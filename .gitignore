@@ -1,0 +1,45 @@
+# forge-control repo — versions ONLY the forge control plane
+# (CLAUDE.md, agents/, tasks/, questions/, .claude/, tests/Features/)
+#
+# All 11 application sub-repos and orphan tooling are excluded so this repo
+# never accidentally swallows code from another git repo.
+
+# 1. Ignore everything by default
+*
+
+# 2. Re-include forge control plane
+!.gitignore
+!CLAUDE.md
+!MEMORY.md
+
+!.claude/
+!.claude/**
+# never commit machine-local Claude settings
+.claude/settings.local.json
+
+!agents/
+!agents/**
+
+!tasks/
+!tasks/**
+
+!questions/
+!questions/**
+
+# .feature files are PO property (CLAUDE.md rule 1a) — keep them under forge-control
+!tests/
+tests/*
+!tests/Features/
+!tests/Features/**
+
+# Belt-and-braces: never track anything inside the 11 application sub-repos,
+# even if a future glob change re-includes them.
+Api/
+Client/
+Dtos/
+Sdk/
+Host/
+DevOps/
+interop/
+psc/
+Tools/
