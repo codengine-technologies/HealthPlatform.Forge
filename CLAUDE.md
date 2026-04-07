@@ -18,7 +18,7 @@ those repos — never at the workspace root.
 |---|---|---|---|---|
 | `api-mail` | `Api/Mail` | .NET 10, xUnit, Reqnroll BDD | `dotnet build HealthPlatform.Api.Mail.sln` | `dotnet test HealthPlatform.Api.Mail.sln` |
 | `client-blazor` | `Client/Blazor` | Blazor WASM, .NET 10, xUnit | `dotnet build HealthPlatform.Client.sln` | `dotnet test HealthPlatform.Client.sln` |
-| `dtos-mss` | `Dtos/Mss` | .NET 10 class lib (NuGet) | `dotnet build HealthPlatform.Dtos.Mss.sln` | n/a |
+| `dtos-mss` | `Dtos` | .NET 10 class lib (NuGet) | `dotnet build HealthPlatform.Dtos.Mss.csproj` | n/a |
 | `sdk` | `Sdk` | .NET 10 host SDK | `dotnet build HealthPlatform.Host.Sdk.csproj` | n/a |
 | `host` | `Host/Modules` | .NET 10 modules | `dotnet build` | n/a |
 | `interop-cda` | `interop/interop.cda.parser` | .NET 10 | `dotnet build interop.cda.parser.sln` | `dotnet test` |

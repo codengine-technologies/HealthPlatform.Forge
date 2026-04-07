@@ -46,7 +46,7 @@ gh pr list --state open
 
 ### 1b. DTO package gate (before dispatching dev agents)
 
-**When a task modifies files in `Dtos/Mss/`:**
+**When a task modifies files in `Dtos/`:**
 
 The DTO project is a shared NuGet package consumed by both Api/Mail and Client.
 Any DTO change requires a publish cycle BEFORE dev agents can use the new types.
@@ -59,7 +59,7 @@ Read the task file. If it mentions DTO changes, new DTOs, or modified contracts:
    /publish-dtos
    ```
    This will:
-   - Auto-increment the version in `Dtos/Mss/HealthPlatform.Dtos.Mss.csproj`
+   - Auto-increment the version in `Dtos/HealthPlatform.Dtos.Mss.csproj`
    - Build, pack, publish to GitHub Packages
    - Update `Api/Mail/Directory.Packages.props` and `Client/Directory.Packages.props`
    - Restore both consumer projects
@@ -106,7 +106,7 @@ agents MUST `cd` into the task's repo path before any git/build/test/gh command.
 |---|---|---|
 | `api-mail` | `Api/Mail` | `develop` |
 | `client-blazor` | `Client/Blazor` | `develop` |
-| `dtos-mss` | `Dtos/Mss` | `develop` |
+| `dtos-mss` | `Dtos` | `develop` |
 | `sdk` | `Sdk` | `develop` |
 | `interop-cda` | `interop/interop.cda.parser` | `develop` |
 | `psc-proxy-server` | `psc/proxy/psc.proxy.server` | `develop` |
