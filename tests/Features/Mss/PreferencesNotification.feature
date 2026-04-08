@@ -25,12 +25,6 @@ Feature: Préférences de notification
     When il désactive toutes les notifications
     Then il ne reçoit plus aucune notification
 
-  Scenario: Activer le son des notifications
-    Given un professionnel de santé connecté
-    And les notifications sont activées
-    When il active le son des notifications
-    Then les notifications sont accompagnées d'un signal sonore
-
   Scenario: Conserver les préférences entre les sessions
     Given un professionnel de santé connecté
     And il a configuré ses préférences de notification

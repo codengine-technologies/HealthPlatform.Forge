@@ -210,6 +210,51 @@ Template:
 - [ ] DTO types match backend contracts
 ```
 
+### 10. Human Acceptance Gate (HAG) — non-négociable
+
+**Aucune PR n'est mergée sur `develop` sans validation humaine explicite, même si toutes les gates automatiques (CI distante, Evaluator, Copilot, QA, Designer) sont vertes.**
+
+L'orchestrator n'a JAMAIS le droit de merger une PR de son propre chef. Le merge a lieu uniquement :
+- sur instruction explicite du humain dans la conversation ("merge #X"), OU
+- via la pose du label `human-approved` sur la PR (que seul le humain peut poser), OU
+- par le humain lui-même via `gh pr merge` ou l'UI GitHub
+
+**Pas d'exception.** Même les PRs triviales (CI fix, doc fix, version bump) attendent une validation humaine. La règle vaut pour les 11 repos de la forge.
+
+**Contrat dev agent enrichi** : chaque dev agent DOIT inclure dans son rapport final une section `## Manual Test Plan` listant :
+- la commande exacte pour lancer l'app localement
+- l'écran/URL à ouvrir
+- les actions à effectuer
+- ce que le humain doit voir/vérifier
+- les données de test si nécessaires (user, mot de passe, mail à envoyer, etc.)
+
+**Contrat orchestrator** :
+1. Quand toutes les gates automatiques sont vertes, l'orchestrator NE merge PAS.
+2. Il poste le `Manual Test Plan` du dev agent comme commentaire de PR (`gh pr comment`).
+3. Il pose le label `awaiting-human-test` (`gh pr edit --add-label`).
+4. Il reporte au humain dans la conversation : "PR #X attend ta validation — teste puis dis 'merge #X' ou pose le label `human-approved`."
+5. Il passe à autre chose et NE relance PAS le merge automatiquement.
+
+**Nouveau statut agent** : `DONE_AWAITING_HUMAN_TEST` — utilisé par le dev agent quand il considère le travail technique terminé et que toutes les gates automatiques peuvent être vertes. Remplace `DONE` dès que cette règle est en vigueur.
+
+**Pourquoi cette règle :** la forge a mergé sur `develop` sans aucune validation humaine pendant plusieurs vagues (drafts, folders, signature, notifications-022/023). Combiné au trou structurel CI (workflows triggered uniquement sur `master` jusqu'au fix de PR codengine-technologies/HealthPlatform.Client#20), des features ont atterri sur `develop` sans validation distante NI humaine. Inacceptable. Le humain doit rester man-in-the-middle.
+
+### 11. US-complete merge gate — non-négociable
+
+**Aucune PR ne merge sur `develop` tant que la User Story complète n'est pas fonctionnellement opérationnelle ET validée humainement de bout en bout.**
+
+Pas de "scaffold first, enrich later". Pas de plomberie nue mergée en attendant l'enrichissement. Pas de "fausse v1" sur develop.
+
+**Conséquences :**
+- Une US découpée en plusieurs waves (wave 1 plomberie + wave 2 enrichissement) reste **entièrement en attente** jusqu'à ce que toutes les waves soient en PR prête. Les PRs intermédiaires attendent.
+- Le test humain (règle 10 HAG) se fait sur la **US assemblée**, pas sur chaque wave isolée. 1 validation humaine = la US entière, pas chaque morceau.
+- L'orchestrator marque les PRs intermédiaires `awaiting-us-completion` et NE propose PAS de merge tant que toutes les waves d'une même US ne sont pas prêtes.
+- Les PRs vraiment orthogonales à toute US en cours (CI/devops indépendant, hotfix sécurité, bump deps non lié) peuvent merger indépendamment. **En cas de doute, demander au humain.**
+
+**Pourquoi :** une wave 1 "plomberie SSE/SignalR + toast générique" mergée sans la wave 2 enrichissement clinique CDA aurait posé une "fausse v1 notifications" sur develop avec aucune valeur médicale (pas de patient, pas de findings, pas de sévérité réelle). Inacceptable. Le médecin doit voir la valeur du premier coup, pas attendre une wave suivante.
+
+Cette règle compose avec la règle 10 HAG : HAG dit "pas de merge sans validation humaine", US-complete dit "pas de validation humaine sur des morceaux".
+
 ---
 
 ## Frozen files

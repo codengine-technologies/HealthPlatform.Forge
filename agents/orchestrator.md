@@ -176,11 +176,15 @@ Each agent MUST end with an explicit status in its result:
 
 | Status | Meaning | Orchestrator action |
 |---|---|---|
-| `DONE` | Task complete, PR created, tests green | Mark done, monitor PR |
-| `DONE_WITH_CONCERNS` | Complete but doubts identified | Mark done, create PO question |
+| `DONE_AWAITING_HUMAN_TEST` | Travail technique terminé, PR ouverte, gates auto OK ou en cours | Run gates, post Manual Test Plan + label `awaiting-human-test`, NE PAS MERGER |
+| `DONE_WITH_CONCERNS` | Complete but doubts identified | Same as above + create PO question |
 | `NEEDS_CONTEXT` | Blocked by missing business info | Create PO question, keep as WIP |
 | `BLOCKED` | Blocked by technical issue | Analyze, retry or escalate |
 | `FAILED` | 3 attempts failed (circuit breaker) | Reset to TODO, create question |
+
+**Important** : le statut `DONE` (sans suffixe) est **obsolète** depuis l'introduction du Human Acceptance Gate (CLAUDE.md règle 10). Tout dev agent qui rapporte `DONE` doit être considéré comme `DONE_AWAITING_HUMAN_TEST` par l'orchestrator.
+
+**Manual Test Plan obligatoire** : chaque rapport agent DOIT contenir une section `## Manual Test Plan` (voir CLAUDE.md règle 10). Si elle manque, l'orchestrator génère un plan minimal à partir de la spec et le marque "à raffiner".
 
 ### 3. Detect wire tasks to create
 
@@ -258,9 +262,35 @@ For each frontend PR with GREEN checks and Copilot handled:
 
 For **backend-only** PRs: only QA is required (no Designer).
 
-**5e. Merge if all OK**
+**5d-bis. Human Acceptance Gate (HAG) — mandatory, non-négociable**
 
-- If all checks GREEN AND Evaluator EVAL_PASS AND Copilot handled AND QA_DONE AND (DESIGN_OK or backend-only) → merge (`gh pr merge <num> --squash --delete-branch`)
+Quand TOUTES les gates automatiques sont vertes (CI distante + Evaluator + Copilot + QA + Designer si applicable), l'orchestrator **NE merge PAS**. Il :
+
+1. Lit la section `## Manual Test Plan` du rapport final du dev agent (chaque dev agent DOIT en produire une — voir CLAUDE.md règle 10)
+2. Poste ce plan comme commentaire de la PR :
+   ```bash
+   gh pr comment <num> --body "## Manual Test Plan\n\n{plan}\n\n👉 Teste puis commente \`[HUMAN_APPROVED]\` ou pose le label \`human-approved\`, ou dis 'merge #<num>' dans la conversation /forge."
+   ```
+3. Pose le label `awaiting-human-test` :
+   ```bash
+   gh pr edit <num> --add-label awaiting-human-test
+   ```
+4. Reporte au humain dans la sortie du cycle : "PR #X attend ta validation — teste puis dis 'merge #X'."
+5. Passe à la PR suivante / autre travail.
+
+**L'orchestrator ne relance JAMAIS le merge tout seul.** Le merge a lieu uniquement :
+- sur instruction explicite du humain dans la conversation ("merge #X")
+- ou par présence du label `human-approved`
+- ou par le humain lui-même via `gh pr merge` / l'UI
+
+Pas d'exception : même les PRs triviales (CI fix, doc, version bump) passent par cette gate. Voir CLAUDE.md règle 10 pour le rationale complet.
+
+**Si le dev agent n'a pas produit de Manual Test Plan dans son rapport** → l'orchestrator en génère un minimal à partir de la spec de la tâche et le poste quand même, accompagné d'une note : "Plan généré par l'orchestrator, à raffiner."
+
+**5e. Merge UNIQUEMENT sur instruction humaine explicite**
+
+- Pré-conditions : toutes checks GREEN AND Evaluator EVAL_PASS AND Copilot handled AND QA_DONE AND (DESIGN_OK or backend-only) AND **HAG approuvé par le humain**
+- Commande : `gh pr merge <num> --squash --delete-branch`
 - **After each merge: check develop CI within 2 minutes**
 
 **5f. Conflict resolution — merge-based, not rebase**
