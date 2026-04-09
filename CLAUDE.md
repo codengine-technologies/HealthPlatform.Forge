@@ -5,6 +5,61 @@
 
 ---
 
+## Forge philosophy — lean
+
+The forge is strictly limited to **4 actions** :
+
+1. **PO** — help the human write user stories (.feature + `todo-*.md` task file)
+2. **Start** — create ONE working branch in the target repo(s) (`/start`)
+3. **Validate** — verify the human's implementation : build + tests + DOD (`/review`)
+4. **PR** — open the pull request and mark the task `done-*` (still inside `/review`)
+
+**Implementation is done by the human in WindSurf with AI pair programming.**
+The forge does NOT dispatch dev agents, does NOT write code, does NOT run QA /
+Designer reviews automatically, does NOT "find extra work" when idle. If there
+is nothing to do, the forge stays idle.
+
+Task lifecycle : `todo → wip → review → done`
+- `todo-*.md` : PO wrote the US, awaiting branch creation
+- `wip-*.md`  : branch created, human is implementing in WindSurf
+- `review-*.md` : human finished, awaiting forge validation
+- `done-*.md` : validated, PR opened, awaiting human merge (HAG, rule 10)
+
+### 1 US = 1 task file = 1 branch name across every impacted repo
+
+**A user story is a single, end-to-end slice of product value.** The PO produces
+**one** `todo-*.md` task file per US, listing **every** repo the US touches in
+a `**Repos**:` field (plural). A full-stack feature touches at minimum :
+
+- `api-mail` (backend)
+- `client-blazor` (new frontend)
+- `client-angular` (legacy frontend)
+
+and possibly `dtos-mss` or others.
+
+**`/start` creates the SAME branch name `feat/{task-id}-{slug}` on each listed
+repo** — one logical branch, multiple physical checkouts. The human implements
+the US end-to-end on these branches in WindSurf (backend + blazor + angular in
+lockstep). `/review` validates every repo and opens one PR per pushable repo,
+linking them together in the task file.
+
+**No more split `todo-back-*` / `todo-front-blazor-*` / `todo-front-angular-*`
+files.** One US = one task = one branch name.
+
+**Exception** : a US that is genuinely scoped to a single layer (e.g. pure
+backend migration, pure Angular-only polish) may list fewer repos, but this
+must be justified in the task body. The default is "all 3 frontends and
+backend".
+
+**Pre-flight for `/start`** : the forge refuses to create a new working branch
+unless **every repo in the polyrepo is on `develop`**. If any repo is on a
+feature branch (finished work not yet cleaned up, or in-flight manual work),
+`/start` aborts and lists the offenders. The human finishes, stashes, or
+checks out `develop` in the listed repos, then retries `/start`. The forge
+never switches branches on the human's behalf.
+
+---
+
 ## Workspace layout — POLYREPO
 
 `D:\TechWatch\HealthPlatform\` is a **meta-workspace**, NOT a git repo. It contains
@@ -18,6 +73,7 @@ those repos — never at the workspace root.
 |---|---|---|---|---|
 | `api-mail` | `Api/Mail` | .NET 10, xUnit, Reqnroll BDD | `dotnet build HealthPlatform.Api.Mail.sln` | `dotnet test HealthPlatform.Api.Mail.sln` |
 | `client-blazor` | `Client/Blazor` | Blazor WASM, .NET 10, xUnit | `dotnet build HealthPlatform.Client.sln` | `dotnet test HealthPlatform.Client.sln` |
+| `client-angular` | `Client/Angular` | Angular, Node | `npm ci && npm run build` | `npm test` |
 | `dtos-mss` | `Dtos` | .NET 10 class lib (NuGet) | `dotnet build HealthPlatform.Dtos.Mss.csproj` | n/a |
 | `sdk` | `Sdk` | .NET 10 host SDK | `dotnet build HealthPlatform.Host.Sdk.csproj` | n/a |
 | `host` | `Host/Modules` | .NET 10 modules | `dotnet build` | n/a |
@@ -27,37 +83,44 @@ those repos — never at the workspace root.
 | `psc-proxy-dto` | `psc/proxy/psc.proxy.dto` | .NET 10 DTOs | `dotnet build psc.proxy.dto.sln` | n/a |
 | `devops` | `DevOps` | CI/CD configs | n/a | n/a |
 
-### Repos EXCLUDED from the forge
+### Partial support : `client-angular` (TFS remote)
 
-The following repos exist under the workspace but the forge MUST NOT touch them.
-No dev agents, no automated commits, no PR creation, no hook enforcement. All
-git/build/test/PR operations for these repos are handled **manually** by the human.
+`client-angular` has a TFS remote (`tfs.weda.fr`) — `gh pr` does not work on it.
+The forge supports it with a **local-only** flow :
 
-| Repo | Path | Reason |
-|---|---|---|
-| `client-angular` | `Client/Angular` | Remote is TFS (`tfs.weda.fr`), not GitHub — `gh pr` unusable. All work done manually. |
+- `/start` creates the branch **locally** (`git checkout -b`) and does NOT push
+- `/review` runs `npm ci && npm run build` + `npm test` locally
+- `/review` does NOT attempt `gh pr create` on this repo ; instead it writes
+  a note to the task file : "TFS PR to be opened manually by the human"
+- The human pushes to TFS and opens the PR manually in the TFS UI
+- The task is marked `done-*` once all non-TFS PRs are opened AND the Angular
+  local build/test is GREEN. The TFS PR tracking is the human's responsibility.
 
-**Rules for excluded repos:**
-- No `**Repo: client-angular**` in task files — such tasks are forbidden
-- The `verify-before-push.sh` hook short-circuits (exit 0) when invoked from inside an excluded repo
-- The orchestrator skips anything under excluded repo paths
-- If the human wants the forge to help edit code inside an excluded repo, they do it via plain `/dev` targeted at a non-forge prompt, never via `/forge`
+### Paired frontends safety net
+
+`client-blazor` and `client-angular` are sibling frontends of the same app —
+any UI change lands on both. The PO is expected to list both in `**Repos**:`.
+As a safety net, if a task file lists one but not the other, `/start`
+automatically adds the missing one before creating branches. To opt out (pure
+Angular polish, pure Blazor experiment), set `**Single frontend**: true` in
+the task file — `/start` will then honour the `**Repos**:` list as-is.
 
 ### Cross-repo dependencies
 
-- `api-mail`, `client-blazor`, `client-angular` consume `dtos-mss` as a NuGet package.
-  Any contract change → `/publish-dtos` first (publishes + bumps consumers).
+- `api-mail`, `client-blazor` consume `dtos-mss` as a NuGet package.
+  `client-angular` consumes the contracts via its own TypeScript types (regenerated manually).
+  Any contract change → `/publish-dtos` first (publishes + bumps .NET consumers).
 - `client-blazor` and `host` consume `sdk`.
 - `psc-proxy-server` consumes `psc-proxy-dto`.
 - All other links are independent.
 
-### Task → Repo routing
+### Task → Repos routing
 
-Each `tasks/todo-*.md` MUST declare a `**Repo**:` field whose value is one of the
-repo keys above. Agents `cd` into that path and execute ALL git/build/test/gh
-commands from there. Tasks that genuinely span repos (e.g. backend + DTO publish)
-list the primary repo and reference the secondary via the body — the orchestrator
-splits these into ordered sub-steps (publish-dtos → backend/frontend).
+Each `tasks/todo-*.md` MUST declare a `**Repos**:` field (plural) with the
+comma-separated list of every repo key the US touches. For a full-stack US the
+list is at minimum `api-mail, client-blazor, client-angular`. `/start` creates
+the same branch name in every listed repo, and `/review` `cd`s into each path
+to run the repo-specific build/test before opening one PR per pushable repo.
 
 ---
 
@@ -67,22 +130,21 @@ splits these into ordered sub-steps (publish-dtos → backend/frontend).
 
 ```
 Step 0: PO writes .feature files BEFORE any implementation
-Step 1: Dev agent READS existing .feature — never creates/modifies them
-Step 2: Write step definitions → verify RED
-Step 3: Implement until GREEN
-Step 4: PR only when all Gherkin scenarios are GREEN
+Step 1: Human (in WindSurf) reads the existing .feature — never creates/modifies them
+Step 2: Human writes step definitions → verify RED
+Step 3: Human implements until GREEN
+Step 4: Human runs /review → forge validates and opens the PR when all Gherkin scenarios are GREEN
 ```
 
-An agent that opens a PR with red tests = PR rejected automatically.
+`/review` refuses to open a PR with red tests.
 
 ### 1b. Endpoint coverage mandatory
 
-Each endpoint MUST have at least 1 integration test. Empty scaffolds (endpoints that compile but return nothing meaningful) are bugs. If an endpoint exists, a test proves it works end-to-end through the DI pipeline.
+Each endpoint MUST have at least 1 integration test. Empty scaffolds (endpoints that compile but return nothing meaningful) are bugs. If an endpoint exists, a test proves it works end-to-end through the DI pipeline. `/review` checks this as part of the DOD.
 
 ### 1a. Feature file purity
 
-**.feature files are PO property.** A dev agent never creates or modifies a .feature file.
-If a .feature is missing or incomplete → agent blocks and writes to `questions/`.
+**.feature files are PO property.** Neither the forge nor WindSurf implementation sessions modify `.feature` files. If a `.feature` is missing or incomplete → stop and ask the PO (human, via `/po`).
 
 **.feature files are purely functional — ZERO technical jargon:**
 
@@ -103,7 +165,7 @@ And I receive a JWT access token         # JWT = technical
 - API paths: `/api/`, `POST /`, `GET /`
 - Technical terms: JWT, token, database, query, SQL, endpoint, header, JSON, HTTP
 
-### 2. Local verification mandatory BEFORE commit/push
+### 2. Local verification mandatory BEFORE the PR
 
 **No code leaves the machine without local verification.**
 
@@ -116,12 +178,7 @@ dotnet build HealthPlatform.Api.Mail.sln    # MUST return 0 errors
 dotnet test  HealthPlatform.Api.Mail.sln    # MUST pass
 ```
 
-**If a test fails → fix BEFORE committing.**
-
-### 3. Immediate commit after GREEN
-
-**As soon as tests are GREEN → git add + git commit + git push IMMEDIATELY.**
-A fix verified locally but not committed does not exist.
+`/review` re-runs these commands before opening the PR and refuses RED.
 
 ### 4. Merge-based sync, not rebase
 
@@ -129,54 +186,29 @@ A fix verified locally but not committed does not exist.
 
 ### 5. PR hygiene (polyrepo)
 
-- **1 task = 1 branch = 1 PR towards `develop`** — in the **repo declared by the
-  task's `**Repo**:` field**. Never push code from one task into another task's repo.
-- A task that legitimately needs to touch N repos lists each repo and produces N
-  PRs (one per repo), with the SAME branch name `feat/{task-id}-{slug}`. The
-  orchestrator links the sibling PR URLs in the task file before merging any of them.
+- **1 task = 1 branch = 1 PR per repo** towards `develop` — in the **repo declared by the
+  task's `**Repos**:` field**. `/start` creates the same branch on every listed repo, `/review` opens one PR per pushable repo.
+- A task that legitimately needs to touch N repos lists each repo — `/start` creates
+  the SAME branch name `feat/{task-id}-{slug}` in each, and `/review` opens N PRs
+  (one per repo) and links them in the task file.
 - Max ~30 modified files per PR
-- Each worktree agent creates its OWN PR in its OWN repo
-- After each merge → verify that repo's `develop` CI GREEN within 2 minutes
-- The workspace root (`D:\TechWatch\HealthPlatform\`) is NEVER pushed — it has no
-  remote. Forge control files (CLAUDE.md, agents/, tasks/, questions/) are tracked
-  separately (see "Forge control" section below) or kept local.
+- After each merge (by the human) → verify that repo's `develop` CI GREEN within 2 minutes
+- The workspace root (`D:\TechWatch\HealthPlatform\`) is NEVER pushed — it has no remote.
 
 ### 6. Isolated scopes
 
-Each agent only touches files in its module. If a cross-module need appears → create `questions/` and block.
+A task only touches files in its module. If a cross-module need appears → stop, ask the PO.
 
 ### 7. Fail-fast mandatory
 
-Block immediately and create `questions/{task-id}.md` if:
+Stop and create `questions/{task-id}.md` if:
 - Edge case not covered by Gherkin
 - Business rule ambiguity
 - Need to modify frozen files
-- Two approaches have failed
-
-### 7a. Circuit breaker — 3 attempts max
-
-An agent debugging a problem has **3 maximum attempts** to resolve it.
-After 3 consecutive failures on the same problem:
-- **STOP immediately** — do not keep guessing
-- Create `questions/{task-id}-debug-{timestamp}.md` documenting:
-  - What was tried (the 3 approaches)
-  - Results/errors of each attempt
-  - Hypothesis on root cause
-- Report status `FAILED` and wait for human/PO input
-
-**Why:** an agent looping on a fix consumes context and budget without progressing.
-
-### 7b. Subagent tool access fallback
-
-Subagents in isolated worktrees may lose access to certain tools (e.g., Bash for git commands).
-When blocked:
-- Report status `BLOCKED` with **exact commands** to execute
-- The orchestrator executes the commands on behalf of the agent
-- Agent prompts should include: "If tool access is denied for git commands, list exact commands and report BLOCKED."
 
 ### 7c. Schema migration audit
 
-After generating any database migration (EF Core, Prisma, Alembic, Knex, etc.), the agent MUST:
+After generating any database migration (EF Core, Prisma, Alembic, Knex, etc.), the human (or `/review`) MUST:
 1. **Read the generated migration file** and verify it matches intent
 2. **Check for phantom operations** (altering columns that were never created, dropping tables that shouldn't be dropped)
 3. **Verify companion/metadata files exist** (e.g., `.Designer.cs` for EF Core, snapshot files)
@@ -195,9 +227,9 @@ refactor(module): refactor description
 
 ### 9. Definition of Done (DOD) mandatory
 
-Every task file (`todo-*.md`) MUST include a `## Definition of Done` section with concrete, verifiable criteria. No subjective criteria ("clean code") — only binary checks the Evaluator agent can verify.
+Every task file (`todo-*.md`) MUST include a `## Definition of Done` section with concrete, verifiable criteria. No subjective criteria ("clean code") — only binary checks `/review` can verify.
 
-The DOD is the contract between the dev agent and the evaluator. If a criterion is not in the DOD, the evaluator won't check it. If it IS in the DOD, the evaluator WILL check it and FAIL the evaluation if it's not met.
+The DOD is the contract between the human (implementing in WindSurf) and `/review`. If a criterion is not in the DOD, `/review` won't check it. If it IS in the DOD, `/review` WILL check it and REFUSE to open the PR if it's not met.
 
 Template:
 ```
@@ -212,32 +244,20 @@ Template:
 
 ### 10. Human Acceptance Gate (HAG) — non-négociable
 
-**Aucune PR n'est mergée sur `develop` sans validation humaine explicite, même si toutes les gates automatiques (CI distante, Evaluator, Copilot, QA, Designer) sont vertes.**
+**Aucune PR n'est mergée sur `develop` par la forge. Jamais. Le merge est l'action exclusive du humain.**
 
-L'orchestrator n'a JAMAIS le droit de merger une PR de son propre chef. Le merge a lieu uniquement :
-- sur instruction explicite du humain dans la conversation ("merge #X"), OU
-- via la pose du label `human-approved` sur la PR (que seul le humain peut poser), OU
-- par le humain lui-même via `gh pr merge` ou l'UI GitHub
+`/review` ouvre la PR et pose le label `awaiting-human-merge`. Le humain teste, puis merge lui-même via `gh pr merge` ou l'UI GitHub. Pas d'exception — même les PRs triviales (CI fix, doc fix, version bump).
 
-**Pas d'exception.** Même les PRs triviales (CI fix, doc fix, version bump) attendent une validation humaine. La règle vaut pour les 11 repos de la forge.
-
-**Contrat dev agent enrichi** : chaque dev agent DOIT inclure dans son rapport final une section `## Manual Test Plan` listant :
+**Contrat task file** : chaque `todo-*.md` doit contenir une section `## Manual Test Plan` listant :
 - la commande exacte pour lancer l'app localement
 - l'écran/URL à ouvrir
 - les actions à effectuer
 - ce que le humain doit voir/vérifier
-- les données de test si nécessaires (user, mot de passe, mail à envoyer, etc.)
+- les données de test si nécessaires
 
-**Contrat orchestrator** :
-1. Quand toutes les gates automatiques sont vertes, l'orchestrator NE merge PAS.
-2. Il poste le `Manual Test Plan` du dev agent comme commentaire de PR (`gh pr comment`).
-3. Il pose le label `awaiting-human-test` (`gh pr edit --add-label`).
-4. Il reporte au humain dans la conversation : "PR #X attend ta validation — teste puis dis 'merge #X' ou pose le label `human-approved`."
-5. Il passe à autre chose et NE relance PAS le merge automatiquement.
+`/review` recopie ce bloc dans le body de la PR au moment de l'ouvrir.
 
-**Nouveau statut agent** : `DONE_AWAITING_HUMAN_TEST` — utilisé par le dev agent quand il considère le travail technique terminé et que toutes les gates automatiques peuvent être vertes. Remplace `DONE` dès que cette règle est en vigueur.
-
-**Pourquoi cette règle :** la forge a mergé sur `develop` sans aucune validation humaine pendant plusieurs vagues (drafts, folders, signature, notifications-022/023). Combiné au trou structurel CI (workflows triggered uniquement sur `master` jusqu'au fix de PR codengine-technologies/HealthPlatform.Client#20), des features ont atterri sur `develop` sans validation distante NI humaine. Inacceptable. Le humain doit rester man-in-the-middle.
+**Pourquoi cette règle :** la forge a mergé sur `develop` sans validation humaine pendant plusieurs vagues. Inacceptable. Le humain doit rester man-in-the-middle, et depuis la bascule "implémentation en WindSurf", il l'est par construction — la forge ne pousse jamais de code, elle ouvre des PRs que le humain merge.
 
 ### 11. US-complete merge gate — non-négociable
 
@@ -248,7 +268,7 @@ Pas de "scaffold first, enrich later". Pas de plomberie nue mergée en attendant
 **Conséquences :**
 - Une US découpée en plusieurs waves (wave 1 plomberie + wave 2 enrichissement) reste **entièrement en attente** jusqu'à ce que toutes les waves soient en PR prête. Les PRs intermédiaires attendent.
 - Le test humain (règle 10 HAG) se fait sur la **US assemblée**, pas sur chaque wave isolée. 1 validation humaine = la US entière, pas chaque morceau.
-- L'orchestrator marque les PRs intermédiaires `awaiting-us-completion` et NE propose PAS de merge tant que toutes les waves d'une même US ne sont pas prêtes.
+- `/review` marque les PRs intermédiaires `awaiting-us-completion` au lieu de `awaiting-human-merge` tant que toutes les waves d'une même US ne sont pas prêtes.
 - Les PRs vraiment orthogonales à toute US en cours (CI/devops indépendant, hotfix sécurité, bump deps non lié) peuvent merger indépendamment. **En cas de doute, demander au humain.**
 
 **Pourquoi :** une wave 1 "plomberie SSE/SignalR + toast générique" mergée sans la wave 2 enrichissement clinique CDA aurait posé une "fausse v1 notifications" sur develop avec aucune valeur médicale (pas de patient, pas de findings, pas de sévérité réelle). Inacceptable. Le médecin doit voir la valeur du premier coup, pas attendre une wave suivante.
@@ -270,9 +290,6 @@ Never modify without human arbitration:
 |---|---|---|
 | `guard-shared.sh` | Write/Edit | Blocks modification of frozen files |
 | `guard-feature.sh` | Write/Edit .feature | Blocks technical jargon |
-| `guard-wip-features.sh` | Bash `git push` | Blocks push if @wip features have step definitions |
-| `guard-merge-ci-green.sh` | Bash `gh pr merge` | Blocks merge if CI is RED on target branch |
-| `guard-bdd-first.sh` | Write/Edit handler/service | Warns when creating handlers without test specs |
 | `verify-before-push.sh` | Bash `git push` | Build + tests MUST pass |
 
 ---
@@ -281,8 +298,10 @@ Never modify without human arbitration:
 
 | Command | Effect |
 |---|---|
-| `/forge` | Full orchestrator cycle |
-| `/loop 15m /forge` | Automatic cycle every 15 min |
+| `/po` | Write a new US : `.feature` + `todo-*.md` task file |
+| `/start {task-id}` | Create the working branch in the target repo(s), move task to `wip-*` |
+| `/review {task-id}` | Validate the human's implementation (build + tests + DOD), open the PR, move task to `done-*` |
+| `/forge` | Lean cycle : report state, auto-run `/review` on any `review-*.md`, list PRs awaiting human merge |
 | `/status` | Quick status in < 10 lines |
-| `/dev tasks/todo-xxx.md` | Launch a dev agent on a task |
-| `/po` | Handle pending business questions |
+| `/publish-dtos` | Publish the DTO NuGet package and bump consumers |
+| `/kickoff` | Bootstrap a new project (scaffold `.claude/`, agents, templates) |

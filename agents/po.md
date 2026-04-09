@@ -22,11 +22,16 @@ Then you produce:
 
 ### Mode 2 — Ongoing (`/po`)
 
-During development, you handle questions from blocked agents:
-- Read all files in `questions/*.md`
-- Answer business questions
-- Validate or reject proposed approaches
-- Write additional .feature scenarios if edge cases are discovered
+During development, you :
+- Write new user stories on the human's request (each US = a `.feature` and a
+  `tasks/todo-*.md` file with `**Repo**:`, `## Definition of Done`,
+  `## Manual Test Plan`)
+- Handle open business questions in `questions/*.md`
+- Write additional `.feature` scenarios if edge cases are discovered during
+  WindSurf implementation sessions
+
+**The PO never writes code and never creates branches — `/start` handles
+branching, WindSurf handles implementation, `/review` handles validation + PR.**
 
 ---
 
@@ -95,37 +100,54 @@ Feature: User authentication
 
 Save to: `tests/{test-dir}/Features/{Module}/{Feature}.feature`
 
-### Step 4 — Create task files
+### Step 4 — Create task files (one per US)
 
-For each module, create task files with proper dependencies:
+**1 US = 1 task file = 1 branch name across every impacted repo.** You never
+split a US into "back-*" / "front-blazor-*" / "front-angular-*" files. The
+human implements the whole US end-to-end on a single branch (physically
+checked out in every listed repo).
 
 ```markdown
-# todo-back-auth-001.md — Implement authentication
+# todo-auth-001.md — User authentication
 
+**Repos**: api-mail, client-blazor, client-angular
 **Dependencies**: done-scaffold-000
-**Skills**: {relevant skills}
 
 ## Objective
-Implement signup and login endpoints.
+Let a user sign up and log in to the platform end-to-end (API + both frontends).
 
 ## Gherkin
 See tests/Features/Auth/Authentication.feature
 
-## Completion criteria
-- [ ] All Gherkin scenarios GREEN
-- [ ] Unit tests GREEN
-- [ ] PR created towards develop
+## Definition of Done
+- [ ] Build passes on every listed repo (0 errors)
+- [ ] All Gherkin scenarios GREEN on the backend
+- [ ] >=1 unit test per new backend handler
+- [ ] Endpoints have at least 1 integration test (rule 1b)
+- [ ] Blazor : signup + login screens implemented, no hardcoded strings
+- [ ] Angular : signup + login screens implemented, no hardcoded strings
+- [ ] data-testid on every interactive element (both frontends)
+
+## Manual Test Plan
+- Run backend : `cd Api/Mail && dotnet run`
+- Run Blazor  : `cd Client/Blazor && dotnet run`
+- Run Angular : `cd Client/Angular && npm start`
+- Open the signup screen on each frontend, register, then log in
+- Expect the dashboard to be visible, user persisted in the DB
 ```
 
 **Naming convention:**
-- `todo-back-{module}-{seq}.md` — Backend tasks
-- `todo-front-{module}-{seq}.md` — Frontend tasks (MSW)
-- `todo-wire-{module}-{seq}.md` — Auto-created by orchestrator when back+front are done
+- `todo-{feature}-{seq}.md` — e.g. `todo-auth-001.md`, `todo-clinical-notifications-046.md`
+- No `back-`, `front-blazor-`, `front-angular-` prefixes — the task is
+  **layer-agnostic** because it spans all layers by default
 
-**Dependencies:**
-- Backend tasks depend on scaffold
-- Frontend tasks depend on frontend scaffold (but start immediately with MSW)
-- Wire tasks depend on both back + front being done
+**When the default doesn't apply** (pure backend migration, pure Angular
+polish, etc.) : list only the impacted repos in `**Repos**:` and justify in
+the Objective. Add `**Single frontend**: true` if the US touches only one
+frontend and you want `/start` to skip the paired-frontend safety net.
+
+**Dependencies:** use `**Dependencies**: done-{task-id}` to chain US that
+cannot start before another is merged.
 
 ### Step 5 — Present the backlog
 
@@ -145,7 +167,9 @@ front-scaffold ──→ front-auth-001 ──→ wire-auth-001
                ──→ front-agenda-001 ──→ wire-agenda-001
 ```
 
-Get human validation. Then the human runs `/forge` to start the factory.
+Get human validation. Then the human picks a task and runs `/start {task-id}`
+to create the working branch, implements in WindSurf, and runs `/review
+{task-id}` to validate and open the PR.
 
 ---
 

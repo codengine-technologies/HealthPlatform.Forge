@@ -1,4 +1,5 @@
 # /status — Quick factory status
 
-Count tasks by state (todo/wip/done), list active agents, check develop CI, list open PRs.
-Output in < 10 lines.
+Count tasks by state (`todo-*`, `wip-*`, `review-*`, `done-*`), list open PRs
+across active repos, list PRs awaiting human merge (label
+`awaiting-human-merge`), list open PO questions. Output in < 10 lines.

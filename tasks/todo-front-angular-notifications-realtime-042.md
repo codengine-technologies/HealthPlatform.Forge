@@ -180,15 +180,15 @@ Vérifier que `mss-settings.component.ts` (livré dans done-front-angular-notifi
 
 ## Definition of Done
 
-- [ ] Build passes (`npm run build` dans `front/`)
-- [ ] Tests Vitest passent (`npm test` dans `front/`)
-- [ ] `NotificationPayloadDto` (TS) aligné avec le DTO backend
-- [ ] `NotificationStreamService` standalone, reconnection auto fonctionnelle
-- [ ] `NotificationDispatcherComponent` OnPush, standalone, intégré dans `AppComponent`
+- [x] Build passes (`npm run build` dans `front/`) — `nx build weda2` OK
+- [x] Tests Vitest passent (`npm test` dans `front/`) — 22/22 pass (`nx test mss-lib`)
+- [x] `NotificationPayloadDto` (TS) aligné avec le DTO backend
+- [x] `NotificationStreamService` standalone, reconnection auto fonctionnelle
+- [x] `NotificationDispatcherComponent` OnPush, standalone, intégré dans `AppComponent`
 - [ ] Test manuel : toast et desktop fonctionnent avec un mail réel (captures d'écran dans le ticket TFS)
-- [ ] Aucune nouvelle dépendance npm ajoutée (`package.json` inchangé côté dependencies, sauf ajout éventuel de types si TS strict l'impose)
-- [ ] data-testid : `notification-dispatcher` sur le composant (même s'il est invisible, utile pour les tests e2e)
-- [ ] Standalone component, OnPush, Angular Signals — respect des conventions du projet
+- [x] Aucune nouvelle dépendance npm ajoutée (`package.json` inchangé côté dependencies, sauf ajout éventuel de types si TS strict l'impose)
+- [x] data-testid : `notification-dispatcher` sur le composant (même s'il est invisible, utile pour les tests e2e)
+- [x] Standalone component, OnPush, Angular Signals — respect des conventions du projet
 - [ ] Pas de régression sur les features existantes (drafts, folders, signature, settings)
 
 ## Notes
