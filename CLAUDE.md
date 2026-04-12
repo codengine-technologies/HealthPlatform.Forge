@@ -83,18 +83,24 @@ those repos — never at the workspace root.
 | `psc-proxy-dto` | `psc/proxy/psc.proxy.dto` | .NET 10 DTOs | `dotnet build psc.proxy.dto.sln` | n/a |
 | `devops` | `DevOps` | CI/CD configs | n/a | n/a |
 
-### Excluded repo : `client-angular` (managed manually)
+### Excluded repos (managed manually)
 
-`client-angular` is **entirely excluded from forge automation**. The human manages
-this repo manually (branches, builds, tests, PRs, TFS push).
+The following repos are **entirely excluded from forge automation**. The human
+manages them manually (branches, builds, tests, PRs). The forge ignores them
+in pre-flight checks, `/start`, and `/review`.
 
-- `/start` does **NOT** create any branch on `client-angular`
-- `/review` does **NOT** build or test `client-angular`
-- `/review` does **NOT** attempt any PR on `client-angular`
-- If a task file lists `client-angular` in `**Repos**:`, the forge acknowledges it
-  but skips all automation for this repo. A note is added to the task file :
-  "Angular : managed manually by the human"
-- The paired frontends safety net does **NOT** auto-add `client-angular`
+**`client-angular`** — TFS remote, human manages branches/PRs manually.
+
+**`devops`** — CI/CD configs, human manages independently.
+
+**`psc-proxy-dto`** — human manages independently.
+
+For both :
+- `/start` does **NOT** create any branch
+- `/review` does **NOT** build, test, or open PRs
+- Pre-flight does **NOT** check their current branch
+- If a task file lists them in `**Repos**:`, the forge acknowledges but skips
+  all automation. A note is added : "managed manually by the human"
 
 ### Paired frontends safety net
 
@@ -102,6 +108,15 @@ this repo manually (branches, builds, tests, PRs, TFS push).
 frontends safety net is **disabled** — `/start` does NOT auto-add
 `client-angular` to any task. The human is responsible for creating the
 Angular branch and implementing the Angular side manually.
+
+### Auto-included repo : `dtos-mss`
+
+`dtos-mss` is the shared DTO package consumed by `api-mail` and `client-blazor`.
+**`/start` MUST always create a branch on `dtos-mss`** alongside `api-mail` and
+`client-blazor`, even if the task file does not explicitly list it in `**Repos**:`.
+Any US that touches `api-mail` or `client-blazor` may need DTO changes, so the
+branch must exist proactively. If no DTO changes are needed, the branch will
+simply have no commits and no PR will be opened for it.
 
 ### Cross-repo dependencies
 

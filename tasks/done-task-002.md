@@ -1,6 +1,6 @@
-# todo-task-002.md — Masquage prefixe XDM dans l'objet
+# done-task-002.md — Masquage prefixe XDM dans l'objet
 
-**Repos**: api-mail, client-blazor, client-angular
+**Repos**: api-mail, dtos-mss, client-blazor, client-angular
 **Dependencies**: aucune
 
 ## Objectif
@@ -65,3 +65,15 @@ See `tests/mss.mail.bdd.tests/Features/Mss/MasquagePrefixeXdm.feature`
 - Recevoir un message avec objet libre (ex: `Bonjour docteur`)
   - Verifier qu'il est affiche tel quel
 - Verifier en base que l'objet original complet est conserve avec le prefixe
+
+## Branches
+- `api-mail` (pushed) : feat/task-002-masquage-prefixe-xdm — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-002-masquage-prefixe-xdm
+- `dtos-mss` (pushed) : feat/task-002-masquage-prefixe-xdm — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-002-masquage-prefixe-xdm
+- `client-blazor` (pushed) : feat/task-002-masquage-prefixe-xdm — https://github.com/codengine-technologies/HealthPlatform.Client/tree/feat/task-002-masquage-prefixe-xdm
+- `client-angular` : managed manually by the human
+
+## PRs
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/18 (awaiting-human-merge)
+- `client-blazor` : https://github.com/codengine-technologies/HealthPlatform.Client/pull/21 (awaiting-human-merge)
+- `dtos-mss` : pas de changements sur cette branche (version bump gere via /publish-dtos)
+- `client-angular` : managed manually by the human

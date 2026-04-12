@@ -3,23 +3,27 @@
 Usage : `/review {task-id}` (e.g. `/review back-clinical-notifications-046`)
 
 Purpose : the human finished implementing a task in WindSurf and pushed (or,
-for `client-angular`, committed locally). The forge validates and, if
-everything is GREEN, opens the pull request(s) and marks the task `done-*`.
+for excluded repos, committed locally). The forge validates (build, tests,
+DOD), performs a **code review** equivalent to a second developer reviewing
+the implementation, and if everything is GREEN **and the human approves**,
+commits any uncommitted changes, opens the pull request(s), and marks the
+task `done-*`.
 
-**The forge does NOT fix code. If validation fails, the forge reports what is
-wrong and the human goes back to WindSurf.**
+**The forge does NOT fix code. If validation or code review fails, the forge
+reports what is wrong and the human goes back to WindSurf.**
 
 ## Steps
 
 1. **Locate the task file** : accept `tasks/wip-{task-id}.md` or
    `tasks/review-{task-id}.md`. If missing → abort.
 
-2. **Read the task** : `## Branches`, `## Definition of Done`, `## Manual Test Plan`.
+2. **Read the task** : `## Branches`, `## Definition of Done`, `## Manual Test Plan`,
+   `## Objectif` (to understand the intent of the US).
 
-3. **For each branch listed in `## Branches`** (both pushed and local-only) :
+3. **For each branch listed in `## Branches`** (pushed repos only, skip excluded) :
    ```bash
    cd {repo-path}
-   git fetch origin                         # safe for both GitHub and TFS
+   git fetch origin
    git checkout feat/{task-id}-{slug}
    # Pushed repos only :
    git pull --ff-only
@@ -34,61 +38,162 @@ wrong and the human goes back to WindSurf.**
    run ; observational items are deferred to the Manual Test Plan in the PR
    body. Any DOD item that fails → validation FAILS with the reason.
 
-5. **Sync each branch with develop** (merge, never rebase) :
+5. **Code Review** — review the diff on each repo like a second developer :
+
+   ```bash
+   cd {repo-path}
+   git diff origin/develop...HEAD
+   ```
+
+   Read all changed files and evaluate against these criteria :
+
+   ### 5.1 Correctness
+   - Does the implementation match the US objective and Gherkin scenarios?
+   - Are there logic errors, off-by-one, null reference risks?
+   - Are edge cases handled (empty strings, nulls, missing data)?
+
+   ### 5.2 Security
+   - No injection risks (SQL, XSS, command injection)
+   - No secrets or credentials in the code
+   - Input validation at system boundaries
+   - Authentication/authorization respected
+
+   ### 5.3 Architecture & Design
+   - Follows existing patterns in the codebase (Clean Architecture, DDD, etc.)
+   - No unnecessary coupling between layers
+   - DTOs used for cross-boundary communication
+   - No business logic in controllers or UI components
+
+   ### 5.4 Code Quality
+   - Readable, clear naming
+   - No dead code, commented-out blocks, or TODO left behind
+   - No code duplication that should be factored
+   - Appropriate error handling (not over-engineered, not missing)
+
+   ### 5.5 Performance
+   - No N+1 queries, unnecessary allocations, or blocking calls in async code
+   - Appropriate use of async/await
+   - No unbounded collections or missing pagination
+
+   ### 5.6 Test Coverage
+   - New code has tests (unit and/or integration)
+   - Tests are meaningful (not just asserting true)
+   - Step definitions match the Gherkin scenarios
+
+   ### Verdict
+
+   For each file or area reviewed, note :
+   - ✅ **Approve** — code is good, no issues
+   - ⚠️ **Suggestion** — non-blocking improvement (nice-to-have, not required)
+   - ❌ **Request changes** — blocking issue that must be fixed before merge
+
+   The overall code review verdict is :
+   - **APPROVED** — no blocking issues (may have suggestions)
+   - **CHANGES REQUESTED** — at least one blocking issue → validation FAILS
+
+6. **Present the validation report to the human** :
+
+   ```
+   Validation report for {task-id} :
+
+   Build       : ✓ api-mail | ✓ client-blazor | ...
+   Tests       : ✓ api-mail (X passed, 0 failed)
+   DOD         : ✓ all items checked
+   Code Review : ✓ APPROVED (or ✗ CHANGES REQUESTED)
+
+   ## Code Review Details
+
+   ### api-mail
+   - `src/Application/Helpers/XdmSubjectHelper.cs` — ✅ clean implementation
+   - `src/Api/Controllers/MailController.cs` — ⚠️ suggestion: consider caching
+   - ...
+
+   ### client-blazor
+   - `Components/MailHeader.razor` — ✅ correct usage of helper
+   - ...
+
+   ## Suggestions (non-blocking)
+   - ...
+
+   ## Blocking Issues (if any)
+   - ...
+
+   Approve to commit and create PRs? (yes / no)
+   ```
+
+   **If CHANGES REQUESTED** : do NOT ask for approval. Report the blocking
+   issues and stop. The human fixes in WindSurf and re-runs `/review`.
+
+   **If APPROVED** : wait for human approval. Do NOT proceed without explicit
+   "yes". If the human says "no" → stop, leave the task as-is.
+
+7. **After human approval — Commit uncommitted changes** on each repo :
+   ```bash
+   cd {repo-path}
+   git add -A
+   git status
+   # If there are changes to commit :
+   git commit -m "feat({module}): {task-title}"
+   git push
+   ```
+   Skip repos with no uncommitted changes.
+
+8. **Sync each branch with develop** (merge, never rebase) :
    ```bash
    git fetch origin develop
    git merge origin/develop
    ```
    Conflicts → stop and report. The human resolves in WindSurf.
 
-6. **If everything is GREEN**, for each branch :
+9. **Open PRs** for each pushed repo :
 
-   **Pushed repos** (GitHub) — open a PR :
+   **Pushed repos** (GitHub) :
    ```bash
    gh pr create \
      --base develop \
      --head feat/{task-id}-{slug} \
      --title "{type}({module}): {task-title}" \
-     --body "{summary + link to task file + Manual Test Plan}"
+     --body "{summary + code review summary + Manual Test Plan}"
    gh pr edit {num} --add-label awaiting-human-merge
    ```
 
-   **Local-only repos** (`client-angular`, TFS remote) — no `gh` :
+   Include the code review summary in the PR body under a `## Code Review`
+   section so the human can see the review when merging.
+
+   **Excluded repos** (`client-angular`, `devops`, `psc-proxy-dto`) :
    - Do NOT push, do NOT attempt `gh pr create`
-   - Write a line to the task file noting that the TFS PR must be opened
-     manually by the human (commit hash + branch name + path)
-   - Record the local commit SHA so the human can find the branch easily
+   - Write a note to the task file : "managed manually by the human"
 
-7. **Rename the task** : `mv tasks/{wip|review}-{task-id}.md tasks/done-{task-id}.md`
-   and append a `## PRs` section :
+10. **Rename the task** : `mv tasks/{wip|review}-{task-id}.md tasks/done-{task-id}.md`
+    and append `## PRs` and `## Code Review Summary` sections.
 
-   ```markdown
-   ## PRs
-   - `api-mail` : https://github.com/.../pull/42 (awaiting-human-merge)
-   - `client-blazor` : https://github.com/.../pull/43 (awaiting-human-merge)
-   - `client-angular` : **TFS manual** — branch feat/X-001 at commit abc1234, push to TFS and open PR manually
-   ```
+11. **Report** to the human :
+    ```
+    {task-id} validated, reviewed, and approved.
 
-8. **Report** to the human :
-   ```
-   {task-id} validated.
-   
-   GitHub PRs opened :
-   - {repo} : {pr-url}
-   - ...
-   
-   TFS (manual) :
-   - client-angular : push feat/{task-id}-{slug} to tfs.weda.fr and open the PR
-   
-   Test manually, then merge the GitHub PRs yourself and open the TFS PR manually.
-   ```
+    Code review : APPROVED (X files reviewed, Y suggestions, 0 blocking)
+
+    Commits pushed, GitHub PRs opened :
+    - {repo} : {pr-url}
+    - ...
+
+    Excluded repos (manual) :
+    - client-angular : human manages branch, push, and PR
+
+    Test manually, then merge the GitHub PRs yourself.
+    ```
 
 ## Rules
 
-- The forge never patches code — validation is read-only
-- The forge never merges — HAG (CLAUDE.md rule 10)
-- The forge never pushes a local-only repo
-- The forge never attempts `gh` on a TFS remote
+- The forge never patches code — validation and review are read-only
+- The forge never merges PRs — HAG (CLAUDE.md rule 10)
+- The forge never pushes an excluded repo
+- The forge never commits or creates PRs without **explicit human approval**
+- The forge never commits or creates PRs if code review is **CHANGES REQUESTED**
 - Every DOD item must be checked or explicitly marked as deferred to manual test
-- Build + test MUST pass on every target repo before any PR is opened
+- Build + test MUST pass on every target repo before code review
+- Code review MUST be APPROVED before presenting for human approval
 - Use `git merge`, never `git rebase` (CLAUDE.md rule 4)
+- The code review is honest and rigorous — it flags real issues, not cosmetic
+  nitpicks. The goal is to catch bugs, security issues, and design problems
+  that the implementing developer might have missed.

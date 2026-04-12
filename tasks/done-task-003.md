@@ -1,4 +1,4 @@
-# todo-task-003.md — Opposition patient envoi MSS
+# done-task-003.md — Opposition patient envoi MSS
 
 **Repos**: api-mail, client-blazor, client-angular
 **Dependencies**: aucune
@@ -100,3 +100,18 @@ See `tests/mss.mail.bdd.tests/Features/Mss/OppositionPatientMss.feature`
   - Selectionner un patient avec INS qualifiee → verifier l'affichage date de naissance + sexe pour confirmation
   - Selectionner un patient sans INS qualifiee → verifier le refus d'envoi vers MES
 - Repeter sur les deux frontends (Blazor et Angular)
+
+## Branches
+- `api-mail` (pushed) : feat/task-003-opposition-patient-mss — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-003-opposition-patient-mss
+- `dtos-mss` (pushed) : feat/task-003-opposition-patient-mss — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-003-opposition-patient-mss
+- `client-blazor` (pushed) : feat/task-003-opposition-patient-mss — https://github.com/codengine-technologies/HealthPlatform.Client/tree/feat/task-003-opposition-patient-mss
+- `client-angular` : managed manually by the human
+
+## PRs
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/19 (awaiting-human-merge)
+- `client-blazor` : https://github.com/codengine-technologies/HealthPlatform.Client/pull/22 (awaiting-human-merge)
+- `dtos-mss` : pas de changements supplementaires sur cette branche (DTOs deja publies en v165.0.0)
+- `client-angular` : managed manually by the human
+
+## Code Review Summary
+APPROVED — 49 fichiers reviewes, 0 issues bloquantes, 2 suggestions mineures (date opposition cote client, silent return si patient inexistant)
