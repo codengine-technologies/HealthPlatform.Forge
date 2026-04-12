@@ -83,27 +83,25 @@ those repos — never at the workspace root.
 | `psc-proxy-dto` | `psc/proxy/psc.proxy.dto` | .NET 10 DTOs | `dotnet build psc.proxy.dto.sln` | n/a |
 | `devops` | `DevOps` | CI/CD configs | n/a | n/a |
 
-### Partial support : `client-angular` (TFS remote)
+### Excluded repo : `client-angular` (managed manually)
 
-`client-angular` has a TFS remote (`tfs.weda.fr`) — `gh pr` does not work on it.
-The forge supports it with a **local-only** flow :
+`client-angular` is **entirely excluded from forge automation**. The human manages
+this repo manually (branches, builds, tests, PRs, TFS push).
 
-- `/start` creates the branch **locally** (`git checkout -b`) and does NOT push
-- `/review` runs `npm ci && npm run build` + `npm test` locally
-- `/review` does NOT attempt `gh pr create` on this repo ; instead it writes
-  a note to the task file : "TFS PR to be opened manually by the human"
-- The human pushes to TFS and opens the PR manually in the TFS UI
-- The task is marked `done-*` once all non-TFS PRs are opened AND the Angular
-  local build/test is GREEN. The TFS PR tracking is the human's responsibility.
+- `/start` does **NOT** create any branch on `client-angular`
+- `/review` does **NOT** build or test `client-angular`
+- `/review` does **NOT** attempt any PR on `client-angular`
+- If a task file lists `client-angular` in `**Repos**:`, the forge acknowledges it
+  but skips all automation for this repo. A note is added to the task file :
+  "Angular : managed manually by the human"
+- The paired frontends safety net does **NOT** auto-add `client-angular`
 
 ### Paired frontends safety net
 
-`client-blazor` and `client-angular` are sibling frontends of the same app —
-any UI change lands on both. The PO is expected to list both in `**Repos**:`.
-As a safety net, if a task file lists one but not the other, `/start`
-automatically adds the missing one before creating branches. To opt out (pure
-Angular polish, pure Blazor experiment), set `**Single frontend**: true` in
-the task file — `/start` will then honour the `**Repos**:` list as-is.
+`client-angular` is excluded from forge automation (see above). The paired
+frontends safety net is **disabled** — `/start` does NOT auto-add
+`client-angular` to any task. The human is responsible for creating the
+Angular branch and implementing the Angular side manually.
 
 ### Cross-repo dependencies
 
@@ -298,7 +296,7 @@ Never modify without human arbitration:
 
 | Command | Effect |
 |---|---|
-| `/po` | Write a new US : `.feature` + `todo-*.md` task file |
+| `/po` | Write a new US : `.feature` + `todo-*.md` task file. With `--from <doc.md>` : batch-extract US from a markdown document (one-by-one human validation) |
 | `/start {task-id}` | Create the working branch in the target repo(s), move task to `wip-*` |
 | `/review {task-id}` | Validate the human's implementation (build + tests + DOD), open the PR, move task to `done-*` |
 | `/forge` | Lean cycle : report state, auto-run `/review` on any `review-*.md`, list PRs awaiting human merge |

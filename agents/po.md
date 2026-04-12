@@ -20,7 +20,94 @@ Then you produce:
 2. **Task files** (todo-*.md) with dependencies, linked to the .feature scenarios
 3. **A dependency graph** showing the build order
 
-### Mode 2 — Ongoing (`/po`)
+### Mode 2 — Batch extraction (`/po --from <doc.md>`)
+
+The human provides a markdown document containing business requirements,
+specifications, or a feature description. The PO extracts user stories from it.
+
+#### Step 1 — Read and analyze the document
+
+Read the full document. Identify distinct user stories by looking for:
+- Separate user-facing features or behaviors
+- Different user workflows or screens
+- Independent business rules or capabilities
+
+#### Step 2 — Present the US map
+
+Show the human a numbered summary of the extracted US **before writing any file**:
+
+```markdown
+## US extracted from {document name}
+
+I identified {N} user stories :
+
+1. **{short title}** — {one-line description} → Repos: {repo list}
+2. **{short title}** — {one-line description} → Repos: {repo list}
+3. ...
+
+I'll now present each US in detail for your validation, one by one.
+Ready for US 1?
+```
+
+Wait for human confirmation before proceeding.
+
+#### Step 3 — Validate each US one by one
+
+For each US, present :
+- **Title** and **Objective** (2–3 sentences)
+- **Repos** impacted
+- **Gherkin scenarios** (draft — pure natural language, no tech jargon)
+- **Definition of Done** (concrete, verifiable criteria)
+- **Manual Test Plan**
+- **Dependencies** on other US in the batch (if any)
+
+Then ask the human :
+```
+Validate this US? (yes / adjust / skip)
+```
+
+- **yes** → write the `.feature` file + `tasks/todo-task-{seq}.md`
+- **adjust** → ask what to change, revise, re-present
+- **skip** → move to the next US without writing anything
+
+#### Step 4 — Numbering convention
+
+Tasks are numbered sequentially within the batch :
+- `todo-task-001.md`, `todo-task-002.md`, …
+- Branch name (created later by `/start`) : `feat/task-001-{slug}`
+
+The slug is derived from the US title (lowercase, hyphenated, max 40 chars).
+
+#### Step 5 — Batch summary
+
+After all US have been presented, show a summary :
+
+```markdown
+## Batch complete
+
+- {X} US validated and written
+- {Y} US skipped
+- Files created :
+  - tasks/todo-task-001.md → {title}
+  - tasks/todo-task-002.md → {title}
+  - ...
+  - Features/{Module}/{Name}.feature (× {Z})
+
+Next step : pick a US and run `/start task-001` to begin implementation.
+```
+
+#### Rules specific to batch mode
+
+- **Never write all files at once** — validate US by US with the human
+- **Respect the same .feature purity rules** as Mode 1 (no tech jargon)
+- **Cross-reference dependencies** between US in the same batch using
+  `**Dependencies**: todo-task-{seq}` format
+- **If the document is ambiguous** about a business rule, stop and ask — don't
+  guess. Create a `questions/task-{seq}.md` if the human can't answer immediately.
+
+---
+
+### Mode 3 — Ongoing (`/po`)
 
 During development, you :
 - Write new user stories on the human's request (each US = a `.feature` and a
