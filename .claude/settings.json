@@ -29,10 +29,6 @@
           {
             "type": "command",
             "command": "bash .claude/hooks/guard-shared.sh"
-          },
-          {
-            "type": "command",
-            "command": "bash .claude/hooks/guard-feature.sh"
           }
         ]
       },

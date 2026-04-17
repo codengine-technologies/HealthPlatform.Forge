@@ -9,7 +9,7 @@
 
 The forge is strictly limited to **4 actions** :
 
-1. **PO** — help the human write user stories (.feature + `todo-*.md` task file)
+1. **PO** — help the human write user stories (`todo-*.md` task file only — no .feature files)
 2. **Start** — create ONE working branch in the target repo(s) (`/start`)
 3. **Validate** — verify the human's implementation : build + tests + DOD (`/review`)
 4. **PR** — open the pull request and mark the task `done-*` (still inside `/review`)
@@ -71,7 +71,7 @@ those repos — never at the workspace root.
 
 | Repo key | Path | Stack | Build cmd | Test cmd |
 |---|---|---|---|---|
-| `api-mail` | `Api/Mail` | .NET 10, xUnit, Reqnroll BDD | `dotnet build HealthPlatform.Api.Mail.sln` | `dotnet test HealthPlatform.Api.Mail.sln` |
+| `api-mail` | `Api/Mail` | .NET 10, xUnit | `dotnet build HealthPlatform.Api.Mail.sln` | `dotnet test HealthPlatform.Api.Mail.sln` |
 | `client-blazor` | `Client/Blazor` | Blazor WASM, .NET 10, xUnit | `dotnet build HealthPlatform.Client.sln` | `dotnet test HealthPlatform.Client.sln` |
 | `client-angular` | `Client/Angular` | Angular, Node | `npm ci && npm run build` | `npm test` |
 | `dtos-mss` | `Dtos` | .NET 10 class lib (NuGet) | `dotnet build HealthPlatform.Dtos.Mss.csproj` | n/a |
@@ -139,44 +139,42 @@ to run the repo-specific build/test before opening one PR per pushable repo.
 
 ## Absolute rules
 
-### 1. BDD-first mandatory
+### 1. Unit-test-first mandatory
 
 ```
-Step 0: PO writes .feature files BEFORE any implementation
-Step 1: Human (in WindSurf) reads the existing .feature — never creates/modifies them
-Step 2: Human writes step definitions → verify RED
-Step 3: Human implements until GREEN
-Step 4: Human runs /review → forge validates and opens the PR when all Gherkin scenarios are GREEN
+Step 0: PO writes the todo-*.md task (Objectif + DOD + Manual Test Plan) — NO .feature file
+Step 1: Human (in WindSurf) writes unit tests for the new behavior → verify RED
+Step 2: Human implements until GREEN
+Step 3: Human runs /review → forge validates (build + tests + DOD) and opens the PR
 ```
 
 `/review` refuses to open a PR with red tests.
+
+**Test style — unit tests only (xUnit/NUnit/Jest/etc.):**
+- Arrange / Act / Assert
+- Small, focused, fast
+- Mock external collaborators via NSubstitute/Moq/Jest mocks
+- One behavior per test, descriptive name (`Method_Context_ExpectedResult`)
+- No Reqnroll/SpecFlow, no Gherkin `.feature` files, no step definitions
+
+**BDD (Reqnroll/SpecFlow) is deprecated across this workspace.** The
+`mss.mail.bdd.tests` project has been removed (chore bundled with task-008).
+Future tasks MUST cover behavior via unit + integration tests. Do not
+resurrect `.feature` files.
 
 ### 1b. Endpoint coverage mandatory
 
 Each endpoint MUST have at least 1 integration test. Empty scaffolds (endpoints that compile but return nothing meaningful) are bugs. If an endpoint exists, a test proves it works end-to-end through the DI pipeline. `/review` checks this as part of the DOD.
 
-### 1a. Feature file purity
+### 1c. Test coverage expectation per task
 
-**.feature files are PO property.** Neither the forge nor WindSurf implementation sessions modify `.feature` files. If a `.feature` is missing or incomplete → stop and ask the PO (human, via `/po`).
+Every `todo-*.md` MUST list in its DOD the concrete test artifacts the task
+will produce. Examples:
+- `[ ] Unit tests for {ServiceName} (>= 1 test per public method / branch)`
+- `[ ] Integration test for {Endpoint} (happy path + 1 failure mode)`
+- `[ ] UI component test for {Component} (render + primary interaction)`
 
-**.feature files are purely functional — ZERO technical jargon:**
-
-```gherkin
-# CORRECT — natural language, user-observable
-Given a user with an active account
-When the user logs in with valid credentials
-Then the user is authenticated
-
-# FORBIDDEN — technical jargon
-When I POST /api/v1/auth/login with:    # URL = technical
-Then the response status is 200          # HTTP code = technical
-And I receive a JWT access token         # JWT = technical
-```
-
-**Forbidden patterns** (enforced by `guard-feature.sh` hook):
-- HTTP status codes: 200, 201, 400, 401, 403, 404, 409, 422, 500
-- API paths: `/api/`, `POST /`, `GET /`
-- Technical terms: JWT, token, database, query, SQL, endpoint, header, JSON, HTTP
+`/review` verifies these items before opening the PR.
 
 ### 2. Local verification mandatory BEFORE the PR
 
@@ -215,7 +213,7 @@ A task only touches files in its module. If a cross-module need appears → stop
 ### 7. Fail-fast mandatory
 
 Stop and create `questions/{task-id}.md` if:
-- Edge case not covered by Gherkin
+- Edge case not covered by the task DOD / Manual Test Plan
 - Business rule ambiguity
 - Need to modify frozen files
 
@@ -302,7 +300,6 @@ Never modify without human arbitration:
 | Hook | Trigger | Effect |
 |---|---|---|
 | `guard-shared.sh` | Write/Edit | Blocks modification of frozen files |
-| `guard-feature.sh` | Write/Edit .feature | Blocks technical jargon |
 | `verify-before-push.sh` | Bash `git push` | Build + tests MUST pass |
 
 ---
@@ -311,7 +308,7 @@ Never modify without human arbitration:
 
 | Command | Effect |
 |---|---|
-| `/po` | Write a new US : `.feature` + `todo-*.md` task file. With `--from <doc.md>` : batch-extract US from a markdown document (one-by-one human validation) |
+| `/po` | Write a new US : `todo-*.md` task file only (no .feature). With `--from <doc.md>` : batch-extract US from a markdown document (one-by-one human validation) |
 | `/start {task-id}` | Create the working branch in the target repo(s), move task to `wip-*` |
 | `/review {task-id}` | Validate the human's implementation (build + tests + DOD), open the PR, move task to `done-*` |
 | `/forge` | Lean cycle : report state, auto-run `/review` on any `review-*.md`, list PRs awaiting human merge |

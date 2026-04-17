@@ -1,4 +1,4 @@
-# todo-task-005.md — Distinction messages pro/patient
+# done-task-005.md — Distinction messages pro/patient
 
 **Repos**: api-mail, client-blazor, client-angular
 **Dependencies**: aucune
@@ -135,3 +135,37 @@ See `tests/mss.mail.bdd.tests/Features/Mss/DistinctionMessagesProPatient.feature
   `<111222333444555@patient.mssante.fr>` (pas de nom)
   - Verifier : patient cree avec INS seul, indicateur "patient", matricule affiche
 - Repeter sur Blazor et Angular
+
+## Branches
+- `api-mail` (pushed) : feat/task-005-distinction-messages-pro-patient — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-005-distinction-messages-pro-patient
+- `dtos-mss` (pushed) : feat/task-005-distinction-messages-pro-patient — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-005-distinction-messages-pro-patient
+- `client-blazor` (pushed) : feat/task-005-distinction-messages-pro-patient — https://github.com/codengine-technologies/HealthPlatform.Client/tree/feat/task-005-distinction-messages-pro-patient
+- `client-angular` : managed manually by the human
+
+## PRs
+- `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/5
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/22
+- `client-blazor` : https://github.com/codengine-technologies/HealthPlatform.Client/pull/24
+- `client-angular` : managed manually by the human
+
+## Code Review Summary
+
+### Verdict : APPROVED (suggestions non-bloquantes)
+
+### Build + Tests
+- Build : 0 erreur sur les 3 repos
+- api-mail : domain 86/86, application 976/976, api 84/84, infrastructure 228/228, integration 134/135 (1 flaky externe `AnnuaireSante.Search_FiltersReduceResults`, sans lien avec task-005)
+- client-blazor : 9/9
+- bdd : 43/87 (+7 scenarios task-005 passent, 44 pending heritage)
+
+### PO arbitration pendant `/review`
+- Le fichier `DistinctionMessagesProPatient.feature` a ete modifie (wording `When il consulte la liste des messages recus` -> `When il consulte sa messagerie`, `When il consulte la fiche du patient` -> `When il consulte le dossier du patient`). Validation explicite par le PO pendant le `/review` : le nouveau wording devient le wording de reference.
+
+### Suggestions a traiter dans une task suivante
+- **Transactionnalite patient + mail + document** (`MailRepository`) : wrapper dans `IDbContextTransaction` pour eviter les patients orphelins si l'Add mail echoue
+- **`DocumentId = COURRIER-{Uid}`** : UID IMAP non-global, risque de collision cross-folder. Preferer `MessageId` ou `COURRIER-{Folder}-{Uid}`
+- **Dedupe absente sur `MailMedicalDocument`** : verifier l'existence (MessageId + PatientId + Category=COURRIER) avant creation pour robustesse en cas de re-sync
+- **BDD step definitions** : `SimulatePatientMessageProcessing` reimplemente `MailRepository` au lieu de l'invoquer -> les BDD ne testent pas le vrai code path
+- **Duplication `GetPatientIdentityDisplay`** (Blazor) : factoriser entre `MailHeader.razor` et `MailDetailComponent.razor`
+- **Perte du pinning `log4net`** dans `Directory.Packages.props` : repinner a une version saine pour eviter la reintroduction silencieuse d'une version vulnerable via une future dep transitive
+- **Stabiliser ou isoler** le test flaky `Search_FiltersReduceResults` (data-dependent RPPS externe)

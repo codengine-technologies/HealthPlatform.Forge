@@ -1,4 +1,4 @@
-# wip-task-004.md — Journal d'audit MSS
+# done-task-004.md — Journal d'audit MSS
 
 **Repos**: api-mail, client-blazor, client-angular, dtos-mss
 **Dependencies**: aucune
@@ -304,3 +304,36 @@ See `tests/mss.mail.bdd.tests/Features/Mss/JournalAuditMss.feature`
 - `dtos-mss` (pushed) : feat/task-004-journal-audit-mss — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-004-journal-audit-mss
 - `client-blazor` (pushed) : feat/task-004-journal-audit-mss — https://github.com/codengine-technologies/HealthPlatform.Client/tree/feat/task-004-journal-audit-mss
 - `client-angular` : managed manually by the human
+
+## PRs
+- `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/4
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/21
+- `client-blazor` : https://github.com/codengine-technologies/HealthPlatform.Client/pull/23
+- `client-angular` : managed manually by the human
+
+## Code Review Summary
+
+### Verdict : APPROVED (avec suggestions non-bloquantes)
+
+### Build + Tests
+- Build : 0 erreur sur les 3 repos
+- api-mail : domain 86/86, application 976/976, api 84/84, infrastructure 228/228, integration 135/135 (18 skipped)
+- client-blazor : 9/9
+- bdd : 25/87 (51 pending — dette acceptee, voir ci-dessous)
+
+### Fixes de plomberie test appliques exceptionnellement pendant `/review`
+- `tests/mss.mail.integration.tests/Fixtures/ImapServicesFixture.cs` : `AddHttpContextAccessor()` avant `AddApplication()`
+- `tests/mss.mail.integration.tests/UseCases/UseCaseFixture.cs` : idem
+- `tests/mss.mail.bdd.tests/StepDefinitions/SharedStepDefinitions.cs` (nouveau) : extraction du step `Given un professionnel de sante connecte` pour lever l'ambiguite preexistante entre `MasquagePrefixeXdm` et `OppositionPatientMss`
+
+### Suggestions a traiter dans une task suivante
+- Factoriser le mapping `MssAuditTrace -> MssAuditTraceDto` (duplication repository)
+- Indexer `MailMessageId` (filtre supporte, pas d'index)
+- `ParseActionType` : log WARN + valeur `Unknown` au lieu du fallback silencieux sur `ImapConnect`
+- Remplacer les `[NotMapped]` transport props de l'entite par un record-message dedie pour le Channel
+- Documenter dans les tasks futures les contraintes `DateFrom` obligatoire + range 92j max
+- Ecrire un test d'integration sur `GET /api/v1/audit/traces` (regle 1b)
+
+### Dette BDD (option 1 retenue avec le humain)
+- 7 scenarios `JournalAuditMss.feature` pending : step definitions a ecrire dans une task dediee
+- 44 scenarios pending preexistants sur develop (hors scope task-004) a traiter en task BDD-debt
