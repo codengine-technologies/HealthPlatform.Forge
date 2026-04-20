@@ -1,0 +1,24 @@
+# Hard long-term targets for SonarQube on api-mail.
+#
+# A single /sonar run is NOT expected to reach these. They serve as :
+# - early-stop signal : if all targets are already met at pre-flight, /sonar
+#   exits without creating a task/branch (nothing to do).
+# - success criteria in the final PR body : the table highlights which targets
+#   are met and which remain.
+# - guide for the iteration priority : categories where the target is not met
+#   are always processed first (bugs before smells).
+
+targets:
+  bugs: 0
+  vulnerabilities: 0
+  sqale_rating: A       # Maintainability rating (1=A, 2=B, ...)
+  coverage: 95.0        # Percent, line_coverage or overall coverage
+  # Security hotspots are reviewed manually by humans, not auto-fixed.
+  # They are not a hard /sonar target.
+
+# Progression criterion used between iterations (hardcoded here for traceability) :
+progression:
+  # Stop the loop early if EITHER criterion is false for the current iteration :
+  min_issue_reduction_pct: 10.0   # >=10% fewer issues vs previous iteration
+  allow_rating_improvement: true  # OR any of reliability/security/sqale rating
+                                  # improved by at least one step vs baseline

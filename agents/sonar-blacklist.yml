@@ -1,0 +1,26 @@
+# Sonar rules excluded from automated cleanup by /sonar.
+#
+# Rules listed here are NEVER fixed by /sonar. Reasons vary :
+# - Risk : the fix requires deep refactoring that should be planned, not batched.
+# - Context-dependent : the "right" fix depends on business semantics a machine
+#   can't judge reliably.
+# - Dedicated command : S3776 has its own /sonar-s3776 (one method at a time).
+#
+# Each entry MUST include a reason so a future reviewer knows why it's here and
+# can re-evaluate when the project matures.
+
+blacklist:
+
+  - rule: csharpsquid:S3776
+    name: Cognitive Complexity of methods should not be too high
+    reason: >
+      Refactoring a high-complexity method is a real design decision (extract
+      method / strategy / polymorphism). Too risky in batch. Handled by the
+      dedicated /sonar-s3776 command, one method at a time, with test coverage
+      verified up-front.
+
+# Add new entries below as the team decides to exclude other rules.
+# Template :
+#   - rule: csharpsquid:SXXXX
+#     name: <short human-readable name>
+#     reason: <why this rule is excluded from /sonar batch cleanup>

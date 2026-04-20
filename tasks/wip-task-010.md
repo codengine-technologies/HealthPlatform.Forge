@@ -126,6 +126,13 @@ See `tests/mss.mail.bdd.tests/Features/Mss/AffichagePrioritairePdf.feature`
 - [ ] >= 1 test d'integration par scenario Gherkin
 - [ ] Aucune regression
 
+## Branches
+
+- `api-mail` (pushed) : feat/task-010-pdf-encapsule-priorite — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-010-pdf-encapsule-priorite
+- `client-blazor` (pushed) : feat/task-010-pdf-encapsule-priorite — https://github.com/codengine-technologies/HealthPlatform.Client/tree/feat/task-010-pdf-encapsule-priorite
+- `dtos-mss` (pushed, auto-included) : feat/task-010-pdf-encapsule-priorite — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-010-pdf-encapsule-priorite
+- `client-angular` : managed manually by the human (TFS remote, excluded from forge automation)
+
 ## Manual Test Plan
 
 - Lancer backend + Blazor + Angular

@@ -19,6 +19,29 @@ The forge does NOT dispatch dev agents, does NOT write code, does NOT run QA /
 Designer reviews automatically, does NOT "find extra work" when idle. If there
 is nothing to do, the forge stays idle.
 
+### Automation exception : Sonar cleanup
+
+There is **one** explicit exception to "the forge does not write code" : the
+`/sonar` and `/sonar-s3776` commands (see `agents/sonar.md`). These commands
+automate the resolution of SonarQube issues on `api-mail` — they fetch issues
+via the Sonar REST API, apply mechanical fixes (with a unit test written first
+whenever the fix changes behaviour), iterate up to 5 times on the same branch,
+and hand over to `/review` for the PR.
+
+This exception is justified because :
+- Sonar cleanup is **mechanical refactoring**, not feature implementation
+- Every behavioural fix is **test-first** (rule 1 holds)
+- The result still goes through `/review` and HAG (rule 10 holds — the human
+  merges)
+- S3776 (cognitive complexity) is handled by a **separate command that
+  processes one method per PR**, to keep each real refactor reviewable
+- A blacklist (`agents/sonar-blacklist.yml`) excludes rules that require human
+  judgement
+
+**No other "forge writes code" use case is authorised.** Any proposal to add
+another automation of this kind MUST be discussed with the human and reflected
+in this section before implementation.
+
 Task lifecycle : `todo → wip → review → done`
 - `todo-*.md` : PO wrote the US, awaiting branch creation
 - `wip-*.md`  : branch created, human is implementing in WindSurf
@@ -314,4 +337,6 @@ Never modify without human arbitration:
 | `/forge` | Lean cycle : report state, auto-run `/review` on any `review-*.md`, list PRs awaiting human merge |
 | `/status` | Quick status in < 10 lines |
 | `/publish-dtos` | Publish the DTO NuGet package and bump consumers |
+| `/sonar api-mail` | **[Automation exception]** Run an automated SonarQube cleanup pass on `api-mail`. Fetches issues, applies fixes (test-first when behavioural), iterates up to 5 times on the same branch, opens 1 PR via `/review`. See `agents/sonar.md`. |
+| `/sonar-s3776 api-mail` | **[Automation exception]** Reduce cognitive complexity of ONE method (S3776). One method = one PR. Characterisation tests written first. See `.claude/commands/sonar-s3776.md`. |
 | `/kickoff` | Bootstrap a new project (scaffold `.claude/`, agents, templates) |
