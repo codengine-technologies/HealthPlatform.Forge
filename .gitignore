@@ -23,6 +23,9 @@
 !tasks/
 !tasks/**
 
+!Docs
+!Docs/**
+
 !questions/
 !questions/**
 
