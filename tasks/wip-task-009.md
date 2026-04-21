@@ -1,4 +1,4 @@
-# todo-task-009.md — Libelle expediteur formate
+# wip-task-009.md — Libelle expediteur formate
 
 **Repos**: api-mail
 **Dependencies**: aucune
@@ -91,3 +91,7 @@ See `tests/mss.mail.bdd.tests/Features/Mss/LibelleExpediteur.feature`
   `Marie_MARTIN <marie.martin@medecin.mssante.fr>`
 - Verifier cote destinataire que le libelle est bien affiche dans la liste
   des messages recus
+
+## Branches
+
+- `api-mail` (pushed) : feat/task-009-libelle-expediteur — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-009-libelle-expediteur

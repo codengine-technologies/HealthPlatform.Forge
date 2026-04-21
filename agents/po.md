@@ -199,6 +199,8 @@ checked out in every listed repo).
 
 **Repos**: api-mail, client-blazor, client-angular
 **Dependencies**: done-scaffold-000
+**Epic**: E001
+**EpicTitle**: Authentification et gestion des identités
 
 ## Objective
 Let a user sign up and log in to the platform end-to-end (API + both frontends).
@@ -235,6 +237,14 @@ frontend and you want `/start` to skip the paired-frontend safety net.
 
 **Dependencies:** use `**Dependencies**: done-{task-id}` to chain US that
 cannot start before another is merged.
+
+**Epic linkage (optional but recommended) :** add `**Epic**: E{NNN}` to the
+task header when the US belongs to a broader EPIC. The first task that
+introduces a new EPIC also declares `**EpicTitle**: <titre lisible>` so
+`/tech-writer` can derive the slug for `docs/epics/E{NNN}-{slug}.md`.
+Subsequent tasks on the same EPIC only need `**Epic**: E{NNN}`. When the task
+has no EPIC (true one-off, pure chore), omit the field — `/review` will skip
+the tech-writer step.
 
 ### Step 5 — Present the backlog
 

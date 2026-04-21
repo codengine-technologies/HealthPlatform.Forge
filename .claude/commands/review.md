@@ -167,7 +167,13 @@ reports what is wrong and the human goes back to WindSurf.**
 10. **Rename the task** : `mv tasks/{wip|review}-{task-id}.md tasks/done-{task-id}.md`
     and append `## PRs` and `## Code Review Summary` sections.
 
-11. **Report** to the human :
+11. **Update the EPIC documentation** — if the task file declares `**Epic**: E{NNN}`,
+    invoke `/tech-writer E{NNN}` to refresh `docs/epics/E{NNN}-{slug}.md`. If no
+    `**Epic**:` field is present, skip with the note "no EPIC linked — skipped
+    tech-writer" in the final report. The tech-writer runs read-only on tasks
+    and only writes to `docs/epics/`.
+
+12. **Report** to the human :
     ```
     {task-id} validated, reviewed, and approved.
 
@@ -179,6 +185,9 @@ reports what is wrong and the human goes back to WindSurf.**
 
     Excluded repos (manual) :
     - client-angular : human manages branch, push, and PR
+
+    EPIC doc : docs/epics/E{NNN}-{slug}.md updated
+               (or : no EPIC linked — skipped tech-writer)
 
     Test manually, then merge the GitHub PRs yourself.
     ```
@@ -197,3 +206,6 @@ reports what is wrong and the human goes back to WindSurf.**
 - The code review is honest and rigorous — it flags real issues, not cosmetic
   nitpicks. The goal is to catch bugs, security issues, and design problems
   that the implementing developer might have missed.
+- The tech-writer is invoked **after** the PRs are opened and the task is
+  renamed `done-*`. A failure in `/tech-writer` does NOT revert the review —
+  the doc can be rebuilt later with `/tech-writer E{NNN} --refresh`.

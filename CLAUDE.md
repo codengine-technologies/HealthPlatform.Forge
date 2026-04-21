@@ -14,6 +14,11 @@ The forge is strictly limited to **4 actions** :
 3. **Validate** — verify the human's implementation : build + tests + DOD (`/review`)
 4. **PR** — open the pull request and mark the task `done-*` (still inside `/review`)
 
+A single read-only **Technical Writer** pass runs at the tail of `/review` to
+refresh the EPIC documentation (`docs/epics/E{NNN}-{slug}.md`). It only reads
+tasks and only writes to `docs/epics/`, so it does not violate the "forge does
+not write code" rule.
+
 **Implementation is done by the human in WindSurf with AI pair programming.**
 The forge does NOT dispatch dev agents, does NOT write code, does NOT run QA /
 Designer reviews automatically, does NOT "find extra work" when idle. If there
@@ -47,6 +52,15 @@ Task lifecycle : `todo → wip → review → done`
 - `wip-*.md`  : branch created, human is implementing in WindSurf
 - `review-*.md` : human finished, awaiting forge validation
 - `done-*.md` : validated, PR opened, awaiting human merge (HAG, rule 10)
+
+### Epic linkage (optional)
+
+Each `todo-*.md` MAY declare `**Epic**: E{NNN}` to associate the US with a
+broader EPIC. The first task that introduces a new EPIC also declares
+`**EpicTitle**:` so the technical writer can derive the slug. The EPIC
+documentation lives in `docs/epics/E{NNN}-{slug}.md` — **one file per EPIC**,
+rebuilt idempotently by `/tech-writer` at the tail of every `/review` cycle.
+Tasks without `**Epic**:` are simply ignored by the tech-writer.
 
 ### 1 US = 1 task file = 1 branch name across every impacted repo
 
@@ -117,6 +131,10 @@ in pre-flight checks, `/start`, and `/review`.
 **`devops`** — CI/CD configs, human manages independently.
 
 **`psc-proxy-dto`** — human manages independently.
+
+**`psc-proxy-server`** — convention de branche `master` (pas de `develop`), human manages independently.
+
+**`psc-proxy-client`** — convention de branche `master` (pas de `develop`), human manages independently.
 
 For both :
 - `/start` does **NOT** create any branch
@@ -339,4 +357,5 @@ Never modify without human arbitration:
 | `/publish-dtos` | Publish the DTO NuGet package and bump consumers |
 | `/sonar api-mail` | **[Automation exception]** Run an automated SonarQube cleanup pass on `api-mail`. Fetches issues, applies fixes (test-first when behavioural), iterates up to 5 times on the same branch, opens 1 PR via `/review`. See `agents/sonar.md`. |
 | `/sonar-s3776 api-mail` | **[Automation exception]** Reduce cognitive complexity of ONE method (S3776). One method = one PR. Characterisation tests written first. See `.claude/commands/sonar-s3776.md`. |
+| `/tech-writer E{NNN}` | Refresh `docs/epics/E{NNN}-{slug}.md` from all tasks that declare `**Epic**: E{NNN}`. Called automatically at the tail of `/review` ; can be run manually for retro-generation or `--refresh`. See `agents/technical-writer.md`. |
 | `/kickoff` | Bootstrap a new project (scaffold `.claude/`, agents, templates) |

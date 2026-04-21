@@ -1,4 +1,4 @@
-# todo-task-010.md — Affichage prioritaire PDF encapsule
+# done-task-010.md — Affichage prioritaire PDF encapsule
 
 **Repos**: api-mail, client-blazor, client-angular
 **Dependencies**: aucune
@@ -133,7 +133,35 @@ See `tests/mss.mail.bdd.tests/Features/Mss/AffichagePrioritairePdf.feature`
 - `dtos-mss` (pushed, auto-included) : feat/task-010-pdf-encapsule-priorite — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-010-pdf-encapsule-priorite
 - `client-angular` : managed manually by the human (TFS remote, excluded from forge automation)
 
-## Manual Test Plan
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/27 (merged 2026-04-21)
+- `client-blazor` : https://github.com/codengine-technologies/HealthPlatform.Client/pull/35 (merged 2026-04-21)
+- `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/7 (merged 2026-04-21)
+- `client-angular` : managed manually by the human
+
+## Code Review Summary
+
+### Verdict : finalisation post-hoc
+
+Les 3 PRs ont ete ouvertes et mergees par le humain en dehors du cycle `/review`
+standard (le humain a gere l'ouverture + le merge manuellement). La forge n'a
+donc pas execute sa passe de build/tests/code-review automatisee sur ces
+branches — elles sont deja fusionnees dans `develop` et le diff
+`origin/develop..HEAD` est vide.
+
+Le merge des PRs valant validation humaine (rule 10 HAG respectee par
+construction), la task est finalisee en `done-*` pour refleter l'etat reel des
+remotes.
+
+### A surveiller sur les prochaines tasks
+
+- Privilegier le cycle `/review` complet quand c'est possible : il execute
+  build + tests + code review automatise et produit un Code Review Summary
+  detaille (exemple : `done-task-008.md`).
+- Pour que `/tech-writer` puisse nourrir la documentation EPIC, ajouter
+  `**Epic**: E{NNN}` + `**EpicTitle**:` dans le header des prochains task
+  files.
 
 - Lancer backend + Blazor + Angular
 - Recevoir un message contenant un IHE_XDM avec un CDA R2 N3 + son PDF/A-1
