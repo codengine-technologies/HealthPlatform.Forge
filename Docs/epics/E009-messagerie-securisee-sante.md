@@ -1,9 +1,12 @@
 # E009 — Messagerie intelligente MSSante
 
 > **Statut** : 🟢 En cours
-> **Version** : 1.5
+> **Modèle** : hand-crafted
+> **Version** : 1.6
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-04-21
+> **Dernière mise à jour** : 2026-04-22
+>
+> **Changelog v1.6** : passe tech-writer conservatrice. Task-016 (Alignement fonctionnel Angular sur Blazor — 8 écarts UX/fonctionnels : onglet Biologie dans le mail viewer, BiologyComponent standalone, onglets dynamiques PatientTimeline, rendu HTML structuré MedicalDocumentModal, filtre DocumentType étendu, timeline verticale vue patient, synthèse clinique grille asymétrique, biologie matricielle horizontale + sparkline) livrée manuellement par le humain (repo `client-angular` entièrement exclu de l'automation forge — pas de build/tests/PR forge, validation end-to-end humaine). Aucune règle Ségur (`**Closes RG**:`) déclarée — contribution purement iso-fonctionnalité frontends (F004 vue patient). Annexe C enrichie avec task-016. Sections 4/5/6 hand-crafted préservées.
 >
 > **Changelog v1.5** : passe tech-writer conservatrice (option A). Task-009 (Libellé expéditeur formaté selon ECO.2.2.7) a été livrée et fait passer RG-E009-043 de 🟡 Partiel à 🟢 Implémenté. Feature E009-F006 (Composition et envoi) passe de 95% à 97% (reste « annule et remplace » AMBU.MSS/va1.02). Annexe C enrichie avec task-009. Les sections 4 (Features) et 5 (Workflow) hand-crafted restent préservées.
 
@@ -659,6 +662,7 @@ Les éléments suivants sont **explicitement exclus** de cet EPIC. S'ils devienn
 | done-task-008 | Vérification de la taille des PJ avant envoi (configurable, défaut 10 Mo) | RG-E009-040 |
 | done-task-010 | Affichage prioritaire du PDF encapsulé + 1 ligne pour CDA R2 N3 + PDF | RG-E009-055, 056 |
 | done-task-009 | Libellé expéditeur formaté selon ECO.2.2.7 (format `<Titre>_<Prénom>_<NOM>_<Entité>`, sanitization anti-injection d'en-têtes, 17 tests unitaires) | RG-E009-043 |
+| done-task-016 | Alignement fonctionnel Angular sur Blazor — 8 écarts UX/fonctionnels (onglet Biologie dans mail viewer, BiologyComponent standalone, onglets dynamiques PatientTimeline, rendu HTML structuré MedicalDocumentModal, filtre DocumentType, timeline verticale, synthèse grille asymétrique, biologie matricielle + sparkline). Livré manuellement (client-angular exclu de l'automation forge). | — (iso-fonctionnalité frontends, F004) |
 
 ### D. Sources documentaires
 
@@ -678,7 +682,7 @@ Les éléments suivants sont **explicitement exclus** de cet EPIC. S'ils devienn
 #### Sources internes
 
 - `CLAUDE.md` — règles de la forge (test-first, vérification locale, HAG, US-complete, polyrepo).
-- Tasks `done-task-002.md`, `done-task-003.md`, `done-task-004.md`, `done-task-005.md`, `done-task-008.md`, `done-task-010.md` — apports incrémentaux à l'EPIC (cf. Annexe C).
+- Tasks `done-task-002.md`, `done-task-003.md`, `done-task-004.md`, `done-task-005.md`, `done-task-008.md`, `done-task-009.md`, `done-task-010.md`, `done-task-016.md` — apports incrémentaux à l'EPIC (cf. Annexe C).
 
 ### E. Table de correspondance REM Ségur ↔ Ref#2
 
