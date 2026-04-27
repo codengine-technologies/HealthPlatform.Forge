@@ -1,11 +1,20 @@
 # /start — Create the working branch(es) for a task
 
-Usage: `/start {task-id}` (e.g. `/start back-clinical-notifications-046`)
+Usage :
+- `/start {task-id}` — create the branches and **chain into `/develop`**
+  (default — autonomous implementation by the forge).
+- `/start {task-id} no-code` — create the branches and **stop**. The task
+  stays in `wip-*` and the human implements in WindSurf manually. No
+  `/develop` invocation.
 
 Purpose : create the working branch(es) in the repo(s) declared by the task
-file, so the human can start implementing in WindSurf.
+file. By default the forge then writes the code itself (`/develop`) ; the
+`no-code` flag is the escape hatch when the human wants to handle the
+implementation in WindSurf (e.g. exploratory work, design-heavy changes,
+or anything Sonar / `/develop` would mishandle).
 
-**The forge does NOT write code here. It only creates the branches.**
+**The forge writes code by default.** The lean "forge does not write code"
+philosophy was inverted on 2026-04-27 — see CLAUDE.md "Forge philosophy".
 
 ## Steps
 
@@ -90,15 +99,48 @@ file, so the human can start implementing in WindSurf.
    - `client-angular` (local-only) : feat/back-X-001-signalr — TFS, human handles push/PR manually
    ```
 
-8. **Report** to the human :
-   ```
-   Branch(es) created for {task-id} :
-   - {repo} (pushed / local-only)
-   - ...
-   
-   The task is now WIP. Go implement in WindSurf on those branches.
-   When you are done, run /review {task-id}.
-   ```
+8. **Parse the optional `no-code` argument** :
+
+   - If the second argument is `no-code` (or `--no-code` / `nocode` —
+     accept any of these forms) → **skip step 9**. Annotate the
+     `## Branches` section with a leading note :
+
+     ```markdown
+     > **Mode** : no-code — l'humain implémente dans WindSurf, pas de chaînage automatique vers /develop.
+     ```
+
+   - Otherwise → continue to step 9.
+
+9. **Chain into `/develop`** (default behaviour) :
+
+   Invoke `/develop {task-id}` immediately. The task stays in `wip-*` and
+   `/develop` takes over the implementation, then chains into `/sonar`
+   (api-mail), then `/review`, then `/tech-writer`. The full autonomous
+   loop runs end-to-end without human prompt — the only mandatory human
+   action is **merging the resulting PR** (HAG, CLAUDE.md rule 10).
+
+10. **Report** to the human :
+
+    **Default mode** (chained into `/develop`) :
+    ```
+    Branch(es) created for {task-id} :
+    - {repo} (pushed / local-only)
+    - ...
+
+    Chaining into /develop now → /sonar → /review → /tech-writer.
+    The PR(s) will land with label awaiting-human-merge — you merge
+    when ready (HAG rule 10).
+    ```
+
+    **`no-code` mode** :
+    ```
+    Branch(es) created for {task-id} (no-code mode) :
+    - {repo} (pushed / local-only)
+    - ...
+
+    The task is now WIP. Go implement in WindSurf on those branches.
+    When you are done, run /review {task-id}.
+    ```
 
 ## Rules
 
@@ -108,4 +150,9 @@ file, so the human can start implementing in WindSurf.
 - Never skip dependencies
 - Never branch from a stale local ref — always `git fetch origin develop` first
 - Never push a `local-only` repo branch
-- Never write code on the branch — only create and track it
+- `/start` itself never writes code — it only creates branches. The
+  `/develop` chaining (step 9) is what writes code, and only when the
+  `no-code` flag is absent.
+- The `no-code` flag is the **only** way to opt out of autonomous
+  implementation. Once chosen, the task is the human's responsibility
+  until they manually trigger `/review`.

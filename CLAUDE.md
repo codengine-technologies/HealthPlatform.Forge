@@ -5,53 +5,86 @@
 
 ---
 
-## Forge philosophy — lean
+## Forge philosophy — autonomous (since 2026-04-27)
 
-The forge is strictly limited to **4 actions** :
+> **Inversion** — la philosophie historique « la forge n'écrit pas de code,
+> WindSurf le fait » a été inversée le 2026-04-27. Par défaut **la forge
+> développe** ; l'humain n'intervient que pour **merger la PR finale** (HAG,
+> règle 10). L'échappatoire est `/start {task-id} no-code` qui rebascule
+> l'implémentation côté WindSurf.
 
-1. **PO** — help the human write user stories (`todo-*.md` task file only — no .feature files)
-2. **Start** — create ONE working branch in the target repo(s) (`/start`)
-3. **Validate** — verify the human's implementation : build + tests + DOD (`/review`)
-4. **PR** — open the pull request and mark the task `done-*` (still inside `/review`)
+### Cycle autonome par défaut
 
-A single read-only **Technical Writer** pass runs at the tail of `/review` to
-refresh the EPIC documentation (`docs/epics/E{NNN}-{slug}.md`). It only reads
-tasks and only writes to `docs/epics/`, so it does not violate the "forge does
-not write code" rule.
+```
+/po                                 (humain rédige la US)
+    ↓
+/start {NNN}                        (crée les branches)
+    ↓ (auto)
+/develop {NNN}                      (écrit code + tests, build + tests verts,
+                                     publie DTOs/interop NuGet, push)
+    ↓ (auto)
+/sonar {NNN}                        (cleanup SonarQube best-effort 5 itérations,
+                                     api-mail uniquement)
+    ↓ (auto)
+/review {NNN}                       (build + test + DOD + code review,
+                                     commit/push/sync develop, ouvre la PR,
+                                     label awaiting-human-merge,
+                                     rename done-*)
+    ↓ (auto)
+/tech-writer E{NNN}                 (refresh docs/epics/E{NNN}-{slug}.md)
+    ↓
+fin de cycle                        (PR en attente de merge humain — HAG)
+```
 
-**Implementation is done by the human in WindSurf with AI pair programming.**
-The forge does NOT dispatch dev agents, does NOT write code, does NOT run QA /
-Designer reviews automatically, does NOT "find extra work" when idle. If there
-is nothing to do, the forge stays idle.
+`/forge` répète ce cycle séquentiellement sur tous les `tasks/todo-task-*.md`.
+Si une étape échoue, la chaîne s'arrête, écrit `questions/{task-id}.md`,
+laisse la task dans son état actuel, et `/forge` passe à la task suivante.
 
-### Automation exception : Sonar cleanup
+**Objectif** : minimiser les interactions humaines. La forge est autonome
+de bout en bout, sauf merge final.
 
-There is **one** explicit exception to "the forge does not write code" : the
-`/sonar` and `/sonar-s3776` commands (see `agents/sonar.md`). These commands
-automate the resolution of SonarQube issues on `api-mail` — they fetch issues
-via the Sonar REST API, apply mechanical fixes (with a unit test written first
-whenever the fix changes behaviour), iterate up to 5 times on the same branch,
-and hand over to `/review` for the PR.
+### Échappatoire — mode `no-code`
 
-This exception is justified because :
-- Sonar cleanup is **mechanical refactoring**, not feature implementation
-- Every behavioural fix is **test-first** (rule 1 holds)
-- The result still goes through `/review` and HAG (rule 10 holds — the human
-  merges)
-- S3776 (cognitive complexity) is handled by a **separate command that
-  processes one method per PR**, to keep each real refactor reviewable
-- A blacklist (`agents/sonar-blacklist.yml`) excludes rules that require human
-  judgement
+```
+/start {task-id} no-code
+```
 
-**No other "forge writes code" use case is authorised.** Any proposal to add
-another automation of this kind MUST be discussed with the human and reflected
-in this section before implementation.
+Casse la chaîne après création des branches. La task reste en `wip-*`,
+l'humain implémente dans WindSurf, puis lance `/review {task-id}` lui-même
+(qui reste autonome — plus de prompt d'approbation côté forge).
+
+À utiliser quand :
+- L'US est exploratoire / heavy-design / hors zone de confort de `/develop`
+- Le humain veut piloter à la main pour des raisons spécifiques
+- `/develop` ou `/sonar` ont mishandled un cas similaire récemment
+
+### Étapes du cycle — ownership
+
+| Étape | Agent / commande | Écrit du code ? | Notes |
+|---|---|---|---|
+| Rédaction US | `/po` (humain) | non | Pas de `.feature`, juste `todo-*.md` |
+| Création branches | `/start` | non | Pre-flight : tous les repos sur `develop` |
+| **Implémentation** | **`/develop`** | **oui** | Test-first, cross-repo dans l'ordre dtos→interop→backend→frontend, publie NuGet pour DTOs/interop |
+| Cleanup Sonar | `/sonar` (api-mail) | oui | Best-effort 5 itérations, accepte les issues restantes |
+| Validation + PR | `/review` | non (lecture seule sur le code) | Plus de prompt humain — autonome |
+| Doc EPIC | `/tech-writer` | non (écrit dans `docs/epics/` uniquement) | Idempotent |
+| **Merge develop** | **humain** | — | **HAG, règle 10 — non négociable** |
+
+### Sonar — étape standard du cycle
+
+`/sonar` n'est plus une « exception d'automation » — c'est une étape
+intégrée du cycle autonome, après `/develop` et avant `/review`. Best-effort :
+5 itérations max, accepte les issues restantes après ça, hand-off à `/review`
+quoi qu'il arrive (sauf erreur de tooling).
+
+`/sonar-s3776` (cognitive complexity, 1 méthode = 1 PR) **reste manuel** —
+hors chaîne autonome, sinon on se retrouve avec N PRs par task.
 
 Task lifecycle : `todo → wip → review → done`
-- `todo-*.md` : PO wrote the US, awaiting branch creation
-- `wip-*.md`  : branch created, human is implementing in WindSurf
-- `review-*.md` : human finished, awaiting forge validation
-- `done-*.md` : validated, PR opened, awaiting human merge (HAG, rule 10)
+- `todo-*.md` : PO a rédigé la US, en attente de `/start`
+- `wip-*.md`  : branche créée, `/develop` en cours **OU** mode `no-code` (humain code dans WindSurf)
+- `review-*.md` : implémentation finie (par `/develop` ou par l'humain en `no-code`), en attente de `/review`
+- `done-*.md` : validée, PR ouverte, en attente du merge humain (HAG, règle 10)
 
 ### Epic linkage (optional)
 
@@ -281,7 +314,7 @@ refactor(module): refactor description
 
 Every task file (`todo-*.md`) MUST include a `## Definition of Done` section with concrete, verifiable criteria. No subjective criteria ("clean code") — only binary checks `/review` can verify.
 
-The DOD is the contract between the human (implementing in WindSurf) and `/review`. If a criterion is not in the DOD, `/review` won't check it. If it IS in the DOD, `/review` WILL check it and REFUSE to open the PR if it's not met.
+The DOD is the contract entre la forge (`/develop` qui implémente, `/sonar` qui nettoie, `/review` qui valide) et l'humain. If a criterion is not in the DOD, `/review` won't check it. If it IS in the DOD, `/review` WILL check it and REFUSE to open the PR if it's not met. En mode `no-code`, c'est l'humain qui implémente dans WindSurf, mais le contrat DOD/`/review` reste identique.
 
 Template:
 ```
@@ -309,7 +342,7 @@ Template:
 
 `/review` recopie ce bloc dans le body de la PR au moment de l'ouvrir.
 
-**Pourquoi cette règle :** la forge a mergé sur `develop` sans validation humaine pendant plusieurs vagues. Inacceptable. Le humain doit rester man-in-the-middle, et depuis la bascule "implémentation en WindSurf", il l'est par construction — la forge ne pousse jamais de code, elle ouvre des PRs que le humain merge.
+**Pourquoi cette règle :** la forge a mergé sur `develop` sans validation humaine pendant plusieurs vagues. Inacceptable. Le humain doit rester man-in-the-middle. Avec la bascule autonome (2026-04-27), la forge écrit du code et ouvre des PRs end-to-end — HAG est désormais **la seule** barrière humaine du cycle, et c'est précisément pour ça qu'elle est non-négociable.
 
 ### 11. US-complete merge gate — non-négociable
 
@@ -350,12 +383,14 @@ Never modify without human arbitration:
 | Command | Effect |
 |---|---|
 | `/po` | Write a new US : `todo-*.md` task file only (no .feature). With `--from <doc.md>` : batch-extract US from a markdown document (one-by-one human validation) |
-| `/start {task-id}` | Create the working branch in the target repo(s), move task to `wip-*` |
-| `/review {task-id}` | Validate the human's implementation (build + tests + DOD), open the PR, move task to `done-*` |
-| `/forge` | Lean cycle : report state, auto-run `/review` on any `review-*.md`, list PRs awaiting human merge |
-| `/status` | Quick status in < 10 lines |
-| `/publish-dtos` | Publish the DTO NuGet package and bump consumers |
-| `/sonar api-mail` | **[Automation exception]** Run an automated SonarQube cleanup pass on `api-mail`. Fetches issues, applies fixes (test-first when behavioural), iterates up to 5 times on the same branch, opens 1 PR via `/review`. See `agents/sonar.md`. |
-| `/sonar-s3776 api-mail` | **[Automation exception]** Reduce cognitive complexity of ONE method (S3776). One method = one PR. Characterisation tests written first. See `.claude/commands/sonar-s3776.md`. |
+| `/start {task-id}` | Create the working branches in the target repo(s) and **chain into `/develop`** by default. The full cycle then runs autonomously : `/develop` → `/sonar` → `/review` → `/tech-writer`. |
+| `/start {task-id} no-code` | Create the working branches and **stop**. Task stays in `wip-*` ; the human implements in WindSurf and runs `/review {task-id}` manually when ready. Escape hatch when `/develop` is unsuitable. |
+| `/develop {task-id}` | **Autonomous implementation** : write code + tests, build, test, publish DTOs / interop NuGet packages when contracts change, bump consumers, push, hand off to `/sonar`. See `agents/develop.md`. |
+| `/sonar {task-id}` | Best-effort SonarQube cleanup on `api-mail` (5 iterations max, accepts remaining issues). Standard step in the autonomous chain. See `agents/sonar.md`. |
+| `/sonar-s3776 api-mail` | **[Manual]** Reduce cognitive complexity of ONE method (S3776). One method = one PR. Characterisation tests written first. Out of the autonomous chain. See `.claude/commands/sonar-s3776.md`. |
+| `/review {task-id}` | Validate the implementation (build + tests + DOD + code review), commit/push/sync develop, open the PR (label `awaiting-human-merge`), rename `done-*`, chain into `/tech-writer`. Autonomous — no human prompt. |
 | `/tech-writer E{NNN}` | Refresh `docs/epics/E{NNN}-{slug}.md` from all tasks that declare `**Epic**: E{NNN}`. Called automatically at the tail of `/review` ; can be run manually for retro-generation or `--refresh`. See `agents/technical-writer.md`. |
+| `/forge` | Loop autonome : pour chaque `tasks/todo-task-*.md`, déclenche `/start` → `/develop` → `/sonar` → `/review` → `/tech-writer`. Séquentiel (pas de parallélisme). Stop sur la première task qui échoue (écrit `questions/`, passe à la suivante). |
+| `/status` | Quick status in < 10 lines |
+| `/publish-dtos` | Publish the DTO NuGet package and bump consumers (manual command — `/develop` does the equivalent inline as part of the autonomous cycle). |
 | `/kickoff` | Bootstrap a new project (scaffold `.claude/`, agents, templates) |

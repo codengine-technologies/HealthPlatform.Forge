@@ -1,16 +1,24 @@
-# /review — Validate the human's implementation and open the PR(s)
+# /review — Validate the implementation and open the PR(s)
 
 Usage : `/review {task-id}` (e.g. `/review back-clinical-notifications-046`)
 
-Purpose : the human finished implementing a task in WindSurf and pushed (or,
-for excluded repos, committed locally). The forge validates (build, tests,
-DOD), performs a **code review** equivalent to a second developer reviewing
-the implementation, and if everything is GREEN **and the human approves**,
-commits any uncommitted changes, opens the pull request(s), and marks the
-task `done-*`.
+Purpose : the implementation phase is complete (either by `/develop` in the
+autonomous chain, or by the human in WindSurf in `no-code` mode). The forge
+validates (build, tests, DOD), performs a **code review** equivalent to a
+second developer reviewing the implementation, and if everything is GREEN
+commits any uncommitted changes, opens the pull request(s), labels them
+`awaiting-human-merge`, marks the task `done-*`, and chains into
+`/tech-writer` to refresh the EPIC doc.
 
-**The forge does NOT fix code. If validation or code review fails, the forge
-reports what is wrong and the human goes back to WindSurf.**
+**Since the autonomous inversion of 2026-04-27, `/review` no longer prompts
+the human for approval before committing / opening PRs.** The chain runs
+end-to-end. The only mandatory human interaction remains the **merge of the
+final PR** (HAG, CLAUDE.md rule 10).
+
+**The forge does NOT fix code.** If validation or code review fails, the
+forge writes `questions/{task-id}.md` with the blocker details and stops.
+In autonomous mode (`/develop` upstream) this halts the chain ; in
+`no-code` mode the human goes back to WindSurf.
 
 ## Steps
 
@@ -91,7 +99,7 @@ reports what is wrong and the human goes back to WindSurf.**
    - **APPROVED** — no blocking issues (may have suggestions)
    - **CHANGES REQUESTED** — at least one blocking issue → validation FAILS
 
-6. **Present the validation report to the human** :
+6. **Print the validation report** (autonomous — no prompt) :
 
    ```
    Validation report for {task-id} :
@@ -117,17 +125,19 @@ reports what is wrong and the human goes back to WindSurf.**
 
    ## Blocking Issues (if any)
    - ...
-
-   Approve to commit and create PRs? (yes / no)
    ```
 
-   **If CHANGES REQUESTED** : do NOT ask for approval. Report the blocking
-   issues and stop. The human fixes in WindSurf and re-runs `/review`.
+   **If CHANGES REQUESTED** : write `questions/{task-id}.md` with the
+   blocking issues, leave the task in `review-*` (or `wip-*` in autonomous
+   mode, since `/develop` left it there), and **halt the chain**. Do not
+   commit, do not open PRs. The human (or a future re-run after fixes)
+   restarts the cycle from the failure point.
 
-   **If APPROVED** : wait for human approval. Do NOT proceed without explicit
-   "yes". If the human says "no" → stop, leave the task as-is.
+   **If APPROVED** : continue to step 7 immediately — no human prompt, no
+   waiting. The autonomous chain has no manual approval gate ; HAG (rule 10)
+   is the single barrier and it sits at PR-merge time, not before.
 
-7. **After human approval — Commit uncommitted changes** on each repo :
+7. **Commit uncommitted changes** on each repo (autonomous — no prompt) :
    ```bash
    cd {repo-path}
    git add -A
@@ -175,12 +185,12 @@ reports what is wrong and the human goes back to WindSurf.**
 
 12. **Report** to the human :
     ```
-    {task-id} validated, reviewed, and approved.
+    {task-id} — autonomous cycle complete.
 
     Code review : APPROVED (X files reviewed, Y suggestions, 0 blocking)
 
     Commits pushed, GitHub PRs opened :
-    - {repo} : {pr-url}
+    - {repo} : {pr-url}    [label: awaiting-human-merge]
     - ...
 
     Excluded repos (manual) :
@@ -189,23 +199,28 @@ reports what is wrong and the human goes back to WindSurf.**
     EPIC doc : docs/epics/E{NNN}-{slug}.md updated
                (or : no EPIC linked — skipped tech-writer)
 
-    Test manually, then merge the GitHub PRs yourself.
+    HAG (rule 10) : test manually, then merge the GitHub PRs yourself.
     ```
 
 ## Rules
 
-- The forge never patches code — validation and review are read-only
+- The forge never patches code in `/review` — validation and review are
+  read-only on the existing code (`/develop` is the agent that writes code)
 - The forge never merges PRs — HAG (CLAUDE.md rule 10)
-- The forge never pushes an excluded repo
-- The forge never commits or creates PRs without **explicit human approval**
-- The forge never commits or creates PRs if code review is **CHANGES REQUESTED**
-- Every DOD item must be checked or explicitly marked as deferred to manual test
+- The forge never pushes an excluded repo (`client-angular`, `devops`,
+  `psc-proxy-*`)
+- **`/review` is autonomous** : no "yes/no" prompt before commit / PR
+  creation. The human's only manual intervention is merging the PR
+  (HAG, rule 10).
+- If code review is **CHANGES REQUESTED** → write `questions/{task-id}.md`
+  and halt the chain. Do not commit, do not open PRs.
+- Every DOD item must be checked or explicitly marked as deferred to manual
+  test (Manual Test Plan items become PR-body checkboxes for the human).
 - Build + test MUST pass on every target repo before code review
-- Code review MUST be APPROVED before presenting for human approval
 - Use `git merge`, never `git rebase` (CLAUDE.md rule 4)
 - The code review is honest and rigorous — it flags real issues, not cosmetic
   nitpicks. The goal is to catch bugs, security issues, and design problems
-  that the implementing developer might have missed.
+  that `/develop` (or the human in `no-code` mode) might have missed.
 - The tech-writer is invoked **after** the PRs are opened and the task is
   renamed `done-*`. A failure in `/tech-writer` does NOT revert the review —
   the doc can be rebuilt later with `/tech-writer E{NNN} --refresh`.

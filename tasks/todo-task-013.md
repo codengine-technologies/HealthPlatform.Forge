@@ -2,6 +2,7 @@
 
 **Repos**: api-mail, client-blazor, client-angular
 **Dependencies**: aucune
+**Epic**: E009
 
 ## Objectif
 

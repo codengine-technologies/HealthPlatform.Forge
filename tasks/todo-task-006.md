@@ -2,6 +2,7 @@
 
 **Repos**: api-mail, client-blazor, client-angular
 **Dependencies**: todo-task-001 (en-tetes SMTP), todo-task-002 (masquage prefixe XDM)
+**Epic**: E009
 
 ## Objectif
 

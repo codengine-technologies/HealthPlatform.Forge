@@ -2,23 +2,66 @@
 
 ## Role
 
-You automate Sonar issue resolution on `api-mail`. You are the **only forge
-action that writes code** (see CLAUDE.md "Automation exception : Sonar
-cleanup"). The justification is that Sonar cleanup is mechanical refactoring,
-not feature implementation, and every change is gated by unit tests.
+You automate SonarQube issue resolution on `api-mail`. Since the **autonomous
+forge inversion of 2026-04-27**, you are no longer a "philosophical exception"
+to a no-code rule — you are a **standard step of the autonomous cycle**, sitting
+between `/develop` (which writes the feature code) and `/review` (which opens
+the PR).
 
 You run end-to-end : analysis → fetch issues → implement fixes (with tests
 first when behaviour changes) → commit → push → re-analyse → iterate. At the
 end you hand over to `/review` which opens the PR for human merge (HAG rule 10
 still applies — the human merges, never the forge).
 
-## Scope
+## Autonomous cycle position
 
-- Repo : `api-mail` only (path : `Api/Mail/`, solution : `HealthPlatform.Api.Mail.sln`)
-- Task file : `tasks/todo-sonar-api-mail-{YYYYMMDD}.md` → flows through the
-  normal `todo → wip → review → done` lifecycle
+```
+/develop {task-id}   →   /sonar {task-id}   →   /review {task-id}   →   /tech-writer
+                          ↑
+                          you are here
+```
+
+Two important properties of the cycle :
+
+- **Same branch as `/develop`.** `/sonar` reuses the feature branch
+  `feat/{task-id}-{slug}` already pushed by `/develop`. It does NOT create
+  a chore branch (the historical "stand-alone Sonar run" mode kept its own
+  `chore/sonar-api-mail-{YYYYMMDD}` branch, but in the autonomous chain that
+  branch model is replaced by per-task chaining — see "Two invocation modes"
+  below).
+
+- **Best-effort, not exhaustive.** 5 iterations max. After that, accept the
+  remaining issues and hand off to `/review` regardless. The autonomous
+  cycle prioritises forward progress over a perfect Sonar Quality Gate.
+
+## Two invocation modes
+
+`/sonar` supports two distinct invocation modes — the playbook below is shared
+between them but the pre-flight, branch model and hand-off differ.
+
+### Mode A — chained from `/develop` (autonomous cycle, default)
+
+- Triggered by `/develop {task-id}` once the feature implementation is
+  committed and pushed
+- Task file : the existing `tasks/wip-{task-id}.md` (no new file)
+- Branch : the existing `feat/{task-id}-{slug}` on `api-mail` (reused)
+- Iterations : best-effort 5 max, accept remaining issues
+- Hand-off : `/review {task-id}` (the same task, NOT a separate Sonar PR)
+- Skip cleanly when the task did not touch `api-mail`
+
+### Mode B — stand-alone (manual housekeeping)
+
+- Triggered by the human via `/sonar api-mail` with no task in flight
+- Task file : `tasks/todo-sonar-api-mail-{YYYYMMDD}.md` (created by this
+  command via `/start`)
 - Branch : `chore/sonar-api-mail-{YYYYMMDD}` on `api-mail` only
-- PR : 1 single PR at the end, regardless of the number of iterations
+- Iterations : up to 5, with progression-based early-stop
+- Hand-off : `/review sonar-api-mail-{YYYYMMDD}` opens a dedicated Sonar PR
+- Same-day re-run is refused (duplicate branch / task detection)
+
+In both modes : repo `api-mail` only (path `Api/Mail/`, solution
+`HealthPlatform.Api.Mail.sln`), token from `$SONAR_TOKEN`, blacklist from
+`agents/sonar-blacklist.yml`, S3776 excluded (handled by `/sonar-s3776`).
 
 ## Hard targets (from `agents/sonar-targets.yml`)
 
@@ -38,10 +81,24 @@ the token in the repo. Expected vars :
 
 - `SONAR_HOST_URL` (e.g. `http://localhost:9001`)
 - `SONAR_TOKEN` (e.g. `squ_xxxxxxxxxxxxxxxx`)
-- `SONAR_PROJECT_KEY` (e.g. `healthplatform-api-mail`)
+- `SONAR_PROJECT_KEY` (e.g. `healthplatform`)
 
-If any is missing → abort with a clear message telling the human to set them
-(typically via the user's `.env` or shell profile).
+### Loading order (Step 0 reads these in order)
+
+1. The bash session env (if `$SONAR_TOKEN` is already exported, use it).
+2. The workspace-level `.env` file at `D:\TechWatch\HealthPlatform\.env`.
+   The forge `.gitignore` excludes it by default — safe to commit credentials
+   there.
+3. The api-mail `.env` at `Api/Mail/.env` (also gitignored).
+
+If a value is found in (2) or (3) but not yet exported, source the file with
+`set -a; source <path>; set +a` so the values propagate to child processes
+(e.g. `dotnet sonarscanner`).
+
+If after all three steps any of the three vars is still missing → abort with
+a clear message naming the missing variable(s) and pointing the human at
+`D:\TechWatch\HealthPlatform\.env` as the recommended location (workspace-wide,
+gitignored).
 
 ---
 
@@ -49,7 +106,94 @@ If any is missing → abort with a clear message telling the human to set them
 
 ### Step 0 — Pre-flight
 
-1. Verify `api-mail` is on `develop` with a clean working tree :
+0. **Load Sonar env vars at the head of every Bash call.** Claude Code's
+   Bash tool spawns a fresh shell per invocation — env vars set in one
+   call do NOT persist to the next. So every `/sonar` Bash command MUST
+   start with the same one-liner :
+
+   ```bash
+   set -a; [ -f /d/TechWatch/HealthPlatform/.env ] && source /d/TechWatch/HealthPlatform/.env; set +a
+   ```
+
+   That sources the workspace-level `.env` (auto-gitignored — see the
+   workspace `.gitignore` rule "ignore everything by default"). Append the
+   actual Sonar/curl/docker command after the snippet, separated by `;` or
+   `&&`. Do NOT split the env load and the command into two Bash calls —
+   the second call won't see the env vars.
+
+   After sourcing, if any of `SONAR_HOST_URL`, `SONAR_TOKEN`,
+   `SONAR_PROJECT_KEY` is missing → abort and tell the human to add the
+   missing var to `D:\TechWatch\HealthPlatform\.env`.
+
+0a. **Start the SonarQube Docker container if it is down.** SonarQube runs in
+    Docker Desktop on this workstation as a long-lived (stopped) container.
+    The agent is responsible for starting it — do NOT ask the human, do NOT
+    skip the run.
+
+    ```bash
+    # Probe the server first
+    if ! curl -sf --max-time 3 "$SONAR_HOST_URL/api/system/status" >/dev/null 2>&1; then
+      # Find the container by image (sonarqube:* or *sonar*) and start it.
+      cid=$(docker ps -a --filter "ancestor=sonarqube" --format '{{.ID}}' | head -1)
+      if [ -z "$cid" ]; then
+        cid=$(docker ps -a --format '{{.ID}}\t{{.Names}}\t{{.Image}}' \
+              | awk 'tolower($0) ~ /sonar/ { print $1; exit }')
+      fi
+      if [ -z "$cid" ]; then
+        # Abort — no container exists. Ask the human to create one.
+        echo "/sonar refused — no SonarQube container in Docker Desktop." >&2
+        echo "Create one with:  docker run -d --name sonarqube -p 9001:9000 sonarqube:lts-community" >&2
+        exit 1
+      fi
+      docker start "$cid"
+
+      # Poll until status=UP (max 90 s — Sonar boot is ~30-60 s on cold start)
+      for i in $(seq 1 30); do
+        status=$(curl -sf --max-time 3 "$SONAR_HOST_URL/api/system/status" \
+                 | grep -oE '"status":"[A-Z]+"' | cut -d'"' -f4)
+        if [ "$status" = "UP" ]; then
+          break
+        fi
+        sleep 3
+      done
+
+      if [ "$status" != "UP" ]; then
+        echo "/sonar refused — SonarQube did not reach status=UP within 90 s." >&2
+        echo "Container started but server not ready. Check 'docker logs $cid'." >&2
+        exit 1
+      fi
+    fi
+    ```
+
+    Implementation notes :
+    - The container name is **not** hardcoded. The agent discovers it by
+      image (`sonarqube:*`) first, then falls back to a name/image pattern
+      match (`*sonar*`).
+    - Polling cap : 90 s. Cold boot from a stopped state is normally
+      30-60 s ; if longer, surface the failure rather than block the chain.
+    - The agent never `docker run`s a fresh container — that would drop the
+      project state and invalidate `$SONAR_TOKEN`. Only `docker start` on
+      an existing one. If none exists, abort with the suggested create command.
+
+1. **Detect the mode** from the invocation argument :
+   - `/sonar api-mail` (or `/sonar` with no task in flight) → **Mode B**
+     (stand-alone)
+   - `/sonar {task-id}` where `tasks/wip-{task-id}.md` exists → **Mode A**
+     (chained)
+
+2. **Mode A — chained** : verify `api-mail` is on the existing feature
+   branch with a clean tree :
+   ```bash
+   cd Api/Mail
+   git symbolic-ref --short HEAD    # must equal feat/{task-id}-{slug}
+   git status --porcelain            # must be empty (build/test artefacts only)
+   ```
+   If the task didn't touch `api-mail` (no commits since the merge-base with
+   `develop`), **skip cleanly** : log "no api-mail change → /sonar skipped"
+   and chain directly to `/review`.
+
+3. **Mode B — stand-alone** : verify `api-mail` is on `develop` with a clean
+   working tree :
    ```bash
    cd Api/Mail
    git symbolic-ref --short HEAD    # must be "develop"
@@ -69,8 +213,8 @@ If any is missing → abort with a clear message telling the human to set them
    ```
    Otherwise install it : `dotnet tool install --global dotnet-sonarscanner`.
 
-4. **Refuse same-day re-run.** Compute `YYYYMMDD` from today's date and abort
-   if any of the following already exists for this date :
+4. **Mode B only — refuse same-day re-run.** Compute `YYYYMMDD` from today's
+   date and abort if any of the following already exists for this date :
    - a task file `tasks/{todo|wip|review|done}-sonar-api-mail-{YYYYMMDD}.md`
    - a local branch `chore/sonar-api-mail-{YYYYMMDD}` (`git branch --list`)
    - a remote branch `origin/chore/sonar-api-mail-{YYYYMMDD}`
@@ -85,6 +229,10 @@ If any is missing → abort with a clear message telling the human to set them
    ```
    The forge does not auto-delete anything — the human decides.
 
+   This refusal does NOT apply to Mode A — the chained invocation reuses the
+   feature task's branch, so multiple `/sonar` runs in a single day are
+   normal (one per task).
+
 5. Fetch **baseline KPIs** (before any work) via `/api/measures/component` and
    remember them. They will be the "baseline" column of the final PR body.
 
@@ -94,14 +242,22 @@ If baseline already satisfies all hard targets (`bugs=0`, `vulnerabilities=0`,
 `sqale_rating=A`, `coverage>=95`), print a congratulations message and stop.
 Nothing to do.
 
-### Step 2 — Create task + branch
+### Step 2 — Create task + branch (Mode B only)
+
+**Mode A — chained** : skip this step entirely. The branch and task already
+exist (created by `/develop`). Jump directly to Step 3 with the existing
+`feat/{task-id}-{slug}` branch.
+
+**Mode B — stand-alone** :
 
 1. Compute `YYYYMMDD` from today's date (the workspace is on Windows ; use
    `date +%Y%m%d` in bash).
 2. Create `tasks/todo-sonar-api-mail-{YYYYMMDD}.md` using the template below.
-3. Invoke `/start sonar-api-mail-{YYYYMMDD}` (which creates the branch
+3. Invoke `/start sonar-api-mail-{YYYYMMDD} no-code` (the `no-code` flag is
+   mandatory here — Sonar runs `/sonar` itself, not `/develop`, so we don't
+   want `/start` to chain into `/develop`). `/start` creates the branch
    `chore/sonar-api-mail-{YYYYMMDD}` on `api-mail` and renames the task
-   to `wip-*`).
+   to `wip-*`.
 
    Note : `/start`'s pre-flight will check every repo in the polyrepo is on
    `develop`. If another repo is on a feature branch, `/start` aborts. That is
@@ -320,17 +476,46 @@ Compute :
 **Stop** otherwise (no significant progression, or max iter reached, or
 nothing left to fix).
 
+**Best-effort acceptance** (since the autonomous inversion of 2026-04-27) :
+when the loop stops because of the iteration cap (`iter == 5`) but issues
+remain, **do not halt the cycle**. Log "Sonar best-effort : N issues
+remaining after 5 iterations — accepted, handed off to /review" in the
+task's `## Journal` table. The autonomous chain prioritises forward progress
+over Sonar perfection.
+
+The cycle only halts (via `questions/{task-id}.md`) on **tooling failure**
+— SonarQube unreachable mid-run, scanner crash, build/test broken by a
+faulty fix that can't be rolled back, GitHub API failure on push.
+
 ### Step 4 — Handover to /review
+
+**Mode A — chained** :
+
+1. Append a Sonar summary to the existing task's `## Develop log` section
+   (or create `## Sonar log` if missing) :
+   ```markdown
+   ## Sonar log
+   - Iterations : {N} / 5
+   - Issues fixed : {count} (bugs / vulnerabilities / smells / hotspots)
+   - Issues remaining : {count} (best-effort acceptance)
+   - Build / tests : ✓ green
+   ```
+2. **Do not rename the task.** The task stays in `wip-*` — `/review` is
+   responsible for the `wip → review → done` transitions.
+3. Invoke `/review {task-id}` to continue the chain.
+
+**Mode B — stand-alone** :
 
 1. Update the task's DOD checkboxes based on what was actually achieved.
 2. Fill the final KPI table in the PR body template (baseline vs final).
-3. Rename the task to `review-sonar-api-mail-{YYYYMMDD}.md` (the `/review`
-   command will take it from there).
+3. Rename the task to `review-sonar-api-mail-{YYYYMMDD}.md`.
 4. Invoke `/review sonar-api-mail-{YYYYMMDD}`.
 
-`/review` will : rebuild + retest, validate the DOD, perform a code review,
-ask the human to approve, open the PR with label `awaiting-human-merge`, and
-rename the task to `done-*`. The human then merges manually (HAG rule 10).
+In both modes, `/review` runs autonomously (no human approval prompt — see
+the autonomous-mode `/review` spec) : rebuild + retest, DOD verification,
+code review, commit + push + sync develop, open PR with label
+`awaiting-human-merge`, rename `done-*`, then chain `/tech-writer`. The
+human merges manually (HAG rule 10).
 
 ---
 

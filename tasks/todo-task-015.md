@@ -2,6 +2,7 @@
 
 **Repos**: api-mail, client-blazor, client-angular
 **Dependencies**: todo-task-006 (annule et remplace — cote expediteur)
+**Epic**: E009
 
 ## Objectif
 

@@ -2,6 +2,7 @@
 
 **Repos**: api-mail, client-blazor, client-angular
 **Dependencies**: todo-task-011 (indicateur document integre)
+**Epic**: E009
 
 ## Objectif
 

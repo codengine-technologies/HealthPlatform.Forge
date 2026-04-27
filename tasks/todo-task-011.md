@@ -3,6 +3,7 @@
 **Repos**: client-blazor, client-angular
 **Dependencies**: aucune
 **Single frontend**: false
+**Epic**: E009
 
 ## Objectif
 

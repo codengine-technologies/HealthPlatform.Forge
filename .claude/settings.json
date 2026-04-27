@@ -55,13 +55,17 @@
       "Bash(echo:*)",
       "Bash(grep:*)",
       "Bash(touch:*)",
-      "Bash(gh:*)"
+      "Bash(gh:*)",
+      "Bash(curl:*)",
+      "Bash(docker start:*)",
+      "Bash(docker stop:*)",
+      "Bash(docker ps:*)",
+      "Bash(docker logs:*)",
+      "Bash(docker inspect:*)"
     ],
     "deny": [
-      "Bash(curl:*)",
       "Bash(wget:*)",
       "Bash(ssh:*)",
-      "Bash(docker:*)",
       "Bash(kubectl:*)"
     ]
   }

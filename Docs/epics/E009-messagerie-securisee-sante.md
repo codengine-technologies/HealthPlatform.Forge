@@ -2,9 +2,11 @@
 
 > **Statut** : 🟢 En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.7
+> **Version** : 1.8
 > **Auteur** : Pascal Cabanel
 > **Dernière mise à jour** : 2026-04-27
+>
+> **Changelog v1.8** : passe tech-writer conservatrice. Task-001 (En-têtes SMTP MSSanté `X-MSS-CODECDA`, `X-MSS-INS`, `X-MSS-NIL`, `X-MSS-MES` — Référentiel socle MSSanté #2 §3.8.1–3.8.3 et §3.4.2.3) livrée sur `api-mail` (PR #30) et `dtos-mss` (PR #9). Nouveau `MssanteHeaderService` câblé dans `SmtpService.SetMessageHeaders` ; décode l'archive `ihe_xdm.zip` côté serveur via le moteur de traitement des documents CDA pour extraire les codes type CDA et déterminer si l'INS est qualifiée (matricule + OID + 4 traits d'identité). Tracé Information à chaque envoi avec la valeur effective des 4 en-têtes. Closes RG-E009-009 (X-MSS-INS, SC.MSS/CONF.14), RG-E009-010 (X-MSS-CODECDA, SC.MSS/CONF.15), RG-E009-011 (X-MSS-NIL, SC.MSS/CONF.16), RG-E009-016 (X-MSS-MES, SC.MSS/CONF.21), et RG-E009-087 (fin d'échange ENS — méthode privilégiée ECO.2.2.8). Mises en garde opérationnelles : (1) `Mail:ConvergenceProductNumber` doit être renseigné via `appsettings` avant la prod sinon X-MSS-NIL est omis avec un warning (non bloquant fonctionnellement, non conforme §3.8.3) ; (2) `DraftService.BuildMailDto` ne résout pas encore `SaveDraftDto.AttachmentIds` en `MailDto.Attachments[].Content` — les en-têtes dérivés du CDA ne se déclenchent end-to-end que via la route directe `MailController.SendMailAsync` ; un follow-up est nécessaire pour câbler le binaire des PJ depuis le brouillon avant l'envoi SMTP. Annexe C enrichie avec task-001. Sections 4/5 hand-crafted préservées.
 >
 > **Changelog v1.7** : passe tech-writer conservatrice. Task-017 (Impression et export d'un email — PDF / EML — avec traçabilité audit-trail des 3 actions distinctes `MailPrint`, `MailExportPdf`, `MailExportEml`) livrée sur `api-mail` (PR #29), `client-blazor` (PR #36) et `dtos-mss` (PR #8). Le médecin peut désormais ouvrir un PDF imprimable (headers + corps + liste PJ + pied de page traçabilité) ou télécharger l'EML brut RFC 5322 préservant la signature S/MIME. Aucune règle Ségur (`**Closes RG**:`) déclarée — l'extension du journal d'audit reste couverte par RG-E009-045/046/047 déjà traités par task-004. Annexe C enrichie avec task-017. Sections 4/5/6 hand-crafted préservées.
 >
@@ -328,9 +330,9 @@ Toute action fonctionnelle (lecture, envoi, suppression, intégration patient, o
 | RG-E009-006 (SC.MSS/CONF.08) | V2 | Erreurs de connexion ne perturbent pas les autres fonctions | ✅ Implémenté (isolation applicative) |
 | RG-E009-007 (SC.MSS/CONF.10) | V2 | Fin de session quand le jeton de rafraîchissement PSC est invalide | 🟡 Partiel (déconnexion gérée, détection expiration non explicite) |
 | RG-E009-008 (SC.MSS/CONF.11) | V2 | Réouverture automatique de session si PSC encore valide | ✅ Implémenté (gestionnaire de connexion IMAP) |
-| RG-E009-009 (SC.MSS/CONF.14) | V2 | En-tête SMTP `X-MSS-INS` dans messages avec IHE_XDM | 🔴 Non implémenté |
-| RG-E009-010 (SC.MSS/CONF.15) | V2 | En-tête SMTP `X-MSS-CODECDA` dans messages avec IHE_XDM | 🔴 Non implémenté |
-| RG-E009-011 (SC.MSS/CONF.16) | V2 | En-tête SMTP `X-MSS-NIL` dans tous les courriels | 🔴 Non implémenté |
+| RG-E009-009 (SC.MSS/CONF.14) | V2 | En-tête SMTP `X-MSS-INS` dans messages avec IHE_XDM | ✅ Implémenté (task-001 — `O`/`N` selon présence d'une INS qualifiée dans l'archive IHE_XDM, omis si pas de CDA) |
+| RG-E009-010 (SC.MSS/CONF.15) | V2 | En-tête SMTP `X-MSS-CODECDA` dans messages avec IHE_XDM | ✅ Implémenté (task-001 — codes `<ClinicalDocument code>` extraits côté serveur via le moteur CDA, multi-value séparé par virgule) |
+| RG-E009-011 (SC.MSS/CONF.16) | V2 | En-tête SMTP `X-MSS-NIL` dans tous les courriels | ✅ Implémenté (task-001 — paramètre applicatif `Mail:ConvergenceProductNumber`, omis avec warning si non configuré) |
 | RG-E009-012 (SC.MSS/CONF.22) | V2 | Conservation de la dernière CRL non expirée | ✅ Implémenté (service de vérification CRL) |
 | RG-E009-013 (SC.MSS/CONF.27) | V2 | Certificat IGC Santé gamme Élémentaire Organisation uniquement | ✅ Implémenté (validateur de certificats) |
 | RG-E009-014 (SC.MSS/CONF.28) | V2 | Jeton d'accès PSC (JWT) non stocké de façon permanente | ✅ Implémenté (mémoire de session, contexte utilisateur) |
@@ -345,7 +347,7 @@ Toute action fonctionnelle (lecture, envoi, suppression, intégration patient, o
 
 | ID | Vague | Règle | Statut |
 |----|-------|-------|--------|
-| RG-E009-016 (SC.MSS/CONF.21) | V2 | En-tête `X-MSS-MES = "FIN"` pour bloquer la réponse patient | 🔴 Non implémenté |
+| RG-E009-016 (SC.MSS/CONF.21) | V2 | En-tête `X-MSS-MES = "FIN"` pour bloquer la réponse patient | ✅ Implémenté (task-001 — opt-in `MailDto.BlockPatientReply` propagé depuis `SaveDraftDto`, `FIN` émis quand un destinataire `@patient.mssante.fr` est présent) |
 | RG-E009-017 (SC.MSS/UX.32) | V2 | Écrire à un usager depuis la base patients | 🟡 Partiel (service SMTP permet l'envoi, sélection patient + vérif INS à compléter) |
 | RG-E009-018 (MSS/va1.01) | V1 | Transmettre documents Ségur aux patients via MSS (IHE_XDM) | 🟡 Partiel (le générateur de paquets IHE produit le paquet, intégration envoi automatique à finaliser) |
 | RG-E009-019 (MSS/va1.20) | V1 | Enregistrer opposition du patient à l'envoi MSS patient | ✅ Implémenté (task-003) |
@@ -479,7 +481,7 @@ Toute action fonctionnelle (lecture, envoi, suppression, intégration patient, o
 | RG-E009-084 | § 2, p.4 | Adressage des usagers mineurs | « Lorsque les données de santé transmises par Messagerie concernent un usager mineur, il faut écrire à l'adresse de messagerie usager de l'usager mineur, et non sur l'adresse de Messagerie du/des représentants légaux. » | 🔴 Non implémenté (bloquant pour E009-F007) |
 | RG-E009-085 | § 6, p.8-10 | Gestion des messages de bounce MES | À réception d'un message « Message non distribué » renvoyé par MES, identifier la cause (messagerie fermée, patient non trouvé, adresse invalide, `Undelivered Mail Returned to Sender` pour taille dépassée) et présenter une erreur explicite au professionnel. | 🔴 Non implémenté (à ajouter au pipeline de réception pour E009-F007) |
 | RG-E009-086 | § 6, p.10 | Limite stricte de 25 Mo pour envoi vers MES | « Un Professionnel envoie un message qui dépasse la taille limite totale de 25 Mo. » — MES renvoie l'erreur `Undelivered Mail Returned to Sender`. La limite 25 Mo s'applique en plus de la limite configurable opérateur (task-008). | 🟡 Partiel — paramètre « taille maximale des pièces jointes » configurable (task-008, défaut 10 Mo). À ajouter : contrôle spécifique 25 Mo quand destinataire est `*@patient.mssante.fr`. |
-| RG-E009-087 | § 7, p.12-13 | Fin d'échange avec un usager | 2 méthodes distinctes sont possibles : (1) envoi d'un message avec objet exactement égal à `[FIN]` (casse respectée, retire la possibilité de répondre à TOUS les messages précédents) ; (2) envoi avec entête `X-MSS-MES = "FIN"` (ECO.2.2.8, méthode **privilégiée** car un seul message). | 🔴 Non implémenté (ECO.2.2.8 non implémenté) |
+| RG-E009-087 | § 7, p.12-13 | Fin d'échange avec un usager | 2 méthodes distinctes sont possibles : (1) envoi d'un message avec objet exactement égal à `[FIN]` (casse respectée, retire la possibilité de répondre à TOUS les messages précédents) ; (2) envoi avec entête `X-MSS-MES = "FIN"` (ECO.2.2.8, méthode **privilégiée** car un seul message). | ✅ Implémenté (task-001 — méthode 2 ECO.2.2.8 livrée via `MssanteHeaderService`. La méthode 1 par sujet `[FIN]` reste optionnelle puisque l'ENS désigne la méthode 2 comme privilégiée) |
 | RG-E009-088 | § 6, p.10-11 | MDN RFC 8098 pour messages vers MES | « Le mécanisme MDN est décrit dans la RFC 8098 et peut être déclenché par le professionnel en ajoutant l'entête SMTP suivante : `Disposition-Notification-To: <adresse_mssante_de_l'expéditeur>`. » Le patient ne peut pas s'opposer à l'envoi de l'accusé de lecture vers MES. | 🟡 Partiel — gestionnaire d'accusés de lecture existant, entête `Disposition-Notification-To` à confirmer dans le moteur de construction d'emails. |
 | RG-E009-089 | § 9, p.15 | Gestion du `reply-to` dans messages patient | Lorsqu'un message envoyé à un usager dispose d'une entête `reply-to` valorisée avec une adresse MSS, le patient peut répondre à la BAL indiquée dans le `reply-to` et non à la BAL émettrice. L'adresse `reply-to` est ajoutée aux contacts autorisés de l'usager ; l'adresse émettrice initiale ne l'est pas. | 🟡 Partiel — `Reply-To` positionnable par ECO.2.2.5 (BAL applicative). Pour BAL perso/orga, cas d'usage à expliciter. |
 
@@ -666,6 +668,7 @@ Les éléments suivants sont **explicitement exclus** de cet EPIC. S'ils devienn
 | done-task-009 | Libellé expéditeur formaté selon ECO.2.2.7 (format `<Titre>_<Prénom>_<NOM>_<Entité>`, sanitization anti-injection d'en-têtes, 17 tests unitaires) | RG-E009-043 |
 | done-task-016 | Alignement fonctionnel Angular sur Blazor — 8 écarts UX/fonctionnels (onglet Biologie dans mail viewer, BiologyComponent standalone, onglets dynamiques PatientTimeline, rendu HTML structuré MedicalDocumentModal, filtre DocumentType, timeline verticale, synthèse grille asymétrique, biologie matricielle + sparkline). Livré manuellement (client-angular exclu de l'automation forge). | — (iso-fonctionnalité frontends, F004) |
 | done-task-017 | Impression et export d'un email (PDF / EML) avec traçabilité audit. 3 endpoints distincts (`/print`, `/export/pdf`, `/export/eml`) générant 3 traces audit séparées (`MailPrint`, `MailExportPdf`, `MailExportEml`). PDF généré via QuestPDF (headers + corps + liste PJ + pied de page « Imprimé/Exporté par Dr X le {date} »), avec rendu Markdown→PDF dédié pour les narratifs CDA. EML : bytes RFC 5322 bruts via `MimeMessage.WriteToAsync`, préservant la signature S/MIME. Boutons Imprimer + menu Exporter PDF/EML dans `MailDetailComponent` (Blazor) avec `data-testid` complets. Angular en cours côté humain (TFS). | — (extension du périmètre audit déjà couvert par RG-E009-045/046/047 via task-004) |
+| done-task-001 | En-têtes SMTP MSSanté `X-MSS-CODECDA`, `X-MSS-INS`, `X-MSS-NIL`, `X-MSS-MES` injectés au moment de l'envoi par un nouveau `MssanteHeaderService` câblé dans `SmtpService.SetMessageHeaders`. Le service décode l'archive `ihe_xdm.zip` côté serveur (parser `Interop.Cda` existant) pour en extraire le code `<ClinicalDocument code>` de chaque CDA et déterminer si l'INS est qualifiée (matricule + OID + nom + prénom + date de naissance + sexe). 25 tests unitaires (couverture des 4 en-têtes, multi-CDA, INS qualifiée vs non, détection `@patient.mssante.fr` dans To/Cc/Bcc, log structuré). Nouveau paramètre applicatif `Mail:ConvergenceProductNumber` (défaut vide) ; si non configuré, `X-MSS-NIL` est omis avec un warning. Nouveau opt-in `SaveDraftDto.BlockPatientReply` propagé jusqu'au `MailDto`. Traces Information à chaque envoi listant les 4 valeurs effectives. | RG-E009-009, 010, 011, 016, 087 |
 
 ### D. Sources documentaires
 
@@ -685,7 +688,7 @@ Les éléments suivants sont **explicitement exclus** de cet EPIC. S'ils devienn
 #### Sources internes
 
 - `CLAUDE.md` — règles de la forge (test-first, vérification locale, HAG, US-complete, polyrepo).
-- Tasks `done-task-002.md`, `done-task-003.md`, `done-task-004.md`, `done-task-005.md`, `done-task-008.md`, `done-task-009.md`, `done-task-010.md`, `done-task-016.md`, `done-task-017.md` — apports incrémentaux à l'EPIC (cf. Annexe C).
+- Tasks `done-task-001.md`, `done-task-002.md`, `done-task-003.md`, `done-task-004.md`, `done-task-005.md`, `done-task-008.md`, `done-task-009.md`, `done-task-010.md`, `done-task-016.md`, `done-task-017.md` — apports incrémentaux à l'EPIC (cf. Annexe C).
 
 ### E. Table de correspondance REM Ségur ↔ Ref#2
 
