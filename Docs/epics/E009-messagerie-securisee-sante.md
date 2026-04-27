@@ -2,9 +2,11 @@
 
 > **Statut** : 🟢 En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.6
+> **Version** : 1.7
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-04-22
+> **Dernière mise à jour** : 2026-04-27
+>
+> **Changelog v1.7** : passe tech-writer conservatrice. Task-017 (Impression et export d'un email — PDF / EML — avec traçabilité audit-trail des 3 actions distinctes `MailPrint`, `MailExportPdf`, `MailExportEml`) livrée sur `api-mail` (PR #29), `client-blazor` (PR #36) et `dtos-mss` (PR #8). Le médecin peut désormais ouvrir un PDF imprimable (headers + corps + liste PJ + pied de page traçabilité) ou télécharger l'EML brut RFC 5322 préservant la signature S/MIME. Aucune règle Ségur (`**Closes RG**:`) déclarée — l'extension du journal d'audit reste couverte par RG-E009-045/046/047 déjà traités par task-004. Annexe C enrichie avec task-017. Sections 4/5/6 hand-crafted préservées.
 >
 > **Changelog v1.6** : passe tech-writer conservatrice. Task-016 (Alignement fonctionnel Angular sur Blazor — 8 écarts UX/fonctionnels : onglet Biologie dans le mail viewer, BiologyComponent standalone, onglets dynamiques PatientTimeline, rendu HTML structuré MedicalDocumentModal, filtre DocumentType étendu, timeline verticale vue patient, synthèse clinique grille asymétrique, biologie matricielle horizontale + sparkline) livrée manuellement par le humain (repo `client-angular` entièrement exclu de l'automation forge — pas de build/tests/PR forge, validation end-to-end humaine). Aucune règle Ségur (`**Closes RG**:`) déclarée — contribution purement iso-fonctionnalité frontends (F004 vue patient). Annexe C enrichie avec task-016. Sections 4/5/6 hand-crafted préservées.
 >
@@ -663,6 +665,7 @@ Les éléments suivants sont **explicitement exclus** de cet EPIC. S'ils devienn
 | done-task-010 | Affichage prioritaire du PDF encapsulé + 1 ligne pour CDA R2 N3 + PDF | RG-E009-055, 056 |
 | done-task-009 | Libellé expéditeur formaté selon ECO.2.2.7 (format `<Titre>_<Prénom>_<NOM>_<Entité>`, sanitization anti-injection d'en-têtes, 17 tests unitaires) | RG-E009-043 |
 | done-task-016 | Alignement fonctionnel Angular sur Blazor — 8 écarts UX/fonctionnels (onglet Biologie dans mail viewer, BiologyComponent standalone, onglets dynamiques PatientTimeline, rendu HTML structuré MedicalDocumentModal, filtre DocumentType, timeline verticale, synthèse grille asymétrique, biologie matricielle + sparkline). Livré manuellement (client-angular exclu de l'automation forge). | — (iso-fonctionnalité frontends, F004) |
+| done-task-017 | Impression et export d'un email (PDF / EML) avec traçabilité audit. 3 endpoints distincts (`/print`, `/export/pdf`, `/export/eml`) générant 3 traces audit séparées (`MailPrint`, `MailExportPdf`, `MailExportEml`). PDF généré via QuestPDF (headers + corps + liste PJ + pied de page « Imprimé/Exporté par Dr X le {date} »), avec rendu Markdown→PDF dédié pour les narratifs CDA. EML : bytes RFC 5322 bruts via `MimeMessage.WriteToAsync`, préservant la signature S/MIME. Boutons Imprimer + menu Exporter PDF/EML dans `MailDetailComponent` (Blazor) avec `data-testid` complets. Angular en cours côté humain (TFS). | — (extension du périmètre audit déjà couvert par RG-E009-045/046/047 via task-004) |
 
 ### D. Sources documentaires
 
@@ -682,7 +685,7 @@ Les éléments suivants sont **explicitement exclus** de cet EPIC. S'ils devienn
 #### Sources internes
 
 - `CLAUDE.md` — règles de la forge (test-first, vérification locale, HAG, US-complete, polyrepo).
-- Tasks `done-task-002.md`, `done-task-003.md`, `done-task-004.md`, `done-task-005.md`, `done-task-008.md`, `done-task-009.md`, `done-task-010.md`, `done-task-016.md` — apports incrémentaux à l'EPIC (cf. Annexe C).
+- Tasks `done-task-002.md`, `done-task-003.md`, `done-task-004.md`, `done-task-005.md`, `done-task-008.md`, `done-task-009.md`, `done-task-010.md`, `done-task-016.md`, `done-task-017.md` — apports incrémentaux à l'EPIC (cf. Annexe C).
 
 ### E. Table de correspondance REM Ségur ↔ Ref#2
 
