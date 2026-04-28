@@ -38,17 +38,22 @@ For every repo touched :
 The task file moves from `wip-*` to **stays `wip-*`** (still in implementation
 phase). The next step (`/sonar`) handles the wip→review transition.
 
-## Excluded repos
+## Repo modes
 
-`/develop` does **not** touch :
+`/develop` operates in three modes depending on the repo :
 
-- `client-angular` (TFS, manual)
-- `devops`
-- `psc-proxy-dto`, `psc-proxy-server`, `psc-proxy-client` (master-branch
-  convention, manual)
+- **Pushable** (`api-mail`, `client-blazor`, `dtos-mss`, `sdk`, `host`,
+  `interop-cda`) : full automation — write code on `feat/{task-id}-{slug}`
+  (already created by `/start`), build, test, commit, push.
 
-If the task lists any of these in `**Repos**:`, log it as "managed manually
-by the human" in the final report and skip.
+- **Code-only** (`client-angular`) : write code on **the branch currently
+  checked out** in `Client/Angular/` (whatever branch the human chose). Run
+  `npm ci && npm run build` and `npm test` to validate. Do **NOT** commit, do
+  **NOT** push. The human handles git + PR (TFS).
+
+- **Entirely excluded** (`devops`, `psc-proxy-dto`, `psc-proxy-server`,
+  `psc-proxy-client`) : skip entirely. If the task lists any of these in
+  `**Repos**:`, log "managed manually by the human" in the final report.
 
 ---
 
@@ -267,7 +272,9 @@ For each backend repo listed, in order :
    git -C {repo-path} push origin feat/{task-id}-{slug}
    ```
 
-### Step 5 — Implement on frontends (`client-blazor`)
+### Step 5 — Implement on frontends (`client-blazor`, `client-angular`)
+
+#### 5a. `client-blazor` (pushable)
 
 Same pattern as Step 4, with frontend-specific DOD requirements :
 
@@ -276,11 +283,55 @@ Same pattern as Step 4, with frontend-specific DOD requirements :
 - `data-testid` on every interactive element
 - Component tests (bUnit) for any new component if the DOD asks for one
 
-For `client-angular` : skipped, the human handles it in TFS.
+#### 5b. `client-angular` (code-only)
+
+Only run this step if the task lists `client-angular` in `**Repos**:`. The
+forge does **not** auto-add Angular (paired-frontend safety net is disabled).
+
+1. **Read the current branch** (do **not** change it) :
+   ```bash
+   cd Client/Angular
+   git symbolic-ref --short HEAD
+   ```
+   Whatever it returns is the working branch. The human is responsible for
+   having checked out the right branch before invoking the forge.
+
+2. **Verify the working tree is sane** :
+   ```bash
+   git status --porcelain
+   ```
+   If non-empty, that's the human's pre-existing work-in-progress — leave it
+   alone, just note the state in the final report. Do **not** stash, do
+   **not** reset.
+
+3. **Write code** in `Client/Angular/` per the task's Angular scope :
+   - All UI strings via i18n (`@ngx-translate` or equivalent — no hardcoded
+     strings if the DOD asks for it)
+   - `data-testid` on every interactive element
+   - Component tests for any new component the DOD requires
+
+4. **Build + test** :
+   ```bash
+   cd Client/Angular
+   npm ci          # only if package.json or package-lock.json changed
+   npm run build   # MUST exit 0
+   npm test        # MUST pass
+   ```
+   On failure → 5 iterations cap applies (same as Step 4). Beyond that, write
+   `questions/{task-id}.md` and stop.
+
+5. **Do NOT commit, do NOT push.** The Angular changes stay uncommitted in the
+   working tree. The human reviews them in WindSurf, commits, pushes to TFS,
+   and opens the PR there. The forge will re-validate via `npm build && npm
+   test` in `/review`, but never touches git.
+
+6. **In the develop log**, list the Angular files modified (use `git diff
+   --name-only`) and note that they are uncommitted on `{current-branch}`,
+   awaiting human commit/push.
 
 ### Step 6 — Final verification before hand-off
 
-1. For every pushable repo touched, verify the branch is up-to-date with
+1. For every **pushable** repo touched, verify the branch is up-to-date with
    origin :
    ```bash
    cd {repo-path}
@@ -288,7 +339,10 @@ For `client-angular` : skipped, the human handles it in TFS.
    git status      # must be "up to date" + "nothing to commit"
    ```
 
-2. For every repo, run a final build + test :
+   **Skip this for `client-angular`** — code is intentionally uncommitted in
+   code-only mode, no remote sync to verify.
+
+2. For every repo touched (pushable AND code-only), run a final build + test :
    ```bash
    cd {repo-path}
    {build-cmd}
@@ -362,8 +416,11 @@ directly. Log "no api-mail change → skipped /sonar" in the develop log.
 - **HAG (rule 10)** : `/develop` never merges on `develop`. Even when the
   feature branch is green and the PR is ready, the merge is the human's
   exclusive action.
-- **Excluded repos** : never branch / commit / push to `client-angular`,
-  `devops`, `psc-proxy-*`. Log as "managed manually by the human".
+- **Code-only repo** (`client-angular`) : write code on the branch the human
+  already checked out, run build + test, **never commit, never push**.
+  Uncommitted Angular changes are handed off to the human via the develop log.
+- **Entirely excluded repos** (`devops`, `psc-proxy-*`) : never branch /
+  commit / push / write code. Log as "managed manually by the human".
 - **Stop on ambiguity** : if the task is unclear, the DOD is contradictory,
   or you can't decide between two implementations of equivalent merit,
   stop and write `questions/{task-id}.md`. Do not improvise.

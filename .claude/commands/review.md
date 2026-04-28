@@ -28,19 +28,36 @@ In autonomous mode (`/develop` upstream) this halts the chain ; in
 2. **Read the task** : `## Branches`, `## Definition of Done`, `## Manual Test Plan`,
    `## Objectif` (to understand the intent of the US).
 
-3. **For each branch listed in `## Branches`** (pushed repos only, skip excluded) :
+3. **For each repo listed in `## Branches`**, branch validation depends on
+   the mode :
+
+   **Pushed repos** (`api-mail`, `client-blazor`, `dtos-mss`, `sdk`, `host`,
+   `interop-cda`) :
    ```bash
    cd {repo-path}
    git fetch origin
    git checkout feat/{task-id}-{slug}
-   # Pushed repos only :
    git pull --ff-only
-   # Run repo's build + test from CLAUDE.md
    {build-cmd}
    {test-cmd}
    ```
-   Any non-zero exit → validation FAILS. Stop, report the failing command and
-   its output. Do NOT attempt a fix. Leave the task as-is.
+
+   **Code-only repos** (`client-angular`) — humain owns git, forge only
+   re-validates :
+   ```bash
+   cd Client/Angular
+   git symbolic-ref --short HEAD     # capture current branch (whatever it is)
+   git status --porcelain            # snapshot the working tree state
+   npm ci && npm run build           # MUST exit 0
+   npm test                          # MUST pass
+   # Do NOT git fetch, git checkout, git pull — humain owns the branch
+   ```
+
+   **Entirely excluded repos** (`devops`, `psc-proxy-*`) :
+   - Skip entirely. Log "managed manually by the human".
+
+   Any non-zero exit on build/test → validation FAILS. Stop, report the
+   failing command and its output. Do NOT attempt a fix. Leave the task as-is.
 
 4. **Check the Definition of Done** item by item. Command-verifiable items are
    run ; observational items are deferred to the Manual Test Plan in the PR
@@ -137,7 +154,8 @@ In autonomous mode (`/develop` upstream) this halts the chain ; in
    waiting. The autonomous chain has no manual approval gate ; HAG (rule 10)
    is the single barrier and it sits at PR-merge time, not before.
 
-7. **Commit uncommitted changes** on each repo (autonomous — no prompt) :
+7. **Commit uncommitted changes** on each **pushable** repo (autonomous — no
+   prompt) :
    ```bash
    cd {repo-path}
    git add -A
@@ -146,7 +164,11 @@ In autonomous mode (`/develop` upstream) this halts the chain ; in
    git commit -m "feat({module}): {task-title}"
    git push
    ```
-   Skip repos with no uncommitted changes.
+   Skip pushable repos with no uncommitted changes.
+
+   **Skip `client-angular` entirely** — code-only mode means uncommitted
+   Angular changes are intentional ; the human owns commit/push to TFS. Do
+   NOT `git add`, do NOT `git commit`, do NOT `git push`.
 
 8. **Sync each branch with develop** (merge, never rebase) :
    ```bash
@@ -170,9 +192,17 @@ In autonomous mode (`/develop` upstream) this halts the chain ; in
    Include the code review summary in the PR body under a `## Code Review`
    section so the human can see the review when merging.
 
-   **Excluded repos** (`client-angular`, `devops`, `psc-proxy-dto`) :
-   - Do NOT push, do NOT attempt `gh pr create`
-   - Write a note to the task file : "managed manually by the human"
+   **Code-only repo** (`client-angular`) :
+   - Do **NOT** push, do **NOT** attempt `gh pr create` (TFS remote, manual).
+   - Write a note in the task's `## PRs` section : "code-only — humain gère
+     commit/push TFS et ouverture PR. Liste des fichiers modifiés ci-dessous :"
+     followed by the output of `git diff --name-only` in `Client/Angular/`.
+   - The forge has already validated build + test in step 3 ; the human
+     reviews the diff in WindSurf before pushing to TFS.
+
+   **Entirely excluded repos** (`devops`, `psc-proxy-*`) :
+   - Skip entirely. Write the note "managed manually by the human" in the
+     task's `## PRs` section.
 
 10. **Rename the task** : `mv tasks/{wip|review}-{task-id}.md tasks/done-{task-id}.md`
     and append `## PRs` and `## Code Review Summary` sections.
@@ -193,8 +223,12 @@ In autonomous mode (`/develop` upstream) this halts the chain ; in
     - {repo} : {pr-url}    [label: awaiting-human-merge]
     - ...
 
+    Code-only repo (humain gère git + PR) :
+    - client-angular : N fichier(s) modifié(s), uncommitted sur branche `{branch}` —
+      review le diff puis commit/push TFS + ouvre la PR
+
     Excluded repos (manual) :
-    - client-angular : human manages branch, push, and PR
+    - devops, psc-proxy-* : managed manually by the human
 
     EPIC doc : docs/epics/E{NNN}-{slug}.md updated
                (or : no EPIC linked — skipped tech-writer)
@@ -207,8 +241,10 @@ In autonomous mode (`/develop` upstream) this halts the chain ; in
 - The forge never patches code in `/review` — validation and review are
   read-only on the existing code (`/develop` is the agent that writes code)
 - The forge never merges PRs — HAG (CLAUDE.md rule 10)
-- The forge never pushes an excluded repo (`client-angular`, `devops`,
-  `psc-proxy-*`)
+- The forge never commits or pushes `client-angular` (code-only mode —
+  humain gère git + PR TFS) ; build + test are still run
+- The forge never builds, tests, commits, pushes, or opens PRs for
+  `devops` or `psc-proxy-*` (entièrement hors automation)
 - **`/review` is autonomous** : no "yes/no" prompt before commit / PR
   creation. The human's only manual intervention is merging the PR
   (HAG, rule 10).

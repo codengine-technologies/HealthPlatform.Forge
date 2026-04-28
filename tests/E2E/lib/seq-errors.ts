@@ -12,27 +12,32 @@ import { join } from 'node:path'
  * then `await assertNoNewBackendErrors(testInfo, t0, 'step label')` to
  * surface any new server-side error.
  *
- * Uses the local Seq instance (default `http://localhost:5341`) — this
- * is the same Seq the api-mail process logs to under Aspire AppHost
- * (via the SEQ_URL=http://localhost:5342 env var, which inside Docker
- * points to the same standalone Seq container).
+ * Targets the local Seq HTTP API (default `http://localhost:5341`,
+ * Seq UI + /api/events). This is intentionally NOT the same env var
+ * the api-mail process uses to ship logs : api-mail reads `SEQ_URL`
+ * which points at the ingestion port (5342 on the host, mapped to
+ * 5341 inside the container). Re-using `SEQ_URL` here would send our
+ * query to the ingestion endpoint, which has no /api/events handler
+ * (404 with no body). The helper uses `SEQ_QUERY_URL` so the two
+ * concepts can coexist in the same shell.
  *
  * Authentication : Seq 2025.x requires an API key for the events
  * endpoint (anonymous reads return 401). Set SEQ_API_KEY in the
- * environment before running to enable the check :
+ * environment (or in `tests/E2E/.env`, gitignored) before running :
  *
  *   1. Open http://localhost:5341 in a browser, login as admin
  *      (default password from AppHost.cs : `admin`)
  *   2. Settings > API Keys > Create — give it Read permission
- *   3. Copy the token, export it for the test run :
- *        export SEQ_API_KEY=tok_xxxxxxxxxxxx
+ *   3. Copy the token into tests/E2E/.env :
+ *        SEQ_API_KEY=tok_xxxxxxxxxxxx
+ *      (loaded automatically by dotenv via playwright.config.ts)
  *
  * Without SEQ_API_KEY the helper logs a warning and silently skips
  * the assertion rather than failing the test (Seq access shouldn't
  * block /qa). Tests pass but lose the backend-error guard.
  */
 
-const SEQ_URL = process.env.SEQ_URL ?? 'http://localhost:5341'
+const SEQ_URL = process.env.SEQ_QUERY_URL ?? 'http://localhost:5341'
 const SEQ_API_KEY = process.env.SEQ_API_KEY ?? ''
 
 interface SeqProperty {

@@ -57,8 +57,17 @@ same branch name across all of them). See CLAUDE.md for the repo table.
 `client-blazor`, `dtos-mss` is auto-included by `/start` (and therefore
 by `/develop`) because those backends/frontends consume the DTO package.
 
-**Excluded repos** : `client-angular` (TFS), `devops`, `psc-proxy-*`. The
-orchestrator never touches these. They are "managed manually by the human".
+**Code-only repo** : `client-angular`. The orchestrator (via `/develop` and
+`/review`) writes Angular code on the branch the human currently has checked
+out, runs `npm ci && npm run build` and `npm test` to validate, but **never
+touches git** (no fetch, no checkout, no commit, no push). The human owns
+branch selection, commit, push to TFS, and PR opening. A task must list
+`client-angular` explicitly in `**Repos**:` to opt in — the paired-frontend
+safety net is disabled.
+
+**Entirely excluded repos** : `devops`, `psc-proxy-server`, `psc-proxy-client`,
+`psc-proxy-dto`. The orchestrator never touches these — no code, no build,
+no git. They are "managed manually by the human".
 
 ---
 
@@ -68,9 +77,11 @@ At each invocation :
 
 ### 1. Pre-flight
 
-- Verify every repo in the polyrepo (CLAUDE.md repo table) is on `develop`.
-  Any repo on a feature branch → halt with the offender list, do NOT
-  switch branches.
+- Verify every **forge-automated repo** (`api-mail`, `client-blazor`,
+  `dtos-mss`, `sdk`, `host`, `interop-cda`) is on `develop`. Any of these on
+  a feature branch → halt with the offender list, do NOT switch branches.
+  The pre-flight **does not** check `client-angular` (code-only — humain
+  libre de sa branche) or the entirely-excluded repos.
 - Verify `tasks/wip-*.md` count : at most one (the autonomous chain
   serialises). If multiple `wip-*` coexist → halt with the offender list.
 
@@ -125,8 +136,11 @@ expected once `todo-*` is drained.
   retroactively (the human owns the implementation from that point on).
 - **You always use `git merge`, never `git rebase`** when syncing a
   branch with `develop` (CLAUDE.md rule 4).
-- **You always respect the excluded-repos list** (CLAUDE.md — currently
-  `client-angular`, `devops`, `psc-proxy-*`).
+- **You respect the per-repo mode** (CLAUDE.md) :
+  - `client-angular` → **code-only** : write code on the branch the human
+    has checked out, build + test only, never touch git.
+  - `devops`, `psc-proxy-*` → **entirely excluded** : never write code,
+    never build, never touch git.
 - **You serialise tasks** — never two `wip-*` simultaneously, never two
   `/develop` runs in flight, never parallel commits to the same shared
   repo (`dtos-mss`, `interop-cda`).

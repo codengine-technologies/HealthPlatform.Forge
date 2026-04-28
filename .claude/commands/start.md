@@ -18,26 +18,33 @@ philosophy was inverted on 2026-04-27 — see CLAUDE.md "Forge philosophy".
 
 ## Steps
 
-0. **Pre-flight : all repos on `develop`**
+0. **Pre-flight : forge-automated repos on `develop`**
 
-   Before doing anything, iterate over every repo listed in CLAUDE.md (the
-   full polyrepo, not just the task's targets) and verify each is on its
-   `develop` branch :
+   Iterate **only over the forge-automated repos** in CLAUDE.md and verify
+   each is on its `develop` branch. The set is :
+
+   - `api-mail`, `client-blazor`, `dtos-mss`, `sdk`, `host`, `interop-cda`
+
+   **Explicitly skipped** (do NOT check their branch) :
+
+   - `client-angular` — code-only mode, humain libre de sa branche
+   - `devops`, `psc-proxy-server`, `psc-proxy-client`, `psc-proxy-dto` —
+     entièrement hors automation
 
    ```bash
-   for each repo in CLAUDE.md table :
+   for each forge-automated repo :
      cd {repo-path}
      current=$(git symbolic-ref --short HEAD)
      if [ "$current" != "develop" ] : record repo + current branch
    ```
 
-   If **any** repo is not on `develop` → **abort** and print the list :
+   If **any** in-scope repo is not on `develop` → **abort** and print the list :
 
    ```
    /start refusé — les repos suivants ne sont pas sur develop :
    - api-mail      : feat/back-old-task-012
    - client-blazor : fix/some-hotfix
-   
+
    Finis, stash ou checkout develop dans ces repos, puis relance /start.
    ```
 
@@ -56,15 +63,23 @@ philosophy was inverted on 2026-04-27 — see CLAUDE.md "Forge philosophy".
 
 3. **Resolve the target repos** :
    - Start with the list from `**Repos**:`
-   - **Paired frontends safety net** : if the list contains `client-blazor`
-     XOR `client-angular`, AND `Single frontend` is not `true`, add the missing
-     one so both frontends get the branch
+   - **Paired frontends safety net** : **disabled**. `/start` never
+     auto-adds `client-angular` when `client-blazor` is listed (or
+     vice-versa). The PO opts into Angular code generation by listing
+     `client-angular` explicitly. Without an explicit listing, Angular
+     stays a manual implementation by the human.
+   - Auto-include `dtos-mss` whenever `api-mail` or `client-blazor` is
+     listed (see CLAUDE.md "Auto-included repo : `dtos-mss`")
    - Deduplicate
    - Abort if any entry is unknown (not in the CLAUDE.md repo table)
 
-4. **For each target repo**, look up its entry in CLAUDE.md and note whether
-   it is a `local-only` repo (currently : `client-angular`, because its remote
-   is TFS and `gh pr` is unusable).
+4. **For each target repo**, look up its mode :
+   - `client-angular` → **code-only**. The forge will write code on the
+     branch currently checked out by the human (no branch creation in this
+     command, no fetch, no checkout).
+   - `devops`, `psc-proxy-*` → **entirely excluded**. Skip with the note
+     "managed manually by the human".
+   - All other repos → **pushable** (origin is GitHub).
 
 5. **Create the branch** in each target repo from the latest `develop` :
 
@@ -76,28 +91,36 @@ philosophy was inverted on 2026-04-27 — see CLAUDE.md "Forge philosophy".
    git push -u origin feat/{task-id}-{slug}
    ```
 
-   **Local-only repos** (`client-angular`) :
-   ```bash
-   cd {repo-path}
-   git fetch origin develop       # TFS remote — still fetches the ref
-   git checkout -b feat/{task-id}-{slug} origin/develop
-   # NO git push — the human pushes to TFS and opens the PR manually later
-   ```
+   **Code-only repos** (`client-angular`) :
+   - **Do nothing.** Do NOT `git fetch`, do NOT `git checkout`, do NOT create
+     a branch. The forge will operate on whatever branch is currently checked
+     out in `Client/Angular/` when `/develop` runs. The human is responsible
+     for the branch selection.
+
+   **Excluded repos** (`devops`, `psc-proxy-*`) :
+   - Skip entirely. Add the note "managed manually by the human" to the
+     `## Branches` section.
 
    Branch prefix : `feat/`, `fix/`, `wire/`, `chore/` — pick from the task type.
    Confirm with the human if ambiguous.
 
 6. **Rename the task** : `mv tasks/todo-{task-id}.md tasks/wip-{task-id}.md`.
 
-7. **Append a `## Branches` section** to the wip task file, listing every branch
-   with its repo, mode (`pushed` or `local-only`) and (if pushed) URL :
+7. **Append a `## Branches` section** to the wip task file, listing every repo
+   with its mode (`pushed`, `code-only`, or `manual`) and the relevant info :
 
    ```markdown
    ## Branches
    - `api-mail` (pushed) : feat/back-X-001-signalr — https://github.com/.../tree/feat/back-X-001-signalr
    - `client-blazor` (pushed) : feat/back-X-001-signalr — https://...
-   - `client-angular` (local-only) : feat/back-X-001-signalr — TFS, human handles push/PR manually
+   - `client-angular` (code-only) : forge writes code on the branch currently checked out in `Client/Angular/` — humain gère branche, commit, push, PR TFS
+   - `devops` (manual) : managed manually by the human
    ```
+
+   For `client-angular`, capture the current branch at the time of `/start`
+   so the report has a snapshot, but understand the human may switch branches
+   before `/develop` runs — that's fine, `/develop` reads the current branch
+   at execution time.
 
 8. **Parse the optional `no-code` argument** :
 
@@ -144,12 +167,16 @@ philosophy was inverted on 2026-04-27 — see CLAUDE.md "Forge philosophy".
 
 ## Rules
 
-- **1 US = 1 task file = 1 branch name** on every repo the US touches.
-  No split `todo-back-*` / `todo-front-*` — one unified task.
-- Never create a branch on a repo not declared (directly or via pairing)
+- **1 US = 1 task file = 1 branch name** on every pushable repo the US touches.
+  `client-angular` is **code-only** : no branch creation, the human owns the
+  branch. No split `todo-back-*` / `todo-front-*` — one unified task.
+- Never create a branch on a repo not declared in `**Repos**:` (auto-include
+  `dtos-mss` is the only exception)
+- Never create a branch on `client-angular` — code-only mode
+- Never create a branch on `devops` or `psc-proxy-*` — entirely manual
 - Never skip dependencies
 - Never branch from a stale local ref — always `git fetch origin develop` first
-- Never push a `local-only` repo branch
+  (pushable repos only — `client-angular` not concerned)
 - `/start` itself never writes code — it only creates branches. The
   `/develop` chaining (step 9) is what writes code, and only when the
   `no-code` flag is absent.

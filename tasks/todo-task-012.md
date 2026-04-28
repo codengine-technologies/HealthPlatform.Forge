@@ -11,6 +11,7 @@ qualifiee (matricule INS absent ou sans OID, traits incomplets), le systeme doit
 proposer au professionnel un workflow de rattachement par comparaison visuelle :
 afficher les traits d'identite extraits du CDA a cote des patients connus dans la
 base pour que le professionnel confirme le rapprochement.
+Dans la liste des email prévoir un visuel pour indiqué le rattachement et si aucun ratachement proposer une action pour déclencher le workflow. Cela doit être fait dans le client Angular et Blazor
 
 ## Contexte reglementaire
 

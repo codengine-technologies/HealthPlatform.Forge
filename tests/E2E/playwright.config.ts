@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
+import 'dotenv/config'
 
 /**
  * E2E Playwright config for HealthPlatform.
@@ -10,6 +11,10 @@ import { defineConfig, devices } from '@playwright/test'
  *
  * Self-signed dev cert → ignoreHTTPSErrors. Tests run serial (workers=1)
  * because the backend keeps shared IMAP state per test session.
+ *
+ * `dotenv/config` loads tests/E2E/.env at startup so SEQ_API_KEY (and
+ * any future env-driven knob) is picked up by the worker process. The
+ * .env file is gitignored — credentials stay local.
  */
 export default defineConfig({
 	testDir: './tests',

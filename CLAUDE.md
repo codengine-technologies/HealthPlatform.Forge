@@ -64,7 +64,7 @@ l'humain implémente dans WindSurf, puis lance `/review {task-id}` lui-même
 |---|---|---|---|
 | Rédaction US | `/po` (humain) | non | Pas de `.feature`, juste `todo-*.md` |
 | Création branches | `/start` | non | Pre-flight : tous les repos sur `develop` |
-| **Implémentation** | **`/develop`** | **oui** | Test-first, cross-repo dans l'ordre dtos→interop→backend→frontend, publie NuGet pour DTOs/interop |
+| **Implémentation** | **`/develop`** | **oui** | Test-first, cross-repo dans l'ordre dtos→interop→backend→frontend, publie NuGet pour DTOs/interop. Pour `client-angular` : mode **code-only** (écrit le code sur la branche actuellement checked out, build + test, mais ne touche pas à git — humain gère branche, commit, push, PR TFS). |
 | Cleanup Sonar | `/sonar` (api-mail) | oui | Best-effort 5 itérations, accepte les issues restantes |
 | Validation + PR | `/review` | non (lecture seule sur le code) | Plus de prompt humain — autonome |
 | Doc EPIC | `/tech-writer` | non (écrit dans `docs/epics/` uniquement) | Idempotent |
@@ -122,11 +122,15 @@ must be justified in the task body. The default is "all 3 frontends and
 backend".
 
 **Pre-flight for `/start`** : the forge refuses to create a new working branch
-unless **every repo in the polyrepo is on `develop`**. If any repo is on a
-feature branch (finished work not yet cleaned up, or in-flight manual work),
-`/start` aborts and lists the offenders. The human finishes, stashes, or
-checks out `develop` in the listed repos, then retries `/start`. The forge
-never switches branches on the human's behalf.
+unless **every forge-automated repo is on `develop`**. The check covers
+`api-mail`, `client-blazor`, `dtos-mss`, `sdk`, `host`, `interop-cda` ; it
+**explicitly skips** `client-angular` (code-only mode — humain libre de sa
+branche), `devops`, `psc-proxy-server`, `psc-proxy-client`, `psc-proxy-dto`
+(entièrement hors automation). If any in-scope repo is on a feature branch
+(finished work not yet cleaned up, or in-flight manual work), `/start`
+aborts and lists the offenders. The human finishes, stashes, or checks out
+`develop` in the listed repos, then retries `/start`. The forge never
+switches branches on the human's behalf.
 
 ---
 
@@ -153,13 +157,32 @@ those repos — never at the workspace root.
 | `psc-proxy-dto` | `psc/proxy/psc.proxy.dto` | .NET 10 DTOs | `dotnet build psc.proxy.dto.sln` | n/a |
 | `devops` | `DevOps` | CI/CD configs | n/a | n/a |
 
-### Excluded repos (managed manually)
+### Code-only repo : `client-angular`
 
-The following repos are **entirely excluded from forge automation**. The human
-manages them manually (branches, builds, tests, PRs). The forge ignores them
-in pre-flight checks, `/start`, and `/review`.
+`client-angular` is in **code-only mode** — the forge writes Angular code, but
+**never touches git**. The remote is TFS (`gh pr` unusable), and the human
+keeps full control of branching, commits, push, and PR opening.
 
-**`client-angular`** — TFS remote, human manages branches/PRs manually.
+Concretely :
+- **`/start`** : does **NOT** create a branch on `client-angular`. The human
+  is responsible for checking out the right branch in `Client/Angular/` before
+  invoking `/start`. Pre-flight does **NOT** check the Angular branch.
+- **`/develop`** : writes code on whatever branch is currently checked out in
+  `Client/Angular/`. Runs `npm ci && npm run build` and `npm test` to validate.
+  Does **NOT** commit, does **NOT** push.
+- **`/review`** : re-runs build + test on the current Angular branch.
+  Does **NOT** push, does **NOT** open a PR.
+- **Human owns** : branch selection, commit, push to TFS, opening the PR.
+- A task file MUST list `client-angular` in `**Repos**:` to opt into Angular
+  code generation by the forge. The paired-frontend safety net is disabled
+  (see below) — Angular is never auto-added.
+
+### Excluded repos (entirely manual)
+
+The following repos are **entirely excluded from forge automation**. The
+forge writes no code, runs no build/test, and never touches git for them. If
+a task file lists any of them in `**Repos**:`, the forge acknowledges and
+adds the note : "managed manually by the human".
 
 **`devops`** — CI/CD configs, human manages independently.
 
@@ -169,19 +192,19 @@ in pre-flight checks, `/start`, and `/review`.
 
 **`psc-proxy-client`** — convention de branche `master` (pas de `develop`), human manages independently.
 
-For both :
+For all four :
 - `/start` does **NOT** create any branch
+- `/develop` does **NOT** write code
 - `/review` does **NOT** build, test, or open PRs
 - Pre-flight does **NOT** check their current branch
-- If a task file lists them in `**Repos**:`, the forge acknowledges but skips
-  all automation. A note is added : "managed manually by the human"
 
 ### Paired frontends safety net
 
-`client-angular` is excluded from forge automation (see above). The paired
-frontends safety net is **disabled** — `/start` does NOT auto-add
-`client-angular` to any task. The human is responsible for creating the
-Angular branch and implementing the Angular side manually.
+The paired frontends safety net is **disabled**. `/start` does NOT auto-add
+`client-angular` when a task lists `client-blazor` (or vice-versa). The PO
+must explicitly list `client-angular` in `**Repos**:` whenever the forge
+should generate Angular code. Without an explicit listing, the human keeps
+the Angular implementation as a manual task.
 
 ### Auto-included repo : `dtos-mss`
 
@@ -389,8 +412,9 @@ Never modify without human arbitration:
 | `/sonar {task-id}` | Best-effort SonarQube cleanup on `api-mail` (5 iterations max, accepts remaining issues). Standard step in the autonomous chain. See `agents/sonar.md`. |
 | `/sonar-s3776 api-mail` | **[Manual]** Reduce cognitive complexity of ONE method (S3776). One method = one PR. Characterisation tests written first. Out of the autonomous chain. See `.claude/commands/sonar-s3776.md`. |
 | `/review {task-id}` | Validate the implementation (build + tests + DOD + code review), commit/push/sync develop, open the PR (label `awaiting-human-merge`), rename `done-*`, chain into `/tech-writer`. Autonomous — no human prompt. |
+| `/merge {task-id} --i-tested` | **[Human only]** After the human has tested the US end-to-end on the open PRs, squash-merge each pushable PR, sync `develop`, delete the branches, archive the task `archived-*`. Refuses without `--i-tested`, on `awaiting-us-completion` label, or red CI. Never invoked by `/forge` — HAG (rule 10) stays. See `agents/merge.md`. |
 | `/tech-writer E{NNN}` | Refresh `docs/epics/E{NNN}-{slug}.md` from all tasks that declare `**Epic**: E{NNN}`. Called automatically at the tail of `/review` ; can be run manually for retro-generation or `--refresh`. See `agents/technical-writer.md`. |
-| `/forge` | Loop autonome : pour chaque `tasks/todo-task-*.md`, déclenche `/start` → `/develop` → `/sonar` → `/review` → `/tech-writer`. Séquentiel (pas de parallélisme). Stop sur la première task qui échoue (écrit `questions/`, passe à la suivante). |
+| `/forge` | Loop autonome : pour chaque `tasks/todo-task-*.md`, déclenche `/start` → `/develop` → `/sonar` → `/review` → `/tech-writer`. Séquentiel (pas de parallélisme). Stop sur la première task qui échoue (écrit `questions/`, passe à la suivante). **Ne déclenche jamais `/merge`** — HAG, règle 10. |
 | `/status` | Quick status in < 10 lines |
 | `/publish-dtos` | Publish the DTO NuGet package and bump consumers (manual command — `/develop` does the equivalent inline as part of the autonomous cycle). |
 | `/kickoff` | Bootstrap a new project (scaffold `.claude/`, agents, templates) |
