@@ -215,3 +215,25 @@ See `tests/mss.mail.bdd.tests/Features/Mss/RattachementPatientVisuel.feature`
 
 ### Gaps connus
 - **Aucun** — la US est complète. Le scope « créer un nouveau patient » a été explicitement retiré par le PO le 2026-04-28 (cf. `feedback_attachment_workflow_no_create_new_patient.md`). L'UI Angular est implémentée et testée (95 tests mss-lib verts), uncommitted sur la branche `feature/nova-rewriting-mss-fixes-20260410` — l'humain commit / push TFS / ouvre la PR.
+
+## Merged
+
+**Merged on** : 2026-04-29 (human-tested, `--i-tested`)
+
+Squash commits on `develop` :
+- `dtos-mss`      : `dce48a5` (PR #11) — feat(dto): add PatientMatchCandidateDto and AttachPatientRequestDto
+- `api-mail`      : `103850c` (PR #33) — feat(mail): patient match + manual attach for non-qualified CDA (task-012)
+- `client-blazor` : `52d2432` (PR #38) — feat(mss): visual patient attachment workflow (task-012)
+
+Late tail commits absorbed via re-`git push` before merge :
+- `api-mail`      : `830e33d` Fix (LogInformation→LogError on update-content fallback)
+- `client-blazor` : `caabec4` Fix (qualified-patient name highlight)
+
+CI on `develop` (post-merge) :
+- `dtos-mss`      : ✓ https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/actions/runs/25103862758
+- `api-mail`      : ✓ (no new run — repo CI runs on PR only)
+- `client-blazor` : ✓ https://github.com/codengine-technologies/HealthPlatform.Client/actions/runs/25103891555
+
+Local feature branches preserved on each clone (per `/merge` policy — only the remote ref is deleted).
+
+`client-angular` : managed manually by the human.
