@@ -200,3 +200,18 @@ Bug de détection signalé par le PO en review : la requête initiale comparait 
 - `AddNewMailItselfInSentFolderShouldNeverFlagAsync` — couvre le scénario miroir : un mail sortant (FolderPath = Sent) avec un DocumentId qui matche un INBOX existant ne doit pas être flagué non plus.
 
 Suite api-mail post-fix : 244 tests infrastructure passés (était 242 — +2 nouveaux). PR `api-mail#34` mise à jour avec le commit `620c532`.
+
+## Merged
+
+- **Merged at** : 2026-04-30T15:42:26Z (squash-merge via `/merge task-013 --i-tested`)
+- **HAG attestation** : `--i-tested` — humain a validé la US end-to-end (Manual Test Plan + run `/qa` 5/5 critical-path tests passants ; les 2 spec `duplicate-decision` Playwright skipped car pas de paire de doublons dans la mailbox seed, scénario validé manuellement par le médecin).
+- **Squash commits sur `develop`** :
+  - `dtos-mss`      : `0f3583a232cda608713a52b83be1508acc1acdcb` (PR #12 closed)
+  - `api-mail`      : `bd02969efa159a5a1aa132cb7626206e91c52217` (PR #34 closed — inclut le fix self-action folders `620c532` ajouté en post-review)
+  - `client-blazor` : `295d1dd9bea8f692df9bc6bef46b359bd0664647` (PR #39 closed — inclut les fixes S3358 sur `DuplicateCleanupDialog` + `MailReadOnlyView` poussés avant le merge)
+- **Remote feature branches** : supprimées (`--delete-branch`). Les branches locales `feat/task-013-detection-doublons-cda` sont préservées sur les 3 clones pour inspection rétroactive (cf. `feedback_forge_merge_keep_local_branches.md`).
+- **CI develop** :
+  - `dtos-mss`      : ✓ green (run `2026-04-30T15:40:02Z`)
+  - `api-mail`      : ⊘ pas de run sur push-to-develop (workflow `Build and Publish` triggé sur `push:master` + `pull_request:develop` uniquement — comportement existant, pas une régression)
+  - `client-blazor` : ✓ green (run `2026-04-30T15:40:41Z`, terminé en ~40 s)
+- **`client-angular`** : code-only, hors scope `/merge`. L'humain gère commit / push TFS / ouverture PR sur la branche `feature/nova-rewriting-mss-fixes-20260410` indépendamment.
