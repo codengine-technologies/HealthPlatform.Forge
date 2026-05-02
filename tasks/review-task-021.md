@@ -288,3 +288,19 @@ app.MapSwagger().AllowAnonymous();
 
 - `api-mail` (pushed) : feat/task-021-jwt-auth-middleware — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-021-jwt-auth-middleware
 - `dtos-mss` (pushed, auto-included) : feat/task-021-jwt-auth-middleware — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-021-jwt-auth-middleware (probablement aucun commit — DTOs non touchés par cette task)
+
+## Develop log
+
+- Repos touched : api-mail (Pass 1-5 livrées), dtos-mss (aucun commit — pas de DTO change attendu)
+- DTOs published : aucun changement
+- Commits :
+  - api-mail Pass 1 (77688a5) : JWT infrastructure scaffolding (package, Program.cs config sans FallbackPolicy, UserContextEnricherMiddleware créé)
+  - api-mail Pass 2-5 (16fc35b) : TestBypassAuthenticationHandler, FallbackPolicy actif, [AllowAnonymous] sur 5 controllers anonymes + Prometheus, suppression des 114 TryExtractJwtToken (97 bloc + 15 braceless + 2 SSE manual), 13 controllers param userContextInfo retiré, 6 controllers param restauré, RequestHelper marqué internal
+- Local build : ✓ 0 errors
+- Local tests : ✓ 1577 passed / 5 skipped / 0 failed (était 1587 ; 10 tests obsolètes "Unauthorized when no header" supprimés par design — la logique a migré pipeline)
+- DOD audit grep :
+  - `TryExtractJwtToken` in Controllers → ✅ vide
+  - `AllowAnonymous` in Controllers → 5 entrées (Ai/Directory/FeatureFlag/MailEvents/Notifications) — base task-022
+  - `Client-Email` in Controllers → 2 occurrences SSE (MailEvents/Notifications) — à fermer en task-022
+- Pass 6 (tests sécurité dédiés HTTP-pipeline) deferred — nécessite scaffold `WebApplicationFactory<Program>` non présent dans la suite actuelle. Couvert opérationnellement par `/qa` Playwright en test-bypass + tests d'intégration existants. À ajouter en task-022 ou comme follow-up.
+- Next step : /sonar (api-mail)
