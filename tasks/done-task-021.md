@@ -304,3 +304,18 @@ app.MapSwagger().AllowAnonymous();
   - `Client-Email` in Controllers → 2 occurrences SSE (MailEvents/Notifications) — à fermer en task-022
 - Pass 6 (tests sécurité dédiés HTTP-pipeline) deferred — nécessite scaffold `WebApplicationFactory<Program>` non présent dans la suite actuelle. Couvert opérationnellement par `/qa` Playwright en test-bypass + tests d'intégration existants. À ajouter en task-022 ou comme follow-up.
 - Next step : /sonar (api-mail)
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/38 (label `awaiting-human-merge`)
+- `dtos-mss` : aucun commit attendu sur cette task (auto-incluse pour anticipation, branche fermée sans PR)
+- `client-blazor`, `client-angular` : non concernés (task back-end uniquement)
+
+## Code Review Summary
+
+**APPROVED** — 2 suggestions non-bloquantes :
+
+1. ⚠️ Tests unitaires dédiés au `TestBypassAuthenticationHandler` manquants (Production block, key mismatch, missing Client-Email, success path). À ajouter en hotfix ou mini-task suivi.
+2. ⚠️ Pass 6 (tests sécurité HTTP-pipeline via `WebApplicationFactory<Program>`) deferred — DOD prévoyait spoofing/expired/forged JWT + SSE query token. Couvert opérationnellement par `/qa` Playwright en test-bypass. À planifier en task-022 ou follow-up.
+
+Pas de blocking issue. La couche 2 du chantier sécurité (authentification cryptographique) est livrée. Le chapitre §10 du doc EPIC sera mis à jour par `/tech-writer` au prochain run.
