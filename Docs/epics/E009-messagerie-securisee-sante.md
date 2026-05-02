@@ -607,6 +607,195 @@ Les éléments suivants sont **explicitement exclus** de cet EPIC. S'ils devienn
 
 ---
 
+## 10. Sécurité applicative — Identifiants opaques (Guid v7)
+
+> Chapitre transverse non-Ségur, ouvert le 2026-04-29, **clos le 2026-05-02**.
+> Couvre la première couche de défense anti-IDOR de la plateforme. Les
+> couches 2 (authentification crypto) et 3 (ownership scoping) sont en
+> backlog (cf. §10.6).
+
+### 10.1 Motivation
+
+Avant ce chantier, l'ensemble des entités persistées en Postgres exposaient
+des **clés primaires `int` auto-incrémentales** côté API (`/contact/1`,
+`/medical-documents/42`, etc.). Trois conséquences non-acceptables pour une
+plateforme de messagerie médicale :
+
+1. **Énumération IDOR triviale** — un attaquant peut balayer
+   `for i in 1..N` et inférer l'existence des ressources voisines.
+2. **Information disclosure** — les Ids monotones révèlent le rythme de
+   création (un `Id=12000` aujourd'hui implique ~12000 contacts créés
+   depuis le début du système).
+3. **Hack `ContactDto.GetIntId()`** — un raccourci historique faisait
+   `BitConverter.ToInt32(Guid.ToByteArray(), 0)` pour caster le Guid du
+   DTO en int côté repo, avec un risque de collision birthday d'environ
+   1/65k sur 4 octets (16 bits effectifs).
+
+L'objectif était double : **éliminer l'énumération URL** (anti-IDOR de
+surface) et **supprimer définitivement** le hack BitConverter.
+
+### 10.2 Choix UUID v7 — RFC 9562
+
+Le standard retenu est **UUID v7** (RFC 9562, finalisée mai 2024) plutôt
+que v4 :
+
+| Critère | UUID v4 | UUID v7 |
+|---|---|---|
+| Non-prédictibilité | ✅ Aléatoire | ✅ Random tail (74 bits) |
+| Tri temporel | ❌ Non | ✅ Prefix Unix epoch ms (48 bits) |
+| B-tree friendliness | ❌ Inserts aléatoires → page splits | ✅ Inserts append-like |
+| Indexabilité Postgres | Médiocre sur grosses tables | Excellente |
+| Génération .NET | `Guid.NewGuid()` | `Guid.CreateVersion7()` (.NET 9+ natif) |
+
+La génération est faite **côté .NET** via un `UuidV7ValueGenerator` câblé
+dans `MailDataContext.OnModelCreating` :
+
+```csharp
+modelBuilder.Entity<Contact>()
+    .Property(e => e.Id)
+    .HasValueGenerator<UuidV7ValueGenerator>()
+    .ValueGeneratedOnAdd();
+```
+
+→ Postgres reçoit un `uuid` déjà rempli, sans `gen_random_uuid()` (qui
+produirait du v4) ni `WithDefault(SystemMethods.NewGuid)`.
+
+### 10.3 Découpage en 3 tasks (018 → 019 → 020)
+
+Le chantier a été séquencé pour limiter le blast radius :
+
+| Task | Cluster | Entités migrées | NuGet `dtos-mss` |
+|---|---|---|---|
+| **task-018** | Patient + MailMedicalDocument | `MailPatient`, `MailMedicalDocument`, `MailMedicalDocumentBiology`, `MailMedicalDocumentSummary` (4 entités) | 231.0.0 |
+| **task-019** | Mail + enfants | `Mail`, `MailContent`, `MailRecipient`, `MailAttachment`, `Tag`, `MailTag` (6 entités) + finalisation `MailMedicalDocument.MailId` | 235.0.0 |
+| **task-020** | User / Contact / Audit + scellement | `User`, `UserSetting`, `MailSignature`, `MailTemplate`, `MailFolder`, `Contact`, `ContactMssAddress`, `ContactTag`, `ContactGroup`, `ContactGroupMember`, `MssAuditTrace`, `PendingAction` (12 entités) + finalisation `MailMedicalDocument.PractitionerContactId` + suppression `ContactDto.GetIntId()` | 239.0.0 |
+
+**Total : 22 entités migrées**, 17 routes API `{*:int}` éliminées
+(MedicalDocuments 3, Contact 8, MailTemplate 3, Signature 5, Audit 1,
+MailController.CancelPendingEmail 1 — chevauchements sur le décompte
+exact entre les domaines).
+
+**Stratégie « à la source »** : pas de cohabitation `int Id` interne +
+`Guid PublicId` externe. Les colonnes `Id` Postgres elles-mêmes
+deviennent `uuid`. Migration consolidée `20240101_SetupMigration.cs`
+éditée directement (convention "re-consolider plutôt qu'empiler", base
+dev-only) — pas de migration de backfill nécessaire.
+
+### 10.4 Convention scellée
+
+À l'issue de task-020, les conventions suivantes sont **figées** sur
+api-mail / dtos-mss / client-blazor / client-angular :
+
+1. **Routes API** : tout id de ressource est typé `{id:guid}` dans le
+   route template ASP.NET Core. Aucune route `{*:int}` ne doit être
+   réintroduite (audit grep en sortie de chaque PR).
+2. **Génération PK** : exclusivement `Guid.CreateVersion7()` via le
+   `UuidV7ValueGenerator`. `Guid.NewGuid()` (v4) reste autorisé dans les
+   tests / arrange, mais pas en production.
+3. **Type DTO C#** : `Guid` / `Guid?` partout pour les Ids et les FK
+   exposés ; `string` réservé aux identifiants externes (email,
+   `MssAuditTrace.UserId` qui stocke le claim JWT, INS, RPPS).
+4. **Type modèle TypeScript Angular** : `string` pour tout id de
+   ressource ; `number` réservé aux UID IMAP (`uid`, `mailUid`,
+   `emailUid`) qui sont une primitive du protocole IMAP, pas une PK
+   métier.
+5. **Tests** : helper `TestGuid.From(int)` côté api-mail (xUnit) pour
+   les setups où le `Received().MethodAsync(seed)` requiert un id stable
+   et déterministe ; `Guid.NewGuid()` pour le reste.
+6. **Pas de legacy** : `ContactDto.GetIntId()`, `BitConverter.ToInt32`
+   sur des byte arrays Guid, et toute autre fonction de cast Guid → int
+   sont définitivement interdites.
+
+### 10.5 Bilan de scellement (audit grep)
+
+Vérifications passées en sortie de task-020 (exécutables comme test
+d'anti-régression) :
+
+| Vérification | Cible | Résultat |
+|---|---|---|
+| `grep -rE '\bint\s+Id\s*\{' Api/Mail/src/Domain/Entities/` | vide | ✅ |
+| `grep -rE '\{(id\|contactId\|groupId\|patientId\|documentId\|mailId\|tagId\|templateId\|userId\|traceId):int\}' Api/Mail/src/Api/Controllers/` | vide | ✅ |
+| `grep -rE '\.AsInt32\(\).*PrimaryKey' Api/Mail/src/Infrastructure/Migrations/` | vide | ✅ |
+| `grep -rE 'public\s+(int\|long)\s+Id\s*\{' Dtos/` | vide | ✅ |
+| `grep -rnE 'GetIntId' Dtos/ Api/Mail/src/ Client/Blazor/Src/` | vide (binaires .dll exclus) | ✅ |
+| `grep -rnE 'BitConverter\.ToInt32.*ToByteArray' Dtos/` | vide | ✅ |
+| `grep -rnE 'id\s*:\s*number' Client/Angular/front/libs/mss/src/core/models/` | uniquement IMAP UIDs | ✅ |
+| `grep -rE 'UseIdentityAlwaysColumn' Api/Mail/src/Infrastructure/Persistance/MailDataContext.cs` | vide | ✅ |
+
+**100% des PK Postgres sont en `uuid` v7**, **0 routes `{*:int}`**,
+**0 hack BitConverter**, **anti-énumération IDOR couvert sur l'ensemble
+des entités exposées**.
+
+### 10.6 Limites résiduelles et roadmap
+
+⚠️ **Le chantier Guid v7 ne suffit pas à lui seul**. Trois vecteurs IDOR
+résiduels persistent et requièrent les tasks 021 / 022 / 023 (rédigées,
+en backlog) :
+
+#### Couche 2 — Authentification cryptographique (task-021)
+
+`RequestHelper.TryExtractJwtToken` ne valide actuellement **rien
+crypto-graphiquement** : il lit les headers `Authorization`,
+`Client-Email`, `Client-Session-Id` et accepte la requête dès qu'ils
+sont présents. Aucun `AddJwtBearer` n'est configuré dans `Program.cs`.
+**Conséquence** : un attaquant qui devine un email peut forger une
+requête en posant `Client-Email: victim@x.fr` + `Authorization: Bearer
+DEADBEEF` et le serveur traite la requête comme provenant de la victime.
+Les Ids opaques (Guid v7) deviennent **cosmétiques** tant que cette
+faille n'est pas fermée.
+
+**Plan task-021** : `AddJwtBearer` Keycloak (signature + issuer +
+audience + lifetime) + `FallbackPolicy = RequireAuthenticatedUser`
+(secure-by-default) + middleware `UserContextEnricherMiddleware` qui
+peuple `UserContextInfo` à partir des claims JWT validés.
+
+#### Couche 2bis — Endpoints anonymes et flux SSE (task-022)
+
+5 controllers actuellement sans aucune protection JWT (audit task-020) :
+`AiController`, `DirectoryController`, `FeatureFlagController`,
+`MailEventsController`, `NotificationsController`. Les 2 derniers (SSE
+streams) sont les plus critiques : `?email=victim@x.fr&token=anything`
+ouvre un flux qui leak en temps réel les notifications, sync progress
+et events mail (subjects, sender, mail UIDs) de la victime.
+
+**Plan task-022** : `[AllowAnonymous]` explicite uniquement sur
+infra (`/health`, `/swagger`, `/metrics`) ; SSE résolvent l'email
+exclusivement depuis le claim JWT (le `?email=` query string est
+ignoré) ; filtrage du token dans les access logs.
+
+#### Couche 3 — Ownership scoping repositories (task-023)
+
+5 dépôts (`ContactRepository`, `MailSignatureRepository`,
+`MailTemplateRepository`, `AuditTraceRepository`,
+`PendingActionRepository`) font `FindAsync(id)` ou
+`FirstOrDefaultAsync(x => x.Id == id)` **sans filtrer par UserId**.
+Conséquence : si un Guid de ressource leak (logs Seq, screenshot, audit
+trail partagé, breach), un user authentifié légitime peut accéder à la
+ressource d'un autre tenant.
+
+**Plan task-023** : ajout colonne `UserId Guid NOT NULL` sur les tables
+qui en manquent (`Contact`, `ContactGroup`, `MailTemplate`,
+`PendingAction`) + filtrage cumulatif `WHERE Id = ? AND UserId = ?`
+sur les méthodes `Get*ById*`, `Update*`, `Delete*` ; convention 404
+(pas 403) sur ownership KO.
+
+### 10.7 Stratégie de défense en profondeur — vue d'ensemble
+
+| Couche | Vise | État |
+|---|---|---|
+| 1. Identifiants opaques (Guid v7) | Anti-énumération URL | 🟢 Implémentée (tasks 018+019+020) |
+| 2. Authentification cryptographique JWT | Anti-spoofing d'identité | 🔴 À faire (task-021) |
+| 2bis. SSE & endpoints anonymes | Anti-leak temps réel | 🔴 À faire (task-022) |
+| 3. Ownership scoping repos | Anti-cross-tenant après leak Guid | 🔴 À faire (task-023) |
+
+**Recommandation forte** : ne pas pousser cette plateforme sur un
+environnement exposé tant que la couche 2 (task-021) n'est pas
+mergée. La couche 1 seule ne protège que contre les balayages
+opportunistes ; un attaquant qui devine un email reste capable d'usurper
+une identité.
+
+---
+
 ## Annexes
 
 ### A. Cartographie des briques applicatives clés
