@@ -222,3 +222,61 @@ sur l'ensemble des repos (pas de tolérance) :
 
 8. **Doc E009** : ouvrir `Docs/epics/E009-...md` après `/tech-writer` →
    chapitre Sécurité présent, lisible, à jour.
+
+## Branches
+
+- `dtos-mss` (pushed) : feat/task-020-pk-guid-v7-final-cleanup — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-020-pk-guid-v7-final-cleanup
+- `api-mail` (pushed) : feat/task-020-pk-guid-v7-final-cleanup — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-020-pk-guid-v7-final-cleanup
+- `client-blazor` (pushed) : feat/task-020-pk-guid-v7-final-cleanup — https://github.com/codengine-technologies/HealthPlatform.Client/tree/feat/task-020-pk-guid-v7-final-cleanup
+- `client-angular` (code-only) : forge writes code on the branch currently checked out in `Client/Angular/` — humain gère branche, commit, push, PR TFS. Snapshot au /start : `feature/nova-rewriting-mss-fixes-20260410`.
+
+## PRs
+
+- `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/15 (label `awaiting-human-merge`)
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/37 (label `awaiting-human-merge`)
+- `client-blazor` : https://github.com/codengine-technologies/HealthPlatform.Client/pull/42 (label `awaiting-human-merge`)
+- `client-angular` : code-only — humain gère commit/push TFS et ouverture PR. Fichiers modifiés :
+  - `front/libs/mss/src/core/models/abnormal-biology.model.ts` (PatientAbnormalBiologyDto.patientId number → string)
+  - `front/libs/mss/src/core/models/audit.model.ts` (MssAuditTraceDto.id number → string)
+  - `front/libs/mss/src/core/models/mail-template.model.ts` (MailTemplateDto.id, EditableTemplate.id, createEmptyTemplate, duplicateTemplate)
+  - `front/libs/mss/src/core/models/pending-email.model.ts` (PendingEmailDto.id)
+  - `front/libs/mss/src/core/models/search.model.ts` (PatientSearchRequestDto.patientId)
+  - `front/libs/mss/src/core/models/signature.model.ts` (SignatureDto.id, EditableSignature.id, createEmptySignature)
+  - `front/libs/mss/src/core/services/mss-api.service.ts` (7 method signatures: cancelPendingEmail, updateSignature, deleteSignature, setDefaultSignature, updateTemplate, deleteTemplate, getAuditTraceById)
+  - `front/libs/mss/src/features/audit/components/audit-timeline/audit-timeline.component.ts` (copiedTraceId signal type)
+  - `front/libs/mss/src/features/mail/components/mail-compose/mail-compose.component.ts` (onTemplateSelected — supprimé parseInt obsolète)
+  - `front/libs/mss/src/features/signatures/mss-signatures.component.ts` (selectedSignatureId signal + checks Id > 0/<= 0 → Id !== ''/=== '')
+  - `front/libs/mss/src/features/templates/mss-templates.component.ts` (idem)
+
+## Code Review Summary
+
+**APPROVED** — large mécanique mais propre :
+- Aucun changement de comportement, juste enforcement de type
+- `ContactDto.GetIntId()` (BitConverter hash collision-prone) supprimé : c'est l'item le plus impactant en sécurité
+- `UseIdentityAlwaysColumn` totalement éliminé du DataContext
+- `{id:int}` 100% éliminé des controllers
+- Tous les FK colonnes (UserId, ContactId, GroupId, PractitionerContactId) migrés cohéremment AsInt32 → AsGuid
+- Helper de test `TestGuid.From(int)` nouveau, deterministic, pour les `.Received(N).MethodAsync(seed)` qui requièrent un id stable
+- `nx test mss-lib` : 98/98 ✓ (Angular)
+- `dotnet test` api-mail : 1587/1592 ✓ (5 skipped, 0 failed)
+- `dotnet test` client-blazor : 21/21 ✓
+
+**Suggestions (non-blocking)** :
+- Le helper `TestGuid` pourrait être promu dans `mss.mail.testing.shared` si une lib commune apparaît
+- L'audit grep du DOD a fait remonter d'anciens binaires `.dll` (stale Release output) qui contiennent encore le symbole `GetIntId` — un `dotnet clean` à la prochaine release suffit, ce n'est pas un blocker.
+
+## Definition of Done — vérifié
+
+- [x] Build passes (0 errors) sur les 3 repos pushable + Angular type-check OK
+- [x] Tests passent (0 failures) — api-mail 1587, client-blazor 21, mss-lib 98
+- [x] Migration consolidée éditée pour les 12 tables
+- [ ] `DROP DATABASE` + replay → vérification psql `\d+` (test manuel humain)
+- [x] Aucun `int Id` ne subsiste sur aucune entité du domaine
+- [x] Aucune route `{id:int}` dans aucun controller
+- [x] `ContactDto.GetIntId()` supprimé
+- [x] Aucun `gen_random_uuid()` ni `WithDefault(SystemMethods.NewGuid)` dans la migration consolidée
+- [x] Tests xUnit Repository adaptés à Guid
+- [x] HealthPlatform.Dtos.Mss 239.0.0 publié (auto-versioning CI)
+- [x] Directory.Packages.props bumpé sur api-mail et client-blazor
+- [ ] /tech-writer E009 — exécution suivante
+- [x] Aucune régression : tests verts
