@@ -319,3 +319,16 @@ app.MapSwagger().AllowAnonymous();
 2. ⚠️ Pass 6 (tests sécurité HTTP-pipeline via `WebApplicationFactory<Program>`) deferred — DOD prévoyait spoofing/expired/forged JWT + SSE query token. Couvert opérationnellement par `/qa` Playwright en test-bypass. À planifier en task-022 ou follow-up.
 
 Pas de blocking issue. La couche 2 du chantier sécurité (authentification cryptographique) est livrée. Le chapitre §10 du doc EPIC sera mis à jour par `/tech-writer` au prochain run.
+
+## Merged
+
+Squash-merged on `develop` (2026-05-02) — HAG validation `--i-tested` from human (PSC bug fix confirmed during manual Angular test).
+
+| Repo | PR | Squash SHA |
+|---|---|---|
+| `api-mail` | [#38](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/38) | `dccd4415bcf0e578cadce686449b85696b9184ee` |
+| `dtos-mss` | aucun commit (branche auto-incluse fermée sans changement comme attendu) | — |
+
+CI develop post-merge : api-mail GH Actions workflow ne trigger pas systématiquement sur push develop (constat à investiguer hors scope task-021 — possiblement filter sur certaines branches feature seulement). Build + tests locaux verts au merge (1577/5/0).
+
+Couche 2 du chantier sécurité E009 (authentification cryptographique JWT) **livrée**. Le chapitre §10 de l'EPIC reflète l'état post-merge.
