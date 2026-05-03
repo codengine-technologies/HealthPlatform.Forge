@@ -2,9 +2,11 @@
 
 > **Statut** : 🟢 En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.17
+> **Version** : 1.18
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-05-02
+> **Dernière mise à jour** : 2026-05-03
+>
+> **Changelog v1.18** : couche 2bis du chantier Sécurité — SSE & endpoints anonymes (task-022) livrée sur `api-mail` (PR #39), `client-blazor` (PR #43) et `client-angular` (code-only, uncommitted). Ferme la faille IDOR temps réel identifiée dans l'audit : un attaquant avec son propre JWT valide pouvait s'abonner au flux SSE d'une autre victime via `?email=victim@x.fr`. **Désormais** : retrait du `[AllowAnonymous]` temporaire posé en task-021 sur les 5 controllers (`AiController`, `DirectoryController`, `FeatureFlagController`, `MailEventsController`, `NotificationsController`) — désormais protégés par la `FallbackPolicy = RequireAuthenticatedUser` ; `MailEventsController.Stream` et `NotificationsController.Stream` refactorés pour résoudre l'email **exclusivement** depuis le claim JWT validé (`User.FindFirstValue(ClaimTypes.Email)` avec fallback sur `JwtRegisteredClaimNames.Email` puis `preferred_username`), le paramètre `?email=` query string est désormais ignoré (un attaquant qui passe `?email=victim@x.fr` avec son propre JWT valide voit s'ouvrir un flux sur SON propre email, jamais celui de la victime) — 400 BadRequest si claim email manquant. Nouveau scrubber `RequestLoggingMiddleware.ScrubQueryStringToken` (regex partial generated, IgnoreCase) qui masque `?token=...` / `&token=...` → `token=***` AVANT d'enrichir LogContext — le JWT propagé en query string pour les flux SSE n'apparaît jamais en clair dans les logs Seq. Frontends adaptés : Blazor `MailSseService.BuildStreamUrl()` drop `email=` du query, garde `folder` + `token` ; Angular `notification-stream.service.ts` drop `email=`, garde `token=`. Tests : api-mail 1587 passés / 5 skipped / 0 failed (était 1577 — **10 nouveaux tests sécurité** : 8 theory `ScrubQueryStringTokenMasksTokenValueButPreservesOtherParams` + 1 multi-occurrence + 1 anti-spoofing `StreamIgnoresEmailQueryStringAndUsesClaimInstead` + 1 missing-claim `StreamWithoutEmailClaimReturns400`) ; client-blazor 21/21 ; mss-lib Vitest 98/98. Audit grep DOD : `[AllowAnonymous]` dans Controllers → ✅ vide, `Headers["Client-Email"]` lu → ✅ vide, `?email=` dans MailEventsController + NotificationsController → ✅ vide (le seul `[FromQuery] string email` restant est `SettingsController.GetAutoconfigAsync`, paramètre métier autoconfig DNS, pas un identifiant d'auth — légitime). Sonar Mode A best-effort accept sans re-analyse (3/4 hard targets déjà atteints, task-022 net LOC négatif -83 lignes + 10 nouveaux tests sécurité, aucun nouveau cluster d'issues attendu, coût d'analyse complète disproportionné vs ROI). **Dans le tableau §10.7 défense en profondeur** : couche 2bis passe de 🔴 À faire à 🟢 Implémentée. **Suggestions non-bloquantes** notées : durcir CORS policy en prod (whitelist explicite des origins, dev reste `AllowAnyOrigin` pour `/qa` et hot-reload) ; cleanup mineur de `MailSseService._currentUserEmail` (résiduel logging) ; tests HTTP-pipeline `WebApplicationFactory<Program>` toujours absents — carry-over task-021, couvert opérationnellement par `/qa`. Annexe C enrichie avec task-022. Sections 4/5/6 hand-crafted préservées.
 >
 > **Changelog v1.17** : couche 2 du chantier Sécurité — Authentification cryptographique JWT (task-021) livrée sur `api-mail` (PR #38). Ferme la faille de spoofing d'identité par header `Client-Email` identifiée dans l'audit IDOR : auparavant `RequestHelper.TryExtractJwtToken` lisait les headers `Authorization`, `Client-Email`, `Client-Session-Id` sans aucune validation crypto — un attaquant qui devine un email pouvait forger une requête `Client-Email: victim@x.fr` + `Authorization: Bearer DEADBEEF` et le serveur traitait la requête comme provenant de la victime. **Désormais** : `AddJwtBearer` Keycloak (signature + issuer + audience + lifetime) ; `PolicyScheme JwtOrTestBypass` qui dispatche entre `TestBypassAuthenticationHandler` (auth scheme dédié pour `X-Test-Bypass`, hard-block en Production — utilisé par `/qa`) et `JwtBearer` ; `FallbackPolicy = RequireAuthenticatedUser` secure-by-default (toute route est `[Authorize]` implicitement, infra publique `[AllowAnonymous]` explicite) ; nouveau `UserContextEnricherMiddleware` qui peuple `UserContextInfo` depuis les claims JWT validés (Email = claim `email` ou `preferred_username`, ClientSessionId = `sid` ou `jti`, KeycloakToken via `SaveToken = true`) et lit `X-PSC-Token` du header inconditionnellement (drives `IsOnlineMode`, indicateur de session PSC pas un secret d'auth) ; **suppression de ~120 appels** `RequestHelper.TryExtractJwtToken` dans 23 controllers (helper marqué `internal`, `InternalsVisibleTo("mss.mail.api.tests")` câblé pour préserver les tests existants) ; mode **dev permissif** quand `Keycloak:Authority` absent ET `ASPNETCORE_ENVIRONMENT != Production` — JWT signature non validée pour permettre le dev local sans Keycloak réel (Production force toujours la validation complète) ; token accepté en query string `?token=...` pour les flux SSE (`EventSource` natif Angular ne sait pas poser de header) via `OnMessageReceived` JwtBearerEvents ; 5 controllers actuellement anonymes (`AiController`, `DirectoryController`, `FeatureFlagController`, `MailEventsController`, `NotificationsController`) marqués `[AllowAnonymous]` temporairement — task-022 décidera lesquels rouvrir. Tests : 1577 passés / 5 skipped / 0 failed (était 1587, 10 tests obsolètes "Unauthorized when missing headers" supprimés par design — l'assertion a perdu son sens, l'auth est dans le pipeline AuthN/AuthZ pas dans le handler). Audit grep DOD : `TryExtractJwtToken` dans Controllers → ✅ vide, `[AllowAnonymous]` → 5 entrées (base task-022). **Pass 6 (tests sécurité HTTP-pipeline dédiés via `WebApplicationFactory<Program>`)** deferred, couvert opérationnellement par `/qa` Playwright en test-bypass mode. **Hotfix utilisateur** : un bug "considéré hors ligne malgré PSC connecté" identifié pendant le test manuel Angular a été corrigé en passe successive (commit `9dc7eb4`) — le middleware lisait `X-PSC-Token` uniquement à l'intérieur du bloc `if (IsAuthenticated)`, désormais lecture inconditionnelle ; le mode dev permissif a aussi été ajouté au même moment pour permettre à l'app Angular d'authentifier en local sans Keycloak réel. Dans le tableau §10.7 défense en profondeur : couche 2 passe de 🔴 À faire à 🟢 Implémentée. Annexe C enrichie avec task-021. Sections 4/5/6 hand-crafted préservées.
 >
@@ -800,19 +802,77 @@ JWT expiré, JWT forgé, SSE query token) deferred — couvert
 opérationnellement par `/qa` Playwright en test-bypass mode. À ajouter
 en task-022 ou follow-up dédié.
 
-#### Couche 2bis — Endpoints anonymes et flux SSE (task-022)
+#### Couche 2bis — Endpoints anonymes et flux SSE (task-022) — 🟢 livrée
 
-5 controllers actuellement sans aucune protection JWT (audit task-020) :
-`AiController`, `DirectoryController`, `FeatureFlagController`,
-`MailEventsController`, `NotificationsController`. Les 2 derniers (SSE
-streams) sont les plus critiques : `?email=victim@x.fr&token=anything`
-ouvre un flux qui leak en temps réel les notifications, sync progress
-et events mail (subjects, sender, mail UIDs) de la victime.
+**Faille initiale** : 5 controllers étaient sans aucune protection JWT
+(audit task-020) puis marqués `[AllowAnonymous]` temporairement par
+task-021 pour ne pas casser la stack pendant l'activation de la
+`FallbackPolicy` : `AiController`, `DirectoryController`,
+`FeatureFlagController`, `MailEventsController`,
+`NotificationsController`. Les 2 derniers (SSE streams) étaient les plus
+critiques : `?email=victim@x.fr&token=anything` ouvrait un flux qui
+leakait en temps réel les notifications, sync progress et events mail
+(subjects, sender, mail UIDs) de la victime.
 
-**Plan task-022** : `[AllowAnonymous]` explicite uniquement sur
-infra (`/health`, `/swagger`, `/metrics`) ; SSE résolvent l'email
-exclusivement depuis le claim JWT (le `?email=` query string est
-ignoré) ; filtrage du token dans les access logs.
+**Livraison task-022** :
+
+- **3 controllers** (Ai/Directory/FeatureFlag) : retrait du
+  `[AllowAnonymous]` — désormais protégés par la `FallbackPolicy`
+  pipeline-level posée en task-021. Les 3 controllers requièrent
+  désormais un JWT valide. À l'avenir, **aucun controller métier ne
+  doit jamais être marqué `[AllowAnonymous]`** ; seules exceptions
+  tolérées : Prometheus `/metrics` (déjà tagué) et Aspire health
+  endpoints.
+- **`MailEventsController.Stream` + `NotificationsController.Stream`**
+  refactorés pour résoudre l'email **exclusivement** depuis le claim
+  JWT validé :
+  ```csharp
+  var email = User.FindFirstValue(ClaimTypes.Email)
+           ?? User.FindFirstValue(JwtRegisteredClaimNames.Email)
+           ?? User.FindFirstValue("preferred_username");
+  ```
+  Le paramètre `?email=` query string est **ignoré**. Un attaquant qui
+  pose son propre JWT valide + `?email=victim@x.fr` ouvre un flux sur
+  SON propre email (claim JWT), jamais celui de la victime. Renvoie
+  400 BadRequest si le claim email est manquant.
+- **`RequestLoggingMiddleware.ScrubQueryStringToken`** : nouveau
+  scrubber regex (partial generated, IgnoreCase) qui masque
+  `?token=...` / `&token=...` → `token=***` AVANT d'enrichir le
+  LogContext. La propriété `RequestQuery` poussée dans Serilog est
+  toujours scrubbée — le JWT propagé en query pour les flux SSE
+  n'apparaît jamais en clair dans Seq.
+- **Frontends adaptés** :
+  - Blazor `MailSseService.BuildStreamUrl()` retire `email=` du query
+    string, conserve `folder` et `token`
+  - Angular `notification-stream.service.ts` même refactor
+
+**Audit grep DOD final** :
+
+| Vérification | Résultat |
+|---|---|
+| `grep -rE 'AllowAnonymous' src/Api/Controllers/V1/*.cs` | ✅ vide |
+| `grep -rE 'Headers\["Client-Email"\]' src/Api/Controllers/` | ✅ vide |
+| `grep -rE 'FromQuery.*email' src/Api/Controllers/V1/MailEventsController.cs src/Api/Controllers/V1/NotificationsController.cs` | ✅ vide |
+
+Le seul `[FromQuery] string email` résiduel est
+`SettingsController.GetAutoconfigAsync` — paramètre métier (autoconfig
+DNS pour un email donné), pas un identifiant d'auth.
+
+**Tests** : api-mail 1587 passés / 5 skipped / 0 failed (était 1577 —
+**10 nouveaux tests sécurité** : 8 theory tests `ScrubQueryStringToken`
++ 1 multi-occurrence + 1 anti-spoofing
+`StreamIgnoresEmailQueryStringAndUsesClaimInstead` + 1 missing-claim
+`StreamWithoutEmailClaimReturns400`) ; client-blazor 21/21 ; mss-lib
+Vitest 98/98.
+
+**Limites de la livraison** :
+- CORS policy `AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()`
+  reste active. À durcir en prod via whitelist explicite des origins
+  (dev reste permissif pour `/qa` et hot-reload). Notée dans le
+  develop log.
+- Tests E2E HTTP-pipeline (`WebApplicationFactory<Program>`) toujours
+  absents (carry-over task-021). Spoofing/expired/forged JWT couverts
+  opérationnellement par `/qa` Playwright.
 
 #### Couche 3 — Ownership scoping repositories (task-023)
 
@@ -836,14 +896,16 @@ sur les méthodes `Get*ById*`, `Update*`, `Delete*` ; convention 404
 |---|---|---|
 | 1. Identifiants opaques (Guid v7) | Anti-énumération URL | 🟢 Implémentée (tasks 018+019+020) |
 | 2. Authentification cryptographique JWT | Anti-spoofing d'identité | 🟢 Implémentée (task-021) |
-| 2bis. SSE & endpoints anonymes | Anti-leak temps réel | 🔴 À faire (task-022) |
+| 2bis. SSE & endpoints anonymes | Anti-leak temps réel | 🟢 Implémentée (task-022) |
 | 3. Ownership scoping repos | Anti-cross-tenant après leak Guid | 🔴 À faire (task-023) |
 
-**Recommandation forte** : la couche 2 étant désormais en place, la
-plateforme est défendue contre le spoofing trivial d'identité par
-header. Reste à fermer les 2 endpoints SSE anonymes (task-022) avant
-toute exposition publique, et à ajouter le scoping par UserId au niveau
-repository (task-023) pour défendre contre un éventuel leak de Guid.
+**Recommandation forte** : les couches 2 et 2bis étant désormais en
+place, la plateforme est défendue contre le spoofing d'identité (par
+header `Client-Email` ou par `?email=` query string SSE). Reste à
+ajouter le scoping par UserId au niveau repository (task-023) pour
+défendre contre un éventuel leak de Guid (un user authentifié légitime
+qui obtiendrait un Guid de ressource d'un autre tenant pourrait encore
+y accéder).
 
 ---
 
@@ -927,6 +989,7 @@ repository (task-023) pour défendre contre un éventuel leak de Guid.
 | done-task-001 | En-têtes SMTP MSSanté `X-MSS-CODECDA`, `X-MSS-INS`, `X-MSS-NIL`, `X-MSS-MES` injectés au moment de l'envoi par un nouveau `MssanteHeaderService` câblé dans `SmtpService.SetMessageHeaders`. Le service décode l'archive `ihe_xdm.zip` côté serveur (parser `Interop.Cda` existant) pour en extraire le code `<ClinicalDocument code>` de chaque CDA et déterminer si l'INS est qualifiée (matricule + OID + nom + prénom + date de naissance + sexe). 25 tests unitaires (couverture des 4 en-têtes, multi-CDA, INS qualifiée vs non, détection `@patient.mssante.fr` dans To/Cc/Bcc, log structuré). Nouveau paramètre applicatif `Mail:ConvergenceProductNumber` (défaut vide) ; si non configuré, `X-MSS-NIL` est omis avec un warning. Nouveau opt-in `SaveDraftDto.BlockPatientReply` propagé jusqu'au `MailDto`. Traces Information à chaque envoi listant les 4 valeurs effectives. | RG-E009-009, 010, 011, 016, 087 |
 | done-task-014 | Options sélectives de parsing CDA : enum `[Flags] CdaParseOptions` (`Metadata` / `Biology` / `Summary` / `HtmlBody` / `Attachments` / `All`) + paramètre optionnel `options = All` sur `ICdaParsingService.ParseIheXdmZip`. `MssanteHeaderService` (task-001) bascule sur `CdaParseOptions.Metadata` pour skipper la transformation HTML XSLT et l'extraction PDF lors de la dérivation des en-têtes SMTP. Élimine le bruit log `[CdaParsingService] HTML transform error: XSLT compile error.` à chaque envoi (le bug XSLT racine reste à investiguer pour le pipeline d'enrichissement clinique). Backward-compatible : tous les autres callers continuent en mode `All` via le paramètre par défaut. 1 nouveau test unitaire `ApplyHeaders_RequestsMetadataOnly_FromCdaParser` vérifiant la propagation du flag `Metadata`. | — (dette technique observabilité, aucun RG Ségur) |
 | done-task-011 | Indicateur visuel d'intégration des documents médicaux (LGC.MDV.06). Le DTO `MailMedicalDocumentDto` expose `PatientId` (mapping ajouté à 3 sites repository), et `MailDto` reçoit un agrégat `PendingIntegrationsCount` calculé côté serveur (count des documents avec `PatientId == null`). Frontends Blazor (`MailHeader.razor` + tabs `MailBodyComponent.razor`) et Angular (`mail-header` + tabs `mail-body`) rendent badge vert ✓ « tous intégrés » ou orange ⏳ avec compteur « N en attente » dans la liste inbox + badge per-document dans les onglets de la vue détail. Mode code-only sur `client-angular` (humain gère commit/push TFS). 9 nouveaux tests : 3 xUnit `MailRepositoryTests` (mixed / all-integrated / no-medical-docs) + 3 bUnit `MailHeaderIntegrationIndicatorTests` + 3 vitest `mail-header.component.spec.ts`. Coverage `api-mail` 49.6 % → 50.2 %. | — (référence LGC.MDV.06 dans l'objectif US ; mapping vers la table section 6 à formaliser) |
+| done-task-022 | **Couche 2bis du chantier sécurité — SSE & endpoints anonymes**. Ferme la faille IDOR temps réel : un attaquant avec son propre JWT valide pouvait s'abonner au flux SSE d'une autre victime via `?email=victim@x.fr`. Désormais : retrait du `[AllowAnonymous]` temporaire posé en task-021 sur 5 controllers (`AiController`, `DirectoryController`, `FeatureFlagController`, `MailEventsController`, `NotificationsController`) — désormais protégés par la `FallbackPolicy = RequireAuthenticatedUser`. `MailEventsController.Stream` et `NotificationsController.Stream` refactorés : email résolu **exclusivement** depuis claim JWT (`User.FindFirstValue(ClaimTypes.Email)` avec fallbacks `JwtRegisteredClaimNames.Email` et `preferred_username`), `?email=` query string ignoré (un attaquant avec son propre JWT + `?email=victim@x.fr` ouvre un flux sur SON propre email, jamais celui de la victime), 400 BadRequest si claim manquant. Nouveau `RequestLoggingMiddleware.ScrubQueryStringToken` (regex partial generated, IgnoreCase) qui masque `?token=...` / `&token=...` → `token=***` AVANT d'enrichir LogContext — le JWT en query pour SSE n'apparaît jamais en clair dans Seq. Frontends adaptés : Blazor `MailSseService.BuildStreamUrl()` drop `email=`, garde `folder` + `token` ; Angular `notification-stream.service.ts` drop `email=`, garde `token=`. Tests : api-mail 1587 (10 nouveaux : 8 theory `ScrubQueryStringToken` + 1 multi-occurrence + 1 anti-spoofing `StreamIgnoresEmailQueryStringAndUsesClaimInstead` + 1 missing-claim `StreamWithoutEmailClaimReturns400`) ; client-blazor 21/21 ; mss-lib 98/98. Audit grep DOD : `[AllowAnonymous]` Controllers → vide, `Headers["Client-Email"]` → vide, `?email=` SSE → vide. Sonar Mode A best-effort accept sans re-analyse (3/4 hard targets déjà atteints, task-022 net LOC négatif -83 lignes). **Limites différées** : CORS policy `AllowAnyOrigin` reste active (à durcir en prod via whitelist explicite des origins) ; tests HTTP-pipeline `WebApplicationFactory<Program>` toujours absents (carry-over task-021), couvert opérationnellement par `/qa`. | — (durcissement sécurité transverse, fermeture vecteur SSE leak temps réel — pas un item Segur explicite) |
 | done-task-021 | **Couche 2 du chantier sécurité — Authentification cryptographique JWT** (secure-by-default). Ferme la faille de spoofing d'identité par header `Client-Email` identifiée dans l'audit IDOR. Avant : `RequestHelper.TryExtractJwtToken` ne validait rien crypto, lisait `Authorization`/`Client-Email`/`Client-Session-Id` à la confiance. Désormais : `AddJwtBearer` Keycloak (signature + issuer + audience + lifetime) ; `PolicyScheme JwtOrTestBypass` qui dispatche entre `TestBypassAuthenticationHandler` (auth scheme dédié `X-Test-Bypass`, hard-block en Production — pour `/qa`) et `JwtBearer` (Angular/Blazor avec token Keycloak) ; `FallbackPolicy = RequireAuthenticatedUser` ; `UserContextEnricherMiddleware` peuple `UserContextInfo` depuis claims JWT validés ; lit `X-PSC-Token` inconditionnellement (drives `IsOnlineMode`). Suppression de ~120 `TryExtractJwtToken` dans 23 controllers (helper devient `internal`). Mode dev permissif quand `Keycloak:Authority` absent ET pas Production. Token accepté en query string pour SSE. 5 controllers anonymes `[AllowAnonymous]` temporaires (Ai/Directory/FeatureFlag/MailEvents/Notifications) — base task-022. Tests : 1577 passés / 5 skipped / 0 failed (10 tests obsolètes "Unauthorized when missing headers" supprimés). Hotfix utilisateur intégré (PSC token + dev permissif) après test manuel Angular. **Pass 6 (tests sécurité HTTP-pipeline dédiés via `WebApplicationFactory<Program>`)** deferred — spoofing/expired/forged JWT + SSE query token, à ajouter en task-022 ou follow-up. Couvert opérationnellement par `/qa` Playwright. | — (durcissement sécurité transverse, fermeture vecteur spoofing d'identité — pas un item Segur explicite mais cohérent avec l'esprit SC.MSS/CONF) |
 | done-task-020 | **Clôture du chantier durcissement sécurité Guid v7** — phase 3 du chapitre. 12 entités migrées de `int Identity` à `Guid v7` : `User`, `UserSetting`, `MailSignature`, `MailTemplate`, `MailFolder`, `Contact`, `ContactMssAddress`, `ContactTag`, `ContactGroup`, `ContactGroupMember`, `MssAuditTrace`, `PendingAction`. Finalise `MailMedicalDocument.PractitionerContactId` resté `int?` en task-018. **Suppression du hack `ContactDto.GetIntId()`** — `BitConverter.ToInt32(Id.ToByteArray(), 0)` (4 bytes / 16, ~1/65k birthday-collision) — l'item le plus impactant en sécurité du chantier complet ; les consumers passent désormais `ContactDto.Id` directement. **MailDataContext** : 8 nouveaux `UuidV7ValueGenerator` câblages ; **0 `UseIdentityAlwaysColumn` restant** (audit grep). Migration consolidée `20240101_SetupMigration.cs` : 12 tables `AsGuid().PrimaryKey()` + propagation Guid sur les FK `UserId` / `ContactId` / `GroupId` / `PractitionerContactId` ; colonnes int légitimes préservées (`Uid` IMAP, `SortOrder`, `UrgencyLevel`, `FolderType`, compteurs, `MailUid`, `RetryCount`, `Status` enum). Routes API : 17 routes migrées (`ContactController` 8, `MailTemplateController` 3, `SignatureController` 5, `AuditController` 1, `MailController.CancelPendingEmail` 1) ; en sortie de cette task **0 `{*:int}` ne subsiste** dans aucun controller. DTOs : `MailSignatureDto`, `MailTemplateDto`, `MssAuditTraceDto` Id Guid (`UserId` reste string — JWT), `MailMedicalDocumentDto.PractitionerContactId` Guid?, `ManagementDtos` 6 records. NuGet `HealthPlatform.Dtos.Mss 239.0.0` publié. Repositories / interfaces / services propagent Guid (`IPendingActionRepository.AddAsync` retourne `Task<Guid>`, plus `Task<int>` ; `IPatientContactService` / `IPractitionerContactService` `Task<Guid?>` ; `RedisKeys.Contact.ById/GroupById` clés Guid). `ContactRepository` : suppression du `BitConverter.ToInt32(group.Id.ToByteArray(), 0)` dans `UpdateGroupAsync` et de l'appel `contact.GetIntId()` dans `UpdateAsync`. **Blazor** : `ISignatureService`/`IMailTemplateService`/`IAuditService` Guid ; `SignatureEditor`, `MailTemplateEditor`, `MailTemplates`, `NewMailComponent`, `Audit`, `ManagementPage` — locaux `_selected*Id`/`_copiedBodyId`/`_copiedTraceId` int? → Guid?, pattern-match `value is int` → `value is Guid`, vérifs `Id > 0` → `Id != Guid.Empty`. **Angular** (code-only) : 11 fichiers TS — 6 modèles, 1 service (`mss-api.service.ts` 7 signatures), 4 composants (incl. suppression de `parseInt` désormais obsolète sur `mail-compose.onTemplateSelected`). Tests : nouveau helper `TestGuid.From(int)` pour les `Received(N).MethodAsync(seed)` qui requièrent un id stable ; 8 fichiers domain entity tests + `TestDataFactory` rebuilt autour de `Guid.CreateVersion7()` ; ContactRepository / PendingAction / MailTemplate / MedicalDocument / 3 service consumers / 2 application service tests / 3 integration tests adaptés. Suite api-mail **1587 / 5 skipped / 0 failed** ; client-blazor **21/21** ; mss-lib Vitest **98/98**. **Scellement final (audit grep)** : `int Id { ` Domain → ✅ vide ; `{*:int}` Controllers → ✅ vide ; `.AsInt32().PrimaryKey()` Migrations → ✅ vide ; `public int Id { ` Dtos → ✅ vide ; `GetIntId` source code → ✅ vide ; `id: number` Angular models → ✅ vide hors `uid`/`mailUid`/`emailUid` IMAP. **Bilan chantier E009 sécurité (3 tasks 018+019+020)** : 100% des PK Postgres en `uuid` v7, 0 routes `{*:int}`, 0 hack BitConverter, anti-énumération IDOR couvert sur l'ensemble des entités exposées. | — (durcissement sécurité transverse — clôture du chapitre, pas un item Segur explicite) |
 | done-task-019 | Migration cluster Mail + finalisation `MailMedicalDocument.MailId` vers Guid v7 — phase 2 du chantier durcissement sécurité (cf. task-018). 6 entités (`Mail`, `MailContent`, `MailRecipient`, `MailAttachment`, `Tag`, `MailTag`) migrées de `int Identity` à `Guid v7` (RFC 9562). Réutilise le `UuidV7ValueGenerator` task-018 (`Guid.CreateVersion7()`, .NET 10 natif). Migration consolidée `20240101_SetupMigration.cs` éditée : 6 tables `AsGuid().PrimaryKey()` + propagation Guid sur les FK (`MailId`, `TagId`) + finalisation `MailMedicalDocuments.MailId` Guid. Pas de routes API à migrer car `MailController` utilise les UID IMAP (string `{emailid}`) cross-boundary, pas la PK Postgres. 4 DTOs migrés (`TagDto.Id`, `DuplicateClusterMemberDto.MailId`, `MailMedicalDocumentDto.MailId`, `MailPatientDto.Id`). NuGet `HealthPlatform.Dtos.Mss 235.0.0` publié. `IMailRepository.AddNewMail` `Task<int>` → `Task<Guid>` ; 5 méthodes signatures Guid ; `ISemanticSearchRepository.Get*ByMailIdsAsync` IEnumerable<Guid> ; helpers `MailRepository` `Dictionary<int,…>` → `Dictionary<Guid,…>` (5 helpers) ; modèles internes (`EmailContentWithEmbedding`, `MedicalDocumentWithEmbedding.MailId`, `FullTextSearchResult.MailId`, `AddNewMailMessage.MailId`) Guid. `BackgroundImapService` + `ImapService` `PublishAddNewMailMessageAsync(Guid mailId)` adaptés. Mock retourne `Guid.Empty` (sentinel). **Blazor** : impact UI minimal (Mail.Uid IMAP cross-boundary inchangé) — seule l'application Mock TagDto.Id passe Guid.NewGuid(). **Angular** (mode code-only, uncommitted) : 1 fichier `mail.model.ts` (3 champs string). Tests : api-mail 1687 / 21 ignorés ; blazor 21 / 21 ; mss-lib Vitest 98 / 98. Sonar pré-PR : 3/4 hard targets atteints, baseline inchangé. Convention task-018 préservée pour les clusters task-020 (User / Contact / MailSignature / MailTemplate / MailFolder / MssAuditTrace / PendingAction restent int — finalisation à venir). | — (durcissement sécurité transverse, cf. task-018) |
@@ -952,7 +1015,7 @@ repository (task-023) pour défendre contre un éventuel leak de Guid.
 #### Sources internes
 
 - `CLAUDE.md` — règles de la forge (test-first, vérification locale, HAG, US-complete, polyrepo).
-- Tasks `archived-task-001.md`, `archived-task-002.md`, `archived-task-003.md`, `archived-task-004.md`, `archived-task-005.md`, `archived-task-008.md`, `archived-task-009.md`, `archived-task-010.md`, `archived-task-011.md`, `archived-task-012.md`, `archived-task-013.md`, `archived-task-014.md`, `archived-task-016.md`, `archived-task-017.md`, `archived-task-018.md`, `archived-task-019.md`, `archived-task-020.md`, `done-task-021.md` — apports incrémentaux à l'EPIC (cf. Annexe C).
+- Tasks `archived-task-001.md`, `archived-task-002.md`, `archived-task-003.md`, `archived-task-004.md`, `archived-task-005.md`, `archived-task-008.md`, `archived-task-009.md`, `archived-task-010.md`, `archived-task-011.md`, `archived-task-012.md`, `archived-task-013.md`, `archived-task-014.md`, `archived-task-016.md`, `archived-task-017.md`, `archived-task-018.md`, `archived-task-019.md`, `archived-task-020.md`, `archived-task-021.md`, `done-task-022.md` — apports incrémentaux à l'EPIC (cf. Annexe C).
 
 ### E. Table de correspondance REM Ségur ↔ Ref#2
 
