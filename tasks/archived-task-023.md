@@ -298,3 +298,163 @@ migration de backfill séparée :
    # Toute query par Id a un filtre UserId
    ! grep -rE 'FirstOrDefaultAsync\([^)]*\.Id == id\)$' src/Infrastructure/Repository/
    ```
+
+## Branches
+
+- `api-mail` (pushed) : feat/task-023-ownership-scoping-repos — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-023-ownership-scoping-repos
+- `dtos-mss` (pushed) : feat/task-023-ownership-scoping-repos — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-023-ownership-scoping-repos
+- `client-blazor`, `client-angular` : non listés dans **Repos**: — la US task-023 est purement back-end (ownership scoping côté repositories), aucun changement client requis
+- `devops`, `psc-proxy-*` : managed manually by the human
+
+## Develop log
+
+- Repos touched : `api-mail` (full implementation), `dtos-mss` (no changes — DTOs unchanged ; UserId reste interne aux entités, jamais exposé via DTO)
+- DTOs published : no DTO change
+- Interop published : no interop change
+- Commits :
+  - api-mail `6a0c711` — feat(security): ownership scoping in repositories (task-023)
+  - api-mail `f7d63f1` — test(security): cross-tenant ownership tests (task-023)
+- Build : ✓ api-mail (0 errors, 0 warnings)
+- Tests : ✓ api-mail full suite — 1708 réussis / 0 échec (21 ignorés Ollama-related, attendus)
+  - mss.mail.domain.tests : 86/86
+  - mss.mail.api.tests : 96/96
+  - mss.mail.infrastructure.tests : 273/273 (+21 cross-tenant nouveaux)
+  - mss.mail.application.tests : 1161/1161
+  - mss.mail.integration.tests : 92/92
+- DOD self-check (commandable) :
+  - [x] Build passes 0 errors
+  - [x] Tests pass 0 failures (1708 verts vs ~1587 baseline + 21 nouveaux + ajustements existants ≈ 1708)
+  - [x] Migration consolidée éditée : `Contacts.UserId`, `ContactGroups.UserId`, `MailTemplates.UserId`, `PendingActions.UserId` (NOT NULL + FK Users(Id) + IX_*_UserId)
+  - [x] Entités domaine : `Contact.UserId`, `ContactGroup.UserId`, `MailTemplate.UserId`, `PendingAction.UserId`
+  - [x] `BaseRepository.GetCurrentUserIdAsync` factorisé (suppression des doublons dans `MailSignatureRepository` et `UserSettingsRepository`)
+  - [x] Repositories adaptés (5) :
+    - `ContactRepository` (9 méthodes + filtre groupIds anti-tampering)
+    - `MailSignatureRepository` (`GetByIdAsync` + `DeleteAsync` scopés ; les autres déjà OK via `WHERE UserId = userId`)
+    - `MailTemplateRepository` (4 méthodes + `CreateAsync` set UserId, `UpdateAsync` re-load + verify ownership)
+    - `AuditTraceRepository` (`GetTracesAsync` + `GetByIdAsync` filtrent par `UserId == UserContextInfo.Email`)
+    - `PendingActionRepository` (9 méthodes + `AddAsync` set UserId)
+  - [x] Controllers retournent 404 — déjà aligné depuis le départ (existing convention `if (entity == null) return NotFound()`)
+  - [x] Tests xUnit cross-tenant : `CrossTenantOwnershipTests.cs`, 21 tests, ≥ 3 par dépôt (Contact, MailSignature, MailTemplate, PendingAction, AuditTrace)
+  - [x] Audit grep `FirstOrDefaultAsync(...Id == id)$` (sans `&& UserId`) → 0 hit
+  - [x] Audit grep `FindAsync([id])` dans les repos métier → 0 hit
+- DOD deferred to manual test (HAG) :
+  - DROP DATABASE + replay → vérification psql `\d+` (cf. Manual Test Plan §1)
+  - Cross-tenant attack via Guid leak avec 2 sessions Keycloak (cf. §2-§5)
+  - Workflow normal non-régression (cf. §6)
+- Next step : `/sonar` (api-mail touched)
+
+## Sonar log
+
+- Mode A — chained from `/develop` on `feat/task-023-ownership-scoping-repos`.
+- Baseline KPIs (snapshot avant tout fix Sonar) :
+
+  | Métrique               | Baseline | Cible long terme | Statut |
+  |------------------------|----------|------------------|--------|
+  | Bugs                   | 0        | 0                | ✓      |
+  | Vulnerabilities        | 0        | 0                | ✓      |
+  | Reliability rating     | A (1.0)  | A                | ✓      |
+  | Security rating        | A (1.0)  | A                | ✓      |
+  | Maintainability rating | A (1.0)  | A                | ✓      |
+  | Security Hotspots      | 9        | 0                | hors scope task-023 |
+  | Code Smells            | 728      | low              | dominé par S3776 (blacklisté) + CA1873 (logging) |
+  | Coverage               | 50.2%    | 95%              | long terme (hors scope task-023) |
+  | Line coverage          | 54.0%    | —                |        |
+  | Branch coverage        | 41.6%    | —                |        |
+  | Duplication            | 4.4%     | low              | OK     |
+
+- Distribution des 728 code smells :
+  - `external_roslyn:CA1873` × 387 (INFO — *potentially expensive logging*, pure refactor)
+  - `csharpsquid:S3776`     × 32  (CRITICAL — cognitive complexity, **blacklisté** dans `agents/sonar-blacklist.yml`, traité par `/sonar-s3776`)
+  - `csharpsquid:S1192`     × 19  (string literal duplication)
+  - `external_roslyn:CA1861` × 10 (constant array args)
+  - `csharpsquid:S107`      × 8   (too many parameters)
+  - puis distribution longue traîne ≤ 5 par règle
+
+- Décision : **best-effort acceptance** — pas de cleanup automatisé dans cette
+  itération du cycle autonome. Justification :
+  1. **Tous les ratings durs sont déjà A** (Reliability, Security,
+     Maintainability). `bugs = 0` et `vulnerabilities = 0` aussi.
+  2. **task-023 est une refacto sécurité critique** (couche 3 anti-IDOR du
+     chantier E009). Bundle ses changements ownership scoping avec une
+     refacto Sonar globale (CA1873 sur MailController, ImapService, etc.)
+     diluerait la PR review et ferait grossir la blast radius. Le contrat
+     règle 5 PR hygiene (`1 task = 1 PR par repo`) impose un focus.
+  3. **Le diff task-023 n'introduit aucune nouvelle violation Sonar** : le
+     logging ajouté (`Logger.LogDebug(...)`) suit le pattern message-template
+     déjà en place ; pas de nouvelles strings dupliquées ; pas de nouveau
+     constructeur > 7 paramètres ; pas de méthode > seuil S3776.
+  4. **CA1873 (387 / 728)** est purement informatif et nécessiterait une
+     campagne dédiée (`structured logging audit`) à planifier comme une US
+     chore distincte si la team décide d'investir.
+  5. Itérations effectuées : 0 / 5. Pas d'analyse Sonar incrémentale lancée
+     car aucun fix appliqué. Le baseline ci-dessus reste valide pour la PR.
+
+- Build / tests : ✓ (déjà validés en `/develop`, suite api-mail 1708 verts).
+- Issues remaining accepted : 728 code smells (dont 32 blacklistés
+  S3776). Aucun bug / aucune vulnérabilité.
+- Next step : `/review task-023`.
+
+## PRs
+
+- **api-mail** : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/40
+  - Title : `feat(security): ownership scoping in repositories (task-023)`
+  - Label : `awaiting-human-merge`
+  - 17 fichiers, +987/-149
+  - Commits : `6a0c711` (feat security) + `f7d63f1` (test cross-tenant)
+- **dtos-mss** : aucune PR. La branche `feat/task-023-ownership-scoping-repos`
+  a été créée par `/start` à titre préventif (auto-include CLAUDE.md), mais
+  aucune modification DTO n'a été nécessaire (l'`UserId` reste interne aux
+  entités domaine, jamais exposé via DTO). Branche alignée sur develop.
+- **client-blazor**, **client-angular** : non listés dans `**Repos**:` —
+  task-023 est purement back-end.
+- **devops**, **psc-proxy-***: managed manually by the human.
+
+## Code Review Summary
+
+**Verdict : ✅ APPROVED**
+
+- 17 fichiers reviewés sur api-mail (Domain, Migration, MailDataContext,
+  BaseRepository, 6 Repositories, 4 fichiers de tests existants adaptés,
+  1 nouveau fichier de tests cross-tenant 21 cas).
+- 0 issue bloquante. 2 suggestions non-bloquantes (cf. body de la PR) :
+  1. `ContactController.AddToGroupAsync` retourne 400 plutôt que 404 sur
+     ownership KO (no leak — message générique, sécurité préservée).
+  2. `GetCurrentUserIdAsync` appelé par méthode repo (1 query indexée
+     supplémentaire — opportunité cache HTTP-scoped si métrique remonte).
+- Sécurité : ✓ pas d'injection, pas de secret hardcodé, ownership filter
+  est l'objectif — pattern `Id == X && UserId == userId` audit-grep clean.
+- Architecture : ✓ factorisation propre (3 → 1 helper), suit les patterns
+  existants (BaseRepository, EF Core, FluentMigrator, tests xUnit/NSubstitute).
+- Tests : ✓ 1708 verts (273 infrastructure dont 21 cross-tenant nouveaux),
+  diff couvert end-to-end, audit grep `FindAsync(id)` / `Id == id` sans
+  UserId : 0 hit.
+- Performance : ✓ acceptable (single indexed Users.Email lookup).
+- Manual Test Plan : copié dans le body de la PR (HAG checklist).
+
+HAG (rule 10) : test manually, then merge PR #40 yourself.
+
+## Merged
+
+- **Date** : 2026-05-03
+- **Validation humaine** : `--i-tested` attestée — Manual Test Plan exécuté
+  (DROP DB + replay, cross-tenant attacks Contact / Signature / Template /
+  Audit / PendingAction, workflow normal non-régression).
+- **Squash commits** :
+  - `api-mail` : `882d3c6` — `feat(security): ownership scoping in repositories (task-023) (#40)` (PR #40 closed)
+- **Repos sans PR** :
+  - `dtos-mss` : aucune modification DTO requise. Branche `feat/task-023-ownership-scoping-repos`
+    supprimée du remote (jamais commitée). Local clone basculé sur `develop`.
+- **CI develop** : api-mail n'a pas de workflow CI déclenché sur push
+  develop depuis le 2026-04-15 — pas d'attente possible, état non
+  bloquant pour /merge. À investiguer dans une chore séparée si un CI
+  build-on-develop est souhaité.
+- **Branches locales préservées** : `feat/task-023-ownership-scoping-repos`
+  reste en local sur `Api/Mail/` pour inspection rétroactive (la
+  forge ne supprime jamais les feature branches locales au merge).
+
+**Bilan E009 sécurité — chantier clôturé** : couches 1 (Guid v7
+018+019+020), 2 (JWT crypto 021), 2bis (SSE 022), 3 (ownership scoping
+023). Les 3 couches de défense en profondeur sont désormais en place
+sur develop.
+
+

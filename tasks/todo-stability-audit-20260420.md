@@ -3,6 +3,7 @@
 **Repos**: api-mail, client-blazor, client-angular, dtos-mss
 **Dependencies**: aucune
 **Type**: chore (→ /start MUST use `chore/` branch prefix)
+**Révisé** : 2026-05-03 après clôture du chantier sécurité E009 (tasks 018-024) — voir section « Progrès au 2026-05-03 » ci-dessous.
 
 > **Note sur `client-angular`** : ce repo est exclu de l'automation forge (CLAUDE.md).
 > Le `/start` ne créera pas de branche Angular ; le humain gère manuellement la branche
@@ -52,6 +53,51 @@ rapports d'audit (agents `audit-api-mail`, `audit-blazor`, `audit-angular`,
 
 ---
 
+## Progrès au 2026-05-03 — chantier sécurité E009 (tasks 018-024)
+
+Entre le 2026-04-20 (audit initial) et le 2026-05-03, **7 tasks** du
+chantier sécurité E009 ont été livrées et mergées sur `develop`. Plusieurs
+findings de cet audit sont **partiellement ou totalement clos**.
+
+### Couches de défense ajoutées (pas explicitement dans l'audit initial)
+
+| Couche | Tasks | Effet sur l'audit |
+|---|---|---|
+| **1. Identifiants opaques (Guid v7)** | 018 + 019 + 020 | 100% des PK Postgres en `uuid` v7 (RFC 9562, .NET-side). 0 routes `{*:int}`, 0 hack `BitConverter.ToInt32` (`ContactDto.GetIntId` supprimé). Anti-énumération URL totale. Crée le besoin de la couche 3. |
+| **2. Authentification cryptographique JWT** | 021 | `AddJwtBearer` Keycloak (signature + issuer + audience + lifetime). `PolicyScheme JwtOrTestBypass` (TestBypassAuthenticationHandler dédié, hard-block en Production). `FallbackPolicy = RequireAuthenticatedUser` secure-by-default. `UserContextEnricherMiddleware` peuple `UserContextInfo` depuis claims JWT validés. **Ferme X-AUTH-01 et API-DI-01.** |
+| **2bis. Endpoints anonymes + flux SSE refermés** | 022 | Retrait du `[AllowAnonymous]` temporaire sur 5 controllers (Ai/Directory/FeatureFlag/MailEvents/Notifications). SSE résolu exclusivement depuis claim JWT (ignore `?email=`). `RequestLoggingMiddleware.ScrubQueryStringToken` masque `?token=...` AVANT `LogContext.Push` → JWT propagé en query SSE n'apparaît jamais en clair en Seq. **Ferme partiellement BLZ-SECURITY-05, NG-SEC-03 et API-LOG-01/05/06 (volet SSE).** |
+| **3. Ownership scoping repositories** | 023 | 5 dépôts (Contact, MailSignature, MailTemplate, MssAuditTrace, PendingAction) filtrent cumulativement `Id == X && UserId == currentUserId`. `BaseRepository.GetCurrentUserIdAsync` factorisé. Convention 404 (jamais 403) sur ownership KO pour ne pas leaker l'existence des Guids. **Anti cross-tenant après leak Guid** — vecteur IDOR résiduel post-tasks 018-022. **+21 tests cross-tenant** (`CrossTenantOwnershipTests.cs`). |
+| **(observabilité)** | 024 | Instrumentation lock IMAP : `MailClientSession` carry `(operation, acquiredAt)`, `MailClientSessionManager.GetCurrentLockHolder` exposé, `ImapLockScope.AcquireAsync` enrichit cancel/timeout warnings avec `HolderOperation` + `HolderHeldMs`, success log Debug → Information. **Ferme partiellement API-LOG-02** (structured logging) sur le périmètre lock IMAP. Fix log-level race `MailRepository.AddNewMail` (Error → Information sur le succès du fallback duplicate-key). |
+
+### Findings audit clos / partiellement clos
+
+| Finding ID | État | Tasks | Note |
+|---|---|---|---|
+| `X-AUTH-01` Auth unifiée Bearer + retirer Client-Email/Client-Session-Id | ✅ **DONE** | 021 | `AddJwtBearer` + `UserContextEnricherMiddleware`. `RequestHelper.TryExtractJwtToken` désormais `internal` (legacy, conservé pour les tests existants seulement). Headers `Client-Email`/`Client-Session-Id` plus jamais lus côté backend. |
+| `API-DI-01` Décoder JWT middleware, claims via HttpContext.User | ✅ **DONE** | 021 | Pipeline AuthN/AuthZ ASP.NET Core en place. Claims accessibles via `User.FindFirstValue(ClaimTypes.Email)` etc. Plus aucun controller ne fait l'extraction de claims à la main. |
+| `BLZ-SECURITY-05` / `NG-SEC-03` Tokens hors URL SSE | ⏳ **PARTIEL** | 021 + 022 | Le token reste en query string (`?token=...`) car EventSource native API ne supporte pas le header `Authorization`. **Mais** : (1) la validation crypto JWT (task-021) empêche tout forgeage même si le token est exfiltré, (2) `ScrubQueryStringToken` (task-022) masque `?token=***` AVANT que les logs n'atteignent Seq. Le risque résiduel est maintenant : exfiltration via `Referer` header HTTP cross-origin → mitigé par CORS Phase 1. |
+| `BLZ-SECURITY-03` `[Authorize]` sur pages Blazor | ⏳ **PARTIEL** | 021 | Côté **backend**, `FallbackPolicy = RequireAuthenticatedUser` rend toute route `[Authorize]` implicitement. **Côté Blazor client (route guard SPA)**, l'attribut reste à poser sur les pages pour éviter de rendre la page côté navigateur avant le 401 du backend (UX). |
+| `API-LOG-01` / `API-SEC-05` / `API-SEC-06` Redaction logs token preview | ⏳ **PARTIEL** | 022 | `?token=...` query string scrubbed dans `RequestLoggingMiddleware`. Restent à auditer : `SmtpConnectionFactory` et `RequestHelper` (token preview en clair dans logs serveur si activé). |
+| `API-LOG-02` Structured logging (LogError($"...{ex.Message}") → templates) | ⏳ **PARTIEL** | 024 + 022 | Cas spécifiques fixés (`MailRepository.AddNewMail` Error → Information, `MailClientSessionManager.LockImapClientAsync` enrichi `HolderOperation`/`HolderHeldMs`/`WaitTimeMs`). **Audit grep complet sur `LogError\(\$"` reste à faire** sur le reste du codebase. |
+
+### Findings audit confirmés inchangés (à attaquer en Phase 1+)
+
+Tous les autres findings Critical / High de l'audit restent ouverts. **9 des 12 Critical** sont toujours actifs :
+- Secrets en clair dans le repo (5 trouvés)
+- CORS wildcard
+- HTTPS non forcé / pas de HSTS
+- XXE dans `AutoconfigService.cs`
+- HtmlSanitizer manquant côté Blazor + bypassSecurityTrustHtml côté Angular
+- Blocking sync-over-async dans callbacks TLS (deadlock IMAP/SMTP sous charge)
+
+### Nouveau finding révélé par le chantier (à intégrer)
+
+| ID | Nature | Tasks |
+|---|---|---|
+| **X-LOG-04** (nouveau) | **Audit grep `LogError($"...")` exhaustif sur le codebase** : task-024 a fixé un cas isolé, mais le pattern est utilisé dans d'autres services (à recenser). Liste à produire avec `grep -rn 'LogError(\$"' src/`. | À ouvrir |
+
+---
+
 ## Phasage (5 phases)
 
 ### Phase 1 — Urgences sécurité (1-3 jours)
@@ -70,8 +116,8 @@ rapports d'audit (agents `audit-api-mail`, `audit-blazor`, `audit-angular`,
 | **Fix XXE dans `AutoconfigService.cs:135`** : remplacer `XDocument.Parse(xml)` par `XmlReader.Create(stream, new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null })`. | api-mail | API-SEC-03 | S |
 | **Sanitiser HTML email Blazor** : installer `HtmlSanitizer`, passer `SelectedMail.Content.BodyHtml` à travers `new HtmlSanitizer().Sanitize(html)` avant tout `MarkupString` ou `loadHtmlInShadowDom`. | client-blazor | BLZ-SECURITY-01, BLZ-SECURITY-02, BLZ-JSINTEROP-03 | M |
 | **Sanitiser HTML email Angular** : retirer tous les `bypassSecurityTrustHtml()` sur `bodyHtml` (mail-body, medical-document-modal). Laisser Angular sanitizer faire son travail (innerHTML seul est sanitisé par défaut). Si besoin d'HTML complexe médical, sanitiser côté backend (HtmlSanitizer.NET) avant de pousser. | client-angular | NG-SEC-01, NG-SEC-02 | M |
-| **Sortir les tokens des URLs SSE/EventSource** : côté Blazor `MailSseService.cs:168`, côté Angular `notification-stream.service.ts:54`. Passer par header `Authorization: Bearer` (si EventSource ne supporte pas, bascule en `fetch()` stream). | client-blazor, client-angular | BLZ-SECURITY-05, NG-SEC-03 | M |
-| **`@attribute [Authorize]`** sur toutes les pages Blazor authentifiées (`Patient.razor`, `Mail.razor`, `Contacts.razor`…). | client-blazor | BLZ-SECURITY-03 | S |
+| ⏳ **PARTIEL (task-021 + task-022)** — **Sortir les tokens des URLs SSE/EventSource** : côté Blazor `MailSseService.cs:168`, côté Angular `notification-stream.service.ts:54`. **État 2026-05-03** : (1) le token est désormais validé crypto par `AddJwtBearer` (task-021) → impossible à forger même si exfiltré ; (2) `RequestLoggingMiddleware.ScrubQueryStringToken` (task-022) masque `?token=...` avant que les logs n'atteignent Seq. **Reste à faire** : décider si on bascule de `EventSource` vers `fetch()` stream pour pouvoir poser `Authorization: Bearer` en header (alternative : durcir CORS Phase 1 pour empêcher l'exfiltration via `Referer` cross-origin). | client-blazor, client-angular | BLZ-SECURITY-05, NG-SEC-03 | M |
+| ⏳ **PARTIEL (task-021)** — **`@attribute [Authorize]`** sur toutes les pages Blazor authentifiées (`Patient.razor`, `Mail.razor`, `Contacts.razor`…). **État 2026-05-03** : côté **backend**, `FallbackPolicy = RequireAuthenticatedUser` rend toutes les routes `[Authorize]` implicitement → l'API est bétonnée. **Reste à faire** : poser l'attribut côté Blazor SPA pour éviter de rendre la page client avant le 401 (UX, pas sécurité). | client-blazor | BLZ-SECURITY-03 | S |
 
 **Sortie Phase 1** : plus aucun secret dans le repo, CORS/HTTPS bétonné, XSS bouchées, tokens hors URL.
 
@@ -134,7 +180,7 @@ rapports d'audit (agents `audit-api-mail`, `audit-blazor`, `audit-angular`,
 | **Convention status codes** : 200 + tableau vide pour les listes (jamais 204). Ban `499`. Lint rule possible. | X-ERR-03, X-HTTP-04 | S |
 | **DTO drift — ajouts Angular manquants** : `inReplyTo`, `references`, `isPartOfThread`, `threadCount`, `isThreadRoot`, `readReceiptTo`, `readReceiptSentAt` sur `MailDto`. Régénérer via `/publish-dtos` + codegen Angular. | X-DTO-02 | S |
 | **DTO drift — types** : documenter `Guid-as-string` sur `ContactDto.id` (X-DTO-01), convention ISO-8601 UTC pour `DateTimeOffset` (X-DTO-03), `uint` UID côté C# ↔ convertir en `string` côté TS si risque précision (X-DTO-04). | X-DTO-01/03/04 | M |
-| **Auth unifiée** : `Authorization: Bearer {jwt}` + `X-PSC-Token` (optionnel). Retirer `Client-Email` et `Client-Session-Id` (extraire depuis claims JWT). Aligner Blazor et Angular sur le même pattern. | X-AUTH-01 | L |
+| ✅ **DONE (task-021)** — **Auth unifiée** : `Authorization: Bearer {jwt}` + `X-PSC-Token` (optionnel). Retirer `Client-Email` et `Client-Session-Id` (extraire depuis claims JWT). Aligner Blazor et Angular sur le même pattern. **État 2026-05-03** : `AddJwtBearer` Keycloak + `UserContextEnricherMiddleware` qui peuple `UserContextInfo` depuis claims (`Email = email \|\| preferred_username`, `ClientSessionId = sid \|\| jti`, `KeycloakToken` via `SaveToken=true`, `X-PSC-Token` lu inconditionnellement). `RequestHelper.TryExtractJwtToken` désormais `internal` (legacy, conservé pour les tests existants seulement). ~120 appels supprimés dans 23 controllers. | X-AUTH-01 | L |
 | **Token refresh margin harmonisée** à 60s sur les 2 frontends. | X-AUTH-02 | M |
 | **Correlation ID propagation** : interceptor Angular + Blazor qui capture `X-Correlation-Id` en réponse et le renvoie sur les requêtes suivantes. | X-OBS-01 | S |
 | **Versioning API consistent** : tous les controllers utilisent `[Route("api/v{version:apiVersion}/[controller]")]`. Fix `DraftController` qui a un path hardcodé. | X-HTTP-03 | S |

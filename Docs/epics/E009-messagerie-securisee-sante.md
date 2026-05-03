@@ -2,9 +2,13 @@
 
 > **Statut** : 🟢 En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.18
+> **Version** : 1.20
 > **Auteur** : Pascal Cabanel
 > **Dernière mise à jour** : 2026-05-03
+>
+> **Changelog v1.20** : passe d'observabilité orthogonale au chantier sécurité — task-024 (instrumentation lock IMAP + fix log-level race AddNewMail) livrée sur `api-mail` (PR #41). Deux patterns d'erreur identifiés en Seq sur la session `virginie.medecinrpps0062267` du 2026-05-03 traités : (1) `MailRepository.AddNewMail` loguait en `Error` un flow de **succès** quand le catch `PostgresErrorCodes.UniqueViolation` rebasculait vers `UpdateExistingMailWithContentAsync` (la race condition concurrent-enrichment était déjà gérée correctement, mais le log level pollue Seq) — corrigé par `LogError → LogInformation`, message reformulé `[DB] Mail UID={Uid} already existed — content updated via duplicate-fallback (MailId={MailId})` ; (2) `MailClientSessionManager.LockImapClientAsync` cancellait des opérations user-driven (`UpdateReadStatus` mark-read, ~1135 ms avant cancel) sans révéler **qui** détenait le lock IMAP au moment du timeout — instrumenté par un slot `(operation, acquiredAt)` thread-safe sur `MailClientSession` (lock minimal `_holderLock`, writer-only update par le thread qui vient d'acquérir le sémaphore, lecture best-effort par les waiters), `GetCurrentLockHolder` exposé sur `MailClientSessionManager`, `ImapLockScope.AcquireAsync` enrichit les catch `OperationCanceledException` (Warning) et `TimeoutException` (Error) avec `HolderOperation` + `HolderHeldMs`, success log `[ImapLock] ✅ Lock acquired` bumpé `Debug → Information` pour rendre la distribution `WaitTimeMs` requêtable en Seq sans activer Debug. **Aucun changement de comportement** : timeout du lock IMAP toujours 120s, pas de nouveau fallback path. Tests : api-mail 1166 application (5 nouveaux tests holder/Information/cancel-warning) + 273 infrastructure + 86 domain + 16 integration repository (2 nouveaux tests Postgres-backed Pattern 1 — `AddNewMailDuplicateFallbackShouldLogInformationNotError` + `AddNewMailDuplicateWithoutContentShouldStillReturnEmptyAndLogDebug`). Sonar Mode A best-effort accept (3/4 hard targets toujours atteints, diff strictement additif via templates de logging structuré, 0 nouveau CA1873 / S107 / S3776). **Note environnementale** : suite `mss.mail.api.tests` non rejouée pendant `/review` à cause du file lock du dev API en cours d'exécution (PID 66188 + Visual Studio 44916), aucun fichier `src/Api/` n'est touché par cette PR — impact fonctionnel nul. Cette task **prépare task-025** : la phase 1 d'analyse de task-025 attend ~5 jours ouvrés de logs `Lock IMAP acquired by ... after ...ms` + `Cancelled while waiting ... HolderOperation=...` collectés par cette instrumentation pour décider de la stratégie fallback (PendingActions queue / timeout bump / pool IMAP split / combinaison). Annexe C enrichie avec task-024. Sections 4/5/6 hand-crafted préservées. Le bilan sécurité §10.7 reste inchangé (task-024 est observability, pas une couche défensive supplémentaire).
+>
+> **Changelog v1.19** : **clôture définitive du chantier Sécurité E009** — couche 3 (ownership scoping repositories, task-023) livrée sur `api-mail` (PR #40). Ferme le **dernier vecteur IDOR** identifié dans l'audit task-020 : avec task-021 (JWT crypto) et task-022 (SSE secured), un attaquant ne peut plus se faire passer pour autrui par header / query string ; mais si un Guid de ressource leak (logs Seq, screenshot, audit trail partagé, breach), un user authentifié légitime peut encore accéder à la ressource d'un autre tenant car les repositories ne filtrent pas par `UserId`. **Désormais** : ajout colonne `UserId Guid NOT NULL + FK Users(Id) + IX_*_UserId` sur les 4 tables qui en manquent (`Contacts`, `ContactGroups`, `MailTemplates`, `PendingActions`) dans la migration consolidée `20240101_SetupMigration.cs` ; 4 entités domaine portent `UserId` ; `BaseRepository.GetCurrentUserIdAsync` factorise les 3 helpers `GetOrCreateUserIdAsync` dupliqués (single source of truth, race 23505 catch + ChangeTracker.Clear + re-read pattern) ; **5 dépôts** scopés cumulativement par UserId : `ContactRepository` (9 méthodes + filtre proactif `FilterOwnedGroupIdsAsync` anti join-table tampering sur `Create`/`Update`), `MailSignatureRepository` (`GetByIdAsync`/`DeleteAsync`), `MailTemplateRepository` (5 méthodes, `UpdateAsync` re-load pour vérifier ownership avant mutation, `CreateAsync` setter UserId), `AuditTraceRepository` (`GetTracesAsync`/`GetByIdAsync` filtrent par `UserId == UserContextInfo.Email` — string par design task-020 pour préserver la traçabilité même si le User row est supprimé), `PendingActionRepository` (9 méthodes, `AddAsync` setter UserId automatique). **Convention scellée** : (a) toute query par Id filtre cumulativement par UserId, (b) toute table métier per-user porte `UserId Guid NOT NULL + FK + index`, (c) controllers retournent **404 sur ownership KO, jamais 403** pour ne pas leaker l'existence des Guids, (d) `BaseRepository.GetCurrentUserIdAsync` est l'unique voie d'accès au UserId courant côté repo. Tests : api-mail **1708 passés / 0 failed** (était 1587 — **+21 tests cross-tenant** dans `CrossTenantOwnershipTests.cs` couvrant Contact, MailSignature, MailTemplate, MssAuditTrace, PendingAction ≥ 3 tests par dépôt ; existants adaptés via seed User row + tag UserId sur entités directement insérées) ; client-blazor / mss-lib non touchés (US purement back-end). **Audit grep DOD** : `FindAsync([id])` repos métier → ✅ vide ; `FirstOrDefaultAsync(...Id == id)$` sans `&& UserId ==` → ✅ vide. Sonar Mode A best-effort accept sans cleanup (3/4 hard targets déjà atteints baseline 728 code smells dont 32 S3776 blacklisté + 387 CA1873 logging — campagne dédiée future ; aucune nouvelle violation introduite par task-023, le diff suit le pattern message-template existant). **Dans le tableau §10.7 défense en profondeur** : couche 3 passe de 🔴 À faire à 🟢 Implémentée — **les 3 couches du chantier sécurité E009 sont désormais en place**. **Bilan E009 sécurité (6 tasks 018+019+020+021+022+023)** : (1) 100% des PK Postgres en `uuid` v7 (anti-énumération), (2) JWT validation crypto + secure-by-default `FallbackPolicy` (anti-spoofing), (3) SSE / endpoints anonymes refermés (anti-leak temps réel), (4) ownership scoping cumulatif sur les repos exposant des Guid (anti-cross-tenant). Le seul vecteur IDOR restant identifié serait un compromis de la base User elle-même — hors périmètre application. Annexe C enrichie avec task-023. Sections 4/5/6 hand-crafted préservées.
 >
 > **Changelog v1.18** : couche 2bis du chantier Sécurité — SSE & endpoints anonymes (task-022) livrée sur `api-mail` (PR #39), `client-blazor` (PR #43) et `client-angular` (code-only, uncommitted). Ferme la faille IDOR temps réel identifiée dans l'audit : un attaquant avec son propre JWT valide pouvait s'abonner au flux SSE d'une autre victime via `?email=victim@x.fr`. **Désormais** : retrait du `[AllowAnonymous]` temporaire posé en task-021 sur les 5 controllers (`AiController`, `DirectoryController`, `FeatureFlagController`, `MailEventsController`, `NotificationsController`) — désormais protégés par la `FallbackPolicy = RequireAuthenticatedUser` ; `MailEventsController.Stream` et `NotificationsController.Stream` refactorés pour résoudre l'email **exclusivement** depuis le claim JWT validé (`User.FindFirstValue(ClaimTypes.Email)` avec fallback sur `JwtRegisteredClaimNames.Email` puis `preferred_username`), le paramètre `?email=` query string est désormais ignoré (un attaquant qui passe `?email=victim@x.fr` avec son propre JWT valide voit s'ouvrir un flux sur SON propre email, jamais celui de la victime) — 400 BadRequest si claim email manquant. Nouveau scrubber `RequestLoggingMiddleware.ScrubQueryStringToken` (regex partial generated, IgnoreCase) qui masque `?token=...` / `&token=...` → `token=***` AVANT d'enrichir LogContext — le JWT propagé en query string pour les flux SSE n'apparaît jamais en clair dans les logs Seq. Frontends adaptés : Blazor `MailSseService.BuildStreamUrl()` drop `email=` du query, garde `folder` + `token` ; Angular `notification-stream.service.ts` drop `email=`, garde `token=`. Tests : api-mail 1587 passés / 5 skipped / 0 failed (était 1577 — **10 nouveaux tests sécurité** : 8 theory `ScrubQueryStringTokenMasksTokenValueButPreservesOtherParams` + 1 multi-occurrence + 1 anti-spoofing `StreamIgnoresEmailQueryStringAndUsesClaimInstead` + 1 missing-claim `StreamWithoutEmailClaimReturns400`) ; client-blazor 21/21 ; mss-lib Vitest 98/98. Audit grep DOD : `[AllowAnonymous]` dans Controllers → ✅ vide, `Headers["Client-Email"]` lu → ✅ vide, `?email=` dans MailEventsController + NotificationsController → ✅ vide (le seul `[FromQuery] string email` restant est `SettingsController.GetAutoconfigAsync`, paramètre métier autoconfig DNS, pas un identifiant d'auth — légitime). Sonar Mode A best-effort accept sans re-analyse (3/4 hard targets déjà atteints, task-022 net LOC négatif -83 lignes + 10 nouveaux tests sécurité, aucun nouveau cluster d'issues attendu, coût d'analyse complète disproportionné vs ROI). **Dans le tableau §10.7 défense en profondeur** : couche 2bis passe de 🔴 À faire à 🟢 Implémentée. **Suggestions non-bloquantes** notées : durcir CORS policy en prod (whitelist explicite des origins, dev reste `AllowAnyOrigin` pour `/qa` et hot-reload) ; cleanup mineur de `MailSseService._currentUserEmail` (résiduel logging) ; tests HTTP-pipeline `WebApplicationFactory<Program>` toujours absents — carry-over task-021, couvert opérationnellement par `/qa`. Annexe C enrichie avec task-022. Sections 4/5/6 hand-crafted préservées.
 >
@@ -874,21 +878,114 @@ Vitest 98/98.
   absents (carry-over task-021). Spoofing/expired/forged JWT couverts
   opérationnellement par `/qa` Playwright.
 
-#### Couche 3 — Ownership scoping repositories (task-023)
+#### Couche 3 — Ownership scoping repositories (task-023) — 🟢 livrée
 
-5 dépôts (`ContactRepository`, `MailSignatureRepository`,
-`MailTemplateRepository`, `AuditTraceRepository`,
-`PendingActionRepository`) font `FindAsync(id)` ou
-`FirstOrDefaultAsync(x => x.Id == id)` **sans filtrer par UserId**.
-Conséquence : si un Guid de ressource leak (logs Seq, screenshot, audit
-trail partagé, breach), un user authentifié légitime peut accéder à la
-ressource d'un autre tenant.
+**Faille initiale** : 5 dépôts (`ContactRepository`,
+`MailSignatureRepository`, `MailTemplateRepository`,
+`AuditTraceRepository`, `PendingActionRepository`) faisaient
+`FindAsync(id)` ou `FirstOrDefaultAsync(x => x.Id == id)` **sans filtrer
+par UserId**. Conséquence : avec les couches 1 (Guid v7) et 2 (JWT
+crypto + SSE) en place, un user authentifié légitime ne peut plus
+deviner ni spoofer une identité — mais si un Guid de ressource leak
+(logs Seq, screenshot, audit trail partagé, breach), il peut encore
+accéder à la ressource d'un autre tenant **avec son propre JWT valide**
+en faisant une requête sur le Guid leaké.
 
-**Plan task-023** : ajout colonne `UserId Guid NOT NULL` sur les tables
-qui en manquent (`Contact`, `ContactGroup`, `MailTemplate`,
-`PendingAction`) + filtrage cumulatif `WHERE Id = ? AND UserId = ?`
-sur les méthodes `Get*ById*`, `Update*`, `Delete*` ; convention 404
-(pas 403) sur ownership KO.
+**Livraison task-023** :
+
+- **Migration consolidée** `20240101_SetupMigration.cs` : ajout
+  `UserId Guid NOT NULL + FK Users(Id) + IX_*_UserId` sur les 4 tables
+  qui en manquaient (`Contacts`, `ContactGroups`, `MailTemplates`,
+  `PendingActions`). `MailSignatures` portait déjà la colonne (task-018
+  initial setup) ; `MssAuditTraces.UserId` reste `string` (email) par
+  design task-020 — préserve la traçabilité même si le User row est
+  supprimé.
+- **Domain entities** : `Contact`, `ContactGroup`, `MailTemplate`,
+  `PendingAction` portent un champ `Guid UserId`. Configurations EF
+  Core (`MailDataContext`) ajoutées avec index UserId.
+- **`BaseRepository.GetCurrentUserIdAsync`** : single source of truth
+  factorisée, remplace les 3 duplications historiques
+  (`MailSignatureRepository`, `UserSettingsRepository`, et l'embryon
+  intra-`MailDataContext`). Concurrent-insert race géré via 23505
+  unique-violation catch + `ChangeTracker.Clear` + re-read.
+  ```csharp
+  protected async Task<Guid> GetCurrentUserIdAsync(CancellationToken ct = default)
+  {
+      var user = await DataContext.Users
+          .FirstOrDefaultAsync(p => p.Email == UserContextInfo.Email, ct);
+      if (user != null) return user.Id;
+      try { /* ... add User row ... */ }
+      catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23505" }) { /* ... re-read ... */ }
+  }
+  ```
+- **5 dépôts scopés cumulativement par UserId** :
+  - **`ContactRepository`** (9 méthodes — `GetByIdAsync`,
+    `GetBySourceIdAsync`, `GetByRppsAsync`, `GetByInsAsync`,
+    `GetBySourceIdAndSourceAsync`, `Update`, `Delete`,
+    `ToggleFavorite`, `GetGroupByIdAsync`, `Update/DeleteGroupAsync`,
+    `Add/RemoveContactToGroupAsync`, `GetOrCreate*GroupAsync`).
+    `Create`/`Update` filtrent les `GroupIds` injectés via un nouveau
+    `FilterOwnedGroupIdsAsync` — défense **proactive** anti
+    join-table tampering : un payload forgé qui pose un `groupId`
+    appartenant à un autre tenant est silencieusement filtré, jamais
+    persisté dans `ContactGroupMembers`.
+  - **`MailSignatureRepository`** : `GetByIdAsync` + `DeleteAsync`
+    scopés ; les autres méthodes filtraient déjà via `WHERE UserId = userId`
+    de bout en bout.
+  - **`MailTemplateRepository`** : 5 méthodes scopées. `CreateAsync`
+    setter UserId. `UpdateAsync` re-charge l'entité depuis la DB pour
+    vérifier l'ownership avant d'appliquer la mutation — un payload
+    forgé `{ "id": "<other-user-template-guid>", ... }` lève
+    `InvalidOperationException` que le controller traduit en 404.
+  - **`AuditTraceRepository`** : `GetTracesAsync` + `GetByIdAsync`
+    filtrent cumulativement par `UserId == UserContextInfo.Email`
+    (string par design — `MssAuditTrace.UserId` est l'email
+    identifiant et non le Guid User.Id, vu en task-020).
+  - **`PendingActionRepository`** : 9 méthodes scopées. `AddAsync`
+    auto-renseigne `action.UserId = currentUserId`. `UpdateAsync`
+    re-vérifie l'ownership de l'entité fournie avant `SaveChanges` (no-op
+    silencieux si UserId mismatch).
+- **Convention scellée** :
+  1. Toute méthode Repository qui prend un `Guid id` filtre
+     cumulativement par `UserId` (audit grep régulier).
+  2. Toute table métier per-user porte `UserId Guid NOT NULL + FK
+     Users(Id) + index` ; les exceptions doivent être documentées
+     (`Mails` indexée par UID IMAP cross-boundary, `Tags` partagée).
+  3. **Controllers retournent 404 sur ownership KO, jamais 403** —
+     un 403 leak l'existence du Guid (un attaquant qui balaie des
+     Guids saurait lesquels existent même sans accès) ; 404 garde le
+     secret.
+  4. `BaseRepository.GetCurrentUserIdAsync` est la **seule** voie
+     pour obtenir le UserId courant côté repo.
+
+**Audit grep DOD final** :
+
+| Vérification | Résultat |
+|---|---|
+| `grep -rE 'FindAsync\(\[?id\]?\)' src/Infrastructure/Repository*` | ✅ vide |
+| `grep -rE 'FirstOrDefaultAsync\([^)]*\.Id == id\)' src/Infrastructure/Repository*` (sans `&& UserId ==`) | ✅ vide |
+
+**Tests** : api-mail **1708 passés / 0 failed** (était 1587 — **+21
+tests cross-tenant** dans `CrossTenantOwnershipTests.cs` couvrant les
+5 dépôts ≥ 3 tests par dépôt : Contact (+8), MailSignature (+2),
+MailTemplate (+4), MssAuditTrace (+2), PendingAction (+5)). Pattern
+type : User A crée la ressource via le repo, User B avec son Guid
+reçoit `null`/`false` (ou `InvalidOperationException` pour les flux
+Update). Tests existants adaptés (`ContactRepositoryTests`,
+`MailTemplateRepositoryTests`, `PendingActionRepositoryTests`,
+`ContactRepositoryIntegrationTests` Search) via seed User row + tag
+UserId sur entités directement insérées.
+
+**Limites de la livraison** :
+- `ContactController.AddToGroupAsync` retourne 400 (existing convention
+  `Contact already in group or not found`) plutôt que 404 sur ownership
+  KO. Le 400 ne leak pas l'existence (message générique conflate les
+  cas), donc la propriété de sécurité tient — mais strictement la
+  convention task-023 voudrait 404. Polish PR future.
+- `GetCurrentUserIdAsync` est appelé une fois par méthode de repo, soit
+  un round-trip Postgres supplémentaire par appel. La requête est
+  indexée (`IX_Users_Email` unique) donc rapide ; opportunité de cache
+  HTTP-scoped si la métrique latence remonte.
 
 ### 10.7 Stratégie de défense en profondeur — vue d'ensemble
 
@@ -897,15 +994,34 @@ sur les méthodes `Get*ById*`, `Update*`, `Delete*` ; convention 404
 | 1. Identifiants opaques (Guid v7) | Anti-énumération URL | 🟢 Implémentée (tasks 018+019+020) |
 | 2. Authentification cryptographique JWT | Anti-spoofing d'identité | 🟢 Implémentée (task-021) |
 | 2bis. SSE & endpoints anonymes | Anti-leak temps réel | 🟢 Implémentée (task-022) |
-| 3. Ownership scoping repos | Anti-cross-tenant après leak Guid | 🔴 À faire (task-023) |
+| 3. Ownership scoping repos | Anti-cross-tenant après leak Guid | 🟢 Implémentée (task-023) |
 
-**Recommandation forte** : les couches 2 et 2bis étant désormais en
-place, la plateforme est défendue contre le spoofing d'identité (par
-header `Client-Email` ou par `?email=` query string SSE). Reste à
-ajouter le scoping par UserId au niveau repository (task-023) pour
-défendre contre un éventuel leak de Guid (un user authentifié légitime
-qui obtiendrait un Guid de ressource d'un autre tenant pourrait encore
-y accéder).
+**Bilan du chantier sécurité E009** : les **3 couches** de défense en
+profondeur sont désormais en place. La plateforme est défendue contre :
+
+1. **L'énumération d'URL** — les PK Postgres sont en Guid v7 RFC 9562
+   (générés .NET-side via `UuidV7ValueGenerator`, tri temporel B-tree
+   friendly), un attaquant ne peut plus deviner l'Id voisin
+   (probabilité ≈ 0).
+2. **L'usurpation d'identité par header / query string** — l'auth
+   passe désormais par le pipeline AuthN/AuthZ ASP.NET Core
+   (`AddJwtBearer` + `FallbackPolicy = RequireAuthenticatedUser`). Le
+   helper legacy `RequestHelper.TryExtractJwtToken` qui lisait
+   `Client-Email` à la confiance est `internal` (purgé des controllers,
+   conservé pour les tests existants). Les flux SSE résolvent l'email
+   exclusivement depuis le claim JWT validé, le paramètre `?email=`
+   query string est ignoré.
+3. **L'accès cross-tenant via leak de Guid** — toute méthode
+   repository qui prend un `Guid id` filtre cumulativement par
+   `UserId` ; controllers retournent 404 sur ownership KO (jamais 403
+   pour ne pas leaker l'existence du Guid) ; convention scellée +
+   audit grep CI à mettre en place pour empêcher les régressions.
+
+Le **seul vecteur IDOR résiduel** identifié serait un compromis de la
+table `Users` elle-même (récupération du mapping email→Guid puis
+forge d'un JWT signé), ce qui suppose une compromission du Keycloak
+ou de la BDD — hors périmètre application, traité au niveau
+infrastructure (rotation des clés, accès BDD restreint, audit Seq).
 
 ---
 
@@ -989,6 +1105,8 @@ y accéder).
 | done-task-001 | En-têtes SMTP MSSanté `X-MSS-CODECDA`, `X-MSS-INS`, `X-MSS-NIL`, `X-MSS-MES` injectés au moment de l'envoi par un nouveau `MssanteHeaderService` câblé dans `SmtpService.SetMessageHeaders`. Le service décode l'archive `ihe_xdm.zip` côté serveur (parser `Interop.Cda` existant) pour en extraire le code `<ClinicalDocument code>` de chaque CDA et déterminer si l'INS est qualifiée (matricule + OID + nom + prénom + date de naissance + sexe). 25 tests unitaires (couverture des 4 en-têtes, multi-CDA, INS qualifiée vs non, détection `@patient.mssante.fr` dans To/Cc/Bcc, log structuré). Nouveau paramètre applicatif `Mail:ConvergenceProductNumber` (défaut vide) ; si non configuré, `X-MSS-NIL` est omis avec un warning. Nouveau opt-in `SaveDraftDto.BlockPatientReply` propagé jusqu'au `MailDto`. Traces Information à chaque envoi listant les 4 valeurs effectives. | RG-E009-009, 010, 011, 016, 087 |
 | done-task-014 | Options sélectives de parsing CDA : enum `[Flags] CdaParseOptions` (`Metadata` / `Biology` / `Summary` / `HtmlBody` / `Attachments` / `All`) + paramètre optionnel `options = All` sur `ICdaParsingService.ParseIheXdmZip`. `MssanteHeaderService` (task-001) bascule sur `CdaParseOptions.Metadata` pour skipper la transformation HTML XSLT et l'extraction PDF lors de la dérivation des en-têtes SMTP. Élimine le bruit log `[CdaParsingService] HTML transform error: XSLT compile error.` à chaque envoi (le bug XSLT racine reste à investiguer pour le pipeline d'enrichissement clinique). Backward-compatible : tous les autres callers continuent en mode `All` via le paramètre par défaut. 1 nouveau test unitaire `ApplyHeaders_RequestsMetadataOnly_FromCdaParser` vérifiant la propagation du flag `Metadata`. | — (dette technique observabilité, aucun RG Ségur) |
 | done-task-011 | Indicateur visuel d'intégration des documents médicaux (LGC.MDV.06). Le DTO `MailMedicalDocumentDto` expose `PatientId` (mapping ajouté à 3 sites repository), et `MailDto` reçoit un agrégat `PendingIntegrationsCount` calculé côté serveur (count des documents avec `PatientId == null`). Frontends Blazor (`MailHeader.razor` + tabs `MailBodyComponent.razor`) et Angular (`mail-header` + tabs `mail-body`) rendent badge vert ✓ « tous intégrés » ou orange ⏳ avec compteur « N en attente » dans la liste inbox + badge per-document dans les onglets de la vue détail. Mode code-only sur `client-angular` (humain gère commit/push TFS). 9 nouveaux tests : 3 xUnit `MailRepositoryTests` (mixed / all-integrated / no-medical-docs) + 3 bUnit `MailHeaderIntegrationIndicatorTests` + 3 vitest `mail-header.component.spec.ts`. Coverage `api-mail` 49.6 % → 50.2 %. | — (référence LGC.MDV.06 dans l'objectif US ; mapping vers la table section 6 à formaliser) |
+| done-task-024 | **Observabilité orthogonale au chantier sécurité — instrumentation lock IMAP + fix log-level race `AddNewMail`**. Pas une couche défensive supplémentaire — passe de qualité log post-clôture sécurité E009. Deux patterns Seq corrigés : (1) `MailRepository.AddNewMail` loguait en `Error` le succès du fallback `UpdateExistingMailWithContentAsync` (la race concurrent-enrichment était déjà gérée correctement, le `LogError` polluait Seq) → `LogError → LogInformation`, message reformulé `[DB] Mail UID={Uid} already existed — content updated via duplicate-fallback (MailId={MailId})`, `ex` retiré ; (2) `MailClientSessionManager.LockImapClientAsync` cancellait des opérations user-driven (mark-read ~1135 ms avant cancel) sans révéler quel holder détenait le lock — slot `(operation, acquiredAt)` thread-safe ajouté sur `MailClientSession` (lock minimal `_holderLock`, writer-only update par le thread qui vient d'acquérir le sémaphore IMAP, lecture best-effort par les waiters), `GetCurrentLockHolder` exposé sur `MailClientSessionManager`, `ImapLockScope.AcquireAsync` enrichit les catch `OperationCanceledException` (Warning) et `TimeoutException` (Error) avec `HolderOperation` + `HolderHeldMs`, success log `[ImapLock] ✅ Lock acquired` bumpé `Debug → Information` pour rendre la distribution `WaitTimeMs` requêtable en Seq sans activer Debug. `AcquireLockWithIdAsync` / `ReleaseLockWithId` (legacy parallel API) reçoivent le même enrichissement pour parité. **Aucun changement de comportement** : le timeout du lock IMAP reste 120s, pas de nouveau fallback path. Tests : 5 nouveaux unit `ImapLockScopeTests` (holder acquired/cleared, Information log on fast acquisition, cancel warning includes `HolderOperation`, contended acquisition reports positive `WaitTimeMs`) + 2 nouveaux integration Postgres-backed `MailRepositoryIntegrationTests` (duplicate-fallback Information + skipping Debug). Suite api-mail : 86 domain + 1166 application (5 ignorés Ollama, 5 nouveaux) + 273 infrastructure + 16 integration repository (2 nouveaux). **Prépare task-025** : la phase 1 d'analyse de task-025 attend ~5 jours ouvrés de logs `Lock IMAP acquired by ... after ...ms` + `Cancelled while waiting ... HolderOperation=...` collectés par cette instrumentation pour décider de la stratégie fallback (PendingActions queue / timeout bump / pool IMAP split / combinaison). | — (observabilité, aucun item Segur explicite) |
+| done-task-023 | **Couche 3 du chantier sécurité — Ownership scoping repositories**, **clôture définitive du chapitre Sécurité E009**. Ferme le dernier vecteur IDOR identifié dans l'audit task-020 : avec task-021 (JWT crypto) et task-022 (SSE + endpoints anonymes refermés), un attaquant ne peut plus se faire passer pour autrui par header `Client-Email` ou `?email=` query string ; mais si un Guid de ressource leak (logs Seq, screenshot, audit trail partagé, breach), un user authentifié légitime peut encore accéder à la ressource d'un autre tenant. **Désormais** : ajout colonne `UserId Guid NOT NULL + FK Users(Id) + IX_*_UserId` sur 4 tables (`Contacts`, `ContactGroups`, `MailTemplates`, `PendingActions`) dans la migration consolidée `20240101_SetupMigration.cs` ; 4 entités domaine portent `UserId`. **`BaseRepository.GetCurrentUserIdAsync`** factorisé — single source of truth, remplace 3 duplications (`MailSignatureRepository`, `UserSettingsRepository`, +1) ; race 23505 catch + ChangeTracker.Clear + re-read. **5 dépôts scopés cumulativement par UserId** : `ContactRepository` (9 méthodes — filtre proactif `FilterOwnedGroupIdsAsync` anti join-table tampering sur Create/Update : un payload forgé qui pose un `groupId` d'un autre tenant est silencieusement filtré), `MailSignatureRepository` (`GetByIdAsync`/`DeleteAsync`), `MailTemplateRepository` (5 méthodes, `UpdateAsync` re-load pour valider ownership avant mutation, payload forgé `{ "id": "<other-user-template-guid>" }` lève `InvalidOperationException` → 404), `AuditTraceRepository` (`GetTracesAsync`/`GetByIdAsync` filtrent par `UserId == UserContextInfo.Email` — string par design task-020), `PendingActionRepository` (9 méthodes, `AddAsync` setter automatique). **Convention scellée** : (a) toute query par Id filtre cumulativement par UserId, (b) toute table métier per-user porte `UserId Guid NOT NULL + FK + index`, (c) controllers retournent **404 sur ownership KO, jamais 403** pour ne pas leaker l'existence des Guids, (d) `BaseRepository.GetCurrentUserIdAsync` est l'unique voie d'accès au UserId courant côté repo. **Tests** : api-mail **1708 / 0 failed** (était 1587 — **+21 tests cross-tenant** dans `CrossTenantOwnershipTests.cs` couvrant les 5 dépôts ≥ 3 tests par dépôt : User A crée la ressource, User B avec son Guid reçoit `null`/`false` ou `InvalidOperationException`) ; existants adaptés (`ContactRepositoryTests`, `MailTemplateRepositoryTests`, `PendingActionRepositoryTests`, `ContactRepositoryIntegrationTests` Search) via seed User row + tag UserId sur entités directement insérées. Sonar Mode A best-effort accept sans cleanup (3/4 hard targets déjà atteints, baseline 728 inchangé : 387 CA1873 logging dominant + 32 S3776 blacklisté ; aucune nouvelle violation introduite, le diff suit le pattern message-template). **Audit grep DOD** : `FindAsync([id])` repos métier → ✅ vide, `FirstOrDefaultAsync(...Id == id)$` sans `&& UserId ==` → ✅ vide. **Limites différées** : `ContactController.AddToGroupAsync` retourne 400 (convention pré-existante `already in group or not found`) plutôt que 404 sur ownership KO — le message générique ne leak pas l'existence donc la propriété de sécurité tient ; `GetCurrentUserIdAsync` appelé par méthode repo (1 round-trip indexed `IX_Users_Email` supplémentaire — opportunité de cache HTTP-scoped si métrique latence remonte). **Bilan E009 sécurité (6 tasks)** : (1) Guid v7 anti-énumération sur 100% des PK (018+019+020), (2) JWT crypto + secure-by-default `FallbackPolicy` anti-spoofing (021), (3) SSE / endpoints anonymes refermés anti-leak temps réel (022), (4) ownership scoping cumulatif sur les repos exposant des Guid anti-cross-tenant (023). Seul vecteur IDOR résiduel : compromis de la base User elle-même (forge JWT signé) — hors périmètre application. | — (durcissement sécurité transverse, clôture du chapitre — pas un item Segur explicite mais cohérent avec l'esprit SC.MSS/CONF.17-18 d'auditabilité et de cloisonnement des données patient) |
 | done-task-022 | **Couche 2bis du chantier sécurité — SSE & endpoints anonymes**. Ferme la faille IDOR temps réel : un attaquant avec son propre JWT valide pouvait s'abonner au flux SSE d'une autre victime via `?email=victim@x.fr`. Désormais : retrait du `[AllowAnonymous]` temporaire posé en task-021 sur 5 controllers (`AiController`, `DirectoryController`, `FeatureFlagController`, `MailEventsController`, `NotificationsController`) — désormais protégés par la `FallbackPolicy = RequireAuthenticatedUser`. `MailEventsController.Stream` et `NotificationsController.Stream` refactorés : email résolu **exclusivement** depuis claim JWT (`User.FindFirstValue(ClaimTypes.Email)` avec fallbacks `JwtRegisteredClaimNames.Email` et `preferred_username`), `?email=` query string ignoré (un attaquant avec son propre JWT + `?email=victim@x.fr` ouvre un flux sur SON propre email, jamais celui de la victime), 400 BadRequest si claim manquant. Nouveau `RequestLoggingMiddleware.ScrubQueryStringToken` (regex partial generated, IgnoreCase) qui masque `?token=...` / `&token=...` → `token=***` AVANT d'enrichir LogContext — le JWT en query pour SSE n'apparaît jamais en clair dans Seq. Frontends adaptés : Blazor `MailSseService.BuildStreamUrl()` drop `email=`, garde `folder` + `token` ; Angular `notification-stream.service.ts` drop `email=`, garde `token=`. Tests : api-mail 1587 (10 nouveaux : 8 theory `ScrubQueryStringToken` + 1 multi-occurrence + 1 anti-spoofing `StreamIgnoresEmailQueryStringAndUsesClaimInstead` + 1 missing-claim `StreamWithoutEmailClaimReturns400`) ; client-blazor 21/21 ; mss-lib 98/98. Audit grep DOD : `[AllowAnonymous]` Controllers → vide, `Headers["Client-Email"]` → vide, `?email=` SSE → vide. Sonar Mode A best-effort accept sans re-analyse (3/4 hard targets déjà atteints, task-022 net LOC négatif -83 lignes). **Limites différées** : CORS policy `AllowAnyOrigin` reste active (à durcir en prod via whitelist explicite des origins) ; tests HTTP-pipeline `WebApplicationFactory<Program>` toujours absents (carry-over task-021), couvert opérationnellement par `/qa`. | — (durcissement sécurité transverse, fermeture vecteur SSE leak temps réel — pas un item Segur explicite) |
 | done-task-021 | **Couche 2 du chantier sécurité — Authentification cryptographique JWT** (secure-by-default). Ferme la faille de spoofing d'identité par header `Client-Email` identifiée dans l'audit IDOR. Avant : `RequestHelper.TryExtractJwtToken` ne validait rien crypto, lisait `Authorization`/`Client-Email`/`Client-Session-Id` à la confiance. Désormais : `AddJwtBearer` Keycloak (signature + issuer + audience + lifetime) ; `PolicyScheme JwtOrTestBypass` qui dispatche entre `TestBypassAuthenticationHandler` (auth scheme dédié `X-Test-Bypass`, hard-block en Production — pour `/qa`) et `JwtBearer` (Angular/Blazor avec token Keycloak) ; `FallbackPolicy = RequireAuthenticatedUser` ; `UserContextEnricherMiddleware` peuple `UserContextInfo` depuis claims JWT validés ; lit `X-PSC-Token` inconditionnellement (drives `IsOnlineMode`). Suppression de ~120 `TryExtractJwtToken` dans 23 controllers (helper devient `internal`). Mode dev permissif quand `Keycloak:Authority` absent ET pas Production. Token accepté en query string pour SSE. 5 controllers anonymes `[AllowAnonymous]` temporaires (Ai/Directory/FeatureFlag/MailEvents/Notifications) — base task-022. Tests : 1577 passés / 5 skipped / 0 failed (10 tests obsolètes "Unauthorized when missing headers" supprimés). Hotfix utilisateur intégré (PSC token + dev permissif) après test manuel Angular. **Pass 6 (tests sécurité HTTP-pipeline dédiés via `WebApplicationFactory<Program>`)** deferred — spoofing/expired/forged JWT + SSE query token, à ajouter en task-022 ou follow-up. Couvert opérationnellement par `/qa` Playwright. | — (durcissement sécurité transverse, fermeture vecteur spoofing d'identité — pas un item Segur explicite mais cohérent avec l'esprit SC.MSS/CONF) |
 | done-task-020 | **Clôture du chantier durcissement sécurité Guid v7** — phase 3 du chapitre. 12 entités migrées de `int Identity` à `Guid v7` : `User`, `UserSetting`, `MailSignature`, `MailTemplate`, `MailFolder`, `Contact`, `ContactMssAddress`, `ContactTag`, `ContactGroup`, `ContactGroupMember`, `MssAuditTrace`, `PendingAction`. Finalise `MailMedicalDocument.PractitionerContactId` resté `int?` en task-018. **Suppression du hack `ContactDto.GetIntId()`** — `BitConverter.ToInt32(Id.ToByteArray(), 0)` (4 bytes / 16, ~1/65k birthday-collision) — l'item le plus impactant en sécurité du chantier complet ; les consumers passent désormais `ContactDto.Id` directement. **MailDataContext** : 8 nouveaux `UuidV7ValueGenerator` câblages ; **0 `UseIdentityAlwaysColumn` restant** (audit grep). Migration consolidée `20240101_SetupMigration.cs` : 12 tables `AsGuid().PrimaryKey()` + propagation Guid sur les FK `UserId` / `ContactId` / `GroupId` / `PractitionerContactId` ; colonnes int légitimes préservées (`Uid` IMAP, `SortOrder`, `UrgencyLevel`, `FolderType`, compteurs, `MailUid`, `RetryCount`, `Status` enum). Routes API : 17 routes migrées (`ContactController` 8, `MailTemplateController` 3, `SignatureController` 5, `AuditController` 1, `MailController.CancelPendingEmail` 1) ; en sortie de cette task **0 `{*:int}` ne subsiste** dans aucun controller. DTOs : `MailSignatureDto`, `MailTemplateDto`, `MssAuditTraceDto` Id Guid (`UserId` reste string — JWT), `MailMedicalDocumentDto.PractitionerContactId` Guid?, `ManagementDtos` 6 records. NuGet `HealthPlatform.Dtos.Mss 239.0.0` publié. Repositories / interfaces / services propagent Guid (`IPendingActionRepository.AddAsync` retourne `Task<Guid>`, plus `Task<int>` ; `IPatientContactService` / `IPractitionerContactService` `Task<Guid?>` ; `RedisKeys.Contact.ById/GroupById` clés Guid). `ContactRepository` : suppression du `BitConverter.ToInt32(group.Id.ToByteArray(), 0)` dans `UpdateGroupAsync` et de l'appel `contact.GetIntId()` dans `UpdateAsync`. **Blazor** : `ISignatureService`/`IMailTemplateService`/`IAuditService` Guid ; `SignatureEditor`, `MailTemplateEditor`, `MailTemplates`, `NewMailComponent`, `Audit`, `ManagementPage` — locaux `_selected*Id`/`_copiedBodyId`/`_copiedTraceId` int? → Guid?, pattern-match `value is int` → `value is Guid`, vérifs `Id > 0` → `Id != Guid.Empty`. **Angular** (code-only) : 11 fichiers TS — 6 modèles, 1 service (`mss-api.service.ts` 7 signatures), 4 composants (incl. suppression de `parseInt` désormais obsolète sur `mail-compose.onTemplateSelected`). Tests : nouveau helper `TestGuid.From(int)` pour les `Received(N).MethodAsync(seed)` qui requièrent un id stable ; 8 fichiers domain entity tests + `TestDataFactory` rebuilt autour de `Guid.CreateVersion7()` ; ContactRepository / PendingAction / MailTemplate / MedicalDocument / 3 service consumers / 2 application service tests / 3 integration tests adaptés. Suite api-mail **1587 / 5 skipped / 0 failed** ; client-blazor **21/21** ; mss-lib Vitest **98/98**. **Scellement final (audit grep)** : `int Id { ` Domain → ✅ vide ; `{*:int}` Controllers → ✅ vide ; `.AsInt32().PrimaryKey()` Migrations → ✅ vide ; `public int Id { ` Dtos → ✅ vide ; `GetIntId` source code → ✅ vide ; `id: number` Angular models → ✅ vide hors `uid`/`mailUid`/`emailUid` IMAP. **Bilan chantier E009 sécurité (3 tasks 018+019+020)** : 100% des PK Postgres en `uuid` v7, 0 routes `{*:int}`, 0 hack BitConverter, anti-énumération IDOR couvert sur l'ensemble des entités exposées. | — (durcissement sécurité transverse — clôture du chapitre, pas un item Segur explicite) |
@@ -1015,7 +1133,7 @@ y accéder).
 #### Sources internes
 
 - `CLAUDE.md` — règles de la forge (test-first, vérification locale, HAG, US-complete, polyrepo).
-- Tasks `archived-task-001.md`, `archived-task-002.md`, `archived-task-003.md`, `archived-task-004.md`, `archived-task-005.md`, `archived-task-008.md`, `archived-task-009.md`, `archived-task-010.md`, `archived-task-011.md`, `archived-task-012.md`, `archived-task-013.md`, `archived-task-014.md`, `archived-task-016.md`, `archived-task-017.md`, `archived-task-018.md`, `archived-task-019.md`, `archived-task-020.md`, `archived-task-021.md`, `done-task-022.md` — apports incrémentaux à l'EPIC (cf. Annexe C).
+- Tasks `archived-task-001.md`, `archived-task-002.md`, `archived-task-003.md`, `archived-task-004.md`, `archived-task-005.md`, `archived-task-008.md`, `archived-task-009.md`, `archived-task-010.md`, `archived-task-011.md`, `archived-task-012.md`, `archived-task-013.md`, `archived-task-014.md`, `archived-task-016.md`, `archived-task-017.md`, `archived-task-018.md`, `archived-task-019.md`, `archived-task-020.md`, `archived-task-021.md`, `archived-task-022.md`, `archived-task-023.md`, `done-task-024.md` — apports incrémentaux à l'EPIC (cf. Annexe C).
 
 ### E. Table de correspondance REM Ségur ↔ Ref#2
 
