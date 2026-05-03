@@ -77,13 +77,16 @@ test.describe('critical path — mail actions on the first inbox row', () => {
 		// Step 1 — flip read state.
 		let t0 = captureNow()
 		await clickRowAction(firstMail, 'Lu/Non lu')
-		await expect.poll(isRead, { timeout: 10_000 }).toBe(!wasInitiallyRead)
+		// Poll budget : 20s pour absorber la latence IMAP STORE + propagation
+		// SSE → UI re-render. 10s suffit en chaud mais flake en cold-start
+		// après DB rebuild (pool de sessions IMAP vide).
+		await expect.poll(isRead, { timeout: 20_000 }).toBe(!wasInitiallyRead)
 		await assertNoNewBackendErrors(testInfo, t0, 'toggle-read-forward')
 
 		// Step 2 — flip back so the test is idempotent on the real mailbox.
 		t0 = captureNow()
 		await clickRowAction(firstMail, 'Lu/Non lu')
-		await expect.poll(isRead, { timeout: 10_000 }).toBe(wasInitiallyRead)
+		await expect.poll(isRead, { timeout: 20_000 }).toBe(wasInitiallyRead)
 		await assertNoNewBackendErrors(testInfo, t0, 'toggle-read-revert')
 	})
 

@@ -20,8 +20,15 @@ export default defineConfig({
 	testDir: './tests',
 	fullyParallel: false,
 	workers: 1,
-	retries: 0,
-	timeout: 60_000,
+	// 1 retry : SMTP/IMAP cold-start (DB freshly rebuilt, MailKit session not
+	// yet pooled, Aspire containers warm-up) makes the first run of state-
+	// changing tests flaky with sub-30s assertions. The second run reuses the
+	// established IMAP session and is consistently fast (<10s).
+	retries: 1,
+	// Test global timeout : 90s = 60s pour la majorité des tests + 30s de
+	// budget pour les scenarii compose-send / toggle-read qui font du round-
+	// trip serveur (SMTP send + IMAP append OR IMAP STORE + SSE propagation).
+	timeout: 90_000,
 	reporter: [['list'], ['html', { open: 'never' }]],
 	use: {
 		baseURL: 'https://localhost:7213',

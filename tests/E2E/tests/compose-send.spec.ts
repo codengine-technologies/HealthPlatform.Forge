@@ -87,13 +87,16 @@ test.describe('compose & send', () => {
 
 		// Step 5 — send. On success NewMailComponent calls OnComposeClosed
 		// → Mail.razor flips back to SelectViewType.ViewMailList and the
-		// compose pane unmounts. We assert the pane is gone within 30s
-		// (covers SMTP send + IMAP append + UI rerender).
+		// compose pane unmounts. We assert the pane is gone within 60s
+		// (covers SMTP send + IMAP append + UI rerender). The 60s budget
+		// is intentionally generous because SMTP send to Gmail can take
+		// 5-15s on cold connections and the IMAP append round-trip adds
+		// another 3-8s on top.
 		t0 = captureNow()
 		await composeForm
 			.locator('[data-testid="compose-send-button"]')
 			.click()
-		await expect(composeForm).toHaveCount(0, { timeout: 30_000 })
+		await expect(composeForm).toHaveCount(0, { timeout: 60_000 })
 		await assertNoNewBackendErrors(testInfo, t0, 'send-mail')
 	})
 })
