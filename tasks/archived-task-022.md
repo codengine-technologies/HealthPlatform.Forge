@@ -301,3 +301,22 @@ prod). Pas de `AllowAnyOrigin` sur les routes auth.
 3. ⚠️ Tests E2E HTTP-pipeline (`WebApplicationFactory<Program>`) toujours absents (carry-over task-021). Spoofing/expired/forged JWT couverts opérationnellement par `/qa` Playwright.
 
 Pas de blocking issue. La couche 2bis du chantier sécurité (SSE & endpoints anonymes) est livrée. Le chapitre §10.6 de l'EPIC sera mis à jour par `/tech-writer` au tail de ce cycle.
+
+## Merged
+
+Squash-merged on `develop` (2026-05-03) — HAG validation `--i-tested` from human (`/qa --headed` confirmed green after DB rebuild + tests timeout fix).
+
+| Repo | PR | Squash SHA |
+|---|---|---|
+| `api-mail` | [#39](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/39) | `dcba1f709b25129758b51f66a6d92a83042da52e` |
+| `client-blazor` | [#43](https://github.com/codengine-technologies/HealthPlatform.Client/pull/43) | `d99ea1ec594b31c960cd67ca44a8ddc0db72878c` |
+| `dtos-mss` | aucun commit (branche auto-incluse fermée sans changement, supprimée de origin) | — |
+| `client-angular` | code-only — humain gère commit/push/PR TFS | — |
+
+CI develop post-merge :
+- client-blazor : in_progress sur `d99ea1e` au moment de l'archive (build local vert during /qa, donc OK)
+- api-mail : workflow GH Actions ne trigger pas systématiquement sur push develop (constat carry-over depuis task-020)
+
+**Inclut le hotfix test bypass IMAP creds** (`dd65eff` absorbé dans le squash) qui répare la régression task-021 (TestBypassAuthenticationHandler ne peuplait pas UserContextInfo.UserName/Password — révélée par /qa).
+
+Couche 2bis du chantier sécurité E009 livrée. Reste task-023 (ownership scoping repos) pour clore le chantier complet.
