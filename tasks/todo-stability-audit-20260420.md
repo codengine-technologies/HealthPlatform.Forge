@@ -223,10 +223,10 @@ Tous les autres findings Critical / High de l'audit restent ouverts. **9 des 12 
 | **ConcurrencyToken** (`[Timestamp] public byte[] RowVersion`) sur `Mail` et entités éditables. | API-EF-04 | M |
 | **Rate limiting** via `Microsoft.AspNetCore.RateLimiting` sur endpoints sensibles (sync, enrichment, search). | API-HTTP-03 | M |
 | **`IValidateOptions<T>` + `ValidateOnStart`** sur toutes les configs critiques (OpenAi, SMTP, IMAP, Keycloak, PSC). | API-CFG-02 | M |
-| **Structured logging** : remplacer les `LogError($"...{ex.Message}")` par `LogError(ex, "message template {Prop}", prop)`. | API-LOG-02 | M |
-| **Redaction logs** : ne plus logger de token preview (SmtpConnectionFactory, RequestHelper). | API-LOG-01, API-SEC-05/06 | S |
+| ⏳ **PARTIEL (task-024 + task-022)** — **Structured logging** : remplacer les `LogError($"...{ex.Message}")` par `LogError(ex, "message template {Prop}", prop)`. **État 2026-05-03** : cas spécifiques fixés — `MailRepository.AddNewMail` (Error → Information sur fallback succès, message structuré `[DB] Mail UID={Uid} already existed — content updated via duplicate-fallback (MailId={MailId})`) ; `MailClientSessionManager.LockImapClientAsync` enrichi `HolderOperation`/`HolderHeldMs`/`WaitTimeMs` ; `ImapLockScope.AcquireAsync` success log Debug → Information avec template structuré. **Reste à faire** : audit grep `grep -rnE 'LogError\(\$"' src/` pour recenser et fixer les autres occurrences (cf. nouveau finding **X-LOG-04**). | API-LOG-02 | M |
+| ⏳ **PARTIEL (task-022)** — **Redaction logs** : ne plus logger de token preview (SmtpConnectionFactory, RequestHelper). **État 2026-05-03** : `RequestLoggingMiddleware.ScrubQueryStringToken` masque `?token=...` query string AVANT `LogContext.Push` → JWT propagé en query SSE n'apparaît jamais en clair en Seq (volet SSE clos). **Reste à faire** : auditer `SmtpConnectionFactory` et `RequestHelper` qui peuvent encore logger des token previews côté backend (sortie Authorization header, refresh token). | API-LOG-01, API-SEC-05/06 | S |
 | **Kernel en Singleton** (pas Transient) dans `SemanticKernelExtensions`. | API-DI-02 | S |
-| **Décoder JWT dans middleware**, exposer les claims via `HttpContext.User` (plus besoin d'extraire via headers custom). | API-DI-01 (lié à X-AUTH-01) | M |
+| ✅ **DONE (task-021)** — **Décoder JWT dans middleware**, exposer les claims via `HttpContext.User` (plus besoin d'extraire via headers custom). **État 2026-05-03** : `AddJwtBearer` Keycloak (signature + issuer + audience + lifetime) + `PolicyScheme JwtOrTestBypass` qui dispatche entre TestBypassAuthenticationHandler (auth scheme dédié `X-Test-Bypass`, hard-block en Production) et JwtBearer. Tous les controllers utilisent désormais `User.FindFirstValue(ClaimTypes.Email)` ou héritent du `UserContextInfo` enrichi par middleware. | API-DI-01 (lié à X-AUTH-01) | M |
 
 #### 4c. i18n, a11y, UX
 
@@ -306,8 +306,8 @@ dans Sonar / backlog forge).
 - [ ] XXE fixé dans `AutoconfigService`
 - [ ] HtmlSanitizer en place côté Blazor (MarkupString email body)
 - [ ] Angular sans `bypassSecurityTrustHtml` sur `bodyHtml`
-- [ ] Tokens hors URL (SSE / EventSource → headers)
-- [ ] `[Authorize]` sur pages Blazor authentifiées
+- [⏳] Tokens hors URL (SSE / EventSource → headers) — risque résiduel mitigé par task-021 (validation crypto JWT) + task-022 (`ScrubQueryStringToken` sur les logs Seq). Token reste en query string pour EventSource. Décision pending : bascule `EventSource → fetch()` stream, ou statu quo + durcissement CORS.
+- [⏳] `[Authorize]` sur pages Blazor authentifiées — backend bétonné via `FallbackPolicy` (task-021). Reste à poser l'attribut côté Blazor SPA pour UX route guard.
 
 ### Phase 2 — Stabilité concurrence & fuites
 - [ ] 0 `GetAwaiter().GetResult()` dans les callbacks TLS
@@ -325,7 +325,7 @@ dans Sonar / backlog forge).
 - [ ] Codes d'erreur enum + mapping frontend
 - [ ] MailDto TypeScript aligné (champs threading, read-receipt)
 - [ ] DTO dates et UID documentés / typés correctement côté TS
-- [ ] Auth unifiée `Authorization: Bearer` partout (headers custom retirés)
+- [x] **Auth unifiée `Authorization: Bearer` partout (headers custom retirés)** — ✅ DONE par task-021 (`AddJwtBearer` Keycloak + `UserContextEnricherMiddleware` peuple `UserContextInfo` depuis claims, `RequestHelper.TryExtractJwtToken` désormais `internal`, ~120 appels supprimés sur 23 controllers).
 - [ ] Correlation ID end-to-end (frontend → backend → logs)
 - [ ] Versioning API consistent sur 100% des controllers
 - [ ] `Directory.Packages.props` aligné avec `.csproj` Dtos
@@ -342,6 +342,10 @@ dans Sonar / backlog forge).
 - [ ] Rate limiting en place
 - [ ] i18n Blazor : 0 string française en dur (audit grep)
 - [ ] a11y : `aria-*` sur tabs, focus trap modales
+- [⏳] **Structured logging** — ✅ task-024 a fixé `MailRepository.AddNewMail` + `MailClientSessionManager` ; reste audit grep `LogError\(\$"` exhaustif (cf. nouveau finding **X-LOG-04**)
+- [⏳] **Redaction logs** — ✅ task-022 scrubbing query-string token sur les logs Seq ; reste à auditer `SmtpConnectionFactory` + `RequestHelper`
+- [x] **Décoder JWT dans middleware** — ✅ DONE par task-021 (`AddJwtBearer` + `UserContextEnricherMiddleware`, claims via `HttpContext.User`)
+- [x] **Cross-tenant ownership tests** — ✅ DONE par task-023 (`CrossTenantOwnershipTests.cs`, +21 tests sur 5 dépôts ContactRepository / MailSignatureRepository / MailTemplateRepository / AuditTraceRepository / PendingActionRepository : User A crée la ressource, User B avec son Guid reçoit `null`/`false` ou `InvalidOperationException` → controller 404)
 
 ### Phase 5 — CI / outillage
 - [ ] GitHub Actions pour les 3 stacks (build + test + lint + Sonar)
@@ -391,7 +395,14 @@ l'objet d'un `/start` distinct ou d'un commit group validé indépendamment.
 - `curl -H "Origin: https://evil.example.com" http://localhost:7012/api/v1/...` → rejeté (CORS)
 - `http://localhost:...` (HTTP) en prod → redirige 301 vers HTTPS
 - Envoyer un mail test avec `<script>alert(1)</script>` en body → non exécuté côté Blazor et Angular
-- EventSource / SSE : `X-Correlation-Id` visible, token dans header `Authorization` seulement (pas en query)
+- EventSource / SSE : `X-Correlation-Id` visible. **task-022** : token reste en query string (limitation EventSource native), mais `?token=...` est **scrubbé en `?token=***`** dans les logs Seq (vérifier sur un push d'event quelconque que `RequestQuery` côté Seq ne contient jamais le token en clair).
+
+### Vérifications spécifiques sécurité E009 (déjà livrées par tasks 018-024 — non-régression à valider sur develop)
+
+- **Anti-spoofing JWT** : poser un `Client-Email: victim@x.fr` + un `Authorization: Bearer DEADBEEF` (token forgé sans signature valide) → réponse **401 Unauthorized** (avant task-021 c'était 200). Le `Client-Email` est désormais ignoré, seul le claim JWT validé compte.
+- **Anti-spoofing SSE** : poser son propre JWT valide + `?email=victim@x.fr` sur `GET /api/v1/mail/events/stream?email=victim@x.fr&token=<own-jwt>` → flux SSE ouvert sur l'email du **claim JWT** (le sien), pas sur celui en query string. Vérifier via Seq ou via les events reçus.
+- **Anti cross-tenant Guid leak** : avec deux comptes (`doctor1@dev` et `doctor2@dev`), créer un contact côté doctor1, copier son Guid. Faire `GET /api/v1/contact/{guid-de-doctor1}` avec le JWT de doctor2 → **404 Not Found** (jamais 403). Idem `DELETE /api/v1/signature/{guid}`, `PUT /api/v1/mailtemplate/{guid}`, `GET /api/v1/audit/traces/{guid}`, `DELETE /api/v1/mail/pending-emails/{guid}`.
+- **Anti-énumération URL** : tenter `GET /api/v1/medical-documents/123` (id `int` legacy) → **404 Not Found** car la route attend désormais `{id:guid}`. Tous les endpoints ont des PK Guid v7 sur `develop`.
 
 ### Vérifications spécifiques Phase 2 (concurrence)
 
