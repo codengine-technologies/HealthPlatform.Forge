@@ -1,6 +1,6 @@
 ---
 name: dtos-publish
-description: **WORKFLOW SKILL** — Commit + push automatique du dépôt `HealthPlatform.Dtos.Mss` à chaque modification d'un DTO. Le projet `Dtos/` est un sous-repo Git distinct dont la publication NuGet est déclenchée par un push GitHub. Sans ce push, les consommateurs (mss.mail.api, Blazor, psc-auth-proxy) ne peuvent pas récupérer la nouvelle version du contrat. USE FOR&nbsp;: ajouter un champ à un DTO, modifier une enum partagée, créer un nouveau DTO. INVOKES&nbsp;: git status / add / commit / push.
+description: **WORKFLOW SKILL** — Commit + push automatique du dépôt `HealthPlatform.Dtos.Mss` à chaque modification d'un DTO. Le projet DTOs est un sous-repo Git distinct dont la publication NuGet est déclenchée par un push GitHub. Sans ce push, les consommateurs (mss.mail.api, Blazor, psc-auth-proxy) ne peuvent pas récupérer la nouvelle version du contrat. USE FOR&nbsp;: ajouter un champ à un DTO, modifier une enum partagée, créer un nouveau DTO. INVOKES&nbsp;: git status / add / commit / push.
 applyTo:
   - "Dtos/**/*.cs"
   - "Dtos/**/*.csproj"
@@ -8,18 +8,42 @@ applyTo:
 
 # DTOs publish skill
 
-Le dossier `Dtos/` est un dépôt Git **indépendant** (`origin =
-https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss.git`).
 Le package NuGet `HealthPlatform.Dtos.Mss` est publié par la CI GitHub à chaque
 push. Tant que le push n'a pas eu lieu, l'API backend, le shell Blazor et les
 proxies (`psc-auth-proxy`) consomment la version précédente et ne peuvent pas
 référencer les nouveaux champs.
 
+## Localisation du sous-repo DTOs
+
+Le sous-repo Git DTOs (`origin = https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss.git`)
+peut se trouver à différents emplacements selon la machine :
+- `Dtos/Mss/` (structure avec sous-dossier)
+- `Dtos/` (structure plate)
+
+**Avant toute opération**, l'agent DOIT détecter le bon chemin en exécutant :
+
+```powershell
+# Détection du chemin du sous-repo DTOs (depuis la racine du workspace)
+if (Test-Path "Dtos/Mss/.git") { $dtosPath = "Dtos/Mss" }
+elseif (Test-Path "Dtos/.git") { $dtosPath = "Dtos" }
+else { throw "Sous-repo DTOs introuvable" }
+
+# Vérifier que le remote pointe vers le bon repo
+$remote = git -C $dtosPath remote get-url origin
+if ($remote -notmatch "HealthPlatform.Dtos.Mss") {
+    throw "Remote DTOs incorrect: $remote"
+}
+Write-Host "Sous-repo DTOs trouvé: $dtosPath"
+```
+
+Toutes les commandes `git -C Dtos` doivent être remplacées par `git -C $dtosPath`.
+
 > **Convention de chemins** : toutes les commandes ci-dessous utilisent des
-> chemins **relatifs à la racine du repo `HealthPlatform.Forge`**. L'agent
-> doit exécuter chaque `run_command` avec `Cwd` posé sur cette racine (ex.
-> `d:\TechWatch\HealthPlatform` sur la machine de l'utilisateur). De cette
-> manière le skill reste portable entre machines / OS.
+> chemins **relatifs à la racine du workspace `HealthPlatform.Forge`**. L'agent
+> doit exécuter chaque `run_command` avec `Cwd` posé sur cette racine. Le chemin
+> absolu varie selon la machine (ex. `D:\TechWatch\HealthPlatform` ou
+> `D:\MyDevelopements\HealthPlatform`). Utiliser `$dtosPath` (variable détectée
+> dynamiquement) pour toutes les opérations Git sur le sous-repo DTOs.
 
 ## Quand déclencher ce skill
 
@@ -33,11 +57,21 @@ Dès qu'un fichier sous `Dtos/` est ajouté, modifié ou supprimé :
 
 ## Procédure obligatoire
 
-1. **Vérifier l'état du sous-repo**
+1. **Détecter et vérifier le sous-repo DTOs**
 
    ```powershell
-   git -C Dtos status --short
-   git -C Dtos rev-parse --abbrev-ref HEAD
+   # Détection dynamique du chemin
+   if (Test-Path "Dtos/Mss/.git") { $dtosPath = "Dtos/Mss" }
+   elseif (Test-Path "Dtos/.git") { $dtosPath = "Dtos" }
+   else { throw "Sous-repo DTOs introuvable" }
+
+   # Vérifier le remote
+   $remote = git -C $dtosPath remote get-url origin
+   if ($remote -notmatch "HealthPlatform.Dtos.Mss") { throw "Remote incorrect: $remote" }
+
+   # État du sous-repo
+   git -C $dtosPath status --short
+   git -C $dtosPath rev-parse --abbrev-ref HEAD
    ```
 
 2. **Confirmer la branche cible** avec l'utilisateur si elle diffère de la
@@ -48,20 +82,20 @@ Dès qu'un fichier sous `Dtos/` est ajouté, modifié ou supprimé :
    `artifacts/`)&nbsp;:
 
    ```powershell
-   git -C Dtos add <fichiers explicites>
+   git -C $dtosPath add <fichiers explicites>
    ```
 
 4. **Commit avec un message conventionnel** (préfixe `feat`, `fix`, `chore`)
    décrivant le changement de contrat&nbsp;:
 
    ```powershell
-   git -C Dtos commit -m "feat(dto): add AttachmentCount on MailDto"
+   git -C $dtosPath commit -m "feat(dto): add AttachmentCount on MailDto"
    ```
 
 5. **Push sur l'origine GitHub**&nbsp;:
 
    ```powershell
-   git -C Dtos push origin <branche-courante>
+   git -C $dtosPath push origin <branche-courante>
    ```
 
    Si la branche n'existe pas encore distante, ajouter `--set-upstream`.
@@ -73,7 +107,7 @@ Dès qu'un fichier sous `Dtos/` est ajouté, modifié ou supprimé :
 
    ```powershell
    # Récupérer le SHA du commit que l'on vient de pousser
-   $sha = git -C Dtos rev-parse HEAD
+   $sha = git -C $dtosPath rev-parse HEAD
 
    # Récupérer l'ID du run associé à ce SHA (peut prendre quelques secondes
    # pour apparaître après le push)
@@ -157,7 +191,7 @@ Dès qu'un fichier sous `Dtos/` est ajouté, modifié ou supprimé :
 
 ## Garde-fous
 
-- **Toujours utiliser `git -C Dtos`** : le repo
+- **Toujours utiliser `git -C $dtosPath`** (chemin détecté dynamiquement) : le repo
   parent (`HealthPlatform.Forge`) ne doit pas recevoir les changements DTO.
 - **Ne jamais committer en parallèle dans les deux repos** dans le même appel
   de tool : faire d'abord le sous-repo, ensuite le repo principal pour les
@@ -170,8 +204,8 @@ Dès qu'un fichier sous `Dtos/` est ajouté, modifié ou supprimé :
 ## Outils MCP / CLI disponibles
 
 - `mcp3_git_status`, `mcp3_git_add`, `mcp3_git_commit` (sur `repo_path` =
-  chemin absolu du sous-repo `Dtos`, à résoudre depuis la racine du workspace ;
-  ex. `<workspace>/Dtos`).
+  chemin absolu du sous-repo DTOs, à résoudre depuis la racine du workspace ;
+  ex. `<workspace>/Dtos/Mss` ou `<workspace>/Dtos` selon la structure).
 - Le push n'est pas exposé par le MCP&nbsp;: utiliser `run_command` avec
   `git push` (commande non destructrice mais qui mute l'état distant, donc
   jamais en `SafeToAutoRun=true`).
@@ -192,32 +226,38 @@ Dès qu'un fichier sous `Dtos/` est ajouté, modifié ou supprimé :
 ## Exemple complet (cas typique : ajout d'une propriété)
 
 ```powershell
-# 1. État
-git -C Dtos status --short
+# 1. Détection du sous-repo DTOs
+if (Test-Path "Dtos/Mss/.git") { $dtosPath = "Dtos/Mss" }
+elseif (Test-Path "Dtos/.git") { $dtosPath = "Dtos" }
+else { throw "Sous-repo DTOs introuvable" }
+Write-Host "Sous-repo DTOs: $dtosPath"
 
-# 2. Stage du seul fichier modifié
-git -C Dtos add MailDto.cs
+# 2. État
+git -C $dtosPath status --short
 
-# 3. Commit
-git -C Dtos commit -m "feat(dto): add AttachmentCount on MailDto"
+# 3. Stage du seul fichier modifié
+git -C $dtosPath add MailDto.cs
 
-# 4. Push
-$branch = 'feat/task-017-impression-export-email-audit'
-git -C Dtos push origin $branch
+# 4. Commit
+git -C $dtosPath commit -m "feat(dto): add AttachmentCount on MailDto"
 
-# 5. Attendre la CI
-$sha = git -C Dtos rev-parse HEAD
+# 5. Push
+$branch = git -C $dtosPath rev-parse --abbrev-ref HEAD
+git -C $dtosPath push origin $branch
+
+# 6. Attendre la CI
+$sha = git -C $dtosPath rev-parse HEAD
 Start-Sleep -Seconds 5  # laisser le temps à GitHub d'enregistrer le run
 $runId = gh run list --repo codengine-technologies/HealthPlatform.Dtos.Mss `
     --commit $sha --limit 1 --json databaseId --jq '.[0].databaseId'
 gh run watch $runId --repo codengine-technologies/HealthPlatform.Dtos.Mss --exit-status
 
-# 6. Récupérer la version NuGet publiée
+# 7. Récupérer la version NuGet publiée
 $runNumber = gh run view $runId --repo codengine-technologies/HealthPlatform.Dtos.Mss `
     --json number --jq '.number'
 $nugetVersion = "$runNumber.0.0"
 
-# 7. Bump dans le repo consommateur (Mail API)
+# 8. Bump dans le repo consommateur (Mail API)
 # Editer Api/Mail/Directory.Packages.props : remplacer la version par $nugetVersion
 # puis :
 git -C Api/Mail add Directory.Packages.props
