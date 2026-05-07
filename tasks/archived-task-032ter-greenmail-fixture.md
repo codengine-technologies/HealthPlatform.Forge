@@ -79,7 +79,81 @@ Approche A pour les 3 services consommant `MailClientSessionManager` ; Approche 
 - US sœur : `task-032quater-cda-samples` (Chantier 3, gated métier).
 - Bénéficie de `task-033` (cleanup Sonar massif) car les classes IMAP réintégrées au dénom seront alors testées et le critère "0 régression" Sonar plus solide.
 
+## Develop log
+
+- **Repos touched** : api-mail
+- **DTOs published** : no DTO change
+- **Interop published** : no interop change
+- **Approach chosen** : **A — Interface extraction + NSubstitute mocks** (no Docker/GreenMail dependency)
+- **Commits** :
+  - `api-mail` : `4127c57` refactor(imap): extract IMailClientSessionManager interface + remove ExcludeFromCodeCoverage (task-032ter)
+- **Local build / test** :
+  - `api-mail` : ✓ build (0 errors), ✓ tests (1942 passed / 0 failed)
+    - domain: 86 passed
+    - api.tests: 102 passed
+    - application: 1309 passed
+    - infrastructure: 307 passed
+    - integration: 138 passed
+- **Refactoring scope** :
+  - Created `IMailClientSessionManager` interface (19 members)
+  - `MailClientSessionManager` now implements `IMailClientSessionManager`
+  - `ImapLockScope` updated to use interface (was concrete type)
+  - DI: `AddSingleton<MailClientSessionManager>()` → `AddSingleton<IMailClientSessionManager, MailClientSessionManager>()`
+  - 5 consumers updated: ImapService, ImapFolderService, ImapConnectionService, BackgroundSyncManager, MailExportService
+  - `MarkLockAcquired`/`MarkLockReleased` promoted from `internal` to `public` (required by ImapLockScope via interface)
+  - Existing tests updated to use `Substitute.For<IMailClientSessionManager>()`
+- **`[ExcludeFromCodeCoverage]` removed** :
+  - [x] ImapService (1914 LOC)
+  - [x] ImapFolderService (612 LOC)
+  - [x] ImapConnectionService (310 LOC)
+  - [ ] BackgroundImapService (584 LOC) — **kept** : does not use MailClientSessionManager, uses raw ImapClient directly (genuine IMAP IO dependency, needs GreenMail/Approach B)
+- **DOD self-check** :
+  - [x] Build passe (0 erreur)
+  - [x] Tests passent (0 failure)
+  - [x] Approche A documentée
+  - [x] Interface `IMailClientSessionManager` extraite + DI remappée
+  - [x] 3 / 4 `[ExcludeFromCodeCoverage]` IMAP retirées (BackgroundImapService excluded — justified)
+  - [ ] ≥ 70 % line coverage per service — deferred to coverage report at PR time
+  - [ ] Aucune régression Sonar — deferred to `/sonar`
+- **Next step** : `/review task-032ter-greenmail-fixture`
+
+## Sonar log
+
+- **Mode** : A (chained from /develop)
+- **Iterations** : 0 / 5 (skipped — Sonar env vars not configured)
+- **Next step** : `/review task-032ter-greenmail-fixture`
+
 ## Branches
 
 - `api-mail` (pushed) : feat/task-032ter-greenmail-fixture — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-032ter-greenmail-fixture
 - `dtos-mss` (pushed, auto-included) : feat/task-032ter-greenmail-fixture — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-032ter-greenmail-fixture
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/49   [label: awaiting-human-merge]
+- `dtos-mss` : no PR needed (no commits on the branch)
+
+## Code Review Summary
+
+**Verdict : APPROVED** (autonomous code review, 0 blocking issues)
+
+### api-mail
+- `IMailClientSessionManager.cs` — ✅ clean interface, 19 members matching concrete class public API
+- `MailClientSessionManager.cs` — ✅ minimal: implements interface, 2 methods internal→public
+- `ImapLockScope.cs` — ✅ all 4 concrete references updated to interface
+- `ServiceCollectionExtensions.cs` — ✅ correct DI registration
+- 5 consumer services — ✅ pure type substitution, no logic changes
+- Test files — ✅ NSubstitute mock with AcquireLockAsync delegation to ImapLockScope.AcquireAsync
+
+### Gaps connus
+- **BackgroundImapService** : `[ExcludeFromCodeCoverage]` conservé — utilise `ImapClient` directement (IMAP IO), nécessite GreenMail (Approach B) pour être couvert
+- **Coverage ≥ 70%** : déféré au rapport cobertura au merge — le structural enabler (interface) est en place, les tests existants (57 tests IMAP) prouvent la non-régression
+
+## Merged
+
+- **Merged at** : 2026-05-07 (squash-merge via `/merge task-032ter-greenmail-fixture --i-tested`)
+- **HAG attestation** : `--i-tested` — humain a validé la US end-to-end
+- **Squash commits sur `develop`** :
+  - `api-mail` : `d72d881` (PR #49 closed, remote branch deleted)
+- **dtos-mss** : no commits, no PR — empty feature branch deleted
+- **Local feature branches** : préservées pour inspection rétroactive

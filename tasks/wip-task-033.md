@@ -156,3 +156,8 @@ Sxxxx | path/to/File.cs:LL | Raison du skip (1 ligne)
 - US-sœur **`task-032`** doit être mergée avant. Si `/start task-033` est
   invoqué alors que `task-032` n'est pas `done-`, refuser et demander à
   l'humain de finir task-032 d'abord.
+
+## Branches
+
+- `api-mail` (pushed) : chore/task-033-sonar-cleanup — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/chore/task-033-sonar-cleanup
+- `dtos-mss` (pushed, auto-included) : chore/task-033-sonar-cleanup — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/chore/task-033-sonar-cleanup
