@@ -4,7 +4,7 @@
 **Dependencies**: done-task-032bis-fhir-mock (à merger d'abord pour bénéficier du harness FHIR)
 **Epic**: E009
 
-> **Mode recommandé** : `/start task-032ter no-code` — l'humain implémente en WindSurf. La US demande une décision structurante (extraction d'interface `IMailClientSessionManager` ou Testcontainers GreenMail Docker) hors zone de confort de `/develop` autonome.
+> **Status** : **WIP** — mode autonome (`/develop`), approche A retenue par défaut (refactor interface + mocks NSubstitute).
 
 ## Objectif
 
@@ -78,3 +78,8 @@ Approche A pour les 3 services consommant `MailClientSessionManager` ; Approche 
 - Issue du découpage **Option B (2026-05-07)** de la US d'origine `task-032bis-test-harness`. Le Chantier 2 (FhirClient mock) est livré dans `task-032bis-fhir-mock`.
 - US sœur : `task-032quater-cda-samples` (Chantier 3, gated métier).
 - Bénéficie de `task-033` (cleanup Sonar massif) car les classes IMAP réintégrées au dénom seront alors testées et le critère "0 régression" Sonar plus solide.
+
+## Branches
+
+- `api-mail` (pushed) : feat/task-032ter-greenmail-fixture — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-032ter-greenmail-fixture
+- `dtos-mss` (pushed, auto-included) : feat/task-032ter-greenmail-fixture — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-032ter-greenmail-fixture
