@@ -246,3 +246,13 @@ Verdict global : **APPROVED** (5 repos validés, 14 fichiers revus, 2 suggestion
 - client-angular mss-lib : **115 / 115** Vitest (cached, inchangé — pas de spec ajouté pour le badge `mail-superseded-badge`, déférée avec le suggested follow-up sur le lien clickable)
 
 HAG (règle 10) : test manuel humain selon `## Manual Test Plan` (5 scénarios INT.18 sur les 2 frontends), puis `/merge task-034 --i-tested` pour squash-merger les 3 PRs en topological order.
+
+## Merged
+
+- **2026-05-07** — 3 PRs squash-mergées par le humain via `/merge task-034 --i-tested`, ordre topologique `dtos-mss → api-mail → client-blazor`.
+- `dtos-mss` : squash sha **`b55273c`** sur `develop` — PR #17 closed, remote branch supprimée (--delete-branch), local préservée.
+- `api-mail` : squash sha **`be65a2b`** sur `develop` — PR #48 closed, remote branch supprimée. **Bonus** : le squash a embarqué en plus 2 zips CDA samples (`Resources/cda-samples/DLU-FLUDT_2021.01/IHE_XDM.ZIP` + `Malformed/IHE_XDM.ZIP`) et `CdaParsingIntegrationTests.cs` ajoutés post-PR par le humain — apport partiel à `task-032quater-cda-samples`.
+- `client-blazor` : squash sha **`5bcb90a`** sur `develop` — PR #46 closed, remote branch supprimée.
+- `interop-cda` : branche `feat/task-034-int18-cda-versioning` (vide, 0 commit) supprimée du remote en cleanup.
+- `client-angular` : code-only — humain gère commit/push TFS et PR (cf. `mail.model.ts`, `mail-header.component.ts`, `mail-header.component.html` modifiés).
+- CI `develop` (api-mail) : ✓ green — workflow `Build and Publish` succeeded.
