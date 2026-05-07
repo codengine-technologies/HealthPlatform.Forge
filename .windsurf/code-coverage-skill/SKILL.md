@@ -10,7 +10,7 @@ applyTo:
 
 # Code Coverage Improvement Skill
 
-Ce skill implémente un processus itératif pour améliorer la couverture de code du projet backend D:\TechWatch\HealthPlatform\Api\Mail\HealthPlatform.Api.Mail.sln en créant les tests unitaires manquants jusqu'à atteindre un objectif de **98% de couverture globale** ou un maximum de **5 itérations**.
+Ce skill implémente un processus itératif pour améliorer la couverture de code du projet backend `Api/Mail/HealthPlatform.Api.Mail.sln` (chemin relatif à la racine du repo) en créant les tests unitaires manquants jusqu'à atteindre un objectif de **98% de couverture globale** ou un maximum de **5 itérations**.
 
 ## Objectif
 
@@ -52,7 +52,7 @@ Ce skill implémente un processus itératif pour améliorer la couverture de cod
 ### Étape 1 : Lancer l'analyse SonarQube
 
 Utiliser le skill `sonar-skill` pour lancer une analyse complète. Suivre la procédure documentée dans ce skill :
-- Préparer l'environnement (se placer dans `Api\Mail`)
+- Préparer l'environnement (se placer dans `Api/Mail`, relatif à la racine du repo)
 - `dotnet sonarscanner begin` avec les exclusions `**/devops/**,**/load-tests/**,**/AppHost/**`
 - Build de la solution `HealthPlatform.Api.Mail.sln`
 - Exécuter les 5 projets de test (`mss.mail.*.tests`) avec couverture OpenCover
@@ -131,7 +131,7 @@ Pour chaque classe sélectionnée :
 
 #### 6a. Identifier le projet de test correspondant
 
-Base : `D:\TechWatch\HealthPlatform\Api\Mail\tests`
+Base (relative à la racine du repo) : `Api/Mail/tests`
 
 | Projet source               | Projet de test associé              |
 |-----------------------------|-------------------------------------|

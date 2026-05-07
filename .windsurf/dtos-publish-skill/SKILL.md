@@ -15,6 +15,12 @@ push. Tant que le push n'a pas eu lieu, l'API backend, le shell Blazor et les
 proxies (`psc-auth-proxy`) consomment la version précédente et ne peuvent pas
 référencer les nouveaux champs.
 
+> **Convention de chemins** : toutes les commandes ci-dessous utilisent des
+> chemins **relatifs à la racine du repo `HealthPlatform.Forge`**. L'agent
+> doit exécuter chaque `run_command` avec `Cwd` posé sur cette racine (ex.
+> `d:\TechWatch\HealthPlatform` sur la machine de l'utilisateur). De cette
+> manière le skill reste portable entre machines / OS.
+
 ## Quand déclencher ce skill
 
 Dès qu'un fichier sous `Dtos/` est ajouté, modifié ou supprimé :
@@ -30,8 +36,8 @@ Dès qu'un fichier sous `Dtos/` est ajouté, modifié ou supprimé :
 1. **Vérifier l'état du sous-repo**
 
    ```powershell
-   git -C d:\TechWatch\HealthPlatform\Dtos status --short
-   git -C d:\TechWatch\HealthPlatform\Dtos rev-parse --abbrev-ref HEAD
+   git -C Dtos status --short
+   git -C Dtos rev-parse --abbrev-ref HEAD
    ```
 
 2. **Confirmer la branche cible** avec l'utilisateur si elle diffère de la
@@ -42,20 +48,20 @@ Dès qu'un fichier sous `Dtos/` est ajouté, modifié ou supprimé :
    `artifacts/`)&nbsp;:
 
    ```powershell
-   git -C d:\TechWatch\HealthPlatform\Dtos add <fichiers explicites>
+   git -C Dtos add <fichiers explicites>
    ```
 
 4. **Commit avec un message conventionnel** (préfixe `feat`, `fix`, `chore`)
    décrivant le changement de contrat&nbsp;:
 
    ```powershell
-   git -C d:\TechWatch\HealthPlatform\Dtos commit -m "feat(dto): add AttachmentCount on MailDto"
+   git -C Dtos commit -m "feat(dto): add AttachmentCount on MailDto"
    ```
 
 5. **Push sur l'origine GitHub**&nbsp;:
 
    ```powershell
-   git -C d:\TechWatch\HealthPlatform\Dtos push origin <branche-courante>
+   git -C Dtos push origin <branche-courante>
    ```
 
    Si la branche n'existe pas encore distante, ajouter `--set-upstream`.
@@ -67,7 +73,7 @@ Dès qu'un fichier sous `Dtos/` est ajouté, modifié ou supprimé :
 
    ```powershell
    # Récupérer le SHA du commit que l'on vient de pousser
-   $sha = git -C d:\TechWatch\HealthPlatform\Dtos rev-parse HEAD
+   $sha = git -C Dtos rev-parse HEAD
 
    # Récupérer l'ID du run associé à ce SHA (peut prendre quelques secondes
    # pour apparaître après le push)
@@ -126,12 +132,12 @@ Dès qu'un fichier sous `Dtos/` est ajouté, modifié ou supprimé :
 
    ```powershell
    # Mail API
-   git -C d:\TechWatch\HealthPlatform\Api\Mail add Directory.Packages.props
-   git -C d:\TechWatch\HealthPlatform\Api\Mail commit -m "chore(deps): bump HealthPlatform.Dtos.Mss to $nugetVersion"
+   git -C Api/Mail add Directory.Packages.props
+   git -C Api/Mail commit -m "chore(deps): bump HealthPlatform.Dtos.Mss to $nugetVersion"
 
    # Blazor
-   git -C d:\TechWatch\HealthPlatform\Client\Blazor add Directory.Packages.props
-   git -C d:\TechWatch\HealthPlatform\Client\Blazor commit -m "chore(deps): bump HealthPlatform.Dtos.Mss to $nugetVersion"
+   git -C Client/Blazor add Directory.Packages.props
+   git -C Client/Blazor commit -m "chore(deps): bump HealthPlatform.Dtos.Mss to $nugetVersion"
    ```
 
    **Important** : ne stager **que** `Directory.Packages.props`. Les
@@ -151,7 +157,7 @@ Dès qu'un fichier sous `Dtos/` est ajouté, modifié ou supprimé :
 
 ## Garde-fous
 
-- **Toujours utiliser `git -C d:\TechWatch\HealthPlatform\Dtos`** : le repo
+- **Toujours utiliser `git -C Dtos`** : le repo
   parent (`HealthPlatform.Forge`) ne doit pas recevoir les changements DTO.
 - **Ne jamais committer en parallèle dans les deux repos** dans le même appel
   de tool : faire d'abord le sous-repo, ensuite le repo principal pour les
@@ -163,8 +169,9 @@ Dès qu'un fichier sous `Dtos/` est ajouté, modifié ou supprimé :
 
 ## Outils MCP / CLI disponibles
 
-- `mcp3_git_status`, `mcp3_git_add`, `mcp3_git_commit` (sur `repo_path =
-  d:/TechWatch/HealthPlatform/Dtos`).
+- `mcp3_git_status`, `mcp3_git_add`, `mcp3_git_commit` (sur `repo_path` =
+  chemin absolu du sous-repo `Dtos`, à résoudre depuis la racine du workspace ;
+  ex. `<workspace>/Dtos`).
 - Le push n'est pas exposé par le MCP&nbsp;: utiliser `run_command` avec
   `git push` (commande non destructrice mais qui mute l'état distant, donc
   jamais en `SafeToAutoRun=true`).
@@ -186,20 +193,20 @@ Dès qu'un fichier sous `Dtos/` est ajouté, modifié ou supprimé :
 
 ```powershell
 # 1. État
-git -C d:\TechWatch\HealthPlatform\Dtos status --short
+git -C Dtos status --short
 
 # 2. Stage du seul fichier modifié
-git -C d:\TechWatch\HealthPlatform\Dtos add MailDto.cs
+git -C Dtos add MailDto.cs
 
 # 3. Commit
-git -C d:\TechWatch\HealthPlatform\Dtos commit -m "feat(dto): add AttachmentCount on MailDto"
+git -C Dtos commit -m "feat(dto): add AttachmentCount on MailDto"
 
 # 4. Push
 $branch = 'feat/task-017-impression-export-email-audit'
-git -C d:\TechWatch\HealthPlatform\Dtos push origin $branch
+git -C Dtos push origin $branch
 
 # 5. Attendre la CI
-$sha = git -C d:\TechWatch\HealthPlatform\Dtos rev-parse HEAD
+$sha = git -C Dtos rev-parse HEAD
 Start-Sleep -Seconds 5  # laisser le temps à GitHub d'enregistrer le run
 $runId = gh run list --repo codengine-technologies/HealthPlatform.Dtos.Mss `
     --commit $sha --limit 1 --json databaseId --jq '.[0].databaseId'
@@ -213,6 +220,6 @@ $nugetVersion = "$runNumber.0.0"
 # 7. Bump dans le repo consommateur (Mail API)
 # Editer Api/Mail/Directory.Packages.props : remplacer la version par $nugetVersion
 # puis :
-git -C d:\TechWatch\HealthPlatform add Api/Mail/Directory.Packages.props
-git -C d:\TechWatch\HealthPlatform commit -m "chore(deps): bump HealthPlatform.Dtos.Mss to $nugetVersion"
+git -C Api/Mail add Directory.Packages.props
+git -C Api/Mail commit -m "chore(deps): bump HealthPlatform.Dtos.Mss to $nugetVersion"
 ```
