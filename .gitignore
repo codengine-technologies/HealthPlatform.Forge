@@ -29,6 +29,11 @@
 !questions/
 !questions/**
 
+!.windsurf/
+!.windsurf/**
+# never commit machine-local Windsurf settings (e.g. MCP secrets)
+.windsurf/mcp.local.json
+
 # .feature files are PO property (CLAUDE.md rule 1a) — keep them under forge-control
 !tests/
 tests/*
