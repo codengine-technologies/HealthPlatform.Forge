@@ -326,3 +326,114 @@ GET /api/v1/patients/with-unread-mails?limit={int}
   filtrage par patient/INS déjà en place dans la BAL (cf. v1.24 — la
   recherche avancée connaît déjà le filtre patient). Pas de nouveau
   paramètre query à introduire.
+
+## Branches
+
+- `api-mail` (pushed) : `feat/task-035-widget-patient` — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-035-widget-patient
+- `client-blazor` (pushed) : `feat/task-035-widget-patient` — https://github.com/codengine-technologies/HealthPlatform.Client/tree/feat/task-035-widget-patient
+- `dtos-mss` (pushed) : `feat/task-035-widget-patient` — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-035-widget-patient
+- `client-angular` (code-only) : forge writes code on the branch currently checked out in `Client/Angular/` — humain gère branche, commit, push, PR TFS. Snapshot au moment de `/start` : `feature/nova-rewriting-mss-fixes-20260410`.
+
+## Develop log
+
+- **Repos touched** : `dtos-mss`, `api-mail`, `client-blazor`, `client-angular`
+- **DTOs published** : `HealthPlatform.Dtos.Mss` 276.0.0 → 279.0.0 (CI run 25630167322 ✓)
+- **Interop published** : no interop change
+- **Commits** :
+  - `dtos-mss` : `2a92ac3` feat(dto): add PatientWithUnreadMailsDto + BiologySeverity/IntegrationStatus enums (task-035)
+  - `api-mail` : `9d77987` feat(api): add /patients/with-unread-mails endpoint for Patient Widget (task-035)
+  - `client-blazor` : `37b9d88` feat(mss): Patient Widget showing 5 patients with unread mails (task-035)
+  - `client-angular` : **uncommitted** (code-only mode — humain gère commit/push/PR TFS) on branch `feature/nova-rewriting-mss-fixes-20260410`
+- **Local build / test** :
+  - `dtos-mss` : ✓ build green
+  - `api-mail` : ✓ build green / 1972 tests passing (0 failure, 16 AI tests skipped intentionally)
+  - `client-blazor` : ✓ build green / 50 tests passing (5 new for PatientWidgetComponent)
+  - `client-angular` : ✓ `mss-lib` build green / 8 new patient-widget Vitest tests passing
+    (pre-existing failures in `mail-detail.component.spec.ts` + `mail-list.component.spec.ts` — 18 tests — caused by `MSS_ACCESS_TOKEN` injection issue **unrelated to task-035**, present on HEAD before this task; production budget warnings on `weda2` also pre-existing)
+- **Angular files modified** (uncommitted, on the branch the human had checked out) :
+  - `front/libs/mss/src/core/services/mss-api.service.ts` (+11 lines : new `getPatientsWithUnreadMails` method)
+  - `front/libs/mss/src/features/dashboard/mss-dashboard.component.ts` (+4 lines : import PatientWidget)
+  - `front/libs/mss/src/features/dashboard/mss-dashboard.component.html` (+5 lines : `<mss-patient-widget />`)
+  - `front/libs/mss/src/ui/index.ts` (+1 line : barrel export)
+  - `front/libs/mss/src/core/models/patient-with-unread-mails.model.ts` (new)
+  - `front/libs/mss/src/ui/patient-widget/patient-widget.component.ts` (new)
+  - `front/libs/mss/src/ui/patient-widget/patient-widget.component.html` (new)
+  - `front/libs/mss/src/ui/patient-widget/patient-widget.component.scss` (new)
+  - `front/libs/mss/src/ui/patient-widget/patient-widget.component.spec.ts` (new)
+- **DOD self-check** :
+  - Backend : ✓ build, ✓ tests, ✓ DTO published, ✓ endpoint `GET /api/v1/Patients/with-unread-mails?limit={int}` (clamped 1..20, default 5), ✓ service + repo + 5 unit + 6 integration tests, ✓ cross-tenant test (per-user DB architecture)
+  - Blazor : ✓ build, ✓ tests, ✓ widget integrated as `IAlertWidget`, ✓ empty state, ✓ kebab with 3 actions (View Patient disabled when no qualified INS, with tooltip), ✓ View Email reuses existing route to `MailDetailComponent`, ✓ SSE refresh via `IMailHubService.OnEmailsEnriched`/`OnNotificationReceived`, ✓ FR + EN i18n, ✓ data-testid, ✓ 5 bUnit tests
+  - Angular : ✓ build (mss-lib), ✓ 8 Vitest tests, ✓ widget added to `mss-dashboard`, ✓ empty state, ✓ kebab with 3 actions (View Patient disabled when no qualified INS), ✓ View Email dispatches custom event for host routing, ✓ SSE refresh via `MailEventsStreamService.emailsEnriched$`, ✓ data-testid parity with Blazor
+  - Parité : ✓ same data-testid hooks, same 3 actions, same indicators
+  - **Manual test plan items** : deferred to HAG (human runs the stack and verifies end-to-end).
+- **Next step** : `/sonar` (best-effort cleanup on `api-mail`).
+
+## Sonar log
+
+- **Mode** : A (chained from `/develop`) on branch `feat/task-035-widget-patient`
+- **Baseline KPIs** (snapshot before run) :
+  - bugs = 0 ✓ (hard target met)
+  - vulnerabilities = 0 ✓ (hard target met)
+  - reliability_rating = A ✓
+  - security_rating = A ✓
+  - sqale_rating = A ✓ (hard target met)
+  - code_smells = 728
+  - security_hotspots = 5 (all TO_REVIEW — require human review)
+  - coverage = 54.4 % (hard target ≥ 95 % — long-term, not realistically improved by mechanical cleanup)
+  - duplicated_lines_density = 4.1 %
+- **Issue distribution analysed** :
+  - CA1873 (622 INFO, external_roslyn) — expensive logging methods. Spread across many files ; a 30-file batch would only fix a slice.
+  - S3776 (39 CRITICAL) — **blacklisted** (handled by `/sonar-s3776`).
+  - CA1862 (36 INFO, external_roslyn) — `string.Contains` overloads. **All 36 occurrences are inside EF Core LINQ queries** (`.ToLower().Contains(...)` patterns translated to SQL `LOWER(col) LIKE …`). Switching to `StringComparison.OrdinalIgnoreCase` would break EF Core translation ; switching to `EF.Functions.ILike(...)` is a behavioural change requiring a test per call-site. **Rejected as too risky for the autonomous chain.**
+  - S1192 (17 MINOR) — duplicate string literals, **all in `20240101_SetupMigration.cs`** (frozen migration file ; modifying it could regenerate / shift snapshots).
+  - S107 (9 MAJOR) — too-many-parameters constructors. Signature changes ripple through DI ; rejected.
+  - S6960 (3 MAJOR) — controllers with multiple responsibilities. Architectural refactor, rejected.
+  - S1075 (1 MINOR) — single hardcoded `DefaultFlagsmithApiUrl` — documented dev fallback, debatable design fix.
+  - S1135 (1 INFO) — TODO marker (not actionable).
+- **Iterations executed** : 0
+- **Issues fixed** : 0
+- **Issues remaining** : 728 (best-effort acceptance — no tractable batch found that fits the autonomous chain's risk envelope)
+- **Build / tests** : ✓ green (verified during `/develop`, no regression introduced by `/sonar`)
+- **Next step** : `/review task-035`
+
+## PRs
+
+- `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/21 — label `awaiting-human-merge`
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/54 — label `awaiting-human-merge`
+- `client-blazor` : https://github.com/codengine-technologies/HealthPlatform.Client/pull/50 — label `awaiting-human-merge`
+- `client-angular` : **code-only** — humain gère commit/push TFS et ouverture PR. Branch at `/start` time : `feature/nova-rewriting-mss-fixes-20260410`. Files modified (uncommitted) :
+  - `front/libs/mss/src/core/services/mss-api.service.ts` (modified)
+  - `front/libs/mss/src/features/dashboard/mss-dashboard.component.html` (modified)
+  - `front/libs/mss/src/features/dashboard/mss-dashboard.component.ts` (modified)
+  - `front/libs/mss/src/ui/index.ts` (modified)
+  - `front/libs/mss/src/core/models/patient-with-unread-mails.model.ts` (new)
+  - `front/libs/mss/src/ui/patient-widget/patient-widget.component.ts` (new)
+  - `front/libs/mss/src/ui/patient-widget/patient-widget.component.html` (new)
+  - `front/libs/mss/src/ui/patient-widget/patient-widget.component.scss` (new)
+  - `front/libs/mss/src/ui/patient-widget/patient-widget.component.spec.ts` (new)
+
+## Code Review Summary
+
+**Verdict : APPROVED** — no blocking issues across all 4 repos.
+
+- ✅ **Correctness** — Repository aggregation correctly filters unread INBOX docs with linked patients, excludes suppressed/duplicates/superseded ; widget lifecycle properly handles loading / SSE refresh / disposal.
+- ✅ **Security** — No injection risks (EF parameterized queries) ; Blazor auto-escapes output ; `Uri.EscapeDataString` on URL params ; per-user DB tenant isolation enforced architecturally.
+- ✅ **Architecture** — Repository pattern, DTOs at boundary, IAlertWidget auto-discovery, no business logic in components.
+- ✅ **Code quality** — Follows existing patterns (mirrors `AbnormalBiologyWidget`), comments explain "why", proper async disposal.
+- ✅ **Performance** — 4 bounded queries (unread INBOX is small), `AsNoTracking`, in-memory grouping after server-side filter, `Take(limit)` at end.
+- ✅ **Tests** — 5 unit + 6 integration on backend ; 5 bUnit on Blazor ; 8 Vitest on Angular ; cross-tenant test included.
+- ⚠️ **Suggestion (non-blocking)** — Angular FR + EN i18n DOD item bypassed because the host `mss-lib` has no @ngx-translate infrastructure ; widget mirrors the existing `AbnormalBiologyWidget` Angular pattern (FR-only). This is a pre-existing module-level limitation, not a regression introduced by task-035.
+- ⚠️ **Suggestion (non-blocking)** — `.ToLower() == "inbox"` follows the existing pattern in `MailRepository`/`PatientRepository` (CA1862 false positive in EF Core LINQ context, see Sonar log). Consistent with codebase style.
+
+## Merged
+
+Merged on 2026-05-10 by the human (`/merge task-035 --i-tested`). Squash-merged in topological order (dtos-mss → api-mail → client-blazor) ; remote feature branches deleted, local branches preserved for retro-inspection.
+
+- `dtos-mss` : `e0bd26a` (PR #21 closed) — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/21
+- `api-mail` : `f8c6305` (PR #54 closed) — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/54
+- `client-blazor` : `c1f60ff` (PR #50 closed) — https://github.com/codengine-technologies/HealthPlatform.Client/pull/50
+- `client-angular` : managed manually by the human (TFS — code-only mode)
+
+`develop` CI : ✓ green on every pushable repo within 2 min of the last merge.
+
+**Note** : the human chose "Merge PRs as-is" at the merge gate. The task-035 v2 follow-ups (Patient.razor `?ins=` query param, Blazor `MailDetailComponent` modal, Angular query-param wiring, kebab visibility / dropdown clipping fixes, Angular mail-preview modal reusing `MailReadOnlyViewComponent`) were stashed locally and are NOT on `develop`. They remain in the local stashes (popped back into the working trees) for the human to either ship in a follow-up task or amend manually.
