@@ -11,27 +11,39 @@ au moins un compte-rendu de biologie avec une valeur anormale (`IsFlagged`
 posé par `CdaParsingService` sur tout `InterpretationCode` ∈
 `{L, H, A, LL, HH, AA}`). Le médecin doit pouvoir, en 1 clic, déclarer
 **l'action qu'il a entreprise** : pris connaissance / rappelé le patient /
-convoqué / adressé à un confrère. Chaque action génère une trace audit
-horodatée portant l'identité du médecin, le `DocumentId` du CDA concerné
-et l'action choisie.
+convoqué / adressé à un confrère, puis explicitement **clôturer le cas**
+via une action de résolution distincte. Chaque action génère une trace
+audit horodatée portant l'identité du médecin, le `DocumentId` du CDA
+concerné et l'action choisie.
 
 L'objectif n'est pas réglementaire (la table E009 §10.x ne mentionne pas
 encore d'exigence d'acquittement — RG-E009-051/052 couvrent uniquement
 détection + affichage) mais **médico-légal** : aujourd'hui rien dans le
-système ne prouve que le médecin a vu une valeur critique. Une bio
-anormale non-ackée reste visuellement persistante tant qu'aucune action
-n'a été posée — le médecin ne peut pas « louper » la valeur silencieusement.
+système ne prouve qu'un médecin identifié a effectivement pris en charge
+une anomalie biologique. Un mail MSS peut être lu par une secrétaire ou
+un assistant administratif sans qu'un médecin n'ait réellement vu les
+données cliniques critiques ; le mécanisme d'ack lève cette ambiguïté en
+exigeant un clic explicite signé par le user JWT authentifié (avec rôle
+`Doctor` requis côté backend).
+
+Le workflow introduit un **état de résolution clinique** : tant qu'une
+action `MarkResolved` n'est pas posée, le CDA reste visible (badge inbox,
+panneau viewer, tuile dashboard) — le médecin doit consciemment clôturer
+le cas. Une **tuile KPI sur le dashboard** surface le volume de CDA en
+attente de résolution, et un **filtre chip "bio non-résolue"** dans
+l'inbox permet d'accéder rapidement à la liste.
 
 ## Contexte — l'existant à réutiliser
 
 | Pièce | Localisation | Réutilisation |
 |---|---|---|
 | Détection `IsFlagged` (HL7) | `Api/Mail/src/Application/Services/Implementation/CdaParsingService.cs` (≈ ligne 192) | Pas de changement — déjà en place |
-| Distinction critical / warning | `AbnormalBiologyValueDto.IsCritical` (helper sur codes `LL/HH/AA`) | Réutilisé pour la couleur du badge persistant |
-| Widget « biologie anormale » F004 | `Client/Blazor/Src/Modules/Mss/Plugin/AbnormalBiologyWidgetComponent.razor` + Angular `ui/abnormal-biology-widget/` | Pas modifié dans cette US — focus sur le viewer mail |
-| Audit framework task-004 | `Api/Mail/src/Domain/Entities/MssAuditTrace.cs` + `Dtos/AuditActionType.cs` (19 types existants) | Étendu de 4 nouveaux types |
-| PendingAction queue offline | `Dtos/PendingActionTypes.cs` (6 types existants) | Étendu de 4 nouveaux types |
-| Pattern aggregate inbox-row | `MailDto.PendingIntegrationsCount` (task-011) — calculé serveur-side, surface inbox sans charger le contenu | Pattern strictement copié pour `HasAbnormalBiology` + `AbnormalBiologyCount` |
+| Distinction critical / warning | `AbnormalBiologyValueDto.IsCritical` (helper sur codes `LL/HH/AA`) | Réutilisé pour la couleur du badge persistant + déclenche la modal de confirmation |
+| Widget « biologie anormale » F004 | `Client/Blazor/Src/Modules/Mss/Plugin/Widgets/AbnormalBiologyWidgetComponent.razor` + Angular `ui/abnormal-biology-widget/` | **Inchangé** dans cette US — la nouvelle tuile KPI est un composant séparé sur le dashboard |
+| Audit framework task-004 | `Api/Mail/src/Domain/Entities/MssAuditTrace.cs` + `Dtos/AuditActionType.cs` (19 types existants) | Étendu de 5 nouveaux types |
+| PendingAction queue offline | `Dtos/PendingActionTypes.cs` (6 types existants) | Étendu de 5 nouveaux types |
+| Pattern aggregate inbox-row | `MailDto.PendingIntegrationsCount` (task-011) — calculé serveur-side, surface inbox sans charger le contenu | Pattern strictement copié pour `HasAbnormalBiology` + `PendingBiologyAcksCount` |
+| Filtres chips inbox | Mécanique chips existante de la barre filtres inbox (Blazor + Angular) | Étendue d'un nouveau chip `bio-non-resolved` |
 
 ## Comportement attendu
 
@@ -40,48 +52,93 @@ n'a été posée — le médecin ne peut pas « louper » la valeur silencieusem
 Un mail IHE_XDM peut porter plusieurs `MailMedicalDocument`. Chaque CDA
 qui contient au moins une valeur `IsFlagged` est **éligible** à
 l'acquittement. L'ack est posé **par-CDA**, jamais par-mail. Si un mail
-porte 3 CDA dont 2 avec bio anormale, le médecin pose 2 acks distincts.
+porte 3 CDA dont 2 avec bio anormale, le médecin pose 2 résolutions
+distinctes (et autant d'actions de prise en charge intermédiaires que
+nécessaire).
 
-### 4 actions exposées (enum partagée)
+### 5 actions exposées (enum partagée)
 
 `BiologyAckActionType` (nouvel enum dans `Dtos/`) :
+
+**4 actions de prise en charge (déclaratives, non clôturantes)** :
 - `Acknowledged` (« J'ai pris connaissance »)
-- `PatientCalled` (« Je rappelle le patient » — déclaratif, pas
+- `PatientCalled` (« J'ai rappelé le patient » — déclaratif, pas
   d'intégration téléphonie ni SMS)
 - `PatientSummoned` (« Je convoque le patient »)
 - `ReferredToColleague` (« J'adresse à un confrère »)
 
-Aucune des 4 actions ne déclenche d'envoi automatique vers le patient
+**1 action de clôture (résolutoire)** :
+- `MarkResolved` (« Marquer comme résolu » — clôture explicite du cas
+  clinique. Le médecin déclare avoir fini la prise en charge OU que le
+  cas n'est pas actionnable (drift connu, patient sous traitement). Une
+  note libre est recommandée pour ce dernier usage.)
+
+Aucune des 5 actions ne déclenche d'envoi automatique vers le patient
 (pas de SMS, pas de mail auto, pas de notification MES). Pure trace
 déclarative.
+
+### Workflow d'état dérivé (Pending / InProgress / Resolved)
+
+L'état de résolution clinique d'un CDA flaggé est **calculé** à la lecture
+(pas stocké comme état mutable) :
+
+| État | Critère |
+|---|---|
+| `Pending` | Aucun ack posé par le user courant sur ce CDA |
+| `InProgress` | ≥ 1 ack posé, mais aucun `MarkResolved` |
+| `Resolved` | Au moins un `MarkResolved` posé (le plus récent) |
+
+Cet état n'est pas un champ de l'entité — c'est une vue calculée par le
+repository. Pas de migration d'état stocké, pas de mutation. Append-only
+préservé.
 
 ### Affichage des boutons
 
 Sous le viewer mail (Blazor `MailDetailComponent`, Angular `mail-detail`)
 **dès qu'au moins un CDA du mail porte `IsFlagged == true`** (critical
-ou warning indifférement — la sévérité drive la couleur du badge mais
-**pas** la disponibilité des boutons), un panneau d'actions par-CDA
-s'affiche.
+ou warning indifféremment — la sévérité drive la couleur du badge ET la
+friction UX sur les boutons, mais **pas** la disponibilité), un panneau
+d'actions par CDA s'affiche.
 
 Si plusieurs CDA flaggés cohabitent dans le mail :
 - En Blazor : un panneau par CDA, en pied de chaque section CDA dans
   le viewer (ou dans l'onglet Biologie)
 - En Angular : idem, panneau par CDA
 
-Chaque panneau présente les 4 boutons + la **dernière action posée**
-(si déjà ackée) :
+Chaque panneau présente les 4 boutons de prise en charge, **plus** le
+bouton `MarkResolved` visuellement distinct (séparateur + style "primary
+confirm"), plus la **dernière action posée** (si déjà ackée) :
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ ⚠️ Bio anormale — Compte-rendu du 03/05/2026               │
 │                                                             │
-│  Dernière action : « Je rappelle le patient »              │
+│  Dernière action : « J'ai rappelé le patient »             │
 │  par Dr Dupont, le 03/05/2026 à 14:32                     │
 │                                                             │
 │  [ Pris connaissance ] [ Rappel patient ] [ Convocation ]  │
 │  [ Adressage confrère ]                                    │
+│  ─────────────────────────────────────────────────────     │
+│  [ ✓ Marquer comme résolu ]                                │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+### Friction supplémentaire pour les valeurs critiques
+
+Quand le CDA contient au moins une valeur `IsCritical` (codes `LL/HH/AA`),
+**chaque clic sur l'un des 5 boutons** ouvre une modal de confirmation
+qui :
+- Affiche le code LOINC du compte-rendu
+- Liste les valeurs critiques avec valeur + unité + intervalle de
+  référence (par ex. « Potassium = 2.1 mmol/L — réf. 3.5-5.0 »)
+- Confirme l'action choisie en clair
+- Exige un clic explicite `[ Confirmer ]` pour persister, sinon `[ Annuler ]`
+
+Pour les CDA non-critical (uniquement `L/H/A`), pas de modal — clic direct
+sur le bouton enregistre l'action.
+
+**Médico-légal** : la modal prouve que le médecin a vu la valeur précise,
+pas juste « un truc anormal ». Capture screenshot-friendly pour litige.
 
 ### Réversibilité — non-réversible, mais rectifiable
 
@@ -90,80 +147,169 @@ l'audit pour toujours.
 
 Le médecin peut **poser une action complémentaire** (par ex. d'abord
 « pris connaissance » à 14:00, puis « convoque » à 14:15 après
-réflexion). Chaque clic = un nouvel audit entry. L'UI affiche
-**uniquement la dernière action** comme état courant, mais l'historique
-complet est conservé en BDD.
+réflexion, puis « marquer comme résolu » à 16:00). Chaque clic = un
+nouvel audit entry. L'UI affiche **uniquement la dernière action** comme
+état courant, mais l'historique complet est conservé en BDD.
+
+Le `MarkResolved` lui-même peut être suivi d'autres actions (par ex.
+le médecin marque résolu trop vite, puis pose un `PatientCalled`
+complémentaire). Dans ce cas l'état dérivé du CDA reste `Resolved`
+tant que **le dernier `MarkResolved` est postérieur à la dernière
+action non-résolutoire** — sinon repasse à `InProgress`.
 
 L'UI n'expose pas l'historique complet en v1 (gardé en audit, accessible
 via `/audit-trail` si besoin). Follow-up possible : affichage timeline
 des actions posées sur ce CDA si le PO le demande.
 
-### Persistance et badge inbox
+### Persistance et badge inbox — 3 états
 
-Tant qu'**au moins un CDA flaggé du mail n'a aucune action posée**, le
-mail garde un badge persistant sur la ligne inbox :
+Le badge sur la ligne inbox reflète l'état agrégé des CDA flaggés du mail :
 
-- **Couleur rouge** si au moins un CDA non-acké contient une valeur
-  critique (`LL/HH/AA`)
-- **Couleur orange** sinon (que des `L/H/A`)
+| État badge | Condition |
+|---|---|
+| **Rouge** | Au moins un CDA flaggé `IsCritical` n'est pas `Resolved` |
+| **Orange** | Au moins un CDA flaggé (warning uniquement) n'est pas `Resolved` |
+| **Invisible** | Tous les CDA flaggés du mail sont `Resolved` |
 
-Une fois que **tous les CDA flaggés du mail ont au moins une action
-posée**, le badge disparaît. Le bouton du dernier ack reste visible
-dans le viewer.
+La transition est driven par `MarkResolved` uniquement. Un clic
+`Acknowledged` seul ne fait **pas** disparaître le badge (changement
+par rapport à la v0 de la spec — décision PO : éviter qu'un médecin
+ferme accidentellement un cas).
+
+Le panneau d'actions reste visible dans le viewer même après
+`MarkResolved` — le médecin peut toujours poser une action complémentaire
+si la situation évolue.
 
 ### Aggregates serveur-side
 
 Pour éviter de charger le contenu CDA complet quand l'inbox calcule
-ses badges, le backend ajoute deux nouveaux champs sur `MailDto` :
+ses badges, le backend ajoute des champs sur `MailDto` :
 
 - `MailDto.HasAbnormalBiology : bool` — vrai si au moins un CDA du
   mail a au moins une valeur `IsFlagged`
 - `MailDto.PendingBiologyAcksCount : int` — nombre de CDA flaggés
-  du mail qui n'ont **aucune** action posée par l'utilisateur courant
+  du mail qui ne sont **pas** `Resolved` pour le user courant
+- `MailDto.HasCriticalPendingBiologyAck : bool` — vrai si au moins un
+  CDA flaggé `IsCritical` n'est pas `Resolved` (drive la couleur rouge
+  du badge inbox sans charger le contenu)
 
-Le badge inbox lit ces deux champs (pas le contenu).
+Et sur `MailMedicalDocumentDto` :
+- `LastBiologyAck : BiologyAckDto?` — denormalized last ack pour
+  affichage rapide ; null tant qu'aucune action posée
+- `BiologyAckState : BiologyAckResolutionState` — vue calculée
+  (`Pending` / `InProgress` / `Resolved`) pour le composant panel
 
-### Audit trace — 4 nouveaux `AuditActionType`
+Le calcul se fait en 1 query SQL agrégée par mail (pas N+1).
+
+### Audit trace — 5 nouveaux `AuditActionType`
 
 - `BiologyAcknowledged`
 - `BiologyPatientCalled`
 - `BiologyPatientSummoned`
 - `BiologyReferredToColleague`
+- `BiologyMarkedResolved`
 
 Chaque action enregistre un `MssAuditTrace` avec les champs habituels
 (task-004) **plus** :
 - `DocumentId` (FK CDA)
 - `DocumentLoinc` (code LOINC du compte-rendu)
-- `PatientIns` (matricule INS du patient)
-- `PatientName` (nom + prénom du patient — si dispo via le CDA)
+- `PatientIns` (matricule INS du patient — snapshot au moment de l'ack,
+  conservé même si l'INS est corrigé ultérieurement)
+- `PatientName` (nom + prénom du patient — snapshot, si dispo via le CDA)
 
 ### Note libre optionnelle
 
 Chaque action peut porter une **note libre** courte (max 500 chars), par
-ex. « Patient injoignable, laissé message » sur `PatientCalled`. Stockée
-sur l'audit trace dans un champ existant `Note` (à vérifier) ou nouveau
-`AckNote`. Optionnel — pas bloquant si absent.
+ex. « Patient injoignable, laissé message » sur `PatientCalled`, ou
+« Drift connu, patient sous diurétique » sur `MarkResolved`. Stockée
+sur l'**entité `BiologyAck`** (colonne `Note VARCHAR(500) NULL` —
+voir migration ci-dessous), **pas** sur l'audit trace. L'audit trace
+porte le `BiologyAck.Id` en référence ; la note est consultable via
+l'entité.
+
+Optionnelle pour les 5 actions. Pas de validation de longueur minimale.
 
 ### Mode offline (PendingAction)
 
-Les 4 actions sont enqueable comme `PendingAction` quand le médecin est
-hors ligne (parité avec `MarkRead`/`MarkFlagged`). 4 nouveaux
+Les 5 actions sont enqueable comme `PendingAction` quand le médecin est
+hors ligne (parité avec `MarkRead`/`MarkFlagged`). 5 nouveaux
 `PendingActionType` :
 - `BiologyAckAcknowledged`
 - `BiologyAckPatientCalled`
 - `BiologyAckPatientSummoned`
 - `BiologyAckReferredToColleague`
+- `BiologyAckMarkResolved`
 
 Le payload de la pending action porte `DocumentId` + éventuelle note +
 horodatage local du clic. Au reconnect, `PendingActionService` rejoue
 l'appel à l'endpoint, l'audit trace porte le timestamp client-side
 (le serveur stocke aussi son `ServerReceivedAt`).
 
+## Widget KPI Dashboard — nouvelle tuile
+
+### Composant `BiologyAckPendingKpiTile` (Blazor + Angular)
+
+Tuile compacte sur le dashboard, distincte du widget F004 existant
+(qui reste inchangé) :
+
+```
+╔══════════════════════════════════╗
+║  ⚠️  Bio en attente d'ack       ║
+║                                  ║
+║       🔴 2 critical              ║
+║       🟠 3 warning               ║
+║                                  ║
+║       [ Voir l'inbox → ]         ║
+╚══════════════════════════════════╝
+```
+
+- Si `criticalPending > 0` → bordure rouge + icône ⚠️ rouge
+- Sinon si `warningPending > 0` → bordure orange
+- Sinon → état "vide" stylé sobre (« Aucune bio en attente d'acquittement »)
+- Clic sur la tuile ou sur `[ Voir l'inbox → ]` → navigation vers
+  l'inbox avec le filtre `bio-non-resolved` pré-appliqué (cf. section
+  suivante)
+
+### Endpoint dédié
+
+`GET /api/v1/biology-acks/pending-summary` — léger, retourne :
+```csharp
+public class BiologyAckPendingSummaryDto
+{
+    public int CriticalPending { get; init; }   // CDA flaggés IsCritical non-Resolved
+    public int WarningPending { get; init; }    // CDA flaggés warning non-Resolved
+}
+```
+
+Scoped au user courant (convention task-023). 1 query SQL agrégée
+(count groupé par sévérité).
+
+## Filtre inbox "bio non-résolue" — nouveau chip
+
+### UI
+
+Nouveau chip dans la barre filtres inbox (Blazor + Angular), libellé
+« Bio à acquitter » (FR) / « Bio to ack » (EN), avec compteur :
+- Texte : `Bio à acquitter (X)` où X = nombre de mails avec
+  `PendingBiologyAcksCount > 0`
+- Activé : filtre actif → l'inbox ne liste que les mails dont au moins
+  un CDA flaggé est non-`Resolved`
+- Désactivé par défaut. Pré-activé quand on arrive depuis le clic du
+  widget KPI (navigation paramétrée par query string).
+
+### Backend
+
+L'endpoint listing inbox (déjà existant) gagne un query param
+`?onlyPendingBiologyAck=true`. Quand vrai, filtre serveur-side via
+join sur `BiologyAcks` + agrégation `MarkResolved`. Pas de nouveau
+endpoint.
+
 ## Périmètre détaillé
 
 ### `dtos-mss`
 
-- **Nouvel enum** `BiologyAckActionType` (4 valeurs ci-dessus)
+- **Nouvel enum** `BiologyAckActionType` (5 valeurs ci-dessus)
+- **Nouvel enum** `BiologyAckResolutionState` (`Pending` / `InProgress` / `Resolved`)
 - **Nouveau DTO** `BiologyAckDto` :
   ```csharp
   public class BiologyAckDto
@@ -173,21 +319,30 @@ l'appel à l'endpoint, l'audit trace porte le timestamp client-side
       public BiologyAckActionType Action { get; init; }
       public string? Note { get; init; }
       public DateTime CreatedAt { get; init; }
-      public string CreatedByUserEmail { get; init; }  // identifiant médecin
-      public string? CreatedByUserName { get; init; }  // nom médecin pour affichage
+      public string CreatedByUserEmail { get; init; }
+      public string? CreatedByUserName { get; init; }
   }
   ```
-- **Nouveau record** `BiologyAckRequestDto` (input endpoint) :
+- **Nouveau record** `BiologyAckRequestDto` :
   ```csharp
   public record BiologyAckRequestDto(BiologyAckActionType Action, string? Note);
   ```
-- **Champ ajouté** sur `MailDto` :
-  - `HasAbnormalBiology : bool` (server-managed)
-  - `PendingBiologyAcksCount : int` (server-managed)
-- **Champ ajouté** sur `MailMedicalDocumentDto` :
-  - `LastBiologyAck : BiologyAckDto?` — denormalized last ack pour
-    affichage rapide ; null tant qu'aucune action posée
-- **2 nouveaux** `AuditActionType` enum members + **4 nouveaux**
+- **Nouveau DTO** `BiologyAckPendingSummaryDto` :
+  ```csharp
+  public class BiologyAckPendingSummaryDto
+  {
+      public int CriticalPending { get; init; }
+      public int WarningPending { get; init; }
+  }
+  ```
+- **Champs ajoutés** sur `MailDto` :
+  - `HasAbnormalBiology : bool`
+  - `PendingBiologyAcksCount : int`
+  - `HasCriticalPendingBiologyAck : bool`
+- **Champs ajoutés** sur `MailMedicalDocumentDto` :
+  - `LastBiologyAck : BiologyAckDto?`
+  - `BiologyAckState : BiologyAckResolutionState`
+- **5 nouveaux** `AuditActionType` enum members + **5 nouveaux**
   `PendingActionType` enum members (cf. plus haut)
 - **NuGet bump** automatique via `/develop` (selon convention task-018+)
 
@@ -195,7 +350,7 @@ l'appel à l'endpoint, l'audit trace porte le timestamp client-side
 
 #### Migration BDD
 
-Nouvelle migration `20260504_AddBiologyAcks.cs` (FluentMigrator) :
+Nouvelle migration `20260512_AddBiologyAcks.cs` (FluentMigrator) :
 
 ```sql
 CREATE TABLE BiologyAcks (
@@ -206,11 +361,10 @@ CREATE TABLE BiologyAcks (
   Note          VARCHAR(500) NULL,
   CreatedAt     TIMESTAMP WITH TIME ZONE NOT NULL,
   CreatedByUserEmail VARCHAR(255) NOT NULL,
-  CreatedByUserName  VARCHAR(255) NULL,
-
-  CONSTRAINT IX_BiologyAcks_DocumentId_CreatedAt
-    INDEX (MedicalDocumentId, CreatedAt DESC)     -- pour fetcher le dernier ack rapidement
+  CreatedByUserName  VARCHAR(255) NULL
 );
+CREATE INDEX IX_BiologyAcks_DocumentId_CreatedAt
+  ON BiologyAcks (MedicalDocumentId, CreatedAt DESC);
 CREATE INDEX IX_BiologyAcks_UserId ON BiologyAcks(UserId);
 ```
 
@@ -230,12 +384,15 @@ CREATE INDEX IX_BiologyAcks_UserId ON BiologyAcks(UserId);
 
 - `IBiologyAckRepository` :
   - `Task<Guid> AddAsync(BiologyAck entity)`
-  - `Task<BiologyAck?> GetLastAckAsync(Guid documentId)` (le plus
-    récent, scoped UserId)
-  - `Task<int> CountPendingAcksForMailAsync(Guid mailId)` (count des
-    `MailMedicalDocument` du mail dont `IsFlagged ∧ aucun ack`)
+  - `Task<BiologyAck?> GetLastAckAsync(Guid documentId, Guid userId)`
+  - `Task<BiologyAckResolutionState> GetStateAsync(Guid documentId, Guid userId)`
+  - `Task<int> CountPendingForMailAsync(Guid mailId, Guid userId)`
+  - `Task<BiologyAckPendingSummaryDto> GetPendingSummaryAsync(Guid userId)` (count groupé critical/warning)
 - `IBiologyAckService` (Application) :
   - `Task<BiologyAckDto> RecordAckAsync(Guid documentId, BiologyAckRequestDto req, ClaimsPrincipal user)`
+  - **Vérifie que le user JWT porte le rôle `Doctor`** (claim role) ;
+    sinon → 403 Forbidden. La secrétaire / staff non-médecin ne peut
+    pas poser d'ack.
   - Vérifie que le CDA appartient au tenant (via repository ownership
     scoping task-023, cumulatif sur UserId)
   - Vérifie que le CDA porte au moins une valeur `IsFlagged` (refus
@@ -243,81 +400,98 @@ CREATE INDEX IX_BiologyAcks_UserId ON BiologyAcks(UserId);
   - Crée l'entité, persiste, retourne le DTO
   - Émet l'audit trace via `IAuditService` avec le bon
     `AuditActionType` selon l'action choisie
+- `IBiologyAckSummaryService` (ou méthode sur le service ci-dessus) :
+  - `Task<BiologyAckPendingSummaryDto> GetPendingSummaryAsync(ClaimsPrincipal user)`
 
-#### Endpoint
+#### Endpoints
 
-`POST /api/v1/medical-documents/{documentId:guid}/biology-ack`
+**POST** `/api/v1/medical-documents/{documentId:guid}/biology-ack`
 - Body : `BiologyAckRequestDto`
-- Auth : JWT obligatoire (FallbackPolicy task-021)
+- Auth : JWT obligatoire (FallbackPolicy task-021) + rôle `Doctor`
 - Réponses :
   - `200 OK` + `BiologyAckDto` au succès
-  - `400 BadRequest` si le CDA ne porte pas de bio anormale (pas
-    `IsFlagged`)
+  - `400 BadRequest` si le CDA ne porte pas de bio anormale
+  - `403 Forbidden` si le user n'a pas le rôle `Doctor`
   - `404 NotFound` si le CDA n'existe pas / ne tenant pas (silent
     leak per task-023 convention)
   - `401` si non authentifié
 
+**GET** `/api/v1/biology-acks/pending-summary`
+- Auth : JWT (rôle `Doctor` requis → 403 sinon)
+- Réponse : `200 OK` + `BiologyAckPendingSummaryDto`
+
+**Query param** `?onlyPendingBiologyAck=true` sur l'endpoint listing
+inbox existant — filtre les mails dont au moins un CDA flaggé n'est
+pas `Resolved` pour le user.
+
 #### Aggregates `MailDto`
 
 `MailRepository` étendu pour calculer :
-- `HasAbnormalBiology` : `EXISTS(SELECT 1 FROM MailMedicalDocumentBiologies WHERE MailMedicalDocumentId IN (...) AND IsFlagged = true)`
-- `PendingBiologyAcksCount` : count des `MailMedicalDocument` du mail
-  qui ont au moins une bio flaggée ET aucun `BiologyAck` posé
-  par le user courant
+- `HasAbnormalBiology`
+- `PendingBiologyAcksCount`
+- `HasCriticalPendingBiologyAck`
 
-Le calcul se fait en 1 query SQL agrégée (pas N+1).
+Le calcul se fait en 1 query SQL agrégée (pas N+1). État `Resolved`
+inféré par sous-requête `EXISTS(... AND Action = MarkResolved AND CreatedAt > MAX(autres actions))`.
 
 #### Tests
 
-- ≥ 8 unit tests `BiologyAckServiceTests` :
-  - 4 happy paths (1 par action)
+- ≥ 10 unit tests `BiologyAckServiceTests` :
+  - 5 happy paths (1 par action, incluant `MarkResolved`)
   - 1 idempotency-revisit (poser 2 actions différentes sur le même
     CDA → 2 entries en BDD, dernier ack reflète la 2e)
   - 1 reject sur CDA sans bio flaggée (400)
   - 1 reject sur CDA inexistant (404)
-  - 1 cross-tenant rejected (User A ne peut pas acker un CDA de User B)
-- ≥ 3 integration tests Postgres-backed :
+  - 1 cross-tenant rejected (User A ne peut pas acker un CDA de User B → 404 silent leak)
+  - 1 reject sur user sans rôle Doctor (403)
+- ≥ 5 integration tests Postgres-backed :
   - Round-trip insertion + read `GetLastAckAsync`
-  - `CountPendingAcksForMailAsync` cohérent (mail avec 3 CDA dont 2
-    flaggés dont 1 acké → returns 1)
-  - `MailRepository` retourne `HasAbnormalBiology` + count corrects
-- 4 nouveaux tests audit trace (1 par action)
+  - `GetStateAsync` retourne `Pending` / `InProgress` / `Resolved` selon historique
+  - `GetStateAsync` repasse à `InProgress` si action posée après `MarkResolved`
+  - **CASCADE DELETE** : suppression d'un `MailMedicalDocument` purge ses `BiologyAcks` associés
+  - `GetPendingSummaryAsync` retourne counts corrects (critical / warning séparés)
+- ≥ 3 tests sur le filtre inbox `onlyPendingBiologyAck=true`
+- 5 nouveaux tests audit trace (1 par action)
 
 ### `client-blazor`
 
 #### Composant `BiologyAckPanelComponent.razor` (nouveau)
 
-Sous le viewer mail (`MailDetailComponent`), **dans l'onglet ou la
-section Biologie déjà existant** (à confirmer pendant l'implé), un
-panneau par CDA flaggé :
+Sous le viewer mail (`MailDetailComponent`), un panneau par CDA flaggé :
 
-- 4 boutons (Radzen ou design-system existant)
+- 4 boutons de prise en charge (Radzen ou design-system existant) +
+  séparateur + 1 bouton `MarkResolved` distinct (couleur primaire)
 - Header : titre du CDA + date
 - Affichage du dernier ack si présent (via `mail.medicalDocuments[i].lastBiologyAck`)
-- Au clic d'un bouton : appel `IBiologyAckService.RecordAckAsync(documentId, action)`,
-  optimistic update du `lastBiologyAck` local, toast succès
+- État badge calculé à partir de `BiologyAckState` (Pending / InProgress / Resolved)
+- Au clic d'un bouton :
+  - Si `medicalDocument.HasCriticalValue` : ouvre `BiologyAckConfirmDialog`
+    (modal Radzen) qui montre LOINC + valeurs critiques + action,
+    persiste seulement après `[ Confirmer ]`
+  - Sinon : appel direct `IBiologyAckService.RecordAckAsync(documentId, action)`,
+    optimistic update du `lastBiologyAck` local, toast succès
 - Sur erreur API : revert + toast erreur
+
+#### Composant `BiologyAckConfirmDialog.razor` (nouveau)
+
+Modal de confirmation. Inputs : `DocumentLoinc`, `CriticalValues` (liste),
+`ActionLabel`. Outputs : confirmé / annulé.
+
+#### Tuile dashboard `BiologyAckPendingKpiTileComponent.razor` (nouveau)
+
+Compose le dashboard côté Blazor. Lit `IBiologyAckService.GetPendingSummaryAsync()`,
+affiche les 2 compteurs, clic → `NavigationManager.NavigateTo("/inbox?onlyPendingBiologyAck=true")`.
+
+#### Filtre chip inbox
+
+Extension de la barre filtres inbox Blazor : nouveau chip `Bio à acquitter (X)`,
+toggle active `?onlyPendingBiologyAck=true` côté API.
 
 #### Service Blazor
 
-`IBiologyAckService` (côté client) avec 1 méthode `RecordAckAsync` qui
-wrap l'appel HTTP.
-
-#### Badge inbox
-
-Sur `MailHeader.razor` (liste inbox), nouveau badge :
-- Lecture `mail.HasAbnormalBiology && mail.PendingBiologyAcksCount > 0`
-- Couleur rouge si au moins un CDA non-acké du mail porte critical
-  (le client doit savoir cette info — soit on enrichit `MailDto` d'un
-  bool `HasPendingCriticalBiologyAck`, soit on fait un `min` sur les
-  CDA chargés en mode détail. Pour l'inbox, simplifier : si
-  `PendingBiologyAcksCount > 0` ET un des CDA chargés est critical,
-  rouge ; sinon orange. À discuter avec le PO si ambigu).
-- Disparition du badge dès que `PendingBiologyAcksCount == 0`
-
-> **Note d'implémentation** : pour éviter d'ajouter un 3e champ sur
-> `MailDto`, simplifier en couleur unique (rouge si pending, neutre
-> sinon) en v1. La distinction rouge/orange peut être un follow-up.
+`IBiologyAckService` (côté client) avec :
+- `RecordAckAsync(documentId, request)`
+- `GetPendingSummaryAsync()`
 
 #### Localizer
 
@@ -327,17 +501,32 @@ Nouvelles clés FR + EN :
 - `BiologyAckActionPatientCalled` (« Rappel patient »)
 - `BiologyAckActionPatientSummoned` (« Convocation »)
 - `BiologyAckActionReferredToColleague` (« Adressage confrère »)
+- `BiologyAckActionMarkResolved` (« Marquer comme résolu »)
 - `BiologyAckLastAction` (« Dernière action : {0} par {1} le {2} »)
 - `BiologyAckSuccess` / `BiologyAckError`
-- `BiologyAckBadgePending` (« Bio anormale à acquitter »)
+- `BiologyAckConfirmDialogTitle` (« Confirmer l'action sur valeur critique »)
+- `BiologyAckConfirmDialogBody` (« Vous êtes sur le point de poser : {0} sur {1} (valeur(s) : {2}) »)
+- `BiologyAckKpiTitle` (« Bio en attente d'acquittement »)
+- `BiologyAckKpiCriticalCount` (« {0} critical »)
+- `BiologyAckKpiWarningCount` (« {0} warning »)
+- `BiologyAckKpiEmpty` (« Aucune bio en attente »)
+- `BiologyAckKpiOpenInbox` (« Voir l'inbox → »)
+- `InboxFilterPendingBiologyAck` (« Bio à acquitter ({0}) »)
 
 #### Tests bUnit
 
-≥ 4 tests `BiologyAckPanelTests.cs` :
-- Render des 4 boutons quand bio flaggée présente
-- Pas de panneau quand `IsFlagged == false`
-- Affichage du dernier ack quand `lastBiologyAck != null`
-- Clic d'un bouton appelle le service et update optimistic
+- ≥ 6 tests `BiologyAckPanelTests.cs` :
+  - Render des 5 boutons quand bio flaggée présente
+  - Pas de panneau quand `IsFlagged == false`
+  - Affichage du dernier ack quand `lastBiologyAck != null`
+  - Clic d'un bouton (non-critical) appelle le service et update optimistic
+  - Clic d'un bouton (critical) ouvre la modal de confirmation
+  - Confirmer la modal persiste, annuler ne fait rien
+- ≥ 3 tests `BiologyAckPendingKpiTileTests.cs` :
+  - Render des 2 compteurs critical/warning
+  - Clic navigue vers inbox?onlyPendingBiologyAck=true
+  - État vide (« Aucune bio en attente »)
+- ≥ 2 tests filtre inbox chip
 
 ### `client-angular` (mode code-only)
 
@@ -348,82 +537,109 @@ Symétrique à Blazor :
   - Signal-first, OnPush, JSDoc
   - Inputs : `medicalDocument`, `mailUid`
   - Output : `(ackPosted)` pour propager au parent
+- Nouveau composant `BiologyAckConfirmDialogComponent` (Angular CDK
+  Dialog ou design system equivalent)
+- Nouveau composant `BiologyAckPendingKpiTileComponent` sur le dashboard
+- Filtre chip dans la barre filtres inbox Angular
 - Service `MssApiService.recordBiologyAck(documentId, request)` ajouté
-- État local : `signal<BiologyAckDto | null>` pour le dernier ack,
-  bumpé optimisticly au clic
-- Badge inbox sur `mail-header` côté Angular avec lecture des champs
-  agrégés
-- Tests Vitest ≥ 4 sur le composant + 2 sur le service
+- Service `MssApiService.getBiologyAckPendingSummary()` ajouté
+- État local : `signal<BiologyAckDto | null>` pour le dernier ack
+- Tests Vitest ≥ 6 sur le panel + 3 sur la KPI + 2 sur le service +
+  2 sur le filtre chip + 2 sur la modal confirmation
 
 ### Pas de modification
 
 - Widget « Biologie anormale » F004 (`AbnormalBiologyWidget*`) reste
   inchangé en v1. Follow-up possible si le PO veut intégrer les acks
-  dans le widget (filtrer les patients dont la bio a déjà été ackée).
+  dans le widget existant.
 - TODO `notifications-abnormal-biology-043` (SSE pipe) **non wirée** —
   scope creep évité, task séparée si demandé.
 
 ## Convention scellée
 
 - **Granularité** : 1 ack = 1 action sur 1 CDA. Pas par-mail, pas par-valeur.
-- **Sévérité** : drive la couleur du badge **mais pas la disponibilité**
-  des boutons. Toute bio `IsFlagged` ouvre les 4 boutons.
+- **Sévérité** : drive la couleur du badge ET la friction UX (modal de
+  confirmation pour `IsCritical`), mais **pas** la disponibilité des
+  boutons. Toute bio `IsFlagged` ouvre les 5 boutons.
 - **Réversibilité** : non. Une fois posée, l'action est dans l'audit
   forever. Le médecin peut poser une action complémentaire (= nouvel
   audit entry, jamais d'écrasement).
-- **Notification patient** : aucune. Les 4 actions sont **purement
+- **État de résolution** : calculé, pas stocké. `Resolved` ssi le
+  dernier `MarkResolved` est postérieur à la dernière action
+  non-résolutoire du user sur ce CDA.
+- **Badge inbox** : disparaît UNIQUEMENT après `MarkResolved`. Un
+  clic `Acknowledged` seul ne ferme pas le badge.
+- **Modèle multi-user** : **personnel** (1 médecin = ses propres acks).
+  Cohérent avec le tenancy mono-utilisateur task-023. Pas applicable
+  à un cabinet partagé — refonte tenancy nécessaire avant de l'envisager.
+- **Rôle requis** : `Doctor` côté backend (claim JWT). Secrétaire /
+  staff non-médecin ne peut pas poser d'ack (403).
+- **Notification patient** : aucune. Les 5 actions sont **purement
   déclaratives**, audit-only. Pour écrire au patient, le médecin
   utilise Compose comme aujourd'hui.
-- **Délégation** : pas applicable v1 (pas de modèle de délégation
-  dans le système).
-- **Audit médico-légal** : chaque action porte `DocumentId`, `DocumentLoinc`,
-  `PatientIns`, `PatientName`, identité médecin, timestamp serveur.
+- **Audit médico-légal** : chaque action porte `DocumentId`,
+  `DocumentLoinc`, `PatientIns` (snapshot), `PatientName` (snapshot),
+  identité médecin, timestamp serveur.
+- **Note libre** : sur l'entité `BiologyAck` (colonne `Note`),
+  optionnelle pour les 5 actions, max 500 chars. PAS sur l'audit trace.
 
 ## Definition of Done
 
 ### Build + tests
 - [ ] `dotnet build HealthPlatform.Api.Mail.sln` → 0 erreurs
-- [ ] `dotnet test HealthPlatform.Api.Mail.sln` → 0 failures, **+8 unit
-  tests min sur `BiologyAckServiceTests`**, **+3 integration tests min
-  sur `BiologyAckRepositoryTests` Postgres-backed**, **+4 audit trace
+- [ ] `dotnet test HealthPlatform.Api.Mail.sln` → 0 failures, **+10 unit
+  tests min sur `BiologyAckServiceTests`**, **+5 integration tests min
+  sur `BiologyAckRepositoryTests` Postgres-backed (incluant CASCADE DELETE)**,
+  **+3 tests filtre inbox `onlyPendingBiologyAck`**, **+5 audit trace
   tests min**
 - [ ] `dotnet build HealthPlatform.Client.sln` → 0 erreurs
-- [ ] `dotnet test HealthPlatform.Client.sln` → 0 failures, **+4 bUnit
-  tests min sur `BiologyAckPanelTests`**
+- [ ] `dotnet test HealthPlatform.Client.sln` → 0 failures, **+6 bUnit
+  tests min sur `BiologyAckPanelTests`**, **+3 sur `BiologyAckPendingKpiTileTests`**,
+  **+2 sur le filtre inbox chip**
 - [ ] `cd Client/Angular/front && npm run build` → 0 erreurs
-- [ ] `cd Client/Angular/front && npm test` → 0 failures, **+4 Vitest
-  tests min sur `biology-ack-panel.component.spec.ts`** + **+2 sur
-  `mss-api.service.spec.ts` méthode `recordBiologyAck`**
+- [ ] `cd Client/Angular/front && npm test` → 0 failures, **+6 Vitest
+  tests min sur `biology-ack-panel.component.spec.ts`**, **+3 sur
+  `biology-ack-pending-kpi-tile.component.spec.ts`**, **+2 sur la modal
+  confirmation**, **+2 sur le filtre chip**, **+2 sur
+  `mss-api.service.spec.ts` (méthodes ack + summary)**
 
 ### Backend
-- [ ] Enum `BiologyAckActionType` publié dans `dtos-mss` + NuGet bump
-- [ ] DTOs `BiologyAckDto` + `BiologyAckRequestDto` publiés
-- [ ] `MailDto.HasAbnormalBiology` + `MailDto.PendingBiologyAcksCount` calculés serveur-side, pas N+1
-- [ ] `MailMedicalDocumentDto.LastBiologyAck` populé serveur-side
-- [ ] Migration `BiologyAcks` table avec FK `Users` + FK `MailMedicalDocuments` + index `(DocumentId, CreatedAt DESC)`
-- [ ] Endpoint `POST /api/v1/medical-documents/{id}/biology-ack` retourne 200/400/404 selon spec
-- [ ] 4 nouveaux `AuditActionType` enum members + audit trace émise par chaque action avec `DocumentId` / `DocumentLoinc` / `PatientIns` / `PatientName`
-- [ ] 4 nouveaux `PendingActionType` enum members + payload + replay logic dans `PendingActionService`
+- [ ] Enums `BiologyAckActionType` (5 valeurs) + `BiologyAckResolutionState` (3 valeurs) publiés dans `dtos-mss` + NuGet bump
+- [ ] DTOs `BiologyAckDto` + `BiologyAckRequestDto` + `BiologyAckPendingSummaryDto` publiés
+- [ ] `MailDto.HasAbnormalBiology` + `MailDto.PendingBiologyAcksCount` + `MailDto.HasCriticalPendingBiologyAck` calculés serveur-side, pas N+1
+- [ ] `MailMedicalDocumentDto.LastBiologyAck` + `MailMedicalDocumentDto.BiologyAckState` populés serveur-side
+- [ ] Migration `BiologyAcks` table avec FK `Users` + FK `MailMedicalDocuments` ON DELETE CASCADE + index `(DocumentId, CreatedAt DESC)` + index `UserId`
+- [ ] Endpoint `POST /api/v1/medical-documents/{id}/biology-ack` retourne 200/400/403/404 selon spec
+- [ ] **Vérification rôle `Doctor`** sur le JWT → 403 si absent
+- [ ] Endpoint `GET /api/v1/biology-acks/pending-summary` retourne 200/401/403
+- [ ] Query param `?onlyPendingBiologyAck=true` sur listing inbox filtre correctement
+- [ ] 5 nouveaux `AuditActionType` enum members + audit trace émise par chaque action avec `DocumentId` / `DocumentLoinc` / `PatientIns` / `PatientName`
+- [ ] 5 nouveaux `PendingActionType` enum members + payload + replay logic dans `PendingActionService`
 - [ ] Cross-tenant ownership scoping vérifié (User A ne peut pas acker CDA User B → 404 silent leak per task-023)
 
 ### Frontend (les 2)
 - [ ] Panneau `BiologyAckPanel` rendu quand `medicalDocument.biologyResults` contient au moins une valeur `IsFlagged`
-- [ ] 4 boutons cliquables avec `data-testid` posés (`bio-ack-acknowledged`, `bio-ack-called`, `bio-ack-summoned`, `bio-ack-referred`)
+- [ ] 5 boutons cliquables avec `data-testid` posés (`bio-ack-acknowledged`, `bio-ack-called`, `bio-ack-summoned`, `bio-ack-referred`, `bio-ack-resolved`)
+- [ ] Bouton `MarkResolved` visuellement distinct (séparateur + style primary)
+- [ ] Modal de confirmation `BiologyAckConfirmDialog` s'ouvre uniquement quand `medicalDocument.HasCriticalValue`, affiche LOINC + valeur(s) + unité + référence + action choisie, `data-testid="bio-ack-confirm-dialog"`
 - [ ] Affichage du `lastBiologyAck` (action + médecin + date) quand présent
-- [ ] Badge inbox sur `mail-header` quand `HasAbnormalBiology && PendingBiologyAcksCount > 0` ; disparaît à `PendingBiologyAcksCount == 0` ; `data-testid="mail-row-pending-bio-ack"`
+- [ ] Badge inbox sur `mail-header` : rouge si `HasCriticalPendingBiologyAck`, orange si `PendingBiologyAcksCount > 0` sans critical, invisible si `PendingBiologyAcksCount == 0` ; `data-testid="mail-row-pending-bio-ack"`
+- [ ] Tuile KPI `BiologyAckPendingKpiTile` sur le dashboard avec compteurs critical + warning, `data-testid="bio-ack-kpi-tile"`, clic navigue vers inbox avec filtre actif
+- [ ] Filtre chip `Bio à acquitter (X)` dans la barre filtres inbox, `data-testid="inbox-filter-pending-bio-ack"`, toggle ajoute `?onlyPendingBiologyAck=true` au query
 - [ ] Clic optimistic update + toast succès / revert sur erreur
 - [ ] i18n FR + EN (Blazor Localizer + Angular i18n inline) pour toutes les clés listées
-- [ ] Localizer parity FR/EN sur les 4 actions + tooltips
+- [ ] Localizer parity FR/EN sur les 5 actions + tooltips + tuile KPI + filtre chip
 
 ### Documents
-- [ ] EPIC E009 doc enrichie via `/tech-writer E009` : nouvelle ligne dans la table §10.x ou §6.13 (à décider) « Workflow d'acquittement bio anormale » avec mention « non Ségur — driven médico-légal ; backend + 2 frontends + audit »
+- [ ] EPIC E009 doc enrichie via `/tech-writer E009` : nouvelle ligne dans la table §10.x ou §6.13 (à décider) « Workflow d'acquittement bio anormale » avec mention « non Ségur — driven médico-légal ; backend + 2 frontends + audit + tuile dashboard + filtre inbox »
 
 ### Audit grep DOD
 - [ ] `grep -rn "BiologyAckActionType" Api/Mail/src/` → matches dans Domain (entité), Application (service), Api (controller), Infrastructure (repository)
-- [ ] `grep -rn "BiologyAck" Client/Blazor/Src/` → matches dans Plugin (composant + service + Localizer)
-- [ ] `grep -rn "biologyAck\|BiologyAck" Client/Angular/front/libs/mss/src/` → matches dans `core/models`, `features/mail/services/mss-api.service.ts`, `features/mail/components/biology-ack-panel/`
-- [ ] `grep -rn "HasAbnormalBiology\|PendingBiologyAcksCount" Api/Mail/src/Application` → matches dans le repository (calcul) + le mapper
-- [ ] Nouveau enum members `BiologyAcknowledged|BiologyPatientCalled|BiologyPatientSummoned|BiologyReferredToColleague` présents dans `AuditActionType` ET `PendingActionType`
+- [ ] `grep -rn "BiologyAckResolutionState" Api/Mail/src/Application` → matches dans le service + repository
+- [ ] `grep -rn "BiologyAck" Client/Blazor/Src/` → matches dans Plugin (composant + service + Localizer + KPI tile + filter chip)
+- [ ] `grep -rn "biologyAck\|BiologyAck" Client/Angular/front/libs/mss/src/` → matches dans `core/models`, `features/mail/services/mss-api.service.ts`, `features/mail/components/biology-ack-panel/`, `features/dashboard/components/biology-ack-pending-kpi-tile/`
+- [ ] `grep -rn "HasAbnormalBiology\|PendingBiologyAcksCount\|HasCriticalPendingBiologyAck" Api/Mail/src/Application` → matches dans le repository (calcul) + le mapper
+- [ ] Nouveau enum members `BiologyAcknowledged|BiologyPatientCalled|BiologyPatientSummoned|BiologyReferredToColleague|BiologyMarkedResolved` présents dans `AuditActionType` ET `PendingActionType`
 
 ### Aucune régression
 - [ ] Suite api-mail >= 1733 + nouveaux tests, 0 failed
@@ -438,90 +654,136 @@ Symétrique à Blazor :
 1. `cd Api/Mail/src/AppHost && dotnet run --launch-profile https`
 2. `cd Client/Blazor/Src/Shell && dotnet run --launch-profile https_test`
 3. `cd Client/Angular/front && npm start`
-4. Loguer en tant que doctor avec une boîte qui contient au moins
-   1 mail avec un CDA portant valeur(s) bio `IsFlagged` (utiliser
-   un mail de test PSC ou injecter manuellement un CDA avec
+4. Loguer en tant que doctor (claim `role=Doctor`) avec une boîte qui
+   contient au moins 1 mail avec un CDA portant valeur(s) bio `IsFlagged`
+   (utiliser un mail de test PSC ou injecter manuellement un CDA avec
    `InterpretationCode="HH"`).
 
-### Vérification 1 — affichage du panneau
-1. Sur Blazor + Angular successivement, ouvrir le mail.
-2. **Vérifier** : un panneau `BiologyAckPanel` s'affiche dans la
-   section Biologie / sous le viewer (selon implé), portant le titre
-   du CDA + 4 boutons.
-3. **Vérifier** : badge rouge ou orange visible sur la ligne inbox
-   correspondante (selon sévérité).
+### Vérification 1 — affichage du panneau + tuile KPI
+1. Sur Blazor + Angular successivement, ouvrir le dashboard.
+2. **Vérifier** : tuile KPI `BiologyAckPendingKpiTile` affiche
+   `X critical` + `Y warning`. Bordure rouge si X > 0, orange sinon.
+3. Ouvrir le mail concerné.
+4. **Vérifier** : un panneau `BiologyAckPanel` s'affiche dans la
+   section Biologie / sous le viewer, portant le titre du CDA + 5 boutons
+   (4 prise en charge + 1 `MarkResolved` distinct).
+5. **Vérifier** : badge rouge ou orange visible sur la ligne inbox.
 
-### Vérification 2 — pose d'une action « Pris connaissance »
-1. Cliquer le bouton « Pris connaissance ».
-2. **Vérifier** : toast succès, puis le panneau affiche
-   « Dernière action : Pris connaissance par Dr Dupont, le {date} ».
-3. **Devtools réseau** : `POST /api/v1/medical-documents/{guid}/biology-ack`
-   avec body `{ "action": "Acknowledged", "note": null }` → 200.
-4. **Seq** : log `MssAuditTrace` émis avec
-   `ActionType=BiologyAcknowledged`, `DocumentId=...`, `PatientIns=...`.
-5. Retourner sur l'inbox : le badge a disparu (le seul CDA flaggé
-   du mail est désormais acké).
+### Vérification 2 — friction modal pour critical
+1. Sur un mail avec CDA `IsCritical` (`LL/HH/AA`), cliquer
+   « Pris connaissance ».
+2. **Vérifier** : la modal `BiologyAckConfirmDialog` s'ouvre, montre
+   le code LOINC, la (les) valeur(s) critique(s) avec unité + référence,
+   et l'action « Pris connaissance ».
+3. Cliquer `[ Annuler ]` → modal se ferme, aucun appel API ne part.
+4. Re-cliquer « Pris connaissance », puis `[ Confirmer ]`.
+5. **Vérifier** : 200 + toast succès. Le panneau affiche « Dernière
+   action : Pris connaissance par Dr Dupont, le {date} ».
 
-### Vérification 3 — action complémentaire
-1. Sur le même mail/CDA, cliquer « Convocation ».
-2. **Vérifier** : toast succès. Le panneau affiche maintenant
-   « Dernière action : Convocation par Dr Dupont, le {date+15min} ».
-   L'historique précédent (« Pris connaissance ») n'est plus dans
-   le panneau **mais reste dans l'audit**.
-3. **DB** : `SELECT * FROM BiologyAcks WHERE MedicalDocumentId = ...`
-   retourne **2 rows** (Acknowledged + PatientSummoned), ordonnées
-   par `CreatedAt`.
+### Vérification 3 — flux complet jusqu'à résolution
+1. Sur le même mail/CDA, cliquer « Rappel patient ». (Confirmation
+   modale si critical.)
+2. **Vérifier** : `lastBiologyAck` mis à jour. Badge inbox toujours
+   présent (état `InProgress`).
+3. Cliquer « Marquer comme résolu ». (Confirmation modale si critical.)
+4. **Vérifier** : toast succès. Le badge inbox **disparaît**. Le panneau
+   reste visible et affiche « Dernière action : Marquer comme résolu ».
+5. **Vérifier** : tuile KPI dashboard mise à jour (compteur décrémenté).
 
-### Vérification 4 — mail avec 2 CDA, 1 acké
+### Vérification 4 — action complémentaire après résolution
+1. Sur le même CDA déjà `Resolved`, cliquer « Convocation ».
+2. **Vérifier** : ack enregistré. État du CDA repasse à `InProgress`
+   (le dernier `MarkResolved` n'est plus le plus récent). Badge inbox
+   réapparaît.
+3. Re-cliquer « Marquer comme résolu » → badge disparaît à nouveau.
+
+### Vérification 5 — DB cohérente
+1. `SELECT * FROM BiologyAcks WHERE MedicalDocumentId = ... ORDER BY CreatedAt`
+   retourne toutes les actions posées dans l'ordre, sans suppression.
+2. Aucune action ne remplace une autre — pure append.
+
+### Vérification 6 — mail avec 2 CDA, 1 résolu
 1. Trouver / construire un mail avec 2 CDA flaggés.
-2. Acker uniquement le 1er.
-3. **Vérifier** : badge inbox toujours présent (le 2e CDA n'a aucun ack).
-4. Acker le 2e.
-5. **Vérifier** : badge inbox a disparu.
+2. Acker + `MarkResolved` uniquement le 1er CDA.
+3. **Vérifier** : badge inbox toujours présent (le 2e CDA est encore
+   `Pending`).
+4. `MarkResolved` le 2e CDA.
+5. **Vérifier** : badge inbox a disparu. Tuile KPI dashboard décrémentée.
 
-### Vérification 5 — refus sur CDA sans bio flaggée
-1. Tenter via Postman : `POST /api/v1/medical-documents/{guid-d-un-CDA-sans-bio-anormale}/biology-ack`
+### Vérification 7 — filtre inbox "bio à acquitter"
+1. Cliquer le chip « Bio à acquitter (X) » dans la barre filtres inbox.
+2. **Vérifier** : l'inbox liste uniquement les mails avec
+   `PendingBiologyAcksCount > 0`. Les mails entièrement résolus ne sont
+   plus listés.
+3. Désactiver le chip → inbox revient à liste complète.
+4. Depuis le dashboard, cliquer la tuile KPI → navigation vers
+   `/inbox?onlyPendingBiologyAck=true`, chip pré-activé.
+
+### Vérification 8 — refus rôle non-Doctor
+1. Loguer en tant que user avec rôle `Staff` (ou sans rôle `Doctor`).
+2. Tenter via Postman : `POST /api/v1/medical-documents/{guid}/biology-ack`
+   `{ "action": "Acknowledged" }`.
+3. **Vérifier** : 403 Forbidden.
+4. **Vérifier** : la tuile KPI dashboard retourne aussi 403 — pas affichée
+   pour les non-doctors (composant masqué côté frontend si claim absent).
+
+### Vérification 9 — refus sur CDA sans bio flaggée
+1. Tenter via Postman : `POST /api/v1/medical-documents/{guid-sans-bio-anormale}/biology-ack`
    `{ "action": "Acknowledged" }`.
 2. **Vérifier** : 400 BadRequest avec message explicite.
 
-### Vérification 6 — refus cross-tenant
+### Vérification 10 — refus cross-tenant
 1. Loguer User A, noter le DocumentId d'un CDA de sa boîte.
 2. Loguer User B (autre médecin).
 3. Tenter via Postman : `POST /api/v1/medical-documents/{guid-A}/biology-ack`
    avec session User B.
 4. **Vérifier** : 404 NotFound (silent leak per task-023, pas 403).
 
-### Vérification 7 — mode offline (PendingAction)
+### Vérification 11 — mode offline (PendingAction)
 1. Couper le réseau (devtools offline).
-2. Cliquer une action.
+2. Cliquer une action (ou la modal confirm si critical).
 3. **Vérifier** : le panneau affiche optimisticly l'action posée.
    Pas de toast d'erreur (PendingAction queue silently).
 4. Reconnecter.
 5. **Vérifier** : `PendingActionService` rejoue, l'audit trace est
-   bien émise serveur-side, `lastBiologyAck` réfléchit le state.
+   bien émise serveur-side, `lastBiologyAck` réfléchit le state, KPI
+   tuile mise à jour.
 
-### Vérification 8 — non-régression widget F004
+### Vérification 12 — non-régression widget F004
 1. Aller sur le dashboard / widget « Biologie anormale » (F004).
 2. **Vérifier** : comportement strictement inchangé. Aucune nouvelle
-   notion d'ack sur le widget. Les patients listés ne tiennent pas
+   notion d'ack sur le widget F004. Les patients listés ne tiennent pas
    compte des acks posés (gardé pour follow-up).
+3. **Vérifier** : la nouvelle tuile `BiologyAckPendingKpiTile` est
+   bien un composant séparé, coexiste avec F004 sans interférence.
 
 ## Limites et follow-ups
 
-- **Pas de filtrage inbox « bio anormale non-ackée »** dans cette US.
-  Les chips rapides sont l'axe 11 du brainstorm — task séparée.
 - **Pas d'affichage timeline d'historique** des acks posés sur un CDA
   (gardé en audit accessible via `/audit-trail`). Follow-up si demandé.
 - **Pas de wiring SSE notif** abnormal biology (TODO
   `notifications-abnormal-biology-043` reste ouvert) — task séparée.
 - **Pas d'intégration au widget F004** (`AbnormalBiologyWidget*`).
-  Follow-up : filtrer les patients dont la bio a déjà été ackée pour
+  Follow-up : filtrer les patients dont la bio a déjà été résolue pour
   réduire la pollution du widget.
 - **Pas de notification patient** quelle que soit l'action.
 - **Pas de délégation / multi-médecin** — chaque user gère ses acks
   séparément (cohérent avec le multi-tenant single-user actuel).
 - **Pas d'unique constraint** `(DocumentId, UserId)` — convention
   d'actions complémentaires en série.
+- **Pas de SLA temporels stockés** (`FirstAcknowledgedAt`, `ResolvedAt`,
+  `ResolutionDuration`) — les valeurs sont **dérivables** depuis la
+  table `BiologyAcks` (`MIN(CreatedAt)`, `MAX(CreatedAt) WHERE Action = MarkResolved`).
+  Pas de dénormalisation tant qu'aucun dashboard SLA n'est demandé.
+  Follow-up dédié si besoin.
+- **Pas de DTO `BiologyAckSummary` enrichi** (`AckCount`, `FirstAckAt`,
+  `LastActor`, etc.) — `LastBiologyAck` + `BiologyAckState` couvrent
+  les besoins UI actuels. Si futur UX en demande plus, extension
+  progressive de `MailMedicalDocumentDto`. YAGNI v1.
+- **Pas de moteur générique de workflow clinique acquittable** —
+  cette feature est dédiée à la bio anormale. Si un jour on a 3+ cas
+  concrets (imagerie critique, ECG anormal, CR hospitalier), refactor
+  d'extraction en moteur générique. Pas d'over-engineering préventif.
 
 ## References
 
@@ -533,8 +795,11 @@ Symétrique à Blazor :
 - `Dtos/PendingActionTypes.cs` — pattern offline queue
 - `Api/Mail/src/Application/Services/NewMailNotifier.cs:35` — TODO
   `notifications-abnormal-biology-043` (intentionnellement non wiré)
+- `Client/Blazor/Src/Modules/Mss/Plugin/Widgets/AbnormalBiologyWidgetComponent.razor`
+  — widget F004 existant (inchangé par cette US)
 - archived-task-011 — pattern `PendingIntegrationsCount` agrégé serveur-side
 - archived-task-004 — framework audit MSS
+- archived-task-021 — FallbackPolicy JWT
 - archived-task-023 — convention ownership scoping cumulatif `UserId`
 - EPIC E009 §6.13 (RG-E009-051/052) — détection / affichage bio
   anormale (acquittement non couvert par ces règles)
