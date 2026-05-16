@@ -718,6 +718,85 @@ Aucun écart sur les capacités **IA** (F3, F13) ni **annuaire** (F8, F9), où E
 
 ---
 
+## 9. Reste à faire — estimation de charge pour internalisation
+
+> Chapitre opérationnel destiné au cadrage d'une **internalisation** du projet chez Weda. Consolide (a) les écarts fonctionnels et réglementaires identifiés en §§ 6, 7 et 8 et (b) les phases industrielles nécessaires pour passer en production. Les charges sont des **estimations de cadrage** en **jours·personne (j·p)**, à confirmer en *kickoff* d'équipe.
+
+### 9.1 Reste à faire fonctionnel & réglementaire (déjà identifié)
+
+Synthèse des écarts repris des §§ 6.1 → 6.16 (REM + Ref#2 + ENS) et de la table des features (§ Annexes / État de couverture).
+
+> **Note :** la sécurité de session (RG-007 refresh token PSC, RG-065 fermeture explicite, RG-066 verrouillage 2 h) est déjà couverte par la plateforme **Nova** et sortie du périmètre de cette estimation.
+
+| # | Périmètre | Détail | Charge (j·p) |
+|---|-----------|--------|-------------:|
+| R1 | **F007 — Envoi vers Mon Espace Santé** | RG-017, 018, 082, 084, 085, 086, 088, 089 ; adressage mineurs, bounces, MDN RFC 8098, INS qualifiée pour adresse usager | **21** |
+| R2 | **F010 — RBAC multi-boîte / boîtes organisationnelles** | Modèle de rôles (médecin / secrétaire / coordinateur), partage de BAL, vues unifiée/séparée | **18** |
+| R3 | **F011 — Suivi d'acheminement complet** | Au-delà de MDN/DSN : statuts agrégés, vue d'ensemble, relances | **6** |
+| R4 | **F012 — Délégation de traitement** | Workflow d'attribution d'un message à un autre praticien, traçabilité | **7** |
+| R5 | **Identité patient INS** | RG-067, RG-068 : généralisation INS qualifiée à l'émission et à la réception | **6** |
+| R6 | **Bio — écarts intervalle de référence** | RG-053 signalement des résultats en écart (au-delà de AA/HH/LL) | **4** |
+| R7 | **Format objet courriel + PDF/A-1** | RG-078, RG-079 : alignement strict ECO.2.1.3 et ECO.2.1.5 | **3** |
+| R8 | **Pros associés au parcours** | RG-048 (LABEL.06) : liste des professionnels associés à la prise en charge | **4** |
+| R9 | **Visualisation + classement 1 clic** | RG-034 : amélioration de l'intégration au dossier patient | **4** |
+| R10 | **Conversion d'unités biologiques inter-CR** | RG-050 — explicitement non priorisé, gardé pour mémoire | *0 (non priorisé)* |
+| | **Sous-total fonctionnel & réglementaire** | | **≈ 73** |
+
+### 9.2 Phases industrielles (mise en production)
+
+Phases listées par l'équipe produit, complétées par les jalons standard d'un go-live SaaS santé HDS.
+
+| # | Phase | Description | Charge (j·p) |
+|---|-------|-------------|-------------:|
+| P1 | **QA — carte de tests** | Campagne QA structurée sur l'ensemble des fonctionnalités (golden paths + edges), automatisation de la non-régression | **10** |
+| P2 | **DevOps — intégration backend** | Pipelines CI/CD, hébergement HDS, gestion des secrets, déploiement multi-env (dev / pré-prod / prod), feature flags, observabilité | **8** |
+| P3 | **Front — ajustement design** | Pass design system sur les deux frontends (Angular + Blazor), responsive, accessibilité visuelle | **10** |
+| P4 | **Réajustement fonctionnel (retours produit)** | Itérations sur la base des retours de l'équipe produit après revue end-to-end | **8** |
+| P5 | **Sécurité — alignement OWASP** | Revue OWASP Top 10 + ASVS niveau santé, correctifs, durcissement headers, validation entrées, gestion sessions | **6** |
+| P6 | **IA — alignement provider Weda** | Ajustement des appels (modèles, prompts, quotas, residency HDS) au provider IA finalement retenu par Weda | **8** |
+| P7 | **Pré-production Azure** | Provisionnement environnement, configuration, tests de bout en bout en conditions proches prod | **4** |
+| P8 | **Pilote « Secure » (2 médecins)** | Mise en ligne sur l'environnement Secure, accompagnement de 2 médecins pilotes, collecte de feedback, hotfix | **5** |
+| P9 | **Conformité MOTCO2** | Passage de la grille de tests **MOTCO2** (*MSSanté Outil de Test et COnformité au Référentiel #2*, ANS) — couvre les exigences `ECO.*` du Ref#2 v1.0.1 | **5** |
+| P10 | **Dev d'ajustement post-MOTCO2** | Correctifs sur les non-conformités révélées par MOTCO2 (réserve dimensionnée par expérience secteur) | **8** |
+| | **Sous-total phases industrielles** | | **≈ 72** |
+
+### 9.3 Production-readiness complémentaire (ajouts recommandés)
+
+Phases non explicitement listées par le produit mais indispensables pour un go-live SaaS santé sérieux.
+
+> **Note :** sortis du périmètre car déjà couverts par la plateforme Nova / Weda — audit RGPD/HDS, homologation CNDA, accessibilité RGAA, plan de migration depuis Weda Échange, observabilité (déjà industrialisée via Grafana).
+
+| # | Phase | Description | Charge (j·p) |
+|---|-------|-------------|-------------:|
+| C1 | **Tests de charge & performance** | Scénarios SMTP/IMAP en volume, IA, recherche annuaire ; tuning DB et caches | **6** |
+| C2 | **Pentest externe + remédiation** | Test d'intrusion par un cabinet tiers (PASSI), correctifs prioritaires | **12** |
+| C3 | **Documentation utilisateur + aide en ligne** | Manuel pro de santé, captures, FAQ, vidéos courtes, tooltips contextuels | **10** |
+| C4 | **Formation & change management** | Supports formateurs, sessions cabinet-pilote, plan de communication, kit migration Weda Échange → NOVA | **10** |
+| C5 | **Support N1/N2 — runbooks** | Procédures incident, escalade, monitoring d'alerte, *rotas* astreinte initiale | **6** |
+| C6 | **Plan de continuité (DRP / backup)** | Sauvegardes BDD chiffrées, plan de bascule, RTO/RPO documentés, exercice de restore | **6** |
+| C7 | **Réserve risques & coordination** | Buffer ~10 % (intégrations tierces, dépendances ANS, ajustements imprévus, *demos* et go/no-go) | **15** |
+| | **Sous-total production-readiness** | | **≈ 65** |
+
+### 9.4 Synthèse de charge
+
+| Bloc | Charge (j·p) |
+|------|-------------:|
+| 9.1 Fonctionnel & réglementaire restant | **≈ 73** |
+| 9.2 Phases industrielles produit | **≈ 72** |
+| 9.3 Production-readiness complémentaire | **≈ 65** |
+| **Total cadrage internalisation** | **≈ 210 j·p** |
+
+**Lecture rapide :**
+
+- Avec une équipe **dédiée de 5 ETP** (2 back, 2 front, 1 QA-DevOps mutualisé) et ≈ 18 j·p ouvrés / mois·ETP, ce volume correspond à **≈ 2,3 mois calendaires** (≈ 10 semaines) de delivery focalisé.
+- La trajectoire critique est **F007 (envoi MES) → MOTCO2 → pilote Secure** : ces 3 jalons s'enchaînent, sans parallélisation possible, et conditionnent la date de production.
+- Les chantiers **F010 / F012 (organisation cabinet)** peuvent partir en parallèle dès que le socle RBAC est cadré ; ils ne bloquent pas la conformité MSSanté mais conditionnent la valeur pour les cabinets multi-praticiens.
+- Le bloc **C2 (pentest)** est à enclencher **avant** la fin du delivery technique car le cycle externe PASSI est long.
+
+> Ces estimations sont volontairement **prudentes mais non gonflées** : elles supposent une équipe formée au stack, sans pivot d'architecture en cours de route. À pondérer si l'équipe entrante doit absorber simultanément le contexte fonctionnel et le code legacy de Weda Échange.
+
+---
+
 ## Annexes
 
 ### A. Sources documentaires
