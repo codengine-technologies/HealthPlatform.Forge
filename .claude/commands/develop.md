@@ -20,8 +20,12 @@ Read `agents/develop.md` and execute the full playbook :
 4. For backends and frontends : test-first for behavioural changes, build +
    test green before each commit, conventional messages, push at the end
 5. Final verification : every repo green, DOD self-check
-6. Hand off : invoke `/sonar` (or `/review` directly when `api-mail` is not
-   touched)
+6. Hand off to the cleanup chain :
+   - api-mail touched → `/sonar {task-id}` (which then chains to
+     `/lint-angular` if client-angular was touched, else `/review`)
+   - api-mail untouched but client-angular touched → `/lint-angular
+     {task-id}` (which chains to `/review`)
+   - neither touched → `/review {task-id}` directly
 
 `/develop` writes code by design — this is the post-lean philosophy. The
 human's only mandatory interaction is **merging the PR on `develop`** at

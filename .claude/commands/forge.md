@@ -9,8 +9,13 @@ For each `tasks/todo-task-*.md` (lowest task-id first), run the full
 autonomous chain :
 
 ```
-/start {task-id}    → /develop {task-id}    → /sonar {task-id}    → /review {task-id}    → /tech-writer E{NNN}
+/start {task-id}    → /develop {task-id}    → /sonar {task-id}    → /lint-angular {task-id}    → /review {task-id}    → /tech-writer E{NNN}
 ```
+
+`/sonar` and `/lint-angular` skip cleanly when their target repo wasn't
+touched (no api-mail change → `/sonar` is a no-op ; no client-angular
+change → `/lint-angular` is a no-op). Both are best-effort 5-iteration
+loops that hand off to the next step even if residual issues remain.
 
 Sequentially, not in parallel. Cross-task interference on shared repos
 (branches, package versions, `Directory.Packages.props`) makes parallel
@@ -39,11 +44,12 @@ fails (e.g. some repo isn't on `develop` and the human hasn't cleaned up).
 Backlog : N tasks in todo-*
 
 Task task-018 — feat(mail) ...
-  /start    : ✓ branches created on api-mail, client-blazor, dtos-mss
-  /develop  : ✓ commits pushed (api-mail @abc1234, client-blazor @def5678, dtos-mss @9876543)
-  /sonar    : ✓ 3 iterations, 12 issues fixed, 4 remaining (best-effort)
-  /review   : ✓ APPROVED, 3 PRs opened (#42, #43, #44, label awaiting-human-merge)
-  /tech-w.  : ✓ docs/epics/E009-... updated
+  /start        : ✓ branches created on api-mail, client-blazor, dtos-mss
+  /develop      : ✓ commits pushed (api-mail @abc1234, client-blazor @def5678, dtos-mss @9876543)
+  /sonar        : ✓ 3 iterations, 12 issues fixed, 4 remaining (best-effort)
+  /lint-angular : ⤍ skipped — no angular change
+  /review       : ✓ APPROVED, 3 PRs opened (#42, #43, #44, label awaiting-human-merge)
+  /tech-w.      : ✓ docs/epics/E009-... updated
 
 Task task-019 — fix(audit) ...
   /start    : ✓

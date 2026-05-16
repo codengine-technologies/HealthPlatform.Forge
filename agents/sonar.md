@@ -13,13 +13,68 @@ first when behaviour changes) → commit → push → re-analyse → iterate. At
 end you hand over to `/review` which opens the PR for human merge (HAG rule 10
 still applies — the human merges, never the forge).
 
+## Zero-new-debt principle (non-négociable)
+
+**Aucune nouvelle dette ne doit être introduite par une PR passant par `/sonar`.**
+Cela impose un découpage en deux phases au sein du même run :
+
+### Phase 1 — New code (MANDATORY, exhaustive, bloquante)
+
+Cible : 100% des findings du **new code period** (au sens SonarQube — code
+ajouté/modifié depuis la baseline du Quality Gate, typiquement le merge-base
+avec `develop`).
+
+- **Tous** les bugs, vulnérabilités, code smells du new code → **doivent être
+  fixés**. Pas d'acceptation, pas de cap d'itérations.
+- **Tous** les security hotspots du new code → doivent être traités (fix si
+  applicable, sinon marqués `SAFE` / `ACKNOWLEDGED` avec justification dans
+  le journal). Aucun ne peut rester `TO_REVIEW`.
+- **Couverture du new code** (`new_coverage`) → doit atteindre la cible
+  (`coverage` de `agents/sonar-targets.yml`, par défaut **95%**). Si elle
+  n'est pas atteinte, l'agent **doit créer les tests unitaires manquants**
+  jusqu'à atteindre la cible. Pas d'acceptation.
+- **Quality Gate sur le new code** → doit passer (`OK`). Sinon, on continue
+  Phase 1.
+- **Règles blacklistées** : la blacklist (`agents/sonar-blacklist.yml`)
+  **NE s'applique PAS au new code**. Si une règle blacklistée déclenche sur
+  du new code, deux options seulement :
+  1. fix manuel (préféré),
+  2. halt via `questions/{task-id}.md` si le fix dépasse le périmètre de la
+     task.
+  Jamais de skip silencieux sur du new code.
+- **Aucun cap d'itérations** sur Phase 1. La phase tourne jusqu'à new-code
+  Quality Gate vert OU jusqu'à blocage (auquel cas → `questions/` et halt,
+  pas d'acceptation).
+- **Conditions d'arrêt en échec** (Phase 1 bloquée → `questions/` + halt,
+  PAS de hand-off vers `/review`) :
+  - Une issue new-code non résolvable sans dépasser le périmètre de la task
+  - Couverture new-code impossible à atteindre (code non testable sans
+    refactor structurel hors scope)
+  - Build / tests cassés par un fix qui ne peut être rollback
+  - 2 itérations consécutives sans progression sur le new code
+
+### Phase 2 — Legacy debt (best-effort, optionnelle)
+
+Cible : la dette préexistante (issues hors new code period). Ne démarre
+**qu'après** Phase 1 verte. Conserve le modèle historique : 5 itérations max,
+blacklist appliquée, acceptation des issues restantes, hand-off à `/review`
+quoi qu'il arrive.
+
+Cette phase peut être entièrement skipped si le temps manque ou si la
+baseline est déjà bonne — elle ne bloque jamais le cycle autonome.
+
 ## Autonomous cycle position
 
 ```
-/develop {task-id}   →   /sonar {task-id}   →   /review {task-id}   →   /tech-writer
+/develop {task-id}   →   /sonar {task-id}   →   /lint-angular {task-id}   →   /review {task-id}   →   /tech-writer
                           ↑
                           you are here
 ```
+
+`/lint-angular` is the Angular counterpart of `/sonar` (best-effort
+ESLint cleanup on `Client/Angular/front/`). It is skipped cleanly when
+the task didn't touch `client-angular` ; in that case `/sonar` hands off
+to `/review` directly. See `agents/lint-angular.md`.
 
 Two important properties of the cycle :
 
@@ -30,9 +85,11 @@ Two important properties of the cycle :
   branch model is replaced by per-task chaining — see "Two invocation modes"
   below).
 
-- **Best-effort, not exhaustive.** 5 iterations max. After that, accept the
-  remaining issues and hand off to `/review` regardless. The autonomous
-  cycle prioritises forward progress over a perfect Sonar Quality Gate.
+- **Best-effort on legacy debt only.** 5 iterations max for Phase 2. After
+  that, accept the remaining **legacy** issues and hand off to `/review`.
+  Phase 1 (new code) is **never** best-effort — see the zero-new-debt
+  principle above. The autonomous cycle prioritises forward progress over
+  a perfect Sonar Quality Gate **on legacy code**, jamais sur le new code.
 
 ## Two invocation modes
 
@@ -65,14 +122,30 @@ In both modes : repo `api-mail` only (path `Api/Mail/`, solution
 
 ## Hard targets (from `agents/sonar-targets.yml`)
 
+Long-term project-wide targets :
+
 - `bugs = 0`
 - `vulnerabilities = 0`
 - `sqale_rating = A` (maintainability)
 - `coverage >= 95%`
 
-These are long-term targets. A single `/sonar` run is NOT expected to reach
-them ; it is expected to **make significant progress**. Early-stop if all
-targets are already met.
+A single `/sonar` run is NOT expected to reach these on the **whole project**
+; Phase 2 (legacy) is expected to make significant progress.
+
+**On the new code period, however, these targets are non-negotiable per
+run** (zero-new-debt principle) :
+
+- `new_bugs = 0`
+- `new_vulnerabilities = 0`
+- `new_security_hotspots_reviewed = 100%`
+- `new_code_smells = 0` (toutes sévérités, sauf règles blacklistées —
+  voir ci-dessus, la blacklist ne couvre PAS le new code)
+- `new_coverage >= 95%` (ou la valeur courante de `coverage` dans
+  `sonar-targets.yml`)
+- Quality Gate sur le new code = `OK`
+
+Early-stop if all project-wide targets AND the new-code Quality Gate are
+already met.
 
 ## Environment
 
@@ -239,8 +312,14 @@ gitignored).
 ### Step 1 — Early-stop if targets already met
 
 If baseline already satisfies all hard targets (`bugs=0`, `vulnerabilities=0`,
-`sqale_rating=A`, `coverage>=95`), print a congratulations message and stop.
-Nothing to do.
+`sqale_rating=A`, `coverage>=95`) **AND** the new-code Quality Gate is `OK`
+(no new-code issues, `new_coverage>=95`), print a congratulations message
+and stop. Nothing to do.
+
+Otherwise, decide which phases to run :
+- If new-code Quality Gate is RED OR any `new_*` finding exists OR
+  `new_coverage < target` → **Phase 1 mandatory**.
+- If project-wide targets are not met after Phase 1 → **Phase 2 best-effort**.
 
 ### Step 2 — Create task + branch (Mode B only)
 
@@ -332,40 +411,151 @@ existants). Max 5 itérations sur la même branche.
 | 1    | ...       | ...             | ...      | ...          | ...            | ✓     | ✓     | ...        |
 ```
 
-### Step 3 — Iteration loop (max 5)
+### Step 3 — Phase 1 loop : new code (MANDATORY, no iteration cap)
+
+Cette boucle ne s'arrête que sur l'un des deux états terminaux :
+- **Succès** : new-code Quality Gate = `OK`, `new_coverage >= target`,
+  zéro `new_bugs / new_vulnerabilities / new_code_smells`, 100% des
+  `new_security_hotspots` revus.
+- **Blocage** : voir "Conditions d'arrêt en échec" du Zero-new-debt
+  principle → écrire `questions/{task-id}.md` et **halt** (pas de hand-off
+  vers `/review`).
+
+Pour chaque itération de Phase 1 :
+
+#### 3.1 Fetch new-code issues
+
+**Filtre `inNewCodePeriod=true` obligatoire** :
+
+```bash
+curl -s -u "$SONAR_TOKEN:" \
+  "$SONAR_HOST_URL/api/issues/search?componentKeys=$SONAR_PROJECT_KEY&resolved=false&inNewCodePeriod=true&ps=500&s=SEVERITY&asc=false" \
+  > /tmp/sonar-newcode-issues-iter{iter}.json
+```
+
+For security hotspots :
+
+```bash
+curl -s -u "$SONAR_TOKEN:" \
+  "$SONAR_HOST_URL/api/hotspots/search?projectKey=$SONAR_PROJECT_KEY&status=TO_REVIEW&inNewCodePeriod=true&ps=500" \
+  > /tmp/sonar-newcode-hotspots-iter{iter}.json
+```
+
+Fetch the new-code coverage :
+
+```bash
+curl -s -u "$SONAR_TOKEN:" \
+  "$SONAR_HOST_URL/api/measures/component?component=$SONAR_PROJECT_KEY&metricKeys=new_coverage,new_line_coverage,new_branch_coverage,new_uncovered_lines,new_uncovered_conditions"
+```
+
+#### 3.2 Build the batch — NO blacklist, NO file cap
+
+- **La blacklist NE s'applique PAS** au new code (zero-new-debt principle).
+- Pas de cap à 30 fichiers — on doit traiter **tout** le new code. Garder
+  un cap de 100 issues par itération uniquement pour cadencer les commits ;
+  les itérations suivantes traitent le reste.
+- Tri identique à l'ancien (bugs > vuln > hotspots > smells, par sévérité).
+
+#### 3.3 Apply fixes — test-first quand comportemental
+
+Même classification que l'ancienne section 3.4/3.5 (refactor pur vs
+comportemental, RED-GREEN pour le comportemental).
+
+Spécificité Phase 1 : si une issue est blacklistée ET sur du new code,
+deux options seulement :
+1. fix manuel (privilégié),
+2. halt via `questions/{task-id}.md`.
+
+Jamais de skip silencieux.
+
+#### 3.4 Combler les trous de couverture du new code
+
+Après avoir fixé les issues, calculer les lignes/branches non couvertes du
+new code :
+
+```bash
+curl -s -u "$SONAR_TOKEN:" \
+  "$SONAR_HOST_URL/api/measures/component_tree?component=$SONAR_PROJECT_KEY&metricKeys=new_uncovered_lines,new_uncovered_conditions&qualifiers=FIL&ps=500&s=metric&metricSort=new_uncovered_lines&asc=false&inNewCodePeriod=true"
+```
+
+Pour chaque fichier ayant `new_uncovered_lines > 0` ou
+`new_uncovered_conditions > 0` :
+
+1. Lire le fichier source et la couverture détaillée (rapport OpenCover dans
+   `TestResults/`).
+2. Identifier les méthodes / branches non couvertes parmi les lignes du new
+   code (intersection avec le diff `git diff origin/develop...HEAD --name-only`
+   et `git blame` si nécessaire).
+3. **Écrire les tests unitaires manquants** dans le projet de tests
+   correspondant (mirror `tests/mss.mail.{layer}.tests/`). Arrange / Act /
+   Assert, NSubstitute pour les mocks, un comportement par test.
+4. Exécuter le test → vérifier qu'il passe et qu'il couvre effectivement
+   les lignes/branches ciblées.
+
+Itérer jusqu'à `new_coverage >= target`. Si une portion du code est
+intrinsèquement non testable sans refactor structurel hors scope → halt via
+`questions/`.
+
+#### 3.5 Build + full test suite
+
+Identique à l'ancienne 3.6 (build + tests, rollback du batch si KO).
+
+#### 3.6 Commit + push
+
+Identique à l'ancienne 3.7. Préfixer les commits Phase 1 :
+
+```
+fix(sonar/new): resolve N occurrences of {ruleKey} — {ruleName}
+test(sonar/new): cover {file/feature} (new-code coverage)
+```
+
+#### 3.7 Re-analyse et vérification
+
+Re-lancer l'analyse Sonar complète (commands de la section "Sonar analysis
+commands"), attendre la fin du traitement serveur, puis fetch :
+
+```bash
+curl -s -u "$SONAR_TOKEN:" \
+  "$SONAR_HOST_URL/api/qualitygates/project_status?projectKey=$SONAR_PROJECT_KEY"
+```
+
+Lire `projectStatus.conditions[]` et vérifier les conditions sur new code
+(`new_*` metrics) :
+- Toutes les conditions new-code en `OK` → **sortir de Phase 1**, passer
+  Phase 2.
+- Au moins une condition new-code en `ERROR` → itération suivante de
+  Phase 1.
+- 2 itérations consécutives sans amélioration sur le new code → halt via
+  `questions/`.
+
+### Step 4 — Phase 2 loop : legacy debt (best-effort, max 5 iterations)
+
+Ne démarre que si Phase 1 est verte. Boucle historique conservée :
 
 For `iter = 1..5` :
 
-#### 3.1 Fetch issues
+#### 4.1 Fetch issues
 
-Call the Sonar REST API :
-
-```bash
-curl -s -u "$SONAR_TOKEN:" \
-  "$SONAR_HOST_URL/api/issues/search?componentKeys=$SONAR_PROJECT_KEY&resolved=false&ps=500&s=SEVERITY&asc=false" \
-  > /tmp/sonar-issues-iter{iter}.json
-```
-
-For security hotspots (separate endpoint) :
+Identique à l'ancienne 3.1 (sans `inNewCodePeriod`), mais ajouter le filtre
+pour **exclure** le new code (déjà traité en Phase 1) :
 
 ```bash
 curl -s -u "$SONAR_TOKEN:" \
-  "$SONAR_HOST_URL/api/hotspots/search?projectKey=$SONAR_PROJECT_KEY&status=TO_REVIEW&ps=500" \
-  > /tmp/sonar-hotspots-iter{iter}.json
+  "$SONAR_HOST_URL/api/issues/search?componentKeys=$SONAR_PROJECT_KEY&resolved=false&inNewCodePeriod=false&ps=500&s=SEVERITY&asc=false" \
+  > /tmp/sonar-legacy-issues-iter{iter}.json
 ```
 
-#### 3.2 Filter + sort
+#### 4.2 Filter + sort (legacy only)
 
-1. **Exclude blacklisted rules** : read `agents/sonar-blacklist.yml` and drop
-   any issue whose `rule` matches a blacklisted key. Log them in the journal
-   as "skipped (blacklisted)".
+1. **La blacklist S'APPLIQUE** ici (Phase 2 = legacy). Drop any issue whose
+   `rule` matches a blacklisted key. Log them as "skipped (blacklisted)".
 2. **Sort by priority** :
    1. Bugs with severity BLOCKER, then CRITICAL, then MAJOR, then MINOR
    2. Vulnerabilities with severity BLOCKER, then CRITICAL, then MAJOR, then MINOR
    3. Security hotspots with priority HIGH, then MEDIUM, then LOW
    4. Code smells with severity CRITICAL, then MAJOR, then MINOR, then INFO
 
-#### 3.3 Build the iteration's batch — **Strategy C**
+#### 4.3 Build the iteration's batch — **Strategy C**
 
 Within the top-priority category still having issues, pick all issues of the
 **most common rule** (or the top 2-3 rules if the top rule has few issues)
@@ -377,7 +567,7 @@ until you hit the cap :
 If all issues of the chosen category are blacklisted or capped out, advance
 to the next category in the same iteration.
 
-#### 3.4 Classify each issue — behavioural vs pure refactor
+#### 4.4 Classify each issue — behavioural vs pure refactor
 
 For each issue in the batch, read the `file:line`, the rule message, and
 enough context to classify :
@@ -394,7 +584,7 @@ enough context to classify :
 
 If the classification is ambiguous → treat as **behavioural** (safer).
 
-#### 3.5 Apply fixes — test-first for behavioural
+#### 4.5 Apply fixes — test-first for behavioural
 
 For each **behavioural** issue :
 
@@ -413,7 +603,7 @@ For each **pure refactor** issue :
    Rollback the fix, reclassify as behavioural, go through step-first test
    path.
 
-#### 3.6 Build + full test suite
+#### 4.6 Build + full test suite
 
 After the whole batch is applied :
 
@@ -425,11 +615,11 @@ dotnet test  HealthPlatform.Api.Mail.sln --configuration Release --logger "conso
 
 - Build KO → rollback the whole batch (`git reset --hard HEAD` before any
   commit). Log the failure, try a smaller batch (halve the size) and retry
-  once. If it still fails → stop the loop, go to Step 4 with what's already
+  once. If it still fails → stop the loop, go to Step 5 with what's already
   committed.
 - Tests KO → same rollback logic.
 
-#### 3.7 Commit + push
+#### 4.7 Commit + push
 
 Group commits by rule for diff readability. Message per commit :
 
@@ -452,7 +642,7 @@ Then :
 git push origin chore/sonar-api-mail-{YYYYMMDD}
 ```
 
-#### 3.8 Re-analyse
+#### 4.8 Re-analyse
 
 Run the full Sonar analysis (begin → build → test with coverage → end) using
 the same commands documented in this file's "Sonar analysis commands" section
@@ -462,7 +652,7 @@ below. Wait for the server to process the report (poll
 
 Fetch the new KPIs. Append a row to the task's `## Journal` table.
 
-#### 3.9 Evaluate progression
+#### 4.9 Evaluate progression
 
 Compute :
 
@@ -478,16 +668,26 @@ nothing left to fix).
 
 **Best-effort acceptance** (since the autonomous inversion of 2026-04-27) :
 when the loop stops because of the iteration cap (`iter == 5`) but issues
-remain, **do not halt the cycle**. Log "Sonar best-effort : N issues
-remaining after 5 iterations — accepted, handed off to /review" in the
-task's `## Journal` table. The autonomous chain prioritises forward progress
-over Sonar perfection.
+remain, **do not halt the cycle**. Log "Sonar best-effort (legacy) : N
+issues remaining after 5 iterations — accepted, handed off to /review" in
+the task's `## Journal` table. The autonomous chain prioritises forward
+progress over Sonar perfection **on legacy code only**.
+
+**Cette acceptance ne s'applique JAMAIS à Phase 1 (new code).** Si Phase 1
+est bloquée, l'agent halt via `questions/` et n'invoque PAS `/review` —
+zero-new-debt principle.
 
 The cycle only halts (via `questions/{task-id}.md`) on **tooling failure**
 — SonarQube unreachable mid-run, scanner crash, build/test broken by a
-faulty fix that can't be rolled back, GitHub API failure on push.
+faulty fix that can't be rolled back, GitHub API failure on push **— OR
+on Phase 1 blockage**.
 
-### Step 4 — Handover to /review
+### Step 5 — Handover to /lint-angular (or /review)
+
+**Pré-condition impérative** : Phase 1 doit être verte (new-code Quality
+Gate `OK`, `new_coverage >= target`, zéro `new_*` finding non traité).
+Sinon, NE PAS appeler `/lint-angular` ni `/review` — écrire
+`questions/{task-id}.md` et halt.
 
 **Mode A — chained** :
 
@@ -495,31 +695,44 @@ faulty fix that can't be rolled back, GitHub API failure on push.
    (or create `## Sonar log` if missing) :
    ```markdown
    ## Sonar log
-   - Iterations : {N} / 5
-   - Issues fixed : {count} (bugs / vulnerabilities / smells / hotspots)
-   - Issues remaining : {count} (best-effort acceptance)
+   - Phase 1 (new code) : ✓ Quality Gate OK, new_coverage = {X}%
+   - Phase 1 — Issues fixées : {count} (bugs / vuln / smells / hotspots)
+   - Phase 1 — Tests ajoutés : {count}
+   - Phase 2 (legacy) : itérations {N} / 5
+   - Phase 2 — Issues fixées : {count}
+   - Phase 2 — Issues restantes : {count} (best-effort acceptance)
    - Build / tests : ✓ green
    ```
 2. **Do not rename the task.** The task stays in `wip-*` — `/review` is
    responsible for the `wip → review → done` transitions.
-3. Invoke `/review {task-id}` to continue the chain.
+3. **Decide the next step** based on whether the task touched
+   `client-angular` :
+   - Task lists `client-angular` in `**Repos**:` **OR**
+     `git -C Client/Angular/front status --porcelain` is non-empty
+     (uncommitted Angular work left by `/develop`) → invoke
+     `/lint-angular {task-id}`. That step will hand off to `/review`
+     when done.
+   - Otherwise → invoke `/review {task-id}` directly (no Angular work
+     to lint).
 
 **Mode B — stand-alone** :
 
 1. Update the task's DOD checkboxes based on what was actually achieved.
 2. Fill the final KPI table in the PR body template (baseline vs final).
 3. Rename the task to `review-sonar-api-mail-{YYYYMMDD}.md`.
-4. Invoke `/review sonar-api-mail-{YYYYMMDD}`.
+4. Invoke `/review sonar-api-mail-{YYYYMMDD}`. A stand-alone Sonar run
+   never touches `client-angular`, so `/lint-angular` is not in the
+   hand-off path for Mode B.
 
-In both modes, `/review` runs autonomously (no human approval prompt — see
-the autonomous-mode `/review` spec) : rebuild + retest, DOD verification,
-code review, commit + push + sync develop, open PR with label
-`awaiting-human-merge`, rename `done-*`, then chain `/tech-writer`. The
-human merges manually (HAG rule 10).
+In every chain path, `/review` runs autonomously (no human approval prompt
+— see the autonomous-mode `/review` spec) : rebuild + retest, DOD
+verification, code review, commit + push + sync develop, open PR with
+label `awaiting-human-merge`, rename `done-*`, then chain `/tech-writer`.
+The human merges manually (HAG rule 10).
 
 ---
 
-## Sonar analysis commands (used in Step 0, Step 3.8)
+## Sonar analysis commands (used in Step 0, Step 3.7, Step 4.8)
 
 ### Cleanup
 ```bash
@@ -580,12 +793,23 @@ Rating mapping : `1=A, 2=B, 3=C, 4=D, 5=E`.
 ## Rules
 
 - The forge NEVER merges the PR — HAG rule 10 always applies.
-- Each behavioural fix is preceded by a RED unit test (rule 1).
-- Blacklisted rules (`agents/sonar-blacklist.yml`) are NEVER fixed by `/sonar`.
-  S3776 (cognitive complexity) has its own dedicated command `/sonar-s3776`.
+- **Zero-new-debt** : aucune issue new-code ne peut être laissée non
+  traitée, aucun trou de couverture sur le new code ne peut être laissé
+  ouvert. Si Phase 1 est bloquée → `questions/` + halt, jamais `/review`.
+- Each behavioural fix is preceded by a RED unit test (rule 1). Pour le
+  new code, les tests manquants doivent être créés (pas seulement les
+  fix de bugs comportementaux).
+- Blacklisted rules (`agents/sonar-blacklist.yml`) :
+  - **Phase 1 (new code)** : la blacklist NE s'applique PAS. Les findings
+    doivent être fix manuellement OU déclencher un halt via `questions/`.
+  - **Phase 2 (legacy)** : la blacklist s'applique normalement.
+  - S3776 (cognitive complexity) garde sa commande dédiée `/sonar-s3776`,
+    y compris pour le new code (auquel cas Phase 1 halt avec une question
+    pointant vers `/sonar-s3776`).
 - Build + full tests MUST pass after each iteration before re-analysis.
-- Max 30 distinct files touched per iteration.
-- Max 5 iterations per run.
+- **Phase 1** : aucun cap de fichiers, aucun cap d'itérations. Cap de 100
+  issues / itération uniquement pour cadencer les commits.
+- **Phase 2** : max 30 fichiers / itération, max 5 itérations / run.
 - No `--no-verify` on git commands. No rebase — only merge (rule 4).
 - The token is read from `SONAR_TOKEN`, never hardcoded.
 - On any unexpected state (file you don't understand, conflict, missing test

@@ -364,7 +364,7 @@ forge does **not** auto-add Angular (paired-frontend safety net is disabled).
    not found), log it as a blocker but **do not halt** — `/sonar` may add
    tests as side effect, and `/review` will catch any remaining miss.
 
-### Step 7 — Hand off to `/sonar`
+### Step 7 — Hand off to the cleanup chain (`/sonar` → `/lint-angular` → `/review`)
 
 Append a `## Develop log` section to the task file with :
 
@@ -380,13 +380,33 @@ Append a `## Develop log` section to the task file with :
   - ...
 - Local build / test : ✓ all repos
 - DOD self-check : {N/M items verifiable via command} verified
-- Next step : /sonar (api-mail)
+- Next step : {/sonar | /lint-angular | /review}  (see decision below)
 ```
 
-Then invoke `/sonar` to start the Sonar cleanup pass on `api-mail`.
+**Decide the next step** based on what was actually touched :
 
-If the task does not touch `api-mail`, skip `/sonar` and invoke `/review`
-directly. Log "no api-mail change → skipped /sonar" in the develop log.
+| api-mail touched ? | client-angular touched ? | Next step |
+|---|---|---|
+| yes | yes  | `/sonar {task-id}` — chains to `/lint-angular`, then `/review` |
+| yes | no   | `/sonar {task-id}` — chains directly to `/review`             |
+| no  | yes  | `/lint-angular {task-id}` — chains directly to `/review`      |
+| no  | no   | `/review {task-id}` directly                                  |
+
+"client-angular touched" means **either** the task lists `client-angular`
+in `**Repos**:` **or** `git -C Client/Angular/front status --porcelain`
+is non-empty (uncommitted Angular work). The two checks are equivalent in
+the autonomous flow but the second one covers `no-code` re-entry edge
+cases.
+
+Log the skipped steps explicitly in the develop log :
+- "no api-mail change → skipped /sonar" when api-mail was untouched.
+- "no angular change → skipped /lint-angular" when client-angular was
+  untouched.
+
+The skipped step itself still runs (its own pre-flight detects the empty
+scope and forwards the chain). The explicit log entries here are just so
+the human can read the develop log and immediately know which cleanup
+phases were active.
 
 ---
 

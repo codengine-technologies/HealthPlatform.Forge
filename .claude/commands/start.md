@@ -138,9 +138,11 @@ philosophy was inverted on 2026-04-27 — see CLAUDE.md "Forge philosophy".
 
    Invoke `/develop {task-id}` immediately. The task stays in `wip-*` and
    `/develop` takes over the implementation, then chains into `/sonar`
-   (api-mail), then `/review`, then `/tech-writer`. The full autonomous
-   loop runs end-to-end without human prompt — the only mandatory human
-   action is **merging the resulting PR** (HAG, CLAUDE.md rule 10).
+   (api-mail), then `/lint-angular` (client-angular), then `/review`,
+   then `/tech-writer`. `/sonar` and `/lint-angular` skip cleanly when
+   their target repo wasn't touched. The full autonomous loop runs
+   end-to-end without human prompt — the only mandatory human action is
+   **merging the resulting PR** (HAG, CLAUDE.md rule 10).
 
 10. **Report** to the human :
 
@@ -150,7 +152,8 @@ philosophy was inverted on 2026-04-27 — see CLAUDE.md "Forge philosophy".
     - {repo} (pushed / local-only)
     - ...
 
-    Chaining into /develop now → /sonar → /review → /tech-writer.
+    Chaining into /develop now → /sonar → /lint-angular → /review → /tech-writer.
+    (/sonar et /lint-angular skip clean si leur repo n'a pas été touché.)
     The PR(s) will land with label awaiting-human-merge — you merge
     when ready (HAG rule 10).
     ```
