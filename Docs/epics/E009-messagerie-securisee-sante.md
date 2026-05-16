@@ -1,6 +1,6 @@
 # E009 — Messagerie intelligente MSSante
 
-> **Statut** : 🟢 En cours
+> **Statut** : En cours
 > **Modèle** : hand-crafted
 > **Version** : 1.30
 > **Auteur** : Pascal Cabanel
@@ -8,6 +8,28 @@
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
+---
+
+## Contexte du projet — opportunité d'internalisation Weda
+
+Cette messagerie intelligente MSSanté a été conçue et développée **sur temps personnel** par **Pascal Cabanel**, sur une période d'**un an et demi** entamée fin 2024.
+
+Le produit est aujourd'hui composé de trois briques techniques :
+
+- un **backend** mutualisé portant l'interopérabilité MSSanté (IMAP / SMTP / STARTTLS / XOAUTH2), le traitement des documents CDA et IHE_XDM, le pipeline d'assistance IA (résumés, tags, chat contextuel, recherche sémantique), le journal d'audit Ségur et l'ensemble des règles métier décrites dans ce document ;
+- un **frontend Blazor** complet, qui a servi de référence d'implémentation initiale et reste maintenu à parité fonctionnelle ;
+- une **version Angular** issue de la conversion du frontend Blazor, **destinée à l'intégration native dans Nova** — c'est cette version qui fait l'objet de la présente documentation produit.
+
+La proposition faite à Weda est l'**internalisation** du produit : code source, contrats partagés et expertise associée rejoindraient le périmètre Weda. La base de code Angular est délibérément alignée sur les standards techniques de Nova (Angular 21, composants standalone, signals, zoneless, NgRx Signal Store, design system maison) pour rendre l'intégration aussi directe que possible.
+
+L'opportunité est double :
+
+1. **Accélérer significativement la trajectoire d'innovation MSSanté** de l'éditeur en s'appuyant sur une base à un **stade de développement très avancé**, déjà conforme Ségur V1/V2 et couverte par une suite de tests substantielle ;
+2. **Mutualiser l'effort de conformité réglementaire à venir** (envoi vers Mon Espace Santé, modèle de rôles RBAC, suivi d'acheminement complet, délégation entre praticiens) sur un socle technique déjà construit, plutôt que de partir d'une page blanche.
+
+> **Statut du produit** — le logiciel est à un stade de développement très avancé mais **n'a pas encore été mis en production**. Il est proposé **en l'état**. Les éventuelles adaptations souhaitées par l'éditeur Weda — intégration au shell Nova, branding, exigences de gouvernance interne, finalisation des chantiers en construction (envoi MES, RBAC, suivi d'acheminement, délégation), durcissement opérationnel pour la mise en production — relèveront du chantier d'internalisation et seront conduites par les équipes Weda sur cette **base solide**.
+
+> **Propriété intellectuelle** — le **code source** du logiciel et la **présente documentation** sont la **propriété intellectuelle exclusive de Pascal Cabanel**. L'internalisation décrite ci-dessous suppose un transfert formel encadré.
 ---
 
 ## 1. Vision
@@ -145,17 +167,44 @@ Avant le premier accès à la messagerie, le compte du professionnel doit être 
   <img src="img/v5-2.jpg" alt="Schéma messagerie sécurisée santé" width="1024" style="border: 1px ridge #b0b0b0; padding: 4px; background: #ffffff; box-shadow: 4px 4px 10px rgba(0,0,0,0.35); border-radius: 4px;" />
 </p>
 
+#### Tableau de bord MSSanté — point d'entrée et vue d'ensemble
+
+À l'ouverture du module, le médecin atterrit sur un **tableau de bord** organisé en trois colonnes — *Messagerie* à gauche, *Résumé des mails non lus du jour* au centre, *Patients et alertes cliniques* à droite — qui rassemble en une page l'essentiel à voir avant de plonger dans la boîte de réception. Le dashboard est **dynamique** : les compteurs, listes et tuiles **reflètent l'état courant** de la BAL. Quand le médecin marque un message comme lu, traite un acquittement biologique ou qu'un nouveau message arrive, les widgets concernés se rafraîchissent sans rechargement de page. Sept widgets cohabitent.
+
+<p style="margin: 35px">
+  <img src="img/Dashboard.png" alt="Schéma messagerie sécurisée santé" style="border: 1px ridge #b0b0b0; padding: 4px; background: #ffffff; box-shadow: 4px 4px 10px rgba(0,0,0,0.35); border-radius: 4px;" />
+  <br>
+  Dashboard avec résumé IA, indicateurs, alertes de biologies
+</p>
+
+   **(a) Vignette *Messagerie***
+   Trois cartes compteurs côte à côte donnent le pouls de la boîte INBOX : *Aujourd'hui* (messages reçus dans la journée), *Non lus* (total non lus toutes périodes), *Total* (volume global). Sous les compteurs, un nuage de tags listant uniquement les tags ayant au moins un message non lu, triés par volume décroissant ; un clic sur un tag ouvre la liste filtrée sur ce tag.
+
+   **(b) Vignette *État de connexion***
+   Indicateur de session : la connexion réseau (en ligne / hors ligne), le nombre de **messages en attente d'envoi** (file d'attente hors ligne), et l'état de la **session Pro Santé Connect** avec un décompte du temps restant avant expiration (format `Hh MMm` ou `MMm SSs`). Le statut PSC est rafraîchi chaque seconde et l'état hors ligne est revérifié toutes les dix secondes — le médecin sait sans ambiguïté s'il est connecté, et combien de temps il lui reste avant la prochaine reconnexion PSC.
+
+   **(c) Vignette *Synchronisation***
+   Cercle de progression matérialisant l'avancement de la synchronisation IMAP en cours. Trois états visuels : *en attente* (compte à rebours de 30 secondes avant démarrage automatique au chargement du module), *synchronisation en cours* (anneau qui se remplit, pourcentage au centre), *au repos* (avec mention de la **dernière synchronisation** en temps relatif : « À l'instant », « Il y a 5 min », « Il y a 2 h »…). Le médecin peut **démarrer ou arrêter manuellement** la synchronisation. À la fin de chaque cycle, les actions hors ligne en attente sont automatiquement rejouées.
+
+   **(d) Résumé des mails non lus du jour**
+   Colonne centrale dédiée à la lecture rapide : jusqu'à **dix messages** non lus du jour (complétés par les plus récents non lus si la journée en compte moins), chacun présenté sous forme de **carte synthèse IA** — identité du patient (nom + âge), praticien émetteur (nom + spécialité), expéditeur, date, et résumé clinique en langage médical du contenu. Le médecin peut **retirer un message de la liste** d'un geste après l'avoir parcouru, pour focaliser la vue sur ce qui reste à traiter. Cette colonne offre une revue de matin condensée : en 30 secondes de scroll, le médecin sait quels comptes-rendus exigent une action immédiate.
+
+   **(e) Tuile *Bio en attente d'acquittement***
+   Présentée en tête de la colonne de droite (cf. §5.2 sous-chapitre *Acquittement biologique anormal*) — compteur total des comptes-rendus biologiques anormaux non encore résolus, ventilation par dernière action posée, deep-link vers la BAL pré-filtrée. La tuile disparaît automatiquement quand la file est vide.
+
+   **(f) Vignette *Résultats anormaux***
+   Liste verticale des **patients ayant au moins un résultat biologique anormal non lu**. Chaque patient apparaît avec ses initiales, son nom complet, un indicateur visuel de criticité (codes HL7 colorisés), un horodatage relatif depuis le dernier résultat, et la liste des valeurs biologiques concernées (biomarqueurs hors normes mis en évidence). Le médecin distingue d'un coup d'œil les patients critiques des patients à surveiller.
+
+   **(g) Widget *Patients avec mails non lus*** (task-035)
+   Cinq patients par défaut (extensible à vingt via *Voir plus*) ayant au moins un mail non lu, classés par date du mail non lu le plus récent. Chaque ligne agrège l'identité, le compteur de mails non lus, les chips catégories CDA présentes, un badge de sévérité biologique, une pastille d'intégration, et un menu contextuel à trois actions : *Voir le dossier patient*, *Filtrer mails sur ce patient*, *Voir l'email* (qui ouvre un aperçu inline du dernier mail non lu en mode lecture seule, et marque le mail comme lu avec trace audit). Ce widget se rafraîchit en temps réel à chaque enrichissement de mail entrant : le patient nouvellement concerné apparaît immédiatement en tête de liste, sans rechargement.
+
+Le caractère **dynamique** du dashboard est central pour l'usage clinique : le médecin n'a pas besoin de fermer puis rouvrir le module pour voir ses compteurs à jour. Une lecture, un acquittement, une réception : le widget concerné se met à jour, le compteur correspondant décroît ou s'incrémente, le patient disparaît de la liste si tous ses messages ont été lus. Le tableau de bord se comporte ainsi comme une **vue vivante** de l'activité MSSanté du jour, à laquelle le médecin revient autant de fois qu'il le souhaite au cours de sa consultation.
+
 1. **E009-F001 — Boîte de réception et gestion IMAP** : à l'ouverture de la messagerie, l'authentification Pro Santé Connect déverrouille la BAL MSSante du professionnel et la synchronisation s'amorce en arrière-plan. Le praticien consulte son arborescence de dossiers (INBOX, Envoyés, Brouillons, Corbeille, dossiers personnalisés), lit ses messages, marque lu/non lu, signale les messages importants, supprime, envoie un accusé de lecture. La **sélection multiple** active les **opérations en masse** (déplacer, supprimer, marquer lu/non lu, signaler) en un seul geste. En mode hors ligne, les actions du professionnel sont mises en file d'attente et synchronisées automatiquement au retour de la connexion — aucune intervention manuelle requise.
 
    Depuis la vue détail d'un message, le médecin peut **imprimer** le mail en PDF (en-têtes, corps, liste des pièces jointes, pied de page traçabilité « Imprimé par Dr X le {date} ») ou **télécharger** son contenu source au format EML pour archivage local. L'impression et chacun des deux exports (PDF, EML) sont enregistrés séparément dans le journal d'audit (task-017).
 
    Un **Mode conversation**, activable depuis les paramètres MSS du praticien, regroupe la liste autour des feuilles de fil : chaque ligne agrégeante affiche un compteur « N messages » et un bouton chevron qui déploie en place les réponses indentées sous le message d'origine. Le médecin retrouve ainsi tout l'historique d'un échange sans quitter la vue liste (task-027).
-
-<p style="margin: 35px">
-  <img src="img/Dashboard.png" alt="Schéma messagerie sécurisée santé" style="border: 1px ridge #b0b0b0; padding: 4px; background: #ffffff; box-shadow: 4px 4px 10px rgba(0,0,0,0.35); border-radius: 4px;" />
-  <br>
-  Dashboard avec résumé IA, indicateur, alertes de biologies
-</p>
 
 <p style="margin: 35px">
   <img src="img/bal.png" alt="Schéma messagerie sécurisée santé" style="border: 1px ridge #b0b0b0; padding: 4px; background: #ffffff; box-shadow: 4px 4px 10px rgba(0,0,0,0.35); border-radius: 4px;" />
@@ -195,12 +244,18 @@ Avant le premier accès à la messagerie, le compte du professionnel doit être 
 
    Toutes les facettes se **cumulent strictement en ET** : un message n'apparaît dans les résultats que s'il satisfait l'intégralité des critères posés (sémantique fiable pour le clinicien — pas d'effet *OU* surprise). Chaque clic sur une chip déclenche la recherche immédiatement, sans appui sur *Entrée* ; la saisie texte se valide par *Entrée*. Un **badge à côté du champ de saisie** indique en permanence le nombre de filtres actifs lorsque la dropdown est repliée. Un clic en dehors de la dropdown ou la touche *Échap* la referme ; un bouton **Tout effacer** réinitialise les filtres et restaure la liste complète. La recherche tient compte du dossier courant : les résultats restent limités à la boîte ou au sous-dossier sélectionné dans l'arborescence (task-029).
 
+<p style="margin: 35px">
+  <img src="img/Recherche.png" alt="Schéma messagerie sécurisée santé"  style="border: 1px ridge #b0b0b0; padding: 4px; background: #ffffff; box-shadow: 4px 4px 10px rgba(0,0,0,0.35); border-radius: 4px;" />
+  <br>
+  Recherche sémentique et textuelle, filtres médicaux
+</p>
+
 4. **E009-F003 — Priorisation** : l'assistance IA propose des tags d'urgence sur les messages reçus. Pour les comptes-rendus de biologie, le système identifie automatiquement les résultats critiques (codes HL7 `AA`, `HH`, `LL`, *CriticalLow*, *CriticalHigh*). Les messages émis par un patient via Mon Espace Santé sont visuellement distincts des messages professionnels, et le nom + INS de l'usager sont extraits du libellé pour rester lisibles dans la liste (task-005). Sur chaque compte-rendu portant au moins une valeur anormale, un workflow médico-légal d'acquittement à 5 actions est proposé au médecin avec traçabilité audit — décrit en détail dans le sous-chapitre **Acquittement biologique anormal — workflow médico-légal** ci-dessous, à la suite du Flux RÉCEPTION (task-028).
 
 <p style="margin: 35px">
   <img src="img/Priorisation.png" alt="Schéma messagerie sécurisée santé"  style="border: 1px ridge #b0b0b0; padding: 4px; background: #ffffff; box-shadow: 4px 4px 10px rgba(0,0,0,0.35); border-radius: 4px;" />
   <br>
-  Valeur de biologie + Alerte détectée par IA
+  Alerte détectée par IA + résumé IA
 </p>
 
 5. **Sélection multiple et opérations en masse** : un bouton dédié de la barre d'en-tête de la liste (icône case à cocher) bascule la boîte en **mode sélection**. Une coche apparaît alors sur chaque ligne, et une barre d'actions contextuelles s'affiche sous les filtres. Le médecin coche les messages à traiter (un par un, ou *Tout* pour cocher l'ensemble des messages visibles), puis applique une action collective :
@@ -213,6 +268,12 @@ Avant le premier accès à la messagerie, le compte du professionnel doit être 
    - **IA** — ouvre le chat IA contextuel sur la sélection (équivalent à *« j'ouvre une conversation avec l'IA à propos de ces N emails »*).
 
    À chaque action, la sélection est vidée et la boîte ressort du mode sélection. Un nouveau clic sur le bouton de bascule (ou la touche *Échap* implicite via la fermeture de la barre) sort du mode sélection sans appliquer d'action. En mode hors ligne, les bascules lu/non lu, favori, déplacement et suppression sont mises en file d'attente et rejouées au retour de la connexion.
+
+   <p style="margin: 35px">
+  <img src="img/multi_selection.png" alt="Schéma messagerie sécurisée santé" style="border: 1px ridge #b0b0b0; padding: 4px; background: #ffffff; box-shadow: 4px 4px 10px rgba(0,0,0,0.35); border-radius: 4px;" />
+  <br>
+  Sélection multiple et opérations en masse
+</p>
 
 6. **E009-F004 — Vue patient de la messagerie (Timeline + Biologie + Synthèse clinique)** : au-delà du simple widget « nouveaux documents », le professionnel dispose d'une **vue patient consolidée de la messagerie**, articulée en trois modules complémentaires, livrés à parité sur les deux frontends. Cette vue **ne se substitue pas au dossier patient du LGC** ; elle réagence les documents MSSanté reçus pour faire émerger, sous un angle clinique, ce que la messagerie sait du patient à un instant donné.
 
@@ -344,7 +405,9 @@ Sur le terrain réglementaire, la fonctionnalité matérialise les exigences **R
 
     **Plugin d'actions métier** — 5 actions exécutables par l'IA depuis le chat : Composer un email, Répondre à un email, Appeler le patient, Envoyer un SMS au patient, Contacter un confrère.
 
-    **Recherche sémantique** : à partir d'une question en langage naturel, le praticien retrouve un email dans toute sa BAL — la recherche combine sens (sémantique) et mots-clés (lexicale). Elle s'articule avec la **recherche avancée à facettes** décrite en *§5.2 — Flux RÉCEPTION (item 3)*, qui complète la requête libre par des filtres cumulables (statut, type de document, plage temporelle, expéditeur…).
+    **Recherche sémantique** : à partir d'une question en langage naturel, le praticien retrouve un email dans toute sa BAL — la recherche combine sens (sémantique) et mots-clés (lexicale).
+
+    **Recherche structurée à facettes** : en complément de la recherche sémantique, une **dropdown de recherche enrichie** permet de filtrer la BAL selon plusieurs dimensions cumulables — 3 chips de statut (Non lus, Importants, Pièces jointes), 6 chips médicaux (Tous, Biologie, Consultation, Imagerie, Prescription, Hospitalisation), 4 chips de plage temporelle (Aujourd'hui, 7 jours, 30 jours, 3 mois), et un panel de recherche avancée pour préciser De / À ou Cc / Objet / Type de document (14 types disponibles). Un badge à côté du champ de saisie indique le nombre de filtres actifs lorsque la dropdown est repliée (task-029).
 
 <p style="margin: 35px">
   <img src="img/chatia.png" alt="Schéma messagerie sécurisée santé" style="border: 1px ridge #b0b0b0; padding: 4px; background: #ffffff; box-shadow: 4px 4px 10px rgba(0,0,0,0.35); border-radius: 4px;" />
@@ -533,170 +596,125 @@ Toute action fonctionnelle du praticien (lecture, envoi, suppression, rattacheme
 | RG-E009-088 | § 6, p.10-11 | MDN RFC 8098 pour messages vers MES | « Le mécanisme MDN est décrit dans la RFC 8098 et peut être déclenché par le professionnel en ajoutant l'entête SMTP suivante : `Disposition-Notification-To: <adresse_mssante_de_l'expéditeur>`. » | 🟡 Partiel |
 | RG-E009-089 | § 9, p.15 | Gestion du `reply-to` dans messages patient | Lorsqu'un message envoyé à un usager dispose d'une entête `reply-to` valorisée avec une adresse MSS, le patient peut répondre à la BAL indiquée dans le `reply-to`. | 🟡 Partiel |
 
-### 6.17 Règles transverses (non Ségur, métier produit)
+---
 
-| ID | Règle | Description |
-|----|-------|-------------|
-| RG-E009-069 | Iso-fonctionnalité multi-frontends | Toute feature visible doit être livrée à parité fonctionnelle sur le frontend embarqué ET sur le frontend autonome. |
-| RG-E009-070 | Mode hors ligne | La composition de message, la lecture des messages déjà synchronisés et la mise en file d'attente d'envois doivent fonctionner sans réseau. |
-| RG-E009-071 | IA optionnelle et désactivable | L'assistance IA est désactivable via feature flag. Le mode on-premise est possible. |
-| RG-E009-072 | Iso-fonctionnalité « avec / sans IA » | Aucune fonction critique (réception, classement, envoi) ne doit dépendre de l'IA. |
-| RG-E009-073 | Test-first sur le backend | Toute logique métier ajoutée doit être couverte par >= 1 test unitaire ; tout endpoint par >= 1 test d'intégration (CLAUDE.md règles 1 et 1b). |
-| RG-E009-074 | DOD vérifiable par `/review` | Chaque task `todo-*.md` doit lister une `## Definition of Done` 100% binaire. |
+## 7. Couverture d'implémentation vs REM-MDV-LGC-Va2 (scope MSS)
+
+> Estimation de la couverture réglementaire de l'EPIC E009 face au référentiel **REM-MDV-LGC-Va2.xlsx** (ANS, vague 2), filtré sur le périmètre **messagerie sécurisée santé** (chapitres « Gestion de la MSSanté », fonctions transverses MSS dans « Gestion de l'INS », « Gestion et partage des documents », « Identification électronique & ProSanté Connect », « Sécurité des SI »).
+>
+> **Hors scope de cette estimation** : les exigences complémentaires Ref#2 v1.0.1 non mappées au REM (§ 6.15) et les exigences ENS Mon espace santé v1.3 (§ 6.16) — issues d'autres référentiels et tracées séparément.
+
+### 7.1 Méthodologie
+
+L'estimation s'appuie sur les statuts déjà publiés en section 6.1–6.14 et applique la pondération suivante :
+
+| Statut | Pondération | Lecture |
+|--------|-------------|---------|
+| ✅ Implémenté | 100 % | Build / tests verts, livré sur `develop`, validé end-to-end |
+| 🟡 Partiel | 50 % | Tronc commun livré, cas limite ou variante non couvert(e) |
+| 🔴 Non implémenté | 0 % | Aucune ligne de code, ou code retiré |
+
+Périmètre comptable : **68 exigences** RG-E009-001 à RG-E009-068 (sections 6.1 → 6.14), correspondant aux lignes REM-MDV-LGC-Va2 filtrées messagerie.
+
+### 7.2 Décompte par domaine
+
+| Domaine REM-MDV-LGC-Va2 | Total | ✅ | 🟡 | 🔴 | Couverture pondérée |
+|-------------------------|------:|---:|---:|---:|--------------------:|
+| 6.1 Interopérabilité opérateurs MSSante | 14 | 13 | 1 | 0 | **96 %** |
+| 6.2 Auto-configuration BAL MSSante | 1 | 1 | 0 | 0 | **100 %** |
+| 6.3 Envoi sécurisé vers Mon Espace Santé | 5 | 3 | 2 | 0 | **80 %** |
+| 6.4 Intégration Annuaire Santé | 6 | 6 | 0 | 0 | **100 %** |
+| 6.5 Intégration et gestion documents reçus | 10 | 9 | 1 | 0 | **95 %** |
+| 6.6 Envoi de messages et documents CDA | 8 | 8 | 0 | 0 | **100 %** |
+| 6.7 Production et conservation de traces MSS | 3 | 3 | 0 | 0 | **100 %** |
+| 6.8 Gestion des professionnels associés | 1 | 0 | 1 | 0 | **50 %** |
+| 6.9 Biologie médicale reçue par MSSante | 6 | 4 | 1 | 1 | **75 %** |
+| 6.10 Affichage des documents CDA reçus | 4 | 4 | 0 | 0 | **100 %** |
+| 6.11 Navigation dossier patient | 4 | 4 | 0 | 0 | **100 %** |
+| 6.12 Authentification PSC | 1 | 1 | 0 | 0 | **100 %** |
+| 6.13 Sécurité | 3 | 1 | 1 | 1 | **50 %** |
+| 6.14 Identité patient | 2 | 0 | 2 | 0 | **50 %** |
+| **Total** | **68** | **57** | **9** | **2** | **≈ 90 %** |
+
+Calcul : (57 × 1,0 + 9 × 0,5 + 2 × 0) / 68 = 61,5 / 68 = **90,4 %**.
+
+### 7.3 Répartition globale
+
+```mermaid
+pie showData title Couverture E009 vs REM-MDV-LGC-Va2 (scope MSS, 68 exigences)
+    "Implémenté" : 57
+    "Partiel" : 9
+    "Non implémenté" : 2
+```
+
+### 7.4 Lecture des écarts résiduels (9,6 %)
+
+Les écarts restants se concentrent sur trois axes fonctionnels précis :
+
+- **Envoi patient (E009-F007)** — RG-E009-017 (sélection usager depuis base patients) et RG-E009-018 (transmission IHE_XDM vers usager) restent partiels ; le chantier ENS Mon espace santé v1.3 traité en § 6.16 pilote leur complétion.
+- **Gouvernance & sécurité de session** — RG-E009-065 (fermeture explicite de session, partiel) et RG-E009-066 (verrouillage automatique 2 h, non implémenté) relèvent d'un chantier sécurité transverse au socle, hors flux MSSante stricto sensu.
+- **Identité patient** — RG-E009-067 et RG-E009-068 (gestion INS qualifiée à la réception et à l'émission) restent partiels en attendant la généralisation INS dans le module patient.
+- **Conversion d'unités biologiques** — RG-E009-050 reste explicitement non priorisé.
+
+Aucun écart bloquant pour la conformité socle MSSanté V2 : les 14 exigences `SC.MSS/CONF.*` du domaine 1 sont à **96 %** et les 3 exigences de traçabilité du domaine 7 à **100 %**.
 
 ---
 
-## 7. Contraintes et hypothèses
+## 8. Couverture d'implémentation vs EPIC NOVA Messagerie (Weda, 10/04/2026)
 
-### Contraintes techniques
+> Estimation de la couverture de l'EPIC E009 face à la **feature map NOVA Messagerie** (13 features F1–F13).
+>
+> **Source** : document interne Weda — *[EPIC] Nova Messagerie* (v1.0, Product Management Weda, rédigé le 10/04/2026, généré avec Claude Opus 4.6). Copie locale : `Docs/Referentiel/[EPIC] Nova Messagerie.pdf`. Original Loop : [SharePoint Weda](https://wedafr.sharepoint.com/:fl:/r/contentstorage/CSP_200d22eb-db19-49d7-8c6d-7484bdb4792a/Biblioth%C3%A8que%20de%20documents/LoopAppData/%5BEPIC%5D%20Nova%20Messagerie.loop?d=wb3390ec71bb94cff85384c9bc98ce6b6&csf=1&web=1&e=0BHaHG&nav=cz0lMkZjb250ZW50c3RvcmFnZSUyRkNTUF8yMDBkMjJlYi1kYjE5LTQ5ZDctOGM2ZC03NDg0YmRiNDc5MmEmZD1iJTIxNnlJTklCbmIxMG1NYlhTRXZiUjVLb2hxZ3lkNW9IeEZoMUZXZzJHdjJVVFA2UG1xQmFPRlFvZm1PTDI0ZG9zUyZmPTAxUFlXSkZZR0hCWTQzSE9JMzc1R0lLT0NNVFBFWVpaVlcmYz0lMkYmYT1Mb29wQXBwJnA9JTQwZmx1aWR4JTJGbG9vcC1wYWdlLWNvbnRhaW5lciZ4PSU3QiUyMnclMjIlM0ElMjJUMFJUVUh4M1pXUmhabkl1YzJoaGNtVndiMmx1ZEM1amIyMThZaUUyZVVsT1NVSnVZakV3YlUxaVdGTkZkbUpTTlV0dmFIRm5lV1ExYjBoNFJtZ3hSbGRuTWtkMk1sVlVVRFpRYlhGQ1lVOUdVVzltYlU5TU1qUmtiM05UZkRBeFVGbFdTa1paUVUwMU5WWTJNbEZaVGpKYVJrbFpNbEJhTmtkRE16VTFXVVElM0QlMjIlMkMlMjJpJTIyJTNBJTIyZjUzNjQ0NWItMTc1ZS00MDlmLTgzNzMtY2EwYTRkOTlhZWFmJTIyJTdE) (accès restreint Weda).
+>
+> Même règle de pondération qu'en § 7.1 (✅ 100 % / 🟡 50 % / 🔴 0 %).
 
-- **Connexion sécurisée** : TLS 1.2 minimum vers les opérateurs MSSante, authentification Pro Santé Connect (PSC), suites de chiffrement validées, certificats IGC Santé gamme Élémentaire Organisation uniquement.
+### 8.1 Décompte feature par feature
 
-- **Standards d'interopérabilité** : RFC 5321 (SMTP), RFC 3501 / 9051 (IMAP4), RFC 5322 (en-têtes mail), CI-SIS (CDA R2 N1/N3, IHE_XDM), HL7 (ObservationInterpretation, RoleCode), LOINC, OID.
+| # | Feature NOVA | Priorité | E009 | Statut |
+|---|--------------|----------|------|--------|
+| F1 | Boîte de réception unifiée multi-boîtes (perso + orga) | Must | F001 95 % mono, F010 0 % multi | 🟡 |
+| F2 | Classement automatique INS / CI-SIS | Must | F002 100 %, task-012 | ✅ |
+| F3 | Priorisation / scoring de sévérité (CI-SIS + IA) | Must | F003 100 %, task-028 | ✅ |
+| F4 | Widget "nouveaux documents" dans le dossier patient | Must | F004 + task-035 (widget dashboard, pas dossier) | 🟡 |
+| F5 | Alertes temps réel urgence | Should | F005 100 % | ✅ |
+| F6 | Envoi contextuel depuis tout document Weda | Must | F006 composition OK ; déclencheur LGC hors scope | 🟡 |
+| F7 | Envoi vers Mon Espace Santé (DMP/MES) | Must | F007 10 % | 🔴 |
+| F8 | Annuaire intégré MSSanté + RPPS multi-critères | Must | F008 100 % | ✅ |
+| F9 | Carnet d'adresses personnel + organisationnel | Should | F009 100 % | ✅ |
+| F10 | Rôles / permissions boîtes organisationnelles | Must | F010 0 % | 🔴 |
+| F11 | Suivi d'acheminement des messages envoyés | Should | F011 30 % | 🟡 |
+| F12 | Délégation de traitement à un collègue | Nice | F012 0 % | 🔴 |
+| F13 | Analyse IA du contenu (enrichissement, résumé) | Nice | F013 100 % | ✅ |
+| **Total** | **13** | | | **✅ 6 · 🟡 4 · 🔴 3** |
 
-- **Référentiels** : Annuaire Santé via API FHIR, codes LOINC, jeux de valeurs CI-SIS.
+### 8.2 Répartition globale
 
-- **Conformité réglementaire** : Ségur V1 et V2 (REM-MDV-LGC-Va2), RGPD, Hébergement de Données de Santé (HDS).
+```mermaid
+pie showData title Couverture E009 vs EPIC NOVA Messagerie (13 features)
+    "Implémenté" : 6
+    "Partiel" : 4
+    "Non implémenté" : 3
+```
 
-- **Architecture multi-frontends** : **frontend embarqué** dans le shell du LGC hôte via un système de plugin **et frontend autonome** accessible en application web.
+Calcul : (6 × 1,0 + 4 × 0,5 + 3 × 0) / 13 = 8 / 13 = **≈ 61,5 %**.
 
-- **Persistance** : base relationnelle avec extension vectorielle pour la recherche sémantique.
+### 8.3 Lecture par priorité
 
-- **Notifications temps réel** : canaux push côté frontend embarqué et flux d'événements serveur côté frontend autonome, avec préférences par utilisateur.
+| Priorité NOVA | Total | ✅ | 🟡 | 🔴 | Couverture pondérée |
+|---------------|------:|---:|---:|---:|--------------------:|
+| Must-have | 8 | 3 (F2, F3, F8) | 3 (F1, F4, F6) | 2 (F7, F10) | **56 %** |
+| Should-have | 3 | 2 (F5, F9) | 1 (F11) | 0 | **83 %** |
+| Nice-to-have | 2 | 1 (F13) | 0 | 1 (F12) | **50 %** |
 
-- **Mode hors ligne** : services de synchronisation en arrière-plan, file d'attente d'actions hors ligne, cache local des messages déjà synchronisés.
+### 8.4 Lecture des écarts
 
-- **Polyrepo** : le produit est constitué de plusieurs dépôts indépendants (backend MSS, frontend embarqué, frontend autonome, contrats partagés, bibliothèque d'interopérabilité CDA), gérés en branches alignées `feat/{task-id}-{slug}` (cf. CLAUDE.md règle « 1 US = 1 branche partagée »).
+L'écart vs § 7 (REM ≈ 90 % / NOVA ≈ 62 %) reflète le fait que NOVA cible **au-delà du socle réglementaire** : organisation cabinet (multi-boîte, RBAC, délégation) et envoi patient MES. Les écarts se concentrent sur **3 chantiers** :
 
-### Hypothèses
+- **Cabinet multi-utilisateurs** — F1 (multi-boîte), F10 (RBAC), F12 (délégation). Trois features liées à un même socle d'identité organisationnelle absent aujourd'hui.
+- **Envoi patient MES** — F7. Aligné avec les écarts identifiés en § 6.16 (ENS Mon espace santé v1.3) et § 7.4.
+- **Intégration LGC hôte** — F6 (déclencheur contextuel depuis un document Weda). Côté composition / envoi, F006 livre 100 % ; l'amorce depuis le LGC est pilotée par l'éditeur du LGC.
 
-- L'**API FHIR de l'Annuaire Santé** est disponible et reste rétrocompatible sur la durée de vie du produit. Latence acceptable < 2s par recherche multicritères (cible UX). En cas de panne, dégradation gracieuse (recherche limitée au carnet local).
-
-- L'**infrastructure de recherche vectorielle** est provisionnée pour la recherche sémantique (embeddings dim 768 ou 1536 selon le modèle).
-
-- Les **moteurs IA** sont disponibles selon l'un des deux modes : on-premise ou cloud. Le choix est fait par l'établissement à l'installation et peut être désactivé en feature flag.
-
-- L'utilisateur est **authentifié via Pro Santé Connect** avant toute action MSS.
-
-- Le **Dossier Médical Partagé (DMP) / Mon Espace Santé** est accessible via les opérateurs MSSante dédiés (`@patient.mssante.fr`). L'homologation CNDA pour l'envoi MES sera demandée séparément lorsque E009-F007 sera prêt à passer en production.
-
-- Le **Logiciel de Gestion de Cabinet (LGC)** hôte prend en charge les fonctions hors périmètre messagerie (intégration au dossier patient en 1 clic, opposition patient au niveau du dossier, rapprochement INS).
-
-- Le **professionnel de santé** dispose d'une carte CPS ou e-CPS pour l'authentification PSC et possède un compte MSSante actif.
-
-- Les **opérateurs MSSante** publient leurs configurations (serveurs IMAP, SMTP, capacités, taille max PJ) selon les conventions DNS SRV décrites dans le Ref#2.
-
----
-
-## 8. Critères d'acceptation de l'EPIC
-
-> Cet EPIC est un produit vivant : il restera « en cours » tant que les évolutions du référentiel Ségur ou des opérateurs MSSante imposent des mises à jour. Les critères ci-dessous définissent l'état « v1.0 conformité Ségur complète ».
-
-- [ ] Toutes les Features de la table 4 sont au moins **🟢 implémentées à 100%** (12/15 aujourd'hui ; reste E009-F007 envoi MES, E009-F010 rôles, E009-F011 suivi d'acheminement complet, E009-F012 délégation).
-
-- [ ] **100% des règles réglementaires identifiées en statut « ✅ Implémenté »** :
-  - RG-E009-001 à RG-E009-068 (REM Ségur V1/V2, 14 domaines).
-  - RG-E009-075 à RG-E009-083 (Ref#2 v1.0.1 complémentaires, 9 règles).
-  - RG-E009-084 à RG-E009-089 (ENS Mon espace santé v1.3, 6 règles MES).
-
-  Cible : 0 ligne 🟡 ou 🔴 dans les tableaux des sections 6.1 à 6.16. Total = **83 règles réglementaires** (les RG 069-074 sont transverses produit, non Ségur).
-
-- [ ] **Build vert** sur les dépôts pushés (backend MSS, frontend embarqué, contrats partagés) sur la branche `develop`.
-
-- [ ] **Tests verts** : 0 échec sur les projets de test du backend MSS et sur les tests des deux frontends.
-
-- [ ] **Couverture endpoints** : chaque endpoint du backend a au moins 1 test d'intégration (CLAUDE.md règle 1b).
-
-- [ ] **Iso-fonctionnalité entre les deux frontends** vérifiée sur chaque feature visible (manual test plan dans chaque task).
-
-- [ ] **Mode hors ligne** validé : composition + lecture + file d'attente d'envois fonctionnels sans réseau, synchronisation transparente au retour.
-
-- [ ] **Audit trail complet** : 100% des actions fonctionnelles MSS tracées et exportables en CSV.
-
-- [ ] **Homologation CNDA** obtenue pour l'envoi vers Mon Espace Santé (prérequis à la mise en production de E009-F007).
-
-- [ ] **Documentation utilisateur** rédigée (hors périmètre forge, responsabilité produit).
-
-- [ ] **Validation humaine end-to-end** sur les 3 personas couverts (médecin, secrétaire, coordinateur) selon les Manual Test Plans des tasks correspondantes.
-
----
-
-## 9. Hors périmètre
-
-Les éléments suivants sont **explicitement exclus** de cet EPIC. S'ils deviennent pertinents, ils donneront lieu à un EPIC distinct.
-
-- **Messagerie instantanée / chat interprofessionnel** (différent de la messagerie asynchrone MSSante).
-- **Téléconsultation** (visioconférence, prise de rendez-vous vidéo).
-- **GED avancée** au-delà du stockage des documents reçus / envoyés (versionnement, workflows d'approbation, signature électronique qualifiée).
-- **Prise de rendez-vous** (l'agenda est un autre module produit).
-- **Facturation et tarification** (FSE, télétransmission, SESAM-Vitale).
-- **Dossier Médical Partagé (DMP)** hors volet messagerie.
-- **Intégration directe au LGC hôte** : l'envoi contextuel depuis un document du LGC est partiellement implémenté côté composition ; l'intégration complète au pipeline LGC est pilotée par l'éditeur du LGC, hors scope de ce projet.
-- **Support multi-langues de l'interface** : version française uniquement pour la v1.0.
-- **Application mobile native**.
-- **Signature électronique qualifiée** des documents transmis (au-delà de la signature CDA standard).
-- **Conversion automatique d'unités biologiques inter-CR** (RG-E009-050 identifié comme non implémenté, actuellement non priorisé).
-
----
-
-## 10. Sécurité applicative — Identifiants opaques et défense en profondeur
-
-> Chapitre transverse non-Ségur, ouvert le 2026-04-29, **clos le 2026-05-02**.
-> Couvre les trois couches de défense anti-IDOR de la plateforme. Le détail
-> ingénierie (découpage tasks, audit grep, limites résiduelles techniques)
-> est dans [`E009-Changelogs.md`](./E009-Changelogs.md), section
-> *Sécurité applicative — Détails techniques*.
-
-### 10.1 Motivation
-
-Avant ce chantier, l'ensemble des entités persistées en Postgres exposaient des **clés primaires `int` auto-incrémentales** côté API. Trois conséquences non-acceptables pour une plateforme de messagerie médicale :
-
-1. **Énumération IDOR triviale** — un attaquant peut balayer `for i in 1..N` et inférer l'existence des ressources voisines.
-2. **Information disclosure** — les Ids monotones révèlent le rythme de création.
-3. **Hack `BitConverter`** — un raccourci historique faisait `BitConverter.ToInt32(Guid.ToByteArray(), 0)` pour caster le Guid du DTO en int côté repo, avec un risque de collision birthday d'environ 1/65k sur 4 octets (16 bits effectifs).
-
-L'objectif était double : **éliminer l'énumération URL** (anti-IDOR de surface) et **supprimer définitivement** le hack BitConverter.
-
-### 10.2 Choix UUID v7 — RFC 9562
-
-Le standard retenu est **UUID v7** (RFC 9562, finalisée mai 2024) plutôt que v4 :
-
-| Critère | UUID v4 | UUID v7 |
-|---|---|---|
-| Non-prédictibilité | ✅ Aléatoire | ✅ Random tail (74 bits) |
-| Tri temporel | ❌ Non | ✅ Prefix Unix epoch ms (48 bits) |
-| B-tree friendliness | ❌ Inserts aléatoires → page splits | ✅ Inserts append-like |
-| Indexabilité Postgres | Médiocre sur grosses tables | Excellente |
-| Génération .NET | `Guid.NewGuid()` | `Guid.CreateVersion7()` (.NET 9+ natif) |
-
-La génération est faite **côté .NET** via un générateur dédié câblé dans la couche d'accès aux données.
-
-### 10.3 Convention scellée
-
-À l'issue du chantier (tasks 018 → 019 → 020), les conventions suivantes sont **figées** sur api-mail / dtos-mss / client-blazor / client-angular :
-
-1. **Routes API** : tout id de ressource est typé `{id:guid}` dans le route template ASP.NET Core. Aucune route `{*:int}` ne doit être réintroduite.
-2. **Génération PK** : exclusivement `Guid.CreateVersion7()`. `Guid.NewGuid()` (v4) reste autorisé dans les tests, mais pas en production.
-3. **Type DTO C#** : `Guid` / `Guid?` partout pour les Ids et les FK exposés ; `string` réservé aux identifiants externes (email, claim JWT, INS, RPPS).
-4. **Type modèle TypeScript Angular** : `string` pour tout id de ressource ; `number` réservé aux UID IMAP (qui sont une primitive du protocole IMAP, pas une PK métier).
-5. **Pas de legacy** : tout cast Guid → int (hack `GetIntId`, `BitConverter.ToInt32` sur byte arrays Guid) est définitivement interdit.
-
-### 10.4 Stratégie de défense en profondeur — vue d'ensemble
-
-| Couche | Vise | État |
-|---|---|---|
-| 1. Identifiants opaques (Guid v7) | Anti-énumération URL | 🟢 Implémentée (tasks 018+019+020) |
-| 2. Authentification cryptographique JWT | Anti-spoofing d'identité | 🟢 Implémentée (task-021) |
-| 2bis. SSE & endpoints anonymes | Anti-leak temps réel | 🟢 Implémentée (task-022) |
-| 3. Ownership scoping repos | Anti-cross-tenant après leak Guid | 🟢 Implémentée (task-023) |
-
-**Bilan du chantier sécurité E009** : les **3 couches** de défense en profondeur sont désormais en place. La plateforme est défendue contre :
-
-1. **L'énumération d'URL** — les PK Postgres sont en Guid v7 RFC 9562, un attaquant ne peut plus deviner l'Id voisin (probabilité ≈ 0).
-2. **L'usurpation d'identité par header / query string** — l'auth passe désormais par le pipeline AuthN/AuthZ ASP.NET Core (`AddJwtBearer` + `FallbackPolicy = RequireAuthenticatedUser`). Les flux SSE résolvent l'email exclusivement depuis le claim JWT validé.
-3. **L'accès cross-tenant via leak de Guid** — toute méthode repository qui prend un `Guid id` filtre cumulativement par `UserId` ; les controllers retournent **404 sur ownership KO** (jamais 403 pour ne pas leaker l'existence du Guid).
-
-Le **seul vecteur IDOR résiduel** identifié serait un compromis de la table `Users` elle-même (forge d'un JWT signé), ce qui suppose une compromission du Keycloak ou de la BDD — hors périmètre application, traité au niveau infrastructure.
+Aucun écart sur les capacités **IA** (F3, F13) ni **annuaire** (F8, F9), où E009 livre déjà à 100 %.
 
 ---
 
@@ -837,5 +855,4 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 - **v1.6 — Alignement iso-fonctionnel** des frontends Angular et Blazor (task-016).
 
 ---
-
-*Documentation produit générée et maintenue par `/tech-writer` (cf. `agents/technical-writer.md`). Sections 1, 2, 3, 7, 9, 10 sont préservées entre les passes ; sections 4, 5, 6 sont en mode hand-crafted. Le doc frère [`E009-Changelogs.md`](./E009-Changelogs.md) concentre la vue ingénierie (PR, NuGet, tests, audit grep, file paths) ; les `task-XXX` apparaissent ici en spine discret. Pour mettre à jour : `/tech-writer E009` ou `/tech-writer E009 --refresh`.*
+**Auteur : Pascal Cabanel — tous droits réservés.**
