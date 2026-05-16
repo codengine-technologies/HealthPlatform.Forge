@@ -75,6 +75,7 @@ If an EPIC doc already exists **without** the `**Modèle**` field AND its sectio
 | Section | Task-driven | Hand-crafted |
 |---|---|---|
 | Header (Statut, Modèle, Version, Audience) | Hybrid (writer updates `Dernière mise à jour` ; preserves the rest) | idem |
+| Sommaire (Table des matières) | **Writer** (rebuilt on every run from the actual `##` / `### N.x` headings present in the file). Delimited by `<!-- toc:start -->` / `<!-- toc:end -->`. See *Sommaire (TOC)* below. | idem |
 | 1. Vision | Human (preserved) | Human (preserved) |
 | 2. Objectifs métier | Human (preserved) | Human (preserved) |
 | 3. Acteurs concernés | Human (preserved) | Human (preserved) |
@@ -121,6 +122,35 @@ Forbidden in the produit file :
 - Commit SHAs
 
 If the writer is tempted to include any of these in the produit file, the content belongs in the changelogs file instead.
+
+## Sommaire (TOC)
+
+Every produit file MUST carry a writer-owned **Sommaire** (Table of Contents) placed immediately after the front-matter block and before the first `## Contexte` / `## 1. Vision` section. The TOC is delimited by HTML comment markers so the writer can locate and rebuild it idempotently :
+
+```markdown
+<!-- toc:start — section générée par /tech-writer ; ne pas éditer manuellement -->
+
+## Sommaire
+
+- [Heading 1](#heading-1)
+  - [Sub-heading 1.1](#sub-heading-11)
+- [Heading 2](#heading-2)
+
+<!-- toc:end -->
+```
+
+### Build rules
+
+- **Source of truth.** The TOC is rebuilt **on every run** from the actual `##` and numbered `### N.x` headings present in the file, after all other section updates. Never hand-edited.
+- **Add or remove a section → TOC updates.** Any addition, removal, or rename of a `##` / `### N.x` heading anywhere in the file forces a TOC rebuild on the next writer run. There is no "skip TOC" mode.
+- **Anchors.** Use GitHub-Flavored-Markdown anchor convention : lowercase, spaces → `-`, punctuation stripped (apostrophes, parentheses, commas, dots, slashes), em-dash → single `-` (which can yield `--` next to surrounding spaces — this is correct GFM behavior), accented characters kept.
+- **Depth.** Include all `##` headings. Include numbered `### N.x` sub-headings (5.x, 6.x, 7.x, 8.x, 9.x, etc.). Skip non-numbered `###` sub-headings (e.g. user-facing prose titles under § 4) to keep the TOC navigable.
+- **Idempotency.** Two consecutive runs produce byte-identical TOC blocks. The TOC is placed between the markers ; everything outside the markers is untouched.
+- **No TOC, no run.** If the produit file exists without the `<!-- toc:start -->` / `<!-- toc:end -->` markers, the writer inserts them right after the front-matter on its next run.
+
+### Changelogs file
+
+The changelogs file does **not** carry a Sommaire — its structure is flat (one historical entry per task), and engineering readers consume it via search rather than navigation.
 
 ## Placement of writer-rebuilt recap sections (produit file)
 
@@ -296,8 +326,9 @@ The `/review` command calls `/tech-writer {epic-id}` after a task has been moved
 4. Determine, for the task(s) that triggered this run, which content belongs where :
    - Produit file : update §6 Statut chip (with discrete `task-XXX` ref), refresh §4 %done if a feature is impacted, update the synthèse fonctionnelle bullets, refresh "all features done" checkbox in §8.
    - Changelogs file : append a new entry to `## Historique détaillé des changelogs` with the full engineering detail (PR, NuGet, tests, audit grep, Sonar, file paths, deferred limites) ; append a row to `Annexe C` ; refresh `Annexe B` daté snapshot if structurally meaningful.
-5. Set `Dernière mise à jour` to today's date in both files.
-6. Write both files. Confirm in one line : `docs/epics/E{NNN}-{slug}.md + Changelogs.md updated ({N} tasks linked, {R} RGs touched, model={task-driven|hand-crafted}).`
+5. **Rebuild the produit Sommaire (TOC)** from the actual headings of the produit file as the final write step, between the `<!-- toc:start -->` / `<!-- toc:end -->` markers. Insert the markers if missing.
+6. Set `Dernière mise à jour` to today's date in both files.
+7. Write both files. Confirm in one line : `docs/epics/E{NNN}-{slug}.md + Changelogs.md updated ({N} tasks linked, {R} RGs touched, model={task-driven|hand-crafted}).`
 
 ### Mode 2 — Retro-generation (manual, for initialising an EPIC)
 
@@ -320,6 +351,7 @@ In hand-crafted mode, `--refresh` only rebuilds Annexe C and the §6 Statut chip
 - **Two files per EPIC.** Always produit + changelogs. Never collapse into one. Never split further (no per-task files).
 - **Audience discipline.** PR/NuGet/test counts/audit grep/file paths **never** appear in the produit file. Vision/regulatory conformity/business motivation **never** clutter the changelogs file.
 - **Task IDs are the spine.** Discrete in produit (max 1 ref per line), fully detailed in changelogs.
+- **Sommaire (TOC) is rebuilt on every run.** The produit file carries a writer-owned TOC between `<!-- toc:start -->` and `<!-- toc:end -->`, immediately after the front-matter. Any add/remove/rename of `##` or numbered `### N.x` headings triggers a rebuild on the next run. Never hand-edit between the markers.
 - **Idempotent.** Two runs back-to-back produce identical bytes on both files (modulo `Dernière mise à jour` being already today).
 - **Append-only changelog entries.** Once an entry has been written for a `done-*` task, it is never rewritten in Mode 1. Only Mode 3 (`--refresh`) may rewrite. This protects historical traceability.
 - **Human sections are sacred.** Never rewrite human-authored sections unless the human explicitly asks (Mode 2 on first creation, or `--refresh` on writer-owned sections only).

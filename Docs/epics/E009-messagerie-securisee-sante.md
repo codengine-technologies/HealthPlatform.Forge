@@ -10,6 +10,47 @@
 
 ---
 
+<!-- toc:start — section générée par /tech-writer ; ne pas éditer manuellement -->
+
+## Sommaire
+
+- [Contexte du projet — opportunité d'internalisation Weda](#contexte-du-projet--opportunité-dinternalisation-weda)
+- [1. Vision](#1-vision)
+- [2. Objectifs métier](#2-objectifs-métier)
+- [3. Acteurs concernés](#3-acteurs-concernés)
+- [4. Fonctionnalités de la messagerie intelligente](#4-fonctionnalités-de-la-messagerie-intelligente)
+- [5. Fonctionnalités détaillées](#5-fonctionnalités-détaillées)
+  - [5.1 Vue d'ensemble](#51-vue-densemble)
+  - [5.2 Description du workflow](#52-description-du-workflow)
+  - [5.3 Paramètres utilisateurs](#53-paramètres-utilisateurs)
+  - [5.4 Trace transverse](#54-trace-transverse)
+- [6. Règles métier transverses (conformité Ségur V1/V2)](#6-règles-métier-transverses-conformité-ségur-v1v2) — *14 domaines REM (§ 6.1 → 6.14) + Ref#2 v1.0.1 (§ 6.15) + ENS Mon espace santé v1.3 (§ 6.16)*
+- [7. Couverture d'implémentation vs REM-MDV-LGC-Va2 (scope MSS)](#7-couverture-dimplémentation-vs-rem-mdv-lgc-va2-scope-mss)
+  - [7.1 Méthodologie](#71-méthodologie)
+  - [7.2 Décompte par domaine](#72-décompte-par-domaine)
+  - [7.3 Répartition globale](#73-répartition-globale)
+  - [7.4 Lecture des écarts résiduels](#74-lecture-des-écarts-résiduels-96-)
+- [8. Couverture d'implémentation vs EPIC NOVA Messagerie (Weda, 10/04/2026)](#8-couverture-dimplémentation-vs-epic-nova-messagerie-weda-10042026)
+  - [8.1 Décompte feature par feature](#81-décompte-feature-par-feature)
+  - [8.2 Répartition globale](#82-répartition-globale)
+  - [8.3 Lecture par priorité](#83-lecture-par-priorité)
+  - [8.4 Lecture des écarts](#84-lecture-des-écarts)
+- [9. Reste à faire — estimation de charge pour internalisation](#9-reste-à-faire--estimation-de-charge-pour-internalisation)
+  - [9.1 Reste à faire fonctionnel & réglementaire (déjà identifié)](#91-reste-à-faire-fonctionnel--réglementaire-déjà-identifié)
+  - [9.2 Phases industrielles (mise en production)](#92-phases-industrielles-mise-en-production)
+  - [9.3 Production-readiness complémentaire (ajouts recommandés)](#93-production-readiness-complémentaire-ajouts-recommandés)
+  - [9.4 Synthèse de charge](#94-synthèse-de-charge)
+- [10. Migration Weda Échange → NOVA Messagerie](#10-migration-weda-échange--nova-messagerie)
+- [Annexes](#annexes)
+  - [A. Sources documentaires](#a-sources-documentaires)
+  - [B. Table de correspondance REM Ségur ↔ Ref#2](#b-table-de-correspondance-rem-ségur--ref2)
+- [État de couverture](#état-de-couverture-2026-05-16)
+- [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
+
+<!-- toc:end -->
+
+---
+
 ## Contexte du projet — opportunité d'internalisation Weda
 
 Cette messagerie intelligente MSSanté a été conçue et développée **sur temps personnel** par **Pascal Cabanel**, sur une période d'**un an et demi** entamée fin 2024.
@@ -414,7 +455,57 @@ Sur le terrain réglementaire, la fonctionnalité matérialise les exigences **R
   <br>
 </p>
 
-### 5.3 Trace transverse
+### 5.3 Paramètres utilisateurs
+
+Chaque praticien personnalise sa messagerie depuis un **panneau de paramètres unique**, accessible depuis le menu utilisateur. Les modifications sont **enregistrées automatiquement** au fil des changements et un indicateur visuel (*Enregistrement…* puis *Enregistré*) confirme la prise en compte. Les paramètres sont **scopés par utilisateur** et suivent le praticien quel que soit le poste de travail. Les paramètres pilotés par l'administrateur (taille maximale des pièces jointes, par exemple) apparaissent en lecture seule. Le panneau est organisé en **neuf sections fonctionnelles**.
+
+**1. Identité de l'expéditeur** — configure l'apparence du nom de l'expéditeur sur les courriels sortants, en conformité avec la règle réglementaire de libellé signifiant (RG-E009-043 / `ECO.2.2.7`).
+- Type de boîte : **personnelle** ou **organisationnelle** (cabinet)
+- Civilité, prénom, nom (boîte personnelle uniquement)
+- Organisation
+- Aperçu en temps réel du libellé final (nom affiché `<adresse@domaine>`)
+
+**2. Lecture** — disposition de l'écran principal.
+- Position du volet de lecture : **à droite** de la liste, ou **masqué** (lecture plein écran)
+- Densité d'affichage : **Normal** (lignes espacées) ou **Compact** (jusqu'à 5+ lignes visibles supplémentaires)
+
+**3. Organisation** — comportement par défaut de la boîte.
+- Dossier par défaut à l'ouverture (`INBOX` ou autre)
+- Filtre de la boîte de réception : **Tous** / **Lus** / **Non lus**
+- Taille de la page (nombre d'emails affichés par page)
+- **Mode conversation** : grouper les emails par fil de discussion
+- Taille maximale des pièces jointes (*lecture seule* — pilotée par l'administrateur)
+
+**4. Avancé** — réglages fins de la recherche.
+- Sensibilité de la recherche sémantique : curseur **Large ↔ Précis** (plage 0,3 → 0,8 sur le score de similarité minimum)
+
+**5. Modèles** — raccourci vers la gestion des **modèles d'emails** (cf. E009-F015).
+
+**6. Signatures** — raccourci vers la gestion des **signatures HTML** (cf. E009-F014).
+
+**7. Notifications** — préférences fines par canal et type d'événement.
+- Notifications pour les nouveaux messages
+- Uniquement les messages urgents
+- Résultats biologiques anormaux
+- Son des notifications
+- Notifications bureau (autorisation du système d'exploitation demandée à l'activation)
+
+**8. Synchronisation** — comportement de récupération des messages.
+- **Synchronisation complète** : bascule entre synchronisation incrémentale (par défaut, rapide) et synchronisation complète de la boîte aux lettres (rattrapage exhaustif)
+
+**9. Serveur** — paramètres techniques de connexion à l'opérateur MSSante.
+- Serveur **IMAP** : hôte et port
+- Serveur **SMTP** : hôte et port
+- **Détection automatique** des paramètres serveur (auto-configuration via DNS SRV — cf. RG-E009-015 / `SC.MSS/CONF.04`)
+- Enregistrement manuel des paramètres (TLS, STARTTLS et XOAUTH2 sont imposés par le socle réglementaire et non négociables depuis ce panneau)
+
+> Les choix de l'utilisateur dans ce panneau alimentent directement plusieurs comportements visibles ailleurs dans la messagerie : libellé expéditeur des envois (§ 5.2 ÉMISSION), tri/filtre par défaut de la liste (§ 5.2 RÉCEPTION), regroupement en conversation, canaux de notification temps réel (E009-F005), et seuil de pertinence de la recherche sémantique (E009-F013).
+
+<p style="margin: 35px">
+  <img src="img/Settings.png" alt="Schéma messagerie sécurisée santé" width="1024" style="border: 1px ridge #b0b0b0; padding: 4px; background: #ffffff; box-shadow: 4px 4px 10px rgba(0,0,0,0.35); border-radius: 4px;" />
+</p>
+
+### 5.4 Trace transverse
 
 Toute action fonctionnelle du praticien (lecture, envoi, suppression, rattachement à un patient, opposition patient, déconnexion, impression / export d'email, acquittement biologie, suppression CDA, annule et remplace) est consignée dans le journal d'audit MSSanté (task-004, étendu par task-017 impression/export, task-015b suppression, task-028 acquittement biologie). Chaque entrée porte horodatage, identifiant du praticien, INS patient si pertinent, code LOINC du document, durée de l'action et adresse IP de connexion. L'export CSV du journal est disponible depuis l'écran d'audit pour les besoins de conformité et de contrôle interne.
 
@@ -666,6 +757,13 @@ Aucun écart bloquant pour la conformité socle MSSanté V2 : les 14 exigences `
 >
 > **Source** : document interne Weda — *[EPIC] Nova Messagerie* (v1.0, Product Management Weda, rédigé le 10/04/2026, généré avec Claude Opus 4.6). Copie locale : `Docs/Referentiel/[EPIC] Nova Messagerie.pdf`. Original Loop : [SharePoint Weda](https://wedafr.sharepoint.com/:fl:/r/contentstorage/CSP_200d22eb-db19-49d7-8c6d-7484bdb4792a/Biblioth%C3%A8que%20de%20documents/LoopAppData/%5BEPIC%5D%20Nova%20Messagerie.loop?d=wb3390ec71bb94cff85384c9bc98ce6b6&csf=1&web=1&e=0BHaHG&nav=cz0lMkZjb250ZW50c3RvcmFnZSUyRkNTUF8yMDBkMjJlYi1kYjE5LTQ5ZDctOGM2ZC03NDg0YmRiNDc5MmEmZD1iJTIxNnlJTklCbmIxMG1NYlhTRXZiUjVLb2hxZ3lkNW9IeEZoMUZXZzJHdjJVVFA2UG1xQmFPRlFvZm1PTDI0ZG9zUyZmPTAxUFlXSkZZR0hCWTQzSE9JMzc1R0lLT0NNVFBFWVpaVlcmYz0lMkYmYT1Mb29wQXBwJnA9JTQwZmx1aWR4JTJGbG9vcC1wYWdlLWNvbnRhaW5lciZ4PSU3QiUyMnclMjIlM0ElMjJUMFJUVUh4M1pXUmhabkl1YzJoaGNtVndiMmx1ZEM1amIyMThZaUUyZVVsT1NVSnVZakV3YlUxaVdGTkZkbUpTTlV0dmFIRm5lV1ExYjBoNFJtZ3hSbGRuTWtkMk1sVlVVRFpRYlhGQ1lVOUdVVzltYlU5TU1qUmtiM05UZkRBeFVGbFdTa1paUVUwMU5WWTJNbEZaVGpKYVJrbFpNbEJhTmtkRE16VTFXVVElM0QlMjIlMkMlMjJpJTIyJTNBJTIyZjUzNjQ0NWItMTc1ZS00MDlmLTgzNzMtY2EwYTRkOTlhZWFmJTIyJTdE) (accès restreint Weda).
 >
+> ⚠️ **Note d'intégration** : deux features de la feature map NOVA relèvent d'un développement **côté Weda**, car elles supposent un accrochage natif au shell du LGC hôte (dossier patient, document produit dans Weda) que la messagerie ne peut pas réaliser seule depuis son frontend :
+>
+> - **F4 — Widget « nouveaux documents » dans le dossier patient** : la mise en évidence visuelle des nouveaux documents à l'ouverture d'un dossier patient nécessite l'intégration d'un widget dans l'écran « dossier patient » de Weda. La messagerie expose la donnée (documents reçus rattachés au patient) ; Weda consomme et affiche.
+> - **F6 — Envoi contextuel depuis tout document Weda** : le bouton *« Envoyer via messagerie »* / *« Transmettre au patient »* depuis un document produit (ordonnance, CR, lettre…) est ajouté par Weda sur ses propres écrans de production de document. La messagerie expose l'API de composition pré-remplie ; Weda déclenche.
+>
+> Côté E009, la **plomberie est prête** (API expositions de messages par patient, API de composition pré-remplie, contrats DTO publiés) ; le **dernier kilomètre d'intégration UI** reste à la charge de l'éditeur Weda.
+>
 > Même règle de pondération qu'en § 7.1 (✅ 100 % / 🟡 50 % / 🔴 0 %).
 
 ### 8.1 Décompte feature par feature
@@ -794,6 +892,28 @@ Phases non explicitement listées par le produit mais indispensables pour un go-
 - Le bloc **C2 (pentest)** est à enclencher **avant** la fin du delivery technique car le cycle externe PASSI est long.
 
 > Ces estimations sont volontairement **prudentes mais non gonflées** : elles supposent une équipe formée au stack, sans pivot d'architecture en cours de route. À pondérer si l'équipe entrante doit absorber simultanément le contexte fonctionnel et le code legacy de Weda Échange.
+
+---
+
+## 10. Migration Weda Échange → NOVA Messagerie
+
+> **Aucun processus technique de migration de données n'est requis dans le cadre de ce projet.**
+
+La bascule depuis Weda Échange vers NOVA Messagerie repose entièrement sur la mécanique **IMAP**, qui est par nature un protocole de **synchronisation côté serveur**. Lorsqu'un praticien configure sa boîte aux lettres MSSante dans NOVA Messagerie pour la première fois :
+
+1. La **synchronisation IMAP** s'établit automatiquement avec l'opérateur MSSante du praticien (auto-configuration via DNS SRV — cf. RG-E009-015).
+2. **L'ensemble des courriels déjà stockés** dans la BAL — qu'ils aient été reçus via Weda Échange ou tout autre client MSSante antérieur — sont automatiquement **récupérés** par NOVA Messagerie via la synchronisation initiale.
+3. Chaque message rapatrié passe par le **pipeline d'analyse IA** de la messagerie : extraction des métadonnées CDA, détection de doublons (algorithme normatif INT.18), tagging clinique, scoring de sévérité, rattachement automatique au patient (INS qualifiée ou reconnaissance documentaire), détection des résultats biologiques anormaux.
+4. Le praticien retrouve **sa boîte historique entièrement classée et exploitable** dans NOVA Messagerie, sans intervention manuelle ni perte d'historique.
+
+**Conséquences opérationnelles :**
+
+- **Pas de script de migration** à développer, pas de fenêtre de bascule, pas d'interruption de service.
+- **Pas de reprise d'historique** à coder côté Weda Échange : l'ancien client n'a aucune donnée propriétaire à transmettre — la source de vérité reste la BAL côté opérateur MSSante.
+- **Coexistence transparente** des deux clients pendant la phase de bascule : le praticien peut continuer à utiliser Weda Échange en parallèle, les deux voient le même état serveur.
+- **Pas de risque de divergence ni de perte d'audit** : les actions tracées dans NOVA Messagerie (lectures, envois, suppressions, acquittements biologie) sont propres au nouveau client ; l'historique d'audit Weda Échange reste consultable séparément côté Weda.
+
+> Ce point est explicitement à distinguer d'un éventuel chantier *Plan de migration* (initialement listé puis retiré du périmètre § 9.3) : le seul effort de bascule réside dans la **conduite du changement** — formation, communication clients, accompagnement — pas dans un traitement technique de données.
 
 ---
 
@@ -933,5 +1053,4 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 - **v1.9 — Optimisation du parsing CDA à l'envoi** (task-014) : moins de charge, moins d'erreurs log.
 - **v1.6 — Alignement iso-fonctionnel** des frontends Angular et Blazor (task-016).
 
----
-**Auteur : Pascal Cabanel — tous droits réservés.**
+
