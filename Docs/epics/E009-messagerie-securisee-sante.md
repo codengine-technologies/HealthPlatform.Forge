@@ -54,93 +54,84 @@ Le produit s'adresse en priorité au **médecin généraliste**, mais s'étend �
 
 ---
 
-## 4. Features de l'EPIC
+## 4. Fonctionnalités de la messagerie intelligente
 
-> Les features sont ordonnées par dépendance logique : socle → réception → émission → fonctions avancées. Chaque feature est autonome (livraison incrémentale possible) tout en partageant le socle technique commun (connexion, sécurité, persistance, notifications).
+La messagerie intelligente est conçue pour libérer du temps médical et fiabiliser la prise en charge des patients. Là où une messagerie ordinaire se contente de transmettre des courriels, elle agit comme une **assistante numérique** qui reçoit, classe et priorise les documents reçus, puis aide le praticien à les exploiter dans son dossier patient — sans rupture de flux, sans saisie redondante, et en respectant à chaque étape les exigences MSSanté et Ségur.
 
-| # | Feature | Description courte | Dépendances |
-|---|---------|--------------------|-------------|
-| **E009-F001** | Boîte de réception — gestion IMAP complète | Synchronisation IMAP, **liste et arborescence des dossiers IMAP** (INBOX, Envoyés, Brouillons, Corbeille, dossiers personnalisés), **création / renommage / suppression** de dossiers, **lu/non lu/marqué**, **sélection multiple et opérations en masse** (déplacer, supprimer, marquer lu/non lu, marquer), vue unifiée et vues séparées par BAL (aujourd'hui mono-boîte ; multi-boîtes en cours — cf. F010). | E009-F010 (rôles pour BAL orga) |
-| **E009-F002** | Classement automatique INS / CI-SIS | Traitement des documents CDA R2 (N1/N3) et des archives IHE_XDM, extraction INS/patient/auteur/LOINC, rattachement automatique au dossier patient. | Aucune (cœur métier) |
-| **E009-F003** | Priorisation et scoring de sévérité | Tags d'urgence, suggestions IA, détection biologie anormale. Tri et filtres orientés priorité. | E009-F002 (métadonnées) |
-| **E009-F004** | Vue patient — timeline documents des emails + biologie horizontale + synthèse clinique | Vue dossier patient complète composée de **trois modules** : (a) **Vue temporelle patient** (*Patient Timeline*) — timeline chronologique groupée des documents MSS reçus ; (b) **Timeline biologie horizontale** (*Biology Timeline*) — grille biomarqueurs × dates d'examen avec mini-courbes ; (c) **Synthèse clinique** (*Clinical Synthesis*) — pathologies actives triées par sévérité, ATCD, allergies, biologie anormale récente, facteurs de style de vie. Embarquée via widget dans le shell du LGC hôte et disponible en application autonome. | E009-F002 |
-| **E009-F005** | Alertes temps réel | Notifications poussées sur événements à valeur clinique (biologie critique, message urgent, document non lu). Préférences utilisateur (son, desktop, urgence). | E009-F003 |
-| **E009-F006** | Composition et envoi de messages MSSante | Édition enrichie, pièces jointes (vérification taille — task-008), brouillons auto-sauvegardés, insertion de signature (F014) et de modèle (F015), accusés de réception (MDN/DSN), en-têtes RFC 5322 conformes, annule et remplace (task-006). | E009-F008, E009-F009, E009-F014, E009-F015 |
-| **E009-F007** | Envoi sécurisé vers Mon Espace Santé (DMP) | Sélection patient depuis la base, vérification INS qualifiée, génération du paquet IHE_XDM, en-têtes X-MSS-MES, gestion de l'opposition patient (task-003), gestion des bounces MES, fin d'échange avec usager, adressage mineur. | E009-F006 |
-| **E009-F008** | Annuaire Santé intégré | Recherche multicritères dans l'Annuaire ANS via API FHIR (RPPS, nom, spécialité, localisation, établissement, filtre « adresse MSSante présente »). | Aucune |
-| **E009-F009** | Carnet d'adresses personnel | CRUD contacts, favoris, groupes, tags, import depuis l'annuaire, fusion de doublons, tri par dernière utilisation. | E009-F008 |
-| **E009-F010** | Rôles, permissions et boîtes organisationnelles | Modèle RBAC explicite (médecin / secrétaire / coordinateur), gestion de plusieurs BAL simultanées, droits par boîte. | Aucune (chantier transverse) |
-| **E009-F011** | Suivi d'acheminement complet | Au-delà des MDN : suivi envoyé / accepté par l'opérateur / délivré / lu / répondu, vue chronologique par message. | E009-F006 |
-| **E009-F012** | Délégation de traitement entre professionnels | Workflow d'attribution d'un message à un autre praticien (avec notification, journal, accusé de prise en charge). | E009-F010 |
-| **E009-F013** | Assistance IA — chat multi-emails, résumés, tags, recherche sémantique | Pipeline IA dual on-premise / cloud, activable par feature flag. **Chat IA avec contexte multi-emails** : le médecin sélectionne N emails, crée une conversation, reçoit un résumé consolidé, puis dialogue avec l'IA qui cite les emails sources. **Plugin d'actions métier** exposant 5 actions exécutables par l'IA. Streaming des réponses en temps réel. Résumés automatiques, tags suggérés, recherche sémantique. | E009-F002, E009-F006 |
-| **E009-F014** | Signature email | CRUD complet de signatures enrichies (HTML), avec signature par défaut, basculement de la signature par défaut, insertion automatique à la composition (F006). Éditeur WYSIWYG disponible sur les deux frontends. | E009-F006 |
-| **E009-F015** | Modèles d'email assistés par IA | CRUD de modèles par catégorie, avec **assistance IA native** : génération d'un modèle complet à partir d'une description en langage naturel, correction orthographique / grammaticale, amélioration de texte paramétrable, détection automatique des placeholders (`{{nom}}`, `{{date}}`). Éditeur enrichi disponible sur les deux frontends. | E009-F006, E009-F013 |
+Concrètement, le médecin y trouve sept valeurs métier, déclinées dans les paragraphes suivants.
 
-> Le bilan d'avancement par feature (statut, couverture, tasks contributives) est consigné en fin de document, dans la section *État de couverture*.
+### Recevoir, classer et prioriser sans effort
+
+À l'arrivée d'un compte-rendu, le praticien n'a rien à faire : la messagerie se connecte à sa boîte aux lettres MSSanté en arrière-plan, synchronise les nouveaux messages, identifie le patient concerné via son identité INS, extrait le type de document (biologie, imagerie, consultation, prescription, hospitalisation…), reconnaît l'auteur et la date de l'acte, puis **rattache automatiquement** le document au bon dossier patient. Une paire CDA + PDF apparaît sur une seule ligne, sans doublon technique. Quand un document est reçu en double, ou comme nouvelle version d'un précédent, la messagerie le détecte et appose un badge *« DOUBLON »* ou *« REMPLACÉ »* — le praticien tranche en un clic et navigue entre les versions sans perdre le fil.
+
+Le tri n'est pas seulement chronologique. Les **résultats biologiques anormaux** sont mis en évidence, les **comptes-rendus critiques** (codes HL7 `AA`, `HH`, `LL`) remontent en alerte, et les messages **émis par un patient** via Mon Espace Santé sont visuellement distincts des messages confraternels — le médecin voit en priorité ce qui mérite son attention.
+
+### Voir l'urgence à temps
+
+Quand un résultat critique arrive, le médecin n'attend pas d'ouvrir sa boîte pour le découvrir : une **notification temps réel** (visuelle et sonore) s'affiche sur le poste, accompagnée du niveau d'urgence apparent. Le praticien règle ses préférences (son, notification bureau, seuil d'urgence minimum) pour ne pas être interrompu sur des messages de routine. La messagerie devient ainsi un capteur vigilant, pas un canal de bruit supplémentaire.
+
+### Une vue patient consolidée de la messagerie
+
+Depuis chaque message, le médecin peut basculer sur une **vue patient de la messagerie** : une consolidation, sous un angle clinique, des échanges et documents MSSanté reçus pour ce patient. Cette vue **ne se substitue pas au dossier patient du LGC** — elle réagence l'information déjà reçue par la messagerie pour faire émerger, à partir de cette seule source, la trajectoire de soin telle qu'elle s'écrit côté MSSanté. Trois modules complémentaires composent la vue :
+
+- une **timeline chronologique** des documents MSSanté reçus pour ce patient, avec filtres par catégorie clinique (biologie, imagerie, consultation, prescription, hospitalisation…) ;
+- une **timeline biologique horizontale** qui croise les biomarqueurs et les dates d'examen, avec mini-courbes, indicateurs de tendance et intervalles de référence — onze catégories biologiques regroupées (hématologie, biochimie, ionogramme, enzymologie, hépatique, lipidique, thyroïde, immunologie, sérologie, microbiologie, urinaire) ;
+- une **synthèse clinique** compatible *International Patient Summary*, alimentée par les métadonnées des documents CDA reçus (problèmes actifs, antécédents médicaux et chirurgicaux, allergies, biologie anormale récente, mode de vie, antécédents familiaux), dédoublonnée par code LOINC.
+
+Sur la page d'accueil, un **widget Patient** affiche les cinq derniers patients ayant un message non lu, avec un menu contextuel pour ouvrir leur vue patient messagerie, filtrer la boîte sur ce patient, ou lire directement le message — l'idée étant de débuter la journée en sachant exactement qui appeler.
+
+Cette vue patient se veut **un éclairage complémentaire** au dossier officiel tenu par le LGC : elle répond à la question *« qu'est-ce que la messagerie sait de ce patient aujourd'hui ? »* — utile pour préparer une consultation, suivre un envoi de résultats, détecter un retard de prise en charge — sans prétendre porter l'ensemble des données structurées dont le LGC reste la source de vérité.
+
+### Acquitter et tracer la prise en charge biologique
+
+Sur chaque compte-rendu biologique anormal, un **workflow médico-légal d'acquittement** réservé au rôle Médecin permet au praticien de signaler qu'il a pris connaissance du résultat, puis d'enregistrer son action de prise en charge — *Pris connaissance*, *Rappel patient*, *Convocation*, *Adressage confrère*, ou *Marquer comme résolu* — avec une note clinique facultative à chaque étape. La clôture est explicite, l'historique est inaltérable. Le dashboard porte une **tuile de suivi** des comptes-rendus en attente d'acquittement, ventilée par dernière action posée — le médecin sait toujours où en est sa file de prise en charge.
+
+Le détail du parcours est décrit en §5.2, sous-chapitre *Acquittement biologique anormal — workflow médico-légal*.
+
+### Écrire vite, écrire bien, écrire conforme
+
+Côté émission, la messagerie épargne au praticien toute friction technique. Il **recherche un correspondant** dans l'Annuaire Santé selon cinq axes (RPPS, nom, spécialité, localisation, recherche combinée), et retient les confrères dans un **carnet d'adresses** organisé en favoris, groupes et étiquettes qui se construit automatiquement au fil des échanges.
+
+Pour rédiger, il dispose d'une **signature** par défaut paramétrable et de **modèles** classés par catégorie (lettres de liaison, demandes d'examen, accusés…). L'assistance IA peut **générer** un modèle complet à partir d'une description en langage naturel, **corriger** l'orthographe et la grammaire en temps réel, **améliorer** un passage selon une intention donnée (raccourcir, formaliser, adapter au patient), ou **détecter** les placeholders à compléter.
+
+Avant l'envoi, la messagerie veille à la conformité réglementaire : libellé expéditeur normalisé selon le format Ségur officiel, en-têtes MSSanté `X-MSS-*` émis automatiquement, taille des pièces jointes contrôlée selon les limites de l'opérateur. Si le médecin envoie à un patient via Mon Espace Santé, il peut signifier la fin de l'échange via une case dédiée *« Bloquer la réponse du patient »*. Et si un document envoyé doit être corrigé après coup, la fonction **« Annule et remplace »** republie une version corrigée tout en marquant explicitement le message d'origine comme annulé — sans rupture de traçabilité.
+
+### Une assistance IA qui éclaire sans décider
+
+L'assistance IA est intégrée à la messagerie, mais elle reste **un outil au service du jugement médical**. Elle propose des **résumés automatiques** sur chaque message reçu, suggère des **tags d'urgence et de catégorie**, et offre une **synthèse à la demande** depuis la vue détail d'un message — carte structurée patient + praticien + résumé clinique. Sur des comptes-rendus longs ou denses, le praticien priorise sa pile en quelques secondes au lieu de plusieurs minutes.
+
+Plus avancé encore, un **chat IA contextuel multi-emails** permet au médecin de sélectionner plusieurs messages, d'ouvrir une conversation avec l'IA et de lui poser des questions ouvertes — l'IA répond en **citant systématiquement les emails sources** et refuse toute fabrication. Cinq actions métier sont accessibles directement depuis le chat : composer un email, répondre à un email, appeler le patient, envoyer un SMS, contacter un confrère.
+
+Une **recherche sémantique** retrouve un email dans toute la boîte à partir d'une question en langage naturel, et une **recherche structurée à facettes** filtre la liste par statut, catégorie médicale, plage temporelle et critères avancés (expéditeur, destinataire, sujet, type de document — quatorze types disponibles).
+
+L'assistance IA est **désactivable par paramètre d'établissement** et peut tourner en mode *on-premise* (modèles locaux, aucune donnée ne sort de l'établissement) ou *cloud*, au choix de la structure.
+
+### Confidentialité et conformité réglementaire
+
+À chaque étape, la messagerie respecte les exigences applicables à un client MSSanté professionnel : connexion TLS 1.2 minimum, authentification Pro Santé Connect, certificats IGC Santé en validation continue (CRL et OCSP), formats CDA R2 et IHE_XDM conformes au CI-SIS. Les identifiants techniques des ressources sont opaques pour empêcher toute énumération, l'authentification est cryptographiquement validée à chaque requête, et chaque donnée n'est accessible qu'à son propriétaire — un confrère ne voit pas les contacts, les modèles, les notes cliniques ou l'audit d'un autre praticien.
+
+Toute action fonctionnelle du praticien est consignée dans le **journal d'audit MSS** (lecture, envoi, suppression, rattachement patient, opposition, déconnexion, impression / export d'email, acquittement biologique, suppression CDA, annule et remplace) avec horodatage, identifiant du praticien, INS du patient, code LOINC du document, durée et adresse IP. Le journal est exportable au format CSV pour les contrôles internes et les audits de conformité.
+
+### Périmètre en construction
+
+Certaines fonctionnalités sont en cours de finalisation et seront livrées prochainement :
+
+- **l'envoi vers Mon Espace Santé** (sélection patient depuis la base, vérification de l'identité INS qualifiée, génération du paquet IHE_XDM, gestion des erreurs de distribution renvoyées par MES, adressage des usagers mineurs) ;
+- un **modèle de rôles explicite** (médecin, secrétaire, coordinateur de soins) pour gérer les boîtes organisationnelles partagées ;
+- le **suivi d'acheminement complet** d'un message (envoyé → accepté par l'opérateur → délivré → lu → répondu), au-delà des seuls accusés MDN aujourd'hui disponibles ;
+- un **workflow de délégation** d'un message à un autre praticien, avec notification cible, journal de transmission et accusé de prise en charge.
+
+L'état d'avancement précis de chaque brique fonctionnelle est consigné en fin de document, dans la section **État de couverture**.
 
 ---
 
-## 5. Workflow entre Features
+## 5. Fonctionnalités détaillées
 
 ### 5.1 Vue d'ensemble
 
-```mermaid
-graph TB
-    subgraph Socle["Socle technique (transverse)"]
-        SEC[Connexion sécurisée<br>TLS + PSC + IGC]
-        AUDIT[Journal d'audit<br>SC.MSS/CONF.17-18]
-    end
-
-    subgraph Reception["Flux RÉCEPTION"]
-        F001[E009-F001<br>Dossiers IMAP + bulk]
-        F002[E009-F002<br>Classement auto]
-        F003[E009-F003<br>Priorisation]
-        F005[E009-F005<br>Alertes temps réel]
-        F004[E009-F004<br>Vue patient<br>Timeline + Biologie + Synthèse]
-    end
-
-    subgraph Emission["Flux ÉMISSION"]
-        F008[E009-F008<br>Annuaire Santé]
-        F009[E009-F009<br>Carnet d'adresses]
-        F014[E009-F014<br>Signature email]
-        F015[E009-F015<br>Modèles IA]
-        F006[E009-F006<br>Composition + envoi]
-        F007[E009-F007<br>Envoi Mon Espace Santé]
-        F011[E009-F011<br>Suivi d'acheminement]
-    end
-
-    subgraph Avance["Fonctions avancées"]
-        F010[E009-F010<br>Rôles & permissions]
-        F012[E009-F012<br>Délégation]
-        F013[E009-F013<br>Assistance IA<br>Chat multi-emails]
-    end
-
-    SEC --> F001
-    SEC --> F006
-    F001 --> F002
-    F002 --> F003
-    F002 --> F004
-    F003 --> F005
-    F004 --> F005
-    F008 --> F006
-    F009 --> F006
-    F014 --> F006
-    F015 --> F006
-    F009 -.import.-> F008
-    F006 --> F011
-    F006 --> F007
-    F007 --> F011
-    F010 --> F001
-    F010 --> F012
-    F012 --> F006
-    F002 --> F013
-    F006 --> F013
-    F013 -.actions.-> F006
-    F015 -.génération.-> F013
-    F001 -.trace.-> AUDIT
-    F006 -.trace.-> AUDIT
-    F007 -.trace.-> AUDIT
-```
+<p style="margin: 35px">
+  <img src="img/v5-1.jpg" alt="Schéma messagerie sécurisée santé" width="1024" style="border: 1px ridge #b0b0b0; padding: 4px; background: #ffffff; box-shadow: 4px 4px 10px rgba(0,0,0,0.35); border-radius: 4px;" />
+</p>
 
 ### 5.2 Description du workflow
 
@@ -149,6 +140,10 @@ graph TB
 Avant le premier accès à la messagerie, le compte du professionnel doit être associé à une adresse MSSanté. Tant que cette association n'est pas réalisée, un écran **« Messagerie non configurée »** bloque l'entrée du module et propose un parcours guidé. Le médecin saisit son adresse MSSanté et son numéro RPPS dans le formulaire de configuration ; le système valide la connexion à la BAL via une sonde IMAP sécurisée vérifiant la chaîne TLS IGC-Santé. Une fois l'association persistée, un écran invite le médecin à se déconnecter puis se reconnecter pour activer son compte (task-037, durci par task-038).
 
 #### Flux RÉCEPTION
+
+<p style="margin: 35px">
+  <img src="img/v5-2.jpg" alt="Schéma messagerie sécurisée santé" width="1024" style="border: 1px ridge #b0b0b0; padding: 4px; background: #ffffff; box-shadow: 4px 4px 10px rgba(0,0,0,0.35); border-radius: 4px;" />
+</p>
 
 1. **E009-F001 — Boîte de réception et gestion IMAP** : à l'ouverture de la messagerie, l'authentification Pro Santé Connect déverrouille la BAL MSSante du professionnel et la synchronisation s'amorce en arrière-plan. Le praticien consulte son arborescence de dossiers (INBOX, Envoyés, Brouillons, Corbeille, dossiers personnalisés), lit ses messages, marque lu/non lu, signale les messages importants, supprime, envoie un accusé de lecture. La **sélection multiple** active les **opérations en masse** (déplacer, supprimer, marquer lu/non lu, signaler) en un seul geste. En mode hors ligne, les actions du professionnel sont mises en file d'attente et synchronisées automatiquement au retour de la connexion — aucune intervention manuelle requise.
 
@@ -168,6 +163,14 @@ Avant le premier accès à la messagerie, le compte du professionnel doit être 
   Réception des messages avec affichage des documents CDA
 </p>
 
+   Un bouton dédié de la toolbar de la vue détail (icône bulle de discussion) bascule l'affichage entre le corps brut du message et une **synthèse IA** générée automatiquement à la demande. La synthèse se présente sous forme d'une carte structurée en tête de message rappelant l'identité du patient (nom + âge), le praticien émetteur (nom + spécialité), l'expéditeur et la date d'envoi, suivis d'un **résumé en langage médical** du contenu du message et des documents médicaux joints. Pendant la génération, un indicateur *« Génération de la synthèse en cours… »* informe le praticien. Un nouveau clic sur le bouton replie la synthèse et restaure le corps brut. Cette aide à la lecture rapide est précieuse face aux comptes-rendus longs ou denses, et permet au médecin de prioriser sa pile de messages d'un coup d'œil.
+
+<p style="margin: 35px">
+  <img src="img/syntheseIA.png" alt="Schéma messagerie sécurisée santé" style="border: 1px ridge #b0b0b0; padding: 4px; background: #ffffff; box-shadow: 4px 4px 10px rgba(0,0,0,0.35); border-radius: 4px;" />
+  <br>
+  Réception des messages avec affichage des documents CDA
+</p>
+
 2. **E009-F002 — Classement automatique** : à chaque message reçu portant une archive IHE_XDM, la messagerie analyse le document CDA (R2 N1 ou N3), extrait l'INS du patient, les traits d'identité, l'auteur, la date d'acte, le code LOINC et la catégorie clinique. Le document est rattaché automatiquement au dossier patient correspondant. Une paire CDA + PDF/A-1 est présentée en **une seule ligne** dans la liste — le praticien ne voit pas le doublon technique (task-010).
 
    Un **indicateur d'intégration** placé directement sur la ligne d'inbox renseigne le médecin d'un coup d'œil : pastille verte ✓ « tous intégrés » si chaque document médical du message est rattaché à un patient, ou pastille orange ⏳ avec compteur « N en attente » si un ou plusieurs documents nécessitent encore une action. Le même indicateur est rappelé par document dans la vue détail (task-011).
@@ -177,12 +180,22 @@ Avant le premier accès à la messagerie, le compte du professionnel doit être 
    Lorsqu'un nouveau document est reconnu comme **doublon** d'un document déjà reçu, ou comme **nouvelle version** d'un document existant, un badge « DOUBLON » ou « REMPLACÉ » est posé conformément à SC.CDA/INT.18 ; le praticien confirme ou rejette la détection, et navigue entre versions (algorithme normatif task-034 ; bannière de demande de suppression task-015a + task-015b ; lien cliquable « Version précédente » task-015c, robustesse de la navigation task-036).
 
 <p style="margin: 35px">
-  <img src="img/Classement_Auto.png" alt="Schéma messagerie sécurisée santé" width="1024" style="border: 1px ridge #b0b0b0; padding: 4px; background: #ffffff; box-shadow: 4px 4px 10px rgba(0,0,0,0.35); border-radius: 4px;" />
+  <img src="img/Classement_Auto.png" alt="Schéma messagerie sécurisée santé" width="800" style="border: 1px ridge #b0b0b0; padding: 4px; background: #ffffff; box-shadow: 4px 4px 10px rgba(0,0,0,0.35); border-radius: 4px;" />
   <br>
   Classement automatique, tags
 </p>
 
-3. **E009-F003 — Priorisation** : l'assistance IA propose des tags d'urgence sur les messages reçus. Pour les comptes-rendus de biologie, le système identifie automatiquement les résultats critiques (codes HL7 `AA`, `HH`, `LL`, *CriticalLow*, *CriticalHigh*). Les messages émis par un patient via Mon Espace Santé sont visuellement distincts des messages professionnels, et le nom + INS de l'usager sont extraits du libellé pour rester lisibles dans la liste (task-005). Sur chaque compte-rendu portant au moins une valeur anormale, un workflow médico-légal d'acquittement à 5 actions est proposé au médecin avec traçabilité audit — décrit en détail dans le sous-chapitre **Acquittement biologique anormal — workflow médico-légal** ci-dessous, à la suite du Flux RÉCEPTION (task-028).
+3. **Recherche avancée à facettes** : pour retrouver rapidement un message dans une boîte volumineuse, la barre de recherche en tête de la liste ouvre au focus une **dropdown enrichie** combinant une saisie en langage naturel et des filtres à facettes cumulables. Le médecin peut formuler une question libre (recherche sémantique sur le corps des messages et les documents joints) tout en filtrant la liste selon plusieurs axes simultanés :
+
+   - **3 chips de statut** — *Non lus*, *Importants*, *Pièces jointes* — activables indépendamment ;
+   - **2 chips de portée médicale** — *Tous les documents médicaux*, *Biologie* — pour cibler la nature du contenu reçu ;
+   - **6 chips de type de document** — *Consultation*, *Imagerie*, *Ordonnances*, *Hospitalisation*, *Synthèse*, *Vaccination* — mutuellement exclusifs, élagage volontaire des 14 types disponibles vers les 6 plus fréquents en pratique de ville ;
+   - **4 chips de plage temporelle** — *Aujourd'hui*, *7 derniers jours*, *30 derniers jours*, *3 derniers mois* — mutuellement exclusifs ;
+   - **un panel de recherche avancée** repliable qui ajoute les champs *De*, *À ou Cc*, *Objet*, et un sélecteur du **type de document complet** (les 6 chips ci-dessus + Chirurgie, Urgences, Anatomopathologie, Génétique, Pharmacie, Procédure, Histoire physique, Biologie — soit 14 types au total).
+
+   Toutes les facettes se **cumulent strictement en ET** : un message n'apparaît dans les résultats que s'il satisfait l'intégralité des critères posés (sémantique fiable pour le clinicien — pas d'effet *OU* surprise). Chaque clic sur une chip déclenche la recherche immédiatement, sans appui sur *Entrée* ; la saisie texte se valide par *Entrée*. Un **badge à côté du champ de saisie** indique en permanence le nombre de filtres actifs lorsque la dropdown est repliée. Un clic en dehors de la dropdown ou la touche *Échap* la referme ; un bouton **Tout effacer** réinitialise les filtres et restaure la liste complète. La recherche tient compte du dossier courant : les résultats restent limités à la boîte ou au sous-dossier sélectionné dans l'arborescence (task-029).
+
+4. **E009-F003 — Priorisation** : l'assistance IA propose des tags d'urgence sur les messages reçus. Pour les comptes-rendus de biologie, le système identifie automatiquement les résultats critiques (codes HL7 `AA`, `HH`, `LL`, *CriticalLow*, *CriticalHigh*). Les messages émis par un patient via Mon Espace Santé sont visuellement distincts des messages professionnels, et le nom + INS de l'usager sont extraits du libellé pour rester lisibles dans la liste (task-005). Sur chaque compte-rendu portant au moins une valeur anormale, un workflow médico-légal d'acquittement à 5 actions est proposé au médecin avec traçabilité audit — décrit en détail dans le sous-chapitre **Acquittement biologique anormal — workflow médico-légal** ci-dessous, à la suite du Flux RÉCEPTION (task-028).
 
 <p style="margin: 35px">
   <img src="img/Priorisation.png" alt="Schéma messagerie sécurisée santé"  style="border: 1px ridge #b0b0b0; padding: 4px; background: #ffffff; box-shadow: 4px 4px 10px rgba(0,0,0,0.35); border-radius: 4px;" />
@@ -190,7 +203,18 @@ Avant le premier accès à la messagerie, le compte du professionnel doit être 
   Valeur de biologie + Alerte détectée par IA
 </p>
 
-4. **E009-F004 — Vue patient complète (Timeline + Biologie + Synthèse clinique)** : au-delà du simple widget « nouveaux documents », le professionnel dispose d'une vue dossier patient articulée en trois modules complémentaires, livrés à parité sur les deux frontends.
+5. **Sélection multiple et opérations en masse** : un bouton dédié de la barre d'en-tête de la liste (icône case à cocher) bascule la boîte en **mode sélection**. Une coche apparaît alors sur chaque ligne, et une barre d'actions contextuelles s'affiche sous les filtres. Le médecin coche les messages à traiter (un par un, ou *Tout* pour cocher l'ensemble des messages visibles), puis applique une action collective :
+
+   - **Lu** — marque l'ensemble des messages sélectionnés comme lus (les messages déjà lus sont ignorés silencieusement).
+   - **Non lu** — bascule en non lu (idem inverse).
+   - **Favori** — appose l'étoile « important » sur les sélectionnés (utile pour préparer une revue ultérieure).
+   - **Déplacer** — ouvre une dropdown listant les dossiers IMAP disponibles ; un clic sur la cible déplace les messages en lot. Le dossier courant et les dossiers de stockage local sont exclus de la liste.
+   - **Supprimer** — envoie les messages sélectionnés à la corbeille.
+   - **IA** — ouvre le chat IA contextuel sur la sélection (équivalent à *« j'ouvre une conversation avec l'IA à propos de ces N emails »*).
+
+   À chaque action, la sélection est vidée et la boîte ressort du mode sélection. Un nouveau clic sur le bouton de bascule (ou la touche *Échap* implicite via la fermeture de la barre) sort du mode sélection sans appliquer d'action. En mode hors ligne, les bascules lu/non lu, favori, déplacement et suppression sont mises en file d'attente et rejouées au retour de la connexion.
+
+6. **E009-F004 — Vue patient de la messagerie (Timeline + Biologie + Synthèse clinique)** : au-delà du simple widget « nouveaux documents », le professionnel dispose d'une **vue patient consolidée de la messagerie**, articulée en trois modules complémentaires, livrés à parité sur les deux frontends. Cette vue **ne se substitue pas au dossier patient du LGC** ; elle réagence les documents MSSanté reçus pour faire émerger, sous un angle clinique, ce que la messagerie sait du patient à un instant donné.
 
    **(a) Vue temporelle patient** (*Patient Timeline*) — timeline chronologique des documents MSS reçus pour le patient. Onglets : *Synthèse Clinique*, *Documents*, *Synthèse Biologie*. Filtres par catégorie (Biologie, Imagerie, Consultation, etc.). Séparateurs temporels (Aujourd'hui, Cette semaine, Semaine dernière, Ce mois…). Groupement par date et pagination. La parité fonctionnelle entre les deux frontends a été établie en task-016.
 
@@ -226,7 +250,7 @@ Avant le premier accès à la messagerie, le compte du professionnel doit être 
 
    **(d) Widget Patient sur le dashboard** (task-035) : le médecin voit en page d'accueil les 5 derniers patients ayant au moins un mail non lu, classés par date du mail non lu le plus récent (extensible à 20 via *Voir plus*). Chaque ligne agrège l'identité du patient, le compteur de mails non lus, les catégories CDA présentes (Biologie, Imagerie, Consultation…), un badge de sévérité biologique (🔴 critique, 🟠 anormal), une pastille d'intégration (✓ tous intégrés / ⏳ en attente) et un menu contextuel à 3 actions : *Voir le dossier patient*, *Filtrer mails sur ce patient*, *Voir l'email*. Le widget se rafraîchit en temps réel à l'arrivée d'un nouveau mail enrichi.
 
-5. **E009-F005 — Alertes temps réel** : à chaque nouveau message reçu, le professionnel est averti en temps réel par notification visuelle et sonore, avec le niveau d'urgence apparent (critique, important, normal). L'alerte s'affiche quelle que soit la fenêtre active. Le médecin règle ses préférences depuis les paramètres utilisateur (son, notification bureau, niveau d'urgence minimum déclenchant l'alerte).
+7. **E009-F005 — Alertes temps réel** : à chaque nouveau message reçu, le professionnel est averti en temps réel par notification visuelle et sonore, avec le niveau d'urgence apparent (critique, important, normal). L'alerte s'affiche quelle que soit la fenêtre active. Le médecin règle ses préférences depuis les paramètres utilisateur (son, notification bureau, niveau d'urgence minimum déclenchant l'alerte).
 
 #### Acquittement biologique anormal — workflow médico-légal
 
@@ -236,6 +260,10 @@ Trois points d'entrée mènent au workflow :
 
    **(a) Tuile KPI sur le dashboard MSS** — *« Bio en attente d'acquittement »* apparaît dès qu'au moins un compte-rendu reste non résolu. Couleur rouge si un résultat critique est en attente, orange sinon. La tuile affiche un compteur total accompagné d'une ventilation par dernière action posée : *Pris connaissance — N*, *Rappel patient — N*, *Convocation — N*, *Adressage confrère — N*, *Sans acquittement — N*. Chaque ligne est cliquable et ouvre la BAL pré-filtrée sur les mails correspondants, prêts à être traités.
 
+<p style="margin: 35px">
+  <img src="img/Tuile_KPI_acquitement.png" alt="Schéma messagerie sécurisée santé" width="300" style="border: 1px ridge #b0b0b0; padding: 4px; background: #ffffff; box-shadow: 4px 4px 10px rgba(0,0,0,0.35); border-radius: 4px;" />
+</p>
+
    **(b) Badge sur la ligne d'inbox** — chaque message portant au moins un compte-rendu anormal non résolu affiche un badge compteur. Rouge si critique, orange sinon. Le survol précise *« Bio critique en attente d'acquittement »* ou *« Bio anormale en attente d'acquittement »*.
 
    **(c) Panel d'acquittement dans la vue détail** — visible sous le mail à l'ouverture d'un compte-rendu portant au moins une valeur anormale. Il se compose :
@@ -243,17 +271,33 @@ Trois points d'entrée mènent au workflow :
    - d'une **frise de la dernière action** rappelant l'action prise, le praticien qui l'a posée, la date et l'heure, et la note clinique éventuelle ;
    - de **cinq actions** disposées en deux groupes : quatre boutons chips intermédiaires — *Pris connaissance*, *Rappel patient*, *Convocation*, *Adressage confrère* — et une action de clôture distincte à droite avec icône, *Marquer comme résolu*.
 
+<p style="margin: 35px">
+  <img src="img/acquitement.png" alt="Schéma messagerie sécurisée santé" width="1024" style="border: 1px ridge #b0b0b0; padding: 4px; background: #ffffff; box-shadow: 4px 4px 10px rgba(0,0,0,0.35); border-radius: 4px;" />
+</p>
+
 Chaque clic sur une action ouvre une **dialog de confirmation** qui rappelle le code LOINC du document, la liste des valeurs critiques le cas échéant, l'action choisie, et propose un champ de **note clinique facultative** (500 caractères maximum). Sur les comptes-rendus critiques (codes HL7 `LL` / `HH` / `AA`), la dialog adopte un visuel renforcé pour rappeler la responsabilité médico-légale du praticien. Après confirmation, l'action est figée et le panel se met à jour immédiatement : la nouvelle action devient la dernière de la frise, la pastille de statut bascule, et le compteur du dashboard est actualisé. Une fois la prise en charge effective, le médecin clôt le dossier via *Marquer comme résolu* ; le panel se replie alors en **bandeau discret** *« Acquittement résolu — par Dr X · {date} »* pour ne plus encombrer la vue tout en conservant la trace visible.
 
+<p style="margin: 35px">
+  <img src="img/acquitement_confirm.png" alt="Schéma messagerie sécurisée santé" width="600" style="border: 1px ridge #b0b0b0; padding: 4px; background: #ffffff; box-shadow: 4px 4px 10px rgba(0,0,0,0.35); border-radius: 4px;" />
+</p>
+
 Sécurité et confidentialité : les acquittements posés par un médecin **ne sont visibles que par ce médecin** (cf. §10, couche 3 ownership scoping). Un associé ou un remplaçant ne voit ni la tuile KPI, ni les notes cliniques, ni l'historique des actions d'un confrère ; pour coordonner une prise en charge, le médecin utilise l'action *Adressage confrère* avec une note explicite, ou envoie un message MSSanté. L'identité du praticien est tracée à chaque acquittement (issue du jeton Pro Santé Connect), et le mode append-only garantit l'inaltérabilité du registre.
+
+<p style="margin: 35px">
+  <img src="img/acquitement_baner.png" alt="Schéma messagerie sécurisée santé" width="1024" style="border: 1px ridge #b0b0b0; padding: 4px; background: #ffffff; box-shadow: 4px 4px 10px rgba(0,0,0,0.35); border-radius: 4px;" />
+</p>
 
 Sur le terrain réglementaire, la fonctionnalité matérialise les exigences **RG-E009-051 (BIO/va1.01)** *— alerte spécifique si code interprétation `AA` / `HH` / `LL` (critique)* — et **RG-E009-052 (BIO/va1.05)** *— élément clinique pertinent visible dans la liste messages*. Le journal d'audit MSS est étendu de 5 nouvelles entrées tracées (*BiologyAcknowledged*, *BiologyPatientCalled*, *BiologyPatientSummoned*, *BiologyReferredToColleague*, *BiologyMarkedResolved*) qui s'ajoutent au périmètre déjà couvert par RG-E009-045/046/047 — voir §5.3 *Trace transverse*.
 
 #### Flux ÉMISSION
 
-6. **E009-F008 — Annuaire Santé** : avant un envoi, le praticien recherche un correspondant dans l'Annuaire Santé de l'ANS selon 5 axes (RPPS, nom, spécialité, localisation, recherche combinée). Le résultat est restitué en moins de 2 secondes en utilisation nominale, grâce à une couche de cache qui amortit la charge sur l'annuaire distant.
+<p style="margin: 35px">
+  <img src="img/v5-3.jpg" alt="Schéma messagerie sécurisée santé" width="1024" style="border: 1px ridge #b0b0b0; padding: 4px; background: #ffffff; box-shadow: 4px 4px 10px rgba(0,0,0,0.35); border-radius: 4px;" />
+</p>
 
-7. **E009-F009 — Carnet d'adresses** : un correspondant retenu dans l'annuaire est sauvegardé dans le carnet personnel (favori, groupe, tag). À la première interaction avec un confrère (envoi, réception), le contact est créé automatiquement — le praticien retrouve l'historique de ses échanges sans saisie manuelle.
+8. **E009-F008 — Annuaire Santé** : avant un envoi, le praticien recherche un correspondant dans l'Annuaire Santé de l'ANS selon 5 axes (RPPS, nom, spécialité, localisation, recherche combinée). Le résultat est restitué en moins de 2 secondes en utilisation nominale, grâce à une couche de cache qui amortit la charge sur l'annuaire distant.
+
+9. **E009-F009 — Carnet d'adresses** : un correspondant retenu dans l'annuaire est sauvegardé dans le carnet personnel (favori, groupe, tag). À la première interaction avec un confrère (envoi, réception), le contact est créé automatiquement — le praticien retrouve l'historique de ses échanges sans saisie manuelle.
 
 <p style="margin: 35px">
   <img src="img/Annuaire.png" alt="Schéma messagerie sécurisée santé" width="1024" style="border: 1px ridge #b0b0b0; padding: 4px; background: #ffffff; box-shadow: 4px 4px 10px rgba(0,0,0,0.35); border-radius: 4px;" />
@@ -261,7 +305,7 @@ Sur le terrain réglementaire, la fonctionnalité matérialise les exigences **R
   Carnet d'adresses / Annuaire
 </p>
 
-8. **E009-F006 — Composition et envoi** : le brouillon en cours est sauvegardé automatiquement à chaque saisie. L'éditeur permet d'insérer en un clic une **signature** (F014) ou un **modèle** (F015). Le libellé expéditeur est normalisé au format réglementaire `<Titre>_<Prénom>_<NOM>_<Entité>` pour les BAL personnelles, et au libellé fonctionnel pour les BAL organisationnelles (task-009). Les en-têtes MSSanté `X-MSS-INS`, `X-MSS-CODECDA`, `X-MSS-NIL` sont émis automatiquement à l'envoi selon le Référentiel socle MSSanté #2 (task-001). Avant l'envoi, la taille des pièces jointes est contrôlée (défaut 10 Mo, configurable selon l'opérateur — task-008) ; en cas de dépassement, le praticien voit un message explicite et peut retirer une pièce jointe. Quand un destinataire patient est présent, une case **« Bloquer la réponse du patient »** apparaît pour signifier la fin de l'échange — l'en-tête `X-MSS-MES: FIN` est alors émis conformément à ECO.2.2.8 (task-026). Enfin, le médecin peut **republier une version corrigée** d'un document déjà envoyé via « Annule et remplace » (task-006) : le message original apparaît marqué « annulé » dans les envoyés, le destinataire reçoit la nouvelle version avec mention explicite.
+10. **E009-F006 — Composition et envoi** : le brouillon en cours est sauvegardé automatiquement à chaque saisie. L'éditeur permet d'insérer en un clic une **signature** (F014) ou un **modèle** (F015). Le libellé expéditeur est normalisé au format réglementaire `<Titre>_<Prénom>_<NOM>_<Entité>` pour les BAL personnelles, et au libellé fonctionnel pour les BAL organisationnelles (task-009). Les en-têtes MSSanté `X-MSS-INS`, `X-MSS-CODECDA`, `X-MSS-NIL` sont émis automatiquement à l'envoi selon le Référentiel socle MSSanté #2 (task-001). Avant l'envoi, la taille des pièces jointes est contrôlée (défaut 10 Mo, configurable selon l'opérateur — task-008) ; en cas de dépassement, le praticien voit un message explicite et peut retirer une pièce jointe. Quand un destinataire patient est présent, une case **« Bloquer la réponse du patient »** apparaît pour signifier la fin de l'échange — l'en-tête `X-MSS-MES: FIN` est alors émis conformément à ECO.2.2.8 (task-026). Enfin, le médecin peut **republier une version corrigée** d'un document déjà envoyé via « Annule et remplace » (task-006) : le message original apparaît marqué « annulé » dans les envoyés, le destinataire reçoit la nouvelle version avec mention explicite.
 
 <p style="margin: 35px">
   <img src="img/New_Mail.png" alt="Schéma messagerie sécurisée santé" width="1024" style="border: 1px ridge #b0b0b0; padding: 4px; background: #ffffff; box-shadow: 4px 4px 10px rgba(0,0,0,0.35); border-radius: 4px;" />
@@ -269,9 +313,9 @@ Sur le terrain réglementaire, la fonctionnalité matérialise les exigences **R
   Nouveau mail, Brouillon automatique, modèle contextuel au patient
 </p>
 
-8a. **E009-F014 — Signature email** : le praticien crée, modifie, supprime ses signatures enrichies (HTML) depuis l'écran *Mes signatures*. Une signature est désignée *par défaut* et insérée automatiquement à chaque nouvelle composition ; le praticien peut basculer sur une autre signature en un clic. L'éditeur enrichi est disponible à parité sur les deux frontends.
+10a. **E009-F014 — Signature email** : le praticien crée, modifie, supprime ses signatures enrichies (HTML) depuis l'écran *Mes signatures*. Une signature est désignée *par défaut* et insérée automatiquement à chaque nouvelle composition ; le praticien peut basculer sur une autre signature en un clic. L'éditeur enrichi est disponible à parité sur les deux frontends.
 
-8b. **E009-F015 — Modèles d'email assistés par IA** : le praticien gère ses modèles d'email par catégorie (lettres de liaison, demandes d'examen, accusés). L'**assistance IA** propose 4 actions :
+10b. **E009-F015 — Modèles d'email assistés par IA** : le praticien gère ses modèles d'email par catégorie (lettres de liaison, demandes d'examen, accusés). L'**assistance IA** propose 4 actions :
    - **Générer un modèle** à partir d'une description en langage naturel.
    - **Corriger un texte** : correction orthographique et grammaticale en streaming.
    - **Améliorer un texte** avec paramètre d'action (raccourcir, formaliser, adapter au patient).
@@ -282,17 +326,17 @@ Sur le terrain réglementaire, la fonctionnalité matérialise les exigences **R
   <br>
 </p>
 
-9. **E009-F007 — Envoi Mon Espace Santé** *(à implémenter)* : sélection du patient depuis la base, vérification de l'identité INS qualifiée, génération du paquet IHE_XDM, émission des en-têtes MSSanté spécifiques (`X-MSS-INS`, `X-MSS-CODECDA`, `X-MSS-MES = "FIN"`), respect de l'opposition patient à l'envoi MES pro et patient (task-003). La validation de la connexion à la BAL MSSanté du professionnel (chaîne TLS IGC-Santé) est assurée en amont par le parcours de configuration initiale décrit en tête de §5.2.
+11. **E009-F007 — Envoi Mon Espace Santé** *(à implémenter)* : sélection du patient depuis la base, vérification de l'identité INS qualifiée, génération du paquet IHE_XDM, émission des en-têtes MSSanté spécifiques (`X-MSS-INS`, `X-MSS-CODECDA`, `X-MSS-MES = "FIN"`), respect de l'opposition patient à l'envoi MES pro et patient (task-003). La validation de la connexion à la BAL MSSanté du professionnel (chaîne TLS IGC-Santé) est assurée en amont par le parcours de configuration initiale décrit en tête de §5.2.
 
-10. **E009-F011 — Suivi d'acheminement** : aujourd'hui, le praticien voit les accusés de lecture (MDN) reçus pour ses envois. Le suivi complet (envoyé → accepté par l'opérateur → délivré → lu → répondu) reste à construire au-dessus.
+12. **E009-F011 — Suivi d'acheminement** : aujourd'hui, le praticien voit les accusés de lecture (MDN) reçus pour ses envois. Le suivi complet (envoyé → accepté par l'opérateur → délivré → lu → répondu) reste à construire au-dessus.
 
 #### Fonctions avancées
 
-11. **E009-F010 — Rôles et permissions** *(à implémenter)*.
+13. **E009-F010 — Rôles et permissions** *(à implémenter)*.
 
-12. **E009-F012 — Délégation** *(à implémenter)*.
+14. **E009-F012 — Délégation** *(à implémenter)*.
 
-13. **E009-F013 — Assistance IA, avec chat multi-emails contextuel** : l'assistance IA est activable ou désactivable par l'établissement. Deux modes d'installation sont disponibles : **on-premise** (les modèles tournent dans l'établissement, aucune donnée ne sort) ou **cloud** (modèles distants).
+15. **E009-F013 — Assistance IA, avec chat multi-emails contextuel** : l'assistance IA est activable ou désactivable par l'établissement. Deux modes d'installation sont disponibles : **on-premise** (les modèles tournent dans l'établissement, aucune donnée ne sort) ou **cloud** (modèles distants).
 
     **Résumés et tags automatiques** : un résumé est généré pour chaque document médical reçu ; les tags d'urgence et de catégorie sont proposés au praticien.
 
@@ -300,9 +344,7 @@ Sur le terrain réglementaire, la fonctionnalité matérialise les exigences **R
 
     **Plugin d'actions métier** — 5 actions exécutables par l'IA depuis le chat : Composer un email, Répondre à un email, Appeler le patient, Envoyer un SMS au patient, Contacter un confrère.
 
-    **Recherche sémantique** : à partir d'une question en langage naturel, le praticien retrouve un email dans toute sa BAL — la recherche combine sens (sémantique) et mots-clés (lexicale).
-
-    **Recherche structurée à facettes** : en complément de la recherche sémantique, une **dropdown de recherche enrichie** permet de filtrer la BAL selon plusieurs dimensions cumulables — 3 chips de statut (Non lus, Importants, Pièces jointes), 6 chips médicaux (Tous, Biologie, Consultation, Imagerie, Prescription, Hospitalisation), 4 chips de plage temporelle (Aujourd'hui, 7 jours, 30 jours, 3 mois), et un panel de recherche avancée pour préciser De / À ou Cc / Objet / Type de document (14 types disponibles). Un badge à côté du champ de saisie indique le nombre de filtres actifs lorsque la dropdown est repliée (task-029).
+    **Recherche sémantique** : à partir d'une question en langage naturel, le praticien retrouve un email dans toute sa BAL — la recherche combine sens (sémantique) et mots-clés (lexicale). Elle s'articule avec la **recherche avancée à facettes** décrite en *§5.2 — Flux RÉCEPTION (item 3)*, qui complète la requête libre par des filtres cumulables (statut, type de document, plage temporelle, expéditeur…).
 
 <p style="margin: 35px">
   <img src="img/chatia.png" alt="Schéma messagerie sécurisée santé" style="border: 1px ridge #b0b0b0; padding: 4px; background: #ffffff; box-shadow: 4px 4px 10px rgba(0,0,0,0.35); border-radius: 4px;" />
