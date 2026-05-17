@@ -14,6 +14,95 @@
 
 ## Historique détaillé des changelogs
 
+### v0.5 — 2026-05-17 — Security hotspots cleanup + secrets move + Dockerfile harden + CORS whitelist (task-045)
+
+**PRs** :
+- `api-mail` #66 — `chore(security): resolve 7 security hotspots — secrets move + Dockerfile harden + CORS whitelist (task-045)` — label `awaiting-human-merge`.
+- `dtos-mss` : pas de PR (0 commit sur la branche).
+
+**Branche** : `chore/task-045-sonar-hotspots-review` (api-mail + dtos-mss auto-include).
+
+**Scope révisé en cours de cycle** (option C-équivalent, humain a arbitré pré-`/start`) :
+
+- Cible task body : 5 hotspots TO_REVIEW.
+- Réalité 2026-05-17 : **7 hotspots TO_REVIEW** (S6418 ApiKey disparu — règle pas active dans `Weda way` — mais 3 nouveaux S4792 logger config apparus).
+- Décision humaine : pour les hotspots #1 (S2068 password), au lieu de Mark SAFE comme proposé par le task body, **déplacer les secrets vers `appsettings.Development.json` (gitignoré)** — meilleure pratique sécurité. Couvre aussi la clé OpenAI bonus de task-040.
+
+| # | Hotspot | Stratégie |
+|---|---|---|
+| 1 | S2068 password `appsettings.json:31` (RabbitMQ guest/guest) | Move to Development.json (gitignored) |
+| 2 | S6418 ApiKey (anciennement) | Disparu de Sonar ; OpenAI key réelle déplacée idem |
+| 3 | S6470 COPY recursive `Dockerfile:26` | Fix code — supprimé le `COPY . .` redondant |
+| 4 | S6471 root user `Dockerfile:34` | Fix code — `USER app` non-root + `--chown=app:app` |
+| 5 | S5122 CORS `Program.cs:83` | Fix code — whitelist depuis config en non-Dev (+ 3 tests) puis Mark SAFE car gated par `if (IsDevelopment())` |
+| 6 | S4792 logger `Program.cs:77` (NEW) | Mark SAFE (Serilog standard, scrubbing middleware en amont) |
+| 7 | S4792 logger `Program.cs:201` (NEW Serilog setup) | Mark SAFE idem |
+| 8 | S4792 logger `BaseRepository.cs:209` (NEW) | Mark SAFE idem |
+| 9 | S6504 Dockerfile COPY perms (NEW, surfacé par le fix #4) | Mark SAFE (default 644/755, exécution read-only par `app`) |
+
+**Commits api-mail (3)** :
+
+- `aaf21cc` — `fix(security): move dev-only secrets out of appsettings.json (task-045 #1)`
+- `e790915` — `fix(docker): harden Dockerfile — non-root USER + drop recursive COPY (task-045 #3, #4)`
+- `77c4cdb` — `fix(cors): whitelist origins in non-Development environments (task-045 #5)`
+
+**Fichiers (api-mail)** :
+
+- **Nouveau** `src/Api/appsettings.Development.json` (gitignored) — 3 sections sensibles (`MassTransit:RabbitMQ:Username`/`Password`, `TestMode:BypassKey`, `OpenAi:ApiKey`).
+- **Modifié** `src/Api/appsettings.json` — valeurs vidées (chaînes vides) sur les 3 sections + section `Cors:AllowedOrigins: []` ajoutée.
+- **Modifié** `.gitignore` — pattern `**/appsettings.Development.json` ajouté avec doc inline.
+- **Modifié** `Dockerfile` — suppression `COPY . .` (L26), final stage avec `USER app` + `COPY --chown=app:app --from=publish /app/publish .`.
+- **Modifié** `.dockerignore` — enrichi avec `**/appsettings.Development.json` (**CRITIQUE** — secrets dev jamais dans une image), `**/TestResults`, `**/tests`, `**/logs`, `**/*.md`, `**/.sonarqube`, `**/.env.*`.
+- **Modifié** `src/Api/Program.cs` (CORS) — politique `MobileWeb` env-aware. Dev → `AllowAnyOrigin()`. Autres → `WithOrigins(Cors:AllowedOrigins)` avec fallback empty array (fail-closed).
+- **Nouveau** `tests/mss.mail.api.tests/Configuration/CorsConfigurationTests.cs` (65 LOC, 3 tests) — binding `Cors:AllowedOrigins` couvert (array peuplé / section manquante / section vide).
+
+**Sonar UI (via `/api/hotspots/change_status`)** :
+
+5 hotspots `TO_REVIEW → REVIEWED:SAFE` avec commentaire justificatif (3× S4792 logger + 1× S6504 Dockerfile COPY perms + 1× S5122 CORS dev-gating). Les 2 hotspots restants après code fix (S6470, S6471) sont résolus par re-analyse — la cible code n'existe plus.
+
+**Local build / test** :
+
+- Build api-mail Release : ✓ 0 erreurs, 0 warnings.
+- Tests : **2183 pass / 0 fail / 16 skipped** (+3 vs baseline post-task-043 — `CorsConfigurationTests` × 3).
+  - domain : 86 / 86
+  - application : 1437 / 1437
+  - infrastructure : 346 / 346
+  - **api : 128 / 128** (+3)
+  - integration : 186 / 202 (16 skipped — AI pré-existants + ParseImagingReport Linux-skip task-040)
+
+**KPIs Sonar — re-analyse post-fix** :
+
+| Métrique | Avant (post-task-043) | Après | Δ |
+|---|---|---|---|
+| Bugs | 0 | 0 | ✅ |
+| **Vulnerabilities** | 1 (token leak `report_coverage.ps1`) | **0** | ✅ (token déjà supprimé hors-task ; fix-forward sur develop) |
+| Code Smells | 1066 | 1072 | +6 mineurs (nouveau fichier de tests + lambda CORS étendue) |
+| Security Hotspots TO_REVIEW | 7 | **0** | ✅ DOD atteinte (5 marqués SAFE + 2 résolus par fix code) |
+| Coverage | 73.3 % | **76.6 %** | +3.3 pp (3 tests CORS + recompilation) |
+| Reliability rating | A | A | ✅ |
+| **Security rating** | **E** | **A** | ✅ rétabli |
+| Maintainability rating | A | A | ✅ |
+
+**Quality Gate** : non re-vérifié post-task-045 (la PR utilise le baseline héritage multi-lang scan task-040, non aggravé). À vérifier au merge.
+
+**Décisions de refactor** :
+
+- **Move to Development.json plutôt que Mark SAFE** sur S2068 — choix humain pré-`/start`. Bénéfice : pas de secret en clair dans le fichier tracked + couvre la clé OpenAI bonus (task-040) sans avoir besoin d'une task séparée.
+- **CORS dev-gating + fail-closed prod** plutôt que whitelist unique — préserve la friction-free dev (pas d'ops pour configurer les CORS en local) tout en garantissant que la prod refuse toute origine non explicitement listée.
+- **Suppression `COPY . .`** plutôt qu'ajout de `--chown=...` partout — le COPY récursif était redondant (src/, Directory.{Build,Packages}.props et nuget.config copiés explicitement plus haut). Réduit la surface d'attaque + accélère le build.
+- **Smoke tests CORS via binding config** plutôt que WebApplicationFactory — l'infrastructure WebApplicationFactory n'est pas en place dans `mss.mail.api.tests` (les vrais integration tests vivent dans `mss.mail.integration.tests` mais organisés par UseCase/Service). Les 3 smoke tests vérifient le contrat de la clé `Cors:AllowedOrigins` ; le comportement runtime est validé par le Manual Test Plan via curl.
+
+**Limites différées** :
+
+1. **Rotation effective des credentials leakés dans le git history** — humain a arbitré une rotation différée hors forge :
+   - Token SonarQube `squ_4cdebf15...` — déjà supprimé du tip (commit `3a9649e` sur develop, suppression de `report_coverage.ps1`) mais reste dans l'historique. Rotation côté SonarQube admin nécessaire.
+   - Clé OpenAI `sk-proj-...` — déplacée vers Development.json (plus dans le tip), mais reste dans l'historique. Rotation côté OpenAI dashboard nécessaire.
+   - RabbitMQ `guest/guest` — credentials par défaut sans valeur, négligeable.
+2. **WebApplicationFactory test pour CORS** — déféré (infrastructure pas en place).
+3. **Smoke test Docker `docker run --rm ... id`** — déféré au Manual Test Plan (Docker pas dans l'env CI courant).
+
+---
+
 ### v0.4 — 2026-05-17 — Split ManagementController → AiDiagnostics + MailMaintenance (task-043)
 
 **PRs** :
@@ -307,20 +396,24 @@ Zero-new-debt principle techniquement violé, mais c'est de la dette héritée r
 | `PatientRepository.ComputeScore` | F002 | ✋ Hors scope task-041 (private static helper, pas de bénéfice API) |
 | Méthodes S3776 (39 occurrences, fichiers TBD) | F007 | 🟡 Campagne en cours (meta-task-046) |
 | Hotspots security (7 occurrences, fichiers TBD) | F006 | ⏳ Todo (task-045) |
-| `report_coverage.ps1` | Hors EPIC — secret leak | ⚠️ À rotater (task TBD) |
-| `src/Api/appsettings.json:L63` | Hors EPIC — secret leak | ⚠️ À rotater (task TBD) |
+| `report_coverage.ps1` | Hors EPIC — secret leak | ✅ Supprimé du tip develop (commit `3a9649e`, hors-task post-task-043). Rotation token Sonar admin différée. |
+| `src/Api/appsettings.json:L63` (clé OpenAI) | F006 — couvert en bonus | ✅ Déplacé vers `appsettings.Development.json` (gitignored) par task-045. Rotation OpenAI dashboard différée. |
+| `src/Api/appsettings.Development.json` (nouveau, gitignored) | F006 | ✅ Créé par task-045 — contient les 3 valeurs sensibles dev (RabbitMQ guest/guest, OpenAI ApiKey, TestMode BypassKey). Production = override par env vars / Key Vault. |
+| `src/Api/Program.cs` (CORS) | F006 | ✅ Politique env-aware par task-045 — Dev `AllowAnyOrigin()`, autres `WithOrigins(Cors:AllowedOrigins)` fail-closed |
+| `Dockerfile` | F006 | ✅ Hardened par task-045 — `USER app` non-root + suppression `COPY . .` redondant |
+| `.dockerignore` | F006 | ✅ Enrichi par task-045 — exclut `appsettings.Development.json` (critique) + tests + logs + sonarqube |
 
 ---
 
-## Annexe B — Inventaire fonctionnel daté (snapshot 2026-05-17, post-task-043)
+## Annexe B — Inventaire fonctionnel daté (snapshot 2026-05-17, post-task-045)
 
 - **Test projects api-mail** : 5 (domain, application, infrastructure, api, integration)
-- **Tests totaux api-mail** : **2178 pass** / 2 fail (IMAP pré-existants sur develop, sans rapport avec task-043) / 16 skipped
+- **Tests totaux api-mail** : **2183 pass / 0 fail / 16 skipped** (les 2 IMAP fails de la baseline post-task-043 ont été fixés sur develop hors-task — commits `313370c` + `e86c7f0`, injection de `UserContextInfo` dans les fixtures)
   - domain : 86 / 86
-  - application : **1437** (+19 vs post-task-041 1418, via commit develop `e6d87e2 Improve test coverage`)
+  - application : 1437 / 1437
   - infrastructure : 346 / 346
-  - api : **125** (+11 vs post-task-041 114, dont 11 smoke tests task-043 sur les 2 nouveaux contrôleurs)
-  - integration : **184 pass / 2 fail / 16 skipped** = 202 total (+54 vs post-task-041 148, via `e6d87e2`)
+  - **api : 128** (+3 vs post-task-043 125 — `CorsConfigurationTests` × 3)
+  - integration : **186 pass / 0 fail / 16 skipped** = 202 total (16 = AI pré-existants + ParseImagingReport Linux-skip task-040)
 - **Tests client-blazor** : 86 pass / 2 skipped / 0 fail
 - **Solution api-mail** : `HealthPlatform.Api.Mail.sln`
 - **Solution client-blazor** : `HealthPlatform.Client.sln`
@@ -329,10 +422,10 @@ Zero-new-debt principle techniquement violé, mais c'est de la dette héritée r
 - **EF Core Design version** : 9.0.8 (drift — voir limite #4 v0.1)
 - **Npgsql.EntityFrameworkCore.PostgreSQL** : 10.0.1
 - **Sonar profile actif** : `Weda way (cs)` (switché depuis `Sonar way` le 2026-05-14)
-- **Sonar baseline globale (post-task-041, non re-analysé par task-043)** : 0 bugs / 1 vulnerability (pré-existante) / 1066 smells / 7 hotspots / 73.3 % coverage / A/E/A ratings
+- **Sonar baseline globale (post-task-045)** : 0 bugs / **0 vulnerabilities** / 1072 smells / **0 security hotspots TO_REVIEW** / **76.6 % coverage** / **A/A/A** ratings
 - **Sonar new-code period** : `PREVIOUS_VERSION` (inherited)
-- **Quality Gate (post-task-041)** : ERROR (new_violations 187 > 0, new_coverage 78.5 % < 80 %) — héritage multi-lang scan, non aggravé par task-043 qui ne re-analyse pas
-- **CI workflow `Build and Publish` api-mail** : nominal sur develop pushes + PR triggers (fix complet posé entre task-040 et task-041, validé sur task-041 PR #63 + merge `8c21da3`).
+- **Quality Gate** : non re-vérifié post-task-045 ; baseline héritage multi-lang scan task-040, non aggravé par task-045
+- **CI workflow `Build and Publish` api-mail** : nominal sur develop pushes + PR triggers (fix complet posé entre task-040 et task-041, validé sur task-041 PR #63 + merge `8c21da3`, signal restauré par les fixes UserContextInfo `313370c` + `e86c7f0` post-task-043).
 
 ---
 
@@ -345,7 +438,7 @@ Zero-new-debt principle techniquement violé, mais c'est de la dette héritée r
 | task-042 | ⛔ Closed no-op | Split `PatientsController` (S6960). Fermée 2026-05-17 après inspection préalable à `/start` (option C.2) — règle S6960 hors profile `Weda way`, `PatientsController` à 368 LOC / 10 endpoints / 4 groupes borderline, coût 3 repos + US-complete merge gate >> bénéfice cosmétique. À reconsidérer si la règle est réactivée ou si le contrôleur dépasse 600 LOC. | — |
 | task-043 | ✅ Done | Split `ManagementController` (530 LOC, 7 endpoints) → `AiDiagnosticsController` (4 endpoints, `/api/v1/diagnostics`) + `MailMaintenanceController` (3 endpoints, `/api/v1/maintenance`). 2 PRs cross-linked (api-mail #65 + client-blazor #53). 11 smoke tests via réflexion. Angular : no-op (aucun consumer). | — |
 | task-044 | ⛔ Closed no-op | Split `SettingsController` (S6960). Fermée 2026-05-17 idem — règle hors profile + contrôleur à 75 LOC seulement (~19 LOC/endpoint), splitter dégraderait la lisibilité. | — |
-| task-045 | ⚪ Todo | Review des 5 (actuellement 7) security hotspots — bascule `TO_REVIEW` → `SAFE` / `ACKNOWLEDGED` / `FIXED`. | — |
+| task-045 | ✅ Done | Hotspots TO_REVIEW 7 → 0 + secrets dev déplacés vers `appsettings.Development.json` gitignored + Dockerfile `USER app` non-root + COPY non-récursif + CORS whitelist depuis config en non-Dev (fail-closed). 5 hotspots marqués SAFE via API Sonar avec commentaire justificatif, 2 résolus par fix code. Security rating E → A (rétabli après suppression hors-task de `report_coverage.ps1`). | — |
 | meta-task-046 | 🟡 En cours | Tracker de campagne S3776 (39 méthodes, 1 méthode = 1 PR via `/sonar-s3776`). Non pické par `/forge`. | — |
 | task-047 | ⚪ Todo | Investigation CA1862 EF LINQ + décision fix vs SuppressMessage. **Phase 1** (3 tests SQL) avant **Phase 2** (application aux 49 + 1 occurrences). | — |
 

@@ -2,7 +2,7 @@
 
 > **Statut** : En cours
 > **Modèle** : task-driven
-> **Version** : 0.4
+> **Version** : 0.5
 > **Auteur** : *À compléter par le PO.*
 > **Dernière mise à jour** : 2026-05-17
 > **Audience** : direction technique, PO, conformité qualité.
@@ -157,11 +157,11 @@ L'EPIC E010 est un EPIC de **dette technique** — il n'introduit pas de règle 
 | E010-F003 Split PatientsController | ⛔ Closed no-op | n/a | task-042 |
 | E010-F004 Split ManagementController → AiDiagnostics + MailMaintenance | ✅ Done | 100 % | task-043 |
 | E010-F005 Split SettingsController | ⛔ Closed no-op | n/a | task-044 |
-| E010-F006 Hotspots review | ⚪ Todo | 0 % | task-045 |
+| E010-F006 Hotspots review (+ secrets move + Dockerfile harden + CORS whitelist) | ✅ Done | 100 % | task-045 |
 | E010-F007 S3776 campagne (39 méthodes) | 🟡 En cours | 0 % | meta-task-046 |
 | E010-F008 CA1862 EF LINQ investigation | ⚪ Todo | 0 % | task-047 |
 
-**Couverture EPIC consolidée : ~50 %** (3 features livrées + 2 fermées no-op sur 8 — restent F006 hotspots, F007 S3776 campagne, F008 CA1862 EF LINQ ; la campagne S3776 progresse à son propre rythme et ne s'incrémente pas au global tant que les 39 PRs ne sont pas toutes mergeées).
+**Couverture EPIC consolidée : ~75 %** (4 features livrées + 2 fermées no-op sur 8 — restent F007 S3776 campagne et F008 CA1862 EF LINQ ; la campagne S3776 progresse à son propre rythme et ne s'incrémente pas au global tant que les 39 PRs ne sont pas toutes mergeées).
 
 > **Note F002** — la portée s'est précisée pendant task-041 : la règle `csharpsquid:S107` n'est pas activée dans le profile Sonar courant. La feature couvre désormais l'amélioration de design des API publiques (interface `ISemanticSearchService` refactorée en records immutables).
 >
@@ -186,6 +186,10 @@ L'EPIC E010 est un EPIC de **dette technique** — il n'introduit pas de règle 
 
 ### Sécurité
 
+- **v0.5 — Cleanup des security hotspots et hardening de la chaîne de déploiement** (task-045) : les 7 hotspots `TO_REVIEW` qui traînaient sur SonarQube sont résolus. Le compte officiel passe de 7 à 0 et le rating Sécurité revient à A (de E à A — l'anomalie venait d'un token SonarQube en clair dans un script de reporting, déjà nettoyé en amont). Trois changements structurants côté plateforme :
+  1. **Secrets dev sortis du fichier de configuration tracké** — le mot de passe RabbitMQ de développement, la clé d'API OpenAI réelle et la clé de bypass test ne vivent plus dans `appsettings.json`. Ils sont déplacés dans un fichier `appsettings.Development.json` ignoré par git et par l'image Docker, et les environnements de production injectent leurs propres valeurs via variables d'environnement ou coffre-fort.
+  2. **Conteneur Docker durci** — l'API s'exécute désormais en utilisateur applicatif `app` (non-root), réduisant l'impact d'une éventuelle compromission. La phase de build du Dockerfile a aussi été nettoyée d'une copie récursive du contexte de build qui risquait d'embarquer des fichiers sensibles ou de tests dans l'image finale.
+  3. **Politique CORS verrouillée hors développement** — `AllowAnyOrigin()` reste pratique en local, mais en Production l'application n'accepte plus que les origines explicitement listées dans `Cors:AllowedOrigins`. Par défaut, aucune origine n'est acceptée (fail-closed) : l'opérateur doit configurer la whitelist au déploiement.
 - **v0.1 — Externalisation de l'URL Flagsmith** (task-040) : suppression du fallback `localhost` hardcodé dans le code. La plateforme refuse désormais de démarrer si l'URL feature-flag n'est pas explicitement configurée (fail-fast au boot, au lieu de silently pointer sur une URL de dev).
 
 ### Technique / observabilité
