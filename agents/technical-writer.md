@@ -21,7 +21,7 @@ Splitting per audience keeps the produit doc legible to non-technical stakeholde
 ## Inputs
 
 - **Epic id** (e.g. `E001`) — mandatory argument.
-- **Task files** under `tasks/` that declare `**Epic**: E001` in their header. All lifecycle states are relevant : `todo-*.md`, `wip-*.md`, `review-*.md`, `done-*.md`, `archived-*.md`. A task without `**Epic**:` field is ignored.
+- **Task files** that declare `**Epic**: E001` in their header. All lifecycle states are relevant : `tasks/todo-*.md`, `tasks/wip-*.md`, `tasks/review-*.md`, `tasks/done-*.md`, and `tasks/archived/archived-*.md` (the terminal state lives in the `archived/` subdir). A task without `**Epic**:` field is ignored.
 - **Existing produit doc** at `docs/epics/E{NNN}-{slug}.md` (if present) — read to preserve human-authored sections and to detect the EPIC **model** (see below).
 - **Existing changelogs doc** at `docs/epics/E{NNN}-Changelogs.md` (if present) — read to append new entries idempotently and preserve prior history.
 - **Template** at `docs/epics/E000-template.md` — reference for section structure, tone, and French wording of the produit doc.
@@ -320,7 +320,7 @@ The changelogs file is always named `E{NNN}-Changelogs.md` (no slug — the slug
 
 The `/review` command calls `/tech-writer {epic-id}` after a task has been moved to `done-*`. Steps :
 
-1. Read every `tasks/*-*.md` with `**Epic**: {epic-id}`.
+1. Read every `tasks/*-*.md` **and** every `tasks/archived/*-*.md` with `**Epic**: {epic-id}` (the writer's scan MUST cover both the flat active states and the archived subdir).
 2. If `docs/epics/E{NNN}-{slug}.md` exists, read it and detect the model (`task-driven` or `hand-crafted`). Preserve human-authored sections.
 3. If `docs/epics/E{NNN}-Changelogs.md` exists, read it. Existing changelog entries are **append-only** — never rewrite a previously emitted entry. Only add new entries for tasks that have moved to `done-*` / `archived-*` since the last run.
 4. Determine, for the task(s) that triggered this run, which content belongs where :

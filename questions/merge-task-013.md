@@ -79,7 +79,7 @@ the merge :
 
 ```
 M  Docs/epics/E009-messagerie-securisee-sante.md   ← /tech-writer v1.13 entry for task-013
-RM tasks/done-task-012.md → tasks/archived-task-012.md
+RM tasks/done-task-012.md → tasks/archived/archived-task-012.md
 D  tasks/todo-task-013.md
 ?? tasks/done-task-013.md
 ?? questions/qa-20260430.md

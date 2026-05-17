@@ -36,8 +36,9 @@ Steps (high-level — see the agent file for the full spec) :
 4. Ask whether the human merged the `client-angular` TFS PR ; if yes,
    switch the local Angular clone back to `develop`.
 5. Wait up to 2 min for CI green on `develop` (rule 5).
-6. Rename `tasks/done-{task-id}.md → tasks/archived-{task-id}.md` and
-   append a `## Merged` section with the squash commit SHAs.
+6. Move `tasks/done-{task-id}.md → tasks/archived/archived-{task-id}.md`
+   (creates the `tasks/archived/` subdir if missing) and append a
+   `## Merged` section with the squash commit SHAs.
 7. Report.
 
 ## When NOT to use `/merge`

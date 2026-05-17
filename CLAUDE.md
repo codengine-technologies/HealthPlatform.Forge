@@ -87,11 +87,12 @@ touché par la task — la chaîne saute simplement à l'étape suivante.
 `/sonar-s3776` (cognitive complexity, 1 méthode = 1 PR) **reste manuel** —
 hors chaîne autonome, sinon on se retrouve avec N PRs par task.
 
-Task lifecycle : `todo → wip → review → done`
-- `todo-*.md` : PO a rédigé la US, en attente de `/start`
-- `wip-*.md`  : branche créée, `/develop` en cours **OU** mode `no-code` (humain code dans WindSurf)
-- `review-*.md` : implémentation finie (par `/develop` ou par l'humain en `no-code`), en attente de `/review`
-- `done-*.md` : validée, PR ouverte, en attente du merge humain (HAG, règle 10)
+Task lifecycle : `todo → wip → review → done → archived`
+- `tasks/todo-*.md` : PO a rédigé la US, en attente de `/start`
+- `tasks/wip-*.md`  : branche créée, `/develop` en cours **OU** mode `no-code` (humain code dans WindSurf)
+- `tasks/review-*.md` : implémentation finie (par `/develop` ou par l'humain en `no-code`), en attente de `/review`
+- `tasks/done-*.md` : validée, PR ouverte, en attente du merge humain (HAG, règle 10)
+- `tasks/archived/archived-*.md` : **état terminal**, post-merge. Le fichier est déplacé dans le sous-répertoire `tasks/archived/` par `/merge` une fois la PR mergée par l'humain. Les globs `/forge` et `/status` ne recursent pas — ce sous-dir reste invisible des cycles actifs. Seul `/tech-writer` le scanne pour le changelog historique.
 
 ### Epic linkage (optional)
 
@@ -420,7 +421,7 @@ Never modify without human arbitration:
 | `/lint-angular {task-id}` | Best-effort ESLint cleanup on `client-angular` (Working dir `Client/Angular/front/`). Reproduit la forme des commandes lint/build/test du pipeline Azure `Client/Angular/azure-pipelines.yml` (Stage 2 CI), avec deux divergences intentionnelles : (1) default `$BASE_BRANCH = origin/next` (branche d'intégration vivante du repo TFS, pas l'`origin/master` du pipeline) ; (2) lint scopé via `--projects=tag:scope:mss` (le forge ne fixe que le module MSS — `mss` + `mss-lib`). Build/test restent en scope complet pour détecter les régressions downstream. Auto-fix puis fix manuels 5 itérations max, accepte les errors restantes. Code-only — ne touche jamais à git. Standard step in the autonomous chain, skip clean si client-angular non touché. See `agents/lint-angular.md`. |
 | `/sonar-s3776 api-mail` | **[Manual]** Reduce cognitive complexity of ONE method (S3776). One method = one PR. Characterisation tests written first. Out of the autonomous chain. See `.claude/commands/sonar-s3776.md`. |
 | `/review {task-id}` | Validate the implementation (build + tests + DOD + code review), commit/push/sync develop, open the PR (label `awaiting-human-merge`), rename `done-*`, chain into `/tech-writer`. Autonomous — no human prompt. |
-| `/merge {task-id} --i-tested` | **[Human only]** After the human has tested the US end-to-end on the open PRs, squash-merge each pushable PR, sync `develop`, delete the branches, archive the task `archived-*`. Refuses without `--i-tested`, on `awaiting-us-completion` label, or red CI. Never invoked by `/forge` — HAG (rule 10) stays. See `agents/merge.md`. |
+| `/merge {task-id} --i-tested` | **[Human only]** After the human has tested the US end-to-end on the open PRs, squash-merge each pushable PR, sync `develop`, delete the branches, move the task into `tasks/archived/archived-{task-id}.md`. Refuses without `--i-tested`, on `awaiting-us-completion` label, or red CI. Never invoked by `/forge` — HAG (rule 10) stays. See `agents/merge.md`. |
 | `/tech-writer E{NNN}` | Refresh `docs/epics/E{NNN}-{slug}.md` from all tasks that declare `**Epic**: E{NNN}`. Called automatically at the tail of `/review` ; can be run manually for retro-generation or `--refresh`. See `agents/technical-writer.md`. |
 | `/forge` | Loop autonome : pour chaque `tasks/todo-task-*.md`, déclenche `/start` → `/develop` → `/sonar` → `/lint-angular` → `/review` → `/tech-writer`. Séquentiel (pas de parallélisme). Stop sur la première task qui échoue (écrit `questions/`, passe à la suivante). **Ne déclenche jamais `/merge`** — HAG, règle 10. |
 | `/status` | Quick status in < 10 lines |

@@ -39,8 +39,10 @@ lifecycle silently).
 
 For excluded repos (`devops`, `psc-proxy-*`) : skipped, log only.
 
-The task file is renamed `tasks/archived-{task-id}.md` once every pushable
-PR is merged.
+The task file is moved to `tasks/archived/archived-{task-id}.md` once every
+pushable PR is merged (the `archived/` subdirectory keeps the active task
+states — `todo-`, `wip-`, `review-`, `done-` — uncluttered at the root
+of `tasks/`).
 
 ## Safety gates — all must pass before merging
 
@@ -137,12 +139,16 @@ Same three-mode taxonomy as the rest of the forge :
    `questions/merge-{task-id}.md` with the failing run URL. The merges
    already happened — the human investigates.
 
-8. **Archive the task** :
+8. **Archive the task** — move into the `tasks/archived/` subdirectory and
+   prefix the filename with `archived-` :
    ```bash
-   mv tasks/done-{task-id}.md tasks/archived-{task-id}.md
+   mv tasks/done-{task-id}.md tasks/archived/archived-{task-id}.md
    ```
-   Append a `## Merged` section with the merge timestamp, the squash commit
-   SHA per repo, and the CI run URL on `develop`.
+   The `tasks/archived/` subdir is the **terminal location**. It MUST
+   exist ; if not (fresh forge), create it with `mkdir -p tasks/archived`
+   before the move. Append a `## Merged` section to the moved file with
+   the merge timestamp, the squash commit SHA per repo, and the CI run
+   URL on `develop`.
 
 9. **Report** :
    ```
@@ -160,7 +166,7 @@ Same three-mode taxonomy as the rest of the forge :
    - devops, psc-proxy-* : N/A
 
    develop CI : ✓ green on all pushable repos
-   Task archived : tasks/archived-{task-id}.md
+   Task archived : tasks/archived/archived-{task-id}.md
    ```
 
 ## Rules
@@ -180,6 +186,7 @@ Same three-mode taxonomy as the rest of the forge :
   beyond "managed manually by the human". The TFS PR and the local
   Angular clone are the human's exclusive domain at merge time.
 - Never modify `devops` or `psc-proxy-*` — they are entirely manual.
-- The task moves `done-* → archived-*` once every pushable PR is merged.
-  `archived-*` is the terminal state and is excluded from `/forge` and
-  `/status` listings.
+- The task moves `tasks/done-*.md → tasks/archived/archived-*.md` once every
+  pushable PR is merged. The `tasks/archived/` subdir is the terminal
+  location and is excluded from `/forge` and `/status` listings (their
+  globs scan the flat `tasks/` only and do not recurse).
