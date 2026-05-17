@@ -2,7 +2,7 @@
 
 > **Statut** : En cours
 > **Modèle** : task-driven
-> **Version** : 0.1
+> **Version** : 0.2
 > **Auteur** : *À compléter par le PO.*
 > **Dernière mise à jour** : 2026-05-17
 > **Audience** : direction technique, PO, conformité qualité.
@@ -153,7 +153,7 @@ L'EPIC E010 est un EPIC de **dette technique** — il n'introduit pas de règle 
 | Feature | Statut | Couverture | Tasks contributives |
 |---------|--------|------------|---------------------|
 | E010-F001 Quick-wins S1075 + S1135 + Migrations | ✅ Done | 100 % | task-040 |
-| E010-F002 S107 param objects | ⚪ Todo | 0 % | task-041 |
+| E010-F002 Refactor de design API (S107 → records `*Options`) | ✅ Done | 100 % | task-041 |
 | E010-F003 Split PatientsController | ⚪ Todo | 0 % | task-042 |
 | E010-F004 Split ManagementController | ⚪ Todo | 0 % | task-043 |
 | E010-F005 Split SettingsController | ⚪ Todo | 0 % | task-044 |
@@ -161,7 +161,9 @@ L'EPIC E010 est un EPIC de **dette technique** — il n'introduit pas de règle 
 | E010-F007 S3776 campagne (39 méthodes) | 🟡 En cours | 0 % | meta-task-046 |
 | E010-F008 CA1862 EF LINQ investigation | ⚪ Todo | 0 % | task-047 |
 
-**Couverture EPIC consolidée : ~12 %** (1 feature / 8 livrée — la campagne S3776 progresse à son propre rythme et ne s'incrémente pas au global tant que les 39 PRs ne sont pas toutes mergeées).
+**Couverture EPIC consolidée : ~25 %** (2 features / 8 livrées — la campagne S3776 progresse à son propre rythme et ne s'incrémente pas au global tant que les 39 PRs ne sont pas toutes mergeées).
+
+> **Note F002** — la portée s'est précisée pendant task-041 : la règle `csharpsquid:S107` n'est pas activée dans le profile Sonar courant. La feature couvre désormais l'amélioration de design des API publiques (interface `ISemanticSearchService` refactorée en records immutables). Les constructeurs DI lourds restent à traiter via les splits S6960 (F003-F005) — un wrapper cosmétique sans split fonctionnel n'apporte pas de valeur.
 
 ---
 
@@ -183,6 +185,8 @@ L'EPIC E010 est un EPIC de **dette technique** — il n'introduit pas de règle 
 
 ### Technique / observabilité
 
+- **v0.2 — Simplification de l'API de recherche** (task-041) : l'interface `ISemanticSearchService` passe de 8 et 7 paramètres par méthode à 1 record `*Options` immutable par méthode. Aucun changement de comportement utilisateur ni de contrat HTTP. Bénéfice pour l'équipe : ajouter un nouveau knob de recherche revient désormais à ajouter une propriété au record, sans toucher tous les sites d'appel.
+- **v0.2 — Couverture de tests api-mail enrichie** (task-041) : passage de 2092 à 2096 tests verts (+4 dédiés aux records de la nouvelle API). Couverture Sonar globale 70.6 % → 73.3 % (+2.7 pp).
 - **v0.1 — Exclusion préventive des migrations EF de l'analyse Sonar** (task-040) : `**/Migrations/**` désormais ignoré par l'analyseur. Pas d'impact runtime ; évite les futurs faux positifs sur des migrations append-only générées par tooling.
 - **v0.1 — Reformulation du TODO `NewMailNotifier`** (task-040) : remplacé par un `// Note:` explicatif pointant le contexte domaine. Aucun changement comportemental.
 

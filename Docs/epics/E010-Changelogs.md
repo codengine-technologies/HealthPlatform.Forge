@@ -14,6 +14,101 @@
 
 ## Historique détaillé des changelogs
 
+### v0.2 — 2026-05-17 — Refactor SemanticSearchService param objects (task-041)
+
+**PR** : `api-mail` #63 — `refactor(search): extract SemanticSearchOptions param objects (task-041)` — label `awaiting-human-merge`.
+
+**Branche** : `chore/task-041-sonar-s107-param-objects` (api-mail + dtos-mss). dtos-mss : 0 commit, pas de PR.
+
+**Scope révisé en cours de cycle** (option C après halt `/develop`, voir `questions/answered/task-041.md`) :
+
+- Cible initiale du task body : 9 méthodes flaggées `csharpsquid:S107` (> 7 paramètres).
+- Réalité 2026-05-17 : **`csharpsquid:S107` a 0 occurrence** dans le Sonar actuel — la règle n'est **pas dans le profile `Weda way`** actif depuis 2026-05-14 (le profile `Sonar way` historique l'incluait).
+- Les 9 méthodes existent toujours physiquement mais ne sont plus flaggées.
+- Décision PO : Option C — refactor uniquement les **vrais cas design API publique**.
+
+| # | Méthode candidate du task body | Décision |
+|---|---|---|
+| 1 | `MailController.cs` ctor primaire (16 deps) | Ignoré — wrapper `*Dependencies` cosmétique. Vrai fix = S6960 split (task-042/043/044). |
+| 2 | `ImapConnectionService.cs` ctor | Ignoré — même argument. |
+| 3 | `ImapFolderService.cs` ctor | Ignoré — même argument. |
+| 4 | `ImapService.cs` ctor primaire | Ignoré — même argument. |
+| 5 | `BackgroundImapService.cs` ctor | Ignoré — même argument. |
+| 6 | `SmtpService.cs` ctor | Ignoré — même argument. |
+| 7 | `ISemanticSearchService.SearchAsync` (8 params) + `SearchByPatientAsync` (7 params) | ✅ **Refactoré** |
+| 8 | `ImapLockScope.AcquireAsync` (8 params) | Ignoré — 3 sont `[CallerMemberName/FilePath/LineNumber]`, attributs compilateur magiques qu'on ne peut pas wrapper sans casser l'auto-injection (diagnostique précieuse pour task-024 lock instrumentation). |
+| 9 | `PatientRepository.ComputeScore` (8 params) | Ignoré — `private static` helper, pas de bénéfice API. Refactor structurel hors scope. |
+
+**Commits api-mail** :
+
+- `2a00407` — `refactor(search): extract SemanticSearchOptions / SemanticSearchByPatientOptions param objects`
+
+**Fichier ajouté** :
+
+- `src/Application/Models/SemanticSearchOptions.cs` (30 lignes) — 2 `sealed record` :
+  - `SemanticSearchOptions` : `Query` (required), `MaxResults=10`, `MinSimilarity=0.1`, `SearchType=Both`, `SearchMode=Hybrid`, `FolderPath`, `Filters`.
+  - `SemanticSearchByPatientOptions` : `Query` + `PatientId` (both required), `MaxResults=10`, `MinSimilarity=0.1`, `SearchMode=Hybrid`, `FolderPath`.
+
+**Fichiers modifiés** :
+
+- `src/Application/Services/Interfaces/ISemanticSearchService.cs` — `SearchAsync(SemanticSearchOptions, CancellationToken)` (vs 8 params) + `SearchByPatientAsync(SemanticSearchByPatientOptions, CancellationToken)` (vs 7 params). Doc XML mise à jour.
+- `src/Application/Services/Implementation/SemanticSearchService.cs` — destructure des options en début des 2 méthodes, **body inchangé** (minimum de risque de régression). `ArgumentNullException.ThrowIfNull(options)` ajouté en garde.
+- `src/Api/Controllers/V1/SearchController.cs` — 2 call sites (`POST /api/v1/search` et `POST /api/v1/search/patient`). Initializer syntax. **Request DTOs (`SearchRequestDto`, `PatientSearchRequestDto`) inchangés → contrat HTTP préservé**.
+- `src/Api/Controllers/V1/ManagementController.cs` — 1 call site (`POST /api/v1/management/test-similarity`). Initializer syntax.
+- `tests/mss.mail.application.tests/Services/Embedding/SemanticSearchServiceTests.cs` — 30 call sites convertis + **4 nouveaux tests dédiés** aux records (defaults + non-defaults pour les 2 records, satisfait DOD).
+- `tests/mss.mail.integration.tests/UseCases/SearchUseCaseTests.cs` — 6 call sites convertis.
+
+**Local build / test** :
+
+- Build api-mail Release : ✓ 0 erreurs, 0 warnings.
+- Tests : **2096 pass / 0 fail / 16 skipped** (16 = AI pré-existants + ParseImagingReport Linux skip)
+  - domain : 86/86
+  - **application : 1418/1418** (+4 vs baseline 1414, grâce aux records tests)
+  - infrastructure : 346/346
+  - api : 114/114
+  - integration : 132/148 (16 skipped)
+
+**KPIs Sonar — avant / après re-analyse** :
+
+| Métrique | Avant (post-task-040) | Après | Δ |
+|---|---|---|---|
+| Bugs | 0 | 0 | ✅ |
+| Vulnerabilities | 1 | 1 | inchangé (pré-existant token leak `report_coverage.ps1`) |
+| Code Smells | 1064 | 1066 | +2 mineurs (probablement sur fichiers non-touchés, drift baseline) |
+| Security Hotspots | 7 | 7 | inchangé |
+| Coverage | 70.6 % | **73.3 %** | +2.7 pp (4 nouveaux tests records + recompilation) |
+| Reliability rating | A | A | ✅ |
+| Security rating | E | E | inchangé (token leak) |
+| Maintainability rating | A | A | ✅ |
+| `csharpsquid:S107` (cible) | 0 | **0** | ✅ (DOD trivialement satisfaite ; intent design respecté pour 3 méthodes refactorées) |
+
+**Issues sur les fichiers touchés** :
+
+| Fichier | Issues |
+|---|---|
+| `src/Application/Models/SemanticSearchOptions.cs` (nouveau) | **0** ✅ |
+| `src/Application/Services/Interfaces/ISemanticSearchService.cs` | **0** ✅ |
+| `src/Application/Services/Implementation/SemanticSearchService.cs` | 30 (pré-existants, body 90% inchangé) |
+| `src/Api/Controllers/V1/SearchController.cs` | 5 (pré-existants) |
+| `src/Api/Controllers/V1/ManagementController.cs` | 6 (pré-existants) |
+
+**Quality Gate** : ERROR (même situation que task-040, non-régression). `new_violations=187 > 0` (vs 185 dans task-040, +2 mineurs). `new_coverage=78.5 % < 80 %` (+2.8 pp vs task-040 grâce aux 4 nouveaux tests, mais sous le seuil). Cause héritée multi-lang scan révélée par task-040.
+
+**Décisions de refactor** :
+
+- **Destructure pattern** plutôt que renaming en interne : `var query = options.Query;` etc. en début de méthode, body inchangé. Trade-off : un peu de bruit en haut des méthodes, mais zéro risque de régression sur le body (qui contient la logique métier complexe de hybrid search, filter intersection, ranking).
+- **2 records distincts** (vs 1 unifié avec `PatientId` optionnel) : `SearchByPatientAsync` n'expose pas `SearchType` ni `Filters`, et `PatientId` est obligatoire — la duplication évite les options invalides au type-system.
+- **`init`-only properties** (pas de primary constructor) : évite que le record lui-même déclenche S107 (synthesized ctor avec 7 params serait au seuil) et permet la syntaxe object initializer en site d'appel.
+
+**Limites différées** :
+
+1. Les 6 ctors DI lourds (#1-6) restent à traiter via S6960 split — voir `todo-task-042-split-patients-controller.md`, `todo-task-043-split-management-controller.md`, `todo-task-044-split-settings-controller.md` (mais aucun de ces 6 n'est listé S6960 dans le profile actuel ; les 3 controllers task-042/043/044 sont d'autres fichiers).
+2. `MailController` (16 deps) n'est ni S107 (rule hors profile) ni S6960 (pas dans la liste). À traiter par décision archi explicite si la densité du ctor devient un problème pour la testabilité.
+3. `ImapLockScope.AcquireAsync` : si vraiment besoin de réduire les params, alternative possible — extraire `(operation, logger)` dans un `ImapLockContext` record, garder les 3 `[CallerInfo]` attrs comme params optionnels en queue. Marginal.
+4. `PatientRepository.ComputeScore` : meilleur refactor possible = merger avec `MatchByTraitsAsync` (public, 4 params, single caller) et passer un `record CandidateScore(string?, string?, DateTime?, string?)` aux 2 sides. Hors scope task-041.
+
+---
+
 ### v0.1 — 2026-05-17 — Quick-wins S1075 + S1135 + exclusion Migrations (task-040)
 
 **PR** : `api-mail` #62 — `chore(sonar): batch quick-wins — S1075 Flagsmith URI + S1135 TODO + Migrations exclusion (task-040)` — label `awaiting-human-merge`.
@@ -116,9 +211,15 @@ Zero-new-debt principle techniquement violé, mais c'est de la dette héritée r
 | `src/Infrastructure/Repository/MailRepository.cs` | F008 (CA1862 × 24) | ⏳ Investigation (task-047) |
 | `src/Infrastructure/Repository/PatientRepository.cs` | F008 (CA1862 × 25) | ⏳ Investigation (task-047) |
 | `src/Api/Controllers/V1/PatientsController.cs` | F003 (S6960) | ⏳ Todo (task-042) |
-| `src/Api/Controllers/V1/ManagementController.cs` | F004 (S6960) | ⏳ Todo (task-043) |
+| `src/Api/Controllers/V1/ManagementController.cs` | F002 + F004 (S6960 + 1 call site SemanticSearchOptions) | ✅ Site SemanticSearch refactoré (task-041) / ⏳ split S6960 todo (task-043) |
 | `src/Api/Controllers/V1/SettingsController.cs` | F005 (S6960) | ⏳ Todo (task-044) |
-| Méthodes S107 (9 occurrences, fichiers TBD) | F002 | ⏳ Todo (task-041) |
+| `src/Application/Services/Interfaces/ISemanticSearchService.cs` | F002 | ✅ Signatures simplifiées en records `*Options` (task-041) |
+| `src/Application/Services/Implementation/SemanticSearchService.cs` | F002 | ✅ Body unchanged + destructure pattern (task-041) |
+| `src/Application/Models/SemanticSearchOptions.cs` (nouveau) | F002 | ✅ 2 records immutables (task-041) |
+| `src/Api/Controllers/V1/SearchController.cs` | F002 | ✅ 2 call sites mis à jour (task-041) |
+| 6 ctors DI lourds (MailController, ImapConnectionService, ImapFolderService, ImapService, BackgroundImapService, SmtpService) | F002 ↪ F003-F005 | ⏳ Déférés au split S6960 (option C task-041) |
+| `ImapLockScope.AcquireAsync` | F002 | ✋ Hors scope task-041 (3 params sont `[CallerInfo]` magic, incompatibles avec record wrapping) |
+| `PatientRepository.ComputeScore` | F002 | ✋ Hors scope task-041 (private static helper, pas de bénéfice API) |
 | Méthodes S3776 (39 occurrences, fichiers TBD) | F007 | 🟡 Campagne en cours (meta-task-046) |
 | Hotspots security (7 occurrences, fichiers TBD) | F006 | ⏳ Todo (task-045) |
 | `report_coverage.ps1` | Hors EPIC — secret leak | ⚠️ À rotater (task TBD) |
@@ -126,19 +227,20 @@ Zero-new-debt principle techniquement violé, mais c'est de la dette héritée r
 
 ---
 
-## Annexe B — Inventaire fonctionnel daté (snapshot 2026-05-17)
+## Annexe B — Inventaire fonctionnel daté (snapshot 2026-05-17, post-task-041)
 
 - **Test projects api-mail** : 5 (domain, application, infrastructure, api, integration)
-- **Tests totaux api-mail** : 2092 pass / 0 fail / 16 skipped (AI pré-existants)
+- **Tests totaux api-mail** : **2096 pass** / 0 fail / 16 skipped (16 = AI pré-existants + `ParseImagingReport` Linux skip post-task-040)
 - **Solution** : `HealthPlatform.Api.Mail.sln`
 - **Build config validée** : Release
 - **EF Core version (runtime)** : 10.0.7
-- **EF Core Design version** : 9.0.8 (drift — voir limite #4)
+- **EF Core Design version** : 9.0.8 (drift — voir limite #4 v0.1)
 - **Npgsql.EntityFrameworkCore.PostgreSQL** : 10.0.1
 - **Sonar profile actif** : `Weda way (cs)` (switché depuis `Sonar way` le 2026-05-14)
-- **Sonar baseline globale** : 0 bugs / 1 vulnerability (pré-existante, voir #1) / 1064 smells / 7 hotspots / 70.6 % coverage / A/E/A ratings
+- **Sonar baseline globale** : 0 bugs / 1 vulnerability (pré-existante) / **1066 smells** / 7 hotspots / **73.3 % coverage** / A/E/A ratings
 - **Sonar new-code period** : `PREVIOUS_VERSION` (inherited)
-- **Quality Gate** : ERROR (new_violations 185 > 0, new_coverage 75.7 % < 80 %)
+- **Quality Gate** : ERROR (new_violations **187** > 0, new_coverage **78.5 %** < 80 %)
+- **CI workflow `Build and Publish` api-mail** : triggered sur `develop` + step `dotnet test` actif (fix posé sur develop entre task-040 et task-041, commits `f7e6d0b` / `747e4fa` / `c053454`). Premier test réel sur PR #63.
 
 ---
 
@@ -147,7 +249,7 @@ Zero-new-debt principle techniquement violé, mais c'est de la dette héritée r
 | Task ID | Statut | Contribution | RGs closes |
 |---------|--------|--------------|------------|
 | task-040 | ✅ Done | Quick-wins S1075 + S1135 + exclusion `**/Migrations/**`. Scope révisé en vol (CA1862 déféré à task-047). | — |
-| task-041 | ⚪ Todo | S107 — refactor des méthodes > 7 paramètres en param objects. | — |
+| task-041 | ✅ Done | Refactor `ISemanticSearchService` (`SearchAsync` + `SearchByPatientAsync`) en records `SemanticSearchOptions` / `SemanticSearchByPatientOptions`. Scope révisé en vol — S107 hors profile `Weda way`, 6 ctors DI lourds et 2 helpers ignorés (option C). 4 nouveaux tests records ; 36 call sites convertis. | — |
 | task-042 | ⚪ Todo | Split `PatientsController` (S6960). Touche api-mail + client-blazor + client-angular. | — |
 | task-043 | ⚪ Todo | Split `ManagementController` (S6960). Touche api-mail + client-blazor + client-angular. | — |
 | task-044 | ⚪ Todo | Split `SettingsController` (S6960). Touche api-mail + client-blazor + client-angular. | — |
