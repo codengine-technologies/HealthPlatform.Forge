@@ -347,3 +347,13 @@ Next step : `/review task-045` directement. `/sonar task-045` skip (déjà re-an
 - EF Core drift `EFCore.Design 9.0.8` vs `EFCore 10.0.7`
 - Cast `((BaseRepository)(object)_mailRepository).DataContext` → exposer DataContext sur `IMailRepository`
 - Node.js 20 deprecation GitHub Actions (avant 2026-06-02)
+
+## Merged
+
+- **Timestamp** : 2026-05-17 ~14:25 UTC (forge local time)
+- **Validation HAG** : humain a attesté avoir testé la US end-to-end (`/merge task-045 -i--tested`, typo invocation acceptée intent-clear).
+- **Squash merges (single PR)** :
+  - `api-mail` : `7d0c430` (PR #66 closed, https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/66) — merge commit `chore(security): resolve 7 security hotspots — secrets move + Dockerfile harden + CORS whitelist (task-045) (#66)`.
+- **`dtos-mss`** : pas de merge (0 commit sur la branche). Branche orpheline supprimée **avant** `/merge` à la demande du humain (pattern post-task-040/041/043).
+- **develop CI api-mail** : ✅ **green** ([run 25992588177](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/25992588177), conclusion=success). Confirme que les fixes UserContextInfo post-task-043 (`313370c` + `e86c7f0`) ont restauré le signal CI durablement.
+- **Local feature branch** (api-mail) : `chore/task-045-sonar-hotspots-review` conservée localement après `gh pr merge --delete-branch` (le flag retire uniquement le remote per `feedback_forge_merge_keep_local_branches`).
