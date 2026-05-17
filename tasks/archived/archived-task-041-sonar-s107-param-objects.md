@@ -259,3 +259,14 @@ Next step : `/review task-041` directement (`/lint-angular` skip clean car clien
 
 **Findings hors scope (héritage task-040, non aggravés par task-041)** :
 - `secrets:S6702` BLOCKER sur `report_coverage.ps1:L1` (token leak), clé OpenAI dans `appsettings.json:L63`, Quality Gate `new_violations=187 > 0` (vs 185 dans task-040, dont les 2 supplémentaires sont mineurs et probablement hors fichiers task-041). Tous pré-existants, à traiter en task séparée.
+
+## Merged
+
+- **Timestamp** : 2026-05-17 ~12:55 UTC (forge local time)
+- **Validation HAG** : humain a attesté avoir testé la PR (`/merge task-041 -i--tested`, typo invocation acceptée intent-clear comme post-task-040).
+- **Squash merges** :
+  - `api-mail` : `4c3d909` (PR #63 closed, https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/63) — merge commit `refactor(search): extract SemanticSearchOptions / SemanticSearchByPatientOptions param objects (#63)`.
+- **`dtos-mss`** : pas de merge (0 commit sur la branche). Branche orpheline `chore/task-041-sonar-s107-param-objects` supprimée manuellement (locale + remote) **avant** `/merge` à la demande du humain — évite de bloquer le pré-flight de la prochaine `/start`.
+- **develop CI** : ✅ **green** ([run 25988279346](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/25988279346), conclusion=success). Workflow `Build and Publish` désormais nominal sur develop pushes — premier merge où le signal CI fonctionne réellement (fix task-040 commits `f7e6d0b` + `747e4fa` + `c053454`).
+- **Note flake CI** : la PR #63 a d'abord échoué sur `BackgroundSyncManagerTests.GetStatus_WhenServiceReturnsStatus_ReturnsServiceStatus` (Linux runner timing race avec `Task.Delay(50)` sur mock background service, ligne 194). Re-run → vert. Test sans rapport avec task-041, à fixer dans une task séparée (TaskCompletionSource au lieu de Task.Delay).
+- **Local feature branch** (api-mail) : `chore/task-041-sonar-s107-param-objects` conservée localement après `gh pr merge --delete-branch` (le flag retire uniquement le remote per `feedback_forge_merge_keep_local_branches`).
