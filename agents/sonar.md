@@ -748,7 +748,7 @@ dotnet sonarscanner begin \
   /d:sonar.host.url="$SONAR_HOST_URL" \
   /d:sonar.token="$SONAR_TOKEN" \
   /d:sonar.sourceEncoding=UTF-8 \
-  /d:sonar.exclusions="**/devops/**,**/load-tests/**,**/AppHost/**" \
+  /d:sonar.exclusions="**/devops/**,**/load-tests/**,**/AppHost/**,**/Migrations/**" \
   /d:sonar.cs.opencover.reportsPaths="TestResults/**/coverage.opencover.xml" \
   /d:sonar.coverage.exclusions="**/obj/**,**/bin/**,**/tests/**,**/AppHost/**,**/Infrastructure.Mock/**"
 ```
