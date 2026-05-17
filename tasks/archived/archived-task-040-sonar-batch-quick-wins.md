@@ -280,3 +280,16 @@ Next step : **`/review task-040`** directement (`/lint-angular` skip clean car `
 3. **Quality Gate ERROR new code** (`new_violations=185`, `new_coverage=75.7%`) — provoqué par l'activation du multi-language scan, pas par cette PR.
 
 Ces 3 findings justifient l'ouverture de tasks dédiées (rotation secrets + cleanup multi-lang findings). Pas bloquants pour le merge de task-040 (DOD task-040 respecté).
+
+## Merged
+
+- **Timestamp** : 2026-05-17 ~10:55 UTC (forge local time)
+- **Validation HAG** : humain a attesté avoir testé la PR (`/merge task-040 -i--tested`, typo invocation accepted as intent-clear).
+- **Squash merges** :
+  - `api-mail` : `8c21da3` (PR #62 closed, https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/62) — merge commit `chore(sonar): batch quick-wins — S1075 Flagsmith URI + S1135 TODO + Migrations exclusion (task-040) (#62)`.
+- **`dtos-mss`** : pas de merge (0 commit sur la branche `chore/task-040-sonar-batch-quick-wins`). La branche `origin/chore/task-040-sonar-batch-quick-wins` reste vide sur le remote — à supprimer manuellement pour éviter de bloquer le pré-flight de la prochaine `/start` (pattern identique à task-038).
+- **develop CI** : ⚠️ **non déclenché** pour le SHA `8c21da3`. La PR #62 affichait 0 checks dès l'ouverture (`gh pr view 62 --json statusCheckRollup` → `[]`). Le workflow `Build and Publish` (`event=pull_request`) ne s'est pas exécuté — possiblement à cause de `paths-ignore` filter dans le YAML qui exclurait les fichiers modifiés (les 3 fichiers task-040 sont `.cs` dans `src/Api/Extensions/`, `src/Application/Services/Implementation/`, `tests/mss.mail.api.tests/Extensions/`). À investiguer côté `.github/workflows/*.yml`. **Anomalie d'observabilité, pas un échec runtime** : le build + tests locaux étaient verts (2092 pass) avant le merge.
+- **Local feature branch** (api-mail) : `chore/task-040-sonar-batch-quick-wins` conservée localement après `gh pr merge --delete-branch` (`--delete-branch` retire uniquement le remote, per memory `feedback_forge_merge_keep_local_branches`).
+- **Workspace forge develop** : 2 commits déjà poussés en amont du `/merge` :
+  - `(SHA TBD)` — `task-040 done — Sonar batch quick-wins (...)` (workspace forge changes : agents/sonar.md, wip→done, task-047 creation, question file archive)
+  - `516265a` — `docs(epic): retro-generate E010 — Sonar cleanup api-mail (hors coverage)`
