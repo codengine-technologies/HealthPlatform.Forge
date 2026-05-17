@@ -16,7 +16,7 @@ Ce skill implémente un processus itératif pour améliorer la couverture de cod
 
 - **Couverture cible** : 98% globale
 - **Seuil par classe** : 98% minimum
-- **Itérations max** : 5
+- **Itérations max** : 10
 - **Classes traitées par itération** : entre 1 et 10
 
 ## Prérequis
