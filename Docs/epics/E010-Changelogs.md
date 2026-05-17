@@ -14,6 +14,88 @@
 
 ## Historique détaillé des changelogs
 
+### v0.4 — 2026-05-17 — Split ManagementController → AiDiagnostics + MailMaintenance (task-043)
+
+**PRs** :
+- `api-mail` #65 — `refactor(api): split ManagementController -> AiDiagnostics + MailMaintenance (task-043)` — label `awaiting-human-merge`.
+- `client-blazor` #53 — `refactor(mss): update ManagementService URLs to diagnostics/maintenance split (task-043)` — label `awaiting-human-merge`.
+- `dtos-mss` : pas de PR (0 commit sur la branche `chore/task-043-split-management-controller`).
+
+**Branche** : `chore/task-043-split-management-controller` (api-mail + client-blazor + dtos-mss). `client-angular` est sur la branche du humain (`feature/nova-rewriting-mss-develop-20260517`) — pas de modification (aucun consumer Angular trouvé).
+
+**Cross-repo coordination (CLAUDE.md règle 11)** : les 2 PRs pushed doivent être mergées ensemble via `/merge task-043 --i-tested` (sinon les frontends consomment des routes inexistantes pendant l'intervalle).
+
+**Scope révisé en cours de cycle** (option C.2 après inspection préalable au `/start task-042`) :
+
+- Cible initiale du backlog : 3 controllers S6960 (Patients, Management, Settings).
+- Réalité : `csharpsquid:S6960` = 0 occurrence dans le profile `Weda way`. Inspection comparative :
+  - `PatientsController` (368 LOC, 10 endpoints, 4 groupes) → **closed no-op** (task-042) — borderline, coût 3 repos US-complete >> bénéfice cosmétique
+  - `SettingsController` (75 LOC, 4 endpoints) → **closed no-op** (task-044) — trop petit, split dégraderait la lisibilité
+  - `ManagementController` (530 LOC, 7 endpoints, **2 groupes nets**) → **refactor justifié** = task-043
+
+**Commits** :
+
+- `api-mail fe805aa` — `refactor(api): split ManagementController into AiDiagnosticsController + MailMaintenanceController`
+- `client-blazor 09ed528` — `refactor(mss): update ManagementService URLs to the new diagnostics/maintenance split`
+
+**Routes (avant → après)** :
+
+| Avant | Après |
+|---|---|
+| `POST   /api/v1/management/test-similarity` | `POST   /api/v1/diagnostics/test-similarity` |
+| `GET    /api/v1/management/check-embeddings-status` | `GET    /api/v1/diagnostics/check-embeddings-status` |
+| `GET    /api/v1/management/debug-vector-search` | `GET    /api/v1/diagnostics/debug-vector-search` |
+| `POST   /api/v1/management/recalculate-summary` | `POST   /api/v1/diagnostics/recalculate-summary` |
+| `GET    /api/v1/management/list-emails` | `GET    /api/v1/maintenance/list-emails` |
+| `GET    /api/v1/management/email-details/{uid}` | `GET    /api/v1/maintenance/email-details/{uid}` |
+| `DELETE /api/v1/management/purge-mails` | `DELETE /api/v1/maintenance/purge-mails` |
+
+Pas d'alias legacy (règle 11 — pas de "fausse v1"). DTOs (`TestSimilarityRequest`, `RecalculateSummaryRequest`) et bodies de tous les endpoints inchangés.
+
+**Fichiers (api-mail)** :
+
+- **Nouveau** `src/Api/Controllers/V1/AiDiagnosticsController.cs` (335 LOC) — 4 endpoints + helpers privés (`ExtractPatientNamesAsync`, `ProcessDocuments<T>`, `CalculateMatchInfo`, `BuildResultObject`) + file-scoped `AiDiagnosticsConstants` (renommé depuis `ManagementConstants`) + DTOs `TestSimilarityRequest` + `RecalculateSummaryRequest`. DI : `ISemanticSearchRepository`, `IEmailEmbeddingService`, `ISemanticSearchService`, `IEmailSummaryService`, `ILogger`, `IMailRepository`. `[ExcludeFromCodeCoverage]` préservé.
+- **Nouveau** `src/Api/Controllers/V1/MailMaintenanceController.cs` (134 LOC) — 3 endpoints. DI réduite à `ILogger` + `IMailRepository` (n'a pas besoin des services IA). `[ExcludeFromCodeCoverage]` préservé.
+- **Supprimé** `src/Api/Controllers/V1/ManagementController.cs` (530 LOC).
+- **Nouveau** `tests/mss.mail.api.tests/Controllers/V1/AiDiagnosticsControllerTests.cs` (72 LOC, 6 smoke tests : route prefix + 4 endpoints via réflexion sur `[HttpVerb("route")]` + ctor smoke).
+- **Nouveau** `tests/mss.mail.api.tests/Controllers/V1/MailMaintenanceControllerTests.cs` (60 LOC, 5 smoke tests : idem).
+
+**Fichiers (client-blazor)** :
+
+- `Src/Modules/Mss/Application/Services/ManagementService.cs` (199 LOC, **+7 / −7**) — 7 URL replacements vers les nouveaux préfixes. Aucun changement de signature publique (`IManagementService` inchangé), aucune page Blazor consommatrice touchée.
+
+**Interprétation pragmatique de DOD rule 1b (smoke tests via réflexion)** :
+
+- Le contrôleur original `ManagementController` était `[ExcludeFromCodeCoverage]` avec **0 test** (convention équipe pour admin/diagnostic).
+- L'accès `DataContext` via le cast `((BaseRepository)(object)_mailRepository).DataContext` rend les unit tests difficiles sans refactor préalable de la couche Repository.
+- Les vrais integration tests demanderaient `WebApplicationFactory` + Postgres Testcontainer harness pour chaque endpoint — pas en place dans `mss.mail.api.tests` (les integration tests existent dans `mss.mail.integration.tests` mais sont organisés par UseCase/Service, pas par contrôleur HTTP).
+- → Option retenue : **smoke tests structurels via réflexion** sur les attributs `[Route]` et `[HttpVerb("...")]`. Cela vérifie que chaque endpoint a bien sa route HTTP attendue, sans introduire d'infrastructure WebApplicationFactory. À reconsidérer en task séparée si une vraie couverture des endpoints diagnostic devient un besoin.
+
+**Local build / test** :
+
+- **api-mail** Release : ✓ 0 erreurs, 0 warnings.
+- Tests : 86 + 1437 + 346 + **125** (+11 vs baseline) + 184 = **2178 pass / 16 skipped / 2 fails IMAP pré-existants**.
+  - Les 2 fails sont sur develop avant task-043 (vérifié par checkout temporaire) : `ImapServiceIntegrationTests.GetEmailAsync_WithFullContent_ShouldReturnCompleteEmailAsync` et `ImapFolderServiceIntegrationTests.MoveEmailAsync_WithValidUid_ShouldMoveAndMoveBackAsync`. Sans rapport avec task-043. À investiguer en task séparée — probablement flakes IMAP infrastructure-dépendants (LINQ translation error + IMAP Sent folder append).
+- **client-blazor** Release : ✓ 0 erreurs, 0 warnings. Tests : 86 pass / 2 skipped / 0 fail.
+
+**KPIs Sonar** : pas de re-analyse manuelle (S6960 hors profile, refactor design pur sans cible Sonar). La PR `awaiting-human-merge` ne dépend pas d'un signal Sonar additionnel pour cette task.
+
+**Décisions de refactor** :
+
+- **Routes changent** (`/management/*` → `/diagnostics/*` ou `/maintenance/*`) plutôt que de garder le préfixe `/management` sur les 2 nouveaux contrôleurs. Cohérence sémantique entre noms de contrôleurs et URL — un endpoint `[Route("api/v1/management")]` exposé par `AiDiagnosticsController` serait confusant. Coût : impact frontend Blazor (mais 1 fichier, 7 URLs — bounded).
+- **Helpers privés stay-with-consumer** : `ExtractPatientNamesAsync`, `ProcessDocuments<T>`, `CalculateMatchInfo`, `BuildResultObject` ne sont utilisés que par `TestSimilarityAsync` → ils migrent dans `AiDiagnosticsController`, pas dans un helper externe partagé. Cohésion forte.
+- **`AiDiagnosticsConstants` file-scoped** (vs internal partagé) : seul `AiDiagnostics` utilise ces constantes → `file static` conserve la visibilité minimale.
+- **2 records DTOs déplacés intacts** (`TestSimilarityRequest`, `RecalculateSummaryRequest`) au lieu de devenir des records readonly — préservation 100% du contrat HTTP existant.
+- **`[ExcludeFromCodeCoverage]` préservé** sur les 2 nouveaux contrôleurs — convention équipe pour admin/diagnostic (visible dans plusieurs autres controllers de la solution).
+
+**Limites différées** :
+
+1. Le cast `((BaseRepository)(object)_mailRepository).DataContext` reste un **code smell hérité** (preservé tel quel dans les 2 nouveaux contrôleurs). Le vrai fix serait d'exposer `DataContext` (ou une abstraction queryable) sur l'interface `IMailRepository`. Hors scope task-043 (toucherait la couche Repository).
+2. Les 2 fails integration IMAP pré-existants (`ImapServiceIntegrationTests.GetEmailAsync_*`, `ImapFolderServiceIntegrationTests.MoveEmailAsync_*`) sont à investiguer dans une task séparée. Probablement infrastructure-dépendants (IMAP test server / EF Core LINQ translation race).
+3. Angular : pas de consumer `/api/v1/management/*` trouvé dans `Client/Angular/front`. Si jamais l'Angular MSS module commence à consommer ces endpoints, il devra utiliser les nouvelles routes directement (`/diagnostics/*` et `/maintenance/*`).
+
+---
+
 ### v0.2 — 2026-05-17 — Refactor SemanticSearchService param objects (task-041)
 
 **PR** : `api-mail` #63 — `refactor(search): extract SemanticSearchOptions param objects (task-041)` — label `awaiting-human-merge`.
@@ -211,7 +293,10 @@ Zero-new-debt principle techniquement violé, mais c'est de la dette héritée r
 | `src/Infrastructure/Repository/MailRepository.cs` | F008 (CA1862 × 24) | ⏳ Investigation (task-047) |
 | `src/Infrastructure/Repository/PatientRepository.cs` | F008 (CA1862 × 25) | ⏳ Investigation (task-047) |
 | `src/Api/Controllers/V1/PatientsController.cs` | F003 (S6960) | ⛔ Closed no-op (task-042) — règle hors profile + 368 LOC/10 endpoints borderline |
-| `src/Api/Controllers/V1/ManagementController.cs` | F002 + F004 (S6960 + 1 call site SemanticSearchOptions) | ✅ Site SemanticSearch refactoré (task-041) / ⏳ split S6960 todo (task-043, **seul vrai cas** — 530 LOC, 2 groupes nets) |
+| `src/Api/Controllers/V1/ManagementController.cs` | F002 + F004 (S6960 + 1 call site SemanticSearchOptions) | ✅ Site SemanticSearch refactoré (task-041) puis **fichier supprimé** par task-043 — remplacé par `AiDiagnosticsController` + `MailMaintenanceController` |
+| `src/Api/Controllers/V1/AiDiagnosticsController.cs` (nouveau) | F004 | ✅ Créé par task-043 (335 LOC, route prefix `/api/v1/diagnostics`, 4 endpoints IA/embeddings) |
+| `src/Api/Controllers/V1/MailMaintenanceController.cs` (nouveau) | F004 | ✅ Créé par task-043 (134 LOC, route prefix `/api/v1/maintenance`, 3 endpoints mail-data) |
+| `Client/Blazor/Src/Modules/Mss/Application/Services/ManagementService.cs` (consumer) | F004 (cross-repo) | ✅ 7 URLs mises à jour par task-043 — `IManagementService` inchangé |
 | `src/Api/Controllers/V1/SettingsController.cs` | F005 (S6960) | ⛔ Closed no-op (task-044) — règle hors profile + 75 LOC trop petit |
 | `src/Application/Services/Interfaces/ISemanticSearchService.cs` | F002 | ✅ Signatures simplifiées en records `*Options` (task-041) |
 | `src/Application/Services/Implementation/SemanticSearchService.cs` | F002 | ✅ Body unchanged + destructure pattern (task-041) |
@@ -227,20 +312,27 @@ Zero-new-debt principle techniquement violé, mais c'est de la dette héritée r
 
 ---
 
-## Annexe B — Inventaire fonctionnel daté (snapshot 2026-05-17, post-task-041)
+## Annexe B — Inventaire fonctionnel daté (snapshot 2026-05-17, post-task-043)
 
 - **Test projects api-mail** : 5 (domain, application, infrastructure, api, integration)
-- **Tests totaux api-mail** : **2096 pass** / 0 fail / 16 skipped (16 = AI pré-existants + `ParseImagingReport` Linux skip post-task-040)
-- **Solution** : `HealthPlatform.Api.Mail.sln`
+- **Tests totaux api-mail** : **2178 pass** / 2 fail (IMAP pré-existants sur develop, sans rapport avec task-043) / 16 skipped
+  - domain : 86 / 86
+  - application : **1437** (+19 vs post-task-041 1418, via commit develop `e6d87e2 Improve test coverage`)
+  - infrastructure : 346 / 346
+  - api : **125** (+11 vs post-task-041 114, dont 11 smoke tests task-043 sur les 2 nouveaux contrôleurs)
+  - integration : **184 pass / 2 fail / 16 skipped** = 202 total (+54 vs post-task-041 148, via `e6d87e2`)
+- **Tests client-blazor** : 86 pass / 2 skipped / 0 fail
+- **Solution api-mail** : `HealthPlatform.Api.Mail.sln`
+- **Solution client-blazor** : `HealthPlatform.Client.sln`
 - **Build config validée** : Release
 - **EF Core version (runtime)** : 10.0.7
 - **EF Core Design version** : 9.0.8 (drift — voir limite #4 v0.1)
 - **Npgsql.EntityFrameworkCore.PostgreSQL** : 10.0.1
 - **Sonar profile actif** : `Weda way (cs)` (switché depuis `Sonar way` le 2026-05-14)
-- **Sonar baseline globale** : 0 bugs / 1 vulnerability (pré-existante) / **1066 smells** / 7 hotspots / **73.3 % coverage** / A/E/A ratings
+- **Sonar baseline globale (post-task-041, non re-analysé par task-043)** : 0 bugs / 1 vulnerability (pré-existante) / 1066 smells / 7 hotspots / 73.3 % coverage / A/E/A ratings
 - **Sonar new-code period** : `PREVIOUS_VERSION` (inherited)
-- **Quality Gate** : ERROR (new_violations **187** > 0, new_coverage **78.5 %** < 80 %)
-- **CI workflow `Build and Publish` api-mail** : triggered sur `develop` + step `dotnet test` actif (fix posé sur develop entre task-040 et task-041, commits `f7e6d0b` / `747e4fa` / `c053454`). Premier test réel sur PR #63.
+- **Quality Gate (post-task-041)** : ERROR (new_violations 187 > 0, new_coverage 78.5 % < 80 %) — héritage multi-lang scan, non aggravé par task-043 qui ne re-analyse pas
+- **CI workflow `Build and Publish` api-mail** : nominal sur develop pushes + PR triggers (fix complet posé entre task-040 et task-041, validé sur task-041 PR #63 + merge `8c21da3`).
 
 ---
 
@@ -251,7 +343,7 @@ Zero-new-debt principle techniquement violé, mais c'est de la dette héritée r
 | task-040 | ✅ Done | Quick-wins S1075 + S1135 + exclusion `**/Migrations/**`. Scope révisé en vol (CA1862 déféré à task-047). | — |
 | task-041 | ✅ Done | Refactor `ISemanticSearchService` (`SearchAsync` + `SearchByPatientAsync`) en records `SemanticSearchOptions` / `SemanticSearchByPatientOptions`. Scope révisé en vol — S107 hors profile `Weda way`, 6 ctors DI lourds et 2 helpers ignorés (option C). 4 nouveaux tests records ; 36 call sites convertis. | — |
 | task-042 | ⛔ Closed no-op | Split `PatientsController` (S6960). Fermée 2026-05-17 après inspection préalable à `/start` (option C.2) — règle S6960 hors profile `Weda way`, `PatientsController` à 368 LOC / 10 endpoints / 4 groupes borderline, coût 3 repos + US-complete merge gate >> bénéfice cosmétique. À reconsidérer si la règle est réactivée ou si le contrôleur dépasse 600 LOC. | — |
-| task-043 | ⚪ Todo | Split `ManagementController` (S6960). Au minimum api-mail (530 LOC, 7 endpoints, 2 groupes nets AI/embeddings vs email maintenance — vrai cas design même hors profile Sonar). | — |
+| task-043 | ✅ Done | Split `ManagementController` (530 LOC, 7 endpoints) → `AiDiagnosticsController` (4 endpoints, `/api/v1/diagnostics`) + `MailMaintenanceController` (3 endpoints, `/api/v1/maintenance`). 2 PRs cross-linked (api-mail #65 + client-blazor #53). 11 smoke tests via réflexion. Angular : no-op (aucun consumer). | — |
 | task-044 | ⛔ Closed no-op | Split `SettingsController` (S6960). Fermée 2026-05-17 idem — règle hors profile + contrôleur à 75 LOC seulement (~19 LOC/endpoint), splitter dégraderait la lisibilité. | — |
 | task-045 | ⚪ Todo | Review des 5 (actuellement 7) security hotspots — bascule `TO_REVIEW` → `SAFE` / `ACKNOWLEDGED` / `FIXED`. | — |
 | meta-task-046 | 🟡 En cours | Tracker de campagne S3776 (39 méthodes, 1 méthode = 1 PR via `/sonar-s3776`). Non pické par `/forge`. | — |

@@ -2,7 +2,7 @@
 
 > **Statut** : En cours
 > **Modèle** : task-driven
-> **Version** : 0.3
+> **Version** : 0.4
 > **Auteur** : *À compléter par le PO.*
 > **Dernière mise à jour** : 2026-05-17
 > **Audience** : direction technique, PO, conformité qualité.
@@ -155,13 +155,13 @@ L'EPIC E010 est un EPIC de **dette technique** — il n'introduit pas de règle 
 | E010-F001 Quick-wins S1075 + S1135 + Migrations | ✅ Done | 100 % | task-040 |
 | E010-F002 Refactor de design API (S107 → records `*Options`) | ✅ Done | 100 % | task-041 |
 | E010-F003 Split PatientsController | ⛔ Closed no-op | n/a | task-042 |
-| E010-F004 Split ManagementController | ⚪ Todo | 0 % | task-043 |
+| E010-F004 Split ManagementController → AiDiagnostics + MailMaintenance | ✅ Done | 100 % | task-043 |
 | E010-F005 Split SettingsController | ⛔ Closed no-op | n/a | task-044 |
 | E010-F006 Hotspots review | ⚪ Todo | 0 % | task-045 |
 | E010-F007 S3776 campagne (39 méthodes) | 🟡 En cours | 0 % | meta-task-046 |
 | E010-F008 CA1862 EF LINQ investigation | ⚪ Todo | 0 % | task-047 |
 
-**Couverture EPIC consolidée : ~40 %** (2 features livrées + 2 fermées no-op sur 8 — la campagne S3776 progresse à son propre rythme et ne s'incrémente pas au global tant que les 39 PRs ne sont pas toutes mergeées).
+**Couverture EPIC consolidée : ~50 %** (3 features livrées + 2 fermées no-op sur 8 — restent F006 hotspots, F007 S3776 campagne, F008 CA1862 EF LINQ ; la campagne S3776 progresse à son propre rythme et ne s'incrémente pas au global tant que les 39 PRs ne sont pas toutes mergeées).
 
 > **Note F002** — la portée s'est précisée pendant task-041 : la règle `csharpsquid:S107` n'est pas activée dans le profile Sonar courant. La feature couvre désormais l'amélioration de design des API publiques (interface `ISemanticSearchService` refactorée en records immutables).
 >
@@ -190,6 +190,7 @@ L'EPIC E010 est un EPIC de **dette technique** — il n'introduit pas de règle 
 
 ### Technique / observabilité
 
+- **v0.4 — Découpage du contrôleur d'administration** (task-043) : l'ancien `ManagementController` (530 lignes, 7 endpoints, 2 groupes de responsabilités mélangées) est remplacé par deux contrôleurs focalisés — `AiDiagnosticsController` (sondes IA / embeddings, 4 endpoints) et `MailMaintenanceController` (inspection et purge des emails, 3 endpoints). Les URL d'administration changent de préfixe (`/api/v1/management/*` → `/api/v1/diagnostics/*` ou `/api/v1/maintenance/*`). Le frontend Blazor est mis à jour en lockstep ; aucun écran utilisateur n'est impacté (refacto interne admin/diagnostic).
 - **v0.2 — Simplification de l'API de recherche** (task-041) : l'interface `ISemanticSearchService` passe de 8 et 7 paramètres par méthode à 1 record `*Options` immutable par méthode. Aucun changement de comportement utilisateur ni de contrat HTTP. Bénéfice pour l'équipe : ajouter un nouveau knob de recherche revient désormais à ajouter une propriété au record, sans toucher tous les sites d'appel.
 - **v0.2 — Couverture de tests api-mail enrichie** (task-041) : passage de 2092 à 2096 tests verts (+4 dédiés aux records de la nouvelle API). Couverture Sonar globale 70.6 % → 73.3 % (+2.7 pp).
 - **v0.1 — Exclusion préventive des migrations EF de l'analyse Sonar** (task-040) : `**/Migrations/**` désormais ignoré par l'analyseur. Pas d'impact runtime ; évite les futurs faux positifs sur des migrations append-only générées par tooling.
