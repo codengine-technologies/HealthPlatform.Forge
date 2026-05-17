@@ -2,7 +2,7 @@
 
 > **Statut** : En cours
 > **Modèle** : task-driven
-> **Version** : 0.2
+> **Version** : 0.3
 > **Auteur** : *À compléter par le PO.*
 > **Dernière mise à jour** : 2026-05-17
 > **Audience** : direction technique, PO, conformité qualité.
@@ -154,16 +154,21 @@ L'EPIC E010 est un EPIC de **dette technique** — il n'introduit pas de règle 
 |---------|--------|------------|---------------------|
 | E010-F001 Quick-wins S1075 + S1135 + Migrations | ✅ Done | 100 % | task-040 |
 | E010-F002 Refactor de design API (S107 → records `*Options`) | ✅ Done | 100 % | task-041 |
-| E010-F003 Split PatientsController | ⚪ Todo | 0 % | task-042 |
+| E010-F003 Split PatientsController | ⛔ Closed no-op | n/a | task-042 |
 | E010-F004 Split ManagementController | ⚪ Todo | 0 % | task-043 |
-| E010-F005 Split SettingsController | ⚪ Todo | 0 % | task-044 |
+| E010-F005 Split SettingsController | ⛔ Closed no-op | n/a | task-044 |
 | E010-F006 Hotspots review | ⚪ Todo | 0 % | task-045 |
 | E010-F007 S3776 campagne (39 méthodes) | 🟡 En cours | 0 % | meta-task-046 |
 | E010-F008 CA1862 EF LINQ investigation | ⚪ Todo | 0 % | task-047 |
 
-**Couverture EPIC consolidée : ~25 %** (2 features / 8 livrées — la campagne S3776 progresse à son propre rythme et ne s'incrémente pas au global tant que les 39 PRs ne sont pas toutes mergeées).
+**Couverture EPIC consolidée : ~40 %** (2 features livrées + 2 fermées no-op sur 8 — la campagne S3776 progresse à son propre rythme et ne s'incrémente pas au global tant que les 39 PRs ne sont pas toutes mergeées).
 
-> **Note F002** — la portée s'est précisée pendant task-041 : la règle `csharpsquid:S107` n'est pas activée dans le profile Sonar courant. La feature couvre désormais l'amélioration de design des API publiques (interface `ISemanticSearchService` refactorée en records immutables). Les constructeurs DI lourds restent à traiter via les splits S6960 (F003-F005) — un wrapper cosmétique sans split fonctionnel n'apporte pas de valeur.
+> **Note F002** — la portée s'est précisée pendant task-041 : la règle `csharpsquid:S107` n'est pas activée dans le profile Sonar courant. La feature couvre désormais l'amélioration de design des API publiques (interface `ISemanticSearchService` refactorée en records immutables).
+>
+> **Note F003 + F005 (closed no-op)** — la règle `csharpsquid:S6960` (controllers should have mixed responsibilities) **n'est pas non plus dans le profile `Weda way`**. Inspection préalable au `/start task-042` (option C.2) :
+> - `PatientsController` (368 LOC, 10 endpoints, 4 groupes de responsabilités) → borderline ; coût refactor (3 repos + US-complete merge gate) >> bénéfice cosmétique. **Fermée**.
+> - `SettingsController` (75 LOC, 4 endpoints) → trop petit, split dégraderait la lisibilité. **Fermée**.
+> - `ManagementController` (530 LOC, 7 endpoints, 2 groupes nets AI/embeddings vs email maintenance) → vrai cas. **Reste en F004**.
 
 ---
 

@@ -90,3 +90,27 @@ delegué à Flagsmith via DI, le sortir du contrôleur n'a pas d'intérêt).
 3. Vérifier console réseau : appels HTTP sur les **nouvelles** routes
 4. Vérifier SonarQube : **0** occurrence S6960 sur SettingsController
 5. Vérifier OpenAPI : nouveaux contrôleurs visibles
+
+## Closed — no-op (2026-05-17)
+
+**Décision** : task fermée sans implémentation, option C.2 après inspection préalable au `/start`.
+
+**Pourquoi** :
+
+1. **`csharpsquid:S6960` = 0 occurrence** dans le Sonar actuel. La règle n'est pas dans le profile `Weda way` actif depuis 2026-05-14.
+
+2. **Analyse design data-driven** :
+   - **75 LOC, 4 endpoints** (`getsettings`, `[HttpPost]`, `settings`, `autoconfig`).
+   - Ratio ~19 LOC/endpoint — c'est un controller **petit** pour les standards .NET.
+   - Pas de mixed-responsibilities flagrant à cette taille.
+
+3. **Coût/bénéfice nettement défavorable** :
+   - Splitter un contrôleur de 75 LOC en N micro-controllers ajoute du boilerplate (déclaration classe + ctor DI + attributs `[Route]` + `[Authorize]`) pour un bénéfice nul. Le résultat serait moins lisible que l'original.
+   - Refactor toucherait 3 repos (api-mail + client-blazor + client-angular) avec US-complete merge gate. Coût ~3-5 j·p pour **dégrader** la lisibilité.
+
+**À reconsidérer si** :
+- L'admin Sonar décide de réactiver `csharpsquid:S6960` dans `Weda way`.
+- `SettingsController` croît significativement (> 300 LOC ou > 10 endpoints).
+- Note tangentielle : les attributs L40-41 affichent une incohérence de route (`[HttpPost]` sans nom + `[HttpGet("settings")]` dans une class déjà routée `/settings` → produit `GET /settings/settings`). À nettoyer dans une future task ciblée si cette URL pose problème en pratique, mais hors scope S6960.
+
+**Aucune branche créée** sur aucun repo. Aucun commit, aucun PR. État repos identique à pré-`/start`.

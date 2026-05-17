@@ -210,9 +210,9 @@ Zero-new-debt principle techniquement violé, mais c'est de la dette héritée r
 | `src/Infrastructure/Migrations/**` | F001 (exclusion) | ✅ Exclu de l'analyse (task-040) |
 | `src/Infrastructure/Repository/MailRepository.cs` | F008 (CA1862 × 24) | ⏳ Investigation (task-047) |
 | `src/Infrastructure/Repository/PatientRepository.cs` | F008 (CA1862 × 25) | ⏳ Investigation (task-047) |
-| `src/Api/Controllers/V1/PatientsController.cs` | F003 (S6960) | ⏳ Todo (task-042) |
-| `src/Api/Controllers/V1/ManagementController.cs` | F002 + F004 (S6960 + 1 call site SemanticSearchOptions) | ✅ Site SemanticSearch refactoré (task-041) / ⏳ split S6960 todo (task-043) |
-| `src/Api/Controllers/V1/SettingsController.cs` | F005 (S6960) | ⏳ Todo (task-044) |
+| `src/Api/Controllers/V1/PatientsController.cs` | F003 (S6960) | ⛔ Closed no-op (task-042) — règle hors profile + 368 LOC/10 endpoints borderline |
+| `src/Api/Controllers/V1/ManagementController.cs` | F002 + F004 (S6960 + 1 call site SemanticSearchOptions) | ✅ Site SemanticSearch refactoré (task-041) / ⏳ split S6960 todo (task-043, **seul vrai cas** — 530 LOC, 2 groupes nets) |
+| `src/Api/Controllers/V1/SettingsController.cs` | F005 (S6960) | ⛔ Closed no-op (task-044) — règle hors profile + 75 LOC trop petit |
 | `src/Application/Services/Interfaces/ISemanticSearchService.cs` | F002 | ✅ Signatures simplifiées en records `*Options` (task-041) |
 | `src/Application/Services/Implementation/SemanticSearchService.cs` | F002 | ✅ Body unchanged + destructure pattern (task-041) |
 | `src/Application/Models/SemanticSearchOptions.cs` (nouveau) | F002 | ✅ 2 records immutables (task-041) |
@@ -250,9 +250,9 @@ Zero-new-debt principle techniquement violé, mais c'est de la dette héritée r
 |---------|--------|--------------|------------|
 | task-040 | ✅ Done | Quick-wins S1075 + S1135 + exclusion `**/Migrations/**`. Scope révisé en vol (CA1862 déféré à task-047). | — |
 | task-041 | ✅ Done | Refactor `ISemanticSearchService` (`SearchAsync` + `SearchByPatientAsync`) en records `SemanticSearchOptions` / `SemanticSearchByPatientOptions`. Scope révisé en vol — S107 hors profile `Weda way`, 6 ctors DI lourds et 2 helpers ignorés (option C). 4 nouveaux tests records ; 36 call sites convertis. | — |
-| task-042 | ⚪ Todo | Split `PatientsController` (S6960). Touche api-mail + client-blazor + client-angular. | — |
-| task-043 | ⚪ Todo | Split `ManagementController` (S6960). Touche api-mail + client-blazor + client-angular. | — |
-| task-044 | ⚪ Todo | Split `SettingsController` (S6960). Touche api-mail + client-blazor + client-angular. | — |
+| task-042 | ⛔ Closed no-op | Split `PatientsController` (S6960). Fermée 2026-05-17 après inspection préalable à `/start` (option C.2) — règle S6960 hors profile `Weda way`, `PatientsController` à 368 LOC / 10 endpoints / 4 groupes borderline, coût 3 repos + US-complete merge gate >> bénéfice cosmétique. À reconsidérer si la règle est réactivée ou si le contrôleur dépasse 600 LOC. | — |
+| task-043 | ⚪ Todo | Split `ManagementController` (S6960). Au minimum api-mail (530 LOC, 7 endpoints, 2 groupes nets AI/embeddings vs email maintenance — vrai cas design même hors profile Sonar). | — |
+| task-044 | ⛔ Closed no-op | Split `SettingsController` (S6960). Fermée 2026-05-17 idem — règle hors profile + contrôleur à 75 LOC seulement (~19 LOC/endpoint), splitter dégraderait la lisibilité. | — |
 | task-045 | ⚪ Todo | Review des 5 (actuellement 7) security hotspots — bascule `TO_REVIEW` → `SAFE` / `ACKNOWLEDGED` / `FIXED`. | — |
 | meta-task-046 | 🟡 En cours | Tracker de campagne S3776 (39 méthodes, 1 méthode = 1 PR via `/sonar-s3776`). Non pické par `/forge`. | — |
 | task-047 | ⚪ Todo | Investigation CA1862 EF LINQ + décision fix vs SuppressMessage. **Phase 1** (3 tests SQL) avant **Phase 2** (application aux 49 + 1 occurrences). | — |

@@ -137,3 +137,29 @@ end-to-end avant merge. Pas de "fausse v1" avec routes legacy en parallèle.
 7. Vérifier sur SonarQube : **0** occurrence S6960 sur PatientsController
 8. Vérifier OpenAPI : `http://localhost:5000/swagger` (ou équivalent),
    les nouveaux contrôleurs apparaissent avec leurs tags propres
+
+## Closed — no-op (2026-05-17)
+
+**Décision** : task fermée sans implémentation, option C.2 après inspection préalable au `/start`.
+
+**Pourquoi** :
+
+1. **`csharpsquid:S6960` = 0 occurrence** dans le Sonar actuel. La règle n'est pas dans le profile `Weda way` actif depuis 2026-05-14 — le PatientsController n'est plus flaggé. DOD littérale "0 occurrence restante de S6960" trivialement satisfaite sans action.
+
+2. **Analyse design data-driven** :
+   - **368 LOC, 10 endpoints**, 4 groupes de responsabilités (lookup INS × 3, search × 3, opposition × 2, dashboard × 2).
+   - Le ratio responsabilités/LOC est défavorable (4 groupes mélangés) mais la taille absolue (368 LOC) reste modérée — pas un code smell critique.
+
+3. **Coût/bénéfice défavorable** :
+   - Refactor toucherait 3 repos (api-mail + client-blazor + client-angular) → US-complete merge gate (CLAUDE.md règle 11) → 3 PRs alignées, 2 frontends à mettre à jour, Angular en code-only (humain owns PR TFS).
+   - Estimation : ~5-7 j·p pour un bénéfice purement cosmétique (4 mini-controllers de ~80-90 LOC chacun).
+   - Aucun gain technique mesurable (perfs, sécurité, observabilité).
+
+4. **Précédent task-041** : même pattern (règle Sonar cible absente du profile, option C "refactor seulement les vrais cas design"). Cohérence avec la décision déjà prise.
+
+**À reconsidérer si** :
+- L'admin Sonar décide de réactiver `csharpsquid:S6960` dans `Weda way`.
+- `PatientsController` croît significativement (> 600 LOC ou > 15 endpoints) → re-évaluation.
+- Un besoin métier amène à ajouter un 5ᵉ groupe de responsabilités.
+
+**Aucune branche créée** sur aucun repo. Aucun commit, aucun PR. État repos identique à pré-`/start`.
