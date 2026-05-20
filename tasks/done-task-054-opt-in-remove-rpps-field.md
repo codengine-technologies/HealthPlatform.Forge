@@ -116,6 +116,61 @@ Fichiers concernés (à confirmer pendant l'implémentation) :
       humain a checked out dans `Client/Angular/` ; le humain gère
       commit/push TFS et PR.
 
+## Branches
+- `client-blazor` (pushed) : `feat/task-054-opt-in-remove-rpps-field` — https://github.com/codengine-technologies/HealthPlatform.Client/tree/feat/task-054-opt-in-remove-rpps-field
+- `dtos-mss` (pushed, auto-included) : `feat/task-054-opt-in-remove-rpps-field` — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-054-opt-in-remove-rpps-field — *(probablement sans commit en sortie de task : aucun changement DTO attendu, branche créée par convention)*
+- `client-angular` (code-only) : forge writes code sur la branche actuellement checked out dans `Client/Angular/` — humain gère branche, commit, push, PR TFS. Snapshot au moment de `/start` : branche `feature/nova-rewriting-mss`, working tree avec 2 fichiers modifiés (environments locaux non-task, à laisser inchangés).
+
+## Develop log
+
+- Repos touched : `client-blazor` (pushed) + `client-angular` (code-only, uncommitted) ; `dtos-mss` non touché (aucun changement DTO comme prévu, branche reste sans commit).
+- DTOs published : no DTO change.
+- Interop published : no interop change.
+- Commits sur `client-blazor` / `feat/task-054-opt-in-remove-rpps-field` :
+  - `5e454ea` feat(mss): retirer le champ RPPS de l'opt-in MSSanté (task-054)
+- Angular (code-only, **uncommitted** sur `feature/nova-rewriting-mss`) :
+  - `libs/mss/src/features/setup/mss-setup.component.ts` — retrait `RPPS_PATTERN` + contrôle `rpps` du `setupForm`.
+  - `libs/mss/src/features/setup/mss-setup.component.html` — retrait du bloc label/input/erreur RPPS.
+  - `libs/mss/src/features/setup/mss-setup.component.spec.ts` — `fillForm` simplifié à 1 paramètre, assertion d'absence du `data-testid` RPPS (anti-régression), `'12'` retiré des arguments du test "invalid form".
+- Local build / test :
+  - Blazor : `dotnet build HealthPlatform.Client.sln` → 0 erreurs / 0 warnings ; `dotnet test` → 86/88 passés (2 skipped historiques) / 0 failed.
+  - Angular : `nx run mss-lib:test` → 183/183 passés ; `nx run mss-lib:build` → ok. *(Note : `nx affected -t build:production` échoue sur `mss:build:production` et `prescription:build:production` à cause d'un `environment.prod.ts` absent localement — pré-existant à task-054, indépendant des fichiers modifiés.)*
+- DOD self-check :
+  - ✓ Blazor : `MailSetup.razor` sans champ RPPS, propriété `Rpps` retirée.
+  - ✓ Angular : contrôle `rpps` + `RPPS_PATTERN` retirés, template HTML simplifié, spec adaptée.
+  - ✓ Blazor — tests : `MailSetupPageTests` vert sans le bloc RPPS, assertion d'absence ajoutée.
+  - ✓ Angular — tests : `mss-setup.component.spec.ts` vert sans `rppsInput`, assertion d'absence ajoutée.
+  - ✓ Blazor — Localizer : `MssOnboarding_RppsLabel` + `MssOnboarding_RppsPlaceholder` retirés (FR + EN, 4 lignes).
+  - ✓ Aucun changement sur `api-mail`, `dtos-mss`.
+  - ✓ Iso-fonctionnel : flux IMAP probe → proxy persist inchangé.
+  - Items différés à `/lint-angular` : passe `nx affected -t lint --projects=tag:scope:mss --fix` (5 itérations max, best-effort).
+  - Items différés à `/review` : PR Blazor ouverte + label `awaiting-human-merge`.
+- Next step : `/lint-angular task-054` (client-angular touché, api-mail non touché — `/sonar` skip implicite).
+
+## Lint log
+
+- Base : `origin/next` (active TFS integration branch, défaut forge — divergent du pipeline qui retombe sur `origin/master` en release).
+- Scope lint : `--projects=tag:scope:mss` (nx projects `mss` + `mss-lib`).
+- Baseline (itération 0) : `nx affected -t lint --base=origin/next --head=HEAD --parallel=3 --projects=tag:scope:mss` → **0 erreurs / 0 warnings** sur les 11 projets affectés. Zéro itération consommée (best-effort cap : 5).
+- Build pipeline-aligned : `nx run mss-lib:build` ✓. `nx affected -t build:production` non rejoué — échec pré-existant sur `environment.prod.ts` absent localement, indépendant de task-054 (cf. Develop log).
+- Tests pipeline-aligned : `nx affected -t test --base=origin/next --head=HEAD --parallel=3 --skipNxCache` → ✓ 11 projets verts ; `mss-lib` 183/183 confirmé (cf. Develop log).
+- Conclusion : ESLint clean, aucune dette résiduelle, aucun fix nécessaire. Code-only — aucune opération git effectuée.
+
+## PRs
+- `client-blazor` (pushed, labellisée `awaiting-human-merge`) : https://github.com/codengine-technologies/HealthPlatform.Client/pull/54
+- `dtos-mss` (no commits) : branche `feat/task-054-opt-in-remove-rpps-field` créée proactivement par `/start` (auto-include) mais sans commit — aucun changement DTO requis, aucune PR ouverte. La branche peut être supprimée à la main si désiré.
+- `client-angular` (code-only) : humain gère commit/push TFS et ouverture PR. Fichiers modifiés, uncommitted sur la branche `feature/nova-rewriting-mss` :
+  - `front/libs/mss/src/features/setup/mss-setup.component.ts`
+  - `front/libs/mss/src/features/setup/mss-setup.component.html`
+  - `front/libs/mss/src/features/setup/mss-setup.component.spec.ts`
+
+## Code Review Summary
+- Build : ✓ Blazor 0 erreur / 0 warning ; Angular `nx run mss-lib:build` ok.
+- Tests : ✓ Blazor 86 / 88 (2 skipped historiques) ; Angular `nx affected -t test` 11 projets verts (mss-lib 183/183).
+- Lint Angular : ✓ 0 erreur / 0 warning sur le scope MSS (zéro itération consommée).
+- DOD command-verifiable : ✓ tous les items checks réussis.
+- Code review verdict : **APPROVED** — cleanup purement subtractif, aucun changement comportemental, anti-régression couverte par assertion d'absence des `data-test*` côté Blazor et Angular. 0 suggestion bloquante.
+
 ## Manual Test Plan
 
 > Validation **iso-fonctionnelle** : le flow d'opt-in doit aboutir au
