@@ -2,7 +2,7 @@
 
 > **Statut** : En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.31
+> **Version** : 1.32
 > **Auteur** : Pascal Cabanel
 > **Dernière mise à jour** : 2026-05-20
 > **Audience** : PO, médecin, direction produit, conformité.
@@ -1040,6 +1040,7 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Sécurité — défense en profondeur
 
+- **v1.29 — Prérequis d'enforcement PSC/KC livrés** (task-049 + task-050) : le proxy Keycloak provisionne désormais les identifiants PSC (`mssSub`, `mssRpps`) dans le profil utilisateur lors de l'opt-in MSSanté, et les Protocol Mappers du realm projettent ces deux attributs en claims du jeton d'accès. La barrière de cross-check côté backend (task-048) peut donc s'appliquer effectivement : un praticien qui présente un jeton Pro Santé Connect d'un autre praticien voit sa requête refusée par 403 avant tout accès à la boîte aux lettres MSSanté. Le suivi opérationnel se fait dans Seq (EventId 3722 — KC token incomplete — pour mesurer la proportion d'utilisateurs pas encore opt-in après ré-authentification ; cible < 5 % du trafic online).
 - **v1.28 — Cross-check d'identité PSC ↔ Keycloak** (task-048, phase 1 observation) : nouvelle barrière côté backend qui refusera (en phase 2 enforcement) toute requête où l'identité du token Pro Santé Connect ne correspond pas à l'identité du jeton Keycloak. Réponse à un incident de production où la boîte aux lettres d'un autre praticien était affichée après un changement de carte CPS sur le même navigateur. La phase 1 mesure la prévalence du problème en prod sans bloquer les utilisateurs ; l'activation de l'enforcement attend l'opt-in des claims Keycloak côté backend d'authentification (task-049) et la projection des attributs en claims du JWT par les Protocol Mappers Keycloak (task-050).
 - **v1.19 — Cloisonnement par utilisateur** (task-023) : contacts, signatures, modèles, audit, actions en attente accessibles uniquement à leur propriétaire.
 - **v1.18 — Flux temps réel sécurisés** (task-022) : impossible de s'abonner aux notifications d'un autre utilisateur.
