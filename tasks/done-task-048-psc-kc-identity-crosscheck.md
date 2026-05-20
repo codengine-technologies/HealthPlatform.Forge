@@ -277,6 +277,90 @@ Signature factice (non vérifiée par `api-mail`), header `{ "alg": "RS256", "ty
       activer après task-049/task-050 déployées et > 95 % de sessions KC
       portant `mssSub`+`mssRpps` (cf. monitoring EventId 3721/3722). »
 
+## Branches
+- `api-mail` (pushed) : `feat/task-048-psc-kc-identity-crosscheck` — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-048-psc-kc-identity-crosscheck
+
+## Develop log
+
+- Repos touched : api-mail (pushed)
+- DTOs published : no DTO change
+- Interop published : no interop change
+- Commits on `feat/task-048-psc-kc-identity-crosscheck` :
+  - `159c309` feat(api): PSC/KC identity cross-check à deux facteurs (task-048)
+  - `89c99b5` test(api): cover PSC/KC cross-check parsing, observation, enforcement (task-048)
+- Local build / test :
+  - `dotnet build HealthPlatform.Api.Mail.sln` → 0 errors / 0 warnings
+  - `dotnet test mss.mail.api.tests` → 149/149 green (includes 16 new cross-check unit tests + 5 new integration tests + 4 historical scenarios still green)
+  - `dotnet test mss.mail.application.tests` → 1437/1437 green
+  - `dotnet test mss.mail.domain.tests` → 86/86 green
+  - `dotnet test mss.mail.infrastructure.tests` → 346/346 green
+  - `mss.mail.integration.tests` (Postgres testcontainers) → not exercised by /develop ; not impacted by this task
+- DOD self-check :
+  - PscIdentityOptions introduced, bound to PscIdentity:Enforce with env override MSS_ENFORCE_PSC_IDENTITY ✓
+  - ResolvePscToken extended via TryParsePscIdentity (sub + SubjectNameID, strict casing) ✓
+  - ApplyAuthenticatedUserAsync calls ApplyPscKcCrossCheckAsync after mssEmail check ✓
+  - Observation mode: logs only, lets through ; Enforcement mode: 403 + body `{"error":"Identity check failed."}` ✓
+  - 3 LoggerMessage events (3721 Information / 3722 Warning / 3723 Warning) with anonymised email + 6-char sub truncation + non-leak verified by unit test ✓
+  - Tests : 16 unit + 5 integration (target ≥11 unit + ≥5 integration) ✓
+  - PscTokenFixtures.cs with realistic payload (2026-05-19 decoded reference) ✓
+- Next step : `/sonar task-048` (api-mail touched ; will chain to `/lint-angular` → skip cleanly since client-angular not touched → `/review`).
+- Skipped step : no angular change → `/lint-angular` will skip clean.
+
+## Sonar log
+
+Server-side analysis performed on commit `c68ce5f` (post-implementation +
+post-refactor) :
+
+- **Phase 1 — new code attributable to task-048 : ✓ clean.** Zero issues
+  raised on any of the 7 files this task touched
+  (`UserContextEnricherMiddleware.cs`, `PscIdentityOptions.cs`,
+  `DependencyInjection.cs`, `UserContextEnricherCrossCheckTests.cs`,
+  `PscKcCrossCheckIntegrationTests.cs`,
+  `UserContextEnricherMiddlewareTests.cs`, `PscTokenFixtures.cs`).
+
+- **Pre-emptive cleanup** before analysis :
+  - Consolidated 3 narrow catch blocks in `TryParsePscIdentity` into a
+    single `when` pattern-matching catch (commit `c68ce5f`).
+  - Extracted 5 JWT claim names (`mssEmail`, `mssSub`, `mssRpps`, `sub`,
+    `SubjectNameID`) into private const strings.
+
+- **Project-wide Quality Gate : RED** (pre-existing) due to legacy
+  accumulation since `PREVIOUS_VERSION` baseline (2026-04-27) on files
+  outside task-048's scope :
+  - `new_violations` = 230 (threshold 0)
+  - `new_coverage`   = 54.3% (threshold 80%)
+  - `new_security_hotspots_reviewed` = 100% ✓
+  - `new_duplicated_lines_density`   = 0.88% ✓
+
+- **Phase 2 (legacy) : skipped.** Project-wide debt (~1072 code smells,
+  76.6% coverage, 230 new-code violations across 20k+ new lines) is far
+  out of scope for a 290-LOC defensive-security task. Per CLAUDE.md
+  rule 6 (isolated scopes), task-048 only touches its module ; the
+  legacy debt belongs to dedicated `/sonar` housekeeping runs or to
+  the tasks that introduced it.
+
+- Build : `dotnet build HealthPlatform.Api.Mail.sln --configuration Release` → 0 errors / 412 warnings (all pre-existing on untouched files).
+- Tests : 2018/2018 green across domain / application / infrastructure / api test projects (integration.tests not run by `/sonar` — Postgres testcontainers fixture, out of scope for the cleanup phase).
+
+Dashboard : http://localhost:9001/dashboard?id=healthplatform
+
+## Lint log
+
+`/lint-angular task-048` skipped cleanly : `**Repos**: api-mail` only,
+`client-angular` not listed, `git -C Client/Angular status --porcelain`
+empty. Per `/lint-angular` Mode A pre-flight, no Angular work to lint —
+chain advances directly to `/review task-048`.
+
+## PRs
+- `api-mail` (pushed, labelled `awaiting-human-merge`) : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/70
+
+## Code Review Summary
+- Build : ✓ 0 errors / 0 warnings
+- Tests : ✓ 2018 / 2018 green (domain 86 / application 1437 / infrastructure 346 / api 149)
+- DOD : ✓ all command-verifiable items checked (option + parser + cross-check + LoggerMessage + anonymisation + ≥11 unit + ≥5 integration + appsettings.json doc)
+- Sonar Phase 1 : ✓ 0 issues on every touched file
+- Code review verdict : **APPROVED** (1 non-blocking suggestion noted in PR body — `Enforce` field always logs `false` in `LogIdentityMatch` since the event is only emitted when `!enforce` ; kept for parameter symmetry).
+
 ## Manual Test Plan
 
 > Cette task ne change **rien** au comportement utilisateur tant que
