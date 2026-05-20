@@ -109,3 +109,10 @@ backend-auth.)
 6. (Tentative malveillante) Simuler un client qui POST
    `{mssEmail:E, mssSub:HACKED, mssRpps:HACKED}` → ces deux champs
    doivent être ignorés ou rejetés (400).
+
+## Closed
+
+- **Closed on** : 2026-05-20 — implémenté directement dans le proxy Keycloak via WindSurf (repo hors workspace, hors automation forge).
+- **Side audit `client-angular`** : ✅ aucun changement requis. `mss-onboarding.service.ts::persistMssEmail` PUTait déjà uniquement `{email}` vers `/admin/mss-profile` (cf. task-037). Le contrat de sécurité de la task — « N'accepter QUE `mssEmail` depuis le client » — est respecté par construction côté Angular ; l'extraction de `sub`/`SubjectNameID` se fait server-side dans le proxy à partir du PSC token de la session.
+- **Side audit `api-mail`** : ✅ aucun changement requis. La consommation des claims `mssSub`/`mssRpps` côté JWT KC est déjà câblée dans `UserContextEnricherMiddleware.ApplyPscKcCrossCheckAsync` (livré par task-048) via `context.User.FindFirstValue("mssSub" | "mssRpps")`. Dès que les Protocol Mappers (task-050) projettent les attributs en claims, le middleware les lit sans modification.
+- **Suivi opérationnel** : à mesurer en Seq via EventId 3722 (KC token incomplete) — le taux doit décroître au fur et à mesure que les utilisateurs se ré-authentifient et déclenchent l'opt-in (provisionnement). Cible < 5 % du trafic online avant de basculer `MSS_ENFORCE_PSC_IDENTITY=true` durablement.

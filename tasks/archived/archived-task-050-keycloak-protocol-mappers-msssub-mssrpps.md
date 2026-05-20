@@ -104,3 +104,10 @@ d'observation passées :
    côte.
 5. Refaire le test sans avoir provisionné l'attribut côté user
    (compte legacy) → claims absents (et non vides).
+
+## Closed
+
+- **Closed on** : 2026-05-20 — Protocol Mappers Keycloak configurés directement dans le realm via WindSurf (repo `devops` hors automation forge).
+- **Side audit `client-angular`** : ✅ aucun changement requis. Les Protocol Mappers sont pure config server-side ; le frontend ne lit pas le JWT et reçoit les nouveaux claims de manière transparente lors de la prochaine émission de token.
+- **Side audit `api-mail`** : ✅ aucun changement requis. Le middleware `UserContextEnricherMiddleware` (task-048) lit les claims `mssSub` et `mssRpps` via `FindFirstValue` ; une fois les mappers actifs et un user provisionné (via task-049), les claims apparaissent automatiquement dans l'access_token et le cross-check à deux facteurs entre en cohérence.
+- **Validation post-déploiement** : décoder un access_token Keycloak fraîchement émis pour un user provisionné (cf. Manual Test Plan §1-5) → la payload doit contenir `mssSub`, `mssRpps`, `mssEmail` côte à côte. Si Seq remonte EventId 3722 même pour des users supposés provisionnés → vérifier la conf des mappers (User Attribute name strict, Add to access_token = true).
