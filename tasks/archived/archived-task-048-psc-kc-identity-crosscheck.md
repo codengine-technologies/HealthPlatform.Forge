@@ -418,3 +418,10 @@ chain advances directly to `/review task-048`.
   token ; vérifier visuellement sur 10 entrées.
 - Aucun `EventId 3723` avec `Enforce=true` ne doit être suivi d'une
   réponse 200 sur la même requête (corrélation par `CorrelationId`).
+
+## Merged
+
+- **Merged on** : 2026-05-20 by Pascal Cabanel (`/merge task-048 --i-tested`).
+- **api-mail** : PR https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/70 squash-merged as `1acbd47` on `develop`. Remote branch `feat/task-048-psc-kc-identity-crosscheck` deleted ; local branch preserved for retroactive inspection.
+- **develop CI** : ✓ green (run https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/26163200700).
+- **Note opérationnelle** : un commit `65c1655 "Ajout config"` poussé par le humain juste avant le merge bascule la valeur par défaut de `PscIdentity:Enforce` à `true` dans `appsettings.json` et ajoute `MSS_ENFORCE_PSC_IDENTITY=True` dans l'AppHost Aspire (dev). L'enforcement est donc actif **dès le déploiement sur tout environnement qui consomme `appsettings.json` sans override**, sans attendre task-049/task-050. À surveiller en Seq (EventId 3722 — KC token incomplete — sur les sessions ne portant pas encore `mssSub`/`mssRpps`).
