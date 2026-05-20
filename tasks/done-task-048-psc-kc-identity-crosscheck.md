@@ -2,8 +2,7 @@
 
 **Repos**: api-mail
 **Dependencies**: task-049 (opt-in backend-auth qui écrit `mssSub`/`mssRpps` dans Keycloak), task-050 (Protocol Mappers Keycloak qui projettent ces attributs en claims du JWT KC)
-**Epic**: E010
-**EpicTitle**: Security hardening — identity propagation & cross-user leak prevention
+**Epic**: E009
 
 > ⚠ **Priorité SÉCURITÉ — incident de production confirmé** (2026-05-19) :
 > un praticien authentifié via Pro Santé Connect avec sa propre carte CPS

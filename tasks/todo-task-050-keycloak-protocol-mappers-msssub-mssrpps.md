@@ -2,8 +2,7 @@
 
 **Repos**: devops *(hors automation forge — pilotage manuel)*
 **Dependencies**: task-049 (alimentation des attributs user), précède l'enforcement de task-048
-**Epic**: E010
-**EpicTitle**: Security hardening — identity propagation & cross-user leak prevention
+**Epic**: E009
 
 > ⚠ **Repo `devops` hors automation forge.** Cette task documente la
 > configuration Keycloak à appliquer manuellement (ou via le pipeline

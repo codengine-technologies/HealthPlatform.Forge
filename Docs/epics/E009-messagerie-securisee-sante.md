@@ -2,9 +2,9 @@
 
 > **Statut** : En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.30
+> **Version** : 1.31
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-05-16
+> **Dernière mise à jour** : 2026-05-20
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -44,7 +44,7 @@
 - [Annexes](#annexes)
   - [A. Sources documentaires](#a-sources-documentaires)
   - [B. Table de correspondance REM Ségur ↔ Ref#2](#b-table-de-correspondance-rem-ségur--ref2)
-- [État de couverture](#état-de-couverture-2026-05-16)
+- [État de couverture](#état-de-couverture-2026-05-20)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -987,7 +987,7 @@ Les règles `RG-E009-084` à `RG-E009-089` sont propres à ENS Mon espace santé
 
 ---
 
-## État de couverture (2026-05-16)
+## État de couverture (2026-05-20)
 
 > Photographie de l'état actuel de l'EPIC, feature par feature. Le détail ingénierie de chaque task contributive (numéros de PR, NuGet, tests, audit grep) est dans [`E009-Changelogs.md`](./E009-Changelogs.md), annexe C.
 
@@ -1038,8 +1038,9 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 - **v1.8 — En-têtes SMTP MSSanté** (`X-MSS-CODECDA`, `X-MSS-INS`, `X-MSS-NIL`, `X-MSS-MES`) émis automatiquement à l'envoi selon le Référentiel socle MSSanté #2 (task-001).
 - **Onboarding MSSanté** (task-037, durci par task-038) : parcours d'opt-in explicite quand le compte Keycloak n'a pas encore d'adresse MSSanté mappée — écran « Messagerie non configurée » + formulaire setup avec sonde IMAP MSSanté + persistance du profil + écran de reconnexion. La sonde TLS valide la chaîne IGC-Santé conformément au socle.
 
-### Sécurité (chantier complet — clos)
+### Sécurité — défense en profondeur
 
+- **v1.28 — Cross-check d'identité PSC ↔ Keycloak** (task-048, phase 1 observation) : nouvelle barrière côté backend qui refusera (en phase 2 enforcement) toute requête où l'identité du token Pro Santé Connect ne correspond pas à l'identité du jeton Keycloak. Réponse à un incident de production où la boîte aux lettres d'un autre praticien était affichée après un changement de carte CPS sur le même navigateur. La phase 1 mesure la prévalence du problème en prod sans bloquer les utilisateurs ; l'activation de l'enforcement attend l'opt-in des claims Keycloak côté backend d'authentification (task-049) et la projection des attributs en claims du JWT par les Protocol Mappers Keycloak (task-050).
 - **v1.19 — Cloisonnement par utilisateur** (task-023) : contacts, signatures, modèles, audit, actions en attente accessibles uniquement à leur propriétaire.
 - **v1.18 — Flux temps réel sécurisés** (task-022) : impossible de s'abonner aux notifications d'un autre utilisateur.
 - **v1.17 — Authentification cryptographique** (task-021) : identité vérifiée par jeton signé, plus de spoofing par simple entête d'email.

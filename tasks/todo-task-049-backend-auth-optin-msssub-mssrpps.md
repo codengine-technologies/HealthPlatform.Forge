@@ -2,8 +2,7 @@
 
 **Repos**: backend-auth *(hors workspace — pilotage manuel par le humain)*
 **Dependencies**: task-050 (les Protocol Mappers Keycloak qui projetteront ces attributs en claims). Provisionnement (049) peut précéder la projection (050), mais l'enforcement task-048 attend les deux.
-**Epic**: E010
-**EpicTitle**: Security hardening — identity propagation & cross-user leak prevention
+**Epic**: E009
 
 > ⚠ **Repo hors automation forge** (`/start`, `/develop`, `/review`, `/merge`
 > n'opèrent pas sur ce repo). Cette task documente le contrat à

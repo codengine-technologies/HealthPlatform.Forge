@@ -2,8 +2,7 @@
 
 **Repos**: client-angular
 **Dependencies**: aucune (peut shipper indépendamment de task-048/049/050 et doit même précéder leur enforcement pour éviter les 403 user-visible)
-**Epic**: E010
-**EpicTitle**: Security hardening — identity propagation & cross-user leak prevention
+**Epic**: E009
 
 > Repo `client-angular` en **mode code-only** : la forge écrit le code et
 > exécute `nx lint`/`nx build`/`nx test` côté `Client/Angular/front/`,
