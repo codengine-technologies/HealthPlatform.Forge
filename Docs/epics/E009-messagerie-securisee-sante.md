@@ -2,7 +2,7 @@
 
 > **Statut** : En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.32
+> **Version** : 1.33
 > **Auteur** : Pascal Cabanel
 > **Dernière mise à jour** : 2026-05-20
 > **Audience** : PO, médecin, direction produit, conformité.
@@ -1019,6 +1019,7 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
+- **v1.30 — Opt-in MSSanté simplifié** (task-054) : l'écran de première configuration de la messagerie ne demande plus que **l'adresse MSSanté**. Le numéro RPPS / ADELI n'est plus saisi : le serveur le récupère automatiquement depuis la session Pro Santé Connect du praticien. Une formalité de saisie en moins, aucun changement sur la suite du parcours.
 - **v1.24 — Recherche Angular alignée sur Blazor** (task-029) : la barre de recherche Angular passe d'un simple input texte à un dropdown riche avec 3 chips de statut (Non lus / Importants / Pièces jointes), 6 chips médicaux (Tous, Biologie, Consultation, Imagerie, Prescription, Hospitalisation — élagage volontaire 14 → 6), 4 chips de plage (Aujourd'hui / 7 j / 30 j / 3 mois) et un panel de recherche avancée (De / À-CC / Objet / Type de document — 14 types). Aucun changement backend ; la pertinence des résultats sera traitée dans une US dédiée.
 - **v1.23 — Vue conversation Angular (parité Blazor)** (task-027) : quand le médecin active « Mode conversation » dans ses paramètres MSS, la liste se replie sur les feuilles de fil et chaque ligne agrégeante affiche un compteur « N messages » + un bouton chevron pour déplier ses enfants en place.
 - **v1.22 — Bloquer la réponse du patient** (task-026) : case à cocher dans le compose, visible uniquement quand au moins un destinataire Mon Espace Santé est présent. Permet de signifier la fin d'un échange.
