@@ -60,3 +60,8 @@ DevOps/
 interop/
 psc/
 Tools/
+
+# Secrets — never commit
+.env
+*.env
+!.env.example

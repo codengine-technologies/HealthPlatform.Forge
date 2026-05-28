@@ -13,6 +13,39 @@ push. Tant que le push n'a pas eu lieu, l'API backend, le shell Blazor et les
 proxies (`psc-auth-proxy`) consomment la version précédente et ne peuvent pas
 référencer les nouveaux champs.
 
+## Chargement des secrets (.env)
+
+Le skill s'authentifie auprès de GitHub via la CLI `gh`, qui consomme
+`$env:GH_TOKEN`. Le token est stocké dans un fichier `.env` **non
+committé** placé à côté de ce `SKILL.md` :
+
+```
+.windsurf/dtos-publish-skill/.env
+```
+
+Format :
+```
+GH_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
+```
+
+**Étape 0 — toujours en premier**, charger ces variables dans la session
+courante :
+
+```powershell
+$envFile = Join-Path $PSScriptRoot ".env"
+# Depuis la racine du workspace si $PSScriptRoot n'est pas posé :
+if (-not (Test-Path $envFile)) { $envFile = ".windsurf/dtos-publish-skill/.env" }
+if (-not (Test-Path $envFile)) { throw "Fichier .env introuvable : $envFile" }
+Get-Content $envFile | Where-Object { $_ -match '^\s*[^#].*=' } | ForEach-Object {
+    $name, $value = $_ -split '=', 2
+    Set-Item -Path "env:$($name.Trim())" -Value $value.Trim()
+}
+if (-not $env:GH_TOKEN) { throw "GH_TOKEN absent du .env" }
+```
+
+Le `.env` ne doit jamais être commité (workspace root n'est pas un repo Git,
+mais en cas de migration future, l'ajouter à `.gitignore`).
+
 ## Localisation du sous-repo DTOs
 
 Le sous-repo Git DTOs (`origin = https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss.git`)
