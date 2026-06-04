@@ -391,6 +391,45 @@ Pas de "scaffold first, enrich later". Pas de plomberie nue mergée en attendant
 
 Cette règle compose avec la règle 10 HAG : HAG dit "pas de merge sans validation humaine", US-complete dit "pas de validation humaine sur des morceaux".
 
+### 12. Gestion d'erreurs API — `ProblemDetails` (RFC 7807) obligatoire — non-négociable
+
+**Toute réponse d'erreur d'un controller backend (4xx/5xx) DOIT sortir en
+`application/problem+json` conforme RFC 7807, produite par le
+`GlobalExceptionHandler` (`IExceptionHandler`), jamais par du code ad hoc dans
+l'action.** (Gravé par task-055.)
+
+Concrètement, pour toute nouvelle US backend (`api-mail` et tout futur service
+.NET de la plateforme) :
+
+- **Interdit** : les `try/catch` boilerplate par action qui retournent
+  `StatusCode(500, "...")`, `ErrorResponse(Success, Message)`, ou une string
+  brute. La gestion des exceptions est **déléguée au `GlobalExceptionHandler`**
+  branché via `AddProblemDetails()` + `AddExceptionHandler<GlobalExceptionHandler>()`
+  + `app.UseExceptionHandler()`.
+- **Mapping par type, pas par chaîne** : lever une exception métier typée
+  (`NotFoundException` → 404, `ValidationException` → 400,
+  `ConflictException` → 409, `UnavailableException` → 503) ou retourner le
+  `ResultStatus` Ardalis correspondant. Aucune heuristique de mots-clés sur le
+  message.
+- **`OperationCanceledException` → 499** est gérée centralement, jamais
+  ré-attrapée dans chaque action.
+- **Zéro fuite** : le `detail` exposé au client ne contient jamais de stack
+  trace, de message d'exception système brut, ni de donnée de santé
+  (INS/NIR/contenu CDA/MSSanté). Le détail technique reste dans les logs
+  serveur, corrélé par `traceId`.
+- **Frontends** : consommer le schéma `ProblemDetails` (`title`/`detail`/`status`)
+  — `HttpRequestService` (Blazor) et le mapping d'erreurs MSS (Angular) lisent
+  `ProblemDetails`, pas l'ancien `ErrorResponse`.
+
+`GlobalExceptionHandler` (`Api/Mail/src/Api/ErrorHandling/GlobalExceptionHandler.cs`)
+est le mécanisme canonique de référence.
+
+**Pourquoi :** avant task-055, ~93 `catch (Exception)`, ~97 retours `500`
+codés en dur et trois formats d'erreur incohérents coexistaient, avec un
+mapping HTTP par heuristique de mots-clés fragile. Un format d'erreur unique et
+typé est une exigence de robustesse, d'observabilité et de non-fuite de données
+de santé.
+
 ---
 
 ## Frozen files

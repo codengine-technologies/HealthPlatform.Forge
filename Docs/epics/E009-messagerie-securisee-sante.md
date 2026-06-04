@@ -2,9 +2,9 @@
 
 > **Statut** : En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.33
+> **Version** : 1.34
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-05-20
+> **Dernière mise à jour** : 2026-06-04
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -44,7 +44,7 @@
 - [Annexes](#annexes)
   - [A. Sources documentaires](#a-sources-documentaires)
   - [B. Table de correspondance REM Ségur ↔ Ref#2](#b-table-de-correspondance-rem-ségur--ref2)
-- [État de couverture](#état-de-couverture-2026-05-20)
+- [État de couverture](#état-de-couverture-2026-06-04)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -987,7 +987,7 @@ Les règles `RG-E009-084` à `RG-E009-089` sont propres à ENS Mon espace santé
 
 ---
 
-## État de couverture (2026-05-20)
+## État de couverture (2026-06-04)
 
 > Photographie de l'état actuel de l'EPIC, feature par feature. Le détail ingénierie de chaque task contributive (numéros de PR, NuGet, tests, audit grep) est dans [`E009-Changelogs.md`](./E009-Changelogs.md), annexe C.
 
@@ -1050,6 +1050,8 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Technique / observabilité (sans impact utilisateur direct)
 
+- **v1.32 — Erreurs applicatives normalisées de bout en bout** (task-059) : les opérations métier qui échouent (dossier indisponible, contact introuvable, demande invalide…) renvoient désormais le même format d'erreur standard que le reste de la plateforme, avec l'identifiant de corrélation qui relie l'erreur affichée aux journaux serveur. La garantie de non-divulgation est étendue à ce dernier canal : aucun détail technique ni donnée de santé ne sort vers le poste de travail. Aucun changement visible pour le praticien.
+- **v1.31 — Gestion d'erreurs API harmonisée** (task-055) : toutes les réponses d'erreur de l'API suivent désormais un format unique et standard (RFC 7807 `application/problem+json`) avec un identifiant de corrélation (`traceId`) qui relie l'erreur affichée à l'utilisateur aux journaux serveur. Garantie renforcée de **non-divulgation** : aucun détail technique ni donnée de santé n'apparaît dans le message d'erreur renvoyé au poste de travail ; le diagnostic reste côté serveur. Les toasts et notifications restent identiques pour le praticien (aucune régression visible).
 - **v1.27 — Cleanup Sonar massif api-mail** (task-033) : code smells 166 → 124 (-25 %), hotspots 6 → 5, ratings A/A/A maintenus.
 - **v1.26 / v1.25 — Harness de tests api-mail** (task-032ter, task-032quater, task-032bis-fhir-mock) : extraction d'interface IMAP, samples CDA, mocks FHIR — préparent les futures campagnes qualité.
 - **v1.20 — Amélioration des logs** (task-024) : verrous IMAP instrumentés, fix log-level race `AddNewMail`.
