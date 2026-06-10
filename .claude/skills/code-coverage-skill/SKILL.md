@@ -1,11 +1,15 @@
 ---
 name: code-coverage-skill
-description: **WORKFLOW SKILL** — Processus itératif d'amélioration de la couverture de code par création de tests unitaires manquants. Lance une analyse SonarQube (via sonar-skill), identifie les classes sous 98% de couverture, génère les tests manquants, puis relance l'analyse. Itère jusqu'à 98% de couverture globale ou 5 itérations max. USE FOR: améliorer la couverture de code; créer des tests unitaires manquants; atteindre un objectif de couverture; processus itératif de test. INVOKES: sonar-skill, dotnet CLI, tests unitaires, API SonarQube.
-applyTo:
-  - "**/*.cs"
-  - "**/*.csproj"
-  - "**/tests/**"
-  - "**/src/**"
+description: >-
+  Processus itératif d'amélioration de la couverture de code par création de
+  tests unitaires manquants sur le backend Api/Mail. Lance une analyse
+  SonarQube (via le skill sonar-skill), identifie les classes sous 98% de
+  couverture, génère les tests manquants, puis relance l'analyse. Itère
+  jusqu'à 98% de couverture globale ou 5 itérations max. Utiliser pour :
+  améliorer la couverture de code, créer des tests unitaires manquants,
+  atteindre un objectif de couverture, ou exécuter un processus itératif de
+  test. INVOKES : skill sonar-skill, dotnet CLI, tests unitaires, API SonarQube.
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 ---
 
 # Code Coverage Improvement Skill
@@ -16,7 +20,7 @@ Ce skill implémente un processus itératif pour améliorer la couverture de cod
 
 - **Couverture cible** : 98% globale
 - **Seuil par classe** : 98% minimum
-- **Itérations max** : 10
+- **Itérations max** : 5
 - **Classes traitées par itération** : entre 1 et 10
 
 ## Prérequis
@@ -60,8 +64,18 @@ Utiliser le skill `sonar-skill` pour lancer une analyse complète. Suivre la pro
 
 ### Étape 2 : Récupérer la couverture globale
 
+Attendre la fin du traitement asynchrone côté serveur (poll sur `ce/activity`)
+plutôt qu'un délai fixe, puis lire la métrique de couverture :
+
 ```powershell
-Start-Sleep -Seconds 10  # Attendre le traitement par SonarQube
+# Attendre que la dernière tâche d'analyse soit terminée (max 3 min)
+$deadline = (Get-Date).AddMinutes(3)
+do {
+    Start-Sleep -Seconds 5
+    $ce = Invoke-RestMethod -Uri "http://localhost:9001/api/ce/activity?component=healthplatform-api-mail&onlyCurrents=true&ps=1" `
+        -Headers @{Authorization="Bearer $env:SONAR_TOKEN"}
+    $status = if ($ce.tasks.Count -gt 0) { $ce.tasks[0].status } else { "PENDING" }
+} while ($status -in @("PENDING","IN_PROGRESS") -and (Get-Date) -lt $deadline)
 
 $metrics = "coverage"
 $result = Invoke-RestMethod -Uri "http://localhost:9001/api/measures/component?component=healthplatform-api-mail&metricKeys=$metrics" `

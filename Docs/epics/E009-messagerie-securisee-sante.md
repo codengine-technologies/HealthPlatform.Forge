@@ -4,7 +4,7 @@
 > **Modèle** : hand-crafted
 > **Version** : 1.34
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-06-04
+> **Dernière mise à jour** : 2026-06-10
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -44,7 +44,7 @@
 - [Annexes](#annexes)
   - [A. Sources documentaires](#a-sources-documentaires)
   - [B. Table de correspondance REM Ségur ↔ Ref#2](#b-table-de-correspondance-rem-ségur--ref2)
-- [État de couverture](#état-de-couverture-2026-06-04)
+- [État de couverture](#état-de-couverture-2026-06-10)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -987,7 +987,7 @@ Les règles `RG-E009-084` à `RG-E009-089` sont propres à ENS Mon espace santé
 
 ---
 
-## État de couverture (2026-06-04)
+## État de couverture (2026-06-10)
 
 > Photographie de l'état actuel de l'EPIC, feature par feature. Le détail ingénierie de chaque task contributive (numéros de PR, NuGet, tests, audit grep) est dans [`E009-Changelogs.md`](./E009-Changelogs.md), annexe C.
 
@@ -1050,6 +1050,9 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Technique / observabilité (sans impact utilisateur direct)
 
+- **v1.35 — Stabilité mémoire des sessions de messagerie** (task-058) : le service qui gère les sessions de connexion à la boîte aux lettres libère désormais correctement toutes les ressources internes quand une session expire (fermeture du navigateur sans déconnexion explicite), et la tâche d'entretien périodique survit aux incidents ponctuels au lieu de s'arrêter silencieusement. Un serveur qui tourne plusieurs semaines ne voit plus sa mémoire croître au fil des connexions : la disponibilité du service sur la durée est renforcée. Aucun changement visible pour le praticien.
+- **v1.34 — Connexions de vérification de certificats fiabilisées** (task-057) : les vérifications de non-révocation des certificats de la chaîne de confiance MSSanté réutilisent désormais des connexions réseau partagées au lieu d'en ouvrir une nouvelle à chaque contrôle. Sous forte charge, la plateforme ne risque plus d'épuiser ses connexions sortantes, les contrôles bénéficient des mécanismes standard de nouvelle tentative en cas d'incident réseau passager, et chaque vérification est désormais visible dans la supervision. Le résultat des contrôles est strictement identique : un certificat révoqué reste rejeté. Aucun changement visible pour le praticien.
+- **v1.33 — Sondes de santé en production** (task-056) : la plateforme expose désormais en production des sondes de disponibilité que l'hébergeur utilise pour surveiller le service en continu : une sonde « vivant » qui vérifie que l'application répond, et une sonde « prêt » qui vérifie que la base de données, le cache et le bus de messages sont joignables. En cas de défaillance d'une dépendance, le service est automatiquement retiré du trafic le temps du rétablissement, sans intervention manuelle. Les réponses de ces sondes sont réservées au réseau interne et ne contiennent aucune donnée de santé ni détail technique. Aucun changement visible pour le praticien.
 - **v1.32 — Erreurs applicatives normalisées de bout en bout** (task-059) : les opérations métier qui échouent (dossier indisponible, contact introuvable, demande invalide…) renvoient désormais le même format d'erreur standard que le reste de la plateforme, avec l'identifiant de corrélation qui relie l'erreur affichée aux journaux serveur. La garantie de non-divulgation est étendue à ce dernier canal : aucun détail technique ni donnée de santé ne sort vers le poste de travail. Aucun changement visible pour le praticien.
 - **v1.31 — Gestion d'erreurs API harmonisée** (task-055) : toutes les réponses d'erreur de l'API suivent désormais un format unique et standard (RFC 7807 `application/problem+json`) avec un identifiant de corrélation (`traceId`) qui relie l'erreur affichée à l'utilisateur aux journaux serveur. Garantie renforcée de **non-divulgation** : aucun détail technique ni donnée de santé n'apparaît dans le message d'erreur renvoyé au poste de travail ; le diagnostic reste côté serveur. Les toasts et notifications restent identiques pour le praticien (aucune régression visible).
 - **v1.27 — Cleanup Sonar massif api-mail** (task-033) : code smells 166 → 124 (-25 %), hotspots 6 → 5, ratings A/A/A maintenus.
