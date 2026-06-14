@@ -72,3 +72,43 @@ inadaptés sur la chaîne de validation de certificats.
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui — environnement HDS existant inchangé
 - **AIPD / impact RGPD** : inchangé — aucun nouveau flux de données vers le provider IA
+
+## Branches
+- `api-mail` (pushed) : feat/task-073-di-httpclientfactory
+- `dtos-mss` (pushed, auto-incluse) : feat/task-073-di-httpclientfactory — sera supprimée sans PR si aucun changement de contrat
+
+## Develop log (2026-06-10)
+
+**Commit (api-mail, `feat/task-073-di-httpclientfactory`)** : `b9926d5`
+
+**Findings traités** :
+1. ✅ Client nommé `SemanticKernelOpenAI` via `IHttpClientFactory` + `SocketsHttpHandler` (`PooledConnectionLifetime` 5 min) — keep-alive et rotation DNS malgré la durée de vie du Kernel. **Correction d'analyse** : le Kernel était déjà construit une fois (pas de recréation par résolution comme l'audit le pensait) — le vrai problème était les 2 `new HttpClient` non poolés et la registration Transient mensongère. Kernel désormais en **vrai singleton** (stateless démontré : il était déjà partagé de fait).
+2. ✅ `IEmailEmbeddingService` : registration **unique** (Application, Scoped, `EmailEmbeddingService`). Justification du lifetime : c'était déjà l'implémentation et le lifetime effectifs (last-wins après `AddApplication`) — la registration Singleton `FlexibleEmbeddingService` était **morte** (shadowée). Comportement strictement identique. `FlexibleEmbeddingService`/`IEmbeddingProviderService` ne sont plus enregistrés (classes laissées en place, hors scope).
+3. ✅ (obsolète) Aucun `X509Store` dans src — la chaîne OCSP/CRL cache déjà via Redis (task-057). Lifetimes Scoped de `CertificateValidator`/`ImapClientTlsConfigurer` corrects (dépendances Scoped → singleton = captive dependency). DOD « plus de X509Store.Find par requête » : vérifié par grep (0 occurrence).
+4. ✅ (déjà conforme) Les `.Get<T>()` sont des lectures one-shot au démarrage pour choisir la branche provider ; les consommateurs par requête passent par `IOptions<T>` (déjà bindés). Commentaire ajouté.
+5. ⏸ `FlagsmithSeeder` (AppHost) : bootstrap one-shot, clients `using`-disposés, hors périmètre du grep DOD (src/Api + src/Application) — laissé en l'état, documenté.
+
+**DOD grep** : `grep -rn "new HttpClient(" src/Api src/Application` → 0 occurrence (hors commentaire).
+
+**Validation** : build Release 0 erreur ; suite complète **2699 verts, 0 échec** (même la flaky IMAP passe). 5 nouveaux tests (Kernel singleton cross-scope, generator singleton, AddSemanticKernel sans registration embedding, timeout client nommé, endpoint IA TestServer provider mocké).
+
+## PRs
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/96 — label `awaiting-human-merge`
+- `dtos-mss` : branche `feat/task-073-di-httpclientfactory` sans commit — pas de PR, branche à supprimer au `/merge`
+
+## Code Review Summary
+
+APPROVED — 0 issue bloquante.
+- `SemanticKernelExtensions.cs` — ✅ client nommé + SocketsHttpHandler 5 min, Kernel vrai singleton, comportement préservé
+- `DependencyInjection.cs` / `ServiceCollectionExtensions.cs` — ✅ registration unique justifiée (last-wins préservé)
+- Findings 3/4/5 requalifiés avec preuves (grep X509Store = 0, .Get<T> one-shot, AppHost hors scope)
+- DOD : tous items verts (grep new HttpClient = 0 dans src/Api+src/Application ; test endpoint IA provider mocké)
+- Sonar : Quality Gate OK, 0 new-code issue
+
+## Merged
+
+- **Date** : 2026-06-11
+- **api-mail** : PR #96 squash-mergée — commit `bac7b1b` sur `develop`
+- **dtos-mss** : aucune PR (branche sans commit) — branche remote supprimée
+- **CI develop** : ✅ success — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/27367867669
+- Branches locales conservées pour inspection rétroactive (convention /merge)

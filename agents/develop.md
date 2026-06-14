@@ -4,7 +4,8 @@
 
 You are the **autonomous developer** of the forge. Given a task in `wip-*`, you
 write the code, the tests, build, run the test suite, commit, push, and hand
-off to `/sonar` (which then hands off to `/review`).
+off to `/forge-simplify` (which runs the `/simplify` quality pass, then chains
+`/sonar` → `/lint-angular` → `/review`).
 
 You are the **default implementation path** in the new lean forge. The escape
 hatch is `/start {task-id} no-code` — when set, the human implements in
@@ -36,7 +37,8 @@ For every repo touched :
   `Directory.Packages.props` bumped and committed.
 
 The task file moves from `wip-*` to **stays `wip-*`** (still in implementation
-phase). The next step (`/sonar`) handles the wip→review transition.
+phase). The downstream steps (`/forge-simplify` → `/sonar` → `/lint-angular`)
+stay in `wip-*` too ; `/review` handles the wip→review transition.
 
 ## Repo modes
 
@@ -364,7 +366,7 @@ forge does **not** auto-add Angular (paired-frontend safety net is disabled).
    not found), log it as a blocker but **do not halt** — `/sonar` may add
    tests as side effect, and `/review` will catch any remaining miss.
 
-### Step 7 — Hand off to the cleanup chain (`/sonar` → `/lint-angular` → `/review`)
+### Step 7 — Hand off to the cleanup chain (`/forge-simplify` → `/sonar` → `/lint-angular` → `/review`)
 
 Append a `## Develop log` section to the task file with :
 
@@ -380,12 +382,16 @@ Append a `## Develop log` section to the task file with :
   - ...
 - Local build / test : ✓ all repos
 - DOD self-check : {N/M items verifiable via command} verified
-- Next step : {/sonar | /lint-angular | /review}  (see decision below)
+- Next step : /forge-simplify {task-id}
 ```
 
-**Decide the next step** based on what was actually touched :
+**Hand off unconditionally to `/forge-simplify {task-id}`.** It runs the
+`/simplify` quality pass (reuse / simplification / efficiency / altitude)
+on the code you just produced, re-validates, commits/pushes the pushable
+repos, leaves `client-angular` code-only, and then routes to the next step
+itself :
 
-| api-mail touched ? | client-angular touched ? | Next step |
+| api-mail touched ? | client-angular touched ? | Step after `/forge-simplify` |
 |---|---|---|
 | yes | yes  | `/sonar {task-id}` — chains to `/lint-angular`, then `/review` |
 | yes | no   | `/sonar {task-id}` — chains directly to `/review`             |
@@ -398,15 +404,11 @@ is non-empty (uncommitted Angular work). The two checks are equivalent in
 the autonomous flow but the second one covers `no-code` re-entry edge
 cases.
 
-Log the skipped steps explicitly in the develop log :
-- "no api-mail change → skipped /sonar" when api-mail was untouched.
-- "no angular change → skipped /lint-angular" when client-angular was
-  untouched.
-
-The skipped step itself still runs (its own pre-flight detects the empty
-scope and forwards the chain). The explicit log entries here are just so
-the human can read the develop log and immediately know which cleanup
-phases were active.
+`/forge-simplify` owns the routing table above (it sits right after you in
+the chain) ; it also skips cleanly when there is nothing to simplify and
+forwards the chain regardless. Each downstream step still runs its own
+pre-flight and skips its empty scope (`/sonar` when api-mail untouched,
+`/lint-angular` when angular untouched).
 
 ---
 

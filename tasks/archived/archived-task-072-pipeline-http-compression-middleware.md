@@ -84,3 +84,41 @@ tokens/secrets) — si le doute persiste au moment de l'implémentation, ouvrir
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui — environnement HDS existant inchangé
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+- `api-mail` (pushed) : feat/task-072-pipeline-http-compression
+- `dtos-mss` (pushed, auto-incluse) : feat/task-072-pipeline-http-compression — sera supprimée sans PR si aucun changement de contrat
+
+## Develop log (2026-06-10)
+
+**Commit (api-mail, `feat/task-072-pipeline-http-compression`)** : `e38e742`
+
+**Findings traités** :
+1. ✅ `AddMssResponseCompression` + `app.UseResponseCompression()` (Brotli prioritaire, Gzip fallback, `CompressionLevel.Fastest`). **Décision BREACH** (gravée dans `ResponseCompressionSetup`) : compression activée sur HTTPS car (a) auth Bearer header, pas cookie → pas de requête cross-site créditée, (b) périmètre MIME restreint à `application/json`/`application/problem+json`, aucun secret reflété à côté d'input attaquant, (c) tokens jamais dans les corps JSON. SSE (`text/event-stream`) exclu (sémantique flush).
+2. ✅ Court-circuit `RequestLoggingMiddleware` : requête **sans aucun credential** (ni Authorization, ni `?token=` SSE, ni X-Test-Bypass) vers un endpoint non-`[AllowAnonymous]` → trace compacte unique Warning (méthode, path, statut, correlationId, IP source — exigence PGSSI-S de traçage des échecs auth conservée) au lieu des 11 pushes LogContext + parsing headers. Les requêtes avec credential invalide gardent le chemin détaillé.
+3. ✅ `ServerConnectionString` singleton résolu une fois au démarrage, injecté au ctor du middleware — plus de `Environment.GetEnvironmentVariable` par requête.
+4. ✅ `JsonWebTokenHandler` statique (stateless en lecture) + `GetPscIdentity` mémoïsé par requête dans `HttpContext.Items` — le token PSC est parsé au plus une fois par requête (2 sites consommateurs). Nota : le token PSC (`X-PSC-Token`) n'est PAS le Bearer validé par JwtBearer — la lecture « depuis les claims » suggérée par l'audit était inapplicable ; la mémoïsation atteint le même objectif (zéro re-parse).
+5. ✅ `X-Forwarded-For` : `IndexOf(',')` + slice au lieu de `Split`.
+
+**Validation** : build Release 0 erreur ; suite 2697 verts (94+491+346+1555+214(+16 skip)), 1 échec = flaky IMAP pré-existante. 7 nouveaux tests (4 TestServer pipeline réel : compression br vérifiée par décompression, SSE non compressé, 401 anonyme avec correlation, 200 authentifié ; 3 unitaires middleware).
+
+## PRs
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/95 — label `awaiting-human-merge`
+- `dtos-mss` : branche `feat/task-072-pipeline-http-compression` sans commit — pas de PR, branche à supprimer au `/merge`
+
+## Code Review Summary
+
+APPROVED — 0 issue bloquante, 1 note non-bloquante (404 sans credential → trace compacte, statut/path tracés).
+- `ResponseCompressionSetup.cs` — ✅ politique BREACH documentée inline, périmètre MIME restreint, SSE exclu
+- `RequestLoggingMiddleware.cs` — ✅ court-circuit testé (compact + détaillé conservé), XFF sans Split
+- `UserContextEnricherMiddleware.cs` — ✅ singleton injecté (ctor), handler statique, mémo PSC par requête ; harnais TestServer task-048 mis à jour
+- DOD : tous items verts (test d'intégration Content-Encoding: br inclus)
+- Sonar : Quality Gate OK, 0 new-code issue (1 fix ASP0015 en itération 2)
+
+## Merged
+
+- **Date** : 2026-06-11
+- **api-mail** : PR #95 squash-mergée — commit `3bf6dce` sur `develop`
+- **dtos-mss** : aucune PR (branche sans commit) — branche remote supprimée
+- **CI develop** : ✅ success — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/27366803559
+- Branches locales conservées pour inspection rétroactive (convention /merge)

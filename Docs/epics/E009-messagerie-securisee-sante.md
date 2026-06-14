@@ -4,7 +4,7 @@
 > **Modèle** : hand-crafted
 > **Version** : 1.34
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-06-10
+> **Dernière mise à jour** : 2026-06-14
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -44,7 +44,7 @@
 - [Annexes](#annexes)
   - [A. Sources documentaires](#a-sources-documentaires)
   - [B. Table de correspondance REM Ségur ↔ Ref#2](#b-table-de-correspondance-rem-ségur--ref2)
-- [État de couverture](#état-de-couverture-2026-06-10)
+- [État de couverture](#état-de-couverture-2026-06-14)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -987,7 +987,7 @@ Les règles `RG-E009-084` à `RG-E009-089` sont propres à ENS Mon espace santé
 
 ---
 
-## État de couverture (2026-06-10)
+## État de couverture (2026-06-14)
 
 > Photographie de l'état actuel de l'EPIC, feature par feature. Le détail ingénierie de chaque task contributive (numéros de PR, NuGet, tests, audit grep) est dans [`E009-Changelogs.md`](./E009-Changelogs.md), annexe C.
 
@@ -1050,6 +1050,9 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Technique / observabilité (sans impact utilisateur direct)
 
+- **v1.39 — Renforcement des tests automatisés de la messagerie** (task-082) : la couverture de tests du moteur de messagerie a été étendue (gestion des dossiers, brouillons, étiquettes, connexions sécurisées, rattachement des pièces jointes), ce qui consolide la fiabilité du service sans rien changer à son fonctionnement visible. Ce travail purement interne réduit le risque de régression lors des évolutions futures. Aucun changement visible pour le praticien.
+- **v1.38 — Diagnostic des listages de dossier lents** (task-081) : lorsqu'un dossier de la messagerie met longtemps à s'afficher, la supervision indique désormais précisément laquelle des quatre étapes de consultation de la boîte aux lettres a consommé le temps. Ce diagnostic permettra de cibler l'optimisation ou d'objectiver un ralentissement imputable à l'opérateur MSSanté. Seules des durées et des compteurs sont journalisés — aucune donnée de santé. Aucun changement visible pour le praticien.
+- **v1.36 — Campagne de renforcement des tests automatisés** (task-067) : la couverture de tests du backend de la messagerie passe de 77 % à 83 % (+69 tests), et le portail qualité du projet est désormais entièrement au vert. Les zones nouvellement protégées contre les régressions incluent la synchronisation multi-postes, les résumés et conversations d'assistance IA, la recherche sémantique, le classement par étiquettes, les brouillons et les fils de discussion. La campagne a également mis au jour un défaut latent sur le traitement des courriers émis par les patients, qui sera corrigé séparément. Aucun changement visible pour le praticien.
 - **v1.35 — Stabilité mémoire des sessions de messagerie** (task-058) : le service qui gère les sessions de connexion à la boîte aux lettres libère désormais correctement toutes les ressources internes quand une session expire (fermeture du navigateur sans déconnexion explicite), et la tâche d'entretien périodique survit aux incidents ponctuels au lieu de s'arrêter silencieusement. Un serveur qui tourne plusieurs semaines ne voit plus sa mémoire croître au fil des connexions : la disponibilité du service sur la durée est renforcée. Aucun changement visible pour le praticien.
 - **v1.34 — Connexions de vérification de certificats fiabilisées** (task-057) : les vérifications de non-révocation des certificats de la chaîne de confiance MSSanté réutilisent désormais des connexions réseau partagées au lieu d'en ouvrir une nouvelle à chaque contrôle. Sous forte charge, la plateforme ne risque plus d'épuiser ses connexions sortantes, les contrôles bénéficient des mécanismes standard de nouvelle tentative en cas d'incident réseau passager, et chaque vérification est désormais visible dans la supervision. Le résultat des contrôles est strictement identique : un certificat révoqué reste rejeté. Aucun changement visible pour le praticien.
 - **v1.33 — Sondes de santé en production** (task-056) : la plateforme expose désormais en production des sondes de disponibilité que l'hébergeur utilise pour surveiller le service en continu : une sonde « vivant » qui vérifie que l'application répond, et une sonde « prêt » qui vérifie que la base de données, le cache et le bus de messages sont joignables. En cas de défaillance d'une dépendance, le service est automatiquement retiré du trafic le temps du rétablissement, sans intervention manuelle. Les réponses de ces sondes sont réservées au réseau interne et ne contiennent aucune donnée de santé ni détail technique. Aucun changement visible pour le praticien.

@@ -81,3 +81,45 @@ trail).
 - **Référentiels métier** : LOINC (inchangé)
 - **Hébergement HDS** : oui — environnement HDS existant inchangé
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+- `api-mail` (pushed) : feat/task-077-exports-streaming
+- `dtos-mss` (pushed, auto-incluse) : feat/task-077-exports-streaming — sera supprimée sans PR si aucun changement de contrat
+
+## Develop log (2026-06-10)
+
+**Commit (api-mail, `feat/task-077-exports-streaming`)** : `9fac915`
+
+**Findings traités** :
+1. ✅ EML : `BuildEmlAsync` retourne le `MimeMessage` (déjà matérialisé par MailKit) ; plus de `MemoryStream` + `ToArray` (2 copies supprimées). Streaming via `StreamingFileResult` → `WriteToAsync(Response.Body)`.
+2. ✅ PDF : `WritePdf(..., Stream)` — QuestPDF `GeneratePdf(output)` directement dans `Response.Body`. `StreamingFileResult` gère RFC 5987 (accents).
+3/4. ⏸ Évalués et différés (hors DOD) : `Convert.FromBase64String` — documents CDA bornés (MSS ≤ ~10 Mo) et l'API aval (parser interop) exige `byte[]` ; `Parallel.Invoke`/`ConcurrentBag` extraction PDF — coordination justifiée pour 2 extractions indépendantes. Sémantique CDA strictement inchangée.
+5. ✅ `string.Join` du log de tagging gardé par `IsEnabled(LogLevel.Information)`.
+6. ✅ Audit trail par lots : drain channel (`MaxBatchSize` 100), groupé par contexte de transport (1 scope + 1 `SaveChangesAsync` via `AddRangeAsync` par groupe), **drain final au shutdown** (PGSSI : aucune trace perdue), **fallback unitaire** si un lot échoue (pas de perte des voisines d'une trace empoisonnée).
+7. ✅ `TokenValidationService` : `Base64Url.DecodeFromChars` — plus de padding/Replace intermédiaires.
+
+**DOD octet-à-octet** : test EML — le flux streamé == `WriteTo` bufferisé (même API MimeKit). PDF : déviation documentée — QuestPDF horodate les métadonnées (non déterministe inter-générations) ; couvert par les tests de contenu existants (texte extrait, sections).
+
+**Découverte .NET 10** : `BackgroundService` démarre `ExecuteAsync` de façon **asynchrone** — un `StopAsync` immédiat annule la tâche avant exécution du corps. Les tests s'alignent sur le log « started » avant d'agir.
+
+**Validation** : build Release 0 erreur ; suite complète verte (2696+), seul échec = flaky IMAP pré-existante documentée. 9 tests nouveaux/adaptés.
+
+## PRs
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/99 — label `awaiting-human-merge`
+- `dtos-mss` : branche `feat/task-077-exports-streaming` sans commit — pas de PR, branche à supprimer au `/merge`
+
+## Code Review Summary
+
+APPROVED — 0 issue bloquante.
+- Streaming EML/PDF sans byte[] (StreamingFileResult, RFC 5987) ; identité octet-à-octet EML testée ; déviation PDF documentée (métadonnées QuestPDF horodatées)
+- Audit par lots + drain shutdown + fallback unitaire (PGSSI : exhaustivité préservée, testée)
+- Findings 3/4 évalués-différés avec justification ; 5/7 corrigés
+- Sonar : Quality Gate OK, 0 new-code (2 itérations)
+
+## Merged
+
+- **Date** : 2026-06-11
+- **api-mail** : PR #99 squash-mergée — commit `930091b` sur `develop`
+- **dtos-mss** : aucune PR (branche sans commit) — branche remote supprimée
+- **CI develop** : ✅ success — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/27369409431
+- Branches locales conservées pour inspection rétroactive (convention /merge)

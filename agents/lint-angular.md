@@ -54,9 +54,9 @@ long-term debt reduction at the human level. The forge's job is to not
 ## Autonomous cycle position
 
 ```
-/develop {task-id}   →   /sonar {task-id}   →   /lint-angular {task-id}   →   /review {task-id}   →   /tech-writer
-                                                  ↑
-                                                  you are here
+/develop {task-id}   →   /forge-simplify {task-id}   →   /sonar {task-id}   →   /lint-angular {task-id}   →   /review {task-id}   →   /tech-writer
+                                                                                  ↑
+                                                                                  you are here
 ```
 
 Properties of the cycle :
@@ -81,7 +81,7 @@ the scope and skip rules differ.
 ### Mode A — chained from `/sonar` (autonomous cycle, default)
 
 - Triggered by `/sonar {task-id}` once Sonar phases are done (or
-  immediately after `/develop` if the task didn't touch `api-mail`).
+  directly from `/forge-simplify` if the task didn't touch `api-mail`).
 - Task file : the existing `tasks/wip-{task-id}.md` (no new file).
 - Working branch on `Client/Angular/` : **whatever is currently checked
   out** — the human owns it.

@@ -86,3 +86,54 @@ lookup O(N²) en mémoire.
 - **Référentiels métier** : LOINC (catégorisation documents) — usage inchangé
 - **Hébergement HDS** : oui — environnement HDS existant ; la migration d'index ne déplace aucune donnée
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+- `api-mail` (pushed) : feat/task-070-efcore-n1-index-projections — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-070-efcore-n1-index-projections
+- `dtos-mss` (pushed, auto-included) : feat/task-070-efcore-n1-index-projections — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-070-efcore-n1-index-projections
+
+## Develop log (2026-06-10)
+
+**Commits (api-mail, `feat/task-070-efcore-n1-index-projections`)** :
+- `75ff307` test(mail): 3 tests de caractérisation — dédup patient même INS dans un batch
+  (`AddNewMail_TwoDocumentsWithTheSameNewIns_CreateASingleSharedPatient`), tag inconnu
+  (`GetMailsByTagAsync_WithUnknownTag_ReturnsEmpty`), tri `GetMailsByInsAsync`
+  (`GetMailsByInsAsyncShouldReturnMailsSortedByDateDescending`)
+- `2eca9da` refactor(mail): implémentation
+
+**Findings traités** :
+1. ✅ AnyAsync par pièce jointe (promote) → 1 SELECT + HashSet des FileName
+2. ✅ FirstOrDefault patient par document → preload batch Dictionary par INS + check `Local` sur le chemin promote
+3. ✅ Migration `20260610_AddMailPatientInsIndex.cs` — `IX_MailPatients_Ins` non-unique, `Down()` fourni, auditée (règle 7c) et appliquée verte sur le conteneur PostgreSQL des tests
+4. ✅ `GetMailsByTagAsync` : `AsNoTracking().AsSplitQuery()` (5 Includes collection — cartesian explosion)
+5. ✅ SaveChanges par document supprimé dans le flux AddNewMail (navigation `Patient`, save unique dans `PersistNewMailAsync`). **Exception délibérée** : les `SaveChangesAsync` de `AddPatientMessageDocumentAsync` (courrier patient) sont laissés intacts — cette méthode est le scope exact de task-078 (bug UTC ligne ~309) ; la toucher ici créerait un conflit de branche.
+6. ✅ PatientRepository `LoadMailsWithAttachmentsAsync` : Dictionary O(N) au lieu de FirstOrDefault-in-Select O(N²), tri vérifié par test de non-régression
+7-9. ⏸ Moyen, hors DOD — documentés, non traités (conformément à la task)
+
+**Déviation DOD (justifiée)** : « integration test sur un endpoint utilisant MailRepository » —
+l'endpoint tag est un flux SSE streamé (`MailController.GetMailsByTagAsync`) impraticable en
+TestServer sans harnais SSE dédié ; couvert au niveau repository (`GetMailsByTagAsync` happy via
+test dédup + empty via tag inconnu), même pipeline DI/EF/PostgreSQL réel via Testcontainers.
+
+**Validation** : build Release 0 erreur ; suite complète 2696 verts / 1 échec =
+`ConnectAsyncWithCancellationShouldRespectTokenAsync` (flaky pré-existante documentée, hors scope).
+
+## PRs
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/93 — label `awaiting-human-merge`
+- `dtos-mss` : branche `feat/task-070-efcore-n1-index-projections` sans commit (aucun changement de contrat) — pas de PR, branche à supprimer au `/merge`
+
+## Code Review Summary
+
+APPROVED — 0 issue bloquante.
+- `MailRepository.cs` — ✅ batch patients + dédup intra-lot (testée), HashSet pièces jointes promote, `AsNoTracking/AsSplitQuery` sûr (listing read-only)
+- `PatientRepository.cs` — ✅ Dictionary O(N), tri couvert par test de caractérisation
+- `20260610_AddMailPatientInsIndex.cs` — ✅ auditée règle 7c (FluentMigrator : pas de Designer/snapshot EF — N/A), appliquée verte sur Testcontainers
+- DOD : tous items verts ; déviation justifiée sur le test d'intégration endpoint (SSE) → couvert niveau repository, pipeline EF/PostgreSQL réel
+- Sonar : Quality Gate OK, 0 new-code issue
+
+## Merged
+
+- **Date** : 2026-06-11
+- **api-mail** : PR #93 squash-mergée — commit `3e4deb4` sur `develop`
+- **dtos-mss** : aucune PR (branche sans commit) — branche remote supprimée
+- **CI develop** : ✅ success — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/27365850711
+- Branches locales conservées pour inspection rétroactive (convention /merge)

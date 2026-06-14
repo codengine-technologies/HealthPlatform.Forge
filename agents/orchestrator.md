@@ -9,18 +9,22 @@ philosophy is gone : implementation runs through `/develop`, Sonar through
 The human's only mandatory interaction is **merging the PR on `develop`**
 (HAG, CLAUDE.md rule 10).
 
-The forge cycle has **6 chained actions** :
+The forge cycle has **7 chained actions** :
 
 1. **PO** — help write user stories (`/po` produces `todo-*.md`)
 2. **Start** — create the branches (`/start`)
 3. **Develop** — write the code, tests, build, push, publish DTOs / interop
    (`/develop`)
-4. **Sonar** — best-effort SonarQube cleanup on `api-mail` (`/sonar`).
+4. **Forge-Simplify** — `/simplify` quality pass (reuse / simplification /
+   efficiency / altitude — quality only, no bug hunting) on the fresh code,
+   re-validate, commit/push (`/forge-simplify`). Skipped cleanly when there
+   is nothing to simplify.
+5. **Sonar** — best-effort SonarQube cleanup on `api-mail` (`/sonar`).
    Skipped cleanly when the task didn't touch `api-mail`.
-5. **Lint-Angular** — best-effort ESLint cleanup on `client-angular`
+6. **Lint-Angular** — best-effort ESLint cleanup on `client-angular`
    (`/lint-angular`). Skipped cleanly when the task didn't touch
    `client-angular`.
-6. **Review** — validate, commit, sync develop, open PR, rename `done-*`,
+7. **Review** — validate, commit, sync develop, open PR, rename `done-*`,
    chain into `/tech-writer` (`/review` → `/tech-writer`)
 
 The escape hatch is `/start {task-id} no-code` which stops after step 2
@@ -35,7 +39,7 @@ todo-*.md      PO wrote the US, awaiting branch creation
     ↓ /start {task-id}                                        (auto-chains into /develop unless `no-code`)
 wip-*.md       Branch created. /develop is implementing
                OR (no-code) the human is implementing in WindSurf.
-    ↓ /develop pushes, hands off to /sonar, /sonar to /lint-angular, /lint-angular to /review
+    ↓ /develop pushes, hands off to /forge-simplify, then /sonar, /lint-angular, /review
               (in no-code mode the human runs /review when ready)
 review-*.md   /review picked up the task (briefly).
     ↓ /review validates, commits, opens PR, chains into /tech-writer
@@ -94,16 +98,19 @@ At each invocation :
 For each `tasks/todo-task-*.md` (sorted by task-id, lowest first) :
 
 ```
-1. /start {task-id}         — creates branches on every repo in **Repos**
-2. /develop {task-id}       — writes code + tests, build/test green, push
-3. /sonar {task-id}         — best-effort 5 iterations on api-mail, accept remaining
-                              (skipped cleanly if api-mail not touched)
-4. /lint-angular {task-id}  — best-effort 5 iterations on client-angular, accept remaining
-                              (skipped cleanly if client-angular not touched)
-5. /review {task-id}        — validates, commits, syncs develop, opens PR,
-                              label awaiting-human-merge, rename done-*
-6. /tech-writer E{NNN}      — refresh docs/epics/E{NNN}-{slug}.md
-                              (skipped if no **Epic**: declared)
+1. /start {task-id}          — creates branches on every repo in **Repos**
+2. /develop {task-id}        — writes code + tests, build/test green, push
+3. /forge-simplify {task-id} — /simplify quality pass on the fresh code,
+                               re-validate, commit/push (skipped if nothing
+                               to simplify ; never touches dtos-mss/interop)
+4. /sonar {task-id}          — best-effort 5 iterations on api-mail, accept remaining
+                               (skipped cleanly if api-mail not touched)
+5. /lint-angular {task-id}   — best-effort 5 iterations on client-angular, accept remaining
+                               (skipped cleanly if client-angular not touched)
+6. /review {task-id}         — validates, commits, syncs develop, opens PR,
+                               label awaiting-human-merge, rename done-*
+7. /tech-writer E{NNN}       — refresh docs/epics/E{NNN}-{slug}.md
+                               (skipped if no **Epic**: declared)
 ```
 
 Per-task failure handling : on first failed step, write
@@ -134,8 +141,9 @@ expected once `todo-*` is drained.
 
 ## Absolute rules
 
-- **You write code** in `/develop`, `/sonar`, and `/lint-angular`. You
-  never write code in `/start`, `/review`, `/tech-writer`, or here.
+- **You write code** in `/develop`, `/forge-simplify`, `/sonar`, and
+  `/lint-angular`. You never write code in `/start`, `/review`,
+  `/tech-writer`, or here.
 - **You never merge a PR yourself** — HAG (CLAUDE.md rule 10) is the
   single mandatory human gate.
 - **You never bypass `no-code`** — when the task was started with that

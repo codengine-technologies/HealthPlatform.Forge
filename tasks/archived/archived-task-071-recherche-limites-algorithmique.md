@@ -71,3 +71,42 @@ recherche (intersections O(N×M), allocations inutiles dans les logs).
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui — environnement HDS existant inchangé
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+- `api-mail` (pushed) : feat/task-071-recherche-bornage
+- `dtos-mss` (pushed, auto-incluse) : feat/task-071-recherche-bornage — sera supprimée sans PR si aucun changement de contrat
+
+## Develop log (2026-06-10)
+
+**Commit (api-mail, `feat/task-071-recherche-bornage`)** : `dda520a`
+
+**Findings traités** :
+1. ✅ `ExecuteFullTextSearchAsync` : `OrderByDescending(Uid).Take(maxCandidatesPerTerm)` par terme + borne du résultat final classé par `Rank` desc. Plafond `SearchLimits.FullTextCandidatesPerTerm` = 200, surchargeable par appel (testé avec dataset > plafond). **Divergence de ranking documentée** : pour un terme présent dans > 200 mails, seuls les 200 plus récents sont candidats — les correspondances plus anciennes sortent du classement (avant : tout chargé en mémoire).
+2. ✅ `queryVector.Memory.Length` aux 2 sites restants (55, 116) — les autres lignes de l'audit (290-319) avaient déjà été nettoyées par des tasks antérieures.
+3. ✅ (déjà résolu en amont) `filteredUids` est déjà `HashSet<uint>` dans `SemanticSearchService` — constat documenté, aucun changement.
+4. ✅ `GetWithMedicalDocumentsTodayAsync(maxPatients = SearchLimits.TodayPatientsMax)` : `Take` après `Distinct`, plafond 500, testé avec plafond surchargé.
+
+**Bonus DOD (PGSSI-S)** : les termes de recherche étaient loggés en clair (controller ×4 dont logger source-généré, service ×3) → remplacés par des longueurs. 3 tests prouvent la non-journalisation de termes nominatifs.
+
+**Validation** : build Release 0 erreur ; suite complète 2700 verts (94+488+346+1555+217), 1 échec = flaky IMAP pré-existante documentée. Les 3 nouveaux tests d'intégration passent (le delta de compteur s'explique : la branche part de develop sans task-070, HAG).
+
+## PRs
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/94 — label `awaiting-human-merge`
+- `dtos-mss` : branche `feat/task-071-recherche-bornage` sans commit (aucun changement de contrat) — pas de PR, branche à supprimer au `/merge`
+
+## Code Review Summary
+
+APPROVED — 0 issue bloquante, 1 note non-bloquante (tri Uid desc = approximation du « plus récent » en multi-dossiers, documentée dans la PR).
+- `SemanticSearchRepository.cs` — ✅ bornage par terme + résultat final, plafond surchargeable testé
+- `SemanticSearchService.cs` / `SearchController*.cs` — ✅ aucune fuite de terme de recherche dans les logs (3 tests)
+- `PatientRepository.cs` — ✅ patients du jour bornés, testé
+- DOD : tous items verts ; déviation justifiée sur le test endpoint DI complet (service d'embedding requis) → 7 tests controller + 3 intégration PostgreSQL
+- Sonar : Quality Gate OK, 0 new-code issue
+
+## Merged
+
+- **Date** : 2026-06-11
+- **api-mail** : PR #94 squash-mergée — commit `4d88f3e` sur `develop`
+- **dtos-mss** : aucune PR (branche sans commit) — branche remote supprimée
+- **CI develop** : ✅ success — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/27366268010
+- Branches locales conservées pour inspection rétroactive (convention /merge)

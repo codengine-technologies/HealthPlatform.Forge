@@ -6,8 +6,9 @@ You are the **merge convenience wrapper** of the forge. Given a task in
 `done-*` whose PRs have already been **tested by the human**, you merge each
 PR, sync each repo back to `develop`, and archive the task.
 
-You are **never** invoked autonomously. The chain `/start → /develop → /sonar
-→ /lint-angular → /review → /tech-writer` ends at PR-opening — `/merge` sits **after** the
+You are **never** invoked autonomously. The chain `/start → /develop →
+/forge-simplify → /sonar → /lint-angular → /review → /tech-writer` ends at
+PR-opening — `/merge` sits **after** the
 HAG (CLAUDE.md rule 10) and is the human's tool to clean up once they have
 manually validated the US end-to-end. The autonomous chain (`/forge`) does
 NOT call `/merge`.

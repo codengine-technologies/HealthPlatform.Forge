@@ -76,3 +76,42 @@ est recalculée pour chaque document de chaque listing.
 - **Référentiels métier** : LOINC (mémoïsation de la table de catégorisation, valeurs inchangées)
 - **Hébergement HDS** : oui — les caches (Redis/mémoire) restent dans l'environnement HDS existant
 - **AIPD / impact RGPD** : inchangé — durée de vie des caches courte et bornée, pas de nouveau stockage durable
+
+## Branches
+- `api-mail` (pushed) : feat/task-074-caching-settings-referentiels
+- `dtos-mss` (pushed, auto-incluse) : feat/task-074-caching-settings-referentiels — sera supprimée sans PR si aucun changement de contrat
+
+## Develop log (2026-06-10)
+
+**Commit (api-mail, `feat/task-074-caching-settings-referentiels`)** : `d0bac8f`
+
+**Findings traités** :
+1. ✅ Settings : cache 5 min (`usersettings:{userId}`, Guid non sensible) + invalidation explicite dans `SaveSettingsAsync`. Les défauts (aucune ligne) ne sont pas cachés. `MaxAttachmentSizeBytes` réappliqué depuis les options après hit (config d'environnement, pas une donnée utilisateur).
+2. ✅ Autoconfig : cache 24 h par domaine, résultats positifs uniquement. Test : 2 connexions même domaine → 1 fetch HTTP (handler compteur).
+3. ✅ `DocumentCategoryCache` (Application) : mémoïsation `ConcurrentDictionary` au-dessus de `CDADocumentHelper` (repo interop **non touché** — scope task = api-mail). 4 call sites repositories migrés ; instances partagées en lecture seule (les appelants ne font que projeter vers DTO). Test : 1000 appels même LOINC → même instance.
+4. ✅ Patient par INS : cache 5 min, clé `patient:ins:{SHA256-16octets-hex}` — INS jamais en clair (test l'assertant), négatifs non cachés (un patient créé juste après un miss est visible), invalidation à `UpdateOppositionAsync`. **Limite documentée** : les écritures patient des chemins d'ingestion (MailRepository) s'appuient sur le TTL filet de 5 min.
+5. ✅ **Requalifié** : `FolderCacheManager` est du code mort — non enregistré en DI, zéro consommateur production (grep : seuls ses propres tests le référencent). Brancher une invalidation push sur un cache inactif est sans objet ; la perf GetFolders a été traitée par task-080 (LIST-STATUS). Déviation DOD documentée.
+
+**Robustesse** : `SafeCacheExtensions` — toute panne Redis dégrade vers la source (log Debug/Warning), jamais d'échec métier. Clés santé hashées.
+
+**Validation** : build Release 0 erreur ; suite 2707 verts / 1 flaky IMAP pré-existante. 11 nouveaux tests (3 settings dont l'intégration « save → lecture suivante voit la nouvelle valeur », 4 patient dont clé-sans-INS, 2 LOINC, 2 autoconfig).
+
+## PRs
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/97 — label `awaiting-human-merge`
+- `dtos-mss` : branche `feat/task-074-caching-settings-referentiels` sans commit — pas de PR, branche à supprimer au `/merge`
+
+## Code Review Summary
+
+APPROVED — 0 issue bloquante.
+- Settings/Autoconfig/Patient/LOINC : 4 caches avec hit/miss/invalidation testés (11 tests)
+- INS jamais en clair (clé SHA-256, test dédié) ; panne Redis = dégradation vers la source
+- Finding 5 requalifié : FolderCacheManager code mort (preuve grep), déviation DOD documentée
+- Sonar : Quality Gate OK premier scan, 0 new-code issue
+
+## Merged
+
+- **Date** : 2026-06-11
+- **api-mail** : PR #97 squash-mergée — commit `5da065d` sur `develop`. Conflit `PatientRepository.cs` (usings 071/074) résolu par merge `origin/develop` (`1080878`) avant le merge final.
+- **dtos-mss** : aucune PR (branche sans commit) — branche remote supprimée
+- **CI develop** : ✅ success — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/27372961128
+- Branches locales conservées pour inspection rétroactive (convention /merge)

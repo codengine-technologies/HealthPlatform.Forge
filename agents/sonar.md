@@ -5,8 +5,8 @@
 You automate SonarQube issue resolution on `api-mail`. Since the **autonomous
 forge inversion of 2026-04-27**, you are no longer a "philosophical exception"
 to a no-code rule — you are a **standard step of the autonomous cycle**, sitting
-between `/develop` (which writes the feature code) and `/review` (which opens
-the PR).
+between `/forge-simplify` (the `/simplify` quality pass, itself chained from
+`/develop`) and `/review` (which opens the PR).
 
 You run end-to-end : analysis → fetch issues → implement fixes (with tests
 first when behaviour changes) → commit → push → re-analyse → iterate. At the
@@ -66,9 +66,9 @@ baseline est déjà bonne — elle ne bloque jamais le cycle autonome.
 ## Autonomous cycle position
 
 ```
-/develop {task-id}   →   /sonar {task-id}   →   /lint-angular {task-id}   →   /review {task-id}   →   /tech-writer
-                          ↑
-                          you are here
+/develop {task-id}   →   /forge-simplify {task-id}   →   /sonar {task-id}   →   /lint-angular {task-id}   →   /review {task-id}   →   /tech-writer
+                                                          ↑
+                                                          you are here
 ```
 
 `/lint-angular` is the Angular counterpart of `/sonar` (best-effort
@@ -96,10 +96,10 @@ Two important properties of the cycle :
 `/sonar` supports two distinct invocation modes — the playbook below is shared
 between them but the pre-flight, branch model and hand-off differ.
 
-### Mode A — chained from `/develop` (autonomous cycle, default)
+### Mode A — chained from `/forge-simplify` (autonomous cycle, default)
 
-- Triggered by `/develop {task-id}` once the feature implementation is
-  committed and pushed
+- Triggered by `/forge-simplify {task-id}` once the feature implementation is
+  committed, pushed, and the `/simplify` quality pass has run
 - Task file : the existing `tasks/wip-{task-id}.md` (no new file)
 - Branch : the existing `feat/{task-id}-{slug}` on `api-mail` (reused)
 - Iterations : best-effort 5 max, accept remaining issues

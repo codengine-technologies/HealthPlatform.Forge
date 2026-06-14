@@ -81,3 +81,48 @@ des erreurs de sync background peuvent être perdues silencieusement.
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui — environnement HDS existant inchangé
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+- `api-mail` (pushed) : feat/task-075-cancellation-fire-and-forget
+- `dtos-mss` (pushed, auto-incluse) : feat/task-075-cancellation-fire-and-forget — sera supprimée sans PR si aucun changement de contrat
+
+## Develop log (2026-06-10)
+
+**Commit (api-mail, `feat/task-075-cancellation-fire-and-forget`)** : `2911eed`
+
+**Findings traités** :
+1. ✅ `SyncController` : les 6 actions prennent et propagent un `CancellationToken` (Start propage maintenant aussi).
+2. ✅ `IBackgroundSyncManager` : token sur toutes les méthodes (défaut `default`), propagé jusqu'à `ISyncStateStore` (qui acceptait déjà les tokens).
+3. ✅ `RemoveMissingUidsAsync(folder, uids, ct)` : `ThrowIfCancellationRequested` entre chaque suppression (`DeleteMailAsync` n'a pas de paramètre token — le travail abandonnable est borné à un mail).
+4. ✅ `MailController` enrich : `BackgroundTaskQueue` gérée (Channel + `IHostedService`) — exceptions observées centralement, token de shutdown au lieu de `CancellationToken.None`, in-flight attendus à l'arrêt.
+5. ✅ `BackgroundSyncManager` : sync via la file avec **token lié** (cts utilisateur StopSync + shutdown). Le `_ = SubscribeCommandsSafelyAsync()` du ctor reste (pas un `Task.Run`, entièrement try/catché — documenté).
+6. ✅ `RedisSyncStateStore` : handler de commande via la file (annulable, observé) au lieu de `Task.Run(..., CancellationToken.None)`.
+7. ✅ `MailClientSessionManager` : cleanup migré vers `MailClientSessionCleanupService` (`IHostedService`) — plus de `Task.Run` au ctor d'un singleton.
+8. ✅ `DraftCacheRepository` : `await deleteTask` au lieu de `.Result`.
+
+**Règle 12 préservée** : aucun try/catch ad hoc ajouté dans les actions — `OperationCanceledException → 499` reste au `GlobalExceptionHandler` ; l'observation des erreurs background est centralisée dans le hosted service.
+
+**Tests** : 7 nouveaux (file : exécution / échec loggé sans abattre la file / annulation au shutdown ; SyncController : propagation du token ×2 ; enrich : mise en file + token). 5 tests existants adaptés via `EagerBackgroundTaskQueue` (sémantique production : background + exceptions contenues).
+
+**Validation** : build Release 0 erreur ; suite complète — seuls échecs = 2 flaky pré-existantes documentées (PDF export, IMAP cancel), confirmées passantes en isolation.
+
+## PRs
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/98 — label `awaiting-human-merge`
+- `dtos-mss` : branche `feat/task-075-cancellation-fire-and-forget` sans commit — pas de PR, branche à supprimer au `/merge`
+
+## Code Review Summary
+
+APPROVED — 0 issue bloquante.
+- File de background gérée (Channel + IHostedService) : 3 Task.Run nus remplacés, exceptions centralisées, shutdown propre
+- Cleanup sessions IMAP en IHostedService ; tokens de bout en bout SyncController → manager → state store ; token lié (user + shutdown) sur la sync
+- Règle 12 préservée (pas de try/catch ad hoc, 499 centralisé)
+- DOD : tous items verts (7 tests dont annulation in-flight et échec-loggé-sans-abattre)
+- Sonar : Quality Gate OK, 0 new-code (3 itérations)
+
+## Merged
+
+- **Date** : 2026-06-11
+- **api-mail** : PR #98 squash-mergée — commit `230ea24` sur `develop`
+- **dtos-mss** : aucune PR (branche sans commit) — branche remote supprimée
+- **CI develop** : ✅ success — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/27368711460
+- Branches locales conservées pour inspection rétroactive (convention /merge)
