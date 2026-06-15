@@ -126,3 +126,9 @@ aucun quota par dossier.**
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui — environnement existant ; le quota est une métadonnée de volumétrie, pas une donnée de santé
 - **AIPD / impact RGPD** : inchangé — aucune donnée personnelle nouvelle traitée
+
+## Branches
+- `api-mail` (pushed) : feat/task-087-mailbox-quota-display
+- `client-blazor` (pushed) : feat/task-087-mailbox-quota-display
+- `dtos-mss` (pushed, auto-included) : feat/task-087-mailbox-quota-display
+- `client-angular` (code-only) : forge writes code on the branch currently checked out in `Client/Angular/` (`feature/nova-rewriting-mss` au moment du /start) — humain gère branche, commit, push, PR TFS
