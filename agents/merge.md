@@ -27,12 +27,13 @@ the feature for the human, you **never** decide if a US is ready, you
 ## Outputs
 
 For every pushable repo whose PR is ready :
-- PR squash-merged via `gh pr merge --squash --delete-branch`
+- PR squash-merged via `gh pr merge --squash` (**NOT** `--delete-branch` —
+  that flag deletes the local branch too, see below)
 - Local clone switched back to `develop`, pulled
-- Remote feature branch deleted (handled by `--delete-branch`)
+- Remote feature branch deleted with a separate `git push origin --delete`
 - **Local feature branch is preserved** — the human keeps it for
   retroactive inspection / re-checkout. The forge does not run
-  `git branch -D` at merge time.
+  `git branch -D` at merge time, and never passes `--delete-branch`.
 
 For `client-angular` (code-only) : fully out of scope — the forge does no
 git operation and asks no question (the human owns the entire Angular
@@ -111,18 +112,21 @@ Same three-mode taxonomy as the rest of the forge :
    interop, then backend, then frontend) :
    ```bash
    cd {repo-path}
-   gh pr merge {num} --squash --delete-branch    # deletes the REMOTE branch only
+   gh pr merge {num} --squash            # NO --delete-branch (it nukes the local branch too)
    git checkout develop
    git pull --ff-only
-   # Do NOT delete the local feature branch — the human keeps it.
+   git push origin --delete feat/{task-id}-{slug}   # remote ref only — local branch kept
    ```
 
    Order rationale : DTO/interop NuGet packages are consumed by backend
    and frontend ; merging the dependency first keeps `develop` consistent
    if a follow-up PR lands between merges.
 
-   The `--delete-branch` flag on `gh pr merge` only removes the remote
-   ref ; the local branch remains in the clone untouched.
+   **PITFALL — never use `gh pr merge --delete-branch`.** Despite its name,
+   `--delete-branch` deletes **both** the remote ref **and** the local
+   branch (verified task-038, recurred task-083). The human wants the local
+   branch kept for retroactive inspection, so we merge without the flag and
+   delete only the remote ref via a separate `git push origin --delete`.
 
 6. **Skip `client-angular` entirely.** Even when the task lists it, do
    **not** ask the human about TFS state, do **not** read `git status`,

@@ -31,8 +31,9 @@ Steps (high-level — see the agent file for the full spec) :
    label, CI green, no `CHANGES_REQUESTED` review, branch up-to-date with
    `develop`, no uncommitted changes.
 3. Squash-merge each pushable PR in topological order
-   (`dtos-mss → interop-cda → api-mail → client-blazor`), delete remote
-   and local branches.
+   (`dtos-mss → interop-cda → api-mail → client-blazor`) with `gh pr merge
+   --squash` (never `--delete-branch`), then delete the **remote** ref only
+   via `git push origin --delete` — the **local** branch is kept.
 4. Ask whether the human merged the `client-angular` TFS PR ; if yes,
    switch the local Angular clone back to `develop`.
 5. Wait up to 2 min for CI green on `develop` (rule 5).

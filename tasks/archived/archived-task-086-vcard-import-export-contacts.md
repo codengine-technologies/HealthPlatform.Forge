@@ -88,3 +88,78 @@ Feature: Import et export des contacts au format vCard
 - **Référentiels métier** : RPPS / ADELI utilisés pour l'anti-doublon lorsqu'ils sont présents — aucune création de RPPS
 - **Hébergement HDS** : oui — environnement existant (le carnet d'adresses est déjà persisté)
 - **AIPD / impact RGPD** : à vérifier — un import de contacts est un traitement de données personnelles (coordonnées de PS) ; confirmer la couverture par l'AIPD existante
+
+## Develop log (repris 2026-06-15 — implémentation complète)
+
+Décisions : parser vCard hand-rollé (pas de NuGet) ; DTO compte-rendu local par
+repo (pas de cascade dtos-mss → dtos-mss reste vide) ; anti-doublon sur snapshot
+`GetAllAsync` (1 lecture DB) par RPPS puis par adresse MSSanté ; PGSSI-S =
+logging volumétrie uniquement (pas de contenu contact, pas d'ajout d'enum
+`AuditActionType` côté dtos-mss).
+
+**api-mail** (branche `feat/task-086`, commits `1f26e55` serializer + `32758a2`
+service/endpoints/tests — **local, non poussé**) :
+- `VCardSerializer` (Serialize 3.0 + Parse 3.0/4.0 tolérant, unfold/unescape).
+- `VCardImportReport` (Created/Updated/Ignored + IgnoredReasons), `IVCardService`/
+  `VCardService` (export + import anti-doublon).
+- `ContactController` : `GET contacts/export/vcard` (StreamingFileResult, pas de
+  piège Kestrel sync-IO) + `POST contacts/import/vcard` (multipart, FormatException
+  → 400 ProblemDetails via ValidationException + GlobalExceptionHandler).
+- Tests : 14 unit serializer + service (`mss.mail.application.tests`), 5 endpoints
+  controller (`mss.mail.api.tests`), 3 intégration Postgres (round-trip +
+  anti-doublon + malformé). **Build + tests api/application verts.**
+
+**client-blazor** (branche `feat/task-086`, commit `96b0023` — **local, non poussé**) :
+- `ContactService.ExportVCardAsync`/`ImportVCardAsync` (GetBytes + multipart),
+  `VCardImportReportDto` client-local, Contacts.razor : boutons Export/Import
+  (file picker), toast compte-rendu, garde 5 Mo, `data-testid`, clés i18n EN+FR.
+- bUnit : 2 tests (rendu des contrôles + click export appelle le service).
+  **Build solution + tests verts.**
+
+**client-angular** (code-only — **non commité, à pousser TFS par l'humain**) :
+- `MssApiService.exportVcard()` (blob) / `importVcard(file)` (FormData),
+  `VCardImportReport` model, `mss-contacts.component` : boutons Export/Import,
+  input file caché, message compte-rendu inline, libellés FR en dur, `data-testid`.
+- Vitest : spec endpoints vCard (`mss-api.vcard.service.spec.ts`).
+  **`nx test mss-lib` = 215 verts, `nx lint mss-lib` = 0 errors, `nx build mss`
+  (dev) OK.**
+
+**RESTE** : `/review` (push api-mail + blazor, ouvrir les 2 PRs
+`awaiting-human-merge`, note Angular code-only) → `/tech-writer E009`. Puis test
+humain + merge (HAG). ⚠️ Angular : l'humain commite/pousse sur TFS (la forge ne
+touche jamais au git Angular). Ne PAS committer `apps/mss/.../environment.ts`.
+
+## PRs
+
+- **api-mail** : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/105 — label `awaiting-human-merge`
+- **client-blazor** : https://github.com/codengine-technologies/HealthPlatform.Client/pull/59 — label `awaiting-human-merge`
+- **dtos-mss** : aucune PR (branche `feat/task-086` vide — pas de changement de contrat, design DTO local par repo).
+- **client-angular** : code-only — humain gère commit/push TFS et ouverture PR. Branche courante `feature/nova-rewriting-mss`, uncommitted. Fichiers modifiés :
+  - `front/libs/mss/src/core/models/contact.model.ts` (M)
+  - `front/libs/mss/src/core/services/mss-api.service.ts` (M)
+  - `front/libs/mss/src/features/contacts/mss-contacts.component.html` (M)
+  - `front/libs/mss/src/features/contacts/mss-contacts.component.ts` (M)
+  - `front/libs/mss/src/core/services/mss-api.vcard.service.spec.ts` (new)
+  - ⚠️ Ne PAS committer `apps/mss/.../environment.ts` (WIP local).
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 0 blocking.
+
+- **api-mail** : `VCardSerializer` ✅, `VCardService` ✅ (anti-doublon snapshot RPPS+adresse, merge champ-à-champ), `ContactController` ✅ (endpoints fins, 400 ProblemDetails via exception typée), `VCardImportReport` ✅. Sécurité ✅ (aucune donnée de santé en log / dans le 400). Build ✅ ; api.tests 510 ✅ ; application.tests vCard 14 ✅ ; intégration Postgres vCard 3 ✅. 1 échec full-suite préexistant sans rapport (`MarkdownPdfRendererTests` flaky PDF).
+- **client-blazor** : `ContactService` export/import ✅, `Contacts.razor` ✅ (busy guard, garde 5 Mo, toast compte-rendu, i18n EN+FR, data-testid). Build ✅ ; bUnit 101 ✅.
+- **client-angular** : `MssApiService.exportVcard/importVcard` ✅, `mss-contacts` boutons + message inline ✅, FR en dur + data-testid ✅. `nx test mss-lib` 215 ✅ ; `nx lint mss-lib` 0 errors ✅ ; `nx build mss` (dev) ✅.
+
+## Merged
+
+Mergée le 2026-06-15 (squash, HAG validée `--i-tested`).
+
+| Repo | Squash SHA | PR |
+|---|---|---|
+| api-mail | `e16b2ff` | #105 (closed) |
+| client-blazor | `618161e` | #59 (closed) |
+| dtos-mss | — | branche vide, pas de PR |
+| client-angular | — | code-only, géré manuellement par l'humain (TFS) |
+
+- Remote refs `feat/task-086-vcard-import-export-contacts` supprimés (api-mail + blazor) ; branches **locales conservées**.
+- CI `develop` : ✅ verte sur api-mail et client-blazor après merge.

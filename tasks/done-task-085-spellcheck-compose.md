@@ -76,3 +76,19 @@ Feature: Correcteur orthographique à la rédaction
 - **Sécurité / confidentialité** : correction strictement locale au navigateur — interdiction d'un service de correction cloud tiers susceptible d'exfiltrer des données de santé
 - **Hébergement HDS** : non — aucun traitement serveur
 - **AIPD / impact RGPD** : inchangé — aucune donnée transmise ni persistée
+
+## Develop log
+
+- Front-only (client-blazor + client-angular). Vérification orthographique native navigateur FR, 100% locale (aucun service tiers).
+- Blazor : `RadzenHtmlEditor` (corps) + `RadzenTextBox` (objet) `spellcheck="true" lang="fr"` + `data-testid`. Test bUnit rendu complet `NewMailComponent` (assert attributs). Suite 100/100.
+- Angular : éditeur TipTap `editorProps.attributes` (spellcheck/lang/data-testid) dans `html-editor.component.ts`. Spec dédié. Suite mss-lib 213/213. Lint 0 erreur.
+
+## PRs
+
+- **client-blazor** : https://github.com/codengine-technologies/HealthPlatform.Client/pull/58 — `awaiting-human-merge`.
+- **client-angular** : code-only — fichiers : `ui/html-editor/html-editor.component.ts`, `ui/html-editor/html-editor.component.spec.ts` (nouveau).
+- **dtos-mss** : branche auto-incluse vide, pas de PR.
+
+## Code Review Summary
+
+Verdict : **APPROVED**. Attributs natifs, correction strictement locale (aucun appel réseau), data-testid, tests de composant sur les deux fronts. Sonar skip (api-mail non touché).

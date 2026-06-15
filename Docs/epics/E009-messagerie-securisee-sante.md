@@ -4,7 +4,7 @@
 > **Modèle** : hand-crafted
 > **Version** : 1.34
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-06-14
+> **Dernière mise à jour** : 2026-06-15 (task-086)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -44,7 +44,7 @@
 - [Annexes](#annexes)
   - [A. Sources documentaires](#a-sources-documentaires)
   - [B. Table de correspondance REM Ségur ↔ Ref#2](#b-table-de-correspondance-rem-ségur--ref2)
-- [État de couverture](#état-de-couverture-2026-06-14)
+- [État de couverture](#état-de-couverture-2026-06-15)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -987,7 +987,7 @@ Les règles `RG-E009-084` à `RG-E009-089` sont propres à ENS Mon espace santé
 
 ---
 
-## État de couverture (2026-06-14)
+## État de couverture (2026-06-15)
 
 > Photographie de l'état actuel de l'EPIC, feature par feature. Le détail ingénierie de chaque task contributive (numéros de PR, NuGet, tests, audit grep) est dans [`E009-Changelogs.md`](./E009-Changelogs.md), annexe C.
 
@@ -1019,6 +1019,10 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
+- **v1.43 — Import/export du carnet d'adresses (vCard)** (task-086) : le praticien peut désormais **exporter** l'intégralité de son carnet d'adresses dans un fichier standard `.vcf` (pour le sauvegarder ou le transférer vers un autre logiciel) et **importer** un fichier `.vcf` reçu d'un confrère ou exporté d'une autre messagerie. À l'import, un compte-rendu indique le nombre de correspondants créés, mis à jour et ignorés. Le système évite tout doublon : un correspondant dont le RPPS ou l'adresse MSSanté existe déjà est mis à jour, jamais recréé. Un fichier illisible est signalé par un message clair.
+- **v1.42 — Correcteur orthographique français** (task-085) : le compositeur active la vérification orthographique du navigateur en français. Les mots mal orthographiés sont soulignés et le praticien accède aux suggestions par un clic droit. La correction reste **entièrement locale au poste** : aucun contenu du courrier n'est envoyé à un service externe, garantissant la confidentialité des données de santé.
+- **v1.41 — Rappel de pièce jointe oubliée** (task-084) : si le praticien rédige un courrier qui évoque une pièce jointe (« ci-joint », « pièce jointe », « PJ », « en annexe », « veuillez trouver »…) mais oublie d'attacher un fichier, un message lui demande de confirmer avant l'envoi (« Envoyer quand même ? »). Il peut confirmer ou revenir au courrier pour ajouter le document. La détection ignore les majuscules et les accents ; aucun avertissement si un fichier est déjà joint.
+- **v1.40 — Téléchargement groupé des pièces jointes** (task-083) : lorsqu'un courrier comporte au moins deux pièces jointes, le praticien dispose d'un bouton « Tout télécharger (ZIP) » qui récupère l'ensemble des documents (compte-rendu de biologie, imagerie, lettre de liaison…) dans une seule archive, au lieu de les enregistrer un par un. Les fichiers conservent leur nom d'origine, les doublons éventuels étant automatiquement numérotés. Geste unique pour archiver tout un courrier dans le dossier patient.
 - **v1.30 — Opt-in MSSanté simplifié** (task-054) : l'écran de première configuration de la messagerie ne demande plus que **l'adresse MSSanté**. Le numéro RPPS / ADELI n'est plus saisi : le serveur le récupère automatiquement depuis la session Pro Santé Connect du praticien. Une formalité de saisie en moins, aucun changement sur la suite du parcours.
 - **v1.24 — Recherche Angular alignée sur Blazor** (task-029) : la barre de recherche Angular passe d'un simple input texte à un dropdown riche avec 3 chips de statut (Non lus / Importants / Pièces jointes), 6 chips médicaux (Tous, Biologie, Consultation, Imagerie, Prescription, Hospitalisation — élagage volontaire 14 → 6), 4 chips de plage (Aujourd'hui / 7 j / 30 j / 3 mois) et un panel de recherche avancée (De / À-CC / Objet / Type de document — 14 types). Aucun changement backend ; la pertinence des résultats sera traitée dans une US dédiée.
 - **v1.23 — Vue conversation Angular (parité Blazor)** (task-027) : quand le médecin active « Mode conversation » dans ses paramètres MSS, la liste se replie sur les feuilles de fil et chaque ligne agrégeante affiche un compteur « N messages » + un bouton chevron pour déplier ses enfants en place.

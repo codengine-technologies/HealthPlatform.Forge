@@ -86,3 +86,19 @@ Feature: Rappel de pièce jointe oubliée
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : non — fonctionnalité 100 % front, le corps du courrier ne quitte pas le compositeur tant que l'envoi n'est pas confirmé
 - **AIPD / impact RGPD** : inchangé — aucun nouveau traitement de données
+
+## Develop log
+
+- Front-only (client-blazor + client-angular). Détection équivalente dans les 2 fronts (même liste FR), pas de backend, pas de DTO.
+- Blazor : `AttachmentReminderDetector` (pur) + hook `NewMailComponent.OnValidSubmit` (DialogService.Confirm) + 4 clés i18n. 13 tests, suite 112/112.
+- Angular : util `attachment-reminder.util.ts` (pur) + hook `mail-compose.send()` (dialogue inline réutilisant `showConfirmDialog`/resolver existant) + bloc template `data-testid=compose-missing-attachment-*`. 13 tests util, suite mss-lib 212/212. Lint 0 erreur.
+
+## PRs
+
+- **client-blazor** : https://github.com/codengine-technologies/HealthPlatform.Client/pull/57 — `awaiting-human-merge`.
+- **client-angular** : code-only — l'humain gère commit/push TFS. Fichiers : `core/utils/attachment-reminder.util.{ts,spec.ts}` (nouveaux), `mail-compose.component.{ts,html}`.
+- **dtos-mss** : branche auto-incluse vide, pas de PR.
+
+## Code Review Summary
+
+Verdict : **APPROVED**. Détecteurs purs testés (casse/accents/HTML/token PJ), réutilisation des mécanismes de dialogue existants des deux fronts, aucune chaîne en dur (Blazor Localizer ; Angular FR convention MSS), aucun flux d'envoi altéré sur confirmation. Sonar skip (api-mail non touché).
