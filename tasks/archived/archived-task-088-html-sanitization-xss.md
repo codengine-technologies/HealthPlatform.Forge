@@ -97,3 +97,49 @@ Feature: Assainissement HTML des courriers
 - **Sécurité / confidentialité** : objectif central — prévenir l'exécution de code (XSS) susceptible d'exfiltrer des données de santé ; PGSSI-S § cryptographie/intégrité
 - **Hébergement HDS** : oui — environnement existant
 - **AIPD / impact RGPD** : amélioration du niveau de sécurité — noter la mesure de réduction de risque dans l'AIPD
+
+## Branches
+- `api-mail` (pushed) : feat/task-088-html-sanitization-xss
+- `client-blazor` (pushed) : feat/task-088-html-sanitization-xss
+- `dtos-mss` (pushed, auto-included) : feat/task-088-html-sanitization-xss
+- `client-angular` (code-only) : forge writes on `feature/nova-rewriting-mss` — humain gère git/PR TFS
+
+## Develop log
+- Repos touched : api-mail, client-blazor, client-angular (code-only). dtos-mss : **no contract change** (MailContentDto.BodyHtml existait déjà) → branche vide, pas de PR.
+- DTOs published : none (pas de changement de contrat).
+- Backend (api-mail) : `IHtmlBodySanitizer`/`HtmlBodySanitizer` — assainisseur allowlist bâti sur **AngleSharp 1.5.0** (déjà dépendance du repo ; HtmlSanitizer/Ganss écarté car il épingle AngleSharp [0.17.1] incompatible + advisory NU1902). Appliqué **au stockage** (`EmailBuildingService.BuildMailDtoAsync`) et **à l'exposition** (`ImapService.GetEmailContentAsync`, couvre lignes DB legacy + fetch frais). Retire `<script>`, attributs `on*`, `javascript:`/`vbscript:`/`data:` exécutables (autorise `data:image/*` sur `<img>`), `<object>/<embed>/<iframe>/...`, CSS `expression`/`behavior`/`@import`/`-moz-binding` ; préserve titres/listes/tableaux/liens http(s)/images. CDA non touché (chemin séparé).
+- Blazor : `MailReadOnlyView` — corps rendu dans l'iframe sandboxée (`loadHtmlInShadowDom`) au lieu de `(MarkupString)` brut. `MailBodyComponent` utilisait déjà l'iframe (inchangé).
+- Angular (code-only, `feature/nova-rewriting-mss`) : `mail-read-only-view` — corps rendu via `mss-medical-html-frame` (iframe sandboxée déjà utilisée par `mail-body`) au lieu de `bypassSecurityTrustHtml`. Fichiers : `mail-read-only-view.component.{ts,html}` + `.spec.ts`.
+- Tests : api-mail `HtmlBodySanitizerTests` 12 (script/on*/javascript:/data:/css/iframe/unwrap/idempotence/formatage préservé) + `EmailBuildingServiceTests` (ctor) + `ImapService` tests (65) + intégration `MailHtmlSanitizationIntegrationTests` (courrier piégé stocké → exposition assainie) ; Blazor `MailReadOnlyViewTests` 2 ; Angular `mail-read-only-view.component.spec` 2, `nx test mss-lib` 223/223, lint 0 erreur.
+- Local build/test : ✓ api-mail, ✓ client-blazor, ✓ client-angular.
+
+## Simplify log
+- /forge-simplify : clean skip — code neuf aligné sur les patterns existants (réutilise AngleSharp, EmailBuildingService/ImapService chokepoints, medical-html-frame, loadHtmlInShadowDom). Pas de commit.
+
+## Sonar log
+- /sonar : skipped — infra SonarQube non provisionnée (serveur injoignable, SONAR_TOKEN absent). Best-effort. Code écrit selon dotnet-coding-rules.
+
+## Lint log
+- /lint-angular (scope tag:scope:mss, base origin/next) : 0 erreur sur le code task-088 ; 33 warnings pré-existants hors scope acceptés ; `nx build mss-lib` ✓, `nx test mss-lib` 223/223. Code-only (pas de git).
+
+## PRs
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/107 — awaiting-human-merge
+- `client-blazor` : https://github.com/codengine-technologies/HealthPlatform.Client/pull/61 — awaiting-human-merge
+- `dtos-mss` : branche vide (aucun changement de contrat) — pas de PR
+- `client-angular` (code-only) : humain gère commit/push TFS + PR. Fichiers : `libs/mss/src/features/mail/components/mail-read-only-view/{*.ts,*.html,*.spec.ts}` (uncommitted sur `feature/nova-rewriting-mss`)
+
+## Code Review Summary
+- Verdict : **APPROVED** (0 blocking).
+- Build ✓ api-mail / client-blazor / client-angular(nx). Tests ✓ api-mail (sanitizer 12 + integration 1 + services 65), Blazor bUnit 2, Angular mss-lib 223/223, lint 0 erreur.
+- DOD : assainisseur backend (allowlist AngleSharp) ✓, vecteurs XSS retirés ✓, formatage légitime préservé ✓, Angular bypassSecurityTrustHtml retiré sur le corps ✓, Blazor plus de MarkupString brut ✓, CDA iframe non régressé ✓, tests par vecteur + intégration + composant ✓, ProblemDetails (GlobalExceptionHandler) ✓, aucun corps loggué ✓.
+
+## Merged
+- Merged : 2026-06-16 (human-tested, `/merge --i-tested`)
+- First attempt aborted on gate 5 (conflict with develop after task-087 merge) ; human re-synced the api-mail branch onto develop, then re-ran /merge.
+- Squash commits on `develop` :
+  - api-mail      : a8a0c08 (PR #107 closed)
+  - client-blazor : 42b06aa (PR #61 closed)
+- dtos-mss : empty branch (no contract change) — no PR, remote branch deleted.
+- client-angular (code-only) : managed manually by the human (TFS)
+- develop CI : ✓ green on api-mail, client-blazor
+- Remote feature branches deleted ; local branches kept.

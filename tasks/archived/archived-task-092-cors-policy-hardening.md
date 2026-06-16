@@ -80,3 +80,38 @@ Feature: Politique CORS restreinte
 - **Sécurité / confidentialité** : empêcher l'accès cross-origin non maîtrisé à une API exposant des données de santé
 - **Hébergement HDS** : oui — environnement existant
 - **AIPD / impact RGPD** : inchangé — mesure de durcissement
+
+## Branches
+- `api-mail` (pushed) : feat/task-092-cors-policy-hardening
+- `dtos-mss` (pushed, auto-included) : empty branch, no PR
+
+## Develop log
+- Repo : api-mail (dtos vide). CORS extrait dans `CorsPolicySetup.AddMssCors` ; **AllowAnyOrigin supprimé** ; whitelist `WithOrigins` configurable (`Cors:AllowedOrigins`) dev/prod ; prod sans config = refus total, dev = repli localhost. `UseCors(CorsPolicySetup.PolicyName)`.
+- Tests : `CorsPolicyResolveOriginsTests` 3 (api.tests) + `CorsPolicyIntegrationTests` 3 (TestServer : autorisée→ACAO, non déclarée→refus, jamais `*`).
+- Build/test : ✓ api-mail.
+
+## Simplify log
+- /forge-simplify : clean skip — extraction façon ResponseCompressionSetup.
+
+## Sonar log
+- /sonar : skipped — infra non provisionnée. La suppression de AllowAnyOrigin résout S5122 (vérifiable au prochain scan).
+
+## Lint log
+- /lint-angular : skipped — client-angular non touché.
+
+## PRs
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/110 — awaiting-human-merge
+- `dtos-mss` : branche vide — pas de PR
+
+## Code Review Summary
+- Verdict : **APPROVED** (0 blocking). Build ✓, tests ✓ (3 unit + 3 integration).
+- DOD : policy appliquée = WithOrigins (pas AllowAnyOrigin) ✓, reliquat permissif retiré (du code entier) ✓, origines configurables dev/prod ✓, test intégration autorisée/refusée ✓, non-régression (frontends en config) ✓, pas de donnée santé loggée ✓.
+
+## Merged
+- Merged : 2026-06-16 (human-tested, `/merge --i-tested`)
+- First attempt aborted on gate 5 (Program.cs conflict with develop after task-091 merge). Re-synced via `git merge origin/develop` : kept task-090 rate limiter + task-091 security headers, dropped the legacy `AddCorsPolicies` (AllowAnyOrigin, S5122), registered `AddMssCors`. Build ✓ 0 err, CORS tests ✓ 3/3 (only the 2 known-flaky tests failed full-suite — `MailExportServiceTests.BuildPdfWithMedicalDocumentHtmlBodyFallback` + `ImapConnectionService…CancellationShouldRespectToken`, pre-existing, not regressions). Pushed (merge commit 8755c21), then merged.
+- Squash commit on `develop` :
+  - api-mail : d935c75 (PR #110 closed)
+- dtos-mss : empty branch (no contract change) — no PR, remote branch deleted.
+- develop CI : ✓ green on api-mail
+- Remote feature branch deleted ; local branch kept.

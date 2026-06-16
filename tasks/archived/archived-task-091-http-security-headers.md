@@ -84,3 +84,38 @@ Feature: En-têtes de sécurité HTTP
 - **Sécurité / confidentialité** : durcissement des réponses HTTP (CSP comme seconde barrière anti-XSS, anti-clickjacking, anti-sniffing, transport strict HSTS)
 - **Hébergement HDS** : oui — environnement existant
 - **AIPD / impact RGPD** : amélioration du niveau de sécurité — à mentionner dans l'AIPD
+
+## Branches
+- `api-mail` (pushed) : feat/task-091-http-security-headers
+- `dtos-mss` (pushed, auto-included) : empty branch, no PR
+
+## Develop log
+- Repo : api-mail (dtos vide). `SecurityHeadersMiddleware` (Response.OnStarting, tête de pipeline) : CSP, X-Frame-Options SAMEORIGIN, X-Content-Type-Options nosniff, Referrer-Policy, HSTS (HTTPS only). `SecurityHeadersOptions` configurable (section SecurityHeaders, dev/prod). N'affecte pas les SPAs (CSP des réponses JSON).
+- Tests : `SecurityHeadersIntegrationTests` 3 (TestServer : présence/valeur des en-têtes ; HSTS https présent / http absent).
+- Build/test : ✓ api-mail.
+
+## Simplify log
+- /forge-simplify : clean skip — middleware minimal façon repo.
+
+## Sonar log
+- /sonar : skipped — infra non provisionnée.
+
+## Lint log
+- /lint-angular : skipped — client-angular non touché.
+
+## PRs
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/109 — awaiting-human-merge
+- `dtos-mss` : branche vide — pas de PR
+
+## Code Review Summary
+- Verdict : **APPROVED** (0 blocking). Build ✓, tests ✓ (3 integration).
+- DOD : middleware CSP/X-Frame-Options/nosniff/Referrer-Policy/HSTS ✓, CSP configurable dev/prod ✓, HSTS HTTPS-only ✓, test par en-tête ✓, non-régression SPAs (CSP réponses JSON sans impact) ✓, pas de donnée santé loggée ✓.
+
+## Merged
+- Merged : 2026-06-16 (human-tested, `/merge --i-tested`)
+- First attempt aborted on gate 5 (Program.cs/appsettings.json conflict with develop after task-090 merge). Re-synced via `git merge origin/develop` on the feature branch (kept both rate-limiter + security-headers middleware), build ✓ 0 err, feature tests ✓ (RateLimiting 2 + SecurityHeaders 3 = 5/5 ; the lone full-suite failure is the known-flaky `ImapConnectionServiceIntegrationTests.ConnectAsyncWithCancellationShouldRespectTokenAsync`, pre-existing, not a regression), pushed (merge commit e203f0f), then merged.
+- Squash commit on `develop` :
+  - api-mail : 214207f (PR #109 closed)
+- dtos-mss : empty branch (no contract change) — no PR, remote branch deleted.
+- develop CI : ✓ green on api-mail
+- Remote feature branch deleted ; local branch kept.

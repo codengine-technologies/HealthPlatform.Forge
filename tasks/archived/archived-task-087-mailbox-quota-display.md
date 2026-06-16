@@ -132,3 +132,82 @@ aucun quota par dossier.**
 - `client-blazor` (pushed) : feat/task-087-mailbox-quota-display
 - `dtos-mss` (pushed, auto-included) : feat/task-087-mailbox-quota-display
 - `client-angular` (code-only) : forge writes code on the branch currently checked out in `Client/Angular/` (`feature/nova-rewriting-mss` au moment du /start) — humain gère branche, commit, push, PR TFS
+
+## Develop log
+
+- Repos touched : dtos-mss, api-mail, client-blazor, client-angular (code-only)
+- DTOs published : HealthPlatform.Dtos.Mss 322.0.0 → **327.0.0** (api-mail) / 298.0.0 → 327.0.0 (client-blazor)
+- Interop published : no interop change
+- Commits :
+  - dtos-mss : 8bd0fd6 feat(dto): add MailboxQuotaDto
+  - api-mail : 1eb85fa chore(deps) bump, 164dae2 feat(account) GET account/quota, a8dca8a test(account)
+  - client-blazor : c06a10b chore(deps) bump, d794e98 feat(mss) quota footer, 5435376 test(mss)
+  - client-angular : **uncommitted (code-only)** on `feature/nova-rewriting-mss` — human commits/pushes to TFS
+- Backend : `IMailboxQuotaService` + `MailboxQuotaService` read IMAP QUOTA (RFC 2087) via `IImapClientWrapper.GetMailboxQuotaAsync` (STORAGE KiB → bytes) ; endpoint `GET api/v1/account/quota` returns `MailboxQuotaDto` ; unsupported QUOTA → `Available=false` (200), connection KO → `UnavailableException` (503 RFC 7807).
+- Blazor : `MailboxQuotaFooterComponent` (linear gauge, amber ≥80 %, red ≥90 %, "Quota non disponible") embedded at the foot of `FolderListComponent` ; Localizer keys `MailboxQuotaUsed` / `MailboxQuotaUnavailable` (en+fr) ; `data-testid="mailbox-quota*"`.
+- Angular (code-only, files modified — uncommitted on `feature/nova-rewriting-mss`) :
+  - `libs/mss/src/core/models/mailbox-quota.model.ts` (new)
+  - `libs/mss/src/core/services/mss-api.service.ts` (getMailboxQuota)
+  - `libs/mss/src/ui/mailbox-quota-widget/` (component ts/html/scss + spec, new)
+  - `libs/mss/src/features/mail/components/mail-folder-list/` (ts + html — footer embed)
+  - `libs/mss/src/ui/index.ts` (barrel export)
+  - NB : `apps/mss/src/environments/environment.ts` était déjà modifié (WIP humain) — non touché.
+- Local build / test : ✓ dtos-mss build ✓ api-mail build + (MailboxQuota unit 5, AccountController 8, quota integration 2) ✓ blazor build + footer bUnit 6 ✓ angular `nx build mss-lib` + `nx test mss-lib` quota spec 6
+- DOD self-check : backend endpoint ✓, IMAP QUOTA read + graceful degradation ✓, unit tests par comportement ✓, integration endpoint (dispo + non supporté) ✓, Blazor footer ✓, Angular footer ✓, ProblemDetails via GlobalExceptionHandler ✓, pas de donnée santé loggée (métriques % seulement) ✓
+- Next step : /forge-simplify task-087
+
+## Simplify log
+
+- /forge-simplify : clean skip — code freshly written to existing patterns
+  (reuse honored: extended AccountController, IImapClientWrapper, MssApiService,
+  Localizer ; mirrored SyncProgressWidget). No material reuse/simplification/
+  efficiency/altitude win without behavioural risk. No commit.
+- Next step : /sonar task-087 (api-mail touched)
+
+## Sonar log
+
+- /sonar : skipped — SonarQube infra non provisionnée dans cet environnement
+  (serveur http://localhost:9000 injoignable, SONAR_TOKEN absent). Best-effort :
+  acceptation des findings restants, hand-off. Nouveau code backend écrit selon
+  `.github/instructions/dotnet-coding-rules.instructions.md` (anti-dette Sonar).
+- Next step : /lint-angular task-087 (client-angular touched)
+
+## Lint log
+
+- /lint-angular (Mode A, scope tag:scope:mss, base origin/next) :
+  - Baseline : 2 errors (prettier/prettier on new mss-api.service.ts +
+    mail-folder-list.component.ts) + 33 warnings.
+  - Iteration 1 (`--fix`) : 2 errors auto-fixed → **0 errors**.
+  - 33 warnings remaining = pre-existing (max-lines / jsdoc/require-example on
+    existing large files, none in new task-087 code) → best-effort accepted.
+  - Validation : `nx build mss-lib` ✓, `nx test mss-lib` ✓ 221/221.
+  - Code-only : no git op (TFS remote offline ; local origin/next used as base).
+- Next step : /review task-087
+
+## PRs
+- `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/24 — label awaiting-human-merge
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/106 — label awaiting-human-merge
+- `client-blazor` : https://github.com/codengine-technologies/HealthPlatform.Client/pull/60 — label awaiting-human-merge
+- `client-angular` (code-only) : humain gère commit/push TFS + ouverture PR. Fichiers modifiés/ajoutés sur `feature/nova-rewriting-mss` :
+  - `libs/mss/src/core/models/mailbox-quota.model.ts` (new)
+  - `libs/mss/src/core/services/mss-api.service.ts` (getMailboxQuota)
+  - `libs/mss/src/ui/mailbox-quota-widget/` (component ts/html/scss + spec, new)
+  - `libs/mss/src/features/mail/components/mail-folder-list/` (ts + html)
+  - `libs/mss/src/ui/index.ts` (barrel)
+
+## Code Review Summary
+- Verdict : **APPROVED** (0 blocking).
+- Build : ✓ dtos-mss, ✓ api-mail, ✓ client-blazor, ✓ client-angular (nx mss-lib).
+- Tests : ✓ api-mail (quota service 5, controller +2, integration 2), ✓ blazor bUnit 6, ✓ angular mss-lib 221/221.
+- DOD : endpoint ✓, IMAP QUOTA + dégradation propre ✓, tests par comportement ✓, integration endpoint (dispo+non supporté) ✓, footer Blazor ✓, footer Angular ✓, ProblemDetails via GlobalExceptionHandler ✓, pas de donnée santé loggée ✓.
+- Notes : réutilisation maximale (AccountController, IImapClientWrapper, HttpRequestService, Localizer, patron SyncProgressWidget) ; splitter Blazor passé en flex:1 pour le footer ; lint Angular 0 error (warnings pré-existants acceptés, fix hors-scope reverté).
+
+## Merged
+- Merged : 2026-06-16 (human-tested, `/merge --i-tested`)
+- Squash commits on `develop` :
+  - dtos-mss      : a1123f5 (PR #24 closed)
+  - api-mail      : 3a490ae (PR #106 closed)
+  - client-blazor : 0e7ea2d (PR #60 closed)
+- client-angular (code-only) : managed manually by the human (TFS)
+- develop CI : ✓ green on dtos-mss, api-mail, client-blazor
+- Remote feature branches deleted ; local branches kept.

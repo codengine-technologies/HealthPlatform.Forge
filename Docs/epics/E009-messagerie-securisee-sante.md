@@ -2,9 +2,9 @@
 
 > **Statut** : En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.34
+> **Version** : 1.40
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-06-15 (task-086)
+> **Dernière mise à jour** : 2026-06-16 (task-092)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -44,7 +44,7 @@
 - [Annexes](#annexes)
   - [A. Sources documentaires](#a-sources-documentaires)
   - [B. Table de correspondance REM Ségur ↔ Ref#2](#b-table-de-correspondance-rem-ségur--ref2)
-- [État de couverture](#état-de-couverture-2026-06-15)
+- [État de couverture](#état-de-couverture-2026-06-16)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -987,13 +987,13 @@ Les règles `RG-E009-084` à `RG-E009-089` sont propres à ENS Mon espace santé
 
 ---
 
-## État de couverture (2026-06-15)
+## État de couverture (2026-06-16)
 
 > Photographie de l'état actuel de l'EPIC, feature par feature. Le détail ingénierie de chaque task contributive (numéros de PR, NuGet, tests, audit grep) est dans [`E009-Changelogs.md`](./E009-Changelogs.md), annexe C.
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---------|--------|------------|---------------------|
-| E009-F001 | 🟢 Implémenté | 95% — dossiers IMAP CRUD complets, opérations en masse (déplacer/lu/marquer), mono-boîte (multi-boîte via F010) | — |
+| E009-F001 | 🟢 Implémenté | 95% — dossiers IMAP CRUD complets, opérations en masse (déplacer/lu/marquer), mono-boîte (multi-boîte via F010), jauge d'occupation de la boîte | task-087 |
 | E009-F002 | 🟢 Implémenté | 100% — traitement CDA et IHE_XDM complet, paire CDA/PDF fusionnée, détection doublons et versions normative INT.18 | task-010, task-013, task-034 |
 | E009-F003 | 🟢 Implémenté | 100% — tags urgence, tagging IA, détection biologie anormale, acquittement médico-légal | task-005, task-028 |
 | E009-F004 | 🟢 Implémenté | 100% — Vue temporelle patient, Timeline biologie horizontale, Synthèse clinique livrées sur les deux frontends ; widget Patient sur le dashboard | task-035 |
@@ -1019,6 +1019,7 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
+- **v1.44 — Affichage du quota de la boîte MSSanté** (task-087) : le praticien voit en pied du volet des dossiers une jauge d'occupation de sa boîte (`Utilisé X Go / Y Go · Z %`). La barre passe en **ambre dès 80 %** de remplissage et en **rouge dès 90 %**, pour anticiper une boîte pleine qui bloquerait la réception de nouveaux courriers de santé. Si l'opérateur MSSanté n'annonce pas de quota, le pied de volet indique simplement « Quota non disponible », sans erreur bloquante. La valeur est rafraîchie au chargement de la messagerie.
 - **v1.43 — Import/export du carnet d'adresses (vCard)** (task-086) : le praticien peut désormais **exporter** l'intégralité de son carnet d'adresses dans un fichier standard `.vcf` (pour le sauvegarder ou le transférer vers un autre logiciel) et **importer** un fichier `.vcf` reçu d'un confrère ou exporté d'une autre messagerie. À l'import, un compte-rendu indique le nombre de correspondants créés, mis à jour et ignorés. Le système évite tout doublon : un correspondant dont le RPPS ou l'adresse MSSanté existe déjà est mis à jour, jamais recréé. Un fichier illisible est signalé par un message clair.
 - **v1.42 — Correcteur orthographique français** (task-085) : le compositeur active la vérification orthographique du navigateur en français. Les mots mal orthographiés sont soulignés et le praticien accède aux suggestions par un clic droit. La correction reste **entièrement locale au poste** : aucun contenu du courrier n'est envoyé à un service externe, garantissant la confidentialité des données de santé.
 - **v1.41 — Rappel de pièce jointe oubliée** (task-084) : si le praticien rédige un courrier qui évoque une pièce jointe (« ci-joint », « pièce jointe », « PJ », « en annexe », « veuillez trouver »…) mais oublie d'attacher un fichier, un message lui demande de confirmer avant l'envoi (« Envoyer quand même ? »). Il peut confirmer ou revenir au courrier pour ajouter le document. La détection ignore les majuscules et les accents ; aucun avertissement si un fichier est déjà joint.
@@ -1045,6 +1046,11 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Sécurité — défense en profondeur
 
+- **v1.49 — Politique CORS restreinte** (task-092) : l'API n'autorise plus que les origines explicitement déclarées (frontends officiels) à l'appeler depuis un autre domaine ; aucune ouverture générale n'est possible, en particulier en production. La liste des origines autorisées est configurable par environnement. Une origine non déclarée se voit refuser l'accès cross-origin. Les frontends officiels continuent de fonctionner normalement.
+- **v1.48 — En-têtes de sécurité HTTP** (task-091) : les réponses de l'API portent désormais les en-têtes de sécurité standards (politique de sécurité du contenu / CSP, anti-encadrement, anti-sniffing, politique de référent, et transport strict HTTPS / HSTS). Ces mesures renforcent la protection contre l'exécution de code malveillant (deuxième barrière complétant l'assainissement anti-XSS), contre l'encadrement abusif des pages (clickjacking) et garantissent un transport chiffré. Les frontends officiels ne sont pas affectés ; les seuils et la politique sont ajustables par environnement.
+- **v1.47 — Limitation de débit des requêtes** (task-090) : l'API de messagerie limite désormais le nombre de requêtes qu'un même professionnel (ou une même origine) peut envoyer dans un court laps de temps. En cas d'usage anormal (rafale, tentative d'énumération ou de force brute), les requêtes excédentaires sont temporairement refusées avec une indication du délai avant nouvelle tentative, sans pénaliser les autres utilisateurs. L'usage normal de la messagerie n'est jamais affecté. Les seuils sont ajustables par environnement.
+- **v1.46 — Blocage du contenu distant des courriers** (task-089) : à l'ouverture d'un courrier, les images et ressources hébergées sur des serveurs externes ne sont **plus chargées automatiquement**. Une bannière discrète informe le praticien et propose « Afficher les images » s'il souhaite les charger — pour ce courrier seulement, sans mémorisation. Les images embarquées dans le courrier (pièces jointes) restent affichées normalement. Cette mesure empêche les « pixels traceurs » de confirmer la lecture d'un courrier de santé à un tiers et protège l'adresse IP / le poste du praticien.
+- **v1.45 — Protection anti-XSS des courriers** (task-088) : le corps HTML des courriers reçus est désormais **assaini côté serveur** avant d'être affiché. Les contenus actifs piégés (scripts, gestionnaires d'évènements, liens `javascript:`, cadres et objets non maîtrisés) sont neutralisés, tandis que la mise en forme légitime (titres, listes, tableaux, liens, images) est conservée. Les deux interfaces (Blazor et Angular) affichent en outre le corps dans un cadre isolé (iframe sandboxée), ajoutant une seconde barrière. Un courrier de santé piégé ne peut plus exécuter de code dans le poste du praticien. Le rendu des documents CDA n'est pas affecté.
 - **v1.29 — Prérequis d'enforcement PSC/KC livrés** (task-049 + task-050) : le proxy Keycloak provisionne désormais les identifiants PSC (`mssSub`, `mssRpps`) dans le profil utilisateur lors de l'opt-in MSSanté, et les Protocol Mappers du realm projettent ces deux attributs en claims du jeton d'accès. La barrière de cross-check côté backend (task-048) peut donc s'appliquer effectivement : un praticien qui présente un jeton Pro Santé Connect d'un autre praticien voit sa requête refusée par 403 avant tout accès à la boîte aux lettres MSSanté. Le suivi opérationnel se fait dans Seq (EventId 3722 — KC token incomplete — pour mesurer la proportion d'utilisateurs pas encore opt-in après ré-authentification ; cible < 5 % du trafic online).
 - **v1.28 — Cross-check d'identité PSC ↔ Keycloak** (task-048, phase 1 observation) : nouvelle barrière côté backend qui refusera (en phase 2 enforcement) toute requête où l'identité du token Pro Santé Connect ne correspond pas à l'identité du jeton Keycloak. Réponse à un incident de production où la boîte aux lettres d'un autre praticien était affichée après un changement de carte CPS sur le même navigateur. La phase 1 mesure la prévalence du problème en prod sans bloquer les utilisateurs ; l'activation de l'enforcement attend l'opt-in des claims Keycloak côté backend d'authentification (task-049) et la projection des attributs en claims du JWT par les Protocol Mappers Keycloak (task-050).
 - **v1.19 — Cloisonnement par utilisateur** (task-023) : contacts, signatures, modèles, audit, actions en attente accessibles uniquement à leur propriétaire.

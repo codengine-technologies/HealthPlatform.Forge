@@ -87,3 +87,37 @@ Feature: Limitation de débit des requêtes API
 - **Sécurité / confidentialité** : réduction de la surface d'abus (DoS applicatif, énumération)
 - **Hébergement HDS** : oui — environnement existant
 - **AIPD / impact RGPD** : inchangé — aucune donnée personnelle nouvelle traitée (attention à ne pas logguer d'IP au-delà du nécessaire)
+
+## Branches
+- `api-mail` (pushed) : feat/task-090-api-rate-limiting
+- `dtos-mss` (pushed, auto-included) : empty branch, no PR
+
+## Develop log
+- Repo : api-mail (dtos vide). Middleware `AddRateLimiter`/`UseRateLimiter` (après auth), partition par identité PS (repli IP), 429 ProblemDetails + Retry-After, seuils configurables (`RateLimiting`), policy "sensitive" dispo, no-op si désactivé. `RateLimitingOptions` + `RateLimitingSetup` (extraits, testés à l'identique de la prod).
+- Tests : `RateLimitingPartitionKeyTests` 4 (api.tests), `RateLimitingIntegrationTests` 2 (TestServer : 200 / 429+Retry-After+problem+json).
+- Build/test : ✓ api-mail.
+
+## Simplify log
+- /forge-simplify : clean skip — config extraite façon `ResponseCompressionSetup`, rien à simplifier.
+
+## Sonar log
+- /sonar : skipped — infra SonarQube non provisionnée. Code selon dotnet-coding-rules.
+
+## Lint log
+- /lint-angular : skipped — client-angular non touché.
+
+## PRs
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/108 — awaiting-human-merge
+- `dtos-mss` : branche vide — pas de PR
+
+## Code Review Summary
+- Verdict : **APPROVED** (0 blocking). Build ✓, tests ✓ (4 unit + 2 integration).
+- DOD : AddRateLimiter partitionné PS/IP ✓, seuils configurables ✓, 429 ProblemDetails + Retry-After ✓, policy stricte sensitive ✓, tests comportements + intégration ✓, pas de donnée santé loggée ✓.
+
+## Merged
+- Merged : 2026-06-16 (human-tested, `/merge --i-tested`)
+- Squash commit on `develop` :
+  - api-mail : 4a8ce8a (PR #108 closed)
+- dtos-mss : empty branch (no contract change) — no PR, remote branch deleted.
+- develop CI : ✓ green on api-mail
+- Remote feature branch deleted ; local branch kept.
