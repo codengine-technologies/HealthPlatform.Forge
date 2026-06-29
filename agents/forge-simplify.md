@@ -50,7 +50,7 @@ The simplify pass is **best-effort**, like `/sonar` Phase 2 and
 ## Autonomous cycle position
 
 ```
-/develop {task-id}  →  /forge-simplify {task-id}  →  /sonar {task-id}  →  /lint-angular {task-id}  →  /review {task-id}  →  /tech-writer
+/develop {task-id}  →  /forge-simplify {task-id}  →  /sonar {task-id}  →  /lint-angular {task-id}  →  /lint-mobile {task-id}  →  /review {task-id}  →  /tech-writer
                        ↑
                        you are here
 ```
@@ -58,19 +58,20 @@ The simplify pass is **best-effort**, like `/sonar` Phase 2 and
 `/develop` hands off here unconditionally. `/forge-simplify` then routes to the
 next step exactly like `/develop` used to (see Step 4 — hand-off).
 
-`/sonar` (api-mail) and `/lint-angular` (angular) run **after** this step on
-purpose : they re-scan and re-validate whatever `/simplify` touched, catching
-any Sonar smell or ESLint error a cleanup might have introduced before it
-reaches the PR.
+`/sonar` (api-mail), `/lint-angular` (angular) and `/lint-mobile` (mobile) run
+**after** this step on purpose : they re-scan and re-validate whatever
+`/simplify` touched, catching any Sonar smell or ESLint error a cleanup might
+have introduced before it reaches the PR.
 
 ## Repo scope
 
 `/simplify` is cross-repo (it works on any diff), so unlike `/sonar`
-(api-mail only) and `/lint-angular` (angular only), `/forge-simplify`
-considers **every touched repo** — but with three tiers :
+(api-mail only), `/lint-angular` (angular only) and `/lint-mobile`
+(mobile only), `/forge-simplify` considers **every touched repo** — but with
+three tiers :
 
 - **Simplify + validate + commit + push** (pushable code repos) :
-  `api-mail`, `client-blazor`, `sdk`, `host`.
+  `api-mail`, `client-blazor`, `client-mobile`, `sdk`, `host`.
 - **Simplify + validate, NEVER git** (code-only) : `client-angular`
   — run the built-in `/simplify` on the working-tree diff, re-run
   `npm run build` + `npm test`, leave the edits uncommitted. The human owns
@@ -111,7 +112,7 @@ touched** by the task (it has a diff vs the merge-base with `develop`, or, for
 ### Step 1 — Determine the touched, eligible repos
 
 For each repo in the **simplify + validate + commit** tier (`api-mail`,
-`client-blazor`, `sdk`, `host`) and the **code-only** tier
+`client-blazor`, `client-mobile`, `sdk`, `host`) and the **code-only** tier
 (`client-angular`) :
 
 ```bash
@@ -152,7 +153,8 @@ For each touched, eligible repo, **one pass** :
 
 For each repo where `/simplify` applied edits :
 
-**Pushable code repos** (`api-mail`, `client-blazor`, `sdk`, `host`) :
+**Pushable code repos** (`api-mail`, `client-blazor`, `client-mobile`, `sdk`,
+`host`) :
 ```bash
 cd {repo-path}
 {build-cmd}    # from CLAUDE.md repo table (Release where applicable)
@@ -208,15 +210,26 @@ npm test         # MUST pass
 
 3. **Route to the next step** (same routing `/develop` used to apply) :
 
-   | api-mail touched ? | client-angular touched ? | Next step |
-   |---|---|---|
-   | yes | *   | `/sonar {task-id}`          |
-   | no  | yes | `/lint-angular {task-id}`   |
-   | no  | no  | `/review {task-id}`         |
+   The cleanup pipeline is a **fixed order**, each step self-skipping when its
+   target repo wasn't touched and unconditionally handing off to the next :
+
+   ```
+   /sonar (api-mail)  →  /lint-angular (client-angular)  →  /lint-mobile (client-mobile)  →  /review
+   ```
+
+   Route to the **first** step whose repo was touched :
+
+   | api-mail | client-angular | client-mobile | Next step |
+   |---|---|---|---|
+   | yes | *   | *   | `/sonar {task-id}`        |
+   | no  | yes | *   | `/lint-angular {task-id}` |
+   | no  | no  | yes | `/lint-mobile {task-id}`  |
+   | no  | no  | no  | `/review {task-id}`       |
 
    "touched" = the same definition as Step 1 (diff vs `develop`, or
-   uncommitted angular work). `/sonar` chains onward to `/lint-angular` /
-   `/review` ; `/lint-angular` chains to `/review`.
+   uncommitted angular work). `/sonar` chains onward to `/lint-angular`,
+   `/lint-angular` to `/lint-mobile`, `/lint-mobile` to `/review` — each
+   self-skips when its repo is untouched.
 
 ---
 

@@ -75,12 +75,13 @@ Read `agents/lint-angular.md` and execute the full playbook :
 5. Stop when : zero errors, no progression, or 5 iterations done
 6. Hand-off :
    - Mode A : append `## Lint log` to `tasks/wip-{task-id}.md`, invoke
-     `/review {task-id}` (autonomous, no human prompt).
+     `/lint-mobile {task-id}` (autonomous, no human prompt — it self-skips
+     to `/review` when `client-mobile` wasn't touched).
    - Mode B : print the final report and exit.
 
 Best-effort acceptance : remaining lint errors after 5 iterations are
 **not** a chain blocker. They are logged in `## Lint log` and the cycle
-proceeds to `/review`.
+proceeds to `/lint-mobile` (which self-skips to `/review`).
 
 The human merges the PR (HAG rule 10) ; for `client-angular` specifically
 the human also owns commit/push/PR-opening on TFS.

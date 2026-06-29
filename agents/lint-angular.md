@@ -54,7 +54,7 @@ long-term debt reduction at the human level. The forge's job is to not
 ## Autonomous cycle position
 
 ```
-/develop {task-id}   →   /forge-simplify {task-id}   →   /sonar {task-id}   →   /lint-angular {task-id}   →   /review {task-id}   →   /tech-writer
+/develop {task-id}   →   /forge-simplify {task-id}   →   /sonar {task-id}   →   /lint-angular {task-id}   →   /lint-mobile {task-id}   →   /review {task-id}   →   /tech-writer
                                                                                   ↑
                                                                                   you are here
 ```
@@ -89,7 +89,8 @@ the scope and skip rules differ.
   --parallel=3` (matches the Azure pipeline byte-for-byte). Cheaper than
   full workspace lint and aligned with what the task touched.
 - Iterations : best-effort 5 max, accept residual.
-- Hand-off : `/review {task-id}` (same task — NOT a separate lint PR).
+- Hand-off : `/lint-mobile {task-id}` (which self-skips to `/review` — same
+  task, NOT a separate lint PR).
 - Skip cleanly when the task didn't touch `client-angular` (Repos field
   + working tree check, see above).
 
@@ -326,7 +327,8 @@ Angular Sonar analysis stays a CI-only concern for now).
      is empty (no uncommitted changes), skip cleanly :
      - Append `## Lint log\n- skipped — no angular change\n` to the task
        file.
-     - Invoke `/review {task-id}` and exit.
+     - Invoke `/lint-mobile {task-id}` and exit (it self-skips to `/review`
+       if `client-mobile` wasn't touched either).
    - Otherwise continue with Step 1.
 
 5. **Mode A — snapshot the working tree state** (for the final report) :
@@ -383,7 +385,7 @@ Notes :
 - If `nx affected ... --projects=tag:scope:mss` yields an empty
   intersection (the task didn't touch any MSS project), the baseline
   is zero — log "lint clean (no MSS project affected) → no work" and
-  enchain `/review`.
+  enchain `/lint-mobile` (which self-skips to `/review`).
 
 Parse `/tmp/lint-baseline.json` (ESLint JSON array, one entry per file)
 to count :
@@ -393,7 +395,7 @@ to count :
 
 If `baselineErrors == 0` AND `baselineWarnings == 0` :
 - Mode A : log "lint clean → no work" in `## Lint log`, hand off to
-  `/review`.
+  `/lint-mobile` (which self-skips to `/review`).
 - Mode B : print "Lint clean, nothing to do" and exit.
 
 ### Step 2 — Iteration 1 : ESLint auto-fix
@@ -485,8 +487,8 @@ After auto-fix :
 
 4. **Early-stop** if `errorsAfterFix == 0`. Warnings can remain (they
    don't block CI lint gates by convention — the pipeline's lint step
-   only fails on `errorCount > 0`). Hand off to `/review` (Mode A) or
-   print the final report (Mode B).
+   only fails on `errorCount > 0`). Hand off to `/lint-mobile` (Mode A —
+   which self-skips to `/review`) or print the final report (Mode B).
 
 ### Step 3 — Iterations 2..5 : manual fixes by rule
 
@@ -640,7 +642,9 @@ accepted, handed off to /review".
 3. **Do NOT rename the task.** It stays in `wip-*`. `/review` is
    responsible for the `wip → review → done` transitions.
 
-4. Invoke `/review {task-id}` to continue the chain.
+4. Invoke `/lint-mobile {task-id}` to continue the chain. `/lint-mobile`
+   self-skips cleanly when `client-mobile` wasn't touched and then hands off
+   to `/review` itself — so the chain reaches `/review` either way.
 
 **Mode B — stand-alone** :
 

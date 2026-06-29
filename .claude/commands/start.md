@@ -23,7 +23,7 @@ philosophy was inverted on 2026-04-27 — see CLAUDE.md "Forge philosophy".
    Iterate **only over the forge-automated repos** in CLAUDE.md and verify
    each is on its `develop` branch. The set is :
 
-   - `api-mail`, `client-blazor`, `dtos-mss`, `sdk`, `host`, `interop-cda`
+   - `api-mail`, `client-blazor`, `client-mobile`, `dtos-mss`, `sdk`, `host`, `interop-cda`
 
    **Explicitly skipped** (do NOT check their branch) :
 
@@ -139,9 +139,10 @@ philosophy was inverted on 2026-04-27 — see CLAUDE.md "Forge philosophy".
    Invoke `/develop {task-id}` immediately. The task stays in `wip-*` and
    `/develop` takes over the implementation, then chains into
    `/forge-simplify` (the `/simplify` quality pass), then `/sonar`
-   (api-mail), then `/lint-angular` (client-angular), then `/review`,
-   then `/tech-writer`. `/forge-simplify`, `/sonar` and `/lint-angular`
-   skip cleanly when there's nothing to do. The full autonomous loop runs
+   (api-mail), then `/lint-angular` (client-angular), then `/lint-mobile`
+   (client-mobile), then `/review`, then `/tech-writer`. `/forge-simplify`,
+   `/sonar`, `/lint-angular` and `/lint-mobile` skip cleanly when there's
+   nothing to do. The full autonomous loop runs
    end-to-end without human prompt — the only mandatory human action is
    **merging the resulting PR** (HAG, CLAUDE.md rule 10).
 
@@ -153,8 +154,8 @@ philosophy was inverted on 2026-04-27 — see CLAUDE.md "Forge philosophy".
     - {repo} (pushed / local-only)
     - ...
 
-    Chaining into /develop now → /forge-simplify → /sonar → /lint-angular → /review → /tech-writer.
-    (/forge-simplify, /sonar et /lint-angular skip clean si leur repo n'a pas été touché.)
+    Chaining into /develop now → /forge-simplify → /sonar → /lint-angular → /lint-mobile → /review → /tech-writer.
+    (/forge-simplify, /sonar, /lint-angular et /lint-mobile skip clean si leur repo n'a pas été touché.)
     The PR(s) will land with label awaiting-human-merge — you merge
     when ready (HAG rule 10).
     ```

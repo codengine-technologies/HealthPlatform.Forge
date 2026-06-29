@@ -9,7 +9,7 @@ philosophy is gone : implementation runs through `/develop`, Sonar through
 The human's only mandatory interaction is **merging the PR on `develop`**
 (HAG, CLAUDE.md rule 10).
 
-The forge cycle has **7 chained actions** :
+The forge cycle has **8 chained actions** :
 
 1. **PO** — help write user stories (`/po` produces `todo-*.md`)
 2. **Start** — create the branches (`/start`)
@@ -22,9 +22,12 @@ The forge cycle has **7 chained actions** :
 5. **Sonar** — best-effort SonarQube cleanup on `api-mail` (`/sonar`).
    Skipped cleanly when the task didn't touch `api-mail`.
 6. **Lint-Angular** — best-effort ESLint cleanup on `client-angular`
-   (`/lint-angular`). Skipped cleanly when the task didn't touch
+   (`/lint-angular`, code-only). Skipped cleanly when the task didn't touch
    `client-angular`.
-7. **Review** — validate, commit, sync develop, open PR, rename `done-*`,
+7. **Lint-Mobile** — best-effort ESLint cleanup on `client-mobile`
+   (`/lint-mobile`, full git automation). Skipped cleanly when the task
+   didn't touch `client-mobile`.
+8. **Review** — validate, commit, sync develop, open PR, rename `done-*`,
    chain into `/tech-writer` (`/review` → `/tech-writer`)
 
 The escape hatch is `/start {task-id} no-code` which stops after step 2
@@ -39,7 +42,7 @@ todo-*.md      PO wrote the US, awaiting branch creation
     ↓ /start {task-id}                                        (auto-chains into /develop unless `no-code`)
 wip-*.md       Branch created. /develop is implementing
                OR (no-code) the human is implementing in WindSurf.
-    ↓ /develop pushes, hands off to /forge-simplify, then /sonar, /lint-angular, /review
+    ↓ /develop pushes, hands off to /forge-simplify, then /sonar, /lint-angular, /lint-mobile, /review
               (in no-code mode the human runs /review when ready)
 review-*.md   /review picked up the task (briefly).
     ↓ /review validates, commits, opens PR, chains into /tech-writer
@@ -73,6 +76,14 @@ branch selection, commit, push to TFS, and PR opening. A task must list
 `client-angular` explicitly in `**Repos**:` to opt in — the paired-frontend
 safety net is disabled.
 
+**Full-automation frontend** : `client-mobile` (Ionic 8 + Angular 20 +
+Capacitor, `Client/Mobile/`). Unlike `client-angular`, its remote is GitHub
+and its branch is `develop`, so the orchestrator owns git here exactly like
+`api-mail` / `client-blazor` : `/start` branches + pushes, `/develop` commits
++ pushes, `/lint-mobile` cleans + commits + pushes, `/review` opens the PR via
+`gh`, `/merge` squash-merges. It consumes contracts via TS types (manually
+regenerated), not NuGet. Must be listed explicitly in `**Repos**:` to opt in.
+
 **Entirely excluded repos** : `devops`, `psc-proxy-server`, `psc-proxy-client`,
 `psc-proxy-dto`. The orchestrator never touches these — no code, no build,
 no git. They are "managed manually by the human".
@@ -86,10 +97,10 @@ At each invocation :
 ### 1. Pre-flight
 
 - Verify every **forge-automated repo** (`api-mail`, `client-blazor`,
-  `dtos-mss`, `sdk`, `host`, `interop-cda`) is on `develop`. Any of these on
-  a feature branch → halt with the offender list, do NOT switch branches.
-  The pre-flight **does not** check `client-angular` (code-only — humain
-  libre de sa branche) or the entirely-excluded repos.
+  `client-mobile`, `dtos-mss`, `sdk`, `host`, `interop-cda`) is on `develop`.
+  Any of these on a feature branch → halt with the offender list, do NOT
+  switch branches. The pre-flight **does not** check `client-angular`
+  (code-only — humain libre de sa branche) or the entirely-excluded repos.
 - Verify `tasks/wip-*.md` count : at most one (the autonomous chain
   serialises). If multiple `wip-*` coexist → halt with the offender list.
 
@@ -107,9 +118,11 @@ For each `tasks/todo-task-*.md` (sorted by task-id, lowest first) :
                                (skipped cleanly if api-mail not touched)
 5. /lint-angular {task-id}   — best-effort 5 iterations on client-angular, accept remaining
                                (skipped cleanly if client-angular not touched)
-6. /review {task-id}         — validates, commits, syncs develop, opens PR,
+6. /lint-mobile {task-id}    — best-effort 5 iterations on client-mobile, accept remaining
+                               (skipped cleanly if client-mobile not touched)
+7. /review {task-id}         — validates, commits, syncs develop, opens PR,
                                label awaiting-human-merge, rename done-*
-7. /tech-writer E{NNN}       — refresh docs/epics/E{NNN}-{slug}.md
+8. /tech-writer E{NNN}       — refresh docs/epics/E{NNN}-{slug}.md
                                (skipped if no **Epic**: declared)
 ```
 
@@ -141,9 +154,9 @@ expected once `todo-*` is drained.
 
 ## Absolute rules
 
-- **You write code** in `/develop`, `/forge-simplify`, `/sonar`, and
-  `/lint-angular`. You never write code in `/start`, `/review`,
-  `/tech-writer`, or here.
+- **You write code** in `/develop`, `/forge-simplify`, `/sonar`,
+  `/lint-angular`, and `/lint-mobile`. You never write code in `/start`,
+  `/review`, `/tech-writer`, or here.
 - **You never merge a PR yourself** — HAG (CLAUDE.md rule 10) is the
   single mandatory human gate.
 - **You never bypass `no-code`** — when the task was started with that

@@ -371,6 +371,13 @@ See tests/Features/Auth/Authentication.feature
 - No `back-`, `front-blazor-`, `front-angular-` prefixes — the task is
   **layer-agnostic** because it spans all layers by default
 
+**Mobile frontend** : `client-mobile` (Ionic/Angular mobile messaging client)
+is an **opt-in** frontend — list it in `**Repos**:` whenever the US impacts
+the mobile app. It is **not** auto-added by the paired-frontend safety net
+(disabled), so it must be explicit. Unlike `client-angular` (code-only, TFS),
+`client-mobile` is fully forge-automated (GitHub : the forge branches,
+commits, pushes, opens the PR, and runs its own `/lint-mobile` cleanup step).
+
 **When the default doesn't apply** (pure backend migration, pure Angular
 polish, etc.) : list only the impacted repos in `**Repos**:` and justify in
 the Objective. Add `**Single frontend**: true` if the US touches only one

@@ -7,8 +7,8 @@ You are the **merge convenience wrapper** of the forge. Given a task in
 PR, sync each repo back to `develop`, and archive the task.
 
 You are **never** invoked autonomously. The chain `/start → /develop →
-/forge-simplify → /sonar → /lint-angular → /review → /tech-writer` ends at
-PR-opening — `/merge` sits **after** the
+/forge-simplify → /sonar → /lint-angular → /lint-mobile → /review →
+/tech-writer` ends at PR-opening — `/merge` sits **after** the
 HAG (CLAUDE.md rule 10) and is the human's tool to clean up once they have
 manually validated the US end-to-end. The autonomous chain (`/forge`) does
 NOT call `/merge`.
@@ -82,9 +82,9 @@ and abort. Do NOT merge any PR (atomic — either every PR merges or none).
 
 Same three-mode taxonomy as the rest of the forge :
 
-- **Pushable** (`api-mail`, `client-blazor`, `dtos-mss`, `sdk`, `host`,
-  `interop-cda`) : full automation — merge PR, sync `develop`, delete
-  branches.
+- **Pushable** (`api-mail`, `client-blazor`, `client-mobile`, `dtos-mss`,
+  `sdk`, `host`, `interop-cda`) : full automation — merge PR, sync `develop`,
+  delete branches.
 - **Code-only** (`client-angular`) : **fully out of scope for `/merge`**.
   The human owns the entire Angular lifecycle (commit, push, PR, merge,
   branch sync — every git operation). `/merge` does **not** ask about

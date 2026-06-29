@@ -9,15 +9,16 @@ For each `tasks/todo-task-*.md` (lowest task-id first), run the full
 autonomous chain :
 
 ```
-/start {task-id}    → /develop {task-id}    → /forge-simplify {task-id}    → /sonar {task-id}    → /lint-angular {task-id}    → /review {task-id}    → /tech-writer E{NNN}
+/start {task-id}    → /develop {task-id}    → /forge-simplify {task-id}    → /sonar {task-id}    → /lint-angular {task-id}    → /lint-mobile {task-id}    → /review {task-id}    → /tech-writer E{NNN}
 ```
 
 `/forge-simplify` runs the `/simplify` quality pass (reuse / simplification /
 efficiency / altitude — quality only, no bug hunting) on the code `/develop`
 just produced, re-validates, and commits/pushes ; it skips cleanly when there
-is nothing to simplify. `/sonar` and `/lint-angular` skip cleanly when their
-target repo wasn't touched (no api-mail change → `/sonar` is a no-op ; no
-client-angular change → `/lint-angular` is a no-op). All three are best-effort
+is nothing to simplify. `/sonar`, `/lint-angular` and `/lint-mobile` skip
+cleanly when their target repo wasn't touched (no api-mail change → `/sonar`
+is a no-op ; no client-angular change → `/lint-angular` is a no-op ; no
+client-mobile change → `/lint-mobile` is a no-op). All are best-effort
 and hand off to the next step even if residual issues remain.
 
 Sequentially, not in parallel. Cross-task interference on shared repos
@@ -52,6 +53,7 @@ Task task-018 — feat(mail) ...
   /forge-simpl. : ✓ api-mail @bcd2345 (3 files simplified), client-blazor no change
   /sonar        : ✓ 3 iterations, 12 issues fixed, 4 remaining (best-effort)
   /lint-angular : ⤍ skipped — no angular change
+  /lint-mobile  : ⤍ skipped — no mobile change
   /review       : ✓ APPROVED, 3 PRs opened (#42, #43, #44, label awaiting-human-merge)
   /tech-w.      : ✓ docs/epics/E009-... updated
 

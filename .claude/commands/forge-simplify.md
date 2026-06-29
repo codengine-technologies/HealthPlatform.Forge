@@ -12,11 +12,11 @@ chain step. This is the forge-aware wrapper around the standalone built-in
 It sits in the autonomous chain **between `/develop` and `/sonar`** :
 
 ```
-/develop  →  /forge-simplify  →  /sonar  →  /lint-angular  →  /review  →  /tech-writer
+/develop  →  /forge-simplify  →  /sonar  →  /lint-angular  →  /lint-mobile  →  /review  →  /tech-writer
 ```
 
-`/sonar` and `/lint-angular` deliberately run after it so they re-scan /
-re-validate whatever the simplify pass touched.
+`/sonar`, `/lint-angular` and `/lint-mobile` deliberately run after it so they
+re-scan / re-validate whatever the simplify pass touched.
 
 Read `agents/forge-simplify.md` and execute the full playbook :
 
@@ -27,8 +27,9 @@ Read `agents/forge-simplify.md` and execute the full playbook :
 4. Re-validate (build + existing tests) ; commit + push pushable repos on
    GREEN, roll back on RED (quality pass must not change behaviour),
    leave `client-angular` uncommitted
-5. Append `## Simplify log` ; route to `/sonar` (if api-mail touched) →
-   `/lint-angular` (if angular touched) → `/review` otherwise
+5. Append `## Simplify log` ; route to the first touched step in the fixed
+   pipeline `/sonar` (api-mail) → `/lint-angular` (client-angular) →
+   `/lint-mobile` (client-mobile) → `/review` (each self-skips when untouched)
 
 ## Rules
 
@@ -36,9 +37,9 @@ Read `agents/forge-simplify.md` and execute the full playbook :
 - **Best-effort, non-blocking.** A repo that fails validation is rolled back
   and skipped ; the chain proceeds. Only tooling failures halt
   (`questions/{task-id}.md`).
-- **Scope** : `api-mail`, `client-blazor`, `sdk`, `host` (commit + push) ;
-  `client-angular` (code-only, never git). NEVER `dtos-mss` / `interop-cda`
-  (contract carriers) or `devops` / `psc-proxy-*` (excluded).
+- **Scope** : `api-mail`, `client-blazor`, `client-mobile`, `sdk`, `host`
+  (commit + push) ; `client-angular` (code-only, never git). NEVER `dtos-mss`
+  / `interop-cda` (contract carriers) or `devops` / `psc-proxy-*` (excluded).
 - **Reuse before create** — the reuse axis enforces the workspace rule.
 - Explicit staging only, conventional `refactor(module):` commits, no rebase.
 - HAG (rule 10) : never merges on `develop`.

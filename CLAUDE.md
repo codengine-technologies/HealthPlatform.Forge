@@ -35,6 +35,9 @@
 /lint-angular {NNN}                 (cleanup ESLint best-effort 5 itérations,
                                      client-angular uniquement — skip si non touché)
     ↓ (auto)
+/lint-mobile {NNN}                  (cleanup ESLint best-effort 5 itérations,
+                                     client-mobile uniquement — skip si non touché)
+    ↓ (auto)
 /review {NNN}                       (build + test + DOD + code review,
                                      commit/push/sync develop, ouvre la PR,
                                      label awaiting-human-merge,
@@ -77,21 +80,28 @@ l'humain implémente dans WindSurf, puis lance `/review {task-id}` lui-même
 | Cleanup Simplify | `/forge-simplify` | oui | Wrapper forge autour du built-in `/simplify` : passe qualité (reuse/simplif/efficacité/altitude) **quality-only** sur le code frais, par repo, re-valide (build + tests = filet anti-régression), commit/push pushables, `client-angular` code-only. Best-effort, non bloquant : rollback du repo si une régression apparaît. **Jamais** `dtos-mss`/`interop-cda` (porteurs de contrat). Skip clean si rien à simplifier. |
 | Cleanup Sonar | `/sonar` (api-mail) | oui | Best-effort 5 itérations, accepte les issues restantes. Skip clean si api-mail non touché. |
 | Cleanup Lint Angular | `/lint-angular` (client-angular) | oui | Best-effort 5 itérations (`lint:fix` + fix manuels), accepte les erreurs restantes. Code-only — ne touche jamais à git. Skip clean si client-angular non touché. |
+| Cleanup Lint Mobile | `/lint-mobile` (client-mobile) | oui | Best-effort 5 itérations (`ng lint --fix` + fix manuels), accepte les erreurs restantes. **Automation git complète** (remote GitHub) : commit/push des fixes. Skip clean si client-mobile non touché. |
 | Validation + PR | `/review` | non (lecture seule sur le code) | Plus de prompt humain — autonome |
 | Doc EPIC | `/tech-writer` | non (écrit dans `docs/epics/` uniquement) | Idempotent |
 | **Merge develop** | **humain** | — | **HAG, règle 10 — non négociable** |
 
-### Simplify + Sonar + Lint Angular — étapes standard du cycle
+### Simplify + Sonar + Lint Angular + Lint Mobile — étapes standard du cycle
 
-`/forge-simplify` (tous repos code), `/sonar` (api-mail) et `/lint-angular`
-(client-angular) ne sont pas des « exceptions d'automation » — ce sont **des
-étapes intégrées du cycle autonome**, insérées entre `/develop` et `/review`,
-dans cet ordre (`/forge-simplify` en premier, juste après `/develop`, pour que
-`/sonar` et `/lint-angular` re-scannent et re-valident derrière ce que la passe
-qualité a touché). Toutes trois sont best-effort : acceptation des findings
+`/forge-simplify` (tous repos code), `/sonar` (api-mail), `/lint-angular`
+(client-angular) et `/lint-mobile` (client-mobile) ne sont pas des
+« exceptions d'automation » — ce sont **des étapes intégrées du cycle
+autonome**, insérées entre `/develop` et `/review`, dans cet ordre
+(`/forge-simplify` en premier, juste après `/develop`, pour que `/sonar`,
+`/lint-angular` et `/lint-mobile` re-scannent et re-valident derrière ce que la
+passe qualité a touché). Toutes sont best-effort : acceptation des findings
 restants, hand-off à l'étape suivante quoi qu'il arrive (sauf erreur de
-tooling). Toutes trois skip cleanly quand leur repo cible n'a pas été touché
+tooling). Toutes skip cleanly quand leur repo cible n'a pas été touché
 par la task — la chaîne saute simplement à l'étape suivante.
+
+`/lint-mobile` est le pendant de `/lint-angular` pour `client-mobile` (app
+Ionic/Angular). Différence clé : `client-mobile` a un remote **GitHub** (pas
+TFS), donc `/lint-mobile` est en **automation git complète** — il commit et
+push ses fixes, contrairement à `/lint-angular` qui reste code-only.
 
 `/forge-simplify` est **quality-only** (reuse / simplification / efficacité /
 altitude) : il ne chasse jamais les bugs (c'est `/code-review`), les tests
@@ -129,7 +139,8 @@ a `**Repos**:` field (plural). A full-stack feature touches at minimum :
 - `client-blazor` (new frontend)
 - `client-angular` (legacy frontend)
 
-and possibly `dtos-mss` or others.
+and, when the mobile messaging client is impacted, `client-mobile`
+(Ionic/Angular mobile frontend), plus possibly `dtos-mss` or others.
 
 **`/start` creates the SAME branch name `feat/{task-id}-{slug}` on each listed
 repo** — one logical branch, multiple physical checkouts. The human implements
@@ -147,10 +158,10 @@ backend".
 
 **Pre-flight for `/start`** : the forge refuses to create a new working branch
 unless **every forge-automated repo is on `develop`**. The check covers
-`api-mail`, `client-blazor`, `dtos-mss`, `sdk`, `host`, `interop-cda` ; it
-**explicitly skips** `client-angular` (code-only mode — humain libre de sa
-branche), `devops`, `psc-proxy-server`, `psc-proxy-client`, `psc-proxy-dto`
-(entièrement hors automation). If any in-scope repo is on a feature branch
+`api-mail`, `client-blazor`, `client-mobile`, `dtos-mss`, `sdk`, `host`,
+`interop-cda` ; it **explicitly skips** `client-angular` (code-only mode —
+humain libre de sa branche), `devops`, `psc-proxy-server`,
+`psc-proxy-client`, `psc-proxy-dto` (entièrement hors automation). If any in-scope repo is on a feature branch
 (finished work not yet cleaned up, or in-flight manual work), `/start`
 aborts and lists the offenders. The human finishes, stashes, or checks out
 `develop` in the listed repos, then retries `/start`. The forge never
@@ -172,6 +183,7 @@ those repos — never at the workspace root.
 | `api-mail` | `Api/Mail` | .NET 10, xUnit | `dotnet build HealthPlatform.Api.Mail.sln` | `dotnet test HealthPlatform.Api.Mail.sln` |
 | `client-blazor` | `Client/Blazor` | Blazor WASM, .NET 10, xUnit | `dotnet build HealthPlatform.Client.sln` | `dotnet test HealthPlatform.Client.sln` |
 | `client-angular` | `Client/Angular` | Angular, Node | `npm ci && npm run build` | `npm test` |
+| `client-mobile` | `Client/Mobile` | Ionic 8 + Angular 20 + Capacitor, Node | `npm ci && npm run build` | `npm test -- --watch=false --browsers=ChromeHeadless` |
 | `dtos-mss` | `Dtos` | .NET 10 class lib (NuGet) | `dotnet build HealthPlatform.Dtos.Mss.csproj` | n/a |
 | `sdk` | `Sdk` | .NET 10 host SDK | `dotnet build HealthPlatform.Host.Sdk.csproj` | n/a |
 | `host` | `Host/Modules` | .NET 10 modules | `dotnet build` | n/a |
@@ -201,6 +213,53 @@ Concretely :
   code generation by the forge. The paired-frontend safety net is disabled
   (see below) — Angular is never auto-added.
 
+### Full-automation frontend : `client-mobile`
+
+`client-mobile` (`Client/Mobile`) is the **mobile messaging client** — an
+Ionic 8 + Angular 20 + Capacitor app (plain Angular CLI, **not** Nx). Unlike
+`client-angular`, its remote is **GitHub** (`gh pr` usable) and its
+integration branch is **`develop`**, so it is a **fully-automated, pushable
+repo** : the forge writes code **and owns git** (branch, commit, push, PR,
+merge) exactly like `api-mail` / `client-blazor`.
+
+Concretely :
+- **`/start`** : creates the branch `feat/{task-id}-{slug}` from `origin/develop`
+  and pushes it (pushable repo). Pre-flight **checks** that `client-mobile` is
+  on `develop`.
+- **`/develop`** : writes code on the feature branch, runs `npm ci && npm run
+  build` and `npm test -- --watch=false --browsers=ChromeHeadless`, commits and
+  pushes. Before coding each mobile screen it invokes **`/stitch-design`**
+  (Step 5c sub-step) to get the design reference (see below).
+- **`/stitch-design`** : the **design sub-step** of `/develop` for mobile
+  screens. Stitch is the **single source of truth for the `client-mobile` UI
+  design** (Stitch project `client-mobile`, id `10088502293310567548`,
+  MOBILE). Convention : **Stitch screen title = component/page kebab-case name**
+  — le nom de fichier/sélecteur (`inbox`, `mail-list`, `mail-folder-list`, …),
+  pas le nom de classe PascalCase. For each target screen it **reuses**
+  the matching Stitch screen if present, else **creates** it
+  (`generate_screen_from_text`), and logs the screenshot + HTML/CSS reference in
+  the task file. Stitch output is a **reference, not applied code** : `/develop`
+  translates the visual/structural intent into Ionic, never pastes the HTML.
+  Best-effort & non-blocking (a Stitch/MCP outage doesn't kill the task). The
+  Stitch MCP has **no rename** op, so renaming existing screens to match
+  component names is the **human's job in the Stitch UI**. See
+  `agents/stitch-design.md`.
+- **`/forge-simplify`** : eligible (frontend code repo, pushable) — quality
+  pass, re-validate, commit/push. Not a contract carrier.
+- **`/lint-mobile`** : its dedicated ESLint cleanup step (`ng lint --fix` +
+  manual fixes, best-effort 5 iterations), inserted after `/lint-angular`.
+  Commits/pushes its fixes (git automation, unlike `/lint-angular`).
+- **`/review`** : build + test on the feature branch, opens the PR via `gh`,
+  label `awaiting-human-merge`.
+- **`/merge`** : squash-merges the PR, syncs `develop`, deletes the remote
+  branch (human-triggered, HAG).
+
+Like `client-angular`, `client-mobile` consumes the backend contracts via its
+own **TypeScript types** (regenerated manually) — it is **not** a NuGet
+consumer, so a `dtos-mss` contract change never auto-bumps it. A task MUST list
+`client-mobile` explicitly in `**Repos**:` to opt into mobile code generation
+(the paired-frontend safety net is disabled — see below).
+
 ### Excluded repos (entirely manual)
 
 The following repos are **entirely excluded from forge automation**. The
@@ -225,10 +284,11 @@ For all four :
 ### Paired frontends safety net
 
 The paired frontends safety net is **disabled**. `/start` does NOT auto-add
-`client-angular` when a task lists `client-blazor` (or vice-versa). The PO
-must explicitly list `client-angular` in `**Repos**:` whenever the forge
-should generate Angular code. Without an explicit listing, the human keeps
-the Angular implementation as a manual task.
+`client-angular` (or `client-mobile`) when a task lists `client-blazor` (or
+vice-versa). The PO must explicitly list `client-angular` and/or
+`client-mobile` in `**Repos**:` whenever the forge should generate Angular
+or mobile code. Without an explicit listing, the human keeps that frontend's
+implementation as a manual task.
 
 ### Auto-included repo : `dtos-mss`
 
@@ -242,7 +302,8 @@ simply have no commits and no PR will be opened for it.
 ### Cross-repo dependencies
 
 - `api-mail`, `client-blazor` consume `dtos-mss` as a NuGet package.
-  `client-angular` consumes the contracts via its own TypeScript types (regenerated manually).
+  `client-angular` and `client-mobile` consume the contracts via their own
+  TypeScript types (regenerated manually).
   Any contract change → `/publish-dtos` first (publishes + bumps .NET consumers).
 - `client-blazor` and `host` consume `sdk`.
 - `psc-proxy-server` consumes `psc-proxy-dto`.
@@ -469,17 +530,19 @@ Never modify without human arbitration:
 | Command | Effect |
 |---|---|
 | `/po` | Write a new US : `todo-*.md` task file only (no .feature). With `--from <doc.md>` : batch-extract US from a markdown document (one-by-one human validation) |
-| `/start {task-id}` | Create the working branches in the target repo(s) and **chain into `/develop`** by default. The full cycle then runs autonomously : `/develop` → `/forge-simplify` → `/sonar` → `/lint-angular` → `/review` → `/tech-writer`. |
+| `/start {task-id}` | Create the working branches in the target repo(s) and **chain into `/develop`** by default. The full cycle then runs autonomously : `/develop` → `/forge-simplify` → `/sonar` → `/lint-angular` → `/lint-mobile` → `/review` → `/tech-writer`. |
 | `/start {task-id} no-code` | Create the working branches and **stop**. Task stays in `wip-*` ; the human implements in WindSurf and runs `/review {task-id}` manually when ready. Escape hatch when `/develop` is unsuitable. |
-| `/develop {task-id}` | **Autonomous implementation** : write code + tests, build, test, publish DTOs / interop NuGet packages when contracts change, bump consumers, push, hand off to `/forge-simplify`. See `agents/develop.md`. |
+| `/develop {task-id}` | **Autonomous implementation** : write code + tests, build, test, publish DTOs / interop NuGet packages when contracts change, bump consumers, push, hand off to `/forge-simplify`. Frontends covered : `client-blazor`, `client-angular` (code-only), `client-mobile` (full git automation). For mobile screens, calls `/stitch-design` first to get the design reference. See `agents/develop.md`. |
+| `/stitch-design {task-id}` | **Design sub-step of `/develop`** (mobile only). Ensures each `client-mobile` screen has a matching design in the Stitch project `client-mobile` (id `10088502293310567548`) — reuse if present, **create** via the Stitch MCP if missing (convention : screen title = component kebab-case name, e.g. `mail-list`). Logs the screenshot + HTML/CSS reference so `/develop` codes the Ionic screen against it. Stitch = design source of truth ; output is a **reference, not code**. Best-effort & non-blocking. Stand-alone form `/stitch-design {screen-name}` for manual design create/refresh. See `agents/stitch-design.md`. |
 | `/forge-simplify {task-id}` | Forge wrapper around the built-in `/simplify` : **quality-only** cleanup pass (reuse / simplification / efficiency / altitude — no bug hunting) on the code `/develop` just produced, per repo, re-validate (build + existing tests), commit/push pushable repos, `client-angular` code-only. Best-effort & non-blocking (rollback a repo on regression). **Never** touches `dtos-mss`/`interop-cda` (contract carriers) or excluded repos. Standard step in the autonomous chain, between `/develop` and `/sonar` ; skip clean if nothing to simplify. The standalone built-in `/simplify` stays available for ad-hoc human use. See `agents/forge-simplify.md`. |
 | `/sonar {task-id}` | Best-effort SonarQube cleanup on `api-mail` (5 iterations max, accepts remaining issues). Standard step in the autonomous chain. See `agents/sonar.md`. |
+| `/lint-mobile {task-id}` | Best-effort ESLint cleanup on `client-mobile` (Working dir `Client/Mobile/`). Plain Angular CLI : `ng lint --fix` then manual fixes, build (`npm run build`) + test (`npm test -- --watch=false --browsers=ChromeHeadless`) as the anti-regression net, 5 iterations max, accepts remaining errors. **Full git automation** (GitHub remote) : commits/pushes its fixes, unlike `/lint-angular`. Standard step in the autonomous chain, after `/lint-angular`, skip clean if client-mobile non touché. See `agents/lint-mobile.md`. |
 | `/lint-angular {task-id}` | Best-effort ESLint cleanup on `client-angular` (Working dir `Client/Angular/front/`). Reproduit la forme des commandes lint/build/test du pipeline Azure `Client/Angular/azure-pipelines.yml` (Stage 2 CI), avec deux divergences intentionnelles : (1) default `$BASE_BRANCH = origin/next` (branche d'intégration vivante du repo TFS, pas l'`origin/master` du pipeline) ; (2) lint scopé via `--projects=tag:scope:mss` (le forge ne fixe que le module MSS — `mss` + `mss-lib`). Build/test restent en scope complet pour détecter les régressions downstream. Auto-fix puis fix manuels 5 itérations max, accepte les errors restantes. Code-only — ne touche jamais à git. Standard step in the autonomous chain, skip clean si client-angular non touché. See `agents/lint-angular.md`. |
 | `/sonar-s3776 api-mail` | **[Manual]** Reduce cognitive complexity of ONE method (S3776). One method = one PR. Characterisation tests written first. Out of the autonomous chain. See `.claude/commands/sonar-s3776.md`. |
 | `/review {task-id}` | Validate the implementation (build + tests + DOD + code review), commit/push/sync develop, open the PR (label `awaiting-human-merge`), rename `done-*`, chain into `/tech-writer`. Autonomous — no human prompt. |
 | `/merge {task-id} --i-tested` | **[Human only]** After the human has tested the US end-to-end on the open PRs, squash-merge each pushable PR, sync `develop`, delete the branches, move the task into `tasks/archived/archived-{task-id}.md`. Refuses without `--i-tested`, on `awaiting-us-completion` label, or red CI. Never invoked by `/forge` — HAG (rule 10) stays. See `agents/merge.md`. |
 | `/tech-writer E{NNN}` | Refresh `docs/epics/E{NNN}-{slug}.md` from all tasks that declare `**Epic**: E{NNN}`. Called automatically at the tail of `/review` ; can be run manually for retro-generation or `--refresh`. See `agents/technical-writer.md`. |
-| `/forge` | Loop autonome : pour chaque `tasks/todo-task-*.md`, déclenche `/start` → `/develop` → `/forge-simplify` → `/sonar` → `/lint-angular` → `/review` → `/tech-writer`. Séquentiel (pas de parallélisme). Stop sur la première task qui échoue (écrit `questions/`, passe à la suivante). **Ne déclenche jamais `/merge`** — HAG, règle 10. |
+| `/forge` | Loop autonome : pour chaque `tasks/todo-task-*.md`, déclenche `/start` → `/develop` → `/forge-simplify` → `/sonar` → `/lint-angular` → `/lint-mobile` → `/review` → `/tech-writer`. Séquentiel (pas de parallélisme). Stop sur la première task qui échoue (écrit `questions/`, passe à la suivante). **Ne déclenche jamais `/merge`** — HAG, règle 10. |
 | `/status` | Quick status in < 10 lines |
 | `/publish-dtos` | Publish the DTO NuGet package and bump consumers (manual command — `/develop` does the equivalent inline as part of the autonomous cycle). |
 | `/kickoff` | Bootstrap a new project (scaffold `.claude/`, agents, templates) |

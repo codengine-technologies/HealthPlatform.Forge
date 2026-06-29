@@ -66,7 +66,7 @@ baseline est déjà bonne — elle ne bloque jamais le cycle autonome.
 ## Autonomous cycle position
 
 ```
-/develop {task-id}   →   /forge-simplify {task-id}   →   /sonar {task-id}   →   /lint-angular {task-id}   →   /review {task-id}   →   /tech-writer
+/develop {task-id}   →   /forge-simplify {task-id}   →   /sonar {task-id}   →   /lint-angular {task-id}   →   /lint-mobile {task-id}   →   /review {task-id}   →   /tech-writer
                                                           ↑
                                                           you are here
 ```
@@ -682,11 +682,11 @@ The cycle only halts (via `questions/{task-id}.md`) on **tooling failure**
 faulty fix that can't be rolled back, GitHub API failure on push **— OR
 on Phase 1 blockage**.
 
-### Step 5 — Handover to /lint-angular (or /review)
+### Step 5 — Handover to /lint-angular → /lint-mobile (or /review)
 
 **Pré-condition impérative** : Phase 1 doit être verte (new-code Quality
 Gate `OK`, `new_coverage >= target`, zéro `new_*` finding non traité).
-Sinon, NE PAS appeler `/lint-angular` ni `/review` — écrire
+Sinon, NE PAS appeler `/lint-angular`, `/lint-mobile` ni `/review` — écrire
 `questions/{task-id}.md` et halt.
 
 **Mode A — chained** :
@@ -705,15 +705,19 @@ Sinon, NE PAS appeler `/lint-angular` ni `/review` — écrire
    ```
 2. **Do not rename the task.** The task stays in `wip-*` — `/review` is
    responsible for the `wip → review → done` transitions.
-3. **Decide the next step** based on whether the task touched
-   `client-angular` :
+3. **Decide the next step** along the fixed pipeline `/lint-angular →
+   /lint-mobile → /review` (each self-skips when its repo is untouched) :
    - Task lists `client-angular` in `**Repos**:` **OR**
      `git -C Client/Angular/front status --porcelain` is non-empty
      (uncommitted Angular work left by `/develop`) → invoke
-     `/lint-angular {task-id}`. That step will hand off to `/review`
-     when done.
-   - Otherwise → invoke `/review {task-id}` directly (no Angular work
-     to lint).
+     `/lint-angular {task-id}`. That step hands off to `/lint-mobile`,
+     then `/review`.
+   - Else, task touched `client-mobile` (lists it in `**Repos**:` **OR**
+     `git -C Client/Mobile diff --name-only origin/develop...HEAD` is
+     non-empty) → invoke `/lint-mobile {task-id}` directly. It hands off
+     to `/review`.
+   - Otherwise → invoke `/review {task-id}` directly (no frontend lint
+     work to do).
 
 **Mode B — stand-alone** :
 

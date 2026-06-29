@@ -4,7 +4,7 @@
 > **Modèle** : hand-crafted
 > **Version** : 1.40
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-06-16 (task-092)
+> **Dernière mise à jour** : 2026-06-17 (task-094)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -44,7 +44,7 @@
 - [Annexes](#annexes)
   - [A. Sources documentaires](#a-sources-documentaires)
   - [B. Table de correspondance REM Ségur ↔ Ref#2](#b-table-de-correspondance-rem-ségur--ref2)
-- [État de couverture](#état-de-couverture-2026-06-16)
+- [État de couverture](#état-de-couverture-2026-06-17)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -987,7 +987,7 @@ Les règles `RG-E009-084` à `RG-E009-089` sont propres à ENS Mon espace santé
 
 ---
 
-## État de couverture (2026-06-16)
+## État de couverture (2026-06-17)
 
 > Photographie de l'état actuel de l'EPIC, feature par feature. Le détail ingénierie de chaque task contributive (numéros de PR, NuGet, tests, audit grep) est dans [`E009-Changelogs.md`](./E009-Changelogs.md), annexe C.
 
@@ -1019,6 +1019,8 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
+- **v1.51 — Déplacement de courrier plus fluide** (task-094) : lorsqu'un praticien glisse un ou plusieurs courriers vers un dossier, le courrier déplacé **apparaît dans le dossier de destination en quelques secondes**, sans attendre le rafraîchissement périodique. Le dossier d'arrivée est rafraîchi automatiquement juste après le dépôt, et ses compteurs (total / non lus) restent cohérents. Le geste reste **instantané à l'écran** : le courrier quitte aussitôt la liste de départ, et en cas d'échec côté serveur il y revient avec un message d'erreur discret. Le comportement de suppression réversible (Corbeille · Annuler) est inchangé.
+- **v1.50 — Glisser-déposer des courriers (Angular)** (task-093) : le praticien peut désormais **faire glisser** un courrier — ou plusieurs courriers sélectionnés — de la liste vers un dossier du volet de gauche pour le **déplacer**, ou vers la **Corbeille** pour le **supprimer**. Les déplacements impossibles sont refusés visuellement : on ne peut pas déposer un courrier dans « Envoyés » ni dans « Brouillons ». Un message envoyé ne peut aller qu'à la Corbeille. Depuis la Corbeille, glisser un courrier vers un autre dossier le **restaure**. Après une suppression, un message « Email supprimé · Annuler » s'affiche quelques secondes : tant qu'il est visible, un clic sur « Annuler » remet le courrier à sa place sans qu'aucune suppression ne soit réellement effectuée. La mise à la Corbeille retire temporairement le rattachement du courrier au dossier patient ; la restauration le rétablit.
 - **v1.44 — Affichage du quota de la boîte MSSanté** (task-087) : le praticien voit en pied du volet des dossiers une jauge d'occupation de sa boîte (`Utilisé X Go / Y Go · Z %`). La barre passe en **ambre dès 80 %** de remplissage et en **rouge dès 90 %**, pour anticiper une boîte pleine qui bloquerait la réception de nouveaux courriers de santé. Si l'opérateur MSSanté n'annonce pas de quota, le pied de volet indique simplement « Quota non disponible », sans erreur bloquante. La valeur est rafraîchie au chargement de la messagerie.
 - **v1.43 — Import/export du carnet d'adresses (vCard)** (task-086) : le praticien peut désormais **exporter** l'intégralité de son carnet d'adresses dans un fichier standard `.vcf` (pour le sauvegarder ou le transférer vers un autre logiciel) et **importer** un fichier `.vcf` reçu d'un confrère ou exporté d'une autre messagerie. À l'import, un compte-rendu indique le nombre de correspondants créés, mis à jour et ignorés. Le système évite tout doublon : un correspondant dont le RPPS ou l'adresse MSSanté existe déjà est mis à jour, jamais recréé. Un fichier illisible est signalé par un message clair.
 - **v1.42 — Correcteur orthographique français** (task-085) : le compositeur active la vérification orthographique du navigateur en français. Les mots mal orthographiés sont soulignés et le praticien accède aux suggestions par un clic droit. La correction reste **entièrement locale au poste** : aucun contenu du courrier n'est envoyé à un service externe, garantissant la confidentialité des données de santé.

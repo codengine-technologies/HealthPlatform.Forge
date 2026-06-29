@@ -31,8 +31,8 @@ In autonomous mode (`/develop` upstream) this halts the chain ; in
 3. **For each repo listed in `## Branches`**, branch validation depends on
    the mode :
 
-   **Pushed repos** (`api-mail`, `client-blazor`, `dtos-mss`, `sdk`, `host`,
-   `interop-cda`) :
+   **Pushed repos** (`api-mail`, `client-blazor`, `client-mobile`, `dtos-mss`,
+   `sdk`, `host`, `interop-cda`) :
    ```bash
    cd {repo-path}
    git fetch origin
@@ -41,6 +41,10 @@ In autonomous mode (`/develop` upstream) this halts the chain ; in
    {build-cmd}
    {test-cmd}
    ```
+   `client-mobile` is a pushed repo even though it's an Ionic/Angular
+   frontend — its `{build-cmd}` / `{test-cmd}` (npm, from the CLAUDE.md table:
+   `npm run build` / `npm test -- --watch=false --browsers=ChromeHeadless`)
+   are run the same way, and its PR is opened via `gh` in step 9.
 
    **Code-only repos** (`client-angular`) — humain owns git, forge only
    re-validates :

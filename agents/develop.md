@@ -5,7 +5,7 @@
 You are the **autonomous developer** of the forge. Given a task in `wip-*`, you
 write the code, the tests, build, run the test suite, commit, push, and hand
 off to `/forge-simplify` (which runs the `/simplify` quality pass, then chains
-`/sonar` → `/lint-angular` → `/review`).
+`/sonar` → `/lint-angular` → `/lint-mobile` → `/review`).
 
 You are the **default implementation path** in the new lean forge. The escape
 hatch is `/start {task-id} no-code` — when set, the human implements in
@@ -44,9 +44,11 @@ stay in `wip-*` too ; `/review` handles the wip→review transition.
 
 `/develop` operates in three modes depending on the repo :
 
-- **Pushable** (`api-mail`, `client-blazor`, `dtos-mss`, `sdk`, `host`,
-  `interop-cda`) : full automation — write code on `feat/{task-id}-{slug}`
-  (already created by `/start`), build, test, commit, push.
+- **Pushable** (`api-mail`, `client-blazor`, `client-mobile`, `dtos-mss`,
+  `sdk`, `host`, `interop-cda`) : full automation — write code on
+  `feat/{task-id}-{slug}` (already created by `/start`), build, test, commit,
+  push. For `client-mobile` (Ionic/Angular, `Client/Mobile/`) : `npm ci &&
+  npm run build` and `npm test -- --watch=false --browsers=ChromeHeadless`.
 
 - **Code-only** (`client-angular`) : write code on **the branch currently
   checked out** in `Client/Angular/` (whatever branch the human chose). Run
@@ -100,7 +102,8 @@ Compute the build/publish order from the listed repos :
 4. sdk             (if listed)
 5. host            (if listed)
 6. client-blazor   (frontend)
-7. client-angular  (skipped — excluded)
+7. client-angular  (frontend — code-only, no git)
+8. client-mobile   (frontend — pushable, Ionic/Angular)
 ```
 
 Reasoning :
@@ -274,7 +277,7 @@ For each backend repo listed, in order :
    git -C {repo-path} push origin feat/{task-id}-{slug}
    ```
 
-### Step 5 — Implement on frontends (`client-blazor`, `client-angular`)
+### Step 5 — Implement on frontends (`client-blazor`, `client-angular`, `client-mobile`)
 
 #### 5a. `client-blazor` (pushable)
 
@@ -331,6 +334,50 @@ forge does **not** auto-add Angular (paired-frontend safety net is disabled).
    --name-only`) and note that they are uncommitted on `{current-branch}`,
    awaiting human commit/push.
 
+#### 5c. `client-mobile` (pushable)
+
+Only run this step if the task lists `client-mobile` in `**Repos**:`. It is the
+Ionic 8 + Angular 20 + Capacitor mobile messaging client (`Client/Mobile/`,
+plain Angular CLI — **not** Nx). Unlike `client-angular`, it is a **pushable**
+repo (GitHub remote, `develop` branch), so the forge owns git here.
+
+1. **Work on the feature branch** `feat/{task-id}-{slug}` already created by
+   `/start` (verify it's checked out in `Client/Mobile/`).
+
+2. **Get the design reference from Stitch first** — invoke
+   `/stitch-design {task-id}` (Mode A). Stitch is the **single source of truth
+   for the `client-mobile` UI design** (project `client-mobile`, id
+   `10088502293310567548`). For every mobile screen this task creates or
+   rewrites, `/stitch-design` ensures a matching Stitch screen exists (reuse if
+   present, **create** if missing — convention : Stitch screen title = component
+   kebab-case name, e.g. `mail-list`), and writes a `## Stitch design log` in the task file with the
+   screenshot + HTML/CSS reference URLs. Read that log and implement each Ionic
+   screen **against the reference** (layout, hierarchy, states) — never paste
+   the Stitch HTML, translate the intent into Ionic. This sub-step is
+   **best-effort & non-blocking** : if Stitch is unreachable, it logs and you
+   proceed without the reference.
+
+3. **Write code** in `Client/Mobile/src/` per the task's mobile scope :
+   - Reuse the existing Ionic/Angular components before creating new ones
+   - FR labels (the MSS frontends use hardcoded FR, not ngx-translate — see
+     the Angular convention) ; follow whatever the DOD asks
+   - `data-testid` on every interactive element
+   - Component tests (Jasmine/Karma) for any new component the DOD requires
+
+4. **Build + test** :
+   ```bash
+   cd Client/Mobile
+   npm ci          # only if package.json or package-lock.json changed
+   npm run build   # ng build — MUST exit 0
+   npm test -- --watch=false --browsers=ChromeHeadless   # MUST pass (headless, single run)
+   ```
+   On failure → 5 iterations cap applies (same as Step 4). Beyond that, write
+   `questions/{task-id}.md` and stop.
+
+5. **Commit + push** on the feature branch, conventional messages
+   (`feat(mobile): …`, `test(mobile): …`). Explicit staging only — never
+   `git add -A`. The PR is opened later by `/review` via `gh`.
+
 ### Step 6 — Final verification before hand-off
 
 1. For every **pushable** repo touched, verify the branch is up-to-date with
@@ -366,7 +413,7 @@ forge does **not** auto-add Angular (paired-frontend safety net is disabled).
    not found), log it as a blocker but **do not halt** — `/sonar` may add
    tests as side effect, and `/review` will catch any remaining miss.
 
-### Step 7 — Hand off to the cleanup chain (`/forge-simplify` → `/sonar` → `/lint-angular` → `/review`)
+### Step 7 — Hand off to the cleanup chain (`/forge-simplify` → `/sonar` → `/lint-angular` → `/lint-mobile` → `/review`)
 
 Append a `## Develop log` section to the task file with :
 
@@ -389,20 +436,34 @@ Append a `## Develop log` section to the task file with :
 `/simplify` quality pass (reuse / simplification / efficiency / altitude)
 on the code you just produced, re-validates, commits/pushes the pushable
 repos, leaves `client-angular` code-only, and then routes to the next step
-itself :
+itself.
 
-| api-mail touched ? | client-angular touched ? | Step after `/forge-simplify` |
-|---|---|---|
-| yes | yes  | `/sonar {task-id}` — chains to `/lint-angular`, then `/review` |
-| yes | no   | `/sonar {task-id}` — chains directly to `/review`             |
-| no  | yes  | `/lint-angular {task-id}` — chains directly to `/review`      |
-| no  | no   | `/review {task-id}` directly                                  |
+The cleanup pipeline after `/forge-simplify` is a **fixed order**, each step
+self-skipping when its target repo wasn't touched and unconditionally handing
+off to the next :
+
+```
+/sonar (api-mail)  →  /lint-angular (client-angular)  →  /lint-mobile (client-mobile)  →  /review
+```
+
+`/forge-simplify` jumps straight to the **first** step whose repo was touched
+(and that step chains the rest). If none of `api-mail` / `client-angular` /
+`client-mobile` was touched, it routes directly to `/review`.
+
+| api-mail | client-angular | client-mobile | First step after `/forge-simplify` |
+|---|---|---|---|
+| yes | *   | *   | `/sonar {task-id}`        |
+| no  | yes | *   | `/lint-angular {task-id}` |
+| no  | no  | yes | `/lint-mobile {task-id}`  |
+| no  | no  | no  | `/review {task-id}`       |
 
 "client-angular touched" means **either** the task lists `client-angular`
 in `**Repos**:` **or** `git -C Client/Angular/front status --porcelain`
 is non-empty (uncommitted Angular work). The two checks are equivalent in
 the autonomous flow but the second one covers `no-code` re-entry edge
-cases.
+cases. "client-mobile touched" means the task lists `client-mobile` in
+`**Repos**:` **or** `git -C Client/Mobile status --porcelain` is non-empty
+(committed mobile work shows up as a diff vs `develop` instead).
 
 `/forge-simplify` owns the routing table above (it sits right after you in
 the chain) ; it also skips cleanly when there is nothing to simplify and
