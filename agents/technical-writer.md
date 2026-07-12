@@ -79,7 +79,7 @@ If an EPIC doc already exists **without** the `**Modèle**` field AND its sectio
 | 1. Vision | Human (preserved) | Human (preserved) |
 | 2. Objectifs métier | Human (preserved) | Human (preserved) |
 | 3. Acteurs concernés | Human (preserved) | Human (preserved) |
-| 4. Features de l'EPIC | **Writer** (rebuilt from tasks ; %done may include 1 discrete task-XXX ref per row) | **Human** (preserved ; writer may only refresh %done refs by appending the latest `task-XXX` if a task touches the feature) |
+| 4. Features de l'EPIC | **Writer** (rebuilt from tasks ; %done may include 1 discrete task-XXX ref per row). **Interdiction absolue de colonnes techniques** : jamais de noms de composants/services (« Composants miroir » est banni du fichier produit — cette cartographie vit dans les Changelogs). Les colonnes parlent valeur d'usage : *Fonctionnalité / Ce que le praticien peut faire / Tasks / Statut*. | **Human** (preserved ; writer may only refresh %done refs by appending the latest `task-XXX` if a task touches the feature) |
 | 5. Workflow entre Features | **Writer** (Mermaid from dependencies) | **Human** (preserved) |
 | 6. Règles métier transverses (Ségur) | **Writer** additive (collects `RG-*` from tasks) | **Hybrid** — human owns the rule list ; writer updates **Statut** column based on `**Closes RG**:` field of tasks. The Statut entry may include **one discrete `task-XXX` ref** (e.g. `✅ Implémenté (task-008)`). No PR/NuGet/test counts. |
 | 7. Contraintes et hypothèses | Human (preserved) | Human (preserved) |
@@ -123,6 +123,34 @@ Forbidden in the produit file :
 
 If the writer is tempted to include any of these in the produit file, the content belongs in the changelogs file instead.
 
+## Auto-contrôle « lecture médecin » (obligatoire avant d'écrire le fichier produit)
+
+Avant chaque écriture du fichier produit, le writer relit **chaque ligne
+writer-owned** en se posant la question : *« Cette ligne apprend-elle quelque
+chose à un médecin sur l'usage ou la valeur du produit ? »* Si la réponse est
+non, la ligne migre dans les Changelogs ou disparaît. Détecteurs concrets
+d'une ligne qui échoue au test (constatés sur la v1 de E012) :
+
+- un nom de composant/service/classe (`mail-list`, `AuthService`, interceptor…)
+- un acronyme d'infrastructure : JWT, SSE, DTO, NuGet, API, stream, lint,
+  build, repo, branche, PR (le sigle **INS** est du vocabulaire métier santé —
+  il reste)
+- un graphe de dépendances de tasks présenté comme « workflow » (le workflow
+  produit décrit ce que FAIT le praticien, pas l'ordre de construction)
+- une contrainte d'organisation du code présentée comme « règle métier »
+  (parité structurelle, conventions de libellés, remote git…)
+- un critère d'acceptation outillé (« build vert », « lint propre ») — le
+  critère produit s'énonce en résultat observable par l'utilisateur
+
+**Seule concession technique autorisée dans le fichier produit : les
+`task-XXX`** (spine de traçabilité vers les Changelogs, max 1 réf par ligne
+— décision humaine du 2026-07-07).
+
+Le tableau §4, l'État de couverture et la Synthèse fonctionnelle sont écrits
+en **langage produit exclusivement** ; ce test s'applique aussi aux entrées
+reprises d'un run précédent (une ligne héritée qui échoue au test est
+réécrite, pas conservée par inertie).
+
 ## Sommaire (TOC)
 
 Every produit file MUST carry a writer-owned **Sommaire** (Table of Contents) placed immediately after the front-matter block and before the first `## Contexte` / `## 1. Vision` section. The TOC is delimited by HTML comment markers so the writer can locate and rebuild it idempotently :
@@ -159,8 +187,11 @@ Two writer-owned sections live **at the tail of the produit file**, after all hu
 The order at the tail is **stable** :
 
 1. `## État de couverture ({YYYY-MM-DD})` — dated snapshot of every feature with statut / couverture / tasks contributives. The date in the heading is **today** on every run.
-2. `## Synthèse fonctionnelle des changelogs` — product-oriented digest of the changelog history, grouped by axe.
-3. Italic footer caption (one line, untouched).
+2. `## État visuel de l'application ({YYYY-MM-DD})` — **writer-owned gallery**
+   of the current screenshots (see below). Only present for EPICs whose
+   features have screens captured by `/verify-visual`.
+3. `## Synthèse fonctionnelle des changelogs` — product-oriented digest of the changelog history, grouped by axe.
+4. Italic footer caption (one line, untouched).
 
 A short pointer inside §4 *Features de l'EPIC* tells the reader where the bilan d'avancement lives :
 
@@ -169,6 +200,58 @@ A short pointer inside §4 *Features de l'EPIC* tells the reader where the bilan
 ### État de couverture
 
 A single Markdown table : `| Feature | Statut | Couverture | Tasks contributives |`. One row per feature declared in §4. The "Tasks contributives" cell holds **discrete `task-XXX` refs** (no PR/NuGet/test counts). A bottom line summarizes : `**Couverture EPIC consolidée : N%** (...)`.
+
+### État visuel de l'application
+
+`/verify-visual` maintient dans `Docs/epics/img/screens/{app}/{écran}.png`
+(un sous-répertoire par application : `client-mobile/`, `client-angular/`) le
+**dernier état connu de chaque écran** de l'application (capture Playwright,
+écrasée à chaque run — l'historique par task vit dans les repos produits).
+The writer rebuilds this gallery **on every run** from the screenshots that
+belong to the EPIC :
+
+- **Screen ↔ EPIC matching** : a screenshot `{écran}.png` belongs to the
+  EPIC when `{écran}` appears in the `Component / Page` column of a
+  `## Stitch design log` (or `## Visual verify log`) of any task declaring
+  this EPIC. Screens of other EPICs are ignored.
+- **Format** : a two-column gallery table, product-language captions,
+  **relative image embeds** (the doc and the images live in `Docs/epics/`) :
+
+  ```markdown
+  ## État visuel de l'application ({YYYY-MM-DD})
+
+  > Captures générées automatiquement par la forge (/verify-visual) —
+  > dernier état connu de chaque écran.
+
+  | | |
+  |---|---|
+  | **Boîte de réception**<br/><img src="img/screens/client-mobile/inbox.png" alt="inbox" width="280" style="border: 1px solid #c2c6d4; border-radius: 8px;" /> | **Paramètres**<br/><img src="img/screens/client-mobile/settings.png" alt="settings" width="280" style="border: 1px solid #c2c6d4; border-radius: 8px;" /> |
+  ```
+
+- **Taille d'affichage bornée** : toujours `<img … width="280">` pour un écran mobile (jamais un embed markdown pleine largeur) — style bordure discrète, convention E009.
+- **Captions** in product language (« Boîte de réception », « Détail d'un
+  message »…), never the kebab-case component name alone — the audience is
+  the médecin/PO. The kebab-case filename stays visible via the image path
+  only.
+- The date in the heading is **today** on every run. If no screenshot
+  matches the EPIC, the section is omitted entirely.
+- The engineering counterpart (per-task capture paths, SHA-pinned PR links,
+  verdicts) stays in the **changelogs** file entries — never in the produit
+  gallery.
+
+### Rendu HTML du doc produit (utilitaire manuel)
+
+`tools/doc-render/render-epic.py` produit une **page HTML autonome** du doc
+produit (Public Sans embarquée, images en data URI, thèmes clair/sombre sur
+les tokens « Clinical Precision », sommaire latéral, captures bornées) :
+
+```bash
+python tools/doc-render/render-epic.py Docs/epics/E{NNN}-{slug}.md {out}.html
+```
+
+Hors chaîne autonome — à lancer sur demande humaine (publication en
+Artifact, partage direction). **La source de vérité reste le `.md`** ; le
+HTML est une vue de lecture jetable, jamais éditée à la main.
 
 ### Synthèse fonctionnelle des changelogs
 

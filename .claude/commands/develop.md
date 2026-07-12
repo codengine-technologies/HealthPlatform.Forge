@@ -4,7 +4,7 @@ Usage : `/develop {task-id}` (e.g. `/develop task-018`)
 
 Purpose : write the code, the tests, build, run the suite, commit, push, and
 hand off to `/forge-simplify` (which runs the `/simplify` quality pass, then
-chains `/sonar` → `/lint-angular` → `/lint-mobile` → `/review`). This is the **default
+chains `/sonar` → `/lint-angular` → `/lint-mobile` → `/verify-visual` → `/review`). This is the **default
 implementation path** of the
 forge — the only escape hatch is `/start {task-id} no-code`, which leaves the
 task in `wip-*` for the human to implement in WindSurf.
@@ -25,7 +25,7 @@ Read `agents/develop.md` and execute the full playbook :
 6. Hand off unconditionally to `/forge-simplify {task-id}` — it runs the
    `/simplify` quality pass on the fresh code, re-validates, commits/pushes
    pushable repos, then routes onward along the fixed pipeline
-   `/sonar → /lint-angular → /lint-mobile → /review` (each step self-skips
+   `/sonar → /lint-angular → /lint-mobile → /verify-visual → /review` (each step self-skips
    when its repo wasn't touched) :
    - api-mail touched → `/sonar {task-id}`
    - else client-angular touched → `/lint-angular {task-id}`

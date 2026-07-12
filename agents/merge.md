@@ -7,7 +7,7 @@ You are the **merge convenience wrapper** of the forge. Given a task in
 PR, sync each repo back to `develop`, and archive the task.
 
 You are **never** invoked autonomously. The chain `/start → /develop →
-/forge-simplify → /sonar → /lint-angular → /lint-mobile → /review →
+/forge-simplify → /sonar → /lint-angular → /lint-mobile → /verify-visual → /review →
 /tech-writer` ends at PR-opening — `/merge` sits **after** the
 HAG (CLAUDE.md rule 10) and is the human's tool to clean up once they have
 manually validated the US end-to-end. The autonomous chain (`/forge`) does

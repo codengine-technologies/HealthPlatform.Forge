@@ -54,7 +54,7 @@ long-term debt reduction at the human level. The forge's job is to not
 ## Autonomous cycle position
 
 ```
-/develop {task-id}   →   /forge-simplify {task-id}   →   /sonar {task-id}   →   /lint-angular {task-id}   →   /lint-mobile {task-id}   →   /review {task-id}   →   /tech-writer
+/develop {task-id}   →   /forge-simplify {task-id}   →   /sonar {task-id}   →   /lint-angular {task-id}   →   /lint-mobile {task-id}   →   /verify-visual {task-id}   →   /review {task-id}   →   /tech-writer
                                                                                   ↑
                                                                                   you are here
 ```
@@ -633,16 +633,28 @@ accepted, handed off to /review".
    {residual block — list of remaining errors grouped by rule, if any}
    ```
 
-2. **Do NOT touch git.** No `git add`, no `git commit`, no `git push`.
+2. **Feed `conventions/angular.md`** (workspace root — control plane, not
+   the Angular repo, so this does NOT violate code-only mode). For each
+   ESLint rule fixed **manually** in this run (iterations 2..5 — auto-fixer
+   fixes don't count) on code written by `/develop` :
+   - entry exists for the rule → increment **Occurrences**, append the
+     task-id to **Origine** ;
+   - no entry → create one (format documented at the top of the file),
+     `Occurrences : 1`.
+   The goal : `/develop` reads that file before coding, so the same rule
+   never needs a manual fix twice. Skip when iteration 1 (auto-fix) or a
+   clean baseline handled everything.
+
+3. **Do NOT touch git.** No `git add`, no `git commit`, no `git push`.
    The Angular changes remain uncommitted on the human's branch —
    exactly as `/develop` left them, plus the lint fixes layered on top.
    The human reviews everything in WindSurf, commits, pushes to TFS,
    opens the PR.
 
-3. **Do NOT rename the task.** It stays in `wip-*`. `/review` is
+4. **Do NOT rename the task.** It stays in `wip-*`. `/review` is
    responsible for the `wip → review → done` transitions.
 
-4. Invoke `/lint-mobile {task-id}` to continue the chain. `/lint-mobile`
+5. Invoke `/lint-mobile {task-id}` to continue the chain. `/lint-mobile`
    self-skips cleanly when `client-mobile` wasn't touched and then hands off
    to `/review` itself — so the chain reaches `/review` either way.
 

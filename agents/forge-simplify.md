@@ -50,7 +50,7 @@ The simplify pass is **best-effort**, like `/sonar` Phase 2 and
 ## Autonomous cycle position
 
 ```
-/develop {task-id}  →  /forge-simplify {task-id}  →  /sonar {task-id}  →  /lint-angular {task-id}  →  /lint-mobile {task-id}  →  /review {task-id}  →  /tech-writer
+/develop {task-id}  →  /forge-simplify {task-id}  →  /sonar {task-id}  →  /lint-angular {task-id}  →  /lint-mobile {task-id}  →  /verify-visual {task-id}  →  /review {task-id}  →  /tech-writer
                        ↑
                        you are here
 ```
@@ -214,7 +214,7 @@ npm test         # MUST pass
    target repo wasn't touched and unconditionally handing off to the next :
 
    ```
-   /sonar (api-mail)  →  /lint-angular (client-angular)  →  /lint-mobile (client-mobile)  →  /review
+   /sonar (api-mail)  →  /lint-angular (client-angular)  →  /lint-mobile (client-mobile)  →  /verify-visual (écrans mobiles)  →  /review
    ```
 
    Route to the **first** step whose repo was touched :

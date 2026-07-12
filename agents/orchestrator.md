@@ -42,7 +42,7 @@ todo-*.md      PO wrote the US, awaiting branch creation
     ↓ /start {task-id}                                        (auto-chains into /develop unless `no-code`)
 wip-*.md       Branch created. /develop is implementing
                OR (no-code) the human is implementing in WindSurf.
-    ↓ /develop pushes, hands off to /forge-simplify, then /sonar, /lint-angular, /lint-mobile, /review
+    ↓ /develop pushes, hands off to /forge-simplify, then /sonar, /lint-angular, /lint-mobile, /verify-visual, /review
               (in no-code mode the human runs /review when ready)
 review-*.md   /review picked up the task (briefly).
     ↓ /review validates, commits, opens PR, chains into /tech-writer
@@ -80,7 +80,7 @@ safety net is disabled.
 Capacitor, `Client/Mobile/`). Unlike `client-angular`, its remote is GitHub
 and its branch is `develop`, so the orchestrator owns git here exactly like
 `api-mail` / `client-blazor` : `/start` branches + pushes, `/develop` commits
-+ pushes, `/lint-mobile` cleans + commits + pushes, `/review` opens the PR via
++ pushes, `/lint-mobile` cleans + commits + pushes, `/verify-visual` captures the touched screens, `/review` opens the PR via
 `gh`, `/merge` squash-merges. It consumes contracts via TS types (manually
 regenerated), not NuGet. Must be listed explicitly in `**Repos**:` to opt in.
 

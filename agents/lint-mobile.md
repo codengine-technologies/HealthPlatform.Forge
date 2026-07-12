@@ -32,16 +32,17 @@ automation** : it commits and pushes its lint fixes on the feature branch.
 ## Autonomous cycle position
 
 ```
-/develop {task-id}   →   /forge-simplify {task-id}   →   /sonar {task-id}   →   /lint-angular {task-id}   →   /lint-mobile {task-id}   →   /review {task-id}   →   /tech-writer
+/develop {task-id}   →   /forge-simplify {task-id}   →   /sonar {task-id}   →   /lint-angular {task-id}   →   /lint-mobile {task-id}   →   /verify-visual {task-id}   →   /review {task-id}   →   /tech-writer
                                                                                                               ↑
                                                                                                               you are here
 ```
 
-`/lint-mobile` is the **last cleanup step** before `/review`. It runs after
-`/lint-angular` so it re-scans / re-validates the final state of the working
-tree. Best-effort : residual lint errors after 5 iterations are **not** a
-chain blocker — they are logged in `## Lint mobile log` and the chain proceeds
-to `/review`.
+`/lint-mobile` is the **last cleanup step** before `/verify-visual` (which
+captures the touched mobile screens then hands off to `/review`). It runs
+after `/lint-angular` so it re-scans / re-validates the final state of the
+working tree. Best-effort : residual lint errors after 5 iterations are
+**not** a chain blocker — they are logged in `## Lint mobile log` and the
+chain proceeds.
 
 ## Commands
 
@@ -152,7 +153,18 @@ For each remaining iteration (max 5 total) :
    {residual block — remaining errors grouped by rule, if any}
    ```
 
-2. **Commit + push the lint fixes** (full git automation — GitHub remote).
+2. **Feed `conventions/angular.md`** (workspace root) — the self-improving
+   loop. For each ESLint rule fixed **manually** in this run (iterations
+   2..5 — auto-fixer fixes don't count) on code written by `/develop` :
+   - entry exists for the rule → increment **Occurrences**, append the
+     task-id to **Origine** ;
+   - no entry → create one (format documented at the top of the file),
+     `Occurrences : 1`.
+   The goal : `/develop` reads that file before coding, so the same rule
+   never needs a manual fix twice. Skip this step when iteration 1
+   (auto-fix) or a clean baseline handled everything.
+
+3. **Commit + push the lint fixes** (full git automation — GitHub remote).
    Explicit staging only, NEVER `git add -A` :
    ```bash
    cd Client/Mobile
@@ -163,10 +175,13 @@ For each remaining iteration (max 5 total) :
    If nothing was actually changed (lint clean, or all fixes rolled back),
    skip the commit.
 
-3. **Do NOT rename the task.** It stays in `wip-*` — `/review` owns the
+4. **Do NOT rename the task.** It stays in `wip-*` — `/review` owns the
    `wip → review → done` transitions.
 
-4. Invoke `/review {task-id}` to continue the chain.
+5. Invoke `/verify-visual {task-id}` to continue the chain (it captures the
+   touched mobile screens, then hands off to `/review` itself ; it
+   self-skips to `/review` when no screen was touched). See
+   `agents/verify-visual.md`.
 
 **Mode B — stand-alone** :
 

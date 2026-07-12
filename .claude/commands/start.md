@@ -154,7 +154,7 @@ philosophy was inverted on 2026-04-27 — see CLAUDE.md "Forge philosophy".
     - {repo} (pushed / local-only)
     - ...
 
-    Chaining into /develop now → /forge-simplify → /sonar → /lint-angular → /lint-mobile → /review → /tech-writer.
+    Chaining into /develop now → /forge-simplify → /sonar → /lint-angular → /lint-mobile → /verify-visual → /review → /tech-writer.
     (/forge-simplify, /sonar, /lint-angular et /lint-mobile skip clean si leur repo n'a pas été touché.)
     The PR(s) will land with label awaiting-human-merge — you merge
     when ready (HAG rule 10).

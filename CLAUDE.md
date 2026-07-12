@@ -38,6 +38,11 @@
 /lint-mobile {NNN}                  (cleanup ESLint best-effort 5 itérations,
                                      client-mobile uniquement — skip si non touché)
     ↓ (auto)
+/verify-visual {NNN}                (captures Playwright des écrans mobiles
+                                     touchés, pairées à la référence Stitch —
+                                     bloquant uniquement sur écran blanc/crash ;
+                                     skip si aucun écran touché)
+    ↓ (auto)
 /review {NNN}                       (build + test + DOD + code review,
                                      commit/push/sync develop, ouvre la PR,
                                      label awaiting-human-merge,
@@ -81,7 +86,8 @@ l'humain implémente dans WindSurf, puis lance `/review {task-id}` lui-même
 | Cleanup Sonar | `/sonar` (api-mail) | oui | Best-effort 5 itérations, accepte les issues restantes. Skip clean si api-mail non touché. |
 | Cleanup Lint Angular | `/lint-angular` (client-angular) | oui | Best-effort 5 itérations (`lint:fix` + fix manuels), accepte les erreurs restantes. Code-only — ne touche jamais à git. Skip clean si client-angular non touché. |
 | Cleanup Lint Mobile | `/lint-mobile` (client-mobile) | oui | Best-effort 5 itérations (`ng lint --fix` + fix manuels), accepte les erreurs restantes. **Automation git complète** (remote GitHub) : commit/push des fixes. Skip clean si client-mobile non touché. |
-| Validation + PR | `/review` | non (lecture seule sur le code) | Plus de prompt humain — autonome |
+| Vérification visuelle | `/verify-visual` (client-mobile) | non (captures uniquement, commit des PNG) | Playwright headless : session factice + API mockée (fixtures), capture 390×844 de chaque écran touché, pairée à la référence Stitch dans la PR. **Bloquant uniquement sur écran blanc/crash** ; écart design = best-effort (juge = humain au HAG). Skip clean si aucun écran touché. |
+| Validation + PR | `/review` | non (lecture seule sur le code) | Plus de prompt humain — autonome. Recopie KPIs Sonar + table de vérification visuelle dans le body des PRs. |
 | Doc EPIC | `/tech-writer` | non (écrit dans `docs/epics/` uniquement) | Idempotent |
 | **Merge develop** | **humain** | — | **HAG, règle 10 — non négociable** |
 
@@ -112,6 +118,22 @@ ad-hoc humain (simplifier le diff courant, sans cérémonie forge).
 
 `/sonar-s3776` (cognitive complexity, 1 méthode = 1 PR) **reste manuel** —
 hors chaîne autonome, sinon on se retrouve avec N PRs par task.
+
+### Conventions apprises — boucle d'auto-amélioration
+
+Deux fichiers de conventions vivent à la racine du workspace et ferment la
+boucle « le nettoyage d'aujourd'hui devient la prévention de demain » :
+
+| Fichier | Alimenté par | Lu par |
+|---|---|---|
+| `conventions/angular.md` | `/lint-angular`, `/lint-mobile` (règles ESLint corrigées **manuellement**) | `/develop` avant tout code Angular/Ionic |
+| `conventions/csharp.md` | `/sonar` (règles corrigées manuellement, new-code en priorité) | `/develop` avant tout code C# |
+
+Protocole : première correction manuelle d'une règle → entrée créée ;
+récidive → compteur incrémenté. `/develop` applique les « Consignes »
+d'emblée — une récidive lint/Sonar sur du code frais signale que le fichier
+n'a pas été lu. Les fixes de l'auto-fixer ESLint ne comptent pas (gratuits).
+Format d'entrée et protocole détaillés en tête de chaque fichier.
 
 Task lifecycle : `todo → wip → review → done → archived`
 - `tasks/todo-*.md` : PO a rédigé la US, en attente de `/start`
@@ -242,7 +264,12 @@ Concretely :
   translates the visual/structural intent into Ionic, never pastes the HTML.
   Best-effort & non-blocking (a Stitch/MCP outage doesn't kill the task). The
   Stitch MCP has **no rename** op, so renaming existing screens to match
-  component names is the **human's job in the Stitch UI**. See
+  component names is the **human's job in the Stitch UI**. Deux pièges connus
+  du connecteur MCP : un **timeout de `generate_screen_from_text` = succès
+  probable côté Stitch** (jamais de re-génération — source de doublons ;
+  détection du nouvel écran par **diff des `screenInstances` de
+  `get_project`**), et **`list_screens` est périmé** pendant des heures sur
+  les créations récentes (`get_project` fait foi). See
   `agents/stitch-design.md`.
 - **`/forge-simplify`** : eligible (frontend code repo, pushable) — quality
   pass, re-validate, commit/push. Not a contract carrier.
@@ -530,19 +557,20 @@ Never modify without human arbitration:
 | Command | Effect |
 |---|---|
 | `/po` | Write a new US : `todo-*.md` task file only (no .feature). With `--from <doc.md>` : batch-extract US from a markdown document (one-by-one human validation) |
-| `/start {task-id}` | Create the working branches in the target repo(s) and **chain into `/develop`** by default. The full cycle then runs autonomously : `/develop` → `/forge-simplify` → `/sonar` → `/lint-angular` → `/lint-mobile` → `/review` → `/tech-writer`. |
+| `/start {task-id}` | Create the working branches in the target repo(s) and **chain into `/develop`** by default. The full cycle then runs autonomously : `/develop` → `/forge-simplify` → `/sonar` → `/lint-angular` → `/lint-mobile` → `/verify-visual` → `/review` → `/tech-writer`. |
 | `/start {task-id} no-code` | Create the working branches and **stop**. Task stays in `wip-*` ; the human implements in WindSurf and runs `/review {task-id}` manually when ready. Escape hatch when `/develop` is unsuitable. |
 | `/develop {task-id}` | **Autonomous implementation** : write code + tests, build, test, publish DTOs / interop NuGet packages when contracts change, bump consumers, push, hand off to `/forge-simplify`. Frontends covered : `client-blazor`, `client-angular` (code-only), `client-mobile` (full git automation). For mobile screens, calls `/stitch-design` first to get the design reference. See `agents/develop.md`. |
 | `/stitch-design {task-id}` | **Design sub-step of `/develop`** (mobile only). Ensures each `client-mobile` screen has a matching design in the Stitch project `client-mobile` (id `10088502293310567548`) — reuse if present, **create** via the Stitch MCP if missing (convention : screen title = component kebab-case name, e.g. `mail-list`). Logs the screenshot + HTML/CSS reference so `/develop` codes the Ionic screen against it. Stitch = design source of truth ; output is a **reference, not code**. Best-effort & non-blocking. Stand-alone form `/stitch-design {screen-name}` for manual design create/refresh. See `agents/stitch-design.md`. |
 | `/forge-simplify {task-id}` | Forge wrapper around the built-in `/simplify` : **quality-only** cleanup pass (reuse / simplification / efficiency / altitude — no bug hunting) on the code `/develop` just produced, per repo, re-validate (build + existing tests), commit/push pushable repos, `client-angular` code-only. Best-effort & non-blocking (rollback a repo on regression). **Never** touches `dtos-mss`/`interop-cda` (contract carriers) or excluded repos. Standard step in the autonomous chain, between `/develop` and `/sonar` ; skip clean if nothing to simplify. The standalone built-in `/simplify` stays available for ad-hoc human use. See `agents/forge-simplify.md`. |
-| `/sonar {task-id}` | Best-effort SonarQube cleanup on `api-mail` (5 iterations max, accepts remaining issues). Standard step in the autonomous chain. See `agents/sonar.md`. |
-| `/lint-mobile {task-id}` | Best-effort ESLint cleanup on `client-mobile` (Working dir `Client/Mobile/`). Plain Angular CLI : `ng lint --fix` then manual fixes, build (`npm run build`) + test (`npm test -- --watch=false --browsers=ChromeHeadless`) as the anti-regression net, 5 iterations max, accepts remaining errors. **Full git automation** (GitHub remote) : commits/pushes its fixes, unlike `/lint-angular`. Standard step in the autonomous chain, after `/lint-angular`, skip clean if client-mobile non touché. See `agents/lint-mobile.md`. |
+| `/sonar {task-id}` | Best-effort SonarQube cleanup on `api-mail` (5 iterations max, accepts remaining issues). Standard step in the autonomous chain. Consigne un tableau de **KPIs qualité (baseline → final + Quality Gate)** dans le `## Sonar log` de la task — restitué par `/review` dans le body de la PR api-mail et dans le rapport de fin de cycle (on monitore toujours la qualité, jamais de fin de cycle silencieuse sur ce plan). See `agents/sonar.md`. |
+| `/lint-mobile {task-id}` | Best-effort ESLint cleanup on `client-mobile` (Working dir `Client/Mobile/`). Plain Angular CLI : `ng lint --fix` then manual fixes, build (`npm run build`) + test (`npm test -- --watch=false --browsers=ChromeHeadless`) as the anti-regression net, 5 iterations max, accepts remaining errors. **Full git automation** (GitHub remote) : commits/pushes its fixes, unlike `/lint-angular`. Standard step in the autonomous chain, after `/lint-angular`, skip clean if client-mobile non touché. Hands off to `/verify-visual`. See `agents/lint-mobile.md`. |
+| `/verify-visual {task-id}` | **Vérification visuelle** des écrans `client-mobile` touchés, entre `/lint-mobile` et `/review`. Playwright headless (`tools/visual-verify/`) : session factice, API mockée par fixtures (aucun backend, aucune donnée de santé), capture 390×844 par écran, **pairée à la référence Stitch** dans le `## Visual verify log` (recopié par `/review` dans la PR). Captures rangées par task (`e2e/screenshots/{task-id}/`, liens SHA-pinnés) **et copiées dans `Docs/epics/img/screens/client-mobile/{écran}.png`** (sous-répertoire par app) — l'**état visuel global de l'application**, intégré par `/tech-writer` dans la galerie « État visuel » du doc produit de l'EPIC. Bloquant **uniquement** sur écran blanc/crash de navigation (`questions/` + halt) ; écarts design/outillage = best-effort. Skip clean si aucun écran touché. Forme stand-alone `/verify-visual {screen-name}`. See `agents/verify-visual.md`. |
 | `/lint-angular {task-id}` | Best-effort ESLint cleanup on `client-angular` (Working dir `Client/Angular/front/`). Reproduit la forme des commandes lint/build/test du pipeline Azure `Client/Angular/azure-pipelines.yml` (Stage 2 CI), avec deux divergences intentionnelles : (1) default `$BASE_BRANCH = origin/next` (branche d'intégration vivante du repo TFS, pas l'`origin/master` du pipeline) ; (2) lint scopé via `--projects=tag:scope:mss` (le forge ne fixe que le module MSS — `mss` + `mss-lib`). Build/test restent en scope complet pour détecter les régressions downstream. Auto-fix puis fix manuels 5 itérations max, accepte les errors restantes. Code-only — ne touche jamais à git. Standard step in the autonomous chain, skip clean si client-angular non touché. See `agents/lint-angular.md`. |
 | `/sonar-s3776 api-mail` | **[Manual]** Reduce cognitive complexity of ONE method (S3776). One method = one PR. Characterisation tests written first. Out of the autonomous chain. See `.claude/commands/sonar-s3776.md`. |
 | `/review {task-id}` | Validate the implementation (build + tests + DOD + code review), commit/push/sync develop, open the PR (label `awaiting-human-merge`), rename `done-*`, chain into `/tech-writer`. Autonomous — no human prompt. |
 | `/merge {task-id} --i-tested` | **[Human only]** After the human has tested the US end-to-end on the open PRs, squash-merge each pushable PR, sync `develop`, delete the branches, move the task into `tasks/archived/archived-{task-id}.md`. Refuses without `--i-tested`, on `awaiting-us-completion` label, or red CI. Never invoked by `/forge` — HAG (rule 10) stays. See `agents/merge.md`. |
-| `/tech-writer E{NNN}` | Refresh `docs/epics/E{NNN}-{slug}.md` from all tasks that declare `**Epic**: E{NNN}`. Called automatically at the tail of `/review` ; can be run manually for retro-generation or `--refresh`. See `agents/technical-writer.md`. |
-| `/forge` | Loop autonome : pour chaque `tasks/todo-task-*.md`, déclenche `/start` → `/develop` → `/forge-simplify` → `/sonar` → `/lint-angular` → `/lint-mobile` → `/review` → `/tech-writer`. Séquentiel (pas de parallélisme). Stop sur la première task qui échoue (écrit `questions/`, passe à la suivante). **Ne déclenche jamais `/merge`** — HAG, règle 10. |
+| `/tech-writer E{NNN}` | Refresh `docs/epics/E{NNN}-{slug}.md` from all tasks that declare `**Epic**: E{NNN}` — y compris la galerie **« État visuel de l'application »** (copies d'écran de `Docs/epics/img/screens/{app}/` appartenant à l'EPIC, embeds relatifs, libellés produit). Called automatically at the tail of `/review` ; can be run manually for retro-generation or `--refresh`. See `agents/technical-writer.md`. |
+| `/forge` | Loop autonome : pour chaque `tasks/todo-task-*.md`, déclenche `/start` → `/develop` → `/forge-simplify` → `/sonar` → `/lint-angular` → `/lint-mobile` → `/verify-visual` → `/review` → `/tech-writer`. Séquentiel (pas de parallélisme). Stop sur la première task qui échoue (écrit `questions/`, passe à la suivante). **Ne déclenche jamais `/merge`** — HAG, règle 10. |
 | `/status` | Quick status in < 10 lines |
 | `/publish-dtos` | Publish the DTO NuGet package and bump consumers (manual command — `/develop` does the equivalent inline as part of the autonomous cycle). |
 | `/kickoff` | Bootstrap a new project (scaffold `.claude/`, agents, templates) |

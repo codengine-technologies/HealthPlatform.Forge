@@ -66,7 +66,7 @@ baseline est déjà bonne — elle ne bloque jamais le cycle autonome.
 ## Autonomous cycle position
 
 ```
-/develop {task-id}   →   /forge-simplify {task-id}   →   /sonar {task-id}   →   /lint-angular {task-id}   →   /lint-mobile {task-id}   →   /review {task-id}   →   /tech-writer
+/develop {task-id}   →   /forge-simplify {task-id}   →   /sonar {task-id}   →   /lint-angular {task-id}   →   /lint-mobile {task-id}   →   /verify-visual {task-id}   →   /review {task-id}   →   /tech-writer
                                                           ↑
                                                           you are here
 ```
@@ -692,7 +692,10 @@ Sinon, NE PAS appeler `/lint-angular`, `/lint-mobile` ni `/review` — écrire
 **Mode A — chained** :
 
 1. Append a Sonar summary to the existing task's `## Develop log` section
-   (or create `## Sonar log` if missing) :
+   (or create `## Sonar log` if missing). **Le tableau de KPIs
+   baseline → final est OBLIGATOIRE** — c'est lui que `/review` recopie
+   dans le body de la PR et dans son rapport de fin de cycle (le monitoring
+   qualité fait partie du flux, pas d'un dashboard externe) :
    ```markdown
    ## Sonar log
    - Phase 1 (new code) : ✓ Quality Gate OK, new_coverage = {X}%
@@ -702,10 +705,37 @@ Sinon, NE PAS appeler `/lint-angular`, `/lint-mobile` ni `/review` — écrire
    - Phase 2 — Issues fixées : {count}
    - Phase 2 — Issues restantes : {count} (best-effort acceptance)
    - Build / tests : ✓ green
+
+   ### KPIs qualité (baseline → final)
+
+   | Métrique | Baseline | Final | Δ |
+   |---|---|---|---|
+   | Quality Gate (new code) | {OK/ERROR} | {OK/ERROR} | {→} |
+   | New coverage | {X}% | {X}% | {±X pt} |
+   | Bugs | {N} | {N} | {±N} |
+   | Vulnerabilities | {N} | {N} | {±N} |
+   | Security hotspots | {N} | {N} | {±N} |
+   | Code smells | {N} | {N} | {±N} |
+   | Coverage (projet) | {X}% | {X}% | {±X pt} |
+   | Duplication | {X}% | {X}% | {±X pt} |
+   | Reliability / Security / Maintainability | {A-E}/{A-E}/{A-E} | {A-E}/{A-E}/{A-E} | {→} |
    ```
-2. **Do not rename the task.** The task stays in `wip-*` — `/review` is
+   Les valeurs viennent des fetchs déjà effectués : baseline du Step 0.5,
+   final de la dernière re-analyse (Step 3.7 / 4.8). Aucune mesure
+   supplémentaire n'est requise — c'est de la restitution, pas un re-scan.
+2. **Feed `conventions/csharp.md`** (workspace root) — the self-improving
+   loop. For each Sonar rule fixed **manually** in this run on code written
+   by `/develop` (Phase 1 new-code findings in priority ; Phase 2 legacy
+   fixes count only when the rule is likely to recur in fresh code) :
+   - entry exists for the rule → increment **Occurrences**, append the
+     task-id to **Origine** ;
+   - no entry → create one (format documented at the top of the file),
+     `Occurrences : 1`.
+   The goal : `/develop` reads that file before coding, so the same rule
+   never triggers on new code twice. Skip when the run had nothing to fix.
+3. **Do not rename the task.** The task stays in `wip-*` — `/review` is
    responsible for the `wip → review → done` transitions.
-3. **Decide the next step** along the fixed pipeline `/lint-angular →
+4. **Decide the next step** along the fixed pipeline `/lint-angular →
    /lint-mobile → /review` (each self-skips when its repo is untouched) :
    - Task lists `client-angular` in `**Repos**:` **OR**
      `git -C Client/Angular/front status --porcelain` is non-empty
@@ -810,6 +840,10 @@ Rating mapping : `1=A, 2=B, 3=C, 4=D, 5=E`.
   - S3776 (cognitive complexity) garde sa commande dédiée `/sonar-s3776`,
     y compris pour le new code (auquel cas Phase 1 halt avec une question
     pointant vers `/sonar-s3776`).
+- **Feed `conventions/csharp.md`** at the end of every run (Mode A and
+  Mode B alike) for each manually-fixed rule likely to recur in fresh code
+  — see Step 5. The self-improving loop only works if the feeding is
+  systematic.
 - Build + full tests MUST pass after each iteration before re-analysis.
 - **Phase 1** : aucun cap de fichiers, aucun cap d'itérations. Cap de 100
   issues / itération uniquement pour cadencer les commits.

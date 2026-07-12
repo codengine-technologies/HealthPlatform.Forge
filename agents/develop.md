@@ -5,7 +5,7 @@
 You are the **autonomous developer** of the forge. Given a task in `wip-*`, you
 write the code, the tests, build, run the test suite, commit, push, and hand
 off to `/forge-simplify` (which runs the `/simplify` quality pass, then chains
-`/sonar` → `/lint-angular` → `/lint-mobile` → `/review`).
+`/sonar` → `/lint-angular` → `/lint-mobile` → `/verify-visual` → `/review`).
 
 You are the **default implementation path** in the new lean forge. The escape
 hatch is `/start {task-id} no-code` — when set, the human implements in
@@ -231,6 +231,11 @@ Same pattern as Step 2 :
 
 For each backend repo listed, in order :
 
+0. **Read `conventions/csharp.md`** (workspace root) before writing any C#.
+   Each « Consigne » is a pattern to apply from the first line — these are
+   lessons `/sonar` learned from previous tasks. A recurring Sonar new-code
+   finding on fresh code means this step was skipped.
+
 1. **Restore packages first** (especially after a DTO/interop bump) :
    ```bash
    cd {repo-path}
@@ -278,6 +283,13 @@ For each backend repo listed, in order :
    ```
 
 ### Step 5 — Implement on frontends (`client-blazor`, `client-angular`, `client-mobile`)
+
+**Before writing any Angular/Ionic code (5b / 5c), read
+`conventions/angular.md`** (workspace root). Each « Consigne » is a pattern
+to apply from the first line — these are lessons `/lint-angular` and
+`/lint-mobile` learned from previous tasks (e.g. native control flow
+`@if`/`@for`, selector prefixes). A recurring lint error on fresh code
+means this step was skipped.
 
 #### 5a. `client-blazor` (pushable)
 
@@ -413,7 +425,7 @@ repo (GitHub remote, `develop` branch), so the forge owns git here.
    not found), log it as a blocker but **do not halt** — `/sonar` may add
    tests as side effect, and `/review` will catch any remaining miss.
 
-### Step 7 — Hand off to the cleanup chain (`/forge-simplify` → `/sonar` → `/lint-angular` → `/lint-mobile` → `/review`)
+### Step 7 — Hand off to the cleanup chain (`/forge-simplify` → `/sonar` → `/lint-angular` → `/lint-mobile` → `/verify-visual` → `/review`)
 
 Append a `## Develop log` section to the task file with :
 
@@ -443,7 +455,7 @@ self-skipping when its target repo wasn't touched and unconditionally handing
 off to the next :
 
 ```
-/sonar (api-mail)  →  /lint-angular (client-angular)  →  /lint-mobile (client-mobile)  →  /review
+/sonar (api-mail)  →  /lint-angular (client-angular)  →  /lint-mobile (client-mobile)  →  /verify-visual (écrans mobiles)  →  /review
 ```
 
 `/forge-simplify` jumps straight to the **first** step whose repo was touched
@@ -475,6 +487,10 @@ pre-flight and skips its empty scope (`/sonar` when api-mail untouched,
 
 ## Rules
 
+- **Read the learned conventions before coding** : `conventions/csharp.md`
+  before C# (Step 4), `conventions/angular.md` before Angular/Ionic
+  (Step 5b/5c). They are auto-fed by `/sonar` and `/lint-*` — applying them
+  up front is what keeps the cleanup steps empty.
 - **Test-first for any behaviour change** (CLAUDE.md rule 1). Pure refactors
   rely on existing tests as the safety net.
 - **Endpoint coverage** : every new endpoint has at least 1 integration test

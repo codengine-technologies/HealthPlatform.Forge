@@ -189,12 +189,25 @@ In autonomous mode (`/develop` upstream) this halts the chain ; in
      --base develop \
      --head feat/{task-id}-{slug} \
      --title "{type}({module}): {task-title}" \
-     --body "{summary + code review summary + Manual Test Plan}"
+     --body "{summary + code review summary + quality KPIs + Manual Test Plan}"
    gh pr edit {num} --add-label awaiting-human-merge
    ```
 
    Include the code review summary in the PR body under a `## Code Review`
    section so the human can see the review when merging.
+
+   **Quality monitoring — mandatory when the cycle went through `/sonar`** :
+   if the task file contains a `## Sonar log`, copy its
+   `### KPIs qualité (baseline → final)` table verbatim into the `api-mail`
+   PR body under a `## Qualité (SonarQube)` section. The human must see the
+   quality trend at merge time without opening SonarQube.
+
+   **Visual verification — when the cycle went through `/verify-visual`** :
+   if the task file contains a `## Visual verify log`, copy its table
+   (écran / référence Stitch / capture / verdict) into the `client-mobile`
+   PR body under a `## Vérification visuelle` section — the human compares
+   design intent and actual render at merge time, before even launching
+   the app.
 
    **Code-only repo** (`client-angular`) :
    - Do **NOT** push, do **NOT** attempt `gh pr create` (TFS remote, manual).
@@ -217,11 +230,25 @@ In autonomous mode (`/develop` upstream) this halts the chain ; in
     tech-writer" in the final report. The tech-writer runs read-only on tasks
     and only writes to `docs/epics/`.
 
-12. **Report** to the human :
+12. **Report** to the human. **Quality monitoring is part of the report** :
+    when the task file contains a `## Sonar log`, the final report MUST
+    include the quality KPI table (baseline → final + Quality Gate) — the
+    cycle never ends silently on quality. If `/sonar` was skipped (api-mail
+    untouched), state it in one line ("Qualité : /sonar skipped — api-mail
+    non touché").
     ```
     {task-id} — autonomous cycle complete.
 
     Code review : APPROVED (X files reviewed, Y suggestions, 0 blocking)
+
+    Qualité (SonarQube) :
+    | Métrique | Baseline | Final | Δ |
+    |---|---|---|---|
+    | Quality Gate (new code) | ... | ... | ... |
+    | New coverage | ... | ... | ... |
+    | Bugs / Vulnérabilités / Smells | ... | ... | ... |
+    | Coverage projet / Duplication / Ratings | ... | ... | ... |
+    (or : Qualité : /sonar skipped — api-mail non touché)
 
     Commits pushed, GitHub PRs opened :
     - {repo} : {pr-url}    [label: awaiting-human-merge]
@@ -256,6 +283,10 @@ In autonomous mode (`/develop` upstream) this halts the chain ; in
   and halt the chain. Do not commit, do not open PRs.
 - Every DOD item must be checked or explicitly marked as deferred to manual
   test (Manual Test Plan items become PR-body checkboxes for the human).
+- **Quality is always surfaced** : when the task went through `/sonar`, the
+  KPI table (baseline → final) from `## Sonar log` appears in the api-mail
+  PR body AND in the final report. Never end a cycle without a quality
+  statement (KPI table, or the explicit "/sonar skipped" line).
 - Build + test MUST pass on every target repo before code review
 - Use `git merge`, never `git rebase` (CLAUDE.md rule 4)
 - The code review is honest and rigorous — it flags real issues, not cosmetic
