@@ -25,6 +25,45 @@ Sequentially, not in parallel. Cross-task interference on shared repos
 (branches, package versions, `Directory.Packages.props`) makes parallel
 execution unsafe.
 
+## Staging branch (per run)
+
+Each `/forge` run aggregates the fully-validated work of all its tasks onto a
+single **staging branch per pushable repo**, so the human can `git checkout`
+**one** branch and test the whole batch end-to-end instead of juggling N
+feature branches.
+
+- **Naming** : `forge/staging-task-{début}-{fin}-{date}` where `{début}` /
+  `{fin}` are the lowest / highest task-id in the run's `todo-*` backlog
+  (collapse to the same id when a single task, e.g.
+  `forge/staging-task-159-159-20260716`) and `{date}` is `YYYYMMDD`. The
+  same branch name is used across every repo.
+- **Fresh from `develop`** : created lazily from `origin/develop` the first
+  time a successful task pushes a `feat/*` on that repo — never reused across
+  runs, never stale. Repos a run never touches get no staging branch (no
+  empty branches).
+- **Scope** : pushable repos only — `api-mail`, `client-blazor`,
+  `client-mobile`, `dtos-mss`, `sdk`, `host`, `interop-cda`. **Never**
+  `client-angular` (code-only, no git), `devops`, `psc-proxy-*` (excluded).
+- **Aggregation is the last per-task link, after `/review`** : it merges
+  (`git merge --no-ff feat/{task}-{slug}`) the feature branch **already
+  cleaned by the full quality chain** — `/forge-simplify`, `/sonar`,
+  `/lint-angular`, `/lint-mobile` all committed their fixes onto `feat/*`
+  *before* `/review`. Staging inherits every quality fix mechanically ;
+  nothing is re-qualified on staging (redundant, and staging has no PR).
+- **Best-effort, never a failure point** : an aggregation merge conflict →
+  abort that merge, log it, leave the task's `feat/* → develop` PR intact and
+  the task `done-*`. Staging is a test convenience, never blocks the cycle.
+- **HAG preserved, no staging PR** : the per-task `feat/* → develop` PRs
+  (label `awaiting-human-merge`) are unchanged and remain the merge vehicle.
+  The staging branch has **no** PR toward `develop` — you check it out, test
+  the batch, then merge the per-task PRs you're happy with. The forge never
+  merges `develop` (HAG, CLAUDE.md rule 10).
+- **Only validated tasks are aggregated** : a task enters staging only once it
+  passes `/review` (build + tests + DOD + code review green). `/sonar` and the
+  lint steps are best-effort and never block aggregation ; a red build/test or
+  CHANGES_REQUESTED keeps the task out of staging (no unvalidated code in the
+  test branch).
+
 ## Per-task halt conditions
 
 If any step fails (`/develop` blocker, Sonar tooling failure, `/review`
@@ -46,6 +85,7 @@ fails (e.g. some repo isn't on `develop` and the human hasn't cleaned up).
 ========================
 
 Backlog : N tasks in todo-*
+Staging : forge/staging-task-018-019-20260716 (fresh from develop, per repo)
 
 Task task-018 — feat(mail) ...
   /start        : ✓ branches created on api-mail, client-blazor, dtos-mss
@@ -55,14 +95,19 @@ Task task-018 — feat(mail) ...
   /lint-angular : ⤍ skipped — no angular change
   /lint-mobile  : ⤍ skipped — no mobile change
   /review       : ✓ APPROVED, 3 PRs opened (#42, #43, #44, label awaiting-human-merge)
+  staging       : ✓ feat/task-018-... merged into forge/staging-... (api-mail, client-blazor, dtos-mss)
   /tech-w.      : ✓ docs/epics/E009-... updated
 
 Task task-019 — fix(audit) ...
   /start    : ✓
   /develop  : ✗ blocker — questions/task-019.md created
-  → skipping to next task
+  → skipping to next task (not aggregated into staging)
 
 ...
+
+Staging branch (checkout + test the whole batch) :
+- forge/staging-task-018-019-20260716 — api-mail, client-blazor, dtos-mss
+  (tasks aggregated : task-018)
 
 PRs awaiting your merge (HAG, rule 10) :
 - api-mail #42, client-blazor #43, dtos-mss #44 (task-018)
@@ -82,8 +127,15 @@ Tasks blocked, action needed :
 ## Rules
 
 - **Sequential only.** Never two tasks in flight at once.
-- **HAG (rule 10) is preserved.** The forge never merges a PR. Each
-  task ends with a PR labelled `awaiting-human-merge`.
+- **HAG (rule 10) is preserved.** The forge never merges a PR onto `develop`.
+  Each task ends with a `feat/* → develop` PR labelled `awaiting-human-merge`.
+  The staging branch is an aggregation of `feat/*` branches for testing — it
+  has no PR toward `develop` and never merges `develop`.
+- **Staging is best-effort and run-level.** It aggregates only tasks that
+  passed `/review`, after the full quality chain (`/forge-simplify`, `/sonar`,
+  `/lint-*`) has already baked its fixes into `feat/*`. An aggregation merge
+  conflict is logged and skipped — it never fails the cycle nor touches the
+  per-task PR.
 - **No retry.** A failed task moves to `questions/` and is skipped — the
   human triages and re-runs the chain (or fixes manually) when ready.
 - **No backlog hunting beyond `todo-*`.** The forge does not invent work,

@@ -114,3 +114,22 @@ Chemins à traiter (les 4) :
 - **Référentiels métier** : aucun (CIM-10 / SNOMED / LOINC / CCAM / NABM / CIS-CIP — sans objet).
 - **Hébergement HDS** : oui — environnement HDS existant (boîte MSSanté) ; périmètre **inchangé**, aucune nouvelle donnée hébergée.
 - **AIPD / impact RGPD** : inchangé — pas de nouveau traitement, aucune donnée supplémentaire collectée ; correctif de robustesse sur un traitement existant.
+
+## Branches
+- `api-mail` (pushed) : feat/task-158-imap-copy-fallback (commit b4f6b4a)
+
+## PRs
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/114 — label `awaiting-human-merge`
+
+## Staging
+- Agrégée dans `forge/staging-task-142-160-20260716` (api-mail) sans conflit — combine task-154 + task-158, build 0 erreur.
+
+## Sonar log
+- `/sonar` **différé** (best-effort) : infra SonarQube injoignable (localhost:9001, conteneurs à démarrer). Relançable : `/sonar task-158`. Qualité non bloquante pour la PR.
+
+## Code Review Summary
+- APPROVED — repli COPY unifié (`ImapMoveHelper`) sur les 4 chemins, MOVE défaut préservé (non-régression testée), COPY-échec→503 ProblemDetails, audit enrichi du transport, corps jamais transité (task-068). Build 0 erreur ; 2770 tests unitaires verts (11 nouveaux) ; 3 reds d'intégration pré-existants (Docker/Gmail) non touchés.
+
+## Merged
+- 2026-07-17 — squash-merge sur `develop` (MERGEABLE sans conflit)
+- `api-mail` : 9966a78 (PR #114 fermée)

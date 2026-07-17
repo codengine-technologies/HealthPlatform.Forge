@@ -5,7 +5,7 @@
 > **Version** : 2.0
 > **Auteur** : PO forge
 > **Audience** : PO, médecin, direction — la vue ingénierie vit dans [E012-Changelogs.md](E012-Changelogs.md)
-> **Dernière mise à jour** : 2026-07-11 (task-145)
+> **Dernière mise à jour** : 2026-07-16 (task-159)
 
 ---
 
@@ -32,8 +32,8 @@
   - [10.7 Consulter le dossier d'un patient](#107-consulter-le-dossier-dun-patient)
   - [10.8 Personnaliser l'application](#108-personnaliser-lapplication)
   - [10.9 Gérer ses signatures](#109-gérer-ses-signatures)
-- [État de couverture (2026-07-11)](#état-de-couverture-2026-07-11)
-- [État visuel de l'application (2026-07-11)](#état-visuel-de-lapplication-2026-07-11)
+- [État de couverture (2026-07-16)](#état-de-couverture-2026-07-16)
+- [État visuel de l'application (2026-07-16)](#état-visuel-de-lapplication-2026-07-16)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -71,7 +71,7 @@ jamais compromettre la confidentialité des données de santé.
 
 | Fonctionnalité | Ce que le praticien peut faire | Tasks | Statut |
 |---|---|---|---|
-| Connexion e-CPS | Se connecter avec son RPPS et valider sur son application e-CPS, sans quitter l'app | task-136 | ✅ Livrée |
+| Connexion e-CPS | Se connecter avec son RPPS et valider sur son application e-CPS, sans quitter l'app ; si la messagerie n'est pas encore configurée, être guidé pour l'activer avant d'entrer dans l'application | task-136, task-159 | ✅ Livrée |
 | Messagerie | Consulter la boîte, naviguer entre répertoires, **organiser ses dossiers personnels** (créer, renommer, supprimer), suivre le **quota** de la boîte, filtrer, rechercher, suivre les conversations, être notifié des nouveaux messages | task-095, task-103, task-104, task-106, task-107, task-108, task-143 | ✅ Livrée |
 | Lecture d'un message | Ouvrir un message avec son identité patient, ses documents médicaux, ses pièces jointes, sa synthèse IA ; émettre un accusé de lecture sur demande | task-096, task-097, task-101, task-105, task-131 | ✅ Livrée |
 | Biologie | Visualiser les résultats avec mise en évidence des valeurs hors norme et **acquitter** avec traçabilité | task-098 | ✅ Livrée |
@@ -480,11 +480,11 @@ suppression) affiche un message lisible ; l'action peut être relancée.
 
 ---
 
-## État de couverture (2026-07-11)
+## État de couverture (2026-07-16)
 
 | Fonctionnalité | Statut | Tasks contributives |
 |---|---|---|
-| Connexion e-CPS | ✅ Livrée | task-136 |
+| Connexion e-CPS | ✅ Livrée | task-136, task-159 |
 | Messagerie (boîte, dossiers personnels, quota, recherche, conversations, notifications) | ✅ Livrée | task-095, task-103, task-104, task-106, task-107, task-108, task-143 |
 | Lecture d'un message et de ses documents | ✅ Livrée | task-096, task-097, task-101, task-105, task-131 |
 | Biologie (affichage + acquittement) | ✅ Livrée | task-098 |
@@ -499,13 +499,14 @@ suppression) affiche un message lisible ; l'action peut être relancée.
 **Couverture EPIC consolidée : 10,5 / 11 fonctionnalités livrées** — seule
 Préférences reste développée et en attente de validation manuelle.
 
-## État visuel de l'application (2026-07-11)
+## État visuel de l'application (2026-07-16)
 
 > Captures générées automatiquement par la forge (/verify-visual) — dernier
 > état connu de chaque écran, sur données de démonstration.
 
 | | |
 |---|---|
+| **Messagerie non configurée**<br/><img src="img/screens/client-mobile/mss-unconfigured.png" alt="Messagerie non configurée" width="280" style="border: 1px solid #c2c6d4; border-radius: 8px;" /> | **Configurer ma messagerie**<br/><img src="img/screens/client-mobile/mss-setup.png" alt="Configurer ma messagerie" width="280" style="border: 1px solid #c2c6d4; border-radius: 8px;" /> |
 | **Connexion e-CPS**<br/><img src="img/screens/client-mobile/login.png" alt="Connexion e-CPS" width="280" style="border: 1px solid #c2c6d4; border-radius: 8px;" /> | **Boîte de réception**<br/><img src="img/screens/client-mobile/inbox.png" alt="Boîte de réception" width="280" style="border: 1px solid #c2c6d4; border-radius: 8px;" /> |
 | **Répertoires**<br/><img src="img/screens/client-mobile/mail-folder-list.png" alt="Répertoires" width="280" style="border: 1px solid #c2c6d4; border-radius: 8px;" /> | **Détail d'un message**<br/><img src="img/screens/client-mobile/mail-detail.png" alt="Détail d'un message" width="280" style="border: 1px solid #c2c6d4; border-radius: 8px;" /> |
 | **Recherche**<br/><img src="img/screens/client-mobile/mail-search.png" alt="Recherche" width="280" style="border: 1px solid #c2c6d4; border-radius: 8px;" /> | **Nouveau message**<br/><img src="img/screens/client-mobile/mail-compose.png" alt="Nouveau message" width="280" style="border: 1px solid #c2c6d4; border-radius: 8px;" /> |
@@ -517,6 +518,12 @@ Préférences reste développée et en attente de validation manuelle.
 
 ## Synthèse fonctionnelle des changelogs
 
+- **v1.27 (task-159)** — Première connexion sans messagerie configurée : si
+  le compte du praticien ne porte pas encore d'adresse MSSanté, l'application
+  affiche un écran dédié « Messagerie non configurée » avec un parcours de
+  configuration guidé — saisie de l'adresse, vérification de la connexion,
+  puis invitation à se reconnecter pour activer la boîte. Fini la boucle de
+  connexion sans explication.
 - **v1.26 (task-145)** — Signatures : le praticien gère plusieurs signatures
   (créer, modifier, supprimer, définir la signature par défaut) depuis
   Paramètres → Rédaction. La signature par défaut est ajoutée automatiquement

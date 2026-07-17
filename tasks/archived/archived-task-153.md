@@ -73,3 +73,25 @@ spécification, deux implémentations TS).
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui — backend existant
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+- `client-mobile` (pushed) : feat/task-153-reply-all (commit f3fa925)
+- `client-angular` (code-only) : code écrit sur la branche courante `feature/nova-rewriting-mss`, **non commité** — l'humain gère commit/push/PR TFS. Fichiers :
+  - `front/libs/mss/src/core/utils/reply-all-recipients.util.ts` (+ .spec.ts)
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.component.{ts,html,spec.ts}`
+
+## PRs
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/55 — label `awaiting-human-merge`
+- `client-angular` : aucune PR forge (code-only, TFS). Validé MSS-scoped : nx test mss-lib 312 OK, nx lint mss-lib 0 erreur.
+
+## Staging
+- Mobile agrégée dans `forge/staging-task-142-160-20260716` ; 674 tests verts.
+- **CONFLIT D'INTÉGRATION résolu** : task-152 (#54) et task-153 (#55) ajoutent toutes deux un champ `to?` à `ComposeRequest` avec des types incompatibles (`string[]` vs `MailAddressDto[]`). Réconcilié dans staging en renommant le champ string[] de task-152 en `toEmails` (mail-event.service + mail-compose + ai-chat + spec). **⚠️ À appliquer au merge de #54+#55 sur develop** (sinon collision de type).
+
+## Code Review Summary
+- APPROVED (2 repos). Logique pure testée identiquement, réutilisation reply/threading, pas d'auto-adressage, FR en dur, data-testid. Mobile build 0 erreur / 522 tests ; Angular MSS 312 tests / lint clean.
+
+## Merged
+- 2026-07-17 — squash-merge sur `develop` (conflit sémantique ComposeRequest.to → réconcilié `toEmails`/`to`/`cc`, consommateurs renommés ; spec union)
+- `client-mobile` : 6211ecb (PR #55 fermée)
+- `client-angular` : géré manuellement par l'humain (code-only TFS)

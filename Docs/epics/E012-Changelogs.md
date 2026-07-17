@@ -2,11 +2,32 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > **Vue produit** : [E012-client-mobile-mssante.md](E012-client-mobile-mssante.md)
-> **Dernière mise à jour** : 2026-07-11
+> **Dernière mise à jour** : 2026-07-16
 
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.27 — task-159 — Onboarding MSSanté mobile (compte sans adresse configurée) (2026-07-16)
+
+- **PR** : [HealthPlatform.Mobile#57](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/57) — label `awaiting-human-merge`. Branche `feat/task-159-mss-onboarding`. Repo `client-mobile` uniquement (`**Single frontend**: true`). **Frontend-only** : endpoints existants réutilisés tels quels (`POST /api/v1/account/mss-imap-test` sur `api-mail`, task-037 ; `PUT {authEndpoint}/admin/mss-profile` sur le proxy Keycloak) ; aucun changement DTO/backend. Dépend fonctionnellement de task-136 (connexion CIBA e-CPS) et task-037 (parité web).
+- **Modèle d'auth** (`src/app/core/auth/auth-session.service.ts`) : nouvel état intermédiaire `needsMssOnboarding` (`!!accessToken && !userEmail`), distinct de `isAuthenticated` (inchangé, exige toujours la session complète) ; `readFromStorage()` ne jette plus une session token-only (conservée pour l'onboarding). `authGuard` : token-only → route onboarding, pas de token → `/login`, session complète → passe. Nouveau `mssConfiguredGuard` protège les routes `ion-tabs`/INBOX tant que `needsMssOnboarding`, exempte `mss-unconfigured`/`mss-setup`.
+- **Écrans** (`src/app/mss-onboarding/`) : `mss-unconfigured` (verrou plein écran, CTA « Configurer mon compte ») et `mss-setup` (formulaire 1 champ adresse MSSanté, phases `editing → submitting → success`, bouton « Se déconnecter maintenant »). Routes ajoutées hors `ion-tabs` dans `app-routing.module.ts` (comme `login`).
+- **`MssOnboardingService`** : `validateImapConnection(email)` → `POST /api/v1/account/mss-imap-test` (mêmes codes d'erreur que task-037 : `AUTH_FAILED`/`HOST_UNREACHABLE`/`MAILBOX_NOT_FOUND`/`INVALID_EMAIL`, mappés en FR) ; `persistMssEmail(email)` → `PUT {authEndpoint}/admin/mss-profile`, bearer (pas `withCredentials` — divergence assumée vs web, session mobile).
+- **Réutilisation** : composants/tokens Ionic + design system E014 « Clinical Precision » réutilisés tels quels (boutons, inputs, toasts) ; `mss-headers.interceptor`/base URL API MSS réutilisés (pas de client HTTP ad hoc).
+- **Assertion clé DOD** : aucun appel mail/mss-api avant configuration — garanti structurellement par `[authGuard, mssConfiguredGuard]` sur `/home` et `/tabs` (les composants concernés ne sont jamais activés tant que `needsMssOnboarding`).
+- **Simplify (`/forge-simplify`)** : skip clean — code déjà à bonne altitude (guards en pattern `inject` idiomatique, logout setup ≠ logout settings, `responseType: 'text'` réutilise le pattern défensif de `sendMail`). Aucun commit.
+- **Lint (`/lint-mobile`)** : baseline `ng lint` **All files pass linting** — 0 erreur, 0 warning sur le code frais. Aucun fix nécessaire (conventions `conventions/angular.md` appliquées d'emblée : `@if` natif, préfixes `app-`/`mss-`, FR en dur, `data-testid`).
+- **Verify-visual (`/verify-visual`)** : 2/2 écrans capturés (390×844, session **token-only** injectée — jeton présent, `userEmail` vide), aucun écran blanc, aucune erreur console. `capture.mjs` étendu (option `session: "token-only"`) + `screens.json` (`mss-unconfigured`, `mss-setup`). Captures : `Client/Mobile/e2e/screenshots/task-159/` (commit `1da6ba0`) + copiées dans `Docs/epics/img/screens/client-mobile/` (galerie E012). Réf. Stitch : `mss-unconfigured` (screen `2bba91686d4c4c93a1feee5043949d4f`, fidèle) ; `mss-setup` (génération en timeout MCP — intention appliquée, pas de re-génération, mémoire `reference_stitch_generate_screen_timeouts`).
+- **Code review** : verdict **APPROVED** — 23 fichiers, 0 bloquant, 1 suggestion non bloquante (`mssConfiguredGuard` recoupe partiellement `authGuard` sur `/home`/`/tabs`, intentionnel).
+- **Tests** : 25 nouvelles specs — `auth-session.service` (needsMssOnboarding + isAuthenticated inchangé + readFromStorage token-only, 4 cas), `auth.guard` (3 cas), `mss-onboarding.guard` (5 cas, guard app-configurée + exemption onboarding), `MssOnboardingService.validateImapConnection` (succès + 4xx par code), `MssOnboardingService.persistMssEmail` (204 + 4xx/5xx + bearer), `mss-setup` (rendu, validation champ requis/format/maxLength 254, chaîne IMAP OK→persist / IMAP KO→pas de persist), `mss-unconfigured` (rendu + CTA nav). Total suite : **537/537** verts.
+- **Build / lint** : `npm run build` ✓ 0 erreur ; `npm test … ChromeHeadless` ✓ 537/537.
+- **Commits** : `8e5934c` (feat auth token-only), `28bb188` (feat écrans + service onboarding), `1da6ba0` (captures verify-visual).
+- **Qualité** : `/sonar` skipped — `api-mail` non touché par cette task.
+- **Staging aggregation** : **non agrégée** sur `forge/staging-task-142-160-20260716` — conflit best-effort sur `src/app/app-routing.module.ts` avec task-149 (déplacement `/home` → redirect `tabs/home`) ; `git merge --abort`, PR #57 `feat → develop` intacte, task reste `done`. Note d'intégration humaine (HAG) : au merge, si task-149 précède task-159, porter les gardes `[authGuard, mssConfiguredGuard]` sur `tabs/home` (ou conserver le parent `/tabs`, déjà gardé) — pas de perte de sécurité, la protection reste assurée par le garde du parent `/tabs`.
+- **Conformité** : aucune adresse MSSanté ni donnée sensible en clair dans les logs console/URL (transite uniquement dans le corps des POST/PUT) ; validation IMAP réutilise l'authentification serveur existante (aucun secret utilisateur en clair côté client) ; persistance en **bearer** (session mobile), pas de cookie `withCredentials` ; événements journalisés côté mobile (tentative, succès, échec IMAP, échec persistance) sans adresse en clair ; authentification PS (e-CPS/CIBA, task-136) inchangée ; AIPD à signaler — vérifier que la note RGPD/AIPD du périmètre mobile couvre la saisie et la transmission de l'adresse MSSanté du PS au proxy Keycloak.
+
+---
 
 ### v1.26 — task-145 — Signatures (CRUD + injection compose) (2026-07-11)
 
@@ -448,3 +469,43 @@
 - **Commits** : 228b2e1 (refonte structure + inbox + dossiers), 5301647 (eslint préfixe `mss`).
 - **Conformité** : aucune donnée de santé en clair (INS/identité/contenu) dans logs/URL ; affichage uniquement, consultation tracée côté backend.
 - **Hors scope (rappel)** : consultation détail (task-096), PJ (task-097), biologie+ack (task-098), actions message (task-099), compose/envoi (task-100).
+
+---
+
+## Annexe C — Tasks ayant contribué à cet EPIC
+
+> Recense les tasks dont l'entrée figure dans l'Historique ci-dessus. Les
+> tasks E012 déjà passées en `done-*` mais pas encore reflétées ici (ex. lot
+> en cours de traitement par la forge) rejoindront cette annexe à leur propre
+> passage `/tech-writer`.
+
+| Task | PR | Contribution | RGs fermés |
+|---|---|---|---|
+| task-095 | Mobile#1 | Socle features/mail miroir : parité Inbox + sélection de répertoire | — |
+| task-096 | Mobile#2 | Parité consultation email : mail-detail, mail-body, medical-html-frame | — |
+| task-097 | Mobile#3 | Pièces jointes : liste unifiée + prévisualisation inline | — |
+| task-098 | Mobile#4 | Biologie : affichage + acquittement tracé | — |
+| task-099 | Mobile#5 | Actions message : lu/non-lu, flag, suppression, déplacement | — |
+| task-100 | Mobile#6 | Compose / envoi : mail-compose + éditeur HTML léger | — |
+| task-101 | interop.cda.parser#6 | HTML CDA responsive mobile (feuille XSL) | — |
+| task-102 | Mobile#7 | Continuité de session : refresh JWT + rejeu | — |
+| task-103 | Mobile#8 | Pagination inbox orientée scroll infini | — |
+| task-104 | Mobile#9 | Enrichissement + mises à jour live SSE | — |
+| task-105 | Mobile#10 | Accusé de lecture sur consentement explicite | — |
+| task-106 | Mobile#11 | Recherche d'emails (sémantique + filtres rapides) | — |
+| task-107 | Mobile#12 | Notifications nouveaux mails (SSE in-app) | — |
+| task-108 | Mobile#13 | Vue Conversations (regroupement par fil) | — |
+| task-131 | Mobile#34 | Synthèse IA d'un email (panneau détail) | — |
+| task-132 | Mobile#35 | Vue patient : socle recherche + fiche + opposition | — |
+| task-133 | Mobile#36 | Vue patient : timeline documents médicaux + viewer | — |
+| task-134 | Mobile#37 | Vue patient : timeline biologie matricielle | — |
+| task-135 | Mobile#38 | Vue patient : synthèse clinique & antécédents | — |
+| task-136 | Mobile#39 | Connexion CIBA e-CPS (RPPS + validation découplée) | — |
+| task-137 | Mobile#41 | Rattachement email → patient par comparaison visuelle | — |
+| task-138 | Mobile#42 | Garde-fous d'envoi conformes (INS, opposition, PJ) | — |
+| task-139 | Mobile#43 | Brouillons : auto-save, dossier dédié, reprise, envoi | — |
+| task-140 | Mobile#44 | Écran Paramètres mobile réel, préférences partagées | — |
+| task-141 | Mobile#45 | Sélection multiple + actions en masse sur l'inbox | — |
+| task-143 | Mobile#48 | Dossiers personnalisés (CRUD) + jauge de quota | — |
+| task-145 | Mobile#49 | Signatures (CRUD + injection automatique au compose) | — |
+| task-159 | Mobile#57 | Onboarding MSSanté (compte sans adresse configurée) | — |

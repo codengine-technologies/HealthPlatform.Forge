@@ -35,6 +35,17 @@ For every pushable repo whose PR is ready :
   retroactive inspection / re-checkout. The forge does not run
   `git branch -D` at merge time, and never passes `--delete-branch`.
 
+For the run's **staging branch** (`forge/staging-task-{début}-{fin}-{date}`,
+created by `/forge` to aggregate the whole run for testing) :
+- Deleted (remote **and** local) **only once the whole run is merged** — i.e.
+  no active task file remains with a numeric id in the branch's `[début, fin]`
+  range. Unlike per-task `feat/*` branches, the staging branch is a forge
+  throwaway with no human value once the batch is on `develop`.
+- Kept if any task of that run is still pending — deleting it early would
+  strip the human's batch-test branch mid-run.
+- Best-effort — a failed deletion (checked out, already gone) is logged, never
+  aborts the merge.
+
 For `client-angular` (code-only) : fully out of scope — the forge does no
 git operation and asks no question (the human owns the entire Angular
 lifecycle silently).
@@ -155,7 +166,42 @@ Same three-mode taxonomy as the rest of the forge :
    the merge timestamp, the squash commit SHA per repo, and the CI run
    URL on `develop`.
 
-9. **Report** :
+9. **Staging branch cleanup** — delete the run's staging branch once its whole
+   batch is merged.
+
+   The task just archived belonged to a `/forge` run whose staging branch is
+   `forge/staging-task-{début}-{fin}-{date}` (same name across every pushable
+   repo it touched). Delete it **only when every task of that run is merged** —
+   i.e. no active task file remains with a numeric id inside `[début, fin]` :
+
+   ```bash
+   # Workspace-level check — compute ONCE, is the run fully drained?
+   #   scan tasks/{todo,wip,review,done}-task-*.md, extract each numeric id.
+   #   The just-merged task is already in tasks/archived/, so it does not count.
+   #   drained  ⇔  no remaining active id falls within [début, fin].
+
+   for each pushable repo (api-mail, client-blazor, client-mobile, dtos-mss,
+                           sdk, host, interop-cda) :
+     cd {repo-path}
+     git fetch origin --prune
+     for each remote branch matching origin/forge/staging-task-*-*-* :
+       parse [début, fin] from the name
+       if the just-merged task's numeric id ∈ [début, fin] :
+         if drained :
+           git push origin --delete forge/staging-task-{début}-{fin}-{date}    # remote ref
+           git branch -D forge/staging-task-{début}-{fin}-{date} 2>/dev/null    # local, best-effort
+         else :
+           # keep — log "staging kept : task(s) {ids} still pending in this run"
+   ```
+
+   **Best-effort — never blocks the merge.** The PRs are already on `develop` ;
+   a failed staging deletion (branch checked out locally, already pruned,
+   permission) is logged, not fatal. Contrary to per-task `feat/*` branches
+   (whose **local** ref is deliberately kept — step 5 pitfall), the staging
+   branch is a **forge throwaway** : both its remote and local refs go once the
+   run is drained.
+
+10. **Report** :
    ```
    {task-id} — merged.
 
@@ -171,6 +217,8 @@ Same three-mode taxonomy as the rest of the forge :
    - devops, psc-proxy-* : N/A
 
    develop CI : ✓ green on all pushable repos
+   Staging : forge/staging-task-{début}-{fin}-{date} deleted (run fully merged)
+             (or : kept — task(s) {ids} still pending in this run)
    Task archived : tasks/archived/archived-{task-id}.md
    ```
 
@@ -187,6 +235,11 @@ Same three-mode taxonomy as the rest of the forge :
 - Squash-merge only (`gh pr merge --squash`). Keeps `develop` history
   linear, one commit per US.
 - Never force-push. Never touch `develop` history.
+- **Delete the run's staging branch only when the run is fully drained** — no
+  active task file with a numeric id inside the branch's `[début, fin]` range.
+  Deleting early strips the human's batch-test branch mid-run. Staging is a
+  forge throwaway → remove both remote and local refs (unlike `feat/*`, whose
+  local ref is kept). Best-effort, never aborts the merge.
 - Never touch `client-angular` — no git op, no question, no log line
   beyond "managed manually by the human". The TFS PR and the local
   Angular clone are the human's exclusive domain at merge time.

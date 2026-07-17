@@ -68,3 +68,19 @@ Contacts cloisonnés par praticien (backend task-023).
 - **Référentiels métier** : RPPS + référentiel de spécialités (via `getSpecialties`, source serveur)
 - **Hébergement HDS** : oui — carnet stocké côté serveur (pas d'export local sur mobile)
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+- `client-mobile` (pushed) : feat/task-148-contacts
+
+## PRs
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/52 — label `awaiting-human-merge`
+
+## Staging
+- Agrégée dans `forge/staging-task-142-160-20260716` sans conflit (593 tests verts).
+
+## Code Review Summary
+- APPROVED — 17 fichiers, module Contacts complet (carnet+groupes+annuaire+compose favoris). Réutilisation E014, FR en dur, data-testid, pas de RPPS/santé loggé. Build 0 erreur ; 563 tests (~51 nouveaux) ; ESLint clean. NgModule-based (pattern réel du repo).
+
+## Merged
+- 2026-07-17 — squash-merge sur `develop` (MERGEABLE sans conflit)
+- `client-mobile` : 0625c87 (PR #52 fermée)

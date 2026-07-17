@@ -60,6 +60,36 @@ laisse la task dans son état actuel, et `/forge` passe à la task suivante.
 **Objectif** : minimiser les interactions humaines. La forge est autonome
 de bout en bout, sauf merge final.
 
+### Branche staging par run `/forge`
+
+Chaque run `/forge` **agrège le travail validé de toutes ses tasks sur une
+branche staging par repo pushable**, pour que l'humain puisse `git checkout`
+**une** branche et tester le lot complet de bout en bout au lieu de jongler
+entre N branches `feat/*`.
+
+- **Nom** : `forge/staging-task-{début}-{fin}-{date}` (`{début}`/`{fin}` =
+  plus petit / plus grand task-id du backlog du run, même id deux fois si une
+  seule task ; `{date}` = `YYYYMMDD`). Même nom sur tous les repos.
+- **Fraîche depuis `develop`** : créée paresseusement depuis `origin/develop`
+  à la première task validée qui pousse un `feat/*` sur ce repo. Jamais
+  réutilisée d'un run à l'autre, jamais périmée, jamais de branche vide.
+- **Scope** : repos pushables uniquement (`api-mail`, `client-blazor`,
+  `client-mobile`, `dtos-mss`, `sdk`, `host`, `interop-cda`). **Jamais**
+  `client-angular` (code-only), `devops`, `psc-proxy-*`.
+- **Dernier maillon par task, après `/review`** : `git merge --no-ff
+  feat/{task}` d'une branche **déjà nettoyée par toute la chaîne qualité**
+  (`/forge-simplify`, `/sonar`, `/lint-angular`, `/lint-mobile` ont committé
+  leurs fixes sur `feat/*` **avant** `/review`). Staging hérite mécaniquement
+  de tous les fixes qualité ; aucune re-qualification sur staging.
+- **Best-effort, jamais un point d'échec** : un conflit d'agrégation →
+  `git merge --abort`, log, la PR `feat/* → develop` de la task reste intacte,
+  la task reste `done-*`, le run continue.
+- **HAG préservé, pas de PR staging** : les PRs `feat/* → develop` par task
+  (label `awaiting-human-merge`) restent inchangées et sont le véhicule de
+  merge. La branche staging n'a **aucune** PR vers `develop` et la forge ne
+  merge **jamais** `develop` (règle 10). Seules les tasks passées par `/review`
+  (build + tests + DOD + code review verts) rejoignent staging.
+
 ### Échappatoire — mode `no-code`
 
 ```
@@ -570,7 +600,7 @@ Never modify without human arbitration:
 | `/review {task-id}` | Validate the implementation (build + tests + DOD + code review), commit/push/sync develop, open the PR (label `awaiting-human-merge`), rename `done-*`, chain into `/tech-writer`. Autonomous — no human prompt. |
 | `/merge {task-id} --i-tested` | **[Human only]** After the human has tested the US end-to-end on the open PRs, squash-merge each pushable PR, sync `develop`, delete the branches, move the task into `tasks/archived/archived-{task-id}.md`. Refuses without `--i-tested`, on `awaiting-us-completion` label, or red CI. Never invoked by `/forge` — HAG (rule 10) stays. See `agents/merge.md`. |
 | `/tech-writer E{NNN}` | Refresh `docs/epics/E{NNN}-{slug}.md` from all tasks that declare `**Epic**: E{NNN}` — y compris la galerie **« État visuel de l'application »** (copies d'écran de `Docs/epics/img/screens/{app}/` appartenant à l'EPIC, embeds relatifs, libellés produit). Called automatically at the tail of `/review` ; can be run manually for retro-generation or `--refresh`. See `agents/technical-writer.md`. |
-| `/forge` | Loop autonome : pour chaque `tasks/todo-task-*.md`, déclenche `/start` → `/develop` → `/forge-simplify` → `/sonar` → `/lint-angular` → `/lint-mobile` → `/verify-visual` → `/review` → `/tech-writer`. Séquentiel (pas de parallélisme). Stop sur la première task qui échoue (écrit `questions/`, passe à la suivante). **Ne déclenche jamais `/merge`** — HAG, règle 10. |
+| `/forge` | Loop autonome : pour chaque `tasks/todo-task-*.md`, déclenche `/start` → `/develop` → `/forge-simplify` → `/sonar` → `/lint-angular` → `/lint-mobile` → `/verify-visual` → `/review` → `/tech-writer`. Séquentiel (pas de parallélisme). Stop sur la première task qui échoue (écrit `questions/`, passe à la suivante). Agrège chaque task validée sur une **branche staging par run** `forge/staging-task-{début}-{fin}-{date}` (fraîche depuis `develop`, par repo pushable, best-effort) pour test du lot complet — voir « Branche staging par run `/forge` ». **Ne déclenche jamais `/merge`**, n'ouvre **aucune** PR staging → develop — HAG, règle 10. |
 | `/status` | Quick status in < 10 lines |
 | `/publish-dtos` | Publish the DTO NuGet package and bump consumers (manual command — `/develop` does the equivalent inline as part of the autonomous cycle). |
 | `/kickoff` | Bootstrap a new project (scaffold `.claude/`, agents, templates) |

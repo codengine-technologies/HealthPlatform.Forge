@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > **Vue produit** : [E014-design-system-mobile-stitch.md](E014-design-system-mobile-stitch.md)
-> **Dernière mise à jour** : 2026-06-26
+> **Dernière mise à jour** : 2026-07-16
 
 ---
 
@@ -358,6 +358,26 @@
 
 ---
 
+### v1.20 — Couche interaction & polish UX mobile (task-160)
+
+- **Repo** : `client-mobile` · **Branche** : `feat/task-160-interaction-polish`
+- **PR** : [#58](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/58) — **ouverte**, label `awaiting-human-merge` (HAG rule 10)
+- **Commits** (branche) : `067c3ba` / `096f2a3` / `38fb0d0` / `b1377a7`
+- **Objet** : industrialisation de 4 leviers de ressenti « premium », sans aucun changement backend ni contrat :
+  1. **Skeletons** — remplacement des `ion-spinner` de contenu par un composant skeleton réutilisable (paramétrable nb de lignes / avatar) sur `mail-list`, `mail-detail`, `mail-draft-list`, `mail-search` + `mail-search-history`, `mail-summary`, `biology-timeline`, `clinical-synthesis`, `patient-timeline` (+ `timeline-document-group`), `medical-history`. `ion-refresher` non touché (indicateur natif conservé).
+  2. **Haptics** — `HapticsService` (`src/app/core/services/haptics.service.ts`) encapsulant `@capacitor/haptics` (`impactLight`/`impactMedium`/`success`/`warning`/`error`/`selection`), no-op si toggle off ou plateforme non supportée, `.catch(() => undefined)` systématique. Toggle « Retour haptique » dans `settings.page.*` (activé par défaut, persisté par mutation spread — pas de remplacement en bloc du DTO settings). Câblage : envoi mail → `success`, acquittement biologie → `success`, swipe-to-flag → `impactMedium`, sélection longue → `selection`, échec après rollback → `warning`. Refactor des 2 appels ad hoc pré-existants (`mail-folder-item.component.ts`, `mail-header.component.ts`) pour passer par le service (plus d'import direct `@capacitor/haptics` hors service).
+  3. **Optimistic UI** — audit de `mail-actions.service.ts` (déjà conforme, non réécrit) ; convention rollback + toast FR + haptique `warning` documentée en en-tête de service et **étendue** à l'acquittement biologie via `ActionFeedbackService` (helper de rollback partagé mail + biologie) : le statut passe « acquitté » immédiatement, rollback + toast FR + haptique `warning` si l'appel échoue.
+  4. **Micro-animations** — utilitaire partagé `src/app/core/utils/animations.ts` (entrée de liste : fade + translate + stagger discret ; ouverture de détail : transition de page) ; détection `prefers-reduced-motion` → apparition instantanée si l'OS le demande ; durées/courbes centralisées en tokens `--app-motion-*` (`theme/variables.scss`), aucune valeur magique dispersée. Toutes les animations < 250 ms, jamais bloquantes.
+- **Fichiers clés (nouveaux)** : `core/services/haptics.service.ts`, `core/services/action-feedback.service.ts`, `core/utils/animations.ts`, `shared/skeleton-list/` (composant `mss-skeleton-list` réutilisable). 45 fichiers touchés au total (4 axes).
+- **Validation** : `npm run build` ✓ 0 erreur, `npm test -- --watch=false --browsers=ChromeHeadless` ✓ **533/0**, `ng lint` ✓ 0 erreur.
+- **Forge-simplify** : skip clean — réutilisation déjà optimale (`ActionFeedbackService` partagé mail+biologie, `mss-skeleton-list` unique, tokens `--app-motion-*` centralisés, `HapticsService` seul importeur `@capacitor/haptics`). Aucun commit.
+- **Sonar** : skip — `api-mail` non touché.
+- **Vérification visuelle** : Playwright headless 390×844, session complète + API mockée (fixtures), 9 écrans capturés, **aucun blank/crash**, 0 erreur console — inbox (`/tabs/messages`), mail-detail (`/mail/INBOX/101`), settings (`/tabs/settings`), biology / ack panel optimiste (`/mail/INBOX/102`), patient-timeline, clinical-synthesis, biology-timeline (`/tabs/patients`), mail-search (`/mail-search`), mail-draft-list (`/tabs/messages`). Captures `Client/Mobile/e2e/screenshots/task-160/` (commit `cebeba4`) + galerie `Docs/epics/img/screens/client-mobile/` (état visuel E014, référence produit).
+- **Code review** : **APPROVED** — 45 fichiers, 4 axes, 0 bloquant. Limitation connue (non bloquante) : le champ `hapticsEnabled` dans le DTO `UserSettings` partagé pourrait ne pas persister au redémarrage si le backend strip les champs inconnus (backend hors scope de cette task).
+- **Staging aggregation** : conflit best-effort → **non agrégée** sur `forge/staging-task-142-160-20260716`. Cause : conflits `mail-list.component.{ts,spec.ts}` + `mail-detail.component.{ts,spec.ts}` (la branche staging porte task-149/152/153/154, qui ont touché les mêmes fichiers ; task-160 est partie de `develop` sans elles). `git merge --abort`, PR #58 `feat → develop` intacte, task reste `done`. Note HAG : au merge humain, résoudre les conflits `mail-list`/`mail-detail` en combinant task-160 (polish interaction) avec task-149/152/153/154 (features).
+
+---
+
 ## Annexe A — Cartographie des briques applicatives
 
 | Brique | Chemin | Rôle |
@@ -373,17 +393,22 @@
 | Ligne d'email | `Client/Mobile/src/app/features/mail/components/mail-header` (+ conteneur `mail-list`) | Ligne haute densité token-driven : avatar carré, nom gras, sujet/extrait, horodatage, pastille non-lu, chips statut, accent critique, valeurs biologie inline |
 | Recherche (mobile) | `Client/Mobile/src/app/mail-search/` + `features/mail/components/mail-search` + `mail-search-history` | Page dédiée `/mail-search` : critères (parité Angular), historique rejouable, résultats via `mail-list` réutilisé ; `SearchSettingsService` (minSimilarity) |
 | Historique de recherche (backend) | `Api/Mail/src/Application/Services/{Interfaces,Implementation}/*SearchHistoryService*` + `Api/Controllers/V1/SearchController` | Persistance Redis scope praticien (clé email), TTL 7 j, dédup/cap/minimisation INS ; endpoints GET/DELETE `/api/v1/search/history` |
+| Retour haptique | `Client/Mobile/src/app/core/services/haptics.service.ts` | Encapsule `@capacitor/haptics` (impact/success/warning/error/selection), no-op si toggle off ou plateforme non supportée, seul importeur direct de `@capacitor/haptics` |
+| Réactivité optimiste (helper partagé) | `Client/Mobile/src/app/core/services/action-feedback.service.ts` | Pattern rollback + toast FR + haptique `warning` mutualisé entre `mail-actions.service.ts` et l'acquittement biologie |
+| Micro-animations | `Client/Mobile/src/app/core/utils/animations.ts` + tokens `--app-motion-*` (`theme/variables.scss`) | Entrée de liste (fade/translate/stagger) et transition d'ouverture de détail ; neutralisées si `prefers-reduced-motion` |
+| Skeleton screens | `Client/Mobile/src/app/shared/skeleton-list/` (`mss-skeleton-list`) | Composant squelette réutilisable (lignes/avatar paramétrables), remplace les `ion-spinner` de contenu sur les écrans à chargement asynchrone |
 
-## Annexe B — Inventaire fonctionnel daté (2026-06-26)
+## Annexe B — Inventaire fonctionnel daté (2026-07-16)
 
-- Tasks de l'EPIC : 20 (1 socle + 19 reprises d'écran ; task-118 `mail-header` supprimée le 2026-06-24 — composant déjà couvert par task-114/115, en-tête détaillé relevant de task-121 `mail-detail`)
+- Tasks de l'EPIC : 21 (1 socle + 19 reprises d'écran + 1 couche interaction & polish ; task-118 `mail-header` supprimée le 2026-06-24 — composant déjà couvert par task-114/115, en-tête détaillé relevant de task-121 `mail-detail`)
 - Tasks mergées : 19 (task-110 … task-129, hors task-118 supprimée)
-- Tasks en PR ouverte : 1 (task-130 `html-editor` — client-mobile)
+- Tasks en PR ouverte : 2 (task-130 `html-editor`, task-160 interaction & polish — client-mobile)
 - Tasks à faire : 0
-- Tests client-mobile : 151 (verts) — inchangé vs task-129 (task-130 = restyle SCSS/HTML pur)
+- Tests client-mobile : 533 (verts) — build/test global du repo au moment de task-160 (task-130 seule = 151, restyle SCSS/HTML pur ; le delta reflète l'ensemble des tasks client-mobile mergées entre-temps, hors périmètre E014)
 - Endpoints backend ajoutés : `GET`/`DELETE /api/v1/search/history` (historique Redis, TTL 7 j, scope praticien)
 - DTO publié : `HealthPlatform.Dtos.Mss 337.0.0` (SearchHistory*)
 - Dépendance de police ajoutée : `@fontsource/public-sans@^5`
+- Nouveaux services transverses (task-160) : `HapticsService`, `ActionFeedbackService`, utilitaire `animations.ts`, composant `mss-skeleton-list` — aucune nouvelle dépendance npm (réutilisation de `@capacitor/haptics`, `ion-skeleton-text`, `@angular/animations` déjà installés)
 
 ## Annexe C — Tasks ayant contribué à cet EPIC
 
@@ -409,3 +434,4 @@
 | task-128 | Refonte Stitch de la modale `biology-ack-confirm-dialog` : SCSS migré 100 % tokens E014, encart valeurs critiques en error-container/radius-lg ; note + confirm/cancel inchangés | aucune (UI) |
 | task-129 | Refonte Stitch de la composition `mail-compose` : SCSS migré 100 % tokens E014 (corps, zone PJ, bouton PJ pointillé) ; champs label visible, logique d'envoi inchangée | aucune (UI) |
 | task-130 | Refonte Stitch de l'éditeur `html-editor` : SCSS migré 100 % tokens E014 (barre d'outils plate, boutons d'outils 44px `--app-touch-target`, zone `--app-type-body-lg`, placeholder `--app-outline`), retrait `size="small"` des `ion-button` ; capacités d'édition (gras/italique/liste/lien, contenteditable) inchangées | aucune (UI) |
+| task-160 | Couche interaction & polish UX mobile : skeletons de chargement réutilisables sur tous les écrans à chargement asynchrone (messagerie + dossier patient), `HapticsService` centralisé + toggle « Retour haptique » réglable (Paramètres, persistance spread-safe), optimistic UI étendu à l'acquittement biologie (rollback + toast FR + haptique `warning` via `ActionFeedbackService` partagé), micro-animations (entrée de liste, ouverture de détail) respectant `prefers-reduced-motion` ; aucun changement backend/contrat | aucune (présentation/interaction pure, pas de RG Ségur) |

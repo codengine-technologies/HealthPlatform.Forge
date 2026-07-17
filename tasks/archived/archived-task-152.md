@@ -69,3 +69,21 @@ serveur existant : le mobile masque l'entrée si le service répond indisponible
 - **Référentiels métier** : aucun nouveau
 - **Hébergement HDS** : oui — la posture IA d'établissement (on-premise/cloud, désactivable) est celle du backend, inchangée
 - **AIPD / impact RGPD** : inchangé — même traitement IA que le web, nouveau canal d'affichage
+
+## Branches
+- `client-mobile` (pushed) : feat/task-152-ai-chat
+
+## PRs
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/54 — label `awaiting-human-merge`
+
+## Staging
+- Agrégée dans `forge/staging-task-142-160-20260716` (conflits imports mail-detail + specs mss-api résolus par union) ; 664 tests verts.
+
+## Code Review Summary
+- APPROVED — chat IA SSE, util markdown partagé extrait (réutilisation réelle), dégradation gracieuse. FR en dur, data-testid, aucun contenu médical loggé. Build 0 erreur ; 539 tests ; ESLint clean.
+- Anti-flaky : SSE via AbortController (pas de timer réel), specs mockent fetch/flux.
+- Mapping actions/citations tolérant et testé (backend action-strings non observables) — à ajuster si le backend réel diffère.
+
+## Merged
+- 2026-07-17 — squash-merge sur `develop` (conflits résolus : import mail-detail à la main, spec par union merge)
+- `client-mobile` : c0ad3f3 (PR #54 fermée)

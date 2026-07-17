@@ -104,6 +104,13 @@ At each invocation :
 - Verify `tasks/wip-*.md` count : at most one (the autonomous chain
   serialises). If multiple `wip-*` coexist → halt with the offender list.
 
+- Compute the run's **staging branch name** :
+  `forge/staging-task-{début}-{fin}-{date}` where `{début}` / `{fin}` are the
+  lowest / highest task-id in the `todo-*` backlog (same id twice when a single
+  task) and `{date}` is `YYYYMMDD`. Do NOT create any branch yet — the
+  staging branch is created lazily, per repo, the first time a validated task
+  pushes a `feat/*` on that repo (see step 2, sub-step 9).
+
 ### 2. Process the backlog
 
 For each `tasks/todo-task-*.md` (sorted by task-id, lowest first) :
@@ -124,15 +131,54 @@ For each `tasks/todo-task-*.md` (sorted by task-id, lowest first) :
                                label awaiting-human-merge, rename done-*
 8. /tech-writer E{NNN}       — refresh docs/epics/E{NNN}-{slug}.md
                                (skipped if no **Epic**: declared)
+9. Aggregate into staging    — LAST link, only if step 7 succeeded (see below)
 ```
 
 Per-task failure handling : on first failed step, write
 `questions/{task-id}.md`, leave the task in its current state, log the
-failure, and move to the next task in the backlog.
+failure, and move to the next task in the backlog. A task that failed before
+`/review` is **not** aggregated into staging.
+
+#### Sub-step 9 — aggregate the validated task into the staging branch
+
+Runs only when `/review` (step 7) succeeded — the `feat/*` branches are now
+fully validated **and already cleaned by the whole quality chain** (steps 3–6
+committed their fixes onto `feat/*` before `/review`). Aggregation therefore
+inherits every simplification / Sonar / ESLint fix mechanically ; nothing is
+re-qualified on staging.
+
+For each **pushable** repo the task touched (`api-mail`, `client-blazor`,
+`client-mobile`, `dtos-mss`, `sdk`, `host`, `interop-cda` — **never**
+`client-angular`, `devops`, `psc-proxy-*`) :
+
+```bash
+cd {repo-path}
+git fetch origin
+# Create the staging branch lazily, fresh from develop, on first touch of this repo :
+git rev-parse --verify --quiet forge/staging-task-{début}-{fin}-{date} \
+  || git checkout -b forge/staging-task-{début}-{fin}-{date} origin/develop
+git checkout forge/staging-task-{début}-{fin}-{date}
+git merge --no-ff feat/{task-id}-{slug} -m "chore(staging): aggregate {task-id}"
+git push -u origin forge/staging-task-{début}-{fin}-{date}
+```
+
+**Best-effort — never a failure point.** A merge conflict → `git merge
+--abort`, log the conflicting repo, leave the task's `feat/* → develop` PR
+intact and the task `done-*`, continue the run. Staging is a test convenience,
+not a merge gate.
+
+**HAG preserved** : the staging branch has **no** PR toward `develop` and the
+forge never merges `develop`. The per-task `feat/* → develop` PRs
+(`awaiting-human-merge`) remain the merge vehicle.
 
 ### 3. Final report
 
 ```
+Staging branch (checkout + test the whole batch) :
+- forge/staging-task-{début}-{fin}-{date} — {repos touched}
+  (tasks aggregated : {task-id}, ...)
+  (aggregation conflicts, if any : {repo}/{task-id} — resolve manually)
+
 PRs awaiting your merge (HAG) :
 - {repo} #{num} — {task-id}
 - ...
@@ -159,6 +205,16 @@ expected once `todo-*` is drained.
   `/review`, `/tech-writer`, or here.
 - **You never merge a PR yourself** — HAG (CLAUDE.md rule 10) is the
   single mandatory human gate.
+- **The staging branch is run-level, best-effort, and never a merge gate.**
+  Per `/forge` run you aggregate every task that passed `/review` onto
+  `forge/staging-task-{début}-{fin}-{date}` (per pushable repo, fresh from
+  `develop`, created lazily on first touch) so the human can checkout one
+  branch and test the whole batch. Aggregation is the last per-task link,
+  after `/review`, so it merges a `feat/*` already cleaned by `/forge-simplify`
+  / `/sonar` / `/lint-*` — no re-qualification on staging. An aggregation
+  conflict is logged and skipped, never fails the cycle. The staging branch
+  has **no** PR toward `develop` ; the per-task `feat/* → develop` PRs stay the
+  merge vehicle. Never on `client-angular` / `devops` / `psc-proxy-*`.
 - **You never bypass `no-code`** — when the task was started with that
   flag, the orchestrator must not invoke `/develop` even if asked
   retroactively (the human owns the implementation from that point on).

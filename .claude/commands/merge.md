@@ -42,7 +42,11 @@ Steps (high-level — see the agent file for the full spec) :
 6. Move `tasks/done-{task-id}.md → tasks/archived/archived-{task-id}.md`
    (creates the `tasks/archived/` subdir if missing) and append a
    `## Merged` section with the squash commit SHAs.
-7. Report.
+7. **Staging cleanup** : delete the run's staging branch
+   `forge/staging-task-{début}-{fin}-{date}` (remote **and** local) **only if
+   the whole run is merged** — no active task file with a numeric id in
+   `[début, fin]`. Otherwise keep it. Best-effort, never aborts the merge.
+8. Report.
 
 ## When NOT to use `/merge`
 

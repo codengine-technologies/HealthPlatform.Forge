@@ -59,3 +59,21 @@ Aucun changement backend ni DTO.
 - **Référentiels métier** : aucun — **ne jamais utiliser un tag pour porter une donnée patient identifiante** (garde-fou : pas d'INS/NIR/nom dans un libellé de tag suggéré par l'app)
 - **Hébergement HDS** : oui — backend existant
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+- `client-mobile` (pushed) : feat/task-147-mail-tags
+
+## PRs
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/51 — label `awaiting-human-merge`
+
+## Staging
+- Agrégation dans `forge/staging-task-142-160-20260716` : **CONFLIT** avec task-142 sur
+  `mail-detail.component.ts` → merge abandonné (best-effort). PR #51 intacte (clean vers develop).
+
+## Code Review Summary
+- APPROVED — 10 fichiers. Réutilisation forte, optimistic+rollback, FR en dur, data-testid complets. Build 0 erreur ; 526 tests (+15) ; ESLint clean.
+- Note parité : compteur section TAGS non rafraîchi instantanément (patch mail.tags only, comme le web).
+
+## Merged
+- 2026-07-17 — squash-merge sur `develop` (résolution conflit `mail-detail` : imports 142+147 combinés)
+- `client-mobile` : a5c25ae (PR #51 fermée)

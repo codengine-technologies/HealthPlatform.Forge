@@ -107,3 +107,36 @@ Constat (suite au test humain de task-138) :
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui — backend existant
 - **AIPD / impact RGPD** : inchangé — aucune donnée nouvelle collectée ; la trace d'acquittement renforce l'imputabilité (registre inchangé)
+
+## Branches
+- `dtos-mss` (pushed) : feat/task-154-opposition-guard — NuGet 343.0.0 publié (run CI #343)
+- `api-mail` (pushed) : feat/task-154-opposition-guard
+- `client-blazor` (pushed) : feat/task-154-opposition-guard
+- `client-mobile` (pushed) : feat/task-154-opposition-guard
+- `client-angular` (code-only) : code sur branche courante, non commité — TFS géré par le PS. Fichiers : mail.model.ts + mail-compose.component.{ts,html,spec.ts} (MSS)
+
+## PRs (US lockstep — tester assemblée, règle 11)
+- `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/26 — awaiting-human-merge
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/113 — awaiting-human-merge
+- `client-blazor` : https://github.com/codengine-technologies/HealthPlatform.Client/pull/65 — awaiting-human-merge
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/56 — awaiting-human-merge
+- `client-angular` : pas de PR forge (code-only TFS)
+
+## NuGet
+- `HealthPlatform.Dtos.Mss` **343.0.0** publié (GitHub Packages, run CI #343). Consommateurs bumpés (api-mail 337→343, client-blazor 327→343) + packages.lock.json régénérés.
+
+## Staging
+- Agrégée dans `forge/staging-task-142-160-20260716` sur dtos-mss, api-mail, client-blazor (branches neuves) et client-mobile (sans conflit ; 677 tests verts).
+
+## Code Review Summary
+- APPROVED (5 repos). Garde serveur au point de convergence unique (3 chemins), 409 ProblemDetails sans INS, trace PGSSI-S clé hashée. Flag posé par les 3 clients après acquittement explicite. FR/Localizer, data-testid, aucune donnée santé loggée.
+- api-mail : 9/9 tests garde verts + build 0 erreur ; 2 reds IMAP pré-existants (flaky, non-régressions). blazor 144 ok. mobile 515 ok. angular MSS 315 ok.
+- Note : chemin sendDraft (SaveDraftDto) hors garde (pas de champ) — cohérent avec le périmètre 3-chemins déclaré.
+
+## Merged
+- 2026-07-17 — squash-merge full-stack sur `develop` (ordre dtos→api→blazor→mobile, tous CLEAN)
+- `dtos-mss`      : 9272ef7 (PR #26 fermée)
+- `api-mail`      : cc58291 (PR #113 fermée)
+- `client-blazor` : 68b3772 (PR #65 fermée)
+- `client-mobile` : 8c8601b (PR #56 fermée)
+- `client-angular` : géré manuellement par l'humain (code-only TFS)

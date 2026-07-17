@@ -5,7 +5,7 @@
 > **Version** : 1.0
 > **Auteur** : PO forge
 > **Audience** : PO, médecin, direction — la vue ingénierie vit dans [E014-Changelogs.md](E014-Changelogs.md)
-> **Dernière mise à jour** : 2026-06-26 (task-130)
+> **Dernière mise à jour** : 2026-07-16 (task-160)
 
 ---
 
@@ -22,7 +22,8 @@
 - [7. Contraintes et hypothèses](#7-contraintes-et-hypothèses)
 - [8. Critères d'acceptation](#8-critères-dacceptation)
 - [9. Hors périmètre](#9-hors-périmètre)
-- [État de couverture (2026-06-26)](#état-de-couverture-2026-06-26)
+- [État de couverture (2026-07-16)](#état-de-couverture-2026-07-16)
+- [État visuel de l'application (2026-07-16)](#état-visuel-de-lapplication-2026-07-16)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -81,6 +82,7 @@ de document, dans la section *État de couverture*.
 | task-128 | Refonte `biology-ack-confirm-dialog` | dialog de confirmation | ✅ mergée |
 | task-129 | Refonte `mail-compose` | composition / envoi | ✅ mergée |
 | task-130 | Refonte `html-editor` | éditeur de contenu | 🟢 PR ouverte (attente merge) |
+| task-160 | Couche interaction & polish (chargements en squelette, retour haptique réglable, réactivité immédiate, micro-animations) | tous les écrans à chargement asynchrone + actions clés (mail, biologie) | 🟢 PR ouverte (attente merge) |
 
 ## 5. Workflow entre Features
 
@@ -105,11 +107,15 @@ graph TD
   T110 --> T128[biology-ack-confirm-dialog]
   T110 --> T129[mail-compose]
   T110 --> T130[html-editor]
+  T110 --> T160[interaction & polish]
 ```
 
 Le socle (task-110) est la fondation : il livre les tokens de style dont tous
 les écrans héritent. Les refontes écran par écran (task-111 à task-130) s'y
-appuient et sont indépendantes entre elles.
+appuient et sont indépendantes entre elles. La couche interaction & polish
+(task-160) s'appuie également sur le socle mais s'applique transversalement,
+par-dessus les écrans déjà repris (chargements, retour haptique, réactivité,
+micro-animations), sans en changer l'apparence.
 
 ## 6. Règles métier transverses (Ségur)
 
@@ -146,7 +152,7 @@ introduite dans l'UI ou les journaux.
 - Un mode sombre complet et abouti (l'objectif est le mode clair ; le sombre
   reste seulement « lisible »).
 
-## État de couverture (2026-06-26)
+## État de couverture (2026-07-16)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---------|--------|------------|---------------------|
@@ -170,19 +176,52 @@ introduite dans l'UI ou les journaux.
 | Refonte dialog de confirmation | ✅ mergée | Mergée sur develop — `biology-ack-confirm-dialog` migré 100 % tokens E014, encart critique en error-container ; logique inchangée | task-128 |
 | Refonte composition message | ✅ mergée | Mergée sur develop — `mail-compose` migré 100 % tokens E014 (corps, PJ, bouton) ; logique d'envoi inchangée | task-129 |
 | Refonte éditeur de contenu | 🟢 PR ouverte | PR ouverte (attente merge humain, HAG) — `html-editor` migré 100 % tokens E014 (barre d'outils plate, boutons d'outils 44px, zone d'édition body-lg, placeholder) ; capacités d'édition inchangées | task-130 |
+| Couche interaction & polish | 🟢 PR ouverte | PR ouverte (attente merge humain, HAG) — chargements en squelette sur tous les écrans à chargement asynchrone (messagerie et dossier patient), retour haptique réglable sur les actions clés (activé par défaut, désactivable dans Paramètres), réactivité immédiate de l'acquittement biologie avec retour à l'état précédent et message clair en cas d'échec, micro-animations discrètes respectant le réglage d'accessibilité « réduire les animations » | task-160 |
 
-**Couverture EPIC consolidée : ~95 %** (socle + **18 reprises d'écran mergées**
+**Couverture EPIC consolidée : ~90 %** (socle + **18 reprises d'écran mergées**
 sur 19 — login, authentication, home, inbox, menu des répertoires, liste des
 emails, item de répertoire, recherche avancée + historique, chip acquittement,
 détail message, corps, cadre HTML médical, pièce jointe, biologie + badge +
 panneau + dialog d'acquittement, composition message ; **dernière reprise
 (`html-editor`) en PR ouverte**, attente merge humain (HAG). task-118
 `mail-header` supprimée — déjà couverte par task-114/115, en-tête détaillé
-absorbé par task-121).
+absorbé par task-121. La **couche interaction & polish** (task-160), qui
+s'ajoute par-dessus l'ensemble des écrans repris, est également **en PR
+ouverte**, attente merge humain (HAG)).
+
+## État visuel de l'application (2026-07-16)
+
+> Captures générées automatiquement par la forge (/verify-visual) —
+> dernier état connu de chaque écran.
+
+| | |
+|---|---|
+| **Boîte de réception**<br/><img src="img/screens/client-mobile/inbox.png" alt="inbox" width="280" style="border: 1px solid #c2c6d4; border-radius: 8px;" /> | **Détail d'un message**<br/><img src="img/screens/client-mobile/mail-detail.png" alt="mail-detail" width="280" style="border: 1px solid #c2c6d4; border-radius: 8px;" /> |
+| **Paramètres**<br/><img src="img/screens/client-mobile/settings.png" alt="settings" width="280" style="border: 1px solid #c2c6d4; border-radius: 8px;" /> | **Résultats de biologie**<br/><img src="img/screens/client-mobile/biology.png" alt="biology" width="280" style="border: 1px solid #c2c6d4; border-radius: 8px;" /> |
+| **Chronologie du dossier patient**<br/><img src="img/screens/client-mobile/patient-timeline.png" alt="patient-timeline" width="280" style="border: 1px solid #c2c6d4; border-radius: 8px;" /> | **Synthèse clinique**<br/><img src="img/screens/client-mobile/clinical-synthesis.png" alt="clinical-synthesis" width="280" style="border: 1px solid #c2c6d4; border-radius: 8px;" /> |
+| **Historique de biologie**<br/><img src="img/screens/client-mobile/biology-timeline.png" alt="biology-timeline" width="280" style="border: 1px solid #c2c6d4; border-radius: 8px;" /> | **Recherche de messages**<br/><img src="img/screens/client-mobile/mail-search.png" alt="mail-search" width="280" style="border: 1px solid #c2c6d4; border-radius: 8px;" /> |
+| **Brouillons**<br/><img src="img/screens/client-mobile/mail-draft-list.png" alt="mail-draft-list" width="280" style="border: 1px solid #c2c6d4; border-radius: 8px;" /> | |
 
 ## Synthèse fonctionnelle des changelogs
 
 ### Fonctionnalités métier
+
+- v1.20 — **Couche interaction & polish** : l'application gagne en confort
+  d'usage sans changer d'apparence. Les chargements de contenu (messagerie,
+  chronologie patient, biologie) affichent désormais un **squelette animé**
+  qui reprend la forme de l'écran à venir, à la place des indicateurs de
+  chargement génériques — pour un ressenti plus calme, moins d'à-coups
+  visuels. Un **retour haptique** discret confirme les actions clés (envoi
+  d'un message, acquittement d'un résultat de biologie, marquage d'un
+  message, entrée en sélection multiple) ; il est activé par défaut et peut
+  être désactivé d'un interrupteur « Retour haptique » dans les Paramètres.
+  L'**acquittement d'un résultat de biologie** réagit désormais
+  instantanément à l'écran (le statut passe « acquitté » sans attendre la
+  réponse du serveur) et revient à son état précédent avec un message clair
+  si l'enregistrement échoue. Enfin, de **micro-animations discrètes**
+  accompagnent l'ouverture d'un message et l'apparition d'une liste ; elles
+  s'effacent automatiquement si le professionnel a activé le réglage
+  d'accessibilité « réduire les animations » de son appareil (task-160).
 
 - v1.8 — **Recherche avancée + historique de recherche** : la recherche de
   messages quitte la barre inline pour une **page de recherche dédiée**, ouverte

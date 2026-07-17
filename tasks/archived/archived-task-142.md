@@ -64,3 +64,22 @@ existants. Aucun changement backend ni DTO.
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui — backend existant
 - **AIPD / impact RGPD** : inchangé — la suppression définitive suit la politique de conservation existante
+
+## Branches
+- `client-mobile` (pushed) : feat/task-142-trash-lifecycle
+
+## PRs
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/50 — label `awaiting-human-merge`
+
+## Staging
+- Agrégée dans `forge/staging-task-142-160-20260716` (chore(staging): aggregate task-142)
+
+## Code Review Summary
+- APPROVED — 11 fichiers, réutilisation forte (port fidèle du pending-delete web), optimistic UI + rollback cohérents, FR en dur, data-testid complets, dead code retiré.
+- Build 0 erreur ; 528 tests OK ; ESLint clean.
+- Vérification visuelle Playwright : best-effort non exécutée dans ce run (non bloquant).
+
+## Merged
+- 2026-07-17 — squash-merge sur `develop`
+- `client-mobile` : 5ed7ca1 (PR #50 fermée)
+- develop CI : run 29568787772 (in_progress au moment du merge — à confirmer verte)

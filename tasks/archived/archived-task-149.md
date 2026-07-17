@@ -76,3 +76,21 @@ US **frontend-only** : tous les endpoints existent. Aucun changement backend ni 
 - **Référentiels métier** : codes de criticité HL7 (AA/HH/LL) restitués tels que fournis par le backend
 - **Hébergement HDS** : oui — backend existant, pas de persistance locale
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+- `client-mobile` (pushed) : feat/task-149-dashboard-tab
+
+## PRs
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/53 — label `awaiting-human-merge`
+  (45 fichiers — au-dessus du repère ~30 de la règle 5, mais US dashboard cohérente indivisible : 5 widgets × ts/html/scss/spec + shell/routing/api/modèles.)
+
+## Staging
+- Agrégée dans `forge/staging-task-142-160-20260716` (conflit imports mss-api.service.ts résolu par union) ; 637 tests verts.
+
+## Code Review Summary
+- APPROVED — tableau de bord clinique + onglet Accueil. Réutilisation mss-mail-summary (état dégradé IA), design E014. FR en dur, data-testid, aucun INS en route/log. Build 0 erreur ; 556 tests ; ESLint clean.
+- Divergences mobiles assumées : bio-ack deep-link unique, patients non-lus « Voir le mail » (pas de filtre inbox par patient, INS interdit en route).
+
+## Merged
+- 2026-07-17 — assemblée et mergée via PR #53 (grappe dashboard 149+161+162, merge atomique)
+- `client-mobile` : 552a8ab (PR #53 fermée)
