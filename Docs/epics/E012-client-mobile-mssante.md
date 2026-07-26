@@ -5,7 +5,7 @@
 > **Version** : 2.0
 > **Auteur** : PO forge
 > **Audience** : PO, médecin, direction — la vue ingénierie vit dans [E012-Changelogs.md](E012-Changelogs.md)
-> **Dernière mise à jour** : 2026-07-16 (task-159)
+> **Dernière mise à jour** : 2026-07-17 (task-166)
 
 ---
 
@@ -518,6 +518,13 @@ Préférences reste développée et en attente de validation manuelle.
 
 ## Synthèse fonctionnelle des changelogs
 
+- **v1.28 (task-166)** — Tableaux dans l'assistant IA : lorsque l'assistant
+  ou la synthèse d'un message présentent des données en tableau (par exemple
+  des résultats de biologie avec analyte, valeur et intervalle de référence),
+  le tableau s'affiche désormais en grille lisible — en-têtes, lignes et
+  alignements — au lieu d'un texte brut parsemé de barres verticales. Un
+  tableau trop large défile horizontalement dans la bulle, sans déborder de
+  l'écran.
 - **v1.27 (task-159)** — Première connexion sans messagerie configurée : si
   le compte du praticien ne porte pas encore d'adresse MSSanté, l'application
   affiche un écran dédié « Messagerie non configurée » avec un parcours de

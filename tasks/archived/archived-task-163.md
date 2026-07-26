@@ -76,3 +76,21 @@ tolérant, pas crasher.
 - **Référentiels métier** : identifiants annuaire ANS (RPPS/structure) — inchangés
 - **Hébergement HDS** : non applicable — donnée annuaire professionnelle, pas de DSCP patient
 - **AIPD / impact RGPD** : inchangé — aucun nouveau traitement
+
+## Branches
+- `api-mail` (pushed) : feat/task-163-fhir-duplicate-resources — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-163-fhir-duplicate-resources
+- `dtos-mss` (pushed, auto-inclus) : feat/task-163-fhir-duplicate-resources — sans commit attendu (fix parser, aucun changement de contrat) → pas de PR ouverte
+
+## PRs
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/115 — label `awaiting-human-merge`
+- `dtos-mss` : aucun changement → branche supprimée, pas de PR
+
+## Develop log
+- 2026-07-17 — fix `FhirBundleParser` (3 `ToDictionary` → `GroupBy` dédup premier-gagnant). Commit `ef4d58a`.
+- Build ✓ 0 erreur/warning ; 142 tests AnnuaireSante ✓ (dont 3 régression parser + 1 CombinedSearchStrategy) ; hook verify-before-push ✓.
+- `/sonar` best-effort non exécuté (changement minime). PR #115 ouverte, en attente merge humain (HAG).
+
+## Merged
+- 2026-07-17 — squash-merge sur `develop` (MERGEABLE sans conflit, `--i-tested`)
+- `api-mail` : bd7b835 (PR #115 fermée)
+- `dtos-mss` : aucun changement, pas de PR

@@ -1,14 +1,18 @@
 # todo-task-165.md — Mobile : le refresh de session ne récupère pas après expiration du jeton
 
-**Repos**: client-mobile
+**Repos**: api-mail, client-mobile
 **Dependencies**: —
 
-> **Dépendance backend recommandée** — le correctif client est bancal tant
-> qu'`api-mail` renvoie un **500** (au lieu de **401**) sur JWT expiré : le volet
-> réactif de l'intercepteur ne peut pas détecter l'expiration derrière un 500 au
-> `detail` assaini. Le fix durable **pair** avec une task api-mail « JWT expiré →
-> 401 `ProblemDetails` » (cf. analyse Seq, mapping 500 constaté le 2026-07-12).
-> Voir « Cause racine » ci-dessous.
+> **Re-scopé 2026-07-17 (`api-mail` ajouté)** — vérification du code : le vrai
+> fix est **backend**. `ImapConnectionService` renvoie `Result.Error(...)` sur
+> jeton expiré → mappé **500**, et pour un 500 `ResultModelExtensions` renvoie un
+> `detail` **générique** (« An unexpected error occurred ») — le message « expired »
+> est droppé. D'où le réactif mobile (regex sur `detail`) **aveugle**. Le mapper
+> gère déjà `ResultStatus.Unauthorized → 401` : il suffit de renvoyer
+> **`Result.Unauthorized`** (→ 401) pour que le réactif mobile (déjà branché sur
+> 401) fonctionne. **client-angular et client-blazor sont vérifiés robustes**
+> (préventif + réactif sur 401) → aucun changement, le 401 est une amélioration
+> transparente pour eux. Le mobile n'a besoin que d'un **durcissement du préventif**.
 
 ## Objective
 
@@ -99,3 +103,23 @@ Deux défauts **côté mobile**, combinés :
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : non applicable — client
 - **AIPD / impact RGPD** : inchangé — aucun nouveau traitement
+
+## Branches
+- `api-mail` (pushed) : feat/task-165-session-refresh-recovery — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-165-session-refresh-recovery
+- `client-mobile` (pushed) : feat/task-165-session-refresh-recovery — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-165-session-refresh-recovery
+- `client-angular` / `client-blazor` : hors scope (vérifiés robustes — gèrent déjà le 401)
+
+## PRs
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/118 — label `awaiting-human-merge`
+- `client-mobile` : **aucun changement** (vérifié : réactif gère déjà le 401 + préventif re-décode `accessTokenExpiresAt` au refresh) → branche supprimée, pas de PR
+- `client-angular` / `client-blazor` : hors scope (robustes, gèrent déjà le 401)
+
+## Develop log
+- 2026-07-17 — cœur du fix = api-mail : jeton expiré `Result.Error`(500) → `Result.Unauthorized`(401), message surfacé au `detail`. Commit 5eccc73.
+- Vérification frontends : mobile/Angular/Blazor gèrent déjà le 401 → aucun changement client (le mobile « durcissement préventif » envisagé s'est avéré inutile, le code re-décode déjà l'exp). 
+- Build ✓ 0/0 ; ResultExtensions 31 ✓ (dont test Unauthorized+message) ; ImapConnection 14 ✓. PR #118 en attente merge humain (HAG).
+
+## Merged
+- 2026-07-17 — squash-merge sur `develop` (`--i-tested`)
+- `api-mail` : 6c5a476 (PR #118 fermée) — jeton expiré → 401
+- `client-mobile`/`angular`/`blazor` : aucun changement (gèrent déjà le 401)

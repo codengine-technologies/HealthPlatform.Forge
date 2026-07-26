@@ -91,3 +91,87 @@ la source IA.
 - **Référentiels métier** : aucun (le *contenu* d'un tableau de biologie peut citer LOINC/NABM, mais le rendu est agnostique)
 - **Hébergement HDS** : non applicable — rendu client
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+- `client-mobile` (pushed) : fix/task-166-markdown-tables — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/fix/task-166-markdown-tables
+
+## Develop log
+
+- Repos touched : `client-mobile`
+- DTOs published : no DTO change
+- Interop published : no interop change
+- Approche : extension de l'util partagée `markdown.util.ts` (`markdownToHtml`) —
+  parsing GFM (en-tête + séparateur + corps) **avant** le collapsing des sauts
+  de ligne, tableau extrait vers une sentinelle NUL isolée de tout `<p>`/`<br>`,
+  puis ré-injecté ; escape-first anti-XSS conservé (HTML de tableau produit par
+  l'util). Formatage inline + alignement (`:---`/`:--:`/`---:`) dans les cellules.
+  Style `.md-table` + `overflow-x` (scroll 390 px) ajouté aux deux surfaces
+  consommatrices (`ai-chat`, `mail-summary`).
+- Commits :
+  - client-mobile : e7348b8 fix(mobile): rendu des tableaux GFM dans markdownToHtml (chat IA + synthèse)
+- Local build / test : ✓ `npm run build` 0 erreur ; `npm test` 760/760 verts (dont 16 nouveaux specs `markdown.util.spec.ts`)
+- DOD self-check :
+  - Build 0 erreur ✓
+  - Tests 0 échec ✓
+  - `<table>` (thead+separator+tbody) rendu ✓ (test unitaire)
+  - Formatage inline dans cellules ✓ (test unitaire)
+  - Alignement `:---`/`:--:`/`---:` ✓ (test unitaire)
+  - Pas de faux positif (`|` sans séparateur / séparateur invalide) ✓ (tests unitaires)
+  - Anti-XSS y compris dans un tableau ✓ (test unitaire)
+  - Non-régression titres/gras/italique/listes ✓ (tests unitaires + suite complète verte)
+  - Style + `overflow-x` + `data-testid="markdown-table"` ✓
+  - Rendu visuel réel du tableau à 390 px → déféré au test manuel (HAG)
+- Next step : /forge-simplify 166
+
+## Simplify log
+- Repos passed : `client-mobile`
+- Applied & committed : —
+- No change : `client-mobile` — util déjà factorisée en helpers unitaires
+  (`extractTables`/`splitRow`/`alignmentOf`/`buildTable`/`renderInline`), pas de
+  réemploi disponible (aucun renderer de tableau préexistant), pas de code mort.
+  SCSS : le bloc tableau est répété dans les deux consommateurs, mais le repo
+  duplique déjà les styles markdown par composant (h1/h2/h3, ul, strong) — une
+  extraction romprait la convention établie et déborderait du code frais.
+- Rolled back (validation RED) : —
+- Skipped (contract/excluded) : dtos-mss, interop-cda, devops, psc-proxy-*
+- Build / tests : ✓ (inchangés depuis /develop — aucune édition simplify)
+- Next step : /lint-mobile 166 (api-mail & client-angular non touchés)
+
+## Lint mobile log
+- Mode : A (chaîné)
+- Baseline : `ng lint` → **All files pass linting** (0 erreur, 0 warning)
+- Itérations : 0 (rien à corriger — code frais 100 % TS/SCSS, aucun template Angular)
+- Fixes committés : —
+- Résiduel accepté : aucun
+- Build / tests : verts (inchangés depuis /develop)
+- Next step : /verify-visual 166
+
+## Visual verify log
+- skipped — no screen touched : la task modifie l'util de rendu partagée
+  `markdown.util.ts` + le style tableau de deux composants existants
+  (`ai-chat`, `mail-summary`), sans créer ni réécrire d'écran (aucun
+  `## Stitch design log`). Le rendu réel des tableaux dans le chat IA et la
+  synthèse est vérifié au test manuel (HAG) — cf. `## Manual Test Plan`.
+- Next step : /review 166
+
+## PRs
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/60 — label `awaiting-human-merge`
+
+## Code Review Summary
+- Verdict : **APPROVED** (2 commits, 4 fichiers, 1 blocage corrigé pendant la review, 0 restant)
+- Build ✓ (`npm run build`, 0 erreur) — Tests ✓ 761/761 (dont 17 specs `markdown.util.spec.ts`)
+- DOD : tous les items command-vérifiables ✓ ; rendu visuel réel déféré au test manuel (HAG)
+- Bug attrapé en review : ré-injection du tableau via string de remplacement
+  (`String.replace` interprète `$&`/`$$`) → cellule contenant un `$` corrompue.
+  Corrigé (remplacement par fonction) + test de régression, commit `a485c03`.
+- Sécurité : escape-first anti-XSS conservé ; alignement issu d'un ensemble
+  fermé → pas d'injection via `style`.
+- Qualité : /sonar skipped — api-mail non touché. /verify-visual skipped — aucun écran.
+- Commits : e7348b8 (feature + tests + styles), a485c03 (fix `$` + test)
+
+## Merged
+- Date : 2026-07-17 (HAG validé par l'humain — `--i-tested`)
+- `client-mobile` : squash commit `76b383a` sur `develop` (PR #60 mergée + fermée)
+- Branche distante `fix/task-166-markdown-tables` supprimée (locale conservée)
+- develop CI : ✓ vert — https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/29602442241
+- Staging : aucune (task lancée en standalone, hors batch /forge)

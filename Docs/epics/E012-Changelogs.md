@@ -2,11 +2,29 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > **Vue produit** : [E012-client-mobile-mssante.md](E012-client-mobile-mssante.md)
-> **Dernière mise à jour** : 2026-07-16
+> **Dernière mise à jour** : 2026-07-17
 
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.28 — task-166 — Rendu des tableaux Markdown (GFM) dans le chat IA et la synthèse (2026-07-17)
+
+- **PR** : [HealthPlatform.Mobile#60](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/60) — label `awaiting-human-merge`. Branche `fix/task-166-markdown-tables`. Repo `client-mobile` uniquement. **Frontend-only** : aucun changement DTO/backend, aucune dépendance externe.
+- **Cause racine** : le rendu Markdown mobile passe par l'util maison `src/app/core/utils/markdown.util.ts` (`markdownToHtml`), un mini-parser regex **escape-first (anti-XSS)** couvrant titres/gras/italique/listes/paragraphes mais **pas les tableaux GFM** — une syntaxe `| a | b |` / `|---|---|` retombait dans le remplacement `\n → <br>` et s'affichait en texte brut (pipes visibles). L'util est **partagée** par le chat IA (`mss-ai-chat`) et la synthèse IA (`mss-mail-summary`) → un seul fix corrige les deux surfaces.
+- **Fix** : parsing GFM (en-tête + séparateur `|---|:--:|` + corps) exécuté **avant** le collapsing des sauts de ligne. Chaque tableau est extrait vers une **sentinelle NUL** isolée dans son propre bloc, son HTML est construit (`<table><thead>…</thead><tbody>…</tbody></table>`) avec formatage inline (`**`/`*`) et alignement (`:---`/`:--:`/`---:`) par cellule, puis **ré-injecté par remplacement fonction** — jamais dans un `<p>`, jamais cassé par des `<br>`. Approche escape-first conservée : le HTML de tableau est produit par l'util, jamais injecté depuis la source IA ; l'alignement provient d'un ensemble fermé (`left`/`center`/`right`) → aucune injection via l'attribut `style`.
+- **Style** : `.md-table` + `overflow-x: auto` (défilement horizontal borné sur mobile 390 px, sans casser la bulle de chat), bordures et en-têtes, `data-testid="markdown-table"` — ajouté aux deux surfaces (`ai-chat.component.scss`, `mail-summary.component.scss`, suivant la convention existante de styles markdown par composant).
+- **Simplify (`/forge-simplify`)** : skip clean — util déjà factorisée en helpers unitaires (`extractTables`/`splitRow`/`alignmentOf`/`buildTable`/`renderInline`), aucune extraction SCSS (romprait la convention par-composant). Aucun commit.
+- **Lint (`/lint-mobile`)** : baseline `ng lint` **All files pass linting** — 0 erreur, 0 warning (code frais 100 % TS/SCSS, aucun template Angular). Aucun fix.
+- **Verify-visual (`/verify-visual`)** : skip clean — aucun écran créé/réécrit (fix d'util partagée + style de deux composants existants, pas de `## Stitch design log`). Rendu réel des tableaux vérifié au test manuel (HAG).
+- **Code review** : verdict **APPROVED** — 4 fichiers, 1 bloquant attrapé **et corrigé pendant la review** : la ré-injection utilisait une string de remplacement (`String.replace` interprète `$&`/`$$`/`$'`) → une cellule contenant un `$` corrompait le rendu, voire ré-injectait la sentinelle. Corrigé par un remplacement fonction (insertion littérale) + test de régression.
+- **Tests** : 17 nouvelles specs (`markdown.util.spec.ts`) — `<table>` thead/tbody, formatage inline en cellule, alignements, faux positifs (`|` sans séparateur, séparateur invalide), anti-XSS y compris dans un tableau, normalisation du nombre de cellules, motifs `$`, non-régression titres/gras/italique/listes. Total suite : **761/761** verts.
+- **Build / lint** : `npm run build` ✓ 0 erreur ; `npm test … ChromeHeadless` ✓ 761/761.
+- **Commits** : `e7348b8` (feat rendu GFM + tests + styles), `a485c03` (fix motifs `$` + test régression).
+- **Qualité** : `/sonar` skipped — `api-mail` non touché.
+- **Conformité** : aucune donnée de santé en clair dans les logs client (aucun log ajouté) ; rendu 100 % côté client, aucun échange réseau ; anti-XSS escape-first préservé.
+
+---
 
 ### v1.27 — task-159 — Onboarding MSSanté mobile (compte sans adresse configurée) (2026-07-16)
 
@@ -509,3 +527,4 @@
 | task-143 | Mobile#48 | Dossiers personnalisés (CRUD) + jauge de quota | — |
 | task-145 | Mobile#49 | Signatures (CRUD + injection automatique au compose) | — |
 | task-159 | Mobile#57 | Onboarding MSSanté (compte sans adresse configurée) | — |
+| task-166 | Mobile#60 | Rendu des tableaux Markdown (GFM) dans le chat IA et la synthèse | — |
