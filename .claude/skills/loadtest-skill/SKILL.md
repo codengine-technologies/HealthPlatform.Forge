@@ -32,6 +32,18 @@ latence, piloté par le profil `loadtest` de l'AppHost. Chemins relatifs à
 | Serveur IMAP **Dovecot** (débloque le parsing CDA) | ✅ livré | task-195 |
 | Harnais **k6** (scénarios, thresholds, Grafana) | ✅ livré | task-174 |
 | Vérification par base + rapport MD comparable + analyse Seq | ✅ livré | develop (task-198) |
+| **Palier 200 utilisateurs validé** (915 req/s, 0,02 % err, verify PASS) | ✅ mesuré 2026-07-27 | rapport `reports/2026-07-27/report-mixed-mssante-60vu-003515.md` |
+| **PgBouncer mode transaction** au profil loadtest (multiplexage mesuré) | ✅ livré, **tir comparatif 200 encore dû** | task-200 (PR #125, non mergée) |
+
+> ⚠️ **Le palier 200 exige une configuration précise** (3 causes de crash
+> mesurées sinon : gel du relais IPv6 Docker, OOM-kill Postgres, épuisement des
+> ports éphémères Windows) : chaîne de connexion `Host=127.0.0.1` + `Maximum
+> Pool Size=2;Connection Idle Lifetime=600` dans l'AppHost, et Postgres
+> `max_connections=2500` / 12 GiB (encodé dans
+> `DevOps/Dev/PostgreSQL/docker-compose.yml`). Détails et formules :
+> `DevOps/DIMENSIONNEMENT-POSTGRESQL-API-MAIL.md`. La règle de fond :
+> **connexions retenues ≈ praticiens × réplicas × Max Pool Size** — la demande
+> suit le nombre de praticiens, pas le trafic.
 
 > **IMAP = Dovecot, SMTP = GreenMail** (depuis task-195). Le blocage du fetch
 > partiel `BODY[part]` est levé : le scénario **pipeline CDA** est pleinement
@@ -51,12 +63,32 @@ latence, piloté par le profil `loadtest` de l'AppHost. Chemins relatifs à
 ## Prérequis
 
 - **Docker Desktop** démarré (conteneurs GreenMail/Dovecot + Toxiproxy).
-- **Postgres métier** joignable sur `localhost:5432` (base d'api-mail — **pas**
-  orchestrée par l'AppHost). Sans elle, api-mail ne démarre pas.
+- **Postgres métier** joignable sur `127.0.0.1:5432` (base d'api-mail — **pas**
+  orchestrée par l'AppHost). Sans elle, api-mail ne démarre pas. C'est aussi
+  l'upstream de PgBouncer, atteint depuis le conteneur par `pgupstream`
+  (`--add-host=…:host-gateway`) et **jamais** par `host.docker.internal` — voir
+  les pièges d'environnement.
 - **.NET 10** (`dotnet`).
 - **k6** (binaire local ou image `grafana/k6`) — pour l'étape 4.
+- **Python 3** — prérequis **dur** de l'étape 5 (`report.py`, stdlib seule).
+  Sans lui, `report.sh` ne produit **ni rapport ni ligne d'INDEX**, tout en
+  annonçant trois chemins : panne silencieuse. Installé le 2026-07-27
+  (3.13.14, `winget install Python.Python.3.13 --scope user`). Contrôle :
+  `python --version` doit répondre `Python 3.x` — s'il répond « Python was not
+  found », c'est le stub Microsoft Store qui masque l'installation (ordre du
+  PATH, ou terminal ouvert avant l'installation).
 
 ## Étape 1 — Lancer le backend + le banc
+
+**Rituel pré-vol obligatoire** (deux états résiduels font échouer ou figer le
+démarrage, tous deux mesurés) :
+
+```bash
+taskkill /F /IM dcp.exe /T 2>/dev/null          # dcp.exe SURVIT à l'AppHost et
+                                                # verrouille l'état DCP (Device or resource busy)
+rm -rf ~/.dcp/state.elevated ~/.dcp/mruPorts.elevated.list   # état DCP élevé corrompu
+                                                # = AppHost figé sans erreur (cf. mémoire)
+```
 
 Depuis `Api/Mail/`, utiliser le **profil de lancement dédié** (il pose
 `MSS_LOADTEST=true` **et** `MSS_ENFORCE_PSC_IDENTITY=false`, ce qui évite d'avoir
@@ -67,6 +99,13 @@ cd Api/Mail
 dotnet run --project src/AppHost --launch-profile https-load-test
 ```
 
+Variante équivalente qui rend l'AppHost **visible au MCP `aspire`** (le MCP ne
+détecte pas un AppHost lancé par `dotnet run`) :
+
+```bash
+MSS_LOADTEST=true MSS_ENFORCE_PSC_IDENTITY=false aspire run --project src/AppHost
+```
+
 Ce que le profil démarre (en plus des dépendances habituelles) :
 
 | Conteneur | Rôle | Ports (proxy Aspire) |
@@ -74,9 +113,27 @@ Ce que le profil démarre (en plus des dépendances habituelles) :
 | `loadtest-dovecot` | **IMAP** de test — auth wildcard, maildir **disque** | IMAPS 3993 (→ 993 conteneur) |
 | `loadtest-greenmail` | **Puits SMTP** de test | SMTPS 3465 |
 | `loadtest-toxiproxy` | Latence réseau devant les serveurs mail | API 8474, IMAP 13993, SMTP 13465 |
+| `loadtest-pgbouncer` | **Multiplexeur de connexions PostgreSQL**, mode transaction (task-200) | 6432 (→ 6432 conteneur) |
+
+> **PgBouncer — deux routes vers Postgres depuis task-200.** En profil loadtest,
+> le **chemin de données** d'api-mail passe par PgBouncer
+> (`MSS-MAIL-CONNECTIONSTRING` → `127.0.0.1:6432`) tandis que le **chemin de
+> contrôle** — verrou consultatif de provisionnement, `CREATE DATABASE`,
+> `MigrateUp` — reste en direct sur Postgres
+> (`MSS-MAIL-CONNECTIONSTRING-DIRECT` → `127.0.0.1:5432`). Hors profil loadtest,
+> la variable directe **n'est pas définie** et tout retombe sur la chaîne
+> serveur : comportement identique à l'avant-task-200.
+>
+> Le mapping `docker ps` affiche un port hôte **aléatoire** (`…->6432/tcp`) :
+> c'est normal, comme pour Dovecot. C'est le **proxy Aspire** qui écoute sur
+> `127.0.0.1:6432`. Contrôle : `netstat -ano | grep LISTENING | grep ':6432\b'`.
+>
+> Configuration montée depuis `src/AppHost/pgbouncer/` (`pgbouncer.ini` +
+> `userlist.txt`). Verdict de compatibilité, réserves et pièges :
+> `Api/Mail/docs/ADR-2026-07-27-pgbouncer-transaction-mode.md`.
 
 **Attendre que api-mail réponde** (boot ~30-90 s : migrations DB + Flagsmith).
-**Point clé — l'endpoint d'api-mail sous l'AppHost est `http://localhost:5052`**
+**Point clé — l'endpoint d'api-mail sous l'AppHost est `http://127.0.0.1:5052`**
 (l'endpoint « metrics » sert toutes les routes). Ce n'est **ni 7012** (dev
 standalone) **ni 17254** (= dashboard Aspire, qui redirige vers `/login`).
 Sonder jusqu'à obtenir 200 :
@@ -84,21 +141,35 @@ Sonder jusqu'à obtenir 200 :
 ```bash
 for i in $(seq 1 20); do
   code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 \
-    "http://localhost:5052/api/v1/connection/status" \
+    "http://127.0.0.1:5052/api/v1/connection/status" \
     -H "X-Test-Bypass: loadtest-local-only" \
-    -H "Client-Email: loadtest-1@loadtest.local" -H "X-PSC-Token: loadtest")
+    -H "Client-Email: loadtest-1@loadtest.local" \
+    -H "Client-Psc-Sub: 00000000-0000-4000-8000-000000000001" \
+    -H "Client-Rpps: 90000000001" \
+    -H "X-PSC-Token: loadtest")
   echo "poll $i: connection/status=$code"; [ "$code" = "200" ] && break; sleep 8
 done
 ```
 
 `{"mode":"online",...}` en 200 = banc prêt.
 
+> ⚠️ **`Client-Rpps` et `Client-Psc-Sub` ne sont PAS décoratifs dans cette
+> sonde.** Sans eux, `UserContextInfo` retombe sur `FallbackRpps = "0"` et
+> **provisionne une base distincte** `u_0_{slug}_{hash}` au lieu de
+> `u_9{index}_…`. Ces bases parasites **échappent au filtre `u_9%`** de
+> `reset-state.sh` (filtre volontairement étroit pour protéger les bases des
+> utilisateurs de dev réels) : elles ne sont **jamais purgées** et s'accumulent
+> — 3 constatées le 2026-07-27. La version ci-dessus les évite. Inventaire :
+> `select datname from pg_database where datname like 'u\_0\_%'`. Ne pas les
+> supprimer en masse sans vérifier qu'aucune n'appartient à un utilisateur de dev
+> sans claim RPPS.
+
 ## Étape 2 — Injecter les emails (seed)
 
 ```bash
 cd Api/Mail
 dotnet run --project tests/mss.mail.loadtest.seed -- \
-  --users 20 --messages 50 --api http://localhost:5052
+  --users 20 --messages 50 --api http://127.0.0.1:5052
 ```
 
 Le seed, dans l'ordre : (1) configure les proxies Toxiproxy (`dovecot-imap`
@@ -120,6 +191,14 @@ de prouver, base par base, (1) que tous les emails ont bien été stockés et
 Options utiles : `--users N`, `--messages M`, `--api <url>`, `--latency <ms>`,
 `--xdm-dir <path>`, `--no-xdm` (mails texte simples), `--no-proxy`,
 `--bypass-key <clé>`, `--mail-password <mdp>`.
+
+> 💡 **`--messages 0` = re-câblage sans injection.** Les proxies Toxiproxy
+> vivent en mémoire du conteneur : **tout redémarrage de l'AppHost les perd**,
+> et le tir k6 suivant échoue en setup (`proxy "dovecot-imap" not found (HTTP
+> 404) — run the seed tool first`). Rejouer le seed avec `--messages 0`
+> reconfigure les proxies et ré-écrit/vérifie les `UserSettings` **sans
+> ajouter un seul message** au maildir — c'est le geste standard après tout
+> redémarrage d'AppHost entre deux tirs.
 
 **Le seed sort en erreur (exit ≠ 0) et liste les utilisateurs fautifs** si un
 `UserSettings` n'a pas pu être posé/relu — ne jamais considérer un seed
@@ -148,7 +227,7 @@ Pour l'utilisateur `n` :
 ### Lecture simple (folders / mode online)
 
 ```bash
-curl -s "http://localhost:5052/api/v1/mail/folders" \
+curl -s "http://127.0.0.1:5052/api/v1/mail/folders" \
   -H "X-Test-Bypass: loadtest-local-only" \
   -H "Client-Email: loadtest-1@loadtest.local" \
   -H "Client-Psc-Sub: 00000000-0000-4000-8000-000000000001" \
@@ -162,7 +241,7 @@ IMAP poolée (chaud ~0,2 s vs froid ~1,3 s) — c'est le comportement à charger
 ### Pipeline CDA (opérationnelle depuis task-195 / Dovecot)
 
 ```bash
-curl -s -X POST "http://localhost:5052/api/v1/mail/folders/INBOX/emails/enrich/sync" \
+curl -s -X POST "http://127.0.0.1:5052/api/v1/mail/folders/INBOX/emails/enrich/sync" \
   -H "Content-Type: application/json" \
   -H "X-Test-Bypass: loadtest-local-only" \
   -H "Client-Email: loadtest-1@loadtest.local" \
@@ -304,12 +383,42 @@ l'analyse Seq. Trois sous-étapes.
 cd Api/Mail
 export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'
 K6JSON=$(ls -t tests/loadtest-k6/reports/*/*.json | head -1)   # dernier résumé k6
-tests/loadtest-k6/report.sh "$K6JSON" --expected 50            # --expected = --messages du seed
+tests/loadtest-k6/report.sh "$K6JSON" --expected 10            # cf. l'encadré ci-dessous
 ```
 
+> ### ⚠️ `--expected` = `MESSAGES_PER_USER` du harnais, PAS `--messages` du seed
+>
+> Corrigé le 2026-07-27 — la consigne précédente (« `--expected` = `--messages`
+> du seed ») est **fausse dès que les deux valeurs diffèrent**. `verify.sh` compte
+> les lignes de la table `"Mails"`, or **seuls les UIDs que le scénario touche**
+> y arrivent. Le scénario `mixed` n'en exerce que **10** par boîte (enrichBand
+> 1..5, readBand 6..10, défaut `MESSAGES_PER_USER=10`), quel que soit le nombre
+> de messages seedés.
+>
+> Mesuré : seed à `--messages 50`, vérification à `--expected 50` → les
+> 20 boîtes ressortent « incomplètes » (⚠️) alors que le tir est parfaitement
+> sain. Avec `--expected 10` : 10/10 partout, verdict PASS.
+>
+> **Règle** : `--expected` = la valeur de `MESSAGES_PER_USER` passée au harnais
+> (10 par défaut), pas celle du seed. Le seed peut sur-provisionner sans risque.
+
 > **Toujours vérifier que le `.md` existe** après coup. `report.sh` affiche
-> « → Rapport : … » **avant** de savoir si l'écriture a réussi : la ligne annonce
-> un chemin, elle ne prouve rien.
+> « → Rapport : … », « → Index : … » et « → Dump Seq … » **avant** de savoir si
+> l'écriture a réussi : les trois lignes annoncent des chemins, elles ne prouvent
+> rien. Contrôle : `test -f <le .md>` et `tail -2 reports/INDEX.md`.
+>
+> **Python est un prérequis dur de cette étape** (`report.py`, stdlib seule).
+> Absent le 2026-07-27, `report.sh` produisait **zéro fichier et zéro ligne
+> d'INDEX** tout en affichant ses trois chemins — panne parfaitement silencieuse.
+> Installé depuis : **Python 3.13.14** (`winget install Python.Python.3.13
+> --scope user`), placé avant `WindowsApps` dans le PATH utilisateur. Attention,
+> le stub Microsoft Store `WindowsApps/python` répond « Python was not found » et
+> **masque** un vrai Python placé après lui dans le PATH ; et un terminal ouvert
+> **avant** l'installation garde l'ancien PATH.
+> Corollaire : `verify.sh` (bash + docker) ne dépend **pas** de Python — en cas
+> de panne de `report.py`, la preuve de non-mélange reste récupérable, seuls les
+> KPI sont à écrire à la main (percentiles globaux :
+> `sed -n '/"http_req_duration"/,/^    },/p' <json>`).
 >
 > *Corrigé le 2026-07-26 (`10b8666` sur `develop`)* — le script n'écrivait aucun
 > rapport dès qu'on le lançait depuis `Api/Mail`, l'usage que prescrit pourtant son
@@ -341,6 +450,43 @@ Repères de lecture : **latence moyenne et p95** sont les deux nombres à compar
 d'un tir à l'autre ; une hausse marquée à volume croissant = dégradation.
 `enrich_short_circuited` doit valoir 0 (sinon le parsing CDA n'a pas tourné —
 piège n°1). `Mélange` (`foreign`) doit valoir 0.
+
+### 5a-bis — Relever le multiplexage PgBouncer (depuis task-200)
+
+Deux chiffres à relever **pendant** le tir, et un **après**. Ni l'un ni l'autre
+n'est produit par `report.py` : à consigner à la main dans le rapport.
+
+```bash
+export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'
+B=$(docker ps --filter "name=loadtest-pgbouncer" --format '{{.Names}}')
+
+# pools, connexions clientes et FILE D'ATTENTE (cl_waiting) — le chiffre qui compte
+docker exec "$B" env PGPASSWORD=pgbouncer \
+  psql -h 127.0.0.1 -p 6432 -U pgbouncer pgbouncer -c 'SHOW POOLS'
+
+# backends RÉELS — toujours sur Postgres EN DIRECT, le pooler ne se mesure pas lui-même
+docker exec postgres-pgvector psql -U postgres -tAc \
+  "select count(*) as total, count(*) filter (where datname like 'u\_%') as praticien
+   from pg_stat_activity"
+```
+
+`PGPASSWORD` est **nécessaire** (`auth_type = plain`, identité `pgbouncer`
+déclarée dans `userlist.txt`) — une commande `SHOW POOLS` sans elle échoue.
+
+Repères mesurés le 2026-07-27, tir `mixed` 20 utilisateurs / 20 VU
+(`report-mixed-mssante-20vu-130917.md`) :
+
+| Grandeur | Valeur | Lecture |
+|---|---|---|
+| Connexions clientes par base praticien | 8 à 10 | demande de 20 praticiens × 5 réplicas |
+| **Backends réels pendant le tir** | **71** (61 sur bases praticien) | ≈ 3 par base = `max_db_connections=3` |
+| **Backends après le tir** | **6** | relâchés par `server_idle_timeout=60` |
+| **`cl_waiting`** | **0** partout | ⚠️ **le chiffre à surveiller** — non nul = pooler sous-dimensionné |
+
+À comparer aux **~2 000 connexions retenues** de la campagne 200 praticiens
+**sans** pooler. `cl_waiting > 0` soutenu est le risque résiduel n°1 identifié
+par l'ADR (`max_db_connections=3` par base est volontairement serré) : il ne se
+manifeste pas à 20 praticiens, il reste à éprouver à 200.
 
 ### 5b — Analyse Seq systématique + dump (OBLIGATOIRE, jamais silencieuse)
 
@@ -403,11 +549,13 @@ ps -W | awk '$4==<PID> {print $NF}'                                # -> identit�
 |---|---|---|
 | `mss.mail.AppHost.exe` | **le vrai AppHost** (port 22234) | **oui**, avec `/T` |
 | `dotnet.exe` (`dotnet run`) | simple lanceur | meurt avec son enfant |
-| `dcp.exe` | orchestrateur Aspire (proxie 5052/17254) | non — suit l'AppHost |
+| `dcp.exe` | orchestrateur Aspire (proxie 5052/17254) | **oui, explicitement** — *contrairement à ce que ce skill affirmait*, il **survit** au kill de l'AppHost et garde `~/.dcp/state.elevated` verrouillé (`Device or resource busy` à la purge). Mesuré le 2026-07-26. |
 
 ```bash
 export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'
 taskkill /T /F /PID <PID de mss.mail.AppHost.exe>
+sleep 8
+taskkill /F /IM dcp.exe /T          # sinon la purge DCP du prochain démarrage échoue
 ```
 
 Aspire détruit alors **tout seul** ses conteneurs `Session` (`loadtest-*`).
@@ -436,25 +584,46 @@ find "$LOCALAPPDATA/Temp" -maxdepth 1 -regextype posix-extended \
 >
 > ```bash
 > cd Api/Mail
-> YES=1 tests/loadtest-k6/reset-state.sh   # bases synthétiques + volume maildir
+> YES=1 tests/loadtest-k6/reset-state.sh   # mode PURGE (défaut) : TRUNCATE des tables mail
 > ```
 >
+> **Deux modes depuis le 2026-07-26 — ne pas appliquer les anciens contrôles :**
+>
+> - **PURGE (défaut)** : vide les tables mail (`TRUNCATE … RESTART IDENTITY`),
+>   **garde les bases, leur schéma et le cache setupdb**. C'est le mode normal
+>   entre deux tirs. ⚠️ Le compte de bases `u_9%` reste donc **inchangé** après
+>   purge — l'ancien contrôle « doit renvoyer 0 » est **périmé**. Le bon
+>   contrôle : `select count(*) from "Mails"` = 0 dans une base témoin. Pas de
+>   redémarrage d'AppHost nécessaire.
+> - **DROP (`--drop-databases`)** : supprime les bases. À réserver aux
+>   changements de schéma — le tir suivant repaie **~16 s de `MigrateUp()` par
+>   praticien** (~53 min pour 200). Et deux pièges mesurés :
+>   1. **Purger les clés `setupdb:u_9*` du Redis persistant** (TTL 1 jour) —
+>      sinon api-mail *saute le provisionnement* des bases supprimées et répond
+>      `3D000 database does not exist` en ~20 ms pour toujours, même après
+>      redémarrage :
+>      `docker exec mss-mail-redis-* sh -c 'redis-cli -p 6380 -a "$REDIS_PASSWORD" --no-auth-warning --scan --pattern "setupdb:u_9*" | xargs -r redis-cli -p 6380 -a "$REDIS_PASSWORD" --no-auth-warning DEL'`
+>      (6380 = port interne non-TLS du conteneur).
+>   2. **Redémarrer l'AppHost ensuite** (cache DataSource + dictionnaire
+>      `_migratedDatabases` in-process).
+>
 > **`YES=1` n'est pas optionnel en usage automatisé.** Sans lui, le script demande
-> `Supprimer ces bases ? [y/N]` ; en shell non interactif le `read` reçoit EOF,
-> le script répond « abandon. » et **sort en code 1 sans rien supprimer**. Piège
-> vicieux : quand il n'y a rien à purger il affiche `(aucune)` et sort en 0, donc
-> il *paraît* fonctionner — et ce n'est qu'au tir suivant, avec des bases
-> présentes, qu'il abandonne silencieusement et que tout `enrich` se retrouve
-> court-circuité. **Toujours vérifier le compte après purge** :
-> `docker exec postgres-pgvector psql -U postgres -tAc "select count(*) from pg_database where datname like 'u\_9%'"`
-> doit renvoyer 0.
+> confirmation ; en shell non interactif le `read` reçoit EOF, le script répond
+> « abandon. » et **sort en code 1 sans rien supprimer** — tout en affichant
+> `(aucune)` et code 0 quand il n'y a rien à purger, ce qui le fait *paraître*
+> fonctionner.
 >
 > Le filtre de noms est étroit (RPPS = `9` + 10 chiffres) : les bases des
 > utilisateurs de dev réels ne matchent pas — vérifié, 4 bases de dev préservées.
 >
-> **Après suppression, redémarrer l'AppHost** : api-mail garde en cache le nom
-> de base et répond `500` au seed sinon (« settings not confirmed (POST
-> status=500) » sur tous les utilisateurs). Puis rejouer le seed.
+> **Contrepartie du filtre étroit : les bases `u_0_…` ne sont jamais purgées.**
+> Toute requête sans en-tête `Client-Rpps` fait retomber `UserContextInfo` sur
+> `FallbackRpps = "0"` et provisionne `u_0_{slug}_{hash}`, hors du filtre `u_9%`.
+> Elles s'accumulent (3 constatées le 2026-07-27). Inventaire :
+> `select datname from pg_database where datname like 'u\_0\_%'`. **Ne pas les
+> supprimer en masse** : une base `u_0_…` peut appartenir à un utilisateur de dev
+> réel dépourvu de claim RPPS. La prévention est côté appelant — envoyer
+> `Client-Rpps` (la sonde de santé de l'étape 1 le fait désormais).
 
 La seconde commande retire les archives IHE-XDM laissées par la pipeline
 (**task-185**) : un tir 20 VU en produit ~90, soit ~18 Mo de CDA **en clair** sur
@@ -478,7 +647,7 @@ IMAP). Symptôme d'un AppHost déjà en place : le redémarrage échoue sur
   issues de `JEUX_TESTS_FULL` (documents de test). Aucune DSCP, aucun INS réel.
 - **Aucun secret en clair** dans les logs/commandes ; la clé de bypass vient du
   profil de lancement, pas d'un dur dans un script partagé.
-- **Endpoint** : toujours `http://localhost:5052` (pas 7012, pas 17254).
+- **Endpoint** : toujours `http://127.0.0.1:5052` (pas 7012, pas 17254).
 - **Rendre le banc en fin de tir** : arrêt de l'AppHost + suppression du volume +
   purge des `.zip` de `%TEMP%` (étape 6). Un banc laissé debout n'est pas un banc
   « disponible », c'est un banc oublié : il consomme des ressources, garde des
@@ -505,15 +674,44 @@ IMAP). Symptôme d'un AppHost déjà en place : le redémarrage échoue sur
 
 ### Pièges d'environnement (Windows / Git Bash)
 
-- **`localhost` ≠ `127.0.0.1` dans Git Bash.** `localhost` y résout en IPv6
-  (`::1`), où les conteneurs Docker n'écoutent pas. Un
-  `</dev/tcp/localhost/5432` renvoie « fermé » alors que Postgres tourne très
-  bien. **Toujours `127.0.0.1`** dans les sondes shell et les `curl`. (Ce faux
-  négatif a fait conclure à tort que le prérequis Postgres manquait.)
+- **`127.0.0.1` partout, jamais `localhost` — règle générale, pas seulement
+  Git Bash.** Élargie le 2026-07-27 : sous orage de connexions, le **relais
+  IPv6 loopback de Docker Desktop se fige par port** (TCP accepté, données
+  jamais relayées — panne 100 % silencieuse). Mesuré sur **5432** (Postgres :
+  NpgsqlTimeout 15 s sur tout, y compris après redémarrages) **et 5342**
+  (ingestion Seq : perte de logs totale sans une seule erreur). Or .NET résout
+  `localhost` en `::1` d'abord. Donc : chaînes de connexion, `SEQ_URL`, sondes
+  shell, `curl` — **tout client d'un port publié Docker cible `127.0.0.1`**.
+  Diagnostic en une commande : parler le protocole sur les deux adresses
+  (`SSLRequest` PG ou POST CLEF) — `127.0.0.1` répond, `::1` trou noir.
+- **Troisième occurrence du même piège, côté PgBouncer (2026-07-27, task-200) :
+  `host.docker.internal` est inutilisable comme upstream.** Dans le conteneur
+  PgBouncer, ce nom ne résout qu'en **AAAA** (`fdc4:f303:9324::254`), et
+  PgBouncer — **contrairement à `psql`** — ne retente pas sur l'autre famille
+  d'adresses : son résolveur retient l'IPv6 et s'y tient. Symptôme :
+  `client_login_timeout (server down)` sur **toute** connexion cliente, alors
+  que le conteneur est « healthy », que le TCP est accepté (`nc -z` réussit) et
+  que `SHOW POOLS` répond parfaitement. Un banc qui démarre sain et ne sert rien.
+  Correctif en place : l'AppHost injecte `--add-host=pgupstream:host-gateway`
+  (IPv4 déterministe, `192.168.65.254` sur Docker Desktop) et `pgbouncer.ini`
+  cible `pgupstream`. **Verrouillé par un test** —
+  `BenchUpstream_DoesNotRelyOnHostDockerInternal` échoue si quelqu'un rétablit
+  `host.docker.internal`. Leçon générale : un client qui ne fait pas de fallback
+  d'adresse transforme ce piège en panne totale, pas en lenteur.
 - **Conversion de chemins MSYS.** Avant tout `docker exec`, `taskkill` ou
   argument commençant par `/` : `export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'`.
   Sans ça, `/etc/dovecot/dovecot.conf` devient `C:/Program Files/Git/etc/...` et
-  `taskkill //T` est rejeté.
+  `taskkill //T` est rejeté. **⚠️ Réciproque pour k6** : `run.sh` passe le chemin
+  du scénario à `k6.exe`, binaire **Windows natif** — avec `MSYS_NO_PATHCONV=1`
+  il reçoit `/d/TechWatch/…/folders.js` et échoue en `moduleSpecifier couldn't
+  be found`. **Faire `unset MSYS_NO_PATHCONV MSYS2_ARG_CONV_EXCL` avant tout
+  `run.sh`.** Les deux exports sont donc à poser/retirer par commande, jamais
+  globalement.
+- **Logs des réplicas api-mail** : la sortie console est dans
+  `%TEMP%\aspire-dcp*\<guid>_out` (un fichier par réplica) — c'est **la**
+  source pour stacks et erreurs, notamment quand Seq ne reçoit rien. Les
+  `resource-executable-*.log` du même répertoire ne contiennent que la trace
+  DCP. Le MCP `aspire` ne voit que les AppHost lancés par `aspire run`.
 - **Python est natif Windows.** Il ne sait pas lire `/tmp/x.json` (chemin MSYS).
   Piper directement (`curl … | python -c …`) ou utiliser un chemin Windows.
 - **Route de liste des messages** : `/emails/{uid1,uid2,…}`. Pas de
@@ -548,5 +746,29 @@ Mettre à jour les sections 🔧 quand :
   `tests/loadtest-k6/`, `run.sh`/`run.ps1`, dashboard Grafana « k6 — tests de
   charge api-mail »), plafonds limiteur/Dovecot documentés, purge des bases par
   utilisateur ajoutée à l'étape 6.
+- ~~**Campagne 200 utilisateurs (2026-07-27)**~~ — ✅ fait : palier 200 validé
+  et prérequis de config documentés ; rituel pré-vol DCP + kill `dcp.exe` ;
+  règle `127.0.0.1` généralisée (relais IPv6 Docker) ; `unset MSYS_NO_PATHCONV`
+  avant k6 ; modes PURGE/DROP de `reset-state.sh` + clés `setupdb:` Redis ;
+  `--messages 0` pour re-câbler Toxiproxy ; logs réplicas via `*_out` DCP.
+  ⚠️ Les réglages AppHost (127.0.0.1, pooling, SEQ_URL) sont **en attente de
+  commit** sur api-mail — si un tir échoue en NpgsqlTimeout 15 s uniforme,
+  vérifier d'abord que ces changements sont bien présents dans `AppHost.cs`.
+- ~~**PgBouncer au profil loadtest**~~ — ✅ fait (task-200, 2026-07-27) :
+  conteneur `loadtest-pgbouncer` à l'étape 1 + encadré des deux routes
+  (données via pooler / provisionnement en direct), relevé du multiplexage à
+  l'étape 5a-bis avec ses repères, `PGPASSWORD` requis pour `SHOW POOLS`,
+  base parasite `u_0_…` documentée à l'étape 6, sonde de santé corrigée
+  (`Client-Rpps` + `Client-Psc-Sub`), `--expected` redressé, Python promu
+  prérequis dur. Tir de validation :
+  `reports/2026-07-27/report-mixed-mssante-20vu-130917.md`.
+- **À venir — tir comparatif 200 praticiens VIA PgBouncer** : c'est le critère
+  qui reste dû à task-200 et qui déverrouille le prérequis §4.1 de
+  `DevOps/DIMENSIONNEMENT-1000-PRATICIENS.md`. Iso-conditions avec
+  `report-mixed-mssante-60vu-003515.md` (200 users, 60 VU, `mixed`, 5 min) :
+  critère p95 dans la marge de 20 %, `pg_stat_activity` < 300, `cl_waiting`
+  nul ou marginal. Mettre à jour les résultats de référence ensuite.
+- **À venir — tir 500 praticiens** (cf. `DIMENSIONNEMENT-1000-PRATICIENS.md`),
+  une fois le comparatif 200 vert.
 - Tout changement d'endpoint/port, d'options du seed, de clé de bypass, ou du
   mot de passe IMAP du banc.

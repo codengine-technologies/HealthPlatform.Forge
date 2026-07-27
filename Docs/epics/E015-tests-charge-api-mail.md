@@ -2,10 +2,10 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.2
+> **Version** : 1.3
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
-> **Dernière mise à jour** : 2026-07-25
+> **Dernière mise à jour** : 2026-07-27
 
 ---
 
@@ -23,7 +23,7 @@
 - [8. Critères d'acceptation de l'EPIC](#8-critères-dacceptation-de-lepic)
 - [9. Hors périmètre](#9-hors-périmètre)
 - [10. Premiers résultats de mesure](#10-premiers-résultats-de-mesure)
-- [État de couverture (2026-07-25)](#état-de-couverture-2026-07-25)
+- [État de couverture (2026-07-27)](#état-de-couverture-2026-07-27)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -76,6 +76,8 @@ baisses de performance avant qu'elles n'atteignent les utilisateurs**.
 | Banc d'essai isolé | Simuler des centaines de boîtes et de messages fictifs, en lieu et place des serveurs de messagerie réels, avec une latence réseau réaliste — sans aucune donnée de santé | task-173 | 🟢 Livré |
 | Mesure du traitement des documents médicaux | Mesurer le parcours complet d'un message porteur d'un compte-rendu : réception, ouverture de la pièce jointe, extraction du document médical et du résultat de biologie associé | task-195 | 🟡 Livré, en attente d'intégration |
 | Campagnes de mesure | Rejouer six usages types sous charge — consulter ses dossiers, lire, rechercher, envoyer, extraire les documents médicaux d'un compte-rendu, et un profil mêlant les cinq — puis lire les temps de réponse sur le tableau de bord de supervision, avec un rapport par campagne et une mesure de référence opposable | task-174 | 🟡 Livré, en attente d'intégration |
+| Interrupteurs de fonctionnalités résilients | Garantir que les fonctions pilotées par interrupteur (dont l'analyse des comptes-rendus) restent dans leur dernier état connu si le service d'interrupteurs faiblit, au lieu de se désactiver silencieusement — avec une alerte d'exploitation quand cela survient | task-199 | 🟡 Livré, en attente d'intégration |
+| Passage à l'échelle des connexions | Permettre au service de servir 1000 praticiens sans que le nombre de connexions à la base de données ne devienne le plafond — via un multiplexeur de connexions, validé d'abord sur le banc | task-200 | 🟡 Livré, en attente d'intégration |
 
 ---
 
@@ -204,6 +206,32 @@ premiers refus ont été observés dès **huit actions par seconde** en rythme
 soutenu. L'usage humain courant — consulter, lire, répondre, envoyer — reste très
 loin de ce plafond, qui vise les enchaînements automatisés.
 
+### La campagne à grande échelle : 200 praticiens (27 juillet 2026)
+
+La campagne « à très grande volumétrie » annoncée à la version 1.2 a été
+conduite : **200 praticiens simulés, 100 messages chacun, cinq minutes de
+charge soutenue**. Verdict final : **280 355 demandes traitées à 915 par
+seconde, 0,02 % d'erreurs**, temps de réponse courants tenus (dossiers en
+29 millisecondes, extraction des documents médicaux d'un lot de cinq en
+2,3 secondes), et la vérification d'étanchéité confirmée — **aucune boîte n'a
+jamais reçu le message d'un autre praticien**, y compris pendant les pannes
+provoquées par la montée en charge.
+
+Ce résultat n'a pas été obtenu du premier coup, et c'est là toute la valeur du
+banc : trois limites d'infrastructure, invisibles à dix praticiens, ont cédé
+l'une après l'autre à deux cents — chacune a été identifiée, corrigée et
+documentée à l'attention de l'équipe système (mémoire de la base de données,
+plafond de connexions, comportement du poste sous tempête de connexions). Les
+règles de dimensionnement qui en résultent, jusqu'au palier 1000 praticiens,
+sont consignées dans le dossier DevOps.
+
+La campagne a aussi révélé une fragilité de la plateforme elle-même : sous
+charge, le service d'interrupteurs de fonctionnalités ne suivait plus, et
+l'analyse des comptes-rendus s'est désactivée **silencieusement** — sans
+erreur visible, ni pour le praticien, ni pour l'exploitant. C'est l'origine
+directe de la feature « Interrupteurs de fonctionnalités résilients »
+(task-199) et du chantier « Passage à l'échelle des connexions » (task-200).
+
 ### Deux mesures à reprendre
 
 - **L'envoi de message.** Les boîtes du banc ne disposent pas de dossier
@@ -217,22 +245,34 @@ loin de ce plafond, qui vise les enchaînements automatisés.
 
 ---
 
-## État de couverture (2026-07-25)
+## État de couverture (2026-07-27)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
 | Banc d'essai isolé | 🟢 Livré | Environnement simulé + vérification bout-en-bout en place | task-173 |
 | Mesure du traitement des documents médicaux | 🟡 Livré, en attente d'intégration | Vérifié sur un lot de messages porteurs de comptes-rendus : 4 messages sur 5 aboutissent à un document médical et un résultat de biologie exploitables ; le 5ᵉ ne portait pas de document exploitable dans le jeu de test | task-195 |
-| Campagnes de mesure | 🟡 Livré, en attente d'intégration | Six usages types rejouables à la demande, verdict automatique sur les temps de réponse attendus, remontée sur le tableau de bord de supervision, rapport par campagne et mesure de référence datée ; deux mesures à reprendre (envoi, recherche) | task-174 |
+| Campagnes de mesure | 🟡 Livré, en attente d'intégration | Six usages types rejouables à la demande, verdict automatique sur les temps de réponse attendus, remontée sur le tableau de bord de supervision, rapport par campagne et mesure de référence datée ; campagne à grande échelle conduite (200 praticiens, verte) ; deux mesures à reprendre (envoi, recherche) | task-174 |
+| Interrupteurs de fonctionnalités résilients | 🟡 Livré, en attente d'intégration | Dernier état connu servi quand le service d'interrupteurs est injoignable, repli déclaré par interrupteur, alerte d'exploitation dédiée, une seule ligne de journal par fenêtre au lieu d'une par échec ; 10 tests dédiés ; vérification finale sur banc au plan de test manuel | task-199 |
+| Passage à l'échelle des connexions | 🟡 Livré, en attente d'intégration | Multiplexeur de connexions intégré au banc, et séparation des deux usages de la base : le trafic courant passe par le multiplexeur, la création d'un nouveau dossier praticien reste en direct — de sorte qu'un multiplexeur saturé n'empêche jamais l'arrivée d'un praticien. Compatibilité établie par mesure : 40 demandes simultanées absorbées par 3 connexions réelles au lieu de 40 ; l'analyse sémantique des comptes-rendus (recherche par similarité) fonctionne à travers le multiplexeur. Hors banc, aucun changement de comportement. **Reste dû** : la campagne comparative 200 praticiens à travers le multiplexeur, qui seule permettra de conclure sur la tenue en charge | task-200 |
 
-**Couverture EPIC consolidée : 100%** (3 features sur 3 livrées et vérifiées ;
-les trois attendent leur intégration). L'EPIC est **fonctionnellement complet** :
-le banc est opérationnel, il mesure la chaîne complète de traitement des
-documents médicaux, et les campagnes de mesure sont outillées avec une référence
-opposable. Restent deux mesures à reprendre — l'envoi et la recherche, pour les
-raisons exposées au chapitre *Premiers résultats de mesure* — et une campagne à
-très grande volumétrie à conduire manuellement pour confirmer le comportement du
-banc à l'échelle.
+**Couverture EPIC consolidée : 5 features livrées sur 5** (les cinq attendent
+leur intégration). L'EPIC est **fonctionnellement complet et éprouvé à
+l'échelle** : le banc est opérationnel, il mesure la chaîne complète de
+traitement des documents médicaux, les campagnes de mesure sont outillées avec
+une référence opposable, et la campagne à grande volumétrie (200 praticiens) a
+été conduite avec succès — en produisant au passage les règles de dimensionnement
+de l'infrastructure jusqu'au palier 1000 praticiens et deux chantiers de
+robustesse, tous deux livrés (task-199, task-200).
+
+Deux réserves à porter au bilan, sans quoi il serait trompeur :
+
+- deux mesures restent à reprendre — l'envoi et la recherche, pour les raisons
+  exposées au chapitre *Premiers résultats de mesure* ;
+- le passage à l'échelle des connexions est **établi comme compatible, pas
+  encore comme performant** : la brique est livrée et vérifiée
+  fonctionnellement, mais la campagne comparative qui doit prouver l'absence de
+  dégradation des temps de réponse n'a pas encore été conduite. Le palier 1000
+  praticiens n'est donc pas encore déverrouillé.
 
 ---
 
@@ -261,6 +301,25 @@ banc à l'échelle.
   référence datée est conservée avec le produit comme garde anti-régression.
   (task-174)
 
+- v1.3 — Les fonctions pilotées par interrupteur (dont l'analyse des
+  comptes-rendus) ne dépendent plus d'un appel réseau à chaque évaluation : le
+  service conserve un état local, rafraîchi périodiquement. Si le service
+  d'interrupteurs devient injoignable, le dernier état connu continue de
+  s'appliquer, une alerte d'exploitation est levée, et le journal ne reçoit
+  qu'une ligne par minute au lieu d'une par échec. (task-199)
+
+- v1.4 — Un multiplexeur de connexions est intégré au banc, en réponse au
+  plafond que la campagne à grande échelle avait mis au jour. Deux usages de la
+  base sont désormais distingués : le trafic courant passe par le multiplexeur,
+  tandis que la création du dossier d'un nouveau praticien reste en accès
+  direct — un multiplexeur saturé ou arrêté ne peut donc jamais empêcher
+  l'arrivée d'un praticien. Vérifié par mesure : 40 demandes simultanées sont
+  absorbées par 3 connexions réelles au lieu de 40, et l'analyse sémantique des
+  comptes-rendus continue de fonctionner à travers le multiplexeur — c'était le
+  point d'incertitude technique de l'étude. Hors banc, aucun changement de
+  comportement. La campagne comparative qui doit prouver l'absence de
+  dégradation des temps de réponse reste à conduire. (task-200)
+
 **Ce que la mesure a appris sur le service**
 
 - v1.2 — La messagerie plafonne chaque praticien à 100 demandes par tranche de
@@ -268,6 +327,15 @@ banc à l'échelle.
   immédiatement. La tranche étant fixe, un enchaînement par à-coups peut déclencher
   ce refus dès huit actions par seconde, en deçà du rythme nominal. L'usage humain
   courant en reste très éloigné. (task-174)
+- v1.3 — À 200 praticiens simulés, la campagne à grande échelle a tenu **915
+  demandes par seconde pendant cinq minutes avec 0,02 % d'erreurs** et une
+  étanchéité parfaite entre boîtes. Elle a établi que le nombre de connexions à
+  la base de données croît avec le **nombre de praticiens équipés**, pas avec le
+  trafic — c'est la donnée qui dimensionne l'infrastructure, consignée avec les
+  règles de calcul jusqu'au palier 1000 praticiens dans le dossier DevOps. Elle
+  a aussi révélé que le service d'interrupteurs de fonctionnalités cédait sous
+  charge en désactivant silencieusement l'analyse des comptes-rendus — corrigé
+  par la task-199. (campagne du 2026-07-27)
 
 ---
 

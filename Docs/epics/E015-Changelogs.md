@@ -525,6 +525,119 @@ problème** — il s'agit d'une instabilité systémique (QuestPDF et OpenTeleme
 
 ---
 
+### v1.4 — PgBouncer mode transaction devant « une base par praticien » : split chemin de données / plan de contrôle — task-200
+
+> **Note de complétude** : ce fichier ne contient pas d'entrée `v1.3` détaillée
+> pour task-199 (évaluation locale des feature flags), alors que la synthèse du
+> doc produit la mentionne, et l'Annexe C n'a pas sa ligne. Manque antérieur à
+> cette entrée, non comblé ici pour ne pas reconstituer après coup le détail
+> d'une task que ce run n'a pas instruite. `/tech-writer E015 --refresh` la
+> régénérerait depuis `tasks/archived/archived-task-199.md`.
+
+- **Task** : task-200 — `done`. **PR** : `api-mail`
+  [#125](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/125)
+  (label `awaiting-human-merge` — **non mergée**, HAG règle 10).
+  `dtos-mss` : branche créée par convention, 0 commit, aucune PR.
+- **ADR** : [`Api/Mail/docs/ADR-2026-07-27-pgbouncer-transaction-mode.md`](../../Api/Mail/docs/ADR-2026-07-27-pgbouncer-transaction-mode.md)
+  — verdict **compatible avec deux réserves**. Instruit le prérequis bloquant
+  n°1 de `DevOps/DIMENSIONNEMENT-1000-PRATICIENS.md` §4.
+
+**Le plafond visé est structurel** : `connexions retenues ≈ praticiens ×
+réplicas × Maximum Pool Size`, un backend Postgres par connexion. Mesuré le
+2026-07-27 à 200 praticiens × 5 réplicas : ~2 000 connexions retenues, tenables
+seulement avec un Postgres à 12 GiB et `max_connections=2500`. La RAM Postgres
+croît avec les praticiens **provisionnés**, même inactifs — à 1000 praticiens,
+10 000+ connexions.
+
+**Split des deux chemins** (le cœur du changement de code) :
+
+| Chemin | Route | Contenu |
+|---|---|---|
+| Données | via PgBouncer (profil loadtest) | tout le trafic EF Core / Npgsql |
+| Contrôle | **toujours direct** sur Postgres | `pg_advisory_xact_lock` de provisionnement, `CREATE DATABASE`, `MigrateUp` |
+
+`UserContextInfo.ConnectionStringDirect` (alimentée par
+`MSS-MAIL-CONNECTIONSTRING-DIRECT`) + dérivées
+`ConnectionStringProvisioningServer` / `…User`. Les trois sites d'appel du plan
+de contrôle dans `BaseRepository` (`UpdateDatabase` : verrou, `DatabaseExists`,
+`CreateDatabase` ; plus `CreateServices` pour FluentMigrator) basculent sur la
+route directe. **Repli : sans route directe configurée, les dérivées retournent
+la chaîne serveur** — hors profil loadtest la variable n'est pas définie et la
+chaîne de connexion est identique à l'octet près. Couvert par test unitaire.
+
+Motif du split : le provisionnement d'un locataire est du plan de contrôle, rare
+et sensible. Par le pooler il deviendrait tributaire de la saturation du pool de
+données (`max_db_connections=3` par base) et créerait une entrée de pool par base
+de maintenance.
+
+**Conteneur `loadtest-pgbouncer`** (`edoburu/pgbouncer:v1.25.2-p0`, profil
+loadtest uniquement), `pgbouncer.ini` + `userlist.txt` montés en lecture seule
+(même motif que `dovecot.conf`) : `pool_mode=transaction`,
+`default_pool_size=2`, `max_db_connections=3`, `server_idle_timeout=60`,
+`server_reset_query` vide, `ignore_startup_parameters=extra_float_digits,options`,
+`max_prepared_statements=0`, routage joker `*` (les bases praticien
+`u_{rpps}_{slug}_{hash}` ne sont pas énumérables).
+
+**Verdicts de compatibilité** — sondes manuelles sur paire isolée, puis figées en
+tests d'intégration qui montent **la configuration réelle du banc** (seul
+l'upstream est réécrit), si bien qu'une régression de configuration casse les
+tests :
+
+| Point | Verdict | Test |
+|---|---|---|
+| EF Core / Npgsql | compatible | `EfCoreReadWrite_ThroughTransactionPooler_Succeeds` |
+| **pgvector** (`UseVector`, insertion + `CosineDistance`) | **compatible** — l'OID du type `vector` est propre à chaque base, mais Npgsql tient un `NpgsqlDataSource` par chaîne (donc par base, cf. cache `BaseRepository._dataSources`) et PgBouncer route une base logique toujours vers la même base physique | `PgVectorSimilarity_ThroughTransactionPooler_ReturnsNearestNeighbour` |
+| Provisionnement complet | compatible par la route directe, exercé via `BaseRepository.CreateDbContextAsync` (code de production) | `Provisioning_TakesDirectRoute_WhilePoolerFrontsTheDataPath` |
+| Multiplexage | **confirmé** : 40 clients tenant chacun une transaction explicite (donc épinglant une connexion serveur) → **≤ 3 backends** dans `pg_stat_activity` | `ConcurrentClients_AreMultiplexed_OntoBoundedPostgresBackends` |
+| `LISTEN`/`NOTIFY` | non concerné — aucun usage (Redis pub/sub + RabbitMQ) | — |
+| `SET` de session sur le chemin de requête | absent — seul `SET LOCAL lock_timeout`, transactionnel, sur la route directe | — |
+| Garde-fou de configuration | l'upstream du banc ne doit pas être `host.docker.internal` | `BenchUpstream_DoesNotRelyOnHostDockerInternal` |
+
+**Réserves** (invariants côté Npgsql) : `Max Auto Prepare=0` — les requêtes
+préparées nommées ne survivent pas au multiplexage, et `max_prepared_statements=0`
+côté PgBouncer fait échouer franchement plutôt qu'erratiquement si on l'active ;
+`No Reset On Close=true` — pendant client du `server_reset_query` vide, sinon un
+`DISCARD ALL` par retour au pool.
+
+**Piège rencontré, troisième occurrence du même motif IPv6** :
+`host.docker.internal` ne résout qu'en **AAAA** dans le conteneur PgBouncer
+(`fdc4:f303:9324::254`), et PgBouncer — contrairement à `psql` — **ne retente pas
+sur l'autre famille d'adresses**. Symptôme : `client_login_timeout (server down)`
+sur toute connexion cliente, alors que le TCP est accepté (`nc -z` réussit) et que
+la console d'administration répond. Un banc « healthy » qui ne sert rien. Les deux
+occurrences précédentes sont documentées dans `AppHost.cs` (Postgres 5432 et
+ingestion Seq 5342). Correctif : `--add-host=pgupstream:host-gateway`
+(`WithContainerRuntimeArgs`), IPv4 déterministe, **plus un test garde-fou** — un
+commentaire n'avait pas suffi les deux fois d'avant.
+
+- **Tests** : 17 neufs (8 domaine, 4 api, 5 intégration). Suite complète
+  **3 140 verts, 0 échec**, 16 skips IA préexistants.
+- **Sonar** : Quality Gate OK, **0 smell sur le périmètre de la task**. Le scan 1
+  avait révélé `CA1822` (propriété d'instance enveloppant un `const`) et un
+  warning `S2068` (littéral de mot de passe dupliqué par le refactor AppHost) —
+  corrigés, KPIs revenus à la baseline (31 smells projet, 6 new-code héritées
+  d'autres tasks), couverture en hausse (86,0 → 86,5 ; new 87,5 → 87,6).
+  `conventions/csharp.md` **créé** (il n'existait pas) avec ces deux règles.
+- **Reste dû, et l'ADR le dit explicitement (§6)** : le tir `mixed` 200 praticiens
+  iso-conditions via PgBouncer (p95 dans la marge de 20 % vs
+  `report-mixed-mssante-60vu-003515.md`), `pg_stat_activity` < 300 pendant ce tir,
+  et le comportement de `cl_waiting` sous rafale — risque résiduel le plus
+  probable, `max_db_connections=3` étant volontairement serré. **Le prérequis
+  §4.1 du dossier de dimensionnement n'est donc pas encore levé.**
+- **Non vérifié par la forge** : le démarrage de l'AppHost Aspire avec la nouvelle
+  ressource (bind mount relatif, publication du port 6432, passage des runtime
+  args). Le conteneur, sa configuration et l'upstream ont été exercés à la main
+  contre le Postgres du banc (207 bases visibles à travers le pooler).
+- **Hors automation** : le lien vers l'ADR depuis
+  `DevOps/DIMENSIONNEMENT-1000-PRATICIENS.md` §4.1 est écrit mais **non committé**
+  — `DevOps` est un repo exclu, l'humain commit et pousse.
+- **Outillage** : lancé depuis Git Bash, `dotnet sonarscanner` ne reçoit pas ses
+  arguments MSBuild-style (`/k:`, `/d:`) — MSYS les réécrit en chemins Windows.
+  Contournement `MSYS_NO_PATHCONV=1` + `MSYS2_ARG_CONV_EXCL='*'`. Le skill
+  `sonar-skill` est en PowerShell et n'a pas ce problème.
+
+---
+
 ## Annexe A — Cartographie des briques applicatives
 
 | Brique | Chemin | Rôle |
@@ -593,3 +706,4 @@ problème** — il s'agit d'une instabilité systémique (QuestPDF et OpenTeleme
 | task-173 | Banc de charge isolé : profil AppHost GreenMail+Toxiproxy, outil de seed, forge de tokens et générateur de population partagés, enrichissement du test-bypass, smoke test bout-en-bout. Binaire de production inchangé. | — |
 | task-195 | Bascule du serveur IMAP du banc vers Dovecot `2.3.21` (conf montée, maildir sur volume nommé, auth wildcard à mot de passe vérifié), GreenMail rétrogradé en puits SMTP, Toxiproxy réaligné, seed adapté, smoke test de fetch partiel. **Débloque la pipeline CDA/IHE-XDM**, jusque-là inexécutable sur le banc, et lève le plafond de volumétrie. Validation end-to-end réelle exécutée (4 extractions CDA observées). Binaire api-mail inchangé. | — |
 | task-174 | Harnais de tir k6 : 6 scénarios (`folders`, `read`, `search`, `send`, `enrich`, `mixed`), 8 modules `lib/`, lanceurs et `reset-state.sh`, profils de latence Toxiproxy pilotés par le harnais, sortie Prometheus remote-write vers le Grafana du banc (dashboard dédié), **thresholds-as-code** (pass/fail démontré, code de sortie 99 sous `degraded`) et **baseline anti-régression committée**. Trois plafonds de banc identifiés et outillés (bases Postgres persistantes, limiteur de débit api-mail, connexions IMAP Dovecot). Quality Gate ERROR → OK en une passe, 17 findings JS, `conventions/javascript.md` créé. Binaire api-mail inchangé (seul l'AppHost bouge, +9 lignes). | — |
+| task-200 | PgBouncer mode transaction devant « une base par praticien » : conteneur `loadtest-pgbouncer` au profil loadtest (configuration montée), et **séparation du chemin de données (via pooler) et du plan de contrôle (verrou de provisionnement, `CREATE DATABASE`, `MigrateUp` — direct sur Postgres)** via `UserContextInfo.ConnectionStringDirect` et ses dérivées, avec repli garantissant l'absence de changement de comportement hors banc. Compatibilité tranchée par 5 tests d'intégration sur la configuration réelle du banc : EF Core ✓, **pgvector ✓** (la question ouverte), provisionnement en route directe ✓, **multiplexage confirmé (40 clients → ≤ 3 backends)**. Troisième occurrence du piège IPv6 Docker Desktop identifiée (`host.docker.internal` résolu en AAAA seul, PgBouncer ne bascule pas de famille d'adresses) et **verrouillée par un test garde-fou**. ADR de compatibilité écrite. `conventions/csharp.md` créé. **Tir comparatif 200 praticiens encore dû** — le prérequis §4.1 du dossier de dimensionnement n'est pas levé. | — |
