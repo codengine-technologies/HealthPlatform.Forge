@@ -4,12 +4,32 @@
 
 INPUT=$(cat)
 
-FILE_PATH=$(echo "$INPUT" | python3 -c "
+# Pick the first Python that actually runs. On Windows, `python3` is often the
+# Microsoft Store stub: it resolves via `command -v` but exits non-zero without
+# executing anything, which used to make this hook a silent no-op.
+PY=""
+for candidate in python3 python py; do
+  if command -v "$candidate" >/dev/null 2>&1 \
+     && "$candidate" -c "import sys" >/dev/null 2>&1; then
+    PY="$candidate"
+    break
+  fi
+done
+
+if [ -n "$PY" ]; then
+  FILE_PATH=$(printf '%s' "$INPUT" | "$PY" -c "
 import json, sys
 data = json.load(sys.stdin)
 inp = data.get('tool_input', {})
 print(inp.get('file_path') or inp.get('path') or inp.get('target_file') or '')
 " 2>/dev/null)
+else
+  # No usable interpreter: fall back to a raw-JSON match rather than failing open.
+  echo "WARN: no working Python found (python3/python/py) — using raw JSON fallback"
+  FILE_PATH=$(echo "$INPUT" \
+    | grep -oE '"(file_path|path|target_file)"[[:space:]]*:[[:space:]]*"[^"]*' \
+    | head -1 | sed 's/.*"//')
+fi
 
 if [ -z "$FILE_PATH" ]; then exit 0; fi
 

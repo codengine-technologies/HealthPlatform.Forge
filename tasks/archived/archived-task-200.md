@@ -371,7 +371,8 @@ humaine du Manual Test Plan, HAG règle 10).
   `develop`.
 - **CI `develop` (api-mail)** : run
   [30263527572](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/30263527572)
-  — CI_STATUS_PLACEHOLDER
+  — **success** (`build` + `publish` verts), confirmé dans la fenêtre de 2 min
+  de la règle 5.
 - **Staging** : aucune branche `forge/staging-task-*` sur `api-mail` ni
   `dtos-mss` (task lancée hors run `/forge` groupé) — rien à nettoyer.
 - **Reste à la main de l'humain** : `DevOps/DIMENSIONNEMENT-1000-PRATICIENS.md`

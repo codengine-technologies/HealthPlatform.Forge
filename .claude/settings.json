@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/guard-shared.sh"
+            "command": "bash -c 'h=guard-shared.sh; d=$PWD; while :; do [ -f \"$d/.claude/hooks/$h\" ] && exec bash \"$d/.claude/hooks/$h\"; p=$(dirname \"$d\"); [ \"$p\" = \"$d\" ] && exit 0; d=$p; done'"
           }
         ]
       },
@@ -37,7 +37,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/verify-before-push.sh"
+            "command": "bash -c 'h=verify-before-push.sh; d=$PWD; while :; do [ -f \"$d/.claude/hooks/$h\" ] && exec bash \"$d/.claude/hooks/$h\"; p=$(dirname \"$d\"); [ \"$p\" = \"$d\" ] && exit 0; d=$p; done'"
           }
         ]
       }

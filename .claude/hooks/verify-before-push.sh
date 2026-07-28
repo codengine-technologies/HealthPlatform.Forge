@@ -5,12 +5,31 @@
 
 INPUT=$(cat)
 
-COMMAND=$(echo "$INPUT" | python3 -c "
+# Pick the first Python that actually runs. On Windows, `python3` is often the
+# Microsoft Store stub: it resolves via `command -v` but exits non-zero without
+# executing anything, which used to make this hook a silent no-op.
+PY=""
+for candidate in python3 python py; do
+  if command -v "$candidate" >/dev/null 2>&1 \
+     && "$candidate" -c "import sys" >/dev/null 2>&1; then
+    PY="$candidate"
+    break
+  fi
+done
+
+if [ -n "$PY" ]; then
+  COMMAND=$(printf '%s' "$INPUT" | "$PY" -c "
 import json, sys
 data = json.load(sys.stdin)
 inp = data.get('tool_input', {})
 print(inp.get('command') or '')
 " 2>/dev/null)
+else
+  # No usable interpreter: fall back to a conservative raw-JSON match rather
+  # than failing open. Over-matching costs a build; under-matching skips the gate.
+  echo "WARN: no working Python found (python3/python/py) — using raw JSON fallback"
+  COMMAND=$(echo "$INPUT" | grep -oE '"command"[[:space:]]*:[[:space:]]*"[^"]*' | sed 's/.*"//')
+fi
 
 if ! echo "$COMMAND" | grep -qE '^git push'; then
   exit 0
