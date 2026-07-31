@@ -402,7 +402,45 @@ tests/loadtest-k6/selftest.sh     # aucune dépendance, aucun banc requis
 | **Le harnais lui-même** (task-203) : un scénario à débit imposé ne délivre que `maxVUs / latence` | débit qui plafonne quel que soit `USERS`, `dropped_iterations` par centaines/s, `vus == vus_max` | pools dimensionnés par la loi de Little (`lib/vu-sizing.js`) ; **lire d'abord la section « Validité du tir » du rapport** — 16 des 21 tirs archivés avant le 2026-07-28 sont invalides |
 | **Limiteur api-mail** : 100 req / 10 s **par identité PS** (task-090, fenêtre fixe) | HTTP 429, p95 superbe mesuré sur des rejets | le harnais se cadence à 6 req/s par identité et échoue sur le moindre 429 (`rate_limited_429: count==0`) |
 | **`mail_max_userip_connections=10`** (défaut Dovecot) : 10 connexions IMAP par (utilisateur, IP), tous les VU partageant une IP | HTTP 500, `IOException` en pleine `AUTHENTICATE` | **monter en charge par `USERS`, pas par VU par utilisateur** ; borne aussi `SESSION_ROTATION` à quelques millièmes sur 10 utilisateurs |
-| **Bases Postgres par utilisateur persistantes** | tout `enrich` court-circuite (voir étape 6) | `tests/loadtest-k6/reset-state.sh` |
+| **Bases Postgres par utilisateur persistantes** | tout `enrich` court-circuite (voir étape 6) | `tests/loadtest-k6/reset-state.sh` — ⚠️ purger change le coût de `read`, donc le dimensionnement : voir juste en dessous |
+
+### ⚠️ La contradiction purge / dimensionnement (task-209)
+
+**Deux exigences du banc se contredisent, et il faut la connaître AVANT
+d'imputer des abandons à l'application.**
+
+Une campagne d'escalier **purge les tables entre paliers** (sinon `enrich`
+court-circuite). Or les latences de référence qui dimensionnent les pools de VUs
+(`lib/vu-sizing.js`, loi de Little) avaient été mesurées **base pleine** : `read`
+y valait 0,16 s l'itération. Sur base purgée, `read` repart sur IMAP et coûte
+**0,41 s** sous le genou. Le pool ne peut alors pas offrir le débit demandé, k6
+jette la différence, et le rapport disait « la charge nominale n'a jamais été
+appliquée » — une phrase qui accuse l'application d'un défaut du harnais. C'est
+ce qui a rendu la première campagne du 2026-07-29 et les quatre tirs du
+2026-07-31 inexploitables.
+
+Depuis task-209, le rapport porte une section **« Latence planifiée vs
+mesurée »** qui compare l'hypothèse du plan à la mesure et **nomme la cause
+candidate des abandons**. La lire avant toute conclusion :
+
+| Ce que dit le rapport | Ce qu'on fait |
+|---|---|
+| *cause : dimensionnement* (écart > 2× et file ThreadPool calme, ou abandons sans écart) | re-tirer avec la latence observée — le rapport imprime la ligne exacte, du type `ITER_SECONDS_READ=0.41 tests/loadtest-k6/run.sh mixed …` |
+| *cause : congestion serveur* (écart > 2× **et** file ThreadPool ≥ 100) | **baisser le débit demandé. Ne PAS élargir les pools** |
+| *cause indéterminée* (aucun témoin serveur sur la fenêtre) | monter le banc en profil loadtest (collector `loadtest-otel-collector`) et régénérer le rapport — les deux remèdes sont opposés |
+
+**Élargir les pools aggrave — mesuré, ne pas re-débattre.** Même budget
+(882 req/s), seul `VU_TAIL_FACTOR` change, 8 → 16 : débit délivré 824,8 →
+716,4 req/s (−13 %), abandons 4,21 % → 13,49 %, p95 1 309 → 6 766 ms, files
+ThreadPool 136 → 951. Au-delà du genou, plus de concurrence cliente alimente une
+file bloquante côté serveur.
+
+Corollaire pour re-mesurer les constantes : **toujours nommer les conditions**.
+Un chiffre pris base pleine ne remplace pas un chiffre pris base purgée. Les
+constantes portent désormais leur date et leurs conditions
+(`REFERENCE_MEASURED_AT`, `REFERENCE_CONDITIONS`), recopiées dans le contexte de
+chaque tir archivé. Elles décrivent le régime **sous le genou** — dimensionner
+sur la latence d'un palier haut reviendrait à nourrir la congestion.
 
 ### Deux réserves sur les baselines livrées
 

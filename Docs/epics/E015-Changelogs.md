@@ -1229,6 +1229,479 @@ banc**, même découpage que la v1.6.
 
 ---
 
+### v1.9 — Le harnais dimensionne sur la latence mesurée, et le rapport nomme qui produit les abandons — task-209
+
+- **Task** : task-209 — `done`. **PR** : `api-mail` #132 (label `awaiting-human-merge`).
+- **Origine** : l'escalier de task-204 a demandé **deux** campagnes (la première
+  jetée, 4,6 % d'abandons dès le premier palier) et les quatre tirs de task-205
+  du 2026-07-31 sont sortis invalides — à chaque fois par sous-provisionnement
+  des pools, imputé à l'application par le rapport (« la charge nominale n'a
+  jamais été appliquée »).
+
+#### La contradiction structurelle, nommée
+
+`REFERENCE_ITERATION_SECONDS` (task-203) a été mesuré le 2026-07-27 avec des
+`read` servis **depuis la base**, après enrichissement : 0,16 s l'itération. Or
+une campagne d'escalier **purge les tables entre paliers** — condition
+nécessaire pour qu'`enrich` ne court-circuite pas (`reset-state.sh`). Sur base
+purgée, `read` repart sur IMAP : **0,41 s sous le genou, 1,65 s à 972 req/s**.
+Le harnais portait donc deux exigences contradictoires, et rien ne le disait.
+
+Écart mesuré le 2026-07-29, même scénario, même population :
+
+| Sous-scénario | Référence 2026-07-27 | 486 req/s | 972 req/s | Écart au pire |
+|---|---|---|---|---|
+| `read` (list + content) | 0,16 s | 0,41 s | **1,65 s** | **×10** |
+| `folders` | 0,06 s | 0,05 s | 0,17 s | ×2,8 |
+| `search` | 0,33 s | 0,24 s | 0,66 s | ×2,0 |
+| `send` | 1,30 s | 1,18 s | 1,70 s | ×1,3 |
+
+#### Ce qui interdisait la correction naïve
+
+Au-delà du genou, la latence n'est plus une propriété du scénario mais du
+serveur qui congestionne. Expérience de discrimination du 2026-07-29, budget
+identique (882 req/s), seul `VU_TAIL_FACTOR` change :
+
+| | `tail=8` | `tail=16` |
+|---|---|---|
+| Débit délivré | 824,8 req/s | **716,4** (−13 %) |
+| Abandons | 4,21 % | **13,49 %** |
+| p95 | 1 309 ms | **6 766 ms** |
+| `read_list` moy | 714 ms | **3 606 ms** |
+| File ThreadPool par réplica | 136/93/13/10/7 | **406/951/579/648/813** |
+
+Élargir les pools **aggrave**. Le harnais ne cherche donc pas à annuler les
+abandons par le dimensionnement — il dit **lequel des deux mécanismes** les
+produit.
+
+#### Livré — `lib/vu-sizing.js`
+
+- Constantes rafraîchies sur le palier **486 req/s du 2026-07-29** (base purgée,
+  sous le genou), avec `REFERENCE_MEASURED_AT` et `REFERENCE_CONDITIONS`
+  exportés et recopiés dans le `context` de chaque tir archivé
+  (`scenarios/mixed.js`). Délibérément **pas** les valeurs d'un palier haut :
+  dimensionner sur la congestion reviendrait à l'alimenter.
+- `iterationSecondsOverrides(env)` : surcharge
+  `ITER_SECONDS_{FOLDERS,READ,SEARCH,SEND,ENRICH}`, parsée dans le module **pur**
+  (donc testable hors k6) et consommée par `CFG.iterationSeconds`. Un nom
+  inconnu ou une valeur ≤ 0 **lèvent** — pas de skip silencieux.
+- Le plan déclare la provenance de chaque latence
+  (`iterationSecondsSource: reference | override`), archivée dans le contexte.
+- **Bug corrigé au passage** : `iterationSecondsFor` **remplaçait** la table de
+  référence au lieu de la fusionner. Poser `{ read: 1.65 }` renvoyait `folders`,
+  `search` et `send` sur le repli pessimiste d'une seconde — pools 4 à 20 fois
+  trop larges. La surcharge demandée par l'US aurait été inutilisable telle
+  quelle.
+- Effet mesuré au `k6 inspect` : au budget 882 req/s, le plan passe de **793 VUs
+  forcés à `VU_TAIL_FACTOR=8`** à **890 VUs au facteur par défaut** — les
+  constantes rafraîchies remplacent le réglage manuel de l'opérateur.
+
+#### Livré — `report.py`, section « Latence planifiée vs mesurée »
+
+- `measured_iteration_seconds` reconstruit la durée réelle d'une itération
+  depuis les trends tagguées, **avec la définition du plan** (`read` compte ses
+  deux appels).
+- `latency_divergence` : une ligne par sous-scénario planifié, écart signalé
+  au-delà de `LATENCY_DIVERGENCE_FACTOR = 2`.
+- `scenario_drops` : abandons ventilés par sous-scénario, filtre
+  `CULPRIT_SHARE = 10 %` pour ne **nommer** que les porteurs réels (au palier
+  972, `read` porte 9 960 abandons sur 10 775 — 92 %).
+- `server_congestion` : discriminant sur la **file ThreadPool par réplica**
+  (`THREADPOOL_QUEUE_CONGESTED = 100`, la même borne que `pinned_candidates`),
+  avec le p95 serveur/client en repli — lequel ne peut que **disculper** le
+  serveur, jamais l'accuser (un p95 serveur proche du client est le cas normal
+  d'un tir sain autant que d'un tir congestionné).
+- `drop_attribution` rend `dimensionnement` / `congestion serveur` /
+  `indéterminée` / `aucune`, avec une **conduite à tenir opposée** :
+  `ITER_SECONDS_*` imprimé prêt à recopier d'un côté, « baisser le débit
+  demandé, surtout pas élargir les pools » de l'autre, chiffres de l'expérience
+  tail 8→16 à l'appui.
+- Renvoi depuis `_validity_section` — **à côté** du verdict de validité, pas à
+  la place.
+
+#### Fixtures — une réserve à connaître
+
+`tests/loadtest-k6/reports/` est gitignoré (`.gitignore:386`) et les JSON de la
+campagne du 2026-07-29 **n'étaient plus sur la machine de banc** au moment de
+l'US (il n'y restait que `2026-07-25/`, `2026-07-26/`, `2026-07-27/`). Ils
+n'ont donc pas pu être « promus » tels quels.
+
+Les cinq fixtures sont **reconstruites depuis les chiffres publiés**
+(`archived-task-205.md`, `reports/INDEX.md`, `todo-task-209.md`), chacune
+portant sa provenance dans une clé `_provenance` :
+
+| Fixture | Cas couvert |
+|---|---|
+| `k6-campagne-486-sous-dimensionne.json` | 1re campagne, `tail` par défaut — **dimensionnement** (serveur calme, file 11) |
+| `k6-campagne-882-tail8.json` | **congestion** (file 136), 4,21 % d'abandons |
+| `k6-campagne-882-tail16.json` | la contre-épreuve (file 951), 13,49 % |
+| `k6-campagne-972-tail8.json` | le palier nommé par la DOD (file 432), 7,38 % |
+| `prom-campagne-2026-07-29.json` | files ThreadPool par réplica, 4 jeux |
+
+`FixtureIntegrityTests` **vérifie qu'elles reproduisent les chiffres publiés**
+— abandons 4,21 / 13,49 / 7,38 %, débits plateau 824,8 / 716,4 / 857,9 req/s,
+`read_list` 714 / 3 606 / 1 533 ms — **avant** que les tests d'attribution ne
+s'y fient. Les assertions ne portent que sur des grandeurs publiées ; les
+opérations non publiées reprennent leurs valeurs du palier 486, ce qui
+**sous-estime** leur dégradation (une valeur de remplissage ne peut donc pas
+fabriquer un écart inexistant). **Task-208 butera sur le même manque.**
+
+#### Tests
+
+- `lib/vu-sizing.test.mjs` : **+4 tests** (conditions de mesure exportées,
+  parsing `ITER_SECONDS_*` et ses trois modes d'échec, redimensionnement ciblé
+  sans effet de bord sur les autres pools, fusion vs substitution).
+- `test_report_sizing.py` : **+19 tests** — intégrité des fixtures, divergence
+  nommée, palier 972 → `read` nommé sur 7,4 %, discrimination des deux causes
+  sur les deux jeux de la campagne, « jamais d'élargissement de pool sous
+  congestion », `ITER_SECONDS_READ=0.41` imprimé sous dimensionnement,
+  `indéterminée` sans témoin, disculpation par le p95 serveur, préavis sans
+  abandon.
+- `selftest.sh` : **15 node + 77 Python**, verts.
+- `dotnet build` Release 0 erreur ; `dotnet test` Release **3 206 réussis**,
+  1 échec **pré-existant** (`MailExportServiceTests.BuildPdfWithMedicalDocumentHtmlBodyFallback`,
+  flaky documenté — passe 3/3 en isolation, aucun lien avec le diff).
+
+#### Passe qualité et Sonar
+
+`/forge-simplify` (`68a4e47`) : parseur `dropped_iterations{scenario:…}` unifié
+(`dropped_by_scenario` + `is_rate_free`, partagés par la garde de validité et
+l'attribution), `worst_threadpool_queue` / `worst_server_p95_ms` extraits (trois
+chemins lisaient les mêmes séries Prometheus), `pinned_candidates` bascule sur
+`THREADPOOL_QUEUE_CONGESTED` au lieu d'un `100` en dur, verdict de validité
+passé à `drop_attribution` au lieu d'être re-dérivé, `overrideFor` partagé côté
+JS (les deux tests de validité divergeaient : typage strict d'un côté,
+coercition de l'autre).
+
+KPIs Sonar (baseline = **premier scan de la branche**, le dernier scan archivé
+du serveur étant antérieur à plusieurs tasks mergées et donc non comparable) :
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| `new_violations` | 14 | **3** | −11 |
+| Bugs | 1 | **0** | −1 |
+| Security hotspots à revoir | 2 | **0** | −2 (100 % revus) |
+| Code smells | 13 | **3** | −10 |
+| Coverage projet / new | 86,6 % / 86,2 % | 86,5 % / 86,1 % | −0,1 pt |
+| Reliability | **C** | **A** | ↑ 2 crans |
+| Security / Maintainability | A / A | A / A | = |
+
+Corrigés : `python:S1764` (le seul bug — `value == value` → `math.isnan`, c'est
+lui seul qui tenait `reliability_rating` à C), `python:S1192` ×2 littéraux
+(7 occurrences → constantes `P95`, `UTC_OFFSET`/`UTC_SUFFIX`), `python:S5713` ×2
+(`URLError` ⊂ `OSError`, `JSONDecodeError` ⊂ `ValueError`), `python:S1481` ×2,
+`csharpsquid:S1144` (champ mort `DefaultAbsoluteExpiration` de task-205, vérifié
+sans usage), `javascript:S1940` ×3, hotspots `python:S5332` et `python:S5852`
+classés `SAFE` avec justification.
+
+> ⚠️ **Un fix Sonar qu'il ne fallait pas appliquer tel quel.**
+> `javascript:S1940` propose `x <= 0` au lieu de `!(x > 0)`. Ce n'est **pas**
+> équivalent : toute comparaison avec `NaN` est fausse, donc `!(NaN > 0)` vaut
+> `true` là où `NaN <= 0` vaut `false`. Appliqué littéralement, le « fix »
+> supprimait la garde qui fait échouer un tir sur `ITER_SECONDS_READ=vite` —
+> soit exactement le silence que la task combat. Écrit
+> `Number.isFinite(x) && x > 0`.
+
+**Restent 3 `python:S3776`** (complexité cognitive de `budget_rows`,
+`reduce_prom_matrix`, `_observe_table`), attribuées par `git blame` à
+**`c10fa7b` — task-204, PR #130**, hors du diff. Acceptées en Phase 2
+best-effort : `budget_rows` est **exactement la fonction que task-208 doit
+réécrire** (défaut du dénominateur), la refactorer ici créerait une collision.
+Le Quality Gate reste donc ERROR **sans dette introduite par task-209**.
+
+#### Conventions alimentées
+
+- `conventions/javascript.md` — entrée `javascript:S1940` (le piège NaN).
+- **`conventions/python.md` — fichier créé.** Il manquait alors que l'analyse
+  d'`api-mail` est multi-langage et que le moteur de rapport du banc est en
+  Python. Six entrées (`S1192`, `S1764`, `S5713`, `S1481`, `S5332`/`S5852`,
+  `S3776`). Directement utile à task-208.
+- `conventions/csharp.md` — la note de portée pointe désormais aussi vers
+  `python.md`.
+
+#### Documentation
+
+`docs/loadtest.md` §4a-bis (la contradiction purge / dimensionnement, la table
+« quelle cause → quelle conduite », l'expérience tail 8→16), piège n°6 du
+`README.md` du harnais, et étape 4 du `loadtest-skill`. Le no-op silencieux
+d'`ITER_SECONDS_*` sur les scénarios mono (qui gardent `4 × VUS`) est documenté
+— relevé pendant le code review.
+
+#### Anomalie d'outillage relevée (hors périmètre)
+
+`agents/sonar.md` — et l'entrée v1.8 ci-dessus, via task-205 — affirment que
+l'instance SonarQube est en **9.9** et qu'il faut `sonar.login`. Le serveur
+répond **25.6.0.109173**, où la propriété est `sonar.token` : les trois analyses
+de cette task ont été conduites avec `sonar.token`. En suivant l'agent à la
+lettre, un futur run perdrait ~6 min (build + tests complets) avant de voir
+échouer le `end` sur une erreur d'authentification trompeuse. **L'encadré ⚠️ de
+`agents/sonar.md` est à inverser.**
+
+#### Ce que cette PR ne livre pas
+
+La **mesure au banc** exigée par la DOD (palier 756 req/s : le rapport doit
+nommer laquelle des deux causes produit ses 1,15 % d'abandons). Le banc n'était
+pas monté et le monter suppose seed de 200 praticiens × 100 messages, purge, tir
+de 3 min et démontage. C'est l'étape 2 du Manual Test Plan, côté humain — comme
+l'a été le « Tir de vérification » de task-205.
+
+---
+
+### v1.10 — Les trois verdicts du rapport reposent sur la bonne statistique — task-208
+
+- **Task** : task-208 — `done`. **PR** : `api-mail` #133 (label `awaiting-human-merge`).
+- **Origine** : les trois défauts ont été trouvés **en lisant les rapports de la
+  campagne du 2026-07-29**, pas en relisant le code. Le mécanisme d'absence de
+  télémétrie livré par task-204 est correct ; ce sont ses **règles de
+  conclusion** qui débordaient. Chacune a produit une affirmation fausse dans un
+  `.md` livré.
+
+#### Défaut n°1 — « Ressource épinglée » sur un transitoire d'ouverture
+
+`pinned_candidates` attribuait `ratio = 1.0` — donc le rang n°1 garanti — dès que
+`cl_waiting > 0`, en retenant le **max** de la fenêtre. Trois paliers ont désigné
+PgBouncer comme facteur limitant sur **un unique échantillon** à 1 ou 2 clients
+en attente, devant un réplica à 11 % et Postgres à 13,6 %.
+
+| Palier | `cl_waiting` max **dans** la fenêtre | Verdict rendu |
+|---|---|---|
+| 486 req/s | 2 | « Ressource épinglée : PgBouncer — 100,0 % de sa borne » |
+| 630 req/s | 1 | idem |
+| 756 req/s | 3 | idem |
+
+**Statistique retenue** : la **part des échantillons non nuls**,
+`PGBOUNCER_WAITING_SUSTAINED = 25 %` (`pgbouncer_waiting`). Sur la campagne,
+15 échantillons sur 230 sont non nuls (6,5 %), tous dans les ~30 s suivant
+l'ouverture d'un palier, avec un pic à 75 mesuré **2 s avant** l'ouverture d'une
+fenêtre. Le seuil est posé bien au-dessus de ce bruit, bien en dessous d'un
+pooler réellement saturé. Le p95 et la durée cumulée conviendraient ; la part
+d'échantillons a été préférée parce qu'elle se lit **sans hypothèse sur la
+cadence d'échantillonnage**.
+
+Le transitoire reste **écrit** (`_pgbouncer_transient_note`) sous la table, avec
+la mention explicite qu'il ne désigne pas de facteur limitant : il croît avec la
+charge (2 → 1 → 6 → 75), donc le taire serait un nouveau silence.
+
+#### Défaut n°2 — deux dénominateurs contradictoires dans le même document
+
+Palier 486 req/s, **le même `.md`** : en-tête « Débit plateau : 482,7 req/s »
+(99,3 % du budget), et table « total 486 → 413,6 — **85,1 % ⚠️** ». task-204
+avait corrigé le dénominateur du chiffre d'en-tête mais pas celui de cette table
+— celle qui porte les ⚠️ par sous-scénario, donc celle qu'on croit.
+
+**Statistique retenue** : `count ÷ durée de plateau` dans `_delivered_rps`, le
+**même dénominateur que l'en-tête**. Sur la fixture du palier 486, la table lit
+**97,5 %** et **473,9 req/s** — exactement le débit de l'en-tête, contre 83,6 %
+et 406,2 avant. Chaque ligne porte son `denominator`, et le repli
+(`shared-iterations` fini, `duration` absente) est **nommé** `fenêtre k6` avec la
+mention que les parts y sont sous-estimées de la durée d'extinction.
+
+#### Défaut n°3 — le reliquat d'un scénario FINI compté comme abandon
+
+`mixed_enrich` est un `shared-iterations` de 2 000 lots dont ~424 tiennent dans
+un plateau de 3 min : k6 range les 1 576 restants dans `dropped_iterations`. Le
+premier palier a été déclaré **invalide à 4,6 %** alors que les scénarios à débit
+imposé n'en avaient que 2,6 %.
+
+**Statistique retenue** : deux chemins dans `validity` —
+la ventilation `dropped_iterations{scenario:…}` (task-203) quand elle existe,
+sinon le **plan déclaré du harnais** (`finite_scenario_remainder` :
+`enrichPlan.iterations` − appels `enrich` émis, divisés par leur
+`REQUESTS_PER_ITERATION`). Le second chemin, `dropped_source = "finite_plan"`,
+couvre **tous les tirs archivés avant task-203**, qui n'ont pas de
+sous-métriques et que la garde invalidait à tort. `ENRICH_SHARE=0.05` reste un
+réglage utile mais n'est plus un contournement obligatoire.
+
+Le reliquat est **écrit comme information** dans « Validité du tir » : lots
+consommés sur lots planifiés, avec la mention que ce n'est pas un signal
+d'invalidité mais que la bande d'UIDs n'a pas été parcourue en entier.
+
+#### Trois tests existants changent de verdict — c'est le correctif
+
+Chacun encodait le défaut ; les trois sont réécrits avec le raisonnement en
+commentaire :
+
+| Test | Avant → Après | Pourquoi |
+|---|---|---|
+| `test_legacy_json_without_plan_falls_back_to_mix_derivation` | `send` délivré **17,24 → 18,97** | exactement le biais de dénominateur (330 s de fenêtre contre 300 s de plateau). Verdict « affamé » inchangé |
+| `test_drop_share_just_over_ceiling_invalidates` | compteur injecté **2 600 → 4 000** | 1 360 des abandons de cette fixture sont le reliquat déclaré de son `enrich` fini ; le test porte toujours sur le franchissement du seuil, sur les abandons **réels** |
+| `test_structural_enrich_drops_do_not_invalidate_a_healthy_run` | contre-épreuve **inversée** | « sans ventilation ce tir sain serait INVALIDE » était le défaut n°3 ; le repli sur le plan le rattrape |
+
+#### Tests et fixtures
+
+`test_report_conclusions.py` — **13 tests**, écrits RED d'abord, dont un qui
+reproduisait littéralement `Ressource épinglée : PgBouncer — 100,0 % de sa borne`
+sur un échantillon unique. Total du harnais : **15 node + 90 Python**.
+
+Deux CSV d'échantillonnage ajoutés, provenance en tête de fichier :
+`observe-cl-waiting-transitoire.csv` (1 point non nul sur 20 dans la fenêtre,
+plus le pic de 75 hors fenêtre) et `observe-cl-waiting-soutenu.csv` (13 sur 20,
+**explicitement marqué synthétique** — aucune campagne n'a produit ce profil ; il
+sert de contre-épreuve pour que la correction du faux positif ne devienne pas une
+cécité).
+
+⚠️ **Même réserve qu'à task-209** : `reports/` est gitignoré et les JSON / CSV de
+la campagne du 2026-07-29 ne sont plus sur la machine de banc. Les fixtures sont
+reconstruites depuis les chiffres publiés.
+
+#### Sonar
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| `new_violations` | 4 | **2** | −2 |
+| Code smells | 4 | **2** | −2 |
+| Bugs / Vulnérabilités / Hotspots | 0 / 0 / 0 | 0 / 0 / 0 | = |
+| Coverage projet / new | 86,6 % / 86,1 % | 86,6 % / 86,2 % | +0,1 pt |
+| Reliability / Security / Maintainability | A / A / A | A / A / A | = |
+
+Les deux corrigés sont de la dette **introduite ou aggravée par cette task** :
+`budget_rows` y était déjà (S3776 = 19, task-203) et ses branches l'ont
+aggravée ; `_budget_section` a franchi le seuil à cause de la note de
+dénominateur ajoutée ici. Extraction de `_budget_scenarios`, `_requested_budget`,
+`_budget_row`, `_budget_denominator_note`. La justification de task-209 — « on
+laisse `budget_rows`, task-208 va la réécrire » — ne tenait plus.
+
+Les deux restants (`reduce_prom_matrix`, `_observe_table`) sont de task-204 et
+hors du diff ; la passe générale sur les helpers de table Markdown est listée en
+toutes lettres dans le **« Hors scope »** de la task.
+
+**Boucle d'auto-amélioration** : aucune convention nouvelle — `conventions/python.md`
+(créé par task-209) portait déjà l'entrée `python:S3776` avec la consigne
+appliquée ici (« un builder par section retournant une liste de lignes »). Son
+compteur **Occurrences** passe de 0 à 2, au premier tour de boucle.
+
+#### Ce que cette PR ne livre pas
+
+La régénération des 3 rapports de la campagne depuis leur JSON archivé, et le
+recalcul de la ligne d'INDEX correspondante : **les JSON n'existent plus**. Ce
+qui couvre l'intention : le changement de verdict est démontré et verrouillé par
+un test sur la fixture reconstruite du palier 486 (un test lit l'en-tête **et**
+la table du même rapport et vérifie qu'ils citent le même débit). Et la ligne
+d'INDEX de ces trois tirs **n'avait pas à changer** : la campagne a tourné avec
+`ENRICH_SHARE=0.05`, donc `mixed_enrich = 0` abandon aux cinq paliers — l'énoncé
+de la task le dit lui-même — et les colonnes d'INDEX ne portent pas la table
+« demandé vs délivré », seule touchée par le défaut n°2.
+
+---
+
+### v1.11 — La route de provisionnement ne retient plus un backend Postgres par praticien — task-202
+
+- **Task** : task-202 — `done`. **PR** : `api-mail` #134 (label `awaiting-human-merge`).
+- **Origine** : campagnes 200 et 500 praticiens du 2026-07-27, premiers tirs à
+  travers PgBouncer. Le pooler fait son travail (2 000 connexions clientes →
+  400 backends), mais **la moitié des backends restants ne lui appartient pas**.
+
+#### La mesure
+
+Écart entre les backends comptés sur Postgres et ceux que PgBouncer déclare
+détenir (`pg_stat_activity` moins `SHOW POOLS`) :
+
+| Tir | `default_pool_size` | Backends pooler | Backends Postgres | **Écart non attribuable** |
+|---|---|---|---|---|
+| A | 2 | 400 (= 200 bases × 2) | 569 | **~169** |
+| B | 1 | 209 (= 200 bases × 1) | 409 | **~200** |
+
+Écart **stable autour d'une connexion par base**, indépendant du réglage du
+pooler — signature de la route directe. Il retombe à ~0 quelques minutes après le
+tir : un pool qui expire, pas une fuite franche. La règle de dimensionnement du
+palier 1000 étant `praticiens × réplicas × pool`, c'est exactement ce plafond-là,
+et aucun correctif de débit ne le déplace.
+
+#### Trois gestes, trois défauts distincts
+
+**1. Le conteneur DI de FluentMigrator est disposé.** `CreateServices` rend un
+`ServiceProvider` (`IDisposable`) dont seul le `scope` interne l'était : il
+fuyait par base praticien et par pod. Le `using` couvre le chemin d'exception —
+celui qui compte, une migration en échec étant rejouée à la requête suivante.
+
+**2. La chaîne de provisionnement est bornée** par un helper dédié,
+`AppendProvisioningPoolingSettings` : `Maximum Pool Size=1`,
+`Minimum Pool Size=0`, `Connection Idle Lifetime=5`. Elle partait sur les défauts
+Npgsql — **100 connexions** par base et un backend retenu **5 minutes**.
+
+> ⚠️ **Le raisonnement du chemin de données ne s'y transpose pas.** Son idle
+> lifetime est volontairement long (30 s ici, 600 s au banc) parce que recycler
+> ~1 000 pools épuise les ports éphémères de Windows — 200 000
+> `SocketException 10048` mesurées le 2026-07-27. Ici : **une** connexion par
+> base, **une** seule fois. D'où un helper **distinct**, comme l'exigeait
+> l'énoncé, et l'argument écrit dans le code.
+
+**3. Le pool est vidé après migration réussie** (`NpgsqlConnection.ClearPool`),
+hors du `using` puisque la connexion du runner doit d'abord y revenir. Pas sur
+échec : rien n'a été provisionné, et une opération de plus masquerait l'erreur.
+Le vidage absorbe ses propres erreurs — un geste d'hygiène ne doit jamais
+transformer un provisionnement réussi en échec.
+
+#### Le piège : la chaîne serveur ne doit PAS être bornée à 1
+
+L'énoncé dit « borner la chaîne de provisionnement ». Il y en a **deux**, et une
+seule doit l'être :
+
+| Chaîne | Portée | Traitement |
+|---|---|---|
+| `ConnectionStringProvisioningUser` | **une par praticien** — la coupable des ~169 | bornée à `Max=1` |
+| `ConnectionStringProvisioningServer` | **une par pod** (base de maintenance) | laissée aux défauts |
+
+`Maximum Pool Size=1` sur la seconde provoquerait un **interblocage** :
+`lockConnection` reste ouverte pendant que `MigrationHelper.DatabaseExists` puis
+`CreateDatabase` en ouvrent une seconde sur la même chaîne. Il en faut au moins
+deux. Raison consignée dans le `<remarks>` de `UpdateDatabase`. Un plafond
+explicite resterait possible **à partir de 4** — le provisionnement étant
+sérialisé par un `SemaphoreSlim(1,1)` statique, 2 connexions simultanées au pire.
+
+#### Une nuance sur l'énoncé, vérifiée dans le code
+
+L'énoncé écrit : « Sans pooler, `ConnectionStringUser` et
+`ConnectionStringProvisioningUser` sont la même chaîne : un seul pool Npgsql. »
+Les deux **propriétés** coïncident bien, mais le chemin de données construit son
+`NpgsqlDataSource` sur `AppendPoolingSettings(cs)` — une chaîne **différente**,
+donc un pool **différent**. La connexion de provisionnement était donc déjà
+distincte **avant** task-200 : le pooler l'a rendue visible et coûteuse, il ne
+l'a pas créée. Sans incidence sur le correctif, mais l'origine du défaut est plus
+ancienne que supposé.
+
+#### Tests
+
+`BaseRepositoryProvisioningPoolTests` — **12 tests**, écrits RED d'abord (échec
+de compilation : ni `AppendProvisioningPoolingSettings` ni `ProvisionDatabase`
+n'existaient). Couvrent la disposition du conteneur **sur succès et sur
+exception**, le **non**-vidage du pool après échec, le bornage et sa
+non-application quand l'appelant a déjà dimensionné, la parsabilité Npgsql de la
+chaîne produite, et le fait que le bornage ne touche ni l'hôte, ni le port, ni la
+base. Suite complète : **3 219 réussis, 0 échec** (382 en infrastructure contre
+370).
+
+Passe `/simplify` : `AppendUnlessExplicitlySized` extrait — les deux helpers de
+pool partageaient garde « déjà dimensionnée » et gestion du séparateur ; seules
+leurs valeurs doivent diverger.
+
+#### Sonar
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| `new_violations` | 3 | **2** | −1 |
+| Code smells | 3 | **2** | −1 |
+| Bugs / Vulnérabilités / Hotspots | 0 / 0 / 0 | 0 / 0 / 0 | = |
+| Coverage projet / new | 86,6 % / 86,2 % | 86,6 % / 86,2 % | = |
+| Reliability / Security / Maintainability | A / A / A | A / A / A | = |
+
+**Zéro finding C# restant.** Le seul introduit, `csharpsquid:S125` « code
+commenté », était un faux positif de forme — les puces de l'explication se
+terminaient par des points-virgules et citaient des identifiants. Déplacée dans
+un `<remarks>`, où elle a de toute façon sa place. Les 2 restants sont les
+`python:S3776` de task-204, sans rapport. Convention `csharpsquid:S103` vérifiée
+avant commit (`awk 'length($0)>150'`).
+
+#### Ce que cette PR ne livre pas
+
+Les **quatre critères de DOD qui exigent le banc** : le test d'intégration
+« connexions directes à 0 en moins de 30 s avec PgBouncer », le tir `mixed`
+200 praticiens iso-conditions (écart de ~169 à moins de 20), la non-régression
+p95 > 10 % vs le tir A, et le rapport de tir comparé. Le banc n'était pas monté ;
+ce sont les étapes 1 à 7 du Manual Test Plan, côté humain.
+
+---
+
 ## Annexe A — Cartographie des briques applicatives
 
 | Brique | Chemin | Rôle |
@@ -1301,3 +1774,6 @@ banc**, même découpage que la v1.6.
 | task-203 | **Le harnais mesurait le harnais.** Pools de VUs de `mixed` dimensionnés par la **loi de Little** à partir des latences mesurées (`lib/vu-sizing.js`, module pur testable hors k6) au lieu de `4 × part × VUS` — un nombre sans rapport avec le débit demandé, qui plafonnait `send` à 7,9 it/s pour 300 demandées et faisait abandonner 45 k à 502 k itérations aux trois tirs du 2026-07-27. `MAX_VUS`, jusque-là **silencieusement ignoré par `mixed`**, est respecté. **Garde de validité** dans `report.py` (bandeau `TIR INVALIDE`, section « Validité du tir », table « débit demandé vs délivré » qui révèle `send` à 14,4 % et `search` à 55,6 % de leur budget) et colonnes `Drop %` / `VU sat.` dans `INDEX.md`, **historique recalculé : 16 des 21 tirs archivés invalides**. Deux faux positifs de la garde trouvés avant livraison (modèle fermé ; abandons structurels d'`enrich`, ~1,16 pt sur un palier de 3 min). Banc journalisé en `Information` comme la Production (904 839 événements `Debug` évités sur une fenêtre de tir). Flaky préexistant de `CdaProcessingMetricsTests` corrigé (meter statique + `List.Add` non verrouillé). **La mesure de capacité reste à produire.** | — |
 | task-204 | **Le banc sait enfin nommer sa ressource limitante.** Attribution des métriques **par réplica** via un fan-out OTLP vers un collector du profil loadtest (`resource_to_telemetry_conversion` promeut `service.instance.id` en étiquette) — le port fixe 5052 devant 5 réplicas étant le proxy DCP, chaque scrape tombait jusque-là sur un réplica au hasard. Voie du **push** retenue contre le scrape par réplica : elle supprime le problème de découverte des ports dynamiques au lieu de le contourner. **Échantillonneur** (`observe.ps1`/`observe.sh`, CSV long UTF-8 UTC) pour ce que la télémétrie ne voit pas : hôte, **k6**, conteneurs du banc, Dovecot, `SHOW POOLS`, `pg_stat_activity`. Section « Ressources & télémétrie » dans `report.py` (par réplica, par conteneur, **p95 client vs p95 serveur**, compteurs métier, ligne « ressource épinglée ») avec **9 tests garantissant qu'aucune absence de source ne produit un tableau vide**. Débit au **dénominateur nommé** : `http_reqs.rate` divisait par la fenêtre totale, arrêt gracieux inclus (~8-10 % de sous-estimation sur TOUS les tirs) — INDEX recalculé, référence 200 à **934,5** et non 915,5. Dashboard « Saturation ». **Deux défauts bloquants trouvés avant merge** : les 5 réplicas auraient planté au démarrage (`AddOtlpExporter` incompatible avec le `UseOtlpExporter` d'Aspire) et le rapport désignait une ressource épinglée sur un CSV non borné. **L'escalier de capacité a été conduit** (cf. v1.7) : genou entre 745 et 825 req/s délivrés, plafond mesuré ~858 req/s, et facteur limitant nommé pour la première fois — famine de ThreadPool sur `read_list`, corrigée par task-205. | — |
 | task-205 | **Suppression du facteur limitant de l'API.** La résolution d'un dossier IMAP par son chemin passait par `IMailStore.GetFolder(string, ct)`, variante **synchrone** d'un aller-retour réseau (commande LIST) : elle parquait un thread du pool pour toute la durée de l'I/O sur le chemin `read_list`. `TryGetFolderSafely` → `TryResolveFolderAsync` (`await GetFolderAsync`), 5 appelants convertis, et **la surcharge synchrone retirée de `IImapClientWrapper`** — le retrait est le correctif. **3 gardes de non-régression** (surface publique, analyseur sur les métadonnées de l'assembly filtrant par signature décodée, test de non-blocage borné en temps), toutes constatées RED avant le correctif ; l'analyseur **se contrôle lui-même** par un témoin, qui a immédiatement révélé que le compilateur émet la référence contre `MailKit.MailStore` et non contre l'interface. Suspect historique `BaseRepository.get_DataContext` **innocenté par lecture du code** (fast-path statique : la tâche est déjà complétée pendant le plateau). Deux blocages adjacents signalés hors périmètre (`MailClientSession.Dispose`, `EmailFlagService`). Faux diagnostic Sonar de task-204 corrigé : `sonar.login` et non `sonar.token` sur SonarQube 9.9. **La campagne de confirmation reste due.** | — |
+| task-209 | **Le harnais dimensionnait sur une latence que le banc ne produit plus.** Constantes `REFERENCE_ITERATION_SECONDS` rafraîchies sur le palier 486 req/s du 2026-07-29 (base purgée, sous le genou) et **assorties de leurs conditions de mesure** (`REFERENCE_MEASURED_AT`, `REFERENCE_CONDITIONS`, archivées dans le `context` de chaque tir) — la contradiction purge / dimensionnement (`read` 0,16 s base pleine vs 0,41 s base purgée, ×10 au palier 972) est nommée dans `docs/loadtest.md`, le README du harnais et le `loadtest-skill`. Surcharge `ITER_SECONDS_*` par sous-scénario, parsée dans le module pur, **levant** sur nom inconnu ou valeur ≤ 0. **Bug corrigé** : `iterationSecondsFor` substituait la table au lieu de la fusionner — une surcharge ciblée renvoyait les autres pools sur le repli d'une seconde. **`report.py` distingue désormais les deux causes d'abandon** — « pool client épuisé alors que le serveur répond dans les temps » vs « le serveur ralentit » — sur le témoin de la file ThreadPool par réplica, nomme le sous-scénario porteur, imprime la conduite à tenir **opposée** selon la cause, et écrit `indéterminée` plutôt que de deviner. 23 tests ajoutés (4 node + 19 Python) sur **5 fixtures de campagne reconstruites depuis les chiffres publiés** — `reports/` étant gitignoré et les JSON du 2026-07-29 absents de la machine —, gardées par un test d'intégrité qui vérifie qu'elles reproduisent ces chiffres. Sonar : bugs 1 → 0, reliability C → A, hotspots 2 → 0, smells 13 → 3 (les 3 restants = `python:S3776` de task-204, laissés car `budget_rows` est la fonction que task-208 doit réécrire). `conventions/python.md` créé. **Mesure au banc du palier 756 req/s encore due.** | — |
+| task-208 | **Les trois verdicts du rapport reposaient sur la mauvaise statistique** — trois affirmations fausses dans des `.md` livrés, trouvées en LISANT les rapports de la campagne, pas le code. (1) `pinned_candidates` désignait PgBouncer comme facteur limitant de trois paliers sur le `max` de `cl_waiting`, c'est-à-dire **un seul échantillon** à 1-2 clients, devant un réplica à 11 % → jugé désormais sur la **part des échantillons non nuls** (`pgbouncer_waiting`, seuil 25 % contre 6,5 % de bruit d'ouverture mesuré), et le transitoire reste **écrit** sous la table. (2) La table « demandé vs délivré » divisait par la fenêtre totale quand l'en-tête du **même document** publiait déjà le débit plateau : « 482,7 req/s / 99,3 % » au-dessus de « 413,6 / 85,1 % ⚠️ » → `_delivered_rps` passe au dénominateur plateau, chaque ligne porte son `denominator`, et le repli est NOMMÉ `fenêtre k6`. (3) La garde comptait le reliquat d'un `shared-iterations` FINI comme des abandons (1er palier invalide à 4,6 % pour 2,6 % réels) → `finite_scenario_remainder` retranche depuis le **plan déclaré** (`dropped_source = finite_plan`), ce qui couvre aussi tous les tirs archivés avant task-203 sans sous-métriques, et le reliquat est écrit comme information. 13 tests écrits RED d'abord, 2 CSV de fixtures (transitoire + contre-épreuve soutenue, marquée synthétique) ; **trois tests existants changent de verdict — c'est le correctif** (`send` 17,24 → 18,97 req/s, et la contre-épreuve « sans ventilation ce tir serait invalide » s'inverse). Sonar : les 2 S3776 que la task avait elle-même introduits ou aggravés (`budget_rows`, `_budget_section`) corrigés par extraction ; les 2 restants sont de task-204 et la passe sur les helpers de table Markdown est en « Hors scope ». `docs/loadtest.md` §4d : les trois règles, quelle statistique et pourquoi celle-là. **Régénération des 3 rapports archivés infaisable** — les JSON n'existent plus. | — |
+| task-202 | **~1 backend Postgres retenu par praticien, pour rien.** Mesuré au banc 200 praticiens du 2026-07-27 : écart de ~169 entre `pg_stat_activity` et `SHOW POOLS`, **stable autour d'une connexion par base** quel que soit le réglage du pooler — signature de la route directe, pas du pooler. Trois gestes : (1) le `ServiceProvider` de FluentMigrator est **disposé** — seul le `scope` interne l'était, un conteneur DI fuyait par base et par pod, et le `using` couvre le chemin d'exception, celui où une migration rejouée les accumule ; (2) la chaîne est **bornée** par un helper dédié `AppendProvisioningPoolingSettings` (`Max=1`, `Min=0`, idle 5 s) au lieu des défauts Npgsql (100 connexions, idle 300 s) — helper distinct d'`AppendPoolingSettings` à dessein, l'idle long du chemin de données existant pour éviter l'épuisement des ports éphémères Windows, raisonnement qui ne se transpose pas à une connexion unique jouée une fois ; (3) le pool est **vidé** (`ClearPool`) après migration réussie, hors du `using` puisque la connexion du runner doit d'abord y revenir, et jamais après un échec. **Piège évité** : la chaîne SERVEUR n'est délibérément pas bornée — unique par pod donc pas la coupable, et `Max=1` y provoquerait un interblocage (`lockConnection` ouverte pendant que `MigrationHelper` en ouvre une seconde) ; un plafond resterait possible à partir de 4. **Nuance sur l'énoncé** : la connexion de provisionnement était déjà un pool distinct AVANT task-200, le chemin de données bâtissant son `NpgsqlDataSource` sur une chaîne suffixée — le pooler l'a rendue visible, pas créée. 12 tests écrits RED d'abord (disposition sur succès ET exception, non-vidage après échec) ; 3 219 tests verts. Sonar : zéro finding C# restant. **Les 4 critères de DOD au banc restent dus** (test d'intégration PgBouncer, tir 200 praticiens, non-régression p95, rapport comparé au tir A). | — |

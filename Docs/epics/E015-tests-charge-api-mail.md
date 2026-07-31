@@ -2,7 +2,7 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.8
+> **Version** : 1.11
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
 > **Dernière mise à jour** : 2026-07-31
@@ -88,6 +88,9 @@ baisses de performance avant qu'elles n'atteignent les utilisateurs**.
 | Fiabilité des mesures de charge | Savoir si le chiffre d'une campagne est exploitable : l'outil de tir demande réellement la charge annoncée, et tout rapport dont la mesure a été faussée par l'instrument le déclare en première page au lieu de publier un chiffre trompeur | task-203 | 🟡 Livré, en attente d'intégration |
 | Localisation de la cause d'un ralentissement | Savoir **ce qui** freine la messagerie quand elle plafonne — le serveur applicatif, la base de données, le serveur de messagerie simulé, ou l'outil de mesure lui-même — au lieu de le supposer ; et le lire en direct pendant une campagne | task-204 | 🟡 Livré, en attente d'intégration |
 | Levée du plafond de capacité | Servir davantage de praticiens simultanés sans que la consultation des messages ne ralentisse : la cause du plafond mesuré a été identifiée dans la messagerie elle-même, puis corrigée | task-205 | 🟡 Corrigé, mesure de confirmation à conduire |
+| Attribution honnête d'une campagne ratée | Savoir, quand une campagne n'a pas pu appliquer toute la charge demandée, **si c'est la messagerie qui a ralenti ou l'instrument de mesure qui était mal réglé** — les deux se soignent de façon opposée, et le rapport nomme laquelle des deux et l'argumente par un chiffre | task-209 | 🟡 Livré, en attente d'intégration |
+| Verdicts de campagne fondés | Pouvoir se fier aux trois conclusions qu'un compte rendu de campagne affirme — ce qui freine la messagerie, quelle part de la charge a réellement été servie, et si le tir est exploitable — sans avoir à les recouper soi-même | task-208 | 🟡 Livré, en attente d'intégration |
+| Plafond du nombre de praticiens desserré | Accueillir davantage de praticiens sur une même installation : la préparation du dossier d'un praticien immobilisait une connexion à la base pour le restant de la vie du service, alors qu'elle ne resservait plus | task-202 | 🟡 Corrigé, mesure de confirmation à conduire |
 
 ---
 
@@ -402,8 +405,11 @@ réseau, au lieu de la libérer pour une autre demande. Ce verrou a été levé
 | Fiabilité des mesures de charge | 🟡 Livré, en attente d'intégration | L'outil de tir dimensionne ses postes simulés d'après la durée réelle de chaque action, au lieu d'un nombre arbitraire : il demande donc réellement la charge annoncée. Tout rapport dont la mesure a été faussée par l'instrument porte un avertissement en première page, et une table indique, action par action, la charge demandée face à celle réellement servie. L'index des campagnes signale ligne par ligne les tirs non exploitables — **seize des vingt-et-une campagnes archivées** le sont. Le banc journalise en outre au niveau de la production, et non en mode verbeux, pour ne plus mesurer une configuration cinq fois plus bavarde que celle déployée. **Reste dû** : la campagne conduite avec l'instrument corrigé, qui donnera le premier chiffre de capacité exploitable | task-203 |
 | Localisation de la cause d'un ralentissement | 🟡 Livré, en attente d'intégration | Le service applicatif est mesuré **serveur par serveur** (cinq exemplaires simultanés, jusque-là confondus en une moyenne). Ce que le service ne voit pas de lui-même est échantillonné : machine hôte, outil de tir, composants simulés, multiplexeur de connexions — c'est ce qui a permis d'établir que **l'outil de tir n'est pas le facteur limitant**. Chaque rapport désigne la ressource la plus proche de sa limite, ou déclare qu'aucune ne l'est, ou qu'il n'a pas la donnée pour le dire — jamais un tableau vide, qui se lirait « rien ne freinait ». Tableau de bord dédié pour suivre une campagne **en direct**. Erreur de calcul du débit corrigée (temps d'extinction compté à tort : ~8 à 10 % de sous-estimation, campagnes archivées recalculées). **La campagne a été conduite** : cinq paliers à population constante, point de rupture situé entre 750 et 825 demandes par seconde, et cause nommée pour la première fois au lieu d'être supposée | task-204 |
 | Levée du plafond de capacité | 🟡 Corrigé, mesure de confirmation à conduire | La cause du plafond est localisée dans la messagerie : la consultation d'une liste de messages immobilisait une ressource de traitement pendant tout l'aller-retour avec le serveur de messagerie, au lieu de la libérer. Le verrou est levé, et trois garde-fous automatiques empêchent qu'il réapparaisse — l'un d'eux inspecte le programme compilé, de sorte qu'aucun contournement du correctif ne passe inaperçu. **Reste dû** : la campagne de confirmation, qui mesurera le gain effectif aux deux paliers où le défaut se manifestait | task-205 |
+| Attribution honnête d'une campagne ratée | 🟡 Livré, en attente d'intégration | Deux causes très différentes produisent le même symptôme — une campagne qui n'applique pas toute la charge annoncée : soit la messagerie ralentit sous la charge, soit l'instrument de mesure a été réglé sur des temps de réponse qui ne sont plus ceux du banc. Elles appellent des gestes **opposés** : réduire la charge demandée dans le premier cas, corriger le réglage dans le second. Le rapport tranche désormais entre les deux, désigne l'usage qui porte les abandons, et **écrit qu'il ne sait pas** plutôt que de deviner quand la mesure côté serveur lui manque. Le réglage de l'instrument a par ailleurs été refait sur les temps réellement observés, et **les conditions dans lesquelles ils ont été relevés sont désormais consignées avec eux** — c'est leur absence qui avait fait perdre deux campagnes | task-209 |
+| Verdicts de campagne fondés | 🟡 Livré, en attente d'intégration | Un compte rendu de campagne affirmait trois choses avec assurance, et les trois pouvaient être fausses. **Ce qui freine** : le multiplexeur de connexions était désigné coupable de trois paliers sur un unique relevé d'attente, pris à l'ouverture du tir — il l'est désormais sur une attente **installée dans la durée**, et le pic d'ouverture reste mentionné puisqu'il grandit avec la charge. **La part servie** : le même document annonçait 99,3 % en tête et 85,1 % dans son tableau, faute de compter sur la même période ; les deux chiffres s'accordent maintenant. **L'exploitabilité** : le traitement des comptes-rendus s'arrête quand son temps imparti est écoulé, ce qui est normal — c'était pourtant compté comme un échec et invalidait des campagnes saines. C'est distingué, et le nombre de comptes-rendus restants est affiché, parce qu'il dit combien de travail n'a pas été exercé | task-208 |
+| Plafond du nombre de praticiens desserré | 🟡 Corrigé, mesure de confirmation à conduire | Le nombre de praticiens qu'une installation peut accueillir est borné par les connexions à la base, et non par le trafic — c'est le constat de la campagne à grande échelle. Or la préparation du dossier d'un nouveau praticien, opération jouée **une seule fois**, gardait ensuite une connexion ouverte pour le restant de la vie du service : mesuré à **une par praticien**, soit environ 169 connexions retenues pour rien sur 200 praticiens. Trois causes cumulées, toutes corrigées. **Reste dû** : la campagne de confirmation, qui vérifiera que l'écart tombe sous 20 et que les temps de réponse ne bougent pas — le correctif ne doit rien coûter, c'est tout son intérêt face à l'autre option, écartée parce qu'elle dégradait la latence | task-202 |
 
-**Couverture EPIC consolidée : 8 features livrées sur 8** (les huit attendent
+**Couverture EPIC consolidée : 11 features livrées sur 11** (les onze attendent
 leur intégration). L'EPIC est **fonctionnellement complet** : le banc est
 opérationnel, il mesure la chaîne complète de traitement des documents médicaux,
 les campagnes de mesure sont outillées avec une référence opposable, la campagne à
@@ -422,7 +428,11 @@ Trois réserves à porter au bilan, sans quoi il serait trompeur :
   correctif. Réserve de lecture inchangée : sur le poste actuel, l'infrastructure
   de test et le service applicatif se partagent le même processeur — et l'infra en
   consomme quatre fois plus que la messagerie —, si bien que tout chiffre obtenu
-  ici est un **plancher** et non un plafond ;
+  ici est un **plancher** et non un plafond. Les quatre campagnes de confirmation
+  tentées le 31 juillet ont échoué **pour une raison d'instrument, pas de
+  messagerie** — leur réglage supposait des temps de réponse que le banc ne
+  produit plus dès lors qu'on repart de dossiers vides. Ce réglage est corrigé
+  (task-209) ; la campagne reste à refaire ;
 - deux mesures d'usage restent à reprendre — l'envoi et la recherche, pour les
   raisons exposées au chapitre *Premiers résultats de mesure* ;
 - le passage à l'échelle des connexions est **établi comme compatible, pas
@@ -541,6 +551,42 @@ Trois réserves à porter au bilan, sans quoi il serait trompeur :
   inspecte le programme compilé, de sorte qu'un contournement du correctif ne
   puisse pas passer inaperçu. La campagne de confirmation reste à conduire.
   (task-205)
+- v1.9 — **Une campagne ratée dit désormais à qui la faute.** Jusqu'ici, quand une
+  campagne n'appliquait pas toute la charge annoncée, le rapport concluait que la
+  messagerie n'avait pas tenu — alors qu'une fois sur deux c'est l'instrument de
+  mesure qui était mal réglé. Les deux causes se soignent pourtant de façon
+  **opposée** : réduire la charge demandée quand la messagerie ralentit, corriger le
+  réglage quand c'est l'instrument. Le rapport tranche maintenant entre les deux,
+  désigne l'usage qui concentre les demandes abandonnées, et **écrit qu'il ne sait
+  pas** plutôt que de deviner lorsque la mesure côté serveur lui manque. (task-209)
+- v1.9 — **Le réglage de l'instrument tient compte d'une contrainte qui lui échappait.**
+  Mesurer le traitement des comptes-rendus impose de repartir de dossiers vides à
+  chaque palier ; or la consultation d'une liste de messages coûte alors deux fois et
+  demie plus cher, puisque tout doit être relu depuis le serveur de messagerie. Le
+  réglage, établi dans l'autre condition, sous-dimensionnait l'instrument — ce qui a
+  coûté deux campagnes. Il est refait sur les temps réellement observés, **et les
+  conditions dans lesquelles ils ont été relevés sont consignées avec eux**, pour que
+  la contradiction ne puisse plus se reproduire en silence. (task-209)
+- v1.10 — **Les trois verdicts d'un compte rendu de campagne sont désormais
+  fondés.** Ils étaient affirmés avec assurance, et les trois pouvaient être
+  faux : le multiplexeur de connexions désigné coupable de trois paliers sur un
+  unique relevé pris à l'ouverture du tir ; une part de charge servie annoncée
+  à 99,3 % en tête de document et à 85,1 % dans son tableau, faute de compter
+  sur la même période ; et des campagnes saines déclarées inexploitables parce
+  que le traitement des comptes-rendus s'était arrêté à son temps imparti,
+  comportement pourtant normal. Les trois sont corrigés, et ce qui a été écarté
+  d'un verdict reste affiché — un pic d'attente à l'ouverture grandit avec la
+  charge, et le nombre de comptes-rendus non traités dit combien de travail n'a
+  pas été exercé. (task-208)
+- v1.11 — **Le plafond du nombre de praticiens est desserré.** Ce qui limite
+  la taille d'une installation, ce n'est pas le trafic mais le nombre de
+  connexions à la base — et la préparation du dossier d'un praticien, jouée
+  une seule fois, en gardait une ouverte pour le restant de la vie du service.
+  Mesuré à une connexion par praticien, soit environ 169 retenues pour rien sur
+  200. Trois causes se cumulaient ; les trois sont corrigées. La campagne de
+  confirmation reste à conduire : elle vérifiera aussi que les temps de réponse
+  ne bougent pas, le correctif ne devant rien coûter — c'est ce qui le distingue
+  de l'autre option, écartée parce qu'elle dégradait la latence. (task-202)
 
 ---
 
