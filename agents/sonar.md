@@ -776,11 +776,25 @@ mkdir -p TestResults
 ```
 
 ### Begin
+
+> ⚠️ **`sonar.login`, pas `sonar.token`, sur ce serveur** (corrigé task-205).
+> La propriété `sonar.token` n'existe qu'à partir de **SonarQube 10.0** ;
+> l'instance de ce poste est en **9.9.8**, qui l'ignore silencieusement. Le
+> `begin` réussit quand même (lecture du profil qualité), et c'est le `end` qui
+> échoue **après le scan complet** sur `ERROR: Not authorized. Analyzing this
+> project requires authentication` — soit ~6 min perdues avant de voir l'erreur.
+> Le message accuse les identifiants, d'où le diagnostic erroné de task-204
+> (« le `SONAR_TOKEN` du `.env` est périmé, à régénérer par l'humain ») : le
+> token était valide (`/api/authentication/validate` → `{"valid":true}`), seul
+> le **nom de la propriété** était faux. Vérifier la version avec
+> `curl -u "$SONAR_TOKEN:" "$SONAR_HOST_URL/api/server/version"` avant de
+> soupçonner les identifiants.
+
 ```bash
 dotnet sonarscanner begin \
   /k:"$SONAR_PROJECT_KEY" \
   /d:sonar.host.url="$SONAR_HOST_URL" \
-  /d:sonar.token="$SONAR_TOKEN" \
+  /d:sonar.login="$SONAR_TOKEN" \
   /d:sonar.sourceEncoding=UTF-8 \
   /d:sonar.exclusions="**/devops/**,**/load-tests/**,**/AppHost/**,**/Migrations/**" \
   /d:sonar.cs.opencover.reportsPaths="TestResults/**/coverage.opencover.xml" \
@@ -810,8 +824,12 @@ done
 
 ### End
 ```bash
-dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"
+dotnet sonarscanner end /d:sonar.login="$SONAR_TOKEN"
 ```
+
+Si le `end` échoue sur l'authentification, le répertoire `.sonarqube/` reste
+**intact** : rejouer `end` seul suffit (~30 s), inutile de refaire le build et
+les tests.
 
 ### KPI fetch
 ```bash

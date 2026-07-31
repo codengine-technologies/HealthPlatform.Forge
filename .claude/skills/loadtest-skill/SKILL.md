@@ -106,6 +106,46 @@ détecte pas un AppHost lancé par `dotnet run`) :
 MSS_LOADTEST=true MSS_ENFORCE_PSC_IDENTITY=false aspire run --project src/AppHost
 ```
 
+> **Niveau de log du banc : `Information`, comme la Production (task-203).**
+> Le profil loadtest tourne en `ASPNETCORE_ENVIRONMENT=Development`, donc
+> `appsettings.json` s'appliquerait avec `MinimumLevel: Debug` — mesuré sur la
+> fenêtre du tir 500 praticiens : **904 839 événements Debug** pour 1 212 478
+> Information, ~5 000 événements/s expédiés à Seq par 5 réplicas. L'AppHost
+> surcharge donc `Serilog__MinimumLevel__Default` et `Logging__LogLevel__Default`
+> à `Information` en profil loadtest **uniquement**.
+> Pour refaire un tir bavard (mesure du coût de l'observabilité) :
+> `MSS_LOADTEST_LOG_LEVEL=Debug` avant de lancer l'AppHost.
+> Contrôle en une requête Seq : `select count(*) from stream where @Level = 'Debug'`
+> sur la fenêtre du tir → **0** en configuration nominale.
+>
+> **Mesuré le 2026-07-28, ne pas re-débattre** : à 540 req/s (point valide),
+> couper `Debug` retire **49 % du volume** (208 796 événements sur 140 s) et ne
+> change **rien** au débit (540,0 req/s dans les deux cas) ni au p95 (−0,5 %).
+> Le seul coût visible est ~1 cœur d'ingestion **côté Seq**, pas côté application.
+> Le niveau de log est donc un levier de **fidélité et d'hygiène**, pas de
+> performance. Protocole du contrôle : redémarrage → échauffement de 60 s **jeté**
+> → mesure de 2 min, les deux niveaux rejoués (jamais comparés à un tir antérieur :
+> un redémarrage vide les pools de sessions IMAP et Npgsql).
+
+> ### ⚠️ Un redémarrage de l'AppHost EFFACE les proxies Toxiproxy
+>
+> Les proxies `dovecot-imap` / `greenmail-smtp` sont créés par l'outil de **seed**,
+> pas par l'AppHost. Après tout redémarrage, `GET http://127.0.0.1:8474/proxies`
+> renvoie `{}` et **tout tir meurt dans `setup()`** :
+> `Toxiproxy profile "mssante" could not be applied — proxy "dovecot-imap" not
+> found (HTTP 404) — run the seed tool first` (code de sortie k6 **107**).
+>
+> Remède **non destructif** — recrée les proxies et revérifie les `UserSettings`
+> sans toucher au maildir ni aux bandes d'UID (donc sans re-seeder 20 000 messages) :
+>
+> ```bash
+> dotnet run --project tests/mss.mail.loadtest.seed -- \
+>   --users 200 --messages 0 --api http://127.0.0.1:5052
+> ```
+>
+> Le maildir vit dans le volume nommé `loadtest-dovecot-mail` et survit, lui, au
+> redémarrage (vérifié : 3,3 Go intacts).
+
 Ce que le profil démarre (en plus des dépendances habituelles) :
 
 | Conteneur | Rôle | Ports (proxy Aspire) |
@@ -348,10 +388,18 @@ Tout se pilote par variables d'environnement (`USERS`, `VUS`, `DURATION`,
 Un run sous la cible sort en **code non nul** (thresholds k6) : la baseline est
 une garde anti-régression, pas un rapport.
 
-### Trois plafonds à connaître avant d'interpréter un chiffre
+Le harnais a ses propres auto-tests (JS + Python, donc hors `dotnet test`), à
+rejouer après toute modification de `lib/`, `scenarios/` ou `report.py` :
+
+```bash
+tests/loadtest-k6/selftest.sh     # aucune dépendance, aucun banc requis
+```
+
+### Quatre plafonds à connaître avant d'interpréter un chiffre
 
 | Plafond | Symptôme | Conduite |
 |---|---|---|
+| **Le harnais lui-même** (task-203) : un scénario à débit imposé ne délivre que `maxVUs / latence` | débit qui plafonne quel que soit `USERS`, `dropped_iterations` par centaines/s, `vus == vus_max` | pools dimensionnés par la loi de Little (`lib/vu-sizing.js`) ; **lire d'abord la section « Validité du tir » du rapport** — 16 des 21 tirs archivés avant le 2026-07-28 sont invalides |
 | **Limiteur api-mail** : 100 req / 10 s **par identité PS** (task-090, fenêtre fixe) | HTTP 429, p95 superbe mesuré sur des rejets | le harnais se cadence à 6 req/s par identité et échoue sur le moindre 429 (`rate_limited_429: count==0`) |
 | **`mail_max_userip_connections=10`** (défaut Dovecot) : 10 connexions IMAP par (utilisateur, IP), tous les VU partageant une IP | HTTP 500, `IOException` en pleine `AUTHENTICATE` | **monter en charge par `USERS`, pas par VU par utilisateur** ; borne aussi `SESSION_ROTATION` à quelques millièmes sur 10 utilisateurs |
 | **Bases Postgres par utilisateur persistantes** | tout `enrich` court-circuite (voir étape 6) | `tests/loadtest-k6/reset-state.sh` |
@@ -401,6 +449,31 @@ tests/loadtest-k6/report.sh "$K6JSON" --expected 10            # cf. l'encadré 
 >
 > **Règle** : `--expected` = la valeur de `MESSAGES_PER_USER` passée au harnais
 > (10 par défaut), pas celle du seed. Le seed peut sur-provisionner sans risque.
+
+> ### 🛑 Le PREMIER contrôle d'un rapport : sa section « Validité du tir » (task-203)
+>
+> Avant de citer un débit, de comparer à un tir antérieur ou de conclure quoi que
+> ce soit sur la capacité, lire la section **« Validité du tir »** du `.md` (et la
+> table **« Débit demandé vs délivré »** juste après les KPI).
+>
+> Un tir est **invalide pour une conclusion de capacité** si l'une de ces
+> conditions est vraie — le rapport s'ouvre alors sur
+> `⚠️ TIR INVALIDE POUR UNE CONCLUSION DE CAPACITÉ` et le dit aussi sur `stderr` :
+>
+> - plus de **1 %** des itérations abandonnées (`dropped_iterations`) ;
+> - pic de VU au plafond du harnais (`vus == vus_max`) sur un tir à débit imposé ;
+> - `MAX_VUS` a mordu sur le dimensionnement calculé.
+>
+> Ce qui reste lisible dans un tir invalide : les **latences** (elles décrivent
+> les requêtes réellement exécutées) et une comparaison A/B **à harnais
+> identique**. Ce qui ne l'est pas : le **débit**, qui est alors celui du client.
+>
+> Pourquoi c'est en tête de cette étape : les trois tirs du 2026-07-27 ont publié
+> 833 à 915 req/s comme s'il s'agissait d'un plafond applicatif, alors que k6
+> tournait au plafond de son propre pool et jetait 45 k à 502 k itérations. À 200
+> praticiens, `send` n'a servi que **14 %** de son budget et `search` **56 %** —
+> faute de VU, pas faute de serveur. L'INDEX porte désormais les colonnes
+> `Drop %` et `VU sat.`, recalculées pour tout l'historique.
 
 > **Toujours vérifier que le `.md` existe** après coup. `report.sh` affiche
 > « → Rapport : … », « → Index : … » et « → Dump Seq … » **avant** de savoir si

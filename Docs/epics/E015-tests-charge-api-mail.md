@@ -2,10 +2,10 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.3
+> **Version** : 1.8
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
-> **Dernière mise à jour** : 2026-07-27
+> **Dernière mise à jour** : 2026-07-31
 
 ---
 
@@ -23,7 +23,14 @@
 - [8. Critères d'acceptation de l'EPIC](#8-critères-dacceptation-de-lepic)
 - [9. Hors périmètre](#9-hors-périmètre)
 - [10. Premiers résultats de mesure](#10-premiers-résultats-de-mesure)
-- [État de couverture (2026-07-27)](#état-de-couverture-2026-07-27)
+  - [Temps de réponse observés](#temps-de-réponse-observés)
+  - [Combien d'actions un praticien peut-il enchaîner ?](#combien-dactions-un-praticien-peut-il-enchaîner)
+  - [La campagne à grande échelle : 200 praticiens (27 juillet 2026)](#la-campagne-à-grande-échelle-200-praticiens-27-juillet-2026)
+  - [Mise au point du 28 juillet 2026 : ce que la campagne mesurait vraiment](#mise-au-point-du-28-juillet-2026-ce-que-la-campagne-mesurait-vraiment)
+  - [Ce que le banc sait désormais dire (29 juillet 2026)](#ce-que-le-banc-sait-désormais-dire-29-juillet-2026)
+  - [La capacité est enfin chiffrée, et sa cause nommée (29-31 juillet 2026)](#la-capacité-est-enfin-chiffrée-et-sa-cause-nommée-29-31-juillet-2026)
+  - [Trois mesures à reprendre](#trois-mesures-à-reprendre)
+- [État de couverture (2026-07-31)](#état-de-couverture-2026-07-31)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -78,6 +85,9 @@ baisses de performance avant qu'elles n'atteignent les utilisateurs**.
 | Campagnes de mesure | Rejouer six usages types sous charge — consulter ses dossiers, lire, rechercher, envoyer, extraire les documents médicaux d'un compte-rendu, et un profil mêlant les cinq — puis lire les temps de réponse sur le tableau de bord de supervision, avec un rapport par campagne et une mesure de référence opposable | task-174 | 🟡 Livré, en attente d'intégration |
 | Interrupteurs de fonctionnalités résilients | Garantir que les fonctions pilotées par interrupteur (dont l'analyse des comptes-rendus) restent dans leur dernier état connu si le service d'interrupteurs faiblit, au lieu de se désactiver silencieusement — avec une alerte d'exploitation quand cela survient | task-199 | 🟡 Livré, en attente d'intégration |
 | Passage à l'échelle des connexions | Permettre au service de servir 1000 praticiens sans que le nombre de connexions à la base de données ne devienne le plafond — via un multiplexeur de connexions, validé d'abord sur le banc | task-200 | 🟡 Livré, en attente d'intégration |
+| Fiabilité des mesures de charge | Savoir si le chiffre d'une campagne est exploitable : l'outil de tir demande réellement la charge annoncée, et tout rapport dont la mesure a été faussée par l'instrument le déclare en première page au lieu de publier un chiffre trompeur | task-203 | 🟡 Livré, en attente d'intégration |
+| Localisation de la cause d'un ralentissement | Savoir **ce qui** freine la messagerie quand elle plafonne — le serveur applicatif, la base de données, le serveur de messagerie simulé, ou l'outil de mesure lui-même — au lieu de le supposer ; et le lire en direct pendant une campagne | task-204 | 🟡 Livré, en attente d'intégration |
+| Levée du plafond de capacité | Servir davantage de praticiens simultanés sans que la consultation des messages ne ralentisse : la cause du plafond mesuré a été identifiée dans la messagerie elle-même, puis corrigée | task-205 | 🟡 Corrigé, mesure de confirmation à conduire |
 
 ---
 
@@ -125,6 +135,7 @@ serveur observée au même instant.
 | Fidélité de la mesure | Le banc doit solliciter la messagerie exactement comme un serveur réel : c'est l'environnement de test qui s'aligne sur le produit, jamais le produit qui s'adapte à l'outil de mesure | ✅ Respecté (task-195) |
 | Verdict automatique, pas d'interprétation | Les temps de réponse attendus sont inscrits dans le dispositif de mesure : une campagne qui passe sous la cible est déclarée en échec d'elle-même, sans lecture humaine des chiffres | ✅ Respecté (task-174) |
 | Mesure de référence opposable | Chaque campagne se compare à une mesure de référence datée et conservée avec le produit, pour distinguer une variation normale d'une régression | ✅ Respecté (task-174) |
+| Cause mesurée, jamais supposée | Un rapport de campagne ne désigne une cause que s'il l'a **mesurée**. À défaut, il écrit qu'il ne sait pas — il ne laisse jamais entendre que rien ne freinait | ✅ Respecté (task-204) |
 
 ---
 
@@ -146,6 +157,16 @@ serveur observée au même instant.
       document médical qu'il contient (task-195).
 - [x] Une mesure de référence des temps de réponse est établie et documentée
       (task-174).
+- [x] Une campagne dont la mesure n'est pas exploitable le déclare elle-même, au
+      lieu de publier un chiffre trompeur (task-203).
+- [x] Une campagne sait désormais **désigner ce qui freine** la messagerie, et le
+      déclarer quand elle ne peut pas le savoir (task-204).
+- [ ] La capacité de la messagerie — le nombre de demandes qu'elle absorbe par
+      seconde — est chiffrée par une campagne exploitable. **Non atteint** : voir
+      la mise au point du 28 juillet au chapitre *Premiers résultats de mesure*.
+- [ ] La ressource qui limite la messagerie est **nommée et chiffrée** par une
+      campagne. **Non atteint** : l'instrument est en place (task-204), la
+      campagne reste à conduire.
 
 ---
 
@@ -232,8 +253,132 @@ erreur visible, ni pour le praticien, ni pour l'exploitant. C'est l'origine
 directe de la feature « Interrupteurs de fonctionnalités résilients »
 (task-199) et du chantier « Passage à l'échelle des connexions » (task-200).
 
-### Deux mesures à reprendre
+> ⚠️ **Le chiffre de « 915 demandes par seconde » ci-dessus ne dit pas ce qu'on a
+> cru** — voir la mise au point du 28 juillet ci-dessous. Les temps de réponse et
+> l'étanchéité entre boîtes, eux, restent établis.
 
+### Mise au point du 28 juillet 2026 : ce que la campagne mesurait vraiment
+
+En relisant les données brutes des campagnes du 27 juillet, une erreur de méthode
+est apparue : **l'outil de tir se bridait lui-même**. Il n'ouvrait pas assez de
+postes de travail simulés pour les actions lentes — un envoi de message dure plus
+d'une seconde — si bien qu'il n'a jamais pu demander la charge annoncée. Sur
+l'envoi, **14 % seulement** des demandes prévues étaient réellement émises ; sur
+la recherche, 56 %. Les demandes manquantes n'étaient pas refusées par la
+messagerie : elles n'ont jamais été formulées.
+
+Conséquence : le chiffre de 915 demandes par seconde décrivait **la limite de
+l'instrument de mesure, pas celle de la messagerie**. Et il expliquait une
+coïncidence trompeuse — la campagne à 500 praticiens avait obtenu le même ordre
+de grandeur, ce qu'on avait lu comme « la plateforme sature toujours au même
+endroit », alors que c'était l'instrument qui saturait dans les deux cas.
+
+**Ce qui reste établi** : les temps de réponse (ils portent sur des demandes
+réellement traitées), le taux d'erreur, l'étanchéité entre boîtes, et les trois
+limites d'infrastructure identifiées puis corrigées. **Ce qui tombe** : l'idée
+d'un plafond de la plateforme autour de 900 demandes par seconde. À 200
+praticiens, la messagerie a au contraire servi **la totalité** de ce qu'on lui
+demandait sur les deux usages les plus fréquents — consulter ses dossiers et lire
+ses messages — sans donner de signe de saturation.
+
+L'instrument est corrigé (task-203) : il dimensionne désormais ses postes
+simulés d'après la durée réelle de chaque action, et **tout rapport de campagne
+dont la mesure n'est pas exploitable le déclare en première page**. Seize des
+vingt-et-une campagnes déjà archivées sont dans ce cas, et l'index des campagnes
+le signale désormais ligne par ligne. La conséquence à retenir : **la capacité
+réelle de la messagerie reste à mesurer**, et ce sera la première campagne
+conduite avec l'instrument corrigé.
+
+### Ce que le banc sait désormais dire (29 juillet 2026)
+
+Les campagnes passées pouvaient dire *à quel niveau* la messagerie plafonnait,
+jamais *pourquoi*. Le rapport du 27 juillet concluait ainsi que le serveur de
+messagerie et le processeur étaient saturés — une supposition, et elle s'est
+révélée fausse : la mesure a montré que c'était la **base de données** qui
+consommait l'essentiel des ressources, le serveur de messagerie simulé restant
+très en deçà.
+
+Le dispositif de mesure a donc été complété sur trois points :
+
+- **Le service applicatif est mesuré serveur par serveur.** La messagerie tourne
+  en cinq exemplaires simultanés ; les mesures les confondaient en une seule
+  moyenne, ce qui interdisait de dire lequel était en difficulté. Chacun est
+  désormais suivi séparément.
+- **Ce que le service ne voit pas de lui-même est échantillonné** : la machine
+  hôte, l'outil de tir, chacun des composants simulés et le multiplexeur de
+  connexions. C'est ainsi qu'on a pu établir que **l'outil de tir n'est pas le
+  facteur limitant** — il consomme moins d'un trentième de la machine.
+- **Chaque rapport désigne la ressource la plus proche de sa limite**, ou écrit
+  explicitement qu'aucune ne l'est, ou qu'il n'a pas la donnée pour le dire. Ce
+  dernier cas est traité comme une information de plein droit : un tableau vide se
+  lirait « rien ne freinait », ce qui serait faux.
+
+Un tableau de bord dédié permet en outre de suivre ces indicateurs **pendant** une
+campagne, au lieu de les analyser après coup.
+
+Enfin, une erreur de calcul présente depuis l'origine a été corrigée : le débit
+publié était divisé par la durée totale de la campagne, **temps d'extinction
+compris**, ce qui le sous-estimait d'environ 8 à 10 %. Les campagnes archivées ont
+été recalculées — la campagne de référence à 200 praticiens vaut **934 demandes
+par seconde** et non 915.
+
+> ⚠️ Ces trois compléments sont **l'instrument**, pas la mesure. La campagne qui
+> nommera enfin la ressource limitante reste à conduire, et c'est désormais le
+> seul obstacle au chiffrage de la capacité.
+
+### La capacité est enfin chiffrée, et sa cause nommée (29-31 juillet 2026)
+
+C'est le résultat que l'EPIC poursuivait depuis son ouverture. Une campagne
+conduite à population constante — 200 praticiens — en demandant à la messagerie
+des charges croissantes a donné, pour la première fois, une courbe de capacité
+exploitable.
+
+| Charge demandée | Charge réellement servie | Part servie | Temps de réponse moyen |
+|---|---|---|---|
+| 486 demandes/s | 483 | 99 % | 0,26 s |
+| 630 demandes/s | 625 | 99 % | 0,22 s |
+| 756 demandes/s | 746 | 99 % | 0,29 s |
+| 882 demandes/s | 825 | 94 % | 0,40 s |
+| 972 demandes/s | 858 | 88 % | 0,59 s |
+
+**Le point de rupture se situe entre 750 et 825 demandes par seconde.** Au-delà,
+la messagerie ne sert plus tout ce qu'on lui demande et les temps de réponse
+doublent.
+
+**Et pour la première fois, la campagne a nommé la cause au lieu de la
+supposer.** Une seule action se dégradait massivement — la consultation de la
+liste des messages, dont le temps de réponse était multiplié par sept, quand
+toutes les autres n'augmentaient que de moitié. Le serveur applicatif, lui,
+n'était pas saturé : il n'utilisait qu'un vingtième de la machine tout en
+accumulant une file d'attente interne considérable. Autrement dit, la messagerie
+n'était pas à court de puissance de calcul — **elle attendait**.
+
+Une expérience a écarté la dernière objection possible, celle de l'outil de
+mesure : en demandant *plus* de simultanéité à l'outil de tir, le débit servi a
+**baissé** de 13 à 20 % et les temps de réponse ont été multipliés par cinq puis
+par onze. Un outil sous-dimensionné produirait l'effet inverse. Le plafond était
+donc bien dans la messagerie.
+
+La cause exacte a ensuite été localisée dans le code : lors de la consultation
+d'une liste de messages, la recherche du dossier concerné sur le serveur de
+messagerie était effectuée de manière **bloquante**. Chaque consultation
+immobilisait ainsi une ressource de traitement pendant tout l'aller-retour
+réseau, au lieu de la libérer pour une autre demande. Ce verrou a été levé
+(task-205).
+
+> ⚠️ **La mesure de confirmation reste à conduire.** Le correctif est livré et
+> verrouillé par des garde-fous automatiques qui empêchent le défaut de
+> réapparaître ; la campagne qui mesurera le gain effectif est la prochaine
+> étape. Rappel de lecture : sur le poste de mesure actuel, l'infrastructure de
+> test consomme quatre fois plus de ressources que la messagerie elle-même — les
+> 858 demandes par seconde constatées sont un **plancher**, pas un plafond.
+
+### Trois mesures à reprendre
+
+- **La capacité de la messagerie**, c'est-à-dire le nombre de demandes qu'elle
+  peut absorber par seconde. Aucune campagne archivée ne permet de la chiffrer,
+  pour la raison exposée juste au-dessus. C'est la première mesure à reprendre,
+  avec l'instrument corrigé.
 - **L'envoi de message.** Les boîtes du banc ne disposent pas de dossier
   « Éléments envoyés » : la copie du message expédié ne peut pas y être archivée,
   et le temps mesuré pour un envoi intègre cette tentative infructueuse. Le
@@ -245,7 +390,7 @@ directe de la feature « Interrupteurs de fonctionnalités résilients »
 
 ---
 
-## État de couverture (2026-07-27)
+## État de couverture (2026-07-31)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
@@ -253,26 +398,39 @@ directe de la feature « Interrupteurs de fonctionnalités résilients »
 | Mesure du traitement des documents médicaux | 🟡 Livré, en attente d'intégration | Vérifié sur un lot de messages porteurs de comptes-rendus : 4 messages sur 5 aboutissent à un document médical et un résultat de biologie exploitables ; le 5ᵉ ne portait pas de document exploitable dans le jeu de test | task-195 |
 | Campagnes de mesure | 🟡 Livré, en attente d'intégration | Six usages types rejouables à la demande, verdict automatique sur les temps de réponse attendus, remontée sur le tableau de bord de supervision, rapport par campagne et mesure de référence datée ; campagne à grande échelle conduite (200 praticiens, verte) ; deux mesures à reprendre (envoi, recherche) | task-174 |
 | Interrupteurs de fonctionnalités résilients | 🟡 Livré, en attente d'intégration | Dernier état connu servi quand le service d'interrupteurs est injoignable, repli déclaré par interrupteur, alerte d'exploitation dédiée, une seule ligne de journal par fenêtre au lieu d'une par échec ; 10 tests dédiés ; vérification finale sur banc au plan de test manuel | task-199 |
-| Passage à l'échelle des connexions | 🟡 Livré, en attente d'intégration | Multiplexeur de connexions intégré au banc, et séparation des deux usages de la base : le trafic courant passe par le multiplexeur, la création d'un nouveau dossier praticien reste en direct — de sorte qu'un multiplexeur saturé n'empêche jamais l'arrivée d'un praticien. Compatibilité établie par mesure : 40 demandes simultanées absorbées par 3 connexions réelles au lieu de 40 ; l'analyse sémantique des comptes-rendus (recherche par similarité) fonctionne à travers le multiplexeur. Hors banc, aucun changement de comportement. **Reste dû** : la campagne comparative 200 praticiens à travers le multiplexeur, qui seule permettra de conclure sur la tenue en charge | task-200 |
+| Passage à l'échelle des connexions | 🟡 Livré, en attente d'intégration | Multiplexeur de connexions intégré au banc, et séparation des deux usages de la base : le trafic courant passe par le multiplexeur, la création d'un nouveau dossier praticien reste en direct — de sorte qu'un multiplexeur saturé n'empêche jamais l'arrivée d'un praticien. Compatibilité établie par mesure : 40 demandes simultanées absorbées par 3 connexions réelles au lieu de 40 ; l'analyse sémantique des comptes-rendus (recherche par similarité) fonctionne à travers le multiplexeur. Hors banc, aucun changement de comportement. La campagne comparative a été conduite et **ne montre pas de dégradation des temps de réponse** ; ce qui reste dû est le chiffre de capacité, indisponible pour la raison exposée à la mise au point du 28 juillet | task-200 |
+| Fiabilité des mesures de charge | 🟡 Livré, en attente d'intégration | L'outil de tir dimensionne ses postes simulés d'après la durée réelle de chaque action, au lieu d'un nombre arbitraire : il demande donc réellement la charge annoncée. Tout rapport dont la mesure a été faussée par l'instrument porte un avertissement en première page, et une table indique, action par action, la charge demandée face à celle réellement servie. L'index des campagnes signale ligne par ligne les tirs non exploitables — **seize des vingt-et-une campagnes archivées** le sont. Le banc journalise en outre au niveau de la production, et non en mode verbeux, pour ne plus mesurer une configuration cinq fois plus bavarde que celle déployée. **Reste dû** : la campagne conduite avec l'instrument corrigé, qui donnera le premier chiffre de capacité exploitable | task-203 |
+| Localisation de la cause d'un ralentissement | 🟡 Livré, en attente d'intégration | Le service applicatif est mesuré **serveur par serveur** (cinq exemplaires simultanés, jusque-là confondus en une moyenne). Ce que le service ne voit pas de lui-même est échantillonné : machine hôte, outil de tir, composants simulés, multiplexeur de connexions — c'est ce qui a permis d'établir que **l'outil de tir n'est pas le facteur limitant**. Chaque rapport désigne la ressource la plus proche de sa limite, ou déclare qu'aucune ne l'est, ou qu'il n'a pas la donnée pour le dire — jamais un tableau vide, qui se lirait « rien ne freinait ». Tableau de bord dédié pour suivre une campagne **en direct**. Erreur de calcul du débit corrigée (temps d'extinction compté à tort : ~8 à 10 % de sous-estimation, campagnes archivées recalculées). **La campagne a été conduite** : cinq paliers à population constante, point de rupture situé entre 750 et 825 demandes par seconde, et cause nommée pour la première fois au lieu d'être supposée | task-204 |
+| Levée du plafond de capacité | 🟡 Corrigé, mesure de confirmation à conduire | La cause du plafond est localisée dans la messagerie : la consultation d'une liste de messages immobilisait une ressource de traitement pendant tout l'aller-retour avec le serveur de messagerie, au lieu de la libérer. Le verrou est levé, et trois garde-fous automatiques empêchent qu'il réapparaisse — l'un d'eux inspecte le programme compilé, de sorte qu'aucun contournement du correctif ne passe inaperçu. **Reste dû** : la campagne de confirmation, qui mesurera le gain effectif aux deux paliers où le défaut se manifestait | task-205 |
 
-**Couverture EPIC consolidée : 5 features livrées sur 5** (les cinq attendent
-leur intégration). L'EPIC est **fonctionnellement complet et éprouvé à
-l'échelle** : le banc est opérationnel, il mesure la chaîne complète de
-traitement des documents médicaux, les campagnes de mesure sont outillées avec
-une référence opposable, et la campagne à grande volumétrie (200 praticiens) a
-été conduite avec succès — en produisant au passage les règles de dimensionnement
-de l'infrastructure jusqu'au palier 1000 praticiens et deux chantiers de
-robustesse, tous deux livrés (task-199, task-200).
+**Couverture EPIC consolidée : 8 features livrées sur 8** (les huit attendent
+leur intégration). L'EPIC est **fonctionnellement complet** : le banc est
+opérationnel, il mesure la chaîne complète de traitement des documents médicaux,
+les campagnes de mesure sont outillées avec une référence opposable, la campagne à
+grande volumétrie (200 praticiens) a été conduite — en produisant les règles de
+dimensionnement de l'infrastructure jusqu'au palier 1000 praticiens et deux
+chantiers de robustesse, livrés (task-199, task-200) — et l'instrument de mesure
+sait désormais dire quand son propre chiffre n'est pas exploitable (task-203).
 
-Deux réserves à porter au bilan, sans quoi il serait trompeur :
+Trois réserves à porter au bilan, sans quoi il serait trompeur :
 
-- deux mesures restent à reprendre — l'envoi et la recherche, pour les raisons
-  exposées au chapitre *Premiers résultats de mesure* ;
+- **la capacité est chiffrée et sa cause nommée, mais le gain du correctif n'est
+  pas encore mesuré.** C'est le grand acquis de fin juillet : la messagerie sert
+  intégralement ce qu'on lui demande jusqu'à environ 750 demandes par seconde,
+  rompt entre 750 et 825, et la cause en a été localisée puis corrigée dans la
+  messagerie elle-même. Ce qui reste dû est la **campagne de confirmation** du
+  correctif. Réserve de lecture inchangée : sur le poste actuel, l'infrastructure
+  de test et le service applicatif se partagent le même processeur — et l'infra en
+  consomme quatre fois plus que la messagerie —, si bien que tout chiffre obtenu
+  ici est un **plancher** et non un plafond ;
+- deux mesures d'usage restent à reprendre — l'envoi et la recherche, pour les
+  raisons exposées au chapitre *Premiers résultats de mesure* ;
 - le passage à l'échelle des connexions est **établi comme compatible, pas
   encore comme performant** : la brique est livrée et vérifiée
-  fonctionnellement, mais la campagne comparative qui doit prouver l'absence de
-  dégradation des temps de réponse n'a pas encore été conduite. Le palier 1000
-  praticiens n'est donc pas encore déverrouillé.
+  fonctionnellement. La comparaison des temps de réponse avec et sans
+  multiplexeur, elle, tient (l'instrument était bridé de façon identique des deux
+  côtés) ; ce qui manque reste le chiffre de capacité. Le palier 1000 praticiens
+  n'est donc pas encore déverrouillé.
 
 ---
 
@@ -320,6 +478,17 @@ Deux réserves à porter au bilan, sans quoi il serait trompeur :
   comportement. La campagne comparative qui doit prouver l'absence de
   dégradation des temps de réponse reste à conduire. (task-200)
 
+- v1.6 — Le dispositif de mesure sait désormais désigner **ce qui** freine la
+  messagerie. Le service applicatif est suivi **serveur par serveur** (il tourne en
+  cinq exemplaires, jusque-là confondus en une seule moyenne, ce qui interdisait de
+  dire lequel était en difficulté). Ce que le service ne voit pas de lui-même est
+  échantillonné : machine hôte, outil de tir, composants simulés, multiplexeur de
+  connexions. Chaque rapport nomme la ressource la plus proche de sa limite — ou
+  écrit qu'aucune ne l'est, ou qu'il n'a pas la donnée pour le dire, ce dernier cas
+  étant traité comme une information de plein droit. Un tableau de bord dédié
+  permet de suivre tout cela **pendant** une campagne. Une erreur de calcul du
+  débit présente depuis l'origine est corrigée au passage. (task-204)
+
 **Ce que la mesure a appris sur le service**
 
 - v1.2 — La messagerie plafonne chaque praticien à 100 demandes par tranche de
@@ -327,15 +496,51 @@ Deux réserves à porter au bilan, sans quoi il serait trompeur :
   immédiatement. La tranche étant fixe, un enchaînement par à-coups peut déclencher
   ce refus dès huit actions par seconde, en deçà du rythme nominal. L'usage humain
   courant en reste très éloigné. (task-174)
-- v1.3 — À 200 praticiens simulés, la campagne à grande échelle a tenu **915
-  demandes par seconde pendant cinq minutes avec 0,02 % d'erreurs** et une
-  étanchéité parfaite entre boîtes. Elle a établi que le nombre de connexions à
-  la base de données croît avec le **nombre de praticiens équipés**, pas avec le
-  trafic — c'est la donnée qui dimensionne l'infrastructure, consignée avec les
-  règles de calcul jusqu'au palier 1000 praticiens dans le dossier DevOps. Elle
-  a aussi révélé que le service d'interrupteurs de fonctionnalités cédait sous
-  charge en désactivant silencieusement l'analyse des comptes-rendus — corrigé
-  par la task-199. (campagne du 2026-07-27)
+- v1.3 — À 200 praticiens simulés, la campagne à grande échelle a tenu cinq
+  minutes de charge soutenue avec **0,02 % d'erreurs** et une étanchéité parfaite
+  entre boîtes. Elle a établi que le nombre de connexions à la base de données
+  croît avec le **nombre de praticiens équipés**, pas avec le trafic — c'est la
+  donnée qui dimensionne l'infrastructure, consignée avec les règles de calcul
+  jusqu'au palier 1000 praticiens dans le dossier DevOps. Elle a aussi révélé que
+  le service d'interrupteurs de fonctionnalités cédait sous charge en désactivant
+  silencieusement l'analyse des comptes-rendus — corrigé par la task-199.
+  (campagne du 2026-07-27)
+- v1.5 — **Le débit annoncé par les campagnes archivées mesurait l'instrument, pas
+  la messagerie.** L'outil de tir n'ouvrait pas assez de postes simulés pour les
+  actions lentes : sur l'envoi, 14 % seulement des demandes prévues étaient
+  réellement émises. Le chiffre de 915 demandes par seconde était donc son propre
+  plafond — ce qui explique aussi pourquoi la campagne à 500 praticiens obtenait le
+  même ordre de grandeur. Ce qui reste établi : temps de réponse, taux d'erreur,
+  étanchéité. Ce qui tombe : l'idée d'un plafond de la plateforme vers 900 demandes
+  par seconde — à 200 praticiens elle servait la totalité de ce qu'on lui demandait
+  sur les deux usages les plus fréquents. La capacité réelle reste à mesurer.
+  (task-203)
+- v1.6 — **« Saturé sur le serveur de messagerie » était une supposition, et elle
+  était fausse.** La première mesure de ressources conduite pendant une campagne
+  montre que c'est la **base de données** qui consomme l'essentiel, le serveur de
+  messagerie simulé restant très en deçà. Elle établit aussi que **l'outil de tir
+  n'est pas le facteur limitant** (moins d'un trentième de la machine). Enseignement
+  de méthode : sur le poste de mesure actuel, l'infrastructure de test et le service
+  applicatif se partagent le même processeur — tout chiffre de capacité qu'on y
+  obtient est donc un **plancher**, jamais un plafond. (task-204)
+- v1.7 — **La capacité de la messagerie est enfin chiffrée, et sa cause nommée.**
+  Cinq paliers à 200 praticiens établissent que la messagerie sert intégralement
+  ce qu'on lui demande jusqu'à environ 750 demandes par seconde et rompt entre 750
+  et 825. Pour la première fois la campagne **nomme** ce qui la freine au lieu de
+  le supposer : une seule action se dégrade — la consultation de la liste des
+  messages, sept fois plus lente au plafond quand les autres n'augmentent que de
+  moitié — et le serveur applicatif n'est pas saturé, il attend. Une expérience
+  écarte l'outil de mesure comme explication : lui donner plus de simultanéité
+  fait *baisser* le débit servi. (task-204)
+- v1.8 — **Le verrou de capacité est levé.** La cause du plafond a été localisée
+  dans la messagerie : lors de la consultation d'une liste de messages, la
+  recherche du dossier concerné sur le serveur de messagerie immobilisait une
+  ressource de traitement pendant tout l'aller-retour réseau au lieu de la libérer
+  pour une autre demande. Le correctif rend cette recherche non bloquante, et
+  trois garde-fous automatiques empêchent le défaut de réapparaître — dont un qui
+  inspecte le programme compilé, de sorte qu'un contournement du correctif ne
+  puisse pas passer inaperçu. La campagne de confirmation reste à conduire.
+  (task-205)
 
 ---
 

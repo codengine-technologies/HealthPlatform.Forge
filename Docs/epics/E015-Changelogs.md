@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E015-tests-charge-api-mail.md](E015-tests-charge-api-mail.md).
-> **Dernière mise à jour** : 2026-07-25
+> **Dernière mise à jour** : 2026-07-31
 
 ---
 
@@ -638,6 +638,597 @@ commentaire n'avait pas suffi les deux fois d'avant.
 
 ---
 
+### v1.5 — Le harnais mesurait le harnais : dimensionnement des VUs par la loi de Little + garde de validité du tir — task-203
+
+- **Task** : task-203 — `done`. **PR** : `api-mail`
+  [#127](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/127)
+  (label `awaiting-human-merge` — **non mergée**, HAG règle 10).
+  `dtos-mss` : branche créée par convention, 0 commit, aucune PR.
+- **Origine** : relecture le 2026-07-28 des **JSON k6** (et non des rapports) des
+  trois tirs du 2026-07-27. Verdict : aucun des trois n'était valide pour une
+  mesure de capacité.
+
+**Le constat, chiffré**
+
+| Tir | `vus / vus_max` | `dropped_iterations` | Débit publié |
+|---|---|---|---|
+| Réf. 200 sans pooler (`…-60vu-003515`) | 222 / 222 | 45 323 (16,7 %) | 915,5 req/s |
+| Tir A 200 PgBouncer (`…-60vu-144525`) | 222 / 222 | 49 485 (18,2 %) | 833,6 req/s |
+| Tir 500 PgBouncer (`…-150vu-141351`) | 555 / 555 | 502 353 (**74,4 %**) | 906,4 req/s |
+
+**Cause racine** — `scenarios/mixed.js` dimensionnait chaque sous-scénario à
+`maxVUs = max(2, round(VUS × part/100) × 4)`, un nombre **sans rapport avec le
+débit demandé**. Un `constant-arrival-rate` plafonne alors à `maxVUs / latence`
+et k6 abandonne le reste. Vérifié au chiffre près sur le tir 500 : `send`
+60 VU / 7,556 s = **7,9 it/s** délivrés (mesuré 7,67) contre 300 demandés ;
+`folders` 240 / 2,235 s = 107 (mesuré 103,7) contre 1 200 ; `search` 60 / 0,627 s
+= 95,7 (mesuré 91,5) contre 300. Second défaut : **`MAX_VUS` était silencieusement
+ignoré par `mixed`** — seul `buildScenario()` (scénarios mono) le lisait, donc la
+recommandation « relever `MAX_VUS` » du rapport 500 était sans effet. `baseline.md`
+décrivait déjà le mécanisme le 2026-07-25 (« 607 itérations abandonnées… relever
+`MAX_VUS` ») sur un run à 10 VU : diagnostic juste, remède inopérant.
+
+**Ce que les tirs 200 disaient réellement** : `folders` (429,1 / 480 req/s = 89 %)
+et `read` (318,6 / 360 = 89 %) servaient l'essentiel de leur budget à p95
+133-225 ms ; les ~250 req/s manquants sont les plafonds VU de `send`
+(17,2 / 120 = **14,4 %**) et `search` (66,7 / 120 = **55,6 %**). Aucun signe de
+saturation applicative à 200 praticiens.
+
+**Livré**
+
+- `tests/loadtest-k6/lib/vu-sizing.js` — module **pur** (aucun import k6, donc
+  testable hors k6) : `littleVus`, `planPool`, `capTotalMaxVus`,
+  `planMixedScenarios`, et `REFERENCE_ITERATION_SECONDS` sourcé des moyennes
+  mesurées des rapports (`folders` 0,06 s, `read` 0,16 s, `search` 0,33 s,
+  `send` 1,30 s). Pré-allocation `×2` (au-delà, k6 instancie ses VUs *pendant* le
+  tir), plafond `×4` pour la queue, `VUS` conservé comme **plancher** (aucun tir
+  moins doté qu'avant), `MAX_VUS` respecté et réparti au prorata avec
+  avertissement quand il mord.
+- `scenarios/mixed.js` — adaptateur du module ; le harnais **déclare** son plan
+  dans le contexte du rapport (`scenarioPlan`) au lieu de laisser `report.py`
+  re-déduire l'arithmétique. `enrich` reste hors plan (`shared-iterations` fini) :
+  sa part du mix n'est pas dépensée, le budget réel vaut 90 % de `targetRps`.
+  Plan résolu lu par `k6 inspect` : `send` 6/24 VU → **312/624**, `search` 6/24 →
+  **80/160**, total 1 022 VU au plafond contre 222.
+- `report.py` refactoré en fonctions importables (`validity`, `budget_rows`,
+  `kpis`, `build_report`, `index_row` — CLI inchangée) : bandeau
+  `⚠️ TIR INVALIDE POUR UNE CONCLUSION DE CAPACITÉ` en tête de rapport et sur
+  `stderr`, section « Validité du tir », section « **Débit demandé vs délivré**
+  par sous-scénario ».
+- `reports/INDEX.md` — colonnes `Drop %` / `VU sat.`, **historique recalculé
+  depuis les JSON** : 16 des 21 tirs archivés sont invalides, dont *tous* ceux à
+  200 et 500 praticiens. Fichier **sorti du `.gitignore`** (`reports/*` +
+  ré-inclusion ciblée) : c'est la mémoire comparative du banc, pas un artefact de
+  run, et non versionné ses colonnes de validité n'existeraient que sur une
+  machine.
+- `AppHost.cs`, profil loadtest **uniquement** :
+  `Serilog__MinimumLevel__Default` et `Logging__LogLevel__Default` à
+  `Information` (surchargeables par `MSS_LOADTEST_LOG_LEVEL`). Le banc tournait en
+  `Debug` : **904 839 événements Debug** pour 1 212 478 Information sur la fenêtre
+  du tir 500, ~5 000 événements/s vers Seq par 5 réplicas.
+- `tests/loadtest-k6/selftest.sh` — point d'entrée des auto-tests du harnais
+  (JS + Python, hors `dotnet test`), avec `SKIP` annoncé comme un échec de
+  couverture et non comme un succès.
+
+**Deux faux positifs de la garde, trouvés et corrigés avant livraison**
+
+1. **Modèle fermé.** `vus == vus_max` est la *définition* d'un
+   `shared-iterations` : la première version déclarait invalide le tir `enrich`
+   du 2026-07-26 (4 VU / 4). Discriminant retenu : la présence de
+   `dropped_iterations` — `context.executor` enregistre l'exécuteur *demandé*
+   (`arrival-rate` par défaut), pas celui que k6 a résolu.
+2. **Abandons structurels d'`enrich`.** k6 met aussi dans `dropped_iterations`
+   les itérations qu'un `shared-iterations` n'a pas eu le temps de lancer avant
+   son `maxDuration` — et `enrich` ne finit jamais sa bande (~2 000 lots × 2,9 s
+   / 6 VUs ≈ 16 min pour un plateau de 5 min). Mesuré sur le tir A : 1 362 lots
+   non lancés, soit **0,5 point** de drop à 5 min… mais **~1,16 point sur un
+   palier de 3 min**, celui de l'escalier de capacité prévu par task-204 : la
+   garde aurait invalidé le tir même qu'elle doit valider. D'où la ventilation
+   `dropped_iterations{scenario:…}` (matérialisée par un seuil toujours vrai, même
+   mécanisme que `http_reqs{op:…}`) et l'exclusion des scénarios sans débit
+   imposé. Les verdicts historiques ne bougent pas à 0,5 point près.
+
+**Validation**
+
+- Build 0 erreur / 0 warning ; suite complète **3 173 tests verts, 0 échec**,
+  16 skips IA préexistants (domain 102, infrastructure 370, api 575,
+  application 1 852, integration 274).
+- Auto-tests du harnais : **11 `node --test` + 20 `unittest`** verts.
+- **Le harnais démarre** avec les seuils tagués (un seuil sur métrique inconnue
+  aurait cassé tous les tirs) : tir à vide hors banc, plan affiché, les cinq
+  sous-métriques `dropped_iterations{scenario:…}` présentes dans le résumé.
+- Passe `/simplify` **sans changement de comportement** : rapport régénéré depuis
+  le JSON du tir A **octet pour octet identique** (`kpis()` mutualisé entre
+  rapport et INDEX, `saturation_state()` mutualisé entre les deux rendus).
+- Sonar (2 itérations) : Quality Gate **OK**, bugs 0, vulnérabilités 0,
+  `new_code_smells` 6 → 8 → **6** (les 2 issues imputables à la task, `CA1861` et
+  `CA1859`, corrigées), `code_smells` 31 → **31**, coverage 86,5 %,
+  new coverage 87,6 → **87,7 %**, maintainability **A**. Les 6 new-code smells
+  restantes sont celles déjà imputées à des tasks antérieures (aucun fichier
+  touché ici).
+- **Flaky préexistant trouvé par le scan et corrigé** :
+  `CdaProcessingMetricsTests.RecordCdaProcessingDurationShouldTagEachStep(step:
+  "total")` échouait en **Release + couverture**, vert en Debug au même commit.
+  Le meter `Mssante.MailProcessing` est statique donc process-wide, xUnit
+  parallélise les classes, et la liste de capture était mutée **sans verrou** (la
+  trace d'échec contient des mesures `mssante_sync_*` qu'aucun test de la classe
+  n'émet). Filtre à l'abonnement + verrou ; vérifié **2 × 1 852 verts en Release
+  avec couverture**.
+
+**Tir de contrôle du coût des logs — résultat négatif, et c'est une information**
+
+Protocole : redémarrage au niveau visé → échauffement de 60 s **jeté** (un
+redémarrage vide les pools IMAP/Npgsql) → mesure de 2 min à `RPS=600`, au point
+**valide** ; les deux niveaux rejoués. Fenêtres identiques à **0,01 %** près sur
+tout ce qui n'est pas `Debug` (Information 324 966 / 324 927 ; Warning 93 692 /
+93 690 ; Error 7 291 / 7 294), seul écart **+208 796 `Debug`** soit **49 % du
+volume** (4 534 → 3 042 év/s).
+
+Effet : **débit plateau 540,0 req/s dans les deux cas** (100 % du budget), p95
+global −0,5 %, latence moyenne +2,8 % (dans l'autre sens), requêtes servies
+identiques à l'unité, les deux tirs **VALIDES** (drop 0,01 % / 0,03 %). CPU
+`mss.mail.api` 2,6-3,4 cœurs contre 3,0-3,8 — chevauchant. Seul écart visible :
+`vmmemWSL` +1 cœur en `Debug`, cohérent avec l'ingestion des 209 k événements —
+**coût payé par Seq, pas par l'application**.
+
+**Conclusion : le niveau de log est un levier de fidélité et d'hygiène, pas de
+performance.** Réserve : mesuré sous le genou ; à saturation aucun tir n'est
+valide, donc rien n'y est proprement imputable.
+
+**Deux corrections de méthode**
+
+- Le « CPU hôte 93-100 % » relevé au tir nominal est **partiellement contaminé** :
+  ce poste fait tourner SonarQube, Ollama, Keycloak, SQL Server, Mongo en
+  permanence et le compteur `_Total` les inclut. Restent propres : le **par
+  processus** (`k6` 0,3 cœur, `mss.mail.api` 3-6 cœurs) et le **par conteneur**
+  (`docker stats` : 3,2 cœurs dont Postgres ~60 %). Énoncé défendable :
+  *la pile application+banc sature entre 540 et 1 080 req/s, Postgres est le plus
+  gros consommateur identifié, le tireur est hors de cause*.
+- **Un redémarrage d'AppHost efface les proxies Toxiproxy** (créés par le seed) :
+  tout tir meurt dans `setup()` en `proxy "dovecot-imap" not found (HTTP 404)`,
+  code k6 107. Remède non destructif consigné dans le skill :
+  `dotnet run --project tests/mss.mail.loadtest.seed -- --users 200 --messages 0`.
+
+**Reste dû — et c'est l'essentiel**
+
+Cette task livre l'**instrument**, pas la **mesure**. Quatre items de DOD sont
+différés au banc : vérification dans Seq de l'absence d'événements `Debug`, **tir
+de validité 200 praticiens** (`dropped < 1 %`, `vus < vus_max`, rapport sans
+bandeau — c'est lui qui produira **le premier chiffre de capacité exploitable du
+banc**), tir de contrôle `MSS_LOADTEST_LOG_LEVEL=Debug` pour chiffrer le coût des
+logs, et les deux rapports comparés au tir A.
+
+**Hors automation / hors périmètre**
+
+- `c9bb52d` — `develop` portait une modification **non committée** de
+  `src/AppHost/pgbouncer/pgbouncer.ini` laissée par la campagne du 2026-07-27
+  (`max_client_conn` 5000 → 12000, justification mesurée de
+  `default_pool_size=2`). Emportée par la création de la branche, committée
+  **seule et en tête** pour rester isolable plutôt que perdue.
+- `conventions/csharp.md` (racine du workspace) enrichi de **CA1861** et
+  **CA1859** — le fichier est **gitignoré** par le `.gitignore` racine (« tout
+  ignoré par défaut »), il ne vit donc que sur cette machine. À noter pour la
+  boucle d'auto-amélioration décrite dans le CLAUDE.md.
+- `.claude/skills/loadtest-skill/SKILL.md` : la garde de validité est posée comme
+  **premier contrôle** d'un rapport, un quatrième plafond (« le harnais lui-même »)
+  est ajouté à la liste des plafonds, et le niveau de log du banc est documenté.
+  Non committé — contrôle plane, géré par l'humain.
+
+---
+
+### v1.6 — Le banc sait enfin nommer sa ressource limitante : attribution par réplica, échantillonneur, débit au dénominateur nommé — task-204
+
+**Origine.** Le rapport `report-mixed-mssante-150vu-141351.md` (campagne 500 du
+2026-07-27) concluait « saturé sur IMAP + CPU » **sans qu'aucune ressource n'ait
+été échantillonnée pendant le tir** — ni CPU hôte par processus, ni CPU par
+conteneur, ni compteur runtime .NET. C'était une inférence, et le tir de contrôle
+de task-203 l'a démentie : `postgres-pgvector` pesait 188 % de CPU en moyenne
+(439 % en pointe, ~60 % du CPU conteneurs) contre **13 % pour `dovecot`**. Aucun
+tir du banc n'avait jamais pu **nommer** son facteur limitant.
+
+#### Le point dur : le proxy DCP rendait les métriques inattribuables
+
+`AppHost.cs` déclare `.WithReplicas(5)` avec `WithHttpEndpoint(port: 5052)`. Ce
+port est le **proxy DCP** devant les cinq réplicas, et `prometheus.yml` scrapait
+cette cible unique. Chaque scrape tombait donc sur un réplica **au hasard** :
+
+- les compteurs (`*_total`) reculaient d'un scrape à l'autre → `rate()` bruité,
+  voire troué ;
+- les jauges runtime (file du ThreadPool, threads, CPU process) décrivaient **un
+  réplica différent à chaque point** — inutilisables pour désigner un réplica
+  saturé ;
+- `/metrics` partageait la surface HTTP de l'API : le scrape traversait le même
+  pipeline que la charge.
+
+#### La voie retenue, et l'argument qui a tranché
+
+| Voie | Ce qu'elle demande | Verdict |
+|---|---|---|
+| Scrape par réplica (`file_sd`/`http_sd` généré depuis l'API DCP) | découvrir les **ports dynamiques** des 5 réplicas au démarrage du banc, puis les régénérer à chaque redémarrage | **écartée** — la méthode DCP « déjà éprouvée » ne l'est que pour **lire les logs** (`%TEMP%\aspire-dcp*\<guid>_out`), pas pour énumérer des endpoints. Elle plaçait un détail d'implémentation d'Aspire sur le chemin critique de chaque montage de banc. |
+| **Fan-out OTLP vers un collector** | un conteneur au profil loadtest, une variable d'environnement | **retenue** — les réplicas **poussent**, donc le problème de découverte **disparaît** au lieu d'être contourné. Le code applicatif était déjà prêt (`AddOpenTelemetryExporters`), et le collector promeut `service.instance.id` en étiquette via `resource_to_telemetry_conversion`. |
+
+**Fan-out et non substitution** : `MSS_BENCH_OTLP_ENDPOINT` ajoute un **second**
+lecteur de métriques ; celui que l'AppHost configure pour le dashboard Aspire
+reste en place. Un banc ne doit pas aveugler l'outil de diagnostic qu'on regarde
+pendant qu'il tourne.
+
+**Identité du réplica** : `MSS_BENCH_INSTANCE_ID` si posée, sinon
+`{machine}-{pid}`. L'AppHost ne sait pas varier une variable d'environnement par
+réplica — mais chaque réplica est un **processus**, donc machine + PID les
+distingue par construction, sans rien demander à l'orchestrateur.
+
+#### Livré
+
+| Brique | Contenu |
+|---|---|
+| `src/Api/Telemetry/BenchTelemetry.cs` | aiguillage pur et testable : `ResolveEndpoint` (complète le chemin `/v1/metrics`, **lève** sur URL mal formée plutôt que de désarmer l'attribution en silence), `ResolveInstanceId`, `IsEnabled` |
+| `src/Api/DependencyInjectionExtensions.cs` | second lecteur OTLP (5 s, aligné sur le scrape) + attribut de ressource `service.instance.id`, **uniquement** quand la variable du banc est posée |
+| `src/AppHost/otel-collector/config.yaml` | collector `contrib` 0.115.1 : réception OTLP/HTTP 4318, réexposition Prometheus 8889 avec promotion des attributs de ressource, métriques internes sur 8888 |
+| `src/AppHost/prometheus.loadtest.yml` | configuration **du profil loadtest seulement** : scrape le collector (5 séries) et sa santé ; le proxy DCP est délibérément absent (le garder ferait un double comptage silencieux) |
+| `src/AppHost/AppHost.cs` | conteneur `loadtest-otel-collector` (14318 / 18899 / 18898), aiguillage du fichier Prometheus, `MSS_BENCH_OTLP_ENDPOINT` sous le garde-fou de profil |
+| `tests/loadtest-k6/observe.ps1` + `observe.sh` | échantillonneur détaché, CSV **long** (`ts_utc,scope,target,metric,value`) horodaté **UTC**, cadence 5 s : CPU/mém/threads de **k6** et de **chaque** réplica par PID, `docker stats` des conteneurs **du banc**, sessions IMAP Dovecot, `SHOW POOLS` agrégé, `pg_stat_activity` |
+| `tests/loadtest-k6/report.py` | section « Ressources & télémétrie » : tableau **par réplica**, tableau par conteneur et pour le tireur, **p95 client vs p95 serveur**, compteurs `Mssante.MailProcessing`, ligne « ressource épinglée » (seuil 85 % de la borne) |
+| `tests/loadtest-k6/lib/summary.js` | `startedAt` / `endedAt` / `runDurationMs` dans le contexte du tir — sans quoi le repliement Prometheus et CSV n'a pas de fenêtre |
+| `src/AppHost/grafana/dashboards/saturation.json` | dashboard « Saturation » : répliques distinguées (doit valoir **5**), rejets du collector, backends et `cl_waiting`, CPU et file du ThreadPool par réplica, p95 serveur par route |
+| `run.sh` / `run.ps1` | remote-write Prometheus **par défaut** (`PROM=0` / `-NoPrometheus` pour couper) |
+
+#### Le débit publié était faux depuis l'origine
+
+`http_reqs.rate` de k6 divise par la fenêtre **totale** du run, **arrêt gracieux
+inclus** (330 s pour un plateau de 300 s) : **tous** les débits publiés par ce
+banc étaient sous-estimés de ~8-10 %. Le rapport publie désormais les deux
+chiffres en nommant leur dénominateur, l'INDEX porte une colonne `Débit plateau`,
+et l'historique a été recalculé (9 lignes).
+
+Le calcul, écrit indépendamment, retombe **exactement** sur les corrections faites
+à la main le 2026-07-28 — ce qui vaut validation croisée :
+
+| Tir | Publié par k6 | À la main (28/07) | `report.py` |
+|---|---|---|---|
+| Référence 200 | 915,5 | 934,5 | **934,5** ✅ |
+| Tir A | 833,6 | 917,0 | **917,0** ✅ |
+| Tir 500 | 906,4 | — | **942,0** |
+
+Garde-fou trouvé au passage : un `shared-iterations` **fini** (`enrich`) s'arrête
+quand sa bande d'UIDs est épuisée, donc sa `duration` n'est qu'un `maxDuration`.
+Diviser par elle rendait **0,4 req/s** pour un tir qui en délivrait 1,8 — un
+chiffre faux dans l'autre sens. Le rapport écrit désormais « sans objet ».
+
+#### Deux défauts bloquants trouvés avant le merge, et ni l'un ni l'autre par relecture
+
+1. **Les 5 réplicas auraient planté au démarrage, en profil loadtest et nulle part
+   ailleurs.** Sous Aspire, `OTEL_EXPORTER_OTLP_ENDPOINT` est posé, donc
+   `UseOtlpExporter()` est armé — et l'API refuse de le combiner avec un
+   `AddOtlpExporter` par signal :
+   `NotSupportedException: Signal-specific AddOtlpExporter methods and the
+   cross-cutting UseOtlpExporter method being invoked on the same
+   IServiceCollection is not supported.` Le fan-out écrit de la façon la plus
+   naturelle était donc un crash **au premier montage de banc, après le merge**.
+   Correctif : le lecteur est instancié à la main
+   (`PeriodicExportingMetricReader` + `OtlpMetricExporter`), ce qui l'ajoute à ceux
+   de `UseOtlpExporter` sans passer par le garde-fou du conteneur DI. **Trouvé par
+   un test de coexistence écrit par acquit de conscience.**
+2. **Le rapport concluait faux, et avec assurance.** Sans fenêtre de tir dans le
+   JSON k6 (**29 fichiers archivés**) et avec un CSV présent, la section agrégeait
+   le fichier **entier** et annonçait « Ressource épinglée : conteneur
+   `postgres-pgvector` (CPU) — 87,5 % de sa borne » sur des points hors tir.
+   Atteignable en une commande, `report.sh` reprenant automatiquement le CSV le
+   plus récent du répertoire de tir. C'est **exactement** le mode d'échec que la
+   task existe pour supprimer, en pire — un chiffre affirmatif se recopie. Un
+   repliement n'a de sens que **borné** : sans fenêtre, aucun point n'est retenu et
+   la section écrit pourquoi. **Trouvé en exécutant le cas dégradé, pas en le
+   relisant** (`questions/task-204.md`).
+
+#### Ne jamais conclure en silence — la règle cardinale, verrouillée par 9 tests
+
+Prometheus injoignable, Prometheus sans point, CSV absent, CSV hors fenêtre, CSV
+non repliable, fenêtre absente, aucune série par réplica, aucun p95 serveur, aucun
+compteur métier : chacun de ces cas **s'écrit** dans le rapport. Une section vide
+se lirait « rien n'était saturé », ce qui est précisément l'erreur du 2026-07-27.
+
+#### Validation
+
+- Build **0 erreur / 0 warning** ; **3 195 tests .NET verts, 0 échec** (16 skips IA
+  préexistants), dont **+22** sur cette task ; suite rejouée en **Release avec
+  couverture** pendant le scan Sonar
+- **Auto-tests du harnais : 11 node + 50 unittest verts** ; `selftest.sh` passe en
+  `unittest discover` (un nouveau `test_*.py` est pris en compte sans intervention)
+- **Sonar : 0 issue sur le périmètre au premier scan**, `BenchTelemetry.cs` à
+  **100 %** de couverture (15/15 lignes), KPI au niveau de la baseline, Quality
+  Gate OK. Aucune entrée ajoutée à `conventions/csharp.md` : **aucune correction
+  manuelle n'a été nécessaire** — CA1861, apprise en task-203, a été appliquée
+  d'emblée. La boucle d'auto-amélioration a fonctionné.
+- Passe `/simplify` validée par un rapport régénéré **octet pour octet identique**
+
+#### Deux pièges d'outillage, dont un neuf et coûteux
+
+1. **Confirmé** (task-200, task-203) : `dotnet sonarscanner` ne reçoit pas ses
+   arguments `/k:` `/d:` sous Git Bash → script PowerShell détaché.
+2. **NEUF** : seul **PowerShell 5.1** est installé sur le poste (`pwsh` absent). Un
+   `.ps1` accentué enregistré **sans BOM UTF-8** est lu en ANSI ; le mangling casse
+   le *parsing*, et l'erreur produite (`CommandNotFoundException` sur un fragment de
+   chaîne) ne ressemble pas à un problème d'encodage. Le premier scan Sonar a ainsi
+   « réussi » avec un code de sortie 0 **sans rien scanner**. Remèdes : BOM UTF-8
+   obligatoire sur tout `.ps1` accentué (appliqué à `observe.ps1`, qui portait le
+   même risque), et contrôle de parsing avant exécution
+   (`[System.Management.Automation.Language.Parser]::ParseFile`).
+
+#### Limites / différé
+
+- **L'escalier de capacité reste dû** — 200 praticiens, paliers **540 / 700 / 840 /
+  980 / 1080** (réalignés sur le genou mesuré au 2026-07-28 ; l'ancien
+  600/900/1200/1600 visait à côté et le palier 1 600 est inatteignable sur cette
+  machine). C'est le livrable qui manque depuis le début de l'EPIC.
+- **Trois points ne sont vérifiables qu'au banc** : les **noms de métriques
+  Prometheus** (conventionnels OTel .NET, non confrontés à un `/metrics` réel —
+  s'ils ont bougé, la section dira « aucun point », comportement voulu, mais
+  l'attribution sera vide) ; la **version et la configuration du collector**
+  (`service.telemetry.metrics.readers` a changé de forme entre versions) ; les
+  **trois sondes** `doveadm who` / `SHOW POOLS` / `pg_stat_activity`, qui ont
+  correctement journalisé leur absence (12 échecs tracés, aucun silencieux) mais
+  dont le chemin nominal n'est pas joué.
+- **Le poste de mesure est le prochain obstacle** : l'infrastructure du banc
+  (`vmmemWSL` 9-10 cœurs) et les 5 réplicas (4-6 cœurs) se partagent 24 cœurs.
+  Tout chiffre de capacité obtenu ici est un **plancher**. Décision à prendre :
+  réduire la contention et publier un plancher assumé, ou séparer le tireur et
+  l'infra du banc de la machine applicative.
+- **Suggestions de revue non traitées** (règle 6) : `BenchTelemetry.IsEnabled`
+  n'est utilisé que par les tests ; `PGPASSWORD=postgres` apparaît deux fois dans
+  `observe.ps1` (la convention S2068 dit « une déclaration, N usages ») ;
+  `report.py` atteint ~1 100 lignes et le helper de table Markdown écarté par
+  task-203 a maintenant 4 sites d'appel de plus.
+- **`SONAR_TOKEN` du `.env` est périmé (401)** — le scan a été authentifié avec
+  `SONAR_ADMIN_PASSWORD` du même fichier, sans rien créer côté SonarQube. À
+  régénérer par l'humain.
+
+---
+
+### v1.7 — L'escalier de capacité : le facteur limitant enfin nommé et chiffré — task-204 (campagne du 2026-07-29)
+
+> Entrée distincte de la v1.6 à dessein : celle-ci livrait **l'instrument**
+> (attribution par réplica, échantillonneur, section « Ressources & télémétrie »)
+> et consignait « l'escalier de capacité reste dû ». Voici la **mesure**.
+
+Population fixe **200 praticiens**, `mixed` 3 min, budget explicite, cinq paliers,
+chacun avec son rapport et sa ligne d'INDEX.
+
+| Budget demandé | Délivré (plateau) | Servi | Latence moy. | p95 | Abandons | Valide |
+|---|---|---|---|---|---|---|
+| 486 req/s | 482,7 | 99,3 % | 256 ms | 1 111 ms | 0,67 % | ✅ |
+| 630 req/s | 625,4 | 99,3 % | 223 ms | 1 125 ms | 0,74 % | ✅ |
+| 756 req/s | 745,5 | 98,6 % | 290 ms | 1 210 ms | 1,15 % | ❌ |
+| 882 req/s | 824,8 | 93,5 % | 396 ms | 1 309 ms | 4,21 % | ❌ |
+| 972 req/s | 857,9 | 88,3 % | 591 ms | 1 343 ms | 7,38 % | ❌ |
+
+**Genou : entre 745 et 825 req/s délivrés.** Plafond mesuré ~858 req/s. Rendement
+marginal : +99 %, +95 %, puis +63 %, +37 % du surcroît demandé.
+
+#### Le facteur limitant : famine de ThreadPool sur `read_list`
+
+| Budget | `read_list` moy | File ThreadPool par réplica | CPU par réplica |
+|---|---|---|---|
+| 630 req/s | 212 ms | 5 / 4 / 4 / 4 / 3 | ~1,0-1,2 cœur |
+| 882 req/s | **714 ms** | **136** / 93 / 13 / 10 / 7 | ~1,1 cœur |
+| 972 req/s | **1 533 ms** | **432** / 205 / 68 / 13 / 6 | ~1,2-1,5 cœur |
+
+Deux faits ne laissent qu'une lecture : `read_list` se dégrade d'un facteur **~7**
+quand les autres opérations ne prennent qu'un facteur ~1,5 (`folders` 44 → 167,
+`search` 276 → 657, `send` 1 137 → 1 703, `enrich` 2 659 → 4 177 ms) ; et la file
+du ThreadPool explose **à CPU quasi constant** — 432 éléments pour 1,19 cœur et
+44 threads. Ce n'est pas une famine de CPU, c'est du **blocage d'I/O sur des
+threads du pool**, que l'escalade du ThreadPool (1-2 threads/s) ne rattrape pas.
+La répartition très inégale entre réplicas (432 / 205 / 68 / 13 / 6) exclut une
+cause globale (base, pooler, IMAP) et pointe un chemin de code.
+
+#### L'expérience qui exclut le harnais, et qui vaut la campagne à elle seule
+
+Même budget, même population, **seul** `VU_TAIL_FACTOR` change :
+
+| | 882 `tail=8` | 882 `tail=16` | 972 `tail=8` | 972 `tail=16` |
+|---|---|---|---|---|
+| **Débit délivré** | **824,8** | **716,4** (−13 %) | **857,9** | **683,3** (−20 %) |
+| Abandons | 4,21 % | 13,49 % | 7,38 % | **23,92 %** |
+| p95 | 1 309 ms | 6 766 ms | 1 343 ms | **14 685 ms** |
+| `read_list` moy | 714 ms | 3 606 ms | 1 533 ms | **5 288 ms** |
+| File ThreadPool | 136/93/13/10/7 | 406/951/579/648/813 | 432/205/68/13/6 | 203/435/484/387/429 |
+| CPU par réplica | ~1,1 cœur | 0,8-2,3 | 1,2-1,5 | 0,9-1,6 |
+
+**Plus de concurrence cliente → moins de débit**, aux deux paliers, de façon
+monotone, à CPU applicatif inchangé. Le harnais n'était donc pas la borne : le
+rendement est **négatif** au-delà du genou. `tail=16` fait déborder les **cinq**
+réplicas alors que `tail=8` n'en chargeait que deux — la congestion se généralise,
+elle ne se déplace pas.
+
+#### Ce que la campagne écarte, avec ses chiffres
+
+| Suspect | Mesure au palier le plus haut | Verdict |
+|---|---|---|
+| CPU applicatif | **3,68 cœurs sur 24** pour les 5 réplicas (15 %) | écarté |
+| CPU de l'hôte | 78-87 % moy — mais **14,93 cœurs pour l'infra du banc** (`vmmemWSL` 7,56 ; Postgres 2,40 ; Docker 1,88 ; `dcp` 1,18) | contamine, ne cause pas |
+| PgBouncer | `cl_waiting` ≤ 8 en fenêtre, 2 001 clients sur 153-162 serveurs (~13:1) | écarté |
+| Dovecot / IMAP | **1 001 sessions, constantes aux 5 paliers** (= 5 × 200), CPU 0,19 cœur | écarté |
+| Postgres | 2,40 cœurs moy, 3,87 max | écarté |
+| Client k6 | 0,47 cœur | écarté |
+
+**Corollaire** : le banc se dispute la machine avec le service qu'il mesure (15 %
+pour l'application, 62 % pour l'infra de test). **~858 req/s est un plancher de la
+capacité réelle, pas un plafond.**
+
+#### Deux campagnes, parce que la première a été jetée
+
+La 1re a sorti 4,6 % d'abandons dès le premier palier. Diagnostic → deux findings
+d'outillage : 1 576 des 3 475 abandons étaient **structurels** (`mixed_enrich` est
+un `shared-iterations` dont le reliquat compte en `dropped_iterations` — contourné
+par `ENRICH_SHARE=0.05`, → task-208) ; le reste était un vrai sous-dimensionnement
+de `folders` et `read`, les constantes de `vu-sizing.js` (`read` = 0,16 s) étant
+démenties par la mesure (jusqu'à 1,65 s) — compensé par `VU_TAIL_FACTOR=8`,
+→ task-209, **mais pas** en élargissant les pools, l'expérience ci-dessus montrant
+que cela aggrave le tir.
+
+#### Vérification et findings ouverts
+
+`--expected 100` : ~20 000 mails stockés aux cinq paliers, verdict **PASS**,
+**0 sujet étranger**, **0 court-circuit d'enrich**. Cinq tasks ouvertes :
+**205** (le facteur limitant), **206** (`SecurityTokenMalformedException`, >1 200/s),
+**207** (`mssante_imap_session_events_total` mort), **208** (le rapport conclut
+faux de 3 façons), **209** (dimensionnement des VUs).
+
+---
+
+### v1.8 — Famine de ThreadPool sur `read_list` : la résolution de dossier IMAP passe en asynchrone — task-205
+
+**Le facteur limitant nommé par la v1.7 est supprimé.**
+
+#### L'instruction bloquante, nommée
+
+`src/Application/Services/Implementation/ImapService.cs:1180` (avant correctif),
+dans `TryGetFolderSafely` :
+
+```csharp
+imapFolder = imapClient.GetFolder(folder, cancellationToken);   // bloquant
+```
+
+Chemin : `MailController.GetEmailsByIdsAsync` (`:247`) → `OnlineMailDataProvider.GetEmailHeadersAsync`
+(`:38`) → `ImapService.GetEmailFromUidsAsync` (`:661`) → `FetchEmailsInternalAsync`
+(`:1215`) → `FetchMissingUidsWithLocksAsync` (`:1277`) → `ProcessEmailUidAsync`
+(`:1435`) → `TryGetFolderSafely` (`:1172` → `:1180`).
+Relais : `IImapClientWrapper.GetFolder(string, CancellationToken)` (`:35`) →
+`ImapClientWrapper.cs:66` → `MailKit.IMailStore.GetFolder(string, CancellationToken)`.
+
+#### La preuve que cette surcharge fait de l'I/O — l'API de MailKit
+
+Tirée des métadonnées de `MailKit.xml` 4.11.0 : sur les **trois** surcharges de
+`GetFolder`, une seule a un pendant `Async` et une seule déclare des exceptions de
+transport.
+
+| Surcharge | Pendant `…Async` ? | Exceptions déclarées | Verdict |
+|---|---|---|---|
+| `GetFolder(FolderNamespace)` | non | `ArgumentNull`, `FolderNotFound` | lecture mémoire |
+| `GetFolder(SpecialFolder)` | non | — | lecture mémoire |
+| **`GetFolder(String, CancellationToken)`** | **oui** | `IOException`, `ProtocolException`, `CommandException`, `OperationCanceled` | **I/O réseau (LIST)** |
+
+#### Trois recoupements avec la mesure de la v1.7
+
+1. **`read_list` ×7 quand `folders` ne fait que ×1,5** : `folders` passe par
+   `GetFoldersAsync(namespace, …)` et ne touche jamais `TryGetFolderSafely`. Même
+   Dovecot, seule l'opération bloquante s'effondre.
+2. **Le Manual Test Plan exige de purger les tables mail** sinon le défaut ne se
+   reproduit pas. Le code dit pourquoi : base pleine → `FetchEmailsInternalAsync`
+   sert depuis `GetMailsByUidsAsync` et sort **avant** le chemin IMAP ; base vide →
+   chaque `read_list` traverse `ProcessEmailUidAsync`. Le déclencheur documenté du
+   défaut sélectionne exactement la branche fautive.
+3. **File qui explose à CPU plat** : un thread parqué sur une I/O ne consomme pas de
+   CPU mais retire une unité de service au pool.
+
+#### Livré
+
+- `TryGetFolderSafely` → **`TryResolveFolderAsync`** (`ImapService.cs:1187`),
+  `await imapClient.GetFolderAsync(…)`. **5** appelants convertis : `:401`
+  `GetFolderStatus`, `:601` `GetFolderQuery`, `:723` `EnrichEmails`, `:1476`
+  `ProcessEmailUid` (*le chemin `read_list`*), `:2693` `FetchSingleEmail`.
+- **La surcharge synchrone est retirée de `IImapClientWrapper`** — le retrait *est*
+  le correctif : ce qui n'existe plus ne peut pas être rappelé par inadvertance.
+  Les surcharges `SpecialFolder` / `FolderNamespace` restent (lectures mémoire).
+- Comportements du try-pattern préservés et testés : `FolderNotFoundException`
+  **propagée** (self-heal → 404), toute autre panne **absorbée**.
+
+#### Trois gardes de non-régression, toutes constatées RED avant le correctif
+
+`tests/mss.mail.application.tests/Services/Imap/ReadListNonBlockingTests.cs`, 6 tests.
+
+| Garde | Ce qu'elle interdit | Angle mort |
+|---|---|---|
+| Surface publique (réflexion) | un `GetFolder(string, …)` synchrone sur `IImapClientWrapper` / `ImapClientWrapper` | un appel qui court-circuite le wrapper |
+| **Analyseur** (`System.Reflection.Metadata`, aucune dépendance ajoutée) | toute référence de l'assembly à `IMailStore.GetFolder(String, CancellationToken)` — filtre sur la **signature décodée**, pas sur le nom (sinon les 2 surcharges légitimes seraient signalées à tort) | un blocage par une *autre* API |
+| Comportement (`Timeout = 15 s`) | que `read_list` garde le thread appelant pendant que l'I/O du dossier est en attente — attrape aussi un `sync-over-async` réintroduit sur `GetFolderAsync` | ce qui ne passe pas par la résolution de dossier |
+
+**L'analyseur se contrôle lui-même** (passe `/simplify`) : il exige de retrouver la
+surcharge **légitime** (`GetFolder(FolderNamespace)`) avant d'affirmer que la
+bloquante a disparu. Sans ce témoin, un changement de rendu des types ferait passer
+la garde **à vide** en annonçant un succès. Le témoin a payé immédiatement : il a
+montré que le compilateur émet la référence contre **`MailKit.MailStore`** (la
+classe de base concrète) et non contre l'interface.
+
+#### Le suspect historique innocenté par la lecture du code
+
+La task désignait `BaseRepository.get_DataContext` (⚠️ « ne pas partir de la
+conclusion »). `BaseRepository.cs:115` porte bien un
+`CreateDbContextAsync().GetAwaiter().GetResult()`, mais `CreateDbContextAsync` n'a
+qu'un `await`, sous `if (environment == "Development" || "Staging")` →
+`HandleEnvironmentDbSetupAsync`, dont la première ligne est un fast-path statique
+par processus (`_migratedDatabases.ContainsKey`, `:276`). Après le premier contact
+de chaque base par chaque réplica — donc pendant tout le plateau d'un tir de 3 min
+— la tâche est **déjà complétée** et `GetAwaiter().GetResult()` ne bloque rien.
+Le `.Result` est réel ; il n'est pas le facteur limitant mesuré. Non corrigé
+(règle 6).
+
+#### Deux blocages adjacents signalés, non corrigés (règle 6)
+
+1. `MailClientSession.cs:234` — `DisconnectAsync(true).GetAwaiter().GetResult()`
+   dans `Dispose` : un `Dispose` qui bloque sur une déconnexion réseau, appelé par
+   le timer de nettoyage des sessions.
+2. `EmailFlagService.cs:44/67/77/89` — `AddFlags` / `RemoveFlags` **synchrones**
+   (commande IMAP STORE), sur le chemin « marquer lu/suivi ».
+
+#### Validation
+
+Build **0 erreur / 0 warning** (`api-mail` + `dtos-mss`) ; **3 207 tests verts,
+0 échec**, 16 skips IA préexistants (domain 102, infrastructure 370, application
+1 858, api 590, integration 287). SonarQube **9.9.8** : Quality Gate **OK**,
+new coverage 87,8 → **87,9 %**, **0 issue** sur les 3 fichiers de production, et
+couverture vérifiée **ligne à ligne** sur `TryResolveFolderAsync` — **100 %**,
+branches `catch` comprises (l'agrégat du fichier, 71,6 % sur 1 350 lignes
+majoritairement antérieures, ne dirait rien de ce diff).
+
+Revue de code : **APPROVED**, 1 défaut trouvé et corrigé avant la PR — le `using
+System.Diagnostics.CodeAnalysis` devenu **mort** avec la disparition du
+`[NotNullWhen(true)]` (`4bfdffe`). Ni Sonar ni le compilateur ne le signalent.
+
+PR : [#131](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/131),
+label `awaiting-human-merge`. `dtos-mss` : branche sans commit, pas de PR.
+
+#### Le piège d'outillage qui corrige task-204
+
+Le `end` du scanner a échoué **après** ~6 min de build + tests sur
+`ERROR: Not authorized`. La v1.6 avait conclu « `SONAR_TOKEN` périmé (401), à
+régénérer par l'humain ». **C'est faux** : `/api/authentication/validate` renvoie
+`{"valid":true}`. La vraie cause est la **version du serveur** — `sonar.token`
+n'existe qu'à partir de SonarQube **10.0**, l'instance est en **9.9.8**, qui
+l'ignore : le `begin` réussit (lecture du profil), seul le **publish** refuse.
+Correctif : `/d:sonar.login="$SONAR_TOKEN"`. `.sonarqube/` survit à un `end` en
+échec — rejouer `end` seul suffit (30 s au lieu de 6 min).
+**`agents/sonar.md` corrigé** (sections Begin/End + avertissement) : modification
+du plan de contrôle de la forge, **à ratifier par l'humain**.
+Confirmé sans changement : `dotnet sonarscanner` ne reçoit pas ses `/k:` `/d:` sous
+Git Bash → script PowerShell détaché, écrit en **ASCII pur** pour neutraliser
+d'emblée le piège d'encodage PS 5.1 de la v1.6, parsing vérifié avant exécution.
+
+#### Limites / différé — la mesure
+
+Le code est corrigé et verrouillé ; **la moitié « mesure » de la DOD est un tir de
+banc**, même découpage que la v1.6.
+
+- **Pile de threads bloqués** à 882 req/s (`dotnet-stack`) — le chemin est nommé et
+  prouvé par l'API de MailKit et trois recoupements, la pile est la preuve *in situ*
+  qui manque.
+- **Palier 882** : file ThreadPool max **< 20** par réplica (contre 136) et
+  `read_list` moy **< 400 ms** (contre 714).
+- **Palier 972** : débit délivré **> 900 req/s** (contre 857,9), drop **< 1 %**.
+- **Rapport de tir + ligne d'INDEX** avant/après (la baseline « avant » est sur
+  `develop` depuis le merge de task-204).
+- **Réserve sur le critère de débit** : le seuil de 900 req/s dépend aussi de la
+  contention du banc (62 % du CPU pour l'infra de test contre 15 % pour
+  l'application), hors périmètre de cette task. Le critère qui teste vraiment le
+  correctif est **l'effondrement de la file ThreadPool** ; file effondrée + débit
+  sous 900 = arbitrage PO, pas échec du correctif.
+- **Les 6 new-code smells Sonar en sont à leur 5ᵉ task consécutive** (task-199, 200,
+  203, 204, 205), sur `BackgroundSyncService`, `OcspValidationService`,
+  `MailClientSession`, `VCardSerializer` — aucun fichier touché par ces tasks.
+  Aucune task de feature ne peut légitimement les corriger (hors de son module) :
+  **seul un run `/sonar api-mail` Mode B le peut. À planifier.**
+
+---
+
 ## Annexe A — Cartographie des briques applicatives
 
 | Brique | Chemin | Rôle |
@@ -707,3 +1298,6 @@ commentaire n'avait pas suffi les deux fois d'avant.
 | task-195 | Bascule du serveur IMAP du banc vers Dovecot `2.3.21` (conf montée, maildir sur volume nommé, auth wildcard à mot de passe vérifié), GreenMail rétrogradé en puits SMTP, Toxiproxy réaligné, seed adapté, smoke test de fetch partiel. **Débloque la pipeline CDA/IHE-XDM**, jusque-là inexécutable sur le banc, et lève le plafond de volumétrie. Validation end-to-end réelle exécutée (4 extractions CDA observées). Binaire api-mail inchangé. | — |
 | task-174 | Harnais de tir k6 : 6 scénarios (`folders`, `read`, `search`, `send`, `enrich`, `mixed`), 8 modules `lib/`, lanceurs et `reset-state.sh`, profils de latence Toxiproxy pilotés par le harnais, sortie Prometheus remote-write vers le Grafana du banc (dashboard dédié), **thresholds-as-code** (pass/fail démontré, code de sortie 99 sous `degraded`) et **baseline anti-régression committée**. Trois plafonds de banc identifiés et outillés (bases Postgres persistantes, limiteur de débit api-mail, connexions IMAP Dovecot). Quality Gate ERROR → OK en une passe, 17 findings JS, `conventions/javascript.md` créé. Binaire api-mail inchangé (seul l'AppHost bouge, +9 lignes). | — |
 | task-200 | PgBouncer mode transaction devant « une base par praticien » : conteneur `loadtest-pgbouncer` au profil loadtest (configuration montée), et **séparation du chemin de données (via pooler) et du plan de contrôle (verrou de provisionnement, `CREATE DATABASE`, `MigrateUp` — direct sur Postgres)** via `UserContextInfo.ConnectionStringDirect` et ses dérivées, avec repli garantissant l'absence de changement de comportement hors banc. Compatibilité tranchée par 5 tests d'intégration sur la configuration réelle du banc : EF Core ✓, **pgvector ✓** (la question ouverte), provisionnement en route directe ✓, **multiplexage confirmé (40 clients → ≤ 3 backends)**. Troisième occurrence du piège IPv6 Docker Desktop identifiée (`host.docker.internal` résolu en AAAA seul, PgBouncer ne bascule pas de famille d'adresses) et **verrouillée par un test garde-fou**. ADR de compatibilité écrite. `conventions/csharp.md` créé. **Tir comparatif 200 praticiens encore dû** — le prérequis §4.1 du dossier de dimensionnement n'est pas levé. | — |
+| task-203 | **Le harnais mesurait le harnais.** Pools de VUs de `mixed` dimensionnés par la **loi de Little** à partir des latences mesurées (`lib/vu-sizing.js`, module pur testable hors k6) au lieu de `4 × part × VUS` — un nombre sans rapport avec le débit demandé, qui plafonnait `send` à 7,9 it/s pour 300 demandées et faisait abandonner 45 k à 502 k itérations aux trois tirs du 2026-07-27. `MAX_VUS`, jusque-là **silencieusement ignoré par `mixed`**, est respecté. **Garde de validité** dans `report.py` (bandeau `TIR INVALIDE`, section « Validité du tir », table « débit demandé vs délivré » qui révèle `send` à 14,4 % et `search` à 55,6 % de leur budget) et colonnes `Drop %` / `VU sat.` dans `INDEX.md`, **historique recalculé : 16 des 21 tirs archivés invalides**. Deux faux positifs de la garde trouvés avant livraison (modèle fermé ; abandons structurels d'`enrich`, ~1,16 pt sur un palier de 3 min). Banc journalisé en `Information` comme la Production (904 839 événements `Debug` évités sur une fenêtre de tir). Flaky préexistant de `CdaProcessingMetricsTests` corrigé (meter statique + `List.Add` non verrouillé). **La mesure de capacité reste à produire.** | — |
+| task-204 | **Le banc sait enfin nommer sa ressource limitante.** Attribution des métriques **par réplica** via un fan-out OTLP vers un collector du profil loadtest (`resource_to_telemetry_conversion` promeut `service.instance.id` en étiquette) — le port fixe 5052 devant 5 réplicas étant le proxy DCP, chaque scrape tombait jusque-là sur un réplica au hasard. Voie du **push** retenue contre le scrape par réplica : elle supprime le problème de découverte des ports dynamiques au lieu de le contourner. **Échantillonneur** (`observe.ps1`/`observe.sh`, CSV long UTF-8 UTC) pour ce que la télémétrie ne voit pas : hôte, **k6**, conteneurs du banc, Dovecot, `SHOW POOLS`, `pg_stat_activity`. Section « Ressources & télémétrie » dans `report.py` (par réplica, par conteneur, **p95 client vs p95 serveur**, compteurs métier, ligne « ressource épinglée ») avec **9 tests garantissant qu'aucune absence de source ne produit un tableau vide**. Débit au **dénominateur nommé** : `http_reqs.rate` divisait par la fenêtre totale, arrêt gracieux inclus (~8-10 % de sous-estimation sur TOUS les tirs) — INDEX recalculé, référence 200 à **934,5** et non 915,5. Dashboard « Saturation ». **Deux défauts bloquants trouvés avant merge** : les 5 réplicas auraient planté au démarrage (`AddOtlpExporter` incompatible avec le `UseOtlpExporter` d'Aspire) et le rapport désignait une ressource épinglée sur un CSV non borné. **L'escalier de capacité a été conduit** (cf. v1.7) : genou entre 745 et 825 req/s délivrés, plafond mesuré ~858 req/s, et facteur limitant nommé pour la première fois — famine de ThreadPool sur `read_list`, corrigée par task-205. | — |
+| task-205 | **Suppression du facteur limitant de l'API.** La résolution d'un dossier IMAP par son chemin passait par `IMailStore.GetFolder(string, ct)`, variante **synchrone** d'un aller-retour réseau (commande LIST) : elle parquait un thread du pool pour toute la durée de l'I/O sur le chemin `read_list`. `TryGetFolderSafely` → `TryResolveFolderAsync` (`await GetFolderAsync`), 5 appelants convertis, et **la surcharge synchrone retirée de `IImapClientWrapper`** — le retrait est le correctif. **3 gardes de non-régression** (surface publique, analyseur sur les métadonnées de l'assembly filtrant par signature décodée, test de non-blocage borné en temps), toutes constatées RED avant le correctif ; l'analyseur **se contrôle lui-même** par un témoin, qui a immédiatement révélé que le compilateur émet la référence contre `MailKit.MailStore` et non contre l'interface. Suspect historique `BaseRepository.get_DataContext` **innocenté par lecture du code** (fast-path statique : la tâche est déjà complétée pendant le plateau). Deux blocages adjacents signalés hors périmètre (`MailClientSession.Dispose`, `EmailFlagService`). Faux diagnostic Sonar de task-204 corrigé : `sonar.login` et non `sonar.token` sur SonarQube 9.9. **La campagne de confirmation reste due.** | — |
