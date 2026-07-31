@@ -2,9 +2,9 @@
 
 > **Statut** : En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.42
+> **Version** : 1.43
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-07-28 (task-153 rattrapée)
+> **Dernière mise à jour** : 2026-07-28 (task-176)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
