@@ -4,6 +4,8 @@
 **Epic**: E015
 **Single frontend**: true
 **Dependencies**: task-204 (la colonne « Exceptions /s » qui a rendu le défaut visible)
+**Priorité**: **4/6** — Fidelite du banc (ordre arrêté le 2026-07-31, objectif montée en charge)
+> Une exception par requete (~1 400/s au plafond) : le banc n'exerce pas le chemin d'authentification de production. Un chiffre de capacite mesure sur un autre chemin que celui deploye n'est pas opposable.
 
 > **Origine** : tir de contrôle télémétrie du 2026-07-29 (task-204). La colonne
 > « Exceptions /s » que task-204 vient d'ajouter au rapport a immédiatement montré

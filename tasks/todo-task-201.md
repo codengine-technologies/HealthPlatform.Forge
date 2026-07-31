@@ -4,6 +4,8 @@
 **Dependencies**: task-199 (mergée — squash `f2a93aa`)
 **Epic**: E015
 **Single frontend**: true
+**Priorité**: **6/6** — Robustesse (ordre arrêté le 2026-07-31, objectif montée en charge)
+> Snapshot de flags partage entre pods. Hors du chemin de capacite : task-199 a deja supprime l'appel reseau par requete.
 
 > **Origine** : suite directe de task-199 (évaluation locale des flags). Le
 > snapshot introduit par task-199 est **par processus** ; en déploiement

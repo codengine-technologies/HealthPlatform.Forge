@@ -4,6 +4,8 @@
 **Dependencies**: task-200 (mergée — c'est elle qui a introduit la route directe)
 **Epic**: E015
 **Single frontend**: true
+**Priorité**: **3/6** — Plafond population (ordre arrêté le 2026-07-31, objectif montée en charge)
+> ~1 backend Postgres retenu PAR PRATICIEN, definitivement. La regle de dimensionnement du palier 1000 est `praticiens x repliques x pool` : c'est exactement ce plafond-la. Aucun correctif de debit ne le deplace.
 
 > **Origine** : campagne 200 et 500 praticiens du 2026-07-27, premiers tirs à
 > travers PgBouncer. Le pooler fait son travail (2 000 connexions clientes →

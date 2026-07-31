@@ -4,6 +4,8 @@
 **Epic**: E015
 **Single frontend**: true
 **Dependencies**: task-204 (qui a livré la section, et dont l'escalier a révélé ces trois défauts)
+**Priorité**: **2/6** — Instrument (ordre arrêté le 2026-07-31, objectif montée en charge)
+> Trois verdicts faux dans le rapport de tir, dont un denominateur qui se contredit dans le meme document.
 
 > **Origine** : escalier de capacité du 2026-07-29 (task-204). Les trois défauts
 > ci-dessous ont été trouvés **en lisant les rapports de la campagne**, pas en

@@ -4,6 +4,8 @@
 **Epic**: E015
 **Single frontend**: true
 **Dependencies**: task-205 — **satisfaite** (PR #131 mergée le 2026-07-31, squash `06f8a62`)
+**Priorité**: **5/6** — Gain applicatif (ordre arrêté le 2026-07-31, objectif montée en charge)
+> read_list a 718 ms, serialise par trois verrous. Le plus gros reliquat de latence -- avec la reserve, ecrite dans la task, que rien ne garantit que les verrous portent les 318 ms manquants.
 
 > **Origine** : demande humaine du 2026-07-31, à la lecture de la re-mesure de
 > task-205. La famine de ThreadPool est éteinte, mais `read_list` reste

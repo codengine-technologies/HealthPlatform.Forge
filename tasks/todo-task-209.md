@@ -4,6 +4,8 @@
 **Epic**: E015
 **Single frontend**: true
 **Dependencies**: task-203 (qui a introduit le modèle), task-204 (l'escalier qui l'a mis en défaut)
+**Priorité**: **1/6** — Instrument (ordre arrêté le 2026-07-31, objectif montée en charge)
+> Le harnais produit des abandons qu'on impute a l'application : les 4 tirs du 2026-07-31 sont sortis INVALIDES a cause de lui. Rien ne se conclut tant que ce n'est pas corrige.
 
 > **Origine** : escalier de capacité du 2026-07-29 (task-204). Deux campagnes ont
 > été nécessaires — la première a été jetée — parce que le modèle de
