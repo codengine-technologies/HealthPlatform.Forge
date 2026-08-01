@@ -151,3 +151,75 @@ serveur, aucun contrat ni écran modifié.
 7. **Propagation à 5 min** : flipper `ai_pipeline` dans l'UI Flagsmith,
    constater la prise en compte au rafraîchissement suivant (≤ 5 min) — c'est
    le coût assumé, à valider comme acceptable au HAG.
+
+## Branches
+- `api-mail` (pushed) : feat/task-201-redis-flag-snapshot — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-201-redis-flag-snapshot
+- `dtos-mss` (pushed, auto-inclus) : feat/task-201-redis-flag-snapshot — aucun contrat attendu (US backend-only)
+
+## Sonar log
+
+**Deux findings introduits par la task, tous deux corrigés** — zéro dette
+nouvelle à l'arrivée :
+
+| Règle | Fichier | Correctif |
+|---|---|---|
+| `csharpsquid:S103` (ligne > 150 car.) | `FlagsmithFeatureFlagService.cs` L313 | message de log du store partagé scindé |
+| `external_roslyn:CA1859` | `FlagsmithExtensions.cs` L76 | `CreateSharedSnapshotStore` retourne le type concret |
+
+Après correction, **0 issue sur les 6 fichiers touchés**.
+
+Les `new_violations` restantes sont hors du diff : `python:S3776` ×3 dans
+`tests/loadtest-k6/report.py` (tasks 204 / 209, déjà connues) et
+`csharpsquid:S1067` dans `ContactRepository.cs` (task-023).
+
+> ⚠️ Les KPIs projet restent inexploitables — voir le `## Sonar log` de
+> task-212 : `agents/sonar.md` est périmé (chemin de rapport OpenCover qui ne
+> matche rien, `sonar.login`, pas de `scanAll`), la baseline a été perdue et
+> doit être refaite. Cette analyse-ci n'a servi qu'à ce pour quoi elle est
+> fiable : **les findings par fichier**.
+
+## PRs
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/139 — label `awaiting-human-merge`
+- `dtos-mss` : aucune PR — branche créée par précaution, aucun commit (US backend-only)
+
+## Code Review Summary
+
+**APPROVED** — 6 fichiers, 0 blocage.
+
+- `IFlagSnapshotStore.cs` — ✅ le contrat déclare explicitement qu'il s'agit d'un
+  partage d'état opportuniste, pas d'un cache de lecture ni d'une source de vérité.
+- `RedisFlagSnapshotStore.cs` — ✅ clé singleton globale (pas de segment par
+  praticien), TTL 24 h justifié dans le code, payload corrompu traité comme une
+  absence.
+- `FlagsmithFeatureFlagService.cs` — ✅ store touché uniquement au
+  rafraîchissement ; aucune I/O sous le verrou ; adoption conditionnée à la
+  fraîcheur ; `FailureThrottle` extrait plutôt que dupliqué.
+- `FlagsmithExtensions.cs` — ✅ résolution optionnelle du multiplexer, aucune
+  nouvelle inscription DI, `FlagsmithExtensionsTests` intact.
+- Tests — ✅ 16 nouveaux, contre-test intégré au jeu.
+
+### Trouvaille de `/forge-simplify` (appliquée, non cosmétique)
+La désérialisation JSON rendait un dictionnaire sensible à la casse là où l'état
+mémoire est en `OrdinalIgnoreCase` : la sémantique de résolution d'un nom de flag
+dépendait de la provenance de l'état. Normalisé à la lecture + test dédié.
+
+### Écarts assumés vs l'énoncé
+- **Aucun.** Les 8 points du « Contenu attendu » sont couverts. Le seul critère
+  de DOD non satisfait est **la vérification au banc**, qui exige le harnais de
+  charge — elle s'ajoute aux campagnes E015 déjà dues.
+
+### Suggestion non bloquante
+- Les options `JsonSerializerOptions` camelCase sont maintenant définies dans
+  trois stores Redis (`RedisSyncStateStore`, `DraftCacheRepository`,
+  `RedisFlagSnapshotStore`). Un helper partagé serait la bonne altitude —
+  écarté ici : touche deux fichiers hors diff (règles 5 et 6).
+
+## Merged
+- `api-mail` : **e30b00c** — squash de la PR #139, mergée le 2026-08-01
+- `dtos-mss` : aucune PR (branche sans commit) ; ref distant supprimé
+
+Refs distants supprimés sur les deux repos ; **branches locales conservées**.
+
+> **Reste dû** : la vérification au banc (15 utilisateurs, zéro
+> `FlagsmithAPIError`, traces `ai_pipeline` présentes) — dernier critère de DOD,
+> non couvert par la PR.

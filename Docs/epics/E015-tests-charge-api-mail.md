@@ -2,7 +2,7 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.13
+> **Version** : 1.14
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
 > **Dernière mise à jour** : 2026-08-01
@@ -93,6 +93,7 @@ baisses de performance avant qu'elles n'atteignent les utilisateurs**.
 | Plafond du nombre de praticiens desserré | Accueillir davantage de praticiens sur une même installation : la préparation du dossier d'un praticien immobilisait une connexion à la base pour le restant de la vie du service, alors qu'elle ne resservait plus | task-202 | 🟡 Corrigé, mesure de confirmation à conduire |
 | Mesures prises sur le vrai parcours d'authentification | Obtenir des chiffres de capacité opposables : les campagnes s'authentifiaient d'une façon que la production n'emploie pas, ce qui faussait la mesure et masquait les vraies anomalies dans le journal | task-206 | 🟡 Corrigé, mesure de confirmation à conduire |
 | Consultation des messages moins mise en file | Réduire l'attente à l'ouverture d'une liste de messages : plusieurs actions du praticien passaient l'une après l'autre derrière un même verrou, et l'une de ces attentes durait une seconde entière même quand la voie se libérait aussitôt | task-211 | 🟡 Corrigé, mesure de confirmation à conduire |
+| L'assistance IA ne se coupe plus toute seule au redémarrage | Éviter qu'un redémarrage du service tombant pendant une panne de l'outil de configuration ne désactive silencieusement l'étage d'analyse des documents | task-201 | 🟡 Corrigé, mesure de confirmation à conduire |
 
 ---
 
@@ -412,8 +413,9 @@ réseau, au lieu de la libérer pour une autre demande. Ce verrou a été levé
 | Plafond du nombre de praticiens desserré | 🟡 Corrigé, mesure de confirmation à conduire | Le nombre de praticiens qu'une installation peut accueillir est borné par les connexions à la base, et non par le trafic — c'est le constat de la campagne à grande échelle. Or la préparation du dossier d'un nouveau praticien, opération jouée **une seule fois**, gardait ensuite une connexion ouverte pour le restant de la vie du service : mesuré à **une par praticien**, soit environ 169 connexions retenues pour rien sur 200 praticiens. Trois causes cumulées, toutes corrigées. **Reste dû** : la campagne de confirmation, qui vérifiera que l'écart tombe sous 20 et que les temps de réponse ne bougent pas — le correctif ne doit rien coûter, c'est tout son intérêt face à l'autre option, écartée parce qu'elle dégradait la latence | task-202 |
 | Mesures prises sur le vrai parcours d'authentification | 🟡 Corrigé, mesure de confirmation à conduire | Les campagnes s'identifiaient auprès du service avec un justificatif simplifié, que la production n'emploie jamais. Deux conséquences : le temps mesuré n'incluait pas ce que coûte réellement la vérification d'identité, et le service signalait une anomalie **à chaque requête** — plus de 1 200 par seconde en pointe. Ce bruit rendait le journal d'anomalies inutilisable : une vraie panne y serait passée inaperçue. Les campagnes présentent désormais un justificatif de la même forme qu'en production, et le service ne signale plus rien quand il n'y a rien à signaler. **Reste dû** : la campagne de confirmation, et la relecture du journal pour vérifier que chaque anomalie restante s'explique | task-206 |
 | Consultation des messages moins mise en file | 🟡 Corrigé, mesure de confirmation à conduire | L'ouverture d'une liste de messages reste l'action la plus lente du profil courant : 718 ms en moyenne, mais 213 ms pour une consultation sur deux. Cet écart dit que le temps se passe **en file d'attente**, pas à travailler — et ni la puissance de calcul ni la capacité de traitement ne sont en cause, toutes deux mesurées au repos. En cause : plusieurs actions du praticien se sérialisent derrière un même verrou. Deux acquis. D'abord, **on sait désormais mesurer** ces attentes une par une : chaque campagne dira laquelle pèse, au lieu de laisser supposer. Ensuite, l'une d'elles imposait **une seconde entière** dès qu'il y avait la moindre concurrence, même quand la voie se libérait en un clin d'œil — ramenée à quelques centièmes. Une attente pouvant aller jusqu'à trente secondes a par ailleurs été ramenée à cinq : elle servait à éviter un travail en double, pas à garantir l'exactitude, et faire patienter une demi-minute pour cette raison était un mauvais échange. **Reste dû** : la campagne qui dira laquelle des attentes portait le retard — et, si elles pèsent peu, la conclusion attendue est de le constater plutôt que de relâcher des garde-fous sans gain établi | task-211 |
+| L'assistance IA ne se coupe plus toute seule au redémarrage | 🟡 Corrigé, mesure de confirmation à conduire | Les fonctions d'analyse automatique des documents peuvent être activées ou coupées à distance, sans redéploiement. Le service qui porte ces interrupteurs peut être momentanément indisponible : dans ce cas, chaque instance continuait de fonctionner sur le dernier réglage qu'elle avait vu — sauf **une instance qui vient de démarrer**, qui n'a rien vu et se rabattait alors sur « tout éteint ». Concrètement, un simple redémarrage tombant pendant une indisponibilité **coupait l'assistance IA sans que personne ne le demande, ni ne le voie**. Les instances partagent désormais le dernier réglage connu : celle qui démarre hérite de l'état du groupe au lieu de repartir aveugle. Ce partage est **volontairement facultatif** — s'il est lui-même indisponible, on retombe exactement sur le comportement précédent, sans nouvelle panne possible. En contrepartie, la prise en compte d'un changement de réglage passe de trente secondes à **cinq minutes** : c'est l'arbitrage assumé de cette correction, moins de réactivité contre plus de robustesse. **Reste dû** : la campagne de confirmation | task-201 |
 
-**Couverture EPIC consolidée : 13 features livrées sur 13** (les treize attendent
+**Couverture EPIC consolidée : 14 features livrées sur 14** (les quatorze attendent
 leur intégration). L'EPIC est **fonctionnellement complet** : le banc est
 opérationnel, il mesure la chaîne complète de traitement des documents médicaux,
 les campagnes de mesure sont outillées avec une référence opposable, la campagne à
@@ -612,6 +614,19 @@ Trois réserves à porter au bilan, sans quoi il serait trompeur :
   en double, elle ne garantissait pas l'exactitude, et faire patienter le
   praticien une demi-minute pour cela était un mauvais échange. La campagne de
   confirmation reste à conduire. (task-211)
+- v1.14 — **L'assistance IA ne se coupe plus toute seule au redémarrage.**
+  Les fonctions d'analyse automatique des documents s'activent à distance ;
+  quand le service qui porte ces interrupteurs est momentanément
+  indisponible, chaque instance poursuivait sur son dernier réglage connu —
+  sauf une instance **qui vient de démarrer**, qui n'a rien vu et se
+  rabattait sur « tout éteint ». Un simple redémarrage tombant pendant une
+  panne **coupait donc l'assistance sans que personne ne le demande ni ne le
+  voie**. Les instances partagent désormais le dernier réglage connu, et ce
+  partage est volontairement facultatif : s'il tombe à son tour, on retombe
+  sur le comportement précédent, sans nouvelle panne possible. En
+  contrepartie, un changement de réglage met jusqu'à cinq minutes à se
+  propager au lieu de trente secondes — arbitrage assumé. La campagne de
+  confirmation reste à conduire. (task-201)
 
 ---
 

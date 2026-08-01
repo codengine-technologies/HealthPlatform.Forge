@@ -1943,6 +1943,126 @@ la base.
 
 ---
 
+### v1.14 — Le snapshot de flags devient partagé entre pods, et l'intervalle passe à 5 minutes — task-201
+
+- **Task** : task-201 — `done`. **PR** : `api-mail` #139 (label `awaiting-human-merge`).
+- **Origine** : suite directe de task-199. Priorité 6/6 de l'ordre arrêté le
+  2026-07-31 — axe **robustesse**, hors du chemin de capacité.
+
+#### Le trou que task-199 avait laissé
+
+task-199 a supprimé l'appel réseau par évaluation : chaque pod sert ses flags
+depuis un snapshot mémoire, avec au plus un appel par intervalle. Ce gain est
+**déjà acquis sur tous les pods** — Redis n'y ajoute rien, et la task le dit
+explicitement pour éviter de re-livrer un bénéfice déjà obtenu.
+
+Ce que le snapshot par processus laisse ouvert : un pod qui **démarre pendant
+une panne Flagsmith** n'a aucun état connu et applique
+`FeatureFlags.ColdStartDefault`, soit `ai_pipeline = false`. C'est exactement la
+désactivation silencieuse de l'étage IA que task-199 visait à supprimer,
+réintroduite à chaque rollout, scale-up ou redémarrage tombant pendant une
+indisponibilité.
+
+#### Trois étages, et une règle sur qui touche Redis
+
+| Étage | Rôle | Quand il est touché |
+|---|---|---|
+| **L1** — mémoire du pod | sert **toutes** les évaluations | chemin de requête, zéro I/O |
+| **L2** — snapshot Redis | hérite de l'état du cluster | **uniquement** au rafraîchissement |
+| **L3** — repli déclaré | dernier recours | ni L1 ni L2 n'ont d'état |
+
+Sur le chemin nominal, Redis est **écrit et jamais lu** : lire aussi coûterait
+un aller-retour toutes les 5 minutes sur chaque pod pour un état que Flagsmith
+vient de fournir plus frais. Deux tests épinglent cette discipline — l'absence
+de lecture au rafraîchissement réussi, et l'absence totale d'accès au store sur
+200 évaluations concurrentes.
+
+#### Ce que le store n'est pas
+
+**Ni un verrou, ni une source de vérité.** Chaque pod continue de poller
+(12 appels/h, négligeable) ; `IDistributedLockService` n'est pas utilisé et
+aucune élection de « pod pollueur unique » n'est introduite — le snapshot est un
+**partage d'état**, ce qui évite d'ajouter un point de défaillance. Redis
+injoignable ⇒ comportement task-199 **à l'identique**, aucune exception
+propagée, même politique « un log par fenêtre ».
+
+Cette politique a été **extraite** (`FailureThrottle`) plutôt que dupliquée pour
+la seconde source d'échec. Comportement Flagsmith inchangé : les 10 tests de
+task-199 passent sans qu'une seule de leurs assertions ait bougé — c'était une
+exigence explicite de la DOD.
+
+**Fraîcheur préservée** : le snapshot porte son `TakenAt` et n'est adopté que
+s'il est **plus récent** que l'état local ; un pod resté en ligne ne régresse
+jamais sur l'état publié par un pod mort il y a une heure. **TTL 24 h**, justifié
+dans le code : un TTL calé sur l'intervalle expirerait pendant l'incident même
+qu'il doit couvrir.
+
+#### Trouvaille de la passe qualité, non cosmétique
+
+La désérialisation JSON reconstruit un dictionnaire **sensible à la casse**,
+alors que l'état mémoire est indexé en `OrdinalIgnoreCase`. Adopter un snapshot
+partagé changeait donc silencieusement la sémantique de résolution des noms de
+flags **selon la provenance de l'état** — piège qui ne se serait manifesté qu'au
+premier flag écrit dans une autre casse. Normalisé à la lecture, avec un test.
+
+#### L'arbitrage à 5 minutes
+
+`Flagsmith:RefreshIntervalSeconds` 30 → 300. La même valeur alimente
+`FlagsmithConfiguration.EnvironmentRefreshInterval` : les deux usages lisent la
+même variable, donc restent cohérents par construction (point 6 de la DOD).
+
+Coût assumé, acté par le PO : la propagation d'un flip monte à ~5 minutes dans
+le pire cas — sur un kill-switch d'étage IA médical, on échange de la réactivité
+contre de la robustesse. L'invalidation immédiate (pub/sub Redis + webhook
+Flagsmith) reste hors scope.
+
+Conséquence **documentée sur place** : à 300 s, il y a au plus une tentative
+échouée toutes les 5 minutes, donc `FailureLogWindowSeconds = 60` ne filtre plus
+rien. Ce n'est pas une régression — le volume qui avait motivé la fenêtre
+(750 stacks pour un tir de 15 utilisateurs) venait de l'appel par évaluation,
+supprimé depuis. Un avertissement explicite est posé dans le code pour que
+personne ne « corrige » ce réglage par erreur.
+
+> ⚠️ **PGSSI-S** — la clé `mss:featureflag:snapshot` est un **singleton global**,
+> sans segment par praticien (contrairement à `mss:sync:state:{email}`). Le
+> payload ne porte que des noms de flags déclarés par l'application et des
+> booléens. Un test l'audite : deux propriétés seulement, et chaque nom de flag
+> stocké doit appartenir à `FeatureFlags.All`.
+
+#### Tests
+
+**16 nouveaux** (10 sur le service, 6 sur le store), suite à **3 269 verts**. Le
+contre-test du scénario principal est **intégré au jeu** plutôt qu'obtenu par une
+édition temporaire : `ColdStartWithFlagsmithDownServesTheSharedSnapshotNotTheColdStartDefault`
+(store présent → l'étage IA reste actif) et `ServiceWithoutSharedStoreKeepsTask199Behaviour`
+(pas de store → `ColdStartDefault`) sont le même scénario avec et sans le
+correctif.
+
+Un flaky pré-existant de rendu PDF (`MailExportServiceTests`, état statique
+partagé de PdfPig) est apparu une fois sur quatre exécutions ; vert au rejeu,
+sans rapport avec ce diff.
+
+#### Sonar
+
+**Deux findings introduits par la task, tous deux corrigés** (`csharpsquid:S103`
+ligne trop longue sur le log du store, `external_roslyn:CA1859` type de retour
+de la fabrique) → **0 issue sur les 6 fichiers touchés**. Les `new_violations`
+restantes sont hors du diff : `python:S3776` ×3 dans `report.py` (tasks 204/209)
+et `csharpsquid:S1067` dans `ContactRepository.cs` (task-023).
+
+> ⚠️ Les KPIs projet SonarQube restent **inexploitables** depuis task-212 —
+> `agents/sonar.md` est périmé sur trois points et la baseline est à refaire.
+> Cette analyse n'a servi qu'aux findings par fichier, ce pour quoi elle est
+> fiable.
+
+#### Ce que cette PR ne livre pas
+
+La **vérification au banc** (15 utilisateurs, zéro `FlagsmithAPIError`, traces
+`ai_pipeline` présentes) — dernier critère de DOD, qui exige le harnais de
+charge. Elle s'ajoute aux campagnes E015 déjà dues.
+
+---
+
 ## Annexe A — Cartographie des briques applicatives
 
 | Brique | Chemin | Rôle |
