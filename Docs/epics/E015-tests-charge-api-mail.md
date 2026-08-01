@@ -2,10 +2,10 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.11
+> **Version** : 1.13
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
-> **Dernière mise à jour** : 2026-07-31
+> **Dernière mise à jour** : 2026-08-01
 
 ---
 
@@ -30,7 +30,7 @@
   - [Ce que le banc sait désormais dire (29 juillet 2026)](#ce-que-le-banc-sait-désormais-dire-29-juillet-2026)
   - [La capacité est enfin chiffrée, et sa cause nommée (29-31 juillet 2026)](#la-capacité-est-enfin-chiffrée-et-sa-cause-nommée-29-31-juillet-2026)
   - [Trois mesures à reprendre](#trois-mesures-à-reprendre)
-- [État de couverture (2026-07-31)](#état-de-couverture-2026-07-31)
+- [État de couverture (2026-08-01)](#état-de-couverture-2026-08-01)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -91,6 +91,8 @@ baisses de performance avant qu'elles n'atteignent les utilisateurs**.
 | Attribution honnête d'une campagne ratée | Savoir, quand une campagne n'a pas pu appliquer toute la charge demandée, **si c'est la messagerie qui a ralenti ou l'instrument de mesure qui était mal réglé** — les deux se soignent de façon opposée, et le rapport nomme laquelle des deux et l'argumente par un chiffre | task-209 | 🟡 Livré, en attente d'intégration |
 | Verdicts de campagne fondés | Pouvoir se fier aux trois conclusions qu'un compte rendu de campagne affirme — ce qui freine la messagerie, quelle part de la charge a réellement été servie, et si le tir est exploitable — sans avoir à les recouper soi-même | task-208 | 🟡 Livré, en attente d'intégration |
 | Plafond du nombre de praticiens desserré | Accueillir davantage de praticiens sur une même installation : la préparation du dossier d'un praticien immobilisait une connexion à la base pour le restant de la vie du service, alors qu'elle ne resservait plus | task-202 | 🟡 Corrigé, mesure de confirmation à conduire |
+| Mesures prises sur le vrai parcours d'authentification | Obtenir des chiffres de capacité opposables : les campagnes s'authentifiaient d'une façon que la production n'emploie pas, ce qui faussait la mesure et masquait les vraies anomalies dans le journal | task-206 | 🟡 Corrigé, mesure de confirmation à conduire |
+| Consultation des messages moins mise en file | Réduire l'attente à l'ouverture d'une liste de messages : plusieurs actions du praticien passaient l'une après l'autre derrière un même verrou, et l'une de ces attentes durait une seconde entière même quand la voie se libérait aussitôt | task-211 | 🟡 Corrigé, mesure de confirmation à conduire |
 
 ---
 
@@ -393,7 +395,7 @@ réseau, au lieu de la libérer pour une autre demande. Ce verrou a été levé
 
 ---
 
-## État de couverture (2026-07-31)
+## État de couverture (2026-08-01)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
@@ -408,8 +410,10 @@ réseau, au lieu de la libérer pour une autre demande. Ce verrou a été levé
 | Attribution honnête d'une campagne ratée | 🟡 Livré, en attente d'intégration | Deux causes très différentes produisent le même symptôme — une campagne qui n'applique pas toute la charge annoncée : soit la messagerie ralentit sous la charge, soit l'instrument de mesure a été réglé sur des temps de réponse qui ne sont plus ceux du banc. Elles appellent des gestes **opposés** : réduire la charge demandée dans le premier cas, corriger le réglage dans le second. Le rapport tranche désormais entre les deux, désigne l'usage qui porte les abandons, et **écrit qu'il ne sait pas** plutôt que de deviner quand la mesure côté serveur lui manque. Le réglage de l'instrument a par ailleurs été refait sur les temps réellement observés, et **les conditions dans lesquelles ils ont été relevés sont désormais consignées avec eux** — c'est leur absence qui avait fait perdre deux campagnes | task-209 |
 | Verdicts de campagne fondés | 🟡 Livré, en attente d'intégration | Un compte rendu de campagne affirmait trois choses avec assurance, et les trois pouvaient être fausses. **Ce qui freine** : le multiplexeur de connexions était désigné coupable de trois paliers sur un unique relevé d'attente, pris à l'ouverture du tir — il l'est désormais sur une attente **installée dans la durée**, et le pic d'ouverture reste mentionné puisqu'il grandit avec la charge. **La part servie** : le même document annonçait 99,3 % en tête et 85,1 % dans son tableau, faute de compter sur la même période ; les deux chiffres s'accordent maintenant. **L'exploitabilité** : le traitement des comptes-rendus s'arrête quand son temps imparti est écoulé, ce qui est normal — c'était pourtant compté comme un échec et invalidait des campagnes saines. C'est distingué, et le nombre de comptes-rendus restants est affiché, parce qu'il dit combien de travail n'a pas été exercé | task-208 |
 | Plafond du nombre de praticiens desserré | 🟡 Corrigé, mesure de confirmation à conduire | Le nombre de praticiens qu'une installation peut accueillir est borné par les connexions à la base, et non par le trafic — c'est le constat de la campagne à grande échelle. Or la préparation du dossier d'un nouveau praticien, opération jouée **une seule fois**, gardait ensuite une connexion ouverte pour le restant de la vie du service : mesuré à **une par praticien**, soit environ 169 connexions retenues pour rien sur 200 praticiens. Trois causes cumulées, toutes corrigées. **Reste dû** : la campagne de confirmation, qui vérifiera que l'écart tombe sous 20 et que les temps de réponse ne bougent pas — le correctif ne doit rien coûter, c'est tout son intérêt face à l'autre option, écartée parce qu'elle dégradait la latence | task-202 |
+| Mesures prises sur le vrai parcours d'authentification | 🟡 Corrigé, mesure de confirmation à conduire | Les campagnes s'identifiaient auprès du service avec un justificatif simplifié, que la production n'emploie jamais. Deux conséquences : le temps mesuré n'incluait pas ce que coûte réellement la vérification d'identité, et le service signalait une anomalie **à chaque requête** — plus de 1 200 par seconde en pointe. Ce bruit rendait le journal d'anomalies inutilisable : une vraie panne y serait passée inaperçue. Les campagnes présentent désormais un justificatif de la même forme qu'en production, et le service ne signale plus rien quand il n'y a rien à signaler. **Reste dû** : la campagne de confirmation, et la relecture du journal pour vérifier que chaque anomalie restante s'explique | task-206 |
+| Consultation des messages moins mise en file | 🟡 Corrigé, mesure de confirmation à conduire | L'ouverture d'une liste de messages reste l'action la plus lente du profil courant : 718 ms en moyenne, mais 213 ms pour une consultation sur deux. Cet écart dit que le temps se passe **en file d'attente**, pas à travailler — et ni la puissance de calcul ni la capacité de traitement ne sont en cause, toutes deux mesurées au repos. En cause : plusieurs actions du praticien se sérialisent derrière un même verrou. Deux acquis. D'abord, **on sait désormais mesurer** ces attentes une par une : chaque campagne dira laquelle pèse, au lieu de laisser supposer. Ensuite, l'une d'elles imposait **une seconde entière** dès qu'il y avait la moindre concurrence, même quand la voie se libérait en un clin d'œil — ramenée à quelques centièmes. Une attente pouvant aller jusqu'à trente secondes a par ailleurs été ramenée à cinq : elle servait à éviter un travail en double, pas à garantir l'exactitude, et faire patienter une demi-minute pour cette raison était un mauvais échange. **Reste dû** : la campagne qui dira laquelle des attentes portait le retard — et, si elles pèsent peu, la conclusion attendue est de le constater plutôt que de relâcher des garde-fous sans gain établi | task-211 |
 
-**Couverture EPIC consolidée : 11 features livrées sur 11** (les onze attendent
+**Couverture EPIC consolidée : 13 features livrées sur 13** (les treize attendent
 leur intégration). L'EPIC est **fonctionnellement complet** : le banc est
 opérationnel, il mesure la chaîne complète de traitement des documents médicaux,
 les campagnes de mesure sont outillées avec une référence opposable, la campagne à
@@ -587,6 +591,27 @@ Trois réserves à porter au bilan, sans quoi il serait trompeur :
   confirmation reste à conduire : elle vérifiera aussi que les temps de réponse
   ne bougent pas, le correctif ne devant rien coûter — c'est ce qui le distingue
   de l'autre option, écartée parce qu'elle dégradait la latence. (task-202)
+- v1.12 — **Les campagnes mesurent enfin le vrai parcours d'authentification.**
+  Elles s'identifiaient auprès du service avec un justificatif simplifié, que la
+  production n'emploie jamais : le temps mesuré n'incluait donc pas ce que coûte
+  réellement la vérification d'identité, et un chiffre obtenu sur un autre
+  parcours que celui déployé n'est pas opposable. Le service signalait de plus
+  une anomalie **à chaque requête** — plus de 1 200 par seconde en pointe —, ce
+  qui rendait le journal d'anomalies inutilisable : une vraie panne y serait
+  passée inaperçue. Les deux sont corrigés, et la documentation du banc indique
+  désormais quel volume d'anomalies est normal, et à partir de quand s'inquiéter.
+  (task-206)
+- v1.13 — **L'ouverture d'une liste de messages attend moins.** C'est l'action
+  la plus lente du profil courant — 718 ms en moyenne, mais 213 ms une fois sur
+  deux : l'écart dit que le temps se passe en file d'attente, pas à travailler.
+  Deux acquis. On sait désormais **mesurer** ces attentes une par une, de sorte
+  que chaque campagne dira laquelle pèse au lieu de laisser supposer. Et l'une
+  d'elles imposait **une seconde entière** à la moindre concurrence, même quand
+  la voie se libérait aussitôt : ramenée à quelques centièmes. Une autre attente,
+  qui pouvait durer trente secondes, est ramenée à cinq — elle évitait un travail
+  en double, elle ne garantissait pas l'exactitude, et faire patienter le
+  praticien une demi-minute pour cela était un mauvais échange. La campagne de
+  confirmation reste à conduire. (task-211)
 
 ---
 

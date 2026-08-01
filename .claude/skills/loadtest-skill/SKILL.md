@@ -442,6 +442,46 @@ constantes portent désormais leur date et leurs conditions
 chaque tir archivé. Elles décrivent le régime **sous le genou** — dimensionner
 sur la latence d'un palier haut reviendrait à nourrir la congestion.
 
+### Lire la colonne « Exceptions /s » du rapport (task-206)
+
+La colonne « Exceptions /s » de la table **« Par réplica api-mail »** (ajoutée
+par task-204) n'était pas lisible : le banc levait **une exception par requête**,
+et ce bruit noyait tout le reste.
+
+**Cause, corrigée depuis.** Le harnais envoyait `X-PSC-Token: loadtest` — une
+valeur non vide mais **pas un JWT** — au motif que le profil du banc pose
+`MSS_ENFORCE_PSC_IDENTITY=false`. api-mail tentait quand même de la parser :
+`SecurityTokenMalformedException`, avalée, requête poursuivie. Mesuré le
+2026-07-29 : **12 668 occurrences en 121 s** à 106 req/s (≈1,2 par requête), et
+**plus de 1 200/s** au plafond de charge, le débit croissant linéairement.
+
+**Ordre de grandeur attendu après correction** :
+
+| Famille | Attendu | Lecture |
+|---|---|---|
+| `SecurityTokenMalformedException` | **0** | toute occurrence = régression. Le harnais forge un vrai JWT par identité, et api-mail contrôle la forme avant de parser |
+| Total « Exceptions /s » par réplica | **quelques unités**, pas des centaines | au-delà de ~10/s soutenus, chercher la famille avant de conclure quoi que ce soit sur la capacité |
+| `FolderNotFoundException` | non nulle, **bénigne** | les boîtes du banc n'ont pas de dossier `Sent` ; l'envoi réussit, l'archivage échoue (non fatal par conception) |
+| `HttpRequestException`, `FlagsmithAPIError` | ponctuelles | dépendances externes du banc |
+| `IOException`, `XmlException` | ponctuelles | à regarder si elles croissent avec la charge |
+
+**Le test qui tranche** — une famille dont le débit croît **linéairement avec la
+charge** est un coût par requête, pas un incident. C'est le signe qu'un chemin de
+code est exercé à chaque appel ; le chercher avant d'interpréter un chiffre de
+capacité.
+
+```bash
+curl -s --get 'http://127.0.0.1:9090/api/v1/query' \
+  --data-urlencode 'query=sum by (error_type) (increase(dotnet_exceptions_total[2m]))'
+```
+
+⚠️ **Fidélité du banc** : `PSC_TOKEN` est désormais **vide par défaut**, ce qui
+fait forger au harnais un token à la forme d'un vrai JWT (claims `sub` /
+`SubjectNameID` par identité). Poser `PSC_TOKEN=loadtest` reproduit l'ancien
+comportement — utile pour re-mesurer le défaut, à ne pas laisser dans une
+campagne dont on veut publier le chiffre : un débit mesuré sur un autre chemin
+d'authentification que celui déployé n'est pas opposable.
+
 ### Deux réserves sur les baselines livrées
 
 - **`send`** : les boîtes du banc n'ont **pas de dossier `Sent`**. L'envoi SMTP

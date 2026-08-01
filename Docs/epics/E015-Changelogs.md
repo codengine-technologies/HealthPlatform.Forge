@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E015-tests-charge-api-mail.md](E015-tests-charge-api-mail.md).
-> **Dernière mise à jour** : 2026-07-31
+> **Dernière mise à jour** : 2026-08-01
 
 ---
 
@@ -1702,6 +1702,247 @@ ce sont les étapes 1 à 7 du Manual Test Plan, côté humain.
 
 ---
 
+### v1.12 — Le banc ne lève plus une exception par requête sur le token PSC — task-206
+
+- **Task** : task-206 — `done`. **PR** : `api-mail` #136 (label `awaiting-human-merge`).
+- **Origine** : tir de contrôle télémétrie du 2026-07-29. La colonne
+  « Exceptions /s » que task-204 venait d'ajouter au rapport a immédiatement
+  montré un débit absurde. Personne ne l'avait vu avant, **faute de le mesurer**.
+
+#### La mesure
+
+| Charge | `SecurityTokenMalformedException` | Débit d'exceptions |
+|---|---|---|
+| 106 req/s (20 praticiens) | 12 668 en 121 s | ~105/s, **≈1,2 par requête** |
+| ~480 req/s (200 praticiens) | — | ~110-145/s **par réplica** |
+| ~858 req/s (200 praticiens) | — | ~233-290/s par réplica, **>1 200/s** au total |
+
+Croissance **linéaire** avec la charge : une exception par requête, pas un
+incident.
+
+#### La cause
+
+Le harnais envoyait `X-PSC-Token: loadtest` — non vide mais **pas un JWT** — au
+motif que le profil du banc pose `MSS_ENFORCE_PSC_IDENTITY=false`. Or
+`UserContextEnricherMiddleware.TryParsePscIdentity` tentait quand même de le
+parser : `ReadJsonWebToken` levait, le `catch` avalait, la requête continuait.
+**Une exception avalée reste une exception levée** — déroulement de pile, ligne
+de télémétrie. En production le token est un vrai JWT : ce n'est donc pas un
+défaut de production, mais un défaut de **fidélité du banc** doublé d'un défaut
+d'**observabilité**.
+
+#### Voie 1 — la correction, posée plus bas que l'énoncé
+
+L'énoncé proposait de court-circuiter quand `Enforce=false`. **Écart assumé** :
+ce garde-là aurait privé le **mode observation** — qui *est* `Enforce=false`,
+phase 1 — des journaux `3721`/`3722`/`3723` qu'il existe précisément pour
+produire ; un déploiement en observation serait devenu aveugle sans que rien ne
+le signale.
+
+La garde porte donc sur la **lisibilité du token** (`CanReadToken`) et non sur
+l'enforcement. Elle supprime l'exception pour tout appelant et dans tous les
+modes, sans rien perdre — un token illisible n'a jamais rendu de claims, il
+coûtait seulement une exception pour le dire. Deux tests pinnent qu'aucun
+contrôle n'est desserré : `Enforce=true` + non-JWT → toujours 403 ;
+`Enforce=false` + non-JWT → journal 3723 toujours émis.
+
+#### Voie 2 — la fidélité, et elle est nécessaire
+
+La voie 1 seule fait *sauter* le parse au banc : il n'exerce **toujours pas** le
+chemin déployé. Or l'énoncé le pose lui-même — « un chiffre de capacité mesuré
+sur un autre chemin que celui déployé n'est pas opposable ». Le harnais forge
+donc un token à la forme d'un vrai JWT, par identité, avec les claims de
+production (`sub`, `SubjectNameID`) — miroir JS de
+`PscTokenForge.BuildPayloadOnlyToken`. `PSC_TOKEN` devient vide par défaut et
+reste une échappatoire (rejouer un token réel, ou reproduire l'ancien
+comportement pour re-mesurer le défaut).
+
+#### Deux choix de test qui portent la démonstration
+
+- **Exceptions comptées en première chance** (`AppDomain.FirstChanceException`,
+  filtrées par type) : le seul moyen d'observer un défaut que le code de
+  production masque. Constaté RED avant le correctif — 4 des 5 tokens non-JWT
+  levaient.
+- **Le token réellement produit par k6 est figé en fixture** dans le test C#,
+  avec ses claims attendus. Une divergence d'encodage JS/.NET — remplissage
+  base64url, casse de `SubjectNameID` — ferait retomber le banc dans le chemin
+  qu'il quitte, **sans rien casser de visible**.
+
+17 tests ajoutés (12 dédiés + 5 dans le fichier de cross-check, là où vivent
+déjà les helpers). `mss.mail.api.tests` : 607 contre 590.
+
+#### Passe `/simplify` — le cache retiré
+
+Le cache de tokens ajouté par `/develop` est **par VU**, et le banc en alloue
+~900 : à 200 identités en tourniquet, ~110 Ko par VU, soit ~100 Mo côté tireur —
+pour économiser un `JSON.stringify`, un base64url et un SHA-256 sur ~250 octets.
+À 900 req/s le forgeage coûte bien moins d'un pour cent d'un cœur quand k6 en
+consomme 0,2 à 0,4 (task-204). Le tireur doit rester hors de cause : le risque
+était la mémoire, pas le CPU. Raisonnement écrit sur place.
+
+#### Sonar
+
+**Aucun finding introduit** — un seul passage d'analyse. Bugs / vulnérabilités /
+hotspots à 0, ratings A/A/A, coverage projet 86,6 % et new 86,2 %. Les 2 findings
+du projet restent les `python:S3776` de task-204, hors diff.
+
+#### Documentation
+
+`loadtest-skill` — grille de lecture de la colonne « Exceptions /s » : ordre de
+grandeur attendu par famille (`SecurityTokenMalformedException` = **0**, total
+« quelques unités » par réplica), rappel que `FolderNotFoundException` est
+bénigne (pas de dossier `Sent` au banc), et **le test qui tranche** — une famille
+dont le débit croît linéairement avec la charge est un coût par requête, pas un
+incident. Y figure aussi l'avertissement de fidélité : `PSC_TOKEN=loadtest`
+reproduit l'ancien comportement, à ne pas laisser dans une campagne dont on veut
+publier le chiffre.
+
+#### ⚠️ Un vrai défaut trouvé à la validation, hors périmètre
+
+`PatientRepository.GetWithMedicalDocumentsTodayAsync` filtre sur
+`var today = DateTime.Today` — minuit **local** — alors que les dates sont
+stockées en **UTC**. À 00 h 14 local (22 h 14 UTC), un document créé
+« aujourd'hui » tombe avant la borne et la requête ne renvoie rien : le test
+correspondant échoue **de façon déterministe entre minuit et 2 h du matin** en
+heure d'été, et la liste « patients avec un document aujourd'hui » est fausse en
+production pendant la même fenêtre quotidienne. Module différent, aucun rapport
+avec cette task — **à arbitrer par le PO**, probablement une task dédiée.
+
+#### Ce que cette PR ne livre pas
+
+Les **deux critères de DOD qui exigent le banc** : `SecurityTokenMalformedException = 0`
+mesuré à ~480 req/s, et l'explication de chaque famille restante dans un rapport
+de tir. Le banc n'était pas monté.
+
+---
+
+### v1.13 — Les trois verrous de `read_list` sont instrumentés, et le plancher d'attente d'une seconde disparaît — task-211
+
+- **Task** : task-211 — `done`. **PR** : `api-mail` #137 (label `awaiting-human-merge`).
+- **Origine** : demande humaine du 2026-07-31, à la lecture de la re-mesure de
+  task-205. La famine de ThreadPool est éteinte, mais `read_list` reste
+  l'opération la plus lente du mix hors `send`/`enrich`, et **son profil a changé
+  de nature** : ce n'est plus du blocage de threads, c'est de l'attente en file.
+
+#### Ce que la mesure disait
+
+Banc du 2026-07-31, 200 praticiens, après les deux correctifs de task-205 :
+
+| Palier | moy | p50 | p95 |
+|---|---|---|---|
+| 882 req/s | **718 ms** | 213 ms | 1 480 ms |
+
+La moyenne vaut **3,4 fois la médiane** — signature d'une file d'attente, pas
+d'un coût unitaire. Les deux suspects habituels sont écartés d'emblée : file du
+ThreadPool **plate** (max 8) et CPU à **1,1 cœur sur 24**. Restent les verrous,
+et le chemin en traverse trois sur base purgée.
+
+#### Deux corrections de l'énoncé, établies en lisant le code
+
+**1. Le correctif d'une ligne proposé aurait été un no-op.** L'énoncé affirmait
+que « le `Task.Delay` précède le premier essai » et proposait d'ajouter un
+`TryAcquireAsync` immédiat. **Cet essai existe déjà** au site d'appel :
+`FetchMissingUidsWithLocksAsync` le tente, et n'entre dans la boucle d'attente
+qu'après son échec. L'appliquer à la lettre aurait ajouté un aller-retour Redis
+pour ne rien changer.
+
+Le symptôme décrit était pourtant réel — mais sa cause est le **pas de sondage** :
+une seconde fixe, sans réveil à la libération, donc une contention levée en 10 ms
+coûtait quand même une seconde pleine. Remplacé par un pas croissant
+**25 ms → 500 ms**.
+
+**2. `proceeding anyway` est tranché : le verrou distribué est OPPORTUNISTE.**
+La task exigeait de lever cette ambiguïté plutôt que de la reconduire. Trois
+éléments l'établissent, tous déjà dans le code : en cas d'échec l'appelant va
+chercher les messages **quand même** (la correction du résultat n'en dépend donc
+pas) ; une fois le verrou obtenu le code **re-vérifie la base** et ne fetch que ce
+qui manque (c'est une déduplication) ; et son commentaire d'origine parle de
+« prevents concurrent fetch across pods », ce qui est une économie, pas une
+garantie.
+
+Conséquence assumée : budget d'attente ramené de **30 s à 5 s**. On abandonnera
+plus souvent, donc on paiera plus souvent un fetch IMAP en double — c'est le bon
+sens de l'échange, une lecture en double coûtant un aller-retour réseau là où
+l'attente coûtait jusqu'à **trente secondes au praticien**. L'issue est
+enregistrée (`outcome=timeout`) pour que le compromis soit **mesurable**, pas
+supposé.
+
+#### L'instrumentation — le vrai livrable
+
+Deux histogrammes sur le meter métier existant,
+`mssante_lock_wait_duration_seconds` (étiqueté `lock` et `outcome`) et
+`mssante_lock_hold_duration_seconds`, sur les trois verrous : `in_process_fetch`,
+`distributed_fetch`, `imap_session`.
+
+**Attente et détention sont séparées** parce qu'elles désignent des défauts
+différents : une attente longue signale la contention, une détention longue
+signale ce qu'on fait *sous* le verrou — et c'est alors sa **portée** qu'il faut
+discuter. Le verrou de session mesurait déjà les deux, mais **vers les logs
+seulement** (task-024) : mêmes mesures, désormais aussi en métriques, sans
+horloge ni coût ajoutés.
+
+`report.py` gagne une table « Verrous du chemin `read_list` », rendue même vide —
+son absence est une information. Elle répond à la question de la task : *lequel
+des trois porte la queue ?*
+
+> ⚠️ **PGSSI-S** — aucune étiquette ne porte d'identifiant de praticien. Les clés
+> de verrou contiennent un email : le promouvoir en étiquette serait à la fois une
+> donnée personnelle dans la télémétrie et une explosion de cardinalité.
+
+#### Ce que la PR ne touche pas, délibérément
+
+La **portée du verrou de session** et l'**existence du verrou en processus**. La
+task les subordonne à la mesure, et le verrou de session protège une **connexion
+IMAP unique, non thread-safe** : le desserrer sans savoir ce qui garantit alors
+l'exclusivité serait un mauvais échange. La réserve de la task tient — rien ne
+garantit que les verrous portent les 318 ms manquants, et si la mesure montre
+qu'ils pèsent peu, la conclusion attendue est de **le dire et refermer**.
+
+#### Tests
+
+7 tests, dont celui qui porte le correctif :
+`AContentionLiftedQuickly_NoLongerCostsAFullSecond` — un premier essai échoué
+suivi d'un succès coûtait ≥ 1 000 ms, il coûte désormais quelques dizaines de
+millisecondes. Les autres verrouillent l'absence d'attente sur le chemin non
+contendu, le budget borné **et** la lecture qui aboutit malgré tout, le backoff
+qui croît au lieu de marteler Redis, le verrou en processus **toujours** relâché
+(sans quoi une boîte praticien resterait gelée jusqu'au redémarrage du pod), et la
+déduplication préservée.
+
+Suite : **3 243 verts**. `selftest.sh` : 15 node + 96 Python.
+
+#### Sonar
+
+**Zéro finding attribuable à la task.** Les 2 findings C# relevés
+(`csharpsquid:S3776` et `S138` sur `FetchMissingUidsWithLocksAsync`) étaient de la
+dette **introduite par l'instrumentation** — corrigés par extraction de quatre
+helpers nommés. Les 3 restants sont dans `report.py` : `reduce_prom_matrix` et
+`_observe_table` (task-204), et `pinned_candidates` qui franchit le seuil via la
+PR #135, déjà sur `develop`.
+
+Une correction issue de `/simplify`, **non cosmétique** : la détention du verrou
+distribué était mesurée avec le chronomètre du verrou en processus, démarré
+**avant** son acquisition. Sur une table dont l'unique raison d'être est
+d'attribuer la queue au bon verrou, une surestimation vaut une fausse
+désignation.
+
+#### Synchronisation avec `develop`
+
+`develop` avait avancé (PR #135, « la ressource épinglée se juge sur la
+présence »), qui touche **le même fichier** — `report.py`. Merge, jamais rebase
+(règle 4) : fusion automatique sans conflit, 96 tests Python verts après coup.
+
+#### Ce que cette PR ne livre pas
+
+Les **cinq critères de DOD qui exigent le banc** : la désignation chiffrée du
+verrou coupable, `read_list` moy < 400 ms et p95 < 800 ms, la non-régression
+ThreadPool et débit, le rapport de tir et sa ligne d'INDEX. Plus le test de
+concurrence « N lectures simultanées → un seul fetch IMAP », dont la
+déduplication est couverte unitairement mais dont le cas N-concurrent réel exige
+la base.
+
+---
+
 ## Annexe A — Cartographie des briques applicatives
 
 | Brique | Chemin | Rôle |
@@ -1777,3 +2018,5 @@ ce sont les étapes 1 à 7 du Manual Test Plan, côté humain.
 | task-209 | **Le harnais dimensionnait sur une latence que le banc ne produit plus.** Constantes `REFERENCE_ITERATION_SECONDS` rafraîchies sur le palier 486 req/s du 2026-07-29 (base purgée, sous le genou) et **assorties de leurs conditions de mesure** (`REFERENCE_MEASURED_AT`, `REFERENCE_CONDITIONS`, archivées dans le `context` de chaque tir) — la contradiction purge / dimensionnement (`read` 0,16 s base pleine vs 0,41 s base purgée, ×10 au palier 972) est nommée dans `docs/loadtest.md`, le README du harnais et le `loadtest-skill`. Surcharge `ITER_SECONDS_*` par sous-scénario, parsée dans le module pur, **levant** sur nom inconnu ou valeur ≤ 0. **Bug corrigé** : `iterationSecondsFor` substituait la table au lieu de la fusionner — une surcharge ciblée renvoyait les autres pools sur le repli d'une seconde. **`report.py` distingue désormais les deux causes d'abandon** — « pool client épuisé alors que le serveur répond dans les temps » vs « le serveur ralentit » — sur le témoin de la file ThreadPool par réplica, nomme le sous-scénario porteur, imprime la conduite à tenir **opposée** selon la cause, et écrit `indéterminée` plutôt que de deviner. 23 tests ajoutés (4 node + 19 Python) sur **5 fixtures de campagne reconstruites depuis les chiffres publiés** — `reports/` étant gitignoré et les JSON du 2026-07-29 absents de la machine —, gardées par un test d'intégrité qui vérifie qu'elles reproduisent ces chiffres. Sonar : bugs 1 → 0, reliability C → A, hotspots 2 → 0, smells 13 → 3 (les 3 restants = `python:S3776` de task-204, laissés car `budget_rows` est la fonction que task-208 doit réécrire). `conventions/python.md` créé. **Mesure au banc du palier 756 req/s encore due.** | — |
 | task-208 | **Les trois verdicts du rapport reposaient sur la mauvaise statistique** — trois affirmations fausses dans des `.md` livrés, trouvées en LISANT les rapports de la campagne, pas le code. (1) `pinned_candidates` désignait PgBouncer comme facteur limitant de trois paliers sur le `max` de `cl_waiting`, c'est-à-dire **un seul échantillon** à 1-2 clients, devant un réplica à 11 % → jugé désormais sur la **part des échantillons non nuls** (`pgbouncer_waiting`, seuil 25 % contre 6,5 % de bruit d'ouverture mesuré), et le transitoire reste **écrit** sous la table. (2) La table « demandé vs délivré » divisait par la fenêtre totale quand l'en-tête du **même document** publiait déjà le débit plateau : « 482,7 req/s / 99,3 % » au-dessus de « 413,6 / 85,1 % ⚠️ » → `_delivered_rps` passe au dénominateur plateau, chaque ligne porte son `denominator`, et le repli est NOMMÉ `fenêtre k6`. (3) La garde comptait le reliquat d'un `shared-iterations` FINI comme des abandons (1er palier invalide à 4,6 % pour 2,6 % réels) → `finite_scenario_remainder` retranche depuis le **plan déclaré** (`dropped_source = finite_plan`), ce qui couvre aussi tous les tirs archivés avant task-203 sans sous-métriques, et le reliquat est écrit comme information. 13 tests écrits RED d'abord, 2 CSV de fixtures (transitoire + contre-épreuve soutenue, marquée synthétique) ; **trois tests existants changent de verdict — c'est le correctif** (`send` 17,24 → 18,97 req/s, et la contre-épreuve « sans ventilation ce tir serait invalide » s'inverse). Sonar : les 2 S3776 que la task avait elle-même introduits ou aggravés (`budget_rows`, `_budget_section`) corrigés par extraction ; les 2 restants sont de task-204 et la passe sur les helpers de table Markdown est en « Hors scope ». `docs/loadtest.md` §4d : les trois règles, quelle statistique et pourquoi celle-là. **Régénération des 3 rapports archivés infaisable** — les JSON n'existent plus. | — |
 | task-202 | **~1 backend Postgres retenu par praticien, pour rien.** Mesuré au banc 200 praticiens du 2026-07-27 : écart de ~169 entre `pg_stat_activity` et `SHOW POOLS`, **stable autour d'une connexion par base** quel que soit le réglage du pooler — signature de la route directe, pas du pooler. Trois gestes : (1) le `ServiceProvider` de FluentMigrator est **disposé** — seul le `scope` interne l'était, un conteneur DI fuyait par base et par pod, et le `using` couvre le chemin d'exception, celui où une migration rejouée les accumule ; (2) la chaîne est **bornée** par un helper dédié `AppendProvisioningPoolingSettings` (`Max=1`, `Min=0`, idle 5 s) au lieu des défauts Npgsql (100 connexions, idle 300 s) — helper distinct d'`AppendPoolingSettings` à dessein, l'idle long du chemin de données existant pour éviter l'épuisement des ports éphémères Windows, raisonnement qui ne se transpose pas à une connexion unique jouée une fois ; (3) le pool est **vidé** (`ClearPool`) après migration réussie, hors du `using` puisque la connexion du runner doit d'abord y revenir, et jamais après un échec. **Piège évité** : la chaîne SERVEUR n'est délibérément pas bornée — unique par pod donc pas la coupable, et `Max=1` y provoquerait un interblocage (`lockConnection` ouverte pendant que `MigrationHelper` en ouvre une seconde) ; un plafond resterait possible à partir de 4. **Nuance sur l'énoncé** : la connexion de provisionnement était déjà un pool distinct AVANT task-200, le chemin de données bâtissant son `NpgsqlDataSource` sur une chaîne suffixée — le pooler l'a rendue visible, pas créée. 12 tests écrits RED d'abord (disposition sur succès ET exception, non-vidage après échec) ; 3 219 tests verts. Sonar : zéro finding C# restant. **Les 4 critères de DOD au banc restent dus** (test d'intégration PgBouncer, tir 200 praticiens, non-régression p95, rapport comparé au tir A). | — |
+| task-206 | **Le banc levait une exception par requête, et ce bruit noyait la télémétrie.** La colonne « Exceptions /s » ajoutée par task-204 l'a révélé : 12 668 `SecurityTokenMalformedException` en 121 s à 106 req/s (≈1,2 par requête), >1 200/s au plafond, croissance **linéaire** avec la charge. Cause : le harnais envoyait `X-PSC-Token: loadtest` — non vide mais pas un JWT — et `TryParsePscIdentity` tentait quand même de le parser ; l'exception était avalée, la requête continuait. **Voie 1, posée plus bas que l'énoncé** : celui-ci proposait de court-circuiter quand `Enforce=false`, ce qui aurait rendu **aveugle le mode observation** (phase 1) en le privant des journaux 3721/3722/3723 qu'il existe pour produire ; la garde porte donc sur la **lisibilité du token** (`CanReadToken`), supprimant l'exception pour tout appelant et dans tous les modes sans rien perdre. **Voie 2, nécessaire** : la voie 1 seule fait *sauter* le parse au banc, qui n'exerce alors toujours pas le chemin déployé — le harnais forge donc un vrai JWT par identité (miroir de `PscTokenForge`), `PSC_TOKEN` restant une échappatoire. 17 tests, avec deux choix qui portent la démonstration : exceptions comptées en **première chance** (seul moyen d'observer un défaut que le code masque) et **token k6 figé en fixture C#** (une divergence d'encodage JS/.NET ferait retomber le banc dans le chemin qu'il quitte sans rien casser de visible). Passe `/simplify` : cache de tokens retiré — **par VU**, ~900 VUs, ~100 Mo pour économiser une microseconde. Sonar : **zéro finding introduit**. `loadtest-skill` : grille de lecture d'« Exceptions /s ». **Les 2 critères de DOD au banc restent dus.** Défaut hors périmètre signalé : `PatientRepository` filtre sur `DateTime.Today` (local) des dates stockées en UTC — faux entre minuit et 2 h. | — |
+| task-211 | **`read_list` n'attendait plus des threads mais des verrous.** Après task-205, 718 ms de moyenne pour 213 ms de médiane au palier 882 — la moyenne vaut 3,4 fois la médiane, signature d'une file d'attente ; file ThreadPool plate (max 8) et CPU à 1,1 cœur sur 24 écartent les deux suspects habituels. **Deux corrections de l'énoncé, établies en lisant le code.** (1) Le correctif d'une ligne proposé — « ajouter un `TryAcquireAsync` immédiat » — aurait été un **no-op** : cet essai existe déjà au site d'appel, la boucle d'attente n'étant atteinte qu'après son échec. Le vrai défaut est le **pas de sondage** (1 s fixe, sans réveil à la libération), remplacé par un pas croissant 25 ms → 500 ms. (2) **`proceeding anyway` tranché : le verrou distribué est OPPORTUNISTE** — trois éléments l'établissent dans le code existant (l'appelant fetch quand même en cas d'échec ; le code re-vérifie la base après acquisition ; son commentaire parle de prévenir un fetch concurrent, ce qui est une économie) — d'où un budget d'attente ramené de **30 s à 5 s**, l'issue étant enregistrée pour rendre le compromis mesurable. **Instrumentation** : deux histogrammes (`mssante_lock_wait_duration_seconds` / `..._hold_...`) sur les trois verrous, attente et détention séparées car elles désignent des défauts différents ; le verrou de session mesurait déjà les deux mais vers les logs seulement. Table « Verrous du chemin read_list » dans `report.py`, rendue même vide. Aucune étiquette ne porte d'email (PGSSI-S + cardinalité). **Non touché délibérément** : la portée du verrou de session et l'existence du verrou en processus — la task les subordonne à la mesure, et le verrou de session protège une connexion IMAP non thread-safe. 7 tests ; 3 243 verts. Sonar : les 2 findings C# étaient de la dette introduite par l'instrumentation (S3776/S138), corrigés par extraction de quatre helpers ; **zéro finding attribuable à la task**. **Les 5 critères de DOD au banc restent dus** — c'est la table des verrous qui doit y répondre. | — |

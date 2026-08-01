@@ -284,3 +284,128 @@ mesuré serait un mauvais échange.
   de TTL ni de rétention.
 - **AIPD / impact RGPD** : inchangée — aucune nouvelle finalité, donnée,
   destinataire ni durée de conservation.
+
+## Branches
+
+- `api-mail` (pushed) : `fix/task-211-read-list-lock-contention` — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-211-read-list-lock-contention
+- `dtos-mss` (pushed, auto-inclus) : `fix/task-211-read-list-lock-contention` — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/fix/task-211-read-list-lock-contention
+  (aucun changement de contrat attendu — branche créée proactivement, pas de PR si aucun commit)
+
+### Ordonnancement avec task-210 — tranché par le lancement
+
+`task-210` **n'existe pas encore** (aucun `tasks/*-task-210.md`) : elle est « en
+cours de cadrage ». Il n'y a donc aucun conflit à l'instant du `/start`. En
+lançant task-211 d'abord, le PO inverse la recommandation de la task : c'est
+task-210 qui devra absorber ce diff. Il est localisé (le bloc de verrous de
+`ImapService`), là où celui de task-210 serait massivement mécanique — le coût
+de l'inversion est donc réel mais borné.
+
+### Ce que `/develop` peut livrer, et ce qu'il ne doit PAS faire
+
+La task exige **de mesurer avant de corriger** (contenu attendu n°1), et le banc
+n'est pas monté. Le périmètre autonome se limite donc à ce qui se justifie
+**sans** la mesure :
+
+| Item | Autonome ? |
+|---|---|
+| Instrumentation des trois verrous (attente + détention) | ✅ — c'est le prérequis de la mesure |
+| Essai immédiat avant la boucle d'attente (`:1412`) | ✅ — un plancher d'une seconde sur toute contention est du gaspillage, quel que soit le coupable |
+| Trancher `proceeding anyway` | ✅ — décision de conception, se lit dans le code |
+| Tests de concurrence et de non-contention | ✅ |
+| **Réduire la portée du verrou n°3 (session)** | ❌ — la task l'exige **après** la mesure, et prévient que c'est le changement le plus risqué (fuite inter-praticiens) |
+| **Supprimer le verrou n°1** | ❌ — même raison |
+| Désignation chiffrée du coupable, cibles 400 ms / 800 ms | ❌ — banc |
+
+> ⚠️ **La réserve honnête de la task s'applique** : rien ne garantit que les
+> verrous portent les 318 ms manquants. Si la mesure montre qu'ils pèsent peu, la
+> conclusion attendue est de **le dire et refermer**, pas de desserrer un verrou
+> de cohérence sans gain établi.
+
+## Develop log
+
+- **Repos touchés** : `api-mail`. `dtos-mss` : aucun commit → pas de PR.
+- **Commits** : `ce36566` (instrumentation + backoff), `d2641bf` (`/simplify`),
+  `2300ee8` (S3776/S138), `d5d9ac8` (merge `develop`).
+- **Build / tests** : Release 0 erreur ; **3 243 réussis** ; `selftest.sh` vert
+  (15 node + 96 Python après synchronisation).
+
+### Deux corrections de l'énoncé, établies en lisant le code
+
+1. **Le correctif d'une ligne proposé aurait été un no-op.** L'essai
+   `TryAcquireAsync` immédiat **existe déjà** au site d'appel ; la boucle
+   d'attente n'est atteinte qu'après son échec. Le vrai défaut est le **pas de
+   sondage** — une seconde fixe, sans réveil à la libération. Remplacé par un pas
+   croissant 25 ms → 500 ms.
+2. **`proceeding anyway` tranché : le verrou distribué est OPPORTUNISTE.** Trois
+   éléments l'établissent dans le code existant (l'appelant fetch quand même en
+   cas d'échec ; le code re-vérifie la base après acquisition ; le commentaire
+   parle de prévenir un fetch concurrent, ce qui est une économie). Budget ramené
+   de **30 s à 5 s**, issue enregistrée pour rendre le compromis mesurable.
+
+### Ce qui n'a PAS été touché, délibérément
+
+La portée du verrou de session (n°3) et l'existence du verrou en processus (n°1).
+La task les subordonne à la mesure, et le n°3 protège une connexion IMAP unique,
+non thread-safe. **La réserve de la task tient** : si la mesure montre que les
+verrous pèsent peu, la conclusion attendue est de le dire et refermer.
+
+## Sonar log
+
+**Zéro finding attribuable à cette task.**
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| `new_violations` | 4 | **3** | −1 |
+| **Findings C#** | **2** | **0** | **−2** |
+| Bugs / Vulnérabilités / Hotspots | 0 / 0 / 0 | 0 / 0 / 0 | = |
+| Coverage projet / new | 86,7 % / 86,5 % | 85,6 % / 84,9 % | −1,1 / −1,6 pt |
+| Reliability / Security / Maintainability | A / A / A | A / A / A | = |
+
+Les 2 findings C# (`S3776`, `S138` sur `FetchMissingUidsWithLocksAsync`) étaient
+de la dette **introduite par cette task** — l'instrumentation avait fait franchir
+les deux plafonds. Corrigés par extraction de quatre helpers nommés.
+
+Les 3 restants sont dans `report.py`, aucun dans ce diff : `reduce_prom_matrix`
+et `_observe_table` (task-204), et `pinned_candidates` — qui franchit le seuil via
+la **PR #135**, déjà sur `develop` et intégrée ici par la synchronisation. La
+baisse de couverture vient de la même synchronisation.
+
+## PRs
+
+- `api-mail` : **https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/137**
+  — label `awaiting-human-merge`, `MERGEABLE`, 4 commits.
+- `dtos-mss` : aucune PR — branche sans commit, ref distant supprimé.
+
+## Code Review Summary
+
+Verdict : **APPROVED** — 0 blocage. Une correction issue de `/simplify`, non
+cosmétique : la détention du verrou distribué était mesurée avec le chronomètre
+du verrou en processus, démarré **avant** son acquisition — sur une table dont
+l'unique raison d'être est d'attribuer la queue au bon verrou, une surestimation
+vaut une fausse désignation.
+
+**Synchronisation** : `develop` avait avancé (PR #135, même fichier `report.py`).
+Merge sans conflit, 96 tests Python verts après coup.
+
+## Reste à faire par le humain
+
+1. **Tester puis merger la PR #137** — HAG, règle 10.
+2. **Cinq critères de DOD restent au banc** : désignation chiffrée du verrou
+   coupable, `read_list` < 400 ms et p95 < 800 ms, non-régression ThreadPool et
+   débit, rapport + ligne d'INDEX. La table « Verrous du chemin `read_list` » du
+   rapport est faite pour y répondre.
+3. Le test de concurrence « N lectures simultanées → un seul fetch IMAP » reste
+   dû : la déduplication est couverte par un test unitaire, mais le cas
+   N-concurrent réel exige la base et le banc.
+
+## Merged
+
+- **Date** : 2026-08-01
+- `api-mail` : squash `cabc1a4` — PR
+  [#137](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/137)
+  fermée. Ref distant supprimé, **branche locale conservée**.
+- `dtos-mss` : aucune PR (branche sans commit) — ref distant déjà supprimé au
+  `/review`, repo sur `develop`.
+- `client-angular`, `client-mobile`, `devops`, `psc-proxy-*` : hors périmètre.
+- **Staging** : `forge/staging-task-176-196-20260728` conservée — 211 est hors de
+  sa plage `[176, 196]`, et ce run n'est pas drainé.
