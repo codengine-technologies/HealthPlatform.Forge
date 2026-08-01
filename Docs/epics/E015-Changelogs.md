@@ -2063,6 +2063,100 @@ charge. Elle s'ajoute aux campagnes E015 déjà dues.
 
 ---
 
+### v1.15 — L'archivage d'un envoi quitte la file des lectures IMAP — task-213
+
+- **Task** : task-213 — `done`. **PR** : `api-mail` #140 (label `awaiting-human-merge`).
+- **Origine** : task-211 avait explicitement **renvoyé cette question à une
+  mesure** sans la faire. La mesure existe depuis le 2026-08-01 ; elle désigne
+  `imap_session`.
+
+#### Ce que la mesure disait
+
+Campagne 500 praticiens, palier 882 req/s : attentes courtes, **détentions
+longues** — `imap_session` détenu **6,345 s au p95**. Ce n'est donc pas une
+contention sur l'acquisition, c'est ce qui se fait sous le verrou qui dure,
+exactement la grille de lecture que task-211 avait inscrite dans le rapport.
+
+Le verrou sérialise **toutes** les opérations IMAP d'une session. `AppendToSent`,
+synchrone du geste du praticien, faisait la queue derrière le fetch
+d'enrichissement du **même** praticien.
+
+#### L'opération nommée, et l'instrumentation qui le prouvera
+
+Par lecture du code : **`EnrichEmails`**, phase A. La table de task-211 agrège
+sur le verrou — elle donne une durée, jamais un coupable. Les deux histogrammes
+portent désormais la **famille d'opération**, et `report.py` gagne une table
+`imap_session` par opération qui **confronte** l'attente de l'archivage à celle
+du reste plutôt que de laisser la conclusion au lecteur.
+
+> ⚠️ **PGSSI-S — la famille, jamais l'opération complète.** Les noms d'opération
+> concatènent chemins de dossier, UID et, pour `GetAttachment`, le **nom de la
+> pièce jointe** — qui dans une messagerie de santé nomme couramment le patient
+> et l'examen. Étiquette non bornée *et* donnée de santé. Seul le préfixe
+> littéral, écrit dans le code, est conservé ; deux tests l'épinglent, côté
+> application et côté rapport.
+
+#### La portée retenue, et les deux options écartées
+
+Le verrou **n'est pas supprimé** : la session MailKit n'est pas thread-safe,
+c'est sa raison d'être et task-211 l'avait laissé pour cela. Les appends
+(`Sent`, `Drafts`) passent par une **voie d'écriture** — identifiant de session
+suffixé, donc seconde connexion et second verrou. Une seule commande circule
+toujours à la fois sur une connexion donnée, ce qu'un test de contre-épreuve
+vérifie sur la même voie.
+
+| Option | Verdict |
+|---|---|
+| File par praticien avec priorité | ❌ **Ne corrige pas la mesure** : la priorité départage des candidats en attente, elle ne préempte pas le détenteur. Le problème mesuré est une **détention** de 6,3 s — un fetch en cours garderait le verrou jusqu'au bout. Gain nul, ordonnanceur maison et risque de famine en plus |
+| Réduire la portée de la détention | ❌ **Déjà faite** par task-079, qui sort persistance et parsing CDA du verrou. L'énoncé la conditionnait à « si le parsing est effectué sous le verrou » : il ne l'est pas. Ce qui reste dessous est du travail réseau réel, hors périmètre |
+
+**Coût chiffré** : une connexion IMAP de plus par praticien *qui écrit*, créée
+paresseusement et réclamée par la boucle d'entretien existante. Rapporté au
+plancher documenté (2 524 sessions à 500 praticiens), le majorant est un
+doublement, atteint seulement si tous écrivent dans la même fenêtre. Le point de
+vigilance réel n'est pas la mémoire mais la **limite de connexions par boîte de
+l'opérateur MSSanté** — c'est elle que le tir doit confirmer.
+
+#### Cloisonnement
+
+La clé de la voie d'écriture reste dérivée de l'email. Le clone de contexte passe
+par `MemberwiseClone` **précisément** pour qu'aucun champ ajouté plus tard ne soit
+oublié en silence — l'oubli se manifesterait par une connexion qui n'authentifie
+plus. Trois tests gardent la propriété ; `CrossTenantOwnershipTests` : 21 verts.
+
+#### Tests
+
+10 nouveaux côté .NET, 6 côté harnais. Suite : **3 280 verts** ;
+`selftest.sh` : **102 tests Python**. Tous **constatés RED avant le correctif**
+(exigence de DOD, preuve dans le `## Develop log`).
+
+Neuf tests existants ajustés — leurs substituts stubbaient l'ancienne surcharge
+de connexion. **Aucune assertion comportementale modifiée** : les deux voies sont
+désormais stubbées séparément pour que `DeleteDraft`, resté sur la voie de
+lecture, continue de le prouver.
+
+#### Sonar
+
+**0 issue** sur les 6 fichiers C# touchés et les 2 nouveaux fichiers de test. Les
+3 `python:S3776` de `report.py` sont pré-existants (`reduce_prom_matrix`,
+`pinned_candidates`, `_observe_table` — task-204 et PR #135).
+
+> ⚠️ KPIs projet toujours inexploitables depuis task-212 — `agents/sonar.md`
+> périmé, baseline à refaire.
+
+#### Ce que cette PR ne livre pas
+
+Le **tir de confirmation** : `send` p95 sous 10 s et ratio moyenne/médiane sous 2
+(contre 35,1 s et 3,3), non-régression `read_list` / `folders_warm` à 20 %.
+
+Et une réserve reportée au HAG, que la task pose elle-même : **le ×5,5 sur `send`
+mélange trois causes** — l'archivage devenu réel (la référence de 1,18 s avait été
+calibrée quand il échouait faute de dossier `Sent`), le passage de 200 à 500
+praticiens, et l'attente de verrou. Cette PR ne traite que la troisième ; la
+nouvelle table par opération est ce qui permettra de les séparer.
+
+---
+
 ## Annexe A — Cartographie des briques applicatives
 
 | Brique | Chemin | Rôle |

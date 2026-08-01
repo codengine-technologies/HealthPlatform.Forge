@@ -219,3 +219,92 @@ attente.
   (boîtes `loadtest-*`, pièces jointes du corpus de test).
 - **AIPD / impact RGPD** : inchangé — aucune nouvelle donnée collectée ni
   nouvelle finalité.
+
+## Branches
+- `api-mail` (pushed) : fix/task-213-imap-session-lock-scope — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-213-imap-session-lock-scope
+- `dtos-mss` (pushed, auto-inclus) : fix/task-213-imap-session-lock-scope — aucun contrat attendu (US backend-only)
+
+## Develop log
+
+### L'opération qui tient `imap_session` — nommée (DOD 1)
+
+**`EnrichEmails`**, phase A. Établi par lecture du code : task-079 a scindé
+l'enrichissement et sort déjà la persistance et le parsing CDA du verrou
+(`ImapService.EnrichEmailsAsync`, commentaire « Phase A / Phase B ») ; ce qui
+reste sous le verrou est le fetch réseau des corps et pièces jointes du lot,
+boucle `FetchMailBodiesAsync` sur les UID du lot. C'est du travail réel — la
+task le place hors périmètre.
+
+La preuve **chiffrée** exigera le banc : la table de task-211 agrège sur le
+verrou et ne peut pas nommer l'opération. C'est l'objet de l'étiquette
+`operation` ajoutée ici.
+
+### Tests constatés RED avant le correctif (DOD 6)
+
+`dotnet build tests/mss.mail.application.tests` avant implémentation :
+
+```
+WriteLaneSessionTests.cs(110,55): error CS1061: 'UserContextInfo' ne contient pas
+  de définition pour 'ForWriteLane' …   (× 4 sites)
+WriteLaneSessionTests.cs(188,44): 'MailProcessingMetrics' ne contient pas de
+  définition pour 'LockOperationFamily'
+```
+
+Après implémentation : **10/10 verts**.
+
+### Correction de l'énoncé — l'option 3 était déjà livrée
+
+L'énoncé proposait de « ne tenir le verrou que le temps des commandes IMAP, pas
+pendant le parsing CDA, **s'il est effectué sous le verrou** ». Il ne l'est pas :
+task-079 l'a sorti. Cette option est donc **sans objet**, et c'est écrit comme
+telle dans `UserContextInfo.ForWriteLane`.
+
+### Réserve reportée au HAG
+
+Le ×5,5 sur `send` mélange trois causes (archivage devenu réel, 200 → 500
+praticiens, attente de verrou) — la task le dit et cette PR ne traite que la
+troisième. La nouvelle table par opération est ce qui permettra de les séparer.
+
+## Sonar log
+
+**0 issue** sur les 6 fichiers C# touchés et sur les 2 nouveaux fichiers de test.
+Les 3 `python:S3776` de `report.py` sont pré-existants — `reduce_prom_matrix`,
+`pinned_candidates`, `_observe_table` (task-204 et PR #135) ; la nouvelle
+fonction `_session_lock_operation_table` n'en fait pas partie.
+
+> ⚠️ KPIs projet toujours inexploitables — cf. `## Sonar log` de task-212,
+> `agents/sonar.md` à corriger et baseline à refaire.
+
+## PRs
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/140 — label `awaiting-human-merge`
+- `dtos-mss` : aucune PR — branche sans commit (US backend-only)
+
+## Code Review Summary
+
+**APPROVED** — 11 fichiers, 0 blocage.
+
+- `UserContextInfo.ForWriteLane` — ✅ clone par `MemberwiseClone` (aucun champ
+  oubliable au fil des évolutions) ; l'arbitrage complet et les deux options
+  écartées y sont écrits.
+- `MailProcessingMetrics.LockOperationFamily` — ✅ borne la cardinalité **et**
+  coupe la fuite : `GetAttachment` concatène le nom de la pièce jointe.
+- `MailClientSessionManager` — ✅ les trois points de mesure étiquetés, aucune
+  autre sémantique touchée.
+- `ImapConnectionService` — ✅ surcharge à contexte explicite, l'ancienne délègue.
+- `ImapService` — ✅ voie d'écriture centralisée sur une propriété ; les autres
+  opérations de brouillon restent sur la voie de lecture, justifié sur place.
+- `report.py` — ✅ table rendue même vide, et **ligne de verdict** qui confronte
+  l'archivage au reste plutôt que de laisser la conclusion au lecteur.
+
+### Ajustements de tests existants
+9 tests ajustés : leurs substituts stubbaient l'ancienne surcharge de connexion.
+**Aucune assertion comportementale modifiée** — les deux voies sont désormais
+stubbées séparément pour que `DeleteDraft`, resté sur la voie de lecture,
+continue de le prouver.
+
+### Observations non bloquantes
+- Deux flakies pré-existants sont apparus une fois sur quatre exécutions de la
+  suite complète (`MailExportServiceTests` / `MarkdownPdfRendererTests`, état
+  statique PdfPig ; `FlagsmithFeatureFlagServiceTests.RefreshFailure…`,
+  `MeterListener` global). Verts en isolation, et la dernière suite complète est
+  à **3 280 verts, 0 échec**. Aucun lien avec ce diff.
