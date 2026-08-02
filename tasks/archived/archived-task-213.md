@@ -320,3 +320,74 @@ Refs distants supprimés sur les deux repos ; **branches locales conservées**.
 > non-régression `read_list` / `folders_warm` à 20 %. La table `imap_session` par
 > opération est ce qui permettra de séparer l'attente de verrou des deux autres
 > causes du ×5,5 sur `send`.
+
+## Vérification au banc du 2026-08-01 — conduite, et NON CONCLUSIVE
+
+Deux tirs 500 praticiens, iso-conditions avec la baseline nommée par le DOD
+(`report-mixed-mssante-60vu-150216.md`, budget 882, pré-task-213). Journalisée
+dans `db13e06`, `INDEX.md` recalculé. `reports/` étant gitignoré, les chiffres
+sont recopiés ici — c'est leur seule trace durable.
+
+**Première tentative invalidée par son propre protocole** (`…-162121.md`) :
+l'ordre était purge → échauffement → tir, et l'échauffement a consommé les fetch
+IMAP de la bande d'enrichissement. Compteurs plats (1 576 → 1 576), 0
+acquisition/s : le tir a mesuré un système où le verrou de session n'était **pas
+pris**. Ses chiffres flatteurs (`send` p95 −60 %, ratio 3,3 → 1,92) ne mesuraient
+rien de la contention sous test. C'est ce tir qui a motivé le correctif
+« non exercé ≠ non mesuré » (`d4643e9`).
+
+**Deuxième tentative**, ordre corrigé échauffement → purge → tir (`…-164903.md`) :
+
+| Critère DOD | Baseline | Vérifié | Verdict |
+|---|---|---|---|
+| `send` p95 | 35 135 ms | 28 844 ms | **NON** (< 10 s exigé) |
+| `send` moyenne/médiane | 3,3 | 2,26 | **NON** (< 2 exigé) |
+| `read_list` p95 | 638,9 ms | 1 162,1 ms | **NON** (+82 %, marge 20 %) |
+| `folders_warm` p95 | 469,1 ms | 764,2 ms | **NON** (+63 %, marge 20 %) |
+| `imap_session` attente p95 | 1,075 s | 1,809 s | +68 % |
+| `imap_session` détention p95 | 6,345 s | 7,207 s | +14 % |
+| Débit plateau | 814,1 req/s | 821,4 req/s | +0,9 % |
+
+Aucun des deux tirs n'est valide (8,9 % et 8,0 % d'abandons) : les latences sont
+lisibles par la règle du harnais, le débit non.
+
+### Pourquoi ce verdict ne juge PAS le correctif (trouvé le 2026-08-02)
+
+Le rapport écrit « ⓘ Aucune acquisition `AppendToSent` sur la fenêtre — le tir
+n'a pas archivé d'envoi ». **L'inférence est fausse, et c'est la table entière
+qui est aveugle.**
+
+`MailClientSessionManager` expose **deux** API pour le même sémaphore :
+
+| API | Sites d'appel | Émet `mssante_lock_*` ? |
+|---|---|---|
+| `AcquireLockWithIdAsync` / `ReleaseLockWithId` | **1** — `ProcessEmailUidAsync` (`ImapService.cs:1763`) | **oui** (`MailClientSessionManager.cs:223,236,265`) |
+| `AcquireLockAsync` → `ImapLockScope` | **~20**, dont `AppendToSentAsync` (`ImapService.cs:2803`) | **non** — `ImapLockScope.cs` ne référence pas `MailProcessingMetrics` |
+
+L'archivage **a bien tourné** : GreenMail à 0,38 cœur de moyenne, envois réussis
+(0,38 % d'erreurs, checks 99,6 %), et surtout les sessions Dovecot **doublées à
+5 002** — c'est la seconde connexion ouverte par la voie d'écriture. Il n'est
+simplement pas instrumenté.
+
+Donc :
+
+- la table « `imap_session`, par opération » **ne peut afficher que
+  `ProcessEmailUid`**, sur n'importe quel tir : ce n'est pas une décomposition du
+  verrou, c'est le seul appelant instrumenté ;
+- **DOD 1 non rempli** — l'étiquette `operation` a été posée sur la seule voie
+  qui n'a qu'un appelant, elle ne pouvait donc rien nommer ;
+- les lignes `imap_session` de task-211 et la prémisse chiffrée de cette task
+  (attente 1,075 s / détention 6,345 s) décrivent **`ProcessEmailUid` seul** ;
+- le verdict ci-dessus mesure le **coût** de la voie d'écriture (dégradation des
+  lectures, +2 500 sessions Dovecot sur un hôte où l'infra partage le CPU des
+  réplicas) mais son **bénéfice côté verrou est structurellement absent** — seule
+  la latence client k6 le porte.
+
+C'est le travers nommé la veille par `d4643e9` (« un verrou non exercé n'est pas
+un verrou non mesuré »), d'un cran au-dessus : ici **« non mesuré » a été lu
+« non exercé »**.
+
+**Suite** : task-214 instrumente `ImapLockScope`, puis la contre-épreuve de
+task-213 est rejouée. Le « NON » sur les lectures reste acquis et n'attend pas
+cette instrumentation — c'est lui qui motive l'interrupteur de la voie
+d'écriture demandé par task-214.

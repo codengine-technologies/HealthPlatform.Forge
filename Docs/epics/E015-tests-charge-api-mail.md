@@ -2,10 +2,10 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.15
+> **Version** : 1.18
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
-> **Dernière mise à jour** : 2026-08-01
+> **Dernière mise à jour** : 2026-08-02
 
 ---
 
@@ -94,7 +94,8 @@ baisses de performance avant qu'elles n'atteignent les utilisateurs**.
 | Mesures prises sur le vrai parcours d'authentification | Obtenir des chiffres de capacité opposables : les campagnes s'authentifiaient d'une façon que la production n'emploie pas, ce qui faussait la mesure et masquait les vraies anomalies dans le journal | task-206 | 🟡 Corrigé, mesure de confirmation à conduire |
 | Consultation des messages moins mise en file | Réduire l'attente à l'ouverture d'une liste de messages : plusieurs actions du praticien passaient l'une après l'autre derrière un même verrou, et l'une de ces attentes durait une seconde entière même quand la voie se libérait aussitôt | task-211 | 🟡 Corrigé, mesure de confirmation à conduire |
 | L'assistance IA ne se coupe plus toute seule au redémarrage | Éviter qu'un redémarrage du service tombant pendant une panne de l'outil de configuration ne désactive silencieusement l'étage d'analyse des documents | task-201 | 🟡 Corrigé, mesure de confirmation à conduire |
-| Envoyer un message n'attend plus la fin d'une analyse en cours | Rendre l'envoi immédiat même quand la boîte du praticien est occupée à analyser des documents reçus : l'archivage du message envoyé passait derrière ce travail de fond | task-213 | 🟡 Corrigé, mesure de confirmation à conduire |
+| Envoyer un message n'attend plus la fin d'une analyse en cours | Rendre l'envoi immédiat même quand la boîte du praticien est occupée à analyser des documents reçus : l'archivage du message envoyé passait derrière ce travail de fond | task-213, task-215 | 🔴 **Mesuré : le correctif fonctionne mais coûte plus qu'il ne rapporte — retrait décidé** (task-216) |
+| L'instrument sait enfin ce qu'il ne mesure pas | Mesurer les vingt points d'attente de la boîte du praticien, et non le seul qui l'était : le tableau censé désigner le coupable d'un ralentissement ne pouvait nommer que celui-là | task-214 | 🟡 Livré, en attente d'intégration |
 
 ---
 
@@ -415,9 +416,11 @@ réseau, au lieu de la libérer pour une autre demande. Ce verrou a été levé
 | Mesures prises sur le vrai parcours d'authentification | 🟡 Corrigé, mesure de confirmation à conduire | Les campagnes s'identifiaient auprès du service avec un justificatif simplifié, que la production n'emploie jamais. Deux conséquences : le temps mesuré n'incluait pas ce que coûte réellement la vérification d'identité, et le service signalait une anomalie **à chaque requête** — plus de 1 200 par seconde en pointe. Ce bruit rendait le journal d'anomalies inutilisable : une vraie panne y serait passée inaperçue. Les campagnes présentent désormais un justificatif de la même forme qu'en production, et le service ne signale plus rien quand il n'y a rien à signaler. **Reste dû** : la campagne de confirmation, et la relecture du journal pour vérifier que chaque anomalie restante s'explique | task-206 |
 | Consultation des messages moins mise en file | 🟡 Corrigé, mesure de confirmation à conduire | L'ouverture d'une liste de messages reste l'action la plus lente du profil courant : 718 ms en moyenne, mais 213 ms pour une consultation sur deux. Cet écart dit que le temps se passe **en file d'attente**, pas à travailler — et ni la puissance de calcul ni la capacité de traitement ne sont en cause, toutes deux mesurées au repos. En cause : plusieurs actions du praticien se sérialisent derrière un même verrou. Deux acquis. D'abord, **on sait désormais mesurer** ces attentes une par une : chaque campagne dira laquelle pèse, au lieu de laisser supposer. Ensuite, l'une d'elles imposait **une seconde entière** dès qu'il y avait la moindre concurrence, même quand la voie se libérait en un clin d'œil — ramenée à quelques centièmes. Une attente pouvant aller jusqu'à trente secondes a par ailleurs été ramenée à cinq : elle servait à éviter un travail en double, pas à garantir l'exactitude, et faire patienter une demi-minute pour cette raison était un mauvais échange. **Reste dû** : la campagne qui dira laquelle des attentes portait le retard — et, si elles pèsent peu, la conclusion attendue est de le constater plutôt que de relâcher des garde-fous sans gain établi | task-211 |
 | L'assistance IA ne se coupe plus toute seule au redémarrage | 🟡 Corrigé, mesure de confirmation à conduire | Les fonctions d'analyse automatique des documents peuvent être activées ou coupées à distance, sans redéploiement. Le service qui porte ces interrupteurs peut être momentanément indisponible : dans ce cas, chaque instance continuait de fonctionner sur le dernier réglage qu'elle avait vu — sauf **une instance qui vient de démarrer**, qui n'a rien vu et se rabattait alors sur « tout éteint ». Concrètement, un simple redémarrage tombant pendant une indisponibilité **coupait l'assistance IA sans que personne ne le demande, ni ne le voie**. Les instances partagent désormais le dernier réglage connu : celle qui démarre hérite de l'état du groupe au lieu de repartir aveugle. Ce partage est **volontairement facultatif** — s'il est lui-même indisponible, on retombe exactement sur le comportement précédent, sans nouvelle panne possible. En contrepartie, la prise en compte d'un changement de réglage passe de trente secondes à **cinq minutes** : c'est l'arbitrage assumé de cette correction, moins de réactivité contre plus de robustesse. **Reste dû** : la campagne de confirmation | task-201 |
-| Envoyer un message n'attend plus la fin d'une analyse en cours | 🟡 Corrigé, mesure de confirmation à conduire | À la réception d'un document, la messagerie l'analyse en tâche de fond — un travail de plusieurs secondes. Pendant ce temps, **toutes** les autres opérations sur la boîte du praticien passaient derrière, y compris le classement du message qu'il vient d'envoyer. Résultat mesuré : un envoi sur vingt dépassait **trente secondes**, le pire cas frôlant la minute. La boîte dispose désormais d'un **second accès réservé aux écritures** : classer un message envoyé, ou enregistrer un brouillon, ne fait plus la queue derrière l'analyse en cours. La règle qui protège la boîte — une seule commande à la fois sur un même accès — est **conservée telle quelle** ; c'est un second accès qui est ouvert, pas une règle qui est levée. On sait par ailleurs désormais **quelle opération** monopolise la boîte, ce qui manquait pour trancher. **Reste dû** : la campagne de confirmation. Elle devra aussi démêler ce qui, dans le ralentissement observé, revient à cette attente et ce qui revient au passage de 200 à 500 praticiens — les deux effets étaient jusqu'ici confondus | task-213 |
+| Envoyer un message n'attend plus la fin d'une analyse en cours | 🔴 **Mesuré : retrait décidé** | À la réception d'un document, la messagerie l'analyse en tâche de fond — un travail de plusieurs secondes. Pendant ce temps, **toutes** les autres opérations sur la boîte du praticien passaient derrière, y compris le classement du message qu'il vient d'envoyer. Résultat mesuré : un envoi sur vingt dépassait **trente secondes**, le pire cas frôlant la minute. La boîte dispose désormais d'un **second accès réservé aux écritures** : classer un message envoyé, ou enregistrer un brouillon, ne fait plus la queue derrière l'analyse en cours. La règle qui protège la boîte — une seule commande à la fois sur un même accès — est **conservée telle quelle** ; c'est un second accès qui est ouvert, pas une règle qui est levée. **La campagne de confirmation a été conduite le 1ᵉʳ août, et elle ne tranche pas.** Ce qu'elle établit : l'envoi s'améliore, mais modestement — le pire cas passe de 35 à 29 secondes, là où l'objectif fixé était de descendre sous 10 —, et cette amélioration est **payée par la consultation**, qui se dégrade de 60 à 80 %. Ce qu'elle n'établit pas : le second accès ouvre une deuxième connexion par praticien, soit 2 500 de plus sur le banc, et sur ce poste l'infrastructure de test partage le processeur du service — la dégradation observée peut donc venir du banc autant que du correctif. Ce qu'elle ne pouvait pas établir du tout : le compte rendu conclut « aucun archivage sur la période », or l'archivage a bien eu lieu — il n'était **pas mesuré**, dix-neuf des vingt points d'attente de la boîte échappant à l'instrument (task-214). **Reste dû** : réparer la mesure, puis rejouer. La reprise devra aussi démêler ce qui, dans le ralentissement observé, revient à cette attente et ce qui revient au passage de 200 à 500 praticiens — les deux effets sont encore confondus | task-213, task-214 |
 
-**Couverture EPIC consolidée : 15 features livrées sur 15** (les quinze attendent
+| L'instrument sait enfin ce qu'il ne mesure pas | 🟡 Livré, en attente d'intégration | Le compte rendu d'une campagne désignait l'opération qui monopolise la boîte du praticien. Il ne pouvait pas : sur les vingt points d'attente que compte la boîte, **un seul était instrumenté** — et c'est donc le seul que le tableau nommait, quelle que soit la campagne. Un tableau qui se lit comme un verdict alors qu'il est un échantillon. La conséquence a été concrète : le compte rendu du 1ᵉʳ août affirme « aucun archivage sur la période » alors que l'archivage tournait, ce qui a fait rendre à la vérification du correctif d'envoi un verdict qui n'en jugeait que le coût. Les vingt points sont désormais mesurés, il n'existe plus **qu'une seule façon** de prendre ce verrou — la seconde a été supprimée, pas corrigée —, et le compte rendu distingue trois situations là où il n'en voyait qu'une : instrument absent, mesure à zéro, et le cas qu'il taisait, « je ne peux pas trancher », assorti du contrôle qui tranche. On sait par ailleurs compter séparément ce qui passe par l'accès en écriture, ce qui rendra enfin attribuable le doublement de connexions qu'il coûte | task-214 |
+
+**Couverture EPIC consolidée : 16 features livrées sur 16** (les seize attendent
 leur intégration). L'EPIC est **fonctionnellement complet** : le banc est
 opérationnel, il mesure la chaîne complète de traitement des documents médicaux,
 les campagnes de mesure sont outillées avec une référence opposable, la campagne à
@@ -641,6 +644,59 @@ Trois réserves à porter au bilan, sans quoi il serait trompeur :
   qui est ouvert, pas une règle qui est levée. La campagne de confirmation
   reste à conduire, et devra démêler cette attente du seul effet du passage
   de 200 à 500 praticiens. (task-213)
+- v1.16 — **La campagne de confirmation du second accès a été conduite, et
+  elle ne tranche pas.** Elle établit une amélioration réelle mais modeste de
+  l'envoi — le pire cas passe de 35 à 29 secondes quand l'objectif était de
+  descendre sous 10 —, payée par la consultation, qui se dégrade de 60 à
+  80 %. Elle n'établit pas que le correctif en soit la cause : le second
+  accès ouvre une deuxième connexion par praticien, soit 2 500 de plus sur le
+  banc, et sur ce poste l'infrastructure de test partage le processeur du
+  service. **Et surtout, elle ne pouvait pas juger ce qu'elle prétendait
+  juger** : son compte rendu conclut « aucun archivage sur la période », alors
+  que l'archivage a bien eu lieu — il n'était pas mesuré. Dix-neuf des vingt
+  points d'attente de la boîte du praticien échappent à l'instrument, qui n'en
+  couvre qu'un seul ; le tableau censé désigner l'opération responsable ne
+  pouvait donc afficher que celle-là, sur n'importe quelle campagne. C'est le
+  travers nommé la veille — « une mesure absente n'est pas une mesure à
+  zéro » — répété d'un cran au-dessus. Réparation d'abord, reprise ensuite.
+  (task-213, task-214)
+- v1.17 — **L'instrument sait enfin ce qu'il ne mesure pas.** La boîte du
+  praticien compte une vingtaine de points où une opération peut attendre son
+  tour. Un seul était mesuré — et c'est donc le seul que le compte rendu de
+  campagne pouvait nommer comme responsable d'un ralentissement, quelle que
+  soit la campagne. Un tableau qui se lit comme un verdict alors qu'il n'est
+  qu'un échantillon. Les vingt sont désormais mesurés, et il n'existe plus
+  **qu'une seule façon** de prendre ce verrou : la seconde n'a pas été
+  corrigée, elle a été supprimée — deux façons de faire la même chose sont
+  deux occasions d'en oublier une. Le compte rendu distingue par ailleurs
+  trois situations là où il n'en voyait qu'une : instrument absent, mesure à
+  zéro, et celle qu'il taisait — « je ne peux pas trancher » —, désormais
+  écrite noir sur blanc avec le contrôle qui permet de le faire. Enfin, ce qui
+  passe par l'accès en écriture est compté à part : c'est ce qui rendra
+  attribuable, à la prochaine campagne, le doublement de connexions que cet
+  accès coûte. (task-214)
+- v1.18 — **Le second accès en écriture fait ce qu'on lui demandait, et il
+  faut pourtant le retirer.** Trois campagnes conduites le 2 août sur le même
+  poste, dont une **campagne témoin** où l'accès en écriture est neutralisé —
+  le terme qui manquait à toutes les mesures précédentes. Ce qu'elles
+  établissent, dans l'ordre. **Le correctif fonctionne** : l'attente du
+  classement d'un message envoyé passe de 4,3 secondes à 5 millisecondes, et
+  le témoin confirme au passage que le problème diagnostiqué existait bien.
+  **Il ne sert pourtant à rien au praticien** : ce qui compte est le temps que
+  dure un envoi, et il est meilleur *sans* le correctif — 8 secondes pour le
+  pire cas contre 10 et 13 avec. Ce que le second accès retire à l'attente, il
+  le repaie intégralement en ouverture de connexion. **Et la dégradation de la
+  consultation qu'on lui reprochait le 1ᵉʳ août n'est pas la sienne** : la
+  campagne témoin se dégrade autant, parfois davantage — c'était la
+  configuration du banc, changée entre la mesure de référence et sa
+  vérification. Décision : retirer le second accès, garder l'instrument qui a
+  permis d'en juger. Le problème d'origine — un envoi sur vingt au-dessus de
+  trente secondes — **ne se reproduit plus sans lui** : les limites du banc
+  levées depuis avaient déjà retiré la congestion qui le produisait. Réserve
+  portée au bilan : la conclusion vaut pour ce poste, où l'infrastructure de
+  test partage le processeur du service ; ce qui la rend malgré tout
+  actionnable est que les deux termes comparés ont subi ce biais à
+  l'identique. (task-215, retrait en task-216)
 
 ---
 
