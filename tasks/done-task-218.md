@@ -372,9 +372,53 @@ Détail api-mail : 102 domain + 393 infrastructure + 639 api + 204 integration
 **Ordre de merge imposé** : SDK d'abord (déjà publié en 12.0.0), puis api-mail
 et client-blazor.
 
-### 11. Reste dû au banc — bloque la clôture de l'US, pas la PR
+### 11. Contre-épreuve au banc — tirée le 2026-08-02 au soir
 
-- [ ] Tir 500 praticiens : aucun thread applicatif parqué dans `ExecuteSync`
-      (contrôle par pile, sur le modèle de task-205). C'est la **contre-épreuve
-      du bénéfice** : tout ce qui précède prouve l'équivalence fonctionnelle et
-      la non-régression, mais **pas** le gain de débit visé. À ne pas confondre.
+- [x] Tir 500 praticiens : **aucun thread applicatif parqué dans `ExecuteSync`**
+
+Rapport : `Api/Mail/tests/loadtest-k6/reports/2026-08-02/report-mixed-mssante-60vu-230054.md`
+(section « Contre-épreuve task-218 »), piles dans `stacks-task218-230600/`.
+Les rapports sont *gitignored* par convention du dépôt — seul `INDEX.md` est
+versionné, donc l'essentiel est recopié ici.
+
+**Le contrôle par pile — tenu.** `dotnet-stack report` sous charge, 3 rounds
+× 5 réplicas :
+
+| | Avant (2026-07-31) | Après |
+|---|---|---|
+| Threads capturés | 236 | **731** |
+| Frames `ExecuteSync` | **20** | **0** |
+| Frames `CacheService` | 17 | **0** |
+
+Ce qui rend le résultat **attribuable** et non fortuit : les appelants parqués
+*avant* nomment exactement le code que task-218 a supprimé ou migré —
+`CacheService.Get` (17), `SafeCacheExtensions.SafeGet` (10),
+`ImapService.GetFoldersAsync` (7), `UserSettingsRepository.GetSettingsAsync` (5),
+`SearchHistoryService.Record` (5).
+
+Les frames StackExchange.Redis restantes sont légitimes : threads d'arrière-plan
+de la bibliothèque et **machines à états asynchrones**. Corroboré statiquement —
+tous les appels StackExchange.Redis d'api-mail sont désormais `*Async`.
+
+**Corollaire mesuré** : `RedisTimeoutException` **7 155 → 0**. Erreurs
+**0,00 %**, tous marqueurs de régression à 0, 819 parsings CDA,
+`enrich_short_circuited = 0`.
+
+⚠️ **Le gain de débit reste NON MESURÉ — ce qui n'est pas « non obtenu ».**
+Plateau 735,8 req/s contre 743,3 pour la référence, p95 2 632 contre 1 593 ms.
+Cet écart n'est **pas** imputable à task-218 :
+
+1. la référence (2026-08-01 15:10) **précède** le merge de task-213
+   (`42f21ed`, 16:08), dont la contre-épreuve `598821c` a établi qu'elle
+   **ralentit l'envoi** — `send` planifié 1,18 s, mesuré **2,72 s** (×2,3) ;
+2. le maildir est passé de 8,2 à **9,0 Go**, et à 500 praticiens le coût
+   dominant suit le volume des boîtes ;
+3. les deux tirs sont formellement **invalides** (abandons > 1 %) des deux côtés.
+
+Le rapport impute les abandons au **dimensionnement du harnais** (file ThreadPool
+max **34** sur un seuil de 100 → serveur calme), pas à l'application.
+
+Il n'existe à ce jour **aucun couple de tirs à 500 praticiens** partageant
+budget, lignée de code **et** volume de maildir. Mesurer le gain demanderait un
+**A/B à harnais et lignée identiques** — même commit, `ICacheService` retiré ou
+remis. **Reste dû.**
