@@ -461,7 +461,7 @@ valeur non vide mais **pas un JWT** — au motif que le profil du banc pose
 |---|---|---|
 | `SecurityTokenMalformedException` | **0** | toute occurrence = régression. Le harnais forge un vrai JWT par identité, et api-mail contrôle la forme avant de parser |
 | Total « Exceptions /s » par réplica | **quelques unités**, pas des centaines | au-delà de ~10/s soutenus, chercher la famille avant de conclure quoi que ce soit sur la capacité |
-| `FolderNotFoundException` | non nulle, **bénigne** | les boîtes du banc n'ont pas de dossier `Sent` ; l'envoi réussit, l'archivage échoue (non fatal par conception) |
+| `FolderNotFoundException` | **0** depuis `118c3f4` (2026-08-01) | les boîtes du banc déclarent désormais `Sent` / `Drafts` / `Trash` et l'archivage aboutit réellement (`doveadm` : Sent messages=1). Toute occurrence = régression de la conf Dovecot. ⚠️ Cette ligne annonçait « non nulle, bénigne » jusqu'à task-214 : c'était vrai avant `118c3f4`, où l'archivage échouait après **chaque** envoi (~73/s) |
 | `HttpRequestException`, `FlagsmithAPIError` | ponctuelles | dépendances externes du banc |
 | `IOException`, `XmlException` | ponctuelles | à regarder si elles croissent avec la charge |
 
@@ -482,12 +482,33 @@ comportement — utile pour re-mesurer le défaut, à ne pas laisser dans une
 campagne dont on veut publier le chiffre : un débit mesuré sur un autre chemin
 d'authentification que celui déployé n'est pas opposable.
 
+### Lire la table « `imap_session`, par opération » (task-214)
+
+**Une étiquette absente n'établit pas qu'une opération n'a pas eu lieu.** Le
+2026-08-01, cette table a imprimé *« Aucune acquisition `AppendToSent` — le tir
+n'a pas archivé d'envoi »*. C'était faux : l'archivage tournait (GreenMail à
+0,38 cœur, 13 973 envois à 0,38 % d'erreurs, sessions Dovecot doublées à 5 002),
+il n'était simplement **pas instrumenté** — `ImapLockScope`, l'API de vingt
+sites d'appel sur vingt-et-un, n'émettait aucun histogramme. La table ne pouvait
+donc afficher que `ProcessEmailUid`, **sur n'importe quelle campagne**.
+
+| Ce que montre la table | Lecture | Geste |
+|---|---|---|
+| Aucune série | Instrumentation absente ou collector muet | Vérifier le binaire déployé (task-214 mergée ?) et le collector |
+| Séries présentes, `AppendToSent` absent, **voie d'écriture à 0** | **Indécidable** | Regarder la ligne `send` de « Débit demandé vs délivré » : débit d'envoi non nul ⇒ défaut d'instrumentation, pas un tir sans archivage |
+| Séries présentes, voie d'écriture non nulle | Instrumentation vivante | L'absence d'`AppendToSent` désigne bien une opération non exercée |
+
+La table **« Voie | Acquisitions /s »** répond à la question que le banc du
+2026-08-01 ne pouvait pas poser : *le doublement des sessions IMAP est-il
+imputable à la voie d'écriture de task-213 ?*
+
 ### Deux réserves sur les baselines livrées
 
-- **`send`** : les boîtes du banc n'ont **pas de dossier `Sent`**. L'envoi SMTP
-  réussit, puis `AppendToSentAsync` échoue en `FolderNotFoundException` — le
-  endpoint répond `200` (archivage non fatal par conception), mais la latence
-  mesurée inclut cet échec. À re-mesurer si le banc provisionne un `Sent`.
+- **`send`** : réserve **levée** par `118c3f4` (2026-08-01) — les boîtes
+  déclarent `Sent` / `Drafts` / `Trash` et l'archivage aboutit. ⚠️ En
+  contrepartie, **les baselines antérieures ne sont plus comparables** : elles
+  mesuraient un envoi dont l'archivage échouait, donc plus court. Toute
+  comparaison de `send` avec un tir d'avant cette date est à écarter.
 - **`search`** : baseline **provisoire** tant que task-196 n'est pas livrée —
   les documents longs n'ont pas de vecteur, l'index sémantique est incomplet.
 
@@ -878,7 +899,7 @@ Attendu et **sans gravité** pendant un run :
 | `[CdaParsingService] Missing values: … in …` | le document de test n'a pas de valeur dans cette section — preuve que le parseur descend dans le CDA |
 | `[MailClientSession] ♻️ Session expired` | recyclage nominal après ~5 min d'inactivité, en fin de tir |
 | `RedisConnectionException … ConnectTimeout` **au démarrage** | conteneur Redis pas encore prêt ; disparaît une fois le banc établi |
-| `[AppendToSentAsync] Failed to append message to Sent folder` + `MailKit.FolderNotFoundException` | les boîtes du banc n'ont **qu'`INBOX`** — pas de dossier `Sent`. L'envoi SMTP a réussi ; seul l'archivage échoue, traité comme non fatal (le endpoint répond `200`). À savoir : la latence mesurée de `send` inclut cet échec (task-174, baseline.md) |
+| ~~`[AppendToSentAsync] Failed to append message to Sent folder`~~ | ⛔ **N'est plus bénin depuis `118c3f4` (2026-08-01)** — les boîtes déclarent `Sent`/`Drafts`/`Trash`. Une occurrence est désormais une **régression de la conf Dovecot**, pas un comportement attendu (déplacé dans la table « à prendre au sérieux » par task-214) |
 
 À prendre au sérieux :
 

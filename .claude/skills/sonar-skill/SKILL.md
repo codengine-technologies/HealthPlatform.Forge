@@ -27,13 +27,13 @@ ces variables dans la session avant de lancer l'analyse (ou les charger depuis
 un `.env` non versionné) :
 
 ```powershell
-$env:SONAR_HOST_URL  = "http://localhost:9001"
+$env:SONAR_HOST_URL  = "http://127.0.0.1:9000"
 $env:SONAR_TOKEN     = "<votre-token-sonarqube>"   # ne jamais committer
 $env:SONAR_PROJECT_KEY = "healthplatform-api-mail"
 ```
 
 ### Prérequis
-- SonarQube server en cours d'exécution sur `http://localhost:9001`
+- SonarQube server en cours d'exécution sur `http://127.0.0.1:9000`
 - `dotnet-sonarscanner` installé globalement :
   `dotnet tool install --global dotnet-sonarscanner`
 - Token SonarQube valide avec permissions d'analyse, exporté dans
@@ -213,5 +213,5 @@ Write-Host "===================================="
 ```
 
 ## Accès aux résultats
-- **Interface SonarQube** : `http://localhost:9001`
+- **Interface SonarQube** : `http://127.0.0.1:9000`
 - **Projet** : `healthplatform-api-mail`
