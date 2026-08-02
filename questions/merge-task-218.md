@@ -61,9 +61,21 @@ plus un problème de merge : il faudra une correction, donc une nouvelle
 validation humaine. Ne pas la court-circuiter au motif que le merge « était
 trivial ».
 
-## Note d'outillage
+## Note d'outillage — ⛔ CETTE NOTE ÉTAIT FAUSSE, corrigée le 2026-08-02
 
-`gh pr checks 146` répond *« no checks reported on the branch »* : **api-mail n'a
-pas de CI sur les branches de feature**. La gate 4 n'y mesure donc rien, et la
-seule garde reste la vérification locale. À savoir avant de s'appuyer sur la
-gate 4 pour ce repo.
+~~`gh pr checks 146` répond « no checks reported on the branch » : api-mail n'a
+pas de CI sur les branches de feature.~~
+
+**Faux.** Le workflow existe bien et s'est déclenché dès la poussée du commit de
+fusion (`build` pass en 1 m 47 s, run `30768261060`). Il n'avait simplement pas
+encore tourné au moment du premier contrôle. **La gate 4 est opérante sur
+api-mail** — ne pas se fier à un « no checks reported » ponctuel pour en conclure
+qu'un repo est dépourvu de CI.
+
+## Résolution
+
+Débloquée puis mergée le 2026-08-02. Voir
+`tasks/archived/archived-task-218.md`, section `## Merged` — qui consigne aussi
+deux erreurs commises pendant la resynchronisation (commit de fusion sans
+deuxième parent ; marqueurs de conflit commités parce que `git add` lève l'état
+« non fusionné » sans regarder le contenu).

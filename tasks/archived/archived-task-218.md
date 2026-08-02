@@ -1,4 +1,4 @@
-# done-task-218.md — Retirer `ICacheService` du SDK : un cache sans budget de temps, sans disjoncteur et sans tolérance à la panne, que 58 appels traversent
+# archived-task-218.md — Retirer `ICacheService` du SDK : un cache sans budget de temps, sans disjoncteur et sans tolérance à la panne, que 58 appels traversent
 
 **Repos**: sdk, api-mail, client-blazor
 **Epic**: E015
@@ -422,3 +422,61 @@ Il n'existe à ce jour **aucun couple de tirs à 500 praticiens** partageant
 budget, lignée de code **et** volume de maildir. Mesurer le gain demanderait un
 **A/B à harnais et lignée identiques** — même commit, `ICacheService` retiré ou
 remis. **Reste dû.**
+
+---
+
+## Merged — 2026-08-02
+
+Mergée par l'humain via `/merge 218 --i-tested` (HAG, règle 10).
+
+| Repo | PR | Commit de squash sur `develop` | CI `develop` |
+|---|---|---|---|
+| `sdk` | [#2](https://github.com/codengine-technologies/HealthPlatform.Host.Sdk/pull/2) | `1fae0cc` | ✅ success |
+| `api-mail` | [#146](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/146) | `5317516` | ✅ success |
+| `client-blazor` | [#68](https://github.com/codengine-technologies/HealthPlatform.Client/pull/68) | `8f11e17` | ✅ success |
+| `dtos-mss` | — | aucune PR (aucun contrat touché, comme prévu) | — |
+
+Ordre respecté : **SDK d'abord** (les consommateurs épinglent `12.0.0`), puis
+api-mail et client-blazor. Refs distantes `fix/task-218-remove-icacheservice`
+supprimées sur les quatre repos ; refs locales conservées.
+
+### Le merge a demandé une resynchronisation, et elle n'était pas cosmétique
+
+`/merge` a d'abord **refusé** sur la gate 5 : api-mail était `CONFLICTING`
+(cf. `questions/merge-task-218.md`). Un seul commit manquait — `f7c970b`
+(task-179) — et un seul fichier était en conflit, `Directory.Packages.props` :
+
+```
+develop (task-179) : Dtos.Mss  343.0.0 -> 377.0.0
+task-218           : Host.Sdk   10.0.0 -> 12.0.0
+```
+
+Deux **lignes adjacentes**, deux paquets **différents**, aucun conflit
+sémantique. Mais l'attestation `--i-tested` portait sur `Dtos 343 + Sdk 12`,
+alors que l'état mergeable était `Dtos 377 + Sdk 12` — **combinaison jamais
+compilée**, sur le paquet de **contrats**, avec un saut de 34 versions majeures.
+La revalidation était donc nécessaire, pas formelle : **build 0 erreur, 3 281
+tests verts** (102 domain + 407 infrastructure + 639 api + 211 integration +
+1 922 application). Aucune rupture de contrat `Dtos.Mss`.
+
+### Deux erreurs de ma part pendant la resynchronisation, corrigées
+
+1. **Premier commit de fusion sans deuxième parent.** `MERGE_HEAD` a été perdu
+   entre la résolution et le commit (probablement pendant le build/test) : git a
+   produit un commit **ordinaire** malgré son message, `develop` n'était donc pas
+   ancêtre et GitHub continuait à annoncer `CONFLICTING`. Refait avec résolution
+   **et** commit dans la même invocation.
+2. **Marqueurs de conflit commités.** `git add` lève l'état « non fusionné »
+   **sans regarder le contenu** : mon contrôle `git diff --diff-filter=U | wc -l`
+   a donc répondu `0` alors que `<<<<<<<` / `=======` / `>>>>>>>` étaient encore
+   dans le fichier. Détecté avant la poussée définitive, corrigé, rebuild +
+   3 281 tests rejoués, commit amendé. **Le bon contrôle est
+   `git grep -nE '^(<<<<<<<|=======|>>>>>>>)'`, pas `--diff-filter=U`.**
+
+### Correction d'une affirmation fausse de ma part
+
+J'ai écrit dans `questions/merge-task-218.md` qu'**api-mail n'a pas de CI sur les
+branches de feature**, sur la foi d'un `gh pr checks 146` répondant *« no checks
+reported »*. **C'est faux** : le workflow existe et s'est déclenché à la poussée
+du commit de fusion (`build` pass en 1 m 47 s). Il n'avait simplement pas encore
+tourné. La gate 4 est donc bien opérante sur ce repo.
