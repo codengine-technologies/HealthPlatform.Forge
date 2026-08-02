@@ -41,12 +41,26 @@ fi
 if ! git rev-parse --show-toplevel >/dev/null 2>&1; then
   echo "BLOCKED: not inside a git repo (CWD=$(pwd))."
   echo "This workspace is a polyrepo. Each task declares **Repo:** — cd into that"
-  echo "path before running git/build/test commands. The workspace root itself is"
-  echo "NOT a git repo and never accepts pushes."
+  echo "path before running git/build/test commands."
   exit 2
 fi
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
+
+# task-219 — LE PLAN DE CONTRÔLE EST UN DÉPÔT, ET IL N'A RIEN À CONSTRUIRE.
+#
+# La racine du workspace est le dépôt `HealthPlatform.Forge` (tasks/, Docs/,
+# agents/, .claude/) et elle CONTIENT les dépôts de code comme sous-répertoires.
+# Le test `ls $REPO_ROOT/**/*.csproj` plus bas y trouve donc les .csproj des
+# dépôts VOISINS (Dtos/, Sdk/, …) et lançait `dotnet build` à la racine, où
+# aucune solution n'existe : le plan de contrôle était impossible à pousser.
+#
+# Détection par la présence de CLAUDE.md ET l'absence de solution à la racine —
+# pas par le nom du remote, qui peut changer.
+if [ -f "$REPO_ROOT/CLAUDE.md" ] && [ -d "$REPO_ROOT/tasks" ] && ! ls "$REPO_ROOT"/*.sln >/dev/null 2>&1; then
+  echo "Pre-push: $REPO_ROOT est le plan de contrôle de la forge (pas de build). Push allowed."
+  exit 0
+fi
 
 # Excluded repos — handled manually by the human, never enforced by the forge.
 # Normalize to forward slashes to handle Windows paths uniformly.
