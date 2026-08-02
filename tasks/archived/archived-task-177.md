@@ -385,3 +385,15 @@ d'être un signal.
 5. **Housekeeping `tests/loadtest-k6/`** — 3 issues Python qui rougissent le QG
    de **chaque** PR api-mail (3ᵉ consécutive)
 6. **Flaky `CdaProcessingMetricsTests`** — nouvellement observé, à documenter
+
+## Merged
+- `api-mail` : **c2aad51** — squash de la PR #129, mergée le 2026-08-02
+- `dtos-mss` : aucune PR (branche sans commit) ; ref distant supprimé
+
+Refs distants supprimés sur les deux repos ; **branches locales conservées**.
+
+> ⚠️ **Le merge ne clôt PAS l'incident.** Sortir les secrets du code source
+> empêche la récidive ; il ne révoque rien. Les secrets committés restent
+> **lisibles dans l'historique git** de tous les clones et forks, et le merge ne
+> les en retire pas. **Rotation requise**, côté humain — c'est le titre même de
+> la PR.
