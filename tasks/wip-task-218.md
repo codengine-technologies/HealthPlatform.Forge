@@ -151,3 +151,116 @@ recherche.
 - **Tracé PGSSI-S** : aucun évènement métier touché.
 - **Hébergement HDS** : non applicable.
 - **AIPD / impact RGPD** : inchangé. Durées de conservation du cache inchangées.
+
+## Branches
+- `sdk` (pushed) : fix/task-218-remove-icacheservice
+- `api-mail` (pushed) : fix/task-218-remove-icacheservice
+- `client-blazor` (pushed) : fix/task-218-remove-icacheservice
+- `dtos-mss` (pushed, auto-inclus) : fix/task-218-remove-icacheservice — aucun contrat attendu
+
+> Ordre cross-repo imposé : **sdk → publication NuGet → bump → api-mail /
+> client-blazor**. Le SDK doit être publié avant que les consommateurs
+> compilent contre le nouveau contrat.
+>
+> Pré-flight : `host` n'a pas de `.git` (corrigé au CLAUDE.md ce jour, le
+> pré-flight ne mesure rien sur lui) ; `client-mobile` n'est pas cloné.
+
+## Develop log — en cours
+
+### 1. Six appels sur 61 étaient du code mort
+
+`FolderCacheManager` et `IFolderCacheManager` n'avaient **aucun appelant de
+production** et n'étaient **pas enregistrés en DI** — seul leur propre test
+unitaire les référençait. Supprimés (3 fichiers). Build vert.
+
+### 2. Le point dur du DOD, instruit par lecture — les deux services de sécurité
+
+Le risque nommé par la task : `ICacheService` **lève** en cas de panne,
+`IResilientCacheService` **avale et rend `default`**. Pour un service qui valide
+un certificat, confondre « panne de cache » et « rien en cache » pourrait
+transformer une indisponibilité en acceptation.
+
+**Vérifié : les deux traitent déjà la panne comme une absence.**
+
+| Service | Ce que fait le code aujourd'hui | Effet de la bascule |
+|---|---|---|
+| `CrlValidationService.GetCrlAsync` | `try/catch` autour du `Get`, `LogWarning` puis **téléchargement du CRL** | **aucun** — le repli existe déjà |
+| `OcspValidationService.TryGetCachedEntry` | `try/catch`, retourne `null`, commentaire de task-069 : « *a cache outage must not abort the validation : the online OCSP check still runs* » | **aucun** |
+| `OcspValidationService.TryGetCachedIssuerData` | idem, retourne `null` → re-téléchargement du certificat émetteur | **aucun** |
+
+Autrement dit, la sémantique cible est **déjà** celle qu'ils implémentent à la
+main. La bascule supprime leur `try/catch`, elle ne change pas leur
+comportement. Des tests le verrouilleront quand même — c'est une propriété de
+sécurité, elle ne doit pas dépendre d'une relecture.
+
+⚠️ **Cascade à prévoir** : `TryGetCachedEntry` et `TryGetCachedIssuerData` sont
+des méthodes **privées synchrones**. Les passer en async remonte à leurs
+appelants.
+
+### 3. Reste à faire
+
+| Cible | Appels |
+|---|---|
+| `ImapFolderService` | 16 |
+| `ImapService` | 13 |
+| `src/Infrastructure/` (`BaseRepository` + ~15 dépôts) | 18 |
+| `OcspValidationService` | 4 |
+| `CrlValidationService` | 2 |
+| `SyncCoverageService` | 2 |
+| `BackgroundSyncService` | 1 |
+| ~~`FolderCacheManager`~~ | ~~6~~ — **supprimé** |
+
+Puis : retrait des helpers redondants de `SafeCacheExtensions`, retrait
+d'`ICacheService`/`CacheService` du SDK, publication, bump des deux
+consommateurs.
+
+**Ordre retenu** : migrer api-mail **d'abord**, contre le SDK 10.0.0 déjà
+publié — `IResilientCacheService` y existe déjà, aucun changement de SDK n'est
+nécessaire pour cette étape. Le retrait côté SDK devient ensuite une simple
+suppression, une fois qu'il n'a plus d'appelant.
+
+### 4. Point de reprise — session du 2026-08-02 interrompue volontairement
+
+**Rien n'est en suspens.** Tous les dépôts sont commités et poussés ; la branche
+`fix/task-218-remove-icacheservice` existe sur les quatre repos, et seul
+`api-mail` y porte un commit (`127e7b9`, retrait du code mort).
+
+**Par où reprendre**, dans cet ordre :
+
+1. **`OcspValidationService` et `CrlValidationService`** — commencer par eux.
+   Ce sont les seuls porteurs d'un risque de sécurité, l'analyse est faite
+   (§2 ci-dessus) et ils sont petits : 6 appels à eux deux. **Écrire d'abord les
+   tests** qui prouvent qu'une panne de cache déclenche une revalidation et
+   jamais une acceptation — ils doivent être verts AVANT et APRÈS la migration,
+   c'est ce qui démontre l'équivalence.
+2. **`SyncCoverageService`** (2) et **`BackgroundSyncService`** (1) — petits,
+   sans piège identifié.
+3. **`src/Infrastructure/`** (18) — `BaseRepository` expose
+   `protected ICacheService CacheService` et `CacheServiceOrNull` ; c'est la
+   racine de la cascade vers une quinzaine de dépôts. Mesurer la cascade avant
+   de commencer.
+4. **`ImapFolderService`** (16) et **`ImapService`** (13) — le plus gros, à
+   garder pour la fin : la majorité de leurs méthodes est déjà `async`, donc la
+   cascade devrait y être faible.
+5. **`SafeCacheExtensions`** — retirer les helpers devenus redondants, avec le
+   test de compatibilité de sérialisation exigé par le DOD.
+6. **SDK** — retirer `ICacheService`/`CacheService`, mettre `AddSdk` en
+   cohérence, publier, bumper les deux consommateurs.
+7. **`client-blazor`** — retirer l'enregistrement DI
+   (`Src/Shell/Extensions/ServiceCollectionExtensions.cs:20`) et bumper.
+
+**Si la cascade fait déborder le plafond de ~30 fichiers de la règle 5** :
+re-découper plutôt que livrer une PR de 80 fichiers. Le point de coupe naturel
+est entre l'étape 4 et l'étape 5.
+
+**Rappels d'outillage acquis aujourd'hui** :
+- Le poste n'a **pas** de `GH_TOKEN`. Utiliser `GH_TOKEN=$(gh auth token)` en
+  ligne devant `dotnet restore` / `build` — le jeton `gh` porte
+  `write:packages`. Ne jamais le faire transiter par un fichier.
+- NuGet **ne retélécharge pas** un paquet déjà en cache global : après
+  publication d'une nouvelle version, purger
+  `~/.nuget/packages/healthplatform.host.sdk/{version}` avant de restaurer,
+  sinon le `contentHash` inscrit dans les lock files sera celui d'un pack local
+  et la CI échouera en `NU1403`.
+- La CI du SDK publie **une version par poussée** (numéro de run). Le SDK est
+  aujourd'hui publié en **11.0.0** ; les consommateurs épinglent **10.0.0**.
