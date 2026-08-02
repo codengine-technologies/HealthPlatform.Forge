@@ -2,9 +2,9 @@
 
 > **Statut** : En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.44
+> **Version** : 1.45
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-08-01 (task-212)
+> **Dernière mise à jour** : 2026-08-01 (task-185)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1049,6 +1049,7 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Sécurité — défense en profondeur
 
+- **v1.56 — Les pièces jointes médicales ne restent plus en clair sur le serveur** (task-185) : à la réception d'un compte-rendu ou d'un résultat de biologie, la messagerie décompressait la pièce jointe dans un dossier de travail partagé du serveur — et **ne l'effaçait jamais**. Ces copies s'accumulaient sans limite, survivaient à la suppression du message, à sa mise à la corbeille et à une opposition du patient, et échappaient à toute règle de conservation ; à terme, le disque se remplissait et l'analyse des documents s'interrompait sans prévenir. Chaque copie est désormais **effacée dès la fin du traitement**, y compris si celui-ci échoue ou est interrompu, et le dossier de travail est **réservé au compte de l'application** au lieu d'être visible de tout utilisateur du serveur. Un ménage est fait **à chaque démarrage**, ce qui efface aussi les copies déjà accumulées. Enfin, un échec de décompression était jusqu'ici silencieux : le message s'enregistrait **sans ses documents médicaux** sans que personne ne le sache — il est maintenant signalé comme une erreur. **À traiter côté exploitation** : le volume déjà accumulé en production reste à qualifier avec le DPO ; l'analyse d'impact doit être mise à jour.
 - **v1.49 — Politique CORS restreinte** (task-092) : l'API n'autorise plus que les origines explicitement déclarées (frontends officiels) à l'appeler depuis un autre domaine ; aucune ouverture générale n'est possible, en particulier en production. La liste des origines autorisées est configurable par environnement. Une origine non déclarée se voit refuser l'accès cross-origin. Les frontends officiels continuent de fonctionner normalement.
 - **v1.48 — En-têtes de sécurité HTTP** (task-091) : les réponses de l'API portent désormais les en-têtes de sécurité standards (politique de sécurité du contenu / CSP, anti-encadrement, anti-sniffing, politique de référent, et transport strict HTTPS / HSTS). Ces mesures renforcent la protection contre l'exécution de code malveillant (deuxième barrière complétant l'assainissement anti-XSS), contre l'encadrement abusif des pages (clickjacking) et garantissent un transport chiffré. Les frontends officiels ne sont pas affectés ; les seuils et la politique sont ajustables par environnement.
 - **v1.47 — Limitation de débit des requêtes** (task-090) : l'API de messagerie limite désormais le nombre de requêtes qu'un même professionnel (ou une même origine) peut envoyer dans un court laps de temps. En cas d'usage anormal (rafale, tentative d'énumération ou de force brute), les requêtes excédentaires sont temporairement refusées avec une indication du délai avant nouvelle tentative, sans pénaliser les autres utilisateurs. L'usage normal de la messagerie n'est jamais affecté. Les seuils sont ajustables par environnement.

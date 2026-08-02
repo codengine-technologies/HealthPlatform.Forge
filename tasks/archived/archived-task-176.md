@@ -379,3 +379,26 @@ clé INS. Task séparée à prévoir.
 - Code review : ✓ APPROVED
 - Quality Gate : `ERROR` sur `new_violations = 4` → 1 finding task-176 corrigé
   (`d54fb1b`), 3 restants **antérieurs** hors diff (`tests/loadtest-k6/report.py`)
+
+## Merged
+- `api-mail` : **23acae4** — squash de la PR #128, mergée le 2026-08-02
+- `dtos-mss` : aucune PR (branche sans commit) ; ref distant supprimé
+
+Refs distants supprimés sur les deux repos ; **branches locales conservées**.
+
+> **Synchronisation avant merge** : la PR était ouverte depuis le 2026-07-28 et sa
+> branche avait **12 commits de retard** sur `develop`, dont task-212 qui touche le
+> même fichier (`MailRepository.cs`). GitHub la donnait `CLEAN` — absence de
+> conflit textuel, ce qui ne dit rien du sémantique. `git merge origin/develop`
+> (règle 4, jamais de rebase), puis revalidation complète : **3 298 verts**, dont
+> les 7 tests `MailRepositoryPatientComminglingTests` et les 4 tests d'intégration
+> `MailRepositoryNoInsIngestionTests` de la task. CI de PR rejouée verte sur la
+> branche synchronisée avant le merge.
+
+> **Reste dû, hors DOD et hors forge** : l'**inventaire de remédiation** livré dans
+> `docs/task-176-inventaire-commingling.md` doit être exécuté en production et
+> qualifié **avec le DPO**. La correction des données n'est volontairement pas
+> automatisée : détacher un document touche des données de santé, et « ce document
+> appartient-il à ce patient ? » n'est pas décidable par programme *précisément
+> parce que l'INS manque*. AIPD à mettre à jour (divulgation entre patients,
+> inexactitude art. 5.1.d).

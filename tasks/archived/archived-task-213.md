@@ -308,3 +308,15 @@ continue de le prouver.
   statique PdfPig ; `FlagsmithFeatureFlagServiceTests.RefreshFailure…`,
   `MeterListener` global). Verts en isolation, et la dernière suite complète est
   à **3 280 verts, 0 échec**. Aucun lien avec ce diff.
+
+## Merged
+- `api-mail` : **42f21ed** — squash de la PR #140, mergée le 2026-08-01
+- `dtos-mss` : aucune PR (branche sans commit) ; ref distant supprimé
+
+Refs distants supprimés sur les deux repos ; **branches locales conservées**.
+
+> **Reste dû (clôture de l'US, pas la PR)** : tir à 500 praticiens iso-conditions
+> — `send` p95 sous 10 s et ratio moyenne/médiane sous 2 (contre 35,1 s et 3,3),
+> non-régression `read_list` / `folders_warm` à 20 %. La table `imap_session` par
+> opération est ce qui permettra de séparer l'attente de verrou des deux autres
+> causes du ×5,5 sur `send`.

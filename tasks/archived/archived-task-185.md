@@ -129,3 +129,92 @@ journaliser — une fois le disque plein, l'enrichissement produit des messages
 - **AIPD / impact RGPD** : **à mettre à jour** — manquement à la limitation de
   conservation (art. 5.1.e) et à la sécurité (art. 32). Qualifier avec le humain le
   volume accumulé en production et organiser la purge.
+
+## Branches
+- `api-mail` (pushed) : fix/task-185-ihe-xdm-temp-lifecycle — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-185-ihe-xdm-temp-lifecycle
+- `dtos-mss` (pushed, auto-inclus) : fix/task-185-ihe-xdm-temp-lifecycle — aucun contrat attendu (US backend-only)
+
+## Develop log
+
+### Le test principal constaté RED avant correctif (DOD 3)
+
+Une sonde jetable (`IheXdmScratchProbeTests`) a été écrite contre le code
+d'origine, puis remplacée par la suite définitive :
+
+```
+Échoué!  - échec : 1, réussite : 0
+  archive résiduelle après traitement : {guid}.zip
+```
+
+### Correction de l'énoncé — le nœud n'est pas un `File.Delete` oublié
+
+C'est la **propriété** qui manquait. Les chemins ne sont pas consommés sur place :
+ils voyagent dans `FetchedMail` / `FetchedBackgroundMail` jusqu'à la persistance.
+Un `try/finally` au site d'extraction — la forme évidente, et celle que suggère
+l'énoncé — **aurait supprimé les archives avant leur lecture**. D'où un lot
+jetable qui traverse la même frontière que les chemins.
+
+Cela explique aussi pourquoi le patron était « connu mais inappliqué » : le seul
+`File.Delete` de `src/` est sur le chemin sortant, où le fichier est consommé
+dans la même méthode. Le patron n'était pas transposable tel quel.
+
+### Point 3 du contenu attendu — écarté, avec sa raison
+
+« Éviter le disque quand c'est possible » : `XDM.Load(fileName, xsdPath)` fait un
+`ZipFile.OpenRead(fileName)`. Le parseur **n'accepte qu'un chemin**, et il vit
+dans `interop-cda` — repo porteur de contrat, non listé dans les `Repos` de cette
+task. Le fichier est donc **réellement imposé**, par une API hors périmètre.
+Candidat pour une task dédiée.
+
+## Sonar log
+
+Deux findings **introduits par la task**, tous deux corrigés :
+
+| Règle | Emplacement | Correctif |
+|---|---|---|
+| `csharpsquid:S3874` | `IheXdmScratch.cs` — `CreateFile(out string)` | tuple de retour |
+| `csharpsquid:S2699` | `IheXdmScratchTests.DisposeIsIdempotent` | le test vérifie désormais la suppression effective, pas seulement l'absence d'exception |
+
+Après correction : **0 issue sur les 7 fichiers touchés**.
+
+> ⚠️ KPIs projet inexploitables depuis task-212 (`agents/sonar.md` périmé).
+
+## PRs
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/141 — label `awaiting-human-merge`
+- `dtos-mss` : aucune PR — branche sans commit (US backend-only)
+
+## Code Review Summary
+
+**APPROVED** — 17 fichiers, 0 blocage.
+
+- `IheXdmScratch.cs` — ✅ répertoire dédié 0700 / fichiers 0600, lot jetable
+  propriétaire, chemin suivi **dès l'ouverture** (un fichier partiellement écrit
+  est supprimé lui aussi), `Dispose` idempotent et non levant.
+- `IheXdmScratchSweepService` — ✅ best-effort au démarrage ; une purge qui
+  empêcherait le démarrage transformerait un correctif de confidentialité en
+  panne de disponibilité.
+- `IheXdmProcessingService` — ✅ l'échec est compté au lieu d'être avalé.
+- `BackgroundImapService` — ✅ duplicata supprimé (1 481 caractères), passe par
+  le service partagé.
+- `ImapService` / transporteurs — ✅ `IDisposable` sur les deux records, `using`
+  là où la consommation est locale.
+
+### Observations non bloquantes
+- Deux flakies pré-existants (`MailExportServiceTests` PdfPig ;
+  `FlagsmithFeatureFlagServiceTests` `MeterListener`) sont apparus une fois
+  chacun sur les exécutions de la suite complète, verts en isolation et sans
+  lien avec ce diff. Dernière suite complète propre : **3 288 verts**.
+
+## Merged
+- `api-mail` : **5393eb6** — squash de la PR #141, mergée le 2026-08-01
+- `dtos-mss` : aucune PR (branche sans commit) ; ref distant supprimé
+
+Refs distants supprimés sur les deux repos ; **branches locales conservées**.
+
+> **Reste dû, hors DOD et hors forge** : qualifier avec le DPO le **volume de
+> fichiers déjà accumulés en production** et mettre à jour l'AIPD (limitation de
+> conservation art. 5.1.e, sécurité art. 32). Le balayage au démarrage purge ces
+> résidus au prochain redémarrage, mais la qualification reste un acte humain.
+>
+> **Candidat de suivi** : surcharge `Stream` sur `XDM.Load` dans `interop-cda`,
+> qui permettrait de supprimer complètement le passage par fichier.
