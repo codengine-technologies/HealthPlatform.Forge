@@ -1,4 +1,4 @@
-# todo-task-218.md — Retirer `ICacheService` du SDK : un cache sans budget de temps, sans disjoncteur et sans tolérance à la panne, que 58 appels traversent
+# done-task-218.md — Retirer `ICacheService` du SDK : un cache sans budget de temps, sans disjoncteur et sans tolérance à la panne, que 58 appels traversent
 
 **Repos**: sdk, api-mail, client-blazor
 **Epic**: E015
@@ -96,16 +96,24 @@ async, budget de 500 ms, disjoncteur, compteurs de santé.
 
 ## Definition of Done
 
-- [ ] Build passes (0 erreur) et tests verts sur **les trois repos**
-- [ ] Plus aucune occurrence d'`ICacheService` dans les trois repos
-- [ ] **Aucune** I/O synchrone ne subsiste dans le SDK — garde par test
-- [ ] Chaque appelant dont la sémantique d'erreur change est **nommé** dans le
+- [x] Build passes (0 erreur) et tests verts sur **les trois repos**
+- [x] Plus aucune occurrence d'`ICacheService` dans les trois repos
+- [x] **Aucune** I/O synchrone ne subsiste dans le SDK — garde par test
+      (`NoSynchronousCacheIoTests`, par réflexion, avec garde anti-vacuité)
+- [x] Chaque appelant dont la sémantique d'erreur change est **nommé** dans le
       `## Develop log`, avec la raison pour laquelle l'équivalence tient
-- [ ] `CrlValidationService` et `OcspValidationService` : test prouvant qu'une
+- [x] `CrlValidationService` et `OcspValidationService` : test prouvant qu'une
       panne de cache déclenche une **revalidation**, jamais une acceptation
-- [ ] Test de compatibilité de sérialisation ancienne voie → nouvelle voie
-- [ ] `Directory.Packages.props` bumpé dans api-mail **et** client-blazor
-- [ ] Tests **constatés RED avant le correctif** (preuve dans le `## Develop log`)
+      (7 gardes, sur la pile de cache réelle)
+- [x] Test de compatibilité de sérialisation ancienne voie → nouvelle voie
+      (`CacheSerializationCompatibilityTests`, dont égalité **octet pour octet**)
+- [x] `Directory.Packages.props` bumpé dans api-mail **et** client-blazor
+      (10.0.0 → 12.0.0)
+- [x] Tests **constatés RED avant le correctif** — voir la nuance honnête au
+      §7 du `## Develop log` : les gardes de sécurité sont **vertes avant ET
+      après** par construction, et c'est précisément ce qui démontre
+      l'équivalence. Le RED classique n'était pas applicable ici ; la régression
+      réellement attrapée l'a été par 6 tests passés au rouge (§6).
 
 ### Dû au banc (ne bloque pas la PR, bloque la clôture de l'US)
 
@@ -264,3 +272,109 @@ est entre l'étape 4 et l'étape 5.
   et la CI échouera en `NU1403`.
 - La CI du SDK publie **une version par poussée** (numéro de run). Le SDK est
   aujourd'hui publié en **11.0.0** ; les consommateurs épinglent **10.0.0**.
+
+---
+
+## Develop log — terminé le 2026-08-02
+
+### 5. La cascade redoutée n'existait pas
+
+La task annonçait `src/Infrastructure/` comme le risque principal :
+`BaseRepository` expose le cache à une quinzaine de dépôts, et rendre `async`
+une méthode synchrone remonte à ses appelants. **Mesuré : la cascade est
+mécanique, pas asynchrone.**
+
+| Ce qui était redouté | Ce qui a été mesuré |
+|---|---|
+| ~15 dépôts à asynchroniser | **3** utilisent le cache (Contact, Patient, UserSettings) ; les 12 autres ne faisaient que **passer le paramètre** au constructeur de base |
+| cascade débordant sur les appelants | **5 sites** seulement ont eu besoin de devenir `async`, tous privés |
+| changement d'API publique | **aucun** |
+
+Ordre effectivement suivi : api-mail d'abord contre le SDK 10.0.0 déjà publié,
+puis retrait côté SDK devenu une simple suppression sans appelant.
+
+### 6. Les trois rustines tombent ensemble
+
+Le cœur de l'US n'était pas la compilation, mais le fait que **trois**
+compensations historiques disparaissent avec l'interface :
+
+| Rustine | Ce qu'elle compensait | Remplacée par |
+|---|---|---|
+| `SafeCacheExtensions` (task-074) | l'interface **levait** en cas de panne | le contrat rend `default`/`false` |
+| contournement `IDistributedCache` (task-205) | l'interface était **synchrone** | le contrat est async, borné à 500 ms |
+| nullabilité (`CacheServiceOrNull`, params par défaut) | le cache pouvait être **absent** | `NoOpResilientCacheService` |
+
+Conséquence : **tous** les `try/catch` et **toutes** les gardes `null` autour du
+cache disparaissent des appelants. `SafeCacheExtensions` est supprimé.
+
+**Régression réellement attrapée.** Retirer le `try/catch` de
+`BackgroundSyncService.InvalidateCoverageCache` a supprimé une tolérance qui ne
+concernait **pas** le cache : `GetRequiredService` **lève** quand aucun cache
+n'est enregistré, et une invalidation ne doit pas faire échouer une synchro qui
+vient d'aboutir. **6 tests sont passés au rouge** et l'ont révélée. Corrigé par
+`GetService` (cache optionnel), qui *dit* la chose au lieu de la masquer.
+
+### 7. Les gardes de sécurité — la méthode, et sa nuance honnête
+
+Les 7 gardes ont été écrites et constatées **VERTES contre l'ancien contrat**
+(mock qui lève) **AVANT** la bascule, puis re-vérifiées vertes **après**. C'est
+cette **invariance** qui démontre l'équivalence exigée au DOD.
+
+⚠️ **Nuance à ne pas maquiller** : ces gardes ne sont donc **jamais passées par
+un état RED**, contrairement à la lettre du DOD. C'est structurel, pas un
+manquement : elles vérifient qu'un comportement **ne change pas**. Un test
+d'équivalence qui serait rouge avant la bascule prouverait l'inverse de ce
+qu'on cherche. Le RED classique s'est produit ailleurs, en §6.
+
+Les gardes portent sur la **pile de cache RÉELLE** (`ResilientCacheService`
+au-dessus d'un `IDistributedCache` en panne), pas sur un mock. Raison : après la
+bascule, un mock à qui on dit « rends `null` » est **indiscernable** d'un cache
+vide — il ne prouverait plus rien. Trois doubles de test qui décrivaient la
+panne en **levant** ont été recâblés sur la pile réelle pour la même raison ;
+deux tests devenus incapables de décrire une panne ont été retirés et remplacés
+par des gardes strictement plus fortes.
+
+### 8. Compatibilité de sérialisation — le risque silencieux
+
+Sans cette preuve, la bascule aurait pu **invalider silencieusement tout le
+cache en production** : chaque entrée écrite avant le déploiement illisible
+après, sans aucune erreur, juste un effondrement du taux de hit sur des chemins
+chauds (les réglages sont lus à presque chaque requête).
+
+Les trois voies écrivaient à l'identique : `JsonSerializer.Serialize(item)` aux
+options **par défaut**, valeur stockée en string. `CacheSerializationCompatibilityTests`
+le prouve dans les deux sens, **plus** l'égalité **octet pour octet**, **plus**
+une garde contre un futur format enveloppé. Le test épingle le **format de fil**
+et non les méthodes supprimées — il survit donc à leur suppression, et c'est
+bien ce format qui est présent dans Redis au moment du déploiement.
+
+### 9. Écart de norme assumé — règle 5
+
+Cette US touche **~56 fichiers**, contre un plafond de ~30. Le point de coupe
+que la task suggérait (entre étapes 4 et 5) donnait encore ~49 fichiers, donc ne
+résolvait rien. **Arbitré explicitement avec l'humain** : tout finir dans
+task-218, parce que le diff est massivement mécanique (2 lignes dans ~20
+fichiers) et que la **règle 11** fait qu'un découpage ne ferait pas merger plus
+tôt. Décision prise en connaissance du plafond, justifiée dans le corps de la PR.
+
+### 10. Résultat
+
+| Repo | Build | Tests | PR |
+|---|---|---|---|
+| `sdk` | vert | **16** | [#2](https://github.com/codengine-technologies/HealthPlatform.Host.Sdk/pull/2) — publié en **12.0.0** |
+| `api-mail` | vert | **3 256** | [#146](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/146) |
+| `client-blazor` | vert | **144** | [#68](https://github.com/codengine-technologies/HealthPlatform.Client/pull/68) |
+| `dtos-mss` | — | — | aucune PR : aucun contrat touché, comme prévu |
+
+Détail api-mail : 102 domain + 393 infrastructure + 639 api + 204 integration
++ 1 918 application. Les trois PRs portent `awaiting-human-merge`.
+
+**Ordre de merge imposé** : SDK d'abord (déjà publié en 12.0.0), puis api-mail
+et client-blazor.
+
+### 11. Reste dû au banc — bloque la clôture de l'US, pas la PR
+
+- [ ] Tir 500 praticiens : aucun thread applicatif parqué dans `ExecuteSync`
+      (contrôle par pile, sur le modèle de task-205). C'est la **contre-épreuve
+      du bénéfice** : tout ce qui précède prouve l'équivalence fonctionnelle et
+      la non-régression, mais **pas** le gain de débit visé. À ne pas confondre.
