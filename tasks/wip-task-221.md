@@ -255,3 +255,28 @@ tests/loadtest-k6/run.sh folders
 - Rolled back : aucun — Build 0 erreur, 3 285 tests verts, selftest + k6 inspect OK
 - Skipped (consignés, non retenus) : `CFG.latencyMsOverride` (perdrait la distinction absente/0), constantes locales supplémentaires (couvertes par les const d'écoute), imbrication des deux `if` AppHost (réindentation sans gain)
 - Next step : /sonar task-221 (api-mail touché — 2 fichiers C# hors périmètre scanner près, AppHost/seed/tests sont DANS les projets MSBuild)
+
+## Sonar log
+
+- **Mode A (chaîné)**, deux analyses complètes sur la branche (build Release + 5 projets de tests avec couverture OpenCover, 3 285 tests verts à chaque passe).
+- **Phase 1 new-code : 17 → 0 issue.** Les 17 findings du new-code period n'appartenaient PAS à task-221 (0 fichier commun avec son diff — `AppHost/**` est exclu du scanner et le seed est un projet de test) : dette **héritée du merge de task-218 (#146)**, la migration IResilientCacheService sur 58 appelants. Nettoyée ici parce que `/sonar` est l'exception d'automation prévue pour ça (commit `57bb187`) :
+  - **CA2016 ×14** — `cancellationToken` forwardé aux `GetAsync`/`SetAsync`/`RemoveAsync` du cache résilient (ImapFolderService ×11, ImapService ×3). ⚠️ le `SetAsync` à 3 arguments reçoit le ct en argument **nommé** — un positionnel serait tombé sur `slidingExpireTime`.
+  - **S4487** — `SearchHistoryService._logger` jamais lu : champ + paramètre retirés, 2 sites de construction de tests alignés.
+  - **CA1859 ×2** — `StoreWithSlidingWindowAsync` rend `Task<bool>` ; `_sharedCache` en type concret.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline (analyse post-develop) | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK (mais 17 issues new-code) | **OK, 0 issue new-code** | ✅ |
+| New coverage | 88,9 % | 88,9 % | = |
+| Bugs / Vulnérabilités | 0 / 0 | 0 / 0 | = |
+| Code smells (projet) | 47 | **30** | **−17** (mieux que les 32 d'avant le merge de task-218) |
+| Couverture projet | 85,1 % | 85,1 % | = |
+| Duplication | 0,6 % | 0,6 % | = |
+| Ratings R/S/M | A / A / A | A / A / A | = |
+| Hotspots new-code | 0 | 0 | = |
+
+- **Acceptation consignée (pas un skip silencieux)** : `new_coverage` 88,9 % < cible aspirationnelle 95 % — ce new-code period est dominé par le code hérité de task-218 (déjà mergé par l'humain) ; écrire ses tests manquants dépasserait le périmètre de task-221 (règle 6). La Quality Gate du projet est OK et task-221 n'apporte aucun code non couvert dans le périmètre du scanner.
+- Phase 2 (legacy, best-effort) : non entamée — 30 smells et 3 hotspots historiques restent, hors new-code.
+- Étapes suivantes : `/lint-angular`, `/lint-mobile`, `/verify-visual` → **skip clean** (repos non touchés / absents). Next step : /review task-221.
