@@ -396,3 +396,75 @@ change pas la réponse de l'API, donc aucun frontend n'a été touché.
 | `/lint-angular` | **skip** | `Client/Angular` est sur `feature/nova-rewriting-mss` avec deux fichiers modifiés non commités (`front/apps/mss/src/environments/environment.ts`, `front/apps/weda2/src/environments/environment.ts`). **Ce sont des travaux en cours de l'humain, pas de task-222** : la forge n'a écrit aucune ligne d'Angular sur cette task. Lancer la passe lint reviendrait à retoucher le WIP de l'humain — on s'abstient et on le dit, plutôt que de laisser le tronc sale déclencher un lint qui ne nous appartient pas. |
 | `/lint-mobile` | **skip** | `Client/Mobile` sur `develop`, arbre propre, aucun diff vs `origin/develop`. `client-mobile` n'est pas listé dans `**Repos**:` — `/start` n'y a donc créé aucune branche, conformément au filet de sécurité désactivé. |
 | `/verify-visual` | **skip** | Aucun écran mobile touché : rien à capturer, aucune référence Stitch à apparier. |
+
+## Sonar log
+
+Mode A (chaîné), 2 itérations, projet `healthplatform`, branche
+`fix/task-222-open-enriched-mail-no-imap`.
+
+### KPIs qualité — baseline → final
+
+| Métrique | Baseline (avant task-222) | Final | Cible LT |
+|---|---|---|---|
+| Bugs | 1 | **1** | 0 |
+| Vulnerabilities | 0 | **0** | 0 ✓ |
+| Security Hotspots (à revoir) | 1 | **1** | 0 |
+| Code Smells | 18 | **18** | — |
+| Coverage | 86,9 % | **87,0 %** | ≥ 95 % |
+| Duplication | 0,5 % | **0,5 %** | — |
+| Reliability rating | C | **C** | A |
+| Security rating | A | **A** | A ✓ |
+| Maintainability rating | A | **A** | A ✓ |
+| ncloc | 41 266 | 41 478 | — |
+| **Quality Gate** | ERROR | **ERROR** | OK |
+
+### Zero-new-debt : tenu
+
+| Itération | Finding new-code attribuable à task-222 | Action |
+|---|---|---|
+| 1 | `csharpsquid:S125` (code commenté) — `IMailRepository.cs:66` | corrigé, `1c2b24c` |
+| 2 | **aucun** | — |
+
+Le finding était un **faux positif de forme** : le bloc de commentaire
+documentant le contrat de `SaveMailContentAsync` cite `(folderPath, uid)`,
+`MailContent`, `GetMailAsync` et termine ses puces par des points-virgules —
+Sonar l'a lu comme du code mis en commentaire. Converti en commentaire de
+documentation XML (`<summary>` / `<remarks>` / `<returns>` avec une `<list>`),
+ce qui est de toute façon la forme attendue sur un membre d'interface :
+`MailRepository.SaveMailContentAsync` y renvoyait déjà par `<see cref>`.
+
+**Après correction : zéro finding new-code sur le code de task-222.**
+
+### Le Quality Gate est ERROR, et ce n'est pas task-222
+
+Il faut le dire nettement plutôt que de laisser la couleur parler : le QG est en
+`ERROR` sur `new_violations = 18 > 0` et
+`new_security_hotspots_reviewed = 83,3 % < 100 %`, et **aucune de ces
+18 violations n'appartient à task-222**. Provenance vérifiée une par une :
+
+| Origine | Fichiers | Count |
+|---|---|---|
+| **task-220** (harnais de mesure `journey`) | `tests/loadtest-k6/report.py`, `scenarios/journey.js`, `lib/journey-model.js` | 16 (dont l'unique `BUG`, `python:S1244`, et l'unique hotspot `javascript:S2245`) |
+| **antérieur à la forge** | `src/Infrastructure/Repository/BaseRepository.cs:68`, `src/Application/Services/Interfaces/IIheXdmProcessingService.cs:9` (`csharpsquid:S103`) | 2 |
+| **task-222** | — | **0** |
+
+C'est exactement le piège déjà connu : la *new-code period* du projet est une
+baseline large, elle englobe donc des tasks **déjà mergées**. Un QG rouge n'y
+signifie pas « cette task a introduit de la dette ». Les 9 `S3776` (complexité
+cognitive) relèvent par ailleurs de `/sonar-s3776`, hors chaîne autonome par
+construction (1 méthode = 1 PR), et les findings Python/JS du harnais de charge
+ne sont pas du code produit.
+
+**Aucun de ces 18 n'a été touché** : les corriger serait sortir du scope de la
+US et gonfler une PR de correctif de performance avec du nettoyage de harnais.
+Best-effort assumé, findings restants acceptés — et nommés, pas passés sous
+silence.
+
+### Note pour `conventions/csharp.md`
+
+Entrée `S125` ajoutée : sur un **membre d'interface**, documenter le contrat en
+commentaire `//` multi-ligne se fait signaler dès que le texte cite des
+identifiants et ponctue en `;`. Écrire d'emblée un commentaire de documentation
+XML — c'est la forme attendue à cet endroit, et elle est visible à l'appel.
+
+- **Étape suivante** : `/review task-222`
