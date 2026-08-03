@@ -190,3 +190,165 @@ aucune donnée de santé réelle.
   de mesure reste local et synthétique.
 - **AIPD / impact RGPD** : inchangé — aucun nouveau traitement, aucune nouvelle
   donnée collectée, aucune durée de conservation modifiée.
+
+## Branches
+
+- `api-mail` (pushed) : `fix/task-222-open-enriched-mail-no-imap` — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-222-open-enriched-mail-no-imap
+- `dtos-mss` (pushed, auto-inclus) : `fix/task-222-open-enriched-mail-no-imap` — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/fix/task-222-open-enriched-mail-no-imap (aucun changement de contrat attendu — pas de PR si aucun commit)
+
+## Develop log
+
+- **Repos touchés** : `api-mail` uniquement. `dtos-mss` : aucun changement de
+  contrat (branche créée par `/start`, restée vide → pas de PR, pas de publish
+  NuGet). `client-angular` / `client-mobile` / `client-blazor` : hors scope
+  (`**Single frontend**: true` — la US corrige un chemin d'accès backend, la
+  réponse de l'API est inchangée).
+- **DTOs publiés** : aucun changement DTO.
+- **Interop publié** : aucun changement interop.
+- **Commits** (`fix/task-222-open-enriched-mail-no-imap`) :
+  - `458fc48` feat(telemetry): compter les sollicitations du serveur de messagerie par requête
+  - `317a403` fix(mail): ouvrir un message déjà analysé ne repaye plus le trajet vers le serveur
+- **Build / tests locaux** : ✓ `dotnet build` 0 erreur / 0 avertissement ;
+  `dotnet test` **3 399 réussis, 0 échec**, 16 ignorés (tests d'intégration
+  exigeant un IMAP vivant, ignorés d'avance). Aucun des 3 rouges pré-existants
+  connus ne s'est manifesté.
+
+### La cause, close
+
+Le décompte manquant est instrumenté (`IMailServerSolicitationRecorder`,
+`Scoped` = une instance par requête ; compteur
+`mssante_mail_server_solicitations_total{command,operation}` + étiquette de
+trace `mss.mail_server.solicitations`). Une session reprise du pool ne compte
+pas : le décompte est une **borne inférieure exacte** du nombre
+d'allers-retours, pas une estimation.
+
+**Sur cette base, la cause est close — et ce n'était pas quatre allers-retours
+de trop, c'était l'absence d'une écriture.**
+
+`GetEmailContentAsync` **lisait** le stock (`ImapService.cs:1982`) sans jamais
+**l'écrire**. Le corps ramené du serveur était assaini, renvoyé, puis **jeté**.
+Le message ne devenait donc jamais « stocké », et chaque ouverture repayait le
+trajet en entier — d'où le verrou de session pris **inconditionnellement**
+(ex-ligne 1991) que la télémétrie fine avait vu, et d'où les trois faits du
+constat, tous les trois expliqués par cette seule asymétrie :
+
+| Fait du constat | Ce que l'absence d'écriture en retour explique |
+|---|---|
+| 440 ms (chaud) ≈ 442 ms (froid) | il n'y avait **pas** de chaud : chaque ouverture était froide |
+| PJ du même message en 34 ms | `GetAttachmentAsync` **écrit** en retour (`UpdateAttachmentAsync`) — le contre-exemple était le témoin du correctif |
+| aucune dérive avec la charge | un trajet payé une fois par ouverture est un coût **fixe**, pas de la contention |
+
+Le harnais `journey` chauffait bien sa bande de relecture (`warmUpOwnMailbox`,
+`scenarios/journey.js`) en appelant `getEmailContent` sur chaque UID chaud —
+mais son commentaire « le GET contenu matérialise le MailContent » était
+**faux** : rien ne le matérialisait. L'étape 3 mesurait donc du froid en croyant
+mesurer du chaud. Le harnais n'est pas en cause (il décrivait le comportement
+attendu), il était le premier à en souffrir.
+
+**Le PO avait raison sur le fond** : ce n'était pas l'absence d'un cache,
+c'était le chemin d'accès. Aucun cache n'a été ajouté — l'écriture en retour
+**complète le stock que la voie rapide lisait déjà**.
+
+### Ce qui a été écrit
+
+`SaveMailContentAsync` (dépôt), la symétrie exacte de `UpdateAttachmentAsync`.
+Chaque clause du contrat est un garde-fou, aucune n'est une commodité :
+
+- **génération courante** (task-179) : la même identité `(dossier, uid,
+  génération)` que celle que lit `GetMailAsync` ;
+- **n'invente jamais de ligne `Mail`** → **cloisonnement par praticien**
+  (point de vigilance de la US) : un contenu ne peut pas être greffé sur une
+  boîte qui ne porte pas le message. La base est déjà par praticien ; cette
+  clause interdit en plus d'y écrire pour un message absent ;
+- **idempotente** : n'écrase pas le contenu de la chaîne d'enrichissement, plus
+  riche (résumé, embedding, documents médicaux) ;
+- **refuse un corps vide des deux côtés** : sinon elle fabriquerait l'état
+  « présent mais inexploitable » que la lecture rejette — donc une boucle.
+
+L'écriture en retour est **best-effort** : le médecin a son contenu en main, un
+incident de stockage ne doit pas le lui retirer (il coûte seulement une
+sollicitation de plus à l'ouverture suivante).
+
+**Effet de bord assumé, et c'est une correction** : une ligne de contenu
+entièrement vide (promotion d'en-tête interrompue) n'est plus servie — elle
+affichait un **écran blanc définitivement**, puisque rien ne repassait jamais
+dessus. Le résumé et les documents médicaux comptent autant que le corps : un
+message dont toute la valeur clinique est dans son CDA a souvent un corps vide,
+et le re-solliciter le renverrait **sans** ses documents médicaux (la voie
+serveur ne les porte pas). Le contenu clinique n'est jamais échangé contre un
+corps vide.
+
+### Contenu périmé côté serveur — tranché
+
+**Il ne peut pas l'être.** Dans IMAP (RFC 3501) le corps d'un message d'UID
+donné est **immuable** au sein d'une génération de dossier : seuls les marqueurs
+changent, et un contenu différent est un autre message, donc un autre UID. Si le
+serveur renumérote (`UIDVALIDITY`), l'identité stockée n'est plus celle du
+dossier courant : le filtre de génération de task-179 cesse de servir la ligne
+périmée et le contenu est re-sollicité. L'écriture en retour **n'ouvre donc
+aucune fenêtre de péremption** — le médecin ne peut pas voir un document
+clinique périmé. Couvert par
+`SaveMailContentAsync_WhenMailBelongsToAPreviousGeneration_WritesNothingAsync`.
+
+### Vérification demandée sur `mssante_lock_hold_duration_seconds`
+
+Vérifié : **l'émission est correcte, le défaut n'est pas dans le code.**
+`ImapLockScope.DisposeAsync` enregistre bien la détention avec la famille
+d'opération depuis task-214 (`MailProcessingMetrics.RecordLockHold(...,
+_tags.Family, _tags.Lane)`), et `report.py` interroge bien
+`sum by (le, operation) (rate(mssante_lock_hold_duration_seconds_bucket
+{lock="imap_session"}[1m]))`. Le silence sur la fenêtre du tir est donc côté
+**observation** (scrape / fenêtre `[1m]` face à un débit de parcours très bas :
+3 111 itérations sur 35 min), pas côté instrumentation. Ce n'est **pas** la même
+famille de défaut que task-214. Hors scope de ce correctif — à confirmer au
+prochain tir, l'instrument étant en place.
+
+### DOD — auto-contrôle
+
+| Critère | État |
+|---|---|
+| Build passe (0 erreur) | ✓ |
+| Tests passent (0 échec) | ✓ 3 399 / 0 |
+| Décompte des sollicitations instrumenté + cause close dans le Develop log | ✓ (ci-dessus) |
+| Tests unitaires du chemin corrigé (contenu présent / absent / présent mais invalide) | ✓ 6 tests, `ImapServiceTests` |
+| Test d'intégration : ouverture d'un message déjà analysé ne sollicite plus le serveur (assertion sur le **nombre**) | ✓ 3 tests sur **vrai PostgreSQL**, `MailContentServedFromStoreIntegrationTests` — dont la preuve de bout en bout : 1re ouverture sollicite + stocke, **2e sollicite zéro fois** |
+| Comportement en cas de contenu périmé tranché, écrit, couvert par un test | ✓ (immuabilité IMAP + garde de génération) |
+| Aucune donnée de santé en clair dans les logs ajoutés | ✓ étiquettes littérales uniquement ; aucun corps, INS, chemin de dossier ni nom de PJ |
+| Cloisonnement par praticien préservé (point de vigilance) | ✓ `SaveMailContentAsync_WhenNoMailRow_WritesNothingAsync` |
+| **Tir `journey` K=1, étape 3 ≤ 100 ms p50 / ≤ 500 ms p95** | ⛔ **non exécuté — déféré au test humain (HAG)** |
+| **Aucune régression sur les 7 autres étapes vs `report-journey-certif-n200-180029.md`** | ⛔ **non exécuté — déféré au test humain (HAG)** |
+
+**Pourquoi les deux derniers ne sont pas faits, précisément** — deux blocages
+matériels, aucun d'eux contournable par la forge :
+
+1. **Le banc exige un nœud distant.** Le Manual Test Plan lui-même impose
+   `MSS_LOADTEST_MAIL_HOST=<ip-noeud>` (serveurs de messagerie **hors** de la
+   machine de mesure) et un tir de **35 minutes au rythme réel**
+   (`JOURNEY_TIME_COMPRESSION=1`, seule forme qui rend un verdict opposable). La
+   forge n'a pas ce nœud.
+2. **Le rapport de référence est absent de cette machine.**
+   `tests/loadtest-k6/reports/` est git-ignoré (seul `INDEX.md` est suivi) et ne
+   contient localement que `2026-07-25`, `2026-07-26`, `2026-07-27`. Le
+   répertoire `2026-08-03/` n'existe pas ; `INDEX.md` porte bien la ligne du tir
+   (`report-journey-certif-n200-180029.md`, 200 VU, PASS) mais le fichier
+   lui-même n'est pas là. La comparaison étape par étape exigée par le DOD est
+   donc impossible ici.
+
+La chaîne de causalité est en revanche **prouvée par test** sans le banc : le
+test d'intégration établit que la seconde ouverture d'un message dont le contenu
+a été stocké sollicite le serveur **zéro fois**, ce qui est l'énoncé même du DOD
+(« assertion sur le nombre de sollicitations, pas sur un temps »). Le banc reste
+nécessaire pour **chiffrer** le gain et confirmer l'absence de régression sur les
+7 autres étapes — c'est le geste humain du HAG.
+
+### Note pour le prochain tir `journey`
+
+Le commentaire de `warmUpOwnMailbox` (`tests/loadtest-k6/scenarios/journey.js`)
+affirme que le GET contenu matérialise le `MailContent`. C'était faux avant ce
+correctif ; **c'est vrai depuis**. La chauffe du harnais fonctionne donc
+désormais comme elle le prétendait, sans qu'il faille y toucher. En revanche
+l'avertissement sur le partage de seed avec un tir `enrich`/`mixed` devient plus
+large : la bande **chaude** matérialise elle aussi du `MailContent` maintenant.
+Signalé, non modifié — l'outillage de mesure est task-224.
+
+- **Étape suivante** : `/forge-simplify task-222`
