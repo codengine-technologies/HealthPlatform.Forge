@@ -280,3 +280,19 @@ tests/loadtest-k6/run.sh folders
 - **Acceptation consignée (pas un skip silencieux)** : `new_coverage` 88,9 % < cible aspirationnelle 95 % — ce new-code period est dominé par le code hérité de task-218 (déjà mergé par l'humain) ; écrire ses tests manquants dépasserait le périmètre de task-221 (règle 6). La Quality Gate du projet est OK et task-221 n'apporte aucun code non couvert dans le périmètre du scanner.
 - Phase 2 (legacy, best-effort) : non entamée — 30 smells et 3 hotspots historiques restent, hors new-code.
 - Étapes suivantes : `/lint-angular`, `/lint-mobile`, `/verify-visual` → **skip clean** (repos non touchés / absents). Next step : /review task-221.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/148 — **label `awaiting-human-merge`** (4 commits : `020e99a` feat, `b3f45f1` harnais k6, `018057a` simplify, `57bb187` sonar)
+- `dtos-mss` : aucune PR — branche auto-incluse sans commit
+- `devops` : **code-only** — 5 fichiers écrits dans `DevOps/Staging` (kustomization, pv-nfs-loadtest, LoadtestMail/{dovecot,greenmail,toxiproxy}.yaml), **non commités** : commit/push DevOps = humain (déjà appliqués au cluster et vérifiés)
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 13 fichiers relus.
+
+- Build Release ✓ 0 erreur — Tests ✓ 3 285 passed / 0 failed (×2, analyses Sonar) — selftest harnais ✓ — k6 inspect ✓
+- DOD ✓ 10/10 (dont apply cluster humain : pods Ready, PVC Bound, doveadm 2 sessions/praticien, verdict NFS tenu)
+- Qualité : Quality Gate OK, **0 issue new-code** (17 héritées de task-218 nettoyées), smells projet 47 → 30
+- Deux défauts réels attrapés PAR les vérifications runtime (garde AppHost trop large ; harnais k6 ignorant l'interrupteur) — corrigés dans la branche
+- Suggestions non bloquantes (dans la PR) : initialDelaySeconds des probes GreenMail/Toxiproxy ; RTT du chemin pfSense à re-mesurer si la topologie change
