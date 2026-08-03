@@ -212,3 +212,35 @@ de santé réelle.
 - **Tracé PGSSI-S** : aucun évènement métier touché.
 - **Hébergement HDS** : non — banc local, données synthétiques.
 - **AIPD / impact RGPD** : néant.
+
+## Branches
+- `api-mail` (pushed) : feat/task-220-banc-parcours-medecin — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-220-banc-parcours-medecin
+- `dtos-mss` (pushed, auto-inclus) : feat/task-220-banc-parcours-medecin — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-220-banc-parcours-medecin
+
+## Develop log
+
+- **Repos touchés** : api-mail uniquement (`dtos-mss` : branche sans commit, aucun changement de contrat — pas de PR à ouvrir dessus)
+- **DTOs publiés** : no DTO change — **Interop** : no interop change
+- **Commits (api-mail, `feat/task-220-banc-parcours-medecin`)** :
+  - `d804adc` feat(loadtest): scénario journey, 1 VU = 1 médecin, verdict SLO par palier (13 fichiers, +2098/−27)
+  - `0f1f97f` test(loadtest): tir smoke journey vert (ligne d'INDEX)
+- **Livré** :
+  - `docs/parcours-medecin.md` — le parcours dérivé du client Blazor réel, provenance fichier:méthode pour chaque appel ; **décision consignée : `enrich` n'est plus une action du parcours** (l'ouverture d'un message froid exerce le fetch IMAP + matérialisation `MailContent` ; la pipeline CDA de fond reste à la famille `mixed`)
+  - `docs/SLO-parcours-medecin.md` — la grille validée le 2026-08-03, verbatim, + conditions de mesure + mapping étape ↔ tag `op:`
+  - `scenarios/journey.js` — modèle fermé `ramping-vus`, paliers `JOURNEY_STAGES`, K (`JOURNEY_TIME_COMPRESSION`, défaut 1), identités stables par VU (round-robin sur la population), session stable par médecin, double tag `op`+`palier`, warmup de la bande chaude au premier passage (tag `warmup`, hors grille)
+  - `lib/journey-model.js` (+ tests node) — tirages **log-normaux bornés** [min/2, max×2] par étape (plages = hypothèse assumée, surchargables `JOURNEY_THINK_*`), probabilités `JOURNEY_P_*`, **bandes froide/chaude/suppression disjointes**, contrôle de budget de campagne (échec franc au setup) + compteur `journey_budget_exhausted` (seuil `count==0`)
+  - `lib/journey-api.js` — 4 opérations nouvelles : `dashboard` (4 appels du client réel), `attachment` (compteur d'octets `journey_attachment_bytes`, jamais écrits sur disque), `delete` (bande dédiée), `mark_read`
+  - `report.py` (+21 tests unittest) — table du genou (palier → N, débit émergent, p95 par étape), coûts résidents contre N (CSV observe replié **par palier**), verdict SLO par étape (**K=1 uniquement**, sinon « non opposable — K=x ») ; sections « débit demandé vs délivré » / « latence planifiée vs mesurée » **absentes** des rapports journey ; `INDEX.md` marque la famille `journey 🚶(fermé)` et neutralise les colonnes du modèle ouvert
+  - `mixed.js` + `lib/vu-sizing.js` : **zéro diff** (vérifié au `git status`)
+- **Local build / test** : ✓ `dotnet build` 0 erreur, ✓ `dotnet test` 2133 passed / 0 failed, ✓ `selftest.sh` vert (131 tests Python + 18 tests node, dont les nouveaux)
+- **Tir smoke (DOD)** : ✅ VERT — banc monté (AppHost `https-load-test`), seed 20 users × 50 messages (read-back verified), tir `JOURNEY_STAGES="5:2m,10:3m" JOURNEY_TIME_COMPRESSION=10 USERS=20 MESSAGES_PER_USER=50` :
+  - verdict k6 **PASS** (exit 0), **3 294 requêtes, 0,00 % d'erreur, 100 % de checks**, 342 passages complets, **0 itération interrompue**, 0 × 429, budget des bandes tenu (`journey_budget_exhausted` = 0)
+  - rapport produit **sans** `TIR INVALIDE` et **sans** sections à débit imposé : `Api/Mail/tests/loadtest-k6/reports/2026-08-03/report-journey-mssante-n10-101131.md` (répertoire gitignoré — extraits ci-dessous)
+  - **table du genou** : 5 médecins → 5,85 req/s émergent, 10 médecins → 12,39 req/s, 0,00 % d'erreurs aux deux paliers ; PJ : 2,9 Mo (palier 5) / 12,5 Mo (palier 10) — les octets sont montrés
+  - **latence par étape × palier** (p50/p95 ms) — les 8 étapes présentes, dont les 4 nouvelles ops : dashboard 94/504, inbox 105/403, **message chaud 3/4** vs **froid 418/464** (la séparation des bandes fonctionne), recherche 192/240, envoi 1262/1864, PJ 12/355, supprimer/marquer lu 743/816 (n=258)
+  - **coûts résidents par palier** : sessions IMAP 10→21 (suit N), backends Postgres 20→30, `cl_waiting` 0 partout, RSS 118→162 Mo/réplica (5 réplicas)
+  - **verdict SLO : « ⚠️ non opposable — K=10 »** affiché explicitement, comme exigé
+  - vérification par base : **PASS, Mélange 0** ; Seq : 0 Error/Fatal, 0 marqueur de régression, warnings = bruit de configuration du banc uniquement
+  - banc rendu : AppHost + dcp arrêtés, volume maildir supprimé, tables purgées (mode PURGE), zips temp nettoyés
+- **DOD self-check** : 11/11 items vérifiables ✓ (le tir de validation K=1 ≥ 30 min à N élevé attend task-221 — hors scope, conforme au « Hors scope » de l'US)
+- **Next step** : /forge-simplify task-220
