@@ -220,3 +220,21 @@ tests/loadtest-k6/run.sh folders
 - **Local build / test** : ✓ build 0 erreur, ✓ **3 285 tests verts / 0 échec** (une passe intermédiaire a eu 1 flaky pendant le teardown du banc de vérification ; deux re-runs verts)
 - **DOD self-check** : 4 items vérifiables faits (variable posée/absente ✓✓, mot de passe IMAP aligné aux 3 endroits ✓ — ConfigMap/`TestMode__Password`/seed, skill ✓) ; **6 items exigent le cluster** → suspendu, `questions/task-221.md` (dry-run kubectl, pods Ready + PVC Bound, RTT + latence, seed 20 read-back, smoke folders + enrich non court-circuité, doveadm, smoke comparatif NFS)
 - **Next step** : humain — `questions/task-221.md` (kubectl apply + relevés), puis la forge reprend les vérifications cluster et enchaîne `/forge-simplify` → `/sonar` → `/review`.
+
+## Vérification cluster (2026-08-03, après apply humain)
+
+- **Topologie découverte** : le poste (192.168.1.x) joint le cluster (192.168.0.x) via le **WAN du pfSense** (`192.168.1.69`) — 4 port-forwards WAN (alias par port) vers `192.168.0.3` posés par l'humain ; « Block private networks » décochée. `MSS_LOADTEST_MAIL_HOST=192.168.1.69`.
+- **Item 3 — RTT** : ≈ **5 ms** (connexion TCP chronométrée poste → pod Toxiproxy, médiane 4,6 ms sur 5 essais ; l'ICMP ne traverse pas les forwards) → **latence injectée = 95 ms** (seed `--latency 95`, k6 `LATENCY_MS=95`). ⚠️ Trouvé en route : le `setup()` de chaque tir k6 ré-appliquait le profil à 100 ms en dur — surcharge `LATENCY_MS` ajoutée (`b3f45f1`).
+- **Item 4 — seed distant** : 20 × 50, injection **directe** (30994), **49 s**, `read-back verified` — plus rapide que le banc local (l'injection ne paie pas la latence).
+- **Item 5 — smokes** : k6 `folders` **PASS** (7 076 req/60 s, **0,00 % err**, 100 % checks, p95 warm 15 ms) — après correction du défaut TOXIPROXY du harnais (`b3f45f1`, trouvé par ce tir) ; `enrich` **non court-circuité** : 10,16 s / 6,62 s / 6,30 s pour 10 UIDs (travail CDA réel, ≫ 200 ms).
+- **Item 7 — smoke comparatif local vs cluster, verdict NFS : TENU** (régime établi, serveur chaud) :
+
+| Chemin IMAP | Cluster | Réf. locale (2026-07-25, 100 ms) | Ratio |
+|---|---|---|---|
+| `enrich` froid 10 UIDs | 6,30–6,62 s | 4,3 s | **~1,5×** ✓ |
+| `folders_cold` | 1,05–1,21 s | 0,7–1,05 s | **~1,1×** ✓ |
+| lecture froide | 0,50–1,17 s | ~0,9 s | **~1,0×** ✓ |
+
+  Le tout premier `enrich` (10,16 s) paie la construction des index Dovecot (emptyDir) + cache NFS froid — écarté du verdict (première touche, consignée). Aucun chemin > 2× → **NFS retenu**, surcoût `enrich` ~1,5× assumé et consigné.
+- **Item 8 — re-confirmé en conditions réelles** : variable posée → seuls `loadtest-pgbouncer` + `loadtest-otel-collector` locaux, api-mail répond sur 5052 contre le cluster.
+- **Items restants (sorties humaines à coller)** : item 1 (`kubectl apply -k DevOps/Staging --dry-run=client` — l'apply réel a réussi, le dry-run reste à consigner), item 2 (`get pods,pvc` — les Services sont Active, il manque la preuve pods Ready/PVC Bound), item 6 (`doveadm who` via `kubectl exec` pendant que les sessions du tir sont poolées).
