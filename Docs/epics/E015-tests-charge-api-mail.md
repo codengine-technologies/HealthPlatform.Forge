@@ -102,6 +102,7 @@ baisses de performance avant qu'elles n'atteignent les utilisateurs**.
 | Mesure en nombre de médecins servis | Poser la question qui décide de l'accueil de nouveaux praticiens — **combien de médecins la messagerie sert-elle en tenant ses temps de réponse** — en simulant des médecins qui déroulent leur journée réelle (arriver sur son tableau de bord, ouvrir sa boîte, lire, supprimer, télécharger une pièce jointe, envoyer) au lieu d'un mélange d'actions isolées ; et lire, à chaque palier de population, **quelle étape du travail du médecin souffre la première** | task-220 | 🟡 Livré, en attente d'intégration |
 | Le banc ne prend plus les ressources du service qu'il mesure | Mesurer la messagerie au-delà de cinq cents praticiens sans que les serveurs de messagerie simulés — désormais installés sur une infrastructure séparée — ne lui prennent ses ressources, et lire leur coût propre séparément du sien | task-221 | 🟡 Livré, en attente d'intégration |
 | Un message parti n'est jamais annoncé en échec | Avoir la certitude qu'un compte rendu remis au correspondant est bien annoncé comme parti au médecin — et, si sa copie dans « Messages envoyés » manque, le lui dire comme une information distincte plutôt que comme un échec d'envoi | task-223 | 🟡 Corrigé, mesure de confirmation à conduire |
+| Savoir combien de fois le serveur de messagerie est sollicité | Lire, sur chaque demande, **le nombre d'allers-retours réellement faits vers le serveur de messagerie** — au lieu de le déduire d'un temps, ce qui ne l'a jamais prouvé. Sert aussi à contrôler l'instrument : une étape de campagne annoncée « servie par la base » qui sollicite le serveur ne mesure pas ce qu'elle annonce | task-225 | 🟢 Livré |
 
 ---
 
@@ -609,8 +610,11 @@ sur une relecture**.
 >
 > **Suites** : la correction du parcours simulé est le **cinquième défaut de
 > task-224** — le seul de ses cinq à avoir faussé un *verdict* et non seulement
-> une lecture. L'instrument qui permet de le prouver (le décompte des
-> allers-retours vers le serveur, par demande) est confié à **task-225**.
+> une lecture. L'instrument qui permet de le prouver — le décompte des
+> allers-retours vers le serveur, par demande — est **livré** (task-225) : il
+> mesure aujourd'hui **cinq sollicitations** sur cette étape, ce qui établit
+> qu'elle n'est pas « servie base », et il devra en mesurer **zéro** une fois la
+> chauffe corrigée.
 
 > ⚠️ **Une US applicative avait été écrite sur ce chiffre, puis annulée, et le
 > motif vaut d'être conservé.** Son correctif faisait garder le contenu du
@@ -670,6 +674,7 @@ sur une relecture**.
 | Mesure en nombre de médecins servis | 🟡 Livré, en attente d'intégration | Le banc rejoue la journée d'un médecin — tableau de bord, boîte de réception, lecture, suppression, téléchargement d'une pièce jointe, envoi — dans une séquence **relevée dans l'application réelle** écran par écran, chaque sollicitation du service étant consignée avec son origine : rien n'y est supposé. Entre deux gestes, un temps de réflexion tiré au hasard dans une plage réaliste propre à chaque étape, car à cadence fixe des centaines de médecins simulés se synchronisent et produisent des vagues qui n'existent pas dans la vraie vie. La charge n'est plus imposée de l'extérieur : elle **résulte** du nombre de médecins, et l'on fait monter la population par paliers. Quatre gestes quotidiens jamais exercés jusqu'ici le sont : supprimer, télécharger une pièce jointe, marquer lu, arriver sur son tableau de bord — le téléchargement ouvrant l'axe du **volume transféré**, qu'aucune campagne ne mesurait et dont l'absence pouvait faire passer une limite de débit réseau pour une lenteur de la messagerie. Les temps de réponse attendus sont énoncés **par étape du parcours** (les huit étapes, avec leurs conditions de mesure), et le rapport rend son verdict étape par étape et palier par palier. Trois engagements sont déjà connus comme non tenus — boîte de réception, envoi, recherche : la grille désigne le programme d'optimisation, elle ne le réalise pas. Campagne de mise au point conduite le 3 août (cinq puis dix médecins, rythme accéléré) : 3 294 demandes, **aucune erreur, aucun parcours interrompu**, charge croissant avec la population, coûts résidents suivant le nombre de médecins, volume de pièces jointes affiché. **Reste dû** : la campagne de certification d'un palier, qui exige le rythme réel d'un humain sur au moins une demi-heure et une population élevée — prérequis désormais levé (task-221) | task-220 |
 | Le banc ne prend plus les ressources du service qu'il mesure | 🟡 Livré, en attente d'intégration | Les serveurs de messagerie simulés ont quitté la machine de mesure pour une infrastructure séparée de l'entreprise. Le motif est chiffré : à cinq cents praticiens ils prenaient à la messagerie l'équivalent de deux cœurs et demi, et ce coût suit le **nombre de boîtes** plutôt que la charge — il croît donc avec la population, l'axe même que les campagnes explorent. Leur consommation se lit maintenant **séparément** de celle de la messagerie, ce que le banc n'avait jamais su faire. Vérifié le 3 août sur l'infrastructure réelle : vingt boîtes injectées en 49 secondes, campagne de contrôle sans aucune erreur sur plus de sept mille demandes, extraction des documents médicaux réellement exercée, et temps d'aller-retour du réseau mesuré puis retranché de la latence simulée pour que le total reste conforme au contrat de mesure. Le risque du stockage partagé par le réseau a été **mesuré et non supposé** : aucun chemin ne dépasse le seuil de dégradation fixé d'avance (au plus une fois et demie sur l'extraction des documents médicaux, quasi nul sur la consultation et la lecture), verdict consigné. La bascule tient à un réglage unique, et son absence laisse le comportement antérieur strictement inchangé — les deux sens vérifiés. Seules des données synthétiques transitent sur le volume dédié au banc. **Reste dû** : la campagne de certification d'un palier de population, que cette étape rend possible | task-221 |
 | Un message parti n'est jamais annoncé en échec | 🟡 Corrigé, mesure de confirmation à conduire | La campagne de certification du 3 août a produit **une seule erreur sur 105 000 demandes** — et c'était la pire qualitativement : un envoi sur 3 352 rendu au médecin **en erreur alors que le message était parti et remis** à son correspondant. Le geste naturel devant un tel message est de le renvoyer, et le destinataire reçoit alors **deux fois le même document de santé** dans le dossier de son patient, sans moyen simple de savoir lequel est le bon. La cause n'était pas l'échec d'archivage — celui-là est traité comme anodin depuis toujours — mais la **libération d'un verrou technique à la sortie de l'archivage** : elle retrouvait la boîte par son nom, et si l'entrée de cette boîte avait été recyclée entre-temps, elle rendait un verrou qui n'était pas le sien. Ce qui explique la rareté, et pourquoi c'est l'archivage qui la portait : il empruntait le second accès en écriture, qui n'existe que le temps des envois. Deux corrections, l'une et l'autre nécessaires : le mécanisme rend désormais **le verrou qu'il a pris**, et un défaut de comptage se journalise sans jamais atteindre le médecin. La revue a fermé une troisième porte du même genre — une attente de verrou expirée produisait le même faux échec. Enfin, les deux informations sont **séparées** pour le médecin : « parti » et « parti, mais sa copie manque », la seconde ayant une valeur d'imputabilité, avec la trace réglementaire correspondante. **Reste dû** : la campagne de confirmation, qui doit rendre zéro erreur là où la référence en comptait une | task-223 |
+| Savoir combien de fois le serveur de messagerie est sollicité | 🟢 Livré | Chaque demande porte désormais **le nombre d'allers-retours réellement faits vers le serveur**, lisible dans la trace et dans les métriques, décomposé par commande. Une session déjà ouverte et réutilisée ne compte pas : le nombre est donc un **plancher exact**, pas une estimation — propriété figée par un test. La campagne du 3 août pouvait dire que 420 des 440 ms d'une ouverture se passaient dans l'application, mais pas combien de fois le serveur avait été sollicité ; 420 ms est *compatible* avec quatre allers-retours de 95 ms sans le prouver, et c'est cette ambiguïté qui avait permis d'écrire une US applicative sur une cause fausse. Aucune donnée de santé dans les étiquettes : uniquement des noms de commande écrits dans le code, vérifié par un test. Trois garde-fous accompagnent la livraison, pour que le piège qui a coûté task-222 ne se retende pas — deux avertissements en clair dans le code, à l'endroit exact où la main se reposerait, et deux tests prouvant qu'une lecture n'écrit rien en base, dont un sur vraie base. **Premier usage attendu** : rendre démontrable le cinquième défaut de task-224 — l'étape 3 du parcours, annoncée « servie base », enregistre aujourd'hui cinq sollicitations et devra passer à zéro | task-225 |
 
 **Couverture EPIC consolidée : 19 features livrées sur 19** (les dix-neuf
 attendent leur intégration). L'EPIC est **fonctionnellement complet** : le banc est
@@ -856,6 +861,25 @@ Cinq réserves à porter au bilan, sans quoi il serait trompeur :
   côté, « parti, mais sa copie dans les messages envoyés manque » de l'autre,
   cette seconde ayant une valeur d'imputabilité — retrouver ce qu'on a envoyé, et
   à qui — et sa trace réglementaire propre. (task-223)
+
+- v1.22 — **Le nombre d'allers-retours vers le serveur de messagerie devient
+  lisible sur chaque demande.** La campagne du 3 août pouvait établir que 420 des
+  440 ms d'une ouverture de message se passaient dans l'application, mais **pas
+  combien de fois** le serveur avait été sollicité : 420 ms est *compatible* avec
+  quatre allers-retours de 95 ms sans le prouver, et un temps n'a jamais démontré
+  l'absence d'un aller-retour. Le décompte est désormais porté par la trace de
+  chaque demande et par les métriques, décomposé par commande ; une session déjà
+  ouverte et réutilisée ne compte pas, de sorte que le nombre est un **plancher
+  exact** plutôt qu'une estimation. Aucune donnée de santé dans les étiquettes —
+  uniquement des noms de commande écrits dans le code, comme pour les verrous, et
+  la propriété est figée par un test plutôt que documentée. **Ce que cette
+  ambiguïté avait coûté** : elle a permis d'écrire une US applicative sur une
+  cause fausse, dont le correctif aurait supprimé le décodage des documents
+  médicaux des messages ouverts avant analyse ; l'US a été annulée et le détail
+  est conservé dans la section datée du 4 août. Trois garde-fous accompagnent donc
+  la livraison — deux avertissements en clair dans le code, à l'endroit exact où
+  la main se reposerait, et deux tests prouvant qu'une lecture n'écrit rien en
+  base. (task-225)
 
 **Ce que la mesure a appris sur le service**
 
