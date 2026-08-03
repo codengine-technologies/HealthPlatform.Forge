@@ -629,10 +629,10 @@ Quatre réserves à porter au bilan, sans quoi il serait trompeur :
   intégralement ce qu'on lui demande jusqu'à environ 750 demandes par seconde,
   rompt entre 750 et 825, et la cause en a été localisée puis corrigée dans la
   messagerie elle-même. Ce qui reste dû est la **campagne de confirmation** du
-  correctif. Réserve de lecture inchangée : sur le poste actuel, l'infrastructure
-  de test et le service applicatif se partagent le même processeur — et l'infra en
-  consomme quatre fois plus que la messagerie —, si bien que tout chiffre obtenu
-  ici est un **plancher** et non un plafond. Les quatre campagnes de confirmation
+  correctif. Réserve de lecture allégée depuis le 3 août : le plus gros
+  consommateur du banc — les serveurs de messagerie simulés — a quitté la machine
+  de mesure, mais l'outil de tir y reste, si bien qu'un chiffre obtenu ici demeure
+  un **plancher** plutôt qu'un plafond (task-221). Les quatre campagnes de confirmation
   tentées le 31 juillet ont échoué **pour une raison d'instrument, pas de
   messagerie** — leur réglage supposait des temps de réponse que le banc ne
   produit plus dès lors qu'on repart de dossiers vides. Ce réglage est corrigé
