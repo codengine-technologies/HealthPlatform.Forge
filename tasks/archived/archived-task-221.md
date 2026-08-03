@@ -296,3 +296,11 @@ tests/loadtest-k6/run.sh folders
 - Qualité : Quality Gate OK, **0 issue new-code** (17 héritées de task-218 nettoyées), smells projet 47 → 30
 - Deux défauts réels attrapés PAR les vérifications runtime (garde AppHost trop large ; harnais k6 ignorant l'interrupteur) — corrigés dans la branche
 - Suggestions non bloquantes (dans la PR) : initialDelaySeconds des probes GreenMail/Toxiproxy ; RTT du chemin pfSense à re-mesurer si la topologie change
+
+## Merged
+
+- **Attestation humaine** : `--i-tested` (2026-08-03) — Manual Test Plan validé (HAG, règle 10).
+- `api-mail` : PR #148 **squash-mergée** → `develop` `63f922e` (13 fichiers, +224/−44) — CI develop **verte** (completed success). Branche remote supprimée, clone local sur `develop`.
+- `dtos-mss` : aucune PR — branches remote et locale supprimées, clone sur `develop`.
+- `devops` : les 5 manifests restent dans ton arbre `DevOps/Staging` (code-only) — commit/push DevOps à ta main quand tu veux les versionner ; ils sont déjà appliqués au cluster.
+- Staging forge : sans objet (cycle lancé par `/start`).
