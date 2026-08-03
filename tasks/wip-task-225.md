@@ -350,3 +350,15 @@ Aucun repo n'est rollback, la chaîne se poursuit. `dtos-mss` n'aurait de toute
 façon pas été éligible (porteur de contrat), et sa branche est vide.
 
 - **Étape suivante** : `/sonar task-225` (api-mail touché).
+
+## Lint / verify-visual log
+
+Les trois étapes frontend **skippent proprement** : `**Repos**: api-mail` et
+`**Single frontend**: true` — la US livre un instrument backend, aucun frontend
+n'est touché.
+
+| Étape | Verdict | Constat |
+|---|---|---|
+| `/lint-angular` | **skip** | `Client/Angular` est sur `feature/nova-rewriting-mss` avec deux `environments/environment.ts` modifiés non commités. **Travaux en cours de l'humain, pas de task-225** : la forge n'a écrit aucune ligne d'Angular. Lancer la passe lint retoucherait ce WIP — on s'abstient et on le dit. |
+| `/lint-mobile` | **skip** | `Client/Mobile` sur `develop`, arbre propre, aucun diff. Non listé dans `**Repos**:`, donc aucune branche créée par `/start`. |
+| `/verify-visual` | **skip** | Aucun écran mobile touché : rien à capturer. |
