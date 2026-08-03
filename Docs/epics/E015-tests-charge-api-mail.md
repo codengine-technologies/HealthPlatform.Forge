@@ -2,10 +2,10 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.18
+> **Version** : 1.19
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
-> **Dernière mise à jour** : 2026-08-02
+> **Dernière mise à jour** : 2026-08-03
 
 ---
 
@@ -29,8 +29,9 @@
   - [Mise au point du 28 juillet 2026 : ce que la campagne mesurait vraiment](#mise-au-point-du-28-juillet-2026-ce-que-la-campagne-mesurait-vraiment)
   - [Ce que le banc sait désormais dire (29 juillet 2026)](#ce-que-le-banc-sait-désormais-dire-29-juillet-2026)
   - [La capacité est enfin chiffrée, et sa cause nommée (29-31 juillet 2026)](#la-capacité-est-enfin-chiffrée-et-sa-cause-nommée-29-31-juillet-2026)
+  - [Le banc simule enfin des médecins, et non des requêtes (3 août 2026)](#le-banc-simule-enfin-des-médecins-et-non-des-requêtes-3-août-2026)
   - [Trois mesures à reprendre](#trois-mesures-à-reprendre)
-- [État de couverture (2026-08-01)](#état-de-couverture-2026-08-01)
+- [État de couverture (2026-08-03)](#état-de-couverture-2026-08-03)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -96,6 +97,7 @@ baisses de performance avant qu'elles n'atteignent les utilisateurs**.
 | L'assistance IA ne se coupe plus toute seule au redémarrage | Éviter qu'un redémarrage du service tombant pendant une panne de l'outil de configuration ne désactive silencieusement l'étage d'analyse des documents | task-201 | 🟡 Corrigé, mesure de confirmation à conduire |
 | Envoyer un message n'attend plus la fin d'une analyse en cours | Rendre l'envoi immédiat même quand la boîte du praticien est occupée à analyser des documents reçus : l'archivage du message envoyé passait derrière ce travail de fond | task-213, task-215 | 🔴 **Mesuré : le correctif fonctionne mais coûte plus qu'il ne rapporte — retrait décidé** (task-216) |
 | L'instrument sait enfin ce qu'il ne mesure pas | Mesurer les vingt points d'attente de la boîte du praticien, et non le seul qui l'était : le tableau censé désigner le coupable d'un ralentissement ne pouvait nommer que celui-là | task-214 | 🟡 Livré, en attente d'intégration |
+| Mesure en nombre de médecins servis | Poser la question qui décide de l'accueil de nouveaux praticiens — **combien de médecins la messagerie sert-elle en tenant ses temps de réponse** — en simulant des médecins qui déroulent leur journée réelle (arriver sur son tableau de bord, ouvrir sa boîte, lire, supprimer, télécharger une pièce jointe, envoyer) au lieu d'un mélange d'actions isolées ; et lire, à chaque palier de population, **quelle étape du travail du médecin souffre la première** | task-220 | 🟡 Livré, en attente d'intégration |
 
 ---
 
@@ -103,7 +105,7 @@ baisses de performance avant qu'elles n'atteignent les utilisateurs**.
 
 ```mermaid
 flowchart LR
-    A[Banc d'essai isolé<br/>task-173] --> B[Mesure du traitement<br/>des documents médicaux<br/>task-195] --> C[Campagnes de mesure<br/>task-174]
+    A[Banc d'essai isolé<br/>task-173] --> B[Mesure du traitement<br/>des documents médicaux<br/>task-195] --> C[Campagnes de mesure<br/>task-174] --> D[Mesure en nombre<br/>de médecins servis<br/>task-220]
 ```
 
 Le banc d'essai doit exister avant les campagnes de mesure : on met d'abord en
@@ -131,6 +133,20 @@ tableau de bord de supervision déjà en place, à côté de la consommation du
 serveur, ce qui permet de rapprocher un ralentissement ressenti d'une cause
 serveur observée au même instant.
 
+Une dernière étape change la question posée. Les premières campagnes imposaient
+à la messagerie un nombre de demandes par seconde et vérifiaient qu'elle suive.
+Or un nombre de demandes par seconde ne se traduit pas en nombre de praticiens :
+personne n'a jamais su combien de médecins représentaient les 900 demandes par
+seconde des premiers relevés. Les campagnes savent désormais simuler **des
+médecins** plutôt que des demandes : chaque praticien simulé déroule sa journée
+dans l'ordre où elle se déroule réellement — il arrive sur son tableau de bord,
+ouvre sa boîte de réception, lit un message, en supprime un, télécharge une
+pièce jointe, envoie une réponse — en prenant entre deux gestes le temps de
+réflexion d'un humain. La charge n'est plus imposée de l'extérieur : elle
+**résulte** du nombre de médecins présents. On fait alors monter la population
+par paliers, et à chaque palier on lit ce que chaque étape du parcours coûte au
+praticien (task-220).
+
 ---
 
 ## 6. Règles métier transverses
@@ -144,6 +160,8 @@ serveur observée au même instant.
 | Verdict automatique, pas d'interprétation | Les temps de réponse attendus sont inscrits dans le dispositif de mesure : une campagne qui passe sous la cible est déclarée en échec d'elle-même, sans lecture humaine des chiffres | ✅ Respecté (task-174) |
 | Mesure de référence opposable | Chaque campagne se compare à une mesure de référence datée et conservée avec le produit, pour distinguer une variation normale d'une régression | ✅ Respecté (task-174) |
 | Cause mesurée, jamais supposée | Un rapport de campagne ne désigne une cause que s'il l'a **mesurée**. À défaut, il écrit qu'il ne sait pas — il ne laisse jamais entendre que rien ne freinait | ✅ Respecté (task-204) |
+| Parcours relevé dans l'application, jamais imaginé | La suite de gestes que le banc rejoue est **relevée dans l'application réelle**, écran par écran, chaque sollicitation du service étant consignée avec son origine. Un parcours imaginé mesurerait une hypothèse et la présenterait comme un fait | ✅ Respecté (task-220) |
+| Un engagement de réactivité ne se certifie qu'au rythme réel | Une campagne peut accélérer artificiellement le rythme des médecins pour trouver plus vite le prochain point de blocage. Un chiffre obtenu ainsi **désigne** un goulet, il ne certifie jamais un palier de population : seule une campagne au rythme d'un humain fait foi, et le rapport déclare de lui-même quand il n'est pas opposable | ✅ Respecté (task-220) |
 
 ---
 
@@ -175,6 +193,12 @@ serveur observée au même instant.
 - [ ] La ressource qui limite la messagerie est **nommée et chiffrée** par une
       campagne. **Non atteint** : l'instrument est en place (task-204), la
       campagne reste à conduire.
+- [ ] Le **nombre de médecins** que la messagerie sert en tenant ses temps de
+      réponse est chiffré par une campagne. **Non atteint** : l'instrument qui
+      pose la question et les temps de réponse attendus par étape du parcours
+      sont en place (task-220) ; la campagne de certification doit se tenir au
+      rythme réel d'un humain sur au moins une demi-heure, et attend que les
+      serveurs de messagerie simulés quittent la machine de mesure (task-221).
 
 ---
 
@@ -381,6 +405,94 @@ réseau, au lieu de la libérer pour une autre demande. Ce verrou a été levé
 > test consomme quatre fois plus de ressources que la messagerie elle-même — les
 > 858 demandes par seconde constatées sont un **plancher**, pas un plafond.
 
+### Le banc simule enfin des médecins, et non des requêtes (3 août 2026)
+
+Toutes les mesures qui précèdent partagent une limite de principe : elles
+chiffrent un **nombre de demandes par seconde**, alors que la question qui décide
+de l'accueil de nouveaux praticiens est *combien de médecins la messagerie
+sert-elle correctement*. Les deux ne se déduisent pas l'une de l'autre. Trois
+conséquences avaient été constatées : au-delà de deux cents praticiens simulés,
+les campagnes se réglaient sur des temps de réponse qu'elles ne produisaient plus
+et se déclaraient elles-mêmes inexploitables ; le mélange d'actions rejoué était
+une hypothèse de répartition, à une cadence vingt à quarante fois celle d'un
+humain, si bien qu'un ralentissement ne pouvait pas être rattaché à un moment du
+travail du médecin ; et quatre gestes quotidiens n'étaient **jamais** exercés —
+supprimer un message, télécharger une pièce jointe, marquer un message comme lu,
+arriver sur son tableau de bord.
+
+Le banc sait désormais rejouer la journée d'un médecin. Chaque praticien simulé
+suit une séquence **relevée dans l'application réelle**, écran par écran, chaque
+sollicitation du service étant consignée avec son origine : rien n'y est supposé.
+Entre deux gestes, il
+prend un temps de réflexion tiré au hasard dans une plage réaliste et propre à
+chaque étape — quelques secondes pour parcourir son tableau de bord, plus longues
+pour lire un message, plus longues encore pour en composer un. Ce tirage aléatoire
+n'est pas un détail : à cadence fixe, des centaines de médecins simulés se
+synchronisent et produisent des vagues qui n'existent pas dans la vraie vie.
+
+**Les temps de réponse attendus sont désormais énoncés par étape du parcours** —
+c'est le contrat que chaque campagne confronte à ses mesures, validé le 3 août
+2026 :
+
+| # | Étape du travail du médecin | Objectif courant (une fois sur deux) | Objectif au pire (95 % des cas) |
+|---|---|---|---|
+| 1 | Arriver sur son tableau de bord (dossiers et couverture) | 300 ms | 1,5 s |
+| 2 | Ouvrir ou rafraîchir sa boîte de réception | 300 ms | 1 s |
+| 3 | Ouvrir un message déjà préparé par la plateforme | 100 ms | 500 ms |
+| 4 | Ouvrir un message encore jamais consulté | 800 ms | 2,5 s |
+| 5 | Rechercher dans ses messages | 500 ms | 2 s |
+| 6 | Envoyer un message sécurisé | 1 s | 3 s |
+| 7 | Télécharger une pièce jointe (environ 120 Ko) | 500 ms | 2 s |
+| 8 | Supprimer, marquer lu, déplacer un message | 200 ms | 1 s |
+
+Les conditions dans lesquelles ces objectifs doivent être vérifiés font partie du
+contrat, et non de son mode d'emploi : campagne conduite **au rythme réel d'un
+humain**, sur la population que l'on cherche à certifier, pendant au moins une
+demi-heure, avec une latence réseau représentative d'un serveur MSSanté distant,
+et au moins trois cents relevés par étape. Une campagne accélérée pour trouver
+vite un point de blocage reste utile — elle **désigne** un goulet — mais son
+rapport porte alors la mention « non opposable », de lui-même.
+
+**Trois des huit engagements sont déjà connus comme non tenus**, d'après les
+relevés du 1ᵉʳ et du 2 août : l'ouverture de la boîte de réception, l'envoi d'un
+message, et la recherche — cette dernière restant à re-mesurer, son chiffre
+n'étant pas fiable tant que les documents les plus longs manquent à l'index
+(task-196). La grille désigne donc déjà le programme d'optimisation à conduire.
+Cette étape livre l'instrument qui les nomme, pas les correctifs : chacun sera
+traité pour lui-même.
+
+Une première campagne de mise au point a été conduite le 3 août — cinq puis dix
+médecins, à rythme accéléré. Ce qu'elle établit tient à l'instrument, pas encore
+à la capacité du service : **3 294 demandes traitées, aucune erreur, aucun
+parcours interrompu**. La charge monte bien avec la population (six demandes par
+seconde à cinq médecins, douze à dix), les huit étapes apparaissent dans le
+rapport, les coûts qui restent attachés à un praticien même inactif suivent le
+nombre de médecins, et le volume téléchargé est enfin visible — 12,5 Mo de pièces
+jointes au palier de dix médecins, un axe que les campagnes précédentes ne
+mesuraient pas et qui aurait pu faire passer une limite de débit réseau pour une
+lenteur de la messagerie. Le rapport ne comporte plus aucune mention
+d'inexploitabilité : elle a disparu **par construction**, la charge n'étant plus
+imposée. Et il affiche de lui-même « non opposable », puisque le rythme était
+accéléré.
+
+Un enseignement au passage, cohérent avec ce que l'EPIC savait déjà : ouvrir un
+message que la plateforme a déjà préparé coûte quelques millisecondes, contre
+près d'une demi-seconde pour un message jamais consulté, qu'il faut aller
+chercher sur le serveur de messagerie. C'est la préparation en tâche de fond des
+messages reçus qui rend la lecture instantanée pour le praticien.
+
+Les campagnes à charge imposée ne disparaissent pas : elles restent la garde
+anti-régression des temps de réponse. Les deux familles de campagnes ne mesurent
+pas la même chose et **ne se comparent pas** — l'index des campagnes les
+distingue désormais l'une de l'autre, pour que personne ne rapproche deux
+chiffres qui n'ont pas le même sens.
+
+> ⚠️ **La campagne qui certifiera un palier de population reste à conduire.**
+> Elle exige le rythme réel d'un humain sur au moins une demi-heure, et une
+> population élevée — donc que les serveurs de messagerie simulés quittent la
+> machine de mesure (task-221), faute de quoi c'est le banc, et non la
+> messagerie, qui plafonnerait.
+
 ### Trois mesures à reprendre
 
 - **La capacité de la messagerie**, c'est-à-dire le nombre de demandes qu'elle
@@ -398,7 +510,7 @@ réseau, au lieu de la libérer pour une autre demande. Ce verrou a été levé
 
 ---
 
-## État de couverture (2026-08-01)
+## État de couverture (2026-08-03)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
@@ -417,19 +529,22 @@ réseau, au lieu de la libérer pour une autre demande. Ce verrou a été levé
 | Consultation des messages moins mise en file | 🟡 Corrigé, mesure de confirmation à conduire | L'ouverture d'une liste de messages reste l'action la plus lente du profil courant : 718 ms en moyenne, mais 213 ms pour une consultation sur deux. Cet écart dit que le temps se passe **en file d'attente**, pas à travailler — et ni la puissance de calcul ni la capacité de traitement ne sont en cause, toutes deux mesurées au repos. En cause : plusieurs actions du praticien se sérialisent derrière un même verrou. Deux acquis. D'abord, **on sait désormais mesurer** ces attentes une par une : chaque campagne dira laquelle pèse, au lieu de laisser supposer. Ensuite, l'une d'elles imposait **une seconde entière** dès qu'il y avait la moindre concurrence, même quand la voie se libérait en un clin d'œil — ramenée à quelques centièmes. Une attente pouvant aller jusqu'à trente secondes a par ailleurs été ramenée à cinq : elle servait à éviter un travail en double, pas à garantir l'exactitude, et faire patienter une demi-minute pour cette raison était un mauvais échange. **Reste dû** : la campagne qui dira laquelle des attentes portait le retard — et, si elles pèsent peu, la conclusion attendue est de le constater plutôt que de relâcher des garde-fous sans gain établi | task-211 |
 | L'assistance IA ne se coupe plus toute seule au redémarrage | 🟡 Corrigé, mesure de confirmation à conduire | Les fonctions d'analyse automatique des documents peuvent être activées ou coupées à distance, sans redéploiement. Le service qui porte ces interrupteurs peut être momentanément indisponible : dans ce cas, chaque instance continuait de fonctionner sur le dernier réglage qu'elle avait vu — sauf **une instance qui vient de démarrer**, qui n'a rien vu et se rabattait alors sur « tout éteint ». Concrètement, un simple redémarrage tombant pendant une indisponibilité **coupait l'assistance IA sans que personne ne le demande, ni ne le voie**. Les instances partagent désormais le dernier réglage connu : celle qui démarre hérite de l'état du groupe au lieu de repartir aveugle. Ce partage est **volontairement facultatif** — s'il est lui-même indisponible, on retombe exactement sur le comportement précédent, sans nouvelle panne possible. En contrepartie, la prise en compte d'un changement de réglage passe de trente secondes à **cinq minutes** : c'est l'arbitrage assumé de cette correction, moins de réactivité contre plus de robustesse. **Reste dû** : la campagne de confirmation | task-201 |
 | Envoyer un message n'attend plus la fin d'une analyse en cours | 🔴 **Mesuré : retrait décidé** | À la réception d'un document, la messagerie l'analyse en tâche de fond — un travail de plusieurs secondes. Pendant ce temps, **toutes** les autres opérations sur la boîte du praticien passaient derrière, y compris le classement du message qu'il vient d'envoyer. Résultat mesuré : un envoi sur vingt dépassait **trente secondes**, le pire cas frôlant la minute. La boîte dispose désormais d'un **second accès réservé aux écritures** : classer un message envoyé, ou enregistrer un brouillon, ne fait plus la queue derrière l'analyse en cours. La règle qui protège la boîte — une seule commande à la fois sur un même accès — est **conservée telle quelle** ; c'est un second accès qui est ouvert, pas une règle qui est levée. **La campagne de confirmation a été conduite le 1ᵉʳ août, et elle ne tranche pas.** Ce qu'elle établit : l'envoi s'améliore, mais modestement — le pire cas passe de 35 à 29 secondes, là où l'objectif fixé était de descendre sous 10 —, et cette amélioration est **payée par la consultation**, qui se dégrade de 60 à 80 %. Ce qu'elle n'établit pas : le second accès ouvre une deuxième connexion par praticien, soit 2 500 de plus sur le banc, et sur ce poste l'infrastructure de test partage le processeur du service — la dégradation observée peut donc venir du banc autant que du correctif. Ce qu'elle ne pouvait pas établir du tout : le compte rendu conclut « aucun archivage sur la période », or l'archivage a bien eu lieu — il n'était **pas mesuré**, dix-neuf des vingt points d'attente de la boîte échappant à l'instrument (task-214). **Reste dû** : réparer la mesure, puis rejouer. La reprise devra aussi démêler ce qui, dans le ralentissement observé, revient à cette attente et ce qui revient au passage de 200 à 500 praticiens — les deux effets sont encore confondus | task-213, task-214 |
-
 | L'instrument sait enfin ce qu'il ne mesure pas | 🟡 Livré, en attente d'intégration | Le compte rendu d'une campagne désignait l'opération qui monopolise la boîte du praticien. Il ne pouvait pas : sur les vingt points d'attente que compte la boîte, **un seul était instrumenté** — et c'est donc le seul que le tableau nommait, quelle que soit la campagne. Un tableau qui se lit comme un verdict alors qu'il est un échantillon. La conséquence a été concrète : le compte rendu du 1ᵉʳ août affirme « aucun archivage sur la période » alors que l'archivage tournait, ce qui a fait rendre à la vérification du correctif d'envoi un verdict qui n'en jugeait que le coût. Les vingt points sont désormais mesurés, il n'existe plus **qu'une seule façon** de prendre ce verrou — la seconde a été supprimée, pas corrigée —, et le compte rendu distingue trois situations là où il n'en voyait qu'une : instrument absent, mesure à zéro, et le cas qu'il taisait, « je ne peux pas trancher », assorti du contrôle qui tranche. On sait par ailleurs compter séparément ce qui passe par l'accès en écriture, ce qui rendra enfin attribuable le doublement de connexions qu'il coûte | task-214 |
+| Mesure en nombre de médecins servis | 🟡 Livré, en attente d'intégration | Le banc rejoue la journée d'un médecin — tableau de bord, boîte de réception, lecture, suppression, téléchargement d'une pièce jointe, envoi — dans une séquence **relevée dans l'application réelle** écran par écran, chaque sollicitation du service étant consignée avec son origine : rien n'y est supposé. Entre deux gestes, un temps de réflexion tiré au hasard dans une plage réaliste propre à chaque étape, car à cadence fixe des centaines de médecins simulés se synchronisent et produisent des vagues qui n'existent pas dans la vraie vie. La charge n'est plus imposée de l'extérieur : elle **résulte** du nombre de médecins, et l'on fait monter la population par paliers. Quatre gestes quotidiens jamais exercés jusqu'ici le sont : supprimer, télécharger une pièce jointe, marquer lu, arriver sur son tableau de bord — le téléchargement ouvrant l'axe du **volume transféré**, qu'aucune campagne ne mesurait et dont l'absence pouvait faire passer une limite de débit réseau pour une lenteur de la messagerie. Les temps de réponse attendus sont énoncés **par étape du parcours** (les huit étapes, avec leurs conditions de mesure), et le rapport rend son verdict étape par étape et palier par palier. Trois engagements sont déjà connus comme non tenus — boîte de réception, envoi, recherche : la grille désigne le programme d'optimisation, elle ne le réalise pas. Campagne de mise au point conduite le 3 août (cinq puis dix médecins, rythme accéléré) : 3 294 demandes, **aucune erreur, aucun parcours interrompu**, charge croissant avec la population, coûts résidents suivant le nombre de médecins, volume de pièces jointes affiché. **Reste dû** : la campagne de certification d'un palier, qui exige le rythme réel d'un humain sur au moins une demi-heure et une population élevée — donc que les serveurs de messagerie simulés quittent la machine de mesure (task-221) | task-220 |
 
-**Couverture EPIC consolidée : 16 features livrées sur 16** (les seize attendent
-leur intégration). L'EPIC est **fonctionnellement complet** : le banc est
+**Couverture EPIC consolidée : 17 features livrées sur 17** (les dix-sept
+attendent leur intégration). L'EPIC est **fonctionnellement complet** : le banc est
 opérationnel, il mesure la chaîne complète de traitement des documents médicaux,
 les campagnes de mesure sont outillées avec une référence opposable, la campagne à
 grande volumétrie (200 praticiens) a été conduite — en produisant les règles de
 dimensionnement de l'infrastructure jusqu'au palier 1000 praticiens et deux
-chantiers de robustesse, livrés (task-199, task-200) — et l'instrument de mesure
-sait désormais dire quand son propre chiffre n'est pas exploitable (task-203).
+chantiers de robustesse, livrés (task-199, task-200) —, l'instrument de mesure
+sait dire quand son propre chiffre n'est pas exploitable (task-203), et il sait
+désormais poser la question qui décide de l'accueil de nouveaux praticiens :
+combien de médecins la messagerie sert-elle en tenant ses temps de réponse
+(task-220).
 
-Trois réserves à porter au bilan, sans quoi il serait trompeur :
+Quatre réserves à porter au bilan, sans quoi il serait trompeur :
 
 - **la capacité est chiffrée et sa cause nommée, mais le gain du correctif n'est
   pas encore mesuré.** C'est le grand acquis de fin juillet : la messagerie sert
@@ -451,7 +566,16 @@ Trois réserves à porter au bilan, sans quoi il serait trompeur :
   fonctionnellement. La comparaison des temps de réponse avec et sans
   multiplexeur, elle, tient (l'instrument était bridé de façon identique des deux
   côtés) ; ce qui manque reste le chiffre de capacité. Le palier 1000 praticiens
-  n'est donc pas encore déverrouillé.
+  n'est donc pas encore déverrouillé ;
+- **la question « combien de médecins ? » a désormais son instrument, pas encore
+  sa réponse.** Le banc sait simuler des médecins qui déroulent leur journée
+  réelle et confronter chaque étape de leur travail à un temps de réponse attendu
+  (task-220). La campagne qui certifiera un palier de population exige le rythme
+  réel d'un humain sur au moins une demi-heure, donc une population élevée : elle
+  attend que les serveurs de messagerie simulés quittent la machine de mesure
+  (task-221), faute de quoi c'est le banc, et non la messagerie, qui
+  plafonnerait. Un chiffre obtenu à rythme accéléré désigne un goulet, il ne
+  certifie pas un palier.
 
 ---
 
@@ -509,6 +633,29 @@ Trois réserves à porter au bilan, sans quoi il serait trompeur :
   étant traité comme une information de plein droit. Un tableau de bord dédié
   permet de suivre tout cela **pendant** une campagne. Une erreur de calcul du
   débit présente depuis l'origine est corrigée au passage. (task-204)
+
+- v1.19 — **Les campagnes simulent des médecins, et non plus des demandes.**
+  Jusqu'ici on imposait à la messagerie un nombre de demandes par seconde et l'on
+  vérifiait qu'elle suive — un chiffre qui ne se traduit pas en nombre de
+  praticiens. Chaque médecin simulé déroule désormais sa journée dans l'ordre où
+  elle se déroule vraiment — tableau de bord, boîte de réception, lecture,
+  suppression, téléchargement d'une pièce jointe, envoi —, dans une séquence
+  **relevée dans l'application réelle** écran par écran plutôt que supposée — chaque
+  sollicitation du service consignée avec son origine —, en
+  prenant entre deux gestes un temps de réflexion tiré au hasard dans une plage
+  réaliste (à cadence fixe, des centaines de médecins simulés se synchronisent et
+  produisent des vagues qui n'existent pas). La charge **résulte** du nombre de
+  médecins présents, si bien que la question posée devient « combien de médecins
+  la messagerie sert-elle correctement » et que les campagnes ne peuvent plus se
+  déclarer inexploitables faute de tenir la charge qu'elles s'imposaient. Quatre
+  gestes quotidiens jamais exercés le sont : supprimer, télécharger une pièce
+  jointe, marquer lu, arriver sur son tableau de bord — le téléchargement ouvrant
+  l'axe du **volume transféré**, dont l'absence pouvait faire passer une limite de
+  débit réseau pour une lenteur de la messagerie. Les temps de réponse attendus
+  sont énoncés **par étape du parcours**, avec leurs conditions de mesure, et le
+  rapport rend son verdict étape par étape et palier par palier. Les campagnes à
+  charge imposée subsistent comme garde anti-régression ; les deux familles ne se
+  comparent pas et l'index des campagnes les distingue. (task-220)
 
 **Ce que la mesure a appris sur le service**
 
@@ -697,6 +844,20 @@ Trois réserves à porter au bilan, sans quoi il serait trompeur :
   test partage le processeur du service ; ce qui la rend malgré tout
   actionnable est que les deux termes comparés ont subi ce biais à
   l'identique. (task-215, retrait en task-216)
+- v1.19 — **Trois des huit engagements de réactivité sont déjà connus comme non
+  tenus.** Mettre les temps de réponse attendus en face de chaque étape du travail
+  du médecin transforme les relevés de début août en programme d'optimisation :
+  l'ouverture de la boîte de réception, l'envoi d'un message et la recherche
+  dépassent leur cible — cette dernière restant à re-mesurer, son chiffre n'étant
+  pas fiable tant que les documents les plus longs manquent à l'index (task-196).
+  La première campagne de mise au point, conduite le 3 août à petite échelle et à
+  rythme accéléré, n'a produit **aucune erreur ni aucun parcours interrompu**, et
+  confirme que la charge croît bien avec le nombre de médecins présents. Elle
+  redit au passage pourquoi la lecture paraît instantanée au praticien : ouvrir un
+  message que la plateforme a déjà préparé coûte quelques millisecondes, contre
+  près d'une demi-seconde pour un message qu'il faut aller chercher sur le serveur
+  de messagerie. Ce tir **ne certifie rien** — seul le rythme réel d'un humain
+  fait foi, et son rapport le déclare de lui-même. (task-220)
 
 ---
 
