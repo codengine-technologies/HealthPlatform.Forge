@@ -539,3 +539,37 @@ RPPS** — vérifié par un test dédié.
 ## HAG (règle 10)
 
 Les deux PRs attendent le **merge humain**. Rien n'a été mergé par la forge.
+
+## Merged
+
+Mergé le **2026-08-03** après validation humaine de bout en bout (`/merge task-223
+--i-tested`, HAG règle 10). Squash-merge, historique linéaire.
+
+| Repo | Commit squash sur `develop` | PR | CI `develop` |
+|---|---|---|---|
+| `dtos-mss` | `dbda7a3` | #28 fermée | ✅ [run 30843650059](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/actions/runs/30843650059) |
+| `api-mail` | `98eb1dc` | #149 fermée | ✅ [run 30843684398](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/30843684398) |
+
+Ordre de merge respecté : contrat (`dtos-mss`) avant consommateur (`api-mail`).
+
+Branches distantes `fix/task-223-semaphore-release-mismatch` supprimées sur les
+deux repos ; **branches locales conservées** (pas de `--delete-branch`, qui
+supprime aussi le ref local).
+
+Aucune branche staging à nettoyer : la task a été lancée par `/start` direct, pas
+par un run `/forge`.
+
+### Ce qui reste ouvert après ce merge
+
+- **Tir `journey` K=1 au banc** — dernier item du DOD, non joué : exige le nœud de
+  banc distant (`MSS_LOADTEST_MAIL_HOST`). Doit rendre **zéro erreur serveur sur
+  l'envoi**, là où la campagne de référence du 2026-08-03 en comptait 1 sur 3 352.
+- **Mention à l'écran** — le backend livre `archived` + `warning` sur
+  `POST /mail/sendmail` et la trace `MailArchiveSent`, mais aucun frontend ne les
+  rend (`**Single frontend**: true`). US de suivi à arbitrer pour
+  `client-blazor` / `client-angular` / `client-mobile`.
+- **Bug `python:S1244`** dans `tests/loadtest-k6/report.py:1336` (égalité entre
+  flottants), propriété de task-220 — porte le Quality Gate de `develop` en ERROR
+  et la note de fiabilité en C. À traiter dans **task-224** (outillage de mesure).
+- **task-216** (retrait de la voie d'écriture) reste pertinente et indépendante :
+  elle réduira la **fréquence** du défaut corrigé ici, jamais le défaut lui-même.
