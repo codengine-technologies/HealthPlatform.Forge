@@ -384,3 +384,15 @@ Signalé, non modifié — l'outillage de mesure est task-224.
   documentation par ce qu'elle protège. Rien à factoriser sans perdre le
   pourquoi.
 - **Étape suivante** : `/sonar task-222` (api-mail touché).
+
+## Lint / verify-visual log
+
+Les trois étapes frontend **skippent proprement** : `**Repos**: api-mail` et
+`**Single frontend**: true` — la US corrige un chemin d'accès backend et ne
+change pas la réponse de l'API, donc aucun frontend n'a été touché.
+
+| Étape | Verdict | Constat |
+|---|---|---|
+| `/lint-angular` | **skip** | `Client/Angular` est sur `feature/nova-rewriting-mss` avec deux fichiers modifiés non commités (`front/apps/mss/src/environments/environment.ts`, `front/apps/weda2/src/environments/environment.ts`). **Ce sont des travaux en cours de l'humain, pas de task-222** : la forge n'a écrit aucune ligne d'Angular sur cette task. Lancer la passe lint reviendrait à retoucher le WIP de l'humain — on s'abstient et on le dit, plutôt que de laisser le tronc sale déclencher un lint qui ne nous appartient pas. |
+| `/lint-mobile` | **skip** | `Client/Mobile` sur `develop`, arbre propre, aucun diff vs `origin/develop`. `client-mobile` n'est pas listé dans `**Repos**:` — `/start` n'y a donc créé aucune branche, conformément au filet de sécurité désactivé. |
+| `/verify-visual` | **skip** | Aucun écran mobile touché : rien à capturer, aucune référence Stitch à apparier. |
