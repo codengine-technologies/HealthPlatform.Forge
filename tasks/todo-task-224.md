@@ -85,9 +85,16 @@ facteur cinq** — un résultat qu'on a failli ne pas avoir.
 3. **Regroupement des adresses paramétrées** dans les étiquettes de l'outil de
    tir, de sorte qu'un geste produise un nombre de séries **borné**, quelles que
    soient la population et la durée.
-4. **Sonde de l'état des serveurs de messagerie en mode distant** : quand le
-   banc pointe vers le cluster, la relever là-bas ; sinon comportement
-   inchangé ; et en cas d'échec, écrire « non relevé ».
+4. **La ligne « sessions ouvertes » du rapport, remplie à la source.**
+   ⚠️ **Correction apportée après l'analyse fine de la campagne** : la
+   messagerie publie déjà `mssante_imap_sessions_active` / `_connected` /
+   `_authenticated`, vérifiées concordantes à 2 % avec un comptage indépendant
+   (94 / 195 / 401 aux trois paliers). **La ligne peut donc être remplie depuis
+   le magasin de métriques, sans aucun accès au cluster** — c'est la voie à
+   privilégier, plus simple et plus fidèle que la sonde distante.
+   Reste utile mais secondaire : relever ce qui est propre au serveur de
+   messagerie (charge du pod, connexions refusées) là où il tourne ; en cas
+   d'échec, écrire « non relevé », jamais un zéro.
 5. **Un contrôle qui échoue si un panneau déclare une unité incompatible avec
    sa métrique** — sans quoi le défaut reviendra au prochain panneau ajouté.
 
@@ -113,8 +120,10 @@ facteur cinq** — un résultat qu'on a failli ne pas avoir.
 - [ ] Les compteurs relus depuis le magasin de métriques concordent avec le
       rapport de tir à ±2 % sur **tous** les gestes du parcours (ils divergeaient
       jusqu'à 61 %)
-- [ ] En mode distant, la ligne « sessions ouvertes des serveurs de messagerie »
-      du rapport est **renseignée** ; cluster injoignable ⇒ « non relevé », et la
+- [ ] La ligne « sessions ouvertes » du rapport est **renseignée depuis le
+      magasin de métriques**, en mode local comme distant, et concorde avec les
+      chiffres de la campagne du 2026-08-03 (94 / 195 / 401 aux paliers 50 / 100 / 200)
+- [ ] Métrique absente ⇒ la ligne écrit « non relevé », **jamais un zéro**, et la
       campagne se poursuit
 - [ ] En mode local, comportement **strictement inchangé** (vérifié)
 - [ ] Un contrôle automatisé refuse un panneau dont l'unité déclarée est

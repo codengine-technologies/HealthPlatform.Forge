@@ -116,9 +116,11 @@ Surface NodePort (pendants exacts des Services k8s — `SeedOptions.Remote*`) :
 
 **Les pièges du mode distant** :
 
-- **RTT à soustraire** : mesurer le RTT poste ↔ cluster en début de campagne
-  (`ping <ip-noeud>`), régler `--latency` à `100 − RTT` — la latence MSSanté
-  simulée totale doit rester 100 ms. Consigner les deux valeurs dans le rapport.
+- **RTT à soustraire, aux DEUX endroits** : mesurer le RTT poste ↔ cluster en
+  début de campagne (connexion TCP chronométrée — le ping ICMP ne traverse pas
+  les port-forwards), puis poser `100 − RTT` sur `--latency` du seed **ET** sur
+  `LATENCY_MS` des tirs k6 (le `setup()` de chaque tir ré-applique le profil,
+  qui vaut 100 ms en dur sinon). Consigner RTT et latence dans le rapport.
 - **Un seul monde à la fois** : `MSS_LOADTEST_MAIL_HOST` posée → l'AppHost ne
   démarre AUCUN conteneur mail local ; sinon les UserSettings désigneraient
   tantôt le banc local, tantôt le cluster.
@@ -756,6 +758,63 @@ absence d'erreur est elle-même un finding (« RAS hors bruit de boot »).
 > « Analyse Seq (findings) » : « seq-local indisponible — analyse non faite »,
 > plutôt que de laisser le placeholder. Ne jamais rendre un rapport avec la
 > section Seq vide.
+
+### 5b-bis — Télémétrie fine : établir les CAUSES (OBLIGATOIRE — consigne humaine du 2026-08-03)
+
+`report.py` produit les **symptômes** (latence par étape, coûts résidents,
+verdict SLO). Il ne dit **jamais pourquoi**. Cette sous-étape est la
+contrepartie : pour **chaque étape hors grille**, établir la cause par la
+télémétrie, et l'écrire dans le rapport sous « Télémétrie fine ».
+
+**⚠️ À préparer AVANT le tir si l'on veut le MCP `aspire`** : il ne détecte pas
+un AppHost lancé par `dotnet run` et n'expose rien une fois l'AppHost arrêté.
+Lancer alors `MSS_LOADTEST=true MSS_ENFORCE_PSC_IDENTITY=false aspire run
+--project src/AppHost`. Sinon l'analyse retombe sur seq-local seul — ce qui
+suffit souvent, mais **doit être dit** dans le rapport.
+
+**1. Décomposer UNE requête représentative de chaque étape hors grille**
+(MCP `seq-local`) — c'est ce qui transforme un symptôme en cause :
+
+```
+filtre : RequestPath like '%<la route>%' and SourceContext = 'mss.mail.api.Middleware.RequestLoggingMiddleware'
+→ relever le TraceId d'une requête dont ElapsedMs est proche du p50
+filtre : TraceId = '<le trace id>'
+→ dérouler les évènements et calculer les Δ entre eux
+```
+
+Ce que ça a donné le 2026-08-03 sur l'ouverture d'un message (439 ms) : 19 ms de
+contexte, puis **420 ms dans le verrou de session IMAP avec `WaitTimeMs=0`** —
+donc du travail, pas une file. Un re-tir n'aurait pas donné cette information.
+
+**2. Confronter le temps client au temps serveur** (Prometheus). Écart nul ⇒ le
+temps est **dans** l'application ; écart large ⇒ file hors d'elle (client, proxy,
+réseau) :
+
+```promql
+histogram_quantile(0.95, sum by (le, http_route) (rate(http_server_request_duration_seconds_bucket[10m])))
+```
+
+**3. Chercher la métrique à la source AVANT tout contournement.** Lister
+`/api/v1/label/__name__/values` et regarder ce qui existe déjà. Exemple vécu :
+les sessions IMAP ont été comptées par `netstat` alors que
+`mssante_imap_sessions_active` / `_connected` / `_authenticated` existaient.
+
+**4. Écrire ce que la télémétrie n'a PAS pu dire.** C'est le backlog
+d'instrumentation de l'US de correctif. Exemple : le décompte des allers-retours
+IMAP **par requête** manque, donc « 420 ms ≈ 4 allers-retours » reste compatible
+et non prouvé.
+
+> ### ⚠️ Deux pièges de lecture, rencontrés le 2026-08-03
+>
+> - **Une `rate[...]` évaluée « maintenant » rend une série VIDE** après la fin du
+>   tir. Toujours passer `time=<instant DANS la fenêtre du tir>` à l'API
+>   Prometheus — sinon on conclut « aucune donnée » sur une campagne parfaitement
+>   instrumentée.
+> - **Après l'arrêt de l'AppHost, Prometheus survit mais son port n'est plus
+>   proxifié** (le proxy DCP meurt avec lui) : `127.0.0.1:9090` répond `000`
+>   alors que le conteneur est sain. Retrouver le port réattribué par
+>   `docker port <conteneur-prometheus>`, ou requêter par
+>   `docker exec <conteneur> wget -qO- 'http://localhost:9090/api/v1/query?...'`.
 
 ### 5c — Enchaîner le nettoyage
 
