@@ -48,14 +48,27 @@ rafraîchissement de sa boîte.
 
 ## Ce qu'il ne faut PAS présumer
 
-- **Ne pas présumer la cause.** L'hypothèse de travail (issue de la campagne)
-  est que le chemin d'ouverture sollicite le serveur de messagerie même quand
-  le contenu est en base — la latence simulée de 100 ms par aller-retour rend
-  ~440 ms compatible avec quatre allers-retours. **Elle doit être établie
-  avant d'être corrigée**, et par la mesure : la confrontation « temps vu du
-  client / temps vu du serveur » du rapport, et le décompte des sollicitations
-  du serveur de messagerie sur une ouverture unique. Un correctif posé sur une
-  cause supposée est ce que cette EPIC s'interdit depuis task-204.
+- **Ne pas repartir de zéro sur la cause : elle est déjà établie aux trois
+  quarts.** L'analyse de télémétrie fine de la campagne (section « Télémétrie
+  fine » du rapport `report-journey-certif-n200-180029.md`) a établi, sur la
+  trace `4d911c462694fab4d7454de2453bb13f` (ouverture d'un message chaud,
+  439 ms) :
+  - **19 ms** pour résoudre le praticien et sa base — le coût n'est pas là ;
+  - **420 ms passées à l'intérieur du verrou de session IMAP**, pris
+    **inconditionnellement** par `GetEmailContentAsync` (`ImapService.cs:1991`),
+    avec **`WaitTimeMs=0`** — donc **du travail, pas une file d'attente**
+    (contrairement au diagnostic de task-211 sur un autre chemin) ;
+  - le p95 **serveur** de la route (497 ms) **égale** le p95 client (494 ms) :
+    le temps est intégralement dans l'application, aucune file hors d'elle.
+- **Ce qui reste à établir, et qui exige une instrumentation** : le **décompte
+  des sollicitations du serveur de messagerie par requête**. 420 ms est
+  *compatible* avec quatre allers-retours à 95 ms — ce n'est pas une preuve, et
+  les commandes IMAP ne sont pas instrumentées à ce grain. **Cette
+  instrumentation fait partie de la US** : sans elle, on ne pourra ni prouver la
+  cause, ni démontrer que le correctif l'a supprimée (le test d'intégration du
+  DOD en dépend). À noter au passage : `mssante_lock_hold_duration_seconds` par
+  `operation` n'a rien rendu sur la fenêtre du tir alors que la métrique existe
+  — même famille de défaut que celui corrigé par task-214 ailleurs, à vérifier.
 - **Ne pas « ajouter un cache » devant le problème.** Le contenu est déjà
   stocké : s'il faut un cache pour aller le chercher vite, c'est le chemin
   d'accès qui est en cause, pas l'absence de cache. Un cache masquerait le
@@ -76,14 +89,16 @@ rafraîchissement de sa boîte.
 
 ## Contenu attendu
 
-1. **La cause établie et consignée** : d'où viennent les ~440 ms, démontré par
-   la mesure (confrontation client/serveur, décompte des sollicitations du
-   serveur de messagerie sur une ouverture), pas par lecture de code seule.
-2. **Le correctif**, à l'altitude que la cause désigne.
-3. **La contre-épreuve au banc** : tir `journey` K=1, palier de population
+1. **L'instrumentation qui manque** : le décompte des sollicitations du serveur
+   de messagerie par requête, sans lequel la cause reste compatible mais non
+   prouvée — et sans lequel le correctif ne sera pas démontrable.
+2. **La cause close et consignée** sur cette base (le reste est déjà établi :
+   voir « Ne pas présumer » ci-dessus).
+3. **Le correctif**, à l'altitude que la cause désigne.
+4. **La contre-épreuve au banc** : tir `journey` K=1, palier de population
    identique à celui du 2026-08-03, comparé étape par étape au rapport de
    référence — gain sur l'étape 3, **aucune régression** sur les 7 autres.
-4. **Le cas du message analysé mais dont le contenu a changé côté serveur**
+5. **Le cas du message analysé mais dont le contenu a changé côté serveur**
    doit rester correct : ce qu'on affiche au médecin ne doit jamais être un
    contenu clinique périmé. À trancher et à écrire.
 
@@ -100,8 +115,9 @@ rafraîchissement de sa boîte.
 
 - [ ] Build passe (0 erreur)
 - [ ] Tests passent (0 échec)
-- [ ] La cause des ~440 ms est **établie par la mesure** et consignée dans le
-      `## Develop log` (chiffres à l'appui, pas seulement une lecture de code)
+- [ ] Le **décompte des sollicitations du serveur de messagerie par requête** est
+      instrumenté, et la cause des ~440 ms **close** sur cette base dans le
+      `## Develop log` (l'analyse de la campagne en a déjà établi les trois quarts)
 - [ ] Tests unitaires du chemin d'ouverture corrigé (≥ 1 test par branche :
       contenu présent en base, contenu absent, contenu présent mais invalide)
 - [ ] Test d'intégration prouvant qu'une ouverture de message **déjà analysé**
