@@ -468,3 +468,56 @@ identifiants et ponctue en `;`. Écrire d'emblée un commentaire de documentatio
 XML — c'est la forme attendue à cet endroit, et elle est visible à l'appel.
 
 - **Étape suivante** : `/review task-222`
+
+## PRs
+
+- `api-mail` : **https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/150**
+  — label `awaiting-human-merge`
+- `dtos-mss` : **aucune PR** — aucun changement de contrat, la branche
+  `fix/task-222-open-enriched-mail-no-imap` créée par `/start` est restée sans
+  commit (comportement documenté de l'auto-inclusion `dtos-mss`).
+- `client-angular`, `client-mobile`, `client-blazor` : non concernés
+  (`**Single frontend**: true` — la réponse de l'API est inchangée).
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 12 fichiers revus, 1 remarque non bloquante, 0 bloquant.
+
+| Zone | Verdict |
+|---|---|
+| `ImapService.GetEmailContentAsync` + helpers | ✅ le stock reste la voie rapide ; l'écriture en retour se fait **hors du verrou de session**, donc n'allonge pas la détention — précisément la grandeur que la campagne avait pointée |
+| `MailRepository.SaveMailContentAsync` | ✅ identité `(dossier, uid, génération)` alignée sur `GetMailAsync` ; projection légère (2 requêtes, pas 3) reprenant l'idiome de `TryResolveExistingMailAsync` |
+| `MailServerSolicitationRecorder` | ✅ `ConcurrentQueue`, aucun verrou ; étiquettes littérales uniquement |
+| `ImapConnectionService` | ✅ ne compte que les connexions/authentifications réellement émises — une session reprise du pool ne parle pas au serveur |
+| Sécurité / PGSSI-S | ✅ aucune donnée de santé dans les logs ajoutés ni dans les étiquettes de métrique ; `EnableSensitiveDataLogging` absent du repo (vérifié) donc aucune valeur de paramètre SQL dans les exceptions journalisées |
+| Architecture | ✅ le contrat vit dans `IMailRepository` (couche Application), l'implémentation EF dans Infrastructure ; aucun type EF ne fuit |
+| Tests | ✅ 12 tests neufs ; assertions sur un **nombre** de sollicitations, jamais sur un temps |
+
+### ⚠️ Remarque non bloquante — fenêtre TOCTOU sur l'écriture en retour
+
+`IX_MailContents_MailId` n'est **pas** unique : deux ouvertures froides
+simultanées du même message par deux sessions client du même praticien (le verrou
+de session est par `(email, ClientSessionId)`, il ne les exclut pas) peuvent
+insérer deux lignes de contenu.
+
+**Conséquence bornée** — les deux portent le **même** corps (un message d'UID
+donné est immuable dans sa génération), la lecture prend la dernière, aucune
+donnée fausse n'est affichée, aucune exception n'est levée, suppression en
+cascade avec le message. La voie d'enrichissement porte la même fenêtre,
+documentée par `TryResolveExistingMailAsync`.
+
+**Pourquoi ce n'est pas corrigé ici** : la supprimer demande un index unique,
+donc une migration **avec dé-doublonnage des lignes existantes** — une task à
+part entière, pas un ajout discret dans un correctif de performance, et aucun
+test de cette PR n'exercerait la concurrence réelle qui la déclenche. Consignée
+en commentaire dans le code (`76ba6d3`) pour qu'elle soit pesée et non
+redécouverte. **Candidate à une US dédiée.**
+
+### Validation
+
+| | Résultat |
+|---|---|
+| Build (`dotnet build`) | ✓ 0 erreur, 0 avertissement |
+| Tests (`dotnet test`) | ✓ **3 399 réussis, 0 échec**, 16 ignorés d'avance |
+| Sync `develop` | ✓ `Already up to date` (merge, pas rebase) |
+| DOD | 9/11 vérifiés ; **2 critères de banc déférés au HAG** (nœud distant absent + rapport de référence absent de la machine — détail dans le `## Develop log`) |
