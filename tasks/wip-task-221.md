@@ -13,6 +13,13 @@ câblage, l'humain `kubectl apply`.
 > **Décisions humaines déjà prises (2026-08-03)** : exposition **NodePort** ;
 > **StorageClass `nfs`** disponible ; RTT poste ↔ cluster **à mesurer pendant
 > cette task** (« à déterminer plus tard »).
+>
+> **Décision /start (2026-08-03)** : les manifests sont livrés dans
+> `DevOps\Staging` en **mode code-only** — la forge écrit les fichiers mais ne
+> touche **jamais** au git de DevOps (commit/push = humain, comme
+> client-angular). Le `kubectl apply` au cluster reste un acte humain : quand
+> `/develop` atteint les items de DOD qui exigent le cluster, il **suspend et
+> demande** (questions/), puis reprend les vérifications après ton apply.
 
 ## Objective
 
@@ -131,8 +138,8 @@ le nœud à la place du NFS — ne pas adopter des chiffres qu'on sait faussés.
 
 ## Definition of Done
 
-- [ ] `kubectl apply -k tests/loadtest-k8s/ --dry-run=client` sans erreur
-      (preuve dans le `## Develop log`)
+- [ ] `kubectl apply -k DevOps/Staging --dry-run=client` sans erreur (preuve
+      dans le `## Develop log`) — manifests livrés code-only, git DevOps humain
 - [ ] Après application par l'humain : les 3 pods `Ready`, PVC `Bound` sur la
       StorageClass `nfs`
 - [ ] RTT mesuré, latence Toxiproxy réglée à `100 − RTT`, les deux consignés
@@ -153,8 +160,8 @@ le nœud à la place du NFS — ne pas adopter des chiffres qu'on sait faussés.
 
 ```bash
 # côté cluster (humain) :
-kubectl apply -k Api/Mail/tests/loadtest-k8s/
-kubectl -n loadtest-mail get pods,pvc          # 3 pods Ready, PVC Bound
+kubectl apply -k DevOps/Staging
+kubectl -n healthplatform get pods,pvc         # 3 pods Ready, PVC Bound
 
 # côté banc :
 cd Api/Mail
@@ -191,3 +198,8 @@ tests/loadtest-k6/run.sh folders
 - **Hébergement HDS** : non applicable (données synthétiques exclusivement —
   et c'est la garde ci-dessus qui le garantit).
 - **AIPD / impact RGPD** : néant.
+
+## Branches
+- `api-mail` (pushed) : feat/task-221-serveurs-mail-cluster — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-221-serveurs-mail-cluster
+- `dtos-mss` (pushed, auto-inclus) : feat/task-221-serveurs-mail-cluster — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-221-serveurs-mail-cluster
+- `devops` (code-only, décision /start 2026-08-03) : la forge écrit les manifests dans `DevOps/Staging` mais ne touche jamais au git de DevOps — commit/push et `kubectl apply` = humain
