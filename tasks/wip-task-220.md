@@ -260,3 +260,28 @@ de santé réelle.
 - Skipped (findings non retenus, consignés) : cache d'en-têtes par VU (~1 µs/req — identity.js documente déjà le compromis anti-mémoïsation), repli unique de l'échantillonneur multi-paliers (fraction de seconde, complexité non payée), bootstrap()/reportContext() réutilisés partiellement seulement (leur bannière et leurs projections sont spécifiques au modèle à débit imposé et seraient trompeuses sur un parcours — `dovecotMaxPerUser` repris seul). ⚠️ À arbitrer humain (hors passe qualité, changerait la sémantique de mesure) : le recouvrement bande froide journey / bande enrich uid-bands sur un seed partagé — mitigé par un avertissement au setup + consigne dans le log ; déplacer les bandes journey dans la bande read d'uid-bands changerait les budgets et invaliderait le smoke.
 - Build / tests : ✓ selftest.sh vert (131 unittest + tests node), ✓ k6 inspect OK (+ refus K=0 vérifié), ✓ dotnet build 0 erreur, ✓ dotnet test 3384 passed / 0 failed
 - Next step : /sonar task-220 (api-mail touché)
+
+## Sonar log
+
+- **Mode A (chaîné), pas de nouvelle analyse** : le diff de la task ne contient
+  **aucun fichier du périmètre du scanner .NET** (0 `.cs`/`.csproj`/`.props`/`.sln`
+  — uniquement le harnais k6 JS/Python, des docs et des scripts sous
+  `tests/loadtest-k6/`, hors projets MSBuild). Une analyse aurait re-mesuré
+  l'état de develop, pas la task.
+- KPIs du projet (dernière analyse serveur, consignés pour le monitoring — baseline = final, aucun code C# modifié) :
+
+| KPI | Baseline | Final |
+|---|---|---|
+| Quality Gate | **OK** | OK (inchangé) |
+| Bugs | 0 | 0 |
+| Vulnérabilités | 0 | 0 |
+| Code smells | 32 | 32 |
+| Fiabilité / Sécurité / Maintenabilité | A / A / A | A / A / A |
+| Couverture | 86,8 % | 86,8 % |
+| Duplication | 0,6 % | 0,6 % |
+
+- Étapes suivantes de la chaîne, **skip clean** :
+  - `/lint-angular` : client-angular non listé dans **Repos**, arbre `Client/Angular` propre (0 fichier) → skipped
+  - `/lint-mobile` : client-mobile non listé, répertoire `Client/Mobile` absent du workspace → skipped
+  - `/verify-visual` : aucun écran mobile touché → skipped
+- Next step : /review task-220
