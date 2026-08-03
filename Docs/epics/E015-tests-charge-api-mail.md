@@ -2,7 +2,7 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.20
+> **Version** : 1.21
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
 > **Dernière mise à jour** : 2026-08-03
@@ -100,6 +100,7 @@ baisses de performance avant qu'elles n'atteignent les utilisateurs**.
 | L'instrument sait enfin ce qu'il ne mesure pas | Mesurer les vingt points d'attente de la boîte du praticien, et non le seul qui l'était : le tableau censé désigner le coupable d'un ralentissement ne pouvait nommer que celui-là | task-214 | 🟡 Livré, en attente d'intégration |
 | Mesure en nombre de médecins servis | Poser la question qui décide de l'accueil de nouveaux praticiens — **combien de médecins la messagerie sert-elle en tenant ses temps de réponse** — en simulant des médecins qui déroulent leur journée réelle (arriver sur son tableau de bord, ouvrir sa boîte, lire, supprimer, télécharger une pièce jointe, envoyer) au lieu d'un mélange d'actions isolées ; et lire, à chaque palier de population, **quelle étape du travail du médecin souffre la première** | task-220 | 🟡 Livré, en attente d'intégration |
 | Le banc ne prend plus les ressources du service qu'il mesure | Mesurer la messagerie au-delà de cinq cents praticiens sans que les serveurs de messagerie simulés — désormais installés sur une infrastructure séparée — ne lui prennent ses ressources, et lire leur coût propre séparément du sien | task-221 | 🟡 Livré, en attente d'intégration |
+| Un message parti n'est jamais annoncé en échec | Avoir la certitude qu'un compte rendu remis au correspondant est bien annoncé comme parti au médecin — et, si sa copie dans « Messages envoyés » manque, le lui dire comme une information distincte plutôt que comme un échec d'envoi | task-223 | 🟡 Corrigé, mesure de confirmation à conduire |
 
 ---
 
@@ -576,9 +577,16 @@ données de santé, et aucune donnée réelle n'y transite.
   avec l'instrument corrigé.
 - **L'envoi de message.** Les boîtes du banc ne disposent pas de dossier
   « Éléments envoyés » : la copie du message expédié ne peut pas y être archivée,
-  et le temps mesuré pour un envoi intègre cette tentative infructueuse. Le
-  message part bien et le praticien n'est pas affecté ; la mesure sera reprise
-  quand le banc fournira ce dossier.
+  et le temps mesuré pour un envoi intègre cette tentative infructueuse. La
+  mesure sera reprise quand le banc fournira ce dossier.
+  **Correction du 3 août 2026** — il était écrit ici que « le praticien n'est pas
+  affecté ». La campagne de certification du 3 août a montré que c'était faux
+  dans un cas rare : sur 3 352 envois, **un a été rendu au médecin en erreur
+  alors que le message était parti et remis**. Ce n'était pas l'échec d'archivage
+  lui-même, déjà traité comme non fatal, mais la libération d'un verrou technique
+  à sa sortie. Corrigé (task-223). La phrase est conservée ici barrée de sa
+  correction plutôt que supprimée : c'est cette confiance-là qui avait retardé
+  le constat.
 - **La recherche.** L'index de recherche du banc est incomplet : les documents
   les plus longs n'y sont pas encore référencés. Le temps mesuré est donc plus
   favorable que la réalité et sera repris une fois cette limite levée.
@@ -607,8 +615,9 @@ données de santé, et aucune donnée réelle n'y transite.
 | L'instrument sait enfin ce qu'il ne mesure pas | 🟡 Livré, en attente d'intégration | Le compte rendu d'une campagne désignait l'opération qui monopolise la boîte du praticien. Il ne pouvait pas : sur les vingt points d'attente que compte la boîte, **un seul était instrumenté** — et c'est donc le seul que le tableau nommait, quelle que soit la campagne. Un tableau qui se lit comme un verdict alors qu'il est un échantillon. La conséquence a été concrète : le compte rendu du 1ᵉʳ août affirme « aucun archivage sur la période » alors que l'archivage tournait, ce qui a fait rendre à la vérification du correctif d'envoi un verdict qui n'en jugeait que le coût. Les vingt points sont désormais mesurés, il n'existe plus **qu'une seule façon** de prendre ce verrou — la seconde a été supprimée, pas corrigée —, et le compte rendu distingue trois situations là où il n'en voyait qu'une : instrument absent, mesure à zéro, et le cas qu'il taisait, « je ne peux pas trancher », assorti du contrôle qui tranche. On sait par ailleurs compter séparément ce qui passe par l'accès en écriture, ce qui rendra enfin attribuable le doublement de connexions qu'il coûte | task-214 |
 | Mesure en nombre de médecins servis | 🟡 Livré, en attente d'intégration | Le banc rejoue la journée d'un médecin — tableau de bord, boîte de réception, lecture, suppression, téléchargement d'une pièce jointe, envoi — dans une séquence **relevée dans l'application réelle** écran par écran, chaque sollicitation du service étant consignée avec son origine : rien n'y est supposé. Entre deux gestes, un temps de réflexion tiré au hasard dans une plage réaliste propre à chaque étape, car à cadence fixe des centaines de médecins simulés se synchronisent et produisent des vagues qui n'existent pas dans la vraie vie. La charge n'est plus imposée de l'extérieur : elle **résulte** du nombre de médecins, et l'on fait monter la population par paliers. Quatre gestes quotidiens jamais exercés jusqu'ici le sont : supprimer, télécharger une pièce jointe, marquer lu, arriver sur son tableau de bord — le téléchargement ouvrant l'axe du **volume transféré**, qu'aucune campagne ne mesurait et dont l'absence pouvait faire passer une limite de débit réseau pour une lenteur de la messagerie. Les temps de réponse attendus sont énoncés **par étape du parcours** (les huit étapes, avec leurs conditions de mesure), et le rapport rend son verdict étape par étape et palier par palier. Trois engagements sont déjà connus comme non tenus — boîte de réception, envoi, recherche : la grille désigne le programme d'optimisation, elle ne le réalise pas. Campagne de mise au point conduite le 3 août (cinq puis dix médecins, rythme accéléré) : 3 294 demandes, **aucune erreur, aucun parcours interrompu**, charge croissant avec la population, coûts résidents suivant le nombre de médecins, volume de pièces jointes affiché. **Reste dû** : la campagne de certification d'un palier, qui exige le rythme réel d'un humain sur au moins une demi-heure et une population élevée — prérequis désormais levé (task-221) | task-220 |
 | Le banc ne prend plus les ressources du service qu'il mesure | 🟡 Livré, en attente d'intégration | Les serveurs de messagerie simulés ont quitté la machine de mesure pour une infrastructure séparée de l'entreprise. Le motif est chiffré : à cinq cents praticiens ils prenaient à la messagerie l'équivalent de deux cœurs et demi, et ce coût suit le **nombre de boîtes** plutôt que la charge — il croît donc avec la population, l'axe même que les campagnes explorent. Leur consommation se lit maintenant **séparément** de celle de la messagerie, ce que le banc n'avait jamais su faire. Vérifié le 3 août sur l'infrastructure réelle : vingt boîtes injectées en 49 secondes, campagne de contrôle sans aucune erreur sur plus de sept mille demandes, extraction des documents médicaux réellement exercée, et temps d'aller-retour du réseau mesuré puis retranché de la latence simulée pour que le total reste conforme au contrat de mesure. Le risque du stockage partagé par le réseau a été **mesuré et non supposé** : aucun chemin ne dépasse le seuil de dégradation fixé d'avance (au plus une fois et demie sur l'extraction des documents médicaux, quasi nul sur la consultation et la lecture), verdict consigné. La bascule tient à un réglage unique, et son absence laisse le comportement antérieur strictement inchangé — les deux sens vérifiés. Seules des données synthétiques transitent sur le volume dédié au banc. **Reste dû** : la campagne de certification d'un palier de population, que cette étape rend possible | task-221 |
+| Un message parti n'est jamais annoncé en échec | 🟡 Corrigé, mesure de confirmation à conduire | La campagne de certification du 3 août a produit **une seule erreur sur 105 000 demandes** — et c'était la pire qualitativement : un envoi sur 3 352 rendu au médecin **en erreur alors que le message était parti et remis** à son correspondant. Le geste naturel devant un tel message est de le renvoyer, et le destinataire reçoit alors **deux fois le même document de santé** dans le dossier de son patient, sans moyen simple de savoir lequel est le bon. La cause n'était pas l'échec d'archivage — celui-là est traité comme anodin depuis toujours — mais la **libération d'un verrou technique à la sortie de l'archivage** : elle retrouvait la boîte par son nom, et si l'entrée de cette boîte avait été recyclée entre-temps, elle rendait un verrou qui n'était pas le sien. Ce qui explique la rareté, et pourquoi c'est l'archivage qui la portait : il empruntait le second accès en écriture, qui n'existe que le temps des envois. Deux corrections, l'une et l'autre nécessaires : le mécanisme rend désormais **le verrou qu'il a pris**, et un défaut de comptage se journalise sans jamais atteindre le médecin. La revue a fermé une troisième porte du même genre — une attente de verrou expirée produisait le même faux échec. Enfin, les deux informations sont **séparées** pour le médecin : « parti » et « parti, mais sa copie manque », la seconde ayant une valeur d'imputabilité, avec la trace réglementaire correspondante. **Reste dû** : la campagne de confirmation, qui doit rendre zéro erreur là où la référence en comptait une | task-223 |
 
-**Couverture EPIC consolidée : 18 features livrées sur 18** (les dix-huit
+**Couverture EPIC consolidée : 19 features livrées sur 19** (les dix-neuf
 attendent leur intégration). L'EPIC est **fonctionnellement complet** : le banc est
 opérationnel, il mesure la chaîne complète de traitement des documents médicaux,
 les campagnes de mesure sont outillées avec une référence opposable, la campagne à
@@ -622,7 +631,7 @@ combien de médecins la messagerie sert-elle en tenant ses temps de réponse
 que le banc ne fausse la réponse : les serveurs de messagerie simulés ont quitté
 la machine de mesure (task-221).
 
-Quatre réserves à porter au bilan, sans quoi il serait trompeur :
+Cinq réserves à porter au bilan, sans quoi il serait trompeur :
 
 - **la capacité est chiffrée et sa cause nommée, mais le gain du correctif n'est
   pas encore mesuré.** C'est le grand acquis de fin juillet : la messagerie sert
@@ -655,6 +664,17 @@ Quatre réserves à porter au bilan, sans quoi il serait trompeur :
   (task-221). La campagne peut donc être conduite, et c'est la prochaine étape.
   Un chiffre obtenu à rythme accéléré désigne un goulet, il ne certifie pas un
   palier.
+- **la campagne de certification a été conduite le 3 août, et son enseignement
+  le plus important n'est pas un chiffre de capacité.** À 200 médecins au rythme
+  réel — 3 352 envois, 105 000 demandes — le taux d'erreur global s'établit à
+  **0,001 %**, soit **une seule erreur**. Mais cette erreur unique était la pire
+  qualitativement : un envoi annoncé **en échec au médecin alors qu'il était
+  parti et remis**, c'est-à-dire l'incident qui pousse à renvoyer un document de
+  santé déjà transmis. Elle est corrigée (task-223) et attend sa campagne de
+  confirmation. Deux autres constats de la même campagne sont ouverts et **ne
+  sont pas couverts ici** : les dépassements de temps de réponse (task-222) et
+  l'outillage de mesure (task-224). Un taux d'erreur quasi nul ne dit donc pas
+  encore « palier certifié ».
 
 ---
 
@@ -751,6 +771,30 @@ Quatre réserves à porter au bilan, sans quoi il serait trompeur :
   des documents médicaux. La bascule tient à un réglage unique dont l'absence
   laisse le comportement antérieur inchangé, et seules des données synthétiques
   transitent sur ce stockage. (task-221)
+
+- v1.21 — **Un message parti n'est plus jamais annoncé en échec au médecin.** La
+  campagne de certification du 3 août n'a produit qu'une seule erreur sur
+  105 000 demandes, mais c'était la plus grave de toutes qualitativement : un
+  envoi sur 3 352 rendu **en erreur au médecin alors que le message était parti
+  et remis** à son correspondant. Devant un tel message, le geste naturel est de
+  le renvoyer — et le correspondant reçoit **deux fois le même document de santé**
+  dans le dossier de son patient, sans moyen simple de savoir lequel est le bon.
+  Dans une messagerie de santé, un document dupliqué n'est pas un désagrément
+  d'ergonomie. La cause n'était pas l'échec d'archivage de la copie, traité comme
+  anodin depuis toujours, mais **la libération d'un verrou technique à sa
+  sortie** : elle retrouvait la boîte du praticien par son nom au moment de
+  rendre le verrou, et non le verrou qu'elle avait effectivement pris — de sorte
+  qu'une boîte recyclée entre-temps faisait rendre un verrou étranger. Ce qui
+  explique à la fois la rareté et la localisation : l'archivage empruntait le
+  second accès en écriture, qui n'existe que le temps des envois. Les deux
+  corrections que le constat appelait ont été faites — le mécanisme rend
+  désormais le verrou qu'il a pris, et un défaut de comptage se journalise sans
+  jamais atteindre le médecin — et la revue de code a fermé une troisième porte
+  du même genre, une attente de verrou expirée produisant le même faux échec.
+  Enfin les deux informations sont **séparées** pour le médecin : « parti » d'un
+  côté, « parti, mais sa copie dans les messages envoyés manque » de l'autre,
+  cette seconde ayant une valeur d'imputabilité — retrouver ce qu'on a envoyé, et
+  à qui — et sa trace réglementaire propre. (task-223)
 
 **Ce que la mesure a appris sur le service**
 
