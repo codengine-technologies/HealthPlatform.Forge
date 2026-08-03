@@ -285,3 +285,20 @@ de santé réelle.
   - `/lint-mobile` : client-mobile non listé, répertoire `Client/Mobile` absent du workspace → skipped
   - `/verify-visual` : aucun écran mobile touché → skipped
 - Next step : /review task-220
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/147 — **label `awaiting-human-merge`** (3 commits : `d804adc` feat, `0f1f97f` smoke, `5f597ad` simplify)
+- `dtos-mss` : aucune PR — branche auto-incluse sans commit (aucun changement de contrat)
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 13 fichiers relus (diff complet vs origin/develop).
+
+- Build ✓ 0 erreur — Tests .NET ✓ 3 281 passed / 0 failed — selftest harnais ✓ (131 unittest + tests node) — `k6 inspect` ✓ (+ refus K≤0)
+- DOD ✓ 11/11 items vérifiés (détail au ## Develop log)
+- Qualité : Quality Gate **OK**, 0 bug, 0 vulnérabilité, ratings A — aucun fichier du périmètre Sonar touché (tableau au ## Sonar log, recopié dans la PR)
+- Passe `/simplify` appliquée avant revue (4 agents, ~15 findings, commit `5f597ad`), zéro diff `mixed.js`/`vu-sizing.js`
+- Suggestions non bloquantes (recopiées dans la PR) :
+  1. le smoke a été tiré avant la passe simplify — le Manual Test Plan de la PR rejoue le chemin runtime de bout en bout (HAG) ;
+  2. recouvrement bande froide journey / bande enrich uid-bands sur seed partagé — avertissement au setup, ne pas rejouer un tir enrich/mixed sans reset-state.
