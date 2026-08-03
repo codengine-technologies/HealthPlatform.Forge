@@ -211,3 +211,117 @@ requise.
 > Quatre critères de DOD de task-224 (défaut 5) s'appuient sur le compteur livré
 > ici ; les enchaîner dans cet ordre évite de laisser ces critères non
 > vérifiables. `/start 224` suivra.
+
+## Develop log
+
+- **Repos touchés** : `api-mail` uniquement. `dtos-mss` : aucun changement de
+  contrat (branche créée par `/start`, restée vide → pas de PR, pas de publish
+  NuGet). Aucun frontend (`**Single frontend**: true`).
+- **Commit** : `e8ff2b5` feat(telemetry): compter les allers-retours vers le
+  serveur de messagerie
+- **Build / tests** : ✓ 0 erreur, **0 avertissement** ; **3 392 tests verts,
+  0 échec**, 16 ignorés d'avance. Aucun flaky ne s'est manifesté sur ce run
+  (contrairement à `Services/Export` sur les runs de task-222).
+
+### Périmètre — le `git diff --stat`, et un écart que je signale
+
+```
+ src/Application/Telemetry/IMailServerSolicitationRecorder.cs    | NEUF
+ src/Application/Telemetry/MailServerSolicitationRecorder.cs     | NEUF
+ src/Application/Telemetry/MailProcessingMetrics.cs              | touché
+ src/Application/Services/Implementation/ImapService.cs          | touché
+ src/Application/Services/Implementation/ImapConnectionService.cs| touché
+ src/Application/Services/Repository/IMailRepository.cs          | touché
+ src/Application/Extensions/ServiceCollectionExtensions.cs       | touché
+ tests/.../Services/Imap/ImapServiceTests.cs                     | touché
+ tests/.../Services/MailServerSolicitationCountIntegrationTests.cs | NEUF
+```
+
+**Écart à déclarer sur le critère de périmètre.** Le DOD que j'ai écrit exigeait
+« 2 fichiers neufs + 4 fichiers touchés au maximum ». Le réel est **2 fichiers
+source neufs + 5 fichiers source touchés**, plus **1 fichier de test neuf et
+1 touché** que le plafond n'énumérait pas.
+
+Le plafond était donc **mal posé** : je l'ai chiffré avant d'énumérer, et il ne
+couvrait ni les tests ni les cinq points du « Contenu attendu », qui exigent
+chacun un fichier :
+
+| Fichier source touché | Exigé par |
+|---|---|
+| `MailProcessingMetrics.cs` | contenu attendu **1** (la métrique) |
+| `ImapService.cs` | contenu attendu **2** (comptage sur le chemin d'ouverture) + **5** (avertissement) |
+| `ImapConnectionService.cs` | contenu attendu **2** (comptage sur l'ouverture de session) |
+| `IMailRepository.cs` | contenu attendu **5** (avertissement, à l'endroit exact du piège) |
+| `ServiceCollectionExtensions.cs` | l'enregistrement `Scoped` — sans lui l'instrument n'existe pas en production |
+
+Je préfère signaler que mon propre plafond était faux plutôt que de retirer un
+garde-fou pour tenir un chiffre, ou de réécrire le DOD après coup pour qu'il
+colle. **Les clauses de fond du contrat de périmètre, elles, tiennent toutes** —
+et je les ai vérifiées par commande, pas par affirmation :
+
+| Clause du « Hors scope » | Vérification | Résultat |
+|---|---|---|
+| Aucun correctif de performance | lecture du diff | ✓ aucun |
+| Aucune méthode ajoutée au dépôt | `git diff … \| grep` sur les 3 fichiers de dépôt | ✓ aucune |
+| Garde de lecture inchangé | `grep -c "existingMail is { Content: not null }"` | ✓ 1, à l'identique |
+| Aucune passe de simplification | diff | ✓ aucune |
+| Harnais non touché | `git status --short tests/loadtest-k6/` | ✓ 0 fichier |
+| Aucun changement de comportement API | tests existants inchangés et verts | ✓ 3 392 |
+
+**Une extraction de méthode, déclarée** : `GetEmailContentInternalAsync`, privée,
+créée uniquement pour héberger le `try/finally` qui appose l'étiquette de trace
+sans indenter 80 lignes de corps existant. Zéro changement de logique, le corps
+est déplacé tel quel. C'est le seul geste structurel, et il est nécessaire au
+comptage — pas opportuniste.
+
+### Ce qui est livré
+
+- **`IMailServerSolicitationRecorder`** (`Scoped`) + `MailServerSolicitationRecorder`
+  (`ConcurrentQueue`, sans verrou).
+- **Métrique** `mssante_mail_server_solicitations_total{command,operation}`.
+- **Étiquette de trace** `mss.mail_server.solicitations`, portant le total
+  **propre à l'appel** et non le cumul de la requête — c'est la seule forme qui
+  permette d'affirmer qu'une ouverture donnée n'a pas parlé au serveur.
+- **Sites de comptage** : `resolve_folder`, `open_folder`, `fetch_bodystructure`,
+  `fetch_body_part` (une par partie de corps), `close_folder` sur le chemin
+  d'ouverture ; `connect` et `authenticate` sur l'ouverture de session, **là où
+  ils sont réellement émis** — une session reprise du pool ne compte pas.
+
+### Les garde-fous, reposés
+
+Ils étaient sur la branche de task-222, supprimée avec elle. Trois pièces :
+
+1. **Avertissement dans `IMailRepository`**, à l'endroit exact où la méthode
+   fautive vivait — c'est là que la main se reposera.
+2. **Avertissement en tête de la doc de `GetEmailContentAsync`**, expliquant que
+   `Content` nul est un **état voulu** et pourquoi écrire ici casse l'analyse.
+3. **Deux tests** assertant que le chemin de lecture **n'écrit rien** : un
+   unitaire (`DidNotReceive` sur les écritures du dépôt) et un sur **vrai
+   PostgreSQL** (`CountAsync` sur `MailContents` = 0 après lecture).
+
+### DOD — auto-contrôle
+
+| Critère | État |
+|---|---|
+| Build passe (0 erreur, 0 avertissement) | ✓ |
+| Tests passent (0 échec) | ✓ 3 392 / 0 |
+| Décompte exposé en métrique + étiquette de trace | ✓ |
+| Session reprise du pool n'incrémente pas | ✓ `…_WhenSessionIsReusedFromThePool_DoesNotCountAConnectAsync` |
+| Unitaire : message analysé ⇒ 0 sollicitation, verrou non acquis | ✓ `…_WhenMailAlreadyAnalysed_SolicitsMailServerZeroTimesAsync` |
+| Unitaire : message non analysé ⇒ séquence exacte des commandes | ✓ `…_WhenMailNotYetAnalysed_RecordsEachMailServerCommandAsync` |
+| Intégration base réelle : message analysé ⇒ 0 sollicitation | ✓ `OpeningAnAnalysedMailSolicitsTheMailServerZeroTimes` |
+| Garde anti-régression : une lecture n'écrit aucune ligne de contenu | ✓ 2 tests, dont un sur vrai PostgreSQL |
+| Aucune donnée de santé dans les étiquettes ni les logs | ✓ `MailServerCommands_CarryNoHealthDataNorIdentifier` |
+| Aucun changement de comportement observable de l'API | ✓ |
+| **Périmètre respecté** | ⚠️ **plafond de fichiers dépassé de 1 source + les tests — plafond mal posé, clauses de fond toutes tenues** (détail ci-dessus) |
+
+### Ce que ça débloque
+
+Le défaut 5 de **task-224** devient démontrable : l'étape 3 du parcours
+`journey`, annoncée « servie base », doit passer de **5 sollicitations**
+(mesurable dès maintenant) à **0** une fois sa chauffe corrigée. C'est ce que le
+DOD de task-224 exige, et c'est pourquoi l'humain a fait passer task-225 en
+premier.
+
+- **Étape suivante** : `/forge-simplify task-225` — qui devra **skipper**, la
+  task interdisant explicitement toute passe de simplification sur ces fichiers.
