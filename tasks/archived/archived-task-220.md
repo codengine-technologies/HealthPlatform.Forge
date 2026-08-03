@@ -302,3 +302,10 @@ de santé réelle.
 - Suggestions non bloquantes (recopiées dans la PR) :
   1. le smoke a été tiré avant la passe simplify — le Manual Test Plan de la PR rejoue le chemin runtime de bout en bout (HAG) ;
   2. recouvrement bande froide journey / bande enrich uid-bands sur seed partagé — avertissement au setup, ne pas rejouer un tir enrich/mixed sans reset-state.
+
+## Merged
+
+- **Attestation humaine** : `--i-tested` (2026-08-03) — Manual Test Plan validé par l'humain (HAG, règle 10).
+- `api-mail` : PR #147 **squash-mergée** → `develop` `c8c6838` — CI develop **verte** (run 30802236334, completed success). Branche `feat/task-220-banc-parcours-medecin` supprimée (remote), clone local resynchronisé sur `develop`.
+- `dtos-mss` : aucune PR (branche auto-incluse sans commit) — branche remote et locale supprimées, clone sur `develop`.
+- Staging : sans objet (cycle lancé par `/start`, pas par `/forge` — aucune branche `forge/staging-*`).

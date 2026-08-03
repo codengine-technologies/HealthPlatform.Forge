@@ -102,8 +102,8 @@ le nœud à la place du NFS — ne pas adopter des chiffres qu'on sait faussés.
 
 ## Contenu attendu
 
-1. **Manifests** sous `tests/loadtest-k8s/` (kustomize) :
-   - `Namespace` `loadtest-mail` ;
+1. **Manifests** sous `D:\TechWatch\HealthPlatform\DevOps\Staging` (kustomize) :
+   - `Namespace` `healthplatform` ;
    - **Dovecot** : StatefulSet (1 réplica), PVC `nfs` **50 Gi**, ConfigMap
      (conf complète + réglages NFS + index sur `emptyDir`), Service NodePort
      **30993** (via Toxiproxy) et **30994** (direct, seed) — requests/limits
@@ -111,6 +111,7 @@ le nœud à la place du NFS — ne pas adopter des chiffres qu'on sait faussés.
    - **GreenMail** : Deployment + Service (SMTPS via Toxiproxy **30465**),
      ~2 CPU / 2–4 Gi ;
    - **Toxiproxy** : Deployment + Service (API **30474**, listeners IMAP/SMTP).
+   - **Volume** : A configurer dans DevOps\Staging\persistentvolumes\pv-nfs-loadtest.yaml
 2. **Seed** : endpoints paramétrables (URL de l'API Toxiproxy, hôte/ports
    distants écrits dans les `UserSettings`), injection directe.
 3. **AppHost** : variable `MSS_LOADTEST_MAIL_HOST` — posée, le profil loadtest
