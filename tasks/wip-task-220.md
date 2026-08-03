@@ -244,3 +244,19 @@ de santé réelle.
   - banc rendu : AppHost + dcp arrêtés, volume maildir supprimé, tables purgées (mode PURGE), zips temp nettoyés
 - **DOD self-check** : 11/11 items vérifiables ✓ (le tir de validation K=1 ≥ 30 min à N élevé attend task-221 — hors scope, conforme au « Hors scope » de l'US)
 - **Next step** : /forge-simplify task-220
+
+## Simplify log
+
+- Repos passés : api-mail (seul repo touché — dtos-mss sans commit, client-angular/mobile hors scope)
+- Applied & committed : api-mail : 7 fichiers (`5f597ad`) — 4 agents de revue (reuse/simplification/efficacité/altitude), ~15 findings appliqués :
+  - `api.js` accepte un objet de tags → `journey-api.js` réduit aux 6 endpoints propres au parcours (~60 lignes de duplication supprimées)
+  - `baseThresholds()` extrait dans `config.js` : les gardes transverses (erreurs/checks/429) ont une seule définition pour les deux familles
+  - `checkBudgets` reçoit le plan réellement exécuté ; scanner de surcharges factorisé ; `K<=0` refusé à la frontière
+  - `report.py` : genou dérivé une fois pour l'affichage ET le verdict ; garde des 300 échantillons au grain de l'opération (`n_min` — un `delete` à 60 points ne se cache plus derrière un `mark_read` à 250) ; `cl_waiting` jugé par `pgbouncer_waiting` (présence soutenue) ; « débit plateau » décidé par `throughput()` pour toutes les familles
+  - `journey.js` : sinks k6 morts supprimés (`warmup` × palier), page d'inbox constante, un jeu de tags par étape, avertissement au setup quand la bande froide recouvre la bande enrich d'uid-bands
+- No change : docs, README, INDEX, selftest.sh, run.sh
+- Rolled back (validation RED) : aucun
+- Skipped (contract/excluded) : dtos-mss, interop-cda, devops, psc-proxy-*
+- Skipped (findings non retenus, consignés) : cache d'en-têtes par VU (~1 µs/req — identity.js documente déjà le compromis anti-mémoïsation), repli unique de l'échantillonneur multi-paliers (fraction de seconde, complexité non payée), bootstrap()/reportContext() réutilisés partiellement seulement (leur bannière et leurs projections sont spécifiques au modèle à débit imposé et seraient trompeuses sur un parcours — `dovecotMaxPerUser` repris seul). ⚠️ À arbitrer humain (hors passe qualité, changerait la sémantique de mesure) : le recouvrement bande froide journey / bande enrich uid-bands sur un seed partagé — mitigé par un avertissement au setup + consigne dans le log ; déplacer les bandes journey dans la bande read d'uid-bands changerait les budgets et invaliderait le smoke.
+- Build / tests : ✓ selftest.sh vert (131 unittest + tests node), ✓ k6 inspect OK (+ refus K=0 vérifié), ✓ dotnet build 0 erreur, ✓ dotnet test 3384 passed / 0 failed
+- Next step : /sonar task-220 (api-mail touché)
