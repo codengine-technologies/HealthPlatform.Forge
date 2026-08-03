@@ -31,6 +31,7 @@
   - [La capacité est enfin chiffrée, et sa cause nommée (29-31 juillet 2026)](#la-capacité-est-enfin-chiffrée-et-sa-cause-nommée-29-31-juillet-2026)
   - [Le banc simule enfin des médecins, et non des requêtes (3 août 2026)](#le-banc-simule-enfin-des-médecins-et-non-des-requêtes-3-août-2026)
   - [La mesure ne se déforme plus elle-même au-delà de 500 praticiens (3 août 2026)](#la-mesure-ne-se-déforme-plus-elle-même-au-delà-de-500-praticiens-3-août-2026)
+  - [Relire un message déjà analysé n'allait plus le chercher : il n'était jamais gardé (3 août 2026)](#relire-un-message-déjà-analysé-nallait-plus-le-chercher--il-nétait-jamais-gardé-3-août-2026)
   - [Trois mesures à reprendre](#trois-mesures-à-reprendre)
 - [État de couverture (2026-08-03)](#état-de-couverture-2026-08-03)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
@@ -101,6 +102,7 @@ baisses de performance avant qu'elles n'atteignent les utilisateurs**.
 | Mesure en nombre de médecins servis | Poser la question qui décide de l'accueil de nouveaux praticiens — **combien de médecins la messagerie sert-elle en tenant ses temps de réponse** — en simulant des médecins qui déroulent leur journée réelle (arriver sur son tableau de bord, ouvrir sa boîte, lire, supprimer, télécharger une pièce jointe, envoyer) au lieu d'un mélange d'actions isolées ; et lire, à chaque palier de population, **quelle étape du travail du médecin souffre la première** | task-220 | 🟡 Livré, en attente d'intégration |
 | Le banc ne prend plus les ressources du service qu'il mesure | Mesurer la messagerie au-delà de cinq cents praticiens sans que les serveurs de messagerie simulés — désormais installés sur une infrastructure séparée — ne lui prennent ses ressources, et lire leur coût propre séparément du sien | task-221 | 🟡 Livré, en attente d'intégration |
 | Un message parti n'est jamais annoncé en échec | Avoir la certitude qu'un compte rendu remis au correspondant est bien annoncé comme parti au médecin — et, si sa copie dans « Messages envoyés » manque, le lui dire comme une information distincte plutôt que comme un échec d'envoi | task-223 | 🟡 Corrigé, mesure de confirmation à conduire |
+| Rouvrir un message déjà consulté est instantané | Retrouver un compte rendu déjà lu sans attendre : son contenu est désormais **gardé** après la première ouverture, de sorte que les suivantes ne repassent plus par le serveur de messagerie — le geste que le médecin répète le plus dans sa journée | task-222 | 🟡 Corrigé, mesure de confirmation à conduire |
 
 ---
 
@@ -569,6 +571,69 @@ données de santé, et aucune donnée réelle n'y transite.
 > population, qui est la prochaine étape. La réserve de lecture s'allège sans
 > disparaître — l'outil de tir, lui, reste sur la machine de mesure.
 
+### Relire un message déjà analysé n'allait plus le chercher : il n'était jamais gardé (3 août 2026)
+
+La campagne de certification a mesuré 6 343 ouvertures de message chez
+200 médecins au rythme réel. Elle a désigné un goulet sur le geste que le
+praticien répète le plus après le rafraîchissement de sa boîte : **rouvrir un
+message déjà consulté coûtait 440 ms**, contre 100 ms attendues.
+
+Ce qui rend ce chiffre parlant n'est pas son écart à la cible, c'est sa
+**comparaison avec son voisin dans la même campagne** :
+
+| Geste du médecin | Mesuré | Attendu | |
+|---|---|---|---|
+| Rouvrir un message **déjà consulté** | **440 ms** | 100 ms | ❌ |
+| Ouvrir un message **jamais ouvert** (le serveur est légitimement sollicité) | 442 ms | 800 ms | ✅ |
+| Télécharger la pièce jointe (~124 Ko) du **même** message déjà consulté | **34 ms** | 500 ms | ✅ |
+
+Rouvrir un message déjà consulté coûtait donc **exactement** le prix d'aller le
+chercher sur le serveur. L'analyse préalable n'apportait rien au médecin sur ce
+geste — alors que c'est toute sa raison d'être. Et le coût ne bougeait pas avec la
+charge : 439 ms à 50 médecins, 443 à 100, 440 à 200. Ce n'était pas de la
+saturation, c'était un **péage payé à chaque ouverture**.
+
+La cause n'était pas un manque de mémoire tampon. C'était que **le contenu n'était
+jamais gardé** : le corps du message ramené du serveur était nettoyé, affiché au
+médecin, puis **jeté**. Le message ne devenait donc jamais « déjà analysé » pour de
+bon, et l'ouverture suivante repayait le trajet en entier. La démonstration était
+dans la campagne elle-même : la pièce jointe du même message, plus lourde que son
+texte, revenait en 34 ms — parce que ce chemin-là, lui, **garde** ce qu'il a
+ramené. Ce n'était donc pas une limite physique de l'installation.
+
+Le contenu est désormais gardé à la première ouverture, exactement comme la pièce
+jointe l'était déjà. Une question devait être tranchée avant de le faire, parce
+qu'elle touche à la sécurité du soin : **un contenu gardé peut-il devenir
+périmé et faire lire au médecin une version dépassée d'un document de santé ?**
+Non — un message identifié dans une boîte ne change jamais de contenu ; un contenu
+différent est un autre message. Et si le serveur renumérote ses boîtes, ce qui
+était gardé cesse d'être reconnu et le contenu est redemandé. Il n'existe donc
+aucune fenêtre où le médecin pourrait voir un document clinique périmé.
+
+Deux effets de bord méritent d'être signalés, tous deux favorables :
+
+- **un écran blanc définitif disparaît.** Quand la préparation d'un message avait
+  été interrompue, une fiche de contenu vide subsistait ; elle était servie
+  telle quelle, et **rien ne repassait jamais dessus** — le médecin voyait un
+  message vide, pour toujours. Cette fiche est maintenant traitée comme absente
+  et le contenu redemandé.
+- **le harnais de mesure disait vrai sans l'être.** Il supposait que relire un
+  message le rendait « déjà analysé » ; c'était faux, donc l'étape mesurait du
+  froid en croyant mesurer du chaud. C'est vrai depuis, sans avoir touché au
+  harnais.
+
+Enfin, la campagne ne pouvait pas **prouver** cette cause : elle savait dire que
+420 des 440 ms se passaient dans la messagerie, pas **combien de fois** le serveur
+de messagerie avait été sollicité. Ce décompte a donc été ajouté à
+l'instrumentation, et il est ce sur quoi porte la vérification : rouvrir un
+message gardé doit solliciter le serveur **zéro fois**. C'est un nombre, pas un
+temps — un temps n'a jamais prouvé l'absence d'un aller-retour.
+
+> **Reste dû** : la campagne de confirmation au rythme réel, sur le même palier
+> de 200 médecins, qui doit faire passer l'étape au vert **sans dégrader**
+> l'ouverture d'un message jamais ouvert — l'acquis à 442 ms pour 800 ms
+> attendues ne doit pas être échangé contre le gain.
+
 ### Trois mesures à reprendre
 
 - **La capacité de la messagerie**, c'est-à-dire le nombre de demandes qu'elle
@@ -616,6 +681,7 @@ données de santé, et aucune donnée réelle n'y transite.
 | Mesure en nombre de médecins servis | 🟡 Livré, en attente d'intégration | Le banc rejoue la journée d'un médecin — tableau de bord, boîte de réception, lecture, suppression, téléchargement d'une pièce jointe, envoi — dans une séquence **relevée dans l'application réelle** écran par écran, chaque sollicitation du service étant consignée avec son origine : rien n'y est supposé. Entre deux gestes, un temps de réflexion tiré au hasard dans une plage réaliste propre à chaque étape, car à cadence fixe des centaines de médecins simulés se synchronisent et produisent des vagues qui n'existent pas dans la vraie vie. La charge n'est plus imposée de l'extérieur : elle **résulte** du nombre de médecins, et l'on fait monter la population par paliers. Quatre gestes quotidiens jamais exercés jusqu'ici le sont : supprimer, télécharger une pièce jointe, marquer lu, arriver sur son tableau de bord — le téléchargement ouvrant l'axe du **volume transféré**, qu'aucune campagne ne mesurait et dont l'absence pouvait faire passer une limite de débit réseau pour une lenteur de la messagerie. Les temps de réponse attendus sont énoncés **par étape du parcours** (les huit étapes, avec leurs conditions de mesure), et le rapport rend son verdict étape par étape et palier par palier. Trois engagements sont déjà connus comme non tenus — boîte de réception, envoi, recherche : la grille désigne le programme d'optimisation, elle ne le réalise pas. Campagne de mise au point conduite le 3 août (cinq puis dix médecins, rythme accéléré) : 3 294 demandes, **aucune erreur, aucun parcours interrompu**, charge croissant avec la population, coûts résidents suivant le nombre de médecins, volume de pièces jointes affiché. **Reste dû** : la campagne de certification d'un palier, qui exige le rythme réel d'un humain sur au moins une demi-heure et une population élevée — prérequis désormais levé (task-221) | task-220 |
 | Le banc ne prend plus les ressources du service qu'il mesure | 🟡 Livré, en attente d'intégration | Les serveurs de messagerie simulés ont quitté la machine de mesure pour une infrastructure séparée de l'entreprise. Le motif est chiffré : à cinq cents praticiens ils prenaient à la messagerie l'équivalent de deux cœurs et demi, et ce coût suit le **nombre de boîtes** plutôt que la charge — il croît donc avec la population, l'axe même que les campagnes explorent. Leur consommation se lit maintenant **séparément** de celle de la messagerie, ce que le banc n'avait jamais su faire. Vérifié le 3 août sur l'infrastructure réelle : vingt boîtes injectées en 49 secondes, campagne de contrôle sans aucune erreur sur plus de sept mille demandes, extraction des documents médicaux réellement exercée, et temps d'aller-retour du réseau mesuré puis retranché de la latence simulée pour que le total reste conforme au contrat de mesure. Le risque du stockage partagé par le réseau a été **mesuré et non supposé** : aucun chemin ne dépasse le seuil de dégradation fixé d'avance (au plus une fois et demie sur l'extraction des documents médicaux, quasi nul sur la consultation et la lecture), verdict consigné. La bascule tient à un réglage unique, et son absence laisse le comportement antérieur strictement inchangé — les deux sens vérifiés. Seules des données synthétiques transitent sur le volume dédié au banc. **Reste dû** : la campagne de certification d'un palier de population, que cette étape rend possible | task-221 |
 | Un message parti n'est jamais annoncé en échec | 🟡 Corrigé, mesure de confirmation à conduire | La campagne de certification du 3 août a produit **une seule erreur sur 105 000 demandes** — et c'était la pire qualitativement : un envoi sur 3 352 rendu au médecin **en erreur alors que le message était parti et remis** à son correspondant. Le geste naturel devant un tel message est de le renvoyer, et le destinataire reçoit alors **deux fois le même document de santé** dans le dossier de son patient, sans moyen simple de savoir lequel est le bon. La cause n'était pas l'échec d'archivage — celui-là est traité comme anodin depuis toujours — mais la **libération d'un verrou technique à la sortie de l'archivage** : elle retrouvait la boîte par son nom, et si l'entrée de cette boîte avait été recyclée entre-temps, elle rendait un verrou qui n'était pas le sien. Ce qui explique la rareté, et pourquoi c'est l'archivage qui la portait : il empruntait le second accès en écriture, qui n'existe que le temps des envois. Deux corrections, l'une et l'autre nécessaires : le mécanisme rend désormais **le verrou qu'il a pris**, et un défaut de comptage se journalise sans jamais atteindre le médecin. La revue a fermé une troisième porte du même genre — une attente de verrou expirée produisait le même faux échec. Enfin, les deux informations sont **séparées** pour le médecin : « parti » et « parti, mais sa copie manque », la seconde ayant une valeur d'imputabilité, avec la trace réglementaire correspondante. **Reste dû** : la campagne de confirmation, qui doit rendre zéro erreur là où la référence en comptait une | task-223 |
+| Rouvrir un message déjà consulté est instantané | 🟡 Corrigé, mesure de confirmation à conduire | La campagne de certification du 3 août a mesuré 6 343 ouvertures : **rouvrir un message déjà consulté coûtait 440 ms** pour 100 attendues — soit **exactement** le prix d'aller le chercher sur le serveur (442 ms). L'analyse préalable n'apportait donc rien au médecin sur le geste qu'il répète le plus, et le coût ne bougeait pas avec la charge (439 / 443 / 440 ms à 50 / 100 / 200 médecins) : un péage payé à chaque ouverture, pas de la saturation. La cause n'était pas un manque de mémoire tampon mais que **le contenu n'était jamais gardé** — le corps ramené du serveur était nettoyé, affiché, puis jeté. La démonstration était dans la même campagne : la pièce jointe du même message, plus lourde que son texte, revenait en **34 ms**, parce que ce chemin-là garde ce qu'il ramène. Le contenu est désormais gardé à la première ouverture. La question de sécurité du soin a été tranchée avant de le faire : un contenu gardé ne peut pas devenir périmé — un message identifié dans une boîte ne change jamais de contenu, un contenu différent est un autre message, et une renumérotation des boîtes par le serveur fait redemander le contenu. Deux effets de bord favorables : un **écran blanc définitif** disparaît (une fiche de contenu vide laissée par une préparation interrompue était servie telle quelle, et rien ne repassait jamais dessus), et le harnais de mesure, qui supposait à tort que relire un message le rendait « déjà analysé », dit désormais vrai sans avoir été modifié. Le décompte des sollicitations du serveur par demande, que la campagne n'avait pas, a été ajouté : c'est sur ce **nombre** — zéro — que porte la vérification, jamais sur un temps. **Reste dû** : la campagne de confirmation au rythme réel sur le même palier de 200 médecins, qui doit faire passer l'étape au vert **sans dégrader** l'ouverture d'un message jamais ouvert | task-222 |
 
 **Couverture EPIC consolidée : 19 features livrées sur 19** (les dix-neuf
 attendent leur intégration). L'EPIC est **fonctionnellement complet** : le banc est
@@ -671,10 +737,14 @@ Cinq réserves à porter au bilan, sans quoi il serait trompeur :
   qualitativement : un envoi annoncé **en échec au médecin alors qu'il était
   parti et remis**, c'est-à-dire l'incident qui pousse à renvoyer un document de
   santé déjà transmis. Elle est corrigée (task-223) et attend sa campagne de
-  confirmation. Deux autres constats de la même campagne sont ouverts et **ne
-  sont pas couverts ici** : les dépassements de temps de réponse (task-222) et
-  l'outillage de mesure (task-224). Un taux d'erreur quasi nul ne dit donc pas
-  encore « palier certifié ».
+  confirmation. Le principal dépassement de temps de réponse de la même campagne
+  est traité depuis : **rouvrir un message déjà consulté** coûtait le prix d'aller
+  le chercher sur le serveur, parce que son contenu n'était jamais gardé
+  (task-222, corrigé, confirmation à conduire). Reste ouvert et **non couvert
+  ici** : l'outillage de mesure (task-224), ainsi que la suppression et le
+  marquage comme lu, qui modifient la boîte et seront re-mesurés après ce
+  correctif. Un taux d'erreur quasi nul ne dit donc pas encore
+  « palier certifié ».
 
 ---
 
@@ -795,6 +865,39 @@ Cinq réserves à porter au bilan, sans quoi il serait trompeur :
   côté, « parti, mais sa copie dans les messages envoyés manque » de l'autre,
   cette seconde ayant une valeur d'imputabilité — retrouver ce qu'on a envoyé, et
   à qui — et sa trace réglementaire propre. (task-223)
+
+- v1.22 — **Rouvrir un message déjà consulté est instantané : son contenu est
+  désormais gardé.** La campagne de certification du 3 août a mesuré 6 343
+  ouvertures et désigné le geste que le médecin répète le plus après le
+  rafraîchissement de sa boîte : rouvrir un message déjà consulté coûtait
+  **440 ms** pour 100 attendues. Le chiffre parlant n'est pas cet écart mais son
+  voisin dans la même campagne : aller chercher un message **jamais ouvert** en
+  coûtait 442. Relire coûtait donc **exactement** le prix d'aller chercher, et
+  l'analyse préalable n'apportait rien. Le coût ne bougeait pas avec la charge
+  (439 / 443 / 440 ms à 50 / 100 / 200 médecins) : un péage payé à chaque
+  ouverture, pas de la saturation. La cause n'était pas un manque de mémoire
+  tampon — c'était que **le contenu n'était jamais gardé** : le corps ramené du
+  serveur était nettoyé, affiché au médecin, puis jeté, de sorte que le message
+  ne devenait jamais « déjà analysé » pour de bon. La démonstration était dans la
+  campagne elle-même : la pièce jointe du même message, plus lourde que son
+  texte, revenait en **34 ms**, parce que ce chemin-là garde ce qu'il ramène — ce
+  n'était donc pas une limite physique de l'installation. Le contenu est
+  maintenant gardé à la première ouverture, comme la pièce jointe l'était déjà.
+  La question de sécurité du soin a été tranchée **avant** de le faire : un
+  contenu gardé ne peut pas devenir périmé, parce qu'un message identifié dans une
+  boîte ne change jamais de contenu — un contenu différent est un autre message —
+  et parce qu'une renumérotation des boîtes par le serveur fait cesser la
+  reconnaissance de ce qui était gardé et redemander le contenu. Il n'existe donc
+  aucune fenêtre où le médecin lirait une version dépassée d'un document de santé.
+  Deux effets de bord, tous deux favorables : un **écran blanc définitif**
+  disparaît — une fiche de contenu vide laissée par une préparation interrompue
+  était servie telle quelle et rien ne repassait jamais dessus — et le harnais de
+  mesure, qui supposait à tort que relire un message le rendait « déjà analysé »,
+  dit désormais vrai sans avoir été modifié. Enfin le décompte des sollicitations
+  du serveur de messagerie par demande, que la campagne n'avait pas et sans lequel
+  la cause restait plausible sans être prouvée, fait partie de la livraison : la
+  vérification porte sur ce **nombre** — zéro sur un message gardé — jamais sur un
+  temps. (task-222)
 
 **Ce que la mesure a appris sur le service**
 
