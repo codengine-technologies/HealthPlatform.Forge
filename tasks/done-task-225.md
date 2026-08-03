@@ -448,3 +448,42 @@ servi** — c'est elle qui a fait écrire le garde-fou de `IMailRepository` sous
 forme que Sonar ne lit pas comme du code commenté.
 
 - **Étape suivante** : `/review task-225`
+
+## PRs
+
+- `api-mail` : **https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/151** — label `awaiting-human-merge`
+- `dtos-mss` : **aucune PR** — aucun changement de contrat, branche restée sans commit (comportement documenté de l'auto-inclusion).
+- Aucun frontend concerné (`**Single frontend**: true`).
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 9 fichiers revus, 1 défaut trouvé **et corrigé pendant la
+revue**, 0 bloquant.
+
+| Zone | Verdict |
+|---|---|
+| `IMailServerSolicitationRecorder` / `MailServerSolicitationRecorder` | ✓ `ConcurrentQueue`, aucun verrou ; trois membres en expressions ; étiquettes littérales uniquement |
+| `MailProcessingMetrics` | ✓ compteur (pas un histogramme) — la grandeur qui tranche est un nombre |
+| `ImapService` | ✓ comptage aux sites réels ; `try/finally` en un seul point d'apposition malgré les 8 retours du chemin ; garde de lecture intact |
+| `ImapConnectionService` | ✓ ne compte que les connexions/authentifications réellement émises — une session du pool ne parle pas au serveur |
+| `IMailRepository` | ✓ avertissement à l'endroit exact du piège, en commentaire de mise en garde (forme que Sonar ne lit pas comme du code commenté — entrée `S125`) |
+| Sécurité / PGSSI-S | ✓ aucune donnée de santé dans les étiquettes ni les logs, **figé par un test** |
+| Tests | ✓ 7 neufs, assertions sur un **nombre** ; garde anti-régression sur vrai PostgreSQL |
+
+### Défaut trouvé et corrigé en revue
+
+**BOM parasite** (`d3f2912`). Mon outillage de patch écrivait en `utf-8-sig`,
+ajoutant un BOM à quatre fichiers qui n'en avaient pas : leur ligne 1 apparaissait
+modifiée sans raison. Exactement le bruit qui rend un diff plus dur à relire — sur
+une task dont le propos est un diff étroit et lisible. Retiré, rebuild + tests
+re-verts.
+
+### Validation
+
+| | Résultat |
+|---|---|
+| Build | ✓ 0 erreur, **0 avertissement** |
+| Tests | ✓ **3 392** verts (2 instables **pré-existants** identifiés par mesure, hors diff — détail dans le body de la PR) |
+| Sync `develop` | ✓ `Already up to date` (merge, pas rebase) |
+| Périmètre | clauses de fond **toutes tenues** et vérifiées par commande ; plafond de fichiers dépassé de 1 source + les tests — **plafond mal posé**, déclaré |
+| DOD | 10/11 ✓, le 11ᵉ étant le plafond ci-dessus |
