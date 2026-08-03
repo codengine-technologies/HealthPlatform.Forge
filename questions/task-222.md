@@ -4,7 +4,47 @@
 **Task** : task-222 — « Ouvrir un message déjà analysé ne doit plus repayer le trajet vers le serveur de messagerie »
 **Épic** : E015
 **Soulevé par** : l'humain, en relecture du correctif proposé
-**État** : correctif **retiré** (commit `5da54bc`) ; instrumentation conservée ; **arbitrage PO requis**
+**État** : ✅ **arbitré le 2026-08-04** — voir la décision ci-dessous. Une question
+reste ouverte (Q3).
+
+---
+
+## ✅ Décision humaine du 2026-08-04
+
+> « recadre task-222 sur la mesure et confie le harnais à task-224 »
+
+| Question | Décision | Appliqué |
+|---|---|---|
+| **Q1** — fermer / re-cadrer / maintenir task-222 ? | **Re-cadrée sur la mesure** (option b). Le décompte des sollicitations est l'objet de la US ; le correctif applicatif sort du périmètre, et n'est pas rouvert faute de défaut produit établi. | `tasks/done-task-222.md` réécrite (Objectif, DOD, Plan de test, Hors scope), DOD **satisfaite**, PR #150 recadrée |
+| **Q2** — qui corrige le harnais ? | **task-224.** | `tasks/todo-task-224.md` : **défaut 5** ajouté en tête par gravité, priorité relevée **3 → 2**, 3 items de contenu attendu, 6 critères de DOD, plan de test étendu, et la ligne « aucun ne bloque task-222 » corrigée — elle était fausse |
+| **Q3** — US pour la lacune de couverture ouverture → enrichissement ? | ⏳ **non arbitrée** | rien fait, volontairement — voir ci-dessous |
+
+### Ce que la décision implique, et qu'il faut assumer
+
+- **Aucun défaut produit n'est retenu sur l'ouverture d'un message.** Le geste
+  n'est pas « corrigé » : il est déclaré **non démontré défaillant**. Rouvrir le
+  sujet demandera une mesure faite après task-224.
+- **Le verdict « étape 3 » du 2026-08-03 reste non opposable** jusqu'à task-224,
+  qui doit l'annoter comme tel dans `reports/INDEX.md`. D'ici là, aucun tir ne
+  peut certifier cette étape — ni avant, ni après un quelconque correctif.
+- **task-224 devient bloquante pour un chiffrage** qu'elle ne portait pas
+  auparavant. Sa priorité a été relevée en conséquence.
+
+### Q3 reste ouverte — et c'est le point que je remonte
+
+Aucun test ne traverse la séquence **ouverture → enrichissement**. C'est ce trou,
+et non un manque de rigueur ponctuel, qui a laissé une perte de contenu clinique
+franchir 3 399 tests verts jusqu'au seuil du merge.
+
+La garde posée par task-222 est **partielle** : elle prouve qu'une lecture
+n'écrit rien, donc elle bloque *ce* défaut précis. Elle ne prouve pas que la
+chaîne ouverture → analyse → contenu complet fonctionne de bout en bout. Un
+prochain défaut situé ailleurs sur cette chaîne passerait de la même façon.
+
+Ce n'est ni du ressort de task-222 (instrument) ni de task-224 (outillage de
+mesure) : c'est une couverture applicative, à arbitrer séparément. Recommandation :
+une US dédiée, de faible coût, dont la valeur est d'interdire structurellement la
+classe de défaut plutôt qu'un défaut.
 
 ---
 

@@ -3,14 +3,21 @@
 **Repos**: api-mail
 **Epic**: E015
 **Single frontend**: true
-**Dependencies**: aucune. Les trois défauts sont dans l'outillage de mesure
-livré par task-174 / task-204 / task-221 ; aucun ne bloque **task-222** ni
-**task-223**, dont les verdicts reposent sur le **rapport de tir** (correct)
-et non sur ces tableaux.
-**Priorité**: **3** — aucun chiffre publié n'est faux à ce jour, parce que le
-verdict fait foi sur le rapport. Mais quatre défauts d'observabilité attendent
-le premier lecteur qui regardera le tableau de bord, et cette EPIC a déjà payé
-deux fois le prix d'un instrument qui mentait sans le dire.
+**Dependencies**: aucune.
+
+> ⚠️ **Révisé le 2026-08-04 — cette US bloque désormais une mesure.** Il était
+> écrit ici qu'« aucun [défaut] ne bloque **task-222** [...] dont les verdicts
+> reposent sur le **rapport de tir** (correct) ». **C'est faux**, et le défaut 5
+> ci-dessous l'établit : le rapport de tir était correct sur ce qu'il mesurait,
+> mais l'étape 3 du parcours ne mesurait pas ce que son nom annonce. task-222 est
+> re-cadrée sur la seule mesure (le décompte des sollicitations, livré) et **ce
+> qui reste à chiffrer sur la relecture d'un message enrichi dépend de cette
+> US-ci**.
+
+**Priorité**: **2** — relevée de 3. Le défaut 5 n'est plus un défaut d'affichage
+qui attend un lecteur : il a **rendu un verdict non opposable** et failli faire
+merger un correctif applicatif qui aurait supprimé le décodage CDA. Cette EPIC a
+maintenant payé **trois** fois le prix d'un instrument qui mentait sans le dire.
 
 ## Objective
 
@@ -19,7 +26,61 @@ messagerie pendant une campagne, y voie soit le bon chiffre, soit l'absence
 explicite de chiffre — jamais un chiffre faux ni un panneau vide qui se lise
 « tout va bien ».
 
-## Les quatre défauts — constatés le 2026-08-03 pendant la campagne de certification
+## Les cinq défauts — constatés pendant et après la campagne de certification du 2026-08-03
+
+**5. L'étape « relire un message enrichi » ne mesure pas un message enrichi.**
+*(Ajouté le 2026-08-04, et placé en tête par gravité : les quatre autres
+faussent une lecture, celui-ci a faussé un verdict.)*
+
+Le scénario `journey` **n'appelle jamais l'enrichissement** — son propre
+commentaire le dit :
+
+```js
+// Sans gravité pour CE tir — journey n'appelle jamais enrich — mais le seed
+// ne doit pas être partagé avec un tir enrich/mixed sans reset-state.
+```
+
+Et sa chauffe (`warmUpOwnMailbox`) prépare la bande de relecture avec
+`getEmailContent`, en affirmant :
+
+```js
+/**
+ * Premier passage d'un VU : chauffe la bande de relecture de SA boîte (le
+ * GET contenu matérialise le MailContent) …
+ */
+```
+
+**Cette parenthèse est fausse.** Le chemin de lecture n'écrit pas dans le stock,
+et **ne doit pas** y écrire : la présence d'une ligne de contenu est le
+**marqueur d'analyse** du message. La bande dite « chaude » n'est donc jamais
+analysée, et l'étape 3 « ouvrir un message enrichi (servi base) » mesure
+l'ouverture d'un message **jamais analysé** — un aller-retour complet vers le
+serveur, comportement normal et attendu dans ce cas.
+
+Ce que cela a coûté :
+
+- **Le verdict de l'étape 3 du 2026-08-03 est non opposable** — 440 ms pour une
+  cible de 100, à comparer aux 442 ms de l'étape 4 « message froid ». Les deux
+  étapes mesuraient la même chose ; l'égalité n'était pas un symptôme, c'était
+  la signature de l'artefact.
+- **Une US applicative a été écrite sur ce chiffre** (task-222, version
+  initiale) et son correctif serait allé jusqu'au merge : il faisait écrire le
+  contenu à la lecture, donc écartait le message de l'analyse ⇒ **CDA jamais
+  décodé, aucun document médical, aucun rattachement patient**, et le poste du
+  médecin recevait l'annonce « analyse terminée ». Le défaut a été arrêté en
+  relecture humaine. Voir `questions/task-222.md`.
+- **Les 34 ms de la pièce jointe du même message n'infirmaient rien** : les
+  pièces jointes sont des octets mis en cache, sans sémantique d'analyse. Ce
+  faux contre-exemple a renforcé la mauvaise lecture.
+
+Levier de vérification désormais disponible (livré par task-222) : le compteur
+`mssante_mail_server_solicitations_total{operation="GetEmailContent"}`. **Une
+étape annoncée « servie base » qui incrémente ce compteur ne mesure pas ce
+qu'elle annonce.**
+
+---
+
+## Les quatre défauts d'affichage — constatés le 2026-08-03 pendant la campagne
 
 **1. Les latences du tableau de bord sont affichées 1000× trop petites.**
 Les panneaux « p95 par operation » et « p50 par operation » déclarent l'unité
@@ -72,7 +133,20 @@ facteur cinq** — un résultat qu'on a failli ne pas avoir.
   dossier) sans perdre la distinction entre appels différents.
 - **Ne pas faire dépendre le rapport de tir de ces tableaux.** Le rapport est
   et reste la source du verdict ; cette US répare les vues, elle ne déplace pas
-  l'autorité.
+  l'autorité. ⚠️ **Mais ne pas en déduire que le rapport est à l'abri** : le
+  défaut 5 montre qu'un rapport parfaitement calculé peut rendre un verdict faux
+  si l'étape mesurée n'est pas celle que son nom annonce. La justesse du calcul
+  ne garantit pas la justesse du sujet.
+- **Ne pas « chauffer » la bande de relecture en écrivant le contenu depuis la
+  lecture.** C'est la voie qui a failli passer, et elle est interdite : la
+  présence du contenu en base signifie « message analysé », et le poser trop tôt
+  supprime le décodage CDA. La chauffe doit passer par **l'enrichissement lui-même**
+  (`POST …/emails/enrich/sync` sur les UIDs de la bande chaude), qui est le seul
+  producteur légitime de cet état.
+- **Ne pas se contenter de corriger le commentaire fautif du harnais.** Un
+  commentaire juste devant un comportement faux ne mesure toujours rien : ce qu'il
+  faut, c'est que la chauffe **enrichisse réellement**, et qu'un contrôle le
+  vérifie.
 - **Ne pas rendre la sonde des serveurs de messagerie obligatoire** : si le
   cluster est injoignable, la ligne doit dire « non relevé », jamais afficher un
   zéro ni faire échouer la campagne.
@@ -97,6 +171,19 @@ facteur cinq** — un résultat qu'on a failli ne pas avoir.
    d'échec, écrire « non relevé », jamais un zéro.
 5. **Un contrôle qui échoue si un panneau déclare une unité incompatible avec
    sa métrique** — sans quoi le défaut reviendra au prochain panneau ajouté.
+6. **La bande de relecture du parcours réellement analysée avant la mesure.**
+   La chauffe doit passer par l'enrichissement (`POST …/emails/enrich/sync` sur
+   les UIDs de la bande chaude), et le commentaire fautif de `warmUpOwnMailbox`
+   doit disparaître. L'artefact de chauffe reste assumé et tagué hors grille SLO,
+   comme aujourd'hui — ce qui change est qu'il produise l'état qu'il annonce.
+7. **Un contrôle qui refuse une étape mal nommée.** Toute étape déclarée « servie
+   base » dont le décompte de sollicitations du serveur est non nul doit faire
+   **échouer le rapport** (ou au minimum marquer son verdict non opposable, à
+   l'image de ce que le rapport fait déjà pour un tir à rythme accéléré). C'est ce
+   contrôle qui empêche un artefact de ce genre de redevenir une US applicative.
+8. **Le verdict « étape 3 » du rapport du 2026-08-03 requalifié** dans
+   `reports/INDEX.md` : non opposable, avec le motif. Ne pas réécrire le rapport
+   (les JSON font foi), annoter l'index.
 
 ## Hors scope
 
@@ -128,6 +215,21 @@ facteur cinq** — un résultat qu'on a failli ne pas avoir.
 - [ ] En mode local, comportement **strictement inchangé** (vérifié)
 - [ ] Un contrôle automatisé refuse un panneau dont l'unité déclarée est
       incompatible avec sa métrique
+- [ ] **La bande de relecture du parcours est réellement analysée avant la
+      mesure** — preuve par le décompte : sur un tir court, l'étape 3 enregistre
+      **zéro** `mssante_mail_server_solicitations_total{operation="GetEmailContent"}`,
+      là où elle en enregistre 5 aujourd'hui (les deux chiffres dans le
+      `## Develop log`)
+- [ ] Le commentaire « le GET contenu matérialise le MailContent » de
+      `warmUpOwnMailbox` a disparu, et rien d'équivalent ne l'a remplacé
+- [ ] **Un contrôle refuse une étape « servie base » dont le décompte de
+      sollicitations est non nul** — vérifié en le constatant ROUGE avec la
+      chauffe actuelle, puis VERT avec la chauffe corrigée
+- [ ] L'étape 3 du rapport du 2026-08-03 est **annotée non opposable** dans
+      `reports/INDEX.md`, avec son motif
+- [ ] **L'étape 4 « message froid » reste mesurée sur des messages réellement
+      froids** — la chauffe ne doit pas empiéter sur la bande froide (le budget de
+      bandes existant est à respecter, cf. `journeyBands`)
 - [ ] `selftest.sh` vert (nouveaux contrôles inclus)
 
 ## Manual Test Plan
@@ -159,6 +261,14 @@ tests/loadtest-k6/selftest.sh
   courbes nommées par geste, pas une courbe par message ;
 - dans le rapport, la ligne **« sessions ouvertes »** des coûts résidents est
   renseignée et croît avec le nombre de médecins ;
+- **l'étape 3 « ouvrir un message enrichi (servi base) » est enfin ce que son nom
+  dit** : son décompte de sollicitations du serveur est à **zéro**, et son temps
+  s'effondre par rapport aux 440 ms du 3 août — non pas parce que le produit a
+  changé (il n'a pas changé), mais parce qu'on mesure enfin un message analysé ;
+- l'étape 4 « message froid » reste dans sa cible : la chauffe n'a pas mangé la
+  bande froide ;
+- en cassant volontairement la chauffe (revenir à l'ancienne), le rapport
+  **refuse** le verdict de l'étape 3 au lieu de publier un chiffre ;
 - sans la variable de banc distant : tout se comporte comme avant.
 
 **Données de test** : boîtes `loadtest-*`, corpus synthétique, aucune donnée de

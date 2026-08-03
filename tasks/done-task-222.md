@@ -1,195 +1,218 @@
-# todo-task-222.md — Ouvrir un message déjà analysé ne doit plus repayer le trajet vers le serveur de messagerie
+# task-222 — Savoir combien de fois le serveur de messagerie est sollicité
 
 **Repos**: api-mail
 **Epic**: E015
 **Single frontend**: true
-**Dependencies**: aucune. L'instrument qui désigne ce goulet et qui validera le
-correctif est livré (**task-220**, scénario `journey` + grille SLO) et le banc
-qui rend la mesure honnête l'est aussi (**task-221**). Rien à attendre.
-**Priorité**: **2** — c'est **le** goulet que la première campagne de
-certification a désigné, sur le geste que le médecin répète le plus après
-l'ouverture de sa boîte. Rien n'est cassé : c'est lent, tout le temps.
+**Dependencies**: aucune pour ce qui est livré ici. ⚠️ **Ce qui reste à chiffrer
+sur la relecture d'un message analysé dépend de task-224** (défaut 5 : la bande
+de relecture du parcours n'est jamais analysée, donc l'étape 3 ne mesure pas ce
+que son nom annonce).
+**Priorité**: **2** — l'instrument manquant. Sans lui, on ne peut ni prouver
+qu'un chemin sollicite le serveur, ni prouver qu'il ne le sollicite pas.
+
+> ### ⚠️ US re-cadrée le 2026-08-04 — lire ceci avant tout
+>
+> **Cette US portait initialement un correctif de performance** : « Ouvrir un
+> message déjà analysé ne doit plus repayer le trajet vers le serveur de
+> messagerie », sur la base des 440 ms mesurés à l'étape 3 de la campagne du
+> 2026-08-03.
+>
+> **Les deux prémisses se sont révélées fausses**, et le détail est conservé
+> dans le `## Develop log` d'origine plus bas ainsi que dans
+> `questions/task-222.md` :
+>
+> 1. **Le correctif proposé était dangereux.** Il faisait écrire le contenu en
+>    base depuis le chemin de lecture. Or la présence d'une ligne de contenu est
+>    le **marqueur d'analyse** du message : la poser trop tôt écarte le message
+>    de l'analyse ⇒ CDA jamais décodé, aucun document médical, aucun rattachement
+>    patient, et le poste du médecin reçoit l'annonce « analyse terminée ». Perte
+>    de contenu clinique, silencieuse. Retiré (`5da54bc`), garde-fous posés.
+> 2. **Le constat lui-même était un artefact de mesure.** Le parcours simulé
+>    n'appelle jamais l'analyse, et sa bande « chaude » n'est donc jamais
+>    analysée : l'étape 3 mesurait des messages **jamais analysés**. D'où
+>    l'égalité 440 ≈ 442 ms avec l'étape « message froid » — les deux mesuraient
+>    la même chose.
+>
+> **Décision humaine du 2026-08-04** : task-222 est re-cadrée sur **la mesure**
+> (ci-dessous, livrée), et **la correction du harnais passe à task-224**
+> (défaut 5). Il n'est **pas établi** qu'un défaut produit existe sur ce geste ;
+> le rouvrir demandera une mesure faite avec un instrument corrigé.
 
 ## Objective
 
-Qu'ouvrir un message dont le contenu est **déjà analysé et stocké** coûte au
-médecin le temps d'une lecture en base, et non celui d'un aller-retour vers le
-serveur de messagerie.
+Qu'on puisse dire, sur n'importe quelle demande, **combien de fois le serveur de
+messagerie a réellement été sollicité** — au lieu de le déduire d'un temps, ce
+qui ne l'a jamais prouvé.
 
-## Le constat — mesuré, avec son contre-exemple dans la même campagne
+C'est un instrument, pas un correctif : il ne change aucun comportement. Il rend
+décidables deux affirmations qui ne l'étaient pas — « ce chemin ne parle plus au
+serveur » et, symétriquement, « cette étape de mesure ne mesure pas ce qu'elle
+annonce ».
 
-Campagne de certification du **2026-08-03** (rapport
-`reports/2026-08-03/report-journey-certif-n200-180029.md`), 200 médecins au
-rythme réel, 6 343 ouvertures de message mesurées :
+## Ce que la campagne pouvait dire, et ce qu'elle ne pouvait pas
 
-| Geste du médecin | p50 mesuré | Cible SLO | |
-|---|---|---|---|
-| Ouvrir un message **déjà analysé** (servi base) | **440 ms** | 100 ms | ❌ |
-| Ouvrir un message **jamais ouvert** (le serveur de messagerie est sollicité) | 442 ms | 800 ms | ✅ |
-| **Télécharger la pièce jointe du même message déjà analysé** | **34 ms** | 500 ms | ✅ |
+Campagne de certification du 2026-08-03 (`report-journey-certif-n200-180029.md`),
+200 médecins au rythme réel, 6 343 ouvertures de message.
 
-Trois faits, et c'est leur conjonction qui fait l'US :
+**Ce qu'elle établissait** — sur la trace
+`4d911c462694fab4d7454de2453bb13f` (ouverture à 439 ms) : 19 ms pour résoudre le
+praticien et sa base, **420 ms à l'intérieur du verrou de session IMAP** avec
+`WaitTimeMs=0` (donc du travail, pas une file d'attente), et un p95 serveur
+(497 ms) égal au p95 client (494 ms) — le temps est intégralement dans
+l'application.
 
-1. **Ouvrir un message déjà analysé coûte exactement le même temps que d'aller
-   le chercher sur le serveur de messagerie** (440 vs 442 ms). L'analyse
-   préalable n'apporte donc **rien** au médecin sur ce geste — alors que c'est
-   toute sa raison d'être.
-2. **Le contre-exemple est dans la même campagne** : la pièce jointe du même
-   message, ~124 Ko, est servie en **34 ms**. Servir depuis le stock local sans
-   solliciter le serveur de messagerie est donc démontré possible sur cette
-   installation — ce n'est pas une limite physique.
-3. **Ce coût ne dépend pas de la charge** : 439 ms à 50 médecins, 443 à 100,
-   440 à 200. Aucune dérive. Ce n'est pas de la saturation, c'est un **coût
-   fixe payé à chaque ouverture**.
+**Ce qu'elle ne pouvait pas établir** — **le nombre d'allers-retours**. 420 ms
+est *compatible* avec quatre allers-retours de 95 ms, sans le prouver, et les
+commandes IMAP n'étaient pas instrumentées à ce grain. Cette ambiguïté est
+exactement ce qui a permis de bâtir une cause plausible et fausse.
 
-Ordre de grandeur du gain pour le médecin : ~400 ms rendues sur chaque
-ouverture de message, soit le geste le plus fréquent de sa journée après le
-rafraîchissement de sa boîte.
+**Ce que l'instrument a immédiatement montré** — que l'étape 3, annoncée « servie
+base », **sollicitait le serveur cinq fois**. Elle ne mesurait donc pas une
+relecture. C'est le premier usage du décompte, et il a servi contre l'instrument
+plutôt que contre le produit.
 
 ## Ce qu'il ne faut PAS présumer
 
-- **Ne pas repartir de zéro sur la cause : elle est déjà établie aux trois
-  quarts.** L'analyse de télémétrie fine de la campagne (section « Télémétrie
-  fine » du rapport `report-journey-certif-n200-180029.md`) a établi, sur la
-  trace `4d911c462694fab4d7454de2453bb13f` (ouverture d'un message chaud,
-  439 ms) :
-  - **19 ms** pour résoudre le praticien et sa base — le coût n'est pas là ;
-  - **420 ms passées à l'intérieur du verrou de session IMAP**, pris
-    **inconditionnellement** par `GetEmailContentAsync` (`ImapService.cs:1991`),
-    avec **`WaitTimeMs=0`** — donc **du travail, pas une file d'attente**
-    (contrairement au diagnostic de task-211 sur un autre chemin) ;
-  - le p95 **serveur** de la route (497 ms) **égale** le p95 client (494 ms) :
-    le temps est intégralement dans l'application, aucune file hors d'elle.
-- **Ce qui reste à établir, et qui exige une instrumentation** : le **décompte
-  des sollicitations du serveur de messagerie par requête**. 420 ms est
-  *compatible* avec quatre allers-retours à 95 ms — ce n'est pas une preuve, et
-  les commandes IMAP ne sont pas instrumentées à ce grain. **Cette
-  instrumentation fait partie de la US** : sans elle, on ne pourra ni prouver la
-  cause, ni démontrer que le correctif l'a supprimée (le test d'intégration du
-  DOD en dépend). À noter au passage : `mssante_lock_hold_duration_seconds` par
-  `operation` n'a rien rendu sur la fenêtre du tir alors que la métrique existe
-  — même famille de défaut que celui corrigé par task-214 ailleurs, à vérifier.
-- **Ne pas « ajouter un cache » devant le problème.** Le contenu est déjà
-  stocké : s'il faut un cache pour aller le chercher vite, c'est le chemin
-  d'accès qui est en cause, pas l'absence de cache. Un cache masquerait le
-  coût au lieu de le supprimer, et ferait porter au médecin le risque d'un
-  contenu périmé sur un document de santé.
-- **Ne pas dégrader l'ouverture d'un message jamais ouvert.** Elle tient
-  largement sa cible (442 ms pour 800 ms) : c'est un acquis à ne pas échanger.
-  Le DOD l'exige explicitement.
-- **Ne pas traiter au passage la suppression / le marquage comme lu** (807 ms
-  pour une cible de 200 ms). C'est très probablement la même famille de coût,
-  mais ces gestes **modifient** la boîte et doivent donc légitimement
-  solliciter le serveur de messagerie au moins une fois : leur plancher n'est
-  pas le même et leur arbitrage est distinct. Ils seront **re-mesurés après**
-  ce correctif, et feront l'objet d'une US propre s'ils ne suivent pas.
-- **Ne pas conclure sur un tir de découverte.** Seul un tir au rythme réel
-  (`JOURNEY_TIME_COMPRESSION=1`) certifie une étape ; le rapport refuse de
-  lui-même le verdict au-delà.
+- **Ne pas confondre le décompte avec un budget.** L'instrument ne dit pas
+  combien d'allers-retours sont acceptables ; il dit combien il y en a eu. La
+  cible reste la grille SLO, validée par l'humain.
+- **Ne pas compter une session reprise du pool.** Réutiliser une connexion déjà
+  ouverte ne parle pas au serveur. Compter cette reprise gonflerait le décompte
+  et lui ferait perdre sa propriété utile : être un **plancher exact**.
+- **Ne pas mettre d'identifiant dans les étiquettes.** Ni chemin de dossier, ni
+  UID, ni nom de pièce jointe — en messagerie de santé un nom de pièce jointe
+  désigne couramment le patient et l'examen (leçon de task-213). Étiquettes
+  littérales, ensemble fini connu à la compilation.
+- **Ne pas conclure du décompte à un défaut produit.** Un message pas encore
+  analysé **doit** solliciter le serveur : c'est le comportement voulu, celui qui
+  permet au poste du médecin d'afficher les premiers éléments puis de recevoir la
+  totalité après décodage du CDA. Un décompte non nul n'est une anomalie que si
+  le message est analysé.
+- **Ne pas écrire le contenu depuis le chemin de lecture pour faire baisser le
+  décompte.** C'est la voie qui a failli passer. Elle est désormais interdite par
+  trois garde-fous dans le code.
 
 ## Contenu attendu
 
-1. **L'instrumentation qui manque** : le décompte des sollicitations du serveur
-   de messagerie par requête, sans lequel la cause reste compatible mais non
-   prouvée — et sans lequel le correctif ne sera pas démontrable.
-2. **La cause close et consignée** sur cette base (le reste est déjà établi :
-   voir « Ne pas présumer » ci-dessus).
-3. **Le correctif**, à l'altitude que la cause désigne.
-4. **La contre-épreuve au banc** : tir `journey` K=1, palier de population
-   identique à celui du 2026-08-03, comparé étape par étape au rapport de
-   référence — gain sur l'étape 3, **aucune régression** sur les 7 autres.
-5. **Le cas du message analysé mais dont le contenu a changé côté serveur**
-   doit rester correct : ce qu'on affiche au médecin ne doit jamais être un
-   contenu clinique périmé. À trancher et à écrire.
+1. **Le décompte des sollicitations du serveur de messagerie, par requête** —
+   exposé en métrique (par commande et par famille d'opération) et en étiquette
+   de trace, et injectable pour être assertable en test.
+2. **Les deux faces couvertes par des tests** : un message analysé se sert sans
+   solliciter le serveur ; un message pas encore analysé le sollicite, et la
+   séquence de commandes est celle attendue.
+3. **La garde qui protège l'analyse** : un test prouvant que le chemin de lecture
+   **n'écrit rien** en base — c'est ce qui empêche la réintroduction du défaut
+   retiré.
+4. **Le constat sur l'instrument, écrit et transmis** : l'étape 3 du parcours ne
+   mesure pas ce qu'elle annonce, avec le levier de vérification, remis à
+   task-224.
 
 ## Hors scope
 
-- La suppression / le marquage comme lu (étape 8) — re-mesurés après, US propre.
-- L'envoi (étape 6, 1 321 ms pour 1 000 ms) — dépassement plus serré, et
-  **task-216** (retrait de la voie d'écriture) va déjà déplacer ce chemin.
-- Toute modification de la grille SLO : elle est validée par l'humain, c'est le
-  produit qui s'y conforme, pas l'inverse.
-- L'outillage de mesure (**task-224**).
+- **La correction du harnais** — la chauffe de la bande de relecture doit passer
+  par l'analyse elle-même. **Confié à task-224** (défaut 5), décision du
+  2026-08-04.
+- **Tout correctif applicatif sur le chemin d'ouverture** : aucun défaut produit
+  n'est établi sur ce geste. À rouvrir seulement si une mesure faite avec un
+  instrument corrigé en montre un.
+- **Le tir de campagne** : cette US livre un instrument, elle ne mesure rien au
+  banc. Le chiffrage de la relecture viendra après task-224.
+- La suppression / le marquage comme lu, l'envoi (task-216), la grille SLO.
 
 ## Definition of Done
 
 - [ ] Build passe (0 erreur)
 - [ ] Tests passent (0 échec)
 - [ ] Le **décompte des sollicitations du serveur de messagerie par requête** est
-      instrumenté, et la cause des ~440 ms **close** sur cette base dans le
-      `## Develop log` (l'analyse de la campagne en a déjà établi les trois quarts)
-- [ ] Tests unitaires du chemin d'ouverture corrigé (≥ 1 test par branche :
-      contenu présent en base, contenu absent, contenu présent mais invalide)
-- [ ] Test d'intégration prouvant qu'une ouverture de message **déjà analysé**
-      ne sollicite plus le serveur de messagerie (assertion sur le nombre de
-      sollicitations, pas sur un temps)
-- [ ] Tir `journey` **K=1** au banc, même palier que la campagne du 2026-08-03 :
-      **étape 3 « ouvrir un message enrichi » ≤ 100 ms de p50 et ≤ 500 ms de p95**
-- [ ] **Aucune régression** sur les 7 autres étapes du parcours face au rapport
-      `report-journey-certif-n200-180029.md` (marge de 20 %), et en particulier
-      l'étape 4 (message jamais ouvert) reste sous sa cible de 800 ms
-- [ ] Le comportement en cas de contenu périmé côté serveur est tranché, écrit,
-      et couvert par un test
-- [ ] Aucune donnée de santé en clair dans les logs ajoutés (contenu CDA, INS)
+      instrumenté : métrique par commande et par famille d'opération, étiquette de
+      trace portant le total propre à l'appel
+- [ ] Une session reprise du pool **n'incrémente pas** le décompte (propriété de
+      plancher exact) — vérifié par construction et documenté
+- [ ] Tests unitaires des deux faces : message analysé ⇒ **0 sollicitation** et
+      verrou de session non acquis ; message pas encore analysé ⇒ la **séquence
+      exacte** des commandes est assertée
+- [ ] Test d'intégration sur base réelle : message analysé ⇒ **0 sollicitation**
+      (assertion sur le **nombre**, pas sur un temps)
+- [ ] **Garde anti-régression** : un test prouve qu'une lecture ne crée **aucune**
+      ligne de contenu en base, sous peine de supprimer le décodage CDA
+- [ ] Aucune donnée de santé dans les étiquettes ni dans les logs ajoutés (ni
+      chemin de dossier, ni UID, ni nom de pièce jointe)
+- [ ] Aucun changement de comportement observable de l'API (le corps rendu au
+      client est identique, message analysé comme non analysé)
+- [ ] Le constat sur l'étape 3 du parcours est écrit et transmis à task-224
 
 ## Manual Test Plan
 
-```bash
-# 1. Banc distant (serveurs de messagerie hors de la machine de mesure)
-cd Api/Mail
-MSS_LOADTEST_MAIL_HOST=<ip-noeud> dotnet run --project src/AppHost --launch-profile https-load-test
-dotnet run --project tests/mss.mail.loadtest.seed -- --users 200 --messages 150 \
-  --api http://127.0.0.1:5052 --mail-host <ip-noeud> --latency 95
+Aucun banc distant n'est nécessaire : l'instrument s'observe sur une instance
+locale.
 
-# 2. Purge des contenus analysés, puis contre-épreuve au rythme réel
-YES=1 tests/loadtest-k6/reset-state.sh
-export BYPASS_KEY=loadtest-local-only MSS_LOADTEST_MAIL_HOST=<ip-noeud>
-LATENCY_MS=95 USERS=200 MESSAGES_PER_USER=150 \
-  JOURNEY_STAGES="200:35m" JOURNEY_TIME_COMPRESSION=1 \
-  tests/loadtest-k6/run.sh journey
-tests/loadtest-k6/report.sh <dernier json> --expected 0
+```bash
+# 1. Lancer l'API locale
+cd Api/Mail
+dotnet run --project src/AppHost
+
+# 2. Ouvrir un message DÉJÀ ANALYSÉ dans le client, deux fois de suite,
+#    puis relever le compteur
+curl -s http://127.0.0.1:5052/metrics | grep mssante_mail_server_solicitations_total
+
+# 3. Ouvrir un message PAS ENCORE ANALYSÉ (message fraîchement reçu, avant
+#    que l'analyse ne soit passée), puis relever à nouveau
+curl -s http://127.0.0.1:5052/metrics | grep mssante_mail_server_solicitations_total
 ```
 
 **Ce que l'humain doit voir** :
-- le rapport annonce un **verdict opposable** (K=1) et non « non opposable » ;
-- l'étape **3 « Ouvrir un message enrichi (servi base) » passe au vert** ;
-- l'étape **4 « message froid » reste verte** — on n'a pas déshabillé l'une
-  pour habiller l'autre ;
-- les étapes 1, 2, 5, 7 restent dans leurs cibles ;
-- à l'écran, en ouvrant un message déjà consulté dans le client : l'affichage
-  est **immédiat**, sans temps d'attente perceptible.
 
-**Données de test** : boîtes `loadtest-*`, corpus synthétique `JEUX_TESTS_FULL`,
-aucune donnée de santé réelle.
+- sur un message **déjà analysé** : le compteur
+  `mssante_mail_server_solicitations_total{operation="GetEmailContent"}`
+  **n'augmente pas**, et le message s'affiche normalement ;
+- sur un message **pas encore analysé** : le compteur augmente de 5
+  (`resolve_folder`, `open_folder`, `fetch_bodystructure`, `fetch_body_part`,
+  `close_folder`), le message s'affiche, **puis le contenu complet arrive après
+  l'analyse** — documents médicaux et rattachement patient inclus. C'est
+  précisément ce flux que le correctif retiré cassait : le vérifier est le point
+  le plus important de ce plan de test ;
+- dans la trace de la requête (Seq / Jaeger) : l'étiquette
+  `mss.mail_server.solicitations` porte le nombre de l'appel ;
+- dans les étiquettes de la métrique : **aucun** nom de dossier, UID ni nom de
+  pièce jointe.
+
+**Données de test** : boîte de test du praticien, aucune donnée de santé réelle
+requise.
 
 ## Conformité santé / Ségur / ANS
 
 - **Couloir Ségur** : médecine de ville — messagerie MSSanté du praticien.
-- **Vague Ségur** : hors vague — la US améliore le temps de restitution d'un
-  document déjà reçu et analysé, elle ne modifie aucun contrat d'interopérabilité.
-- **Exigences DSR honorées** : aucune nouvelle. Aucune exigence existante n'est
-  relâchée : le contenu affiché reste le document reçu, inchangé.
-- **INS** : non manipulée par cette US — le chemin corrigé restitue un contenu
-  déjà rattaché ; le rattachement lui-même n'est pas touché.
-- **Authentification PS** : inchangée (PSC / e-CPS, niveau eIDAS substantiel au
-  moins) — la US ne touche ni l'authentification ni le contrôle d'accès.
-- **Habilitations** : inchangées. ⚠️ **Point de vigilance explicite** : si le
-  correctif introduit une lecture directe du stock local, le **cloisonnement par
-  praticien** doit être préservé — un médecin ne doit jamais pouvoir obtenir le
-  contenu d'un message d'une autre boîte. À couvrir par un test.
-- **Interop CI-SIS** : CDA r2 (volets CR de biologie / lettre de liaison selon
-  le document reçu) — **lecture seule**, aucun document produit ni transformé.
-- **Tracé PGSSI-S** : évènement « consultation d'un document de santé par un PS »
-  déjà journalisé — **doit le rester à l'identique** après correctif (le DOD
-  l'exige indirectement par la non-régression). Durée de conservation inchangée.
-- **Consentement patient** : non applicable — consultation par le PS
-  destinataire du message, dans le cadre de la prise en charge.
-- **Référentiels métier** : aucun nouveau (les codes portés par les documents
-  reçus ne sont pas retouchés).
-- **Hébergement HDS** : oui en production — le contenu lu est une DSCP. Le banc
-  de mesure reste local et synthétique.
-- **AIPD / impact RGPD** : inchangé — aucun nouveau traitement, aucune nouvelle
-  donnée collectée, aucune durée de conservation modifiée.
+- **Vague Ségur** : hors vague — instrumentation interne, aucun contrat
+  d'interopérabilité touché, aucun comportement fonctionnel modifié.
+- **Exigences DSR honorées** : aucune nouvelle, aucune relâchée.
+- **INS** : non manipulée.
+- **Authentification PS** : inchangée (PSC / e-CPS).
+- **Habilitations** : inchangées — l'instrument ne lit ni n'écrit aucune donnée
+  métier.
+- **Interop CI-SIS** : non applicable. ⚠️ **Point de vigilance honoré** : le
+  correctif initialement proposé aurait supprimé le décodage CDA des messages
+  ouverts avant analyse ; il a été retiré pour cette raison, et trois garde-fous
+  interdisent sa réintroduction.
+- **Tracé PGSSI-S** : aucun évènement métier touché. Les étiquettes de la
+  nouvelle métrique et l'étiquette de trace ne portent **que** des littéraux
+  écrits dans le code — aucun identifiant, aucune donnée de santé.
+- **Consentement patient** : non applicable.
+- **Référentiels métier** : aucun.
+- **Hébergement HDS** : oui en production, mais l'US n'ajoute aucune donnée
+  collectée ni conservée.
+- **AIPD / impact RGPD** : néant — aucun nouveau traitement, aucune nouvelle
+  donnée, aucune durée de conservation modifiée.
+
+---
+
+> ## Historique d'exécution — à lire avec la section de correction en fin de fichier
+>
+> Les sections qui suivent (`## Develop log`, `## Simplify log`, `## Sonar log`,
+> `## PRs`, `## Code Review Summary`) datent de la **version initiale** de la US
+> et décrivent le correctif qui a été **retiré**. Elles sont conservées
+> **non corrigées** : c'est leur raisonnement qu'il faut pouvoir relire pour
+> comprendre comment une cause cohérente s'est bâtie sur un artefact de mesure.
+> La `## ⛔ Correction du 2026-08-04` en fin de fichier prévaut sur elles.
 
 ## Branches
 
