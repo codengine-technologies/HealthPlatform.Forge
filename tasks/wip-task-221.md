@@ -203,3 +203,20 @@ tests/loadtest-k6/run.sh folders
 - `api-mail` (pushed) : feat/task-221-serveurs-mail-cluster — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-221-serveurs-mail-cluster
 - `dtos-mss` (pushed, auto-inclus) : feat/task-221-serveurs-mail-cluster — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-221-serveurs-mail-cluster
 - `devops` (code-only, décision /start 2026-08-03) : la forge écrit les manifests dans `DevOps/Staging` mais ne touche jamais au git de DevOps — commit/push et `kubectl apply` = humain
+
+## Develop log
+
+- **Repos touchés** : api-mail (commit `020e99a`, pushé) ; DevOps (code-only — fichiers écrits, non commités, git humain) ; plan de contrôle (skill loadtest). `dtos-mss` : branche sans commit, aucun changement de contrat.
+- **Livré — manifests kustomize (`DevOps/Staging`, code-only)** :
+  - `kustomization.yaml` (racine Staging, périmètre banc mail uniquement — le reste de la stack continue en `apply -f`)
+  - `persistentvolumes/pv-nfs-loadtest.yaml` — PV statique NFS 50 Gi (`192.168.0.7:/data/loadtest-mail`, classe `nfs-loadtest`, patron pv-nfs-postgresql) + PVC lié
+  - `LoadtestMail/dovecot.yaml` — StatefulSet 1 réplica (⚠️ ne pas scaler : NFS multi-serveurs = pathologie connue), ConfigMap portée de `src/AppHost/dovecot/dovecot.conf` (TOUS les plafonds durement acquis) **+ réglages NFS** (index sur `emptyDir` local via `INDEX=`, `mmap_disable`, `mail_fsync=never`, `mail_nfs_*=no`), requests 4 CPU / limits 8, Services : interne 993 (upstream Toxiproxy) + NodePort **30994** (direct, seed)
+  - `LoadtestMail/greenmail.yaml` — puits SMTP, Service interne (jamais exposé direct)
+  - `LoadtestMail/toxiproxy.yaml` — Deployment + Service NodePort **30474** (API), **30993** (IMAPS praticiens), **30465** (SMTPS praticiens)
+  - Validation : 11 documents YAML valides, chemins kustomize résolus (contrôle Python — `kubectl` est bloqué par les permissions de la session ; le `--dry-run=client` du DOD est délégué à l'étape humaine, cf. questions/task-221.md)
+- **Livré — AppHost (`src/AppHost/AppHost.cs`)** : `MSS_LOADTEST_MAIL_HOST` posée → **zéro conteneur mail local** ; PgBouncer + collector OTLP restent locaux (plateforme sous test). **Vérifié au runtime, les deux sens** : posée → 2 conteneurs `loadtest-*` (pgbouncer, otel-collector) ; absente → les 5 (dovecot, greenmail, toxiproxy en plus), comportement inchangé. ⚠️ La première version du garde coupait aussi pgbouncer/otel — **attrapé par la vérification runtime**, corrigé en scindant le bloc.
+- **Livré — seed (`SeedOptions.cs`, `Program.cs`)** : interrupteur unique `--mail-host` (défaut : env `MSS_LOADTEST_MAIL_HOST`, la même variable que l'AppHost) → UserSettings vers NodePorts 30993/30465, **injection directe vers 30994** (jamais via la latence), API Toxiproxy vers 30474 ; upstreams inchangés (les Services k8s portent les noms des alias Aspire). **Piège attrapé** : ports d'écoute dans le pod Toxiproxy (13993/13465) désormais distincts des ports joints — en k8s le Service mappe NodePort → containerPort. Test-first : 4 tests nouveaux, RED constaté avant implémentation.
+- **Livré — skill `loadtest-skill`** : section « Mode DISTANT » (déploiement, surface NodePort, RTT à soustraire de la latence, contrôles `kubectl exec`/`kubectl top`, purge du PVC, piège NFS + verdict par smoke comparatif obligatoire).
+- **Local build / test** : ✓ build 0 erreur, ✓ **3 285 tests verts / 0 échec** (une passe intermédiaire a eu 1 flaky pendant le teardown du banc de vérification ; deux re-runs verts)
+- **DOD self-check** : 4 items vérifiables faits (variable posée/absente ✓✓, mot de passe IMAP aligné aux 3 endroits ✓ — ConfigMap/`TestMode__Password`/seed, skill ✓) ; **6 items exigent le cluster** → suspendu, `questions/task-221.md` (dry-run kubectl, pods Ready + PVC Bound, RTT + latence, seed 20 read-back, smoke folders + enrich non court-circuité, doveadm, smoke comparatif NFS)
+- **Next step** : humain — `questions/task-221.md` (kubectl apply + relevés), puis la forge reprend les vérifications cluster et enchaîne `/forge-simplify` → `/sonar` → `/review`.

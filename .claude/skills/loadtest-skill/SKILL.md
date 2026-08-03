@@ -78,6 +78,76 @@ latence, piloté par le profil `loadtest` de l'AppHost. Chemins relatifs à
   found », c'est le stub Microsoft Store qui masque l'installation (ordre du
   PATH, ou terminal ouvert avant l'installation).
 
+## Mode DISTANT — serveurs mail sur le cluster k8s (task-221)
+
+Depuis task-221, les serveurs mail simulés peuvent quitter l'hôte sous test :
+Dovecot/GreenMail/Toxiproxy tournent sur le cluster (manifests
+`DevOps/Staging/LoadtestMail/`, namespace `healthplatform`, PV NFS
+`persistentvolumes/pv-nfs-loadtest.yaml`). **Obligatoire au-delà de ~500
+praticiens** : en local, Dovecot vole 2,6 cœurs au SUT et son coût suit la
+population — tout chiffre > 500 mesuré banc local est un artefact connu.
+
+**Déploiement (humain — accès cluster)** :
+
+```bash
+# pré-requis : /data/loadtest-mail existe sur le serveur NFS 192.168.0.7
+kubectl apply -k DevOps/Staging --dry-run=client   # contrôle
+kubectl apply -k DevOps/Staging
+kubectl -n healthplatform get pods,pvc             # 3 pods Ready, PVC Bound
+```
+
+**Lancement du banc en mode distant** — une seule variable, lue par l'AppHost
+(aucun conteneur mail local ne démarre) ET par le seed (défaut de `--mail-host`) :
+
+```bash
+cd Api/Mail
+MSS_LOADTEST_MAIL_HOST=<ip-noeud> dotnet run --project src/AppHost --launch-profile https-load-test
+dotnet run --project tests/mss.mail.loadtest.seed -- --mail-host <ip-noeud>   --users 20 --messages 50 --api http://127.0.0.1:5052 --latency <100-RTT>
+```
+
+Surface NodePort (pendants exacts des Services k8s — `SeedOptions.Remote*`) :
+
+| NodePort | Rôle |
+|---|---|
+| 30993 | IMAPS des praticiens (via Toxiproxy — latence injectée) |
+| 30465 | SMTPS des praticiens (via Toxiproxy) |
+| 30994 | IMAPS **direct** (seed uniquement — l'injection ne passe JAMAIS par la latence) |
+| 30474 | API d'administration Toxiproxy |
+
+**Les pièges du mode distant** :
+
+- **RTT à soustraire** : mesurer le RTT poste ↔ cluster en début de campagne
+  (`ping <ip-noeud>`), régler `--latency` à `100 − RTT` — la latence MSSanté
+  simulée totale doit rester 100 ms. Consigner les deux valeurs dans le rapport.
+- **Un seul monde à la fois** : `MSS_LOADTEST_MAIL_HOST` posée → l'AppHost ne
+  démarre AUCUN conteneur mail local ; sinon les UserSettings désigneraient
+  tantôt le banc local, tantôt le cluster.
+- **Un redémarrage du pod Toxiproxy perd les proxies** (mêmes causes qu'en
+  local) : rejouer le seed avec `--messages 0 --mail-host <ip-noeud>`.
+- **`doveadm` passe par kubectl**, plus par un port :
+  `kubectl -n healthplatform exec statefulset/loadtest-dovecot -- doveadm who`
+  (idem pour les contrôles boîte témoin). Le fond des contrôles ne change pas.
+- **Purge du maildir distant** : plus de `docker volume rm` — vider le PVC :
+  `kubectl -n healthplatform exec statefulset/loadtest-dovecot -- sh -c 'rm -rf /srv/mail/*'`
+  (ou recréer le pod après nettoyage côté NFS). `reset-state.sh` (bases
+  Postgres) reste inchangé — Postgres est resté local.
+- **CPU de Dovecot enfin attribuable** : `kubectl top pods -n healthplatform`
+  donne le coût des serveurs mail séparément du SUT — le relever dans le
+  rapport à chaque palier.
+- ⚠️ **Dovecot sur NFS est un cas de dégradation documenté** (maildir
+  metadata-heavy). Atténuations en place : 1 seul pod, index sur `emptyDir`
+  local, `mmap_disable`/`mail_fsync=never` dans la ConfigMap. **Verdict par
+  smoke comparatif obligatoire** (mêmes opérations local vs cluster :
+  `folders_cold`, `enrich` 10 UIDs, lecture froide) ; si la dégradation
+  dépasse ~2× sur les chemins IMAP, s'arrêter et demander à l'humain un
+  stockage local-path — ne pas adopter des chiffres qu'on sait faussés.
+- **Mot de passe IMAP : toujours trois endroits**, dont un sur le cluster
+  désormais — la `passdb` de la ConfigMap (`DevOps/Staging/LoadtestMail/dovecot.yaml`),
+  `TestMode__Password` de l'AppHost, `--mail-password` du seed.
+- La conf Dovecot du cluster est **portée depuis**
+  `src/AppHost/dovecot/dovecot.conf` : toute évolution de l'un doit être
+  reportée dans l'autre (plafonds de concurrence, dossiers spéciaux…).
+
 ## Étape 1 — Lancer le backend + le banc
 
 **Rituel pré-vol obligatoire** (deux états résiduels font échouer ou figer le
@@ -942,5 +1012,9 @@ Mettre à jour les sections 🔧 quand :
   nul ou marginal. Mettre à jour les résultats de référence ensuite.
 - **À venir — tir 500 praticiens** (cf. `DIMENSIONNEMENT-1000-PRATICIENS.md`),
   une fois le comparatif 200 vert.
+- ~~**task-221 (serveurs mail sur le cluster)**~~ — ✅ fait : section « Mode
+  DISTANT » ajoutée (déploiement kustomize, surface NodePort, RTT à soustraire,
+  contrôles kubectl, purge du PVC, piège NFS + smoke comparatif obligatoire).
+  Le `kubectl apply` et le smoke comparatif restent des actes humains/au banc.
 - Tout changement d'endpoint/port, d'options du seed, de clé de bypass, ou du
   mot de passe IMAP du banc.
