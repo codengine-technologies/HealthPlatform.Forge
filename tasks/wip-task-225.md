@@ -201,3 +201,13 @@ requise.
   collectée ni conservée.
 - **AIPD / impact RGPD** : néant — aucun nouveau traitement, aucune nouvelle
   donnée, aucune durée de conservation modifiée.
+
+## Branches
+
+- `api-mail` (pushed) : `feat/task-225-mail-server-solicitation-count` — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-225-mail-server-solicitation-count
+- `dtos-mss` (pushed, auto-inclus) : même nom de branche — aucun changement de contrat attendu, donc pas de PR si aucun commit.
+
+> **Ordre décidé par l'humain le 2026-08-04** : task-225 **avant** task-224.
+> Quatre critères de DOD de task-224 (défaut 5) s'appuient sur le compteur livré
+> ici ; les enchaîner dans cet ordre évite de laisser ces critères non
+> vérifiables. `/start 224` suivra.
