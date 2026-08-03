@@ -521,3 +521,90 @@ redécouverte. **Candidate à une US dédiée.**
 | Tests (`dotnet test`) | ✓ **3 399 réussis, 0 échec**, 16 ignorés d'avance |
 | Sync `develop` | ✓ `Already up to date` (merge, pas rebase) |
 | DOD | 9/11 vérifiés ; **2 critères de banc déférés au HAG** (nœud distant absent + rapport de référence absent de la machine — détail dans le `## Develop log`) |
+
+---
+
+## ⛔ Correction du 2026-08-04 — tout ce qui précède sur le correctif est FAUX
+
+> **Cette section prévaut sur les sections `## Develop log`, `## Simplify log`,
+> `## Sonar log`, `## PRs` et `## Code Review Summary` ci-dessus.** Elles sont
+> conservées telles quelles, non corrigées, parce que c'est leur raisonnement
+> qu'il faut pouvoir relire pour comprendre comment une cause cohérente a été
+> bâtie sur un artefact de mesure. Ne pas s'y fier pour l'état de la task.
+
+**Défaut trouvé par l'humain en relecture, avant tout merge.**
+
+### 1. Le correctif était dangereux — retiré (`5da54bc`)
+
+L'écriture en retour du contenu depuis `GetEmailContentAsync` **empoisonnait le
+marqueur d'enrichissement**. L'existence d'une ligne `MailContents` signifie
+« ce message a été analysé » partout dans le code : `GetEnrichedUidsAsync`
+(`MailContents.Any()`) consommé par `ComputePendingEnrichmentAsync`
+(`ImapService:827`) et `BackgroundImapService:142` ; `TryResolveExistingMailAsync`
+(`ContentCount > 0` ⇒ « already enriched — skipping », **avant** la promotion) ;
+`GetCoverageCountsAsync` pour l'indicateur produit.
+
+Conséquence : le médecin ouvre un message pas encore analysé — **flux voulu**, le
+frontend affiche les premiers éléments puis déclenche `POST …/emails/enrich` —, une
+ligne corps-seul est posée, l'analyse écarte le message, **le CDA n'est jamais
+décodé** (aucun document médical, aucun rattachement patient, aucun résultat de
+biologie, aucun embedding), et `NotifyAlreadyEnrichedAsync` annonce au frontend
+que c'est terminé : il cesse d'attendre. **Perte de contenu clinique,
+silencieuse.**
+
+Retiré aussi `HasDisplayableContent` : je l'avais justifié par un « écran blanc
+définitif » que je n'ai jamais établi.
+
+### 2. Le diagnostic est invalidé, pas seulement le correctif
+
+Le scénario `journey` **n'appelle jamais l'enrichissement** — c'est écrit dans son
+code — et chauffe sa bande de relecture par `getEmailContent`, en commentant à
+tort que « le GET contenu matérialise le `MailContent` ». L'étape 3 « ouvrir un
+message enrichi (servi base) » mesurait donc des messages **jamais analysés** : un
+fetch IMAP complet, comportement normal et attendu.
+
+D'où l'égalité 440 ≈ 442 ms qui fondait la US. Et les 34 ms de la pièce jointe ne
+prouvent rien contre le produit : les pièces jointes sont des **octets** mis en
+cache, sans sémantique d'enrichissement.
+
+**Le dépassement de l'étape 3 n'est donc pas un défaut produit établi**, et le
+verdict du rapport du 2026-08-03 sur cette étape est **non opposable** tant que le
+harnais n'enrichit pas sa bande chaude.
+
+### 3. Ce qui reste livré et mergeable
+
+| Élément | État |
+|---|---|
+| Décompte des sollicitations du serveur (métrique + trace + service `Scoped`) | **conservé** — aucun changement de comportement |
+| Conversion en doc XML du contrat (S125) | conservé |
+| Écriture en retour du contenu, `HasDisplayableContent`, 8 tests associés | **retirés** |
+| Garde-fous anti-réintroduction (2 avertissements en code + 1 test d'intégration) | ajoutés |
+
+Build 0 erreur / 0 avertissement, **3 389 tests verts** (1 flaky `Services/Export`
+pré-existant, hors diff, vert en isolation).
+
+### 4. DOD — état réel
+
+| Critère | État |
+|---|---|
+| Build / tests | ✓ |
+| Décompte des sollicitations instrumenté | ✓ |
+| Cause des ~440 ms close | ⛔ **non** — la cause supposée était un artefact de mesure ; la vraie question est rouverte |
+| Tests unitaires du chemin corrigé | ⛔ sans objet — il n'y a plus de correctif |
+| Test d'intégration « ne sollicite plus le serveur » | ⚠️ requalifié : prouve qu'un message **enrichi** est servi sans sollicitation (ce qui était déjà vrai avant la task) |
+| Tir `journey` K=1, étape 3 ≤ 100 ms | ⛔ non exécutable, et **non certifiable** avant correction du harnais |
+| Non-régression sur les 7 autres étapes | ⛔ non exécuté |
+| Comportement en cas de contenu périmé tranché | ⚠️ sans objet — plus d'écriture en retour |
+| Aucune donnée de santé dans les logs ajoutés | ✓ |
+| Cloisonnement praticien préservé | ✓ (aucune écriture) |
+
+**La US n'est pas satisfaite** — et il n'est pas établi qu'elle doive l'être.
+
+### 5. Arbitrage attendu
+
+Trois questions dans **`questions/task-222.md`** : fermer / re-cadrer / maintenir
+task-222 ; qui corrige le harnais (task-224 ?) ; faut-il une US pour la lacune de
+couverture ouverture → enrichissement, qui est ce qui a laissé passer le défaut.
+
+- **Étape suivante** : décision PO. La task repasse en `wip-*` ; la PR #150 reste
+  ouverte, retitrée sur le seul périmètre réellement livré.
