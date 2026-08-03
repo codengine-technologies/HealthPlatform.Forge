@@ -102,7 +102,6 @@ baisses de performance avant qu'elles n'atteignent les utilisateurs**.
 | Mesure en nombre de médecins servis | Poser la question qui décide de l'accueil de nouveaux praticiens — **combien de médecins la messagerie sert-elle en tenant ses temps de réponse** — en simulant des médecins qui déroulent leur journée réelle (arriver sur son tableau de bord, ouvrir sa boîte, lire, supprimer, télécharger une pièce jointe, envoyer) au lieu d'un mélange d'actions isolées ; et lire, à chaque palier de population, **quelle étape du travail du médecin souffre la première** | task-220 | 🟡 Livré, en attente d'intégration |
 | Le banc ne prend plus les ressources du service qu'il mesure | Mesurer la messagerie au-delà de cinq cents praticiens sans que les serveurs de messagerie simulés — désormais installés sur une infrastructure séparée — ne lui prennent ses ressources, et lire leur coût propre séparément du sien | task-221 | 🟡 Livré, en attente d'intégration |
 | Un message parti n'est jamais annoncé en échec | Avoir la certitude qu'un compte rendu remis au correspondant est bien annoncé comme parti au médecin — et, si sa copie dans « Messages envoyés » manque, le lui dire comme une information distincte plutôt que comme un échec d'envoi | task-223 | 🟡 Corrigé, mesure de confirmation à conduire |
-| Savoir combien de fois le serveur de messagerie est sollicité | Lire, sur chaque demande, **le nombre d'allers-retours réellement faits vers le serveur de messagerie** — au lieu de le déduire d'un temps, ce qui ne l'a jamais prouvé. Sert aussi à contrôler l'instrument : une étape de campagne annoncée « servie par la base » qui sollicite le serveur ne mesure pas ce qu'elle annonce | task-222 | 🟢 Livré |
 
 ---
 
@@ -580,18 +579,18 @@ coûter exactement le prix d'aller chercher, ce qui aurait signifié que l'analy
 préalable n'apportait rien au médecin.
 
 **Ce n'est pas ce que la campagne mesurait.** Le parcours simulé **ne déclenche
-jamais l'analyse des messages** — il n'appelle pas l'étape d'enrichissement. Sa
-« bande de relecture » était préparée en ouvrant simplement les messages, geste
-qui, par conception, ne déclenche pas l'analyse. L'étape 3 mesurait donc
-l'ouverture de messages **jamais analysés** : un aller-retour complet vers le
-serveur, ce qui est le comportement normal et attendu dans ce cas.
+jamais l'analyse des messages**. Sa « bande de relecture » était préparée en
+ouvrant simplement les messages — geste qui, par conception, ne déclenche pas
+l'analyse. L'étape 3 mesurait donc l'ouverture de messages **jamais analysés** :
+un aller-retour complet vers le serveur, comportement normal et attendu dans ce
+cas.
 
 Les trois faits qui semblaient s'accorder s'expliquent tous par là :
 
 | Fait du rapport | Explication |
 |---|---|
 | 440 ms (relecture) ≈ 442 ms (jamais ouvert) | les deux étapes mesuraient la même chose |
-| pièce jointe du même message en 34 ms | les pièces jointes sont gardées à leur première lecture, indépendamment de l'analyse du message — comportement normal, sans rapport |
+| pièce jointe du même message en 34 ms | les pièces jointes sont gardées à leur première lecture, indépendamment de l'analyse du message — normal, et sans rapport |
 | coût invariant à la charge | un aller-retour par ouverture est un coût fixe |
 
 **Comment le produit se comporte réellement** : à l'ouverture d'un message pas
@@ -599,15 +598,8 @@ encore analysé, le médecin voit **immédiatement les premiers éléments**, pu
 l'analyse se déclenche et le contenu complet — documents médicaux, résultats de
 biologie, rattachement au patient — lui parvient dès que le CDA est décodé. Une
 fois le message analysé, sa relecture **est** servie par la base. Ce
-fonctionnement est voulu, et il n'est pas établi qu'un médecin réel paye 440 ms
-sur une relecture.
-
-Ce qui a été livré est donc **l'instrument qui manquait pour trancher** : le
-nombre d'allers-retours vers le serveur de messagerie, lisible sur chaque
-demande. La campagne pouvait dire que le temps se passait dans l'application ;
-elle ne pouvait pas dire combien de fois le serveur avait été sollicité. C'est ce
-décompte qui a permis d'établir que l'étape « chaude » sollicitait le serveur —
-donc qu'elle n'était pas chaude.
+fonctionnement est voulu, et **il n'est pas établi qu'un médecin réel paye 440 ms
+sur une relecture**.
 
 > **Conséquence à retenir** : tant que le parcours simulé ne déclenche pas
 > l'analyse sur sa bande de relecture, **aucun tir ne peut certifier l'étape 3** —
@@ -615,22 +607,21 @@ donc qu'elle n'était pas chaude.
 > 3 août est **non opposable**, au même titre qu'un chiffre obtenu à rythme
 > accéléré.
 >
-> **Décision du 4 août** : la correction du parcours simulé est confiée à
-> **task-224**, qui l'inscrit comme son cinquième défaut — le seul des cinq à
-> avoir faussé un verdict et non seulement une lecture. **Aucun défaut produit
-> n'est retenu** sur l'ouverture d'un message : le geste est déclaré *non démontré
-> défaillant*, et le sujet ne sera rouvert que si une mesure faite avec
-> l'instrument corrigé en désigne un.
+> **Suites** : la correction du parcours simulé est le **cinquième défaut de
+> task-224** — le seul de ses cinq à avoir faussé un *verdict* et non seulement
+> une lecture. L'instrument qui permet de le prouver (le décompte des
+> allers-retours vers le serveur, par demande) est confié à **task-225**.
 
-> ⚠️ **Un correctif a été proposé puis retiré, et le motif vaut d'être conservé.**
-> Il faisait garder le contenu dès la première ouverture. Mais c'est la présence
-> de ce contenu en base qui **signifie « ce message a été analysé »** : le poser
-> trop tôt aurait fait **écarter le message de l'analyse**, donc jamais décoder
-> son CDA — aucun document médical, aucun rattachement patient — tout en
-> annonçant au poste du médecin que l'analyse était terminée. Perte de contenu
-> clinique, silencieuse. Le défaut a été trouvé en relecture humaine avant tout
-> merge ; il est consigné parce que la symétrie apparente avec les pièces jointes
-> est un piège qui se retendra.
+> ⚠️ **Une US applicative avait été écrite sur ce chiffre, puis annulée, et le
+> motif vaut d'être conservé.** Son correctif faisait garder le contenu du
+> message dès la première ouverture. Mais c'est la présence de ce contenu en base
+> qui **signifie « ce message a été analysé »** : le poser trop tôt aurait fait
+> **écarter le message de l'analyse**, donc jamais décoder son CDA — aucun
+> document médical, aucun rattachement patient — tout en annonçant au poste du
+> médecin que l'analyse était terminée. Perte de contenu clinique, silencieuse.
+> Le défaut a été trouvé en relecture humaine avant tout merge, et l'US a été
+> annulée (task-222). C'est consigné parce que la symétrie apparente avec les
+> pièces jointes est un piège qui se retendra.
 
 ### Trois mesures à reprendre
 
@@ -679,7 +670,6 @@ donc qu'elle n'était pas chaude.
 | Mesure en nombre de médecins servis | 🟡 Livré, en attente d'intégration | Le banc rejoue la journée d'un médecin — tableau de bord, boîte de réception, lecture, suppression, téléchargement d'une pièce jointe, envoi — dans une séquence **relevée dans l'application réelle** écran par écran, chaque sollicitation du service étant consignée avec son origine : rien n'y est supposé. Entre deux gestes, un temps de réflexion tiré au hasard dans une plage réaliste propre à chaque étape, car à cadence fixe des centaines de médecins simulés se synchronisent et produisent des vagues qui n'existent pas dans la vraie vie. La charge n'est plus imposée de l'extérieur : elle **résulte** du nombre de médecins, et l'on fait monter la population par paliers. Quatre gestes quotidiens jamais exercés jusqu'ici le sont : supprimer, télécharger une pièce jointe, marquer lu, arriver sur son tableau de bord — le téléchargement ouvrant l'axe du **volume transféré**, qu'aucune campagne ne mesurait et dont l'absence pouvait faire passer une limite de débit réseau pour une lenteur de la messagerie. Les temps de réponse attendus sont énoncés **par étape du parcours** (les huit étapes, avec leurs conditions de mesure), et le rapport rend son verdict étape par étape et palier par palier. Trois engagements sont déjà connus comme non tenus — boîte de réception, envoi, recherche : la grille désigne le programme d'optimisation, elle ne le réalise pas. Campagne de mise au point conduite le 3 août (cinq puis dix médecins, rythme accéléré) : 3 294 demandes, **aucune erreur, aucun parcours interrompu**, charge croissant avec la population, coûts résidents suivant le nombre de médecins, volume de pièces jointes affiché. **Reste dû** : la campagne de certification d'un palier, qui exige le rythme réel d'un humain sur au moins une demi-heure et une population élevée — prérequis désormais levé (task-221) | task-220 |
 | Le banc ne prend plus les ressources du service qu'il mesure | 🟡 Livré, en attente d'intégration | Les serveurs de messagerie simulés ont quitté la machine de mesure pour une infrastructure séparée de l'entreprise. Le motif est chiffré : à cinq cents praticiens ils prenaient à la messagerie l'équivalent de deux cœurs et demi, et ce coût suit le **nombre de boîtes** plutôt que la charge — il croît donc avec la population, l'axe même que les campagnes explorent. Leur consommation se lit maintenant **séparément** de celle de la messagerie, ce que le banc n'avait jamais su faire. Vérifié le 3 août sur l'infrastructure réelle : vingt boîtes injectées en 49 secondes, campagne de contrôle sans aucune erreur sur plus de sept mille demandes, extraction des documents médicaux réellement exercée, et temps d'aller-retour du réseau mesuré puis retranché de la latence simulée pour que le total reste conforme au contrat de mesure. Le risque du stockage partagé par le réseau a été **mesuré et non supposé** : aucun chemin ne dépasse le seuil de dégradation fixé d'avance (au plus une fois et demie sur l'extraction des documents médicaux, quasi nul sur la consultation et la lecture), verdict consigné. La bascule tient à un réglage unique, et son absence laisse le comportement antérieur strictement inchangé — les deux sens vérifiés. Seules des données synthétiques transitent sur le volume dédié au banc. **Reste dû** : la campagne de certification d'un palier de population, que cette étape rend possible | task-221 |
 | Un message parti n'est jamais annoncé en échec | 🟡 Corrigé, mesure de confirmation à conduire | La campagne de certification du 3 août a produit **une seule erreur sur 105 000 demandes** — et c'était la pire qualitativement : un envoi sur 3 352 rendu au médecin **en erreur alors que le message était parti et remis** à son correspondant. Le geste naturel devant un tel message est de le renvoyer, et le destinataire reçoit alors **deux fois le même document de santé** dans le dossier de son patient, sans moyen simple de savoir lequel est le bon. La cause n'était pas l'échec d'archivage — celui-là est traité comme anodin depuis toujours — mais la **libération d'un verrou technique à la sortie de l'archivage** : elle retrouvait la boîte par son nom, et si l'entrée de cette boîte avait été recyclée entre-temps, elle rendait un verrou qui n'était pas le sien. Ce qui explique la rareté, et pourquoi c'est l'archivage qui la portait : il empruntait le second accès en écriture, qui n'existe que le temps des envois. Deux corrections, l'une et l'autre nécessaires : le mécanisme rend désormais **le verrou qu'il a pris**, et un défaut de comptage se journalise sans jamais atteindre le médecin. La revue a fermé une troisième porte du même genre — une attente de verrou expirée produisait le même faux échec. Enfin, les deux informations sont **séparées** pour le médecin : « parti » et « parti, mais sa copie manque », la seconde ayant une valeur d'imputabilité, avec la trace réglementaire correspondante. **Reste dû** : la campagne de confirmation, qui doit rendre zéro erreur là où la référence en comptait une | task-223 |
-| Savoir combien de fois le serveur de messagerie est sollicité | 🟢 Livré | Chaque demande porte désormais **le nombre d'allers-retours réellement faits vers le serveur**, lisible dans la trace et dans les métriques, décomposé par commande. Une session déjà ouverte et réutilisée ne compte pas : le nombre est donc un **plancher exact**, pas une estimation. La campagne du 3 août pouvait dire que 420 des 440 ms d'une ouverture se passaient dans l'application, mais pas combien de fois le serveur avait été sollicité — 420 ms est *compatible* avec quatre allers-retours de 95 ms sans le prouver. **Premier usage, et il a servi contre nous** : le décompte a établi que l'étape 3 du parcours, annoncée « servie par la base », sollicitait bel et bien le serveur — donc qu'elle mesurait des messages jamais analysés, et que le dépassement de 440 ms était un artefact de l'instrument et non un défaut établi du produit (voir la section datée du 4 août). Aucune donnée de santé dans les étiquettes : uniquement des noms de commande écrits dans le code. **Reste dû, et c'est ailleurs** : la correction du parcours simulé pour qu'il déclenche réellement l'analyse sur sa bande de relecture est **confiée à task-224** (décision du 4 août), puis le chiffrage de la relecture pourra être fait. Cette feature-ci est complète | task-222 |
 
 **Couverture EPIC consolidée : 19 features livrées sur 19** (les dix-neuf
 attendent leur intégration). L'EPIC est **fonctionnellement complet** : le banc est
@@ -735,17 +725,17 @@ Cinq réserves à porter au bilan, sans quoi il serait trompeur :
   qualitativement : un envoi annoncé **en échec au médecin alors qu'il était
   parti et remis**, c'est-à-dire l'incident qui pousse à renvoyer un document de
   santé déjà transmis. Elle est corrigée (task-223) et attend sa campagne de
-  confirmation. Deux autres constats de la même campagne sont ouverts et **ne
-  sont pas couverts ici** : les dépassements de temps de réponse (task-222) et
-  l'outillage de mesure (task-224). Un taux d'erreur quasi nul ne dit donc pas
-  encore « palier certifié ».
-- **mise à jour du 4 août** — le principal de ces dépassements, l'étape 3
-  « relire un message », **ne mesurait pas ce qu'il annonçait** : le parcours
-  simulé ne déclenche jamais l'analyse des messages, donc l'étape mesurait des
-  messages jamais analysés. Le décompte des allers-retours vers le serveur de
-  messagerie, livré par task-222, est ce qui a permis de l'établir. Le verdict
-  « étape 3 au rouge » est donc **non opposable** jusqu'à correction de
-  l'instrument. Voir la section datée correspondante et `questions/task-222.md`.
+  confirmation. Un taux d'erreur quasi nul ne dit donc pas encore « palier
+  certifié ».
+- **mise à jour du 4 août** — le principal dépassement de temps de réponse de la
+  même campagne, l'étape 3 « relire un message », **ne mesurait pas ce qu'il
+  annonçait** : le parcours simulé ne déclenche jamais l'analyse des messages,
+  donc l'étape mesurait des messages jamais analysés. Le verdict de cette étape
+  est **non opposable**, et l'US applicative qui en était née a été **annulée**
+  (task-222) — son correctif aurait supprimé le décodage CDA. Restent ouverts et
+  **non couverts ici** : la correction du parcours simulé (**task-224**,
+  défaut 5) et l'instrument qui permet de la prouver (**task-225**). Voir la
+  section datée correspondante.
 
 ---
 
@@ -866,26 +856,6 @@ Cinq réserves à porter au bilan, sans quoi il serait trompeur :
   côté, « parti, mais sa copie dans les messages envoyés manque » de l'autre,
   cette seconde ayant une valeur d'imputabilité — retrouver ce qu'on a envoyé, et
   à qui — et sa trace réglementaire propre. (task-223)
-
-- v1.22 — **Le nombre d'allers-retours vers le serveur de messagerie devient
-  lisible sur chaque demande.** La campagne du 3 août pouvait établir que 420 des
-  440 ms d'une ouverture de message se passaient dans l'application, mais pas
-  **combien de fois** le serveur avait été sollicité : 420 ms est *compatible*
-  avec quatre allers-retours de 95 ms sans le prouver, et un temps n'a jamais
-  démontré l'absence d'un aller-retour. Le décompte est désormais porté par la
-  trace de chaque demande et par les métriques, décomposé par commande ; une
-  session déjà ouverte et réutilisée ne compte pas, de sorte que le nombre est un
-  **plancher exact** plutôt qu'une estimation. Aucune donnée de santé dans les
-  étiquettes — uniquement des noms de commande écrits dans le code, comme pour les
-  verrous. **Son premier usage a servi contre l'instrument lui-même** : il a
-  établi que l'étape 3 du parcours simulé, annoncée « servie par la base »,
-  sollicitait bel et bien le serveur — donc qu'elle mesurait des messages jamais
-  analysés, et que le dépassement de 440 ms n'était pas un défaut établi du
-  produit. Un correctif avait été proposé sur cette base ; il a été **retiré** en
-  relecture, parce qu'il aurait fait écarter les messages de l'analyse du CDA (le
-  détail est conservé dans la section datée du 4 août : la leçon est que la
-  présence du contenu en base signifie « analysé », et non « en cache »).
-  (task-222)
 
 **Ce que la mesure a appris sur le service**
 

@@ -9,10 +9,13 @@
 > écrit ici qu'« aucun [défaut] ne bloque **task-222** [...] dont les verdicts
 > reposent sur le **rapport de tir** (correct) ». **C'est faux**, et le défaut 5
 > ci-dessous l'établit : le rapport de tir était correct sur ce qu'il mesurait,
-> mais l'étape 3 du parcours ne mesurait pas ce que son nom annonce. task-222 est
-> re-cadrée sur la seule mesure (le décompte des sollicitations, livré) et **ce
-> qui reste à chiffrer sur la relecture d'un message enrichi dépend de cette
-> US-ci**.
+> mais l'étape 3 du parcours ne mesurait pas ce que son nom annonce.
+>
+> **task-222 a été ANNULÉE** le 2026-08-04 (trop de modifications non maîtrisées ;
+> PR fermée, branche supprimée). Son seul acquis — le décompte des sollicitations
+> du serveur — est repris par **task-225**. Les critères de DOD de cette US-ci qui
+> s'appuient sur ce décompte **dépendent donc de task-225** ; les quatre défauts
+> d'affichage n'en dépendent pas et restent traitables indépendamment.
 
 **Priorité**: **2** — relevée de 3. Le défaut 5 n'est plus un défaut d'affichage
 qui attend un lecteur : il a **rendu un verdict non opposable** et failli faire
@@ -63,8 +66,8 @@ Ce que cela a coûté :
   cible de 100, à comparer aux 442 ms de l'étape 4 « message froid ». Les deux
   étapes mesuraient la même chose ; l'égalité n'était pas un symptôme, c'était
   la signature de l'artefact.
-- **Une US applicative a été écrite sur ce chiffre** (task-222, version
-  initiale) et son correctif serait allé jusqu'au merge : il faisait écrire le
+- **Une US applicative a été écrite sur ce chiffre** (task-222, depuis
+  **annulée**) et son correctif serait allé jusqu'au merge : il faisait écrire le
   contenu à la lecture, donc écartait le message de l'analyse ⇒ **CDA jamais
   décodé, aucun document médical, aucun rattachement patient**, et le poste du
   médecin recevait l'annonce « analyse terminée ». Le défaut a été arrêté en
@@ -73,7 +76,7 @@ Ce que cela a coûté :
   pièces jointes sont des octets mis en cache, sans sémantique d'analyse. Ce
   faux contre-exemple a renforcé la mauvaise lecture.
 
-Levier de vérification désormais disponible (livré par task-222) : le compteur
+Levier de vérification (⚠️ **livré par task-225**, pas encore disponible) : le compteur
 `mssante_mail_server_solicitations_total{operation="GetEmailContent"}`. **Une
 étape annoncée « servie base » qui incrémente ce compteur ne mesure pas ce
 qu'elle annonce.**
@@ -189,7 +192,7 @@ facteur cinq** — un résultat qu'on a failli ne pas avoir.
 
 - Le rapport de tir lui-même (`report.py`) : ses chiffres sont justes, en
   millisecondes, correctement agrégés — il n'est pas en cause.
-- Les correctifs applicatifs désignés par la campagne (**task-222**, **task-223**).
+- Les correctifs applicatifs désignés par la campagne (**task-223**) ; **task-222 est annulée** et son instrumentation est portée par **task-225**.
 - Toute nouvelle campagne de mesure : cette US répare l'instrument, elle ne
   mesure rien.
 

@@ -4,12 +4,50 @@
 **Task** : task-222 — « Ouvrir un message déjà analysé ne doit plus repayer le trajet vers le serveur de messagerie »
 **Épic** : E015
 **Soulevé par** : l'humain, en relecture du correctif proposé
-**État** : ✅ **arbitré le 2026-08-04** — voir la décision ci-dessous. Une question
-reste ouverte (Q3).
+**État** : 🚫 **task-222 ANNULÉE le 2026-08-04.** Ce fichier reste le dossier
+d'instruction du défaut évité — il ne décrit plus une US en cours.
 
 ---
 
-## ✅ Décision humaine du 2026-08-04
+## 🚫 Décision finale du 2026-08-04 — task-222 annulée
+
+Deux décisions successives le même jour :
+
+1. **« recadre task-222 sur la mesure et confie le harnais à task-224 »** —
+   appliquée (recadrage de la US, défaut 5 ajouté à task-224).
+2. **« je souhaite supprimer 222, la branche et la PR ; à la place crée une
+   nouvelle tâche pour ajouter l'instrumentation »** — **c'est la décision qui
+   prévaut**.
+
+**Motif de l'annulation** : trop de modifications non maîtrisées sur une seule
+branche — un correctif applicatif retiré, une passe de simplification, un
+refactoring du chemin d'ouverture et l'instrumentation. Un périmètre qu'on ne
+remet pas sous contrôle en le rapiéçant, même après le revert.
+
+**Exécuté** : PR `api-mail` #150 **fermée sans merge** ; branches
+`fix/task-222-open-enriched-mail-no-imap` **supprimées** (locales et distantes)
+sur `api-mail` et `dtos-mss` ; task déplacée en
+`tasks/archived/archived-task-222.md` avec bandeau d'annulation. **Aucune ligne
+de task-222 n'est sur `develop`.**
+
+**Repris** :
+
+| Acquis | Repris par |
+|---|---|
+| Le décompte des sollicitations du serveur | **task-225** — écrite **strictement bornée** : son « Hors scope » interdit explicitement tout correctif, toute modification du dépôt, toute passe de simplification, et son DOD plafonne le diff (2 fichiers neufs + 4 touchés) |
+| L'artefact de mesure de l'étape 3 | **task-224**, défaut 5, priorité 3 → 2 |
+| Les garde-fous contre le défaut évité | **task-225**, points 4 et 5 du contenu attendu |
+
+> ### La leçon de forme, et elle est pour moi
+>
+> Le correctif dangereux n'est pas le seul problème : c'est le **mélange** qui a
+> rendu la branche inévaluable. Un correctif applicatif, une instrumentation, un
+> refactoring et une passe qualité sur la même branche, et plus rien n'est
+> jugeable séparément — ni par une revue, ni par un revert propre. task-225 est
+> écrite avec un contrat de périmètre explicite pour cette raison, et un critère
+> de DOD qui plafonne la taille du diff.
+
+### Décisions de cadrage antérieures (conservées pour la traçabilité)
 
 > « recadre task-222 sur la mesure et confie le harnais à task-224 »
 

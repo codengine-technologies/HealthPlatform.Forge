@@ -1,4 +1,33 @@
-# task-222 — Savoir combien de fois le serveur de messagerie est sollicité
+# task-222 — ANNULÉE
+
+> ## 🚫 US ANNULÉE le 2026-08-04 — décision humaine
+>
+> **Motif** : trop de modifications non maîtrisées sur la branche. Elle mêlait un
+> correctif applicatif retiré, une passe de simplification, un refactoring du
+> chemin d'ouverture et l'instrumentation — un périmètre qu'on ne remet pas sous
+> contrôle en le rapiéçant.
+>
+> **Ce qui a été défait** : PR `api-mail` #150 **fermée sans merge** ; branches
+> `fix/task-222-open-enriched-mail-no-imap` **supprimées** sur `api-mail` et
+> `dtos-mss` (locales et distantes). **Aucune ligne de cette US n'est sur
+> `develop`.**
+>
+> **Ce qui est repris ailleurs** — rien de ce qui avait de la valeur n'est perdu :
+>
+> | Acquis | Repris par |
+> |---|---|
+> | Le décompte des sollicitations du serveur de messagerie | **task-225**, écrite strictement bornée à l'instrumentation |
+> | L'artefact de mesure de l'étape 3 du parcours `journey` | **task-224**, défaut 5, priorité relevée 3 → 2 |
+> | L'analyse du défaut évité (`MailContents` = marqueur d'enrichissement) | `questions/task-222.md` + garde-fous à reposer par task-225 |
+>
+> **Ce fichier est conservé comme dossier d'instruction**, pas comme travail
+> livrable. Il vaut pour une seule chose : montrer comment une cause cohérente
+> et fausse s'est bâtie sur un artefact de mesure, et jusqu'où elle est allée
+> avant d'être arrêtée en relecture humaine. Tout ce qu'il affirme sur le
+> correctif est faux — voir la section de correction en fin de fichier.
+
+---
+
 
 **Repos**: api-mail
 **Epic**: E015
