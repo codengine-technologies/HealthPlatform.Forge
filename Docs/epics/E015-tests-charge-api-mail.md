@@ -2,7 +2,7 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.19
+> **Version** : 1.20
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
 > **Dernière mise à jour** : 2026-08-03
@@ -30,6 +30,7 @@
   - [Ce que le banc sait désormais dire (29 juillet 2026)](#ce-que-le-banc-sait-désormais-dire-29-juillet-2026)
   - [La capacité est enfin chiffrée, et sa cause nommée (29-31 juillet 2026)](#la-capacité-est-enfin-chiffrée-et-sa-cause-nommée-29-31-juillet-2026)
   - [Le banc simule enfin des médecins, et non des requêtes (3 août 2026)](#le-banc-simule-enfin-des-médecins-et-non-des-requêtes-3-août-2026)
+  - [La mesure ne se déforme plus elle-même au-delà de 500 praticiens (3 août 2026)](#la-mesure-ne-se-déforme-plus-elle-même-au-delà-de-500-praticiens-3-août-2026)
   - [Trois mesures à reprendre](#trois-mesures-à-reprendre)
 - [État de couverture (2026-08-03)](#état-de-couverture-2026-08-03)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
@@ -98,6 +99,7 @@ baisses de performance avant qu'elles n'atteignent les utilisateurs**.
 | Envoyer un message n'attend plus la fin d'une analyse en cours | Rendre l'envoi immédiat même quand la boîte du praticien est occupée à analyser des documents reçus : l'archivage du message envoyé passait derrière ce travail de fond | task-213, task-215 | 🔴 **Mesuré : le correctif fonctionne mais coûte plus qu'il ne rapporte — retrait décidé** (task-216) |
 | L'instrument sait enfin ce qu'il ne mesure pas | Mesurer les vingt points d'attente de la boîte du praticien, et non le seul qui l'était : le tableau censé désigner le coupable d'un ralentissement ne pouvait nommer que celui-là | task-214 | 🟡 Livré, en attente d'intégration |
 | Mesure en nombre de médecins servis | Poser la question qui décide de l'accueil de nouveaux praticiens — **combien de médecins la messagerie sert-elle en tenant ses temps de réponse** — en simulant des médecins qui déroulent leur journée réelle (arriver sur son tableau de bord, ouvrir sa boîte, lire, supprimer, télécharger une pièce jointe, envoyer) au lieu d'un mélange d'actions isolées ; et lire, à chaque palier de population, **quelle étape du travail du médecin souffre la première** | task-220 | 🟡 Livré, en attente d'intégration |
+| Le banc ne prend plus les ressources du service qu'il mesure | Mesurer la messagerie au-delà de cinq cents praticiens sans que les serveurs de messagerie simulés — désormais installés sur une infrastructure séparée — ne lui prennent ses ressources, et lire leur coût propre séparément du sien | task-221 | 🟡 Livré, en attente d'intégration |
 
 ---
 
@@ -106,6 +108,7 @@ baisses de performance avant qu'elles n'atteignent les utilisateurs**.
 ```mermaid
 flowchart LR
     A[Banc d'essai isolé<br/>task-173] --> B[Mesure du traitement<br/>des documents médicaux<br/>task-195] --> C[Campagnes de mesure<br/>task-174] --> D[Mesure en nombre<br/>de médecins servis<br/>task-220]
+    E[Serveurs de messagerie simulés<br/>hors de la machine de mesure<br/>task-221] --> D
 ```
 
 Le banc d'essai doit exister avant les campagnes de mesure : on met d'abord en
@@ -146,6 +149,13 @@ réflexion d'un humain. La charge n'est plus imposée de l'extérieur : elle
 **résulte** du nombre de médecins présents. On fait alors monter la population
 par paliers, et à chaque palier on lit ce que chaque étape du parcours coûte au
 praticien (task-220).
+
+Cette montée en population avait toutefois une limite qui ne venait pas de la
+messagerie mais du banc lui-même : les serveurs de messagerie simulés
+partageaient la machine du service qu'ils servaient à mesurer, et lui prenaient
+d'autant plus de ressources que la population grandissait. Ils sont désormais
+installés sur une infrastructure séparée, ce qui rend la mesure honnête aux
+paliers élevés et permet de lire leur coût propre à part (task-221).
 
 ---
 
@@ -196,9 +206,10 @@ praticien (task-220).
 - [ ] Le **nombre de médecins** que la messagerie sert en tenant ses temps de
       réponse est chiffré par une campagne. **Non atteint** : l'instrument qui
       pose la question et les temps de réponse attendus par étape du parcours
-      sont en place (task-220) ; la campagne de certification doit se tenir au
-      rythme réel d'un humain sur au moins une demi-heure, et attend que les
-      serveurs de messagerie simulés quittent la machine de mesure (task-221).
+      sont en place (task-220), et les serveurs de messagerie simulés ont quitté
+      la machine de mesure, de sorte qu'un palier élevé peut être mesuré sans
+      être faussé par le banc (task-221) ; la campagne de certification, au
+      rythme réel d'un humain sur au moins une demi-heure, reste à conduire.
 
 ---
 
@@ -490,8 +501,72 @@ chiffres qui n'ont pas le même sens.
 > ⚠️ **La campagne qui certifiera un palier de population reste à conduire.**
 > Elle exige le rythme réel d'un humain sur au moins une demi-heure, et une
 > population élevée — donc que les serveurs de messagerie simulés quittent la
-> machine de mesure (task-221), faute de quoi c'est le banc, et non la
-> messagerie, qui plafonnerait.
+> machine de mesure, faute de quoi c'est le banc, et non la messagerie, qui
+> plafonnerait. Ce prérequis est levé depuis le 3 août (task-221, ci-dessous).
+
+### La mesure ne se déforme plus elle-même au-delà de 500 praticiens (3 août 2026)
+
+Un banc de mesure doit rester extérieur à ce qu'il mesure. Ce n'était pas le
+cas : les serveurs de messagerie simulés — ceux qui tiennent la place des
+serveurs MSSanté le temps d'une campagne — tournaient sur la machine même qui
+héberge la messagerie, et lui prenaient ses ressources. Le coût en avait été
+mesuré : à cinq cents praticiens, le serveur de messagerie simulé consommait à
+lui seul l'équivalent de deux cœurs et demi de la machine, contre une part
+négligeable à deux cents. Surtout, ce coût ne suit pas la charge : il suit le
+**nombre de boîtes** et le volume de messages qu'elles contiennent. Il croît donc
+mécaniquement avec la population — exactement l'axe que les campagnes cherchent à
+explorer. Tout chiffre annoncé au-delà de cinq cents praticiens aurait ainsi été
+faussé de façon connue d'avance, sans qu'on puisse même dire dans quelle
+proportion : la consommation du banc et celle de la messagerie se mélangeaient
+dans la même enveloppe.
+
+Les serveurs de messagerie simulés ont donc été installés sur une infrastructure
+séparée, hébergée par l'entreprise. Ne restent avec la messagerie que les
+composants qui, en production, font réellement partie de la plateforme — la base
+de données et son multiplexeur de connexions. Deux gains : la machine de mesure
+est rendue à la messagerie, et la consommation du serveur de messagerie simulé se
+lit **séparément** de la sienne, ce que le banc n'avait jamais su faire.
+
+La bascule a été vérifiée le 3 août sur l'infrastructure réelle : les vingt
+boîtes de test ont été injectées en **49 secondes** — plus vite qu'en local —, et
+la campagne de contrôle a servi plus de sept mille demandes **sans une seule
+erreur**, l'extraction des documents médicaux étant réellement exercée et non
+court-circuitée. Le poste de mesure et cette infrastructure étant séparés par un
+réseau, le temps d'aller-retour a été mesuré (environ cinq millisecondes) puis
+**retranché** de la latence simulée, afin que la latence totale reste les cent
+millisecondes du contrat de mesure. Un défaut a été trouvé à cette occasion et
+corrigé : l'outil de tir réimposait cent millisecondes de son côté, ce qui aurait
+porté le total au-delà de la cible.
+
+Le risque était nommé d'avance : les boîtes reposent maintenant sur un stockage
+partagé par le réseau, moins prompt qu'un disque local quand il faut manipuler
+des dizaines de milliers de petits fichiers. Il a été mesuré, pas supposé, en
+rejouant les mêmes opérations de part et d'autre.
+
+| Opération du banc | Sur l'infrastructure séparée | Référence sur la machine locale | Écart |
+|---|---|---|---|
+| Extraire les documents médicaux d'un lot de dix comptes-rendus | 6,3 à 6,6 s | 4,3 s | une fois et demie |
+| Afficher la liste des dossiers d'une boîte jamais ouverte | 1,05 à 1,2 s | 0,7 à 1,05 s | quasi nul |
+| Première lecture d'un message | 0,5 à 1,2 s | environ 0,9 s | nul |
+
+La toute première extraction, à 10,2 secondes, paie la constitution initiale des
+index du serveur simulé : elle est écartée du verdict et consignée comme telle.
+Aucun chemin ne dépasse le seuil de dégradation fixé avant la mesure — le
+stockage partagé est donc **retenu**, le surcoût d'une fois et demie sur
+l'extraction des documents médicaux étant assumé et documenté.
+
+Deux garanties complètent le tableau. La configuration du banc bascule d'un mode
+à l'autre par un seul réglage, et l'absence de ce réglage laisse le comportement
+antérieur **strictement inchangé** — les deux sens ont été vérifiés. Et le
+stockage partagé ne reçoit que des données synthétiques : boîtes de test et
+comptes-rendus d'un jeu d'essai, sur un volume dédié au banc, nommé comme tel et
+effaçable d'un geste. Cette infrastructure n'est pas agréée pour l'hébergement de
+données de santé, et aucune donnée réelle n'y transite.
+
+> ⚠️ Ce que cette étape lève est un plafond **du banc**, pas un plafond de la
+> messagerie : elle rend possible la campagne de certification d'un palier de
+> population, qui est la prochaine étape. La réserve de lecture s'allège sans
+> disparaître — l'outil de tir, lui, reste sur la machine de mesure.
 
 ### Trois mesures à reprendre
 
@@ -530,9 +605,10 @@ chiffres qui n'ont pas le même sens.
 | L'assistance IA ne se coupe plus toute seule au redémarrage | 🟡 Corrigé, mesure de confirmation à conduire | Les fonctions d'analyse automatique des documents peuvent être activées ou coupées à distance, sans redéploiement. Le service qui porte ces interrupteurs peut être momentanément indisponible : dans ce cas, chaque instance continuait de fonctionner sur le dernier réglage qu'elle avait vu — sauf **une instance qui vient de démarrer**, qui n'a rien vu et se rabattait alors sur « tout éteint ». Concrètement, un simple redémarrage tombant pendant une indisponibilité **coupait l'assistance IA sans que personne ne le demande, ni ne le voie**. Les instances partagent désormais le dernier réglage connu : celle qui démarre hérite de l'état du groupe au lieu de repartir aveugle. Ce partage est **volontairement facultatif** — s'il est lui-même indisponible, on retombe exactement sur le comportement précédent, sans nouvelle panne possible. En contrepartie, la prise en compte d'un changement de réglage passe de trente secondes à **cinq minutes** : c'est l'arbitrage assumé de cette correction, moins de réactivité contre plus de robustesse. **Reste dû** : la campagne de confirmation | task-201 |
 | Envoyer un message n'attend plus la fin d'une analyse en cours | 🔴 **Mesuré : retrait décidé** | À la réception d'un document, la messagerie l'analyse en tâche de fond — un travail de plusieurs secondes. Pendant ce temps, **toutes** les autres opérations sur la boîte du praticien passaient derrière, y compris le classement du message qu'il vient d'envoyer. Résultat mesuré : un envoi sur vingt dépassait **trente secondes**, le pire cas frôlant la minute. La boîte dispose désormais d'un **second accès réservé aux écritures** : classer un message envoyé, ou enregistrer un brouillon, ne fait plus la queue derrière l'analyse en cours. La règle qui protège la boîte — une seule commande à la fois sur un même accès — est **conservée telle quelle** ; c'est un second accès qui est ouvert, pas une règle qui est levée. **La campagne de confirmation a été conduite le 1ᵉʳ août, et elle ne tranche pas.** Ce qu'elle établit : l'envoi s'améliore, mais modestement — le pire cas passe de 35 à 29 secondes, là où l'objectif fixé était de descendre sous 10 —, et cette amélioration est **payée par la consultation**, qui se dégrade de 60 à 80 %. Ce qu'elle n'établit pas : le second accès ouvre une deuxième connexion par praticien, soit 2 500 de plus sur le banc, et sur ce poste l'infrastructure de test partage le processeur du service — la dégradation observée peut donc venir du banc autant que du correctif. Ce qu'elle ne pouvait pas établir du tout : le compte rendu conclut « aucun archivage sur la période », or l'archivage a bien eu lieu — il n'était **pas mesuré**, dix-neuf des vingt points d'attente de la boîte échappant à l'instrument (task-214). **Reste dû** : réparer la mesure, puis rejouer. La reprise devra aussi démêler ce qui, dans le ralentissement observé, revient à cette attente et ce qui revient au passage de 200 à 500 praticiens — les deux effets sont encore confondus | task-213, task-214 |
 | L'instrument sait enfin ce qu'il ne mesure pas | 🟡 Livré, en attente d'intégration | Le compte rendu d'une campagne désignait l'opération qui monopolise la boîte du praticien. Il ne pouvait pas : sur les vingt points d'attente que compte la boîte, **un seul était instrumenté** — et c'est donc le seul que le tableau nommait, quelle que soit la campagne. Un tableau qui se lit comme un verdict alors qu'il est un échantillon. La conséquence a été concrète : le compte rendu du 1ᵉʳ août affirme « aucun archivage sur la période » alors que l'archivage tournait, ce qui a fait rendre à la vérification du correctif d'envoi un verdict qui n'en jugeait que le coût. Les vingt points sont désormais mesurés, il n'existe plus **qu'une seule façon** de prendre ce verrou — la seconde a été supprimée, pas corrigée —, et le compte rendu distingue trois situations là où il n'en voyait qu'une : instrument absent, mesure à zéro, et le cas qu'il taisait, « je ne peux pas trancher », assorti du contrôle qui tranche. On sait par ailleurs compter séparément ce qui passe par l'accès en écriture, ce qui rendra enfin attribuable le doublement de connexions qu'il coûte | task-214 |
-| Mesure en nombre de médecins servis | 🟡 Livré, en attente d'intégration | Le banc rejoue la journée d'un médecin — tableau de bord, boîte de réception, lecture, suppression, téléchargement d'une pièce jointe, envoi — dans une séquence **relevée dans l'application réelle** écran par écran, chaque sollicitation du service étant consignée avec son origine : rien n'y est supposé. Entre deux gestes, un temps de réflexion tiré au hasard dans une plage réaliste propre à chaque étape, car à cadence fixe des centaines de médecins simulés se synchronisent et produisent des vagues qui n'existent pas dans la vraie vie. La charge n'est plus imposée de l'extérieur : elle **résulte** du nombre de médecins, et l'on fait monter la population par paliers. Quatre gestes quotidiens jamais exercés jusqu'ici le sont : supprimer, télécharger une pièce jointe, marquer lu, arriver sur son tableau de bord — le téléchargement ouvrant l'axe du **volume transféré**, qu'aucune campagne ne mesurait et dont l'absence pouvait faire passer une limite de débit réseau pour une lenteur de la messagerie. Les temps de réponse attendus sont énoncés **par étape du parcours** (les huit étapes, avec leurs conditions de mesure), et le rapport rend son verdict étape par étape et palier par palier. Trois engagements sont déjà connus comme non tenus — boîte de réception, envoi, recherche : la grille désigne le programme d'optimisation, elle ne le réalise pas. Campagne de mise au point conduite le 3 août (cinq puis dix médecins, rythme accéléré) : 3 294 demandes, **aucune erreur, aucun parcours interrompu**, charge croissant avec la population, coûts résidents suivant le nombre de médecins, volume de pièces jointes affiché. **Reste dû** : la campagne de certification d'un palier, qui exige le rythme réel d'un humain sur au moins une demi-heure et une population élevée — donc que les serveurs de messagerie simulés quittent la machine de mesure (task-221) | task-220 |
+| Mesure en nombre de médecins servis | 🟡 Livré, en attente d'intégration | Le banc rejoue la journée d'un médecin — tableau de bord, boîte de réception, lecture, suppression, téléchargement d'une pièce jointe, envoi — dans une séquence **relevée dans l'application réelle** écran par écran, chaque sollicitation du service étant consignée avec son origine : rien n'y est supposé. Entre deux gestes, un temps de réflexion tiré au hasard dans une plage réaliste propre à chaque étape, car à cadence fixe des centaines de médecins simulés se synchronisent et produisent des vagues qui n'existent pas dans la vraie vie. La charge n'est plus imposée de l'extérieur : elle **résulte** du nombre de médecins, et l'on fait monter la population par paliers. Quatre gestes quotidiens jamais exercés jusqu'ici le sont : supprimer, télécharger une pièce jointe, marquer lu, arriver sur son tableau de bord — le téléchargement ouvrant l'axe du **volume transféré**, qu'aucune campagne ne mesurait et dont l'absence pouvait faire passer une limite de débit réseau pour une lenteur de la messagerie. Les temps de réponse attendus sont énoncés **par étape du parcours** (les huit étapes, avec leurs conditions de mesure), et le rapport rend son verdict étape par étape et palier par palier. Trois engagements sont déjà connus comme non tenus — boîte de réception, envoi, recherche : la grille désigne le programme d'optimisation, elle ne le réalise pas. Campagne de mise au point conduite le 3 août (cinq puis dix médecins, rythme accéléré) : 3 294 demandes, **aucune erreur, aucun parcours interrompu**, charge croissant avec la population, coûts résidents suivant le nombre de médecins, volume de pièces jointes affiché. **Reste dû** : la campagne de certification d'un palier, qui exige le rythme réel d'un humain sur au moins une demi-heure et une population élevée — prérequis désormais levé (task-221) | task-220 |
+| Le banc ne prend plus les ressources du service qu'il mesure | 🟡 Livré, en attente d'intégration | Les serveurs de messagerie simulés ont quitté la machine de mesure pour une infrastructure séparée de l'entreprise. Le motif est chiffré : à cinq cents praticiens ils prenaient à la messagerie l'équivalent de deux cœurs et demi, et ce coût suit le **nombre de boîtes** plutôt que la charge — il croît donc avec la population, l'axe même que les campagnes explorent. Leur consommation se lit maintenant **séparément** de celle de la messagerie, ce que le banc n'avait jamais su faire. Vérifié le 3 août sur l'infrastructure réelle : vingt boîtes injectées en 49 secondes, campagne de contrôle sans aucune erreur sur plus de sept mille demandes, extraction des documents médicaux réellement exercée, et temps d'aller-retour du réseau mesuré puis retranché de la latence simulée pour que le total reste conforme au contrat de mesure. Le risque du stockage partagé par le réseau a été **mesuré et non supposé** : aucun chemin ne dépasse le seuil de dégradation fixé d'avance (au plus une fois et demie sur l'extraction des documents médicaux, quasi nul sur la consultation et la lecture), verdict consigné. La bascule tient à un réglage unique, et son absence laisse le comportement antérieur strictement inchangé — les deux sens vérifiés. Seules des données synthétiques transitent sur le volume dédié au banc. **Reste dû** : la campagne de certification d'un palier de population, que cette étape rend possible | task-221 |
 
-**Couverture EPIC consolidée : 17 features livrées sur 17** (les dix-sept
+**Couverture EPIC consolidée : 18 features livrées sur 18** (les dix-huit
 attendent leur intégration). L'EPIC est **fonctionnellement complet** : le banc est
 opérationnel, il mesure la chaîne complète de traitement des documents médicaux,
 les campagnes de mesure sont outillées avec une référence opposable, la campagne à
@@ -542,7 +618,9 @@ chantiers de robustesse, livrés (task-199, task-200) —, l'instrument de mesur
 sait dire quand son propre chiffre n'est pas exploitable (task-203), et il sait
 désormais poser la question qui décide de l'accueil de nouveaux praticiens :
 combien de médecins la messagerie sert-elle en tenant ses temps de réponse
-(task-220).
+(task-220). Cette question peut désormais être posée à une population élevée sans
+que le banc ne fausse la réponse : les serveurs de messagerie simulés ont quitté
+la machine de mesure (task-221).
 
 Quatre réserves à porter au bilan, sans quoi il serait trompeur :
 
@@ -571,11 +649,12 @@ Quatre réserves à porter au bilan, sans quoi il serait trompeur :
   sa réponse.** Le banc sait simuler des médecins qui déroulent leur journée
   réelle et confronter chaque étape de leur travail à un temps de réponse attendu
   (task-220). La campagne qui certifiera un palier de population exige le rythme
-  réel d'un humain sur au moins une demi-heure, donc une population élevée : elle
-  attend que les serveurs de messagerie simulés quittent la machine de mesure
-  (task-221), faute de quoi c'est le banc, et non la messagerie, qui
-  plafonnerait. Un chiffre obtenu à rythme accéléré désigne un goulet, il ne
-  certifie pas un palier.
+  réel d'un humain sur au moins une demi-heure, donc une population élevée : ce
+  qui l'empêchait est levé, les serveurs de messagerie simulés ayant quitté la
+  machine de mesure, qui autrement aurait plafonné avant la messagerie
+  (task-221). La campagne peut donc être conduite, et c'est la prochaine étape.
+  Un chiffre obtenu à rythme accéléré désigne un goulet, il ne certifie pas un
+  palier.
 
 ---
 
@@ -656,6 +735,22 @@ Quatre réserves à porter au bilan, sans quoi il serait trompeur :
   rapport rend son verdict étape par étape et palier par palier. Les campagnes à
   charge imposée subsistent comme garde anti-régression ; les deux familles ne se
   comparent pas et l'index des campagnes les distingue. (task-220)
+
+- v1.20 — **Le banc ne prend plus les ressources du service qu'il mesure.** Les
+  serveurs de messagerie simulés, qui tiennent la place des serveurs MSSanté le
+  temps d'une campagne, tournaient sur la machine même qui héberge la messagerie :
+  à cinq cents praticiens ils lui prenaient l'équivalent de deux cœurs et demi, et
+  ce coût suit le nombre de boîtes plutôt que la charge — il croît donc avec la
+  population, l'axe même que les campagnes explorent. Ils sont désormais installés
+  sur une infrastructure séparée ; ne restent avec la messagerie que les
+  composants qui, en production, font partie de la plateforme. Deux gains : la
+  mesure ne se déforme plus elle-même aux paliers élevés, et la consommation du
+  serveur simulé se lit **séparément** de celle de la messagerie. Le risque du
+  stockage partagé par le réseau a été mesuré et non supposé : écart contenu dans
+  les limites fixées d'avance, verdict consigné, surcoût assumé sur l'extraction
+  des documents médicaux. La bascule tient à un réglage unique dont l'absence
+  laisse le comportement antérieur inchangé, et seules des données synthétiques
+  transitent sur ce stockage. (task-221)
 
 **Ce que la mesure a appris sur le service**
 
