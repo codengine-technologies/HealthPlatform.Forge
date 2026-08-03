@@ -325,3 +325,28 @@ premier.
 
 - **Étape suivante** : `/forge-simplify task-225` — qui devra **skipper**, la
   task interdisant explicitement toute passe de simplification sur ces fichiers.
+
+## Simplify log
+
+**Verdict : skip — et pour deux raisons qui se cumulent.**
+
+**1. La task l'interdit.** Son « Hors scope » nomme explicitement « toute passe
+de simplification ou de refactoring opportuniste sur les fichiers touchés ».
+C'est le contrat de périmètre écrit après l'annulation de task-222, dont la
+branche mêlait justement une passe qualité à un correctif et à un refactoring —
+au point de devenir inévaluable. Passer outre ici viderait de son sens la
+raison d'être de cette task.
+
+**2. Il n'y a rien à simplifier.** Vérifié plutôt que supposé, sur les trois
+points où un examen était légitime :
+
+| Point examiné | Conclusion |
+|---|---|
+| `MailServerSolicitationRecorder` | déjà sans verrou (`ConcurrentQueue`), trois membres en expressions. Rien à retirer. |
+| Les 5 appels `Record(MailServerCommands.X, GetEmailContentOperation)` | un helper privé économiserait ~20 caractères par ligne mais **masquerait la famille d'opération**, qui est précisément l'information utile et ce sur quoi on grep. L'explicite gagne — et c'est le même arbitrage que sur la branche annulée, tranché pareil. |
+| `ReadPartAsync` (fonction locale) | **réduit** déjà le code : deux ternaires de trois lignes chacune deviennent deux appels d'une ligne, et c'est ce qui permet de compter chaque partie de corps. La retirer rallongerait. |
+
+Aucun repo n'est rollback, la chaîne se poursuit. `dtos-mss` n'aurait de toute
+façon pas été éligible (porteur de contrat), et sa branche est vide.
+
+- **Étape suivante** : `/sonar task-225` (api-mail touché).
