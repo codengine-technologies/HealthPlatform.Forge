@@ -352,3 +352,35 @@ large : la bande **chaude** matérialise elle aussi du `MailContent` maintenant.
 Signalé, non modifié — l'outillage de mesure est task-224.
 
 - **Étape suivante** : `/forge-simplify task-222`
+
+## Simplify log
+
+- **Repos éligibles touchés** : `api-mail` seul. `dtos-mss` : porteur de contrat
+  → jamais simplifié (et sa branche est vide de toute façon). Aucun frontend
+  touché.
+- **Commit** : `ee095f1` refactor(mail): passe qualité sur le code frais
+- **Re-validation** : build 0 erreur / 0 avertissement ; **3 399 tests verts,
+  0 échec** (filet anti-régression — la passe qualité ne change pas le
+  comportement). Aucun rollback.
+
+### Ce qui a été simplifié
+
+| Axe | Fichier | Avant → après |
+|---|---|---|
+| Simplification | `MailServerSolicitationRecorder` | `lock` + `List<string>` + champ `_gate` → `ConcurrentQueue<string>`. Le verrou manuel et le champ de garde disparaissent, trois membres deviennent des expressions, la garantie de ne perdre aucun incrément est la même. |
+| Réutilisation + efficacité | `MailRepository.SaveMailContentAsync` | l'existence d'un contenu se lisait dans une **seconde** requête ; elle se lit désormais dans la **même** que le message, via la projection légère `Select(m => new { m.Id, ContentCount = m.MailContents.Count })` — l'idiome déjà employé par `TryResolveExistingMailAsync` juste au-dessus dans ce fichier. **2 requêtes au lieu de 3** sur un chemin appelé à chaque ouverture froide. |
+
+### Ce qui a été examiné et laissé tel quel
+
+- **Les 6 appels `Record(MailServerCommands.X, GetEmailContentOperation)`** dans
+  `ImapService` : un helper privé économiserait ~20 caractères par ligne mais
+  masquerait la famille d'opération, qui est précisément l'information utile et
+  ce sur quoi on grep. L'explicite gagne — pas de churn.
+- **Le découpage `GetEmailContentAsync` / `…CoreAsync`** : le `try/finally` du
+  premier existe pour n'apposer l'étiquette de trace qu'en **un seul point**
+  malgré les huit retours du chemin. Le fusionner rendrait les huit retours
+  responsables du marquage — l'inverse d'une simplification.
+- **`HasDisplayableContent`** : quatre conditions, chacune nommée dans la
+  documentation par ce qu'elle protège. Rien à factoriser sans perdre le
+  pourquoi.
+- **Étape suivante** : `/sonar task-222` (api-mail touché).
