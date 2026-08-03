@@ -241,3 +241,17 @@ tests/loadtest-k6/run.sh folders
 - **Item 6** (sortie humaine, pendant un filet de trafic de 5 praticiens) : `doveadm who` via `kubectl exec` montre les 5 identités, **2 sessions IMAP chacune** (une seule à l'instant t pour loadtest-5) — première observation sur cluster du plancher `praticiens × 2` (voie de lecture + voie d'écriture, task-213), IP source unique (NAT pfSense) → le `mail_max_userip_connections=100` de la ConfigMap est bien la bonne valeur.
 - **Item 1** (sortie humaine, depuis le clone DevOps sur k8s-x2c) : `kubectl apply -k . --dry-run=client` → 10 ressources `configured (dry run)`, zéro erreur.
 - **DOD : 10/10.** Chaîne reprise : `/forge-simplify` → `/sonar` → `/review`.
+
+## Simplify log
+
+- Repos passés : api-mail (seul éligible — DevOps exclu de la passe, dtos-mss sans commit)
+- Applied & committed : api-mail : 6 fichiers (`018057a`) — 4 agents de revue, ~8 findings appliqués :
+  - `LATENCY_MS` parsé via le `num()` exporté de config.js (la 4ᵉ copie du parseur d'env était exactement ce que l'export de task-220 interdit)
+  - `MSS_LOADTEST_MAIL_HOST` lu une fois dans config.js (const de module)
+  - Ports d'écoute du pod Toxiproxy en `const` C# — l'invariant « ne bouge jamais avec `--mail-host` » tenu par le compilateur ; défauts des ports joints référencés dessus
+  - **Les 9 appels `Parse` des tests passent par la surcharge déterministe** — les 7 tests préexistants lisaient le vrai env depuis l'ajout du défaut et auraient mesuré le poste en campagne distante (trouvé par l'axe reuse)
+  - AppHost : variable inlinée, commentaire dédupliqué
+- No change : manifests DevOps (hors passe), README, skill
+- Rolled back : aucun — Build 0 erreur, 3 285 tests verts, selftest + k6 inspect OK
+- Skipped (consignés, non retenus) : `CFG.latencyMsOverride` (perdrait la distinction absente/0), constantes locales supplémentaires (couvertes par les const d'écoute), imbrication des deux `if` AppHost (réindentation sans gain)
+- Next step : /sonar task-221 (api-mail touché — 2 fichiers C# hors périmètre scanner près, AppHost/seed/tests sont DANS les projets MSBuild)
