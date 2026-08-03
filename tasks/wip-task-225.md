@@ -362,3 +362,89 @@ n'est touché.
 | `/lint-angular` | **skip** | `Client/Angular` est sur `feature/nova-rewriting-mss` avec deux `environments/environment.ts` modifiés non commités. **Travaux en cours de l'humain, pas de task-225** : la forge n'a écrit aucune ligne d'Angular. Lancer la passe lint retoucherait ce WIP — on s'abstient et on le dit. |
 | `/lint-mobile` | **skip** | `Client/Mobile` sur `develop`, arbre propre, aucun diff. Non listé dans `**Repos**:`, donc aucune branche créée par `/start`. |
 | `/verify-visual` | **skip** | Aucun écran mobile touché : rien à capturer. |
+
+## Sonar log
+
+Mode A (chaîné), **1 itération** — aucune seconde n'était nécessaire, voir
+ci-dessous. Projet `healthplatform`, branche
+`feat/task-225-mail-server-solicitation-count`.
+
+### KPIs qualité — baseline → final
+
+| Métrique | Baseline (avant task-225) | Final | Cible LT |
+|---|---|---|---|
+| Bugs | 1 | **1** | 0 |
+| Vulnerabilities | 0 | **0** | 0 ✓ |
+| Security Hotspots (à revoir) | 1 | **1** | 0 |
+| Code Smells | 18 | **18** | — |
+| Coverage | 86,9 % | **86,9 %** | ≥ 95 % |
+| New coverage | — | **86,9 %** (seuil 80 % ✓) | ≥ 80 % |
+| Duplication | 0,5 % | **0,5 %** | — |
+| New duplication | — | **0,08 %** (seuil 3 % ✓) | ≤ 3 % |
+| Reliability rating | C | **C** | A |
+| Security rating | A | **A** | A ✓ |
+| Maintainability rating | A | **A** | A ✓ |
+| ncloc | 41 266 | 41 369 | — |
+| **Quality Gate** | ERROR | **ERROR** | OK |
+
+### Zero-new-debt : tenu du premier coup
+
+**Zéro finding new-code attribuable à task-225.** Aucune itération de correction
+n'a été nécessaire — c'est la première fois sur cette EPIC, et c'est
+vraisemblablement l'effet de la lecture préalable de `conventions/csharp.md`
+combinée à un périmètre étroit : le contrôle `awk` sur les 150 caractères (règle
+`S103`, 5 occurrences historiques) a été passé **avant** le commit, et l'entrée
+`S125` apprise sur la branche annulée de task-222 a été appliquée d'emblée — le
+contrat de `IMailRepository` est documenté en commentaire `//` **de mise en
+garde**, pas en pseudo-signature, donc rien qui ressemble à du code commenté.
+
+### Le Quality Gate est ERROR, et aucune de ses causes n'est de task-225
+
+Deux conditions en échec, à dire nettement plutôt que de laisser la couleur
+parler :
+
+- `new_violations = 18 > 0`
+- `new_security_hotspots_reviewed = 83,3 % < 100 %`
+
+Provenance des 18, vérifiée une par une :
+
+| Origine | Fichiers | Count |
+|---|---|---|
+| **task-220** (harnais de mesure `journey`) | `tests/loadtest-k6/report.py`, `scenarios/journey.js`, `lib/journey-model.js` | 16, dont l'unique `BUG` (`python:S1244`) et l'unique hotspot (`javascript:S2245`) |
+| **antérieur à la forge** | `src/Infrastructure/Repository/BaseRepository.cs:68`, `src/Application/Services/Interfaces/IIheXdmProcessingService.cs:9` (`csharpsquid:S103`) | 2 |
+| **task-225** | — | **0** |
+
+C'est le piège déjà documenté : la *new-code period* du projet est une baseline
+large, elle englobe donc des tasks **déjà mergées**. Un QG rouge n'y signifie pas
+« cette task a introduit de la dette ». Les 9 `S3776` relèvent par ailleurs de
+`/sonar-s3776` (1 méthode = 1 PR, hors chaîne autonome par construction), et les
+findings Python/JS appartiennent au harnais de charge — **dont task-224 va
+justement rouvrir le code** (défaut 5). Les corriger ici sortirait du périmètre
+verrouillé de cette task et rentrerait en collision avec task-224.
+
+**Aucun des 18 n'a été touché.** Best-effort assumé, findings restants
+acceptés — et nommés, pas passés sous silence.
+
+### Un test rouge dans le run Release, et ce n'est pas une régression
+
+`PgBouncerTransactionPoolingTests.ConcurrentClients_AreMultiplexed_OntoBoundedPostgresBackends`
+a échoué sur le run Release complet de l'analyse. Vérifié :
+
+- **vert en isolation** en Release (5/5) ;
+- **aucun fichier PgBouncer / Npgsql / `BaseRepository` dans le diff** de la task
+  (contrôlé par `git diff --name-only`) ;
+- la suite Debug complète était à **3 392 / 0** avant l'analyse.
+
+Cause la plus probable : contention Docker — l'analyse Sonar fait tourner la
+suite d'intégration (Testcontainers PostgreSQL + PgBouncer) pendant que le
+scanner travaille. Même famille d'artefact d'environnement que le flaky
+`Services/Export` documenté en v1.18, sur un autre conteneur.
+
+### Note pour `conventions/csharp.md`
+
+Aucune entrée nouvelle : aucune règle n'a eu besoin d'être corrigée manuellement.
+L'entrée `S125` créée lors de la branche annulée de task-222 **reste valable et a
+servi** — c'est elle qui a fait écrire le garde-fou de `IMailRepository` sous une
+forme que Sonar ne lit pas comme du code commenté.
+
+- **Étape suivante** : `/review task-225`
