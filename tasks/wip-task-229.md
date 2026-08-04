@@ -136,3 +136,29 @@ frontends. Ils restent des pistes pour une US ultérieure si nécessaire.
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : inchangé — Redis déjà porteur de ces caches, aucun contenu de message ajouté au cache (UIDs et compteurs uniquement)
 - **AIPD / impact RGPD** : inchangé — aucun traitement nouveau
+
+
+---
+
+## Branches
+
+- `api-mail` (pushed) : `fix/task-229-dashboard-imap-cache-folder-n1` — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-229-dashboard-imap-cache-folder-n1
+- `dtos-mss` (pushed, auto-inclus) : même nom de branche — **aucun changement de contrat attendu**, la contrainte absolue de la US étant l'absence totale d'impact frontend (aucune route, aucun DTO, aucune sémantique de réponse modifiée). Pas de PR si aucun commit.
+
+**Base** : `develop` d'`api-mail` au commit `13480d5` — **task-228 y est mergée**
+(squash de la PR #155). La dépendance déclarée est donc levée : les deux
+corrections de verrou sont séparées dans l'historique, ce qui est exactement ce
+que la US demandait pour que la contre-épreuve au banc se lise proprement.
+
+**Dépendances vérifiées** : task-228 dans `tasks/archived/` ; task-080 mergée
+(elle avait déjà supprimé le N+1 **réseau** STATUS par dossier — cette task
+attaque le N+1 **SQL** restant, ce qui est bien un périmètre disjoint).
+
+**Préfixe `fix/`** : la US corrige des défauts **mesurés** (5 RTT IMAP sans
+cache sur `emails/today` ; détention p95 du verrou IMAP à 4,77 s sur le N+1 SQL
+de `PersistAndReconcileFoldersAsync`), pas une amélioration spéculative.
+
+**Pré-flight** : les 7 repos automatisés sont sur `develop`.
+⚠️ Un faux négatif rencontré au passage : CLAUDE.md donne `interop/interop.cda.parser`
+comme chemin d'`interop-cda`, alors que la racine git est `interop/`. Corrigé dans
+CLAUDE.md — sans ça, chaque pré-flight futur signalerait `interop-cda` à tort.
