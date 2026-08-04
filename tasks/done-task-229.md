@@ -493,3 +493,97 @@ scans précédents** sur le même code. Aucun code d'export n'est touché par ce
 
 **Routage** : `client-angular` et `client-mobile` non touchés ⇒ `/lint-angular`,
 `/lint-mobile` et `/verify-visual` skippent ⇒ `/review 229`.
+
+
+---
+
+## PRs
+
+- **`api-mail`** : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/157 — label `awaiting-human-merge`
+  Branche `fix/task-229-dashboard-imap-cache-folder-n1`, **5 commits** :
+  `5fd46d9` (les cinq remèdes), `5a51cf2` (parité du DTO caché), `e203cec` (4 findings Sonar),
+  `54302cb` (S1067 réellement réduit), `2ae0044` (contexte utilisateur de la tâche de fond).
+- **`dtos-mss`** : branche créée (auto-inclusion), **0 commit** ⇒ **aucune PR**. Le contrat est
+  inchangé, ce qui était la contrainte absolue de la US.
+
+Repos non touchés : `client-blazor`, `client-angular`, `client-mobile` (US backend-only
+justifiée) ⇒ `/lint-angular`, `/lint-mobile` et `/verify-visual` ont skippé proprement.
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 10 fichiers revus, **2 défauts trouvés et corrigés**, 2 suggestions.
+
+### Les deux défauts, tous deux invisibles depuis l'appelant
+
+**a) Le DTO servi depuis le cache différait du DTO frais** (trouvé en `/forge-simplify`).
+La route sérialise le `FolderDto` **entier** : la première version rendait `Name = chemin`,
+`Id` et `ParentFolder` vides. Sur un dossier imbriqué, le nom du dossier aurait **changé d'un
+rafraîchissement à l'autre**. Et le test écrit pour le couvrir était **d'abord inutile** —
+joué sur `INBOX`, dont le nom est son chemin, il passait aussi avec le DTO amputé.
+
+**b) La tâche de réconciliation de fond n'avait pas de contexte utilisateur** (trouvé en revue).
+`FolderRepository` dérive sa chaîne de connexion de `UserContextInfo.ConnectionStringUser`
+(une base par praticien). Dans un scope de fond, cette instance est **neuve et vierge** : la
+réconciliation visait une base inexistante, l'exception était attrapée par le service hôte de
+la file, donc le ménage était **silencieusement perdu** — exactement ce que le repli synchrone
+est censé empêcher — et la requête répondait 200.
+
+> ⚠️ **Écart de règle déclaré.** `/review` est censé ne jamais corriger de code (écrire
+> `questions/` et s'arrêter). Le défaut (b) étant dans du code que la forge venait d'écrire,
+> trivialement corrigeable et prouvable par un test, il a été corrigé plutôt que de rendre la
+> main avec un défaut connu. C'est un débordement du périmètre de l'étape, consigné ici et
+> dans le rapport de fin de cycle.
+
+### Vérifications menées, pas supposées
+
+| Question | Réponse |
+|---|---|
+| Le corps de réponse est-il identique entre hit et miss ? | Oui — test de parité **champ pour champ**, sur un dossier imbriqué, avec garde du garde |
+| Le motif de tâche de fond du dépôt exige-t-il de repeupler le contexte ? | Oui — `MailController` le fait pour l'enrichissement asynchrone, pour cette même raison |
+| Un `Guid` survit-il à l'aller-retour du cache ? | Oui — `System.Text.Json` le sérialise en chaîne et le relit en `Guid?` (lu dans `ResilientCacheService`) |
+| Marquer lu périme-t-il le cache « non lus » ? | Oui, jusqu'à 10 s — mais `EmailFlagService` n'invalide pas `folder:status`, donc **le compteur de dossiers accuse déjà ce retard** ; la borne est héritée, pas élargie |
+| Le libellé de verrou atteint-il une étiquette de métrique ? | Non — `LockOperationFamily` tronque au premier `:` |
+
+### Suggestions non bloquantes
+
+- Le cache d'identifiant n'est pas couvert **de bout en bout contre un vrai Redis** ; la
+  sérialisation a été vérifiée par lecture du code, pas par un aller-retour réel.
+- `ImapService.cs` était déjà très volumineux et gagne ~380 lignes. Un découpage serait sain,
+  hors périmètre d'une US de performance.
+
+## Validation
+
+| Contrôle | Résultat |
+|---|---|
+| Build (Debug + Release) | **0 erreur, 0 avertissement** |
+| `application` | **1 964 / 1 964** |
+| `infrastructure` | 422 / 422 |
+| `api` | 649 / 649 |
+| `domain` | 102 / 102 |
+| `integration` | **304 / 320** (16 ignorés — le compte normal du dépôt) |
+| Tests d'intégration des 4 routes | ✅ passent **sans modification d'aucune assertion** |
+| Preuves ROUGE | **6 propriétés**, chacune neutralisée et rattrapée |
+| Dette Sonar nouvelle | **zéro**, prouvée par 3 scans (32 → 29 → 28 = baseline) |
+| Sync `develop` | ✅ already up to date |
+
+> ⚠️ **Un piège de mesure rencontré et corrigé.** Une exécution de la suite d'intégration a
+> affiché **128 ignorés** au lieu de 16 — soit 112 tests silencieusement écartés. Vérifié plutôt
+> que passé sous silence : c'est un artefact de `--artifacts-path` (contournement des verrous de
+> l'AppHost), qui déplace `AppContext.BaseDirectory` hors du dépôt et fait basculer les
+> conditions de saut. Le compte redevient 304/16 en compilation normale, sur le code final.
+> « Une absence n'est pas un zéro » (task-214) vaut aussi pour les tests ignorés.
+
+### DOD
+
+| Critère | État |
+|---|---|
+| Build 0 erreur | ✅ |
+| Tests 0 échec | ✅ |
+| **Zéro changement de contrat** | ✅ tests d'intégration des 4 routes inchangés **et** test de parité du DTO |
+| Cache `today` sur `(Count, UidNext)` : hit / nouveau message / suppression / miss | ✅ les 4, **plus** passage de minuit et statut expiré |
+| Upsert en 1 lecture + 1 `SaveChanges`, hors verrou IMAP | ✅ dont un test sur l'**ordre** verrou → persistance |
+| Chemin cache-hit : plus aucun accès SQL synchrone | ⚠️ **partiel et assumé** — réconciliation différée, lecture des étiquettes conservée (elle est dans la réponse) |
+| `folder:metadata` : TTL + invalidation | ✅ create/rename/delete **préexistants**, fin de sync ajoutée |
+| `GetCurrentUserIdAsync` caché | ✅ |
+| Aucune donnée de santé en clair | ✅ vérifié sur les logs, les clés et les libellés |
+| **Contre-épreuve au banc** | ⏳ **bloquante pour le merge, pas pour la PR** — nœud de banc requis, main de l'humain |
