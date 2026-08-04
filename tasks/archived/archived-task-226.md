@@ -646,3 +646,41 @@ derrière (3 305 tests .NET, 55 Node, 157 Python).
 
 **DOD** : 15 items vérifiés par commande, **6 déferrés au test manuel** (ils exigent
 un banc — détail dans le `## Develop log`).
+
+## Merged
+
+- **Mergée le 2026-08-04** par l'humain via `/merge task-226 --i-tested`
+  (HAG, règle 10 — attestation explicite du test manuel).
+- **`api-mail`** : PR #153 **squash-mergée** → `44e2756` sur `develop`.
+  Ref distante `feat/task-226-journey-dossier-patient` supprimée ; **branche
+  locale conservée** pour inspection rétroactive.
+- **`dtos-mss`** : aucune PR (branche sans commit — la task ne change aucun
+  contrat). Ref distante nettoyée, branche locale conservée, repo remis sur
+  `develop`.
+- **Six barrières de sécurité franchies avant tout merge** : attestation
+  `--i-tested`, label `awaiting-human-merge` (et non `awaiting-us-completion`),
+  aucun `CHANGES_REQUESTED`, CI de la PR verte (`build` pass), état
+  `MERGEABLE`/`CLEAN` (ni `BEHIND` ni `CONFLICTING`), et zéro fichier non
+  commité sur les cinq repos concernés.
+- Pas de branche staging à nettoyer : la task n'a pas été lancée par un run
+  `/forge`.
+
+### Ce qui reste dû après le merge — non couvert par le test manuel
+
+Le merge ne clôt pas les **6 critères déférés au banc**, qui exigent un tir et
+non un test d'écran. Ils restent le programme de la prochaine campagne :
+
+1. les 4 nouvelles étiquettes présentes, et **la chaîne visible dans l'ordre sur
+   une trace** (traitement → lecture → dossier) ;
+2. largeur de rafale ≥ 10 documents sur un semis à 100 messages ;
+3. **l'étape 4 mesurant encore du froid en fin de tir** — garanti par
+   construction (réserves disjointes contrôlées au setup) et testé, mais à
+   prouver sur une mesure ;
+4. taille du dossier qui croît alors que la largeur de rafale sature ;
+5. part de la chauffe minoritaire dans la durée du tir ;
+6. **deux tirs consécutifs sans semis ni ré-analyse** — *le* critère qui prouve
+   le gain de la task.
+
+**Point ouvert pour le PO** : le 5ᵉ appel du geste (« charger plus ») attend une
+fréquence produit (`JOURNEY_P_LOAD_MORE`). Quatre des cinq appels documentés sont
+exercés.
