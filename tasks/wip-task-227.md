@@ -252,3 +252,42 @@ dotnet test HealthPlatform.Api.Mail.sln
 > déprécié dans cet atelier (CLAUDE.md règle 1, projet `mss.mail.bdd.tests`
 > retiré avec task-008). Le comportement attendu est décrit ci-dessus et couvert
 > par des tests unitaires et d'intégration.
+
+## Branches
+
+- `api-mail` (pushed) : `chore/task-227-guard-enrichment-invariant` — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/chore/task-227-guard-enrichment-invariant
+- `dtos-mss` (pushed, auto-inclus) : même nom de branche — aucun changement de contrat attendu (l'US ne touche que des tests), donc pas de PR si aucun commit.
+
+**Base** : `develop` d'`api-mail` au commit `aab6297` — task-224 et task-225 y
+sont mergées, donc les garde-fous de task-225 (« une lecture n'écrit rien ») sont
+présents dans la base. Cette US ne les remplace pas : elle garde la **chaîne**
+là où ils ne gardent qu'**un** de ses défauts.
+
+**Préfixe `chore/`** : l'US ne livre aucun comportement produit — elle rend un
+invariant existant vérifiable. `feat/` serait trompeur, `fix/` supposerait un
+défaut actif en production alors qu'il n'y en a pas (task-222 a été arrêtée avant
+merge).
+
+> ### ⚠️ Garde-fou multi-`wip` levé par instruction humaine explicite
+>
+> `agents/develop.md` (étape 0.3) fait **abandonner** `/develop` quand plusieurs
+> `tasks/wip-*.md` coexistent — « la boucle autonome sérialise les tasks, un
+> `wip-*` parallèle est le signe que quelque chose ne va pas ».
+>
+> **`wip-task-226.md` est active** (« Le dossier patient, là où il naît », E015,
+> priorité 2, attendue avant la prochaine campagne de certification), avec une
+> branche distante `feat/task-226-journey-dossier-patient` sur `api-mail`.
+>
+> J'ai signalé le conflit et recommandé de finir task-226 d'abord ; l'humain a
+> **réitéré `/start 227`**. Le garde-fou est donc traité comme **levé sur
+> instruction explicite**, et non contourné en silence.
+>
+> **Ce qui rend la levée sans danger** : la branche de task-226 **ne porte aucun
+> commit** (vérifié — rien entre `origin/develop` et elle), donc aucun travail
+> n'est en péril et aucune divergence ne peut naître d'un développement parallèle.
+> Les deux US touchent en outre des zones disjointes — task-226 le harnais
+> `journey` et le seed, task-227 les tests de la chaîne d'enrichissement.
+>
+> **Ce qui reste à la charge de l'humain** : task-226 conserve ses branches et son
+> état `wip-*`. Elle devra être reprise (`/develop 226`) ou rangée
+> (`tasks/onhold/`) ; cette US ne décide rien pour elle.
