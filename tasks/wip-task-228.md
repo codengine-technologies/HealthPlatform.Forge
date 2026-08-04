@@ -148,3 +148,174 @@ dans `tasks/archived/`.
 
 **Préfixe `fix/`** : la US corrige un défaut **mesuré** (détention p95 du verrou
 de session à 58,5 s au tir n300 du 2026-08-04), pas une amélioration spéculative.
+
+
+---
+
+## Develop log
+
+**Commit** : `d863087` — `perf(imap): task-228 — decouper la phase A de l'enrichissement en sous-lots`
+**Branche** : `fix/task-228-enrich-phase-a-chunking` (poussée sur `api-mail`)
+**Base** : `develop` @ `4ec2b73` (task-227 mergée)
+
+### Ce qui a changé
+
+| Fichier | Nature |
+|---|---|
+| `src/Application/Services/Implementation/ImapService.cs` | Phase A découpée en sous-lots ; verrou de session pris/rendu **par fenêtre** ; `FetchedMail` libéré ; commentaire de `ComputePendingUidsHash` corrigé |
+| `src/Application/Options/MailOptions.cs` | `EnrichFetchChunkSize` (défaut **15**) |
+| `tests/mss.mail.application.tests/Services/Imap/ImapServiceTests.cs` | 7 tests de découpage + `BuildServiceWithChunkSize(int)` |
+
+Découpage : la boucle de fetch itère `ChunkForEnrichment(pendingUids, EnrichFetchChunkSize)`
+et délègue chaque fenêtre à `FetchEnrichmentChunkAsync`, qui ouvre **son** `ImapLockScope`.
+L'ordre décroissant des UIDs est conservé — les messages récents, ceux que le
+médecin regarde, arrivent dans la première fenêtre au lieu d'attendre la fin du lot.
+
+Phase B inchangée : un seul appel à `PersistEnrichedBatchAsync`, donc **une** prise
+du verrou de persistance par (boîte, dossier).
+
+### Deux constats que la US ne pouvait pas connaître
+
+**1. La contrainte 1 se trompait d'endroit — le hash d'UIDs ne sérialise rien.**
+
+La US posait comme risque principal que relâcher le verrou entre sous-lots
+rouvrirait la course sur l'upsert par UID, en s'appuyant sur ce commentaire :
+
+> *« Lock key includes a stable hash of the actual UID set […] so two concurrent
+> enrichment passes hitting the same UIDs serialize on the same key »*
+
+Vérifié par le code : `AcquireLockAsync` transmet ce libellé à `ImapLockScope`,
+qui appelle `LockImapClientAsync(userContext)` — lequel keye le sémaphore sur
+`{email}_{ClientSessionId}` **et rien d'autre**. Le hash n'influence **aucune**
+décision de verrouillage, et ne survit même pas dans les métriques
+(`LockOperationFamily` le tronque au premier `:`).
+
+La garantie anti-course vit dans le **verrou de persistance** par (boîte, dossier),
+pris en Phase B — hors du découpage. Donc découper la Phase A n'affaiblit rien :
+il n'y avait rien à affaiblir à cet endroit.
+
+Commentaire réécrit pour dire ce que le hash fait réellement (un libellé de
+journal, conservé pour ça). Propriété figée par
+`EnrichEmailsAsync_KeepsThePersistLockWhichIsTheRealAntiRaceGuardAsync`.
+
+**2. `FetchedMail` n'était libéré par aucun chemin — fuite préalable.**
+
+`FetchedMail` est `IDisposable` (il possède un `IheXdmScratchSet`, donc des
+répertoires de travail sur disque) et ni `PersistEnrichedBatchAsync`, ni
+`PersistEnrichedMailAsync`, ni les chemins d'erreur ne le libéraient : les
+répertoires ne disparaissaient qu'au balayage de démarrage. Corrigé dans le bloc
+restructuré (`finally` + `DisposeAll`), parce que laisser une fuite connue dans du
+code qu'on réécrit serait pire. Sûr : `BuildMailDtoAsync` consomme les chemins de
+façon synchrone, personne n'en a besoin après la Phase B.
+
+### Tests
+
+7 nouveaux, tous sur le **nombre** d'acquisitions du verrou — la seule grandeur
+qui prouve le découpage. Une durée dépendrait de la machine ; un test qui ne
+compte rien laisserait passer un lot redevenu monolithique.
+
+| Test | Ce qu'il fige |
+|---|---|
+| `WhenBatchFitsInOneChunk_TakesTheSessionLockOnce` | Cas limite bas : pas de fenêtre superflue |
+| `WithMoreUidsThanTheChunkSize_ReleasesAndRetakesTheLock` | **Le cœur** : 5 UIDs / sous-lot 2 ⇒ 3 fenêtres, 5 messages enrichis |
+| `EnrichesTheMostRecentUidsFirst` | Ordre décroissant conservé |
+| `WhenAChunkFailsToConnect_PersistsWhatWasAlreadyRead` | Le travail réseau déjà payé n'est pas jeté ; le reste redevient « pending » |
+| `WhenCancelledBetweenTwoChunks_PersistsNothing` | Comportement d'annulation d'avant task-228 délibérément conservé |
+| `KeepsThePersistLockWhichIsTheRealAntiRaceGuard` | 3 fenêtres de fetch, **1** persistance |
+| `WithAnInvalidChunkSize_FallsBackToTheDefault` | Une taille ≤ 0 en config ne donne pas une boucle qui n'avance pas |
+
+**Preuve ROUGE** — en neutralisant le découpage (sous-lot = `int.MaxValue`, donc
+lot monolithique), **3 tests échouent** :
+`KeepsThePersistLockWhichIsTheRealAntiRaceGuard`,
+`WhenAChunkFailsToConnect_PersistsWhatWasAlreadyRead`,
+`WithMoreUidsThanTheChunkSize_ReleasesAndRetakesTheLock`. Découpage rétabli, aucune
+trace du patch de preuve dans le commit.
+
+**Filet task-227** : les 13 tests de la chaîne d'analyse (dont les deux réparés)
+restent verts — le refactoring n'a pas cassé le verrouillage de l'analyse.
+
+### Suite complète
+
+`3 412` réussis, `16` ignorés, **1** échec :
+`Services.Export.MarkdownPdfRendererTests.RenderHeadingPreservesText`.
+
+Flaky préexistant (`UglyToad.PdfPig`, connu et documenté), **sans rapport avec le
+diff** : relancé **3 fois sur 3 en isolation, vert à chaque fois**. Ce n'est pas
+une régression, et ce n'est pas non plus une excuse — c'est vérifié, pas supposé.
+
+### ⚠️ Ce que ce commit ne prouve PAS
+
+**La valeur 15 n'est pas mesurée.** C'est le milieu de la fourchette 10–20 donnée
+par le PO. Elle est configurable **précisément** pour que le banc la tranche.
+
+**Le gain n'est pas mesuré.** Les tests prouvent le *découpage* (le verrou est
+rendu N fois), pas la *latence* (p95 de détention, p95 d'ouverture d'un message).
+La contre-épreuve `journey-mssante-n300` avant/après est **bloquante pour le
+merge, pas pour la PR** — elle exige le nœud de banc distant, donc c'est la main
+de l'humain. C'est la leçon de task-213 : un correctif de verrou se prouve par un
+tir, jamais par intuition. Et celle de task-222 : un chiffre non opposable ne
+vaut rien.
+
+
+---
+
+## Simplify log
+
+**Repos éligibles touchés** : `api-mail` seul.
+`dtos-mss` : branche créée (auto-inclusion) mais **aucun commit** — le contrat est
+inchangé, comme la US le prévoyait. Et de toute façon hors périmètre de cette étape
+(porteur de contrat, jamais simplifié).
+
+**Commit** : `fb4a21d` — `refactor(imap): task-228 — deleguer le decoupage a Enumerable.Chunk et reutiliser DisposeAll`
+(−13 / +10 lignes, un seul fichier)
+
+### Deux prises, sur les axes réutilisation et simplification
+
+**1. `ChunkForEnrichment` réécrivait `Enumerable.Chunk`.**
+La méthode portait une arithmétique d'offsets à la main (`GetRange` +
+`Math.Min` + boucle `for`) alors que `Enumerable.Chunk` fait précisément cela
+depuis .NET 6. Elle se réduit à ce qu'elle a de propre à dire — **l'ordre**
+décroissant — et le découpage est délégué. Un endroit de moins où se tromper d'un
+cran, pour zéro information perdue. Signature `IEnumerable<uint[]>` ; le paramètre
+du consommateur passe à `IReadOnlyList<uint>`.
+
+**2. Le `finally` recopiait `DisposeAll`.**
+J'avais créé le helper puis oublié de l'appeler à l'un des deux endroits. Réutilisé.
+
+### Re-validation (filet anti-régression)
+
+| Suite | Résultat |
+|---|---|
+| Build solution | **0 avertissement, 0 erreur** |
+| `application` | 1948 / 1948 |
+| `api` | 649 / 649 |
+| `domain` | 102 / 102 |
+| `infrastructure` | 410 / 410 |
+
+Dont les 7 tests de découpage et les 13 gardes de la chaîne d'analyse (task-227).
+La passe qualité n'a pas changé le comportement.
+
+### Deux artefacts d'environnement, nommés pour ne pas être pris pour des régressions
+
+**`--artifacts-path` casse les 4 scans de sources.** L'AppHost tournait et
+verrouillait `src/Api/bin` (MSB3026), j'ai donc compilé via `--artifacts-path` —
+ce qui déplace `AppContext.BaseDirectory` hors du dépôt et fait échouer les tests
+qui remontent au `RepoRoot()` : `SecretLiteralScanTests` et les **3**
+`MailContentWriterScanTests` de task-227. Vérifié en recompilant normalement : les
+4 redeviennent verts. Ce n'est pas une régression, c'est le prix de mon propre
+contournement de verrous.
+
+À noter tout de même : le garde-du-garde `Assert.NotEmpty(writers)` de task-227
+a fait exactement son travail ici — il a **échoué bruyamment** au lieu de passer
+en silence sur un scan devenu aveugle. C'est la propriété pour laquelle il a été
+écrit, et elle vient d'être exercée pour de vrai.
+
+**Un échec intermittent, non reproduit et non attribué.** Une exécution d'`api`
+a rendu 648/649 ; les **4** suivantes ont rendu 649/649. J'ai perdu le nom du test
+dans un filtre `grep`, donc **je ne l'attribue pas** : le défaut d'isolation connu
+sur `develop` (écouteur d'activité global,
+`GetFolderTodayAsync_HappyPath_TagsTheImapActivityWithPerCommandDurations`) en est
+le candidat plausible, pas une certitude. Le nommer sans preuve serait exactement
+la faute que task-227 a eu à réparer.
+
+**Routage** : `api-mail` touché ⇒ `/sonar 228`.
