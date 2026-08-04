@@ -816,6 +816,56 @@ et non prouvé.
 >   `docker port <conteneur-prometheus>`, ou requêter par
 >   `docker exec <conteneur> wget -qO- 'http://localhost:9090/api/v1/query?...'`.
 
+### 5b-ter — Axes d'amélioration d'api-mail (OBLIGATOIRE — consigne humaine du 2026-08-04)
+
+Le verdict SLO répond à « **le médecin attend-il trop ?** ». Il ne répond pas à
+« **où part le temps serveur ?** » — et les deux questions **ne désignent pas les
+mêmes traitements**. C'est l'objet de cette sous-étape : sortir du tir des **axes
+d'optimisation du code d'api-mail**, classés par ce qu'ils coûtent réellement.
+
+**La grandeur qui classe : `appels × durée moyenne`**, pas le percentile.
+`report.py` produit la table et signale les candidats mécaniquement dans la
+section **« Axes d'amélioration — où part le temps serveur »**. Mesuré le
+2026-08-04 : l'arrivée sur le tableau de bord est **verte** au SLO (p95 441 ms
+pour 1,5 s) et consomme **23 % du temps serveur**, parce qu'elle émet quatre
+appels à chaque passage. Un rapport qui ne lit que les percentiles ne peut pas la
+voir.
+
+**Quatre signaux automatiques** (seuils dans `report.py`) : gros consommateur
+(> 15 % du temps), **vert au SLO mais gros consommateur** (le point aveugle),
+hors grille, coût par appel > 1 s, dispersion p95/p50 ≥ 3× (coût dépendant de la
+charge ou de la donnée).
+
+**Ce que l'IA doit faire — remplir « Findings d'optimisation »** :
+
+1. Pour **chaque** candidat signalé : la **cause établie** par la télémétrie
+   (§ 5b-bis), le **remède** envisagé (mise en cache, algorithme, requête SQL,
+   regroupement d'appels), le **gain attendu** en temps serveur, le **risque**.
+2. **Un finding sans cause mesurée n'est pas un finding.** Cette EPIC a déjà payé
+   une US applicative écrite sur une cause supposée (task-222, annulée) : le coût
+   d'un raccourci ici est connu et non théorique.
+3. **Distinguer ce qui est MESURÉ de ce qui est LU dans le code.** Une cause
+   structurelle établie par lecture (N+1, index inutilisable, cérémonie par
+   appel) est recevable — à condition d'être annoncée comme telle.
+4. **Distinguer un finding d'application d'un finding d'INSTRUMENT.** Si le coût
+   d'une étape ne peut pas être attribué à l'un de ses appels, le premier finding
+   est le manque d'instrumentation, pas une optimisation devinée. Exemple constaté
+   le 2026-08-04 : les sous-métriques par **route** ne sont pas matérialisées dans
+   le résumé k6, donc les quatre appels du tableau de bord partagent un seul `op`
+   et son coût n'est pas attribuable.
+5. **Une absence n'est pas un zéro** — le compteur de sollicitations (task-225)
+   ne couvre pas tous les sites d'appel : l'absence d'une opération ne prouve pas
+   qu'elle ne sollicite pas le serveur.
+
+**Puis PROPOSER à l'humain de créer une task `/po`** pour tout finding
+significatif : un candidat qui pèse plus de 15 % du temps serveur, ou qui sort de
+la grille, mérite une US. **Proposer, jamais créer d'office** — le découpage et la
+priorité sont des décisions produit, et le PO tranche. Présenter chaque finding
+avec son gain attendu pour que l'arbitrage soit possible.
+
+Quand aucun candidat n'est signalé, la section le **dit** (« Aucun candidat
+mécanique ») : c'est un résultat, pas un vide à combler.
+
 ### 5c — Enchaîner le nettoyage
 
 Une fois le rapport écrit, l'index mis à jour, le dump Seq sauvegardé et les
