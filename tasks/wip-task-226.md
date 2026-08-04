@@ -430,3 +430,82 @@ base. Dépendance levée au démarrage, pas supposée.
 **Pre-flight** : `api-mail`, `client-blazor`, `dtos-mss`, `sdk`, `interop-cda`
 sur `develop`. `host` n'a pas de `.git` (non mesurable, cf. CLAUDE.md).
 `client-mobile` est **absent du poste** — hors périmètre de cette task.
+
+## Develop log
+
+- **Repos touchés** : `api-mail` uniquement. `dtos-mss` : branche créée par
+  `/start` (auto-inclusion) mais **aucun commit** — la task ne change aucun
+  contrat, donc aucun paquet NuGet publié et aucun consommateur bumpé.
+- **DTOs publiés** : aucun changement de contrat. **Interop** : aucun.
+- **Commits** (`feat/task-226-journey-dossier-patient`) :
+  - `c481eb0` — le parcours : réserves disjointes, chaîne traitement → lecture →
+    dossier, rafale bridée à 6, retrait franc de « supprimer » (modèle + scénario
+    + endpoints + gabarits d'adresse)
+  - `c13d795` — le rapport : grille (8 réduite, 9/10/11 ajoutées), couple
+    rafale/dossier, refus d'interpréter une fiche maigre, bandeau de baseline,
+    coût de la chauffe et du traitement
+  - `2dbe1f5` — `reset-state.sh --keep-analysed N` (rejeu par réserve), provenance
+    et contrat SLO
+  - `4c9fc3a` — la grille ne peut plus diverger de son contrat lisible
+- **Validation locale** : `dotnet build` 0 erreur · `dotnet test` **3 203 tests,
+  0 échec** · `selftest.sh` vert (**54** tests Node + **157** Python) · les
+  **7 scénarios** k6 s'initialisent (`k6 inspect`).
+
+### Écarts de périmètre déclarés
+
+- **Un guard non demandé par la task, ajouté** : `warmupWarnings` avertit quand la
+  chauffe dépasserait le délai d'expiration de l'appel d'analyse (300 s). Sans lui,
+  une réserve analysée trop grande fait échouer la chauffe **en silence** et
+  l'étape 3 mesure des messages non analysés — le défaut 5 de task-224 ramené par
+  la porte du dimensionnement. C'était le point de vigilance n°1 de la task, il
+  n'avait pas de garde.
+- **Une correction de documentation hors périmètre littéral** :
+  `docs/parcours-medecin.md` affirmait encore que la lecture froide « matérialise »
+  le contenu. C'est exactement l'affirmation que task-224 a démentie. Corrigée avec
+  sa raison — un document faux derrière un comportement juste finit par ramener le
+  défaut.
+
+### DOD — auto-contrôle
+
+Vérifiés par commande (14/20) :
+
+- [x] Build 0 erreur · tests 0 échec · `selftest.sh` vert
+- [x] Tests du modèle : retrait de la suppression, nouvelles réserves,
+      **non-intersection** des réserves, fréquences de la chaîne (dont la
+      consultation conditionnée au traitement), budget sans suppression
+- [x] Aucune mention de « supprimer » dans le parcours ni son budget — vérifié par
+      recherche (`grep` sur `BANDS`, `P.delete`, `'delete'`, `deleteEmail` : zéro
+      occurrence) ; les surcharges d'environnement de l'ancien geste **font
+      échouer le setup** (vérifié par `k6 inspect` sur les trois variables)
+- [x] Rafale bridée à 6 : `http.batch` par tranches, plafond archivé dans le
+      contexte du tir
+- [x] Documents de la fiche hors du percentile de l'étape 3 : étiquette
+      `patient_docs` distincte de `read_content`
+- [x] Traitement publié et dans **aucune** ligne de grille — test dédié
+- [x] Documents sans INS comptés à part et jamais en échec — test dédié, y compris
+      la non-dégradation du verdict
+- [x] Coût de la chauffe publié — test dédié
+- [x] Grille identique dans ses deux exemplaires — **test automatisé** qui lit le
+      Markdown et compare les 11 étapes seuil par seuil
+- [x] Rapport signale la baseline différente du 2026-08-03, avec la raison
+- [x] `parcours-medecin.md` : chaîne + provenance ligne à ligne, révision explicite
+      de la décision de task-220, règle « analysé + INS ⇒ dossier »
+- [x] Aucun identifiant patient dans une étiquette — test PGSSI-S sur les gabarits
+- [x] Rien branché dans la forge ni dans la CI
+
+Déferrés au test manuel (HAG) — ils exigent un banc, pas un test unitaire (6/20) :
+
+- [ ] Un tir court produit les 4 nouvelles étiquettes, et la chaîne est visible
+      dans l'ordre attendu sur une trace
+- [ ] Largeur de rafale ≥ 10 documents sur un semis à 100 messages
+- [ ] L'étape 4 mesure encore du froid en fin de tir (garanti par construction —
+      réserves disjointes contrôlées au setup et testées — mais à **prouver** sur
+      un tir)
+- [ ] Taille du dossier qui croît alors que la largeur de rafale sature
+- [ ] Coût de la chauffe minoritaire dans la durée du tir
+- [ ] **Deux tirs consécutifs sans semis et sans ré-analyse** — le critère qui
+      prouve le gain de la task. L'outil est livré
+      (`reset-state.sh --keep-maildir --keep-analysed N`), la démonstration
+      appartient au banc.
+
+- **Next step** : `/forge-simplify task-226`
