@@ -323,3 +323,95 @@ le candidat plausible, pas une certitude. Le nommer sans preuve serait exactemen
 la faute que task-227 a eu à réparer.
 
 **Routage** : `api-mail` touché ⇒ `/sonar 228`.
+
+
+---
+
+## Sonar log
+
+**Deux analyses complètes**, pas une : la première pour mesurer, la seconde pour
+**prouver** que la correction a porté. Serveur `localhost:9001`, projet
+`healthplatform`, `dotnet sonarscanner` autour du build Release + couverture
+OpenCover des 5 suites (3 413 tests).
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| **Quality Gate (new code)** | **ERROR** | **ERROR** | inchangé — *dette antérieure, cf. ci-dessous* |
+| `new_violations` | 30 | **28** | **−2** |
+| `new_coverage` | 86,9 % | **87,0 %** | +0,1 pt (seuil 80 — OK) |
+| `new_duplicated_lines_density` | 0,086 % | 0,086 % | = (seuil 3 — OK) |
+| `new_security_hotspots_reviewed` | 71,43 % | 71,43 % | = (seuil 100 — **ERROR**) |
+| Bugs | 1 | 1 | = |
+| Vulnérabilités | 0 | 0 | = |
+| Code smells | 28 | **27** | **−1** |
+| Coverage projet | 86,9 % | 86,9 % | = |
+| Duplication projet | 0,5 % | 0,5 % | = |
+| Reliability / Security / Maintainability | 3,0 / 1,0 / 1,0 | 3,0 / 1,0 / 1,0 | = |
+
+### Dette nouvelle attribuable à task-228 : **zéro** — et c'est mesuré
+
+L'itération a trouvé **un seul** finding imputable à cette task, et il venait de
+**ma propre passe `/forge-simplify`** :
+
+> `external_roslyn:CA1859` — `ImapService.cs:875` : *« Modifier le type de
+> paramètre `chunkUids` de `IReadOnlyList<uint>` en `uint[]` »*
+
+En déléguant le découpage à `Enumerable.Chunk` (qui rend des `uint[]`), j'avais
+élargi le paramètre à `IReadOnlyList<uint>` — imposant une répartition
+d'interface pour rien, puisque l'unique appelant passe déjà un tableau. Corrigé
+(`50c7d9c`), type concret rétabli, `.Count` → `.Length`.
+
+**Le compte se vérifie exactement** : 30 → 29 après le premier scan (−2
+`SYSLIB1045` que mon correctif de task-227 a bien supprimés, +1 `CA1859` que ma
+simplification venait d'introduire), puis 29 → **28** après correction. Le second
+scan confirme **0 finding** sur `ImapService.cs`, `MailOptions.cs` et
+`ImapServiceTests.cs`.
+
+### Pourquoi le Quality Gate reste ERROR, et pourquoi ce n'est pas cette task
+
+C'est le piège documenté de la *new-code period* (`PREVIOUS_VERSION`) : elle
+englobe des tasks déjà mergées. Les 28 violations restantes se répartissent ainsi
+— **aucune en C# de task-228** :
+
+| Origine | Compte | Détail |
+|---|---|---|
+| `tests/loadtest-k6/report.py` | 16 | `S3776` ×8, `S1192` ×3, `S3358` ×2, `S1172`, `S1244` (task-174 / task-224) |
+| `tests/loadtest-k6/scenarios/journey.js` | 7 | `S3776` ×2, `S2486` ×2, `S1940`, `S6582`, `S4624` |
+| `tests/loadtest-k6/lib/journey-model.js` | 5 | `S1940` ×2, `S6582`, `S6035` |
+| `csharpsquid:S103` (lignes trop longues) | 2 | `IIheXdmProcessingService.cs`, `BaseRepository.cs` — préexistant |
+
+Et les **2 security hotspots** qui plafonnent `new_security_hotspots_reviewed`
+à 71,43 % sont deux `Math.random()` dans `journey.js` (`weak-cryptography`,
+MEDIUM), également du harnais k6.
+
+> ⚠️ **Un point qui mérite une décision humaine, hors périmètre de cette task.**
+> Ces 2 hotspots sont en statut `TO_REVIEW`, donc ils maintiendront le Quality
+> Gate en ERROR à **chaque cycle futur**, quelle que soit la task. Ce sont des
+> tirages pseudo-aléatoires de sélection de message dans un scénario de charge —
+> ils n'ont aucun rôle cryptographique, donc les marquer *safe* est très
+> probablement correct. Mais marquer un hotspot de sécurité comme sûr est un
+> **jugement de sécurité**, et le faire au passage dans le cycle d'une autre task
+> serait exactement le genre de raccourci que la forge doit éviter. Je le signale
+> plutôt que de le décider.
+
+### Un artefact du plan de contrôle corrigé en chemin
+
+`agents/sonar.md` imposait `sonar.login` « car le serveur est en **9.9.8** ».
+Vérifié : `api/server/version` répond **`25.6.0.109173`**, et un cycle
+`begin` + `end` complet avec `/d:sonar.token=` réussit (`EXECUTION SUCCESS`).
+La recette est passée à `sonar.token` (`05c778b`), en conservant la règle de fond
+qui reste vraie et utile — *lire la version avant de soupçonner les identifiants*,
+puisque l'échec survient au `end`, après le scan complet, et que son message
+accuse le token. C'est ce piège qui avait donné à task-204 un diagnostic faux.
+
+### Suites de tests pendant les scans (Release)
+
+Premier scan : **3 413 / 3 413 verts**, 0 échec (y compris l'intégration, 304/304).
+Second scan : 1 échec — `PgBouncerTransactionPoolingTests.ConcurrentClients_AreMultiplexed_OntoBoundedPostgresBackends`,
+le flaky de contention Docker connu, **vert au scan précédent** et sans aucun
+rapport avec l'IMAP (multiplexage PgBouncer).
+
+**Routage** : `client-angular` et `client-mobile` non touchés ⇒ `/lint-angular`,
+`/lint-mobile` et `/verify-visual` skippent ⇒ `/review 228`.
