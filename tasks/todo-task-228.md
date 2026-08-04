@@ -3,7 +3,11 @@
 **Repos**: api-mail
 **Epic**: E015
 **Single frontend**: true
-**Dependencies**: task-079 (mergée) — a séparé la Phase A (fetch IMAP sous verrou)
+**Dependencies**: **task-227 (wip, à merger d'abord)** — pose les tests qui
+assertent réellement le skip des UIDs déjà enrichis, le lot mixte et la chaîne
+bout en bout sur base réelle : c'est le filet anti-régression exact du refactor
+de cette task (ne pas refactorer la Phase A tant que ces tests ne sont pas sur
+`develop`) ; task-079 (mergée) — a séparé la Phase A (fetch IMAP sous verrou)
 de la Phase B (persistance hors verrou) : cette task découpe la Phase A elle-même ;
 task-211 (mergée) — instrumentation des trois verrous, indispensable à la
 contre-épreuve ; task-213/214 (archivées) — leçon de méthode : tout correctif de
