@@ -268,26 +268,19 @@ invariant existant vérifiable. `feat/` serait trompeur, `fix/` supposerait un
 défaut actif en production alors qu'il n'y en a pas (task-222 a été arrêtée avant
 merge).
 
-> ### ⚠️ Garde-fou multi-`wip` levé par instruction humaine explicite
+> ### Note sur le garde-fou multi-`wip` — conflit résolu de lui-même
 >
-> `agents/develop.md` (étape 0.3) fait **abandonner** `/develop` quand plusieurs
-> `tasks/wip-*.md` coexistent — « la boucle autonome sérialise les tasks, un
-> `wip-*` parallèle est le signe que quelque chose ne va pas ».
+> Au moment de `/start`, `wip-task-226.md` était active et j'ai signalé que
+> `agents/develop.md` (étape 0.3) fait abandonner `/develop` quand plusieurs
+> `wip-*` coexistent. L'humain a réitéré `/start 227`, et j'ai levé le garde-fou
+> sur instruction explicite.
 >
-> **`wip-task-226.md` est active** (« Le dossier patient, là où il naît », E015,
-> priorité 2, attendue avant la prochaine campagne de certification), avec une
-> branche distante `feat/task-226-journey-dossier-patient` sur `api-mail`.
+> **La synchronisation de `develop` a montré que le conflit n'existait plus** :
+> task-226 a été **terminée et archivée** dans une session parallèle
+> (`tasks/archived/archived-task-226.md`). Il n'y a donc qu'un seul `wip-*`, et
+> aucune levée de garde-fou n'était en réalité nécessaire.
 >
-> J'ai signalé le conflit et recommandé de finir task-226 d'abord ; l'humain a
-> **réitéré `/start 227`**. Le garde-fou est donc traité comme **levé sur
-> instruction explicite**, et non contourné en silence.
->
-> **Ce qui rend la levée sans danger** : la branche de task-226 **ne porte aucun
-> commit** (vérifié — rien entre `origin/develop` et elle), donc aucun travail
-> n'est en péril et aucune divergence ne peut naître d'un développement parallèle.
-> Les deux US touchent en outre des zones disjointes — task-226 le harnais
-> `journey` et le seed, task-227 les tests de la chaîne d'enrichissement.
->
-> **Ce qui reste à la charge de l'humain** : task-226 conserve ses branches et son
-> état `wip-*`. Elle devra être reprise (`/develop 226`) ou rangée
-> (`tasks/onhold/`) ; cette US ne décide rien pour elle.
+> Consigné plutôt que effacé : ma recommandation de « finir task-226 d'abord »
+> était fondée sur un état périmé de mon côté, et l'humain avait raison de passer
+> outre. La leçon est pour moi — **lire `develop` avant de recommander un ordre de
+> travail**, un plan de contrôle partagé pouvant avancer hors de la conversation.
