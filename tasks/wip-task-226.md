@@ -509,3 +509,31 @@ Déferrés au test manuel (HAG) — ils exigent un banc, pas un test unitaire (6
       appartient au banc.
 
 - **Next step** : `/forge-simplify task-226`
+
+## Simplify log
+
+- **Repos passés** : `api-mail` (seul repo touché).
+- **Appliqué & commité** : `api-mail` — 6 fichiers (`93ed66d`).
+- **Sans changement** : aucun autre repo touché.
+- **Ignorés (contrat / exclus)** : `dtos-mss` (zéro diff **et** porteur de
+  contrat), `interop-cda`, `devops`, `psc-proxy-*`.
+- **Build / tests** : ✓ verts avant **et** après la passe (55 tests Node, 157
+  Python, les 7 scénarios k6 s'initialisent) — le filet anti-régression a tenu,
+  aucun rollback.
+
+Quatre nettoyages, un par axe :
+
+| Axe | Trouvaille | Correctif |
+|---|---|---|
+| Réutilisation | le chemin d'une ouverture de message construit dans **deux** fichiers (`api.js` et la rafale, qui passe par `http.batch` donc ne pouvait pas appeler le premier) | `emailContentPath()` exporté et partagé |
+| Altitude | deux gardes `if` ad hoc dans le scénario, alors qu'un mécanisme générique de refus existait juste à côté | table `REMOVED_OVERRIDES` + `assertNoRemovedOverrides()` dans le modèle, **avec la raison** de chaque retrait |
+| Efficacité | `reservesDisjoint` énumérait tous les UIDs de la boîte dans un `Set` pour trois intervalles ; `journey_warmup_cost` calculait un champ que personne ne lit | comparaison d'intervalles ; champ mort supprimé |
+| Simplification | `treatedUid !== null` évalué trois fois dans deux expressions denses | un `justTreated` nommé |
+
+> **Écart de mécanisme déclaré** : la consigne de session interdit d'appeler
+> l'outil Agent sans demande explicite de l'humain. La revue des quatre angles a
+> donc été menée **en ligne** au lieu d'être répartie sur quatre sous-agents. Le
+> livrable est identique (quatre axes couverts, correctifs appliqués et validés) ;
+> seul le parallélisme manque.
+
+- **Next step** : `/sonar task-226` (api-mail touché)
