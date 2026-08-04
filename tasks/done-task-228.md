@@ -415,3 +415,78 @@ rapport avec l'IMAP (multiplexage PgBouncer).
 
 **Routage** : `client-angular` et `client-mobile` non touchés ⇒ `/lint-angular`,
 `/lint-mobile` et `/verify-visual` skippent ⇒ `/review 228`.
+
+
+---
+
+## PRs
+
+- **`api-mail`** : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/155 — label `awaiting-human-merge`
+  Branche `fix/task-228-enrich-phase-a-chunking`, 3 commits (`d863087` découpage, `fb4a21d` passe qualité, `50c7d9c` CA1859).
+- **`dtos-mss`** : branche créée (auto-inclusion) mais **0 commit** ⇒ **aucune PR**.
+  Le contrat est inchangé, comme la US le prévoyait — le découpage est une propriété
+  interne d'un verrou applicatif, invisible des consommateurs.
+
+Repos non touchés : `client-blazor`, `client-angular`, `client-mobile` (US backend-only
+assumée et justifiée dans le corps de la task) ⇒ `/lint-angular`, `/lint-mobile` et
+`/verify-visual` ont skippé proprement.
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 3 fichiers revus, **0 blocage**, 1 suggestion.
+
+| Fichier | Verdict |
+|---|---|
+| `ImapService.cs` | ✅ Découpage correct ; erreur et annulation couvertes ; libération sur tous les chemins ; commentaire mensonger corrigé |
+| `MailOptions.cs` | ✅ Défaut documenté, y compris ce qu'il ne prétend pas être |
+| `ImapServiceTests.cs` | ✅ 7 tests assertant le **nombre** d'acquisitions du verrou |
+
+### Vérifications menées, pas supposées
+
+**Le changement de comportement en cas d'erreur a été comparé au code d'origine.**
+Avant, une exception pendant le fetch faisait `return` et **jetait tout le lot** ;
+désormais les messages déjà lus sont persistés et le reste redevient « pending ».
+C'est ce que le DOD demandait, et c'est sûr parce que chaque `FetchedMail` est
+individuellement complet : persister un sous-ensemble ne marque comme analysés que
+des messages réellement analysés — l'invariant gardé par les 13 tests de task-227.
+
+**Les exceptions non-annulation continuent de remonter.** `PersistEnrichedBatchAsync`
+est passée à l'intérieur du `try`, mais le seul `catch` y est
+`OperationCanceledException` : le comportement de propagation est préservé.
+
+**Aucune donnée de santé ne fuit, et la cardinalité des métriques ne bouge pas.**
+Les nouveaux logs ne portent que `folder` + comptes. La clé de verrou contient
+`folder` + empreinte, mais `MailProcessingMetrics.LockOperationFamily` la tronque au
+premier `:` — **lu dans l'implémentation** : le libellé de métrique reste
+`EnrichEmails`, donc passer à une clé par sous-lot ne multiplie pas la cardinalité.
+
+### Suggestion non bloquante
+
+`EnrichFetchChunkSize` est une propriété qui journalise un avertissement quand la
+configuration est invalide. Un effet de bord dans un getter est légèrement
+surprenant, même s'il n'est évalué qu'une fois par lot.
+
+## Validation
+
+| Contrôle | Résultat |
+|---|---|
+| Build (Debug + Release) | ✅ 0 erreur, 0 avertissement |
+| Tests (Release, 5 suites) | ✅ **3 413 / 3 413**, intégration incluse (304/304) |
+| Preuve ROUGE du découpage | ✅ 3 tests échouent si le lot redevient monolithique |
+| Filet task-227 (chaîne d'analyse) | ✅ 13 tests verts |
+| Dette Sonar nouvelle de la task | ✅ **zéro**, prouvée par second scan |
+| Sync `develop` | ✅ already up to date |
+
+### DOD
+
+| Critère | État |
+|---|---|
+| Build 0 erreur | ✅ |
+| Tests 0 échec | ✅ |
+| Phase A par sous-lots, verrou relâché entre chaque | ✅ test comptant les acquisitions |
+| Taille configurable, défaut documenté | ✅ `Mail:EnrichFetchChunkSize` = 15 |
+| Garantie anti-course préservée (contrainte 1) | ✅ test — *et la contrainte se trompait d'endroit, cf. PR* |
+| Tests découpage : lot court / multiple / annulation / erreur IMAP | ✅ les 4 |
+| Aucune régression enrichissement | ✅ |
+| Aucune donnée de santé dans les logs | ✅ vérifié sur l'implémentation |
+| **Contre-épreuve au banc** | ⏳ **bloquante pour le merge, pas pour la PR** — nœud de banc requis, main de l'humain |
