@@ -33,7 +33,7 @@
   - [La mesure ne se déforme plus elle-même au-delà de 500 praticiens (3 août 2026)](#la-mesure-ne-se-déforme-plus-elle-même-au-delà-de-500-praticiens-3-août-2026)
   - [L'étape « relire un message » ne mesurait pas ce qu'elle annonçait (4 août 2026)](#létape--relire-un-message--ne-mesurait-pas-ce-quelle-annonçait-4-août-2026)
   - [Trois mesures à reprendre](#trois-mesures-à-reprendre)
-- [État de couverture (2026-08-03)](#état-de-couverture-2026-08-03)
+- [État de couverture (2026-08-04)](#état-de-couverture-2026-08-04)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -657,7 +657,7 @@ sur une relecture**.
 
 ---
 
-## État de couverture (2026-08-03)
+## État de couverture (2026-08-04)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
@@ -682,8 +682,9 @@ sur une relecture**.
 | Un message parti n'est jamais annoncé en échec | 🟡 Corrigé, mesure de confirmation à conduire | La campagne de certification du 3 août a produit **une seule erreur sur 105 000 demandes** — et c'était la pire qualitativement : un envoi sur 3 352 rendu au médecin **en erreur alors que le message était parti et remis** à son correspondant. Le geste naturel devant un tel message est de le renvoyer, et le destinataire reçoit alors **deux fois le même document de santé** dans le dossier de son patient, sans moyen simple de savoir lequel est le bon. La cause n'était pas l'échec d'archivage — celui-là est traité comme anodin depuis toujours — mais la **libération d'un verrou technique à la sortie de l'archivage** : elle retrouvait la boîte par son nom, et si l'entrée de cette boîte avait été recyclée entre-temps, elle rendait un verrou qui n'était pas le sien. Ce qui explique la rareté, et pourquoi c'est l'archivage qui la portait : il empruntait le second accès en écriture, qui n'existe que le temps des envois. Deux corrections, l'une et l'autre nécessaires : le mécanisme rend désormais **le verrou qu'il a pris**, et un défaut de comptage se journalise sans jamais atteindre le médecin. La revue a fermé une troisième porte du même genre — une attente de verrou expirée produisait le même faux échec. Enfin, les deux informations sont **séparées** pour le médecin : « parti » et « parti, mais sa copie manque », la seconde ayant une valeur d'imputabilité, avec la trace réglementaire correspondante. **Reste dû** : la campagne de confirmation, qui doit rendre zéro erreur là où la référence en comptait une | task-223 |
 | Savoir combien de fois le serveur de messagerie est sollicité | 🟢 Livré | Chaque demande porte désormais **le nombre d'allers-retours réellement faits vers le serveur**, lisible dans la trace et dans les métriques, décomposé par commande. Une session déjà ouverte et réutilisée ne compte pas : le nombre est donc un **plancher exact**, pas une estimation — propriété figée par un test. La campagne du 3 août pouvait dire que 420 des 440 ms d'une ouverture se passaient dans l'application, mais pas combien de fois le serveur avait été sollicité ; 420 ms est *compatible* avec quatre allers-retours de 95 ms sans le prouver, et c'est cette ambiguïté qui avait permis d'écrire une US applicative sur une cause fausse. Aucune donnée de santé dans les étiquettes : uniquement des noms de commande écrits dans le code, vérifié par un test. Trois garde-fous accompagnent la livraison, pour que le piège qui a coûté task-222 ne se retende pas — deux avertissements en clair dans le code, à l'endroit exact où la main se reposerait, et deux tests prouvant qu'une lecture n'écrit rien en base, dont un sur vraie base. **Premier usage attendu** : rendre démontrable le cinquième défaut de task-224 — l'étape 3 du parcours, annoncée « servie base », enregistre aujourd'hui cinq sollicitations et devra passer à zéro | task-225 |
 | Les tableaux de bord ne peuvent plus afficher un chiffre faux | 🟡 Corrigé, mesure de confirmation à conduire | Cinq défauts, tous constatés pendant ou après la campagne du 3 août. **Le plus grave n'était pas un défaut d'affichage** : l'étape « relire un message enrichi » ne mesurait pas un message enrichi, parce que le parcours simulé ne déclenchait jamais l'analyse — elle mesurait donc des ouvertures froides, et c'est sur ce chiffre qu'une demande produit a été écrite puis annulée. La chauffe passe désormais par l'analyse, et le rapport **refuse** le verdict d'une étape qui ne mesure pas ce que son nom annonce. Les quatre autres : les latences n'affichent plus mille fois moins que leur valeur (deux panneaux, dont un que le contrôle automatisé a trouvé et que le constat initial ne listait pas — celui-là même qui sert de « juge de l'attribution ») ; le panneau de taux d'erreur lit enfin une métrique qui existe, et **tous** les panneaux du banc disent « pas de donnée » au lieu de se laisser lire « zéro » ; les adresses paramétrées sont regroupées, donc la légende redevient lisible, les compteurs cessent d'être sous-estimés jusqu'à 61 % — et le nom de la pièce jointe disparaît de la télémétrie, ce qui réduit la donnée exposée ; la ligne « sessions ouvertes » est renseignée depuis le magasin de métriques, sans aucun accès au cluster, et écrit « non relevé » plutôt qu'un zéro quand elle ne sait pas. Le verdict de l'étape 3 du 3 août est requalifié **non opposable** dans l'index des tirs. **Reste dû** : le tir de confirmation — quatre critères l'exigent, dont la preuve du défaut principal (zéro sollicitation là où l'étape en enregistre cinq) | task-224 |
+| Le médecin consulte enfin le dossier de son patient dans la mesure | 🟡 Livré, en attente d'intégration | Le parcours simulé ignorait le geste qui **récupère de très loin le plus de données** par action du médecin : consulter le dossier d'un patient. La campagne du 3 août certifiait donc un médecin qui n'en consulte jamais. Ce geste est désormais mesuré **là où il a lieu dans la vraie vie** — au bout du traitement. Un dossier patient n'est pas une donnée qui préexiste : c'est le **produit de l'analyse** des comptes-rendus reçus, et seulement pour ceux qui portent un identifiant national de santé. Le parcours enchaîne donc : la plateforme analyse un lot de messages, le médecin ouvre l'un d'eux — c'est là que le patient rattaché apparaît —, puis il consulte son dossier. Ce que la mesure révèle du coût : l'affichage d'une fiche patient déclenche **une vingtaine de demandes simultanées** (le dossier ne rapporte jamais le contenu des comptes-rendus, l'application le redemande pour chacun), soit environ **vingt-trois demandes en un seul geste** contre huit ou neuf pour une visite entière dans la messagerie. Le banc reproduit la limite du navigateur — six demandes à la fois — pour ne pas mesurer une charge que l'application n'émet jamais. Deux chiffres sont publiés côte à côte, et c'est leur **écart** qui informe : le nombre de comptes-rendus affichés **plafonne** (une page en contient vingt) alors que le dossier **grossit** à chaque analyse — or la page se calcule en relisant tout le dossier. Les documents **sans identifiant** sont comptés à part et **jamais en erreur** : ils n'entrent dans aucun dossier et attendent un rattachement manuel, ce qui est le comportement attendu. **Second acquis, de nature différente** : le parcours ne détruit plus son propre matériel de test. Le geste « supprimer » en a été retiré — c'était le seul à consommer des messages sans retour, ce qui obligeait à **reconstruire toutes les boîtes entre deux campagnes**. Rejouer une campagne coûte maintenant quelques secondes au lieu d'une reconstruction complète, et la place ainsi libérée (deux cinquièmes de chaque boîte) est exactement celle dont le dossier patient avait besoin. **Reste dû** : la campagne qui exercera ce parcours, et la démonstration du gain — deux campagnes de suite sans reconstruction. **Point ouvert** : le défilement d'un dossier au-delà de la première page attend une décision produit sur sa fréquence | task-226 |
 
-**Couverture EPIC consolidée : 19 features livrées sur 19** (les dix-neuf
+**Couverture EPIC consolidée : 20 features livrées sur 20** (les vingt
 attendent leur intégration). L'EPIC est **fonctionnellement complet** : le banc est
 opérationnel, il mesure la chaîne complète de traitement des documents médicaux,
 les campagnes de mesure sont outillées avec une référence opposable, la campagne à
@@ -1118,6 +1119,27 @@ Cinq réserves à porter au bilan, sans quoi il serait trompeur :
   près d'une demi-seconde pour un message qu'il faut aller chercher sur le serveur
   de messagerie. Ce tir **ne certifie rien** — seul le rythme réel d'un humain
   fait foi, et son rapport le déclare de lui-même. (task-220)
+
+- v1.21 — Le parcours simulé mesure enfin **la consultation du dossier d'un
+  patient**, le geste qui récupère de très loin le plus de données par action du
+  médecin, et il le mesure **là où il a lieu** : au bout du traitement. Un dossier
+  patient ne préexiste pas — c'est le produit de l'analyse des comptes-rendus
+  reçus, et seulement pour ceux qui portent un identifiant national de santé. La
+  séquence simulée est donc devenue une chaîne : la plateforme analyse un lot de
+  messages, le médecin en ouvre un — c'est là que le patient rattaché apparaît —,
+  puis il consulte son dossier. Ce que cela révèle : afficher une fiche patient
+  déclenche une **vingtaine de demandes simultanées**, soit environ vingt-trois en
+  un seul geste, contre huit ou neuf pour une visite entière dans la messagerie.
+  Deux chiffres sont publiés côte à côte parce que c'est leur écart qui informe :
+  le nombre de comptes-rendus affichés plafonne (vingt par page) alors que le
+  dossier grossit à chaque analyse. Les documents sans identifiant sont comptés à
+  part et jamais en erreur — ils attendent un rattachement manuel, ce qui est le
+  comportement attendu. **Second acquis** : le parcours ne détruit plus son propre
+  matériel de test. Le geste « supprimer » en a été retiré — seul geste à consommer
+  des messages sans retour, ce qui obligeait à reconstruire toutes les boîtes entre
+  deux campagnes ; rejouer coûte désormais quelques secondes, et la place libérée
+  est exactement celle dont le dossier patient avait besoin. Ce tir **ne certifie
+  rien** tant que la campagne n'a pas été conduite. (task-226)
 
 ---
 
