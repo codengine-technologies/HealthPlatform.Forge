@@ -549,3 +549,57 @@ sur du code frais. Les entrées existantes de `python.md` (S1192) et
 `javascript.md` (S4624, S6582, S3863) ont servi en prévention.
 
 - **Étape suivante** : `/review task-224`
+
+## PRs
+
+- `api-mail` : **https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/152** — label `awaiting-human-merge`
+- `dtos-mss` : **aucune PR** — branche sans commit (auto-inclusion).
+- Aucun frontend concerné (`**Single frontend**: true`).
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 13 fichiers revus, **0 bloquant**, 1 risque à surveiller
+au banc, 1 suggestion.
+
+| Zone | Verdict |
+|---|---|
+| `journey.js` — chauffe par `enrich/sync` | ✓ un seul appel pour la bande ; `'warmup'` était déjà un op déclaré, aucun seuil cassé ; bandes disjointes, l'étape 4 reste sur du vrai froid |
+| `report.py` — contrôle de l'étape mal nommée | ✓ 3 états, `mislabel` hors de l'early-return des tirs non opposables ; bandeau **avant** les tables |
+| `report.py` — sessions depuis le magasin | ✓ sonde locale prioritaire (test dédié), « non relevé » jamais un zéro |
+| `lib/routes.js` — gabarits | ✓ module **pur**, donc testable par node ; tags de l'appelant **copiés** (sinon le `name` fuitait d'un geste sur le suivant) |
+| Tableaux de bord | ✓ unités corrigées (2 occurrences), métrique `_rate`, `noValue` sur 77 blocs |
+| `test_dashboards.py` — contrôles | ✓ le modèle dimensionnel a été corrigé **et documenté** après 10 faux positifs |
+| Sécurité / PGSSI-S | ✓ le gabarit **retire** le nom de pièce jointe des étiquettes — bénéfice, pas seulement garde-fou ; test dédié |
+
+### ⚠️ Risque à surveiller au tir — le coût de la chauffe a changé d'ordre de grandeur
+
+Conséquence directe du correctif du défaut 5, chiffrée plutôt que découverte :
+15 `GET contenu` légers deviennent **1 `enrich/sync` de 15 UIDs**, soit **~65 s de
+pipeline CDA par VU** contre quelques centaines de ms. `JOURNEY_PALIER_TRIM_S` ne
+rogne que 10 s : le premier palier pourrait voir de la charge de chauffe dans sa
+fenêtre.
+
+Borné par le fait que `ramping-vus` échelonne les démarrages — la chauffe est
+étalée, pas simultanée. Symptôme à guetter : premier palier dégradé sans raison
+applicative. Remèdes, du moins au plus structurel : relever le rognage ; baisser
+`JOURNEY_WARM_SHARE` ; ou **faire enrichir la bande chaude par le seed**, hors
+bande, au lieu que chaque VU la refasse (le bon à terme, mais il touche
+`mss.mail.loadtest.seed`, hors périmètre).
+
+**Ne pas enrichir est le défaut lui-même** : le correctif reste le bon choix.
+
+### Suggestion non bloquante
+
+`store_served_solicitation_rate` est appelé deux fois par verdict. Deux lectures de
+dictionnaire en mémoire — négligeable, et `/review` est en lecture seule sur le code.
+
+### Validation
+
+| | Résultat |
+|---|---|
+| Build | ✓ 0 erreur |
+| Tests harnais | ✓ **146 Python + 39 node**, `selftest.sh` vert, **20 tests ajoutés** |
+| Tests .NET | ✓ 3 391 verts ; 1 flaky pré-existant par run (`Services/Export`), **aucun fichier C# dans le diff** |
+| Sync `develop` | ✓ `Already up to date` (merge, pas rebase) |
+| Sonar | ✓ **zéro finding attribuable**, vérifié par (règle, fichier) et non par total |
+| DOD | 11/15 ✓ ; **4 déférés au banc** (nœud distant absent) |
