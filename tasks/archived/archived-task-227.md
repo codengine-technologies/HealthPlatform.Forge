@@ -527,3 +527,55 @@ que cette US combat, une exemption désactivée sans bruit.
 | Production | ✓ `git diff --stat … -- src/` : **vide** |
 | Sonar | ✓ **zéro finding attribuable** après correction des 2 `SYSLIB1045` |
 | DOD | **12/12**, aucun critère déféré |
+
+## Merged
+
+**Mergé le 2026-08-04** par l'humain via `/merge task-227 --i-tested` (HAG,
+CLAUDE.md règle 10 — attestation explicite du plan de test manuel).
+
+| Repo | PR | Squash commit |
+|---|---|---|
+| `api-mail` | [#154](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/154) | `4ec2b73` chore(mail): le contenu clinique d'un message ne peut plus disparaître en silence |
+| `dtos-mss` | aucune PR (branche sans commit) | — |
+
+- **Barrières de sécurité** : toutes vertes — CI `build` SUCCESS,
+  `mergeable=MERGEABLE` / `mergeStateStatus=CLEAN`, aucun `CHANGES_REQUESTED`,
+  pas de label `awaiting-us-completion`, arbre local propre, 5 commits d'avance /
+  0 de retard.
+- **Squash-merge** (`gh pr merge --squash`, jamais `--delete-branch`) : ref
+  **distant** supprimé, branche **locale conservée**. Branche vide de `dtos-mss`
+  nettoyée des deux côtés.
+- **CI `develop` après merge** : ✅ verte (run `30947434890`, `4ec2b736`), dans la
+  fenêtre de 2 minutes (règle 5).
+- **`client-angular`** : aucune opération git, aucune question — code-only, et
+  cette task ne touchait aucun frontend.
+
+### Ce qui est désormais sur `develop`
+
+**13 tests, et zéro ligne de production.** L'invariant qui décide si le CDA d'un
+message est décodé — la présence d'une ligne `MailContents` — est enfin gardé :
+
+- les **deux tests qui mentaient** assertent ce que leur nom promet, et **échouent**
+  désormais quand l'invariant est cassé (ils restaient verts avant) ;
+- la **chaîne de bout en bout** est vérifiée sur vraie base, documents médicaux
+  inclus — c'est le test qui aurait attrapé task-222 ;
+- l'**ensemble des écrivains** de `MailContents` est **clos** : un quatrième
+  écrivain fait échouer la suite jusqu'à ce qu'il soit ajouté délibérément.
+
+C'est le premier cycle passé **sans interruption** de `/sonar` à `/tech-writer`,
+grâce à la règle 13 posée dans le même mouvement.
+
+### Ce qui reste ouvert, et qui n'est pas de cette US
+
+1. **Le piège du contenu corps-seul** — une ligne de contenu sans document médical
+   suffit à sortir un message de la file d'analyse. Énoncé et couvert par un test,
+   **délibérément non corrigé** : le remplacer par un champ explicite
+   (`EnrichedAt`) est une migration de schéma sur une table de DSCP. À arbitrer.
+2. **Aucune trace quand l'analyse est court-circuitée à tort.** C'est ce silence
+   qui a rendu task-222 invisible. Cette US ne le corrige pas — elle ne touche pas
+   la production — mais le documente. Une trace d'exploitation sur ce chemin serait
+   une US distincte.
+3. **`GetFolderTodayAsync_HappyPath_TagsTheImapActivityWithPerCommandDurations`**
+   reste un test à défaut d'isolation sur `develop` (listener d'activité global) —
+   signalé sur task-225, sans lien avec cette US, et il produira du bruit à chaque
+   cycle tant qu'il n'est pas corrigé.
