@@ -131,3 +131,20 @@ boucle de fetch des messages du lot.
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : inchangé — aucun flux ni stockage nouveau
 - **AIPD / impact RGPD** : inchangé — aucun traitement nouveau, aucune donnée nouvelle
+
+## Branches
+
+- `api-mail` (pushed) : `fix/task-228-enrich-phase-a-chunking` — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-228-enrich-phase-a-chunking
+- `dtos-mss` (pushed, auto-inclus) : même nom de branche — aucun changement de contrat attendu (US backend-only, portée d'un verrou applicatif), donc pas de PR si aucun commit.
+
+**Base** : `develop` d'`api-mail` au commit `4ec2b73` — **task-227 y est mergée**.
+Ce n'est pas un détail : cette US refactore `EnrichEmailsAsync`, c'est-à-dire
+**exactement** le code que task-227 vient de garder. Les 13 tests de la chaîne
+d'analyse font donc office de filet sur ce refactoring — dont les deux tests
+réparés, qui échouent désormais si le verrouillage de l'analyse est cassé.
+
+**Dépendances vérifiées** : task-079, task-211, task-213 et task-214 sont toutes
+dans `tasks/archived/`.
+
+**Préfixe `fix/`** : la US corrige un défaut **mesuré** (détention p95 du verrou
+de session à 58,5 s au tir n300 du 2026-08-04), pas une amélioration spéculative.
