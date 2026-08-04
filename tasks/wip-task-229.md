@@ -385,3 +385,111 @@ d'environnement connu (les scans de sources remontent au `RepoRoot()` depuis
 verts en compilation normale.
 
 **Routage** : `api-mail` touché ⇒ `/sonar 229`.
+
+
+---
+
+## Sonar log
+
+**Trois analyses complètes** : une pour mesurer, deux pour vérifier que les
+corrections portaient — et la deuxième a montré que la première ne portait pas.
+Serveur `localhost:9001`, projet `healthplatform`, `dotnet sonarscanner` autour du
+build Release + couverture OpenCover des 5 suites.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| **Quality Gate (new code)** | **ERROR** | **ERROR** | inchangé — *dette antérieure, cf. ci-dessous* |
+| `new_violations` | 28 | **28** | **0 — retour exact à la baseline** |
+| `new_coverage` | 87,0 % | **87,1 %** | +0,1 pt (seuil 80 — OK) |
+| `new_duplicated_lines_density` | 0,086 % | **0,081 %** | −0,005 pt (seuil 3 — OK) |
+| `new_security_hotspots_reviewed` | 71,43 % | 71,43 % | = (seuil 100 — **ERROR**) |
+| Bugs / Vulnérabilités / Smells | 1 / 0 / 27 | 1 / 0 / **27** | = |
+| Coverage projet | 86,9 % | **87,0 %** | +0,1 pt |
+| Duplication projet | 0,5 % | **0,4 %** | −0,1 pt |
+| Reliability / Security / Maintainability | 3,0 / 1,0 / 1,0 | 3,0 / 1,0 / 1,0 | = |
+
+### Dette nouvelle attribuable à task-229 : **zéro**, et c'est mesuré
+
+La progression des trois scans se lit exactement :
+
+| Scan | `new_violations` | Findings sur les fichiers de task-229 |
+|---|---|---|
+| 1 — état livré par `/develop` + `/forge-simplify` | **32** | **5** |
+| 2 — après correction | 29 | 2 |
+| 3 — après itération 2 | **28** (= baseline) | **1**, et il est préexistant |
+
+**Itération 1 — 4 findings corrigés :**
+
+| Règle | Fichier | Nature |
+|---|---|---|
+| `S1067` | `ImapService.cs` | garde du cache-hit à 5 conditions liées |
+| `S1481` | `ImapService.cs` | liaisons de motif inutilisées dans un `switch` |
+| `S1172` | `BaseRepository.cs` | paramètre `cancellationToken` non utilisé |
+| `external_roslyn:CA2016` | `BaseRepository.cs` | jeton non transmis à `SetAsync`, qui l'accepte |
+
+Les deux derniers étaient **le même défaut** : `TryCacheUserIdAsync` recevait un
+jeton d'annulation et ne le passait pas à `SetAsync`. Une requête annulée laissait
+donc une écriture de cache courir derrière elle. Corrigé en le transmettant.
+
+**⚠️ Itération 2 — mon correctif de `S1067` n'avait pas corrigé le finding, il
+l'avait DÉPLACÉ.** J'avais extrait la garde dans `IsQueryCacheUsable` en croyant
+régler la règle ; le scan suivant a remonté le même `S1067`, ligne 803 → 868.
+**Extraire une condition ne réduit pas son nombre d'opérateurs.** Les cinq
+conditions sont désormais évaluées une par une, dans le **même ordre** que
+`ExplainQueryCacheMiss` — les deux méthodes se lisent en regard, ce qui a un
+bénéfice propre : un motif de non-utilisation du cache ne peut pas manquer à l'une
+des deux.
+
+C'est la valeur du second scan, et la raison pour laquelle il ne faut pas conclure
+sur une correction sans la remesurer. Sans lui, la task aurait été livrée avec un
+finding annoncé corrigé.
+
+### Le 5ᵉ finding n'était pas le mien, et je ne me l'attribue pas
+
+`csharpsquid:S103` sur `BaseRepository.cs` **ligne 68** — « ligne de 155 caractères ».
+C'est la ligne du **constructeur**, absente de mon diff (vérifié par
+`git diff origin/develop...HEAD`), et elle figurait **déjà dans la baseline**.
+Non corrigée, non attribuée — la corriger reviendrait à reformater du code que la
+task ne touche pas.
+
+### Pourquoi le Quality Gate reste ERROR
+
+Piège documenté de la *new-code period* (`PREVIOUS_VERSION`), qui englobe des tasks
+déjà mergées. Les 28 violations se répartissent ainsi — **aucune de task-229** :
+
+| Origine | Compte |
+|---|---|
+| `tests/loadtest-k6/report.py` (task-174 / 224) | 16 |
+| `tests/loadtest-k6/scenarios/journey.js` | 7 |
+| `tests/loadtest-k6/lib/journey-model.js` | 5 |
+| `csharpsquid:S103` préexistants (`IIheXdmProcessingService`, `BaseRepository`) | 2 |
+
+Et les **2 security hotspots** qui plafonnent `new_security_hotspots_reviewed` à
+71,43 % sont les deux `Math.random()` de `journey.js`.
+
+> ⚠️ **Le même point ouvert qu'à task-228, et il ne se refermera pas tout seul** :
+> ces 2 hotspots sont en `TO_REVIEW`, donc ils maintiendront le Quality Gate en
+> ERROR à **chaque cycle futur**. Les marquer *safe* est très probablement correct
+> (tirages pseudo-aléatoires de sélection de message dans un scénario de charge,
+> aucun rôle cryptographique) mais c'est un **jugement de sécurité** que la forge ne
+> prend pas au passage dans le cycle d'une autre task.
+
+### Suites de tests pendant les scans (Release)
+
+| Scan | Résultat |
+|---|---|
+| 1 | **3 440 / 3 440**, 0 échec |
+| 2 | **3 440 / 3 440**, 0 échec |
+| 3 | 2 échecs — `MailExportServiceTests.BuildPdfWithoutAttachmentsOmitsAttachmentSection` et `MarkdownPdfRendererTests.RenderGfmTableKeepsAllCellsInOrder` |
+
+Les deux échecs du 3ᵉ scan appartiennent à la **même famille de flakies PDF**
+(`Services/Export`, `UglyToad.PdfPig`), déjà connue de l'EPIC, et **verts aux deux
+scans précédents** sur le même code. Aucun code d'export n'est touché par ce diff.
+
+> Cette famille s'est manifestée **cinq fois** au cours de ce cycle et du précédent
+> (task-228). Elle mérite une task dédiée : signalée, pas corrigée ici.
+
+**Routage** : `client-angular` et `client-mobile` non touchés ⇒ `/lint-angular`,
+`/lint-mobile` et `/verify-visual` skippent ⇒ `/review 229`.
