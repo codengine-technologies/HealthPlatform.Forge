@@ -284,3 +284,101 @@ merge).
 > était fondée sur un état périmé de mon côté, et l'humain avait raison de passer
 > outre. La leçon est pour moi — **lire `develop` avant de recommander un ordre de
 > travail**, un plan de contrôle partagé pouvant avancer hors de la conversation.
+
+## Develop log
+
+- **Repos touchés** : `api-mail` uniquement, et **exclusivement des tests**.
+  `dtos-mss` : branche vide, pas de PR. Aucun frontend.
+- **Commits** :
+  - `a1a6957` — points 1 à 4 (les deux tests réparés + 8 tests neufs)
+  - `1c95fdd` — point 5 (le garde-fou de la classe de défaut)
+- **Build / tests** : 0 erreur ; **3 405 verts**. 1 flaky pré-existant
+  (`Services/Export`, famille `UglyToad.PdfPig` de v1.18) — 31/31 en isolation,
+  et **aucun fichier C# de production dans le diff**, ce qui exclut mécaniquement
+  une régression.
+
+### Les cinq points
+
+| # | État | Ce qui a été fait |
+|---|---|---|
+| **1** | ✓ | Les deux tests qui mentaient assertent enfin ce que leur nom promet |
+| **2** | ✓ | Le cas **positif** du marqueur + lot mixte + cloisonnement par dossier |
+| **3** | ✓ | Le verrouillage réellement asserté, **et** la notification au poste du médecin |
+| **4** | ✓ | La chaîne de bout en bout sur **vrai PostgreSQL** — le test qui aurait attrapé task-222 |
+| **5** | ✓ | L'ensemble des écrivains de `MailContents` est **clos** — retenu par arbitrage humain |
+
+**13 tests** au total : 2 réparés, 11 neufs.
+
+### La preuve ROUGE, obtenue sur les trois couches
+
+Le DOD l'exigeait, et c'est la seule chose qui distingue un test d'un
+commentaire décoratif. Chaque fois : casser, constater ROUGE, rétablir,
+re-vérifier la production vierge.
+
+| Ce qui a été cassé | Effet |
+|---|---|
+| `Where(!alreadyEnriched.Contains(u))` dans `BackgroundImapService` | `SkipsThem` **échoue** — alors qu'il était **vert** dans ce même état avant correction |
+| Le même filtrage dans `ImapService` | `WhenEveryUidIsAlreadyAnalysed_PersistsNothing` **échoue** |
+| Un écrivain factice de `MailContents` sur un chemin de lecture | **deux** tests du garde-fou échouent, dont celui de la couche |
+
+### Ce que j'ai trouvé en mesurant le point 5
+
+**Un brouillon est reporté comme « analysé »** par `GetEnrichedUidsAsync` :
+`UpdateDraftMailAsync` écrit une ligne `MailContents` pour un brouillon, qui n'a
+évidemment aucun CDA à décoder.
+
+**C'est sans conséquence, mais pour une raison précise et non par chance** : les
+brouillons vivent dans « Drafts » quand l'analyse s'exerce sur les dossiers de
+réception, et `GetEnrichedUidsAsync` filtre par dossier. Je l'ai constaté en
+lisant le code, puis **couvert par un test dédié**
+(`...ShouldNotLeakAcrossFoldersAsyncAsync`) — le raisonnement ne repose donc plus
+sur une lecture de code, ce qui est exactement le reproche que cette US adresse à
+l'état antérieur.
+
+### Le piège, énoncé comme tel plutôt que corrigé
+
+Un test dédié établit qu'une ligne de contenu **corps-seul** suffit à faire sortir
+un message de la file d'analyse : le marqueur ne distingue pas « analysé » de
+« porte du texte ». C'est le mécanisme exact par lequel task-222 aurait supprimé le
+décodage CDA.
+
+Ce test **ne demande pas de changer ce comportement** — le remplacer par un champ
+explicite serait une migration de schéma sur une table de données de santé, que la
+US place en hors scope. Il rend la propriété **visible et exécutable**, pour que
+quiconque envisagerait d'écrire une ligne de contenu ailleurs voie d'abord ce
+qu'il déclenche.
+
+### Sur le garde-fou : ce qu'il ne prouve pas
+
+Écrit dans le fichier lui-même, parce que le taire serait reproduire la faute
+combattue : c'est un scan de **texte source**, pas une analyse sémantique. Une
+écriture par réflexion, par un helper générique ou en SQL brut lui échapperait. Il
+couvre la forme **idiomatique** — la seule employée dans ce dépôt, et celle qu'un
+développeur pressé écrirait. **Garde-fou, pas preuve d'impossibilité.**
+
+Il porte en outre une **garde du garde** : `Assert.NotEmpty(writers)`. Un scan qui
+ne trouve plus rien — motif obsolète, arborescence changée — passerait sinon pour
+un scan satisfait. « Une absence n'est pas un zéro » (task-214), appliqué au test
+lui-même.
+
+### DOD — auto-contrôle
+
+| Critère | État |
+|---|---|
+| Build passe (0 erreur, 0 avertissement) | ✓ |
+| Tests passent (0 échec) | ✓ 3 405 ; 1 flaky pré-existant hors diff |
+| `SkipsThem` asserte que rien n'est enrichi, **constaté ROUGE** | ✓ (détail ci-dessus) |
+| `WithEmptyUidList` asserte réellement qu'il ne se passe rien | ✓ |
+| `GetEnrichedUidsAsync` — cas positif couvert | ✓ + lot mixte + cloisonnement |
+| Le verrouillage est asserté sur un lot mixte | ✓ sur les **deux** couches |
+| La notification « déjà enrichi » est assertée | ✓ |
+| Test d'intégration de la chaîne sur base réelle | ✓ 4 tests, dont documents médicaux présents après analyse |
+| Chaque test neuf **constaté ROUGE** | ✓ sur les trois couches |
+| Aucune ligne de production modifiée | ✓ `git diff --stat` sur `src/` : **vide** |
+| Aucune donnée de santé en clair dans les tests | ✓ corpus synthétique, INS absente |
+| Un écrivain non déclaré fait échouer la suite | ✓ **deux** tests, preuve ROUGE faite |
+
+**12/12.** Aucun critère déféré : cette US se vérifie entièrement sur poste, sans
+banc ni nœud distant.
+
+- **Étape suivante** : `/forge-simplify task-227`
