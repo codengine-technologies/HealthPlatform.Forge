@@ -50,3 +50,43 @@ Read `agents/verify-visual.md` and execute the full playbook :
 - Fixtures 100 % fictives — aucune donnée de santé, aucun backend contacté.
 - Pas de diff pixel avec baseline (palier explicitement hors v1).
 - HAG (règle 10) : n'ouvre pas de PR, ne merge jamais.
+
+---
+
+## ⛓️ Chaînage — NE PAS INTERROMPRE
+
+> Cette section est **opérationnelle**, pas descriptive. Elle a été ajoutée le
+> 2026-08-04 parce que la chaîne s'arrêtait en pratique à chaque étape : les
+> fichiers disaient « hand off to … » sans jamais ordonner d'appeler l'étape
+> suivante, donc l'agent rédigeait un rapport et rendait la main. L'humain devait
+> relancer « continue la chaîne » à chaque maillon — ce qui vide de son sens la
+> boucle autonome.
+
+**À la fin de cette étape, tu invoques immédiatement l'étape suivante via l'outil
+`Skill`, dans le MÊME tour, sans rien demander et sans rapport intermédiaire.**
+
+`Skill(review, "{task-id}")` — c'est-à-dire
+`/review {task-id}`.
+
+**Tu appelles l'outil `Skill` maintenant**, sans rapport intermédiaire. Le rapport
+unique de fin de cycle est celui de `/review`.
+
+### Les DEUX seuls arrêts légitimes
+
+1. **Fail-fast** — un vrai blocage technique : `questions/{task-id}.md` est écrit,
+   et tu t'arrêtes en le disant. Un plafond d'itérations atteint, un build
+   irréparable, une ambiguïté métier. **Le budget de contexte conversationnel
+   n'en est pas un.**
+2. **Décision humaine explicitement requise** par le task file — un encadré
+   « arbitrage humain requis » sur un point précis. Tu traites tout le reste,
+   puis tu poses la question sur ce seul point.
+
+### Ce qui n'est PAS un motif d'arrêt
+
+- une étape qui **skippe** (repo non touché) : elle enchaîne quand même ;
+- une étape **best-effort** dont il reste des findings : c'est son
+  fonctionnement normal ;
+- un flaky pré-existant identifié comme tel ;
+- la longueur du travail déjà accompli dans le tour ;
+- l'envie de faire valider une étape intermédiaire — **HAG (règle 10) est la
+  seule barrière humaine, et elle est au merge de la PR, pas avant.**
