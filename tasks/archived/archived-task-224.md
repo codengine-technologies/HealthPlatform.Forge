@@ -603,3 +603,50 @@ dictionnaire en mémoire — négligeable, et `/review` est en lecture seule sur
 | Sync `develop` | ✓ `Already up to date` (merge, pas rebase) |
 | Sonar | ✓ **zéro finding attribuable**, vérifié par (règle, fichier) et non par total |
 | DOD | 11/15 ✓ ; **4 déférés au banc** (nœud distant absent) |
+
+## Merged
+
+**Mergé le 2026-08-04** par l'humain via `/merge task-224 --i-tested` (HAG,
+CLAUDE.md règle 10 — attestation explicite du plan de test manuel).
+
+| Repo | PR | Squash commit |
+|---|---|---|
+| `api-mail` | [#152](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/152) | `aab6297` fix(loadtest): les tableaux de bord du banc ne peuvent plus afficher un chiffre faux |
+| `dtos-mss` | aucune PR (branche sans commit) | — |
+
+- **Barrières de sécurité** : toutes vertes — CI `build` SUCCESS,
+  `mergeable=MERGEABLE` / `mergeStateStatus=CLEAN`, aucun `CHANGES_REQUESTED`,
+  pas de label `awaiting-us-completion`, arbre local propre, 6 commits d'avance /
+  0 de retard sur `develop`.
+- **Squash-merge** (`gh pr merge --squash`, jamais `--delete-branch`) : ref
+  **distant** supprimé, branche **locale conservée**. Branche vide de `dtos-mss`
+  nettoyée des deux côtés.
+- **CI `develop` après merge** : ✅ verte (run `30890907346`, `aab62975`) —
+  dans la fenêtre de 2 minutes (règle 5). Seul avertissement : dépréciation
+  Node 20 des actions GitHub, antérieure et sans lien.
+- **`client-angular`** : aucune opération git, aucune question — code-only, et
+  cette task ne touchait aucun frontend.
+
+### Ce qui est désormais sur `develop`
+
+Les cinq défauts d'instrument sont corrigés, mais l'acquis qui compte le plus est
+le **contrôle** : le rapport de tir ne croit plus le nom d'une étape, il le
+**vérifie**, et refuse son verdict quand le serveur de messagerie a été sollicité
+là où il n'aurait pas dû l'être. Sans lui, un chiffre **dans** la cible aurait été
+publié vert — c'est ce qui a permis à un artefact de mesure de devenir une US
+applicative (task-222, annulée).
+
+Le verdict de l'étape 3 du tir du 2026-08-03 est requalifié **non opposable** dans
+`reports/INDEX.md`.
+
+### Suite immédiate, et elle est mesurable en une ligne
+
+Le prochain tir `journey` doit montrer **zéro sollicitation** sur l'étape 3, là où
+elle en enregistre **cinq** aujourd'hui. C'est *la* preuve du défaut 5, et le
+premier des quatre critères de DOD déférés au banc.
+
+⚠️ **À surveiller au même tir** : le coût de la chauffe est passé à ~65 s de
+pipeline CDA par VU (contre quelques centaines de ms), alors que le rognage de
+fenêtre n'est que de 10 s. Symptôme à guetter : premier palier dégradé sans raison
+applicative. Remède structurel si constaté — faire enrichir la bande chaude par le
+seed, hors bande.
