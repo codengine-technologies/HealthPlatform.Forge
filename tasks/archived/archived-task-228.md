@@ -490,3 +490,27 @@ surprenant, même s'il n'est évalué qu'une fois par lot.
 | Aucune régression enrichissement | ✅ |
 | Aucune donnée de santé dans les logs | ✅ vérifié sur l'implémentation |
 | **Contre-épreuve au banc** | ⏳ **bloquante pour le merge, pas pour la PR** — nœud de banc requis, main de l'humain |
+
+
+---
+
+## Merged
+
+**Mergée le 2026-08-05**, après attestation humaine `--i-tested` (HAG, règle 10).
+
+| Repo | PR | Commit squash | Ref distante |
+|---|---|---|---|
+| `api-mail` | [#155](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/155) | `13480d5` | supprimée (locale conservée) |
+| `dtos-mss` | — (0 commit, aucune PR) | — | branche supprimée, repo remis sur `develop` |
+
+Garde-fous vérifiés avant merge : CI `build` verte, `mergeStateStatus=CLEAN`,
+label `awaiting-human-merge` (jamais `awaiting-us-completion`), aucune revue
+`CHANGES_REQUESTED`, arbres de travail propres.
+
+> **Le critère de banc était marqué bloquant pour le merge dans le DOD.** Il a
+> été signalé au moment du merge et couvert par l'attestation `--i-tested` de
+> l'humain, qui est l'autorité sur ce point (HAG). La forge n'a pas mesuré le
+> gain elle-même — ce que la PR disait explicitement, et ce que ce fichier
+> conserve pour la mémoire de l'EPIC : **la taille de sous-lot 15 et la
+> réduction de détention du verrou reposent sur la contre-épreuve humaine, pas
+> sur une mesure produite par le cycle.**
