@@ -487,3 +487,40 @@ re-verts.
 | Sync `develop` | ✓ `Already up to date` (merge, pas rebase) |
 | Périmètre | clauses de fond **toutes tenues** et vérifiées par commande ; plafond de fichiers dépassé de 1 source + les tests — **plafond mal posé**, déclaré |
 | DOD | 10/11 ✓, le 11ᵉ étant le plafond ci-dessus |
+
+## Merged
+
+**Mergé le 2026-08-04** par l'humain via `/merge task-225 --i-tested` (HAG,
+CLAUDE.md règle 10 — attestation explicite du plan de test manuel).
+
+| Repo | PR | Squash commit |
+|---|---|---|
+| `api-mail` | [#151](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/151) | `eec2cfd` feat(telemetry): task-225 — compter les allers-retours vers le serveur de messagerie |
+| `dtos-mss` | aucune PR (branche sans commit) | — |
+
+- **Barrières de sécurité** : toutes vertes avant merge — CI `build` SUCCESS,
+  `mergeable=MERGEABLE` / `mergeStateStatus=CLEAN`, aucun `CHANGES_REQUESTED`,
+  pas de label `awaiting-us-completion`, arbre local propre, branche à jour avec
+  `develop` (2 commits d'avance, 0 de retard).
+- **Squash-merge** (`gh pr merge --squash`, jamais `--delete-branch`) : le ref
+  **distant** est supprimé par `git push origin --delete`, la branche **locale
+  est conservée**. La branche vide de `dtos-mss` a été supprimée des deux côtés —
+  reliquat de l'auto-inclusion, identique à `develop`.
+- **CI `develop` après merge** : ✅ verte (run `30885443244`, `eec2cfd3`) —
+  vérifiée dans la fenêtre de 2 minutes (règle 5). Le seul avertissement est la
+  dépréciation Node 20 des actions GitHub, antérieure et sans lien.
+- **`client-angular`** : aucune opération git, aucune question — code-only, et
+  cette task ne touchait aucun frontend.
+
+### Ce qui est désormais sur `develop`
+
+Le décompte des allers-retours vers le serveur de messagerie, et les trois
+garde-fous qui interdisent de réintroduire le défaut qui a coûté task-222. **Le
+piège du marqueur d'analyse est refermé** — il était resté ouvert entre
+l'annulation de task-222 et ce merge.
+
+### Suite immédiate
+
+**task-224 est débloquée** : son défaut 5 est maintenant démontrable. L'étape 3
+du parcours `journey`, annoncée « servie base », enregistre **5 sollicitations**
+et devra passer à **0** une fois sa chauffe corrigée.
