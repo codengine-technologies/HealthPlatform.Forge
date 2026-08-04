@@ -313,3 +313,109 @@ santé réelle.
 > disponible sur cette branche, et les critères de DOD du **défaut 5** qui
 > s'appuient sur lui sont **observables** — c'était la raison de l'ordre
 > 225 → 224.
+
+## Develop log
+
+- **Repos touchés** : `api-mail` uniquement (harnais de mesure + tableaux de bord —
+  **zéro fichier C#**). `dtos-mss` : branche vide, pas de PR, pas de publish NuGet.
+  Aucun frontend (`**Single frontend**: true`).
+- **Commits** :
+  - `2042b3d` défaut 5 — la chauffe analyse, et le rapport refuse une étape mal nommée
+  - `675c28c` défauts 1 & 2 — unités des panneaux, panneau d'erreurs aveugle, contrôles
+  - `6927cc2` défaut 3 — adresses paramétrées regroupées
+  - `e681869` défaut 4 + item 8 — sessions IMAP depuis le magasin, verdict requalifié
+- **Build / tests** : `dotnet build` 0 erreur / 0 avertissement ; **146 tests
+  Python**, **39 tests node**, `selftest.sh` vert. Côté .NET : 3 391 verts,
+  **2 flaky pré-existants** (`Services/Export`, famille `UglyToad.PdfPig`
+  documentée en v1.18) — vérifiés **31/31 en isolation**, et la task ne touche
+  **aucun fichier C#**, ce qui exclut toute régression de son fait.
+
+### Les cinq défauts
+
+| # | État | Ce qui a été fait |
+|---|---|---|
+| **5** | ✓ | La chauffe passe par **l'analyse elle-même** (`enrich/sync`, un seul appel pour la bande), le commentaire fautif de `journey-model.js` est corrigé, et le rapport **refuse** désormais le verdict d'une étape « servie base » dont le décompte de sollicitations est non nul |
+| **1** | ✓ | Unités `ms → s` sur les panneaux de latence — **et une seconde occurrence non listée dans la US**, trouvée par le contrôle |
+| **2** | ✓ | Métrique corrigée (`_rate`, pas `_total` : `http_req_failed` est un Rate côté k6) **et `noValue` sur 77 blocs** des trois tableaux |
+| **3** | ✓ | Gabarits d'adresse dans `lib/routes.js` (module pur), `name` posé sur 12 appels — cardinalité bornée par le nombre de routes |
+| **4** | ✓ | Sessions IMAP lues dans le magasin (`mssante_imap_sessions_active`), sonde locale gardée prioritaire, « non relevé » si les deux se taisent |
+
+### Trois choses que la US ne prévoyait pas, et qui comptent
+
+**1. Le contrôle d'unité a trouvé une seconde occurrence du défaut 1.**
+`saturation.json / « p95 serveur par route (ms) »` déclarait aussi la
+milliseconde sur un `histogram_quantile` en secondes. Ce panneau est décrit par
+sa **propre description** comme « le juge de l'attribution », à confronter au p95
+client du tableau k6. Les deux étaient faux du **même** facteur : leur
+confrontation semblait donc cohérente, et c'est la comparaison à la grille SLO
+(en millisecondes) qui était fausse. Titre et unité corrigés.
+
+**2. Mon contrôle d'unité était faux à la première écriture.** J'avais posé
+« la métrique contient `_seconds` donc le panneau doit être en secondes ». C'est
+faux : PromQL **change la dimension** — `rate(x_seconds_total[1m])` rend des
+secondes par seconde, soit un ratio sans dimension (des cœurs, pour du CPU), où
+`percentunit` et `none` sont légitimes. Dix faux positifs. Seul le **quantile
+d'un histogramme** garantit la dimension de sortie, donc c'est la seule forme que
+le contrôle juge. C'est consigné **à côté du code** plutôt que corrigé en
+silence : un contrôle qui se trompe de dimension serait exactement le défaut
+qu'il prétend empêcher.
+
+**3. Le regroupement d'adresses réduit la donnée exposée.** Le gabarit retire le
+**nom de la pièce jointe** de l'étiquette de série. En messagerie de santé, un
+nom de pièce jointe désigne couramment le patient et l'examen (leçon de task-213
+sur les clés de verrou). La US le mentionnait comme un garde-fou ; c'est en fait
+un bénéfice direct, et un test le fige.
+
+### Le contrôle qui empêche la récidive (item 7)
+
+C'est la pièce la plus importante de cette task, plus que les cinq correctifs :
+le rapport ne **croit** plus le nom d'une étape, il le **vérifie**.
+`JOURNEY_SLO_GRID` porte `served_from_store` sur l'étape 3, et le verdict la
+refuse si `mssante_mail_server_solicitations_total{operation="GetEmailContent"}`
+est non nul. **Trois** états, et le troisième vaut autant que les deux autres :
+
+- non nul → étape **refusée**, bandeau **avant** les tables, palier tombé ;
+- nul → étape jugée normalement ;
+- **absent** → « non vérifiée », **jamais lu comme zéro** (task-214 : une absence
+  n'est pas un zéro — un binaire antérieur à task-225 ne publie pas ce compteur).
+
+Sans lui, un chiffre **dans** la cible aurait été publié vert. C'est ce qui
+transforme un artefact d'instrument en verdict refusé plutôt qu'en US applicative.
+
+### DOD — auto-contrôle
+
+| Critère | État |
+|---|---|
+| Build passe (0 erreur) | ✓ |
+| Tests passent (0 échec) | ✓ 146 Python + 39 node + `selftest.sh` ; .NET 2 flaky pré-existants hors diff |
+| Panneaux de latence cohérents avec la grille | ✓ unités corrigées, **2** occurrences ; confrontation au rapport d'un même tir → **déféré au banc** |
+| Panneau de taux d'erreur : valeur réelle + « pas de donnée » | ✓ métrique `_rate` + `noValue` ; valeur réelle **à confirmer au banc** |
+| Nombre de séries par geste **borné** | ✓ gabarits + 6 tests ; vérification sur tir court **déférée au banc** |
+| Compteurs du magasin concordants à ±2 % sur tous les gestes | ⛔ **déféré au banc** |
+| Ligne « sessions ouvertes » renseignée depuis le magasin | ✓ code + 4 tests ; concordance 94/195/401 **à confirmer au banc** |
+| Métrique absente ⇒ « non relevé », jamais un zéro | ✓ test dédié |
+| Mode local strictement inchangé | ✓ la sonde locale garde la priorité (test dédié) |
+| Contrôle refusant une unité incompatible | ✓ `test_dashboards.py`, 5 tests |
+| **Étape 3 : 0 sollicitation là où elle en enregistre 5** | ⛔ **déféré au banc** — les deux chiffres exigent un tir |
+| Commentaire « le GET contenu matérialise le MailContent » disparu | ✓ dans `journey.js` **et** `journey-model.js` |
+| Contrôle refusant une étape « servie base » au décompte non nul | ✓ 6 tests, dont le refus d'une étape **pourtant dans ses cibles** |
+| Étape 3 annotée non opposable dans `INDEX.md` | ✓ ligne + note de lecture |
+| Étape 4 mesurée sur des messages réellement froids | ✓ la chauffe ne touche que la bande chaude (bandes disjointes, budget inchangé) |
+| `selftest.sh` vert | ✓ |
+
+**Quatre critères sont déférés au banc**, et c'est structurel : ils exigent un tir
+avec le nœud distant `MSS_LOADTEST_MAIL_HOST`, que la forge n'a pas. Le plus
+important — « étape 3 : 5 sollicitations avant, 0 après » — est **la** preuve du
+défaut 5, et elle se lit en une ligne du prochain rapport. Tout le reste est
+couvert par test.
+
+### Ce qui n'a pas été fait, volontairement
+
+- **Les 16 findings Sonar new-code de `tests/loadtest-k6/`** (task-220) n'ont pas
+  été touchés, bien que je rouvre ces fichiers. Les corriger mélangerait le
+  nettoyage de dette d'une autre task avec cinq correctifs d'instrument, et
+  `S3776` relève de `/sonar-s3776` (1 méthode = 1 PR) par construction.
+- **Le rapport du 2026-08-03 n'est pas réécrit** : les JSON font foi, l'index est
+  annoté. C'est ce que la US demande.
+
+- **Étape suivante** : `/forge-simplify task-224`
