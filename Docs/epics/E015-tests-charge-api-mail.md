@@ -103,6 +103,7 @@ baisses de performance avant qu'elles n'atteignent les utilisateurs**.
 | Le banc ne prend plus les ressources du service qu'il mesure | Mesurer la messagerie au-delà de cinq cents praticiens sans que les serveurs de messagerie simulés — désormais installés sur une infrastructure séparée — ne lui prennent ses ressources, et lire leur coût propre séparément du sien | task-221 | 🟡 Livré, en attente d'intégration |
 | Un message parti n'est jamais annoncé en échec | Avoir la certitude qu'un compte rendu remis au correspondant est bien annoncé comme parti au médecin — et, si sa copie dans « Messages envoyés » manque, le lui dire comme une information distincte plutôt que comme un échec d'envoi | task-223 | 🟡 Corrigé, mesure de confirmation à conduire |
 | Savoir combien de fois le serveur de messagerie est sollicité | Lire, sur chaque demande, **le nombre d'allers-retours réellement faits vers le serveur de messagerie** — au lieu de le déduire d'un temps, ce qui ne l'a jamais prouvé. Sert aussi à contrôler l'instrument : une étape de campagne annoncée « servie par la base » qui sollicite le serveur ne mesure pas ce qu'elle annonce | task-225 | 🟢 Livré |
+| Les tableaux de bord ne peuvent plus afficher un chiffre faux | Lire l'état du banc sans risquer de conclure à l'envers : les latences affichées dans la bonne unité, un panneau d'erreurs qui **dit** quand il n'a pas de donnée au lieu de se lire « aucune erreur », une légende lisible plutôt qu'une courbe par message, le coût en sessions du serveur de messagerie enfin relevé — et surtout, une étape de campagne qui **refuse de rendre un verdict** quand elle ne mesure pas ce que son nom annonce | task-224 | 🟡 Corrigé, mesure de confirmation à conduire |
 
 ---
 
@@ -608,13 +609,18 @@ sur une relecture**.
 > 3 août est **non opposable**, au même titre qu'un chiffre obtenu à rythme
 > accéléré.
 >
-> **Suites** : la correction du parcours simulé est le **cinquième défaut de
-> task-224** — le seul de ses cinq à avoir faussé un *verdict* et non seulement
-> une lecture. L'instrument qui permet de le prouver — le décompte des
-> allers-retours vers le serveur, par demande — est **livré** (task-225) : il
-> mesure aujourd'hui **cinq sollicitations** sur cette étape, ce qui établit
-> qu'elle n'est pas « servie base », et il devra en mesurer **zéro** une fois la
-> chauffe corrigée.
+> **Suites — corrigé le 4 août.** La chauffe du parcours passe désormais par
+> **l'analyse elle-même**, et le rapport ne croit plus le nom d'une étape : il le
+> **vérifie**. Une étape déclarée « servie base » dont le serveur de messagerie a
+> été sollicité voit son verdict **refusé**, avec le motif écrit avant les
+> tableaux (task-224, défaut 5). Trois états, et le troisième compte autant que
+> les deux autres : sollicitations mesurées ⇒ refus ; aucune ⇒ étape jugée ;
+> **compteur absent ⇒ « non vérifiée », jamais lu comme zéro**.
+>
+> C'est ce contrôle, plus que le correctif, qui empêche un défaut de ce genre de
+> redevenir une demande produit : sans lui, un chiffre **dans** la cible aurait
+> été publié vert. **Reste dû** : le tir de confirmation, qui doit montrer zéro
+> sollicitation sur cette étape là où elle en enregistre cinq.
 
 > ⚠️ **Une US applicative avait été écrite sur ce chiffre, puis annulée, et le
 > motif vaut d'être conservé.** Son correctif faisait garder le contenu du
@@ -675,6 +681,7 @@ sur une relecture**.
 | Le banc ne prend plus les ressources du service qu'il mesure | 🟡 Livré, en attente d'intégration | Les serveurs de messagerie simulés ont quitté la machine de mesure pour une infrastructure séparée de l'entreprise. Le motif est chiffré : à cinq cents praticiens ils prenaient à la messagerie l'équivalent de deux cœurs et demi, et ce coût suit le **nombre de boîtes** plutôt que la charge — il croît donc avec la population, l'axe même que les campagnes explorent. Leur consommation se lit maintenant **séparément** de celle de la messagerie, ce que le banc n'avait jamais su faire. Vérifié le 3 août sur l'infrastructure réelle : vingt boîtes injectées en 49 secondes, campagne de contrôle sans aucune erreur sur plus de sept mille demandes, extraction des documents médicaux réellement exercée, et temps d'aller-retour du réseau mesuré puis retranché de la latence simulée pour que le total reste conforme au contrat de mesure. Le risque du stockage partagé par le réseau a été **mesuré et non supposé** : aucun chemin ne dépasse le seuil de dégradation fixé d'avance (au plus une fois et demie sur l'extraction des documents médicaux, quasi nul sur la consultation et la lecture), verdict consigné. La bascule tient à un réglage unique, et son absence laisse le comportement antérieur strictement inchangé — les deux sens vérifiés. Seules des données synthétiques transitent sur le volume dédié au banc. **Reste dû** : la campagne de certification d'un palier de population, que cette étape rend possible | task-221 |
 | Un message parti n'est jamais annoncé en échec | 🟡 Corrigé, mesure de confirmation à conduire | La campagne de certification du 3 août a produit **une seule erreur sur 105 000 demandes** — et c'était la pire qualitativement : un envoi sur 3 352 rendu au médecin **en erreur alors que le message était parti et remis** à son correspondant. Le geste naturel devant un tel message est de le renvoyer, et le destinataire reçoit alors **deux fois le même document de santé** dans le dossier de son patient, sans moyen simple de savoir lequel est le bon. La cause n'était pas l'échec d'archivage — celui-là est traité comme anodin depuis toujours — mais la **libération d'un verrou technique à la sortie de l'archivage** : elle retrouvait la boîte par son nom, et si l'entrée de cette boîte avait été recyclée entre-temps, elle rendait un verrou qui n'était pas le sien. Ce qui explique la rareté, et pourquoi c'est l'archivage qui la portait : il empruntait le second accès en écriture, qui n'existe que le temps des envois. Deux corrections, l'une et l'autre nécessaires : le mécanisme rend désormais **le verrou qu'il a pris**, et un défaut de comptage se journalise sans jamais atteindre le médecin. La revue a fermé une troisième porte du même genre — une attente de verrou expirée produisait le même faux échec. Enfin, les deux informations sont **séparées** pour le médecin : « parti » et « parti, mais sa copie manque », la seconde ayant une valeur d'imputabilité, avec la trace réglementaire correspondante. **Reste dû** : la campagne de confirmation, qui doit rendre zéro erreur là où la référence en comptait une | task-223 |
 | Savoir combien de fois le serveur de messagerie est sollicité | 🟢 Livré | Chaque demande porte désormais **le nombre d'allers-retours réellement faits vers le serveur**, lisible dans la trace et dans les métriques, décomposé par commande. Une session déjà ouverte et réutilisée ne compte pas : le nombre est donc un **plancher exact**, pas une estimation — propriété figée par un test. La campagne du 3 août pouvait dire que 420 des 440 ms d'une ouverture se passaient dans l'application, mais pas combien de fois le serveur avait été sollicité ; 420 ms est *compatible* avec quatre allers-retours de 95 ms sans le prouver, et c'est cette ambiguïté qui avait permis d'écrire une US applicative sur une cause fausse. Aucune donnée de santé dans les étiquettes : uniquement des noms de commande écrits dans le code, vérifié par un test. Trois garde-fous accompagnent la livraison, pour que le piège qui a coûté task-222 ne se retende pas — deux avertissements en clair dans le code, à l'endroit exact où la main se reposerait, et deux tests prouvant qu'une lecture n'écrit rien en base, dont un sur vraie base. **Premier usage attendu** : rendre démontrable le cinquième défaut de task-224 — l'étape 3 du parcours, annoncée « servie base », enregistre aujourd'hui cinq sollicitations et devra passer à zéro | task-225 |
+| Les tableaux de bord ne peuvent plus afficher un chiffre faux | 🟡 Corrigé, mesure de confirmation à conduire | Cinq défauts, tous constatés pendant ou après la campagne du 3 août. **Le plus grave n'était pas un défaut d'affichage** : l'étape « relire un message enrichi » ne mesurait pas un message enrichi, parce que le parcours simulé ne déclenchait jamais l'analyse — elle mesurait donc des ouvertures froides, et c'est sur ce chiffre qu'une demande produit a été écrite puis annulée. La chauffe passe désormais par l'analyse, et le rapport **refuse** le verdict d'une étape qui ne mesure pas ce que son nom annonce. Les quatre autres : les latences n'affichent plus mille fois moins que leur valeur (deux panneaux, dont un que le contrôle automatisé a trouvé et que le constat initial ne listait pas — celui-là même qui sert de « juge de l'attribution ») ; le panneau de taux d'erreur lit enfin une métrique qui existe, et **tous** les panneaux du banc disent « pas de donnée » au lieu de se laisser lire « zéro » ; les adresses paramétrées sont regroupées, donc la légende redevient lisible, les compteurs cessent d'être sous-estimés jusqu'à 61 % — et le nom de la pièce jointe disparaît de la télémétrie, ce qui réduit la donnée exposée ; la ligne « sessions ouvertes » est renseignée depuis le magasin de métriques, sans aucun accès au cluster, et écrit « non relevé » plutôt qu'un zéro quand elle ne sait pas. Le verdict de l'étape 3 du 3 août est requalifié **non opposable** dans l'index des tirs. **Reste dû** : le tir de confirmation — quatre critères l'exigent, dont la preuve du défaut principal (zéro sollicitation là où l'étape en enregistre cinq) | task-224 |
 
 **Couverture EPIC consolidée : 19 features livrées sur 19** (les dix-neuf
 attendent leur intégration). L'EPIC est **fonctionnellement complet** : le banc est
@@ -880,6 +887,35 @@ Cinq réserves à porter au bilan, sans quoi il serait trompeur :
   la livraison — deux avertissements en clair dans le code, à l'endroit exact où
   la main se reposerait, et deux tests prouvant qu'une lecture n'écrit rien en
   base. (task-225)
+
+- v1.23 — **Les tableaux de bord du banc ne peuvent plus afficher un chiffre
+  faux, et une étape de campagne peut désormais refuser de rendre un verdict.**
+  Cinq défauts d'instrument, tous constatés pendant ou après la campagne du 3 août.
+  Le plus grave n'était pas un défaut d'affichage : l'étape « relire un message
+  enrichi » **ne mesurait pas un message enrichi**, parce que le parcours simulé
+  ne déclenchait jamais l'analyse des messages. Elle mesurait donc des ouvertures
+  froides — d'où l'égalité troublante avec l'étape « message froid », qui n'était
+  pas un symptôme mais la signature de l'artefact, et sur laquelle une demande
+  produit a été écrite puis annulée. La chauffe passe désormais par l'analyse
+  elle-même, et surtout **le rapport ne croit plus le nom d'une étape : il le
+  vérifie**, refusant son verdict quand le serveur de messagerie a été sollicité
+  là où il n'aurait pas dû l'être. Trois états, et le troisième compte autant que
+  les deux autres — compteur absent signifie « non vérifiée », jamais « zéro ».
+  Les quatre autres défauts : les latences n'affichent plus mille fois moins que
+  leur valeur — **deux** panneaux, dont un que le contrôle automatisé a trouvé et
+  que le constat initial ne listait pas, celui-là même qui sert de « juge de
+  l'attribution » entre le client et le serveur ; le panneau de taux d'erreur lit
+  enfin une métrique qui existe, et **tous** les panneaux du banc disent « pas de
+  donnée » au lieu de se laisser lire « aucune erreur » ; les adresses paramétrées
+  sont regroupées, donc la légende redevient lisible et les compteurs cessent
+  d'être sous-estimés jusqu'à 61 % — au passage le nom de la pièce jointe
+  disparaît de la télémétrie, ce qui **réduit** la donnée exposée ; et la ligne
+  « sessions ouvertes », muette depuis que les serveurs simulés ont quitté la
+  machine de mesure, est renseignée depuis le magasin de métriques sans aucun
+  accès au cluster — en écrivant « non relevé » plutôt qu'un zéro quand elle ne
+  sait pas. Le verdict de l'étape 3 du 3 août est requalifié **non opposable**
+  dans l'index des tirs : le rapport n'est pas réécrit, il est annoté.
+  (task-224)
 
 **Ce que la mesure a appris sur le service**
 
