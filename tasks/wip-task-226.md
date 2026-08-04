@@ -537,3 +537,41 @@ Quatre nettoyages, un par axe :
 > seul le parallélisme manque.
 
 - **Next step** : `/sonar task-226` (api-mail touché)
+
+## Sonar log
+
+**Skip justifié — rien de cette task n'entre dans le périmètre de l'analyse.**
+Ce n'est pas un skip silencieux : voici la preuve.
+
+| Contrôle | Mesure |
+|---|---|
+| Fichiers `.cs` dans le diff de la task | **0** |
+| Extensions touchées | 5 `.js`, 3 `.md`, 2 `.mjs`, 2 `.py`, 1 `.sh` |
+| Périmètre du scanner | `dotnet sonarscanner` autour du build de `HealthPlatform.Api.Mail.sln` — il ne voit que ce que MSBuild compile |
+| `tests/loadtest-k6/` dans la solution ? | **non** (harnais k6 / Python, aucun `.csproj`) |
+
+La task ne produit donc **aucun new code** au sens de SonarQube : une analyse ne
+pourrait remonter que de la dette préexistante de `develop`, qui n'est pas
+l'affaire de cette task (la règle de la chaîne est le new code). Le principe
+« jamais de skip silencieux sur du new code » est respecté — il n'y a pas de new
+code à scanner.
+
+**Aucun tableau de KPIs n'est produit, et il faut le dire** : la consigne du
+CLAUDE.md est de toujours monitorer la qualité. Ici l'analyse est de surcroît
+**non exécutable dans cette session** — `SONAR_TOKEN` et `SONAR_HOST_URL` sont
+absents de l'environnement (le scanner, lui, est installé). Les deux raisons sont
+indépendantes : même avec le jeton, il n'y aurait rien à attribuer à la task.
+
+> La qualité du code livré a été contrôlée par les moyens qui s'appliquent
+> réellement à du JS/Python : `/forge-simplify` (4 nettoyages appliqués, un par
+> axe) et la suite d'auto-tests du harnais (55 Node + 157 Python, verte).
+
+## Lint & vérification visuelle — skips
+
+| Étape | Décision | Raison |
+|---|---|---|
+| `/lint-angular` | **skip** | `client-angular` n'est pas dans `**Repos**:`, aucun fichier Angular touché — et le répertoire `Client/Angular` est **absent du poste** (constat consigné au `/start`) |
+| `/lint-mobile` | **skip** | `client-mobile` n'est pas dans `**Repos**:`, `Client/Mobile` **absent du poste** |
+| `/verify-visual` | **skip** | aucun écran mobile touché (la task ne livre aucun écran : c'est de l'outillage de mesure) |
+
+- **Next step** : `/review task-226`
