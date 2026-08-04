@@ -489,3 +489,41 @@ Les trois étapes frontend **skippent proprement** : `**Repos**: api-mail`,
 `**Single frontend**: true`, et la US ne livre que des tests backend.
 `client-mobile` est sur `develop` sans diff ; `client-angular` porte toujours le
 WIP humain (deux `environments/environment.ts`), que la forge ne touche pas.
+
+## PRs
+
+- `api-mail` : **https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/154** — label `awaiting-human-merge`
+- `dtos-mss` : **aucune PR** — branche sans commit (auto-inclusion).
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 0 bloquant. **13 tests, aucune ligne de production.**
+
+| Zone | Verdict |
+|---|---|
+| `BackgroundImapServiceTests` | ✓ les 2 tests trompeurs assertent enfin deux effets **observables**, tous deux au-delà de l'early-return |
+| `ImapServiceTests` | ✓ verrouillage + notification au poste du médecin + contre-épreuve du lot mixte |
+| `MailRepositoryTests` | ✓ cas positif du marqueur, lot mixte, cloisonnement par dossier |
+| `EnrichmentGatingChainIntegrationTests` | ✓ chaîne complète sur **vrai PostgreSQL**, avec l'assertion qui porte la valeur clinique (documents médicaux présents) |
+| `MailContentWriterScanTests` | ✓ 3 tests, dont celui de la couche ; **garde du garde** contre un scan devenu muet |
+| `TrackedSourceScan` | ✓ outillage partagé, et le `remarks` interdit la normalisation qui avait cassé les exemptions |
+
+### Un défaut introduit puis corrigé pendant la passe qualité
+
+En extrayant l'outillage partagé, ma première version **normalisait les
+séparateurs** de chemin. `SecretLiteralScanTests` compare un préfixe écrit en dur
+(`StartsWith("tests/")`) : la normalisation faisait **échouer silencieusement**
+ses exemptions, et le scan de secrets s'est mis à signaler **six faux positifs**.
+Corrigé, et le motif consigné dans le code — le mode d'échec est exactement celui
+que cette US combat, une exemption désactivée sans bruit.
+
+### Validation
+
+| | Résultat |
+|---|---|
+| Build | ✓ 0 erreur, 0 avertissement |
+| Tests | ✓ **3 406 .NET** + **182 Python**, aucun échec — pas même le flaky `PdfPig` sur le dernier run |
+| Sync `develop` | ✓ merge (jamais rebase), 1 commit intégré |
+| Production | ✓ `git diff --stat … -- src/` : **vide** |
+| Sonar | ✓ **zéro finding attribuable** après correction des 2 `SYSLIB1045` |
+| DOD | **12/12**, aucun critère déféré |
