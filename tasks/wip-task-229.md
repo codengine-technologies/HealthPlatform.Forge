@@ -299,3 +299,89 @@ et exige le nœud de banc : c'est la main de l'humain. Les quatre seuils du DOD
 C'est la leçon de **task-213** — un correctif de verrou dont la mesure a révélé
 qu'il coûtait plus qu'il ne rapportait, jusqu'au retrait — et celle de
 **task-222** : une US écrite sur un chiffre non opposable, annulée.
+
+
+---
+
+## Simplify log
+
+**Repos éligibles touchés** : `api-mail` seul. `dtos-mss` : 0 commit, et hors
+périmètre de cette étape de toute façon (porteur de contrat).
+
+**Commit** : `5a51cf2` — `fix(mail): task-229 — le DTO servi depuis le cache doit etre identique au DTO frais`
+
+### ⚠️ La passe a d'abord trouvé un défaut, pas une simplification
+
+En relisant mon propre diff, j'ai trouvé un changement de contrat — précisément ce
+que cette US s'interdit.
+
+La route `emails/today` sérialise le `FolderDto` **entier**
+(`result.ToActionResult(this)`). Or ma première version reconstituait un DTO
+**partiel** depuis le cache : `Name` valait le **chemin** au lieu du nom court,
+`Id` et `ParentFolder` étaient vides. **Le corps de réponse différait donc entre un
+cache hit et un cache miss.** Sur un dossier imbriqué (`INBOX/Analyses`), le client
+aurait vu le nom du dossier changer d'un rafraîchissement à l'autre.
+
+`FolderQueryCache` porte désormais l'identité du dossier (`Id`, `Name`,
+`ParentFolder`) et `BuildQueryDtoFromCache` la restitue.
+
+> C'est un **bug**, pas une question de qualité, et `/forge-simplify` est
+> explicitement *quality-only*. Je l'ai corrigé quand même : le laisser en place en
+> le sachant, dans du code que je venais d'écrire, aurait été bien pire que de
+> déborder du périmètre de l'étape. Le débordement est déclaré ici.
+
+### Et le test de ce défaut était D'ABORD INUTILE — c'est le point à retenir
+
+Le test de parité que j'ai écrit pour couvrir ce défaut **passait aussi avec le DTO
+amputé**. La cause : je l'avais joué sur `INBOX` — un dossier **racine**, dont le
+nom **est** son chemin, sans identifiant ni dossier parent. Les deux DTO étaient
+identiques **par coïncidence**, et l'assertion ne discriminait rien.
+
+Je ne l'ai su qu'en **posant la preuve ROUGE** : j'ai remis le DTO partiel, et les
+14 tests sont restés verts. C'est exactement le piège que task-227 a eu à réparer —
+un test vert qui n'asserte rien est pire qu'un test absent, parce qu'il éteint la
+question.
+
+Refait sur un dossier **imbriqué** (`INBOX/Analyses`, nom court `Analyses`,
+identifiant `folder-id-42`, parent `INBOX`), il **tombe** dès que le DTO redevient
+partiel. Et une **garde du garde** interdit désormais au scénario de redevenir non
+discriminant :
+
+```csharp
+Assert.NotEqual(fresh.Value!.Name, fresh.Value.Path);
+Assert.NotEmpty(fresh.Value.Id);
+Assert.NotEmpty(fresh.Value.ParentFolder);
+```
+
+### La passe qualité proprement dite — 3 prises
+
+| Axe | Prise |
+|---|---|
+| **Réutilisation** | Fabrique commune `CachedQuery()` pour les entrées de cache des tests : 4 constructions inline remplacées, et surtout un **seul** endroit à corriger quand le record gagne un champ — ce qui vient précisément d'arriver. |
+| **Altitude** | `ArrangeImapFolder` devient paramétrable sur l'identité du dossier (`path`, `name`, `id`, `parentFullName`). C'est ce qui rend la parité du DTO **observable** ; le montage figé sur `INBOX` était la cause racine du test inutile. |
+| **Simplification** | `LogQueryCacheMiss` : liaisons de motif inutilisées et opérateurs `!` de complaisance retirés du `switch`. |
+
+### Re-validation
+
+| Suite | Résultat |
+|---|---|
+| Build solution | **0 erreur, 0 avertissement** |
+| `application` | **1 963 / 1 963** (+1 : le test de parité) |
+| `infrastructure` | 422 / 422 |
+| `api` | 649 / 649 |
+| `domain` | 102 / 102 |
+
+**Un flaky nommé, mesuré, et non attribué à tort** :
+`Services.Export.MailExportServiceTests.BuildPdfWithoutAttachmentsOmitsAttachmentSection`
+échoue environ **1 fois sur 2 à 3** en exécution isolée de la suite `application`,
+et était **vert** dans le run complet de la solution (3 439/3 439). C'est la famille
+de flakies PDF (`UglyToad.PdfPig`) déjà connue de l'EPIC, sans aucun rapport avec ce
+diff (aucun code d'export touché). Il revient assez souvent d'un cycle à l'autre
+pour mériter une task dédiée — signalé, pas corrigé ici.
+
+Les 4 échecs de la suite `api` en compilation `--artifacts-path` sont l'artefact
+d'environnement connu (les scans de sources remontent au `RepoRoot()` depuis
+`AppContext.BaseDirectory`, déplacé hors du dépôt par ce contournement de verrous) :
+verts en compilation normale.
+
+**Routage** : `api-mail` touché ⇒ `/sonar 229`.
