@@ -584,6 +584,43 @@ de santé.
 
 ---
 
+### 13. La chaîne autonome ne s'interrompt pas — non-négociable
+
+**Chaque étape de la chaîne invoque l'étape suivante via l'outil `Skill`, dans le
+même tour, sans rapport intermédiaire et sans rien demander à l'humain.**
+
+```
+/start → /develop → /forge-simplify → /sonar → /lint-angular → /lint-mobile
+       → /verify-visual → /review → /tech-writer
+```
+
+**Pourquoi cette règle existe** (posée le 2026-08-04, sur constat humain) : les
+fichiers de commande décrivaient le chaînage en prose — « hand off to
+`/forge-simplify` » — sans jamais **ordonner** d'appeler l'étape suivante.
+L'agent lisait « passe la main », rédigeait un rapport de fin d'étape, et rendait
+la main. L'humain devait relancer « continue la chaîne » à chaque maillon, ce qui
+vide de son sens la boucle autonome et transforme un cycle en huit interactions.
+
+**Les DEUX seuls arrêts légitimes** :
+
+1. **Fail-fast** sur un vrai blocage technique → `questions/{task-id}.md` écrit,
+   arrêt annoncé. Plafond d'itérations, build irréparable, ambiguïté métier.
+2. **Décision humaine explicitement requise** par le task file (encadré
+   « arbitrage humain requis »). Tout le reste est traité d'abord ; la question
+   ne porte que sur ce point.
+
+**Ce qui n'est PAS un motif d'arrêt** : une étape qui skippe proprement, une
+étape best-effort avec des findings restants, un flaky pré-existant identifié,
+la longueur du travail déjà fait dans le tour, ou l'envie de faire valider une
+étape intermédiaire. **HAG (règle 10) est la seule barrière humaine du cycle, et
+elle se situe au merge de la PR — jamais avant.**
+
+Un rapport intermédiaire entre deux étapes n'est pas une faute de style : il
+**termine le tour**, donc il casse la chaîne. Le rapport unique de fin de cycle
+est celui produit après `/tech-writer`.
+
+---
+
 ## Frozen files
 
 Never modify without human arbitration:
@@ -601,6 +638,12 @@ Never modify without human arbitration:
 ---
 
 ## Commands
+
+> **⛓️ Chaînage** — les étapes `/develop` → `/forge-simplify` → `/sonar` →
+> `/lint-angular` → `/lint-mobile` → `/verify-visual` → `/review` →
+> `/tech-writer` s'appellent **les unes les autres via l'outil `Skill`, sans
+> rapport intermédiaire ni retour à l'humain** (règle 13). Une étape qui rend la
+> main au milieu de la chaîne est un défaut, pas une politesse.
 
 | Command | Effect |
 |---|---|

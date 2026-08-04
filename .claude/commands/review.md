@@ -295,3 +295,44 @@ In autonomous mode (`/develop` upstream) this halts the chain ; in
 - The tech-writer is invoked **after** the PRs are opened and the task is
   renamed `done-*`. A failure in `/tech-writer` does NOT revert the review —
   the doc can be rebuilt later with `/tech-writer E{NNN} --refresh`.
+
+---
+
+## ⛓️ Chaînage — NE PAS INTERROMPRE
+
+> Cette section est **opérationnelle**, pas descriptive. Elle a été ajoutée le
+> 2026-08-04 parce que la chaîne s'arrêtait en pratique à chaque étape : les
+> fichiers disaient « hand off to … » sans jamais ordonner d'appeler l'étape
+> suivante, donc l'agent rédigeait un rapport et rendait la main. L'humain devait
+> relancer « continue la chaîne » à chaque maillon — ce qui vide de son sens la
+> boucle autonome.
+
+**À la fin de cette étape, tu invoques immédiatement l'étape suivante via l'outil
+`Skill`, dans le MÊME tour, sans rien demander et sans rapport intermédiaire.**
+
+`Skill(tech-writer, "E{NNN}")` — l'identifiant d'EPIC vient du champ `**Epic**:`
+du task file. **Si le task file ne déclare pas d'EPIC**, la chaîne s'arrête ici :
+c'est le seul arrêt normal, et tu le dis en une ligne dans le rapport final.
+
+`/tech-writer` est le **dernier maillon**. C'est après lui, et seulement après
+lui, que tu produis le rapport de fin de cycle à l'humain.
+
+### Les DEUX seuls arrêts légitimes
+
+1. **Fail-fast** — un vrai blocage technique : `questions/{task-id}.md` est écrit,
+   et tu t'arrêtes en le disant. Un plafond d'itérations atteint, un build
+   irréparable, une ambiguïté métier. **Le budget de contexte conversationnel
+   n'en est pas un.**
+2. **Décision humaine explicitement requise** par le task file — un encadré
+   « arbitrage humain requis » sur un point précis. Tu traites tout le reste,
+   puis tu poses la question sur ce seul point.
+
+### Ce qui n'est PAS un motif d'arrêt
+
+- une étape qui **skippe** (repo non touché) : elle enchaîne quand même ;
+- une étape **best-effort** dont il reste des findings : c'est son
+  fonctionnement normal ;
+- un flaky pré-existant identifié comme tel ;
+- la longueur du travail déjà accompli dans le tour ;
+- l'envie de faire valider une étape intermédiaire — **HAG (règle 10) est la
+  seule barrière humaine, et elle est au merge de la PR, pas avant.**

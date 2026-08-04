@@ -47,3 +47,50 @@ Read `agents/forge-simplify.md` and execute the full playbook :
 The standalone built-in `/simplify` stays available for ad-hoc human use
 (simplify the current diff, no forge ceremony). `/forge-simplify` is the
 chained, task-scoped version.
+
+---
+
+## ⛓️ Chaînage — NE PAS INTERROMPRE
+
+> Cette section est **opérationnelle**, pas descriptive. Elle a été ajoutée le
+> 2026-08-04 parce que la chaîne s'arrêtait en pratique à chaque étape : les
+> fichiers disaient « hand off to … » sans jamais ordonner d'appeler l'étape
+> suivante, donc l'agent rédigeait un rapport et rendait la main. L'humain devait
+> relancer « continue la chaîne » à chaque maillon — ce qui vide de son sens la
+> boucle autonome.
+
+**À la fin de cette étape, tu invoques immédiatement l'étape suivante via l'outil
+`Skill`, dans le MÊME tour, sans rien demander et sans rapport intermédiaire.**
+
+L'étape suivante dépend des repos touchés (table de routage ci-dessus) :
+
+| api-mail | client-angular | client-mobile | Invoquer |
+|---|---|---|---|
+| oui | * | * | `Skill(sonar, "{task-id}")` |
+| non | oui | * | `Skill(lint-angular, "{task-id}")` |
+| non | non | oui | `Skill(lint-mobile, "{task-id}")` |
+| non | non | non | `Skill(review, "{task-id}")` |
+
+**Tu appelles l'outil `Skill` maintenant.** Tu ne dis pas « je vais enchaîner »,
+tu ne résumes pas ce que tu viens de faire : le `## Simplify log` du task file
+porte déjà la trace, et le rapport unique de fin de cycle est celui de `/review`.
+
+### Les DEUX seuls arrêts légitimes
+
+1. **Fail-fast** — un vrai blocage technique : `questions/{task-id}.md` est écrit,
+   et tu t'arrêtes en le disant. Un plafond d'itérations atteint, un build
+   irréparable, une ambiguïté métier. **Le budget de contexte conversationnel
+   n'en est pas un.**
+2. **Décision humaine explicitement requise** par le task file — un encadré
+   « arbitrage humain requis » sur un point précis. Tu traites tout le reste,
+   puis tu poses la question sur ce seul point.
+
+### Ce qui n'est PAS un motif d'arrêt
+
+- une étape qui **skippe** (repo non touché) : elle enchaîne quand même ;
+- une étape **best-effort** dont il reste des findings : c'est son
+  fonctionnement normal ;
+- un flaky pré-existant identifié comme tel ;
+- la longueur du travail déjà accompli dans le tour ;
+- l'envie de faire valider une étape intermédiaire — **HAG (règle 10) est la
+  seule barrière humaine, et elle est au merge de la PR, pas avant.**

@@ -382,3 +382,200 @@ lui-même.
 banc ni nœud distant.
 
 - **Étape suivante** : `/forge-simplify task-227`
+
+## Simplify log
+
+**Une factorisation, et un défaut qu'elle a introduit puis corrigé.**
+
+`RepoRoot()` et l'appel `git ls-files` existaient en **deux exemplaires** dans le
+même projet de tests : le garde-fou de task-227 avait été écrit sur le patron de
+`SecretLiteralScanTests`. Extraits dans
+`tests/mss.mail.api.tests/TestInfrastructure/TrackedSourceScan.cs`.
+
+> ⚠️ **Le défaut que l'extraction a introduit, et qu'il faut lire.** Ma première
+> version **normalisait les séparateurs** de chemin (`/` → `Path.DirectorySeparatorChar`).
+> Or `SecretLiteralScanTests` compare un préfixe écrit **en dur** —
+> `StartsWith("tests/")` — pour ses exemptions. La normalisation faisait donc
+> échouer **silencieusement** ces comparaisons, et le scan de secrets s'est mis à
+> signaler **six faux positifs**.
+>
+> Corrigé : la convention de git (`/` partout, y compris sur Windows) est la
+> référence, et le `remarks` de `TrackedFiles` dit pourquoi ne pas y toucher.
+> **Consigné parce que le mode d'échec est exactement celui que cette US
+> combat** : une exemption désactivée sans bruit aurait pu, dans l'autre sens,
+> faire passer un scan pour satisfait.
+
+**Examiné et laissé tel quel** : `AssertNothingWasEnrichedAsync` (helper
+d'instance, il lit deux champs — `CA1822` ne s'applique pas), et les trois tests
+du garde-fou qui appellent chacun `FindWriters` (chaque test doit être lisible
+seul ; partager un état entre `[Fact]` créerait une dépendance d'ordre, soit le
+défaut de `GetFolderTodayAsync_HappyPath_TagsTheImapActivity…` signalé sur
+task-225).
+
+Re-validation : **649 tests** sur le projet api, **182 tests Python** du harnais.
+Commits `b53bcbf`, `aef4175` (sync `develop`).
+
+## Sonar log
+
+Mode A (chaîné), **1 itération** + 1 correction. Branche
+`chore/task-227-guard-enrichment-invariant`.
+
+### KPIs qualité — baseline → final
+
+| Métrique | Baseline (avant task-227) | Final | Cible LT |
+|---|---|---|---|
+| Bugs | 1 | **1** | 0 |
+| Vulnerabilities | 0 | **0** | 0 ✓ |
+| Security Hotspots (à revoir) | 1 | 2 | 0 |
+| Code Smells | 18 | 30 | — |
+| Coverage | 86,9 % | **86,9 %** | ≥ 95 % |
+| Duplication | 0,5 % | **0,5 %** | — |
+| Reliability / Security / Maintainability | C / A / A | **C / A / A** | A / A / A |
+| ncloc | 41 666 | 42 720 | — |
+| **Quality Gate** | ERROR | **ERROR** | OK |
+
+⚠️ **Les compteurs bruts montent, et il faut dire pourquoi plutôt que de laisser
+lire une dégradation.** Entre les deux mesures, la branche a **synchronisé
+`develop`** (merge, `aef4175`), qui a apporté du code frais de harnais — d'où
++1 054 ncloc, +12 smells et +1 hotspot. La comparaison par **(règle, fichier)**
+le montre sans ambiguïté : tous les nouveaux findings sont dans
+`tests/loadtest-k6/report.py`, `journey.js` et `journey-model.js`, c'est-à-dire le
+code que `develop` vient d'apporter, **pas** les fichiers de task-227.
+
+### Zero-new-debt : deux findings à moi, corrigés
+
+| Itération | Finding attribuable à task-227 | Action |
+|---|---|---|
+| 1 | `external_roslyn:SYSLIB1045` ×2 — `MailContentWriterScanTests.cs:75,78` | corrigé, `b0cc35d` |
+
+Les deux `Regex` du garde-fou utilisaient `RegexOptions.Compiled` là où
+l'analyseur exige `GeneratedRegex` (génération à la compilation, sans coût
+d'analyse au premier appel). Classe passée `partial`, champs devenus méthodes.
+
+**Le garde-fou a été re-vérifié après conversion** : écrivain factice sur un
+chemin de lecture ⇒ les deux mêmes tests échouent. Un test réparé doit rester
+capable d'échouer, sinon la conversion l'aurait vidé de son sens sans que rien
+ne le dise — exactement le défaut que cette US combat.
+
+**Aucun autre finding sur les 7 fichiers touchés par task-227**, dont les
++321 lignes de C# neuf du garde-fou et de l'outillage partagé.
+
+### Le Quality Gate est ERROR, et rien n'en revient à task-227
+
+30 `new_violations`, provenance vérifiée par (règle, fichier) :
+
+| Origine | Count |
+|---|---|
+| **task-220 et le code de harnais arrivé de `develop`** (`report.py`, `journey.js`, `journey-model.js`) | 28, dont l'unique `BUG` et les 2 hotspots |
+| **antérieur à la forge** (`BaseRepository.cs`, `IIheXdmProcessingService.cs`, `S103`) | 2 |
+| **task-227** | **0** après correction |
+
+Phase 2 legacy non lancée : le harnais est du ressort de task-224/228, et les
+`S3776` de `/sonar-s3776` (1 méthode = 1 PR) par construction.
+
+### Note de conventions
+
+Une entrée à ajouter à `conventions/csharp.md` (fichier **git-ignoré**, donc
+local au poste) : **`SYSLIB1045` — utiliser `[GeneratedRegex]` et non
+`new Regex(..., RegexOptions.Compiled)`**, sur du code neuf comme sur du code
+touché. Le piège est que `RegexOptions.Compiled` *paraît* être l'optimisation
+canonique ; depuis .NET 7 la génération à la compilation la remplace.
+
+- **Étape suivante** : `/review task-227`
+
+## Lint / verify-visual log
+
+Les trois étapes frontend **skippent proprement** : `**Repos**: api-mail`,
+`**Single frontend**: true`, et la US ne livre que des tests backend.
+`client-mobile` est sur `develop` sans diff ; `client-angular` porte toujours le
+WIP humain (deux `environments/environment.ts`), que la forge ne touche pas.
+
+## PRs
+
+- `api-mail` : **https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/154** — label `awaiting-human-merge`
+- `dtos-mss` : **aucune PR** — branche sans commit (auto-inclusion).
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 0 bloquant. **13 tests, aucune ligne de production.**
+
+| Zone | Verdict |
+|---|---|
+| `BackgroundImapServiceTests` | ✓ les 2 tests trompeurs assertent enfin deux effets **observables**, tous deux au-delà de l'early-return |
+| `ImapServiceTests` | ✓ verrouillage + notification au poste du médecin + contre-épreuve du lot mixte |
+| `MailRepositoryTests` | ✓ cas positif du marqueur, lot mixte, cloisonnement par dossier |
+| `EnrichmentGatingChainIntegrationTests` | ✓ chaîne complète sur **vrai PostgreSQL**, avec l'assertion qui porte la valeur clinique (documents médicaux présents) |
+| `MailContentWriterScanTests` | ✓ 3 tests, dont celui de la couche ; **garde du garde** contre un scan devenu muet |
+| `TrackedSourceScan` | ✓ outillage partagé, et le `remarks` interdit la normalisation qui avait cassé les exemptions |
+
+### Un défaut introduit puis corrigé pendant la passe qualité
+
+En extrayant l'outillage partagé, ma première version **normalisait les
+séparateurs** de chemin. `SecretLiteralScanTests` compare un préfixe écrit en dur
+(`StartsWith("tests/")`) : la normalisation faisait **échouer silencieusement**
+ses exemptions, et le scan de secrets s'est mis à signaler **six faux positifs**.
+Corrigé, et le motif consigné dans le code — le mode d'échec est exactement celui
+que cette US combat, une exemption désactivée sans bruit.
+
+### Validation
+
+| | Résultat |
+|---|---|
+| Build | ✓ 0 erreur, 0 avertissement |
+| Tests | ✓ **3 406 .NET** + **182 Python**, aucun échec — pas même le flaky `PdfPig` sur le dernier run |
+| Sync `develop` | ✓ merge (jamais rebase), 1 commit intégré |
+| Production | ✓ `git diff --stat … -- src/` : **vide** |
+| Sonar | ✓ **zéro finding attribuable** après correction des 2 `SYSLIB1045` |
+| DOD | **12/12**, aucun critère déféré |
+
+## Merged
+
+**Mergé le 2026-08-04** par l'humain via `/merge task-227 --i-tested` (HAG,
+CLAUDE.md règle 10 — attestation explicite du plan de test manuel).
+
+| Repo | PR | Squash commit |
+|---|---|---|
+| `api-mail` | [#154](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/154) | `4ec2b73` chore(mail): le contenu clinique d'un message ne peut plus disparaître en silence |
+| `dtos-mss` | aucune PR (branche sans commit) | — |
+
+- **Barrières de sécurité** : toutes vertes — CI `build` SUCCESS,
+  `mergeable=MERGEABLE` / `mergeStateStatus=CLEAN`, aucun `CHANGES_REQUESTED`,
+  pas de label `awaiting-us-completion`, arbre local propre, 5 commits d'avance /
+  0 de retard.
+- **Squash-merge** (`gh pr merge --squash`, jamais `--delete-branch`) : ref
+  **distant** supprimé, branche **locale conservée**. Branche vide de `dtos-mss`
+  nettoyée des deux côtés.
+- **CI `develop` après merge** : ✅ verte (run `30947434890`, `4ec2b736`), dans la
+  fenêtre de 2 minutes (règle 5).
+- **`client-angular`** : aucune opération git, aucune question — code-only, et
+  cette task ne touchait aucun frontend.
+
+### Ce qui est désormais sur `develop`
+
+**13 tests, et zéro ligne de production.** L'invariant qui décide si le CDA d'un
+message est décodé — la présence d'une ligne `MailContents` — est enfin gardé :
+
+- les **deux tests qui mentaient** assertent ce que leur nom promet, et **échouent**
+  désormais quand l'invariant est cassé (ils restaient verts avant) ;
+- la **chaîne de bout en bout** est vérifiée sur vraie base, documents médicaux
+  inclus — c'est le test qui aurait attrapé task-222 ;
+- l'**ensemble des écrivains** de `MailContents` est **clos** : un quatrième
+  écrivain fait échouer la suite jusqu'à ce qu'il soit ajouté délibérément.
+
+C'est le premier cycle passé **sans interruption** de `/sonar` à `/tech-writer`,
+grâce à la règle 13 posée dans le même mouvement.
+
+### Ce qui reste ouvert, et qui n'est pas de cette US
+
+1. **Le piège du contenu corps-seul** — une ligne de contenu sans document médical
+   suffit à sortir un message de la file d'analyse. Énoncé et couvert par un test,
+   **délibérément non corrigé** : le remplacer par un champ explicite
+   (`EnrichedAt`) est une migration de schéma sur une table de DSCP. À arbitrer.
+2. **Aucune trace quand l'analyse est court-circuitée à tort.** C'est ce silence
+   qui a rendu task-222 invisible. Cette US ne le corrige pas — elle ne touche pas
+   la production — mais le documente. Une trace d'exploitation sur ce chemin serait
+   une US distincte.
+3. **`GetFolderTodayAsync_HappyPath_TagsTheImapActivityWithPerCommandDurations`**
+   reste un test à défaut d'isolation sur `develop` (listener d'activité global) —
+   signalé sur task-225, sans lien avec cette US, et il produira du bruit à chaque
+   cycle tant qu'il n'est pas corrigé.
