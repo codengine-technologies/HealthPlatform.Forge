@@ -419,3 +419,40 @@ couvert par test.
   annoté. C'est ce que la US demande.
 
 - **Étape suivante** : `/forge-simplify task-224`
+
+## Simplify log
+
+**Verdict : passe conduite** — contrairement à task-225, cette task n'interdit
+pas la simplification.
+
+| Axe | Fichier | Avant → après |
+|---|---|---|
+| Réutilisation | `report.py` | les deux nouveaux lecteurs de métrique répétaient `reduce_prom_matrix(((telemetry or {}).get("prom") or {}).get(clé), None)`. Un `prom_series(telemetry, clé)` partagé remplace les deux, et porte **une fois** la raison de la tolérance aux niveaux absents : un tir sans magasin joignable est un cas **normal**, pas une erreur |
+| Réutilisation | `test_dashboards.py` | `panel_unit` et `panel_no_value` déroulaient la même descente `fieldConfig.defaults`. Un `panel_default(panel, clé)` la porte, et le prochain accesseur sera une ligne |
+
+**Examiné et laissé tel quel** :
+
+- la boucle de construction des UIDs chauds dans `warmUpOwnMailbox` — trois
+  lignes explicites, un `Array.from({length})` n'y gagnerait rien de lisible ;
+- `isBoundedRoute` — déjà une expression ;
+- les 12 appels passant `ROUTES.x` en 5ᵉ argument — un objet d'options serait
+  plus élégant mais toucherait 12 sites d'appel **et** la signature partagée avec
+  la voie `mixed`, pour un gain cosmétique. Le contrat de périmètre de la task
+  n'interdit pas ce refactoring, mais il n'apporte rien à la lisibilité du diff.
+
+Re-validation : **146 tests Python + 39 node verts**, `selftest.sh` inclus.
+Aucun rollback. Commit `f54dcec`.
+
+- **Étape suivante** : `/sonar task-224` (api-mail touché).
+
+## Lint / verify-visual log
+
+Les trois étapes frontend **skippent proprement** : `**Repos**: api-mail` et
+`**Single frontend**: true` — la US répare l'outillage de mesure du backend,
+aucun frontend n'est touché.
+
+| Étape | Verdict | Constat |
+|---|---|---|
+| `/lint-angular` | **skip** | `Client/Angular` porte deux `environments/environment.ts` modifiés non commités — **travaux en cours de l'humain**, pas de task-224. La forge n'a écrit aucune ligne d'Angular ; lancer la passe lint retoucherait ce WIP. |
+| `/lint-mobile` | **skip** | `Client/Mobile` sur `develop`, arbre propre, aucun diff. Non listé dans `**Repos**:`. |
+| `/verify-visual` | **skip** | Aucun écran mobile touché. |
