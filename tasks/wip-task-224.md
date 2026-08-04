@@ -456,3 +456,96 @@ aucun frontend n'est touché.
 | `/lint-angular` | **skip** | `Client/Angular` porte deux `environments/environment.ts` modifiés non commités — **travaux en cours de l'humain**, pas de task-224. La forge n'a écrit aucune ligne d'Angular ; lancer la passe lint retoucherait ce WIP. |
 | `/lint-mobile` | **skip** | `Client/Mobile` sur `develop`, arbre propre, aucun diff. Non listé dans `**Repos**:`. |
 | `/verify-visual` | **skip** | Aucun écran mobile touché. |
+
+## Sonar log
+
+Mode A (chaîné), **2 itérations**. Projet `healthplatform`, branche
+`fix/task-224-bench-instrument-truthful`.
+
+**Pourquoi deux itérations sans aucune correction entre elles** : l'itération 1 a
+tourné sur `f54dcec`, avant l'extraction de constante `b22f857`. Mesurer un commit
+qui n'est pas celui qu'on merge serait ironique sur une task dont l'objet est la
+véracité des instruments — l'itération 2 porte donc sur **HEAD**. Les deux donnent
+le même résultat.
+
+### KPIs qualité — baseline → final (mesuré sur HEAD)
+
+| Métrique | Baseline (avant task-224) | Final | Cible LT |
+|---|---|---|---|
+| Bugs | 1 | **1** | 0 |
+| Vulnerabilities | 0 | **0** | 0 ✓ |
+| Security Hotspots (à revoir) | 1 | **1** | 0 |
+| Code Smells | 18 | **18** | — |
+| Coverage | 86,9 % | **86,9 %** | ≥ 95 % |
+| Duplication | 0,5 % | **0,5 %** | — |
+| Reliability rating | C | **C** | A |
+| Security rating | A | **A** | A ✓ |
+| Maintainability rating | A | **A** | A ✓ |
+| ncloc | 41 369 | 41 666 | — |
+| **Quality Gate** | ERROR | **ERROR** | OK |
+
+`new_coverage` et `new_duplicated_lines_density` reviennent à `None` : le new code
+de ce tir est **entièrement du Python et du JavaScript de harnais**, exclu de la
+couverture (`sonar.coverage.exclusions` couvre `**/tests/**`). Ce n'est pas une
+régression de couverture — c'est l'absence de code C# neuf.
+
+### Zero-new-debt : tenu, et vérifié par provenance et non par total
+
+Le total des `new_violations` est **inchangé à 18**, mais un total inchangé ne
+prouve rien à lui seul : task-224 **rouvre précisément les fichiers** qui portent
+ces 18 findings (`report.py`, `journey.js`, `journey-model.js`), et y insère du
+code — donc **leurs numéros de ligne bougent** et les mêmes findings ressemblent à
+des nouveaux. La comparaison a donc été faite par **(règle, fichier)**, relevée
+avant l'analyse :
+
+| Fichier | Baseline | Après | Δ |
+|---|---|---|---|
+| `report.py` | S1192 ×2, S3776 ×6, S1244 ×1, S3358 ×1 | identique | **0** |
+| `lib/journey-model.js` | S1940 ×2, S6035 ×1 | identique | **0** |
+| `scenarios/journey.js` | S1940 ×1, S3776 ×1, S4624 ×1 | identique | **0** |
+| `BaseRepository.cs`, `IIheXdmProcessingService.cs` | S103 ×2 (task-218 / task-185) | identique | **0** |
+| **Fichiers neufs** — `lib/routes.js`, `lib/routes.test.mjs`, `test_dashboards.py` | — | **aucun finding** | **0** |
+
+**Zéro finding attribuable à task-224.** Notons que les trois fichiers neufs
+(+321 lignes de JS et de Python) n'en produisent aucun : les conventions
+`javascript.md` et `python.md` ont été lues avant d'écrire, ce qui est leur seule
+raison d'être.
+
+### Une honnêteté sur l'extraction de constante
+
+J'ai extrait `IMAP_SESSIONS_KEY` **avant** l'analyse, parce que
+`conventions/python.md` (S1192) impose la constante dès 3 occurrences et que la
+clé était citée 5 fois. **Sonar ne l'aurait pas signalée** : le compte de `S1192`
+sur `report.py` est resté à 2 dans les deux itérations. L'extraction reste
+conforme à la convention et justifiée sur le fond — une faute de frappe sur l'une
+des cinq occurrences rendrait `None` sans rien dire, soit le défaut 2 de cette
+task transposé au code — mais je ne la présenterai pas comme un finding évité.
+
+### Le Quality Gate est ERROR, et aucune de ses causes n'est de task-224
+
+- `new_violations = 18 > 0` — provenance ci-dessus : **16 → task-220** (le harnais
+  de mesure, dont l'unique `BUG` `python:S1244` et l'unique hotspot
+  `javascript:S2245`), **2 → task-185 / task-218**, **0 → task-224**.
+- `new_security_hotspots_reviewed = 83,3 % < 100 %` — le hotspot restant est le
+  `Math.random()` de `journey.js`, de task-220.
+
+**Phase 2 legacy volontairement non lancée**, et le motif est propre à cette task :
+je rouvre le code du harnais, mais y corriger la dette de task-220 mélangerait ce
+nettoyage avec cinq correctifs d'instrument sur la même branche — c'est exactement
+le mélange qui a coulé task-222. Les 9 `S3776` relèvent par ailleurs de
+`/sonar-s3776` (1 méthode = 1 PR) par construction.
+
+### Tests .NET pendant les analyses
+
+Un flaky `Services/Export` par run Release (`MarkdownPdfRendererTests` à
+l'itération 1, `MailExportServiceTests` à l'itération 2 — la famille
+`UglyToad.PdfPig` documentée en v1.18). **task-224 ne touche aucun fichier C#**,
+ce qui exclut mécaniquement une régression de son fait ; 31/31 en isolation.
+
+### Note pour les fichiers de conventions
+
+Aucune entrée nouvelle : aucune règle n'a eu besoin d'être corrigée manuellement
+sur du code frais. Les entrées existantes de `python.md` (S1192) et
+`javascript.md` (S4624, S6582, S3863) ont servi en prévention.
+
+- **Étape suivante** : `/review task-224`
