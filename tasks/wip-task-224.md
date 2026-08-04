@@ -301,3 +301,15 @@ santé réelle.
 - **Hébergement HDS** : non — banc local et cluster de test interne, données
   synthétiques exclusivement. Aucun environnement de production touché.
 - **AIPD / impact RGPD** : néant.
+
+## Branches
+
+- `api-mail` (pushed) : `fix/task-224-bench-instrument-truthful` — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-224-bench-instrument-truthful
+- `dtos-mss` (pushed, auto-inclus) : même nom de branche — aucun changement de contrat attendu, donc pas de PR si aucun commit.
+
+> **Dépendance levée le 2026-08-04** : **task-225 est mergée** (`eec2cfd` sur
+> `develop`). Le compteur
+> `mssante_mail_server_solicitations_total{operation="GetEmailContent"}` est donc
+> disponible sur cette branche, et les critères de DOD du **défaut 5** qui
+> s'appuient sur lui sont **observables** — c'était la raison de l'ordre
+> 225 → 224.
