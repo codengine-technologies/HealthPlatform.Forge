@@ -1019,6 +1019,25 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
+- **v1.57 — Le contenu clinique d'un message ne peut plus disparaître en silence**
+  (task-227) : aucune fonctionnalité nouvelle pour le praticien, et c'est
+  volontaire — cette version **protège** ce qui existe. Quand un compte rendu
+  arrive, la messagerie l'analyse pour en extraire les documents médicaux, les
+  résultats de biologie et le rattachement au patient. Le signal qui dit
+  « ce message a été analysé » gouvernait ce déclenchement **sans qu'aucun contrôle
+  automatique ne le vérifie** : une modification anodine ailleurs dans le logiciel
+  pouvait donc arrêter l'analyse d'un message, et le praticien aurait vu arriver un
+  compte rendu **dont le contenu médical ne serait jamais apparu** — sans message
+  d'erreur, sans avertissement, sans trace. Le poste aurait même annoncé
+  « analyse terminée », donc cessé d'attendre.
+  Ce n'est pas une crainte théorique : le défaut a été réellement écrit, il a
+  franchi toutes les étapes de validation automatique, et seule une relecture
+  humaine l'a arrêté avant sa mise en service. Treize contrôles automatiques
+  gardent désormais cette chaîne — dont un qui **vérifie de bout en bout** qu'un
+  message analysé porte bien son document médical, et un autre qui **refuse toute
+  nouvelle façon d'écrire ce signal** tant qu'elle n'a pas été explicitement
+  déclarée. Aucun comportement du logiciel n'a été modifié.
+
 - **v1.55 — « Patients du jour » désigne le bon jour, à toute heure** (task-212) : la liste des patients ayant reçu un document médical « aujourd'hui » se trompait de jour **entre minuit et deux heures du matin** en heure d'été. Un document reçu à 00 h 30 n'y figurait pas, et réapparaissait le lendemain — un jour trop tard. Deux causes, corrigées ensemble : la liste définissait « aujourd'hui » dans une échelle de temps différente de celle où les dates sont enregistrées, et **les documents issus des deux canaux d'arrivée n'étaient pas horodatés dans la même échelle** — de sorte que les vrais documents médicaux (canal CDA) et les courriers n'étaient pas comparables entre eux. « Aujourd'hui » désigne désormais **la journée du praticien**, explicitement calée sur le fuseau français plutôt que sur celui du serveur — un serveur hébergé en temps universel aurait sinon reproduit le décalage sans que rien ne le signale. Les jours de changement d'heure, qui durent 23 ou 25 heures, sont traités correctement. Le plafond de 500 patients affichés est inchangé.
 - **v1.51 — Déplacement de courrier plus fluide** (task-094) : lorsqu'un praticien glisse un ou plusieurs courriers vers un dossier, le courrier déplacé **apparaît dans le dossier de destination en quelques secondes**, sans attendre le rafraîchissement périodique. Le dossier d'arrivée est rafraîchi automatiquement juste après le dépôt, et ses compteurs (total / non lus) restent cohérents. Le geste reste **instantané à l'écran** : le courrier quitte aussitôt la liste de départ, et en cas d'échec côté serveur il y revient avec un message d'erreur discret. Le comportement de suppression réversible (Corbeille · Annuler) est inchangé.
 - **v1.50 — Glisser-déposer des courriers (Angular)** (task-093) : le praticien peut désormais **faire glisser** un courrier — ou plusieurs courriers sélectionnés — de la liste vers un dossier du volet de gauche pour le **déplacer**, ou vers la **Corbeille** pour le **supprimer**. Les déplacements impossibles sont refusés visuellement : on ne peut pas déposer un courrier dans « Envoyés » ni dans « Brouillons ». Un message envoyé ne peut aller qu'à la Corbeille. Depuis la Corbeille, glisser un courrier vers un autre dossier le **restaure**. Après une suppression, un message « Email supprimé · Annuler » s'affiche quelques secondes : tant qu'il est visible, un clic sur « Annuler » remet le courrier à sa place sans qu'aucune suppression ne soit réellement effectuée. La mise à la Corbeille retire temporairement le rattachement du courrier au dossier patient ; la restauration le rétablit.
