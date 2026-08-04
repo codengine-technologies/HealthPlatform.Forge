@@ -575,3 +575,74 @@ indépendantes : même avec le jeton, il n'y aurait rien à attribuer à la task
 | `/verify-visual` | **skip** | aucun écran mobile touché (la task ne livre aucun écran : c'est de l'outillage de mesure) |
 
 - **Next step** : `/review task-226`
+
+## PRs
+
+- **`api-mail`** : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/153
+  — label `awaiting-human-merge`, 6 commits, 13 fichiers (+1 573 / −216)
+- **`dtos-mss`** : **aucune PR** — branche créée par `/start` (auto-inclusion) mais
+  **zéro commit** : la task ne change aucun contrat. Build vérifié quand même
+  (0 erreur). La branche `feat/task-226-journey-dossier-patient` reste vide.
+- Repos exclus : `devops`, `psc-proxy-*` — managed manually by the human.
+- `client-angular` / `client-mobile` : **hors périmètre** (non listés dans
+  `**Repos**:`) et **absents du poste**.
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 13 fichiers relus, **0 blocage**, 2 défauts corrigés en
+cours de revue, 3 suggestions non bloquantes.
+
+### Corrigés pendant la revue — écart de règle déclaré
+
+`/review` est en lecture seule sur le code. Ces deux points ont été corrigés
+(`bffa39e`) plutôt que laissés en suggestions **parce que tous deux font dire un
+faux à l'instrument** — le mode d'échec que cette EPIC a déjà payé trois fois. Le
+choix est déclaré ici et dans la PR, pas caché ; validation complète rejouée
+derrière (3 305 tests .NET, 55 Node, 157 Python).
+
+1. **`journey_docs_without_ins` sous-comptait les cas mixtes** — la boucle sortait
+   au premier document porteur d'une INS : un message portant un document
+   rattachable *et* un document sans INS déclarait **zéro** en attente. C'est
+   précisément le cas que le produit doit présenter, et ce compteur est publié.
+2. **Le rapport affirmait « un appel de chauffe par médecin »** — vrai depuis
+   task-224, faux avant. Constaté en régénérant le rapport du 2026-08-03, qui
+   annonçait « 3000 appels (un par médecin) » pour 200 médecins.
+
+### Suggestions non bloquantes
+
+1. **Le 5ᵉ appel du geste (« charger plus ») n'est pas implémenté** — 4 des 5
+   appels documentés sont exercés. Le PO a acté une fréquence pour le traitement et
+   la consultation, **aucune pour le défilement** ; en inventer une serait une
+   décision de banc déguisée en décision produit. S'ajoute que le défaut de
+   pagination fait rendre à `page=1` le même contenu que `page=0` : un défilement
+   doublerait la rafale pour zéro information. **Demande une décision PO**
+   (`JOURNEY_P_LOAD_MORE`). Hors DOD ⇒ non bloquant (règle 9).
+2. **La recherche par nom ne dépouille pas sa réponse** — le harnais va droit au
+   dossier de l'INS connue là où le client choisit dans la liste. Requêtes mesurées
+   identiques, seule la sélection est court-circuitée.
+3. **Un check peut faire échouer un tir** — « la fiche porte au moins un document »
+   pèse sur le taux de checks : un corpus sans INS passerait sous `THR_CHECK_RATE`.
+   Délibéré (un tir mesurant des fiches vides ne vaut rien), mais à savoir.
+
+### Points vérifiés
+
+- **PGSSI-S** — l'INS voyage dans le chemin de deux adresses et n'atteint **jamais**
+  une étiquette de métrique (gabarits `{ins}` + test). Aucun secret. Octets de PJ en
+  mémoire, jamais sur disque.
+- **Le défaut 5 de task-224 ne peut pas revenir par une autre porte** — réserves
+  disjointes contrôlées au setup (refus franc) et testées.
+- **Refus francs** des trois variables retirées, **avec la raison**.
+- **Non-régression** — le rapport du 2026-08-03 se régénère (exit 0), les nouvelles
+  étapes affichent « — » et non « 0 ms ».
+
+### Validation
+
+| Contrôle | Résultat |
+|---|---|
+| `dotnet build` (api-mail, dtos-mss) | ✓ 0 erreur |
+| `dotnet test` (api-mail) | ✓ **3 305 tests, 0 échec** |
+| `selftest.sh` | ✓ 55 Node + 157 Python |
+| `k6 inspect` × 7 scénarios | ✓ tous s'initialisent |
+
+**DOD** : 15 items vérifiés par commande, **6 déferrés au test manuel** (ils exigent
+un banc — détail dans le `## Develop log`).
