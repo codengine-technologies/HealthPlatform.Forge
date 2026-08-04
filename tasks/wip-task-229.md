@@ -162,3 +162,140 @@ de `PersistAndReconcileFoldersAsync`), pas une amélioration spéculative.
 ⚠️ Un faux négatif rencontré au passage : CLAUDE.md donne `interop/interop.cda.parser`
 comme chemin d'`interop-cda`, alors que la racine git est `interop/`. Corrigé dans
 CLAUDE.md — sans ça, chaque pré-flight futur signalerait `interop-cda` à tort.
+
+
+---
+
+## Develop log
+
+**Commit** : `5fd46d9` — `perf(mail): task-229 — le dashboard ne repaie plus 5 allers-retours IMAP ni du SQL evitable`
+**Branche** : `fix/task-229-dashboard-imap-cache-folder-n1` (`api-mail`)
+**Base** : `develop` @ `13480d5` (task-228 mergée)
+`dtos-mss` : 0 commit — contrat inchangé, comme prévu.
+
+### Les cinq remèdes
+
+| # | Remède | Fichier(s) | État |
+|---|---|---|---|
+| 1 | Cache de `emails/today` validé par `(Count, UidNext)` | `ImapService`, `RedisKeys` | ✅ **zéro** RTT quand rien n'est arrivé |
+| 2 | Upsert des dossiers en 1 lecture + 1 `SaveChanges`, **hors verrou IMAP** | `FolderRepository`, `IFolderRepository`, `ImapService` | ✅ |
+| 3 | Réconciliation SQL sortie du chemin cache-hit | `ImapService` | ⚠️ **partiel, assumé** — voir plus bas |
+| 4 | TTL `folder:metadata` 10 s → 5 min + invalidation | `RedisKeys`, `BackgroundSyncService` | ✅ |
+| 5 | `SELECT Users` de `GetCurrentUserIdAsync` caché | `BaseRepository` | ✅ |
+
+Le remède 1 fait **mieux que demandé** : la US visait l'économie de SELECT + SEARCH
++ CLOSE (3 RTT sur 5). Comme la validation s'appuie sur l'entrée `folder:status`
+déjà en place, un dossier immobile est servi **sans aucun aller-retour**.
+
+### Trois constats que la US ne pouvait pas connaître
+
+**1. L'invalidation demandée par le remède 4 existait déjà.**
+La US demandait de rendre `folder:metadata` « invalidable explicitement sur
+create/rename/delete ». C'est en place **avant** task-229, dans `ImapFolderService`
+(trois sites, sur les chemins de succès). Ce qui manquait réellement — et qui est
+ajouté ici — c'est l'invalidation **en fin de passe de synchronisation** : avec un
+TTL porté à 5 min, un dossier découvert par une synchro serait resté invisible du
+dashboard pendant cinq minutes. Ce qui rendait l'invalidation *facultative*
+(l'entrée expirait d'elle-même en 10 s avant qu'on la remarque) la rend
+**nécessaire**.
+
+**2. Un défaut de correction que la US n'anticipait pas : le passage de minuit.**
+La requête « aujourd'hui » est `DeliveredAfter(DateTime.Now.Date)` — sa borne
+**dépend du jour courant**. Un cache validé sur le seul `(Count, UidNext)` aurait
+donc servi, sur une boîte restée immobile pendant la nuit, **la liste d'hier comme
+étant celle d'aujourd'hui** : les deux valeurs correspondent encore, l'entrée passe
+pour valide. Le cache porte désormais le jour local de calcul (`ScopeDay`), et un
+test le fige — la preuve ROUGE D montre qu'il tombe si le garde-fou est retiré.
+
+**3. Le remède 3 ne peut pas être tenu à la lettre, et deux items du DOD se
+contredisent.**
+Le DOD exige à la fois :
+- *« Zéro changement de contrat : aucune forme de réponse modifiée »* (contrainte
+  déclarée **absolue** en tête de la US), et
+- *« Chemin cache-hit : plus aucun accès SQL synchrone — unit test (mock repository
+  jamais appelé sur hit) »*.
+
+Or `GetTagFoldersAsync` **fait partie de la réponse** : il fournit les dossiers
+d'étiquettes avec leurs compteurs de non-lus. Le différer ampute la réponse
+(changement de contrat) ; le cacher rend les badges périmés à chaque message lu.
+Les deux issues sont exclues.
+
+**Ce qui est donc sorti du chemin chaud** : `ReconcileFoldersAsync` — une lecture
+de toutes les lignes de dossiers, une suppression et une écriture, c'est-à-dire du
+**ménage dont le résultat n'entre pas dans la réponse**. Il part sur
+`IBackgroundTaskQueue`. **Ce qui reste** : la lecture des étiquettes, une requête
+unique, dont le médecin attend le résultat.
+
+Le test `OnCacheHit_StillReturnsTagFolders` verrouille explicitement ce choix pour
+qu'il ne soit pas défait par inadvertance en croyant « finir » le remède 3.
+
+### Une borne de fraîcheur héritée, et non desserrée
+
+Marquer un message comme lu change `UnreadCount` **sans** toucher `Count` ni
+`UIDNEXT` : l'invariant de validation ne le voit pas. La famille de requête
+« non lus » est donc la plus exposée.
+
+**Vérifié dans le code plutôt que supposé** : `EmailFlagService` n'invalide pas
+`folder:status`. Le compteur de non-lus des dossiers accuse donc **déjà exactement
+ce retard de 10 s aujourd'hui**, avant task-229. Le cache de recherche hérite de la
+borne existante, il ne l'élargit pas. C'est écrit dans le code, à l'endroit où la
+validation se fait.
+
+Un second point de vigilance est documenté à `InvalidateFolderListingCacheAsync` :
+le cache `folder:query` **dépend** de cette méthode sans y être nommé (retirer le
+statut suffit à le neutraliser). Si la règle de validation change un jour, cette
+méthode devra retirer les clés `folder:query` explicitement — sinon des listes
+périmées seront servies en silence.
+
+### Tests — +26, et ce qu'ils mesurent
+
+Ils comptent des **appels** (allers-retours IMAP, acquisitions de verrou, écritures
+en base), jamais des durées : une durée dépendrait de la machine, et les trois
+défauts corrigés étaient tous des défauts de *nombre d'appels*.
+
+| Fichier | Nb | Objet |
+|---|---|---|
+| `ImapDashboardCachingTests` (nouveau) | 13 | Cache `today` (hit / nouveau message / suppression / premier appel / **passage de minuit** / statut expiré / clés distinctes), cache-hit sans réconciliation synchrone, étiquettes toujours rendues, repli sans file, lot en un appel, **ordre verrou→persistance**, TTL |
+| `FolderRepositoryBatchUpsertTests` (nouveau) | 8 | Sémantique du lot **identique** à l'unitaire, dont les deux garde-fous « ne pas écraser une valeur connue avec 0 » (`UidNext`, `UidValidity` de task-179) et le cas « même chemin deux fois » |
+| `CurrentUserIdCachingTests` (nouveau) | 4 | Identifiant caché, table `Users` **vide** pour que le test ne puisse pas passer par hasard, repli `Guid.Empty`, montage sans cache |
+| `BackgroundSyncPipelineTests` (étendu) | 1 | Invalidation de `folder:metadata` **et** de `sync:coverage` en fin de sync |
+
+**Preuves ROUGE** — chaque propriété porteuse a été neutralisée, une par une :
+
+| Neutralisation | Tests qui tombent |
+|---|---|
+| Le cache de recherche ne sert plus jamais | `ServesFromCacheWithoutAnyImapRoundTrip` |
+| La persistance repasse **sous** le verrou IMAP | `PersistsTheWholeBatchInOneCall` + `PersistsAfterTheImapLockIsReleased` |
+| La réconciliation redevient synchrone | `DefersTheReconciliationToTheBackgroundQueue` |
+| Le garde-fou du jour est retiré | `WhenTheDayRolledOver_IgnoresYesterdaysEntry` |
+
+Une cinquième tentative de preuve a été **écartée comme invalide** : elle avait
+produit du code inaccessible, donc un build en erreur, donc des tests joués sur
+l'ancien binaire — les échecs affichés étaient ceux de la preuve précédente. Refaite
+proprement. Un test rouge pour la mauvaise raison ne prouve rien.
+
+### Validation
+
+| Contrôle | Résultat |
+|---|---|
+| Build (solution) | **0 erreur, 0 avertissement** |
+| Suite complète | **3 439 / 3 439**, 16 ignorés, intégration incluse (304/304) |
+| Tests d'intégration des 4 routes | ✅ passent **sans modification d'aucune assertion** — le critère « zéro changement de contrat » du DOD |
+| Delta de tests | +26, exactement le compte des tests ajoutés (13 + 8 + 4 + 1) |
+| BOM | aucun introduit (entêtes comparés à `origin/develop`) |
+
+### 🚧 Ce que ce commit ne prouve PAS
+
+**Aucune latence n'est mesurée.** Les tests prouvent des **nombres d'appels** — le
+verrou est rendu avant la persistance, le lot tient en un appel, le cache sert sans
+aller-retour. Ils ne disent rien du p95 réel.
+
+La contre-épreuve `journey` n300 en iso-conditions est **bloquante pour le merge**
+et exige le nœud de banc : c'est la main de l'humain. Les quatre seuils du DOD
+(part de `dashboard`, détention `GetFolders` ≤ 1,5 s, attente `GetEmailContent`,
+`read_list` p95) et le contrôle de fraîcheur (un message injecté apparaît dans
+`today` sous 10 s) s'y jouent.
+
+C'est la leçon de **task-213** — un correctif de verrou dont la mesure a révélé
+qu'il coûtait plus qu'il ne rapportait, jusqu'au retrait — et celle de
+**task-222** : une US écrite sur un chiffre non opposable, annulée.
