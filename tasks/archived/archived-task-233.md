@@ -532,3 +532,27 @@ partiel/couvrant de l'index qui dépend de cette mesure.
 
 Mergée en connaissance de cet écart, sur décision humaine explicite après double
 signalement.
+
+
+## Correction post-merge — 2026-08-05
+
+La justification écartant `MailFolders.FolderType` s'appuyait sur un relevé en base
+présenté comme une propriété du système : *« `Trash` classé `Custom`, 50 messages, aucun
+dossier de type `Trash` »*. **Exact à l'instant de la mesure, faux ensuite** : après une
+synchronisation ultérieure, la même base classe correctement `INBOX`=0, `Sent`=1,
+`Drafts`=2, `Trash`=3, `Junk`=4, seuls les dossiers réellement personnalisés restant en
+`Custom`.
+
+Reste vrai : `GetFolderType` n'a **aucun repli sur le nom** (fait de code). N'est plus
+établi : que ce serveur n'annonce pas SPECIAL-USE — il l'annonce. La cause du transitoire
+**n'a pas été établie**.
+
+L'argument devient donc « la classification persistée n'est pas stable et a été observée
+fausse pendant une fenêtre » — plus faible que celui écrit, mais suffisant pour le choix
+retenu. **Aucune conséquence sur le code** : la règle est restée fondée sur le nom, donc le
+comportement antérieur est préservé. C'est la justification qui était trop forte, pas la
+décision.
+
+Erreur de méthode à retenir : citer un volume et une classification relevés à un instant
+comme s'ils caractérisaient le système. Corrigé dans `E015-Changelogs.md` (v1.27) et
+`E015-tests-charge-api-mail.md` (v1.28).

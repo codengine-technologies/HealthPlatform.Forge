@@ -2376,6 +2376,39 @@ nouvelle table par opération est ce qui permettra de les séparer.
 - **Build / tests**, sans `--artifacts-path` (le verrou de l'AppHost s'étant levé, la suite tourne enfin en entier) : 0 erreur, 0 avertissement ; domain 106/106, infrastructure 421/421, **api 650/650**, **integration 339/339** (16 ignorés contre **128** avec l'option — ce qui **prouve** que les 4 échecs de scan de sources signalés plus tôt étaient bien l'artefact d'outillage), application 1972/1972 sur deux runs consécutifs. Une occurrence du flaky pré-existant `MailExportServiceTests.BuildPdfWithMedicalDocumentHtmlBodyFallback`.
 - **⚠️ SONAR — les deux relevés ne sont PAS comparables**, et le dire vaut mieux que présenter un delta imaginaire : `ncloc` **37 181 → 43 533**, périmètres d'analyse différents. La mesure qui, elle, est indépendante du périmètre : **zéro** violation « new code » sur 33 tombe dans un fichier touché par cette task. Les 33 sont héritées — 26 dans l'outillage k6 (`report.py`, `journey.js`, `journey-model.js`), 3 `S125` dans `AppHost.cs`, 1 `S3903`, 2 `S103`, 1 `S1067`. Deux étaient à moi (`CA1861`, tests de task-234) : corrigées, disparues. Le Quality Gate reste ERROR sur `new_coverage` = 0 — **aucun rapport de couverture n'est importé**, donc le seuil de 80 % est inatteignable par construction — et sur les hotspots `Math.random()` de `journey.js`, **jamais révisés (4ᵉ signalement)**.
 - **AUDIT DE MIGRATION (règle 7c)** — deux migrations écrites à la main. FluentMigrator n'a ni `.Designer.cs` ni instantané EF, donc **aucune opération fantôme n'est possible : il n'y a pas de générateur**. Une opération dans chaque `Up`, sa symétrique dans `Down` ; numéros strictement postérieurs, aucune collision ; noms de colonnes bruts (`Ins`, `MailId`, `Date`) **vérifiés contre `information_schema`**. Coût dit franchement : une colonne générée `STORED` **réécrit la table sous verrou exclusif**, de l'ordre de la seconde sur une base par praticien.
+> ### ⚠️ Correction du 2026-08-05 — la preuve invoquée était un état TRANSITOIRE
+>
+> L'argument ci-dessus s'appuyait sur un relevé en base : *« le dossier littéralement nommé
+> `Trash`, 50 messages, est classé `FolderType = Custom`, et aucun dossier n'y porte le type
+> `Trash` »*. **Ce relevé était exact au moment de la mesure et ne l'est plus.** Après une
+> synchronisation ultérieure (`LastSyncedAt` 2026-08-05T14:54), la même base classe
+> correctement **tous** ses dossiers système : `INBOX`=0, `Sent`=1, `Drafts`=2, **`Trash`=3**,
+> `Junk`=4, et seuls les dossiers réellement personnalisés (`Demo`, `Demo/Biologie`,
+> `Demo/Demo2`) restent en `Custom`.
+>
+> **Ce qui reste vrai** : `ImapHelper.GetFolderType` n'a **aucun repli sur le nom** — c'est un
+> fait de code, inchangé. Un serveur qui n'annonce pas SPECIAL-USE produirait donc bien du
+> `Custom`.
+>
+> **Ce qui n'est PLUS établi** : que ce serveur ne l'annonce pas. Il l'annonce. La
+> classification a **transité par une valeur fausse** puis s'est corrigée, et **je n'ai pas
+> établi pourquoi** (listing incomplet ? attributs non demandés à ce passage ? autre ?).
+>
+> **L'argument change donc de nature, et de force.** Il ne dit plus « ce serveur n'annonce pas
+> SPECIAL-USE, donc s'y fier serait faux », mais « la classification persistée **n'est pas
+> stable dans le temps**, et a été observée fausse pendant une fenêtre ». Pendant cette
+> fenêtre, un filtre clinique fondé sur `FolderType` aurait bel et bien laissé entrer la
+> corbeille dans des dossiers patients. C'est un argument plus faible que celui écrit, et
+> suffisant pour justifier le choix retenu — mais il faut le lire pour ce qu'il est.
+>
+> **Aucune conséquence sur le code livré** : la règle est restée fondée sur le **nom** du
+> dossier, ce qui préserve le comportement antérieur. C'est la **justification documentée** qui
+> était trop forte, pas la décision.
+>
+> Le nombre de messages a lui aussi changé (la base n'a plus que 51 messages, tous dans
+> `INBOX`) : citer un volume relevé à un instant comme s'il caractérisait le système était
+> l'erreur de méthode sous-jacente.
+
 - **⚠️ ANGLE MORT SIGNALÉ, NON RÉSOLU.** La fixture d'intégration bâtit son schéma par **`EnsureCreatedAsync()`**, donc depuis le **modèle EF**. Les migrations FluentMigrator ne sont jouées par **aucun test** : schéma de test et schéma de production sont produits par **deux mécanismes différents**, et rien dans ce dépôt ne vérifie qu'ils concordent. D'où la double déclaration (migration **et** modèle) et la vérification manuelle des noms de colonnes. **Même famille que task-235** — et que le défaut du getter ci-dessus : *le harnais est plus permissif que la production, donc il valide du code qui ne marche pas*.
 - **DÉCISION PRODUIT À ARBITRER.** Renforcer la règle par l'**union** SPECIAL-USE **et** nom. Le besoin est prouvé dans les deux sens : la boîte de dev classe `Trash` (50 messages) en `Custom` ; à l'inverse, un serveur peut annoncer `\Sent` sur un dossier au nom quelconque, que le nom seul laisserait entrer dans un dossier patient. **Cela change le comportement**, donc hors de cette task (règles 6 et 7).
 - **🚧 BLOQUANT POUR LE MERGE, NON FAIT ET NON FAISABLE ICI.** La contre-épreuve au banc exige un dossier de **~300 documents** ; la base de dev plafonne à **41** pour son patient le plus fourni. Le critère central — « le coût cesse de suivre la taille du dossier » — **n'est pas mesurable sur le corpus nominal**. Le plan post-index n'a pas été relevé non plus : la migration n'est pas appliquée sur cette base (MCP en lecture seule, et on n'écrit pas dans une base praticien), et à 92 documents un relevé ne prouverait rien. **Le choix partiel/couvrant dépend de cette mesure.** Restent dus : le re-tir du pool à 6 et l'`EXPLAIN ANALYZE` après.

@@ -2,7 +2,7 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.27
+> **Version** : 1.28
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
 > **Dernière mise à jour** : 2026-08-05
@@ -699,12 +699,19 @@ L'index a donc été créé, la sélection de la page confiée à la base, et la
 — « ce qui est parti, brouillonné ou jeté n'entre pas dans un dossier patient » — ramenée
 d'une trentaine d'écritures éparses à **une seule**, calculée par la base elle-même.
 
-Cette dernière opération méritait une vérification avant d'être écrite, et elle l'a
-justifiée : la solution évidente aurait été de se fier au type de dossier que déclare le
-serveur de messagerie. Sur la boîte de développement, le dossier littéralement nommé
-`Trash`, qui contient cinquante messages, n'est **pas** déclaré comme corbeille par le
-serveur. S'y fier aurait fait entrer des documents jetés dans des dossiers patients. La
-règle continue donc de lire le **nom** du dossier.
+Cette dernière opération méritait une vérification avant d'être écrite. La solution
+évidente aurait été de se fier au type de dossier que déclare le serveur de messagerie.
+Un relevé en base a montré le dossier nommé `Trash` classé « personnalisé » et non
+« corbeille » — s'y fier aurait fait entrer des documents jetés dans des dossiers
+patients.
+
+⚠️ **Correction du 2026-08-05** : ce relevé était **transitoire**. Après une
+synchronisation ultérieure, la même base classe correctement tous ses dossiers système,
+corbeille comprise. Ce qui reste vrai, c'est que le code ne se rabat **jamais** sur le nom
+du dossier si le serveur n'annonce rien, et que la classification enregistrée **a été
+observée fausse pendant une fenêtre**. La règle continue donc de lire le **nom** du
+dossier — le choix est le bon, mais pour une raison plus faible que celle écrite
+initialement, et la cause du transitoire n'a pas été établie.
 
 **Ce qui reste à démontrer, et qui conditionne l'intégration** : que le coût cesse
 effectivement de suivre la taille du dossier. Ce n'est pas mesurable sur les données de
