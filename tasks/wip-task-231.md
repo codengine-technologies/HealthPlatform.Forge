@@ -183,3 +183,9 @@ Ce qui est établi sans Sonar, et qui ne le remplace pas : build 0 erreur,
 poste) : démarrer SonarQube, poser `SONAR_TOKEN`, puis relancer
 `/sonar 231` sur la branche. Le diff est petit et localisé (chemin d'envoi
 SMTP), donc l'analyse est rapide.
+
+## Lint log
+
+`/lint-angular` — **skip propre** : `client-angular` n'est pas dans les
+`**Repos**:` de cette task (US backend pure, justifiée dans le corps) et son
+arbre de travail est intact. Aucun code Angular produit, donc rien à linter.
