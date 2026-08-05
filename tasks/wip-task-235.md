@@ -129,15 +129,35 @@ l'écart soit observable.
 
 ## Definition of Done
 
+> ### ✂️ DOD amendé le 2026-08-06 — décision humaine
+>
+> La US portait **trois remèdes**. Les remèdes **1** (échouer sur une erreur journalisée) et
+> **3** (`MssRpps` dans les fixtures) sont **livrés** ; le remède **2** (câbler
+> `IBackgroundTaskQueue`) est **découpé vers `task-237`**.
+>
+> **Pourquoi ce découpage.** Le filet livré a déjà attrapé un vrai défaut du harnais — la jambe
+> de durabilité morte sur un hôte nul, six tests rouges portant l'erreur que la US citait en
+> preuve. Le laisser sur une branche prolongeait l'aveuglement qui a laissé passer task-234,
+> task-233 et task-236. Le remède 2 est plus gros que les deux autres réunis et porte son propre
+> risque de conception (un exécuteur non déterministe rendrait la suite intermittente, donc
+> ignorée — le travers même que cette US corrige) : il mérite sa revue.
+>
+> **La règle 11 ne s'y oppose pas** : elle interdit de livrer une US **produit** à moitié.
+> Celle-ci n'a aucun impact produit — c'est sa borne, écrite par le PO en tête de fichier.
+>
+> Les items déplacés sont barrés ci-dessous et **repris intégralement** dans le DOD de
+> task-237, dont ce qui est livré ici est une **dépendance stricte**.
+
+
 - [ ] Build passes (0 errors) — `dotnet build HealthPlatform.Api.Mail.sln`
 - [ ] Tests pass (0 failures) — `dotnet test HealthPlatform.Api.Mail.sln`
 - [ ] **Un test d'intégration échoue si une erreur inattendue est journalisée** — preuve par un test qui en provoque une délibérément et constate l'échec
 - [ ] Liste d'exemptions explicite, **chaque entrée justifiée en une phrase** ; aucune exemption « pour faire passer »
-- [ ] `IBackgroundTaskQueue` câblée dans les fixtures, **exécution déterministe** (aucun `Task.Delay`, aucun `Thread.Sleep`, aucune attente de scrutation dans les tests)
-- [ ] **Au moins un test par chemin de fond** (enrichissement asynchrone, réconciliation de dossiers, propagation de flags) prouvant que le travail a eu lieu — assertion sur l'**effet**, pas sur le code HTTP
+- [x] ~~`IBackgroundTaskQueue` câblée dans les fixtures, **exécution déterministe** (aucun `Task.Delay`, aucun `Thread.Sleep`, aucune attente de scrutation dans les tests)~~ → **déplacé vers task-237** (découpage du 2026-08-06)
+- [x] ~~**Au moins un test par chemin de fond** (enrichissement asynchrone, réconciliation de dossiers, propagation de flags) prouvant que le travail a eu lieu — assertion sur l'**effet**, pas sur le code HTTP~~ → **déplacé vers task-237** (découpage du 2026-08-06)
 - [ ] `MssRpps` renseigné dans les fixtures partagées, avec le commentaire expliquant pourquoi
-- [ ] **Un test compare le nom de base utilisé par la tâche de fond à celui de la requête** — l'assertion qui aurait attrapé task-234
-- [ ] **Preuve ROUGE de chaque filet** : en réintroduisant l'oubli de `MssRpps` dans un chemin de fond, un test d'intégration échoue ; en supprimant la collecte d'erreurs, le test de démonstration passe
+- [x] ~~**Un test compare le nom de base utilisé par la tâche de fond à celui de la requête** — l'assertion qui aurait attrapé task-234~~ → **déplacé vers task-237** (découpage du 2026-08-06)
+- [x] **Preuve ROUGE du filet livré** : en supprimant son exemption, le test de démonstration échoue — vérifié. ~~La preuve par réintroduction de l'oubli de `MssRpps` dans un chemin de fond~~ → **déplacée vers task-237** : elle exige le scope de fond, donc la file câblée
 - [ ] Aucun secret ni donnée de santé ajouté au harnais (le compte de test et ses identifiants restent hors du dépôt)
 - [ ] Tout défaut de production révélé par le câblage est **signalé dans le task file**, non corrigé ici
 
