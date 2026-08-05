@@ -174,3 +174,34 @@ Ouverte le 2026-08-05 sur constat humain, à la suite de task-234. Question pos�
 l'humain : *« pourtant nous avons des tests d'intégration sur une boîte gmail, pourquoi
 cela n'a pas révélé le problème ? »* — les trois raisons établies ci-dessus sont la
 réponse, et cette US les traite.
+
+
+## Branches
+
+- `api-mail` (pushed) : `chore/task-235-filet-integration-erreurs-journalisees` —
+  https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/chore/task-235-filet-integration-erreurs-journalisees
+- `dtos-mss` (pushed) : même nom — **auto-incluse** par `/start`. Aucun changement de
+  contrat n'est attendu (cette US ne touche que le harnais de test) : si elle reste vide,
+  aucune PR ne sera ouverte pour elle, et il faudra la supprimer à la main.
+
+Préfixe `chore/` et non `feat/` : la US ne modifie **aucun code de production** — c'est sa
+borne explicite.
+
+Pré-flight vert sur les six repos mesurables. Dépendance task-234 : archivée (mergée).
+
+### Contexte acquis depuis la rédaction de la US, et qui la renforce
+
+Deux défauts de la **même famille** ont été trouvés depuis, chacun invisible pour la même
+raison — *le harnais est plus permissif que la production* :
+
+1. **task-233** : trois tests unitaires ont dû être portés vers un vrai PostgreSQL, le
+   fournisseur InMemory ignorant les colonnes calculées ; et un défaut de production (le
+   getter `DataContext` levant) a passé 2 700 tests verts avant d'être trouvé **par un
+   conflit de fusion**, parce que les tests **injectent** le contexte que la production
+   **résout**.
+2. **task-236** : l'outbox de propagation des flags levait dès que le cache d'identifiant
+   était chaud — corrigé, mais **aucun test ne l'aurait attrapé**.
+
+La US parlait de trois angles morts ; il y en a désormais **cinq documentés**, tous du même
+genre. C'est un argument de plus pour le remède 1 (échouer sur une erreur journalisée), qui
+est le seul des trois à attraper des défauts **dont on ne connaît pas la nature à l'avance**.
