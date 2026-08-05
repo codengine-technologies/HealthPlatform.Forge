@@ -317,3 +317,59 @@ Un point demandera une attention particulière au tir : le travail IMAP n'a pas
 disparu, il s'exécute désormais **pendant** que le médecin fait autre chose. Le
 groupement doit plus que compenser ce chevauchement — c'est précisément ce que la
 détention p95 du verrou `UpdateFlag` (référence 0,997 s à 5,11 acq/s) dira.
+
+
+---
+
+## Simplify log
+
+**Repos éligibles touchés** : `api-mail` seul (`dtos-mss` : 0 commit, et hors
+périmètre de cette étape).
+
+**Commit** : `4c6e149` — `refactor(mail): task-230 — les trois chemins de flag partagent la lecture d'audit legere`
+
+### Une prise, sur l'axe réutilisation — et c'est un défaut, pas un embellissement
+
+J'avais créé `GetMailAuditSnapshotAsync` et ne l'avais utilisé qu'à **un endroit sur
+trois**. `UpdateEmailFlaggedStatusAsync` et `UpdateEmailUnFlaggedStatusAsync`
+payaient encore `GetMailAsync(Header)` — qui charge étiquettes, destinataires,
+pièces jointes, et **le contenu clinique** dès que le message porte des documents
+médicaux — pour renseigner un objet et trois adresses.
+
+`TraceFlagChange` prend désormais un `MailAuditSnapshot`. **Les champs tracés sont
+inchangés**, format `;` des destinataires compris : deux stubs de test ont été
+recalés sur la nouvelle source, pas les assertions.
+
+> **Extension du périmètre littéral de la task, déclarée.** Le défaut mesuré était
+> « marquer lu ». Mais c'est **littéralement le même défaut**, le remplacement est
+> mécanique, et un changement d'état de flag n'a aucune raison de lire le matériau
+> clinique — où que ce soit. Le même motif (helper créé puis non appelé à l'un des
+> endroits) avait déjà été attrapé à task-228 : c'est précisément ce que cette étape
+> est là pour voir.
+
+### Une asymétrie constatée et NON corrigée
+
+`UpdateEmailUnReadStatusAsync` (« marquer non lu ») n'émet **aucune trace d'audit**,
+là où « marquer lu » et les deux « suivi / non suivi » en émettent une. Ce n'est pas
+un oubli que la forge doit combler seule : ajouter ou non une trace réglementaire est
+une **décision de traçabilité PGSSI-S**, pas un choix d'implémentation. Signalé pour
+arbitrage.
+
+### Re-validation
+
+| Suite | Résultat |
+|---|---|
+| Build solution | **0 erreur, 0 avertissement** |
+| `application` | **1 977 / 1 977** |
+| `infrastructure` | 422 / 422 |
+| `domain` | 102 / 102 |
+| `api` | 649 / 649 en compilation normale |
+
+Les 4 échecs de `api` observés sous `--artifacts-path` sont l'artefact d'environnement
+connu (les scans de sources remontent au `RepoRoot()` depuis `AppContext.BaseDirectory`,
+déplacé hors du dépôt par ce contournement de verrous).
+
+Le flaky `Services.Export.MarkdownPdfRendererTests.RenderHeadingPreservesText` s'est
+manifesté une fois de plus (famille `UglyToad.PdfPig`), vert en isolation.
+
+**Routage** : `api-mail` touché ⇒ `/sonar 230`.
