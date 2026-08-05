@@ -408,3 +408,41 @@ rétrospective qu'on pouvait lui souhaiter.
 **non établie** : la jambe de durabilité fonctionnant désormais, les chemins concernés
 provisionnent réellement une base par praticien au lieu d'échouer immédiatement. Le DOD de
 task-237 prend 2 min 45 s comme référence — à réviser si l'écart se confirme.
+
+
+## Merged
+
+Mergée le **2026-08-06** par l'humain (HAG, règle 10), sur attestation `--i-tested`.
+
+- `api-mail` : PR #164 **squash-mergée** → `80b839c` sur `develop`. Ref remote supprimée,
+  **branche locale conservée**. **CI `develop` verte.**
+- `dtos-mss` : branche auto-incluse **vide (0 commit vérifié)**, aucune PR. Supprimée localement
+  et sur le remote.
+
+### ⚠️ Le défaut de cycle en est à sa TROISIÈME occurrence
+
+Une branche auto-incluse sur `dtos-mss` restée sans commit n'est nettoyée par **rien** dans la
+chaîne : elle a dû l'être à la main pour task-233, task-232 et maintenant task-235. Entre-temps
+elle a **bloqué le pré-flight de `/start` deux fois**, chaque task payant l'auto-inclusion de la
+précédente. Ce n'est plus une gêne ponctuelle, c'est un motif — il mérite sa propre US.
+
+### Ce qui est désormais sur `develop`
+
+Le filet à erreurs journalisées, `MssRpps` et `ConnectionStringServer` dans les deux fixtures
+d'intégration. Autrement dit : **la suite ne peut plus journaliser une panne en restant verte**
+sur les 11 classes qui en héritent.
+
+### ⚠️ Ce qui reste dû, et n'a PAS été livré ici
+
+- **task-237** — câbler `IBackgroundTaskQueue`. Tant que ce n'est pas fait, les services
+  empruntent leur **repli en ligne** et **le scope de tâche de fond n'est jamais créé pendant
+  les tests d'intégration**. Le filet attrape ce que ce chemin journalise *quand il est
+  emprunté* ; il ne le fait pas emprunter.
+- **Adoption : 11 classes sur 21.** Les dix autres ne sont **pas protégées** — ce n'est pas une
+  exemption, c'est un reste à faire, d'autant qu'elles tournent sur des fixtures où le
+  fournisseur n'est pas branché.
+- **Durée de la suite d'intégration : ~2 min 45 s → 5 min 05 s**, cause **non établie**
+  (probablement le provisionnement d'une base par praticien désormais réellement exercé). Le DOD
+  de task-237 prend 2 min 45 s comme référence et sera peut-être à réviser.
+
+Mergée en connaissance de ces trois écarts, sur décision humaine explicite.
