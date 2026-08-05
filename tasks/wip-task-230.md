@@ -125,3 +125,25 @@ elle doit seulement rester dans la même enveloppe. Contraintes :
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : inchangé — le payload différé (folder + uid) ne contient aucune DSCP
 - **AIPD / impact RGPD** : inchangé — aucun traitement nouveau
+
+
+---
+
+## Branches
+
+- `api-mail` (pushed) : `fix/task-230-mark-read-async-propagation` — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-230-mark-read-async-propagation
+- `dtos-mss` (pushed, auto-inclus) : même nom de branche — **aucun changement de contrat attendu**, la contrainte absolue de la US étant l'identité de la route, du code HTTP et du corps de réponse. Pas de PR si aucun commit.
+
+**Base** : `develop` d'`api-mail` au commit `61900e3` — **task-229 y est mergée**
+(squash de la PR #157). La US se déclare indépendante de task-228/229 dans le code ;
+partir d'un `develop` où elles sont mergées est néanmoins ce qui permettra de lire
+la contre-épreuve au banc sans mélanger les effets.
+
+**Dépendances** : aucune déclarée.
+
+**Préfixe `fix/`** : la US corrige un défaut **mesuré** (`mark_read` p50 331 ms /
+p95 524 ms au palier 300, hors grille SLO, 8,7 % du temps serveur), pas une
+amélioration spéculative.
+
+**Pré-flight** : les 6 repos automatisés vérifiables sont sur `develop`. Le chemin
+d'`interop-cda` corrigé dans CLAUDE.md à task-229 est validé — plus de faux négatif.
