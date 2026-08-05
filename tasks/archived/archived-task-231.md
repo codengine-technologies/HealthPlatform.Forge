@@ -282,3 +282,87 @@ invoqué** — ni pour, ni contre.
 retiré de la PR #158. À reprendre : trouver la fuite, la corriger, refaire le
 tir. Et arbitrer si la réutilisation vaut d'être poursuivie sans affinité de
 session.
+
+## Fuite corrigée — 2026-08-05, commit `bcf86a1`
+
+### La cause, nommée puis attribuée
+
+Reproduction courte (100 médecins, 10 min) : threads processus 286 → 965,
+pool 24 → 673, ~1,1 thread/s — la pente exacte du tir de 92 min. Capture de
+piles sur un réplica : **93 threads sur 120 garés au même endroit** :
+
+```
+BaseRepository.get_DataContext()
+  get => _dataContext ??= CreateDbContextAsync().GetAwaiter().GetResult();
+```
+
+Un getter sync-over-async dont le corps `await` le **sémaphore statique de
+provisionnement** et le cache : chaque thread du pool s'y gare pendant que ses
+continuations attendent… un thread du pool. Famine auto-entretenue — le
+ThreadPool injecte ~1 thread/s, chaque nouveau thread se gare à son tour.
+C'est aussi l'origine des délais de 60 s sur `GET /mail/folders`
+(`ReconcileFoldersAsync` passe par ce getter). Violation S4462, le défaut même
+que task-205 avait mesuré comme facteur limitant.
+
+**Attribution par A/B** (même tir, seule la lignée change) : develop reste
+plat (313 → 324), la branche s'emballe. Le défaut est pré-existant mais la
+modification l'a rendu atteignable : les deux lectures base de l'envoi,
+auparavant espacées par les ~1,3 s d'établissement SMTP, se font désormais
+d'emblée — la pression concurrente sur le sémaphore dépasse son débit de
+service.
+
+### Le correctif
+
+- `DataContext` ne crée plus rien : le getter **lève** si le contexte n'est
+  pas résolu (un site oublié casse au premier test au lieu de fuir en
+  silence) ; il ne sert plus que les montages de test (contexte injecté).
+- La résolution passe par `GetDataContextAsync()` — `ValueTask` mémoïsée par
+  instance, chemin chaud synchrone sans allocation, premier appel asynchrone
+  de bout en bout (provisionnement compris), **aucun thread bloqué**.
+- Conversion mécanique des ~394 sites : 13 repositories + 2 controllers,
+  `var db = await GetDataContextAsync();` hissé avant le premier usage.
+  Aucune signature publique modifiée ; 3 helpers privés de composition de
+  requête reçoivent `db` en paramètre (pas d'`await` dans les lambdas EF).
+- Build 0 erreur, **3 368 tests verts** (dont intégration, qui empruntent la
+  vraie voie DI).
+
+### Tir de vérification `fuite-fix-bcf86a1` — 🟢 la fuite est éteinte
+
+Même tir que les deux jambes de l'A/B (100 médecins, 10 min, K=1,25,
+latence mssante), 12 804 requêtes servies, `http_req_failed` < 1 % :
+
+| | Branche avant correctif | develop (réf.) | **Branche corrigée** |
+|---|---|---|---|
+| Threads processus | 286 → **965** | 313 → 324 | **263 → 326** (max 362) |
+| Threads ThreadPool | 24 → **673** | 39 → 32 | **23 → 31** (max 45) |
+
+Pente nulle — le pool finit à 31 threads là où il en empilait 673. Le départ
+plus bas (263) vient du redémarrage à froid du banc ; le palier rejoint celui
+de develop.
+
+Deux artefacts de banc rencontrés et neutralisés en route : (1) le redémarrage
+de l'AppHost recrée Toxiproxy **sans ses proxies** (`dovecot-imap`,
+`greenmail-smtp` — recréés via l'API, le seed n'a pas de mode « proxies
+seuls ») ; (2) un premier tir avec k6 muet (`>/dev/null`) a produit une fausse
+ligne plate à **0 requête servie** — le script de tir vérifie désormais le
+volume servi et s'invalide sous 1 000 requêtes.
+
+### Reste à faire avant merge (inchangé sur le fond)
+
+1. **Contre-épreuve DOD au banc** : tir `journey` n300 iso-conditions avec
+   `journey-mssante-n300-021137` — `send` p50 en baisse, part de `send` en
+   baisse, 0 erreur, ~1 connexion SMTP par session. La fuite qui rendait le
+   tir non concluant est éteinte ; le tir peut maintenant trancher.
+2. **`/sonar 231`** : qualité du diff toujours non mesurée (serveur éteint).
+3. **Arbitrage humain** : la réutilisation SMTP vaut ~1/5 de sa promesse sans
+   affinité de session (5 réplicas, client par processus) — poursuivre,
+   compléter par une affinité, ou re-scoper.
+
+## Merged
+
+- **Date** : 2026-08-05, via `/merge task-231 --i-tested` (attestation humaine HAG)
+- **api-mail** : PR #158 squash-mergée → `0b026b1` sur `develop` ; branche distante supprimée, branche locale conservée. Sync develop : merge du chore local `1a5a1c0` (index des rapports de tir, jamais poussé) → `6788b13`, conflit INDEX.md résolu (les deux lignes de tir conservées, doublon du squash dédoublonné).
+- **dtos-mss** : aucune PR (branche de précaution sans commit) — branche distante supprimée, clone resynchronisé sur `develop`.
+- **CI develop** : run post-merge lancé (https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/31014481875)
+- **Staging** : aucune branche `forge/staging-*` — run `/start` isolé, hors batch `/forge`.
+- **Note** : la contre-épreuve DOD n300 et `/sonar 231` n'ont pas été rejoués avant merge — l'attestation `--i-tested` de l'humain (HAG, règle 10) couvre la décision. La fuite de threads qui invalidait le tir du 2026-08-05 est corrigée et vérifiée (voir « Fuite corrigée », tir `fuite-fix-bcf86a1`).
