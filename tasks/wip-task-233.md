@@ -231,3 +231,168 @@ page tant qu'elle n'est pas corrigée.
 `fix/task-230-…`, branche auto-incluse **vide** (0 commit) que rien ne remet sur
 `develop` quand aucune PR n'est ouverte pour ce repo. L'humain l'a basculée ; le défaut
 de cycle est signalé et attend une décision.
+
+
+## Develop log
+
+Trois volets, dans l'ordre où la mesure les a imposés — **pas** dans l'ordre où la US
+les annonçait.
+
+### Ce que le plan d'exécution a dit, et qui corrige le diagnostic de la US
+
+La US attribuait le parcours séquentiel de la page aux six filtres
+`lower(FolderPath) LIKE '%…%'`. Le relevé dit autre chose : **`MailMedicalDocuments`
+n'avait aucun index sur `Ins`** — ni sur `MailId`. Ses index portaient sur
+`DuplicateOfId`, `PractitionerContactId`, `SetId`, `SupersededByDocumentId`,
+`SuppressionRequestedByMailId` : aucun sur la colonne qui restreint au patient. Le
+parcours séquentiel était donc **inévitable quoi qu'on fasse aux filtres de nom** —
+les supprimer n'aurait rien gagné, faute d'index à parcourir à la place.
+
+task-070 avait bien créé `IX_MailPatients_Ins` — sur la table des **patients**. La
+requête de la page filtre les **documents**, table restée sans index. Le même défaut,
+sur la table voisine.
+
+### Volet 2 — la pagination en SQL (`7fb47a5`)
+
+`GetActiveMailIdsByDocDateAsync`, qui **exécutait**, devient
+`ActiveDocumentsForPatient`, qui **compose**. Le `GROUP BY MailId` + `MAX(Date)`, le
+`COUNT`, le tri et le `Skip`/`Take` partent en base ; seule la page revient.
+`LoadMailsWithAttachmentsAsync` ré-ordonne déjà selon la liste d'entrée (task-070),
+donc l'ordre est préservé sans travail supplémentaire.
+
+Sortie anticipée sur `totalCount == 0`, et `skip` borné à `int.MaxValue` — un
+`page * pageSize` en `int` débordait silencieusement sur une page absurde.
+
+### Volet 1 — l'index sur `Ins` (`7951339`)
+
+`IX_MailMedicalDocuments_Ins_MailId_Date`, non unique. Trois colonnes :
+`Ins` pour l'égalité qui restreint au patient ; `MailId` en seconde position pour que
+les lignes sortent déjà ordonnées par message et que l'agrégat se passe du tri
+intermédiaire visible dans le plan d'avant ; `Date` parce qu'elle est agrégée par
+`MAX` et n'exige alors aucun accès au tas.
+
+**Non unique volontairement** : un patient a plusieurs documents dans un même message,
+et `Ins` est nullable (documents sans identité nationale, en attente de rattachement —
+comportement attendu depuis task-226).
+
+**Écartés faute de mesure**, la US demandant de décider « après avoir vu le plan » :
+la variante **partielle** (`WHERE NOT SuppressionAccepted AND SupersededByDocumentId
+IS NULL`) et la variante **couvrante**. La base de développement — 92 documents, 41 au
+maximum pour un patient — ne permet pas de trancher : à cette taille PostgreSQL
+parcourt séquentiellement même avec un index, car c'est optimal pour lui. Le choix
+reste ouvert pour la contre-épreuve au banc.
+
+Aucun index sur `MailId` seul : la jointure vers `Mails` emprunte la clé primaire de
+cette table, déjà indexée.
+
+### Volet 3 — la règle de nommage dite une seule fois (`a861ae9`)
+
+La règle « envoyés / brouillons / corbeille n'entrent pas dans un dossier patient »
+était écrite **33 fois** en LINQ : 24 occurrences dans `PatientRepository` (quatre
+récitations complètes), 9 dans `MailRepository`. Elle devient une **colonne générée par
+PostgreSQL**, `Mails."IsInSentDraftOrTrashFolder"`, calculée sur `FolderPath` avec les
+six mêmes motifs. Il reste 3 occurrences, volontairement : elles testent « sent »
+**seul**, une règle différente (préférence de doublon).
+
+**Pourquoi pas `MailFolders.FolderType`, que la US proposait.** Ce type est dérivé
+**uniquement des attributs SPECIAL-USE annoncés par le serveur**, sans repli sur le nom
+(`ImapHelper.GetFolderType`). Relevé en base : le dossier littéralement nommé `Trash`,
+qui contient **50 messages**, est classé `FolderType = Custom` faute d'attribut `\Trash`
+annoncé, et **aucun** dossier n'y porte le type `Trash`. Filtrer sur ce type aurait
+**relâché la règle clinique** et fait entrer la corbeille dans les dossiers patients.
+
+**Ce que ce volet n'apporte pas** : le gain de latence. Ce fut le volet 1. Il apporte
+une règle unique, un prédicat d'une lecture de booléen au lieu de six comparaisons de
+motifs par ligne, et une colonne indexable — impossible avec `LIKE '%…%'`.
+
+### Ce que la comparaison des cinq récitations a révélé
+
+Deux exigent `FolderPath != null` puis excluent les motifs — chemin inconnu **écarté**.
+Les deux autres écrivent `FolderPath == null || (aucun motif)` — chemin inconnu
+**gardé**. Deux réponses opposées à la même question. **Sans conséquence sur les
+données actuelles** : `FolderPath` est `IsRequired()`, donc NOT NULL en base. C'est une
+divergence d'**intention**, qui attendait qu'on rende la colonne nullable pour devenir
+un défaut. Chaque appelant garde ici son comportement local **tel quel** — cette task
+unifie la règle de nommage, elle n'arbitre pas le cas nul à la place des requêtes.
+
+### Un test unitaire a dû être porté, et c'est un constat sur le harnais
+
+`GetDuplicateClusterAsyncShouldExcludeMembersInTrashAsync` tournait sur **InMemory**,
+qui **ignore `HasComputedColumnSql`** : la colonne y vaut `false` en toutes
+circonstances. Le test est donc devenu rouge alors que la production excluait toujours
+la corbeille — le rouge disait la vérité sur le **harnais**, pas sur le code. Le
+réparer sur InMemory aurait voulu dire écrire la valeur à la main dans le seed, donc
+tester le seed et non la règle. Il est porté en intégration, avec une note à la place
+de l'ancien test.
+
+Même famille que l'angle mort ci-dessous, et que celui de task-235.
+
+### Couverture
+
+| Preuve | Où |
+|---|---|
+| Règle clinique par nom de dossier, 8 variantes exclues + 3 gardées | `PatientFilePageTests` (`[Theory]` sur la page) |
+| La colonne générée elle-même, motif par motif (11 cas) | `TheFolderNamingRuleIsComputedByTheDatabase` |
+| L'index dont la page dépend existe | `TheIndexThatRestrictsToOnePatientExists` |
+| Corbeille exclue du cluster de doublons | `ATrashedOriginalStaysOutOfItsDuplicateCluster` (porté) |
+| Page / `TotalCount` / continuité / ordre | `PatientFilePageTests` |
+
+**Preuves ROUGE**, chacune obtenue en cassant délibérément le code :
+- règle de nommage neutralisée → **18 des 28** tests du fichier échouent ;
+- déclaration `HasIndex` retirée du modèle → la garde d'index échoue.
+
+Le corps de `GetMailsByInsAsync` n'avait **aucune** couverture avant cette task : le
+fournisseur InMemory refuse le `GroupBy` des pièces jointes, donc les tests
+unitaires ne pouvaient pas l'atteindre. D'où le projet d'intégration.
+
+### Angle mort signalé, non résolu
+
+La fixture d'intégration bâtit son schéma par **`EnsureCreatedAsync()`**, donc **depuis
+le modèle EF**. Les migrations FluentMigrator ne sont jouées par **aucun test** :
+schéma de test et schéma de production sont produits par **deux mécanismes différents**,
+et rien dans ce dépôt ne vérifie qu'ils disent la même chose. C'est pourquoi les deux
+migrations de cette task déclarent aussi leur objet côté modèle, et pourquoi les noms
+de colonnes bruts (`Ins`, `MailId`, `Date`) ont été vérifiés à la main contre
+`information_schema`. **Même famille que task-235** — à rattacher.
+
+### Audit de migration (règle 7c)
+
+Deux migrations, toutes deux écrites à la main (FluentMigrator : ni `.Designer.cs`, ni
+instantané EF, donc aucune dérive de snapshot possible et aucune opération fantôme —
+il n'y a pas de générateur).
+
+- `20260805120000` — une `Create.Index`, sa symétrique `Delete.Index` dans `Down`.
+- `20260805130000` — une colonne générée en SQL brut (FluentMigrator n'a pas d'API
+  pour cela), sa `Delete.Column` dans `Down`. L'expression vient de
+  `MailFolderNamingRule` et de nulle part ailleurs, partagée avec le modèle EF.
+- Numéros strictement postérieurs aux quatre existants, **aucune collision** vérifiée.
+- Noms de colonnes bruts vérifiés contre `information_schema` de la base de
+  développement.
+- Coût dit franchement : une colonne générée `STORED` réécrit la table sous verrou
+  exclusif — de l'ordre de la seconde sur une base par praticien.
+
+### Contre-épreuve au banc — **bloquante pour le merge**
+
+Non faite, et elle ne peut pas l'être ici : la base de développement plafonne à **41
+documents** pour son patient le plus fourni, la US demande **~300**. Le plan post-index
+n'a pas été relevé non plus — la migration n'est pas appliquée sur cette base (le MCP
+PostgreSQL est en lecture seule, et on n'écrit pas dans une base praticien), et à 92
+documents un relevé ne prouverait rien : PostgreSQL parcourt séquentiellement à cette
+taille parce que c'est optimal. **La mesure appartient au banc**, avec le choix
+partiel/couvrant qui en dépend.
+
+### Décision produit à arbitrer par le PO
+
+Renforcer la règle par l'**union** des deux signaux — SPECIAL-USE **et** nom — au lieu
+du nom seul. Preuve du besoin : la boîte de développement classe `Trash` (50 messages)
+en `Custom`. L'inverse est vrai aussi — un serveur peut annoncer `\Sent` sur un dossier
+au nom quelconque, et le nom seul le laisserait alors entrer dans un dossier patient.
+**Cela change le comportement**, donc cela ne se fait pas dans cette task (règles 6
+et 7).
+
+### Constat de cycle signalé, non corrigé
+
+Le premier `/start 233` a été refusé parce que `dtos-mss` était resté sur
+`fix/task-230-…` — branche **auto-incluse vide** (0 commit) que rien ne remet sur
+`develop` quand aucune PR n'est ouverte pour ce repo. Le pré-flight de la task suivante
+paie donc l'auto-inclusion de la précédente. Défaut de cycle, à décider.
