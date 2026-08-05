@@ -195,3 +195,9 @@ arbre de travail est intact. Aucun code Angular produit, donc rien à linter.
 `/lint-mobile` — **skip propre** : `client-mobile` n'est pas dans les
 `**Repos**:` de cette task, et `Client/Mobile/` n'est pas un dépôt git sur ce
 poste. Aucun code mobile produit, rien à linter.
+
+## Visual verify log
+
+`/verify-visual` — **skip propre** : aucun écran `client-mobile` touché (pas de
+`## Stitch design log` dans cette task, `client-mobile` hors `**Repos**:`).
+Rien à capturer.
