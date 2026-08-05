@@ -201,3 +201,43 @@ poste. Aucun code mobile produit, rien à linter.
 `/verify-visual` — **skip propre** : aucun écran `client-mobile` touché (pas de
 `## Stitch design log` dans cette task, `client-mobile` hors `**Repos**:`).
 Rien à capturer.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/158
+  — label `awaiting-human-merge`, 17 fichiers, MERGEABLE
+- `dtos-mss` : **aucune PR** — branche créée par précaution, restée sans commit.
+  La DOD exigeait zéro changement de contrat, et il n'y en a eu aucun.
+
+## Code Review Summary
+
+Verdict : **APPROVED**. 17 fichiers revus.
+
+**Un défaut trouvé à la revue et corrigé sur la branche** (`3659817`) :
+`DiscardSmtpClient` faisait un `Disconnect(true)` **synchrone** sur le chemin de
+requête. Un thread du pool s'y serait garé le temps d'un QUIT — le défaut même
+que task-205 a mesuré comme facteur limitant de l'API, et que la règle S4462 du
+repo interdit en flux normal. Le QUIT poli ne subsiste que là où il est gratuit
+pour la requête : la fermeture de session.
+
+Deux suggestions non bloquantes, consignées dans la PR :
+
+1. `MailClientSession.Dispose` peut fermer un client pendant qu'un emprunt le
+   détient. **Exposition pré-existante et identique côté IMAP** — à traiter pour
+   les deux voies à la fois, pas ici.
+2. `SmtpConnectionFactory` journalise un extrait de JWT en `LogWarning`.
+   Pré-existant, hors périmètre, pas une donnée de santé — mais un fragment de
+   secret dans les logs. Mérite une US.
+
+**Point de contention nouveau, assumé et instrumenté** : la réutilisation
+sérialise les envois concurrents d'une même session, ce qui n'était pas le cas
+avant. Verrou `smtp_session`, attente et détention consignées.
+
+## Reste dû avant merge
+
+Deux choses, toutes deux sur le poste de l'humain :
+
+1. **Contre-épreuve au banc** (DOD, bloquante pour le merge) : tir `journey`
+   n300 en iso-conditions avec `journey-mssante-n300-021137`.
+2. **`/sonar 231`** : la qualité de ce diff est **non mesurée** (serveur
+   injoignable au moment du cycle), ce qui n'est pas la même chose que verte.
