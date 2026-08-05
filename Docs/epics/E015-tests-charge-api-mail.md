@@ -2,7 +2,7 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.28
+> **Version** : 1.29
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
 > **Dernière mise à jour** : 2026-08-05
@@ -717,6 +717,22 @@ initialement, et la cause du transitoire n'a pas été établie.
 effectivement de suivre la taille du dossier. Ce n'est pas mesurable sur les données de
 développement, qui plafonnent à quarante documents pour un patient là où il en faudrait
 trois cents. La démonstration appartient au banc de charge. *(task-233)*
+
+### Le harnais de test cesse de jeter le signal le moins cher du dépôt (6 août 2026)
+
+Un test qui passe pendant que le programme écrit « quelque chose a échoué » dans ses journaux
+est un test qui ne mesure pas ce qu'on croit. C'était le cas de toute la suite d'intégration :
+elle avait, à plusieurs reprises, journalisé des pannes réelles **en restant verte**.
+
+Désormais, une erreur journalisée pendant un test **fait échouer ce test**. Le dispositif a
+trouvé un vrai défaut dès sa première exécution — et ce défaut était dans le harnais lui-même :
+deux informations manquaient aux montages de test, si bien que l'écriture de sécurité qui
+garantit qu'un geste du praticien ne se perd pas **échouait en silence**.
+
+C'est le même genre d'angle mort que les semaines précédentes ont révélé à répétition : le
+montage de test était plus permissif que la production, il validait donc du code qui ne
+marchait pas. La moitié du chantier reste à faire — les tâches de fond ne sont toujours pas
+réellement déclenchées pendant les tests. *(task-235, suite dans task-237)*
 
 ## État de couverture (2026-08-05)
 
