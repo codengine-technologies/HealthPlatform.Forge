@@ -322,3 +322,60 @@ pratique un filet désactivé.
 Les classes restantes tournent en outre sur d'autres fixtures (`PostgreSqlFixture`,
 `AiServicesFixture`, `PgBouncerFixture`, `AnnuaireSanteFixture`) où le fournisseur n'est **pas
 branché** : y appliquer la base serait sans effet tant que leur `AddLogging` ne l'a pas.
+
+
+## Sonar log
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline (task-233, 2026-08-05) | Final (task-235, 2026-08-06) |
+|---|---|---|
+| Quality Gate (new code) | **ERROR** | **ERROR** |
+| `new_violations` | 33 | 35 |
+| `new_coverage` | 0.0 % (seuil 80) | 0.0 % (seuil 80) |
+| `new_security_hotspots_reviewed` | 0.0 % (seuil 100) | 0.0 % (seuil 100) |
+| Bugs / Vulnérabilités / Smells | 2 / 0 / 35 | 2 / 0 / 36 |
+| Coverage projet / Duplication | 0.0 % / 0.4 % | 0.0 % / 0.4 % |
+| Ratings (Fiab. / Sécu. / Maint.) | C / A / A | C / A / A |
+| `ncloc` | 43 533 | 44 159 |
+
+Les deux relevés sont cette fois **comparables** — même périmètre de scan, `ncloc` en hausse du
+seul volume ajouté.
+
+### La mesure qui attribue
+
+**Combien des 35 violations tombent dans un fichier touché par cette task ?**
+
+> **Zéro.**
+
+Réparties ainsi, et toutes héritées : `report.py` 15, `journey.js` 7, `journey-model.js` 4
+(outillage k6, tasks 173/174/195) ; `AppHost.cs` 3 ; `AppHostSecrets.cs`,
+`IIheXdmProcessingService.cs`, `ContactRepository.cs`, `BaseRepository.cs`,
+`SmtpConnectionFactory.cs` 1 chacun.
+
+### Une violation était à moi, et corrigée
+
+`DataContextGetterScanTests.cs:45` — `SYSLIB1045` (INFO) : la regex de la garde d'architecture
+livrée par **task-233** était construite à l'exécution. Passée en `[GeneratedRegex]`, donc
+compilée à la génération. Mécanique, sans risque, et c'est mon code : je le corrige plutôt que
+de le compter comme dette d'autrui. `api-mail` 650/650 après.
+
+Les deux `S103` (lignes > 150 caractères) de `BaseRepository.cs` et `SmtpConnectionFactory.cs`
+appartiennent à task-231 : **hors périmètre** (règle 6), signalées ici avec leur provenance.
+
+### Ce qui garde le Quality Gate rouge — inchangé, et pour la cinquième fois
+
+1. **`new_coverage` = 0** — aucun rapport de couverture n'est importé par le scan. Ce n'est pas
+   une couverture faible, c'est une **absence de mesure** : le seuil de 80 % est inatteignable
+   par construction, à chaque cycle. Cela relève d'une task d'outillage, pas de code.
+2. **`new_security_hotspots_reviewed` = 0** — dont les deux `Math.random()` de `journey.js`.
+   **Cinquième signalement.** Ce sont des points à *réviser*, pas à corriger ; personne ne le
+   fait, donc le Quality Gate reste rouge indéfiniment.
+3. **`new_violations` > 0** — la période « new code » englobe des tasks déjà mergées. Une task
+   peut donc être rouge sans avoir introduit la moindre dette. C'est le cas ici.
+
+### Itérations
+
+**Une seule.** Zéro finding sur le code de la task ; le reste appartient à d'autres périmètres.
+Aller jusqu'à cinq itérations aurait voulu dire réparer la dette d'autrui sous couvert de cette
+US.
