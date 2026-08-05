@@ -155,3 +155,31 @@ ressemblent, mais chacun porte une issue distincte (`acquired` / `timeout` /
 `cancelled`) — les factoriser rendrait l'étiquette moins lisible qu'elle ne l'est.
 
 Build + **3 362 tests verts** avant et après la passe.
+
+## Sonar log
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | **non mesuré** | **non mesuré** | — |
+| New coverage | non mesuré | non mesuré | — |
+| Bugs / Vulnérabilités / Smells | non mesuré | non mesuré | — |
+| Coverage projet / Duplication / Ratings | non mesuré | non mesuré | — |
+
+**`/sonar` n'a pas pu tourner le 2026-08-05** : le serveur SonarQube n'est pas
+joignable (`http://127.0.0.1:9000/api/system/status` → pas de réponse, aucun
+conteneur `sonar` en marche) et `SONAR_TOKEN` est absent de l'environnement.
+
+**Ce n'est pas un « rien à signaler ».** Aucune analyse n'a eu lieu, donc la
+qualité de ce diff n'est **ni verte ni rouge : elle est non mesurée**. Confondre
+les deux serait exactement l'erreur que cette EPIC s'interdit — une absence de
+mesure n'est pas un zéro.
+
+Ce qui est établi sans Sonar, et qui ne le remplace pas : build 0 erreur,
+**3 362 tests verts**, et la passe `/forge-simplify` (voir `## Simplify log`).
+
+**À faire avant merge** (relève de l'humain — le banc et Sonar sont sur son
+poste) : démarrer SonarQube, poser `SONAR_TOKEN`, puis relancer
+`/sonar 231` sur la branche. Le diff est petit et localisé (chemin d'envoi
+SMTP), donc l'analyse est rapide.
