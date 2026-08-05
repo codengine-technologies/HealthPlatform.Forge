@@ -379,3 +379,32 @@ appartiennent à task-231 : **hors périmètre** (règle 6), signalées ici avec
 **Une seule.** Zéro finding sur le code de la task ; le reste appartient à d'autres périmètres.
 Aller jusqu'à cinq itérations aurait voulu dire réparer la dette d'autrui sous couvert de cette
 US.
+
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/164 — label `awaiting-human-merge`
+- `dtos-mss` : branche auto-incluse **vide**, aucune PR. À supprimer à la main au merge — rien
+  dans la chaîne ne nettoie une branche auto-incluse restée sans commit (défaut de cycle déjà
+  signalé deux fois).
+
+## Code Review Summary
+
+**APPROVED**, 0 blocage. Un défaut trouvé et corrigé pendant le cycle : la fabrique de logger du
+sentinelle existait **deux fois** dans le même fichier. Une fabrique dupliquée est une fabrique
+qui dérive — il suffit qu'une des deux oublie le fournisseur pour que son test ne mesure plus
+rien tout en restant vert, exactement le genre de test sans valeur que les cycles récents ont
+produit trois fois.
+
+### Ce que ce cycle apprend
+
+Le filet a trouvé un vrai défaut **du premier coup**, et ce défaut était dans le harnais
+lui-même : ni `MssRpps` ni `ConnectionStringServer` n'étaient posés, donc la jambe de
+durabilité était morte en silence. Autrement dit, l'outil chargé de détecter que le harnais
+mentait a commencé par trouver que **le harnais mentait**. C'est la meilleure justification
+rétrospective qu'on pouvait lui souhaiter.
+
+⚠️ **Durée de la suite d'intégration : ~2 min 45 s → 5 min 05 s** sur ce run. Cause probable et
+**non établie** : la jambe de durabilité fonctionnant désormais, les chemins concernés
+provisionnent réellement une base par praticien au lieu d'échouer immédiatement. Le DOD de
+task-237 prend 2 min 45 s comme référence — à réviser si l'écart se confirme.
