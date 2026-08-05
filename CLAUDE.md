@@ -254,7 +254,7 @@ inside one of those repos, never at the workspace root.
 | `dtos-mss` | `Dtos` | .NET 10 class lib (NuGet) | `dotnet build HealthPlatform.Dtos.Mss.csproj` | n/a |
 | `sdk` | `Sdk` | .NET 10 host SDK | `dotnet build HealthPlatform.Host.Sdk.csproj` | n/a |
 | `host` | `Host/Modules` | .NET 10 modules | `dotnet build` | n/a — ⚠️ **pas de `.git`**, cf. l'avertissement ci-dessus |
-| `interop-cda` | `interop/interop.cda.parser` | .NET 10 | `dotnet build interop.cda.parser.sln` | `dotnet test` |
+| `interop-cda` | `interop` | .NET 10 | `dotnet build interop.cda.parser.sln` | `dotnet test` |
 | `psc-proxy-server` | `psc/proxy/psc.proxy.server` | .NET 10 DDD | `dotnet build psc.proxy.server.sln` | `dotnet test` |
 | `psc-proxy-client` | `psc/proxy/psc.proxy.client` | .NET 10 client | `dotnet build psc.proxy.client.sln` | n/a |
 | `psc-proxy-dto` | `psc/proxy/psc.proxy.dto` | .NET 10 DTOs | `dotnet build psc.proxy.dto.sln` | n/a |
