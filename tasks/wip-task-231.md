@@ -189,3 +189,9 @@ SMTP), donc l'analyse est rapide.
 `/lint-angular` — **skip propre** : `client-angular` n'est pas dans les
 `**Repos**:` de cette task (US backend pure, justifiée dans le corps) et son
 arbre de travail est intact. Aucun code Angular produit, donc rien à linter.
+
+## Lint mobile log
+
+`/lint-mobile` — **skip propre** : `client-mobile` n'est pas dans les
+`**Repos**:` de cette task, et `Client/Mobile/` n'est pas un dépôt git sur ce
+poste. Aucun code mobile produit, rien à linter.
