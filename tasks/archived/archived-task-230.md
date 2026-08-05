@@ -667,3 +667,11 @@ durabilité que la US invoquait.
 
 **Deux de mes propres erreurs** ont été corrigées et sont consignées : une boucle sans fin
 dans le rejeu, et une affirmation fausse sur la disparition du cycle de dépendances.
+
+## Merged
+
+- **Date** : 2026-08-05, via `/merge task-230 --i-tested` (attestation humaine HAG)
+- **api-mail** : PR #159 squash-mergée → `a64ea64` sur `develop` ; branche distante supprimée, branche locale conservée.
+  La PR était `CONFLICTING` avec `develop` (task-231/234 passées derrière elle) : synchro merge-based (règle 4) faite avant merge — 4 hunks cosmétiques (attribution `task-231` → `task-234` dans des commentaires, côté develop retenu) + un add/add sur `UserContextIdentityCopyTests.cs` (version develop retenue). Build 0 erreur, **3 394 tests verts** après synchro.
+- **dtos-mss** : aucune PR (branche de précaution sans commit) — refs locale et distante supprimées.
+- **Staging** : aucune branche `forge/staging-*` — hors batch `/forge`.
