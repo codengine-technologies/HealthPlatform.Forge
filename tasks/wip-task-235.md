@@ -205,3 +205,100 @@ raison — *le harnais est plus permissif que la production* :
 La US parlait de trois angles morts ; il y en a désormais **cinq documentés**, tous du même
 genre. C'est un argument de plus pour le remède 1 (échouer sur une erreur journalisée), qui
 est le seul des trois à attraper des défauts **dont on ne connaît pas la nature à l'avance**.
+
+
+## Develop log
+
+### Remède 1 — le filet, et il a mordu dès sa première exécution
+
+`LoggedErrorSentinel` collecte les événements `Error` et `Critical` pendant chaque test ;
+`IntegrationTestBase` fait échouer le test s'il en reste un non exempté, en affichant
+message **et** exception.
+
+**Portée par `AsyncLocal`, pas collecteur global.** xUnit exécute les classes en parallèle :
+un collecteur unique ferait échouer la classe A sur une erreur de la classe B — un flaky,
+donc un filet désactivé sous trois jours. Deux tests le vérifient plutôt que de le supposer :
+l'isolation de deux portées concurrentes, et le fait que la portée **suit les continuations
+asynchrones et le travail de fond** — c'est *la* propriété qui rend le filet utile, puisque
+les défauts visés y vivent.
+
+`Warning` est exclu **délibérément** : la suite en émet légitimement (replis best-effort), et
+un filet qui crie pour des avertissements attendus serait ignoré.
+
+**Ce qu'il a trouvé, mot pour mot ce que la US citait.** Appliqué à 11 classes, six tests de
+`EmailManagementUseCaseTests` sont passés au rouge :
+
+```
+[Error] PendingActionRepository: Error creating DbContext for user <compte>
+    → ArgumentNullException: Value cannot be null. (Parameter 'Host')
+[Error] FlagPropagationService: [FlagChange] Failed to persist the pending MarkRead for INBOX/4
+```
+
+C'est **l'erreur donnée en preuve par la US** que la suite journalisait une panne et restait
+verte. Le filet l'a reproduite sans rien connaître de sa nature — c'est exactement ce qu'on
+lui demandait.
+
+### Remède 3 — et la cause était le harnais, pas la production
+
+Deux manques, tous deux dans les fixtures :
+
+1. **`MssRpps` n'était renseigné nulle part.** Le nom de la base se dérive de
+   `(Email, MssRpps)` : sans RPPS, le repli s'appliquait **dans les deux scopes**, qui
+   calculaient donc le **même** nom de base. L'écart corrigé par task-234 était
+   structurellement inobservable. RPPS **fictif**.
+2. **`ConnectionStringServer` n'était jamais posée.** `ConnectionStringUser` s'en compose :
+   tout scope construisant son propre contexte — les tâches de fond — tombait sur un **hôte
+   nul**. C'est la cause exacte des six échecs, et sa correction les rend verts : la jambe de
+   durabilité **fonctionne enfin** dans la fixture au lieu d'échouer en silence derrière un
+   `catch` best-effort.
+
+### Preuves ROUGE
+
+| Preuve | Résultat |
+|---|---|
+| Exemption retirée du test de démonstration | le test échoue — le filet fait bien échouer |
+| Filet appliqué avant le correctif de chaîne | 6 tests rouges, avec l'erreur de la US |
+| Correctif de chaîne appliqué | 10/10 verts sur `EmailManagementUseCaseTests` |
+
+### Liste d'exemptions
+
+**Une seule entrée dans tout le dépôt**, sur le test de démonstration, avec sa justification
+et un fragment étroit. Aucune exemption « pour faire passer ».
+
+### Validation
+
+Build 0 erreur / 0 avertissement · domain 106/106 · infrastructure 421/421 ·
+application 1998/1998 · api 650/650 · integration **348/348** (16 ignorés).
+
+### ⚠️ Ce qui N'EST PAS fait — le remède 2
+
+**`IBackgroundTaskQueue` n'est toujours câblée dans aucune fixture.** Restent donc dus, et je
+ne les ai pas commencés :
+
+- l'exécuteur de test **synchrone et déterministe** (la US interdit tout `Task.Delay` /
+  `Thread.Sleep`) ;
+- **au moins un test par chemin de fond** — enrichissement asynchrone, réconciliation de
+  dossiers, propagation de flags — prouvant que le travail a **eu lieu**, pas que la requête
+  a répondu 200 ;
+- l'item de DOD **« un test compare le nom de base utilisé par la tâche de fond à celui de la
+  requête »** — l'assertion qui aurait attrapé task-234. Les deux prérequis en sont désormais
+  posés (`MssRpps` **et** la chaîne serveur), donc elle est devenue **écrivable** ; elle ne
+  l'était pas avant ce commit.
+
+Conséquence à ne pas maquiller : les services de production prennent la file en paramètre
+**optionnel**, donc elle vaut `null` en test et le code emprunte son **repli en ligne**. Le
+scope de fond n'est **toujours jamais créé** pendant les tests d'intégration. Le remède 1
+attrape désormais ce que ce chemin journalise **quand il est emprunté** ; il ne le fait pas
+emprunter.
+
+### Adoption du filet — état exact
+
+**11 classes sur 21** en héritent (les trois `ImapService*`, les huit `UseCase*`). Une classe
+qui n'en hérite pas **n'est pas protégée** — ce n'est pas une exemption, c'est un reste à
+faire. Le choix de ne pas basculer les vingt-et-une d'un coup est assumé : cela aurait produit
+une fournée d'échecs mêlant vrais défauts et erreurs délibérées, impossible à trier, donc en
+pratique un filet désactivé.
+
+Les classes restantes tournent en outre sur d'autres fixtures (`PostgreSqlFixture`,
+`AiServicesFixture`, `PgBouncerFixture`, `AnnuaireSanteFixture`) où le fournisseur n'est **pas
+branché** : y appliquer la base serait sans effet tant que leur `AddLogging` ne l'a pas.
