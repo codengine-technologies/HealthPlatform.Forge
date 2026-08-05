@@ -148,3 +148,89 @@ La même liste de jetons est dupliquée à trois autres endroits :
   tests de task-233 qui caractérisent la sémantique actuelle.
 
 Pré-flight vert sur les six repos mesurables. Dépendances : aucune.
+
+
+## Develop log
+
+Un seul commit applicatif : `8e6e065` sur `fix/task-182-dossiers-exclus-correspondance-exacte`.
+
+### Preuve ROUGE avant correctif — l'exigence explicite du DOD
+
+La théorie de la colonne, étendue aux victimes, échoue sur la règle actuelle : **4 échecs,
+exactement** `Consentements`, `Renvoyés`, `Présentations`, `Documents envoyés par le patient`.
+
+**Correction au diagnostic de la US** : `Absences`, cité comme victime, ne l'était pas —
+« absences » ne contient aucun jeton (s-e-n-**c**). Il reste dans les tests comme cas conservé.
+
+### La sémantique retenue : le segment, pas la sous-chaîne
+
+Chemin découpé sur `/` et `.`, chaque segment comparé **exactement** (insensible à la casse) à
+une liste de noms connus élargie aux variantes réelles des serveurs (`Sent Items`,
+`Sent Mail`, `Éléments envoyés`, `Deleted Items`…, graphies accentuée **et** non accentuée —
+`unaccent()` n'est pas immuable au sens PostgreSQL, donc interdit dans une colonne générée).
+`Sent/2024` reste exclu (sous-dossier de même nature), `[Gmail]/Sent Mail` aussi. Le
+séparateur `.` est inclus parce que **Dovecot en Maildir sépare par défaut avec `.`** — le
+banc en dépend ; coût assumé : un dossier nommé « x.sent.y » serait exclu à tort, cas jugé
+bien plus rare que les victimes réelles.
+
+### SPECIAL-USE : l'union, et l'écart assumé avec la lettre de la US
+
+La US demande que les attributs **priment** sur le nom. Implémenté en **union** — le type ne
+peut qu'**ajouter** des exclusions, jamais en retirer — parce que task-233 a observé la
+classification persistée **transitoirement fausse** (un vrai `Trash` classé `Custom` pendant
+une fenêtre) : « primer » dans les deux sens aurait, pendant une telle fenêtre, fait entrer la
+corbeille dans les dossiers patients. Trois tests fixent les trois quadrants ; **preuve ROUGE
+de la jambe type** : liste des types neutralisée → seul le test « nom inconnu classé Sent »
+tombe, le plancher par nom tient.
+
+### La règle était en QUATRE exemplaires, pas un
+
+task-233 l'avait centralisée côté Infrastructure — mais `ImapService` et
+`BackgroundEnrichmentProcessor` (couche Application, qui **ne peut pas** référencer
+Infrastructure) gardaient chacun leur copie de sous-chaîne. Le commentaire de `MailRepository`
+disait « si un troisième appelant apparaît, promouvoir en helper partagé » : **les troisième
+et quatrième existaient déjà**. La règle vit désormais dans **Domain**, seule couche visible
+des trois consommatrices.
+
+**Conséquence fonctionnelle au-delà de la restitution** : ces deux copies gardaient
+l'enrichissement — un message rangé dans `Consentements` n'était pas seulement caché du
+dossier patient, il n'était **jamais analysé**. Il est désormais enrichi comme les autres.
+
+### Vérification du périmètre (item 4 de la US) — les consommateurs, tous listés
+
+| Consommateur | Sémantique appliquée |
+|---|---|
+| Colonne générée `Mails.IsInSentDraftOrTrashFolder` | nom exact par segment (plancher) |
+| `PatientRepository` — 3 sites (page dossier patient, réfs de doublons, membres de cluster) | plancher **+ union SPECIAL-USE** |
+| `MailRepository` — 4 sites (doublon exact, versions de lot, docs d'origine, original du doublon) | plancher **+ union SPECIAL-USE** |
+| `MailRepository.IsSelfActionFolder` (mémoire — détection au vol) | nom exact seul (pas d'accès au type persisté, documenté) |
+| `ImapService.IsSelfActionFolder` (mémoire — enrichissement) | idem |
+| `BackgroundEnrichmentProcessor.IsSelfActionFolder` (mémoire) | idem |
+
+### Migrations (audit règle 7c)
+
+- `20260806120000` — DROP + ADD de la colonne générée (PostgreSQL ne modifie pas l'expression
+  d'une colonne générée). Le ADD **recalcule toutes les lignes** : les documents déjà rangés
+  dans un `Consentements` redeviennent visibles **dès la migration**, sans réanalyse. `Down`
+  restaure l'expression historique à l'identique.
+- `20260805130000` (task-233) — **figée** à son expression historique : une migration déjà
+  appliquée ne change pas de comportement rétroactivement ; elle référençait la constante
+  partagée, qui vient de changer de valeur et de couche.
+- Numéro strictement postérieur aux six existants, aucune collision ; pas de snapshot EF ;
+  modèle et migration partagent la même constante.
+
+### Validation
+
+Build 0 erreur / 0 avertissement · domain 136/136 · infrastructure 419/419 ·
+application 1998/1998 · api 650/650 · integration **362/362** (16 ignorés). Un flaky sans
+rapport (`FlagsmithFeatureFlagServiceTests.RefreshFailure_LogsOncePerWindow`, fenêtre
+temporelle) rouge sur un run, vert au suivant.
+
+Les semeurs de tests qui s'isolaient par suffixe (`Sent_T233_xyz`) passent en forme
+sous-dossier (`Sent/T233-xyz`) : l'isolation par suffixe **reposait sur la sémantique de
+sous-chaîne** — y compris un oublié (`Envoyés_T233_`) attrapé par la suite d'intégration.
+
+### Ce qui reste au Manual Test Plan (humain)
+
+Les étapes 2-7 de la US — dossier `Consentements` réel dans la boîte MSSanté de test, dépôt
+d'un CDA, vérification visuelle. Non automatisables ici : elles exigent la boîte réelle.
