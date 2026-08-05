@@ -584,3 +584,86 @@ sur le même code.
 
 **Routage** : `client-angular` et `client-mobile` non touchés ⇒ `/lint-angular`,
 `/lint-mobile` et `/verify-visual` skippent ⇒ `/review 230`.
+
+
+---
+
+## PRs
+
+- **`api-mail`** : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/159 — label `awaiting-human-merge`
+  Branche `fix/task-230-mark-read-async-propagation`, **5 commits** :
+  `751c99e` (acquittement optimiste + groupement), `4c6e149` (lecture d'audit légère
+  aux 3 chemins), `b3501ec` (les 4 gestes sur le même mécanisme), `f1a4360` (gestes en
+  lot + suppression des chemins morts), `809ceb3` (dépendances IMAP retirées).
+- **`dtos-mss`** : branche créée (auto-inclusion), **0 commit** ⇒ **aucune PR**. Contrat
+  inchangé — la contrainte absolue de la US.
+
+Repos non touchés : `client-blazor`, `client-angular`, `client-mobile` ⇒ `/lint-angular`,
+`/lint-mobile` et `/verify-visual` ont skippé proprement.
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 16 fichiers revus, **0 blocage**, 3 suggestions.
+
+### Ce que la revue a vérifié plutôt que supposé
+
+| Question | Réponse |
+|---|---|
+| La file de fond est-elle bornée ? | **Non** — `CreateUnbounded`, lecteur unique. Un lot de 1 000 enfile 1 000 éléments : ils ne bloquent pas la requête, et 999 sont des non-événements sérialisés derrière celui qui fait le trajet |
+| Le chemin bulk a-t-il perdu son unique `STORE` ? | **Non** — le regroupement le reproduit : N actions ⇒ la 1ʳᵉ course les réclame toutes ⇒ 1 `STORE` |
+| `AddFlagsAsync` est-elle bien la variante non bloquante ? | **Oui** — méthode d'extension déléguant à `StoreAsync` (c'est d'ailleurs pourquoi NSubstitute ne peut vérifier qu'elle, et non l'extension) |
+| Une donnée de santé peut-elle atteindre un libellé ? | **Non** — libellés de tâche littéraux, logs limités au dossier et à des comptes |
+
+### ⚠️ Suggestions non bloquantes
+
+1. **Le chemin en lot fait N enfilages, donc jusqu'à 3N requêtes de déduplication** dans
+   la requête (recherche d'action existante + recherche d'action opposée + insertion, par
+   UID). L'ancien chemin faisait N mises à jour + **1** trajet IMAP. Le travail **réseau**
+   disparaît, mais le travail **base** est multiplié — local et rapide, donc probablement
+   gagnant net, mais un `QueueActionsAsync` par lot le réduirait à quelques requêtes.
+   **À mesurer au banc plutôt qu'à supposer.**
+2. File de fond non bornée à lecteur unique (voir ci-dessus).
+3. `UpdateEmailUnReadStatusAsync` n'émet **aucune trace d'audit**, là où les trois autres
+   gestes en émettent une. Ce n'est pas à la forge de combler : ajouter une trace
+   réglementaire est une **décision de traçabilité PGSSI-S**. Signalé pour arbitrage.
+
+## Validation
+
+| Contrôle | Résultat |
+|---|---|
+| Build | **0 erreur, 0 avertissement** |
+| Suite complète | **3 464 / 3 464 verts**, intégration incluse (304 / 320, 16 ignorés) |
+| Tests d'intégration des routes de flag | ✅ **10/10 sans modification d'aucune assertion** — le critère du DOD |
+| Preuves ROUGE | **6 propriétés**, chacune neutralisée et rattrapée |
+| Dette Sonar nouvelle | **zéro**, prouvée par 4 scans (31 → 29 → 32 → 28 = baseline) |
+| Sync `develop` | ✅ already up to date |
+
+### DOD
+
+| Critère | État |
+|---|---|
+| Build 0 erreur | ✅ |
+| Tests 0 échec | ✅ |
+| **Zéro changement de contrat** | ✅ route, code HTTP et corps identiques ; tests d'intégration inchangés |
+| Chemin synchrone sans aucun appel IMAP | ✅ test « le service de connexion n'est pas sollicité » |
+| Propagation asynchrone : enfilage, rejeu après échec, déduplication, pas de perte au crash | ✅ les quatre, plus le partage entre pods |
+| Relecture d'audit allégée, trace complète | ✅ `MailAuditSnapshot`, mêmes champs, format `;` conservé |
+| `AddFlagsAsync` non bloquant | ✅ (et `RemoveFlagsAsync` pour les gestes inverses) |
+| Invalidation `folder:status` après propagation | ✅ et **seulement** pour les gestes qui changent ce compteur |
+| Aucune donnée de santé en clair | ✅ vérifié sur logs, clés et libellés |
+| **Contre-épreuve au banc** | ⏳ **bloquante pour le merge, pas pour la PR** — nœud de banc requis |
+
+### Au-delà du DOD
+
+La US bornait le remède à `mark_read`. Sur question humaine, le périmètre a été étendu
+aux **quatre gestes et à leurs variantes en lot** — non par souci de symétrie, mais parce
+que l'asymétrie créait une **divergence visible** (base « non lu » / serveur « lu ») sur
+un geste normal. Il ne reste qu'**un seul chemin d'écriture de flag** dans le code.
+
+**Trois défauts préexistants** ont été trouvés en chemin : réclamation non atomique entre
+pods, actions `Failed` jamais rejouées (code de retry inatteignable), constructeurs
+ambigus pour le conteneur. Les deux premiers touchent directement la garantie de
+durabilité que la US invoquait.
+
+**Deux de mes propres erreurs** ont été corrigées et sont consignées : une boucle sans fin
+dans le rejeu, et une affirmation fausse sur la disparition du cycle de dépendances.
