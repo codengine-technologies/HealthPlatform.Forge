@@ -136,3 +136,22 @@ l'essentiel de l'écart entre 1 340 ms observés et le plancher DATA + APPEND.
 > Décision : on continue. Si task-216 démarre avant le merge de celle-ci, la
 > coordination redevient un point d'attention réel au moment de la synchro
 > avec `develop`.
+
+## Simplify log
+
+Passe qualité `/forge-simplify` du 2026-08-05 — `api-mail` seul repo touché
+(`dtos-mss` sans commit : aucun changement de contrat, comme la DOD l'exige).
+
+Trois points corrigés, aucun comportement changé :
+
+| Axe | Constat | Correction |
+|---|---|---|
+| Efficacité | la sonde de repli était allouée **à chaque emprunt**, avec un `NullLogger` pleinement qualifié en ligne | champ initialisé une fois |
+| Simplification | `DiscardSmtpClient` / `DisposeSmtpClient` : deux noms pour une seule chose | un seul reste |
+| Simplification | extension de test appelée une fois pour tester `Client is not null` | assertion directe, extension supprimée |
+
+Non retenu : les trois appels à `RecordLockWait` d'`AcquireSmtpSlotAsync` se
+ressemblent, mais chacun porte une issue distincte (`acquired` / `timeout` /
+`cancelled`) — les factoriser rendrait l'étiquette moins lisible qu'elle ne l'est.
+
+Build + **3 362 tests verts** avant et après la passe.
