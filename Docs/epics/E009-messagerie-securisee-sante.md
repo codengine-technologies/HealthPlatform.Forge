@@ -2,9 +2,9 @@
 
 > **Statut** : En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.45
+> **Version** : 1.46
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-08-01 (task-185)
+> **Dernière mise à jour** : 2026-08-06 (task-182)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -261,7 +261,7 @@ Le caractère **dynamique** du dashboard est central pour l'usage clinique : le 
   Réception des messages avec affichage des documents CDA
 </p>
 
-2. **E009-F002 — Classement automatique** : à chaque message reçu portant une archive IHE_XDM, la messagerie analyse le document CDA (R2 N1 ou N3), extrait l'INS du patient, les traits d'identité, l'auteur, la date d'acte, le code LOINC et la catégorie clinique. Le document est rattaché automatiquement au dossier patient correspondant. Une paire CDA + PDF/A-1 est présentée en **une seule ligne** dans la liste — le praticien ne voit pas le doublon technique (task-010).
+2. **E009-F002 — Classement automatique** : à chaque message reçu portant une archive IHE_XDM, la messagerie analyse le document CDA (R2 N1 ou N3), extrait l'INS du patient, les traits d'identité, l'auteur, la date d'acte, le code LOINC et la catégorie clinique. Le document est rattaché automatiquement au dossier patient correspondant. Une paire CDA + PDF/A-1 est présentée en **une seule ligne** dans la liste — le praticien ne voit pas le doublon technique (task-010). Les dossiers d'**auto-action** (Envoyés, Brouillons, Corbeille) sont écartés du dossier patient par une identification **exacte** de leurs noms, complétée par la classification annoncée par le serveur de messagerie — et non plus par une recherche de fragment : un dossier personnalisé dont le nom contient fortuitement un fragment réservé (`Consentements`, `Présentations`, `Renvoyés`…) est traité comme un dossier de réception à part entière, ses documents sont analysés et restitués (task-182).
 
    Un **indicateur d'intégration** placé directement sur la ligne d'inbox renseigne le médecin d'un coup d'œil : pastille verte ✓ « tous intégrés » si chaque document médical du message est rattaché à un patient, ou pastille orange ⏳ avec compteur « N en attente » si un ou plusieurs documents nécessitent encore une action. Le même indicateur est rappelé par document dans la vue détail (task-011).
 
