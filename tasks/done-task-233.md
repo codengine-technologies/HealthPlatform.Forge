@@ -396,3 +396,103 @@ Le premier `/start 233` a été refusé parce que `dtos-mss` était resté sur
 `fix/task-230-…` — branche **auto-incluse vide** (0 commit) que rien ne remet sur
 `develop` quand aucune PR n'est ouverte pour ce repo. Le pré-flight de la task suivante
 paie donc l'auto-inclusion de la précédente. Défaut de cycle, à décider.
+
+
+## Sonar log
+
+### KPIs qualité (baseline → final)
+
+⚠️ **Lisez d'abord ceci, sinon le tableau mentira.** Les deux relevés **ne portent pas
+sur le même périmètre**. Le scan de baseline (celui du cycle précédent) et mon premier
+scan employaient un périmètre restreint ; le scan final tourne avec le périmètre complet
+du scanner. `ncloc` le dit sans ambiguïté : **37 181 → 43 533**. Aucun delta de ce
+tableau ne mesure donc task-233 — il mesure surtout ce qui est entré dans le champ de
+l'analyse. Je le signale au lieu de présenter une amélioration ou une dégradation
+imaginaire.
+
+| Métrique | Baseline (périmètre restreint) | Final (périmètre complet) | Comparable ? |
+|---|---|---|---|
+| Quality Gate (new code) | **ERROR** | **ERROR** | oui — rouge avant, rouge après |
+| `new_violations` | 5 | 33 | **non** — périmètres différents |
+| `new_coverage` | 0.0 % (seuil 80) | 0.0 % (seuil 80) | oui — structurellement 0 |
+| `new_security_hotspots_reviewed` | 0.0 % (seuil 100) | 0.0 % (seuil 100) | oui |
+| Bugs / Vulnérabilités / Smells | 0 / 0 / 8 | 2 / 0 / 35 | **non** |
+| Coverage projet | 0.0 % | 0.0 % | oui — aucun rapport de couverture n'est importé |
+| Duplication | 0.5 % | 0.4 % | non |
+| Ratings (Fiab. / Sécu. / Maint.) | A / A / A | C / A / A | **non** |
+| `ncloc` | 37 181 | 43 533 | — c'est *la* cause de tout ce qui précède |
+
+### La mesure qui, elle, est indépendante du périmètre
+
+**Combien de violations de la période « new code » tombent dans un fichier que cette
+task a touché ?**
+
+> **Zéro sur 33.**
+
+Les 33 sont intégralement de la dette héritée, et voici sa provenance :
+
+| Fichiers | Violations | Origine |
+|---|---|---|
+| `report.py`, `journey.js`, `journey-model.js` | **26** | outillage du banc k6 (tasks 173 / 174 / 195) |
+| `AppHost.cs` | 3 | `S125` — code commenté |
+| `AppHostSecrets.cs` | 1 | `S3903` — type hors espace de noms nommé (le « bug » du décompte) |
+| `BaseRepository.cs`, `IIheXdmProcessingService.cs` | 2 | `S103` — lignes > 150 caractères |
+| `ContactRepository.cs` | 1 | `S1067` — 9 opérateurs conditionnels |
+
+Rien de tout cela n'appartient au périmètre de cette US (règle 6). Deux violations
+étaient en revanche **à moi** — les `CA1861` des tests de `GlobalExceptionHandler`
+(task-234) : corrigées ici, elles ont disparu du relevé final.
+
+### Ce qui garde le Quality Gate rouge, et depuis quand
+
+1. **`new_coverage` = 0** — aucun rapport de couverture n'est importé par le scan.
+   Ce n'est pas une couverture faible, c'est une **absence de mesure** : le seuil à 80 %
+   est donc inatteignable par construction, à chaque cycle. À traiter par une task
+   d'outillage, pas par du code.
+2. **`new_security_hotspots_reviewed` = 0** — dont les deux `Math.random()` de
+   `journey.js`. **Signalé pour la quatrième fois.** Ce sont des points à *réviser*, pas
+   à corriger : personne ne le fait, donc le Quality Gate reste rouge indéfiniment.
+3. **`new_violations` > 0** — la période « new code » englobe des tasks déjà mergées
+   (constat déjà consigné). Une task peut donc être rouge sans avoir introduit la
+   moindre dette. C'est précisément le cas ici.
+
+### Règle blacklistée, non touchée
+
+Les 3 `S3776` de `report.py` (complexité cognitive) relèvent de `/sonar-s3776`, commande
+manuelle et hors chaîne autonome — une méthode = une PR. Non traitées, conformément à la
+blacklist.
+
+### Itérations
+
+**Une seule**, et volontairement. La passe n'a rien à nettoyer sur le code de la task
+(zéro finding), et le reste appartient à d'autres périmètres. Poursuivre jusqu'à cinq
+itérations aurait voulu dire aller réparer la dette d'autrui sous couvert de cette US.
+
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/162 — label `awaiting-human-merge`
+
+Aucun autre repo touché. `dtos-mss` est auto-inclus par `/start` mais n'a reçu aucun
+commit — aucune PR ouverte pour lui, conformément à la règle.
+
+## Code Review Summary
+
+**Verdict : APPROVED**, 0 blocage — mais trois défauts trouvés et corrigés **pendant** le
+cycle, chacun ayant passé la suite verte avant d'être vu :
+
+| Défaut | Trouvé par | Pourquoi les tests ne le voyaient pas |
+|---|---|---|
+| Le getter `DataContext` **lève** depuis task-231 et `ActiveDocumentsForPatient` l'appelait → la page aurait levé **à chaque appel en production** | le conflit de fusion avec `develop` — donc par chance | les tests **injectent** le contexte, où le getter fonctionne |
+| Sortie anticipée « dossier vide » renvoyait `Page`/`PageSize` à **zéro** | relecture de la passe qualité | la liste étant vide, rien ne le signalait |
+| Mon décompte « 3 occurrences restantes, d'une autre règle » était **faux** — 3 récitations complètes de plus, écrites avec des constantes | grep élargi aux constantes | — |
+
+Une garde a été posée pour le premier (`DataContextGetterScanTests`). Pour le deuxième,
+un test. Le troisième était une erreur de mon propre compte rendu, corrigée au commit
+suivant.
+
+**Ce que ce cycle apprend, et qui dépasse la task** : trois tests ont dû être portés
+d'InMemory vers un vrai PostgreSQL, et un défaut de production n'a été trouvé que par un
+conflit de fusion. Dans les deux cas la cause est la même — **le harnais est plus
+permissif que la production**, donc il valide du code qui ne marche pas. C'est exactement
+l'objet de task-235.
