@@ -234,3 +234,39 @@ sous-chaîne** — y compris un oublié (`Envoyés_T233_`) attrapé par la suite
 
 Les étapes 2-7 de la US — dossier `Consentements` réel dans la boîte MSSanté de test, dépôt
 d'un CDA, vérification visuelle. Non automatisables ici : elles exigent la boîte réelle.
+
+
+## Sonar log
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline (task-235, 2026-08-06) | Final (task-182, 2026-08-06) |
+|---|---|---|
+| Quality Gate (new code) | **ERROR** | **ERROR** |
+| `new_violations` | 35 | 35 (34 héritées + 1 à moi, corrigée après relevé) |
+| `new_coverage` | 0.0 % (seuil 80) | 0.0 % (seuil 80) |
+| `new_security_hotspots_reviewed` | 0.0 % (seuil 100) | 0.0 % (seuil 100) |
+| Bugs / Vulnérabilités / Smells | 2 / 0 / 36 | 2 / 0 / 36 |
+| Ratings (Fiab. / Sécu. / Maint.) | C / A / A | C / A / A |
+| `ncloc` | 44 159 | 44 224 |
+
+Relevés **comparables** (même périmètre de scan).
+
+### La mesure qui attribue
+
+**Une** violation new-code sur 35 dans un fichier de cette task : `CA1861` (INFO) sur le
+tableau en ligne d'un test — **corrigée** (`2d271a0`), domain 136/136 après. Les 34 autres
+sont la dette héritée déjà cartographiée : outillage k6 26 (`report.py`, `journey.js`,
+`journey-model.js`), `AppHost.cs` 3, cinq fichiers à 1.
+
+### Ce qui garde le Quality Gate rouge — inchangé, sixième signalement
+
+1. `new_coverage` = 0 — **aucun rapport de couverture n'est importé**, seuil inatteignable
+   par construction. Task d'outillage, pas de code.
+2. Hotspots `Math.random()` de `journey.js` — **jamais révisés**.
+3. La période « new code » englobe des tasks déjà mergées.
+
+### Itérations
+
+**Une seule** : zéro finding restant sur le code de la task, le reste appartient à d'autres
+périmètres.
