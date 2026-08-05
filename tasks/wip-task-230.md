@@ -373,3 +373,126 @@ Le flaky `Services.Export.MarkdownPdfRendererTests.RenderHeadingPreservesText` s
 manifesté une fois de plus (famille `UglyToad.PdfPig`), vert en isolation.
 
 **Routage** : `api-mail` touché ⇒ `/sonar 230`.
+
+
+---
+
+## Develop log — extension du périmètre aux quatre gestes
+
+**Commit** : `b3501ec` — `fix(mail): task-230 — les quatre gestes de flag sur le meme mecanisme, une divergence visible en moins`
+
+**Origine** : question humaine du 2026-08-05 — *« je ne comprends pas pourquoi dans
+`ProcessActionAsync`, seul `PendingActionTypes.MarkRead` a été touché. Est-ce que ton
+implémentation est bien sur tout le périmètre des pending action ou seulement sur
+MarkRead ? »*
+
+### La réponse en deux temps
+
+**Le correctif de ré-entrance était correctement borné.** Seule
+`UpdateEmailReadStatusAsync` était devenue une méthode **qui enfile** ; les trois
+autres faisaient l'IMAP en direct, donc les appeler depuis le rejeu ne créait aucune
+boucle. Sur ce point précis, rien à étendre.
+
+**Mais l'asymétrie créait une divergence visible pour le médecin**, et c'est le vrai
+sujet. Le geste est normal — ouvrir un message puis le remettre en non lu pour le
+garder dans sa liste à traiter :
+
+| # | Ce qui se passait |
+|---|---|
+| 1 | Ouverture → `IsRead = true` en base, pense-bête `MarkRead` écrit, course lancée |
+| 2 | Clic « non lu » → `IsRead = false` en base, et **IMAP synchrone** retire `\Seen` |
+| 3 | La course `MarkRead` part **ensuite** → elle **repose** `\Seen` |
+
+**Base « non lu », serveur « lu ».** Le pense-bête supprimé, rien ne corrige, et la
+synchronisation suivante pouvait **annuler le geste du médecin en silence**.
+
+### Ce qui le ferme, par construction
+
+Les quatre gestes empruntent le même mécanisme, chacun sous son propre nom d'action.
+L'annulation par action opposée de l'outbox (`OppositeActions`) — qui **ne servait à
+rien dans ce cas** — fait alors son travail : enfiler « non lu » **supprime** le
+pense-bête « lu », et la course déjà lancée ne trouve plus rien à réclamer (zéro
+aller-retour, zéro verrou). Plus aucune règle à « penser à respecter ».
+
+`FlagChangeKind` porte les quatre gestes, et une table de correspondance unique dit
+pour chacun l'ordre IMAP et s'il change le compteur de non-lus :
+
+| Geste | Ordre | Invalide `folder:status` ? |
+|---|---|---|
+| `MarkRead` | pose `\Seen` | oui |
+| `MarkUnread` | retire `\Seen` | oui |
+| `MarkFlagged` | pose `\Flagged` | **non** |
+| `MarkUnflagged` | retire `\Flagged` | **non** |
+
+« Suivi » ne l'invalide pas : `folder:status` ne porte que `Count`, `Unread` et
+`UidNext`, que ce geste ne touche pas — invalider ferait relire le dossier au serveur
+pour rien.
+
+Le regroupement est **par geste** et non seulement par dossier : poser et retirer
+`\Seen` sont deux ordres `STORE` opposés, qu'on ne peut pas mêler. Deux gestes en
+attente sur le même dossier font donc deux trajets — le minimum, non une
+inefficacité. `RemoveFlagsAsync` (asynchrone) remplace `RemoveFlags` (bloquante),
+comme pour l'ajout.
+
+### ⚠️ Trois corrections, dont une où je m'étais trompé en l'affirmant
+
+**a) J'ai affirmé à tort que le cycle de dépendances avait disparu.**
+Retirer `IEmailFlagService` de `PendingActionService` ne l'a **pas** supprimé : je
+l'ai remplacé par `IFlagPropagationService`, ce qui a rendu la boucle **plus
+directe**. Le conteneur l'a dit (`A circular dependency was detected`) et **les tests
+d'intégration l'ont fait remonter**. Le cycle est **réel et inévitable** : enfiler
+exige l'outbox, rejouer exige la propagation. Il est cassé du côté **froid** (le
+rejeu résout paresseusement) pour que le chemin **chaud** — la réponse du praticien —
+garde une dépendance directe vérifiée à la compilation. C'est mieux que la version
+initiale, mais **pas pour la raison que j'avais donnée** ; le commentaire du code
+porte la correction explicite.
+
+**b) Mon `try/catch` best-effort masquait un défaut de résolution DI.**
+`PendingActionRepository` a **deux constructeurs à trois paramètres** ; dans les
+montages où `MailDataContext` est enregistré (fixtures d'intégration), le conteneur
+ne sait pas choisir. L'exception était **avalée** par le `catch` : la voie de
+**durabilité était donc silencieusement morte** là, le journal ne parlant que d'une
+« panne d'outbox ». **Production non concernée** — `MailDataContext` n'y est pas
+enregistré, un seul constructeur est satisfaisable. Corrigé à l'enregistrement dans
+les deux fixtures, avec la raison écrite.
+
+> Au passage : `[ActivatorUtilitiesConstructor]` **n'est pas** le remède — cet
+> attribut n'est lu que par `ActivatorUtilities`, pas par la sélection du conteneur
+> intégré. Tenté puis **retiré**, plutôt que de laisser un attribut décoratif
+> accompagné d'un commentaire faux. (`FolderRepository` le porte, mais son second
+> constructeur a deux paramètres : c'est l'**arité** qui le sauve, pas l'attribut.)
+
+**c) Mon test de l'enchaînement ne valait rien.**
+Écrit dans `FlagPropagationServiceTests`, il **stubbait lui-même** « plus rien en
+attente » : il passait donc **aussi avec l'asymétrie rétablie**, ne testant que la
+propriété déjà couverte (une course sans rien à réclamer ne fait rien). Découvert
+**seulement en posant la preuve ROUGE**. L'asymétrie vivait dans `EmailFlagService` :
+le test y est désormais, en `Theory` sur les trois gestes, et **rétablir l'asymétrie
+fait tomber 2 tests**. L'ancien est renommé pour ce qu'il prouve, avec mention
+explicite de ce qu'il ne prouve pas.
+
+> Troisième test-sans-valeur de la campagne (task-227, task-229, celui-ci), et
+> toujours découvert de la même façon : **en cassant volontairement le code**. Le
+> constat mérite d'être noté tel quel — la preuve ROUGE n'est pas une formalité de
+> DOD, c'est le seul moment où un test vert est mis en cause.
+
+### Tests
+
+**+13** : 4 de périmètre (un par geste, nom d'action attendu), 4 de correspondance
+poser/retirer, 1 sur la non-invalidation du compteur pour « suivi », 3 de rejeu
+recalés, 1 sur l'enchaînement.
+
+**4 tests unitaires** encodant l'ancien contrat synchrone ont été réécrits — et
+**les tests d'intégration des routes passent sans modification d'aucune assertion**
+(10/10 sur `EmailManagementUseCaseTests`), ce qui est le critère du DOD.
+
+### Validation
+
+| Contrôle | Résultat |
+|---|---|
+| Build | **0 erreur, 0 avertissement** |
+| Suite complète | **3 467 / 3 467 verts**, intégration incluse (304/320, 16 ignorés) |
+| Preuve ROUGE de l'asymétrie | ✅ 2 tests tombent quand « non lu » redevient synchrone |
+
+La contre-épreuve au banc reste due et **bloquante pour le merge** — elle mesurera
+désormais les **quatre** gestes d'un coup.
