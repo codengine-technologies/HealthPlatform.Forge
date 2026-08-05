@@ -357,3 +357,12 @@ volume servi et s'invalide sous 1 000 requêtes.
 3. **Arbitrage humain** : la réutilisation SMTP vaut ~1/5 de sa promesse sans
    affinité de session (5 réplicas, client par processus) — poursuivre,
    compléter par une affinité, ou re-scoper.
+
+## Merged
+
+- **Date** : 2026-08-05, via `/merge task-231 --i-tested` (attestation humaine HAG)
+- **api-mail** : PR #158 squash-mergée → `0b026b1` sur `develop` ; branche distante supprimée, branche locale conservée. Sync develop : merge du chore local `1a5a1c0` (index des rapports de tir, jamais poussé) → `6788b13`, conflit INDEX.md résolu (les deux lignes de tir conservées, doublon du squash dédoublonné).
+- **dtos-mss** : aucune PR (branche de précaution sans commit) — branche distante supprimée, clone resynchronisé sur `develop`.
+- **CI develop** : run post-merge lancé (https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/31014481875)
+- **Staging** : aucune branche `forge/staging-*` — run `/start` isolé, hors batch `/forge`.
+- **Note** : la contre-épreuve DOD n300 et `/sonar 231` n'ont pas été rejoués avant merge — l'attestation `--i-tested` de l'humain (HAG, règle 10) couvre la décision. La fuite de threads qui invalidait le tir du 2026-08-05 est corrigée et vérifiée (voir « Fuite corrigée », tir `fuite-fix-bcf86a1`).
