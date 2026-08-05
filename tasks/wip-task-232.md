@@ -130,3 +130,22 @@ verrou de session (~400 ms). L'analyse de code a établi :
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : inchangé — aucune donnée nouvelle stockée ; la dimension de télémétrie est purement technique
 - **AIPD / impact RGPD** : inchangé
+
+
+## Branches
+
+- `api-mail` (pushed) : `fix/task-232-uidvalidity-lecture-enrichissement` —
+  https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-232-uidvalidity-lecture-enrichissement
+- `dtos-mss` (pushed) : `fix/task-232-uidvalidity-lecture-enrichissement` — **auto-incluse**
+  par `/start` (règle CLAUDE.md). Aucun changement de contrat n'est attendu : si elle reste
+  vide, **aucune PR ne sera ouverte pour elle**.
+
+> ⚠️ **Rappel du défaut de cycle**, qui vient de bloquer `/start` deux fois de suite : rien
+> dans la chaîne ne nettoie une branche auto-incluse restée **vide**. Si `dtos-mss` ne reçoit
+> aucun commit, il faudra la supprimer à la main au merge — comme cela a été fait pour
+> task-233.
+
+Pré-flight : les six repos automatisés mesurables étaient sur `develop`
+(`api-mail`, `client-blazor`, `client-mobile`, `dtos-mss`, `sdk`, `interop-cda`).
+`host` n'est pas un dépôt git — non mesurable, cf. l'avertissement de CLAUDE.md.
+Dépendances vérifiées archivées : task-224, task-225.
