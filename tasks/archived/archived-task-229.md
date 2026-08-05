@@ -587,3 +587,35 @@ est censé empêcher — et la requête répondait 200.
 | `GetCurrentUserIdAsync` caché | ✅ |
 | Aucune donnée de santé en clair | ✅ vérifié sur les logs, les clés et les libellés |
 | **Contre-épreuve au banc** | ⏳ **bloquante pour le merge, pas pour la PR** — nœud de banc requis, main de l'humain |
+
+
+---
+
+## Merged
+
+**Mergée le 2026-08-05**, après attestation humaine `--i-tested` (HAG, règle 10).
+
+| Repo | PR | Commit squash | Ref distante |
+|---|---|---|---|
+| `api-mail` | [#157](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/157) | `61900e3` | supprimée (locale conservée) |
+| `dtos-mss` | — (0 commit, aucune PR) | — | branche supprimée, repo remis sur `develop` |
+
+Garde-fous vérifiés avant merge : CI `build` verte, `mergeStateStatus=CLEAN`, label
+`awaiting-human-merge` (jamais `awaiting-us-completion`), aucune revue
+`CHANGES_REQUESTED`, arbres de travail propres sur les deux repos.
+
+> **Le critère de banc était marqué bloquant pour le merge dans le DOD**, comme pour
+> task-228. Il a été signalé au moment du merge et couvert par l'attestation
+> `--i-tested` de l'humain, qui est l'autorité sur ce point. **Ce que la forge n'a pas
+> mesuré, et qui reste donc non démontré par le cycle** : la part de `dashboard` dans
+> le temps serveur (réf. 25,5 %), la détention p95 du verrou `GetFolders` (réf. 4,77 s,
+> cible ≤ 1,5 s), l'attente p95 de `GetEmailContent` (réf. 1,67 s) et `read_list` p95
+> (réf. 534 ms). Les tests prouvent que les redemandes ont disparu — des **nombres
+> d'appels** — pas que le tableau de bord est plus rapide.
+
+**Deux points ouverts hérités de ce cycle**, consignés pour ne pas être perdus :
+1. Les 2 security hotspots `Math.random()` de `journey.js` restent en `TO_REVIEW` et
+   maintiendront le Quality Gate en ERROR à chaque cycle futur — jugement de sécurité
+   déféré à l'humain.
+2. La famille de flakies `Services/Export` (`UglyToad.PdfPig`) s'est manifestée cinq
+   fois sur les cycles task-228 et task-229 — mérite une task dédiée.
