@@ -270,3 +270,24 @@ sont la dette héritée déjà cartographiée : outillage k6 26 (`report.py`, `j
 
 **Une seule** : zéro finding restant sur le code de la task, le reste appartient à d'autres
 périmètres.
+
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/165 — label `awaiting-human-merge`
+- `dtos-mss` : branche auto-incluse **vide**, aucune PR — à supprimer au merge (défaut de cycle, 4e occurrence).
+
+## Code Review Summary
+
+**APPROVED**, 0 blocage. Points vérifiés : sémantique du cas `FolderPath` nul préservée site
+par site ; pliage de casse accentuée vérifié **empiriquement** dans le conteneur ; layering
+Domain sans référence montante ; les deux copies Application supprimées (leur existence même —
+quatre exemplaires et non un — élargit le constat de la US). Suggestion non bloquante : les
+7 clauses d'union sont du boilerplate EF assumé, le **contenu** de la règle restant à source
+unique.
+
+**Écart assumé avec la lettre de la US** : SPECIAL-USE en **union** (le type ajoute, ne retire
+jamais) plutôt qu'en primauté bidirectionnelle — justifié par la classification observée
+transitoirement fausse (task-233), prouvé par trois quadrants + preuve ROUGE de la jambe type.
+
+**Correction au diagnostic de la US** : `Absences` n'était pas une victime réelle.
