@@ -496,3 +496,91 @@ recalés, 1 sur l'enchaînement.
 
 La contre-épreuve au banc reste due et **bloquante pour le merge** — elle mesurera
 désormais les **quatre** gestes d'un coup.
+
+
+---
+
+## Sonar log
+
+**Quatre analyses complètes**, et chacune a servi à quelque chose de différent — la
+première à mesurer, les trois autres à vérifier qu'une correction portait, et deux
+d'entre elles à **révéler du code devenu mort** par l'extension du périmètre.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| **Quality Gate (new code)** | **ERROR** | **ERROR** | inchangé — *dette antérieure* |
+| `new_violations` | 28 | **28** | **0 — retour exact à la baseline** |
+| `new_coverage` | 87,1 % | 86,9 % | −0,2 pt (seuil 80 — OK) |
+| `new_duplicated_lines_density` | 0,081 % | **0,0795 %** | −0,001 pt (seuil 3 — OK) |
+| `new_security_hotspots_reviewed` | 71,43 % | 71,43 % | = (seuil 100 — **ERROR**) |
+| Bugs / Vulnérabilités / Smells | 1 / 0 / 27 | 1 / 0 / **27** | = |
+| Coverage projet / Duplication | 86,9 % / 0,4 % | 86,9 % / 0,4 % | = |
+| Reliability / Security / Maintainability | 3,0 / 1,0 / 1,0 | 3,0 / 1,0 / 1,0 | = |
+
+### Dette nouvelle attribuable à task-230 : **zéro**, mesurée
+
+| Scan | `new_violations` | Sur les fichiers de task-230 | Ce qu'il a appris |
+|---|---|---|---|
+| 1 — après `/develop` + `/forge-simplify` | 31 | **3** | `S1067` (dépôt), `S3267` (boucle), `CA1822` (test) |
+| 2 — après extension aux 4 gestes | 29 | **1** | `S1144` — `ProcessEmailAsync` **devenu code mort** |
+| 3 — après extension aux gestes en lot | 32 | **4** | `S4487` ×4 — **dépendances IMAP devenues non lues** |
+| 4 — après nettoyage | **28** (= baseline) | **0** | — |
+
+**Les scans 2 et 3 n'ont pas seulement validé, ils ont trouvé.** Chacun a signalé du
+code que l'extension venait de rendre inutile, et que j'aurais laissé sinon :
+
+- **Scan 2** — `S1144` : `ProcessEmailAsync` n'était plus appelé. En le regardant, j'ai
+  vu que les quatre méthodes **en lot** s'appuyaient encore sur son cousin
+  `ProcessEmailsBulkAsync` — donc qu'il restait un **second chemin d'écriture de
+  flag**, synchrone, portant une version plus étroite du défaut qu'on venait de
+  fermer. Les gestes en lot ont rejoint le mécanisme ; les deux méthodes ont été
+  supprimées. **Il ne reste qu'un seul chemin d'écriture de flag.**
+- **Scan 3** — `S4487` ×4 : `EmailFlagService` portait encore
+  `IImapConnectionService`, `IMailClientSessionManager`, `UserContextInfo` et un
+  logger — tout le nécessaire pour poser un flag lui-même — alors qu'aucun n'était
+  plus lu. Les garder aurait été **pire qu'inutile** : ils auraient suggéré à tout
+  lecteur futur que le travail IMAP se fait là. **Trois dépendances au lieu de
+  sept.**
+
+Les trois findings du scan 1 : `S1067` (cinq conditions dans une expression du dépôt —
+posées en deux temps, même requête pour la base), `S3267` (boucle remplaçable par
+`Select`) et `CA1822` (helper de test rendu `static`).
+
+### Pourquoi le Quality Gate reste ERROR
+
+Piège documenté de la *new-code period* (`PREVIOUS_VERSION`), qui englobe des tasks
+déjà mergées. Les 28 violations sont **toutes antérieures** : harnais k6
+(`report.py`, `journey.js`, `journey-model.js` — task-174/224) plus 2 `S103`
+préexistants. Et les **2 security hotspots** qui plafonnent le ratio à 71,43 % sont
+les deux `Math.random()` de `journey.js`.
+
+> ⚠️ **Le même point ouvert qu'à task-228 et task-229, pour la troisième fois** : ces
+> 2 hotspots sont en `TO_REVIEW` et maintiendront le Quality Gate en ERROR à **chaque
+> cycle futur**. Les marquer *safe* est très probablement correct (tirages
+> pseudo-aléatoires de sélection dans un scénario de charge, aucun rôle
+> cryptographique), mais c'est un **jugement de sécurité** que la forge ne prend pas
+> au passage dans le cycle d'une autre task. Trois cycles consécutifs l'ont signalé —
+> il mérite sa propre décision.
+
+### Suites de tests pendant les scans (Release)
+
+| Scan | Résultat |
+|---|---|
+| 1 | **3 453 / 3 453** verts |
+| 2 | **3 467 / 3 467** verts |
+| 3 | 1 échec — `MailExportServiceTests.BuildPdfWithoutAttachmentsOmitsAttachmentSection` |
+| 4 | 1 échec — `PgBouncerTransactionPoolingTests.ConcurrentClients_AreMultiplexed_OntoBoundedPostgresBackends` |
+
+Les deux échecs appartiennent à des familles de flakies **connues et préexistantes** :
+`Services/Export` (`UglyToad.PdfPig`) et la contention Docker de PgBouncer. Aucun code
+d'export ni de pooling n'est touché par ce diff, et chacun est vert aux autres scans
+sur le même code.
+
+> **La famille `Services/Export` s'est manifestée sept fois** au cours des cycles
+> task-228, 229 et 230. Signalée à chaque fois, jamais corrigée : elle mérite une task
+> dédiée plutôt qu'une mention de plus.
+
+**Routage** : `client-angular` et `client-mobile` non touchés ⇒ `/lint-angular`,
+`/lint-mobile` et `/verify-visual` skippent ⇒ `/review 230`.
