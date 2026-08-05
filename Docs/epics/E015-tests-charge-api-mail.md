@@ -2,7 +2,7 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.25
+> **Version** : 1.27
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
 > **Dernière mise à jour** : 2026-08-05
@@ -660,6 +660,56 @@ sur une relecture**.
   favorable que la réalité et sera repris une fois cette limite levée.
 
 ---
+
+### Ce que le praticien ne verra plus : une base vide à la place de son dossier (4-5 août 2026)
+
+Un travail d'arrière-plan — propager un « lu », réconcilier des dossiers, enrichir un
+message — s'exécute hors de la requête qui l'a déclenché. Trois de ces chemins
+reconstituaient l'identité du praticien **en oubliant son RPPS**. Or c'est de cette
+identité que se déduit **quelle base de données** est la sienne : ils travaillaient donc
+sur une **autre base**, sans erreur, sans avertissement, en lisant des tables vides.
+
+Rien ne l'a vu. Ni les 3 467 tests, ni quatre analyses de qualité successives. C'est un
+médecin qui a marqué quatre messages dans l'interface, constaté que rien ne se passait, et
+demandé qu'on regarde les journaux.
+
+Le correctif tient en un point de vérité unique, doublé d'un garde-fou qui échouera
+automatiquement si un futur champ d'identité était oublié à son tour. Ce qui **reste à
+faire**, en revanche, est plus important que le correctif : le filet qui aurait dû
+attraper ce défaut n'existe pas encore. Trois raisons empilées expliquent le silence, et
+la plus gênante est qu'une erreur **a été journalisée pendant que la suite restait
+verte**. *(task-234, puis task-235 pour le filet)*
+
+### Ouvrir un dossier patient ne coûte plus la taille du dossier (5 août 2026)
+
+Le dossier clinique d'un patient s'épaissit à chaque analyse reçue. La page qui l'affiche,
+elle, n'en montre que vingt documents à la fois. Elle les lisait pourtant **tous** avant
+de choisir lesquels afficher : le coût suivait la taille du dossier, alors que ce que voit
+le médecin est constant. Un patient suivi de longue date payait donc son propre historique
+à chaque ouverture.
+
+Trois gestes, dans l'ordre où la mesure les a imposés — et le premier constat a été de
+**contredire l'hypothèse de départ**. On soupçonnait la manière dont la requête écarte les
+dossiers d'envoi, de brouillons et de corbeille. Le plan d'exécution a montré autre chose :
+la table des documents médicaux n'avait **aucun index sur l'identifiant du patient**, la
+seule colonne qui restreint vraiment la recherche. Aucune réécriture des filtres n'aurait
+pu aider — il n'y avait rien à parcourir à la place.
+
+L'index a donc été créé, la sélection de la page confiée à la base, et la règle clinique
+— « ce qui est parti, brouillonné ou jeté n'entre pas dans un dossier patient » — ramenée
+d'une trentaine d'écritures éparses à **une seule**, calculée par la base elle-même.
+
+Cette dernière opération méritait une vérification avant d'être écrite, et elle l'a
+justifiée : la solution évidente aurait été de se fier au type de dossier que déclare le
+serveur de messagerie. Sur la boîte de développement, le dossier littéralement nommé
+`Trash`, qui contient cinquante messages, n'est **pas** déclaré comme corbeille par le
+serveur. S'y fier aurait fait entrer des documents jetés dans des dossiers patients. La
+règle continue donc de lire le **nom** du dossier.
+
+**Ce qui reste à démontrer, et qui conditionne l'intégration** : que le coût cesse
+effectivement de suivre la taille du dossier. Ce n'est pas mesurable sur les données de
+développement, qui plafonnent à quarante documents pour un patient là où il en faudrait
+trois cents. La démonstration appartient au banc de charge. *(task-233)*
 
 ## État de couverture (2026-08-05)
 
