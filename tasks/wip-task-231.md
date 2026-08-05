@@ -116,3 +116,23 @@ l'essentiel de l'écart entre 1 340 ms observés et le plancher DATA + APPEND.
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : inchangé
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+
+- `api-mail` (pushed) : `feat/task-231-smtp-connexion-reutilisee` —
+  https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-231-smtp-connexion-reutilisee
+- `dtos-mss` (pushed, auto-inclus) : `feat/task-231-smtp-connexion-reutilisee` —
+  https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-231-smtp-connexion-reutilisee
+  (branche créée par précaution ; aucun changement de contrat n'est attendu —
+  la DOD exige zéro changement de contrat, donc elle restera probablement
+  sans commit et sans PR)
+
+> **Dépendance task-216 — tranchée au `/start` du 2026-08-05.** La règle
+> mécanique de `/start` abandonne sur une dépendance non `done-*`, et task-216
+> est en `todo`. Le task file la qualifie explicitement de **coordination
+> obligatoire, pas de blocage** (« ne touche que la jambe SMTP et ne dépend pas
+> de l'issue de task-216 »), et le contrôle confirme qu'aucune branche
+> task-216 n'existe : personne ne travaille sur le chemin d'envoi/archivage.
+> Décision : on continue. Si task-216 démarre avant le merge de celle-ci, la
+> coordination redevient un point d'attention réel au moment de la synchro
+> avec `develop`.
