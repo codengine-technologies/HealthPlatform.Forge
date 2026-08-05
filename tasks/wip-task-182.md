@@ -118,3 +118,33 @@ La même liste de jetons est dupliquée à trois autres endroits :
 - **Hébergement HDS** : oui
 - **AIPD / impact RGPD** : inchangé — pas de nouveau traitement ; risque
   d'exactitude/complétude (art. 5.1.d) à mentionner au humain.
+
+
+## Branches
+
+- `api-mail` (pushed) : `fix/task-182-dossiers-exclus-correspondance-exacte` —
+  https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-182-dossiers-exclus-correspondance-exacte
+- `dtos-mss` (pushed) : même nom — **auto-incluse**. Aucun changement de contrat attendu : si
+  elle reste vide, aucune PR, suppression manuelle au merge (défaut de cycle, 4e occurrence
+  attendue).
+
+### ⚠️ État du code depuis la rédaction de la US (2026-07-25) — lu AVANT d'implémenter
+
+**task-233 (mergée le 2026-08-05) a déjà fait une partie du travail, et pas le reste :**
+
+- ✅ **La règle est déjà dite une seule fois** : `MailFolderNamingRule` (source unique), colonne
+  générée PostgreSQL `Mails.IsInSentDraftOrTrashFolder`, consommée par les 7 sites de requête
+  et par le contrôle en mémoire `IsSelfActionFolder`. La « Preuve (état actuel du code) » de la
+  US — les blocs `ToLower().Contains` dupliqués — **n'existe plus sous cette forme**.
+- ❌ **La sémantique de sous-chaîne, elle, est intacte** : l'expression de la colonne est
+  `~ '(sent|draft|trash|corbeille|envoy|brouillon)'` **sans ancrage**. `Consentements`
+  matche `sent` : **le bug clinique est toujours là**, simplement concentré en un seul endroit
+  au lieu de huit. Le travail de cette task est de changer la sémantique de cet endroit unique.
+- 📌 **L'arbitrage produit demandé par task-233 est tranché par cette US** : task-233 avait
+  renvoyé au PO la question « union SPECIAL-USE + nom ? » ; cette US, écrite avant, y répond
+  oui (attributs quand fournis, repli sur correspondance exacte).
+- ⚠️ **Conséquence pratique** : changer la règle = **migration** (une colonne générée ne
+  s'`ALTER` pas — DROP + ADD, recalcul de toute la table) + mise à jour du modèle EF + des
+  tests de task-233 qui caractérisent la sémantique actuelle.
+
+Pré-flight vert sur les six repos mesurables. Dépendances : aucune.
