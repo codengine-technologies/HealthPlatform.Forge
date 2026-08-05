@@ -206,3 +206,28 @@ réelle, aucun patient réel.**
   production, mais l'US ne modifie ni la donnée ni son emplacement.
 - **AIPD / impact RGPD** : néant — aucun traitement nouveau, aucune donnée
   supplémentaire collectée.
+
+
+---
+
+## Branches
+
+- `api-mail` (pushed) : `fix/task-233-patient-file-page-sql-pagination` — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-233-patient-file-page-sql-pagination
+- `dtos-mss` (pushed, auto-inclus) : même nom de branche — aucun changement de contrat attendu (US backend-only : pagination et indexabilité d'une requête). Pas de PR si aucun commit.
+
+**Base** : `develop` d'`api-mail` au commit `ac814e1` — task-234 y est mergée (correctif
+des tâches de fond). task-230 est encore en PR ouverte (#159) et **ne touche pas** le
+dépôt patient : pas de recouvrement.
+
+**Dépendances** : aucune déclarée.
+
+**Préfixe `fix/`** : la US corrige un défaut **mesuré** (p95 343 ms au palier 300, avec une
+dispersion p95/p50 de 4,2× qui désigne un coût dépendant de la donnée), et **bloquant** —
+le redimensionnement du pool fait gagner 53 % à la recherche mais coûte +145 % à cette
+page tant qu'elle n'est pas corrigée.
+
+**Pré-flight** : les 6 repos automatisés vérifiables sont sur `develop`.
+⚠️ Le premier `/start 233` a été **refusé** : `dtos-mss` était resté sur
+`fix/task-230-…`, branche auto-incluse **vide** (0 commit) que rien ne remet sur
+`develop` quand aucune PR n'est ouverte pour ce repo. L'humain l'a basculée ; le défaut
+de cycle est signalé et attend une décision.
