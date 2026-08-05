@@ -233,7 +233,7 @@ Deux suggestions non bloquantes, consignées dans la PR :
 sérialise les envois concurrents d'une même session, ce qui n'était pas le cas
 avant. Verrou `smtp_session`, attente et détention consignées.
 
-## Reste dû avant merge
+## ⛔ Merge bloqué — contre-épreuve au banc du 2026-08-05
 
 Deux choses, toutes deux sur le poste de l'humain :
 
@@ -241,3 +241,44 @@ Deux choses, toutes deux sur le poste de l'humain :
    n300 en iso-conditions avec `journey-mssante-n300-021137`.
 2. **`/sonar 231`** : la qualité de ce diff est **non mesurée** (serveur
    injoignable au moment du cycle), ce qui n'est pas la même chose que verte.
+
+### Tir de contre-épreuve `journey-mssante-n300-133618` — 🔴 ROUGE
+
+Iso-conditions strictes avec `journey-mssante-n300-021137` (paramètres recopiés
+du `context.journeyPlan`, pas repris des défauts du harnais). 1 h 32,
+19 374 passages, 500 bases purgées, maildir recréé, échantillonneur armé.
+
+**1,53 % d'erreurs** (plafond 1 %) — 0,00 % à 100 médecins, 1,08 % à 200,
+2,29 % à 300. Échecs = délais de **60 s sur `GET /mail/folders`**, donc sur le
+chemin IMAP, **étranger** à la modification.
+
+**Fuite de ressources attribuée par A/B sur la même machine :**
+
+| | Réf. (sans task-231) | Cette branche |
+|---|---|---|
+| Threads ThreadPool | 6 → **10** | 7 → **8 164** |
+| Threads processus | 57 → 81 | 69 → **8 228** |
+| File d'attente ThreadPool | 0 | **0** |
+| Connexions Kestrel | — | 0 → **701** |
+| Mémoire | 386 → ~1 000 Mo | 386 → **2 350 Mo** |
+
+Croissance monotone, ~1,5 thread/s, sur les cinq réplicas. File d'attente à zéro
+⇒ threads **retenus**, pas injectés faute de débit. **La ligne fautive n'est pas
+identifiée, et elle n'est pas devinée** — task-222 a été annulée pour avoir bâti
+sur une cause plausible et fausse.
+
+**Second résultat, indépendant** : la réutilisation ne se déclenche presque jamais
+au parcours — 5 300 `connect` pour 5 301 `send_message`, `noop = 3` dont 2 de ma
+sonde. Cause mesurée : **5 réplicas sans affinité de session**, le client SMTP
+vivant dans un singleton par processus. Sonde de 12 envois consécutifs sur une
+même session : `noop = 2` — le mécanisme marche, il n'est pas sollicité. Au
+rythme du parcours (~4,8 min entre deux envois d'un médecin, ~24 min par
+réplica), il vaut ~1/5 de sa promesse.
+
+**Le tir étant non concluant, le `send` p50 à 1 199 ms (−11 %) ne peut pas être
+invoqué** — ni pour, ni contre.
+
+**Verdict DOD** : critère bloquant **non tenu**. Label `awaiting-human-merge`
+retiré de la PR #158. À reprendre : trouver la fuite, la corriger, refaire le
+tir. Et arbitrer si la réutilisation vaut d'être poursuivie sans affinité de
+session.
