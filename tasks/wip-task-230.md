@@ -147,3 +147,173 @@ amélioration spéculative.
 
 **Pré-flight** : les 6 repos automatisés vérifiables sont sur `develop`. Le chemin
 d'`interop-cda` corrigé dans CLAUDE.md à task-229 est validé — plus de faux négatif.
+
+
+---
+
+## Develop log
+
+**Commit** : `751c99e` — `perf(mail): task-230 — marquer lu acquitte sur la base, la gommette IMAP part en arriere-plan groupee`
+**Branche** : `fix/task-230-mark-read-async-propagation` (`api-mail`)
+**Base** : `develop` @ `61900e3` (task-229 mergée)
+`dtos-mss` : 0 commit — contrat inchangé.
+
+### Ce qui a changé
+
+| Fichier | Nature |
+|---|---|
+| `Services/Implementation/FlagPropagationService.cs` (nouveau) | Enfilage + propagation groupée hors requête |
+| `Services/Interfaces/IFlagPropagationService.cs` (nouveau) | Deux portes distinctes : `Enqueue…` (requête) et `Propagate…` (rejeu) |
+| `Services/Repository/MailAuditSnapshot.cs` (nouveau) | Les 4 champs d'audit, et rien d'autre |
+| `EmailFlagService.cs` | Chemin synchrone sans IMAP, lecture d'audit minimale, trace rendue véridique |
+| `PendingActionService.cs` | Réclamation atomique ; rejeu branché sur la propagation directe |
+| `PendingActionRepository.cs` + interface | `TryClaimForProcessingAsync`, `GetPendingMarkReadAsync`, `ReleaseClaimAsync` |
+| `MailRepository.cs` + interface (+ mock) | `GetMailAuditSnapshotAsync` — une projection |
+
+### Le remède, et l'écart argumenté avec la US
+
+La US privilégiait la file persistée (`PendingActions`) pour sa rejouabilité après
+un crash — **argument juste** — mais posait aussi une borne : propagation
+« attendue en secondes », « jamais au-delà de la fenêtre du `folder:status` (10 s) ».
+
+**Vérifié dans le code** : `ProcessPendingActionsAsync` n'est drainée que par une
+passe de synchronisation (`BackgroundSyncService`) ou un appel explicite du client
+(`ConnectionController`) — **aucun timer interne**. La voie persistée seule aurait
+donc respecté la *lettre* du remède en manquant la borne que la **même US** impose,
+avec une latence indéterminée et, sous le scénario de charge, potentiellement
+infinie.
+
+**Les deux briques sont donc utilisées pour ce que chacune sait faire** :
+`PendingActions` **persiste** (durabilité, déduplication, annulation par action
+opposée — tout ce que le PO voulait), `IBackgroundTaskQueue` **propage tout de
+suite**.
+
+### Le groupement d'une rafale — demandé par la US, et sans fenêtre d'attente
+
+La US l'autorisait : *« en cas de rafale, les propagations peuvent être regroupées
+(la voie bulk `AddFlagsAsync` existe déjà) mais jamais retardées au-delà de 10 s »*.
+
+Dépiler sa boîte est le geste **normal** : 20 clics faisaient 20 trajets et
+**20 prises du verrou de session** — celui dont cette campagne cherche précisément à
+réduire la contention. Sortir le travail de la réponse HTTP ne l'aurait pas réduit,
+seulement déplacé.
+
+**Aucune temporisation n'a été ajoutée**, et c'est le point de conception : la file
+persistée **est déjà l'accumulateur**, puisque chaque marquage y écrit sa ligne. Une
+course ramasse donc tout ce qui est en attente **pour ce dossier au moment où elle
+part**, et le pose en **un** `STORE` multi-UID (IMAP l'accepte nativement).
+
+| Situation | Coût |
+|---|---|
+| 20 clics — la 1ʳᵉ course | **1** trajet, **1** prise du verrou, 20 UID dans un `STORE` |
+| Les 19 courses suivantes | **0** trajet, **0** verrou — rien à réclamer, elles sortent |
+| Un seul message | 1 trajet, et **rien n'attend** |
+
+Le groupement est **opportuniste** : il se produit exactement quand une rafale se
+chevauche.
+
+### Trois défauts trouvés en chemin
+
+**a) Une boucle sans fin — de ma conception.**
+Le rejeu appelait `UpdateEmailReadStatusAsync`, qui **enfile**. Or la déduplication
+ne voit que les actions `Pending`, et celle en cours de rejeu vient de passer à
+`Processing` : une **nouvelle** action était donc insérée avant que l'originale ne
+soit supprimée. **Une ligne de plus par passe de synchronisation**, chacune payant
+un aller-retour IMAP, une file qui ne se vide jamais. Corrigé par deux portes
+distinctes ; un test interdit au rejeu d'appeler la méthode qui enfile.
+
+**b) Deux pods pouvaient traiter la même action — préexistant.**
+`MarkAsProcessingAsync` écrivait **sans condition** : deux pods ayant chargé la même
+ligne `Pending` réussissaient tous les deux. `TryClaimForProcessingAsync` porte
+désormais sa condition dans l'ordre SQL (`WHERE Status = Pending`) : **la base
+arbitre**, exactement un appelant obtient la ligne. **Aucune migration** — la
+condition remplace le jeton de concurrence absent du schéma (règle 7c non
+déclenchée). La duplication était bénigne tant que les actions rejouées étaient
+idempotentes (`STORE +FLAGS` l'est) ; elle cesse de dépendre de cette propriété.
+
+**c) Une action `Failed` n'est jamais rejouée — préexistant.**
+`MarkAsFailedAsync` écrit `Failed`, mais `GetPendingActionsAsync` ne lit que les
+`Pending` : une action ayant échoué **une fois** est abandonnée en silence, et le
+`RetryCount >= 3` de `HandleActionFailureAsync` est **du code inatteignable** (on ne
+dépasse jamais 1). Cela **vidait de son sens l'argument** qui justifiait la voie
+persistée. Le défaut général est **signalé et non corrigé** (il porte la sémantique
+du rejeu hors ligne, hors périmètre), mais le chemin des flags ne peut pas s'y
+appuyer : `ReleaseClaimAsync` rend la ligne à `Pending` avec une borne de
+tentatives.
+
+### La trace d'audit ne ment plus
+
+Elle inscrivait `ServerResponse = "OK flags updated"` — **la réponse du serveur**.
+La propagation étant différée, garder cette phrase aurait **écrit dans un registre
+réglementaire une réponse serveur qui n'a pas eu lieu**. Le champ dit l'état vrai
+(« queued for background propagation »), et `Success` porte ce que la trace atteste
+réellement : **l'accès du praticien au message**, vrai dès le commit — ce que la
+traçabilité PGSSI-S attend d'un `MailRead`.
+
+### Hygiène du même chemin
+
+- **Lecture d'audit minimale.** `GetMailAsync(Header)` chargeait étiquettes,
+  destinataires, pièces jointes — et le **contenu clinique** dès que le message
+  portait des documents médicaux, pour renseigner un objet et trois adresses. Un
+  changement d'état de flag n'a **aucune raison** de lire ce matériau.
+- **`AddFlagsAsync`** (extension asynchrone déléguant à `StoreAsync`) au lieu de
+  l'extension **bloquante** `AddFlags`, qui immobilisait un thread du pool pendant
+  un aller-retour réseau sous latence MSSanté.
+- **Invalidation de `folder:status`** après propagation : avant, `mark_read`
+  n'invalidait **rien**, le compteur de non-lus restait faux jusqu'à 10 s.
+
+### Deux conséquences signalées, non corrigées
+
+**Un cas d'erreur change de code HTTP.** Une panne du serveur de messagerie ne fait
+plus échouer la requête (5xx → 200). C'est la conséquence **directe** du remède — on
+ne peut pas rapporter un échec qu'on n'attend plus — et la US la sanctionne
+(« en dernier recours le flag reste posé en base »). Deux tests **unitaires** du
+service qui encodaient l'ancien contrat synchrone ont été réécrits ; **les tests
+d'intégration des routes, que le DOD protège, ne sont pas touchés**.
+
+**Un glissement de sens dans la réponse.** Le corps contient
+`{ queued = !IsOnlineMode }` : en ligne il dira `queued: false` alors que la
+propagation **est** désormais enfilée. Le champ devient trompeur — mais le corriger
+changerait le corps de réponse, ce que la contrainte absolue de la US interdit.
+
+### Tests
+
+| Fichier | Nb | Objet |
+|---|---|---|
+| `FlagPropagationServiceTests` (nouveau) | **11** | Aucun IMAP dans la requête / ordre persisté / outbox en panne / repli sans file / **groupement d'une rafale en 1 trajet** / courses surnuméraires à coût nul / partage entre pods / invalidation du compteur / relâchement de la réclamation sur échec / contexte praticien repeuplé / rejeu n'enfile rien |
+| `EmailFlagServiceTests` (étendu) | +5 | Chemin synchrone sans IMAP, pas de lecture clinique pour l'audit, acquittement malgré panne serveur |
+| `PendingActionServiceTests` (recalé) | 3 | Rejeu via la propagation directe, réclamation atomique attendue |
+
+Ils comptent des **appels** — prises du verrou, ordres `STORE`, allers-retours —
+jamais des durées.
+
+**Preuve ROUGE du groupement** : en revenant à un UID par course,
+`GroupsAWholeBurstIntoASingleRoundTrip` tombe.
+
+Un enseignement de test : `AddFlagsAsync` est une **méthode d'extension** de MailKit
+qui délègue à `StoreAsync`. NSubstitute ne peut donc pas la vérifier — les
+assertions visent `StoreAsync`. Accessoirement, c'est ce qui **confirme** que le
+code emprunte la voie asynchrone et non `AddFlags`.
+
+### Validation
+
+| Contrôle | Résultat |
+|---|---|
+| Build | **0 erreur, 0 avertissement** |
+| Suite complète | **3 453 verts**, intégration incluse (**304 / 320**, 16 ignorés — le compte normal) |
+| Flaky rencontré | `MarkdownPdfRendererTests.RenderHeadingPreservesText` — famille `Services/Export` (`UglyToad.PdfPig`), **6ᵉ occurrence** sur ces cycles, **vert 3 fois sur 3 en isolation**, aucun code d'export touché |
+
+### 🚧 Ce que ce commit ne prouve PAS
+
+**Aucune latence n'est mesurée.** Les tests prouvent des **nombres d'appels** : zéro
+IMAP dans la réponse, un trajet pour une rafale, une prise de verrou au lieu de
+vingt. Ils ne disent rien du p50 réel de `mark_read` (référence 331 ms).
+
+La contre-épreuve `journey` n300 en iso-conditions est **bloquante pour le merge** et
+exige le nœud de banc. C'est la leçon de **task-213** (correctif de verrou retiré
+après mesure) et de **task-222** (US écrite sur un chiffre non opposable, annulée).
+
+Un point demandera une attention particulière au tir : le travail IMAP n'a pas
+disparu, il s'exécute désormais **pendant** que le médecin fait autre chose. Le
+groupement doit plus que compenser ce chevauchement — c'est précisément ce que la
+détention p95 du verrou `UpdateFlag` (référence 0,997 s à 5,11 acq/s) dira.
