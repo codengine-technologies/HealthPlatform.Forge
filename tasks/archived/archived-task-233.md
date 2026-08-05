@@ -496,3 +496,39 @@ d'InMemory vers un vrai PostgreSQL, et un défaut de production n'a été trouv�
 conflit de fusion. Dans les deux cas la cause est la même — **le harnais est plus
 permissif que la production**, donc il valide du code qui ne marche pas. C'est exactement
 l'objet de task-235.
+
+
+## Merged
+
+Mergée le **2026-08-05** par l'humain (HAG, règle 10), sur attestation `--i-tested`.
+
+- `api-mail` : PR #162 **squash-mergée** → `e296753` sur `develop`. Ref remote supprimée
+  (`git push origin --delete`), **branche locale conservée**.
+- `dtos-mss` : branche auto-incluse **vide (0 commit vérifié)**, aucune PR. Supprimée
+  localement **et** sur le remote — c'est elle qui bloquait le pré-flight de `/start` deux
+  fois de suite. Le défaut de cycle reste à corriger : rien dans la chaîne ne nettoie une
+  branche auto-incluse restée vide.
+
+### Ce que ce merge a emporté au-delà de la task
+
+Le correctif de l'outbox (commit `357c310`, 8 emplois du getter `DataContext` levant) est
+**arrivé sur `develop` avec cette PR**. Vérifié après synchronisation : `develop` porte la
+garde `DataContextGetterScanTests` **et** zéro emploi du getter dans `src/`. La CI de
+`develop` ne pouvait donc pas casser — le risque d'ordre que task-236 signalait est levé.
+
+**Conséquence pour task-236** : son *correctif* est déjà en place. Il lui reste son cœur —
+le test qui échoue avant lui (dépôt sans contexte injecté, cache d'identifiant chaud, preuve
+ROUGE), le recensement des autres méthodes pouvant retourner sans résoudre le contexte, et
+l'arbitrage sur la suppression du getter. Le task file a été mis à jour en ce sens.
+
+### ⚠️ Ce qui reste dû, et qui n'a PAS été fait
+
+La **contre-épreuve au banc** du DOD — non faisable en local (la base de développement
+plafonne à 41 documents pour son patient le plus fourni, la US en demande ~300). Le gain est
+donc **démontré structurellement** (pagination et agrégation en SQL vérifiées sur le SQL
+réellement exécuté, index créé, 28 tests dont trois preuves ROUGE) mais **non mesuré**.
+Restent également dus : l'`EXPLAIN ANALYZE` après, le re-tir du pool à 6, et le choix
+partiel/couvrant de l'index qui dépend de cette mesure.
+
+Mergée en connaissance de cet écart, sur décision humaine explicite après double
+signalement.

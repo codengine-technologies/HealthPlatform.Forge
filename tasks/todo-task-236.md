@@ -3,9 +3,35 @@
 **Repos**: api-mail
 **Epic**: E015
 **Single frontend**: true
-**Dependencies**: aucune. ⚠️ **À merger AVANT task-233** — voir « Ordre de merge » ci-dessous.
+**Dependencies**: aucune. ⚠️ **Le correctif est déjà sur `develop`** depuis le merge de task-233 (`e296753`, 2026-08-05) — voir « Ce qui reste à faire » ci-dessous.
 **Priorité**: **1** — défaut de production **vivant sur `develop`**, en régime établi, sur un
 chemin qui touche l'état des messages du praticien. Rien de ce backlog ne passe devant.
+
+> ## ⚠️ Mise à jour du 2026-08-05 — le correctif a été merge avec task-233
+>
+> La PR #162 (task-233) a été mergée en squash (`e296753`) **avec le commit `357c310` à
+> l'intérieur**. Vérifié après synchronisation : `develop` porte la garde
+> `DataContextGetterScanTests` **et** zéro emploi du getter `DataContext` dans `src/`. La CI
+> de `develop` est **verte**.
+>
+> **Le remède 1 est donc DÉJÀ FAIT.** L'ordre de merge décrit plus bas est caduc, et la
+> duplication qu'il justifiait n'existe plus.
+>
+> **Ce qui reste à faire, et c'était déjà le cœur de la task :**
+>
+> 1. **Le test qui échoue sans le correctif** (remède 2) — dépôt exercé **sans contexte
+>    injecté**, cache d'identifiant **chaud**, sur les trois méthodes, avec **preuve ROUGE
+>    consignée**. Rien ne protège aujourd'hui contre une réintroduction : la garde
+>    `DataContextGetterScanTests` interdit l'emploi du *getter*, elle ne prouve pas que le
+>    chemin fonctionne cache chaud. Un futur code qui appellerait
+>    `GetCurrentUserIdAsync` puis un contexte non résolu par un autre moyen repasserait au
+>    travers.
+> 2. **Le recensement** des méthodes de `BaseRepository` pouvant retourner sans résoudre le
+>    contexte (remède 3) — à consigner même vide.
+> 3. **L'arbitrage humain** sur la suppression du getter (remède 4).
+>
+> Le DOD reste applicable **tel quel** : ses items sur le correctif seront simplement
+> constatés déjà satisfaits, ceux sur le test et le recensement restent à produire.
 
 ## Objective
 
