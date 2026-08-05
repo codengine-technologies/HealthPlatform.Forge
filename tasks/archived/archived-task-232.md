@@ -1,4 +1,57 @@
-# todo-task-232.md — Des messages enrichis sont servis par IMAP au prix du froid : réconcilier l'asymétrie d'UidValidity entre lecture et enrichissement, et rendre la mesure discriminante
+# task-232 — Des messages enrichis sont servis par IMAP au prix du froid : réconcilier l'asymétrie d'UidValidity entre lecture et enrichissement, et rendre la mesure discriminante — ANNULÉE
+
+> ## 🚫 US ANNULÉE le 2026-08-05 — décision humaine
+>
+> Abandonnée à la demande de l'humain, **après la Phase 1**. Le corps de la US est conservé
+> tel quel ci-dessous : il documente une hypothèse sérieuse et les mesures qui l'ont mise en
+> doute, et cela vaut d'être relisible.
+>
+> ### Où en était le travail
+>
+> **Phase 1 était livrée et poussée** — commit **`3fd1dac`** sur
+> `fix/task-232-uidvalidity-lecture-enrichissement` (`api-mail`). Aucune PR n'a été ouverte.
+>
+> Elle contenait le témoin `mssante_mail_content_served_total` (étiquette `served_from` ∈
+> {`db`, `imap`}), posé aux deux côtés du point de décision de
+> `ImapService.GetEmailContentInternalAsync`, avec 7 tests et une preuve ROUGE.
+>
+> **Phase 2 n'a jamais été entamée**, sur ordre de la US elle-même : le désalignement
+> d'`UidValidity` mesuré était **nul** (51 messages sur 51 alignés sur la génération de leur
+> dossier, aucune ligne à `UidValidity = 0`), donc la fenêtre de dérive décrite ne s'était pas
+> produite. Cette mesure n'infirmait pas l'hypothèse — base de développement et non base du
+> banc, un seul dossier peuplé, une seule génération — mais elle ne la soutenait pas.
+>
+> ### ⚠️ Ce que cette annulation abandonne, et qu'il faudra refaire
+>
+> Le témoin `served_from` **n'est pas sur `develop`**. Il vit dans le commit `3fd1dac`, sur une
+> branche sans PR. Conséquence concrète : **rien ne permet aujourd'hui de dire si une ouverture
+> de message chaude est servie par la base ou par le serveur.** L'étape 3 du parcours du banc
+> reste donc mesurée à 407 ms p50 pour un message déjà en base, avec une moyenne (327 ms) sous
+> sa médiane — signature d'un mélange que personne ne peut ventiler.
+>
+> Le commit est conservé et récupérable par `git cherry-pick 3fd1dac` : la branche **locale**
+> n'est pas supprimée. Si le sujet revient, ne pas réécrire l'instrument — le reprendre.
+>
+> ### Une piste à ne pas perdre, indépendante de l'UidValidity
+>
+> Si l'étape 3 reste lente alors que le contenu vient bien de la base, le suspect n'est pas le
+> choix de la source mais **`htmlBodySanitizer.Sanitize`** : l'assainissement AngleSharp posé
+> par task-088 tourne **sur le chemin chaud, à chaque ouverture, sur tout le corps HTML**. La
+> US ne l'envisageait pas. C'était détaillé dans `questions/task-232.md`, conservé.
+>
+> ### Ce qui a été produit et qui SURVIT à cette annulation
+>
+> Une correction de documentation sans rapport avec l'hypothèse de cette US, faite en mesurant
+> pour elle : la preuve invoquée par **task-233** contre `MailFolders.FolderType` était un
+> **état transitoire** (`Trash` est correctement classé après resynchronisation). Corrigée dans
+> `E015-Changelogs.md` (v1.27), `E015-tests-charge-api-mail.md` (v1.28) et
+> `archived-task-233.md` — commit `bffe728`. **Cette correction reste valide.**
+>
+> ### Branches
+>
+> - `api-mail` : remote supprimé, **branche locale conservée** (elle porte `3fd1dac`)
+> - `dtos-mss` : branche auto-incluse restée **vide** — supprimée en local et sur le remote
+
 
 **Repos**: api-mail
 **Epic**: E015
