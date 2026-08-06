@@ -387,3 +387,20 @@ scan, à traiter avec l'outillage).
 désormais construire les dépôts comme la production (task-236), échouer sur une erreur
 journalisée (task-235), et le getter qui rendait le piège possible **n'existe plus** —
 le compilateur est la garde.
+
+
+## Merged
+
+Mergée le **2026-08-06** par l'humain (HAG, règle 10), sur attestation `--i-tested`.
+
+- `api-mail` : PR #166 **squash-mergée** → `d8c4ff1` sur `develop`. Ref remote supprimée,
+  branche locale conservée. **CI `develop` verte.**
+- `dtos-mss` : branche auto-incluse **vide (0 commit vérifié)**, supprimée des deux côtés —
+  **cinquième occurrence** du défaut de cycle.
+
+### Ce qui est désormais sur `develop`
+
+Le scénario exact du défaut de task-234 est un **test permanent** (constructeur de
+production + cache chaud), les migrations FluentMigrator tournent dans un test, et le getter
+`BaseRepository.DataContext` **n'existe plus** — le compilateur est la garde. La boucle
+ouverte par task-234 est fermée.
