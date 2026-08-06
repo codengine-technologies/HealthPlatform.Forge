@@ -175,3 +175,66 @@ task-216 : sans objet (archivage synchrone, hors périmètre ici, task-216 encor
 ⚠️ Contexte plateforme au moment du /start : GitHub Actions ne consomme plus les événements
 du repo depuis 13:56Z — la CI de la PR pourrait ne pas se déclencher (précédent : PR #167,
 mergée par l'humain sans verdict CI, en connaissance de cause).
+
+
+## Develop log
+
+Commit `f40cfe6` sur `fix/task-238-smtp-keepalive-sonde-ocsp`.
+
+### Remède 1 — le keep-alive SMTP
+
+La boucle d'entretien de session (30 s) couvre désormais le client SMTP retenu, même patron
+non bloquant que la voie IMAP (`Wait(0)` : si le verrou est pris, la connexion sert — un
+envoi n'attend **jamais** derrière un battement). Deux renforts au passage :
+
+- **un NOOP d'entretien qui échoue écarte le client sur-le-champ** (fermeture sans I/O, sous
+  le verrou déjà détenu) — le prochain emprunt reconnecte proprement au lieu de payer
+  l'`IOException` de sonde (1 345 sur le tir de référence) ;
+- **le démarrage devient idempotent et bi-voie** : l'adoption d'un client SMTP lance la
+  boucle — avant, seul le getter IMAP le faisait, et une session qui n'avait jamais lu
+  n'entretenait pas son SMTP.
+
+### Remède 2 — la sonde conditionnée à l'âge
+
+La session tient un **signal de santé** (adoption, NOOP d'entretien réussi, sonde réussie) —
+distinct de l'accès, et il le faut : l'accès est rafraîchi **à l'emprunt**, avant qu'on sache
+si la connexion vit ; s'en servir rendrait la sonde inatteignable. L'emprunt réutilise sans
+sonder si le signal a moins de `SmtpProbeMaxAge` (défaut **60 s** = 2 × la cadence du
+keep-alive, configurable par domaine ; zéro/négatif = sonder à chaque emprunt — le repli
+task-231). **Mesure au smoke test contre vrai serveur** : deux envois d'une session passent
+de `CONNECT=1, AUTH=1, SEND=2, NOOP=1` à **`NOOP=0`**.
+
+### Remède 3 — correction du diagnostic de la US (cinquième de la semaine)
+
+La US affirme « aucune mise en cache des réponses de révocation ». **C'est faux** : le cache
+OCSP existe depuis **task-069** (Redis, fraîcheur 1 h configurable, fenêtre de grâce
+Option C, RÉVOQUÉ honoré quel que soit l'âge) et le cache CRL aussi (borné par `NextUpdate`).
+Les tests demandés par le DOD existent déjà (`CertificateValidatorTests`). **Rien à
+construire** — le poste OCSP était déjà amorti ; ce sont les reconnexions elles-mêmes que les
+remèdes 1 et 2 suppriment. Les items OCSP du DOD sont donc satisfaits **par l'existant**,
+constaté et non réécrit.
+
+### Défaut préexistant réparé
+
+`MailClientSession.Dispose` n'était **pas idempotent** (second `Dispose` →
+`ObjectDisposedException` sur le CTS) — exposé par les nouveaux tests, garde posée. Le
+nettoyage de session et un logout concurrent pouvaient se marcher dessus.
+
+### Tests
+
+5 nouveaux (keep-alive) + 2 nouveaux (sonde) + 2 adaptés au nouveau contrat — dont le smoke
+`NOOP=0`, qui est la mesure du remède 2 sur vraie socket. **Preuve par mutation** : condition
+d'âge inversée → le test de réutilisation fraîche échoue. Les tests de sonde font répondre
+« morte » au substitut **exprès** : si la sonde était consultée sur le chemin frais, le test
+le verrait par la reconnexion.
+
+### Validation
+
+Build 0 erreur / 0 avertissement · domain 136/136 · infrastructure 419/419 ·
+application **2037/2037** · api 650/650 · integration **369/369** (16 ignorés).
+
+### 🚧 Contre-épreuve au banc — bloquante pour le merge, non faite ici
+
+Le DOD l'exige : tir `journey` n200 K=1 iso-conditions — `send` p50 ≤ 1 000 ms (réf. 1 229),
+part du temps serveur en baisse (réf. 17,9 %), `IOException` de sonde en forte baisse
+(réf. 1 345), ~1 connexion par session au rythme réel. Le banc n'est pas monté dans ce cycle.
