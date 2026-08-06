@@ -367,3 +367,23 @@ rapport importé — seuil inatteignable par construction) et hotspots `Math.ran
 ### Itérations
 
 **Une seule** : plus aucun finding sur les fichiers de la task après correction.
+
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/166 — label `awaiting-human-merge`
+- `dtos-mss` : branche auto-incluse **vide**, aucune PR — à supprimer au merge (5e occurrence du défaut de cycle).
+
+## Code Review Summary
+
+**APPROVED**, 0 blocage. La suppression du getter compile du premier coup — confirmation
+empirique du chiffrage « zéro consommateur ». Motif `try/finally` sur l'environnement repris
+du précédent PgBouncer. Suggestion non bloquante consignée : les deux tests SMTP échouent au
+lieu de skipper quand le `.env` est introuvable sous `--artifacts-path` (famille des gardes de
+scan, à traiter avec l'outillage).
+
+**Ce que ce cycle ferme** : la boucle ouverte par task-234. Le défaut avait échappé à
+3 467 tests parce que le harnais injectait ce que la production résout ; le harnais sait
+désormais construire les dépôts comme la production (task-236), échouer sur une erreur
+journalisée (task-235), et le getter qui rendait le piège possible **n'existe plus** —
+le compilateur est la garde.
