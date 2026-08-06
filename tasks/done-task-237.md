@@ -267,3 +267,24 @@ signalement**.
 ### Itérations
 
 **Une seule** : rien à corriger sur les fichiers de la task.
+
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/167 — label `awaiting-human-merge`
+- `dtos-mss` : branche auto-incluse **vide**, aucune PR — à supprimer au merge (6e occurrence du défaut de cycle).
+
+## Code Review Summary
+
+**APPROVED**, 0 blocage. La forme finale du harnais est née de **deux preuves ROUGE restées
+vertes** — chaque masquage documenté dans le code à l'endroit où il opérait. Écart de
+périmètre dit franchement : 2 chemins de fond sur 3 couverts par l'effet, `enrich:{folder}`
+étant hors de portée des fixtures (couche API) — une US d'outillage `WebApplicationFactory`
+est suggérée, avec le statut du cache résilient substitué.
+
+**Au-delà de la task** : trois mensonges de harnais découverts (domaine mail jamais déclaré —
+tous les tests Gmail de `develop` cassés depuis le 2026-08-06, indépendamment de cette task ;
+cache résilient = substitut à miss permanent — le chemin cache-hit de task-229 jamais
+atteignable ; fast-path de provisionnement keyé sans le serveur — collision multi-conteneurs),
+et un défaut `develop` réparé (`c565250` avait cassé ses propres tests SMTP, invisibles de la
+CI).
