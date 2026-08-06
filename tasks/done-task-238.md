@@ -282,3 +282,23 @@ héritées (hotspots jamais révisés + violations d'outillage k6).
 
 **Décision** : acceptation best-effort, aucune itération de fix — rien à corriger dans le
 périmètre de la task, et les findings restants appartiennent aux tasks d'outillage.
+
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/168 — label `awaiting-human-merge`. ⚠️ Aucun check CI remonté à l'ouverture (Actions s'est rétabli le matin même après la panne du 2026-08-06 — le run develop post-merge de task-237 est passé VERT, règle 5 soldée) ; vérifier que le run PR apparaît avant le merge.
+- `dtos-mss` : branche auto-incluse **vide** (0 commit), aucune PR — **7ᵉ occurrence** du défaut de cycle « branche auto-incluse jamais utilisée ».
+
+## Code Review Summary
+
+**APPROVED — 0 blocage** (9 fichiers revus, diff 401 lignes).
+
+- Flux de contrôle de l'emprunt sûr : early-return fenêtre-fraîche dans le `try`, `catch` libère le jeton (`slot.Dispose()`), jamais de slot orphelin.
+- Pas de course NOOP/DATA : battement en `Wait(0)` (n'attend jamais), écartement sur échec effectué verrou détenu, `finally` libère.
+- Signal de santé distinct de `LastSmtpAccessTime` — justifié dans le code (l'accès est rafraîchi avant qu'on sache si la connexion vit).
+- Aucune donnée de santé dans les logs (SessionId technique uniquement).
+- ⚠️ Trade-off documenté (non bloquant) : fenêtre sans-sonde ≤ 60 s → une connexion tuée à l'instant peut servir un envoi qui échouera ; probabilité bornée par le keep-alive 30 s qui écarte les morts. Inhérent à toute sonde conditionnée à l'âge.
+- Au passage : `Dispose` rendu idempotent (garde `_disposed`) — défaut pré-existant exposé par un test du keep-alive.
+
+**Validation finale /review** : build 0 erreur ; suites 136 / 419 / 2037 / 650 / 369 (16 ignorés) — tout vert sur bin normal.
+**DOD** : tous les items vérifiés ; item « cache OCSP/CRL » couvert par les tests de task-069 (correction de diagnostic — le cache existe depuis task-069, rien à construire) ; item « contre-épreuve au banc » = **bloquant pour le MERGE, non fait** (banc non monté) — consigné dans la PR.
