@@ -236,3 +236,12 @@ task-234.
 **Et un défaut `develop` réparé au passage** : `c565250` (correction du décalage
 d'arguments) avait cassé ses propres tests SMTP — le semis compensait l'ancien bug, la CI ne
 joue pas ces tests, personne ne l'a vu. Semis aligné.
+
+
+## Simplify log
+
+Une factorisation réelle : la copie champ à champ de l identité de requête était récitée dans
+les deux fixtures (neuf champs ×2) — dérive garantie au premier ajout. Factorisée dans
+`RequestScopeIdentity` (Harness), avec la justification écrite de pourquoi ce n est PAS
+`CopyIdentityTo` (la méthode que les preuves ROUGE cassent) et de qui protège l original (le
+garde-fou par réflexion de task-234). Comportement inchangé : integration 369/369.
