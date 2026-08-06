@@ -291,3 +291,22 @@ jamais) plutôt qu'en primauté bidirectionnelle — justifié par la classifica
 transitoirement fausse (task-233), prouvé par trois quadrants + preuve ROUGE de la jambe type.
 
 **Correction au diagnostic de la US** : `Absences` n'était pas une victime réelle.
+
+
+## Merged
+
+Mergée le **2026-08-06** par l'humain (HAG, règle 10), sur attestation `--i-tested` — donc
+Manual Test Plan sur boîte MSSanté réelle exécuté par l'humain (dossier `Consentements`,
+non-régression `Envoyés`/`Corbeille`/`Brouillons`, doublons).
+
+- `api-mail` : PR #165 **squash-mergée** → `f23eff6` sur `develop`. Ref remote supprimée,
+  **branche locale conservée**. **CI `develop` verte.**
+- `dtos-mss` : branche auto-incluse **vide (0 commit vérifié)**, aucune PR. Supprimée
+  localement et sur le remote — **quatrième occurrence** du défaut de cycle (rien ne nettoie
+  une branche auto-incluse restée sans commit).
+
+### Effet immédiat en production, sans réanalyse
+
+La migration `20260806120000` recalcule la colonne pour **toutes les lignes** au premier
+démarrage : les documents déjà rangés dans un `Consentements` (ou `Présentations`,
+`Renvoyés`…) redeviennent visibles dans le dossier patient **dès la migration**.
