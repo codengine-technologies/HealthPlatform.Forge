@@ -233,3 +233,18 @@ Ouverte le 2026-08-05 à la demande de l'humain, après que la garde
 soit passée au rouge en fusionnant `develop`. Le correctif avait été écrit dans task-233
 faute de pouvoir livrer un test rouge ; il est extrait ici pour être revu et mergé pour
 lui-même, sans attendre la contre-épreuve au banc qui bloque task-233.
+
+
+## Branches
+
+- `api-mail` (pushed) : `chore/task-236-outbox-preuve-cache-chaud` —
+  https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/chore/task-236-outbox-preuve-cache-chaud
+- `dtos-mss` (pushed) : même nom — **auto-incluse**. Aucun changement de contrat attendu :
+  si elle reste vide, aucune PR, suppression manuelle au merge (5e occurrence attendue du
+  défaut de cycle).
+
+Préfixe `chore/` : le correctif de production est **déjà sur `develop`** (arrivé avec la
+PR #162 de task-233) — ce qui reste est le harnais de preuve, le recensement, et
+l'arbitrage sur le getter.
+
+Pré-flight vert sur les six repos mesurables. Dépendances : aucune.
