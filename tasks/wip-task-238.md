@@ -247,3 +247,38 @@ démarrage idempotent centralisés dans la session, décision d'âge en un seul 
 Candidat non retenu : deux helpers d'attente-par-scrutation privés quasi identiques dans deux
 classes de test (`EventuallyAsync` / `WaitUntilAsync`) — utilitaire sans risque de dérive
 sémantique, à mutualiser opportunément lors d'un prochain passage dans ces fichiers.
+
+
+## Sonar log
+
+Scan direct sur la branche `fix/task-238-smtp-keepalive-sonde-ocsp` (scanner local, EXECUTION SUCCESS).
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline (task-237) | Final (task-238) |
+|---|---|---|
+| Quality Gate (new code) | **ERROR** | **ERROR** |
+| `new_violations` | 35 | **28** |
+| `new_bugs` | 0 | 1 (`report.py` S1244 — task-174, hérité) |
+| `new_coverage` | 0.0 % (aucun rapport importé) | **86.9 % — OK** ✅ |
+| `new_security_hotspots_reviewed` | 0.0 % | 71.4 % (2 restants) |
+| `new_duplicated_lines_density` | — | 0.08 % — OK |
+
+### Attribution
+
+- **Zéro** des 28 violations dans un fichier touché par task-238 (`MailClientSession`,
+  `SmtpConnectionFactory`, `SmtpSessionSlot`, `MailSessionTimeouts`, `MailServersOptions`,
+  `MailServerDiscovery`, tests) — la passe n'a rien à corriger sur le code de la task.
+- 24/28 dans l'outillage de banc `tests/loadtest-k6/` (tasks 174/195) : `report.py` (15,
+  dont le new bug S1244 et 8 S3776), `journey.js` + `journey-model.js` (9). Les 2 hotspots
+  non révisés = `Math.random()` de `journey.js` — **9ᵉ signalement**.
+- 2 S103 hérités hors task : `BaseRepository.cs`, `IIheXdmProcessingService.cs`.
+
+### Fait notable
+
+**Le mur `new_coverage = 0` est tombé** : un rapport de couverture est désormais importé et
+la condition passe (86.9 % ≥ 80). Les deux causes restantes du QG ERROR sont entièrement
+héritées (hotspots jamais révisés + violations d'outillage k6).
+
+**Décision** : acceptation best-effort, aucune itération de fix — rien à corriger dans le
+périmètre de la task, et les findings restants appartiennent aux tasks d'outillage.
