@@ -2,7 +2,7 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.29
+> **Version** : 1.30
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
 > **Dernière mise à jour** : 2026-08-05
@@ -733,6 +733,22 @@ C'est le même genre d'angle mort que les semaines précédentes ont révélé �
 montage de test était plus permissif que la production, il validait donc du code qui ne
 marchait pas. La moitié du chantier reste à faire — les tâches de fond ne sont toujours pas
 réellement déclenchées pendant les tests. *(task-235, suite dans task-237)*
+
+### La pièce qui permettait au piège de se reformer a été retirée (6 août 2026)
+
+Les journées précédentes avaient corrigé un défaut grave — l'écriture de sécurité qui
+garantit qu'un geste du praticien ne se perd pas était hors service dans l'état normal de
+l'application — et posé le filet qui fait échouer un test dès qu'une erreur est journalisée.
+
+Cette livraison ferme la boucle. D'abord, le scénario exact du défaut est désormais un test
+permanent : les composants y sont assemblés **comme en production**, et non plus comme les
+tests avaient l'habitude de le faire — c'est cette différence d'assemblage qui avait rendu le
+défaut invisible pour 3 467 tests. Ensuite, la pièce de code qui rendait ce piège possible —
+un accesseur qui fonctionnait dans les tests et plantait en production — a été **supprimée**,
+sur décision humaine : plus personne ne peut l'appeler, c'est le compilateur qui refuse.
+
+Au passage, les scripts de mise à niveau de la base de données, qui n'étaient joués par aucun
+test, tournent maintenant pour de vrai dans l'un d'eux. *(task-236)*
 
 ## État de couverture (2026-08-05)
 
