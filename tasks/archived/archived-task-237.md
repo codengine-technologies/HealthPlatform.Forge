@@ -288,3 +288,31 @@ cache résilient = substitut à miss permanent — le chemin cache-hit de task-2
 atteignable ; fast-path de provisionnement keyé sans le serveur — collision multi-conteneurs),
 et un défaut `develop` réparé (`c565250` avait cassé ses propres tests SMTP, invisibles de la
 CI).
+
+
+## Merged
+
+Mergée le **2026-08-06** par l'humain, **directement sur GitHub** (HAG, règle 10) — squash
+`43ed9c5`. Contexte : GitHub Actions ne consommait plus aucun événement du repo depuis
+13:56 UTC (aucun run pour les pushes de la branche, l'ouverture, la synchronisation ni le
+close/reopen de la PR) ; la porte CI de `/merge` étant insatisfiable côté plateforme, la
+décision de merger sans verdict CI a été prise par l'humain, en connaissance de cause. Le
+job CI de ce repo ne fait que compiler/publier ; la validation locale (369/369 + toutes les
+suites) dépassait déjà sa couverture.
+
+- `api-mail` : ref remote supprimée, **branche locale conservée**. ⚠️ **Le run `push develop`
+  post-merge n'a pas pu être vérifié** (règle 5) tant qu'Actions est en panne — à contrôler
+  au retour de la plateforme.
+- `dtos-mss` : branche auto-incluse **vide (0 commit vérifié)**, supprimée des deux côtés —
+  **sixième occurrence** du défaut de cycle.
+
+### Ce qui est désormais sur `develop`
+
+La file de tâches de fond câblée et déterministe, le harnais production-fidèle (scopes de
+fond vides, remplissage des seuls scopes de requête), l'assertion qui aurait attrapé
+task-234 (et qui **nomme les deux bases** en cas de récidive), les 8 drains
+d'`EmailManagement`, la déclaration explicite des serveurs mail des fixtures (qui répare
+**tous** les tests Gmail, cassés depuis le matin), le RPPS distinct par fixture, et le semis
+SMTP aligné sur `c565250`. Le chantier harnais ouvert par task-234 est **entièrement fermé** :
+234 (correctif) → 235 (filet d'erreurs) → 236 (cache chaud + getter supprimé) → 237 (scope de
+fond réel).
