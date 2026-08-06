@@ -330,3 +330,12 @@ est conservée comme ceinture. Justification complète dans le commit et dans le
 laissé à l'emplacement de la propriété.
 
 Le build 0 erreur est la meilleure preuve du chiffrage : rien ne consommait la propriété.
+
+
+## Simplify log
+
+**Skip propre — rien à simplifier.** Le diff fait 184 lignes sur 2 fichiers : la suppression
+de la propriété (nette) et une classe de test déjà structurée autour de trois helpers partagés
+(`BuildProductionShapedContext`, `BuildWarmIdentityCache`, `WithProvisioningEnabledAsync`).
+La triple construction du dépôt dans les corps de test est de l'idiome xUnit lisible, pas une
+règle dupliquée. Poursuivre aurait été du churn cosmétique sur du code écrit dans l'heure.
