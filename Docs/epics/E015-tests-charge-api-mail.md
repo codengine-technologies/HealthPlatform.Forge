@@ -2,7 +2,7 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.31
+> **Version** : 1.32
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
 > **Dernière mise à jour** : 2026-08-05
@@ -733,6 +733,25 @@ C'est le même genre d'angle mort que les semaines précédentes ont révélé �
 montage de test était plus permissif que la production, il validait donc du code qui ne
 marchait pas. La moitié du chantier reste à faire — les tâches de fond ne sont toujours pas
 réellement déclenchées pendant les tests. *(task-235, suite dans task-237)*
+
+### L'envoi ne repaie plus le prix d'une connexion neuve à chaque message (7 août 2026)
+
+La certification du 6 août l'avait montré : l'envoi était la seule étape hors grille
+(1,23 s au lieu de 1 s), parce que la connexion sécurisée gardée pour le praticien
+mourait d'inactivité entre deux envois — et chaque message repayait alors l'établissement
+complet (connexion, chiffrement, vérification du certificat, authentification).
+
+C'est corrigé à trois niveaux : la connexion gardée est désormais **entretenue** (un
+battement discret la maintient en vie tant que la session du praticien existe, sans
+jamais retarder un envoi en cours) ; le **contrôle de fraîcheur** qui précédait chaque
+envoi disparaît du cas courant (une connexion entretenue est réutilisée directement) ;
+et une connexion trouvée morte est écartée **avant** qu'un envoi ne la rencontre.
+Rien ne change pour le cabinet : même bouton, même réponse, mêmes garanties de
+sécurité (la vérification des certificats reste entière — elle était d'ailleurs déjà
+optimisée depuis février, contrairement à ce que le diagnostic initial supposait).
+
+La preuve chiffrée sur banc de charge (retour sous la barre de 1 seconde) reste à
+tirer avant la mise en production — le banc n'était pas monté ce jour-là. *(task-238)*
 
 ### Les tâches d'arrière-plan sont enfin éprouvées comme elles s'exécutent réellement (6 août 2026, soir)
 
