@@ -339,3 +339,31 @@ de la propriété (nette) et une classe de test déjà structurée autour de tro
 (`BuildProductionShapedContext`, `BuildWarmIdentityCache`, `WithProvisioningEnabledAsync`).
 La triple construction du dépôt dans les corps de test est de l'idiome xUnit lisible, pas une
 règle dupliquée. Poursuivre aurait été du churn cosmétique sur du code écrit dans l'heure.
+
+
+## Sonar log
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline (task-182, 2026-08-06) | Final (task-236, 2026-08-06) |
+|---|---|---|
+| Quality Gate (new code) | **ERROR** | **ERROR** |
+| `new_violations` | 35 | 36 → 35 (le `S103` de `BaseRepository`, corrigé après relevé) |
+| `new_coverage` | 0.0 % (seuil 80) | 0.0 % (seuil 80) |
+| `new_security_hotspots_reviewed` | 0.0 % | 0.0 % |
+
+### La mesure qui attribue
+
+**Une** violation dans un fichier touché par cette task : `S103` sur le constructeur de
+`BaseRepository` (155 caractères) — **héritée de task-231 et signalée trois fois** dans les
+Sonar logs précédents. Corrigée (`7246df0`) : la régler coûtait moins que la re-signaler une
+quatrième fois. `WarmCacheContextResolutionTests` : **zéro** finding.
+
+Le reste : la dette héritée cartographiée (outillage k6 26, `AppHost.cs` 3,
+`MailServerDiscovery.cs` 2, quatre fichiers à 1). QG rouge sur `new_coverage` = 0 (aucun
+rapport importé — seuil inatteignable par construction) et hotspots `Math.random()` de
+`journey.js` jamais révisés — **septième signalement**.
+
+### Itérations
+
+**Une seule** : plus aucun finding sur les fichiers de la task après correction.
