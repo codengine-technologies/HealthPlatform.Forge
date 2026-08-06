@@ -159,3 +159,19 @@ elle a eu lieu, sinon `journey-certif-n200-022915`.
 - **AIPD / impact RGPD** : inchangé — aucun traitement nouveau, aucune donnée
   nouvelle (le cache OCSP ne porte que des identifiants de certificats
   serveur)
+
+
+## Branches
+
+- `api-mail` (pushed) : `fix/task-238-smtp-keepalive-sonde-ocsp` —
+  https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-238-smtp-keepalive-sonde-ocsp
+- `dtos-mss` (pushed) : même nom — **auto-incluse**, aucun changement de contrat attendu
+  (contrainte absolue de la US) ; si vide, aucune PR, suppression manuelle au merge
+  (7e occurrence attendue du défaut de cycle).
+
+Pré-flight vert sur les six repos mesurables. Dépendances : task-231 mergée. Coordination
+task-216 : sans objet (archivage synchrone, hors périmètre ici, task-216 encore en todo).
+
+⚠️ Contexte plateforme au moment du /start : GitHub Actions ne consomme plus les événements
+du repo depuis 13:56Z — la CI de la PR pourrait ne pas se déclencher (précédent : PR #167,
+mergée par l'humain sans verdict CI, en connaissance de cause).
