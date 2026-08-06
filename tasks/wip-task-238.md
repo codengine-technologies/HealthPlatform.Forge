@@ -238,3 +238,12 @@ application **2037/2037** · api 650/650 · integration **369/369** (16 ignorés
 Le DOD l'exige : tir `journey` n200 K=1 iso-conditions — `send` p50 ≤ 1 000 ms (réf. 1 229),
 part du temps serveur en baisse (réf. 17,9 %), `IOException` de sonde en forte baisse
 (réf. 1 345), ~1 connexion par session au rythme réel. Le banc n'est pas monté dans ce cycle.
+
+
+## Simplify log
+
+**Skip propre.** Le diff (401 lignes, 9 fichiers) est déjà factorisé : signal de santé et
+démarrage idempotent centralisés dans la session, décision d'âge en un seul point du factory.
+Candidat non retenu : deux helpers d'attente-par-scrutation privés quasi identiques dans deux
+classes de test (`EventuallyAsync` / `WaitUntilAsync`) — utilitaire sans risque de dérive
+sémantique, à mutualiser opportunément lors d'un prochain passage dans ces fichiers.
