@@ -2,7 +2,7 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.30
+> **Version** : 1.31
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
 > **Dernière mise à jour** : 2026-08-05
@@ -733,6 +733,25 @@ C'est le même genre d'angle mort que les semaines précédentes ont révélé �
 montage de test était plus permissif que la production, il validait donc du code qui ne
 marchait pas. La moitié du chantier reste à faire — les tâches de fond ne sont toujours pas
 réellement déclenchées pendant les tests. *(task-235, suite dans task-237)*
+
+### Les tâches d'arrière-plan sont enfin éprouvées comme elles s'exécutent réellement (6 août 2026, soir)
+
+Une partie du travail de la messagerie se fait **après** la réponse au praticien : propager
+un « lu » vers la boîte, réconcilier les dossiers, analyser les documents. Jusqu'ici, les
+tests d'intégration n'exécutaient jamais ce travail comme la production le fait — ils
+l'aplatissaient dans le traitement de la requête. Les deux défauts sérieux des jours
+précédents vivaient précisément là.
+
+C'est corrigé : les tests déclenchent désormais ce travail différé **exactement comme en
+production**, au moment qu'ils choisissent, et l'assertion qui aurait attrapé le défaut «
+mauvaise base de données » existe — en cas de récidive, l'échec **nomme les deux bases**.
+
+La mise au niveau a fait tomber trois illusions du banc de test (une configuration qui ne
+venait d'aucune source déclarée — tous les tests de connexion réelle étaient d'ailleurs
+cassés depuis le matin sans que rien ne le signale —, un cache factice qui rendait un chemin
+entier intestable, une collision de provisionnement propre aux tests), et réparé au passage
+un correctif de la veille qui avait cassé ses propres tests sans que la chaîne d'intégration
+continue ne le voie. *(task-237)*
 
 ### La pièce qui permettait au piège de se reformer a été retirée (6 août 2026)
 
