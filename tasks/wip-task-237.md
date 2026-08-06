@@ -245,3 +245,25 @@ les deux fixtures (neuf champs ×2) — dérive garantie au premier ajout. Facto
 `RequestScopeIdentity` (Harness), avec la justification écrite de pourquoi ce n est PAS
 `CopyIdentityTo` (la méthode que les preuves ROUGE cassent) et de qui protège l original (le
 garde-fou par réflexion de task-234). Comportement inchangé : integration 369/369.
+
+
+## Sonar log
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline (task-236) | Final (task-237) |
+|---|---|---|
+| Quality Gate (new code) | **ERROR** | **ERROR** |
+| `new_violations` | 35 | 35 |
+| `new_coverage` | 0.0 % (seuil 80) | 0.0 % (seuil 80) |
+| `new_security_hotspots_reviewed` | 0.0 % | 0.0 % |
+
+**Zéro** des 35 violations dans un fichier de cette task. Cartographie héritée inchangée
+(outillage k6 26, `AppHost.cs` 3, `MailServerDiscovery.cs` 2 — arrivées avec `c565250`,
+quatre fichiers à 1). QG rouge sur les causes structurelles : `new_coverage` = 0 (aucun
+rapport importé) et hotspots `Math.random()` de `journey.js` jamais révisés — **huitième
+signalement**.
+
+### Itérations
+
+**Une seule** : rien à corriger sur les fichiers de la task.
