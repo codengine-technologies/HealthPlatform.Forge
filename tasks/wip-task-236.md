@@ -318,3 +318,15 @@ D'où le remède 4, qui est un arbitrage humain.
 Build tests d'intégration 0 erreur (via `--artifacts-path`, l'AppHost verrouillant `src/Api/bin`
 — même contournement documenté que task-233) ; `WarmCacheContextResolutionTests` **4/4** ;
 preuve ROUGE 3/4 puis restauration 4/4. Suites complètes au moment de `/review`.
+
+
+### Remède 4 — décision humaine rendue : SUPPRIMER (2026-08-06)
+
+Question posée avec le chiffrage (zéro usage restant du getter/setter, dans `src/` comme dans
+les tests) ; réponse humaine : **supprimer**. Appliqué : la propriété publique
+`BaseRepository.DataContext` n'existe plus — **le compilateur est désormais la garde**,
+impossible à désactiver, là où `DataContextGetterScanTests` restait un test. La garde de scan
+est conservée comme ceinture. Justification complète dans le commit et dans le commentaire
+laissé à l'emplacement de la propriété.
+
+Le build 0 erreur est la meilleure preuve du chiffrage : rien ne consommait la propriété.
