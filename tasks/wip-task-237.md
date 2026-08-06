@@ -150,3 +150,59 @@ Pré-flight vert sur les six repos mesurables. Dépendance task-235 : **archivé
 satisfaite. Acquis disponibles depuis sa rédaction : task-236 a aussi supprimé le getter
 `DataContext` (compilateur = garde) et fait tourner les migrations FluentMigrator dans un
 test.
+
+
+## Develop log
+
+Commit `d044266` sur `chore/task-237-cabler-file-taches-de-fond`.
+
+### Livré
+
+- **`DeterministicBackgroundTaskQueue`** (Harness) : rien ne s'exécute avant `DrainAsync()` —
+  aucun hôte, aucun `Task.Delay`, aucune scrutation ; chaque élément dans un **scope DI
+  neuf** (fidèle à l'hôte de production) ; les exceptions **propagent** au test (prouvé).
+- **Câblée dans les deux fixtures**, avec `UserContextInfo` **frais par scope** comme en
+  production — l'ancien enregistrement rendait la même instance à tous les scopes, donc la
+  recopie d'identité des work items copiait l'instance **sur elle-même** : un no-op qui ne
+  pouvait jamais diverger. Les 253 tests d'intégration non-Gmail passent inchangés.
+- **`BackgroundQueueDrainTests`** : exception propagée ✓ ; `flag-propagate` par la file
+  (label présent = « No background queue wired » impossible ici) + effet **dans la base de
+  la requête** avec diagnostic qui **nomme l'écart** en cas d'échec — l'assertion qui aurait
+  attrapé task-234 ; `folder-reconcile` enfilé par un listing en cache-hit et exécuté sans
+  erreur dans un scope de fond.
+- **8 drains** insérés dans `EmailManagementUseCaseTests` : la propagation étant désormais
+  différée comme en production, la frontière asynchrone est **visible** dans les tests —
+  l'échec-de-tests-verts que la US annonçait, résolu par le drain explicite et non par une
+  exemption.
+- `ProvisioningEnvironment` partagé dans Harness (réutilisé par `WarmCacheContextResolutionTests`).
+
+### Le troisième chemin (`enrich:{folder}`) — écart de périmètre, dit franchement
+
+L'enqueue de l'enrichissement asynchrone vit dans **`MailController`** (couche API) : les
+fixtures d'intégration n'ont pas de pipeline HTTP, il n'est pas constructible ici. Son work
+item suit **le même motif** (`CopyIdentityTo` + services du scope) que les deux chemins
+couverts. Consigné comme reste — le couvrir exigerait un montage `WebApplicationFactory`,
+décision d'outillage distincte.
+
+### Deux découvertes d'environnement
+
+1. **`ASPNETCORE_ENVIRONMENT=Development` est posé au niveau utilisateur Windows du poste**
+   — tout `dotnet test` provisionne (CREATE DATABASE + MigrateUp). C'est ce qui rendait les
+   runs de task-235/236 verts sans wrapper explicite. Le wrapper try/finally reste (portable
+   CI, motif PgBouncer).
+2. **Les tests Gmail ne vivent que sur le bin normal** : sous `--artifacts-path`, le `.env`
+   ne se résout pas (remontée depuis `BaseDirectory`) et la résolution du domaine échoue.
+   Diagnostic établi par expérience discriminante (stash de mes changements → même échec :
+   mes modifications **innocentées**). Mes deux tests Gmail portent la garde maison
+   `Skip.IfNot(IsConfigured)`.
+
+### ⏳ Validation — ce qui est fait, ce qui attend
+
+Sous `--artifacts-path` : domain 136/136 · infrastructure 419/419 · application 2029/2030
+(flaky PDF documenté) · api 645/650 (les 5 scans de sources — artefact documenté) ·
+integration **253/253 exécutés** (2 échecs SMTP `.env` — artefact documenté ; 130 ignorés
+= 128 + mes 2 skips).
+
+**En attente du bin normal (AppHost verrouille `src/Api/bin`)** : les tests Gmail — mes 2
+tests de drain et les 10 `EmailManagement` avec leurs 8 drains. C'est la validation
+décisive du câblage ; la chaîne reprend dès le verrou levé.
