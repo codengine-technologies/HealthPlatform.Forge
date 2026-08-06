@@ -248,3 +248,73 @@ PR #162 de task-233) — ce qui reste est le harnais de preuve, le recensement, 
 l'arbitrage sur le getter.
 
 Pré-flight vert sur les six repos mesurables. Dépendances : aucune.
+
+
+## Develop log
+
+### Remède 2 — le test qui manquait, sur le constructeur de production
+
+`WarmCacheContextResolutionTests` (intégration, vrai PostgreSQL) : quatre tests qui
+construisent les dépôts par le **constructeur de production**
+(`UserContextInfo, IResilientCacheService, ILogger`) — celui où rien n'est injecté — avec un
+**cache d'identifiant chaud** (le substitut répond du premier coup, donc
+`GetCurrentUserIdAsync` sort tôt sans avoir résolu le contexte). C'est la combinaison exacte
+qui déclenchait le défaut, et elle n'existait **nulle part** dans le harnais : tous les tests
+existants injectent le contexte, où le getter fonctionne toujours.
+
+Couvert : les **trois méthodes** de `PendingActionRepository` (réclamation, lecture de la
+file, libération) + `MailRepository.GetMailAuditSnapshotAsync`. Le montage emprunte en outre
+le **chemin de production intégral** : `CreateDbContextAsync` → provisionnement réel
+(CREATE DATABASE + FluentMigrator `MigrateUp`) dans le conteneur — donc les migrations
+FluentMigrator **tournent enfin dans un test**, ce que `EnsureCreated` ne fait jamais (angle
+mort consigné par task-233). Identité **fictive** unique pour la classe (RPPS
+`99700000236`), la base dérivée n'est provisionnée qu'une fois.
+
+### Preuve ROUGE — exigence centrale du DOD, faite
+
+Réintroduction du getter (`var db = DataContext;` à la place de la résolution — l'état exact
+d'avant le correctif) → **3 échecs sur 4**, chacun avec le message qui nomme la cause :
+
+```
+System.InvalidOperationException : DataContext non résolu — utiliser GetDataContextAsync()
+sur le chemin asynchrone (task-231).
+   at BaseRepository.get_DataContext() … line 186
+```
+
+Correctif restauré → 4/4.
+
+### ⚠️ Portée exacte, sans survente
+
+La preuve ROUGE est **nette pour les trois méthodes de `PendingActionRepository`**. Pour
+`GetMailAuditSnapshotAsync`, elle est **impossible en isolation** : `CurrentGenerationAsync`,
+appelé en premier, résout déjà le contexte — le correctif de task-233 y était **défensif**
+(rien ne garantit cet ordre d'appel), pas la réparation d'un plantage vivant. C'est écrit
+dans l'en-tête de la classe de test.
+
+### Remède 3 — le recensement demandé, complet
+
+**Méthodes de `BaseRepository` pouvant retourner sans résoudre le contexte :**
+
+| Méthode / chemin | Sortie sans résolution | Suivi d'un accès contexte ? |
+|---|---|---|
+| `GetCurrentUserIdAsync` | **oui** — retour immédiat sur cache `user:id:{email}` chaud (task-229) | plus maintenant — les 8 emplois du getter ont été corrigés (task-236/`357c310`), tous les sites résolvent explicitement |
+| Constructeur `(UserContextInfo, …)` | par construction — `_dataContext` reste nul | c'est le point de départ du piège |
+| `CreateDbContextAsync` (public) | crée **sans mémoïser** dans `_dataContext` | **zéro appelant en production** (seul `PgBouncerTransactionPoolingTests` l'appelle) — piège si un appelant production apparaissait puis lisait le getter |
+| `Dispose()` | remet `_dataContext = null` | le getter **se réarme** après dispose — un dépôt réutilisé après dispose relèverait |
+
+**Sorties anticipées sur cache dans les dépôts dérivés** (même famille que
+`GetCurrentUserIdAsync`) : `ContactRepository` ×4, `PatientRepository` ×1 (cache patient),
+`UserSettingsRepository` ×1. Toutes **sûres aujourd'hui** : leur chemin de miss résout via
+`GetDataContextAsync`, et aucun site de `src/` ne lit plus le getter —
+`DataContextGetterScanTests` (task-233) le garantit par lecture des sources à chaque build de
+la suite api.
+
+**Conclusion du recensement** : le piège structurel restant n'est pas un site existant, c'est
+le **getter lui-même** — toujours présent, toujours compilable depuis une méthode d'instance.
+D'où le remède 4, qui est un arbitrage humain.
+
+### Validation
+
+Build tests d'intégration 0 erreur (via `--artifacts-path`, l'AppHost verrouillant `src/Api/bin`
+— même contournement documenté que task-233) ; `WarmCacheContextResolutionTests` **4/4** ;
+preuve ROUGE 3/4 puis restauration 4/4. Suites complètes au moment de `/review`.
