@@ -206,3 +206,33 @@ integration **253/253 exécutés** (2 échecs SMTP `.env` — artefact document�
 **En attente du bin normal (AppHost verrouille `src/Api/bin`)** : les tests Gmail — mes 2
 tests de drain et les 10 `EmailManagement` avec leurs 8 drains. C'est la validation
 décisive du câblage ; la chaîne reprend dès le verrou levé.
+
+
+### Complément au develop log — la validation Gmail (2026-08-06 soir, AppHost arrêté sur autorisation humaine)
+
+**Tout est vert sur bin normal** : integration **369/369** (16 ignorés — la ligne de base
+normale), domain 136, infrastructure 419, application 2030, api 650.
+
+**Preuve ROUGE du DOD faite, à la troisième tentative — et les deux échecs valent la
+livraison** : (1) la fixture semait ses scopes avec `CopyIdentityTo`, la méthode même que la
+preuve casse — les deux côtés cassaient symétriquement, écart inobservable ; (2) la fixture
+pré-remplissait **aussi** les scopes de fond — un champ sauté gardait sa valeur semée. Forme
+finale : enregistrement production-exact (`AddScoped<UserContextInfo>()`), remplissage des
+seuls scopes de **requête** par le harnais (rôle du middleware), scopes de fond **vides**.
+La preuve ROUGE nomme alors les deux bases (`u_99700000042` vs `u_0`) — le symptôme exact de
+task-234.
+
+**Trois mensonges de harnais découverts et traités** (détail au commit `291bc6a`) :
+1. la résolution du domaine mail ne venait d'**aucune source déclarée** — tous les tests
+   Gmail de `develop` étaient cassés depuis le 2026-08-06 (dernier succès Seq :
+   2026-08-05T23:39Z), indépendamment de cette task ; les fixtures déclarent désormais leurs
+   serveurs ;
+2. le **cache résilient des fixtures est un substitut nu** (miss permanent) : le chemin
+   cache-hit de task-229 n'a jamais été atteignable en intégration — consigné, substitut
+   programmé par clé dans le test de réconciliation ;
+3. le **fast-path de provisionnement par pod est keyé par nom de base sans le serveur** —
+   collision entre les deux conteneurs du processus de test ; RPPS distinct par fixture.
+
+**Et un défaut `develop` réparé au passage** : `c565250` (correction du décalage
+d'arguments) avait cassé ses propres tests SMTP — le semis compensait l'ancien bug, la CI ne
+joue pas ces tests, personne ne l'a vu. Semis aligné.
