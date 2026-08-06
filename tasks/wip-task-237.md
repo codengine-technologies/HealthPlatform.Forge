@@ -136,3 +136,17 @@ et 3 (le filet à erreurs journalisées, `MssRpps`, la chaîne serveur) et **n'a
 remède 2. Le découpage a été retenu parce que le filet livré attrape déjà de vrais défauts et
 n'avait pas à attendre : le laisser sur une branche prolongeait l'aveuglement qui a laissé
 passer task-234, task-233 et task-236.
+
+
+## Branches
+
+- `api-mail` (pushed) : `chore/task-237-cabler-file-taches-de-fond` —
+  https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/chore/task-237-cabler-file-taches-de-fond
+- `dtos-mss` (pushed) : même nom — **auto-incluse**, aucun changement de contrat attendu
+  (US harnais de test pur) ; si vide, aucune PR, suppression manuelle au merge (6e occurrence
+  attendue du défaut de cycle).
+
+Pré-flight vert sur les six repos mesurables. Dépendance task-235 : **archivée (mergée)** —
+satisfaite. Acquis disponibles depuis sa rédaction : task-236 a aussi supprimé le getter
+`DataContext` (compilateur = garde) et fait tourner les migrations FluentMigrator dans un
+test.
