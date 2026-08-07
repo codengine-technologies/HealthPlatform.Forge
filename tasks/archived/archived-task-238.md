@@ -302,3 +302,11 @@ périmètre de la task, et les findings restants appartiennent aux tasks d'outil
 
 **Validation finale /review** : build 0 erreur ; suites 136 / 419 / 2037 / 650 / 369 (16 ignorés) — tout vert sur bin normal.
 **DOD** : tous les items vérifiés ; item « cache OCSP/CRL » couvert par les tests de task-069 (correction de diagnostic — le cache existe depuis task-069, rien à construire) ; item « contre-épreuve au banc » = **bloquant pour le MERGE, non fait** (banc non monté) — consigné dans la PR.
+
+## Merged
+
+- **Date** : 2026-08-07, `/merge task-238 --i-tested` (attestation humaine HAG — la contre-épreuve au banc exigée par le DOD relève de cette attestation)
+- `api-mail` : squash `801c48c95821549dadb00eadca040e5e9e658fe2` (PR #168 fermée), branche remote `fix/task-238-smtp-keepalive-sonde-ocsp` supprimée, locale conservée
+- `dtos-mss` : branche auto-incluse vide (0 commit, aucune PR) — remote supprimée, repo resynchronisé sur `develop` (7ᵉ occurrence du défaut de cycle)
+- **CI develop api-mail** : ✅ success — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/31163699714 (le run PR #168 était bien apparu et VERT avant merge — réserve Actions levée)
+- **Staging** : aucune branche `forge/staging-*` (run mono-task) — rien à nettoyer
