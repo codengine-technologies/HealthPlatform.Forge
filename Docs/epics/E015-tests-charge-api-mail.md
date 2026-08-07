@@ -753,6 +753,33 @@ optimisée depuis février, contrairement à ce que le diagnostic initial suppos
 La preuve chiffrée sur banc de charge (retour sous la barre de 1 seconde) reste à
 tirer avant la mise en production — le banc n'était pas monté ce jour-là. *(task-238)*
 
+### Consulter sa boîte pendant qu'un traitement tourne ne fait plus la queue message par message (7 août 2026)
+
+La certification du 6 août avait nommé **le** plafond du palier 200 médecins : quand la
+plateforme analyse les comptes-rendus reçus d'une boîte, elle réserve l'accès au serveur
+de messagerie par **paquets de quinze messages** — plus de sept secondes d'affilée — et
+tous les gestes du médecin font la queue derrière **son propre traitement**. Ouvrir sa
+boîte de réception prenait plus de quatre secondes à 200 médecins (elle est immédiate à
+50 et à 100 : c'est bien l'embouteillage qui coûte, pas le travail), et des lectures
+servies en quelques centièmes pouvaient rester coincées dix secondes.
+
+Le traitement rend désormais l'accès **entre chaque message** au lieu de le garder pour
+le paquet entier : chaque intervalle laisse passer un geste du médecin — ouvrir la boîte,
+lire un message, poser un « lu », consulter une fiche patient. Rien de ce que le
+traitement garantissait n'est affaibli : aucun aller-retour ni lecture supplémentaires
+dans le cas courant, l'analyse produit les mêmes documents (un geste qui s'intercale ne
+fait ni perdre ni dupliquer un compte-rendu — prouvé par un test qui rejoue précisément
+ce croisement), et une coupure en plein paquet ne jette plus les messages déjà lus.
+
+Au passage, le diagnostic initial est corrigé : l'analyse des documents et les écritures
+en base tournaient **déjà** hors de l'accès réservé depuis février — ce qui coûtait était
+la largeur de la fenêtre de lecture, pas le traitement lui-même.
+
+La preuve chiffrée reste à tirer avant la mise en production : la re-certification à
+200 médecins doit montrer la détention sous 2 secondes (référence : 7,4), la boîte de
+réception sous la seconde (référence : 4,1), et re-mesurer la fiche patient — c'est ce
+chiffre qui décidera du prochain chantier. *(task-239)*
+
 ### Les tâches d'arrière-plan sont enfin éprouvées comme elles s'exécutent réellement (6 août 2026, soir)
 
 Une partie du travail de la messagerie se fait **après** la réponse au praticien : propager
