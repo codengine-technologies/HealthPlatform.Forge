@@ -180,3 +180,67 @@ sont son filet propre.
 ## Visual verify log
 
 `/verify-visual` — **skip propre** : aucun écran `client-mobile` touché.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/173
+  — label `awaiting-human-merge`, 6 fichiers (tous dans `tests/loadtest-k6/`)
+- `dtos-mss` : **aucune PR** — branche auto-incluse restée sans commit (US de
+  harnais, aucun changement de contrat).
+
+## Recensement des étapes multi-appels (item de DOD)
+
+| Étape | Appels consécutifs | Traitée ? |
+|---|---|---|
+| `dashboard` | **4** — `folder`, `today`, `folders`, `coverage` | **oui** |
+| `read_list` | **2** — `folder`, `emails` | **oui** |
+| chauffe (`warmup`) | 2 | **non, délibérément** — artefact de harnais, aucune ligne de grille SLO, non ventilé par palier |
+| `patient_search` | 1 à 3 | **non** — répétitions du même appel (rafale de frappe). ⚠️ Nuance consignée : l'étape mêle aussi deux **critères** sur la même route (INS vs nom), profils de coût plausiblement différents — hors du défaut visé, mais à savoir |
+| `patient_docs` | N en rafale bridée | **non** — même route répétée |
+| étape 10 | 2 | **déjà ventilée** — deux `op` distincts dans la même ligne de grille |
+
+## Code Review Summary
+
+Verdict initial **CHANGES REQUESTED**, puis **APPROVED après correction sur la
+branche** (`7ca0763`).
+
+**Le défaut bloquant — la fixture certifiait une arithmétique impossible.**
+`http_reqs` s'incrémente une fois par requête HTTP, donc le compte de l'étape
+vaut **2×** celui de chacun de ses appels (**4×** pour `dashboard`). La fixture
+posait l'égalité, et un test l'affirmait comme « la propriété du harnais que la
+fixture reproduit » — l'inverse de cette propriété. Ce n'était pas cosmétique :
+sur cette fixture, **le rapport se contredisait lui-même** (« Axes
+d'amélioration » chiffrait `read_list` à 80 s, la ventilation à 184 s) sans
+qu'aucun test ne le voie, et le prochain qui aurait écrit le contrôle évident
+(« la somme des appels reconstitue le coût de l'étape ») aurait conclu à un bug
+inexistant. La fixture redevient un **tir possible**, avec trois invariants de
+mélange **vérifiés** au lieu d'être commentés.
+
+**La garantie centrale a été éprouvée PAR MUTATION, pas sur parole.** Toutes les
+lectures du rapport passent par un accès par clé exacte — ajouter des clés ne
+peut donc rien changer *aujourd'hui*, et les tests de comparabilité pourraient
+passer trivialement. La revue a injecté une régression plausible (« prendre le
+pire appel quand l'étape est ventilée ») dans une copie hors dépôt : **les
+quatre tests de comparabilité tombent**, y compris la comparaison caractère pour
+caractère des tables genou et verdict SLO. Re-vérifié après correction.
+
+**Quatre suggestions traitées** : l'avertissement d'incomplétude ne couvrait
+qu'**un** mode de rupture (appel manquant) — il couvre désormais l'étape entière
+disparue, sinon la section se rendait « complète et saine » avec la moitié des
+données ; la phrase d'attribution nommait un porteur même à n=3 et réutilise
+maintenant la garde d'échantillons de la grille SLO ; « % du temps de l'étape »
+devient « % du **temps ventilé** » ; un commentaire comptait 6 sous-métriques là
+où il y en a 12.
+
+**Limite honnête, non testable hors banc** : ces tests verrouillent le côté
+rapport. Le côté k6 — « un échantillon portant `{op, palier, call}` alimente
+toujours la sous-métrique `{op, palier}` » — repose sur la correspondance par
+sous-ensemble de tags, correcte mais qu'aucun test ne peut prouver ici. La
+contre-épreuve au banc la clôt.
+
+**🚧 CE QUE CE CYCLE NE PROUVE PAS** : la DOD « le rapport nomme lequel des deux
+appels porte le coût, avec son chiffre » est prouvée **sur fixture**, pas encore
+sur mesure réelle — aucun tir n'a été lancé (banc non monté pendant le cycle).
+Le geste manquant est court : un tir `journey` de 100 médecins sur 10 minutes.
+
+Auto-tests du harnais : **209 Python + 57 node**, verts.
