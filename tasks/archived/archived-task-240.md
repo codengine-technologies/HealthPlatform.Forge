@@ -244,3 +244,17 @@ sur mesure réelle — aucun tir n'a été lancé (banc non monté pendant le cy
 Le geste manquant est court : un tir `journey` de 100 médecins sur 10 minutes.
 
 Auto-tests du harnais : **209 Python + 57 node**, verts.
+
+## Merged
+
+- **Date** : 2026-08-08, via `/merge task-240 --i-tested` (attestation humaine HAG)
+- **api-mail** : PR #173 squash-mergée → `3667337` sur `develop` ; branche distante supprimée, branche locale conservée.
+- **dtos-mss** : aucune PR (branche auto-incluse sans commit) — refs locale et distante supprimées.
+- **Staging** : aucune branche `forge/staging-*` — cycle `/start` isolé, hors batch `/forge`.
+- **⚠️ CONTRE-ÉPREUVE AU BANC ENCORE DUE.** La DOD « le rapport nomme lequel des
+  deux appels porte le coût, avec son chiffre » est prouvée **sur fixture**, pas
+  sur mesure réelle — aucun tir n'a été lancé pendant le cycle. Reste aussi à
+  clore la seule limite non testable hors banc : que la sous-métrique
+  `{op, palier}` continue d'être alimentée par les échantillons portant
+  `{op, palier, call}` (correspondance par sous-ensemble de tags). **Un tir
+  `journey` de 100 médecins sur 10 minutes clôt les deux.**
