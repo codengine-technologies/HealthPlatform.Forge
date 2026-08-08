@@ -269,3 +269,15 @@ entièrement héritées (hotspots k6 jamais révisés + violations d'outillage/t
 650 / 370 (16 ignorés) — tout vert sur bin normal.
 **DOD** : tous les items vérifiés ; item « contre-épreuve au banc » = **bloquant pour le
 MERGE, non fait** (banc non monté) — consigné dans la PR.
+
+## Merged
+
+- **Date** : 2026-08-08, `/merge task-239 --i-tested` (attestation humaine HAG — la
+  contre-épreuve au banc exigée par le DOD relève de cette attestation)
+- `api-mail` : squash `0bdeb6b2ef12a65ff9a8e752dc9871973cf63130` (PR #170 fermée), branche
+  remote `fix/task-239-enrich-lock-scope` supprimée, locale conservée
+- `dtos-mss` : branche auto-incluse vide (0 commit, aucune PR) — remote supprimée, repo
+  resynchronisé sur `develop` (8ᵉ occurrence du défaut de cycle)
+- **CI develop api-mail** : ✅ success —
+  https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/31249392125
+- **Staging** : aucune branche `forge/staging-*` (run mono-task) — rien à nettoyer
