@@ -258,3 +258,45 @@ Auto-tests du harnais : **209 Python + 57 node**, verts.
   `{op, palier}` continue d'être alimentée par les échantillons portant
   `{op, palier, call}` (correspondance par sous-ensemble de tags). **Un tir
   `journey` de 100 médecins sur 10 minutes clôt les deux.**
+
+## ✅ Contre-épreuve au banc — 2026-08-08, `ce-240-attribution-155105`
+
+**La DOD est tenue sur mesure réelle**, et plus seulement sur fixture. Tir court
+100 médecins × 10 min sur `develop` `cbde5ce`, 13 204 requêtes, 0,00 % d'erreurs.
+
+**La réponse que la task existait pour produire** — `read_list` (46 % du temps
+serveur à la campagne du 2026-08-08) est portée à **98 % par un seul de ses deux
+appels** :
+
+| Appel | n | p50 | p95 | Temps serveur | Part |
+|---|---|---|---|---|---|
+| `folder` — dossier + liste d'UIDs | 1004 | **7 ms** | 126 ms | 32,1 s | 2 % |
+| `emails` — page d'en-têtes | 1004 | **452 ms** | **6 980 ms** | **1 443,2 s** | **98 %** |
+
+L'ouverture du dossier est **gratuite** ; tout le coût est dans la page
+d'en-têtes. Le premier poste du parcours est désormais **une requête nommée**,
+plus une étape floue. `dashboard` est porté à 57 % par son appel `folder`
+(726 ms p95) — le même geste que l'inbox refait juste avant, ce qui est en soi
+une piste.
+
+⚠️ **La phrase attribue, elle n'explique pas** : la cause du coût de `emails`
+(requête SQL, allers-retours IMAP, volume de données) reste à établir par la
+télémétrie. Cette EPIC a déjà payé une US écrite sur une cause supposée
+(task-222).
+
+**La limite non testable hors banc est levée.** Aucun test ne pouvait prouver
+que la sous-métrique `{op, palier}` reste alimentée par les échantillons portant
+`{op, palier, call}` — le tir le prouve : `read_list` au niveau `op` compte
+**n = 2 034 = 2 × 1 017 passages** (un incrément par requête, exactement la
+propriété que la revue avait fait corriger dans la fixture), et
+`2 034 × 728,0 ms = 1 480,8 s` contre **1 475,3 s** pour la somme des deux
+appels — 0,4 % d'écart, qui est la part du palier `transition` exclue de la
+ventilation par palier. La comparabilité historique de la ligne `read_list` est
+donc intacte.
+
+**Bonus non prévu — task-196 vérifiée en charge sur le même tir** :
+`mssante_embedding_failures_total` = **aucun échec**, `ClientResultException` =
+**0** sur la fenêtre (référence : 1 286 en 20 minutes avant correctif). Les
+documents cliniques entrent dans l'index. `search` mesure 285 ms de p50 /
+928 ms de p95 sur un index **enfin complet** — ce n'est pas une baseline (format
+trop court), mais c'est le premier chiffre `search` non faussé depuis task-174.
