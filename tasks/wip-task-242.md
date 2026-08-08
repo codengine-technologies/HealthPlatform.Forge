@@ -254,3 +254,37 @@ Métriques d'exploitation et requêtes de diagnostic uniquement (`SHOW POOLS`,
 `pg_stat_activity`, compteurs Prometheus). Données du banc 100 % synthétiques.
 Le cloisonnement « une base par praticien » est inchangé — aucun réglage de
 multiplexage n'a été touché.
+
+## Simplify log
+
+- `api-mail` — passe qualité sur le code frais (Python/PowerShell du harnais ; aucun
+  C# touché par cette task). Une seule simplification retenue :
+  `palier_designated_resources` construisait son entrée en deux branches
+  (« premier palier » / « palier suivant ») qui dupliquaient les affectations et
+  auraient divergé au premier champ ajouté → un `setdefault` avec un `share`
+  sentinelle et **un seul** jeu d'affectations. Re-validé : **236 tests verts**.
+- Repos non éligibles ou non touchés : `dtos-mss` (porteur de contrat, exclu par
+  principe — aucun commit sur sa branche), `client-blazor`, `client-angular`,
+  `client-mobile`, `sdk`, `host`, `interop-cda`.
+
+## Sonar log
+
+**Skip propre — zéro fichier C# touché.** Le diff de la task porte exclusivement sur
+le harnais de banc (`report.py`, `observe.ps1`, ses tests) et de la documentation :
+`git diff --name-only origin/develop...HEAD | grep '\.cs$'` renvoie **0**. Le périmètre
+de `/sonar` est la solution .NET `HealthPlatform.Api.Mail.sln` — une analyse aurait
+mesuré du code que cette task n'a pas modifié, et consommé ~20 min de build +
+couverture pour un delta nul. Les KPI Sonar de `develop` restent donc ceux du dernier
+tir d'analyse, inchangés par cette task.
+
+Filet de non-régression effectivement appliqué : la suite du harnais, **236 tests
+verts** (`python -m unittest discover -s tests/loadtest-k6`), rejouée après chaque
+commit — c'est la garde pertinente pour du code Python/PowerShell.
+
+## Lint log
+
+- `/lint-angular` — **skip propre** : `client-angular` non touché (aucune branche
+  créée, aucun fichier au diff).
+- `/lint-mobile` — **skip propre** : `client-mobile` non touché.
+- `/verify-visual` — **skip propre** : aucun écran mobile touché, donc aucune capture
+  à pairer.
