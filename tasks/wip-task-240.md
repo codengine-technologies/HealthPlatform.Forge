@@ -116,3 +116,16 @@ appels — le rapport voit des requêtes serveur jusqu'à 10 s sur `.../emails/{
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : non applicable — banc local, données synthétiques
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+
+- `api-mail` (pushed) : `feat/task-240-read-list-attribution` —
+  https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-240-read-list-attribution
+- `dtos-mss` (pushed, auto-inclus) : même nom de branche — **US de harnais**
+  (`tests/loadtest-k6/`), aucun changement de contrat attendu ; la branche
+  restera sans commit et sans PR.
+
+> **Nature de la task** : le code touché vit dans `Api/Mail/tests/loadtest-k6/`
+> (`scenarios/journey.js`, `report.py`) — **pas** dans le code applicatif.
+> `/sonar`, `/lint-*` et `/verify-visual` skipperont donc proprement, et la
+> contre-épreuve est un tir court de 100 médecins, pas une campagne complète.
