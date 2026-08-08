@@ -142,3 +142,115 @@ Pré-flight : `api-mail`, `client-blazor`, `dtos-mss`, `sdk`, `interop-cda` sur
 Dépendance `task-240` : le corps de cette US la déclare `todo`, elle est en
 réalité **archivée** (mergée le 2026-08-08). La coordination annoncée est donc
 acquise — `read_list` est ventilé par appel.
+
+## Ce qui a été livré et mesuré (2026-08-08)
+
+### Code (branche `feat/task-242-attente-connexion-base`)
+
+1. **`report.py` — la moyenne du tir n'écarte plus ce qu'un palier désigne.** C'était
+   le défaut nommé par la DOD. `pinned_candidates_by_palier` juge sur les fenêtres
+   internes de l'escalier, `palier_designated_resources` publie ce que la moyenne
+   dilue, et le verdict est rendu **sur le palier** avec l'écart **écrit**
+   (« Désignée par un palier, écartée par la moyenne du tir »). Le CPU et l'attente
+   cliente seuls sont jugés par palier — la file ThreadPool vient de Prometheus, dont
+   les payloads couvrent le tir entier et ne sont donc pas rattachables à un palier.
+   Deux garde-fous : la porte de task-208 reste fermée (témoin négatif : un
+   transitoire d'ouverture répété à chaque palier ne désigne rien) et une ressource
+   déjà épinglée globalement n'est pas dupliquée. **12 tests neufs**, suite complète
+   **233 verte**.
+2. **`observe.ps1` — `maxwait` relevé**, la *profondeur* de la file là où
+   `cl_waiting` n'en disait que la *présence*. Agrégation par MAX entre pools
+   (sommer des attentes concurrentes n'a pas de sens physique) et garde de colonnes
+   séparée, pour qu'un pooler sans `maxwait_us` ne fasse pas retomber à zéro
+   `cl_waiting`, déjà acquis.
+3. **`observe.ps1` + `report.py` — attente VENTILÉE** entre bases **praticien**
+   (`u_9…`) et pool de **maintenance**. C'est la ventilation qui a rendu la grandeur
+   lisible : le total sommait deux phénomènes sans rapport.
+4. **INDEX** — le verdict du 2026-08-05 est **marqué périmé** avec sa raison, et la
+   note de campagne du tir est écrite.
+
+### Le tir — `journey-lot-n200-205342`, iso-conditions
+
+Escalier 50/100/200 × 32 min, K=1, 200 boîtes × 247 messages **re-seedées à vierge**
+(49 400 messages, read-back vérifié), 500 bases purgées avant tir. 133 214 requêtes,
+**0,013 % d'erreurs**, 0 abandon, 0 mélange, verify **PASS**.
+
+### DOD — la cause, établie et non supposée
+
+**L'attente existe, elle accélère, et elle ne coûte presque rien sur le chemin du
+médecin.** Les deux affirmations sont mesurées et ne se contredisent pas : l'une
+porte sur la *présence* d'une file, l'autre sur son *coût*.
+
+| Ce qui est mesuré | Valeur |
+|---|---|
+| Attente de connexion dans `GetMailsByUids` (page d'en-têtes) | **1,8 ms — 0,1 %** du total |
+| Attente de connexion dans `GetMail` | 12,3 ms — 4,1 % |
+| Poste dominant de la page d'en-têtes | **matérialisation : 961,6 ms — 80,2 %** |
+| Requêtes SQL par appel | **14,8** (et non les « 6 à 8 » annoncées par lecture de code) |
+
+**D'où viennent les emprunts qui attendent** — ventilation par pool (`SHOW POOLS`
+direct, pas 5-10 s mais 2 min ; le pooler ne se mesure pas lui-même) :
+
+| Palier | Pools praticien en attente | profondeur max | Pool `postgres` | profondeur max |
+|---|---|---|---|---|
+| 50 | 1 relevé | 3 ms | 0 | — |
+| 100 | 1 relevé | 9 ms | 3 relevés | 18,3 s |
+| 200 | **22 relevés** | **1,10 s** | 2 relevés | **23,4 s** |
+
+⇒ **La grandeur qui « accélérait » confondait deux populations.** Les bases praticien
+attendent peu profondément mais de plus en plus souvent ; le pool de maintenance
+`postgres` attend rarement mais des dizaines de secondes. Ce dernier existe parce que
+**la sonde de readiness traverse le pooler sans `Database=`**
+(`DependencyInjectionExtensions.cs:211`) — établi par lecture **et vérifié au banc** :
+un seul `GET /health` recrée le pool `postgres`.
+
+**Réserve honnête** : la profondeur de 18-62 s est **compatible** avec une entrée de
+file abandonnée (Npgsql abandonne à 5 s, PgBouncer continue de compter ; profil en
+dents de scie observé) mais **non prouvée** — l'état des sockets clientes n'a pas été
+relevé. Ne pas la lire comme « un médecin a attendu 62 s ».
+
+### DOD — décision de réglage : AUCUN, et pourquoi
+
+`default_pool_size` **reste à 2**, non pas au nom du verdict périmé du 2026-08-05,
+mais parce que la mesure **désigne un autre remède** : élargir les pools praticien ne
+toucherait pas le pool `postgres` (qui porte les attentes profondes) et gagnerait
+**0,1 %** là où la matérialisation pèse **80,2 %** — au prix de +43 % de backends en
+pointe, déjà mesuré. **Aucun A/B n'était donc justifié** ; en faire un aurait été
+mesurer un réglage devant une cause qu'on venait d'écarter.
+
+**Seuil de reprise du sujet** : attente des pools **praticien** (ventilée, pas le
+total) > **1 % du temps** de `GetMailsByUids`, ou profondeur **p95 > 100 ms** à un
+palier. Les deux se lisent désormais directement dans le rapport.
+
+### Findings ouverts — à NE PAS corriger ici
+
+- **F-242-1** — matérialisation de la page d'en-têtes (80,2 %, 14,8 requêtes/appel) ;
+  inclut les deux scans complets de `Mails` de F-243-1. **Candidat US n°1.**
+- **F-242-2** — la sonde de readiness traverse le pooler sur une base de maintenance :
+  gain **nul** sur la latence, **tout** sur la lisibilité de la mesure (elle a masqué
+  la vraie tendance pendant trois campagnes). Finding d'**instrument**, prioritaire.
+- **F-242-3** — `DbUpdateConcurrencyException` sur `PractitionerContactService` :
+  **une écriture perdue**, rare (1/133 214) mais silencieuse et croissante avec N.
+- **F-242-4** — 4,4 à 5,0 exceptions/s par réplica, famille non identifiée ; le débit
+  croît avec la charge ⇒ coût par requête (signature de task-206).
+
+### Verdict SLO du tir
+
+50 et 100 médecins : **10/11 vertes** (seul `send`, coût fixe connu). 200 médecins :
+**6/11** — sortent l'inbox (p95 5 198 ms), le message servi base (1 297), l'envoi
+(2 199), la page dossier (2 008) et la fiche patient (5 004).
+
+### Projection 500 praticiens
+
+Backends **~880** (linéaire, 1,76/médecin), sessions IMAP **~1 200** (2,4/médecin),
+attente praticien **> 1 s en régime** (super-linéaire, ×122 entre 100 et 200).
+Hypothèses et invalidants écrits dans le rapport — dont celui-ci, dirimant : **toute
+mesure réelle à 500 exige le mode distant** (task-221), le banc local devenant un
+artefact au-delà de ~500 (Dovecot vole ~2,6 cœurs au système sous test).
+
+### Aucune donnée de santé
+
+Métriques d'exploitation et requêtes de diagnostic uniquement (`SHOW POOLS`,
+`pg_stat_activity`, compteurs Prometheus). Données du banc 100 % synthétiques.
+Le cloisonnement « une base par praticien » est inchangé — aucun réglage de
+multiplexage n'a été touché.
