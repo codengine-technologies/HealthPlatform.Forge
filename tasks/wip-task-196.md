@@ -202,3 +202,55 @@ aucun INS réel.
 > **À mesurer dans la DOD** : la part exacte des `ClientResultException` due au
 > dépassement de tokens, distinguée des annulations clientes emballées par le
 > même type — comptage par message Seq, pas par famille d'exception.
+
+## Develop log
+
+### Décision 1 — troncature bornée en TOKENS, pas segmentation multi-vecteurs
+
+**Retenu** : une seule borne d'entrée, exprimée dans l'unité du modèle (le token),
+appliquée avec le **tokeniseur réel** du modèle configuré.
+
+**Écarté (pour cette US)** : la segmentation en plusieurs vecteurs par document.
+Elle préserverait la fin des documents longs, mais elle change le **modèle de
+données** (N vecteurs par document) et le **classement** des résultats — or
+task-196 place explicitement la pertinence hors périmètre, et sa section
+conformité interdit de franchir ce pas « sans arbitrage ». La segmentation reste
+une US candidate ; cette US lui fournit précisément le chiffre qui permettra de
+l'arbitrer (voir ci-dessous).
+
+**Ce qu'on accepte de perdre, dit franchement** : au-delà de la borne, **la fin
+du document n'est pas indexée**. Le document reste intégralement lisible dans le
+message — seule la recherche sémantique ignore sa queue. Un document clinique
+porte souvent sa conclusion à la fin : c'est un vrai renoncement, pas un détail.
+Il est rendu **mesurable** par le drapeau `WasTruncated` du bornage : si les
+documents tronqués s'avèrent nombreux, la segmentation devient justifiable sur
+mesure au lieu d'être supposée.
+
+### Décision 2 — tokeniseur réel + marge + repli, plutôt qu'une estimation
+
+L'US interdit l'estimation approximative (« si l'estimation sous-évalue, on
+retombe sur le 400 »). Trois protections empilées :
+
+1. **Tokeniseur réel** du modèle (`Microsoft.ML.Tokenizers`, vocabulaire
+   `cl100k_base` **embarqué en ressource** — aucun téléchargement au démarrage,
+   donc compatible d'un déploiement HDS cloisonné) ;
+2. **Marge de sécurité de 2 %** (164 tokens sur 8 192) : un fournisseur peut
+   compter des tokens de protocole en plus du contenu, et un vocabulaire local
+   peut diverger de quelques unités. Coût négligeable sur le document ;
+3. **Repli sur rejet** : si l'appel part quand même en dépassement, le contenu
+   est re-borné plus bas et l'appel **réessayé une fois**. C'est la bretelle qui
+   couvre ce que la ceinture n'avait pas prévu.
+
+### Décision 3 — la coupe se fait sur une frontière de token
+
+Corollaire gratuit : une coupe sur frontière de token ne peut pas scinder une
+paire de substitution UTF-16 (le défaut de `content[..n]` en unités de code).
+Un filet indépendant du tokeniseur recule d'une unité si l'index tombe malgré
+tout entre les deux moitiés d'une paire.
+
+### Dépendance transitive remontée (sécurité)
+
+`Microsoft.ML.Tokenizers` 2.0.0 embarque `Microsoft.Bcl.Memory` **9.0.4**, qui
+porte une vulnérabilité de **sévérité haute** (`GHSA-73j8-2gch-69rq`) — le build
+du repo la refuse, à raison. La dépendance est **remontée explicitement en
+10.0.10** dans `Directory.Packages.props` plutôt que l'alerte contournée.
