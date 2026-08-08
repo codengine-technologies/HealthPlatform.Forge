@@ -149,3 +149,105 @@ Données de test synthétiques uniquement — aucune donnée de santé réelle.
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : inchangé
 - **AIPD / impact RGPD** : inchangé
+
+---
+
+## Branches
+
+- `api-mail` (pushed) : `fix/task-241-smtp-keepalive-diagnostic` —
+  https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-241-smtp-keepalive-diagnostic
+- `dtos-mss` (pushed) : même nom — **auto-incluse**, aucun changement de contrat attendu
+  (contrainte absolue de la US) ; si vide, aucune PR, suppression au merge
+  (10ᵉ occurrence attendue du défaut de cycle).
+
+Préfixe `fix/` retenu comme pour task-238 et task-239 (même famille de travail perf sur E015),
+étant entendu que **le premier livrable est une réponse écrite, pas un correctif** — cf.
+l'encadré en tête de US.
+
+Pré-flight vert sur les six repos mesurables, working trees propres. Dépendances : aucune ;
+task-238 (contexte direct) est archivée. Le blocage constaté au premier `/start` — task-240
+restée en `wip` alors que sa PR #173 était mergée — est levé : elle a été archivée.
+
+---
+
+## Develop log
+
+### Livrable n°1 — la réponse, avant tout correctif
+
+**Les deux faits fondateurs de la US sont des lectures d'instrument, pas des faits de
+comportement.** Vérifié dans le code, site par site.
+
+#### 1. `noop = 0` ne mesure pas le keep-alive — il mesure la sonde, et il vaut 0 *parce que task-238 a réussi*
+
+`MailServerCommands.NoOp` n'est enregistré qu'à **un seul endroit** du dépôt :
+`SmtpConnectionProbe.cs:35`, la **sonde de fraîcheur**. Le battement d'entretien
+(`MailClientSession.SendSmtpKeepAliveNoopAsync`, ligne 339) appelle `NoOpAsync` **directement
+sur le client, sans enregistrer de sollicitation**.
+
+Or task-238 a précisément retiré la sonde du chemin nominal (`SmtpProbeMaxAge` = 60 s : pas de
+sonde si le signal de santé a moins de 60 s). **`noop = 0` est donc la preuve que le remède 2 de
+task-238 fonctionne**, et ne dit **rien** sur le keep-alive, qui n'est pas instrumenté. La US
+conclut « le mécanisme d'entretien ne s'exécute jamais » à partir d'un compteur qui ne le compte
+pas — exactement le motif de task-222, retrouvé cette fois dans les prémisses de la US.
+
+#### 2. « ~1,85 connexion par envoi » agrège l'IMAP et le SMTP
+
+Le compteur porte deux étiquettes, `command` **et** `operation`. Les sites d'enregistrement :
+
+| `command` | `operation` | site |
+|---|---|---|
+| `connect` / `authenticate` | `ConnectImap` | `ImapConnectionService` |
+| `connect` / `authenticate` | **`SmtpConnect`** | `SmtpConnectionFactory` |
+| `noop` | `SmtpSend` | `SmtpConnectionProbe` (**seul site `noop`**) |
+| `send_message` | `SmtpSend` | `SmtpService` |
+
+`connect = 5 395` est donc la **somme IMAP + SMTP**, sur un parcours dont l'essentiel est de la
+lecture. Le ratio 5 395 / 2 920 ne mesure pas les reconnexions SMTP par envoi : il faut filtrer
+sur `operation="SmtpConnect"`, ce que le rapport ne fait pas.
+
+#### 3. Le keep-alive est bien démarré — et il est **structurellement impuissant**
+
+C'est la réponse de fond, et elle n'est pas l'affinité de session.
+
+`EnsureKeepAliveStarted()` est bien appelé à l'adoption d'un client SMTP (task-238) comme à la
+création du client IMAP : ce n'est pas un `IHostedService` oublié, c'est une boucle par session,
+démarrée. **Mais deux horloges indépendantes gouvernent la connexion, et le keep-alive n'agit que
+sur la mauvaise** :
+
+- `LastSmtpAccessTime` est rafraîchi par `RefreshSmtp()`, appelé depuis **un seul endroit** —
+  `MailClientSessionManager:170`, c'est-à-dire **à l'emprunt du jeton SMTP**, donc à l'envoi.
+- `IsSmtpConnectionIdle` = `now − LastSmtpAccessTime > SmtpIdleTimeout` (**5 min**), et le
+  balayage (`CleanupExpiredSessions`, cadence 1 min) **ferme la connexion** sur ce critère.
+- Le battement, lui, met à jour `_lastSmtpHealthySignalUtc` — le **signal de santé**, que
+  task-238 a délibérément rendu distinct de l'accès. Il ne touche **jamais** `LastSmtpAccessTime`.
+
+**Conséquence** : le keep-alive garde la connexion *vivante sur le fil*, pendant que l'éviction la
+ferme sur son *inactivité d'usage*. Aucun nombre de battements ne peut l'empêcher. Le remède 1 de
+task-238 visait la bonne connexion et la mauvaise horloge.
+
+**Et la marge est de douze secondes** : le parcours laisse **~4,8 min** entre deux envois d'un
+même médecin, contre un `SmtpIdleTimeout` de **5 min**. Même sans dispersion, la marge est
+dérisoire ; avec le temps de réflexion tiré au hasard qu'impose le modèle par parcours, une part
+importante des intervalles dépasse 5 min. La connexion est donc évincée avant l'envoi suivant
+dans une fraction élevée des cas — ce qui explique le coût **plat sur les trois paliers** (il est
+payé par appel, pas subi sous la charge) et l'inertie des trois remèdes.
+
+#### Ce que cette réponse ne tranche pas encore
+
+- **La question 3 (affinité) reste ouverte et n'est pas la cause dominante identifiée.** Elle
+  s'ajoute au mécanisme ci-dessus au lieu de le remplacer : même avec une connexion non évincée,
+  1 réplica sur 5 la détient. Le chiffrer exige le banc, avec un filtre `operation="SmtpConnect"`.
+- **La question 4 (décomposition des ~1 240 ms)** exige le banc et une trace représentative.
+
+#### Ce qui découle directement de la réponse
+
+1. **Instrumenter le battement** (`operation="SmtpKeepAlive"`) — sans quoi la question 1 restera
+   sans réponse mesurable au prochain tir, et le prochain rapport redira « noop = 0 ».
+2. **Séparer `connect` par `operation`** dans le rapport — sinon le ratio continuera de mélanger
+   les deux protocoles.
+3. **La correction de fond est un arbitrage, pas une évidence** : soit le battement rafraîchit
+   aussi l'accès (la rétention devient « vivante tant qu'entretenue » — **changement de politique
+   que task-238 s'était explicitement interdit**), soit `SmtpIdleTimeout` passe au-dessus de
+   l'intervalle réel entre envois. Les deux augmentent le nombre de connexions retenues par boîte,
+   face à la **contrainte opérateur MSSanté** que task-231 et task-238 ont toutes deux préservée.
+   C'est le point qui mérite l'arbitrage humain au HAG, pas une décision de la forge.
