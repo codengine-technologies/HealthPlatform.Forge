@@ -93,28 +93,146 @@ ensuite **nommer le poste dominant**, comme task-240 a appris à nommer l'appel.
 
 ## Definition of Done
 
-- [ ] Build passes (0 erreur) — `dotnet build HealthPlatform.Api.Mail.sln`
-- [ ] Tests pass (0 failure) — `dotnet test HealthPlatform.Api.Mail.sln`
-- [ ] **Zéro changement de comportement** : mêmes routes, mêmes réponses, mêmes
+- [x] Build passes (0 erreur) — `dotnet build HealthPlatform.Api.Mail.sln`
+- [x] Tests pass (0 failure) — `dotnet test HealthPlatform.Api.Mail.sln`
+      (3 689 tests, 0 échec) + suite du harnais (224 tests Python, 0 échec)
+- [x] **Zéro changement de comportement** : mêmes routes, mêmes réponses, mêmes
       requêtes SQL émises — l'instrumentation observe, elle ne réécrit pas
-- [ ] La décomposition sépare au minimum **emprunt de connexion / exécution SQL /
+      (intercepteurs délégant à `base`, résultat rendu inchangé — test dédié)
+- [x] La décomposition sépare au minimum **emprunt de connexion / exécution SQL /
       construction des DTO**, et le choix des phases est **justifié par écrit**
-- [ ] Cardinalité **bornée** : étiquettes littérales, aucune valeur dérivée de la
+      (voir « Ce qui a été livré » ci-dessous et le commentaire de tête de
+      `MailProcessingMetrics`, section task-243)
+- [x] Cardinalité **bornée** : étiquettes littérales, aucune valeur dérivée de la
       donnée (ni UID, ni dossier, ni identifiant patient) — cf. la fuite évitée
-      par task-213 sur le nom de pièce jointe
-- [ ] Unit tests : les phases sont chronométrées aux bons endroits (test d'ordre
+      par task-213 sur le nom de pièce jointe. Deux tests la verrouillent, côté
+      C# (étiquettes émises) et côté rapport (aucun `by` élargi dans les PromQL)
+- [x] Unit tests : les phases sont chronométrées aux bons endroits (test d'ordre
       ou de comptage d'émissions), et une exception ne laisse pas une phase
       ouverte
-- [ ] Aucune donnée de santé dans les métriques ni dans les logs ajoutés
-- [ ] `report.py` publie la décomposition — ou, si l'US choisit de ne pas
+- [x] Aucune donnée de santé dans les métriques ni dans les logs ajoutés
+      (aucun log ajouté ; deux étiquettes, toutes deux littérales)
+- [x] `report.py` publie la décomposition — ou, si l'US choisit de ne pas
       toucher au rapport, la requête PromQL qui la lit est **écrite dans le
-      task file** pour être rejouable
+      task file** pour être rejouable → **les deux** ont été faits
 - [ ] **Contre-épreuve au banc (bloquante pour le merge, pas pour la PR)** : tir
       `journey` court (100 médecins, 10 min) et **une phrase attribuable** —
       « sur les ~3,3 s de la page d'en-têtes, X ms sont l'attente de connexion,
       Y ms l'exécution SQL, Z ms la construction des DTO ». Si les trois postes
       ne suffisent pas à expliquer le total, **le dire** : le reste inexpliqué
       est lui-même un résultat, et il désigne le prochain découpage.
+      → **RESTE À FAIRE** : le banc n'était pas monté. Le rapport rend la phrase
+      tout seul dès qu'un tir tourne sur ce binaire (section « Où part le temps
+      d'une lecture servie par la base »).
+
+## Ce qui a été livré (2026-08-08, directement sur `develop`)
+
+> ⚠️ Développée **directement sur `develop`** à la demande humaine — pas de
+> branche `feat/*`, pas de PR, donc pas de HAG sur cette task. La seule case
+> restante est la contre-épreuve au banc, qui exige un banc monté.
+
+**Le découpage, et pourquoi celui-là.** Trois phases, choisies pour trancher entre
+les trois candidats de la US et rien de plus :
+
+| Phase | Ce qu'elle mesure | Le candidat qu'elle désigne |
+|---|---|---|
+| `connection_open` | obtenir une connexion : pool Npgsql, PgBouncer, poignée de main | **contention base** à l'état pur |
+| `sql_execute` | commande envoyée → serveur répondu | travail du serveur |
+| `assemble` | **le reste, par différence** : streaming des lignes, matérialisation EF, LINQ, DTO | **coût de matérialisation** (et concurrence CPU) |
+
+`connection_open` **ne pouvait pas se mesurer au point d'appel** :
+`GetDataContextAsync` n'instancie qu'un `DbContext`, et Npgsql n'ouvre la
+connexion que paresseusement, à l'exécution de chaque requête. D'où le passage par
+des **intercepteurs EF Core**, seul endroit qui voie cette frontière. La durée est
+lue dans les `eventData.Duration` d'EF, qu'il mesure déjà pour cet usage — la
+re-chronométrer aurait exigé de corréler début et fin par `ConnectionId`, donc un
+état partagé, pour une mesure moins fidèle.
+
+`assemble` est **volontairement une soustraction** et non une mesure : le découper
+(streaming vs matérialisation vs DTO) n'aurait aucun sens tant qu'on ne sait pas
+s'il pèse. S'il domine, c'est lui que la prochaine US découpe.
+
+**Un compteur à côté des durées** : `mssante_db_operation_queries_total`. Si
+`sql_execute` domine, c'est ce chiffre qui distingue « une requête lente » de
+« trente requêtes rapides » — deux remèdes sans rapport. Il vérifie du même coup
+l'annonce « 6 à 8 requêtes groupées », jamais mesurée jusqu'ici.
+
+**La famille, pas le seul chemin.** Deux points d'appel instrumentés :
+`GetMailsByUidsAsync` (le sujet) et `GetMailAsync` (l'autre lecture servie par la
+base, qui partage `PopulateMailContentAsync` et porte l'hydratation des documents
+de la fiche patient). Le périmètre n'est **pas re-entrant** : un périmètre
+imbriqué alimente le périmètre extérieur sans republier, pour que l'attribution
+désigne le geste du médecin et non le détail d'implémentation.
+
+**Hors périmètre, rien ne coûte.** Les intercepteurs sont branchés sur tout le
+trafic SQL du service, mais sans `DbOperationScope` actif ils ne font rien : ni
+allocation, ni série temporelle. Instrumenter les dizaines d'autres requêtes
+(réglages, contacts, migrations) aurait produit une métrique illisible à un coût
+payé partout.
+
+Fichiers : `src/Application/Telemetry/DbOperationScope.cs` (nouveau),
+`MailProcessingMetrics.cs` (section task-243),
+`src/Infrastructure/Telemetry/DbOperationPhaseInterceptors.cs` (nouveau),
+`BaseRepository.cs` (câblage), `MailRepository.cs` (deux périmètres),
+`tests/loadtest-k6/report.py` (section publiée) + 3 fichiers de tests.
+
+## Les requêtes PromQL — rejouables à la main
+
+Le rapport les émet lui-même (`report.py`, `PROM_DB_*`), mais elles se rejouent
+telles quelles dans Prometheus / Grafana. **Les parts se calculent sur les
+MOYENNES, qui s'additionnent ; jamais sur les p95 — le p95 d'une somme n'est pas
+la somme des p95.**
+
+```promql
+# Moyenne par phase, en ms — CE SONT CES TROIS VALEURS QUI SOMMENT AU TOTAL
+1000 * sum by (operation, phase) (rate(mssante_db_operation_phase_duration_seconds_sum[1m]))
+     / sum by (operation, phase) (rate(mssante_db_operation_phase_duration_seconds_count[1m]))
+
+# p95 par phase, en ms — dit OÙ VIT LA QUEUE, ne se partage aucun total
+1000 * histogram_quantile(0.95, sum by (le, operation, phase)
+       (rate(mssante_db_operation_phase_duration_seconds_bucket[1m])))
+
+# L'enveloppe : moyenne et p95 de l'opération complète (instrument SÉPARÉ des
+# phases, pour qu'un `sum by (phase)` ne puisse pas compter le total en double)
+1000 * sum by (operation) (rate(mssante_db_operation_duration_seconds_sum[1m]))
+     / sum by (operation) (rate(mssante_db_operation_duration_seconds_count[1m]))
+1000 * histogram_quantile(0.95, sum by (le, operation)
+       (rate(mssante_db_operation_duration_seconds_bucket[1m])))
+
+# Requêtes SQL PAR APPEL — « une requête lente » ou « trente rapides » ?
+sum by (operation) (rate(mssante_db_operation_queries_total[1m]))
+  / sum by (operation) (rate(mssante_db_operation_duration_seconds_count[1m]))
+```
+
+## Findings consignés — à NE PAS corriger ici
+
+> La US l'exige : « si une évidence saute aux yeux pendant le travail, **la
+> consigner** comme finding et la traiter dans une US suivante — mesurée. Une US
+> d'instrument qui optimise en passant ne peut plus prouver son propre effet. »
+> Aucun de ces points n'a été touché.
+
+**F-243-1 — `ComputeThreadCountsAsync` lit TOUTE la table `Mails` du praticien, à
+chaque page d'en-têtes.** Deux requêtes sans aucun filtre de dossier, de page ni
+de génération, sur le chemin de `GetMailsByUidsAsync` :
+
+- [MailRepository.cs:1301-1304](../Api/Mail/src/Infrastructure/Repository/MailRepository.cs#L1301-L1304)
+  — tous les `MessageId` de la boîte, matérialisés en mémoire ;
+- [MailRepository.cs:1307-1310](../Api/Mail/src/Infrastructure/Repository/MailRepository.cs#L1307-L1310)
+  — tous les mails porteurs de `References` ou `InReplyTo`, avec trois colonnes.
+
+Ce coût suit la **taille de la boîte**, pas celle de la page : c'est le profil
+« plat en charge, croissant avec le corpus » que la certification a observé. À
+247 messages par boîte au banc, c'est modeste ; à 50 000 messages pour un
+praticien réel, c'est deux scans complets par ouverture d'inbox. **Candidat
+sérieux pour les 3,3 s**, et l'instrument livré ici doit maintenant le confirmer
+ou l'écarter (il apparaîtra dans `sql_execute` et dans `assemble`) — c'est
+exactement l'ordre que la US impose : mesurer d'abord.
+
+**F-243-2 — l'hydratation d'un document reste en N+1 sur `GetMailAsync`.** ~10 +
+3·D requêtes séquentielles par message (D = nombre de documents CDA), là où le
+chemin bulk sans N+1 existe déjà dans le dépôt (`LoadBulkMailLookupsAsync`) sans
+route HTTP qui l'expose avec `WithContent`. Déjà identifié à l'analyse du
+2026-08-06 ; la task-243 le rend désormais mesurable via l'opération `GetMail`.
 
 ## Manual Test Plan
 
