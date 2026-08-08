@@ -288,3 +288,36 @@ commit — c'est la garde pertinente pour du code Python/PowerShell.
 - `/lint-mobile` — **skip propre** : `client-mobile` non touché.
 - `/verify-visual` — **skip propre** : aucun écran mobile touché, donc aucune capture
   à pairer.
+
+## PRs
+
+- `api-mail` (pushed) : **https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/175** — label `awaiting-human-merge`
+- `dtos-mss` (pushed, auto-inclus) : **aucune PR** — 0 commit sur la branche, aucun
+  contrat touché (`git log origin/develop..HEAD` = 0). La branche
+  `feat/task-242-attente-connexion-base` existe et reste vide, comme prévu.
+- Repos non concernés : `client-blazor`, `client-angular`, `client-mobile`, `sdk`,
+  `host`, `interop-cda`. `devops`, `psc-proxy-*` : gérés manuellement par l'humain.
+
+## Code Review Summary
+
+**APPROVED** — 5 fichiers revus, 0 blocage, 2 corrections appliquées pendant la revue.
+
+| Fichier | Verdict |
+|---|---|
+| `tests/loadtest-k6/report.py` | ✅ verdict par palier, écart écrit, seuils nommés une seule fois (`PGBOUNCER_WAITING_RESOURCE` plutôt que deux littéraux qui dériveraient) |
+| `tests/loadtest-k6/observe.ps1` | ⚠️→✅ deux corrections : `cl_waiting` calculé deux fois (dédupliqué), garde de colonnes **séparée** pour qu'un pooler sans `maxwait_us` ne fasse pas retomber la sonde à zéro |
+| `tests/loadtest-k6/test_report_pinned_palier.py` | ✅ 13 tests, dont **deux témoins négatifs** (un transitoire d'ouverture répété à chaque palier ne désigne rien ; une ressource déjà épinglée globalement n'est pas dupliquée) |
+| `docs/loadtest.md`, `reports/INDEX.md` | ✅ défaut, cause et garde-fous écrits ; verdict périmé marqué |
+
+**Corrections issues de la revue** : (1) donnée morte — `cl_waiting_practitioner` /
+`_maintenance` étaient émis dans le CSV sans jamais être rendus, alors que c'est
+précisément la famille **praticien** que porte le seuil de reprise du sujet ; ils sont
+désormais lus par le rapport ; (2) calcul dupliqué dans `observe.ps1`.
+
+**Sécurité / données de santé** : métriques d'exploitation uniquement, aucune donnée
+patient dans les étiquettes ni dans les requêtes de diagnostic, banc 100 % synthétique.
+Le cloisonnement « une base par praticien » est inchangé — aucun réglage de
+multiplexage n'a été touché.
+
+**Validation** : build **0 erreur**, tests .NET **371 passés / 0 échec**, harnais
+**237 tests verts**.
