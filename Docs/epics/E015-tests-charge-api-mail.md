@@ -734,6 +734,51 @@ montage de test était plus permissif que la production, il validait donc du cod
 marchait pas. La moitié du chantier reste à faire — les tâches de fond ne sont toujours pas
 réellement déclenchées pendant les tests. *(task-235, suite dans task-237)*
 
+### Le premier poste de coût du parcours n'est plus une boîte noire (8 août 2026)
+
+L'ouverture de la boîte de réception était devenue le poste le plus cher du parcours du
+médecin — et personne ne pouvait dire **pourquoi**. On savait seulement *quel* appel
+coûtait : la page d'en-têtes, 97 % du temps de l'étape. À l'intérieur, rien n'était
+mesuré, et trois explications restaient également plausibles : l'attente d'une
+connexion à la base, la concurrence du traitement des documents qui tourne en parallèle,
+ou le simple prix de construire les objets envoyés à l'écran.
+
+Cette étape n'a **rien rendu plus rapide**, volontairement. Elle a posé les trois
+chronomètres qui manquaient — obtenir une connexion, exécuter les requêtes, tout le
+reste — pour que le prochain correctif soit **décidable** au lieu d'être deviné. Cette
+EPIC a déjà annulé un correctif écrit sur une cause plausible et fausse ; la règle qui
+en est sortie s'applique mot pour mot. *(task-243)*
+
+### La question qui restait ouverte est tranchée : ce n'est pas la base de données (8 août 2026)
+
+La campagne suivante a fait parler ces chronomètres, et le verdict est net. Sur
+l'ouverture de la boîte de réception, **obtenir une connexion à la base coûte 1,8
+milliseconde sur 1 200** — un millième du temps. Ce qui coûte, ce sont les **quatorze
+requêtes** émises à chaque ouverture (on en annonçait six à huit) et surtout le travail
+de **construction des données** à renvoyer : 80 % du temps. Le prochain chantier est
+donc identifié, et il ne porte pas là où l'intuition l'aurait placé.
+
+Le même tir a levé une confusion qui durait depuis trois campagnes. Une grandeur
+inquiétait : le nombre de demandes en attente d'une connexion **accélérait** avec la
+population, quand tout le reste croissait proportionnellement. En séparant les
+compteurs, on a découvert qu'ils **additionnaient deux phénomènes sans rapport** : les
+bases des médecins, qui attendent très brièvement mais de plus en plus souvent, et une
+base technique interne — sollicitée par la simple **sonde de bonne santé** du service —
+qui attend rarement mais très longtemps. Un seul chiffre pour les deux rendait toute
+décision de dimensionnement impossible.
+
+**Aucun réglage n'a donc été changé, et c'est un résultat.** Élargir la réserve de
+connexions, geste réflexe, ne toucherait pas la base technique et gagnerait un millième
+du temps là où la construction des données en pèse huit dixièmes — au prix d'un tiers de
+connexions supplémentaires. Le seuil qui rouvrirait le sujet est écrit noir sur blanc,
+et le rapport le mesure désormais tout seul.
+
+Dernier acquis, plus discret mais structurant : le rapport de campagne **ne peut plus
+écarter par une moyenne ce qu'un palier de population désigne**. Il affirmait
+simultanément, dans le même document, qu'une ressource était saturée à 200 médecins et
+qu'elle ne l'était pas — parce qu'il moyennait 200 avec 50. On ne certifie pas la plus
+grande population avec les mesures de la plus petite. *(task-242)*
+
 ### Pourquoi l'envoi n'a pas accéléré : on mesurait la mauvaise chose, et on entretenait la mauvaise horloge (8 août 2026)
 
 Le correctif du 7 août devait faire passer l'envoi sous la seconde. Deux campagnes
