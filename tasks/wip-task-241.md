@@ -251,3 +251,31 @@ payé par appel, pas subi sous la charge) et l'inertie des trois remèdes.
    l'intervalle réel entre envois. Les deux augmentent le nombre de connexions retenues par boîte,
    face à la **contrainte opérateur MSSanté** que task-231 et task-238 ont toutes deux préservée.
    C'est le point qui mérite l'arbitrage humain au HAG, pas une décision de la forge.
+
+### Ce qui a été livré ici — commit `9ec3a60`
+
+**Le correctif d'instrument, et lui seul** : le battement d'entretien SMTP enregistre désormais
+sa sollicitation sous l'étiquette d'opération **`SmtpKeepAlive`**, distincte de `SmtpSend`. Sans
+lui, le prochain tir redirait « noop = 0 » et la question 1 resterait sans réponse mesurable.
+
+Appel direct à `MailProcessingMetrics.RecordMailServerSolicitation` plutôt qu'au recorder par
+requête : la boucle tourne **hors requête**, et l'y brancher attribuerait ses allers-retours à la
+requête qui passe — le recorder tient un compte par requête et une étiquette d'activité.
+
+**Validation** : build solution 0 erreur ; application **2073/2074**. L'unique échec est le flaky
+pré-existant `MailExportServiceTests` (`UglyToad.PdfPig`, famille `Services/Export` signalée
+depuis task-228) — sans rapport avec cette task.
+
+**Aucun changement de comportement** : ni la politique de rétention, ni les délais, ni le contrat
+d'envoi ne sont touchés. C'est délibéré — voir le point 3 ci-dessus : la correction de fond est un
+arbitrage entre la durée de rétention et la contrainte opérateur MSSanté, et il revient à l'humain
+au HAG, pas à la forge.
+
+### 🚧 Ce que cette livraison ne prouve pas
+
+Elle ne fait pas passer `send` sous 1 000 ms, et ne prétend pas le faire. Elle rend **mesurable**
+ce qui ne l'était pas, et elle remplace deux faits fondateurs faux par un mécanisme établi depuis
+le code. Le prochain tir `journey` K=1 doit maintenant rendre, en filtrant sur `operation` :
+`SmtpKeepAlive` **non nul** (le battement tourne), `SmtpConnect` par envoi (le vrai ratio de
+reconnexion SMTP, séparé de l'IMAP), et la décomposition des ~1 240 ms — questions 3 et 4, qui
+exigent le banc.
