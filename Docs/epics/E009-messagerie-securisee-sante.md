@@ -1019,6 +1019,29 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
+- **v1.59 — Les contrôles automatiques de la messagerie cessent de dépendre d'une
+  boîte mail personnelle** (task-197) : aucune fonctionnalité nouvelle pour le
+  praticien — cette version répare l'outil qui **protège** toutes les autres.
+  Quatre-vingt-sept contrôles automatiques s'exécutaient jusqu'ici contre une
+  **vraie boîte de messagerie personnelle**, si bien que leur verdict dépendait de
+  ce qui s'y trouvait ce jour-là, et que chaque message présent dans ce compte
+  traversait la chaîne de validation d'un service hébergeant des données de santé.
+  Ils s'exécutent désormais contre des serveurs de test **jetables, montés et
+  détruits à chaque exécution**, sur une boîte au contenu connu d'avance : plus
+  aucune donnée personnelle réelle n'entre dans la validation, et le résultat ne
+  dépend plus de personne. **Le gain principal est ailleurs** : la moitié de ces
+  contrôles ne vérifiait rien. Ils se déclaraient satisfaits sur une boîte vide,
+  affichaient « succès » à partir de données inventées quand le compte rendu
+  attendu manquait, et deux d'entre eux, nommés « supprimer un message »,
+  n'essayaient jamais de supprimer quoi que ce soit. Ils vérifient maintenant ce
+  que leur nom annonce. **Ce qui compte cliniquement** : la chaîne qui transforme
+  un compte rendu reçu en document médical, résultats de biologie et dossier
+  patient est désormais éprouvée **de bout en bout sur de vrais comptes rendus**,
+  y compris le cas d'une pièce jointe illisible — où il est vérifié que le message
+  reste conservé, et qu'aucun patient n'est inventé. C'est le contrôle qui manquait
+  pour que le décodage des comptes rendus ne puisse plus s'arrêter sans que
+  personne ne le voie.
+
 - **v1.57 — Le contenu clinique d'un message ne peut plus disparaître en silence**
   (task-227) : aucune fonctionnalité nouvelle pour le praticien, et c'est
   volontaire — cette version **protège** ce qui existe. Quand un compte rendu
