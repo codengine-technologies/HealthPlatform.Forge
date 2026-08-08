@@ -465,6 +465,229 @@ ses `TestFolder_*` / `MoveTest_*`.
 
 ---
 
+## Branches
+
+- `api-mail` (pushed) : `chore/task-197-tests-hermetiques-dovecot` —
+  https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/chore/task-197-tests-hermetiques-dovecot
+- `dtos-mss` (pushed) : même nom — **auto-incluse**, aucun changement de contrat attendu
+  (la US ne touche aucun code de production) ; si vide, aucune PR, suppression au merge
+  (9ᵉ occurrence attendue du défaut de cycle).
+
+Préfixe `chore/` : infrastructure de test, aucun code de production modifié.
+
+Pré-flight vert sur les six repos mesurables, working trees propres. Dépendances :
+task-177 et task-195 mergées et archivées.
+
+---
+
+## Develop log
+
+Commit `2a4e5f3` sur `chore/task-197-tests-hermetiques-dovecot` (api-mail seul ; `dtos-mss`
+intouché, aucun code de production modifié). 21 fichiers : 5 créés, 16 modifiés.
+
+### Le socle
+
+- **`DovecotFixture`** — conteneur `dovecot/dovecot:2.3.21`, monte `src/AppHost/dovecot/dovecot.conf`
+  (la conf du banc, pas une copie), port IMAPS aléatoire. Auto-portante : aucune dépendance à
+  l'AppHost, donc elle **s'exécute** en CI au lieu de s'y ignorer.
+- **`GreenMailFixture`** — `greenmail/standalone:2.1.3`, puits SMTP (Dovecot est en
+  `protocols = imap`, il n'expose aucun SMTP). Expose aussi son IMAP pour **relire le puits** :
+  c'est ce qui distingue « l'envoi n'a pas levé d'exception » de « le message est arrivé ».
+- **`MailboxCorpus`** — 45 messages déterministes (30 lus dont 5 flaggés, 10 non lus, puis fil de
+  discussion, PJ ordinaire, archive `IHE_XDM.ZIP`, message du jour) et un **manifeste**
+  `SeededMailbox` contre lequel les suites assertent. Chaque quantité vient d'une exigence
+  d'assertion relevée dans le code, pas d'un choix rond.
+- **`CdaSampleCorpus`** — la vérité terrain des 5 archives IHE-XDM, **relevée en exécutant le
+  parseur de production** (titre, code, INS, drapeau biologie), plus l'archive `Malformed`.
+- **`BenchImap` étendu** — APPEND avec drapeaux, date interne, en-têtes de fil, dossier
+  arbitraire ; les appelants du banc de charge restent inchangés.
+- **Isolation** : un utilisateur virtuel par suite (la `passdb static` wildcard les rend gratuits),
+  donc une boîte Dovecot **et une base praticien** par suite.
+
+### Trois défauts d'assemblage trouvés à l'exécution
+
+1. **Les fixtures injectaient un `MailDataContext` partagé**, ce qui court-circuite
+   `BaseRepository.GetDataContextAsync` : la base n'était plus dérivée de `(Email, MssRpps)` et
+   **toutes les suites écrivaient dans la même base**. Symptôme constaté au premier run : un test
+   lisait les documents semés par un autre. Corrigé en enregistrant les dépôts avec leurs
+   **constructeurs de production** — le harnais cesse de tester un assemblage qui n'existait qu'ici.
+2. **Constructeurs ambigus** (`MailRepository`, `SemanticSearchRepository`, …) : la fixture
+   enregistrant `MailDataContext`, les deux surcharges deviennent satisfaisables. Même piège que
+   task-230 ; constructeurs désignés explicitement. Il ne s'était jamais manifesté parce que la
+   suite de recherche **attrapait l'exception de résolution et sortait verte**.
+3. **Seed non rejouable** : une session d'APPEND peut être coupée en cours de lot (« The IMAP
+   server has unexpectedly disconnected »). La boîte gardait les messages déjà écrits, la
+   mémoïsation n'enregistrait rien, et le test suivant re-semait **par-dessus** — le corpus valait
+   45 + n, et l'échec apparaissait dans une suite étrangère (« 45 attendus, 51 obtenus », valeur
+   variable d'un run à l'autre). Le seed **se vérifie et se purge** désormais : il échoue à son
+   origine en nommant la cause, au lieu de trois assertions en aval.
+
+Deux défauts trouvés par relecture avant première exécution : l'arithmétique des dates faisait
+tomber deux messages de fond sur le jour courant (le « dossier du jour » n'aurait pas contenu un
+seul message), et le corpus datait en UTC alors que `GetFolderTodayAsync` tranche à minuit
+**local** — le test aurait échoué deux heures par nuit sans que rien ne soit cassé.
+
+### ⭐ La pipeline documents médicaux, éprouvée de bout en bout
+
+`MedicalDocumentsPipelineTests` — 3 tests, une boîte par test :
+
+- **Archive réelle** semée → `EnrichEmailsAsync` (chemin de production, donc **fetch partiel
+  `BODY[part]`**, raison d'être du choix de Dovecot) → assertions **sans branche conditionnelle**
+  sur le document (INS, titre, drapeau biologie) et sur le **patient créé en base**, plus une garde
+  du garde sur un INS absent.
+- **Chemin d'erreur** : l'archive `Malformed` ne produit aucun document, ne fait rien tomber, et
+  **le message reste stocké** (invariant task-227). L'erreur journalisée est exemptée par un
+  fragment **étroit** et justifié — le filet de task-235 reste entier ailleurs.
+- **Corpus complet** : 5 archives → 5 documents, **3 patients distincts**, chacun portant le bon
+  nombre de documents. Le chiffre 3 est **mesuré**, pas supposé.
+
+Deux constats de production consignés au passage, non corrigés (hors périmètre) : `CdaTypeCode`
+est produit par le parseur mais **n'est jamais persisté** (la projection de lecture ne le
+sélectionne pas) ; et `HasBiologyResults` **n'est pas invariant à l'aller-retour** — l'archive de
+microbiologie conserve son drapeau, celle de cardiologie le perd, le dépôt écartant les lignes
+sans libellé. Enfin, `PatientRepository.SearchAsync("")` **omet les patients sans nom de famille**
+(sémantique SQL du `NULL`) : l'énumération des patients passe donc par l'INS.
+
+### Validation
+
+| Mesure | Avant | Après |
+|---|---|---|
+| Suite d'intégration **sans `.env`, sans réseau** | 183 passants / 103 ignorés | **371 passants / 0 échec / 18 ignorés** |
+| Tests gatés « Gmail credentials not configured » | 87 | **0** |
+| Sorties anticipées sur boîte vide | 29 | **0** |
+| `Assert.True(true)` / `Assert.NotNull` sur non-nullable | 5 / 11 | **0 / 0** |
+| « ✅ SUCCÈS » sur données codées en dur | 4 branches | **0** (méthodes supprimées) |
+
+Build 0 erreur / 0 avertissement. Solution complète : domain 136/136 · infrastructure 419/419 ·
+application 2040/2041 · api 652/652 · integration **371/371** (18 ignorés). L'unique échec est le
+flaky pré-existant `MarkdownPdfRendererTests` (`UglyToad.PdfPig`, famille signalée depuis
+task-228) — **vert 9/9 en isolation**, aucun code d'export touché.
+
+Aucun conteneur résiduel après run. Deux exécutions consécutives sans nettoyage : résultat
+identique.
+
+### Écarts au DOD, assumés et consignés
+
+- **18 ignorés au lieu de ≤ 16** : 16 Ollama (structurels, hors périmètre) **+ 2 tests de recherche
+  sémantique** portant un `Skip` explicite et justifié — leur intention est la similarité
+  vectorielle, les embeddings sont mockés et Ollama est hors périmètre. Les 4 autres tests de la
+  suite sont convertis en `SearchMode.FullTextOnly` et assertent exactement (terme semé → résultats,
+  terme absent → vide).
+- **`UC7.3` (« valeurs anormales ») repointé sans nombre attendu** : l'archive semée est un
+  antibiogramme (`S`/`I`/`R`), donc aucune valeur anormale au sens des codes HL7 de production.
+  Le test asserte désormais l'invariant `IsFlagged ⇔ code ∈ ensemble anormal`, qui discrimine dans
+  les deux sens, plutôt qu'un décompte faux.
+- **`CdaTypeCode` non asserté** — voir ci-dessus : il décrirait une colonne absente, pas un défaut.
+
+## Simplify log
+
+Commit `be5215c`. **Une prise, sur l'axe réutilisation.**
+
+Les deux fixtures récitaient chacune les **douze clés** de configuration serveur et les
+**quinze lignes** de mémoïsation du seed. Extrait dans `MailServerTestHarness`
+(`DomainSettings`) et `SeededMailboxRegistry` — c'est exactement le motif que task-237 avait
+déjà retiré de ces deux mêmes fichiers en créant `RequestScopeIdentity` (« neuf champs
+dupliqués, qui auraient dérivé au premier ajout »), et l'argument est identique : un réglage
+ajouté d'un seul côté produirait deux harnais qui ne testent pas la même chose, et l'écart ne
+se verrait qu'au premier test qui en dépend.
+
+Candidats examinés et **non retenus** : mutualiser `DovecotFixture` et `GreenMailFixture`
+derrière une base commune (leur seul point commun est `ContainerBuilder` ; leurs stratégies
+d'attente, leurs ports et leur rôle diffèrent — la base n'aurait porté que du vocabulaire) ;
+factoriser les blocs `CreateScopeFor` (déjà réduits à une seule expression chacun).
+
+**Re-validation** : build 0 erreur / 0 avertissement ; intégration **371 / 0 / 18**, identique
+à avant la passe.
+
+⚠️ **Un run intermédiaire a rendu 2 échecs, tous deux flakies confirmés** — `PgBouncer­Transaction­PoolingTests`
+(contention Docker, famille connue depuis task-228) et un `ImapProtocolException: The IMAP server
+has unexpectedly disconnected` sur la suite de recherche. Les deux repassent en isolation et au
+run suivant. C'est la même instabilité de connexion Dovecot sous charge que le seed rejouable
+neutralise **côté seed** ; elle peut encore frapper pendant un test. Signalée, non masquée —
+voir la réserve en fin de Develop log.
+
+## Sonar log
+
+Deux scans (le protocole exige la remesure : un correctif annoncé n'est pas un correctif
+vérifié). Commits `2929817` et `523a940`.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline (task-239) | Après 1ᵉʳ scan | Final |
+|---|---|---|---|
+| Quality Gate (new code) | **ERROR** | ERROR | **ERROR** |
+| `new_violations` | 32 | 37 (**+5 imputables**) | **33 — 0 imputable** |
+| `new_coverage` | 87.5 % — OK | 87.8 % — OK | **87.8 % — OK** ✅ |
+| `new_security_hotspots_reviewed` | 71.4 % | 71.4 % | 71.4 % (2 restants) |
+| `new_duplicated_lines_density` | 0.07 % — OK | 0.07 % — OK | 0.07 % — OK |
+
+### Dette neuve : 5 findings introduits, 5 corrigés, vérifié par remesure
+
+- **`CA1822` ×2** (`DovecotFixture`, `GreenMailFixture`) — `Host` codé en dur à `"127.0.0.1"`
+  n'accédait à aucun état d'instance. Corrigé en le **lisant sur le conteneur**
+  (`_container.Hostname`) : plus juste sur le fond (un démon Docker distant n'est pas sur la
+  boucle locale) et le finding disparaît par construction, pas par annotation.
+- **`S2699` ×2** (`SearchUseCaseTests`) — « aucune assertion » sur les deux tests de recherche
+  sémantique/hybride, qui portaient un `Skip` permanent. **Tests retirés** : un test qui ne peut
+  jamais s'exécuter n'est pas un test, c'est un commentaire portant un attribut ; il coûtait deux
+  findings, deux ignorés par exécution, et donnait l'impression d'une couverture inexistante. Le
+  manque est consigné dans la doc de classe et ci-dessous. **Effet de bord bienvenu : les ignorés
+  passent de 18 à 16**, la cible exacte du DOD.
+- **`CA1859` ×1** puis ×1 à la remesure (type de retour, puis type de paramètre des helpers de
+  recherche) — le second n'est apparu **qu'au deuxième scan**, le premier correctif l'ayant
+  déplacé du retour vers les paramètres. Sans remesure, la task aurait été livrée avec un finding
+  annoncé corrigé (même piège que task-229).
+
+### Attribution des 33 restants — aucun imputable à task-197
+
+- **26** dans l'outillage de banc `tests/loadtest-k6/` (tasks 174/195, hérité) : `report.py` (15),
+  `journey.js` (7), `journey-model.js` (4). Les 2 hotspots non révisés = `Math.random()` de
+  `journey.js` — **11ᵉ signalement**, il mérite sa décision humaine plutôt qu'une mention de plus.
+- **6** dans des fichiers de task-238 (mergée le 2026-08-07), apparues post-merge dans la
+  new-code period : `SmtpConnectionFactory` (S103), `MailClientSession` (S3776),
+  `SmtpSessionKeepAliveTests` (CA1816), `MailServerDiscovery` ×2, `IIheXdmProcessingService`.
+- **0** dans un fichier créé ou modifié par task-197 — vérifié fichier par fichier via l'API.
+
+**Décision** : Phase 1 (new code) close à zéro dette imputable. Phase 2 (legacy) non engagée : les
+findings restants appartiennent aux tasks d'outillage et à task-238.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/172 —
+  label `awaiting-human-merge`. 4 commits : `2a4e5f3` (socle + migration des 12 suites),
+  `be5215c` (passe qualité), `2929817` + `523a940` (dette Sonar neuve à zéro).
+- `dtos-mss` : branche auto-incluse **vide** (0 commit), aucune PR — **9ᵉ occurrence** du défaut
+  de cycle « branche auto-incluse jamais utilisée ».
+
+## Code Review Summary
+
+**APPROVED — 0 blocage** (22 fichiers, +4 546 / −3 225 ; aucun code de production modifié).
+
+- Le harnais devient **production-exact** : les dépôts sont enregistrés avec leurs constructeurs
+  de production, donc chaque identité résout sa propre base — l'isolation par suite est réelle
+  jusqu'au stockage.
+- Le seed **se vérifie et se purge** : un échec de seed échoue à son origine en nommant la cause,
+  au lieu d'apparaître comme un compte faux dans une suite étrangère.
+- Aucune donnée de santé : échantillons ANS déjà versionnés, utilisateurs synthétiques, INS de test.
+- Deux défauts trouvés **par relecture avant la première exécution** (arithmétique des dates,
+  référentiel horaire du corpus vs celui du filtre de production).
+
+**⚠️ Réserve de stabilité, portée dans la PR** : sur 9 exécutions complètes, 3 ont rendu 1 à 2
+échecs, tous repassant en isolation et au run suivant. Deux familles — `PgBouncer` (flaky Docker
+pré-existant, task-228) et `ImapProtocolException` (**nouveau**, propre à ce harnais : Dovecot
+coupe une connexion sous la charge de plusieurs conteneurs). Non masqué par une assertion
+tolérante ; mérite une US dédiée si la CI l'exige.
+
+**Validation finale /review** : build 0 erreur / 0 avertissement ; domain 136 · infrastructure 419 ·
+application 2041 · api 652 · intégration **371 / 0 échec / 16 ignorés**.
+
+**DOD** : tous les items vérifiés. Trois écarts assumés et consignés — 16 ignorés atteints après
+retrait des deux tests sémantiques définitivement skippés ; `UC7.3` repointé sans nombre attendu
+(l'archive semée est un antibiogramme, donc aucune valeur anormale au sens des codes HL7) ;
+`CdaTypeCode` non asserté (jamais persisté).
+
+---
+
 ## ⚠️ Note de dimensionnement (pour le PO et la forge)
 
 Cette task réunit délibérément ce qui pourrait être trois lots : (1) le déblocage
