@@ -734,6 +734,37 @@ montage de test était plus permissif que la production, il validait donc du cod
 marchait pas. La moitié du chantier reste à faire — les tâches de fond ne sont toujours pas
 réellement déclenchées pendant les tests. *(task-235, suite dans task-237)*
 
+### Pourquoi l'envoi n'a pas accéléré : on mesurait la mauvaise chose, et on entretenait la mauvaise horloge (8 août 2026)
+
+Le correctif du 7 août devait faire passer l'envoi sous la seconde. Deux campagnes
+successives ont rendu le même verdict : **aucun changement**. Plutôt que d'écrire un
+quatrième correctif, cette étape a d'abord cherché **pourquoi** — et la réponse tient
+en deux constats, tous deux embarrassants.
+
+**Le premier : on lisait un compteur qui ne comptait pas ce qu'on croyait.** Le rapport
+affichait « zéro battement d'entretien » et l'on en concluait que le mécanisme ne
+s'exécutait jamais. En réalité ce compteur ne suivait pas le battement, mais un
+**contrôle de vivacité** que le correctif du 7 août avait précisément supprimé du cas
+courant. Zéro était donc le **résultat recherché**, pas le symptôme d'une panne.
+C'est la troisième fois dans ce projet qu'une conclusion est tirée d'un instrument mal
+lu — et la première fois que le défaut se trouvait dans l'énoncé même de la demande.
+
+**Le second : le mécanisme d'entretien ne pouvait pas fonctionner, par construction.**
+La connexion gardée pour un médecin est fermée quand elle n'a **pas servi** depuis cinq
+minutes. Le battement, lui, la maintient *vivante* — mais ne compte pas comme un usage.
+Deux horloges indépendantes : l'une entretient, l'autre expulse, et la seconde ne
+regarde jamais la première. Or un médecin laisse en moyenne **4 minutes 48** entre deux
+envois, contre un seuil de fermeture à cinq minutes : douze secondes de marge, que le
+rythme irrégulier d'un humain fait sauter très souvent.
+
+Cette étape livre donc **l'instrument qui manquait** — le battement se compte désormais
+sous son propre nom, et la prochaine campagne pourra dire s'il s'exécute — et **écrit la
+réponse** plutôt qu'un correctif de plus. La correction de fond, elle, demande un
+arbitrage qui n'appartient pas à la technique : allonger la durée de conservation d'une
+connexion **augmente le nombre de connexions retenues** dans la boîte de chaque médecin,
+et l'opérateur MSSanté en limite le nombre. C'est un compromis à trancher, pas une
+évidence à coder. *(task-241)*
+
 ### L'envoi ne repaie plus le prix d'une connexion neuve à chaque message (7 août 2026)
 
 La certification du 6 août l'avait montré : l'envoi était la seule étape hors grille
