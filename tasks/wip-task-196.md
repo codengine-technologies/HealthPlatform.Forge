@@ -282,3 +282,44 @@ structurelle testée) ; la forme PGSSI-S des modèles d'inventaire (non enrichis
 
 Build 0 erreur, **3 575 tests verts** avant et après la passe — aucun
 comportement changé, aucun rollback nécessaire.
+
+## Sonar log
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | **non mesuré** | **non mesuré** | — |
+| New coverage | non mesuré | non mesuré | — |
+| Bugs / Vulnérabilités / Smells | non mesuré | non mesuré | — |
+
+**`/sonar` n'a pas pu tourner le 2026-08-08** : serveur SonarQube injoignable
+(`http://127.0.0.1:9000/api/system/status` → aucune réponse, aucun conteneur
+`sonar` en marche) et `SONAR_TOKEN` absent de l'environnement.
+
+**Ce n'est pas un « rien à signaler ».** Aucune analyse n'a eu lieu : la qualité
+de ce diff n'est **ni verte ni rouge, elle est non mesurée**. Confondre les deux
+serait exactement l'erreur que cette EPIC s'interdit.
+
+Ce qui est établi sans Sonar, et qui ne le remplace pas : build 0 erreur,
+**3 575 tests verts** (54 nouveaux), et la passe `/forge-simplify` ci-dessus.
+
+**À faire avant merge** (relève de l'humain — Sonar est sur son poste) :
+démarrer SonarQube, poser `SONAR_TOKEN`, relancer `/sonar 196`. Le diff est
+localisé (chemin d'embedding + inventaire), donc l'analyse est rapide.
+
+## Lint log
+
+`/lint-angular` — **skip propre** : `client-angular` n'est pas dans les
+`**Repos**:` de cette task (US backend pure, `**Single frontend**: true`).
+Aucun code Angular produit, rien à linter.
+
+## Lint mobile log
+
+`/lint-mobile` — **skip propre** : `client-mobile` hors `**Repos**:`, et
+`Client/Mobile/` n'est pas un dépôt git sur ce poste.
+
+## Visual verify log
+
+`/verify-visual` — **skip propre** : aucun écran `client-mobile` touché (pas de
+`## Stitch design log`, `client-mobile` hors périmètre). Rien à capturer.
