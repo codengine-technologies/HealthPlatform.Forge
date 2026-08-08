@@ -347,3 +347,39 @@ cette task ne touche qu'une ligne de télémétrie sur la voie SMTP.
 ## Visual verify log
 
 **Skip propre** — aucun écran mobile touché.
+
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/174 —
+  label `awaiting-human-merge`. Commit `9ec3a60`.
+- `dtos-mss` : branche auto-incluse **vide** (0 commit), aucune PR — **10ᵉ occurrence** du défaut
+  de cycle « branche auto-incluse jamais utilisée ».
+
+## Code Review Summary
+
+**APPROVED — 0 blocage** (1 fichier, +28 lignes dont 21 de commentaire).
+
+- L'enregistrement suit le NOOP **réussi**, après `MarkSmtpHealthy()` : un battement échoué ne
+  compte pas comme une sollicitation aboutie.
+- Étiquette littérale bornée à la compilation — aucune donnée de santé, aucune cardinalité non
+  bornée dans les métriques.
+- Aucun changement de flux, aucune I/O ajoutée, aucun verrou touché, aucun contrat modifié.
+- ⚠️ Suggestion non bloquante : le battement **IMAP** souffre du même angle mort ; écarté par
+  discipline de périmètre, signalé pour une US d'entretien.
+
+**Validation finale /review** : build 0 erreur ; solution complète verte — domain 136 ·
+infrastructure 429 · application 2074 · api 660 · intégration 371 (16 ignorés). Deux exécutions
+antérieures ont montré un échec chacune, **flakies connus et verts au re-run** (`UglyToad.PdfPig`
+famille task-228 ; `ImapProtocolException` consigné par task-197).
+
+**DOD** : livrable n°1 (la réponse écrite) **livré** ; le correctif livré découle explicitement de
+la réponse et cite la mesure qui le justifie ; zéro changement de contrat ; vérification de
+révocation intacte. **Restent au HAG et au banc** : le chiffrage de l'affinité (question 3), la
+décomposition des ~1 240 ms (question 4), la contre-épreuve, et **l'arbitrage rétention vs
+contrainte opérateur MSSanté** — explicitement déféré à l'humain, la forge ne tranche pas seule un
+changement de politique que task-238 s'était interdit.
+
+⚠️ **La dette signalée par la revue de task-231 n'a pas été traitée** : un fragment de JWT reste
+journalisé en avertissement dans `SmtpConnectionFactory`. Elle est **re-signalée** ici, comme le
+DOD l'autorisait, plutôt que traitée hors du fil de l'analyse.
