@@ -702,3 +702,30 @@ prouvent toujours rien.
 **1 → 2 → 5 (pipeline médicale) → 3 → 6 → 4 sur les suites restantes**, et aucune
 PR intermédiaire ne merge avant que l'ensemble soit prêt (règle 11, US-complete
 merge gate).
+
+---
+
+## Merged
+
+- **Date** : 2026-08-08, `/merge task-197 --i-tested` (attestation humaine HAG).
+- `api-mail` : squash `4bb236ed0991c66933cc0c0d2a495c599997ba1b` (PR #172 fermée), branche
+  remote `chore/task-197-tests-hermetiques-dovecot` supprimée, locale conservée.
+- `dtos-mss` : branche auto-incluse vide (0 commit, aucune PR) — remote supprimée, repo
+  resynchronisé sur `develop` (9ᵉ occurrence du défaut de cycle).
+- **CI develop api-mail** : ✅ success —
+  https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/31259178249
+- **Staging** : aucune branche `forge/staging-*` (run mono-task) — rien à nettoyer.
+
+### ⚠️ Deux suites à ouvrir, héritées de cette task
+
+1. **Stabilité du harnais d'intégration.** 3 exécutions sur 9 ont rendu 1 à 2 échecs
+   intermittents, tous verts en isolation : `PgBouncerTransactionPoolingTests` (flaky Docker
+   pré-existant, task-228) et `ImapProtocolException: The IMAP server has unexpectedly
+   disconnected` (**nouveau**, propre à ce harnais — Dovecot coupe une connexion sous la charge
+   de plusieurs conteneurs et collections parallèles). Le seed rejouable couvre le cas côté
+   seed ; une coupure pendant un test reste possible. Prérequis si la suite doit garder la CI
+   verte sans reprise.
+2. **Trois constats de production**, consignés et non corrigés : `CdaTypeCode` jamais persisté ;
+   `HasBiologyResults` non invariant à l'aller-retour (l'archive de cardiologie perd son
+   drapeau, le dépôt écartant les lignes de biologie sans libellé) ; `SearchAsync("")` omet les
+   patients sans nom de famille (sémantique SQL du `NULL`).
