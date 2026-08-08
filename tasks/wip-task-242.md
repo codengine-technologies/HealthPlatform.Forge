@@ -129,3 +129,16 @@ Données de test synthétiques uniquement.
   l'environnement HDS cible (le banc local n'est pas la cible) — à noter dans la
   conclusion
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+
+- `api-mail` (pushed) : `feat/task-242-attente-connexion-base` — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-242-attente-connexion-base
+- `dtos-mss` (pushed, auto-inclus) : `feat/task-242-attente-connexion-base` — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-242-attente-connexion-base
+
+Pré-flight : `api-mail`, `client-blazor`, `dtos-mss`, `sdk`, `interop-cda` sur
+`develop`. `client-mobile` : répertoire `Client/Mobile/` **absent du workspace**
+— hors périmètre de cette US (aucune branche à créer), noté pour mémoire.
+
+Dépendance `task-240` : le corps de cette US la déclare `todo`, elle est en
+réalité **archivée** (mergée le 2026-08-08). La coordination annoncée est donc
+acquise — `read_list` est ventilé par appel.
