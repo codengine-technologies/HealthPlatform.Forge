@@ -292,3 +292,58 @@ Candidat examiné et **non retenu** : instrumenter symétriquement le battement 
 probablement utile — mais la US porte sur `send`, et ajouter une étiquette d'opération IMAP
 changerait la lecture des campagnes en cours sur un axe que personne n'a demandé. Signalé ici pour
 qu'une prochaine US d'entretien le prenne, plutôt que glissé au passage.
+
+
+## Sonar log
+
+Scan direct sur `fix/task-241-smtp-keepalive-diagnostic` (scanner local, EXECUTION SUCCESS).
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline (task-197) | Final (task-241) |
+|---|---|---|
+| Quality Gate (new code) | **ERROR** | **ERROR** |
+| `new_violations` | 33 | 44 |
+| `new_coverage` | 87.8 % — OK | **87.9 % — OK** ✅ |
+| `new_security_hotspots_reviewed` | 71.4 % | 71.4 % (2 restants) |
+| `new_duplicated_lines_density` | 0.07 % — OK | 0.07 % — OK |
+
+### Attribution — 0 finding imputable
+
+`MailClientSession.cs` porte **un** finding : `csharpsquid:S3776` ligne 296 (`StartKeepAlive`,
+complexité cognitive **19**). C'est **exactement** celui que le log de task-239 attribuait déjà à
+task-238 — la complexité est **inchangée**, l'ajout de cette task étant du code linéaire dans une
+autre méthode (`SendSmtpKeepAliveNoopAsync`). S3776 relève par ailleurs de `/sonar-s3776`, hors
+chaîne autonome (1 méthode = 1 PR).
+
+**La hausse 33 → 44 ne vient pas de cette task** : elle suit le merge de task-240 sur `develop`,
+qui a fait entrer de nouveaux fichiers dans la new-code period — `EmailEmbeddingServiceFunctionalTests`
+(3), `MedicalDocumentRepositoryEmbeddingInventoryTests` (3), `EmbeddingInputBounderFactory` (1),
+`MailMaintenanceControllerTests` (1), `AddNewMailConsumerTests` (1). Le reste est la dette héritée
+connue : outillage k6 (27) et fichiers de task-238 (5). Les 2 hotspots `Math.random()` de
+`journey.js` en sont à leur **12ᵉ signalement**.
+
+**Décision** : aucune itération de fix — rien à corriger dans le périmètre de la task.
+
+### Validation pendant le scan
+
+Release : domain / application / infrastructure / api verts. Intégration **370/387, 1 échec** —
+`EmailManagementUseCaseTests.BulkMarkEmailsAsReadShouldMarkAll10Emails`, sur
+`ImapProtocolException: The IMAP server has unexpectedly disconnected`. C'est **le flaky que
+task-197 a signalé et consigné** (coupure Dovecot sous charge de conteneurs), pas une régression :
+cette task ne touche qu'une ligne de télémétrie sur la voie SMTP.
+
+
+## Lint log
+
+**Skip propre** — `client-angular` non touché (`**Repos**: api-mail`).
+
+
+## Lint mobile log
+
+**Skip propre** — `client-mobile` non touché.
+
+
+## Visual verify log
+
+**Skip propre** — aucun écran mobile touché.
