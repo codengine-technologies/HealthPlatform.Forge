@@ -129,3 +129,54 @@ appels — le rapport voit des requêtes serveur jusqu'à 10 s sur `.../emails/{
 > (`scenarios/journey.js`, `report.py`) — **pas** dans le code applicatif.
 > `/sonar`, `/lint-*` et `/verify-visual` skipperont donc proprement, et la
 > contre-épreuve est un tir court de 100 médecins, pas une campagne complète.
+
+## Simplify log
+
+Passe qualité `/forge-simplify` du 2026-08-08 — harnais seul touché
+(`tests/loadtest-k6/`) ; `dtos-mss` sans commit, aucun changement de contrat.
+
+| Axe | Constat | Correction |
+|---|---|---|
+| Simplification | `tagsFor(op, call)` avait gagné un paramètre qu'**aucun appelant ne passait** : les six sites multi-appels contournaient la fonction et appelaient `stepTags` en direct, avec `op` répété deux fois par ligne. | `tagsFor(op)` retrouve sa signature d'origine ; un `stepTagger(op)` fige le palier une fois et rend un étiqueteur. Même sémantique de palier. |
+| Réutilisation | La section du rapport **recalculait** la ventilation du palier le plus peuplé alors qu'elle venait de la calculer pour tous les paliers — double lecture des métriques, et deux chemins pouvant diverger. | Un seul calcul, indexé par palier. |
+| Simplification | La parenthèse de coût de la phrase d'attribution était écrite deux fois, une par tournure. | Extraite. |
+| Efficacité | Le jeu de tags de la ventilation était construit deux fois par appel. | Construit une fois. |
+| Altitude | Rien à redire. | — |
+
+**Le contrat inter-runtime suit déjà le patron maison**, découvert à la
+relecture : `MULTI_CALL_STEPS` (JS) et `JOURNEY_MULTI_CALL_STEPS` (Python) ne
+peuvent pas s'importer l'une l'autre, et le repo tient ce genre de contrat par
+**commentaire directionnel + échec visible** — exactement comme
+`ITERATION_SECONDS_ENV_PREFIX` entre `report.py` et `lib/vu-sizing.js`. Un
+générateur ou un parseur JS-depuis-Python aurait été une **régression** par
+rapport à la convention locale. Rien inventé.
+
+**Non retenu délibérément** : factoriser la lecture `avg/med/p95/count` d'un
+sélecteur (duplication réelle mais **préexistante**, et la refonte toucherait
+quatre fonctions hors diff dont celles que les tests de comparabilité
+verrouillent octet pour octet) ; fusionner les deux tables (voir ci-dessus).
+
+Auto-tests du harnais verts avant et après : **203 Python + 57 node**. Aucun
+rollback nécessaire, aucun comportement changé.
+
+## Sonar log
+
+`/sonar` — **skip propre** : cette US ne touche **aucun code applicatif**. Le
+diff vit entièrement dans `Api/Mail/tests/loadtest-k6/` (JavaScript de harnais
+k6 et Python de rapport), hors périmètre de l'analyse C# d'`api-mail`. La
+qualité de ce diff est tenue par les auto-tests du harnais (`selftest.sh`), qui
+sont son filet propre.
+
+## Lint log
+
+`/lint-angular` — **skip propre** : `client-angular` hors `**Repos**:`
+(`**Single frontend**: true`), aucun code Angular produit.
+
+## Lint mobile log
+
+`/lint-mobile` — **skip propre** : `client-mobile` hors `**Repos**:`, et
+`Client/Mobile/` n'est pas un dépôt git sur ce poste.
+
+## Visual verify log
+
+`/verify-visual` — **skip propre** : aucun écran `client-mobile` touché.
