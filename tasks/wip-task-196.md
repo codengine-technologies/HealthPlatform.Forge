@@ -180,3 +180,25 @@ aucun INS réel.
   segmentation, le nombre d'appels au fournisseur d'embedding augmente. Aucune
   donnée nouvelle ne sort, mais la **fréquence** change ; à valider auprès du DPO
   si le fournisseur est externe. Durées de conservation inchangées.
+
+## Branches
+
+- `api-mail` (pushed) : `fix/task-196-embedding-token-truncation` —
+  https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-196-embedding-token-truncation
+- `dtos-mss` (pushed, auto-inclus) : même nom de branche — aucun changement de
+  contrat attendu (US backend pure, `**Single frontend**: true`) ; la branche
+  restera probablement sans commit et sans PR.
+
+> **Contexte de démarrage (2026-08-08)** : le défaut est **re-constaté en charge**
+> sur le smoke du jour — `ClientResultException` = 1 286 en 20 minutes, avec le
+> `HTTP 400 — maximum input length is 8192 tokens` sur pièce
+> (`EmailEmbeddingService.GenerateEmbeddingInternalAsync`, praticien
+> `loadtest-49`). Cette famille d'exceptions avait été **mal attribuée à
+> Flagsmith** dans deux rapports de tir (rectificatif consigné dans
+> `Api/Mail/tests/loadtest-k6/reports/INDEX.md`, 2026-08-08) : ce n'est pas du
+> bruit d'infrastructure, c'est le compteur des documents cliniques absents de
+> l'index sémantique. `FlagsmithAPIError` vaut 0 sur la même fenêtre.
+>
+> **À mesurer dans la DOD** : la part exacte des `ClientResultException` due au
+> dépassement de tokens, distinguée des annulations clientes emballées par le
+> même type — comptage par message Seq, pas par famille d'exception.
