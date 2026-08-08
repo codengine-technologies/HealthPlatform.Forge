@@ -279,3 +279,16 @@ le code. Le prochain tir `journey` K=1 doit maintenant rendre, en filtrant sur `
 `SmtpKeepAlive` **non nul** (le battement tourne), `SmtpConnect` par envoi (le vrai ratio de
 reconnexion SMTP, séparé de l'IMAP), et la décomposition des ~1 240 ms — questions 3 et 4, qui
 exigent le banc.
+
+
+## Simplify log
+
+**Skip propre.** Le diff est d'un seul fichier et de 28 lignes, dont 21 de commentaire : une
+constante d'étiquette et un appel d'enregistrement, au point exact où le geste a lieu. Il n'y a ni
+duplication, ni indirection à retirer, ni niveau d'abstraction à corriger.
+
+Candidat examiné et **non retenu** : instrumenter symétriquement le battement **IMAP**
+(`SendKeepAliveNoopAsync`, même boucle, même absence de compteur). Ce serait cohérent et
+probablement utile — mais la US porte sur `send`, et ajouter une étiquette d'opération IMAP
+changerait la lecture des campagnes en cours sur un axe que personne n'a demandé. Signalé ici pour
+qu'une prochaine US d'entretien le prenne, plutôt que glissé au passage.
