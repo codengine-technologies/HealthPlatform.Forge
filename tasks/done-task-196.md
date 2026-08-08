@@ -323,3 +323,60 @@ Aucun code Angular produit, rien à linter.
 
 `/verify-visual` — **skip propre** : aucun écran `client-mobile` touché (pas de
 `## Stitch design log`, `client-mobile` hors périmètre). Rien à capturer.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/171
+  — label `awaiting-human-merge`, ~50 fichiers
+- `dtos-mss` : **aucune PR** — branche auto-incluse restée sans commit. Aucun
+  changement de contrat, conforme à `**Single frontend**: true`.
+
+## Code Review Summary
+
+Verdict initial : **CHANGES REQUESTED**, puis **APPROVED après correction sur la
+branche** (`bb7d988`).
+
+**Les deux défauts bloquants venaient de la même cause de fond** : task-196 a été
+écrite par deux agents travaillant **en parallèle sans se voir**, et toute
+l'anomalie s'est logée à leur jointure. C'est l'enseignement de méthode du cycle.
+
+1. **Le compteur d'échec comptait double** — chacun des deux agents avait posé
+   son incrément, et la passe `/forge-simplify` a mutualisé le chemin d'appel
+   **sans retirer** ceux des appelants. Deux conséquences réelles : le compteur
+   qui doit répondre à « combien de documents manquent » était **faux et
+   incohérent d'une étiquette à l'autre** (`medical_document` doublé,
+   `email` juste) ; et à chaque **arrêt propre**, l'annulation classée
+   `cancelled` par l'invocateur se doublait d'un `provider_error` de l'appelant
+   — toute alerte posée sur cette cause se serait déclenchée. La distinction que
+   le code documente comme « ce qui rend le chiffre actionnable » était annulée
+   par l'appelant.
+   **Le test qui manquait est ajouté** : « un document perdu = **une** mesure,
+   avec la bonne cause », sur la voie nominale complète. C'est son absence qui a
+   laissé passer la régression.
+2. Deux `packages.lock.json` non commités, que tout build régénérait.
+
+**Suggestions également traitées** : marqueur `too long` qui matchait « took too
+long » (un timeout) et faisait réessayer sur un chemin déjà en panne ; branche
+`ClientResultException` du discriminant exercée par aucun test **alors que c'est
+le type constaté en production** ; voie nominale qui pouvait écrire un vecteur
+nul par-dessus un index valide, là où la reprise s'en gardait déjà.
+
+**Ce que la revue a vérifié plutôt que supposé** : le tokeniseur éprouvé
+empiriquement (l'optimisation en passe unique conserve `TokenCount` juste dans
+les deux branches) ; le test de non-fuite d'INS est une vraie preuve (liste
+blanche des propriétés **et** balayage des valeurs à la recherche de l'INS et du
+corps réellement semés) ; la portée praticien est **structurelle** — aucun
+chemin ne permet de lister ou ré-indexer les documents d'un confrère.
+
+**Divergence assumée, à arbitrer au HAG** : le DOD exigeait « plus aucune
+duplication de `TruncateContent` ». Deux subsistent (`EmailSummaryService`,
+`EmailTaggingService`), délibérément : garde-fous de **coût** sur `gpt-4o-mini`
+(contexte 128 k), deux ordres de grandeur sous sa limite — les convertir aurait
+aligné l'unité sans rien corriger.
+
+**Dette explicitement notée** : l'inventaire ne couvre que les documents
+médicaux (`MailContent.Embedding` peut aussi être nul) ; la ré-indexation en
+masse est synchrone dans la requête HTTP ; le prédicat `Embedding IS NULL` est
+prouvé contre le fournisseur en mémoire, pas contre pgvector réel.
+
+Build **0 erreur 0 warning**, **3 580 tests verts** (59 nouveaux).
