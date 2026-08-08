@@ -380,3 +380,23 @@ masse est synchrone dans la requête HTTP ; le prédicat `Embedding IS NULL` est
 prouvé contre le fournisseur en mémoire, pas contre pgvector réel.
 
 Build **0 erreur 0 warning**, **3 580 tests verts** (59 nouveaux).
+
+## Merged
+
+- **Date** : 2026-08-08, via `/merge task-196 --i-tested` (attestation humaine HAG)
+- **api-mail** : PR #171 squash-mergée → `cbde5ce` sur `develop` ; branche distante supprimée, branche locale conservée.
+- **dtos-mss** : aucune PR (branche auto-incluse sans commit) — refs locale et distante supprimées.
+- **Staging** : aucune branche `forge/staging-*` — cycle `/start` isolé.
+- **⚠️ CE QUI RESTE DÛ, et c'était déjà écrit dans la revue** :
+  - `/sonar 196` — la qualité de ce diff est **non mesurée** (serveur injoignable
+    pendant tout le cycle), ce qui n'est ni vert ni rouge ;
+  - le prédicat `Embedding IS NULL` de l'inventaire est prouvé contre le
+    fournisseur **en mémoire**, pas contre pgvector réel (Docker indisponible
+    dans la session) ;
+  - **conséquence pour le banc** : la baseline du scénario `search`, marquée
+    PROVISOIRE depuis task-174 parce qu'elle mesurait un index **incomplet**,
+    peut désormais être re-dérivée — mais elle ne l'a pas encore été.
+- **Divergence assumée au HAG** : deux `TruncateContent` subsistent
+  (`EmailSummaryService`, `EmailTaggingService`) là où le DOD exigeait zéro —
+  garde-fous de **coût** sur un modèle de chat, deux ordres de grandeur sous sa
+  limite. Les convertir aurait aligné l'unité sans rien corriger.
