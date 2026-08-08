@@ -254,3 +254,31 @@ tout entre les deux moitiés d'une paire.
 porte une vulnérabilité de **sévérité haute** (`GHSA-73j8-2gch-69rq`) — le build
 du repo la refuse, à raison. La dépendance est **remontée explicitement en
 10.0.10** dans `Directory.Packages.props` plutôt que l'alerte contournée.
+
+## Simplify log
+
+Passe qualité `/forge-simplify` du 2026-08-08 — `api-mail` seul repo touché
+(`dtos-mss` sans commit : aucun changement de contrat, comme la DOD l'exige).
+
+**Le constat qui domine la passe** : task-196 a été écrite par deux agents
+travaillant **en parallèle sans se voir**, et toute la duplication trouvée est
+tombée exactement sur leur frontière. C'est un enseignement de méthode, pas un
+hasard — la passe qualité est ce qui rattrape le prix de la parallélisation.
+
+| Axe | Constat | Correction |
+|---|---|---|
+| Réutilisation | `EmailEmbeddingService` et `BaseEmbeddingProviderService` portaient **chacun sa copie** du même chemin d'appel (~35 lignes : activité, logs, appel borné, compteur d'échec et sa branche *cancelled/provider_error*). Une correction sur une seule copie aurait désaligné la sémantique du compteur **en silence**. | Chemin unique `BoundedEmbeddingInvoker.GenerateVectorOrNullAsync` ; les trois libellés qui variaient regroupés dans `EmbeddingCall`. La classe de base ne garde que ce qu'elle ajoute vraiment. |
+| Réutilisation | La composition du texte vectorisé était écrite **deux fois** (voie nominale et reprise) — alors que le commentaire de la reprise **exige** que le texte soit le même. Invariant énoncé, rien ne le tenait. | `MedicalDocumentEmbeddingText.Compose` : un seul endroit, avec le pourquoi (un vecteur reconstruit d'un texte composé autrement n'est pas comparable à l'index). |
+| Simplification | `ReindexOneAsync` répétait 4 fois le même appel de métrique dont seul le résultat variait. | Local `RecordReindexOutcome(outcome)`. |
+| Efficacité | `EmbeddingInputBounder.Bound` tokenisait **deux fois** : comptage complet du document, puis coupe. Sur les documents longs — la raison d'être de ce chemin — la première passe était intégralement jetée. | Passe unique. |
+| Altitude | Rien à redire : contrôleur purement délégant, plafond d'inventaire au niveau du dépôt, borne isolée de son montage DI. | Aucune modification. |
+
+**Non retenu, délibérément** : les troncatures en caractères de
+`EmailSummaryService`/`EmailTaggingService` (garde-fous de coût sur un modèle de
+chat, hors sujet) ; la marge de 2 % et le réessai unique (ceinture et bretelles
+voulue) ; l'absence de collaborateur IMAP dans la reprise (garantie
+structurelle testée) ; la forme PGSSI-S des modèles d'inventaire (non enrichis
+« pour la commodité »).
+
+Build 0 erreur, **3 575 tests verts** avant et après la passe — aucun
+comportement changé, aucun rollback nécessaire.
