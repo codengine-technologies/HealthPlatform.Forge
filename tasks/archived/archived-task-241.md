@@ -383,3 +383,30 @@ changement de politique que task-238 s'était interdit.
 ⚠️ **La dette signalée par la revue de task-231 n'a pas été traitée** : un fragment de JWT reste
 journalisé en avertissement dans `SmtpConnectionFactory`. Elle est **re-signalée** ici, comme le
 DOD l'autorisait, plutôt que traitée hors du fil de l'analyse.
+
+
+---
+
+## Merged
+
+- **Date** : 2026-08-08, `/merge task-241 --i-tested` (attestation humaine HAG).
+- `api-mail` : squash `924ef40b16555a0638365b0da618ed9b61ce288c` (PR #174 fermée), branche remote
+  `fix/task-241-smtp-keepalive-diagnostic` supprimée, locale conservée.
+- `dtos-mss` : branche auto-incluse vide (0 commit, aucune PR) — remote supprimée, repo
+  resynchronisé sur `develop` (10ᵉ occurrence du défaut de cycle).
+- **CI develop api-mail** : ✅ success —
+  https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/31263078019
+- **Staging** : aucune branche `forge/staging-*` (run mono-task) — rien à nettoyer.
+
+### ⚠️ Ce qui reste dû, et à qui
+
+1. **L'arbitrage rétention SMTP vs contrainte opérateur MSSanté** — le seul point que la forge a
+   délibérément laissé ouvert. Les deux voies possibles (le battement rafraîchit l'accès, ou
+   `SmtpIdleTimeout` dépasse l'intervalle réel entre envois) augmentent le nombre de connexions
+   retenues par boîte. **Décision produit, pas technique.** Aucune US « accélérer `send` » ne
+   devrait démarrer avant.
+2. **Deux mesures au banc** : le chiffrage de l'affinité de session (question 3 — désormais
+   possible avec le filtre `operation="SmtpConnect"`, et elle s'**ajoute** au mécanisme trouvé au
+   lieu de le remplacer) et la décomposition des ~1 240 ms par trace (question 4).
+3. **Dette re-signalée, non traitée** : un fragment de JWT reste journalisé en avertissement dans
+   `SmtpConnectionFactory` — signalée à l'origine par la revue de task-231.
