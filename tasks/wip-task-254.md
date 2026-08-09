@@ -129,3 +129,69 @@ Données de test synthétiques uniquement.
 - **Hébergement HDS** : le gain doit être transposable à l'environnement cible ; le
   banc local n'est pas la cible et ses latences IMAP ne sont pas celles de production
 - **AIPD / impact RGPD** : inchangé — aucune donnée nouvelle collectée
+
+## Branches
+- `api-mail` (pushed) : feat/task-254-enrich-imap-fetch
+- `dtos-mss` (pushed, auto-inclus) : feat/task-254-enrich-imap-fetch — aucun changement de contrat attendu
+
+## Develop log — étape 1/2 : l'instrument (le livrable gatant du DOD)
+
+- **api-mail** `feat/task-254-enrich-imap-fetch` @0b3f4e6 — poussé.
+- **dtos-mss** — branche créée, aucun commit.
+
+### Ce qui est livré
+
+Le **nombre d'allers-retours IMAP par message enrichi** — premier critère du DOD,
+et explicitement gatant : « sans lui, la piste 1 n'est pas décidable ».
+
+Le compteur de sollicitations existait (task-225) mais **n'était câblé que sur
+`GetEmailContent` et le SMTP** : le chemin d'enrichissement n'en publiait aucune.
+Il l'est désormais aux 6 emplacements qui parlent au serveur, avec le **même
+vocabulaire** que `GetEmailContent` — c'est ce qui rend les deux voies comparables.
+Le dénominateur existait déjà (task-245) : **aucun nouvel instrument nécessaire**.
+
+### ⚠️ CE QUE LA MESURE CHANGE — l'ordre des pistes doit être revu
+
+**3 allers-retours `FETCH BODY[..]` par message**, un **par partie** (texte, HTML,
+archive). Les résumés, eux, sont **déjà groupés** : un seul `FETCH` par sous-lot.
+
+Conséquence à confronter au banc, mais elle saute aux yeux : à **94 ms** de latence
+injectée, 3 allers-retours coûtent **~282 ms**, soit **~11 %** des 2 612,7 ms du
+fetch. **La piste 1 (grouper les commandes) ne peut donc pas rendre l'essentiel** —
+elle plafonne à ~11 % du poste, ~10 % du total.
+
+Les ~2 330 ms restantes sont du **transfert** (l'archive pèse ~124 Ko contre
+quelques Ko pour un corps) et/ou de la **sérialisation** — et c'est exactement ce
+que désigne l'autre chiffre du tir : `EnrichEmails` **détient `imap_session`
+29,68 s en p95**. La **piste 2** (ne pas tenir la session pendant le téléchargement)
+devient donc le levier principal, et non la piste 1 comme l'ordre du task file le
+suggérait.
+
+C'est précisément le service qu'un instrument doit rendre : **écarter une piste
+avant qu'on l'écrive**. Le task file demandait de mesurer avant de choisir — c'est
+fait, et le choix change.
+
+### Validation
+
+- 3 tests d'intégration sur le vrai dépôt : attribution à `EnrichEmails`, un
+  aller-retour par partie, et le **témoin négatif** « sans archive, un de moins »
+  (sans lui, un compteur publiant un nombre fixe passerait).
+- 3 tests de rendu, dont **« absence ≠ zéro »**.
+- Suite : 136 + 436 + 660 + 2 099 .NET, **270 Python, 72 JS**. Échecs observés =
+  flakies documentés (`MailExport` PDF, `BulkDelete`, `GetThreadAsync`), **tous
+  verts isolément** — vérifié, et `GetThreadAsync` isolé confirme au passage que
+  task-247 est saine.
+- **Aucun changement de comportement** : seules des sollicitations sont consignées.
+
+### Reste à faire — étape 2/2
+
+Les 5 autres critères du DOD sont des **optimisations et des mesures au banc** :
+réduire la phase fetch, A/B iso-conditions, détention de `imap_session` avant/après,
+franchir le plateau de ~9,5 messages/s, et les tests de non-régression sur les
+3 formes de corpus (mono-document, multi-documents, archive sans CDA exploitable).
+
+**Piste 2 d'abord**, à la lumière du calcul ci-dessus — et son arbitrage inclut le
+plafond `mail_max_userip_connections` (task-213 a montré qu'une voie dédiée
+**double** les sessions IMAP par praticien).
+
+**`/sonar` n'a pas été rejoué** sur cette étape (du C# a été modifié).
