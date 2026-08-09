@@ -87,3 +87,144 @@ Données de test synthétiques uniquement.
 
 - `api-mail` (pushed) : `chore/task-251-exception-family-triage` — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/chore/task-251-exception-family-triage
 - `dtos-mss` (pushed, auto-included) : `chore/task-251-exception-family-triage` — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/chore/task-251-exception-family-triage — aucun changement de contrat attendu, branche créée proactivement
+
+## Develop log
+
+- Repos touchés : `api-mail` (`docs/loadtest.md` uniquement) + plan de contrôle
+  (`.claude/skills/loadtest-skill/SKILL.md`). **Aucun code C# modifié** —
+  US d'enquête. `dtos-mss` : aucun commit, pas de PR.
+- DTOs publiés : aucun changement de contrat. Interop : aucun.
+- Banc : monté (`https-load-test`), seedé 50 praticiens, **3 tirs**, puis
+  arrêté et purgé (`reset-state.sh` mode PURGE : 50 bases purgées, volume
+  maildir supprimé).
+
+### La réponse, en une phrase
+
+Les deux familles qui composaient les 4,4–5,0 exc/s **ne sont pas un coût par
+requête** : l'une est le **sérialiseur Prometheus d'OpenTelemetry** qui déborde
+son tampon **à chaque scrape**, l'autre est le **keep-alive de session IMAP** qui
+sort de sa boucle **à chaque extinction de session**. Les deux sont bénignes ;
+ce qui ne l'était pas, c'est que la colonne les additionnait sans les nommer.
+
+### Ce qui a été établi, et comment
+
+**1. La famille dominante dépend de ce que Prometheus scrape.** Deux régimes :
+
+| Régime | Cible du scrape | Famille dominante | Part |
+|---|---|---|---|
+| A (config du 2026-08-08) | `:5052/metrics` en direct | `IndexOutOfRangeException` + `ArgumentException` | ~73 % / ~27 % |
+| B (config actuelle) | voie collector `:8889` | `TaskCanceledException` | **80–93 %** |
+
+**2. Régime A — `PrometheusSerializer` d'OpenTelemetry** (paquet
+`OpenTelemetry.Exporter.Prometheus.AspNetCore` 1.16.0-beta.1).
+Sites d'appel relevés (pile complète) : `WriteNormalizedLabelKey`
+(`IndexOutOfRangeException`) et `WriteUtf8NoEscape` — « Destination buffer too
+small » — (`ArgumentException`), sous `PrometheusCollectionManager.TryWriteResponse`
+← `PrometheusExporterMiddleware.InvokeAsync`. C'est l'**agrandissement de tampon**
+de l'exporteur : il déborde, attrape, double, recommence ; le scrape rendu est
+complet.
+
+**Fréquence : par _scrape_.** Causalité prouvée par l'expérience directe —
+20 scrapes forcés sur un réplica **au repos, sans une seule requête métier** :
+**+54 `IndexOutOfRange`, +18 `ArgumentException`** (≈ 2,7 + 0,9 par scrape).
+Et la « signature » qui avait alerté s'explique entièrement : `scrape_interval:
+5s` produit, au relevé du 2026-08-08 09:09→09:18, exactement **8 + 3 toutes les
+5 s**, invariant — un **métronome**, sur une session de navigation manuelle.
+
+⚠️ Contre-intuitif et vérifié : le coût **ne suit pas** la charge linéairement —
+à 86 ko / 364 séries il **descend** à ~5 par scrape contre ~8 à 69 ko / 301 séries.
+
+**3. Régime B — keep-alive de session**, `MailClientSession.StartKeepAlive`,
+`await Task.Delay(KeepAliveInterval, _keepAliveCts.Token)`
+(`src/Application/Session/MailClientSession.cs:305`), rattrapé par le
+`catch (OperationCanceledException) { break; }` de la boucle. **Une exception par
+extinction de session**, jamais par requête ; le débit suit `SESSION_ROTATION`.
+
+Tir `mixed`, 50 médecins, 5 min (`RPS_PER_USER=2`, `SESSION_ROTATION=0.002`),
+`sum by (service_instance_id, error_type) (increase(dotnet_exceptions_total[5m]))`
+relevé **dans** la fenêtre :
+
+| Réplica | Exceptions /s | dont `TaskCanceledException` |
+|---|---|---|
+| `…-27264` | 1,37 | 374 / 412 (91 %) |
+| `…-2860`  | 1,17 | 280 / 352 (80 %) |
+| `…-53032` | 2,03 | 506 / 608 (83 %) |
+| `…-59220` | 1,47 | 365 / 441 (83 %) |
+| `…-64200` | 1,27 | 355 / 381 (93 %) |
+
+Même homogénéité entre réplicas que la table du tir 200 — à 4× moins de
+praticiens, 4× moins d'exceptions. Les 4,4–5,0 /s du 2026-08-08 sont **cohérents**
+avec cette famille portée à 200 praticiens (extrapolation, non re-mesurée).
+
+### Verdicts par famille (DOD)
+
+| Famille | Une fois par… | Verdict |
+|---|---|---|
+| `IndexOutOfRangeException` | **scrape** | **Bénigne** — contrôle de flux d'une dépendance, scrape complet, zéro impact fonctionnel. Coût de l'**instrument**, pas du produit |
+| `ArgumentException` | **scrape** | **Bénigne** — même cause |
+| `TaskCanceledException` | **extinction de session** | **Bénigne** — sortie de boucle intentionnelle |
+| `IOException` | fermeture de connexion IMAP | **Bénigne** — `SslStream` sur socket avortée |
+| `ImapProtocolException` | fin de session | **Bénigne** |
+| `NpgsqlException` + `InvalidOperationException` | **appariées** (736 : 635) | ⚠️ **Défaut → US proposée** (ci-dessous) |
+| `PostgresException 08P01 … server_login_retry` | — | ⚠️ **Défaut de banc → US proposée** (ci-dessous) |
+
+### Contrôles de non-régression
+
+| Famille | Attendu | Relevé |
+|---|---|---|
+| `SecurityTokenMalformedException` | **0** | **0** ✓ — aucune occurrence sur les 3 tirs ni au repos. (Le libellé apparaît dans `label/error_type/values`, qui est l'historique **persistant** du TSDB ; la requête de valeur rend vide.) |
+| `FolderNotFoundException` | **0** | **0** ✓ |
+
+### Deux US proposées au PO
+
+1. **La reprise EF Core masque des coupures de connexion Postgres.**
+   `NpgsqlException` « Exception while reading from stream »
+   (`NpgsqlReadBuffer.EnsureLong`) systématiquement **appariée** à
+   `InvalidOperationException` « An exception has been raised that is likely due
+   to a transient failure. » levée par `NpgsqlExecutionStrategy.ExecuteAsync`.
+   736 : 635 relevées **sur le seul seed**. La reprise fait son travail — et c'est
+   précisément ce qui rend la coupure invisible. À rapprocher du plafond « un pool
+   Npgsql par base praticien ».
+2. **PgBouncer refuse les connexions au banc** (`08P01: server login has been
+   failing, cached error: connect failed (server_login_retry)`, jusqu'à
+   **313 /s**). Défaut de configuration du banc, pas d'api-mail : tant qu'il est
+   présent, **aucun chiffre de capacité du tir n'est opposable**.
+
+### Observation collatérale (hors périmètre, à ne pas perdre)
+
+Au seed, **le premier `POST` de `UserSettings` répond 500 pour _chaque_
+praticien**, et la 2ᵉ tentative passe — 50 fois sur 50, deux seeds de suite. Le
+seed le rattrape (`retry 1/3`) et sort en succès, donc personne ne le voit.
+
+### Livré
+
+- `Api/Mail/docs/loadtest.md` § **4b-bis** (nouveau) : les familles nommées, leur
+  site d'appel, leur périodicité, les verdicts, le repère chiffré qui remplace
+  « quelques unités », et les deux pièges d'outillage.
+- `.claude/skills/loadtest-skill/SKILL.md` : table « Ordre de grandeur attendu »
+  réécrite (c'est **là** que vivait le repère « quelques unités », pas dans
+  `docs/loadtest.md` — le DOD visait le bon texte au mauvais fichier ; les deux
+  sont traités), et « Le test qui tranche » complété de ses **deux angles morts**.
+
+### Deux pièges d'outillage, payés en les découvrant
+
+- **`dotnet-trace` ne voit pas ces exceptions.** Sur 60 s où le compteur montait
+  de +11 / +3, une collecte `Microsoft-Windows-DotNETRuntime:0x8000`
+  (`ExceptionKeyword`) en a enregistré **zéro**, tout en capturant des
+  `IOException` dans la même trace. Ce qui marche : une sonde
+  `FirstChanceException` injectée par `DOTNET_STARTUP_HOOKS` — elle voit
+  exactement ce que le compteur compte. À compiler en **`netstandard2.0`** :
+  en `net10.0` elle se charge aussi dans l'outillage de build et le casse.
+- **`increase()` sur un scrape direct de `:5052` ne veut rien dire** : endpoint
+  **réparti** entre 5 réplicas, une série entrelace 5 compteurs. L'attribution
+  passe par `service_instance_id`.
+
+### Validation
+
+- Aucun code C# modifié → aucun test à ajouter, aucune régression possible.
+  `dtos-mss` : branche vide, pas de PR.
+- Les chiffres ci-dessus sont **relevés**, pas estimés ; les deux extrapolations
+  (tir 200, et le lien avec la table du 2026-08-08) sont signalées comme telles.
+- Le banc a été **arrêté et purgé** après mesure (étape 6 du skill).
+
+- Next step : `/forge-simplify 251`

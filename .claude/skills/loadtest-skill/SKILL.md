@@ -532,7 +532,11 @@ valeur non vide mais **pas un JWT** — au motif que le profil du banc pose
 | Famille | Attendu | Lecture |
 |---|---|---|
 | `SecurityTokenMalformedException` | **0** | toute occurrence = régression. Le harnais forge un vrai JWT par identité, et api-mail contrôle la forme avant de parser |
-| Total « Exceptions /s » par réplica | **quelques unités**, pas des centaines | au-delà de ~10/s soutenus, chercher la famille avant de conclure quoi que ce soit sur la capacité |
+| Total « Exceptions /s » par réplica | **1 à 2 /s à 50 médecins**, dont **80–93 % `TaskCanceledException`** (task-251) | ⚠️ « quelques unités » jusqu'au 2026-08-09 : un ordre de grandeur sans famille ne permet **pas** de détecter une dérive. Au-delà de ~10/s soutenus, **nommer** la famille avant toute conclusion de capacité |
+| `TaskCanceledException` | **dominante** en régime normal, ~1 à 2 /s par réplica à 50 médecins | **une par extinction de session**, jamais par requête : `MailClientSession.StartKeepAlive` (`MailClientSession.cs:305`), sortie de boucle voulue. Suit `SESSION_ROTATION`, pas le débit. Bénigne. Sa **part qui chute sous ~70 %** est le signal : une autre famille monte |
+| `IndexOutOfRangeException` + `ArgumentException` | **≈ 2,7 + 0,9 par _scrape_** — non nulles **seulement** si Prometheus scrape `/metrics` en direct | sérialiseur Prometheus d'OpenTelemetry (agrandissement de tampon, `PrometheusSerializer`) : c'est le coût de **l'instrument**, pas du produit. Le scrape rendu est complet. **Les exclure du total** avant de le lire. Détail : `docs/loadtest.md` § 4b-bis |
+| `NpgsqlException` + `InvalidOperationException` (« transient failure ») | **appariées** | reprise EF Core (`NpgsqlExecutionStrategy`) sur une connexion Postgres **coupée** — la reprise masque la coupure. Pas du simple bruit |
+| `PostgresException 08P01 … server_login_retry` | **0** | PgBouncer refuse faute d'auth amont. Tant qu'elle est là, **aucun chiffre de capacité n'est opposable** |
 | `FolderNotFoundException` | **0** depuis `118c3f4` (2026-08-01) | les boîtes du banc déclarent désormais `Sent` / `Drafts` / `Trash` et l'archivage aboutit réellement (`doveadm` : Sent messages=1). Toute occurrence = régression de la conf Dovecot. ⚠️ Cette ligne annonçait « non nulle, bénigne » jusqu'à task-214 : c'était vrai avant `118c3f4`, où l'archivage échouait après **chaque** envoi (~73/s) |
 | `HttpRequestException`, `FlagsmithAPIError` | ponctuelles | dépendances externes du banc |
 | `IOException`, `XmlException` | ponctuelles | à regarder si elles croissent avec la charge |
@@ -542,9 +546,29 @@ charge** est un coût par requête, pas un incident. C'est le signe qu'un chemin
 code est exercé à chaque appel ; le chercher avant d'interpréter un chiffre de
 capacité.
 
+> ⚠️ **Ce test a deux angles morts, tous deux rencontrés par task-251 — un débit
+> régulier et homogène entre réplicas n'établit PAS un coût par requête.**
+>
+> 1. **Un métronome ressemble à un coût par requête.** Les familles dominantes du
+>    2026-08-08 (`IndexOutOfRange` + `Argument`) valaient exactement 8 + 3 toutes
+>    les 5 s — c'est-à-dire le `scrape_interval`, pas le trafic. Le contrôle qui
+>    tranche en une minute : **regarder le banc au repos**. Une famille qui
+>    continue à compter sans une seule requête métier n'est pas un coût par
+>    requête.
+> 2. **« Par session » se lit comme « par requête ».** `TaskCanceledException`
+>    suit le **renouvellement de sessions** ; il monte avec la charge sans
+>    qu'aucun chemin de code ne soit exercé à chaque appel. Contrôle :
+>    faire varier `SESSION_ROTATION` à charge constante.
+
 ```bash
-curl -s --get 'http://127.0.0.1:9090/api/v1/query' \
+# ⚠️ le port de Prometheus est attribué dynamiquement par l'AppHost —
+#    le relever (`docker ps`) plutôt que supposer 9090.
+curl -s --get "http://127.0.0.1:${PROM_PORT}/api/v1/query" \
   --data-urlencode 'query=sum by (error_type) (increase(dotnet_exceptions_total[2m]))'
+
+# Attribution PAR RÉPLICA — la seule forme opposable (cf. docs/loadtest.md § 4b-bis) :
+curl -s --get "http://127.0.0.1:${PROM_PORT}/api/v1/query" \
+  --data-urlencode 'query=sum by (service_instance_id, error_type) (increase(dotnet_exceptions_total[5m]))'
 ```
 
 ⚠️ **Fidélité du banc** : `PSC_TOKEN` est désormais **vide par défaut**, ce qui
