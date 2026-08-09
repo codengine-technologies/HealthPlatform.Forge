@@ -321,3 +321,26 @@ multiplexage n'a été touché.
 
 **Validation** : build **0 erreur**, tests .NET **371 passés / 0 échec**, harnais
 **237 tests verts**.
+
+## Merged
+
+Mergée le **2026-08-09** après validation humaine de bout en bout (HAG, règle 10 —
+`/merge task-242 --i-tested`).
+
+| Repo | PR | Squash | CI `develop` |
+|---|---|---|---|
+| `api-mail` | [#175](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/175) | **`c74120a9`** | ✅ verte |
+| `dtos-mss` | aucune PR — branche vide (aucun contrat touché) | — | — |
+
+Portes de sécurité au moment du merge : `mergeable=MERGEABLE`, `mergeState=CLEAN`,
+label `awaiting-human-merge`, CI de la PR verte (`build` succès, `publish` sauté),
+aucune revue en `CHANGES_REQUESTED`, aucun commit local non poussé, arbres de
+travail propres. Branches distantes supprimées sur les deux repos ; clones locaux
+revenus sur `develop`.
+
+**Ce que ce merge met sur `develop`** — deux campagnes et leurs correctifs
+d'instrument : la section « Ressource épinglée » ne peut plus écarter par la
+moyenne du tir ce qu'un **palier** désigne, `maxwait` est relevé, l'attente du
+pooler est **ventilée** entre bases praticien et pool de maintenance, et le seed
+est devenu **reprenable**. Les findings ouverts par ces campagnes sont instruits
+par les US **task-244 à task-252**.
