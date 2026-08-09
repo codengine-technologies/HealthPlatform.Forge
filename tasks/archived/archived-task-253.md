@@ -146,3 +146,16 @@ tir, qui est de toute façon celui qui doit aussi prouver task-247.
 
 `/sonar` non joué : **aucun fichier C# touché** (harnais Python/JS et documentation
 uniquement) — le périmètre de la solution .NET n'est pas concerné.
+
+## Archivée
+
+Archivée le **2026-08-09**. Livrée directement sur `develop` à la demande humaine —
+**pas de PR, donc pas de HAG** (même régime que task-243).
+
+| Commit | Objet |
+|---|---|
+| `5d056db` | chauffe par vagues, délai dérivé de la concurrence bornée, mesure du temps prélevé |
+| `077001c` | correctif : le décalage se calcule sur la **cohorte** et non l'index global — le VU 200 attendait 1 981 s sur une fenêtre de 1 920, il n'aurait jamais chauffé |
+
+Le critère de DOD « zéro lot expiré sur un tir 200 distant » se referme au tir de
+preuve lancé le même jour, qui valide aussi task-247.

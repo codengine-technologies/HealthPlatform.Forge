@@ -161,31 +161,34 @@ des deux fournisseurs.
 ## Merged
 
 - **api-mail** : PR #178 squash-mergée sur `develop` — commit **`9e1b4bf`** (2026-08-09).
-- **CI `develop`** : ✅ verte sur ce sha (vérifiée par `headSha`, pas sur « le dernier
+- **CI `develop`** : ✅ verte sur ce sha (vérifiée par `headSha`, et non sur « le dernier
   run » — `develop` avait déjà avancé avec task-253 pendant l'attente).
 - Branche distante supprimée ; **branche locale conservée**.
 - Attestation humaine `--i-tested` fournie le 2026-08-09.
+- **Les trois critères de DOD laissés ouverts étaient des mesures** : ils se referment
+  au **tir de preuve lancé le même jour** (nombre de requêtes avant/après par le
+  compteur de task-243, A/B iso-conditions, retour de l'étape inbox dans la grille au
+  palier 200).
 
 ### Ce que la contre-épreuve humaine a apporté — une régression évitée
 
-L'humain a fourni une base praticien réelle, et l'A/B a **trouvé un défaut que mes
-fixtures ne pouvaient pas voir** : je dédupliquais les descendants de fil par
+L'humain a fourni une base praticien réelle, et l'A/B a **trouvé un défaut que les
+fixtures ne pouvaient pas voir** : les descendants de fil étaient dédupliqués par
 `MessageId`, alors que **le même `MessageId` existe dans plusieurs dossiers** (message
 reçu puis mis à la corbeille — jusqu'à 3 lignes relevées). Les compteurs de fil
 baissaient : 3 → 2, et un fil retombé à 1 avec `isPartOfThread` à `false`.
 
-Corrigé par `e7c3b89` (déduplication sur `(FolderPath, Uid)`, l'identité réelle de la
-ligne — l'index unique du schéma). Second A/B : **diff vide**.
+Corrigé par `e7c3b89` — déduplication sur `(FolderPath, Uid)`, l'identité réelle de la
+ligne, qui est l'index unique du schéma. Second A/B : **diff vide** sur 39 mails de
+3 dossiers, dont 12 porteurs de fils, 8 liens inter-dossiers et 3 racines orphelines.
 
 Cas verrouillé par `GetMailsByUidsAsyncCountsDescendantsThatShareAMessageIdAcrossFolders`,
-**éprouvé par mutation** (il échoue si l'on réintroduit `DistinctBy(m => m.MessageId)`).
+**éprouvé par mutation** : il échoue si l'on réintroduit `DistinctBy(m => m.MessageId)`.
 
-**Leçon** : toutes les fixtures du dépôt utilisent des `MessageId` uniques ; aucune ne
-pouvait reproduire ce défaut. La contre-épreuve sur données réelles n'était pas une
-formalité.
+**Leçon transférable** : toutes les fixtures du dépôt utilisent des `MessageId`
+uniques ; aucune ne pouvait reproduire ce défaut. La contre-épreuve sur données
+réelles n'était pas une formalité.
 
-### Restes ouverts
+### Reste ouvert
 
-- Les 3 critères de **mesure** du DOD (A/B iso-conditions, compteur de requêtes par
-  appel, retour de l'étape inbox dans la grille au palier 200) exigent un tir.
 - **`/sonar` n'a jamais été rejoué** sur cette task, qui modifie du C#.
