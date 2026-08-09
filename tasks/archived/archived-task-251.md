@@ -307,3 +307,17 @@ seed le rattrape (`retry 1/3`) et sort en succès, donc personne ne le voit.
   fixture Dovecot, consécutif à la purge du banc faite juste avant ; un diff
   100 % documentaire ne peut pas causer de régression de code.
 - Qualité : `/sonar` skipped — aucun `.cs` au diff.
+
+## Merged
+
+- **Mergée le 2026-08-09** par l'humain (HAG, règle 10), attestation `--i-tested`.
+- `api-mail` : PR #181 **squash-mergée** → `b731306` sur `develop`.
+  Branche distante `chore/task-251-exception-family-triage` supprimée ;
+  **branche locale conservée**.
+- `dtos-mss` : aucune PR (0 commit). Branche distante supprimée, locale conservée.
+- Clones locaux resynchronisés sur `develop` (`api-mail` en `b731306`).
+- **CI `develop` verte** (run `31333854013`, workflow « Build and Publish »,
+  conclusion `success`). L'annotation « Node.js 20 is deprecated » est un
+  avertissement préexistant du runner, pas un échec.
+- Aucune branche `forge/staging-*` à nettoyer : task lancée par `/start`, pas
+  par un run `/forge`.
