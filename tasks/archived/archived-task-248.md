@@ -147,3 +147,36 @@ portant sur un **nombre**. L'assertion est l'**égalité** entre D=1 et D=5, et 
 **`/sonar` n'a pas été rejoué** sur cette task, qui modifie du C#.
 
 Commits : `af8d61e` (perf), `98440c8` (preuve du décompte).
+
+## Merged
+
+- **api-mail** : PR #179 squash-mergée sur `develop` — commit **`036b71f`** (2026-08-09).
+- **CI `develop`** : ✅ verte, vérifiée **sur ce sha précis** (`headSha`) et non sur
+  « le dernier run » — `develop` bouge en parallèle sur cette EPIC.
+- Branche distante supprimée ; **branche locale conservée**.
+- **dtos-mss** : branche `feat/task-248-...` restée vide, aucune PR — non supprimée.
+- Attestation humaine `--i-tested` fournie le 2026-08-09.
+
+### Ce que le passage par `/review` a apporté
+
+Un premier `/merge 248` a été **refusé** : la task était encore en `wip-*` et aucune
+PR n'existait. Le refus a servi à quelque chose de concret — `/review` a :
+
+1. **tranché une incertitude que j'avais explicitement signalée** :
+   `PatientUseCaseTests.SearchShouldReturnMatchingPatients` avait échoué de façon non
+   reproductible et je ne pouvais dire flaky vs régression. La suite d'intégration
+   est ressortie **intégralement verte** (380, 0 échec) : c'était un flaky d'état
+   entre tests. Merger avant, c'eût été merger sur cette incertitude ;
+2. **converti un critère du DOD** au lieu de le différer — le décompte de requêtes
+   est désormais prouvé **déterministement** par un intercepteur local au test, le
+   compteur de task-243 n'étant pas câblé dans la fixture (constat empirique).
+
+### ⚠️ Reste ouvert après merge
+
+- **4 critères du DOD sur 6** sont des **mesures au banc** : p95 de `GetMail` qui ne
+  plafonne plus, retour de l'étape « fiche patient complète » dans la grille au
+  palier 200 (p95 mesuré **5 004 ms** pour une cible de 4 000), zéro timeout
+  `patient_docs` sur un tir 200, et l'**A/B iso-conditions**. Le gain est
+  **structurellement** acquis (le décompte ne croît plus avec D, prouvé) ; son
+  **effet sur l'attente du médecin** ne l'est pas.
+- **`/sonar` n'a jamais été rejoué** sur cette task, qui modifie du C#.
