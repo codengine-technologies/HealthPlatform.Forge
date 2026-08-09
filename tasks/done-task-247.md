@@ -103,3 +103,57 @@ Données de test synthétiques uniquement.
 - **Tracé PGSSI-S** : inchangé
 - **Hébergement HDS** : sans objet
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+- `api-mail` (pushed) : feat/task-247-inbox-materialisation
+- `dtos-mss` (pushed, auto-included) : feat/task-247-inbox-materialisation
+
+## Develop log
+
+- **api-mail** `feat/task-247-inbox-materialisation` @2ae7833 — poussé.
+- **dtos-mss** — branche créée, aucun commit → pas de PR.
+
+### Le correctif
+
+`ComputeThreadCountsAsync` lisait **deux fois la table `Mails` entière** à chaque
+page d'en-têtes (finding F-243-1) : tous les MessageId, puis tous les mails
+porteurs de `References`/`InReplyTo`. **Aucun filtre de page.** Les deux lectures
+sont désormais bornées par les **racines de la page**.
+
+### Deux décisions expliquées, pas subies
+
+- **Pas de filtre par dossier** — le DOD le suggérait, le comportement l'interdit :
+  un fil **traverse les dossiers** (racine dans `Sent`, réponses en `INBOX`).
+  Verrouillé par `…CountsAThreadWhoseRootLivesInAnotherFolder`.
+- **Pas de filtre de génération** — `UIDVALIDITY` est propre à un dossier ; un
+  membre de fil situé ailleurs porte légitimement une autre valeur. Le filtre
+  appartient à la lecture de la **page**, pas au comptage qui la traverse.
+
+### Le piège de traduction, trouvé par les tests et non par la théorie
+
+`roots.Any(r => References.Contains(r))` est traduit par **Npgsql** mais **pas** par
+le fournisseur **InMemory** des tests unitaires — intégration verte, deux tests
+unitaires rouges. Remplacé par une **chaîne de OR en arbre d'expression**, comprise
+des deux fournisseurs.
+
+### Validation
+
+- 4 tests de caractérisation **écrits avant** le correctif, verts avant comme après
+  (dont le témoin négatif : un mono-message porte `ThreadCount = 1` — **valeur
+  relevée**, mon hypothèse initiale de 0 était fausse).
+- Suite : domain 136, application 2 086, infrastructure 436, api 660 — **0 échec**.
+- Intégration : **2 échecs identiques au baseline sans mes changements**
+  (369/387 → 373/391), vérifié par `git stash` + re-run. **Pas des régressions.**
+
+### ⚠️ Écarts assumés
+
+- **`/sonar` non rejoué** pour cette task (durée du run cumulé). Du C# a été modifié :
+  un scan dédié reste à faire si le humain le souhaite.
+- **3 critères du DOD sur 6 restent ouverts** — ce sont des **mesures**, pas du
+  code : nombre de requêtes avant/après par le compteur task-243, A/B iso-conditions,
+  et retour de l'étape inbox dans la grille au palier 200. Tous exigent un tir.
+
+## PRs
+
+- **api-mail** : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/178 — label `awaiting-human-merge`
+- **Staging** : `forge/staging-task-244-252-20260809` — task-247 agrégée
