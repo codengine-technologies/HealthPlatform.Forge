@@ -228,3 +228,12 @@ seed le rattrape (`retry 1/3`) et sort en succès, donc personne ne le voit.
 - Le banc a été **arrêté et purgé** après mesure (étape 6 du skill).
 
 - Next step : `/forge-simplify 251`
+
+## Simplify log
+
+- **Skip clean** — aucun repo éligible. Le diff de `api-mail` vs `develop` est
+  `docs/loadtest.md` uniquement (130 lignes ajoutées, **0 fichier de code** :
+  `git diff --name-only origin/develop...HEAD | grep -cE '\.(cs|ts|html|scss|csproj)$'`
+  → `0`). `dtos-mss` : branche vide. Rien à simplifier, aucune re-validation
+  nécessaire (pas de comportement modifiable par une passe qualité).
+- Next step : `/sonar 251`
