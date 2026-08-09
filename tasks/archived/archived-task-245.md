@@ -199,3 +199,15 @@ Duplication projet 0,4 % → **0,3 %** (passe `/forge-simplify`).
 | **Contre-épreuve au banc (local + distant)** | ⏳ **différée** — exige le banc |
 
 Commits : `b8f340a` (feat), `670cb50` (simplify), `86c03fb` (sonar).
+
+## Merged
+
+- **api-mail** : PR #177 squash-mergée sur `develop` — commit **`4d8846b`** (2026-08-09).
+- Branche distante `feat/task-245-enrichment-phase-telemetry` supprimée ; **branche locale conservée**.
+- **dtos-mss** : branche `feat/task-245-...` restée vide, aucune PR — non supprimée.
+- **CI `develop`** : ✅ verte après merge.
+- Attestation humaine `--i-tested` fournie le 2026-08-09.
+
+> ⚠️ Contre-épreuve encore due : la décomposition doit être **lue** sur un tir
+> (local **puis** distant, pour ne pas imputer au réseau ce qui appartient au
+> traitement). Section « Où part le temps d'un enrichissement » du rapport.

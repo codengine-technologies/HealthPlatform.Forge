@@ -246,3 +246,16 @@ Corrigés en review : commentaire replacé au-dessus de la boucle qu'il décrit
 | **Tir 500 distant sans timeout** | ⏳ **différé au Manual Test Plan** — exige le banc |
 
 Commits : `ea06465` (feat), `ad10f5e` (simplify), `32d3844` (sonar), `c71006a` (review).
+
+## Merged
+
+- **api-mail** : PR #176 squash-mergée sur `develop` — commit **`a87946d`** (2026-08-09).
+- Branche distante `feat/task-244-warmup-batched-verdict-gate` supprimée ; **branche locale conservée**.
+- **dtos-mss** : branche `feat/task-244-...` restée vide (aucun contrat touché), aucune PR — non supprimée.
+- **CI `develop`** : ✅ verte après merge.
+- Attestation humaine `--i-tested` fournie le 2026-08-09.
+
+> ⚠️ La validation réelle de cette US **est le prochain tir 500** : son Manual Test
+> Plan exige un banc, et le tir a besoin d'elle (elle ne touche aucun code de
+> production — uniquement `tests/loadtest-k6/` et `docs/`). À lire dans le rapport :
+> le **bandeau de chauffe** doit refuser les étapes 2/3/10/11 si la chauffe échoue.
