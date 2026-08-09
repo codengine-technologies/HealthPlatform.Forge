@@ -268,3 +268,42 @@ seed le rattrape (`retry 1/3`) et sort en succès, donc personne ne le voit.
 - **`/verify-visual` — skip clean.** Aucun écran `client-mobile` touché, donc
   aucune capture à produire ni à apparier à une référence Stitch.
 - Next step : `/review 251`
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/181 — label `awaiting-human-merge`
+- `dtos-mss` : **aucune PR** — 0 commit vs `develop` (branche créée
+  proactivement par la règle d'auto-inclusion, aucun changement de contrat).
+  Branche `chore/task-251-exception-family-triage` à supprimer au `/merge`.
+- `client-angular` / `client-mobile` / `devops` / `psc-proxy-*` : hors périmètre
+  (`**Repos**: api-mail`).
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 1 fichier revu, 0 blocage, 0 suggestion.
+
+- `Api/Mail/docs/loadtest.md` (+131, −0) — ✅ ajout d'une section `## 4b-bis`.
+  Documentation pure : aucun `.cs`, `.ts`, `.csproj` au diff, donc **aucune
+  surface de régression** (correctness / sécurité / archi / perf sans objet).
+  Contrôles réellement applicables :
+  - **Exactitude** : chaque chiffre publié est un relevé daté, et les deux
+    extrapolations (tir 200 ; lien avec la table du 2026-08-08) sont explicitement
+    marquées comme telles plutôt que présentées comme mesurées.
+  - **Non-fuite** (exigence du task file) : sur les 131 lignes ajoutées, aucun
+    identifiant PS/patient, aucune adresse, aucun secret — seuls le **type**
+    d'exception et le **site d'appel** sont cités. Contrôlé par grep sur les
+    lignes ajoutées seules.
+  - **Cohérence** : la nouvelle section corrige aussi l'heuristique « le test qui
+    tranche » du skill, qui est précisément ce qui avait envoyé l'enquête sur une
+    fausse piste (un métronome se lisait comme un coût par requête).
+
+## Validation
+
+- Build `api-mail` : ✓ 0 erreur.
+- Tests : 136 + 436 + 2 102 + 660 = **3 334 verts, 0 échec**.
+  `integration` : **1 échec** (`GetFolderAsync_Inbox_ShouldReturnTheSeededMessageCount`,
+  `ImapProtocolException: The IMAP server has unexpectedly disconnected` pendant
+  le seed Dovecot) — **vert en isolation (12/12)**. Flake d'environnement de la
+  fixture Dovecot, consécutif à la purge du banc faite juste avant ; un diff
+  100 % documentaire ne peut pas causer de régression de code.
+- Qualité : `/sonar` skipped — aucun `.cs` au diff.
