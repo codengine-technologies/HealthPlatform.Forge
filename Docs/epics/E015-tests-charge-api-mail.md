@@ -734,6 +734,38 @@ montage de test était plus permissif que la production, il validait donc du cod
 marchait pas. La moitié du chantier reste à faire — les tâches de fond ne sont toujours pas
 réellement déclenchées pendant les tests. *(task-235, suite dans task-237)*
 
+### Une fiche de correspondant ne se met plus à jour « à moitié » (9 août 2026)
+
+Quand un praticien reçoit un message d'un confrère, l'application complète
+automatiquement la fiche de ce confrère dans son annuaire : téléphone, spécialité,
+adresse MSSanté.
+
+Un défaut discret y avait été relevé. Lorsque **deux praticiens reçoivent un message du
+même confrère au même instant**, l'une des deux mises à jour échouait — et l'échec
+était **journalisé puis oublié**. Résultat : la fiche restait incomplète, et personne
+n'en savait rien.
+
+Ce n'est pas une lenteur, c'est **une donnée perdue**. Et une fiche d'annuaire
+incomplète ne se remarque pas tout de suite : elle se remarque des semaines plus tard,
+au moment où l'on en a besoin — ou jamais.
+
+Le défaut est aujourd'hui **rare** : une occurrence sur plus de 130 000 demandes. Mais
+il ne se produit que lorsque deux praticiens se croisent sur le même confrère : sa
+fréquence **augmente avec le carré du nombre de praticiens**, pas proportionnellement.
+Ce qui est rare à 200 ne le reste pas à 500.
+
+Désormais, la mise à jour perdante **relit la fiche telle que l'autre l'a laissée, puis
+y ajoute son propre apport**. Les deux compléments survivent, au lieu que l'un écrase
+l'autre. Et si un cas reste malgré tout irréconciliable, il est **signalé comme une
+anomalie** au lieu d'être passé sous silence.
+
+Un mot sur la méthode, parce qu'elle a compté ici : le premier contrôle automatique
+écrit pour ce défaut **passait alors que le défaut était toujours présent**. Il a été
+démasqué en réintroduisant volontairement l'erreur pour vérifier qu'il la détectait —
+ce qu'il ne faisait pas. Réécrit, il échoue bien sans le correctif. Sans cette
+vérification, la correction aurait été livrée avec un filet qui ne retenait rien.
+*(task-250)*
+
 ### Ouvrir un dossier patient ne coûtera plus le nombre de documents qu'il contient (9 août 2026)
 
 Quand un praticien ouvre un message porteur de comptes rendus, l'application affiche
