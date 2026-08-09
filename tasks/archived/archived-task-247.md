@@ -157,3 +157,10 @@ des deux fournisseurs.
 
 - **api-mail** : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/178 — label `awaiting-human-merge`
 - **Staging** : `forge/staging-task-244-252-20260809` — task-247 agrégée
+
+## Merged
+
+PR **#178** squashée le **2026-08-09** — `9e1b4bf2`. Les trois critères de DOD
+laissés ouverts étaient des **mesures** : ils se referment au tir de preuve lancé
+le même jour (nombre de requêtes avant/après par le compteur task-243, A/B
+iso-conditions, retour de l'étape inbox dans la grille au palier 200).
