@@ -734,6 +734,49 @@ montage de test était plus permissif que la production, il validait donc du cod
 marchait pas. La moitié du chantier reste à faire — les tâches de fond ne sont toujours pas
 réellement déclenchées pendant les tests. *(task-235, suite dans task-237)*
 
+### On sait enfin poser la question « pourquoi analyser un message coûte-t-il trois secondes ? » (9 août 2026)
+
+Analyser un message reçu — en extraire les documents cliniques pour qu'ils entrent dans
+le dossier du patient — est le traitement le plus cher de la plateforme. À 500
+praticiens simultanés, il dépasse **trois secondes par message**, et c'est une borne
+basse : la mesure s'est arrêtée avant la fin du travail, faute de patience côté client.
+
+C'est aussi le seul poste qui **casse** au lieu de ralentir. Les autres se dégradent
+progressivement ; celui-ci abandonne.
+
+Et personne ne pouvait dire **où** partent ces trois secondes. Quatre explications
+tenaient également bien : le téléchargement du message depuis le serveur de messagerie
+distant, la décompression de l'archive, le décodage des documents médicaux eux-mêmes,
+ou l'écriture en base. Le décodage est le suspect qui vient à l'esprit — c'est
+précisément pour cela qu'il fallait se garder de le désigner. Cette EPIC a déjà annulé
+un correctif écrit sur une cause plausible et fausse.
+
+Cette étape n'accélère donc **rien**, volontairement. Elle pose les chronomètres qui
+manquaient, un par phase, pour que le prochain correctif soit **décidable** au lieu
+d'être deviné.
+
+Trois précisions valent d'être dites, parce qu'elles changent la lecture des chiffres
+à venir :
+
+- **Le téléchargement est compté**, alors qu'il se paie à un tout autre moment du
+  traitement que le reste. Sans cette précaution il aurait paru gratuit — et il est
+  l'un des suspects sérieux, le message pesant environ 124 Ko sur une liaison
+  volontairement ralentie.
+- **La génération de l'empreinte de recherche est comptée à part**, parce qu'elle
+  s'exécute *après* la réponse : le praticien ne l'attend pas. L'inclure aurait gonflé
+  un temps que personne ne subit. La plateforme, elle, le paie en ressources — d'où sa
+  publication, mais séparée.
+- **Le chronomètre d'ensemble mesurait faux au-delà de dix secondes** : l'outil de
+  mesure plafonnait là, si bien que « au moins dix secondes » était tout ce qu'il
+  savait dire — sur exactement l'opération dont on cherchait le coût. Le plafond est
+  levé.
+
+Enfin, et c'est une exigence de cette plateforme : ces mesures ne portent **aucune**
+donnée de santé. Ni identité patient, ni contenu de document, ni même l'objet du
+message — uniquement le nom de la phase mesurée, choisi dans une liste écrite dans le
+code. Un test vérifie cette propriété plutôt que de se contenter de l'affirmer.
+*(task-245)*
+
 ### Un rapport de test ne peut plus dire « tout va bien » sur une mesure qui n'a pas eu lieu (9 août 2026)
 
 C'est le défaut le plus embarrassant que cette EPIC ait rencontré, parce qu'il ne portait
