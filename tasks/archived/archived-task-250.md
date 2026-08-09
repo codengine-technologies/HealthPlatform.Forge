@@ -133,3 +133,34 @@ consécutifs ; je ne peux pas les nommer, la sortie identifiante est revenue ver
 **`/sonar` n'a pas été rejoué** sur cette task, qui modifie du C#.
 
 Commits : `b3c21ab` (fix), `f30ce27` (merge develop).
+
+## Merged
+
+- **api-mail** : PR #180 squash-mergée sur `develop` — commit **`bf4e745`** (2026-08-09).
+- **CI `develop`** : ✅ verte, vérifiée **sur ce sha précis** (`headSha`) — `develop`
+  bouge en parallèle sur cette EPIC, « le dernier run » ne prouverait rien.
+- Branche distante supprimée ; **branche locale conservée**.
+- **dtos-mss** : branche restée vide, aucune PR — non supprimée.
+- Attestation humaine `--i-tested` fournie le 2026-08-09.
+
+### Ce que cette task laisse comme leçon transférable
+
+**Deux pièges de portabilité de provider dans la même session.** task-247 :
+`roots.Any(r => References.Contains(r))` passe sur Npgsql, pas sur InMemory.
+task-250 : `ExecuteDeleteAsync` est relationnel uniquement et lève sur InMemory. Dans
+les deux cas le constat a été **empirique** — un test unitaire tombé — et non
+théorique. La règle est désormais écrite dans les deux fichiers : *le code de
+production ne doit pas être testable seulement sur le provider le plus riche.*
+
+**Et deux tests verts par construction, démasqués par mutation.** task-247 : la
+déduplication par `MessageId` (les fixtures utilisent des `MessageId` uniques).
+task-250 : deux `UpdateAsync` séquentiels ne peuvent pas se croiser. Dans les deux cas
+la preuve par mutation a été le seul moyen de le voir — un test qui passe ne dit rien
+tant qu'on n'a pas vérifié qu'il sait échouer.
+
+### ⚠️ Reste ouvert après merge
+
+- **Dernier critère du DOD** : zéro `DbUpdateConcurrencyException` sur un tir 200 —
+  exige un tir. Le mécanisme est corrigé et testé ; son **absence en conditions
+  réelles** reste à constater.
+- **`/sonar` n'a jamais été rejoué** sur cette task, qui modifie du C#.
