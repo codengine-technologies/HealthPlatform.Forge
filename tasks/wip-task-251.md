@@ -82,3 +82,8 @@ Données de test synthétiques uniquement.
 - **Tracé PGSSI-S** : non applicable
 - **Hébergement HDS** : sans objet
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+
+- `api-mail` (pushed) : `chore/task-251-exception-family-triage` — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/chore/task-251-exception-family-triage
+- `dtos-mss` (pushed, auto-included) : `chore/task-251-exception-family-triage` — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/chore/task-251-exception-family-triage — aucun changement de contrat attendu, branche créée proactivement
