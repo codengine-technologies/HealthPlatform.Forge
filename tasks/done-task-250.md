@@ -90,3 +90,46 @@ Données de test synthétiques uniquement.
 > Recouvrement de fichiers **mesuré nul** : 254 touche `ImapService.cs` /
 > `MailServerSolicitationRecorder.cs` / `report.py`, 250 touche `ContactRepository.cs` /
 > `PractitionerContactService.cs`. Dérogation assumée à la règle « un seul wip ».
+
+## PRs
+
+- **api-mail** : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/180 — label `awaiting-human-merge`
+- **dtos-mss** : aucun commit → **pas de PR** (branche vide)
+
+## Code Review Summary
+
+**APPROVED** — 4 fichiers, 0 blocage.
+
+| Fichier | Verdict |
+|---|---|
+| `ContactRepository.cs` | ✅ traduction à la frontière, cause conservée en `InnerException` ; `RemoveRange` **conservé délibérément**, le commentaire dit pourquoi (portabilité du provider) |
+| `PractitionerContactService.cs` | ✅ rejeu **borné à 1**, relecture + ré-application, conflit métier en `Error` ; `ApplyEnrichment` pure |
+| `ContactConcurrentUpdateTests.cs` | ✅ 3 cas sur **vrai Postgres** (l'InMemory ne vérifie pas les lignes affectées) |
+| `PractitionerContactServiceTests.cs` | ✅ 3 cas du rejeu, dont le témoin « déjà à jour → aucun rejeu inutile » |
+
+**Frontière de couche vérifiée sur le diff** : **0 `using Microsoft.EntityFrameworkCore`**
+dans la couche Application.
+
+### Validation
+
+Build 0 erreur. domain 136 · infrastructure 436 · api 660 · application 2 102 ·
+**integration 384, 0 échec**. `develop` mergée (apporte 247 + 248) — **aucun conflit**.
+
+Deux échecs `application` apparus **une fois**, non reproduits sur deux runs verts
+consécutifs ; je ne peux pas les nommer, la sortie identifiante est revenue verte.
+
+### DOD
+
+| Critère | État |
+|---|---|
+| Plus d'échec silencieux — **rejoué sur conflit** | ✅ |
+| Stratégie **justifiée par la cause établie** | ✅ |
+| Test de concurrence, préséance explicite et testée | ✅ |
+| Conflit irréconciliable journalisé, **jamais avalé** | ✅ |
+| **Zéro `DbUpdateConcurrencyException` sur un tir 200** | ⏳ **exige un tir** |
+
+### ⚠️ Reste ouvert
+
+**`/sonar` n'a pas été rejoué** sur cette task, qui modifie du C#.
+
+Commits : `b3c21ab` (fix), `f30ce27` (merge develop).
