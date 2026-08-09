@@ -734,6 +734,72 @@ montage de test était plus permissif que la production, il validait donc du cod
 marchait pas. La moitié du chantier reste à faire — les tâches de fond ne sont toujours pas
 réellement déclenchées pendant les tests. *(task-235, suite dans task-237)*
 
+### On saura enfin pourquoi télécharger une pièce jointe s'effondre à 500 praticiens (9 août 2026)
+
+Récupérer la pièce jointe d'un message — c'est-à-dire **le document clinique
+lui-même** — tient la seconde à 100 et 200 praticiens simultanés. À 500, cette
+même action demande jusqu'à **4,8 secondes**, et seize tentatives n'aboutissent
+pas du tout.
+
+Ce n'est pas une question de machine : rien n'est saturé pendant ce test, ni les
+processeurs (8 % de ce qui est disponible), ni la mémoire. Quelque chose fait la
+queue quelque part — et personne ne pouvait dire quoi, parce que toute l'action
+était chronométrée **d'un bloc**. Quatre explications tenaient également bien :
+la base de données, l'attente d'un accès à la boîte aux lettres, le
+téléchargement depuis le serveur de messagerie, ou l'envoi du fichier vers le
+poste du praticien.
+
+Cette étape **n'accélère rien**, et c'est délibéré. Elle pose les quatre
+chronomètres qui manquaient, un par segment, choisis pour que **chacun désigne
+un remède différent** : si c'est le serveur de messagerie qui plafonne, aucune
+correction applicative n'y changera quoi que ce soit — et l'inverse est vrai
+aussi. Le prochain test à grande échelle rendra donc un verdict au lieu d'une
+hypothèse.
+
+Cette prudence n'est pas de la lenteur : cette EPIC a déjà **annulé** une
+correction écrite sur une cause plausible et fausse. Le suspect le plus évident
+ici — l'attente d'accès à la boîte — a déjà été innocenté une fois sur un autre
+chemin.
+
+Un point a pesé sur la façon de mesurer. Le segment le plus intéressant, l'envoi
+du fichier au praticien, se déroule **après** la fin du traitement : le mesurer
+imposait soit de s'intercaler sur le trajet du fichier, soit d'attendre la fin de
+l'envoi pour relever l'heure. La première solution aurait placé un intermédiaire
+sur le chemin d'un document de santé, où une troncature silencieuse serait une
+perte de donnée médicale. C'est la seconde qui est retenue : elle ne touche pas
+un octet, et un test vérifie que le fichier remis est bien celui produit, sans
+intermédiaire.
+
+Enfin, ce qui **reste** hors de portée est écrit noir sur blanc plutôt que
+laissé à découvrir : la mesure ne dira pas si un abandon vient du praticien qui
+renonce ou du serveur qui lâche, et c'est le premier point à vérifier au prochain
+test. *(task-252)*
+
+### Une sonde de surveillance faussait la mesure qui sert à dimensionner la base (9 août 2026)
+
+La plateforme se surveille elle-même : un appel régulier vérifie qu'elle est en
+état de servir. Cet appel passait par le répartiteur de connexions à la base de
+données — et il n'avait rien à y faire.
+
+L'effet était disproportionné. Ce simple appel de surveillance ouvrait sa propre
+file d'attente, minuscule et partagée par les cinq serveurs, où il s'accumulait
+des attentes de **plusieurs dizaines de secondes**. Ces attentes étaient ensuite
+**additionnées** à celles du chemin réel des praticiens, alors qu'elles n'ont
+rien à voir avec lui : le total publié mélangeait deux populations sans rapport.
+
+Ce n'est pas un problème de rapidité pour le médecin — il n'en voyait rien. C'est
+un problème de **lisibilité de la mesure**, et il a coûté cher : trois campagnes
+de tests ont été lues à travers ce brouillard, et deux décisions de
+dimensionnement de la base ont été prises sur la grandeur qu'il fausse.
+
+Le remède retenu est de **router** la sonde, pas de lui faire de la place :
+elle emprunte désormais la voie directe, déjà utilisée pour la création des
+espaces de travail. Deux garanties accompagnent le changement : hors banc de
+test, le comportement est strictement identique à avant ; et la sonde continue de
+**vraiment** échouer quand la base est indisponible — un test le vérifie
+explicitement, pour qu'on n'ait pas supprimé la mesure en croyant la déplacer.
+*(task-249)*
+
 ### Les erreurs que comptait le banc portent enfin un nom (9 août 2026)
 
 Chaque tir de charge publiait un chiffre d'« erreurs par seconde » — environ cinq, sur
