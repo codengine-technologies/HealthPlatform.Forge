@@ -98,3 +98,51 @@ Données de test synthétiques uniquement.
 - **Sécurité** : aucun contenu CDA ni identifiant patient dans les journaux du harnais
 - **Hébergement HDS** : sans objet (banc de test)
 - **AIPD / impact RGPD** : inchangé
+
+## Ce qui a été livré (2026-08-09, directement sur `develop`)
+
+> ⚠️ Développée **directement sur `develop`** à la demande humaine — pas de branche
+> `feat/*`, pas de PR, donc **pas de HAG sur cette task** (même régime que
+> task-243). Commit `5d056db`.
+
+**La correction, et pourquoi celle-là.** Le fait qui commande tout est que le débit
+d'enrichissement du serveur est **plafonné** (mesuré : 0,59 s/message à concurrence
+4 soit 6,8 msg/s ; 2,11 s à 20 soit 9,5 msg/s — ×5 de concurrence pour +40 % de
+débit). Chauffer N médecins × R messages prend donc `N × R / débit` secondes **quoi
+qu'on fasse**. Allonger le délai d'un lot ne crée pas de débit : ça transforme une
+expiration en attente. Le seul levier côté harnais est de **borner la concurrence**.
+
+| Livré | Où |
+|---|---|
+| Chauffe par **vagues** de `JOURNEY_WARMUP_MAX_CONCURRENT` (8), décalage déduit de l'index du VU — aucun état partagé | `lib/journey-model.js`, `scenarios/journey.js` |
+| Délai d'un lot dérivé de la concurrence **bornée** (`warmupCostSecondsPerMessage`, interpolation sur les deux points mesurés) et non plus d'un forfait de régime | `lib/journey-model.js` |
+| `journey_warmup_elapsed_s` — le temps **prélevé sur la fenêtre**, attente de vague incluse | `scenarios/journey.js` |
+| Ligne de rapport « part de la fenêtre consommée », avertissement au-delà de **50 %** | `report.py` |
+| Règle et chiffres fondateurs | `docs/loadtest.md` § 4d règle **5b**, `README.md` |
+
+**La première vague ne patiente pas** : la chauffe démarre bien à la première
+seconde du palier, elle est seulement étalée.
+
+**Pourquoi le plafond de fenêtre est à 50 % et pas 25 %** : à 100 médecins et 98
+messages, le plafond serveur impose déjà ~17 min sur une fenêtre de 32. Exiger plus
+court reviendrait à refuser tout tir jusqu'à ce que **task-254** relève ce plafond —
+c'est le vrai remède, et il est côté application.
+
+### DOD — état
+
+- [x] Délai dérivé de la concurrence bornée, plus du coût en régime
+- [x] Part de la fenêtre consommée par la chauffe **mesurée et rendue**
+- [x] Règle écrite dans `docs/loadtest.md` avec les chiffres qui la fondent
+- [x] Garde de refus de task-244 **inchangée** — prouvé par `TaskTwoFortyFourGateIsIntactTests`
+- [x] Tests : vagues, coût selon concurrence, refus de NaN, témoin de physique
+      (le retard total reste borné par le débit), et **témoin négatif** de la garde
+- [x] `selftest.sh` vert — **268 tests Python, 45 tests JS**
+- [ ] **Zéro lot expiré sur un tir 200 distant** — exige un tir, non fait ici
+
+**Le seul critère ouvert est une mesure**, pas du code : il se referme au prochain
+tir, qui est de toute façon celui qui doit aussi prouver task-247.
+
+### Écart assumé
+
+`/sonar` non joué : **aucun fichier C# touché** (harnais Python/JS et documentation
+uniquement) — le périmètre de la solution .NET n'est pas concerné.
