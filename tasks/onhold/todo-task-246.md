@@ -1,5 +1,20 @@
 # todo-task-246.md — Le banc n'exerce pas la voie que le médecin emprunte réellement
 
+> ⏸️ **ON HOLD (décision humaine 2026-08-09)** — retirée du backlog actif. Le banc
+> ne sait pas lire un flux SSE (k6 v1.4.2 : `k6/experimental/sse` retiré en v1.x, ni
+> `go` ni `xk6` installés), donc le critère « déclenchement → évènement reçu » n'est
+> pas implémentable en l'état — analyse complète dans `questions/answered/task-246.md`.
+>
+> **Et surtout, ce n'est pas le bon moment** : task-244 et task-245 viennent de changer
+> la façon dont un tir est jugé, sans qu'aucun tir 500 ne les ait encore exercées.
+> Changer en plus la **définition du parcours mesuré** déplacerait la référence une
+> troisième fois avant d'en avoir fixé une seule.
+>
+> **Pour réactiver** : merger 244/245, tirer un 500, lire les chiffres — puis
+> redéplacer ce fichier dans `tasks/` et `/start 246`. Envisager alors de couper en
+> **246a** (coût résident des connexions : ne demande aucune extension k6, ne casse
+> pas la comparabilité) et **246b** (latence perçue : exige un k6 recompilé).
+
 **Repos**: api-mail
 **Epic**: E015
 **Single frontend**: true

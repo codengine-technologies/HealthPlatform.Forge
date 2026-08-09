@@ -96,3 +96,19 @@ Le contrôle de **confidentialité** exigé par la US (« chaque médecin ne re�
 **ses** évènements ») est testable dès qu'un client sait lire le flux — donc en
 Option A seulement. En Option B il resterait non éprouvé, et c'est un point de
 conformité, pas de performance : il primerait sur toute conclusion de charge.
+
+---
+
+## ⏸️ Décision humaine — 2026-08-09
+
+**« Supprime 246, on traitera ce changement plus tard. »**
+
+Task retirée du backlog actif et déplacée dans `tasks/onhold/todo-task-246.md`
+(même mécanique que task-171/172), plutôt qu'effacée : l'énoncé du PO et l'analyse
+ci-dessus sont précisément ce dont la réactivation aura besoin.
+
+**Aucune des trois options A/B/C n'est tranchée** — le choix est *reporté*, pas fait.
+Il se reposera sur des chiffres, après un tir 500 exerçant task-244 et task-245.
+
+Si le fichier doit réellement disparaître, un `git rm` suffit — l'historique le
+conserve de toute façon.
