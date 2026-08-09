@@ -734,6 +734,46 @@ montage de test était plus permissif que la production, il validait donc du cod
 marchait pas. La moitié du chantier reste à faire — les tâches de fond ne sont toujours pas
 réellement déclenchées pendant les tests. *(task-235, suite dans task-237)*
 
+### Un rapport de test ne peut plus dire « tout va bien » sur une mesure qui n'a pas eu lieu (9 août 2026)
+
+C'est le défaut le plus embarrassant que cette EPIC ait rencontré, parce qu'il ne portait
+pas sur l'application : il portait sur **notre capacité à la juger**.
+
+Avant chaque campagne, le banc « chauffe » la boîte de chaque médecin simulé — il fait
+analyser une centaine de messages, pour que la campagne mesure un praticien qui a déjà de
+la matière, et non une boîte vide. Lors de la campagne à 500 praticiens, cette chauffe a
+été demandée **en un seul bloc de 98 messages**, avec un délai d'attente de cinq minutes.
+Elle a échoué pour **les 500 médecins**. Le serveur, lui, travaillait toujours : ce n'était
+pas une panne, simplement un travail plus long que le délai accordé.
+
+Conséquence : la campagne a mesuré une base de données **presque vide**. Les temps de
+réponse obtenus étaient donc **flatteurs** — l'équivalent de chronométrer une recherche
+dans un dossier médical qui ne contient rien. Le rapport a pourtant conclu **« 8 étapes
+sur 11 conformes »**.
+
+Un garde-fou existait bien, mais il ne protégeait **qu'une seule** des étapes concernées.
+Les trois autres — ouvrir sa boîte, ouvrir un dossier patient, afficher la fiche complète —
+sont servies par exactement la même base vide, et sont passées au vert. *Un contrôle qui
+s'arrête avant le bout de sa logique est plus dangereux que pas de contrôle du tout : il
+inspire une confiance qu'il ne justifie pas.*
+
+Deux choses ont été corrigées. La chauffe est désormais **découpée en lots** : chaque lot
+qui aboutit est acquis, là où un envoi unique qui expire ne laissait rien de garanti. Et
+surtout, le refus se **propage** : si la chauffe n'a pas peuplé la base, **aucune** des
+étapes servies par cette base ne reçoit de verdict, et le rapport écrit en tête, en toutes
+lettres, que **ce tir ne mesure pas la capacité**. Les étapes qui ne dépendent pas de la
+chauffe, elles, gardent leur verdict — refuser tout le tir aurait fait perdre des mesures
+parfaitement valides.
+
+Le seuil à partir duquel le refus se déclenche est **écrit** dans la documentation du banc,
+avec la raison pour laquelle il n'est pas fixé à 100 % : une chauffe partiellement réussie
+peut rester exploitable, et c'est la quantité de matière réellement présente qui décide.
+
+Cette correction ne rend rien plus rapide, et ne le prétend pas. Elle garantit seulement
+qu'une campagne future ne pourra plus **se déclarer réussie sans avoir rien mesuré**. Le
+coût réel de l'analyse d'un message — le sujet de fond que cette campagne a révélé — reste
+entier. *(task-244)*
+
 ### Le premier poste de coût du parcours n'est plus une boîte noire (8 août 2026)
 
 L'ouverture de la boîte de réception était devenue le poste le plus cher du parcours du
