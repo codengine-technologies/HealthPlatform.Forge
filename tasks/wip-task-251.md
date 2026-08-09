@@ -237,3 +237,17 @@ seed le rattrape (`retry 1/3`) et sort en succès, donc personne ne le voit.
   → `0`). `dtos-mss` : branche vide. Rien à simplifier, aucune re-validation
   nécessaire (pas de comportement modifiable par une passe qualité).
 - Next step : `/sonar 251`
+
+## Sonar log
+
+- **Skip clean — aucune analyse lancée, et ce n'est pas un silence.** Le diff
+  d'`api-mail` vs `develop` ne contient **aucun fichier `.cs`** (un seul
+  fichier : `docs/loadtest.md`). SonarQube n'analyse que du code : il n'y a ni
+  new code à qualifier, ni dette introduite possible.
+- **KPIs qualité** : inchangés par construction — cette task n'a pas modifié une
+  ligne de C#. Aucune baseline → final à consigner, aucun Quality Gate à
+  réévaluer. Le dernier état publié reste celui de la task précédente
+  (`/review` le restituera comme tel dans le body de la PR).
+- ⚠️ Rappel indépendant de cette task : la new-code period du projet inclut des
+  tasks déjà mergées — un QG rouge ultérieur ne serait pas imputable à task-251.
+- Next step : `/lint-angular 251`
