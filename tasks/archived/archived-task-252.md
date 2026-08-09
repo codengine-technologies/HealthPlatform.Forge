@@ -299,3 +299,24 @@ new code** (87,9 % avant comme après). L'instrument arrive couvert.
   dédié). Habilitations inchangées — le chemin de streaming n'est pas modifié.
 - **Performance** : l'instrument ne fait qu'ajouter des `Stopwatch.GetTimestamp`
   et des `Interlocked.Add` ; aucune allocation par phase, aucun appel réseau.
+
+## Merged
+
+- **Mergée le 2026-08-09** par l'humain (HAG, règle 10), attestation `--i-tested`.
+- `api-mail` : PR #183 **squash-mergée** → `e893fcd` sur `develop`.
+  Branche distante supprimée ; **branche locale conservée**.
+- `dtos-mss` : aucune PR (0 commit). Branche distante supprimée, locale conservée.
+- Clone local resynchronisé sur `develop` (`api-mail` en `e893fcd`).
+- **CI `develop` verte** (run `31337104060`, « Build and Publish », `success`).
+- **Staging conservée** : `forge/staging-task-249-252-20260809` n'est **pas**
+  supprimée — le run n'est pas entièrement mergé (task-249 / PR #182 encore
+  ouverte). Elle le sera au `/merge` de task-249.
+
+> ⚠️ **Ce qui reste dû sur cette US, et qui n'est pas couvert par ce merge.**
+> Le DOD reste **majoritairement non rempli, par construction** : la cause n'est
+> pas établie, le partage « côté serveur mail / côté api-mail » n'est pas
+> tranché, et les 16 abandons ne sont pas expliqués. Ce merge livre
+> l'**instrument**, pas le verdict. Le verdict exige un tir 500 en mode distant
+> (accès cluster, geste humain), et le premier contrôle à y faire est de vérifier
+> si les abandons apparaissent bien dans l'histogramme — un client qui renonce
+> peut ne jamais déclencher `Response.OnCompleted`.
