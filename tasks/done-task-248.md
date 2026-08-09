@@ -88,3 +88,62 @@ Données de test synthétiques uniquement.
 - **Tracé PGSSI-S** : inchangé — aucun contenu CDA en clair dans les journaux
 - **Hébergement HDS** : sans objet
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+- `api-mail` (pushed) : feat/task-248-patient-file-n-plus-one
+- `dtos-mss` (pushed, auto-inclus) : feat/task-248-patient-file-n-plus-one
+
+> Branchée sur `develop` **après** le merge de task-247 (`9e1b4bf`), comme la
+> dépendance l'exige — pour que le gain de chacune reste attribuable.
+
+## PRs
+
+- **api-mail** : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/179 — label `awaiting-human-merge`
+- **dtos-mss** : aucun commit → **pas de PR** (branche vide, comme prévu)
+
+## Code Review Summary
+
+**APPROVED** — 2 fichiers, 0 blocage.
+
+| Fichier | Verdict |
+|---|---|
+| `MailRepository.cs` | ✅ **0 `await` restant** dans la boucle sur les documents (vérifié) ; 3 chargeurs groupés avec garde `Count == 0` ; clé d'appariement = `DocumentId`, filtre = `MailId` |
+| `PatientFileHydrationTests.cs` | ✅ 5 cas dont le cloisonnement inter-messages et le décompte |
+
+**Éprouvé par mutation, deux fois** — mauvaise clé d'appariement → 2 tests tombent ;
+pièces jointes perdues → 3 tests tombent. Pas des tests verts par construction.
+
+### Validation
+
+Build 0 erreur. domain 136 · infrastructure 436 · api 660 · application 2 099 ·
+**integration 380, 0 échec**.
+
+> **La suite d'intégration est intégralement verte sur cette branche**, ce qui
+> **tranche la question laissée ouverte** au développement :
+> `PatientUseCaseTests.SearchShouldReturnMatchingPatients` avait échoué de façon non
+> reproductible et je ne pouvais pas dire flaky vs régression. C'était bien un
+> **flaky d'état entre tests**.
+
+### DOD
+
+| Critère | État |
+|---|---|
+| Plus de requête par document — **décompte prouvé** | ✅ |
+| Tests 1 / N / 0 document, contenu identique | ✅ |
+| p95 de `GetMail` ne plafonne plus | ⏳ **exige un tir** |
+| Étape fiche patient dans la grille au palier 200 | ⏳ **tir** |
+| Zéro timeout `patient_docs` sur un tir 200 | ⏳ **tir** |
+| A/B iso-conditions, décomposition avant/après | ⏳ **tir** |
+
+**Comment le premier critère est prouvé** : le compteur de task-243 est alimenté par
+les intercepteurs EF de **production**, absents de la fixture de test — il ne
+publiait rien (constat empirique). Les commandes sont donc comptées par un
+**intercepteur local au test** : preuve indépendante du câblage, **déterministe**, et
+portant sur un **nombre**. L'assertion est l'**égalité** entre D=1 et D=5, et non
+« moins de requêtes » — ce dernier serait satisfait par un passage de 3×D à 2×D.
+
+### ⚠️ Reste ouvert
+
+**`/sonar` n'a pas été rejoué** sur cette task, qui modifie du C#.
+
+Commits : `af8d61e` (perf), `98440c8` (preuve du décompte).

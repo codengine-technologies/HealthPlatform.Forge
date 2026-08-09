@@ -81,3 +81,12 @@ Données de test synthétiques uniquement.
 - **Tracé PGSSI-S** : un conflit non résolu doit être traçable
 - **Hébergement HDS** : sans objet
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+- `api-mail` (pushed) : feat/task-250-contact-concurrent-update
+- `dtos-mss` (pushed, auto-inclus) : feat/task-250-contact-concurrent-update
+
+> ⚠️ Démarrée alors que `wip-task-254` est en test au banc sur une autre machine.
+> Recouvrement de fichiers **mesuré nul** : 254 touche `ImapService.cs` /
+> `MailServerSolicitationRecorder.cs` / `report.py`, 250 touche `ContactRepository.cs` /
+> `PractitionerContactService.cs`. Dérogation assumée à la règle « un seul wip ».
