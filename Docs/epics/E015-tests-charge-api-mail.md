@@ -734,6 +734,55 @@ montage de test était plus permissif que la production, il validait donc du cod
 marchait pas. La moitié du chantier reste à faire — les tâches de fond ne sont toujours pas
 réellement déclenchées pendant les tests. *(task-235, suite dans task-237)*
 
+### Les erreurs que comptait le banc portent enfin un nom (9 août 2026)
+
+Chaque tir de charge publiait un chiffre d'« erreurs par seconde » — environ cinq, sur
+chacun des cinq serveurs. Le repère écrit disait « quelques unités, pas des centaines ».
+On était donc dans les clous, et pourtant ce chiffre ne servait à rien : **personne ne
+savait de quoi il était fait**. Un repère sans nom ne permet pas de détecter une
+dérive — cinq erreurs par seconde pouvaient aussi bien être la routine qu'un défaut
+naissant, et rien ne permettait de trancher sans rouvrir l'enquête à chaque fois.
+
+Deux détails rendaient ce chiffre inquiétant plutôt que rassurant : il était **identique
+sur les cinq serveurs**, et il **montait avec la charge**. C'est exactement la signature
+d'un défaut payé à chaque requête — et cette EPIC en avait déjà rencontré deux, dont un
+qui masquait des documents cliniques perdus. La prudence commandait donc d'ouvrir.
+
+**Ce n'était ni l'un ni l'autre.** Les deux familles responsables ont été identifiées,
+et aucune ne se paie à la requête :
+
+- La première vient de **l'outil de mesure lui-même**. À chaque fois que le banc relève
+  ses compteurs — toutes les cinq secondes — la brique chargée de mettre ces compteurs
+  en forme déborde de son tampon, se rattrape et recommence avec un tampon plus grand.
+  La régularité qui alarmait n'était pas le trafic : c'était **la cadence du relevé**.
+  Le banc mesurait le coût de sa propre mesure.
+- La seconde vient de **l'entretien des connexions de messagerie**. Chaque session
+  ouverte vers le serveur de mail entretient sa connexion en arrière-plan ; quand elle
+  se referme, cette veille s'interrompt, et c'est cette interruption qui était comptée.
+  Une par fermeture de session — jamais une par requête. Elle suit donc le **rythme de
+  renouvellement des sessions**, ce qui explique qu'elle grimpe avec la charge sans
+  qu'aucun travail supplémentaire ne soit payé.
+
+Les deux sont sans conséquence : le relevé rendu est complet, et l'arrêt de la veille
+est le comportement voulu. **Le chiffre était bénin — c'est de ne pas savoir pourquoi
+qui ne l'était pas.**
+
+L'enquête a par ailleurs vérifié qu'un défaut corrigé plus tôt dans cette EPIC — une
+erreur d'authentification levée à chaque appel — **n'est pas revenu** : il vaut toujours
+zéro.
+
+Elle a enfin mis au jour **deux points qui, eux, méritent d'être traités** et feront
+l'objet de demandes séparées : la base de données coupe des connexions et le mécanisme
+de reprise automatique le masque si bien que rien n'apparaît nulle part ; et le
+répartiteur de connexions du banc refuse des connexions en rafale, ce qui suffit à
+rendre non opposable toute mesure de capacité tant qu'il est dans cet état.
+
+Le repère « quelques unités » est remplacé par un chiffre **et sa famille** : à
+50 praticiens, un à deux par seconde et par serveur, dont 80 à 93 % d'entretien de
+session. C'est désormais la **part de cette famille** qui sert d'alarme : si elle
+tombe, c'est qu'une autre a pris sa place, et il faut la nommer avant de conclure quoi
+que ce soit sur la capacité. *(task-251)*
+
 ### Une fiche de correspondant ne se met plus à jour « à moitié » (9 août 2026)
 
 Quand un praticien reçoit un message d'un confrère, l'application complète
