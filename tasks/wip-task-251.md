@@ -251,3 +251,20 @@ seed le rattrape (`retry 1/3`) et sort en succès, donc personne ne le voit.
 - ⚠️ Rappel indépendant de cette task : la new-code period du projet inclut des
   tasks déjà mergées — un QG rouge ultérieur ne serait pas imputable à task-251.
 - Next step : `/lint-angular 251`
+
+## Lint log
+
+- **`/lint-angular` — skip clean.** `client-angular` n'est pas dans
+  `**Repos**:` (api-mail seul) et cette task n'a écrit aucune ligne d'Angular.
+  Aucune commande lint/build/test lancée.
+  ⚠️ Le working tree de `Client/Angular/` porte **2 fichiers modifiés**
+  (`front/apps/mss/src/environments/environment.ts`,
+  `front/apps/weda2/src/environments/environment.ts`, branche
+  `feature/nova-rewriting-mss`) : c'est du **WIP humain préexistant**, étranger à
+  task-251. Laissé intact — mode code-only, la forge ne touche pas à git côté
+  Angular.
+- **`/lint-mobile` — skip clean.** `client-mobile` n'est pas dans `**Repos**:`,
+  working tree propre, toujours sur `develop`. Aucun écran touché.
+- **`/verify-visual` — skip clean.** Aucun écran `client-mobile` touché, donc
+  aucune capture à produire ni à apparier à une référence Stitch.
+- Next step : `/review 251`
