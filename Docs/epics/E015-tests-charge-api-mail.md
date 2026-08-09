@@ -734,6 +734,43 @@ montage de test était plus permissif que la production, il validait donc du cod
 marchait pas. La moitié du chantier reste à faire — les tâches de fond ne sont toujours pas
 réellement déclenchées pendant les tests. *(task-235, suite dans task-237)*
 
+### Ouvrir un dossier patient ne coûtera plus le nombre de documents qu'il contient (9 août 2026)
+
+Quand un praticien ouvre un message porteur de comptes rendus, l'application affiche
+la fiche du patient concerné. Jusqu'ici, ce geste coûtait **d'autant plus cher que le
+message contenait de documents** : pour chacun, l'application repartait chercher
+séparément ses résultats de biologie, ses éléments de synthèse et ses pièces jointes.
+
+Dans les cas les plus chargés, l'affichage atteignait **la minute** — exactement la
+limite au-delà de laquelle la demande est abandonnée. Le praticien voyait donc, non
+pas une fiche lente, mais **une fiche qui ne s'affiche pas**.
+
+**La cause a été démontrée, et pas seulement supposée.** L'indice décisif est venu
+d'une comparaison inattendue : sur une campagne où la base était presque vide — donc
+sans documents à assembler — le même affichage tombait d'une minute à **moins de trois
+dixièmes de seconde**. Ce n'était donc pas le nombre de praticiens simultanés qui
+faisait plafonner l'affichage : c'était **la quantité de documents à rassembler**.
+
+Désormais, tout est rassemblé **en une seule fois par message**, quel que soit le
+nombre de documents. Le coût cesse de croître avec eux.
+
+**Ce qui a été protégé en priorité n'est pas la vitesse.** Ces documents portent
+l'identité du patient. Rassembler des données en une fois, c'est prendre le risque de
+les **rattacher au mauvais document** — une erreur qui ne se verrait pas à l'écran et
+qui serait bien plus grave qu'une lenteur. Cinq contrôles automatiques ont donc été
+écrits autour de cette propriété précise, dont un qui vérifie qu'un message ne peut
+jamais recevoir les documents d'un autre. Ils ont été éprouvés en y réintroduisant
+volontairement l'erreur, pour vérifier qu'ils la détectent.
+
+Enfin, une précaution de méthode : le correctif n'a **pas** réutilisé le mécanisme
+groupé qui existait déjà ailleurs dans l'application, bien que ce fût tentant. Ce
+mécanisme venait d'être modifié par une autre amélioration livrée le même jour, et les
+mélanger aurait rendu impossible de dire laquelle des deux avait produit quel gain.
+
+Reste à mesurer, sur un banc de charge, ce que le praticien y gagne réellement. Le
+gain est **structurellement** acquis ; son effet sur le temps d'attente ne l'est pas
+encore. *(task-248)*
+
 ### On sait enfin poser la question « pourquoi analyser un message coûte-t-il trois secondes ? » (9 août 2026)
 
 Analyser un message reçu — en extraire les documents cliniques pour qu'ils entrent dans
