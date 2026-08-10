@@ -510,3 +510,27 @@ de cette task**. Mais « dans un fichier touché » n'est pas « introduit » :
   tests qui **discriminent** (mutation le prouve).
 - **Performance** : le gain est mesuré, pas supposé ; et la promesse de ne pas
   défaire task-239 est **vérifiée** (acquisitions de verrou inchangées).
+
+## Merged
+
+- **Mergée le 2026-08-10** par l'humain (HAG, règle 10), attestation `--i-tested`.
+- `api-mail` : PR #184 **squash-mergée** → `2642301` sur `develop`.
+  Branche distante supprimée ; **branche locale conservée**.
+- `dtos-mss` : aucune branche, aucune PR — contrat non touché.
+- Clone local resynchronisé sur `develop` (`api-mail` en `2642301`).
+- **CI `develop` verte** (run `31388111209`, « Build and Publish », `success`).
+- **Aucune branche `forge/staging-*`** à nettoyer : task lancée hors run `/forge`
+  (celle du run 249-252 a été supprimée à son merge).
+
+> ⚠️ **Ce que ce merge ne règle PAS, et qui est déjà tracé.**
+> Le correctif livre un gain de **latence par message** (−43 % sur le fetch, un
+> aller-retour de moins, −34 % de détention de verrou à acquisitions inchangées).
+> Il ne lève **pas** le plafond de débit : +4 % pour un doublement de concurrence,
+> **mesuré**. Le critère est porté par **task-255**, avec les faits établis ici et
+> — surtout — ce que cette campagne permet d'**écarter** (ce n'est pas le fetch).
+>
+> Deux réserves consignées pour la suite : le **pool Postgres froid** (15 s de
+> timeout à l'ouverture, 500 avant tout fetch — préchauffage obligatoire avant
+> toute mesure d'enrichissement) et un **confondant de 15-22 %** sur les durées
+> du banc local, qui rend les écarts de temps moins opposables que le compte de
+> sollicitations.
