@@ -734,6 +734,48 @@ montage de test était plus permissif que la production, il validait donc du cod
 marchait pas. La moitié du chantier reste à faire — les tâches de fond ne sont toujours pas
 réellement déclenchées pendant les tests. *(task-235, suite dans task-237)*
 
+### Analyser un message demande un aller-retour de moins au serveur de messagerie (10 août 2026)
+
+Extraire les documents cliniques d'un message reçu est le traitement le plus cher
+de la plateforme, et la mesure avait établi où partait le temps : **97 % dans le
+simple fait d'aller chercher le message** sur le serveur de messagerie distant —
+le décodage des documents, le suspect que tout le monde aurait corrigé, ne pesant
+que 0,4 %.
+
+Le coût n'était pas dans le volume transféré mais dans le **nombre d'allers et
+retours** : deux échanges par message, chacun payant la distance jusqu'au serveur.
+L'application n'en demande plus qu'un. Résultat mesuré, et reproduit deux fois :
+**la phase de téléchargement coûte 43 % de moins**.
+
+Deux précautions ont dicté la forme du correctif, et toutes deux ont été
+**vérifiées** plutôt que supposées :
+
+- **Le regroupement se fait à l'intérieur d'un seul message**, jamais entre
+  plusieurs. Regrouper plusieurs messages aurait obligé à garder la boîte du
+  praticien occupée pendant tout le lot — exactement ce qu'un correctif précédent
+  avait supprimé pour que le médecin puisse consulter sa messagerie *pendant*
+  qu'elle travaille. La mesure confirme que cette liberté est intacte : la boîte
+  est occupée un tiers de temps en moins, et **pas plus souvent**.
+- **Le regroupement est conditionnel.** Demander le message entier ferait
+  télécharger pour rien une grosse pièce jointe dont l'analyse n'a que faire.
+  L'application décide donc à partir de la description du message, qu'elle a déjà
+  en main : elle ne regroupe que si l'essentiel du message est utile à l'analyse,
+  et jamais au-delà d'une certaine taille.
+
+**Ce que ce correctif ne fait pas, et c'est dit franchement** : il ne permet pas
+d'analyser *plus* de messages à la fois. Doubler le nombre de traitements
+simultanés ne rend que **4 %** de capacité supplémentaire — le plafond est
+ailleurs, et la même mesure prouve qu'il n'est pas dans le téléchargement. Ce
+point devient une demande séparée plutôt que de retenir un gain déjà acquis.
+
+Enfin, l'essentiel pour un dossier patient : **aucun document clinique n'est perdu
+en chemin**. Le nombre exact de documents extraits est désormais vérifié, sur un
+message à un document, un message à plusieurs, et une archive illisible — et ces
+vérifications ont été **éprouvées en cassant volontairement l'extraction**, pour
+s'assurer qu'elles s'en apercevraient. Deux d'entre elles ne le voyaient pas :
+c'est écrit noir sur blanc plutôt que laissé à découvrir. *(task-254, suite dans
+task-255)*
+
 ### On saura enfin pourquoi télécharger une pièce jointe s'effondre à 500 praticiens (9 août 2026)
 
 Récupérer la pièce jointe d'un message — c'est-à-dire **le document clinique
