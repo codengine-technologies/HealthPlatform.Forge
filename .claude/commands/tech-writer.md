@@ -1,3 +1,22 @@
+---
+description: Rafraîchit la documentation vivante d'un EPIC depuis ses task files
+argument-hint: "E{NNN} [--refresh]"
+# ⚠️ MESURÉ le 2026-08-10, et à connaître avant de compter sur ce champ : `model`
+# est bien analysé par le harnais (cette description-ci apparaît dans la liste des
+# skills, preuve que le frontmatter est lu), mais il n'a AUCUN EFFET quand la
+# commande est appelée par la chaîne via l'outil `Skill` — les instructions sont
+# injectées dans le tour en cours, et le modèle courant continue. Contrôle : quatre
+# messages assistant après l'invocation, tous en `claude-opus-5` dans le transcript
+# de session, alors que ce champ demandait `sonnet`.
+#
+# Il ne sert donc qu'à une invocation MANUELLE (`/tech-writer E015` tapé par
+# l'humain) — cas non éprouvé à ce jour. Pour que l'économie porte aussi sur la
+# chaîne autonome, il faut faire du tech-writer un SOUS-AGENT
+# (`.claude/agents/tech-writer.md` avec `model:`), que l'outil `Agent` lance dans
+# son propre tour : là, le modèle s'applique sans ambiguïté.
+model: sonnet
+---
+
 # /tech-writer — Maintain the living EPIC documentation
 
 Read `agents/technical-writer.md` and act as the Technical Writer.
