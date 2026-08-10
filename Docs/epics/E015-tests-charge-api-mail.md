@@ -2,10 +2,10 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.32
+> **Version** : 1.33
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
-> **Dernière mise à jour** : 2026-08-05
+> **Dernière mise à jour** : 2026-08-10
 
 ---
 
@@ -1000,6 +1000,108 @@ Cette correction ne rend rien plus rapide, et ne le prétend pas. Elle garantit 
 qu'une campagne future ne pourra plus **se déclarer réussie sans avoir rien mesuré**. Le
 coût réel de l'analyse d'un message — le sujet de fond que cette campagne a révélé — reste
 entier. *(task-244)*
+
+### Le banc nous faisait croire que l'application était plus lente qu'elle ne l'est (9 août 2026)
+
+Toutes les mesures de cette EPIC ont été prises sur un poste où le **serveur de
+messagerie simulé tournait à côté du service mesuré**. Cette étape l'a déplacé sur
+une autre machine, et le résultat oblige à relire tout ce qui précède.
+
+À population identique et **à code identique** — 200 praticiens, aucun correctif
+entre les deux mesures — le temps d'ouverture de la boîte de réception passe de
+**5,2 à 1,7 seconde**, l'ouverture d'un message de 1,3 seconde à **0,3**, et la
+fiche patient de 5,0 à **1,8 seconde**. Le nombre d'étapes du parcours qui tiennent
+le temps de réponse attendu passe de **six sur onze à neuf sur onze**.
+
+La cause est prosaïque : le serveur de messagerie simulé consommait à lui seul
+l'équivalent d'un cœur et demi de la machine, qu'il **prenait au service qu'on
+mesurait**. Le banc affamait ce qu'il observait.
+
+**Ce que cela change pour les décisions** : les verdicts de temps de réponse rendus
+jusqu'ici sont **pessimistes**, d'environ deux tiers sur les étapes servies par la
+base. Aucune conclusion favorable n'a donc été prise à tort ; en revanche, plusieurs
+chantiers ont été jugés urgents alors qu'ils ne le sont pas — la fiche patient et le
+téléchargement de pièce jointe tiennent désormais leur cible à 200 praticiens. Et la
+règle de méthode qui en découle vaut pour la suite : **on ne mesure plus la capacité
+sur un poste qui héberge aussi les serveurs simulés**, quelle que soit la population.
+
+Une exception, et elle est instructive : **l'envoi d'un message ne profite pas de ce
+déplacement** — il se dégrade même légèrement, parce qu'il paie désormais un trajet
+réseau. Cela confirme ce que l'étape du 8 août avait établi : son coût est une
+latence d'établissement de connexion, pas du calcul. *(banc distant livré par
+task-221 ; constat établi par la campagne du 9 août 2026)*
+
+### Traiter un message reçu coûte 2,7 secondes, et 97 % de ce temps est le téléchargement (9-10 août 2026)
+
+C'est le dernier poste de coût qui restait inexpliqué, et le plus visible pour le
+médecin : le délai entre « un compte rendu arrive » et « je peux le lire enrichi ».
+
+L'instrument posé à cette étape décompose ce traitement en cinq temps. Le verdict
+contredit frontalement l'intuition :
+
+| Ce que fait le service pour un message | Part du temps |
+|---|---|
+| **Aller chercher le message sur le serveur de messagerie** | **97,1 %** |
+| Écrire en base | 1,3 % |
+| Ouvrir l'archive | 0,8 % |
+| **Décoder le compte rendu médical** | **0,4 %** |
+| Le reste | 0,4 % |
+
+**Le décodage des documents médicaux — le candidat que tout le monde aurait optimisé
+d'abord — pèse quatre millièmes du temps.** Il est écarté par un facteur 237. Tout le
+coût est dans le transport.
+
+Poussée d'un cran, la mesure dit **pourquoi** : le service allait chercher le contenu
+d'un message en **deux demandes séparées** au serveur, et chaque demande paie la
+latence du réseau. Quatre cinquièmes du coût de transport sont cette latence ; le
+transfert des données lui-même ne pèse que 50 millisecondes.
+
+**Le correctif est écrit et mesuré** : une seule demande au lieu de deux, quand la
+structure du message le permet. Le temps de transport tombe de **239 à 134
+millisecondes** par message (−44 %), et le traitement complet de **330 à 204**. La
+prévision faite à partir du nombre de demandes supprimées se vérifie à 10 % près —
+signe que la cause était correctement identifiée.
+
+Deux points de prudence assumés. Le correctif **ne s'applique pas** quand le message
+porte des pièces jointes volumineuses dont l'analyse n'a pas besoin : rapatrier le
+message entier coûterait alors plus qu'il ne gagne, et le service continue dans ce
+cas de demander partie par partie. Et il **n'est pas encore intégré** : sa validation
+finale reste à conduire. *(instrument : task-245 ; correctif en cours : task-254)*
+
+### Ouvrir sa boîte ne coûte plus la taille de sa boîte (9 août 2026)
+
+Le comptage des fils de discussion, affiché à chaque ouverture de la boîte de
+réception, relisait **toute** la table des messages du praticien — sans filtre de
+dossier, de page ni d'ancienneté. À 250 messages de test, le coût passait inaperçu ;
+pour un praticien réel qui en accumule des dizaines de milliers, c'étaient deux
+balayages complets à chaque ouverture.
+
+Le travail de base de données de cette ouverture est passé de **178 à 78
+millisecondes**. Le gain n'est pas encore formellement attribué à ce seul correctif —
+la campagne qui devait l'isoler a perdu son compte rendu (voir ci-dessous) — mais le
+poste visé baisse bien de 56 %. *(task-247)*
+
+### Le banc a appris à refuser de conclure (9-10 août 2026)
+
+Deux corrections d'outillage, nées d'un chiffre faux qui avait failli être publié.
+Elles n'améliorent aucun temps de réponse ; elles empêchent de croire des mesures qui
+n'en sont pas. (Les autres corrections de la même veine — sonde de surveillance,
+fiche de correspondant, erreurs nommées — ont leur propre section ci-dessus.)
+
+**Une campagne dont la préparation échoue ne rend plus de verdict.** Une campagne à
+500 praticiens avait publié « neuf étapes sur onze dans les temps » alors que la base
+était restée vide : tout paraissait rapide parce qu'il n'y avait rien à traiter. Le
+rapport refuse désormais de juger les étapes concernées, et la préparation elle-même
+a été redécoupée pour aboutir — de **zéro praticien préparé sur 100** à **94,5 %**.
+Le redécoupage a demandé deux essais : la première version calculait le rythme de
+préparation sur l'ensemble de la population au lieu du groupe qui démarre, ce qui
+faisait attendre le dernier praticien plus longtemps que la mesure ne dure.
+
+**Une campagne perdue pour une raison bête, désormais corrigée.** Lancée à 22h27,
+terminée à 00h05, elle a voulu écrire son compte rendu dans un répertoire daté du
+lendemain, qui n'existait pas encore. Une heure trente-huit de mesure, récupérée
+seulement en partie par la télémétrie du service — et les temps de réponse par étape,
+eux, définitivement perdus. *(task-244, puis task-253 pour la calibration)*
 
 ### Le premier poste de coût du parcours n'est plus une boîte noire (8 août 2026)
 
