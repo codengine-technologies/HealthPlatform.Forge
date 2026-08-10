@@ -310,3 +310,131 @@ fait **à l'intérieur** d'un message — task-239 n'est pas défaite.
 2. **Rejouer l'A/B sur une machine au repos**, ou en alternant les bras
    (A-B-A-B) pour absorber le confondant.
 3. **Le plateau**, seulement ensuite.
+
+---
+
+## Develop log — étape 2/2, suite : les trois réserves levées, et le plateau qui ne l'est pas
+
+### 1. L'asymétrie d'échec est ENVIRONNEMENTALE — le correctif est disculpé
+
+La pile Seq du 500 (trace `87f0463b`, `ElapsedMs=15015`) est sans ambiguïté :
+
+```
+InvalidOperationException (transient) → NpgsqlException: The operation has timed out
+  at NpgsqlConnector.ConnectAsync            ← ouverture d'une connexion NEUVE
+  at PoolingDataSource.OpenNewConnector
+  at MailRepository.GetEnrichedUidsAsync     (MailRepository.cs:2749)
+  at ImapService.ComputePendingEnrichmentAsync (ImapService.cs:1468)
+```
+
+L'échec tombe sur la **toute première requête base** de l'enrichissement,
+**avant tout fetch IMAP**, sur un chemin **identique dans les deux bras**. C'est
+le plafond de connexions Postgres (un pool par base praticien), pas une
+fragilité du message entier.
+
+**Deux preuves indépendantes** : (a) préchauffer les pools (une requête
+`GET /folders` par praticien avant le tir) fait passer un bras de 5/8 à **8/8** ;
+(b) l'asymétrie **s'inverse** d'un round à l'autre — round 1 c'est B qui échoue,
+round 2 c'est A. Un défaut du facteur ne change pas de camp.
+
+⚠️ **Effet de bord à connaître** : un lot échoué ne contribue **aucun message**
+mesuré, donc le bras qui échoue est **flatté** (biais de survie). C'est ce qui
+gonflait le −45 % du premier round.
+
+### 2. ⚠️ Mon deuxième round était aveugle — A contre A
+
+`--artifacts-path` (le contournement qui évite de tuer un AppHost en vol) écrit
+**hors du `bin` normal**. Chronologie établie par horodatage :
+
+| Heure | Fait |
+|---|---|
+| 11:33:35 | `src/Api` construit avec `floor = 2.0` (bras A) |
+| 11:38:34 | build « de vérification » → parti dans le **scratchpad** |
+| 11:53:30 | rebuild à `2.0` pour A1 |
+
+Entre 11:38 et 11:53 le `bin` portait donc encore `floor = 2.0`, et le bras « B1 »
+lancé avec `--no-build` a exécuté **le binaire du bras A**. D'où un round qui
+rendait −4 % de sollicitations et **+1 %** sur `imap_fetch` : je m'apprêtais à
+conclure que le gain n'existait pas. **`--artifacts-path` et `--no-build` ne se
+combinent pas** — à ne pas reproduire.
+
+### 3. L'A/B valide : deux mesures indépendantes qui concordent
+
+Bras préchauffés, **même taux d'échec (6/8 des deux côtés)**, binaires vérifiés :
+
+| Par message | A1 (une commande/partie) | B2 (groupé) | Écart | Rappel round 1 |
+|---|---|---|---|---|
+| **Sollicitations serveur** | **3,00** | **1,50** | **−50 %** | −40 % |
+| `imap_fetch` | 228,8 ms | 131,4 ms | **−43 %** | −45 % |
+| Enveloppe | 425,1 ms | 300,6 ms | −29 % | −34 % |
+| Détention `imap_session` | 269,3 ms/acq | 178,7 ms/acq | **−34 %** | −35 % |
+| `cda_parse` (sans rapport) | 62,2 ms | 48,6 ms | −22 % | −25 % |
+| `db_write` (sans rapport) | 46,7 ms | 47,7 ms | +2 % | −18 % |
+
+**Établi** : un aller-retour de moins par message (compte, pas durée), un
+`imap_fetch` réduit de ~43 % reproduit deux fois, et une détention de verrou en
+baisse de ~34 % **à nombre d'acquisitions inchangé** — le groupement s'est bien
+fait *à l'intérieur* d'un message, **task-239 n'est pas défaite**.
+
+**Réserve résiduelle honnête** : des phases sans rapport avec le réseau bougent
+encore de 15 à 22 % (`cda_parse`, `xdm_extract`), alors que `db_write` ne bouge
+pas. Il reste donc un confondant de cet ordre — plus petit que le gain de fetch,
+et incapable d'expliquer le **compte** de sollicitations, qui est structurel.
+
+### 4. ❌ Le plateau n'est PAS franchi — et c'est le résultat qui compte
+
+Même bras (groupement actif), deux points de concurrence :
+
+| Concurrence | Débit | `imap_fetch` | Sollicitations |
+|---|---|---|---|
+| 4 | **2,66 msg/s** | 131,4 ms | 1,50 |
+| 8 | **2,77 msg/s** | 130,1 ms | 1,80 |
+
+**Doubler la concurrence rend +4 %.** Le plateau tient, et le coût de fetch par
+message ne se dégrade pas (131 → 130 ms) : **ce n'est donc pas le fetch qui
+plafonne le débit**.
+
+⚠️ Le niveau absolu (2,7 msg/s) n'est **pas** comparable aux 9,5 msg/s
+documentés — banc local, 8 praticiens, latence Toxiproxy. C'est la **platitude
+relative** qui est le résultat, pas le chiffre.
+
+**Conséquence pour la US** : le correctif améliore la **latence par message**
+sans lever le **plafond de débit**. Le critère « le plateau à ~9,5 messages/s est
+franchi » est **non atteint**, et il ne le sera pas par cette piste. La piste 2
+(détention de `imap_session`) reste candidate — et le task file avait raison
+d'interdire de présumer dans un sens comme dans l'autre.
+
+### État final du DOD
+
+| Critère | État |
+|---|---|
+| Allers-retours IMAP mesurés et rendus | ✅ |
+| Aucune régression fonctionnelle, 3 formes de corpus | ✅ `8a843a8` |
+| Ni perdu ni dupliqué sur échec partiel | ✅ `e71f14e` |
+| Phase `fetch IMAP` réduite, **prouvée par A/B iso-conditions** | ✅ **−43 %, reproduit deux fois, un aller-retour de moins par message** |
+| Détention `imap_session` mesurée avant/après | ✅ 269,3 → 178,7 ms/acq, acquisitions inchangées |
+| **Plateau ~9,5 msg/s franchi** | ❌ **non atteint** — +4 % pour un doublement de concurrence |
+
+**5 sur 6.** Le sixième n'est pas « à finir » : il est **mesuré et négatif**.
+C'est un arbitrage PO, pas un reste de travail — voir ci-dessous.
+
+### La décision qui revient au PO
+
+Le correctif est **sain, mesuré et sans régression** : il retire un aller-retour
+par message et raccourcit la détention du verrou d'un tiers. Il ne fait pas ce
+que le DOD lui demandait en dernier critère : franchir le plateau.
+
+Trois options :
+1. **Livrer tel quel** en amendant le DOD : le gain de latence est acquis et
+   prouvé, le plateau devient une US séparée (piste 2 — la détention de
+   `imap_session`, dont on sait maintenant qu'elle baisse de 34 % mais reste à
+   178 ms/acquisition).
+2. **Garder la branche ouverte** jusqu'à ce que la piste 2 soit traitée, et
+   livrer les deux ensemble — conforme à la règle 11 si l'on considère que « le
+   débit croît avec la concurrence » est la valeur attendue par le médecin.
+3. **Reprendre la mesure du plateau sur le banc distant**, où le niveau absolu
+   est opposable, avant de trancher.
+
+⚠️ **Deux réserves à ne pas perdre** : le plafond de connexions Postgres
+(préchauffage obligatoire avant toute mesure d'enrichissement, sinon 15 s de
+timeout à l'ouverture) et le confondant résiduel de 15-22 % sur ce banc local.
