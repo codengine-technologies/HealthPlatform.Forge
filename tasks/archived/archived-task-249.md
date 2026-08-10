@@ -220,3 +220,28 @@ et violerait la règle 6 (une task ne touche que son module).
   aucune base praticien, reste anonyme et n'expose qu'un état agrégé.
 - **Régression hors loadtest** : impossible par construction (variable absente
   ⇒ repli), et verrouillée par test.
+
+## Merged
+
+- **Mergée le 2026-08-10** par l'humain (HAG, règle 10), attestation `--i-tested`.
+- `api-mail` : PR #182 **squash-mergée** → `db37379` sur `develop`.
+  Branche distante supprimée ; **branche locale conservée**.
+- `dtos-mss` : aucune PR (0 commit). Branche distante supprimée, locale conservée.
+- Clone local resynchronisé sur `develop` (`api-mail` en `db37379`).
+- ⚠️ **Mergée APRÈS task-252** (`e893fcd`) bien qu'ouverte avant : GitHub a
+  recalculé la mergeabilité (`UNKNOWN` → `MERGEABLE`/`CLEAN`) et les deux diffs
+  sont **disjoints** — task-249 touche `ServerConnectionString.cs` /
+  `DependencyInjectionExtensions.cs`, task-252 `MailController.cs` /
+  `ImapService.cs` / `MailProcessingMetrics.cs`. Aucun conflit, aucun rebase.
+- **CI `develop` verte sur la combinaison des deux tasks** (run `31364762340`,
+  « Build and Publish », `success`) — c'est cette exécution, et non celle de la
+  PR (rendue sur une base antérieure à task-252), qui valide le résultat.
+- **Staging supprimée** : `forge/staging-task-249-252-20260809` (distante **et**
+  locale) — le run 249-252 est désormais entièrement mergé.
+
+> ⚠️ **Ce qui reste dû sur cette US.** Les deux critères **observables** du DOD
+> exigent un banc et n'ont pas été vérifiés par le merge : après un `GET /health`,
+> **aucun pool `postgres`** dans `SHOW POOLS` ; et sur un tir, la ligne « pool de
+> maintenance » de la table des coûts résidents à **zéro**. C'est ce second point
+> qui prouvera que la contamination de `cl_waiting` a bien disparu — donc que les
+> prochains verdicts d'A/B de pool sont lisibles.
