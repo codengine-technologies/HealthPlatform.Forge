@@ -195,3 +195,118 @@ plafond `mail_max_userip_connections` (task-213 a montré qu'une voie dédiée
 **double** les sessions IMAP par praticien).
 
 **`/sonar` n'a pas été rejoué** sur cette étape (du C# a été modifié).
+
+---
+
+## Develop log — étape 2/2 : les tests, puis l'A/B au banc
+
+### Resynchronisation
+
+Branche remise à niveau sur `develop` par **merge** (`5598f89`) — task-251, task-252
+et task-249 avaient atterri depuis. **Aucun conflit** malgré une collision
+apparente : task-254 et task-252 touchent tous deux `ImapService.cs` et
+`MailProcessingMetrics.cs`, mais sur des régions disjointes (enrichissement vs
+téléchargement). Suite complète après merge : **3 747 verts**, 1 flaky documenté
+(`BulkDelete`, vert en isolation).
+
+### Les deux critères de test (livrés)
+
+**`8a843a8` — non-régression sur les 3 formes de corpus.** Le compte de documents
+cliniques est désormais **exact** là où `CdaParsingIntegrationTests` se contentait
+de `NotEmpty` (« au moins un ») : une archive rendant 1 document au lieu de 2
+passait sans broncher. La forme **multi-documents est absente du corpus versionné**
+(les 5 archives de l'ANS portent un seul `SUBSET01`) — elle est fabriquée à
+l'exécution en dupliquant le sous-ensemble d'une archive réelle.
+
+⚠️ **Ces tests sont verts avant comme après le correctif, et c'est le but.** Mon
+cadrage initial (« reverter `4cf6021` doit les rendre rouges ») était faux :
+l'ancien code extrayait les mêmes documents, il était seulement plus lent.
+
+Mutations : (A) n'extraire que le premier document → **multi-documents rouge, mono
+verts** ; (B) n'extraire aucun document → **6/7 rouges** ; (C) injecter un DTO vide
+dans la garde anti-fantôme → **aucun rouge**. La C est un résultat : la
+bibliothèque XDM ne produit aucun `CdaFile` candidat pour cette archive, donc la
+garde n'est **jamais atteinte**. Test renommé et **trou de couverture écrit** dans
+le fichier.
+
+**`e71f14e` — ni perdu ni dupliqué sur échec partiel.** L'invariant était
+revendiqué en prose par le commentaire d'`EnrichEmailsAsync` et vérifié par aucun
+test. Éprouvé contre un vrai PostgreSQL, en assertant l'état de la **base**.
+
+Mutations : (D) jeter ce qui a été lu → **rouge** ; (E) retirer le filtre de
+déduplication → **aucun rouge**. La E établit deux gardes indépendantes dont la
+seconde suffit : le filtre de `ComputePendingEnrichmentAsync` est une garde de
+**coût**, `AddNewMail` (refus si `ContentCount > 0`) la garde de **correction**.
+Le test ne protège donc **pas** la déduplication amont — **trou de couverture
+consigné**.
+
+### L'A/B iso-conditions — le levier retenu
+
+`EnrichmentFetchPlan` n'expose aucun réglage : les seuils sont des `const`. Le
+bras A n'est donc **pas** `develop` (qui diffère aussi par l'instrument et le fix
+de rapport = plusieurs facteurs), mais **le même binaire** avec
+`UsefulOctetsShareFloor = 2.0` — une part impossible (≤ 100 %), donc le
+groupement n'est jamais choisi. **Un seul facteur.** Levier retiré après mesure,
+contenu de production vérifié **identique à HEAD par hachage**.
+
+Protocole par bras : purge (`reset-state.sh`) → snapshot des compteurs cumulés →
+tir → snapshot → deltas. Compteurs cumulés et non `rate()` : sur un tir de 40 s,
+une fenêtre de `rate` rend des séries vides ou du `nan` (constaté).
+
+Conditions : banc local, 8 praticiens × 30 messages porteurs d'`IHE_XDM.ZIP`,
+`VUS=4`, `ENRICH_BATCH=20`, `SESSION_ROTATION=0.002`, latence Toxiproxy du banc.
+
+### Le résultat
+
+| Grandeur (par message) | Bras A (une commande/partie) | Bras B (groupé) | Écart |
+|---|---|---|---|
+| **Sollicitations serveur** | **2,50** | **1,50** | **−40 %** |
+| `imap_fetch` | 232,1 ms | 127,5 ms | −45 % |
+| Enveloppe d'enrichissement | 418,6 ms | 274,6 ms | −34 % |
+| Détention `imap_session` | 272,3 ms/acq | 178,1 ms/acq | −35 % |
+| Acquisitions `imap_session` | 1,10 | 1,10 | **+0 %** |
+| `cda_parse` | 50,1 ms | 37,3 ms | −25 % |
+| `xdm_extract` | 53,3 ms | 44,9 ms | −16 % |
+| `db_write` | 58,2 ms | 47,7 ms | −18 % |
+
+**Ce qui est établi sans réserve** : **un aller-retour de moins par message**
+(2,50 → 1,50). C'est un **compte**, pas une durée — il ne dépend d'aucune
+condition de machine, et il correspond exactement au mécanisme annoncé. Et la
+promesse de conception est tenue : la détention du verrou baisse de 35 % **à
+nombre d'acquisitions inchangé** (1,10), c'est-à-dire que le groupement s'est bien
+fait **à l'intérieur** d'un message — task-239 n'est pas défaite.
+
+### ⚠️ Deux réserves qui interdisent de publier « −45 % » comme un gain net
+
+1. **Des phases sans aucun rapport avec le fetch ont bougé de 16 à 25 %.**
+   `cda_parse`, `xdm_extract` et `db_write` ne touchent pas au réseau : un
+   changement à facteur unique ne devrait pas les déplacer. Il existe donc un
+   **confondant de cet ordre** entre les deux tirs (charge de la machine hôte),
+   et il joue dans le **même sens** que le gain. Les écarts de **durée** ne sont
+   donc pas opposables à mieux que ~±20 % ; seul le **compte** de sollicitations
+   l'est.
+2. **Les deux bras n'ont pas abouti pareil** : bras A **8 lots / 8**, bras B
+   **5 lots / 8** (100 messages contre 160). La normalisation par message atténue
+   l'écart de volume, mais **l'asymétrie d'échec va dans le sens gênant** — c'est
+   le *correctif* qui a échoué davantage. Un fetch de message entier est plus gros
+   qu'un fetch de partie : l'hypothèse d'une sensibilité accrue au délai est
+   ouverte et **non écartée**. À trancher avant de livrer le gain.
+
+### État du DOD
+
+| Critère | État |
+|---|---|
+| Allers-retours IMAP mesurés et rendus | ✅ étape 1 |
+| Aucune régression fonctionnelle, 3 formes de corpus | ✅ `8a843a8` |
+| Ni perdu ni dupliqué sur échec partiel | ✅ `e71f14e` |
+| Phase `fetch IMAP` réduite, **prouvée par A/B** | 🟡 **réduction établie en compte** (−1 aller-retour), **gain en temps non opposable** (confondant ~±20 %, asymétrie d'échec) |
+| Détention `imap_session` mesurée avant/après | ✅ 272,3 → 178,1 ms/acq, acquisitions inchangées |
+| Plateau ~9,5 messages/s franchi | ❌ **non mesuré** — exige deux points de concurrence, et le confondant ci-dessus le rendrait de toute façon non opposable en l'état |
+
+### Ce qu'il reste, et dans quel ordre
+
+1. **Expliquer l'asymétrie d'échec** (5/8 contre 8/8). C'est le point bloquant :
+   tant qu'il tient, le correctif peut être un gain de latence payé en abandons.
+2. **Rejouer l'A/B sur une machine au repos**, ou en alternant les bras
+   (A-B-A-B) pour absorber le confondant.
+3. **Le plateau**, seulement ensuite.
