@@ -448,3 +448,65 @@ Trois options :
 ⚠️ **Deux réserves à ne pas perdre** : le plafond de connexions Postgres
 (préchauffage obligatoire avant toute mesure d'enrichissement, sinon 15 s de
 timeout à l'ouverture) et le confondant résiduel de 15-22 % sur ce banc local.
+
+## Sonar log
+
+Analyse complète relancée (le task file signalait qu'elle ne l'avait pas été
+alors que du C# est modifié). `EXECUTION SUCCESS`, 5 rapports de couverture.
+
+### KPIs qualité
+
+| Métrique | Valeur |
+|---|---|
+| Quality Gate (new code) | **ERROR** — lecture ci-dessous |
+| Couverture new code | **87,9 %** (seuil 80 ✅) |
+| Duplication (new code) | 0,06 % (seuil 3 ✅) |
+
+### Lecture — 1 finding introduit, corrigé ; 20 préexistants
+
+Contrairement aux tasks 249/251/252, **21 des 56 findings sont dans des fichiers
+de cette task**. Mais « dans un fichier touché » n'est pas « introduit » :
+
+- **`csharpsquid:S103`** (ligne de 154 caractères) dans
+  `IIheXdmProcessingService.cs` — fichier **créé** par la task, donc dette bien
+  à elle. **Corrigé** (`38eb14e`).
+- **20 findings Python sur `report.py`**, aux lignes **1700 à 4790** d'un fichier
+  de ~5000 lignes alors que la task n'en ajoute que **55** → fonctions
+  **préexistantes**, remontées par la new-code period large. Ce sont des
+  **S3776** (complexité cognitive), **hors chaîne autonome par charte**
+  (`/sonar-s3776` : une méthode = une PR).
+
+**Dette C# introduite après correction : zéro.**
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/184 — label `awaiting-human-merge`
+- `dtos-mss` : **aucune branche, aucune PR** — la task n'a jamais eu besoin de
+  toucher au contrat (elle est antérieure à la règle d'auto-inclusion de `/start`
+  telle qu'appliquée aux tasks 249-252).
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 15 fichiers au diff, 0 blocage, 1 correction appliquée.
+
+- `EnrichmentFetchPlan.cs` — ✅ **fonction pure**, décision prise sur le
+  `BODYSTRUCTURE` déjà en main (zéro aller-retour supplémentaire), trois refus
+  explicites et motivés (moins de deux parties utiles, plafond d'octets, tailles
+  inconnues) avant le cas favorable. Les bords sont testés.
+- `ImapService.cs` — ✅ les deux chemins de fetch rendent le **même**
+  `FetchedBodies`, et la **question de correction qui compte** — les corps sont-ils
+  équivalents ? — se vérifie : `MimeMessage.TextBody`/`HtmlBody` appliquent la même
+  sélection de partie que le `BODYSTRUCTURE` qu'utilise le chemin historique.
+  Aucune divergence substanciable. Les compteurs de sollicitation sont posés
+  **avant** les tests de réussite (un `SELECT` qui échoue a parlé au serveur lui
+  aussi).
+- `IIheXdmProcessingService.cs` — ⚠️ S103 corrigé (`38eb14e`).
+- Tests (5 fichiers, 17 tests) — ✅ et surtout **la preuve par mutation est
+  publiée avec ses deux résultats négatifs** : la garde anti-fantôme n'est jamais
+  atteinte, et le filtre de déduplication n'est pas protégé. Deux trous écrits
+  plutôt que deux propriétés supposées.
+- **Sécurité / conformité** : aucune donnée de santé en étiquette ni en journal ;
+  cloisonnement par praticien inchangé ; intégrité des documents couverte par des
+  tests qui **discriminent** (mutation le prouve).
+- **Performance** : le gain est mesuré, pas supposé ; et la promesse de ne pas
+  défaire task-239 est **vérifiée** (acquisitions de verrou inchangées).
