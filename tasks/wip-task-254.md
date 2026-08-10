@@ -84,8 +84,18 @@ arrive » et « je peux le lire enrichi ».
 - [ ] La détention de `imap_session` par `EnrichEmails` est **mesurée** avant/après ;
       si la piste 2 est retenue, l'effet sur le **nombre de sessions IMAP par
       praticien** est mesuré lui aussi (coût résident, table « contre N »)
-- [ ] Le débit d'enrichissement **croît avec la concurrence** : le plateau à
-      ~9,5 messages/s est franchi, chiffre à l'appui
+- [~] ~~Le débit d'enrichissement **croît avec la concurrence** : le plateau à
+      ~9,5 messages/s est franchi, chiffre à l'appui~~ → **DÉPLACÉ vers
+      [task-255](todo-task-255.md)** par arbitrage PO du 2026-08-10.
+      **Motif** : le critère a été **mesuré, et il est négatif** — doubler la
+      concurrence rend **+4 %** (2,66 → 2,77 msg/s). La même mesure **écarte le
+      fetch** comme cause du plateau : son coût par message ne se dégrade pas
+      avec la concurrence (131 → 130 ms), et le retrait d'un aller-retour sur
+      deux n'a rien rendu au débit. Ce critère ne relevait donc pas de cette
+      piste, et l'y laisser aurait bloqué un gain acquis et prouvé
+      (−43 % sur `imap_fetch`, −34 % de détention de verrou) derrière une cause
+      qui n'est pas la sienne. Il n'est **pas abandonné** : il est le cœur de
+      task-255, avec les faits que cette campagne a établis.
 - [ ] Aucune régression fonctionnelle : le **même** nombre de documents cliniques
       est extrait des mêmes messages, avec le même contenu — tests écrits **avant**
       le correctif, sur un message mono-document, un multi-documents, et une
