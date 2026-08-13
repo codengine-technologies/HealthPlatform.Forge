@@ -522,3 +522,55 @@ la suite complète ne s'est pas reproduit à l'unité : flaky, non caractérisé
 **Ce n'est pas traité ici** (hors périmètre, et la forge ne corrige pas de code en
 `/review`) mais cela mérite une US : un test qui garde un texte de prompt et qu'on
 laisse rouge trois jours ne garde plus rien.
+
+## Merged
+
+Mergée le 2026-08-13 par l'humain (`/merge task-255 --i-tested`), après
+validation manuelle du plan de test.
+
+| Repo | PR | Squash commit | Branche distante |
+|---|---|---|---|
+| `api-mail` | [#185](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/185) | `24fecce` | supprimée |
+| `dtos-mss` | aucune (branche sans commit) | — | supprimée |
+
+**CI `develop` : verte** (`success`) — vérifiée après le merge, règle 5.
+
+### ⚠️ Cette PR ne contient pas que la campagne
+
+`/merge` s'est d'abord **arrêté sur porte de sécurité** : la CI d'`api-mail`
+était rouge, et **pas du fait de cette task** (`questions/merge-task-255.md`).
+
+**`GHSA-q939-rpr3-3284`, sévérité HAUTE** — *ScpClient, en téléchargement
+récursif, permet une écriture de fichier arbitraire via des noms de fichiers
+contrôlés par le serveur SCP*. Affecte `SSH.NET <= 2025.1.0`, corrigé en
+`2026.0.0`. Avis publié **entre le 2026-08-10 et le 2026-08-13** ; `NuGetAudit`
+traitant les alertes en erreurs, **toute branche du dépôt échouait au Restore**,
+`develop` comprise, avant même de compiler.
+
+Sur décision humaine (« règle le problème directement dans la branche »), le
+correctif a été livré ici :
+
+- `SSH.NET` n'est utilisé par **aucun** projet et n'entre dans **aucun binaire
+  livré** — il arrive en transitif via `Testcontainers`, dans le seul projet de
+  tests d'intégration.
+- **Remonter `Testcontainers` ne corrige rien** : vérifié sur les nuspec, 4.12.0
+  **et** 4.13.0 épinglent toutes deux SSH.NET 2025.1.0. La référence directe qui
+  surclasse la transitive est donc le remède, pas un pis-aller.
+- Motif **et condition de retrait** écrits dans `Directory.Packages.props`, à
+  l'endroit où quelqu'un se demandera pourquoi on référence un paquet inutilisé.
+- Fichier de verrouillage régénéré et committé (`Transitive/2025.1.0` →
+  `Direct/2026.0.0`, `BouncyCastle.Cryptography` 2.6.2 → 2.7.0) — sans lui la CI
+  aurait restauré autre chose que ce qui a été validé localement.
+
+**Vérification** : restore 0 erreur (c'est-à-dire l'audit lui-même), build
+0 avertissement, **intégration 401 passés / 0 échec** — soit exactement le même
+résultat qu'avant ce saut de version **majeure**, ce qui écarte le seul risque
+réel (une régression de `Testcontainers`).
+
+### Reste ouvert après ce merge
+
+`AiPromptHelperTests.GetPromptShouldContainDocumentIntroduction` échoue toujours
+**en local** (le commit `411b289` a changé le texte du prompt sans mettre à jour
+son test). La CI ne l'atteignait pas — elle mourait avant, au Restore ; elle
+l'atteint désormais. **Non corrigé ici** : remettre ce test en accord suppose de
+trancher quel texte fait foi, décision produit et non déblocage d'outillage.
