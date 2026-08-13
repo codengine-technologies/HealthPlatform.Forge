@@ -2,7 +2,7 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.35
+> **Version** : 1.36
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
 > **Dernière mise à jour** : 2026-08-13
@@ -110,6 +110,7 @@ baisses de performance avant qu'elles n'atteignent les utilisateurs**.
 | Envoyer un message ne rouvre plus une connexion à chaque fois | Ne plus attendre plus d'une seconde à chaque envoi pour une raison qui n'a rien à voir avec le message : la plateforme ouvrait une connexion neuve au serveur de messagerie — négociation de sécurité et contrôle du certificat compris — pour **chaque** message envoyé. Elle réutilise désormais celle de la session du praticien, comme elle le fait déjà pour la lecture. Le contrôle du certificat n'est pas allégé : il est simplement payé une fois au lieu de l'être à chaque envoi | task-231 | 🟡 Corrigé, mesure de confirmation à conduire |
 | Accueillir plus de praticiens ajoute bien de la capacité | Savoir si la messagerie traite davantage de comptes-rendus quand on lui en demande plus en même temps — et non si elle bute sur une limite qui lui serait propre. Mesuré : lui demander quatre fois plus de travail simultané en fait aboutir **2,7 fois plus**. Ce qui borne la montée est la puissance de la machine qui héberge la simulation, et non la messagerie | task-255 | 🟢 Mesuré — aucune limite propre à lever |
 | Les mesures de capacité ne sont plus faussées par le banc lui-même | Se fier aux chiffres d'une campagne : l'outil de mesure perdait par intermittence l'accès à sa base de données, sans lever d'erreur — il dégradait silencieusement le résultat au lieu de s'arrêter. La panne est fermée, et un contrôle automatique empêche qu'elle revienne sous une autre forme | task-257 | 🟢 Corrigé et vérifié |
+| Savoir POURQUOI l'analyse des comptes-rendus ralentit quand la charge monte | Distinguer deux causes que rien ne séparait jusqu'ici — la messagerie **attend-elle** son tour pour accéder aux dossiers, ou **fait-elle le même travail plus lentement** ? Les deux se soignent à l'opposé. Mesuré : elle n'attend pas, et elle ne fait pas plus de travail — ce sont les mêmes accès aux dossiers qui prennent plus de temps | task-258 | 🟢 Mesuré — cause localisée hors de la messagerie |
 
 ---
 
@@ -1308,6 +1309,7 @@ test, tournent maintenant pour de vrai dans l'un d'eux. *(task-236)*
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
+| Savoir POURQUOI l'analyse des comptes-rendus ralentit quand la charge monte | 🟢 Mesuré — cause localisée hors de la messagerie | Trois volumes de demandes simultanées, tous les comptes-rendus traités, aucune erreur. **La messagerie n'attend jamais son tour** pour accéder aux dossiers d'un praticien : cette attente vaut 1,4 % du coût d'écriture et **ne bouge pas** avec la charge — la piste que l'on suivait en priorité est donc écartée par la mesure, pas par raisonnement. **Elle ne fait pas non plus davantage de travail** : le nombre d'accès aux dossiers par compte-rendu est **identique au centième** aux trois volumes. Ce sont **les mêmes accès qui prennent plus de temps** — le ralentissement est donc dans le stockage des dossiers, pas dans la messagerie. La prochaine étape instrumente le stockage, plus la messagerie | task-258 |
 | Les mesures de capacité ne sont plus faussées par le banc lui-même | 🟢 Corrigé et vérifié | L'outil de mesure perdait par intermittence l'accès à sa base de données — **13 % des traitements d'une campagne perdus, deux campagnes entières jetées** — et le faisait **sans lever d'erreur** : il rendait un chiffre dégradé qui avait l'apparence d'un résultat valide. Troisième occurrence de la même cause en quelques mois ; les deux correctifs précédents ne tenaient que jusqu'au prochain changement de l'outillage sous-jacent. Celui-ci ferme la **famille entière** de pannes plutôt que le cas du jour, et un contrôle automatique — éprouvé en le mettant volontairement en défaut à quatre reprises — refuse désormais tout retour en arrière. Vérifié sur un banc démarré sans aucune intervention manuelle : aucune erreur, campagne de contrôle à 0 % d'échec | task-257 |
 | Accueillir plus de praticiens ajoute bien de la capacité | 🟢 Mesuré — aucune limite propre à lever | Trois volumes de demandes simultanées mesurés ; **tous les comptes-rendus soumis ont été traités**, aucune erreur. La messagerie en traite **2,7 fois plus** quand on lui en demande **4 fois plus** à la fois. Les trois causes soupçonnées sont **écartées par la mesure**, et non par raisonnement : l'attente devant la boîte du praticien est **nulle** aux deux premiers volumes, l'accès aux dossiers ne fait pas la queue, et le temps d'échange avec le serveur de messagerie ne bouge pas d'un demi-millimètre. Ce qui borne la montée est la **puissance de la machine d'essai**, partagée entre la messagerie et les serveurs simulés qui l'entourent — donc extérieure au produit. **Contre-épreuve** : la même mesure refaite après avoir libéré la machine d'un programme étranger qui en consommait la moitié rend **jusqu'à 30 % de plus**, et l'écart grandit avec la charge — ce qui confirme que la machine était bien le facteur limitant. **Aucune correction n'était à faire** : la difficulté que cette mesure devait expliquer n'existe pas. Un seuil est posé pour rouvrir le sujet si une mesure future le contredisait | task-255 |
 | Banc d'essai isolé | 🟢 Livré | Environnement simulé + vérification bout-en-bout en place | task-173 |
@@ -1822,6 +1824,18 @@ Cinq réserves à porter au bilan, sans quoi il serait trompeur :
   ferme la **famille entière**, et un contrôle automatique — éprouvé en le mettant
   volontairement en défaut à quatre reprises — refuse tout retour en arrière.
   Vérifié sur un banc démarré sans aucune intervention manuelle. (task-257)
+
+- v1.50 — On sait désormais **pourquoi** l'analyse des comptes-rendus ralentit
+  quand la charge monte, et la réponse écarte la piste que l'on suivait. Deux
+  causes possibles se soignent à l'opposé : soit la messagerie **attend son tour**
+  pour accéder aux dossiers, soit elle **fait le même travail plus lentement**. La
+  mesure tranche : l'attente vaut **1,4 %** du coût et **ne bouge pas** avec la
+  charge, et le nombre d'accès aux dossiers par compte-rendu est **identique au
+  centième** aux trois volumes testés. Ce sont donc **les mêmes accès qui prennent
+  plus de temps** : le ralentissement vient du **stockage des dossiers**, pas de la
+  messagerie. Sans le décompte des accès, cette conclusion était hors de portée —
+  une durée qui augmente se lit aussi bien « plus de travail » que « travail plus
+  lent ». La prochaine étape instrumente le stockage. (task-258)
 
 ---
 
