@@ -138,3 +138,91 @@ Données de test synthétiques uniquement.
 - **Hébergement HDS** : le coût de l'instrument doit être négligeable en
   production — critère « hors périmètre, rien ne coûte » ci-dessus
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+
+- `api-mail` (pushed) : feat/task-258-instrumenter-db-write — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-258-instrumenter-db-write
+- `dtos-mss` (pushed, auto-inclus) : feat/task-258-instrumenter-db-write — aucun contrat DTO attendu (US d'instrument interne)
+
+## Develop log — 2026-08-13
+
+### L'instrument existait déjà — il n'était pas branché
+
+`DbOperationScope` (task-243) publie **exactement** les trois composantes que le
+DOD demande — `connection_open`, `sql_execute`, et le **reste** par différence —
+plus le compte de requêtes. Il n'était simplement jamais ouvert sur le chemin
+d'écriture.
+
+**Cause précise de l'angle mort**, que task-255 avait constaté sans pouvoir
+l'expliquer : l'intercepteur de **commandes** alimente les **deux** périmètres
+(lecture task-243 et enrichissement task-245), mais l'intercepteur de
+**connexion** n'alimente que `DbOperationScope`, inactif sur ce chemin faute de
+`Begin`. La phase `db_write` de l'enrichissement ne mesurait donc **que
+l'exécution SQL** — l'attente d'obtention de connexion n'était pas mal mesurée,
+**elle n'existait pas**.
+
+**Livré** : `DbOperationScope.Begin(DbOperationEnrichPersistMail)` dans
+`MailRepository.AddNewMail`. **Zéro nouvel instrument, zéro changement de contrat
+de métrique.**
+
+### Deux décisions de placement
+
+**Au dépôt, pas chez l'appelant** — comme les deux périmètres de lecture. La
+mesure suit alors l'opération quel que soit son appelant, au lieu de dépendre
+d'un site d'appel qu'on oublierait : c'est le mode de panne de task-214, où une
+API instrumentée n'était branchée que sur **un site sur vingt et un**.
+
+**Le court-circuit de déduplication est DANS le périmètre** : il interroge la
+base, donc il coûte. Un message dédupliqué doit apparaître pour ce qu'il est —
+une écriture bon marché — plutôt que de disparaître de la mesure, ce qui
+flatterait le coût moyen d'écriture.
+
+### `report.py` : rien à câbler
+
+La table et la phrase attribuable agrègent **par opération** (`sum by
+(operation)`) : la nouvelle opération y apparaît d'elle-même. Seul le titre de
+section a changé — il annonçait « lecture servie par la base » alors qu'une
+**écriture** va désormais s'y ranger — assorti d'une note de lecture qui dit ce
+que `EnrichPersistMail` tranche.
+
+### Tests — éprouvés par mutation, y compris contre le « vert à vide »
+
+**6 tests, 6 verts avec l'instrumentation, 6 rouges sans** (mutation : retrait du
+`using` dans `AddNewMail`).
+
+⚠️ **Au premier passage, seuls 4 sur 5 tombaient.** Le cinquième bouclait sur une
+liste vide et **passait à vide** — exactement le piège payé par task-250 (un test
+d'intégration vert **avec** le défaut). Renforcé par un `Assert.NotEmpty`, avec le
+commentaire qui dit pourquoi.
+
+Cas couverts : décomposition publiée sous son opération · **attente nulle**
+(InMemory n'ouvre aucune connexion — le zéro est **publié**, jamais tu) · le reste
+porte tout le total quand rien n'est observé · message dédupliqué mesuré quand
+même · étiquettes bornées à `operation`/`phase`, littérales · **compteur de
+requêtes publié**.
+
+**Limite assumée** : le fournisseur **InMemory** n'ouvre aucune connexion et
+n'exécute aucune commande, donc les intercepteurs ne se déclenchent pas. C'est ce
+qui donne gratuitement le cas « attente nulle », et cela prouve que la publication
+n'en dépend pas — mais **le cas multi-requêtes réel ne peut pas être éprouvé
+ici** ; il l'est au niveau du périmètre (`DbOperationScopeTests`), où les durées
+sont injectables.
+
+### Réutilisation : cherchée, et écartée pour une raison
+
+`PhaseCapture` (même projet) semble être le helper à réutiliser. Il ne l'est
+pas : il **ouvre lui-même** un périmètre avec l'opération de **lecture**, parce
+qu'il éprouve les intercepteurs. Ces tests-ci doivent au contraire vérifier que
+**le dépôt** ouvre le bon périmètre, donc n'en ouvrir aucun. Le réutiliser
+exigerait d'inverser son contrat.
+
+### Ce qui reste ouvert — et c'est le cœur de la US
+
+Le dernier critère du DOD — **la contre-épreuve chiffrée** : rejouer les trois
+points de concurrence de task-255 et **dire** laquelle des deux hypothèses la
+mesure retient, file ou travail. Elle exige **une campagne de banc**, hors chaîne
+autonome. Même situation que task-243, task-247, task-248 et task-250 : l'US
+d'instrument livre l'instrument, la mesure suit.
+
+**Ordre recommandé** : merger d'abord, mesurer ensuite. Mesurer avec un instrument
+non mergé obligerait à re-mesurer après merge.
