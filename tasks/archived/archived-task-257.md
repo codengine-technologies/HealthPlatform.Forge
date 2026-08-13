@@ -400,3 +400,46 @@ aucun `## Stitch design log` dans cette task). Rien à capturer.
 
 **Sécurité** : aucun secret, aucune entrée externe, aucune donnée de santé,
 aucune interpolation dans une ligne de commande.
+
+## Merged
+
+Mergée le 2026-08-13 par l'humain (`/merge task-257 --i-tested`), après
+exécution complète du plan de test manuel.
+
+| Repo | PR | Squash commit | Branche distante |
+|---|---|---|---|
+| `api-mail` | [#186](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/186) | `98a3b55` | supprimée |
+| `dtos-mss` | aucune (branche sans commit) | — | supprimée |
+
+**CI `develop` : verte** (`success`) — vérifiée après le merge, règle 5.
+
+### Plan de test manuel — joué et vert
+
+| Contrôle | Attendu | Mesuré |
+|---|---|---|
+| Démarrage du banc **sans commande Docker manuelle** | sert | ✅ `connection/status` → 200 au premier essai |
+| Réseaux du conteneur pooler | les deux | ✅ `aspire-…` **et** `postgresql_default` |
+| `getent ahosts postgres-pgvector` | IPv4 seule | ✅ **172.24.0.2 uniquement — aucune `fdc4:`** |
+| Erreurs pooler après seed + tir | 0 | ✅ **0** |
+| `PostgresException` | 0 | ✅ **0** (aucune série) |
+| Seed : `500` au premier POST | 0 | ✅ **0** — signature du pool froid disparue |
+| Tir `enrich` (4 praticiens, VUS=4) | 0 % d'erreur | ✅ **0 %**, 100 % de checks, **8 seuils sur 8** |
+| Contre-épreuve du garde-fou (`host=pgupstream` remis) | doit rougir | ✅ **rouge**, en nommant l'alias fautif ; fichier restauré |
+
+**Le multiplexage de task-200 n'est pas dégradé** — c'était le risque non trivial
+de ce changement de route, et il est écarté par la mesure : `SHOW POOLS` rend
+8 à 10 connexions clientes par base praticien servies par **2 backends réels**,
+`cl_waiting` et `maxwait` à **0** partout.
+
+### Ce qui n'a PAS été vérifié
+
+Le chemin d'échec — réseau `postgresql_default` absent — n'a été contrôlé **qu'à
+la lecture**, pas à l'exécution. Le code doit alors écrire un message nommant le
+réseau attendu, et `MSS_LOADTEST_PG_NETWORK` permet de le surcharger. À éprouver
+le jour où le PostgreSQL de développement change d'emplacement.
+
+### Reste ouvert après ce merge
+
+`AiPromptHelperTests.GetPromptShouldContainDocumentIntroduction` reste rouge sur
+`develop` (commit `411b289`, 10 août). Sans rapport avec cette task. Le corriger
+suppose de trancher quel texte de prompt fait foi — décision produit.
