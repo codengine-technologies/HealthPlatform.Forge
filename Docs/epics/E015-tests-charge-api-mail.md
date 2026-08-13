@@ -2,7 +2,7 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.34
+> **Version** : 1.35
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
 > **Dernière mise à jour** : 2026-08-13
@@ -109,6 +109,7 @@ baisses de performance avant qu'elles n'atteignent les utilisateurs**.
 | Marquer un message lu est immédiat | Ne plus attendre que le serveur de messagerie confirme une simple pastille « lu » : le geste est enregistré tout de suite, et la pastille est posée sur le serveur juste après, en arrière-plan. Dépiler sa boîte devient fluide — vingt messages marqués d'affilée ne coûtent plus qu'un seul échange avec le serveur au lieu de vingt | task-230 | 🟡 Corrigé, mesure de confirmation à conduire |
 | Envoyer un message ne rouvre plus une connexion à chaque fois | Ne plus attendre plus d'une seconde à chaque envoi pour une raison qui n'a rien à voir avec le message : la plateforme ouvrait une connexion neuve au serveur de messagerie — négociation de sécurité et contrôle du certificat compris — pour **chaque** message envoyé. Elle réutilise désormais celle de la session du praticien, comme elle le fait déjà pour la lecture. Le contrôle du certificat n'est pas allégé : il est simplement payé une fois au lieu de l'être à chaque envoi | task-231 | 🟡 Corrigé, mesure de confirmation à conduire |
 | Accueillir plus de praticiens ajoute bien de la capacité | Savoir si la messagerie traite davantage de comptes-rendus quand on lui en demande plus en même temps — et non si elle bute sur une limite qui lui serait propre. Mesuré : lui demander quatre fois plus de travail simultané en fait aboutir **2,7 fois plus**. Ce qui borne la montée est la puissance de la machine qui héberge la simulation, et non la messagerie | task-255 | 🟢 Mesuré — aucune limite propre à lever |
+| Les mesures de capacité ne sont plus faussées par le banc lui-même | Se fier aux chiffres d'une campagne : l'outil de mesure perdait par intermittence l'accès à sa base de données, sans lever d'erreur — il dégradait silencieusement le résultat au lieu de s'arrêter. La panne est fermée, et un contrôle automatique empêche qu'elle revienne sous une autre forme | task-257 | 🟢 Corrigé et vérifié |
 
 ---
 
@@ -1307,6 +1308,7 @@ test, tournent maintenant pour de vrai dans l'un d'eux. *(task-236)*
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
+| Les mesures de capacité ne sont plus faussées par le banc lui-même | 🟢 Corrigé et vérifié | L'outil de mesure perdait par intermittence l'accès à sa base de données — **13 % des traitements d'une campagne perdus, deux campagnes entières jetées** — et le faisait **sans lever d'erreur** : il rendait un chiffre dégradé qui avait l'apparence d'un résultat valide. Troisième occurrence de la même cause en quelques mois ; les deux correctifs précédents ne tenaient que jusqu'au prochain changement de l'outillage sous-jacent. Celui-ci ferme la **famille entière** de pannes plutôt que le cas du jour, et un contrôle automatique — éprouvé en le mettant volontairement en défaut à quatre reprises — refuse désormais tout retour en arrière. Vérifié sur un banc démarré sans aucune intervention manuelle : aucune erreur, campagne de contrôle à 0 % d'échec | task-257 |
 | Accueillir plus de praticiens ajoute bien de la capacité | 🟢 Mesuré — aucune limite propre à lever | Trois volumes de demandes simultanées mesurés ; **tous les comptes-rendus soumis ont été traités**, aucune erreur. La messagerie en traite **2,7 fois plus** quand on lui en demande **4 fois plus** à la fois. Les trois causes soupçonnées sont **écartées par la mesure**, et non par raisonnement : l'attente devant la boîte du praticien est **nulle** aux deux premiers volumes, l'accès aux dossiers ne fait pas la queue, et le temps d'échange avec le serveur de messagerie ne bouge pas d'un demi-millimètre. Ce qui borne la montée est la **puissance de la machine d'essai**, partagée entre la messagerie et les serveurs simulés qui l'entourent — donc extérieure au produit. **Contre-épreuve** : la même mesure refaite après avoir libéré la machine d'un programme étranger qui en consommait la moitié rend **jusqu'à 30 % de plus**, et l'écart grandit avec la charge — ce qui confirme que la machine était bien le facteur limitant. **Aucune correction n'était à faire** : la difficulté que cette mesure devait expliquer n'existe pas. Un seuil est posé pour rouvrir le sujet si une mesure future le contredisait | task-255 |
 | Banc d'essai isolé | 🟢 Livré | Environnement simulé + vérification bout-en-bout en place | task-173 |
 | Mesure du traitement des documents médicaux | 🟡 Livré, en attente d'intégration | Vérifié sur un lot de messages porteurs de comptes-rendus : 4 messages sur 5 aboutissent à un document médical et un résultat de biologie exploitables ; le 5ᵉ ne portait pas de document exploitable dans le jeu de test | task-195 |
@@ -1808,6 +1810,18 @@ Cinq réserves à porter au bilan, sans quoi il serait trompeur :
   mesure ont été trouvés en chemin, dont **deux fabriquaient à eux seuls la
   difficulté que l'on croyait observer** — ils sont corrigés ou documentés, et
   deux campagnes ont été refaites avant de publier un chiffre. (task-255)
+
+- v1.49 — Les chiffres de capacité ne sont plus faussés par l'outil qui les
+  produit. Le banc de mesure perdait par intermittence l'accès à sa base de
+  données — **13 % des traitements perdus, deux campagnes entières jetées** — et
+  le faisait **sans lever d'erreur** : il rendait un résultat dégradé ayant
+  l'apparence d'un chiffre valide, ce qui est la pire des pannes pour un
+  instrument de mesure. C'était la **troisième occurrence de la même cause** en
+  quelques mois : les deux correctifs précédents visaient le symptôme du jour et
+  ne tenaient que jusqu'au changement suivant de l'outillage sous-jacent. Celui-ci
+  ferme la **famille entière**, et un contrôle automatique — éprouvé en le mettant
+  volontairement en défaut à quatre reprises — refuse tout retour en arrière.
+  Vérifié sur un banc démarré sans aucune intervention manuelle. (task-257)
 
 ---
 
