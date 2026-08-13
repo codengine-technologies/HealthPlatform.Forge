@@ -483,6 +483,20 @@ d'être opposable. Les trois causes produisent toutes le même symptôme —
 « le débit ne monte pas » — et deux d'entre elles imitent parfaitement un
 plafond applicatif.
 
+> ✅ **Le piège n°1 est CORRIGÉ depuis task-257** (mergée le 2026-08-13) :
+> l'AppHost rattache lui-même PgBouncer au réseau du conteneur PostgreSQL, et
+> deux garde-fous protègent l'invariant. **Plus aucun geste manuel** — le
+> `docker network connect` de la section ci-dessous n'est plus à jouer. Le
+> contrôle pré-vol reste utile : c'est lui qui dira si la classe de panne
+> revient sous une autre forme.
+>
+> ```bash
+> # Contrôle pré-vol, 2 s, à faire avant toute campagne
+> B=$(docker ps --filter name=loadtest-pgbouncer --format '{{.Names}}')
+> docker logs "$B" 2>&1 | grep -icE 'unreachable|server_login_retry'   # doit valoir 0
+> docker exec "$B" getent ahosts postgres-pgvector                     # QUE des IPv4
+> ```
+
 **1. `08P01 server_login_retry` — l'alias `pgupstream` ne protège plus.**
 `--add-host=pgupstream:host-gateway` injecte aujourd'hui **deux** entrées dans
 `/etc/hosts` du conteneur : IPv4 (`192.168.65.254`) **et** IPv6
