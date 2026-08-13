@@ -476,6 +476,96 @@ tests/loadtest-k6/selftest.sh     # aucune dépendance, aucun banc requis
 | **`mail_max_userip_connections=10`** (défaut Dovecot) : 10 connexions IMAP par (utilisateur, IP), tous les VU partageant une IP | HTTP 500, `IOException` en pleine `AUTHENTICATE` | **monter en charge par `USERS`, pas par VU par utilisateur** ; borne aussi `SESSION_ROTATION` à quelques millièmes sur 10 utilisateurs |
 | **Bases Postgres par utilisateur persistantes** | tout `enrich` court-circuite (voir étape 6) | `tests/loadtest-k6/reset-state.sh` — ⚠️ purger change le coût de `read`, donc le dimensionnement : voir juste en dessous |
 
+### ⚠️ Trois pièges qui FABRIQUENT un plateau (task-255, 2026-08-13)
+
+Une campagne de montée en concurrence a jeté **deux séries complètes** avant
+d'être opposable. Les trois causes produisent toutes le même symptôme —
+« le débit ne monte pas » — et deux d'entre elles imitent parfaitement un
+plafond applicatif.
+
+**1. `08P01 server_login_retry` — l'alias `pgupstream` ne protège plus.**
+`--add-host=pgupstream:host-gateway` injecte aujourd'hui **deux** entrées dans
+`/etc/hosts` du conteneur : IPv4 (`192.168.65.254`) **et** IPv6
+(`fdc4:f303:9324::254`). PgBouncer retient l'AAAA, échoue en « Network
+unreachable », met l'échec en cache, et tout client du pool prend un 500 en
+quelques millisecondes. Le garde-fou de task-200 teste le **nom**, pas la
+**famille d'adresses résolue**, donc il ne voit rien. Mesuré : 13 % des lots
+perdus. ⚠️ **Retirer l'entrée IPv6 de `/etc/hosts` ne suffit pas** — PgBouncer
+garde sa propre résolution (il restait 2,6 % d'échecs). Remède : rattacher
+PgBouncer au réseau du conteneur PostgreSQL et l'adresser par son nom.
+
+```bash
+docker network connect postgresql_default $(docker ps --filter name=loadtest-pgbouncer --format '{{.Names}}')
+# pgbouncer.ini : * = host=postgres-pgvector port=5432 ...   puis RELOAD
+```
+
+**Contrôle en une commande, à faire AVANT toute campagne** :
+
+```bash
+docker logs --since 5m $(docker ps --filter name=loadtest-pgbouncer --format '{{.Names}}') 2>&1 \
+  | grep -icE 'unreachable|server_login_retry'    # doit valoir 0
+```
+
+**2. Le snapshot pris à la fin du tir perd la queue du tir.** L'application
+exporte ses métriques toutes les 5 s (`PeriodicExportingMetricReader`) et
+Prometheus scrute toutes les 5 s. Un snapshot de compteurs cumulés pris à la
+seconde où k6 s'arrête perd jusqu'à ~10 s de données — **et d'autant plus que le
+tir est court, or un tir se raccourcit précisément quand la concurrence monte**.
+Mesuré : sur un tir de 16 s, **275 messages comptés pour 640 réellement
+enrichis** (−57 %). L'artefact fabrique mécaniquement un plateau, puis une
+décroissance. **Remède : décanter 30 s avant le snapshot « après ».** C'est le
+pendant, sur les compteurs cumulés, du piège des `rate()` évaluées après coup.
+
+**3. Purger pendant que le bus travaille re-remplit les tables.** Un
+`reset-state.sh` lancé alors qu'il reste des `AddNewMailMessage` en vol laisse
+les consommateurs réécrire des `MailContents` **après** le TRUNCATE. Le point
+suivant court-circuite son enrichissement (22 lots sur 32 constatés) et rend un
+débit faux, d'apparence excellente. **Attendre le drainage avant de purger** :
+
+```bash
+docker exec $(docker ps --filter name=rabbitmq --format '{{.Names}}') \
+  rabbitmqctl list_queues messages     # toutes les files à 0 avant reset-state.sh
+```
+
+**4. Et le contrôle qui les englobe tous : à qui appartient le CPU ?** La même
+campagne a mesuré **~17 cœurs sur 24 consommés par des charges étrangères à la
+mesure**, dont ~11 par un conteneur `sql-server` sans rapport avec le banc. Le
+banc et le SUT n'en utilisaient que 4,6.
+
+```bash
+docker stats --no-stream --format '{{.Name}}\t{{.CPUPerc}}' | sort -k2 -hr | head
+```
+
+⚠️ **Un conteneur qui brûle du CPU ne travaille pas forcément.** Celui-là était
+en **boucle d'échec** depuis dix mois — `Error 17300, Failed to start system
+task` — collé à 99,994 % de son plafond mémoire cgroup (2 GiB), avec 50 997
+échecs d'allocation, 9,1 M lignes de journal et **aucun service rendu** : un
+`sqlcmd` sur son propre `localhost` échouait avant login. Son port était
+pourtant en écoute — même faux positif que le relais IPv6 : **TCP accepté,
+service mort**. Les deux contrôles qui tranchent :
+
+```bash
+docker exec <c> sh -c 'cat /sys/fs/cgroup/memory.current /sys/fs/cgroup/memory.max'   # collé au plafond ?
+docker logs --tail 5 <c>                                                              # en boucle ?
+```
+
+**Ce que ça coûte, mesuré** — même série, un seul facteur (le conteneur fautif
+arrêté), protocole identique :
+
+| Concurrence | Hôte affamé | Hôte calme | Écart |
+|---|---|---|---|
+| 4 | 15,22 msg/s | 16,66 msg/s | +9 % |
+| 8 | 26,38 msg/s | 30,19 msg/s | +14 % |
+| 16 | 34,59 msg/s | 45,02 msg/s | **+30 %** |
+| Pente (×4 de concurrence) | ×2,27 | ×2,70 | — |
+
+**Le gain croît avec la concurrence** : une famille CPU écrase la pente d'autant
+plus qu'on demande de simultanéité — c'est-à-dire qu'elle **imite exactement un
+plafond applicatif**. Un hôte affamé rend une pente **plancher**, jamais un
+plafond. Corollaire utile : cet A/B est aussi le test qui distingue une file
+applicative d'une contention de calcul — une file sur une ressource nommée ne
+se desserre pas en arrêtant un conteneur tiers.
+
 ### ⚠️ La contradiction purge / dimensionnement (task-209)
 
 **Deux exigences du banc se contredisent, et il faut la connaître AVANT
