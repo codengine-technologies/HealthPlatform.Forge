@@ -2,10 +2,10 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.36
+> **Version** : 1.38
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
-> **Dernière mise à jour** : 2026-08-13
+> **Dernière mise à jour** : 2026-08-14
 
 ---
 
@@ -24,16 +24,38 @@
 - [9. Hors périmètre](#9-hors-périmètre)
 - [10. Premiers résultats de mesure](#10-premiers-résultats-de-mesure)
   - [Temps de réponse observés](#temps-de-réponse-observés)
-  - [Combien d'actions un praticien peut-il enchaîner ?](#combien-dactions-un-praticien-peut-il-enchaîner)
-  - [La campagne à grande échelle : 200 praticiens (27 juillet 2026)](#la-campagne-à-grande-échelle-200-praticiens-27-juillet-2026)
-  - [Mise au point du 28 juillet 2026 : ce que la campagne mesurait vraiment](#mise-au-point-du-28-juillet-2026-ce-que-la-campagne-mesurait-vraiment)
+  - [Combien d'actions un praticien peut-il enchaîner ?](#combien-dactions-un-praticien-peut-il-enchaîner-)
+  - [La campagne à grande échelle : 200 praticiens (27 juillet 2026)](#la-campagne-à-grande-échelle--200-praticiens-27-juillet-2026)
+  - [Mise au point du 28 juillet 2026 : ce que la campagne mesurait vraiment](#mise-au-point-du-28-juillet-2026--ce-que-la-campagne-mesurait-vraiment)
   - [Ce que le banc sait désormais dire (29 juillet 2026)](#ce-que-le-banc-sait-désormais-dire-29-juillet-2026)
   - [La capacité est enfin chiffrée, et sa cause nommée (29-31 juillet 2026)](#la-capacité-est-enfin-chiffrée-et-sa-cause-nommée-29-31-juillet-2026)
   - [Le banc simule enfin des médecins, et non des requêtes (3 août 2026)](#le-banc-simule-enfin-des-médecins-et-non-des-requêtes-3-août-2026)
   - [La mesure ne se déforme plus elle-même au-delà de 500 praticiens (3 août 2026)](#la-mesure-ne-se-déforme-plus-elle-même-au-delà-de-500-praticiens-3-août-2026)
   - [L'étape « relire un message » ne mesurait pas ce qu'elle annonçait (4 août 2026)](#létape--relire-un-message--ne-mesurait-pas-ce-quelle-annonçait-4-août-2026)
   - [Trois mesures à reprendre](#trois-mesures-à-reprendre)
-- [État de couverture (2026-08-13)](#état-de-couverture-2026-08-13)
+  - [Ce que le praticien ne verra plus : une base vide à la place de son dossier (4-5 août 2026)](#ce-que-le-praticien-ne-verra-plus--une-base-vide-à-la-place-de-son-dossier-4-5-août-2026)
+  - [Ouvrir un dossier patient ne coûte plus la taille du dossier (5 août 2026)](#ouvrir-un-dossier-patient-ne-coûte-plus-la-taille-du-dossier-5-août-2026)
+  - [Le harnais de test cesse de jeter le signal le moins cher du dépôt (6 août 2026)](#le-harnais-de-test-cesse-de-jeter-le-signal-le-moins-cher-du-dépôt-6-août-2026)
+  - [Analyser un message demande un aller-retour de moins au serveur de messagerie (10 août 2026)](#analyser-un-message-demande-un-aller-retour-de-moins-au-serveur-de-messagerie-10-août-2026)
+  - [On saura enfin pourquoi télécharger une pièce jointe s'effondre à 500 praticiens (9 août 2026)](#on-saura-enfin-pourquoi-télécharger-une-pièce-jointe-seffondre-à-500-praticiens-9-août-2026)
+  - [Une sonde de surveillance faussait la mesure qui sert à dimensionner la base (9 août 2026)](#une-sonde-de-surveillance-faussait-la-mesure-qui-sert-à-dimensionner-la-base-9-août-2026)
+  - [Les erreurs que comptait le banc portent enfin un nom (9 août 2026)](#les-erreurs-que-comptait-le-banc-portent-enfin-un-nom-9-août-2026)
+  - [Une fiche de correspondant ne se met plus à jour « à moitié » (9 août 2026)](#une-fiche-de-correspondant-ne-se-met-plus-à-jour--à-moitié--9-août-2026)
+  - [Ouvrir un dossier patient ne coûtera plus le nombre de documents qu'il contient (9 août 2026)](#ouvrir-un-dossier-patient-ne-coûtera-plus-le-nombre-de-documents-quil-contient-9-août-2026)
+  - [On sait enfin poser la question « pourquoi analyser un message coûte-t-il trois secondes ? » (9 août 2026)](#on-sait-enfin-poser-la-question--pourquoi-analyser-un-message-coûte-t-il-trois-secondes---9-août-2026)
+  - [Un rapport de test ne peut plus dire « tout va bien » sur une mesure qui n'a pas eu lieu (9 août 2026)](#un-rapport-de-test-ne-peut-plus-dire--tout-va-bien--sur-une-mesure-qui-na-pas-eu-lieu-9-août-2026)
+  - [Le banc nous faisait croire que l'application était plus lente qu'elle ne l'est (9 août 2026)](#le-banc-nous-faisait-croire-que-lapplication-était-plus-lente-quelle-ne-lest-9-août-2026)
+  - [Traiter un message reçu coûte 2,7 secondes, et 97 % de ce temps est le téléchargement (9-10 août 2026)](#traiter-un-message-reçu-coûte-27-secondes-et-97--de-ce-temps-est-le-téléchargement-9-10-août-2026)
+  - [Ouvrir sa boîte ne coûte plus la taille de sa boîte (9 août 2026)](#ouvrir-sa-boîte-ne-coûte-plus-la-taille-de-sa-boîte-9-août-2026)
+  - [Le banc a appris à refuser de conclure (9-10 août 2026)](#le-banc-a-appris-à-refuser-de-conclure-9-10-août-2026)
+  - [Le premier poste de coût du parcours n'est plus une boîte noire (8 août 2026)](#le-premier-poste-de-coût-du-parcours-nest-plus-une-boîte-noire-8-août-2026)
+  - [La question qui restait ouverte est tranchée : ce n'est pas la base de données (8 août 2026)](#la-question-qui-restait-ouverte-est-tranchée--ce-nest-pas-la-base-de-données-8-août-2026)
+  - [Pourquoi l'envoi n'a pas accéléré : on mesurait la mauvaise chose, et on entretenait la mauvaise horloge (8 août 2026)](#pourquoi-lenvoi-na-pas-accéléré--on-mesurait-la-mauvaise-chose-et-on-entretenait-la-mauvaise-horloge-8-août-2026)
+  - [L'envoi ne repaie plus le prix d'une connexion neuve à chaque message (7 août 2026)](#lenvoi-ne-repaie-plus-le-prix-dune-connexion-neuve-à-chaque-message-7-août-2026)
+  - [Consulter sa boîte pendant qu'un traitement tourne ne fait plus la queue message par message (7 août 2026)](#consulter-sa-boîte-pendant-quun-traitement-tourne-ne-fait-plus-la-queue-message-par-message-7-août-2026)
+  - [Les tâches d'arrière-plan sont enfin éprouvées comme elles s'exécutent réellement (6 août 2026, soir)](#les-tâches-darrière-plan-sont-enfin-éprouvées-comme-elles-sexécutent-réellement-6-août-2026-soir)
+  - [La pièce qui permettait au piège de se reformer a été retirée (6 août 2026)](#la-pièce-qui-permettait-au-piège-de-se-reformer-a-été-retirée-6-août-2026)
+- [État de couverture (2026-08-14)](#état-de-couverture-2026-08-14)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -111,6 +133,8 @@ baisses de performance avant qu'elles n'atteignent les utilisateurs**.
 | Accueillir plus de praticiens ajoute bien de la capacité | Savoir si la messagerie traite davantage de comptes-rendus quand on lui en demande plus en même temps — et non si elle bute sur une limite qui lui serait propre. Mesuré : lui demander quatre fois plus de travail simultané en fait aboutir **2,7 fois plus**. Ce qui borne la montée est la puissance de la machine qui héberge la simulation, et non la messagerie | task-255 | 🟢 Mesuré — aucune limite propre à lever |
 | Les mesures de capacité ne sont plus faussées par le banc lui-même | Se fier aux chiffres d'une campagne : l'outil de mesure perdait par intermittence l'accès à sa base de données, sans lever d'erreur — il dégradait silencieusement le résultat au lieu de s'arrêter. La panne est fermée, et un contrôle automatique empêche qu'elle revienne sous une autre forme | task-257 | 🟢 Corrigé et vérifié |
 | Savoir POURQUOI l'analyse des comptes-rendus ralentit quand la charge monte | Distinguer deux causes que rien ne séparait jusqu'ici — la messagerie **attend-elle** son tour pour accéder aux dossiers, ou **fait-elle le même travail plus lentement** ? Les deux se soignent à l'opposé. Mesuré : elle n'attend pas, et elle ne fait pas plus de travail — ce sont les mêmes accès aux dossiers qui prennent plus de temps | task-258 | 🟢 Mesuré — cause localisée hors de la messagerie |
+| Savoir COMBIEN de choses la messagerie fabrique pour afficher une boîte | Ramener le coût d'affichage d'une boîte de réception à un **volume**, et non plus seulement à une durée. On savait combien de temps la préparation de la liste prend et combien de demandes elle adresse au stockage ; on ne savait pas **combien d'éléments elle assemble** — donc on ne pouvait pas choisir entre « en assembler moins », « les assembler moins cher » ou « ne pas les assembler à ce moment-là ». Le compte est désormais publié **par catégorie** (messages, étiquettes, correspondants, pièces jointes, contenus, résultats de biologie…), avec le **coût unitaire** qui en découle | task-256 | 🟢 Livré — mesure de confirmation à conduire au banc |
+| Une fiche de correspondant ne se perd plus quand deux comptes-rendus arrivent ensemble | Garantir que l'annuaire du praticien se met bien à jour, même quand deux comptes-rendus citant **le même confrère** sont traités au même instant. Jusqu'ici l'un des deux échouait : le message était bien analysé, mais **la fiche du correspondant ne recevait pas son apport**, et personne n'en était averti — l'erreur était consignée puis abandonnée. Le même défaut valait pour les fiches patient. Au passage, le **nom du praticien est retiré du journal d'erreur** : un identifiant suffit à diagnostiquer | task-259 | 🟢 Corrigé — mesure de confirmation à conduire au banc |
 
 ---
 
@@ -1305,10 +1329,12 @@ sur décision humaine : plus personne ne peut l'appeler, c'est le compilateur qu
 Au passage, les scripts de mise à niveau de la base de données, qui n'étaient joués par aucun
 test, tournent maintenant pour de vrai dans l'un d'eux. *(task-236)*
 
-## État de couverture (2026-08-13)
+## État de couverture (2026-08-14)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
+| Savoir COMBIEN de choses la messagerie fabrique pour afficher une boîte | 🟢 Livré — mesure de confirmation à conduire au banc | Deux campagnes menées à protocole identique avaient constaté un fait troublant : **préparer la liste des messages coûte 51 % de plus** d'une campagne à l'autre, alors que le nombre de demandes adressées au stockage est resté **identique au millième**. Le travail demandé n'avait donc pas changé — c'était le **volume d'éléments à fabriquer** qui avait grossi, la préparation des boîtes aboutissant désormais pour tous les médecins et non pour 94,5 % d'entre eux. Mais cette explication était une **déduction** : rien ne comptait les éléments fabriqués. Ce décompte existe maintenant, **par catégorie** — parce que le remède n'est pas le même selon la catégorie qui pèse, et que le coût peut être porté par une seule d'entre elles. Le rapport de campagne publie le nombre d'éléments par affichage, le **coût unitaire**, et une contre-épreuve **réfutable** : au coût unitaire mesuré, l'écart de 51 % exige tant d'éléments supplémentaires — si la campagne de référence n'en comptait pas autant, c'est la déduction actuelle qui est fausse, et le rapport le dit. Aucune donnée patient dans les libellés de catégorie : la garantie est portée par le type de données lui-même, pas par une consigne | task-256 |
+| Une fiche de correspondant ne se perd plus quand deux comptes-rendus arrivent ensemble | 🟢 Corrigé — mesure de confirmation à conduire au banc | La campagne du 13 août relevait **quatre pertes par série de trois mesures**, sur les deux séries et sur des praticiens différents : quand deux comptes-rendus citant le même confrère étaient traités au même instant, la mise à jour de sa fiche échouait. **Ce qui rendait le défaut grave n'est pas sa fréquence mais son silence** : le message était analysé, l'erreur consignée puis abandonnée, et rien ne signalait que l'annuaire n'avait pas reçu son apport. **La cause supposée était fausse, et c'est un test qui l'a dit** : la lecture du code désignait un mécanisme que le premier test a réfuté du premier coup. La cause réelle tient à ce que deux traitements simultanés du même praticien partagent le même accès aux dossiers, et que l'un défait ce que l'autre est en train de parcourir. Le correctif tient en trois lignes, mais il est désormais posé sur la bonne raison — donc il couvre toutes les formes du défaut, pas seulement celle qu'on avait imaginée. **Le chemin des fiches patient suivait le même code** : il est corrigé du même geste, et un test l'épingle — aucune occurrence n'avait été relevée uniquement parce que le corpus d'essai n'adresse pas deux fois le même patient. La confirmation au banc (zéro erreur d'enrichissement de contact sur une campagne) reste à conduire | task-259 |
 | Savoir POURQUOI l'analyse des comptes-rendus ralentit quand la charge monte | 🟢 Mesuré — cause localisée hors de la messagerie | Trois volumes de demandes simultanées, tous les comptes-rendus traités, aucune erreur. **La messagerie n'attend jamais son tour** pour accéder aux dossiers d'un praticien : cette attente vaut 1,4 % du coût d'écriture et **ne bouge pas** avec la charge — la piste que l'on suivait en priorité est donc écartée par la mesure, pas par raisonnement. **Elle ne fait pas non plus davantage de travail** : le nombre d'accès aux dossiers par compte-rendu est **identique au centième** aux trois volumes. Ce sont **les mêmes accès qui prennent plus de temps** — le ralentissement est donc dans le stockage des dossiers, pas dans la messagerie. La prochaine étape instrumente le stockage, plus la messagerie | task-258 |
 | Les mesures de capacité ne sont plus faussées par le banc lui-même | 🟢 Corrigé et vérifié | L'outil de mesure perdait par intermittence l'accès à sa base de données — **13 % des traitements d'une campagne perdus, deux campagnes entières jetées** — et le faisait **sans lever d'erreur** : il rendait un chiffre dégradé qui avait l'apparence d'un résultat valide. Troisième occurrence de la même cause en quelques mois ; les deux correctifs précédents ne tenaient que jusqu'au prochain changement de l'outillage sous-jacent. Celui-ci ferme la **famille entière** de pannes plutôt que le cas du jour, et un contrôle automatique — éprouvé en le mettant volontairement en défaut à quatre reprises — refuse désormais tout retour en arrière. Vérifié sur un banc démarré sans aucune intervention manuelle : aucune erreur, campagne de contrôle à 0 % d'échec | task-257 |
 | Accueillir plus de praticiens ajoute bien de la capacité | 🟢 Mesuré — aucune limite propre à lever | Trois volumes de demandes simultanées mesurés ; **tous les comptes-rendus soumis ont été traités**, aucune erreur. La messagerie en traite **2,7 fois plus** quand on lui en demande **4 fois plus** à la fois. Les trois causes soupçonnées sont **écartées par la mesure**, et non par raisonnement : l'attente devant la boîte du praticien est **nulle** aux deux premiers volumes, l'accès aux dossiers ne fait pas la queue, et le temps d'échange avec le serveur de messagerie ne bouge pas d'un demi-millimètre. Ce qui borne la montée est la **puissance de la machine d'essai**, partagée entre la messagerie et les serveurs simulés qui l'entourent — donc extérieure au produit. **Contre-épreuve** : la même mesure refaite après avoir libéré la machine d'un programme étranger qui en consommait la moitié rend **jusqu'à 30 % de plus**, et l'écart grandit avec la charge — ce qui confirme que la machine était bien le facteur limitant. **Aucune correction n'était à faire** : la difficulté que cette mesure devait expliquer n'existe pas. Un seuil est posé pour rouvrir le sujet si une mesure future le contredisait | task-255 |
@@ -1836,6 +1862,44 @@ Cinq réserves à porter au bilan, sans quoi il serait trompeur :
   messagerie. Sans le décompte des accès, cette conclusion était hors de portée —
   une durée qui augmente se lit aussi bien « plus de travail » que « travail plus
   lent ». La prochaine étape instrumente le stockage. (task-258)
+
+- v1.51 — On sait désormais **combien d'éléments** la messagerie fabrique pour
+  afficher une boîte de réception, et pas seulement combien de temps elle y met.
+  Le manque était concret : deux campagnes à protocole identique avaient mesuré
+  cette préparation coûter **51 % de plus**, pour un nombre de demandes au
+  stockage **identique au millième**. Le travail demandé n'avait pas changé, donc
+  c'était le volume à fabriquer qui avait grossi — mais **personne ne le comptait**,
+  et une explication non comptée ne permet pas de dimensionner un remède. Le
+  décompte est publié **par catégorie** (messages, étiquettes, correspondants,
+  pièces jointes, contenus, résultats de biologie…) : le remède diffère selon la
+  catégorie qui pèse, et le coût peut être porté par une seule d'entre elles. Le
+  rapport en tire un **coût unitaire** et une contre-épreuve **réfutable** — au
+  coût mesuré, l'écart de 51 % exige tant d'éléments de plus ; si la campagne de
+  référence n'en comptait pas autant, c'est la déduction actuelle qui est fausse,
+  et le rapport le dit plutôt que de la sauver. Une catégorie que l'affichage n'a
+  pas chargée se lit « non relevé » et jamais zéro : les deux ne veulent pas dire
+  la même chose. Aucune donnée patient ne peut figurer dans les libellés — la
+  garantie tient au type de données employé, pas à une consigne de vigilance.
+  Cette livraison ne rend rien plus rapide : c'est un instrument, et la mesure de
+  confirmation reste à conduire au banc. (task-256)
+
+- v1.52 — Une **fiche de correspondant ne se perd plus** quand deux comptes-rendus
+  citant le même confrère sont traités au même instant. La campagne du 13 août
+  relevait quatre pertes par série de trois mesures, sur les deux séries et sur des
+  praticiens différents. **Ce qui rendait le défaut grave n'est pas sa fréquence,
+  c'est son silence** : le message était bien analysé, l'erreur consignée puis
+  abandonnée, et rien ne signalait au praticien que son annuaire n'avait pas reçu
+  l'apport. **La cause supposée était fausse, et c'est un test qui l'a dit** — la
+  lecture du code désignait un mécanisme que le premier test a réfuté du premier
+  coup, avant qu'aucune ligne ne soit corrigée. La cause réelle tient à ce que deux
+  traitements simultanés du même praticien partagent le même accès aux dossiers, et
+  que l'un défait ce que l'autre parcourt. Le correctif tient en trois lignes, mais
+  posé sur la bonne raison il couvre **toutes** les formes du défaut et pas
+  seulement celle qu'on avait imaginée. Les **fiches patient** suivaient le même
+  code : corrigées du même geste, et vérifiées. Au passage, le **nom du praticien
+  est retiré du journal d'erreur** — un identifiant suffit à diagnostiquer, et
+  l'échec reste visible. La confirmation au banc reste à conduire. (task-259)
+
 
 ---
 
