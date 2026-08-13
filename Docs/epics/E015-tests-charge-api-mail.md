@@ -2,10 +2,10 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.33
+> **Version** : 1.34
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
-> **Dernière mise à jour** : 2026-08-10
+> **Dernière mise à jour** : 2026-08-13
 
 ---
 
@@ -33,7 +33,7 @@
   - [La mesure ne se déforme plus elle-même au-delà de 500 praticiens (3 août 2026)](#la-mesure-ne-se-déforme-plus-elle-même-au-delà-de-500-praticiens-3-août-2026)
   - [L'étape « relire un message » ne mesurait pas ce qu'elle annonçait (4 août 2026)](#létape--relire-un-message--ne-mesurait-pas-ce-quelle-annonçait-4-août-2026)
   - [Trois mesures à reprendre](#trois-mesures-à-reprendre)
-- [État de couverture (2026-08-05)](#état-de-couverture-2026-08-05)
+- [État de couverture (2026-08-13)](#état-de-couverture-2026-08-13)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -108,6 +108,7 @@ baisses de performance avant qu'elles n'atteignent les utilisateurs**.
 | Arriver sur son tableau de bord ne redemande plus tout au serveur | Afficher le tableau de bord sans refaire à chaque visite un travail déjà fait : le décompte des messages du jour était redemandé intégralement au serveur de messagerie à chaque arrivée, et la liste des dossiers réécrite ligne par ligne en base — en immobilisant l'accès au serveur pendant ce temps, ce qui faisait attendre l'ouverture d'un message | task-229 | 🟡 Corrigé, mesure de confirmation à conduire |
 | Marquer un message lu est immédiat | Ne plus attendre que le serveur de messagerie confirme une simple pastille « lu » : le geste est enregistré tout de suite, et la pastille est posée sur le serveur juste après, en arrière-plan. Dépiler sa boîte devient fluide — vingt messages marqués d'affilée ne coûtent plus qu'un seul échange avec le serveur au lieu de vingt | task-230 | 🟡 Corrigé, mesure de confirmation à conduire |
 | Envoyer un message ne rouvre plus une connexion à chaque fois | Ne plus attendre plus d'une seconde à chaque envoi pour une raison qui n'a rien à voir avec le message : la plateforme ouvrait une connexion neuve au serveur de messagerie — négociation de sécurité et contrôle du certificat compris — pour **chaque** message envoyé. Elle réutilise désormais celle de la session du praticien, comme elle le fait déjà pour la lecture. Le contrôle du certificat n'est pas allégé : il est simplement payé une fois au lieu de l'être à chaque envoi | task-231 | 🟡 Corrigé, mesure de confirmation à conduire |
+| Accueillir plus de praticiens ajoute bien de la capacité | Savoir si la messagerie traite davantage de comptes-rendus quand on lui en demande plus en même temps — et non si elle bute sur une limite qui lui serait propre. Mesuré : lui demander quatre fois plus de travail simultané en fait aboutir **2,7 fois plus**. Ce qui borne la montée est la puissance de la machine qui héberge la simulation, et non la messagerie | task-255 | 🟢 Mesuré — aucune limite propre à lever |
 
 ---
 
@@ -1302,10 +1303,11 @@ sur décision humaine : plus personne ne peut l'appeler, c'est le compilateur qu
 Au passage, les scripts de mise à niveau de la base de données, qui n'étaient joués par aucun
 test, tournent maintenant pour de vrai dans l'un d'eux. *(task-236)*
 
-## État de couverture (2026-08-05)
+## État de couverture (2026-08-13)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
+| Accueillir plus de praticiens ajoute bien de la capacité | 🟢 Mesuré — aucune limite propre à lever | Trois volumes de demandes simultanées mesurés ; **tous les comptes-rendus soumis ont été traités**, aucune erreur. La messagerie en traite **2,7 fois plus** quand on lui en demande **4 fois plus** à la fois. Les trois causes soupçonnées sont **écartées par la mesure**, et non par raisonnement : l'attente devant la boîte du praticien est **nulle** aux deux premiers volumes, l'accès aux dossiers ne fait pas la queue, et le temps d'échange avec le serveur de messagerie ne bouge pas d'un demi-millimètre. Ce qui borne la montée est la **puissance de la machine d'essai**, partagée entre la messagerie et les serveurs simulés qui l'entourent — donc extérieure au produit. **Contre-épreuve** : la même mesure refaite après avoir libéré la machine d'un programme étranger qui en consommait la moitié rend **jusqu'à 30 % de plus**, et l'écart grandit avec la charge — ce qui confirme que la machine était bien le facteur limitant. **Aucune correction n'était à faire** : la difficulté que cette mesure devait expliquer n'existe pas. Un seuil est posé pour rouvrir le sujet si une mesure future le contredisait | task-255 |
 | Banc d'essai isolé | 🟢 Livré | Environnement simulé + vérification bout-en-bout en place | task-173 |
 | Mesure du traitement des documents médicaux | 🟡 Livré, en attente d'intégration | Vérifié sur un lot de messages porteurs de comptes-rendus : 4 messages sur 5 aboutissent à un document médical et un résultat de biologie exploitables ; le 5ᵉ ne portait pas de document exploitable dans le jeu de test | task-195 |
 | Campagnes de mesure | 🟡 Livré, en attente d'intégration | Six usages types rejouables à la demande, verdict automatique sur les temps de réponse attendus, remontée sur le tableau de bord de supervision, rapport par campagne et mesure de référence datée ; campagne à grande échelle conduite (200 praticiens, verte) ; deux mesures à reprendre (envoi, recherche) | task-174 |
@@ -1789,6 +1791,23 @@ Cinq réserves à porter au bilan, sans quoi il serait trompeur :
   deux campagnes ; rejouer coûte désormais quelques secondes, et la place libérée
   est exactement celle dont le dossier patient avait besoin. Ce tir **ne certifie
   rien** tant que la campagne n'a pas été conduite. (task-226)
+
+- v1.48 — La question qui décide de l'accueil de nouveaux praticiens a reçu sa
+  réponse, et elle est bonne : **demander quatre fois plus d'analyses de
+  comptes-rendus en même temps en fait aboutir 2,7 fois plus**. Autrement dit,
+  ajouter des praticiens ajoute bien de la capacité — la messagerie ne bute sur
+  aucune limite qui lui serait propre dans cette plage. Les trois causes que
+  l'on soupçonnait sont écartées **par la mesure** : l'attente devant la boîte
+  du praticien, l'accès aux dossiers et le temps d'échange avec le serveur de
+  messagerie. Ce qui borne la montée est la **puissance de la machine d'essai**,
+  partagée avec les serveurs simulés qui l'entourent, donc extérieure au
+  produit — vérifié en refaisant la mesure sur une machine libérée, qui rend
+  jusqu'à 30 % de plus. **Aucune correction n'a été livrée, et c'est le
+  résultat** : la difficulté que cette mesure devait expliquer n'existe pas, et
+  corriger aurait traité une cause supposée. Trois défauts de l'instrument de
+  mesure ont été trouvés en chemin, dont **deux fabriquaient à eux seuls la
+  difficulté que l'on croyait observer** — ils sont corrigés ou documentés, et
+  deux campagnes ont été refaites avant de publier un chiffre. (task-255)
 
 ---
 
