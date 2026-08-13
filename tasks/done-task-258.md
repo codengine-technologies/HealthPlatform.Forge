@@ -226,3 +226,122 @@ d'instrument livre l'instrument, la mesure suit.
 
 **Ordre recommandé** : merger d'abord, mesurer ensuite. Mesurer avec un instrument
 non mergé obligerait à re-mesurer après merge.
+
+## Contre-épreuve — 2026-08-13, banc local, trois points de concurrence
+
+**Le dernier critère du DOD est tenu : la mesure tranche.**
+
+Protocole **identique à task-255** — 8 praticiens × 80 messages porteurs
+d'`IHE_XDM.ZIP`, `ENRICH_BATCH=20`, `ENRICH_SHARE=1.0`,
+`SESSION_ROTATION=0.002`, drainage du bus → purge → préchauffage → snapshot →
+tir → décantation 30 s → snapshot. Trois points verts : **0 erreur HTTP, 100 %
+de checks, 32 lots sur 32, 640 messages enrichis sur 640 soumis** à chacun.
+
+### La décomposition que la US devait produire
+
+| Concurrence | Débit | `connection_open` | `sql_execute` | `assemble` | **Requêtes/message** |
+|---|---|---|---|---|---|
+| 4 | 13,96 msg/s | 0,52 ms | 22,92 ms | 11,28 ms | **8,72** |
+| 8 | 26,66 msg/s | 0,21 ms | 25,53 ms | 8,46 ms | **8,72** |
+| 16 | 40,21 msg/s | 0,61 ms | **37,40 ms** | 9,57 ms | **8,72** |
+
+### Verdict : **du TRAVAIL, pas une file — et plus précisément, le MÊME travail plus lent**
+
+Trois faits, et ils s'excluent mutuellement de toute autre lecture :
+
+1. **L'attente d'obtention de connexion est nulle et plate** : 0,52 → 0,21 →
+   0,61 ms, soit **1,4 % du coût d'écriture** au point le plus chargé, sans
+   tendance. Corroboré côté pooler : `cl_waiting` et `maxwait` **nuls sur tous
+   les relevés**. **Ce n'est pas une file.** L'hypothèse du pool — `Maximum Pool
+   Size=2` par base praticien, suspect désigné d'avance — est **écartée par la
+   mesure**.
+2. **Le nombre de requêtes est identique au centième** : **8,72 par message** aux
+   trois concurrences. **Ce n'est donc pas non plus « plus de travail »** : la
+   quantité de travail demandée à la base ne bouge pas d'un iota.
+3. **L'exécution SQL, elle, croît de 63 %** (22,92 → 37,40 ms). Ce sont donc **les
+   mêmes requêtes, en même nombre, qui prennent plus de temps** quand la
+   concurrence monte.
+
+**Sans le dénominateur, ce verdict était impossible.** Une durée qui croît se lit
+aussi bien « plus de requêtes » que « des requêtes plus lentes », et les deux
+appellent des remèdes opposés. C'est exactement la leçon que task-243 et
+task-256 avaient tirée, et la raison d'être du compteur ajouté ici.
+
+### Où cela déplace la question
+
+`sql_execute` mesure « commande envoyée → serveur répondu ». Le temps
+supplémentaire est donc **dans PostgreSQL ou sur le lien qui y mène**, pas dans
+l'application ni dans l'attente d'une connexion. Les causes candidates — et
+**aucune n'est tranchée ici** — sont la contention interne de PostgreSQL (CPU,
+verrous de ligne, écriture du journal WAL, points de reprise), ou la concurrence
+entre les 8 bases praticien sollicitées simultanément.
+
+**Ce que la présente mesure ne dit pas**, et qu'il ne faut pas lui faire dire :
+elle ne distingue pas ces causes entre elles. Le prochain instrument n'est plus
+côté application — il est **côté PostgreSQL** (`pg_stat_statements`,
+`pg_stat_activity.wait_event`, statistiques de verrous).
+
+### Réserve d'honnêteté sur les niveaux
+
+Le débit de cette campagne (13,96 → 26,66 → 40,21 msg/s, soit **×2,88 pour ×4**
+de concurrence) est cohérent avec task-255 (16,66 → 30,19 → 45,02, ×2,70) sans
+lui être identique : conditions d'hôte différentes, à quelques heures d'écart.
+**Seules les grandeurs comparées à l'intérieur de cette campagne sont
+opposables** — et ce sont elles qui portent le verdict : le compte de requêtes
+(un nombre, pas une durée) et la platitude de l'attente de connexion.
+
+### Ce qui reste ouvert
+
+- **La cause du ralentissement des requêtes**, à instruire côté base — c'est la
+  prochaine US, et elle n'est plus une US d'instrument applicatif.
+- **Le domaine de validité s'arrête à 16** et à 8 praticiens, banc local. Rien
+  ici ne dit ce qui se passe à 500.
+
+## PRs
+
+- `api-mail` (pushed) : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/187 — label `awaiting-human-merge`
+- `dtos-mss` (pushed, auto-inclus) : **aucune PR** — branche sans commit, contrat non touché
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 6 fichiers, 0 blocage, **1 suggestion**.
+
+| Contrôle | Résultat |
+|---|---|
+| Build | ✅ 0 erreur, 0 avertissement |
+| Tests | ✅ **3 762 verts** (domain 136 · infra 442 · api 661 · integration 402 · application 2 122) + **270 auto-tests Python** — 1 rouge **pré-existant** |
+| DOD | ✅ **8 critères sur 8 — y compris la contre-épreuve**, ce qu'aucune US d'instrument de cette EPIC n'avait encore fait |
+| Quality Gate | ✅ OK, dette introduite **zéro** |
+
+### ⚠️ Suggestion — l'étiquette couvre plus que son nom
+
+`EnrichPersistMail` promet un enrichissement, mais le périmètre couvre **les
+quatre** sites d'appel de `AddNewMail`, dont un (`ImapService.cs:2646`) écrit des
+**DTO d'en-têtes seuls**, bien moins coûteux. Sur une campagne `journey`, la
+série **mélangerait deux populations** — c'est la classe de défaut que cette EPIC
+paie régulièrement.
+
+**La campagne qui porte le verdict n'en est pas contaminée — vérifié, pas
+supposé** : **640 appels mesurés pour 640 messages enrichis, aux trois points**.
+Le scénario `enrich` n'exerce pas ce chemin.
+
+**À trancher avant la première campagne `journey` qui lira cette métrique** :
+renommer en neutre (`PersistMail`), ou distinguer les deux écritures par un
+paramètre. Non corrigé ici — `/review` ne patche pas de code.
+
+### Ce que la revue relève par ailleurs
+
+- `MailProcessingMetrics.cs` — ✅ une constante ; le commentaire **nomme la cause
+  de l'angle mort**, ce qui est ici autant le livrable que le code.
+- `MailRepository.cs` — ✅ une ligne, placée comme les deux périmètres de lecture.
+  **Non ré-entrant** : les quatre sites d'appel sont hors de tout périmètre
+  englobant (vérifié), et un `Begin` imbriqué rendrait de toute façon un objet
+  inerte alimentant le périmètre extérieur.
+- Tests — ✅ 6, éprouvés par mutation, dont un **renforcé après avoir été surpris
+  à passer à vide**.
+- `report.py` — ✅ titre corrigé (« lecture » → « opération ») et note qui dit ce
+  que l'opération tranche.
+
+**Sécurité / PGSSI-S** : étiquettes littérales d'un ensemble fini, **vérifié par
+test**. Le chemin instrumenté écrit des CDA porteurs d'INS ; seules des durées,
+des nombres et des noms de phases sont publiés.
