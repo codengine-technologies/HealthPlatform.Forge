@@ -345,3 +345,30 @@ paramètre. Non corrigé ici — `/review` ne patche pas de code.
 **Sécurité / PGSSI-S** : étiquettes littérales d'un ensemble fini, **vérifié par
 test**. Le chemin instrumenté écrit des CDA porteurs d'INS ; seules des durées,
 des nombres et des noms de phases sont publiés.
+
+## Merged
+
+Mergée le 2026-08-13 par l'humain (`/merge task-258 --i-tested`).
+
+| Repo | PR | Squash commit | Branche distante |
+|---|---|---|---|
+| `api-mail` | [#187](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/187) | `452ca99` | supprimée |
+| `dtos-mss` | aucune (branche sans commit) | — | supprimée |
+
+**CI `develop` : verte** (`success`) — vérifiée après le merge, règle 5.
+
+**DOD close à 8 critères sur 8, contre-épreuve comprise.** C'est la première US
+d'instrument de cette EPIC dans ce cas : task-243, 245, 247, 248 et 250 ont
+toutes livré leur instrument en laissant leurs critères de mesure ouverts.
+
+### Ce qui reste ouvert, et qui n'appartient plus à cette task
+
+1. **La cause du ralentissement des requêtes**, côté PostgreSQL — contention
+   interne (CPU, verrous, WAL, points de reprise) ou concurrence entre les
+   8 bases praticien. **Le prochain instrument n'est plus applicatif** :
+   `pg_stat_statements`, `pg_stat_activity.wait_event`, statistiques de verrous.
+2. **La portée de l'étiquette `EnrichPersistMail`** — elle couvre les quatre
+   sites d'appel de `AddNewMail`, dont un écrit des en-têtes seuls. Campagne du
+   verdict **non contaminée (vérifié : 640 appels pour 640 messages)**, mais à
+   trancher **avant** la première campagne `journey` qui lira cette métrique.
+3. **Le domaine de validité s'arrête à 16** et à 8 praticiens, banc local.
