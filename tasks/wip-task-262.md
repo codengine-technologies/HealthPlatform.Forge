@@ -184,3 +184,24 @@ maison : enregistrements identiques à ceux d'ImapService (task-225), injection
 optionnelle identique à ImapService, harnais de test réutilisé
 d'ImapFolderServiceSuccessTests. Aucun axe reuse/simplification/efficacité/
 altitude actionnable. dtos-mss non touché (porteur de contrat, jamais simplifié).
+
+## Sonar log (2026-08-15)
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline (develop) | Final (branche) | Δ |
+|---|---|---|---|
+| **Quality Gate** | OK | **OK** | = |
+| Bugs / Vulnérabilités | 0 / 0 | 0 / 0 | = |
+| Issues non résolues (projet) | 72 | 72 | = |
+| Issues sur les fichiers touchés | — | **1** (S107) | voir ci-dessous |
+
+**S107 — constructeur à 9 paramètres (`ImapFolderService`)** : la violation
+préexiste — le constructeur avait déjà **8** paramètres sur develop (> 7 déjà) ;
+ce diff n'en ajoute qu'un, **optionnel**, sur le modèle exact d'ImapService
+(task-225, même signature de recorder). Réduire le nombre de paramètres est un
+refactor de design hors du périmètre d'un cleanup mécanique — accepté
+best-effort, non corrigé. Aucune dette nouvelle d'une autre règle.
+
+Arrêt itération 1 : Quality Gate OK, aucune issue mécaniquement corrigeable
+dans le périmètre du diff.
