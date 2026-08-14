@@ -156,3 +156,15 @@ intégralement vert : **88 JS + 287 Python, zéro SKIP**.
    part de 1) + adaptateur CFG sans changement d'API.
 
 Banc local éteint après la contre-épreuve.
+
+## Simplify log (2026-08-15)
+
+Skip propre — la passe qualité est déjà dans la conception : séparation cœur
+pur / adaptateur CFG (le pattern vu-sizing/journey-model du harnais), jugement
+pur / sonde k6. Aucun axe actionnable. dtos-mss non touché.
+
+## Sonar log (2026-08-15)
+
+Skip propre — aucun fichier C# modifié (diff 100 % harnais k6 : JS/MJS sous
+`tests/loadtest-k6/`, hors périmètre de l'analyse dotnet-sonarscanner). KPIs
+inchangés par construction ; Quality Gate develop : OK (relevé task-262).
