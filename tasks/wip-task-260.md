@@ -144,3 +144,34 @@ Données de test synthétiques uniquement.
 - **Hébergement HDS** : le coût de l'instrument doit être négligeable en
   production — critère « hors périmètre, rien ne coûte » ci-dessus
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+
+- `api-mail` (pushed) : feat/task-260-decomposer-envoi — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-260-decomposer-envoi
+- `dtos-mss` (pushed, auto-inclus) : feat/task-260-decomposer-envoi — aucun contrat attendu
+
+## Develop log — 2026-08-14
+
+**Livré** : `SendOperationScope` (6 phases : garde d'opposition, construction
+MIME, obtention de session, transmission+acquittement, archivage Sent
+optionnelle, reste par différence), **imbriquable** — le contrôleur ouvre le
+périmètre englobant envoi+archivage (la durée que paie le médecin), le `Begin`
+de `SmtpService` devient inerte dessous. Alimentation aux 4 sites naturels + 
+`AppendToSentAsync`. `report.py` : section « Où part le temps d'un envoi »,
+phrase attribuable, `archive_sent` « non relevé » quand absente.
+
+**Compteur d'allers-retours** : déjà en place (`solicitationRecorder`, task-225)
+— réutilisé, pas dupliqué.
+
+**Tests** : 7 C# éprouvés par mutation (6/7 rouges sans publication — après DEUX
+faux positifs de protocole corrigés : mutation non compilable, puis binaire de
+test non reconstruit), 6 Python. **Collision de parallélisme** : 4 classes de
+test exercent désormais l'envoi et polluaient les captures — rangées dans
+`MailMetricsCaptureCollection` (le mécanisme posé par task-256, deuxième paire
+de classes confirmée).
+
+## Simplify log — 2026-08-14
+
+Un exotisme retiré (délégué à retour de référence → style maison des scopes).
+**Consigné sans traiter** : 5ᵉ copie du helper `Capture` de tests — les 4 autres
+préexistent, hors charte de cette passe. 7 tests verts après.
