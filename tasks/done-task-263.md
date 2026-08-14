@@ -168,3 +168,16 @@ pur / sonde k6. Aucun axe actionnable. dtos-mss non touché.
 Skip propre — aucun fichier C# modifié (diff 100 % harnais k6 : JS/MJS sous
 `tests/loadtest-k6/`, hors périmètre de l'analyse dotnet-sonarscanner). KPIs
 inchangés par construction ; Quality Gate develop : OK (relevé task-262).
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/193 — label `awaiting-human-merge`
+- `dtos-mss` : aucune modification, pas de PR
+- Staging : `forge/staging-task-260-264-20260814` (task-263 agrégée)
+
+## Code Review Summary
+
+APPROVED — 0 blocage. Jugement pur / sonde séparés, contrat task-174 re-prouvé
+sous décalage, refus éprouvé par test (message vérifié) ET en live (contre-
+épreuve banc local : refus sans décalage, 3/3 travail réel avec UID_BASE=11).
+selftest 88 JS + 287 Python, zéro SKIP. Sonar : skip propre (aucun C#).
