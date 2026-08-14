@@ -411,3 +411,24 @@ bloquante. Détail complet dans le body de la PR #189.
 4. **F-256-4 se confirme** — la new-code period `PREVIOUS_VERSION` héritée oblige
    chaque task à refaire à la main l'analyse de provenance. Deuxième task
    consécutive.
+
+---
+
+## Merged
+
+**Date** : 2026-08-14 — `/merge task-259 --i-tested` (HAG, règle 10 : l'humain a
+testé et attesté avant merge).
+
+| Repo | PR | Commit squash sur `develop` |
+|---|---|---|
+| `api-mail` | [#189](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/189) | `20e8c8a` |
+| `dtos-mss` | aucune PR — branche auto-incluse sans commit | — |
+
+- Refs distantes `fix/task-259-removerange-collection-modifiee` supprimées sur
+  `api-mail` et `dtos-mss` ; **branche locale conservée** sur `api-mail`.
+- `develop` synchronisé sur les deux repos.
+- CI `develop` api-mail : run
+  [31802545948](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/31802545948).
+- **Branche staging `forge/staging-task-256-259-20260814` supprimée** (distante et
+  locale, `api-mail`) : le lot 256-259 est intégralement mergé — plus aucune task
+  active dans cet intervalle.
