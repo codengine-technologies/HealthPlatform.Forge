@@ -114,3 +114,55 @@ Données de test synthétiques uniquement.
 
 - `api-mail` (pushed) : feat/task-264-chauffe-fenetre
 - `dtos-mss` (pushed, auto-inclus) : feat/task-264-chauffe-fenetre — aucune modification attendue
+
+## Develop log (2026-08-15)
+
+**Levier retenu : fenêtre de mesure décalée, dérivée du MODÈLE** — pas observée
+(les VU k6 n'ont aucun état partagé : personne ne peut savoir à l'exécution
+quand « la cohorte » a fini de chauffer). L'allocation se calcule d'avance des
+grandeurs qui étalent déjà les vagues (task-253) : vagues pleines de
+maxConcurrent médecins × réserve analysée ÷ débit plafond. Vagues PLEINES à
+dessein : sous-évaluer remettrait de la chauffe dans le régime — l'erreur est
+du côté sûr. La « chauffe incrémentale » demandée par la US **existait déjà**
+(task-253, rang de cohorte) : l'allocation d'un palier se calcule sur sa
+cohorte NOUVELLE (à 500 après 200 : 300 médecins, 44 % d'une fenêtre de
+1 800 s — sous les 50 %).
+
+Livré (`5edfeba`, `84c6dcd`) : `warmupWindowSeconds` + `warmupWindowChecks`
+(refus si l'allocation avale la fenêtre — aucun régime = aucun verdict ;
+avertissement > 50 %) ; `buildStagePlan` porte `warmupEndS` par palier
+(défaut : comportement historique intact) ; `palierAt` tague `chauffe` pendant
+l'allocation — ces requêtes n'entrent dans AUCUN verdict ; report.py publie
+« Fenêtres de verdict » (chauffe/régime par palier, laquelle porte le verdict,
+et la rupture de comparabilité DITE) ; les tirs archivés sans `warmupEndS`
+gardent leur récit d'origine. Budget de corpus INCHANGÉ (re-fenêtrage, aucune
+consommation déplacée).
+
+Tests : 6 cas node --test + 4 unittest ; mutation (branche `chauffe` de
+palierAt neutralisée → rouge) ; selftest.sh intégralement vert, zéro SKIP.
+
+**Contre-épreuve (DOD)** — deux tirs à protocole identique, banc local
+(`2:120s,4:120s`, seed 4×100, reset-state entre jambes) :
+| | Jambe A (develop) | Jambe B (task-264) |
+|---|---|---|
+| Chauffe dans la fenêtre | incluse | **allouée [+30..+64s] et [+180..+214s], 28 %, taguée `chauffe`** |
+| Verdicts SLO | échantillons insuffisants (échelle locale) | idem — **pas verdis par construction** |
+| p95 dashboard (palier max) | 361 ms | 667 ms — l'exclusion ne flatte pas |
+| Chauffe aboutie / budget | 100 % / passé | 100 % / passé |
+Rapports : `reports/2026-08-15/journey-264-leg{A,B}-contre-epreuve.md` (INDEX
+committé ; répertoire daté gitignoré, conservé localement).
+
+**Part < 50 % à forte population** : établie par le modèle (500 : 789 s /
+1 800 s = 44 %) — à confirmer en distant à la prochaine campagne ; au-delà de
+50 %, le rapport avertit et nomme le geste (allonger le hold), le refus ne
+tombe que sur régime nul. Banc local éteint après la contre-épreuve.
+
+## Simplify log (2026-08-15)
+
+Skip propre — modèle pur + calendrier + rapport, dans les modules et styles
+existants (journey-model/report), aucun axe actionnable. dtos-mss non touché.
+
+## Sonar log (2026-08-15)
+
+Skip propre — aucun fichier C# modifié (JS/Python du harnais uniquement, hors
+périmètre dotnet-sonarscanner). Build api-mail : 0 erreur. QG develop : OK.
