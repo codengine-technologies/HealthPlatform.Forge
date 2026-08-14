@@ -107,3 +107,72 @@ Données de test synthétiques uniquement.
 - **Tracé PGSSI-S** : inchangé
 - **Hébergement HDS** : gain de capacité attendu, sans effet visible utilisateur
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+
+- `api-mail` (pushed) : feat/task-262-dashboard-attribuable
+- `dtos-mss` (pushed, auto-inclus) : aucune modification attendue
+
+## Develop log (2026-08-15)
+
+### Étape 1 — déjà livrée par task-240 : la prémisse de la US était périmée
+
+Le finding cité (« les quatre appels partagent un seul `op` », 2026-08-04) a été
+traité par **task-240** dès le 5 août. Le rapport du tir `journey-500-esc` du
+2026-08-14 attribue déjà appel par appel, avec la grandeur qui classe
+(total = appels × durée moyenne) :
+
+> **Arrivée dashboard** (`dashboard`, palier 500) — le p95 de l'étape est porté
+> par l'appel **`folder`** (826 ms de p95, 139 ms de p50, n=13945), qui porte
+> **aussi** le temps serveur de l'étape (**3725,6 s, 65 %**).
+
+Les DOD « attribuables un par un » et « appels × durée moyenne » sont donc
+satisfaits **par l'existant** — rien à livrer côté rapport, et le vérifier était
+la première chose à faire avant d'écrire du code.
+
+### Le trou réel, découvert en instruisant l'attribution : côté serveur
+
+- L'appel `folder` (65 % du coût de l'étape) correspond à la route
+  `GET /folders/{name}` — **p95 serveur 726 ms** sur la fenêtre du palier 500 :
+  le coût est bien dans l'application, pas dans le transport.
+- Or sur cette même fenêtre, `mssante_mail_server_solicitations_total`
+  (task-225) ne contient **aucune** opération `GetFolder*` : les 4
+  allers-retours IMAP de la recherche de dossier (resolve, open, SEARCH, close)
+  n'étaient enregistrés nulle part — `ImapFolderService` n'était pas branché sur
+  le compteur. C'est l'angle mort exact que task-225 documentait : l'absence
+  d'une opération ne prouve pas qu'elle ne sollicite pas le serveur.
+
+**Livré** (`91f0cfb`, `945cdb8`) :
+- `MailServerCommands.SearchFolder` (IMAP SEARCH, jamais nommé jusqu'ici) ;
+- les 4 enregistrements dans `ExecuteFolderSearchAsync`, étiquetés par la
+  famille d'opération appelante (`GetFolderStatus` / `GetFolderQuery`) — couvre
+  les appels `folder` (cache-miss) **et** `today` du dashboard ;
+- recorder en paramètre optionnel du constructeur (style ImapService) ;
+- 3 tests (nombre + ordre, attribution, absence prouvable), **mutation éprouvée
+  avec reconstruction du binaire de test : 2/3 rouges** quand l'enregistrement
+  de `search_folder` disparaît.
+
+### Étape 2 — aucune réduction livrée, et voici pourquoi (DOD honoré)
+
+La moyenne de 267 ms de l'appel `folder` mélange cache-hit Redis (rapide) et
+cache-miss (4 allers-retours IMAP sous 96 ms de latence injectée). **Cette
+décomposition n'était pas mesurable** — c'est précisément ce que le compteur
+branché ici rend lisible à la prochaine campagne. Réduire avant de compter
+serait l'erreur de task-222.
+
+**Seuil qui rouvre le sujet** : si la prochaine campagne confirme ≥ 2
+allers-retours IMAP par appel `folder` non-caché (lecture directe de
+`mssante_mail_server_solicitations_total{operation="GetFolderStatus"}` rapportée
+au nombre d'appels), le remède candidat est côté cache — durée, ou STATUS au
+lieu de SEARCH — dans une US dédiée, avec fraîcheur énoncée (décision produit,
+comme l'exige ce task file).
+
+**Ce que le médecin voit est inchangé** : le diff ne touche que l'enregistrement
+de compteurs (aucune valeur servie ne change) ; les tests existants du service
+restent verts.
+
+### Suite pré-existante connue (hors diff)
+
+AiPromptHelperTests (rouge depuis `411b289`) et les 5 filtres « aujourd'hui »
+dans la fenêtre nocturne 00h–02h (documentés à la PR #190) — aucun de ces
+fichiers dans ce diff.
