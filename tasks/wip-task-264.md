@@ -109,3 +109,8 @@ Données de test synthétiques uniquement.
 - **Tracé PGSSI-S** : inchangé
 - **Hébergement HDS** : sans objet
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+
+- `api-mail` (pushed) : feat/task-264-chauffe-fenetre
+- `dtos-mss` (pushed, auto-inclus) : feat/task-264-chauffe-fenetre — aucune modification attendue
