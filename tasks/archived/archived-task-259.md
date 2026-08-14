@@ -427,8 +427,10 @@ testé et attesté avant merge).
 - Refs distantes `fix/task-259-removerange-collection-modifiee` supprimées sur
   `api-mail` et `dtos-mss` ; **branche locale conservée** sur `api-mail`.
 - `develop` synchronisé sur les deux repos.
-- CI `develop` api-mail : run
-  [31802545948](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/31802545948).
+- CI `develop` api-mail : ✅ **verte** — run
+  [31802545948](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/31802545948)
+  (`completed / success`). Premier run éprouvant task-256 et task-259 ensemble :
+  la CI de la PR #189 avait tourné avant l'arrivée de task-256 sur `develop`.
 - **Branche staging `forge/staging-task-256-259-20260814` supprimée** (distante et
   locale, `api-mail`) : le lot 256-259 est intégralement mergé — plus aucune task
   active dans cet intervalle.
