@@ -2829,6 +2829,68 @@ nouvelle table par opération est ce qui permettra de les séparer.
 
 ---
 
+### v1.53 — L'envoi coûte 1,3 s quel que soit le palier : l'instrument qui décompose enfin le premier poste du temps serveur — task-260
+
+- **Task** : task-260 — `done`. **PR** : `api-mail` #190 (label `awaiting-human-merge`). `dtos-mss` : branche créée, **aucun commit**.
+- **LE FAIT.** Tir `journey-500-esc` du 2026-08-14 : `send` p50 **1 305 / 1 270 / 1 302 ms** à 100/200/500 médecins — un coût **fixe par envoi**, pas un effet de charge — et **25,1 % du temps serveur**, premier poste. Trois corrections l'ont visé sans le faire bouger (task-231, 238, 241), toutes écrites **sans décomposition**. Celle-ci la fournit.
+- **LIVRÉ.** `SendOperationScope`, quatrième périmètre du modèle maison (task-243/245/252) : six phases — `opposition_guard`, `build_mime`, `acquire_session` (quasi nulle si session réutilisée, paie connexion+TLS+auth si neuve — le coût d'une session fraîche se lit sans instrument séparé), `smtp_transmit`, `archive_sent` (**optionnelle : publiée seulement si observée**, « non relevé » jamais zéro — leçon task-256), `assemble` par différence.
+- **L'IMBRICATION PORTE L'ARCHITECTURE.** `SmtpService` est l'étranglement de tous les envois, mais l'archivage vit chez l'appelant : le contrôleur ouvre le périmètre **englobant** (la durée que le médecin paie) et le `Begin` de `SmtpService` devient inerte dessous. Un chemin qui n'archive pas (rejeu, brouillon) obtient quand même la décomposition.
+- **report.py** : section « Où part le temps d'un envoi », phrase attribuable, poste dominant nommé — **`assemble` ne peut jamais l'être** (désigner un résidu inviterait à optimiser une soustraction). Note de lecture : le finding Seq du tir 500 (**≈3,1 `SmtpCommandException` par envoi**) confronté aux phases où il devra se confirmer.
+- **Tests** : 7 C# (mutation éprouvée **6/7 rouges** — deux faux positifs de protocole corrigés en route : mutation non compilable, puis binaire de test non reconstruit — dans les deux cas les verts ne prouvaient rien) + 6 Python. Collision de parallélisme réglée par le mécanisme prévu (`MailMetricsCaptureCollection`, 4 classes émettrices rangées).
+- **⚠️ FINDING PRODUIT DÉCOUVERT EN ROUTE** : la vue « aujourd'hui » a une **fenêtre aveugle nocturne** — `DeliveredAfter(DateTime.Now.Date)` (minuit local) face à des INTERNALDATE UTC (`ImapService.cs:768`) ; 5 tests d'intégration rouges déterministes entre 00 h et 02 h locales. Un médecin de garde à 1 h du matin peut ne pas voir les messages reçus depuis minuit. **À instruire en US produit** ; hors de ce diff.
+- **Sonar** : QG **OK**, dette introduite zéro (2 issues sur fichiers touchés, toutes préexistantes, vérifié par `git blame`).
+
+---
+
+### v1.54 — La page d'en-têtes ne matérialise plus ce qu'elle n'affiche pas : −69,5 % d'objets sur le chemin le plus coûteux du parcours — task-261
+
+- **Task** : task-261 — `done`. **PR** : `api-mail` #191 (label `awaiting-human-merge`). `dtos-mss` : branche créée, **aucun commit**.
+- **LE FAIT, PAR CROISEMENT DE DEUX INSTRUMENTS.** task-256 (objets) × task-243 (phases), tir du 2026-08-14 : **298 objets matérialisés pour 25 en-têtes affichés** — dont 65 résultats de biologie et des corps de message complets que la page n'affiche jamais. **69,5 % de la matérialisation est du travail invisible.**
+- **LIVRÉ, en mode en-têtes uniquement** (`headerOnly`, le mode contenu inchangé) : corps projetés à vide (`Body`/`BodyHtml`/`Summary` = chaîne vide dans la projection SQL — la ligne n'est plus transférée), biologie réduite aux marqués (`IsFlagged`), synthèses non chargées. **Les marqueurs `HasBiologyResults`/`HasPatientSummary` restent exacts** : comptes corrélés portés par la requête documents (sous-requêtes `Count` — la première conception ajoutait une requête, refusée : le DOD exigeait « pas une requête de plus », redessinée en **net −1 requête**).
+- **CE QUE LE MÉDECIN VOIT EST INCHANGÉ** — même liste, mêmes badges, même pagination ; vérifié par 6 tests d'intégration sur le vrai dépôt (dont « un document à biologie non marquée garde son badge »).
+- **Tests** : 6 cas (`MailHeaderPageMaterializationTests`), seeds réalistes (la biologie exige `PrimaryValue`, le dépôt exige un `UserContextInfo` — deux pièges du modèle découverts en écrivant les seeds).
+- **La mesure de confirmation au banc** (part d'objets et coût `assemble` en baisse sur une campagne `journey`) reste due — Manual Test Plan de la PR.
+- **Sonar** : QG **OK**, dette introduite zéro.
+
+---
+
+### v1.55 — L'appel `folder` porte 65 % du coût du dashboard et n'était compté nulle part : le chemin des dossiers entre dans le compteur de sollicitations — task-262
+
+- **Task** : task-262 — `done`. **PR** : `api-mail` #192 (label `awaiting-human-merge`). Commits `945cdb8` (instrument), `91f0cfb` (tests mutation-éprouvés). `dtos-mss` : branche créée, **aucun commit**.
+- **⚠️ LA PRÉMISSE DE LA US ÉTAIT PÉRIMÉE, ET LE DIRE EST LE PREMIER LIVRABLE.** Le finding fondateur (2026-08-04 : « les 4 appels du dashboard partagent un seul `op` ») avait été traité par **task-240** dès le 5 août. Le rapport du tir 500 attribue déjà appel par appel : **`folder` porte 65 % du coût serveur de l'étape** (3 725,6 s ; p95 826 ms, p50 139 ms, n=13 945 — moyenne **plate** de 100 à 500, un coût fixe par appel). Vérifier l'existant avant d'écrire du code était la première chose à faire — quatrième prémisse réfutée de l'EPIC.
+- **LE VRAI TROU ÉTAIT CÔTÉ SERVEUR.** La route `GET /folders/{name}` (p95 serveur 726 ms) n'apparaissait **nulle part** dans le compteur de sollicitations de task-225 : `ImapFolderService` n'y était pas branché, et les **4 allers-retours IMAP** de la recherche de dossier (resolve, open, SEARCH, close) n'étaient comptés par personne — l'angle mort exact que task-225 documentait. Vérifié sur la fenêtre du palier 500 dans le Prometheus persistant : aucune série `GetFolder*`.
+- **LIVRÉ** : `MailServerCommands.SearchFolder` (IMAP SEARCH, jamais nommé), les 4 enregistrements dans `ExecuteFolderSearchAsync` étiquetés par la famille appelante (`GetFolderStatus`/`GetFolderQuery` — couvre `folder` **et** `today`), recorder en paramètre optionnel (pattern ImapService, aucun appelant de production ne change).
+- **AUCUNE RÉDUCTION LIVRÉE, DÉLIBÉRÉMENT** (le DOD l'exige dit et motivé) : la moyenne de 267 ms mélange cache-hit Redis et cache-miss à 4 allers-retours sous 96 ms de latence — décomposition **pas encore mesurable**, c'est ce que ce compteur rend lisible. **Seuil de reprise** : ≥ 2 allers-retours confirmés par appel non-caché → remède côté cache (durée, ou STATUS au lieu de SEARCH), US dédiée, fraîcheur énoncée.
+- **Tests** : 3 (nombre + **ordre**, attribution, absence prouvable), mutation éprouvée avec reconstruction du binaire : 2/3 rouges.
+- **Sonar** : QG **OK** ; seule issue touchée = S107 (constructeur 9 params) **préexistante à 8**, +1 optionnel accepté.
+
+---
+
+### v1.56 — Le harnais refuse désormais de mentir : bande d'UID absente = tir refusé, jamais des verdicts verts sur des messages inexistants — task-263
+
+- **Task** : task-263 — `done`. **PR** : `api-mail` #193 (label `awaiting-human-merge`). Commit `286b2ae` (UID_BASE + refus + 16 tests) + doc skill. `dtos-mss` : branche créée, **aucun commit**.
+- **LE DÉFAUT.** Le harnais postulait des UID commençant à 1 — vrai seulement sur maildir vierge : les UID IMAP ne sont **jamais réutilisés**, une purge `doveadm expunge` laisse le compteur avancer. Mesuré le 2026-08-14 : 500 boîtes à UID **201–447**, et le banc rendait des verdicts **verts sans rien mesurer** (`enrich` HTTP 200 en ~1 s, 0 mail en base). **Deux campagnes distantes invalidées ainsi.**
+- **LE REFUS D'ABORD** (un `UID_BASE` mal réglé reproduirait le défaut en silence) : le `setup()` de tout scénario consommant une bande sonde **trois boîtes** (première/milieu/dernière — des boîtes peuvent différer, trois du banc portaient déjà des bases distinctes) via `GET /folders/{f}` et **refuse le tir** en nommant la boîte, la cause et le geste (`UID_BASE=<valeur>` ou Job `maildir-purge-job.yaml`). Une sonde muette n'est **pas** un laissez-passer. Jugement pur (`uid-guard.js`, testé) séparé de la sonde k6 (`uid-probe.js`). Modèle : le contrôle de budget, qui a refusé une campagne le 2026-08-14 avant de brûler deux heures de banc.
+- **`UID_BASE`** (défaut 1, historique intact) : `uid-bands.js` passe par un cœur pur node-testable, `journeyReserves` gagne un 4ᵉ paramètre — préfixe analysé toujours préfixe, réserves disjointes sous décalage (testé).
+- **PRÉREQUIS DOD LEVÉ** : Node absent du poste (le selftest JS **skippait** — « un SKIP n'est pas un succès ») → installé v24.19.0. `selftest.sh` : **88 JS + 287 Python, zéro SKIP**.
+- **CONTRE-ÉPREUVE, banc local** (mécanisme identique) : seed → expunge → re-seed = boîtes à UID 11–20, l'état du 2026-08-14 en miniature. Sans décalage : **refus** nommant `UID_BASE=11`. Avec : 3/3 enrich réels (« ran the CDA pipeline »), 0 court-circuit, `hasMedicalDocuments=true` en lecture.
+- **Doc skill** : le contrôle, le geste de purge, et **pourquoi `kubectl exec rm -rf` échoue** (répertoires `drwx------ 1000:1000` + `root_squash` NFS — le Job tourne en uid 1000).
+- **Sonar** : skip propre — aucun C# touché (diff 100 % harnais k6).
+
+---
+
+### v1.57 — Un palier ne mesure plus sa propre préparation : la chauffe est allouée d'avance, taguée `chauffe`, et le régime seul porte le verdict — task-264
+
+- **Task** : task-264 — `done`. **PR** : `api-mail` #194 (label `awaiting-human-merge`). Commits `5edfeba` (modèle + calendrier + rapport + tests), `84c6dcd` (contre-épreuve INDEX). `dtos-mss` : branche créée, **aucun commit**. ⚠️ **Staging : non agrégée** — conflit `journey.js` avec task-263, abort conformément à la règle (ordre de merge conseillé : #193 puis #194, conflit trivial documenté dans la PR).
+- **LE FAIT.** Tir du 2026-08-14 : chauffe à **139 %** de la fenêtre du palier (2 494 s au p95 pour 1 800 s). Pendant qu'une cohorte chauffe, la population réellement en régime est inférieure à ce que le tag `palier` annonce — le palier mesurait surtout sa préparation.
+- **LEVIER : FENÊTRE DE MESURE DÉCALÉE, DÉRIVÉE DU MODÈLE** — pas observée (les VU k6 n'ont aucun état partagé : personne ne peut savoir à l'exécution quand « la cohorte » a fini). Allocation calculée d'avance des grandeurs qui étalent les vagues (task-253) : vagues **pleines** × réserve ÷ débit plafond — sous-évaluer remettrait de la chauffe dans le régime, l'erreur est du côté sûr. La chauffe **était déjà incrémentale** (task-253, rang de cohorte) : l'allocation d'un palier se calcule sur sa cohorte **nouvelle** — à 500 après 200 : 300 médecins, **44 % d'une fenêtre de 1 800 s, sous les 50 %** exigés.
+- **LIVRÉ** : `buildStagePlan` porte `warmupEndS` par palier (défaut : historique intact, prouvé par le test deep-equal existant) ; `palierAt` tague **`chauffe`** pendant l'allocation — hors de tout verdict ; `warmupWindowChecks` **refuse** quand l'allocation avale la fenêtre (aucun régime = aucun verdict possible) et avertit au-delà de 50 % avec le geste ; `report.py` publie « **Fenêtres de verdict** » — chauffe/régime par palier, laquelle porte le verdict, et la rupture de comparabilité **dite** (un tir antérieur incluait la chauffe : pas directement comparable). Tirs archivés sans `warmupEndS` : récit d'origine préservé. **Budget de corpus inchangé** (re-fenêtrage, aucune consommation déplacée).
+- **CONTRE-ÉPREUVE (DOD)** — deux tirs à protocole identique, banc local, reset entre jambes : jambe B alloue **28 %**/palier tagués `chauffe`, verdicts **non améliorés par construction** (p95 dashboard régime 667 ms vs 361 — l'exclusion ne flatte pas), chauffe aboutie 100 % et budget passé des deux côtés. Échelle locale = preuve du **mécanisme** ; la part < 50 % à forte population est établie par le modèle et à confirmer à la prochaine campagne distante. `reports/INDEX.md`, entrée 2026-08-15.
+- **Tests** : 6 node --test + 4 unittest, mutation éprouvée (branche `chauffe` neutralisée → rouge), selftest zéro SKIP.
+- **Sonar** : skip propre — aucun C# touché.
+
+---
+
 ## Annexe A — Cartographie des briques applicatives
 
 | Brique | Chemin | Rôle |
