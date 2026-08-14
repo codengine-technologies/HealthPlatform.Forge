@@ -176,3 +176,11 @@ restent verts.
 AiPromptHelperTests (rouge depuis `411b289`) et les 5 filtres « aujourd'hui »
 dans la fenêtre nocturne 00h–02h (documentés à la PR #190) — aucun de ces
 fichiers dans ce diff.
+
+## Simplify log (2026-08-15)
+
+Skip propre — diff de 3 fichiers (+142/−1) entièrement calqué sur les patterns
+maison : enregistrements identiques à ceux d'ImapService (task-225), injection
+optionnelle identique à ImapService, harnais de test réutilisé
+d'ImapFolderServiceSuccessTests. Aucun axe reuse/simplification/efficacité/
+altitude actionnable. dtos-mss non touché (porteur de contrat, jamais simplifié).
