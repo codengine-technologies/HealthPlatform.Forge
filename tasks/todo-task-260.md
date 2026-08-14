@@ -41,6 +41,23 @@ plus rouverte à chaque message), task-238 (la connexion retenue est entretenue,
 la sonde quitte le chemin nominal), task-241 (le keep-alive agissait sur la
 mauvaise horloge). Trois corrections, et le coût n'a pas bougé.
 
+### ⚠️ La piste que l'analyse Seq désigne — à examiner en premier, pas à croire
+
+**12 482 `SmtpCommandException` pour 4 031 envois**, soit **~3,1 par envoi** :
+c'est la **famille d'exceptions la plus nombreuse de tout le tir**, devant les
+extinctions de session.
+
+Le volume suit le **nombre d'appels**, pas la charge — c'est le test que le skill
+prescrit pour distinguer un coût par requête d'un incident. Rapproché d'un coût
+**plat sur un facteur 5 de population**, cela désigne un chemin de code exercé à
+chaque envoi, qui lève et rattrape.
+
+⚠️ **Ce n'est PAS une cause établie.** Une exception rattrapée peut coûter très
+peu, et rien ne relie aujourd'hui ces 12 482 levées aux 1,3 seconde. C'est une
+**piste**, et la décomposition doit précisément permettre de la confirmer ou de
+l'écarter — pas de la présumer. Une US écrite sur « il faut supprimer ces
+exceptions » serait exactement l'erreur de task-222.
+
 ## Ce qu'il ne faut PAS présumer
 
 - **Ne pas présumer que c'est encore le SMTP.** Trois corrections successives ont
