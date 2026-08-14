@@ -166,3 +166,21 @@ existants (journey-model/report), aucun axe actionnable. dtos-mss non touché.
 
 Skip propre — aucun fichier C# modifié (JS/Python du harnais uniquement, hors
 périmètre dotnet-sonarscanner). Build api-mail : 0 erreur. QG develop : OK.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/194 — label `awaiting-human-merge`
+- `dtos-mss` : aucune modification, pas de PR
+- Staging : **non agrégée** — conflit `journey.js` avec task-263 (les deux
+  touchent imports + setup), `git merge --abort` conformément à la règle
+  staging (best-effort, jamais un point d'échec). La PR #194 reste le véhicule ;
+  ordre de merge conseillé : #193 puis #194 (conflit trivial, orthogonal —
+  détaillé dans le body de la PR).
+
+## Code Review Summary
+
+APPROVED — 0 blocage. Allocation dérivée du modèle côté sûr (vagues pleines),
+refus/avertissement au contrat de checkBudgets, tag `chauffe` hors de tout
+verdict, compat tirs archivés préservée. Contre-épreuve A/B : 28 % de fenêtre
+alloués, verdicts non améliorés par construction. selftest zéro SKIP.
+Sonar : skip propre (aucun C#).
