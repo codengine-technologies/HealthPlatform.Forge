@@ -175,3 +175,12 @@ SONT la simplification (une requête de moins). Skip.
 ## Lint log — 2026-08-15
 
 Skips propres : `client-angular`, `client-mobile`, écrans — non touchés.
+
+## PRs
+
+- `api-mail` (pushed) : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/191 — label `awaiting-human-merge`
+- `dtos-mss` : aucune PR — branche sans commit
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 2 fichiers, 0 blocage. Build 0 erreur, 464 tests infra verts (6 nouveaux rouge-d'abord), QG OK, dette zéro. Détail dans la PR. Contre-épreuve chiffrée au banc : à conduire après merge (comme task-258).
