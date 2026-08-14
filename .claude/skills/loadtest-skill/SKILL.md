@@ -129,10 +129,26 @@ Surface NodePort (pendants exacts des Services k8s — `SeedOptions.Remote*`) :
 - **`doveadm` passe par kubectl**, plus par un port :
   `kubectl -n healthplatform exec statefulset/loadtest-dovecot -- doveadm who`
   (idem pour les contrôles boîte témoin). Le fond des contrôles ne change pas.
-- **Purge du maildir distant** : plus de `docker volume rm` — vider le PVC :
-  `kubectl -n healthplatform exec statefulset/loadtest-dovecot -- sh -c 'rm -rf /srv/mail/*'`
-  (ou recréer le pod après nettoyage côté NFS). `reset-state.sh` (bases
-  Postgres) reste inchangé — Postgres est resté local.
+- ⚠️ **Les UID ne commencent à 1 que sur un maildir vierge — et le harnais le
+  CONTRÔLE désormais (task-263).** Les UID IMAP ne sont jamais réutilisés :
+  purger par IMAP (`doveadm expunge`) supprime les messages mais laisse le
+  compteur avancer — mesuré le 2026-08-14 : 500 boîtes à UID 201–447 après
+  purge IMAP + re-seed, et le banc rendait des verdicts **verts sans rien
+  mesurer** (enrich HTTP 200 en ~1 s, 0 mail en base ; deux campagnes
+  distantes invalidées ainsi). Depuis task-263 : le `setup()` de tout scénario
+  consommant une bande d'UID **sonde trois boîtes** (première/milieu/dernière,
+  `GET /mail/folders/{folder}`) et **refuse le tir** si la bande visée
+  n'existe pas, en nommant la cause et le geste. Deux remèdes : poser
+  `UID_BASE=<premier UID réel>` (décale bandes ET réserves journey, défaut 1),
+  ou remettre les compteurs à zéro via le **Job
+  `DevOps/Staging/LoadtestMail/maildir-purge-job.yaml`** (efface les
+  répertoires de boîte, les UID repartent de 1).
+- **Purge du maildir distant** : plus de `docker volume rm` — et **PAS**
+  `kubectl exec ... rm -rf /srv/mail/*` : ça échoue en `Permission denied`,
+  parce que les répertoires de boîte sont `drwx------ 1000:1000` et que le
+  serveur NFS applique `root_squash` (le root du conteneur devient `nobody`).
+  Le geste qui marche est le Job `maildir-purge-job.yaml` (tourne en uid 1000).
+  `reset-state.sh` (bases Postgres) reste inchangé — Postgres est resté local.
 - **CPU de Dovecot enfin attribuable** : `kubectl top pods -n healthplatform`
   donne le coût des serveurs mail séparément du SUT — le relever dans le
   rapport à chaque palier.

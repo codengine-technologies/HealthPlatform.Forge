@@ -117,3 +117,42 @@ Données de test synthétiques uniquement.
 
 - `api-mail` (pushed) : feat/task-263-uid-base-refus
 - `dtos-mss` (pushed, auto-inclus) : feat/task-263-uid-base-refus — aucune modification attendue
+
+## Develop log (2026-08-15)
+
+**Prérequis DOD levé d'abord** : Node absent du poste (le selftest JS skippait,
+et « un SKIP n'est pas un succès ») → installé `OpenJS.NodeJS.LTS` v24.19.0
+(winget, scope user), comme Python l'avait été le 2026-07-27.
+
+**Livré** (`286b2ae`) :
+- `UID_BASE` (défaut 1, comportement historique intact) — `uid-bands.js` passe
+  par un cœur pur node-testable (`uid-bands-core.js`), `journeyReserves` gagne
+  un 4ᵉ paramètre ; réserves toujours disjointes sous décalage (testé).
+- **Refus de démarrage** — `uid-guard.js` (jugement pur, testé) +
+  `uid-probe.js` (sonde k6) : 3 boîtes sondées (première/milieu/dernière) via
+  `GET /folders/{f}`, refus nommant boîte + cause + geste ; une sonde muette
+  n'est pas un laissez-passer. Branché dans `bootstrap()` (enrich/read/mixed)
+  ET dans le `setup()` de journey.
+- Doc skill : contrôle documenté, purge = Job `maildir-purge-job.yaml`, et
+  pourquoi `kubectl exec rm -rf` échoue (répertoires 1000:1000 + root_squash).
+
+**Tests** : 16 nouveaux cas `node --test`, messages de refus vérifiés
+(cause + geste + valeur UID_BASE à poser + boîte divergente seule nommée).
+Mutation éprouvée : neutraliser le refus minUid → 2 rouges. `selftest.sh`
+intégralement vert : **88 JS + 287 Python, zéro SKIP**.
+
+**Contre-épreuve (DOD) — banc local, mécanisme identique au distant** :
+1. Seed 3×10 (UID 1–10) → `doveadm expunge` → re-seed 10 → boîtes à **UID
+   11–20, uidnext=21** : l'état exact du 2026-08-14 en miniature.
+2. **Sans décalage** : le tir `enrich` **refuse de démarrer** — « les UID de
+   loadtest-1@… commencent à 11 alors que la bande visée commence à 1 … Geste :
+   poser UID_BASE=11, ou … maildir-purge-job.yaml ». Avant task-263, cette
+   configuration rendait HTTP 200 verts sans rien mesurer.
+3. **Avec `UID_BASE=11`** : contrôle passe (bande 11..20 présente, 3 boîtes),
+   bandes enrich=11..15 / read=16..20, **3/3 enrich HTTP 200, 3/3 « ran the
+   CDA pipeline (not short-circuited) », `enrich_short_circuited count==0`** ;
+   vérifié côté données : UID 11–13 portent `hasMedicalDocuments=true`.
+4. Non-régression maildir vierge : test unitaire « défaut inchangé » (tout
+   part de 1) + adaptateur CFG sans changement d'API.
+
+Banc local éteint après la contre-épreuve.
