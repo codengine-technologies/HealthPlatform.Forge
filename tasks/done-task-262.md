@@ -205,3 +205,16 @@ best-effort, non corrigé. Aucune dette nouvelle d'une autre règle.
 
 Arrêt itération 1 : Quality Gate OK, aucune issue mécaniquement corrigeable
 dans le périmètre du diff.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/192 — label `awaiting-human-merge`
+- `dtos-mss` : aucune modification, pas de PR
+- Staging : `forge/staging-task-260-264-20260814` (task-262 agrégée)
+
+## Code Review Summary
+
+APPROVED — 0 blocage. Enregistrements aux 4 sites exacts après chaque
+aller-retour réussi ; étiquettes = littéraux finis (PGSSI-S) ; 3 tests
+mutation-éprouvés (2/3 rouges, binaire de test reconstruit). Qualité : QG OK,
+seule issue touchée = S107 préexistante (8→9 params, +1 optionnel accepté).
