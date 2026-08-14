@@ -112,3 +112,8 @@ Données de test synthétiques uniquement.
 - **Tracé PGSSI-S** : inchangé
 - **Hébergement HDS** : sans objet — le harnais ne tourne jamais en production
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+
+- `api-mail` (pushed) : feat/task-263-uid-base-refus
+- `dtos-mss` (pushed, auto-inclus) : feat/task-263-uid-base-refus — aucune modification attendue
