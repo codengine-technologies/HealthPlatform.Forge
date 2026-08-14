@@ -131,3 +131,47 @@ Données de test synthétiques uniquement.
 - **AIPD / impact RGPD** : ⚠️ charger **moins** de données de santé pour un écran
   qui ne les affiche pas est une **minimisation** — à noter comme bénéfice, pas
   comme simple performance
+
+## Branches
+
+- `api-mail` (pushed) : feat/task-261-page-en-tetes-allegee
+- `dtos-mss` (pushed, auto-inclus) : feat/task-261-page-en-tetes-allegee — aucun contrat attendu
+
+## Develop log — 2026-08-15
+
+**Ce que l'écran affiche, établi AVANT de tailler** (exigence du task file) : la
+ligne 2 de l'en-tête Blazor ne rend que les biologies **marquées**
+(`ShowOnlyFlagged="true"`) ; aucune surface de liste (Blazor, Mobile) ne lit
+`Content.Body`, `Content.Summary` ni `SummaryItems`.
+
+**Livré, mode Header seul (WithContent intact)** : biologie **marquée seule** ;
+marqueurs `HasBiologyResults`/`HasPatientSummary` gardés véridiques par des
+**comptes portés par la requête des documents** (sous-requêtes corrélées, même
+aller-retour) ; synthèses non chargées ; corps **projetés sans Body** (~30 Ko par
+message laissés en base — minimisation RGPD autant que performance).
+
+**Requêtes par appel : en BAISSE d'une unité** (la requête de synthèses
+disparaît) — le DOD interdisait toute hausse ; la première version en ajoutait
+une, corrigée avant commit.
+
+**Test-first** : 6 tests de caractérisation **rouges sur l'ancien code** (dont le
+piège du filtre : un document aux biologies toutes normales garde son marqueur),
+verts après. Suite complète verte hors flakies caractérisés (5 × fenêtre
+nocturne, 1 × prompt, 2 aléas de run instrumenté re-vérifiés verts en isolation).
+
+## Simplify log — 2026-08-15
+
+Rien à simplifier : le diff est concentré (2 fichiers), les comptes corrélés
+SONT la simplification (une requête de moins). Skip.
+
+## Sonar log — 2026-08-15
+
+| Métrique | Valeur |
+|---|---|
+| Quality Gate | **OK** |
+| Issues sur les fichiers de la task | **0** |
+| Dette introduite | **zéro** |
+
+## Lint log — 2026-08-15
+
+Skips propres : `client-angular`, `client-mobile`, écrans — non touchés.
