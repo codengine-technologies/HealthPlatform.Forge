@@ -212,3 +212,24 @@ reçus depuis minuit. **À instruire en US** — non traité ici (hors périmèt
 **Skips propres** : `client-angular`, `client-mobile` non touchés
 (`**Repos**: api-mail`), aucun écran mobile — `/lint-angular`, `/lint-mobile` et
 `/verify-visual` sans objet.
+
+## PRs
+
+- `api-mail` (pushed) : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/190 — label `awaiting-human-merge`
+- `dtos-mss` (pushed, auto-inclus) : **aucune PR** — branche sans commit
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 12 fichiers (+802 lignes), 0 blocage, 0 suggestion.
+
+| Contrôle | Résultat |
+|---|---|
+| Build | ✅ 0 erreur, 0 avertissement |
+| Tests | ✅ **3 792 verts** — 6 rouges, TOUS pré-existants et caractérisés : 5 = fenêtre nocturne 00h–02h de la vue « aujourd'hui » (cause lue dans `ImapService.cs:768`, fichiers hors diff), 1 = `AiPromptHelperTests` (commit `411b289`) |
+| DOD | ✅ 8 critères sur 9 — la contre-épreuve au banc (dernier critère) reste ouverte : elle exige un tir `journey`, à faire après merge |
+| Quality Gate | ✅ OK — dette introduite **zéro** (2 issues sur fichiers touchés, toutes de task-231, vérifié par `git blame`) |
+
+Revue détaillée dans le corps de la PR. Points saillants : périmètre imbriquable
+(contrôleur = englobant, `SmtpService` = inerte dessous), `archive_sent`
+optionnelle « non relevé » ≠ zéro, mutation 6/7 après correction de deux faux
+positifs de protocole, collision xUnit réglée par `MailMetricsCaptureCollection`.
