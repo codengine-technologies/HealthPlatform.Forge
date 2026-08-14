@@ -429,3 +429,23 @@ bloquantes. Détail complet recopié dans le body de la PR #188.
 4. **F-256-4 — new-code period `PREVIOUS_VERSION` héritée.** Rend le Quality Gate
    structurellement rouge et empêche une task de savoir si *elle* a introduit de la
    dette sans analyse de provenance manuelle. Décision de configuration.
+
+---
+
+## Merged
+
+**Date** : 2026-08-14 12:39 UTC — `/merge task-256 --i-tested` (HAG, règle 10 :
+l'humain a testé et attesté avant merge).
+
+| Repo | PR | Commit squash sur `develop` |
+|---|---|---|
+| `api-mail` | [#188](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/188) | `467e848` |
+| `dtos-mss` | aucune PR — branche auto-incluse sans commit | — |
+
+- Refs distantes `feat/task-256-compteur-objets-materialises` supprimées sur
+  `api-mail` et `dtos-mss` ; **branches locales conservées**.
+- `develop` synchronisé sur les deux repos.
+- CI `develop` api-mail : run
+  [31801298842](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/31801298842).
+- Branche staging `forge/staging-task-256-259-20260814` **conservée** :
+  task-259 du même run n'est pas encore mergée.
