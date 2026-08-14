@@ -445,7 +445,8 @@ l'humain a testé et attesté avant merge).
 - Refs distantes `feat/task-256-compteur-objets-materialises` supprimées sur
   `api-mail` et `dtos-mss` ; **branches locales conservées**.
 - `develop` synchronisé sur les deux repos.
-- CI `develop` api-mail : run
-  [31801298842](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/31801298842).
+- CI `develop` api-mail : ✅ **verte** — run
+  [31801298842](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/31801298842)
+  (`completed / success`).
 - Branche staging `forge/staging-task-256-259-20260814` **conservée** :
   task-259 du même run n'est pas encore mergée.
