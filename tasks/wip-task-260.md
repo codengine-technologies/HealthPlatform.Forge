@@ -175,3 +175,40 @@ de classes confirmée).
 Un exotisme retiré (délégué à retour de référence → style maison des scopes).
 **Consigné sans traiter** : 5ᵉ copie du helper `Capture` de tests — les 4 autres
 préexistent, hors charte de cette passe. 7 tests verts après.
+
+## Sonar log — 2026-08-15
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| **Quality Gate** | OK | **OK** | = |
+| Bugs / Vulnérabilités | 0 / 0 | **0 / 0** | = |
+| Issues sur les fichiers touchés | — | **2, toutes préexistantes** (S3604 sur `SmtpService.cs`, lignes de task-231 — vérifié par `git blame`) | **dette introduite : zéro** |
+
+Le code de cette task est **dans le périmètre analysé** (`src/Application`,
+`src/Api`) : le verdict porte sur le livrable.
+
+### 🟠 Finding découvert par le run de couverture — la vue « aujourd'hui » a une fenêtre aveugle nocturne
+
+Le run Release a traversé minuit : **5 tests d'intégration rouges, tous des
+filtres « aujourd'hui »**, et ils restent rouges rejoués après minuit —
+**déterministes entre 00 h et 02 h locales**, chaque nuit.
+
+**Cause lue dans le code de production** (`ImapService.cs:768`) :
+`GetFolderNotSeenTodayAsync` filtre par `SearchQuery.DeliveredAfter(DateTime.Now.Date)`
+— minuit **local** — pendant que l'INTERNALDATE IMAP des messages vit en UTC.
+Entre 00 h et 02 h (UTC+2), « aujourd'hui » local n'a pas commencé en UTC : les
+messages du début de nuit échappent au filtre.
+
+**Aucun de ces fichiers n'est dans le diff de task-260** (vérifié) — flaky
+**pré-existant**, jamais vu parce qu'aucun run n'était tombé dans la fenêtre.
+Et c'est un **finding produit** autant qu'un flaky de test : un médecin de garde
+qui ouvre sa vue « aujourd'hui » à 1 h du matin peut ne pas voir les messages
+reçus depuis minuit. **À instruire en US** — non traité ici (hors périmètre).
+
+## Lint log — 2026-08-15
+
+**Skips propres** : `client-angular`, `client-mobile` non touchés
+(`**Repos**: api-mail`), aucun écran mobile — `/lint-angular`, `/lint-mobile` et
+`/verify-visual` sans objet.
