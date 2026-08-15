@@ -218,3 +218,25 @@ APPROVED — 0 blocage. Enregistrements aux 4 sites exacts après chaque
 aller-retour réussi ; étiquettes = littéraux finis (PGSSI-S) ; 3 tests
 mutation-éprouvés (2/3 rouges, binaire de test reconstruit). Qualité : QG OK,
 seule issue touchée = S107 préexistante (8→9 params, +1 optionnel accepté).
+
+## Contrôle staging (2026-08-15) — correctif `65516d0`
+
+Tir de contrôle intermédiaire (non consigné, demandé par l'humain avant merge)
+sur `forge/staging-task-260-264-20260814` : **la première implémentation était
+réfutée** — aucune sollicitation `GetFolder*` émise pendant que la route
+servait le dashboard. La route passe par `ImapService.GetFolderWithCacheAsync`,
+pas par la jumelle `ImapFolderService` instrumentée initialement.
+
+Chemin froid réel : **7 allers-retours** (resolve+STATUS, puis
+resolve+STATUS+SELECT+SEARCH+CLOSE) — 7 × 96 ms ≈ 672 ms, le p95 serveur de
+726 ms s'explique presque entièrement. Correctif livré (StatusFolder nommé,
+7 enregistrements, 2 tests ordre exact + absence, mutation éprouvée),
+**vérifié en direct** : un GET froid → les 7 séries exactes. Staging re-agrégé.
+Le seuil de reprise de la US est ATTEINT (7 ≥ 2) : la US cache peut être
+instruite. Piège de protocole consigné : `mv` de restauration = mtime antérieur
+= binaire muté conservé par MSBuild ; `touch` obligatoire.
+
+Au passage : le tir de contrôle a aussi validé en conditions réelles task-260
+(6 phases d'envoi publiées, archive 4/4), task-261 (biologie 3,4/appel sur la
+page d'en-têtes au lieu de 65/25, synthèses à zéro) et task-263 (bannière
+« contrôle d'UID : bande 1..100 présente dans 3 boîtes »).
