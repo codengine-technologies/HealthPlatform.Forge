@@ -233,3 +233,32 @@ Revue détaillée dans le corps de la PR. Points saillants : périmètre imbriqu
 (contrôleur = englobant, `SmtpService` = inerte dessous), `archive_sent`
 optionnelle « non relevé » ≠ zéro, mutation 6/7 après correction de deux faux
 positifs de protocole, collision xUnit réglée par `MailMetricsCaptureCollection`.
+
+## Merged
+
+**Date** : 2026-08-17 19:07 UTC — `/merge task-260 --i-tested` (HAG, règle 10 :
+l'humain a testé et attesté avant merge).
+
+| Repo | PR | Commit squash sur `develop` |
+|---|---|---|
+| `api-mail` | [#190](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/190) | `a96354e` |
+| `dtos-mss` | aucune PR — branche auto-incluse sans commit | — |
+
+- Six garde-fous passés avant merge : `--i-tested` présent, label
+  `awaiting-human-merge` (pas `awaiting-us-completion`), `reviewDecision` vide,
+  CI PR verte (`build` 1m46s), `mergeable = MERGEABLE / CLEAN`, arbres de travail
+  propres sur `api-mail` et `dtos-mss`.
+- Refs distantes `feat/task-260-decomposer-envoi` supprimées sur `api-mail` et
+  `dtos-mss` (jamais `--delete-branch`). **Aucune branche locale n'existait**
+  pour cette task sur les deux repos — rien à conserver ; `api-mail` était
+  checked out sur la staging du run.
+- `develop` synchronisé sur `api-mail` (fast-forward `4aff6ae..a96354e`, 12
+  fichiers, +802 lignes) ; `dtos-mss` déjà sur `develop`.
+- CI `develop` api-mail : ✅ **verte** — run
+  [32058246607](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/32058246607)
+  (`completed / success`, tête `a96354e`).
+- Branche staging `forge/staging-task-260-264-20260814` **conservée** :
+  task-261, 262, 263 et 264 du même run sont encore en `done-*`.
+- **Reste ouvert** (hérité du DOD) : la contre-épreuve au banc du dernier
+  critère exige un tir `journey` sur `develop` — à faire post-merge, hors
+  périmètre de `/merge`.
