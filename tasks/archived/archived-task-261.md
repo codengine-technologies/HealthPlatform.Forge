@@ -184,3 +184,35 @@ Skips propres : `client-angular`, `client-mobile`, écrans — non touchés.
 ## Code Review Summary
 
 **Verdict : APPROVED** — 2 fichiers, 0 blocage. Build 0 erreur, 464 tests infra verts (6 nouveaux rouge-d'abord), QG OK, dette zéro. Détail dans la PR. Contre-épreuve chiffrée au banc : à conduire après merge (comme task-258).
+
+## Merged
+
+**Date** : 2026-08-18 08:01 UTC — `/merge task-261 --i-tested` (HAG, règle 10 :
+l'humain a testé et attesté avant merge).
+
+| Repo | PR | Commit squash sur `develop` |
+|---|---|---|
+| `api-mail` | [#191](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/191) | `f76b0a9` |
+| `dtos-mss` | aucune PR — branche auto-incluse sans commit | — |
+
+- Six garde-fous passés avant merge : `--i-tested` présent, label
+  `awaiting-human-merge` (pas `awaiting-us-completion`), `reviewDecision` vide,
+  CI PR verte (`build` 1m45s, `publish` skipped), `mergeable = MERGEABLE / CLEAN`,
+  arbres de travail propres sur `api-mail` et `dtos-mss`.
+- Refs **distantes** `feat/task-261-page-en-tetes-allegee` supprimées sur
+  `api-mail` et `dtos-mss` (jamais `--delete-branch`). **Aucune branche locale
+  n'existait** pour cette task sur les deux repos — rien à conserver.
+- `develop` synchronisé sur `api-mail` (fast-forward, 2 fichiers, +288/−12 :
+  `MailRepository.cs` et `MailHeaderPageMaterializationTests.cs`) ; `dtos-mss`
+  déjà sur `develop`.
+- CI `develop` api-mail : ✅ **verte** — run
+  [32114294561](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/32114294561)
+  (`completed / success`, tête `f76b0a9`). Verte à ~4 min du merge, au-delà des
+  2 min de la règle 5 : le run était encore `in_progress` à l'échéance, attendu
+  jusqu'à conclusion plutôt que déclaré indéterminé.
+- Branche staging `forge/staging-task-260-264-20260814` **conservée** :
+  task-262, 263 et 264 du même run sont encore en `done-*`.
+- **Reste ouvert** (hérité du DOD) : la **contre-épreuve chiffrée** au banc
+  (tir `journey` à deux paliers, objets/appel et temps de matérialisation
+  avant/après) n'est pas faite — elle exige un tir sur `develop`, hors périmètre
+  de `/merge`. Le code review l'avait déjà notée comme post-merge.
