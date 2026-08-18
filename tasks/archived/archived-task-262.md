@@ -240,3 +240,41 @@ Au passage : le tir de contrôle a aussi validé en conditions réelles task-260
 (6 phases d'envoi publiées, archive 4/4), task-261 (biologie 3,4/appel sur la
 page d'en-têtes au lieu de 65/25, synthèses à zéro) et task-263 (bannière
 « contrôle d'UID : bande 1..100 présente dans 3 boîtes »).
+
+## Merged
+
+**Date** : 2026-08-18 15:52 UTC — `/merge task-262 --i-tested` (HAG, règle 10 :
+l'humain a testé et attesté avant merge).
+
+| Repo | PR | Commit squash sur `develop` |
+|---|---|---|
+| `api-mail` | [#192](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/192) | `5031fa2` |
+| `dtos-mss` | aucune PR — branche auto-incluse sans commit | — |
+
+- Six garde-fous passés avant merge : `--i-tested` présent, label
+  `awaiting-human-merge`, `reviewDecision` vide (aucun `CHANGES_REQUESTED`),
+  CI PR verte **sur la tête réelle** `65516d0` — le correctif post-contrôle
+  staging, vérifié explicitement (`build` 1m55s, `publish` skipped, run
+  [31875066689](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/31875066689)),
+  `mergeable = MERGEABLE / CLEAN`, arbres propres sur `api-mail` et `dtos-mss`.
+- Les 3 commits de la PR sont donc bien tous entrés : `91f0cfb` (tests),
+  `945cdb8` (première instrumentation) et `65516d0` (correctif « vraie
+  jumelle », 7 allers-retours).
+- Refs **distantes** `feat/task-262-dashboard-attribuable` supprimées sur
+  `api-mail` et `dtos-mss` (jamais `--delete-branch`). Aucune branche locale
+  n'existait — rien à conserver.
+- `develop` synchronisé sur `api-mail` (fast-forward, 5 fichiers, +301/−1) ;
+  `dtos-mss` déjà sur `develop`.
+- CI `develop` api-mail : ✅ **verte** — run
+  [32157129219](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/32157129219)
+  (`completed / success`, tête `5031fa2`). Verte à ~3,5 min du merge, au-delà des
+  2 min de la règle 5 : attendue jusqu'à conclusion plutôt que déclarée
+  indéterminée.
+- Branche staging `forge/staging-task-260-264-20260814` **conservée** : task-263
+  et 264 du même run sont encore en `done-*`.
+- **Ce qui reste ouvert, par conception de la US** : aucune réduction de coût
+  n'est livrée — l'US livre l'instrumentation qui rend la décomposition
+  cache-hit / cache-miss mesurable. Le **seuil de reprise est déjà atteint**
+  (7 allers-retours IMAP ≥ 2, constaté au contrôle staging), donc la US « cache
+  de dossier » (durée, ou STATUS au lieu de SEARCH, avec fraîcheur énoncée comme
+  décision produit) est instruisible dès la prochaine campagne.
