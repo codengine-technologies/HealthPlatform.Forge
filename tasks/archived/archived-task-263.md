@@ -181,3 +181,41 @@ APPROVED — 0 blocage. Jugement pur / sonde séparés, contrat task-174 re-prou
 sous décalage, refus éprouvé par test (message vérifié) ET en live (contre-
 épreuve banc local : refus sans décalage, 3/3 travail réel avec UID_BASE=11).
 selftest 88 JS + 287 Python, zéro SKIP. Sonar : skip propre (aucun C#).
+
+## Merged
+
+**Date** : 2026-08-19 06:28 UTC — `/merge task-263 --i-tested` (HAG, règle 10 :
+l'humain a testé et attesté avant merge).
+
+| Repo | PR | Commit squash sur `develop` |
+|---|---|---|
+| `api-mail` | [#193](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/193) | `2589ada` |
+| `dtos-mss` | aucune PR — branche auto-incluse sans commit | — |
+
+- Six garde-fous passés avant merge : `--i-tested` présent, label
+  `awaiting-human-merge`, `reviewDecision` vide (aucun `CHANGES_REQUESTED`),
+  CI PR verte (`build` 1m47s, `publish` skipped, run
+  [31849827996](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/31849827996)),
+  `mergeable = MERGEABLE / CLEAN`, arbres propres sur `api-mail` et `dtos-mss`
+  (tous deux déjà sur `develop`).
+- Contenu entré sur `develop` : 12 fichiers, +511/−69 — le cœur pur
+  `uid-bands-core.js` et son test, le refus `uid-guard.js` + `uid-guard.test.mjs`,
+  la sonde `uid-probe.js`, et le branchement dans `bootstrap.js` / `journey.js`.
+- Refs **distantes** `feat/task-263-uid-base-refus` supprimées sur `api-mail` et
+  `dtos-mss` (jamais `--delete-branch`). La branche `dtos-mss` pointait sur
+  `3a54260`, tête de son `develop` — zéro commit, conforme au « aucune
+  modification attendue » du task file. Aucune branche locale n'existait sur
+  les deux repos — rien à conserver.
+- `develop` synchronisé sur `api-mail` (fast-forward) ; `dtos-mss` déjà à jour.
+- CI `develop` api-mail : ✅ **verte** — run
+  [32223553314](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/32223553314)
+  (`completed / success`, tête `2589ada`), conclusion atteinte dans les 2 min de
+  la règle 5.
+- Branche staging `forge/staging-task-260-264-20260814` **conservée** : task-264
+  du même run est encore en `done-*`. Présente sur `api-mail` uniquement (aucun
+  autre repo pushable n'en porte).
+- **Ce que ce merge change pour le banc** : les verdicts verts sans travail
+  mesuré ne sont plus possibles en silence — une bande d'UID absente arrête le
+  tir en nommant la boîte, la cause et le geste (`UID_BASE=N`, ou
+  `maildir-purge-job.yaml`). Le décalage seul aurait laissé un `UID_BASE` mal
+  réglé reproduire le défaut ; c'est le refus qui ferme la porte.
