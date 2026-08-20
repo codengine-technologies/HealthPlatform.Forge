@@ -413,3 +413,31 @@ Suggestions non bloquantes : `UntrustedPrompt.Invoke` reconstruit la
 du tagging passe de `Error` à `Warning`, cohérent avec le best-effort assumé et
 la sentinelle d'erreurs journalisées (task-235), le compteur prenant le rôle de
 signal d'alerte.
+
+## Merged (2026-08-20)
+
+**Date** : 2026-08-20 — `/merge 265 --i-tested` (HAG, règle 10 : l'humain a
+testé et attesté avant merge).
+
+| Repo | PR | Commit squash sur `develop` |
+|---|---|---|
+| `api-mail` | [#195](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/195) | `ecf1a8f` |
+| `dtos-mss` | aucune PR — branche auto-incluse sans commit | — |
+
+**Gates** : `--i-tested` présent ; label `awaiting-human-merge` (jamais
+`awaiting-us-completion`) ; aucune review `CHANGES_REQUESTED` ;
+`build` pass (1m47s) ; `MERGEABLE` / `CLEAN` ; arbres de travail propres.
+
+**Nettoyage** : refs distantes `fix/task-265-contenu-hors-gabarit` supprimées
+sur `api-mail` **et** `dtos-mss` (branche vide) ; **branche locale conservée**
+sur `api-mail` (règle : jamais `gh pr merge --delete-branch`).
+
+**CI `develop`** : ✅ verte —
+[run 32388893814](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/32388893814).
+
+**Staging** : aucune — task menée hors run `/forge`, donc pas de branche
+`forge/staging-*` à supprimer (balayage des 6 repos pushables : aucun résultat).
+
+**Reste dû** : le Manual Test Plan portait sur l'UID 4891 réel (front legacy +
+Seq). L'attestation `--i-tested` couvre ce point ; aucune vérification
+automatisée ne le remplace.
