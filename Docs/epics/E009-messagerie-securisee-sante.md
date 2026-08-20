@@ -1019,6 +1019,38 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
+- **v1.60 — Le résumé d'un message ne peut plus échouer à cause de ce que le
+  message contient** (task-265) : le 17 août, un praticien a demandé le résumé
+  d'un message reçu et a obtenu **une erreur technique** à la place. La cause
+  tenait au contenu du message lui-même : le logiciel qui l'avait émis y avait
+  laissé un **champ de fusion non remplacé** — le genre de `{{Nom du médecin}}`
+  qu'un modèle de courrier oublie parfois de substituer. Notre assistant
+  d'analyse lisait cette marque comme **une instruction à exécuter**, pas comme
+  du texte à lire, et s'arrêtait net.
+
+  **Deux conséquences, dont une invisible.** Côté résumé, le praticien voyait
+  l'erreur. Côté classement, le **même** message échouait au calcul de sa
+  priorité et repartait **sans étiquette**, sans que rien ne le signale : un
+  compte rendu potentiellement urgent pouvait ainsi perdre sa marque d'urgence en
+  silence.
+
+  **Ce qui change.** Le corps d'un message est désormais traité pour ce qu'il
+  est — **une donnée à analyser, jamais des instructions à exécuter**. Quel que
+  soit son contenu, un message reçu ne peut plus faire échouer son propre résumé
+  ni son propre classement. Le texte parvient à l'analyse **exactement tel qu'il
+  a été écrit** : c'est important en clinique, car une valeur comme « K+ &lt; 4 »
+  doit être lue avec son comparateur, pas transformée en chemin.
+
+  **Au-delà de l'incident.** Le défaut ouvrait la porte à un usage détourné :
+  un expéditeur pouvait, par le simple contenu d'un mail, atteindre le moteur
+  interne de l'assistant. Sans effet aujourd'hui, cela devenait exploitable dès
+  que l'assistant gagnerait de nouvelles capacités. La porte est fermée, et un
+  contrôle automatique interdit désormais qu'elle se rouvre.
+
+  **Enfin, un échec de classement se voit.** Il est maintenant compté et
+  journalisé — sans jamais recopier le contenu du message — pour qu'un message
+  laissé sans étiquette soit constatable, et non découvert par hasard.
+
 - **v1.59 — Les contrôles automatiques de la messagerie cessent de dépendre d'une
   boîte mail personnelle** (task-197) : aucune fonctionnalité nouvelle pour le
   praticien — cette version répare l'outil qui **protège** toutes les autres.

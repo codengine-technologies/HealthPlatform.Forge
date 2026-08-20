@@ -205,3 +205,211 @@ validation.
   plutôt qu'un résumé vide, l'affichage côté `client-angular` /
   `client-blazor` / `client-mobile` devra suivre — **à traiter en US séparée**,
   après arbitrage du comportement retenu.
+
+## Branches
+
+- `api-mail` (pushed) : fix/task-265-contenu-hors-gabarit — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-265-contenu-hors-gabarit
+- `dtos-mss` (pushed, auto-inclus) : fix/task-265-contenu-hors-gabarit — aucune modification attendue (aucun contrat ne bouge, cf. « Arbitrages pris »)
+
+Préfixe `fix/` : correctif de robustesse sur un défaut déclenché par la donnée reçue.
+
+## Develop log (2026-08-20)
+
+**Le remède est celui prescrit** (contenu en `KernelArguments`), mais son
+réglage a été **établi empiriquement sur SK 1.77**, pas supposé — trois faits
+mesurés par sonde jetable avant d'écrire une ligne de correctif :
+
+1. **La valeur d'une variable n'est jamais re-parsée.** `{{SenderTitle}}` y
+   survit en texte, dans les deux modes. C'est ce qui ferme le défaut.
+2. **Le mode par défaut ENCODE en HTML.** `K+ < 4 & > 2` arrive au modèle en
+   `K+ &lt; 4 &amp; &gt; 2`. Sur des bornes de référence cliniques, c'est
+   exactement la dénaturation que la US refuse (« le modèle ne verra plus le
+   texte réel ») → `AllowDangerouslySetContent` sur les variables, pour une
+   insertion **verbatim**.
+3. **Le drapeau ne rouvre pas d'injection de rôle dans notre forme.** Une balise
+   `<message role="system">` venue du contenu n'est interprétée **que si le
+   gabarit lui-même est du XML de chat** : avec un gabarit de chat elle crée un
+   vrai message système, avec un gabarit en **texte brut** (le nôtre) elle reste
+   inerte. `UntrustedPrompt.Invoke` **refuse** un gabarit de chat pour que
+   l'invariant ne puisse pas être perdu par une évolution ultérieure.
+
+Livré (`18c43ee`) : `UntrustedPrompt` (point de passage unique) ;
+`AiPromptHelper.GetPrompt` → `GetPromptTemplate` (marque de variable assemblée
+par **concaténation** — le piège d'écriture signalé par la US était réel) ;
+les 4 sites basculés (`EmailSummaryService`, `EmailTaggingService`,
+`AiConversationService` ×2) ; compteur `mssante_tagging_failures_total`
+(cause en littéral, zéro donnée de santé) + log Warning attribuable.
+
+**Point DOD affiné en cours de route** : sur la cause `prompt_template`,
+l'exception n'est **pas** journalisée — le message d'un `KeyNotFoundException`
+de rendu **cite le fragment fautif** (« function name - 'SenderTitle' »), donc
+un extrait du corps du mail. Journaliser `ex` aurait fait sortir du contenu de
+message par la porte de derrière, contre le DOD « aucune donnée de santé en
+clair dans les logs ». Test dédié, mutation vérifiée.
+
+**Aucun `catch` élargi, aucun `StatusCode(500, …)` ajouté** : le correctif
+supprime la cause, il ne rattrape pas le symptôme. La gestion d'erreur reste au
+`GlobalExceptionHandler` (règle 12).
+
+### Tests — chacun mutation-vérifié
+
+| Garde-fou | Mutation appliquée | Verdict |
+|---|---|---|
+| 4 syntaxes SK sur le résumé | concaténation restaurée | **rouge**, avec l'exception de production **au mot près** : `Plugin name - '', function name - 'SenderTitle'` |
+| Corps + expéditeur sur le tagging | idem | **rouge** — et le modèle n'était **jamais atteint** (`Calls` vide), ce que le `catch` masquait |
+| Endpoint `GET …/emails/summary/{uid}` | idem | **rouge** sur 2 cas /4 ; les 2 autres (`{{$patient}}`, `{{ 'test' }}`) ne plantent pas mais **altèrent silencieusement le contenu** — rattrapés au niveau unitaire par l'assertion « verbatim » |
+| Balayage anti-`InvokePromptAsync` | appel réintroduit | **rouge**, fichier nommé |
+| Non-journalisation de l'exception | `ex` repassé au logger | **rouge** |
+
+Le test d'endpoint rejoue la chaîne réelle de l'incident
+(`MailController` → `EmailSummaryService` → `Kernel`) avec le **vrai** service
+et un **vrai** kernel ; seules IMAP et le fournisseur de complétion sont
+doublés — donc il tourne aussi en CI, sans infrastructure.
+
+### État des suites (exécution **en place**, comme la CI)
+
+| Projet | Résultat |
+|---|---|
+| `mss.mail.api.tests` | **665 / 665** ✅ |
+| `mss.mail.application.tests` | **2 160 / 2 160** ✅ |
+| `mss.mail.domain.tests` | **136 / 136** ✅ |
+| `mss.mail.infrastructure.tests` | 463 / 464 — **flaky pré-existant** (voir ci-dessous) |
+| `mss.mail.integration.tests` | 91 échecs — **identique à la baseline develop** (91/285/42/418), dépendances IMAP/Postgres absentes |
+
+**Deux pièges de mesure rencontrés, à ne pas reproduire :**
+
+- **`--artifacts-path` fait échouer 6 tests d'architecture** (`TrackedSourceScan.RepoRoot()`
+  renvoie `null`) : ils remontent depuis le répertoire de sortie pour trouver la
+  racine du dépôt, et le drapeau la met hors du dépôt. Ce ne sont **pas** des
+  régressions. Le garde-fou de cette task s'ancre volontairement sur
+  `[CallerFilePath]` pour être immunisé.
+- **`MailReadObjectCountTests.GetMailsByUidsOnAnEmptyPagePublishesAMeasuredZeroAsync`
+  est flaky** : vert en isolation, alterne en suite complète. Mesuré **sur
+  develop aussi** (2 verts / 2 rouges sur 4 exécutions) — pré-existant, sans
+  rapport avec cette task. À ajouter à la liste des rouges connus.
+
+**Rouge pré-existant corrigé au passage** :
+`AiPromptHelperTests.GetPromptShouldContainDocumentIntroduction` cherchait
+« Voici le document à analyser », chaîne **absente de toutes les ressources** —
+le test était rouge sur develop (vérifié par `git stash`). Il assertait une
+introduction qui n'existe pas ; il asserte désormais celle qui existe.
+
+**Reste à la main de l'humain (Manual Test Plan)** : la vérification sur l'UID
+4891 réel via le front et Seq. Le banc automatisé ne peut pas la produire — elle
+porte sur une boîte MSSanté de formation.
+
+## Simplify log (2026-08-20)
+
+Passe qualité sur `api-mail` (seul repo touché) — `d145567`. Cinq axes,
+aucun changement de comportement :
+
+- **Altitude** — la grille de priorités du tagging est une **constante de
+  code** : elle sort du canal `KernelArguments`, réservé aux **données non
+  maîtrisées**, et rejoint le gabarit par concaténation de consts (résolue à
+  la compilation). Faire transiter du code par le canal des données brouillait
+  l'invariant même que le garde-fou protège.
+- **Efficacité** — `EmailSummaryService` calculait la longueur du prompt deux
+  fois dans le même appel de log.
+- **Simplification** — assertion dupliquée retirée du test d'injection ;
+  paramètre `out` supprimé du test d'endpoint (il n'alimentait qu'un
+  `Assert.NotNull` sur un objet tout juste construit) ; double de capture passé
+  en constructeur primaire, comme le reste du projet.
+
+Re-validation : build 0 erreur ; api **665/665**, application **2160/2160**,
+domain **136/136** ; infrastructure 462/464 = le flaky pré-existant caractérisé
+au Develop log. `dtos-mss` non touché (et hors périmètre — porteur de contrat).
+
+## Sonar log (2026-08-20)
+
+Analyse complète exécutée sur la branche (`dotnet-sonarscanner`, projet
+`healthplatform`, conteneurs redémarrés — ils étaient arrêtés).
+
+### KPIs qualité — baseline → final
+
+| Condition | Baseline | Final | Seuil | Verdict |
+|---|---|---|---|---|
+| `new_coverage` | 88,0 % | **88,3 %** | ≥ 80 | ✅ (en hausse) |
+| `new_duplicated_lines_density` | 0,061 % | **0,058 %** | ≤ 3 | ✅ |
+| `new_security_hotspots_reviewed` | 100 % | **100 %** | 100 | ✅ |
+| `new_violations` | 59 | **68** | 0 | ❌ |
+| **Quality Gate** | **ERROR** | **ERROR** | — | inchangé |
+
+### Le point qui compte : **task-265 contribue 0 violation**
+
+Deux issues avaient été introduites par la task, elles ont été corrigées
+(`8eab7a5`) :
+
+- `S103` — la ligne de log du chemin `prompt_template` faisait 166 caractères ;
+- `SYSLIB1045` — le balayage anti-gabarit-de-chat passe désormais par
+  `[GeneratedRegex]` au lieu d'un `Regex.IsMatch` interprété à chaque fichier.
+  **Mutation revérifiée après ce changement de mécanisme** : un gabarit de chat
+  introduit dans `EmailSummaryService` fait toujours échouer le garde-fou.
+
+Après correction, la requête d'attribution par fichier renvoie **0 issue** sur
+les 11 fichiers de la task, sur les 68 restantes.
+
+### Pourquoi la QG reste ERROR — et pourquoi ce n'est pas une dégradation
+
+Les 68 violations viennent **toutes de tasks déjà mergées** entrées dans la
+fenêtre de new code : `report.py` (22), `journey-model.js` (14), `journey.js`
+(7) — le harnais de banc des tasks 263/264 — plus quelques fichiers backend
+antérieurs. C'est le phénomène déjà connu et documenté : *la new-code period
+inclut des tasks déjà mergées*, donc la QG peut être rouge sans dette
+introduite. La hausse 59 → 68 correspond à l'analyse de ces fichiers, pas à
+cette task.
+
+DOD « Quality Gate non dégradée sur le new code » : **tenu au sens strict** —
+contribution nulle de task-265, couverture en hausse.
+
+### Suites en Release (configuration du scan)
+
+domain **136/136**, api **665/665**, integration **402/418** (16 skipped,
+**0 échec**), application 2159/2160 et infrastructure 463/464 = les deux flaky
+pré-existants connus (`MailExportServiceTests.BuildPdfWithoutAttachmentsOmitsAttachmentSection`,
+`MailReadObjectCountTests.GetMailsByUidsOnAnEmptyPagePublishesAMeasuredZeroAsync`).
+
+## Lint Angular log (2026-08-20)
+
+Skip propre — `client-angular` n'est pas dans `**Repos**` (task `api-mail`
+seule, `**Single frontend**: true`) et aucun fichier Angular n'a été touché.
+Aucune commande lancée dans `Client/Angular/front/`, aucune opération git
+(mode code-only).
+
+## Lint mobile log (2026-08-20)
+
+Skip propre — `client-mobile` n'est pas dans `**Repos**` et aucun fichier de
+`Client/Mobile/` n'a été touché. Aucune commande, aucun commit, aucun push.
+
+## Visual verify log (2026-08-20)
+
+Skip propre — aucun écran `client-mobile` touché (task backend `api-mail`
+seule, aucun `## Stitch design log`). Aucun serveur lancé, aucune capture.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/195 — label `awaiting-human-merge`
+- `dtos-mss` : aucune modification, pas de PR (branche `fix/task-265-contenu-hors-gabarit` créée à vide par `/start`, auto-inclusion)
+- Staging : task isolée hors run `/forge` — pas de branche staging pour ce cycle.
+
+## Code Review Summary
+
+**APPROVED** — 0 blocage.
+
+Contenu non maîtrisé sorti du gabarit sur les **4** sites, derrière un point de
+passage unique (`UntrustedPrompt.Invoke`). Le réglage `AllowDangerouslySetContent`
+est **justifié par mesure** (l'encodage HTML par défaut dénaturait les bornes de
+référence cliniques) et son unique contre-indication — un gabarit de chat — est
+verrouillée **à l'exécution** (refus dans `Invoke`) **et** par un test. Le
+best-effort du tagging est conservé mais instrumenté ; ni le compteur ni le log
+ne portent de donnée de santé, et l'exception qui citerait un fragment de corps
+n'est pas journalisée. Aucun `catch` élargi, aucune 500 ad hoc : la gestion
+d'erreur reste au `GlobalExceptionHandler` (règle 12).
+
+Chaque garde-fou a été **mutation-vérifié** ; la mutation du chemin résumé
+reproduit l'exception de production au mot près.
+
+Suggestions non bloquantes : `UntrustedPrompt.Invoke` reconstruit la
+`KernelFunction` à chaque appel (négligeable devant l'aller-retour LLM) ; le log
+du tagging passe de `Error` à `Warning`, cohérent avec le best-effort assumé et
+la sentinelle d'erreurs journalisées (task-235), le compteur prenant le rôle de
+signal d'alerte.
