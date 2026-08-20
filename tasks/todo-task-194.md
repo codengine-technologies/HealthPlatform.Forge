@@ -1,7 +1,9 @@
 # todo-task-194.md — Chaque page de dossier balaye toute la table des mails ; historique patient non paginé
 
 **Repos**: api-mail
-**Dependencies**: —
+**Dependencies**: — (aucune dépendance de livraison). **task-267** (corpus de
+banc porteur de fils) est un **préalable de mesure**, pas de code : sans elle le
+gain reste réel mais non chiffrable — voir le point 4.
 **Epic**: E011
 **Single frontend**: true
 
@@ -65,6 +67,22 @@ client peut expirer — le dossier ne s'ouvre jamais.
 4. **Mesurer avant / après** : le banc de charge des tasks 173/174 existe
    précisément pour cela. Chiffrer le gain sur une boîte représentative plutôt que
    d'affirmer une amélioration.
+
+   > ⚠️ **Constaté le 2026-08-20 — le banc n'exerce pas ce que cette task
+   > optimise.** Le corpus semé ne porte **ni `In-Reply-To` ni `References`**
+   > (`tests/mss.mail.loadtest.seed/Program.cs:312-334`). Sur
+   > `GetThreadCountsAsync`, la première requête (scan des `MessageId`) est bien
+   > exercée, mais la seconde ramène **0 ligne** et la boucle
+   > `racines × lignes` — les « 2,5 millions de recherches de sous-chaîne »
+   > chiffrées plus haut, c'est-à-dire **le coût dominant** — tourne **à vide**.
+   > Une campagne sur le corpus actuel conclurait donc à un gain modeste par
+   > défaut d'exercice, pas par faiblesse du correctif.
+   >
+   > **task-267** sème des fils dans le corpus. Deux options, à trancher au
+   > moment de la livraison : attendre task-267 pour produire une mesure
+   > opposable, ou mesurer sans elle **en énonçant explicitement** que le
+   > comptage n'est pas exercé. Ce qui n'est pas acceptable, c'est de publier un
+   > chiffre sans dire lequel des deux cas s'applique.
 5. **Ne pas régresser fonctionnellement** : les compteurs de fils et le contenu du
    dossier patient doivent rester **identiques** — seul le coût change. C'est la
    condition pour que ce soit une task de performance et non un changement de
@@ -96,6 +114,9 @@ client peut expirer — le dossier ne s'ouvre jamais.
 - [ ] **Mesures chiffrées avant / après** consignées dans la task, obtenues sur le
       banc de charge (tasks 173/174) avec une boîte représentative : latence p50/p95
       du listage de dossier, et temps d'ouverture d'un dossier patient fourni
+- [ ] Le rapport de mesure précise si le corpus portait des fils (cf. task-267).
+      À défaut, il **énonce** que le comptage n'a pas été exercé et que le gain
+      publié ne couvre que le scan
 - [ ] Aucune donnée de santé en clair dans les logs
 
 ## Manual Test Plan

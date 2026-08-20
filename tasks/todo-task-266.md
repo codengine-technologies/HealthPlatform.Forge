@@ -8,6 +8,8 @@ supprime le calcul **quand personne ne le demande**. Les deux sont
 indépendantes et composables — ni l'une ni l'autre n'attend la seconde. Si
 task-194 est livrée d'abord, le gain de celle-ci reste entier : ne pas faire
 un travail borné coûte toujours moins que le faire.
+**task-267** (`todo`, corpus de banc porteur de fils) **améliorerait** la mesure
+sans la conditionner — voir « Ce que la mesure peut et ne peut pas montrer ».
 **Priorité**: **3** — aucun défaut fonctionnel, aucun risque patient. C'est du
 travail serveur gaspillé, sur le geste le plus fréquent de la messagerie.
 
@@ -103,12 +105,39 @@ théorique. C'est la raison d'être du périmètre à trois repos.
    petite » — **zéro requête**.
 3. **Angular envoie le paramètre** depuis son `mailViewMode()` déjà existant.
 4. **Mobile envoie le paramètre** depuis son `isConversation` déjà existant.
-5. **Mesure avant/après** sur le banc des tasks 173/174, à protocole identique,
+5. **Le harnais k6 doit pouvoir envoyer le paramètre.** Vérifié le 2026-08-20 :
+   `getEmails` (`tests/loadtest-k6/lib/api.js`) construit
+   `GET /mail/folders/{f}/emails/{uid1,uid2,…}` **sans aucune chaîne de
+   requête**, et c'est ce que l'étape `read_list` de `journey.js:693` et le
+   scénario `read` de `mixed.js:223` appellent. Sans modification du harnais,
+   l'appel resterait muet, le défaut compatible s'appliquerait, et **la mesure
+   « après » serait identique à la mesure « avant »** — le DOD de cette US
+   serait invérifiable. Le harnais doit donc exposer les **deux jambes**.
+6. **Mesure avant/après** sur le banc des tasks 173/174, à protocole identique,
    en mode `List` **et** en mode `Conversation` — le second doit être **inchangé**.
-6. **Aucun changement d'affichage nulle part.** En mode `Conversation`, les
+7. **Aucun changement d'affichage nulle part.** En mode `Conversation`, les
    compteurs et le repliement sont identiques. En mode `List`, l'écran est déjà
    identique aujourd'hui puisque les champs y sont ignorés — c'est précisément
    ce qui rend cette US sûre, et il faut le **prouver**, pas l'affirmer.
+
+### Ce que la mesure peut et ne peut pas montrer
+
+**Le corpus du banc ne contient aucun fil de discussion.** `BuildMime`
+(`tests/mss.mail.loadtest.seed/Program.cs:312-334`) ne pose ni `In-Reply-To` ni
+`References`. Sur `GetThreadCountsAsync`, cela signifie que la première requête
+(scan complet des `MessageId`) est bien exercée, mais que la seconde ramène
+**0 ligne** et que la boucle de comptage tourne **à vide**.
+
+**Cette US reste mesurable malgré cela**, et c'est ce qui la distingue de
+task-194 : elle fait passer le listage de *deux requêtes, dont un scan complet
+de table* à **zéro requête**. Le gain mesuré est donc réel et observable — il
+est simplement **minoré**, puisque la part de coût qui manque au banc
+(comptage) est justement celle qu'on supprime aussi. **L'erreur est du côté
+sûr : on sous-promet.**
+
+Le rapport de mesure **doit le dire** en toutes lettres, sans quoi le chiffre
+sera lu comme un plafond alors qu'il est un plancher. **task-267** corrige le
+corpus ; si elle est livrée avant, refaire la mesure et publier les deux.
 
 ### Hors scope, explicitement
 
@@ -116,6 +145,9 @@ théorique. C'est la raison d'être du périmètre à trois repos.
   fil ici : ce serait faire deux fois le même travail, mal.
 - **Câbler un mode de vue dans `client-blazor`** → US séparée si le besoin est
   confirmé. Blazor reste inchangé.
+- **Semer des fils dans le corpus du banc** → **task-267**. Changer à la fois la
+  chose mesurée et l'instrument de mesure dans le même run rendrait la mesure
+  inopposable — c'est le travers que task-264 a dû traiter pour la chauffe.
 - **Le réglage `MailViewMode` côté serveur** : il reste stocké et restitué tel
   quel, non consulté. Cette US ne lui donne pas de rôle nouveau.
 - L'identité des mails → task-179.
@@ -141,10 +173,15 @@ théorique. C'est la raison d'être du périmètre à trois repos.
       avec `In-Reply-To` et `References` variés
 - [ ] **`client-blazor` non modifié** — vérifiable : `git diff` vide sur
       `Client/Blazor`
+- [ ] Le harnais k6 sait émettre les **deux** formes d'appel (avec et sans le
+      paramètre) — sans cela la mesure « après » serait identique à « avant »
 - [ ] **Mesures chiffrées avant/après** consignées dans la task, obtenues sur le
       banc (tasks 173/174) : latence p50/p95 du listage de dossier en mode
       `List` **et** en mode `Conversation`, plus le nombre de requêtes base par
       page dans chaque mode
+- [ ] Le rapport de mesure **énonce** que le corpus du banc ne porte aucun fil,
+      donc que le gain publié est un **plancher** et non un plafond
+      (cf. task-267)
 - [ ] Le mode `Conversation` ne montre **aucune** dégradation mesurable
 - [ ] Aucune donnée de santé en clair dans les logs
 
