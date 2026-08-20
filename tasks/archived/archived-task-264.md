@@ -184,3 +184,35 @@ refus/avertissement au contrat de checkBudgets, tag `chauffe` hors de tout
 verdict, compat tirs archivés préservée. Contre-épreuve A/B : 28 % de fenêtre
 alloués, verdicts non améliorés par construction. selftest zéro SKIP.
 Sonar : skip propre (aucun C#).
+
+## Merged (2026-08-20)
+
+**Resynchronisation préalable** — `/merge` a d'abord refusé (gate 5 : PR #194
+`CONFLICTING`). C'est le conflit annoncé par la section `## PRs` : task-263
+(#193, mergée en `2589ada`) et task-264 touchent toutes deux le calendrier et
+le `setup()` de `journey.js`. Résolu par `git merge origin/develop` (règle 4 —
+jamais de rebase), commit `89b8428`, trois hunks additifs et orthogonaux, les
+deux côtés conservés :
+
+- `journey.js` / `journeyReserves` : l'argument `CFG.uidBase` (task-263) **et**
+  le callback d'allocation `warmupWindowSeconds` passé à `buildStagePlan`
+  (task-264). `buildStagePlan` descend sous `RESERVES` — il en dépend désormais.
+- `journey.js` / `setup()` : les **deux** refus, contrôle de fenêtre de chauffe
+  (modèle pur) d'abord, `assertUidBandsExist` (sonde IMAP) ensuite — on refuse
+  sur le modèle avant de solliciter les boîtes.
+- `journey-model.test.mjs` : les deux blocs de tests, conservés tels quels.
+
+Revalidation après résolution : `selftest.sh` vert — **94 tests JS + 297 tests
+Python, 0 échec, 0 SKIP** (DOD « tests JS compris ») ; `k6 archive
+scenarios/journey.js` sort en 0, le contexte d'init complet s'évalue sous k6.
+CI de la PR sur le nouveau head : `build` pass (1m38s).
+
+**Merges** (squash, `gh pr merge --squash` — branches locales conservées) :
+
+- `api-mail` : `501bd9c` — PR [#194](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/194) fermée ; ref distante `feat/task-264-chauffe-fenetre` supprimée
+- `dtos-mss` : aucune PR (branche vide, 0 commit) — ref distante supprimée
+
+**Staging** : `forge/staging-task-260-264-20260814` supprimée (remote + local,
+api-mail) — le run 260-264 est entièrement mergé.
+
+`client-angular`, `client-mobile` : non concernés (task `api-mail` seule).
