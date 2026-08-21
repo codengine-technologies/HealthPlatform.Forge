@@ -365,3 +365,47 @@ la rebrancher.
 | `CrossTenantOwnershipTests` verte | ✅ 21/21 |
 | Tests constatés RED avant le retrait | ✅ 3/3, `s1#write` au lieu de `s1` |
 | **Dû au banc** (tir 500, table sans ligne `write`) | ⏳ **humain** — Manual Test Plan de la PR |
+
+## Merged (2026-08-20)
+
+**Date** : 2026-08-20 — `/merge 216 --i-tested` (HAG, règle 10).
+
+| Repo | PR | Commit squash sur `develop` |
+|---|---|---|
+| `api-mail` | [#196](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/196) | `99c2ff3` |
+| `dtos-mss` | aucune PR — branche auto-incluse sans commit | — |
+
+**Gates** : `--i-tested` présent ; label `awaiting-human-merge` ; aucune review
+`CHANGES_REQUESTED` ; `build` pass (1m40s) ; `MERGEABLE` / `CLEAN` ; arbres de
+travail propres.
+
+**Nettoyage** : refs distantes supprimées sur `api-mail` **et** `dtos-mss` ;
+**branche locale conservée** sur `api-mail`. Aucune branche staging (task menée
+hors run `/forge`).
+
+**CI `develop`** : ✅ verte —
+[run 32511233045](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/32511233045).
+
+### ⚠️ L'US n'est pas close — la confirmation au banc reste due
+
+Le code est sur `develop`, mais le DOD porte une section « **Dû au banc** » qui
+ne bloquait pas la PR et **bloque la clôture** :
+
+- tir 500 praticiens iso-conditions avec task-215 : `send` p95 **sous 10 s**,
+  ratio moyenne/médiane **sous 2** ;
+- table « Voie | Acquisitions /s » : ligne `write` **absente** ;
+- sessions IMAP Dovecot revenues au plancher d'avant task-213 (~2 500 à 500
+  praticiens contre ~5 000 avec la voie) ;
+- ⚠️ lancer `observe.ps1` **avant** le tir — task-215 ne l'a pas fait et le
+  comptage des sessions Dovecot lui a manqué.
+
+Tant que ce tir n'a pas été conduit, le retrait est **justifié par la mesure de
+task-215** mais **non confirmé après coup**. C'est la même exigence que celle
+que cette task reproche à task-213 ; ne pas l'oublier au motif que la PR est
+mergée.
+
+### Suggestion non résolue, reportée
+
+`AppendToDraftsAsync` n'a **aucun appelant en production** (déclaration
+d'interface + implémentation seulement) — surface morte antérieure à cette task.
+À constater avant de la retirer ou de la rebrancher.
