@@ -1019,6 +1019,39 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
+- **v1.61 — Une conversation s'affiche enfin de la même façon partout**
+  (task-268) : la messagerie regroupe les messages d'un même échange en
+  « conversations ». Elle le faisait de **deux façons différentes** selon la
+  manière dont la page était servie — et le praticien ne pouvait pas savoir
+  laquelle il regardait.
+
+  **Ce qu'il voyait.** Un même échange pouvait afficher, comme ligne de
+  conversation, soit le **dernier** message reçu, soit le **premier** de
+  l'échange — donc un objet et une date différents pour la même conversation.
+
+  **Le cas le plus gênant : les conversations que le praticien a lui-même
+  ouvertes.** Quand il écrit le premier message et que le correspondant répond,
+  le premier message vit dans « Messages envoyés ». L'un des deux modes de
+  lecture ne le comptait pas : l'échange n'était **pas** présenté comme une
+  conversation, la réponse s'affichait seule, et le lien avec ce qui avait été
+  demandé était perdu.
+
+  **Et une incohérence visible à l'œil nu** : un échange annoncé « 2 messages »
+  pouvait n'en afficher **qu'un** quand on le dépliait, parce que le comptage et
+  le contenu ne répondaient pas à la même question.
+
+  **Ce qui change.** Une règle unique, désormais la même partout : une
+  conversation regroupe tous les messages de l'échange, **dans tous les dossiers
+  — messages envoyés compris** ; la ligne affichée est le message **le plus
+  récent** ; et la déplier montre l'échange **entier**. Le compteur et le contenu
+  disent la même chose.
+
+  **Ce qui a permis de le voir, et qui reste.** Un contrôle automatique compare
+  désormais les **deux** modes de lecture sur les mêmes données et refuse qu'ils
+  divergent. C'est le livrable qui compte le plus : la divergence corrigée ici
+  s'était installée précisément parce que rien ne la surveillait — l'un des deux
+  comportements n'était couvert par **aucun** contrôle.
+
 - **v1.60 — Le résumé d'un message ne peut plus échouer à cause de ce que le
   message contient** (task-265) : le 17 août, un praticien a demandé le résumé
   d'un message reçu et a obtenu **une erreur technique** à la place. La cause

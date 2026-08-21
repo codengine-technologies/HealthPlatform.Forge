@@ -170,15 +170,22 @@ une :
    dans `Sent`, une réponse en `INBOX`) affiche « 2 messages » sur un chemin et
    **rien** sur l'autre — sans la racine le total tombe à 1, sous le seuil.
 
-   **Décision pour cette task** : le portage **reproduit l'exclusion `Sent`** du
-   chemin IMAP. Les compteurs restent strictement inchangés, le point 5 de
-   « Contenu attendu » est tenu, et task-194 reste une pure US de performance.
-   Le geste naturel — réutiliser tel quel le code de task-247, qui n'exclut pas
-   `Sent` — **changerait les compteurs** et transformerait cette task en
-   changement de comportement non validé.
-
-   **Laquelle des deux sémantiques est la bonne est une question produit
-   ouverte** → **task-268**. Elle n'est pas tranchée ici.
+   > ⚠️ **PÉRIMÉ depuis task-268 (2026-08-20).** Cette task portait l'instruction
+   > « le portage **reproduit l'exclusion `Sent`** du chemin IMAP », valable tant
+   > que la divergence subsistait. **task-268 l'a tranchée** : la sémantique est
+   > désormais **unique** — `Sent` inclus, feuille d'affichage = message le plus
+   > récent, dépliage du fil entier — et elle est verrouillée par un garde-fou
+   > qui exerce les deux chemins et exige l'égalité.
+   >
+   > **Ce que task-194 doit préserver est donc la sémantique unifiée**, pas
+   > l'ancienne exclusion. Le geste devient plus simple : réutiliser la forme
+   > bornée de task-247 est maintenant **le** bon geste, puisque les deux chemins
+   > partagent déjà la même règle. Le garde-fou de task-268 échouera si le
+   > portage la casse — c'est précisément à cela qu'il sert.
+   >
+   > task-268 a par ailleurs révélé que la divergence ne portait pas que sur
+   > `Sent` : **quatre** dimensions divergeaient, dont `IsThreadRoot`. Le tableau
+   > ci-dessus n'en décrivait qu'une.
 
 ### Hors scope
 
