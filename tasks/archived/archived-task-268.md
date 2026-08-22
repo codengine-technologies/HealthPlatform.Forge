@@ -440,3 +440,49 @@ RFC 5322, mais la changer modifierait les compteurs — US séparée si confirm�
 | Test de verrouillage de task-247 toujours vert | ✅ `GetMailsByUidsAsyncCountsAThreadWhoseRootLivesInAnotherFolder` |
 | Liste nommée des cas dont l'affichage change | ✅ 4 cas, dans la task et dans la PR |
 | Aucune donnée de santé dans les logs | ✅ aucun log ajouté |
+
+## Merged (2026-08-22)
+
+**Date** : 2026-08-22 — `/merge 268 --i-tested` (HAG, règle 10).
+
+| Repo | PR | Commit squash sur `develop` |
+|---|---|---|
+| `api-mail` | [#197](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/197) | `d403779` |
+| `dtos-mss` | aucune PR — branche auto-incluse sans commit | — |
+
+**Gates** : `--i-tested` présent ; label `awaiting-human-merge` ; aucune review
+`CHANGES_REQUESTED` ; `build` pass (1m36s) ; `MERGEABLE` / `CLEAN` ; arbres de
+travail propres.
+
+**Nettoyage** : refs distantes supprimées sur `api-mail` **et** `dtos-mss` ;
+branche locale conservée sur `api-mail`. Aucune branche staging (hors run
+`/forge`).
+
+**CI `develop`** : ✅ verte —
+[run 32553835020](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/32553835020).
+
+### Ce que la validation humaine a couvert, et ce qu'elle ne pouvait pas couvrir
+
+Sur demande explicite, la forge a poussé la vérification aussi loin qu'elle le
+pouvait **sans login PSC** : le mode de lecture se déduit de la présence d'un
+token PSC (`UserContextInfo.IsOnlineMode`), lu depuis un simple en-tête
+`X-PSC-Token` que le middleware qualifie lui-même de « not an auth check ». Un
+test de bascule a donc été ajouté (`b9d625e`), fermant le dernier joint entre
+« les deux chemins s'accordent » et « celui qui s'exécute est l'un des deux ».
+
+**Restait irréductiblement humain, et couvert par l'attestation** : le rendu
+dans l'UI Angular. Le client filtre sur `isThreadRoot` — un test vert et un
+écran faux restent compatibles, et c'est précisément ce que l'œil devait
+vérifier (ligne de conversation = message le plus récent ; dépliage = autant de
+messages que le compteur annonce).
+
+**Non fait, et assumé** : l'E2E HTTP complet. Il aurait demandé Dovecot/GreenMail
+(non démarrés), un corpus porteur de fils — que le seeder ne sait pas produire,
+c'est **task-267** — et un harnais `WebApplicationFactory` qui n'existe pas dans
+ce dépôt. L'ordre naturel pour un jour le faire reste **267 avant**.
+
+### Suggestion reportée
+
+La correspondance par **sous-chaîne** sur `References` est conservée à
+l'identique (`LIKE '%id%'`). Plus correcte par jeton au sens RFC 5322, mais la
+changer modifierait les compteurs — US séparée si le besoin est confirmé.
