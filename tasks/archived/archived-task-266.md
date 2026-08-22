@@ -542,3 +542,68 @@ pour mémoire.
 | Le mode `Conversation` ne montre aucune dégradation | ⏳ **humain**, même campagne |
 | Le rapport énonce que le gain est un **plancher** (corpus sans fils) | ⏳ à faire au moment de la campagne |
 | Aucune donnée de santé en clair dans les logs | ✅ aucun log ajouté |
+
+## Merged (2026-08-22)
+
+**Date** : 2026-08-22 — `/merge 266 --i-tested` (HAG, règle 10).
+
+| Repo | PR | Commit squash sur `develop` |
+|---|---|---|
+| `api-mail` | [#198](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/198) | `5c53458` |
+| `client-mobile` | [#62](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/62) | `d182ba9` |
+| `dtos-mss` | aucune PR — branche auto-incluse sans commit | — |
+| `client-angular` | code-only — **reste à la main de l'humain** (commit/push TFS) | — |
+
+**CI `develop`** : `api-mail` ✅ verte. `client-mobile` ❌ — **voir ci-dessous**.
+
+### ⚠️ Gate 4 (CI verte) EXPLICITEMENT OUTREPASSÉ sur `client-mobile`
+
+La PR #62 était rouge au moment du merge, et le merge a quand même eu lieu.
+C'est une décision, pas un oubli, et voici sur quoi elle repose.
+
+**Les 11 étapes de build sont vertes** — `Install dependencies`, `Build web
+assets`, `Set up Android SDK`, `Sync Capacitor Android`, `Build debug APK`.
+**Seule `Upload debug APK` échoue** :
+
+```
+Failed to CreateArtifact: Artifact storage quota has been hit.
+Unable to upload any new artifacts. Usage is recalculated every 6-12 hours.
+```
+
+C'est une condition de **facturation du compte GitHub**, pas un défaut de code :
+l'APK est bien produit (« With the provided path, there will be 1 file
+uploaded »), c'est son **dépôt** qui est refusé. Constaté sur **trois** runs —
+deux sur la PR, un sur `develop` après merge — avec la même étape et la même
+cause.
+
+**Ce que cela implique** : la CI de `client-mobile` restera rouge sur toutes les
+branches jusqu'à ce que le quota se recycle (6 à 12 h selon GitHub) ou soit
+relevé. Ce n'est **pas** un signal exploitable pendant cette fenêtre, et il ne
+faut pas le confondre avec une régression. Purger les artefacts anciens du dépôt
+ou augmenter le quota rend le signal utilisable de nouveau.
+
+**Nettoyage** : refs distantes supprimées sur `api-mail`, `client-mobile` et
+`dtos-mss` ; branches locales conservées. Aucune branche staging (hors run
+`/forge`).
+
+### Reste à la main de l'humain
+
+1. **`client-angular`** — 3 fichiers non committés sur `feature/nova-rewriting-mss` :
+   `mss-api.service.ts`, `mss-api.service.spec.ts`, `mail-list.component.ts`.
+   ⚠️ Les deux `environment.ts` du même arbre sont du travail humain antérieur,
+   pas de la forge.
+2. **Le build de production Angular est cassé** sur cette branche
+   (`apps/mss/src/environments/environment.prod.ts` absent alors qu'il existe sur
+   `origin/next`) — antérieur à cette task, contre-épreuve faite, mais il
+   bloquera la PR TFS.
+3. **Les mesures banc** (DOD) restent dues, et seront **minorées** tant que
+   task-267 n'a pas donné au banc un corpus porteur de fils : le gain publié sera
+   un **plancher**. Le rapport devra le dire.
+
+### Dette d'outillage constatée pendant le cycle, non corrigée
+
+Le **filtre de scope MSS de `/lint-angular` est inerte** :
+`nx affected -t lint --projects=tag:scope:mss` passe `--projects` à l'exécuteur
+ESLint, où il ne signifie rien — 11 projets ont été lintés et auto-fixés, dont
+`apps/weda2`. Les 7 fichiers hors charte ont été annulés. Correction à porter
+dans `agents/lint-angular.md` : `nx run-many -t lint -p tag:scope:mss`.
