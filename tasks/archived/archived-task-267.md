@@ -456,3 +456,54 @@ RFC 5322, pas du contenu métier. Rien de nouveau n'est journalisé.
 | `/verify-visual` | ⏭️ skip — aucun écran mobile touché |
 | `/review` | ✅ APPROVED, PR #199 ouverte |
 
+
+## Merged (2026-08-23)
+
+**Date** : 2026-08-23 — `/merge 267 --i-tested` (HAG, règle 10 : l'humain a
+testé et attesté avant merge).
+
+| Repo | PR | Commit squash sur `develop` |
+|---|---|---|
+| `api-mail` | [#199](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/199) | `9cea3f7` |
+| `dtos-mss` | aucune PR — branche auto-incluse sans commit | — |
+
+**Gates** : `--i-tested` présent ; label `awaiting-human-merge` (jamais
+`awaiting-us-completion`) ; aucune review `CHANGES_REQUESTED` ; `build` pass
+(1m36s), `publish` skipping ; `MERGEABLE` / `CLEAN` ; arbres de travail propres
+sur `api-mail` **et** `dtos-mss`.
+
+**Nettoyage** : refs distantes `feat/task-267-corpus-fils-de-discussion`
+supprimées sur `api-mail` **et** `dtos-mss` (branche vide) ; **branche locale
+conservée** sur `api-mail` (règle : jamais `gh pr merge --delete-branch`).
+
+**CI `develop`** : ✅ verte —
+[run 32648818180](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/32648818180)
+(`build` + `publish` succès).
+
+**Staging** : aucune — task menée hors run `/forge`. Balayage des 6 repos
+pushables porteurs d'un `.git` (`api-mail`, `client-blazor`, `client-mobile`,
+`dtos-mss`, `sdk`, `interop-cda`) : aucune ref `forge/staging-*`.
+
+### Ce que l'attestation couvre, et ce qui reste dû
+
+Le corpus **existe** désormais sur `develop` ; il n'est pas **exercé** pour
+autant. Deux critères du DOD restaient explicitement adossés au Manual Test
+Plan, donc à l'attestation humaine :
+
+1. **Le contrôle de budget de corpus** (`assertUidBandsExist`) est un garde
+   d'exécution k6 qui exige un banc vivant. L'argument statique tient — le
+   nombre de messages semés est indépendant de la part de fils — mais il reste
+   un argument, pas un constat.
+2. **Le rendu en mode « Conversation »** du front legacy avec un corpus
+   réellement fileté.
+
+**Reste dû, et c'est la raison d'être de cette task** : refaire les mesures de
+**task-266** — et de **task-194** quand elle sera livrée — avec
+`--thread-share` non nul au semis **et** `CORPUS_THREAD_SHARE` accordé au tir,
+pour remplacer leurs planchers par des chiffres représentatifs. Tant que ce
+n'est pas fait, tout gain publié sur le chemin du comptage de fils se lit comme
+un **plancher**, et le rapport le dit désormais de lui-même.
+
+⚠️ **La comparabilité est rompue dès que la part est non nulle** : un tir à
+corpus fileté ne se compare pas aux campagnes antérieures. Le rapport l'énonce ;
+ne pas l'oublier en relisant deux campagnes côte à côte.
