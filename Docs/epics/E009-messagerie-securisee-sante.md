@@ -2,7 +2,7 @@
 
 > **Statut** : En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.46
+> **Version** : 1.62
 > **Auteur** : Pascal Cabanel
 > **Dernière mise à jour** : 2026-08-06 (task-182)
 > **Audience** : PO, médecin, direction produit, conformité.
@@ -1018,6 +1018,45 @@ Les règles `RG-E009-084` à `RG-E009-089` sont propres à ENS Mon espace santé
 Cette synthèse digère l'historique des versions en langage produit. Le détail ingénierie (numéros de PR, versions NuGet, métriques tests, audits grep) est consigné dans le document frère [`E009-Changelogs.md`](./E009-Changelogs.md).
 
 ### Fonctionnalités métier
+
+- **v1.62 — Des messages reçus pouvaient ne jamais arriver dans la boîte, sans
+  aucune alerte** (task-187) : quand la messagerie récupère un lot de messages
+  auprès du serveur MSSanté, elle ouvre une connexion et la garde le temps du
+  travail. Un ménage automatique fermait les connexions restées **inactives**
+  plus de cinq minutes — mais il ne savait pas distinguer « inactive » de
+  « occupée depuis longtemps ».
+
+  **Ce que le praticien constatait.** Sur une boîte volumineuse, ou avec un
+  serveur MSSanté lent, la récupération d'un lot pouvait dépasser ces cinq
+  minutes. Le ménage fermait alors la connexion **en pleine lecture**. Le lot en
+  cours était perdu — **en silence** : aucune erreur à l'écran, aucune alerte.
+  Les messages concernés ne réapparaissaient qu'à une synchronisation ultérieure,
+  et rien n'indiquait qu'ils avaient manqué entre-temps. Sur des comptes rendus
+  ou des résultats de biologie, c'est un retard de prise en charge que personne
+  ne voit venir.
+
+  **Un second effet, plus rare et plus déroutant.** La même situation pouvait
+  amener **deux actions à piloter la même connexion en même temps**. La
+  messagerie affichait alors une erreur technique inattendue, ou se figeait, sur
+  un geste aussi banal que changer de dossier depuis un second onglet.
+
+  **Et un troisième, invisible mais large.** Si un serveur MSSanté cessait de
+  répondre, le ménage restait bloqué à l'attendre — et **les connexions de tous
+  les autres praticiens n'étaient plus recyclées** pendant ce temps. Le problème
+  d'un opérateur devenait le problème de tout le monde.
+
+  **Ce qui change.** Une connexion en cours d'utilisation n'est **plus jamais**
+  fermée par le ménage, quelle que soit la durée du travail. Les fermetures
+  attendent la fin de ce qui est en cours avant de couper, chacune dans un délai
+  borné et indépendamment des autres : un serveur muet ne pénalise plus que sa
+  propre boîte. Enfin, se déconnecter au milieu d'une synchronisation ne lui fait
+  plus perdre ce qu'elle avait déjà récupéré — elle termine d'enregistrer avant
+  que la session ne soit libérée.
+
+  **Ce qui reste à vérifier à la main.** Les conditions qui déclenchaient ce
+  défaut — une boîte lente, un serveur qui ne répond plus, deux onglets ouverts
+  en même temps — ne se reproduisent pas dans des tests automatiques. Elles
+  demandent un essai sur un environnement réel avant mise en production.
 
 - **v1.61 — Une conversation s'affiche enfin de la même façon partout**
   (task-268) : la messagerie regroupe les messages d'un même échange en
