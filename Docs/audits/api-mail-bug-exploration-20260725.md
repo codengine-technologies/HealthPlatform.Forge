@@ -37,15 +37,15 @@ ce sont des asymétries — et c'est ce qui les rend corrigeables sans débat de
 
 ## 2. Findings convertis en US
 
-| US | Titre | Gravité | Axe | Vérifié par le PO |
-|---|---|---|---|---|
+| US | Titre | Gravité | Axe | Vérifié par le PO | Statut |
+|---|---|---|---|---|---|
 | [task-175](../../tasks/todo-task-175.md) | Fuite inter-praticiens sur le flux SSE (clé = dossier) | critique | HTTP + async + IMAP | oui |
 | [task-176](../../tasks/todo-task-176.md) | Documents sans INS agrégés sur un patient arbitraire | critique | données + métier | oui |
 | [task-177](../../tasks/todo-task-177.md) | Secrets vivants committés (OpenAI, FHIR ANS, mots de passe) | critique | sécurité | oui |
 | [task-178](../../tasks/todo-task-178.md) | Contenu clinique envoyé à OpenAI par défaut | critique | sécurité | oui |
 | [task-179](../../tasks/todo-task-179.md) | Identité mail sans UIDVALIDITY : mauvais contenu servi | critique | IMAP | oui |
-| [task-180](../../tasks/todo-task-180.md) | PJ identifiées par nom : mauvais fichier, perte silencieuse | critique | métier | oui |
-| [task-181](../../tasks/todo-task-181.md) | PJ et IHE_XDM invisibles sans `Content-Disposition` | majeur | métier | non |
+| ~~task-180~~ | PJ identifiées par nom : mauvais fichier, perte silencieuse | critique | métier | oui | **US abandonnée** le 2026-08-23 — non retenue par le PO ; le finding reste valide, le fichier de task est supprimé |
+| ~~task-181~~ | PJ et IHE_XDM invisibles sans `Content-Disposition` | majeur | métier | non | **US abandonnée** le 2026-08-23 — non retenue par le PO ; le finding reste valide, le fichier de task est supprimé |
 | [task-182](../../tasks/todo-task-182.md) | Dossiers exclus par sous-chaîne (« Consentements » ⊃ « sent ») | majeur | métier | oui |
 | [task-183](../../tasks/todo-task-183.md) | `X-MSS-INS: O` pour une INS non qualifiée ; OID perdu | majeur | métier | non |
 | [task-184](../../tasks/todo-task-184.md) | INS dans les URL, données patient dans les logs | majeur | sécurité | oui |
