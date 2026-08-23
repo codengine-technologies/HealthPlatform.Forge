@@ -641,3 +641,74 @@ task-184. Aucun secret, aucune surface HTTP touchée, aucun contrat modifié.
 | `/lint-mobile` | ⏭️ skip — `client-mobile` non touché |
 | `/verify-visual` | ⏭️ skip — aucun écran mobile touché |
 | `/review` | ✅ APPROVED après correction du défaut trouvé (`8623662`), PR #200 ouverte |
+
+## Tentative de vérification par test d'intégration (2026-08-23) — **non livrée**
+
+Sur demande humaine (« es-tu en mesure de tester toi-même avec un test
+d'intégration ? »), deux tests d'intégration ont été écrits, exécutés contre le
+**vrai** Dovecot conteneurisé et une base praticien réelle, puis **retirés**. Le
+code de production n'a pas bougé ; rien de cette tentative n'est dans la PR.
+
+### Ce qui a été construit
+
+Le harnais s'y prêtait : `ImapServicesFixture` monte Dovecot, Postgres et Redis
+en conteneurs, sème une boîte de 45 messages par suite, et
+`IMailRepository.GetEnrichedUidsAsync` donne exactement l'observable « ce message
+a-t-il été analysé ». Deux tests :
+
+1. enrichissement des 45 messages pendant qu'un balayeur antidate l'horloge de la
+   session **pendant une détention** puis balaie sans répit ;
+2. deux lectures concurrentes sur la **même** session (deux scopes, comme deux
+   onglets) sous la même pression.
+
+### Pourquoi ils ne sont pas livrés — deux raisons, la seconde étant rédhibitoire
+
+1. **Ils ne discriminent pas le correctif.** Verts sur le code corrigé (2 tirs) —
+   et verts aussi sur le code **d'avant**, contre-épreuve faite trois fois en
+   rechargeant les sources de `develop` dans l'arbre de travail. Un test qui
+   passe des deux côtés ne prouve rien du correctif ; le présenter comme la
+   « vérification sur pièce » aurait été faux.
+2. **Ils cassaient la suite voisine** : `ImapServiceIntegrationTests` passe de
+   14/14 à 8/14 dès que ma suite est dans le même processus, sur des assertions
+   de sujet (« la collection ne contient aucun élément correspondant »). Les deux
+   suites passent séparément. Cause **non isolée** : ni l'indice d'utilisateur
+   virtuel (testé 17 puis 6, même résultat), ni le nombre de passes de balayage
+   (borné à 20, même résultat). Livrer une suite qui déstabilise une fixture
+   partagée pour une raison incomprise aurait échangé un actif — une suite
+   d'intégration stable à 417/433 — contre un test sans pouvoir de preuve.
+
+### Ce que la tentative a quand même établi
+
+- **Le mode de défaillance est réel sur un vrai serveur.** Lors d'un tir
+  intermédiaire sur le code de `develop`, le scénario a fait lever
+  `MailKit.Net.Imap.ImapProtocolException: The IMAP server has unexpectedly
+  disconnected` — la session détruite sous son détenteur, vue par MailKit. Une
+  observation, pas un test reproductible.
+- **Pourquoi ce n'est pas reproductible ici** : Dovecot est **local**, et chaque
+  fenêtre de verrou de l'enrichissement (une par message depuis task-239) dure
+  quelques millisecondes. Le défaut demande que l'expiration tombe dans cette
+  fenêtre. Le rendre déterministe demanderait de **ralentir le serveur**
+  (Toxiproxy, profil du banc task-173/174), qui n'est pas monté dans cette
+  fixture.
+- **Deux erreurs de harnais, notées parce qu'elles se reproduiront** : (a) deux
+  lectures concurrentes sur le **même** scope partagent le `DbContext` scopé, qui
+  n'est pas thread-safe — « A second operation was started on this context
+  instance », un faux positif sans rapport avec la session IMAP ; (b) antidater
+  l'horloge dès que la session existe frappe celle qu'a créée la lecture des
+  en-têtes, pas celle du lot — le scénario visé n'est alors jamais joué, et le
+  test est vert pour rien. Une garde asserte désormais qu'une détention a bien
+  été observée… mais elle ne suffit pas à rendre le test discriminant.
+
+### Ce qui resterait à faire pour y arriver
+
+Une task d'outillage : un profil de fixture avec **serveur ralenti** (Toxiproxy)
+et un **gestionnaire de sessions isolé par suite** — c'est son partage en
+singleton qui rend le cycle de vie des sessions difficile à éprouver sans
+perturber les voisins. Hors périmètre de task-187, et à arbitrer : le bénéfice
+est un reproducteur de défauts de concurrence IMAP, le coût est une fixture de
+plus.
+
+**Conclusion inchangée** : la preuve discriminante reste **unitaire** (5 tests
+ROUGES sur `develop`, dont celui qui montre qu'une seconde prise du verrou de
+session y était accordée), et les cinq scénarios du Manual Test Plan restent
+couverts par l'attestation humaine.
