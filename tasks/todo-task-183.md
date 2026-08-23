@@ -8,6 +8,21 @@
 > **Origine** : exploration de bugs `api-mail` du 2026-07-25 (axe métier MSSanté).
 > **Sujet d'identito-vigilance — arbitrage humain requis, voir point 4.**
 
+> ### Re-vérification du 2026-08-23 — **toujours pertinente, intégralement**
+>
+> Chaque preuve rejouée sur `develop` après merge des tasks 226 à 267. Les
+> numéros de ligne du bloc « Preuve » ci-dessous datent du 2026-07-25 ; **la
+> colonne « au 2026-08-23 » fait foi**.
+>
+> | Preuve | 2026-07-25 | Au 2026-08-23 | État |
+> |---|---|---|---|
+> | Qualification par non-vacuité seule | `MssanteHeaderService.cs:185-194` | **`:192-198`** (`hasInsIdentifiers` 192-193, `hasIdentityTraits` 194, `return` 198) | inchangé |
+> | OID jamais persisté | « aucune colonne `PatientOid` » | **inchangé** — `PatientOid` n'est écrit qu'en mémoire (`CdaParsingService.cs:219`) et n'existe dans aucune entité | inchangé |
+> | Aucune constante d'OID | — | **confirmé** : les quatre OID (`…1.4.8/.9/.10/.11`) n'apparaissent **nulle part** dans le source d'`api-mail` — la valeur n'est donc jamais examinée, ni pour qualifier ni pour rejeter | inchangé |
+>
+> L'arbitrage humain du point 4 (NIA, OID de test, fusion rétroactive) **reste
+> ouvert** et reste le vrai préalable. Le point 1 demeure livrable seul.
+
 ## Objective
 
 Rétablir la vérité de l'annonce d'identité INS dans les messages MSSanté émis, et

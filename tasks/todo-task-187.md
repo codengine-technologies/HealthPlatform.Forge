@@ -8,6 +8,49 @@
 > **Origine** : exploration de bugs `api-mail` du 2026-07-25 (axes sessions IMAP et
 > concurrence).
 
+> ### Re-vérification du 2026-08-23 — **pertinente, mais une preuve sur six est corrigée**
+>
+> Chaque preuve rejouée sur `develop`. **La preuve 2 est corrigée par task-223 :
+> elle doit sortir du périmètre.** Les autres tiennent, avec des références
+> déplacées et deux atténuations partielles.
+>
+> | Preuve | 2026-07-25 | Au 2026-08-23 | État |
+> |---|---|---|---|
+> | 1. Expiration pendant l'usage | `MailClientSessionManager.cs:275`, `:515` | `GetOrCreateSession` **`:316-325`** (appelé par `LockImapClientAsync` **`:139`**) ; `CleanupExpiredSessions` **`:595`** | **valide** |
+> | 2. Déverrouillage sur la mauvaise session | `:118` | **CORRIGÉE (task-223)** | **à retirer** |
+> | 3. Destruction bloquante | `MailClientSession.cs:218-220` | `Dispose` **`:535-575`** — `_imapLock.Dispose()` **`:559`**, `DisconnectAsync(true).GetAwaiter().GetResult()` **`:570`** | **valide, atténuée** |
+> | 4. Déconnexion pendant un flux | `BackgroundSyncManager.cs:206`, `:398` | `RemoveSession` **`:236`** ; `StopLocallyAsync(…, resetUserContext: true)` **`:249`** et **`:435`** ; `Reset()` **`:454`** | **valide** |
+> | 5. Sémaphores partagés détruits | `:441` | `CleanupLocksForSession` **`:518`** | **valide, atténuée** |
+> | 6. Registre d'arrière-plan | `BackgroundImapConnectionRegistry.cs:143-154` | `Dispose` **`:166-177`** — `entry.UsageLock.Dispose()` sans vérifier le prêt | **valide** |
+>
+> **Preuve 2 — corrigée, et il faut le dire précisément.** `LockImapClientAsync`
+> capture le sémaphore **une seule fois** (`:141-144`, commentaire task-223) et
+> rend un `ImapSessionLockHandle` ; `UnLockImapClient` (**`:236`**) libère **ce**
+> handle, sans nouvelle recherche par clé. Le second jeton sur un sémaphore de
+> capacité 1 n'est donc plus atteignable, et l'exception de libération d'un verrou
+> libre non plus. Le même patron est appliqué au SMTP (`AcquireSmtpSlotAsync`
+> `:181`, task-231). **Ne pas re-livrer ce correctif.**
+>
+> **Preuve 1 — toujours entière, et c'est elle qui porte la US.** `IsExpired`
+> (`MailClientSession.cs:442-453`) reste **purement temporel** : aucune notion
+> d'usage n'existe dans le modèle. Rien ne rafraîchit la voie IMAP pendant qu'elle
+> travaille — contraste net et instructif : `AcquireSmtpSlotAsync` appelle
+> `session.RefreshSmtp()` (**`:185`**) pour exactement cette raison, avec le
+> commentaire qui l'explique. La voie IMAP n'a pas reçu son équivalent. Une session
+> occupée depuis plus de 5 minutes est donc toujours détruite sous son détenteur —
+> ce qui, depuis task-223, ne corrompt plus les verrous mais **casse toujours
+> l'opération en vol** (`_imapLock` détruit, client déconnecté).
+>
+> **Atténuations à ne pas surestimer** :
+> - Preuve 3 : `Dispose` est devenu **idempotent** (task-238, `:542`) et l'appel
+>   bloquant est **gardé** par `IsConnected` (`:569`). Le gel de la boucle de
+>   nettoyage par un serveur muet reste possible — `GetAwaiter().GetResult()` est
+>   toujours là, sur le thread de nettoyage partagé.
+> - Preuve 5 : task-058 a ajouté le garde `HasActiveSessionsForEmail` (`:545`) pour
+>   les verrous partagés entre sessions du même praticien. Le cas d'origine subsiste :
+>   un **travail d'arrière-plan** détenteur d'un verrou ne possède aucune session,
+>   donc le garde ne le voit pas.
+
 ## Objective
 
 Garantir qu'une session IMAP n'est jamais détruite pendant qu'elle est utilisée, et
@@ -111,11 +154,13 @@ thread-safe), ou exception au retour du bloc de verrouillage.
 - [ ] Test unitaire : une session **en cours d'usage** n'est pas recyclée par le
       nettoyage, même au-delà du délai d'expiration (ce test doit échouer sur le
       code actuel — le vérifier explicitement)
-- [ ] Test unitaire : la libération d'un verrou porte sur l'instance acquise ;
-      recréer une session sous la même clé pendant l'opération ne provoque ni
-      double jeton, ni exception au retour
-- [ ] Test unitaire : deux requêtes concurrentes ne peuvent jamais piloter le même
-      client IMAP (le sémaphore de capacité 1 tient sous le scénario de recréation)
+- [x] ~~Test unitaire : la libération d'un verrou porte sur l'instance acquise~~
+      — **livré par task-223** (`ImapSessionLockHandle`). Hors périmètre : ne pas
+      re-livrer, ne pas re-tester (les tests de task-223 couvrent ce point)
+- [ ] Test unitaire **de non-régression** : deux requêtes concurrentes ne peuvent
+      jamais piloter le même client IMAP. Le mécanisme existe depuis task-223 ;
+      ce qui reste à prouver ici, c'est qu'il **survit** au recyclage d'une
+      session occupée (preuve 1) — c'est le scénario que task-223 ne couvre pas
 - [ ] Test unitaire : destruction pendant un keep-alive en vol ⇒ pas de seconde
       commande concurrente, pas d'exception depuis le chemin de destruction
 - [ ] Test unitaire : plus aucun `.GetAwaiter().GetResult()` sur le chemin de

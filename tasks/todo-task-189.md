@@ -8,6 +8,28 @@
 > **Origine** : exploration de bugs `api-mail` du 2026-07-25 (axe surface HTTP).
 > Findings vérifiés sur pièces par le PO.
 
+> ### Re-vérification du 2026-08-23 — **toujours pertinente, et la preuve 4 est plus large qu'annoncé**
+>
+> Chaque preuve rejouée sur `develop`. Les numéros de ligne du bloc « Preuve »
+> datent du 2026-07-25 ; **la colonne « au 2026-08-23 » fait foi**.
+>
+> | Preuve | 2026-07-25 | Au 2026-08-23 | État |
+> |---|---|---|---|
+> | 1. Purge non gardée | `MailMaintenanceController.cs:105-126` | **`:108-119`** — six `TRUNCATE`, dont `"Mails" RESTART IDENTITY CASCADE` (**`:119`**) ; **aucun** `[Authorize]`, aucun contrôle d'environnement, aucune confirmation | inchangé |
+> | 2. Corps invalide en 500 | `Program.cs:57` | **`:65`** (`SuppressModelStateInvalidFilter = true`) ; patron correct toujours **seul** dans `ContactController.cs:35` (`RequireBody`) | inchangé |
+> | 3. Écriture exposée en GET | `SettingsController.cs:41-42` | **`:53-54`** — `[HttpPost]` **et** `[HttpGet("settings")]` sur l'action qui remplace les paramètres en bloc ; la lecture garde sa route `getsettings` (**`:34`**) | inchangé |
+> | 4. Pagination non bornée | `:37,49` | **`:40`/`:52`** (`limit = 100` → `.Take(limit)`) **plus deux sites supplémentaires** : **`:145`** et **`:185`** (`limit = 200`) | **plus large** |
+> | 5. Rejets hors RFC 7807 | `:462-467`, `:525-542`, `:548-562` | **`:507-508`** (`{"error":…}` en `application/json`) ; **`:583`** et **`:603`** (chaînes brutes, **sans** `Content-Type`) | inchangé |
+>
+> **Preuve 4** : quatre sites non bornés au lieu de deux. Le patron correct existe
+> toujours dans le repo (`PatientsController.cs:250`, `Math.Clamp`).
+>
+> **Recoupement à connaître avant de livrer** : la preuve 5 touche exactement les
+> deux mêmes chemins de rejet que **task-184** (preuve 5, anonymisation contournée),
+> et ces chemins loguent désormais aussi `Path=` — donc l'INS. Les deux tasks
+> **doivent** être coordonnées sur `UserContextEnricherMiddleware` : livrer l'une
+> sans l'autre laissera la moitié du défaut, sur les mêmes lignes.
+
 ## Objective
 
 Corriger quatre défauts de la surface HTTP qui rendent l'API destructive,

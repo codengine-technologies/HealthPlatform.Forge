@@ -1,9 +1,10 @@
 # todo-task-194.md — Le chemin IMAP balaye encore toute la table des mails ; historique patient non paginé
 
 **Repos**: api-mail
-**Dependencies**: — (aucune dépendance de livraison). **task-267** (corpus de
-banc porteur de fils) est un **préalable de mesure**, pas de code : sans elle le
-gain reste réel mais non chiffrable — voir le point 4.
+**Dependencies**: — aucune. **task-267** (corpus de banc porteur de fils) était le
+**préalable de mesure** ; elle est **mergée le 2026-08-23** (`9cea3f7`), donc le
+gain est désormais chiffrable — à condition de semer et de tirer avec la part de
+fils accordée (voir le point 4 et la re-vérification ci-dessous).
 **Epic**: E011
 **Single frontend**: true
 
@@ -32,6 +33,32 @@ gain reste réel mais non chiffrable — voir le point 4.
 > Le travail restant est donc : **porter le remède de task-247 sur le chemin
 > IMAP**, en préservant la sémantique de comptage de ce chemin (cf. « La
 > sémantique à préserver »).
+
+> ### Re-vérification du 2026-08-23 — **toujours pertinente ; le préalable de mesure est levé**
+>
+> Preuves rejouées sur `develop`. La révision du 2026-08-20 (ci-dessus) reste
+> exacte. Quatre changements depuis :
+>
+> | Point | Au 2026-08-23 |
+> |---|---|
+> | **`task-267` est mergée** (`9cea3f7`) | Le **préalable de mesure est levé** : le seeder sait produire des fils (`--thread-share`, opt-in) et le rapport publie la part semée. Le gain de cette task devient **chiffrable**. |
+> | `GetThreadCountsAsync` | déplacée en **`MailRepository.cs:4145`** (citée `:4039`). Corps **inchangé sur le fond** : deux chargements **sans aucun filtre** (`:4156-4166`), puis la boucle `rootMessageIds × allMailsWithReferences` avec `Contains` (`:4176-4178`). Le `dynamic` a bien disparu — c'est un type anonyme. |
+> | **`task-268` a changé la sémantique** | Le commentaire `:4150-4154` acte la **suppression de l'exclusion de `Sent`** : les deux chemins comptent désormais **la même chose**. |
+> | Historique patient | `GetMedicalDocumentsByInsAsync` **`:258-312`** — toujours **aucun** `Take`, `Body` + `HtmlBody` chargés en entier. `EnrichBiologyAndAttachmentsAsync` **`:368`** — biologie bien regroupée, mais la requête de pièces jointes reste **dans le `foreach`** (**`:397`** → **`:405`**). `GetMailsByInsAsync` **`:422`** délègue toujours en `int.MaxValue`. |
+>
+> **Ce que task-268 simplifie, et qu'il faut lire comme une bonne nouvelle** : la
+> section « La sémantique à préserver » a été écrite quand les deux chemins
+> comptaient différemment. Ce n'est plus le cas. Porter la forme de task-247 n'a
+> donc plus à préserver d'écart : il n'y en a plus. Le risque de régression que
+> l'humain redoutait (« un fil peut être sur une page plus éloignée ») se réduit à
+> la seule question des citations par sous-chaîne, déjà traitée par
+> `ReferencesAnyOf`.
+>
+> **Ce qui reste à faire côté mesure** (hérité de task-267, à énoncer dans la PR) :
+> semer avec `--thread-share` non nul **et** tirer avec `CORPUS_THREAD_SHARE`
+> accordé, sinon le gain publié reste un **plancher** — la seconde requête de
+> `GetThreadCountsAsync` ramènerait 0 ligne et le coût corrigé serait multiplié
+> par zéro.
 
 ## Objective
 

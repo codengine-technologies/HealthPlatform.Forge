@@ -8,6 +8,38 @@
 > **Origine** : exploration de bugs `api-mail` du 2026-07-25 (axe accès données).
 > Findings vérifiés sur pièces par le PO.
 
+> ### Re-vérification du 2026-08-23 — **pertinente sur deux preuves ; la troisième est corrigée**
+>
+> Chaque preuve rejouée sur `develop`. **La preuve 3 (horodatages mêlés) est
+> corrigée par task-212 : elle doit sortir du périmètre**, ce qui réduit la US
+> d'un tiers et retire la migration d'horodatage de son DOD.
+>
+> | Preuve | 2026-07-25 | Au 2026-08-23 | État |
+> |---|---|---|---|
+> | 1. Ordre d'écriture invalide | `MailRepository.cs:83-90` | **`:125-131`** — `DetectSuppressionRequestAsync` `:125`, `AddPatientMessageDocumentAsync` `:128`, `db.Mails.Add(mail)` `:131` (toujours **après**) | **valide** |
+> | `SaveChanges` intermédiaire | `:325`, `:330` | `AddPatientMessageDocumentAsync` **`:391`** — **trois** `SaveChangesAsync` dans le corps | **valide, pire** |
+> | Estampille sur entités suivies | `:2959-2985` | `DetectSuppressionRequestAsync` **`:3901`** | **valide** |
+> | 2. Dossiers dupliqués sur la même INS | `:267-269`, `:560-577` | lecture **`:401`** → écriture **`:412`** ; et **`:651-652`** → **`:667`** (avec un repli `.Local` qui ne protège pas entre requêtes) | **valide** |
+> | 3. Horodatages locaux et UTC mêlés | `:3089` vs `:347` | **CORRIGÉE (task-212)** | **à retirer** |
+>
+> **Preuve 3 — corrigée, preuve à l'appui.** `DateTime.Now` a **disparu** de
+> `MailRepository` : le seul reste est le **commentaire** de task-212 (`:4059-4062`)
+> qui documente le remède, et les deux écritures de la colonne passent par
+> `NormalizeUtc(DateTime.UtcNow)` (**`:435`**, **`:4063`**). Côté lecture, la borne
+> `DateTime.Today` de « Patients du jour » est remplacée par
+> `PractitionerDay.UtcBoundsFor(instant)` (`PatientRepository.cs:210-211`), avec le
+> commentaire qui nomme le défaut d'origine. **Ne pas re-livrer ce correctif.**
+>
+> **Deux résidus, volontairement laissés hors périmètre** (à vérifier avant de
+> conclure, pas à corriger d'office) : `PendingActionRepository.cs:250`
+> (`DateTime.Now` pour un seuil d'ancienneté) et `PatientRepository.cs:1194`
+> (`DateTime.Today` dans `CalculateAge` — un calcul d'âge, pas une borne de
+> requête). Aucun des deux n'écrit la colonne visée par la preuve 3.
+>
+> **Preuve 1 — plus grave qu'écrit.** `AddPatientMessageDocumentAsync` contient
+> désormais **trois** `SaveChangesAsync`, pas deux : la fenêtre pendant laquelle un
+> `UPDATE` référence une ligne `Mails` inexistante s'est élargie.
+
 ## Objective
 
 Corriger trois défauts d'intégrité du chemin d'ingestion des messages, qui ont en
@@ -109,15 +141,16 @@ peut s'ordonner à l'envers.
       même INS aboutissent à **un seul** dossier patient
 - [ ] Test unitaire : la violation d'unicité INS est traitée en retombant sur le
       dossier existant, sans erreur remontée au praticien
-- [ ] Test unitaire : tous les chemins d'écriture de `CreatedAt` produisent la même
-      base de temps
-- [ ] Test unitaire : la requête « du jour » retient bien un document créé à 01:00
-      heure locale (et exclut celui de 23:30 la veille) sur un serveur en
-      Europe/Paris — le cas précis qui échoue aujourd'hui
-- [ ] Migrations FluentMigrator relues selon la règle 7c (unicité INS, valeurs par
-      défaut d'horodatage), stratégie de reprise documentée
-- [ ] Requêtes d'inventaire livrées (doublons INS, horodatages en base locale) et
-      note de remédiation rédigée
+- [x] ~~Test unitaire : tous les chemins d'écriture de `CreatedAt` produisent la
+      même base de temps~~ — **livré par task-212**. Hors périmètre
+- [x] ~~Test unitaire : la requête « du jour » retient un document créé à 01:00
+      heure locale~~ — **livré par task-212** (`PractitionerDay.UtcBoundsFor`).
+      Hors périmètre
+- [ ] Migrations FluentMigrator relues selon la règle 7c (**unicité INS** ;
+      la partie « valeurs par défaut d'horodatage » est retirée — task-212),
+      stratégie de reprise documentée
+- [ ] Requête d'inventaire livrée (**doublons INS** ; l'inventaire des horodatages
+      en base locale est retiré — task-212) et note de remédiation rédigée
 - [ ] Aucune donnée de santé en clair dans les logs ni dans les requêtes
       d'inventaire
 

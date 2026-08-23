@@ -15,6 +15,25 @@
 > **246a** (coût résident des connexions : ne demande aucune extension k6, ne casse
 > pas la comparabilité) et **246b** (latence perçue : exige un k6 recompilé).
 
+> ### Point de situation du 2026-08-23 — **la moitié de la condition de réactivation est remplie**
+>
+> Relecture du backlog restant. Sans lever le hold :
+>
+> - **task-244 et task-245 sont mergées** (`tasks/archived/`). La première moitié
+>   de la condition (« merger 244/245 ») est donc **remplie**.
+> - **Reste dû** : « tirer un 500, lire les chiffres ». Aucun tir de référence n'a
+>   été consigné depuis — donc la raison principale du hold (ne pas déplacer la
+>   référence une troisième fois avant d'en avoir fixé une seule) **tient encore
+>   entièrement**.
+> - **Le blocage technique tient aussi** : k6 v1.4.2 ne sait toujours pas lire un
+>   flux SSE (`k6/experimental/sse` retiré en v1.x, ni `go` ni `xk6` installés).
+>   C'est ce qui justifie la découpe **246a** / **246b** proposée ci-dessus — 246a
+>   ne dépend pas de cette extension et pourrait partir seule dès qu'un tir de
+>   référence existe.
+>
+> **Reste on hold.** Pas de changement de décision, seulement l'état à jour de sa
+> condition.
+
 **Repos**: api-mail
 **Epic**: E015
 **Single frontend**: true

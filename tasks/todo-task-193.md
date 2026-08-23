@@ -7,6 +7,24 @@
 
 > **Origine** : exploration de bugs `api-mail` du 2026-07-25 (axe métier MSSanté).
 
+> ### Re-vérification du 2026-08-23 — **toujours pertinente, intégralement**
+>
+> Chaque preuve rejouée sur `develop`. Les numéros de ligne du bloc « Preuve »
+> datent du 2026-07-25 ; **la colonne « au 2026-08-23 » fait foi**.
+>
+> | Preuve | 2026-07-25 | Au 2026-08-23 | État |
+> |---|---|---|---|
+> | Identifiant fabriqué `"_"` | `CdaParsingService.cs:181` | **`:202`** — `DocumentId = $"{…id?.root}_{…id?.extension}"`, inconditionnel | inchangé |
+> | Bon patron déjà voisin | `:171-177` (`SetId` laissé nul) | **`:203`** — `SetId = setId`, calculé nul quand ses deux parties sont vides, **une ligne plus bas** | inchangé |
+> | Doublon sans prédicat de patient | `MailRepository.cs:2765-2776`, `:2807-2822` | **`:3763`** — `.Where(d => d.DocumentId == documentId && d.Version == version && d.Mail != null)`, **toujours aucun** prédicat de patient ni d'INS | inchangé |
+> | Masquage des doublons | `PatientRepository.cs:208`, `:406`, `:883` | **`:516`** (`ActiveDocumentsForPatient`, prédicat désormais **centralisé** par task-233) et **`:1022`** | inchangé |
+>
+> **Un point qui simplifie la livraison** : task-233 a factorisé le prédicat
+> « documents actifs de ce patient » dans `ActiveDocumentsForPatient`
+> (`PatientRepository.cs:511-516`). Les trois sites de filtrage cités en 2026-07-25
+> n'en font plus que **deux**, dont un centralisé — le point 3 (« ne pas masquer en
+> cas de doute ») se règle donc à **un** endroit au lieu de trois.
+
 ## Objective
 
 Empêcher que deux documents cliniques **de patients différents** soient déclarés

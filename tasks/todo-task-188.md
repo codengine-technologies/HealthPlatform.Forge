@@ -8,6 +8,24 @@
 > **Origine** : exploration de bugs `api-mail` du 2026-07-25 (axes sessions IMAP et
 > concurrence).
 
+> ### Re-vérification du 2026-08-23 — **toujours pertinente, intégralement**
+>
+> Chaque preuve rejouée sur `develop`. Les numéros de ligne du bloc « Preuve »
+> datent du 2026-07-25 ; **la colonne « au 2026-08-23 » fait foi**.
+>
+> | Preuve | 2026-07-25 | Au 2026-08-23 | État |
+> |---|---|---|---|
+> | 1. Pause inopérante (DI `Scoped`) | `DependencyInjection.cs:37` | **`:48-49`** — `AddScoped<IBackgroundSyncService>` **et** `AddScoped<ISyncPauser>(sp => sp.GetRequiredService<IBackgroundSyncService>())`, inchangé | inchangé |
+> | État de pause en champ d'instance | `BackgroundSyncService.cs:29` | **`:32`** (`private volatile bool _isPaused`), lu par `WaitWhilePausedAsync` **`:469`** de la **même** instance | inchangé |
+> | Résolution dans un autre scope | `BackgroundSyncManager.cs:146` | **`:163`** — `scopedProvider.GetRequiredService<IBackgroundSyncService>()` | inchangé |
+> | Appel de pause qui ne met rien en pause | `ImapService.cs:1197` | **`:2176`** (`syncPauser?.PauseSync()`), reprise **`:2186`** | inchangé |
+> | 2. TTL d'état à 15 min | `RedisSyncStateStore.cs:29` | **`:28`** (`StateTtl`), posé en `SET NX` **`:105`**, rafraîchi **`:140`** — seul appelant `BackgroundSyncNotifier.cs:30` | inchangé |
+> | Écrasement du runtime vivant | `:101-117` | **`:134`** (`_localRuntime[userEmail] = runtime`) | inchangé |
+> | 3. Gardes muets avant démarrage | `:236-252`, `:364-379` | **`:274`, `:298`, `:419`, `:427`, `:446`** — cinq sites `runtime.SyncService is not null` sans branche `else` | inchangé, **plus étendu** |
+>
+> Le nombre de sites gardés par `SyncService is not null` est passé de deux à
+> **cinq**. La forme du défaut n'a pas changé ; sa surface a grandi.
+
 ## Objective
 
 Rendre le pilotage de la synchronisation d'arrière-plan **effectif et cohérent** :

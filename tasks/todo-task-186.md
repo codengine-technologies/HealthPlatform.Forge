@@ -8,6 +8,27 @@
 > **Origine** : exploration de bugs `api-mail` du 2026-07-25 (axes confidentialité
 > et concurrence). Vérifié par le PO.
 
+> ### Re-vérification du 2026-08-23 — **toujours pertinente, intégralement**
+>
+> Chaque preuve rejouée sur `develop`. Les numéros de ligne du bloc « Preuve »
+> datent du 2026-07-25 ; **la colonne « au 2026-08-23 » fait foi**.
+>
+> | Preuve | 2026-07-25 | Au 2026-08-23 | État |
+> |---|---|---|---|
+> | PJ unitaire non tracée | `MailController.cs:437` | **`:505`** (`…/download/attachment/{attachmentfilename}`) | inchangé |
+> | Archive ZIP non tracée | `:495-570` | **`:592`** (`…/attachments/download/zip`) | inchangé |
+> | `MailController` n'appelle jamais l'audit | — | **confirmé : 0 occurrence** de `auditService`/`IAuditService` dans le fichier | inchangé |
+> | Aucun type d'action « pièce jointe » | énumération | **confirmé** — `Dtos/AuditActionType.cs` (le type vit dans `dtos-mss`) n'a **aucun** membre `Attachment*`/`*Download*` | inchangé |
+> | Asymétrie avec l'export | `MailExportController.cs:142-154` | **`:88`** (EML) et **`:124`** (PDF/impression) tracent, via `TraceMailAction` | inchangé |
+> | File bornée qui jette le plus ancien | `ServiceCollectionExtensions.cs:90-93` | **`:125-127`** — `BoundedChannelOptions(1000)` + `FullMode = DropOldest` | inchangé |
+> | Retour de `TryWrite` ignoré | `AuditService.cs:45` | **`:59`** | inchangé |
+> | Contrat inverse documenté | `AuditBackgroundService.cs:15` | **`:14`** (« no trace is lost ») et `:45`, `:48` (« the trail must be exhaustive ») | inchangé |
+>
+> **Note de périmètre découverte à la re-vérification** : le type d'action vivant
+> dans `dtos-mss`, ajouter des membres à `AuditActionType` **touche un porteur de
+> contrat** — la task devra lister `dtos-mss` dans `**Repos**:` et passer par
+> `/publish-dtos`. Ce point n'était pas identifié au 2026-07-25.
+
 ## Objective
 
 Rendre le journal d'audit **complet et fiable**, c'est-à-dire réellement opposable.

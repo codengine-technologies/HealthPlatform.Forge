@@ -8,6 +8,27 @@
 > **Origine** : exploration de bugs `api-mail` du 2026-07-25 (axes surface HTTP et
 > métier MSSanté).
 
+> ### Re-vérification du 2026-08-23 — **toujours pertinente, intégralement**
+>
+> Chaque preuve rejouée sur `develop`. Les numéros de ligne du bloc « Preuve »
+> datent du 2026-07-25 ; **la colonne « au 2026-08-23 » fait foi**.
+>
+> | Preuve | 2026-07-25 | Au 2026-08-23 | État |
+> |---|---|---|---|
+> | Écriture synchrone du PDF | `MailExportController.cs:126-131` | **`:132-137`** — `StreamingFileResult` dont l'écrivain appelle `mailExportService.WritePdf(…, output)` puis `return Task.CompletedTask` | inchangé |
+> | Rendu synchrone QuestPDF | `MailExportService.cs:88` | **`:102`** (`document.GeneratePdf(output)`) | inchangé |
+> | Flux = `Response.Body` nu | `StreamingFileResult.cs:40` | **`:48`** (`await _writer(response.Body, …)`) | inchangé |
+> | `AllowSynchronousIO` jamais activé | — | **confirmé : 0 occurrence** dans tout le repo | inchangé |
+> | Patron correct déjà en place ailleurs | `MailController.cs:534-541` | **`:646-650`** — `FileBufferingWriteStream` pour le ZIP, avec le commentaire qui explique le piège | inchangé |
+> | `TD`/`TH` sans séparateur | `MailExportService.cs:416-460` | `AppendNodeText` **`:437`** et suivantes ; `ExtractPlainBody` **`:388`** (préfère `BodyHtml`) ; appel **`:71`** | inchangé |
+>
+> **À savoir avant de livrer** : deux tests PDF de la suite `application` sont des
+> **flaky pré-existants documentés** (`MailExportServiceTests.BuildPdfWithoutAttachmentsOmitsAttachmentSection`,
+> `MarkdownPdfRendererTests.RenderHeadingPreservesText` — verts en isolation). Ne
+> pas les lire comme une régression de cette task, et ne pas les compter comme la
+> preuve demandée au point 2 : ils tournent sur `MemoryStream`, donc ils ne
+> prouvent rien sur le refus des écritures synchrones.
+
 ## Objective
 
 Rendre l'impression et l'export PDF **fonctionnels** et le document produit

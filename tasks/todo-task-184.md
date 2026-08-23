@@ -9,6 +9,26 @@
 > Viole frontalement le garde-fou projet « jamais d'INS, de NIR, de NIA ni de
 > contenu CDA/MSSanté en clair dans les logs, les URL ou la télémétrie ».
 
+> ### Re-vérification du 2026-08-23 — **toujours pertinente, et aggravée sur un point**
+>
+> Chaque preuve rejouée sur `develop`. Les numéros de ligne du bloc « Preuve »
+> datent du 2026-07-25 ; **la colonne « au 2026-08-23 » fait foi**.
+>
+> | Preuve | 2026-07-25 | Au 2026-08-23 | État |
+> |---|---|---|---|
+> | INS en segment d'URL | `PatientsController.cs:25,113,147,163,244` ; `BiologyController.cs:42` | **`PatientsController.cs:33,137,175,195,280`** (dont un `[HttpPut("ins/{ins}/opposition")]`) ; **`BiologyController.cs:54`** | inchangé |
+> | Masquage limité à `token=` | `RequestLoggingMiddleware.cs:91` | regex `:25`/`:35` (query seule), `RequestPath` poussé en **`:105`** | inchangé |
+> | INS et traits journalisés | `:30,122,152,201,252` / `:75` | **`:38,146,180,200,288`** ; traits groupés en **`:233-234`** ; filtre entier en **`:91`** ; `BiologyController.cs:59,74` | inchangé |
+> | Requête brute en `Error` | `SemanticSearchService.cs:114` | **`:114` — identique** | inchangé |
+> | Diagnostics IA | `:67-68,145-146,291` | **`:67,145,291` — identiques** | inchangé |
+> | Anonymisation contournée | `UserContextEnricherMiddleware.cs:530-536`, `:553-558` | **`:572-583`** et **`:596-603`** ; helpers déplacés en `:517`/`:540` | **aggravé** |
+>
+> **Aggravation à retenir** : les deux chemins de rejet loguent désormais aussi
+> `Path={Path}` (`:581`, `:601`). Les deux défauts de cette task **se composent**
+> — une requête `GET /patients/ins/{ins}/…` rejetée en 403 écrit l'INS **et**
+> l'adresse MSSanté **et** le `sub` Keycloak complets dans la même ligne de log.
+> Ce n'était pas le cas au 2026-07-25.
+
 ## Objective
 
 Supprimer les fuites de données de santé et de traits d'identité patient vers les

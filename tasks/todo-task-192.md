@@ -7,6 +7,28 @@
 
 > **Origine** : exploration de bugs `api-mail` du 2026-07-25 (axe métier MSSanté).
 
+> ### Re-vérification du 2026-08-23 — **toujours pertinente, et le défaut de casse est plus large qu'écrit**
+>
+> Chaque preuve rejouée sur `develop`. Les numéros de ligne du bloc « Preuve »
+> datent du 2026-07-25 ; **la colonne « au 2026-08-23 » fait foi**.
+>
+> | Preuve | 2026-07-25 | Au 2026-08-23 | État |
+> |---|---|---|---|
+> | Déduplication sur l'UID | `SemanticSearchRepository.cs:513-515` | **`:579`** — `.GroupBy(x => x.Uid).Select(g => g.First())` | inchangé |
+> | Fenêtre ordonnée sur l'UID | — | **`:572`** — `OrderByDescending(x => x.Uid)` puis `Take`, par terme | inchangé |
+> | Casse hétérogène | `:597-632` — « patients en `ILike`, sujet/expéditeur en `Like` » | **inversé, et pire** : le **seul** `ILike` porte sur le corps (**`:571`**) ; sont en `Like` **sensible à la casse** : nom/prénom **patient** (`:98-99`, `:186-187`, `:260-261`, `:319-320`), `FromAddress`/`FromName` (`:674-675`, `:680`) et `Subject` (`:685`) | **plus large** |
+> | Jokers non échappés | — | **confirmé : 0 échappement** dans le fichier — aucun `Escape`, aucun remplacement de `%`/`_` | inchangé |
+>
+> **Correction d'une erreur de la preuve d'origine, qui change le périmètre** :
+> la recherche par **nom de patient** n'est **pas** insensible à la casse, contrairement
+> à ce qu'affirmait la preuve du 2026-07-25. Chercher « DUPONT » ne trouve pas
+> « Dupont ». C'est le champ le plus utilisé cliniquement, et c'est donc lui qui
+> justifie le point 3 en priorité — pas le sujet.
+>
+> **Dépendance levée** : la task s'appuyait sur « l'identité de mail assainie par
+> task-179 ». task-179 est **mergée** (`tasks/archived/`) — le point 1 peut donc
+> être livré sur cette identité, sans attente.
+
 ## Objective
 
 Rendre la recherche **exhaustive**. Une recherche multi-dossiers écarte aujourd'hui
