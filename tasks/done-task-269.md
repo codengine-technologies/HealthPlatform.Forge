@@ -209,3 +209,25 @@ leur visibilité (log Information par mort réelle).
 - Note SonarQube : conteneurs `sonarqube`/`sonarqube_db` trouvés arrêtés
   (reboot) et relancés ; piège MSYS sur les arguments `/k:`/`/d:` du scanner
   (poser `MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'` avant `sonarscanner`).
+
+## Lint log (/lint-angular, 2026-08-25)
+
+- Skip propre : `client-angular` non listé dans **Repos** et non touché par la task.
+
+## Lint mobile log (/lint-mobile, 2026-08-25)
+
+- Skip propre : `client-mobile` non listé dans **Repos** et non touché par la task.
+
+## Visual verify log (/verify-visual, 2026-08-25)
+
+- Skip propre : aucun écran `client-mobile` touché (task backend uniquement).
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/201 — label `awaiting-human-merge`
+- `dtos-mss` : aucun commit (pas de changement de contrat) — pas de PR ; branche `feat/task-269-smtp-session-pool` à supprimer au /merge
+- `client-blazor` / `client-angular` / `client-mobile` : non concernés (US backend seule, justifiée dans le corps)
+
+## Code Review Summary
+
+APPROVED — 9 fichiers, 0 bloquant, 1 suggestion (cadence de relance du NOOP IMAP en échec répété avec IsConnected=true — cas rare, à lisser si observé), 1 flaky pré-existant identifié hors diff (EnrichmentOperationScopeTests, pollution Meter sous parallélisme — candidat US harnais).
