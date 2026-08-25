@@ -370,3 +370,36 @@ Best-effort atteint en **1 itération de correctifs** : les issues restantes
 n'appartiennent pas à cette US, et la seule règle qui les domine (`S3776`) est
 en liste noire. Poursuivre reviendrait à traiter la dette d'autres tasks dans
 la PR de celle-ci — ce que la règle « 1 US = 1 PR » interdit.
+
+## Lint log (/lint-angular, 2026-08-25)
+
+**Skip propre — `client-angular` hors périmètre.** La task déclare
+`**Repos**: api-mail` ; `/develop` n'a écrit aucune ligne Angular.
+
+⚠️ Le répertoire de travail `Client/Angular/` n'est pas vide (3 fichiers
+modifiés : `apps/mss/.../environment.ts`, `apps/weda2/.../environment.ts`,
+`libs/mss/.../mss-api.service.spec.ts`). Ce sont des **travaux en cours de
+l'humain**, antérieurs à cette task. Conformément au mode code-only, la forge
+les laisse strictement en l'état : aucun auto-fix, aucun stash, aucun reset,
+aucune opération git. Les lancer aurait mêlé des corrections de lint à un
+diff humain non commité.
+
+Aucune itération exécutée, aucun fichier touché.
+
+## Lint mobile log (/lint-mobile, 2026-08-25)
+
+**Skip propre — `client-mobile` hors périmètre.** La task déclare
+`**Repos**: api-mail`. Le repo est resté sur `develop`, working tree vide,
+zéro fichier de différence avec `origin/develop` : aucune branche de feature
+créée, aucun code mobile écrit.
+
+Aucune itération exécutée, aucun commit, aucun push.
+
+## Visual verify log (/verify-visual, 2026-08-25)
+
+**Skip propre — aucun écran touché.** La task ne porte que du backend
+(`api-mail`) et de l'outillage de tir (`report.py`) : aucun écran
+`client-mobile`, aucun `## Stitch design log`, donc rien à capturer.
+
+Aucune capture, aucun commit de PNG, aucune modification de l'état visuel
+global de l'application.
