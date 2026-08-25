@@ -294,3 +294,79 @@ comportement) :
 - `selftest.sh` du harnais → **320 tests, OK, 0 SKIP**
 
 Commit : `refactor(telemetry): passe qualite sur le diff de task-271`, poussé.
+
+## Sonar log (/sonar, 2026-08-25)
+
+Infra : conteneurs `sonarqube_db` puis `sonarqube` redémarrés (ils étaient
+`exited`), SonarQube **25.6.0**, token valide
+(`/api/authentication/validate` → `{"valid":true}`). Projet `healthplatform`,
+3 analyses complètes (build Release + couverture OpenCover sur les 5 projets de
+tests + scan).
+
+### KPIs qualité — baseline → final
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| `code_smells` | 67 | **63** | −4 |
+| `sqale_index` (dette, min) | 572 | **541** | −31 |
+| `new_violations` | 68 | **65** | −3 |
+| `bugs` | 2 | 2 | = |
+| `vulnerabilities` | 0 | 0 | = |
+| `security_hotspots` | 0 | 0 | = |
+| `coverage` | 88,0 % | 88,0 % | = |
+| `new_coverage` | 88,3 % | **88,4 %** | +0,1 |
+| `duplicated_lines_density` | 0,3 % | 0,3 % | = |
+| `reliability_rating` | C (3) | C (3) | = |
+| `security_rating` | A (1) | A (1) | = |
+| `sqale_rating` | A (1) | A (1) | = |
+
+**Quality Gate : ERROR** — une seule condition en échec, `new_violations`
+(65 > 0). Les trois autres (`new_coverage`, `new_duplicated_lines_density`,
+`new_security_hotspots_reviewed`) sont **OK**.
+
+### ⚠️ Le QG ERROR n'est pas de la dette introduite par cette task
+
+**Issues en new-code period portées par les fichiers de task-271 : 0** (vérifié
+sur les 65 restantes, après correctifs). La new-code period du projet couvre
+une **baseline large** qui inclut des tasks déjà mergées — travers déjà
+constaté et documenté. Les 65 restantes se répartissent ainsi :
+
+| Fichier | Nb | Nature |
+|---|---|---|
+| `tests/loadtest-k6/report.py` | 21 | `python:S3776` (complexité cognitive — **liste noire**, relève de `/sonar-s3776`), `S1192`, `S3358` — dette du harnais, tasks 174/208/244… |
+| `tests/loadtest-k6/lib/journey-model.js` + `scenarios/journey.js` | 21 | `javascript:S1940`, `S2486`, `S6582` — scénarios k6, tasks antérieures |
+| Tests + sources `Embedding` / divers | 23 | `CA1861`, `S3267`, `CA1816`, `xUnit2032`… — tasks antérieures |
+
+Aucune n'est dans le périmètre de cette US, et `S3776` est explicitement hors
+chaîne autonome (`agents/sonar-blacklist.yml`).
+
+### Correctifs livrés par cette passe
+
+**`csharpsquid:S125` — 2 occurrences, ponctuation seule, zéro changement de
+comportement.**
+
+La leçon vaut plus que le correctif : l'heuristique « code commenté » **ne
+demande ni interface ni liste à puces**. Il suffit qu'une ligne `//` **se
+termine par `;`** pour qu'elle soit prise pour une instruction.
+
+1. `MailProcessingMetrics.cs:273` — **introduite par task-271**, prose ordinaire
+   au fil du texte (`… does not shrink the hold;`). Corrigée en virgule.
+2. `MailClientSessionManager.cs:616` — **pré-existante (task-269)**, même règle,
+   même déclencheur. Corrigée au passage (`;` → tiret) : le fichier était déjà
+   dans le périmètre de la task, et le coût est nul.
+
+**Boucle d'auto-amélioration fermée** : `conventions/csharp.md`, entrée S125
+généralisée (elle ne couvrait que les blocs de contrat d'interface — d'où la
+récidive), compteur porté à **2 occurrences**, avec le contrôle mécanique à
+passer sur le diff avant commit :
+
+```bash
+git diff --cached -U0 -- '*.cs' | grep -nE "^\+\s*//.*;\s*$"
+```
+
+### Arrêt
+
+Best-effort atteint en **1 itération de correctifs** : les issues restantes
+n'appartiennent pas à cette US, et la seule règle qui les domine (`S3776`) est
+en liste noire. Poursuivre reviendrait à traiter la dette d'autres tasks dans
+la PR de celle-ci — ce que la règle « 1 US = 1 PR » interdit.
