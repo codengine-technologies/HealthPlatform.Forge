@@ -109,3 +109,94 @@ d'enrichissement.
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui — inchangé
 - **AIPD / impact RGPD** : inchangé — aucun nouveau traitement de données
+
+## Branches
+- `api-mail` (pushed) : feat/task-272-async-sent-archive — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-272-async-sent-archive
+- `dtos-mss` (pushed, auto-inclus) : feat/task-272-async-sent-archive — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-272-async-sent-archive
+
+## Journal d'implémentation (/develop, 2026-08-25)
+
+- **Réutilisation avant création** : la file `IBackgroundTaskQueue` (task-075 —
+  scope DI par travail, exceptions observées centralement) porte l'archivage ;
+  l'identité voyage par `CopyIdentityTo` (task-234 — copie complète, le champ
+  oublié qui visait une autre base ne peut pas se reproduire). Aucun nouveau
+  type de session, aucune voie d'écriture (interdit task-216) : le travail
+  différé retrouve la session IMAP poolée par `{Email}_{ClientSessionId}` et
+  son verrou `imap_session`.
+- **Nouveaux** : `ISentArchiveDispatcher`/`SentArchiveDispatcher` (singleton,
+  capture identité par copie + traceId d'Activity, met en file) ;
+  `ISentArchiveService`/`SentArchiveService` (scopé, rejeu borné 3 tentatives
+  2 s/10 s, échec final LogError + compteur, jamais d'exception hors
+  annulation). Métriques : durée publiée hors périmètre sur la série
+  `archive_sent` existante (modèle empreinte sémantique task-245) +
+  `mssante_send_archive_outcomes_total{outcome}`.
+- **Contrat de réponse** : `{ queued, archivePending }` — `archived`/`warning`
+  retirés (aucun consommateur : Blazor ne lit que `Queued`/`Message`, vérifié).
+  `ApiMessages.MailSentButNotArchived` orphelin retiré (commentaire de renvoi).
+  4 tests task-223 du contrat synchrone réécrits en préservant leur intention
+  (jamais d'échec d'envoi rétroactif — désormais par construction ; zéro fuite
+  — plus aucun canal d'erreur d'archivage dans la réponse).
+- **DOD 4 (SemaphoreFullException)** : cause établie — libération par CLÉ
+  (`UnLockImapClient(userContext)` → lookup → entrée recyclée → sémaphore neuf
+  au plein), **déjà corrigée à la racine par task-223** (`ImapSessionLockHandle`,
+  libération par jeton, idempotente) ; couverture vérifiée :
+  `SessionLockReleaseMismatchTests` (entrée recyclée, double libération,
+  verrou disposé). Sortir l'archivage du chemin supprime en plus toute
+  possibilité qu'un résidu de cette famille atteigne le praticien.
+- **Validation** : build 0 erreur ; api 685/685 (dont 2 nouveaux tests DOD 1 :
+  réponse rendue avec archivage infiniment lent + composition complète du
+  travail différé), application 2173/2173 (7 nouveaux SentArchive*), domain
+  136, infrastructure 464, intégration 417/433 (16 ignorés Ollama). Flaky
+  pré-existant Meter/parallélisme revu une fois (vert au re-run, hors diff).
+- **Constaté hors périmètre** : le rejeu offline (`PendingActionService.
+  ProcessSendMailAsync`) n'archive PAS dans « Envoyés » — écart pré-existant à
+  cette US (le chemin offline n'a jamais archivé), candidat US.
+
+## Simplify log (/forge-simplify, 2026-08-25)
+
+- **Robustesse d'invariant** : `RetryDelays[attempt-1]` supposait
+  `Length ≥ MaxAttempts−1` sans le dire — le dernier délai se répète désormais.
+- **Altitude** : le `SendOperationScope.Begin()` du contrôleur ne couvrait plus
+  que `SmtpService.SendMailAsync`, qui ouvre le même périmètre (task-260) —
+  retiré, l'étape « Envoi » est mesurée à un seul endroit.
+- Re-validation : build 0 erreur, api 685/685, SentArchive*/SendOperationScope
+  14/14. `dtos-mss` non touché (contrat inchangé).
+
+## Sonar log (/sonar, 2026-08-25 — mode chaîné, 2 itérations)
+
+| KPI | Baseline (post-develop) | Final | Cible |
+|---|---|---|---|
+| Quality Gate | OK | **OK** | OK |
+| Bugs / Vulnérabilités | 0 / 0 | **0 / 0** | 0 / 0 |
+| Violations new-code | 38 | **37** | best-effort |
+| Couverture new-code | 91,3 % | 91,3 % | gate |
+| Couverture globale | 88,0 % | 88,0 % | — |
+
+- **Corrigé (it. 2)** : S4457 sur `ArchiveWithRetryAsync` — garde de paramètre
+  scindée hors de la machine async (lève à l'appel, pas à l'await).
+- **Acceptés (faux positifs, famille documentée en task-269)** : S3604 ×2 sur
+  `SentArchiveService` (initialiseurs avec constructeur primaire C# 12).
+- **Hors périmètre** : le reste de la new-code period appartient aux lots
+  précédents (mêmes items que le Sonar log de task-269).
+
+## Lint log (/lint-angular, 2026-08-25)
+
+- Skip propre : `client-angular` non listé dans **Repos** et non touché.
+
+## Lint mobile log (/lint-mobile, 2026-08-25)
+
+- Skip propre : `client-mobile` non listé dans **Repos** et non touché.
+
+## Visual verify log (/verify-visual, 2026-08-25)
+
+- Skip propre : aucun écran `client-mobile` touché (task backend uniquement).
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/202 — label `awaiting-human-merge`
+- `dtos-mss` : aucun commit (pas de changement de contrat) — pas de PR ; branche à supprimer au /merge
+- Autres repos : non concernés (US backend seule, justifiée dans le corps)
+
+## Code Review Summary
+
+APPROVED — 11 fichiers, 0 bloquant, 2 suggestions (perte possible de la copie « Envoyés » sur crash processus entre acquittement et exécution de la file — limite assumée par la US ; volume du log Information par envoi). Constaté hors périmètre : le rejeu offline n'archive pas (pré-existant, candidat US).
