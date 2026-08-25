@@ -231,3 +231,10 @@ leur visibilité (log Information par mort réelle).
 ## Code Review Summary
 
 APPROVED — 9 fichiers, 0 bloquant, 1 suggestion (cadence de relance du NOOP IMAP en échec répété avec IsConnected=true — cas rare, à lisser si observé), 1 flaky pré-existant identifié hors diff (EnrichmentOperationScopeTests, pollution Meter sous parallélisme — candidat US harnais).
+
+## Merged
+
+- `api-mail` : PR [#201](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/201) squash-mergée → `develop` `aba835b` — CI develop VERTE. Branche remote supprimée (locale conservée puis repositionnée sur develop).
+- `dtos-mss` : aucun commit — branche remote supprimée sans PR.
+- Staging : sans objet (cycle unitaire hors run /forge).
+- Attestation humaine : `--i-tested` (2026-08-25).
