@@ -122,6 +122,7 @@ baisses de performance avant qu'elles n'atteignent les utilisateurs**.
 | Envoyer un message n'attend plus la fin d'une analyse en cours | Rendre l'envoi immédiat même quand la boîte du praticien est occupée à analyser des documents reçus : l'archivage du message envoyé passait derrière ce travail de fond | task-213, task-215, task-216 | 🟠 **Retrait livré, confirmation au banc due** — le correctif fonctionnait mais coûtait plus qu'il ne rapportait (task-216) |
 | L'envoi ne repaie plus une connexion à chaque message | Réutiliser la connexion d'envoi du praticien d'un message au suivant : elle était rouverte à chaque envoi (près d'une demi-seconde payée à chaque fois), parce que son entretien battait pile sur le délai de coupure du serveur et que sa perte était invisible | task-269 | 🟡 Livré, en attente d'intégration — confirmation au banc due |
 | L'envoi n'attend plus son classement dans « Envoyés » | Rendre la main au praticien dès que le serveur de messagerie a accepté son message : la copie dans « Envoyés » se fait ensuite, en coulisse, avec reprise automatique et trace en cas d'échec | task-272 | 🟡 Livré, en attente d'intégration — confirmation au banc due |
+| Le rapport de campagne ne présente plus une non-mesure comme une mesure | Distinguer, dans le coût d'accès à la boîte d'un praticien, ce qui est payé une fois à l'ouverture de ce qui est payé à chaque geste — et faire dire au rapport « au moins 60 s » plutôt qu'un nombre à trois décimales quand l'instrument est saturé | task-271 | 🟢 Livré — caractérisé, étiqueté ; confirmation au banc due |
 | L'instrument sait enfin ce qu'il ne mesure pas | Mesurer les vingt points d'attente de la boîte du praticien, et non le seul qui l'était : le tableau censé désigner le coupable d'un ralentissement ne pouvait nommer que celui-là | task-214 | 🟡 Livré, en attente d'intégration |
 | Mesure en nombre de médecins servis | Poser la question qui décide de l'accueil de nouveaux praticiens — **combien de médecins la messagerie sert-elle en tenant ses temps de réponse** — en simulant des médecins qui déroulent leur journée réelle (arriver sur son tableau de bord, ouvrir sa boîte, lire, supprimer, télécharger une pièce jointe, envoyer) au lieu d'un mélange d'actions isolées ; et lire, à chaque palier de population, **quelle étape du travail du médecin souffre la première** | task-220 | 🟡 Livré, en attente d'intégration |
 | Le banc ne prend plus les ressources du service qu'il mesure | Mesurer la messagerie au-delà de cinq cents praticiens sans que les serveurs de messagerie simulés — désormais installés sur une infrastructure séparée — ne lui prennent ses ressources, et lire leur coût propre séparément du sien | task-221 | 🟡 Livré, en attente d'intégration |
@@ -1344,10 +1345,65 @@ sur décision humaine : plus personne ne peut l'appeler, c'est le compilateur qu
 Au passage, les scripts de mise à niveau de la base de données, qui n'étaient joués par aucun
 test, tournent maintenant pour de vrai dans l'un d'eux. *(task-236)*
 
-## État de couverture (2026-08-15)
+### Le banc annonçait une attente de soixante secondes qui n'a jamais existé (23-25 août 2026)
+
+Le rapport de la campagne du 23 août portait un chiffre alarmant : l'accès à la
+liste des dossiers d'une boîte aurait retenu la connexion du praticien
+**soixante secondes**. Le même geste, chronométré du côté du praticien simulé,
+prenait **155 millisecondes**. Deux mesures du même geste, dans un rapport de
+mille lignes, séparées par un facteur quatre cents.
+
+L'explication tient en une phrase : **soixante secondes est la plus grande durée
+que l'instrument sait mesurer.** Au-delà, il ne compte plus — il répond « au
+moins soixante », et le rapport imprimait cette réponse comme s'il s'agissait
+d'une mesure au millième de seconde. Personne ne pouvait le deviner à la
+lecture.
+
+La conséquence n'était pas théorique. Une demande d'évolution avait été rédigée
+sur ce chiffre, pour partir à la recherche d'un délai d'expiration réglé à
+soixante secondes. **Ce délai n'existe nulle part** : l'inventaire complet des
+limites de ce chemin donne 120 secondes, 5 minutes et 5 secondes, et les seules
+valeurs à soixante secondes du module sont des **rythmes d'entretien**, pas des
+limites d'attente. La journée aurait été dépensée à chercher une pièce absente.
+
+Ce qui est vrai, en revanche, et que la mesure masquait : **ouvrir sa boîte pour
+la première fois coûte cher.** Établir la connexion sécurisée à la messagerie —
+résolution du nom, connexion, chiffrement, vérification du certificat,
+authentification — se fait pendant que la connexion du praticien est réservée,
+et le banc ouvre trois cents boîtes neuves d'un coup au démarrage de chaque
+palier. Ces ouvertures écrasaient dans la moyenne le coût réel du travail
+courant, celui d'un praticien dont la boîte est déjà ouverte.
+
+Deux corrections, et aucune ne change ce que voit le médecin :
+
+**La mesure distingue désormais les deux situations.** Ouvrir une boîte pour la
+première fois et travailler dans une boîte déjà ouverte sont comptés
+séparément. C'est la seconde qui vaut comme engagement de service : la première
+mesure un coût d'entrée, payé une fois.
+
+**Le rapport refuse de présenter comme une mesure ce qu'il n'a pas mesuré.**
+Quand l'instrument est saturé, il écrit « au moins soixante secondes » assorti
+d'un avertissement, au lieu d'un nombre à trois décimales. Et il nomme lui-même
+la lecture : si la lenteur appartient aux ouvertures de boîtes, il le dit ; si
+elle touche le travail courant, il le signale comme un vrai défaut.
+
+Ce dernier point est le plus durable. Le banc avait déjà rencontré deux fois ce
+piège de plafond, et l'avait deux fois corrigé en repoussant la limite — sans
+jamais rendre la saturation **visible**. C'est ce qui manquait, et c'est ce qui
+est livré : un instrument qui dit quand il ne sait plus.
+
+Une réserve, dite franchement : les traces détaillées de la campagne du 23 août
+ont expiré avant d'être exploitées. La cause du **chiffre publié** est établie
+sans elles — elle se lit dans la définition de l'instrument. Ce qui reste
+inconnu, c'est la durée réelle des ouvertures les plus lentes : au-delà de
+soixante secondes, on ne sait toujours pas. La prochaine campagne le dira, et
+c'est précisément ce que cette livraison rend possible. *(task-271)*
+
+## État de couverture (2026-08-25)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
+| Le rapport de campagne ne présente plus une non-mesure comme une mesure | 🟢 Livré — caractérisé et étiqueté ; confirmation au banc due | Le rapport du 23 août annonçait que consulter la liste de ses dossiers retenait la connexion du praticien **soixante secondes**, quand le même geste chronométré côté praticien valait **155 millisecondes**. Ni l'un ni l'autre n'était faux : soixante secondes est **la plus grande durée que l'instrument sait mesurer**, et le rapport imprimait cette borne comme un résultat au millième. **Une demande d'évolution avait déjà été rédigée sur ce chiffre**, pour partir en quête d'un délai d'expiration réglé à soixante secondes — l'inventaire complet des limites de ce chemin (120 s, 5 min, 5 s) montre qu'**il n'en existe aucun**. Ce que la mesure masquait est réel, en revanche : ouvrir une boîte pour la première fois coûte cher (connexion, chiffrement, vérification du certificat, authentification), et le banc en ouvre trois cents d'un coup au démarrage de chaque palier — ces ouvertures écrasaient le coût du travail courant. Les deux situations sont désormais **comptées séparément**, et seule la seconde vaut comme engagement de service. Le correctif envisagé — sortir l'établissement de la connexion de la zone réservée — a été **écarté sur analyse** : la connexion est partagée avant même d'être ouverte, et l'en sortir permettrait à deux actions du même praticien de l'ouvrir en même temps. Enfin, le rapport **refuse** désormais de présenter comme mesuré ce qui est saturé, et nomme lui-même la lecture (la lenteur appartient-elle aux ouvertures, ou au travail courant ?). Ce dernier point est le plus durable : le banc avait rencontré deux fois ce piège de plafond et l'avait deux fois corrigé en repoussant la limite, **sans jamais rendre la saturation visible**. **Réserve dite** : les traces détaillées du 23 août ont expiré ; la durée réelle des ouvertures les plus lentes reste inconnue au-delà de soixante secondes, et c'est la prochaine campagne qui la dira | task-271 |
 | Savoir où part la seconde et demie que coûte chaque envoi | 🟢 Livré — mesure de confirmation à conduire au banc | Le coût de l'envoi est **fixe** (1,3 s à 100, 200 et 500 médecins) : ce n'est pas un problème de charge mais un coût par geste, que trois corrections successives n'avaient pas entamé faute de décomposition. Chaque envoi est désormais découpé en six étapes mesurées, et l'archivage dans « Messages envoyés » se lit « non relevé » quand il n'a pas lieu — jamais zéro, qui fausserait la moyenne. Le poste dominant est nommé par le rapport ; le reste par différence ne peut jamais l'être : on n'optimise pas une soustraction | task-260 |
 | La liste des messages ne fabrique plus ce qu'elle n'affiche pas | 🟢 Corrigé — mesure de confirmation à conduire au banc | Le croisement de deux instruments (le décompte d'éléments de task-256, la décomposition des durées de task-243) a établi que 70 % des éléments fabriqués pour une page d'en-têtes ne sont jamais affichés. La page ne charge plus que le nécessaire, **sans requête supplémentaire** (une de moins, en fait), et les pastilles restent exactes — un compte-rendu à biologie non mise en avant garde sa pastille, c'est testé | task-261 |
 | L'écran d'accueil dit enfin ce qu'il demande au serveur de messagerie | 🟢 Livré — aucune réduction sans mesure, seuil de reprise posé | Premier résultat : la demande initiale était **déjà satisfaite** (l'attribution appel par appel existe depuis task-240) — le vérifier a évité de livrer un doublon. Le vrai manque était ailleurs : l'appel qui porte 65 % du coût de l'étape ne comptait pas ses allers-retours vers le serveur de messagerie. Ils sont comptés désormais. Aucune optimisation n'est livrée **délibérément** : réduire avant de mesurer est l'erreur déjà payée par cette EPIC ; le seuil qui rouvre le sujet est écrit | task-262 |
