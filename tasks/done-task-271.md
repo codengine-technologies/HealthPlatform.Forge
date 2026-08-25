@@ -403,3 +403,39 @@ Aucune itération exécutée, aucun commit, aucun push.
 
 Aucune capture, aucun commit de PNG, aucune modification de l'état visuel
 global de l'application.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/203 — label `awaiting-human-merge`
+- `dtos-mss` : **aucune PR** — branche créée par auto-inclusion, zéro commit.
+  La US est purement observabilité : aucun contrat DTO ne bouge.
+- `client-angular`, `client-mobile`, `devops`, `psc-proxy-*` : hors périmètre,
+  non touchés.
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 9 fichiers revus, 0 blocage.
+
+| Axe | Verdict |
+|---|---|
+| Correction | ✅ Phase résolue sémaphore en main ; l'attente ne la porte pas ; `n/a` explicite sur les autres verrous |
+| Sécurité / PGSSI-S | ✅ Deux littéraux compilés — aucune donnée de santé, aucune cardinalité non bornée |
+| Architecture | ✅ Sonde en lecture pure, sans effet de bord ; surface d'interface épinglée par un test avec justification écrite |
+| Qualité | ✅ Passe `/simplify` appliquée (3 findings) ; 2 × S125 corrigés |
+| Performance | ✅ Une lecture de dictionnaire + deux bool, sous un verrou déjà tenu |
+| Tests | ✅ 6 tests C# (preuve rouge d'abord) + 14 tests harnais ; 320/320 selftest |
+
+**Compatibilité des requêtes** : ajouter une étiquette ne casse aucune requête
+existante — `sum by (le, lock)` et `sum by (le, operation)` agrègent sur
+`phase`. Vérifié sur les deux tables de verrous de `report.py`.
+
+**Deux points relevés et traités pendant la revue** :
+
+1. Le commentaire de `LockPhaseNotApplicable` annonçait « locks that are not
+   session locks », alors que `smtp_session` y tombe aussi — et c'est bien un
+   verrou de session, qui paie lui aussi un établissement depuis task-269. La
+   question du découpage par phase de la voie SMTP est désormais laissée
+   **ouverte explicitement** plutôt que masquée par un libellé inexact.
+2. `EnrichmentOperationScopeTests` flake sous filtre restreint — **reproduit
+   sur `origin/develop`** (2 tirs sur 3) en worktree isolé. Pré-existant,
+   meter statique partagé. Non introduit par cette task.
