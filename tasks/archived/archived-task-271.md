@@ -439,3 +439,20 @@ existante — `sum by (le, lock)` et `sum by (le, operation)` agrègent sur
 2. `EnrichmentOperationScopeTests` flake sous filtre restreint — **reproduit
    sur `origin/develop`** (2 tirs sur 3) en worktree isolé. Pré-existant,
    meter statique partagé. Non introduit par cette task.
+
+## Merged (2026-08-26)
+
+| Repo | PR | Squash commit | Branche distante |
+|---|---|---|---|
+| `api-mail` | [#203](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/203) | `70afc1d27861069ba2161a79d4e2a1d6f5fd821c` | supprimée |
+| `dtos-mss` | aucune PR (branche d'auto-inclusion, zéro commit) | — | supprimée |
+
+Attestation humaine : `/merge 271 --i-tested` (HAG, règle 10).
+
+Locaux repositionnés sur `develop` (`api-mail`, `dtos-mss`) ; branches locales
+`feat/task-271-imap-session-lock-hold` conservées.
+
+Aucune branche staging pour ce run (`/forge` n'a pas agrégé de lot — task unique
+lancée hors boucle).
+
+`client-angular` : hors périmètre de la task, aucune opération git.
