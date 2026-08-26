@@ -200,3 +200,10 @@ d'enrichissement.
 ## Code Review Summary
 
 APPROVED — 11 fichiers, 0 bloquant, 2 suggestions (perte possible de la copie « Envoyés » sur crash processus entre acquittement et exécution de la file — limite assumée par la US ; volume du log Information par envoi). Constaté hors périmètre : le rejeu offline n'archive pas (pré-existant, candidat US).
+
+## Merged
+
+- `api-mail` : PR [#202](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/202) squash-mergée → `develop` `ea7a7a4` — CI develop VERTE. Branche remote supprimée, clone local sur develop.
+- `dtos-mss` : aucun commit — branche remote supprimée sans PR, clone sur develop.
+- Staging : sans objet (cycle unitaire hors run /forge).
+- Attestation humaine : `--i-tested` (2026-08-26).
