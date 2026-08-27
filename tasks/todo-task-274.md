@@ -62,6 +62,24 @@ cas d'incident (délester le widget coûteux sans redéployer).
   réelles et le délestage).
 - Tout widget hors tableau de bord.
 
+## Inventaire préliminaire widgets/flags (PO, 2026-08-27 — à confirmer par /develop)
+
+Huit flags, mêmes noms sur les trois fronts, tous créés **ON** :
+
+| Flag | Widget | Blazor | Angular | Mobile |
+|---|---|---|---|---|
+| `dashboard_widget_mail_counters` | Compteurs de messagerie (dossiers, non-lus) | MailWidget | mss-mail-widget | messaging-counters-widget |
+| `dashboard_widget_mail_notifications` | Notifications de nouveaux messages | MailNotificationWidget | mss-mail-notification-widget | — |
+| `dashboard_widget_today_summary` | Résumé du jour / non-lus du jour | — | — | today-unread-summary-widget |
+| `dashboard_widget_abnormal_biology` | Biologies anormales | AbnormalBiologyWidget | mss-abnormal-biology-widget | abnormal-biology-widget |
+| `dashboard_widget_biology_ack_pending` | KPI acquittements en attente ⚠️ outil d'incident uniquement (obligation métier) | BiologyAckPendingKpiTile | mss-biology-ack-pending-kpi-tile | biology-ack-pending-tile |
+| `dashboard_widget_patients` | Patients / documents non lus | PatientWidget | mss-patient-widget | patients-unread-widget |
+| `dashboard_widget_sync_progress` | Couverture / progression de synchro | SyncProgressWidget | mss-sync-progress-widget | — |
+| `dashboard_widget_offline_status` | Statut de connexion (candidat à l'exclusion : info « mode dégradé », charge locale) | OfflineStatusWidget | mss-offline-status-widget | — |
+
+/develop confirme la correspondance widget → appels serveur et signale toute
+divergence ; les NOMS ci-dessus sont définitifs sauf objection d'inventaire.
+
 ## Definition of Done
 
 - [ ] Build + tests verts sur les trois fronts (`client-blazor`,
