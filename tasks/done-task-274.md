@@ -153,3 +153,111 @@ divergence ; les NOMS ci-dessus sont définitifs sauf objection d'inventaire.
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : inchangé — Flagsmith fait déjà partie de la plateforme
 - **AIPD / impact RGPD** : néant — aucun nouveau traitement de données
+
+## Branches
+- `api-mail` (pushed) : feat/task-274-dashboard-widget-flags — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-274-dashboard-widget-flags
+- `client-blazor` (pushed) : feat/task-274-dashboard-widget-flags — https://github.com/codengine-technologies/HealthPlatform.Client/tree/feat/task-274-dashboard-widget-flags
+- `client-mobile` (pushed) : feat/task-274-dashboard-widget-flags — https://github.com/codengine-technologies/HealthPlatform.Client.Mobile/tree/feat/task-274-dashboard-widget-flags
+- `dtos-mss` (pushed, auto-inclus) : feat/task-274-dashboard-widget-flags — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-274-dashboard-widget-flags
+- `client-angular` (code-only) : la forge écrit sur la branche actuellement checked out dans `Client/Angular/` (snapshot au /start : `feature/nova-rewriting-mss`) — humain gère branche, commit, push, PR TFS
+
+## Inventaire widgets/flags (final, /develop 2026-08-27)
+
+L'inventaire préliminaire du PO est confirmé tel quel — 8 flags, aucun widget
+supplémentaire découvert, aucune divergence de nom :
+
+| Flag | Blazor (IFlaggedWidget) | Angular (mss-dashboard) | Mobile (home) | Appels serveur coupés quand OFF |
+|---|---|---|---|---|
+| `dashboard_widget_mail_counters` | MailWidget | mss-mail-widget | messaging-counters-widget | `GET /mail/folders` (compteurs) |
+| `dashboard_widget_mail_notifications` | MailNotificationWidget | mss-mail-notification-widget | — | résumé des non-lus |
+| `dashboard_widget_today_summary` | — | — | today-unread-summary-widget | `…/emails/today`, `…/unread/today` |
+| `dashboard_widget_abnormal_biology` | AbnormalBiologyWidget | mss-abnormal-biology-widget | abnormal-biology-widget | biologies anormales |
+| `dashboard_widget_biology_ack_pending` ⚠️ | BiologyAckPendingKpiWidget | mss-biology-ack-pending-kpi-tile | biology-ack-pending-tile | KPI acquittements |
+| `dashboard_widget_patients` | PatientWidget | mss-patient-widget | patients-unread-widget | patients non lus |
+| `dashboard_widget_sync_progress` | SyncProgressWidget | mss-sync-progress-widget | — | `GET /sync/coverage` |
+| `dashboard_widget_offline_status` | OfflineStatusWidgetDefinition | mss-offline-status-widget | — | statut local (charge ~nulle) |
+
+⚠️ `biology_ack_pending` : obligation métier — outil d'incident uniquement
+(consigne d'exploitation, cf. Conformité santé).
+
+## Journal d'implémentation (/develop, 2026-08-27)
+
+- **api-mail** (`878794c`) : 8 flags ajoutés au `FlagsmithSeeder` (banc, ON).
+- **client-blazor** (`29c988f`) : contrat opt-in `IFlaggedWidget` + service
+  `DashboardWidgetFlagService` (fail-open, cache 5 min, vol unique, budget
+  3 s) sur l'endpoint existant ; gating dans `DashBoard.razor` (composant
+  jamais instancié = appels jamais émis ; service absent = tout visible) ;
+  7 widgets marqués. 6 tests (ProbeComponent compte les initialisations).
+  Build vert, 150/152 tests (2 skips pré-existants).
+- **client-mobile** (`86c3406`) : `DashboardWidgetFlagsService` (signal,
+  mêmes règles), `MssApiService.getFeatureFlags()` (defer), `@if` sur les 5
+  widgets du home, `ensureLoaded()` fire-and-forget à l'entrée d'onglet.
+  6 tests. Build vert, 769/769.
+- **client-angular** (code-only, branche humaine `feature/nova-rewriting-mss`,
+  NON committé) : même triptyque (service signal + `getFeatureFlags()` +
+  `@if` sur les 7 sélecteurs, en-têtes de section suivant leur widget).
+  7 tests vitest. `mss-lib:test` 322/322, build `weda2` (aval) vert.
+  Arbre humain préservé (2 fichiers environments modifiés pré-existants,
+  non touchés).
+- **dtos-mss** : aucun changement de contrat, branche sans commit.
+
+## Simplify log (/forge-simplify, 2026-08-27)
+
+- Examiné sur les 4 repos : rien à simplifier de substantiel — code mince,
+  symétrique par construction. La duplication du service de flags entre
+  `client-mobile` et `client-angular` est structurelle (workspaces sans lib
+  partagée ; le mobile est le « miroir raisonné » d'Angular, convention
+  existante du repo). `dtos-mss`/`interop-cda` non touchés.
+
+## Sonar log (/sonar, 2026-08-27)
+
+- Skip motivé : le seul fichier api-mail touché (`src/AppHost/FlagsmithSeeder.cs`)
+  est dans un chemin **exclu de l'analyse Sonar** (`sonar.exclusions:
+  **/AppHost/**`) — une analyse complète ne produirait aucun finding
+  attribuable à la task. Build AppHost vert (validation /develop).
+
+## Lint log (/lint-angular, 2026-08-27)
+
+- Baseline scope MSS (`tag:scope:mss`, base `origin/next`) : mss-lib en échec
+  sur le code frais de la task (prettier + jsdoc) — 5 erreurs.
+- It. 1 : `--fix` (prettier + squelettes JSDoc auto), puis JSDoc remplis à la
+  main (`@param`/`@returns`/`@example` réels, conventions du CLAUDE.md repo).
+- Final : **0 erreur**, 35 warnings résiduels (jsdoc/@example et max-lines
+  pré-existants du fichier mss-api.service, hors périmètre) ; `mss-lib:test`
+  322/322 verts. Code-only : rien de committé (git humain).
+
+## Lint mobile log (/lint-mobile, 2026-08-27)
+
+- Baseline : **0 erreur, 0 warning** (« All files pass linting ») — rien à
+  corriger, aucun commit de lint. Build + 769 tests déjà verts (/develop).
+
+## Visual verify log (/verify-visual, 2026-08-27)
+
+- Best-effort, non bloquant : l'outillage `tools/visual-verify/` est absent de
+  ce poste (aucun `capture.mjs`) — capture impossible. Aucun design nouveau
+  (pas de `## Stitch design log` : gating pur, rendu identique flags ON).
+  Filet compensatoire : specs de rendu du `home` verts (769/769), dont les
+  nouveaux tests @if (flag OFF → sélecteur absent, défaut → tous rendus).
+  Le juge visuel reste l'humain au HAG (Manual Test Plan).
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/204 — label `awaiting-human-merge` (seeder banc)
+- `client-blazor` : https://github.com/codengine-technologies/HealthPlatform.Client/pull/69 — label `awaiting-human-merge`
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/63 — label `awaiting-human-merge`
+- `dtos-mss` : aucun commit (pas de changement de contrat) — pas de PR ; branche à supprimer au /merge
+- `client-angular` : code-only — humain gère commit/push TFS et ouverture PR (branche `feature/nova-rewriting-mss`). Fichiers modifiés/ajoutés par la forge :
+  -  M front/apps/mss/src/environments/environment.ts
+  -  M front/apps/weda2/src/environments/environment.ts
+  -  M front/libs/mss/src/core/services/mss-api.service.ts
+  -  M front/libs/mss/src/core/utils/reply-all-recipients.util.ts
+  -  M front/libs/mss/src/features/dashboard/mss-dashboard.component.html
+  -  M front/libs/mss/src/features/dashboard/mss-dashboard.component.ts
+  -  M front/libs/mss/src/features/mail/components/ai-chat-panel/ai-chat-panel.component.ts
+  - ?? front/libs/mss/src/core/services/dashboard-widget-flags.service.spec.ts
+  - ?? front/libs/mss/src/core/services/dashboard-widget-flags.service.ts
+  - ?? front/libs/mss/src/features/dashboard/mss-dashboard.component.spec.ts
+
+## Code Review Summary
+
+APPROVED — 0 bloquant. 1 suggestion : le DashBoard Blazor attend la première lecture des flags (3 s max, une fois par session) là où mobile/Angular sont en fire-and-forget — à aligner si la latence du premier affichage devient visible. Duplication mobile/Angular du service : structurelle (workspaces distincts, convention miroir). Règle 11 : les 3 PRs GitHub + le diff Angular forment UNE US — test humain sur l'ensemble assemblé avant merge.
