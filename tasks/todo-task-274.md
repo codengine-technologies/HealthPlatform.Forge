@@ -1,6 +1,6 @@
 # todo-task-274.md — Chaque widget du tableau de bord a son interrupteur (feature flag)
 
-**Repos**: client-blazor, client-angular, client-mobile
+**Repos**: api-mail, client-blazor, client-angular, client-mobile
 **Dependencies**: —
 **Epic**: E015
 
@@ -43,17 +43,24 @@ cas d'incident (délester le widget coûteux sans redéployer).
    par widget en codant, complète la correspondance widget → appels serveur,
    et consigne l'inventaire final dans la task — repris dans le body des PRs
    pour que l'humain crée les flags dans Flagsmith.
-4. **Les flags ne sont PAS créés par le code** : ils se créent dans
-   l'administration Flagsmith (humain/exploitation). Le code se comporte
-   correctement qu'ils existent ou non (règle 1). La US livre la **liste à
-   créer**, pas la création.
+4. **Création des flags — deux mondes** : sur le **banc**, le
+   `FlagsmithSeeder` de l'AppHost (task-177, `src/AppHost/FlagsmithSeeder.cs`)
+   crée déjà les flags de façon idempotente (`default_enabled = true`) — la US
+   **ajoute les huit `dashboard_widget_*` à son tableau `FeatureFlags`** : au
+   prochain démarrage du banc ils existent, ON. Dans les **environnements
+   réels** (staging/prod), la création reste un geste d'exploitation manuel à
+   partir de la liste livrée — le code applicatif ne crée jamais de flag
+   (l'API admin et son token n'ont rien à faire hors du seeder de banc).
+   Dans tous les cas le code des fronts se comporte correctement que les
+   flags existent ou non (règle 1).
 5. **Un widget masqué ne laisse pas de trou** : la mise en page se recompose
    proprement (pas d'emplacement vide figé).
 
 **Hors périmètre, dit explicitement** :
-- Aucun changement `api-mail` : l'endpoint `FeatureFlagController` existant
-  suffit ; aucun garde serveur par flag (couper l'appel côté client coupe la
-  charge — un garde serveur dupliquerait la logique pour rien).
+- Côté `api-mail`, SEUL le seeder de banc (`src/AppHost/FlagsmithSeeder.cs`)
+  change : l'endpoint `FeatureFlagController` existant suffit tel quel, et
+  aucun garde serveur par flag (couper l'appel côté client coupe la charge —
+  un garde serveur dupliquerait la logique pour rien).
 - Le harnais k6 (l'attribution au banc passe déjà par les probabilités
   `JOURNEY_*` par geste ; les flags servent l'attribution en conditions
   réelles et le délestage).
@@ -79,8 +86,11 @@ divergence ; les NOMS ci-dessus sont définitifs sauf objection d'inventaire.
 
 ## Definition of Done
 
-- [ ] Build + tests verts sur les trois fronts (`client-blazor`,
+- [ ] Build + tests verts sur les quatre repos (`api-mail`, `client-blazor`,
       `client-angular` code-only, `client-mobile`)
+- [ ] Les huit flags `dashboard_widget_*` de l'inventaire sont ajoutés au
+      tableau `FeatureFlags` de `FlagsmithSeeder` (AppHost, banc uniquement,
+      `default_enabled = true`) — au démarrage du banc ils existent, ON
 - [ ] Inventaire des widgets par front consigné dans la task (section
       `## Inventaire widgets/flags`), avec le nom de flag de chaque widget —
       convention `dashboard_widget_{slug}`, mêmes noms sur les trois fronts
@@ -103,8 +113,11 @@ divergence ; les NOMS ci-dessus sont définitifs sauf objection d'inventaire.
   (le conteneur Flagsmith du profil démarre avec lui), puis le front à tester
   (Blazor : `Client/Blazor` ; mobile : `cd Client/Mobile && npm start` ;
   Angular : selon la branche humaine).
-- Dans l'admin Flagsmith du banc, créer `dashboard_widget_mail_counters` et le
-  mettre **OFF** (sur mobile, tester aussi `dashboard_widget_today_summary`).
+- Vérifier dans l'admin Flagsmith du banc que les huit `dashboard_widget_*`
+  ont été créés par le seeder au démarrage, tous **ON** (aucune création
+  manuelle au banc).
+- Mettre `dashboard_widget_mail_counters` **OFF** (sur mobile, tester aussi
+  `dashboard_widget_today_summary`).
 - Ouvrir le tableau de bord : le widget des compteurs de messagerie est absent,
   la mise en page est propre, et l'onglet Réseau (DevTools) **ne montre pas**
   ses appels (`GET /mail/folders`…).
