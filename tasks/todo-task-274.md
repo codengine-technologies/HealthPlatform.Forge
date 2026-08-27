@@ -37,15 +37,12 @@ cas d'incident (délester le widget coûteux sans redéployer).
    l'usage est l'investigation et le délestage, pas le temps réel.
 3. **Convention de nommage imposée** : `dashboard_widget_{slug}` (kebab/snake
    du nom du widget), identique sur les trois fronts pour le même widget —
-   c'est ce qui rend l'attribution lisible dans Flagsmith. La liste canonique
-   couvre au minimum les appels mesurés au banc : compteurs de dossiers
-   (`dashboard_widget_folders`), dossier principal/inbox
-   (`dashboard_widget_folder_summary`), compteur du jour
-   (`dashboard_widget_today`), couverture de synchronisation
-   (`dashboard_widget_sync_coverage`). `/develop` inventorie les widgets
-   réellement affichés par chaque front et **complète la liste** (un flag par
-   widget affiché) ; l'inventaire final est consigné dans la task et repris
-   dans le body des PRs pour que l'humain crée les flags dans Flagsmith.
+   c'est ce qui rend l'attribution lisible dans Flagsmith. La liste des huit
+   flags est fixée par l'inventaire préliminaire ci-dessous (section
+   « Inventaire préliminaire widgets/flags ») ; `/develop` la confirme widget
+   par widget en codant, complète la correspondance widget → appels serveur,
+   et consigne l'inventaire final dans la task — repris dans le body des PRs
+   pour que l'humain crée les flags dans Flagsmith.
 4. **Les flags ne sont PAS créés par le code** : ils se créent dans
    l'administration Flagsmith (humain/exploitation). Le code se comporte
    correctement qu'ils existent ou non (règle 1). La US livre la **liste à
@@ -106,11 +103,11 @@ divergence ; les NOMS ci-dessus sont définitifs sauf objection d'inventaire.
   (le conteneur Flagsmith du profil démarre avec lui), puis le front à tester
   (Blazor : `Client/Blazor` ; mobile : `cd Client/Mobile && npm start` ;
   Angular : selon la branche humaine).
-- Dans l'admin Flagsmith du banc, créer `dashboard_widget_today` et le mettre
-  **OFF**.
-- Ouvrir le tableau de bord : le compteur du jour est absent, la mise en page
-  est propre, et l'onglet Réseau (DevTools) **ne montre pas** l'appel
-  `.../emails/today`.
+- Dans l'admin Flagsmith du banc, créer `dashboard_widget_mail_counters` et le
+  mettre **OFF** (sur mobile, tester aussi `dashboard_widget_today_summary`).
+- Ouvrir le tableau de bord : le widget des compteurs de messagerie est absent,
+  la mise en page est propre, et l'onglet Réseau (DevTools) **ne montre pas**
+  ses appels (`GET /mail/folders`…).
 - Remettre le flag **ON** : au prochain rafraîchissement de session (ou après
   le TTL), le widget revient et l'appel repart.
 - Supprimer le flag / couper Flagsmith : tous les widgets visibles, aucun
