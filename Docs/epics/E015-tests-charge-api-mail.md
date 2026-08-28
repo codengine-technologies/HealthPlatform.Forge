@@ -2,7 +2,7 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.42
+> **Version** : 1.43
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
 > **Dernière mise à jour** : 2026-08-28
@@ -56,6 +56,7 @@
   - [Les tâches d'arrière-plan sont enfin éprouvées comme elles s'exécutent réellement (6 août 2026, soir)](#les-tâches-darrière-plan-sont-enfin-éprouvées-comme-elles-sexécutent-réellement-6-août-2026-soir)
   - [La pièce qui permettait au piège de se reformer a été retirée (6 août 2026)](#la-pièce-qui-permettait-au-piège-de-se-reformer-a-été-retirée-6-août-2026)
   - [Le banc annonçait une attente de soixante secondes qui n'a jamais existé (23-25 août 2026)](#le-banc-annonçait-une-attente-de-soixante-secondes-qui-na-jamais-existé-23-25-août-2026)
+  - [Chaque widget du tableau de bord a son interrupteur (27 août 2026)](#chaque-widget-du-tableau-de-bord-a-son-interrupteur-27-août-2026)
   - [Chercher un dossier ne redemande plus deux fois la même chose au serveur (28 août 2026)](#chercher-un-dossier-ne-redemande-plus-deux-fois-la-même-chose-au-serveur-28-août-2026)
 - [État de couverture (2026-08-28)](#état-de-couverture-2026-08-28)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
@@ -125,6 +126,7 @@ baisses de performance avant qu'elles n'atteignent les utilisateurs**.
 | L'envoi ne repaie plus une connexion à chaque message | Réutiliser la connexion d'envoi du praticien d'un message au suivant : elle était rouverte à chaque envoi (près d'une demi-seconde payée à chaque fois), parce que son entretien battait pile sur le délai de coupure du serveur et que sa perte était invisible | task-269 | 🟡 Livré, en attente d'intégration — confirmation au banc due |
 | L'envoi n'attend plus son classement dans « Envoyés » | Rendre la main au praticien dès que le serveur de messagerie a accepté son message : la copie dans « Envoyés » se fait ensuite, en coulisse, avec reprise automatique et trace en cas d'échec | task-272 | 🟡 Livré, en attente d'intégration — confirmation au banc due |
 | Le rapport de campagne ne présente plus une non-mesure comme une mesure | Distinguer, dans le coût d'accès à la boîte d'un praticien, ce qui est payé une fois à l'ouverture de ce qui est payé à chaque geste — et faire dire au rapport « au moins 60 s » plutôt qu'un nombre à trois décimales quand l'instrument est saturé | task-271 | 🟢 Livré — caractérisé, étiqueté ; confirmation au banc due |
+| Chaque widget du tableau de bord a son interrupteur | Attribuer la charge du tableau de bord widget par widget (en l'activant/désactivant sélectivement) et délester un widget coûteux en incident sans redéployer — flag coupé : le widget disparaît **et ses appels serveur ne partent plus** ; flag absent ou service d'interrupteurs en panne : tout reste visible, comme aujourd'hui | task-274 | 🟡 Livré, en attente d'intégration (3 PRs + volet Angular manuel) |
 | L'instrument sait enfin ce qu'il ne mesure pas | Mesurer les vingt points d'attente de la boîte du praticien, et non le seul qui l'était : le tableau censé désigner le coupable d'un ralentissement ne pouvait nommer que celui-là | task-214 | 🟡 Livré, en attente d'intégration |
 | Mesure en nombre de médecins servis | Poser la question qui décide de l'accueil de nouveaux praticiens — **combien de médecins la messagerie sert-elle en tenant ses temps de réponse** — en simulant des médecins qui déroulent leur journée réelle (arriver sur son tableau de bord, ouvrir sa boîte, lire, supprimer, télécharger une pièce jointe, envoyer) au lieu d'un mélange d'actions isolées ; et lire, à chaque palier de population, **quelle étape du travail du médecin souffre la première** | task-220 | 🟡 Livré, en attente d'intégration |
 | Le banc ne prend plus les ressources du service qu'il mesure | Mesurer la messagerie au-delà de cinq cents praticiens sans que les serveurs de messagerie simulés — désormais installés sur une infrastructure séparée — ne lui prennent ses ressources, et lire leur coût propre séparément du sien | task-221 | 🟡 Livré, en attente d'intégration |
@@ -1402,6 +1404,31 @@ inconnu, c'est la durée réelle des ouvertures les plus lentes : au-delà de
 soixante secondes, on ne sait toujours pas. La prochaine campagne le dira, et
 c'est précisément ce que cette livraison rend possible. *(task-271)*
 
+### Chaque widget du tableau de bord a son interrupteur (27 août 2026)
+
+L'arrivée sur le tableau de bord est le geste le plus fréquent du parcours et le
+deuxième poste du temps serveur mesuré au banc (un quart du total au palier
+1000). Ce coût est la somme de plusieurs appels — dossiers, compteurs du jour,
+couverture de synchronisation… — sans moyen simple de dire **lequel pèse**, ni
+de soulager le service en production si l'un d'eux se révèle coûteux.
+
+Chaque widget du tableau de bord est désormais gouverné par un interrupteur
+(huit au total, mêmes noms sur les trois applications — web nouvelle
+génération, web historique, mobile). Couper un interrupteur masque le widget
+**et empêche ses appels de partir** : c'est un interrupteur de charge, pas
+d'affichage — masquer sans couper l'appel ne changerait rien au serveur. On
+peut donc mesurer la part de chaque widget en le coupant sélectivement, et
+délester le widget coûteux en cas d'incident **sans redéployer**.
+
+Deux garde-fous, testés sur chaque application : si le service d'interrupteurs
+est absent, en panne ou lent, **tout reste visible** — un cabinet médical ne
+perd jamais un widget à cause d'un incident de configuration ; et la lecture
+des interrupteurs se fait une fois par session (rafraîchie au plus toutes les
+cinq minutes), jamais à chaque affichage — instrumenter le geste le plus
+fréquent sans l'alourdir. Un des huit widgets porte une obligation métier
+(l'indicateur d'acquittements de biologie) : son interrupteur est documenté
+comme **outil d'incident uniquement**. *(task-274)*
+
 ### Chercher un dossier ne redemande plus deux fois la même chose au serveur (28 août 2026)
 
 Afficher un dossier de messages — le geste par lequel commence chaque arrivée sur
@@ -1452,6 +1479,7 @@ réduction, elle, n'est pas déduite d'un temps : elle est **comptée**, échang
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
+| Chaque widget du tableau de bord a son interrupteur | 🟡 Livré, en attente d'intégration | Huit interrupteurs `dashboard_widget_*`, mêmes noms sur les trois applications, créés automatiquement (et allumés) au démarrage du banc — dans les environnements réels leur création reste un geste d'exploitation à partir de la liste livrée. Interrupteur coupé : le widget n'est pas construit du tout, donc ses appels serveur ne partent pas — prouvé par test sur chaque front (sur le web nouvelle génération, un composant témoin compte les constructions ; sur mobile et web historique, le sélecteur est absent du rendu). Service d'interrupteurs absent, lent ou en panne : tout reste visible, aucun message d'erreur — le comportement d'aujourd'hui. Lecture des interrupteurs une fois par session, cache de cinq minutes : le geste instrumenté n'est pas alourdi. L'indicateur d'acquittements de biologie porte une obligation métier : son interrupteur est réservé aux incidents. Volet web historique livré en code seul (intégration manuelle) ; l'ensemble forme une seule US à tester assemblée | task-274 |
 | Chercher un dossier ne redemande plus deux fois la même chose au serveur | 🟢 Livré — réduction prouvée par le compteur ; confirmation au banc due | L'affichage d'un dossier non encore en mémoire coûtait **sept** échanges avec le serveur de messagerie, dont **deux étaient la répétition exacte** des deux premiers — la messagerie demandait l'état du dossier, puis recommençait par la même demande avant de chercher la liste. Il en coûte **cinq**. Le décompte des messages du jour, lui, était jeté au bout de dix secondes et entièrement recalculé alors qu'il restait bon cinq minutes : il est désormais **revérifié** contre un état fraîchement mesuré — **deux** échanges au lieu de cinq quand le dossier n'a pas bougé. Le compteur de **non lus** est volontairement exclu de ce raccourci (lire un message ne déplace aucun des deux repères qui servent à la vérification). Ce que le médecin voit est inchangé : compteurs toujours issus d'une mesure de l'appel en cours, réponse identique champ pour champ entre chemin court et chemin long, vérifié par test | task-270 |
 | Le rapport de campagne ne présente plus une non-mesure comme une mesure | 🟢 Livré — caractérisé et étiqueté ; confirmation au banc due | Le rapport du 23 août annonçait que consulter la liste de ses dossiers retenait la connexion du praticien **soixante secondes**, quand le même geste chronométré côté praticien valait **155 millisecondes**. Ni l'un ni l'autre n'était faux : soixante secondes est **la plus grande durée que l'instrument sait mesurer**, et le rapport imprimait cette borne comme un résultat au millième. **Une demande d'évolution avait déjà été rédigée sur ce chiffre**, pour partir en quête d'un délai d'expiration réglé à soixante secondes — l'inventaire complet des limites de ce chemin (120 s, 5 min, 5 s) montre qu'**il n'en existe aucun**. Ce que la mesure masquait est réel, en revanche : ouvrir une boîte pour la première fois coûte cher (connexion, chiffrement, vérification du certificat, authentification), et le banc en ouvre trois cents d'un coup au démarrage de chaque palier — ces ouvertures écrasaient le coût du travail courant. Les deux situations sont désormais **comptées séparément**, et seule la seconde vaut comme engagement de service. Le correctif envisagé — sortir l'établissement de la connexion de la zone réservée — a été **écarté sur analyse** : la connexion est partagée avant même d'être ouverte, et l'en sortir permettrait à deux actions du même praticien de l'ouvrir en même temps. Enfin, le rapport **refuse** désormais de présenter comme mesuré ce qui est saturé, et nomme lui-même la lecture (la lenteur appartient-elle aux ouvertures, ou au travail courant ?). Ce dernier point est le plus durable : le banc avait rencontré deux fois ce piège de plafond et l'avait deux fois corrigé en repoussant la limite, **sans jamais rendre la saturation visible**. **Réserve dite** : les traces détaillées du 23 août ont expiré ; la durée réelle des ouvertures les plus lentes reste inconnue au-delà de soixante secondes, et c'est la prochaine campagne qui la dira | task-271 |
 | Savoir où part la seconde et demie que coûte chaque envoi | 🟢 Livré — mesure de confirmation à conduire au banc | Le coût de l'envoi est **fixe** (1,3 s à 100, 200 et 500 médecins) : ce n'est pas un problème de charge mais un coût par geste, que trois corrections successives n'avaient pas entamé faute de décomposition. Chaque envoi est désormais découpé en six étapes mesurées, et l'archivage dans « Messages envoyés » se lit « non relevé » quand il n'a pas lieu — jamais zéro, qui fausserait la moyenne. Le poste dominant est nommé par le rapport ; le reste par différence ne peut jamais l'être : on n'optimise pas une soustraction | task-260 |
@@ -2075,7 +2103,7 @@ Cinq réserves à porter au bilan, sans quoi il serait trompeur :
 - v1.59 — **L'envoi ne repaie plus une connexion à chaque message.** Le mécanisme de réutilisation existait mais ne servait jamais : son battement d'entretien était réglé pile sur le délai de coupure du serveur, et la connexion mourait sans trace entre deux envois. L'entretien bat désormais plus vite que la coupure, la connexion vit aussi longtemps que la session du praticien, et sa disparition s'écrit dans le journal. La confirmation au banc reste due ; le classement dans « Envoyés », autre tiers du coût, est porté par une US dédiée. (task-269)
 
 - v1.60 — **L'envoi rend la main dès l'acceptation du serveur.** Le classement de la copie dans « Envoyés » — près d'une demi-seconde — se fait désormais en coulisse, avec reprise automatique et trace reliée à l'envoi en cas d'échec définitif ; un échec de classement ne peut plus être présenté comme un échec d'envoi. Avec la réutilisation de connexion (v1.59), l'envoi est attendu bien sous la seconde — confirmation au banc due. (task-272)
-- v1.63 — **Afficher un dossier ne repose plus deux fois la même question au
+- v1.64 — **Afficher un dossier ne repose plus deux fois la même question au
   serveur.** Premier poste de coût de l'écran d'accueil (63 % de son temps), et
   un coût **fixe** : 696 ms à cent médecins, 698 à cinq cents. La messagerie
   demandait l'état du dossier, puis recommençait par la même demande avant
@@ -2087,6 +2115,10 @@ Cinq réserves à porter au bilan, sans quoi il serait trompeur :
   exclu de ce raccourci, faute de pouvoir en démontrer la fraîcheur. Ce que le
   médecin voit est inchangé, et la réduction est **comptée** échange par échange
   plutôt que déduite d'un temps. (task-270)
+
+- v1.61 — **L'attente de soixante secondes annoncée par le banc n'a jamais existé.** Le chiffre était la plus grande durée que l'instrument sait mesurer, imprimée comme un résultat au millième — et une demande d'évolution avait déjà été rédigée dessus. L'inventaire des limites du chemin montre qu'aucun délai à soixante secondes n'existe ; ce que la mesure masquait — le coût réel de la première ouverture d'une boîte, payé en rafale au début de chaque palier — est désormais compté séparément du travail courant, et le rapport refuse de présenter comme mesuré ce qui est saturé. (task-271)
+
+- v1.62 — **Chaque widget du tableau de bord a son interrupteur.** Huit interrupteurs, mêmes noms sur les trois applications : coupé, le widget disparaît **et ses appels serveur ne partent plus** — de quoi attribuer la charge du geste le plus fréquent widget par widget, et délester en incident sans redéployer. Service d'interrupteurs en panne ou absent : tout reste visible, aucun message d'erreur ; lecture une fois par session, le geste instrumenté n'est pas alourdi. (task-274)
 
 ---
 
