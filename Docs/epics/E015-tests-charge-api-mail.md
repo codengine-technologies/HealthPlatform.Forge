@@ -2,10 +2,10 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.41
+> **Version** : 1.42
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
-> **Dernière mise à jour** : 2026-08-25
+> **Dernière mise à jour** : 2026-08-28
 
 ---
 
@@ -55,7 +55,9 @@
   - [Consulter sa boîte pendant qu'un traitement tourne ne fait plus la queue message par message (7 août 2026)](#consulter-sa-boîte-pendant-quun-traitement-tourne-ne-fait-plus-la-queue-message-par-message-7-août-2026)
   - [Les tâches d'arrière-plan sont enfin éprouvées comme elles s'exécutent réellement (6 août 2026, soir)](#les-tâches-darrière-plan-sont-enfin-éprouvées-comme-elles-sexécutent-réellement-6-août-2026-soir)
   - [La pièce qui permettait au piège de se reformer a été retirée (6 août 2026)](#la-pièce-qui-permettait-au-piège-de-se-reformer-a-été-retirée-6-août-2026)
-- [État de couverture (2026-08-14)](#état-de-couverture-2026-08-14)
+  - [Le banc annonçait une attente de soixante secondes qui n'a jamais existé (23-25 août 2026)](#le-banc-annonçait-une-attente-de-soixante-secondes-qui-na-jamais-existé-23-25-août-2026)
+  - [Chercher un dossier ne redemande plus deux fois la même chose au serveur (28 août 2026)](#chercher-un-dossier-ne-redemande-plus-deux-fois-la-même-chose-au-serveur-28-août-2026)
+- [État de couverture (2026-08-28)](#état-de-couverture-2026-08-28)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -151,6 +153,7 @@ baisses de performance avant qu'elles n'atteignent les utilisateurs**.
 | Le banc de mesure refuse de rendre un verdict sur des boîtes vides | Deux campagnes ont été invalidées parce que l'outil de mesure visait des messages **qui n'existaient plus** — et rendait des verdicts verts sans avoir rien mesuré. Il **refuse désormais de démarrer** dans cet état, en nommant la cause et le geste qui répare ; un décalage paramétrable permet aussi de viser les messages réellement présents | task-263 | 🟢 Corrigé et éprouvé — refus vérifié en conditions réelles |
 | Une mesure de capacité ne juge plus sa propre préparation | À forte population, la mise en condition du banc consommait **139 % de la fenêtre de mesure** : le verdict portait surtout sur la préparation, pas sur le régime établi. La préparation est désormais **allouée d'avance et exclue du verdict** — le rapport dit quelle fenêtre porte chaque verdict, et signale qu'un tir ancien n'est pas directement comparable | task-264 | 🟢 Corrigé — confirmation à forte population à conduire |
 | Le banc peut enfin mesurer le coût des conversations | Le corpus d'essai ne contenait **aucune conversation** : aucun message ne répondait à un autre. Le travail de regroupement en fils — celui-là même qu'une optimisation en attente vise — tournait donc **à vide** sur le banc, et une campagne y aurait conclu à un gain modeste **faute de l'avoir exercé**. Le corpus peut désormais contenir des conversations, en proportion réglable et de longueurs variées ; le réglage est **volontaire**, le corpus par défaut est inchangé, et le rapport dit sur quel corpus le tir a porté | task-267 | 🟢 Livré — campagnes de confirmation à conduire sur corpus fileté |
+| Chercher un dossier ne redemande plus deux fois la même chose au serveur | Afficher un dossier de messages sans que la messagerie ne repose au serveur, quelques millisecondes plus tard, **la question qu'elle vient de lui poser** : l'affichage d'un dossier non encore en mémoire coûtait sept échanges avec le serveur de messagerie, dont deux étaient la répétition exacte des deux premiers. Il en coûte cinq. Et le décompte des messages du jour, jeté au bout de dix secondes, est désormais **revérifié** plutôt que recalculé quand le dossier n'a pas bougé — deux échanges au lieu de cinq | task-270 | 🟢 Livré — réduction prouvée par le compteur ; confirmation au banc due |
 
 ---
 
@@ -1399,10 +1402,57 @@ inconnu, c'est la durée réelle des ouvertures les plus lentes : au-delà de
 soixante secondes, on ne sait toujours pas. La prochaine campagne le dira, et
 c'est précisément ce que cette livraison rend possible. *(task-271)*
 
-## État de couverture (2026-08-25)
+### Chercher un dossier ne redemande plus deux fois la même chose au serveur (28 août 2026)
+
+Afficher un dossier de messages — le geste par lequel commence chaque arrivée sur
+le tableau de bord — était le **premier poste de coût** de cet écran : 63 % de son
+temps, l'écran lui-même pesant près d'un quart du temps total de la messagerie. Et
+ce coût ne bougeait pas avec la population : 696 millisecondes à cent médecins,
+699 à deux cents, 698 à cinq cents. Un prix fixe, payé à chaque fois, que rien
+n'expliquait par la charge.
+
+Le décompte des sollicitations posé trois semaines plus tôt (task-262) a nommé la
+cause, et elle est simple à dire : la messagerie **posait deux fois la même
+question** au serveur. Elle lui demandait d'abord l'état du dossier — combien de
+messages, combien de non lus — puis, quelques millisecondes plus tard, elle
+recommençait par exactement les deux mêmes demandes avant d'aller chercher la
+liste. Sept échanges avec le serveur, dont deux inutiles. Sous les cent
+millisecondes de latence d'un réseau de messagerie de santé, ces deux échanges
+valent à eux seuls un cinquième de l'attente.
+
+Ils ont disparu. La question n'est plus posée qu'une fois, et la recherche de la
+liste s'appuie sur la réponse déjà obtenue : cinq échanges au lieu de sept. Sur
+les seize mille affichages qu'une campagne comptabilise, cela représente environ
+une **heure de temps serveur** rendue.
+
+Le second gain touche le décompte des messages reçus dans la journée. Ce décompte
+était conservé cinq minutes, mais la preuve qu'il était encore juste, elle, ne
+vivait que dix secondes — passé ce délai, un décompte parfaitement valable était
+**jeté** et entièrement recalculé. Il est désormais **revérifié** : la messagerie
+redemande l'état du dossier et, s'il n'a pas changé, elle ressert le décompte
+qu'elle avait déjà. Deux échanges au lieu de cinq, pour un chiffre tout aussi
+frais — puisque c'est un état fraîchement mesuré qui le confirme.
+
+Ce raccourci s'arrête là où il cesserait d'être honnête. Le compteur de messages
+**non lus** n'en bénéficie pas, et c'est délibéré : lire un message ne change ni
+le nombre de messages du dossier ni le rang du prochain à arriver, donc la
+vérification ne prouve rien sur cette liste-là. La réutiliser reviendrait à
+promettre au médecin une fraîcheur que l'on ne sait pas démontrer. Ce compteur
+continue donc d'être recalculé.
+
+Enfin, la garantie qui compte : **ce que le médecin voit est inchangé**. Les
+compteurs affichés proviennent toujours d'une mesure prise pendant l'appel en
+cours, jamais d'un souvenir ; et la réponse rendue est identique champ pour champ,
+que la messagerie ait pris le chemin court ou le chemin long — c'est un test qui
+le compare, sur un dossier imbriqué où la moindre différence se verrait. La
+réduction, elle, n'est pas déduite d'un temps : elle est **comptée**, échange par
+échange, par l'instrument même qui avait révélé le doublon. *(task-270)*
+
+## État de couverture (2026-08-28)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
+| Chercher un dossier ne redemande plus deux fois la même chose au serveur | 🟢 Livré — réduction prouvée par le compteur ; confirmation au banc due | L'affichage d'un dossier non encore en mémoire coûtait **sept** échanges avec le serveur de messagerie, dont **deux étaient la répétition exacte** des deux premiers — la messagerie demandait l'état du dossier, puis recommençait par la même demande avant de chercher la liste. Il en coûte **cinq**. Le décompte des messages du jour, lui, était jeté au bout de dix secondes et entièrement recalculé alors qu'il restait bon cinq minutes : il est désormais **revérifié** contre un état fraîchement mesuré — **deux** échanges au lieu de cinq quand le dossier n'a pas bougé. Le compteur de **non lus** est volontairement exclu de ce raccourci (lire un message ne déplace aucun des deux repères qui servent à la vérification). Ce que le médecin voit est inchangé : compteurs toujours issus d'une mesure de l'appel en cours, réponse identique champ pour champ entre chemin court et chemin long, vérifié par test | task-270 |
 | Le rapport de campagne ne présente plus une non-mesure comme une mesure | 🟢 Livré — caractérisé et étiqueté ; confirmation au banc due | Le rapport du 23 août annonçait que consulter la liste de ses dossiers retenait la connexion du praticien **soixante secondes**, quand le même geste chronométré côté praticien valait **155 millisecondes**. Ni l'un ni l'autre n'était faux : soixante secondes est **la plus grande durée que l'instrument sait mesurer**, et le rapport imprimait cette borne comme un résultat au millième. **Une demande d'évolution avait déjà été rédigée sur ce chiffre**, pour partir en quête d'un délai d'expiration réglé à soixante secondes — l'inventaire complet des limites de ce chemin (120 s, 5 min, 5 s) montre qu'**il n'en existe aucun**. Ce que la mesure masquait est réel, en revanche : ouvrir une boîte pour la première fois coûte cher (connexion, chiffrement, vérification du certificat, authentification), et le banc en ouvre trois cents d'un coup au démarrage de chaque palier — ces ouvertures écrasaient le coût du travail courant. Les deux situations sont désormais **comptées séparément**, et seule la seconde vaut comme engagement de service. Le correctif envisagé — sortir l'établissement de la connexion de la zone réservée — a été **écarté sur analyse** : la connexion est partagée avant même d'être ouverte, et l'en sortir permettrait à deux actions du même praticien de l'ouvrir en même temps. Enfin, le rapport **refuse** désormais de présenter comme mesuré ce qui est saturé, et nomme lui-même la lecture (la lenteur appartient-elle aux ouvertures, ou au travail courant ?). Ce dernier point est le plus durable : le banc avait rencontré deux fois ce piège de plafond et l'avait deux fois corrigé en repoussant la limite, **sans jamais rendre la saturation visible**. **Réserve dite** : les traces détaillées du 23 août ont expiré ; la durée réelle des ouvertures les plus lentes reste inconnue au-delà de soixante secondes, et c'est la prochaine campagne qui la dira | task-271 |
 | Savoir où part la seconde et demie que coûte chaque envoi | 🟢 Livré — mesure de confirmation à conduire au banc | Le coût de l'envoi est **fixe** (1,3 s à 100, 200 et 500 médecins) : ce n'est pas un problème de charge mais un coût par geste, que trois corrections successives n'avaient pas entamé faute de décomposition. Chaque envoi est désormais découpé en six étapes mesurées, et l'archivage dans « Messages envoyés » se lit « non relevé » quand il n'a pas lieu — jamais zéro, qui fausserait la moyenne. Le poste dominant est nommé par le rapport ; le reste par différence ne peut jamais l'être : on n'optimise pas une soustraction | task-260 |
 | La liste des messages ne fabrique plus ce qu'elle n'affiche pas | 🟢 Corrigé — mesure de confirmation à conduire au banc | Le croisement de deux instruments (le décompte d'éléments de task-256, la décomposition des durées de task-243) a établi que 70 % des éléments fabriqués pour une page d'en-têtes ne sont jamais affichés. La page ne charge plus que le nécessaire, **sans requête supplémentaire** (une de moins, en fait), et les pastilles restent exactes — un compte-rendu à biologie non mise en avant garde sa pastille, c'est testé | task-261 |
@@ -2025,6 +2075,18 @@ Cinq réserves à porter au bilan, sans quoi il serait trompeur :
 - v1.59 — **L'envoi ne repaie plus une connexion à chaque message.** Le mécanisme de réutilisation existait mais ne servait jamais : son battement d'entretien était réglé pile sur le délai de coupure du serveur, et la connexion mourait sans trace entre deux envois. L'entretien bat désormais plus vite que la coupure, la connexion vit aussi longtemps que la session du praticien, et sa disparition s'écrit dans le journal. La confirmation au banc reste due ; le classement dans « Envoyés », autre tiers du coût, est porté par une US dédiée. (task-269)
 
 - v1.60 — **L'envoi rend la main dès l'acceptation du serveur.** Le classement de la copie dans « Envoyés » — près d'une demi-seconde — se fait désormais en coulisse, avec reprise automatique et trace reliée à l'envoi en cas d'échec définitif ; un échec de classement ne peut plus être présenté comme un échec d'envoi. Avec la réutilisation de connexion (v1.59), l'envoi est attendu bien sous la seconde — confirmation au banc due. (task-272)
+- v1.63 — **Afficher un dossier ne repose plus deux fois la même question au
+  serveur.** Premier poste de coût de l'écran d'accueil (63 % de son temps), et
+  un coût **fixe** : 696 ms à cent médecins, 698 à cinq cents. La messagerie
+  demandait l'état du dossier, puis recommençait par la même demande avant
+  d'aller chercher la liste — sept échanges avec le serveur, dont deux
+  strictement redondants. Il en reste cinq. Par ailleurs, le décompte des
+  messages du jour n'est plus jeté au bout de dix secondes : il est **revérifié**
+  contre un état fraîchement mesuré et resservi si le dossier n'a pas bougé —
+  deux échanges au lieu de cinq. Le compteur de **non lus** est délibérément
+  exclu de ce raccourci, faute de pouvoir en démontrer la fraîcheur. Ce que le
+  médecin voit est inchangé, et la réduction est **comptée** échange par échange
+  plutôt que déduite d'un temps. (task-270)
 
 ---
 
