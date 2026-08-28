@@ -328,3 +328,40 @@ après `/forge-simplify` était **3888 verts / 0 rouge**.
 
 `/verify-visual` — **skip clean** : aucun écran `client-mobile` touché
 (la task est purement backend `api-mail`, sans changement de contrat de route).
+
+## PRs
+
+- `api-mail` — **[PR #205](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/205)** — label `awaiting-human-merge`
+- `dtos-mss` — branche créée par `/start` (auto-inclusion), **0 commit** : aucun
+  changement de contrat, donc **aucune PR** et aucun publish NuGet
+- `client-angular`, `client-mobile`, `devops`, `psc-proxy-*` — non concernés
+  (US strictement backend, justifiée par la task : optimisation interne sans
+  modification du contrat de route)
+
+## Code Review Summary
+
+Verdict : **APPROVED** — 3 fichiers revus, 0 blocage, 2 suggestions.
+
+| Fichier | Verdict |
+|---|---|
+| `src/Application/Services/Implementation/ImapService.cs` | ✅ Fusion correcte ; compteurs toujours issus du `STATUS` de l'appel courant ; `NotFound` remonte en 404 (désormais aussi sur la route `today`) ; `BuildFolderDto` supprime deux constructions jumelles du DTO |
+| `tests/.../ImapServiceFolderStatusSolicitationTests.cs` | ✅ Nombre **et** ordre des commandes, avec leur attribution d'opération |
+| `tests/.../ImapDashboardCachingTests.cs` | ✅ Quatre branches nouvelles couvertes + parité champ pour champ du corps de réponse sur dossier imbriqué |
+
+**Suggestions non bloquantes** (hors périmètre, règle 6) :
+
+1. `ImapFolderService.ExecuteFolderSearchAsync` reste la « jumelle » hors chemin
+   de production identifiée par task-262 — elle duplique la logique corrigée ici
+   et paie toujours 4 commandes. Candidate à une suppression dédiée.
+2. Le `resolve_folder` compté n'est peut-être pas toujours un aller-retour
+   réseau : MailKit expose `FolderCache` / `TryGetCachedFolder`, donc un dossier
+   déjà listé dans la session peut être résolu sans `LIST`. Le compteur serait
+   alors une **borne supérieure** sur ce point. Non mesurable depuis le code —
+   à trancher au banc si le gain observé dépasse la prédiction.
+
+### Validation finale
+
+- Build `api-mail` : 0 erreur, 0 avertissement
+- Tests `api-mail` : **3 888 verts / 0 rouge** (domain 136, infrastructure 464,
+  application 2 186, api 685, integration 417 + 16 skipped)
+- Branche à jour avec `origin/develop` (merge, pas de rebase — règle 4)
