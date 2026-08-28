@@ -105,3 +105,121 @@ mesure par `/develop`) :
 
 - `api-mail` (pushed) : `feat/task-270-folder-imap-roundtrips` — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-270-folder-imap-roundtrips
 - `dtos-mss` (pushed, auto-inclus) : `feat/task-270-folder-imap-roundtrips` — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-270-folder-imap-roundtrips (aucun changement de contrat attendu — la task exclut toute modification du contrat de la route)
+
+## Develop log
+
+**Repos touchés** : `api-mail` uniquement. `dtos-mss` : branche créée par
+`/start` (auto-inclusion), **aucun commit** — la task interdit toute
+modification du contrat de la route, aucun DTO n'a bougé, donc pas de publish
+NuGet ni de bump consommateur.
+
+### Le défaut, tel que le compteur de task-262 le nommait
+
+Un appel froid de `GET /mail/folders/{name}` enchaînait **deux séquences IMAP
+indépendantes**, chacune sous son propre verrou de session, dont la seconde
+**recommençait par `resolve` + `STATUS`** :
+
+| # | Commande | Opération |
+|---|---|---|
+| 1 | `resolve_folder` | `GetFolderStatus` |
+| 2 | `status_folder` | `GetFolderStatus` |
+| 3 | `resolve_folder` | `GetFolderQuery` ← **doublon** |
+| 4 | `status_folder` | `GetFolderQuery` ← **doublon** |
+| 5 | `open_folder` | `GetFolderQuery` |
+| 6 | `search_folder` | `GetFolderQuery` |
+| 7 | `close_folder` | `GetFolderQuery` |
+
+Le `SEARCH` n'est pas redondant — c'est la seule commande qui rend la liste
+d'UIDs. Le `STATUS` l'est : celui de `GetFolderQuery` refaisait, quelques
+millisecondes plus tard, la mesure que `GetFolderStatus` venait de prendre.
+
+### Remède 1 — les deux séquences fusionnent (7 → 5)
+
+`ReadFolderAsync` est désormais **le** passage IMAP d'une lecture de dossier :
+`resolve` + `STATUS` une fois (le plancher, inchangé), puis
+`SELECT` + `SEARCH` + `CLOSE` **seulement si** les compteurs frais démentent la
+liste d'UIDs déjà en cache. Un verrou de session au lieu de deux.
+
+L'opération `GetFolderQuery` passe donc de **5 commandes à 3** ; l'appel froid
+complet de **7 à 5**.
+
+### Remède 2 — « reçus aujourd'hui » ne jette plus une recherche encore valide
+
+Dès que la fenêtre de `folder:status` (10 s) se refermait, l'entrée
+`folder:query` — pourtant vivante 5 min — était **jetée** et la recherche
+refaite à 5 allers-retours. Elle est maintenant confrontée à un `STATUS` frais
+(2 allers-retours) : si `(Count, UidNext)` n'a pas bougé, le dossier n'a pas
+bougé, donc l'ensemble des messages reçus dans la journée non plus.
+
+### La fraîcheur retenue — arbitrage explicite
+
+**Aucun TTL n'est modifié.** Ce qui change est la manière de démontrer la
+fraîcheur, pas sa durée :
+
+| Ce qui est rendu | Fraîcheur | Comment elle est démontrée |
+|---|---|---|
+| `Count`, `UnreadCount`, `UidNext` | **l'instant de l'appel** | `STATUS` de l'appel courant — jamais le cache |
+| liste d'UIDs de `folder` (route `folder`) | jusqu'à 5 min (`folder:uids`) | confirmée par le `STATUS` frais — comportement **inchangé** |
+| liste d'UIDs « reçus aujourd'hui » | jusqu'à 5 min (`folder:query`) | confirmée par le `STATUS` frais — **nouveau** (elle était jetée à 10 s) |
+| liste d'UIDs « non lus » | **10 s** (`folder:status`) | **inchangé, volontairement strict** |
+
+L'asymétrie est le point d'arbitrage, et elle est écrite en commentaire au point
+de décision (`RevalidatableUids`) : « reçus aujourd'hui » est **entièrement**
+décrit par l'invariant `(Count, UidNext)` — une arrivée fait avancer `UIDNEXT`,
+une suppression fait bouger `Count`, rien d'autre ne modifie l'ensemble du jour.
+**« Non lus » ne l'est pas** : marquer un message comme lu ne touche ni l'un ni
+l'autre. Le re-valider promettrait une fraîcheur que l'invariant ne prouve pas
+(retard possible jusqu'à 5 min sur le compteur de non-lus) — refusé.
+
+### La preuve : le compteur, pas la latence
+
+`tests/mss.mail.application.tests/Services/Imap/ImapServiceFolderStatusSolicitationTests.cs`
+— nombre **et ordre** exacts des commandes enregistrées, même style que task-262 :
+
+| Test | Chemin | Attendu |
+|---|---|---|
+| `ACacheMissOnTheFolderRoute_PaysTheStatusFloorThenTheSearch` | miss complet | **5** commandes (était 7), ordre épinglé |
+| `AFolderRouteRevalidation_StillCostsExactlyTheTwoCommandsOfTheStatusFloor` | re-validation | **2** commandes — non-régression du chemin `GetFolderStatus` exigée par le DOD |
+| `AFolderRouteMissWithAStaleUidCache_PaysTheFiveCommandsOnce` | UIDs périmés | 5, un seul `resolve`, un seul `STATUS` |
+| `ABoundedSearchMiss_PaysFiveCommands_TheFloorPlusItsThreeAsync` | `emails/today` miss | 5 |
+| `AFailedConnection_RecordsNothing_AbsenceStaysProvable` | connexion KO | 0 |
+
+`ImapDashboardCachingTests.cs` — le comportement produit :
+
+| Test | Ce qu'il fixe |
+|---|---|
+| `GetFolderTodayAsync_WhenTheStatusWindowExpired_RevalidatesInsteadOfSearchingAgainAsync` | statut périmé + dossier inchangé → **aucun `SEARCH`**, UIDs resservis |
+| `GetFolderTodayAsync_WhenTheStatusWindowExpiredAndTheFolderMoved_SearchesAgainAsync` | `UIDNEXT` a bougé → recherche refaite (la borne de la re-validation) |
+| `GetFolderNotSeenAsync_WhenTheStatusWindowExpired_TakesNoShortcutAsync` | « non lus » **jamais** re-validé — l'asymétrie voulue |
+| `GetFolderAsync_ServesTheSameResponseBodyWhetherRevalidatedOrSearchedAsync` | corps de réponse **champ pour champ identique** entre chemin court et chemin long, sur un dossier imbriqué (`Id`, `Name`, `ParentFolder` discriminants) |
+
+### Vérification
+
+- `dotnet build HealthPlatform.Api.Mail.sln` → **0 erreur, 0 avertissement**
+- `dotnet test HealthPlatform.Api.Mail.sln` → domain 136/136, infrastructure
+  464/464, api 685/685, **integration 417/417** (16 skipped), application
+  2185/2186
+- L'unique rouge est le flaky **pré-existant** du rendu PDF
+  (`Services.Export`, QuestPDF) : il change de nom d'un tir à l'autre
+  (`BuildPdfWithoutAttachmentsOmitsAttachmentSection`, puis
+  `RenderHeadingPreservesText`) et passe 3 fois sur 3 en isolation. Sans rapport
+  avec ce chemin. Les 325 tests `Services.Imap` sont verts.
+
+### DOD
+
+- [x] Build 0 erreur / tests verts (hors flaky PDF pré-existant)
+- [x] Allers-retours d'un cache-miss réduits **et prouvés par le compteur**
+      (7 → 5 pour l'appel froid ; opération `GetFolderQuery` 5 → 3)
+- [x] Réponse inchangée — parité champ pour champ testée sur dossier imbriqué
+- [x] Fraîcheur : aucun TTL modifié ; l'arbitrage (et l'asymétrie today/unread)
+      est écrit au point de décision et fixé par deux tests
+- [x] `GetFolderStatus` reste à 2 allers-retours — test dédié
+- [x] Tests unitaires sur chaque nouvelle branche (re-validation OK / démentie /
+      refusée pour « non lus » / miss complet)
+- [x] Aucune donnée de santé dans les journaux : les étiquettes du compteur
+      restent des littéraux (`GetFolderStatus`, `GetFolderQuery`), les journaux
+      ne portent que chemin de dossier et compteurs, comme avant
+
+### Commit
+
+- `api-mail` — [`6e1551b`](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/commit/6e1551b) sur `feat/task-270-folder-imap-roundtrips`
