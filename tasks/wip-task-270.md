@@ -313,3 +313,8 @@ fichiers de tests `Services/Imap`) :
 
 Les 325 tests `Services.Imap` sont verts à chaque tir, et le tir Debug complet
 après `/forge-simplify` était **3888 verts / 0 rouge**.
+
+## Lint log
+
+`/lint-angular` — **skip clean** : la task ne liste que `api-mail` dans
+`**Repos**:`, aucun fichier de `Client/Angular/front/` n'a été écrit.
