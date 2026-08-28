@@ -261,3 +261,18 @@ supplémentaire découvert, aucune divergence de nom :
 ## Code Review Summary
 
 APPROVED — 0 bloquant. 1 suggestion : le DashBoard Blazor attend la première lecture des flags (3 s max, une fois par session) là où mobile/Angular sont en fire-and-forget — à aligner si la latence du premier affichage devient visible. Duplication mobile/Angular du service : structurelle (workspaces distincts, convention miroir). Règle 11 : les 3 PRs GitHub + le diff Angular forment UNE US — test humain sur l'ensemble assemblé avant merge.
+
+## Merged (2026-08-29, /merge --i-tested)
+
+- `api-mail` : squash `0cd80d4` (PR #204 closed)
+- `client-blazor` : squash `63aeb52` (PR #69 closed)
+- `client-mobile` : squash `46015b7` (PR #63 closed)
+- `dtos-mss` : aucun commit — branche distante supprimée sans PR
+- `client-angular` : code-only — managed manually by the human
+
+**Arbitrage humain (2026-08-28/29)** : gate CI — `build-android` (PR #63) a
+nécessité deux correctifs sur branche (rétention APK 3 j `ddce79d0` ; lock
+régénéré sous npm 10.9.8 `03d1750` — le lock npm 11 local était invalide pour
+le runner). Après quoi npm ci + build + Gradle passent ; seul l'upload d'APK
+échoue encore (« Artifact storage quota has been hit », infra préexistante,
+recalcul 6-12 h). L'humain a tranché : « merge quand même ».
