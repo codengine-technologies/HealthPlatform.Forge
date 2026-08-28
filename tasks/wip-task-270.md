@@ -318,3 +318,8 @@ après `/forge-simplify` était **3888 verts / 0 rouge**.
 
 `/lint-angular` — **skip clean** : la task ne liste que `api-mail` dans
 `**Repos**:`, aucun fichier de `Client/Angular/front/` n'a été écrit.
+
+## Lint mobile log
+
+`/lint-mobile` — **skip clean** : `client-mobile` n'est pas listé dans
+`**Repos**:`, aucun fichier de `Client/Mobile/` n'a été écrit.
