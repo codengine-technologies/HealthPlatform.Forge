@@ -242,3 +242,74 @@ l'autre. Le re-valider promettrait une fraîcheur que l'invariant ne prouve pas
 16 skipped). Le flaky PDF pré-existant n'est pas ressorti sur ce tir.
 
 **Commit** : [`3f5d48b`](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/commit/3f5d48b)
+
+## Sonar log
+
+Projet `healthplatform` (`http://localhost:9001/dashboard?id=healthplatform`),
+2 analyses complètes sur `feat/task-270-folder-imap-roundtrips`
+(build Release + 5 projets de tests avec couverture OpenCover).
+
+### Phase 1 — new code (zero-new-debt) : ✅ verte
+
+| Analyse | `new_violations` | Attribuables à task-270 |
+|---|---|---|
+| Baseline (avant la task, 2026-08-25) | 65 | — |
+| Après `/develop` + `/forge-simplify` | 66 | **2** (`CA1861`, `ImapServiceFolderStatusSolicitationTests.cs` : tableaux littéraux passés à `Assert.Equal` dans des tests répétés) |
+| Après correctif | **64** | **0** |
+
+Les 2 findings introduits ont été corrigés
+([`42482a7`](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/commit/42482a7)) :
+les séquences de commandes attendues sont devenues des champs `static readonly`
+nommés (`ColdReadCommands`, `ColdReadOperations`, `StatusFloorCommands`,
+`StatusFloorOperations`) — le nom dit ce que la séquence est, ce que le tableau
+anonyme ne disait pas. **Zéro violation new-code sur `ImapService.cs`** aux deux
+analyses.
+
+### KPIs qualité
+
+| Métrique | Baseline (2026-08-25) | Final (task-270) | Cible |
+|---|---|---|---|
+| Bugs | 2 | 2 | 0 |
+| Vulnerabilities | 0 | 0 | 0 |
+| Security Hotspots | 0 | 0 | 0 |
+| Code Smells | 63 | 63 | — |
+| Coverage | 88,0 % | **88,2 %** | ≥ 95 % |
+| New coverage | 88,4 % | **88,6 %** | ≥ 80 % (QG) |
+| Duplication | 0,3 % | 0,3 % | < 3 % |
+| Reliability rating | C | C | A |
+| Security rating | A | A | A |
+| Maintainability rating | A | A | A |
+| **Quality Gate** | **ERROR** | **ERROR** | OK |
+
+### Pourquoi le Quality Gate reste ERROR — et pourquoi ce n'est pas cette task
+
+La `new code period` du projet est en mode `PREVIOUS_VERSION` avec une baseline
+au **2026-04-27** : quatre mois de travail **déjà mergé** entrent dans le
+« new code ». Les 64 violations restantes sont donc de la dette héritée, pas de
+la dette introduite ici. Leur répartition le montre :
+
+| Origine | Violations | Fichiers |
+|---|---|---|
+| Harnais de charge k6 (Python + JS, task-174/224) | 42 | `tests/loadtest-k6/**` |
+| Tests C# antérieurs (`CA1861`, `xUnit2032`) | 10 | Embedding, MailMaintenance, AddNewMailConsumer… |
+| Code applicatif antérieur (`S138`, `S125`, `S3267`, `S4456`, `S4457`, `S103`, `CA1859`) | 12 | `MailRepository`, `IheXdmProcessingService`, `MailClientSession`, `MailServerDiscovery`, `EnrichmentFetchPlan`, `SmtpConnectionFactory`, `EmbeddingInputBounderFactory` |
+| **task-270** | **0** | — |
+
+**Phase 2 (dette héritée) non traitée, volontairement** : ces fichiers sont hors
+du périmètre de la US (règle 6 — scopes isolés), et les tirer dans cette PR
+mélangerait un correctif de performance mesurable avec un nettoyage sans
+rapport. Le net est de toute façon favorable : 65 → **64** violations new-code,
+et la couverture progresse de 88,0 % à 88,2 %.
+
+### Rouges de test observés pendant les tirs Release
+
+Deux familles de flakies **pré-existantes**, dans des fichiers que cette task ne
+touche pas (le diff vs `develop` ne contient que `ImapService.cs` et deux
+fichiers de tests `Services/Imap`) :
+
+- `Services.Export` (rendu PDF QuestPDF) — vert 3 fois sur 3 en isolation
+- `Repository.MailRepositoryEnrichPersistInstrumentationTests` (métriques,
+  état statique partagé) — le test rouge change de nom d'un tir à l'autre
+
+Les 325 tests `Services.Imap` sont verts à chaque tir, et le tir Debug complet
+après `/forge-simplify` était **3888 verts / 0 rouge**.
