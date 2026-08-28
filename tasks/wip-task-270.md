@@ -323,3 +323,8 @@ après `/forge-simplify` était **3888 verts / 0 rouge**.
 
 `/lint-mobile` — **skip clean** : `client-mobile` n'est pas listé dans
 `**Repos**:`, aucun fichier de `Client/Mobile/` n'a été écrit.
+
+## Visual verify log
+
+`/verify-visual` — **skip clean** : aucun écran `client-mobile` touché
+(la task est purement backend `api-mail`, sans changement de contrat de route).
