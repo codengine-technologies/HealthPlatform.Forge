@@ -100,3 +100,8 @@ mesure par `/develop`) :
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui — inchangé
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+
+- `api-mail` (pushed) : `feat/task-270-folder-imap-roundtrips` — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-270-folder-imap-roundtrips
+- `dtos-mss` (pushed, auto-inclus) : `feat/task-270-folder-imap-roundtrips` — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-270-folder-imap-roundtrips (aucun changement de contrat attendu — la task exclut toute modification du contrat de la route)
