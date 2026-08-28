@@ -223,3 +223,22 @@ l'autre. Le re-valider promettrait une fraîcheur que l'invariant ne prouve pas
 ### Commit
 
 - `api-mail` — [`6e1551b`](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/commit/6e1551b) sur `feat/task-270-folder-imap-roundtrips`
+
+## Simplify log
+
+**Repos éligibles touchés** : `api-mail`. `dtos-mss` exclu par construction
+(porteur de contrat), aucun frontend touché.
+
+| Axe | Constat | Action |
+|---|---|---|
+| Réutilisation | La conversion `Result<FolderRead>` → `Result<FolderDto>` (NotFound compris) était recopiée **mot pour mot** dans les deux chemins de cache. Deux copies qui devaient rester égales pour qu'un dossier orphelin sorte en 404 et non en 500. | Extraite en `FailureOf(...)` |
+| Simplification | Branche morte `searchWhenStale is null` dans `ReadFolderAsync` — aucun appelant ne passe `null`. | Paramètre rendu non-nullable, branche supprimée (fait avant le commit `/develop`) |
+| Efficacité | Le point même de la task : 7 → 5 allers-retours, 2 → 1 verrou de session. | Déjà traité par `/develop` |
+| Altitude | `BuildFolderDto` remplace deux constructions jumelles du DTO ; `RevalidatableUids` nomme l'arbitrage de fraîcheur au lieu de le laisser dans une garde. | Déjà traité par `/develop` |
+
+**Re-validation** : `dotnet build` 0 erreur / 0 avertissement ;
+`dotnet test HealthPlatform.Api.Mail.sln` → **3888 verts, 0 rouge**
+(domain 136, infrastructure 464, application 2186, api 685, integration 417 +
+16 skipped). Le flaky PDF pré-existant n'est pas ressorti sur ce tir.
+
+**Commit** : [`3f5d48b`](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/commit/3f5d48b)
