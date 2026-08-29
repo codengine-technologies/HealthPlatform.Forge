@@ -374,3 +374,36 @@ par le task file.
 - `tests/loadtest-k6/selftest.sh` → **333 verts / 0 rouge**
 - `dotnet build HealthPlatform.Api.Mail.sln` → 0 erreur / 0 avertissement
 - Branche à jour avec `origin/develop` (merge, pas de rebase — règle 4)
+
+## Merged
+
+**Date** : 2026-08-29 — `/merge 276 --i-tested` (HAG, règle 10 : validé par
+l'humain avant merge).
+
+| Repo | PR | Squash commit sur `develop` |
+|---|---|---|
+| `api-mail` | [#207](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/207) closed | [`8867dc5`](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/commit/8867dc5741d18b2c3c99d41e11d71ebe6e2a86d4) — `feat(loadtest): task-276 — la table des verrous est repliée sur la fenêtre de verdict et rend sa distribution (#207)` |
+| `dtos-mss` | aucune PR (branche à 0 commit) | — |
+
+**Portes de sécurité au merge** : `--i-tested` fourni ; label
+`awaiting-human-merge` (pas `awaiting-us-completion`) ; `MERGEABLE` / `CLEAN` ;
+CI de la PR verte (`build` pass, `publish` skipped) ; aucun `CHANGES_REQUESTED`.
+
+**Branches** : refs distantes `feat/task-276-folder-session-lock-scope`
+supprimées sur `api-mail` et `dtos-mss` ; branches locales conservées.
+
+**Staging** : aucune branche `forge/staging-*` — rien à nettoyer.
+
+**Ce que ce merge met sur `develop`, et pourquoi l'ordre comptait** :
+l'instrument corrigé est désormais sur `develop` **avant** tout nouveau tir.
+Un rapport produit sans lui republierait la pointe comme une valeur
+d'exploitation — l'artefact qui avait fait publier une cause fausse sur
+task-270.
+
+**Reste ouvert (hors périmètre du merge)** :
+- `tests/loadtest-k6/reports/INDEX.md` — récit de campagne du tir du 2026-08-29,
+  **non commité**, en attente de décision humaine.
+- Finding neuf non instruit : `GetAttachmentStream` est la seule opération dont
+  la détention est **tenue en régime** (médiane 0,697 s, p90 2,136 s, 11,6 % des
+  relevés > 2 s). Instruisable sur les données Prometheus du tir, encore vivantes.
+- Sonar jamais exécuté sur ce diff (`$SONAR_TOKEN` absent) — dette Python non mesurée.
