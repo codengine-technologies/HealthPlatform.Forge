@@ -306,3 +306,12 @@ phase de l'arrivée dashboard.
 0 rouge en isolation (16 skips préexistants ; flaky `EnrichmentOperationScopeTests`
 en run parallèle, hors de cause — le diff vs `develop` est un unique fichier de
 tests). PR #206 repassée `MERGEABLE`, titre et corps réécrits au périmètre réel.
+
+## Merged (2026-08-29, /merge --i-tested)
+
+- `api-mail` : squash `e8617b9` (PR #206 closed) — filet d'intégration seul,
+  après réduction de périmètre (la fusion elle-même a été mergée par task-270,
+  PR #205, squash `99f855d`)
+- `dtos-mss` : aucun commit — branche distante supprimée sans PR
+- Branches distantes `feat/task-273-dashboard-folder-cost` supprimées sur les
+  deux repos ; branches locales conservées.
