@@ -258,3 +258,51 @@ strictement inchangé (aucun DTO, aucune route touchés) ; parité de forme du
 FolderDto centralisée dans MapLiveFolderToDto et testée. DOD 8/8 vérifiables
 verts ; l'item « part dashboard < 15 % au banc » est un critère de clôture
 d'US au prochain tir, non bloquant pour le merge (dit par la task).
+
+## Réduction de périmètre (2026-08-29, après merge de la PR #205)
+
+La PR #205 (task-270) a été mergée sur `develop` à 16:57 : elle porte la
+**fusion du chemin froid** de `GET /folders/{name}` (une seule acquisition du
+verrou de session, 7 → 5 allers-retours — `ReadFolderAsync` / `SearchIntoAsync`
+/ `BuildFolderDto`), plus la re-validation du chemin `today`. task-273 avait
+implémenté la même fusion indépendamment (branche partie d'un `develop`
+antérieur) : la PR #206 est devenue `CONFLICTING`.
+
+**Arbitrage rendu : ni rebase ni redéveloppement.** Le rebase est interdit par
+la règle 4 et aurait fait résoudre trois fois le même conflit pour jeter ~90 %
+des hunks ; redévelopper aurait re-dérivé ce qui est déjà mergé. `develop` a
+donc été **fusionné** dans la branche (merge `802586f`, deux parents), avec
+résolution **intégrale en faveur de `develop`** sur `ImapService.cs` et les
+deux fichiers de tests unitaires.
+
+**Ce que la branche conserve** — `DashboardArrivalCostIntegrationTests`
+(2 tests, +227 lignes, **aucun code de production**) : le filet de bout en bout
+que task-270 n'avait pas (ses preuves sont unitaires). Il fixe que l'appel
+`folder` froid paie `resolve` et `STATUS` une fois chacun, qu'une seconde
+arrivée dashboard dans la fenêtre de cache ne paie **aucune** sollicitation ni
+connexion et sert le même corps, et qu'un message arrivé entre deux passages
+est servi dès l'expiration de la fenêtre de statut. **Éprouvés par mutation**
+(cache toujours en défaut → le test de la 2ᵉ arrivée échoue).
+
+**Ce que la branche abandonne** :
+- La **famille de verrou `GetFolderRead`** — le schéma de `develop`
+  (`GetFolderStatus` = plancher, `GetFolderQuery` = recherche, dans une seule
+  acquisition) est plus fin et préserve la comparabilité des séries de
+  campagnes.
+- La **pollinisation LIST-STATUS** → `folder:status`, et la raison est un fait
+  de banc, pas une préférence : **le quatuor du dashboard émet `folder` AVANT
+  `folders`** (`tests/loadtest-k6/scenarios/journey.js`), donc l'amorçage
+  arriverait après l'appel qu'il doit servir, et la fenêtre de statut (10 s)
+  est expirée à l'arrivée suivante (~56 s). **Aucun gain mesurable par le
+  harnais actuel** ; à rouvrir en task dédiée, avec une mesure d'abord — le
+  bénéfice résiduel ne vaut que pour un front qui afficherait l'arborescence
+  avant d'ouvrir un dossier, et seulement sur listing froid (1 arrivée sur 5).
+
+Le dossier de cause (section « Cause établie ») reste valable et intégralement
+attribuable à cette task — c'est lui qui a documenté la décomposition par
+phase de l'arrivée dashboard.
+
+**Validation post-réduction** : build 0 erreur, suite complète 3 897 verts /
+0 rouge en isolation (16 skips préexistants ; flaky `EnrichmentOperationScopeTests`
+en run parallèle, hors de cause — le diff vs `develop` est un unique fichier de
+tests). PR #206 repassée `MERGEABLE`, titre et corps réécrits au périmètre réel.
