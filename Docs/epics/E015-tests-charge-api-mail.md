@@ -2,7 +2,7 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.45
+> **Version** : 1.46
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
 > **Dernière mise à jour** : 2026-08-30
@@ -2125,6 +2125,9 @@ Cinq réserves à porter au bilan, sans quoi il serait trompeur :
 - v1.65 — **Le gain de l'écran d'accueil est vérifié sur le geste complet du praticien.** La cause du deuxième poste de coût avait d'abord été établie par la mesure, phase par phase — et ce constat a réconcilié deux lectures jusque-là contradictoires : « ouvrir un dossier est gratuit » et « c'est l'appel le plus coûteux » décrivaient le même geste selon que la mémoire courte du serveur était chaude ou froide. L'amélioration elle-même ayant été livrée en v1.64 et prouvée pièce par pièce, restait à la vérifier du point de vue du médecin : deux arrivées successives sur le tableau de bord sont désormais rejouées de bout en bout, la seconde ne redemande rien au serveur, et un message reçu entre les deux passages reste visible dans les dix secondes. Le filet est lui-même éprouvé — mis volontairement en défaut pour vérifier qu'il sait échouer. (task-273)
 
 - v1.66 — **L'appareil de mesure du banc disait une chose fausse, et une décision d'ingénierie avait déjà été prise dessus.** Le tableau qui suit l'attente interne du serveur ne publiait qu'un seul chiffre par opération : **le pire instant de toute la campagne**, présenté comme s'il décrivait le fonctionnement ordinaire. Une amélioration livrée peu avant avait ainsi été déclarée contre-productive — à tort. Le tableau distingue désormais ce que le praticien vit d'habitude de ce qui n'arrive qu'exceptionnellement, et il ne mélange plus la phase de préparation d'une campagne avec la phase mesurée. Résultat immédiat : l'amélioration mise en cause est **innocentée par la mesure** (elle raccourcit très légèrement l'attente au lieu de l'allonger), le correctif qu'on s'apprêtait à écrire pour un problème inexistant **n'a pas été écrit**, et une opération réellement coûteuse — le téléchargement des pièces jointes — est identifiée à sa place. Quatrième fois que cet appareil de mesure trompe son lecteur de la même façon, et la première où il avait déjà fait publier une conclusion. (task-276)
+
+- v1.67 — **Une coupure de connexion côté serveur ne se voit plus.** Les serveurs de messagerie recyclent leurs connexions ; l'application réutilisait parfois une connexion déjà fermée, et le praticien recevait alors « une erreur inattendue s'est produite » sur un geste parfaitement valide. La connexion morte est désormais détectée et l'opération rejouée une fois sur une connexion neuve, sans que le médecin voie quoi que ce soit. **Une garde stricte protège l'envoi** : un courrier n'est rejoué que si le serveur l'a refusé **avant** d'en avoir accepté le contenu — dès qu'il y a le moindre doute sur ce qui est parti, rien n'est renvoyé, parce qu'un courrier médical envoyé deux fois est plus grave que l'erreur qu'on évite. (task-277)
+- v1.68 — **Le téléchargement d'une pièce jointe devient mesurable.** C'est l'opération qui immobilise le plus longtemps la connexion d'un praticien, et la seule dont on ne savait pas ce qu'elle demande au serveur de messagerie : rien ne comptait ses échanges. Elle est désormais suivie comme les autres, avec une précaution qui décide de la valeur de la mesure — seuls les échanges **réellement envoyés** sont comptés, jamais ceux que la bibliothèque économise. Aucune optimisation n'a été faite à ce stade : il fallait d'abord pouvoir la mesurer. (task-279)
 
 ---
 

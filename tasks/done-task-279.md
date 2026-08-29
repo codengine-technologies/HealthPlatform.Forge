@@ -182,3 +182,136 @@ fonctionne à l'identique. Le gain est un fait de banc, jugé au tir suivant.
 - **Hébergement HDS** : oui — inchangé
 - **AIPD / impact RGPD** : inchangé — aucune donnée nouvelle collectée, le
   compteur est une métrique technique sans identifiant
+
+## Branches
+
+- `api-mail` (pushed) : `feat/task-279-attachment-solicitations`
+- `dtos-mss` (pushed, auto-inclus) : `feat/task-279-attachment-solicitations`
+- `client-angular`, `client-mobile`, `devops`, `psc-proxy-*` — non concernés
+
+## Develop log
+
+**Repos touchés** : `api-mail` uniquement. `dtos-mss` : branche créée, **0 commit**.
+
+### Étape 1 — l'instrument (livré)
+
+Quatre points de comptage dans `GetAttachmentStreamAsync`, famille
+`GetAttachmentStream`, littéraux existants de `MailServerCommands` (aucun nouveau
+nom — la comparabilité des séries de campagnes en dépend) :
+
+| Commande | Site |
+|---|---|
+| `resolve_folder` | `GetFolderAsync` |
+| `open_folder` | `OpenAsync` — **conditionnel, voir ci-dessous** |
+| `fetch_bodystructure` | `FindAttachmentPartAsync` |
+| `fetch_body_part` | `DownloadAttachmentMimePartAsync` |
+
+### ⭐ Le point qui décide de la valeur du compteur : ne compter que les ouvertures RÉELLES
+
+MailKit **court-circuite** `OpenAsync` quand le dossier est déjà ouvert avec le
+même accès. Compter l'appel plutôt que la commande aurait rendu un **majorant**
+— et aurait fait croire à une redondance là où il n'y en a pas. Or c'est
+**exactement la question** que ce compteur existe pour trancher : le parcours du
+médecin ouvre le message *puis* télécharge sa pièce jointe, dans le même
+dossier. Le compteur teste donc `IsOpen && Access == ReadOnly` avant d'inscrire.
+
+C'est la différence entre un instrument qui répond à la question et un
+instrument qui la maquille — la leçon que task-276 vient de payer.
+
+### Étape 2 — établir la redondance : reportée au banc, à raison
+
+Le test `AnAlreadySelectedFolder_DoesNotPayTheSelectAgainAsync` prouve le
+**mécanisme** (dossier déjà ouvert ⇒ pas de `open_folder` compté). Mais la
+question de l'US — « le SELECT est-il redondant **en pratique** ? » — est une
+question de **fréquence**, pas de mécanisme : elle se lit au banc, sur le
+rapport du prochain tir, dans le rapport `open_folder / resolve_folder` de la
+famille `GetAttachmentStream`. C'est le critère de clôture inscrit au Manual
+Test Plan.
+
+### Étape 3 — remède : non écrit, volontairement
+
+L'US l'autorisait explicitement (« si le SELECT n'est jamais redondant, l'US
+s'arrête ici »). Écrire un contournement de `OpenAsync` avant de savoir s'il
+sert serait le raccourci que cette EPIC a déjà payé deux fois.
+
+### Vérification
+
+- `dotnet build HealthPlatform.Api.Mail.sln` → **0 erreur, 0 avertissement**
+- domain 136/136 · infrastructure 464/464 · api 692/692 · application **2 191/2 191**
+- **5 tests neufs** : les 4 commandes **dans l'ordre** sur téléchargement froid ;
+  pièce jointe introuvable → les 3 commandes déjà envoyées sont **quand même**
+  comptées (ne rien compter ferait passer un appel coûteux pour gratuit) ;
+  téléchargement servi par le cache base → **rien** ; connexion en échec →
+  **rien** (absence prouvable, garde de task-270) ; dossier déjà ouvert → pas de
+  `open_folder`.
+
+**Piège d'outillage rencontré** : `FetchAsync(IList<UniqueId>,
+MessageSummaryItems, CancellationToken)` est une **méthode d'extension** de
+MailKit — NSubstitute ne peut pas l'intercepter et laisse des matchers en
+suspens (`RedundantArgumentMatcherException`). Le membre d'interface prend
+`IFetchRequest` ; c'est lui qu'il faut mocker, comme le font déjà
+`ImapServiceTests` et `BackgroundSyncPipelineTests`.
+
+### DOD
+
+- [x] Build 0 erreur — [x] Tests verts
+- [x] `GetAttachmentStream` au compteur, mêmes étiquettes que les chemins couverts
+- [x] Test épinglant **nombre et ordre** des commandes
+- [x] Test : téléchargement servi par le cache → aucune sollicitation
+- [x] Test d'absence provable : connexion en échec → rien
+- [ ] Redondance du `OpenAsync` **établie** → **reportée au banc** (question de
+      fréquence, pas de mécanisme) — critère de clôture au Manual Test Plan
+- [x] Remède : sans objet à ce stade (issue prévue par l'US)
+- [x] Aucune donnée de santé : littéraux d'opération et de commande uniquement,
+      jamais le nom de fichier, l'UID ni le dossier patient
+
+## Simplify log
+
+**Repos éligibles touchés** : `api-mail`.
+
+| Axe | Constat | Action |
+|---|---|---|
+| Réutilisation | Aucun littéral de commande créé — les quatre existaient dans `MailServerCommands`. Le recorder est celui déjà injecté dans `ImapService`. | — |
+| Simplification | Aucun finding : le diff est quatre lignes de comptage et une garde. | — |
+| Efficacité | La garde `IsOpen && Access` est une lecture de propriété, aucun aller-retour ajouté. | — |
+| Altitude | `AttachmentOperation` nomme la famille au même endroit que `StatusOperation` et `QueryOperation`. | — |
+
+**Re-validation** : build 0 erreur / 0 avertissement, 3 483 tests verts sur les
+quatre suites unitaires.
+
+## Sonar log
+
+**Analyse NON exécutée** — `$SONAR_TOKEN` absent du shell de la forge (serveur
+`UP` sur le port 9000, pas 9001 comme l'annonce `agents/sonar.md`). Aucun KPI,
+**aucun vert revendiqué**. Diff C# de 5 lignes de production + 1 fichier de
+tests ; dette neuve non mesurée.
+
+## Lint log (/lint-angular)
+
+**Skip clean** : `client-angular` non listé, aucun fichier Angular écrit.
+
+## Lint mobile log (/lint-mobile)
+
+**Skip clean** : `client-mobile` non listé, aucun fichier mobile écrit.
+
+## Visual verify log (/verify-visual)
+
+**Skip clean** : aucun écran mobile touché.
+
+## PRs
+
+- `api-mail` — **[PR #209](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/209)** — label `awaiting-human-merge`
+- `dtos-mss` — branche créée, **0 commit**, aucune PR.
+
+## Code Review Summary
+
+**APPROVED** — 2 fichiers, 0 bloquant, 0 suggestion.
+
+Le diff est minimal (5 lignes de production) et son point délicat — ne compter
+que les ouvertures réelles — est **testé dans les deux sens** : la commande
+apparaît sur dossier fermé, elle n'apparaît pas sur dossier déjà ouvert.
+
+**DOD** : 7/8 verts. Le huitième — « la redondance du `OpenAsync` est établie » —
+est **reporté au banc** et c'est justifié : c'est une question de **fréquence**,
+pas de mécanisme, et elle se lit sur le rapport du prochain tir. Le critère est
+inscrit au Manual Test Plan.

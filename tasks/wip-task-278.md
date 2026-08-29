@@ -141,3 +141,97 @@ qu'avant. Le gain est un fait de banc et se juge au tir suivant.
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui — inchangé
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+
+- `api-mail` (pushed) : `feat/task-278-dashboard-cost`
+- `dtos-mss` (pushed, auto-inclus) : `feat/task-278-dashboard-cost`
+- `client-angular`, `client-mobile`, `devops`, `psc-proxy-*` — non concernés
+
+## Develop log — CAUSE ÉTABLIE, remède non écrit (arbitrage produit requis)
+
+**Aucun code de production n'a été écrit.** L'US exigeait d'établir la cause
+avant tout remède ; la cause est établie, et le remède qu'elle appelle est une
+**décision produit**, pas une décision technique. Voir `questions/task-278.md`.
+
+Instruction menée sur les données Prometheus du tir du 2026-08-29, **sans
+rejouer de tir**.
+
+### 1. La piste des allers-retours est fermée — et bien plus largement qu'on ne croyait
+
+Le compteur de sollicitations et la table des verrous permettent de reconstituer
+le mélange froid/chaud des **deux** tirs :
+
+| | 26/08 (avant task-270) | 29/08 (après) | Δ |
+|---|---|---|---|
+| lectures de dossier /s | 11,51 | 11,83 | volume identique |
+| recherches complètes /s | 7,22 | **2,95** | **−59 %** |
+| **part froide** | **62,7 %** | **24,9 %** | — |
+| **allers-retours IMAP /s** | **59,1** | **32,5** | **−45 %** |
+| **coût moyen `call:folder`** | **357,1 ms** | **358,4 ms** | **+0,4 %** |
+
+task-270 a livré **deux** gains cumulés — 7→5 allers-retours par miss, **et** la
+part froide effondrée par son second remède (« reçus aujourd'hui » ne jette plus
+une recherche encore valide). Ensemble : **45 % des allers-retours du chemin
+dossier supprimés.** Le coût vu du médecin n'a pas bougé d'un millimètre.
+
+> **Le coût de `GET /mail/folders/{name}` n'est pas borné par les allers-retours
+> IMAP.** Établi deux fois, à une magnitude qui ne laisse aucune ambiguïté.
+
+### 2. La cause : l'appel n'est pas cher, il est FROID — et il l'est par construction
+
+Le harnais émet **la même route deux fois par itération**, à quelques secondes
+d'écart, sur la même session :
+
+| Appel | n | moyenne | p50 | p95 |
+|---|---|---|---|---|
+| `dashboard,call:folder` (1er de l'itération) | 16 713 | **358,4 ms** | **140,3** | 928,3 |
+| `read_list,call:folder` (~5 s plus tard) | 16 722 | **52,7 ms** | **10,3** | 139,7 |
+| **facteur** | — | **×6,8** | **×13,6** | ×6,6 |
+
+Même route, même travail, même session, même dossier. **Le seul écart est la
+position dans le parcours.** Reproduit à l'identique au tir de référence
+(357,1 vs 43,8).
+
+**Mécanisme** : un passage complet du médecin dure ~63 s. Entre la fin d'une
+itération et l'arrivée dashboard de la suivante, **toutes les fenêtres de cache
+ont expiré** (`folder:status` 10 s, `folder:uids` 5 min) — l'arrivée dashboard
+est donc froide **par construction**. L'appel de l'inbox, lui, tombe 3-10 s plus
+tard, dans la fenêtre de 10 s : il est chaud par construction.
+
+C'est exactement la réconciliation que le dossier de cause de task-273 avait
+écrite (« deux populations, pas deux coûts ») — cette instruction la **chiffre**
+et prouve qu'elle survit à task-270.
+
+### 3. Écart client/serveur — vérifié, et il n'y a rien
+
+J'ai d'abord cru lire 185 ms d'écart. **C'était une faute de comparaison de ma
+part** (moyenne client d'un seul des deux appels contre moyenne serveur des
+deux). Recalculé proprement : client 205,5 ms sur les deux appels, serveur
+172,9 ms → **32,6 ms**, l'ordre de grandeur d'un aller-retour localhost à travers
+le proxy DCP. **Rien à chercher de ce côté.**
+
+### 4. ⚠️ Ma propre recommandation de task file était fausse
+
+Le task file recommandait d'« attribuer la charge widget par widget via les flags
+`dashboard_widget_*` de task-274 ». **Ça ne marche pas au banc** : k6 appelle
+l'API directement et ne lit jamais Flagsmith ; basculer un flag ne change donc
+rien à la charge émise. Les flags restent un levier d'exploitation réel (front
+réel, pré-prod), mais **pas un instrument de banc**. Consigné pour que personne
+ne le retente.
+
+### 5. Attente du verrou — mesurée, et significative
+
+`ReadFolder` : attente **moyenne** du verrou de session **82,8 ms**, soit ~48 %
+du temps serveur moyen de la route (172,9 ms). Ce n'est pas la cause du coût
+froid, mais c'est un poste réel, et il grandira avec la population.
+
+## Pourquoi la chaîne s'arrête ici
+
+Le remède que la cause appelle est un **arbitrage de fraîcheur** : servir
+l'arrivée dashboard depuis le cache et rafraîchir derrière, ou allonger la
+fenêtre de statut. Les deux échangent de la **fraîcheur des compteurs affichés
+au praticien** contre du temps. **Ce n'est pas une décision technique** — c'est
+au PO de dire de combien de secondes un compteur de messages peut être périmé.
+
+Règle 7 (fail-fast sur ambiguïté de règle métier) → `questions/task-278.md`.
