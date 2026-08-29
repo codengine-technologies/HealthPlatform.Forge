@@ -2,10 +2,10 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.44
+> **Version** : 1.45
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
-> **Dernière mise à jour** : 2026-08-29
+> **Dernière mise à jour** : 2026-08-30
 
 ---
 
@@ -2123,6 +2123,8 @@ Cinq réserves à porter au bilan, sans quoi il serait trompeur :
 - v1.62 — **Chaque widget du tableau de bord a son interrupteur.** Huit interrupteurs, mêmes noms sur les trois applications : coupé, le widget disparaît **et ses appels serveur ne partent plus** — de quoi attribuer la charge du geste le plus fréquent widget par widget, et délester en incident sans redéployer. Service d'interrupteurs en panne ou absent : tout reste visible, aucun message d'erreur ; lecture une fois par session, le geste instrumenté n'est pas alourdi. (task-274)
 
 - v1.65 — **Le gain de l'écran d'accueil est vérifié sur le geste complet du praticien.** La cause du deuxième poste de coût avait d'abord été établie par la mesure, phase par phase — et ce constat a réconcilié deux lectures jusque-là contradictoires : « ouvrir un dossier est gratuit » et « c'est l'appel le plus coûteux » décrivaient le même geste selon que la mémoire courte du serveur était chaude ou froide. L'amélioration elle-même ayant été livrée en v1.64 et prouvée pièce par pièce, restait à la vérifier du point de vue du médecin : deux arrivées successives sur le tableau de bord sont désormais rejouées de bout en bout, la seconde ne redemande rien au serveur, et un message reçu entre les deux passages reste visible dans les dix secondes. Le filet est lui-même éprouvé — mis volontairement en défaut pour vérifier qu'il sait échouer. (task-273)
+
+- v1.66 — **L'appareil de mesure du banc disait une chose fausse, et une décision d'ingénierie avait déjà été prise dessus.** Le tableau qui suit l'attente interne du serveur ne publiait qu'un seul chiffre par opération : **le pire instant de toute la campagne**, présenté comme s'il décrivait le fonctionnement ordinaire. Une amélioration livrée peu avant avait ainsi été déclarée contre-productive — à tort. Le tableau distingue désormais ce que le praticien vit d'habitude de ce qui n'arrive qu'exceptionnellement, et il ne mélange plus la phase de préparation d'une campagne avec la phase mesurée. Résultat immédiat : l'amélioration mise en cause est **innocentée par la mesure** (elle raccourcit très légèrement l'attente au lieu de l'allonger), le correctif qu'on s'apprêtait à écrire pour un problème inexistant **n'a pas été écrit**, et une opération réellement coûteuse — le téléchargement des pièces jointes — est identifiée à sa place. Quatrième fois que cet appareil de mesure trompe son lecteur de la même façon, et la première où il avait déjà fait publier une conclusion. (task-276)
 
 ---
 
