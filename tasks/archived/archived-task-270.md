@@ -365,3 +365,29 @@ Verdict : **APPROVED** — 3 fichiers revus, 0 blocage, 2 suggestions.
 - Tests `api-mail` : **3 888 verts / 0 rouge** (domain 136, infrastructure 464,
   application 2 186, api 685, integration 417 + 16 skipped)
 - Branche à jour avec `origin/develop` (merge, pas de rebase — règle 4)
+
+## Merged
+
+**Date** : 2026-08-29 — `/merge task-270 --i-tested` (HAG, règle 10 : validé
+end-to-end par l'humain avant merge).
+
+| Repo | PR | Squash commit sur `develop` |
+|---|---|---|
+| `api-mail` | [#205](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/205) closed | [`99f855d9`](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/commit/99f855d9ace993158bbf07a819282f2a40bed7e7) — `perf(mail): un cache-miss de dossier ne paie plus 7 allers-retours IMAP mais 5 (#205)` |
+| `dtos-mss` | aucune PR (branche à 0 commit) | — branche distante supprimée, clone repassé sur `develop` |
+
+**CI `develop` (api-mail)** : ✅ verte —
+[run 33264362142](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/33264362142)
+(`Build and Publish`, success sur `99f855d9`).
+
+**Branches** : refs distantes `feat/task-270-folder-imap-roundtrips` supprimées
+sur `api-mail` et `dtos-mss` ; **branche locale conservée** sur `api-mail` pour
+inspection rétroactive.
+
+**Staging** : aucune branche `forge/staging-*` sur les repos pushables — rien à
+nettoyer.
+
+**Reste ouvert (hors périmètre du merge)** : le tir journey distant
+iso-conditions 2026-08-23 du Manual Test Plan (clôture de l'US au banc, non
+bloquant pour le merge) — `dashboard,call:folder` p95 < 500 ms au palier 500 et
+part du dashboard < 18 % du temps serveur.
