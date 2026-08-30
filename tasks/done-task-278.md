@@ -320,3 +320,47 @@ on ne montre rien qu'on n'ait déjà montré.
 
 **DOD** : 7/8 verts. Le huitième — les cibles de temps serveur — est un
 **critère de clôture au banc**, inscrit au Manual Test Plan.
+
+## Révision après revue humaine du périmètre (2026-08-30) — commit `58d89b3`
+
+Trois défauts relevés par le PO à la lecture de la première version. **Le premier
+était bloquant et n'était couvert par aucun test.**
+
+| # | Défaut | Correctif |
+|---|---|---|
+| 1 | **L'instantané survivait aux invalidations** — consulté avant IMAP, il faisait **réapparaître un message supprimé** jusqu'à expiration | retiré sur les **4 sites** où `folder:uids`/`folder:status` le sont ; **éprouvé par mutation** |
+| 2 | Il **préemptait** la re-validation à 2 allers-retours, qui rendait du **frais** | servi seulement quand la liste d'UIDs a **aussi** expiré (vrai froid) |
+| 3 | TTL **hérité** de `Default` (15 min) | **90 s**, dérivées du passage complet du médecin (~63 s mesurés) |
+
+**Court-circuit évité au passage** : dans `FlagPropagationService`, chaîner la
+seconde suppression par `&&` l'aurait fait sauter **dès que la première
+réussit** — donc dans le cas nominal.
+
+**Test existant renforcé, pas relâché** : `DeleteFolderAsync_WhenMailboxAlreadyGone`
+épinglait « exactement 3 suppressions » ; il en attend 4 **et nomme la clé
+d'instantané** — un compte seul n'aurait pas dit *laquelle* manque.
+
+### ⚠️ Ce que cette US livre, et ce qu'elle ne livre pas
+
+Modèle sur la décomposition mesurée (`358,4 ms = ~275 ms IMAP + ~83 ms d'attente
+de verrou`) : moyenne attendue **~215 ms**, soit **−40 %**.
+
+**Mais le travail ne disparaît pas, il se déplace** sur le bus. Cette US améliore
+la **latence ressentie**, pas la **capacité** — alors qu'elle était écrite comme
+une US de capacité. Son critère de clôture initial (« part du dashboard < 25 % »)
+aurait été **atteint tout en étant trompeur** : k6 ne mesure que le chemin
+client, la part aurait chuté parce que le travail l'a quitté.
+
+**Critère de clôture corrigé** : `dashboard,call:folder` moyenne **< 250 ms** et
+p95 **< 600 ms**, 11/11 vertes, **sans** revendiquer de baisse de part de temps
+serveur.
+
+**La capacité reste à traiter ailleurs** : l'attente du verrou de session
+(82,8 ms de moyenne, ~48 % du temps serveur de la route) est le candidat, et il
+ne demande aucun arbitrage produit.
+
+### Vérification après révision
+
+- Build 0 erreur / 0 avertissement
+- domain 136 · infrastructure 464 · api 692 · application **2 192** — tous verts
+- **6 tests** sur ce chemin, dont les trois corrections
