@@ -527,3 +527,16 @@ integration **419** (+16 skips) — soit **3 947 verts**.
 **Skip clean** : `client-angular` n'est pas listé dans `**Repos**:`
 (`client-mobile, api-mail`), et aucun fichier de `Client/Angular/front/` n'a
 été écrit. Le repo n'a pas été touché — rien à linter.
+
+## Lint mobile log (/lint-mobile)
+
+`npm run lint` (`ng lint`) → **« All files pass linting »** dès la baseline :
+**0 erreur, 0 avertissement**. Aucune itération d'auto-fix, aucun fix manuel,
+rien à committer.
+
+Le diff mobile est de 4 fichiers / 387 lignes, dont **279 de tests**. Il
+n'introduit aucune construction que les règles du projet contestent — la
+seule nouveauté structurelle (`decodeJwtPayload` déplacée puis ré-exportée)
+est un motif que le linter accepte tel quel.
+
+Branche à jour, arbre propre au moment du contrôle.
