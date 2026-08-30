@@ -787,38 +787,56 @@ mkdir -p TestResults
 
 ### Begin
 
-> ⚠️ **Périmé depuis task-228 (2026-08-04) — le serveur est en 25.6.0, donc
-> `sonar.token` est la bonne propriété.** L'instance de ce poste a été mise à
-> niveau : `curl .../api/server/version` renvoie **`25.6.0.109173`**, et un cycle
-> `begin` + `end` complet avec `/d:sonar.token=` réussit (`EXECUTION SUCCESS`,
-> vérifié). Les blocs ci-dessous ont été passés à `sonar.token`. `sonar.login`
-> reste accepté mais est **déprécié** côté SonarQube.
+> ### ⚠️ LA PROPRIÉTÉ DÉPEND DE LA VERSION DU SERVEUR — la vérifier est le PREMIER geste
 >
-> **La règle de fond, elle, tient toujours** : ne jamais accuser les identifiants
-> avant d'avoir lu la version du serveur, parce que l'échec se produit au `end`,
-> après le scan complet, et son message (`Not authorized`) accuse le token.
-> C'est le piège qui a coûté à task-204 un diagnostic faux (« token périmé »)
-> alors que le token était valide. La commande de vérification est en bas de cet
-> encadré — elle est le premier geste, pas le dernier.
+> **Ne pas figer `sonar.token` ni `sonar.login` dans sa tête : le serveur de ce
+> poste a changé de version au moins deux fois.**
 >
-> Contexte historique (task-205, serveur alors en **9.9.8**) :
-> la propriété `sonar.token` n'existe qu'à partir de **SonarQube 10.0** ;
-> une instance 9.9.8 l'ignore silencieusement. Le
-> `begin` réussit quand même (lecture du profil qualité), et c'est le `end` qui
-> échoue **après le scan complet** sur `ERROR: Not authorized. Analyzing this
-> project requires authentication` — soit ~6 min perdues avant de voir l'erreur.
-> Le message accuse les identifiants, d'où le diagnostic erroné de task-204
-> (« le `SONAR_TOKEN` du `.env` est périmé, à régénérer par l'humain ») : le
-> token était valide (`/api/authentication/validate` → `{"valid":true}`), seul
-> le **nom de la propriété** était faux. Vérifier la version avec
-> `curl -u "$SONAR_TOKEN:" "$SONAR_HOST_URL/api/server/version"` avant de
-> soupçonner les identifiants.
+> | Date | Version mesurée | Propriété qui marche |
+> |---|---|---|
+> | task-205 | 9.9.8 | `sonar.login` |
+> | task-228 (2026-08-04) | 25.6.0 | `sonar.token` |
+> | **2026-08-30 (vérifié)** | **9.9.8.100196** | **`sonar.login`** |
+>
+> L'image est `sonarqube:lts-community` : elle **suit la LTS courante**, donc une
+> re-création du conteneur peut ramener une 9.9 là où on avait une 25.x. C'est ce
+> qui s'est produit — d'où deux notes contradictoires dans ce fichier avant le
+> 2026-08-30. Ni l'une ni l'autre n'était fausse à sa date.
+>
+> **Le geste, avant toute analyse** :
+>
+> ```bash
+> curl -s -u "$SONAR_TOKEN:" "$SONAR_HOST_URL/api/server/version"
+> #   >= 10.0  →  /d:sonar.token=
+> #   <  10.0  →  /d:sonar.login=
+> ```
+>
+> Les blocs ci-dessous sont écrits pour la version **actuellement installée
+> (9.9.8, donc `sonar.login`)**. Si le contrôle rend une 10+, basculer.
+>
+> **Pourquoi ça compte autant** : sur une 9.9, `sonar.token` est **ignoré
+> silencieusement**. Le `begin` réussit (il ne contacte le serveur que pour les
+> plugins), le build et les tests tournent, et c'est le **`end` qui échoue après
+> ~6 min** sur `ERROR: Not authorized. Analyzing this project requires
+> authentication`. Le message **accuse les identifiants alors que le token est
+> valide** — c'est le piège qui a coûté à task-204 un diagnostic faux (« token
+> périmé, à régénérer par l'humain »). Le `.sonarqube/` reste intact : rejouer le
+> `end` seul suffit (~30 s), inutile de refaire build et tests.
+
+> ### ⚠️ `MSYS_NO_PATHCONV=1` est OBLIGATOIRE sous Git Bash
+>
+> `/k:...` et `/d:...` ressemblent à des chemins absolus : sans cette variable,
+> MSYS les convertit et le scanner répond `A required argument is missing:
+> /key:` — un message qui ne dit pas du tout ce qui se passe. Poser
+> `export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'` avant `begin` **et** `end`.
+> (Réciproque connue : il faut au contraire les `unset` avant `run.sh` de k6,
+> binaire Windows natif — cf. `loadtest-skill`.)
 
 ```bash
 dotnet sonarscanner begin \
   /k:"$SONAR_PROJECT_KEY" \
   /d:sonar.host.url="$SONAR_HOST_URL" \
-  /d:sonar.token="$SONAR_TOKEN" \
+  /d:sonar.login="$SONAR_TOKEN" \
   /d:sonar.sourceEncoding=UTF-8 \
   /d:sonar.exclusions="**/devops/**,**/load-tests/**,**/AppHost/**,**/Migrations/**" \
   /d:sonar.cs.opencover.reportsPaths="TestResults/**/coverage.opencover.xml" \
