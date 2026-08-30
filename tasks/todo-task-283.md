@@ -1,4 +1,4 @@
-# todo-task-276.md — Le mobile perd l'accès à sa boîte ~3 min sur 5 : le refresh est piloté par la mauvaise horloge, et l'échec sort en 500 muet
+# todo-task-283.md — Le mobile perd l'accès à sa boîte ~3 min sur 5 : le refresh est piloté par la mauvaise horloge, et l'échec sort en 500 muet
 
 **Repos**: client-mobile, api-mail
 **Dependencies**: — aucune. Complémentaire de `todo-task-275` (dont le plan de test
@@ -11,6 +11,37 @@ l'infra `*.weda.fr` — voir « Articulation avec l'ADR ».
 > **Origine** : session de test `client-mobile` du 2026-08-30, analyse Seq
 > (`seq-local`, `localhost:5341`). Symptôme rapporté par l'humain :
 > « JWT token appears to be expired for user robert.specialiste0060694@… ».
+
+> ### ✅ Re-vérification du 2026-08-30 — **valide**, après mise à jour de `develop`
+>
+> Rejouée sur `develop` @ `041cd91` (api-mail) et `46015b7` (client-mobile).
+> Trois corrections, aucune remise en cause du fond :
+>
+> 1. **Renumérotée 276 → 281 → 283.** Deux collisions successives :
+>    `archived-task-276` … `280` existaient déjà (mergées entre-temps), puis
+>    `todo-task-281` a été créée **en parallèle sur une autre machine**
+>    (`edc31a5`, contention archivage/lecture de dossier, E015) et poussée sur
+>    `origin/develop` la première. La sienne est conservée telle quelle ;
+>    celle-ci prend **283**.
+> 2. **Le tableau des sites d'aplatissement passe de 10 à 23 sites**, re-dérivé
+>    mécaniquement. `ImapService.cs` a été profondément remanié par
+>    `archived-task-277` (+183 lignes, `DeadSessionPolicy`), donc les numéros de
+>    ligne d'origine étaient périmés. Le DOD exige désormais **un seul point de
+>    conversion**, pas 23 corrections copiées.
+> 3. Toutes les autres citations vérifiées une à une et **inchangées** :
+>    `UserContextInfo.cs:84` (alias `JwtToken` → `PscToken`),
+>    `ImapConnectionService.cs:301` / `:304-307` (commentaire task-165) / `:315`,
+>    `BackgroundSyncManager.cs:89`, `session.model.ts:35-56`,
+>    `mss-headers.interceptor.ts:30` (marge 30 s) et `:233` (`isSessionExpired`).
+>
+> **`archived-task-277` ne recouvre pas cette US** : elle rejoue une session
+> poolée coupée par le serveur, et son `DeadSessionPolicy` ne filtre que des
+> **exceptions** (`SocketException`, `IOException`, `ProtocolException`…). Le
+> jeton expiré remonte un `Result.Unauthorized`, jamais une exception — aucune
+> interaction, aucun risque de boucle de rejeu.
+>
+> La durée de vie de 5 min du jeton Keycloak est désormais **prouvée** et non
+> plus déduite : `exp − iat = 300 s` sur un jeton décodé le 2026-08-30.
 
 ## Objectif
 
@@ -80,13 +111,21 @@ Mais le statut est **aplati en `Error`** en remontant, par le motif
 `Result<T>.Error(connectResult.Errors.FirstOrDefault() ?? …)` qui ne conserve que
 le message :
 
-| Fichier | Lignes |
+| Fichier | Sites de retour (lignes, `develop` @ `041cd91`) |
 |---|---|
-| `ImapService.cs` | 218-224, 641-643, 1421-1425 |
-| `ImapFolderService.cs` | 109-110, 207-208, 277-278 |
-| `MailExportService.cs` | 328-331 |
-| `FlagPropagationService.cs` | 288-294 |
-| `BackgroundImapService.cs` | 90-92, 142-144, 204-… (`string.Join`) |
+| `ImapService.cs` | 231, 748, 3081, 3185, 3278, 3435, 3672, 4051, 4097, 4156, 4207, 4268 |
+| `ImapFolderService.cs` | 110, 208, 278, 347, 413, 505, 611 |
+| `FlagPropagationService.cs` | 294 |
+| `MailExportService.cs` | 331 |
+| `BackgroundImapService.cs` | 92, 144 (forme `string.Join`) |
+
+**23 sites au total.** Le compte a été re-dérivé sur `develop` le 2026-08-30 ;
+une première estimation à 10 sous-évaluait `ImapService` et `ImapFolderService`.
+Trois formes cohabitent (`.FirstOrDefault() ?? ConnectionFailed`,
+`ImapConnectionFailedPrefix + (…)`, `string.Join(", ", …)`), et
+`ImapService:231` est la seule multi-lignes (elle ajoute un repli sur
+`ValidationErrors`) — d'où l'intérêt d'**un seul point de conversion** plutôt
+que 23 corrections copiées.
 
 Trace du 2026-08-30 16:21:03 (`TraceId=367fc544f490a462546003604f400e50`) :
 
@@ -135,7 +174,21 @@ deviendra simplement sans objet et se retirera avec l'en-tête.
 Aligner le refresh sur le jeton PSC fait passer la cadence de **~5 min à ~2 min**.
 Or chaque refresh **rote la claim `sid`**, qui clé le pool IMAP/SMTP d'api-mail —
 donc le nombre de reconnexions IMAP passerait d'environ 12/h à 30/h. Ce couplage
-est traité par **`todo-task-277`**, à livrer de préférence dans le même lot.
+est traité par **`todo-task-282`**, qu'il faut livrer **dans le même lot et
+*avant* celle-ci** — voir « Ordre de livraison » ci-dessous.
+
+## Ordre de livraison — `282` d'abord, puis `283`
+
+Les deux US forment un lot indissociable (règle 11), mais **l'ordre compte** :
+
+1. **`todo-task-282`** découple la clé du pool IMAP de la claim `jti`, ce qui
+   ramène le régime établi de ~10 sessions IMAP simultanées par praticien à ~5.
+2. **`todo-task-283`** (celle-ci) fait ensuite passer la cadence de refresh de
+   ~5 min à ~2 min. Livrée **en premier**, elle ferait franchir le plafond de
+   10 connexions IMAP par utilisateur ; livrée **après `282`**, elle reste sous
+   le plafond.
+
+L'ordre numérique est donc aussi l'ordre d'exécution.
 
 ## Hors périmètre
 
@@ -173,8 +226,9 @@ est traité par **`todo-task-277`**, à livrer de préférence dans le même lot
       tests pass (`dotnet test HealthPlatform.Api.Mail.sln`, 0 échec) — hors les
       3 rouges pré-existants connus (middleware DB-name stale, IMAP cancel,
       MailExport PDF)
-- [ ] Les 10 sites listés dans le tableau propagent le `ResultStatus` du
-      `Result` de connexion au lieu de l'aplatir en `Error`
+- [ ] Les **23** sites listés dans le tableau propagent le `ResultStatus` du
+      `Result` de connexion au lieu de l'aplatir en `Error`, via **un seul**
+      point de conversion partagé (pas 23 copies du même `switch`)
 - [ ] Test d'intégration : un `X-PSC-Token` expiré sur `GET /api/v1/mail/folders/INBOX`
       renvoie **401** (pas 500), en `application/problem+json`, avec un `detail`
       non vide contenant « refresh your session »
@@ -229,7 +283,7 @@ app mobile `npm start` (http://localhost:8100), Seq sur http://localhost:5341.
 - Côté api-mail, `Ardalis.Result` conserve le statut si on **retourne le
   `Result` d'origine remappé** plutôt que d'en fabriquer un nouveau avec
   `.Error(...)`. Vérifier le helper existant avant d'en introduire un : le but
-  est un seul point de conversion, pas 10 copies du même `switch`.
+  est un seul point de conversion, pas 23 copies du même `switch`.
 - `BackgroundImapService` utilise `string.Join(", ", …)` là où les autres
   utilisent `.FirstOrDefault()` — harmoniser au passage, mais sans élargir le
   périmètre à d'autres fichiers.

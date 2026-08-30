@@ -1,13 +1,40 @@
-# todo-task-277.md — Chaque refresh de jeton jette le pool IMAP : la clé de session suit une claim `sid` qui tourne
+# todo-task-282.md — Chaque refresh de jeton jette le pool IMAP : la clé de session suit la claim `jti`, unique par jeton
 
 **Repos**: client-mobile, api-mail
 **Dependencies**: — aucune techniquement, mais **à livrer dans le même lot que
-`todo-task-276`** : celle-ci fait passer la cadence de refresh de ~5 min à ~2 min,
-ce qui multiplie par ~2,5 le churn décrit ici. Livrer 276 seule dégrade cet axe.
+`todo-task-283`, et AVANT elle**. `283` fait passer la cadence de refresh de
+~5 min à ~2 min, ce qui multiplie par ~2,5 le churn décrit ici : livrée en
+premier, elle ferait franchir le plafond de 10 connexions IMAP par praticien.
+Cette US le ramène d'abord à ~5, ce qui rend `283` sûre.
 **Epic**: E012
 
 > **Origine** : session de test `client-mobile` du 2026-08-30, analyse Seq
-> (`seq-local`, `localhost:5341`), en marge de l'investigation `todo-task-276`.
+> (`seq-local`, `localhost:5341`), en marge de l'investigation `todo-task-283`.
+
+> ### ✅ Re-vérification du 2026-08-30 — **valide**, après mise à jour de `develop`
+>
+> Rejouée sur `develop` @ `041cd91` (api-mail) et `46015b7` (client-mobile).
+> Deux corrections, le fond est renforcé :
+>
+> 1. **Renumérotée 277 → 282** (collision avec `archived-task-277`, déjà mergée
+>    et sur un tout autre sujet : le rejeu d'une session poolée coupée par le
+>    serveur). `282` était libre sur `origin/develop` — pas de conflit, à la
+>    différence de sa jumelle passée en `283`.
+> 2. **La claim en cause est `jti`, pas `sid`** — titre et cause racine corrigés.
+>    Établi d'abord par recoupement, puis **vérifié directement** en décodant un
+>    jeton réel : aucune claim `sid`, `jti = "trrtag:ebead400-…"`.
+>
+> Citations vérifiées et inchangées : `MailClientSessionManager.cs`
+> (101, 138, 182, 254, 267, 279, 288, 491), `UserContextEnricherMiddleware.cs`
+> `:323` / `:610-616`, `RequestHelper.cs:285`, `RequestLoggingMiddleware.cs:194`,
+> `ServiceCollectionExtensions.cs:80` (singleton), `AppHost.cs:350`
+> (`.WithReplicas(5)`), `appsettings.json` `:79` / `:81` / `:82` (1 min de
+> balayage, 5 min d'inactivité IMAP et SMTP).
+>
+> ⚠️ **Note d'environnement, sans effet sur l'US** : une modification **locale
+> non commitée** de `AppHost.cs` déplace le conteneur Seq de `5342` vers `5341`.
+> C'est ce qui explique que tous les logs (api-mail **et** proxy) atterrissent
+> sur la même instance. À committer ou à annuler, mais indépendamment d'ici.
 
 ## Objectif
 
@@ -22,7 +49,8 @@ session du cycle de vie des jetons.
 `MailClientSessionManager` clé son pool sur
 `$"{userContext.Email}_{userContext.ClientSessionId}"`
 (`Api/Mail/src/Application/Session/MailClientSessionManager.cs`,
-lignes 101, 138, 182, 254, 267, 279, 288, 485, 491, 508, 534).
+lignes 101, 138, 182, 254, 267, 279, 288, 491 ; plus les clés de verrou
+dérivées en 485, 508, 534).
 
 Et `UserContextEnricherMiddleware:610-616` (`PopulateIdentityFromClaims`) remplit
 `ClientSessionId` par un **triple repli** :
@@ -36,11 +64,14 @@ userContext.ClientSessionId = context.User.FindFirstValue("sid")
 **C'est le deuxième repli — `jti` — qui est effectivement emprunté**, établi par
 recoupement de deux observations indépendantes :
 
-1. `client-mobile` ne pose l'en-tête `Client-Session-Id` que si `session.sessionId`
-   existe, et `sessionId = jwtPayload['sid']` (`session.model.ts`). Or il ne le
-   pose **jamais** : 1420 requêtes à `ClientSessionId=unknown` côté
-   `RequestLoggingMiddleware` sur la fenêtre 16:00–16:30. ⟹ **le jeton Keycloak
-   ne porte pas de claim `sid`.**
+1. **Vérifié directement** en décodant un jeton réel le 2026-08-30 : **aucune
+   claim `sid`**, et `"jti": "trrtag:ebead400-4969-eb56-751e-c7ce2374cf9a"` —
+   exactement le format des clés de pool observées dans Seq. Le même jeton donne
+   `exp − iat = 300 s`, ce qui confirme au passage la durée de vie de 5 min
+   utilisée par `todo-task-283`.
+   (Corroboré indépendamment côté trafic : `client-mobile` ne pose l'en-tête
+   `Client-Session-Id` que si `jwtPayload['sid']` existe, et ne le pose jamais —
+   1420 requêtes à `ClientSessionId=unknown`.)
 2. Sans `sid`, le repli suivant est `jti`. Ce qui est cohérent avec le modèle du
    proxy : l'échange est un **JWT Authorization Grant RFC 7523**
    (`grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer`,
@@ -68,7 +99,7 @@ Corrélation relevée le 2026-08-30, **1:1 sans exception** (valeurs de la forme
 ### Ce que ça produit
 
 - Une **reconnexion IMAP + SMTP complète toutes les ~5 min** (et ~2 min après
-  `todo-task-276`), re-authentification XOAUTH2 comprise.
+  `todo-task-283`), re-authentification XOAUTH2 comprise.
 - Le cache d'UIDs attaché à la clé de session est jeté à chaque rotation →
   `[ListFolder] UIDs cache present but status expired — re-validating INBOX
   against IMAP`, à répétition.
@@ -111,7 +142,7 @@ praticien** : **27 sessions IMAP créées**, soit 7 clés (rotations de `sid`) �
 **L'arithmétique qui rend cette US nécessaire** : 5 réplicas × 2 générations
 (l'ancienne qui draine pendant 5 min + la nouvelle) = **10 sessions IMAP
 simultanées pour un praticien**, soit exactement le **plafond de 10 connexions
-par utilisateur**. On est à la limite aujourd'hui. Après `todo-task-276` (refresh
+par utilisateur**. On est à la limite aujourd'hui. Après `todo-task-283` (refresh
 toutes les ~2 min au lieu de ~5), l'ancienne génération n'a plus le temps de
 mourir avant que la suivante arrive : **on dépasse**. C'est la raison pour
 laquelle les deux US doivent partir ensemble.
