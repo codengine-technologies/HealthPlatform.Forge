@@ -540,3 +540,22 @@ seule nouveauté structurelle (`decodeJwtPayload` déplacée puis ré-exportée)
 est un motif que le linter accepte tel quel.
 
 Branche à jour, arbre propre au moment du contrôle.
+
+## Visual verify log (/verify-visual)
+
+**Skip clean** : aucun écran `client-mobile` touché.
+
+Le diff mobile porte sur le **modèle de session** (`session.model.ts`), le
+**service d'authentification** (`auth.service.ts`) et l'**intercepteur HTTP**
+(`mss-headers.interceptor.ts`), plus un fichier de tests — **aucun composant,
+aucun template, aucune feuille de style**. Pas de `## Stitch design log` sur
+cette task, donc aucune référence de design à apparier.
+
+Rien à capturer : ni Playwright ni serveur `npm start` n'ont été démarrés.
+L'état visuel global de l'application dans `Docs/epics/img/screens/` est
+inchangé.
+
+> Le comportement corrigé ici est en revanche **pleinement observable à l'écran**
+> — c'est même le symptôme rapporté par l'humain : la boîte qui devient
+> inaccessible ~3 min sur 5. Il relève du **plan de test manuel** (10 minutes
+> d'usage continu couvrant ≥ 3 refresh), pas d'une capture ponctuelle.
