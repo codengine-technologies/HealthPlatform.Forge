@@ -619,3 +619,72 @@ banc**, inscrits au Manual Test Plan — non vérifiables en unitaire.
 - `client-mobile` : build OK, **796/796**, `ng lint` propre dès la baseline
 - SonarQube : **Quality Gate OK**, new coverage 90,4 %, **0 violation attribuable**
 - Branches à jour avec `origin/develop` (merge, pas de rebase — règle 4)
+
+## Merged
+
+Mergée le **2026-08-30** par `/merge 283 --i-tested` (HAG, règle 10 — validation
+humaine bout en bout effectuée avant l'appel).
+
+| Repo | PR | Commit squash sur `develop` |
+|---|---|---|
+| `api-mail` | [#214](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/214) | `085fc29` — *fix(mail): task-283 — un jeton PSC expiré ressort en 401, plus en 500 muet* |
+| `client-mobile` | [#67](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/67) | `3e454c5` — *fix(auth): task-283 — le refresh préventif suit l'échéance du jeton PSC* |
+| `dtos-mss` | — | branche auto-incluse, **0 commit**, aucune PR ; ref distante supprimée dès `/review` |
+
+Les deux PRs mergées **ensemble** (règle 11) : séparément, l'une ferait voir une
+*déconnexion* au lieu d'une erreur, l'autre laisserait tout échec résiduel sortir
+en 500 muet.
+
+Refs distantes supprimées sur les trois repos ; **branches locales conservées**
+pour inspection rétroactive. Aucune branche staging `forge/staging-*` sur ce lot.
+
+### ✅ Toutes les portes de sécurité vertes — y compris la CI
+
+Contrairement au `/merge` de task-282 quelques heures plus tôt, **aucune
+dérogation n'a été nécessaire** : `build-android` est passé **vert** sur la PR
+mobile (4 min 34), pour la première fois depuis cinq semaines. Le correctif
+[Mobile#66](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/66)
+(« ne téléverser l'APK que depuis develop et les runs manuels »), mergé par
+l'humain entre les deux cycles, supprime la consommation de quota d'artefact à
+la source au lieu de masquer l'échec. **La porte CI de `client-mobile` est de
+nouveau signifiante.**
+
+| Porte | `api-mail` #214 | `client-mobile` #67 |
+|---|---|---|
+| `--i-tested` | ✅ | ✅ |
+| Label `awaiting-human-merge` | ✅ | ✅ |
+| Pas de `CHANGES_REQUESTED` | ✅ | ✅ |
+| `mergeable` / à jour avec `develop` | ✅ `CLEAN` | ✅ `CLEAN` |
+| **CI verte** | ✅ build pass 1 min 52 | ✅ build-android pass 4 min 34 |
+| Arbre de travail propre | ✅ | ✅ |
+
+### ⚠️ Reste à faire — clôture au banc, toujours ouverte
+
+Deux mesures « bout en bout » n'ont **pas** été prises, ni pour cette task ni
+pour task-282 dont elle dépend :
+
+- **task-282** — une seule valeur de `ClientSessionId` sur 10 min couvrant ≥ 3
+  refresh, et `[MailClientSession] 🌱 New ImapClient` **borné par le nombre de
+  réplicas** (≤ 5) au lieu des ~27 relevés le 2026-08-30.
+- **task-283** — aucun `HTTP-500` sur 10 minutes d'usage continu.
+
+C'est la première qui porte l'enjeu : **cette US triple la cadence de refresh**
+(~5 min → ~90 s), et c'est la mesure de task-282 qui prouve que le régime est
+bien retombé de ~10 à ~5 sessions IMAP par praticien — donc qu'on reste sous le
+plafond de **10 connexions IMAP par utilisateur** malgré la cadence accrue.
+Les deux se prennent dans la **même** session de 10 minutes (plan de test manuel
+ci-dessus, étapes 3 à 5).
+
+### Flaky `mss.mail.infrastructure.tests` — signalement
+
+Un test d'`infrastructure` a échoué **trois fois** pendant ce cycle, toujours
+lorsque le projet est enchaîné derrière les autres (tir solution ou boucle de
+couverture), **jamais isolément** (3 tirs × 464/464, plus un re-tir avec
+couverture passé du premier coup). Signature d'une contention de ressource
+partagée. **Son nom n'a pas pu être capturé** : les tirs qui ont échoué n'étaient
+pas instrumentés `trx`, et les tirs instrumentés qui ont suivi sont propres.
+
+**Consigne pour le prochain cycle api-mail** : instrumenter `trx` **dès le
+premier** tir solution (`--logger "trx" --results-directory …`), pour le nommer
+au lieu de le constater. Rien ne le rattache à ce diff — aucun de ses tests ne
+touche à la concurrence ni à une ressource partagée.
