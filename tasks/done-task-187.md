@@ -712,3 +712,73 @@ plus.
 ROUGES sur `develop`, dont celui qui montre qu'une seconde prise du verrou de
 session y était accordée), et les cinq scénarios du Manual Test Plan restent
 couverts par l'attestation humaine.
+
+## 🔄 Resynchronisation avec `develop` — 2026-08-30
+
+Cette PR était ouverte depuis le **23 août** et avait pris **21 commits de
+retard** sur `develop` pour 4 d'avance : GitHub la donnait `CONFLICTING`, et
+`/merge` l'aurait refusée sur sa porte n° 5. Elle est de nouveau **`MERGEABLE`**.
+
+### Les deux conflits, et pourquoi ils étaient mécaniques
+
+| Fichier | Nature | Résolution |
+|---|---|---|
+| `MailClientSession.cs` | task-187 ajoute `CloseDrainTimeout` ; `develop` (task-269) ajoute `SmtpKeepAliveInterval` **au même endroit**. Deux membres **distincts**, aucun recouvrement sémantique. | **Les deux conservés** |
+| `MailClientSessionManager.cs` | **Commentaires seuls** — le code (`EvictIdleSmtpConnection(kvp.Value)`) est identique des deux côtés. task-187 avait hissé l'explication dans le `<summary>` de la méthode et laissé un renvoi ; `develop` la garde sur place. | Renvoi conservé — l'explication est **déjà** au-dessus, rien n'est perdu |
+
+Merge (jamais rebase — règle 4), commit à **deux parents** vérifié, et contrôle
+des marqueurs résiduels par `git grep` sur **tout** le dépôt (et non
+`--diff-filter=U`, qui ne voit pas un marqueur déjà `git add`é).
+
+### Re-validation sur la branche réconciliée
+
+- Build : **0 erreur, 0 avertissement**
+- Tests : **3 971 verts / 0 rouge** — domain 136, application **2 247** (+24
+  apportés par la task), infrastructure 464, api 705, integration 419 (+16 skips)
+
+### Qualité (SonarQube) — scan **refait**, la table d'août n'était plus opposable
+
+Le `## Sonar log` du 23 août mesurait contre une baseline où le Quality Gate
+était **`ERROR`** (2 bugs, reliability 3,0). Cette dette a été résorbée sur
+`develop` depuis. Les chiffres ci-dessous sont ceux de la branche **réconciliée**,
+scannée aujourd'hui :
+
+| Métrique | `develop` | **Cette branche** |
+|---|---|---|
+| **Quality Gate** | OK | **OK ✅** |
+| New coverage | 90,4 % | **90,5 %** |
+| Bugs | 0 | **0** |
+| Vulnérabilités | 0 | **0** |
+| Code smells | 62 | **63** (+1) |
+| Coverage projet | 88,2 % | **88,2 %** |
+| Duplication | 0,4 % | **0,4 %** |
+| Ratings R/S/M | A / A / A | **A / A / A** |
+
+**Le +1 est attribué précisément** (filtre `createdAfter`) : `S3604` sur
+`MailClientSession.cs:309`, c'est-à-dire le membre `CloseDrainTimeout` ajouté
+par la task. Il n'est **pas corrigé, délibérément** : S3604 demande de retirer
+l'initialiseur, or le défaut de 5 s est exactement ce que ce membre doit porter.
+C'est la famille de faux positifs que le primary constructor de ce fichier
+déclenche — **15 occurrences de S3604 sur `MailClientSession.cs`, dont 14
+antérieures** à cette PR. Le `S125` de la ligne 244 est de la prose (« Two
+clocks, one per lane… ») prise pour du code commenté, introduite par
+`1d90f22a "Add comments"` — pas par cette task.
+
+### Code review du diff réconcilié — **APPROVED**
+
+Revue centrée sur le risque propre à ce design : **un `EnterUse()` sans son
+`ExitUse()` rend la session immortelle** — un échec strictement pire que le
+sémaphore fuité d'avant, puisque le balayage ne la reprendrait plus jamais.
+
+| Point | Verdict |
+|---|---|
+| Appariement `EnterUse`/`ExitUse` | ✅ **Fermé sur tous les chemins.** `LockImapClientAsync` déclare l'usage **avant** l'attente (délibéré : une requête qui fait la queue en a besoin), puis un `finally` gardé par `handedOverToHandle` rend l'usage si le jeton n'a pas été remis. Le jeton, lui, referme dans son propre `finally` — y compris sur `SemaphoreFullException` et `ObjectDisposedException`. |
+| Double libération | ✅ `ImapSessionLockHandle.Release()` garde par `Interlocked.Exchange` et **sort avant** le `try/finally` : pas de second `ExitUse`. |
+| Chaîne de possession | ✅ Bouclée : `ImapLockScope.DisposeAsync` → `UnLockImapClient(handle)` → `handle.Release()` → `ExitUse`. Les sites d'appel utilisent `await using`. |
+| Preuve 3 (destruction bloquante) | ✅ `GetAwaiter().GetResult()` remplacé par un `DisposeAsync` qui draine chaque voie avec un délai borné (`CloseDrainTimeout`). Test : `AMutedServerDoesNotHoldUpTheCloseOfTheOtherSessions`. |
+| Couverture du risque d'immortalité | ✅ Test dédié : `AnIdleSessionNobodyHoldsIsStillReclaimed` — le pendant de `ASessionHeldByAnOperationSurvivesTheSweepEvenPastItsIdleTimeout`. |
+| ⚠️ Suggestion non bloquante | `SmtpSessionSlot._released` est un `bool` simple là où `ImapSessionLockHandle._released` est atomique (`Interlocked`). Asymétrie sans conséquence ici (un créneau a un seul détenteur), et **antérieure** à cette PR (task-231). |
+
+**Périmètre confirmé** : la preuve 2 (déverrouillage sur la mauvaise session),
+corrigée par task-223, est bien **absente** du diff — le correctif n'est pas
+re-livré.
