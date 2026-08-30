@@ -447,3 +447,46 @@ US strictement backend (télémétrie `api-mail`). Ni Playwright lancé, ni serv
 | Si remède : échec d'archivage visible et tracé | n/a — idem |
 | Si aucun remède sans contrepartie, l'US s'arrête sur le constat | ✅ **c'est le cas** |
 | Aucune donnée de santé dans journaux ni étiquettes | ✅ étiquettes = littéraux de code |
+
+## Merged
+
+**Mergée le 2026-08-30** par `/merge 281 --i-tested`.
+
+| Repo | PR | Merge | Commit squash |
+|---|---|---|---|
+| `api-mail` | [#213](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/213) | squash | `b85f409110db7833d5c900d05bf108fd38b52450` |
+| `dtos-mss` | — | aucune PR | branche sans commit, supprimée |
+
+**Portes de sécurité — toutes vertes, aucune dérogation** (contrairement à
+task-275) : `--i-tested` présent, label `awaiting-human-merge`, aucune review
+`CHANGES_REQUESTED`, `mergeable: MERGEABLE` / `mergeState: **CLEAN**`, et
+surtout **CI verte** (`build=SUCCESS`, `publish=SKIPPED`).
+
+**Règle 5 satisfaite** : CI de `develop` **verte** sur le commit de merge
+`b85f409`, vérifiée dans la fenêtre.
+
+- Références distantes supprimées sur les deux repos ; branches **locales
+  conservées** (`gh pr merge --squash` seul, jamais `--delete-branch`).
+- Clones resynchronisés sur `develop`.
+- Aucune branche staging à nettoyer (`/start` isolé, pas un run `/forge`).
+- `client-angular`, `client-mobile`, `devops`, `psc-proxy-*` : hors périmètre.
+
+> **Note** : `Api/Mail/src/AppHost/AppHost.cs` porte toujours la modification
+> locale non commitée (Seq `5342` → `5341`). Elle n'est **pas** entrée dans la
+> PR — staging explicite tenu de bout en bout. Elle reste à committer ou à
+> annuler, hors de cette US.
+
+### Ce que `develop` a reçu en parallèle
+
+Le merge a révélé que **task-282 et task-283 ont été livrées et mergées** entre
+temps par l'autre machine, **dans l'ordre prescrit** :
+
+| Commit | Task |
+|---|---|
+| `9edb6d8` | task-282 — la clé du pool de sessions suit le client, plus le jeton (#212) |
+| `085fc29` | task-283 — un jeton PSC expiré ressort en 401, plus en 500 muet (#214) |
+| `b85f409` | **task-281 — le chemin d'archivage compte ses allers-retours (#213)** |
+
+`282` **avant** `283` : la contrainte d'ordre consignée le 2026-08-30 (découpler
+la clé du pool avant de tripler la cadence de refresh, sous peine de franchir le
+plafond de 10 connexions IMAP par praticien) a bien été respectée.
