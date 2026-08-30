@@ -324,3 +324,24 @@ mobile écrit.
 - integration : 5 rouges **pré-existants, vérifiés sur `develop` nu** (flaky
   « du jour » de minuit, F-259-1)
 - Branche à jour avec `origin/develop` (merge, pas de rebase — règle 4)
+
+## Merged
+
+**Date** : 2026-08-30 — `/merge 277 278 279 --i-tested` (HAG, règle 10).
+
+| Repo | PR | Squash sur `develop` |
+|---|---|---|
+| `api-mail` | [#208](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/208) closed | `d47cb8c` |
+| `dtos-mss` | aucune PR (0 commit) | — branche distante supprimée |
+
+**Portes** : `--i-tested` fourni, label `awaiting-human-merge`, `MERGEABLE`/`CLEAN`,
+aucun `CHANGES_REQUESTED`. Mergeabilité **revérifiée entre chaque merge** — les
+trois touchent `ImapService.cs`.
+
+**Validation post-merge sur `develop`** : build 0 erreur, **3 929 tests verts /
+0 rouge** (domain 136, infrastructure 464, api 692, integration 422 + 16 skips,
+application 2 215). Les trois modifications concurrentes du même fichier
+cohabitent — un conflit sémantique n'aurait pas été visible en git.
+
+**Branches** : refs distantes supprimées sur `api-mail` et `dtos-mss` ; branches
+locales conservées.
