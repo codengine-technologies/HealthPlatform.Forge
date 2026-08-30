@@ -454,3 +454,76 @@ qui pèse les deux tiers des lignes.
 `client-mobile` build OK, **796/796**, `ng lint` propre.
 
 **Commits** : `api-mail` `621316c`, `client-mobile` `b4aa923`.
+
+## Sonar log
+
+Projet `healthplatform-api-mail` (`http://localhost:9000`, SonarQube **9.9.8.100196**),
+analyse complète Release + couverture OpenCover sur les 5 projets de tests.
+
+### KPIs qualité — baseline (task-282) → final (task-283)
+
+| Métrique | Baseline | Final | Cible |
+|---|---|---|---|
+| **Quality Gate** | OK ✅ | **OK ✅** | OK |
+| New coverage | 90,7 % | **90,4 %** | ≥ 80 % (QG) |
+| Bugs | 0 | **0** | 0 |
+| Vulnérabilités | 0 | **0** | 0 |
+| Security Hotspots | 3 | **3** | — |
+| Code Smells | 62 | **62** | — |
+| Coverage projet | 88,1 % | **88,2 %** | ≥ 95 % |
+| Duplication | 0,4 % | **0,4 %** | < 3 % |
+| Ratings R/S/M | A / A / A | **A / A / A** | A |
+
+Conditions du Quality Gate, toutes vertes : new reliability A, new security A,
+new maintainability A, new coverage **90,4 %**, new duplication **0,02 %**.
+
+### Deux findings sur le code frais, corrigés
+
+La première analyse remontait **64** code smells (+2 sur la baseline), les deux
+attribuables à task-283 :
+
+| Règle | Fichier | Constat | Correction |
+|---|---|---|---|
+| **S1135** | `UserContextInfo.cs:102` | Le doc XML citait la task en attente sous sa forme de fichier, `onhold/todo-task-171` — le mot-clé **TODO** y déclenche « Complete the task associated to this TODO comment », sur une phrase qui documente précisément un choix de **ne pas** faire. | Cité par numéro : « task-171, en attente » |
+| **CA1869** | `ExpiredPscTokenReturns401Tests.cs:149` | Une instance de `JsonSerializerOptions` construite à **chaque** désérialisation, dans un helper appelé par plusieurs tests. | Hissée en `static readonly` |
+
+Après correction et re-analyse : **62 code smells**, soit le niveau exact de la
+baseline. **Zéro dette attribuable à task-283**, vérifiée fichier par fichier —
+les 4 fichiers créés par la task portent **0 issue**.
+
+Les 5 issues qui subsistent sur les fichiers *modifiés* sont de la dette
+héritée, antérieure et non touchée : `S107` (constructeurs à 9–10 paramètres
+sur `ImapFolderService`, `BackgroundImapService`, `FlagPropagationService`) et
+`S3604` (`ImapService:83`). Aucune n'est sur une ligne de ce diff.
+
+### Boucle d'auto-amélioration
+
+Les deux règles ont été ajoutées à `conventions/csharp.md` (S1135 : citer une
+task par son **numéro**, jamais par son nom de fichier `todo-*` ; CA1869 : un
+`JsonSerializerOptions` en argument d'appel se hisse en `static readonly`, même
+réflexe que CA1861). Ce fichier n'est pas versionné (`conventions/` est couvert
+par le `.gitignore` du plan de contrôle) — il vit sur le poste et c'est
+`/develop` qui le lit.
+
+### Tests Release
+
+domain **136**, application **2 223**, infrastructure **464**, api **705**,
+integration **419** (+16 skips) — soit **3 947 verts**.
+
+> ⚠️ **Un flaky d'`infrastructure` enfin observé, toujours pas nommé.** Il s'est
+> manifesté une fois de plus pendant la boucle de couverture (1 échec sur 464).
+> Rejoué **isolément 3 fois de suite : 464/464 à chaque tir**, et le re-tir avec
+> couverture est passé du premier coup. Il ne se déclenche que lorsque le projet
+> est enchaîné derrière les autres — signature d'une contention de ressource
+> partagée, pas d'un défaut de ce diff (dont aucun test ne touche à la
+> concurrence). Le tir qui a échoué n'était pas instrumenté `trx`, donc le nom
+> du test manque encore. **À instrumenter systématiquement** au prochain cycle
+> api-mail pour le capturer.
+
+**Commit** : `54bb709`.
+
+## Lint log (/lint-angular)
+
+**Skip clean** : `client-angular` n'est pas listé dans `**Repos**:`
+(`client-mobile, api-mail`), et aucun fichier de `Client/Angular/front/` n'a
+été écrit. Le repo n'a pas été touché — rien à linter.
