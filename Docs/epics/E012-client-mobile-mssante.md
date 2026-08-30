@@ -5,7 +5,7 @@
 > **Version** : 2.0
 > **Auteur** : PO forge
 > **Audience** : PO, médecin, direction — la vue ingénierie vit dans [E012-Changelogs.md](E012-Changelogs.md)
-> **Dernière mise à jour** : 2026-07-17 (task-166)
+> **Dernière mise à jour** : 2026-08-30 (task-275)
 
 ---
 
@@ -480,7 +480,7 @@ suppression) affiche un message lisible ; l'action peut être relancée.
 
 ---
 
-## État de couverture (2026-07-16)
+## État de couverture (2026-08-30)
 
 | Fonctionnalité | Statut | Tasks contributives |
 |---|---|---|
@@ -494,7 +494,7 @@ suppression) affiche un message lisible ; l'action peut être relancée.
 | Rattachement document → patient | ✅ Livrée | task-137 |
 | Dossier patient (fiche, documents, biologie, synthèse) | ✅ Livrée | task-132, task-133, task-134, task-135 |
 | Préférences partagées | 🟡 En validation par le praticien référent | task-140 |
-| Continuité de session | ✅ Livrée | task-102 |
+| Continuité de session | ✅ Livrée | task-102, task-275 |
 
 **Couverture EPIC consolidée : 10,5 / 11 fonctionnalités livrées** — seule
 Préférences reste développée et en attente de validation manuelle.
@@ -518,6 +518,14 @@ Préférences reste développée et en attente de validation manuelle.
 
 ## Synthèse fonctionnelle des changelogs
 
+- **v1.29 (task-275)** — Continuité de session préservée lors d'une évolution
+  du service d'authentification : le praticien ne verra **aucun changement**.
+  L'application a été mise à l'épreuve pour garantir qu'après une évolution
+  de la manière dont son identité est renouvelée en arrière-plan, sa session
+  reste maintenue aussi longtemps que sa connexion e-CPS est valide — sans
+  déconnexion inopinée, et sans retour au formulaire de connexion au milieu
+  d'une consultation. En cas d'échec réel du renouvellement, le retour à
+  l'écran de connexion reste net et explicite, comme aujourd'hui.
 - **v1.28 (task-166)** — Tableaux dans l'assistant IA : lorsque l'assistant
   ou la synthèse d'un message présentent des données en tableau (par exemple
   des résultats de biologie avec analyte, valeur et intervalle de référence),
