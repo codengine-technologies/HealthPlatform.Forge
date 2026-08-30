@@ -559,3 +559,63 @@ inchangé.
 > — c'est même le symptôme rapporté par l'humain : la boîte qui devient
 > inaccessible ~3 min sur 5. Il relève du **plan de test manuel** (10 minutes
 > d'usage continu couvrant ≥ 3 refresh), pas d'une capture ponctuelle.
+
+## PRs
+
+- `api-mail` — **[PR #214](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/214)** — label `awaiting-human-merge`
+- `client-mobile` — **[PR #67](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/67)** — label `awaiting-human-merge`
+- `dtos-mss` — branche créée par `/start` (auto-inclusion), **0 commit** : aucun
+  changement de contrat, donc aucune PR ni publish NuGet. Ref distante supprimée.
+- `client-angular`, `client-blazor`, `devops`, `psc-proxy-*` — non listés, hors périmètre.
+
+> ⚠️ **Deux PRs, une seule US** (règle 11) : elles doivent être **mergées
+> ensemble**. Mergée seule, la PR backend restaurerait le 401 mais le mobile
+> continuerait à laisser mourir son jeton PSC ~3 min sur 5 — le praticien verrait
+> une **déconnexion** au lieu d'une erreur, ce qui est moins bien, pas mieux.
+> Mergée seule, la PR mobile alignerait l'horloge mais tout échec résiduel
+> ressortirait encore en 500 muet, filet réactif inerte.
+
+## Code Review Summary
+
+**APPROVED** — 13 fichiers, **1 finding trouvé et corrigé par la review elle-même**.
+
+### api-mail (9 fichiers)
+
+| Fichier | Verdict |
+|---|---|
+| `ConnectionResultPropagation.cs` | ✅ Le cœur de l'US. Deux surcharges dont le `switch` se ressemble : **délibérément non factorisées** — `Result` et `Result<T>` sont deux types Ardalis sans conversion entre eux ; toute factorisation passerait par de la réflexion, plus chère à lire que la répétition supprimée. |
+| Les 5 services (23 sites) | ✅ Conversion mécanique, exhaustivité **vérifiée** : `grep` des trois formes historiques → **0 résiduel**. |
+| `BackgroundImapService.cs` | ⚠️→✅ **Le point qui méritait vérification** : ce service propage désormais `Unauthorized` là où il rendait `Error`. Ses deux seuls appelants (`BackgroundSyncService:190` et `:287`) ne testent que `IsSuccess`, **jamais le statut** — changement neutre pour le sync de fond, aucun risque de boucle de rejeu. Son `string.Join(", ", …)` devient le premier message non blanc : harmonisation demandée par la task. |
+| `UserContextInfo.cs` | ✅ Documentation seule, alias volontairement non renommé. |
+| `MailExportService.cs` | ⚠️→✅ **Le finding.** L'outillage d'édition de la chaîne avait ajouté un **BOM UTF-8** à un fichier qui n'en avait pas, faisant apparaître sa première ligne comme modifiée. Retiré (`4a9e318`) — zéro octet de comportement, du bruit en moins dans le diff. Les 5 autres fichiers C# touchés ont été contrôlés : BOM inchangé. |
+| 2 fichiers de tests | ✅ 18 tests. |
+
+### client-mobile (4 fichiers)
+
+| Fichier | Verdict |
+|---|---|
+| `session.model.ts` | ✅ `expiresAtOfToken` garde la chaîne vide **et** le jeton indécodable en un seul endroit. Champ documenté comme **temporaire** — il disparaîtra avec `X-PSC-Token` à la livraison de l'ADR backend-pull. |
+| `mss-headers.interceptor.ts` | ✅ `earliestExpiry` pure et exportée, testable sans monter un intercepteur. Le reste de la logique de refresh (single-flight, anti-boucle `RETRIED`, `Retry-After`) est intact. |
+| `auth.service.ts` | ✅ **Le point délicat** : `mintSessionFromCookie` conserve la reprise du `sessionId` de task-282. Ne pas la casser était le vrai risque de ce diff. Ré-export de `decodeJwtPayload` plutôt que duplication. |
+| `psc-token-expiry.spec.ts` | ✅ 15 tests, dont la garde anti-`NaN` et le single-flight. |
+
+### Écart assumé avec les « Notes pour /develop »
+
+La note demandait de réutiliser `decodeJwtPayload` « déjà exporté par
+`auth.service.ts` ». L'importer depuis `session.model.ts` aurait créé un **cycle**
+(`auth.service` importe déjà ce module). La fonction a donc été **déplacée** et
+**ré-exportée** : importateurs existants intacts, et l'intention de la note —
+**un seul décodeur** — respectée.
+
+### DOD
+
+**11/11 items automatisables vérifiés.** Les items « bout en bout » (aucun
+`HTTP-500` sur 10 minutes d'usage continu) sont des **critères de clôture au
+banc**, inscrits au Manual Test Plan — non vérifiables en unitaire.
+
+### Validation finale
+
+- `api-mail` : build 0 erreur / 0 avertissement, **3 947 verts / 0 rouge**
+- `client-mobile` : build OK, **796/796**, `ng lint` propre dès la baseline
+- SonarQube : **Quality Gate OK**, new coverage 90,4 %, **0 violation attribuable**
+- Branches à jour avec `origin/develop` (merge, pas de rebase — règle 4)
