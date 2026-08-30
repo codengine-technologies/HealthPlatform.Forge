@@ -235,3 +235,88 @@ au praticien** contre du temps. **Ce n'est pas une décision technique** — c'e
 au PO de dire de combien de secondes un compteur de messages peut être périmé.
 
 Règle 7 (fail-fast sur ambiguïté de règle métier) → `questions/task-278.md`.
+
+## Develop log — reprise après arbitrage produit (2026-08-30)
+
+**Décision reçue** : `questions/task-278.md`, **option A** — *stale-while-revalidate*.
+« A, oui c'est absolument acceptable ».
+
+### Périmètre précisé au moment de l'implémentation
+
+La question décrivait « l'écran se corrige tout seul ~300 ms plus tard ». **Côté
+`api-mail` seul, la correction est PASSIVE** : la route répond instantanément et
+rafraîchit derrière, mais sans changement front la valeur affichée ne se met à
+jour **qu'à la navigation suivante**. Dans le parcours réel c'est borné et utile
+— le rafraîchissement finit en ~300 ms, et l'appel suivant du médecin (ouverture
+de l'inbox, 3-10 s plus tard) est déjà juste. Une correction **visible sans
+navigation** exigerait un drapeau de fraîcheur + re-fetch client, donc une US sur
+les **trois clients** : **proposée séparément, pas embarquée ici.**
+
+### Ce qui est livré
+
+| Pièce | Rôle |
+|---|---|
+| `RedisKeys.Folder.Snapshot` | le dernier état connu. Se distingue de `Status`/`Uids` par sa raison d'être : ceux-là **expirent** pour garantir la fraîcheur, celui-ci **survit** pour garantir une réponse immédiate |
+| `RefreshFolderSnapshotMessage` | « rafraîchis ce dossier, je n'attends pas » — `IUserScopedMessage`, donc le contexte praticien traverse la frontière asynchrone |
+| `RefreshFolderSnapshotConsumer` | refait la lecture hors chemin de réponse, best-effort |
+| `PublishRefreshFolderSnapshotAsync` | **ne lève jamais** — le médecin a déjà sa réponse quand ce message part |
+| `ImapService.RefreshFolderAsync` | la même lecture, mais qui **refuse** l'instantané |
+
+### ⚠️ Pourquoi le bus et pas une tâche détachée
+
+`ImapService`, `UserContextInfo` et le service de cache sont tous **scoped sur la
+requête HTTP**. Une tâche lancée-puis-oubliée les utiliserait **après leur
+disposition**. Le bus est la façon dont ce dépôt sort déjà du chemin de réponse
+(task-075, task-272), et `IUserScopedMessage` est ce qui fait traverser le
+contexte praticien.
+
+### ⛔⛔ Le défaut que la conception a failli introduire : la boucle infinie
+
+La première version faisait appeler `GetFolderAsync` par le consommateur. Or
+cette méthode **sert l'instantané et republie un rafraîchissement** : le
+consommateur aurait retrouvé l'instantané qu'il est chargé de remplacer et
+republié un message — **indéfiniment, et sous le verrou de session du
+praticien**. D'où `RefreshFolderAsync`, la porte qui refuse l'instantané, et un
+test dédié qui échoue si elle republie.
+
+### Deux réglages de file délibérément différents des autres
+
+- **Pas de `UseMessageRetry`** — le message est **périmable**. Rejouer dans 10 s
+  le rafraîchissement d'un compteur que le médecin a peut-être déjà quitté coûte
+  plus que ça ne rapporte, et le passage suivant relancera de toute façon.
+- **`ConcurrentMessageLimit = 5`** — ces messages arrivent en rafale au front
+  d'un palier et chacun prend le verrou de session du praticien. Les laisser
+  filer ferait concurrencer les gestes du médecin par le confort qu'on lui rend.
+
+### Vérification
+
+- `dotnet build` → **0 erreur, 0 avertissement**
+- domain 136/136 · infrastructure 464/464 · api 692/692 · application **2 190/2 190**
+- Une exécution sur quatre a rendu 1 rouge, **non reproduit sur trois
+  exécutions consécutives** : c'est le flaky d'**état statique partagé** en run
+  parallèle déjà documenté dans l'EPIC (famille `EnrichmentOperationScope` /
+  `MailReadObjectCount` / `SeededThreadsAreCountable`). Aucun rapport avec ce
+  diff, qui ne touche aucun compteur.
+- **4 tests neufs** : arrivée avec instantané → servie sans interroger le serveur
+  **et** rafraîchissement publié ; **première arrivée jamais servie périmée** (on
+  ne montre rien qu'on n'ait déjà montré) ; **le chemin de rafraîchissement
+  refuse l'instantané et ne republie pas** (garde anti-boucle) ; une lecture
+  fraîche écrit l'instantané.
+
+## PRs
+
+- `api-mail` — **[PR #210](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/210)** — label `awaiting-human-merge`
+- `dtos-mss` — branche créée, **0 commit**, aucune PR.
+
+## Code Review Summary
+
+**APPROVED** — 9 fichiers, 0 bloquant.
+
+Le point délicat — la boucle infinie de rafraîchissement — a été **évité par
+conception** et non trouvé après coup : `RefreshFolderAsync` refuse l'instantané,
+et un test échoue si le chemin de rafraîchissement republie. Second point
+sensible également gardé : **la première arrivée n'est jamais servie périmée**,
+on ne montre rien qu'on n'ait déjà montré.
+
+**DOD** : 7/8 verts. Le huitième — les cibles de temps serveur — est un
+**critère de clôture au banc**, inscrit au Manual Test Plan.

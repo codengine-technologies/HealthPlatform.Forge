@@ -88,3 +88,30 @@ avant que task-276 ne la réfute).
    soit ~48 % du temps serveur de la route. Ce n'est pas la cause du coût froid,
    mais c'est un poste réel qui grandira avec la population — candidat à une US
    distincte, sans arbitrage produit.
+
+---
+
+## RÉPONSE DE L'HUMAIN — 2026-08-30
+
+> « A, oui c'est absolument acceptable »
+
+**Option A retenue** : *stale-while-revalidate*. L'arrivée dashboard est servie
+depuis le dernier instantané connu, le rafraîchissement s'exécute derrière.
+
+### Périmètre précisé au moment de la réponse (et pourquoi)
+
+La question posée décrivait « l'écran se corrige tout seul ~300 ms plus tard ».
+**Côté `api-mail` seul, la correction est PASSIVE** : la route répond
+instantanément et rafraîchit en arrière-plan, mais sans changement côté front la
+valeur affichée ne se met à jour **qu'à la navigation suivante**.
+
+Dans le parcours réel, cela reste utile et borné : le rafraîchissement se
+termine en ~300 ms, et l'appel suivant du médecin — l'ouverture de l'inbox, 3 à
+10 s plus tard — est déjà juste.
+
+Une correction **visible sans navigation** exigerait un drapeau de fraîcheur
+dans la réponse et un re-fetch côté client, ou une notification poussée : c'est
+une US sur les **trois clients**, pas sur `api-mail`. **Elle est proposée
+séparément et n'est pas embarquée ici.**
+
+**Question soldée** — task-278 reprend son cycle.

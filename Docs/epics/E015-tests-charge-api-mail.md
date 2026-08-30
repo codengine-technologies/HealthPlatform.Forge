@@ -2,7 +2,7 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.46
+> **Version** : 1.47
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
 > **Dernière mise à jour** : 2026-08-30
@@ -2128,6 +2128,8 @@ Cinq réserves à porter au bilan, sans quoi il serait trompeur :
 
 - v1.67 — **Une coupure de connexion côté serveur ne se voit plus.** Les serveurs de messagerie recyclent leurs connexions ; l'application réutilisait parfois une connexion déjà fermée, et le praticien recevait alors « une erreur inattendue s'est produite » sur un geste parfaitement valide. La connexion morte est désormais détectée et l'opération rejouée une fois sur une connexion neuve, sans que le médecin voie quoi que ce soit. **Une garde stricte protège l'envoi** : un courrier n'est rejoué que si le serveur l'a refusé **avant** d'en avoir accepté le contenu — dès qu'il y a le moindre doute sur ce qui est parti, rien n'est renvoyé, parce qu'un courrier médical envoyé deux fois est plus grave que l'erreur qu'on évite. (task-277)
 - v1.68 — **Le téléchargement d'une pièce jointe devient mesurable.** C'est l'opération qui immobilise le plus longtemps la connexion d'un praticien, et la seule dont on ne savait pas ce qu'elle demande au serveur de messagerie : rien ne comptait ses échanges. Elle est désormais suivie comme les autres, avec une précaution qui décide de la valeur de la mesure — seuls les échanges **réellement envoyés** sont comptés, jamais ceux que la bibliothèque économise. Aucune optimisation n'a été faite à ce stade : il fallait d'abord pouvoir la mesurer. (task-279)
+
+- v1.69 — **Le tableau de bord s'affiche instantanement.** L'arrivee sur l'ecran d'accueil attendait le serveur de messagerie a chaque retour du praticien — non parce qu'elle demande beaucoup, mais parce qu'elle arrive toujours apres une absence, quand tout ce qui avait ete retenu a expire. Elle affiche desormais **immediatement les compteurs du dernier passage**, pendant que la mesure a jour se refait en arriere-plan. Deux garde-fous : le **tout premier** affichage d'un praticien n'est jamais servi ainsi — on ne montre rien qu'on n'ait deja montre — et la valeur exacte est en place avant meme qu'il ouvre sa boite de reception, quelques secondes plus tard. **Nuance a connaitre** : sans evolution des applications clientes, un compteur affiche se corrige a la navigation suivante, pas sous les yeux du medecin ; la correction visible fera l'objet d'une demande separee. (task-278)
 
 ---
 

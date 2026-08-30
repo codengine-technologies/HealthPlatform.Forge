@@ -3070,7 +3070,7 @@ nouvelle table par opération est ce qui permettra de les séparer.
 
 ---
 
-### task-278 — arrêtée sur arbitrage produit : la cause est établie, le remède appartient au PO
+### v1.69 — L'arrivée sur le tableau de bord est servie sans attendre le serveur de messagerie — task-278
 
 - **Task** : task-278 — reste en `wip`, **aucun code de production écrit**, `questions/task-278.md` ouverte. Branches supprimées.
 - **⭐ LA PISTE DES ALLERS-RETOURS EST DÉFINITIVEMENT FERMÉE, et bien plus largement qu'on ne croyait.** Reconstitution du mélange froid/chaud des deux tirs : task-270 a livré **deux** gains cumulés — 7→5 allers-retours par miss **et** la part froide effondrée de **62,7 % à 24,9 %** (son second remède). Ensemble : **allers-retours IMAP du chemin dossier 59,1 → 32,5 par seconde, −45 %**. Coût moyen de `call:folder` : **357,1 → 358,4 ms, +0,4 %**. Le coût de cette route **n'est pas borné par les allers-retours IMAP**.
@@ -3079,6 +3079,16 @@ nouvelle table par opération est ce qui permettra de les séparer.
 - **⚠️ La recommandation du task file était fausse, et c'est consigné** : attribuer la charge widget par widget via les flags `dashboard_widget_*` (task-274) **ne marche pas au banc** — k6 appelle l'API directement et ne lit jamais Flagsmith. Les flags restent un levier d'exploitation réel, pas un instrument de banc.
 - **Pourquoi la chaîne s'est arrêtée** : le seul remède que la cause appelle échange de la **fraîcheur des compteurs affichés au praticien** contre du temps (servir le cache et rafraîchir derrière, ou allonger la fenêtre de statut). **Ce n'est pas une décision technique.** Règle 7. Trois options chiffrées sont posées dans `questions/task-278.md`, avec une recommandation (*stale-while-revalidate*) et la raison de ne pas l'avoir écrite.
 - **Relevé annexe** : l'attente **moyenne** du verrou de session sur `ReadFolder` vaut **82,8 ms**, ~48 % du temps serveur de la route. Pas la cause du coût froid, mais un poste réel qui grandira avec la population — candidat à une US distincte, sans arbitrage produit.
+
+- **REPRISE APRÈS ARBITRAGE (2026-08-30)** — réponse du PO : **option A**, *stale-while-revalidate*. « A, oui c'est absolument acceptable ». **PR** : `api-mail` [#210](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/210) (`awaiting-human-merge`), commit `552dd1c`. `dtos-mss` : 0 commit.
+- **Livré** : une clé d'**instantané** (`folder:snapshot`) qui **survit** là où `folder:status`/`folder:uids` **expirent** — les premiers garantissent la fraîcheur, celui-ci garantit une réponse immédiate ; un message `RefreshFolderSnapshotMessage` (`IUserScopedMessage`) et son consommateur, qui refont la lecture **hors du chemin de réponse** ; une publication qui **ne lève jamais** (le médecin a déjà sa réponse quand elle part).
+- **⚠️ Pourquoi le bus et pas une tâche détachée** : `ImapService`, `UserContextInfo` et le cache sont **scoped sur la requête HTTP** — une tâche lancée-puis-oubliée les utiliserait **après leur disposition**. Le bus est la façon dont ce dépôt sort déjà du chemin de réponse (task-075, task-272).
+- **⛔⛔ Le défaut évité PAR CONCEPTION : la boucle infinie.** Faire appeler `GetFolderAsync` par le consommateur l'aurait fait retrouver l'instantané qu'il est chargé de remplacer, et republier un rafraîchissement — **indéfiniment, et sous le verrou de session du praticien**. D'où `RefreshFolderAsync`, la porte qui refuse l'instantané, et un test qui échoue si le chemin de rafraîchissement republie.
+- **⛔ La première arrivée n'est JAMAIS servie périmée** : sans instantané, le chemin synchrone reprend. On ne montre jamais rien qu'on n'ait déjà montré.
+- **Deux réglages de file délibérément différents des autres** : **pas de `UseMessageRetry`** (le message est **périmable** — rejouer dans 10 s le rafraîchissement d'un compteur que le médecin a peut-être quitté coûte plus que ça ne rapporte, et le passage suivant relancera), et `ConcurrentMessageLimit = 5` (ces messages arrivent en rafale au front d'un palier et chacun prend le verrou de session : les laisser filer ferait concurrencer les gestes du médecin par le confort qu'on lui rend).
+- **⚠️ PORTÉE ASSUMÉE, dite AVANT l'implémentation** : sans changement front, la valeur affichée se corrige **à la navigation suivante, pas spontanément**. Borné et utile dans le parcours réel (rafraîchissement en ~300 ms, ouverture de l'inbox 3-10 s plus tard déjà juste), mais ce n'est pas « l'écran se met à jour tout seul » — cela exigerait un drapeau de fraîcheur et un re-fetch client, donc une US sur les **trois clients**, **proposée séparément**.
+- **Tests** : 4 neufs (arrivée servie + rafraîchissement publié ; première arrivée jamais périmée ; garde anti-boucle ; l'instantané est écrit par la lecture fraîche). Suites unitaires **3 482 vertes**. Un rouge sur une exécution des quatre, **non reproduit sur trois consécutives** : flaky d'état statique partagé déjà documenté, sans rapport avec ce diff.
+- ⚠️ **Sonar non exécuté** (`$SONAR_TOKEN` absent) — diff C# applicatif, dette neuve non mesurée.
 
 ---
 
