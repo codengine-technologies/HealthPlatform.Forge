@@ -8,6 +8,36 @@
 
 ## Historique détaillé des changelogs
 
+> ⚠️ **Entrées manquantes (retard de documentation, constaté le 2026-08-30).**
+> Sept tasks E012 ont atteint `done-*`/`archived-*` sans entrée ici :
+> **task-147** (tags depuis le détail d'un mail, [Mobile#51](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/51)),
+> **task-148** (carnet de contacts + annuaire, [Mobile#52](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/52)),
+> **task-152** (chat IA contextuel multi-emails, [Mobile#54](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/54)),
+> **task-154** (opposition patient : garde-fou serveur à l'envoi),
+> **task-161** (dashboard : robustesse au chargement),
+> **task-162** (dashboard : casser la boucle de rétroaction),
+> **task-167** (onboarding MSSanté : déclenchement de l'opt-in).
+> Elles sont **antérieures** à `v1.28` : les insérer imposerait de renuméroter
+> des entrées existantes, ce que le writer s'interdit (append-only). À combler
+> par un `/tech-writer E012 --refresh` délibéré, qui reconstruit l'historique
+> complet dans le bon ordre.
+
+### v1.29 — task-275 — Compatibilité verrouillée au modèle « token Keycloak jetable » (2026-08-30)
+
+- **PR** : [HealthPlatform.Mobile#64](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/64) — label `awaiting-human-merge`. Branche `feat/task-275-mobile-psc-horizon`, commit `4c9c663`. Repo `client-mobile` uniquement (pas d'auto-inclusion `dtos-mss` : ni `api-mail` ni `client-blazor` listés). **Dépendance** : `psc-auth-proxy/task-015` (autre forge, PR `!9039`, état `done-*`).
+- **Contexte** : `psc-auth-proxy/task-015` bascule le refresh mobile — le seul refresh token consommé est celui de **PSC**, et le jeton Keycloak n'est plus rafraîchi mais **re-frappé** à chaque `/auth/refresh` (JWT Authorization Grant RFC 7523, `KeycloakTokenExchangeService`). Plus de session ni de refresh token Keycloak : l'agrégat rendu au mobile a un `refreshToken` **vide** et un `refreshTokenExpirationDateUtc` qui porte l'horizon du refresh token PSC.
+- **Nature** : **aucun code de production modifié.** Diff 100 % test — 3 fichiers de specs, +204 lignes, 6 tests. L'analyse préalable (`psc-auth-proxy/questions/task-014-session-persistante.md` §7.6) concluait que `client-mobile` était déjà compatible ; cette US **verrouille** la conclusion au lieu de la supposer.
+- **Invariants épinglés** : (1) `refreshToken` vide → session pleinement valide (`accessToken`, `mssEmail`, `accessTokenExpiresAt`) ; (2) l'échéance provient de la claim `exp` du JWT et **non** des champs de date de l'agrégat — verrouillé par un agrégat aux dates volontairement incohérentes ; (3) absence d'`exp` → préventif désactivé, le réactif reste le filet ; (4) `refreshSession()` re-dérive `accessTokenExpiresAt` **et** `mssEmail` du jeton re-frappé et les **persiste** ; (5) le tour suivant est piloté par l'`exp` du jeton re-frappé, sans dépendance à `refreshTokenExpirationDateUtc` ; (6) un échec `/auth/refresh` en `ProblemDetails` porteur du code de re-échange suit le chemin existant purge + `/login?expired=1`, sans traitement particulier.
+- **Fichiers** : `src/app/core/auth/session.model.spec.ts` (+56), `src/app/core/auth/auth.service.spec.ts` (+30), `src/app/core/http/mss-headers.interceptor.spec.ts` (+119).
+- **Point technique** : l'invariant (5) exige un **stub de session mutable**. Les `describe` voisins utilisent `jasmine.createSpyObj<AuthSessionService>` dont la propriété `session` est **figée** — elle masquerait précisément ce qu'on vérifie (l'intercepteur doit *relire* une session différente après re-frappe). D'où un `describe` autonome avec un getter sur une variable réassignée par le `callFake` du refresh.
+- **Simplify (`/forge-simplify`)** : skip clean, aucun commit. Deux factorisations examinées puis écartées, motifs consignés : mutualiser la configuration `TestBed` (le fichier porte **déjà 5 blocs** indépendants, un par `describe` — factoriser le seul nouveau serait incohérent, factoriser les cinq est un refactor hors périmètre d'une US « aucun changement de comportement ») ; réutiliser `validSession()`/`expiredSession()` (valeurs figées + spy immuable, incompatibles avec l'invariant 5). Réutilisation effective là où elle valait : `session.model.spec.ts` s'appuie sur le helper `tokens()` déjà présent.
+- **Sonar** : skippé — `api-mail` non touché.
+- **Lint (`/lint-mobile`)** : baseline `ng lint` **All files pass linting** — 0 erreur, 0 warning, 0 itération, aucun fix.
+- **Verify-visual (`/verify-visual`)** : skip clean — 0 fichier d'écran modifié (`*.html`, `*.scss`, `*.component.ts`, `*.page.ts`), aucun `## Stitch design log`. État visuel global inchangé.
+- **Code review** : verdict **APPROVED** — 3 fichiers, 0 bloquant, 1 suggestion non bloquante (le stub de session est un littéral non typé là où les `describe` voisins passent par `jasmine.createSpyObj<AuthSessionService>` ; `useValue` étant `any`, sans effet fonctionnel). Aucun secret, aucune donnée de santé : adresses et jetons entièrement fictifs. Échéances figées en constantes plutôt que dérivées de `Date.now()` → tests déterministes, pas de flaky temporel.
+- **Tests** : **780 / 780** verts (774 → 780, +6). Build vert. Merge `origin/develop` : already up to date, aucun conflit.
+- **Limite connue, hors périmètre** : le point 2 du plan de test manuel (« laisser l'app ouverte > 5 min puis ouvrir un mail avec PJ ») **ne peut pas passer aujourd'hui**. L'auth IMAP/SMTP d'`api-mail` s'appuie sur le **jeton PSC** (`UserContextInfo.JwtToken` est un alias de `PscToken`), qui vit ~2 min, alors que le mobile ne déclenche son préventif que sur l'`exp` du jeton **Keycloak** (5 min) — soit ~3 min sur 5 avec un `X-PSC-Token` périmé (mesure du 2026-08-30 : HTTP 500 corps vide sur `GET /api/v1/mail/folders/INBOX`, 2 min 20 d'indisponibilité). C'est le périmètre de **task-283**, pas une régression de cette US, et la compatibilité annoncée reste vraie **du côté Keycloak** — qui est bien ce que change task-015.
+
 ### v1.29 — task-282 — La clé du pool de sessions suit le client, plus le jeton (2026-08-30)
 
 - **Task** : task-282 — `done`. **PRs** : `api-mail` [#212](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/212) et `client-mobile` [#65](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/65), toutes deux `awaiting-human-merge`. **Une seule US, deux PRs à merger ENSEMBLE** (règle 11) : séparément, chacune laisse le défaut entier — l'une envoie un en-tête que l'autre ignore encore, ou l'inverse.
@@ -544,3 +574,4 @@
 | task-145 | Mobile#49 | Signatures (CRUD + injection automatique au compose) | — |
 | task-159 | Mobile#57 | Onboarding MSSanté (compte sans adresse configurée) | — |
 | task-166 | Mobile#60 | Rendu des tableaux Markdown (GFM) dans le chat IA et la synthèse | — |
+| task-275 | Mobile#64 | Compatibilité verrouillée au modèle « token Keycloak jetable » (6 tests, aucun code de production) | — |
