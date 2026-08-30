@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > **Vue produit** : [E012-client-mobile-mssante.md](E012-client-mobile-mssante.md)
-> **Dernière mise à jour** : 2026-08-30
+> **Dernière mise à jour** : 2026-08-30 (task-283)
 
 ---
 
@@ -21,6 +21,27 @@
 > des entrées existantes, ce que le writer s'interdit (append-only). À combler
 > par un `/tech-writer E012 --refresh` délibéré, qui reconstruit l'historique
 > complet dans le bon ordre.
+>
+> ⚠️ **Collision de numérotation** : **task-275 et task-282 portent toutes deux
+> `v1.29`** (deux cycles du 2026-08-30). Le writer étant append-only, il ne
+> renumérote pas — task-283 prend donc `v1.30`. À corriger par le même
+> `--refresh` délibéré.
+
+### v1.30 — task-283 — Le refresh suit l'horloge du jeton PSC, et l'échec sort en 401 (2026-08-30)
+
+- **PRs** : `api-mail` [#214](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/214) et `client-mobile` [#67](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/67), toutes deux `awaiting-human-merge`. Branche `fix/task-283-psc-refresh-clock-and-401-propagation`. `dtos-mss` : branche auto-incluse, **0 commit**, ref supprimée. **Une seule US, deux PRs à merger ENSEMBLE** (règle 11).
+- **Symptôme** : le praticien perd l'accès à sa boîte **par tranches de 2 à 3 minutes, en boucle**, puis l'app se répare seule et retombe. Origine : session de test du 2026-08-30, analyse Seq.
+- **Cause 1 — la mauvaise horloge (`client-mobile`)** : `api-mail` s'authentifie à IMAP/SMTP en **XOAUTH2 avec le jeton PSC**, pas avec le bearer Keycloak (`UserContextInfo.JwtToken` est un **alias de `PscToken`**). Or les deux jetons n'ont pas la même durée de vie — Keycloak **~5 min** (`exp − iat = 300 s`, mesuré sur un jeton réel), PSC **~1,98 min**. Le client ne calculait son échéance préventive que sur l'`exp` du jeton **Keycloak** : pendant ~3 min sur 5, il envoyait un bearer valide avec un `X-PSC-Token` périmé.
+- **Cause 2 — l'échec muet (`api-mail`)** : `ImapConnectionService` posait bien un `Result.Unauthorized` sur un jeton expiré (task-165, explicitement *« pour que le refresh réactif des frontends, branchés sur 401, se déclenche correctement »*), mais **23 sites de retour** l'aplatissaient en `Result<T>.Error(errors.FirstOrDefault() ?? …)` : seul le **message** survivait, le statut retombait sur `Error`, donc **500 au corps vide**. Ni `status === 401` ni le test sur le `detail` de `isSessionExpired()` ne matchaient — **task-165 était présente dans le code et inerte en pratique**.
+- **Le « rattrapage » n'était pas un mécanisme** : quand l'horloge Keycloak franchissait enfin son seuil, le proxy re-frappait les **deux** jetons et réparait le PSC au passage. D'où le dents-de-scie relevé dans Seq, reproduit à chaque cycle sans exception.
+- **Correctif mobile** : `AuthSession.pscAccessTokenExpiresAt`, alimenté depuis l'`exp` du `pscAccessToken` ; `isAccessTokenExpired()` raisonne sur **`min(Keycloak, PSC)`** (`earliestExpiry`, pure et exportée). Échéance absente ⇒ ignorée, comme avant. **Cadence de refresh : ~5 min → ~90 s** — attendu, borné par le single-flight existant et par task-161 sur 429.
+- **Correctif backend** : **un seul point de conversion**, `ConnectionResultPropagation.PropagateFailure` (générique + non générique), remplace les 23 aplatissements dans leurs **trois formes** historiques (`.FirstOrDefault() ?? fallback`, préfixe technique, `string.Join`). Il conserve statut, messages et erreurs de validation, et **n'applique pas le préfixe technique à un 401** — ce message-là est lu tel quel par le client. `ImapService:2810` n'est pas concerné (`yield break` de journalisation, pas un site de retour).
+- **Réutilisation** : `decodeJwtPayload` **déplacée** dans `session.model.ts` et **ré-exportée** depuis `auth.service.ts` — l'importer en sens inverse aurait créé un cycle. Écart assumé avec la note de la task, dont l'intention (**un seul décodeur**) est respectée. Côté backend, `MailExportService` perd sa troisième orthographe locale de `"Connection failed"` au profit de `MetricsConstants.ConnectionFailed`.
+- **Ambiguïté levée sans renommage** : `UserContextInfo.JwtToken` est documenté comme étant le **jeton PSC**, pas le bearer Keycloak — c'est cette ambiguïté qui a masqué le défaut. L'alias n'est pas renommé (transverse à ~20 sites) : l'ADR backend-pull (task-171, en attente) le supprimera avec l'en-tête `X-PSC-Token`, et `pscAccessTokenExpiresAt` se retirera avec lui.
+- **Tests** : 14 unitaires sur le point de conversion (tous statuts, replis, préfixe, garde sur un succès), 4 d'intégration HTTP sur la vraie route `/api/v1/mail/folders/INBOX` (401 + `problem+json` + `detail` exploitable, zéro fuite règle 12, non-régression 500 réseau et 503 indisponible), 15 mobile. Suites : **3 947** et **796** verts. Deux tests méritent mention — la **garde anti-`NaN`** (`decodeJwtPayload` étant tolérante, `Number(undefined) * 1000` désarmerait le préventif en silence) et le **single-flight**, d'abord écrit avec un mock synchrone qui le rendait inobservable.
+- **Qualité** : Quality Gate **OK**, new coverage **90,4 %**, code smells **62 = baseline** après correction de deux findings sur le code frais (`S1135` : le mot-clé TODO dans `onhold/todo-task-171` cité en prose ; `CA1869` : `JsonSerializerOptions` par désérialisation). **Zéro dette attribuable.** Les deux règles ont alimenté `conventions/csharp.md`.
+- **Trouvé par le code review** : un **BOM UTF-8** ajouté par l'outillage à `MailExportService.cs`, qui n'en avait pas — retiré (`4a9e318`). Vérifié aussi que `BackgroundImapService` propage désormais `Unauthorized` **sans effet** : ses deux appelants ne testent que `IsSuccess`, jamais le statut.
+- **Reste ouvert** : les critères « bout en bout » (aucun `HTTP-500` sur 10 min d'usage continu) relèvent du plan de test manuel. **Et la clôture au banc de task-282** — une seule valeur de `ClientSessionId`, `New ImapClient` ≤ 5 réplicas — n'a **pas** été faite : c'est elle qui prouve qu'on reste sous le plafond de 10 connexions IMAP par praticien alors que cette US triple la cadence de refresh.
 
 ### v1.29 — task-275 — Compatibilité verrouillée au modèle « token Keycloak jetable » (2026-08-30)
 

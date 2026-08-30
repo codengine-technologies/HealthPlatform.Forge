@@ -5,7 +5,7 @@
 > **Version** : 2.1
 > **Auteur** : PO forge
 > **Audience** : PO, médecin, direction — la vue ingénierie vit dans [E012-Changelogs.md](E012-Changelogs.md)
-> **Dernière mise à jour** : 2026-08-30 (task-275, task-282)
+> **Dernière mise à jour** : 2026-08-30 (task-275, task-282, task-283)
 
 ---
 
@@ -494,7 +494,7 @@ suppression) affiche un message lisible ; l'action peut être relancée.
 | Rattachement document → patient | ✅ Livrée | task-137 |
 | Dossier patient (fiche, documents, biologie, synthèse) | ✅ Livrée | task-132, task-133, task-134, task-135 |
 | Préférences partagées | 🟡 En validation par le praticien référent | task-140 |
-| Continuité de session | ✅ Livrée | task-102, task-275 |
+| Continuité de session | ✅ Livrée | task-102, task-275, task-282, task-283 |
 
 **Couverture EPIC consolidée : 10,5 / 11 fonctionnalités livrées** — seule
 Préférences reste développée et en attente de validation manuelle.
@@ -518,6 +518,18 @@ Préférences reste développée et en attente de validation manuelle.
 
 ## Synthèse fonctionnelle des changelogs
 
+- **v1.30 (task-283)** — Accès à la messagerie rétabli en continu. Le praticien
+  qui laissait l'application ouverte perdait l'accès à sa boîte **par tranches
+  de deux à trois minutes, en boucle** : les dossiers ne se chargeaient plus,
+  les pièces jointes refusaient de s'ouvrir, puis tout revenait seul quelques
+  minutes plus tard, avant de retomber. L'application renouvelait son identité
+  en se fiant à la mauvaise échéance — celle qui expire le plus tard — et
+  laissait donc périmer l'autorisation qui donne réellement accès à la boîte
+  MSSanté. Elle suit désormais **la première des deux échéances**, et renouvelle
+  avant que l'accès ne soit perdu. Le praticien ne voit plus d'interruption.
+  En complément, lorsqu'une autorisation expire malgré tout, le serveur le dit
+  désormais explicitement au lieu de renvoyer une erreur technique muette :
+  l'application sait alors se réparer d'elle-même, au lieu d'afficher un échec.
 - **v1.29 (task-275)** — Continuité de session préservée lors d'une évolution
   du service d'authentification : le praticien ne verra **aucun changement**.
   L'application a été mise à l'épreuve pour garantir qu'après une évolution
