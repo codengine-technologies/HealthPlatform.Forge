@@ -320,3 +320,137 @@ qui prouve que le régime est bien retombé de ~10 à ~5 sessions IMAP par
 praticien, donc que la cadence de refresh ramenée à ~2 min par la présente US
 reste sous le plafond de 10 connexions. Le lancement de 283 a été décidé par
 l'humain en connaissance de cette réserve. À lever au plan de test manuel.
+
+## Develop log
+
+- **Repos touchés** : `api-mail`, `client-mobile`. `dtos-mss` : **0 commit**
+  (aucun changement de contrat) → pas de PR, pas de publish NuGet.
+- **DTOs publiés** : aucun. **Interop publié** : aucun.
+- **Commits** :
+  - `api-mail` : `ac564b6` — *fix(mail): task-283 — un jeton expiré ressort en 401, plus en 500 muet*
+  - `client-mobile` : `7651b92` — *fix(auth): task-283 — le refresh préventif suit l'échéance du jeton PSC*
+- **Build / tests locaux** : ✓ les deux repos.
+
+### api-mail — le point de conversion unique
+
+Les **23** sites recensés par la task sont convertis, et il n'en reste **aucun**
+(`grep` des trois formes d'aplatissement → 0 résiduel) :
+
+| Fichier | Sites |
+|---|---|
+| `ImapService.cs` | 12 (dont le multi-lignes `:231`, qui repliait aussi sur `ValidationErrors`) |
+| `ImapFolderService.cs` | 7 |
+| `BackgroundImapService.cs` | 2 (forme `string.Join`, harmonisée au passage) |
+| `FlagPropagationService.cs` | 1 |
+| `MailExportService.cs` | 1 |
+
+Le point unique est `ConnectionResultPropagation.PropagateFailure` (générique et
+non générique). Il conserve statut, messages et erreurs de validation, applique
+le repli historique (premier message non blanc → première erreur de validation →
+fallback), et **n'applique pas le préfixe technique à un 401** : ce message-là
+est lu tel quel par le client pour décider d'un refresh.
+
+`ImapService:2810` n'est **pas** un site de retour (c'est un `yield break` de
+journalisation) — hors périmètre, conforme au décompte de 23 de la task.
+
+`UserContextInfo.JwtToken` est documenté sans être renommé : c'est le **jeton
+PSC**, pas le bearer Keycloak, et c'est cette ambiguïté qui a masqué le défaut.
+Le renommage est laissé à l'ADR backend-pull, qui supprimera l'alias.
+
+### client-mobile — l'échéance effective
+
+`AuthSession.pscAccessTokenExpiresAt` est alimenté par `sessionFromTokenAggregate`
+depuis l'`exp` du `pscAccessToken`, et `isAccessTokenExpired` raisonne sur
+`min(Keycloak, PSC)` via `earliestExpiry` (fonction pure exportée, testée).
+
+**Un écart assumé avec les « Notes pour /develop »** : la note demandait de
+réutiliser `decodeJwtPayload` « déjà exporté par `auth.service.ts` ». L'importer
+depuis `session.model.ts` aurait créé un **cycle d'import** (`auth.service`
+importe déjà `session.model`). La fonction a donc été **déplacée** dans
+`session.model.ts` et **ré-exportée** depuis `auth.service.ts` : les importateurs
+existants (`authentication.page.ts`) ne bougent pas, et l'intention de la note
+est respectée — **un seul décodeur**, pas un second.
+
+### DOD — contrôle
+
+**client-mobile** — 6/6 vérifiables par commande :
+
+- [x] Build ✓, tests ✓ — **796/796** (781 avant, +15)
+- [x] `AuthSession.pscAccessTokenExpiresAt` alimenté depuis l'`exp` du jeton PSC
+- [x] Agrégat dont le PSC expire avant le Keycloak ⇒ échéance effective = PSC
+- [x] PSC absent **ou indécodable** ⇒ `undefined` et comportement identique
+      (2 tests ; le second épingle explicitement **`undefined`, jamais `NaN`` —
+      `Date.now() >= NaN` est toujours faux, le préventif serait désarmé en
+      silence, soit exactement le défaut corrigé)
+- [x] Intercepteur : Keycloak valide + PSC dans la marge ⇒ préventif déclenché,
+      requête émise avec les **deux** jetons frais
+- [x] Refresh single-flight : 5 requêtes concurrentes ⇒ **un seul** refresh
+- [x] Aucun changement dans `src/environments/*` (vérifié sur le diff)
+
+**api-mail** — 5/5 vérifiables par commande :
+
+- [x] Build 0 erreur / 0 avertissement ; tests **3 947 verts / 0 rouge**
+- [x] Les 23 sites propagent le `ResultStatus` via **un seul** point de conversion
+- [x] Intégration : `X-PSC-Token` expiré sur `GET /api/v1/mail/folders/INBOX` ⇒
+      **401**, `application/problem+json`, `detail` non vide contenant
+      « refresh your session »
+- [x] Le corps ne contient ni jeton (`eyJ`, `X-PSC-Token`), ni stack trace, ni
+      adresse de boîte
+- [x] Non-régression : panne non liée au jeton ⇒ 500 ; `Unavailable` ⇒ 503
+
+**Bout en bout** — `aucun HTTP-500 sur 10 minutes d'usage continu` : **différé au
+test manuel (HAG)**, non vérifiable en automatisé.
+
+### Note sur la santé de la suite api-mail
+
+La DOD prévoyait « hors les 3 rouges pré-existants connus (middleware DB-name
+stale, IMAP cancel, MailExport PDF) ». **Ces trois-là ne se sont pas manifestés** :
+les deux derniers tirs solution complets sont à **3 947/3 947**.
+
+En revanche **deux épisodes de flaky ont été observés** sur des tirs solution
+antérieurs (1 échec, puis 4 répartis sur `infrastructure` et `application`).
+Leurs noms n'ont **pas** pu être capturés — ces tirs précédaient l'ajout du
+logger `trx`, et les deux tirs instrumentés qui ont suivi sont propres. Les
+tirs ciblés par projet sont eux aussi verts trois fois de suite. À surveiller ;
+rien n'indique un lien avec ce diff, dont les tests ne touchent ni la
+concurrence ni les ressources partagées.
+
+- **Étape suivante** : `/forge-simplify 283`
+
+## Simplify log
+
+**Repos éligibles touchés** : `api-mail`, `client-mobile`. `dtos-mss` exclu par
+construction (porteur de contrat, 0 commit).
+
+### api-mail
+
+| Axe | Constat | Action |
+|---|---|---|
+| **Réutilisation** | `MailExportService` redéclarait `private const string ConnectionFailed = "Connection failed"` — le **littéral exact** de `MetricsConstants.ConnectionFailed`, pour **un seul usage** : celui que cette task venait de convertir. `ImapService` (via `using static`) et `ImapFolderService` utilisaient déjà la constante partagée. Une troisième orthographe du même message pour aucune information ajoutée. | Locale supprimée, `MetricsConstants.ConnectionFailed` au site d'appel |
+| Simplification | Le point de conversion **est** la simplification de l'US : 23 sites, trois formes, un seul `switch`. Rien à réduire au-delà. | Déjà traité par `/develop` |
+| Efficacité | Une lecture d'en-tête de moins qu'un `Guid.NewGuid()` ne s'applique pas ici ; le chemin d'échec fait strictement le même travail qu'avant. | Rien à faire |
+| Altitude | Les trois `using` insérés par `/develop` avaient atterri **en tête de liste**, hors de l'ordre du fichier (`System` d'abord, puis le reste). Cosmétique, mais c'est le genre d'écart qui rend un diff bruyant à relire. | Remis en place dans les 3 fichiers |
+
+**Deux surcharges de `PropagateFailure` conservées.** Le `switch` y est
+dupliqué à huit lignes près, et la tentation est de factoriser. On ne le fait
+pas : `Result` et `Result<T>` sont deux types distincts chez Ardalis, sans
+conversion entre eux, et toute factorisation passerait par de la réflexion ou
+un troisième niveau d'indirection — plus cher à lire que la répétition qu'elle
+supprime.
+
+### client-mobile
+
+| Axe | Constat | Action |
+|---|---|---|
+| Simplification | `expiresAtOfToken(tokens.pscAccessToken \|\| undefined)` — le `\|\| undefined` était mort : `expiresAtOfToken` garde déjà la chaîne vide (`jwt ? … : undefined`). Deux gardes pour un cas, dont une invisible au site d'appel. | Repli retiré |
+| Réutilisation | `decodeJwtPayload` **déplacée** plutôt que dupliquée, et ré-exportée depuis `auth.service.ts` : un seul décodeur, importateurs existants intacts. C'est déjà l'axe réutilisation appliqué. | Déjà traité par `/develop` |
+| Altitude | `earliestExpiry` est exportée et pure — testable sans monter un intercepteur. | Déjà traité par `/develop` |
+
+Aucun autre finding : le diff mobile est de 4 fichiers, dont un fichier de tests
+qui pèse les deux tiers des lignes.
+
+**Re-validation** — filet anti-régression, aucun rollback nécessaire :
+`api-mail` build 0 erreur / 0 avertissement, **3 947 verts** ;
+`client-mobile` build OK, **796/796**, `ng lint` propre.
+
+**Commits** : `api-mail` `621316c`, `client-mobile` `b4aa923`.
