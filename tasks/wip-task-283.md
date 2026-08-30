@@ -292,3 +292,31 @@ app mobile `npm start` (http://localhost:8100), Seq sur http://localhost:5341.
   backend-pull va le supprimer. Se contenter d'un commentaire XML qui explicite
   que c'est le **jeton PSC**, pas le bearer Keycloak — c'est précisément
   l'ambiguïté qui a masqué ce bug.
+
+## Branches
+
+Créées par `/start` le 2026-08-30 depuis `origin/develop`, même nom sur les
+trois repos : **`fix/task-283-psc-refresh-clock-and-401-propagation`**
+(préfixe `fix/` — c'est un correctif de défaut, pas une fonctionnalité).
+
+- `client-mobile` (pushed) : [`fix/task-283-psc-refresh-clock-and-401-propagation`](https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/fix/task-283-psc-refresh-clock-and-401-propagation)
+- `api-mail` (pushed) : [`fix/task-283-psc-refresh-clock-and-401-propagation`](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-283-psc-refresh-clock-and-401-propagation)
+- `dtos-mss` (pushed, auto-inclus) : branche créée par précaution ; aucun
+  changement de contrat attendu — si elle reste à 0 commit, pas de PR ni de
+  publish NuGet.
+- `client-angular`, `client-blazor`, `devops`, `psc-proxy-*` — non listés,
+  hors périmètre.
+
+### État de l'antécédent d'ordre
+
+`task-282` est **mergée et archivée** le 2026-08-30 (`9edb6d8` api-mail,
+`2daa61d` client-mobile) : la condition d'ordre posée par « Ordre de livraison »
+est satisfaite côté code.
+
+⚠️ **Réserve consignée** : les deux critères « bout en bout » de la DOD de 282
+— une seule valeur de `ClientSessionId` sur 10 min, `🌱 New ImapClient` borné
+aux 5 réplicas — **n'ont pas encore été mesurés au banc**. C'est cette mesure
+qui prouve que le régime est bien retombé de ~10 à ~5 sessions IMAP par
+praticien, donc que la cadence de refresh ramenée à ~2 min par la présente US
+reste sous le plafond de 10 connexions. Le lancement de 283 a été décidé par
+l'humain en connaissance de cette réserve. À lever au plan de test manuel.
