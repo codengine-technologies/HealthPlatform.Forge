@@ -242,3 +242,40 @@ merger dans n'importe quel ordre** vis-à-vis de task-015. Elle ne devient
 | Tests (`npm test -- --watch=false --browsers=ChromeHeadless`) | ✓ 780 / 780 |
 | DOD | ✓ 7/7 items (les 6 vérifiables par commande + « aucun changement d'environnement » — 0 fichier sous `src/environments/`) |
 | Merge `origin/develop` | ✓ already up to date, aucun conflit |
+
+## Merged
+
+**Mergée le 2026-08-30** par `/merge 275 --i-tested`.
+
+| Repo | PR | Merge | Commit squash |
+|---|---|---|---|
+| `client-mobile` | [Mobile#64](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/64) | squash | `7391eb1768008a81ed9b9d300208484cb75637a9` |
+
+- Référence distante `feat/task-275-mobile-psc-horizon` **supprimée** ;
+  branche **locale conservée** (`gh pr merge --squash` seul, jamais
+  `--delete-branch` qui supprimerait aussi le local).
+- Clone local resynchronisé sur `develop`.
+- Aucune branche staging à nettoyer (`/start` isolé, pas un run `/forge`).
+- `client-angular`, `devops`, `psc-proxy-*` : hors périmètre, non touchés.
+
+### ⚠️ Porte CI franchie sur arbitrage humain
+
+La porte « CI verte » était **rouge au moment du merge** — `build-android` en
+échec pour **quota d'artefact GitHub Actions saturé** :
+
+```
+##[error]Failed to CreateArtifact: Artifact storage quota has been hit.
+```
+
+Le build Gradle aboutit ; seul l'upload d'artefact échoue. Le **même** échec
+est présent sur `develop` en continu **depuis le 2026-07-25** (dernier succès :
+2026-07-17). `/merge` s'est donc arrêté une première fois et a consigné
+`questions/merge-task-275.md` ; l'humain a ré-émis la commande, ce qui vaut
+arbitrage, et le merge a été effectué.
+
+**La règle 5 (« CI verte sur `develop` dans les 2 min après merge ») reste donc
+non satisfaite**, pour cette cause infrastructurelle et non pour ce changement
+— dont le diff est 100 % test (build local ✅, 780/780 ✅). Le correctif de fond
+reste à faire : soit purger le quota, soit rendre l'étape d'upload non
+bloquante dans le workflow `Android Build`, faute de quoi la porte CI restera
+rouge en permanence et cessera d'être un signal.
