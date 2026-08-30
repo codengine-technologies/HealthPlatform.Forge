@@ -416,3 +416,53 @@ au Manual Test Plan — non vérifiables en unitaire.
 - `client-mobile` : build OK, **781/781**, `ng lint` propre dès la baseline
 - SonarQube : **Quality Gate OK**, new coverage 90,7 %, **0 violation attribuable**
 - Branches à jour avec `origin/develop` (merge, pas de rebase — règle 4)
+
+## Merged
+
+Mergée le **2026-08-30** par `/merge 282 --i-tested` (HAG, règle 10 — validation
+humaine bout en bout effectuée par l'humain avant l'appel).
+
+| Repo | PR | Commit squash sur `develop` |
+|---|---|---|
+| `api-mail` | [#212](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/212) | `9edb6d8` — *fix(mail): task-282 — la clé du pool de sessions suit le client, plus le jeton* |
+| `client-mobile` | [#65](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/65) | `2daa61d` — *fix(auth): task-282 — l'identifiant de session est tiré au login, plus lu du jeton* |
+| `dtos-mss` | — | branche auto-incluse, **0 commit**, aucune PR ; ref distante supprimée |
+
+Les deux PRs ont été mergées **ensemble** (règle 11, US-complete) : merger l'une
+sans l'autre laissait le défaut entier — le mobile posant un en-tête qu'`api-mail`
+ignore, ou l'inverse.
+
+Refs distantes `feat/task-282-session-key-decoupled-from-token` supprimées sur
+les trois repos ; **branches locales conservées** pour inspection rétroactive.
+Aucune branche staging `forge/staging-task-*` sur ce lot — rien à nettoyer.
+
+### ⚠️ Gate CI franchie sur diagnostic, pas sur vert
+
+`gh pr checks 65` était **rouge** au moment du merge (`build-android`, deux
+échecs). La gate 4 de `/merge` a été franchie sur arbitrage humain explicite,
+après établissement de la cause :
+
+- **Tous** les steps du job passent, **`Build debug APK` compris**. Seul
+  `Upload debug APK` échoue :
+  `Failed to CreateArtifact: Artifact storage quota has been hit.`
+- C'est **pré-existant et global au dépôt** : le dernier run sur `develop`
+  lui-même (2026-08-28, task-274 déjà mergée) échoue au **même step**, pour la
+  même raison. Aucun run `client-mobile` ne pouvait passer au vert avant
+  recalcul du quota (6–12 h), ni sur la branche, ni sur `develop`, ni après un
+  re-run.
+
+Rien d'attribuable à task-282. Le quota d'artefact GitHub reste un point
+d'hygiène CI à traiter hors de cette US.
+
+### Reste à faire — clôture au banc
+
+Les deux critères « bout en bout » de la DOD ne sont pas vérifiables en
+unitaire et **n'ont pas été mesurés par ce merge** :
+
+- une seule valeur de `ClientSessionId` sur 10 min couvrant ≥ 3 refresh ;
+- `[MailClientSession] 🌱 New ImapClient` **borné par le nombre de réplicas**
+  (≤ 5) au lieu des ~27 relevés le 2026-08-30.
+
+C'est la mesure qui prouve que le plafond de 10 connexions IMAP par praticien
+n'est plus menacé — **pré-requis à la livraison de task-283**, qui triple la
+cadence de refresh.
