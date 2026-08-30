@@ -416,3 +416,41 @@ rien n'indique un lien avec ce diff, dont les tests ne touchent ni la
 concurrence ni les ressources partagées.
 
 - **Étape suivante** : `/forge-simplify 283`
+
+## Simplify log
+
+**Repos éligibles touchés** : `api-mail`, `client-mobile`. `dtos-mss` exclu par
+construction (porteur de contrat, 0 commit).
+
+### api-mail
+
+| Axe | Constat | Action |
+|---|---|---|
+| **Réutilisation** | `MailExportService` redéclarait `private const string ConnectionFailed = "Connection failed"` — le **littéral exact** de `MetricsConstants.ConnectionFailed`, pour **un seul usage** : celui que cette task venait de convertir. `ImapService` (via `using static`) et `ImapFolderService` utilisaient déjà la constante partagée. Une troisième orthographe du même message pour aucune information ajoutée. | Locale supprimée, `MetricsConstants.ConnectionFailed` au site d'appel |
+| Simplification | Le point de conversion **est** la simplification de l'US : 23 sites, trois formes, un seul `switch`. Rien à réduire au-delà. | Déjà traité par `/develop` |
+| Efficacité | Une lecture d'en-tête de moins qu'un `Guid.NewGuid()` ne s'applique pas ici ; le chemin d'échec fait strictement le même travail qu'avant. | Rien à faire |
+| Altitude | Les trois `using` insérés par `/develop` avaient atterri **en tête de liste**, hors de l'ordre du fichier (`System` d'abord, puis le reste). Cosmétique, mais c'est le genre d'écart qui rend un diff bruyant à relire. | Remis en place dans les 3 fichiers |
+
+**Deux surcharges de `PropagateFailure` conservées.** Le `switch` y est
+dupliqué à huit lignes près, et la tentation est de factoriser. On ne le fait
+pas : `Result` et `Result<T>` sont deux types distincts chez Ardalis, sans
+conversion entre eux, et toute factorisation passerait par de la réflexion ou
+un troisième niveau d'indirection — plus cher à lire que la répétition qu'elle
+supprime.
+
+### client-mobile
+
+| Axe | Constat | Action |
+|---|---|---|
+| Simplification | `expiresAtOfToken(tokens.pscAccessToken \|\| undefined)` — le `\|\| undefined` était mort : `expiresAtOfToken` garde déjà la chaîne vide (`jwt ? … : undefined`). Deux gardes pour un cas, dont une invisible au site d'appel. | Repli retiré |
+| Réutilisation | `decodeJwtPayload` **déplacée** plutôt que dupliquée, et ré-exportée depuis `auth.service.ts` : un seul décodeur, importateurs existants intacts. C'est déjà l'axe réutilisation appliqué. | Déjà traité par `/develop` |
+| Altitude | `earliestExpiry` est exportée et pure — testable sans monter un intercepteur. | Déjà traité par `/develop` |
+
+Aucun autre finding : le diff mobile est de 4 fichiers, dont un fichier de tests
+qui pèse les deux tiers des lignes.
+
+**Re-validation** — filet anti-régression, aucun rollback nécessaire :
+`api-mail` build 0 erreur / 0 avertissement, **3 947 verts** ;
+`client-mobile` build OK, **796/796**, `ng lint` propre.
+
+**Commits** : `api-mail` `621316c`, `client-mobile` `b4aa923`.
