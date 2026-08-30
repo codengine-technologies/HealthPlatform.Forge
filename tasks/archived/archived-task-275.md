@@ -258,24 +258,35 @@ merger dans n'importe quel ordre** vis-à-vis de task-015. Elle ne devient
 - Aucune branche staging à nettoyer (`/start` isolé, pas un run `/forge`).
 - `client-angular`, `devops`, `psc-proxy-*` : hors périmètre, non touchés.
 
-### ⚠️ Porte CI franchie sur arbitrage humain
+### Porte CI : franchie sur arbitrage humain, puis rétablie d'elle-même
 
-La porte « CI verte » était **rouge au moment du merge** — `build-android` en
+Au moment du merge, la porte « CI verte » était **rouge** — `build-android` en
 échec pour **quota d'artefact GitHub Actions saturé** :
 
 ```
 ##[error]Failed to CreateArtifact: Artifact storage quota has been hit.
 ```
 
-Le build Gradle aboutit ; seul l'upload d'artefact échoue. Le **même** échec
-est présent sur `develop` en continu **depuis le 2026-07-25** (dernier succès :
-2026-07-17). `/merge` s'est donc arrêté une première fois et a consigné
+Le build Gradle aboutissait ; seul l'upload d'artefact échouait. Le **même**
+échec était présent sur `develop` en continu **depuis le 2026-07-25** (dernier
+succès : 2026-07-17). `/merge` s'est donc arrêté une première fois et a consigné
 `questions/merge-task-275.md` ; l'humain a ré-émis la commande, ce qui vaut
 arbitrage, et le merge a été effectué.
 
-**La règle 5 (« CI verte sur `develop` dans les 2 min après merge ») reste donc
-non satisfaite**, pour cette cause infrastructurelle et non pour ce changement
-— dont le diff est 100 % test (build local ✅, 780/780 ✅). Le correctif de fond
-reste à faire : soit purger le quota, soit rendre l'étape d'upload non
-bloquante dans le workflow `Android Build`, faute de quoi la porte CI restera
-rouge en permanence et cessera d'être un signal.
+**Épilogue — la règle 5 est finalement satisfaite.** Le quota s'est recalculé
+(GitHub le refait toutes les 6-12 h) entre 19:25 et 19:39 UTC, et le run
+`Android Build` du commit de merge est **vert** :
+
+| Commit | Run | Conclusion |
+|---|---|---|
+| `2daa61d` (task-282) | 19:25 | ❌ quota |
+| **`7391eb1` (task-275, ce merge)** | **19:39** | ✅ **success** |
+| `f472606` | 19:40 | ✅ success |
+
+C'est le **premier succès depuis le 2026-07-17**. La CI de `develop` est donc
+verte après ce merge, dans la fenêtre de la règle 5.
+
+**Ce que ça ne règle pas** : la cause était un quota qui se vide et se remplit,
+pas un correctif. Elle réapparaîtra. Le fond reste à traiter — rendre l'étape
+d'upload d'artefact non bloquante dans le workflow `Android Build`, faute de
+quoi la porte CI redeviendra rouge en permanence et cessera d'être un signal.
