@@ -277,3 +277,142 @@ mobile `npm start` (http://localhost:8100), Seq sur http://localhost:5341.
   des deux chemins ne diverge après le changement, sinon les logs et le pool
   raconteront deux histoires différentes (c'est ce qui rendait ce bug difficile
   à lire : `unknown` côté logging, `trrtag:…` côté pool).
+
+## Branches
+
+- `api-mail` (pushed) : `feat/task-282-session-key-decoupled-from-token`
+- `client-mobile` (pushed) : `feat/task-282-session-key-decoupled-from-token`
+- `dtos-mss` (pushed, auto-inclus) : `feat/task-282-session-key-decoupled-from-token`
+- `client-angular`, `devops`, `psc-proxy-*` — non concernés
+
+## Simplify log
+
+**Repos éligibles touchés** : `api-mail`, `client-mobile`. `dtos-mss` exclu par
+construction (porteur de contrat, 0 commit).
+
+### api-mail
+
+| Axe | Constat | Action |
+|---|---|---|
+| **Réutilisation** | `"Client-Session-Id"` écrit en dur à **cinq endroits** — deux middlewares, deux helpers, un gestionnaire d'authentification. **Ce n'est pas cosmétique** : c'est la divergence entre deux de ces cinq (journalisation lisant l'en-tête → `unknown`, identité lisant les claims → `trrtag:…`) qui a rendu ce défaut illisible pendant des semaines. | Extrait en `ClientHeaders.ClientSessionId` — 1 déclaration, 5 usages |
+| Simplification | `ReadClientSessionIdHeader` isole la lecture et le traitement d'une valeur blanche ; le site d'appel reste une chaîne de replis lisible. | Déjà traité par `/develop` |
+| Efficacité | Une lecture d'en-tête remplace un `Guid.NewGuid()` par requête — strictement moins de travail. | Déjà traité par `/develop` |
+| Altitude | Le repli terminal est nommé (`DefaultClientSessionId`) au lieu d'être un littéral au milieu d'une expression. | Déjà traité par `/develop` |
+
+**Piège rencontré et corrigé** : un remplacement trop large a d'abord transformé
+le **nom de méthode** `ReadClientSessionIdHeader` en
+`ReadClientHeaders.ClientSessionId`. Attrapé par le build, pas par la relecture.
+
+### client-mobile
+
+**Aucun finding.** Le diff est de 5 fichiers pour 159 lignes, dont 103 de tests.
+`newClientSessionId` est exportée depuis le modèle et réutilisée par le service
+de session — pas de seconde façon de générer un identifiant. La reprise au
+refresh vit au seul endroit qui connaît la session courante.
+
+**Re-validation** : `api-mail` build 0 erreur, api **698**, application **2 209** ;
+`client-mobile` build OK, **781/781**.
+
+## Sonar log
+
+Projet `healthplatform-api-mail` (`http://localhost:9000`), analyse complète
+Release + couverture OpenCover sur les 5 projets de tests.
+
+### KPIs qualité
+
+| Métrique | Valeur | Cible |
+|---|---|---|
+| **Quality Gate** | **OK** ✅ | OK |
+| New coverage | **90,7 %** | ≥ 80 % (QG) |
+| Bugs | 0 | 0 |
+| Vulnérabilités | 0 | 0 |
+| Security Hotspots | 3 | — |
+| Code Smells | 62 | — |
+| Coverage projet | 88,1 % | ≥ 95 % |
+| Duplication | 0,4 % | < 3 % |
+| Ratings R/S/M | **A / A / A** | A |
+| Violations new-code | 35 | — |
+
+### Dette attribuable à task-282 : **zéro**, vérifiée fichier par fichier
+
+Les 6 fichiers du diff (`UserContextEnricherMiddleware`, `RequestLoggingMiddleware`,
+`RequestHelper`, `TestBypassAuthenticationHandler`, `ClientHeaders`,
+`ClientSessionIdResolutionTests`) portent **0 violation new-code**. Les 35
+restantes sont de la dette héritée : la *new code period* est en
+`PREVIOUS_VERSION` avec une base au 2026-04-27, donc quatre mois de travail déjà
+mergé y entrent — constat déjà fait par task-270 et task-278.
+
+**Tests Release** : domain 136, application 2 209, infrastructure 464, api 698,
+integration 419 (+16 skips) — **tous verts, aucun flaky sur ce tir**.
+
+### ⚙️ Déblocage de l'outillage, hors périmètre de l'US
+
+Cette analyse est la première à tourner depuis trois tasks. Trois valeurs
+fausses dans `agents/sonar.md` ont été redressées sur mesure le 2026-08-30 :
+port **9000** (annoncé 9001), clé de projet **`healthplatform-api-mail`**
+(`healthplatform` n'existe pas), et **`sonar.login`** (le serveur est retombé en
+9.9.8, où `sonar.token` est ignoré **silencieusement** — le `begin` passe, le
+`end` échoue après le scan complet sur un message qui accuse les identifiants).
+`SONAR_TOKEN`, `SONAR_HOST_URL` et `SONAR_PROJECT_KEY` sont désormais persistés
+par `setx` — visibles des prochaines sessions, pas du shell courant.
+
+## Lint log (/lint-angular)
+
+**Skip clean** : `client-angular` n'est pas listé dans `**Repos**:`, aucun
+fichier de `Client/Angular/front/` n'a été écrit.
+
+## Lint mobile log (/lint-mobile)
+
+`npm run lint` (`ng lint`) → **« All files pass linting »** dès la baseline,
+**0 erreur, 0 avertissement**. Aucune itération d'auto-fix nécessaire, aucun fix
+manuel, rien à committer.
+
+Le diff mobile est de 5 fichiers / 159 lignes dont 103 de tests : il n'introduit
+aucune construction que les règles du projet contestent.
+
+## Visual verify log (/verify-visual)
+
+**Skip clean** : aucun écran `client-mobile` touché. Le diff porte sur le modèle
+de session, le service de session, le service d'authentification et
+l'intercepteur HTTP — **aucun composant, aucun template, aucune feuille de
+style**. Pas de `## Stitch design log` sur cette task, donc aucune référence de
+design à apparier.
+
+## PRs
+
+- `api-mail` — **[PR #212](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/212)** — label `awaiting-human-merge`
+- `client-mobile` — **[PR #65](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/65)** — label `awaiting-human-merge`
+- `dtos-mss` — branche créée par `/start` (auto-inclusion), **0 commit** : aucun
+  changement de contrat, donc aucune PR ni publish NuGet.
+
+> ⚠️ **Deux PRs, une seule US** (règle 11) : elles doivent être **mergées
+> ensemble**. Mergée seule, la PR mobile enverrait un en-tête qu'`api-mail`
+> ignore encore ; mergée seule, la PR backend lirait un en-tête que le mobile
+> n'envoie pas. Dans les deux cas le défaut reste entier, sans régression — mais
+> sans gain non plus.
+
+## Code Review Summary
+
+**APPROVED** — 11 fichiers, **1 finding de sécurité trouvé et corrigé par la
+review elle-même**.
+
+| Fichier | Verdict |
+|---|---|
+| `UserContextEnricherMiddleware.cs` | ⚠️→✅ La valeur vient désormais du **client**, là où elle venait d'un jeton validé — frontière d'entrée non bornée, entrant dans la clé du pool **et** dans les journaux. Bornée à 64 caractères (`ba4ed2b`), avec **repli sur les claims** plutôt que troncature : tronquer ferait collisionner deux clients qui ne diffèrent qu'au-delà de la borne. |
+| `ClientHeaders.cs` | ✅ Une déclaration au lieu de cinq — et la justification n'est pas esthétique : c'est la divergence entre deux de ces cinq qui a rendu le défaut illisible. |
+| `RequestLoggingMiddleware` / `RequestHelper` / `TestBypassAuthenticationHandler` | ✅ alignés sur la constante partagée |
+| `auth.service.ts` | ✅ **Le point délicat** : `mintSessionFromCookie` est partagé login/refresh ; l'identifiant est **repris** et non régénéré, sans quoi le défaut se recréait côté client. |
+| `auth-session.service.ts` | ✅ Session antérieure tolérée, **jamais invalidée** |
+| `session.model.ts` / `mss-headers.interceptor.ts` | ✅ |
+| 2 fichiers de tests | ✅ 16 tests, dont la garde anti-usurpation et les bornes |
+
+**DOD** : les items « bout en bout » (une seule valeur de `ClientSessionId` sur
+10 min, `New ImapClient` ≤ 5) sont des **critères de clôture au banc**, inscrits
+au Manual Test Plan — non vérifiables en unitaire.
+
+### Validation finale
+
+- `api-mail` : build 0 erreur / 0 avertissement, **3 929 verts / 0 rouge**
+- `client-mobile` : build OK, **781/781**, `ng lint` propre dès la baseline
+- SonarQube : **Quality Gate OK**, new coverage 90,7 %, **0 violation attribuable**
+- Branches à jour avec `origin/develop` (merge, pas de rebase — règle 4)

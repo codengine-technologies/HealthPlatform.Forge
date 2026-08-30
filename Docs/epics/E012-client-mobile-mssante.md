@@ -2,10 +2,10 @@
 
 > **Statut** : 🟢 En cours
 > **Modèle** : hand-crafted
-> **Version** : 2.0
+> **Version** : 2.1
 > **Auteur** : PO forge
 > **Audience** : PO, médecin, direction — la vue ingénierie vit dans [E012-Changelogs.md](E012-Changelogs.md)
-> **Dernière mise à jour** : 2026-07-17 (task-166)
+> **Dernière mise à jour** : 2026-08-30 (task-282)
 
 ---
 

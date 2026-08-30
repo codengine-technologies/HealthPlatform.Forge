@@ -2,11 +2,27 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > **Vue produit** : [E012-client-mobile-mssante.md](E012-client-mobile-mssante.md)
-> **Dernière mise à jour** : 2026-07-17
+> **Dernière mise à jour** : 2026-08-30
 
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.29 — task-282 — La clé du pool de sessions suit le client, plus le jeton (2026-08-30)
+
+- **Task** : task-282 — `done`. **PRs** : `api-mail` [#212](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/212) et `client-mobile` [#65](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/65), toutes deux `awaiting-human-merge`. **Une seule US, deux PRs à merger ENSEMBLE** (règle 11) : séparément, chacune laisse le défaut entier — l'une envoie un en-tête que l'autre ignore encore, ou l'inverse.
+- **Le défaut** : `api-mail` recréait un **pool IMAP+SMTP complet** (TCP + TLS + validation de certificat IGC-Santé + XOAUTH2) **à chaque refresh de jeton**, alors que rien dans la session du praticien n'avait changé. Le pool abandonné mourait ensuite sur son timeout d'inactivité.
+- **La cause, établie sur pièce et non déduite** : la clé du pool vaut `{Email}_{ClientSessionId}`, et `ClientSessionId` venait du jeton — `sid`, puis `jti`, puis un `Guid.NewGuid()` **par requête**. Or le proxy **ne rafraîchit pas** le jeton, il le **re-frappe** (JWT Authorization Grant, RFC 7523) : **aucun `sid`**, et un `jti` neuf à chaque fois comme la RFC 7519 l'impose. Vérifié en décodant un jeton réel (`jti = "trrtag:ebead400-…"`, exactement le format des clés de pool vues dans Seq) et corroboré côté trafic : **1 420 requêtes à `ClientSessionId=unknown`**, le mobile conditionnant la pose de l'en-tête à une claim `sid` inexistante.
+- **⭐ Aucun réglage serveur ne pouvait corriger ça** : `jti` est unique par jeton *par spécification*. **Seul un identifiant fourni par le client peut être stable** — c'est tout l'objet de l'US.
+- **client-mobile** : identifiant tiré au **login** (`crypto.randomUUID`, repli pour contexte non sécurisé) et persisté avec la session. **Le point délicat** : `mintSessionFromCookie` est **partagé entre le login CIBA et le refresh** — y laisser générer un identifiant neuf aurait refait le défaut côté client. L'identifiant est donc **repris** de la session en cours. **Tolérance à la mise à jour** : une session persistée par une version antérieure en reçoit un à la volée **sans être invalidée** — la refuser aurait déconnecté tous les praticiens au déploiement.
+- **api-mail** : l'en-tête passe **avant** les claims ; les claims restent en repli pour `client-angular` et `client-blazor`, **inchangés**. Le repli aléatoire disparaît au profit d'un littéral déterministe — deux requêtes sans en-tête ni claim partagent un pool au lieu d'en ouvrir un chacune.
+- **La divergence qui rendait le défaut illisible est fermée** : le middleware de journalisation lisait l'en-tête (→ `unknown`) pendant que celui d'identité lisait les claims (→ `trrtag:…`) ; les journaux et le pool racontaient deux histoires. Le nom de l'en-tête, écrit en dur à **cinq endroits**, est désormais déclaré une fois (`ClientHeaders.ClientSessionId`) — la justification n'est pas esthétique, c'est ce qui a caché le bug.
+- **Finding de sécurité trouvé PAR la code review** : la valeur vient désormais du **client**, là où elle venait d'un jeton validé. Frontière d'entrée, entrant dans la clé du pool **et** dans les champs journalisés. Bornée à 64 caractères, avec **repli sur les claims plutôt que troncature** — tronquer ferait collisionner deux clients qui ne diffèrent qu'au-delà de la borne. **Ce qu'un en-tête forgé ne permet pas, et c'est testé** : atteindre le pool d'un autre praticien, l'e-mail de la clé venant de la claim `mssEmail` du jeton validé.
+- **Tests** : 16 neufs (9 backend, 7 mobile). `api-mail` **3 929 verts / 0 rouge** ; `client-mobile` **781/781** ; `ng lint` propre dès la baseline.
+- **Sonar** : **Quality Gate OK**, new coverage 90,7 %, ratings A/A/A, **0 violation attribuable** (vérifiée fichier par fichier ; les 35 new-code sont de la dette héritée d'une *new code period* remontant au 2026-04-27).
+- **Clôture au banc, non couverte par l'unitaire** : sur 10 min et ≥ 3 refresh, **une seule** valeur de `ClientSessionId`, et `New ImapClient` **≤ 5** (le nombre de réplicas) au lieu des ~27 relevés le 2026-08-30.
+
+---
 
 ### v1.28 — task-166 — Rendu des tableaux Markdown (GFM) dans le chat IA et la synthèse (2026-07-17)
 
