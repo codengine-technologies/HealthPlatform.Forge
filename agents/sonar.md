@@ -152,9 +152,19 @@ already met.
 Read the SonarQube endpoint and token from environment variables. NEVER hardcode
 the token in the repo. Expected vars :
 
-- `SONAR_HOST_URL` (e.g. `http://localhost:9001`)
-- `SONAR_TOKEN` (e.g. `squ_xxxxxxxxxxxxxxxx`)
-- `SONAR_PROJECT_KEY` (e.g. `healthplatform`)
+- `SONAR_HOST_URL` — **`http://localhost:9000`** sur ce poste
+- `SONAR_TOKEN` (e.g. `squ_xxxxxxxxxxxxxxxx`) — **doit être un `USER_TOKEN`**, pas
+  un `GLOBAL_ANALYSIS_TOKEN` : ce dernier publie l'analyse mais **ne lit pas** les
+  mesures, or `/review` doit recopier les KPI dans le corps des PRs.
+- `SONAR_PROJECT_KEY` — **`healthplatform-api-mail`**
+
+> ⚠️ **Corrigé le 2026-08-30.** Ces trois valeurs étaient fausses ou trompeuses et
+> ont coûté une analyse ratée : le port annoncé était **9001** (le serveur répond
+> sur **9000**), la clé de projet **`healthplatform`** (elle n'existe pas ; les
+> clés réelles sont `api-mail`, `healthplatform-api-mail`, `psc-auth-proxy`), et
+> rien ne disait que le type de token décide de la capacité à **lire** les KPI.
+> Les trois sont désormais persistées par `setx` sur le poste — le shell de la
+> forge les hérite du profil utilisateur.
 
 ### Loading order (Step 0 reads these in order)
 
@@ -838,7 +848,7 @@ done
 
 ### End
 ```bash
-dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"
+dotnet sonarscanner end /d:sonar.login="$SONAR_TOKEN"
 ```
 
 Si le `end` échoue sur l'authentification, le répertoire `.sonarqube/` reste
