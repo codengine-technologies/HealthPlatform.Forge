@@ -213,7 +213,8 @@ Branche unique sur les repos pushables : `feat/task-285-logout-closes-mail-sessi
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 1 min 24 s | — | — | — | — |
-| **Total cycle** | | **1 min 24 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 41 min 33 s | 8 (2 min 09 s) | 15 (5 min 13 s) | — | api-mail 4B/6T, client-mobile 1B/2T, client-blazor 1B/4T, client-angular 2B/3T |
+| **Total cycle** | | **42 min 58 s** | **8 (2 min 09 s)** | **15 (5 min 13 s)** | **0 (0.0 s)** | |
 
 ## Develop log
 
@@ -325,3 +326,83 @@ sans vérification.
   L'avertissement de CLAUDE.md ne nomme que `host` — il vaut pour les deux.
 
 - **Étape suivante** : `/sonar task-285`
+
+## Sonar log
+
+**Analyse** : `healthplatform-api-mail`, branche `feat/task-285-logout-closes-mail-session-all-pods`,
+2026-09-01 23:52. Scan complet (build Release + 5 projets de tests avec couverture
+OpenCover, 7 rapports).
+
+> **Le serveur SonarQube était arrêté** (conteneur `sonarqube` en `Exited (255)`
+> depuis 28 h). Redémarré avec `sonarqube_db` — sans quoi l'étape aurait skippé
+> sur une indisponibilité d'outillage, pas sur une absence de dette.
+
+### KPI
+
+| Métrique | Baseline (avant) | Final | Cible |
+|---|---|---|---|
+| `bugs` | 0 | **0** | 0 ✓ |
+| `vulnerabilities` | 0 | **0** | 0 ✓ |
+| `code_smells` | 63 | **62** | — |
+| `coverage` | 88,2 % | **88,2 %** | ≥ 95 % |
+| `security_hotspots` | 3 | **3** | — |
+| `sqale_rating` | A | **A** | A ✓ |
+| `new_bugs` | 0 | **0** | 0 ✓ |
+| `new_vulnerabilities` | 0 | **0** | 0 ✓ |
+| `new_security_hotspots` | — | **0** | 0 ✓ |
+| `new_code_smells` | 36 | **35** | 0 |
+| `new_coverage` | 90,5 % | **90,4 %** | ≥ 95 % |
+
+**Quality Gate : `OK`** — les 5 conditions passent (`new_reliability_rating`,
+`new_security_rating`, `new_maintainability_rating`, `new_coverage` 90,4 % ≥ 80 %,
+`new_duplicated_lines_density` 0,02 % ≤ 3 %).
+
+### Phase 1 — zero-new-debt : verte, et mesurée fichier par fichier
+
+Les 35 findings de la période « new code » **n'appartiennent pas à cette US**.
+Vérifié par une requête par fichier, pas par déduction :
+
+| Fichier de task-285 | Findings new-code |
+|---|---|
+| `src/Application/Services/Implementation/BackgroundSyncManager.cs` | **0** |
+| `src/Application/Services/Interfaces/ISyncStateStore.cs` | **0** |
+| `src/Application/Session/IMailClientSessionManager.cs` | **0** |
+| `src/Application/Session/MailClientSessionManager.cs` | **0** |
+| `tests/…/Sync/ClusterBusFake.cs` | **0** |
+| `tests/…/Sync/LogoutClosesMailSessionAcrossPodsTests.cs` | **0** |
+
+**Cette PR introduit zéro nouvelle dette.** Le compteur `new_code_smells` était
+déjà à 36 avant l'analyse : les 35 restants viennent de la période « new code »
+du projet (travaux récemment mergés), concentrés sur
+`MailClientSession.cs` (9 — à ne pas confondre avec `MailClientSessionManager.cs`),
+et répartis sur `S3604` (15), `CA1861` (9), `S107` (3).
+
+**Un trou de couverture réel a été trouvé et bouché** (`dc1ee69`) : le new code de
+`BackgroundSyncManager.cs` était à 85,4 %, et la branche non couverte de mes ajouts
+était le garde-fou de périmètre — un ordre de clôture sans identifiant de session
+cliente. Branche non décorative : l'appliquer construirait une clé « email_ » vide
+et pourrait déconnecter un praticien actif sur un autre appareil (règle 2).
+
+### Phase 2 — dette héritée : sautée délibérément
+
+Phase 2 est **optionnelle** (`agents/sonar.md`). Sautée ici pour trois raisons :
+
+1. Les 35 findings sont dans des fichiers **qu'aucun commit de cette US ne touche**.
+2. Les corriger gonflerait une PR déjà répartie sur 4 repos et brouillerait la
+   revue humaine du HAG (règle 10), qui porte sur une US de sécurité.
+3. `CA1861` (9 occurrences) est déjà consigné dans `conventions/csharp.md`
+   (`Occurrences : 2`) — la récidive est donc **connue et tracée**, et relève
+   d'un run `/sonar` autonome (Mode B), pas du passager de cette US.
+
+### Instabilité de tests observée (pré-existante, non liée)
+
+Trois exécutions de la suite `api-mail` ont montré des échecs intermittents non
+reproductibles : 2 échecs, puis 1, puis 0, puis 2 sous Release + couverture, puis 0.
+Le seul nommé est
+`MailRepositoryEnrichPersistInstrumentationTests.The_remainder_carries_the_whole_total_when_no_phase_was_observed`
+(6/6 en isolation sur 3 exécutions). **La classe ajoutée par cette US a été lancée
+5 fois de suite : 13/13 à chaque fois**, puis 14/14 après l'ajout du test de
+couverture. Deux exécutions complètes de la solution finissent à 0 échec. Mérite
+sa propre task.
+
+- **Étape suivante** : `/lint-angular task-285`
