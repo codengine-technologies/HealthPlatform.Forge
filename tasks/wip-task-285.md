@@ -216,7 +216,8 @@ Branche unique sur les repos pushables : `feat/task-285-logout-closes-mail-sessi
 | /develop | ok | 41 min 33 s | 8 (2 min 09 s) | 15 (5 min 13 s) | — | api-mail 4B/6T, client-mobile 1B/2T, client-blazor 1B/4T, client-angular 2B/3T |
 | /sonar | ok | 12 min 24 s | 1 (12 s) | 2 (4.7 s) | — | 1 itération(s), api-mail 1B/2T |
 | /lint-angular | ok | 3 min 12 s | 1 (17 s) | 1 (21 s) | — | 1 itération(s), client-angular 1B/1T |
-| **Total cycle** | | **58 min 34 s** | **10 (2 min 39 s)** | **18 (5 min 39 s)** | **0 (0.0 s)** | |
+| /lint-mobile | ok | 41 s | — | — | — | — |
+| **Total cycle** | | **59 min 15 s** | **10 (2 min 39 s)** | **18 (5 min 39 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×2 (35 s)
 
@@ -485,3 +486,48 @@ cette US : la configuration ESLint de `client-mobile` n'impose pas les règles
 `jsdoc/*` qui les avaient déclenchées là-bas.
 
 - **Étape suivante** : `/verify-visual task-285`
+
+## Visual verify log
+
+**Skip propre — 0 écran capturé, 0 itération.**
+
+Les deux conditions de skip du playbook sont réunies, et vérifiées plutôt que
+supposées :
+
+1. **Aucun `## Stitch design log`** dans la task — `/develop` n'a invoqué
+   `/stitch-design` pour aucun écran, parce que la US n'en crée ni n'en réécrit.
+2. **Aucun template ni feuille de style touché** sur `client-mobile` :
+
+```
+$ git diff --name-only origin/develop...HEAD | grep -E '\.html$|\.scss$|\.css$' | wc -l
+0
+```
+
+Les 8 fichiers mobiles modifiés sont des `.ts` : le nouveau `LogoutService`, son
+spec, la méthode `closeMailSession`, deux specs de page recentrés, et les trois
+`*.page.ts` dont seul le corps du gestionnaire `logout()` change (délégation au
+service). **Aucun pixel ne bouge** — une capture d'écran ne montrerait rien de
+cette US, dont l'effet observable est côté serveur.
+
+C'est aussi la limite honnête de cette étape ici : le comportement livré (l'ordre
+de clôture part avant la purge) n'est pas observable à l'image. Il est couvert par
+les tests unitaires d'ordonnancement des trois frontends, et par les étapes 5 à 7
+du `## Manual Test Plan` (relevé des instances dans Seq).
+
+### Contrôle opportuniste — DOD `data-testid` sur les trois frontends
+
+| Frontend | Contrôle de déconnexion | `data-testid` |
+|---|---|---|
+| `client-mobile` — boîte de réception | `ion-button` | `logout-btn` ✓ |
+| `client-mobile` — paramètres | `ion-button` | `settings-logout-btn` ✓ |
+| `client-mobile` — onboarding | `ion-button` | `mss-setup-logout-btn` ✓ |
+| `client-angular` — onboarding MSS | bouton | `mss-setup-logout-btn` ✓ |
+| `client-blazor` — menu profil | `RadzenProfileMenuItem` (`Path="/logout"`) | **absent** ⚠️ |
+
+⚠️ Le point d'entrée Blazor est un `RadzenProfileMenuItem` dans `MainLayout.razor`,
+qui n'expose pas de `data-testid` — et ce composant **n'appartient pas au périmètre
+de cette US** (élément de layout du shell, antérieur, non modifié ici). Signalé
+pour l'arbitrage de `/review` plutôt que corrigé en douce : y toucher élargirait la
+PR au layout général du shell.
+
+- **Étape suivante** : `/review task-285`
