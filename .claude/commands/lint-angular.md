@@ -86,6 +86,29 @@ proceeds to `/lint-mobile` (which self-skips to `/review`).
 The human merges the PR (HAG rule 10) ; for `client-angular` specifically
 the human also owns commit/push/PR-opening on TFS.
 
+## ⏱️ Instrumentation (obligatoire)
+
+Borne l'étape et mesure chaque commande coûteuse — c'est ce qui rend le coût
+du cycle **mesuré** au lieu d'estimé :
+
+```bash
+Tools/timing/step.sh start --task {task-id} --step lint-angular
+Tools/timing/measure.sh --task {task-id} --step lint-angular --repo {repo} \
+    --cwd {repo-path} --kind {kind} -- {commande}
+Tools/timing/step.sh end --task {task-id} --step lint-angular --status ok
+```
+
+- **Kinds de cette étape** : `lint` (`nx affected -t lint`), `build`, `test`
+- `step.sh end --iterations N` — le nombre d'itérations réellement consommées sur les 5 autorisées.
+- `step.sh end` est appelé **aussi** quand l'étape skip proprement
+  (`--status skipped --note "{raison}"`) ou fail-fast (`--status failed`) — un
+  skip non mesuré est un trou dans le journal, pas une mesure à zéro.
+- `measure.sh` est **transparent** : sortie et code retour inchangés, la
+  commande est exécutée telle quelle (donc sûr autour du scanner Sonar et de
+  `npm test -- --watch=false`). Une panne du harnais ne casse jamais l'étape.
+- Protocole complet et vocabulaire des kinds : `Tools/timing/README.md`.
+
+---
 ## Rules
 
 - Scope : `client-angular` only (working directory

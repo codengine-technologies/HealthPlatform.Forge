@@ -22,6 +22,30 @@ Read `agents/sonar.md` and execute the full playbook :
 
 The human merges the PR (HAG rule 10). The forge never merges.
 
+## ⏱️ Instrumentation (obligatoire)
+
+Borne l'étape et mesure chaque commande coûteuse — c'est ce qui rend le coût
+du cycle **mesuré** au lieu d'estimé :
+
+```bash
+Tools/timing/step.sh start --task {task-id} --step sonar
+Tools/timing/measure.sh --task {task-id} --step sonar --repo {repo} \
+    --cwd {repo-path} --kind {kind} -- {commande}
+Tools/timing/step.sh end --task {task-id} --step sonar --status ok
+```
+
+- **Kinds de cette étape** : `scan` (`sonarscanner begin`/`end` + attente de traitement serveur), `build`, `test` (ajouter `--label coverage` sur les passes OpenCover)
+- Reporter le nombre d'itérations : `step.sh end --iterations N`. C'est la métrique qui dira si Phase 2 mérite de rester dans le chemin critique.
+- Envelopper le scanner est sûr : `measure.sh` exécute la commande directement, donc `MSYS_NO_PATHCONV` / `MSYS2_ARG_CONV_EXCL` exportés avant l'appel s'appliquent à l'identique.
+- `step.sh end` est appelé **aussi** quand l'étape skip proprement
+  (`--status skipped --note "{raison}"`) ou fail-fast (`--status failed`) — un
+  skip non mesuré est un trou dans le journal, pas une mesure à zéro.
+- `measure.sh` est **transparent** : sortie et code retour inchangés, la
+  commande est exécutée telle quelle (donc sûr autour du scanner Sonar et de
+  `npm test -- --watch=false`). Une panne du harnais ne casse jamais l'étape.
+- Protocole complet et vocabulaire des kinds : `Tools/timing/README.md`.
+
+---
 ## Rules
 
 - Scope : `api-mail` only. Other repos are out of scope for this command.

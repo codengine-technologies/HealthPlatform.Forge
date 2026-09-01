@@ -224,6 +224,10 @@ In autonomous mode (`/develop` upstream) this halts the chain ; in
 10. **Rename the task** : `mv tasks/{wip|review}-{task-id}.md tasks/done-{task-id}.md`
     and append `## PRs` and `## Code Review Summary` sections.
 
+10b. **Recopier la table `## Timings`** du task file dans le rapport final de
+    fin de cycle (elle est déjà à jour : `step.sh end` la régénère). Le coût du
+    cycle fait partie du compte rendu, comme les KPIs Sonar.
+
 11. **Update the EPIC documentation** — if the task file declares `**Epic**: E{NNN}`,
     invoke `/tech-writer E{NNN}` to refresh `docs/epics/E{NNN}-{slug}.md`. If no
     `**Epic**:` field is present, skip with the note "no EPIC linked — skipped
@@ -267,6 +271,29 @@ In autonomous mode (`/develop` upstream) this halts the chain ; in
     HAG (rule 10) : test manually, then merge the GitHub PRs yourself.
     ```
 
+## ⏱️ Instrumentation (obligatoire)
+
+Borne l'étape et mesure chaque commande coûteuse — c'est ce qui rend le coût
+du cycle **mesuré** au lieu d'estimé :
+
+```bash
+Tools/timing/step.sh start --task {task-id} --step review
+Tools/timing/measure.sh --task {task-id} --step review --repo {repo} \
+    --cwd {repo-path} --kind {kind} -- {commande}
+Tools/timing/step.sh end --task {task-id} --step review --status ok
+```
+
+- **Kinds de cette étape** : `build`, `test` (un couple par repo validé)
+- C'est la **troisième** validation complète du cycle (après `/develop` et les étapes de cleanup). La mesurer par repo est ce qui chiffrera le gain d'un marqueur green partagé.
+- `step.sh end` est appelé **aussi** quand l'étape skip proprement
+  (`--status skipped --note "{raison}"`) ou fail-fast (`--status failed`) — un
+  skip non mesuré est un trou dans le journal, pas une mesure à zéro.
+- `measure.sh` est **transparent** : sortie et code retour inchangés, la
+  commande est exécutée telle quelle (donc sûr autour du scanner Sonar et de
+  `npm test -- --watch=false`). Une panne du harnais ne casse jamais l'étape.
+- Protocole complet et vocabulaire des kinds : `Tools/timing/README.md`.
+
+---
 ## Rules
 
 - The forge never patches code in `/review` — validation and review are

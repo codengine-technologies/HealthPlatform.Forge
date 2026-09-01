@@ -26,7 +26,7 @@ is headed and needs a human login, so it can never run unattended.
 > HTTP-header auth bypass (`tests/E2E/`). That suite is removed. `/qa` now
 > targets `client-mobile` with a **real** PSC login done by a human. The
 > fixture-mocked, no-auth path still exists separately as `/verify-visual`
-> (`tools/visual-verify/`) — do not confuse the two.
+> (`Tools/visual-verify/`) — do not confuse the two.
 
 ## Difference vs `/verify-visual`
 

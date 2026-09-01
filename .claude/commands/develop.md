@@ -2,12 +2,21 @@
 
 Usage : `/develop {task-id}` (e.g. `/develop task-018`)
 
-Purpose : write the code, the tests, build, run the suite, commit, push, and
-hand off to `/forge-simplify` (which runs the `/simplify` quality pass, then
-chains `/sonar` → `/lint-angular` → `/lint-mobile` → `/verify-visual` → `/review`). This is the **default
-implementation path** of the
-forge — the only escape hatch is `/start {task-id} no-code`, which leaves the
-task in `wip-*` for the human to implement in WindSurf.
+Purpose : write the code, the tests, build, run the suite, run the **integrated
+quality pass** (built-in `/simplify`) on the fresh code, commit, push, and hand
+off to the cleanup chain (`/sonar` → `/lint-angular` → `/lint-mobile` →
+`/verify-visual` → `/review`). This is the **default implementation path** of
+the forge — the only escape hatch is `/start {task-id} no-code`, which leaves
+the task in `wip-*` for the human to implement in WindSurf.
+
+> **Fusion (2026-08-31)** — l'ancienne étape `/forge-simplify` est **absorbée
+> par `/develop`**. Elle refaisait tout ce que `/develop` venait de faire
+> (pré-flight, détection du diff, **build + tests complets par repo**, commit,
+> push) pour appliquer une passe cosmétique. C'est désormais la **sous-étape
+> « passe qualité » (§Q de `agents/develop.md`)**, exécutée par repo juste
+> après le vert de la feature et **avant le push** : un seul cycle build+test
+> par repo au lieu de deux, un seul tour d'agent au lieu de deux. Le built-in
+> `/simplify` reste dispo pour l'usage ad-hoc humain.
 
 Read `agents/develop.md` and execute the full playbook :
 
@@ -20,11 +29,19 @@ Read `agents/develop.md` and execute the full playbook :
    NuGet package, bump consumers' `Directory.Packages.props`, commit the
    bump in each consumer (push later)
 4. For backends and frontends : test-first for behavioural changes, build +
-   test green before each commit, conventional messages, push at the end
-5. Final verification : every repo green, DOD self-check
-6. Hand off unconditionally to `/forge-simplify {task-id}` — it runs the
-   `/simplify` quality pass on the fresh code, re-validates, commits/pushes
-   pushable repos, then routes onward along the fixed pipeline
+   test green before each commit, conventional messages
+5. **Passe qualité intégrée (§Q)** par repo éligible, une seule fois, **avant
+   le push** : built-in `/simplify` sur le diff vs `develop` (reuse /
+   simplification / efficacité / altitude — **quality only, jamais de chasse
+   aux bugs**), re-validation build+test **seulement si des cleanups ont été
+   appliqués**, commit `refactor(module): simplify pass (/simplify) —
+   {task-id}` au vert, `git restore` au rouge (best-effort, jamais bloquant).
+   **Jamais** sur `dtos-mss` / `interop-cda` (porteurs de contrat) ; jamais
+   d'opération git sur `client-angular` (code-only). Puis **un seul push** par
+   repo, portant feature + passe qualité
+6. Final verification : DOD self-check, et **pas de re-build** d'un repo déjà
+   vert depuis sa dernière validation
+7. Hand off unconditionally to the fixed cleanup pipeline
    `/sonar → /lint-angular → /lint-mobile → /verify-visual → /review` (each step self-skips
    when its repo wasn't touched) :
    - api-mail touched → `/sonar {task-id}`
@@ -36,6 +53,30 @@ Read `agents/develop.md` and execute the full playbook :
 human's only mandatory interaction is **merging the PR on `develop`** at
 the end of the chain (HAG, CLAUDE.md rule 10).
 
+## ⏱️ Instrumentation (obligatoire)
+
+Borne l'étape et mesure chaque commande coûteuse — c'est ce qui rend le coût
+du cycle **mesuré** au lieu d'estimé :
+
+```bash
+Tools/timing/step.sh start --task {task-id} --step develop
+Tools/timing/measure.sh --task {task-id} --step develop --repo {repo} \
+    --cwd {repo-path} --kind {kind} -- {commande}
+Tools/timing/step.sh end --task {task-id} --step develop --status ok
+```
+
+- **Kinds de cette étape** : `restore` (`dotnet restore`, `npm ci`), `build`, `test`, `nuget-wait` (`gh run watch` sur la CI DTO/interop)
+- Mesurer le `gh run watch` a un intérêt propre : c'est du **temps mort série** au milieu de l'implémentation, et le premier candidat au feed NuGet local.
+- La passe qualité §Q se mesure avec le même `--step develop` : ses build/test de re-validation apparaissent dans le compte du repo concerné.
+- `step.sh end` est appelé **aussi** quand l'étape skip proprement
+  (`--status skipped --note "{raison}"`) ou fail-fast (`--status failed`) — un
+  skip non mesuré est un trou dans le journal, pas une mesure à zéro.
+- `measure.sh` est **transparent** : sortie et code retour inchangés, la
+  commande est exécutée telle quelle (donc sûr autour du scanner Sonar et de
+  `npm test -- --watch=false`). Une panne du harnais ne casse jamais l'étape.
+- Protocole complet et vocabulaire des kinds : `Tools/timing/README.md`.
+
+---
 ## Rules
 
 - 5 iterations cap on the same RED test or broken build → fail-fast into
@@ -62,8 +103,17 @@ the end of the chain (HAG, CLAUDE.md rule 10).
 **À la fin de cette étape, tu invoques immédiatement l'étape suivante via l'outil
 `Skill`, dans le MÊME tour, sans rien demander et sans rapport intermédiaire.**
 
-`Skill(forge-simplify, "{task-id}")` — c'est-à-dire
-`/forge-simplify {task-id}`.
+L'étape suivante dépend des repos touchés :
+
+| api-mail | client-angular | client-mobile | Invoquer |
+|---|---|---|---|
+| oui | * | * | `Skill(sonar, "{task-id}")` |
+| non | oui | * | `Skill(lint-angular, "{task-id}")` |
+| non | non | oui | `Skill(lint-mobile, "{task-id}")` |
+| non | non | non | `Skill(review, "{task-id}")` |
+
+La passe qualité **n'est plus un maillon de la chaîne** : elle est déjà faite,
+dans cette étape, repo par repo. Il n'y a rien à invoquer pour elle.
 
 **Tu appelles l'outil `Skill` maintenant**, sans rapport intermédiaire. Le rapport
 unique de fin de cycle est celui de `/review`.

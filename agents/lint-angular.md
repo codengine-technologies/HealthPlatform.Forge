@@ -54,7 +54,7 @@ long-term debt reduction at the human level. The forge's job is to not
 ## Autonomous cycle position
 
 ```
-/develop {task-id}   →   /forge-simplify {task-id}   →   /sonar {task-id}   →   /lint-angular {task-id}   →   /lint-mobile {task-id}   →   /verify-visual {task-id}   →   /review {task-id}   →   /tech-writer
+/develop {task-id} (code + tests + passe qualité /simplify)   →   /sonar {task-id}   →   /lint-angular {task-id}   →   /lint-mobile {task-id}   →   /verify-visual {task-id}   →   /review {task-id}   →   /tech-writer
                                                                                   ↑
                                                                                   you are here
 ```
@@ -81,7 +81,7 @@ the scope and skip rules differ.
 ### Mode A — chained from `/sonar` (autonomous cycle, default)
 
 - Triggered by `/sonar {task-id}` once Sonar phases are done (or
-  directly from `/forge-simplify` if the task didn't touch `api-mail`).
+  directly from `/develop` if the task didn't touch `api-mail`).
 - Task file : the existing `tasks/wip-{task-id}.md` (no new file).
 - Working branch on `Client/Angular/` : **whatever is currently checked
   out** — the human owns it.
@@ -229,6 +229,12 @@ Angular Sonar analysis stays a CI-only concern for now).
 ---
 
 ## Steps
+
+> **⏱️ Instrumentation** — cette étape est mesurée : `step.sh start` en
+> entrée, `measure.sh` autour de chaque build / test / scan / lint / capture,
+> `step.sh end` en sortie (y compris sur skip et sur échec). Le protocole et
+> les kinds sont dans le fichier de commande de l'étape et dans
+> `Tools/timing/README.md`. Les durées ne sont **jamais** estimées à la main.
 
 ### Step 0 — Pre-flight
 

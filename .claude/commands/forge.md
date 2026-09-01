@@ -9,13 +9,14 @@ For each `tasks/todo-task-*.md` (lowest task-id first), run the full
 autonomous chain :
 
 ```
-/start {task-id}    → /develop {task-id}    → /forge-simplify {task-id}    → /sonar {task-id}    → /lint-angular {task-id}    → /lint-mobile {task-id}    → /review {task-id}    → /tech-writer E{NNN}
+/start {task-id}    → /develop {task-id}    → /sonar {task-id}    → /lint-angular {task-id}    → /lint-mobile {task-id}    → /review {task-id}    → /tech-writer E{NNN}
 ```
 
-`/forge-simplify` runs the `/simplify` quality pass (reuse / simplification /
-efficiency / altitude — quality only, no bug hunting) on the code `/develop`
-just produced, re-validates, and commits/pushes ; it skips cleanly when there
-is nothing to simplify. `/sonar`, `/lint-angular` and `/lint-mobile` skip
+`/develop` now carries the `/simplify` quality pass itself (reuse /
+simplification / efficiency / altitude — quality only, no bug hunting), applied
+per repo right after the feature code is green and before the push : the former
+`/forge-simplify` chain step was merged into it on 2026-08-31 to stop paying a
+second full build + test per repo. `/sonar`, `/lint-angular` and `/lint-mobile` skip
 cleanly when their target repo wasn't touched (no api-mail change → `/sonar`
 is a no-op ; no client-angular change → `/lint-angular` is a no-op ; no
 client-mobile change → `/lint-mobile` is a no-op). All are best-effort
@@ -24,6 +25,39 @@ and hand off to the next step even if residual issues remain.
 Sequentially, not in parallel. Cross-task interference on shared repos
 (branches, package versions, `Directory.Packages.props`) makes parallel
 execution unsafe.
+
+## ⏱️ Instrumentation du run (obligatoire)
+
+Un run `/forge` regroupe ses mesures sous un **run id**. Les variables
+d'environnement ne survivent pas d'un appel Bash à l'autre, donc le run id vit
+dans un fichier — écrit au démarrage, supprimé à la fin :
+
+```bash
+# au tout début du run, une fois le backlog connu
+mkdir -p metrics/.state
+echo "forge-{YYYYMMDD}-{début}-{fin}" > metrics/.state/run_id
+
+# ... les tasks s'exécutent, chaque étape mesure ...
+
+# à la toute fin du run, avant le rapport
+rm -f metrics/.state/run_id
+```
+
+Chaque étape de la chaîne borne et mesure elle-même (voir la section
+« Instrumentation » de son fichier de commande) ; `/forge` n'a que le run id à
+gérer, plus deux lignes de restitution dans le rapport final :
+
+```bash
+Tools/timing/report.sh --last {N}    # une ligne par task du run
+Tools/timing/report.sh --by-kind     # combien de builds / tests / scans par task
+```
+
+**Le rapport de run n'est jamais silencieux sur le coût** — comme il ne l'est
+jamais sur la qualité Sonar. C'est cette restitution qui permet de comparer un
+run au précédent et de valider (ou d'invalider) chaque optimisation de la
+chaîne.
+
+---
 
 ## Staging branch (per run)
 
@@ -46,8 +80,8 @@ feature branches.
   `client-angular` (code-only, no git), `devops`, `psc-proxy-*` (excluded).
 - **Aggregation is the last per-task link, after `/review`** : it merges
   (`git merge --no-ff feat/{task}-{slug}`) the feature branch **already
-  cleaned by the full quality chain** — `/forge-simplify`, `/sonar`,
-  `/lint-angular`, `/lint-mobile` all committed their fixes onto `feat/*`
+  cleaned by the full quality chain** — `/develop`'s `/simplify` pass,
+  `/sonar`, `/lint-angular`, `/lint-mobile` all committed their fixes onto `feat/*`
   *before* `/review`. Staging inherits every quality fix mechanically ;
   nothing is re-qualified on staging (redundant, and staging has no PR).
 - **Best-effort, never a failure point** : an aggregation merge conflict →
@@ -90,13 +124,14 @@ Staging : forge/staging-task-018-019-20260716 (fresh from develop, per repo)
 Task task-018 — feat(mail) ...
   /start        : ✓ branches created on api-mail, client-blazor, dtos-mss
   /develop      : ✓ commits pushed (api-mail @abc1234, client-blazor @def5678, dtos-mss @9876543)
-  /forge-simpl. : ✓ api-mail @bcd2345 (3 files simplified), client-blazor no change
+                  passe qualité : api-mail @bcd2345 (3 files simplified), client-blazor no change
   /sonar        : ✓ 3 iterations, 12 issues fixed, 4 remaining (best-effort)
   /lint-angular : ⤍ skipped — no angular change
   /lint-mobile  : ⤍ skipped — no mobile change
   /review       : ✓ APPROVED, 3 PRs opened (#42, #43, #44, label awaiting-human-merge)
   staging       : ✓ feat/task-018-... merged into forge/staging-... (api-mail, client-blazor, dtos-mss)
   /tech-w.      : ✓ docs/epics/E009-... updated
+  coût          : 34 min (11 builds, 9 suites, 3 scans) — cf. ## Timings du task file
 
 Task task-019 — fix(audit) ...
   /start    : ✓
@@ -108,6 +143,11 @@ Task task-019 — fix(audit) ...
 Staging branch (checkout + test the whole batch) :
 - forge/staging-task-018-019-20260716 — api-mail, client-blazor, dtos-mss
   (tasks aggregated : task-018)
+
+Coût du run (Tools/timing/report.sh --by-kind) :
+- 2 tasks mesurées — 1 h 12 min cumulées
+- build ×19 (2 min médiane) | test ×14 (4 min médiane) | scan ×5
+- poste le plus lourd : /sonar (42 % du temps mesuré)
 
 PRs awaiting your merge (HAG, rule 10) :
 - api-mail #42, client-blazor #43, dtos-mss #44 (task-018)
@@ -132,8 +172,8 @@ Tasks blocked, action needed :
   The staging branch is an aggregation of `feat/*` branches for testing — it
   has no PR toward `develop` and never merges `develop`.
 - **Staging is best-effort and run-level.** It aggregates only tasks that
-  passed `/review`, after the full quality chain (`/forge-simplify`, `/sonar`,
-  `/lint-*`) has already baked its fixes into `feat/*`. An aggregation merge
+  passed `/review`, after the full quality chain (`/develop`'s `/simplify`
+  pass, `/sonar`, `/lint-*`) has already baked its fixes into `feat/*`. An aggregation merge
   conflict is logged and skipped — it never fails the cycle nor touches the
   per-task PR.
 - **No retry.** A failed task moves to `questions/` and is skipped — the

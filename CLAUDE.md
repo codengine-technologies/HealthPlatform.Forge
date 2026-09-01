@@ -21,13 +21,12 @@
 /start {NNN}                        (crée les branches)
     ↓ (auto)
 /develop {NNN}                      (écrit code + tests, build + tests verts,
-                                     publie DTOs/interop NuGet, push)
-    ↓ (auto)
-/forge-simplify {NNN}               (passe qualité /simplify : reuse/simplif/
-                                     efficacité/altitude — quality only, pas de
-                                     chasse aux bugs ; re-valide + commit/push ;
-                                     skip si rien à simplifier ; jamais
-                                     dtos-mss/interop)
+                                     PUIS passe qualité /simplify intégrée par
+                                     repo — reuse/simplif/efficacité/altitude,
+                                     quality only, re-valide seulement si des
+                                     cleanups sont appliqués, jamais
+                                     dtos-mss/interop — publie DTOs/interop
+                                     NuGet, un seul push par repo)
     ↓ (auto)
 /sonar {NNN}                        (cleanup SonarQube best-effort 5 itérations,
                                      api-mail uniquement — skip si non touché)
@@ -60,6 +59,44 @@ laisse la task dans son état actuel, et `/forge` passe à la task suivante.
 **Objectif** : minimiser les interactions humaines. La forge est autonome
 de bout en bout, sauf merge final.
 
+### Instrumentation — le cycle se mesure (depuis 2026-08-31)
+
+**Chaque étape de la chaîne mesure son coût, et aucune durée n'est estimée par
+un agent.** L'outillage vit dans `Tools/timing/` et écrit un journal
+append-only versionné : `metrics/timings.jsonl`.
+
+```bash
+Tools/timing/step.sh start --task {task-id} --step develop
+Tools/timing/measure.sh --task {task-id} --step develop --repo api-mail \
+    --cwd Api/Mail --kind build -- dotnet build HealthPlatform.Api.Mail.sln
+Tools/timing/step.sh end --task {task-id} --step develop --status ok
+```
+
+- **Deux granularités** : la durée de chaque étape (`step.sh`), et le coût de
+  chaque commande lourde (`measure.sh`, dimension `--kind` : `build`, `test`,
+  `scan`, `lint`, `capture`, `restore`, `nuget-wait`).
+- **Toujours invoqué depuis la racine du workspace**, avec `--cwd {repo-path}`
+  au lieu d'un `cd` préalable : c'est ce qui garantit que le chemin du wrapper
+  résout toujours. Un `--cwd` introuvable sort en 66 **sans** exécuter la
+  commande.
+- **`measure.sh` est transparent** : sortie et code retour inchangés, commande
+  exécutée telle quelle — envelopper une commande ne change ni la logique
+  RED/GREEN ni le comportement du scanner Sonar. Une panne du harnais ne casse
+  jamais une étape (tous ses chemins sortent en 0).
+- **Le skip se mesure aussi** (`--status skipped`) : sinon on ne distingue plus
+  « gratuit » de « pas mesuré ».
+- **Restitution** : `step.sh end` régénère la section `## Timings` du task file
+  (reprise par `/review` dans son rapport de fin de cycle), et `/forge` publie
+  `report.sh --last N` + `report.sh --by-kind` dans son rapport de run.
+- **Pourquoi** : le coût du cycle était jusque-là *compté sur les playbooks*
+  (« ~13 builds et ~11 suites de tests pour une task backend »), jamais mesuré.
+  Toute optimisation de la chaîne — supprimer un build redondant, sortir la
+  dette legacy du chemin critique, paralléliser des lanes — était donc un pari.
+  Le journal transforme les paris en avant/après chiffré.
+
+Protocole détaillé, vocabulaire des kinds et limites assumées :
+`Tools/timing/README.md`.
+
 ### Branche staging par run `/forge`
 
 Chaque run `/forge` **agrège le travail validé de toutes ses tasks sur une
@@ -78,8 +115,8 @@ entre N branches `feat/*`.
   `client-angular` (code-only), `devops`, `psc-proxy-*`.
 - **Dernier maillon par task, après `/review`** : `git merge --no-ff
   feat/{task}` d'une branche **déjà nettoyée par toute la chaîne qualité**
-  (`/forge-simplify`, `/sonar`, `/lint-angular`, `/lint-mobile` ont committé
-  leurs fixes sur `feat/*` **avant** `/review`). Staging hérite mécaniquement
+  (la passe `/simplify` de `/develop`, puis `/sonar`, `/lint-angular`,
+  `/lint-mobile` ont committé leurs fixes sur `feat/*` **avant** `/review`). Staging hérite mécaniquement
   de tous les fixes qualité ; aucune re-qualification sur staging.
 - **Best-effort, jamais un point d'échec** : un conflit d'agrégation →
   `git merge --abort`, log, la PR `feat/* → develop` de la task reste intacte,
@@ -111,8 +148,7 @@ l'humain implémente dans WindSurf, puis lance `/review {task-id}` lui-même
 |---|---|---|---|
 | Rédaction US | `/po` (humain) | non | Pas de `.feature`, juste `todo-*.md` |
 | Création branches | `/start` | non | Pre-flight : tous les repos sur `develop` |
-| **Implémentation** | **`/develop`** | **oui** | Test-first, cross-repo dans l'ordre dtos→interop→backend→frontend, publie NuGet pour DTOs/interop. Pour `client-angular` : mode **code-only** (écrit le code sur la branche actuellement checked out, build + test, mais ne touche pas à git — humain gère branche, commit, push, PR TFS). |
-| Cleanup Simplify | `/forge-simplify` | oui | Wrapper forge autour du built-in `/simplify` : passe qualité (reuse/simplif/efficacité/altitude) **quality-only** sur le code frais, par repo, re-valide (build + tests = filet anti-régression), commit/push pushables, `client-angular` code-only. Best-effort, non bloquant : rollback du repo si une régression apparaît. **Jamais** `dtos-mss`/`interop-cda` (porteurs de contrat). Skip clean si rien à simplifier. |
+| **Implémentation + passe qualité** | **`/develop`** | **oui** | Test-first, cross-repo dans l'ordre dtos→interop→backend→frontend, publie NuGet pour DTOs/interop. Pour `client-angular` : mode **code-only** (écrit le code sur la branche actuellement checked out, build + test, mais ne touche pas à git — humain gère branche, commit, push, PR TFS). **Inclut la passe qualité `/simplify`** (ex-`/forge-simplify`, fusionnée le 2026-08-31) : par repo éligible, une fois, après le vert de la feature et **avant le push** — quality-only (reuse/simplif/efficacité/altitude, jamais de chasse aux bugs), re-validation build+test **seulement si des cleanups sont appliqués**, commit `refactor(module): simplify pass`, rollback au rouge (best-effort). **Jamais** `dtos-mss`/`interop-cda` (porteurs de contrat), jamais de git sur `client-angular`. |
 | Cleanup Sonar | `/sonar` (api-mail) | oui | Best-effort 5 itérations, accepte les issues restantes. Skip clean si api-mail non touché. |
 | Cleanup Lint Angular | `/lint-angular` (client-angular) | oui | Best-effort 5 itérations (`lint:fix` + fix manuels), accepte les erreurs restantes. Code-only — ne touche jamais à git. Skip clean si client-angular non touché. |
 | Cleanup Lint Mobile | `/lint-mobile` (client-mobile) | oui | Best-effort 5 itérations (`ng lint --fix` + fix manuels), accepte les erreurs restantes. **Automation git complète** (remote GitHub) : commit/push des fixes. Skip clean si client-mobile non touché. |
@@ -121,30 +157,38 @@ l'humain implémente dans WindSurf, puis lance `/review {task-id}` lui-même
 | Doc EPIC | `/tech-writer` | non (écrit dans `docs/epics/` uniquement) | Idempotent |
 | **Merge develop** | **humain** | — | **HAG, règle 10 — non négociable** |
 
-### Simplify + Sonar + Lint Angular + Lint Mobile — étapes standard du cycle
+### Sonar + Lint Angular + Lint Mobile — étapes standard du cycle
 
-`/forge-simplify` (tous repos code), `/sonar` (api-mail), `/lint-angular`
-(client-angular) et `/lint-mobile` (client-mobile) ne sont pas des
-« exceptions d'automation » — ce sont **des étapes intégrées du cycle
-autonome**, insérées entre `/develop` et `/review`, dans cet ordre
-(`/forge-simplify` en premier, juste après `/develop`, pour que `/sonar`,
-`/lint-angular` et `/lint-mobile` re-scannent et re-valident derrière ce que la
-passe qualité a touché). Toutes sont best-effort : acceptation des findings
-restants, hand-off à l'étape suivante quoi qu'il arrive (sauf erreur de
-tooling). Toutes skip cleanly quand leur repo cible n'a pas été touché
-par la task — la chaîne saute simplement à l'étape suivante.
+`/sonar` (api-mail), `/lint-angular` (client-angular) et `/lint-mobile`
+(client-mobile) ne sont pas des « exceptions d'automation » — ce sont **des
+étapes intégrées du cycle autonome**, insérées entre `/develop` et `/review`,
+dans cet ordre. Elles tournent **après la passe qualité `/simplify`** — qui est
+désormais une sous-étape de `/develop`, pas un maillon de la chaîne — pour
+re-scanner et re-valider ce que cette passe a touché. Toutes sont best-effort :
+acceptation des findings restants, hand-off à l'étape suivante quoi qu'il
+arrive (sauf erreur de tooling). Toutes skip cleanly quand leur repo cible n'a
+pas été touché par la task — la chaîne saute simplement à l'étape suivante.
 
 `/lint-mobile` est le pendant de `/lint-angular` pour `client-mobile` (app
 Ionic/Angular). Différence clé : `client-mobile` a un remote **GitHub** (pas
 TFS), donc `/lint-mobile` est en **automation git complète** — il commit et
 push ses fixes, contrairement à `/lint-angular` qui reste code-only.
 
-`/forge-simplify` est **quality-only** (reuse / simplification / efficacité /
-altitude) : il ne chasse jamais les bugs (c'est `/code-review`), les tests
-existants sont son filet anti-régression, et il **ne touche jamais**
-`dtos-mss`/`interop-cda` (porteurs de contrat → éviter un republish NuGet
-cosmétique). Le built-in `/simplify` standalone reste dispo pour l'usage
-ad-hoc humain (simplifier le diff courant, sans cérémonie forge).
+**Fusion `/forge-simplify` → `/develop` (2026-08-31).** La passe qualité était
+un maillon séparé de la chaîne : elle refaisait intégralement la cérémonie que
+`/develop` venait de finir — pré-flight, détection du diff, **build + tests
+complets par repo**, commit, push — pour appliquer des cleanups cosmétiques.
+Elle est désormais la **sous-étape « passe qualité » de `/develop`** (§Q de
+`agents/develop.md`), exécutée par repo juste après le vert de la feature et
+avant le push : **un seul cycle build+test par repo au lieu de deux, un seul
+tour d'agent au lieu de deux**. Les invariants sont conservés : quality-only
+(jamais de chasse aux bugs — c'est `/code-review`), les tests existants comme
+filet anti-régression, rollback du repo si la re-validation passe au rouge,
+**jamais** `dtos-mss`/`interop-cda` (porteurs de contrat → éviter un republish
+NuGet cosmétique), jamais de git sur `client-angular`. La commande
+`/forge-simplify` et `agents/forge-simplify.md` sont supprimés ; le built-in
+`/simplify` standalone reste dispo pour l'usage ad-hoc humain (simplifier le
+diff courant, sans cérémonie forge).
 
 `/sonar-s3776` (cognitive complexity, 1 méthode = 1 PR) **reste manuel** —
 hors chaîne autonome, sinon on se retrouve avec N PRs par task.
@@ -316,8 +360,9 @@ Concretely :
   `get_project`**), et **`list_screens` est périmé** pendant des heures sur
   les créations récentes (`get_project` fait foi). See
   `agents/stitch-design.md`.
-- **`/forge-simplify`** : eligible (frontend code repo, pushable) — quality
-  pass, re-validate, commit/push. Not a contract carrier.
+- **Passe qualité `/simplify`** (sous-étape de `/develop`) : eligible
+  (frontend code repo, pushable) — quality pass, re-validate, commit/push.
+  Not a contract carrier.
 - **`/lint-mobile`** : its dedicated ESLint cleanup step (`ng lint --fix` +
   manual fixes, best-effort 5 iterations), inserted after `/lint-angular`.
   Commits/pushes its fixes (git automation, unlike `/lint-angular`).
@@ -590,13 +635,13 @@ de santé.
 même tour, sans rapport intermédiaire et sans rien demander à l'humain.**
 
 ```
-/start → /develop → /forge-simplify → /sonar → /lint-angular → /lint-mobile
-       → /verify-visual → /review → /tech-writer
+/start → /develop (code + tests + passe qualité /simplify) → /sonar
+       → /lint-angular → /lint-mobile → /verify-visual → /review → /tech-writer
 ```
 
 **Pourquoi cette règle existe** (posée le 2026-08-04, sur constat humain) : les
 fichiers de commande décrivaient le chaînage en prose — « hand off to
-`/forge-simplify` » — sans jamais **ordonner** d'appeler l'étape suivante.
+l'étape suivante » — sans jamais **ordonner** de l'appeler.
 L'agent lisait « passe la main », rédigeait un rapport de fin d'étape, et rendait
 la main. L'humain devait relancer « continue la chaîne » à chaque maillon, ce qui
 vide de son sens la boucle autonome et transforme un cycle en huit interactions.
@@ -639,7 +684,7 @@ Never modify without human arbitration:
 
 ## Commands
 
-> **⛓️ Chaînage** — les étapes `/develop` → `/forge-simplify` → `/sonar` →
+> **⛓️ Chaînage** — les étapes `/develop` → `/sonar` →
 > `/lint-angular` → `/lint-mobile` → `/verify-visual` → `/review` →
 > `/tech-writer` s'appellent **les unes les autres via l'outil `Skill`, sans
 > rapport intermédiaire ni retour à l'humain** (règle 13). Une étape qui rend la
@@ -648,20 +693,20 @@ Never modify without human arbitration:
 | Command | Effect |
 |---|---|
 | `/po` | Write a new US : `todo-*.md` task file only (no .feature). With `--from <doc.md>` : batch-extract US from a markdown document (one-by-one human validation) |
-| `/start {task-id}` | Create the working branches in the target repo(s) and **chain into `/develop`** by default. The full cycle then runs autonomously : `/develop` → `/forge-simplify` → `/sonar` → `/lint-angular` → `/lint-mobile` → `/verify-visual` → `/review` → `/tech-writer`. |
+| `/start {task-id}` | Create the working branches in the target repo(s) and **chain into `/develop`** by default. The full cycle then runs autonomously : `/develop` (code + passe qualité `/simplify`) → `/sonar` → `/lint-angular` → `/lint-mobile` → `/verify-visual` → `/review` → `/tech-writer`. |
 | `/start {task-id} no-code` | Create the working branches and **stop**. Task stays in `wip-*` ; the human implements in WindSurf and runs `/review {task-id}` manually when ready. Escape hatch when `/develop` is unsuitable. |
-| `/develop {task-id}` | **Autonomous implementation** : write code + tests, build, test, publish DTOs / interop NuGet packages when contracts change, bump consumers, push, hand off to `/forge-simplify`. Frontends covered : `client-blazor`, `client-angular` (code-only), `client-mobile` (full git automation). For mobile screens, calls `/stitch-design` first to get the design reference. See `agents/develop.md`. |
+| `/develop {task-id}` | **Autonomous implementation + passe qualité** : write code + tests, build, test, run the integrated `/simplify` quality pass per eligible repo (quality-only, before the push — ex-`/forge-simplify`, fusionnée le 2026-08-31), publish DTOs / interop NuGet packages when contracts change, bump consumers, push, hand off to `/sonar` (or the first touched cleanup step). Frontends covered : `client-blazor`, `client-angular` (code-only), `client-mobile` (full git automation). For mobile screens, calls `/stitch-design` first to get the design reference. See `agents/develop.md`. |
 | `/stitch-design {task-id}` | **Design sub-step of `/develop`** (mobile only). Ensures each `client-mobile` screen has a matching design in the Stitch project `client-mobile` (id `10088502293310567548`) — reuse if present, **create** via the Stitch MCP if missing (convention : screen title = component kebab-case name, e.g. `mail-list`). Logs the screenshot + HTML/CSS reference so `/develop` codes the Ionic screen against it. Stitch = design source of truth ; output is a **reference, not code**. Best-effort & non-blocking. Stand-alone form `/stitch-design {screen-name}` for manual design create/refresh. See `agents/stitch-design.md`. |
-| `/forge-simplify {task-id}` | Forge wrapper around the built-in `/simplify` : **quality-only** cleanup pass (reuse / simplification / efficiency / altitude — no bug hunting) on the code `/develop` just produced, per repo, re-validate (build + existing tests), commit/push pushable repos, `client-angular` code-only. Best-effort & non-blocking (rollback a repo on regression). **Never** touches `dtos-mss`/`interop-cda` (contract carriers) or excluded repos. Standard step in the autonomous chain, between `/develop` and `/sonar` ; skip clean if nothing to simplify. The standalone built-in `/simplify` stays available for ad-hoc human use. See `agents/forge-simplify.md`. |
 | `/sonar {task-id}` | Best-effort SonarQube cleanup on `api-mail` (5 iterations max, accepts remaining issues). Standard step in the autonomous chain. Consigne un tableau de **KPIs qualité (baseline → final + Quality Gate)** dans le `## Sonar log` de la task — restitué par `/review` dans le body de la PR api-mail et dans le rapport de fin de cycle (on monitore toujours la qualité, jamais de fin de cycle silencieuse sur ce plan). See `agents/sonar.md`. |
 | `/lint-mobile {task-id}` | Best-effort ESLint cleanup on `client-mobile` (Working dir `Client/Mobile/`). Plain Angular CLI : `ng lint --fix` then manual fixes, build (`npm run build`) + test (`npm test -- --watch=false --browsers=ChromeHeadless`) as the anti-regression net, 5 iterations max, accepts remaining errors. **Full git automation** (GitHub remote) : commits/pushes its fixes, unlike `/lint-angular`. Standard step in the autonomous chain, after `/lint-angular`, skip clean if client-mobile non touché. Hands off to `/verify-visual`. See `agents/lint-mobile.md`. |
-| `/verify-visual {task-id}` | **Vérification visuelle** des écrans `client-mobile` touchés, entre `/lint-mobile` et `/review`. Playwright headless (`tools/visual-verify/`) : session factice, API mockée par fixtures (aucun backend, aucune donnée de santé), capture 390×844 par écran, **pairée à la référence Stitch** dans le `## Visual verify log` (recopié par `/review` dans la PR). Captures rangées par task (`e2e/screenshots/{task-id}/`, liens SHA-pinnés) **et copiées dans `Docs/epics/img/screens/client-mobile/{écran}.png`** (sous-répertoire par app) — l'**état visuel global de l'application**, intégré par `/tech-writer` dans la galerie « État visuel » du doc produit de l'EPIC. Bloquant **uniquement** sur écran blanc/crash de navigation (`questions/` + halt) ; écarts design/outillage = best-effort. Skip clean si aucun écran touché. Forme stand-alone `/verify-visual {screen-name}`. See `agents/verify-visual.md`. |
+| `/verify-visual {task-id}` | **Vérification visuelle** des écrans `client-mobile` touchés, entre `/lint-mobile` et `/review`. Playwright headless (`Tools/visual-verify/`) : session factice, API mockée par fixtures (aucun backend, aucune donnée de santé), capture 390×844 par écran, **pairée à la référence Stitch** dans le `## Visual verify log` (recopié par `/review` dans la PR). Captures rangées par task (`e2e/screenshots/{task-id}/`, liens SHA-pinnés) **et copiées dans `Docs/epics/img/screens/client-mobile/{écran}.png`** (sous-répertoire par app) — l'**état visuel global de l'application**, intégré par `/tech-writer` dans la galerie « État visuel » du doc produit de l'EPIC. Bloquant **uniquement** sur écran blanc/crash de navigation (`questions/` + halt) ; écarts design/outillage = best-effort. Skip clean si aucun écran touché. Forme stand-alone `/verify-visual {screen-name}`. See `agents/verify-visual.md`. |
 | `/lint-angular {task-id}` | Best-effort ESLint cleanup on `client-angular` (Working dir `Client/Angular/front/`). Reproduit la forme des commandes lint/build/test du pipeline Azure `Client/Angular/azure-pipelines.yml` (Stage 2 CI), avec deux divergences intentionnelles : (1) default `$BASE_BRANCH = origin/next` (branche d'intégration vivante du repo TFS, pas l'`origin/master` du pipeline) ; (2) lint scopé via `--projects=tag:scope:mss` (le forge ne fixe que le module MSS — `mss` + `mss-lib`). Build/test restent en scope complet pour détecter les régressions downstream. Auto-fix puis fix manuels 5 itérations max, accepte les errors restantes. Code-only — ne touche jamais à git. Standard step in the autonomous chain, skip clean si client-angular non touché. See `agents/lint-angular.md`. |
 | `/sonar-s3776 api-mail` | **[Manual]** Reduce cognitive complexity of ONE method (S3776). One method = one PR. Characterisation tests written first. Out of the autonomous chain. See `.claude/commands/sonar-s3776.md`. |
 | `/review {task-id}` | Validate the implementation (build + tests + DOD + code review), commit/push/sync develop, open the PR (label `awaiting-human-merge`), rename `done-*`, chain into `/tech-writer`. Autonomous — no human prompt. |
 | `/merge {task-id} --i-tested` | **[Human only]** After the human has tested the US end-to-end on the open PRs, squash-merge each pushable PR, sync `develop`, delete the branches, move the task into `tasks/archived/archived-{task-id}.md`. Refuses without `--i-tested`, on `awaiting-us-completion` label, or red CI. Never invoked by `/forge` — HAG (rule 10) stays. See `agents/merge.md`. |
 | `/tech-writer E{NNN}` | Refresh `docs/epics/E{NNN}-{slug}.md` from all tasks that declare `**Epic**: E{NNN}` — y compris la galerie **« État visuel de l'application »** (copies d'écran de `Docs/epics/img/screens/{app}/` appartenant à l'EPIC, embeds relatifs, libellés produit). Called automatically at the tail of `/review` ; can be run manually for retro-generation or `--refresh`. See `agents/technical-writer.md`. |
-| `/forge` | Loop autonome : pour chaque `tasks/todo-task-*.md`, déclenche `/start` → `/develop` → `/forge-simplify` → `/sonar` → `/lint-angular` → `/lint-mobile` → `/verify-visual` → `/review` → `/tech-writer`. Séquentiel (pas de parallélisme). Stop sur la première task qui échoue (écrit `questions/`, passe à la suivante). Agrège chaque task validée sur une **branche staging par run** `forge/staging-task-{début}-{fin}-{date}` (fraîche depuis `develop`, par repo pushable, best-effort) pour test du lot complet — voir « Branche staging par run `/forge` ». **Ne déclenche jamais `/merge`**, n'ouvre **aucune** PR staging → develop — HAG, règle 10. |
+| `/forge` | Loop autonome : pour chaque `tasks/todo-task-*.md`, déclenche `/start` → `/develop` (code + passe qualité `/simplify`) → `/sonar` → `/lint-angular` → `/lint-mobile` → `/verify-visual` → `/review` → `/tech-writer`. Séquentiel (pas de parallélisme). Stop sur la première task qui échoue (écrit `questions/`, passe à la suivante). Agrège chaque task validée sur une **branche staging par run** `forge/staging-task-{début}-{fin}-{date}` (fraîche depuis `develop`, par repo pushable, best-effort) pour test du lot complet — voir « Branche staging par run `/forge` ». **Ne déclenche jamais `/merge`**, n'ouvre **aucune** PR staging → develop — HAG, règle 10. |
 | `/status` | Quick status in < 10 lines |
+| `Tools/timing/report.sh` | **[Outil, pas une commande de chaîne]** Lecture du journal de mesure `metrics/timings.jsonl` : `--task {id}` (coût d'un cycle), `--task {id} --sync` (régénère la section `## Timings` du task file), `--last N` (derniers cycles), `--by-kind` (combien de builds / suites / scans par task, et ce qu'ils coûtent — le tableau qui valide une optimisation). Voir `Tools/timing/README.md`. |
 | `/publish-dtos` | Publish the DTO NuGet package and bump consumers (manual command — `/develop` does the equivalent inline as part of the autonomous cycle). |
 | `/kickoff` | Bootstrap a new project (scaffold `.claude/`, agents, templates) |

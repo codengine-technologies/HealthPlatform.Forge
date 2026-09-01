@@ -137,12 +137,13 @@ philosophy was inverted on 2026-04-27 — see CLAUDE.md "Forge philosophy".
 9. **Chain into `/develop`** (default behaviour) :
 
    Invoke `/develop {task-id}` immediately. The task stays in `wip-*` and
-   `/develop` takes over the implementation, then chains into
-   `/forge-simplify` (the `/simplify` quality pass), then `/sonar`
-   (api-mail), then `/lint-angular` (client-angular), then `/lint-mobile`
-   (client-mobile), then `/review`, then `/tech-writer`. `/forge-simplify`,
-   `/sonar`, `/lint-angular` and `/lint-mobile` skip cleanly when there's
-   nothing to do. The full autonomous loop runs
+   `/develop` takes over the implementation **including the `/simplify`
+   quality pass** (integrated sub-step since the 2026-08-31 fusion of
+   `/forge-simplify`), then chains into `/sonar` (api-mail), then
+   `/lint-angular` (client-angular), then `/lint-mobile` (client-mobile), then
+   `/verify-visual`, then `/review`, then `/tech-writer`. `/sonar`,
+   `/lint-angular` and `/lint-mobile` skip cleanly when there's nothing to
+   do. The full autonomous loop runs
    end-to-end without human prompt — the only mandatory human action is
    **merging the resulting PR** (HAG, CLAUDE.md rule 10).
 
@@ -154,8 +155,8 @@ philosophy was inverted on 2026-04-27 — see CLAUDE.md "Forge philosophy".
     - {repo} (pushed / local-only)
     - ...
 
-    Chaining into /develop now → /forge-simplify → /sonar → /lint-angular → /lint-mobile → /verify-visual → /review → /tech-writer.
-    (/forge-simplify, /sonar, /lint-angular et /lint-mobile skip clean si leur repo n'a pas été touché.)
+    Chaining into /develop now (code + tests + passe qualité /simplify) → /sonar → /lint-angular → /lint-mobile → /verify-visual → /review → /tech-writer.
+    (/sonar, /lint-angular et /lint-mobile skip clean si leur repo n'a pas été touché.)
     The PR(s) will land with label awaiting-human-merge — you merge
     when ready (HAG rule 10).
     ```
@@ -170,6 +171,29 @@ philosophy was inverted on 2026-04-27 — see CLAUDE.md "Forge philosophy".
     When you are done, run /review {task-id}.
     ```
 
+## ⏱️ Instrumentation (obligatoire)
+
+Borne l'étape et mesure chaque commande coûteuse — c'est ce qui rend le coût
+du cycle **mesuré** au lieu d'estimé :
+
+```bash
+Tools/timing/step.sh start --task {task-id} --step start
+Tools/timing/measure.sh --task {task-id} --step start --repo {repo} \
+    --cwd {repo-path} --kind {kind} -- {commande}
+Tools/timing/step.sh end --task {task-id} --step start --status ok
+```
+
+- **Kinds de cette étape** : aucune commande coûteuse (git seulement) — seules les bornes d'étape sont mesurées
+- Le pré-flight balaie 7 repos : la borne d'étape suffit à savoir ce que coûte l'entrée dans le cycle.
+- `step.sh end` est appelé **aussi** quand l'étape skip proprement
+  (`--status skipped --note "{raison}"`) ou fail-fast (`--status failed`) — un
+  skip non mesuré est un trou dans le journal, pas une mesure à zéro.
+- `measure.sh` est **transparent** : sortie et code retour inchangés, la
+  commande est exécutée telle quelle (donc sûr autour du scanner Sonar et de
+  `npm test -- --watch=false`). Une panne du harnais ne casse jamais l'étape.
+- Protocole complet et vocabulaire des kinds : `Tools/timing/README.md`.
+
+---
 ## Rules
 
 - **1 US = 1 task file = 1 branch name** on every pushable repo the US touches.

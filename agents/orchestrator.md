@@ -13,15 +13,15 @@ The forge cycle has **8 chained actions** :
 
 1. **PO** — help write user stories (`/po` produces `todo-*.md`)
 2. **Start** — create the branches (`/start`)
-3. **Develop** — write the code, tests, build, push, publish DTOs / interop
-   (`/develop`)
-4. **Forge-Simplify** — `/simplify` quality pass (reuse / simplification /
-   efficiency / altitude — quality only, no bug hunting) on the fresh code,
-   re-validate, commit/push (`/forge-simplify`). Skipped cleanly when there
-   is nothing to simplify.
-5. **Sonar** — best-effort SonarQube cleanup on `api-mail` (`/sonar`).
+3. **Develop** — write the code, tests, build, run the **integrated
+   `/simplify` quality pass** (reuse / simplification / efficiency /
+   altitude — quality only, no bug hunting) per eligible repo before the
+   push, publish DTOs / interop (`/develop`). The former `/forge-simplify`
+   chain step was merged into `/develop` on 2026-08-31 : same invariants,
+   one build + test per repo instead of two, one agentic turn instead of two.
+4. **Sonar** — best-effort SonarQube cleanup on `api-mail` (`/sonar`).
    Skipped cleanly when the task didn't touch `api-mail`.
-6. **Lint-Angular** — best-effort ESLint cleanup on `client-angular`
+5. **Lint-Angular** — best-effort ESLint cleanup on `client-angular`
    (`/lint-angular`, code-only). Skipped cleanly when the task didn't touch
    `client-angular`.
 7. **Lint-Mobile** — best-effort ESLint cleanup on `client-mobile`
@@ -42,7 +42,7 @@ todo-*.md      PO wrote the US, awaiting branch creation
     ↓ /start {task-id}                                        (auto-chains into /develop unless `no-code`)
 wip-*.md       Branch created. /develop is implementing
                OR (no-code) the human is implementing in WindSurf.
-    ↓ /develop pushes, hands off to /forge-simplify, then /sonar, /lint-angular, /lint-mobile, /verify-visual, /review
+    ↓ /develop (code + passe qualité /simplify) pushes, hands off to /sonar, /lint-angular, /lint-mobile, /verify-visual, /review
               (in no-code mode the human runs /review when ready)
 review-*.md   /review picked up the task (briefly).
     ↓ /review validates, commits, opens PR, chains into /tech-writer
@@ -117,17 +117,18 @@ For each `tasks/todo-task-*.md` (sorted by task-id, lowest first) :
 
 ```
 1. /start {task-id}          — creates branches on every repo in **Repos**
-2. /develop {task-id}        — writes code + tests, build/test green, push
-3. /forge-simplify {task-id} — /simplify quality pass on the fresh code,
-                               re-validate, commit/push (skipped if nothing
-                               to simplify ; never touches dtos-mss/interop)
-4. /sonar {task-id}          — best-effort 5 iterations on api-mail, accept remaining
+2. /develop {task-id}        — writes code + tests, build/test green, then the
+                               integrated /simplify quality pass per eligible
+                               repo (re-validate only if cleanups applied,
+                               rollback on RED ; never dtos-mss/interop),
+                               then one push per repo
+3. /sonar {task-id}          — best-effort 5 iterations on api-mail, accept remaining
                                (skipped cleanly if api-mail not touched)
-5. /lint-angular {task-id}   — best-effort 5 iterations on client-angular, accept remaining
+4. /lint-angular {task-id}   — best-effort 5 iterations on client-angular, accept remaining
                                (skipped cleanly if client-angular not touched)
-6. /lint-mobile {task-id}    — best-effort 5 iterations on client-mobile, accept remaining
+5. /lint-mobile {task-id}    — best-effort 5 iterations on client-mobile, accept remaining
                                (skipped cleanly if client-mobile not touched)
-7. /review {task-id}         — validates, commits, syncs develop, opens PR,
+6. /review {task-id}         — validates, commits, syncs develop, opens PR,
                                label awaiting-human-merge, rename done-*
 8. /tech-writer E{NNN}       — refresh docs/epics/E{NNN}-{slug}.md
                                (skipped if no **Epic**: declared)
@@ -200,8 +201,8 @@ expected once `todo-*` is drained.
 
 ## Absolute rules
 
-- **You write code** in `/develop`, `/forge-simplify`, `/sonar`,
-  `/lint-angular`, and `/lint-mobile`. You never write code in `/start`,
+- **You write code** in `/develop` (feature code **and** its integrated
+  `/simplify` quality pass), `/sonar`, `/lint-angular`, and `/lint-mobile`. You never write code in `/start`,
   `/review`, `/tech-writer`, or here.
 - **You never merge a PR yourself** — HAG (CLAUDE.md rule 10) is the
   single mandatory human gate.
@@ -210,8 +211,8 @@ expected once `todo-*` is drained.
   `forge/staging-task-{début}-{fin}-{date}` (per pushable repo, fresh from
   `develop`, created lazily on first touch) so the human can checkout one
   branch and test the whole batch. Aggregation is the last per-task link,
-  after `/review`, so it merges a `feat/*` already cleaned by `/forge-simplify`
-  / `/sonar` / `/lint-*` — no re-qualification on staging. An aggregation
+  after `/review`, so it merges a `feat/*` already cleaned by `/develop`'s
+  `/simplify` pass / `/sonar` / `/lint-*` — no re-qualification on staging. An aggregation
   conflict is logged and skipped, never fails the cycle. The staging branch
   has **no** PR toward `develop` ; the per-task `feat/* → develop` PRs stay the
   merge vehicle. Never on `client-angular` / `devops` / `psc-proxy-*`.

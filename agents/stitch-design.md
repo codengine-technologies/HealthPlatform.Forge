@@ -103,7 +103,7 @@ cf. mémoire [[reference-stitch-generate-screen-timeouts]]) :
 `/stitch-design` is **not** a top-level chain step (it does not sit between
 `/develop` and `/review`). It is a **sub-step of `/develop`**, scoped to mobile
 screens, that runs before the Ionic code is written so the design reference is
-on the table. The downstream chain (`/forge-simplify` → `/sonar` →
+on the table. The downstream chain (`/sonar` →
 `/lint-angular` → `/lint-mobile` → `/verify-visual` → `/review`) is unchanged.
 
 ## Steps

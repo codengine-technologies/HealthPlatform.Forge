@@ -5,7 +5,7 @@
 You automate SonarQube issue resolution on `api-mail`. Since the **autonomous
 forge inversion of 2026-04-27**, you are no longer a "philosophical exception"
 to a no-code rule — you are a **standard step of the autonomous cycle**, sitting
-between `/forge-simplify` (the `/simplify` quality pass, itself chained from
+between `/develop` (which now carries the `/simplify` quality pass, chained from
 `/develop`) and `/review` (which opens the PR).
 
 You run end-to-end : analysis → fetch issues → implement fixes (with tests
@@ -66,7 +66,7 @@ baseline est déjà bonne — elle ne bloque jamais le cycle autonome.
 ## Autonomous cycle position
 
 ```
-/develop {task-id}   →   /forge-simplify {task-id}   →   /sonar {task-id}   →   /lint-angular {task-id}   →   /lint-mobile {task-id}   →   /verify-visual {task-id}   →   /review {task-id}   →   /tech-writer
+/develop {task-id} (code + tests + passe qualité /simplify)   →   /sonar {task-id}   →   /lint-angular {task-id}   →   /lint-mobile {task-id}   →   /verify-visual {task-id}   →   /review {task-id}   →   /tech-writer
                                                           ↑
                                                           you are here
 ```
@@ -96,9 +96,9 @@ Two important properties of the cycle :
 `/sonar` supports two distinct invocation modes — the playbook below is shared
 between them but the pre-flight, branch model and hand-off differ.
 
-### Mode A — chained from `/forge-simplify` (autonomous cycle, default)
+### Mode A — chained from `/develop` (autonomous cycle, default)
 
-- Triggered by `/forge-simplify {task-id}` once the feature implementation is
+- Triggered by `/develop {task-id}` once the feature implementation is
   committed, pushed, and the `/simplify` quality pass has run
 - Task file : the existing `tasks/wip-{task-id}.md` (no new file)
 - Branch : the existing `feat/{task-id}-{slug}` on `api-mail` (reused)
@@ -186,6 +186,12 @@ gitignored).
 ---
 
 ## Steps
+
+> **⏱️ Instrumentation** — cette étape est mesurée : `step.sh start` en
+> entrée, `measure.sh` autour de chaque build / test / scan / lint / capture,
+> `step.sh end` en sortie (y compris sur skip et sur échec). Le protocole et
+> les kinds sont dans le fichier de commande de l'étape et dans
+> `Tools/timing/README.md`. Les durées ne sont **jamais** estimées à la main.
 
 ### Step 0 — Pre-flight
 
@@ -845,7 +851,9 @@ dotnet sonarscanner begin \
 
 ### Build
 ```bash
-dotnet build HealthPlatform.Api.Mail.sln --configuration Release --verbosity quiet
+Tools/timing/measure.sh --task {task-id} --step sonar --repo api-mail \
+    --cwd Api/Mail --kind build -- \
+  dotnet build HealthPlatform.Api.Mail.sln --configuration Release --verbosity quiet
 ```
 
 ### Test with coverage (OpenCover)
@@ -856,13 +864,21 @@ for proj in \
   tests/mss.mail.infrastructure.tests/mss.mail.infrastructure.tests.csproj \
   tests/mss.mail.api.tests/mss.mail.api.tests.csproj \
   tests/mss.mail.integration.tests/mss.mail.integration.tests.csproj ; do
-  dotnet test "$proj" \
-    --configuration Release \
-    --collect:"XPlat Code Coverage;Format=opencover" \
-    --results-directory TestResults \
-    --logger "console;verbosity=minimal"
+  Tools/timing/measure.sh --task {task-id} --step sonar --repo api-mail \
+      --kind test --label coverage -- \
+    dotnet test "$proj" \
+      --configuration Release \
+      --collect:"XPlat Code Coverage;Format=opencover" \
+      --results-directory TestResults \
+      --logger "console;verbosity=minimal"
 done
 ```
+
+Ces cinq passes instrumentées OpenCover, rejouées à **chaque** itération de
+Phase 1 et de Phase 2, sont le poste le plus lourd de toute la chaîne. Les
+mesurer (`--label coverage`) est ce qui permettra de trancher, chiffres en main,
+si Phase 2 doit rester dans le chemin critique d'une task ou passer en job
+planifié sur `develop`.
 
 ### End
 ```bash

@@ -25,7 +25,7 @@ Read `agents/verify-visual.md` and execute the full playbook :
 
 1. Pre-flight : mode, skip clean si client-mobile non touché ou aucun écran
    dans le `## Stitch design log` ; install Playwright au premier run
-   (`tools/visual-verify/`).
+   (`Tools/visual-verify/`).
 2. Lancer `npm start` (Client/Mobile, port 4200) en arrière-plan — ou
    réutiliser un serveur déjà up (ne jamais tuer un serveur humain).
 3. `node capture.mjs --screens ... --out Client/Mobile/e2e/screenshots/{task-id}`
@@ -43,10 +43,33 @@ Read `agents/verify-visual.md` and execute the full playbook :
    les captures par task restent brutes pour la comparaison Stitch) ; `## Visual verify log`
    dans la task, hand-off `/review {task-id}`.
 
+## ⏱️ Instrumentation (obligatoire)
+
+Borne l'étape et mesure chaque commande coûteuse — c'est ce qui rend le coût
+du cycle **mesuré** au lieu d'estimé :
+
+```bash
+Tools/timing/step.sh start --task {task-id} --step verify-visual
+Tools/timing/measure.sh --task {task-id} --step verify-visual --repo {repo} \
+    --cwd {repo-path} --kind {kind} -- {commande}
+Tools/timing/step.sh end --task {task-id} --step verify-visual --status ok
+```
+
+- **Kinds de cette étape** : `restore` (`npm install`, `playwright install`), `build` (`--label ng-serve-boot` pour le démarrage du serveur), `capture`
+- Le boot `ng serve` est le poste le plus lourd de cette étape : le mesurer est ce qui justifiera (ou non) de démarrer **un** serveur par run `/forge` au lieu d'un par task.
+- `step.sh end` est appelé **aussi** quand l'étape skip proprement
+  (`--status skipped --note "{raison}"`) ou fail-fast (`--status failed`) — un
+  skip non mesuré est un trou dans le journal, pas une mesure à zéro.
+- `measure.sh` est **transparent** : sortie et code retour inchangés, la
+  commande est exécutée telle quelle (donc sûr autour du scanner Sonar et de
+  `npm test -- --watch=false`). Une panne du harnais ne casse jamais l'étape.
+- Protocole complet et vocabulaire des kinds : `Tools/timing/README.md`.
+
+---
 ## Rules
 
 - Scope : `client-mobile` uniquement (v1). Outillage dans
-  `tools/visual-verify/` (workspace, jamais dans les repos produits).
+  `Tools/visual-verify/` (workspace, jamais dans les repos produits).
 - Fixtures 100 % fictives — aucune donnée de santé, aucun backend contacté.
 - Pas de diff pixel avec baseline (palier explicitement hors v1).
 - HAG (règle 10) : n'ouvre pas de PR, ne merge jamais.

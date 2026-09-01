@@ -24,7 +24,7 @@ plus tard). You never merge (HAG rule 10), never open PRs.
 ## Autonomous cycle position
 
 ```
-/develop → /forge-simplify → /sonar → /lint-angular → /lint-mobile → /verify-visual → /review → /tech-writer
+/develop (code + passe qualité /simplify) → /sonar → /lint-angular → /lint-mobile → /verify-visual → /review → /tech-writer
                                                                       ↑
                                                                       you are here
 ```
@@ -35,7 +35,7 @@ legitimately — no mobile change means no screen to verify.
 
 ## Tooling
 
-Everything lives in `tools/visual-verify/` (workspace root — control plane,
+Everything lives in `Tools/visual-verify/` (workspace root — control plane,
 never inside the product repos) :
 
 - `capture.mjs` — Playwright headless : session factice injectée en
@@ -69,6 +69,12 @@ never inside the product repos) :
 
 ## Steps
 
+> **⏱️ Instrumentation** — cette étape est mesurée : `step.sh start` en
+> entrée, `measure.sh` autour de chaque build / test / scan / lint / capture,
+> `step.sh end` en sortie (y compris sur skip et sur échec). Le protocole et
+> les kinds sont dans le fichier de commande de l'étape et dans
+> `Tools/timing/README.md`. Les durées ne sont **jamais** estimées à la main.
+
 ### Step 0 — Pre-flight & skip detection
 
 1. **Mode detection** : argument `task-NNN`-shaped → Mode A ; otherwise
@@ -89,7 +95,7 @@ never inside the product repos) :
    inatteignable sans données réelles), en le logant.
 4. **Tooling ready** (first run only) :
    ```bash
-   cd tools/visual-verify
+   cd Tools/visual-verify
    [ -d node_modules ] || npm install
    npx playwright install chromium   # idempotent, no-op si déjà installé
    ```
@@ -113,7 +119,7 @@ process lancé par l'agent à la fin (succès comme échec).
 ### Step 2 — Capture
 
 ```bash
-cd tools/visual-verify
+cd Tools/visual-verify
 node capture.mjs --screens {a,b,c} --out ../../Client/Mobile/e2e/screenshots/{task-id}
 ```
 
@@ -169,7 +175,7 @@ Sans, listes 56 px, cartes blanches, primaire #005EB8).
    2026-07-07 ; le rendu reste Material, pas d'émulation iOS) :
    ```bash
    cp Client/Mobile/e2e/screenshots/{task-id}/{écran}.png Docs/epics/img/screens/client-mobile/{écran}.png
-   cd tools/visual-verify && node frame.mjs --in ../../Docs/epics/img/screens/client-mobile --files {écran1}.png,{écran2}.png
+   cd Tools/visual-verify && node frame.mjs --in ../../Docs/epics/img/screens/client-mobile --files {écran1}.png,{écran2}.png
    ```
    **Toujours passer `--files` avec les seuls fichiers copiés à ce run** —
    encadrer tout le répertoire double-encadrerait les images déjà traitées.

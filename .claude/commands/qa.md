@@ -26,7 +26,7 @@ comparison, blank/crash gate only.
 so it can never run unattended.
 
 > The fixture-mocked, no-auth headless captures live separately in
-> `/verify-visual` (`tools/visual-verify/`). `/qa` is the **real PSC auth**
+> `/verify-visual` (`Tools/visual-verify/`). `/qa` is the **real PSC auth**
 > path. The old Blazor `tests/E2E/` bypass suite was removed by task-170.
 
 ## GARDE-FOU données de santé (non négociable)

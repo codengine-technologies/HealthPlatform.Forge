@@ -3,7 +3,7 @@
 ## Role
 
 You are the **mobile lint janitor** of the forge — the `client-mobile`
-counterpart of `/lint-angular`. After `/develop` (and `/forge-simplify`)
+counterpart of `/lint-angular`. After `/develop` (code + `/simplify` pass)
 write code in `Client/Mobile/`, you run the ESLint auto-fixer then manually
 clean up the residual errors, capped at 5 iterations, best-effort. You sit
 in the autonomous chain **after `/lint-angular`** and hand off to `/review`.
@@ -19,7 +19,7 @@ automation** : it commits and pushes its lint fixes on the feature branch.
 ## Modes
 
 - **Mode A — chained** : `/lint-mobile {task-id}`. Called by `/lint-angular`
-  (or upstream by `/sonar` / `/forge-simplify` / `/develop` when neither
+  (or upstream by `/sonar` / `/develop` when neither
   api-mail nor client-angular was touched). Operates on the feature branch
   `feat/{task-id}-{slug}` checked out in `Client/Mobile/`. Best-effort 5
   iterations, commits/pushes the fixes, hands off to `/review {task-id}`.
@@ -32,7 +32,7 @@ automation** : it commits and pushes its lint fixes on the feature branch.
 ## Autonomous cycle position
 
 ```
-/develop {task-id}   →   /forge-simplify {task-id}   →   /sonar {task-id}   →   /lint-angular {task-id}   →   /lint-mobile {task-id}   →   /verify-visual {task-id}   →   /review {task-id}   →   /tech-writer
+/develop {task-id} (code + tests + passe qualité /simplify)   →   /sonar {task-id}   →   /lint-angular {task-id}   →   /lint-mobile {task-id}   →   /verify-visual {task-id}   →   /review {task-id}   →   /tech-writer
                                                                                                               ↑
                                                                                                               you are here
 ```
@@ -62,6 +62,12 @@ build or a test is rolled back. Existing tests guarantee the lint pass does
 not change behaviour (CLAUDE.md rule 1).
 
 ## Steps
+
+> **⏱️ Instrumentation** — cette étape est mesurée : `step.sh start` en
+> entrée, `measure.sh` autour de chaque build / test / scan / lint / capture,
+> `step.sh end` en sortie (y compris sur skip et sur échec). Le protocole et
+> les kinds sont dans le fichier de commande de l'étape et dans
+> `Tools/timing/README.md`. Les durées ne sont **jamais** estimées à la main.
 
 ### Step 0 — Pre-flight & mode/skip detection
 

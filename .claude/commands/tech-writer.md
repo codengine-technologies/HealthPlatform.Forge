@@ -21,6 +21,19 @@ model: sonnet
 
 Read `agents/technical-writer.md` and act as the Technical Writer.
 
+## ⏱️ Instrumentation (obligatoire)
+
+Aucune commande coûteuse ici (lecture de task files, écriture de deux
+markdowns), mais l'étape se borne quand même — c'est ce qui chiffrera le gain
+d'un appel unique par EPIC en fin de run `/forge` au lieu d'un appel par task :
+
+```bash
+Tools/timing/step.sh start --task {task-id} --step tech-writer
+Tools/timing/step.sh end --task {task-id} --step tech-writer --status ok
+```
+
+Invocation manuelle sans task en vol : `--task -`.
+
 ## Usage
 
 - `/tech-writer {epic-id}`

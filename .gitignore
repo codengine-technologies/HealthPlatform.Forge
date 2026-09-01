@@ -61,7 +61,30 @@ interop/
 psc/
 Tools/
 
-# Secrets � never commit
+# Forge instrumentation (task-level timing) — tooling + append-only ledger.
+# `Tools/` is otherwise orphan tooling and stays untracked ; only the timing
+# harness is forge infrastructure and must survive a fresh clone.
+#
+# CASSE : le répertoire s'appelle bien `Tools` (majuscule) sur le disque. Le
+# système de fichiers étant insensible à la casse, un motif en `tools/` semble
+# fonctionner mais `git` enregistre le chemin réel — d'où des chemins cassés sur
+# un clone sensible à la casse. Toujours écrire `Tools/`.
+#
+# Ce bloc doit rester APRÈS la ligne `Tools/` ci-dessus : le dernier motif qui
+# matche gagne.
+!Tools/
+Tools/*
+!Tools/timing/
+!Tools/timing/**
+
+# The ledger is the forge's measurement journal (committed, append-only).
+# The .state/ markers are machine-local run state and must never be tracked.
+!metrics/
+metrics/*
+!metrics/timings.jsonl
+
+
+# Secrets � never commit
 .env
 *.env
 !.env.example
