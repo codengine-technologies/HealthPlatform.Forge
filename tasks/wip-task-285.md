@@ -184,3 +184,24 @@ instances, c'est exactement le cas à couvrir.
 - **MSSanté** : les connexions closes sont celles de l'API LPS de l'opérateur
   MSSanté (adresse personnelle PS). Aucun en-tête ni certificat n'est modifié
   par cette US.
+
+## Branches
+
+Branche unique sur les repos pushables : `feat/task-285-logout-closes-mail-session-all-pods`
+
+- `api-mail` (pushed) — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-285-logout-closes-mail-session-all-pods
+- `client-blazor` (pushed) — https://github.com/codengine-technologies/HealthPlatform.Client/tree/feat/task-285-logout-closes-mail-session-all-pods
+- `client-mobile` (pushed) — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-285-logout-closes-mail-session-all-pods
+- `dtos-mss` (pushed, auto-inclus) — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-285-logout-closes-mail-session-all-pods
+- `client-angular` (code-only) — aucune branche créée. `/develop` écrit sur la branche checkée dans `Client/Angular/` ; snapshot au `/start` : `feature/nova-rewriting-mss`. L'humain garde branche, commit, push et PR TFS.
+
+### Observations du pré-flight (2026-09-01)
+
+- Tous les repos pushables en scope étaient sur `develop`, arbre propre.
+- `interop-cda` (`interop/`) **n'a pas de `.git`** — comme `host/Modules`,
+  déjà documenté dans CLAUDE.md. Le pré-flight ne mesure donc rien sur ces deux
+  repos : toute commande git qui les cible répond pour le dépôt de la forge.
+  Hors périmètre de cette US, mais l'avertissement de CLAUDE.md vaut pour les
+  deux, pas seulement `host`.
+- `api-mail` porte `f3f0b6b` (« Add MOTCOV2 server config ») — vérifié présent
+  sur `origin/develop`, donc hérité par la branche de la task.
