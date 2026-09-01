@@ -205,3 +205,123 @@ Branche unique sur les repos pushables : `feat/task-285-logout-closes-mail-sessi
   deux, pas seulement `host`.
 - `api-mail` porte `f3f0b6b` (« Add MOTCOV2 server config ») — vérifié présent
   sur `origin/develop`, donc hérité par la branche de la task.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-285 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 1 min 24 s | — | — | — | — |
+| **Total cycle** | | **1 min 24 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+
+## Develop log
+
+- **Repos touchés** : `api-mail`, `client-blazor`, `client-mobile`, `client-angular` (code-only).
+- **DTO publié** : aucun. La US n'ajoute aucun champ de contrat — l'endpoint
+  `POST /api/v1/sync/logout` existait et n'a ni corps ni réponse typée. La
+  branche `dtos-mss` auto-incluse reste **vide**, aucune PR : pas de cascade
+  NuGet pour une US qui n'en avait pas besoin.
+- **Interop publié** : aucun (repo non touché).
+
+### Ce que l'instruction du code a révélé
+
+Le task file décrivait deux causes. L'instruction en a précisé la mécanique, et
+a fait apparaître un troisième défaut :
+
+1. **Le bus inter-instances existait déjà** — canal Redis `mss:sync:cmd`,
+   `SyncControlCommand`, abonné sur chaque instance. Rien à construire. Mais
+   `HandleRemoteCommandAsync` **sortait immédiatement** si l'instance ne
+   détenait pas le runtime de synchronisation. Une instance porteuse d'une
+   session IMAP sans runtime de sync ignorait donc tout ordre. La nouvelle
+   commande `CloseMailSession` est traitée **avant** ce garde-fou.
+2. **`client-blazor` n'appelait rien.** `SyncProgressService.LogoutCleanupAsync()`
+   existait, appelait le bon endpoint — et **aucun écran ne l'appelait**. Le
+   task file disait « pas systématiquement au bon moment » ; c'était zéro
+   appelant.
+3. **Défaut non prévu, trouvé par un test** (bUnit, cas dégradé) : dans
+   `Logout.razor`, une exception échappée de l'ordre de clôture faisait sauter
+   la purge locale plus bas — le praticien restait authentifié sur son poste.
+   Corrigé par un `catch` dédié.
+
+### Commits
+
+| Repo | Commit | Objet |
+|---|---|---|
+| `api-mail` | `1ce74a0` | commande `CloseMailSession`, diffusion, traitement hors garde-fou |
+| `api-mail` | `b3d380c` | passe qualité `/simplify` |
+| `client-mobile` | `e487353` | `LogoutService` — séquence unique pour les 3 écrans |
+| `client-blazor` | `a6b7582` | ordre émis en premier, appel borné, page durcie |
+| `client-angular` | — | **code-only, non commité** (voir plus bas) |
+
+### Build / tests
+
+| Repo | Build | Tests |
+|---|---|---|
+| `api-mail` | ✓ | **3963 passés**, 16 skipped, 0 échec |
+| `client-blazor` | ✓ | 157 passés, 2 skipped |
+| `client-mobile` | ✓ | 801 passés |
+| `client-angular` | ✓ (`nx build weda2`) | weda2 **2570 passés** · mss-lib **329 passés** |
+
+**Test-first (règle 1) — démonstration RED faite.** Correctif d'`api-mail` retiré
+puis tests relancés : **4 échecs sur 7**, exactement les tests inter-instances
+(`ClosesTheMailSessionHeldByAnotherInstance`, `ReachesAnInstanceThatOwnsNoSyncRuntime`,
+`ReplayedOnAnAlreadyClosedSession`, `PublishesTheCloseOrderCarryingTheClientSessionId`).
+Les 3 autres passaient déjà : ce sont les fermetures locales, qui tiennent lieu de
+non-régression. Correctif remis → 13/13.
+
+**Deux flakies pré-existants rencontrés, aucun lié à cette US** :
+`MailRepositoryEnrichPersistInstrumentationTests.The_remainder_carries_the_whole_total_when_no_phase_was_observed`
+(6/6 en isolation, 3 exécutions) et un échec non reproductible dans
+`mss.mail.application.tests`. La classe de tests ajoutée par cette US a été
+lancée **5 fois de suite : 13/13 à chaque fois**. Deux exécutions complètes de la
+solution finissent à 0 échec.
+
+### Passe qualité (`/simplify`)
+
+- **Appliquée & commitée** : `api-mail` (`b3d380c`) — le retrait de session et sa
+  ligne de journal PGSSI-S étaient dupliqués entre le chemin HTTP et le chemin
+  diffusé ; extraits dans `CloseMailSessionLocally`. Un seul message, donc un
+  total cluster qui s'agrège en filtrant une seule ligne. Au passage,
+  `BroadcastCloseMailSessionAsync` ne reçoit plus le résultat de la fermeture
+  locale, dont il ne se servait que pour journaliser.
+- **Sans changement** : `client-mobile` et `client-angular` — l'axe réutilisation
+  a été appliqué pendant l'écriture, pas après : trois copies du bloc de
+  déconnexion mobile fondues en un `LogoutService`, et côté Angular le jeton
+  `MAIL_SESSION_CLOSER` reprend le schéma déjà en place pour `MSS_PSC_REFRESH_FN`
+  au lieu d'introduire une dépendance shell → module.
+- **Sans changement** : `client-blazor` — le diff réutilise `LogoutCleanupAsync`,
+  qui existait déjà.
+- **Sautée (porteur de contrat)** : `dtos-mss`.
+
+### `client-angular` — code-only, en attente de l'humain
+
+Branche checkée : **`feature/nova-rewriting-mss`**. Rien n'est commité ni poussé.
+
+Fichiers écrits par la forge :
+
+- `apps/weda2/src/lib/auth/models/mail-session-closer.model.ts` *(nouveau)*
+- `apps/weda2/src/lib/auth/index.ts`
+- `apps/weda2/src/lib/auth/store/authentication-store.ts`
+- `apps/weda2/src/lib/auth/store/models/authentication-store-props.model.ts`
+- `apps/weda2/src/lib/auth/store/utils/store-helpers.utils.ts`
+- `apps/weda2/src/lib/auth/store/utils/store-helpers.utils.spec.ts`
+- `apps/weda2/src/app/app.config.ts`
+- `libs/mss/src/core/services/mss-api.service.ts`
+
+⚠️ **Deux fichiers modifiés qui ne sont PAS de la forge** — WIP humain
+antérieur, laissé intact : `apps/mss/src/environments/environment.ts` et
+`apps/weda2/src/environments/environment.ts`. Ne pas les inclure dans la PR TFS
+sans vérification.
+
+### Notes
+
+- `conventions/angular.md` **n'existe pas** dans le workspace (seul
+  `conventions/csharp.md` est présent), alors que CLAUDE.md le décrit comme lu
+  par `/develop` avant tout code Angular/Ionic. Rien à appliquer, donc, mais
+  l'écart mérite d'être connu : la boucle d'auto-amélioration côté front n'a pas
+  encore de support.
+- `interop-cda` (`interop/`) n'a **pas de `.git`**, comme `host/Modules`.
+  L'avertissement de CLAUDE.md ne nomme que `host` — il vaut pour les deux.
+
+- **Étape suivante** : `/sonar task-285`
