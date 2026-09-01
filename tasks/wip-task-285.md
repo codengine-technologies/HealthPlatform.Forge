@@ -215,7 +215,10 @@ Branche unique sur les repos pushables : `feat/task-285-logout-closes-mail-sessi
 | /start | ok | 1 min 24 s | — | — | — | — |
 | /develop | ok | 41 min 33 s | 8 (2 min 09 s) | 15 (5 min 13 s) | — | api-mail 4B/6T, client-mobile 1B/2T, client-blazor 1B/4T, client-angular 2B/3T |
 | /sonar | ok | 12 min 24 s | 1 (12 s) | 2 (4.7 s) | — | 1 itération(s), api-mail 1B/2T |
-| **Total cycle** | | **55 min 22 s** | **9 (2 min 22 s)** | **17 (5 min 18 s)** | **0 (0.0 s)** | |
+| /lint-angular | ok | 3 min 12 s | 1 (17 s) | 1 (21 s) | — | 1 itération(s), client-angular 1B/1T |
+| **Total cycle** | | **58 min 34 s** | **10 (2 min 39 s)** | **18 (5 min 39 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : lint ×2 (35 s)
 
 ## Develop log
 
@@ -463,3 +466,22 @@ l'arbre de travail de `feature/nova-rewriting-mss` — l'humain garde branche,
 commit, push et PR TFS.
 
 - **Étape suivante** : `/lint-mobile task-285`
+
+## Lint mobile log
+
+`npm run lint` (`ng lint`) sur `feat/task-285-logout-closes-mail-session-all-pods` :
+
+```
+Linting "app"...
+All files pass linting.
+```
+
+**0 erreur, 0 warning — 0 itération consommée.** Rien à corriger, donc aucun
+commit : le code écrit par `/develop` (`LogoutService`, son spec, la méthode
+`closeMailSession`, et les trois écrans recâblés) passe le lint tel quel.
+
+Contraste utile avec `client-angular`, qui portait 4 erreurs sur les fichiers de
+cette US : la configuration ESLint de `client-mobile` n'impose pas les règles
+`jsdoc/*` qui les avaient déclenchées là-bas.
+
+- **Étape suivante** : `/verify-visual task-285`
