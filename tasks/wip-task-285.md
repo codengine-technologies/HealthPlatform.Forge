@@ -214,7 +214,8 @@ Branche unique sur les repos pushables : `feat/task-285-logout-closes-mail-sessi
 |---|---|---|---|---|---|---|
 | /start | ok | 1 min 24 s | — | — | — | — |
 | /develop | ok | 41 min 33 s | 8 (2 min 09 s) | 15 (5 min 13 s) | — | api-mail 4B/6T, client-mobile 1B/2T, client-blazor 1B/4T, client-angular 2B/3T |
-| **Total cycle** | | **42 min 58 s** | **8 (2 min 09 s)** | **15 (5 min 13 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 12 min 24 s | 1 (12 s) | 2 (4.7 s) | — | 1 itération(s), api-mail 1B/2T |
+| **Total cycle** | | **55 min 22 s** | **9 (2 min 22 s)** | **17 (5 min 18 s)** | **0 (0.0 s)** | |
 
 ## Develop log
 
@@ -406,3 +407,59 @@ couverture. Deux exécutions complètes de la solution finissent à 0 échec. M�
 sa propre task.
 
 - **Étape suivante** : `/lint-angular task-285`
+
+## Lint log — `client-angular` (code-only)
+
+**Scope retenu : `weda2` + `mss-lib`, pas le défaut.**
+
+Le task file ne déclare pas `**LintProjects**`, or le code Angular de cette US
+vit dans **`apps/weda2/src/lib/auth`** (`scope:weda2`) autant que dans
+`libs/mss`. Le scope par défaut de `/lint-angular` (`tag:scope:mss`) n'aurait
+donc pas regardé une seule ligne de la partie shell — exactement le piège que
+task-284 avait consigné. Lint lancé explicitement sur les deux projets.
+
+Base de comparaison : projets ciblés directement plutôt que
+`affected --base=origin/next`, car la branche checkée
+(`feature/nova-rewriting-mss`) porte du travail humain en cours qui n'appartient
+pas à cette US.
+
+### Résultat — 1 itération
+
+| Projet | Avant | Après |
+|---|---|---|
+| `weda2` | 39 problèmes (**2 erreurs**, 37 warnings) | 36 problèmes (**0 erreur**, 36 warnings) |
+| `mss-lib` | 17 problèmes (**2 erreurs**, 15 warnings) | 14 problèmes (**0 erreur**, 14 warnings) |
+
+**Les 4 erreurs étaient toutes dans des fichiers de cette US** — corrigées, aucune
+acceptée. Les warnings restants sont pré-existants (`max-lines`, `complexity`,
+`jsdoc/require-example` sur du code ancien) ; un warning a disparu au passage.
+
+### Un vrai défaut d'insertion, révélé par le lint
+
+Deux des quatre erreurs venaient de la **même bévue** : dans
+`libs/mss/src/core/services/mss-api.service.ts`, mon ancre d'insertion était la
+signature de `getFolders()`, ce qui a placé `closeMailSession` **entre le JSDoc
+existant de `getFolders` et `getFolders` lui-même**. Résultat : un bloc JSDoc
+orphelin attribué à ma méthode, et `getFolders` sans documentation
+(`jsdoc/require-jsdoc`). Le JSDoc a été rendu à son propriétaire.
+
+Le même motif d'insertion avait été utilisé côté `client-mobile` — **vérifié, il
+est sain** : l'ancre y était placée après le corps de `getFolders`, pas avant sa
+signature.
+
+Deux autres erreurs : `@param`/`@returns` manquants sur le helper
+`closeMailSession` de `store-helpers.utils.ts`. Ajoutés.
+
+### Re-validation
+
+- `npx nx build weda2` → **succès**
+- `npx nx run-many -t test --projects=weda2,mss-lib` → **weda2 2570 passés**
+  (14 skipped), **mss-lib 329 passés**, 0 échec
+
+### Code-only
+
+Aucune opération git sur `client-angular`. Les fichiers restent modifiés dans
+l'arbre de travail de `feature/nova-rewriting-mss` — l'humain garde branche,
+commit, push et PR TFS.
+
+- **Étape suivante** : `/lint-mobile task-285`
