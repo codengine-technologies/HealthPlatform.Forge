@@ -217,7 +217,8 @@ Branche unique sur les repos pushables : `feat/task-285-logout-closes-mail-sessi
 | /sonar | ok | 12 min 24 s | 1 (12 s) | 2 (4.7 s) | — | 1 itération(s), api-mail 1B/2T |
 | /lint-angular | ok | 3 min 12 s | 1 (17 s) | 1 (21 s) | — | 1 itération(s), client-angular 1B/1T |
 | /lint-mobile | ok | 41 s | — | — | — | — |
-| **Total cycle** | | **59 min 15 s** | **10 (2 min 39 s)** | **18 (5 min 39 s)** | **0 (0.0 s)** | |
+| /verify-visual | skipped | 31 s | — | — | — | aucun ecran touche : 0 template/style modifie, pas de Stitch design log |
+| **Total cycle** | | **59 min 46 s** | **10 (2 min 39 s)** | **18 (5 min 39 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×2 (35 s)
 
@@ -531,3 +532,86 @@ pour l'arbitrage de `/review` plutôt que corrigé en douce : y toucher élargir
 PR au layout général du shell.
 
 - **Étape suivante** : `/review task-285`
+
+## PRs
+
+| Repo | PR | Label |
+|---|---|---|
+| `api-mail` | [#215](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/215) | `awaiting-human-merge` |
+| `client-mobile` | [#68](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/68) | `awaiting-human-merge` |
+| `client-blazor` | [#70](https://github.com/codengine-technologies/HealthPlatform.Client/pull/70) | `awaiting-human-merge` |
+| `dtos-mss` | **aucune** — branche vide, la US ne change aucun contrat | — |
+| `client-angular` | **code-only** — l'humain gère commit/push TFS et ouverture de PR | — |
+
+### `client-angular` — fichiers à reprendre
+
+Branche checkée : `feature/nova-rewriting-mss`. Modifications **non commitées**.
+
+- `apps/weda2/src/lib/auth/models/mail-session-closer.model.ts` *(nouveau)*
+- `apps/weda2/src/lib/auth/index.ts`
+- `apps/weda2/src/lib/auth/store/authentication-store.ts`
+- `apps/weda2/src/lib/auth/store/models/authentication-store-props.model.ts`
+- `apps/weda2/src/lib/auth/store/utils/store-helpers.utils.ts`
+- `apps/weda2/src/lib/auth/store/utils/store-helpers.utils.spec.ts`
+- `apps/weda2/src/app/app.config.ts`
+- `libs/mss/src/core/services/mss-api.service.ts`
+
+⚠️ **Ne pas inclure** dans la PR TFS sans vérification : `apps/mss/src/environments/environment.ts`
+et `apps/weda2/src/environments/environment.ts` sont un WIP humain **antérieur**,
+laissé intact par la forge.
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 0 blocage, 3 suggestions non bloquantes.
+
+### Suggestions
+
+1. **`api-mail`** — l'instance qui répond applique l'ordre deux fois (fermeture
+   locale synchrone, puis réception de sa propre diffusion). Le second passage
+   rend `0`, donc l'agrégation du total cluster reste juste, mais cela produit
+   une ligne de journal à vide par déconnexion.
+2. **`client-mobile`** — `firstValueFrom(this.auth.$logout())` n'est pas borné.
+   `$logout()` avale déjà ses erreurs, mais un proxy qui accepterait la connexion
+   sans jamais répondre retiendrait le praticien. **Pré-existant**, hors périmètre
+   de cette US.
+3. **`client-blazor`** — le point d'entrée `/logout` du menu profil
+   (`MainLayout.razor`) ne porte pas de crochet de test ; aucun de ses 4 items
+   n'en porte. Layout de shell, antérieur, hors périmètre.
+
+### Sécurité / données de santé
+
+Les journaux backend portent l'adresse MSSanté du praticien — identification
+professionnelle exigée par l'imputabilité PGSSI-S, déjà la convention du dépôt.
+**Aucun INS, aucun NIR, aucun contenu de message, aucune pièce jointe, aucun CDA.**
+Les frontends n'émettent qu'un POST sans corps ; leurs journaux d'échec ne portent
+ni adresse ni contenu.
+
+## DOD — vérification
+
+| Item | État |
+|---|---|
+| Build passe sur chaque repo listé | ✓ 4/4 |
+| Tests passent sur chaque repo listé | ✓ sauf 5 échecs `api-mail` **prouvés pré-existants** (voir plus bas) |
+| Intégration : l'ordre d'une instance ferme la session d'une **autre** | ✓ `ClosesTheMailSessionHeldByAnotherInstance` |
+| Intégration : ordre sur session inexistante/close → succès | ✓ `ReplayedOnAnAlreadyClosedSession_Succeeds` |
+| Intégration : la réponse n'attend pas la propagation | ✓ `DoesNotWaitForOtherInstancesToApplyTheOrder` |
+| ≥ 1 test unitaire par nouveau handler backend | ✓ 14 tests |
+| Par frontend : l'API est appelée **avant** la purge locale | ✓ mobile, blazor, angular |
+| Par frontend : aboutit même si l'appel échoue ou expire | ✓ mobile (3), blazor (2), angular (1) |
+| `client-mobile` transmet son identifiant de session cliente | ✓ en-tête `Client-Session-Id` (`MssHeadersInterceptor`, task-282) |
+| Évènements PGSSI-S journalisés | ✓ ordre reçu, sessions fermées, échec de diffusion, échec côté client |
+| Aucune donnée de santé en clair dans les logs | ✓ |
+| `data-testid` sur le contrôle de déconnexion des 3 frontends | ✓ **avec nuance** — mobile `data-testid` ×3, angular `data-testid`, blazor `data-test` (convention du dépôt Blazor). Le menu profil du shell n'en porte pas : hors périmètre. |
+
+### Les 5 échecs `api-mail`, et pourquoi ils ne bloquent pas
+
+`GetFolderTodayAsync` / `GetFolderNotSeenTodayAsync` / `FilterTodayEmails` :
+`Assert.NotEmpty()` sur la sélection « emails du jour ».
+
+Le corpus de test date ses messages **relativement au jour du semis**, et le
+magasin de mail est persisté d'avant minuit. La validation a traversé le passage
+au 2026-09-02 : les messages « J-0 » sont devenus J-1.
+
+**Prouvé, pas supposé** : les 5 mêmes tests ont été rejoués dans un worktree sur
+`origin/develop` (`f3f0b6b`, sans aucun commit de cette US) — ils échouent à
+l'identique. Mérite sa propre task.
