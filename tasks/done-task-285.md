@@ -218,7 +218,9 @@ Branche unique sur les repos pushables : `feat/task-285-logout-closes-mail-sessi
 | /lint-angular | ok | 3 min 12 s | 1 (17 s) | 1 (21 s) | — | 1 itération(s), client-angular 1B/1T |
 | /lint-mobile | ok | 41 s | — | — | — | — |
 | /verify-visual | skipped | 31 s | — | — | — | aucun ecran touche : 0 template/style modifie, pas de Stitch design log |
-| **Total cycle** | | **59 min 46 s** | **10 (2 min 39 s)** | **18 (5 min 39 s)** | **0 (0.0 s)** | |
+| /review | ok | 12 min 53 s | 2 (12 s) | 4 (1 min 53 s) | — | api-mail 1B/1T, client-blazor 0B/1T, client-mobile 1B/1T, client-angular 0B/1T |
+| /tech-writer | ok | 3 min 53 s | — | — | — | — |
+| **Total cycle** | | **1 h 16 min** | **12 (2 min 51 s)** | **22 (7 min 33 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×2 (35 s)
 
