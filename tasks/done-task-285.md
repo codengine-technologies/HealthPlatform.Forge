@@ -617,3 +617,73 @@ au 2026-09-02 : les messages « J-0 » sont devenus J-1.
 **Prouvé, pas supposé** : les 5 mêmes tests ont été rejoués dans un worktree sur
 `origin/develop` (`f3f0b6b`, sans aucun commit de cette US) — ils échouent à
 l'identique. Mérite sa propre task.
+
+## Test d'intégration multi-instances (2026-09-02) — un défaut trouvé et corrigé
+
+Banc Aspire, **5 réplicas** d'`api-mail`, Dovecot + Redis réels, identités
+virtuelles du harnais de charge (profil `https-load-test`,
+`MSS_ENFORCE_PSC_IDENTITY=false`, jeton PSC forgé à la forme d'un vrai JWT).
+
+### Le défaut : l'abonnement au canal était posé paresseusement
+
+`IBackgroundSyncManager` est un singleton résolu par **un seul** appelant,
+`SyncController`. Son abonnement à `mss:sync:cmd` — le canal qui porte l'ordre de
+clôture de cette US — n'était donc établi qu'à la **première requête
+`/api/v1/sync/*` servie par l'instance**.
+
+Or une instance ouvre ses sessions IMAP par `/api/v1/mail/*`, qui résout un
+**autre** singleton. Elle pouvait donc détenir la session d'un praticien **en
+étant sourde à l'ordre**. Le défaut que la US visait, revenu sous une autre forme.
+
+**Mesure avant correctif** — les 5 abonnements portaient tous un contexte HTTP :
+
+| Horodatage | Déclenché par |
+|---|---|
+| 05:14:23 | `SyncController.LogoutCleanupAsync` |
+| 05:15:57 | `SyncController.LogoutCleanupAsync` |
+| 05:16:03 ×3 | `SyncController.GetSyncStatusAsync` |
+
+Aucun au démarrage. Un ordre émis avant réchauffement n'a fermé **aucune**
+session. En production, une instance fraîche (déploiement progressif, montée en
+charge) ne servant que du trafic `/mail/*` serait restée sourde indéfiniment.
+
+### Correctif — `327501f`
+
+`SyncCommandSubscriptionService`, un `IHostedService` qui force la résolution du
+singleton au démarrage. Test ajouté, vérifié **ROUGE** sans lui (`SubscriberCount`
+attendu 1, observé 0) — il porte sur le **démarrage de l'hôte**, pas sur la
+construction directe du gestionnaire, qui était l'angle mort des 14 tests
+précédents.
+
+### Contre-épreuve après correctif
+
+Banc redémarré : **5 abonnements en 134 ms, aucun avec contexte de requête**.
+
+Puis, **sans aucun réchauffement `/sync/*`** (20 appels `/mail/*`, un seul ordre) :
+
+| Horodatage | Instance | Contexte | `SessionsClosed` |
+|---|---|---|---|
+| 05:24:16.926 | celle qui **reçoit** le POST | `RequestPath=/api/v1/sync/logout` | **0** |
+| 05:24:17.047 | une **autre** | diffusion (`CorrelationId="-"`) | **1** |
+
+**Règle 4 tenue sur le système réel.** Avant le correctif, cette seconde instance
+n'était pas abonnée et la session aurait survécu.
+
+### Autres relevés
+
+- **Règle 5 en conditions réelles** : `POST /api/v1/sync/logout` répond en **37 ms**.
+- **Les 5 échecs d'intégration « emails du jour » sont redevenus verts** (419/435)
+  après re-semis du corpus — confirmation du diagnostic de bascule de minuit.
+- **Flaky pré-existant nommé** : `MailRepositoryEnrichPersistInstrumentationTests`,
+  **deux** de ses tests ont clignoté (`The_remainder_carries_the_whole_total_when_no_phase_was_observed`,
+  `A_deduplicated_mail_is_measured_too_instead_of_vanishing_from_the_series`),
+  6/6 en isolation sur 4 exécutions. Sans rapport avec cette US — mérite sa task.
+- **Piège d'outillage** : le MCP `aspire` ne détecte pas un AppHost lancé par
+  `dotnet run` (il faut `aspire run`), et `MachineName`/`PodName` sont identiques
+  pour les 5 réplicas — le discriminant utilisable est la **présence ou l'absence
+  de contexte de requête** dans l'événement.
+
+Suite complète après correctif : domain 136, application **2 241**, integration
+419, api 705, infrastructure 463/464 (flaky ci-dessus).
+
+Commentaire déposé sur la PR : [#215 (comment)](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/215#issuecomment-5504887884)
