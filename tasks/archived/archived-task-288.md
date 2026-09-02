@@ -452,3 +452,33 @@ rejoindre cette collection**.
 
 → **Mérite sa propre task** : la corriger ici toucherait 18 fichiers du module IMAP
 sur une PR de révocation de certificats (règles 5 et 6).
+
+## Merged
+
+- **Date** : 2026-09-02 09:39 UTC — attestation humaine `--i-tested`.
+- **`api-mail`** : PR [#216](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/216)
+  squash-mergée sur `develop` — commit **`03841f0`**. Branche distante
+  `fix/task-288-ocsp-crl-hardening` supprimée ; **branche locale conservée**.
+- **`dtos-mss`** : aucune PR (branche auto-incluse restée vide, aucun contrat
+  touché). Branche distante supprimée, locale conservée.
+- **CI `develop`** : ✅ success —
+  [run 33615325241](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/33615325241).
+
+### Suites identifiées pendant le cycle, non traitées ici
+
+1. **Vérification de la signature de la réponse OCSP** — `ValidateOcspResponse`
+   lit le statut sans jamais vérifier la signature de la réponse contre l'AC
+   émettrice, sans contrôler `thisUpdate`/`nextUpdate` ni de nonce, sur un
+   transport HTTP en clair. Défaut **antérieur** à cette task ; le cache
+   l'amplifie (une réponse forgée vaudrait pour tous les praticiens de
+   l'opérateur et sur les 5 réplicas, la clé étant le numéro de série). La
+   graine livrée ici met le certificat d'AC à disposition sans accès réseau, ce
+   qui rend le correctif immédiat. **Mérite une US de sécurité dédiée.**
+2. **Borner la fraîcheur OCSP par le `nextUpdate` de la réponse** —
+   `min(nextUpdate, OcspCacheFreshnessHours)`. Ne peut que raccourcir la
+   fenêtre, donc sans arbitrage ; corrige une incohérence interne (le chemin
+   CRL honore déjà `crl.NextUpdate`) et un écart RFC 6960 §3.2.
+3. **Dette d'isolation des tests** — ~18 classes `ImapService*Tests` émettent
+   les instruments de `EnrichmentOperationScope` sans rejoindre la collection
+   sérialisée `MailMetricsCaptureCollection` ; `origin/develop` échoue 4 fois
+   sur 12 exécutions sans une ligne de task-288. **Mérite sa propre task.**
