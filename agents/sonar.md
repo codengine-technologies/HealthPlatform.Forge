@@ -802,7 +802,8 @@ mkdir -p TestResults
 > |---|---|---|
 > | task-205 | 9.9.8 | `sonar.login` |
 > | task-228 (2026-08-04) | 25.6.0 | `sonar.token` |
-> | **2026-08-30 (vérifié)** | **9.9.8.100196** | **`sonar.login`** |
+> | 2026-08-30 (vérifié) | 9.9.8.100196 | `sonar.login` |
+> | **2026-09-02 (vérifié, task-288)** | **25.6.0.109173** | **`sonar.token`** |
 >
 > L'image est `sonarqube:lts-community` : elle **suit la LTS courante**, donc une
 > re-création du conteneur peut ramener une 9.9 là où on avait une 25.x. C'est ce
@@ -818,7 +819,12 @@ mkdir -p TestResults
 > ```
 >
 > Les blocs ci-dessous sont écrits pour la version **actuellement installée
-> (9.9.8, donc `sonar.login`)**. Si le contrôle rend une 10+, basculer.
+> (25.6.0, donc `sonar.token`)**. Si le contrôle rend une 9.x, basculer.
+>
+> Le conteneur a **encore** changé de version entre le 2026-08-30 et le
+> 2026-09-02 : la quatrième bascule de ce tableau. Elle confirme que la seule
+> conduite tenable est d'exécuter le `curl` de contrôle, jamais de se fier à
+> la dernière ligne.
 >
 > **Pourquoi ça compte autant** : sur une 9.9, `sonar.token` est **ignoré
 > silencieusement**. Le `begin` réussit (il ne contacte le serveur que pour les
