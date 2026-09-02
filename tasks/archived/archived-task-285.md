@@ -736,3 +736,27 @@ distincts, ou le banc — ce que le test d'intégration de 05:24 a fait.
 
 La diffusion reste vérifiée sur ce contrôle : pour l'ordre de 09:12:11,
 **6 instances atteintes** (1 fermeture locale + 5 applications par diffusion).
+
+## Merged
+
+Mergée le 2026-09-02 par l'humain via `/merge task-285 --i-tested`, après deux
+contrôles depuis l'interface Angular (voir la section précédente).
+
+| Repo | PR | Commit squash |
+|---|---|---|
+| `api-mail` | [#215](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/215) | `83fcaa6` |
+| `client-blazor` | [#70](https://github.com/codengine-technologies/HealthPlatform.Client/pull/70) | `c197d5d` |
+| `client-mobile` | [#68](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/68) | `ccb14d6` |
+| `dtos-mss` | aucune PR — branche vide, aucun contrat touché | — |
+| `client-angular` | **code-only** — cycle de vie git et PR TFS entièrement à l'humain | — |
+
+Refs distantes `feat/task-285-logout-closes-mail-session-all-pods` supprimées sur
+les quatre repos pushables ; branches **locales conservées** (spec `/merge`).
+Les quatre clones sont repassés sur `develop` en avance rapide.
+
+⚠️ **`client-angular` reste à traiter par l'humain** : 11 fichiers modifiés non
+commités sur `feature/nova-rewriting-mss`, correctif du cycle de DI
+(`mailSessionCloserFactory`, `app.config.spec.ts`) inclus. Deux d'entre eux
+(`apps/mss/src/environments/environment.ts`, `apps/weda2/src/environments/environment.ts`)
+sont un WIP humain **antérieur** à cette US et ne doivent pas partir dans la PR
+TFS sans vérification.
