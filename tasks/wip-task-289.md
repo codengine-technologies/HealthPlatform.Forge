@@ -224,3 +224,14 @@ reste le choix de `/develop`) :
   Flagsmith du chemin d'identité **est** une donnée personnelle du praticien
   (adresse MSSanté nominative) ; le DOD exige qu'elle ne fuite pas dans les
   logs de dérive
+
+## Branches
+
+- `api-mail` (pushed) : `fix/task-289-flag-absent-isole-du-snapshot` —
+  https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-289-flag-absent-isole-du-snapshot
+- `dtos-mss` (pushed, auto-inclus) : `fix/task-289-flag-absent-isole-du-snapshot` —
+  https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/fix/task-289-flag-absent-isole-du-snapshot
+  (branche créée proactivement par convention ; aucun changement de contrat
+  n'est attendu pour cette US — sans commit, aucune PR ne sera ouverte)
+
+Pré-flight du 2026-09-04 : les 7 repos automatisés sont sur `develop`.
