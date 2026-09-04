@@ -244,7 +244,12 @@ Pré-flight du 2026-09-04 : les 7 repos automatisés sont sur `develop`.
 |---|---|---|---|---|---|---|
 | /start | ok | 40 s | — | — | — | — |
 | /develop | ok | 42 min 49 s | 3 (17 s) | 18 (9 min 15 s) | — | api-mail 3B/18T |
-| **Total cycle** | | **43 min 30 s** | **3 (17 s)** | **18 (9 min 15 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 28 min 57 s | 4 (49 s) | 21 (9 min 47 s) | — | 3 itération(s), api-mail 4B/21T |
+| /lint-angular | skipped | 0.5 s | — | — | — | client-angular non listé dans **Repos** (US backend-only, Single frontend: true) — aucun code Angular écrit |
+| /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non listé dans **Repos** (US backend-only) — repo resté sur develop, aucun code mobile écrit |
+| /verify-visual | skipped | 0.5 s | — | — | — | aucun écran client-mobile touché (US backend-only, pas de ## Stitch design log) |
+| /review | failed | 10 min 28 s | 1 (5.5 s) | 1 (1 min 22 s) | — | api-mail 1B/1T, code review CHANGES REQUESTED — 3 bloquants (2 tests vacuos établis par mutation, 1 libellé de log trompeur) ; questions/task-289.md écrit |
+| **Total cycle** | | **1 h 22 min** | **8 (1 min 12 s)** | **40 (20 min 24 s)** | **0 (0.0 s)** | |
 
 ## Develop log
 
