@@ -29,6 +29,15 @@
 !questions/
 !questions/**
 
+# Conventions apprises (CLAUDE.md § « Conventions apprises — boucle
+# d'auto-amélioration ») : alimentées par /sonar et /lint-*, lues par /develop
+# avant d'écrire du code. Ce sont des artefacts du plan de contrôle au même
+# titre que agents/ — non versionnées, les leçons ne survivaient pas à un clone
+# ni à un changement de poste, et la boucle d'auto-amélioration se réinitialisait
+# en silence. Constaté le 2026-09-04 (task-289) en incrémentant CA1859.
+!conventions/
+!conventions/**
+
 !.windsurf/
 !.windsurf/**
 # never commit machine-local Windsurf settings (e.g. MCP secrets)
