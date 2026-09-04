@@ -244,12 +244,12 @@ Pré-flight du 2026-09-04 : les 7 repos automatisés sont sur `develop`.
 |---|---|---|---|---|---|---|
 | /start | ok | 40 s | — | — | — | — |
 | /develop | ok | 9 min 02 s | 5 (29 s) | 22 (11 min 26 s) | — | api-mail 5B/22T |
-| /sonar | ok | 28 min 57 s | 4 (49 s) | 21 (9 min 47 s) | — | 3 itération(s), api-mail 4B/21T |
-| /lint-angular | skipped | 0.5 s | — | — | — | client-angular non listé dans **Repos** (US backend-only, Single frontend: true) — aucun code Angular écrit |
-| /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non listé dans **Repos** (US backend-only) — repo resté sur develop, aucun code mobile écrit |
-| /verify-visual | skipped | 0.5 s | — | — | — | aucun écran client-mobile touché (US backend-only, pas de ## Stitch design log) |
+| /sonar | ok | 5 min 41 s | 5 (1 min 05 s) | 26 (13 min 01 s) | — | 1 itération(s), api-mail 5B/26T |
+| /lint-angular | skipped | 0.4 s | — | — | — | US backend-only (**Repos**: api-mail) — repo cible non touché |
+| /lint-mobile | skipped | 0.5 s | — | — | — | US backend-only (**Repos**: api-mail) — repo cible non touché |
+| /verify-visual | skipped | 0.5 s | — | — | — | US backend-only (**Repos**: api-mail) — repo cible non touché |
 | /review | failed | 10 min 28 s | 1 (5.5 s) | 1 (1 min 22 s) | — | api-mail 1B/1T, code review CHANGES REQUESTED — 3 bloquants (2 tests vacuos établis par mutation, 1 libellé de log trompeur) ; questions/task-289.md écrit |
-| **Total cycle** | | **49 min 10 s** | **10 (1 min 25 s)** | **44 (22 min 36 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **25 min 54 s** | **11 (1 min 40 s)** | **49 (25 min 50 s)** | **0 (0.0 s)** | |
 
 ## Develop log
 
@@ -569,3 +569,44 @@ télémétrie sensibles à la charge) que celle attribuée ce matin à `origin/d
 par contre-épreuve sur worktree vierge — deux runs, dont un rouge sur d'autres
 tests de la même famille, à code identique. Ce test n'est dans aucun fichier du
 diff de task-289.
+
+## PRs
+
+- `api-mail` (pushed) : **PR #217** — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/217
+  — label `awaiting-human-merge`, `MERGEABLE`. Branche
+  `fix/task-289-flag-absent-isole-du-snapshot`, 4 commits.
+- `dtos-mss` (pushed, auto-inclus) : **aucune PR** — aucun commit, aucun
+  changement de contrat n'était nécessaire. Branche créée par convention.
+- `client-angular`, `client-mobile`, `devops`, `psc-proxy-*` : hors périmètre
+  (US backend-only, `**Repos**: api-mail`).
+
+## Code Review Summary
+
+**Deux tours, tous deux CHANGES REQUESTED, tous deux levés. Verdict final :
+APPROVED.**
+
+Les défauts ont été établis **par mutation du code**, pas par relecture — et
+c'est ce protocole qui a permis d'attraper des tests qui ne gardaient rien.
+
+| Tour | Défauts | Nature |
+|---|---|---|
+| 1 | 3 bloquants | 2 tests vacuos (restaient verts sous mutation) + 1 libellé de log trompeur |
+| 2 | 2 bloquants | **introduits par la 1re reprise** : heuristique qui mentait + test n'assertant pas le niveau |
+
+Contre-épreuves finales : `FailClosedAtColdStart` vidée → 2 tests tombent ;
+correctif d'isolation neutralisé → 7 ; niveau de log muté → 3 ; heuristique
+réintroduite → 2 ; `ai_pipeline` en fail-open → 6.
+
+### La leçon de ce cycle
+
+Le tour 2 a trouvé un défaut **que le tour 1 avait causé**. La correction du
+bloquant 3 (un libellé qui affirmait plus qu'il ne savait) avait été faite par
+une **heuristique** comparant chaque flag à son repli — laquelle affirmait à son
+tour plus qu'elle ne savait, et **mentait** dans une configuration de production
+plausible. Le remède final est l'inverse d'un ajout : **ne rien affirmer**. La
+ligne d'amorce n'énonce plus que du mesuré, et le signal de panne reste au
+service, qui nomme les flags éteints.
+
+Deux fois de suite, la même erreur de méthode a été prise : croire qu'un
+comportement est correct parce qu'il est raisonné. Les deux fois, la mesure a
+tranché contre le raisonnement.
