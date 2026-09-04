@@ -235,3 +235,122 @@ reste le choix de `/develop`) :
   n'est attendu pour cette US — sans commit, aucune PR ne sera ouverte)
 
 Pré-flight du 2026-09-04 : les 7 repos automatisés sont sur `develop`.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-289 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 40 s | — | — | — | — |
+| /develop | ok | 42 min 49 s | 3 (17 s) | 18 (9 min 15 s) | — | api-mail 3B/18T |
+| **Total cycle** | | **43 min 30 s** | **3 (17 s)** | **18 (9 min 15 s)** | **0 (0.0 s)** | |
+
+## Develop log
+
+### Implémentation (api-mail)
+
+Test-first : 11 tests unitaires écrits d'abord, **RED vérifié à 10/11** — le 11e
+(`TransportFailureMidEvaluation_IsNotTreatedAsAMissingFlag`) était vert avant
+tout code, et c'est normal : il verrouille l'invariant de task-199, qui n'était
+pas encore cassé. Puis GREEN 11/11.
+
+Fichiers touchés : `FlagsmithFeatureFlagService.cs` (isolation par flag, statut
+`partial`, log de dérive, log de panne véridique), `FeatureFlags.cs`
+(`FailClosedAtColdStart`, `HasDeclaredColdStartDefault`),
+`FeatureFlagMetrics.cs` (statut `partial`), `FeatureFlagWarmUpService.cs`
+(nouveau), `FlagsmithExtensions.cs` (enregistrement).
+
+### Deux trouvailles qui ont changé l'implémentation
+
+1. **`FlagsmithAPIError` hérite de `FlagsmithClientError`** (vérifié par
+   réflexion sur le paquet Flagsmith 9.0.0). Un `catch (FlagsmithClientError)`
+   attrape donc aussi les pannes réseau : le premier jet publiait un snapshot de
+   replis à chaque hoquet de transport, ce qui **détruisait l'invariant « dernier
+   état connu » de task-199**. Le filtre est
+   `when (error is not FlagsmithAPIError)`. C'est le test de non-régression qui
+   l'a attrapé, pas la relecture.
+2. **`await Task.Yield()` en tête de `ExecuteAsync`.** Sans lui,
+   `BackgroundService` n'attend `ExecuteAsync` que jusqu'au premier `await`
+   réellement incomplet : en évaluation locale Flagsmith tout se complète de
+   façon synchrone, et l'appel réseau serait payé par le thread de démarrage du
+   pod, sous le verrou du service — exactement ce que l'amorce prétend éviter.
+   Même motif que `BackgroundTaskQueue`.
+
+### Passe qualité `/simplify` — appliquée
+
+Quatre revues en parallèle (reuse / simplification / efficacité / altitude).
+Cleanups appliqués :
+
+- **Discipline de verrou** : `LogRefreshFailure` prend `_gate` lui-même, comme
+  `ReportRefreshOutcome` et `LogSharedStoreFailure`. Deux blocs `lock` chez les
+  appelants supprimés, et un invariant qui ne tenait que par un commentaire.
+- **Vocabulaire de scope unifié** : constantes `EnvironmentScope` /
+  `IdentityScope` partagées par le log de dérive et le log de panne, au lieu de
+  quatre littéraux pour deux chemins. Le log de panne d'environnement est
+  désormais scopé, ce qu'il n'était pas.
+- **`FailClosedAtColdStartLabel`** pré-calculé (immuable pour la vie du process).
+- **Test de convention** `FeatureFlagsConventionTests` : tout flag de
+  `FeatureFlags.All` doit avoir un repli **explicitement déclaré**.
+  `ColdStartDefault` rendait `false` aussi bien pour « déclaré désactivé » que
+  pour « jamais déclaré » — un flag ajouté sans sa politique aurait été annoncé
+  « stay DISABLED » sans que personne n'ait pris la décision. C'est l'oubli de
+  task-274 rejoué un cran plus loin, et c'est le seul finding d'altitude qui
+  généralise au lieu d'empiler.
+- **Helpers de test promus** : `MutableTimeProvider` →
+  `mss.mail.testing.shared` (elle existait en 3 copies nested dans le seul
+  répertoire `Extensions/`) ; `RefreshStatusCounter` et `CapturingLogger<T>` →
+  `tests/mss.mail.api.tests/TestInfrastructure/`. Le bloc `MeterListener` inline
+  de `FlagsmithFeatureFlagServiceTests` et son inspection réflexive
+  `GetArguments()[2]` disparaissent au profit de ces helpers.
+- **Duplications de test** : `StubEnvironment(defaultValue, …)` remplace trois
+  montages manuels de substitut ; la liste des huit flags de widgets est
+  déclarée une fois par fichier au lieu d'être énumérée verbatim.
+- **`IReadOnlyList<string>`** pour le paramètre `missing` (le helper ne mute
+  rien).
+
+### Un flake que la passe qualité a introduit, puis corrigé
+
+Le `Task.Yield()` de l'amorce a rendu les deux tests du warm-up non
+déterministes, de deux façons distinctes :
+
+- sous le **contexte de synchronisation de xUnit**, la continuation du yield ne
+  s'exécute pas avant la fin du test — mesuré : le service n'avait alors *rien*
+  fait, et le test « l'amorce appelle Flagsmith » passait pourtant, parce que
+  c'était l'évaluation suivante du test qui déclenchait l'appel. **Un test vert
+  qui ne gardait rien** ;
+- `StopAsync` **annule le jeton d'arrêt avant** d'attendre `ExecuteAsync` : si
+  l'annulation gagnait la course, l'amorce sortait par son
+  `catch (OperationCanceledException)` sans jamais interroger Flagsmith.
+
+Correctif : `Task.Run` (pas de contexte de synchronisation) + attente de
+`BackgroundService.ExecuteTask` au lieu de `StopAsync`. 3 × 720/720 verts.
+
+### Findings écartés (et pourquoi)
+
+- **Tag `scope` sur `mssante_featureflag_refresh_total`** — utile pour
+  distinguer une dérive d'environnement d'une dérive d'identité, mais c'est un
+  changement du **contrat de télémétrie**, hors du périmètre « quality only »
+  d'une passe qualité. À instruire si l'exploitation en a besoin.
+- **Throttle de dérive clé par scope** — aujourd'hui `_driftReports` est unique
+  pour les deux chemins, donc une dérive d'environnement peut étouffer le
+  premier log d'une dérive d'identité dans la même fenêtre. C'est un changement
+  de **comportement**, pas un cleanup. Signalé ici pour arbitrage `/review`.
+- **`WarmUpAsync` sur `IFeatureFlagService`** — l'amorce chauffe par effet de
+  bord d'une lecture ; un membre dédié dirait l'intention. Changement de
+  contrat d'interface : écarté. Le risque signalé (une optimisation du chemin à
+  froid qui viderait l'amorce en silence) est couvert autrement, par le test
+  `WarmUp_ActuallyRefreshesTheSnapshotFromFlagsmith` qui assert l'appel réseau
+  **réel**.
+- **Renommage `FailureThrottle` → `WindowedReportThrottle`** — juste sur le
+  fond (le type sert désormais à journaliser un non-échec), mais du churn sur un
+  type pré-existant au milieu d'un diff de correctif.
+- **Health check `feature-flags` en `Degraded`** — la dérive contrat/environnement
+  est sur le fond une condition de *readiness de configuration*, et le repo a
+  l'infrastructure (`AddDefaultHealthChecks`, tag `ready`). Bien plus
+  exploitable qu'une ligne de log au boot : interrogeable en continu, survit à
+  la rotation des logs. **Hors périmètre** (dépasse le diff, et implique une
+  décision produit : ne surtout pas sortir un pod du service pour un flag de
+  widget). À instruire en US.
+- **Migration des 3 copies nested de `CapturingLogger<T>` dans `Middleware/`** —
+  hors du périmètre du diff.
