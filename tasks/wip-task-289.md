@@ -463,3 +463,57 @@ Par ailleurs, la version du conteneur a **rebasculé de 25.6.0 à 9.9.8 en deux
 jours** (donc `sonar.login` et non `sonar.token`) : cinquième bascule du
 tableau du playbook, et la première *descendante*. Aucune tendance à
 extrapoler ; le `curl` de contrôle reste le seul geste fiable (commit `6972864`).
+
+## Develop log — reprise après CHANGES REQUESTED
+
+Les trois bloquants de `questions/task-289.md` sont levés. Chacun est vérifié
+par **contre-épreuve de mutation**, pas par relecture — c'était le reproche
+adressé à la première passe.
+
+| Bloquant | Contre-épreuve | Avant | Après |
+|---|---|---|---|
+| 1 — test de convention vacuo | `FailClosedAtColdStart` vidée | restait **vert** | **tombe** |
+| 2 — test décoratif | correctif d'isolation annulé | restait **vert** | **tombe** (7/11 de la classe) |
+| 3 — libellé de l'amorce | test « Flagsmith injoignable au boot » | n'existait pas | RED puis GREEN |
+
+### Ce qui a changé
+
+1. **`FailClosedList_IsCompleteAndAnchoredOnTheAiPipeline`** (renommé) : assertion
+   de **complétude** (projection exacte de `All`, ordre compris) plus un
+   **ancrage** sur `AiPipeline`. L'ancienne version n'assertait qu'une identité
+   algébrique entre deux dérivés de la même source, satisfaite par le vide.
+2. **`MissingFlag_TakesItsDeclaredColdStartDefault_WhileOthersStayLive`**
+   (renommé) : `defaultValue: false`, donc les flags **présents** portent une
+   valeur qui **contredit** leur repli. Sans cela le test ne pouvait pas
+   distinguer « chaque absent prend SON repli » de l'incident lui-même. Même
+   correction sur `OneDeclaredFlagMissing_…`, dont 2 des 3 assertions étaient
+   vacuoses.
+3. **`FeatureFlagWarmUpService`** : `NoStateCameBack()` distingue « état chargé »
+   de « replis appliqués ». **Limite assumée et documentée** : ce contrôle
+   **sur-avertit sans jamais sous-avertir** — si Flagsmith rend par coïncidence
+   exactement les valeurs de repli, on annonce à tort qu'aucun état n'est revenu ;
+   mais dès qu'une valeur diffère, un état est certainement revenu. Le contrôle
+   exact demanderait au service d'exposer l'existence de son snapshot, soit un
+   changement de contrat d'interface — écarté, comme la revue le recommandait.
+
+### Passe qualité
+
+Le montage du service réel était recopié 3 fois dans les tests du warm-up
+(duplication introduite par les 2 tests du bloquant 3) → factorisé en
+`RealFlagServiceOver(client)`.
+
+### Note sur l'historique de la branche
+
+La branche a été **squashée en un commit** (`6dfa5d3`) entre la revue et cette
+reprise, hors forge. Contrôlé avant de reprendre : rien n'a été perdu — les 13
+fichiers sont présents, CA1859 et `Task.Yield` appliqués, local et distant
+alignés. La branche porte maintenant 3 commits.
+
+Build 0 erreur / 0 warning, **4025 tests verts**.
+
+### Non bloquants de la revue, toujours écartés
+
+Le log de résolution de dérive (symétrique de `TryConsumeRecovery`), l'invariant
+d'ordre `slot.Gate → _gate` à écrire dans le XML, `ConcurrentDictionary` dans
+`RefreshStatusCounter`, et le health check `feature-flags` — inchangés, motifs
+au `## Develop log` initial.
