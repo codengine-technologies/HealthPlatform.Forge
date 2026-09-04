@@ -243,13 +243,13 @@ Pré-flight du 2026-09-04 : les 7 repos automatisés sont sur `develop`.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 40 s | — | — | — | — |
-| /develop | ok | 42 min 49 s | 3 (17 s) | 18 (9 min 15 s) | — | api-mail 3B/18T |
+| /develop | ok | 9 min 02 s | 5 (29 s) | 22 (11 min 26 s) | — | api-mail 5B/22T |
 | /sonar | ok | 28 min 57 s | 4 (49 s) | 21 (9 min 47 s) | — | 3 itération(s), api-mail 4B/21T |
 | /lint-angular | skipped | 0.5 s | — | — | — | client-angular non listé dans **Repos** (US backend-only, Single frontend: true) — aucun code Angular écrit |
 | /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non listé dans **Repos** (US backend-only) — repo resté sur develop, aucun code mobile écrit |
 | /verify-visual | skipped | 0.5 s | — | — | — | aucun écran client-mobile touché (US backend-only, pas de ## Stitch design log) |
 | /review | failed | 10 min 28 s | 1 (5.5 s) | 1 (1 min 22 s) | — | api-mail 1B/1T, code review CHANGES REQUESTED — 3 bloquants (2 tests vacuos établis par mutation, 1 libellé de log trompeur) ; questions/task-289.md écrit |
-| **Total cycle** | | **1 h 22 min** | **8 (1 min 12 s)** | **40 (20 min 24 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **49 min 10 s** | **10 (1 min 25 s)** | **44 (22 min 36 s)** | **0 (0.0 s)** | |
 
 ## Develop log
 
@@ -517,3 +517,55 @@ Le log de résolution de dérive (symétrique de `TryConsumeRecovery`), l'invari
 d'ordre `slot.Gate → _gate` à écrire dans le XML, `ConcurrentDictionary` dans
 `RefreshStatusCounter`, et le health check `feature-flags` — inchangés, motifs
 au `## Develop log` initial.
+
+## Sonar log — reprise
+
+**Phase 1 (new code) — VERTE.** Phase 2 (dette legacy) skippée, même motif.
+
+| Métrique | 1er passage | Reprise | Cible | Verdict |
+|---|---|---|---|---|
+| **Quality Gate** | OK | **OK** (5/5) | OK | ✅ |
+| new_bugs / new_vulnerabilities | 0 / 0 | **0 / 0** | 0 | ✅ |
+| new_security_hotspots | 0 | **0** | 0 | ✅ |
+| new_coverage | 91,0 % | **91,0 %** | 80 % (QG) | ✅ |
+| bugs / vulnerabilities | 0 / 0 | 0 / 0 | 0 | ✅ |
+| sqale_rating | A | A | A | ✅ |
+| code_smells | 65 | 66 | — | ⚠️ non attribuable (voir note) |
+| coverage projet | 88,2 % | 88,2 % | 95 % | ❌ dette legacy |
+
+**Issues sur les 15 fichiers du diff : 0.** Aucun finding à corriger cette fois
+(le premier passage en avait un, CA1859, déjà corrigé).
+
+### Couverture du code de la task
+
+| Fichier | line_coverage | Non couvertes |
+|---|---|---|
+| `FeatureFlagWarmUpService.cs` | **100 %** | 0 |
+| `FeatureFlags.cs` | **100 %** | 0 |
+| `FeatureFlagMetrics.cs` | **100 %** | 0 |
+| `FlagsmithFeatureFlagService.cs` | 92,6 % | 16, **inchangées** |
+
+Les 16 lignes non couvertes sont exactement les mêmes qu'au premier passage —
+la reprise n'a ajouté aucun code à ce fichier. Elles avaient été inspectées
+ligne à ligne (`api/sources/lines`) et appartiennent toutes à task-199/201/274 :
+chemin frais du snapshot d'identité, adoption du snapshot Redis d'identité, log
+de reprise.
+
+### Deux réserves, reconduites
+
+1. **`code_smells` 65 → 66 n'est pas attribuable à task-289** : les issues sur
+   les fichiers de la task sont à **0**, mesuré sur les 15 fichiers du diff. Le
+   +1 vit ailleurs et n'a pas été chassé — hors périmètre (règle 6).
+2. **La cible `new_coverage ≥ 95 %` du playbook n'est pas opposable** sur ce
+   serveur : `new_lines` dépasse le `ncloc` total du projet, la période « new
+   code » ne délimite donc rien d'utile. La couverture du code neuf est
+   établie fichier par fichier ci-dessus, ce qui l'est.
+
+### Flaky pré-existant rencontré
+
+`MailReadObjectCountTests.AContentReadReportsAMeasuredZeroForTheLotsItDidEnter`
+a échoué une fois pendant les passes OpenCover. Même famille (tests de
+télémétrie sensibles à la charge) que celle attribuée ce matin à `origin/develop`
+par contre-épreuve sur worktree vierge — deux runs, dont un rouge sur d'autres
+tests de la même famille, à code identique. Ce test n'est dans aucun fichier du
+diff de task-289.
