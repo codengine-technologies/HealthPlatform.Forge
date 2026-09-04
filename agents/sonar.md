@@ -803,7 +803,8 @@ mkdir -p TestResults
 > | task-205 | 9.9.8 | `sonar.login` |
 > | task-228 (2026-08-04) | 25.6.0 | `sonar.token` |
 > | 2026-08-30 (vérifié) | 9.9.8.100196 | `sonar.login` |
-> | **2026-09-02 (vérifié, task-288)** | **25.6.0.109173** | **`sonar.token`** |
+> | 2026-09-02 (vérifié, task-288) | 25.6.0.109173 | `sonar.token` |
+> | **2026-09-04 (vérifié, task-289)** | **9.9.8.100196** | **`sonar.login`** |
 >
 > L'image est `sonarqube:lts-community` : elle **suit la LTS courante**, donc une
 > re-création du conteneur peut ramener une 9.9 là où on avait une 25.x. C'est ce
@@ -818,13 +819,17 @@ mkdir -p TestResults
 > #   <  10.0  →  /d:sonar.login=
 > ```
 >
-> Les blocs ci-dessous sont écrits pour la version **actuellement installée
-> (25.6.0, donc `sonar.token`)**. Si le contrôle rend une 9.x, basculer.
+> Les blocs ci-dessous sont écrits avec `sonar.login`, ce qui correspond à la
+> version mesurée le 2026-09-04 (9.9.8). **Ne pas s'y fier davantage qu'aux
+> lignes précédentes** : si le contrôle rend une ≥ 10.x, basculer sur
+> `sonar.token`.
 >
-> Le conteneur a **encore** changé de version entre le 2026-08-30 et le
-> 2026-09-02 : la quatrième bascule de ce tableau. Elle confirme que la seule
-> conduite tenable est d'exécuter le `curl` de contrôle, jamais de se fier à
-> la dernière ligne.
+> Le conteneur a rebasculé **de 25.6.0 vers 9.9.8 en deux jours** (2026-09-02 →
+> 2026-09-04, task-288 → task-289) : cinquième bascule du tableau, et la
+> première dans le sens *descendant* à si court intervalle. Il n'y a donc
+> **aucune** tendance à extrapoler, pas même « ça monte ». La seule conduite
+> tenable est d'exécuter le `curl` de contrôle à chaque run, jamais de se fier à
+> la dernière ligne — y compris celle-ci.
 >
 > **Pourquoi ça compte autant** : sur une 9.9, `sonar.token` est **ignoré
 > silencieusement**. Le `begin` réussit (il ne contacte le serveur que pour les
