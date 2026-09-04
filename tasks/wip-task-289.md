@@ -354,3 +354,107 @@ Correctif : `Task.Run` (pas de contexte de synchronisation) + attente de
   widget). À instruire en US.
 - **Migration des 3 copies nested de `CapturingLogger<T>` dans `Middleware/`** —
   hors du périmètre du diff.
+
+## Sonar log
+
+**Phase 1 (new code) — VERTE. Phase 2 (dette legacy) — skippée, explicitement.**
+
+### KPIs qualité
+
+| Métrique | Baseline (2026-09-01) | Final (2026-09-04) | Cible | Verdict |
+|---|---|---|---|---|
+| **Quality Gate** | OK | **OK** (5/5 conditions) | OK | ✅ |
+| bugs | 0 | 0 | 0 | ✅ |
+| vulnerabilities | 0 | 0 | 0 | ✅ |
+| sqale_rating (maintenabilité) | A | A | A | ✅ |
+| reliability_rating | A | A | — | ✅ |
+| security_rating | A | A | — | ✅ |
+| code_smells | 62 | 65 | — | ⚠️ voir note |
+| security_hotspots (TO_REVIEW) | 3 | 3 | — | inchangé, legacy |
+| coverage | 88,2 % | 88,2 % | 95 % | ❌ dette legacy |
+| line_coverage | 91,4 % | 91,5 % | — | +0,1 |
+| duplicated_lines_density | 0,4 % | 0,4 % | — | inchangé |
+| new_coverage | — | **91,0 %** | 80 % (QG) | ✅ |
+| new_bugs / new_vulnerabilities | — | **0 / 0** | 0 | ✅ |
+| new_security_hotspots | — | **0** | 0 | ✅ |
+
+### Issues sur les 13 fichiers de task-289 : **0**
+
+Un seul finding a été trouvé et corrigé — et il est instructif :
+
+- **CA1859** (INFO) sur `ReportRefreshOutcome(IReadOnlyList<string> missing, …)`.
+  Corrigé en `List<string>` : helper **privé** dont l'unique appelant construit
+  déjà une liste concrète. **C'est la passe qualité `/simplify` qui l'avait
+  introduit**, sur recommandation d'une revue (« le helper ne mute rien » — vrai,
+  mais hors sujet ici). Récidive d'une règle documentée depuis task-203 →
+  `conventions/csharp.md` incrémenté à 2 occurrences, consigne étendue aux
+  **paramètres** et non plus aux seules valeurs de retour.
+
+### Couverture du code AJOUTÉ par la task — mesurée fichier par fichier
+
+| Fichier | line_coverage | Lignes non couvertes |
+|---|---|---|
+| `FeatureFlagWarmUpService.cs` | **100 %** | 0 |
+| `FeatureFlags.cs` | **100 %** | 0 |
+| `FeatureFlagMetrics.cs` | **100 %** | 0 |
+| `FlagsmithFeatureFlagService.cs` | 92,6 % | 16, **toutes pré-existantes** |
+
+La première mesure donnait `FeatureFlagWarmUpService.cs` à 87,5 % : les 2 lignes
+manquantes étaient la branche `catch (OperationCanceledException)` de l'amorce
+(arrêt de l'hôte pendant le warm-up). Un test l'a couverte, et vérifie en plus
+qu'elle est **silencieuse** — un arrêt de pod est normal, y journaliser un
+warning salirait chaque redéploiement.
+
+Les 16 lignes non couvertes de `FlagsmithFeatureFlagService.cs` ont été
+**inspectées ligne à ligne** (`api/sources/lines`) : ce sont le chemin frais du
+snapshot d'identité (278), l'adoption du snapshot Redis d'identité (350-369) et
+le log de reprise (486-488) — task-199/201/274. **Aucune n'appartient à
+task-289.**
+
+### Deux réserves de méthode, à ne pas lire comme des succès
+
+1. **La cible `new_coverage ≥ 95 %` du playbook n'est pas opposable sur ce
+   serveur.** `new_lines` vaut **45 025** pour un diff de ~800 lignes — plus que
+   le `ncloc` total du projet (39 687). La période « new code » de cette
+   instance ne délimite donc rien d'utile, et `new_coverage` mesure en réalité
+   ~tout le projet. C'est pourquoi la couverture du code neuf a été établie
+   **fichier par fichier** ci-dessus, ce qui est opposable, plutôt que par un
+   agrégat qui ne l'est pas. Le seuil du Quality Gate (80 %) est respecté dans
+   les deux lectures.
+2. **`code_smells` 62 → 65 (+3) n'est pas attribuable à task-289** : les issues
+   sur les fichiers de la task sont à 0. La baseline datait du **2026-09-01**,
+   donc d'un `develop` antérieur au merge de task-285 (`83fcaa6`) dont ma
+   branche part. Les +3 viennent de ce code déjà mergé, pas d'ici. Une baseline
+   prise sur le vrai merge-base l'aurait montré — c'est une limite du protocole,
+   signalée et non masquée.
+
+### Phase 2 (dette legacy) — skippée
+
+`coverage` global reste à 88,2 % contre 95 % visés. L'atteindre demanderait
+d'écrire des tests sur du code sans rapport avec cette US, hors périmètre
+(règle 6, scopes isolés). Le playbook autorise explicitement ce skip : Phase 2
+est best-effort et ne bloque jamais le cycle. Les 3 security hotspots
+`TO_REVIEW` (`Program.cs` ×2, `BaseRepository.cs`) restent en attente de revue
+humaine — aucun n'est sur du code de task-289.
+
+### Coût mesuré
+
+3 analyses complètes (build Release + 5 passes OpenCover chacune). ⚠️ **Les
+`begin`/`end` du scanner ne sont pas dans le journal de mesure** : mon script
+n'a instrumenté que les `build` et les `test`. C'est un trou d'instrumentation
+de ce run, pas une mesure à zéro — le `--kind scan` du playbook attend d'être
+posé autour du scanner lui-même.
+
+### Incident d'outillage du pré-flight (corrigé dans le playbook)
+
+`docker start sonarqube` rend la main **sans erreur**, puis le serveur s'arrête
+seul sur `UnknownHostException: sonarqube_db` et repasse en `Exited (0)` — code
+de sortie 0, donc aucun signe de panne. Le poll de 90 s du pré-flight expirait
+intégralement en concluant « serveur pas prêt ». L'installation de ce poste est
+un **couple** `sonarqube` + `sonarqube_db` (postgres:15) ; le pré-flight ne
+démarrait que le premier. Corrigé dans `agents/sonar.md` (commit `2472b07`).
+
+Par ailleurs, la version du conteneur a **rebasculé de 25.6.0 à 9.9.8 en deux
+jours** (donc `sonar.login` et non `sonar.token`) : cinquième bascule du
+tableau du playbook, et la première *descendante*. Aucune tendance à
+extrapoler ; le `curl` de contrôle reste le seul geste fiable (commit `6972864`).
