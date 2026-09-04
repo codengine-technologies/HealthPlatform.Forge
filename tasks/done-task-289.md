@@ -248,8 +248,9 @@ Pré-flight du 2026-09-04 : les 7 repos automatisés sont sur `develop`.
 | /lint-angular | skipped | 0.4 s | — | — | — | US backend-only (**Repos**: api-mail) — repo cible non touché |
 | /lint-mobile | skipped | 0.5 s | — | — | — | US backend-only (**Repos**: api-mail) — repo cible non touché |
 | /verify-visual | skipped | 0.5 s | — | — | — | US backend-only (**Repos**: api-mail) — repo cible non touché |
-| /review | failed | 10 min 28 s | 1 (5.5 s) | 1 (1 min 22 s) | — | api-mail 1B/1T, code review CHANGES REQUESTED — 3 bloquants (2 tests vacuos établis par mutation, 1 libellé de log trompeur) ; questions/task-289.md écrit |
-| **Total cycle** | | **25 min 54 s** | **11 (1 min 40 s)** | **49 (25 min 50 s)** | **0 (0.0 s)** | |
+| /review | ok | 17 min 48 s | 4 (17 s) | 4 (4 min 04 s) | — | api-mail 4B/4T |
+| /tech-writer | ok | 3 min 03 s | — | — | — | — |
+| **Total cycle** | | **36 min 17 s** | **14 (1 min 52 s)** | **52 (28 min 32 s)** | **0 (0.0 s)** | |
 
 ## Develop log
 
