@@ -234,6 +234,24 @@ gitignored).
         echo "Create one with:  docker run -d --name sonarqube -p 9001:9000 sonarqube:lts-community" >&2
         exit 1
       fi
+
+      # ⚠️ DÉMARRER LA BASE D'ABORD (mesuré le 2026-09-04, task-289).
+      # Ce pré-flight ne démarrait que `sonarqube`. Or l'installation de ce
+      # poste est un couple : `sonarqube` + `sonarqube_db` (postgres:15). Sans
+      # la base, `docker start sonarqube` REND LA MAIN SANS ERREUR, puis le
+      # serveur s'arrête tout seul quelques secondes plus tard sur
+      # `java.net.UnknownHostException: sonarqube_db`. Le conteneur repasse en
+      # `Exited (0)` — un code de sortie 0, donc rien qui ressemble à une panne.
+      # Symptôme observé : le poll de 90 s expire intégralement et l'agent
+      # conclut « serveur pas prêt », alors que le serveur a démarré, échoué et
+      # rendu l'âme. Le diagnostic n'est visible que dans `docker logs`.
+      dbcid=$(docker ps -a --format '{{.ID}}\t{{.Names}}' \
+              | awk 'tolower($2) ~ /sonar.*(db|postgres)/ { print $1; exit }')
+      if [ -n "$dbcid" ]; then
+        docker start "$dbcid"
+        sleep 8   # laisser Postgres accepter les connexions avant le serveur
+      fi
+
       docker start "$cid"
 
       # Poll until status=UP (max 90 s — Sonar boot is ~30-60 s on cold start)
