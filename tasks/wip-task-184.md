@@ -353,7 +353,8 @@ Branche unique sur les repos pushables : `feat/task-184-ins-hors-urls-et-logs`
 |---|---|---|---|---|---|---|
 | /start | ok | 2 min 26 s | — | — | — | — |
 | /develop | ok | 54 min 27 s | 11 (2 min 13 s) | 14 (7 min 19 s) | — | api-mail 5B/7T, client-blazor 3B/3T, client-mobile 1B/1T, client-angular 2B/3T |
-| **Total cycle** | | **56 min 53 s** | **11 (2 min 13 s)** | **14 (7 min 19 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 22 min 39 s | 3 (41 s) | 12 (11 min 12 s) | 2 (58 s) | 1 itération(s), api-mail 3B/12T |
+| **Total cycle** | | **1 h 19 min** | **14 (2 min 55 s)** | **26 (18 min 32 s)** | **2 (58 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (14 s), restore ×1 (3.0 s)
 
@@ -386,11 +387,15 @@ Autres commandes mesurées : nuget-wait ×1 (14 s), restore ×1 (3.0 s)
 | `client-angular` | ✓ (config `development`) | ✓ **329** (`mss-lib`), 0 échec |
 
 > ⚠️ **`nx build mss --configuration=production` échoue, et c'est préexistant** :
-> `apps/mss/src/environments/environment.prod.ts` n'existe pas dans le repo
-> (`file replacements` du projet le référence). Aucun fichier d'environnement
-> n'est touché par cette task — les deux `environment.ts` modifiés dans l'arbre
-> Angular sont le WIP humain constaté au pré-flight. Le build passe en
-> configuration `development`, et `tsc --noEmit` sur la lib `mss` est propre.
+> `apps/mss/src/environments/environment.prod.ts` est **absent du HEAD de la
+> branche humaine** `feature/nova-rewriting-mss`, alors que le projet le
+> référence dans ses `file replacements`. Le fichier **existe sur `origin/next`** :
+> il a été supprimé par le commit `7de0cee3 « First MSS implementation »` de
+> cette branche, bien avant task-184, et l'arbre ne porte aucune suppression non
+> committée. Aucun fichier d'environnement n'est touché par cette task — les
+> deux `environment.ts` modifiés sont le WIP humain constaté au pré-flight. Le
+> build passe en configuration `development`, et `tsc --noEmit` sur la lib `mss`
+> est propre.
 
 ### Voie retenue pour la sortie de l'INS des URL
 
@@ -538,3 +543,58 @@ Run 1 : `EnrichmentOperationScopeTests.The_total_includes_the_seeded_fetch…`
 Aucun des fichiers concernés n'est dans le diff de task-184 (vérifié). Les deux
 dernières exécutions complètes de la branche sont vertes : **4093 tests, 0
 échec**.
+
+## Lint log — client-angular (code-only)
+
+Mode A (chaîné), 1 itération sur les 5 autorisées. Base `origin/next`,
+scope lint `tag:scope:mss`.
+
+| | Baseline | Final |
+|---|---|---|
+| Erreurs (`mss` + `mss-lib`) | **7** | **0** ✅ |
+| Warnings | 39 | 39 (préexistants) |
+| Itérations | — | 1 (auto-fix seul) |
+
+### Ce qui a été corrigé
+
+Les 7 erreurs étaient toutes `prettier/prettier` sur du code écrit par cette
+task — parenthèses manquantes autour du paramètre unique des arrow functions
+introduites par la résolution handle→INS (`patient =>` → `(patient) =>`) et un
+retour à la ligne dans le `switchMap` de `getMailsByInsPaged`. **Auto-fixer
+seul, aucun fix manuel** : rien à verser dans `conventions/angular.md` (les
+corrections gratuites ne comptent pas — cf. le protocole de la boucle
+d'auto-amélioration).
+
+Les 39 warnings sont préexistants et hors périmètre : `jsdoc/require-example`,
+`max-lines` (fichiers de 500+ lignes antérieurs), `complexity` sur `classify`,
+`initializeFromPrefill`, `replacePlaceholders`.
+
+### ⚠️ L'auto-fixer a débordé du scope — corrigé
+
+`--projects=tag:scope:mss` **ne filtre pas** le `--fix` : Nx a exécuté la cible
+sur les **11 projets affectés**, et l'auto-fixer a modifié 5 fichiers de
+`apps/weda2/src/app/features/booking/daily/` (mappers, service, store, helper)
+qui étaient **propres au pré-flight** et sont hors charte de la forge.
+
+Les 5 fichiers ont été **restaurés** (`git checkout --`). L'arbre Angular ne
+porte plus que les 5 fichiers MSS de cette task + les 2 `environment.ts` du WIP
+humain constatés au pré-flight — exactement l'état attendu.
+
+> **À corriger dans `agents/lint-angular.md`** : la commande documentée laisse
+> croire que le scope protège les projets hors MSS. Ce n'est pas le cas avec le
+> passthrough `-- --fix`. Il faut soit `nx run-many -t lint --projects=mss,mss-lib
+> -- --fix`, soit vérifier l'arbre après coup. Non corrigé ici : modifier le
+> playbook d'une étape depuis une task produit sort du périmètre de task-184.
+
+### Validation
+
+- Lint `mss` + `mss-lib` : **0 erreur**, 39 warnings acceptés (best-effort)
+- Tests `nx affected -t test` (11 projets) : **2572 passed**, 14 skipped
+- Tests `mss-lib` après restauration : **329 passed**
+- Build `nx affected -t build` : `mss:build:production` échoue — **préexistant**,
+  `environment.prod.ts` supprimé par `7de0cee3` sur la branche humaine (voir le
+  Develop log). Le build `development` passe.
+
+**Code-only respecté** : aucune opération git de mutation sur `client-angular`.
+Les 5 fichiers MSS restent **non committés** sur `feature/nova-rewriting-mss` ;
+l'humain gère commit / push / PR TFS.
