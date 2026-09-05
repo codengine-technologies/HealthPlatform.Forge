@@ -190,3 +190,61 @@ return JsonSerializer.Deserialize<ProblemDetails>(json, ProblemJson)!;
 argument d'appel**, le hisser en `private static readonly`. Même réflexe que
 CA1861 pour les tableaux littéraux : ce qui est constant au fil des appels se
 déclare une fois.
+
+---
+
+## S3267 — une boucle qui ne fait que chercher s'écrit avec `Contains`/`Any`
+
+**Occurrences : 1** (task-184)
+
+Écrit sans y penser dans un helper d'appartenance : un `foreach` sur un tableau
+de constantes, un `if` de comparaison, un `return true`. La forme explicite
+n'ajoute rien et **répète la règle de comparaison** — ici l'insensibilité à la
+casse — à chaque ajout d'entrée dans le tableau.
+
+```csharp
+// ❌ AVANT — huit lignes pour une appartenance
+private static bool IsSensitiveQueryKey(string key)
+{
+    foreach (var sensitive in SensitiveQueryKeys)
+    {
+        if (string.Equals(key, sensitive, StringComparison.OrdinalIgnoreCase))
+            return true;
+    }
+    return false;
+}
+
+// ✅ APRÈS — le comparateur porte la règle, une fois
+private static bool IsSensitiveQueryKey(string key) =>
+    SensitiveQueryKeys.Contains(key, StringComparer.OrdinalIgnoreCase);
+```
+
+**Consigne** : une boucle dont le corps se réduit à `if (…) return true;` est une
+appartenance — écrire `Contains` (avec un `StringComparer` quand la comparaison
+n'est pas ordinale stricte) ou `Any`. Attention au couple : `StringComparison`
+dans `string.Equals`, mais `StringComparer` dans `Contains`.
+
+---
+
+## S125 — une prose qui « ressemble à du code » est signalée comme code commenté
+
+**Occurrences : 1** (task-184)
+
+Un commentaire d'intention parfaitement légitime a été relevé comme du code mis
+en commentaire, uniquement à cause de sa **ponctuation** : un point-virgule en
+fin de proposition, au milieu d'une phrase anglaise.
+
+```csharp
+// ❌ AVANT — le `;` en fin de ligne suffit à déclencher la règle
+// raw path is still what routing and the skip/debug predicates see;
+// only what reaches a sink is masked.
+
+// ✅ APRÈS — même information, ponctuation de prose
+// Routing and the skip/debug predicates keep reading the raw path, because
+// only what reaches a sink needs masking.
+```
+
+**Consigne** : dans un commentaire, éviter le point-virgule en fin de ligne et
+les fins de ligne en `)` ou `}`. Écrire des phrases. Le coût est nul et cela
+évite une issue qu'on est ensuite tenté d'« accepter », ce qui use la crédibilité
+des exemptions.

@@ -470,3 +470,71 @@ fonctionne ; l'arbre propre a été préféré.
   la vérification de bout en bout dans Seq, l'export OTLP, et les trois
   parcours frontend écran par écran.
 - **Next step** : `/sonar task-184`
+
+## Sonar log
+
+Analyse complète sur `feat/task-184-ins-hors-urls-et-logs`
+(`healthplatform-api-mail`, SonarQube 9.9.8), 1 itération.
+
+### KPIs
+
+| Métrique | Baseline | Final | |
+|---|---|---|---|
+| **Quality Gate** | OK | **OK** | ✅ |
+| Bugs | 0 | **0** | ✅ |
+| Vulnerabilities | 0 | **0** | ✅ |
+| Security hotspots | 3 | **3** | = (préexistants) |
+| Code smells | 66 | **65** | ▼ |
+| Code smells (new code) | 40 | **38** | ▼ |
+| Coverage | 88,2 % | **88,3 %** | ▲ |
+| Coverage (new code) | — | **90,8 %** | ✅ |
+| Duplication | 0,4 % | **0,4 %** | = |
+| Reliability / Security / Maintainability | A / A / A | **A / A / A** | ✅ |
+
+### Ce qui a été corrigé
+
+**Deux findings, les deux sur du code de cette task** (`b2d3e57`) :
+
+- **S3267** — `SensitiveRequestDataSanitizer.IsSensitiveQueryKey` : boucle
+  explicite là où `Contains` + `StringComparer.OrdinalIgnoreCase` suffit.
+- **S125** — `RequestLoggingMiddleware` : un commentaire de prose relevé comme
+  code commenté, à cause d'un point-virgule en fin de ligne.
+
+Les deux sont des **règles nouvelles** pour la forge → entrées créées dans
+`conventions/csharp.md` (S3267, S125), pour que `/develop` les applique d'emblée.
+
+### Les 38 restants — pourquoi ils restent
+
+**Aucun n'appartient à task-184.** Le *new code period* couvre plusieurs commits
+récents de `develop`, pas seulement ce diff : S3604 (18) dans
+`MailClientSession`, `ImapService`, `SmtpService`… ; CA1861 (9) dans des tests
+d'embedding ; S107 (3), S125 (3), S3267 (2), CA1859, S4456, S4457, xUnit2032.
+Vérifié fichier par fichier contre `git diff --name-only origin/develop...HEAD`.
+
+Les nettoyer signifierait toucher le code de session IMAP et d'enrichissement
+depuis une task de confidentialité — un périmètre que le PO n'a pas demandé, et
+un risque sans rapport avec l'objectif. Le Quality Gate est **OK** et les trois
+notes sont **A** : rien n'oblige à le faire ici. À instruire séparément.
+
+> **Récidive CA1861 à noter** : la règle est dans `conventions/csharp.md` avec
+> `Occurrences: 2`, et 9 nouvelles occurrences apparaissent — mais **dans des
+> tests écrits par d'autres tasks**, pas par task-184. Compteur non incrémenté :
+> la consigne a été respectée ici.
+
+### ⚠️ Flaky préexistant, prouvé et non imputable à cette task
+
+Deux familles de tests d'instrumentation échouent **par intermittence**, et le
+test qui échoue **change d'une exécution à l'autre** :
+`EnrichmentOperationScopeTests`, `MailRepositoryEnrichPersistInstrumentationTests`,
+`MailReadObjectCountTests`. Signature d'un état statique partagé
+(`MailMetricsCaptureCollection`), pas d'une régression — une régression échoue
+sur le même test.
+
+**Preuve, plutôt qu'affirmation** : la suite a été rejouée deux fois sur
+`origin/develop` dans un worktree isolé, **sans une ligne de cette task**.
+Run 1 : `EnrichmentOperationScopeTests.The_total_includes_the_seeded_fetch…`
+échoue. Run 2 : 2280/2280 vertes. Le flaky vit sur `develop`.
+
+Aucun des fichiers concernés n'est dans le diff de task-184 (vérifié). Les deux
+dernières exécutions complètes de la branche sont vertes : **4093 tests, 0
+échec**.
