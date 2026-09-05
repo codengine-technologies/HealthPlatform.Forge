@@ -344,3 +344,129 @@ Branche unique sur les repos pushables : `feat/task-184-ins-hors-urls-et-logs`
 - `client-mobile` (pushed) : feat/task-184-ins-hors-urls-et-logs — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-184-ins-hors-urls-et-logs
 - `dtos-mss` (pushed, auto-inclus) : feat/task-184-ins-hors-urls-et-logs — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-184-ins-hors-urls-et-logs
 - `client-angular` (code-only) : la forge écrit sur la branche checked out dans `Client/Angular/` — snapshot au moment du `/start` : **`feature/nova-rewriting-mss`**. Humain gère branche, commit, push, PR TFS.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-184 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 2 min 26 s | — | — | — | — |
+| /develop | ok | 54 min 27 s | 11 (2 min 13 s) | 14 (7 min 19 s) | — | api-mail 5B/7T, client-blazor 3B/3T, client-mobile 1B/1T, client-angular 2B/3T |
+| **Total cycle** | | **56 min 53 s** | **11 (2 min 13 s)** | **14 (7 min 19 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : nuget-wait ×1 (14 s), restore ×1 (3.0 s)
+
+## Develop log
+
+- **Repos touchés** : `dtos-mss`, `api-mail`, `client-blazor`, `client-mobile`, `client-angular` (code-only)
+- **DTOs publiés** : `HealthPlatform.Dtos.Mss` 381.0.0 → **449.0.0** (nouveau `InsRequestDto`) ; consommateurs bumpés (`api-mail`, `client-blazor`)
+- **Interop publié** : aucun changement
+
+### Commits
+
+| Repo | SHA | Message |
+|---|---|---|
+| `dtos-mss` | `7ad998f` | `feat(dto): add InsRequestDto to carry an INS in a request body` |
+| `api-mail` | `e513703` | `chore(deps): bump HealthPlatform.Dtos.Mss to 449.0.0` |
+| `api-mail` | `b39d064` | `feat(api): take the INS out of URLs, logs and telemetry` |
+| `api-mail` | `e17eb11` | `refactor(api): simplify pass (/simplify) — task-184` |
+| `client-blazor` | `69183b9` | `feat(mss): address patients by handle and stop logging identifiers` |
+| `client-mobile` | `c28a5b7` | `feat(mobile): address patients by handle instead of INS in URLs` |
+| `client-angular` | — | **non committé** (code-only), branche `feature/nova-rewriting-mss` |
+
+### Build / test
+
+| Repo | Build | Tests |
+|---|---|---|
+| `dtos-mss` | ✓ | n/a |
+| `api-mail` | ✓ | ✓ **4093** (136 domain + 464 infra + 787 api + 426 integration + 2280 application), 0 échec, 16 skipped préexistants |
+| `client-blazor` | ✓ | ✓ **168**, 0 échec, 2 skipped préexistants |
+| `client-mobile` | ✓ | ✓ **807**, 0 échec |
+| `client-angular` | ✓ (config `development`) | ✓ **329** (`mss-lib`), 0 échec |
+
+> ⚠️ **`nx build mss --configuration=production` échoue, et c'est préexistant** :
+> `apps/mss/src/environments/environment.prod.ts` n'existe pas dans le repo
+> (`file replacements` du projet le référence). Aucun fichier d'environnement
+> n'est touché par cette task — les deux `environment.ts` modifiés dans l'arbre
+> Angular sont le WIP humain constaté au pré-flight. Le build passe en
+> configuration `development`, et `tsc --noEmit` sur la lib `mss` est propre.
+
+### Voie retenue pour la sortie de l'INS des URL
+
+`MailPatient.Id` (`Guid`, clé primaire non signifiante) sert de **handle**.
+Les deux opérations dont l'entrée est réellement un INS passent par le **corps**
+de la requête (`POST patients/resolve`, `POST patients/validate-ins`) ; toutes
+les autres adressent le patient par son handle. HMAC de l'INS écarté : un
+pseudonyme stable et corrélable déplace la fuite au lieu de la fermer.
+
+La substitution est faite **à la frontière API** : les couches application et
+infrastructure restent clés par INS, donc la task change ce qui voyage dans une
+URL et rien d'autre.
+
+Les six routes `ins/{ins}` restent servies, `[Obsolete]` + `Deprecated` OpenAPI,
+le temps du délai de grâce. **Leur suppression est une task de suite.**
+
+### Ce que les garde-fous ont trouvé et que la task ne listait pas
+
+Les tests d'architecture ont été écrits avant les correctifs, et ils ont
+immédiatement révélé **onze fichiers** au-delà des cinq preuves du task file —
+tous corrigés dans cette task :
+
+- **api-mail** : `RequestLoggingMiddleware` émettait le chemin brut sur **cinq**
+  sites (la task en citait un) ; `UserContextEnricherMiddleware` sur **sept** ;
+  `PatientContactService`, `PatientContactPublisher`,
+  `CreatePatientContactConsumer` et `BiologyRepository` journalisaient l'INS
+  (dont un message d'exception interpolé, invisible à toute regex de template) ;
+  `CdaParsingService` le nom du patient ; la ligne « filtres actifs » de
+  `SemanticSearchService` concaténait INS + nom + objet du message.
+- **client-blazor** : **seize** templates journalisaient la requête brute, un
+  INS ou un nom, dont neuf dans `SemanticSearchService` — le jumeau exact du
+  défaut backend de task-071, chemin d'erreur compris.
+- **client-angular** : `?patient={ins}` **et** `?ins={ins}` mettaient l'INS dans
+  la barre d'adresse du SPA. Non listé dans la task ; aucun masquage serveur ne
+  l'atteint.
+- **client-angular** : réponse au constat demandé par la DOD — le `path` du
+  dossier virtuel `__patient__/{…}` **n'est pas** repris dans un appel API
+  (vérifié : deux occurrences, toutes deux locales, comparaisons de sélection).
+  L'INS y est tout de même remplacé par le handle, et le libellé affiché
+  neutralisé : laisser un identifiant dans un champ `path` de dossier, c'est
+  parier que personne ne le réutilisera dans une URL de dossier.
+
+### Passe qualité (`/simplify`)
+
+- **Appliquée et committée** : `api-mail` (`e17eb11`) — la résolution handle→INS
+  existait en double dans `PatientsController` et `BiologyController` ; extraite
+  en `PatientHandleResolver`. Re-validation build + tests : verte.
+- **Sans changement** : `client-blazor`, `client-mobile` — diffs mécaniques
+  (substitution d'URL + assainissement de logs), rien à factoriser.
+- **Sans changement, code-only** : `client-angular` — idem, et aucune opération
+  git sur ce repo.
+- **Sautée (porteurs de contrat)** : `dtos-mss`.
+
+### Findings laissés ouverts (hors périmètre, à instruire)
+
+- **Famille « Annuaire Santé »** : ~35 sites (`ContactController`,
+  `DirectoryController`, 7 stratégies `AnnuaireSante/`) journalisent `{Query}`.
+  La requête porte sur un **annuaire public de professionnels**, pas sur un
+  patient — exposition matériellement moindre que les quatre familles de la
+  task, dans un sous-système qu'elle ne couvre pas. **Exemptés explicitement**
+  dans `SensitiveLogTemplateScanTests`, avec le raisonnement, plutôt que retirés
+  de la regex : rien n'empêche un praticien de taper un nom de patient dans une
+  recherche d'annuaire. À arbitrer en task de suite.
+- **Suppression des six routes `ins/{ins}` dépréciées** : task de suite, après
+  délai de grâce.
+
+### Écart assumé au playbook
+
+Les `packages.lock.json` ont été committés (le playbook dit de ne pas les
+stager). Ils sont **suivis par git** et leur diff est exactement la montée de
+version du DTO : les laisser modifiés laissait un arbre sale au pré-flight de
+`/review`. Aucun `--locked-mode` n'est utilisé en CI, donc l'un ou l'autre
+fonctionne ; l'arbre propre a été préféré.
+
+- **DOD self-check** : tous les items commandables sont vérifiés par un test
+  (voir les quatre blocs de DOD). Restent déférés au test manuel (HAG) :
+  la vérification de bout en bout dans Seq, l'export OTLP, et les trois
+  parcours frontend écran par écran.
+- **Next step** : `/sonar task-184`
