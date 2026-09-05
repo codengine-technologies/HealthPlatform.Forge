@@ -357,9 +357,9 @@ Branche unique sur les repos pushables : `feat/task-184-ins-hors-urls-et-logs`
 | /lint-angular | ok | 5 min 41 s | 1 (22 s) | 2 (46 s) | — | 1 itération(s), client-angular 1B/2T |
 | /lint-mobile | ok | 42 s | — | — | — | — |
 | /verify-visual | skipped | 17 s | — | — | — | aucun écran mobile touché — diff limité à mss-api.service.ts et sa spec |
-| /review | ok | 7 min 47 s | 4 (28 s) | 4 (1 min 46 s) | — | dtos-mss 1B/0T, api-mail 1B/1T, client-blazor 1B/1T, client-mobile 1B/1T, client-angular 0B/1T |
+| /review | ok | 7 min 47 s | 5 (31 s) | 6 (4 min 42 s) | — | dtos-mss 1B/0T, api-mail 2B/3T, client-blazor 1B/1T, client-mobile 1B/1T, client-angular 0B/1T |
 | /tech-writer | ok | 6 min 07 s | — | — | — | — |
-| **Total cycle** | | **1 h 40 min** | **19 (3 min 45 s)** | **32 (21 min 05 s)** | **2 (58 s)** | |
+| **Total cycle** | | **1 h 40 min** | **20 (3 min 48 s)** | **34 (24 min 01 s)** | **2 (58 s)** | |
 
 Autres commandes mesurées : lint ×4 (1 min 21 s), nuget-wait ×1 (14 s), restore ×1 (3.0 s)
 
@@ -758,3 +758,85 @@ bloquantes.
   exactes supprimées, et par un cas qui vérifie qu'ils ne signalent pas les
   remplacements — un garde qui signale tout est aussi inutile qu'un garde qui
   ne signale rien.
+
+## Tests d'intégration HTTP — ajoutés après coup (2026-09-05)
+
+Demande humaine : « mettre en place et exécuter des tests d'intégration pour
+contrôler et corriger si besoin ». **Ils ont trouvé quatre fuites que la
+première passe de la task avait laissées.**
+
+### Le trou que ces tests comblent
+
+Les tests de controller de cette task appellent les actions **directement**.
+Ils prouvent la logique, et rien d'autre : ni que les nouvelles routes sont
+joignables aux URL annoncées, ni que `POST resolve` lie son corps, ni que la
+contrainte `{patientId:guid}` existe, ni que le masquage opère quand une
+requête traverse réellement la chaîne. Un test qui invoque
+`controller.ResolveByInsAsync(dto)` passerait à l'identique **si l'attribut de
+route avait été oublié**.
+
+`PatientRoutingAndMaskingEndToEndTests` — **17 tests**, vraie requête HTTP,
+vraie route, vrai pipeline (routage MVC + versionnement, liaison de modèle,
+`RequestLoggingMiddleware` et `GlobalExceptionHandler` de production).
+
+### Quatre fuites trouvées et corrigées
+
+| Site | Ce qui fuyait |
+|---|---|
+| `Program.cs` → `ProblemDetails.Instance` | le chemin brut dans **chaque payload d'erreur** |
+| `GlobalExceptionHandler.LogException` | le chemin brut dans **chaque exception journalisée** |
+| `RateLimitingSetup` | l'`instance` de **chaque 429** |
+| `ResultModelExtensions` (×2) | la ligne de log 5xx **et** l'`instance` de chaque échec de `Result` |
+
+### Pourquoi le garde-fou existant ne les voyait pas
+
+Un chemin de requête qui fuit ne s'appelle pas `{Ins}` : il s'appelle `{Path}`
+— et `{Path}` est **légitime ailleurs** (chemin de dossier IMAP, chemin fichier
+d'une archive CDA). Interdire le **nom** aurait signalé ceux-là et appris au
+prochain auteur à exempter des fichiers en bloc.
+
+Deux règles ajoutées à la place :
+
+1. **niveau fichier** — une source qui lit `Request.Path` doit connaître
+   l'assainisseur ;
+2. **niveau ligne** — resserrée sur les **deux formes qui publient vraiment**
+   un chemin (affectation d'`Instance`, appel de log). Un prédicat de routage
+   ou une liste de skip lisent `Request.Path` sans jamais l'émettre : ils ne
+   sont pas signalés.
+
+La règle 2 existe parce que la règle 1 s'est révélée **insuffisante dans la
+même séance** : la ligne de log de `ResultModelExtensions` corrigée, le fichier
+passait — et son affectation d'`Instance` douze lignes plus loin restait brute.
+
+### Deux défauts de harnais, qui ressemblaient d'abord à des défauts de production
+
+- **Ordre du pipeline inversé.** Monter `UseExceptionHandler` **à l'extérieur**
+  de `RequestLoggingMiddleware` inverse l'ordre de production (`Program.cs`
+  l.253 vs l.261). Le middleware de journalisation ré-emballe alors toute
+  exception en `InvalidOperationException` et le gestionnaire mappe en **500** :
+  chaque 404, 400, 409 et 503 typé de la règle 12 devient un 500. Le harnais
+  avait l'air d'avoir trouvé un défaut majeur ; il testait un pipeline qui
+  n'existe pas.
+- **Découverte des controllers.** L'assembly d'entrée d'un hôte de test est le
+  runner : sans `AddApplicationPart` explicite, aucun controller n'est trouvé ;
+  et sans `AddApiVersioning().AddMvc()`, MVC ignore la contrainte
+  `apiVersion`. Les deux font répondre **404 à toutes les routes** — ce qui se
+  lit exactement comme « les routes n'ont jamais été déclarées ».
+
+### Une correction de conception, pas seulement de code
+
+La personnalisation `ProblemDetails` a été extraite de `Program.cs` vers
+`ProblemDetailsSetup` pour que production et tests partagent **la même**
+inscription. La première version du harnais en redéclarait une copie
+identique en apparence — et **continuait d'échouer après la correction de
+`Program.cs`**, puisqu'elle n'exerçait jamais `Program.cs`. Une copie ne prouve
+rien sur l'original.
+
+### Validation
+
+Build ✓ — **4110 tests** (806 dans `api.tests`, +19), 0 échec. Le flaky
+d'instrumentation reste celui déjà **prouvé préexistant** sur `develop` : vert
+en isolation (deux fois), et le test qui échoue change d'une exécution à
+l'autre.
+
+Commit `4db7cf2`, poussé sur la PR `api-mail` #218.
