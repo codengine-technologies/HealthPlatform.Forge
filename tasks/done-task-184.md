@@ -358,7 +358,8 @@ Branche unique sur les repos pushables : `feat/task-184-ins-hors-urls-et-logs`
 | /lint-mobile | ok | 42 s | — | — | — | — |
 | /verify-visual | skipped | 17 s | — | — | — | aucun écran mobile touché — diff limité à mss-api.service.ts et sa spec |
 | /review | ok | 7 min 47 s | 4 (28 s) | 4 (1 min 46 s) | — | dtos-mss 1B/0T, api-mail 1B/1T, client-blazor 1B/1T, client-mobile 1B/1T, client-angular 0B/1T |
-| **Total cycle** | | **1 h 34 min** | **19 (3 min 45 s)** | **32 (21 min 05 s)** | **2 (58 s)** | |
+| /tech-writer | ok | 6 min 07 s | — | — | — | — |
+| **Total cycle** | | **1 h 40 min** | **19 (3 min 45 s)** | **32 (21 min 05 s)** | **2 (58 s)** | |
 
 Autres commandes mesurées : lint ×4 (1 min 21 s), nuget-wait ×1 (14 s), restore ×1 (3.0 s)
 
