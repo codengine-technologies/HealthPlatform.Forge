@@ -1,0 +1,346 @@
+# todo-task-184.md — INS dans les URL et données patient en clair dans les logs et la télémétrie
+
+**Repos**: api-mail, client-blazor, client-angular, client-mobile
+**Dependencies**: —
+**Epic**: E009
+
+> **Origine** : exploration de bugs `api-mail` du 2026-07-25 (axe confidentialité).
+> Viole frontalement le garde-fou projet « jamais d'INS, de NIR, de NIA ni de
+> contenu CDA/MSSanté en clair dans les logs, les URL ou la télémétrie ».
+
+> ### Re-vérification du 2026-08-23 — **toujours pertinente, et aggravée sur un point**
+>
+> Chaque preuve rejouée sur `develop`. Les numéros de ligne du bloc « Preuve »
+> datent du 2026-07-25 ; **la colonne « au 2026-08-23 » fait foi**.
+>
+> | Preuve | 2026-07-25 | Au 2026-08-23 | État |
+> |---|---|---|---|
+> | INS en segment d'URL | `PatientsController.cs:25,113,147,163,244` ; `BiologyController.cs:42` | **`PatientsController.cs:33,137,175,195,280`** (dont un `[HttpPut("ins/{ins}/opposition")]`) ; **`BiologyController.cs:54`** | inchangé |
+> | Masquage limité à `token=` | `RequestLoggingMiddleware.cs:91` | regex `:25`/`:35` (query seule), `RequestPath` poussé en **`:105`** | inchangé |
+> | INS et traits journalisés | `:30,122,152,201,252` / `:75` | **`:38,146,180,200,288`** ; traits groupés en **`:233-234`** ; filtre entier en **`:91`** ; `BiologyController.cs:59,74` | inchangé |
+> | Requête brute en `Error` | `SemanticSearchService.cs:114` | **`:114` — identique** | inchangé |
+> | Diagnostics IA | `:67-68,145-146,291` | **`:67,145,291` — identiques** | inchangé |
+> | Anonymisation contournée | `UserContextEnricherMiddleware.cs:530-536`, `:553-558` | **`:572-583`** et **`:596-603`** ; helpers déplacés en `:517`/`:540` | **aggravé** |
+>
+> **Aggravation à retenir** : les deux chemins de rejet loguent désormais aussi
+> `Path={Path}` (`:581`, `:601`). Les deux défauts de cette task **se composent**
+> — une requête `GET /patients/ins/{ins}/…` rejetée en 403 écrit l'INS **et**
+> l'adresse MSSanté **et** le `sub` Keycloak complets dans la même ligne de log.
+> Ce n'était pas le cas au 2026-07-25.
+
+## Objective
+
+Supprimer les fuites de données de santé et de traits d'identité patient vers les
+journaux, la télémétrie et les URL. Quatre familles de fuites documentées, toutes
+émises à un niveau qui passe les seuils configurés — elles atterrissent donc
+réellement dans Seq et dans l'export OTLP, lisibles par un public bien plus large
+que celui habilité aux DSCP.
+
+**US full-stack (requalifiée le 2026-09-05)** : la task était déclarée
+`**Repos**: api-mail` / `Single frontend: true`. C'est faux sur deux plans,
+vérifié sur `develop` :
+
+1. Les six routes portant l'INS en chemin sont appelées par **les trois
+   frontends** — les sortir de l'URL sans basculer les appelants casse
+   l'application (règle 11, US-complete).
+2. **Chaque frontend a ses propres fuites**, indépendantes du backend : l'INS
+   dans la barre d'adresse du navigateur (Blazor), la requête de recherche
+   nominative journalisée côté client (Blazor), l'INS dans un identifiant
+   d'objet de state (Angular). Aucune n'est corrigée par un correctif serveur.
+
+### Preuve (état actuel du code)
+
+1. **INS en segment d'URL** — cinq routes prennent l'INS en **chemin** :
+   `src/Api/Controllers/V1/PatientsController.cs:25,113,147,163,244`
+   (`[HttpGet("ins/{ins}")]`, `ins/{ins}/medical-documents`,
+   `ins/{ins}/opposition`, …) et `src/Api/Controllers/V1/BiologyController.cs:42`.
+   `src/Api/Middleware/RequestLoggingMiddleware.cs:91` pousse `RequestPath` dans le
+   contexte Serilog et ne masque que `token=` en query string : **rien** ne masque
+   les segments de chemin. L'INS voyage donc aussi dans les logs d'accès de tout
+   reverse-proxy.
+2. **INS et traits journalisés explicitement** — `PatientsController` logue
+   `ins={Ins}` (`:30,122,152,201,252`), et `:201` logue ensemble `lastName`,
+   `firstName`, `birthDate`, `gender` ; `:75` sérialise le filtre entier
+   (`{@Filters}`). `BiologyController.cs:47,62` fait de même.
+3. **Requête de recherche brute en Error** —
+   `src/Application/Services/Implementation/SemanticSearchService.cs:114` :
+   `_logger.LogError(ex, "Error performing hybrid search for query: {Query}", query)`.
+   Le même fichier est pourtant exemplaire ailleurs (`:53`, `:212` ne loguent que
+   `queryLength`), et `SearchController.cs:62` porte le commentaire
+   « task-071 — PGSSI-S : never log the raw query (potentially nominative) ». Le
+   chemin d'erreur a été oublié. Les requêtes sont bel et bien nominatives : le
+   code embarque un `PatientNameExtractor.ExtractPatientFromQuery`.
+4. **Diagnostics IA** — `src/Api/Controllers/V1/AiDiagnosticsController.cs:67-68`,
+   `:145-146`, `:291` loguent la requête brute **et** le nom et prénom du patient
+   auto-détecté (`"🔍 Patient auto-détecté dans la requête: {FirstName} {LastName}"`),
+   en `Information`.
+5. **Anonymisation contournée** —
+   `src/Api/Middleware/UserContextEnricherMiddleware.cs:530-536` et `:553-558` :
+   le middleware définit `AnonymiseEmail` et `TruncateSub` et les applique
+   partout… sauf dans ses deux chemins de rejet, qui loguent l'adresse MSSanté du
+   praticien et son `sub` Keycloak en entier. (PII professionnelle, pas DSCP —
+   portée moindre, mais la politique du fichier est contredite.)
+
+### Preuve — fuites propres aux frontends (relevé du 2026-09-05)
+
+6. **`client-blazor` — INS dans la barre d'adresse** :
+   `Src/Modules/Mss/Plugin/Widgets/PatientWidgetComponent.razor:212` et `:223`
+   naviguent vers `/Patient?ins={ins}` ;
+   `Src/Modules/Mss/Plugin/Pages/Patient.razor:41-45` reçoit l'INS en paramètre
+   de query. L'INS atterrit donc dans l'historique du navigateur, dans le
+   `Referer` de toute requête sortante de la page, et dans les journaux de tout
+   proxy servant le SPA. C'est la même fuite que le point 1, côté client, et
+   **aucun masquage serveur ne la couvre**.
+7. **`client-blazor` — requête brute et INS journalisés côté client** :
+   `Src/Modules/Mss/Plugin/Pages/Patient.razor:82` logue `{Ins}` sur le chemin
+   d'erreur ; `Src/Modules/Mss/Application/Services/SemanticSearchService.cs:47`
+   (`LogError`) et `:57` (`LogInformation`) loguent `{Query}` brute. C'est le
+   **jumeau exact côté client** du point 3 — même défaut, y compris l'oubli du
+   chemin d'erreur.
+8. **`client-angular` — INS dans un identifiant de state** :
+   `libs/mss/src/features/mail/mss-mail.component.ts:586-588` fabrique un dossier
+   virtuel dont l'`id` et le `path` valent `__patient__/${ins}`. À établir pendant
+   l'implémentation : si ce `path` est repris dans un appel API (déplacement en
+   masse, rechargement de dossier), l'INS repart en URL ; sinon la fuite reste
+   locale et il suffit de substituer le handle technique.
+9. **`client-mobile`** — consommateur des routes
+   (`src/app/core/services/mss-api.service.ts:333,345,540,547,560`) ; aucune
+   journalisation nominative détectée. Bascule d'appels uniquement, plus la mise
+   à jour des tests qui figent les URL actuelles
+   (`mss-api.service.spec.ts:433-492`).
+
+### Contenu attendu
+
+1. **INS hors des URL** : les routes concernées ne doivent plus véhiculer l'INS en
+   segment de chemin.
+
+   **Voie retenue (2026-09-05) : handle technique + résolution en POST.**
+   `MailPatient` a déjà une clé primaire non signifiante
+   (`src/Domain/Entities/MailPatient.cs:17`, `Guid Id`) — rien à inventer.
+
+   | Aujourd'hui | Cible |
+   |---|---|
+   | `GET patients/ins/{ins}` | `POST patients/resolve` — INS dans le **corps**, renvoie le patient + son `Id` |
+   | `GET patients/ins/{ins}/medical-documents` | `GET patients/{patientId:guid}/medical-documents` |
+   | `GET` / `PUT patients/ins/{ins}/opposition` | `GET` / `PUT patients/{patientId:guid}/opposition` |
+   | `GET patients/ins/{ins}/validate-ins` | `POST patients/validate-ins` — corps `{ ins }` |
+   | `GET biology/ins/{ins}` | `GET biology/patients/{patientId:guid}` |
+
+   Le `POST` de lecture n'est pas une entorse locale : `POST search/advanced`
+   (`PatientsController.cs:86`) existe déjà pour exactement cette raison. Le corps
+   n'est journalisé ni par le middleware, ni par un reverse-proxy, ni par
+   l'historique du navigateur, ni par le `Referer`. `validate-ins` est le seul cas
+   qui ne peut **pas** prendre de handle : il valide un INS qui n'existe pas
+   forcément en base — d'où le POST à corps.
+
+   **Écarté** : un pseudonyme HMAC de l'INS en segment. Stateless et séduisant,
+   mais c'est un identifiant patient stable et corrélable qui reste dans tous les
+   journaux traversés — la fuite est déplacée, pas fermée.
+
+   **Séquencement (règle 11, US-complete)** : les nouvelles routes sont livrées
+   **en parallèle** des anciennes, les trois frontends basculent dessus **dans la
+   même US**, et les anciennes routes sont marquées `[Obsolete]` + `Deprecated`
+   OpenAPI. **Leur suppression fait l'objet d'une task de suite** — elle ne peut
+   intervenir qu'après un délai de grâce couvrant les clients non maîtrisés.
+   Le **masquage des segments de chemin** dans la journalisation et la télémétrie
+   reste dû ici quoi qu'il arrive, puisque les anciennes routes survivent à cette
+   task.
+
+2. **Frontends — trois chantiers distincts** :
+   - **`client-blazor`** : bascule des six appels
+     (`Src/Modules/Mss/Application/Services/PatientService.cs:37,45,53,61,68,75`) ;
+     **sortie de l'INS de la barre d'adresse** — `/Patient?ins={ins}` devient un
+     deep-link porteur du handle technique ; assainissement des logs client
+     (`Patient.razor:82`, `SemanticSearchService.cs:47,57` → longueurs et
+     identifiants techniques, jamais `{Query}` ni `{Ins}`).
+   - **`client-angular`** : bascule des six appels
+     (`libs/mss/src/core/services/mss-api.service.ts:1162,1209,1230,1245,1263,1278`)
+     et substitution de l'INS dans `__patient__/${ins}`
+     (`features/mail/mss-mail.component.ts:586-588`). Rappel : repo **code-only**,
+     la forge n'y touche jamais à git.
+   - **`client-mobile`** : bascule des cinq appels
+     (`src/app/core/services/mss-api.service.ts:333,345,540,547,560`) et des tests
+     qui figent les URL (`mss-api.service.spec.ts:433-492`).
+
+3. **Journalisation assainie** : ni INS, ni nom, prénom, date de naissance, sexe,
+   ni requête de recherche brute, ni contenu de message ou de document. Remplacer
+   par des grandeurs non identifiantes (longueurs, compteurs, identifiants
+   techniques) — le fichier `SemanticSearchService` (backend) montre déjà le bon
+   patron.
+4. **Règle homogène** : appliquer l'anonymisation existante (`AnonymiseEmail`,
+   `TruncateSub`) sur **tous** les chemins du middleware, y compris les rejets.
+5. **Masquage du chemin — trois points d'émission, un seul assainisseur** :
+   `RequestLoggingMiddleware` pousse le path brut en `:105` (`RequestPath`), le
+   réémet dans le `LogDebug` suivant, **et** dans le message de
+   l'`InvalidOperationException` du `catch` ; `UserContextEnricherMiddleware:581`
+   et `:601` loguent `Path={Path}`. Côté télémétrie,
+   `src/Api/DependencyInjectionExtensions.cs:180` ne pose qu'un `Filter` : sans un
+   `EnrichWithHttpRequest` réécrivant le tag `url.path`, l'INS part en OTLP même
+   une fois Serilog assaini (`http.route` reste le gabarit `ins/{ins}`, lui est
+   sain). Un unique assainisseur canonique, appliqué aux cinq endroits.
+6. **Garde-fou anti-récidive** : un contrôle mécanique (analyseur, test, revue
+   outillée) empêchant de journaliser un champ marqué sensible. La récidive est
+   avérée : task-071 avait déjà durci ce point sur le chemin nominal, et le chemin
+   d'erreur juste à côté est passé au travers.
+
+### Arbitrage tranché — traits patient en query string
+
+Deux routes voisines fuient des traits d'identité en **query string**, et le
+scrub ne connaît que `token=` (`RequestLoggingMiddleware.cs:25-35`) :
+`GET patients/search?lastName=` (`PatientsController.cs:59`) et
+`GET patients/match` (`:220`, traits groupés loggés en `:233-234`). Même famille
+de fuite, même correctif, mêmes fichiers touchés — **inclus dans cette task**
+plutôt que reportés : les traiter séparément imposerait de rouvrir les mêmes
+controllers et le même middleware une seconde fois.
+
+### Hors scope
+
+- Le contenu clinique envoyé au fournisseur d'IA → task-178.
+- Les DSCP écrites sur disque → task-185.
+- La complétude du journal d'audit → task-186.
+- La **suppression** des routes `ins/{ins}` dépréciées → task de suite, après
+  délai de grâce.
+
+## Definition of Done
+
+### Socle
+
+- [ ] Build passes (0 errors) sur les quatre repos
+- [ ] Tests pass (0 failures, hors flaky pré-existants documentés) sur les quatre repos
+
+### DOD — backend, journalisation
+
+- [ ] Test : aucun log émis par les chemins listés ne contient d'INS, de nom, de
+      prénom, de date de naissance ni de requête brute (tests sur les cinq
+      emplacements identifiés — ils doivent échouer sur le code actuel)
+- [ ] Test : le chemin d'**erreur** de la recherche sémantique ne logue que des
+      grandeurs non identifiantes (le cas précis oublié par task-071)
+- [ ] Test : `RequestPath` journalisé et exporté en télémétrie est **masqué** sur
+      les routes portant une INS — couvrant les **cinq** points d'émission
+      (contexte Serilog, `LogDebug`, message d'exception, les deux `Path={Path}`
+      du middleware d'identité) **et** le tag OTLP `url.path`
+- [ ] Test : les deux chemins de rejet du middleware appliquent bien
+      `AnonymiseEmail` / `TruncateSub`
+- [ ] Test : les traits passés en query string (`search`, `match`) sont masqués
+      dans `RequestQuery`
+- [ ] Garde-fou anti-récidive en place et **prouvé** par un cas de test (une
+      tentative de journalisation d'un champ sensible est détectée)
+
+### DOD — backend, routes
+
+- [ ] Les cinq routes cibles existent et sont testées (≥ 1 test d'intégration par
+      route : cas passant + 1 mode d'échec)
+- [ ] Les six anciennes routes `ins/{ins}` sont marquées `[Obsolete]` et
+      `Deprecated` dans OpenAPI, et **fonctionnent toujours** (1 test de
+      non-régression par route)
+- [ ] Test d'architecture : aucun gabarit de route exposé par `EndpointDataSource`
+      ne contient un paramètre au nom sensible (`ins`, `nir`, `lastName`,
+      `firstName`, `birthDate`), hors la liste explicite des routes dépréciées —
+      liste qui ne peut que décroître. Ce test échoue sur le code actuel.
+- [ ] Décision documentée sur la sortie de l'INS des URL (voie retenue, calendrier,
+      impact des trois frontends) ; masquage livré dans tous les cas
+
+### DOD — client-blazor
+
+- [ ] Les six appels de `PatientService` visent les nouvelles routes ; tests
+      unitaires vérifiant l'URL émise (aucune ne contient l'INS)
+- [ ] `/Patient?ins={ins}` ne véhicule plus l'INS : test vérifiant que la
+      navigation depuis `PatientWidgetComponent` émet un handle technique
+- [ ] Test : `SemanticSearchService` ne logue `{Query}` sur **aucun** chemin, y
+      compris le chemin d'erreur
+- [ ] Test : le chemin d'erreur de `Patient.razor` ne logue pas `{Ins}`
+
+### DOD — client-angular
+
+- [ ] Les six appels de `mss-api.service.ts` visent les nouvelles routes ; tests
+      `HttpTestingController` vérifiant l'URL émise
+- [ ] Le dossier virtuel patient n'embarque plus l'INS dans son `id`/`path` ; test
+      de non-régression sur la sélection du dossier patient
+- [ ] Constat consigné dans la task : le `path` du dossier virtuel est — ou n'est
+      pas — repris dans un appel API (vérification faite, résultat écrit)
+
+### DOD — client-mobile
+
+- [ ] Les cinq appels de `mss-api.service.ts` visent les nouvelles routes ;
+      `mss-api.service.spec.ts` mis à jour et vert
+- [ ] Test : aucune URL émise par le service ne contient d'INS
+
+### DOD — bout en bout
+
+- [ ] Vérification de bout en bout dans Seq : aucune donnée identifiante sur un
+      parcours patient complet, depuis **chacun** des trois frontends
+
+## Manual Test Plan
+
+1. Lancer le backend : `cd Api/Mail && dotnet run --project src/AppHost`
+2. Ouvrir Seq et filtrer sur `mss.mail`.
+3. Parcours patient (données de test anonymisées) : ouvrir un dossier patient,
+   lister ses documents médicaux, poser une opposition MSS, consulter un résultat
+   de biologie.
+4. **Attendu dans Seq** : aucune ligne ne contient l'INS, ni le nom/prénom/date de
+   naissance. Avant correctif, l'INS apparaît à la fois dans les messages et dans
+   `RequestPath`.
+5. **Recherche** : lancer une recherche nominative (« résultats Dupont »), puis
+   provoquer un échec de recherche (arrêter le service de recherche vectorielle) →
+   la ligne d'erreur ne contient **pas** la requête. Avant correctif, elle la
+   contient intégralement.
+6. **Diagnostics IA** : appeler un endpoint de diagnostic avec une requête
+   contenant un nom de patient → ni la requête ni le nom détecté n'apparaissent.
+7. **Rejet d'identité** : forger un jeton sans le claim `mssEmail` → la ligne de
+   rejet montre une adresse **anonymisée** et un `sub` tronqué.
+8. Vérifier le même résultat côté export OTLP (backend de télémétrie).
+
+### Frontends — écran par écran
+
+9. **Blazor** (`cd Client/Blazor && dotnet run`) : ouvrir le widget patient,
+   cliquer un patient → **la barre d'adresse ne doit plus contenir l'INS**.
+   Ouvrir la console du navigateur : ni INS, ni requête de recherche brute.
+   Onglet Réseau : aucune URL appelée ne contient l'INS. Avant correctif,
+   `/Patient?ins=...` est visible dans la barre d'adresse.
+10. **Angular** (`cd Client/Angular/front && npm start`) : depuis la liste de
+    mails, filtrer par patient → l'en-tête du dossier virtuel s'affiche
+    correctement, et l'onglet Réseau ne montre aucune URL porteuse d'INS.
+11. **Mobile** (`cd Client/Mobile && npm start`) : ouvrir une fiche patient, ses
+    documents médicaux, poser une opposition → onglet Réseau sans INS dans les URL.
+12. Sur les trois frontends : le parcours reste **fonctionnellement identique**
+    (mêmes données affichées, deep-link toujours utilisable). La sortie de l'INS
+    des URL ne doit rien retirer au médecin.
+
+## Conformité santé / Ségur / ANS
+
+- **Couloir Ségur** : médecine de ville
+- **Vague Ségur** : V2
+- **Exigences DSR honorées** : correctif de conformité PGSSI-S — confidentialité
+  et journalisation (une trace ne doit jamais elle-même exposer la donnée)
+- **INS** : **cœur du sujet** — l'INS ne doit apparaître ni dans les logs, ni dans
+  la télémétrie, ni dans une URL (les URL sont journalisées par toute
+  l'infrastructure traversée), **y compris les URL des frontends** : barre
+  d'adresse, historique du navigateur et en-tête `Referer` sont autant de vecteurs
+  hors de portée d'un masquage serveur
+- **Authentification PS** : inchangée
+- **Habilitations** : la population habilitée à lire Seq et la télémétrie est plus
+  large que celle habilitée aux DSCP — c'est précisément ce qui qualifie la fuite
+- **Interop CI-SIS** : non applicable
+- **Tracé PGSSI-S** : les évènements restent journalisés — c'est leur **contenu**
+  qui est assaini. Ne pas réduire la couverture du journal en corrigeant (voir
+  task-186 qui l'étend)
+- **Consentement patient** : non applicable
+- **Référentiels métier** : aucun
+- **Hébergement HDS** : oui — vérifier que Seq et le backend de télémétrie sont
+  eux-mêmes dans un périmètre conforme ; si non, la fuite est aggravée (à
+  confirmer avec le humain)
+- **AIPD / impact RGPD** : **à mettre à jour** — divulgation de données de santé
+  et de traits d'identité à une population non habilitée. Qualifier la portée avec
+  le DPO (rétention Seq, accès, période) et statuer sur la purge des journaux
+  existants.
+
+## Branches
+
+Branche unique sur les repos pushables : `feat/task-184-ins-hors-urls-et-logs`
+(créée depuis `origin/develop` le 2026-09-05).
+
+- `api-mail` (pushed) : feat/task-184-ins-hors-urls-et-logs — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-184-ins-hors-urls-et-logs
+- `client-blazor` (pushed) : feat/task-184-ins-hors-urls-et-logs — https://github.com/codengine-technologies/HealthPlatform.Client/tree/feat/task-184-ins-hors-urls-et-logs
+- `client-mobile` (pushed) : feat/task-184-ins-hors-urls-et-logs — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-184-ins-hors-urls-et-logs
+- `dtos-mss` (pushed, auto-inclus) : feat/task-184-ins-hors-urls-et-logs — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-184-ins-hors-urls-et-logs
+- `client-angular` (code-only) : la forge écrit sur la branche checked out dans `Client/Angular/` — snapshot au moment du `/start` : **`feature/nova-rewriting-mss`**. Humain gère branche, commit, push, PR TFS.
