@@ -356,7 +356,9 @@ Branche unique sur les repos pushables : `feat/task-184-ins-hors-urls-et-logs`
 | /sonar | ok | 22 min 39 s | 3 (41 s) | 12 (11 min 12 s) | 2 (58 s) | 1 itération(s), api-mail 3B/12T |
 | /lint-angular | ok | 5 min 41 s | 1 (22 s) | 2 (46 s) | — | 1 itération(s), client-angular 1B/2T |
 | /lint-mobile | ok | 42 s | — | — | — | — |
-| **Total cycle** | | **1 h 25 min** | **15 (3 min 17 s)** | **28 (19 min 19 s)** | **2 (58 s)** | |
+| /verify-visual | skipped | 17 s | — | — | — | aucun écran mobile touché — diff limité à mss-api.service.ts et sa spec |
+| /review | ok | 7 min 47 s | 4 (28 s) | 4 (1 min 46 s) | — | dtos-mss 1B/0T, api-mail 1B/1T, client-blazor 1B/1T, client-mobile 1B/1T, client-angular 0B/1T |
+| **Total cycle** | | **1 h 34 min** | **19 (3 min 45 s)** | **32 (21 min 05 s)** | **2 (58 s)** | |
 
 Autres commandes mesurées : lint ×4 (1 min 21 s), nuget-wait ×1 (14 s), restore ×1 (3.0 s)
 
@@ -648,3 +650,110 @@ reste inchangée.
 > lecture patient sur mobile. Le rendu est identique ; c'est la **latence**
 > perçue à l'ouverture d'une fiche patient qui est à juger sur l'appareil.
 > Consigné au plan de test manuel (étape 11).
+
+## PRs
+
+| Repo | PR | Label |
+|---|---|---|
+| `dtos-mss` | https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/29 | `awaiting-human-merge` |
+| `api-mail` | https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/218 | `awaiting-human-merge` |
+| `client-blazor` | https://github.com/codengine-technologies/HealthPlatform.Client/pull/71 | `awaiting-human-merge` |
+| `client-mobile` | https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/69 | `awaiting-human-merge` |
+
+**`client-angular` — code-only, l'humain gère commit / push TFS et l'ouverture
+de la PR.** 5 fichiers modifiés, **non committés**, sur
+`feature/nova-rewriting-mss` :
+
+- `front/libs/mss/src/core/services/mss-api.service.ts`
+- `front/libs/mss/src/features/mail/mss-mail.component.ts`
+- `front/libs/mss/src/features/patient/mss-patient.component.ts`
+- `front/libs/mss/src/ui/patient-widget/patient-widget.component.ts`
+- `front/libs/mss/src/ui/patient-widget/patient-widget.component.spec.ts`
+
+> Les deux `environment.ts` également modifiés dans cet arbre sont le **WIP
+> humain préexistant** constaté au pré-flight — pas cette task.
+
+**Repos exclus** : `devops`, `psc-proxy-*` — managed manually by the human
+(non listés par la task, aucun impact).
+
+> ⚠️ **US-complete (règle 11)** : les cinq lots forment **une seule** US. Les
+> quatre PRs se mergent ensemble, et l'Angular se pousse dans la même fenêtre.
+> Merger `api-mail` seul déprécierait les routes sans basculer les appelants.
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 68 fichiers revus, 0 blocage, 3 suggestions non
+bloquantes.
+
+### Correction
+
+- ✅ **Le handle est toujours renseigné là où l'INS l'était.** Vérifié sur les
+  deux projections dont dépendent les frontends : `AdvancedSearchAsync`
+  (`Id = p.Id`) et `GetWithUnreadMailsAsync` (`PatientId = pat?.Id`, avec
+  `Ins = hasIns ? pat!.Ins : null`). Un INS non nul **implique** un handle non
+  nul — le garde `if (!patient.PatientId.HasValue) return` ne peut donc pas
+  supprimer une navigation qui fonctionnait. Le seul cas nouvellement inerte est
+  « ni INS ni handle », où l'ancien code naviguait avec une chaîne vide, c'est-
+  à-dire vers une page incapable de résoudre quoi que ce soit.
+- ✅ **`GetByInsAsync` n'assignait jamais `Id`** — défaut latent trouvé en
+  écrivant le test d'intégration, sans conséquence avant cette task, fatal au
+  nouveau schéma. Corrigé, couvert sur base réelle.
+- ✅ **`Guid.Empty` lu comme « aucun patient »**, jamais comme « la première
+  ligne » — testé côté repository et côté services clients.
+- ✅ Un patient sans INS (issu d'un CDA non qualifié) lève `NotFoundException`
+  au lieu de dégrader en recherche sur chaîne vide, qui aurait ramené les
+  mauvaises lignes. Testé.
+
+### Sécurité
+
+- ✅ **L'isolation inter-praticiens n'est pas affaiblie.** Le handle est une clé
+  primaire de la base **du praticien** (`BaseRepository`, une base par
+  praticien) : un handle d'un autre tenant ne correspond simplement à rien.
+  Aucune énumération possible — c'est un `Guid`.
+- ✅ Aucun secret, aucune donnée de santé dans les nouveaux templates de log.
+- ✅ Le masquage ne réduit **pas** la couverture du journal PGSSI-S : les
+  évènements restent tous émis, la route reste identifiable, seule la valeur
+  disparaît. Test dédié (`CompletionTraceStillNamesTheRouteItMasked`).
+- ✅ `InsRequestDto` valide `[Required]` + `[StringLength(50, MinimumLength = 1)]`
+  à la frontière.
+
+### Architecture
+
+- ✅ Substitution **à la frontière API** : application et infrastructure restent
+  clés par INS. Le rayon d'action de la task est le plus étroit possible pour
+  un correctif de conformité.
+- ✅ `PatientHandleResolver` supprime le doublon entre les deux controllers
+  (passe qualité `/simplify`).
+- ✅ Les frontends ne dupliquent pas la logique de résolution dans leurs
+  composants : elle est dans le service, les appelants sont inchangés.
+
+### Suggestions (non bloquantes)
+
+1. **⚠️ Coût d'un aller-retour supplémentaire, non caché.** `GetByIdAsync`
+   n'est **pas** mis en cache, contrairement à `GetByInsAsync` (TTL 5 min, clé
+   SHA-256). Chaque lecture adressée par handle fait donc une lecture base non
+   mise en cache, **et** les frontends mobile/Angular ajoutent un aller-retour
+   HTTP de résolution avant chaque lecture patient. Volontaire (un second cache
+   devrait être invalidé en phase avec le premier, pour un gain non mesuré),
+   mais **à surveiller au banc** : la fiche patient est déjà un poste connu du
+   profil de charge. À rejouer sur l'escalier avant certification.
+2. **Allocation sur le chemin chaud.** `SanitizePath` fait un `Split('/')` à
+   chaque requête journalisée. ~6 petites chaînes par requête : négligeable
+   devant le travail IMAP/base de chaque requête, et non bloquant. Une
+   sortie anticipée est possible si un profil dit un jour le contraire.
+3. **`PatientConsentSection` (Blazor) n'a aucun appelant.** Migré vers le handle
+   pour rester cohérent et compiler, mais c'est du code mort — à supprimer dans
+   une passe de ménage, hors de cette task.
+
+### Couverture de test
+
+- ✅ Les tests d'architecture ont été écrits **avant** les correctifs et étaient
+  **rouges** sur le code d'avant (15 échecs constatés) — ce que la DOD exigeait.
+- ✅ Chaque nouvelle route a un cas passant **et** un mode d'échec.
+- ✅ Chaque route dépréciée garde son test de non-régression ; `CS0618` est levé
+  explicitement, avec la raison, plutôt que les tests supprimés pour faire
+  taire l'avertissement.
+- ✅ Les deux garde-fous sont **prouvés** par un cas qui leur soumet les lignes
+  exactes supprimées, et par un cas qui vérifie qu'ils ne signalent pas les
+  remplacements — un garde qui signale tout est aussi inutile qu'un garde qui
+  ne signale rien.
