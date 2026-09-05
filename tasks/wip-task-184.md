@@ -355,9 +355,10 @@ Branche unique sur les repos pushables : `feat/task-184-ins-hors-urls-et-logs`
 | /develop | ok | 54 min 27 s | 11 (2 min 13 s) | 14 (7 min 19 s) | — | api-mail 5B/7T, client-blazor 3B/3T, client-mobile 1B/1T, client-angular 2B/3T |
 | /sonar | ok | 22 min 39 s | 3 (41 s) | 12 (11 min 12 s) | 2 (58 s) | 1 itération(s), api-mail 3B/12T |
 | /lint-angular | ok | 5 min 41 s | 1 (22 s) | 2 (46 s) | — | 1 itération(s), client-angular 1B/2T |
+| /lint-mobile | ok | 42 s | — | — | — | — |
 | **Total cycle** | | **1 h 25 min** | **15 (3 min 17 s)** | **28 (19 min 19 s)** | **2 (58 s)** | |
 
-Autres commandes mesurées : lint ×3 (1 min 05 s), nuget-wait ×1 (14 s), restore ×1 (3.0 s)
+Autres commandes mesurées : lint ×4 (1 min 21 s), nuget-wait ×1 (14 s), restore ×1 (3.0 s)
 
 ## Develop log
 
@@ -622,3 +623,28 @@ se nourrit que des règles corrigées **à la main**, et il n'y en a eu aucune.
 Build et tests de non-régression : déjà verts à l'étape `/develop`
 (`npm run build` OK, **807 tests passed**) et inchangés depuis, cet arbre
 n'ayant reçu aucune modification à cette étape.
+
+## Visual verify log
+
+**Skip propre — aucun écran mobile touché.**
+
+Le diff `client-mobile` de cette task se limite à deux fichiers :
+
+- `src/app/core/services/mss-api.service.ts`
+- `src/app/core/services/mss-api.service.spec.ts`
+
+Aucun `.html`, aucun `.scss`, aucune `.page.ts`, aucun composant. La task change
+**ce qui voyage dans les URL** des appels API — les écrans reçoivent exactement
+les mêmes données, affichées à l'identique. Il n'y a donc rien à capturer, et
+aucun `## Stitch design log` n'a été produit par `/develop` (aucun écran créé ni
+réécrit).
+
+Ni serveur `ng serve` démarré, ni Playwright invoqué, ni capture produite : la
+galerie « État visuel de l'application » (`Docs/epics/img/screens/client-mobile/`)
+reste inchangée.
+
+> Ce que l'humain doit tout de même vérifier au HAG, et qu'aucune capture ne
+> couvrirait : la task ajoute **un aller-retour de résolution** avant chaque
+> lecture patient sur mobile. Le rendu est identique ; c'est la **latence**
+> perçue à l'ouverture d'une fiche patient qui est à juger sur l'appareil.
+> Consigné au plan de test manuel (étape 11).
