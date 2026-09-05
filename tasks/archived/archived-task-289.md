@@ -611,3 +611,32 @@ service, qui nomme les flags éteints.
 Deux fois de suite, la même erreur de méthode a été prise : croire qu'un
 comportement est correct parce qu'il est raisonné. Les deux fois, la mesure a
 tranché contre le raisonnement.
+
+## Merged
+
+- **Date** : 2026-09-05, sur attestation humaine `--i-tested` (HAG, règle 10).
+- `api-mail` : PR [#217](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/217)
+  **squash-mergée** → commit `7368f0f` sur `develop`. Référence distante
+  `fix/task-289-flag-absent-isole-du-snapshot` supprimée ; branche locale
+  conservée.
+- `dtos-mss` : aucune PR, aucun commit — aucun changement de contrat n'était
+  nécessaire. Branche créée par convention (auto-inclusion), restée vide.
+- **Portes vérifiées avant merge** : `mergeable=MERGEABLE`,
+  `mergeState=CLEAN`, CI `build` **SUCCESS** (`publish` skipped), label
+  `awaiting-human-merge` (jamais `awaiting-us-completion`), aucune revue en
+  `CHANGES_REQUESTED`, branche sans retard sur `develop`, arbres propres sur
+  les deux repos.
+- **Aucune branche staging à nettoyer** : la task n'a pas été lancée par un run
+  `/forge`, aucune `forge/staging-*` n'existe pour cet intervalle.
+
+### Reste à faire, hors périmètre de ce merge
+
+1. **Créer les 8 flags `dashboard_widget_*`** dans l'environnement Flagsmith
+   Staging (`default_enabled = true`). Ce merge empêche la **récidive** ; il ne
+   crée pas les flags manquants — c'est un geste d'exploitation, et le seeder
+   `src/AppHost/FlagsmithSeeder.cs` ne sert que le banc.
+2. **`todo-task-290.md`** — les mails traités pendant la panne ont sauté
+   l'étage IA et le resteront : pas d'embedding, pas de tags, **pas
+   d'extraction de contacts** (qui alimente le rattachement patient). Le résumé
+   se régénère à la demande. Le mail sauté n'étant pas marqué, le marquage doit
+   précéder tout rejeu.
