@@ -1030,3 +1030,79 @@ exactement ce que le séquencement de la task prévoyait.
 2. **Task de suite — suppression des routes dépréciées** : ne peut intervenir
    qu'après bascule des trois frontends **et** un délai de grâce couvrant les
    clients non maîtrisés.
+
+## Suite — routes dépréciées SUPPRIMÉES (2026-09-06, `754a194` sur `develop`)
+
+Le « reste dû » du merge est soldé. Fait **directement sur `develop`**, sans PR
+ni gate HAG, sur décision explicite de l'humain.
+
+### Pourquoi aucun délai de grâce n'était dû
+
+task-184 avait conservé les six routes précisément pour ce délai. L'humain a
+tranché : **l'API n'est pas encore déployée et n'a aucun client** hors nos trois
+frontends. La condition qu'il a posée — « si tu as bien vérifié Angular, mobile
+et Blazor » — a été tenue **dans les deux sens**, l'absence d'appel ne prouvant
+pas la bascule :
+
+| Frontend | Commit | Contrôle positif : routes par handle réellement émises |
+|---|---|---|
+| `client-angular` | `65b8736d` | `resolve`, `{patientId}`, `medical-documents`, `opposition` (GET+PUT), `validate-ins` |
+| `client-blazor` | `814a8e3c` | `resolve`, `medical-documents`, `opposition`, `validate-ins`, `biology/patients` |
+| `client-mobile` | `c39aa63f` | `resolve`, `{patientId}`, `validate-ins`, `opposition`, `medical-documents` |
+
+Zéro appel résiduel aux routes par INS sur les trois.
+
+### Les garde-fous ont fonctionné à la sortie — c'est le point à retenir
+
+- **`SensitiveRouteTemplateScanTests`** portait une liste d'exemptions de cinq
+  entrées, documentée « ne peut que décroître », **avec un test qui vérifiait
+  que chaque entrée correspondait encore à une route réelle**. Ce test a
+  **échoué à la seconde où les routes ont été supprimées**, forçant à vider la
+  liste dans le même commit au lieu de la laisser devenir une permission
+  générale que plus personne ne contrôle. La règle est passée de « ces cinq-là
+  sont tolérées » à « aucune ne l'est », et un nouveau test l'y maintient.
+- **`EveryDeprecatedRouteStillAnswers`** affirmait que les cinq routes rendaient
+  200. Il est conservé **retourné** (`NoInsBearingRouteIsServedAnyMore`, 404
+  désormais) plutôt que supprimé : `ins/{ins}` reste la forme la plus naturelle
+  à écrire pour qui ajoutera un endpoint patient sans connaître cette histoire.
+
+### Le masquage est conservé, sa justification réécrite
+
+Il ne protège plus une route servie, et ce n'est pas du code mort pour autant :
+une URL portant un INS mais **non routée** voit toujours son chemin journalisé
+(client périmé, marque-page, sonde) ; les **traits en query string** de
+`patients/search` et `patients/match` en dépendent ; et toute route future
+réintroduisant un identifiant est couverte sans qu'on ait à y penser.
+
+**Sept commentaires** affirmaient encore que les routes étaient « encore servies
+pendant le délai de grâce » — corrigés. Un commentaire périmé est ici pire que
+pas de commentaire : il décrit une protection qui n'a plus la forme annoncée.
+
+### Harnais k6
+
+`PATIENT_ROUTE_MODE` et sa jambe `ins` partent avec les routes qu'ils
+exerçaient : il n'y a plus de seconde lignée à tirer. **Le verdict de l'A/B est
+consigné là où vit le code** (~1 ms par requête) pour ne pas être re-deviné. Le
+parcours **saute** désormais la consultation quand la recherche ne rapporte pas
+de handle — compté par `journey_patient_handle_missing` — au lieu de se replier
+sur une route qui n'existe plus et de mesurer un 404 sous le nom du geste.
+
+### Aussi retiré
+
+Constante `DeprecatedInsRouteReason` orpheline, dépendance `ModelStateLogger`
+devenue inutile dans `BiologyController`, 14 tests de controller morts (leurs
+équivalents par handle couvrent chaque comportement), deux pragmas `CS0618`.
+
+### Validation
+
+Build 0 erreur, **4101 tests verts**, CI `develop` **verte** (`754a194f`).
+
+### ⚠️ Finding à instruire — flakiness d'ordre dans `mss.mail.application.tests`
+
+**Un** test échoue par exécution complète, et **un différent à chaque fois** :
+`EnrichmentOperationScopeTests` (×2), `MarkdownPdfRendererTests`,
+`MailRepositoryEnrichPersistInstrumentationTests`. Chacun **vert en isolation,
+deux fois de suite**. C'est un état partagé dépendant de l'ordre dans cet
+assembly, **préexistant** et sans rapport avec ce changement — mais il rend
+toute exécution complète non déterministe, donc il masquera un vrai défaut un
+jour. **Mérite sa propre task.**
