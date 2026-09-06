@@ -196,3 +196,25 @@ identifié. **À ne pas ranger de force dans les deux premières.**
 - **Hébergement HDS** : non — exécution locale et CI, aucune DSCP manipulée
 - **AIPD / impact RGPD** : inchangé — aucun traitement de données personnelles
   créé ni modifié
+
+## Branches
+
+- `api-mail` (pushed) : `fix/task-291-suite-tests-non-deterministe` — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-291-suite-tests-non-deterministe
+- `dtos-mss` (pushed, auto-inclus) : `fix/task-291-suite-tests-non-deterministe` — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/fix/task-291-suite-tests-non-deterministe
+  (branche créée par convention CLAUDE.md ; **aucun changement de DTO attendu**
+  pour cette task — elle restera sans commit et sans PR)
+
+Préfixe `fix/` et non `feat/` : la task ne livre aucune fonctionnalité, elle
+répare un garde-fou.
+
+### Pré-vol du 2026-09-06
+
+Sept repos automatisés sur `develop`, aucun sur une branche de feature. Seul
+fichier non committé : `metrics/timings.jsonl`, écrit par `step.sh start` de
+cette étape même.
+
+> ⚠️ **Lacune de pré-vol constatée, hors scope de cette task.** `interop` n'a
+> **pas** de `.git` — exactement comme `Host/Modules`. `git -C interop` remonte
+> donc au dépôt du plan de contrôle et répond pour lui. CLAUDE.md ne porte cet
+> avertissement que pour `host` : le pré-flight de `/start` ne mesure donc rien
+> pour **`interop-cda` non plus**, et ne le dit pas. À corriger dans CLAUDE.md.
