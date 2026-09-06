@@ -218,3 +218,13 @@ cette étape même.
 > donc au dépôt du plan de contrôle et répond pour lui. CLAUDE.md ne porte cet
 > avertissement que pour `host` : le pré-flight de `/start` ne mesure donc rien
 > pour **`interop-cda` non plus**, et ne le dit pas. À corriger dans CLAUDE.md.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-291 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 59 s | — | — | — | — |
+| /develop | failed | 50 min 54 s | — | — | — | — |
+| **Total cycle** | | **51 min 53 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
