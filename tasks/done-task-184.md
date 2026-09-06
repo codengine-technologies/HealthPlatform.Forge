@@ -840,3 +840,59 @@ en isolation (deux fois), et le test qui échoue change d'une exécution à
 l'autre.
 
 Commit `4db7cf2`, poussé sur la PR `api-mail` #218.
+
+## Harnais k6 — mis à jour (2026-09-05)
+
+Question humaine : « as-tu mis à jour les tests k6 suite à ce changement de
+route ? » **Non — et le harnais tapait bien les routes dépréciées.**
+
+Rien n'était cassé (les routes `ins/{ins}` répondent pendant le délai de
+grâce), mais le banc mesurait **le chemin déprécié** pendant que les trois
+frontends étaient passés au handle. Un tir de capacité aurait donc cessé de
+représenter le produit livré.
+
+### Ce n'est pas une réécriture cosmétique du chemin
+
+Côté serveur, la route par handle commence par
+`ResolveInsOrThrowAsync(patientId)` : **une lecture en base de plus par
+requête**, là où la route par INS recevait déjà la clé fonctionnelle. **Deux
+des trois gestes** de la chaîne « dossier patient » paient cette indirection.
+
+Côté client, en revanche, le handle ne coûte **aucun aller-retour** :
+`SearchResultPatientDto` porte déjà `Id`, donc la recherche qui ouvre la chaîne
+le rapporte. Le harnais le lit dans cette réponse — comme le client réel — au
+lieu de se le faire souffler par la configuration.
+
+### `PATIENT_ROUTE_MODE` — la jambe de comparaison
+
+| Mode | Ce qu'il tire |
+|---|---|
+| `handle` (défaut) | les adresses des trois frontends — le produit tel qu'il est livré |
+| `ins` | les adresses dépréciées — **la jambe de comparaison**, pas un mode de compatibilité |
+
+Tirer les deux jambes sur la même base est la seule façon de **chiffrer** le
+surcoût de l'indirection au lieu de le supposer. C'est aussi la seule façon
+honnête de rattacher un tir d'après task-184 à la référence d'avant : en
+`handle`, la chaîne patient **n'exerce plus le même code serveur**, donc
+l'iso-conditions ne tient plus sur ces gestes (leçon
+« iso-conditions inclut la lignée de code »).
+
+Repli explicite : sans handle appris (recherche en échec, corps illisible), la
+chaîne retombe sur l'INS plutôt que d'émettre `/Patients/undefined/…`. Les deux
+gabarits restant distincts dans le magasin de métriques, une bascule
+silencieuse se verrait dans la répartition.
+
+`{patientId}` ajouté à `ROUTE_PLACEHOLDERS` : le gabarit est ce qui tient le
+handle hors des étiquettes de métriques, exactement comme il y tenait l'INS.
+
+### Validation
+
+`selftest.sh` vert : **94 tests node + 333 tests python**. Commit `fabd277`.
+
+### ⚠️ Reste à faire — un tir, pas du code
+
+Le harnais est à jour ; **aucun tir n'a été lancé**. Avant la prochaine
+campagne de capacité, tirer les deux jambes sur la même base
+(`PATIENT_ROUTE_MODE=handle` puis `=ins`, re-seed vierge entre les deux) pour
+chiffrer le surcoût de la résolution en base. Tant que ce n'est pas fait, le
+coût de l'indirection par handle est **estimé, pas mesuré**.
