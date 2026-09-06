@@ -986,3 +986,47 @@ n'est donc **pas** « retour non nul » mais `flags == 0x80000003`.
 4. Banc local : valeurs absolues pessimistes (Dovecot vole du CPU au SUT).
 5. Le coût de `POST resolve` n'est **pas** mesuré — le parcours passe déjà par
    `POST search/advanced`, qui rapporte le handle.
+
+## Merged
+
+Mergée le 2026-09-06 par l'humain (`/merge task-184 --i-tested`, HAG règle 10).
+Squash-merge, ordre topologique, CI `develop` **verte sur les quatre repos**.
+
+| Repo | PR | Commit de squash | CI `develop` |
+|---|---|---|---|
+| `dtos-mss` | #29 | `56522d81` | ✅ success |
+| `api-mail` | #218 | `2f892bfb` | ✅ success |
+| `client-blazor` | #71 | `814a8e3c` | ✅ success |
+| `client-mobile` | #69 | `c39aa63f` | ✅ success |
+
+Refs distantes `feat/task-184-ins-hors-urls-et-logs` supprimées ; branches
+locales conservées ; les quatre clones resynchronisés sur `develop`.
+
+### ⚠️ `client-angular` — NON mergé, et délibérément non touché
+
+Le repo est en **code-only** (remote TFS) : l'humain possède branche, commit,
+push et ouverture de PR. Au moment du merge, les 5 fichiers de la task étaient
+**encore non committés** dans l'arbre de travail, sur
+`feature/nova-rewriting-mss` :
+
+- `front/libs/mss/src/core/services/mss-api.service.ts`
+- `front/libs/mss/src/features/mail/mss-mail.component.ts`
+- `front/libs/mss/src/features/patient/mss-patient.component.ts`
+- `front/libs/mss/src/ui/patient-widget/patient-widget.component.ts`
+- `front/libs/mss/src/ui/patient-widget/patient-widget.component.spec.ts`
+
+`/merge` **n'a donc pas** basculé le clone Angular sur `develop` : le faire
+aurait détruit ce travail non committé. Les deux `environment.ts` modifiés dans
+le même arbre restent le WIP propre de l'humain, hors task-184.
+
+**Pourquoi ce merge partiel ne casse rien** (règle 11) : les six routes
+`ins/{ins}` sont **conservées et testées** pendant le délai de grâce. Angular
+continue de fonctionner à l'identique, qu'il soit basculé ou non. C'est
+exactement ce que le séquencement de la task prévoyait.
+
+### Reste dû après ce merge
+
+1. **`client-angular`** : commit + push + PR TFS par l'humain.
+2. **Task de suite — suppression des routes dépréciées** : ne peut intervenir
+   qu'après bascule des trois frontends **et** un délai de grâce couvrant les
+   clients non maîtrisés.
