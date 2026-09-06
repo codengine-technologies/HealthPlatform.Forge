@@ -896,3 +896,93 @@ campagne de capacité, tirer les deux jambes sur la même base
 (`PATIENT_ROUTE_MODE=handle` puis `=ins`, re-seed vierge entre les deux) pour
 chiffrer le surcoût de la résolution en base. Tant que ce n'est pas fait, le
 coût de l'indirection par handle est **estimé, pas mesuré**.
+
+## Campagne A/B du banc — 2026-09-06 (`PATIENT_ROUTE_MODE` handle vs ins)
+
+Le « reste à faire » de la section précédente est **fait**. Deux jambes tirées
+sur la même base, harnais identique, 0 itération abandonnée de part et d'autre.
+
+Rapport de comparaison :
+`tests/loadtest-k6/reports/2026-09-06/AB-task-184-handle-vs-ins.md`.
+
+### Le résultat — le surcoût vaut ~1 ms par requête
+
+| Geste | Écart avg | Écart relatif |
+|---|---|---|
+| `patient_opposition` | **+1,0 ms** | +50 % |
+| `patient_dossier` | **+1,4 ms** | +12 % |
+| *témoin* `patient_search` (route inchangée) | −0,1 ms | −5 % |
+| *témoin* `patient_docs` (route inchangée) | +0,4 ms | +5 % |
+
+Cohérent avec ce que l'indirection **est** : une lecture de plus par clé
+primaire indexée, sur une connexion déjà ouverte. **Le pourcentage est
+trompeur, l'absolu ne l'est pas** — `patient_opposition` est une requête à 2 ms,
++1 ms la fait paraître 50 % plus lente sans qu'un médecin puisse le percevoir.
+Aux percentiles hauts l'écart disparaît (p95 30,8 vs 31,1 sur `patient_dossier`).
+
+Les deux témoins sont ce qui rend l'écart **attribuable** : la dérive entre
+tirs vaut ~0,4 ms, l'écart mesuré la dépasse.
+
+**Verdict** : la sortie de l'INS des URL est payante et son coût est négligeable
+pour le médecin. Aucune raison de reconsidérer la voie retenue.
+
+### ⚠️ Le tir a trouvé une fuite que TOUTE la suite de tests avait manquée
+
+Sur une route dépréciée `ins/{ins}`, **le même événement Seq** portait :
+
+| Propriété | Valeur | |
+|---|---|---|
+| `Path` | `/api/v1/Patients/ins/***/opposition` | ✅ masqué |
+| `RequestPath` | `/api/v1/Patients/ins/279035121518989/opposition` | ❌ **INS EN CLAIR** |
+
+C'est l'item de DOD « `RequestPath` journalisé et exporté en télémétrie est
+masqué », **silencieusement non tenu**.
+
+**Cause** : `IncludeScopes = true` fait remonter le scope de requête d'ASP.NET
+Core, et `HostingApplicationDiagnostics` publie **son propre** `RequestPath`
+brut, qui écrase celui que pousse le middleware.
+
+**Pourquoi aucun test ne l'attrapait** — deux causes cumulées :
+1. les tests de bout en bout assertent sur le **message rendu**, or
+   `RequestPath` ne vit que dans les **propriétés structurées** ;
+2. le scope framework **n'existe pas** dans un hôte de test qui monte le
+   middleware seul — la collision de noms ne peut pas s'y produire.
+
+Un test unitaire du middleware serait resté vert indéfiniment. C'est
+exactement la classe de défaut qu'un banc trouve et qu'une suite ne trouve pas.
+
+**Correctif** : `MaskedRequestPathEnricher` — dernier étage avant les puits,
+donc couvrant le scope framework, notre poussée, et tout futur producteur du
+même nom. Commit `f0052e4`. 5 tests ajoutés, portant sur les **propriétés
+structurées** (le trou qui avait laissé passer le défaut).
+
+**Vérifié en conditions réelles après correctif** : `RequestPath` et
+`RequestQuery` masqués (`?lastName=***&firstName=***`), et un balayage Seq de la
+valeur d'INS sur la fenêtre rend **zéro** événement.
+
+### Hygiène de campagne
+
+Pré-vol : hôte calme (rien au-dessus de 4,3 % CPU), PgBouncer en IPv4 seul et
+0 `server_login_retry`, bus drainé avant chaque purge, 1000 bases purgées entre
+les jambes. `cl_waiting = 0` partout pendant le tir. Marqueurs de régression du
+banc tous à zéro. Une seule erreur sur 20 min (`ConflictException` de
+concurrence optimiste, délibérément signalée, sans rapport).
+
+Banc rendu : AppHost et `dcp.exe` arrêtés, volume maildir supprimé, bases
+purgées, 0 archive CDA en clair dans `%TEMP%`.
+
+**Piège keep-awake, troisième variante rencontrée** : Windows PowerShell 5.1
+n'a pas l'accélérateur `[uint]`, et le littéral `0x80000000` est parsé en
+`Int32` **avant** la conversion. Dans les deux cas les drapeaux tombent à 0 —
+et `flags=0` **désarme** au lieu d'armer, tout en renvoyant un « état
+précédent » non nul qui fait croire au succès. La preuve d'armement à exiger
+n'est donc **pas** « retour non nul » mais `flags == 0x80000003`.
+
+### Réserves
+
+1. A/B, **pas** une certification SLO (20 praticiens, K=10, mix distordu).
+2. Le dossier `Sent` de la jambe B contenait les archives de la jambe A.
+3. Le binaire mesuré est **antérieur** au correctif que ce tir a fait découvrir.
+4. Banc local : valeurs absolues pessimistes (Dovecot vole du CPU au SUT).
+5. Le coût de `POST resolve` n'est **pas** mesuré — le parcours passe déjà par
+   `POST search/advanced`, qui rapporte le handle.
