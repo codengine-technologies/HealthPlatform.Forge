@@ -1,203 +1,250 @@
-# conventions/csharp.md — Conventions de code C# apprises par la forge
+# conventions/csharp.md — règles apprises côté C#
 
-> **Portée** : tous les repos .NET écrits par la forge (`api-mail` en
-> premier lieu ; `client-blazor`, `sdk`, `host`, `interop-cda` par extension).
-> **Lu par** : `/develop` (avant d'écrire du code C#).
-> **Alimenté par** : `/sonar` (voir protocole).
-> **Jamais édité à la main** sauf pour retirer une convention devenue fausse.
+> **Boucle d'auto-amélioration** (CLAUDE.md § « Conventions apprises »).
+> Alimenté par `/sonar` à chaque règle corrigée **à la main** sur du code frais.
+> Lu par `/develop` **avant** d'écrire du C#.
 >
-> ⚠️ **Ce fichier ne couvre que le C#.** L'analyse Sonar d'`api-mail` est
-> multi-langage : le JavaScript **et le Python** du repo (harnais k6,
-> `tests/loadtest-k6/` — scénarios en JS, moteur de rapport en Python) sont
-> scannés par SonarJS / SonarPython et comptent dans le new code du Quality
-> Gate. Avant d'écrire du **JS** dans un repo .NET, lire
-> `conventions/javascript.md` ; avant d'écrire du **Python**,
-> `conventions/python.md`.
-
-## Protocole d'alimentation (/sonar)
-
-À la fin d'un run (Mode A ou B), pour **chaque règle Sonar corrigée
-manuellement** sur du code écrit par `/develop` (Phase 1 new-code en
-priorité — c'est là que la forge se corrige elle-même ; les fixes Phase 2
-sur du legacy antérieur à la forge ne comptent que si la règle est
-susceptible de se reproduire dans du code neuf) :
-
-1. Si une entrée existe pour cette règle → incrémenter **Occurrences**,
-   ajouter la task à **Origine**.
-2. Sinon → créer l'entrée avec le format ci-dessous, `Occurrences : 1`.
-3. Une entrée existe dès la **première** correction sur du new code : la
-   prévention est immédiate, pas de seuil.
-
-`/develop` lit ce fichier avant d'écrire du code C# : chaque « Consigne »
-est un pattern à appliquer d'emblée — un finding Sonar new-code récurrent
-sur du code frais est un échec de lecture de ce fichier.
-
-## Format d'entrée
-
-```markdown
-### {règle-sonar-ou-slug} — {titre court}
-- **Règle** : {clé Sonar exacte (ex. csharpsquid:S1481), ou "convention projet"}
-- **Repos** : {api-mail | tous .NET | ...}
-- **Consigne** : {ce que /develop doit faire d'emblée}
-- **Origine** : task-NNN (/sonar, N occurrences corrigées)
-- **Occurrences** : {n}
-```
+> Les corrections de l'auto-fixer ne comptent pas (elles sont gratuites). Seules
+> les règles qu'un humain ou la forge a dû corriger manuellement entrent ici :
+> ce sont celles qui coûtent un aller-retour et qu'il faut donc éviter d'emblée.
+>
+> **Protocole** : première correction manuelle d'une règle → nouvelle entrée,
+> `Occurrences: 1`. Récidive sur du code frais → incrémenter le compteur (une
+> récidive signale que ce fichier n'a pas été lu avant de coder). Ne jamais
+> supprimer une entrée sans justification dans le commit.
+>
+> Ce fichier complète, sans le remplacer,
+> [`Api/Mail/.github/instructions/dotnet-coding-rules.instructions.md`](../Api/Mail/.github/instructions/dotnet-coding-rules.instructions.md)
+> — la source de vérité des règles de codage d'`api-mail`, qui reste à lire pour
+> tout code C# de ce repo.
 
 ---
 
-## Conventions actives
+## CA1822 — un membre qui n'accède pas à l'état d'instance doit être `static`
 
-### problemdetails-rfc7807 — Erreurs API via GlobalExceptionHandler uniquement
-- **Règle** : convention projet (CLAUDE.md règle 12 — rappel préventif ici)
-- **Repos** : api-mail (et tout futur service .NET)
-- **Consigne** : jamais de `try/catch` boilerplate par action, jamais de
-  `StatusCode(500, "...")` ni de string brute. Lever une exception métier
-  typée (`NotFoundException` → 404, `ValidationException` → 400,
-  `ConflictException` → 409, `UnavailableException` → 503) ; le
-  `GlobalExceptionHandler` produit le `ProblemDetails`. Aucun détail
-  technique ni donnée de santé dans le `detail` exposé.
-- **Origine** : task-055 (gravée dans CLAUDE.md)
-- **Occurrences** : n/a (préventif)
+**Occurrences : 1** (task-200)
 
-### html-sanitize-anglesharp — Assainir le HTML avec AngleSharp, pas Ganss
-- **Règle** : convention projet (choix de dépendance)
-- **Repos** : api-mail
-- **Consigne** : tout assainissement HTML côté backend passe par une
-  allowlist sur **AngleSharp 1.5** — jamais `HtmlSanitizer` (Ganss), qui
-  épingle AngleSharp 0.17.x (incompatible) et traîne l'advisory NU1902.
-  Cf. mémoire `reference_html_sanitizer_use_anglesharp`.
-- **Origine** : gravée avant la création de ce fichier
-- **Occurrences** : n/a (préventif)
+Le piège classique en test : exposer une valeur constante par une **propriété
+d'instance** qui enveloppe un `private const`. La propriété n'accède à aucun
+état d'instance, donc CA1822 la signale — et l'indirection n'apportait rien.
 
-### xUnit2032 — `Assert.IsType<T>(obj, exactMatch: false)`, pas `IsAssignableFrom`
-- **Règle** : `xUnit2032`
-- **Repos** : tous .NET (projets de tests xUnit)
-- **Consigne** : pour asserter qu'un objet est d'un type **ou d'un sous-type**,
-  écrire `Assert.IsType<T>(obj, exactMatch: false)` — jamais
-  `Assert.IsAssignableFrom<T>(obj)`, dont le nommage est jugé ambigu par
-  l'analyseur. Cas typique : une API qui renvoie une classe de base
-  (`MimeKit` renvoie une sous-classe concrète de `MimePart`).
-- **Origine** : task-195 (/sonar, 1 occurrence corrigée sur du new code)
-- **Occurrences** : 1
+```csharp
+// ❌ AVANT — propriété d'instance qui ne fait que relayer une constante
+private const string Database = "mail_pooler_test";
+public string DatabaseName => Database;
 
-### CA1822 — Membre de test sans état d'instance ⇒ `static`
-- **Règle** : `external_roslyn:CA1822`
-- **Repos** : tous .NET (surtout les projets de tests)
-- **Consigne** : tout helper privé d'une classe de test qui n'accède à aucun champ
-  d'instance doit être déclaré `static` d'emblée (fabriques `Arrange*`, builders de
-  substituts, constructeurs de données). C'est le cas de la majorité des helpers de
-  test : le réflexe par défaut est `private static`.
-- **Origine** : task-195 (/sonar, 1 occurrence corrigée — comptée sur le new code
-  par la période `PREVIOUS_VERSION`)
-- **Occurrences** : 1
+// ✅ APRÈS — une seule déclaration, publique
+public const string DatabaseName = "mail_pooler_test";
+```
 
-### S103 — Signature > 150 caractères ⇒ un paramètre par ligne
-- **Règle** : `csharpsquid:S103`
-- **Repos** : tous .NET
-- **Consigne** : ajouter un paramètre à une signature déjà longue la fait
-  franchir la limite de 150 caractères — cas typique quand on propage une
-  nouvelle dimension (identité, tenant, corrélation) à travers une interface et
-  ses implémentations. **Dès qu'une signature dépasse ~120 caractères, la passer
-  d'emblée en un paramètre par ligne** (interface *et* implémentations *et*
-  fabriques de test), plutôt que d'attendre le finding. Vérification rapide avant
-  commit :
-  `awk 'length($0)>150 {print FILENAME":"NR}' {fichiers-modifiés}`
-- **Origine** : task-175 (/sonar, 4 occurrences — 3 implémentations de
-  `IMailEnrichmentNotifier` + 1 fabrique de test) ; task-176 (/sonar, 1
-  occurrence — **récidive sur du code frais** : un message de log interpolé
-  dépassait 150 caractères. L'entrée existait déjà : appliquer le contrôle `awk`
-  **avant** le commit, pas après le finding Sonar)
-- **Occurrences** : 5
+**Consigne** : avant d'écrire `public X Truc => _constante;`, vérifier si la
+constante ne peut pas être exposée directement. Dans une fixture de test, une
+valeur fixe partagée par les tests est une `public const`, pas une propriété.
+Corollaire : les sites d'appel deviennent `MaClasse.DatabaseName` et non
+`_fixture.DatabaseName` — c'est le signe attendu, pas une gêne.
 
-### S125 — Un commentaire `//` ne finit JAMAIS par `;`
-- **Règle** : `csharpsquid:S125` (sections de code commenté)
-- **Repos** : tous .NET
-- **Consigne** : documenter le contrat d'un **membre d'interface** dans un bloc
-  de commentaires `//` multi-ligne se fait signaler comme « code commenté » dès
-  que le texte cite des identifiants (`(folderPath, uid)`, `MailContent`,
-  `GetMailAsync`) et ponctue ses puces par des `;` — l'heuristique n'y voit plus
-  de la prose. **Écrire d'emblée un commentaire de documentation XML**
-  (`<summary>` / `<remarks>` / `<returns>`, puces en `<list type="bullet">`).
-  Ce n'est pas un contournement : c'est la forme attendue à cet endroit, elle
-  est visible à l'appel (IntelliSense) et elle est référençable par
-  `<see cref>` depuis l'implémentation.
+---
 
-  **Le déclencheur mécanique, isolé par task-271 : la ponctuation en fin de
-  ligne.** Le finding n'exige ni interface ni liste à puces — il suffit qu'une
-  ligne de commentaire `//` **se termine par `;`** pour que l'heuristique la
-  prenne pour une instruction. Le cas de task-271 était de la prose ordinaire
-  au fil du texte :
+## S2068 — ne pas multiplier les littéraux de mot de passe
 
-  ```csharp
-  // is a scope that cannot be narrowed. The label does not shrink the hold;
-  // it makes the two populations addressable.
-  ```
+**Occurrences : 1** (task-200)
 
-  Remplacer le `;` par une virgule ou un tiret suffit — le sens ne change pas.
-  **Contrôle avant commit** (coût nul, à passer sur le diff) :
+Les bancs de test ont des identifiants synthétiques en clair, assumés et
+documentés. S2068 ne se déclenche pas sur leur existence mais sur **chaque
+occurrence** : un refactor qui construit une seconde chaîne de connexion avec le
+même `Password=…` crée une nouvelle issue pour zéro information ajoutée.
 
-  ```bash
-  git diff --cached -U0 -- '*.cs' | grep -nE "^\+\s*//.*;\s*$"
-  ```
+```csharp
+// ❌ AVANT — deux littéraux pour les mêmes identifiants
+const string direct = "Host=127.0.0.1;Port=5432;Username=postgres;Password=postgres";
+var data = "Host=127.0.0.1;Port=6432;Username=postgres;Password=postgres" + pooling;
 
-  Toute sortie non vide est un S125 à venir.
-- **Origine** : task-222 (/sonar, 1 occurrence sur du new code) ; **récidive
-  task-271** (1 occurrence, prose au fil du texte — d'où la généralisation
-  ci-dessus, la consigne d'origine ne couvrait que les blocs d'interface)
-- **Occurrences** : 2
+// ✅ APRÈS — identifiants déclarés une fois
+const string credentials = "Username=postgres;Password=postgres";
+const string direct = $"Host=127.0.0.1;Port=5432;{credentials}";
+var data = $"Host=127.0.0.1;Port=6432;{credentials}{pooling}";
+```
 
-### no-sync-io-response-body — Jamais d'IO synchrone sur Response.Body
-- **Règle** : apparentée `csharpsquid:S6966` (méthodes async disponibles)
-  + contrainte Kestrel `AllowSynchronousIO=false`
-- **Repos** : api-mail
-- **Consigne** : `ZipArchive.Dispose()` (et tout writer qui flush en
-  synchrone) est interdit directement sur `Response.Body` : bufferiser via
-  `FileBufferingWriteStream` puis drainer en async (`DrainBufferAsync`).
-  Un test controller sur `MemoryStream` ne détecte PAS ce bug — exiger un
-  vrai test d'intégration endpoint. Cf. mémoire
-  `reference_ziparchive_kestrel_sync_io`.
-- **Origine** : gravée avant la création de ce fichier
-- **Occurrences** : n/a (préventif)
+**Consigne** : quand une US ajoute une variante d'une chaîne de connexion
+existante (autre port, autres bornes de pooling), extraire la partie
+identifiants en constante **avant** de dupliquer. Vaut pour tout secret de banc
+(mots de passe IMAP, clés de bypass) : une déclaration, N usages.
 
-### controller-operation-scope — Chaque action de controller ouvre un scope de log
-- **Règle** : convention projet, **tenue par une garde** —
-  `tests/mss.mail.api.tests/Architecture/ControllerOperationScopeScanTests.cs`
-- **Repos** : api-mail (et tout futur service .NET exposant des controllers)
-- **Consigne** : le corps de toute action portant un attribut de route
-  (`[HttpGet]`, `[HttpPost]`, …) est enveloppé dans
+---
 
-  ```csharp
-  using (logger.BeginOperationScope("NomDuScope"))
-  {
-      // ...
-  }
-  ```
+## CA1861 — pas de tableau littéral en argument d'appel
 
-  Sans ça, les journaux de l'endpoint sortent sans propriété Serilog
-  `Operation` : ils existent, mais on ne peut pas les retrouver **par
-  opération** dans Seq — ce qui est exactement la question qu'on pose à Seq
-  quand un endpoint se comporte mal.
+**Occurrences : 2** (task-203, task-273 — récidive sur code frais : tableaux
+attendus d'un `Assert.Equal` dans un test de sollicitations ; la consigne vaut
+aussi pour les attendus de test)
 
-  **Nommage** — PascalCase, nom de la méthode moins `Async`
-  (`GetFoldersAsync` → `GetFolders`). Le nom doit être **unique dans le
-  repo** : un doublon fait ramener au filtre `Operation` les journaux de deux
-  endpoints mélangés, ce qui est plus sournois qu'une absence. Quand le nom nu
-  est déjà pris, préfixer par le domaine — précédents en place :
-  `MailTemplate.GetAll`, `Signature.GetAll`, `Maintenance.PurgeMails`,
-  `BiologyAck.RecordAck`, `MailExport.Eml`, `Notifications.Stream`.
+Un tableau littéral passé en argument est **réalloué à chaque appel**. Le motif
+apparaît naturellement quand on préfixe des segments de chemin ou qu'on
+construit une liste courte « à la volée » — y compris dans du code de test, où
+l'analyseur ne fait pas de remise.
 
-  **Délégation admise** : une action qui délègue à une méthode privée du même
-  type ouvrant le scope est conforme (motif de `MailExportController`
-  → `BuildPdfResponseAsync`). La garde suit les appels sur deux niveaux.
+```csharp
+// ❌ AVANT — le préfixe est réalloué à chaque résolution
+internal static string? TryResolveAppHostFile(params string[] segments)
+    => TryResolveRepoFile([.. new[] { "src", "AppHost" }.Concat(segments)]);
 
-  **Contrôle avant commit** (coût nul) — la garde tourne dans
-  `mss.mail.api.tests`, donc `dotnet test` suffit ; elle nomme le fichier, la
-  ligne et l'action fautive.
-- **Origine** : correctif du 2026-09-07 — 38 actions sur 10 controllers
-  n'ouvraient aucun scope, alors que 107 sites appliquaient déjà la
-  convention. Sept controllers n'en avaient aucun ; **trois en avaient un sur
-  trois ou quatre actions**, forme partielle invisible à la relecture puisque
-  le fichier *contient* un `BeginOperationScope`. C'est ce cas-là qui motive
-  une garde plutôt qu'une consigne seule : la consigne valait déjà pour les
-  cent-sept autres sites au moment où les dix controllers ont dérivé.
-- **Occurrences** : 38 (1 passe)
+// ✅ APRÈS — préfixe déclaré une fois, et l'appel se lit mieux
+private static readonly string[] AppHostSegments = ["src", "AppHost"];
+
+internal static string? TryResolveAppHostFile(params string[] segments)
+    => TryResolveRepoFile([.. AppHostSegments, .. segments]);
+```
+
+**Consigne** : dès qu'un tableau littéral (`["a", "b"]` ou `new[] { … }`) apparaît
+**dans un argument**, le hisser en `private static readonly`. Bonus de lisibilité
+en C# 12 : deux spreads valent mieux qu'un `Concat`.
+
+---
+
+## CA1859 — type concret plutôt qu'interface pour un helper local
+
+**Occurrences : 2** (task-203, task-289 — récidive sur du code frais, et
+c'est la **passe qualité `/simplify` elle-même** qui l'a introduite : une revue
+a proposé `IReadOnlyList<string>` au motif que « le helper ne mute rien », ce
+qui est vrai mais hors sujet. Le paramètre d'un helper **privé** dont l'unique
+appelant construit déjà un `List<string>` n'a rien à abstraire. Leçon : la
+consigne ci-dessous vaut **aussi contre une recommandation de revue**, et vaut
+pour les **paramètres**, pas seulement les valeurs de retour.)
+
+Renvoyer une interface depuis une fabrique **privée** dont tous les appelants
+sont dans le même fichier fait payer un appel virtuel sans rien abstraire.
+L'analyseur le signale, et le type concret révèle souvent une information que
+l'interface masquait — ici que l'objet est **jetable**.
+
+```csharp
+// ❌ AVANT — ILogger cache le fait que l'objet doit être libéré
+private static ILogger LoggerFrom(string? level) => new LoggerConfiguration()…CreateLogger();
+var logger = LoggerFrom("Information");        // fuite silencieuse
+
+// ✅ APRÈS — type concret, et le `using` devient évident
+private static Logger LoggerFrom(string? level) => new LoggerConfiguration()…CreateLogger();
+using var logger = LoggerFrom("Information");
+```
+
+**Consigne** : un helper `private` rend — et **reçoit** — le **type concret**,
+pas l'abstraction. On n'introduit une interface que lorsqu'un second
+implémenteur existe, ou que le type traverse une frontière publique. Vérifier au
+passage si ce type concret est `IDisposable` : c'est fréquent, et l'interface le
+dissimulait. `using Serilog.Core;` est nécessaire pour `Logger` (`Serilog` seul
+ne suffit pas).
+
+**Ne pas confondre avec l'immuabilité.** « Ce helper ne mute pas son argument »
+n'est pas une raison de prendre `IReadOnlyList<T>` : sur un helper privé, cette
+garantie se lit dans les cinq lignes du corps, et l'interface la paie d'un appel
+virtuel. `IReadOnlyList<T>` se justifie sur une API **publique**, où l'appelant
+ne voit pas le corps.
+
+---
+
+## S1135 — le mot « TODO » dans une prose n'est pas un TODO
+
+**Occurrences : 1** (task-283)
+
+Citer une task en attente sous sa forme de fichier (`onhold/todo-task-171`)
+place le mot-clé **TODO** dans un commentaire. S1135 le relève et demande de
+« terminer la tâche associée » — alors que la phrase documente précisément un
+choix de **ne pas** faire quelque chose maintenant.
+
+```csharp
+// ❌ AVANT — le nom de fichier de la task porte le mot-clé
+/// L'ADR backend-pull (<c>onhold/todo-task-171</c>) le supprimera.
+
+// ✅ APRÈS — même information, sans déclencheur
+/// L'ADR backend-pull (task-171, en attente) le supprimera.
+```
+
+**Consigne** : dans un commentaire ou un doc XML, citer une task par son
+**numéro** (`task-171`), jamais par son nom de fichier `todo-*` / `wip-*`. Le
+préfixe de cycle de vie n'apporte rien au lecteur du code — il change au fil
+du temps, et `todo-` fabrique un faux positif. Vaut aussi pour `FIXME` et
+`HACK` cités entre guillemets.
+
+---
+
+## CA1869 — `JsonSerializerOptions` se construit une fois, pas à chaque appel
+
+**Occurrences : 1** (task-283)
+
+Écrit sans y penser dans un helper de test qui désérialise à chaque cas :
+l'objet est coûteux à construire et conçu pour être **mis en cache et
+partagé**. La règle vaut autant en test qu'en production — un helper appelé par
+N tests, c'est N instances.
+
+```csharp
+// ❌ AVANT — une instance par désérialisation
+return JsonSerializer.Deserialize<ProblemDetails>(
+    json, new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+
+// ✅ APRÈS — une déclaration, N usages
+private static readonly JsonSerializerOptions ProblemJson = new(JsonSerializerDefaults.Web);
+...
+return JsonSerializer.Deserialize<ProblemDetails>(json, ProblemJson)!;
+```
+
+**Consigne** : dès qu'un `new JsonSerializerOptions(...)` apparaît **dans un
+argument d'appel**, le hisser en `private static readonly`. Même réflexe que
+CA1861 pour les tableaux littéraux : ce qui est constant au fil des appels se
+déclare une fois.
+
+---
+
+## S3267 — une boucle qui ne fait que chercher s'écrit avec `Contains`/`Any`
+
+**Occurrences : 1** (task-184)
+
+Écrit sans y penser dans un helper d'appartenance : un `foreach` sur un tableau
+de constantes, un `if` de comparaison, un `return true`. La forme explicite
+n'ajoute rien et **répète la règle de comparaison** — ici l'insensibilité à la
+casse — à chaque ajout d'entrée dans le tableau.
+
+```csharp
+// ❌ AVANT — huit lignes pour une appartenance
+private static bool IsSensitiveQueryKey(string key)
+{
+    foreach (var sensitive in SensitiveQueryKeys)
+    {
+        if (string.Equals(key, sensitive, StringComparison.OrdinalIgnoreCase))
+            return true;
+    }
+    return false;
+}
+
+// ✅ APRÈS — le comparateur porte la règle, une fois
+private static bool IsSensitiveQueryKey(string key) =>
+    SensitiveQueryKeys.Contains(key, StringComparer.OrdinalIgnoreCase);
+```
+
+**Consigne** : une boucle dont le corps se réduit à `if (…) return true;` est une
+appartenance — écrire `Contains` (avec un `StringComparer` quand la comparaison
+n'est pas ordinale stricte) ou `Any`. Attention au couple : `StringComparison`
+dans `string.Equals`, mais `StringComparer` dans `Contains`.
+
+---
+
+## S125 — une prose qui « ressemble à du code » est signalée comme code commenté
+
+**Occurrences : 1** (task-184)
+
+Un commentaire d'intention parfaitement légitime a été relevé comme du code mis
+en commentaire, uniquement à cause de sa **ponctuation** : un point-virgule en
+fin de proposition, au milieu d'une phrase anglaise.
+
+```csharp
+// ❌ AVANT — le `;` en fin de ligne suffit à déclencher la règle
+// raw path is still what routing and the skip/debug predicates see;
+// only what reaches a sink is masked.
+
+// ✅ APRÈS — même information, ponctuation de prose
+// Routing and the skip/debug predicates keep reading the raw path, because
+// only what reaches a sink needs masking.
+```
+
+**Consigne** : dans un commentaire, éviter le point-virgule en fin de ligne et
+les fins de ligne en `)` ou `}`. Écrire des phrases. Le coût est nul et cela
+évite une issue qu'on est ensuite tenté d'« accepter », ce qui use la crédibilité
+des exemptions.

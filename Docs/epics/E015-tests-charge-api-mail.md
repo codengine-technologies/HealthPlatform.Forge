@@ -5,7 +5,7 @@
 > **Version** : 1.47
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
-> **Dernière mise à jour** : 2026-08-30
+> **Dernière mise à jour** : 2026-09-04
 
 ---
 
@@ -2135,6 +2135,9 @@ Cinq réserves à porter au bilan, sans quoi il serait trompeur :
 - v1.70 — **On sait enfin ce que coûte le classement d'un message envoyé.** Quand un praticien envoie un courrier, l'application en dépose une copie dans son dossier « Envoyés ». Cette opération monopolise la connexion du praticien au serveur de messagerie — et, pendant ce temps, **la lecture de ses propres dossiers attend derrière elle**, jusqu'à près de quatre secondes en pointe sous forte charge. Le constat était connu ; ce qui manquait, c'est la cause, et trois tentatives précédentes s'y étaient cassé les dents. La raison en est simple une fois vue : le classement était **la seule opération dont on ne comptait aucun échange avec le serveur**. On savait combien de temps elle occupait la connexion, jamais en combien d'étapes. On sait maintenant qu'elle n'en fait pas une mais **quatre** — retrouver le dossier, l'ouvrir, y déposer le message, le refermer — auxquelles s'ajoute l'ouverture complète de la connexion quand celle-ci est froide, et que le dossier « Envoyés » est recherché **à chaque envoi** alors qu'il ne change jamais. **Aucune correction n'a été apportée volontairement** : une piste séduisante avait déjà été essayée par le passé et **mesurée comme dégradant l'envoi**, et il aurait été imprudent d'en écrire une nouvelle avant d'avoir chiffré ce qui coûte réellement. La prochaine campagne de mesure le dira, désormais avec l'instrument pour le voir. (task-281)
 
 > **Correction sur v1.69** — l'affichage instantané du tableau de bord décrit ci-dessus **a été retiré** : mis à l'épreuve, il dégradait le service au lieu de l'améliorer. L'écran d'accueil est revenu à son comportement antérieur. Le besoin reste ouvert.
+
+
+- v1.71 — **Un seul interrupteur manquant éteignait toute l'aide à la lecture des courriers médicaux.** Les huit interrupteurs des widgets du tableau de bord n'avaient pas été créés dans l'environnement de recette. Conséquence inattendue : l'application les demandait, ne les trouvait pas, et **abandonnait la lecture de tous les autres interrupteurs** — y compris celui qui autorise l'analyse assistée des courriers. Résultat pour le praticien : plus aucun résumé, plus aucune indexation, sans le moindre message d'erreur. Il ne voyait pas une panne, il voyait une fonctionnalité absente. Désormais **un interrupteur introuvable ne dégrade que lui-même** : tous les autres gardent la valeur réellement configurée. Le journal **nomme** l'interrupteur manquant dès le démarrage de l'application, là où il ne disait rien d'exploitable, et il ne prétend plus « je sers le dernier état connu » quand aucun état n'a jamais été chargé — c'est ce libellé trompeur qui avait fait perdre des heures. **À faire séparément** : créer les huit interrupteurs en recette ; cette livraison empêche la récidive, elle ne les crée pas. **Et une conséquence reste ouverte** : les courriers reçus pendant la panne n'ont pas été analysés et ne le seront pas rétroactivement — ni indexation, ni mots-clés, ni extraction des correspondants, qui sert au rattachement au dossier patient. Le résumé, lui, se recalcule à la demande. Le rattrapage fait l'objet d'une demande distincte. (task-289)
 
 ---
 

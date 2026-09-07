@@ -687,3 +687,76 @@ Suite complète après correctif : domain 136, application **2 241**, integratio
 419, api 705, infrastructure 463/464 (flaky ci-dessus).
 
 Commentaire déposé sur la PR : [#215 (comment)](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/215#issuecomment-5504887884)
+
+## Contrôle humain du 2026-09-02 — et une prémisse du task file invalidée
+
+Deux tests de contrôle depuis l'interface Angular, compte MSSanté réel
+`899700622675@mail-tests-editeur.espacedeconfiance.mssante.fr`, navigateur Edge.
+
+### Contrôle 1 (08:36:48) — la chaîne complète, depuis le parcours médecin
+
+| Δ | Événement | `SessionsClosed` |
+|---|---|---|
+| +0 ms | `Logout close order received` | — |
+| +32 ms | `[RemoveSession] IMAP session disposed on logout` (clé `…mssante.fr_JSNdjCk0p-dptlXjwHZplVNC`) | — |
+| +32 ms | `Close order applied` — instance appelée | **1** |
+| +33 ms | `Close order broadcast` | — |
+| +33 à +35 ms | `Close order applied` ×**5** — abonnés (`CorrelationId="-"`) | 0 |
+
+La session IMAP est **réellement détruite**, pas seulement décomptée. Règle 5
+tenue : 33 ms entre réception et diffusion. Le correctif d'abonnement au
+démarrage (`327501f`) tourne bien : `[SyncCommandSubscription] Instance ready…`
+à 06:58:23 avec `CorrelationId="-"`, donc hors requête.
+
+### Contrôle 2 (09:10 / 09:12) — ⚠️ une prémisse du task file est fausse
+
+Le `## Contexte constaté` de cette task affirme : « deux onglets Angular du même
+praticien partagent un identifiant, donc se déconnectent ensemble ». **Mesuré
+inexact.**
+
+| Horodatage | Session cliente | `SessionsClosed` |
+|---|---|---|
+| 09:10:27.856 | `5DFG_xnbZvWaNcKmLbsJKeEU` | **1** |
+| 09:11:59 | `X0Xa934V09PPSzOQ2uZLjUQE` (trafic) | — |
+| 09:12:11.063 | `X0Xa934V09PPSzOQ2uZLjUQE` | **1** |
+
+`X0Xa934V09PPSzOQ2uZLjUQE` n'a **aucun événement avant 09:10:25** — vérifié sur
+06:00 → 09:10:25. Ce n'étaient donc pas deux onglets concurrents mais **deux
+cycles connexion → déconnexion séquentiels** : chaque authentification frappe un
+identifiant de session **distinct** (quatre valeurs ce matin pour le même compte
+et le même navigateur : `26804TD3…`, `JSNdjCk0…`, `5DFG_xnb…`, `X0Xa934V…`).
+
+**Conséquence à connaître, sans impact sur le code livré** : se déconnecter d'un
+onglet détruit la session du **fournisseur d'identité**, partagée par tout le
+navigateur — l'autre onglet tombe donc aussi, mais par le proxy, pas par le
+mécanisme de cette US. Et un seul navigateur partageant ses cookies ne peut pas
+détenir deux sessions MSS simultanées : **le cas multi-appareils de la règle 2
+n'est pas atteignable depuis un navigateur unique.** Il faut deux profils
+distincts, ou le banc — ce que le test d'intégration de 05:24 a fait.
+
+La diffusion reste vérifiée sur ce contrôle : pour l'ordre de 09:12:11,
+**6 instances atteintes** (1 fermeture locale + 5 applications par diffusion).
+
+## Merged
+
+Mergée le 2026-09-02 par l'humain via `/merge task-285 --i-tested`, après deux
+contrôles depuis l'interface Angular (voir la section précédente).
+
+| Repo | PR | Commit squash |
+|---|---|---|
+| `api-mail` | [#215](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/215) | `83fcaa6` |
+| `client-blazor` | [#70](https://github.com/codengine-technologies/HealthPlatform.Client/pull/70) | `c197d5d` |
+| `client-mobile` | [#68](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/68) | `ccb14d6` |
+| `dtos-mss` | aucune PR — branche vide, aucun contrat touché | — |
+| `client-angular` | **code-only** — cycle de vie git et PR TFS entièrement à l'humain | — |
+
+Refs distantes `feat/task-285-logout-closes-mail-session-all-pods` supprimées sur
+les quatre repos pushables ; branches **locales conservées** (spec `/merge`).
+Les quatre clones sont repassés sur `develop` en avance rapide.
+
+⚠️ **`client-angular` reste à traiter par l'humain** : 11 fichiers modifiés non
+commités sur `feature/nova-rewriting-mss`, correctif du cycle de DI
+(`mailSessionCloserFactory`, `app.config.spec.ts`) inclus. Deux d'entre eux
+(`apps/mss/src/environments/environment.ts`, `apps/weda2/src/environments/environment.ts`)
+sont un WIP humain **antérieur** à cette US et ne doivent pas partir dans la PR
+TFS sans vérification.
