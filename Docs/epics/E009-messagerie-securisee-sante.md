@@ -2,9 +2,9 @@
 
 > **Statut** : En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.65
+> **Version** : 1.66
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-09-05 (task-184)
+> **Dernière mise à jour** : 2026-09-08 (task-186)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -598,9 +598,9 @@ Toute action fonctionnelle du praticien (lecture, envoi, suppression, rattacheme
 
 | ID | Vague | Règle | Statut |
 |----|-------|-------|--------|
-| RG-E009-045 (SC.MSS/CONF.17) | V2 | Traces fonctionnelles pour tous les traitements sur la BAL | ✅ Implémenté (task-004 — étendu par task-017 / task-015b / task-028) |
-| RG-E009-046 (SC.MSS/CONF.18) | V2 | Chaque trace : identifiant auteur, horodatage, type d'action, demande serveur | ✅ Implémenté (task-004) |
-| RG-E009-047 (SC.MSS/UX.37) | V2 | Tracer et historiser tous les flux de transmissions MSSante | ✅ Implémenté (task-004) |
+| RG-E009-045 (SC.MSS/CONF.17) | V2 | Traces fonctionnelles pour tous les traitements sur la BAL | ✅ Implémenté (task-004 — étendu par task-017 / task-015b / task-028 ; téléchargements de pièces jointes couverts par task-186) |
+| RG-E009-046 (SC.MSS/CONF.18) | V2 | Chaque trace : identifiant auteur, horodatage, type d'action, demande serveur | ✅ Implémenté (task-004 — fiabilité et durée de conservation posées par task-186) |
+| RG-E009-047 (SC.MSS/UX.37) | V2 | Tracer et historiser tous les flux de transmissions MSSante | ✅ Implémenté (task-004 — sorties de documents complétées par task-186) |
 
 ### 6.8 Domaine 8 — Gestion des professionnels associés (1 exigence)
 
@@ -1018,6 +1018,69 @@ Les règles `RG-E009-084` à `RG-E009-089` sont propres à ENS Mon espace santé
 Cette synthèse digère l'historique des versions en langage produit. Le détail ingénierie (numéros de PR, versions NuGet, métriques tests, audits grep) est consigné dans le document frère [`E009-Changelogs.md`](./E009-Changelogs.md).
 
 ### Fonctionnalités métier
+
+- **v1.66 — Le journal des accès ne disait pas tout, et pouvait s'effacer tout
+  seul** (task-186) : la messagerie tient un journal de ce que chaque praticien
+  fait des documents de santé qu'il reçoit — qui a lu quoi, qui a exporté,
+  imprimé, envoyé. C'est ce journal qui permet de reconstituer les accès en cas
+  de réclamation d'un patient, de contrôle, ou de litige.
+
+  **Ce qu'il ne disait pas.** Exporter un compte rendu en PDF, l'imprimer ou
+  l'envoyer laissait une trace. **Télécharger la pièce jointe du même message
+  n'en laissait aucune** — ni le téléchargement d'un document, ni celui de
+  toutes les pièces d'un message d'un seul geste. Or c'est exactement la même
+  chose : un document de santé sort de la plateforme. Le journal affirmait
+  couvrir ces sorties ; il en couvrait la moitié.
+
+  **Ce n'est pas une question de droits d'accès.** Personne ne pouvait consulter
+  la boîte d'un confrère — cela n'a jamais été possible et ne l'est toujours
+  pas. Ce qui manquait, c'est la capacité à dire *après coup* ce qui est sorti,
+  et par qui. C'est précisément ce qu'aucun contrôle d'accès ne peut faire :
+  distinguer un usage normal d'un usage anormal par une personne qui a le droit
+  d'être là.
+
+  **Un second défaut, plus grave.** Le journal gardait en mémoire une file
+  d'attente d'écriture. Quand elle était pleine — une base lente, ou une grosse
+  synchronisation de boîte — les traces **les plus anciennes étaient effacées
+  pour faire de la place aux nouvelles**, sans le moindre signal. Autrement dit,
+  produire beaucoup d'activité suffisait à faire disparaître l'historique, et
+  rien ne l'indiquait. Un journal qui peut se vider en silence ne prouve plus
+  rien, y compris pour les traces qu'il a correctement conservées.
+
+  **Un troisième, découvert en instruisant le sujet.** Aucune durée de
+  conservation n'était fixée : le journal grandissait indéfiniment. Une durée non
+  fixée est un manquement en soi.
+
+  **Un quatrième.** Quand le journal rencontrait une action qu'il ne
+  reconnaissait pas, il l'affichait comme « Connexion IMAP ». Pas une case vide :
+  **une étiquette fausse**, sans avertissement. C'est pire qu'une trace
+  manquante — cela fausse la lecture au lieu de la trouer.
+
+  **Ce qui change.** Les deux formes de téléchargement laissent désormais une
+  trace, au même titre que l'export. Une trace acceptée n'est **plus jamais**
+  effacée par une plus récente ; en cas d'affluence, elle est mise de côté puis
+  reprise, et une trace ne peut être perdue qu'en dernier recours — auquel cas
+  c'est signalé et compté, jamais silencieux. Le journal a une **durée de
+  conservation**, distincte selon la nature de la trace : dix ans par défaut pour
+  les accès aux documents de santé (alignée sur la conservation du dossier
+  médical, réglable jusqu'à vingt ans), un an pour les évènements purement
+  techniques. Cette durée est **paramétrable** — c'est le responsable de
+  traitement qui la fixe, pas l'éditeur — et peut être suspendue en cas de
+  contentieux. Le nettoyage se journalise lui-même : on sait ce qui a été
+  supprimé, et jusqu'à quand. Enfin, une action non reconnue s'affiche comme
+  telle, avec son nom réel, au lieu d'emprunter celui d'une autre.
+
+  **Sur les deux écrans de consultation du journal**, douze actions
+  s'affichaient jusqu'ici sous leur nom technique en anglais — « MailExportPdf »
+  au lieu de « Export PDF » — et les deux écrans ne nommaient pas les mêmes
+  actions de la même façon. Ils sont désormais alignés, en français, sur la
+  totalité des actions.
+
+  **À noter pour la conformité** : les périodes antérieures ne sont **pas
+  reconstituables** sur les deux routes de téléchargement, et le journal a pu
+  perdre des traces sous charge sans que rien ne l'indique. L'analyse d'impact
+  est à mettre à jour avec le DPO, ainsi que la durée de conservation retenue
+  dans le registre des traitements.
 
 - **v1.62 — Des messages reçus pouvaient ne jamais arriver dans la boîte, sans
   aucune alerte** (task-187) : quand la messagerie récupère un lot de messages
