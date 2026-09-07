@@ -158,3 +158,46 @@ sur du code frais est un échec de lecture de ce fichier.
   `reference_ziparchive_kestrel_sync_io`.
 - **Origine** : gravée avant la création de ce fichier
 - **Occurrences** : n/a (préventif)
+
+### controller-operation-scope — Chaque action de controller ouvre un scope de log
+- **Règle** : convention projet, **tenue par une garde** —
+  `tests/mss.mail.api.tests/Architecture/ControllerOperationScopeScanTests.cs`
+- **Repos** : api-mail (et tout futur service .NET exposant des controllers)
+- **Consigne** : le corps de toute action portant un attribut de route
+  (`[HttpGet]`, `[HttpPost]`, …) est enveloppé dans
+
+  ```csharp
+  using (logger.BeginOperationScope("NomDuScope"))
+  {
+      // ...
+  }
+  ```
+
+  Sans ça, les journaux de l'endpoint sortent sans propriété Serilog
+  `Operation` : ils existent, mais on ne peut pas les retrouver **par
+  opération** dans Seq — ce qui est exactement la question qu'on pose à Seq
+  quand un endpoint se comporte mal.
+
+  **Nommage** — PascalCase, nom de la méthode moins `Async`
+  (`GetFoldersAsync` → `GetFolders`). Le nom doit être **unique dans le
+  repo** : un doublon fait ramener au filtre `Operation` les journaux de deux
+  endpoints mélangés, ce qui est plus sournois qu'une absence. Quand le nom nu
+  est déjà pris, préfixer par le domaine — précédents en place :
+  `MailTemplate.GetAll`, `Signature.GetAll`, `Maintenance.PurgeMails`,
+  `BiologyAck.RecordAck`, `MailExport.Eml`, `Notifications.Stream`.
+
+  **Délégation admise** : une action qui délègue à une méthode privée du même
+  type ouvrant le scope est conforme (motif de `MailExportController`
+  → `BuildPdfResponseAsync`). La garde suit les appels sur deux niveaux.
+
+  **Contrôle avant commit** (coût nul) — la garde tourne dans
+  `mss.mail.api.tests`, donc `dotnet test` suffit ; elle nomme le fichier, la
+  ligne et l'action fautive.
+- **Origine** : correctif du 2026-09-07 — 38 actions sur 10 controllers
+  n'ouvraient aucun scope, alors que 107 sites appliquaient déjà la
+  convention. Sept controllers n'en avaient aucun ; **trois en avaient un sur
+  trois ou quatre actions**, forme partielle invisible à la relecture puisque
+  le fichier *contient* un `BeginOperationScope`. C'est ce cas-là qui motive
+  une garde plutôt qu'une consigne seule : la consigne valait déjà pour les
+  cent-sept autres sites au moment où les dix controllers ont dérivé.
+- **Occurrences** : 38 (1 passe)
