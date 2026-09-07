@@ -1,5 +1,5 @@
 # forge-control repo — versions ONLY the forge control plane
-# (CLAUDE.md, agents/, tasks/, questions/, .claude/, tests/Features/)
+# (CLAUDE.md, agents/, tasks/, questions/, conventions/, .claude/, tests/Features/)
 #
 # All 11 application sub-repos and orphan tooling are excluded so this repo
 # never accidentally swallows code from another git repo.
@@ -28,6 +28,15 @@
 
 !questions/
 !questions/**
+
+# Conventions apprises par la forge (CLAUDE.md « Conventions apprises —
+# boucle d'auto-amélioration ») : alimentées par /sonar et /lint-*, lues par
+# /develop avant d'écrire du code. C'est de la mémoire de forge au même titre
+# que agents/ et tasks/ — non versionnées, elles ne survivaient pas à un clone
+# frais et la moitié prévention de la boucle ne voyageait pas (constaté le
+# 2026-09-07, les quatre fichiers existaient depuis des mois en local seul).
+!conventions/
+!conventions/**
 
 !.windsurf/
 !.windsurf/**
