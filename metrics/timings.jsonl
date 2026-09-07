@@ -95,3 +95,5 @@
 {"ts":"2026-09-02T00:13:11+02:00","run_id":"-","type":"step","task":"task-285","step":"review","status":"ok","note":"","iterations":null,"duration_ms":773610}
 {"ts":"2026-09-02T00:13:23+02:00","run_id":"-","type":"step_start","task":"task-285","step":"tech-writer"}
 {"ts":"2026-09-02T00:17:17+02:00","run_id":"-","type":"step","task":"task-285","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":233977}
+{"ts":"2026-09-07T09:18:28+02:00","run_id":"-","type":"step_start","task":"task-287","step":"start"}
+{"ts":"2026-09-07T09:19:07+02:00","run_id":"-","type":"step","task":"task-287","step":"start","status":"failed","note":"pre-flight: api-mail sur fix/task-288-ocsp-crl-hardening (PR #216 deja mergee), pas sur develop","iterations":null,"duration_ms":39202}
