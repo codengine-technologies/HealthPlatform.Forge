@@ -494,6 +494,114 @@ filtres du SQL exécuté, et lignes matérialisées insensibles aux messages
 prédéterminé » — mais le DOD demande en plus les chiffres du banc : ce point du
 DOD reste donc **ouvert**.
 
+## Sonar log
+
+Analyse complète du 2026-09-08 sur la branche `fix/task-194-thread-counts-scoped-load`
+(projet `healthplatform-api-mail`, analyse serveur `12:25:43Z`, build Release +
+5 suites instrumentées OpenCover, `EXECUTION SUCCESS`).
+
+### KPIs qualité — baseline → final
+
+| Métrique | Baseline (`08:09Z`, avant task-194) | Final (`12:25Z`, avec task-194) | Δ |
+|---|---|---|---|
+| Bugs | 2 | 2 | 0 |
+| Vulnérabilités | 0 | 0 | 0 |
+| Code smells | 73 | 73 | 0 |
+| Security hotspots | 15 | 15 | 0 |
+| Couverture | 88,0 % | 88,0 % | 0 |
+| Duplication | 0,3 % | 0,3 % | 0 |
+| `ncloc` | 49 908 | 49 908 | 0 |
+| Maintenabilité (`sqale_rating`) | A | A | — |
+| Sécurité (`security_rating`) | A | A | — |
+| Fiabilité (`reliability_rating`) | C | C | — |
+| **Quality Gate** | **ERROR** | **ERROR** | inchangé |
+
+Conditions du Quality Gate au tir final :
+
+| Condition | Valeur | Verdict |
+|---|---|---|
+| `new_coverage` ≥ 80 % | 88,0 % | OK |
+| `new_duplicated_lines_density` ≤ 3 % | 0,05 % | OK |
+| `new_security_hotspots_reviewed` = 100 % | 0 % | **ERROR** |
+| `new_violations` = 0 | 74 | **ERROR** |
+
+### Phase 1 — new code : zéro dette introduite par task-194
+
+**Aucun finding sur les fichiers de la task**, vérifié fichier par fichier :
+
+| Fichier | Issues | Hotspots |
+|---|---|---|
+| `src/Infrastructure/Repository/MailRepository.cs` | 1 (voir ci-dessous) | 0 |
+| `tests/mss.mail.integration.tests/Repository/ThreadCountsScopedLoadTests.cs` | **0** | 0 |
+| `tests/mss.mail.integration.tests/Fixtures/PostgreSqlFixture.cs` | **0** | 0 |
+
+Le finding unique sur `MailRepository.cs` est `csharpsquid:S138` (« méthode de
+106 lignes ») sur **`LoadBulkContentLookupsAsync`**, ligne 1416 — une méthode que
+task-194 **n'a pas touchée**, et hors new code period (`inNewCodePeriod` non
+positionné). Ce n'est pas de la dette introduite ici ; la réduire est un
+refactor d'une méthode étrangère à cette US (règle 6, périmètres isolés).
+
+La convention `CA1861` (tableau littéral en argument) a été appliquée **d'emblée**
+sur le nouveau code de test, avant analyse : `conventions/csharp.md` la donnait à
+2 occurrences, et le new code period en compte 10 sur d'autres fichiers. La
+boucle d'auto-amélioration a donc joué son rôle — aucune récidive sur du code
+frais.
+
+### Phase 2 — dette héritée : non engagée, et pourquoi
+
+Le Quality Gate est `ERROR`, mais **aucune** des conditions en échec n'est
+imputable à cette task. Provenance des 90 issues du new code period (dont les 74
+comptées par `new_violations`) et des 15 hotspots `TO_REVIEW` :
+
+| Fichier | Issues new-code | Hotspots |
+|---|---|---|
+| `tests/loadtest-k6/report.py` | 23 | 1 |
+| `tests/loadtest-k6/lib/journey-model.js` | 14 | — |
+| `tests/loadtest-k6/scenarios/journey.js` | 9 | 2 |
+| `src/Application/Session/MailClientSession.cs` | 6 | — |
+| autres (`AppHost.cs`, `IheXdmProcessingService`, `ContactRepository`, `MailServerDiscovery`, suites de tests…) | 38 | — |
+| `src/Api/Program.cs`, `Dockerfile`, `BaseRepository.cs`, harnais k6 (`test_report_*.py`, `folders.js`, `mixed.js`) | — | 12 |
+| **dont fichiers de task-194** | **0** | **0** |
+
+Règles dominantes : `javascript:S1940` (13), `python:S3776` (13),
+`external_roslyn:CA1861` (10), `csharpsquid:S125` (6), `python:S1192` (5).
+
+C'est le piège documenté de ce poste : **la new code period englobe des tasks
+déjà mergées** (le harnais de charge des tasks 173/174/195 en tête), donc un
+`ERROR` du Quality Gate ne signifie pas qu'une task a introduit de la dette.
+La provenance a été vérifiée avant de conclure, comme l'exige ce constat.
+
+Phase 2 est donc **délibérément non engagée** — elle est best-effort et
+optionnelle par playbook, et la traiter ici aurait signifié :
+
+- modifier du Python et du JavaScript du harnais de charge, plus
+  `MailClientSession.cs`, `AppHost.cs`, `Program.cs`, `BaseRepository.cs` — des
+  fichiers **hors du module de cette US** (règle 6, « périmètres isolés ») et
+  explicitement hors scope du task file ;
+- faire exploser la PR bien au-delà des ~30 fichiers de la règle 5, en mélangeant
+  une optimisation de requêtes avec du nettoyage de harnais de test.
+
+**Ce n'est pas un skip silencieux** : la dette est ici chiffrée, localisée et
+attribuée. Elle mérite sa propre task (nettoyage du harnais `loadtest-k6` +
+revue des 15 hotspots), et les 12 hotspots du harnais devraient probablement
+être marqués `SAFE` en lot plutôt que corrigés.
+
+### Faits opérationnels relevés — le playbook était faux sur trois points
+
+À consigner, parce que chacun coûte une analyse ratée :
+
+| Point | Ce que dit `agents/sonar.md` | Mesuré ce jour |
+|---|---|---|
+| Port | `http://localhost:9000` (« corrigé le 2026-08-30 ») | **9001** — 9000 ne répond pas (`http_code 000`) |
+| Version / propriété d'auth | 9.9.8 → `sonar.login` (mesuré le 2026-09-04) | **25.6.0.109173 → `sonar.token`** — sixième bascule du tableau |
+| Clé de projet | `healthplatform-api-mail` | correcte, mais **`SONAR_PROJECT_KEY` de l'environnement vaut `healthplatform`**, un projet distinct dont la dernière analyse date du 2026-09-02 |
+
+Le contrôle `curl /api/server/version` avant analyse est donc bien la seule
+conduite tenable — la dernière ligne du tableau du playbook n'est jamais fiable.
+Accessoirement, `Api/Mail/.env` a une ligne 70 qui casse un `source` (`xpui:
+command not found`) sans conséquence ici, mais qui polluera tout script qui la
+source.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-194 --sync` — ne pas éditer à la main)*
@@ -502,4 +610,5 @@ DOD reste donc **ouvert**.
 |---|---|---|---|---|---|---|
 | /start | ok | 2 min 15 s | — | — | — | — |
 | /develop | ok | 1 h 52 min | 4 (1 min 36 s) | 7 (5 min 18 s) | — | api-mail 4B/7T |
-| **Total cycle** | | **1 h 54 min** | **4 (1 min 36 s)** | **7 (5 min 18 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 11 min 21 s | 1 (27 s) | 5 (3 min 30 s) | — | 1 itération(s), api-mail 1B/5T |
+| **Total cycle** | | **2 h 05 min** | **5 (2 min 04 s)** | **12 (8 min 49 s)** | **0 (0.0 s)** | |
