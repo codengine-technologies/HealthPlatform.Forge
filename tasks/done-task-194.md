@@ -193,9 +193,10 @@ Un corpus sans fils ou un tir avec comptage désactivé ne valide pas ce DOD.
       `includeThreadCounts=false`, et comportement par défaut inchangé.
 - [ ] Réutilisation de la logique filtrée existante, sans introduire de `dynamic`,
       de filtre de dossier/génération de la page ou de limite de descendants.
-- [ ] Mesures avant/après consignées dans la tâche : corpus réellement fileté,
+- [x] Mesures avant/après consignées dans la tâche : corpus réellement fileté,
       paramètres seeder/k6 cohérents, comptage activé, commits, volumes, chauffe,
-      p50/p95 `read_list`, erreurs, lignes matérialisées et mémoire/allocations.
+      p50/p95 `read_list`, erreurs, lignes matérialisées et mémoire/allocations —
+      **tir du 2026-09-08**, voir « Mesure de charge avant/après — exécutée ».
 - [ ] Aucun changement patient, DTO, route ou frontend ; aucune donnée de santé,
       aucun identifiant de message ni contenu de référence en clair dans les
       nouveaux logs de diagnostic.
@@ -465,34 +466,61 @@ Quatre revues en parallèle (reuse / simplification / efficacité / altitude).
   signalant elle-même la contrepartie — chaque cas porte un « pourquoi » que la
   table effacerait.
 
-### Mesure de charge avant/après — non exécutée
+### Mesure de charge avant/après — exécutée le 2026-09-08
 
-La comparaison p50/p95 `read_list` sur le banc des tasks 173/174 (§4 de la
-tâche et DOD) **n'a pas été produite**. Elle est gated humainement par le
-Manual Test Plan lui-même :
+La comparaison p50/p95 `read_list` du §4 et du DOD, restée ouverte au `/review`
+(campagne gated humainement), a été **tirée le 2026-09-08** sur le banc local,
+selon le `## Manual Test Plan`. Rapport complet et conditions :
+`Docs/audits/api-mail-loadtest-task-194-ab-thread-counts-20260908.md` (copie
+versionnée ; original local `Api/Mail/tests/loadtest-k6/reports/2026-09-08/report-task-194-ab-thread-counts.md`,
+le dossier `reports/` d'api-mail étant ignoré par git — seul `INDEX.md` est poussé)
+(rapports k6 par jambe `report-read-mssante-50vu-152239.md` avant /
+`report-read-mssante-50vu-154118.md` après, dumps Seq, 0 erreur). Résumé posté
+sur la PR #223.
 
-1. elle exige un banc isolé et une préparation de corpus dont « toute purge ou
-   réinitialisation destructive nécessite une confirmation explicite » ;
-2. elle exige la clé du banc **par l'environnement**, que la forge ne détient
-   pas ;
-3. elle exige un AppHost lancé sur le profil `https-load-test`, alors qu'un
-   AppHost tourne déjà sur un autre profil sur cette machine ;
-4. la jambe « avant » se tire sur le code **pré-correctif**, donc sur un
-   `develop` re-checkouté, avec le même corpus et le même protocole de chauffe.
+**Conditions** : corpus `--users 10 --messages 10000 --thread-share 0.3 --no-xdm`
+(100 000 messages), **fileté vérifié en base** (10 × 10 000 lignes `"Mails"`,
+3 000 réponses par base), hydraté une fois par pages d'en-têtes puis **partagé
+par les deux jambes** (aucune purge entre elles) ; avant = `develop` `da2f2b6`,
+après = `fix/task-194` `98f207c` ; k6 `read` `USERS=10 MESSAGES_PER_USER=100
+ENRICH_SHARE=0 READ_BATCH=5 JOURNEY_THREAD_COUNTS=1 CORPUS_THREAD_SHARE=0.3
+DURATION=3m`, 30 pages/s, chauffe 60 s jetée par jambe, décantation 30 s avant
+relevé ; latence Toxiproxy 100 ms ; garde anti-veille armée avec preuve.
 
-**Décision humaine du 2026-09-08** : la campagne est menée par l'humain **au
-HAG**, sur la PR ouverte. Ce point du DOD reste donc explicitement **ouvert** —
-il n'est ni retiré, ni réputé satisfait — et `/review` le signale dans le body
-de la PR.
+| Grandeur (`GET …/emails/{ids}`, comptage activé) | Avant | Après | Δ |
+|---|---|---|---|
+| `read_list` p50 / p95 / max (client) | 29,5 / 47,2 / 128,4 ms | 27,3 / **32,7** / 54,7 ms | −7 % / **−31 %** / −57 % |
+| p50 / p95 serveur | 38,5 / 61,2 ms | 35,9 / 48,6 ms | −7 % / −21 % |
+| **Allocations GC** (fenêtre du tir) | **44,35 Go** (8,2 Mo/page) | **3,44 Go** (0,63 Mo/page) | **−92 %** |
+| Collections gen0 / gen1 / gen2 | 489 / 104 / 74 | 231 / 0 / 9 | gen2 ÷8 |
+| CPU api-mail | 131,1 s | 77,8 s | −41 % |
+| `sql_execute` / `assemble` (sommes) | 65,5 / 8,7 s | 71,3 / 8,8 s | +9 % / = |
+| Postgres base témoin `seq_scan` / `seq_tup_read` `"Mails"` | 2 705 / 27,05 M | 2 720 / 27,20 M | = |
+| Erreurs HTTP / 429 / abandons | 0 / 0 / 0 | 0 / 0 / 0 | — |
+| Réponses (42 pages, 3 boîtes, 2 modes) | référence | **identiques** | — |
 
-Le protocole exact à rejouer est celui du `## Manual Test Plan`, avec
-`--thread-share > 0`, `CORPUS_THREAD_SHARE` égal à la part semée et
-**`JOURNEY_THREAD_COUNTS=1`** (sans quoi on ne mesure que le court-circuit de
-task-266). Ce qui est livré et mesuré ici est la **preuve structurelle** :
-filtres du SQL exécuté, et lignes matérialisées insensibles aux messages
-étrangers. La tâche l'annonçait comme le résultat attendu — « sans gain
-prédéterminé » — mais le DOD demande en plus les chiffres du banc : ce point du
-DOD reste donc **ouvert**.
+**Lecture.** La matérialisation .NET de toute la boîte par page a disparu :
+allocations ÷13, gen2 ÷8, CPU −41 %, queue de latence écrasée (la médiane bouge
+peu : à 10 praticiens la page était déjà courte, le coût se payait en mémoire et
+en pauses GC). **Le scan Postgres du filtre `References LIKE` reste**, comme la
+« limite explicite » du §4 l'annonçait : `seq_scan` inchangé (5 par page avec
+comptage, 2 sans — mesuré sur les deux binaires), `sql_execute` +9 %. Le coût
+Postgres résiduel est mesuré séparément (point 7 du plan de test) et **n'est pas
+attribué à cette task** ; c'est le candidat d'une US ultérieure (index ou
+normalisation des liens de fil), à proposer au PO.
+
+**Limite d'instrumentation** : le banc n'expose pas le nombre de lignes rendues
+par Postgres par requête (`mssante_db_operation_objects_total{family="thread_links"}`
+compte après filtrage : 14,3 objets par page dans les deux jambes). La preuve
+ligne à ligne reste l'intercepteur de `ThreadCountsScopedLoadTests` ; sur le
+banc, la grandeur qui la reflète est l'allocation GC par page.
+
+**Écarts déclarés** : `--no-xdm` (le comptage ne dépend pas des pièces jointes ;
+l'hydratation aurait sinon déclenché 100 000 analyses CDA hors sujet) ;
+10 praticiens et non un palier de population (coût par page, pas capacité) ;
+les 1 000 bases `u_9…` d'une campagne antérieure étaient présentes et hors
+chemin — **purgées** (mode PURGE) au rendu du banc, conformément à l'étape 6 du
+skill.
 
 ## Sonar log
 
