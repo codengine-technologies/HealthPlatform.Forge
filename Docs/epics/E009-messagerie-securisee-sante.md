@@ -2,9 +2,9 @@
 
 > **Statut** : En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.71
+> **Version** : 1.72
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-09-09 (task-292)
+> **Dernière mise à jour** : 2026-09-09 (task-293)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1018,6 +1018,24 @@ Les règles `RG-E009-084` à `RG-E009-089` sont propres à ENS Mon espace santé
 Cette synthèse digère l'historique des versions en langage produit. Le détail ingénierie (numéros de PR, versions NuGet, métriques tests, audits grep) est consigné dans le document frère [`E009-Changelogs.md`](./E009-Changelogs.md).
 
 ### Fonctionnalités métier
+
+- **v1.72 — Les comptes-rendus et résultats reçus ne peuvent plus disparaître en
+  silence à cause d'un dossier de travail effacé** (task-293) : pour constituer
+  les documents de santé joints aux messages MSSanté (biologie, comptes-rendus),
+  la messagerie les décompresse dans un dossier de travail du serveur. Lors du
+  test de charge du 8 septembre, ce dossier a été supprimé pendant que le
+  service tournait ; à partir de cet instant, **plus aucun document n'était
+  constitué**, alors que la messagerie répondait au praticien que le traitement
+  avait réussi. Un simple nettoyage de fichiers temporaires suffisait à
+  provoquer l'incident, jusqu'au redémarrage du service. Désormais le dossier
+  est **recréé automatiquement** dès qu'il manque, avec les mêmes protections
+  d'accès qu'au démarrage, et lorsque l'extraction échoue malgré tout pour une
+  cause technique (disque, droits), le message **n'est pas considéré comme
+  traité** : il reste à traiter, et la demande **échoue visiblement** avec un
+  message clair et réessayable — au lieu d'un succès muet. Une pièce jointe
+  réellement invalide reste distinguée d'une panne du serveur. L'exploitation
+  dispose d'un compteur par cause et d'un journal qui dit une fois par minute ce
+  qu'il disait neuf cents fois.
 
 - **v1.70 — Un résultat de biologie imprimé devenait illisible, et pouvait se
   lire de travers** (task-190) : quand un praticien imprimait (ou exportait en
