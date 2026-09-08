@@ -1,304 +1,268 @@
-# todo-task-194.md — Le chemin IMAP balaye encore toute la table des mails ; historique patient non paginé
+# todo-task-194.md — Borner le chargement des données de fils sur le chemin IMAP, sans modifier les compteurs
 
 **Repos**: api-mail
-**Dependencies**: — aucune. **task-267** (corpus de banc porteur de fils) était le
-**préalable de mesure** ; elle est **mergée le 2026-08-23** (`9cea3f7`), donc le
-gain est désormais chiffrable — à condition de semer et de tirer avec la part de
-fils accordée (voir le point 4 et la re-vérification ci-dessous).
+**Dependencies**: — aucune bloquante. task-267 (corpus de banc porteur de fils) est
+mergée depuis le 2026-08-23 (`9cea3f75`). Le banc permet une mesure représentative
+si le corpus est réellement fileté et si le comptage est activé pendant le tir.
 **Epic**: E011
 **Single frontend**: true
 
-> **Origine** : exploration de bugs `api-mail` du 2026-07-25 (axe accès données).
-> Rattaché à **E011 (performance api-mail)** et non à E009 : le défaut est de nature
-> performance, pas fonctionnelle.
-
-> ### ⚠️ Révision du 2026-08-20 — la moitié de cette task est déjà faite
->
-> Relecture demandée par l'humain (« comment es-tu certain de ne pas provoquer de
-> régression ? un fil peut être sur une page plus éloignée »). Trois constats qui
-> changent le périmètre :
->
-> 1. **`task-247` (PR #178) a déjà borné le comptage**, sur le chemin
->    `GetMailsByUidsAsync` (lecture servie par la base) : trois requêtes bornées
->    par la page au lieu de deux balayages. `task-256` l'a affinée. Les numéros de
->    ligne cités plus bas datent d'avant.
-> 2. **Le « doublon `:1167-1176` » n'est pas un doublon à corriger — c'est la
->    version corrigée.** Et le `dynamic` a déjà disparu de ce chemin :
->    `BuildThreadCountsByRoot` prend un `IReadOnlyCollection<ThreadLink>`, type
->    nommé, avec le commentaire qui explique pourquoi.
-> 3. **Ce qui reste** : `GetThreadCountsAsync` (`MailRepository.cs:4039`), appelé
->    par `OnlineMailDataProvider` — le chemin **IMAP**. Lui balaie toujours la
->    table, et c'est le seul des deux que le banc k6 exerce.
->
-> Le travail restant est donc : **porter le remède de task-247 sur le chemin
-> IMAP**, en préservant la sémantique de comptage de ce chemin (cf. « La
-> sémantique à préserver »).
-
-> ### Re-vérification du 2026-08-23 — **toujours pertinente ; le préalable de mesure est levé**
->
-> Preuves rejouées sur `develop`. La révision du 2026-08-20 (ci-dessus) reste
-> exacte. Quatre changements depuis :
->
-> | Point | Au 2026-08-23 |
-> |---|---|
-> | **`task-267` est mergée** (`9cea3f7`) | Le **préalable de mesure est levé** : le seeder sait produire des fils (`--thread-share`, opt-in) et le rapport publie la part semée. Le gain de cette task devient **chiffrable**. |
-> | `GetThreadCountsAsync` | déplacée en **`MailRepository.cs:4145`** (citée `:4039`). Corps **inchangé sur le fond** : deux chargements **sans aucun filtre** (`:4156-4166`), puis la boucle `rootMessageIds × allMailsWithReferences` avec `Contains` (`:4176-4178`). Le `dynamic` a bien disparu — c'est un type anonyme. |
-> | **`task-268` a changé la sémantique** | Le commentaire `:4150-4154` acte la **suppression de l'exclusion de `Sent`** : les deux chemins comptent désormais **la même chose**. |
-> | Historique patient | `GetMedicalDocumentsByInsAsync` **`:258-312`** — toujours **aucun** `Take`, `Body` + `HtmlBody` chargés en entier. `EnrichBiologyAndAttachmentsAsync` **`:368`** — biologie bien regroupée, mais la requête de pièces jointes reste **dans le `foreach`** (**`:397`** → **`:405`**). `GetMailsByInsAsync` **`:422`** délègue toujours en `int.MaxValue`. |
->
-> **Ce que task-268 simplifie, et qu'il faut lire comme une bonne nouvelle** : la
-> section « La sémantique à préserver » a été écrite quand les deux chemins
-> comptaient différemment. Ce n'est plus le cas. Porter la forme de task-247 n'a
-> donc plus à préserver d'écart : il n'y en a plus. Le risque de régression que
-> l'humain redoutait (« un fil peut être sur une page plus éloignée ») se réduit à
-> la seule question des citations par sous-chaîne, déjà traitée par
-> `ReferencesAnyOf`.
->
-> **Ce qui reste à faire côté mesure** (hérité de task-267, à énoncer dans la PR) :
-> semer avec `--thread-share` non nul **et** tirer avec `CORPUS_THREAD_SHARE`
-> accordé, sinon le gain publié reste un **plancher** — la seconde requête de
-> `GetThreadCountsAsync` ramènerait 0 ligne et le coût corrigé serait multiplié
-> par zéro.
+> **Origine** : exploration de bugs `api-mail` du 2026-07-25, axe accès données.
+> **Révision du 2026-09-08** : périmètre réévalué sur `api-mail/develop`, commit
+> `cecf2c48`, identique au `develop` distant lors du contrôle. Cette rédaction
+> remplace les révisions précédentes et leurs consignes contradictoires.
+> Analyse du code et des tests existants uniquement : aucun benchmark ni test
+> exécuté lors de cette réévaluation, aucun gain de latence annoncé.
 
 ## Objective
 
-Supprimer deux motifs d'accès aux données dont le coût croît avec la **taille totale
-de la boîte** au lieu de la taille de ce qui est demandé. Sur une boîte MSSanté
-réelle, la messagerie devient lente au point d'être inutilisable, et la
-consommation mémoire du serveur suit le volume de la boîte, non celui de la page.
+Ne plus matérialiser les identifiants et les liens de discussion de toute la
+boîte pour calculer les compteurs des fils demandés par une page IMAP.
+Les données chargées doivent dépendre des fils recherchés, pas des messages
+sans rapport avec eux. Les compteurs et les drapeaux exposés au client restent
+inchangés.
 
-**US backend-only (justification)** : requêtes côté serveur, aucun contrat modifié.
+**US backend-only (justification)** : optimisation des requêtes et tests dans
+`api-mail`, sans modification des DTOs, des routes ni des frontends. Le volet
+patient de la rédaction initiale est retiré de cette livraison ; voir « Hors
+scope ».
 
-### Preuve (état actuel du code)
+### État vérifié au 2026-09-08
 
-**1. Comptage de fils de discussion — deux balayages complets par page**
-`src/Infrastructure/Repository/MailRepository.cs:3171-3181` (et le doublon
-`:1167-1176`) émet deux chargements **sans aucun filtre** : tous les `MessageId` de
-la base, puis toutes les lignes `(MessageId, InReplyTo, References)` dont l'un des
-champs de référence est non vide — sans filtre de dossier, sans pagination, sans
-`AsNoTracking`. Il imbrique ensuite
-`allMailsWithReferences.Count(m => … m.References.Contains(rootId))` dans une boucle
-sur les racines de la page. Le helper `BuildThreadCountsByRoot` (`:1199`) prend un
-`IReadOnlyCollection<dynamic>` : **chaque** accès `m.InReplyTo` / `m.References`
-passe donc par le liant dynamique du runtime.
+Les chemins ci-dessous sont relatifs à `Api/Mail`. Les numéros de ligne sont
+ceux du commit de référence ; les noms de méthodes font foi après déplacement.
 
-Cet enrichissement s'exécute sur **chaque** page de **chaque** listage de dossier
-(`src/Application/Services/Implementation/OnlineMailDataProvider.cs:83-89`).
-Sur une boîte de 50 000 messages : ~50 000 chaînes d'identifiants plus ~50 000
-lignes à trois champs matérialisées par page, puis 50 racines × 50 000 lignes =
-**2,5 millions** de recherches de sous-chaîne à répartition dynamique — par page,
-par praticien, à chaque rafraîchissement.
+| Élément | État actuel | Preuve |
+|---|---|---|
+| `GetThreadCountsAsync` | Deux chargements non restreints aux racines demandées : tous les `MessageId` non vides, puis tous les messages ayant `References` ou `InReplyTo`. Une boucle recompte les descendants pour chaque identifiant demandé. | `src/Infrastructure/Repository/MailRepository.cs:4145-4187` |
+| Appel sur le chemin IMAP | `OnlineMailDataProvider` appelle ce comptage lorsque `includeThreadCounts=true`, valeur par défaut. Depuis task-266, `false` évite cet enrichissement : le défaut ne touche plus systématiquement tous les listages. | `src/Application/Services/Implementation/OnlineMailDataProvider.cs:74-102,126-160` |
+| Chemin servi par la base | task-247 a déjà restreint les chargements aux fils recherchés ; task-256 a ajouté le décompte des objets matérialisés. Ce n'est pas un second balayage à corriger. | `src/Infrastructure/Repository/MailRepository.cs:1622-1669` |
+| Sémantique des fils | task-268 a inclus `Sent` et ajouté des tests de convergence des deux chemins. Un mono-message expose `ThreadCount=1`. | `tests/mss.mail.integration.tests/Repository/ThreadCountConvergenceTests.cs`, `MailRepository.cs:4190-4198` |
+| Typage | Le chemin base utilise `ThreadLink`, le comptage IMAP une projection anonyme statiquement typée. Aucun travail de suppression de `dynamic` ne reste à faire. | `src/Infrastructure/Repository/MailRepository.cs:1735-1737,4162-4165` |
+| Préalable de mesure | Le seeder supporte `--thread-share`. Le harnais expose `CORPUS_THREAD_SHARE` et `JOURNEY_THREAD_COUNTS`. | `tests/mss.mail.loadtest.seed/SeedOptions.cs`, `tests/loadtest-k6/lib/config.js:66-86` |
 
-**2. Historique patient sans pagination, avec une requête par document**
-`src/Infrastructure/Repository/PatientRepository.cs:201-256` : aucun `Take`, aucune
-pagination — l'intégralité de l'historique documentaire du patient est retournée.
-Puis `EnrichBiologyAndAttachmentsAsync` (`:338-358`) regroupe correctement la
-biologie mais émet **une requête de pièces jointes par document**, dans un
-`foreach`. À noter aussi `GetMailsByInsAsync` (`:361-365`) qui délègue avec
-`pageSize = int.MaxValue`.
+Les deux requêtes de `GetThreadCountsAsync` ont des filtres de non-vacuité,
+mais **aucun filtre sur les identifiants demandés**. Le problème est le volume
+transféré et matérialisé, puis parcouru en mémoire. L'absence de
+`AsNoTracking` n'est pas un défaut autonome sur ces projections scalaires,
+qui ne matérialisent pas d'entités suivies.
 
-Un patient chronique suivi plusieurs années cumule des centaines de CDA : ouvrir son
-dossier matérialise tous les documents avec leur corps complet, puis enchaîne
-autant d'allers-retours qu'il y a de documents. Sur une connexion lente, le délai
-client peut expirer — le dossier ne s'ouvre jamais.
+## Contenu attendu
 
-### Contenu attendu
+### 1. Restreindre les chargements IMAP aux fils demandés
 
-1. **Comptage de fils borné sur le chemin IMAP** — porter sur
-   `GetThreadCountsAsync` (`:4039`) la forme déjà livrée par task-247 :
+Porter sur `GetThreadCountsAsync` la forme déjà utilisée par task-247 :
 
-   | Requête | Prédicat | Pourquoi cette forme |
-   |---|---|---|
-   | racines existantes | `MessageId IN (racines de la page)` | donne le `+1` quand la racine existe |
-   | réponses directes | `InReplyTo IN (racines)` | `InReplyTo` **égale** la racine → traduisible en `IN` |
-   | citations | `References LIKE '%r1%' OR … OR '%rN%'` | une citation est une **sous-chaîne**, pas une égalité → pas d'`IN`. Autant de `LIKE` que la page a de racines (25 chez le client réel), jamais la taille de la boîte |
+| Lot | Prédicat | Sémantique conservée |
+|---|---|---|
+| Racines existantes | `MessageId IN (identifiants demandés)` | Détermine le `+1` lorsque la racine existe en base. |
+| Réponses directes | `InReplyTo IN (identifiants demandés)` | Recherche les réponses par égalité. |
+| Citations | Disjonction de `References.Contains(rootId)` traduite en SQL | Recherche par sous-chaîne, pas par égalité ni par jeton RFC. |
 
-   Réutiliser `ReferencesAnyOf` / `LoadMailsReferencingAnyRootAsync` plutôt que
-   réécrire : c'est du code déjà éprouvé sur l'autre chemin.
+Réutiliser `ReferencesAnyOf`, `LoadMailsReferencingAnyRootAsync` et les helpers
+existants lorsque leurs contrats conviennent, plutôt que dupliquer les règles.
+La traduction doit rester vérifiée avec Npgsql et compatible avec les tests
+InMemory existants. Ne pas construire du SQL par concaténation des identifiants.
 
-   > ⚠️ **« Filtrer par dossier quand la sémantique le permet » — instruction
-   > RETIRÉE.** C'était la rédaction d'origine, et task-247 a dû la **désobéir**,
-   > mesure à l'appui. Son commentaire de code le dit : « PAS DE FILTRE PAR
-   > DOSSIER, et ce n'est pas un oubli — le DOD le suggérait, la mesure de
-   > comportement l'interdit. Un fil TRAVERSE les dossiers : la racine d'une
-   > conversation vit couramment dans `Sent` pendant que les réponses arrivent en
-   > `INBOX`. Borner au dossier de la page ferait retomber ce fil à un
-   > mono-message — une régression fonctionnelle silencieuse. » Verrouillé par
-   > `GetMailsByUidsAsyncCountsAThreadWhoseRootLivesInAnotherFolder`.
+Les identifiants recherchés sont dérivés des messages de la page : ils incluent
+leurs propres `MessageId` et les racines déduites de leurs références. Leur
+nombre n'est donc pas nécessairement égal au nombre de messages affichés.
 
-2. ~~**Sortir de `dynamic`**~~ — **déjà fait** par task-247 sur le chemin base
-   (type nommé `ThreadLink`). À vérifier seulement : que le portage sur le chemin
-   IMAP n'en réintroduise pas.
-3. **Historique patient paginé** : pagination effective sur les documents et les
-   mails du patient, et chargement des pièces jointes **par lot** (une requête pour
-   l'ensemble de la page, pas une par document). Traiter aussi
-   `pageSize = int.MaxValue`.
-4. **Mesurer avant / après** : le banc de charge des tasks 173/174 existe
-   précisément pour cela. Chiffrer le gain sur une boîte représentative plutôt que
-   d'affirmer une amélioration.
+**Borner le chargement ne signifie pas limiter les descendants à la page.**
+Aucun `Take` arbitraire, filtre sur les seuls UID affichés, filtre de dossier ou
+filtre sur la seule génération du dossier affiché ne doit tronquer un fil.
 
-   > ⚠️ **Constaté le 2026-08-20 — le banc n'exerce pas ce que cette task
-   > optimise.** Le corpus semé ne porte **ni `In-Reply-To` ni `References`**
-   > (`tests/mss.mail.loadtest.seed/Program.cs:312-334`). Sur
-   > `GetThreadCountsAsync`, la première requête (scan des `MessageId`) est bien
-   > exercée, mais la seconde ramène **0 ligne** et la boucle
-   > `racines × lignes` — les « 2,5 millions de recherches de sous-chaîne »
-   > chiffrées plus haut, c'est-à-dire **le coût dominant** — tourne **à vide**.
-   > Une campagne sur le corpus actuel conclurait donc à un gain modeste par
-   > défaut d'exercice, pas par faiblesse du correctif.
-   >
-   > **task-267** sème des fils dans le corpus. Deux options, à trancher au
-   > moment de la livraison : attendre task-267 pour produire une mesure
-   > opposable, ou mesurer sans elle **en énonçant explicitement** que le
-   > comptage n'est pas exercé. Ce qui n'est pas acceptable, c'est de publier un
-   > chiffre sans dire lequel des deux cas s'applique.
-5. **Ne pas régresser fonctionnellement** : les compteurs de fils et le contenu du
-   dossier patient doivent rester **identiques** — seul le coût change. C'est la
-   condition pour que ce soit une task de performance et non un changement de
-   comportement.
+### 2. Préserver les règles de comptage et d'affichage
 
-### La sémantique à préserver — c'est ici que se joue la non-régression
+- **Périmètre inter-dossiers et inter-pages** : une racine dans `Sent` et ses
+  réponses dans `INBOX` constituent toujours le même fil. Un descendant situé
+  sur une autre page reste compté.
+- **Comptage de lignes pour les descendants**, pas de `MessageId` distincts :
+  plusieurs lignes portant le même `MessageId` restent plusieurs descendants.
+- **Union sans double comptage** : une même ligne qui répond à la racine et la
+  cite dans `References` compte une seule fois, pas une fois par lot SQL.
+- **Correspondance par sous-chaîne sensible à la casse** : préserver le
+  comportement de `string.Contains`, y compris lorsque les identifiants
+  comportent des caractères spéciaux SQL (`%`, `_`, barre oblique inverse).
+  Le passage à une comparaison par jeton RFC est hors scope.
+- **Racine présente ou absente** : le `+1` est conditionné par l'existence de la
+  racine, pas par son nombre de copies. Les fils orphelins restent possibles.
+  Le dictionnaire de compteurs ne conserve que les totaux supérieurs ou égaux
+  à deux ; à l'affichage, un mono-message conserve `ThreadCount=1`.
+- **Affichage inchangé** : conserver `IsPartOfThread`, la désignation de la
+  feuille d'affichage via `IsThreadRoot`, le départage des dates égales et le
+  dépliage du fil. Ne pas réécrire ces comportements dans cette optimisation.
+- **Comptage à la demande** : conserver `includeThreadCounts=false`, l'absence
+  d'appel aux deux méthodes d'enrichissement des fils et les drapeaux neutres.
+  L'omission du paramètre continue d'activer les compteurs.
+- **Entrée vide** : ne pas interroger la table lorsque la liste demandée est vide.
 
-Le périmètre du comptage n'est **jamais** la page : seules les **racines**
-viennent de la page (au plus une par message affiché) ; les **descendants** sont
-cherchés dans **toute la base**. Un fil dont les membres sont dix pages plus loin
-est compté aujourd'hui et doit continuer de l'être. « Borner à la page » veut
-dire *ne plus matérialiser la table pour répondre sur 25 racines*, pas *ne
-regarder que la page*.
+### 3. Verrouiller l'identité avant de réutiliser la déduplication
 
-Cinq propriétés du comptage actuel doivent survivre **à l'identique**. Chacune a
-été trouvée sur pièce, et une réécriture « plus propre » en casserait au moins
-une :
+Depuis task-179, l'index unique est
+`(FolderPath, UidValidity, Uid)` et non `(FolderPath, Uid)` :
+`src/Infrastructure/Migrations/20260802_AddMailUidValidity.cs:43-53`.
+Le helper du chemin base déduplique encore sur `(FolderPath, Uid)` et
+`ThreadLink` ne porte pas `UidValidity`.
 
-1. **Comptage de LIGNES, pas de messages distincts.** Un même `MessageId` existe
-   légitimement dans plusieurs dossiers (reçu puis mis à la corbeille — jusqu'à
-   **3 lignes** relevées sur une vraie boîte). task-247 a mesuré qu'une
-   déduplication par `MessageId` **faisait baisser** les compteurs, 3 → 2. La
-   déduplication porte sur **`(FolderPath, Uid)`**. Un `COUNT(DISTINCT MessageId)`
-   en SQL reproduirait exactement le défaut corrigé.
-2. **Un mail qui satisfait les deux critères compte UNE fois.** Répondre à la
-   racine **et** la citer dans `References` est le cas courant. Deux agrégations
-   additionnées double-compteraient.
-3. **Correspondance par sous-chaîne sur `References`, sensible à la casse.**
-   `Contains` → `LIKE '%id%'`. Un passage à une comparaison par jeton (plus
-   correcte en RFC 5322, les `Message-Id` étant stockés sans chevrons) **changerait
-   les compteurs**. Si ce point mérite d'être corrigé, c'est une autre US.
-4. **Le `+1` de la racine est conditionnel** à son existence en base, et le
-   résultat n'est retenu qu'à partir de **2** — un mono-message reste absent de la
-   table de compteurs (`GetThreadCount` rend alors `isThreadRoot ? 1 : 0`).
-5. **L'exclusion du dossier `Sent`, propre au chemin IMAP, est conservée.**
-   C'est le point délicat : les deux chemins **divergent aujourd'hui**.
+**Ne pas recopier cette clé sans test de caractérisation.** Ajouter un jeu de
+référence contenant deux générations du même dossier avec le même UID et
+vérifier que le portage conserve le résultat actuel de `GetThreadCountsAsync`.
+Distinguer les lignes physiques, par exemple par `Mail.Id` ou l'identité
+complète, tout en éliminant la double sélection d'une même ligne par les lots
+« réponses » et « citations ».
 
-   | | `:4039` (IMAP — à corriger) | `~:1600` (base — corrigé par 247) |
-   |---|---|---|
-   | dossier `Sent` | **exclu** des deux requêtes | **inclus**, délibérément |
+Si ce jeu révèle une divergence préexistante avec le chemin base, la consigner
+et demander un arbitrage avant toute modification de sa sémantique. Ne pas
+masquer cette divergence en changeant les attendus ni transformer une
+optimisation IMAP en correction fonctionnelle implicite des deux chemins.
 
-   Conséquence concrète : une conversation que le praticien a **initiée** (racine
-   dans `Sent`, une réponse en `INBOX`) affiche « 2 messages » sur un chemin et
-   **rien** sur l'autre — sans la racine le total tombe à 1, sous le seuil.
+### 4. Mesurer la matérialisation et le coût observé
 
-   > ⚠️ **PÉRIMÉ depuis task-268 (2026-08-20).** Cette task portait l'instruction
-   > « le portage **reproduit l'exclusion `Sent`** du chemin IMAP », valable tant
-   > que la divergence subsistait. **task-268 l'a tranchée** : la sémantique est
-   > désormais **unique** — `Sent` inclus, feuille d'affichage = message le plus
-   > récent, dépliage du fil entier — et elle est verrouillée par un garde-fou
-   > qui exerce les deux chemins et exige l'égalité.
-   >
-   > **Ce que task-194 doit préserver est donc la sémantique unifiée**, pas
-   > l'ancienne exclusion. Le geste devient plus simple : réutiliser la forme
-   > bornée de task-247 est maintenant **le** bon geste, puisque les deux chemins
-   > partagent déjà la même règle. Le garde-fou de task-268 échouera si le
-   > portage la casse — c'est précisément à cela qu'il sert.
-   >
-   > task-268 a par ailleurs révélé que la divergence ne portait pas que sur
-   > `Sent` : **quatre** dimensions divergeaient, dont `IsThreadRoot`. Le tableau
-   > ci-dessus n'en décrivait qu'une.
+- Ajouter une preuve sur les requêtes **réellement exécutées** par
+  `GetThreadCountsAsync`, pas sur une requête équivalente reconstruite par le test.
+- À fils demandés constants, ajouter des messages et des fils étrangers : le
+  nombre de lignes matérialisées par ce comptage ne doit plus augmenter.
+  Vérifier aussi les filtres du SQL exécuté ; un résultat fonctionnel identique
+  ne prouve pas que la table n'a pas été chargée en entier.
+- Produire une comparaison avant/après sur le banc des tasks 173/174, avec
+  `--thread-share > 0`, `CORPUS_THREAD_SHARE` égal à la part semée et
+  **`JOURNEY_THREAD_COUNTS=1`**. Cette dernière option est nécessaire pour ne
+  pas mesurer uniquement le court-circuit de task-266.
+- Vérifier que des fils et leurs descendants sont réellement présents dans la
+  base du banc au moment du tir. `CORPUS_THREAD_SHARE` est une déclaration,
+  pas une mesure du contenu stocké.
+- Consigner les commits, le volume réel, la part de fils, les tailles de page,
+  la concurrence, la latence réseau simulée et le protocole de chauffe. Comparer
+  la latence p50/p95 de `read_list`, les erreurs, la matérialisation et la mémoire
+  ou les allocations avec le même protocole d'observation.
 
-### Hors scope
+**Limite explicite** : une recherche de sous-chaîne peut encore entraîner un
+parcours important côté PostgreSQL. La tâche ne garantit ni l'absence de scan
+physique ni une latence indépendante de la taille de la boîte. Le résultat
+attendu est la suppression du chargement des messages étrangers aux fils
+recherchés et une comparaison de performances chiffrée, sans gain prédéterminé.
+Un corpus sans fils ou un tir avec comptage désactivé ne valide pas ce DOD.
 
-- L'identité des mails → task-179 (mais s'aligner dessus si elle est livrée avant).
-- **Unifier la sémantique de comptage entre les deux chemins** (exclusion de
-  `Sent`) → **task-268**. C'est un changement de comportement, il ne se glisse pas
-  dans une task de performance.
-- **Corriger la correspondance par sous-chaîne sur `References`** en comparaison
-  par jeton : plus correct au sens RFC 5322, mais cela changerait les compteurs.
-  US séparée si le besoin est confirmé.
-- La pertinence de la recherche → task-192.
-- Toute modification du contrat d'API (la pagination doit s'appuyer sur les
-  paramètres existants ; si un nouveau paramètre s'avère nécessaire, le documenter et
-  prévoir un défaut compatible).
+## Hors scope
+
+- **Historique patient** : le parcours `GetMailsByInsAsync(ins, page, pageSize)`
+  applique déjà `CountAsync`, `Skip` et `Take` en SQL depuis task-233, puis charge
+  les pièces jointes par lot (`PatientRepository.cs:463-518,566-638`). Ne pas
+  refaire ce travail.
+- **Suivi patient distinct à qualifier** : la surcharge sans pagination utilise
+  encore `int.MaxValue` et reste accessible lorsque les paramètres sont omis.
+  `GetMedicalDocumentsByInsAsync` charge encore les corps et présente un N+1,
+  mais le contrôleur expose les surcharges de `GetMailsByInsAsync`, pas cette
+  méthode. Examiner séparément les consommateurs et la compatibilité avant de
+  plafonner le fallback ou de décider du devenir du chemin documentaire non
+  exposé. Aucun `Take` silencieux ni changement patient dans task-194.
+- Changement du contrat d'API, publication de DTOs, modifications des frontends.
+- Nouvelle règle d'appartenance à un fil, comparaison RFC par jeton, exclusion
+  de `Sent`, nouvelle politique de générations ou de purge des mails.
+- Refonte du choix de la feuille d'affichage ou de la recherche de messages.
+- Migration d'index ou optimisation du plan PostgreSQL à présenter comme un gain
+  garanti sans mesure ; qualifier séparément un besoin révélé par le benchmark.
 
 ## Definition of Done
 
-- [ ] Build passes (0 errors)
-- [ ] Tests pass (0 failures, hors flaky pré-existants documentés)
-- [ ] Test : le comptage de fils ne charge plus l'intégralité de la table — vérifié
-      par assertion sur le SQL émis ou sur le nombre de lignes matérialisées (ce test
-      doit échouer sur le code actuel — le vérifier explicitement)
-- [ ] Test de non-régression fonctionnelle : les compteurs de fils retournés sont
-      **identiques** à ceux du code actuel sur un jeu de données de référence
-      (messages avec `In-Reply-To` et `References` variés)
-- [ ] Test : un fil dont un membre est **sur une autre page** que la racine est
-      compté — le périmètre du comptage reste la base, pas la page
-- [ ] Test : un fil dont la racine vit **dans un autre dossier** est compté (hors
-      `Sent` sur le chemin IMAP, cf. « La sémantique à préserver »)
-- [ ] Test : le **même `MessageId` présent dans plusieurs dossiers** compte pour
-      autant de lignes — les fixtures doivent porter des doublons de `MessageId`,
-      sans quoi le test ne peut structurellement pas voir le défaut que task-247 a
-      mesuré (3 → 2)
-- [ ] Test : un mail qui **répond à la racine ET la cite** dans `References`
-      compte une seule fois
-- [ ] Test : l'exclusion du dossier `Sent` sur le chemin IMAP est **préservée** —
-      test de verrouillage explicite, il n'en existe aucun aujourd'hui
-- [ ] Test : l'historique documentaire du patient est paginé, et les pièces jointes
-      sont chargées par lot (nombre de requêtes indépendant du nombre de documents)
-- [ ] Test de non-régression fonctionnelle : le contenu du dossier patient (mêmes
-      documents, même ordre) est inchangé
-- [ ] Plus aucun `dynamic` sur le chemin de comptage de fils (déjà vrai sur le
-      chemin base depuis task-247 — vérifier que le portage n'en réintroduit pas)
-- [ ] **Mesures chiffrées avant / après** consignées dans la task, obtenues sur le
-      banc de charge (tasks 173/174) avec une boîte représentative : latence p50/p95
-      du listage de dossier, et temps d'ouverture d'un dossier patient fourni
-- [ ] Le rapport de mesure précise si le corpus portait des fils (cf. task-267).
-      À défaut, il **énonce** que le comptage n'a pas été exercé et que le gain
-      publié ne couvre que le scan
-- [ ] Aucune donnée de santé en clair dans les logs
+- [ ] Build passes (0 errors) : `dotnet build HealthPlatform.Api.Mail.sln`.
+- [ ] Tests pass (0 failures, hors flaky préexistants documentés) :
+      `dotnet test HealthPlatform.Api.Mail.sln`.
+- [ ] Test de régression du coût sur `GetThreadCountsAsync` : SQL réellement
+      exécuté filtré par les racines demandées et nombre de lignes matérialisées
+      inchangé lorsque seuls des messages/fils étrangers sont ajoutés. Vérifier
+      et consigner l'échec de ce test avant correction, puis son succès après.
+- [ ] Tests de caractérisation : mêmes compteurs avant/après sur réponses
+      directes, références seules, références nulles/vides, sous-chaînes,
+      différences de casse et identifiants contenant des caractères spéciaux SQL.
+- [ ] Tests : descendants hors page et racine dans un autre dossier, **`Sent`
+      inclus**, conservés dans le comptage.
+- [ ] Tests : même `MessageId` dans plusieurs dossiers conservé comme plusieurs
+      lignes ; une ligne satisfaisant les deux critères compte une seule fois.
+- [ ] Test : deux générations du même dossier avec un UID identique ne sont pas
+      fusionnées par le portage ; le résultat IMAP de référence est conservé.
+      Toute divergence préexistante avec le chemin base est documentée et tout
+      élargissement fonctionnel fait l'objet d'un arbitrage explicite.
+- [ ] Tests : racine absente, racine présente en plusieurs exemplaires,
+      mono-message et liste d'identifiants vide conservent leur comportement.
+- [ ] Les tests de `ThreadCountConvergenceTests` restent verts : compteurs,
+      drapeaux, feuille d'affichage et dépliage inchangés sur les cas existants.
+- [ ] Les tests de `ThreadCountsOnDemandTests` restent verts : aucune des deux
+      méthodes d'enrichissement des fils appelée lorsque
+      `includeThreadCounts=false`, et comportement par défaut inchangé.
+- [ ] Réutilisation de la logique filtrée existante, sans introduire de `dynamic`,
+      de filtre de dossier/génération de la page ou de limite de descendants.
+- [ ] Mesures avant/après consignées dans la tâche : corpus réellement fileté,
+      paramètres seeder/k6 cohérents, comptage activé, commits, volumes, chauffe,
+      p50/p95 `read_list`, erreurs, lignes matérialisées et mémoire/allocations.
+- [ ] Aucun changement patient, DTO, route ou frontend ; aucune donnée de santé,
+      aucun identifiant de message ni contenu de référence en clair dans les
+      nouveaux logs de diagnostic.
 
 ## Manual Test Plan
 
-1. Préparer le banc : profil de charge des tasks 173/174 avec une boîte fournie
-   (idéalement ≥ 10 000 messages ; à défaut, documenter le volume atteint) et un
-   patient de test porteur de nombreux documents.
-2. **Mesure avant** : lancer le backend, mesurer la latence d'un listage de dossier
-   (scénario `read` du banc, p50/p95) et chronométrer l'ouverture du dossier patient
-   fourni. Consigner les chiffres.
-3. Appliquer le correctif, relancer les **mêmes** mesures. **Attendu** : baisse
-   nette et chiffrée, et une latence qui ne croît plus avec la taille totale de la
-   boîte.
-4. **Non-régression fonctionnelle** : comparer côte à côte, avant et après, les
-   compteurs de fils affichés sur plusieurs pages d'un dossier à discussions —
-   valeurs identiques.
-5. Ouvrir le dossier du patient fourni : mêmes documents, même ordre, mêmes pièces
-   jointes qu'avant, mais ouverture rapide et sans expiration de délai.
-6. Observer la mémoire du serveur pendant un parcours de plusieurs pages : elle ne
-   doit plus suivre le volume total de la boîte.
+1. Préparer un banc isolé avec les identités synthétiques, conformément à
+   `Api/Mail/docs/loadtest.md` et `Api/Mail/tests/loadtest-k6/README.md`.
+   Toute purge ou réinitialisation destructive nécessite une confirmation
+   explicite ; ne pas toucher à une boîte clinique pour cette campagne.
+2. Depuis `Api/Mail`, lancer l'AppHost dans un terminal dédié :
+
+   ```powershell
+   dotnet run --project src/AppHost --launch-profile https-load-test
+   ```
+
+   Ouvrir le dashboard Aspire indiqué au démarrage et vérifier l'état du banc.
+   Préparer un corpus représentatif avec `--thread-share` non nul, des racines
+   dans `Sent`, des réponses dans d'autres dossiers, des descendants hors page
+   et des messages étrangers aux fils observés. Documenter le volume atteint
+   (cible : au moins 10 000 messages dans la boîte observée) et la chauffe.
+3. Dans le terminal de tir, depuis `Api/Mail`, configurer la clé du banc par
+   l'environnement conformément au mode d'emploi, sans la recopier dans le
+   rapport. Renseigner `CORPUS_THREAD_SHARE` avec la part réellement semée et
+   aligner les autres paramètres de population avec le corpus. Puis lancer :
+
+   ```powershell
+   $env:JOURNEY_THREAD_COUNTS = '1'
+   .\tests\loadtest-k6\run.ps1 read
+   ```
+
+   La route observée est
+   `GET /api/v1/mail/folders/{folder}/emails/{uids}`, avec comptage activé.
+   Relever séparément l'opération `read_list`, pas seulement le scénario agrégé
+   qui comprend aussi l'ouverture du contenu.
+4. Effectuer la mesure avant correction, puis après correction sur le même
+   corpus et avec les mêmes paramètres, en répétant le même protocole de chauffe.
+   Publier les p50/p95, erreurs, lignes matérialisées et mémoire/allocations.
+   Ne pas réensemencer par simple ajout entre les deux jambes.
+5. Comparer les réponses avant/après sur plusieurs pages : mêmes `ThreadCount`,
+   `IsPartOfThread` et `IsThreadRoot`, fils inter-dossiers et orphelins conservés.
+   Déplier les fils dans un client existant ou via la route de fil existante et
+   vérifier le contenu et la cohérence des compteurs.
+6. Répéter la lecture avec `includeThreadCounts=false` et vérifier l'absence
+   d'appel aux méthodes d'enrichissement des fils et les drapeaux neutres.
+7. À fils demandés et page constants, comparer deux jeux synthétiques ne
+   différant que par le volume de messages étrangers. **Attendu** : aucune
+   croissance du nombre de lignes matérialisées par `GetThreadCountsAsync`.
+   Mesurer séparément le coût PostgreSQL résiduel au lieu de supposer qu'il est
+   constant.
 
 ## Conformité santé / Ségur / ANS
 
-- **Couloir Ségur** : médecine de ville
-- **Vague Ségur** : hors exigence DSR spécifique — sujet de performance ; contribue
-  indirectement à l'utilisabilité du LPS sur le volet MSSanté
-- **Exigences DSR honorées** : non applicable — aucune exigence fonctionnelle
-  nouvelle
-- **INS** : non applicable — aucune règle d'identité modifiée
-- **Authentification PS** : inchangée
-- **Habilitations** : inchangées — le périmètre des données lues doit rester
-  strictement identique (attention à ne pas élargir un filtre en optimisant)
-- **Interop CI-SIS** : non applicable
-- **Tracé PGSSI-S** : inchangé — ne pas réduire la journalisation existante en
-  optimisant les requêtes
-- **Consentement patient** : non applicable
-- **Référentiels métier** : aucun
-- **Hébergement HDS** : oui
-- **AIPD / impact RGPD** : inchangé — aucun nouveau traitement, aucun changement de
-  périmètre de données.
+- **Couloir Ségur** : médecine de ville.
+- **Vague Ségur** : hors exigence DSR spécifique ; amélioration de performance
+  sans changement fonctionnel.
+- **Exigences DSR honorées** : non applicable, aucune exigence fonctionnelle
+  nouvelle.
+- **INS** : aucune modification ; le volet patient est hors scope.
+- **Authentification PS** : inchangée.
+- **Habilitations** : inchangées ; conserver la base de l'utilisateur courant
+  et le périmètre fonctionnel des fils, sans accès inter-utilisateurs.
+- **Interop CI-SIS** : inchangée.
+- **Tracé PGSSI-S** : inchangé ; ne pas réduire la journalisation existante et
+  ne pas exposer le contenu des messages dans les mesures.
+- **Consentement patient** : inchangé.
+- **Référentiels métier** : aucun.
+- **Hébergement HDS** : oui.
+- **AIPD / impact RGPD** : inchangé, aucun nouveau traitement ni changement du
+  périmètre fonctionnel.

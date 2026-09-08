@@ -184,7 +184,8 @@ lui-même. Elle ne touche aucun des fichiers de cette task.
 | /lint-mobile | skipped | 2.5 s | — | — | — | client-mobile hors Repos, arbre vide |
 | /verify-visual | skipped | 2.1 s | — | — | — | aucun ecran client-mobile touche |
 | /review | ok | 4 min 45 s | 2 (16 s) | 1 (1 min 35 s) | — | dtos-mss 1B/0T, api-mail 1B/1T |
-| **Total cycle** | | **35 min 36 s** | **3 (38 s)** | **6 (5 min 34 s)** | **1 (1 min 48 s)** | |
+| /tech-writer | ok | 2 min 38 s | — | — | — | — |
+| **Total cycle** | | **38 min 15 s** | **3 (38 s)** | **6 (5 min 34 s)** | **1 (1 min 48 s)** | |
 
 ## Develop log — 2026-09-08
 
@@ -392,3 +393,57 @@ body de la PR #221.
 **Validation finale** : builds verts sur les deux repos, **4193 tests, zéro
 échec** — la suite est redevenue déterministe, le correctif de task-291 (PR #220)
 ayant été mergé sur `develop` et intégré ici pendant la synchronisation.
+
+
+## Merged — 2026-09-08
+
+Mergée par l'humain après validation manuelle de bout en bout (HAG, règle 10),
+via `/merge task-193 --i-tested`.
+
+| Repo | PR | Commit de squash sur `develop` | CI `develop` |
+|---|---|---|---|
+| `dtos-mss` | #31 | `f20f310` | ✅ success |
+| `api-mail` | #221 | `18a076de` | ✅ success |
+
+Merge en **ordre topologique** `dtos-mss → api-mail` : le paquet
+`HealthPlatform.Dtos.Mss` **458.0.0** est consommé par le second.
+
+Références distantes supprimées, **branches locales conservées** (`--squash`
+seul, jamais `--delete-branch`).
+
+### Ce qui est désormais sur `develop`
+
+- Un CDA sans balise `<id>` reçoit un identifiant **nul**, plus la chaîne
+  fabriquée `"_"` — et les deux identifiants (`DocumentId`, `SetId`) partagent
+  la même fonction de composition, donc ils ne peuvent plus diverger.
+- La détection de doublons est **bornée au patient** sur ses **deux** chemins
+  (identifiant exact et chaîne de versions).
+- **Sans INS, aucune détection** : en cas de doute, on ne masque pas.
+- La colonne `MailMedicalDocuments.DocumentId` est nullable (migration
+  `20260908100000`).
+
+### Reste à la charge de l'humain
+
+- **Inventaire à exécuter, base par base** :
+  `Docs/task-193-inventaire-doublons-inter-patients.sql`. Il recense les
+  documents marqués doublons dont le patient diffère de celui du document
+  référencé — la signature du défaut. Commencer par le bloc de dénombrement en
+  fin de fichier. **Les lignes existantes portant `"_"` n'ont pas été touchées** :
+  les réécrire serait une modification de données de santé.
+- **Remédiation** : task dédiée si l'inventaire remonte des cas. Décision
+  humaine, document par document.
+- **AIPD / registre des traitements** : à mettre à jour avec le DPO — art. 5.1.d
+  (inexactitude et incomplétude du dossier patient), des documents cliniques
+  ayant pu être masqués. La portée se qualifie via l'inventaire.
+- **Émetteurs non conformes** : le `Warning` « Document CDA reçu sans
+  identifiant exploitable » les rend enfin visibles. Si le volume devient
+  bruyant sur un émetteur systématiquement non conforme, un compteur agrégé
+  serait plus juste (suggestion de revue, non bloquante).
+
+### Suggestion de revue non traitée
+
+`LoadActiveSetVersionsAsync` et `FindExactDuplicateIdAsync` partagent désormais
+quatre `.Where` identiques (patient, chemin nul, self-action, SPECIAL-USE). Les
+factoriser serait tentant ; ce n'a pas été fait parce que les deux requêtes
+divergent ensuite et que task-233 a déjà centralisé ce qui devait l'être. **À
+trancher si un troisième appelant apparaît.**
