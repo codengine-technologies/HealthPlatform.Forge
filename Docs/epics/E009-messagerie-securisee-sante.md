@@ -2,9 +2,9 @@
 
 > **Statut** : En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.66
+> **Version** : 1.67
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-09-08 (task-186)
+> **Dernière mise à jour** : 2026-09-08 (task-193)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -574,7 +574,7 @@ Toute action fonctionnelle du praticien (lecture, envoi, suppression, rattacheme
 | RG-E009-028 (SC.MSS/UX.25) | V2 | Distinguer messages professionnels vs patients | ✅ Implémenté (task-005) |
 | RG-E009-029 (SC.MSS/UX.28) | V2 | Masquer le préfixe `XDM/1.0/DDM+` dans l'objet | ✅ Implémenté (task-002) |
 | RG-E009-030 (SC.MSS/UX.31) | V2 | Afficher nom/prénom/INS de l'usager | ✅ Implémenté (task-005) |
-| RG-E009-031 (LGC.MDV.06) | V2 | Informer que le document a déjà été intégré | ✅ Implémenté (task-011) |
+| RG-E009-031 (LGC.MDV.06) | V2 | Informer que le document a déjà été intégré | ✅ Implémenté (task-011 — détection bornée au patient depuis task-193) |
 | RG-E009-032 (MSS/va1.25) | V1 | Restituer métadonnées CDA dans la liste messages reçus | ✅ Implémenté |
 | RG-E009-033 (MSS/va1.27) | V1 | Rattachement patient par comparaison visuelle si INS sans identité qualifiée | ✅ Implémenté (task-012) |
 | RG-E009-034 (MSS/va1.28) | V1 | Visualiser et classer en 1 clic dans le dossier patient | 🟡 Partiel |
@@ -1018,6 +1018,54 @@ Les règles `RG-E009-084` à `RG-E009-089` sont propres à ENS Mon espace santé
 Cette synthèse digère l'historique des versions en langage produit. Le détail ingénierie (numéros de PR, versions NuGet, métriques tests, audits grep) est consigné dans le document frère [`E009-Changelogs.md`](./E009-Changelogs.md).
 
 ### Fonctionnalités métier
+
+- **v1.67 — Un compte rendu pouvait disparaître du dossier d'un patient, pris
+  pour le doublon du document d'un autre** (task-193) : quand un laboratoire ou
+  un confrère envoie un document de santé, la messagerie vérifie s'il ne l'a pas
+  déjà reçu, pour ne pas afficher deux fois la même chose. Les doublons sont
+  alors masqués du dossier patient.
+
+  **Ce qui n'allait pas.** Cette vérification comparait les documents par leur
+  numéro d'identification — **sans jamais regarder de quel patient il
+  s'agissait**. Et quand un émetteur ne respecte pas la norme et n'envoie
+  *aucun* numéro, la messagerie lui en fabriquait un, identique pour tous ces
+  documents-là.
+
+  Les deux défauts se combinaient. Le deuxième document sans numéro reçu était
+  déclaré doublon du premier — un document appartenant à **un autre patient** —
+  et, à ce titre, **retiré du dossier de son propre patient et du tableau de
+  bord**.
+
+  **Ce que le praticien voyait.** Rien, dans le dossier. Le document
+  n'apparaissait que dans la boîte de réception, accompagné d'un signal de
+  doublon renvoyant au dossier de quelqu'un d'autre. Il fallait le repérer et
+  écarter ce signal à la main pour que le document réintègre le dossier. Sur un
+  compte rendu ou un résultat de biologie, c'est un retard de prise en charge que
+  rien ne signale.
+
+  **Ce qui change.** Deux documents ne peuvent plus être déclarés identiques
+  s'ils ne concernent pas **le même patient** — quelle que soit la façon dont
+  leurs numéros se ressemblent. Un document sans numéro exploitable n'est plus
+  rapproché de rien : il entre dans le dossier de son patient, tout simplement.
+  Et un document dont le patient n'est pas identifié n'est jamais masqué — le
+  principe retenu est qu'**un doublon affiché est un désagrément, un document
+  masqué est un risque**.
+
+  La détection des vrais doublons, elle, ne change pas : renvoyer deux fois le
+  même document au même patient reste signalé, et le suivi des versions
+  successives d'un même compte rendu continue de fonctionner à l'identique.
+
+  **Pour les documents déjà reçus.** Le correctif empêche que cela se reproduise,
+  mais il ne touche pas aux documents déjà enregistrés. Une requête d'inventaire
+  est livrée avec ce correctif pour recenser, base par base, les documents qui
+  ont pu être masqués à tort — leur rétablissement demande une décision humaine
+  et fera l'objet d'un travail distinct. **L'analyse d'impact est à mettre à jour
+  avec le DPO** : des documents cliniques ont pu manquer à des dossiers.
+
+  **Une trace technique est désormais écrite** à chaque réception d'un document
+  sans numéro d'identification — sans aucun contenu ni donnée patient. Elle sert
+  à repérer les émetteurs qui n'appliquent pas la norme, ce que rien ne remontait
+  jusqu'ici : ce défaut avait été trouvé en relisant le code, pas par une alerte.
 
 - **v1.66 — Le journal des accès ne disait pas tout, et pouvait s'effacer tout
   seul** (task-186) : la messagerie tient un journal de ce que chaque praticien
