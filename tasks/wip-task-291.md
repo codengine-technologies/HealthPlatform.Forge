@@ -299,8 +299,9 @@ cette étape même.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 59 s | — | — | — | — |
-| /develop | failed | 50 min 54 s | — | — | — | — |
-| **Total cycle** | | **51 min 53 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 0.4 s | — | — | — | — |
+| /sonar | ok | 10 min 05 s | — | — | — | — |
+| **Total cycle** | | **11 min 05 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
 
 ## Causes établies — famille A
 
@@ -373,3 +374,78 @@ l'assembly.
 Arbitrage humain sur `questions/task-291.md` : **A accepté comme livrable, pas
 de task de suite pour B ni C pour le moment.** La trace de B et C vit donc dans
 la section « Ce qui reste, sans task » de ce fichier, et nulle part ailleurs.
+
+## Sonar log
+
+Analyse complète de la branche `fix/task-291-suite-tests-non-deterministe`
+(après resynchronisation sur `develop`, task-186 incluse), 2026-09-08.
+
+### KPI
+
+| Métrique | Baseline | Final | Cible |
+|---|---|---|---|
+| `bugs` | 0 | **0** | 0 ✅ |
+| `vulnerabilities` | 0 | **0** | 0 ✅ |
+| `code_smells` | 65 | 67 | — |
+| `new_bugs` | 0 | **0** | 0 ✅ |
+| `new_vulnerabilities` | 0 | **0** | 0 ✅ |
+| `new_code_smells` | 38 | **8** | 0 ⚠️ |
+| `coverage` | 88,3 % | 88,0 % | 95 % ⚠️ |
+| `new_coverage` | 90,8 % | 87,4 % | 95 % — QG OK |
+| `duplicated_lines_density` | 0,4 % | 0,4 % | — |
+| `reliability_rating` / `security_rating` / `sqale_rating` | — | **A / A / A** | A ✅ |
+| **Quality Gate** | OK | **OK** | OK ✅ |
+
+⚠️ **La baseline n'est pas comparable au strict** : elle provient de la dernière
+analyse en date, celle du cycle de task-186, sur un périmètre de branche
+différent. Les deltas de `code_smells` (+2) et de `coverage` (−0,3 pt) sont donc
+**indicatifs et non attribuables** — la fusion de task-186 apporte du code de
+production que la baseline ne mesurait pas au même point. Le dire plutôt que
+laisser croire à une régression de cette task.
+
+### Aucune issue n'est imputable à task-291
+
+Les 15 code smells ouverts de la période portent tous sur du code que cette task
+n'a pas écrit (`RevocationDownloadCoordinator`, `MailClientSession`,
+`SentArchiveService`, `MailServerDiscovery`, `IheXdmProcessingService`, plus des
+`INFO` CA14xx). **Les fichiers de task-291 n'en produisent aucun** — ce sont des
+fichiers de test, analysés (seule la *couverture* exclut `**/tests/**`), et ils
+sortent propres.
+
+**Deux fausses pistes vérifiées et closes**, pour que personne ne les rechasse :
+
+| Issue | Fichier | Verdict |
+|---|---|---|
+| `S125` « remove commented out code » | `RequestLoggingMiddleware.cs:115` | **CLOSED / FIXED** — déjà traitée dans task-184 |
+| `S3267` « loops should be simplified with LINQ » | `SensitiveRequestDataSanitizer.cs:182` | **CLOSED / FIXED** — déjà traitée dans task-184 |
+
+Toutes deux apparaissaient dans la liste « nouvelle période » comme entrées
+historiques, ce qui les fait passer pour actionnables alors qu'elles ne le sont
+plus. Contrôle : filtrer sur `status=OPEN`, pas seulement sur
+`inNewCodePeriod=true`.
+
+### Décision — early-stop, best-effort assumé
+
+Zéro itération de nettoyage. Motif : Quality Gate **OK**, `bugs` et
+`vulnerabilities` à **0**, les trois notes à **A**, et **task-291 n'introduit
+aucun smell**. Les 15 restants relèvent d'autres tasks ; les corriger ici
+mélangerait les périmètres (règle 6, scopes isolés) et gonflerait un diff de
+task de test avec du refactoring de production sans rapport.
+
+Les deux cibles projet non atteintes (`coverage` 88 % < 95 %, `new_code_smells`
+8 ≠ 0) sont **antérieures et non imputables**. Elles restent affichées ici parce
+que la règle est de toujours monitorer la qualité, jamais de clore en silence.
+
+### Note d'outillage
+
+`dotnet sonarscanner begin` **exige** `MSYS_NO_PATHCONV=1
+MSYS2_ARG_CONV_EXCL='*'` sous Git Bash : sans eux, le `/` initial de chaque
+`/k:` et `/d:` est converti et le scanner répond
+« Unrecognized command line argument », puis « A required argument is missing ».
+C'est le piège MSYS documenté du skill, **en sens inverse** de celui de `run.sh`
+pour k6 — qui exige, lui, que ces variables soient *absentes*. Les deux se
+posent et se retirent par commande, jamais globalement.
+
+⚠️ SonarQube était **arrêté** (`Exited (255)`, ~1 h) au pré-vol, vraisemblablement
+emporté par l'arrêt du banc de charge de task-184. Relancé par
+`docker start sonarqube_db sonarqube`.
