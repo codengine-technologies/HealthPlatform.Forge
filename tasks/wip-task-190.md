@@ -198,3 +198,26 @@ qu'ils devaient démontrer soit corrigé. Deux raisons :
 
   L'impression fonctionne ; ce qui reste en jeu est la **qualité de restitution**
   d'un document imprimé et versé au dossier patient.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-190 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 1 min 25 s | — | — | — | — |
+| **Total cycle** | | **1 min 25 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+
+## Branches
+
+Nom de branche unique : `fix/task-190-print-table-cell-separators` (préfixe `fix/` —
+défaut de lisibilité, pas une nouvelle fonctionnalité).
+
+- `api-mail` (pushed) : `fix/task-190-print-table-cell-separators` — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-190-print-table-cell-separators
+- `dtos-mss` (pushed, auto-inclus) : `fix/task-190-print-table-cell-separators` — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/fix/task-190-print-table-cell-separators
+  — branche créée proactivement (règle d'auto-inclusion CLAUDE.md). Aucun changement
+  de contrat attendu pour cette US : si elle reste sans commit, aucune PR ne sera ouverte.
+
+Pré-flight du 2026-09-08 : les 7 repos automatisés sur `develop`. Premier essai
+refusé (api-mail et dtos-mss encore sur `fix/task-194-…`, PR #223 en attente de
+merge) — relance verte après checkout `develop`.
