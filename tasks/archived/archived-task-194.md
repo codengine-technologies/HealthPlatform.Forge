@@ -686,3 +686,11 @@ décor de semis avec `ThreadCountConvergenceTests`.
 | /review | ok | 5 min 17 s | 1 (26 s) | 1 (1 min 41 s) | — | api-mail 1B/1T |
 | /tech-writer | ok | 4 min 50 s | — | — | — | — |
 | **Total cycle** | | **2 h 16 min** | **6 (2 min 31 s)** | **13 (10 min 30 s)** | **0 (0.0 s)** | |
+
+## Merged
+
+- **Date** : 2026-09-08, `/merge task-194 --i-tested` (attestation humaine du test de bout en bout, HAG règle 10).
+- `api-mail` : PR #223 squash-mergée → `develop` **`9bd8a72`** (`fix(mail): borner le chargement des fils aux racines demandees sur le chemin IMAP (task-194) (#223)`). Branche distante `fix/task-194-thread-counts-scoped-load` supprimée, branche locale conservée.
+- `dtos-mss` : aucune PR (0 commit) — branche distante `fix/task-194-thread-counts-scoped-load` supprimée, clone déjà sur `develop`.
+- CI `develop` api-mail : run https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/34237419509 (build + publish ; encore en cours après la fenêtre de 2 minutes au moment de l'archivage — conclusion notée dans le rapport de merge).
+- Staging : aucune branche `forge/staging-task-*` sur les repos pushables — rien à nettoyer.
