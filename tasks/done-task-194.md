@@ -602,6 +602,47 @@ Accessoirement, `Api/Mail/.env` a une ligne 70 qui casse un `source` (`xpui:
 command not found`) sans conséquence ici, mais qui polluera tout script qui la
 source.
 
+## PRs
+
+- `api-mail` : **https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/223**
+  — label `awaiting-human-merge`, `MERGEABLE`. Branche
+  `fix/task-194-thread-counts-scoped-load`, fusionnée avec `origin/develop`
+  (`da2f2b65`, task-183) sans conflit avant validation.
+- `dtos-mss` : **aucune PR** — la branche a été créée par `/start`
+  (auto-inclusion) mais l'US ne change aucun contrat : 0 commit, donc rien à
+  publier et aucun consommateur à bumper.
+- `client-angular`, `client-mobile`, `client-blazor` : non concernés (US
+  backend-only assumée et justifiée dans le task file).
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 3 fichiers, 0 blocage, 3 suggestions non bloquantes.
+
+Vérifié à la revue, au-delà de ce que la passe qualité couvre (elle est
+quality-only par contrat) :
+
+- **Équivalence sémantique lot par lot** : toute ligne que l'ancien code comptait
+  est chargée par la nouvelle union (`InReplyTo == root` → lot « réponses
+  directes », `References.Contains(root)` → lot « citations »), et le prédicat de
+  comptage est le même helper partagé. La déduplication par `Mail.Id` reproduit
+  le comptage de lignes de l'implémentation à requête unique.
+- **Sécurité** : aucun SQL concaténé (arbre d'expression + paramètres, échappement
+  délégué au provider), aucun secret, aucune validation d'entrée contournée.
+- **Données de santé** : **0 nouveau log**. `EnableSensitiveDataLogging` n'apparaît
+  que dans le contexte d'observation **du test**, jamais en production
+  (vérifié : 0 occurrence dans `src/`).
+- **task-183 intacte** : le diff de la task ne touche **aucune** ligne INS/OID, et
+  les marqueurs `InsIdentityDomain` / `PatientInsOid` sont toujours présents après
+  la fusion.
+- **Performance** : 3 requêtes bornées, séquentielles à dessein (le `DbContext`
+  mémoïsé du dépôt n'est pas thread-safe) ; comptage en mémoire O(racines ×
+  descendants) inchangé et borné par la page.
+
+Suggestions consignées dans le body de la PR : les deux dernières copies SQL de
+la règle de rattachement (`GetLatestMessageIdsPerThreadAsync`,
+`CollectThreadMessageIdsAsync`), le `S138` pré-existant, et la mutualisation du
+décor de semis avec `ThreadCountConvergenceTests`.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-194 --sync` — ne pas éditer à la main)*
@@ -611,4 +652,8 @@ source.
 | /start | ok | 2 min 15 s | — | — | — | — |
 | /develop | ok | 1 h 52 min | 4 (1 min 36 s) | 7 (5 min 18 s) | — | api-mail 4B/7T |
 | /sonar | ok | 11 min 21 s | 1 (27 s) | 5 (3 min 30 s) | — | 1 itération(s), api-mail 1B/5T |
-| **Total cycle** | | **2 h 05 min** | **5 (2 min 04 s)** | **12 (8 min 49 s)** | **0 (0.0 s)** | |
+| /lint-angular | skipped | 1.9 s | — | — | — | client-angular non touche (Repos: api-mail) |
+| /lint-mobile | skipped | 2.2 s | — | — | — | client-mobile non touche (Repos: api-mail) |
+| /verify-visual | skipped | 1.9 s | — | — | — | aucun ecran mobile touche (US backend-only, api-mail) |
+| /review | ok | 5 min 17 s | 1 (26 s) | 1 (1 min 41 s) | — | api-mail 1B/1T |
+| **Total cycle** | | **2 h 11 min** | **6 (2 min 31 s)** | **13 (10 min 30 s)** | **0 (0.0 s)** | |
