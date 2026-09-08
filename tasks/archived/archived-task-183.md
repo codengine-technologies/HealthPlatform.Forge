@@ -391,3 +391,31 @@ Build vert (0 erreur, 0 avertissement), **4247 tests passés / 0 échec** /
 16 skipped préexistants, DOD intégralement vérifié (dont le ROUGE constaté
 avant correctif, et l'audit de migration règle 7c joué sur une vraie base).
 
+## Merged
+
+Mergée le **2026-09-08** par l'humain (HAG, règle 10), après test manuel
+attesté par `--i-tested`.
+
+| Repo | PR | Merge | Squash SHA |
+|---|---|---|---|
+| `api-mail` | [#222](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/222) | squash sur `develop` | `da2f2b6` |
+| `dtos-mss` | — (aucune PR) | — | — |
+
+**Garde-fous passés avant merge** : `--i-tested` présent ; label
+`awaiting-human-merge` (pas `awaiting-us-completion`) ; aucune revue en
+`CHANGES_REQUESTED` ; CI de la PR verte (`build` pass, `publish` skipping) ;
+`mergeable = MERGEABLE`, `mergeStateStatus = CLEAN` ; arbres de travail propres
+sur les deux repos.
+
+**Après merge** : CI de `develop` **verte** sur le commit de squash (vérifiée
+dans les 2 min, règle 5). Refs distantes `fix/task-183-ins-oid-qualification`
+supprimées sur `api-mail` **et** sur `dtos-mss` (cette dernière n'avait aucun
+commit — branche créée par auto-inclusion, jamais utilisée). **Branches locales
+conservées** sur les deux repos, pour inspection rétroactive. Aucune branche
+staging à nettoyer (task lancée par `/start` direct, hors run `/forge`).
+
+**Ce qui reste ouvert après ce merge** : les trois arbitrages
+d'identito-vigilance de `questions/task-183.md` — statut du NIA, OID de test en
+production (point 3 de la US, **non livré**), et fusion rétroactive des dossiers
+déjà scindés. Le merge de cette PR ne les tranche pas et n'en dépendait pas.
+
