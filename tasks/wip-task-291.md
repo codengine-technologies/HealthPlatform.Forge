@@ -302,6 +302,7 @@ cette étape même.
 | /develop | ok | 0.4 s | — | — | — | — |
 | /sonar | ok | 10 min 05 s | — | — | — | — |
 | /lint-angular | skipped | — | — | — | — | client-angular hors Repos de task-291 (api-mail seul) et arbre inchange par la task; no start marker |
+| /lint-mobile | skipped | — | — | — | — | client-mobile hors Repos de task-291 (api-mail seul), arbre intouche; no start marker |
 | **Total cycle** | | **11 min 05 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
 
 ## Causes établies — famille A
@@ -458,3 +459,9 @@ emporté par l'arrêt du banc de charge de task-184. Relancé par
 Angular. Les deux `environment.ts` modifiés dans `Client/Angular/` sont le WIP
 propre de l'humain, hors de cette task (déjà consigné au merge de task-184).
 Aucune commande de lint lancée, rien à corriger.
+
+## Lint mobile log
+
+**`/lint-mobile` — SKIP propre.** `client-mobile` n'est pas dans `**Repos**:`
+(task `api-mail` seule), reste sur `develop` et son arbre est intouché par cette
+task. Aucune commande lancée, aucun commit.
