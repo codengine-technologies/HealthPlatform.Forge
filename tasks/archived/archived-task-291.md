@@ -299,8 +299,14 @@ cette étape même.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 59 s | — | — | — | — |
-| /develop | failed | 50 min 54 s | — | — | — | — |
-| **Total cycle** | | **51 min 53 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 0.4 s | — | — | — | — |
+| /sonar | ok | 10 min 05 s | — | — | — | — |
+| /lint-angular | skipped | — | — | — | — | client-angular hors Repos de task-291 (api-mail seul) et arbre inchange par la task; no start marker |
+| /lint-mobile | skipped | — | — | — | — | client-mobile hors Repos de task-291 (api-mail seul), arbre intouche; no start marker |
+| /verify-visual | skipped | — | — | — | — | aucun ecran client-mobile touche : task api-mail seule, sur des fichiers de test; no start marker |
+| /review | ok | 4 min 39 s | 1 (2.0 s) | 1 (1 min 23 s) | — | api-mail 1B/1T |
+| /tech-writer | ok | 3 min 23 s | — | — | — | — |
+| **Total cycle** | | **19 min 07 s** | **1 (2.0 s)** | **1 (1 min 23 s)** | **0 (0.0 s)** | |
 
 ## Causes établies — famille A
 
@@ -373,3 +379,164 @@ l'assembly.
 Arbitrage humain sur `questions/task-291.md` : **A accepté comme livrable, pas
 de task de suite pour B ni C pour le moment.** La trace de B et C vit donc dans
 la section « Ce qui reste, sans task » de ce fichier, et nulle part ailleurs.
+
+## Sonar log
+
+Analyse complète de la branche `fix/task-291-suite-tests-non-deterministe`
+(après resynchronisation sur `develop`, task-186 incluse), 2026-09-08.
+
+### KPI
+
+| Métrique | Baseline | Final | Cible |
+|---|---|---|---|
+| `bugs` | 0 | **0** | 0 ✅ |
+| `vulnerabilities` | 0 | **0** | 0 ✅ |
+| `code_smells` | 65 | 67 | — |
+| `new_bugs` | 0 | **0** | 0 ✅ |
+| `new_vulnerabilities` | 0 | **0** | 0 ✅ |
+| `new_code_smells` | 38 | **8** | 0 ⚠️ |
+| `coverage` | 88,3 % | 88,0 % | 95 % ⚠️ |
+| `new_coverage` | 90,8 % | 87,4 % | 95 % — QG OK |
+| `duplicated_lines_density` | 0,4 % | 0,4 % | — |
+| `reliability_rating` / `security_rating` / `sqale_rating` | — | **A / A / A** | A ✅ |
+| **Quality Gate** | OK | **OK** | OK ✅ |
+
+⚠️ **La baseline n'est pas comparable au strict** : elle provient de la dernière
+analyse en date, celle du cycle de task-186, sur un périmètre de branche
+différent. Les deltas de `code_smells` (+2) et de `coverage` (−0,3 pt) sont donc
+**indicatifs et non attribuables** — la fusion de task-186 apporte du code de
+production que la baseline ne mesurait pas au même point. Le dire plutôt que
+laisser croire à une régression de cette task.
+
+### Aucune issue n'est imputable à task-291
+
+Les 15 code smells ouverts de la période portent tous sur du code que cette task
+n'a pas écrit (`RevocationDownloadCoordinator`, `MailClientSession`,
+`SentArchiveService`, `MailServerDiscovery`, `IheXdmProcessingService`, plus des
+`INFO` CA14xx). **Les fichiers de task-291 n'en produisent aucun** — ce sont des
+fichiers de test, analysés (seule la *couverture* exclut `**/tests/**`), et ils
+sortent propres.
+
+**Deux fausses pistes vérifiées et closes**, pour que personne ne les rechasse :
+
+| Issue | Fichier | Verdict |
+|---|---|---|
+| `S125` « remove commented out code » | `RequestLoggingMiddleware.cs:115` | **CLOSED / FIXED** — déjà traitée dans task-184 |
+| `S3267` « loops should be simplified with LINQ » | `SensitiveRequestDataSanitizer.cs:182` | **CLOSED / FIXED** — déjà traitée dans task-184 |
+
+Toutes deux apparaissaient dans la liste « nouvelle période » comme entrées
+historiques, ce qui les fait passer pour actionnables alors qu'elles ne le sont
+plus. Contrôle : filtrer sur `status=OPEN`, pas seulement sur
+`inNewCodePeriod=true`.
+
+### Décision — early-stop, best-effort assumé
+
+Zéro itération de nettoyage. Motif : Quality Gate **OK**, `bugs` et
+`vulnerabilities` à **0**, les trois notes à **A**, et **task-291 n'introduit
+aucun smell**. Les 15 restants relèvent d'autres tasks ; les corriger ici
+mélangerait les périmètres (règle 6, scopes isolés) et gonflerait un diff de
+task de test avec du refactoring de production sans rapport.
+
+Les deux cibles projet non atteintes (`coverage` 88 % < 95 %, `new_code_smells`
+8 ≠ 0) sont **antérieures et non imputables**. Elles restent affichées ici parce
+que la règle est de toujours monitorer la qualité, jamais de clore en silence.
+
+### Note d'outillage
+
+`dotnet sonarscanner begin` **exige** `MSYS_NO_PATHCONV=1
+MSYS2_ARG_CONV_EXCL='*'` sous Git Bash : sans eux, le `/` initial de chaque
+`/k:` et `/d:` est converti et le scanner répond
+« Unrecognized command line argument », puis « A required argument is missing ».
+C'est le piège MSYS documenté du skill, **en sens inverse** de celui de `run.sh`
+pour k6 — qui exige, lui, que ces variables soient *absentes*. Les deux se
+posent et se retirent par commande, jamais globalement.
+
+⚠️ SonarQube était **arrêté** (`Exited (255)`, ~1 h) au pré-vol, vraisemblablement
+emporté par l'arrêt du banc de charge de task-184. Relancé par
+`docker start sonarqube_db sonarqube`.
+
+## Lint log
+
+**`/lint-angular` — SKIP propre.** `client-angular` n'est pas dans
+`**Repos**:` (task `api-mail` seule) et la task n'a touché aucun fichier
+Angular. Les deux `environment.ts` modifiés dans `Client/Angular/` sont le WIP
+propre de l'humain, hors de cette task (déjà consigné au merge de task-184).
+Aucune commande de lint lancée, rien à corriger.
+
+## Lint mobile log
+
+**`/lint-mobile` — SKIP propre.** `client-mobile` n'est pas dans `**Repos**:`
+(task `api-mail` seule), reste sur `develop` et son arbre est intouché par cette
+task. Aucune commande lancée, aucun commit.
+
+## Visual verify log
+
+**`/verify-visual` — SKIP propre.** Aucun écran `client-mobile` touché : la task
+porte sur `api-mail` seul, et uniquement sur des fichiers de test. Aucun
+`## Stitch design log` dans la task, donc aucun écran à capturer. Serveur `ng
+serve` non démarré, aucune capture produite, état visuel global inchangé.
+
+## PRs
+
+| Repo | PR | Label |
+|---|---|---|
+| `api-mail` | https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/220 | `awaiting-human-merge` |
+
+`dtos-mss` : branche créée par convention (auto-inclusion), **restée vide** —
+aucun changement de DTO dans cette task. Branche locale et distante supprimées,
+aucune PR ouverte.
+
+`client-angular`, `client-mobile` : hors périmètre, non touchés.
+
+## Code Review Summary
+
+**APPROVED** — 10 fichiers, +269/−1, **exclusivement des fichiers de test**.
+Aucun code de production touché. 0 bloquant, 1 suggestion.
+
+**⚠️ Suggestion non bloquante** : le garde-fou détecte les classes qui
+**capturent** des mesures, pas celles qui en **émettent**. Un pur émetteur laissé
+hors collection polluerait les captures voisines sans que le scan bronche.
+L'état actuel est correct — les émetteurs connus (dont 4 classes de service, qui
+utilisent la forme pleinement qualifiée de l'attribut) sont déjà dans la
+collection — et la limite est écrite dans la doc de la classe. Mais c'est un
+angle mort réel si une future famille de compteurs arrive.
+
+**Vérifié au passage** : le matcher pleinement qualifié du garde-fou n'est **pas**
+du code mort — 4 classes préexistantes emploient bien cette forme.
+
+## Merged
+
+Mergée le 2026-09-08 par l'humain (`/merge task-291 --i-tested`, HAG règle 10).
+Squash-merge, CI `develop` **verte**.
+
+| Repo | PR | Commit de squash | CI `develop` |
+|---|---|---|---|
+| `api-mail` | #220 | `8a7668c7` | ✅ success |
+
+Ref distante `fix/task-291-suite-tests-non-deterministe` supprimée ; branche
+locale conservée ; clone resynchronisé sur `develop`. `dtos-mss` n'avait pas de
+PR (branche auto-incluse restée vide, déjà supprimée à l'ouverture de la PR).
+
+### Validation humaine — ce qui a été éprouvé
+
+| Contrôle | Résultat |
+|---|---|
+| 5 exécutions complètes de la solution | **5/5 vertes**, 0 échec |
+| Total exécuté / skipped, sur les 5 | **4188 / 16** — identiques, rien de neutralisé |
+| Garde-fou éprouvé en retirant un `[Collection(...)]` | **échoue en nommant le fichier**, puis vert après restauration |
+
+Cumul après correctif : **21 exécutions de la solution**, **zéro** échec de la
+famille de capture de métrique.
+
+### ⚠️ Ce que ces 5 verts ne prouvent PAS
+
+Les familles **B** et **C** n'ont pas échoué non plus sur ces 5 passes — **ce
+n'est pas une extinction**. Sur un défaut qui frappe ~1 run sur 5, une série de
+5 verts arrive environ une fois sur trois. C'est exactement le biais que cette
+task a documenté (« une fenêtre de N verts ne borne rien sans le taux d'échec de
+base »), et il aurait été facile de le prendre pour une bonne nouvelle.
+
+**La suite peut donc encore rougir**, sur `MarkdownPdfRendererTests` (famille B)
+ou sur un test `[Collection("PostgreSql")]` d'`integration.tests` (famille C).
+Aucune task ne les porte, par décision du 2026-09-08 ; leur trace vit dans la
+section « Ce qui reste, sans task » de ce fichier.
