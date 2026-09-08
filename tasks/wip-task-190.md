@@ -263,6 +263,60 @@ le `FileBufferingWriteStream` + `DrainBufferAsync` de task-077 par une écriture
 directe dans `output`, les deux tests d'endpoint passent au rouge. Le correctif
 d'origine a ensuite été restauré à l'identique (diff vide).
 
+### Passe qualité `/simplify` — ce qui a été appliqué
+
+Reuse, simplification, efficacité, altitude. Appliqué : promotion du décorateur
+anti-écriture-synchrone dans `mss.mail.testing.shared` (il existait **en deux
+exemplaires** pour le même garde-fou task-077), docs ramenées à ce que fait le
+code, garde de rangée vide simplifiée (`TrueForAll` est déjà vrai sur une liste
+vide), prédicat hissé hors de boucle, `TagName` évalué une fois,
+`IsTableStructure` renommé `IgnoresInterElementWhitespace`, second `Regex` hissé
+comme le premier. Détail dans le message de commit `e33d99a1`.
+
+### Découvertes de la passe qualité — à ne pas perdre
+
+**1. Un test de garde sync-IO existait déjà, et la task l'ignorait.**
+`MailExportControllerTests.PdfResponseWhenSynchronousIoIsDisallowedWritesAllBytesAsync`
+(api.tests) exerce **déjà** `/print` et `/export/pdf` contre un flux refusant
+les écritures synchrones. La section « Ce qui est conservé du périmètre
+d'origine » affirmait qu'« aucun test du repo n'exerce ces deux routes de bout
+en bout » : c'est vrai **au sens HTTP/DI** (ce test appelle l'action
+directement sur un `DefaultHttpContext`, avec `IMailExportService` substitué,
+donc sans QuestPDF, sans routage, sans MVC), mais faux au sens « le piège
+task-077 n'est pas gardé ». Les nouveaux tests d'intégration gardent ce que
+l'ancien ne pouvait pas voir — le vrai service à travers le vrai pipeline — et
+les deux se complètent. **Même travers que celui documenté en tête de cette
+task** : un constat posé sans lire le code existant.
+
+**2. La plateforme a un second convertisseur HTML→texte, et il sépare déjà les
+cellules avec le même séparateur.**
+`Interop.Cda.Helpers.HtmlToTextHelper.ConvertHtmlToPlainText`
+(`interop/src/Interop.Cda/Helpers/HtmlToTextHelper.cs`, livré par le NuGet
+`Interop.Cda.Parser` 93.0.0) est appelé par `EmailSummaryService.cs:165` et
+`ImapService.cs:4357`. Il traite `td`/`th` en ajoutant `" | "` — **exactement le
+séparateur retenu ici**, choisi indépendamment. Deux conséquences :
+
+- le choix du séparateur est **cohérent avec la plateforme**, argument plus
+  fort que le raisonnement a priori consigné plus haut ;
+- il y a bien **deux** implémentations de « HTML de mail → texte lisible » dans
+  cet assembly, aux règles de mise en forme divergentes (puces `• ` ici,
+  troncature à 10 000 caractères là, jeux de balises différents). Les unifier
+  est un vrai gain d'altitude, **hors périmètre** : ce sont des chemins
+  distincts (impression vs résumé IA / corps IMAP), le helper est porté par un
+  NuGet, et l'unification changerait la sortie d'impression de tout mail HTML.
+  Candidat pour une task dédiée.
+
+### Pistes écartées, avec leur motif — ne pas les re-litiger
+
+| Piste | Motif de l'écart |
+|---|---|
+| Utiliser une facilité de rendu texte d'AngleSharp au lieu du walker maison | **Elle n'existe pas.** AngleSharp 1.5 n'expose que des `IMarkupFormatter` (émetteurs de *balisage*) ; pas d'`innerText`, pas de rendu texte conscient de la mise en page. Un formatter custom serait le même switch par balise avec *moins* de contexte (il ne sait pas qu'il est dans un `TR`). |
+| Rendre de vrais tableaux QuestPDF (comme `MarkdownPdfRenderer.RenderTable`) | **Refonte de mise en page**, explicitement hors scope (§ Hors scope). Le chemin HTML aplatit tout le corps en un seul `.Text(string)` ; en sortir change l'impression de **tout** mail HTML et invalide les assertions de texte PDF existantes, dans un repo sans stratégie de PDF de référence (cf. le `[ExcludeFromCodeCoverage]` de `MarkdownPdfRenderer`, task-032bis). |
+| Généraliser la règle du blanc insignifiant (contexte de bloc) à `UL`/`DIV`/`DL` | Correct sur le fond, mais **change la sortie du HTML indenté non-tabulaire**, au-delà du symptôme rapporté, et aucun test ne la fixe aujourd'hui. Le concept est **nommé** (`IgnoresInterElementWhitespace`) sans être élargi : la généralisation est un commit à part. |
+| Remplacer `RecordingAuditService` par `Substitute.For<IAuditService>()` + `Received(1)` | L'idiome courant du repo n'**exécute pas** la lambda de peuplement de la trace : une exception dedans passerait inaperçue. Ici elle est exécutée sur un vrai `MailDto`. Motif consigné dans le doc de la classe. |
+| Supprimer `BuildPdfWithMedicalDocumentHtmlTableSeparatesCells` (produit de deux tests existants) | C'est la **preuve du point 4 du DOD** (chemin CDA). La retirer retirerait une couverture exigée. |
+| Passer les deux `Regex` en `[GeneratedRegex]` | Exigerait de rendre `MailExportService` `partial` pour un `\s+` évalué une fois par mail exporté. Les deux sont hissés en `static readonly`, ce qui règle CA1869. |
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-190 --sync` — ne pas éditer à la main)*
@@ -270,7 +324,8 @@ d'origine a ensuite été restauré à l'identique (diff vide).
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 1 min 25 s | — | — | — | — |
-| **Total cycle** | | **1 min 25 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 33 min 31 s | 3 (48 s) | 9 (6 min 31 s) | — | api-mail 3B/9T |
+| **Total cycle** | | **34 min 57 s** | **3 (48 s)** | **9 (6 min 31 s)** | **0 (0.0 s)** | |
 
 ## Branches
 
