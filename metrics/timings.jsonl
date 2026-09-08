@@ -498,3 +498,5 @@
 {"ts":"2026-09-08T21:48:31+02:00","run_id":"-","type":"cmd","task":"task-190","step":"review","repo":"api-mail","kind":"build","label":"","cwd":"Api/Mail","cmd":"dotnet build HealthPlatform.Api.Mail.sln","duration_ms":12493,"exit_code":0}
 {"ts":"2026-09-08T21:51:59+02:00","run_id":"-","type":"cmd","task":"task-190","step":"review","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln --no-build","duration_ms":92265,"exit_code":1}
 {"ts":"2026-09-08T21:58:09+02:00","run_id":"-","type":"step","task":"task-190","step":"review","status":"ok","note":"PR #224 ouverte, awaiting-human-merge; 2 blocages trouves en revue et corriges","iterations":null,"duration_ms":1773330}
+{"ts":"2026-09-08T21:58:22+02:00","run_id":"-","type":"step_start","task":"task-190","step":"tech-writer"}
+{"ts":"2026-09-08T22:03:13+02:00","run_id":"-","type":"step","task":"task-190","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":290564}

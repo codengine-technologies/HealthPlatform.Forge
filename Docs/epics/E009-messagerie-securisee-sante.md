@@ -2,9 +2,9 @@
 
 > **Statut** : En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.69
+> **Version** : 1.70
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-09-08 (task-183)
+> **Dernière mise à jour** : 2026-09-08 (task-190)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1018,6 +1018,48 @@ Les règles `RG-E009-084` à `RG-E009-089` sont propres à ENS Mon espace santé
 Cette synthèse digère l'historique des versions en langage produit. Le détail ingénierie (numéros de PR, versions NuGet, métriques tests, audits grep) est consigné dans le document frère [`E009-Changelogs.md`](./E009-Changelogs.md).
 
 ### Fonctionnalités métier
+
+- **v1.70 — Un résultat de biologie imprimé devenait illisible, et pouvait se
+  lire de travers** (task-190) : quand un praticien imprimait (ou exportait en
+  PDF) un message contenant un **tableau de résultats de biologie**, les
+  colonnes du tableau étaient collées les unes aux autres. Un hémogramme
+  s'imprimait `Hémoglobine7,2g/dL13,0-17,0` : le libellé de l'analyse, sa
+  valeur, son unité et son intervalle de référence formaient une seule suite de
+  caractères.
+
+  **Pourquoi c'est plus qu'un défaut de confort.** Rien n'indiquait au lecteur
+  où finit la valeur et où commence l'intervalle de référence. `7,2g/dL` suivi
+  de `13,0-17,0` peut se lire comme une hémoglobine à 7,2 — ou à 7,213. Sur un
+  document **imprimé au point de soin et versé au dossier patient**, c'est un
+  risque d'interprétation, pas seulement une gêne de lecture. Les intervalles
+  de référence et les unités sont précisément ce qui permet de juger si un
+  résultat est normal.
+
+  **Ce qui change.** Chaque ligne du tableau s'imprime désormais avec ses
+  colonnes séparées par une barre verticale :
+  `Hémoglobine | 7,2 | g/dL | 13,0-17,0`. Une tabulation ou des espaces
+  n'auraient rien garanti — le PDF utilise une police à largeur variable, où
+  ces séparateurs se dessinent de façon imprévisible. La barre verticale reste
+  visible en toutes circonstances. Le même choix était déjà en place dans
+  l'autre convertisseur de la plateforme, ce qui rend l'impression cohérente
+  avec le reste.
+
+  La correction vaut aussi pour les **comptes-rendus structurés (CDA)** reçus
+  par messagerie, pas seulement pour le corps des messages : les deux
+  empruntent le même chemin de restitution.
+
+  **Limites assumées.** Un tableau dont des cellules sont fusionnées
+  (`rowspan`/`colspan`) perd l'alignement de ses colonnes sur les lignes
+  suivantes, et une barre verticale déjà présente dans le texte d'une cellule
+  reste indistinguable d'une séparation. La mise en page typographique du PDF
+  (vraies colonnes alignées, bordures) n'est pas l'objet de cette correction :
+  elle relève d'une refonte de la présentation, non traitée ici.
+
+  **Ce qui n'était plus à corriger.** Cette évolution devait aussi rétablir
+  l'impression, réputée tomber en erreur. Vérification faite, ce défaut
+  **n'existait plus depuis juin 2026** : il avait été corrigé sans que la fiche
+  soit mise à jour. L'impression fonctionnait ; seule la qualité de restitution
+  restait en jeu.
 
 - **v1.69 — La messagerie déclarait « identité vérifiée » sur des identités qui
   ne l'étaient pas, et coupait en deux l'histoire de certains patients**

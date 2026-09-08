@@ -460,7 +460,8 @@ task, appliqué à la task elle-même.
 | /lint-mobile | skipped | 2.7 s | — | — | — | client-mobile non touche par task-190 (Repos: api-mail); repo sur develop, arbre propre |
 | /verify-visual | skipped | 2.3 s | — | — | — | aucun ecran client-mobile touche (Repos: api-mail, pas de Stitch design log); US backend-only |
 | /review | ok | 29 min 33 s | 2 (20 s) | 2 (3 min 52 s) | — | api-mail 2B/2T, PR #224 ouverte, awaiting-human-merge; 2 blocages trouves en revue et corriges |
-| **Total cycle** | | **1 h 14 min** | **6 (1 min 26 s)** | **12 (12 min 22 s)** | **1 (1 min 39 s)** | |
+| /tech-writer | ok | 4 min 50 s | — | — | — | — |
+| **Total cycle** | | **1 h 19 min** | **6 (1 min 26 s)** | **12 (12 min 22 s)** | **1 (1 min 39 s)** | |
 
 ## Branches
 
