@@ -266,3 +266,240 @@ Un corpus sans fils ou un tir avec comptage désactivé ne valide pas ce DOD.
 - **Hébergement HDS** : oui.
 - **AIPD / impact RGPD** : inchangé, aucun nouveau traitement ni changement du
   périmètre fonctionnel.
+
+## Branches
+
+- `api-mail` (pushed) : `fix/task-194-thread-counts-scoped-load` — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-194-thread-counts-scoped-load
+- `dtos-mss` (pushed, auto-inclus) : `fix/task-194-thread-counts-scoped-load` — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/fix/task-194-thread-counts-scoped-load — aucun changement de contrat attendu (US backend-only), la branche restera probablement sans commit et sans PR
+
+Créées le 2026-09-08 depuis `origin/develop`. Pré-flight `/start` : les 7 repos
+forge-automated étaient sur `develop`.
+
+## Develop log
+
+**Repo touché** : `api-mail` uniquement. `dtos-mss` : branche créée par `/start`
+(auto-inclusion), **aucun commit** — l'US ne change ni DTO, ni route, ni
+frontend, donc aucune publication NuGet et aucun bump de consommateur.
+
+**Commits** :
+- `531d0dd3` — `fix(mail): borner le chargement des fils aux racines demandees
+  sur le chemin IMAP — task-194` (la feature et ses tests) ;
+- `5fea456f` — `refactor(mail): simplify pass (/simplify) — task-194` (la passe
+  qualité intégrée, quality-only).
+
+### Ce qui a changé
+
+`src/Infrastructure/Repository/MailRepository.cs` :
+
+| Élément | Avant | Après |
+|---|---|---|
+| `GetThreadCountsAsync` | 2 requêtes **non filtrées** (tous les `MessageId` non vides ; tous les messages porteurs de `References` ou `InReplyTo`), prédicat de comptage appliqué en mémoire | 3 lots **bornés aux racines demandées** : racines existantes (`MessageId IN`), réponses directes (`InReplyTo IN`), citations (sous-chaîne via `ReferencesAnyOf` / `LoadMailsReferencingAnyRootAsync`) |
+| Comptage | boucle locale recopiée | `BuildThreadCountsByRoot`, le helper **déjà** utilisé par le chemin base |
+| Règle de rattachement | écrite 4 fois (comptage base, comptage IMAP, `BelongsToThread`, feuille d'affichage) | extraite dans `IsDescendantOf(inReplyTo, references, rootId)` — sous-chaîne, **ordinale** |
+| Union des lots | inexistante (une seule requête, donc comptage de lignes de fait) | `DistinctBy(m => m.Id)` — la **ligne physique** |
+| `ThreadLink` | `(FolderPath, Uid, MessageId, InReplyTo, References, SentDate)` | + `Id` en tête, l'identité de ligne |
+| Instrumentation | aucune | `DbOperationScope.AddMaterializedObjects(ThreadLinks, …)` sur les 3 lots, comme le chemin base depuis task-256 |
+
+**Aucun** filtre de dossier, de génération ou de page n'a été ajouté ; aucun
+`Take` ; `Sent` reste inclus. Pas de `dynamic`. La liste vide sort avant toute
+requête, et une liste ne contenant que des identifiants vides aussi — laisser
+entrer un identifiant vide rendait `References.Contains("")` vrai pour chaque
+ligne, c'est-à-dire le balayage supprimé, rentré par la porte du cas limite.
+
+### Preuves de coût — rouges AVANT, vertes APRÈS
+
+Nouveau fichier `tests/mss.mail.integration.tests/Repository/ThreadCountsScopedLoadTests.cs`
+(15 tests, vrai PostgreSQL). Le rouge a été **constaté** en remettant la version
+`origin/develop` du seul fichier de production, les tests inchangés :
+
+| Test | Avant correction | Après |
+|---|---|---|
+| `TheExecutedSqlIsScopedToTheRequestedRoots` | **ROUGE** — « 2 out of 2 items in the collection did not pass » : les deux lectures de `Mails` exécutées avec `[Parameters=[]]`, c'est-à-dire sans aucune référence aux racines demandées | vert |
+| `AddingForeignMailsDoesNotReadMoreRows` | **ROUGE** — 4 lignes attendues, **23 lues** | vert : 4 avant l'ajout de 40 messages étrangers, **4 après** — écart nul |
+| `IdentifiersWithSqlSpecialCharactersAreMatchedLiterally` | **ROUGE** — 3 lignes attendues, **111 lues** | vert |
+| `ARequestMadeOnlyOfEmptyIdentifiersQueriesNothing` | **ROUGE** — une liste faite uniquement d'identifiants vides interrogeait la table | vert |
+| les 11 autres (caractérisation) | **verts** | verts |
+
+Les deux chiffres « 23 » et « 111 » ne sont pas du bruit : la base du conteneur
+est partagée par la collection, donc le comptage non borné **suivait le volume
+accumulé par les tests voisins**. C'est le défaut, mesuré.
+
+Les lignes sont comptées par un **intercepteur EF attaché au contexte du test**
+(`RowCountingInterceptor`, `ReadCount` par commande), et non par le compteur
+d'objets du dépôt : celui-ci passe par un `Meter` statique partagé par tout le
+processus, et task-291 réserve ce type de capture aux collections sérialisantes
+(le garde-fou `MetricCaptureSerialisationScanTests` aurait signalé le fichier).
+L'intercepteur mesure de surcroît **ce que la base a rendu**, pas ce que le code
+déclare avoir matérialisé. Ce choix n'était pas cosmétique : le tir final en
+chemins standards confirme que `MetricCaptureSerialisationScanTests` serait
+sorti **rouge** avec la première version, fondée sur le `Meter` statique.
+
+Les 11 tests de caractérisation verts *des deux côtés* sont le point important :
+ils prouvent que les compteurs et les règles de rattachement n'ont pas bougé.
+Ils couvrent : réponse directe, descendant par `References` seul,
+`References` nul et vide, sous-chaîne, différence de casse, identifiants
+contenant `%`, `_` et `\`, racine dans `Sent` avec descendants hors page et
+hors génération, même `MessageId` dans plusieurs dossiers, ligne satisfaisant
+les deux critères comptée une fois, deux générations d'un même dossier
+partageant un `Uid`, racine absente, racine en plusieurs exemplaires,
+mono-message, liste vide.
+
+Le test de coût porte sur le **SQL réellement exécuté**, relu dans le journal
+du provider (`LogTo` + `EnableSensitiveDataLogging`), pas sur une requête
+équivalente reconstruite par le test.
+
+### Divergence pré-existante consignée — arbitrage demandé, rien changé
+
+Le chemin base déduplique encore son union sur `(FolderPath, Uid)`. Depuis
+task-179 l'index unique est `(FolderPath, UidValidity, Uid)`
+(`src/Infrastructure/Migrations/20260802_AddMailUidValidity.cs:43-53`) : cette
+clé **n'identifie plus une ligne**. Sur un décor de deux générations d'un même
+dossier partageant un `Uid`, le chemin base **fusionnerait** les deux
+descendants là où le chemin IMAP en compte deux.
+
+Conformément au §3 de la tâche, le portage n'a **pas** recopié cette clé : il
+déduplique sur `Mail.Id`, seule clé qui reproduit exactement le comportement
+d'avant task-194 (une requête, aucune déduplication, donc un comptage de
+lignes). Le cas est verrouillé par
+`TwoGenerationsOfTheSameFolderSharingAUidAreNotMerged`. **La sémantique du
+chemin base n'est pas modifiée** — l'aligner (et donc changer des compteurs
+servis par la base) demande un arbitrage explicite, hors scope de task-194.
+
+### Validation build / tests
+
+**Suite complète VERTE en chemins standards**, AppHost arrêté par l'humain sur
+demande (2026-09-08) :
+
+| Projet | Verts | Rouges | Ignorés |
+|---|---|---|---|
+| `mss.mail.domain.tests` | 136 | 0 | 0 |
+| `mss.mail.infrastructure.tests` | 475 | 0 | 0 |
+| `mss.mail.application.tests` | 2 312 | 0 | 0 |
+| `mss.mail.api.tests` | 822 | 0 | 0 |
+| `mss.mail.integration.tests` | 463 | 0 | 16 |
+| **Total** | **4 208** | **0** | **16** |
+
+- `dotnet build HealthPlatform.Api.Mail.sln` : **0 erreur, 0 avertissement**.
+- `dotnet test HealthPlatform.Api.Mail.sln` : **0 échec**. Les trois flaky
+  pré-existants connus de ce dépôt (middleware DB-name en Release, annulation
+  IMAP, export PDF) ne se sont pas déclenchés sur ce tir.
+- Les **7 tests d'architecture** qui scannent les sources sont donc réellement
+  exécutés et verts — dont `MetricCaptureSerialisationScanTests` (task-291),
+  celui qui aurait signalé le fichier de test si la passe qualité n'avait pas
+  remplacé le `MeterListener` par un intercepteur EF.
+
+**Chemin parcouru avant ce tir, et pourquoi il est consigné.** Toute la mise au
+point s'est faite avec `--artifacts-path`, parce que l'AppHost tournait (5
+réplicas `mss.mail.api` + Visual Studio verrouillaient
+`src/Api/bin/Debug/net10.0`) et que `dotnet build` sortait en `MSB3021`/`MSB3027`
+sur la copie des DLL. Ce contournement **casse 107 tests** — non pas par
+régression mais par résolution de chemin : 91 × `src/AppHost/dovecot/dovecot.conf
+introuvable`, 12 × `Assert.NotNull` dans les scans de sources (`RepoRoot()` rend
+null), 4 × `src/Api/appsettings.json introuvable`. C'est bien plus large que les
+« ~10 tests » que la mémoire de la forge annonçait, et **ces 107 rouges masquent
+précisément les garde-fous d'architecture** : sans le tir en chemins standards,
+la violation de task-291 introduite par la première version des tests serait
+passée inaperçue jusqu'à la CI.
+
+> ⚠️ **Constat sur le garde-fou de la forge** : `git push` sur `api-mail` a été
+> **accepté** alors que `dotnet build` en chemins standards échouait sur les
+> verrous. Le hook `verify-before-push.sh` n'a donc pas joué son rôle de
+> barrière sur ce coup-ci. Hors périmètre de task-194, mais à regarder — c'est
+> la seule vérification automatique avant la sortie du code.
+
+### Passe qualité `/simplify` (§Q) — ce qui a été appliqué, ce qui a été écarté
+
+Quatre revues en parallèle (reuse / simplification / efficacité / altitude).
+**Appliqué** (commit `5fea456f`) :
+
+- `LoadThreadLinkBatchesAsync` — **le point sur lequel deux revues
+  indépendantes ont convergé** : après le portage, les deux chemins émettaient
+  les mêmes trois requêtes, écrites deux fois, télémétrie comprise. Elles sont
+  désormais définies une fois pour les deux, et la seule différence restante
+  entre les appelants (la clé de déduplication) est visible comme telle.
+- `ToThreadLink` — la projection du maillon était recopiée sur **quatre**
+  requêtes ; ajouter `Id` avait demandé quatre modifications identiques.
+- `IsDescendantOf(ThreadLink, rootId)` au lieu de deux `string?` consécutifs,
+  que le compilateur laissait transposer — transposition qui échangeait
+  l'égalité et la sous-chaîne.
+- Doc XML de `ThreadLink` **qui mentait** : elle affirmait encore que
+  `(FolderPath, Uid)` identifie une ligne, en citant un index supprimé par
+  task-179. Corrigée, `Id` documenté, et l'asymétrie des clés signalée aux
+  **deux** bouts (le chemin base ne disait rien du chemin IMAP — sans quoi
+  « harmoniser » sa ligne passait pour un rangement).
+- `PostgreSqlFixture.CreateContext(configure)` — l'incantation
+  `UseNpgsql(…, o => o.UseVector())` était recopiée par chaque test devant
+  observer le SQL.
+- Décor de test : `SeedAsync` rend l'identifiant de racine (les deux autres
+  champs du record étaient morts), le paramètre `sent` inutilisé dans 8 lambdas
+  sur 9 devient une constante de classe, `CreateRepository` remplace trois
+  copies, le littéral à caractères spéciaux n'est plus épelé trois fois.
+- CA1861 (`conventions/csharp.md`) appliqué d'emblée sur le tableau littéral
+  passé à `LogTo`.
+
+**Écarté, et pourquoi** :
+
+- **Paralléliser les trois requêtes** : elles partagent le `DbContext` mémoïsé
+  du dépôt, qui n'est pas thread-safe — EF lève sur une seconde opération
+  concurrente. Un `Task.WhenAll` serait une régression de fiabilité.
+- **Projection plus étroite pour le comptage** (il n'a besoin ni de
+  `FolderPath`, ni de `Uid`, ni de `SentDate`) : elle referait deux formes de
+  maillon là où la passe vient d'en unifier une, pour quelques octets par ligne
+  d'un lot déjà borné par le fil.
+- **Resserrer `List<string?>` en `List<string>`** sur les helpers partagés :
+  correct, mais la nullabilité vient du chemin base (`RootOf`) et le
+  changement se propage à trois méthodes de ce chemin. Hors périmètre d'une
+  passe qualité.
+- **Mutualiser le décor de semis avec `ThreadCountConvergenceTests`** : ~65
+  lignes dupliquées, dont l'invariant « le dossier s'appelle exactement
+  `Sent` ». Réel, mais toucher le garde-fou anti-divergence de task-268 pendant
+  la passe qualité de task-194 ajoute du risque à un fichier dont la stabilité
+  est la raison d'être. **À reprendre dans une task de dette de test.**
+- **`GetLatestMessageIdsPerThreadAsync` et `CollectThreadMessageIdsAsync`**
+  épellent encore la règle de rattachement côté SQL, sous la forme
+  `roots.Any(id => References.Contains(id))` que le doc de `ReferencesAnyOf`
+  documente comme **non traduisible par le fournisseur InMemory**. Aucune n'a
+  le défaut corrigé ici (la première est déjà bornée aux racines demandées).
+  **Candidates identifiées pour la prochaine passe sur ce fichier.**
+- **Cinq tests de caractérisation en un `[Theory]`** : la revue le proposait en
+  signalant elle-même la contrepartie — chaque cas porte un « pourquoi » que la
+  table effacerait.
+
+### Mesure de charge avant/après — non exécutée
+
+La comparaison p50/p95 `read_list` sur le banc des tasks 173/174 (§4 de la
+tâche et DOD) **n'a pas été produite**. Elle est gated humainement par le
+Manual Test Plan lui-même :
+
+1. elle exige un banc isolé et une préparation de corpus dont « toute purge ou
+   réinitialisation destructive nécessite une confirmation explicite » ;
+2. elle exige la clé du banc **par l'environnement**, que la forge ne détient
+   pas ;
+3. elle exige un AppHost lancé sur le profil `https-load-test`, alors qu'un
+   AppHost tourne déjà sur un autre profil sur cette machine ;
+4. la jambe « avant » se tire sur le code **pré-correctif**, donc sur un
+   `develop` re-checkouté, avec le même corpus et le même protocole de chauffe.
+
+**Décision humaine du 2026-09-08** : la campagne est menée par l'humain **au
+HAG**, sur la PR ouverte. Ce point du DOD reste donc explicitement **ouvert** —
+il n'est ni retiré, ni réputé satisfait — et `/review` le signale dans le body
+de la PR.
+
+Le protocole exact à rejouer est celui du `## Manual Test Plan`, avec
+`--thread-share > 0`, `CORPUS_THREAD_SHARE` égal à la part semée et
+**`JOURNEY_THREAD_COUNTS=1`** (sans quoi on ne mesure que le court-circuit de
+task-266). Ce qui est livré et mesuré ici est la **preuve structurelle** :
+filtres du SQL exécuté, et lignes matérialisées insensibles aux messages
+étrangers. La tâche l'annonçait comme le résultat attendu — « sans gain
+prédéterminé » — mais le DOD demande en plus les chiffres du banc : ce point du
+DOD reste donc **ouvert**.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-194 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 2 min 15 s | — | — | — | — |
+| /develop | ok | 1 h 52 min | 4 (1 min 36 s) | 7 (5 min 18 s) | — | api-mail 4B/7T |
+| **Total cycle** | | **1 h 54 min** | **4 (1 min 36 s)** | **7 (5 min 18 s)** | **0 (0.0 s)** | |
