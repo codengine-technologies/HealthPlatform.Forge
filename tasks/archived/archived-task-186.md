@@ -1274,3 +1274,50 @@ l'autre. Le pinner reviendrait à bénir un comportement, le corriger à tranche
 une doctrine ; ni l'un ni l'autre n'appartient à une task de complément de
 couverture. **À arbitrer.** La route ZIP, elle, est déjà volumétrique (un
 compteur, jamais les noms) et un test le vérifie.
+
+
+## Merged — 2026-09-08
+
+Mergée par l'humain après validation manuelle de bout en bout (HAG, règle 10),
+via `/merge task-186 --i-tested`.
+
+| Repo | PR | Commit de squash sur `develop` | CI `develop` |
+|---|---|---|---|
+| `dtos-mss` | #30 | `4d3b9cb` | ✅ success |
+| `api-mail` | #219 | `cecf2c48` | ✅ success |
+| `client-blazor` | #72 | `d4a0730` | ✅ success |
+
+Merge en **ordre topologique** `dtos-mss → api-mail → client-blazor` : le paquet
+`HealthPlatform.Dtos.Mss` **454.0.0** est consommé par les deux autres, et le
+défaut 4 rend l'ordre inverse visible — des traces valides remonteraient
+étiquetées « Connexion IMAP ».
+
+Références distantes supprimées, **branches locales conservées** (`--squash`
+seul, jamais `--delete-branch`, qui supprime aussi le local).
+
+### ⚠️ Reste à la charge de l'humain — `client-angular`
+
+Le volet Angular est **code-only** : 5 fichiers modifiés et **non commités** sur
+`feature/nova-rewriting-mss` (l'enum miroir, ses libellés, le filtre, les deux
+composants d'affichage, plus `audit.model.spec.ts` nouveau). La forge n'y touche
+pas — branche, commit, push et PR TFS appartiennent à l'humain.
+
+**Conséquence tant qu'ils ne sont pas livrés** : le backend émet désormais les
+ordinaux 28, 29 et 30, que le miroir TypeScript ne connaît pas. L'écran d'audit
+Angular affichera donc **« Inconnu »** sur les téléchargements de pièces
+jointes et les purges — et `MailArchiveSent` (27) reste absent depuis task-223.
+L'écran Blazor, lui, est à jour.
+
+### Suites identifiées, non traitées ici
+
+- **Contexte patient sur les traces `Attachment*`** : la trace porte désormais
+  le message (sujet, Message-ID, correspondants) mais pas l'INS —
+  `AttachmentStreamResult` ne le transporte pas. Demande de trancher la voie de
+  streaming.
+- **Nom de fichier journalisé en `Debug`** (`Attachment={Attachment}`) : le
+  garde-fou de task-184 ne l'interdit pas, alors qu'un fichier peut s'appeler
+  `DUPONT_Jean_biologie.pdf`. **À arbitrer.**
+- **Règle d'alerte** sur `mss_audit_traces_dropped_total` → `devops`.
+- **Persistance Redis (AOF/RDB)** à confirmer : sans elle le spill ne survit pas
+  à un redémarrage Redis.
+- **AIPD / registre des traitements** à mettre à jour avec le DPO.
