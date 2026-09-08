@@ -1,5 +1,5 @@
 # forge-control repo — versions ONLY the forge control plane
-# (CLAUDE.md, agents/, tasks/, questions/, .claude/, tests/Features/)
+# (CLAUDE.md, agents/, tasks/, questions/, conventions/, .claude/, tests/Features/)
 #
 # All 11 application sub-repos and orphan tooling are excluded so this repo
 # never accidentally swallows code from another git repo.

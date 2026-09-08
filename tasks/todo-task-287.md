@@ -196,3 +196,12 @@ Relevés en instruisant `X-MSS-CODECDA` le 2026-09-01, écartés de cette US :
   `34112-3,34112-3`. C'est **correct** — l'en-tête sert à suivre la volumétrie
   *et* le type de documents, donc une valeur par document. À ne pas « corriger »
   par réflexe.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-287 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | failed | 39 s | — | — | — | pre-flight: api-mail sur fix/task-288-ocsp-crl-hardening (PR #216 deja mergee), pas sur develop |
+| **Total cycle** | | **39 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
