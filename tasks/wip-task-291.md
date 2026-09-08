@@ -303,6 +303,7 @@ cette étape même.
 | /sonar | ok | 10 min 05 s | — | — | — | — |
 | /lint-angular | skipped | — | — | — | — | client-angular hors Repos de task-291 (api-mail seul) et arbre inchange par la task; no start marker |
 | /lint-mobile | skipped | — | — | — | — | client-mobile hors Repos de task-291 (api-mail seul), arbre intouche; no start marker |
+| /verify-visual | skipped | — | — | — | — | aucun ecran client-mobile touche : task api-mail seule, sur des fichiers de test; no start marker |
 | **Total cycle** | | **11 min 05 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
 
 ## Causes établies — famille A
@@ -465,3 +466,10 @@ Aucune commande de lint lancée, rien à corriger.
 **`/lint-mobile` — SKIP propre.** `client-mobile` n'est pas dans `**Repos**:`
 (task `api-mail` seule), reste sur `develop` et son arbre est intouché par cette
 task. Aucune commande lancée, aucun commit.
+
+## Visual verify log
+
+**`/verify-visual` — SKIP propre.** Aucun écran `client-mobile` touché : la task
+porte sur `api-mail` seul, et uniquement sur des fichiers de test. Aucun
+`## Stitch design log` dans la task, donc aucun écran à capturer. Serveur `ng
+serve` non démarré, aucune capture produite, état visuel global inchangé.
