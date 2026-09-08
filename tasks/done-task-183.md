@@ -172,7 +172,8 @@ matricule de production **fusionne deux personnes**.
 | /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non liste dans Repos (US backend-only), repo sur develop et arbre propre |
 | /verify-visual | skipped | 0.5 s | — | — | — | aucun ecran client-mobile touche (US backend-only, pas de Stitch design log) |
 | /review | ok | 5 min 49 s | 1 (4.9 s) | 1 (1 min 34 s) | — | api-mail 1B/1T |
-| **Total cycle** | | **51 min 02 s** | **11 (1 min 24 s)** | **16 (13 min 50 s)** | **0 (0.0 s)** | |
+| /tech-writer | ok | 4 min 10 s | — | — | — | — |
+| **Total cycle** | | **55 min 13 s** | **11 (1 min 24 s)** | **16 (13 min 50 s)** | **0 (0.0 s)** | |
 
 ## Develop log
 
