@@ -1213,3 +1213,64 @@ tests, `client-angular` 334 tests, `api-mail` 3709 tests sur 4 assemblies vertes
 Les 5 rouges d'intégration (`*Today*`) sont **vérifiés rouges à l'identique sur
 `origin/develop`** — tests dépendants du jour courant, cassés par le passage de
 minuit pendant ce cycle, zéro référence à l'audit.
+
+
+## Couverture d'intégration — complément du 2026-09-08
+
+Les écarts au DOD signalés comme « non écrits » au terme du cycle sont **fermés**
+(24 tests, commit `8cf7736`, PR api-mail #219 mise à jour).
+
+| Écart initial | Statut | Où |
+|---|---|---|
+| Purge non exercée contre une vraie base | **fermé** — 9 tests | `AuditRetentionPurgeIntegrationTests` (PostgreSQL Testcontainers) |
+| Rejeu du spill de bout en bout | **fermé** — 8 tests | `AuditSpillIntegrationTests` (Redis Testcontainers) |
+| Test d'intégration ZIP | **fermé** — 3 tests | `MailControllerTests` |
+| Frontière Serilog sur le même chemin | **fermé** — 4 tests | `AttachmentAuditLogFrontierTests` |
+
+**Suites complètes vertes** : `api.tests` **809** (+7), `integration.tests`
+**443** (+17). Les 5 rouges `*Today*` du cycle précédent sont repassés au vert
+d'eux-mêmes — confirmation que le diagnostic « passage de minuit » était le bon.
+
+### Pourquoi la purge n'était pas testable là où elle aurait dû l'être
+
+`mss.mail.infrastructure.tests` tourne sur le provider **EF InMemory**, qui
+**n'implémente pas `ExecuteDeleteAsync`**. Une purge couverte uniquement là
+aurait été un test n'exécutant jamais l'instruction qu'il prétend vérifier —
+c'est exactement la réserve formulée à la revue de code. Ce que seul un vrai
+PostgreSQL pouvait établir : que la suppression visant une **sous-requête**
+`Take(batchSize)` se traduit en SQL valide, propriété du provider et non de
+l'expression C#.
+
+### Ce que la première exécution a rendu explicite
+
+La purge **n'est pas scopée par `UserId`** : les lignes semées par un test
+étaient retirées par la passe du suivant. C'est le **comportement correct** —
+une base par praticien, donc le contexte *est* le tenant. Un test le documente
+désormais, avec sa contrepartie : ajouter un prédicat `UserId` à la purge
+rendrait les traces **orphelines** (celles dont la ligne utilisateur a disparu,
+cf. task-020) impurgeables à jamais. La lecture, elle, filtre bien par `UserId`
+— et c'est précisément pourquoi les deux diffèrent.
+
+### Le test qu'aucune doublure ne pouvait remplacer
+
+Une trace déversée porte son **routage vers la base praticien** dans trois
+propriétés `[NotMapped]`. Si la sérialisation les perdait, les traces rejouées
+seraient persistées **dans la mauvaise base** — une écriture inter-tenants
+silencieuse dans une plateforme de santé. Les tests unitaires substituent
+`IAuditSpillStore` : ils prouvent la *décision* de dérouter, jamais ce qui
+survit au round-trip. Vérifié contre un vrai Redis.
+
+### Une question ouverte, non tranchée ici
+
+La ligne `LogDebug` du téléchargement unitaire journalise le **nom de fichier**
+de la pièce jointe (`Attachment={Attachment}`, `MailController`). Le garde-fou
+de task-184 (`SensitiveLogTemplateScanTests`) interdit `{Ins}`, `{PatientName}`,
+`{LastName}`, `{Query}`… mais **pas** `{Attachment}` : la doctrine encodée du
+projet ne considère donc pas un nom de pièce jointe comme identifiant. Or un
+fichier peut s'appeler `DUPONT_Jean_biologie.pdf`.
+
+Les tests de frontière **n'assertent pas** ce point — ni dans un sens ni dans
+l'autre. Le pinner reviendrait à bénir un comportement, le corriger à trancher
+une doctrine ; ni l'un ni l'autre n'appartient à une task de complément de
+couverture. **À arbitrer.** La route ZIP, elle, est déjà volumétrique (un
+compteur, jamais les noms) et un test le vérifie.
