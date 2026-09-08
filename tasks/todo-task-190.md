@@ -1,4 +1,4 @@
-# todo-task-190.md — Impression et export PDF : 500 systématique sous Kestrel, et tableaux de résultats illisibles
+# todo-task-190.md — Tableaux de résultats illisibles à l'impression : les cellules sont collées
 
 **Repos**: api-mail
 **Dependencies**: —
@@ -8,116 +8,139 @@
 > **Origine** : exploration de bugs `api-mail` du 2026-07-25 (axes surface HTTP et
 > métier MSSanté).
 
-> ### Re-vérification du 2026-08-23 — **toujours pertinente, intégralement**
+> ### ⚠️ Re-vérification du 2026-09-08 — **périmètre réduit de moitié**
 >
-> Chaque preuve rejouée sur `develop`. Les numéros de ligne du bloc « Preuve »
-> datent du 2026-07-25 ; **la colonne « au 2026-08-23 » fait foi**.
+> Cette task portait **deux** défauts. Le premier — le 500 systématique sous
+> Kestrel — **n'existe plus**, et n'existait déjà plus quand la re-vérification
+> du 2026-08-23 l'a coché « inchangé ». Seul le second reste ouvert.
 >
-> | Preuve | 2026-07-25 | Au 2026-08-23 | État |
-> |---|---|---|---|
-> | Écriture synchrone du PDF | `MailExportController.cs:126-131` | **`:132-137`** — `StreamingFileResult` dont l'écrivain appelle `mailExportService.WritePdf(…, output)` puis `return Task.CompletedTask` | inchangé |
-> | Rendu synchrone QuestPDF | `MailExportService.cs:88` | **`:102`** (`document.GeneratePdf(output)`) | inchangé |
-> | Flux = `Response.Body` nu | `StreamingFileResult.cs:40` | **`:48`** (`await _writer(response.Body, …)`) | inchangé |
-> | `AllowSynchronousIO` jamais activé | — | **confirmé : 0 occurrence** dans tout le repo | inchangé |
-> | Patron correct déjà en place ailleurs | `MailController.cs:534-541` | **`:646-650`** — `FileBufferingWriteStream` pour le ZIP, avec le commentaire qui explique le piège | inchangé |
-> | `TD`/`TH` sans séparateur | `MailExportService.cs:416-460` | `AppendNodeText` **`:437`** et suivantes ; `ExtractPlainBody` **`:388`** (préfère `BodyHtml`) ; appel **`:71`** | inchangé |
+> | Preuve d'origine | Au 2026-09-08 | État |
+> |---|---|---|
+> | Écriture synchrone du PDF vers `Response.Body` | **CORRIGÉ** — `MailExportController.cs:135-137` bufferise via `FileBufferingWriteStream` puis `DrainBufferAsync`. Correctif de **task-077**, commit `930091bb` du **2026-06-11**. | **obsolète** |
+> | `AllowSynchronousIO` jamais activé | confirmé — les 2 seules occurrences du repo sont des **commentaires** expliquant pourquoi on ne l'active pas | inchangé (et c'est bien) |
+> | Autres endpoints de téléchargement | confirmé sains — les 4 `StreamingFileResult` du repo : ZIP et PDF via `FileBufferingWriteStream`, EML via `WriteToAsync`, vCard via `StreamWriter.WriteAsync` | **balayage déjà fait** |
+> | `TD`/`TH` sans séparateur | **`MailExportService.cs:437`** — `AppendNodeText` traite `BR`, `LI`, `P/DIV/H1-H6/UL/OL/TR` et envoie **tout le reste** au `default:` sans séparateur | **inchangé** |
+> | `ExtractPlainBody` préfère `BodyHtml` | **inchangé** — c'est donc le chemin normal de tout message HTML imprimé | **inchangé** |
 >
-> **À savoir avant de livrer** : deux tests PDF de la suite `application` sont des
-> **flaky pré-existants documentés** (`MailExportServiceTests.BuildPdfWithoutAttachmentsOmitsAttachmentSection`,
-> `MarkdownPdfRendererTests.RenderHeadingPreservesText` — verts en isolation). Ne
-> pas les lire comme une régression de cette task, et ne pas les compter comme la
-> preuve demandée au point 2 : ils tournent sur `MemoryStream`, donc ils ne
-> prouvent rien sur le refus des écritures synchrones.
+> **Comment la re-vérification d'août s'est trompée.** Elle citait
+> `MailExportController.cs:132-137` comme preuve du défaut. Ce sont exactement les
+> lignes du **correctif** de task-077 — le `FileBufferingWriteStream` et son
+> commentaire « writes synchronously into a bounded buffer, then drains
+> asynchronously ». La ligne a été **relevée sans être lue**. À retenir pour les
+> prochaines re-vérifications : constater qu'un numéro de ligne a bougé ne dit
+> rien de ce qu'il contient.
+>
+> **Ce que le changement de périmètre change.** L'objectif n'est plus « la
+> fonctionnalité est cassée » mais « le PDF sort, et il est illisible pour les
+> tableaux ». Ce n'est plus une panne, c'est un **défaut de lisibilité clinique** —
+> à traiter comme tel, sans l'urgence d'une régression de service.
 
 ## Objective
 
-Rendre l'impression et l'export PDF **fonctionnels** et le document produit
-**lisible**. Deux défauts distincts sur la même fonctionnalité :
+Rendre **déchiffrables** les tableaux de résultats dans le PDF produit par
+l'impression et par l'export.
 
-1. **La fonctionnalité est cassée en exécution réelle** : le rendu PDF écrit
-   **synchronement** dans le flux de réponse, ce que Kestrel interdit. Les deux
-   endpoints (impression et export PDF) répondent donc `500`. Les tests unitaires ne
-   le voient pas parce qu'ils exécutent le résultat contre un `MemoryStream`, qui
-   accepte les écritures synchrones.
-2. **Quand il sortira, le PDF sera inexploitable pour les tableaux** : les cellules
-   HTML sont concaténées sans séparateur. Un hémogramme s'imprime en
-   `Hémoglobine7,2g/dL13,0-17,0` — valeur, unité et intervalle de référence
-   indiscernables. C'est précisément l'artefact qui rend un résultat imprimé
-   inutilisable, voire mal interprétable, au point de soin.
+Les cellules HTML sont concaténées **sans séparateur**. Un hémogramme s'imprime
+`Hémoglobine7,2g/dL13,0-17,0` : le libellé, la valeur, l'unité et l'intervalle de
+référence sont indiscernables. C'est précisément l'artefact qui rend un résultat
+imprimé inutilisable — et, plus grave, **mal interprétable** au point de soin :
+rien ne dit au lecteur où finit la valeur et où commence l'intervalle.
 
-**US backend-only (justification)** : rendu et streaming côté serveur.
+**US backend-only (justification)** : extraction de texte et rendu côté serveur.
 
-### Preuve (état actuel du code)
+### Preuve (état actuel du code, vérifié le 2026-09-08)
 
-**Écriture synchrone sur le flux de réponse** —
-`src/Api/Controllers/V1/MailExportController.cs:126-131` retourne un
-`StreamingFileResult` dont l'écrivain est
-`(output, _) => { mailExportService.WritePdf(mail, practitioner, intent, output); return Task.CompletedTask; }`,
-et `src/Application/Services/Implementation/MailExportService.cs:88` se termine par
-`document.GeneratePdf(output)`. `GeneratePdf(Stream)` (QuestPDF) écrit de façon
-**synchrone**, et `src/Api/Results/StreamingFileResult.cs:40` lui passe directement
-`response.Body`. Kestrel refuse les écritures synchrones sur le corps de réponse
-(`AllowSynchronousIO` est à `false` par défaut et n'est activé nulle part dans ce
-repo) : `InvalidOperationException: Synchronous operations are disallowed`.
+`src/Application/Services/Implementation/MailExportService.cs`, méthode
+`AppendNodeText` :
 
-Le repo connaît déjà ce piège et l'a corrigé **ailleurs** :
-`src/Api/Controllers/V1/MailController.cs:534-541` bufferise via
-`FileBufferingWriteStream` précisément parce que « ZipArchive.Dispose() flushes …
-with *synchronous* writes, which Kestrel forbids on the response body ». Le chemin
-PDF n'a pas reçu le même traitement. Les voisins sont sains : l'export EML utilise
-`MimeMessage.WriteToAsync`, l'export vCard `StreamWriter.WriteAsync`.
+```csharp
+case "P": case "DIV": case "H1": … case "UL": case "OL": case "TR":
+    AppendNodeText(element, sb);
+    sb.Append('\n');
+    continue;
+default:
+    AppendNodeText(element, sb);   // ← TD et TH passent ici
+    continue;
+```
 
-**Tableaux collés** —
-`src/Application/Services/Implementation/MailExportService.cs:416-460` :
-`AppendNodeText` traite `BR`, `LI`, `P/DIV/H1-H6/UL/OL/TR` et envoie tout le reste
-au `default:` **sans séparateur**. `TD` et `TH` versent donc leur texte brut bout à
-bout ; seule la fin du `TR` produit un `\n`. Et `ExtractPlainBody` (`:374-377`)
-préfère `BodyHtml` dès qu'il est présent — c'est donc le chemin **normal** pour tout
-message HTML imprimé par le praticien.
+`TD` et `TH` tombent dans le `default:` et versent leur texte bout à bout. Seule
+la fin du `TR` produit un `\n` : on obtient donc **une ligne par rangée, sans
+aucune séparation entre les colonnes**.
+
+`ExtractPlainBody` préfère `BodyHtml` dès qu'il est présent — c'est le chemin
+**normal** de tout message HTML imprimé par le praticien, pas un cas limite.
 
 ### Contenu attendu
 
-1. **Écriture asynchrone du PDF** : bufferiser le rendu puis drainer le tampon de
-   façon asynchrone vers le corps de réponse, en réutilisant le patron
-   `FileBufferingWriteStream` déjà en place pour le ZIP — ne pas inventer un second
-   mécanisme, et ne **pas** activer `AllowSynchronousIO` (ce serait masquer le
-   problème à l'échelle du serveur).
-2. **Test représentatif** : le test doit exercer un flux qui **refuse** les
-   écritures synchrones, sinon le défaut reste invisible. C'est l'enseignement
-   principal de ce finding : un test sur `MemoryStream` ne prouve rien ici.
-3. **Séparation des cellules** : `TD`/`TH` doivent produire un séparateur lisible
-   (espacement ou tabulation), et les tableaux de résultats de biologie doivent
-   rester déchiffrables — libellé, valeur, unité, intervalle de référence
-   distinguables.
-4. **Vérification sur cas réels** : valider le rendu sur un hémogramme et un bilan
-   biologique complets, pas seulement sur un tableau jouet.
-5. **Balayage des autres endpoints de téléchargement** : vérifier qu'aucun autre
-   chemin n'écrit synchronement dans la réponse (le ZIP est traité, l'EML et la
-   vCard sont sains — confirmer qu'il n'existe pas d'autre cas).
+1. **Séparer les cellules.** `TD` et `TH` doivent produire un séparateur lisible.
+   Le choix du séparateur est à trancher à l'implémentation et à **justifier dans
+   la task** : une tabulation aligne mal en police proportionnelle (le PDF n'est
+   pas du texte à chasse fixe), plusieurs espaces se collapsent visuellement, un
+   séparateur visible (` | `) est lisible mais ajoute un caractère au contenu
+   clinique. Contrainte qui tranche : **le lecteur doit pouvoir distinguer une
+   valeur de son intervalle de référence sans ambiguïté**.
+2. **Ne pas régresser le reste de l'extraction.** Paragraphes, listes (`• `),
+   sauts de ligne, titres, et le collapse des lignes vides doivent rester
+   identiques. Les tests existants (`BuildPdfWithHtmlBodyConvertsToPlainText`,
+   `BuildPdfWithPlainTextBodyContainingHtmlTagsConverts`,
+   `BuildPdfWithMedicalDocumentHtmlBodyFallback`) sont le filet.
+3. **Vérifier sur un cas réel**, pas sur un tableau jouet : un hémogramme complet
+   (au moins 8 lignes, colonnes libellé / valeur / unité / intervalle) et un
+   tableau avec `TH` d'en-tête. Le corpus `tests/…/Resources/cda-samples` peut
+   fournir un cas si un CDA en contient un.
+4. **Couvrir aussi le chemin CDA.** Le repli d'extraction sert également au
+   contenu de documents **CDA r2** : la lisibilité des tableaux vaut donc pour les
+   comptes-rendus structurés, pas seulement pour le corps du mail.
+
+### Ce qui a été retiré du périmètre, et pourquoi
+
+- **Streaming asynchrone du PDF** — déjà livré par **task-077** (`930091bb`,
+  2026-06-11). Rien à faire.
+- **Balayage des autres endpoints de téléchargement** — déjà vérifié : les quatre
+  `StreamingFileResult` du repo sont sains. Le résultat est consigné dans le
+  tableau de re-vérification ci-dessus ; **ne pas le refaire**.
+- **`AllowSynchronousIO`** — jamais activé, et deux commentaires du repo
+  expliquent déjà pourquoi il ne doit pas l'être.
+
+### Ce qui est conservé du périmètre d'origine
+
+**Les tests d'intégration HTTP sur `/print` et `/export/pdf`**, bien que le défaut
+qu'ils devaient démontrer soit corrigé. Deux raisons :
+
+- **Ils n'existent pas** — vérifié : aucun test du repo n'exerce ces deux routes
+  de bout en bout.
+- **L'enseignement de la task d'origine reste vrai** : les tests PDF actuels
+  tournent sur `MemoryStream`, qui **accepte** les écritures synchrones. Ils
+  n'auraient pas vu le défaut de 2026-07, et ils ne verraient pas sa réapparition.
+  Un test contre un flux qui **refuse** les écritures synchrones est un garde-fou
+  de non-régression sur un piège que ce repo a déjà rencontré **deux fois** (ZIP
+  puis PDF).
 
 ### Hors scope
 
-- La refonte de la mise en page du PDF (typographie, en-têtes) au-delà de la
-  lisibilité des tableaux.
-- La journalisation des exports, déjà en place (voir task-186 pour les PJ).
+- La refonte de la mise en page du PDF (typographie, en-têtes, colonnes alignées)
+  au-delà de la lisibilité des cellules.
+- La journalisation des exports, déjà en place et vérifiée.
 
 ## Definition of Done
 
 - [ ] Build passes (0 errors)
 - [ ] Tests pass (0 failures, hors flaky pré-existants documentés)
-- [ ] Test d'intégration : `GET …/print` retourne `200` `application/pdf` (ce test
-      doit échouer sur le code actuel — le vérifier explicitement)
+- [ ] Test unitaire : un corps HTML contenant un tableau produit un texte où les
+      cellules sont **séparées** — cas hémogramme, libellé / valeur / unité /
+      intervalle discernables (ce test doit échouer sur le code actuel — le
+      vérifier explicitement)
+- [ ] Test unitaire : un tableau avec en-têtes `TH` sépare aussi ses en-têtes
+- [ ] Test unitaire de non-régression : paragraphes, listes à puces, `BR`, titres
+      et collapse des lignes vides **inchangés**
+- [ ] Le séparateur retenu est **justifié dans la task** (§ Contenu attendu, point 1)
+- [ ] Test d'intégration : `GET …/print` retourne `200` `application/pdf`
 - [ ] Test d'intégration : `GET …/export/pdf` retourne `200` `application/pdf`
 - [ ] Ces deux tests s'exécutent contre un flux **refusant les écritures
-      synchrones** (pas un `MemoryStream` permissif) — exigence explicite
-- [ ] Test unitaire : un corps HTML contenant un tableau produit un texte où les
-      cellules sont **séparées** (cas hémogramme : libellé, valeur, unité,
-      intervalle discernables)
-- [ ] Test unitaire de non-régression sur le reste de l'extraction de texte
-      (paragraphes, listes, sauts de ligne inchangés)
-- [ ] Aucun autre endpoint de téléchargement n'écrit synchronement dans la réponse
-      (revue documentée dans la task)
-- [ ] `AllowSynchronousIO` reste désactivé
+      synchrones** (pas un `MemoryStream` permissif) — garde-fou de non-régression
+      sur le piège corrigé par task-077
+- [ ] Les traces d'audit `MailPrint` / `MailExportPdf` sont **toujours** produites
+      (non-régression — ne pas casser ce que task-186 a consolidé)
 - [ ] Aucune donnée de santé en clair dans les logs
 
 ## Manual Test Plan
@@ -125,39 +148,53 @@ message HTML imprimé par le praticien.
 1. Lancer le backend : `cd Api/Mail && dotnet run --project src/AppHost`
 2. Ouvrir un message contenant un **tableau de résultats de biologie** en HTML
    (données de test anonymisées) — idéalement un hémogramme complet.
-3. **Impression** : déclencher l'impression du message. **Attendu** : un PDF
-   s'ouvre. Avant correctif : erreur générique, et dans Seq une
-   `InvalidOperationException: Synchronous operations are disallowed`.
-4. **Export PDF** : même vérification sur l'export.
-5. **Lisibilité** : dans le PDF produit, vérifier que chaque ligne du tableau reste
-   déchiffrable — `Hémoglobine`, `7,2`, `g/dL`, `13,0-17,0` séparés. Avant
-   correctif : tout est collé.
-6. **Non-régression** : exporter le même message en EML et une fiche contact en
-   vCard → toujours fonctionnels.
-7. Vérifier qu'un export de message **volumineux** (nombreuses pièces jointes,
-   corps long) aboutit sans saturer la mémoire du serveur.
+3. **Impression** : déclencher l'impression. **Attendu** : un PDF s'ouvre — c'est
+   déjà le cas aujourd'hui, c'est une vérification de non-régression.
+4. **Lisibilité** — le cœur du test : dans le PDF produit, chaque ligne du tableau
+   doit rester déchiffrable. `Hémoglobine`, `7,2`, `g/dL`, `13,0-17,0` **séparés**.
+   Avant correctif : `Hémoglobine7,2g/dL13,0-17,0`.
+5. **En-têtes** : vérifier qu'une ligne d'en-tête (`TH`) est elle aussi lisible.
+6. **Cas CDA** : imprimer un message porteur d'un compte-rendu structuré contenant
+   un tableau → même vérification.
+7. **Non-régression de mise en forme** : un message avec paragraphes et liste à
+   puces s'imprime comme avant (puces `• `, sauts de ligne, pas de ligne vide en
+   trop).
+8. **Non-régression des voisins** : exporter le même message en EML et une fiche
+   contact en vCard → toujours fonctionnels.
+9. **Journal d'audit** : vérifier qu'une trace `MailPrint` et une trace
+   `MailExportPdf` sont bien écrites (écran « Journal d'audit »).
 
 ## Conformité santé / Ségur / ANS
 
 - **Couloir Ségur** : médecine de ville
 - **Vague Ségur** : V2 — volet MSSanté
-- **Exigences DSR honorées** : correctif de conformité — restitution fidèle et
-  exploitable des documents de santé reçus (impression au point de soin)
-- **INS** : non applicable — l'INS peut figurer dans le document imprimé, ce qui est
-  normal et attendu dans un document destiné au dossier patient (à ne pas confondre
-  avec l'interdiction dans les **logs**, cf. task-184)
+- **Exigences DSR honorées** : correctif de conformité — restitution **fidèle et
+  exploitable** des documents de santé reçus (impression au point de soin)
+- **INS** : non applicable — l'INS peut figurer dans le document imprimé, ce qui
+  est normal et attendu dans un document destiné au dossier patient (à ne pas
+  confondre avec son interdiction dans les **logs**, cf. task-184 et l'arbitrage
+  de task-186)
 - **Authentification PS** : inchangée
 - **Habilitations** : inchangées
 - **Interop CI-SIS** : le repli d'extraction concerne aussi le contenu de documents
   **CDA r2** — la lisibilité des tableaux vaut donc aussi pour les comptes-rendus
   structurés
 - **Tracé PGSSI-S** : impression et export PDF sont **déjà** journalisés
-  (`MailExportController`) — vérifier que la trace est toujours produite après
-  correctif (ne pas régresser)
+  (`MailExportController.TraceMailAction`) — vérifier que la trace est toujours
+  produite après correctif
 - **Consentement patient** : non applicable
 - **Référentiels métier** : les intervalles de référence et unités des résultats de
-  biologie doivent rester lisibles — enjeu de sécurité d'interprétation clinique
+  biologie doivent rester lisibles — **enjeu de sécurité d'interprétation
+  clinique**, c'est la justification première de cette task
 - **Hébergement HDS** : oui
-- **AIPD / impact RGPD** : inchangé — pas de nouveau traitement. Signaler au humain
-  que la fonctionnalité était **inopérante** en exécution réelle : les praticiens
-  n'ont pas pu imprimer depuis la mise en place de ce chemin.
+- **AIPD / impact RGPD** : inchangé — pas de nouveau traitement.
+
+  > **Correction d'une alerte devenue caduque.** La version précédente de cette
+  > task demandait de signaler à l'humain que la fonctionnalité était
+  > **inopérante** et que les praticiens n'avaient pas pu imprimer. C'était vrai
+  > entre la mise en place du chemin PDF (task-017) et son correctif
+  > (**task-077, 2026-06-11**) — **pas depuis**. Ne pas transmettre cette alerte
+  > telle quelle.
+
+  L'impression fonctionne ; ce qui reste en jeu est la **qualité de restitution**
+  d'un document imprimé et versé au dossier patient.
