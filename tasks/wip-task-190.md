@@ -199,6 +199,70 @@ qu'ils devaient démontrer soit corrigé. Deux raisons :
   L'impression fonctionne ; ce qui reste en jeu est la **qualité de restitution**
   d'un document imprimé et versé au dossier patient.
 
+## Develop log
+
+### Séparateur retenu : `" | "` — justification (DOD)
+
+Le task file demandait de trancher à l'implémentation et de justifier. Les trois
+candidats, mesurés à l'aune de la contrainte qui tranche — *le lecteur doit
+pouvoir distinguer une valeur de son intervalle de référence sans ambiguïté* :
+
+| Candidat | Verdict |
+|---|---|
+| Tabulation (`\t`) | **écarté** — le PDF est rendu en police proportionnelle (QuestPDF, Lato) ; une tabulation n'y aligne aucune colonne et se dessine comme un blanc de largeur arbitraire. Elle *déplace* l'ambiguïté au lieu de la lever. |
+| Plusieurs espaces | **écarté** — visuellement indistinguable d'un espace unique après rendu, et un lecteur ne peut pas décider si `7,2  g/dL` est une cellule ou deux. |
+| **Barre verticale ` \| `** | **retenu** — visible en toutes circonstances, indépendant de la police et de la largeur de colonne. Coût assumé : un caractère ajouté au contenu clinique restitué. |
+
+Le coût est accepté parce que l'alternative est une restitution *mal
+interprétable* : le défaut d'origine ne rendait pas la lecture pénible, il la
+rendait **fausse** (`Hémoglobine7,2g/dL13,0-17,0` se lit tout aussi bien comme
+une hémoglobine à 7,2 qu'à 7,213). Sur un document versé au dossier patient, un
+caractère de ponctuation en trop est préférable à une valeur ambiguë.
+
+### Trois effets de bord traités avec le séparateur
+
+Séparer les cellules seules aurait laissé le tableau illisible pour trois
+raisons voisines, toutes corrigées dans la même passe :
+
+1. **Indentation de source** — les blancs entre deux rangées ou sections
+   (`TABLE`/`THEAD`/`TBODY`/`TFOOT`) étaient émis tels quels, ce qui indentait
+   chaque rangée d'un tableau formaté lisiblement à la source.
+2. **Collage au texte environnant** — un tableau tombait dans le `default:` sans
+   saut de ligne : sa première cellule se lisait comme la fin de la phrase
+   précédente.
+3. **Rangée entièrement vide** — sans garde, elle aurait rendu des séparateurs
+   nus (` | | | `).
+
+### Chemin CDA (DOD, point 4)
+
+Aucun code supplémentaire : `RenderMedicalDocumentBody` appelle **le même**
+`HtmlToPlainText` en repli quand la colonne Markdown d'un document CDA r2 est
+vide. La correction couvre donc les deux chemins, et un test le prouve
+(`BuildPdfWithMedicalDocumentHtmlTableSeparatesCells`). Quand la colonne
+Markdown est renseignée, c'est `MarkdownPdfRenderer` qui rend un vrai tableau —
+chemin distinct, non concerné.
+
+### Le garde-fou sync-IO n'était pas celui qu'on croyait
+
+Le task file demandait que les tests d'intégration `/print` et `/export/pdf`
+tournent **contre un flux refusant les écritures synchrones**, et non un
+`MemoryStream` permissif. L'hypothèse naturelle — « un TestServer refuse déjà
+les écritures synchrones, `AllowSynchronousIO` valant `false` par défaut » — est
+**fausse** : vérifiée le 2026-09-08 par une route sonde qui écrit en synchrone
+dans `Response.Body`, elle est passée **sans lever**. S'appuyer dessus aurait
+produit un garde-fou de façade — précisément le travers que cette task corrige
+chez les tests PDF sur `MemoryStream`.
+
+Le refus est donc posé explicitement : un décorateur de flux
+(`ThrowOnSynchronousWriteStream`) installé par middleware sur toutes les routes
+du harnais, qui reproduit le comportement de Kestrel. Deux tests le prouvent
+(l'un sur le décorateur, l'autre sur la route sonde → 500).
+
+**Et le garde-fou a été vérifié en réinjectant la régression** : en remplaçant
+le `FileBufferingWriteStream` + `DrainBufferAsync` de task-077 par une écriture
+directe dans `output`, les deux tests d'endpoint passent au rouge. Le correctif
+d'origine a ensuite été restauré à l'identique (diff vide).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-190 --sync` — ne pas éditer à la main)*
