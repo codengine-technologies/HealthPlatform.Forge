@@ -129,30 +129,103 @@ identifié. **À ne pas ranger de force dans les deux premières.**
 - `SemaphoreFullException` sur `AppendToSent`, défaut connu et non corrigé, sans
   rapport.
 
-## Definition of Done
+## Périmètre — RESTREINT par arbitrage humain du 2026-09-08
 
-- [ ] Build passes (0 errors)
-- [ ] **Cause écrite pour chacune des trois familles** (`EnrichmentOperationScope`
-      + `MailRepositoryEnrichPersistInstrumentation`, `SemanticSearchRepository`,
-      `MarkdownPdfRenderer`), avec la mesure qui l'établit — ou, pour une
-      famille dont la cause résiste, le constat explicite « cause non établie »
-      plutôt qu'une hypothèse présentée comme un fait
-- [ ] **Reproductibilité démontrée avant correctif** : pour au moins une
-      famille, une commande qui fait échouer le test **à la demande** (l'échec
-      observé au hasard ne prouve pas qu'on a compris)
-- [ ] **10 exécutions complètes consécutives** de
-      `dotnet test HealthPlatform.Api.Mail.sln`, **0 échec**, journal des 10
-      exécutions consigné dans la task. C'est le seul critère qui distingue
-      « corrigé » de « pas retombé cette fois »
-- [ ] Aucun test désactivé, ignoré, exclu du CI ou mis sous `retry` — vérifiable
-      par diff : le nombre de tests exécutés est ≥ celui d'avant (4101 au
-      2026-09-06)
-- [ ] Si le parallélisme est désactivé quelque part : un commentaire dans le
-      `xunit.runner.json` concerné qui dit **pourquoi**, et la durée avant/après
-      de la suite mesurée et consignée
-- [ ] Garde-fou anti-récidive en place et **prouvé** par un cas de test qui
-      échoue si on réintroduit le partage d'état incriminé
-- [ ] CI `develop` verte après merge
+> Cette task a été cadrée en supposant **une** cause. L'implémentation en a
+> établi **trois**, indépendantes. `/develop` s'est arrêté en fail-fast et a
+> posé la question du découpage (`questions/task-291.md`).
+>
+> **Décision humaine du 2026-09-08** : *« accepte A et ne crée pas de nouvelles
+> tâches pour le moment »*.
+>
+> Le périmètre de task-291 est donc **la famille A seule**. La DOD ci-dessous
+> est réécrite en conséquence — **sur décision du PO, pas par l'agent** : un
+> agent qui réécrit ses propres critères pour les faire passer est exactement
+> l'anti-pattern que cette task dénonce.
+>
+> ⚠️ **B et C ne font l'objet d'AUCUNE task, volontairement.** Leur trace vit
+> donc ici et nulle part ailleurs — voir « Ce qui reste, sans task ».
+
+## Definition of Done — famille A (périmètre accepté)
+
+- [x] Build passes (0 errors)
+- [x] **Cause de la famille A établie et écrite**, avec la mesure :
+      `MailMetricsCaptureCollection` sans `DisableParallelization = true` (donc
+      sérialisant ses propres classes et personne d'autre), deux `SessionLock*`
+      hors de toute collection émettant sur le même meter statique, et
+      `infrastructure.tests` sans aucune collection pour trois classes de
+      capture. Consigné dans le code (`dd83bdc`) et dans « Causes établies ».
+- [x] **Le contraste qui établit la course est mesuré** : `application.tests`
+      seul est vert **5/5** (2280 tests), la **solution** — cinq assemblies en
+      parallèle — sortait rouge **2/3**. La course est latente en permanence, la
+      contention CPU la révèle. Piège de diagnostic consigné : rejouer
+      l'assembly seul innocente à tort.
+- [x] **La famille A ne réapparaît plus** : sur **16 exécutions de la solution
+      après correctif** (10 consécutives sans aucun échec, puis 6 de chasse), le
+      moindre échec de capture de métrique est **absent** — les 2 rouges de la
+      chasse relèvent de B et C. C'est le critère honnête pour A ; voir
+      « Ce qui reste » pour pourquoi « 10 verts » ne prouvait pas la suite.
+- [x] Aucun test désactivé, ignoré, exclu du CI ou sous `retry` : **4123 tests
+      exécutés, 16 skipped** — inchangé (4101 + 22 tests ajoutés par cette task
+      et par task-184).
+- [x] Garde-fou anti-récidive en place et **prouvé** :
+      `MetricCaptureSerialisationScanTests` porte trois cas qui l'éprouvent
+      (détecte une capture non sérialisée, ne signale pas une capture
+      sérialisée, ignore un helper sans test). **Il a payé dès sa première
+      exécution** en trouvant `TaggingFailureIsCountedTests`, manquée par le
+      relevé manuel.
+- [ ] CI `develop` verte après merge — vérifiable seulement après le merge (HAG)
+
+**Retiré du périmètre** (relevait de B et C) : la reproductibilité à la demande
+et les « 10 exécutions consécutives vertes » comme preuve d'extinction de la
+suite entière. Voir ci-dessous.
+
+## ⚠️ Ce qui reste, sans task — à ne pas perdre
+
+**La suite restera rouge par intermittence** (~1 exécution sur 5 observée). Ce
+n'est **pas** une régression du correctif A : ce sont deux causes distinctes,
+identifiées, délibérément non traitées sur décision du 2026-09-08.
+
+**Pourquoi « 10 exécutions vertes » ne prouve rien ici** : le critère a été
+**atteint** (10/10, 0 échec) *puis* le 11e run est sorti rouge. Un défaut qui
+frappe ~1 run sur 5 passe une fenêtre de 10 environ une fois sur trois. À
+retenir pour toute future DOD de flakiness : une fenêtre de N verts ne borne
+rien sans le taux d'échec de base.
+
+### Famille B — `MarkdownPdfRendererTests` (atténuée, cause NON établie)
+
+Deux méthodes touchées (`RenderGfmTableKeepsAllCellsInOrder`, puis
+`RenderRowsWithFewerCellsThanHeaderDoesNotThrow`). **Pas la cause A** : aucune
+autre classe n'utilise QuestPDF, donc aucun concurrent ne pollue un état de test
+partagé. Ce qui est partagé est **global au processus et natif** —
+`QuestPDF.Settings` muté par le constructeur, rendu SkiaSharp de
+`GeneratePdf()` — et les assertions portent sur du **texte extrait d'un PDF**,
+donc sur une mise en page sensible aux ressources.
+
+La classe **est sérialisée**, en atténuation assumée et commentée comme telle
+dans le fichier. Le symptôme devient rare ; la sensibilité reste. Reproduction à
+la demande **non obtenue**.
+
+### Famille C — fixture Postgres partagé d'`integration.tests` (NON traitée)
+
+`SeededThreadsAreCountableTests.SeveralDistinctThreadSizesReachTheCounter` et
+`SemanticSearchRepositoryIntegrationTests.SearchByFiltersAsyncShouldFilterBySubjectAsync`,
+tous deux `[Collection("PostgreSql")]`.
+
+Cet assembly a **déjà** `parallelizeTestCollections: false` : il n'y a donc
+**aucune course**. C'est de l'**interférence de données séquentielle** — un test
+voit les lignes semées par un voisin. Mode d'échec déjà documenté sur ce banc
+(les suites pgvector se marchant sur les dimensions de vecteurs).
+
+Le remède est l'isolation des données par test (clés uniques, ou nettoyage entre
+tests) sur une suite d'intégration entière — un chantier d'un autre ordre que A.
+
+### Accessoirement — lacune de CLAUDE.md
+
+`interop` n'a **pas** de `.git`, exactement comme `Host/Modules` : `git -C interop`
+remonte au dépôt du plan de contrôle et répond pour lui. CLAUDE.md ne porte cet
+avertissement que pour `host`, donc le pré-flight de `/start` ne mesure rien pour
+**`interop-cda`** non plus, sans le dire. Correctif d'une ligne, non fait.
 
 ## Manual Test Plan
 
@@ -228,3 +301,75 @@ cette étape même.
 | /start | ok | 59 s | — | — | — | — |
 | /develop | failed | 50 min 54 s | — | — | — | — |
 | **Total cycle** | | **51 min 53 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+
+## Causes établies — famille A
+
+### Le détail qui manquait à task-256
+
+`MailMetricsCaptureCollection` existait **déjà** et documentait le défaut (meter
+statique + parallélisme xUnit). Il lui manquait **`DisableParallelization = true`**.
+
+Sans ce drapeau, une `CollectionDefinition` sérialise ses **propres** classes
+entre elles, mais la collection continue de tourner **en parallèle des autres
+collections et de toute classe non collectée**. Les huit classes rattachées
+étaient donc protégées les unes des autres — et de personne d'autre.
+
+### Les polluantes
+
+| Classe | Problème | Correctif |
+|---|---|---|
+| `SessionLockInstrumentationTests` | émet sur le meter statique via `LockObservations`, **aucune** collection | rattachée |
+| `SessionLockPhaseInstrumentationTests` | idem | rattachée |
+| `TaggingFailureIsCountedTests` | écoute `MailProcessingMetrics.MeterName`, **aucune** collection — **manquée par le relevé manuel**, trouvée par le garde-fou | rattachée |
+| `MailRepositoryEnrichPersistInstrumentationTests` | capture, assembly **sans aucune** collection | `MetricsCaptureCollection` créée |
+| `MailReadObjectCountTests` | capture via `ObjectCountCapture`, idem | rattachée |
+| `DbOperationPhaseInterceptorsTests` | capture via `PhaseCapture`, idem | rattachée |
+
+La collection d'`application.tests` ne pouvait pas servir à `infrastructure.tests` :
+**une collection xUnit ne franchit pas la frontière d'assembly.**
+
+### Le piège de diagnostic, à retenir
+
+**Rejouer l'assembly seul « pour vérifier » innocente à tort.** Mesuré :
+
+| Portée | Résultat |
+|---|---|
+| `application.tests` seul | **5/5 verts** (2280 tests) |
+| solution (5 assemblies en parallèle) | **rouge 2 fois sur 3** |
+
+La course est latente en permanence ; la contention CPU des assemblies
+concurrentes est ce qui fait réellement se recouvrir les fenêtres de capture.
+C'est l'erreur que j'ai commise d'abord — et elle coûte cher, parce qu'elle
+conclut « pas mon problème » sur un défaut bien réel.
+
+### Le garde-fou
+
+`MetricCaptureSerialisationScanTests` balaie les sources **suivies par git** de
+**tous** les assemblies de test et refuse une classe de test qui capture sans
+être sérialisée. Scan de **sources** et non réflexion : l'usage d'un
+`MeterListener` vit dans un corps de méthode, invisible sans lire l'IL.
+
+Trois cas l'éprouvent lui-même : il détecte la forme fautive, il ne signale pas
+une capture correctement sérialisée, et il ignore un helper porteur d'un
+`MeterListener` mais d'aucun test (`ObjectCountCapture`, `PhaseCapture`,
+`LockObservations` — ce sont leurs **utilisateurs** qu'il faut sérialiser).
+
+## Mesures
+
+| Grandeur | Valeur |
+|---|---|
+| Exécutions de la solution après correctif | **16** (10 consécutives + 6 de chasse) |
+| Échecs de la famille A sur ces 16 | **0** |
+| Échecs relevant de B ou C | 2 (runs 3 et 5 de la chasse) |
+| Tests exécutés / skipped | **4123 / 16** — aucun test désactivé |
+| Durée de la suite | inchangée (~3 min ; la sérialisation ne touche que des classes de capture, très courtes) |
+
+Aucun `xunit.runner.json` n'a été modifié : le parallélisme reste actif partout
+où il l'était. Le remède est ciblé sur les classes qui capturent, pas sur
+l'assembly.
+
+## Décision de périmètre — 2026-09-08
+
+Arbitrage humain sur `questions/task-291.md` : **A accepté comme livrable, pas
+de task de suite pour B ni C pour le moment.** La trace de B et C vit donc dans
+la section « Ce qui reste, sans task » de ce fichier, et nulle part ailleurs.

@@ -90,3 +90,20 @@ remonte donc au dépôt du plan de contrôle et répond pour lui. CLAUDE.md ne p
 cet avertissement que pour `host` : le pré-flight de `/start` ne mesure donc
 rien pour **`interop-cda` non plus**, et ne le dit pas. Un correctif d'une ligne
 dans CLAUDE.md, hors périmètre de cette task.
+
+---
+
+## RÉPONSE — 2026-09-08
+
+> *« accepte A et ne crée pas de nouvelles tâches pour le moment »*
+
+**Option 1 retenue** : famille A acceptée comme livrable de task-291. **Aucune
+task de suite créée** pour B ni C, sur demande explicite.
+
+Conséquence assumée : **la suite restera rouge par intermittence** (~1 exécution
+sur 5), sans task pour la porter. La trace des deux causes restantes est
+consignée dans `tasks/wip-task-291.md`, section « Ce qui reste, sans task » —
+c'est le seul endroit où elle vit désormais.
+
+DOD de task-291 réécrite sur ce périmètre, **par décision du PO**, avec la
+provenance explicitement inscrite dans le task file.
