@@ -305,7 +305,8 @@ cette étape même.
 | /lint-mobile | skipped | — | — | — | — | client-mobile hors Repos de task-291 (api-mail seul), arbre intouche; no start marker |
 | /verify-visual | skipped | — | — | — | — | aucun ecran client-mobile touche : task api-mail seule, sur des fichiers de test; no start marker |
 | /review | ok | 4 min 39 s | 1 (2.0 s) | 1 (1 min 23 s) | — | api-mail 1B/1T |
-| **Total cycle** | | **15 min 44 s** | **1 (2.0 s)** | **1 (1 min 23 s)** | **0 (0.0 s)** | |
+| /tech-writer | ok | 3 min 23 s | — | — | — | — |
+| **Total cycle** | | **19 min 07 s** | **1 (2.0 s)** | **1 (1 min 23 s)** | **0 (0.0 s)** | |
 
 ## Causes établies — famille A
 
@@ -502,3 +503,40 @@ angle mort réel si une future famille de compteurs arrive.
 
 **Vérifié au passage** : le matcher pleinement qualifié du garde-fou n'est **pas**
 du code mort — 4 classes préexistantes emploient bien cette forme.
+
+## Merged
+
+Mergée le 2026-09-08 par l'humain (`/merge task-291 --i-tested`, HAG règle 10).
+Squash-merge, CI `develop` **verte**.
+
+| Repo | PR | Commit de squash | CI `develop` |
+|---|---|---|---|
+| `api-mail` | #220 | `8a7668c7` | ✅ success |
+
+Ref distante `fix/task-291-suite-tests-non-deterministe` supprimée ; branche
+locale conservée ; clone resynchronisé sur `develop`. `dtos-mss` n'avait pas de
+PR (branche auto-incluse restée vide, déjà supprimée à l'ouverture de la PR).
+
+### Validation humaine — ce qui a été éprouvé
+
+| Contrôle | Résultat |
+|---|---|
+| 5 exécutions complètes de la solution | **5/5 vertes**, 0 échec |
+| Total exécuté / skipped, sur les 5 | **4188 / 16** — identiques, rien de neutralisé |
+| Garde-fou éprouvé en retirant un `[Collection(...)]` | **échoue en nommant le fichier**, puis vert après restauration |
+
+Cumul après correctif : **21 exécutions de la solution**, **zéro** échec de la
+famille de capture de métrique.
+
+### ⚠️ Ce que ces 5 verts ne prouvent PAS
+
+Les familles **B** et **C** n'ont pas échoué non plus sur ces 5 passes — **ce
+n'est pas une extinction**. Sur un défaut qui frappe ~1 run sur 5, une série de
+5 verts arrive environ une fois sur trois. C'est exactement le biais que cette
+task a documenté (« une fenêtre de N verts ne borne rien sans le taux d'échec de
+base »), et il aurait été facile de le prendre pour une bonne nouvelle.
+
+**La suite peut donc encore rougir**, sur `MarkdownPdfRendererTests` (famille B)
+ou sur un test `[Collection("PostgreSql")]` d'`integration.tests` (famille C).
+Aucune task ne les porte, par décision du 2026-09-08 ; leur trace vit dans la
+section « Ce qui reste, sans task » de ce fichier.
