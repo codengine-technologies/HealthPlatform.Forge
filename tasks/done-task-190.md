@@ -393,6 +393,60 @@ visible et revue.
    jour même). `agents/sonar.md` le disait déjà ; le `.env` le contredisait.
    Surchargé explicitement dans les commandes du run.
 
+## PRs
+
+- `api-mail` (pushed) : **[PR #224](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/224)** — label `awaiting-human-merge`
+- `dtos-mss` (pushed, auto-inclus) : **aucune PR** — branche créée proactivement
+  par la règle d'auto-inclusion, aucun changement de contrat nécessaire, donc
+  zéro commit. Branche à supprimer au `/merge`.
+- `client-angular`, `client-mobile` : non listés (US backend-only justifiée) —
+  aucune intervention.
+
+## Code Review Summary
+
+**Deux blocages trouvés et corrigés**, tous deux reproduits avant correction.
+La revue portait sur l'axe **correction**, celui que la passe qualité
+`/simplify` exclut par construction — c'est précisément là que les défauts
+étaient.
+
+1. **Régression introduite par le premier commit** : un tableau imbriqué dans
+   une cellule voyait ses rangées aplaties sur une seule ligne
+   (`13,0-17,0 Hématies` lu comme un seul champ). Avant le correctif, la même
+   entrée produisait **deux lignes** — on échangeait donc une ambiguïté contre
+   une pire, sur la **forme dominante du mail HTML réel** (tableau de mise en
+   page enveloppant le tableau de résultats). Aucun test initial ne la voyait :
+   tous portaient sur un tableau de premier niveau.
+2. **Sonde sync-IO verte en local, rouge en CI** : le harnais ne monte aucun
+   gestionnaire d'exceptions, donc seul le `DeveloperExceptionPage` — ajouté
+   uniquement si `IsDevelopment()` — convertissait l'exception en 500. La CI ne
+   fixe aucune variable d'environnement. Mon poste exporte `Development` : le
+   run local validait l'assertion **pour la mauvaise raison**. Environnement
+   épinglé à `Production`, assertion portée sur l'exception, suite complète
+   rejouée sous `Production`.
+
+Deux défauts de la même classe corrigés au passage (`<caption>` collée à la
+première cellule ; séparateur nu sur cellule de bord vide), et une garde
+existante d'`api.tests` — affaiblie par la mise en commun du décorateur —
+restaurée en suivant la libération du flux.
+
+**Trois limites assumées épinglées par des tests** pour rester des décisions :
+`rowspan`/`colspan` non honorés, barre verticale déjà présente dans le contenu,
+aplatissement de la structure interne d'une cellule.
+
+**Suggestion hors scope** : deux convertisseurs HTML→texte coexistent dans la
+plateforme aux règles divergentes. **Défaut pré-existant relevé** :
+`AppendNodeText` récurse sans plafond de profondeur (débordement de pile
+possible sur HTML de mail très imbriqué) — mérite sa propre task.
+
+### Leçon de méthode
+
+Les deux blocages partagent une cause : **une validation locale verte prouvée
+insuffisante**. Le premier parce que les tests ne couvraient qu'une forme
+d'entrée ; le second parce que l'environnement local différait de la CI. Le vert
+local n'est pas le vert de la CI, et un test qui passe ne dit pas qu'il garde
+quelque chose — c'est le même enseignement que le garde-fou sync-IO de cette
+task, appliqué à la task elle-même.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-190 --sync` — ne pas éditer à la main)*
@@ -402,7 +456,11 @@ visible et revue.
 | /start | ok | 1 min 25 s | — | — | — | — |
 | /develop | ok | 33 min 31 s | 3 (48 s) | 9 (6 min 31 s) | — | api-mail 3B/9T |
 | /sonar | ok | 9 min 28 s | 1 (17 s) | 1 (1 min 59 s) | 1 (1 min 39 s) | api-mail 1B/1T, Phase 1 clean (0 finding sur les fichiers task-190); Phase 2 skippee (dette heritee hors perimetre) |
-| **Total cycle** | | **44 min 25 s** | **4 (1 min 05 s)** | **10 (8 min 30 s)** | **1 (1 min 39 s)** | |
+| /lint-angular | skipped | 14 s | — | — | — | client-angular non touche par task-190 (Repos: api-mail, Single frontend: true); 2 environment.ts modifies = WIP humain pre-existant sur feature/nova-rewriting-mss, non touches |
+| /lint-mobile | skipped | 2.7 s | — | — | — | client-mobile non touche par task-190 (Repos: api-mail); repo sur develop, arbre propre |
+| /verify-visual | skipped | 2.3 s | — | — | — | aucun ecran client-mobile touche (Repos: api-mail, pas de Stitch design log); US backend-only |
+| /review | ok | 29 min 33 s | 2 (20 s) | 2 (3 min 52 s) | — | api-mail 2B/2T, PR #224 ouverte, awaiting-human-merge; 2 blocages trouves en revue et corriges |
+| **Total cycle** | | **1 h 14 min** | **6 (1 min 26 s)** | **12 (12 min 22 s)** | **1 (1 min 39 s)** | |
 
 ## Branches
 
