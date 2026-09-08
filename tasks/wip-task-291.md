@@ -301,6 +301,7 @@ cette étape même.
 | /start | ok | 59 s | — | — | — | — |
 | /develop | ok | 0.4 s | — | — | — | — |
 | /sonar | ok | 10 min 05 s | — | — | — | — |
+| /lint-angular | skipped | — | — | — | — | client-angular hors Repos de task-291 (api-mail seul) et arbre inchange par la task; no start marker |
 | **Total cycle** | | **11 min 05 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
 
 ## Causes établies — famille A
@@ -449,3 +450,11 @@ posent et se retirent par commande, jamais globalement.
 ⚠️ SonarQube était **arrêté** (`Exited (255)`, ~1 h) au pré-vol, vraisemblablement
 emporté par l'arrêt du banc de charge de task-184. Relancé par
 `docker start sonarqube_db sonarqube`.
+
+## Lint log
+
+**`/lint-angular` — SKIP propre.** `client-angular` n'est pas dans
+`**Repos**:` (task `api-mail` seule) et la task n'a touché aucun fichier
+Angular. Les deux `environment.ts` modifiés dans `Client/Angular/` sont le WIP
+propre de l'humain, hors de cette task (déjà consigné au merge de task-184).
+Aucune commande de lint lancée, rien à corriger.
