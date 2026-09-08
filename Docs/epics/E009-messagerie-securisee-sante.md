@@ -2,9 +2,9 @@
 
 > **Statut** : En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.68
+> **Version** : 1.69
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-09-08 (task-193)
+> **Dernière mise à jour** : 2026-09-08 (task-183)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -656,7 +656,7 @@ Toute action fonctionnelle du praticien (lecture, envoi, suppression, rattacheme
 | ID | Vague | Règle | Statut |
 |----|-------|-------|--------|
 | RG-E009-067 (SENTINELLE.20) | V2 | Recherche identité connue à la réception d'un document avec INS qualifiée | 🟡 Partiel |
-| RG-E009-068 (INS/va1.53) | V1 | Ne pas transmettre l'INS si identité non qualifiée | 🟡 Partiel |
+| RG-E009-068 (INS/va1.53) | V1 | Ne pas transmettre l'INS si identité non qualifiée | 🟡 Partiel — l'annonce de qualification est restreinte au domaine NIR (task-183) |
 
 ### 6.15 Exigences complémentaires du Ref#2 v1.0.1 non mappées au REM Ségur
 
@@ -1019,6 +1019,64 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
+- **v1.69 — La messagerie déclarait « identité vérifiée » sur des identités qui
+  ne l'étaient pas, et coupait en deux l'histoire de certains patients**
+  (task-183) : chaque patient porte un numéro national de santé (INS). Ce numéro
+  est délivré par une **autorité**, et l'autorité change tout : le numéro
+  définitif d'une identité vérifiée, le numéro **provisoire** d'une identité
+  encore en cours de vérification (patient né à l'étranger, par exemple), ou
+  encore un numéro de **jeu d'essai** n'ont pas la même valeur — et peuvent se
+  ressembler au point d'être identiques.
+
+  **Ce qui n'allait pas, à l'envoi.** En joignant un document de santé à un
+  message, la messagerie annonce au logiciel du confrère destinataire si
+  l'identité du patient est **vérifiée** — ce qui autorise ce logiciel à classer
+  le document automatiquement dans le bon dossier. Cette annonce était émise dès
+  qu'un numéro **et** une autorité étaient présents, **sans jamais regarder de
+  quelle autorité il s'agissait**. Une identité provisoire, et même un numéro de
+  jeu d'essai, étaient donc annoncés comme vérifiés. Le confrère pouvait classer,
+  au titre d'une identité certaine, un document qui n'en portait pas.
+
+  **Ce qui n'allait pas, à la réception.** L'autorité n'était **pas conservée** :
+  seul le numéro était enregistré. Deux conséquences opposées, aussi graves l'une
+  que l'autre. Un même patient dont un document arrive sous son numéro provisoire
+  et un autre sous son numéro définitif se retrouvait avec **deux dossiers** — son
+  histoire médicale coupée en deux, sans que rien ne le signale. À l'inverse, un
+  numéro de jeu d'essai qui coïncide avec un vrai numéro faisait **fusionner deux
+  personnes** dans un seul dossier.
+
+  **Ce qui change.** L'annonce « identité vérifiée » n'est plus faite que pour le
+  numéro délivré par l'autorité de référence, et seulement si les traits
+  d'identité exigés (nom de naissance, premier prénom, date de naissance, sexe)
+  sont tous présents. Un refus d'annonce est tracé pour être vérifiable, **sans
+  jamais recopier le numéro du patient** dans le journal. À la réception,
+  l'autorité est désormais **conservée** et fait partie de l'identité : un numéro
+  n'est plus jamais interprété hors de l'autorité qui l'a délivré.
+
+  **Pour les dossiers déjà constitués.** L'autorité n'a jamais été enregistrée et
+  **ne peut pas être devinée** — lui attribuer d'office l'autorité de référence
+  aurait été affirmer quelque chose de faux sur des données de santé. Les dossiers
+  existants sont donc marqués « autorité inconnue » et **adoptent** celle du
+  premier document qui la porte, ce qui évite d'ouvrir un second dossier à chaque
+  patient déjà suivi. Les dossiers **déjà** coupés en deux, eux, ne sont pas
+  réunis par ce correctif : les réunir est un acte d'identito-vigilance qui
+  demande un protocole et une décision humaine, en cours d'arbitrage.
+
+  **Reste à arbitrer** (décisions produit, hors de ce correctif) : ce que doit
+  devenir un document porteur d'une identité **provisoire** — rattachement avec
+  mention du statut, ou reprise manuelle comme pour un document sans identité ; et
+  ce que doit devenir un document porteur d'un numéro de **jeu d'essai** en
+  production — rejet, mise en quarantaine, ou ingestion signalée. D'ici là, ces
+  documents ne sont plus confondus avec des identités vérifiées, ce qui était le
+  risque principal.
+
+  **À traiter côté conformité.** Un logiciel destinataire a pu classer
+  automatiquement, au titre d'une identité vérifiée, des documents qui ne
+  l'étaient pas. Le volume concerné **n'est pas reconstituable** — ni l'autorité
+  ni l'annonce n'étaient journalisées. La portée et l'éventuelle information des
+  destinataires restent à qualifier avec le DPO, ainsi que la mise à jour de
+  l'analyse d'impact.
+
 - **v1.68 — Un compte rendu pouvait disparaître du dossier d'un patient, pris
   pour le doublon du document d'un autre** (task-193) : quand un laboratoire ou
   un confrère envoie un document de santé, la messagerie vérifie s'il ne l'a pas
@@ -1130,8 +1188,15 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
   est à mettre à jour avec le DPO, ainsi que la durée de conservation retenue
   dans le registre des traitements.
 
-- **v1.62 — Des messages reçus pouvaient ne jamais arriver dans la boîte, sans
-  aucune alerte** (task-187) : quand la messagerie récupère un lot de messages
+- **v1.62 — ⚠️ ENTRÉE CADUQUE — Des messages reçus pouvaient ne jamais arriver
+  dans la boîte, sans aucune alerte** (task-187) :
+
+  > **Ce correctif n'a jamais été livré.** La task-187 a été abandonnée et sa
+  > demande d'intégration fermée sans être retenue ; le défaut décrit ci-dessous
+  > **est toujours présent**. Le diagnostic reste valable et est conservé à ce
+  > titre, mais rien de ce qui suit n'est en production. Entrée à retirer ou à
+  > requalifier en anomalie ouverte — arbitrage humain.
+ quand la messagerie récupère un lot de messages
   auprès du serveur MSSanté, elle ouvre une connexion et la garde le temps du
   travail. Un ménage automatique fermait les connexions restées **inactives**
   plus de cinq minutes — mais il ne savait pas distinguer « inactive » de
