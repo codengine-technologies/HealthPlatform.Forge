@@ -304,7 +304,8 @@ cette étape même.
 | /lint-angular | skipped | — | — | — | — | client-angular hors Repos de task-291 (api-mail seul) et arbre inchange par la task; no start marker |
 | /lint-mobile | skipped | — | — | — | — | client-mobile hors Repos de task-291 (api-mail seul), arbre intouche; no start marker |
 | /verify-visual | skipped | — | — | — | — | aucun ecran client-mobile touche : task api-mail seule, sur des fichiers de test; no start marker |
-| **Total cycle** | | **11 min 05 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /review | ok | 4 min 39 s | 1 (2.0 s) | 1 (1 min 23 s) | — | api-mail 1B/1T |
+| **Total cycle** | | **15 min 44 s** | **1 (2.0 s)** | **1 (1 min 23 s)** | **0 (0.0 s)** | |
 
 ## Causes établies — famille A
 
@@ -473,3 +474,31 @@ task. Aucune commande lancée, aucun commit.
 porte sur `api-mail` seul, et uniquement sur des fichiers de test. Aucun
 `## Stitch design log` dans la task, donc aucun écran à capturer. Serveur `ng
 serve` non démarré, aucune capture produite, état visuel global inchangé.
+
+## PRs
+
+| Repo | PR | Label |
+|---|---|---|
+| `api-mail` | https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/220 | `awaiting-human-merge` |
+
+`dtos-mss` : branche créée par convention (auto-inclusion), **restée vide** —
+aucun changement de DTO dans cette task. Branche locale et distante supprimées,
+aucune PR ouverte.
+
+`client-angular`, `client-mobile` : hors périmètre, non touchés.
+
+## Code Review Summary
+
+**APPROVED** — 10 fichiers, +269/−1, **exclusivement des fichiers de test**.
+Aucun code de production touché. 0 bloquant, 1 suggestion.
+
+**⚠️ Suggestion non bloquante** : le garde-fou détecte les classes qui
+**capturent** des mesures, pas celles qui en **émettent**. Un pur émetteur laissé
+hors collection polluerait les captures voisines sans que le scan bronche.
+L'état actuel est correct — les émetteurs connus (dont 4 classes de service, qui
+utilisent la forme pleinement qualifiée de l'attribut) sont déjà dans la
+collection — et la limite est écrite dans la doc de la classe. Mais c'est un
+angle mort réel si une future famille de compteurs arrive.
+
+**Vérifié au passage** : le matcher pleinement qualifié du garde-fou n'est **pas**
+du code mort — 4 classes préexistantes emploient bien cette forme.

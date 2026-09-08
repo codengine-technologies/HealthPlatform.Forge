@@ -353,3 +353,7 @@
 {"ts":"2026-09-08T09:31:53+02:00","run_id":"-","type":"step","task":"task-291","step":"lint-angular","status":"skipped","note":"client-angular hors Repos de task-291 (api-mail seul) et arbre inchange par la task; no start marker","iterations":null,"duration_ms":null}
 {"ts":"2026-09-08T09:32:23+02:00","run_id":"-","type":"step","task":"task-291","step":"lint-mobile","status":"skipped","note":"client-mobile hors Repos de task-291 (api-mail seul), arbre intouche; no start marker","iterations":null,"duration_ms":null}
 {"ts":"2026-09-08T09:32:41+02:00","run_id":"-","type":"step","task":"task-291","step":"verify-visual","status":"skipped","note":"aucun ecran client-mobile touche : task api-mail seule, sur des fichiers de test; no start marker","iterations":null,"duration_ms":null}
+{"ts":"2026-09-08T09:33:04+02:00","run_id":"-","type":"step_start","task":"task-291","step":"review"}
+{"ts":"2026-09-08T09:33:14+02:00","run_id":"-","type":"cmd","task":"task-291","step":"review","repo":"api-mail","kind":"build","label":"","cwd":"Api/Mail","cmd":"dotnet build HealthPlatform.Api.Mail.sln","duration_ms":2069,"exit_code":0}
+{"ts":"2026-09-08T09:34:46+02:00","run_id":"-","type":"cmd","task":"task-291","step":"review","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln --no-build","duration_ms":83410,"exit_code":0}
+{"ts":"2026-09-08T09:37:43+02:00","run_id":"-","type":"step","task":"task-291","step":"review","status":"ok","note":"","iterations":null,"duration_ms":279529}
