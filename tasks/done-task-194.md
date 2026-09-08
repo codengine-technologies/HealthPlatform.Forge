@@ -656,4 +656,5 @@ décor de semis avec `ThreadCountConvergenceTests`.
 | /lint-mobile | skipped | 2.2 s | — | — | — | client-mobile non touche (Repos: api-mail) |
 | /verify-visual | skipped | 1.9 s | — | — | — | aucun ecran mobile touche (US backend-only, api-mail) |
 | /review | ok | 5 min 17 s | 1 (26 s) | 1 (1 min 41 s) | — | api-mail 1B/1T |
-| **Total cycle** | | **2 h 11 min** | **6 (2 min 31 s)** | **13 (10 min 30 s)** | **0 (0.0 s)** | |
+| /tech-writer | ok | 4 min 50 s | — | — | — | — |
+| **Total cycle** | | **2 h 16 min** | **6 (2 min 31 s)** | **13 (10 min 30 s)** | **0 (0.0 s)** | |
