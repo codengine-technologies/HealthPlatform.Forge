@@ -152,19 +152,32 @@ already met.
 Read the SonarQube endpoint and token from environment variables. NEVER hardcode
 the token in the repo. Expected vars :
 
-- `SONAR_HOST_URL` — **`http://localhost:9000`** sur ce poste
+- `SONAR_HOST_URL` — **`http://localhost:9001`** sur ce poste
 - `SONAR_TOKEN` (e.g. `squ_xxxxxxxxxxxxxxxx`) — **doit être un `USER_TOKEN`**, pas
   un `GLOBAL_ANALYSIS_TOKEN` : ce dernier publie l'analyse mais **ne lit pas** les
   mesures, or `/review` doit recopier les KPI dans le corps des PRs.
 - `SONAR_PROJECT_KEY` — **`healthplatform-api-mail`**
 
-> ⚠️ **Corrigé le 2026-08-30.** Ces trois valeurs étaient fausses ou trompeuses et
-> ont coûté une analyse ratée : le port annoncé était **9001** (le serveur répond
-> sur **9000**), la clé de projet **`healthplatform`** (elle n'existe pas ; les
-> clés réelles sont `api-mail`, `healthplatform-api-mail`, `psc-auth-proxy`), et
-> rien ne disait que le type de token décide de la capacité à **lire** les KPI.
-> Les trois sont désormais persistées par `setx` sur le poste — le shell de la
-> forge les hérite du profil utilisateur.
+> ⚠️ **Le port est 9001 — re-corrigé le 2026-09-08 (task-190).** L'encadré
+> précédent, daté du 2026-08-30, affirmait que « le port annoncé était 9001 (le
+> serveur répond sur 9000) » et avait donc remplacé la valeur **juste** par une
+> fausse, dans le paragraphe même qui déplore qu'une valeur fausse « a coûté une
+> analyse ratée ». Mesuré : `docker port sonarqube` rend
+> `9000/tcp -> 0.0.0.0:9001` — 9000 est le port **interne** du conteneur, 9001
+> le port publié. `curl` sur 9000 ne répond pas, sur 9001 rend `200`.
+>
+> **Vérifier plutôt que réécrire de mémoire** : `docker port sonarqube` puis
+> `curl -s -o /dev/null -w '%{http_code}' http://localhost:9001/api/system/status`.
+>
+> Deux autres pièges du même encadré, toujours valables : la clé de projet est
+> **`healthplatform-api-mail`** (le `.env` du workspace porte `healthplatform`,
+> qui existe mais n'est plus analysé — surcharger explicitement), et le type de
+> token décide de la capacité à **lire** les KPI (il faut un `USER_TOKEN`, pas un
+> `GLOBAL_ANALYSIS_TOKEN`).
+>
+> Les conteneurs ne redémarrent pas seuls après un reboot :
+> `docker start sonarqube_db` **puis** `docker start sonarqube`, et attendre que
+> `/api/system/status` rende `"status":"UP"` (~30 s).
 
 ### Loading order (Step 0 reads these in order)
 

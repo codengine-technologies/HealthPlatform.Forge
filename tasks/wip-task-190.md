@@ -317,6 +317,82 @@ séparateur retenu ici**, choisi indépendamment. Deux conséquences :
 | Supprimer `BuildPdfWithMedicalDocumentHtmlTableSeparatesCells` (produit de deux tests existants) | C'est la **preuve du point 4 du DOD** (chemin CDA). La retirer retirerait une couverture exigée. |
 | Passer les deux `Regex` en `[GeneratedRegex]` | Exigerait de rendre `MailExportService` `partial` pour un `\s+` évalué une fois par mail exporté. Les deux sont hissés en `static readonly`, ce qui règle CA1869. |
 
+## Sonar log
+
+Analyse complète du 2026-09-08 sur la branche `fix/task-190-print-table-cell-separators`
+(projet `healthplatform-api-mail`, SonarQube 25.6). Build Release + 5 suites avec
+couverture OpenCover, puis scan. Rapport traité côté serveur (`SUCCESS`).
+
+### KPIs
+
+| Métrique | Valeur | Cible | Verdict |
+|---|---|---|---|
+| Bugs | 2 | 0 | hérités (bench k6) |
+| Vulnerabilities | 0 | 0 | ✅ |
+| Security Hotspots | 15 (dont 12 `TO_REVIEW` en new code) | 0 `TO_REVIEW` | hérités (bench k6 + Dockerfile) |
+| Code Smells | 72 | — | hérités |
+| Coverage | 88,2 % | ≥ 95 % (long terme) | inchangé |
+| New coverage | **88,3 %** | ≥ 80 % | ✅ |
+| Duplication | 0,3 % | < 3 % | ✅ |
+| Reliability rating | C | A | hérité (les 2 bugs) |
+| Security rating | **A** | A | ✅ |
+| Maintainability rating | **A** | A | ✅ |
+| Lignes de code | 50 744 | — | — |
+
+**Quality Gate : ERROR — intégralement hérité.**
+Deux conditions rouges, `new_violations = 72` et
+`new_security_hotspots_reviewed = 0 %`.
+
+### Phase 1 (new code) — zéro dette introduite
+
+**Aucun des 72 findings ni des 12 hotspots ne touche un fichier de task-190.**
+Vérifié par regroupement par fichier des issues `inNewCodePeriod=true` : les six
+fichiers écrits ou modifiés par cette task (`MailExportService.cs`,
+`MailExportControllerIntegrationTests.cs`, `MailExportHtmlToPlainTextTests.cs`,
+`MailExportServiceTests.cs`, `MailExportControllerTests.cs`, `AsyncOnlyStream.cs`)
+n'apparaissent **pas une seule fois**. Rien à corriger, donc aucune itération
+de fix.
+
+Répartition réelle des 72 : `tests/loadtest-k6/` **46** (report.py 23,
+journey-model.js 14, journey.js 9), reste dispersé sur des services
+d'embedding, repositories et sessions IMAP — tous issus de tasks **déjà
+mergées**. Les 2 bugs : `python:S3923` dans `test_report_pinned_palier.py:68` et
+`python:S1244` dans `report.py:2661`.
+
+**C'est exactement le piège déjà documenté** : la new-code period de ce projet
+est en mode `PREVIOUS_VERSION` avec une baseline au **2026-04-17**, soit près de
+cinq mois de travail mergé considéré comme « nouveau ». Un Quality Gate ERROR
+n'y vaut donc **pas** preuve de dette introduite par la task courante, et le
+vérifier fichier par fichier est obligatoire avant de conclure quoi que ce soit.
+
+Corollaire positif : zéro finding sur du code C# frais signifie que
+`conventions/csharp.md` a bien été appliqué d'emblée (CA1861, CA1869, CA1859,
+S3267 notamment) — aucune entrée à créer ni compteur à incrémenter.
+
+### Phase 2 (dette héritée) — skippée, motivée
+
+Best-effort et optionnelle par construction (`agents/sonar.md`). Skippée ici
+parce que la totalité des findings vit dans des fichiers **hors périmètre** de
+cette US : les traiter violerait la règle 6 (scopes isolés) et la règle 5
+(hygiène de PR) en mêlant un correctif de lisibilité PDF à un nettoyage du banc
+de charge k6. La dette du bench mérite sa propre task — c'est là qu'elle sera
+visible et revue.
+
+### Deux erreurs de documentation corrigées au passage
+
+1. **Le port de SonarQube est 9001, pas 9000.** `agents/sonar.md` portait un
+   encadré « Corrigé le 2026-08-30 » affirmant que « le port annoncé était 9001
+   (le serveur répond sur 9000) ». C'est l'inverse : `docker port sonarqube`
+   donne `9000/tcp -> 0.0.0.0:9001`, et `curl` sur 9000 ne répond pas
+   (`000`) là où 9001 rend `200`. La « correction » avait donc remplacé une
+   valeur juste par une fausse — dans le même encadré qui déplore qu'une valeur
+   fausse « a coûté une analyse ratée ». Corrigé.
+2. **`SONAR_PROJECT_KEY` du `.env` workspace vaut `healthplatform`**, un projet
+   qui existe mais n'est plus analysé (dernière analyse 2026-09-02) et n'est pas
+   celui d'api-mail. La bonne clé est `healthplatform-api-mail` (analysé le
+   jour même). `agents/sonar.md` le disait déjà ; le `.env` le contredisait.
+   Surchargé explicitement dans les commandes du run.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-190 --sync` — ne pas éditer à la main)*
@@ -325,7 +401,8 @@ séparateur retenu ici**, choisi indépendamment. Deux conséquences :
 |---|---|---|---|---|---|---|
 | /start | ok | 1 min 25 s | — | — | — | — |
 | /develop | ok | 33 min 31 s | 3 (48 s) | 9 (6 min 31 s) | — | api-mail 3B/9T |
-| **Total cycle** | | **34 min 57 s** | **3 (48 s)** | **9 (6 min 31 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 9 min 28 s | 1 (17 s) | 1 (1 min 59 s) | 1 (1 min 39 s) | api-mail 1B/1T, Phase 1 clean (0 finding sur les fichiers task-190); Phase 2 skippee (dette heritee hors perimetre) |
+| **Total cycle** | | **44 min 25 s** | **4 (1 min 05 s)** | **10 (8 min 30 s)** | **1 (1 min 39 s)** | |
 
 ## Branches
 
