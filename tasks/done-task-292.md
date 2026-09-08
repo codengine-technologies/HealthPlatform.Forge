@@ -196,3 +196,90 @@ Deux défauts distincts, donc :
 - **AIPD / impact RGPD** : à mettre à jour si le stockage change de base
   (localisation des traces contenant l'INS) ; inchangée sinon. La finalité, les
   durées de conservation et les destinataires ne changent pas
+
+## Branches
+- `api-mail` (pushed) : feat/task-292-audit-trail-decoupled — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-292-audit-trail-decoupled
+- `dtos-mss` (pushed, auto-included) : feat/task-292-audit-trail-decoupled — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-292-audit-trail-decoupled
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-292 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 17 s | — | — | — | — |
+| /develop | ok | 42 min 02 s | 6 (34 s) | 2 (3 min 00 s) | — | api-mail 6B/2T |
+| /sonar | ok | 18 min 15 s | 6 (42 s) | 15 (8 min 17 s) | 5 (56 s) | 2 itération(s), api-mail 6B/15T |
+| /lint-angular | skipped | 0.5 s | — | — | — | client-angular non touché |
+| /lint-mobile | skipped | 0.6 s | — | — | — | client-mobile non touché |
+| /verify-visual | skipped | 0.5 s | — | — | — | aucun écran mobile touché |
+| /review | ok | 14 min 56 s | 5 (25 s) | 7 (5 min 55 s) | 1 (25 s) | api-mail 5B/7T |
+| /tech-writer | ok | 5 min 29 s | — | — | — | — |
+| **Total cycle** | | **1 h 21 min** | **17 (1 min 41 s)** | **24 (17 min 13 s)** | **6 (1 min 21 s)** | |
+
+## Develop log
+
+- Repos touched : api-mail (dtos-mss : branche créée, aucun commit — aucun changement de contrat)
+- DTOs published : no DTO change
+- Interop published : no interop change
+- Commits :
+  - api-mail : 42fb5e5 feat(audit): le journal PGSSI-S ne perd plus de trace et quitte le chemin de données du praticien (task-292)
+  - api-mail : 4ee85c4 refactor(audit): simplify pass (/simplify) — task-292
+- Local build / test : ✓ build 0 erreur ; tests 167 + 484 + 2355 + 822 unitaires verts, intégration 460 verts / 16 skips / **5 rouges pré-existants hors périmètre** (`GetFolderToday*`, `GetFolderNotSeenToday*`, `FilterTodayEmails*` : filtre « aujourd'hui » sur `DateTime.Now.Date` alors que la suite a tourné entre 00h00 et 02h00 heure locale, soit encore la veille en UTC pour les messages du fixture IMAP — frontière de minuit, aucun lien avec l'audit ; ils repassent au vert après 02h00 locale).
+- Décisions d'implémentation (choix laissés à /develop par l'US) :
+  - **Chemin d'écriture séparé** : `AuditTraceRepository` surcharge le nouveau hook `BaseRepository.DataConnectionString` avec la route DIRECTE (`ConnectionStringProvisioningUser` + bornes du pool de provisionnement, réutilisées : 1 connexion, idle 5 s). Les traces restent dans la base du praticien (imputabilité et purge par famille inchangées) ; seul le **chemin** change. Sans `MSS-MAIL-CONNECTIONSTRING-DIRECT`, retombe sur la chaîne serveur (comportement pré-task). La trace transporte `TransportConnectionStringDirect` pour que le writer d'arrière-plan hydrate la route.
+  - **Zéro perte par construction** : canal (`TryWrite`, inchangé) → spill Redis (désormais attendu inline, son résultat décide) → **contre-pression bornée** (`Audit:BackpressureTimeout`, 5 s) → **refus typé** de l'action tracée (`UnavailableException` → 503 `ProblemDetails`, règle 12). Le « LOST » du spill plein/injoignable disparaît ; le seul Critical restant est une entrée Redis illisible (corruption), inatteignable en fonctionnement nominal ou dégradé.
+  - **Tampon dimensionné par durée** : `SpillMaxLength = PeakTracesPerMinute × SpillRetentionMinutes` (2000 × 60 = 120 000 par défaut, pic mesuré au tir 1000 du 08/09).
+  - **Redis** : spill et marqueurs de purge dans la base logique `Audit:SpillRedisDatabase = 1` (le cache reste en 0).
+  - **Observabilité** : compteurs `mss_audit_traces_{emitted,persisted,spilled,replayed,dropped}_total`, `mss_audit_backpressure_{waits,refusals}_total` ; jauges `mss_audit_channel_depth`, `mss_audit_backlog_oldest_age_seconds`, `mss_audit_backlog_lag_seconds`, `mss_audit_spill_pending`. Le meter `Mssante.Audit` est désormais exporté (`AddMeter`) — il était déclaré mais invisible du collecteur.
+  - **Interrupteur de banc** : `Audit:Disabled` (AppHost : `MSS_LOADTEST_AUDIT_DISABLED=true` → `Audit__Disabled`), évalué une fois par `AuditJournalSwitch`, **refusé en Production** (log Error), `NoOpAuditService` sinon.
+- Passe qualité (/simplify) :
+  - Applied & committed : api-mail : 15 files (4ee85c4) — docs de contrat alignées, surface publique réduite, jauges fusionnées, DI sans réflexion, chaîne directe mémoïsée, helpers de test partagés (`CapturingLogger<T>`, `FakeSpillStore`), réutilisation de `ProvisioningEnvironment`.
+  - Skipped (noted, quality-only pass) : RPUSH-puis-RPOP à la place de LLEN+RPUSH (sémantique du plafond) ; `PendingCountAsync` Redis à la place de l'estimation locale `SpilledPending` (changement d'interface, suivi) ; paramètres de constructeur rendus obligatoires (3 fichiers de tests legacy) ; validation `[Range]` + `ValidateOnStart` des options (comportement au démarrage).
+  - Skipped (contract/excluded) : dtos-mss
+- DOD self-check : 8/10 items vérifiables par commande satisfaits (build, tests, contre-pression sans perte, route directe + pooler indisponible, base Redis distincte, purge par famille, compteurs + test de capture sérialisé, aucune donnée de santé dans les logs du nouveau chemin, interrupteur refusé en Production). **2 items de mesure au banc différés (HAG)** : re-tir 1000 iso (0 `LOST`, 0 `Channel full` en régime) et écart journal actif/désactivé à 500 et 1000 — 3 h 30 par tir sur le banc distant, hors portée de la chaîne autonome ; protocole et variable de banc livrés (`MSS_LOADTEST_AUDIT_DISABLED`).
+- Next step : /sonar task-292
+
+## Sonar log
+- Phase 1 (new code) : ✓ Quality Gate OK, new_coverage = 91,2 % (seuil QG 80 %) — re-scan post-revue de code (c2c108b) : QG OK, 0 finding new-code, new_coverage = 91,3 %
+- Phase 1 — Issues fixées : 3 (0 bug / 0 vuln / 3 smells / 0 hotspot) — S125 ×1 (prose lue comme code commenté dans `ServiceCollectionExtensions`), S3604 ×2 (initialiseurs de membre sur constructeur primaire, `RedisAuditSpillStore` et `AuditBackgroundService`)
+- Phase 1 — Tests ajoutés : 8 (`AuditBackgroundServiceReplayAndPurgeTests` : rejeu du spill, re-spill sur canal plein, spill injoignable au rejeu, purge rate-limitée et journalisée, marqueur présent / Redis absent, legal hold + purge en échec, lot poison, journal no-op) — `AuditBackgroundService` 39,4 % → 86,8 %, `NoOpAuditService` 0 → 100 %
+- Phase 1 — Hotspots new-code : 0
+- Phase 2 (legacy) : itérations 0 / 5 — skippée : baseline déjà aux cibles dures (0 bug, 0 vuln, A/A/A), 59 smells legacy hors périmètre
+- Itérations d'analyse : 2 (baseline post-develop → finale)
+- Build / tests : ✓ green (5 échecs pré-existants de frontière de minuit sur les filtres « aujourd'hui », cf. Develop log — hors périmètre)
+- Commits : a4fb552 fix(sonar/new), a260d53 test(sonar/new)
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | → |
+| New coverage | 87,8 % | 91,3 % | +3,5 pt |
+| New-code issues | 3 (après /develop) | 0 | −3 |
+| Bugs | 0 | 0 | → |
+| Vulnerabilities | 0 | 0 | → |
+| Security hotspots | 3 (legacy, hors new code) | 3 | → |
+| Code smells | 59 | 59 | → |
+| Coverage (projet) | 88,1 % | 88,4 % | +0,3 pt |
+| Duplication | 0,4 % | 0,4 % | → |
+| Reliability / Security / Maintainability | A/A/A | A/A/A | → |
+
+## Lint log
+- /lint-angular : ⤍ skipped — `client-angular` non listé dans **Repos** ; les 2 fichiers `environment.ts` modifiés dans `Client/Angular` (branche humaine `feature/nova-rewriting-mss`) préexistaient au run et ne sont pas touchés par la forge.
+
+## Lint mobile log
+- /lint-mobile : ⤍ skipped — `client-mobile` non listé dans **Repos**, `Client/Mobile` sur `develop`, arbre propre.
+
+## Visual verify log
+- /verify-visual : ⤍ skipped — aucun écran `client-mobile` touché (task backend `api-mail` uniquement, pas de `## Stitch design log`).
+
+## PRs
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/225 — label `awaiting-human-merge`
+- `dtos-mss` : aucun commit sur `feat/task-292-audit-trail-decoupled` (pas de changement de contrat) — pas de PR
+
+## Code Review Summary
+- Itération 1 : **CHANGES REQUESTED** (relecture indépendante) — 2 bloquants : (1) trace refusée après timeout de contre-pression non parquée, perte silencieuse aux sites d'appel qui tracent après l'effet de bord ; (2) rejeu du spill ignorant l'échec du re-spill, trace dépilée de Redis perdue. Non bloquants : auto-blocage du drain via `IAuditService.Trace(AuditPurge)`, pool 1 partagé avec la lecture de l'écran d'audit, tests d'environnement non sérialisés.
+- Correctifs (`c2c108b`, reprise /develop) : parcage avant refus (spill forcé, sinon écriture en attente), persistance directe des traces rejouées non requeuables, trace de purge persistée par le dépôt, pool audit à 2, sérialisation des tests.
+- Itération 2 : **APPROVED** — build 0 erreur, 3 836 tests unitaires verts, 460 tests d'intégration verts (5 flakes pré-existants de frontière de minuit hors périmètre), Sonar re-scan : QG OK, 0 finding new-code, new_coverage 91,3 %.
+- Suggestions restantes (hors périmètre, à suivre) : `PendingCountAsync` Redis pour la jauge `mss_audit_spill_pending` (estimation locale aujourd'hui) ; `[JsonIgnore]` des chaînes de connexion dans le payload du spill + note AIPD (INS dans Redis, pré-existant task-186) ; drain sur un scheduler dédié si le re-tir montre une famine du thread pool sous contre-pression.

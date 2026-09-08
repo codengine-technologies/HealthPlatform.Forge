@@ -2,9 +2,9 @@
 
 > **Statut** : En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.70
+> **Version** : 1.71
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-09-08 (task-190)
+> **Dernière mise à jour** : 2026-09-09 (task-292)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1412,6 +1412,28 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 - **Onboarding MSSanté** (task-037, durci par task-038) : parcours d'opt-in explicite quand le compte Keycloak n'a pas encore d'adresse MSSanté mappée — écran « Messagerie non configurée » + formulaire setup avec sonde IMAP MSSanté + persistance du profil + écran de reconnexion. La sonde TLS valide la chaîne IGC-Santé conformément au socle.
 
 ### Sécurité — défense en profondeur
+
+- **v1.71 — Le journal des accès ne perd plus rien quand la plateforme sature, et
+  il ne ralentit plus le médecin** (task-292) : le journal qui retrace qui a lu,
+  exporté ou envoyé quel document de santé (v1.66) se déclarait lui-même
+  incomplet lors du test de charge à 1000 médecins du 8 septembre — 1 477
+  traces jetées quand ses tampons étaient pleins, c'est-à-dire précisément au
+  moment où un journal d'imputabilité doit tenir. Deux causes : ses écritures
+  passaient par la même file d'attente vers la base que les lectures du
+  médecin, et son tampon de secours était compté en nombre de traces alors
+  qu'une saturation se compte en minutes. Désormais le journal emprunte un
+  **chemin séparé** vers la base — une base saturée ralentit le médecin, elle
+  ne peut plus faire échouer son journal —, son tampon est dimensionné pour
+  **tenir une heure au débit de pointe mesuré**, et lorsque même ce tampon est
+  plein, la messagerie **ralentit puis refuse l'action** (message clair,
+  réessayable) plutôt que d'oublier de la tracer : une trace n'est jamais moins
+  importante que le geste qu'elle enregistre. Le tampon ne partage plus
+  l'espace du cache applicatif, qu'il faisait attendre. L'exploitation dispose
+  de compteurs (émises, écrites, en attente, perdues — qui doit rester à zéro)
+  et d'une mesure du retard du journal en secondes, alertables. Un interrupteur
+  réservé au banc de mesure permet de chiffrer le coût du journal ; il est
+  refusé en production. Aucune donnée de santé ne transite par les nouveaux
+  journaux techniques.
 
 - **v1.65 — L'INS du patient ne circule plus dans les adresses web, et n'apparaît plus dans les journaux techniques** (task-184) : pour afficher un dossier patient, ses documents ou son opposition, la messagerie plaçait jusqu'ici l'**INS du patient dans l'adresse de la page et dans celle de chaque requête**. Une adresse est la partie d'un échange que **tout le monde enregistre** : le serveur, chaque équipement réseau traversé, l'historique du navigateur du praticien, et la supervision technique. L'INS y était donc recopié en clair, à chaque consultation, dans des journaux lisibles par une population **bien plus large** que celle habilitée aux documents de santé. Plusieurs messages de supervision affichaient de surcroît, en clair, l'INS, le nom, le prénom, la date de naissance du patient, ou le **texte exact d'une recherche** — laquelle est le plus souvent nominative (« résultats Dupont »). Désormais, le patient est désigné par un **identifiant technique sans signification**, qui ne dit rien de lui à qui l'intercepte, et l'INS n'est transmis que dans la partie confidentielle de la requête, celle qu'aucun de ces journaux n'enregistre. La supervision ne conserve que des grandeurs non identifiantes — des durées, des compteurs, des longueurs. **Rien ne change pour le praticien** : mêmes écrans, mêmes données, mêmes liens de raccourci depuis le tableau de bord. **La traçabilité n'est pas réduite** : tous les évènements restent journalisés, et l'on sait toujours quelle opération a eu lieu — seule la valeur identifiante disparaît, ce que le journal d'audit MSS, lui, continue de consigner comme la réglementation l'exige. La correction couvre les **trois interfaces** (poste de travail, interface historique, application mobile) ainsi que le serveur, car chacune exposait l'information par ses propres moyens. **À traiter côté exploitation** : les journaux **déjà accumulés** contiennent ces données ; leur purge et la mise à jour de l'analyse d'impact restent à statuer avec le DPO.
 - **v1.64 — La vérification de non-révocation des certificats MSSanté est remise en état de marche** (task-288) : avant chaque échange avec l'opérateur MSSanté, la messagerie vérifie que le certificat présenté par le serveur n'a pas été révoqué. Cette vérification s'appuie sur deux sources — un service d'interrogation en direct (voie nominale) et une liste de révocation publiée (voie de secours). **La voie nominale était en panne**, parce que le service de l'ANS qui publie le certificat d'autorité nécessaire à l'interrogation refusait les demandes : la messagerie le sollicitait à **chaque** connexion, dépassait sa limite de débit, et **entretenait ainsi son propre blocage**. Rien ne cassait, parce que la voie de secours fonctionnait — mais **le dernier filet servait en permanence**, et la règle retenue en arbitrage (tolérance de 4 h puis refus de connexion) suppose exactement l'inverse. Trois changements ferment le sujet. Le certificat d'autorité est désormais **livré avec l'application** : il n'y a plus rien à télécharger au démarrage, la vérification fonctionne dès la première connexion et même si l'ANS est injoignable. Un échec de sollicitation est **mémorisé** et les tentatives suivantes **s'espacent**, au lieu d'être rejouées à chaque connexion. Enfin, plusieurs connexions simultanées **partagent une seule** sollicitation au lieu d'en émettre une chacune. En régime établi, la messagerie ne sollicite l'ANS qu'**une fois par jour et par autorité**. **Aucun contrôle n'est relâché** : une autorité inconnue reste résolue en ligne, un certificat révoqué reste refusé **immédiatement et sans tolérance**, et un échec de vérification n'est jamais transformé en acceptation. Aucun changement visible pour le praticien — sinon que la panne silencieuse de la voie nominale est réparée.

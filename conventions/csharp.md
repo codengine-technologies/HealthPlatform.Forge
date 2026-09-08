@@ -228,7 +228,8 @@ dans `string.Equals`, mais `StringComparer` dans `Contains`.
 
 ## S125 — une prose qui « ressemble à du code » est signalée comme code commenté
 
-**Occurrences : 1** (task-184)
+**Occurrences : 2** (task-184, task-292 — récidive sur code frais : un commentaire DI
+de trois lignes avec une parenthèse fermante puis « : » en milieu de phrase)
 
 Un commentaire d'intention parfaitement légitime a été relevé comme du code mis
 en commentaire, uniquement à cause de sa **ponctuation** : un point-virgule en
@@ -248,3 +249,36 @@ fin de proposition, au milieu d'une phrase anglaise.
 les fins de ligne en `)` ou `}`. Écrire des phrases. Le coût est nul et cela
 évite une issue qu'on est ensuite tenté d'« accepter », ce qui use la crédibilité
 des exemptions.
+
+---
+
+## S3604 — pas d'initialiseur de membre qui ne fait que copier un paramètre de constructeur primaire
+
+**Occurrences : 1** (task-292, ×2 dans le même run)
+
+Avec un **constructeur primaire**, un champ initialisé depuis un paramètre
+(`private readonly AuditOptions _options = options.Value;`) est signalé :
+l'analyseur lit « tous les constructeurs affectent le membre », donc
+l'initialiseur est redondant. Le motif apparaît naturellement quand on ajoute
+un paramètre optionnel avec repli (`backlog ?? new AuditBacklog()`).
+
+```csharp
+// ❌ AVANT — champ recopié depuis le paramètre primaire
+public sealed class RedisAuditSpillStore(IOptions<AuditOptions> options)
+{
+    private readonly AuditOptions _options = options.Value;
+    private int MaxSpillLength => _options.SpillMaxLength;
+}
+
+// ✅ APRÈS — le paramètre primaire est capturé, on le lit directement
+public sealed class RedisAuditSpillStore(IOptions<AuditOptions> options)
+{
+    private int MaxSpillLength => options.Value.SpillMaxLength;
+}
+```
+
+**Consigne** : dans une classe à constructeur primaire, **lire le paramètre**
+capturé plutôt que le recopier dans un champ. Et un repli `?? new X()` sur un
+paramètre optionnel est le signe qu'il devrait être **obligatoire** : rendre le
+paramètre requis et passer l'instance explicitement dans les tests (c'est ce qui
+porte l'invariant « une instance par processus » au compilateur).
