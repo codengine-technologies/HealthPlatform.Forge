@@ -476,3 +476,21 @@ défaut de lisibilité, pas une nouvelle fonctionnalité).
 Pré-flight du 2026-09-08 : les 7 repos automatisés sur `develop`. Premier essai
 refusé (api-mail et dtos-mss encore sur `fix/task-194-…`, PR #223 en attente de
 merge) — relance verte après checkout `develop`.
+
+## Merged
+
+Mergé le **2026-09-09** par l'humain (HAG, règle 10 — `/merge task-190 --i-tested`).
+
+| Repo | PR | Commit squash sur `develop` |
+|---|---|---|
+| `api-mail` | [#224](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/224) — squash-merged | `7aa0551` — *fix(mail): séparer les cellules des tableaux imprimés (lisibilité clinique) — task-190 (#224)* |
+| `dtos-mss` | aucune PR — branche auto-incluse restée sans commit | — |
+
+- Branches distantes `fix/task-190-print-table-cell-separators` supprimées sur
+  `api-mail` et `dtos-mss` ; **branches locales conservées** (inspection
+  rétroactive).
+- `client-angular` / `client-mobile` : non listés (US backend-only) — aucune
+  intervention.
+- Staging : `forge/staging-task-292-294-20260908` **conservée** — hors de la
+  plage de cette task (190 ∉ [292, 294]), elle appartient à un autre run.
+- CI `develop` (api-mail) : CI_PLACEHOLDER
