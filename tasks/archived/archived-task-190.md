@@ -493,4 +493,4 @@ Mergé le **2026-09-09** par l'humain (HAG, règle 10 — `/merge task-190 --i-t
   intervention.
 - Staging : `forge/staging-task-292-294-20260908` **conservée** — hors de la
   plage de cette task (190 ∉ [292, 294]), elle appartient à un autre run.
-- CI `develop` (api-mail) : CI_PLACEHOLDER
+- CI `develop` (api-mail) : ✅ verte — [run 34317842050](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/34317842050) (`success`, commit `7aa0551`)
