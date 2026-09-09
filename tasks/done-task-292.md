@@ -136,7 +136,7 @@ Deux défauts distincts, donc :
 - [ ] Le profil de banc expose un interrupteur du journal **hors production**
       (refusé si `ASPNETCORE_ENVIRONMENT=Production`, comme le bypass), avec
       test
-- [ ] Mesure au banc consignée dans le task file : re-tir 1000 iso
+- [~] Mesure au banc consignée dans le task file : re-tir 1000 iso
       (`Docs/audits/api-mail-loadtest-campagne-post-lot-20260908.md`, protocole
       du tir 1000 r2) → **0 `LOST`**, 0 `Channel full` en régime, et l'écart
       journal actif / désactivé à 500 et 1000 (p95 des étapes servies base,
@@ -283,3 +283,25 @@ Deux défauts distincts, donc :
 - Correctifs (`c2c108b`, reprise /develop) : parcage avant refus (spill forcé, sinon écriture en attente), persistance directe des traces rejouées non requeuables, trace de purge persistée par le dépôt, pool audit à 2, sérialisation des tests.
 - Itération 2 : **APPROVED** — build 0 erreur, 3 836 tests unitaires verts, 460 tests d'intégration verts (5 flakes pré-existants de frontière de minuit hors périmètre), Sonar re-scan : QG OK, 0 finding new-code, new_coverage 91,3 %.
 - Suggestions restantes (hors périmètre, à suivre) : `PendingCountAsync` Redis pour la jauge `mss_audit_spill_pending` (estimation locale aujourd'hui) ; `[JsonIgnore]` des chaînes de connexion dans le payload du spill + note AIPD (INS dans Redis, pré-existant task-186) ; drain sur un scheduler dédié si le re-tir montre une famine du thread pool sous contre-pression.
+
+## Bench log — tir de vérification 2026-09-09 (journey 1000, iso 08/09 r2)
+
+Rapport : `Docs/audits/api-mail-loadtest-journey-1000-task292-audit-20260909.md` (copie de
+`Api/Mail/tests/loadtest-k6/reports/2026-09-09/report-journey-1000-task292-audit-20260909-123235.md`, gitignoré côté api-mail).
+Code sous test `c2c108b` (branche de la PR #225). Bases praticien **gardées** (hydratées, non purgées), maildir cluster intact,
+RTT 20 ms → latence 81 ms, fenêtre 09h01 → 12h32, régime 11h54 → 12h32. Bases gardées après le tir (re-tir A/B possible).
+
+| Exigence (DOD) | Mesure | Verdict |
+|---|---|---|
+| 0 `LOST` / 0 Fatal sous saturation | Fatal **0**, `LOST` **0** (08/09 : 1 477) ; Postgres 11-14 cœurs en régime, hôte 96 % | ✅ |
+| 0 `Channel full` en régime | **111 678** — canal de 5 000 plein en continu de 11h00 à la fin ; c'est le spill qui absorbe (111 681 rejouées, vide 6 min après le tir) | ❌ le canal n'est jamais « en régime » à 1000 : le drain est plus lent que l'émission (F-292-2) |
+| Contre-pression au lieu de perte | 18 attentes / 18 refus (12h17-12h18), borne 120 000 atteinte à 3 h 16 ; 11 × HTTP 503, 7 refus après effet de bord | ✅ conforme au contrat, mais 18 gestes médecin refusés |
+| Chemin séparé du pooler | INSERT `MssAuditTraces` vus **uniquement** depuis l'hôte (route directe), jamais depuis PgBouncer ; `08P01` 85 787 → **646** | ✅ |
+| Redis : 0 timeout cache imputable au spill | `[Cache] Timeout getting key` **21 835** (08/09 : 10 233), spill en `db1` | ⚠️ non attribuable sans A/B « journal désactivé » (non joué) |
+| Exhaustivité en base | 198 545 émises, 198 542 persistées (compteur) = **198 542 lignes** sur les 1000 bases | ❌ **3 traces perdues** par `PersistIndividuallyAsync` (6 timeouts Npgsql journalisés en Error, sans `dropped`, sans re-spill) — F-292-1 |
+| Écart journal actif / désactivé à 500 et 1000 | **non mesuré** (2 × 3 h 30 supplémentaires) | ⏳ à jouer : `MSS_LOADTEST_AUDIT_DISABLED=true`, même protocole, mêmes bases |
+
+Findings à traiter **avant merge** de la PR #225 : F-292-1 (perte silencieuse du repli par trace), F-292-4 (mot de passe en clair dans le
+payload du spill Redis, déjà suggéré par la revue). À instruire ensuite : F-292-2 (drain sérialisé par praticien, 0,2-0,45 trace/s
+par réplica pour ~4/s émises — un login Postgres direct par groupe ; paralléliser / allonger l'idle du pool audit / dimensionner la
+borne sur le débit de drain), F-292-3 (timeouts Redis ×2,1, cause non établie), F-292-5 (PgBouncer mono-thread à 1,02 cœur — task-294).
