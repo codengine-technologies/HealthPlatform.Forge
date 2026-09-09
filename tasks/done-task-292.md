@@ -305,3 +305,31 @@ Findings à traiter **avant merge** de la PR #225 : F-292-1 (perte silencieuse d
 payload du spill Redis, déjà suggéré par la revue). À instruire ensuite : F-292-2 (drain sérialisé par praticien, 0,2-0,45 trace/s
 par réplica pour ~4/s émises — un login Postgres direct par groupe ; paralléliser / allonger l'idle du pool audit / dimensionner la
 borne sur le débit de drain), F-292-3 (timeouts Redis ×2,1, cause non établie), F-292-5 (PgBouncer mono-thread à 1,02 cœur — task-294).
+
+### Suite du 2026-09-09 (après-midi et soir) — A/B journal désactivé, re-tir corrigé, seconde reprise
+
+Rapports : `Docs/audits/api-mail-loadtest-journey-1000-task292-audit-off-20260909.md` (A/B, journal désactivé, 14h08-17h39) et
+`Docs/audits/api-mail-loadtest-journey-1000-task292-fix-20260909.md` (re-tir de `2354b44`, 17h47-21h18, **ROUGE**). Même protocole,
+mêmes bases, RTT 23 ms → latence 78 ms.
+
+| | Matin `c2c108b` (drain série) | A/B journal OFF `2354b44` | Soir `2354b44` (drain parallèle 8) |
+|---|---|---|---|
+| Postgres CPU régime (cœurs) | 11,30 | **11,47** | — |
+| Refus `08P01` | 646 | 270 | **15 873** |
+| Erreurs k6 / p95 | 0,44 % / 10 526 ms | 0,16 % / 9 418 ms | **1,37 % / 11 079 ms** (k6 exit 99) |
+| Traces perdues | 3 (silencieuses) | — | **1 034** (Critical, plafond de 5 essais sur des timeouts) |
+| Timeouts cache Redis | 21 835 | 6 568 | 8 778 |
+
+- **Point 5 (coût du journal) tranché** : CPU Postgres identique journal actif / désactivé ; `cl_waiting` 47 % vs 45 %. Le coût visible
+  du journal était celui du drain (erreurs ×2,7, refus 08P01 ×2,4), pas des INSERT. Pas d'US d'écriture par lot pour Postgres.
+- **Remède « drain parallèle » invalidé par la mesure** : un login Postgres prend 10 à 16 s sous saturation (mesuré `psql` dans le
+  conteneur), ~3,8 backends créés/s ; les logins directs concurrents affament ceux de PgBouncer (`server_connect_timeout` 15 s) →
+  rejets 08P01 ×25. **Cause racine mesurée : cgroup mémoire du conteneur Postgres à sa limite** (12 Go pour 54 Go de bases,
+  +15 600 échecs d'allocation/s, `DataFileRead` sur 27 backends) → **task-294** (limite 24-32 Go, `shared_buffers` 8 Go).
+- **Plafond d'essais réservé aux traces poison** (SqlState 22/23/42) : appliqué aux timeouts, il a perdu 1 034 traces au rejeu.
+- **Redis** : le spill subit la saturation du cache (contre-pression prématurée à 70 k / 120 k, `Spill buffer unreachable`), et le
+  cache sature seul (6 568 timeouts sans journal, Redis à 1,1 cœur sur `HMSET mail:email:*` de 1,5 Mo) → finding cache à proposer.
+- **Seconde reprise `3d8f2ed`** (poussée, tests verts : 3 852 unitaires, 465 intégration après 1 flaky rejoué) : `DrainParallelism` = 1,
+  `IsPoison`, `SpillRetentionMinutes` 60 → 180 ; conservés : re-spill du repli par trace, `[JsonIgnore]` des chaînes de connexion,
+  idle du pool audit 60 s. **Tir de confirmation lancé le 2026-09-09 à 21h38** (`journey-1000-task292-fix2-20260909`), fin ~01h10 —
+  critères : 0 perte (émises = lignes en base), 0 refus de contre-pression, refus 08P01 ≤ 646.
