@@ -136,7 +136,7 @@ Deux défauts distincts, donc :
 - [ ] Le profil de banc expose un interrupteur du journal **hors production**
       (refusé si `ASPNETCORE_ENVIRONMENT=Production`, comme le bypass), avec
       test
-- [~] Mesure au banc consignée dans le task file : re-tir 1000 iso
+- [x] Mesure au banc consignée dans le task file : re-tir 1000 iso
       (`Docs/audits/api-mail-loadtest-campagne-post-lot-20260908.md`, protocole
       du tir 1000 r2) → **0 `LOST`**, 0 `Channel full` en régime, et l'écart
       journal actif / désactivé à 500 et 1000 (p95 des étapes servies base,
@@ -333,3 +333,22 @@ mêmes bases, RTT 23 ms → latence 78 ms.
   `IsPoison`, `SpillRetentionMinutes` 60 → 180 ; conservés : re-spill du repli par trace, `[JsonIgnore]` des chaînes de connexion,
   idle du pool audit 60 s. **Tir de confirmation lancé le 2026-09-09 à 21h38** (`journey-1000-task292-fix2-20260909`), fin ~01h10 —
   critères : 0 perte (émises = lignes en base), 0 refus de contre-pression, refus 08P01 ≤ 646.
+
+### Tir de confirmation `3d8f2ed` (2026-09-09 21h38 → 2026-09-10 01h09) — ✅ DOD tenue
+
+Rapport : `Docs/audits/api-mail-loadtest-journey-1000-task292-fix2-20260910.md`. Même protocole, mêmes bases, RTT 23 ms → 78 ms, k6 exit 0.
+
+| Critère | Mesure | Verdict |
+|---|---|---|
+| 0 perte | **178 145 émises = 178 145 persistées = 178 145 lignes** sur les 1000 bases (contrôle indépendant) ; 0 `LOST`, 0 Fatal | ✅ |
+| 0 refus de contre-pression | 0 attente / 0 refus / 0 `Spill buffer unreachable` ; pic du spill ~95 000 sur une borne de 360 000 ; vidé en 8 min après le tir | ✅ |
+| Refus `08P01` ≤ 646 | **203** (270 sans journal, 646 le matin, 15 873 avec le drain parallèle) | ✅ |
+| Erreurs k6 | **0,16 %** = niveau du tir sans journal (0,44 % le matin, 1,37 % le soir) ; HTTP 500 173, 503 0 | ✅ |
+| `Channel full` en régime | 102 231 — le spill reste le régime normal sous saturation (Postgres ~3,8 backends/s sous pression mémoire) | ❌ attendu tant que task-294 n'est pas faite ; sans effet sur la perte ni sur le médecin |
+| Écart journal actif / désactivé | Postgres CPU régime 11,53 vs 11,47 cœurs ; `cl_waiting` ≈ 45 % dans les deux cas ; erreurs 0,16 % vs 0,16 % | ✅ coût nul à la mesure |
+
+Repli par trace : 36 090 échecs de lot et 46 165 échecs individuels (timeouts de login), **tous re-spillés puis persistés** — bruit de
+journal en Error à requalifier en Warning (suivi). Timeouts du cache Redis 10 773 (finding cache, hors task). Chauffe 99,9 %.
+
+**Reste à traiter avant merge (PR #225, `3d8f2ed`)** : rien de bloquant côté journal. À suivre hors task : task-294 (mémoire Postgres,
+cause racine), finding cache Redis, bruit de journal du repli.
