@@ -76,10 +76,10 @@ atteint (aucun `53300`) : ce n'est pas un plafond de connexions, c'est un plafon
 
 ## Definition of Done
 
-- [ ] `DevOps/Dev/PostgreSQL/docker-compose.yml` : `limits.memory` ≥ 24G, `effective_cache_size`
+- [x] `DevOps/Dev/PostgreSQL/docker-compose.yml` : `limits.memory` ≥ 24G, `effective_cache_size`
       cohérent (≥ 16GB), `shared_buffers` ≤ 25 % de la limite, `max_connections` inchangé ;
       commentaire daté citant cette US et la mesure d'origine
-- [ ] Contrôle post-recréation consigné : `show shared_buffers`, `show effective_cache_size`,
+- [x] Contrôle post-recréation consigné : `show shared_buffers`, `show effective_cache_size`,
       `docker inspect --format '{{.HostConfig.Memory}}'`
 - [ ] Deux tirs journey 1000 iso (12 Go de référence = tir task-292 `fix2` ; jambe A ≥ 24 Go), même
       SHA de code, mêmes bases non purgées, rapports dans `Docs/audits/`
@@ -145,8 +145,8 @@ atteint (aucun `53300`) : ce n'est pas un plafond de connexions, c'est un plafon
 
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
-| /start | skipped | 20 s | — | — | — | Repos=devops, entièrement hors automation forge (acte humain au banc) |
-| **Total cycle** | | **20 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /start | skipped | 23 s | — | — | — | devops only — no branch, manual bench act |
+| **Total cycle** | | **23 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
 
 ## Branches
 > **Mode** : task `devops` uniquement — repo **hors automation** (CLAUDE.md « Excluded repos »). Aucune branche créée, `/develop` n'écrit rien : l'implémentation est un **acte humain au banc** (édition de `DevOps/Dev/PostgreSQL/docker-compose.yml` + recréation du conteneur), puis mesure A/B par le skill `loadtest-skill`. `/start` du 2026-09-11, après merge de task-295 (`5855604`, préalable déclaré).
@@ -154,3 +154,21 @@ atteint (aucun `53300`) : ce n'est pas un plafond de connexions, c'est un plafon
 
 ### Jambe de référence « 12 Go » — proposition
 Le tir post-lot `journey-1000-postlot-292-294-20260911` (`Docs/audits/api-mail-loadtest-journey-1000-postlot-292-294-20260911.md`, develop `d04f2ca`, 12 Go, ROUGE) est plus proche du code de la jambe 24 Go que le `fix2` du 09/09 désigné par la DOD : task-295 (mergée depuis) ne touche que le harnais, le système sous test est identique. Écarts à consigner : RTT 6 ms (latence injectée 95 → 101 ms simulés), Postgres redémarré le matin du tir. Mesures de référence relevées : backends créés/60 s 344 → 0 à 10h50, `sv_login` max 467, `memory.usage` 11,6-11,7 / 12 Go, `failcnt` 159 M, 110 693 refus `08P01`, erreurs k6 11,98 %.
+
+## Jambe A — recréation du conteneur (2026-09-11, ~13h40)
+
+Édition de `DevOps/Dev/PostgreSQL/docker-compose.yml` (repo `devops`, **non commitée** — branche locale `feature/setup_k8s`, git à la main de l'humain) :
+`limits.memory` 12G → **24G**, `effective_cache_size` 8GB → **16GB**, `shared_buffers` 4GB et `max_connections` 2500 inchangés, commentaire daté citant cette US et les mesures des 09/09 et 11/09.
+`docker compose config` validé, puis `docker compose up -d --force-recreate`.
+
+| Contrôle | Attendu | Relevé |
+|---|---|---|
+| `show shared_buffers` | 4GB | **4GB** |
+| `show effective_cache_size` | 16GB | **16GB** |
+| `show max_connections` | 2500 | **2500** |
+| `docker inspect … HostConfig.Memory` | 25769803776 | **25769803776** |
+| `memory.limit_in_bytes` (cgroup) | 25769803776 | **25769803776** |
+| `memory.usage_in_bytes` / `failcnt` au démarrage | — | 297 Mo / **0** |
+| Bases `u_9%` | 1000 | **1000** (volume `pgdata` conservé, bases hydratées gardées) |
+
+Prêt pour la jambe A : journey 1000 iso (bases gardées, journal actif, `develop` = `5855604` avec task-295), référence 12 Go = tir post-lot du 2026-09-11.
