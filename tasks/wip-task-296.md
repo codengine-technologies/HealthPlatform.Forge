@@ -172,3 +172,12 @@ Le tir post-lot `journey-1000-postlot-292-294-20260911` (`Docs/audits/api-mail-l
 | Bases `u_9%` | 1000 | **1000** (volume `pgdata` conservé, bases hydratées gardées) |
 
 Prêt pour la jambe A : journey 1000 iso (bases gardées, journal actif, `develop` = `5855604` avec task-295), référence 12 Go = tir post-lot du 2026-09-11.
+
+## Jambe A — tir lancé (2026-09-11 14h28, `journey-1000-task296-legA-24G-20260911`)
+
+- **Système sous test** : `d04f2ca` (= SHA du tir de référence 12 Go du matin) via un worktree détaché `Api/Mail-ref` — **pas** le tip de `develop` (`5855604`), parce que `cf685ac` (« Migration to Xunit.V3 + update package », 11h52) change ~40 paquets de production (Npgsql EF, EF Core, OpenTelemetry, Aspire, MessagePack 2→3, Dtos 458→467, Host.Sdk 12→13) : un second facteur, interdit par le point 5 de cette US. Le harnais (k6, `observe.ps1` avec task-295, `report.py`) tourne depuis `Api/Mail` sur `develop`.
+- **Un seul facteur** : Postgres 12G → 24G, `effective_cache_size` 16GB. Bases gardées (1000, 57 Go), journal actif, RTT 5 ms → `LATENCY_MS=96`, même plan journey (`1000:12600s`, réserves 365/463/537, traitement 0,095, froid 0,19, corpus 0,3).
+- **Instrumentation task-295 active** (relevés à +5 min) : login 7 ms, backends créés/60 s 27, cgroup 43 % (7,0 Go), `majfault/s` 0, `sv_login` 0, `cl_waiting` 0.
+- **Incidents de pré-vol, corrigés avant le tir** (aucun effet sur la mesure, à consigner dans le skill) :
+  1. Le rattachement automatique de PgBouncer au réseau `postgresql_default` (task-257) n'a pas eu lieu après la recréation du conteneur Postgres (« DNS lookup failed: postgres-pgvector ») → `docker network connect` manuel. Le contrôle `getent ahosts postgres-pgvector` du pré-vol reste obligatoire.
+  2. Lancer l'AppHost depuis un autre chemin (worktree) crée une seconde famille de conteneurs persistants (`-ab5b4678`) qui partagent les **mêmes volumes nommés** que la première (`prometheus-data`, données Seq) : Prometheus/Seq neufs sortent en « lock DB directory » tant que ceux du matin tournent. Arrêt des `-b6152948`, démarrage des `-ab5b4678` ; historique Prometheus du matin conservé (même volume). Les ~12 premières minutes de séries k6/serveur côté Prometheus sont perdues (rampe), pas le résumé k6 ni Seq.
