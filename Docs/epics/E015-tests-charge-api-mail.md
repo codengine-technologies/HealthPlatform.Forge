@@ -2,10 +2,10 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.47
+> **Version** : 1.50
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
-> **Dernière mise à jour** : 2026-09-04
+> **Dernière mise à jour** : 2026-09-11
 
 ---
 
@@ -23,42 +23,7 @@
 - [8. Critères d'acceptation de l'EPIC](#8-critères-dacceptation-de-lepic)
 - [9. Hors périmètre](#9-hors-périmètre)
 - [10. Premiers résultats de mesure](#10-premiers-résultats-de-mesure)
-  - [Temps de réponse observés](#temps-de-réponse-observés)
-  - [Combien d'actions un praticien peut-il enchaîner ?](#combien-dactions-un-praticien-peut-il-enchaîner-)
-  - [La campagne à grande échelle : 200 praticiens (27 juillet 2026)](#la-campagne-à-grande-échelle--200-praticiens-27-juillet-2026)
-  - [Mise au point du 28 juillet 2026 : ce que la campagne mesurait vraiment](#mise-au-point-du-28-juillet-2026--ce-que-la-campagne-mesurait-vraiment)
-  - [Ce que le banc sait désormais dire (29 juillet 2026)](#ce-que-le-banc-sait-désormais-dire-29-juillet-2026)
-  - [La capacité est enfin chiffrée, et sa cause nommée (29-31 juillet 2026)](#la-capacité-est-enfin-chiffrée-et-sa-cause-nommée-29-31-juillet-2026)
-  - [Le banc simule enfin des médecins, et non des requêtes (3 août 2026)](#le-banc-simule-enfin-des-médecins-et-non-des-requêtes-3-août-2026)
-  - [La mesure ne se déforme plus elle-même au-delà de 500 praticiens (3 août 2026)](#la-mesure-ne-se-déforme-plus-elle-même-au-delà-de-500-praticiens-3-août-2026)
-  - [L'étape « relire un message » ne mesurait pas ce qu'elle annonçait (4 août 2026)](#létape--relire-un-message--ne-mesurait-pas-ce-quelle-annonçait-4-août-2026)
-  - [Trois mesures à reprendre](#trois-mesures-à-reprendre)
-  - [Ce que le praticien ne verra plus : une base vide à la place de son dossier (4-5 août 2026)](#ce-que-le-praticien-ne-verra-plus--une-base-vide-à-la-place-de-son-dossier-4-5-août-2026)
-  - [Ouvrir un dossier patient ne coûte plus la taille du dossier (5 août 2026)](#ouvrir-un-dossier-patient-ne-coûte-plus-la-taille-du-dossier-5-août-2026)
-  - [Le harnais de test cesse de jeter le signal le moins cher du dépôt (6 août 2026)](#le-harnais-de-test-cesse-de-jeter-le-signal-le-moins-cher-du-dépôt-6-août-2026)
-  - [Analyser un message demande un aller-retour de moins au serveur de messagerie (10 août 2026)](#analyser-un-message-demande-un-aller-retour-de-moins-au-serveur-de-messagerie-10-août-2026)
-  - [On saura enfin pourquoi télécharger une pièce jointe s'effondre à 500 praticiens (9 août 2026)](#on-saura-enfin-pourquoi-télécharger-une-pièce-jointe-seffondre-à-500-praticiens-9-août-2026)
-  - [Une sonde de surveillance faussait la mesure qui sert à dimensionner la base (9 août 2026)](#une-sonde-de-surveillance-faussait-la-mesure-qui-sert-à-dimensionner-la-base-9-août-2026)
-  - [Les erreurs que comptait le banc portent enfin un nom (9 août 2026)](#les-erreurs-que-comptait-le-banc-portent-enfin-un-nom-9-août-2026)
-  - [Une fiche de correspondant ne se met plus à jour « à moitié » (9 août 2026)](#une-fiche-de-correspondant-ne-se-met-plus-à-jour--à-moitié--9-août-2026)
-  - [Ouvrir un dossier patient ne coûtera plus le nombre de documents qu'il contient (9 août 2026)](#ouvrir-un-dossier-patient-ne-coûtera-plus-le-nombre-de-documents-quil-contient-9-août-2026)
-  - [On sait enfin poser la question « pourquoi analyser un message coûte-t-il trois secondes ? » (9 août 2026)](#on-sait-enfin-poser-la-question--pourquoi-analyser-un-message-coûte-t-il-trois-secondes---9-août-2026)
-  - [Un rapport de test ne peut plus dire « tout va bien » sur une mesure qui n'a pas eu lieu (9 août 2026)](#un-rapport-de-test-ne-peut-plus-dire--tout-va-bien--sur-une-mesure-qui-na-pas-eu-lieu-9-août-2026)
-  - [Le banc nous faisait croire que l'application était plus lente qu'elle ne l'est (9 août 2026)](#le-banc-nous-faisait-croire-que-lapplication-était-plus-lente-quelle-ne-lest-9-août-2026)
-  - [Traiter un message reçu coûte 2,7 secondes, et 97 % de ce temps est le téléchargement (9-10 août 2026)](#traiter-un-message-reçu-coûte-27-secondes-et-97--de-ce-temps-est-le-téléchargement-9-10-août-2026)
-  - [Ouvrir sa boîte ne coûte plus la taille de sa boîte (9 août 2026)](#ouvrir-sa-boîte-ne-coûte-plus-la-taille-de-sa-boîte-9-août-2026)
-  - [Le banc a appris à refuser de conclure (9-10 août 2026)](#le-banc-a-appris-à-refuser-de-conclure-9-10-août-2026)
-  - [Le premier poste de coût du parcours n'est plus une boîte noire (8 août 2026)](#le-premier-poste-de-coût-du-parcours-nest-plus-une-boîte-noire-8-août-2026)
-  - [La question qui restait ouverte est tranchée : ce n'est pas la base de données (8 août 2026)](#la-question-qui-restait-ouverte-est-tranchée--ce-nest-pas-la-base-de-données-8-août-2026)
-  - [Pourquoi l'envoi n'a pas accéléré : on mesurait la mauvaise chose, et on entretenait la mauvaise horloge (8 août 2026)](#pourquoi-lenvoi-na-pas-accéléré--on-mesurait-la-mauvaise-chose-et-on-entretenait-la-mauvaise-horloge-8-août-2026)
-  - [L'envoi ne repaie plus le prix d'une connexion neuve à chaque message (7 août 2026)](#lenvoi-ne-repaie-plus-le-prix-dune-connexion-neuve-à-chaque-message-7-août-2026)
-  - [Consulter sa boîte pendant qu'un traitement tourne ne fait plus la queue message par message (7 août 2026)](#consulter-sa-boîte-pendant-quun-traitement-tourne-ne-fait-plus-la-queue-message-par-message-7-août-2026)
-  - [Les tâches d'arrière-plan sont enfin éprouvées comme elles s'exécutent réellement (6 août 2026, soir)](#les-tâches-darrière-plan-sont-enfin-éprouvées-comme-elles-sexécutent-réellement-6-août-2026-soir)
-  - [La pièce qui permettait au piège de se reformer a été retirée (6 août 2026)](#la-pièce-qui-permettait-au-piège-de-se-reformer-a-été-retirée-6-août-2026)
-  - [Le banc annonçait une attente de soixante secondes qui n'a jamais existé (23-25 août 2026)](#le-banc-annonçait-une-attente-de-soixante-secondes-qui-na-jamais-existé-23-25-août-2026)
-  - [Chaque widget du tableau de bord a son interrupteur (27 août 2026)](#chaque-widget-du-tableau-de-bord-a-son-interrupteur-27-août-2026)
-  - [Chercher un dossier ne redemande plus deux fois la même chose au serveur (28 août 2026)](#chercher-un-dossier-ne-redemande-plus-deux-fois-la-même-chose-au-serveur-28-août-2026)
-- [État de couverture (2026-08-29)](#état-de-couverture-2026-08-29)
+- [État de couverture (2026-09-11)](#état-de-couverture-2026-09-11)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -1476,10 +1441,122 @@ le compare, sur un dossier imbriqué où la moindre différence se verrait. La
 réduction, elle, n'est pas déduite d'un temps : elle est **comptée**, échange par
 échange, par l'instrument même qui avait révélé le doublon. *(task-270)*
 
-## État de couverture (2026-08-29)
+### Quand la base est saturée, elle fait patienter au lieu de renvoyer une erreur (9-11 septembre 2026)
+
+À mille médecins simultanés, la messagerie renvoyait des erreurs. Pas des
+lenteurs : des **échecs**, servis en une dizaine de millisecondes. L'aiguilleur
+qui répartit les connexions vers la base de données refusait d'en ouvrir de
+nouvelles — 646 refus lors d'une première mesure, près de seize mille lors d'une
+seconde. Le médecin, lui, voyait une opération échouer sans raison apparente.
+
+Un refus est plus trompeur qu'une lenteur, et c'est ce qui rendait le sujet
+urgent. Une demande refusée n'est jamais servie, donc elle **ne compte pas** dans
+les temps de réponse mesurés : le banc publiait des chiffres flatteurs *parce
+que* le système était en panne. Une campagne antérieure avait ainsi laissé passer
+plus de quatre-vingt mille refus sans que le rapport en dise un mot.
+
+Deux corrections ont été apportées. L'aiguilleur du banc garde désormais ses
+connexions ouvertes dix fois plus longtemps, au lieu de les refermer toutes les
+minutes et de les rouvrir aussitôt — sur mille dossiers de praticiens, cette
+réouverture permanente était devenue le travail principal du système. Et lorsque
+la base est réellement indisponible, la messagerie ne laisse plus remonter une
+erreur technique brute : elle répond « service momentanément indisponible », un
+message propre, sans le moindre détail interne exposé au client. La vérification
+qu'une demande refusée n'est **pas rejouée en silence** ne repose pas sur une
+lecture du paramétrage : elle est démontrée par un test.
+
+Enfin, le banc lui-même a appris à ne plus fermer les yeux : tout refus, même un
+seul, classe désormais un tir en échec. *(task-294)*
+
+### On saura enfin pourquoi la base refuse, au lieu de le deviner (11 septembre 2026)
+
+La correction précédente reposait sur un diagnostic solide — mais **relevé à la
+main, pendant le tir**. Quelqu'un ouvrait une console pendant que la charge
+tournait, chronométrait l'ouverture d'une connexion à la base (dix à seize
+secondes, contre six millisecondes sur un système sain), lisait la mémoire du
+serveur, notait les chiffres. Le verdict d'une campagne était donc une
+**reconstitution** assemblée après coup, jamais une lecture sur une seule et même
+courbe de temps.
+
+Le banc mesure désormais lui-même ce que coûte l'ouverture d'une connexion à la
+base, et à quel rythme le système en ouvre. Cette dernière grandeur est la plus
+importante, et elle était absente : ce qui provoque la panne n'est pas le nombre
+de demandes par seconde, c'est le **nombre de connexions ouvertes par seconde**.
+Deux mesures très différentes, dont une seule était suivie.
+
+Trois indicateurs accompagnent ce chiffre. Le premier dit si les connexions
+inactives survivent ou si elles sont toutes recyclées en permanence — c'est la
+preuve directe du gaspillage corrigé par la livraison précédente. Le deuxième
+sépare les connexions venues de l'aiguilleur de celles ouvertes directement par
+d'autres traitements. Le troisième suit la mémoire du serveur de base, qui est
+l'explication de fond : quand elle sature, ouvrir une connexion oblige le serveur
+à relire ses données sur le disque, et six millisecondes deviennent quinze
+secondes.
+
+Le rapport de tir en tire une conclusion écrite noir sur blanc, au lieu de
+laisser conclure le lecteur. Si des refus surviennent **et** que l'ouverture d'une
+connexion dépasse une seconde, il désigne cette lenteur comme cause probable. Si
+des refus surviennent alors que l'ouverture est saine, il le dit tout aussi
+clairement — **la cause est ailleurs**, et il oriente la recherche vers d'autres
+pistes. Et si la mesure n'a pas été prise, il refuse de conclure plutôt que de
+supposer. Une ouverture lente sans aucun refus reste, elle, un simple
+avertissement : le système tient encore, et le banc ne crie pas au loup.
+
+Ce principe de prudence va jusqu'au bout : sur une machine où la mémoire du
+serveur ne peut pas être lue, le rapport n'affiche **aucune ligne** plutôt qu'un
+zéro — parce qu'un zéro se lirait « tout va bien », alors qu'il signifie « on n'a
+pas regardé ». C'est la même exigence qui gouverne ce banc depuis ses débuts, et
+elle a d'ailleurs payé pendant cette livraison : deux défauts ont été trouvés
+avant la mise en service, dont un chronomètre qui aurait publié une colonne de
+zéros parfaitement crédibles. *(task-295)*
+
+### Le cache de la messagerie ne se met plus lui-même à genoux (11 septembre 2026)
+
+Un cache existe pour rendre les choses plus rapides. Celui de la messagerie
+faisait par moments l'inverse, et la raison tient en une phrase : il servait les
+demandes **une par une**.
+
+Tant qu'on n'y range que de petites choses, cela ne se voit pas. Mais la
+messagerie y rangeait le **contenu entier** des messages ouverts — texte et mise
+en forme comprise, jusqu'à un million et demi de caractères pour un seul
+compte-rendu. Ranger un message de cette taille occupe le cache une quinzaine de
+millisecondes. Pendant ce temps, toutes les autres demandes attendent : l'identité
+du praticien, ses préférences d'affichage, les résumés de sa boîte. Quelques
+messages volumineux par seconde suffisaient à faire dépasser à ces petites
+demandes le délai au bout duquel la messagerie renonce à interroger le cache.
+
+Le comptage est net : sur une mesure à mille médecins, **6 568 abandons** de ce
+type. Et cette mesure a été prise le journal de traçabilité **éteint**, donc
+sans aucune autre sollicitation du cache — ce qui a d'ailleurs **innocenté** ce
+journal, un temps soupçonné d'être le coupable. Le cache n'était pas plein. Il
+était occupé.
+
+Désormais, **ce qui est trop gros n'y entre plus**. Au-delà d'une taille fixée,
+le message n'est pas mis en cache : il sera relu depuis la base de données, ce
+qui est déjà son chemin habituel. Le médecin ne voit aucune différence — le
+message s'affiche entier, mise en forme et documents rattachés compris, c'est
+vérifié par un test qui compare les deux lectures caractère par caractère. Ce qui
+change est pour tous les autres : les petites demandes ne font plus la queue
+derrière un pavé.
+
+La taille retenue n'a pas été choisie pour faire un compte rond. Le relevé du
+serveur montre que la plus petite écriture bloquante observée pesait 160 kilo-octets
+pour onze millisecondes. En proportion, la limite fixée coûte environ quatre
+millisecondes — sous le seuil que la mesure de vérification exigera. La limite
+haute qu'on nous autorisait serait, elle, restée vers neuf millisecondes.
+
+Enfin, la messagerie sait maintenant **dire ce qu'elle range** : la taille de
+chaque contenu proposé au cache est publiée, ainsi que le nombre de refus. C'est
+ce qui manquait pour diagnostiquer la panne autrement qu'en lisant le journal du
+serveur après coup. *(task-297)*
+
+## État de couverture (2026-09-11)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
+| Le cache de la messagerie ne se met plus lui-même à genoux | 🟢 Livré — mesure de confirmation à conduire au banc | Le cache sert les demandes **une par une**. La messagerie y rangeait le contenu entier des messages ouverts — jusqu'à un million et demi de caractères — et ranger un tel message l'occupe une quinzaine de millisecondes, pendant lesquelles l'identité du praticien, ses préférences et les résumés de sa boîte attendent. **6 568 abandons** de ce type sur une mesure à mille médecins, prise **journal de traçabilité éteint** : ce journal, un temps soupçonné, en est donc **innocenté**. Le cache n'était pas plein, il était occupé. Désormais ce qui dépasse une taille fixée n'y entre plus : le message est relu depuis la base, son chemin habituel. **Le médecin ne voit aucune différence** — affichage entier, mise en forme et documents rattachés compris, vérifié par un test qui compare les deux lectures. La taille n'a pas été choisie ronde : la plus petite écriture bloquante observée pesait 160 kilo-octets pour onze millisecondes, la limite retenue en coûte environ quatre, sous le seuil qu'exigera la mesure de vérification. La messagerie publie enfin la taille de ce qu'elle range et le nombre de refus — ce qui manquait pour diagnostiquer autrement qu'en lisant le journal du serveur après coup | task-297 |
+| Une base saturée fait patienter au lieu de renvoyer une erreur | 🟢 Livré — mesure de confirmation à conduire au banc | À mille médecins, l'aiguilleur de connexions à la base **refusait** d'en ouvrir de nouvelles (646 refus à une première mesure, près de seize mille à une seconde) : le médecin voyait une opération échouer, servie en une dizaine de millisecondes. Un refus est plus trompeur qu'une lenteur — une demande refusée n'est jamais servie, donc elle **ne compte pas** dans les temps mesurés, et le banc publiait des chiffres flatteurs *parce que* le système était en panne (une campagne antérieure avait laissé passer plus de quatre-vingt mille refus sans un mot). Les connexions restent désormais ouvertes dix fois plus longtemps, au lieu d'être refermées chaque minute et rouvertes aussitôt — sur mille dossiers de praticiens, cette réouverture permanente était devenue le travail principal du système. Quand la base est réellement indisponible, la réponse est un « service momentanément indisponible » propre, **sans aucun détail interne exposé** ; et qu'une demande refusée ne soit **pas rejouée en silence** est démontré par un test, pas déduit du paramétrage. Le banc, lui, classe désormais en échec tout tir portant ne serait-ce qu'**un seul** refus | task-294 |
+| On saura pourquoi la base refuse, au lieu de le deviner | 🟢 Livré — tir de confirmation à conduire au banc | Le diagnostic de la ligne précédente était solide mais **relevé à la main pendant le tir** : quelqu'un chronométrait l'ouverture d'une connexion (dix à seize secondes, contre six millisecondes sur un système sain), lisait la mémoire du serveur, notait les chiffres. Un verdict de campagne était donc une **reconstitution après coup**, jamais une lecture sur une même courbe de temps. Le banc mesure maintenant lui-même ce que coûte l'ouverture d'une connexion et **à quel rythme le système en ouvre** — cette seconde grandeur étant la plus importante et la seule qui manquait : ce qui provoque la panne n'est pas le nombre de demandes par seconde, c'est le nombre de **connexions** ouvertes par seconde. Trois indicateurs l'accompagnent : la survie des connexions inactives (preuve directe du gaspillage corrigé par task-294), l'origine des connexions, et la mémoire du serveur de base — l'explication de fond, puisque sa saturation oblige le serveur à relire ses données sur disque. Le rapport **écrit sa conclusion** au lieu de laisser conclure : refus **et** ouverture lente → cette lenteur est la cause probable ; refus **et** ouverture saine → la cause est ailleurs, et il oriente la recherche ; mesure absente → il refuse de conclure. Une ouverture lente **sans** refus reste un simple avertissement : le système tient encore. Sur une machine où la mémoire ne peut pas être lue, **aucune ligne** n'est affichée plutôt qu'un zéro — un zéro se lirait « tout va bien » alors qu'il signifie « on n'a pas regardé » | task-295 |
 | Chaque widget du tableau de bord a son interrupteur | 🟡 Livré, en attente d'intégration | Huit interrupteurs `dashboard_widget_*`, mêmes noms sur les trois applications, créés automatiquement (et allumés) au démarrage du banc — dans les environnements réels leur création reste un geste d'exploitation à partir de la liste livrée. Interrupteur coupé : le widget n'est pas construit du tout, donc ses appels serveur ne partent pas — prouvé par test sur chaque front (sur le web nouvelle génération, un composant témoin compte les constructions ; sur mobile et web historique, le sélecteur est absent du rendu). Service d'interrupteurs absent, lent ou en panne : tout reste visible, aucun message d'erreur — le comportement d'aujourd'hui. Lecture des interrupteurs une fois par session, cache de cinq minutes : le geste instrumenté n'est pas alourdi. L'indicateur d'acquittements de biologie porte une obligation métier : son interrupteur est réservé aux incidents. Volet web historique livré en code seul (intégration manuelle) ; l'ensemble forme une seule US à tester assemblée | task-274 |
 | Chercher un dossier ne redemande plus deux fois la même chose au serveur | 🟢 Livré — réduction prouvée par le compteur ; confirmation au banc due | L'affichage d'un dossier non encore en mémoire coûtait **sept** échanges avec le serveur de messagerie, dont **deux étaient la répétition exacte** des deux premiers — la messagerie demandait l'état du dossier, puis recommençait par la même demande avant de chercher la liste. Il en coûte **cinq**. Le décompte des messages du jour, lui, était jeté au bout de dix secondes et entièrement recalculé alors qu'il restait bon cinq minutes : il est désormais **revérifié** contre un état fraîchement mesuré — **deux** échanges au lieu de cinq quand le dossier n'a pas bougé. Le compteur de **non lus** est volontairement exclu de ce raccourci (lire un message ne déplace aucun des deux repères qui servent à la vérification). Ce que le médecin voit est inchangé : compteurs toujours issus d'une mesure de l'appel en cours, réponse identique champ pour champ entre chemin court et chemin long, vérifié par test | task-270 |
 | Le gain de l'écran d'accueil est vérifié sur le geste complet du praticien | 🟢 Livré — vérification de bout en bout, la cause du coût est documentée | Deux apports distincts. **Le premier est un constat, et il valait la peine d'être écrit** : la cause du coût de l'arrivée sur le tableau de bord a été **établie par la mesure, phase par phase, avant tout remède** — la lecture du dossier attendait deux fois son tour d'accès à la boîte du praticien, avec entre les deux une fenêtre où l'analyse des comptes-rendus pouvait s'intercaler plusieurs secondes ; le stockage des dossiers, lui, était hors de cause. Ce constat a aussi **réconcilié deux lectures contradictoires** de mesures antérieures — « ouvrir un dossier est gratuit » et « c'est l'appel le plus coûteux » décrivaient le même geste selon que la mémoire courte du serveur était chaude ou froide. **Le second est le filet de vérification** : l'amélioration correspondante ayant été livrée par ailleurs (ligne précédente) et prouvée pièce par pièce, il restait à la vérifier **du point de vue du médecin**. Deux arrivées successives sur le tableau de bord sont désormais rejouées de bout en bout : la seconde ne redemande **rien** au serveur, et un message reçu entre les deux passages reste visible dans les dix secondes. Le filet est lui-même éprouvé — on l'a mis volontairement en défaut pour vérifier qu'il sait échouer | task-273 |
@@ -2138,6 +2215,11 @@ Cinq réserves à porter au bilan, sans quoi il serait trompeur :
 
 
 - v1.71 — **Un seul interrupteur manquant éteignait toute l'aide à la lecture des courriers médicaux.** Les huit interrupteurs des widgets du tableau de bord n'avaient pas été créés dans l'environnement de recette. Conséquence inattendue : l'application les demandait, ne les trouvait pas, et **abandonnait la lecture de tous les autres interrupteurs** — y compris celui qui autorise l'analyse assistée des courriers. Résultat pour le praticien : plus aucun résumé, plus aucune indexation, sans le moindre message d'erreur. Il ne voyait pas une panne, il voyait une fonctionnalité absente. Désormais **un interrupteur introuvable ne dégrade que lui-même** : tous les autres gardent la valeur réellement configurée. Le journal **nomme** l'interrupteur manquant dès le démarrage de l'application, là où il ne disait rien d'exploitable, et il ne prétend plus « je sers le dernier état connu » quand aucun état n'a jamais été chargé — c'est ce libellé trompeur qui avait fait perdre des heures. **À faire séparément** : créer les huit interrupteurs en recette ; cette livraison empêche la récidive, elle ne les crée pas. **Et une conséquence reste ouverte** : les courriers reçus pendant la panne n'ont pas été analysés et ne le seront pas rétroactivement — ni indexation, ni mots-clés, ni extraction des correspondants, qui sert au rattachement au dossier patient. Le résumé, lui, se recalcule à la demande. Le rattrapage fait l'objet d'une demande distincte. (task-289)
+
+- v1.72 — **Quand la base est saturée, elle fait patienter au lieu de renvoyer une erreur.** À mille médecins simultanés, l'aiguilleur de connexions à la base refusait d'en ouvrir de nouvelles : le praticien voyait des opérations échouer sans raison apparente. Plus insidieux, ces échecs **flattaient les mesures** — une demande refusée n'étant jamais servie, elle ne comptait pas dans les temps de réponse, si bien que le banc publiait de bons chiffres sur un système en panne. Les connexions restent désormais ouvertes bien plus longtemps au lieu d'être recyclées en permanence, et une indisponibilité réelle donne un message propre « service momentanément indisponible », sans le moindre détail technique exposé. Le banc, lui, ne ferme plus les yeux : un seul refus suffit à déclarer une campagne en échec. (task-294)
+- v1.73 — **On saura enfin pourquoi la base refuse, au lieu de le deviner.** Le diagnostic précédent reposait sur des mesures prises à la main pendant la campagne : un verdict était une reconstitution après coup, jamais une lecture continue. Le banc mesure désormais lui-même ce que coûte l'ouverture d'une connexion à la base et, surtout, **à quel rythme le système en ouvre** — car ce qui provoque la panne n'est pas le nombre de demandes par seconde mais le nombre de connexions ouvertes par seconde, une grandeur qui n'était pas suivie. Le rapport de campagne écrit sa conclusion noir sur blanc : il désigne l'ouverture lente comme cause probable quand elle l'est, dit clairement que **la cause est ailleurs** quand l'ouverture est saine, et refuse de conclure quand la mesure manque. Même prudence sur les machines où la mémoire du serveur ne peut pas être lue : aucune ligne n'est affichée plutôt qu'un zéro, parce qu'un zéro se lirait « tout va bien » là où il signifie « on n'a pas regardé ». (task-295)
+
+- v1.74 — **Le cache de la messagerie ne se met plus lui-même à genoux.** Un cache sert les demandes une par une : en y rangeant le contenu entier des messages ouverts, la messagerie l'occupait une quinzaine de millisecondes à chaque fois, pendant lesquelles l'identité du praticien, ses préférences et les résumés de sa boîte attendaient — 6 568 abandons sur une seule mesure à mille médecins. Ce qui dépasse une taille fixée n'entre plus en cache et sera relu depuis la base, son chemin habituel. Le médecin ne voit aucune différence : le message s'affiche entier, mise en forme et documents rattachés compris. La mesure avait par ailleurs **innocenté** le journal de traçabilité, un temps soupçonné d'être la cause. (task-297)
 
 ---
 

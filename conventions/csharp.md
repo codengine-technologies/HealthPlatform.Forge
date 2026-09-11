@@ -282,3 +282,79 @@ capturé plutôt que le recopier dans un champ. Et un repli `?? new X()` sur un
 paramètre optionnel est le signe qu'il devrait être **obligatoire** : rendre le
 paramètre requis et passer l'instance explicitement dans les tests (c'est ce qui
 porte l'invariant « une instance par processus » au compilateur).
+
+---
+
+## CA1869 — une seule instance de `JsonSerializerOptions`, jamais une par appel
+
+**Occurrences : 1** (task-295 — corrigée sur du new code de task-292 : deux
+appels `JsonSerializer.Serialize` / `Deserialize` dans un test de charge utile)
+
+`JsonSerializerOptions` construit sa **cache de métadonnées de contrat** à la
+première sérialisation d'un type. Une instance neuve à chaque appel la
+reconstruit intégralement — le coût est invisible en test unitaire, réel sur un
+chemin chaud. La règle se déclenche sur `new JsonSerializerOptions { … }` passé
+directement en argument.
+
+```csharp
+// ❌ AVANT — deux instances, deux caches, et deux endroits où la convention peut diverger
+var json = JsonSerializer.Serialize(trace, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+var back = JsonSerializer.Deserialize<MssAuditTrace>(json, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })!;
+
+// ✅ APRÈS — une instance partagée, et la symétrie garantie par construction
+private static readonly JsonSerializerOptions CamelCase =
+    new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+
+var json = JsonSerializer.Serialize(trace, CamelCase);
+var back = JsonSerializer.Deserialize<MssAuditTrace>(json, CamelCase)!;
+```
+
+**Consigne** : ne jamais écrire `new JsonSerializerOptions { … }` dans un
+argument. Déclarer un `private static readonly JsonSerializerOptions` nommé par
+sa convention (`CamelCase`, `Indented`…) et le réutiliser. Vaut **aussi dans les
+tests** — l'analyseur ne fait pas de remise, et un aller-retour
+sérialise/désérialise qui partage l'instance ne peut pas diverger sur la
+convention de nommage.
+
+---
+
+## S3604 — un constructeur primaire n'accepte pas d'initialiseur de champ
+
+**Occurrences : 1** (task-297)
+
+Le motif se forme naturellement quand on veut **capturer une fois** une valeur
+de configuration dans une classe à constructeur primaire : on déclare un champ
+`readonly` initialisé depuis un paramètre du constructeur primaire. Sonar lit
+alors « initialiseur de membre redondant, tous les constructeurs affectent déjà
+ce membre » et ouvre un finding sur du code frais.
+
+```csharp
+// ❌ AVANT — l'initialiseur de champ dans une classe à constructeur primaire
+public sealed class SizeBoundedCacheService(
+    IResilientCacheService inner,
+    IOptions<CacheOptions> options,
+    ILogger<SizeBoundedCacheService> logger) : IResilientCacheService
+{
+    private readonly int _maxEntryBytes = options.Value.MaxEntryBytes;   // S3604
+
+// ✅ APRÈS — constructeur explicite, et l'intention devient lisible
+public sealed class SizeBoundedCacheService : IResilientCacheService
+{
+    private readonly IResilientCacheService _inner;
+    private readonly int _maxEntryBytes;
+
+    public SizeBoundedCacheService(
+        IResilientCacheService inner, IOptions<CacheOptions> options, ILogger<…> logger)
+    {
+        _inner = inner;
+        _maxEntryBytes = options.Value.MaxEntryBytes;
+    }
+```
+
+**Consigne** : le constructeur primaire est parfait tant qu'on **consomme
+directement** ses paramètres dans les corps de méthode (`inner.GetAsync(…)`).
+Dès qu'il faut **dériver et retenir** une valeur — lire un `IOptions`, calculer
+une borne, résoudre un chemin —, écrire un **constructeur explicite**. Ne pas
+« corriger » en relisant `options.Value` à chaque appel : sur un chemin chaud
+c'est payer à chaque passage une valeur qui ne bouge pas, et c'est justement ce
+que la capture évitait.
