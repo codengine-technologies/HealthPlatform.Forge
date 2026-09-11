@@ -216,3 +216,32 @@ la vérification par base du rapport a dû être rejouée à la main : 1000 base
 - `DevOps/Dev/PostgreSQL/docker-compose.yml` (non commité côté `devops`, à la main de l'humain) : `limits.memory` 24G → **48G**, `shared_buffers` 4GB → **12GB** (25 %), `effective_cache_size` 16GB → **36GB**, `max_connections` 2500 inchangé. Recréé à 18h20 ; contrôle : `show shared_buffers` 12GB, `show effective_cache_size` 36GB, `HostConfig.Memory` 51539607552, cgroup 49 152 Mo, `failcnt` 0, 1000 bases intactes.
 - Budget : hôte **191 Go** de RAM (129 libres), VM Docker Desktop plafonnée à **62,8 GiB** ; 48G + ~10 Go des autres conteneurs (sqlserver 2,6, sonarqube 2,7, seq 1,2, keycloak 1,0…) ≈ 58 Go : tient, sans marge pour monter plus haut sans relever la VM.
 - **Tir lancé 18h31** : `journey-1000-task296-legB-48G-20260911`, SUT `d04f2ca` (worktree `Api/Mail-ref` recréé), harnais `develop`, bases gardées, journal actif, RTT 5,2 ms → `LATENCY_MS=96`, même plan. Pré-vol entièrement vert (attache PgBouncer automatique cette fois, Prometheus prêt, 200 au premier poll, remote-write k6 sans erreur). Fin prévue ~22h02.
+
+## Jambe B — résultat (2026-09-11, 18h31 → 22h02) — la mémoire n'est plus le facteur limitant ; plafond suivant = `max_connections`
+
+Rapport : `Docs/audits/api-mail-loadtest-journey-1000-task296-legB-48G-20260911.md`.
+
+| Critère de sortie (DOD) | Cible | 12 Go | 24 Go | **48 Go** |
+|---|---|---|---|---|
+| Login p95 en régime | < 1 s | 10-16 s | 1,0 s (160-300 s en régime) | **80 ms** (max 0,83 s) ✅ |
+| cgroup | < 85 % | 100 % | 100 % dès +52 min | **80-92 %, cache stabilisé à 34 Go** ✅ (à la marge) |
+| `08P01`, `server_login_retry` inchangé | 0 | 110 693 | 2 099 | **175** ❌ — cause : `max_connections` atteint à +2 h 46, plus la mémoire |
+| `failcnt` | ÷ 10 | 159 M | 50 M | compteur perdu (redémarrage VM) ; fautes majeures max 199/s contre 1 120 |
+| Erreurs k6 tir / régime | — | 11,98 % / 28 % | 0,37 % / 1,5 % | **0,024 % / 0,024 %** |
+| p95 k6 global | — | 11,0 s | 10,0 s | **4,8 s** |
+| CPU Postgres régime | — | 11-15 cœurs | 12-13 | **2,2-2,7** |
+| SLO (11 étapes) | — | 8 ❌ | 11 ❌ | **7 ❌ / 4 ✅** |
+| Journal d'audit | 0 perte | 0 perte | 0 perte | 0 `LOST` ; 13 487 traces encore dans le spill (drain interrompu par l'incident VM, rejouées au prochain démarrage) |
+
+**Besoin réel mesuré** : cache de pages stabilisé à ~34 Go pour 1000 bases hydratées (57 Go) + `shared_buffers` 12 Go + RSS ~6 Go
+≈ **50 Go** ; 48 Go tiennent, 24 non. Le plafond suivant : backends ∝ temps (1000 pools × `max_db_connections=3`, idle 600 s) →
+2 504 = `max_connections` à 21h17, puis « too many clients » ≈1 700/min sur la route directe (118 886 pendant le tir), `cl_waiting`
+28 % des relevés, `maxwait` 12 s. C'est le sujet de la prochaine US (un facteur) : `server_idle_timeout` 600 → 60-120 ou
+`max_db_connections` 3 → 2, puis plafond de connexions du rejeu d'audit.
+
+**Incident post-tir** : le rejeu du spill + Postgres à 48 Go ont saturé la VM Docker Desktop (62,8 GiB) → daemon figé 45 min,
+`wsl --shutdown` à 22h50, volumes intacts (1000 bases, 124 731 mails vérifiés), `sonarqube` non redémarré. À prévoir avant tout
+autre tir : relever la mémoire de la VM ou arrêter les conteneurs étrangers au banc.
+
+- [x] Deux tirs journey 1000 iso (référence 12 Go = tir post-lot du 2026-09-11 `d04f2ca` ; jambes A 24 Go et B 48 Go, même SHA, mêmes bases non purgées), rapports dans `Docs/audits/`
+- [ ] Reste : `DevOps/DIMENSIONNEMENT-POSTGRESQL-API-MAIL.md` + rappel du skill (formule complétée par le jeu de travail ~34 Go / 1000 bases) — repo `devops`, à la main de l'humain ; compose `48G` à commiter côté `devops`.
