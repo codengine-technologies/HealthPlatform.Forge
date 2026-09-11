@@ -293,3 +293,11 @@ Ce que le rapport doit rendre lisible, à N médecins :
 - ✅ Aucune donnée de santé dans les nouveaux échantillons, journaux et rapports. Les seuls identifiants publiés sont des noms de bases `u_9…` (RPPS **synthétiques** du banc), explicitement acceptés par la DOD.
 - ✅ Aucun secret ajouté : le `PGPASSWORD=postgres` est l'identifiant de banc déjà utilisé par les sondes existantes du même fichier.
 - ✅ Le nom de base passé à `psql` vient de `pg_database`, pas d'une entrée externe, et transite comme argument positionnel (`$1`), pas par interpolation dans la commande.
+
+## Merged
+- **Date** : 2026-09-11
+- `api-mail` : PR #228 squash-mergée → `58556045e9163f56f553ae4cba86d2ad3ed0cde7` — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/commit/58556045e9163f56f553ae4cba86d2ad3ed0cde7
+- `dtos-mss` : aucune PR (branche vide, 0 commit) — ref distante `feat/task-295-bench-postgres-login-probe` supprimée, clone local repassé sur `develop`
+- **CI develop api-mail** : ✓ success — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/34592853180
+- **Staging** : `forge/staging-task-295-297-20260911` **conservée** — task-296 (`todo`) et task-297 (`done`, PR #229 en attente) encore actives dans ce run
+- **Contexte** : mergée en préalable à task-296 (A/B mémoire Postgres) — même SHA de code sur les deux jambes, lecture avant/après sur les séries `login`, `backends/started_last_60s`, `failcnt`
