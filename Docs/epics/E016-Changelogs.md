@@ -134,6 +134,65 @@ retomberait dans la population `Server!=real`, donc resterait exécuté).
 
 ---
 
+### v1.1 — task-301 : un seul serveur de messagerie pour tout l'assembly
+
+**PR** : api-mail [#231](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/231) (`awaiting-human-merge`) — **contient les commits de task-300**, `develop` ne portant pas encore les traits `Server=real`
+**Branche** : `feat/task-301-harnais-serveur-assembly`, base `origin/develop` @ `5855604` + merge de `feat/task-300`
+**Commit** : `d502c3b9`
+
+#### Le livrable
+
+`MailServerFixture` devient un fixture d'assembly (`[assembly: AssemblyFixture(...)]`,
+xUnit v3 4.0.0 deja en place). Dovecot et GreenMail sont demarres **une fois** ;
+`ImapServicesFixture` et `UseCaseFixture` les recoivent par constructeur.
+Postgres et Redis **restent par collection** (isolation des bases praticien).
+
+| Grandeur | Avant | Apres |
+|---|---|---|
+| `DovecotFixture.StartAsync()` dans le code | 2 | **1** |
+| `GreenMailFixture.StartAsync()` | 2 | **1** |
+| Demarrages de conteneur longue duree / execution | 8 | **6** |
+| Population `Server=real` | 97 / 51 s | 97 / **49-50 s** |
+| Projet d'integration | 487 / ~90 s | **490** / 82-91 s |
+
+Le gain n'est pas la duree — les conteneurs demarraient deja de front — mais le
+**cout d'entree d'une nouvelle suite a serveur reel**, qui tombe a zero.
+
+Ajouts : table `VirtualUsers` (15 indices reunis et nommes),
+`VirtualUserAllocationTests` (3 tests de garde), contrat d'extension en tete de
+`MailServerFixture`.
+
+#### Le parallelisme : active, mesure, retire
+
+`parallelizeTestCollections: true` / `maxParallelThreads: 4` → **90 s -> 27 s
+(x3,3)** et **3 echecs**, tous d'extraction CDA, tous « collection vide » :
+`CdaParsingIntegrationTests.ParseCardiologyPrescriptionReturnsDocumentWithMetadata`,
+`...ParseImagingReportReturnsDocumentWithMetadata`,
+`CdaDocumentExtractionNonRegressionTests(folder: "CR-BIO_2021.01_Microbiologie_V2")`.
+
+**Cause** : `src/Application/Helpers/IheXdmScratch.cs:32` —
+`Root = Path.Combine(Path.GetTempPath(), "mss-ihe-xdm")`, repertoire **unique par
+machine**, et `Sweep()` (ligne 112) supprime **tous** les fichiers sans filtre
+d'age ni marqueur de proprietaire. Le balayage d'une collection efface les
+archives en vol de l'autre.
+
+**Non quarantine** : le defaut porte aussi en production (5 replicas partageant
+l'espace temporaire → suppression d'archives en vol au redemarrage de l'un →
+perte de contenu clinique silencieuse). Hypothese forte qu'il explique aussi
+l'echec CI #1 de task-300 (`folder: "CR Imagerie"`, meme symptome sur Linux).
+Analyse : `questions/task-301.md`.
+
+#### Validation
+
+Solution complete **4 373 tests, 0 echec** ; projet d'integration **3 executions
+consecutives vertes** (1 m 31 / 1 m 25 / 1 m 22).
+
+#### Sonar
+
+Skippe — aucun `src/**/*.cs` dans le diff.
+
+---
+
 ## Annexe A — Cartographie des briques applicatives
 
 | Brique | Chemin | Rôle dans l'EPIC |
@@ -176,7 +235,7 @@ retomberait dans la population `Server!=real`, donc resterait exécuté).
 | Task | Apport | RG fermées | Statut |
 |---|---|---|---|
 | **task-300** | Gate CI rétabli sur `develop` (deux étapes gatantes) ; `[Trait("Server","real")]` sur 16 suites ; registre de quarantaine ; 3 `*BenchSmokeTests` passés sous `IntegrationTestBase` | — | ✅ PR #230 ouverte |
-| **task-301** | Harnais serveur unique au niveau assembly (`AssemblyFixture`), table d'attribution des utilisateurs virtuels, parallélisme des collections | — | 📋 todo |
+| **task-301** | Harnais serveur unique au niveau assembly (`AssemblyFixture`), table `VirtualUsers` + test de garde, contrat d'extension. **Parallélisme mesuré (×3,3) puis retiré** : révèle un répertoire de travail IHE-XDM partagé par machine | — | ✅ PR #231 ouverte |
 | **task-302** | Conf Dovecot de test dédiée : capacité QUOTA, `Junk`/`Archive`, comptes distincts par praticien ; suite de cloisonnement inter-praticiens | — | 📋 todo |
 | **task-303** | `MailApiFactory` (pipeline `Program` réel) ; première vague de 13 endpoints bout-en-bout ; Kestrel réel pour le streaming ; `ProblemDetails` sur panne IMAP | — | 📋 todo |
 | **task-304** | Toxiproxy dans le harnais ; 5 familles de panne ; non-amplification des reconnexions ; intégrité de l'archive IHE-XDM sous débit dégradé | — | 📋 todo |
