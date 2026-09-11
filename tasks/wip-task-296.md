@@ -147,3 +147,10 @@ atteint (aucun `53300`) : ce n'est pas un plafond de connexions, c'est un plafon
 |---|---|---|---|---|---|---|
 | /start | skipped | 20 s | — | — | — | Repos=devops, entièrement hors automation forge (acte humain au banc) |
 | **Total cycle** | | **20 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+
+## Branches
+> **Mode** : task `devops` uniquement — repo **hors automation** (CLAUDE.md « Excluded repos »). Aucune branche créée, `/develop` n'écrit rien : l'implémentation est un **acte humain au banc** (édition de `DevOps/Dev/PostgreSQL/docker-compose.yml` + recréation du conteneur), puis mesure A/B par le skill `loadtest-skill`. `/start` du 2026-09-11, après merge de task-295 (`5855604`, préalable déclaré).
+- `devops` (manual) : managed manually by the human — `DevOps/Dev/PostgreSQL/docker-compose.yml`
+
+### Jambe de référence « 12 Go » — proposition
+Le tir post-lot `journey-1000-postlot-292-294-20260911` (`Docs/audits/api-mail-loadtest-journey-1000-postlot-292-294-20260911.md`, develop `d04f2ca`, 12 Go, ROUGE) est plus proche du code de la jambe 24 Go que le `fix2` du 09/09 désigné par la DOD : task-295 (mergée depuis) ne touche que le harnais, le système sous test est identique. Écarts à consigner : RTT 6 ms (latence injectée 95 → 101 ms simulés), Postgres redémarré le matin du tir. Mesures de référence relevées : backends créés/60 s 344 → 0 à 10h50, `sv_login` max 467, `memory.usage` 11,6-11,7 / 12 Go, `failcnt` 159 M, 110 693 refus `08P01`, erreurs k6 11,98 %.
