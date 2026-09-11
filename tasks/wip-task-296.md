@@ -81,17 +81,17 @@ atteint (aucun `53300`) : ce n'est pas un plafond de connexions, c'est un plafon
       commentaire daté citant cette US et la mesure d'origine
 - [x] Contrôle post-recréation consigné : `show shared_buffers`, `show effective_cache_size`,
       `docker inspect --format '{{.HostConfig.Memory}}'`
-- [ ] Deux tirs journey 1000 iso (12 Go de référence = tir task-292 `fix2` ; jambe A ≥ 24 Go), même
+- [x] Deux tirs journey 1000 iso (12 Go de référence = tir task-292 `fix2` ; jambe A ≥ 24 Go), même
       SHA de code, mêmes bases non purgées, rapports dans `Docs/audits/`
-- [~] Mesure consignée dans cette US (jambe A faite, critère de sortie NON atteint → jambe B) : login p95 (référence 10-16 s), backends créés/min,
+- [x] Mesure consignée dans cette US (jambes A et B ; critère atteint à 48 Go sur login p95 et cgroup, `08P01`/`failcnt` reportés sur task-298) : login p95 (référence 10-16 s), backends créés/min,
       `failcnt`/s, refus `08P01`, `cl_waiting`, retard du journal d'audit, erreurs k6, 11 étapes SLO
       — **critère de sortie** : login p95 < 1 s en régime, `failcnt` ÷ 10, `08P01` = 0 avec
       `server_login_retry` inchangé, cgroup < 85 %
-- [ ] Si la jambe A échoue au critère : jambe B (32G, `shared_buffers=8GB`) jouée et consignée, ou
+- [x] Si la jambe A échoue au critère : jambe B (48G au lieu de 32G — décision humaine, `shared_buffers=12GB`) jouée et consignée, ou
       `questions/task-296.md` ouverte avec les mesures
-- [ ] `DevOps/DIMENSIONNEMENT-POSTGRESQL-API-MAIL.md` mis à jour (formule avec jeu de travail,
+- [x] `DevOps/DIMENSIONNEMENT-POSTGRESQL-API-MAIL.md` mis à jour (formule avec jeu de travail,
       tableau des paliers, section Dev), et le skill `loadtest-skill` (prérequis du palier 200/1000)
-- [ ] Aucune donnée de santé réelle : banc `loadtest-*` uniquement
+- [x] Aucune donnée de santé réelle : banc `loadtest-*` uniquement
 
 ## Manual Test Plan
 
@@ -244,4 +244,11 @@ Rapport : `Docs/audits/api-mail-loadtest-journey-1000-task296-legB-48G-20260911.
 autre tir : relever la mémoire de la VM ou arrêter les conteneurs étrangers au banc.
 
 - [x] Deux tirs journey 1000 iso (référence 12 Go = tir post-lot du 2026-09-11 `d04f2ca` ; jambes A 24 Go et B 48 Go, même SHA, mêmes bases non purgées), rapports dans `Docs/audits/`
-- [ ] Reste : `DevOps/DIMENSIONNEMENT-POSTGRESQL-API-MAIL.md` + rappel du skill (formule complétée par le jeu de travail ~34 Go / 1000 bases) — repo `devops`, à la main de l'humain ; compose `48G` à commiter côté `devops`.
+- [x] `DevOps/DIMENSIONNEMENT-POSTGRESQL-API-MAIL.md` (formules, palier 1000, état Dev) et skill `loadtest-skill` mis à jour le 2026-09-11 23h. **Reste à la main de l'humain** : commiter côté `devops` le compose `48G` et la note de dimensionnement (branche `feature/setup_k8s`).
+
+## Clôture
+
+US `devops`, hors automation : pas de PR forge. Les livrables sont (1) le compose Postgres à 48G / `shared_buffers` 12GB /
+`effective_cache_size` 36GB et la note `DIMENSIONNEMENT-POSTGRESQL-API-MAIL.md` (repo `devops`, **à commiter par l'humain**),
+(2) trois rapports A/B dans `Docs/audits/` et le rappel du skill (plan de contrôle, poussés), (3) la suite désignée par la mesure :
+**task-298** (backends résidents et drain d'audit). Archivage à faire dès le commit `devops` : `mv tasks/wip-task-296.md tasks/archived/archived-task-296.md`.

@@ -39,11 +39,26 @@ latence, piloté par le profil `loadtest` de l'AppHost. Chemins relatifs à
 > mesurées sinon : gel du relais IPv6 Docker, OOM-kill Postgres, épuisement des
 > ports éphémères Windows) : chaîne de connexion `Host=127.0.0.1` + `Maximum
 > Pool Size=2;Connection Idle Lifetime=600` dans l'AppHost, et Postgres
-> `max_connections=2500` / 12 GiB (encodé dans
-> `DevOps/Dev/PostgreSQL/docker-compose.yml`). Détails et formules :
+> `max_connections=2500` / **48 GiB depuis task-296 (2026-09-11 ; 12 GiB jusque-là)**,
+> encodé dans `DevOps/Dev/PostgreSQL/docker-compose.yml`. Détails et formules :
 > `DevOps/DIMENSIONNEMENT-POSTGRESQL-API-MAIL.md`. La règle de fond :
 > **connexions retenues ≈ praticiens × réplicas × Max Pool Size** — la demande
 > suit le nombre de praticiens, pas le trafic.
+>
+> ⚠️ **Le palier 1000 exige la mémoire du jeu de travail** (task-296, A/B à un
+> facteur, 3 tirs le 2026-09-11, `Docs/audits/api-mail-loadtest-journey-1000-task296-*`) :
+> 1000 bases hydratées (57 Go) ont un **jeu de travail de ~34 Go de cache de
+> pages** — mesuré comme le point où le cache cesse de croître à 48 GiB. À 12 et
+> 24 GiB, le cgroup sature, les fautes de page majeures explosent, le login d'un
+> backend passe de 6 ms à 10-300 s et PgBouncer met l'échec en cache (`08P01`).
+> Besoin ≈ cache 34 + `shared_buffers` 12 + RSS ~6 ≈ **50 GiB**. Deux conséquences
+> pratiques : (1) la VM Docker Desktop (62,8 GiB par défaut) n'a plus de marge —
+> la relever ou arrêter les conteneurs étrangers au banc avant un tir 1000, sinon
+> elle se fige (vécu : 45 min, `wsl --shutdown`) ; (2) le plafond suivant est
+> **`max_connections`**, atteint par des backends qui croissent avec le **temps**
+> (1000 pools × 3, idle 600 s) — task-298. Et ne jamais lancer `report.sh` tant que
+> `pg_stat_activity` n'est pas redescendu < 2000 après le tir (le rejeu du spill
+> d'audit sature Postgres quelques minutes) : `verify.sh` rendrait « aucune base ».
 
 > **IMAP = Dovecot, SMTP = GreenMail** (depuis task-195). Le blocage du fetch
 > partiel `BODY[part]` est levé : le scénario **pipeline CDA** est pleinement
