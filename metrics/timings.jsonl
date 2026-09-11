@@ -730,3 +730,5 @@
 {"ts":"2026-09-11T10:39:29+02:00","run_id":"forge-20260911-295-297","type":"step","task":"task-297","step":"review","status":"ok","note":"","iterations":null,"duration_ms":1119266}
 {"ts":"2026-09-11T10:39:43+02:00","run_id":"forge-20260911-295-297","type":"step_start","task":"task-297","step":"tech-writer"}
 {"ts":"2026-09-11T10:41:35+02:00","run_id":"forge-20260911-295-297","type":"step","task":"task-297","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":111925}
+{"ts":"2026-09-11T13:16:30+02:00","run_id":"-","type":"step_start","task":"task-296","step":"start"}
+{"ts":"2026-09-11T13:16:54+02:00","run_id":"-","type":"step","task":"task-296","step":"start","status":"skipped","note":"devops only — no branch, manual bench act","iterations":null,"duration_ms":23730}
