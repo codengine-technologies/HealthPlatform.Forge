@@ -153,3 +153,13 @@ intact.
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : non — conteneurs locaux, données synthétiques
 - **AIPD / impact RGPD** : inchangée
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-302 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 4.8 s | — | — | — | — |
+| /develop | failed | 10 min 39 s | — | — | — | DOD partiel : quota livre, cloisonnement et passdb en arbitrage (questions/task-302.md) |
+| **Total cycle** | | **10 min 44 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |

@@ -1,8 +1,8 @@
 # E016 — Tests d'intégration à serveur de messagerie réel
 
-> **Statut** : 🟡 En cours — 1 task livrée sur 5
+> **Statut** : 🟡 En cours — 2 tasks livrées sur 5
 > **Modèle** : task-driven
-> **Version** : 1.0
+> **Version** : 1.1
 > **Auteur** : PO forge (audit d'exploitation du 2026-09-11)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E016-Changelogs.md](E016-Changelogs.md)
 > **Dernière mise à jour** : 2026-09-11
@@ -85,7 +85,7 @@ communication.
 | Fonctionnalité | Ce que le praticien peut faire / ce qui le protège | Tasks | Statut |
 |---|---|---|---|
 | **Vérifications opposables à chaque livraison** | Toute proposition de changement est désormais vérifiée automatiquement avant d'être soumise ; un défaut est vu au lieu d'être découvert au hasard | task-300 | ✅ Livré |
-| **Socle de vérification à serveur réel partagé** | Permet de multiplier les vérifications contre un vrai serveur sans allonger le temps de livraison | task-301 | 📋 À faire |
+| **Socle de vérification à serveur réel partagé** | Permet de multiplier les vérifications contre un vrai serveur sans allonger le temps de livraison | task-301 | ✅ Livré |
 | **Cloisonnement et capacités de boîte éprouvés** | Garantit qu'un praticien n'accède pas à la boîte d'un autre, et que l'occupation de sa boîte est lue correctement | task-302 | 📋 À faire |
 | **Vérification des fonctions telles qu'utilisées** | Les fonctions de messagerie sont éprouvées à travers l'application complète, comme le praticien les sollicite | task-303 | 📋 À faire |
 | **Continuité du service en cas de défaillance serveur** | Coupure ou lenteur du serveur : le service reprend, et le contenu clinique reste intègre | task-304 | 📋 À faire |
@@ -196,6 +196,18 @@ clinique authentique.
 
 ### Technique
 
+- **Le socle de vérification à serveur réel est mutualisé** (task-301) : le
+  serveur de messagerie est démarré une fois par exécution au lieu de deux, ce
+  qui rend quasi gratuit l'ajout d'une nouvelle vérification contre un vrai
+  serveur. C'est ce qui conditionne les trois fonctionnalités restantes.
+- **Une tentative d'accélération a révélé un défaut de fond** (task-301) : le
+  répertoire de travail utilisé pour extraire les comptes rendus est **unique
+  par machine**, et son nettoyage au démarrage supprime aussi les archives en
+  cours de traitement. En vérification, deux exécutions simultanées se
+  détruisent mutuellement ; en production, le redémarrage d'une instance
+  pourrait faire disparaître un compte rendu qu'une autre est en train de
+  traiter — **sans erreur visible**. L'accélération a été abandonnée plutôt que
+  de masquer le défaut ; un arbitrage est demandé.
 - **Un registre unique recense les vérifications temporairement écartées**
   (task-300), chacune devant nommer le travail qui la remettra en service. Le
   registre est aujourd'hui **vide** : le relevé de référence, conduit en trois

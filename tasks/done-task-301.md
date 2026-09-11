@@ -151,3 +151,142 @@ collection existante : **0,11 à 0,25 s par test**.
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : non — conteneurs locaux, données synthétiques
 - **AIPD / impact RGPD** : inchangée
+
+## Branches
+
+- `api-mail` (pushed) : `feat/task-301-harnais-serveur-assembly` — base `origin/develop` @ 5855604, puis **merge de `feat/task-300`** (voir Develop log)
+- `dtos-mss` (pushed, auto-inclus) : même nom de branche, aucun changement de contrat
+
+## Develop log
+
+### Ce qui a ete fait
+
+1. **`MailServerFixture`, fixture d'assembly** (`[assembly: AssemblyFixture(...)]`,
+   xUnit v3 deja en place en 4.0.0) : Dovecot et GreenMail demarres **une fois
+   pour tout l'assembly**, avec le registre de boites semees. Postgres et Redis
+   **restent par collection** — ce sont eux qui portent l'isolation des bases
+   praticien ; les partager melangerait les etats au lieu de les separer.
+2. **`ImapServicesFixture` et `UseCaseFixture` deviennent consommateurs** : ils
+   recoivent le harnais par constructeur et deleguent `Dovecot`, `GreenMail` et
+   `GetSeededMailboxAsync`. Aucun site d'appel de test n'a change.
+3. **Table `VirtualUsers`** : les 15 indices d'utilisateur virtuel, jusque-la en
+   dur et disperses, reunis avec le nom de leur reservataire.
+4. **Test de garde `VirtualUserAllocationTests`** (3 tests) : echoue si un
+   indice est reserve deux fois, si le compte d'attributions derive, ou si un
+   indice est nul/negatif.
+5. **Contrat d'extension** ecrit en tete de `MailServerFixture` : trois gestes
+   pour brancher une nouvelle suite a serveur reel, sans declarer de conteneur.
+
+### Mesure avant / apres
+
+| Grandeur | Avant | Apres |
+|---|---|---|
+| Declarations `DovecotFixture.StartAsync()` dans le code | **2** | **1** |
+| Declarations `GreenMailFixture.StartAsync()` | **2** | **1** |
+| Demarrages de conteneur longue duree par execution | **8** | **6** |
+| Population `Server=real` | 97 verts / 51 s | **97 verts / 49-50 s** |
+| Projet d'integration complet | 487 tests / ~90 s | **490 tests / 82-91 s** |
+
+**Le gain n'est pas la duree** — les conteneurs demarraient deja de front, donc
+la mesure ne bouge quasiment pas, et le task file l'annoncait. Le gain est que
+le **cout d'entree d'une nouvelle suite a serveur reel tombe a zero** : c'est ce
+qui rend abordables task-302, task-303 et task-304.
+
+### Le parallelisme a ete active, mesure, puis RETIRE — et c'est un resultat
+
+`parallelizeTestCollections: true` + `maxParallelThreads: 4` :
+
+- **duree 90 s -> 27 s (x3,3)** ;
+- **3 echecs**, tous d'extraction CDA, tous « collection vide » :
+  `CdaParsingIntegrationTests.ParseCardiologyPrescriptionReturnsDocumentWithMetadata`,
+  `CdaParsingIntegrationTests.ParseImagingReportReturnsDocumentWithMetadata`,
+  `CdaDocumentExtractionNonRegressionTests(folder: "CR-BIO_2021.01_Microbiologie_V2")`.
+
+**La cause n'est pas dans les tests.** `IheXdmScratch`
+(`src/Application/Helpers/IheXdmScratch.cs:32`) expose **un repertoire de
+travail unique par machine** — `Path.Combine(Path.GetTempPath(), "mss-ihe-xdm")` —
+et son `Sweep()` de demarrage (ligne 112) supprime **tous** les fichiers qu'il y
+trouve, sans filtre d'age ni marqueur de proprietaire. Deux collections en
+parallele : le balayage de l'une efface les archives **en vol** de l'autre.
+
+Decision : **revenir au sequentiel** plutot que mettre ces 3 tests en
+quarantaine. Les quarantiner aurait force le gain de duree en masquant un defaut
+qui **porte aussi en production** — api-mail tourne en 5 replicas, et un
+redemarrage de l'un balaie le repertoire partage des autres. Detail et
+implication production : `questions/task-301.md`.
+
+**Ce meme mecanisme explique tres probablement l'echec CI #1 de task-300**
+(`CdaDocumentExtractionNonRegressionTests(folder: "CR Imagerie")`, « collection
+vide » sur Linux, vert sur Windows) : meme symptome, meme famille, meme
+repertoire partage.
+
+### Dependance de branche
+
+`task-301` a d'abord ete branchee sur `origin/develop`, qui **ne contient pas
+task-300** (PR #230 ouverte, non mergee — HAG). Les traits `Server=real`
+n'existaient donc pas et le filtre ne selectionnait **aucun** test. `feat/task-300`
+a ete **merge** dans `feat/task-301` (regle 4 : merge, jamais rebase). La PR de
+task-301 porte donc les commits de task-300 tant que celle-ci n'est pas mergee.
+
+### Validation
+
+**3 executions consecutives du projet d'integration, sequentiel** : 490 tests,
+**0 echec** a chaque passe (1 m 31 / 1 m 25 / 1 m 22), 16 ignores
+(`Assert.SkipUnless` Ollama / Windows-only).
+
+### Passe qualite `/simplify` (SQ)
+
+Aucun cleanup applique. Le diff est une extraction de responsabilite deja
+factorisee (`MailServerTestHarness` existait) ; les deux fixtures consommatrices
+ont perdu une trentaine de lignes de duplication, ce qui **etait** l'objet de la
+task et non un cleanup opportuniste. Pas de re-validation supplementaire.
+
+## Sonar log
+
+**Skip propre** — `git diff --name-only origin/develop...HEAD` sur api-mail ne
+rend aucun `src/**/*.cs` : le diff est entierement dans
+`tests/mss.mail.integration.tests/`. Aucune issue Sonar attribuable.
+
+| KPI | Baseline | Final | Quality Gate |
+|---|---|---|---|
+| — | non mesure (skip) | non mesure (skip) | non evalue |
+
+> Le defaut decouvert par cette task porte pourtant sur du code de production
+> (`src/Application/Helpers/IheXdmScratch.cs`) — mais il est **constate**, pas
+> **modifie** : voir `questions/task-301.md`.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/231 — label `awaiting-human-merge`
+  - ⚠️ contient les commits de task-300 (PR #230) : voir « Dependance de branche » du Develop log
+- `dtos-mss` : **aucune PR** — 0 commit
+
+## Code Review Summary
+
+**APPROVED** — 5 fichiers revus, 0 blocage.
+
+| Fichier | Verdict |
+|---|---|
+| `Fixtures/MailServerFixture.cs` | OK — portee correcte (serveurs partages, bases par collection), contrat d'extension explicite, message d'erreur nommant la cause si le fixture d'assembly est retire |
+| `Fixtures/VirtualUserAllocationTests.cs` | OK — garde le seul invariant que le partage rend critique ; hors `Server=real` (lecture de table) |
+| `Fixtures/ImapServicesFixture.cs` | OK — delegation, aucun site d'appel modifie ; `Dispose` ne libere plus les serveurs |
+| `UseCases/UseCaseFixture.cs` | OK — idem |
+| `xunit.runner.json` | OK — sequentiel conserve, avec la mesure et la cause ecrites dans le fichier |
+
+**Validation** : solution complete **4 373 tests, 0 echec** ; projet d'integration
+**3 executions consecutives vertes**. `develop` n'avait pas bouge.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-301 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /develop | ok | 19 min 19 s | — | — | — | — |
+| /sonar | skipped | 2.8 s | — | — | — | hors périmètre (api-mail tests seuls) |
+| /lint-angular | skipped | 2.4 s | — | — | — | hors périmètre (api-mail tests seuls) |
+| /lint-mobile | skipped | 2.2 s | — | — | — | hors périmètre (api-mail tests seuls) |
+| /verify-visual | skipped | 2.0 s | — | — | — | hors périmètre (api-mail tests seuls) |
+| /review | ok | 3 min 21 s | — | 1 (0.9 s) | — | api-mail 0B/1T |
+| /tech-writer | ok | 42 s | — | — | — | — |
+| **Total cycle** | | **23 min 33 s** | **0 (0.0 s)** | **1 (0.9 s)** | **0 (0.0 s)** | |
