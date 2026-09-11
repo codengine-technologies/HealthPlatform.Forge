@@ -148,3 +148,165 @@ dans la même US, dans cet ordre : trier, puis brancher.
 - **Hébergement HDS** : non — exécution en CI GitHub sur données synthétiques
   exclusivement ; aucune DSCP ne quitte l'environnement
 - **AIPD / impact RGPD** : inchangée — aucun traitement nouveau
+
+## Branches
+
+- `api-mail` (pushed) : `feat/task-300-ci-gate-tests-serveur-reel` — base `origin/develop` @ 5855604
+- `dtos-mss` (pushed, auto-inclus) : `feat/task-300-ci-gate-tests-serveur-reel` — base `origin/develop` @ f20f310 (aucun changement de contrat attendu, pas de PR si sans commit)
+
+> Base de mesure : `cf685ac` (migration xUnit v3). `5855604` (task-295, sonde de login
+> PostgreSQL du banc) ne touche ni `tests/mss.mail.integration.tests/` ni `.github/` —
+> la référence « 97 tests à serveur réel » reste valide sur cette base.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-300 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 1 min 26 s | — | — | — | — |
+| /develop | ok | 11 min 17 s | 1 (24 s) | 3 (4 min 56 s) | — | api-mail 1B/3T |
+| /sonar | skipped | 26 s | — | — | — | aucun code C# de production dans le diff (tests + workflow + md) |
+| /lint-angular | skipped | 1.9 s | — | — | — | client-angular non listé dans **Repos** (api-mail seul) |
+| /lint-mobile | skipped | 2.0 s | — | — | — | client-mobile non listé dans **Repos** (api-mail seul) |
+| /verify-visual | skipped | 2.2 s | — | — | — | aucun écran mobile touché |
+| /review | ok | 4 min 09 s | 1 (9.7 s) | 1 (1 min 43 s) | — | api-mail 1B/1T |
+| /tech-writer | ok | 2 min 23 s | — | — | — | — |
+| **Total cycle** | | **19 min 48 s** | **2 (33 s)** | **4 (6 min 40 s)** | **0 (0.0 s)** | |
+
+## Develop log
+
+### Ce qui a été fait
+
+1. **`[Trait("Server", "real")]` posé sur 16 classes** — les 13 suites des
+   collections `ImapServices` (4) et `UseCases` (9), plus les 3
+   `*BenchSmokeTests`. Littéraux et non constantes : c'est la convention déjà
+   en place dans le repo (`[Trait("Category", "Integration")]`,
+   `[Trait("Feature", "AI")]`), et la cohérence vaut mieux qu'une abstraction
+   nouvelle pour 16 occurrences.
+
+   > ⚠️ **Correction d'un chiffre du DOD.** Le DOD dit « les 13 suites […]
+   > plus les 3 `*BenchSmokeTests` » : 13 est le compte des deux collections
+   > (4 + 9), le total à étiqueter est donc **16**. Le critère qui lie
+   > réellement est le suivant — `Server=real` sélectionne **exactement 97** —
+   > et il est tenu.
+
+2. **Les 3 `*BenchSmokeTests` héritent désormais de `IntegrationTestBase`.**
+   Les 13 autres en héritaient déjà. **Aucune exemption
+   `ExpectedErrorFragments` n'a été nécessaire** : les trois exécutions de
+   calibrage sont vertes avec le filet actif, y compris
+   `WildcardAuth_AcceptsAnyUser_AndRejectsWrongPassword` qui éprouve pourtant
+   un refus d'authentification.
+
+3. **Gate CI rétabli** (`.github/workflows/dotnet.yml`) : la condition
+   `github.ref == 'refs/heads/master' || github.base_ref == 'master'` est
+   retirée, et l'étape `Test` est scindée en deux étapes gatantes — hors
+   serveur réel, puis serveur réel (Testcontainers). Les deux excluent
+   `Quarantine!~task` et **rien d'autre**.
+
+4. **`tests/quarantine.md`** posé : contrat, procédure d'entrée/sortie, et le
+   tableau — **vide**.
+
+### Les 3 exécutions de calibrage (2026-09-11, base `5855604`)
+
+`dotnet test HealthPlatform.Api.Mail.sln --no-build`, trois fois de suite :
+
+| Projet | Passe 1 | Passe 2 | Passe 3 |
+|---|---|---|---|
+| `mss.mail.domain.tests` | 167 ✓ | 167 ✓ | 167 ✓ |
+| `mss.mail.infrastructure.tests` | 487 ✓ | 487 ✓ | 487 ✓ |
+| `mss.mail.application.tests` | 2 400 ✓ | 2 400 ✓ | 2 400 ✓ |
+| `mss.mail.api.tests` | 829 ✓ | 829 ✓ | 829 ✓ |
+| `mss.mail.integration.tests` | 471 ✓ / 16 ignorés | 471 ✓ / 16 ignorés | 471 ✓ / 16 ignorés |
+| **Total** | **4 370, 0 échec** | **4 370, 0 échec** | **4 370, 0 échec** |
+
+**Résultat : liste de quarantaine vide.** Aucun test n'a été rouge, sur aucune
+des trois passes. Les 16 ignorés sont des `Assert.SkipUnless` explicites
+(Ollama absent, chemins Windows-only), pas des rouges.
+
+**Ce que ce résultat ne dit pas.** Il ne dit pas que les flakies historiques
+sont corrigés : `metrics/timings.jsonl` porte 30 exécutions de
+`mss.mail.integration.tests` dont 13 rouges (43 %), sur des bases antérieures.
+Il dit que **sur `5855604`, aujourd'hui, la suite est verte** — donc que le
+gate peut être armé sans exclusion, ce qui était l'inconnue de cette US.
+
+### Contre-épreuves du mécanisme de quarantaine
+
+Un registre vide ne prouve rien tant que le mécanisme n'a pas été exercé. Les
+deux risques ont été levés empiriquement :
+
+| Contre-épreuve | Attendu | Mesuré |
+|---|---|---|
+| `--filter "Server=real"` | population serveur réel | **97** |
+| `"Server=real&Quarantine!~task"`, registre vide | **97** (clause inerte sans trait) | **97** |
+| `"Server!=real&Quarantine!~task"`, registre vide | 97 + N = suite complète | **4 273** (→ 4 370) |
+| idem après étiquetage d'**un** test | **96** | **96** |
+
+La deuxième ligne était le vrai risque : si `Quarantine!~task` avait exclu les
+tests **dépourvus** du trait, le gate aurait exécuté zéro test en silence —
+soit exactement le défaut que cette US corrige, sous une autre forme.
+L'étiquette de vérification a été retirée (`grep task-999` → aucune trace).
+
+### Note de mesure
+
+La suite compte **4 370 cas de test** exécutés pour **3 993 déclarations**
+`[Fact]`/`[Theory]` — l'écart vient des lignes de données des `[Theory]`. Les
+deux chiffres sont justes, ils ne mesurent pas la même chose ; le tableau
+d'origine de cette US citait le compte de déclarations.
+
+### Passe qualité `/simplify` (§Q)
+
+Exécutée sur le diff vs `develop` : **aucun cleanup appliqué**. Le diff est
+constitué d'attributs de test, d'un héritage de classe de base et d'un fichier
+de workflow — aucune duplication à factoriser, aucune abstraction à extraire
+qui ne dégraderait pas la cohérence avec la convention existante. Pas de
+re-validation build+test nécessaire (règle : re-valider seulement si des
+cleanups sont appliqués). `dtos-mss` : hors passe qualité par construction
+(porteur de contrat), et sans commit sur cette task.
+
+## Sonar log
+
+**Skip propre — aucun code C# de production dans le diff.**
+
+`git diff --name-only origin/develop...HEAD` sur `api-mail` ne rend **aucun**
+fichier `src/**/*.cs`. Le diff se compose de : 16 attributs `[Trait]` sur des
+classes de test, 3 héritages de classe de base de test, un fichier de workflow
+GitHub Actions et un `tests/quarantine.md`. Aucune issue Sonar ne peut être
+attribuée à cette task, et aucun KPI ne peut bouger de son fait.
+
+| KPI | Baseline | Final | Quality Gate |
+|---|---|---|---|
+| — | non mesuré (skip) | non mesuré (skip) | non évalué |
+
+> **Précision sur l'infrastructure** : les conteneurs `sonarqube` et
+> `sonarqube_db` sont arrêtés (`Exited (255)`, il y a 2 jours) et
+> `localhost:9001` ne répond pas. **Ce n'est pas le motif du skip** — le motif
+> est l'absence de code de production dans le diff, et il tient serveur allumé
+> ou éteint. La distinction compte : un skip pour panne d'outillage serait un
+> `questions/`, un skip pour périmètre vide est le fonctionnement normal de
+> l'étape. Pour les tasks suivantes de l'EPIC E016 qui toucheront du code de
+> production (`task-303` notamment), relancer l'infra :
+> `docker start sonarqube_db && sleep 30 && docker start sonarqube`.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/230 — label `awaiting-human-merge`
+- `dtos-mss` : **aucune PR** — 0 commit sur la branche (branche auto-incluse par `/start`, aucun changement de contrat nécessaire)
+
+Run CI de la PR : 34594564320 — c'est **lui** qui valide le livrable de cette US
+(les deux étapes `Test` doivent s'exécuter, alors qu'elles étaient sautées).
+
+## Code Review Summary
+
+**APPROVED** — 21 fichiers revus, 0 blocage, 1 suggestion non bloquante.
+
+| Fichier / zone | Verdict |
+|---|---|
+| `.github/workflows/dotnet.yml` | ✅ deux étapes gatantes, commentaire portant la mesure d'origine. ⚠️ la durée de CI va croître (tirage des images au premier run) — coût assumé de la US |
+| 16 fichiers de test (attribut `[Trait]`) | ✅ mécanique ; littéraux cohérents avec la convention du repo |
+| 3 `*BenchSmokeTests` (héritage `IntegrationTestBase`) | ✅ validé par 4 exécutions complètes vertes, filet d'erreurs actif |
+| `tests/quarantine.md` | ✅ contrat explicite, contre-épreuves reproductibles |
+
+**Validation** : build 0 erreur ; `dotnet test` solution **4 370 tests, 0 échec**
+(4ᵉ exécution verte consécutive). `develop` n'avait pas bougé depuis la base —
+aucun merge de synchronisation nécessaire.
