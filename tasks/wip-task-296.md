@@ -83,7 +83,7 @@ atteint (aucun `53300`) : ce n'est pas un plafond de connexions, c'est un plafon
       `docker inspect --format '{{.HostConfig.Memory}}'`
 - [ ] Deux tirs journey 1000 iso (12 Go de référence = tir task-292 `fix2` ; jambe A ≥ 24 Go), même
       SHA de code, mêmes bases non purgées, rapports dans `Docs/audits/`
-- [ ] Mesure consignée dans cette US : login p95 (référence 10-16 s), backends créés/min,
+- [~] Mesure consignée dans cette US (jambe A faite, critère de sortie NON atteint → jambe B) : login p95 (référence 10-16 s), backends créés/min,
       `failcnt`/s, refus `08P01`, `cl_waiting`, retard du journal d'audit, erreurs k6, 11 étapes SLO
       — **critère de sortie** : login p95 < 1 s en régime, `failcnt` ÷ 10, `08P01` = 0 avec
       `server_login_retry` inchangé, cgroup < 85 %
@@ -181,3 +181,32 @@ Prêt pour la jambe A : journey 1000 iso (bases gardées, journal actif, `develo
 - **Incidents de pré-vol, corrigés avant le tir** (aucun effet sur la mesure, à consigner dans le skill) :
   1. Le rattachement automatique de PgBouncer au réseau `postgresql_default` (task-257) n'a pas eu lieu après la recréation du conteneur Postgres (« DNS lookup failed: postgres-pgvector ») → `docker network connect` manuel. Le contrôle `getent ahosts postgres-pgvector` du pré-vol reste obligatoire.
   2. Lancer l'AppHost depuis un autre chemin (worktree) crée une seconde famille de conteneurs persistants (`-ab5b4678`) qui partagent les **mêmes volumes nommés** que la première (`prometheus-data`, données Seq) : Prometheus/Seq neufs sortent en « lock DB directory » tant que ceux du matin tournent. Arrêt des `-b6152948`, démarrage des `-ab5b4678` ; historique Prometheus du matin conservé (même volume). Les ~12 premières minutes de séries k6/serveur côté Prometheus sont perdues (rampe), pas le résumé k6 ni Seq.
+
+## Jambe A — résultat (2026-09-11, 14h28 → 17h58) — 🔴 ROUGE, 24 Go insuffisants, jambe B requise
+
+Rapport : `Docs/audits/api-mail-loadtest-journey-1000-task296-legA-24G-20260911.md` (copie de
+`Api/Mail/tests/loadtest-k6/reports/2026-09-11/report-journey-1000-task296-legA-24G-20260911-175909.md`). Référence 12 Go :
+`Docs/audits/api-mail-loadtest-journey-1000-postlot-292-294-20260911.md` (même jour, même SHA `d04f2ca`, mêmes bases).
+
+| Grandeur (critère de sortie de la DOD) | Cible | 12 Go (matin) | **24 Go (jambe A)** |
+|---|---|---|---|
+| Login p95 en régime | < 1 s | 10-16 s (manuel 09/09) | **1,0 s sur le tir, 160-300 s en régime** ❌ |
+| `memory.failcnt` (cumul) | ÷ 10 | 159 M | **50,2 M** (÷3,2) ❌ |
+| Refus `08P01` (`server_login_retry` inchangé) | 0 | 110 693 | **2 099** (÷53) ❌ |
+| cgroup | < 85 % | 100 % | **100 % dès +52 min** ❌ |
+| Erreurs k6 tir / régime | — | 11,98 % / 28 % | **0,37 % / 1,5 %** |
+| Backends créés/min (max) · `sv_login` max | — | 344 · 467 | 740 · 157 |
+| Fautes de page majeures (cumul · max/s) | — | 9,2 M | 3,87 M · 1 120/s |
+| Journal d'audit | 0 perte | 0 perte | **0 perte** (191 459 = 191 459) |
+
+Lecture : la spirale (`sv_login` → `server_connect_timeout` → `server_login_retry` en cache → `08P01`) est **la même**, déclenchée
+**2 h 20 plus tard** (17h10 au lieu de 10h55) et **30 à 50 fois moins violente**. Le cgroup sature à 15h20 ; le cache recule de 20,5 à
+14,6 Go pendant que les backends montent de 900 à 2 100 (`server_idle_timeout=600` × 1000 pools × `max_db_connections=3`) ; les fautes
+majeures partent quand le cache passe sous ~18 Go (16h00), le login dépasse 1 s à 16h40, 300 s à 17h10. Le jeu de travail utile de
+1000 bases hydratées (57 Go, un catalogue système par base) ne tient pas dans 24 Go.
+
+Décision : **jambe B** (32 Go + `shared_buffers` 8 Go, point 1 de l'US), même protocole, même SHA `d04f2ca`. Attendu : recul
+supplémentaire de la spirale, pas forcément sa disparition — mesurer la pente. À instruire hors task (un facteur par jambe) :
+plafond de backends résidents (`server_idle_timeout` 600 → 60-120 ou `max_db_connections` 3 → 2), cache d'échec de login PgBouncer,
+plafond de connexions du rejeu d'audit (post-tir : 2 500 backends, 29 000 « too many clients », 6 min d'administration refusée —
+la vérification par base du rapport a dû être rejouée à la main : 1000 bases, 123 949 mails, 0 mélange, PASS).
