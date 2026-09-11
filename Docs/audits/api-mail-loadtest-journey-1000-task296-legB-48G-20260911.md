@@ -472,5 +472,9 @@ spill** (plafond global de connexions du drain) — c'est la troisième fois de 
 
 - `Fatal` 0, `LOST` 0, `query_wait_timeout` 0, `Spill buffer unreachable` 0, requêtes > 30 min 0, `Failed to parse entity headers` 0, 429 : 0.
 - `Channel full` 17 973 (jambe A : 61 704 ; le drain paie le plafond de connexions à partir de 21h17, plus le login lent).
+- **Qui prend les refus `53300 too many clients` (53 456 exceptions, Seq)** : `AuditBackgroundService` **52 088 (97 %)**,
+  `AuditTraceRepository` 1 029, `MailRepository` 126 (provisionnement), `UserSettingsRepository` 87, requêtes médecin remontées
+  au `GlobalExceptionHandler` **67** (= les 67 × 503). Le plafond de connexions frappe donc d'abord le **drain du journal d'audit**
+  (route directe, une connexion par base drainée), le médecin n'en voit que la queue : c'est lui qu'il faut borner en premier.
 - Timeouts cache Redis 11 872 (≈ jambe A) — Redis de la famille `-ab5b4678`, finding cache déjà ouvert, hors facteur.
 - Dump : 600 événements Error/Fatal les plus récents dans `seq-journey-1000-task296-legB-48G-20260911-220235.jsonl`.

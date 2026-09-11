@@ -236,7 +236,7 @@ Rapport : `Docs/audits/api-mail-loadtest-journey-1000-task296-legB-48G-20260911.
 **Besoin réel mesuré** : cache de pages stabilisé à ~34 Go pour 1000 bases hydratées (57 Go) + `shared_buffers` 12 Go + RSS ~6 Go
 ≈ **50 Go** ; 48 Go tiennent, 24 non. Le plafond suivant : backends ∝ temps (1000 pools × `max_db_connections=3`, idle 600 s) →
 2 504 = `max_connections` à 21h17, puis « too many clients » ≈1 700/min sur la route directe (118 886 pendant le tir), `cl_waiting`
-28 % des relevés, `maxwait` 12 s. C'est le sujet de la prochaine US (un facteur) : `server_idle_timeout` 600 → 60-120 ou
+28 % des relevés, `maxwait` 12 s. Seq attribue 97 % des 53 456 exceptions `53300` au **drain du journal d'audit** (`AuditBackgroundService`), 67 seulement remontent au médecin en 503. C'est le sujet de la prochaine US (un facteur) : `server_idle_timeout` 600 → 60-120 ou
 `max_db_connections` 3 → 2, puis plafond de connexions du rejeu d'audit.
 
 **Incident post-tir** : le rejeu du spill + Postgres à 48 Go ont saturé la VM Docker Desktop (62,8 GiB) → daemon figé 45 min,
