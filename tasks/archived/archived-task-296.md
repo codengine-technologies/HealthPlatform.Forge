@@ -252,3 +252,10 @@ US `devops`, hors automation : pas de PR forge. Les livrables sont (1) le compos
 `effective_cache_size` 36GB et la note `DIMENSIONNEMENT-POSTGRESQL-API-MAIL.md` (repo `devops`, **à commiter par l'humain**),
 (2) trois rapports A/B dans `Docs/audits/` et le rappel du skill (plan de contrôle, poussés), (3) la suite désignée par la mesure :
 **task-298** (backends résidents et drain d'audit). Archivage à faire dès le commit `devops` : `mv tasks/wip-task-296.md tasks/archived/archived-task-296.md`.
+
+## Merged
+- **Date** : 2026-09-11
+- `devops` (hors automation, pas de PR) : commit humain `65f5b22` « Devops 48 Go » sur `feature/setup_k8s`, poussé — `Dev/PostgreSQL/docker-compose.yml` (48G / `shared_buffers` 12GB / `effective_cache_size` 36GB) + `DIMENSIONNEMENT-POSTGRESQL-API-MAIL.md` (formule avec jeu de travail, palier 1000, état Dev)
+- **Plan de contrôle** : rapports `Docs/audits/api-mail-loadtest-journey-1000-{postlot-292-294,task296-legA-24G,task296-legB-48G}-20260911.md`, skill `loadtest-skill` (`4458135`)
+- **Suite** : task-298 (backends résidents PgBouncer + plafond du drain d'audit) — `tasks/todo-task-298.md`
+- **Staging** : `forge/staging-task-295-297-20260911` conservée — task-297 (`done`, PR #229) encore en attente de merge
