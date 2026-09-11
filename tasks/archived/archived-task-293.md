@@ -236,3 +236,10 @@ maintenance suffit à provoquer l'incident en production.
 - Suggestion appliquée (`32f01a1`) : une `OperationCanceledException` pendant l'extraction laisse le message à traiter sans alimenter le compteur ni le log Error.
 - Suggestion consignée (suivi) : throttle du log Error par cause (`scratch_unavailable` vs `io`) au lieu d'un instant partagé — un second défaut d'hôte dans la même minute n'est visible que par le compteur.
 - Build 0 erreur, 3 807 tests unitaires verts, 460 tests d'intégration verts (5 flakes pré-existants de frontière de minuit, hors périmètre) ; Sonar QG OK, 0 finding new-code, new_coverage 88,1 %.
+
+## Merged
+- **Date** : 2026-09-11
+- `api-mail` : PR #226 squash-mergée → `609e3d811f41d96146b2d163bc403a4bdabf993e` — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/commit/609e3d811f41d96146b2d163bc403a4bdabf993e ; branche distante `fix/task-293-ihe-xdm-scratch-recreate` supprimée (locale conservée)
+- `dtos-mss` : aucune PR (branche vide, 0 commit) — ref distante `fix/task-293-ihe-xdm-scratch-recreate` supprimée
+- **CI develop api-mail** : ✓ success — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/34568919441
+- **Staging** : `forge/staging-task-292-294-20260908` conservée — task 294 encore en `done-*` dans ce run
