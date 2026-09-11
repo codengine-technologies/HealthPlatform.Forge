@@ -2,7 +2,7 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.49
+> **Version** : 1.50
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
 > **Dernière mise à jour** : 2026-09-11
@@ -1510,10 +1510,51 @@ elle a d'ailleurs payé pendant cette livraison : deux défauts ont été trouv�
 avant la mise en service, dont un chronomètre qui aurait publié une colonne de
 zéros parfaitement crédibles. *(task-295)*
 
+### Le cache de la messagerie ne se met plus lui-même à genoux (11 septembre 2026)
+
+Un cache existe pour rendre les choses plus rapides. Celui de la messagerie
+faisait par moments l'inverse, et la raison tient en une phrase : il servait les
+demandes **une par une**.
+
+Tant qu'on n'y range que de petites choses, cela ne se voit pas. Mais la
+messagerie y rangeait le **contenu entier** des messages ouverts — texte et mise
+en forme comprise, jusqu'à un million et demi de caractères pour un seul
+compte-rendu. Ranger un message de cette taille occupe le cache une quinzaine de
+millisecondes. Pendant ce temps, toutes les autres demandes attendent : l'identité
+du praticien, ses préférences d'affichage, les résumés de sa boîte. Quelques
+messages volumineux par seconde suffisaient à faire dépasser à ces petites
+demandes le délai au bout duquel la messagerie renonce à interroger le cache.
+
+Le comptage est net : sur une mesure à mille médecins, **6 568 abandons** de ce
+type. Et cette mesure a été prise le journal de traçabilité **éteint**, donc
+sans aucune autre sollicitation du cache — ce qui a d'ailleurs **innocenté** ce
+journal, un temps soupçonné d'être le coupable. Le cache n'était pas plein. Il
+était occupé.
+
+Désormais, **ce qui est trop gros n'y entre plus**. Au-delà d'une taille fixée,
+le message n'est pas mis en cache : il sera relu depuis la base de données, ce
+qui est déjà son chemin habituel. Le médecin ne voit aucune différence — le
+message s'affiche entier, mise en forme et documents rattachés compris, c'est
+vérifié par un test qui compare les deux lectures caractère par caractère. Ce qui
+change est pour tous les autres : les petites demandes ne font plus la queue
+derrière un pavé.
+
+La taille retenue n'a pas été choisie pour faire un compte rond. Le relevé du
+serveur montre que la plus petite écriture bloquante observée pesait 160 kilo-octets
+pour onze millisecondes. En proportion, la limite fixée coûte environ quatre
+millisecondes — sous le seuil que la mesure de vérification exigera. La limite
+haute qu'on nous autorisait serait, elle, restée vers neuf millisecondes.
+
+Enfin, la messagerie sait maintenant **dire ce qu'elle range** : la taille de
+chaque contenu proposé au cache est publiée, ainsi que le nombre de refus. C'est
+ce qui manquait pour diagnostiquer la panne autrement qu'en lisant le journal du
+serveur après coup. *(task-297)*
+
 ## État de couverture (2026-09-11)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
+| Le cache de la messagerie ne se met plus lui-même à genoux | 🟢 Livré — mesure de confirmation à conduire au banc | Le cache sert les demandes **une par une**. La messagerie y rangeait le contenu entier des messages ouverts — jusqu'à un million et demi de caractères — et ranger un tel message l'occupe une quinzaine de millisecondes, pendant lesquelles l'identité du praticien, ses préférences et les résumés de sa boîte attendent. **6 568 abandons** de ce type sur une mesure à mille médecins, prise **journal de traçabilité éteint** : ce journal, un temps soupçonné, en est donc **innocenté**. Le cache n'était pas plein, il était occupé. Désormais ce qui dépasse une taille fixée n'y entre plus : le message est relu depuis la base, son chemin habituel. **Le médecin ne voit aucune différence** — affichage entier, mise en forme et documents rattachés compris, vérifié par un test qui compare les deux lectures. La taille n'a pas été choisie ronde : la plus petite écriture bloquante observée pesait 160 kilo-octets pour onze millisecondes, la limite retenue en coûte environ quatre, sous le seuil qu'exigera la mesure de vérification. La messagerie publie enfin la taille de ce qu'elle range et le nombre de refus — ce qui manquait pour diagnostiquer autrement qu'en lisant le journal du serveur après coup | task-297 |
 | Une base saturée fait patienter au lieu de renvoyer une erreur | 🟢 Livré — mesure de confirmation à conduire au banc | À mille médecins, l'aiguilleur de connexions à la base **refusait** d'en ouvrir de nouvelles (646 refus à une première mesure, près de seize mille à une seconde) : le médecin voyait une opération échouer, servie en une dizaine de millisecondes. Un refus est plus trompeur qu'une lenteur — une demande refusée n'est jamais servie, donc elle **ne compte pas** dans les temps mesurés, et le banc publiait des chiffres flatteurs *parce que* le système était en panne (une campagne antérieure avait laissé passer plus de quatre-vingt mille refus sans un mot). Les connexions restent désormais ouvertes dix fois plus longtemps, au lieu d'être refermées chaque minute et rouvertes aussitôt — sur mille dossiers de praticiens, cette réouverture permanente était devenue le travail principal du système. Quand la base est réellement indisponible, la réponse est un « service momentanément indisponible » propre, **sans aucun détail interne exposé** ; et qu'une demande refusée ne soit **pas rejouée en silence** est démontré par un test, pas déduit du paramétrage. Le banc, lui, classe désormais en échec tout tir portant ne serait-ce qu'**un seul** refus | task-294 |
 | On saura pourquoi la base refuse, au lieu de le deviner | 🟢 Livré — tir de confirmation à conduire au banc | Le diagnostic de la ligne précédente était solide mais **relevé à la main pendant le tir** : quelqu'un chronométrait l'ouverture d'une connexion (dix à seize secondes, contre six millisecondes sur un système sain), lisait la mémoire du serveur, notait les chiffres. Un verdict de campagne était donc une **reconstitution après coup**, jamais une lecture sur une même courbe de temps. Le banc mesure maintenant lui-même ce que coûte l'ouverture d'une connexion et **à quel rythme le système en ouvre** — cette seconde grandeur étant la plus importante et la seule qui manquait : ce qui provoque la panne n'est pas le nombre de demandes par seconde, c'est le nombre de **connexions** ouvertes par seconde. Trois indicateurs l'accompagnent : la survie des connexions inactives (preuve directe du gaspillage corrigé par task-294), l'origine des connexions, et la mémoire du serveur de base — l'explication de fond, puisque sa saturation oblige le serveur à relire ses données sur disque. Le rapport **écrit sa conclusion** au lieu de laisser conclure : refus **et** ouverture lente → cette lenteur est la cause probable ; refus **et** ouverture saine → la cause est ailleurs, et il oriente la recherche ; mesure absente → il refuse de conclure. Une ouverture lente **sans** refus reste un simple avertissement : le système tient encore. Sur une machine où la mémoire ne peut pas être lue, **aucune ligne** n'est affichée plutôt qu'un zéro — un zéro se lirait « tout va bien » alors qu'il signifie « on n'a pas regardé » | task-295 |
 | Chaque widget du tableau de bord a son interrupteur | 🟡 Livré, en attente d'intégration | Huit interrupteurs `dashboard_widget_*`, mêmes noms sur les trois applications, créés automatiquement (et allumés) au démarrage du banc — dans les environnements réels leur création reste un geste d'exploitation à partir de la liste livrée. Interrupteur coupé : le widget n'est pas construit du tout, donc ses appels serveur ne partent pas — prouvé par test sur chaque front (sur le web nouvelle génération, un composant témoin compte les constructions ; sur mobile et web historique, le sélecteur est absent du rendu). Service d'interrupteurs absent, lent ou en panne : tout reste visible, aucun message d'erreur — le comportement d'aujourd'hui. Lecture des interrupteurs une fois par session, cache de cinq minutes : le geste instrumenté n'est pas alourdi. L'indicateur d'acquittements de biologie porte une obligation métier : son interrupteur est réservé aux incidents. Volet web historique livré en code seul (intégration manuelle) ; l'ensemble forme une seule US à tester assemblée | task-274 |
@@ -2177,6 +2218,8 @@ Cinq réserves à porter au bilan, sans quoi il serait trompeur :
 
 - v1.72 — **Quand la base est saturée, elle fait patienter au lieu de renvoyer une erreur.** À mille médecins simultanés, l'aiguilleur de connexions à la base refusait d'en ouvrir de nouvelles : le praticien voyait des opérations échouer sans raison apparente. Plus insidieux, ces échecs **flattaient les mesures** — une demande refusée n'étant jamais servie, elle ne comptait pas dans les temps de réponse, si bien que le banc publiait de bons chiffres sur un système en panne. Les connexions restent désormais ouvertes bien plus longtemps au lieu d'être recyclées en permanence, et une indisponibilité réelle donne un message propre « service momentanément indisponible », sans le moindre détail technique exposé. Le banc, lui, ne ferme plus les yeux : un seul refus suffit à déclarer une campagne en échec. (task-294)
 - v1.73 — **On saura enfin pourquoi la base refuse, au lieu de le deviner.** Le diagnostic précédent reposait sur des mesures prises à la main pendant la campagne : un verdict était une reconstitution après coup, jamais une lecture continue. Le banc mesure désormais lui-même ce que coûte l'ouverture d'une connexion à la base et, surtout, **à quel rythme le système en ouvre** — car ce qui provoque la panne n'est pas le nombre de demandes par seconde mais le nombre de connexions ouvertes par seconde, une grandeur qui n'était pas suivie. Le rapport de campagne écrit sa conclusion noir sur blanc : il désigne l'ouverture lente comme cause probable quand elle l'est, dit clairement que **la cause est ailleurs** quand l'ouverture est saine, et refuse de conclure quand la mesure manque. Même prudence sur les machines où la mémoire du serveur ne peut pas être lue : aucune ligne n'est affichée plutôt qu'un zéro, parce qu'un zéro se lirait « tout va bien » là où il signifie « on n'a pas regardé ». (task-295)
+
+- v1.74 — **Le cache de la messagerie ne se met plus lui-même à genoux.** Un cache sert les demandes une par une : en y rangeant le contenu entier des messages ouverts, la messagerie l'occupait une quinzaine de millisecondes à chaque fois, pendant lesquelles l'identité du praticien, ses préférences et les résumés de sa boîte attendaient — 6 568 abandons sur une seule mesure à mille médecins. Ce qui dépasse une taille fixée n'entre plus en cache et sera relu depuis la base, son chemin habituel. Le médecin ne voit aucune différence : le message s'affiche entier, mise en forme et documents rattachés compris. La mesure avait par ailleurs **innocenté** le journal de traçabilité, un temps soupçonné d'être la cause. (task-297)
 
 ---
 

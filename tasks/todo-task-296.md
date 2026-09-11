@@ -130,3 +130,20 @@ atteint (aucun `53300`) : ce n'est pas un plafond de connexions, c'est un plafon
 - **Hébergement HDS** : non — banc de charge local ; le portage des valeurs vers Staging/Production
   HDS est une décision DevOps séparée
 - **AIPD / impact RGPD** : inchangée — aucun traitement nouveau
+
+## Forge log
+
+- **`/start` refusé par conception, et ce n'est pas un échec** — `**Repos**: devops`. `DevOps/` est **entièrement hors automation** (CLAUDE.md § « Excluded repos ») : la forge n'y crée aucune branche, n'y écrit aucun code, n'y lance ni build ni test, et n'ouvre aucune PR. La task elle-même le déclare (« acte humain au banc, pas une US de code »).
+- **Statut** : `managed manually by the human`. La task reste en `todo-*` — elle attend l'humain, pas la forge.
+- **Ce que la forge a pu préparer, et qui est livré** : task-295 (PR api-mail #228) arme les trois sondes dont cette US a besoin pour lire son A/B « avant / après » sur une même série temporelle — coût d'un login (référence saine 6 ms, 10-16 s pendant l'incident), débit de création de backends, pression mémoire du cgroup. La dépendance déclarée est donc **satisfaite côté outillage**, sous réserve du merge humain de la PR #228 (HAG, règle 10).
+- **Ce qui reste à l'humain** (cf. `## Manual Test Plan`) : éditer `DevOps/Dev/PostgreSQL/docker-compose.yml` (jambe A : `limits.memory` 24G, `effective_cache_size` 16GB), recréer le conteneur, contrôler les `show …`, puis conduire les deux tirs journey 1000 iso sur bases gardées et consigner la mesure. Environ 3 h 30 par tir sur le banc distant.
+- Run `/forge` : `forge-20260911-295-297` — task sautée, passage à la suivante.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-296 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | skipped | 20 s | — | — | — | Repos=devops, entièrement hors automation forge (acte humain au banc) |
+| **Total cycle** | | **20 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |

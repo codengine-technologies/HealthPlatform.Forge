@@ -315,3 +315,46 @@ sa convention (`CamelCase`, `Indented`…) et le réutiliser. Vaut **aussi dans 
 tests** — l'analyseur ne fait pas de remise, et un aller-retour
 sérialise/désérialise qui partage l'instance ne peut pas diverger sur la
 convention de nommage.
+
+---
+
+## S3604 — un constructeur primaire n'accepte pas d'initialiseur de champ
+
+**Occurrences : 1** (task-297)
+
+Le motif se forme naturellement quand on veut **capturer une fois** une valeur
+de configuration dans une classe à constructeur primaire : on déclare un champ
+`readonly` initialisé depuis un paramètre du constructeur primaire. Sonar lit
+alors « initialiseur de membre redondant, tous les constructeurs affectent déjà
+ce membre » et ouvre un finding sur du code frais.
+
+```csharp
+// ❌ AVANT — l'initialiseur de champ dans une classe à constructeur primaire
+public sealed class SizeBoundedCacheService(
+    IResilientCacheService inner,
+    IOptions<CacheOptions> options,
+    ILogger<SizeBoundedCacheService> logger) : IResilientCacheService
+{
+    private readonly int _maxEntryBytes = options.Value.MaxEntryBytes;   // S3604
+
+// ✅ APRÈS — constructeur explicite, et l'intention devient lisible
+public sealed class SizeBoundedCacheService : IResilientCacheService
+{
+    private readonly IResilientCacheService _inner;
+    private readonly int _maxEntryBytes;
+
+    public SizeBoundedCacheService(
+        IResilientCacheService inner, IOptions<CacheOptions> options, ILogger<…> logger)
+    {
+        _inner = inner;
+        _maxEntryBytes = options.Value.MaxEntryBytes;
+    }
+```
+
+**Consigne** : le constructeur primaire est parfait tant qu'on **consomme
+directement** ses paramètres dans les corps de méthode (`inner.GetAsync(…)`).
+Dès qu'il faut **dériver et retenir** une valeur — lire un `IOptions`, calculer
+une borne, résoudre un chemin —, écrire un **constructeur explicite**. Ne pas
+« corriger » en relisant `options.Value` à chaque appel : sur un chemin chaud
+c'est payer à chaque passage une valeur qui ne bouge pas, et c'est justement ce
+que la capture évitait.
