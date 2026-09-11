@@ -352,3 +352,10 @@ journal en Error à requalifier en Warning (suivi). Timeouts du cache Redis 10 7
 
 **Reste à traiter avant merge (PR #225, `3d8f2ed`)** : rien de bloquant côté journal. À suivre hors task : task-294 (mémoire Postgres,
 cause racine), finding cache Redis, bruit de journal du repli.
+
+## Merged
+- **Date** : 2026-09-11
+- `api-mail` : PR #225 squash-mergée → `5b09e1b643bdf86119ae491d3951118157dc3804` — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/commit/5b09e1b643bdf86119ae491d3951118157dc3804 ; branche distante `feat/task-292-audit-trail-decoupled` supprimée (locale conservée)
+- `dtos-mss` : aucune PR (branche vide, 0 commit) — ref distante `feat/task-292-audit-trail-decoupled` supprimée
+- **CI develop api-mail** : ✓ success — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/34568555923
+- **Staging** : `forge/staging-task-292-294-20260908` conservée — tasks 293 et 294 encore en `done-*` dans ce run
