@@ -744,3 +744,7 @@
 {"ts":"2026-09-11T14:06:04+02:00","run_id":"forge-20260911-300-304","type":"step","task":"task-301","step":"review","status":"ok","note":"","iterations":null,"duration_ms":201508}
 {"ts":"2026-09-11T14:06:07+02:00","run_id":"forge-20260911-300-304","type":"step_start","task":"task-301","step":"tech-writer"}
 {"ts":"2026-09-11T14:06:50+02:00","run_id":"forge-20260911-300-304","type":"step","task":"task-301","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":42428}
+{"ts":"2026-09-11T14:07:32+02:00","run_id":"forge-20260911-300-304","type":"step_start","task":"task-302","step":"start"}
+{"ts":"2026-09-11T14:07:37+02:00","run_id":"forge-20260911-300-304","type":"step","task":"task-302","step":"start","status":"ok","note":"","iterations":null,"duration_ms":4858}
+{"ts":"2026-09-11T14:07:40+02:00","run_id":"forge-20260911-300-304","type":"step_start","task":"task-302","step":"develop"}
+{"ts":"2026-09-11T14:18:20+02:00","run_id":"forge-20260911-300-304","type":"step","task":"task-302","step":"develop","status":"failed","note":"DOD partiel : quota livre, cloisonnement et passdb en arbitrage (questions/task-302.md)","iterations":null,"duration_ms":639902}
