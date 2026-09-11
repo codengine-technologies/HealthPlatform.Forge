@@ -210,3 +210,9 @@ supplémentaire de la spirale, pas forcément sa disparition — mesurer la pent
 plafond de backends résidents (`server_idle_timeout` 600 → 60-120 ou `max_db_connections` 3 → 2), cache d'échec de login PgBouncer,
 plafond de connexions du rejeu d'audit (post-tir : 2 500 backends, 29 000 « too many clients », 6 min d'administration refusée —
 la vérification par base du rapport a dû être rejouée à la main : 1000 bases, 123 949 mails, 0 mélange, PASS).
+
+## Jambe B — 48 Go (décision humaine du 2026-09-11 18h : « beaucoup de marge sur cette machine, passer directement à 48 Go et mesurer ce dont Postgres a réellement besoin »)
+
+- `DevOps/Dev/PostgreSQL/docker-compose.yml` (non commité côté `devops`, à la main de l'humain) : `limits.memory` 24G → **48G**, `shared_buffers` 4GB → **12GB** (25 %), `effective_cache_size` 16GB → **36GB**, `max_connections` 2500 inchangé. Recréé à 18h20 ; contrôle : `show shared_buffers` 12GB, `show effective_cache_size` 36GB, `HostConfig.Memory` 51539607552, cgroup 49 152 Mo, `failcnt` 0, 1000 bases intactes.
+- Budget : hôte **191 Go** de RAM (129 libres), VM Docker Desktop plafonnée à **62,8 GiB** ; 48G + ~10 Go des autres conteneurs (sqlserver 2,6, sonarqube 2,7, seq 1,2, keycloak 1,0…) ≈ 58 Go : tient, sans marge pour monter plus haut sans relever la VM.
+- **Tir lancé 18h31** : `journey-1000-task296-legB-48G-20260911`, SUT `d04f2ca` (worktree `Api/Mail-ref` recréé), harnais `develop`, bases gardées, journal actif, RTT 5,2 ms → `LATENCY_MS=96`, même plan. Pré-vol entièrement vert (attache PgBouncer automatique cette fois, Prometheus prêt, 200 au premier poll, remote-write k6 sans erreur). Fin prévue ~22h02.
