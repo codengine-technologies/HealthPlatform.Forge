@@ -167,3 +167,91 @@ attente.
 - **Hébergement HDS** : oui — la configuration du pooler de banc préfigure celle
   de Staging/Production (portage humain via `DevOps/`) ; aucun nouveau flux
 - **AIPD / impact RGPD** : inchangée
+
+## Branches
+- `api-mail` (pushed) : feat/task-294-pgbouncer-wait-not-reject — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-294-pgbouncer-wait-not-reject
+- `dtos-mss` (pushed, auto-included) : feat/task-294-pgbouncer-wait-not-reject — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-294-pgbouncer-wait-not-reject
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-294 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 7.3 s | — | — | — | — |
+| /develop | ok | 15 min 47 s | 4 (13 s) | 4 (2 min 16 s) | — | api-mail 4B/4T |
+| /sonar | ok | 4 min 18 s | 1 (10 s) | 5 (2 min 52 s) | 1 (26 s) | 1 itération(s), api-mail 1B/5T |
+| /lint-angular | skipped | 0.6 s | — | — | — | repo/écrans non touchés (task api-mail uniquement) |
+| /lint-mobile | skipped | 0.5 s | — | — | — | repo/écrans non touchés (task api-mail uniquement) |
+| /verify-visual | skipped | 0.6 s | — | — | — | repo/écrans non touchés (task api-mail uniquement) |
+| /review | ok | 7 min 10 s | 5 (15 s) | 2 (1 min 45 s) | — | api-mail 5B/2T |
+| **Total cycle** | | **27 min 25 s** | **10 (39 s)** | **11 (6 min 53 s)** | **1 (26 s)** | |
+
+## Develop log
+
+- Repos touched : api-mail (dtos-mss : branche créée, aucun commit — aucun changement de contrat)
+- DTOs published : no DTO change
+- Interop published : no interop change
+- Commits :
+  - api-mail : d97b325 feat(loadtest): le multiplexeur PostgreSQL fait attendre au lieu de rejeter, et le rejet devient une erreur typée (task-294)
+  - api-mail : 6b8ae28 refactor(loadtest): simplify pass (/simplify) — task-294
+- Local build / test : ✓ build 0 erreur ; 167 + 486 + 2325 + 827 unitaires verts (1 échec pré-existant d'isolation `GetFolderTodayAsync_HappyPath_TagsTheImapActivity…`, réentrance statique `ActivitySources`, cf. task-292), intégration 458 verts / 16 skips / 5 rouges pré-existants de frontière de minuit (hors périmètre) ; `selftest.sh` du harnais : node 94/94, unittest 338/338 OK.
+- Décisions d'implémentation :
+  - **pgbouncer.ini (profil de banc)** : `server_idle_timeout` 60 → 600 et `server_lifetime` 600 → 3600 (fin de la réouverture permanente des 1000 pools — `sv_login` 212–243 mesuré), `server_connect_timeout` 15 → 30, `server_login_retry` 15 → 1 (aucun échec de login mis 15 s en cache), `query_wait_timeout` 120 → 30 (attente bornée, puis 503 typé). Ce fichier porte la jambe « tout réglé » ; les jambes A/B intermédiaires (idle+lifetime seuls, puis connect+retry, puis wait) sont à mesurer au banc — les commentaires du fichier le disent et référencent la baseline du 08/09.
+  - **Rejet typé** : `GlobalExceptionHandler.IsDatabaseUnavailable` mappe `PostgresException` `08P01` / `08006` / `57014` — trouvée n'importe où dans la chaîne d'`InnerException` (la stratégie EF Core enveloppe le driver) — en **503 `ProblemDetails`** au détail générique, sans le message brut du pooler. Décision de couche assumée : le handler référence Npgsql plutôt que d'introduire un intercepteur EF Core qui traduirait en `UnavailableException` — plus simple, couvre aussi les exceptions levées hors DbContext ; alternative consignée.
+  - **Stratégie d'exécution EF Core** : le chemin de données (`UseNpgsql` sans `EnableRetryOnFailure`) ne rejoue pas — test qui le prouve (`RetriesOnFailure` faux, délégué tenté une fois, `08P01` en cause racine). Les 138 873 `InvalidOperationException` « transient » du 08/09 ne viennent donc pas d'un rejeu EF : leur site d'émission reste à localiser dans Seq (suivi, hors périmètre).
+  - **Harnais** : `observe.ps1` échantillonne `sv_login` et les refus `server_login_retry` par **delta** (`docker logs --since` le relevé précédent) ; `report.py` publie `sv_login` (moy/max) et le **total de refus du palier** dans « Coûts résidents », et tout refus non nul classe le tir **ROUGE** (le 08/09 le rapport avait été complété à la main).
+- Passe qualité (/simplify) :
+  - Applied & committed : api-mail : 10 files (6b8ae28) — mesure des refus par delta + somme sur la fenêtre (au lieu d'un cumul lu en max, qui faisait hériter les paliers et coûtait O(journal) par relevé), pattern match sans allocation sur les SQLSTATE, `GetBaseException` dans le test, consts `PostgresErrorCodes` dans les `InlineData`, classes Python avant le garde `__main__`, test doublon retiré, commentaire ini aligné sur le code.
+  - Skipped (noted) : intercepteur EF Core → `UnavailableException` (couche ; alternative documentée) ; forge de `PostgresException` partagée dans `mss.mail.testing.shared` (deux factories de 3 lignes) ; fusion de la ligne « refus » dans la boucle `PGBOUNCER_WAIT_ROWS` (sémantique somme ≠ max) ; raccourcissement du récit de mesure dans l'ini (le DOD exige la justification par la mesure en commentaire).
+  - Skipped (contract/excluded) : dtos-mss
+- DOD self-check : 5/8 items vérifiables satisfaits (build, tests, ini avec valeurs justifiées + tests `BenchUpstream_ResolvesToIpv4WithoutHostAlias` / `PgBouncerTransactionPoolingTests` verts, mapping 503 testé sans fuite, non-rejeu EF testé, `report.py` + `selftest.sh` verts, aucune donnée de santé dans les nouveaux logs/métriques). **3 items de banc différés (HAG)** : A/B au moins deux jambes sur le protocole 1000 r2, re-tir 1000 final (erreurs ≤ 0,1 %, `08P01` = 0, rapport + `INDEX.md` + copie `Docs/audits/`), et la réécriture des commentaires ini « par la mesure » qui en découle — 3 h 30 par tir sur le banc distant.
+- Next step : /sonar task-294
+
+## Sonar log
+- Phase 1 (new code) : ✓ Quality Gate OK, **0 finding new-code dès la première analyse**, new_coverage = 88,0 % (seuil QG 80 %) — `GlobalExceptionHandler.cs` : 100 % du new code couvert
+- Phase 1 — Issues fixées : 0 ; Tests ajoutés : 0 (couverture déjà complète) ; Hotspots new-code : 0
+- Phase 2 (legacy) : itérations 0 / 5 — skippée : baseline déjà aux cibles dures (0 bug, 0 vuln, A/A/A), 59 smells legacy hors périmètre
+- Itérations d'analyse : 1
+- Build / tests : ✓ green (5 échecs pré-existants de frontière de minuit, cf. Develop log — hors périmètre)
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | → |
+| New coverage | 88,1 % | 88,0 % | −0,1 pt |
+| New-code issues | 0 | 0 | → |
+| Bugs | 0 | 0 | → |
+| Vulnerabilities | 0 | 0 | → |
+| Security hotspots | 3 (legacy) | 3 | → |
+| Code smells | 59 | 59 | → |
+| Coverage (projet) | 88,1 % | 88,1 % | → |
+| Duplication | 0,4 % | 0,4 % | → |
+| Reliability / Security / Maintainability | A/A/A | A/A/A | → |
+
+## Lint log
+- /lint-angular : ⤍ skipped — `client-angular` non listé dans **Repos** (les 2 `environment.ts` modifiés dans `Client/Angular` préexistent au run, branche humaine `feature/nova-rewriting-mss`).
+
+## Lint mobile log
+- /lint-mobile : ⤍ skipped — `client-mobile` non listé dans **Repos**, `Client/Mobile` sur `develop`, arbre propre.
+
+## Visual verify log
+- /verify-visual : ⤍ skipped — aucun écran `client-mobile` touché.
+
+## PRs
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/227 — label `awaiting-human-merge`
+- `dtos-mss` : aucun commit sur `feat/task-294-pgbouncer-wait-not-reject` (pas de changement de contrat) — pas de PR
+
+## Code Review Summary
+- Itération 1 : **CHANGES REQUESTED** (relecture indépendante) — 1 bloquant : `query_wait_timeout = 30` à égalité avec le `Command Timeout` Npgsql par défaut (30 s, non surchargé par `AppHost.cs`) → `TimeoutException` sans `PostgresException`, le 503 promis redevenait un 500. Suggestions : sémantique de `server_login_retry` (fenêtre de refus, pas attente), borne 1000 × 3 > `max_connections` 2500 → `53300`, garde `__main__` en double, `docker logs` en échec lu comme 0.
+- Correctifs (`06cc225`) : `query_wait_timeout` = 20 + test d'invariant `QueryWaitTimeout_StaysBelowNpgsqlCommandTimeout` ; `53300` mappé en 503 (+ InlineData) ; commentaires ini alignés ; `observe.ps1` : `--since` en `ToString('o')`, aucun échantillon si `docker logs` échoue ; test Python déplacé avant le garde.
+- Itération 2 : **APPROVED** — build 0 erreur, 3 806 tests unitaires verts, 458 tests d'intégration verts (5 flakes pré-existants de frontière de minuit, hors périmètre), `selftest.sh` vert, Sonar QG OK, 0 finding new-code, `GlobalExceptionHandler` couvert à 100 %.
+- Suggestions restantes (hors périmètre, à suivre) : `NpgsqlException.IsTransient` / `SocketException` (pooler injoignable) en 503 ; localiser dans Seq le site émetteur des 138 873 `InvalidOperationException` « transient » du 08/09 (ce n'est pas un rejeu EF Core, prouvé) ; intercepteur EF Core → `UnavailableException` si l'on veut sortir Npgsql de la couche API.
+
+## Merged
+- **Date** : 2026-09-11
+- `api-mail` : PR #227 squash-mergée → `d04f2ca4691dcf0ebf7134da506ce67e4d69d938` — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/commit/d04f2ca4691dcf0ebf7134da506ce67e4d69d938 ; branche distante `feat/task-294-pgbouncer-wait-not-reject` supprimée (locale conservée)
+- `dtos-mss` : aucune PR (branche vide, 0 commit) — ref distante `feat/task-294-pgbouncer-wait-not-reject` supprimée, clone local repassé sur `develop`
+- **CI develop api-mail** : ✓ success — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/34569293335
+- **Staging** : `forge/staging-task-292-294-20260908` supprimée (remote + local, api-mail) — run 292-294 entièrement mergé
