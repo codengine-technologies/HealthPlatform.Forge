@@ -127,3 +127,58 @@ explicite : on ne supprime pas une source de traçabilité PGSSI-S le jour même
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui — déplacement interne au même environnement HDS, aucun flux sortant
 - **AIPD / impact RGPD** : couverte par la mise à jour de task-300 ; cette US en est l'exécution
+
+---
+
+## Branches
+
+- `api-mail` (pushed) : `feat/task-301-reprise-historique-audit` — base `origin/develop`
+  @ `ff6332f7` (task-300 mergée)
+- `dtos-mss` (pushed) : `feat/task-301-reprise-historique-audit` — branche auto-incluse
+  (CLAUDE.md « Auto-included repo »). Sans changement de contrat, elle restera **sans commit**.
+
+> **Pré-flight** : les six repos automatisés sur `develop`, arbres propres. Dépendances
+> `task-299` et `task-300` satisfaites — toutes deux en `tasks/archived/`, état terminal qui
+> suit `done-*`.
+
+### ⚠️ Second point de collision avec task-303 — à connaître avant d'écrire
+
+`archived-task-300.md` documente déjà la collision **task-300 × task-303** (renommage
+`tenants` → `mss_accounts`, et le trou silencieux sur la migration du journal).
+
+**Cette US en ajoute un second, sur les mêmes fichiers.** task-301 retire le chemin de
+lecture double source, donc modifie `PostgresAuditReader` — précisément le fichier que
+task-303 doit aussi modifier pour suivre le renommage du DbSet.
+
+| Fichier | task-301 y fait | task-303 y fait |
+|---|---|---|
+| `PostgresAuditReader` | **supprime** la fusion double source et la lecture de `audit_cutover_at` | renomme `context.Tenants` → `context.MssAccounts` |
+| `PostgresAuditSink` | inchangé | renomme `UPDATE tenants` |
+| migration `TenantDb/` | ajoute la reprise + le retrait de la table par tenant | renomme la table |
+
+**Conséquence pratique, dans l'ordre de merge contraint** (task-303 ne peut pas merger
+avant task-304, règle 11) : c'est **task-303 qui se resynchronise** sur un `develop` qui
+portera peut-être déjà task-301. Si tel est le cas, une partie de sa réconciliation
+**disparaît d'elle-même** — on ne renomme pas un appel dans du code qu'on vient de
+supprimer.
+
+Le risque inverse — task-301 mergée *après* task-303 — est celui qu'il faut surveiller :
+elle supprimerait alors du code déjà renommé, ce qui est bénin, **mais sa propre migration
+devrait viser `mss_accounts` et non `tenants`**. Le même piège silencieux que task-300, au
+même endroit.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-301 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /develop | ok | 19 min 19 s | — | — | — | — |
+| /sonar | skipped | 2.8 s | — | — | — | hors périmètre (api-mail tests seuls) |
+| /lint-angular | skipped | 2.4 s | — | — | — | hors périmètre (api-mail tests seuls) |
+| /lint-mobile | skipped | 2.2 s | — | — | — | hors périmètre (api-mail tests seuls) |
+| /verify-visual | skipped | 2.0 s | — | — | — | hors périmètre (api-mail tests seuls) |
+| /review | ok | 3 min 21 s | — | 1 (0.9 s) | — | api-mail 0B/1T |
+| /tech-writer | ok | 42 s | — | — | — | — |
+| /start | ok | 56 s | — | — | — | — |
+| **Total cycle** | | **24 min 29 s** | **0 (0.0 s)** | **1 (0.9 s)** | **0 (0.0 s)** | |

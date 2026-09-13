@@ -867,3 +867,5 @@
 {"ts":"2026-09-13T20:32:14+02:00","run_id":"-","type":"step","task":"task-300","step":"review","status":"ok","note":"","iterations":null,"duration_ms":993658}
 {"ts":"2026-09-13T20:32:35+02:00","run_id":"-","type":"step_start","task":"task-300","step":"tech-writer"}
 {"ts":"2026-09-13T20:35:54+02:00","run_id":"-","type":"step","task":"task-300","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":198382}
+{"ts":"2026-09-13T20:50:06+02:00","run_id":"-","type":"step_start","task":"task-301","step":"start"}
+{"ts":"2026-09-13T20:51:03+02:00","run_id":"-","type":"step","task":"task-301","step":"start","status":"ok","note":"","iterations":null,"duration_ms":56689}
