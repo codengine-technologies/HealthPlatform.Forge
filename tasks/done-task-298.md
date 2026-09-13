@@ -160,3 +160,187 @@ des requêtes du médecin (backlog E015 : page d'en-têtes hydratée, dossier pa
 - **Hébergement HDS** : oui — le réglage du pooler et du drain préfigure Staging/Production
   (portage humain via `DevOps/`) ; aucun nouveau flux, aucune nouvelle donnée
 - **AIPD / impact RGPD** : inchangée — même traitement, même finalité, même durée
+
+## Branches
+
+- `api-mail` (pushed) : `feat/task-298-borner-drain-audit-backends` — base `origin/develop` @ 58556045
+- `dtos-mss` (pushed, auto-inclus) : même nom de branche — aucun changement de contrat attendu, pas de PR si sans commit
+
+> **Portée réalisable par la forge.** Les deux jambes de code — plafond global du drain,
+> `application_name` explicite, durées de vie des connexions directes, attribution dans
+> `observe.ps1` / `report.py` — sont dans le périmètre de `/develop`. En revanche les
+> **deux mesures au banc** du DOD (tirs journey 1000 de plusieurs heures, Postgres 48 Go,
+> 1000 bases gardées, VM Docker dédiée) sont des **actes humains** : elles passent par le
+> skill `loadtest-skill`, sur une machine de banc, et aucune étape de la chaîne autonome
+> ne peut les produire. `/review` les trouvera donc non cochées — c'est attendu, pas un
+> échec de la chaîne.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-298 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 1 min 09 s | — | — | — | — |
+| /develop | ok | 20 min 58 s | 1 (10 s) | 1 (0.9 s) | — | api-mail 1B/1T |
+| /sonar | ok | 16 min 44 s | 1 (52 s) | — | — | 1 itération(s), api-mail 1B/0T |
+| /lint-angular | skipped | 2.0 s | — | — | — | task-298 ne touche que api-mail |
+| /lint-mobile | skipped | 2.3 s | — | — | — | task-298 ne touche que api-mail |
+| /verify-visual | skipped | 2.5 s | — | — | — | task-298 ne touche que api-mail |
+| /review | ok | 8 min 03 s | 2 (30 s) | — | — | api-mail 2B/0T |
+| /tech-writer | ok | 2 min 57 s | — | — | — | — |
+| **Total cycle** | | **50 min 00 s** | **4 (1 min 33 s)** | **1 (0.9 s)** | **0 (0.0 s)** | |
+
+## Develop log
+
+### Jambe 1 — code api-mail
+
+1. **`Audit:DrainMaxConnections` (défaut 16)** — plafond **global** de bases
+   drainées simultanément, pris dans `PersistGroupAsync`. C'est le **seul** point
+   qui ouvre une connexion directe vers la base d'un praticien, donc le seul où
+   tous les chemins du drain passent : lot ordinaire, rejeu de spill, et
+   persistance directe de secours quand le canal est plein. Un plafond posé
+   ailleurs aurait laissé l'un de ces chemins libre.
+
+   > Ce n'est **pas** un doublon de `DrainParallelism`, qui ne borne que la
+   > concurrence *à l'intérieur d'un lot*. C'est le nombre de bases touchées sur
+   > une **fenêtre** qui faisait grimper les backends : chaque base laisse
+   > derrière elle son pool Npgsql le temps de son idle.
+
+2. **Route d'audit : `Connection Idle Lifetime` 60 → 30 s.** L'amortissement du
+   login visé par task-292 reste acquis (le drain repasse sur la même base bien
+   plus souvent que toutes les 30 s en régime), mais après un rejeu de spill les
+   backends directs redescendent en moins d'une minute au lieu de deux.
+3. **`Application Name` explicite** : `mss-mail-audit`, `mss-mail-provision`.
+
+### Jambe 2 — profil de banc
+
+`pgbouncer.ini` : `server_idle_timeout` 600 → **120**. La rafale que le
+commentaire de task-294 annonçait s'est produite. 120 s reste 2× au-dessus de la
+pause réelle entre deux gestes du médecin (~30 s à 1000) : le churn de login que
+task-294 avait supprimé ne revient pas — c'est pourquoi on ne retourne **pas** à
+60. **Un seul facteur par tir** : `max_db_connections` reste à 3 ; si 120 ne
+suffit pas, 3 → 2 se mesure seule.
+
+### L'outillage mesurait faux
+
+`observe.ps1` classait les backends par `client_addr` (« le pooler parle depuis
+`172.x` »). Or la route directe arrive par la **même passerelle Docker** : elle
+était comptée « pooler », et la colonne « directs » affichait **0** pendant que
+le drain saturait le serveur. Le rapport imputait donc l'incident au pooler.
+L'attribution se fait désormais par `application_name`, que le client pose et que
+Postgres expose. `report.py` publie les deux routes séparément, le pic rapporté à
+`max_connections`, et classe le tir **ROUGE** à ≥ 98 %.
+
+### Tests — 6 nouveaux, RED vérifié
+
+| Test | Vérifie |
+|---|---|
+| `Le_drain_ne_depasse_jamais_son_plafond_de_bases_simultanees` | 40 groupes, `DrainParallelism = 40`, plafond 4 → pic ≤ 4 |
+| `Sous_plafond_atteint_les_traces_ATTENDENT_et_aucune_n_est_jetee` | 40 traces persistées, pic ≤ 2 (invariant task-292) |
+| `Le_plafond_par_defaut_est_tres_inferieur_a_la_population_de_bases` | défaut 16, deux ordres sous 1000 |
+| `La_route_d_audit_se_nomme_et_ne_retient_pas_ses_connexions` | `mss-mail-audit`, idle ≤ 30, pruning ≤ 10 |
+| `La_route_de_provisionnement_se_nomme_aussi` | `mss-mail-provision` |
+| `Les_deux_routes_directes_portent_des_noms_DISTINCTS` | sinon l'attribution ne discrimine rien |
+
+Plus 5 tests `unittest` sur le verdict de saturation de `report.py`.
+
+**RED vérifié** : plafond neutralisé → 2 des 3 tests de drain tombent. Les
+assertions portent sur la **concurrence observée**, jamais sur une durée — un
+test de durée serait un test de la machine.
+
+### Validation
+
+- Solution : **4 376 tests, 0 échec** (4 370 + 6).
+- Outillage de banc (`selftest.sh`, node + unittest) : **359 tests, 0 échec**.
+
+### Passe qualité `/simplify` (§Q)
+
+Un cleanup appliqué : retrait d'un compteur de pic **écrit et jamais lu** — code
+mort, et écriture de propriété non synchronisée depuis plusieurs threads. Les
+tests observent la concurrence côté dépôt, ce qui mesure mieux (ce qui atteint
+réellement la base). Re-validation complète après cleanup : verte.
+
+### ⚠️ Ce que la forge ne peut pas cocher
+
+Les **deux mesures au banc** du DOD (tirs journey 1000 de plusieurs heures,
+Postgres 48 Go, 1000 bases gardées) sont des actes humains via le skill
+`loadtest-skill`. Les cibles sont posées : jambe 1 → backends < 2 300, 0 `53300` ;
+jambe 2 → backends < 1 800, `08P01` = 0, erreurs k6 ≤ 0,02 %.
+
+## Sonar log
+
+Infrastructure relancée (conteneurs arrêtés depuis 4 jours) :
+`docker start sonarqube_db` → 30 s → `docker start sonarqube` → `UP`.
+Analyse complète : build Release, 5 projets de test avec couverture OpenCover
+(4 376 tests verts), scanner `begin` / `end`.
+
+### KPIs qualité
+
+| Métrique | Valeur | Quality Gate |
+|---|---|---|
+| **Quality Gate (new code)** | **ERROR** | ✗ |
+| `new_coverage` | **89,1 %** (seuil 80) | ✓ |
+| `new_duplicated_lines_density` | 0,048 % (seuil 3) | ✓ |
+| `new_security_hotspots_reviewed` | 83,3 % (seuil 100) | ✗ |
+| `new_violations` | **155** (seuil 0) | ✗ |
+| Couverture projet | 88,5 % | — |
+| Bugs / Vulnérabilités / Code smells | 2 / 2 / 226 | — |
+| Duplication projet | 0,3 % | — |
+| Ratings (reliability / security / maintainability) | 3.0 / 5.0 / **A** | — |
+
+### ⚠️ Provenance des 155 `new_violations` — vérifiée avant de conclure
+
+Le Quality Gate est ROUGE, et **aucune de ces violations n'est attribuable à ce
+diff**. Vérification faite issue par issue :
+
+| Fichier | Issues | Dans mon diff ? |
+|---|---|---|
+| `AuditBackgroundService.cs` | 2 (S103, lignes > 150 car.) | **non** — L373 et L438, mon diff touche L33-53, L485-490, L517-523 |
+| `tests/loadtest-k6/report.py` | 23 (S3776 **blacklistée**, S1192) | non — fichier de 6 000 lignes, mes ajouts sont ailleurs |
+| `lib/journey-model.js`, `scenarios/journey.js` | 23 | non — non touchés |
+| ~40 fichiers de test divers | ~107 | non — non touchés |
+
+C'est le piège documenté : **la *new-code period* du projet englobe des tasks
+déjà mergées**, donc le Quality Gate peut être ROUGE sans dette introduite. La
+majorité des violations restantes sont des **S3776** (complexité cognitive), qui
+sont sur la liste noire de `/sonar` et relèvent de `/sonar-s3776` — une méthode,
+une PR.
+
+### Cleanup appliqué
+
+Les 2 **S103** de `AuditBackgroundService.cs` ont été corrigées bien
+qu'antérieures à ce diff : mécaniques, dans un fichier déjà ouvert, protégées par
+2 403 tests. Plus aucune ligne de ce fichier ne dépasse 150 caractères.
+
+**Best-effort assumé** : les 153 autres sont acceptées et passent à l'étape
+suivante, conformément au fonctionnement de `/sonar`.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/232 — label `awaiting-human-merge`
+- `dtos-mss` : **aucune PR** — 0 commit (branche auto-incluse, aucun changement de contrat)
+
+## Code Review Summary
+
+**APPROVED** — 10 fichiers revus, 0 blocage, 2 suggestions non bloquantes.
+
+| Fichier | Verdict |
+|---|---|
+| `AuditBackgroundService.cs` | ✅ sémaphore acquis **avant** le `try`, rendu dans le `finally` sur tous les chemins ; **pas de ré-entrance** — `PersistIndividuallyAsync` crée son propre scope et ne réacquiert pas le jeton, donc le drain ne peut pas se bloquer lui-même |
+| `BaseRepository.cs` | ✅ noms distincts, idle 30 / pruning 10 cohérents. ⚠️ le nom applicatif passe par `AppendUnlessExplicitlySized` : un déploiement dimensionnant explicitement le pool perdrait l'attribution (sans effet au banc) |
+| `AuditOptions.cs` | ✅. ⚠️ borne haute `Math.Clamp(…, 1, 256)` arbitraire, cohérente avec le clamp à 64 de `DrainParallelism` |
+| `pgbouncer.ini` | ✅ un seul facteur changé, mesure et raison écrites dans le fichier |
+| `observe.ps1`, `report.py`, fixture | ✅ attribution par `application_name`, verdict de saturation testé |
+| 3 fichiers de tests (+1 fixture) | ✅ assertions sur la concurrence **observée**, jamais sur une durée |
+
+**Validation** : build 0 erreur ; solution **4 376 tests, 0 échec** ; outillage de
+banc **363 tests, 0 échec**. `develop` n'avait pas bougé — aucun merge de
+synchronisation nécessaire.
+
+### État du DOD
+
+Tous les items de **code** sont couverts. Les **deux mesures au banc** ne le sont
+pas et ne peuvent pas l'être par la chaîne autonome : tirs journey 1000 de
+plusieurs heures, Postgres 48 Go, 1000 bases gardées, via le skill
+`loadtest-skill`, sur une machine de banc. Les cibles sont posées dans la PR.

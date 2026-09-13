@@ -2,10 +2,10 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.50
+> **Version** : 1.51
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
-> **Dernière mise à jour** : 2026-09-11
+> **Dernière mise à jour** : 2026-09-13
 
 ---
 
@@ -2220,6 +2220,7 @@ Cinq réserves à porter au bilan, sans quoi il serait trompeur :
 - v1.73 — **On saura enfin pourquoi la base refuse, au lieu de le deviner.** Le diagnostic précédent reposait sur des mesures prises à la main pendant la campagne : un verdict était une reconstitution après coup, jamais une lecture continue. Le banc mesure désormais lui-même ce que coûte l'ouverture d'une connexion à la base et, surtout, **à quel rythme le système en ouvre** — car ce qui provoque la panne n'est pas le nombre de demandes par seconde mais le nombre de connexions ouvertes par seconde, une grandeur qui n'était pas suivie. Le rapport de campagne écrit sa conclusion noir sur blanc : il désigne l'ouverture lente comme cause probable quand elle l'est, dit clairement que **la cause est ailleurs** quand l'ouverture est saine, et refuse de conclure quand la mesure manque. Même prudence sur les machines où la mémoire du serveur ne peut pas être lue : aucune ligne n'est affichée plutôt qu'un zéro, parce qu'un zéro se lirait « tout va bien » là où il signifie « on n'a pas regardé ». (task-295)
 
 - v1.74 — **Le cache de la messagerie ne se met plus lui-même à genoux.** Un cache sert les demandes une par une : en y rangeant le contenu entier des messages ouverts, la messagerie l'occupait une quinzaine de millisecondes à chaque fois, pendant lesquelles l'identité du praticien, ses préférences et les résumés de sa boîte attendaient — 6 568 abandons sur une seule mesure à mille médecins. Ce qui dépasse une taille fixée n'entre plus en cache et sera relu depuis la base, son chemin habituel. Le médecin ne voit aucune différence : le message s'affiche entier, mise en forme et documents rattachés compris. La mesure avait par ailleurs **innocenté** le journal de traçabilité, un temps soupçonné d'être la cause. (task-297)
+- v1.75 — **La base finissait par être pleine, simplement parce que le service tournait depuis longtemps.** À mille médecins, le nombre de connexions ouvertes vers la base montait régulièrement pendant près de trois heures — alors même que le nombre de demandes des praticiens, lui, avait cessé d'augmenter depuis longtemps. Ce n'était donc pas la charge qui la remplissait, mais **la durée de fonctionnement** : passé un seuil, la base refusait toute nouvelle connexion, et le service commençait à échouer. Deux causes s'additionnaient. D'abord, les connexions inactives étaient conservées dix minutes : à mille cabinets, cela suffit à ne jamais rien libérer ; elles sont désormais rendues au bout de deux minutes, ce qui reste largement au-dessus du temps entre deux gestes d'un médecin. Ensuite, le journal de traçabilité — celui qui garantit qu'aucun accès à un dossier n'est perdu — pouvait, en rattrapant son retard, ouvrir une connexion vers **chacune** des mille bases en quelques minutes ; il n'en traite maintenant qu'un petit nombre à la fois, et les écritures en attente patientent au lieu d'être perdues. Ce rattrapage avait figé la machine de mesure trois fois dans la même journée. Enfin, l'outil de mesure lui-même **désignait le mauvais responsable** : il devinait l'origine des connexions d'après leur adresse réseau et attribuait au mauvais composant celles du journal de traçabilité, dont la colonne affichait obstinément zéro pendant qu'il saturait le serveur. Chaque connexion porte désormais son nom, et un rapport de campagne dont la base est pleine est **déclaré en échec** au lieu d'être lu comme un bon résultat. (task-298)
 
 ---
 
