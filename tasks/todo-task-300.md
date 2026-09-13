@@ -79,12 +79,20 @@ En base commune, le drain redevient : **une connexion, une insertion de 1 000 li
    (2 connexions), `Application Name=mss-mail-audit` (convention task-298).
    **Séparation d'avec l'annuaire** (arbitrage 2026-09-13 : la base centrale aura son propre
    backend d'API) : le chemin d'écriture du journal passe par un contrat **distinct** de
-   `ITenantRegistryClient` — `IAuditSink.WriteBatchAsync(IReadOnlyList<AuditTraceRecord>)` dans le SDK
-   (`HealthPlatform.Host.Sdk.Audit.V1`), implémentation Postgres dans `api-mail`. Il est
-   asynchrone, **par lots**, idempotent (clé de trace), et son indisponibilité est absorbée par
-   le tampon Redis : c'est un contrat d'arrière-plan, pas de chemin de requête. Il pourra devenir
-   distant (gRPC par lots) sans toucher au drain. L'écran de lecture du praticien passe, lui, par
-   `IAuditReader` (même paquet), scopé par tenant, RLS appliquée côté implémentation.
+   `ITenantRegistryClient` — `IAuditSink.WriteBatchAsync(IReadOnlyList<AuditTraceRecord>)` dans
+   `mss.mail.application.Services.Repository.TenantDb`, ses `record` de données dans
+   `mss.mail.Domain.Entities.TenantDb`, implémentation Postgres dans
+   `Infrastructure/Repositories/TenantDb`. Il est asynchrone, **par lots**, idempotent (clé de
+   trace), et son indisponibilité est absorbée par le tampon Redis : c'est un contrat
+   d'arrière-plan, pas de chemin de requête. Il pourra devenir distant (gRPC par lots) sans
+   toucher au drain. L'écran de lecture du praticien passe, lui, par `IAuditReader` (même
+   emplacement), scopé par tenant, RLS appliquée côté implémentation.
+
+   > ⚠️ **Pas dans le SDK.** task-299 y avait placé `ITenantRegistryClient` ; la décision a été
+   > **révisée le 2026-09-13** — un contrat publié en paquet impose un cycle publication + bump
+   > à chaque évolution du modèle. Les deux contrats d'audit suivent la même règle : isolation
+   > par espace de noms, garde-fous par test de réflexion. Voir « Révision post-review » dans
+   > `done-task-299.md`.
 
    **Le contrat SDK ignore la transition.** `IAuditReader` expose *lire les traces d'un tenant* —
    point. La lecture double source (§5) vit **entièrement dans l'implémentation `api-mail`** et

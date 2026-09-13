@@ -103,7 +103,14 @@ en C# 12 : deux spreads valent mieux qu'un `Concat`.
 
 ## CA1859 — type concret plutôt qu'interface pour un helper local
 
-**Occurrences : 2** (task-203, task-289 — récidive sur du code frais, et
+**Occurrences : 3** (task-203, task-289, task-299 — troisième récidive. Variante
+task-299 : une méthode privée `async`-sans-`await` qui **rendait directement** la
+tâche concrète d'un appelé (`Task<bool>` du cache) sous un type déclaré `Task`.
+La consigne vaut donc aussi pour le **relais d'une tâche** : soit on déclare le
+type concret, soit on `await` — mais on ne masque pas un `Task<T>` derrière un
+`Task`.)
+
+**Occurrences (historique) : 2** (task-203, task-289 — récidive sur du code frais, et
 c'est la **passe qualité `/simplify` elle-même** qui l'a introduite : une revue
 a proposé `IReadOnlyList<string>` au motif que « le helper ne mute rien », ce
 qui est vrai mais hors sujet. Le paramètre d'un helper **privé** dont l'unique
@@ -358,3 +365,77 @@ une borne, résoudre un chemin —, écrire un **constructeur explicite**. Ne pa
 « corriger » en relisant `options.Value` à chaque appel : sur un chemin chaud
 c'est payer à chaque passage une valeur qui ne bouge pas, et c'est justement ce
 que la capture évitait.
+
+
+---
+
+## S1854 — une affectation qu'on écrase aussitôt est morte, même si elle « documente »
+
+**Occurrences : 1** (task-299)
+
+Le piège vient d'une **passe de simplification**. Le code créait la ligne puis
+la relisait pour absorber une course perdue entre réplicas :
+
+```csharp
+var row = await EnsureAccountRowAsync(db, subject, ct);   // ← morte
+await SaveIdempotentAsync(db, ct);
+row = await db.Accounts.FirstAsync(a => a.Subject == subject, ct);
+```
+
+La première affectation ne sert à rien : la relecture est **systématique**, pas
+conditionnelle. On l'avait gardée parce qu'elle « se lisait bien » — ce qui est
+exactement ce que le commentaire doit faire, pas la variable.
+
+**Consigne** : quand une relecture suit inconditionnellement une écriture, ne pas
+capturer le résultat de l'écriture. Si le lecteur a besoin de comprendre pourquoi
+on relit, c'est un commentaire qu'il faut, pas une variable morte.
+
+---
+
+## S4457 — la validation des arguments se fait hors du corps `async`
+
+**Occurrences : 1** (task-299)
+
+Dans une méthode `async`, le corps ne s'exécute qu'à la première consommation de
+la tâche. Un `ArgumentException.ThrowIfNullOrWhiteSpace` placé en tête d'une
+méthode `async` ne lève donc **pas à l'appel** : il lève au premier `await` de
+l'appelant, dans une pile déroulée où l'appel fautif n'apparaît plus.
+
+**Consigne** : méthode publique **non-`async`** qui valide puis délègue à un
+`…CoreAsync` privé.
+
+```csharp
+public Task<T> DoAsync(Request request, CancellationToken ct = default)
+{
+    ArgumentNullException.ThrowIfNull(request);      // lève À L'APPEL
+    return DoCoreAsync(request, ct);
+}
+
+private async Task<T> DoCoreAsync(Request request, CancellationToken ct) { … }
+```
+
+S'applique dès qu'une méthode `async` publique valide ses arguments — donc à
+presque toute méthode de contrat.
+
+---
+
+## CA1068 — le `CancellationToken` est le **dernier** paramètre
+
+**Occurrences : 1** (task-299, 4 occurrences dans la même task)
+
+Toutes sur des **helpers privés** dont la signature avait été calquée sur celle
+du contrat public, lequel porte `(…, CancellationToken ct = default, string?
+correlationId = null)` — un ordre imposé par la compatibilité des paramètres
+optionnels côté contrat.
+
+**Consigne** : ne pas recopier l'ordre du contrat dans les helpers privés. Sur un
+privé, le jeton va **en dernier**, et les paramètres de corrélation ou de contexte
+passent avant.
+
+```csharp
+// contrat public (ordre contraint par les valeurs par défaut)
+Task<T> ReadAsync(string key, CancellationToken ct = default, string? correlationId = null);
+
+// helper privé
+private Task<T> ReadCoreAsync(string key, string? correlationId, CancellationToken ct);
+```

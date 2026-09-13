@@ -47,6 +47,13 @@ explicite : on ne supprime pas une source de traçabilité PGSSI-S le jour même
 ## Definition of Done
 
 - [ ] Build passes on api-mail (0 errors)
+- [ ] **Prérequis hérité de task-299 (revue de code)** — le curseur de pagination du registre
+      s'écrit `t.Id.CompareTo(cursor) > 0` (`PostgresTenantRegistryClient`, `ListTenantsAsync` et
+      `ListDormantAccountsAsync`). **Aucun test ne prouve qu'il se traduit en SQL** : les tests de
+      task-299 tournent sur le fournisseur EF en mémoire, qui évalue l'expression côté client. Sur
+      un vrai Postgres, une expression non traduisible lève à l'exécution. **Vérifier par un test
+      d'intégration sur base réelle** avant que la reprise ne s'appuie dessus — ou remplacer le
+      curseur par une colonne dont l'ordre est trivialement traduisible.
 - [ ] Tests pass (0 failures)
 - [ ] Commande de reprise déclenchable à la demande (pas de cron : `api-mail` n'a pas
       d'ordonnanceur), reprenable après interruption sans reprendre depuis le début
@@ -67,8 +74,9 @@ explicite : on ne supprime pas une source de traçabilité PGSSI-S le jour même
 - [ ] Migration par tenant supprimant la table d'audit héritée, appliquée **uniquement** aux
       tenants marqués repris et vérifiés
 - [ ] Retrait du chemin de lecture double de task-300 — il vit **entièrement dans
-      l'implémentation `api-mail`** de `IAuditReader`, jamais dans le contrat publié : ce retrait
-      ne touche donc **pas** le SDK (c'est pourquoi cette US ne liste pas `sdk`)
+      l'implémentation** de `IAuditReader`, jamais dans le contrat : ce retrait ne change donc
+      aucune signature (et, depuis la révision du 2026-09-13, plus aucun contrat de l'EPIC n'est
+      publié en paquet — c'est pourquoi cette US ne liste pas `sdk`)
 - [ ] **C'est cette US, et elle seule, qui supprime la configuration devenue morte** :
       `Audit:DrainParallelism` et le plafond de drain côté audit (`Audit:DrainMaxConnections`
       pour ce chemin — il **reste** pour le provisionnement). task-300 cesse de s'en servir mais

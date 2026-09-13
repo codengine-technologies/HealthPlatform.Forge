@@ -1,8 +1,12 @@
 # todo-task-303.md — Comptes multi-messageries (vague 1/2 — backend, contrat, banc) : la boîte MSSanté devient une sélection validée par le registre et par l'identité PSC, plus un claim Keycloak
 
-**Repos**: sdk, api-mail
+**Repos**: api-mail
 **Dependencies**: **task-299** (registre — comptes, messageries, tenants, et le contrat
-`ITenantRegistryClient` dans le SDK que cette US **étend**). Indépendante de task-300 / task-301
+`ITenantRegistryClient`, que cette US **étend**). ⚠️ Ce contrat **a quitté le SDK** le 2026-09-13
+(révision post-review de task-299) : il vit dans `mss.mail.application.Services.Repository.TenantDb`,
+ses `record` dans `mss.mail.Domain.Entities.TenantDb`. **L'étendre ne demande donc plus ni
+publication NuGet ni bump de consommateur** — c'est précisément ce que la révision achetait, et
+c'est pourquoi cette US ne liste plus `sdk`. Indépendante de task-300 / task-301
 (journal d'audit) et de task-302 (accès admin).
 **Epic**: E016
 **Priorité**: **1** — c'est l'US qui donne son sens produit au registre : un praticien, un compte,
@@ -288,6 +292,12 @@ poussait la PR `api-mail` au-delà du plafond de la règle 5.
 
 ### Transverse
 - [ ] Build passes on `sdk`, `api-mail` (0 errors) ; tests pass (0 failures)
+- [ ] **Prérequis hérité de task-299 (revue de code)** — `EnsureTenantAsync` ne **relit pas** la
+      ligne après `SaveIdempotentAsync`. Sur une course perdue (violation d'unicité sur
+      `(account_id, mailbox_id)`, tracker vidé), la méthode rend le tenant **qu'elle a tenté
+      d'insérer**, donc un `TenantId` qui n'existe pas en base — alors que c'est précisément
+      l'identifiant sur lequel le journal d'audit sera clé (task-300). `EnsureAccountAsync` fait
+      la relecture correctement : appliquer le même motif, et couvrir la course par un test.
 - [ ] `sdk` : extension additive de `ITenantRegistryClient` (opérations ci-dessus), DTOs `record`,
       aucune dépendance Npgsql/EF ; NuGet publié, `api-mail` et `client-blazor` bumpés à la même
       version. Le middleware, les contrôleurs et le SSE ne parlent à l'annuaire **que** via

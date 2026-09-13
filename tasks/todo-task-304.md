@@ -236,7 +236,7 @@ dernier mécanisme est conservé — et généralisé à la bascule.
 
 ### Transverse
 - [ ] Build passes on **every** listed repo (0 errors) ; tests pass (0 failures)
-- [ ] `client-blazor` bumpé aux versions `dtos-mss` / `sdk` publiées par task-303
+- [ ] `client-blazor` bumpé à la version `dtos-mss` publiée par task-303 (**pas `sdk`** : task-305 en a retiré la référence, et le contrat du registre a quitté le SDK le 2026-09-13)
 - [ ] Sur les **trois** fronts : plus aucune lecture de `mssEmail` / `mssSub` / `mssRpps` / `sid`
       (pour `Client-Session-Id`), aucun appel à `mss-profile`, aucune URL de proxy Keycloak, aucun
       écran « non configurée / déconnectez-vous » dans le code de production — vérifié par grep

@@ -12,6 +12,164 @@ entrée existante n'est jamais réécrite.
 
 ## Historique détaillé des changelogs
 
+### v1.1 — task-299 : registre des tenants (`api-mail`, + un `sdk` réduit à sa CI)
+
+**Statut** : `done` — PR [Host.Sdk#3](https://github.com/codengine-technologies/HealthPlatform.Host.Sdk/pull/3) et [Api.Mail#233](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/233), label `awaiting-human-merge`
+**Branche** : `feat/task-299-registre-tenants` (3 repos ; `dtos-mss` auto-inclus, **0 commit**, pas de PR)
+**NuGet publié** : `HealthPlatform.Host.Sdk 14.0.0` (run CI 14) — **référencé par personne** après la révision ci-dessous ; `api-mail` est revenu à `13.0.0`
+**Commits** : `sdk` 3 - `api-mail` 8 - **~2 700 lignes ajoutées**
+**Tests** : `sdk` **16/16** - `api-mail` **4 412 / 0 échec** (16 ignorés), dont **45 dédiés au registre**
+
+> **Révision du 13/09/2026, après `/review` et avant tout merge.** Le contrat du registre devait
+> vivre dans le SDK pour préparer le futur service du réseau privé. Décision humaine : le coût réel
+> était un **cycle de publication à chaque évolution du modèle** — commit SDK, attente de CI,
+> publication NuGet, bump de consommateur — pour un modèle qui bougera à chaque vague de l'EPIC.
+> Les types sont rapatriés dans `api-mail`, isolés par espace de noms. `Sdk/TenantRegistry/` est
+> supprimé ; PR #3 ne porte plus que le déclencheur CI (`branches: [ "**" ]`), utile au cycle de
+> la forge.
+>
+> **Ordre de merge : plus d'objet.** `api-mail` ne compile plus contre un paquet dont le code
+> source serait absent de `develop` du SDK. Les deux PRs sont indépendantes.
+
+#### Le défaut de conformité corrigé
+
+`AuditRetentionOptions.PurgeInterval` l'admettait noir sur blanc : « no way to enumerate the
+practitioner databases, so a global nightly job would have nothing to iterate over ». La purge
+de rétention étant **opportuniste**, déclenchée par l'activité du tenant lui-même, un praticien
+qui cessait d'utiliser le produit **ne déclenchait plus jamais de purge** — ses traces, porteuses
+de `PatientIns` et de `PatientName`, restaient au-delà de leur durée de conservation,
+indéfiniment (RGPD art. 5.1.e).
+
+#### Contrat du registre — isolé par espace de noms, plus par paquet
+
+| Rôle | Types | Emplacement |
+|---|---|---|
+| Données franchissant le contrat | `RegistryAccount`, `RegistryMailbox`, `RegistryTenant`, `TenantState` | `Domain/Entities/TenantDb` |
+| Contrat | `ITenantRegistryClient`, `EnsureTenantRequest` | `Application/Services/Repository/TenantDb` |
+| Pannes typées | `TenantRegistryUnavailableException`, `TenantRegistryConflictException` | `Application/Exceptions` |
+
+Symétriquement, les **22 entités du courrier** descendent de `mss.mail.Domain.Entities` à
+`mss.mail.Domain.Entities.MailDb` — 310 fichiers, renommage mécanique. Les deux domaines sont
+désormais des espaces **frères**, comme `Migrations/`, `Persistance/` et `Repositories/` depuis la
+restructuration FluentMigrator.
+
+Cinq contraintes de migrabilité, **toutes tenues par des tests** parce qu'elles sont toutes
+silencieuses à la perte (`TenantRegistryContractTests`, 8 tests, portés depuis le dépôt SDK) :
+`record` immuables (détection `init`-only via `IsExternalInit`), **aucune entité de persistance ne
+franchit le contrat**, aucune séquence différée en retour, pannes typées avec le contrat,
+`CancellationToken` + `correlationId` sur chaque opération. Deux tests sont **nés de la révision** :
+`NoPersistenceType_CrossesTheContract` remplace la barrière d'assembly perdue (tant que le contrat
+vivait dans un paquet, exposer un `RegistryTenantRow` était *impossible* ; c'est désormais une ligne
+qui compile), et `TheContract_DoesNotDependOnTheSdk` épingle la décision — le SDK reste référencé
+pour `IResilientCacheService`, donc une rechute passerait sans bruit. Les énumérations de types sont
+assertées **non vides** — sans quoi les tests passeraient à vide.
+
+Le **versionnement par espace de noms** (`.V1`) est abandonné : il protège un consommateur externe
+déjà livré, et il n'y en a plus.
+
+#### Implémentation `api-mail`
+
+| Brique | Chemin | Rôle |
+|---|---|---|
+| `PostgresTenantRegistryClient` | `src/Infrastructure/Repositories/TenantDb/` | **Seule** implémentation ; cache-first + invalidation explicite, budget de temps (`CallTimeout` 3 s), dégradation par opération, traduction des pannes |
+| `TenantRegistryDbContext` + les trois `…Row` | `src/Infrastructure/Persistance/TenantDb/` | Trois tables ; index unique **filtré** `WHERE rpps IS NOT NULL` ; unique partiel `WHERE is_default` (au plus une messagerie par défaut par compte, garanti par la base) |
+| `CreateTenantRegistry` + `TenantRegistryMigrator` | `src/Infrastructure/Migrations/TenantDb/` | Migration FluentMigrator du registre et son coureur, **bornés par `TypeFilterOptions`** au seul espace `…Migrations.TenantDb` |
+| `MigrationHelper` | `src/Infrastructure/Migrations/` | Création de base (`42P04` bénin) et **verrou consultatif partagé** par les deux bases — `SET LOCAL lock_timeout`, clé SHA-256 stable, budget client > budget serveur |
+| `TenantRegistrySchemaInitializer` | `src/Infrastructure/Migrations/TenantDb/` | `IHostedService` ; un échec **ne bloque pas le démarrage** |
+| `TenantRegistrySynchronizer` | `src/Application/Services/Implementation/` | Crochet du middleware ; bride horaire sur l'horodatage d'activité |
+| `TenantRegistryOptions` | `src/Application/Configuration/` | Défauts dans le code, pas dans le JSON ; chaîne vide = registre désactivé ; chaîne câblée par l'`AppHost` (`MSS_TENANT_REGISTRY_DB`, défaut `mss_registry`) |
+
+#### Trois écarts assumés par rapport au task file
+
+1. **Crochet dans `UserContextEnricherMiddleware`, pas sur le chemin de provisionnement.**
+   `BaseRepository.HandleEnvironmentDbSetupAsync` est conditionné à `Development`/`Staging`
+   (ligne 540) : s'y accrocher n'aurait **jamais rien écrit en Production**.
+2. **Nommage `TenantRegistry`.** `DirectoryController` (`api/v{version}/Directory`) sert l'Annuaire
+   Santé de l'ANS ; le `GET /v1/directory/self` prévu serait tombé dessus. Le registre n'expose
+   **aucune route** — garde-fou `RegistryNamingGuardTests`.
+3. ~~**Schéma en SQL, pas en migration FluentMigrator.** L'exécuteur du produit applique son
+   assembly à **chaque base praticien** : y ajouter les tables du registre les créerait dans les
+   mille bases du parc.~~
+
+   > ⚠️ **Écart refusé par l'humain, corrigé le 2026-09-13.** Le constat était juste, la conclusion
+   > non : la frontière n'est pas *« pas de FluentMigrator »*, c'est **`TypeFilterOptions`**
+   > (`Namespace` + `NestedNamespaces`), qui borne un coureur à un jeu de migrations. Les deux jeux
+   > coexistent donc dans le même assembly, séparés par leur espace de noms —
+   > `…Migrations.MailDb` (appliqué à chaque base praticien, paresseusement) et
+   > `…Migrations.TenantDb` (appliqué à une seule base, au démarrage). Trois tests tiennent cette
+   > frontière (`TenantRegistryMigrationScopeTests`), et le verrou consultatif de provisionnement
+   > est **unifié** dans `MigrationHelper` : le verrou du registre était plus faible que celui du
+   > courrier sur trois points (pas de `lock_timeout` serveur, pas de `CommandTimeout`, `hashtext()`
+   > au lieu d'une clé SHA-256 stable), ce qui l'aurait rendu inopérant entre pods lors d'un
+   > déploiement progressif. L'unification a d'ailleurs révélé un **défaut préexistant** côté
+   > courrier : budget client (300 s) **égal** au budget serveur (`5min`), en violation de
+   > l'invariant que le code documentait lui-même — corrigé à 330 s.
+
+#### Tests dédiés (45)
+
+`PostgresTenantRegistryClientTests` (14) - `TenantRegistryContractTests` (8, portés du dépôt SDK à
+la révision) - `TenantRegistryArchitectureTests` (5, **par réflexion** et non par balayage de
+sources — `RepoRoot()` rend `null` sous `--artifacts-path`) - `TenantRegistrySynchronizerTests` (6)
+- `TenantRegistryMigrationScopeTests` (3) - `ProvisioningLockTests` (5) -
+`TenantRegistryOptionsBindingTests` (3) - `RegistryNamingGuardTests` (1).
+
+Trois d'entre eux existent parce que le défaut qu'ils couvrent est **silencieux** :
+- **adresse organisationnelle partagée** : 1 messagerie, 2 tenants, 2 bases (si le `TenantId`
+  était celui de la messagerie, deux praticiens verraient les traces l'un de l'autre) ;
+- **piège `MapInboundClaims`** : `FindFirstValue("sub")` rend toujours `null` ; le test échoue si
+  la lecture repart sur `sub` seul ;
+- **bride d'écriture** : 100 requêtes donnent 1 seule écriture d'activité.
+
+#### Sonar — 4 itérations, delta **0**
+
+| Métrique | Baseline | Pic | Final | Delta |
+|---|---|---|---|---|
+| `new_violations` | 155 | 165 | **155** | **0** |
+| `new_code_smells` | 151 | 161 | **151** | **0** |
+| `new_bugs` / `new_vulnerabilities` | 2 / 2 | 2 / 2 | **2 / 2** | 0 |
+| `new_coverage` | 89,1 % | 89,1 % | **89,1 %** | 0 |
+
+Corrigés : **S1854** (affectation morte — introduite par la passe `/simplify` elle-même),
+**S4457** (validation d'arguments dans un corps `async`), **CA1068** x5, **CA1859** x2,
+**S2699** (test sans assertion — dont la première correction était elle-même fausse : le double
+levait avant d'incrémenter), **S103** x3, **S138**.
+
+**Accepté** : S138 sur `AddApplication` — la méthode faisait déjà ~93 lignes avant les 2 lignes de
+cette US (seuil 80). Non attribuable.
+**QG ERROR** : `new_violations` 155 (seuil 0) et `new_security_hotspots_reviewed` 83,3 % — valeurs
+**identiques avant l'US**. La new-code period du projet est une baseline large qui inclut des
+tasks déjà mergées.
+
+`conventions/csharp.md` : 3 entrées créées (S1854, S4457, CA1068), 1 compteur incrémenté
+(CA1859, 3e récidive).
+
+#### Revue de code — APPROVED, 2 suggestions reportées en DOD
+
+Toutes deux sur des méthodes **sans appelant en production** :
+
+1. **Curseur `t.Id.CompareTo(cursor) > 0` non prouvé traduisible en SQL** — les tests tournent sur
+   le fournisseur EF **en mémoire**, qui évalue **côté client** : ils ne prouvent rien sur
+   Postgres. Reporté au **DOD de task-301**.
+2. **`EnsureTenantAsync` ne relit pas après `SaveIdempotentAsync`** — sur une course perdue, rend
+   le tenant *tenté*, donc un `TenantId` inexistant, alors que c'est l'identifiant sur lequel le
+   journal d'audit sera clé. `EnsureAccountAsync` fait la relecture correctement. Reporté au
+   **DOD de task-303**.
+
+#### Changement d'intégration continue (`sdk`)
+
+Déclencheur élargi de `master`/`develop` à **toutes les branches**, comme `dtos-mss`. Sans cela,
+aucun paquet n'aurait pu être publié depuis un `feat/*` et l'attente `gh run watch` du playbook
+`/develop` aurait tourné à vide.
+
+#### Dette laissée
+
+- Les deux suggestions de revue (reportées en DOD de 301 et 303).
+- S138 sur `AddApplication` (préexistante).
+- La clé `RedisConnectionString` reste dans les `appsettings*.json` de `client-blazor` (task-305).
+
+---
+
+
 ### v1.0 — task-305 : `HealthPlatform.Host.Sdk` retiré de `client-blazor`
 
 **Statut** : `done` — PR [HealthPlatform.Client#73](https://github.com/codengine-technologies/HealthPlatform.Client/pull/73), label `awaiting-human-merge`
@@ -135,12 +293,12 @@ en `foreach`). **184 tests verts avant comme après.**
 
 ## Annexe A — Cartographie des briques applicatives
 
-### Contrats de plateforme (à venir, task-299 / task-300)
+### Contrats de plateforme (`TenantRegistry` livré par task-299 ; `Audit` à venir, task-300)
 
 | Brique | Emplacement prévu | Rôle |
 |---|---|---|
-| `ITenantRegistryClient` + DTOs | `Sdk/` — `HealthPlatform.Host.Sdk.TenantRegistry.V1` | Contrat du registre : comptes, messageries, tenants, dormance |
-| `PostgresTenantRegistryClient` | `Api/Mail/src/Infrastructure/` | **Seule** implémentation ; test d'architecture garantit que le `DbContext` du registre n'est référencé nulle part ailleurs |
+| `ITenantRegistryClient` + DTOs | `Sdk/TenantRegistry/V1/` | **Livré** (task-299) — comptes, messageries, tenants, dormance. Paquet `14.0.0` |
+| `PostgresTenantRegistryClient` | `Api/Mail/src/Infrastructure/TenantRegistry/` | **Livré** (task-299) — seule implémentation ; test d'architecture (par réflexion) garantit que le `DbContext` n'est référencé nulle part ailleurs |
 | `IAuditSink` / `IAuditReader` | `Sdk/` — `HealthPlatform.Host.Sdk.Audit.V1` | Contrat du journal mutualisé (écriture par lots / lecture scopée tenant) |
 
 > **Nommage — piège connu.** `DirectoryController` (`api/v{version}/Directory`,
@@ -164,11 +322,11 @@ en `foreach`). **184 tests verts avant comme après.**
 | Grandeur | Valeur |
 |---|---|
 | Tasks déclarant `**Epic**: E016` | 7 (299, 300, 301, 303, 304, 305, 306) |
-| Tasks `done` | 1 (task-305) |
-| Tasks `todo` | 6 |
+| Tasks `done` | 2 (task-299, task-305) |
+| Tasks `todo` | 5 |
 | Questions ouvertes bloquantes | 1 (`questions/task-302.md` — identité et habilitation des administrateurs) |
-| PRs ouvertes | 1 (HealthPlatform.Client#73, `awaiting-human-merge`) |
-| Paquets NuGet publiés par l'EPIC | 0 |
+| PRs ouvertes | 2 (Host.Sdk#3, Api.Mail#233 — `awaiting-human-merge`) ; 1 mergée (Client#73) |
+| Paquets NuGet publiés par l'EPIC | 1 (`HealthPlatform.Host.Sdk 14.0.0`) |
 | Consommateurs du SDK après task-305 | **1** (`api-mail`) — contre 2 avant |
 
 ---
@@ -177,7 +335,7 @@ en `foreach`). **184 tests verts avant comme après.**
 
 | Task | Apport | Repos | Statut |
 |---|---|---|---|
-| task-299 | Registre des tenants : comptes (`sub` Keycloak + RPPS), messageries, **tenants** (compte × messagerie, porteurs de la base isolée et de `TenantId`), horodatages de connexion et dormance. Contrat `ITenantRegistryClient` dans le SDK, implémentation Postgres dans `api-mail` | `sdk`, `api-mail` | 🔜 todo |
+| task-299 | Registre des tenants : comptes (`sub` Keycloak + RPPS), messageries, **tenants** (compte × messagerie, porteurs de la base isolée et de `TenantId`), horodatages de connexion et dormance. Contrat `ITenantRegistryClient` et implémentation Postgres dans `api-mail` — **le contrat a quitté le SDK à la révision du 13/09** | `api-mail` (`sdk` : CI seulement) | ✅ **done** (PR Sdk#3, Api.Mail#233) |
 | task-300 | Journal d'audit en base commune : table partitionnée par mois, `TenantId` = id du **tenant**, RLS + rôles lecture/écriture séparés, purge planifiée s'appuyant sur `AuditRetentionPolicy.FamilyOf`, lecture double source transitoire | `sdk`, `api-mail` | 🔜 todo |
 | task-301 | Reprise de l'historique d'audit à débit borné (≤ 4 bases simultanées), vérification par comptage par tenant, puis retrait de la table par tenant et de la configuration morte | `api-mail` | 🔜 todo |
 | task-303 | Vague 1 multi-BAL : la boîte devient une sélection par requête validée contre le registre **et** l'identité PSC ; disparition des claims `mssEmail`/`mssSub`/`mssRpps` ; bascule = fin de session + nouvelle session (garde `SESSION_MAILBOX_MISMATCH`) ; `AuditActionType` + 5 membres | `sdk`, `api-mail` | 🔜 todo |

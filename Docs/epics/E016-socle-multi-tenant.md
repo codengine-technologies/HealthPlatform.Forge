@@ -2,7 +2,7 @@
 
 > **Statut** : 🟡 En cours
 > **Modèle** : task-driven
-> **Version** : 1.0
+> **Version** : 1.1
 > **Auteur** : PO forge
 > **Audience** : PO, médecin, direction produit, conformité — la vue ingénierie vit dans [E016-Changelogs.md](E016-Changelogs.md)
 > **Dernière mise à jour** : 2026-09-13
@@ -88,7 +88,7 @@ augmente.
 | **Changer de messagerie en direct** | Cliquer sur son avatar et ouvrir une autre de ses messageries : l'écran se vide et se recharge sur la nouvelle boîte, sans reconnexion | task-304 | 🔜 À faire |
 | **Rattacher sa première messagerie** | Entrer son adresse dès le premier accès et travailler immédiatement, sans se déconnecter ni se reconnecter | task-304 | 🔜 À faire |
 | **Gérer ses messageries** | Ajouter une messagerie, en détacher une, désigner celle qui s'ouvre par défaut, comprendre pourquoi l'une est indisponible | task-304 | 🔜 À faire |
-| **Conservation appliquée à tous les comptes** | Être assuré que les durées d'effacement s'appliquent aussi aux comptes qui ne servent plus | task-299 | 🔜 À faire |
+| **Conservation appliquée à tous les comptes** | Être assuré que les durées d'effacement s'appliquent aussi aux comptes qui ne servent plus, y compris à ceux d'un praticien qui a quitté le service | task-299 | ✅ Livrée |
 | **Traçabilité des accès à l'échelle du parc** | Consulter l'historique de ses propres accès, sans que la croissance du parc n'en dégrade la tenue | task-300, task-301 | 🔜 À faire |
 | **Accès des équipes sécurité à la traçabilité** | *(indisponible — en attente d'arbitrage : voir §7)* | — | ⛔ Bloquée |
 | **Réactivité vérifiée en multi-messagerie** | Bénéficier d'un service dont la réactivité a été mesurée avec plusieurs messageries par praticien | task-306 | 🔜 À faire |
@@ -137,7 +137,7 @@ Deux points structurent ce parcours :
 | RG-3 | **Aucune donnée ne traverse une bascule.** Messages, dossiers patients, brouillons, signature et notifications de la messagerie quittée disparaissent avant que la suivante ne s'affiche | 🔜 À implémenter (task-304) |
 | RG-4 | **Une adresse de structure reste cloisonnée par praticien.** Deux médecins partageant la même adresse organisationnelle ne voient ni les rattachements, ni l'historique d'accès l'un de l'autre | 🔜 À implémenter (task-300) |
 | RG-5 | **Détacher une messagerie n'efface rien.** Le détachement retire l'accès ; les données restent soumises aux durées de conservation en vigueur | 🔜 À implémenter (task-303) |
-| RG-6 | **Les durées de conservation s'appliquent à tous les comptes.** Un compte qui ne sert plus est purgé à échéance comme les autres — la dormance ne le soustrait pas à la règle | 🔜 À implémenter (task-299) |
+| RG-6 | **Les durées de conservation s'appliquent à tous les comptes.** Un compte qui ne sert plus est purgé à échéance comme les autres — la dormance ne le soustrait pas à la règle | ✅ Implémenté (task-299) |
 | RG-7 | **Les changements d'accès sont tracés.** Rattacher, détacher, changer de messagerie par défaut, ouvrir et fermer une session de messagerie laissent une trace consultable | 🔜 À implémenter (task-303) |
 | RG-8 | **La consultation de l'historique reste strictement personnelle.** Un médecin ne voit que ses propres accès ; aucun accès transverse n'est ouvert par cet EPIC | 🔜 À implémenter (task-300) |
 
@@ -201,15 +201,16 @@ Deux points structurent ce parcours :
 | Changer de messagerie en direct | 🔜 À faire | 0 % | task-304 |
 | Rattacher sa première messagerie | 🔜 À faire | 0 % | task-304 |
 | Gérer ses messageries | 🔜 À faire | 0 % | task-304 |
-| Conservation appliquée à tous les comptes | 🔜 À faire | 0 % | task-299 |
+| Conservation appliquée à tous les comptes | ✅ Livrée | 100 % | task-299 |
 | Traçabilité des accès à l'échelle du parc | 🔜 À faire | 0 % | task-300, task-301 |
 | Accès des équipes sécurité à la traçabilité | ⛔ Bloquée | 0 % | — |
 | Réactivité vérifiée en multi-messagerie | 🔜 À faire | 0 % | task-306 |
 | Application allégée au poste | ✅ Livrée | 100 % | task-305 |
 
-**Couverture EPIC consolidée : 11 %** (1 fonctionnalité livrée sur 9 ; 1 bloquée en
-attente d'arbitrage, 7 à faire). L'EPIC est au tout début de son exécution : seule
-la préparation technique préalable est livrée.
+**Couverture EPIC consolidée : 22 %** (2 fonctionnalités livrées sur 9 ; 1 bloquée en
+attente d'arbitrage, 6 à faire). Le socle est posé : la plateforme sait désormais
+quels comptes existent, ce qui débloque à la fois la conformité de conservation et
+les fonctionnalités visibles qui suivent.
 
 ---
 
@@ -217,6 +218,13 @@ la préparation technique préalable est livrée.
 
 ### Technique
 
+- **La plateforme sait désormais de quoi son parc est fait** (task-299) : quels comptes
+  praticiens existent, quelles messageries leur sont rattachées, et quel espace de
+  données isolé correspond à chaque couple. Rien n'a bougé pour le médecin — aucune
+  donnée déplacée, aucune frontière d'isolation modifiée — mais trois chantiers
+  jusque-là impossibles deviennent faisables : l'application des durées de
+  conservation, la mise à niveau des espaces dormants, et les comptes à plusieurs
+  messageries.
 - **L'application transmise au poste du praticien s'est allégée** (task-305). Des
   composants qui n'y servaient à rien — dont un client de cache réseau — y étaient
   embarqués par une dépendance devenue inutile. Ils en sont retirés, et un garde-fou
@@ -225,7 +233,12 @@ la préparation technique préalable est livrée.
 
 ### Conformité
 
-*Aucune entrée à ce stade.*
+- **Les durées de conservation s'appliquent enfin à tous les comptes** (task-299). Un
+  praticien qui cessait d'utiliser le service ne déclenchait plus jamais l'effacement
+  de ses données à échéance : l'effacement était déclenché par son activité, et son
+  inactivité le suspendait donc indéfiniment. La plateforme sait désormais quels
+  comptes existent et depuis quand chacun ne s'est plus connecté — ce qui rend
+  l'échéance applicable à tous, actifs comme dormants.
 
 ### Fonctionnalités métier
 
