@@ -110,6 +110,64 @@ dernier mécanisme est conservé — et généralisé à la bascule.
 3. **Aucune persistance de la sélection sur l'appareil** : le défaut vit dans l'annuaire et suit
    le médecin d'un poste à l'autre. La sélection sans défaut vaut pour la session en cours.
 
+### A bis. Les sept états d'entrée — table de décision exhaustive
+
+> Demande humaine du 2026-09-13 : « 1re connexion Keycloak seulement ⇒ on fait quoi ? […] Ces cas
+> doivent être soigneusement étudiés. »
+
+Deux axes seulement : **la session porte-t-elle un jeton PSC**, et **combien de BAL sélectionnables
+le compte a-t-il**. Les fronts n'ont aucune autre information à interpréter — le backend rend
+`selectable` et `capabilities` par boîte (task-303, règles 4 et 5).
+
+| # | Session | BAL rattachées | Écran | Actions d'écriture |
+|---|---|---|---|---|
+| **1** | **KC seul** | **0** | **`mailbox-psc-required`** — écran dédié : « Aucune messagerie n'est rattachée à votre compte. Le rattachement d'une messagerie MSSanté exige une connexion Pro Santé Connect. » + bouton **Se connecter avec Pro Santé Connect**. **Aucun formulaire.** | — |
+| **2** | KC + PSC | 0 | **Onboarding** (§B) — rattachement de la 1re BAL, sonde IMAP XOAUTH2, `isDefault = true` | complètes |
+| **3** | KC + PSC | 1, sélectionnable | **Connexion directe**, aucun écran | complètes |
+| **4** | KC + PSC | N, défaut sélectionnable | **Connexion directe** au défaut | complètes |
+| **5** | KC + PSC | N, pas de défaut **ou** défaut non sélectionnable | **`mailbox-select`** | complètes |
+| **6** | **KC seul** | **≥ 1** | **Connexion directe au défaut**, sinon `mailbox-select`. **Toutes les BAL actives sont cliquables.** Bandeau persistant « Hors ligne — lecture locale » | **désactivées** |
+| **7** | KC + PSC | ≥ 1 mais **aucune** sélectionnable (toutes `AuthFailing` / `Detached`) | `mailbox-select`, toutes grisées avec leur raison, **+ « Ajouter une messagerie » actif** — jamais une impasse | complètes |
+
+**Le cas 1 est le cas neuf**, et il est le seul qui n'existait pas avant : jusqu'ici le claim
+`mssEmail` garantissait qu'une session authentifiée avait toujours une boîte. Ce n'est plus vrai.
+Ce n'est **pas** une erreur ni un blocage — c'est l'état normal d'un compte Keycloak qui n'a pas
+encore joué l'onboarding. L'écran l'explique et propose la seule action utile.
+
+**Le cas 6 est celui qui porte l'exigence hors ligne** : un compte déjà provisionné, connecté sans
+Pro Santé Connect, **choisit sa messagerie et la consulte**. Voir §D pour les affordances.
+
+### A ter. Transitions — ce qui fait passer d'un état à l'autre
+
+| Depuis | Événement | Vers |
+|---|---|---|
+| 1 | connexion Pro Santé Connect | 2 (onboarding) |
+| 2 | 1re BAL rattachée | 3 |
+| 3 / 4 / 5 | « Ajouter une messagerie » (§C) | 4 ou 5 |
+| 4 / 5 | suppression d'une BAL non dernière | 4 ou 5 |
+| 3 / 4 / 5 | suppression de la **dernière** BAL | **2** (onboarding), pas 1 — la session porte PSC |
+| 6 | connexion Pro Santé Connect | 3 / 4 / 5 selon le compte |
+| 3..7 | expiration / absence du jeton PSC en cours de session | **6** — bascule en lecture locale, **sans déconnexion** |
+
+### D. Hors ligne — ce qui reste possible, ce qui ne l'est pas
+
+**Gestion des comptes = en ligne uniquement.** Rattacher exige une sonde IMAP XOAUTH2 ; détacher et
+changer le défaut sont des actes d'administration du compte. Les trois sont **désactivés** hors
+ligne, avec l'explication « Connexion Pro Santé Connect requise », jamais masqués.
+
+| | Hors ligne (cas 6) |
+|---|---|
+| Consulter la liste, lire un message, ouvrir une PJ déjà synchronisée | ✅ |
+| Recherche locale | ✅ |
+| Basculer d'une BAL à l'autre | ✅ (fin de session + nouvelle session, comme en ligne) |
+| Composer, répondre, transférer | ❌ désactivé |
+| Marquer lu/non lu, déplacer, supprimer | ❌ désactivé |
+| Ajouter / supprimer une BAL, changer le défaut | ❌ désactivé |
+
+Aucune de ces désactivations n'est une nouveauté fonctionnelle : le backend les refuse déjà
+(`CanAccessImap`, `CanSendEmail`, `CanModifyFlags` valent `false` hors ligne). Les fronts cessent
+simplement de proposer une action qui finirait en erreur.
+
 ### B. Onboarding — 0 boîte, parcours neuf porté par le registre
 
 4. **Écran d'accueil** `mailbox-onboarding` : identité du PS telle que l'authentification l'a
@@ -285,9 +343,22 @@ dernier mécanisme est conservé — et généralisé à la bascule.
 - [ ] **Bascule — échec de `/sync/logout`** (500 / réseau) ⇒ journalisé, la bascule **aboutit**
 - [ ] 409 `SESSION_MAILBOX_MISMATCH` ⇒ erreur journalisée + rotation + rejeu, jamais silencieux
 - [ ] Refresh du jeton PSC (rotation simulée) ⇒ liste et boîte courante **inchangées**
-- [ ] **Hors ligne, le sélecteur reste utilisable** : session sans `X-PSC-Token`, compte à
+- [ ] **Les sept états d'entrée (§A bis) sont couverts par un test chacun, sur les trois fronts** —
+      c'est la table de décision, pas une liste d'exemples
+- [ ] **Cas 1 — compte Keycloak seul, 0 BAL** : écran `mailbox-psc-required` avec explication et
+      bouton Pro Santé Connect, **aucun formulaire de rattachement**, aucune erreur technique
+      affichée. C'est l'état neuf que le claim `mssEmail` rendait impossible jusqu'ici
+- [ ] **Cas 6 — hors ligne, le sélecteur reste utilisable** : session sans `X-PSC-Token`, compte à
       2 boîtes actives ⇒ les deux sont **cliquables**, l'ouverture réussit, bandeau « Hors ligne —
       lecture locale », actions d'écriture désactivées. Sur les **trois** fronts
+- [ ] **Cas 7 — aucune BAL sélectionnable** : toutes grisées avec raison **et** « Ajouter une
+      messagerie » actif ⇒ jamais d'impasse
+- [ ] Transition « perte du jeton PSC en cours de session » ⇒ bascule en cas 6 **sans
+      déconnexion** ni perte de la boîte ouverte
+- [ ] Suppression de la **dernière** BAL avec session PSC ⇒ retour à l'**onboarding** (cas 2),
+      jamais à l'écran `mailbox-psc-required`
+- [ ] Gestion des comptes (ajouter / supprimer / défaut) **désactivée hors ligne** avec
+      l'explication, jamais masquée
 - [ ] Sélecteur : `selectable = false` grisées, raison affichée, **non cliquables** ; « Ajouter » et
       « Gérer » mènent aux bons écrans
 - [ ] `MAILBOX_PSC_MISMATCH` / `MAILBOX_NOT_ATTACHED` en cours de session ⇒ rechargement de la

@@ -76,6 +76,76 @@ k6 ; seule sa **sémantique** côté serveur change :
 C'est ce qui rend l'US **transverse mais petite** sur le protocole : aucun nouvel en-tête, aucun
 changement de route, aucun changement de forme des appels métier.
 
+## Modèle de données — fusion `mailboxes` + `tenants` (arbitrage humain du 2026-09-13)
+
+> « On devrait avoir account = au niveau de Keycloak, puis account-mss pour les BAL qui s'y
+> rattachent. »
+
+task-299 a livré **trois** tables : `accounts` (compte Keycloak), `mailboxes` (l'adresse comme
+entité globale) et `tenants` (le rattachement). **Cette US ramène le registre à deux tables.**
+
+```
+accounts       le compte chapeau Keycloak   (authentication_subject unique)
+mss_accounts   la BAL rattachée au compte   (ex-`tenants`, absorbe `mailboxes`)
+```
+
+### Trois raisons, vérifiées dans le schéma livré
+
+1. **Double clé de fait.** `tenants` porte **à la fois** `mailbox_id` (FK) **et** `mailbox_address`
+   (copie dénormalisée « pour éviter une jointure sur le chemin de requête »), les deux indexés par
+   compte. Deux sources de vérité pour « quelle messagerie » : une adresse corrigée dans
+   `mailboxes` laisse la copie périmée, en silence.
+2. **L'entité intermédiaire ne porte rien.** `RegistryMailbox` n'est **rendu par aucune opération**
+   de `ITenantRegistryClient` — vérifié. `operator_domain` se dérive de l'adresse. La table
+   n'existe que pour être jointe.
+3. **Elle rend possible la faute qu'on documente.** Trois paragraphes du code avertissent de ne
+   **jamais** clé le journal d'audit sur `mailbox_id`, sous peine de faire voir à deux PS d'une
+   adresse organisationnelle les traces l'un de l'autre. **Supprimer la colonne rend la faute
+   impossible** au lieu de la commenter.
+
+**Ce qu'on abandonne** : l'identité globale d'une adresse partagée. Assumé — la propriété d'une
+adresse organisationnelle relève de l'opérateur et de l'ANS, pas de notre cartographie du parc.
+Deux PS sur `secretariat@…` ⇒ **deux lignes** `mss_accounts`, deux bases, aucun parent commun sur
+lequel se tromper.
+
+### Vocabulaire — ce qui change et ce qui ne change pas
+
+**Les tables seulement.** Le code garde `ITenantRegistryClient`, `Domain/Entities/TenantDb/`,
+`Infrastructure/Migrations/TenantDb/`, `TenantRegistryDbContext` — nommage arbitré le 2026-09-13
+(« TenantRegistry est ok ») et **`TenantId` reste le nom de l'unité d'isolation**, y compris la
+colonne du journal d'audit de task-300. `mss_accounts.id` **est** le `TenantId`.
+**Impact sur task-300 / task-301 : aucun.**
+
+### La migration — une NOUVELLE, jamais une édition
+
+`20260913120000_CreateTenantRegistry` est **mergée sur `develop`** et déjà appliquée sur des bases
+de développement : elle ne se réécrit pas (règle 7c). Cette US ajoute une migration dans
+`Migrations/TenantDb/` :
+
+```
+Rename.Table("tenants").To("mss_accounts")
+Delete.Column("mailbox_id").FromTable("mss_accounts")     // + son index unique
+Delete.Table("mailboxes")
+Create.Index("ux_mss_accounts_account_address")
+      .OnTable("mss_accounts").OnColumn("account_id").OnColumn("mailbox_address")
+      .WithOptions().Unique()                              // la SEULE clé du rattachement
+```
+
+> **La fenêtre est ouverte, et elle se referme avec cette US.** Le synchroniseur de task-299
+> n'appelle que `EnsureAccountAsync` : `mailboxes` et `tenants` sont **vides dans tous les
+> environnements**. La migration ne déplace aucune donnée aujourd'hui. Dès que cette US rattache
+> la première boîte, elle en déplacerait.
+
+### Conséquences sur le code
+
+- `RegistryMailboxRow`, `RegistryMailbox`, `TenantRegistryDbContext.Mailboxes` et
+  `EnsureMailboxRowAsync` : **supprimés**.
+- `RegistryTenantRow` / `RegistryTenant` : `MailboxId` retiré ; `[Table("mss_accounts")]`.
+- `EnsureTenantAsync` résout le rattachement sur `(account_id, mailbox_address)` — une lecture au
+  lieu de deux, et l'idempotence porte sur la même clé que l'index unique.
+- Tests à reprendre : liste blanche de colonnes (architecture **et** intégration), tests de
+  contrat, les 12 tests d'intégration de task-299.
+
 ## Règle métier centrale — compatibilité PSC (demande humaine du 2026-09-13)
 
 > **Un médecin peut basculer en direct entre deux boîtes TANT QUE ces deux boîtes sont issues de
@@ -444,8 +514,18 @@ poussait la PR `api-mail` au-delà du plafond de la règle 5.
       ancré ⇒ compte ancré + boîte rattachée par défaut (`ValidatedByPscSubject = mssSub`), **une
       seule fois** (idempotent), compteur incrémenté ; compte **déjà ancré** avec des claims
       différents ⇒ **aucune** écriture, warning
-- [ ] **Le chemin de requête lit `tenants.database_name`, il ne le recalcule plus.** Test : un
-      tenant dont le `database_name` enregistré diffère de ce que `BuildUserDatabaseName` rendrait
+- [ ] **Registre à deux tables** : migration **nouvelle** (jamais une édition de
+      `20260913120000_CreateTenantRegistry`, règle 7c) qui renomme `tenants` en `mss_accounts`,
+      supprime `mailbox_id` et la table `mailboxes`, et pose l'unique `(account_id,
+      mailbox_address)` comme **seule** clé du rattachement
+- [ ] Test d'intégration sur vrai PostgreSQL : après migration, `mailboxes` **n'existe plus**,
+      `mss_accounts` existe, et deux comptes distincts rattachés à la **même** adresse
+      organisationnelle produisent **deux lignes, deux `database_name` distincts** — le cas qui
+      rendait `mailbox_id` dangereux
+- [ ] Liste blanche de colonnes remise à jour (test d'architecture **et** test d'intégration sur
+      `information_schema`) : `mss_accounts` sans `mailbox_id`
+- [ ] **Le chemin de requête lit `mss_accounts.database_name`, il ne le recalcule plus.** Test : un
+      rattachement dont le `database_name` enregistré diffère de ce que `BuildUserDatabaseName` rendrait
       (RPPS absent du jeton, slug modifié) ⇒ c'est **la valeur enregistrée** qui est utilisée.
       Test de non-régression : pour tout compte migré, le nom enregistré au rattachement est
       **identique** à celui que produisait `mssRpps` avant la bascule (fixture : 3 identités du
