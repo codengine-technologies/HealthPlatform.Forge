@@ -88,6 +88,36 @@ explicite : on ne supprime pas une source de traçabilité PGSSI-S le jour même
       comment suivre l'avancement, comment reprendre après incident, comment **vérifier avant
       de supprimer**
 
+## Écart assumé — la configuration « morte » ne l'est pas encore
+
+La DOD demande : « **C'est cette US, et elle seule, qui supprime la configuration
+devenue morte** : `Audit:DrainParallelism` et le plafond de drain côté audit ».
+
+**Non fait, et voici pourquoi.** task-300 n'a pas seulement déplacé le journal : elle a
+gardé l'ancien chemin **comme filet**. Une trace sans `TenantId` — registre désactivé
+(`TenantRegistry:ConnectionString` vide), registre injoignable, ou trace émise avant la
+résolution du tenant — repart sur la base praticien via `PersistGroupAsync`, qui utilise
+`DrainParallelism` et le sémaphore de `DrainMaxConnections`.
+
+Ce filet est ce qui permet au journal de rester fonctionnel quand le registre n'est pas
+configuré, et il a été **accepté au merge de task-300**. Retirer les réglages
+maintenant :
+
+- ne supprimerait aucune architecture en parallèle — le chemin de repli resterait, sans
+  plafond ;
+- rendrait ce chemin **non bornable**, c'est-à-dire exactement le défaut que task-298 a
+  posé un garrot pour contenir.
+
+La DOD elle-même énonce la condition : « tant que le chemin hérité vit, le réglage doit
+rester réglable ». **Il vit.** Le retrait est donc une tâche de fin de chantier, quand la
+décision aura été prise de supprimer le repli lui-même — ce qui est un arbitrage produit
+(« le journal peut-il s'arrêter si le registre est absent ? »), pas un nettoyage de code.
+
+> **Proposition** : rattacher ce retrait à la suppression des tables héritées (étape 5 du
+> runbook), qui est de toute façon conditionnée à une validation humaine. Les deux
+> décisions ont le même déclencheur — le parc entièrement repris — et la même nature :
+> on ne retire un filet qu'une fois certain de ne plus en avoir besoin.
+
 ## Manual Test Plan
 
 - **Pré-requis** : task-299 et task-300 déployées ; au moins deux praticiens de test disposant
@@ -173,7 +203,7 @@ même endroit.
 
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
-| /develop | ok | 19 min 19 s | — | — | — | — |
+| /develop | ok | 16 min 53 s | — | — | — | — |
 | /sonar | skipped | 2.8 s | — | — | — | hors périmètre (api-mail tests seuls) |
 | /lint-angular | skipped | 2.4 s | — | — | — | hors périmètre (api-mail tests seuls) |
 | /lint-mobile | skipped | 2.2 s | — | — | — | hors périmètre (api-mail tests seuls) |
@@ -181,4 +211,4 @@ même endroit.
 | /review | ok | 3 min 21 s | — | 1 (0.9 s) | — | api-mail 0B/1T |
 | /tech-writer | ok | 42 s | — | — | — | — |
 | /start | ok | 56 s | — | — | — | — |
-| **Total cycle** | | **24 min 29 s** | **0 (0.0 s)** | **1 (0.9 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **22 min 03 s** | **0 (0.0 s)** | **1 (0.9 s)** | **0 (0.0 s)** | |
