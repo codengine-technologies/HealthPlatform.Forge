@@ -204,11 +204,70 @@ même endroit.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /develop | ok | 16 min 53 s | — | — | — | — |
-| /sonar | skipped | 2.8 s | — | — | — | hors périmètre (api-mail tests seuls) |
-| /lint-angular | skipped | 2.4 s | — | — | — | hors périmètre (api-mail tests seuls) |
-| /lint-mobile | skipped | 2.2 s | — | — | — | hors périmètre (api-mail tests seuls) |
-| /verify-visual | skipped | 2.0 s | — | — | — | hors périmètre (api-mail tests seuls) |
+| /sonar | ok | 17 min 04 s | — | — | — | 2 itération(s) |
+| /lint-angular | skipped | 2.4 s | — | — | — | non touche par task-301 (Repos: api-mail) |
+| /lint-mobile | skipped | 2.3 s | — | — | — | non touche par task-301 (Repos: api-mail) |
+| /verify-visual | skipped | 2.2 s | — | — | — | non touche par task-301 (Repos: api-mail) |
 | /review | ok | 3 min 21 s | — | 1 (0.9 s) | — | api-mail 0B/1T |
 | /tech-writer | ok | 42 s | — | — | — | — |
 | /start | ok | 56 s | — | — | — | — |
-| **Total cycle** | | **22 min 03 s** | **0 (0.0 s)** | **1 (0.9 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **39 min 05 s** | **0 (0.0 s)** | **1 (0.9 s)** | **0 (0.0 s)** | |
+
+## Sonar log
+
+**2 itérations** (scan initial + scan de vérification après correction).
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline (fin de task-300) | Final | Δ |
+|---|---|---|---|
+| **Quality Gate (new code)** | ERROR | ERROR | = |
+| `new_violations` | 167 – 170 * | **168** | ≈ 0 |
+| `new_bugs` | 2 | 2 | = |
+| `new_vulnerabilities` | 2 | 2 | = |
+| `new_code_smells` | 166 | 164 | −2 |
+| `new_coverage` | 88,2 % | 88,1 % | −0,1 |
+| Coverage projet | 88,1 % | 88,0 % | −0,1 |
+| Duplication | 0,4 % | 0,4 % | = |
+| Reliability / Security / Maintainability | 3,0 / 5,0 / 1,0 | 3,0 / 5,0 / 1,0 | = |
+
+> \* **Deux sources, deux chiffres, et il faut le dire.** L'API `measures` rendait
+> 170 en fin de task-300 quand l'API `issues` en comptait 167 ouvertes. L'écart est
+> un décalage d'indexation, pas une divergence de fond — la même chose s'est
+> reproduite ici : la requête faite juste après le scan listait encore une `CA1822`
+> déjà corrigée, absente d'une requête faite une minute plus tard. **Le compte
+> d'issues ouvertes fait foi**, le snapshot de mesures traîne.
+
+### Ce que task-301 a introduit : **0**
+
+Vérifié issue par issue via l'API, sur les **8 fichiers créés** (options, contrat,
+`record` de rapport, service d'orchestration, service hébergé, magasin Postgres,
+migration, tests) : **aucune issue ouverte**.
+
+### Corrigé pendant cette étape (3 issues, toutes attribuables)
+
+| Règle | Où | Fait |
+|---|---|---|
+| `S138` | `AddApplication` | Mes trois lignes d'enregistrement la poussaient de **97 à 100 lignes**. Extraites dans `AddAuditBackfill()` — ce qui a sa propre valeur : la reprise est un chantier temporaire, et la retirer sera une suppression d'appel, pas une chirurgie dans une méthode de cent lignes. |
+| `CA1822` | `AuditDualSourceReadTests.ReadAllAsync` | `static` — le helper n'accède à aucun état d'instance. |
+| `xUnit2033` | `TenantRegistryIntegrationTests` | Valeur **rendue** par `Assert.Single` au lieu de re-indexer. |
+
+### Appliqué sans y être forcé : `S4457`
+
+Les trois méthodes publiques `async` de `PostgresAuditBackfillStore` qui valident
+leurs arguments sont passées à la forme « méthode non-`async` qui délègue à un
+`…CoreAsync` privé ». **Sonar ne les avait pas signalées** — mais la convention
+s'applique, et son compteur a été incrémenté une heure plus tôt pour exactement ce
+motif. Mieux vaut l'appliquer spontanément que d'ajouter une troisième récidive.
+
+### Security hotspots (`new_security_hotspots_reviewed` 83,3 % ⇒ ERROR)
+
+Inchangés : les 2 hotspots à revoir sont toujours dans
+`tests/loadtest-k6/test_report_session_lock_regime.py` (URLs `http://localhost`
+d'un test Python du banc, task-298). **Hors périmètre de cette US.**
+
+## Lint log
+
+**`/lint-angular`, `/lint-mobile`, `/verify-visual` : skips propres.** `**Repos**: api-mail`
+— aucune ligne d'Angular ni d'Ionic, aucun écran touché. US strictement backend
+(reprise d'historique, migration, service hébergé).
