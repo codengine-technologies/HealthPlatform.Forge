@@ -394,7 +394,13 @@ on relit, c'est un commentaire qu'il faut, pas une variable morte.
 
 ## S4457 — la validation des arguments se fait hors du corps `async`
 
-**Occurrences : 1** (task-299)
+**Occurrences : 2** (task-299, task-300)
+
+> ⚠️ **Récidive sur du code frais (task-300).** `PostgresAuditSink.WriteBatchAsync`
+> et `PostgresAuditReader.GetTracesAsync` ont été écrites avec un `ThrowIfNull` en
+> tête d'une méthode `async`, alors que la consigne ci-dessous existait déjà. Le
+> protocole des conventions dit ce que signale une récidive : le fichier n'a pas
+> été lu avant d'écrire. À relire **avant** tout nouveau contrat asynchrone.
 
 Dans une méthode `async`, le corps ne s'exécute qu'à la première consommation de
 la tâche. Un `ArgumentException.ThrowIfNullOrWhiteSpace` placé en tête d'une

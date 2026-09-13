@@ -88,6 +88,36 @@ explicite : on ne supprime pas une source de traçabilité PGSSI-S le jour même
       comment suivre l'avancement, comment reprendre après incident, comment **vérifier avant
       de supprimer**
 
+## Écart assumé — la configuration « morte » ne l'est pas encore
+
+La DOD demande : « **C'est cette US, et elle seule, qui supprime la configuration
+devenue morte** : `Audit:DrainParallelism` et le plafond de drain côté audit ».
+
+**Non fait, et voici pourquoi.** task-300 n'a pas seulement déplacé le journal : elle a
+gardé l'ancien chemin **comme filet**. Une trace sans `TenantId` — registre désactivé
+(`TenantRegistry:ConnectionString` vide), registre injoignable, ou trace émise avant la
+résolution du tenant — repart sur la base praticien via `PersistGroupAsync`, qui utilise
+`DrainParallelism` et le sémaphore de `DrainMaxConnections`.
+
+Ce filet est ce qui permet au journal de rester fonctionnel quand le registre n'est pas
+configuré, et il a été **accepté au merge de task-300**. Retirer les réglages
+maintenant :
+
+- ne supprimerait aucune architecture en parallèle — le chemin de repli resterait, sans
+  plafond ;
+- rendrait ce chemin **non bornable**, c'est-à-dire exactement le défaut que task-298 a
+  posé un garrot pour contenir.
+
+La DOD elle-même énonce la condition : « tant que le chemin hérité vit, le réglage doit
+rester réglable ». **Il vit.** Le retrait est donc une tâche de fin de chantier, quand la
+décision aura été prise de supprimer le repli lui-même — ce qui est un arbitrage produit
+(« le journal peut-il s'arrêter si le registre est absent ? »), pas un nettoyage de code.
+
+> **Proposition** : rattacher ce retrait à la suppression des tables héritées (étape 5 du
+> runbook), qui est de toute façon conditionnée à une validation humaine. Les deux
+> décisions ont le même déclencheur — le parc entièrement repris — et la même nature :
+> on ne retire un filet qu'une fois certain de ne plus en avoir besoin.
+
 ## Manual Test Plan
 
 - **Pré-requis** : task-299 et task-300 déployées ; au moins deux praticiens de test disposant
@@ -127,3 +157,58 @@ explicite : on ne supprime pas une source de traçabilité PGSSI-S le jour même
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui — déplacement interne au même environnement HDS, aucun flux sortant
 - **AIPD / impact RGPD** : couverte par la mise à jour de task-300 ; cette US en est l'exécution
+
+---
+
+## Branches
+
+- `api-mail` (pushed) : `feat/task-301-reprise-historique-audit` — base `origin/develop`
+  @ `ff6332f7` (task-300 mergée)
+- `dtos-mss` (pushed) : `feat/task-301-reprise-historique-audit` — branche auto-incluse
+  (CLAUDE.md « Auto-included repo »). Sans changement de contrat, elle restera **sans commit**.
+
+> **Pré-flight** : les six repos automatisés sur `develop`, arbres propres. Dépendances
+> `task-299` et `task-300` satisfaites — toutes deux en `tasks/archived/`, état terminal qui
+> suit `done-*`.
+
+### ⚠️ Second point de collision avec task-303 — à connaître avant d'écrire
+
+`archived-task-300.md` documente déjà la collision **task-300 × task-303** (renommage
+`tenants` → `mss_accounts`, et le trou silencieux sur la migration du journal).
+
+**Cette US en ajoute un second, sur les mêmes fichiers.** task-301 retire le chemin de
+lecture double source, donc modifie `PostgresAuditReader` — précisément le fichier que
+task-303 doit aussi modifier pour suivre le renommage du DbSet.
+
+| Fichier | task-301 y fait | task-303 y fait |
+|---|---|---|
+| `PostgresAuditReader` | **supprime** la fusion double source et la lecture de `audit_cutover_at` | renomme `context.Tenants` → `context.MssAccounts` |
+| `PostgresAuditSink` | inchangé | renomme `UPDATE tenants` |
+| migration `TenantDb/` | ajoute la reprise + le retrait de la table par tenant | renomme la table |
+
+**Conséquence pratique, dans l'ordre de merge contraint** (task-303 ne peut pas merger
+avant task-304, règle 11) : c'est **task-303 qui se resynchronise** sur un `develop` qui
+portera peut-être déjà task-301. Si tel est le cas, une partie de sa réconciliation
+**disparaît d'elle-même** — on ne renomme pas un appel dans du code qu'on vient de
+supprimer.
+
+Le risque inverse — task-301 mergée *après* task-303 — est celui qu'il faut surveiller :
+elle supprimerait alors du code déjà renommé, ce qui est bénin, **mais sa propre migration
+devrait viser `mss_accounts` et non `tenants`**. Le même piège silencieux que task-300, au
+même endroit.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-301 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /develop | ok | 16 min 53 s | — | — | — | — |
+| /sonar | skipped | 2.8 s | — | — | — | hors périmètre (api-mail tests seuls) |
+| /lint-angular | skipped | 2.4 s | — | — | — | hors périmètre (api-mail tests seuls) |
+| /lint-mobile | skipped | 2.2 s | — | — | — | hors périmètre (api-mail tests seuls) |
+| /verify-visual | skipped | 2.0 s | — | — | — | hors périmètre (api-mail tests seuls) |
+| /review | ok | 3 min 21 s | — | 1 (0.9 s) | — | api-mail 0B/1T |
+| /tech-writer | ok | 42 s | — | — | — | — |
+| /start | ok | 56 s | — | — | — | — |
+| **Total cycle** | | **22 min 03 s** | **0 (0.0 s)** | **1 (0.9 s)** | **0 (0.0 s)** | |

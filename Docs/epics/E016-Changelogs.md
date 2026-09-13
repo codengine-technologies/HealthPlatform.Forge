@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > **Document frère (vue produit)** : [`E016-socle-multi-tenant.md`](./E016-socle-multi-tenant.md)
-> **Dernière mise à jour** : 2026-09-13
+> **Dernière mise à jour** : 2026-09-14
 
 Historique détaillé des changements de l'EPIC **E016 — Socle multi-tenant**.
 Une entrée par task ayant atteint `done-*` ou `archived-*`. Append-only : une
@@ -11,6 +11,139 @@ entrée existante n'est jamais réécrite.
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.2 — task-300 : journal d'audit en base commune (`api-mail`)
+
+**Statut** : `done` — PR [Api.Mail#234](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/234), label `awaiting-human-merge`
+**Branche** : `feat/task-300-journal-audit-base-commune` (2 repos ; `dtos-mss` auto-inclus, **0 commit**, pas de PR)
+**Commits** : 6 — **35 fichiers, +3 364 / −28 lignes**
+**Tests** : **4 456 / 0 échec** (16 ignorés), dont **21 dédiés au journal mutualisé**
+
+#### Le défaut corrigé, et pourquoi c'était un défaut de placement
+
+Le journal était écrit dans une table **par praticien** — placement hérité du choix
+« un médecin, une base », jamais décidé pour le journal. Un lot de 100 traces s'étalait
+donc sur ~100 bases, ~100 pools Npgsql, ~100 logins Postgres : **52 088 des 53 456**
+exceptions `53300` venaient de là, soit **97 %**. Le remède « évident » — drain
+concurrent, degré 8 — avait **aggravé** (15 873 `08P01` contre 646).
+
+Un journal d'audit est un flux append-only à fort débit, quasiment jamais relu : le
+remède naturel est l'insertion groupée, et le sharding par tenant **détruit
+mécaniquement la groupabilité**. On payait le coût maximal de l'isolation pour un
+bénéfice d'isolation quasi nul.
+
+#### Ce qui a été livré
+
+| Brique | Chemin | Rôle |
+|---|---|---|
+| `audit_traces` | migration `Migrations/TenantDb/20260914090000` | Table partitionnée par mois, PK `(id, timestamp)`, index `(tenant_id, timestamp DESC)`, partition `DEFAULT` |
+| `IAuditSink` / `IAuditReader` / `IAuditJournalPurge` | `Application/Services/Repository/TenantDb/` | Contrats — **hors du SDK**, même règle que le registre depuis la révision du 13/09 |
+| `AuditTraceRecord` | `Domain/Entities/TenantDb/` | Ce qui franchit le contrat ; **aucun champ `Transport…`** (l'un portait un mot de passe Postgres) |
+| `PostgresAuditSink` | `Infrastructure/Repositories/TenantDb/` | Un lot, une instruction, une connexion — `Application Name=mss-mail-audit`, pool **2** |
+| `PostgresAuditReader` | idem | Lecture double source, confinée ici, supprimée par task-301 sans toucher une signature |
+| `PostgresAuditJournalPurge` | idem | Purge par lots + suppression de partition, verrou légal prioritaire |
+| `AuditPartitionMaintenance` | `Migrations/TenantDb/` | Avance de 3 mois maintenue au démarrage, verrou consultatif partagé |
+| `tenants.audit_cutover_at` | migration | Borne de bascule **par tenant**, posée à l'horodatage de la première trace mutualisée |
+
+#### Trois couches d'isolation, à la place d'une frontière de base
+
+| Couche | Ce qu'elle tient |
+|---|---|
+| RLS PostgreSQL | `tenant_id = NULLIF(current_setting('mss.tenant_id', true), '')::uuid`, `FORCE ROW LEVEL SECURITY` |
+| Deux rôles | `mss_audit_writer` (INSERT, **pas** SELECT) / `mss_audit_reader` (SELECT sous RLS, **pas** INSERT) |
+| Filtre applicatif | optimisation de plan, **jamais** la sécurité |
+
+#### Quatre défauts trouvés à l'implémentation — tous silencieux, tous prouvés à l'exécution
+
+C'est la partie de cette entrée qui vaut d'être relue avant la prochaine US touchant
+PostgreSQL. Aucun des quatre n'aurait échoué en test unitaire.
+
+1. **`ON CONFLICT (id, timestamp) DO NOTHING` exige le privilège `SELECT`** — PostgreSQL
+   doit inspecter l'index arbitre. Or le rôle d'écriture ne doit précisément pas pouvoir
+   lire : il écrit pour **tous** les tenants, donc un `SELECT` ferait de lui un point
+   d'exfiltration de tout le parc. La forme **sans cible d'inférence** ne demande aucun
+   privilège de lecture et couvre la même contrainte.
+2. **`current_setting(…, true)` rend une chaîne vide, pas `NULL`, sur une connexion
+   recyclée.** Une fois un paramètre personnalisé posé dans une session — fût-ce par
+   `SET LOCAL` —, il revient à chaîne vide, et le cast en `uuid` lève `22P02`. Sans
+   `NULLIF`, la lecture suivante servie par le pool **échouerait** au lieu de rendre zéro
+   ligne.
+3. **`DELETE … WHERE ctid IN (…)` est FAUX sur une table partitionnée.** Le `ctid` est un
+   emplacement physique, unique **par** partition et non entre partitions. L'idiome
+   standard pour borner un `DELETE` supprimait donc des traces d'autres partitions,
+   **encore dans leur durée de conservation**. Constaté : une trace du jour supprimée par
+   une purge visant les traces de plus de 365 jours.
+4. **`SET LOCAL` hors transaction explicite n'a aucun effet** au-delà de l'instruction :
+   PostgreSQL crée une transaction implicite puis la valide. Au moment où la requête
+   part, rôle **et** tenant ont été annulés. En production, l'écran d'audit du praticien
+   aurait été **vide**. Masqué parce que l'utilisateur des conteneurs de test est
+   `SUPERUSER` et **contourne la RLS**, y compris `FORCE ROW LEVEL SECURITY`.
+
+> **Le quatrième a produit une leçon de méthode** : un test de sécurité qui tourne sous
+> superutilisateur ne teste pas la sécurité. Le test qui l'a attrapé se connecte avec un
+> rôle **ordinaire**, et la régression a été **ré-injectée** après correction pour
+> vérifier qu'il mord — il échoue alors sur « Collection was empty », le symptôme exact
+> de production.
+
+#### Dépendance découverte : le tenant n'était jamais matérialisé
+
+L'en-tête de l'US affirmait « Indépendante de task-303 : `TenantId` étant défini dans
+task-299 ». **Faux.** task-299 a livré la table des tenants et `EnsureTenantAsync`, mais
+**rien ne l'appelait** : `TenantRegistrySynchronizer` n'appelait qu'`EnsureAccountAsync`,
+et la table était vide dans tous les environnements. Un journal clé sur `tenant_id`
+n'avait aucun tenant à référencer.
+
+Résolu ici au plus petit périmètre — boîte courante, nom de base déjà utilisé par
+l'application. task-303 étend cette résolution à la sélection multi-boîtes ; elle ne la
+refait pas.
+
+#### Tests dédiés (21)
+
+`AuditJournalIntegrationTests` (10, vrai PostgreSQL : RLS, rôles, partitions, purge,
+idempotence, borne de bascule) — `AuditDualSourceReadTests` (3, dont **1 bloquant sous
+utilisateur ordinaire**) — `AuditDrainMutualisationTests` (3, unitaires : un appel par
+lot, repli sans tenant, invariant task-292) — `AuditJournalLogHygieneTests` (2, aucune
+donnée de santé dans les journaux techniques) — `TenantRegistryContractTests` (+6 cas :
+surface des trois contrats du journal).
+
+#### Trois items de DOD comblés pendant `/review`
+
+Cochés à blanc, ils auraient fait passer la PR pour complète : chaîne de connexion dédiée
+`mss-mail-audit` (pool 2), test de lecture double source, test d'hygiène des journaux.
+
+#### Sonar — 2 itérations, **0 issue sur le code neuf**
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| `new_violations` | 155 | 167 | +12 |
+| Quality Gate | ERROR | ERROR | = |
+| `new_coverage` | 89,1 % | 88,2 % | −0,9 |
+
+Le `+12` vient de la **fenêtre de new-code**, pas du code neuf : toucher un fichier y fait
+entrer ses issues **préexistantes**. Vérifié issue par issue — **0 sur les 14 fichiers
+créés**, 0 imputable sur les fichiers modifiés. 3 issues corrigées (`S4457` ×2,
+`xUnit2033`), dont une **récidive** : la consigne S4457 existait depuis task-299
+(compteur 1 → 2).
+
+#### Ce que cette US rend caduc
+
+`Audit:DrainMaxConnections` et `Audit:DrainParallelism` n'ont plus d'objet **sur le chemin
+d'audit**. **task-298 n'est pas annulée pour autant** : son `application_name` explicite
+reste nécessaire quelle que soit l'architecture, et son plafond protège le chemin de
+provisionnement.
+
+#### Le risque assumé, à accepter au HAG
+
+Le mode de panne devient **global** : la base commune indisponible contre-pressionne
+**tous** les praticiens. Tampon Redis de 3 h, contre-pression en filet. Deux atténuations
+livrées : les traces **sans tenant** gardent l'ancien chemin (un registre absent ne rend
+pas le journal inopérant), et la partition `DEFAULT` absorbe tout horodatage hors plage.
+
+**Documentation** : `ADR-2026-09-14-journal-audit-mutualise.md`, plus la réserve §4.y
+ajoutée à `ADR-2026-07-27-pgbouncer-transaction-mode.md`.
+
+---
+
 
 ### v1.1 — task-299 : registre des tenants (`api-mail`, + un `sdk` réduit à sa CI)
 
@@ -347,7 +480,7 @@ en `foreach`). **184 tests verts avant comme après.**
 | Task | Apport | Repos | Statut |
 |---|---|---|---|
 | task-299 | Registre des tenants : comptes (`sub` Keycloak + RPPS), messageries, **tenants** (compte × messagerie, porteurs de la base isolée et de `TenantId`), horodatages de connexion et dormance. Contrat `ITenantRegistryClient` et implémentation Postgres dans `api-mail` — **le contrat a quitté le SDK à la révision du 13/09** | `api-mail` (`sdk` : CI seulement) | ✅ **done** (PR Sdk#3, Api.Mail#233) |
-| task-300 | Journal d'audit en base commune : table partitionnée par mois, `TenantId` = id du **tenant**, RLS + rôles lecture/écriture séparés, purge planifiée s'appuyant sur `AuditRetentionPolicy.FamilyOf`, lecture double source transitoire | `sdk`, `api-mail` | 🔜 todo |
+| task-300 | Journal d'audit en base commune : table partitionnée par mois, `TenantId` = id du **tenant**, RLS + rôles lecture/écriture séparés, purge planifiée s'appuyant sur `AuditRetentionPolicy.FamilyOf`, lecture double source transitoire | `api-mail` | ✅ **done** (PR Api.Mail#234, en attente de merge) |
 | task-301 | Reprise de l'historique d'audit à débit borné (≤ 4 bases simultanées), vérification par comptage par tenant, puis retrait de la table par tenant et de la configuration morte | `api-mail` | 🔜 todo |
 | task-303 | Vague 1 multi-BAL : la boîte devient une sélection par requête validée contre le registre **et** l'identité PSC ; disparition des claims `mssEmail`/`mssSub`/`mssRpps` ; bascule = fin de session + nouvelle session (garde `SESSION_MAILBOX_MISMATCH`) ; `AuditActionType` + 5 membres | `sdk`, `api-mail` | 🔜 todo |
 | task-304 | Vague 2 multi-BAL : onboarding par le registre, écran de sélection, avatar → sélecteur, gestion des comptes, purge totale de l'état à la bascule — parité Blazor / Angular / mobile. Inclut la remise à niveau de l'outillage de capture visuelle | `client-blazor`, `client-angular`, `client-mobile` | 🔜 todo |

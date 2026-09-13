@@ -50,6 +50,35 @@ En base commune, le drain redevient : **une connexion, une insertion de 1 000 li
 - La purge **opportuniste par tenant** devient une **purge planifiée globale**, ce que l'annuaire
   (task-299) rend enfin possible.
 
+### ⚠️ Dépendance découverte à l'implémentation — le tenant n'est jamais matérialisé
+
+L'en-tête de cette US affirme « **Indépendante de task-303** : `TenantId` étant défini dans
+task-299 ». **Vérifié le 2026-09-13 dans le code mergé : la prémisse est fausse.**
+
+| Ce que task-299 a livré | Ce qui manque |
+|---|---|
+| la table `tenants` et l'opération `EnsureTenantAsync` | **personne ne l'appelle** |
+| `TenantRegistrySynchronizer` | n'appelle que `EnsureAccountAsync` — compte seul |
+| `MssAuditTrace` | **aucun champ `TenantId`** |
+
+Conséquence directe : la table `tenants` est **vide dans tous les environnements**, aucun
+`TenantId` n'existe, et une table d'audit clée sur `tenant_id` n'aurait rien à écrire dedans.
+
+**Résolu dans cette US, au plus petit périmètre possible** (plutôt que de sérialiser la ligne
+audit derrière la ligne multi-BAL, ce que le plan excluait explicitement) :
+
+1. `TenantRegistrySynchronizer` appelle `EnsureTenantAsync(subject, userContext.Email,
+   userContext.UserDatabaseName)` après `EnsureAccountAsync` — la boîte courante devient un
+   rattachement, avec le nom de base que l'application utilise déjà.
+2. `MssAuditTrace` gagne `TenantId`, estampillé **à l'émission** (`AuditService`), là où le
+   contexte de requête est disponible — jamais résolu par le drain, qui n'a plus de contexte.
+
+**Ce que cela ne préempte pas de task-303.** Le couplage porte sur `UserContextInfo.Email`, dont
+la *source* change avec task-303 (claim `mssEmail` → en-tête `Client-Email`) mais dont la *valeur*
+ne change pas. task-303 remplace la résolution mono-boîte par la sélection multi-boîtes, ajoute la
+compatibilité PSC et la fusion `mailboxes` + `tenants` → `mss_accounts` : elle **étend** ce que
+cette US pose, elle ne le refait pas.
+
 ### Conception retenue
 
 1. **Une table unique partitionnée** dans la base commune, **partitionnement déclaratif par mois**
@@ -230,10 +259,23 @@ travail qui se partitionne réellement). La réponse est hybride, pas « abandon
      ligne par praticien**, dans la partition du mois courant.
   2. Ouvrir l'écran d'audit de chacun : **chacun ne voit que ses propres traces** — c'est la
      vérification métier centrale de cette US.
-  3. Vérifier la couche de sécurité à la main :
-     `docker exec postgres-pgvector psql -U mss_audit_reader -d mss_registry -c "select count(*) from audit_traces"`
-     → **0** (aucun tenant positionné). Le même compte avec le tenant A positionné ne doit
-     jamais rendre une trace du tenant B.
+  3. Vérifier la couche de sécurité à la main. **Les deux rôles sont `NOLOGIN`** — ils sont
+     endossés, jamais utilisés pour ouvrir une session : poser un mot de passe dans une migration
+     serait un secret en clair dans le dépôt, et deux comptes de plus exposés au réseau. On les
+     endosse donc :
+     ```sql
+     -- aucun tenant positionné ⇒ ZÉRO ligne (et non une erreur)
+     BEGIN; SET LOCAL ROLE mss_audit_reader; SELECT count(*) FROM audit_traces; ROLLBACK;
+
+     -- tenant A positionné ⇒ QUE les traces de A
+     BEGIN; SET LOCAL ROLE mss_audit_reader;
+       SELECT set_config('mss.tenant_id', '<tenant-A>', true);
+       SELECT DISTINCT tenant_id FROM audit_traces; ROLLBACK;
+
+     -- le rôle d'écriture ne peut pas lire
+     BEGIN; SET LOCAL ROLE mss_audit_writer; SELECT count(*) FROM audit_traces; ROLLBACK;
+     -- attendu : 42501 permission denied
+     ```
   4. Vérifier l'attribution des connexions :
      `docker exec postgres-pgvector psql -U postgres -c "select application_name, count(*) from pg_stat_activity group by 1"`
      → `mss-mail-audit` reste à **2 au plus**, quel que soit le nombre de praticiens actifs
@@ -299,3 +341,197 @@ travail qui se partitionne réellement). La réponse est hybride, pas « abandon
 > le renommage d'une table emporte ses clés étrangères côté PostgreSQL, et la colonne du journal
 > reste `tenant_id` quel que soit l'ordre de merge (arbitrage du 2026-09-13 — le renommage s'arrête
 > aux tables, `mss_accounts.id` **est** le `TenantId`).
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-300 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 45 s | — | — | — | — |
+| /develop | ok | 40 min 06 s | — | — | — | — |
+| /sonar | ok | 18 min 55 s | — | — | — | 2 itération(s) |
+| /lint-angular | skipped | 3.3 s | — | — | — | client-angular non touche par task-300 (Repos: api-mail) |
+| /lint-mobile | skipped | 2.0 s | — | — | — | client-mobile non touche par task-300 (Repos: api-mail) |
+| /verify-visual | skipped | 2.1 s | — | — | — | aucun ecran client-mobile touche (US backend) |
+| /review | ok | 16 min 33 s | — | — | — | — |
+| /tech-writer | ok | 3 min 18 s | — | — | — | — |
+| **Total cycle** | | **1 h 19 min** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+
+## Sonar log
+
+**2 itérations** (scan initial + scan de vérification après correction).
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline (scan task-299) | Final | Δ |
+|---|---|---|---|
+| **Quality Gate (new code)** | ERROR | ERROR | = |
+| `new_violations` | 155 | **167** | **+12** |
+| `new_bugs` | 2 | 2 | = |
+| `new_vulnerabilities` | 2 | 2 | = |
+| `new_code_smells` | 151 | 166 | +15 |
+| `new_coverage` | 89,1 % | 88,2 % | −0,9 |
+| Coverage projet | 88,5 % | 88,1 % | −0,4 |
+| Duplication | 0,3 % | 0,4 % | +0,1 |
+| Reliability / Security / Maintainability | 3,0 / 5,0 / 1,0 | 3,0 / 5,0 / 1,0 | = |
+
+### Ce que task-300 a réellement introduit : **0**
+
+Le chiffre `+12` ne doit pas être lu comme de la dette introduite. Vérifié issue
+par issue via l'API :
+
+| Périmètre | Issues ouvertes |
+|---|---|
+| **Fichiers créés par task-300** (12 fichiers : contrats, `record`, entité, migration, maintenance des partitions, 3 implémentations, 2 fichiers de tests) | **0** |
+| **Fichiers modifiés par task-300** | **0 imputable** — 5 issues, toutes préexistantes : `S138` sur `AddApplication` (97 lignes, méthode non touchée), `S4462 ×3` sur les chemins dégradés de `AuditService` (task-292), `xUnit2033` sur un test de middleware non modifié |
+
+**D'où vient alors le +12ceau ?** De la **fenêtre de new-code**, pas du code neuf :
+toucher un fichier y fait entrer ses issues **préexistantes**. C'est le piège
+déjà documenté (« la new-code period inclut des tasks déjà mergées ») — un
+Quality Gate `ERROR` sans dette introduite.
+
+### Corrigé pendant cette étape (3 issues, toutes sur du code neuf)
+
+| Règle | Où | Fait |
+|---|---|---|
+| `S4457` ×2 | `PostgresAuditSink.WriteBatchAsync`, `PostgresAuditReader.GetTracesAsync` | Validation sortie du corps `async` → méthode publique non-`async` qui délègue à un `…CoreAsync` privé |
+| `xUnit2033` ×1 | `AuditJournalIntegrationTests` | Valeur **rendue** par `Assert.Single` au lieu de re-indexer |
+
+> ⚠️ **`S4457` est une récidive** : la consigne existait dans
+> `conventions/csharp.md` depuis task-299, et n'a pas été appliquée sur du code
+> frais. Compteur incrémenté (1 → 2) avec l'avertissement correspondant.
+
+### Security hotspots (`new_security_hotspots_reviewed` 83,3 % ⇒ ERROR)
+
+Les 2 hotspots à revoir sont dans `tests/loadtest-k6/test_report_session_lock_regime.py`
+(URLs `http://localhost` d'un test Python du banc, task-298). **Hors périmètre de
+cette US**, aucun code livré ici n'est concerné.
+
+## Lint log
+
+**`/lint-angular` : skip propre.** `client-angular` n'est pas dans le
+`**Repos**:` de cette US (`api-mail` seul) et aucune ligne d'Angular n'a été
+écrite.
+
+> Les deux fichiers modifiés dans `Client/Angular/` au moment du passage
+> (`front/apps/mss/src/environments/environment.ts`,
+> `front/apps/weda2/src/environments/environment.ts`, branche
+> `feature/nova-rewriting-mss`) sont **antérieurs et étrangers** à task-300 —
+> configuration locale de l'humain. Mode code-only : la forge ne touche ni au
+> contenu ni à git sur ce repo.
+
+**`/lint-mobile` : skip propre.** `client-mobile` n'est pas dans le `**Repos**:`
+et aucun écran n'a été touché.
+
+**`/verify-visual` : skip propre.** Aucun écran `client-mobile` touché — US
+strictement backend (journal d'audit, migration, RLS).
+
+---
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/234
+  — label `awaiting-human-merge`.
+- `dtos-mss` : **aucune PR** — branche auto-incluse, **0 commit** (cette US n'expose aucune route
+  et ne change aucun contrat de fil).
+- `client-angular` / `client-mobile` / `client-blazor` : **non concernés** — US strictement
+  backend. Aucun écran, aucun DTO, aucune signature HTTP touchée.
+
+## Code Review Summary
+
+**APPROVED** — 35 fichiers revus. **4 défauts bloquants trouvés et corrigés avant la PR**,
+0 restant.
+
+| Défaut | Où | Pourquoi il était invisible |
+|---|---|---|
+| `ON CONFLICT (id, timestamp)` exige `SELECT` | `PostgresAuditSink` | Le rôle d'écriture ne doit pas pouvoir lire — refus `42501` à l'exécution seulement |
+| `current_setting(…, true)` rend `''`, pas `NULL` | migration, politique RLS | Invisible sur connexion neuve ; `''::uuid` lève `22P02` sur une connexion recyclée |
+| `DELETE … WHERE ctid IN (…)` faux sur table partitionnée | `PostgresAuditJournalPurge` | Le `ctid` n'est unique que **par** partition ⇒ suppression de traces encore en conservation |
+| `SET LOCAL` hors transaction explicite sans effet | `PostgresAuditReader` | L'utilisateur des conteneurs de test est `SUPERUSER` et **contourne la RLS** |
+
+Les quatre ont été **prouvés à l'exécution** avant correction, et le dernier a été **re-injecté**
+après correction pour vérifier que son test mord (il échoue alors sur « Collection was empty » —
+le symptôme exact de production : écran d'audit vide).
+
+### Trois items de DOD non tenus, comblés pendant la revue
+
+Cochés à blanc, ils auraient fait passer la PR pour complète :
+
+1. chaîne de connexion dédiée `Application Name=mss-mail-audit`, pool borné à 2 ;
+2. test d'intégration de la lecture double source (3 avant / 3 après, pagination par 2) ;
+3. test de contrat « aucune donnée de santé dans les journaux techniques ».
+
+### Suggestions non bloquantes
+
+- La fenêtre de fusion double source est plafonnée à 2 000 lignes par source. Au-delà, la
+  pagination profonde rend des pages incomplètes — acceptable car le chemin disparaît avec
+  task-301, et le contrat HTTP plafonne déjà la page à 200.
+- `AuditRetentionPolicy.ActionNamesOf` est appelé à chaque purge ; un cache statique serait
+  gratuit. Non fait : la purge est planifiée, pas sur un chemin chaud.
+
+---
+
+## Merged — 2026-09-13
+
+Mergée par l'humain après attestation `--i-tested` (HAG, règle 10).
+
+| Repo | PR | Commit de squash | CI `develop` |
+|---|---|---|---|
+| `api-mail` | [#234](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/234) | `ff6332f7` | ✅ vert (4 min 04 s) |
+| `dtos-mss` | — | aucune PR, **0 commit** | — |
+
+Branches distantes supprimées ; **branches locales conservées** (le drapeau
+`--delete-branch` de `gh` supprime aussi la locale — jamais utilisé ici).
+
+Portes de sécurité au moment du merge : `mergeState CLEAN`, `MERGEABLE`, build `SUCCESS`,
+aucun `CHANGES_REQUESTED`, **0 commit de retard** sur `develop`, arbres de travail propres.
+
+### ⚠️ Collision à venir avec task-303 — à traiter dans task-303, pas ici
+
+task-303 est **en cours dans une session parallèle** (6 commits sur
+`feat/task-303-comptes-multi-messageries` au moment de ce merge), et son commit
+`0f7d8844` fait passer le registre **à deux tables** : `tenants` devient `mss_accounts`,
+`RegistryMailboxRow` disparaît. Vérifié sur sa branche.
+
+task-300, qui vient d'être mergée, s'appuie sur `tenants` à trois endroits :
+
+| Où | Ce qui casse | Comment ça se manifeste |
+|---|---|---|
+| migration `20260914090000` — `ALTER TABLE tenants ADD audit_cutover_at` | la table n'existe plus sous ce nom | ⚠️ **SILENCIEUX** — échec au démarrage avalé par le `LogWarning` du `TenantRegistrySchemaInitializer` |
+| `PostgresAuditSink.MarkCutoverAsync` (`UPDATE tenants`) et `PostgresAuditReader.ReadCutoverAsync` (`context.Tenants`) | DbSet renommé | erreur de compilation — bruyant |
+| `AuditJournalIntegrationTests` / `AuditDualSourceReadTests` (`RegistryMailboxRow`) | type supprimé | erreur de compilation — bruyant |
+
+**C'est la même classe de piège que task-298 → task-299** : le renommage produit des
+conflits bruyants sur le code, et **un trou parfaitement silencieux sur la migration**,
+parce qu'un fichier neuf n'entre jamais en conflit textuel.
+
+**Ce que task-303 doit faire en se resynchronisant sur `develop`** :
+
+1. sa migration de renommage doit **emporter `audit_cutover_at`** — `ALTER TABLE … RENAME`
+   conserve les colonnes, donc c'est gratuit **à condition** que sa migration s'exécute
+   après celle de task-300 (numéro de version supérieur : `20260914090000` est déjà pris) ;
+2. `PostgresAuditSink` et `PostgresAuditReader` suivent le renommage du DbSet ;
+3. les deux fichiers de tests d'intégration du journal cessent de semer un
+   `RegistryMailboxRow` ;
+4. **vérifier au démarrage** que la migration du journal s'est appliquée — le
+   `LogWarning` qui protège le démarrage est précisément ce qui masquerait l'échec.
+
+L'ordre était contraint dans le bon sens : task-303 ne peut pas merger avant task-304
+(règle 11, US-complete), donc elle se resynchronise de toute façon.
+
+### Reste ouvert après ce merge
+
+- **`devops`** : provisionner `mss_registry` et poser `TenantRegistry__ConnectionString`
+  dans les environnements déployés. Chaîne vide ⇒ registre désactivé **en silence**, et
+  le journal retombe sur l'ancien chemin par praticien — le correctif de capacité ne
+  produirait alors aucun effet.
+- **Mesure au banc** (DOD non cochée, attendu) : tir journey 1000, protocole iso
+  task-298, Postgres 48 Go. **0** refus `53300` imputable à l'audit, backends max
+  < 1 500, débit de persistance ≥ débit d'émission. Acte humain via `loadtest-skill`.
+- **`questions/task-302.md`** : accès admin / sécurité au journal, en attente
+  d'arbitrage — aucun modèle de rôles n'existe dans `api-mail`. Le journal mutualisé est
+  livré ; seuls les praticiens peuvent le lire.
+- **Le mode de panne global** a été accepté à ce merge : la base commune indisponible
+  contre-pressionne **tous** les praticiens. Tampon Redis 3 h, contre-pression en filet,
+  traces sans tenant sur l'ancien chemin, partition `DEFAULT` en dernier recours.
