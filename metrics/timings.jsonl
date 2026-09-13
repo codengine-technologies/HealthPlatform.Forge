@@ -849,3 +849,5 @@
 {"ts":"2026-09-13T16:14:31+02:00","run_id":"-","type":"cmd","task":"task-299","step":"develop","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln","duration_ms":121039,"exit_code":0}
 {"ts":"2026-09-13T16:28:25+02:00","run_id":"-","type":"cmd","task":"task-299","step":"develop","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test Api/Mail/tests/mss.mail.infrastructure.tests/mss.mail.infrastructure.tests.csproj --artifacts-path /tmp/t299r --filter FullyQualifiedName~ProvisioningLock|FullyQualifiedName~MigrationScope","duration_ms":836,"exit_code":1}
 {"ts":"2026-09-13T16:29:36+02:00","run_id":"-","type":"cmd","task":"task-299","step":"develop","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test Api/Mail/HealthPlatform.Api.Mail.sln","duration_ms":1545,"exit_code":1}
+{"ts":"2026-09-13T19:13:44+02:00","run_id":"-","type":"step_start","task":"task-303","step":"start"}
+{"ts":"2026-09-13T19:14:11+02:00","run_id":"-","type":"step","task":"task-303","step":"start","status":"ok","note":"","iterations":null,"duration_ms":26917}

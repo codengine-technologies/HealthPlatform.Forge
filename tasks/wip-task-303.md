@@ -631,3 +631,23 @@ poussait la PR `api-mail` au-delà du plafond de la règle 5.
 - **AIPD / impact RGPD** : **à mettre à jour** dans la continuité de task-299 — le compte peut
   désormais référencer plusieurs boîtes ; finalité inchangée ; les événements de rattachement /
   détachement sont journalisés ; le détachement n'entraîne aucune suppression immédiate
+
+## Branches
+
+- `api-mail` (pushed) : `feat/task-303-comptes-multi-messageries` — depuis `origin/develop` `142e0cd` (task-299 incluse)
+  https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-303-comptes-multi-messageries
+- `dtos-mss` (pushed, auto-incluse) : `feat/task-303-comptes-multi-messageries` — depuis `origin/develop` `f20f310`
+  https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-303-comptes-multi-messageries
+
+> Pré-vol : `api-mail`, `client-blazor`, `client-mobile`, `dtos-mss`, `sdk` tous sur `develop`, arbres propres.
+> `host` et `interop-cda` n'ont pas de dépôt sur ce poste — non mesurables (cf. avertissement CLAUDE.md).
+> Repère : le tag d'étape `palier-1000-stable-pre-E016` marque l'état **antérieur** à ce chantier.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-303 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 26 s | — | — | — | — |
+| **Total cycle** | | **26 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
