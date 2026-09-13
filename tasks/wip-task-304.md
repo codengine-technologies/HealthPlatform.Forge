@@ -510,3 +510,27 @@ API **mockée par fixtures**. Trois ruptures certaines, toutes à traiter **dans
 - **Hébergement HDS** : inchangé
 - **AIPD / impact RGPD** : couverte par la mise à jour de task-303 ; cette vague n'ajoute aucun
   traitement ni aucune donnée locale
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-304 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | failed | 6.4 s | — | — | — | pre-flight: api-mail et dtos-mss sur feat/task-303 |
+| **Total cycle** | | **6.4 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+
+## Branches
+
+Nom unique sur tous les repos : `feat/task-304-selection-et-bascule-de-boite`
+
+- `client-blazor` (pushed) : https://github.com/codengine-technologies/HealthPlatform.Client/tree/feat/task-304-selection-et-bascule-de-boite
+- `client-mobile` (pushed) : https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-304-selection-et-bascule-de-boite
+- `dtos-mss` (pushed, auto-inclus) : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-304-selection-et-bascule-de-boite — sans commit si aucun contrat ne bouge (les contrats de la vague 1 sont déjà publiés en **474.0.0**)
+- `client-angular` (code-only) : la forge écrit sur la branche checked out dans `Client/Angular/` — snapshot au `/start` : `feature/nova-rewriting-mss`. Humain gère branche, commit, push, PR TFS.
+
+> **Contexte vague 2/2 (règle 11)** — les PRs de **task-303** (api-mail #236, dtos #32) sont
+> ouvertes en `awaiting-us-completion`. Le paquet DTO **474.0.0** est publié ; `client-blazor`
+> est épinglé en **454.0.0** sur `develop` et doit être bumpé pour voir les contrats de la
+> vague 1. `api-mail` n'est **pas** dans le scope de cette task : le backend vit sur
+> `feat/task-303-*`, dont la PR est en conflit avec `develop` (à résoudre avant le merge final).

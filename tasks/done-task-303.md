@@ -798,4 +798,5 @@ point-virgule en fin de ligne).
 | /lint-mobile | skipped | 0.3 s | — | — | — | client-mobile hors perimetre de la task (Repos: api-mail) |
 | /verify-visual | skipped | 0.4 s | — | — | — | aucun ecran mobile touche (Repos: api-mail, US backend vague 1/2) |
 | /review | ok | 15 min 58 s | 1 (0.2 s) | 2 (3 min 07 s) | — | api-mail 1B/2T |
-| **Total cycle** | | **43 min 06 s** | **3 (19 s)** | **8 (14 min 15 s)** | **4 (1 min 11 s)** | |
+| /tech-writer | ok | 1 min 40 s | — | — | — | — |
+| **Total cycle** | | **44 min 46 s** | **3 (19 s)** | **8 (14 min 15 s)** | **4 (1 min 11 s)** | |
