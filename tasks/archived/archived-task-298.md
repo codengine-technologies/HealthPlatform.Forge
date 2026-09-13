@@ -385,3 +385,15 @@ Tous les items de **code** sont couverts. Les **deux mesures au banc** ne le son
 pas et ne peuvent pas l'être par la chaîne autonome : tirs journey 1000 de
 plusieurs heures, Postgres 48 Go, 1000 bases gardées, via le skill
 `loadtest-skill`, sur une machine de banc. Les cibles sont posées dans la PR.
+
+## Merged
+
+- **Date** : 2026-09-13
+- **Attestation humaine** : `/merge 298 --i-tested` — le tir de clôture du palier 1000
+  (3 h 30, 1000 médecins) **est** le test de cette US ; son rapport est
+  `Docs/audits/api-mail-loadtest-journey-1000-task297-298-20260913.md`.
+- `api-mail` : squash `18e899c6202058d8d6e24344edff2d5293e657a7` (PR #232 closed)
+- `dtos-mss` : aucun commit — branche supprimée sans PR
+- Branches distantes supprimées (locale conservée) ; aucune branche staging à nettoyer
+- CI `develop` : ✅ verte — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/34768578468
+- Inclut le correctif d'outillage `7a86dce` (faux refus PgBouncer comptés par `observe.ps1`)
