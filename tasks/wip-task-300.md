@@ -50,6 +50,35 @@ En base commune, le drain redevient : **une connexion, une insertion de 1 000 li
 - La purge **opportuniste par tenant** devient une **purge planifiée globale**, ce que l'annuaire
   (task-299) rend enfin possible.
 
+### ⚠️ Dépendance découverte à l'implémentation — le tenant n'est jamais matérialisé
+
+L'en-tête de cette US affirme « **Indépendante de task-303** : `TenantId` étant défini dans
+task-299 ». **Vérifié le 2026-09-13 dans le code mergé : la prémisse est fausse.**
+
+| Ce que task-299 a livré | Ce qui manque |
+|---|---|
+| la table `tenants` et l'opération `EnsureTenantAsync` | **personne ne l'appelle** |
+| `TenantRegistrySynchronizer` | n'appelle que `EnsureAccountAsync` — compte seul |
+| `MssAuditTrace` | **aucun champ `TenantId`** |
+
+Conséquence directe : la table `tenants` est **vide dans tous les environnements**, aucun
+`TenantId` n'existe, et une table d'audit clée sur `tenant_id` n'aurait rien à écrire dedans.
+
+**Résolu dans cette US, au plus petit périmètre possible** (plutôt que de sérialiser la ligne
+audit derrière la ligne multi-BAL, ce que le plan excluait explicitement) :
+
+1. `TenantRegistrySynchronizer` appelle `EnsureTenantAsync(subject, userContext.Email,
+   userContext.UserDatabaseName)` après `EnsureAccountAsync` — la boîte courante devient un
+   rattachement, avec le nom de base que l'application utilise déjà.
+2. `MssAuditTrace` gagne `TenantId`, estampillé **à l'émission** (`AuditService`), là où le
+   contexte de requête est disponible — jamais résolu par le drain, qui n'a plus de contexte.
+
+**Ce que cela ne préempte pas de task-303.** Le couplage porte sur `UserContextInfo.Email`, dont
+la *source* change avec task-303 (claim `mssEmail` → en-tête `Client-Email`) mais dont la *valeur*
+ne change pas. task-303 remplace la résolution mono-boîte par la sélection multi-boîtes, ajoute la
+compatibilité PSC et la fusion `mailboxes` + `tenants` → `mss_accounts` : elle **étend** ce que
+cette US pose, elle ne le refait pas.
+
 ### Conception retenue
 
 1. **Une table unique partitionnée** dans la base commune, **partitionnement déclaratif par mois**
@@ -230,10 +259,23 @@ travail qui se partitionne réellement). La réponse est hybride, pas « abandon
      ligne par praticien**, dans la partition du mois courant.
   2. Ouvrir l'écran d'audit de chacun : **chacun ne voit que ses propres traces** — c'est la
      vérification métier centrale de cette US.
-  3. Vérifier la couche de sécurité à la main :
-     `docker exec postgres-pgvector psql -U mss_audit_reader -d mss_registry -c "select count(*) from audit_traces"`
-     → **0** (aucun tenant positionné). Le même compte avec le tenant A positionné ne doit
-     jamais rendre une trace du tenant B.
+  3. Vérifier la couche de sécurité à la main. **Les deux rôles sont `NOLOGIN`** — ils sont
+     endossés, jamais utilisés pour ouvrir une session : poser un mot de passe dans une migration
+     serait un secret en clair dans le dépôt, et deux comptes de plus exposés au réseau. On les
+     endosse donc :
+     ```sql
+     -- aucun tenant positionné ⇒ ZÉRO ligne (et non une erreur)
+     BEGIN; SET LOCAL ROLE mss_audit_reader; SELECT count(*) FROM audit_traces; ROLLBACK;
+
+     -- tenant A positionné ⇒ QUE les traces de A
+     BEGIN; SET LOCAL ROLE mss_audit_reader;
+       SELECT set_config('mss.tenant_id', '<tenant-A>', true);
+       SELECT DISTINCT tenant_id FROM audit_traces; ROLLBACK;
+
+     -- le rôle d'écriture ne peut pas lire
+     BEGIN; SET LOCAL ROLE mss_audit_writer; SELECT count(*) FROM audit_traces; ROLLBACK;
+     -- attendu : 42501 permission denied
+     ```
   4. Vérifier l'attribution des connexions :
      `docker exec postgres-pgvector psql -U postgres -c "select application_name, count(*) from pg_stat_activity group by 1"`
      → `mss-mail-audit` reste à **2 au plus**, quel que soit le nombre de praticiens actifs
@@ -299,3 +341,13 @@ travail qui se partitionne réellement). La réponse est hybride, pas « abandon
 > le renommage d'une table emporte ses clés étrangères côté PostgreSQL, et la colonne du journal
 > reste `tenant_id` quel que soit l'ordre de merge (arbitrage du 2026-09-13 — le renommage s'arrête
 > aux tables, `mss_accounts.id` **est** le `TenantId`).
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-300 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 45 s | — | — | — | — |
+| /develop | ok | 40 min 06 s | — | — | — | — |
+| **Total cycle** | | **40 min 52 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
