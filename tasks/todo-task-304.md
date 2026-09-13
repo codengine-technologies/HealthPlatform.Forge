@@ -126,7 +126,7 @@ le compte a-t-il**. Les fronts n'ont aucune autre information à interpréter �
 | **3** | KC + PSC | 1, sélectionnable | **Connexion directe**, aucun écran | complètes |
 | **4** | KC + PSC | N, défaut sélectionnable | **Connexion directe** au défaut | complètes |
 | **5** | KC + PSC | N, pas de défaut **ou** défaut non sélectionnable | **`mailbox-select`** | complètes |
-| **6** | **KC seul** | **≥ 1** | **Connexion directe au défaut**, sinon `mailbox-select`. **Toutes les BAL actives sont cliquables.** Bandeau persistant « Hors ligne — lecture locale » | **désactivées** |
+| **6** | **KC seul** | **≥ 1** | **Connexion directe au défaut** (arbitrage humain du 2026-09-13), sinon `mailbox-select`. **Toutes les BAL actives sont cliquables.** Bandeau persistant « Hors ligne — lecture locale » | **désactivées** |
 | **7** | KC + PSC | ≥ 1 mais **aucune** sélectionnable (toutes `AuthFailing` / `Detached`) | `mailbox-select`, toutes grisées avec leur raison, **+ « Ajouter une messagerie » actif** — jamais une impasse | complètes |
 
 **Le cas 1 est le cas neuf**, et il est le seul qui n'existait pas avant : jusqu'ici le claim
@@ -136,6 +136,17 @@ encore joué l'onboarding. L'écran l'explique et propose la seule action utile.
 
 **Le cas 6 est celui qui porte l'exigence hors ligne** : un compte déjà provisionné, connecté sans
 Pro Santé Connect, **choisit sa messagerie et la consulte**. Voir §D pour les affordances.
+
+> **Arbitrage du 2026-09-13 : hors ligne, on va directement au défaut** — même comportement qu'en
+> ligne, pas d'écran intercalé. La question posée était : afficher le sélecteur rendrait la lecture
+> seule visible **avant** toute tentative d'écriture, alors que la connexion directe laisse le
+> praticien découvrir la dégradation en cliquant sur « Répondre ».
+>
+> **La fluidité l'emporte, donc le bandeau porte seul la charge d'informer.** Conséquence
+> non négociable : il est **présent au premier rendu**, persistant, et **au-dessus** de la liste
+> des messages — jamais un toast, jamais un état qui n'apparaît qu'à l'échec d'une action. Les
+> commandes d'écriture sont désactivées **visiblement** (grisées, pas masquées) dès l'ouverture,
+> avec l'infobulle « Hors ligne — lecture locale ».
 
 ### A ter. Transitions — ce qui fait passer d'un état à l'autre
 
@@ -348,9 +359,13 @@ simplement de proposer une action qui finirait en erreur.
 - [ ] **Cas 1 — compte Keycloak seul, 0 BAL** : écran `mailbox-psc-required` avec explication et
       bouton Pro Santé Connect, **aucun formulaire de rattachement**, aucune erreur technique
       affichée. C'est l'état neuf que le claim `mssEmail` rendait impossible jusqu'ici
-- [ ] **Cas 6 — hors ligne, le sélecteur reste utilisable** : session sans `X-PSC-Token`, compte à
-      2 boîtes actives ⇒ les deux sont **cliquables**, l'ouverture réussit, bandeau « Hors ligne —
-      lecture locale », actions d'écriture désactivées. Sur les **trois** fronts
+- [ ] **Cas 6 — hors ligne avec défaut : ouverture directe du défaut**, aucun écran intercalé
+      (arbitrage du 2026-09-13). Le bandeau « Hors ligne — lecture locale » est visible **au
+      premier rendu**, persistant, au-dessus de la liste — test qui échoue s'il n'apparaît qu'après
+      une tentative d'écriture. Composer / répondre / transférer / drapeaux **grisés et visibles**
+      dès l'ouverture. Sur les **trois** fronts
+- [ ] **Cas 6 sans défaut** : `mailbox-select`, les BAL actives **cliquables**, l'ouverture réussit
+      en lecture locale. Sur les **trois** fronts
 - [ ] **Cas 7 — aucune BAL sélectionnable** : toutes grisées avec raison **et** « Ajouter une
       messagerie » actif ⇒ jamais d'impasse
 - [ ] Transition « perte du jeton PSC en cours de session » ⇒ bascule en cas 6 **sans
