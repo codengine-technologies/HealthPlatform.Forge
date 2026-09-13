@@ -350,4 +350,55 @@ travail qui se partitionne réellement). La réponse est hybride, pas « abandon
 |---|---|---|---|---|---|---|
 | /start | ok | 45 s | — | — | — | — |
 | /develop | ok | 40 min 06 s | — | — | — | — |
-| **Total cycle** | | **40 min 52 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 18 min 55 s | — | — | — | 2 itération(s) |
+| **Total cycle** | | **59 min 47 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+
+## Sonar log
+
+**2 itérations** (scan initial + scan de vérification après correction).
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline (scan task-299) | Final | Δ |
+|---|---|---|---|
+| **Quality Gate (new code)** | ERROR | ERROR | = |
+| `new_violations` | 155 | **167** | **+12** |
+| `new_bugs` | 2 | 2 | = |
+| `new_vulnerabilities` | 2 | 2 | = |
+| `new_code_smells` | 151 | 166 | +15 |
+| `new_coverage` | 89,1 % | 88,2 % | −0,9 |
+| Coverage projet | 88,5 % | 88,1 % | −0,4 |
+| Duplication | 0,3 % | 0,4 % | +0,1 |
+| Reliability / Security / Maintainability | 3,0 / 5,0 / 1,0 | 3,0 / 5,0 / 1,0 | = |
+
+### Ce que task-300 a réellement introduit : **0**
+
+Le chiffre `+12` ne doit pas être lu comme de la dette introduite. Vérifié issue
+par issue via l'API :
+
+| Périmètre | Issues ouvertes |
+|---|---|
+| **Fichiers créés par task-300** (12 fichiers : contrats, `record`, entité, migration, maintenance des partitions, 3 implémentations, 2 fichiers de tests) | **0** |
+| **Fichiers modifiés par task-300** | **0 imputable** — 5 issues, toutes préexistantes : `S138` sur `AddApplication` (97 lignes, méthode non touchée), `S4462 ×3` sur les chemins dégradés de `AuditService` (task-292), `xUnit2033` sur un test de middleware non modifié |
+
+**D'où vient alors le +12ceau ?** De la **fenêtre de new-code**, pas du code neuf :
+toucher un fichier y fait entrer ses issues **préexistantes**. C'est le piège
+déjà documenté (« la new-code period inclut des tasks déjà mergées ») — un
+Quality Gate `ERROR` sans dette introduite.
+
+### Corrigé pendant cette étape (3 issues, toutes sur du code neuf)
+
+| Règle | Où | Fait |
+|---|---|---|
+| `S4457` ×2 | `PostgresAuditSink.WriteBatchAsync`, `PostgresAuditReader.GetTracesAsync` | Validation sortie du corps `async` → méthode publique non-`async` qui délègue à un `…CoreAsync` privé |
+| `xUnit2033` ×1 | `AuditJournalIntegrationTests` | Valeur **rendue** par `Assert.Single` au lieu de re-indexer |
+
+> ⚠️ **`S4457` est une récidive** : la consigne existait dans
+> `conventions/csharp.md` depuis task-299, et n'a pas été appliquée sur du code
+> frais. Compteur incrémenté (1 → 2) avec l'avertissement correspondant.
+
+### Security hotspots (`new_security_hotspots_reviewed` 83,3 % ⇒ ERROR)
+
+Les 2 hotspots à revoir sont dans `tests/loadtest-k6/test_report_session_lock_regime.py`
+(URLs `http://localhost` d'un test Python du banc, task-298). **Hors périmètre de
+cette US**, aucun code livré ici n'est concerné.

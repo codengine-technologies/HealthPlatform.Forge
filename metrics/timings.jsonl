@@ -855,3 +855,5 @@
 {"ts":"2026-09-13T19:54:18+02:00","run_id":"-","type":"step","task":"task-300","step":"develop","status":"ok","note":"","iterations":null,"duration_ms":2406748}
 {"ts":"2026-09-13T19:13:44+02:00","run_id":"-","type":"step_start","task":"task-303","step":"start"}
 {"ts":"2026-09-13T19:14:11+02:00","run_id":"-","type":"step","task":"task-303","step":"start","status":"ok","note":"","iterations":null,"duration_ms":26917}
+{"ts":"2026-09-13T19:55:02+02:00","run_id":"-","type":"step_start","task":"task-300","step":"sonar"}
+{"ts":"2026-09-13T20:13:58+02:00","run_id":"-","type":"step","task":"task-300","step":"sonar","status":"ok","note":"","iterations":2,"duration_ms":1135630}
