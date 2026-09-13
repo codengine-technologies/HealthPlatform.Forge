@@ -25,8 +25,8 @@
                                      repo — reuse/simplif/efficacité/altitude,
                                      quality only, re-valide seulement si des
                                      cleanups sont appliqués, jamais
-                                     dtos-mss/interop — publie DTOs/interop
-                                     NuGet, un seul push par repo)
+                                     dtos-mss/interop/sdk — publie DTOs/interop/
+                                     SDK NuGet, un seul push par repo)
     ↓ (auto)
 /sonar {NNN}                        (cleanup SonarQube best-effort 5 itérations,
                                      api-mail uniquement — skip si non touché)
@@ -148,7 +148,7 @@ l'humain implémente dans WindSurf, puis lance `/review {task-id}` lui-même
 |---|---|---|---|
 | Rédaction US | `/po` (humain) | non | Pas de `.feature`, juste `todo-*.md` |
 | Création branches | `/start` | non | Pre-flight : tous les repos sur `develop` |
-| **Implémentation + passe qualité** | **`/develop`** | **oui** | Test-first, cross-repo dans l'ordre dtos→interop→backend→frontend, publie NuGet pour DTOs/interop. Pour `client-angular` : mode **code-only** (écrit le code sur la branche actuellement checked out, build + test, mais ne touche pas à git — humain gère branche, commit, push, PR TFS). **Inclut la passe qualité `/simplify`** (ex-`/forge-simplify`, fusionnée le 2026-08-31) : par repo éligible, une fois, après le vert de la feature et **avant le push** — quality-only (reuse/simplif/efficacité/altitude, jamais de chasse aux bugs), re-validation build+test **seulement si des cleanups sont appliqués**, commit `refactor(module): simplify pass`, rollback au rouge (best-effort). **Jamais** `dtos-mss`/`interop-cda` (porteurs de contrat), jamais de git sur `client-angular`. |
+| **Implémentation + passe qualité** | **`/develop`** | **oui** | Test-first, cross-repo dans l'ordre dtos→interop→sdk→backend→frontend, publie NuGet pour DTOs/interop/SDK. Pour `client-angular` : mode **code-only** (écrit le code sur la branche actuellement checked out, build + test, mais ne touche pas à git — humain gère branche, commit, push, PR TFS). **Inclut la passe qualité `/simplify`** (ex-`/forge-simplify`, fusionnée le 2026-08-31) : par repo éligible, une fois, après le vert de la feature et **avant le push** — quality-only (reuse/simplif/efficacité/altitude, jamais de chasse aux bugs), re-validation build+test **seulement si des cleanups sont appliqués**, commit `refactor(module): simplify pass`, rollback au rouge (best-effort). **Jamais** `dtos-mss`/`interop-cda`/`sdk` (porteurs de contrat — `sdk` depuis le 2026-09-13, E016), jamais de git sur `client-angular`. |
 | Cleanup Sonar | `/sonar` (api-mail) | oui | Best-effort 5 itérations, accepte les issues restantes. Skip clean si api-mail non touché. |
 | Cleanup Lint Angular | `/lint-angular` (client-angular) | oui | Best-effort 5 itérations (`lint:fix` + fix manuels), accepte les erreurs restantes. Code-only — ne touche jamais à git. Skip clean si client-angular non touché. |
 | Cleanup Lint Mobile | `/lint-mobile` (client-mobile) | oui | Best-effort 5 itérations (`ng lint --fix` + fix manuels), accepte les erreurs restantes. **Automation git complète** (remote GitHub) : commit/push des fixes. Skip clean si client-mobile non touché. |
@@ -184,8 +184,9 @@ avant le push : **un seul cycle build+test par repo au lieu de deux, un seul
 tour d'agent au lieu de deux**. Les invariants sont conservés : quality-only
 (jamais de chasse aux bugs — c'est `/code-review`), les tests existants comme
 filet anti-régression, rollback du repo si la re-validation passe au rouge,
-**jamais** `dtos-mss`/`interop-cda` (porteurs de contrat → éviter un republish
-NuGet cosmétique), jamais de git sur `client-angular`. La commande
+**jamais** `dtos-mss`/`interop-cda`/`sdk` (porteurs de contrat → éviter un republish
+NuGet cosmétique ; `sdk` depuis le 2026-09-13 : il porte les contrats de plateforme
+`IDirectoryClient`/`IAuditSink` de l'EPIC E016, implémentés dans `api-mail`), jamais de git sur `client-angular`. La commande
 `/forge-simplify` et `agents/forge-simplify.md` sont supprimés ; le built-in
 `/simplify` standalone reste dispo pour l'usage ad-hoc humain (simplifier le
 diff courant, sans cérémonie forge).
@@ -695,7 +696,7 @@ Never modify without human arbitration:
 | `/po` | Write a new US : `todo-*.md` task file only (no .feature). With `--from <doc.md>` : batch-extract US from a markdown document (one-by-one human validation) |
 | `/start {task-id}` | Create the working branches in the target repo(s) and **chain into `/develop`** by default. The full cycle then runs autonomously : `/develop` (code + passe qualité `/simplify`) → `/sonar` → `/lint-angular` → `/lint-mobile` → `/verify-visual` → `/review` → `/tech-writer`. |
 | `/start {task-id} no-code` | Create the working branches and **stop**. Task stays in `wip-*` ; the human implements in WindSurf and runs `/review {task-id}` manually when ready. Escape hatch when `/develop` is unsuitable. |
-| `/develop {task-id}` | **Autonomous implementation + passe qualité** : write code + tests, build, test, run the integrated `/simplify` quality pass per eligible repo (quality-only, before the push — ex-`/forge-simplify`, fusionnée le 2026-08-31), publish DTOs / interop NuGet packages when contracts change, bump consumers, push, hand off to `/sonar` (or the first touched cleanup step). Frontends covered : `client-blazor`, `client-angular` (code-only), `client-mobile` (full git automation). For mobile screens, calls `/stitch-design` first to get the design reference. See `agents/develop.md`. |
+| `/develop {task-id}` | **Autonomous implementation + passe qualité** : write code + tests, build, test, run the integrated `/simplify` quality pass per eligible repo (quality-only, before the push — ex-`/forge-simplify`, fusionnée le 2026-08-31), publish DTOs / interop / SDK NuGet packages when contracts change, bump consumers, push, hand off to `/sonar` (or the first touched cleanup step). Frontends covered : `client-blazor`, `client-angular` (code-only), `client-mobile` (full git automation). For mobile screens, calls `/stitch-design` first to get the design reference. See `agents/develop.md`. |
 | `/stitch-design {task-id}` | **Design sub-step of `/develop`** (mobile only). Ensures each `client-mobile` screen has a matching design in the Stitch project `client-mobile` (id `10088502293310567548`) — reuse if present, **create** via the Stitch MCP if missing (convention : screen title = component kebab-case name, e.g. `mail-list`). Logs the screenshot + HTML/CSS reference so `/develop` codes the Ionic screen against it. Stitch = design source of truth ; output is a **reference, not code**. Best-effort & non-blocking. Stand-alone form `/stitch-design {screen-name}` for manual design create/refresh. See `agents/stitch-design.md`. |
 | `/sonar {task-id}` | Best-effort SonarQube cleanup on `api-mail` (5 iterations max, accepts remaining issues). Standard step in the autonomous chain. Consigne un tableau de **KPIs qualité (baseline → final + Quality Gate)** dans le `## Sonar log` de la task — restitué par `/review` dans le body de la PR api-mail et dans le rapport de fin de cycle (on monitore toujours la qualité, jamais de fin de cycle silencieuse sur ce plan). See `agents/sonar.md`. |
 | `/lint-mobile {task-id}` | Best-effort ESLint cleanup on `client-mobile` (Working dir `Client/Mobile/`). Plain Angular CLI : `ng lint --fix` then manual fixes, build (`npm run build`) + test (`npm test -- --watch=false --browsers=ChromeHeadless`) as the anti-regression net, 5 iterations max, accepts remaining errors. **Full git automation** (GitHub remote) : commits/pushes its fixes, unlike `/lint-angular`. Standard step in the autonomous chain, after `/lint-angular`, skip clean if client-mobile non touché. Hands off to `/verify-visual`. See `agents/lint-mobile.md`. |

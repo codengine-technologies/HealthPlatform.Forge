@@ -498,6 +498,37 @@ rejouer après toute modification de `lib/`, `scenarios/` ou `report.py` :
 tests/loadtest-k6/selftest.sh     # aucune dépendance, aucun banc requis
 ```
 
+### ⚠️ Pré-vol obligatoire depuis task-298 : Postgres doit avoir de la marge
+
+Deux contrôles, **avant** le tir et **avant** `report.sh` :
+
+```bash
+# 1. AVANT LE TIR — Postgres doit partir avec de la marge sur max_connections (2 500).
+docker exec -e PGPASSWORD=postgres <postgres>   psql -U postgres -d postgres -t -A -c "select count(*) from pg_stat_activity;"
+#    → attendu : ≪ 2 500. Au-delà de ~2 000, le tir mesurera le plafond, pas le produit.
+
+# 2. APRÈS LE TIR, AVANT report.sh — attendre que les backends soient retombés.
+#    Le rejeu du spill d'audit ouvre des connexions directes ; lancer le rapport
+#    pendant qu'il tourne a figé la VM Docker 45 minutes le 2026-09-11.
+docker exec -e PGPASSWORD=postgres <postgres>   psql -U postgres -d postgres -t -A -c "select count(*) from pg_stat_activity;"
+#    → attendre < 2 000 avant de lancer report.sh
+```
+
+**Pourquoi.** Le 2026-09-11 (jambe B de task-296), les backends sont montés de
+270 à **2 504** en 2 h 46 — *linéairement*, alors que le débit k6 plafonnait
+depuis deux heures. La croissance suivait le **temps**, pas la charge :
+118 886 refus `53300 sorry, too many clients already`, dont 97 % imputables au
+drain du journal d'audit. Un tir dans cet état **délestre** une partie du
+trafic, ce qui **flatte** les latences servies : aucun verdict SLO n'est
+opposable.
+
+Depuis task-298, `report.py` classe un tel tir **ROUGE** de lui-même
+(« Postgres à `max_connections` ») et publie le pic rapporté à
+`max_connections` dans « Coûts résidents ». Les backends y sont désormais
+attribués par `application_name` (`mss-mail-audit`, `mss-mail-provision`) et
+non plus par sous-réseau — l'ancien classement imputait la route directe au
+pooler, et la colonne « directs » affichait 0 pendant la saturation.
+
 ### Quatre plafonds à connaître avant d'interpréter un chiffre
 
 | Plafond | Symptôme | Conduite |

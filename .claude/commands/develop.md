@@ -36,7 +36,7 @@ Read `agents/develop.md` and execute the full playbook :
    aux bugs**), re-validation build+test **seulement si des cleanups ont été
    appliqués**, commit `refactor(module): simplify pass (/simplify) —
    {task-id}` au vert, `git restore` au rouge (best-effort, jamais bloquant).
-   **Jamais** sur `dtos-mss` / `interop-cda` (porteurs de contrat) ; jamais
+   **Jamais** sur `dtos-mss` / `interop-cda` / `sdk` (porteurs de contrat — `sdk` depuis le 2026-09-13, E016) ; jamais
    d'opération git sur `client-angular` (code-only). Puis **un seul push** par
    repo, portant feature + passe qualité
 6. Final verification : DOD self-check, et **pas de re-build** d'un repo déjà

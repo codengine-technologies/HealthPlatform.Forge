@@ -47,8 +47,8 @@ For every repo touched :
   (`refactor(module): simplify pass (/simplify) — {task-id}`), or nothing at
   all when it found nothing / was rolled back.
 - Pushed to `origin` for pushable repos.
-- For `dtos-mss` and `interop-cda` : NuGet package published via CI, consumers'
-  `Directory.Packages.props` bumped and committed.
+- For `dtos-mss`, `interop-cda` and `sdk` : NuGet package published via CI,
+  consumers' `Directory.Packages.props` bumped and committed.
 
 The task file moves from `wip-*` to **stays `wip-*`** (still in implementation
 phase). The downstream steps (`/sonar` → `/lint-angular` → `/lint-mobile` →
@@ -119,8 +119,8 @@ Compute the build/publish order from the listed repos :
 ```
 1. dtos-mss        (if listed or implied — auto-include when api-mail or client-blazor are listed, per CLAUDE.md auto-inclusion rule)
 2. interop-cda     (if listed)
-3. api-mail        (backend)
-4. sdk             (if listed)
+3. sdk             (if listed — contract carrier, published BEFORE its consumers)
+4. api-mail        (backend)
 5. host            (if listed)
 6. client-blazor   (frontend)
 7. client-angular  (frontend — code-only, no git)
@@ -131,6 +131,10 @@ Reasoning :
 - DTOs are consumed via NuGet by `api-mail` and `client-blazor` → published
   first, otherwise consumers can't compile against the new contract.
 - `interop-cda` is consumed via NuGet by `api-mail` → published next.
+- `sdk` (`HealthPlatform.Host.Sdk`) is consumed via NuGet by `api-mail` **and**
+  `client-blazor` → published before both (2026-09-13, E016 : it carries the
+  platform contracts `IDirectoryClient`, `IAuditSink`, … — a consumer compiled
+  against the previous package would simply not see them).
 - Backend before frontend so the frontend test phase can hit the new contract.
 
 If a repo isn't listed and isn't auto-included, skip it.
@@ -151,9 +155,9 @@ whole cycle, and it doubles as the repo's final verification (Step 6).
 
 | Tier | Repos | Behaviour |
 |---|---|---|
-| Simplify + validate + commit + push | `api-mail`, `client-blazor`, `client-mobile`, `sdk`, `host` | full automation |
+| Simplify + validate + commit + push | `api-mail`, `client-blazor`, `client-mobile`, `host` | full automation |
 | Simplify + validate, **never git** | `client-angular` | edits left uncommitted (code-only) |
-| **Skipped entirely** | `dtos-mss`, `interop-cda` (contract / data carriers), `devops`, `psc-proxy-*` (out of automation) | a cosmetic change on a contract carrier triggers a NuGet republish cascade for zero product value |
+| **Skipped entirely** | `dtos-mss`, `interop-cda`, `sdk` (contract / data carriers — `sdk` since 2026-09-13, E016), `devops`, `psc-proxy-*` (out of automation) | a cosmetic change on a contract carrier triggers a NuGet republish cascade for zero product value |
 
 **Protocol, per eligible repo :**
 
@@ -320,7 +324,57 @@ contract carrier) :
 7. Commit the bump in `Api/Mail` (push later with the rest of the api-mail
    code).
 
-### Step 4 — Implement on backends (`api-mail`, `sdk`, `host`)
+### Step 3b — Implement on `sdk` (if needed)
+
+Only if the task changes `HealthPlatform.Host.Sdk` (`Sdk/`). Since 2026-09-13
+(E016) the SDK is a **contract carrier** : it holds the platform-level
+abstractions (`IDirectoryClient`, `IAuditSink`, `IAuditReader`, their DTOs) whose
+implementations live in `api-mail`. Same pattern as Step 2 — **no quality pass**
+(§Q, tier 3).
+
+**Two invariants specific to the SDK :**
+- **No `Npgsql`, no `Microsoft.EntityFrameworkCore` in the SDK.** It is loaded
+  in Blazor WASM (`HealthPlatform.Components.Shared`). Contracts and DTOs
+  (`record`) only ; a Postgres implementation belongs to `api-mail/Infrastructure`.
+- **Additive contract evolution** : never remove or rename a member of a
+  published `V1` interface within a task — both consumers are bumped to the
+  same version, but `client-blazor` may have shipped against the old one.
+
+**CI guard — check before pushing.** The SDK workflow
+(`Sdk/.github/workflows/dotnet.yml`) must trigger on the feature branch, as
+the DTOs workflow does (`branches: [ "**" ]`). If it still reads
+`branches: [ "master", "develop" ]`, **fix it in the same feature branch as
+the first commit** (`ci(sdk): publish NuGet from every branch, like dtos-mss`)
+— GitHub runs the workflow as defined on the pushed branch, so no prior merge
+to `develop` is needed. Without this, `gh run list --commit $sha` finds no run
+and the step would wait forever.
+
+1. Code in `Sdk/`. Build :
+   ```bash
+   cd Sdk
+   dotnet build HealthPlatform.Host.Sdk.csproj    # 0 errors — no test project
+   ```
+2. Commit specifically (no `git add -A`) :
+   `git -C Sdk commit -m "feat(sdk): {summary of the contract change}"`
+3. Push : `git -C Sdk push origin feat/{task-id}-{slug}`
+4. `gh run watch` the CI publishing `HealthPlatform.Host.Sdk`
+   (`--repo codengine-technologies/HealthPlatform.Host.Sdk`, same
+   `--commit "$sha"` lookup as Step 2.5 ; CI failure ⇒ **stop**,
+   `questions/{task-id}.md` with the run URL, consumers untouched)
+5. Compute `${nugetVersion}` = `${runNumber}.0.0` (the workflow packs with
+   `-p:Version=${{github.run_number}}`, which NuGet normalises to `N.0.0`)
+6. Bump **both** consumers to the **same** version :
+   ```xml
+   <PackageVersion Include="HealthPlatform.Host.Sdk" Version="{nugetVersion}" />
+   ```
+   in `Api/Mail/Directory.Packages.props` **and**
+   `Client/Blazor/Directory.Packages.props` (they had drifted — 13.0.0 vs
+   12.0.0 — before E016 ; keep them aligned from now on).
+7. Commit the bump in each consumer repo
+   (`chore(deps): bump HealthPlatform.Host.Sdk to ${nugetVersion}`), push later
+   with the consumer's feature code (Steps 4 / 5a).
+
+### Step 4 — Implement on backends (`api-mail`, `host`)
 
 For each backend repo listed, in order :
 
