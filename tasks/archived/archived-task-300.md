@@ -469,3 +469,69 @@ Cochés à blanc, ils auraient fait passer la PR pour complète :
   task-301, et le contrat HTTP plafonne déjà la page à 200.
 - `AuditRetentionPolicy.ActionNamesOf` est appelé à chaque purge ; un cache statique serait
   gratuit. Non fait : la purge est planifiée, pas sur un chemin chaud.
+
+---
+
+## Merged — 2026-09-13
+
+Mergée par l'humain après attestation `--i-tested` (HAG, règle 10).
+
+| Repo | PR | Commit de squash | CI `develop` |
+|---|---|---|---|
+| `api-mail` | [#234](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/234) | `ff6332f7` | ✅ vert (4 min 04 s) |
+| `dtos-mss` | — | aucune PR, **0 commit** | — |
+
+Branches distantes supprimées ; **branches locales conservées** (le drapeau
+`--delete-branch` de `gh` supprime aussi la locale — jamais utilisé ici).
+
+Portes de sécurité au moment du merge : `mergeState CLEAN`, `MERGEABLE`, build `SUCCESS`,
+aucun `CHANGES_REQUESTED`, **0 commit de retard** sur `develop`, arbres de travail propres.
+
+### ⚠️ Collision à venir avec task-303 — à traiter dans task-303, pas ici
+
+task-303 est **en cours dans une session parallèle** (6 commits sur
+`feat/task-303-comptes-multi-messageries` au moment de ce merge), et son commit
+`0f7d8844` fait passer le registre **à deux tables** : `tenants` devient `mss_accounts`,
+`RegistryMailboxRow` disparaît. Vérifié sur sa branche.
+
+task-300, qui vient d'être mergée, s'appuie sur `tenants` à trois endroits :
+
+| Où | Ce qui casse | Comment ça se manifeste |
+|---|---|---|
+| migration `20260914090000` — `ALTER TABLE tenants ADD audit_cutover_at` | la table n'existe plus sous ce nom | ⚠️ **SILENCIEUX** — échec au démarrage avalé par le `LogWarning` du `TenantRegistrySchemaInitializer` |
+| `PostgresAuditSink.MarkCutoverAsync` (`UPDATE tenants`) et `PostgresAuditReader.ReadCutoverAsync` (`context.Tenants`) | DbSet renommé | erreur de compilation — bruyant |
+| `AuditJournalIntegrationTests` / `AuditDualSourceReadTests` (`RegistryMailboxRow`) | type supprimé | erreur de compilation — bruyant |
+
+**C'est la même classe de piège que task-298 → task-299** : le renommage produit des
+conflits bruyants sur le code, et **un trou parfaitement silencieux sur la migration**,
+parce qu'un fichier neuf n'entre jamais en conflit textuel.
+
+**Ce que task-303 doit faire en se resynchronisant sur `develop`** :
+
+1. sa migration de renommage doit **emporter `audit_cutover_at`** — `ALTER TABLE … RENAME`
+   conserve les colonnes, donc c'est gratuit **à condition** que sa migration s'exécute
+   après celle de task-300 (numéro de version supérieur : `20260914090000` est déjà pris) ;
+2. `PostgresAuditSink` et `PostgresAuditReader` suivent le renommage du DbSet ;
+3. les deux fichiers de tests d'intégration du journal cessent de semer un
+   `RegistryMailboxRow` ;
+4. **vérifier au démarrage** que la migration du journal s'est appliquée — le
+   `LogWarning` qui protège le démarrage est précisément ce qui masquerait l'échec.
+
+L'ordre était contraint dans le bon sens : task-303 ne peut pas merger avant task-304
+(règle 11, US-complete), donc elle se resynchronise de toute façon.
+
+### Reste ouvert après ce merge
+
+- **`devops`** : provisionner `mss_registry` et poser `TenantRegistry__ConnectionString`
+  dans les environnements déployés. Chaîne vide ⇒ registre désactivé **en silence**, et
+  le journal retombe sur l'ancien chemin par praticien — le correctif de capacité ne
+  produirait alors aucun effet.
+- **Mesure au banc** (DOD non cochée, attendu) : tir journey 1000, protocole iso
+  task-298, Postgres 48 Go. **0** refus `53300` imputable à l'audit, backends max
+  < 1 500, débit de persistance ≥ débit d'émission. Acte humain via `loadtest-skill`.
+- **`questions/task-302.md`** : accès admin / sécurité au journal, en attente
+  d'arbitrage — aucun modèle de rôles n'existe dans `api-mail`. Le journal mutualisé est
+  livré ; seuls les praticiens peuvent le lire.
+- **Le mode de panne global** a été accepté à ce merge : la base commune indisponible
+  contre-pressionne **tous** les praticiens. Tampon Redis 3 h, contre-pression en filet,
+  traces sans tenant sur l'ancien chemin, partition `DEFAULT` en dernier recours.
