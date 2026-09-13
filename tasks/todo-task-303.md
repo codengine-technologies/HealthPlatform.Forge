@@ -292,11 +292,32 @@ poussait la PR `api-mail` au-delà du plafond de la règle 5.
   règles d'**appartenance**, pas des contrôles d'identité : ils s'appliquent **toujours**, banc
   compris. Sinon le banc n'exercerait jamais la règle centrale de l'EPIC.
 
+> ### ⚠️ Fait vérifié dans le code le 2026-09-13 — le chemin de contournement n'a pas de `sub`
+>
+> `TestBypassAuthenticationHandler` (`src/Api/Authentication/`) rend bien un principal
+> **authentifié**, et le banc k6 envoie `X-Test-Bypass` sur **chaque** requête
+> (`tests/loadtest-k6/lib/identity.js`). Mais les claims qu'il émet sont `ClaimTypes.Email`,
+> `mssEmail`, `preferred_username`, `sid`, `test_bypass` (+ `mssSub`/`mssRpps` optionnels) —
+> **ni `ClaimTypes.NameIdentifier`, ni `sub`**.
+>
+> Or `TenantRegistrySynchronizer.ReadAuthenticationSubject` lit exactement ces deux claims et
+> **rend `null`** sinon, auquel cas la synchronisation ne fait rien. **Conséquence mesurable :
+> aujourd'hui le banc de charge ne nourrit pas le registre** — aucune connexion à la base commune,
+> aucune latence ajoutée, références E015 intactes.
+>
+> **C'est cette US qui change cela.** L'« upsert d'annuaire sur le chemin bypass » attendu par
+> task-306 suppose d'ajouter un claim de sujet au handler de contournement (dérivé de
+> `Client-Psc-Sub`, ou une valeur stable dérivée de `Client-Email`). Le faire **déplace la
+> référence du banc** : c'est à partir de là que le registre coûte quelque chose sous charge, et
+> task-306 devra re-baseliner. Ne pas l'attribuer à task-299, qui est neutre sur ce plan.
+
 ## Definition of Done
 
 ### Transverse
 - [ ] Build passes on `api-mail` (0 errors) ; tests pass (0 failures)
-- [ ] **Prérequis hérité de task-299 (revue de code)** — `EnsureTenantAsync` ne **relit pas** la
+- [ ] **Prérequis hérité de task-299 (revue de code) — TOUJOURS OUVERT.** Les tests
+      d'intégration ajoutés le 2026-09-13 couvrent l'idempotence sur le **chemin nominal** contre
+      un vrai PostgreSQL, **pas la course perdue** : `EnsureTenantAsync` ne **relit pas** la
       ligne après `SaveIdempotentAsync`. Sur une course perdue (violation d'unicité sur
       `(account_id, mailbox_id)`, tracker vidé), la méthode rend le tenant **qu'elle a tenté
       d'insérer**, donc un `TenantId` qui n'existe pas en base — alors que c'est précisément

@@ -104,6 +104,18 @@ défaut d'appartenance ne serait découvert qu'en production. C'est pour cela qu
 pré-enregistre les rattachements (§4). Une jambe de contre-épreuve vérifie qu'une
 `Client-Email` non rattachée est bien refusée **même** avec le drapeau à `false`.
 
+> ### ⚠️ La référence E015 bouge à cause de task-303, pas de task-299
+>
+> Vérifié dans le code le 2026-09-13 : le handler de contournement de test n'émet **ni `sub` ni
+> `ClaimTypes.NameIdentifier`**, donc `TenantRegistrySynchronizer` n'écrit **rien** sous le banc
+> aujourd'hui — le registre livré par task-299 est **neutre** pour les références E015 (aucune
+> connexion supplémentaire, aucune latence). La « non-régression stricte » attendue par cette US
+> porte donc sur le delta introduit par **task-303** (upsert d'annuaire sur le chemin bypass,
+> résolution de tenant sur le chemin de requête), pas par le registre lui-même.
+>
+> Conséquence pratique : le tir de référence **avant/après** doit encadrer le merge de task-303.
+> Un tir pris après 299 et avant 303 est une référence *inchangée*, pas une nouvelle baseline.
+
 ## Definition of Done
 
 - [ ] Build passes on api-mail (0 errors) ; tests pass (0 failures)

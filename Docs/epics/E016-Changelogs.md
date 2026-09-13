@@ -18,7 +18,7 @@ entrée existante n'est jamais réécrite.
 **Branche** : `feat/task-299-registre-tenants` (3 repos ; `dtos-mss` auto-inclus, **0 commit**, pas de PR)
 **NuGet publié** : `HealthPlatform.Host.Sdk 14.0.0` (run CI 14) — **référencé par personne** après la révision ci-dessous ; `api-mail` est revenu à `13.0.0`
 **Commits** : `sdk` 3 - `api-mail` 8 - **~2 700 lignes ajoutées**
-**Tests** : `sdk` **16/16** - `api-mail` **4 412 / 0 échec** (16 ignorés), dont **45 dédiés au registre**
+**Tests** : `sdk` **16/16** - `api-mail` **4 424 / 0 échec** (16 ignorés), dont **57 dédiés au registre** (dont **12 d'intégration sur vrai PostgreSQL**)
 
 > **Révision du 13/09/2026, après `/review` et avant tout merge.** Le contrat du registre devait
 > vivre dans le SDK pour préparer le futur service du réseau privé. Décision humaine : le coût réel
@@ -105,13 +105,24 @@ déjà livré, et il n'y en a plus.
    > courrier : budget client (300 s) **égal** au budget serveur (`5min`), en violation de
    > l'invariant que le code documentait lui-même — corrigé à 330 s.
 
-#### Tests dédiés (45)
+#### Tests dédiés (57)
 
 `PostgresTenantRegistryClientTests` (14) - `TenantRegistryContractTests` (8, portés du dépôt SDK à
 la révision) - `TenantRegistryArchitectureTests` (5, **par réflexion** et non par balayage de
 sources — `RepoRoot()` rend `null` sous `--artifacts-path`) - `TenantRegistrySynchronizerTests` (6)
 - `TenantRegistryMigrationScopeTests` (3) - `ProvisioningLockTests` (5) -
-`TenantRegistryOptionsBindingTests` (3) - `RegistryNamingGuardTests` (1).
+`TenantRegistryOptionsBindingTests` (3) - `RegistryNamingGuardTests` (1) -
+**`TenantRegistryIntegrationTests` (12, contre un vrai PostgreSQL)**.
+
+> **Pourquoi 12 tests d'intégration après coup.** Les 45 premiers tournaient **tous** sur le
+> fournisseur EF en mémoire — qui n'a ni index, ni contraintes, et évalue côté client ce qu'il ne
+> sait pas traduire. Trois affirmations de la DOD y étaient donc **invérifiables** : « au plus une
+> messagerie par défaut par compte, *garanti par la base* », l'index unique **filtré**
+> `WHERE rpps IS NOT NULL`, et la traduction SQL du curseur `t.Id.CompareTo(cursor) > 0`. Les
+> tests passaient au vert sans rien prouver. Les 12 tests d'intégration ferment ces trois trous,
+> plus la frontière `TypeFilterOptions` (prouvée par le **schéma réellement produit**, pas par
+> réflexion) et le verrou consultatif entre pods. **Effet immédiat** : le prérequis hérité inscrit
+> dans la DOD de task-301 (curseur non prouvé traduisible) est **levé**.
 
 Trois d'entre eux existent parce que le défaut qu'ils couvrent est **silencieux** :
 - **adresse organisationnelle partagée** : 1 messagerie, 2 tenants, 2 bases (si le `TenantId`

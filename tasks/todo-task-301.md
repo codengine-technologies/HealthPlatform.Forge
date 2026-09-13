@@ -47,13 +47,13 @@ explicite : on ne supprime pas une source de traçabilité PGSSI-S le jour même
 ## Definition of Done
 
 - [ ] Build passes on api-mail (0 errors)
-- [ ] **Prérequis hérité de task-299 (revue de code)** — le curseur de pagination du registre
-      s'écrit `t.Id.CompareTo(cursor) > 0` (`PostgresTenantRegistryClient`, `ListTenantsAsync` et
-      `ListDormantAccountsAsync`). **Aucun test ne prouve qu'il se traduit en SQL** : les tests de
-      task-299 tournent sur le fournisseur EF en mémoire, qui évalue l'expression côté client. Sur
-      un vrai Postgres, une expression non traduisible lève à l'exécution. **Vérifier par un test
-      d'intégration sur base réelle** avant que la reprise ne s'appuie dessus — ou remplacer le
-      curseur par une colonne dont l'ordre est trivialement traduisible.
+- [x] ~~**Prérequis hérité de task-299 (revue de code)** — le curseur de pagination du registre
+      s'écrit `t.Id.CompareTo(cursor) > 0` … **Aucun test ne prouve qu'il se traduit en SQL**.~~
+      **LEVÉ le 2026-09-13** : `TenantRegistryIntegrationTests.ListTenantsAsync_PaginatesWithA
+      CursorTranslatedToSql` et son jumeau `ListDormantAccountsAsync_…` parcourent le parc par
+      pages contre un **vrai PostgreSQL** (Testcontainers) et vérifient les deux propriétés de la
+      pagination — aucune page répétée, aucun tenant sauté. **L'expression se traduit.** La
+      reprise d'historique peut s'appuyer dessus sans réserve.
 - [ ] Tests pass (0 failures)
 - [ ] Commande de reprise déclenchable à la demande (pas de cron : `api-mail` n'a pas
       d'ordonnanceur), reprenable après interruption sans reprendre depuis le début

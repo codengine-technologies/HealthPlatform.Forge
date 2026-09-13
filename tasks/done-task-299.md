@@ -536,7 +536,8 @@ Le versionnement par espace de noms (`.V1`) — sans consommateur externe, il ne
 
 Build `sdk` 0 erreur / 0 avertissement, **16 tests** (23 − 7 tests de contrat, portés vers
 `api-mail`). Build `api-mail` 0 erreur (1 avertissement `ASPIRE010` préexistant), **4 412 tests
-verts, 0 échec, 16 ignorés** — dont **45 dédiés au registre** (26 au moment du
-`/review`, + 11 nés de la restructuration FluentMigrator, + 8 portés ou créés à la révision).
+verts, 0 échec, 16 ignorés** — dont **57 dédiés au registre** (26 au moment du
+`/review`, + 11 nés de la restructuration FluentMigrator, + 8 portés ou créés à la révision,
++ **12 tests d'intégration contre un vrai PostgreSQL**).
 
 Commits : `api-mail` `02967676`, `sdk` `3e79ab3`.
