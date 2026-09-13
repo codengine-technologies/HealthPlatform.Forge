@@ -439,3 +439,32 @@ Task<T> ReadAsync(string key, CancellationToken ct = default, string? correlatio
 // helper privé
 private Task<T> ReadCoreAsync(string key, string? correlationId, CancellationToken ct);
 ```
+
+---
+
+## xUnit1051 — un test qui appelle une méthode à `CancellationToken` doit passer celui du contexte
+
+**Occurrences : 2** (task-297 le 2026-09-13 — 10 appels, CI `develop` cassée ;
+task-303 le même jour — 12 appels, attrapés avant le push)
+
+La migration vers **xUnit v3** (`cf685ac`) a fait passer cet analyseur en
+**erreur**. Tout appel de test vers une méthode qui accepte un
+`CancellationToken` — y compris les vérifications NSubstitute
+(`DidNotReceiveWithAnyArgs().Méthode(…)`) — doit passer
+`TestContext.Current.CancellationToken`, jamais `default` ni rien.
+
+**Consigne** : déclarer le raccourci en tête de classe de test et l'utiliser
+partout, dès la première écriture.
+
+```csharp
+private static CancellationToken Ct => TestContext.Current.CancellationToken;
+
+var result = await Sut.DoAsync(arg, Ct);
+await _dependency.DidNotReceiveWithAnyArgs().DoAsync(default!, Ct);
+```
+
+**Pourquoi ça coûte cher** : la première occurrence est passée **verte sur la PR
+et rouge sur `develop`** — l'écart entre les deux builds n'a jamais été expliqué
+(voir `questions/merge-task-297.md`). Tant qu'il ne l'est pas, la seule
+protection est d'écrire le token dès le départ : la garde « CI verte avant
+merge » ne l'attrape pas de façon fiable.
