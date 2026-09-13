@@ -1,11 +1,11 @@
 # todo-task-300.md — Journal d'audit en base commune : sortir l'écriture du journal du sharding par praticien
 
 **Repos**: sdk, api-mail
-**Dependencies**: **task-299** (annuaire — fournit l'identifiant de tenant stable et la dormance
-qui pilote la purge ; pose le motif « contrat SDK / implémentation api-mail » que cette US
-reproduit). Recouvre partiellement **task-298** : voir « Ce que cette US rend caduc ».
+**Dependencies**: **task-299** (registre — définit le **tenant** et son `TenantId`, fournit la
+dormance qui pilote la purge, et pose le motif « contrat SDK / implémentation api-mail » que cette
+US reproduit). **Indépendante de task-303** : `TenantId` étant défini dans task-299, les deux
+lignes (audit et multi-BAL) peuvent avancer en parallèle. Recouvre partiellement **task-298** : voir « Ce que cette US rend caduc ».
 **Epic**: E016
-**Single frontend**: true
 **Priorité**: **1** — c'est le levier de capacité le plus lourd identifié par E015. La mesure
 désigne le drain du journal comme **97 %** des refus Postgres à 1000 médecins ; tout le reste
 de la chaîne task-292 → 294 → 298 sont des garrots posés autour de ce placement.
@@ -56,8 +56,15 @@ En base commune, le drain redevient : **une connexion, une insertion de 1 000 li
    sur l'horodatage. Volumétrie à assumer dès le premier jour : ~2,9 M traces/jour à 1000
    médecins, soit ~1 milliard par an, avec une rétention de 3 653 jours sur les traces d'accès
    aux données de santé. Sans partitionnement, la purge et les index deviennent ingérables.
-2. **Colonne `TenantId`** (identifiant stable issu de l'annuaire task-299), **jamais** l'email.
-   Index principal `(tenant_id, timestamp desc)`.
+2. **Colonne `TenantId`** = l'identifiant du **tenant** au sens de task-299, c'est-à-dire du
+   **rattachement (compte × messagerie)** — **jamais** l'id du compte, **jamais** celui de la
+   messagerie, **jamais** l'email. Index principal `(tenant_id, timestamp desc)`.
+
+   > ⚠️ Se tromper ici est une **fuite de données de santé entre praticiens**, pas une imprécision :
+   > `MssAuditTrace.UserId` stocke l'email, donc deux PS partageant une adresse MSSanté
+   > organisationnelle ont le **même** `UserId` et des bases distinctes. Seul le tenant les sépare.
+   > La définition fait foi dans task-299 (§ Modèle retenu) ; cette US la consomme, elle ne la
+   > réinvente pas.
 3. **Isolation par la base de données, pas seulement par le code.** La frontière d'isolation
    cesse d'être une base PostgreSQL : elle doit être rétablie **dans** la base commune, sinon
    un filtre oublié devient une fuite de données de santé entre praticiens (la trace porte
@@ -72,23 +79,41 @@ En base commune, le drain redevient : **une connexion, une insertion de 1 000 li
    (2 connexions), `Application Name=mss-mail-audit` (convention task-298).
    **Séparation d'avec l'annuaire** (arbitrage 2026-09-13 : la base centrale aura son propre
    backend d'API) : le chemin d'écriture du journal passe par un contrat **distinct** de
-   `IDirectoryClient` — `IAuditSink.WriteBatchAsync(IReadOnlyList<AuditTraceRecord>)` dans le SDK
+   `ITenantRegistryClient` — `IAuditSink.WriteBatchAsync(IReadOnlyList<AuditTraceRecord>)` dans le SDK
    (`HealthPlatform.Host.Sdk.Audit.V1`), implémentation Postgres dans `api-mail`. Il est
    asynchrone, **par lots**, idempotent (clé de trace), et son indisponibilité est absorbée par
    le tampon Redis : c'est un contrat d'arrière-plan, pas de chemin de requête. Il pourra devenir
    distant (gRPC par lots) sans toucher au drain. L'écran de lecture du praticien passe, lui, par
    `IAuditReader` (même paquet), scopé par tenant, RLS appliquée côté implémentation.
+
+   **Le contrat SDK ignore la transition.** `IAuditReader` expose *lire les traces d'un tenant* —
+   point. La lecture double source (§5) vit **entièrement dans l'implémentation `api-mail`** et
+   disparaîtra avec elle (task-301) **sans toucher au contrat publié**. C'est ce qui permet à
+   task-301 de ne pas lister `sdk` dans ses repos.
+
+   *(Le SDK est un paquet strictement backend depuis task-305 : y placer les contrats du journal
+   ne pèse sur aucune charge utile navigateur.)*
 5. **Lecture pendant la transition (double source).** Tant que task-301 n'a pas repris
    l'historique, l'écran d'audit du praticien lit **les deux** sources et les fusionne :
    la base commune pour les traces postérieures à l'instant de bascule, la table du tenant pour
-   les antérieures. L'instant de bascule est enregistré par tenant dans l'annuaire, ce qui rend
-   la partition du temps **déterministe** : aucune trace en double, aucune manquante. La
+   les antérieures. L'instant de bascule est enregistré **par tenant**, dans une colonne
+   `AuditCutoverAt` **ajoutée au tenant par cette US** (task-299 crée la table, pas cette
+   colonne — elle n'a de sens que pour le journal). Cela rend la partition du temps
+   **déterministe** : aucune trace en double, aucune manquante. La
    pagination est bornée par le plafond de taille de page existant (200). **Ce chemin double
    est transitoire et retiré par task-301.**
 6. **Purge planifiée** sur la base commune : suppression par lots des traces techniques au-delà
    de 365 j, **suppression de partition entière** pour les traces d'accès aux données de santé
-   au-delà de 3 653 j. Les comptes dormants (annuaire) sont purgés comme les autres — c'est
+   au-delà de 3 653 j. Les comptes dormants (registre) sont purgés comme les autres — c'est
    précisément le défaut RGPD que task-299 débloque.
+
+   **La classification des familles n'est pas réinventée** : elle est déjà dans le code
+   (`AuditRetentionPolicy.FamilyOf`, liste **explicite** de traces techniques, tout le reste en
+   accès aux données de santé — le défaut est délibérément la rétention **la plus longue**). La
+   purge appelle cette fonction, elle ne duplique pas la règle. Et elle **respecte le verrou
+   légal** : une durée configurée à `0` désactive la purge de cette famille
+   (`AuditRetentionOptions`, sémantique à trois états) — une partition qui contient une seule
+   ligne sous verrou ne peut pas être supprimée.
 
 ### Le risque assumé, écrit noir sur blanc
 
@@ -107,8 +132,7 @@ travail qui se partitionne réellement). La réponse est hybride, pas « abandon
 
 ## Definition of Done
 
-- [ ] Build passes on api-mail (0 errors)
-- [ ] Tests pass (0 failures)
+- [ ] Build passes on `sdk` et `api-mail` (0 errors) ; tests pass (0 failures)
 - [ ] Table d'audit commune **partitionnée par mois**, index `(tenant_id, timestamp desc)`,
       créée et migrée par le chemin de migration de la base commune (task-299)
 - [ ] Test unitaire : un lot de N traces couvrant M tenants distincts produit **une seule**
@@ -123,6 +147,13 @@ travail qui se partitionne réellement). La réponse est hybride, pas « abandon
       `SET LOCAL` de tenant rend **zéro ligne** ; une requête avec le tenant A ne rend **aucune**
       trace du tenant B, **même si le filtre applicatif est retiré** (le test doit échouer si
       la RLS n'est pas la couche qui tient). Extension de `CrossTenantOwnershipTests`
+- [ ] **Test de sécurité (bloquant) — adresse organisationnelle** : deux comptes PS distincts
+      rattachés à la **même** adresse MSSanté (donc même `MssAuditTrace.UserId`, deux tenants)
+      ⇒ chacun ne voit **que** ses propres traces. C'est le cas que `TenantId = id du compte` ou
+      `= id de la messagerie` casserait silencieusement
+- [ ] Test : la purge appelle `AuditRetentionPolicy.FamilyOf` (aucune reclassification locale) ;
+      une famille configurée à `0` jour (verrou légal) n'est **jamais** purgée, y compris par
+      suppression de partition
 - [ ] Test : le rôle d'écriture du drain ne peut pas **lire** la table ; le rôle de lecture ne
       peut pas écrire
 - [ ] Test d'intégration : lecture double source — un praticien dont l'historique straddle
@@ -164,7 +195,7 @@ travail qui se partitionne réellement). La réponse est hybride, pas « abandon
   2. Ouvrir l'écran d'audit de chacun : **chacun ne voit que ses propres traces** — c'est la
      vérification métier centrale de cette US.
   3. Vérifier la couche de sécurité à la main :
-     `docker exec postgres-pgvector psql -U mss_audit_reader -d mss_directory -c "select count(*) from audit_traces"`
+     `docker exec postgres-pgvector psql -U mss_audit_reader -d mss_registry -c "select count(*) from audit_traces"`
      → **0** (aucun tenant positionné). Le même compte avec le tenant A positionné ne doit
      jamais rendre une trace du tenant B.
   4. Vérifier l'attribution des connexions :

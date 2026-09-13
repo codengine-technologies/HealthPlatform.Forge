@@ -131,10 +131,11 @@ Reasoning :
 - DTOs are consumed via NuGet by `api-mail` and `client-blazor` → published
   first, otherwise consumers can't compile against the new contract.
 - `interop-cda` is consumed via NuGet by `api-mail` → published next.
-- `sdk` (`HealthPlatform.Host.Sdk`) is consumed via NuGet by `api-mail` **and**
-  `client-blazor` → published before both (2026-09-13, E016 : it carries the
-  platform contracts `IDirectoryClient`, `IAuditSink`, … — a consumer compiled
-  against the previous package would simply not see them).
+- `sdk` (`HealthPlatform.Host.Sdk`) is a **backend-only** package consumed via NuGet
+  by `api-mail` **only** (task-305 removed the dead reference from `client-blazor`,
+  which consumed no member of it) → published before `api-mail` (2026-09-13, E016 :
+  it carries the platform contracts `ITenantRegistryClient`, `IAuditSink`, … — a
+  consumer compiled against the previous package would simply not see them).
 - Backend before frontend so the frontend test phase can hit the new contract.
 
 If a repo isn't listed and isn't auto-included, skip it.
@@ -328,13 +329,15 @@ contract carrier) :
 
 Only if the task changes `HealthPlatform.Host.Sdk` (`Sdk/`). Since 2026-09-13
 (E016) the SDK is a **contract carrier** : it holds the platform-level
-abstractions (`IDirectoryClient`, `IAuditSink`, `IAuditReader`, their DTOs) whose
+abstractions (`ITenantRegistryClient`, `IAuditSink`, `IAuditReader`, their DTOs) whose
 implementations live in `api-mail`. Same pattern as Step 2 — **no quality pass**
 (§Q, tier 3).
 
 **Two invariants specific to the SDK :**
-- **No `Npgsql`, no `Microsoft.EntityFrameworkCore` in the SDK.** It is loaded
-  in Blazor WASM (`HealthPlatform.Components.Shared`). Contracts and DTOs
+- **No `Npgsql`, no `Microsoft.EntityFrameworkCore` in the SDK.** Not a payload
+  concern any more (task-305 made it backend-only) but an architectural one : an SDK
+  that carries the implementation stops being a contract, and the future switch to an
+  HTTP client ceases to be a mere DI registration change. Contracts and DTOs
   (`record`) only ; a Postgres implementation belongs to `api-mail/Infrastructure`.
 - **Additive contract evolution** : never remove or rename a member of a
   published `V1` interface within a task — both consumers are bumped to the
@@ -363,13 +366,13 @@ and the step would wait forever.
    `questions/{task-id}.md` with the run URL, consumers untouched)
 5. Compute `${nugetVersion}` = `${runNumber}.0.0` (the workflow packs with
    `-p:Version=${{github.run_number}}`, which NuGet normalises to `N.0.0`)
-6. Bump **both** consumers to the **same** version :
+6. Bump the **single** consumer :
    ```xml
    <PackageVersion Include="HealthPlatform.Host.Sdk" Version="{nugetVersion}" />
    ```
-   in `Api/Mail/Directory.Packages.props` **and**
-   `Client/Blazor/Directory.Packages.props` (they had drifted — 13.0.0 vs
-   12.0.0 — before E016 ; keep them aligned from now on).
+   in `Api/Mail/Directory.Packages.props`. **Do not add it back to
+   `Client/Blazor`** : task-305 removed that reference on purpose — the SDK is a
+   backend-only package, and Blazor has its own `IMarkdownService` / `ICacheService`.
 7. Commit the bump in each consumer repo
    (`chore(deps): bump HealthPlatform.Host.Sdk to ${nugetVersion}`), push later
    with the consumer's feature code (Steps 4 / 5a).

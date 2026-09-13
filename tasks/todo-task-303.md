@@ -1,12 +1,11 @@
-# todo-task-303.md — Comptes multi-messageries (vague 1/2 — backend, contrat, banc) : la boîte MSSanté devient une sélection validée par l'annuaire et par l'identité PSC, plus un claim Keycloak
+# todo-task-303.md — Comptes multi-messageries (vague 1/2 — backend, contrat, banc) : la boîte MSSanté devient une sélection validée par le registre et par l'identité PSC, plus un claim Keycloak
 
 **Repos**: sdk, api-mail
-**Dependencies**: **task-299** (annuaire — comptes, messageries, rattachements, et le contrat
-`IDirectoryClient` dans le SDK que cette US **étend**). Indépendante de task-300 / task-301
+**Dependencies**: **task-299** (registre — comptes, messageries, tenants, et le contrat
+`ITenantRegistryClient` dans le SDK que cette US **étend**). Indépendante de task-300 / task-301
 (journal d'audit) et de task-302 (accès admin).
 **Epic**: E016
-**Single frontend**: true
-**Priorité**: **1** — c'est l'US qui donne son sens produit à l'annuaire : un praticien, un compte,
+**Priorité**: **1** — c'est l'US qui donne son sens produit au registre : un praticien, un compte,
 plusieurs boîtes MSSanté, sans jamais se déconnecter pour en changer.
 
 > **Vague 1 d'une US en deux vagues.** La vague 2 est **task-304** (gestion des comptes dans les
@@ -42,7 +41,7 @@ nous, qui est l'autorité de ce rattachement.
 | L'en-tête `Client-Email` doit être **égal** au claim, sinon 403 | `UserContextEnricherMiddleware.RejectClientEmailMismatchAsync` ; `RequestHelper.cs:94-106` | L'en-tête existe déjà sur les trois fronts et sur k6 — il ne porte aujourd'hui **aucune** information, il fait écho au claim |
 | L'onboarding (task-037) : **A.** sonde IMAP `POST /api/v1/account/mss-imap-test` `{email}` puis **B.** `PUT {proxy}/v1/admin/mss-profile` qui écrit l'attribut Keycloak, puis **C.** « déconnectez-vous et reconnectez-vous » | `MssAccountOnboardingService.TestImapConnectionAsync(email, pscToken)` ; fronts : `MssOnboardingService` ×3 | La persistance est **orchestrée par le client** (A puis B) et le nouveau jeton n'arrive qu'après une **déconnexion** — c'est ce parcours qui est refondu |
 | Le flux SSE lit l'identité **uniquement dans le claim** (`User.FindFirstValue("mssEmail")`) | `MailEventsController.cs:65-83` | Un `EventSource` ne pose pas d'en-tête : la boîte doit être passée **en paramètre de requête** et validée |
-| Cross-check PSC/KC (task-048) : `mssSub == sub PSC`, `mssRpps == SubjectNameID PSC` — `mssSub`/`mssRpps` sont des **copies** du jeton PSC écrites par le backend-auth à l'opt-in (task-049), projetées en claims par des mappers (task-050) | `ApplyPscKcCrossCheckAsync` | Le **principe** (le jeton PSC présenté appartient au même PS que le compte) est conservé ; la **référence** migre : elle est lue dans l'annuaire (`compte.PscSubject`, `compte.Rpps`), plus dans le jeton KC. **Les trois claims `mssEmail`, `mssSub`, `mssRpps` disparaissent du modèle cible** |
+| Cross-check PSC/KC (task-048) : `mssSub == sub PSC`, `mssRpps == SubjectNameID PSC` — `mssSub`/`mssRpps` sont des **copies** du jeton PSC écrites par le backend-auth à l'opt-in (task-049), projetées en claims par des mappers (task-050) | `ApplyPscKcCrossCheckAsync` | Le **principe** (le jeton PSC présenté appartient au même PS que le compte) est conservé ; la **référence** migre : elle est lue dans le registre (`compte.PscSubject`, `compte.Rpps`), plus dans le jeton KC. **Les trois claims `mssEmail`, `mssSub`, `mssRpps` disparaissent du modèle cible** |
 | Nom de base = `f(email, rpps)` → `u_{rpps}_{slug}_{hash}` | `UserContextInfo.BuildUserDatabaseName` | La base est une propriété du **couple (PS, boîte)**. Inchangé : la boîte sélectionnée détermine la base, structurellement |
 | Pool IMAP+SMTP clé `{email}_{sessionId}` | `AuthSession.sessionId` (mobile, task-282) ; `UserContextInfo.ClientSessionId` | Déjà clé par boîte : N boîtes = N pools qui coexistent, rien à changer |
 | Le jeton PSC **tourne toutes les ~2 min** (task-283) ; le bearer Keycloak ~5 min | `AuthSession.pscAccessTokenExpiresAt` | « Même jeton PSC » ne peut signifier que **même identité PSC** — jamais même chaîne |
@@ -54,7 +53,7 @@ nous, qui est l'autorité de ce rattachement.
 
 **Le jeton Keycloak n'est plus qu'une identité d'authentification (`sub`). Tout ce qui est
 MSSanté — l'identité PSC du professionnel, son RPPS, ses boîtes — vit dans l'annuaire central.
-La boîte est une sélection par requête, validée contre l'annuaire ET contre l'identité PSC de la
+La boîte est une sélection par requête, validée contre le registre ET contre l'identité PSC de la
 session.**
 
 État cible, sans ambiguïté :
@@ -128,8 +127,16 @@ réutilise exactement ce mécanisme** — pas un second chemin de fermeture.
 **Garde serveur — la nouvelle session est imposée, pas conseillée.** Un `Client-Session-Id` est
 **lié à la première boîte qu'il a ouverte** (marqueur Redis `{sessionId} → email`, TTL = durée
 de vie de session). Le même identifiant présenté avec une **autre** `Client-Email` ⇒ **409**
-`ProblemDetails` `SESSION_MAILBOX_MISMATCH` — un front qui « changerait juste l'en-tête » sans
-clore la session est refusé. Le multi-onglets (même boîte, même identifiant) reste légitime.
+`ProblemDetails` `SESSION_MAILBOX_MISMATCH`. Le multi-onglets (même boîte, même identifiant)
+reste légitime.
+
+> **Ce que cette garde empêche exactement.** Le registre de sessions est clé sur
+> `{email}_{clientSessionId}` (vérifié : `MailClientSessionManager.cs`, sept sites). Réutiliser
+> l'identifiant avec une autre boîte ne provoque donc **pas** de collision — il crée une
+> **seconde** session et **abandonne la première** : un pool IMAP+SMTP orphelin, connecté chez
+> l'opérateur précédent, vivant jusqu'à son expiration. Sur un praticien qui bascule dix fois,
+> c'est dix pools résidents. La garde n'est pas de l'hygiène de contrat : c'est ce qui empêche
+> la bascule de devenir une fuite de connexions — exactement le défaut que E015 combat.
 
 **Ce que la bascule n'est pas** : ni une déconnexion Keycloak / PSC (le bearer et le
 `X-PSC-Token` sont conservés), ni un `forceLoad` du front. Le médecin ne se ré-authentifie pas ;
@@ -151,7 +158,7 @@ serveur écrit par le compte lui-même**. Pour que le remplacement ne soit pas u
 1. **L'opérateur MSSanté est l'autorité.** Une boîte n'est rattachée que si la sonde IMAP
    **réussit, côté serveur, avec le jeton PSC de l'appelant** — jamais sur la foi d'un client
    qui affirme que l'étape A a réussi. Rattacher = **sonder puis persister, dans le même appel,
-   dans cet ordre** (deux appels `IDirectoryClient`, sans transaction commune — l'atomicité
+   dans cet ordre** (deux appels `ITenantRegistryClient`, sans transaction commune — l'atomicité
    « rien persisté si la sonde échoue » vient de l'ordre, pas d'une transaction). Un PS ne peut
    rattacher que ce que son opérateur lui ouvre : sa boîte personnelle, et les boîtes
    organisationnelles où sa structure l'a habilité.
@@ -173,8 +180,8 @@ serveur écrit par le compte lui-même**. Pour que le remplacement ne soit pas u
 
 ### Résolution du compte, de l'identité PSC et de la boîte (middleware)
 
-- **Compte** ← `sub` Keycloak (voir le piège `MapInboundClaims`), résolu dans l'annuaire via
-  `IDirectoryClient`. Un jeton dont le `sub` est inconnu crée le compte (upsert task-299,
+- **Compte** ← `sub` Keycloak (voir le piège `MapInboundClaims`), résolu dans le registre via
+  `ITenantRegistryClient`. Un jeton dont le `sub` est inconnu crée le compte (upsert task-299,
   décision 2), **sans identité PSC ni RPPS** tant qu'aucune boîte n'a été rattachée.
 - **Identité PSC du compte — ancrage** (reprend le contrat de task-049, côté `api-mail`) :
   au **premier rattachement réussi**, le `sub` et le `SubjectNameID` du jeton PSC qui vient de
@@ -197,7 +204,7 @@ serveur écrit par le compte lui-même**. Pour que le remplacement ne soit pas u
   warning sécurité journalisé. La ré-association (changement de RPPS, rarissime) est un acte
   administratif, hors produit — exactement la règle 3 de task-049.
 - **RPPS du nom de base** : `BuildUserDatabaseName(email, rpps)` reçoit désormais `compte.Rpps`
-  (annuaire), plus le claim `mssRpps`. Même valeur pour tout compte existant — le nom de base
+  (registre), plus le claim `mssRpps`. Même valeur pour tout compte existant — le nom de base
   ne change pas.
 - **Migration à la volée des comptes existants — le seul endroit où les anciens claims sont
   encore lus.** Un jeton portant `mssEmail` + `mssSub` + `mssRpps` **et** dont le compte n'est
@@ -207,7 +214,7 @@ serveur écrit par le compte lui-même**. Pour que le remplacement ne soit pas u
   sont dignes de confiance. Un ancien client sans `Client-Email` utilise alors cette boîte. Aucun
   praticien existant ne perd sa boîte, aucun big-bang, les anciens fronts fonctionnent jusqu'à
   leur mise à jour. Ce code est **isolé dans une classe dédiée** (`LegacyClaimsMigration`),
-  marqué `[Obsolete]`, avec un compteur `mss_directory_legacy_claims_migrations_total` : quand il
+  marqué `[Obsolete]`, avec un compteur `mss_registry_legacy_claims_migrations_total` : quand il
   reste à zéro 30 jours en production, l'humain retire les mappers, la route proxy, puis cette
   classe.
 - **Aucune boîte sélectionnée** (ni en-tête ni claim) : les routes de gestion des boîtes
@@ -219,7 +226,7 @@ serveur écrit par le compte lui-même**. Pour que le remplacement ne soit pas u
 
 ### Contrat HTTP (DTOs dans `dtos-mss`) et contrat SDK
 
-`IDirectoryClient` (SDK, `V1`, évolution **additive**) gagne : `ListCompatibleMailboxesAsync
+`ITenantRegistryClient` (SDK, `V1`, évolution **additive**) gagne : `ListCompatibleMailboxesAsync
 (accountId, pscIdentity)`, `AttachMailboxAsync`, `DetachMailboxAsync`, `SetDefaultMailboxAsync`,
 `AnchorPscIdentityAsync`, `IsMailboxCompatibleAsync(accountId, email, pscIdentity)` — mêmes
 contraintes de migrabilité que task-299 (asynchrone, `record`, pas d'EF, pas de transaction
@@ -259,33 +266,41 @@ Cette US **retire toute dépendance du produit à ces trois attributs et à cett
 Le jeton Keycloak cible ne porte que `sub` (et les claims standard). **Le produit ne demande
 plus rien à Keycloak à propos de MSSanté.**
 
-## Banc de charge — `tests/loadtest-k6` et `tests/mss.mail.loadtest.seed`
+## Banc de charge — extrait en **task-306**
 
-- **`MAILBOXES_PER_USER`** (k6) et **`--mailboxes-per-user`** (seed), **défaut 1** : à défaut, le
-  tir est **iso** aux références E015 (mêmes identités `loadtest-{n}@…`, mêmes bases) — la
-  non-régression des baselines est un critère du DOD.
-- `identity(n)` rend un **compte** (rpps, pscSub — **une seule identité PSC** pour toutes ses
-  boîtes, conformément à la règle) et ses boîtes `loadtest-{n}-{k}@{domain}` pour `k ≥ 2` (la
-  boîte 1 garde son nom actuel). `headersFor(user, sessionId, mailboxIndex)` pose `Client-Email`
-  de la boîte choisie ; les autres en-têtes sont inchangés.
-- **`JOURNEY_P_SWITCH`** (défaut **0**) : probabilité qu'un passage du parcours change de boîte
-  — ce qui mesure le **coût d'une bascule** (pool IMAP froid de l'autre boîte, base différente).
-  Le rapport gagne une ligne « boîtes par compte / part de bascules » et une phase « bascule ».
-- **Chemin bypass** : `RequestHelper` lit déjà `Client-Email` / `Client-Rpps` / `Client-Psc-Sub`
-  comme identité ; il gagne l'**upsert d'annuaire** (compte ← `Client-Rpps`/`Client-Psc-Sub`,
-  boîte ← `Client-Email`, `ValidatedByPscSubject ← Client-Psc-Sub`) pour que la vérification de
-  compatibilité passe sans pré-enregistrement. Le seed pré-enregistre néanmoins les rattachements
-  (idempotent) pour ne pas mesurer l'upsert dans le premier passage.
-- Le seed provisionne `users × mailboxes` boîtes sur Dovecot/GreenMail.
+La dimension « boîtes par compte » du harnais k6, du seed et de `report.py`, ainsi que les deux
+tirs de mesure, vivent dans **task-306** (revue du 2026-09-13) : c'est du JavaScript et du Python,
+sa validation est un tir de plusieurs heures, et il ne conditionne aucun écran. Le garder ici
+poussait la PR `api-mail` au-delà du plafond de la règle 5.
+
+**Ce qui reste à la charge de cette US** — parce que c'est du code de `src/` :
+
+- le chemin **bypass de test** (`RequestHelper`, `X-Test-Bypass`) gagne l'**upsert de registre**
+  (compte ← `Client-Rpps` / `Client-Psc-Sub`, messagerie ← `Client-Email`, tenant créé avec
+  `ValidatedByPscSubject ← Client-Psc-Sub`), sans quoi le banc ne peut rien exercer ;
+- la **décision de portée du drapeau `MSS_ENFORCE_PSC_IDENTITY`** : il gouverne le **cross-check
+  PSC/KC** (ex-task-048) et **lui seul**. Le refus d'une boîte non rattachée
+  (`MAILBOX_NOT_ATTACHED`) et celui d'une boîte non compatible (`MAILBOX_PSC_MISMATCH`) sont des
+  règles d'**appartenance**, pas des contrôles d'identité : ils s'appliquent **toujours**, banc
+  compris. Sinon le banc n'exercerait jamais la règle centrale de l'EPIC.
 
 ## Definition of Done
 
 ### Transverse
 - [ ] Build passes on `sdk`, `api-mail` (0 errors) ; tests pass (0 failures)
-- [ ] `sdk` : extension additive de `IDirectoryClient` (opérations ci-dessus), DTOs `record`,
+- [ ] `sdk` : extension additive de `ITenantRegistryClient` (opérations ci-dessus), DTOs `record`,
       aucune dépendance Npgsql/EF ; NuGet publié, `api-mail` et `client-blazor` bumpés à la même
       version. Le middleware, les contrôleurs et le SSE ne parlent à l'annuaire **que** via
-      `IDirectoryClient` (le test d'architecture de task-299 reste vert)
+      `ITenantRegistryClient` (le test d'architecture de task-299 reste vert)
+- [ ] **`AuditActionType` — les 5 membres sont AJOUTÉS EN FIN D'ÉNUMÉRATION.** L'enum est
+      sérialisée **par son ordinal** sur le fil d'audit (avertissement gravé dans
+      `Dtos/AuditActionType.cs`) : toute insertion au milieu décale silencieusement chaque trace
+      historique côté Angular et Blazor. Test de contrat sur les valeurs ordinales attendues
+- [ ] **Les 5 membres sont ajoutés à `AuditRetentionPolicy.TechnicalActions`.** Cette liste est
+      **explicite** et son défaut est la rétention **la plus longue** : sans cet ajout,
+      `FamilyOf` les classerait en `HealthDataAccess` et le journal les garderait **3 653 jours**
+      au lieu des 365 que cette US annonce en conformité. Test : `FamilyOf(MailboxSessionOpened)
+      == Technical` pour les cinq
 - [ ] `dtos-mss` : `MailboxDto` (avec `compatibleWithSession`, `incompatibilityReason`),
       `AttachMailboxRequest`, codes `MAILBOX_NOT_ATTACHED` / `MAILBOX_REQUIRED` /
       `MAILBOX_PSC_MISMATCH` / `PSC_IDENTITY_CONFLICT` / `SESSION_MAILBOX_MISMATCH`,
@@ -355,7 +370,7 @@ plus rien à Keycloak à propos de MSSanté.**
       `mssRpps` pour tout compte migré (fixture : 3 identités du banc, avant / après)
 - [ ] Test : `MailboxAttached` / `MailboxDetached` / `MailboxDefaultChanged` écrits dans le
       journal d'audit ; une bascule n'écrit **que** `MailboxSessionClosed` + `MailboxSessionOpened`
-- [ ] Test de non-régression : la suite task-048 est **réécrite sur la référence annuaire** (mêmes
+- [ ] Test de non-régression : la suite task-048 est **réécrite sur la référence registre** (mêmes
       cas, mêmes verdicts, mêmes EventIds) ; clé du pool IMAP inchangée
 - [ ] Cache de compatibilité invalidé sur attach / detach / changement d'état (test : detach puis
       requête ⇒ 403 sans attendre le TTL)
@@ -382,7 +397,7 @@ plus rien à Keycloak à propos de MSSanté.**
 - **Lancer** : `cd Api/Mail && aspire run --project src/AppHost` ; `http://127.0.0.1:5052/scalar`.
 - **Vérifications** (bearer Keycloak **sans** claim MSS + `X-PSC-Token` du PS) :
   1. `GET /account/mailboxes` → `[]`. `POST /account/mailboxes {email: boîte1}` → 201,
-     `isDefault`, `compatibleWithSession: true`. En annuaire : compte ancré (`PscSubject`, `Rpps`),
+     `isDefault`, `compatibleWithSession: true`. Dans le registre : compte ancré (`PscSubject`, `Rpps`),
      rattachement `ValidatedByPscSubject` = `sub` du jeton PSC.
   2. `POST` boîte2 → 201. `GET` → deux boîtes, **toutes deux compatibles**.
   3. `GET /mail/folders` avec `Client-Email: boîte1`, `Client-Session-Id: S1` → 200. **Bascule** :
