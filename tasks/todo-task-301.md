@@ -1,10 +1,9 @@
 # todo-task-301.md — Reprise de l'historique d'audit vers la base commune, à débit borné, puis retrait de la table par praticien
 
 **Repos**: api-mail
-**Dependencies**: **task-299** (annuaire — sans lui, les bases à reprendre ne sont pas
+**Dependencies**: **task-299** (registre — sans lui, les tenants à reprendre ne sont pas
 énumérables), **task-300** (table commune, partitionnement, RLS)
 **Epic**: E016
-**Single frontend**: true
 **Priorité**: **2** — ferme le chantier. Sans elle, chaque praticien traîne indéfiniment une
 table d'audit résiduelle et le chemin de lecture double de task-300 reste en place.
 
@@ -28,17 +27,19 @@ est un échec, même si elle est plus rapide.
 
 ### Déroulé
 
-1. **Énumérer** les messageries depuis l'annuaire (task-299) — l'opération n'était pas
-   réalisable avant, c'est ce que l'annuaire débloque.
+1. **Énumérer les tenants** depuis le registre (`ITenantRegistryClient.ListTenantsAsync`,
+   task-299) — l'opération n'était pas réalisable avant, c'est ce que le registre débloque.
+   L'unité de reprise est le **tenant** (compte × messagerie = une base), pas la messagerie :
+   une adresse organisationnelle partagée par deux PS correspond à **deux** bases à reprendre.
 2. Pour chaque base, **copier par lots** les traces antérieures à l'instant de bascule vers la
    table commune, en renseignant le `TenantId`, **idempotent** (une trace déjà reprise n'est
    jamais dupliquée — clé d'identité conservée).
-3. **Vérifier** : nombre de traces reprises == nombre de traces source, par messagerie. Toute
-   divergence est un échec bloquant pour cette messagerie, journalisé, sans arrêter les autres.
-4. Marquer la messagerie **reprise** dans l'annuaire ; l'écran d'audit cesse alors d'interroger
-   la source héritée pour ce praticien.
-5. Quand **toutes** les messageries sont reprises et vérifiées : retirer le chemin de lecture
-   double, puis supprimer la table d'audit des bases praticien (migration par tenant).
+3. **Vérifier** : nombre de traces reprises == nombre de traces source, **par tenant**. Toute
+   divergence est un échec bloquant pour ce tenant, journalisé, sans arrêter les autres.
+4. Marquer le tenant **repris** dans le registre ; l'écran d'audit cesse alors d'interroger la
+   source héritée pour ce tenant.
+5. Quand **tous** les tenants sont repris et vérifiés : retirer le chemin de lecture double, puis
+   supprimer la table d'audit des bases praticien (migration par tenant).
 
 L'étape 5 est **séparée dans le temps** de l'étape 4 et conditionnée à une validation humaine
 explicite : on ne supprime pas une source de traçabilité PGSSI-S le jour même de sa copie.
@@ -50,24 +51,29 @@ explicite : on ne supprime pas une source de traçabilité PGSSI-S le jour même
 - [ ] Commande de reprise déclenchable à la demande (pas de cron : `api-mail` n'a pas
       d'ordonnanceur), reprenable après interruption sans reprendre depuis le début
 - [ ] Test unitaire : la reprise ne dépasse **jamais** `Backfill:MaxConcurrentDatabases`
-      (défaut 4) bases simultanées, quel que soit le nombre de messageries dans l'annuaire
+      (défaut 4) bases simultanées, quel que soit le nombre de tenants dans le registre
       (compteur de concurrence observé)
-- [ ] Test unitaire : **idempotence** — rejouer la reprise sur une messagerie déjà reprise
-      n'insère aucune ligne et ne lève pas
+- [ ] Test unitaire : **idempotence** — rejouer la reprise sur un tenant déjà repris n'insère
+      aucune ligne et ne lève pas
 - [ ] Test unitaire : **garde-fou de saturation** — au-delà d'un seuil de connexions Postgres
       configurable, la reprise se met en pause au lieu de continuer (fixture simulant la
       saturation)
-- [ ] Test unitaire : une messagerie en échec (base injoignable, divergence de comptage)
-      **n'interrompt pas** la reprise des autres ; elle est journalisée et laissée non marquée
-- [ ] Test d'intégration : après reprise d'une messagerie, l'écran d'audit du praticien rend
+- [ ] Test unitaire : un tenant en échec (base injoignable, divergence de comptage)
+      **n'interrompt pas** la reprise des autres ; il est journalisé et laissé non marqué
+- [ ] Test d'intégration : après reprise d'un tenant, l'écran d'audit du praticien rend
       **exactement le même contenu** qu'avant la reprise — même nombre, même ordre, aucun doublon
-- [ ] Test : la vérification de comptage par messagerie échoue **bruyamment** si une seule trace
+- [ ] Test : la vérification de comptage par tenant échoue **bruyamment** si une seule trace
       manque (test par retrait délibéré d'une ligne)
 - [ ] Migration par tenant supprimant la table d'audit héritée, appliquée **uniquement** aux
-      messageries marquées reprises et vérifiées
-- [ ] Retrait du chemin de lecture double de task-300 et de la configuration devenue morte
-      (`Audit:DrainParallelism`, plafond de drain côté audit) — le code ne garde pas deux
-      architectures en parallèle
+      tenants marqués repris et vérifiés
+- [ ] Retrait du chemin de lecture double de task-300 — il vit **entièrement dans
+      l'implémentation `api-mail`** de `IAuditReader`, jamais dans le contrat publié : ce retrait
+      ne touche donc **pas** le SDK (c'est pourquoi cette US ne liste pas `sdk`)
+- [ ] **C'est cette US, et elle seule, qui supprime la configuration devenue morte** :
+      `Audit:DrainParallelism` et le plafond de drain côté audit (`Audit:DrainMaxConnections`
+      pour ce chemin — il **reste** pour le provisionnement). task-300 cesse de s'en servir mais
+      ne les retire pas : tant que le chemin hérité vit, le réglage doit rester réglable. Le code
+      ne garde pas deux architectures en parallèle une fois la reprise terminée
 - [ ] Aucune donnée de santé en clair dans les logs de reprise (nombre de traces, nom de base,
       identifiant de tenant : oui ; contenu de trace : jamais)
 - [ ] Documentation : runbook `Api/Mail/docs/runbook-reprise-audit.md` — comment lancer,
@@ -88,9 +94,9 @@ explicite : on ne supprime pas une source de traçabilité PGSSI-S le jour même
   2. Après reprise d'un praticien : son écran d'audit affiche le **même historique qu'avant**
      (comparer un export avant / après — même nombre de lignes, même ordre).
   3. Relancer la reprise une seconde fois → **aucune ligne insérée**, aucune erreur.
-  4. Couper une base praticien pendant la reprise → cette messagerie est signalée en échec, les
-     autres se terminent normalement.
-  5. **Avant toute suppression** : vérifier messagerie par messagerie que le comptage source ==
+  4. Couper une base praticien pendant la reprise → ce tenant est signalé en échec, les autres
+     se terminent normalement.
+  5. **Avant toute suppression** : vérifier tenant par tenant que le comptage source ==
      comptage cible. C'est la porte de validation humaine de l'étape 5.
 - **Données de test** : praticiens synthétiques du banc, aucune donnée réelle.
 
