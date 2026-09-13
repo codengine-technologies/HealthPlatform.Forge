@@ -208,10 +208,10 @@ même endroit.
 | /lint-angular | skipped | 2.4 s | — | — | — | non touche par task-301 (Repos: api-mail) |
 | /lint-mobile | skipped | 2.3 s | — | — | — | non touche par task-301 (Repos: api-mail) |
 | /verify-visual | skipped | 2.2 s | — | — | — | non touche par task-301 (Repos: api-mail) |
-| /review | ok | 3 min 21 s | — | 1 (0.9 s) | — | api-mail 0B/1T |
+| /review | ok | 4 min 59 s | — | 1 (0.9 s) | — | api-mail 0B/1T |
 | /tech-writer | ok | 42 s | — | — | — | — |
 | /start | ok | 56 s | — | — | — | — |
-| **Total cycle** | | **39 min 05 s** | **0 (0.0 s)** | **1 (0.9 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **40 min 43 s** | **0 (0.0 s)** | **1 (0.9 s)** | **0 (0.0 s)** | |
 
 ## Sonar log
 
@@ -271,3 +271,50 @@ d'un test Python du banc, task-298). **Hors périmètre de cette US.**
 **`/lint-angular`, `/lint-mobile`, `/verify-visual` : skips propres.** `**Repos**: api-mail`
 — aucune ligne d'Angular ni d'Ionic, aucun écran touché. US strictement backend
 (reprise d'historique, migration, service hébergé).
+
+---
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/235
+  — label `awaiting-human-merge`.
+- `dtos-mss` : **aucune PR** — branche auto-incluse, **0 commit** (aucune route, aucun contrat
+  de fil touché).
+- `client-blazor` / `client-angular` / `client-mobile` : **non concernés** — US strictement
+  backend d'exploitation.
+
+## Code Review Summary
+
+**APPROVED** — 22 fichiers revus, **1 écart de DOD trouvé et comblé avant la PR**, 0 blocage
+restant.
+
+### L'écart comblé : le verrou de suppression était procédural
+
+La DOD demande que la suppression de la table héritée soit « appliquée **uniquement** aux
+tenants marqués repris et vérifiés ». Le mécanisme existait
+(`IAuditBackfillStore.DropLegacyTableAsync`), mais la garde vivait dans le **runbook**, pas
+dans le code.
+
+Sur une opération **irréversible** portant sur une source de traçabilité PGSSI-S, ce n'est
+pas suffisant. La signature prend désormais le **tenant** — et non le seul nom de base —
+pour relire `audit_backfilled_at` et **refuser** si la marque est absente. Test bloquant
+dans les deux sens : refus sans marque, acceptation une fois posée.
+
+### Ce que la revue a confirmé
+
+| Point | Verdict |
+|---|---|
+| Ordre compter → copier → **vérifier** → marquer | ✅ marquer avant de vérifier ferait perdre de l'historique en silence |
+| Isolement des échecs par tenant | ✅ sur mille bases, s'arrêter au premier incident = ne jamais finir |
+| Curseur déterministe (`ORDER BY "Id"`) | ✅ deux passes voient le même ordre, donc reprise sûre |
+| Route directe hors pooler | ✅ motif task-200, plan de contrôle |
+| `Application Name=mss-mail-backfill` | ✅ convention task-298, attribution sans devinette |
+| Aucune donnée de santé dans les journaux | ✅ testé sur le chemin de **panne**, celui qui fuit |
+
+### Suggestions non bloquantes
+
+- `AuditBackfillService` énumère le registre page par page et traite chaque page avant la
+  suivante. Un flux continu serait légèrement plus régulier — mais le gain est nul face au
+  plafond de concurrence, qui est la vraie borne.
+- `CountServerConnectionsAsync` compte **toutes** les connexions du serveur, pas seulement
+  celles de la reprise. C'est voulu : le garde-fou protège le serveur, pas la reprise.

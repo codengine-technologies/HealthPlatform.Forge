@@ -889,3 +889,5 @@
 {"ts":"2026-09-13T21:25:59+02:00","run_id":"-","type":"step","task":"task-301","step":"verify-visual","status":"skipped","note":"non touche par task-301 (Repos: api-mail)","iterations":null,"duration_ms":2221}
 {"ts":"2026-09-13T21:09:47+02:00","run_id":"-","type":"cmd","task":"task-303","step":"develop","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln","duration_ms":96431,"exit_code":0}
 {"ts":"2026-09-13T21:10:34+02:00","run_id":"-","type":"step","task":"task-303","step":"develop","status":"ok","note":"implementation complete, 4495 tests verts; no start marker","iterations":null,"duration_ms":null}
+{"ts":"2026-09-13T21:26:43+02:00","run_id":"-","type":"step_start","task":"task-301","step":"review"}
+{"ts":"2026-09-13T21:31:43+02:00","run_id":"-","type":"step","task":"task-301","step":"review","status":"ok","note":"","iterations":null,"duration_ms":299763}
