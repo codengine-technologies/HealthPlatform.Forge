@@ -517,8 +517,9 @@ API **mockée par fixtures**. Trois ruptures certaines, toutes à traiter **dans
 
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
-| /start | failed | 6.4 s | — | — | — | pre-flight: api-mail et dtos-mss sur feat/task-303 |
-| **Total cycle** | | **6.4 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /start | ok | 35 s | — | — | — | — |
+| /develop | ok | 1 h 03 min | 20 (2 min 49 s) | 17 (2 min 48 s) | — | client-blazor 14B/6T, client-angular 2B/3T, client-mobile 4B/8T |
+| **Total cycle** | | **1 h 03 min** | **20 (2 min 49 s)** | **17 (2 min 48 s)** | **0 (0.0 s)** | |
 
 ## Branches
 
@@ -534,3 +535,74 @@ Nom unique sur tous les repos : `feat/task-304-selection-et-bascule-de-boite`
 > est épinglé en **454.0.0** sur `develop` et doit être bumpé pour voir les contrats de la
 > vague 1. `api-mail` n'est **pas** dans le scope de cette task : le backend vit sur
 > `feat/task-303-*`, dont la PR est en conflit avec `develop` (à résoudre avant le merge final).
+
+## Stitch design log
+
+Projet `client-mobile` (id `10088502293310567548`), design system « Clinical Precision »
+(Public Sans, primaire `#005eb8`, rayons 4/8/12 px, listes ≥ 56 px, cibles tactiles ≥ 44 px).
+Aucun des quatre écrans n'existait : les quatre ont été **créés** (convention : titre Stitch =
+nom kebab-case du composant).
+
+| Écran | Statut | Id Stitch | Capture |
+|---|---|---|---|
+| `mailbox-select` | créé | `3f84e49c6242414880e6bffa7036127b` | rendue par le MCP |
+| `mailbox-switcher` | créé | `8da2543c595f494d990094223e74ed3e` | rendue par le MCP |
+| `mailbox-management` | créé | `d0d02a1abf344d589119bf5b34fdec2c` | rendue par le MCP |
+| `mailbox-onboarding` | **timeout de génération** | à relever | — |
+
+> ⚠️ **`mailbox-onboarding` : timeout de `generate_screen_from_text`.** C'est le piège connu du
+> connecteur — un timeout signale un **succès probable côté Stitch**, jamais un échec. L'écran
+> n'a donc **pas** été re-généré (une re-génération est la source des doublons) ; son
+> identifiant reste à relever dans l'UI Stitch par diff des `screenInstances`.
+
+**Ce que la référence a apporté au code** (traduit en Ionic, jamais collé) : bandeau hors ligne
+ambre **persistant et au-dessus de la liste** plutôt qu'un toast ; boîtes non sélectionnables
+**grisées à ~55 %, raison en italique dessous, jamais masquées** ; actions de gestion **visibles
+et désactivées** hors ligne avec leur explication ; identité du PS en **texte non éditable** dans
+l'onboarding ; sélecteur en **bottom sheet** (rayon 12 px) depuis l'avatar de l'en-tête Messages.
+
+## Develop log
+
+| Repo | Mode | Build | Tests | Push |
+|---|---|---|---|---|
+| `dtos-mss` | pushable | — | — | **aucun commit** — les contrats de la vague 1 sont déjà publiés en **474.0.0** ; task-304 n'ajoute aucun DTO. Pas de PR. |
+| `client-blazor` | pushable | ✅ 0 erreur | ✅ **228** (2 skipped pré-existants) | `ca767a2` |
+| `client-angular` | **code-only** | ✅ `nx build weda2` | ✅ **2 572** (weda2+mss) + **343** (mss-lib) | **non commité** — l'humain gère git/TFS |
+| `client-mobile` | pushable | ✅ 0 erreur | ✅ **819** | `1d886f3` |
+
+**`client-blazor` bumpé** `454.0.0` → **`474.0.0`** (DOD transverse). Pas de `sdk` :
+task-305 en a retiré la référence.
+
+### Ce que la passe qualité `/simplify` a trouvé
+
+- **`client-blazor`** — quatre composants répétaient le même trio « s'abonner à
+  `OnChanged`, redessiner, se désabonner ». Quatre copies d'un abonnement ne
+  dérivent pas bruyamment : c'est le **désabonnement** qu'on oublie, et la fuite
+  ne se voit qu'en cumulant les navigations. Extrait en
+  `MailboxAwareComponentBase` (`ca767a2`).
+- **`client-mobile`** — `isAuthenticated` et `hasValidToken` sont devenus le même
+  test une fois la claim retirée. Deux noms pour un prédicat finissent toujours
+  par diverger ; un seul reste (`0a892f2`).
+- **`client-angular`** — rien d'appliqué : le store, le service et la garde sont
+  neufs et sans doublon, et `MailboxListItemComponent` était déjà partagé entre
+  le sélecteur et l'écran de choix.
+
+### Deux constats à porter au HAG
+
+**1. Lacune du contrat task-303 — les deux 409 du rattachement n'ont pas de code.**
+`AttachMailbox` rend `Problem(409, …)` pour « déjà rattachée » **et** pour
+« identité non concordante », sans `instance` ni `code`. Les 403 d'appartenance,
+eux, portent bien leur code dans `instance`. Les trois fronts ne peuvent donc pas
+distinguer les deux conflits autrement qu'en lisant le message — ce que la règle 12
+proscrit. Ils affichent le `detail` du serveur tel quel (spécifique et déjà rédigé
+pour le praticien dans les deux cas) plutôt que de deviner. **Le correctif est
+d'une ligne côté api-mail** (`instance: MailboxErrorCodes.PscIdentityConflict`),
+mais `api-mail` n'est pas dans le `**Repos**:` de cette task — règle 6. La PR #236
+de task-303 étant **encore ouverte**, c'est l'endroit naturel pour le poser.
+
+**2. Outillage visuel absent du poste** — `Tools/visual-verify/` n'existe pas et
+n'est pas versionné (`.gitignore` l'exclut délibérément, seul `Tools/timing/` est
+réintroduit). Les quatre critères « Outillage visuel » de la DOD restent non
+satisfaits, et les captures des écrans mobiles ne peuvent pas être produites.
+Détail, cause et options : `questions/task-304.md`. La suite `/qa`, elle, est
+traitée : `Client/Mobile/e2e/README.md` documente le ré-alignement (`1d886f3`).
