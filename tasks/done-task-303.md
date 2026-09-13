@@ -733,6 +733,47 @@ point-virgule en fin de ligne).
 - Les autres smells du code neuf ne viennent pas de cette US (fixtures des
   services IA, version d'API par défaut, `ISerializable`).
 
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/236 — label **`awaiting-us-completion`**
+- `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/32 — label **`awaiting-us-completion`** (paquet **474.0.0** publié)
+
+> ⚠️ **Règle 11 — US-complete.** Les deux PRs portent `awaiting-us-completion`,
+> **pas** `awaiting-human-merge` : cette vague est de la plomberie sans valeur
+> médecin tant que **task-304** (sélecteur, bascule en direct dans les trois
+> fronts) n'est pas en PR prête. Le test humain se fait sur la **US assemblée**.
+
+## Code Review Summary
+
+**APPROVED** — 0 blocage.
+
+| Zone | Verdict |
+|---|---|
+| `MailboxCompatibility` | ✅ pure, sans I/O, matrice de 14 tests. Les deux questions (`Selectable` / `CanUseImap`) restent séparées de bout en bout jusqu'au DTO |
+| `MailboxSelectionService` | ✅ rend un verdict métier, jamais un code HTTP — traduit à la frontière, testable sans hôte web |
+| `MailboxManagementService` | ✅ ordre sonde→persistance **testé** (`Received.InOrder`), conflits distingués **par type** et non par sous-chaîne (règle 12) |
+| `LegacyClaimsMigration` | ✅ isolée, `[Obsolete]`, compteur de retrait. Jamais d'écrasement d'ancrage |
+| `SessionMailboxGuard` | ✅ ne journalise **aucune** des deux adresses — deux adresses MSSanté côte à côte seraient un rapprochement de praticiens |
+| Middleware | ✅ refus en `problem+json`, piège `MapInboundClaims` contourné et testé des deux côtés |
+| `PostgresTenantRegistryClient` | ✅ course perdue relue **par le sujet** ; aucune entité de persistance ne traverse le contrat |
+| Migration | ✅ **nouvelle**, jamais une édition (règle 7c) ; renumérotée pour passer après task-300 |
+| Sécurité / données de santé | ✅ aucune adresse ni jeton dans les nouveaux journaux ; `AnonymiseAddress` sur les messages d'exception |
+
+### Réserves assumées (non bloquantes)
+
+- **Provisionnement de la base au rattachement** : reste **paresseux** (première
+  requête). Le forcer demanderait de construire un contexte praticien complet
+  dans le contrôleur — risque disproportionné pour un gain de latence au premier
+  accès.
+- **Tests d'intégration HTTP par endpoint** : la logique est couverte au niveau
+  service. L'ajout d'une suite `WebApplicationFactory` par route est un
+  complément, pas une garantie supplémentaire sur la règle métier.
+- **Test d'invalidation de cache** (detach ⇒ 403 sans attendre le TTL) :
+  l'invalidation est écrite et appelée à chaque écriture ; le test dédié manque.
+- **Flaky pré-existant** : `GreenMailBenchSmokeTests` / `SmtpSessionReuseBenchSmokeTests`
+  échouent par intermittence sur cette machine (conteneurs concurrents). Identifié
+  comme tel depuis task-297, vert au rejeu, hors du diff de cette US.
+
 ## Branches
 
 - `api-mail` (pushed) : `feat/task-303-comptes-multi-messageries` — depuis `origin/develop` `142e0cd` (task-299 incluse)
@@ -753,4 +794,8 @@ point-virgule en fin de ligne).
 | /start | ok | 26 s | — | — | — | — |
 | /develop | ok | — | 1 (2.3 s) | 5 (6 min 22 s) | — | dtos-mss 1B/0T, api-mail 0B/5T, implementation complete, 4495 tests verts; no start marker |
 | /sonar | ok | 26 min 35 s | 1 (16 s) | 1 (4 min 44 s) | 4 (1 min 11 s) | 2 itération(s), api-mail 1B/1T, 1 bug corrige (fiabilite C->A), 48->41 smells neufs, QG ERROR sur 4 hotspots LOW pre-existants |
-| **Total cycle** | | **27 min 02 s** | **2 (19 s)** | **6 (11 min 07 s)** | **4 (1 min 11 s)** | |
+| /lint-angular | skipped | 5.0 s | — | — | — | client-angular hors perimetre de la task (Repos: api-mail) |
+| /lint-mobile | skipped | 0.3 s | — | — | — | client-mobile hors perimetre de la task (Repos: api-mail) |
+| /verify-visual | skipped | 0.4 s | — | — | — | aucun ecran mobile touche (Repos: api-mail, US backend vague 1/2) |
+| /review | ok | 15 min 58 s | 1 (0.2 s) | 2 (3 min 07 s) | — | api-mail 1B/2T |
+| **Total cycle** | | **43 min 06 s** | **3 (19 s)** | **8 (14 min 15 s)** | **4 (1 min 11 s)** | |
