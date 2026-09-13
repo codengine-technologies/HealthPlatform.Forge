@@ -355,7 +355,8 @@ travail qui se partitionne réellement). La réponse est hybride, pas « abandon
 | /lint-mobile | skipped | 2.0 s | — | — | — | client-mobile non touche par task-300 (Repos: api-mail) |
 | /verify-visual | skipped | 2.1 s | — | — | — | aucun ecran client-mobile touche (US backend) |
 | /review | ok | 16 min 33 s | — | — | — | — |
-| **Total cycle** | | **1 h 16 min** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /tech-writer | ok | 3 min 18 s | — | — | — | — |
+| **Total cycle** | | **1 h 19 min** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
 
 ## Sonar log
 

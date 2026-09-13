@@ -2,7 +2,7 @@
 
 > **Statut** : 🟡 En cours
 > **Modèle** : task-driven
-> **Version** : 1.1
+> **Version** : 1.2
 > **Auteur** : PO forge
 > **Audience** : PO, médecin, direction produit, conformité — la vue ingénierie vit dans [E016-Changelogs.md](E016-Changelogs.md)
 > **Dernière mise à jour** : 2026-09-13
@@ -89,7 +89,7 @@ augmente.
 | **Rattacher sa première messagerie** | Entrer son adresse dès le premier accès et travailler immédiatement, sans se déconnecter ni se reconnecter | task-304 | 🔜 À faire |
 | **Gérer ses messageries** | Ajouter une messagerie, en détacher une, désigner celle qui s'ouvre par défaut, comprendre pourquoi l'une est indisponible | task-304 | 🔜 À faire |
 | **Conservation appliquée à tous les comptes** | Être assuré que les durées d'effacement s'appliquent aussi aux comptes qui ne servent plus, y compris à ceux d'un praticien qui a quitté le service | task-299 | ✅ Livrée |
-| **Traçabilité des accès à l'échelle du parc** | Consulter l'historique de ses propres accès, sans que la croissance du parc n'en dégrade la tenue | task-300, task-301 | 🔜 À faire |
+| **Traçabilité des accès à l'échelle du parc** | Consulter l'historique de ses propres accès, sans que la croissance du parc n'en dégrade la tenue | task-300, task-301 | 🟡 Partiellement — écriture livrée (PR ouverte), reprise de l'historique à faire |
 | **Accès des équipes sécurité à la traçabilité** | *(indisponible — en attente d'arbitrage : voir §7)* | — | ⛔ Bloquée |
 | **Réactivité vérifiée en multi-messagerie** | Bénéficier d'un service dont la réactivité a été mesurée avec plusieurs messageries par praticien | task-306 | 🔜 À faire |
 | **Application allégée au poste** | Recevoir une application débarrassée de composants qui ne lui servaient pas | task-305 | ✅ Livrée |
@@ -193,7 +193,7 @@ Deux points structurent ce parcours :
 
 ---
 
-## État de couverture (2026-09-13)
+## État de couverture (2026-09-14)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
@@ -202,15 +202,20 @@ Deux points structurent ce parcours :
 | Rattacher sa première messagerie | 🔜 À faire | 0 % | task-304 |
 | Gérer ses messageries | 🔜 À faire | 0 % | task-304 |
 | Conservation appliquée à tous les comptes | ✅ Livrée | 100 % | task-299 |
-| Traçabilité des accès à l'échelle du parc | 🔜 À faire | 0 % | task-300, task-301 |
+| Traçabilité des accès à l'échelle du parc | 🟡 Partielle | 60 % | task-300 (PR ouverte), task-301 |
 | Accès des équipes sécurité à la traçabilité | ⛔ Bloquée | 0 % | — |
 | Réactivité vérifiée en multi-messagerie | 🔜 À faire | 0 % | task-306 |
 | Application allégée au poste | ✅ Livrée | 100 % | task-305 |
 
-**Couverture EPIC consolidée : 22 %** (2 fonctionnalités livrées sur 9 ; 1 bloquée en
-attente d'arbitrage, 6 à faire). Le socle est posé : la plateforme sait désormais
-quels comptes existent, ce qui débloque à la fois la conformité de conservation et
-les fonctionnalités visibles qui suivent.
+**Couverture EPIC consolidée : 29 %** (2 fonctionnalités livrées sur 9, 1 partielle en
+attente de merge, 1 bloquée en attente d'arbitrage, 5 à faire). Le socle est posé — la
+plateforme sait de quoi son parc est fait — et le premier usage concret de ce savoir,
+le journal d'audit mutualisé, est en attente de validation humaine.
+
+> **Lecture du 🟡** : la PR de task-300 est ouverte et attend le merge humain (HAG,
+> règle 10). Rien n'est compté « livré » avant ce merge : c'est la seule barrière de
+> validation du cycle, et l'anticiper dans un tableau d'avancement reviendrait à la
+> contourner sur le papier.
 
 ---
 
@@ -225,6 +230,17 @@ les fonctionnalités visibles qui suivent.
   jusque-là impossibles deviennent faisables : l'application des durées de
   conservation, la mise à niveau des espaces dormants, et les comptes à plusieurs
   messageries.
+- **L'historique des accès cesse de dépendre de la taille du parc** (task-300, *en
+  attente de merge*). Le journal était écrit dans un espace de données par praticien :
+  enregistrer une centaine d'actions revenait à ouvrir une centaine de connexions, et
+  cette forme expliquait à elle seule **97 %** des refus de connexion mesurés à mille
+  médecins. Le journal rejoint un espace commun où une centaine d'actions s'écrivent
+  d'un seul geste. Pour le praticien, rien ne change à l'écran : il consulte le même
+  historique, et **ne voit toujours que le sien** — l'isolation est désormais tenue par
+  la base de données elle-même plutôt que par le découpage en espaces séparés. Effet
+  secondaire de conformité : les durées d'effacement peuvent enfin s'appliquer aussi
+  aux comptes qui ne servent plus, ce qui n'était pas possible tant qu'aucun balayage
+  d'ensemble n'existait.
 - **L'application transmise au poste du praticien s'est allégée** (task-305). Des
   composants qui n'y servaient à rien — dont un client de cache réseau — y étaient
   embarqués par une dépendance devenue inutile. Ils en sont retirés, et un garde-fou
