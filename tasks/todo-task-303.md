@@ -96,13 +96,36 @@ Formalisation :
    session** (demande humaine du 2026-09-13) — voir la section dédiée ci-dessous : l'ancienne
    session de boîte est **fermée explicitement** (IMAP/SMTP, synchro de fond, contexte), jamais
    laissée expirer.
-4. **Boîte non compatible** = tout le reste, avec une raison explicite : `Detached`,
-   `AuthFailing`, `PscIdentityMismatch` (théorique : un compte est ancré sur une seule identité,
-   mais la règle est écrite et testée, pas déduite), `NoPscToken`.
-5. **Sans jeton PSC** (mode hors ligne existant, `IsOfflineMode`) : la compatibilité n'est pas
-   évaluable ; la liste est rendue avec `NoPscToken`, la bascule reste possible **en lecture
-   locale** de ce qui est déjà synchronisé — exactement le comportement hors ligne d'aujourd'hui,
-   étendu à N boîtes. Aucune ouverture IMAP.
+4. **Boîte non sélectionnable** = `Detached`, `AuthFailing`, `PscIdentityMismatch` (théorique :
+   un compte est ancré sur une seule identité, mais la règle est écrite et testée, pas déduite).
+   Ces trois-là sont grisées et **non cliquables** côté front (task-304).
+5. **Sans jeton PSC** (mode hors ligne existant, `IsOfflineMode`) : **mode dégradé, PAS une
+   incompatibilité.**
+
+   > ⚠️ **Corrigé le 2026-09-13 (clarification humaine).** La rédaction précédente rangeait
+   > `NoPscToken` parmi les raisons d'incompatibilité, au même rang que `Detached` et
+   > `AuthFailing`. Composée avec la règle de task-304 — « non compatible ⇒ grisée, raison
+   > affichée, **non cliquable** » — elle rendait **toutes** les boîtes inaccessibles hors ligne,
+   > c'est-à-dire l'inverse exact du comportement voulu. `NoPscToken` n'est pas un défaut de la
+   > boîte : c'est un état de la **session**.
+
+   Le contrat rend donc, par boîte, **deux informations distinctes** :
+   `selectable` (l'état du rattachement — `Detached` / `AuthFailing` / `PscIdentityMismatch` le
+   mettent à `false`) et `capabilities` (`read` toujours, `imap`/`send`/`flags` seulement si la
+   session porte un jeton PSC compatible). Hors ligne : **toutes les boîtes actives restent
+   sélectionnables et ouvrables**, en lecture locale de ce qui est déjà synchronisé — exactement
+   le comportement hors ligne d'aujourd'hui (`IsOfflineMode`, `CanAccessImap == false`,
+   `CanSendEmail == false`), étendu à N boîtes. Aucune ouverture IMAP, aucun envoi, aucun
+   changement de drapeau.
+
+6. **Précondition du hors ligne : le compte doit avoir été ancré au moins une fois en ligne.**
+   Un compte Keycloak **seul** — jamais passé par PSC, jamais migré depuis les anciens claims —
+   n'a **aucun tenant** dans le registre, donc aucune base praticien, donc rien à consulter.
+   C'est un état légitime, pas une panne : il tombe dans le parcours d'onboarding (§B de
+   task-304), lui-même **impossible hors ligne** puisque le rattachement exige une sonde IMAP
+   XOAUTH2 avec le jeton PSC. La première connexion utile après cette US est donc
+   **nécessairement en ligne**. À dire explicitement au support : « je ne vois rien hors ligne »
+   sur un compte neuf n'est pas un défaut.
 
 ## Bascule = fin de session + nouvelle session (demande humaine du 2026-09-13)
 
@@ -207,9 +230,28 @@ serveur écrit par le compte lui-même**. Pour que le remplacement ne soit pas u
   `(sub, SubjectNameID)` ≠ `(PscSubject, Rpps)` du compte ⇒ **409** `PSC_IDENTITY_CONFLICT`,
   warning sécurité journalisé. La ré-association (changement de RPPS, rarissime) est un acte
   administratif, hors produit — exactement la règle 3 de task-049.
-- **RPPS du nom de base** : `BuildUserDatabaseName(email, rpps)` reçoit désormais `compte.Rpps`
-  (registre), plus le claim `mssRpps`. Même valeur pour tout compte existant — le nom de base
-  ne change pas.
+- **Nom de base : le registre fait autorité, on ne recalcule plus.** Le rattachement enregistre
+  `tenants.database_name` une fois — `EnsureTenantAsync` ne réécrit jamais la colonne — et
+  **c'est cette valeur que le chemin de requête lit**. `BuildUserDatabaseName(email, rpps)` ne
+  sert plus qu'**une fois**, au rattachement, pour *proposer* le nom que le registre grave.
+
+  Deux raisons, la seconde étant celle qui a motivé le changement (clarification humaine du
+  2026-09-13) :
+
+  1. **Une seule source de vérité.** Le nom est déjà persisté ; le recalculer à chaque requête,
+     c'est le *reconstruire* — et faire dépendre l'accès aux données de santé d'une fonction pure
+     qui ne doit jamais changer. Une retouche du slug ou du hachage déplacerait **tout le parc**
+     sur des bases neuves et vides, en silence.
+  2. **Le hors ligne cesse de dépendre de l'ancrage.** Recalculer exige `compte.Rpps` ; le lire
+     n'exige rien. Le segment RPPS n'entre d'ailleurs dans le nom qu'en **préfixe** (le hachage
+     ne porte que l'email) : `u_0_{slug}_{hash}` sans RPPS contre `u_{rpps}_{slug}_{hash}` avec.
+     Deux bases distinctes pour le même praticien selon la forme du jeton. Lire le nom enregistré
+     rend cette asymétrie inoffensive **par construction**, au lieu de la neutraliser par une
+     précaution qu'il faudrait maintenir.
+
+  Repli : tenant sans `database_name` (impossible — colonne `NOT NULL`) ⇒ `500`, jamais un
+  recalcul silencieux. Le compte reste ancré (`compte.Rpps`), mais plus aucun chemin de requête
+  ne s'en sert pour nommer une base.
 - **Migration à la volée des comptes existants — le seul endroit où les anciens claims sont
   encore lus.** Un jeton portant `mssEmail` + `mssSub` + `mssRpps` **et** dont le compte n'est
   pas encore ancré ⇒ en **une** opération idempotente : compte ancré (`PscSubject ← mssSub`,
@@ -402,8 +444,20 @@ poussait la PR `api-mail` au-delà du plafond de la règle 5.
       ancré ⇒ compte ancré + boîte rattachée par défaut (`ValidatedByPscSubject = mssSub`), **une
       seule fois** (idempotent), compteur incrémenté ; compte **déjà ancré** avec des claims
       différents ⇒ **aucune** écriture, warning
-- [ ] Test : `BuildUserDatabaseName` reçoit `compte.Rpps` et rend le **même** nom que depuis
-      `mssRpps` pour tout compte migré (fixture : 3 identités du banc, avant / après)
+- [ ] **Le chemin de requête lit `tenants.database_name`, il ne le recalcule plus.** Test : un
+      tenant dont le `database_name` enregistré diffère de ce que `BuildUserDatabaseName` rendrait
+      (RPPS absent du jeton, slug modifié) ⇒ c'est **la valeur enregistrée** qui est utilisée.
+      Test de non-régression : pour tout compte migré, le nom enregistré au rattachement est
+      **identique** à celui que produisait `mssRpps` avant la bascule (fixture : 3 identités du
+      banc, avant / après) — aucun praticien ne change de base
+- [ ] **Hors ligne, toutes les boîtes actives restent sélectionnables.** Test : session sans
+      `X-PSC-Token`, compte à 2 boîtes actives ⇒ `GET /account/mailboxes` rend les deux avec
+      `selectable = true` et `capabilities` sans `imap`/`send`/`flags` ; l'ouverture de l'une
+      **réussit** et sert la lecture locale ; aucune ouverture IMAP n'est tentée.
+      `Detached` / `AuthFailing` restent `selectable = false` **y compris** hors ligne
+- [ ] Test : compte Keycloak **jamais ancré** (0 tenant) + session hors ligne ⇒ la liste est
+      **vide** et le code rendu oriente vers l'onboarding, qui répond « jeton PSC requis » —
+      jamais une erreur technique
 - [ ] Test : `MailboxAttached` / `MailboxDetached` / `MailboxDefaultChanged` écrits dans le
       journal d'audit ; une bascule n'écrit **que** `MailboxSessionClosed` + `MailboxSessionOpened`
 - [ ] Test de non-régression : la suite task-048 est **réécrite sur la référence registre** (mêmes

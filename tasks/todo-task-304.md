@@ -59,10 +59,23 @@ Quatre capacités, une par section du comportement commun :
   `SESSION_MAILBOX_MISMATCH`) un identifiant réutilisé avec une autre boîte.
 - **Aucune ré-authentification** : bearer Keycloak et `X-PSC-Token` conservés ; aucune navigation
   vers Keycloak / PSC ; aucun rechargement de page.
-- **Non compatible** = affichée **grisée** avec la raison rendue par le backend, jamais masquée
-  (`AuthFailing` → « Authentification à cette boîte en échec », `PscIdentityMismatch` → « Cette
-  boîte relève d'une autre identité Pro Santé Connect », `NoPscToken` → « Hors ligne — lecture
-  locale seulement »).
+- **Deux notions distinctes, à ne surtout pas confondre** (corrigé le 2026-09-13, clarification
+  humaine) :
+  - **`selectable = false`** — un défaut du **rattachement** : `AuthFailing` → « Authentification
+    à cette boîte en échec », `PscIdentityMismatch` → « Cette boîte relève d'une autre identité
+    Pro Santé Connect », `Detached`. Affichée **grisée**, raison visible, **non cliquable**,
+    jamais masquée.
+  - **`capabilities` réduites** — un état de la **session**, pas de la boîte. Hors ligne (pas de
+    `X-PSC-Token`), toutes les boîtes actives restent **cliquables et ouvrables** ; le front
+    affiche un bandeau « Hors ligne — lecture locale » et **désactive** composer, répondre,
+    transférer, marquer lu/non lu, déplacer, supprimer. La consultation, la recherche locale et
+    l'ouverture des pièces jointes déjà synchronisées restent disponibles.
+
+  > ⚠️ La rédaction précédente rangeait `NoPscToken` parmi les raisons d'incompatibilité. Composée
+  > avec « non compatible ⇒ grisée, non cliquable », elle aurait rendu **toutes** les boîtes
+  > inaccessibles hors ligne — l'inverse exact du comportement voulu : *« si un compte Keycloak a
+  > déjà été provisionné avec des comptes MSS et qu'on s'y connecte sans Pro Santé Connect, il
+  > peut choisir la messagerie qu'il pourra consulter en mode hors ligne »*.
 - **Rattacher une boîte = un seul appel** `POST /account/mailboxes` : le backend sonde l'opérateur
   avec le jeton PSC du médecin puis persiste. Le front **n'orchestre plus** « sonde puis
   persistance », et **n'appelle plus jamais le proxy**.
@@ -272,7 +285,10 @@ dernier mécanisme est conservé — et généralisé à la bascule.
 - [ ] **Bascule — échec de `/sync/logout`** (500 / réseau) ⇒ journalisé, la bascule **aboutit**
 - [ ] 409 `SESSION_MAILBOX_MISMATCH` ⇒ erreur journalisée + rotation + rejeu, jamais silencieux
 - [ ] Refresh du jeton PSC (rotation simulée) ⇒ liste et boîte courante **inchangées**
-- [ ] Sélecteur : non compatibles grisées, raison affichée, **non cliquables** ; « Ajouter » et
+- [ ] **Hors ligne, le sélecteur reste utilisable** : session sans `X-PSC-Token`, compte à
+      2 boîtes actives ⇒ les deux sont **cliquables**, l'ouverture réussit, bandeau « Hors ligne —
+      lecture locale », actions d'écriture désactivées. Sur les **trois** fronts
+- [ ] Sélecteur : `selectable = false` grisées, raison affichée, **non cliquables** ; « Ajouter » et
       « Gérer » mènent aux bons écrans
 - [ ] `MAILBOX_PSC_MISMATCH` / `MAILBOX_NOT_ATTACHED` en cours de session ⇒ rechargement de la
       liste + bascule de repli + toast
