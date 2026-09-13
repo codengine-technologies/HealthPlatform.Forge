@@ -423,6 +423,54 @@ poussait la PR `api-mail` au-delà du plafond de la règle 5.
 > référence du banc** : c'est à partir de là que le registre coûte quelque chose sous charge, et
 > task-306 devra re-baseliner. Ne pas l'attribuer à task-299, qui est neutre sur ce plan.
 
+> ### 🔴 ACTION REQUISE AVANT MERGE — renuméroter la migration une seconde fois
+>
+> *(ajouté le 2026-09-13 par le cycle task-301, après son merge)*
+>
+> **task-301 a mergé** (`ff3ddea7`) avec la migration `20260914140000_AddAuditBackfillMark`,
+> qui fait `ALTER TABLE tenants ADD COLUMN audit_backfilled_at`.
+>
+> La migration de cette US, `20260914120000_MergeMailboxesIntoMssAccounts`, s'exécute donc
+> **avant** elle sur une base neuve : on renomme `tenants` en `mss_accounts`, puis on tente
+> d'altérer une table qui n'existe plus ⇒ **`42P01`**.
+>
+> **Et l'échec est avalé** par le `LogWarning` du `TenantRegistrySchemaInitializer` — c'est
+> délibéré, le registre ne doit jamais bloquer le démarrage. Conséquence : le pod démarre,
+> sert les praticiens, et le journal d'audit **n'a pas la colonne qui fait cesser la lecture
+> double source**. Aucune alerte, aucun test rouge.
+>
+> **Invisible en développement** : les bases locales sont déjà migrées au-delà de `140000`,
+> FluentMigrator y appliquera `120000` hors séquence et le renommage emportera les deux
+> colonnes. **Seules les installations neuves cassent.**
+>
+> #### Correctif
+>
+> Renuméroter à une version **strictement supérieure à `20260914140000`** — par exemple
+> `20260914160000`. L'ordre devient :
+>
+> ```
+> 090000  ALTER TABLE tenants ADD audit_cutover_at      (task-300)
+> 140000  ALTER TABLE tenants ADD audit_backfilled_at   (task-301)
+> 160000  RENAME tenants -> mss_accounts                (cette US, emporte les DEUX colonnes)
+> ```
+>
+> `ALTER TABLE … RENAME` conserve les colonnes : rien d'autre à faire.
+>
+> C'est **exactement le raisonnement déjà appliqué dans cette US face à task-300** — la
+> migration encore sur branche est celle qui bouge, jamais celle qui est mergée (règle 7c).
+> Il vaut une seconde fois.
+>
+> #### À traiter en même temps — deux d'entre eux sont silencieux
+>
+> | Fichier | Ce qu'il faut faire | Comment ça se signale |
+> |---|---|---|
+> | `PostgresAuditBackfillStore.GetBackfilledAtAsync` / `MarkBackfilledAsync` | viser `mss_accounts` | ⚠️ **SQL brut — aucune erreur de compilation** |
+> | `PostgresAuditSink.MarkCutoverAsync` | viser `mss_accounts` | ⚠️ **SQL brut — aucune erreur de compilation** |
+> | `PostgresAuditReader.ReadTenantMarksAsync` | `context.Tenants` → `context.MssAccounts` | erreur de compilation, bruyant |
+> | Fixtures d'intégration semant un `RegistryMailboxRow` | retirer | erreur de compilation, bruyant |
+>
+> Détail complet : `tasks/archived/archived-task-301.md`, section *Merged*.
+
 ## Definition of Done
 
 ### Transverse

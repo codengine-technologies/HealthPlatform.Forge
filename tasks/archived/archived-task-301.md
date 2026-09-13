@@ -318,3 +318,104 @@ dans les deux sens : refus sans marque, acceptation une fois posée.
   plafond de concurrence, qui est la vraie borne.
 - `CountServerConnectionsAsync` compte **toutes** les connexions du serveur, pas seulement
   celles de la reprise. C'est voulu : le garde-fou protège le serveur, pas la reprise.
+
+---
+
+## Merged — 2026-09-13
+
+Mergée par l'humain après attestation `--i-tested` (HAG, règle 10).
+
+| Repo | PR | Commit de squash | CI `develop` |
+|---|---|---|---|
+| `api-mail` | [#235](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/235) | `ff3ddea7` | ✅ vert (3 min 55 s) |
+| `dtos-mss` | — | aucune PR, **0 commit** | — |
+
+Branches distantes supprimées ; **branches locales conservées**. Portes au moment du
+merge : `mergeState CLEAN`, `MERGEABLE`, build `SUCCESS`, **0 commit de retard**, arbres
+propres.
+
+La ligne « traçabilité » de l'EPIC est désormais **entièrement sur `develop`** :
+task-299 (registre) → task-300 (journal mutualisé) → task-301 (reprise d'historique).
+
+---
+
+## ⚠️ ACTION REQUISE DANS task-303 — renuméroter sa migration une seconde fois
+
+**À traiter avant le merge de task-303. Le défaut est silencieux.**
+
+### Le fait
+
+task-303 (en cours sur `feat/task-303-comptes-multi-messageries`, 13 commits) porte la
+migration `20260914120000_MergeMailboxesIntoMssAccounts`, qui fait
+`Rename.Table("tenants").To("mss_accounts")`.
+
+Son auteur a **déjà** renuméroté une fois, et pour la bonne raison : sa version initiale
+`20260913180000` s'exécutait *avant* `20260914090000` (task-300), qui fait
+`ALTER TABLE tenants ADD audit_cutover_at`. Sur une base neuve, on aurait renommé la table
+avant de l'altérer. Le raisonnement est écrit dans le fichier et il est juste.
+
+**Mais task-301 vient de merger avec la migration `20260914140000_AddAuditBackfillMark`**,
+qui fait `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS audit_backfilled_at`.
+
+### Ce qui se passe sur une base NEUVE si rien n'est fait
+
+| Ordre | Migration | Effet |
+|---|---|---|
+| 1 | `20260913120000` | crée `tenants` |
+| 2 | `20260914090000` (task-300) | `ALTER TABLE tenants ADD audit_cutover_at` ✅ |
+| 3 | `20260914120000` (task-303) | `RENAME tenants → mss_accounts` ✅ |
+| 4 | `20260914140000` (task-301) | `ALTER TABLE tenants ADD audit_backfilled_at` ❌ **`42P01 relation "tenants" does not exist`** |
+
+**Et l'échec est avalé.** `TenantRegistrySchemaInitializer` attrape l'exception et émet un
+`LogWarning` — c'est délibéré : le registre ne doit jamais bloquer le démarrage du service.
+Conséquence : le pod démarre, sert les praticiens, et le journal d'audit **n'a pas la colonne
+qui fait cesser la lecture double source**. Aucune alerte, aucun test rouge.
+
+**Invisible sur les bases de développement**, qui sont déjà migrées au-delà de `140000` :
+FluentMigrator y appliquera `120000` hors séquence, après coup, et le renommage emportera
+les deux colonnes. Ça marchera partout — sauf sur une installation neuve.
+
+### Ce qu'il faut faire
+
+**Renuméroter la migration de task-303 à une version strictement supérieure à
+`20260914140000`** — par exemple `20260914160000`. L'ordre devient alors :
+
+```
+090000  ALTER TABLE tenants ADD audit_cutover_at
+140000  ALTER TABLE tenants ADD audit_backfilled_at
+160000  RENAME tenants → mss_accounts     ← emporte LES DEUX colonnes
+```
+
+`ALTER TABLE … RENAME` conserve les colonnes : il n'y a rien d'autre à faire.
+
+**Pourquoi ce n'est pas à task-301 de bouger** : sa migration est **mergée**. La règle 7c
+interdit d'éditer une migration livrée — c'est exactement le raisonnement que l'auteur de
+task-303 a appliqué à lui-même face à task-300, et il vaut dans les deux sens. La migration
+encore sur une branche est celle qui se renumérote.
+
+### Reste à faire côté task-303 (inchangé depuis `archived-task-300.md`)
+
+- `PostgresAuditSink.MarkCutoverAsync` (`UPDATE tenants`) et
+  `PostgresAuditReader.ReadTenantMarksAsync` (`context.Tenants`) suivent le renommage —
+  erreurs de compilation, donc bruyantes.
+- `PostgresAuditBackfillStore` : trois requêtes visent `tenants`
+  (`GetBackfilledAtAsync`, `MarkBackfilledAsync`) — **SQL brut, donc silencieuses**. À
+  traiter en même temps.
+- Les fixtures d'intégration qui sèment un `RegistryMailboxRow` — type supprimé, bruyant.
+
+---
+
+## Reste ouvert après ce merge
+
+- **`devops`** : provisionner `mss_registry` et poser `TenantRegistry__ConnectionString`.
+  Sans cela, registre désactivé **en silence**, journal sur l'ancien chemin, et la reprise
+  n'a aucun tenant à énumérer. **Toute la ligne E016 reste inerte.**
+- **La reprise ne se déclenche pas toute seule** : `Backfill:RunOnStartup` est `false` par
+  défaut. Merger ne lance rien — c'est voulu. Procédure complète dans
+  `Api/Mail/docs/runbook-reprise-audit.md`, sur **un seul** réplica.
+- **Écart assumé** : `Audit:DrainParallelism` et le plafond de drain ne sont pas retirés —
+  le chemin hérité vit encore comme filet pour les traces sans `TenantId`. Rattaché à la
+  suppression des tables héritées, même déclencheur.
+- **`questions/task-302.md`** : sans modèle de rôles, ni l'accès sécurité au journal, ni une
+  route d'administration pour déclencher la reprise ne sont possibles.
+- **Mesure au banc** de task-300 (DOD non cochée) : tir journey 1000, acte humain.
