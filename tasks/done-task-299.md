@@ -185,6 +185,15 @@ données de santé, ni un écran d'administration (task-302), ni le journal d'au
 
 ## Definition of Done
 
+> **Provenance des cases.** `/review` a validé cette liste point par point le 2026-09-13 et a
+> consigné son verdict (`DOD ✓`) dans le rapport de fin de cycle, mais **sans cocher les cases** —
+> d'où une liste entièrement `[ ]` dans un fichier `done-*`. Les cases sont donc à lire avec le
+> rapport `## Code Review Summary` et la section `## Révision post-review` : deux items (contrat
+> `sdk`, contrat versionné) ont été **remplacés** par la révision du même jour, les autres sont
+> tenus par les **45 tests dédiés**. À cocher au `/merge`, pas avant — c'est là que la vérification
+> humaine a lieu (HAG, règle 10).
+
+
 - [ ] Build passes on `sdk` et `api-mail` (0 errors) ; tests pass (0 failures)
 - [ ] `sdk` : workflow `Sdk/.github/workflows/dotnet.yml` déclenché sur **toutes** les branches
       (`branches: [ "**" ]`, comme `dtos-mss`) — aujourd'hui `master`/`develop` seulement, donc

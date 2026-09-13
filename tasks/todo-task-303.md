@@ -228,13 +228,17 @@ serveur écrit par le compte lui-même**. Pour que le remplacement ne soit pas u
 - `Client-Email` **et** claim présents mais différents : c'est le cas nominal de la bascule —
   **plus un motif de 403**. Le test `RequestHelper` correspondant est réécrit, pas supprimé.
 
-### Contrat HTTP (DTOs dans `dtos-mss`) et contrat SDK
+### Contrat HTTP (DTOs dans `dtos-mss`) et contrat du registre
 
-`ITenantRegistryClient` (SDK, `V1`, évolution **additive**) gagne : `ListCompatibleMailboxesAsync
+`ITenantRegistryClient` (`mss.mail.application.Services.Repository.TenantDb`, évolution
+**additive**) gagne : `ListCompatibleMailboxesAsync
 (accountId, pscIdentity)`, `AttachMailboxAsync`, `DetachMailboxAsync`, `SetDefaultMailboxAsync`,
 `AnchorPscIdentityAsync`, `IsMailboxCompatibleAsync(accountId, email, pscIdentity)` — mêmes
-contraintes de migrabilité que task-299 (asynchrone, `record`, pas d'EF, pas de transaction
-partagée, exceptions typées, cache-first).
+contraintes de migrabilité que task-299 (asynchrone, `record` immuables, **aucune entité de
+persistance dans la surface**, pas de transaction partagée, exceptions typées, cache-first,
+`CancellationToken` + `correlationId`). Les nouveaux `record` vont dans
+`mss.mail.Domain.Entities.TenantDb` ; `TenantRegistryContractTests` les couvre automatiquement
+(il énumère l'espace de noms, pas une liste de types).
 
 | Route | Corps / réponse | Règles |
 |---|---|---|
@@ -291,17 +295,18 @@ poussait la PR `api-mail` au-delà du plafond de la règle 5.
 ## Definition of Done
 
 ### Transverse
-- [ ] Build passes on `sdk`, `api-mail` (0 errors) ; tests pass (0 failures)
+- [ ] Build passes on `api-mail` (0 errors) ; tests pass (0 failures)
 - [ ] **Prérequis hérité de task-299 (revue de code)** — `EnsureTenantAsync` ne **relit pas** la
       ligne après `SaveIdempotentAsync`. Sur une course perdue (violation d'unicité sur
       `(account_id, mailbox_id)`, tracker vidé), la méthode rend le tenant **qu'elle a tenté
       d'insérer**, donc un `TenantId` qui n'existe pas en base — alors que c'est précisément
       l'identifiant sur lequel le journal d'audit sera clé (task-300). `EnsureAccountAsync` fait
       la relecture correctement : appliquer le même motif, et couvrir la course par un test.
-- [ ] `sdk` : extension additive de `ITenantRegistryClient` (opérations ci-dessus), DTOs `record`,
-      aucune dépendance Npgsql/EF ; NuGet publié, `api-mail` et `client-blazor` bumpés à la même
-      version. Le middleware, les contrôleurs et le SSE ne parlent à l'annuaire **que** via
-      `ITenantRegistryClient` (le test d'architecture de task-299 reste vert)
+- [ ] Extension **additive** de `ITenantRegistryClient` (opérations ci-dessus) ; `record` de
+      données dans `mss.mail.Domain.Entities.TenantDb`. **Aucun bump de paquet** : le contrat n'est
+      plus publié (révision task-299 du 2026-09-13). Le middleware, les contrôleurs et le SSE ne
+      parlent au registre **que** via `ITenantRegistryClient` (les tests d'architecture et de
+      contrat de task-299 restent verts)
 - [ ] **`AuditActionType` — les 5 membres sont AJOUTÉS EN FIN D'ÉNUMÉRATION.** L'enum est
       sérialisée **par son ordinal** sur le fil d'audit (avertissement gravé dans
       `Dtos/AuditActionType.cs`) : toute insertion au milieu décale silencieusement chaque trace

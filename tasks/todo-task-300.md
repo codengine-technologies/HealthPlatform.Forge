@@ -1,9 +1,9 @@
 # todo-task-300.md — Journal d'audit en base commune : sortir l'écriture du journal du sharding par praticien
 
-**Repos**: sdk, api-mail
+**Repos**: api-mail
 **Dependencies**: **task-299** (registre — définit le **tenant** et son `TenantId`, fournit la
-dormance qui pilote la purge, et pose le motif « contrat SDK / implémentation api-mail » que cette
-US reproduit). **Indépendante de task-303** : `TenantId` étant défini dans task-299, les deux
+dormance qui pilote la purge, et pose le motif « contrat isolé par espace de noms / implémentation
+Postgres derrière lui » que cette US reproduit). **Indépendante de task-303** : `TenantId` étant défini dans task-299, les deux
 lignes (audit et multi-BAL) peuvent avancer en parallèle. Recouvre partiellement **task-298** : voir « Ce que cette US rend caduc ».
 **Epic**: E016
 **Priorité**: **1** — c'est le levier de capacité le plus lourd identifié par E015. La mesure
@@ -56,6 +56,26 @@ En base commune, le drain redevient : **une connexion, une insertion de 1 000 li
    sur l'horodatage. Volumétrie à assumer dès le premier jour : ~2,9 M traces/jour à 1000
    médecins, soit ~1 milliard par an, avec une rétention de 3 653 jours sur les traces d'accès
    aux données de santé. Sans partitionnement, la purge et les index deviennent ingérables.
+
+   **Créée par FluentMigrator, dans `Migrations/TenantDb/`** — le jeu de migrations de la base
+   commune, borné par `TypeFilterOptions` et appliqué au démarrage (task-299). L'API fluente ne
+   sait pas déclarer un partitionnement : la table mère et ses partitions passent par
+   `Execute.Sql(...)`, **jamais** par une édition de migration déjà livrée (règle 7c).
+
+   > ⚠️ **Les partitions futures doivent être créées d'avance, et c'est un point de panne
+   > silencieux à retardement.** Une insertion dont l'horodatage ne tombe dans aucune partition
+   > échoue — `no partition of relation … found for row`. Le défaut ne se déclenche pas à un
+   > changement de code mais **à une date**, et ce jour-là c'est le journal d'audit qui s'arrête,
+   > c'est-à-dire la conformité. Deux obligations, donc :
+   >
+   > - **avance d'au moins 3 mois** maintenue par le démarrage du service (idempotent :
+   >   `CREATE TABLE IF NOT EXISTS … PARTITION OF …`), au même endroit que la migration — pas un
+   >   cron, `api-mail` n'en a pas (voir `reference_api_mail_no_tenant_enumeration`) ;
+   > - **une partition `DEFAULT`** comme filet : une trace hors plage y atterrit au lieu d'être
+   >   perdue, et une métrique la signale. Un journal d'audit ne perd pas de ligne en silence.
+   >
+   > Le drain absorbe déjà l'indisponibilité par le tampon Redis — mais une erreur d'insertion
+   > n'est pas une indisponibilité : elle serait rejouée indéfiniment jusqu'à saturer le tampon.
 2. **Colonne `TenantId`** = l'identifiant du **tenant** au sens de task-299, c'est-à-dire du
    **rattachement (compte × messagerie)** — **jamais** l'id du compte, **jamais** celui de la
    messagerie, **jamais** l'email. Index principal `(tenant_id, timestamp desc)`.
@@ -94,13 +114,9 @@ En base commune, le drain redevient : **une connexion, une insertion de 1 000 li
    > par espace de noms, garde-fous par test de réflexion. Voir « Révision post-review » dans
    > `done-task-299.md`.
 
-   **Le contrat SDK ignore la transition.** `IAuditReader` expose *lire les traces d'un tenant* —
-   point. La lecture double source (§5) vit **entièrement dans l'implémentation `api-mail`** et
-   disparaîtra avec elle (task-301) **sans toucher au contrat publié**. C'est ce qui permet à
-   task-301 de ne pas lister `sdk` dans ses repos.
-
-   *(Le SDK est un paquet strictement backend depuis task-305 : y placer les contrats du journal
-   ne pèse sur aucune charge utile navigateur.)*
+   **Le contrat ignore la transition.** `IAuditReader` expose *lire les traces d'un tenant* —
+   point. La lecture double source (§5) vit **entièrement dans l'implémentation** et disparaîtra
+   avec elle (task-301) **sans toucher à une seule signature**.
 5. **Lecture pendant la transition (double source).** Tant que task-301 n'a pas repris
    l'historique, l'écran d'audit du praticien lit **les deux** sources et les fusionne :
    la base commune pour les traces postérieures à l'instant de bascule, la table du tenant pour
@@ -140,9 +156,18 @@ travail qui se partitionne réellement). La réponse est hybride, pas « abandon
 
 ## Definition of Done
 
-- [ ] Build passes on `sdk` et `api-mail` (0 errors) ; tests pass (0 failures)
+- [ ] Build passes on `api-mail` (0 errors) ; tests pass (0 failures)
 - [ ] Table d'audit commune **partitionnée par mois**, index `(tenant_id, timestamp desc)`,
-      créée et migrée par le chemin de migration de la base commune (task-299)
+      créée par une migration FluentMigrator de `Migrations/TenantDb/` (jeu borné par
+      `TypeFilterOptions`, appliqué au démarrage — task-299), partitionnement déclaré via
+      `Execute.Sql`
+- [ ] **Partitions futures maintenues avec au moins 3 mois d'avance** au démarrage du service,
+      de façon idempotente, **plus une partition `DEFAULT`** — et un test qui prouve qu'une trace
+      horodatée hors de toute partition nommée **atterrit dans `DEFAULT` sans être perdue**, avec
+      une métrique qui la signale. Sans cela, le journal s'arrête à une date, pas à un changement
+      de code
+- [ ] Test : deux pods qui démarrent ensemble ne se marchent pas dessus sur la création des
+      partitions (même verrou consultatif que le provisionnement — `MigrationHelper`)
 - [ ] Test unitaire : un lot de N traces couvrant M tenants distincts produit **une seule**
       insertion groupée et **une seule** connexion, quel que soit M (compteur de connexions
       observé) — c'est l'inversion exacte du défaut mesuré
@@ -171,10 +196,13 @@ travail qui se partitionne réellement). La réponse est hybride, pas « abandon
       partitions > 3 653 j sont supprimées entières, et **aucune trace en deçà n'est touchée** ;
       un compte dormant est purgé exactement comme un compte actif
 - [ ] Chaîne de connexion du chemin d'audit : `Application Name=mss-mail-audit`, pool borné à 2
-- [ ] `sdk` : `IAuditSink` / `IAuditReader` + `AuditTraceRecord` dans
-      `HealthPlatform.Host.Sdk.Audit.V1`, sans dépendance Npgsql/EF ; NuGet publié, consommateurs
-      bumpés. `api-mail` : implémentations Postgres seules à référencer le `DbContext` commun
-      (test d'architecture, même motif que task-299). Le drain ne connaît que `IAuditSink`
+- [ ] `IAuditSink` / `IAuditReader` dans `mss.mail.application.Services.Repository.TenantDb`,
+      `AuditTraceRecord` dans `mss.mail.Domain.Entities.TenantDb` ; implémentations Postgres dans
+      `Infrastructure/Repositories/TenantDb`, **seules** à référencer le `DbContext` commun (test
+      d'architecture, même motif que task-299). **Aucune entité de persistance ne franchit les deux
+      contrats** — test de réflexion sur leur surface, comme
+      `TenantRegistryContractTests.NoPersistenceType_CrossesTheContract`. Le drain ne connaît que
+      `IAuditSink`
 - [ ] Aucune donnée de santé en clair dans les logs et métriques du nouveau chemin (INS, nom de
       patient, sujet, contenu) — test de contrat sur les champs journalisés
 - [ ] Métriques conservées et cohérentes : `mss_audit_traces_emitted_total ==
