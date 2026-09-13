@@ -520,9 +520,10 @@ API **mockée par fixtures**. Trois ruptures certaines, toutes à traiter **dans
 | /start | ok | 35 s | — | — | — | — |
 | /develop | ok | 1 h 03 min | 20 (2 min 49 s) | 17 (2 min 48 s) | — | client-blazor 14B/6T, client-angular 2B/3T, client-mobile 4B/8T |
 | /lint-angular | ok | 4 min 08 s | 1 (17 s) | 1 (21 s) | — | 2 itération(s), client-angular 1B/1T |
+| /lint-mobile | ok | 25 s | — | — | — | — |
 | **Total cycle** | | **1 h 08 min** | **21 (3 min 06 s)** | **18 (3 min 09 s)** | **0 (0.0 s)** | |
 
-Autres commandes mesurées : lint ×3 (39 s)
+Autres commandes mesurées : lint ×4 (50 s)
 
 ## Branches
 
@@ -650,3 +651,19 @@ s'en remettre à `--fix` pour ça.
 
 **Code-only** : aucune opération git sur `client-angular`. Les fixes de lint sont
 dans le worktree avec le reste du travail Angular, en attente du commit humain.
+
+## Lint mobile log
+
+**Mode A** (chaîné), `Client/Mobile/` sur `feat/task-304-selection-et-bascule-de-boite`.
+**0 itération consommée** sur les 5 autorisées : `npm run lint` rend
+**« All files pass linting »** dès la baseline — 0 erreur, 0 avertissement.
+
+Aucun commit, aucun push : il n'y avait rien à corriger.
+
+> **Pourquoi le contraste avec `client-angular`** (57 erreurs à la baseline) : la
+> config ESLint de `client-mobile` ne porte **ni `prettier/prettier` ni la famille
+> `jsdoc/*`**, qui représentaient la totalité des erreurs Angular. Le code mobile
+> de cette US a par ailleurs été écrit d'emblée avec le control flow natif
+> (`@if`/`@for`), les sélecteurs préfixés `app-`, `ChangeDetectionStrategy.OnPush`
+> et un `data-testid` par élément interactif — les quatre consignes de
+> `conventions/angular.md` qui s'appliquent aux deux repos.
