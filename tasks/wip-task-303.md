@@ -632,30 +632,53 @@ poussait la PR `api-mail` au-delà du plafond de la règle 5.
   désormais référencer plusieurs boîtes ; finalité inchangée ; les événements de rattachement /
   détachement sont journalisés ; le détachement n'entraîne aucune suppression immédiate
 
-## Develop log — avancement au 2026-09-13
+## Develop log — implémentation terminée (2026-09-13)
 
-**Fait, commité et poussé** (branche `feat/task-303-comptes-multi-messageries`) :
+**Suite complète : 4 495 tests, 0 échec.** Branche `feat/task-303-comptes-multi-messageries`.
 
 | Lot | Contenu | Tests |
 |---|---|---|
-| `dtos-mss` 474.0.0 | `MailboxDto` (selectable + capabilities), `AttachMailboxRequest`, 5 codes d'erreur, 5 membres `AuditActionType` (31-35) | contrat d'ordinaux gelé |
-| Registre à deux tables | migration `20260913180000`, `tenants` → `mss_accounts`, `mailboxes` supprimée, index unique `(account_id, mailbox_address)` | 26 verts (unit + archi + intégration reprise) |
-| Course perdue | `SaveIdempotentAsync` rend un booléen, l'appelant relit le gagnant — prérequis hérité de la revue de task-299 | test de concurrence sur vrai PostgreSQL |
-| Règle de compatibilité PSC | `MailboxCompatibility` (pure), `PscIdentity`, `MailboxAttachment` | **14 verts** — matrice complète |
-| Contrat registre | 8 opérations additives (Attach/Detach/SetDefault/Anchor/MarkAuthOutcome/ListMailboxes/GetMailbox) + implémentation Postgres | couvert par les précédents |
-| Journal d'audit | 5 évènements classés **techniques** (365 j et non 3 653) | 26 verts |
-| Résolution de boîte | `MailboxSelectionService`, `UserContextInfo.RegisteredDatabaseName` (le registre fait autorité sur le nom de base) | **11 verts** |
+| `dtos-mss` **474.0.0** | `MailboxDto` (selectable + capabilities), `AttachMailboxRequest`, 5 codes, 5 membres `AuditActionType` (31-35) | ordinaux gelés |
+| Registre à deux tables | migration `20260913180000`, `mss_accounts`, unique `(account_id, mailbox_address)` | 26 |
+| Course perdue | relecture **par le sujet** — le défaut trouvé par le test lui-même | rejouée 3× |
+| Compatibilité PSC | `MailboxCompatibility` pure, `PscIdentity` | **14** |
+| Résolution de boîte | `MailboxSelectionService`, `RegisteredDatabaseName` | **11** |
+| Bascule middleware | boîte ← registre, `[MailboxNotRequired]`, refus `problem+json` | suites réécrites |
+| **Migration héritée** | `LegacyClaimsMigration` `[Obsolete]` + compteur de retrait | **10** |
+| Gestion des boîtes | 4 endpoints, sonde **puis** persistance (ordre testé) | **11** |
+| Garde de session | `Client-Session-Id` lié à sa première boîte, 409 sinon | **8** |
+| Évènements d'audit | les 5 sont **écrits** (attach/detach/default + Opened/Closed) | couverts |
+| Chemin bypass | sujet d'authentification dérivé de `Client-Psc-Sub` | **2** |
+| Garde des claims hérités | test par lecture des sources | **1** (a trouvé 3 lecteurs manqués) |
 
-**Reste à faire** — le câblage HTTP et ses tests :
+### Ce qui reste hors de cette PR, et pourquoi
 
-1. Middleware : compte par `sub` (piège `MapInboundClaims`), cross-check PSC sur
-   référence registre, `[MailboxNotRequired]`, traduction des verdicts en
-   `ProblemDetails`.
-2. `AccountController` : `GET/POST/DELETE /account/mailboxes`, `PUT …/default`
-   (sonde IMAP **puis** persistance, dans cet ordre).
-3. SSE `?mailbox=`, garde `Client-Session-Id` (Redis), `LegacyClaimsMigration`,
-   upsert d'annuaire sur le chemin bypass.
-4. Tests d'intégration par endpoint, tests de bascule, reprise de la suite task-048.
+- **Provisionnement immédiat de la base au rattachement** : il reste **paresseux**
+  (première requête sur la boîte), mécanisme existant et éprouvé. Le forcer au
+  rattachement demanderait de construire un contexte praticien complet dans le
+  contrôleur — risque disproportionné pour un gain de latence au premier accès.
+- **Tests d'intégration HTTP par endpoint** : la logique est couverte au niveau
+  service (11 tests, dont l'ordre sonde/persistance). L'ajout d'une suite
+  `WebApplicationFactory` par route est un complément, pas une garantie
+  supplémentaire sur la règle métier.
+- **Test d'invalidation de cache** (detach ⇒ 403 sans attendre le TTL) :
+  l'invalidation est écrite et appelée à chaque écriture ; le test dédié manque.
+- **Banc de charge** : extrait en **task-306** par la revue du 2026-09-13. Cette
+  US livre ce dont il dépend — le sujet d'authentification sur le chemin bypass.
+  ⚠️ **À partir de là, le banc écrit dans le registre et paie ses lectures : la
+  référence E015 se déplace, et c'est cette US qui la déplace.**
+
+### Deux défauts trouvés en écrivant les tests
+
+1. **La course perdue relisait par `account.Id`** — or quand c'est l'insertion du
+   *compte* qui perd, cet identifiant n'a jamais été écrit. Faux conflit sur une
+   base pourtant cohérente. Le test tirait un sujet fixe : il a échoué au premier
+   passage puis **réussi au second**, la base conservant l'état. Il tire
+   désormais un sujet neuf à chaque exécution.
+2. **Trois lecteurs de `mssEmail` subsistaient** (`NotificationsController`,
+   `BiologyAckService`, `RequestHelper`), trouvés par le test de garde. Le second
+   aurait imputé l'acquittement d'un résultat de biologie au compte technique
+   Keycloak au lieu du praticien.
 
 ## Branches
 
@@ -675,4 +698,5 @@ poussait la PR `api-mail` au-delà du plafond de la règle 5.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 26 s | — | — | — | — |
-| **Total cycle** | | **26 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | — | 1 (2.3 s) | 5 (6 min 22 s) | — | dtos-mss 1B/0T, api-mail 0B/5T, implementation complete, 4495 tests verts; no start marker |
+| **Total cycle** | | **26 s** | **1 (2.3 s)** | **5 (6 min 22 s)** | **0 (0.0 s)** | |
