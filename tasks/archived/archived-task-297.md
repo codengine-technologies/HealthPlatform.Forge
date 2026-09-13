@@ -242,3 +242,14 @@ partagée avec le spill d'audit, les marqueurs de purge et le cache d'identité.
 - ✅ Aucune donnée de santé dans le nouveau chemin : le seul journal ajouté est au niveau **Debug** et porte une taille et une clé, jamais le contenu. La clé contient l'adresse MSSanté du praticien — même niveau et même forme que le `[GetEmail] ⚡ Cache hit: {CacheKey}` déjà en place.
 - ✅ **Effet positif de minimisation** : la US réduit l'emprise des corps de message dans Redis, qui est dans le périmètre HDS de Staging et de Production.
 - ✅ Aucun secret, aucune entrée externe : le seuil vient de la configuration, la taille du sérialiseur.
+
+## Merged
+
+- **Date** : 2026-09-13
+- **Attestation humaine** : `/merge task-297 --i-tested`
+- `api-mail` : squash `a2690a708b1adb69a8a4c2ee1be84567a395b3bf` (PR #229 closed)
+- `dtos-mss` : aucun commit — branche `feat/task-297-cache-borne-taille-entree` supprimée sans PR
+- Branches distantes supprimées (locales conservées) ; staging `forge/staging-task-295-297-20260911` supprimée (run 295-297 entièrement mergé)
+- **CI `develop` : ROUGE** — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/34746668197
+  10 erreurs `xUnit1051` dans `tests/mss.mail.application.tests/Services/Cache/SizeBoundedCacheServiceTests.cs`
+  (lignes 39, 50, 53, 67, 80, 93, 95, 112, 136, 137). Voir `questions/merge-task-297.md`.
