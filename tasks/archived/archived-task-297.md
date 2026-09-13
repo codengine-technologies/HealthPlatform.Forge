@@ -253,3 +253,25 @@ partagée avec le spill d'audit, les marqueurs de purge et le cache d'identité.
 - **CI `develop` : ROUGE** — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/34746668197
   10 erreurs `xUnit1051` dans `tests/mss.mail.application.tests/Services/Cache/SizeBoundedCacheServiceTests.cs`
   (lignes 39, 50, 53, 67, 80, 93, 95, 112, 136, 137). Voir `questions/merge-task-297.md`.
+
+## Mesure au banc — tir du 2026-09-13 (post-merge)
+
+Rapport : `Docs/audits/api-mail-loadtest-journey-1000-task297-298-20260913.md`.
+
+Tir `journey` 1000 médecins, 3 h 30, iso-conditions avec la référence du 11/09.
+
+| Preuve | Avant (09/09) | **Après (13/09)** |
+|---|---|---|
+| `Timeout getting key` | **6 568** (tir sans autre charge Redis) | **0** |
+| SLOWLOG Redis (seuil 10 ms) | écritures de 11-16 ms portant 160 Ko à 1,47 Mo | **3 entrées**, ~10 ms, **aucune écriture de corps** |
+| Erreurs de cache (Seq) | — | **0** |
+
+Item de DOD « mesure au banc » **fermé**.
+
+**Réserve** : le *nombre* d'entrées refusées par la borne n'est pas mesurable —
+`CacheMetrics.MeterName` n'est jamais passé à `AddMeter(...)`
+(`src/Api/DependencyInjectionExtensions.cs`), donc `mss_cache_entry_bytes` et
+`mss_cache_oversize_skipped_total` n'atteignent pas le collecteur, et
+`[Cache] Entry skipped` est en `Debug` (invisible au banc). Même défaut que celui que
+task-292 avait corrigé pour le meter d'audit. **Correctif : une ligne**, à porter par une
+prochaine US. C'est l'**effet** de la borne qui est démontré ici, pas le compte.

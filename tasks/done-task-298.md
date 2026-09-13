@@ -84,36 +84,77 @@ des requêtes du médecin (backlog E015 : page d'en-têtes hydratée, dossier pa
 
 ## Definition of Done
 
-- [ ] Build passes on api-mail (0 errors)
-- [ ] Tests pass (0 failures)
-- [ ] Test unitaire : le drain ne dépasse **jamais** `Audit:DrainMaxConnections` bases drainées
+> `[~]` = mesuré, partiellement tenu — voir « Mesure au banc — tir du 2026-09-13 » :
+> les deux jambes tiennent sur le fond (0 refus, 0 saturation, bornage acquis) mais
+> manquent leurs cibles chiffrées de backends et de `cl_waiting`.
+
+- [x] Build passes on api-mail (0 errors)
+- [x] Tests pass (0 failures)
+- [x] Test unitaire : le drain ne dépasse **jamais** `Audit:DrainMaxConnections` bases drainées
       simultanément, quel que soit le nombre de groupes dans le lot (compteur de concurrence
       observé sous un `DrainParallelism` > plafond)
-- [ ] Test unitaire : sous plafond atteint, les traces **attendent** (re-spill / lot suivant),
+- [x] Test unitaire : sous plafond atteint, les traces **attendent** (re-spill / lot suivant),
       aucune n'est jetée (`dropped == 0`, invariant task-292)
-- [ ] Test : la chaîne de connexion de la route d'audit porte `Application Name=mss-mail-audit`,
+- [x] Test : la chaîne de connexion de la route d'audit porte `Application Name=mss-mail-audit`,
       `Connection Idle Lifetime ≤ 30`, `Connection Pruning Interval ≤ 10` ; celle du
       provisionnement porte `Application Name=mss-mail-provision`
-- [ ] `observe.ps1` attribue les backends par `application_name` (audit / provision /
+- [x] `observe.ps1` attribue les backends par `application_name` (audit / provision /
       pooler / autre) et non plus par sous-réseau ; fixture + test `report.py` : la colonne
       « directs » n'est plus 0 quand le drain tourne (rejouer le CSV du 11/09 en fixture :
       elle doit rendre > 0 sur la fenêtre 21h17 → 22h05)
-- [ ] `report.py` : nouvelle ligne « Coûts résidents » — **backends max / `max_connections`**
+- [x] `report.py` : nouvelle ligne « Coûts résidents » — **backends max / `max_connections`**
       (%), et verdict ROUGE explicite « Postgres à `max_connections` » quand `53300` ou
       backends ≥ 98 % apparaissent (aujourd'hui le rapport les impute au pooler)
-- [ ] Aucune donnée de santé en clair dans les nouveaux logs/métriques (noms de bases `u_9…`
+- [x] Aucune donnée de santé en clair dans les nouveaux logs/métriques (noms de bases `u_9…`
       acceptables, jamais d'INS, de RPPS ni de contenu de trace)
-- [ ] Documentation : `Api/Mail/docs/ADR-2026-07-27-pgbouncer-transaction-mode.md` (§ risques
+- [x] Documentation : `Api/Mail/docs/ADR-2026-07-27-pgbouncer-transaction-mode.md` (§ risques
       résiduels) et skill `loadtest-skill` (pré-vol : « backends ≪ `max_connections` » et
       « attendre `pg_stat_activity` < 2000 avant `report.sh` »)
-- [ ] **Mesure au banc, jambe 1** (journey 1000 iso, Postgres 48 Go, mêmes bases, même SHA
+- [~] **Mesure au banc, jambe 1** (journey 1000 iso, Postgres 48 Go, mêmes bases, même SHA
       que la référence 11/09 jambe B pour le reste) : backends max **< 2 300** en régime,
       **0** `53300`, `cl_waiting` < 5 % des relevés, rejeu post-tir sans « too many clients »
       et sans redémarrage de VM ; rapport dans `Docs/audits/`
-- [ ] **Mesure au banc, jambe 2** (jambe 1 + un réglage PgBouncer) : backends max
+- [~] **Mesure au banc, jambe 2** (jambe 1 + un réglage PgBouncer) : backends max
       **< 1 800**, `08P01 = 0`, `cl_waiting = 0` soutenu, erreurs k6 ≤ 0,02 % ; c'est ce tir
       qui rend le **premier verdict SLO opposable à 1000** — rapport dans `Docs/audits/`, ligne
       dans `Api/Mail/tests/loadtest-k6/reports/INDEX.md`
+
+## Mesure au banc — tir du 2026-09-13 (jambes 1 et 2 ensemble)
+
+Rapport complet : `Docs/audits/api-mail-loadtest-journey-1000-task297-298-20260913.md`.
+Rapport déterministe : `Api/Mail/tests/loadtest-k6/reports/2026-09-13/report-journey-1000-task297-298-20260913-140525.md`.
+
+Tir unique portant **297 + jambe 1 + jambe 2** (décision humaine : vert ⇒ l'attribution
+par facteur est sans objet). Iso-conditions avec la référence du 11/09 (`1000:12600s`,
+K=1, `UID_BASE=365`, cluster distant, `LATENCY_MS=96`, 1050 bases hydratées conservées,
+Postgres 48 GiB) ; seul le code change (`cddaf73` = `d04f2ca` + 297 + 298).
+
+| Cible du DOD | Mesuré | Verdict |
+|---|---|---|
+| **0** `53300` | **0** | ✅ |
+| **0** `08P01` | **0** | ✅ |
+| Erreurs k6 ≤ 0,02 % | 0,013 % brut — **0,0002 %** hors boîte de banc vide | ✅ |
+| Rejeu post-tir sans « too many clients », sans redémarrage de VM | **rien à rejouer** (spill vide) ; backends 2 421 → 8 en 100 s | ✅ |
+| Backends directs → 0 en < 1 min après drain | **< 10 s** | ✅ |
+| Backends max < 2 300 (j1) / < 1 800 (j2) | **2 421** (pooler 1 874 + drain 586) | ❌ |
+| `cl_waiting` < 5 % (j1) / 0 soutenu (j2) | **6 %** des relevés, `maxwait` 814 ms | ❌ |
+
+**Le fond est acquis** : la grandeur a changé de nature. Le 11/09 les backends croissaient
+**avec le temps** (270 → 2 504 en 2 h 46, débit plafonné depuis 2 h). Ici le pooler est
+borné par la **population** (934/1000 bases à 1,90) et le drain par son **débit × 30 s**
+d'oisiveté ; le plateau s'est formé vers 13h25 puis a **reculé**. Journal d'audit :
+**236 781 émises = 236 781 persistées, 0 perdue, 0 spill**, plus vieille trace à 0 s
+(11/09 : 13 487 bloquées, 5 307 s).
+
+**Les deux cibles chiffrées sont manquées pour une cause de dimensionnement** :
+`max_connections = 2500` a été dimensionné sur le **seul** pooler (1000 × 2), sans rien
+prévoir pour la route directe du journal (~586). Prochain levier, à mesurer seul :
+`max_db_connections` 3 → 2 (plafond dur 2 000, aucun coût mémoire).
+
+**Défaut d'outillage trouvé et corrigé pendant la mesure** : `observe.ps1` comptait
+220 refus PgBouncer **inexistants** (`@($scalaire -match m).Count` vaut 1 en PowerShell),
+ce qui classait le tir ROUGE à tort. Corrigé par `Where-Object`, CSV remis en accord avec
+les journaux (copie brute conservée), rapport régénéré → 🟠 ORANGE.
 
 ## Manual Test Plan
 
