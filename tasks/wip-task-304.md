@@ -521,6 +521,7 @@ API **mockée par fixtures**. Trois ruptures certaines, toutes à traiter **dans
 | /develop | ok | 1 h 03 min | 20 (2 min 49 s) | 17 (2 min 48 s) | — | client-blazor 14B/6T, client-angular 2B/3T, client-mobile 4B/8T |
 | /lint-angular | ok | 4 min 08 s | 1 (17 s) | 1 (21 s) | — | 2 itération(s), client-angular 1B/1T |
 | /lint-mobile | ok | 25 s | — | — | — | — |
+| /verify-visual | skipped | 18 s | — | — | — | Tools/visual-verify absent du poste (non versionne) |
 | **Total cycle** | | **1 h 08 min** | **21 (3 min 06 s)** | **18 (3 min 09 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×4 (50 s)
@@ -667,3 +668,45 @@ Aucun commit, aucun push : il n'y avait rien à corriger.
 > (`@if`/`@for`), les sélecteurs préfixés `app-`, `ChangeDetectionStrategy.OnPush`
 > et un `data-testid` par élément interactif — les quatre consignes de
 > `conventions/angular.md` qui s'appliquent aux deux repos.
+
+## Visual verify log
+
+**SKIP — panne d'outillage, best-effort, non bloquant.**
+
+`Tools/visual-verify/` **n'existe pas sur ce poste** et n'est pas versionné :
+`.gitignore` exclut `Tools/` en bloc et ne réintroduit que `Tools/timing/`
+(« only the timing harness is forge infrastructure and must survive a fresh
+clone »). Le harnais de capture Playwright vit donc sur le poste qui l'a écrit.
+
+```
+$ ls Tools/visual-verify/
+ls: cannot access 'Tools/visual-verify/': No such file or directory
+$ git ls-files | grep visual-verify      # (rien)
+```
+
+C'est bien la sévérité **« panne outillage »** du playbook, pas la sévérité
+bloquante : celle-ci est réservée à l'**écran blanc / crash de navigation**, une
+régression runtime que seule une capture révèle. Ici aucune capture n'a pu être
+tentée — il n'y a donc rien à conclure sur les écrans, ni en bien ni en mal.
+
+| Écran | Référence Stitch | Capture | Verdict |
+|---|---|---|---|
+| `mailbox-onboarding` | timeout de génération, id à relever | — | non capturé |
+| `mailbox-select` | `3f84e49c6242414880e6bffa7036127b` | — | non capturé |
+| `mailbox-switcher` | `8da2543c595f494d990094223e74ed3e` | — | non capturé |
+| `mailbox-management` | `d0d02a1abf344d589119bf5b34fdec2c` | — | non capturé |
+
+**Conséquences à porter au HAG :**
+
+1. **La galerie porte deux captures périmées** —
+   `Docs/epics/img/screens/client-mobile/mss-setup.png` et `mss-unconfigured.png`
+   documentent des écrans **supprimés par cette US**. Elles ne peuvent pas être
+   remplacées sans le harnais.
+2. **Le premier geste au retour du harnais est la fixture `mailboxes.json`**, pas
+   une capture. Le mock `**/api/**` rend `[]` sur tout `GET` non mappé : sans
+   elle, `GET /account/mailboxes` rendrait « zéro boîte » et **toute la galerie
+   mobile deviendrait l'écran d'onboarding**.
+3. La vérification visuelle des quatre écrans revient donc à l'humain, au HAG.
+
+Détail, cause et options (dont : versionner `Tools/visual-verify/` au même titre
+que `Tools/timing/`) → **`questions/task-304.md`**.
