@@ -351,7 +351,11 @@ travail qui se partitionne réellement). La réponse est hybride, pas « abandon
 | /start | ok | 45 s | — | — | — | — |
 | /develop | ok | 40 min 06 s | — | — | — | — |
 | /sonar | ok | 18 min 55 s | — | — | — | 2 itération(s) |
-| **Total cycle** | | **59 min 47 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /lint-angular | skipped | 3.3 s | — | — | — | client-angular non touche par task-300 (Repos: api-mail) |
+| /lint-mobile | skipped | 2.0 s | — | — | — | client-mobile non touche par task-300 (Repos: api-mail) |
+| /verify-visual | skipped | 2.1 s | — | — | — | aucun ecran client-mobile touche (US backend) |
+| /review | ok | 16 min 33 s | — | — | — | — |
+| **Total cycle** | | **1 h 16 min** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
 
 ## Sonar log
 
@@ -402,3 +406,65 @@ Quality Gate `ERROR` sans dette introduite.
 Les 2 hotspots à revoir sont dans `tests/loadtest-k6/test_report_session_lock_regime.py`
 (URLs `http://localhost` d'un test Python du banc, task-298). **Hors périmètre de
 cette US**, aucun code livré ici n'est concerné.
+
+## Lint log
+
+**`/lint-angular` : skip propre.** `client-angular` n'est pas dans le
+`**Repos**:` de cette US (`api-mail` seul) et aucune ligne d'Angular n'a été
+écrite.
+
+> Les deux fichiers modifiés dans `Client/Angular/` au moment du passage
+> (`front/apps/mss/src/environments/environment.ts`,
+> `front/apps/weda2/src/environments/environment.ts`, branche
+> `feature/nova-rewriting-mss`) sont **antérieurs et étrangers** à task-300 —
+> configuration locale de l'humain. Mode code-only : la forge ne touche ni au
+> contenu ni à git sur ce repo.
+
+**`/lint-mobile` : skip propre.** `client-mobile` n'est pas dans le `**Repos**:`
+et aucun écran n'a été touché.
+
+**`/verify-visual` : skip propre.** Aucun écran `client-mobile` touché — US
+strictement backend (journal d'audit, migration, RLS).
+
+---
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/234
+  — label `awaiting-human-merge`.
+- `dtos-mss` : **aucune PR** — branche auto-incluse, **0 commit** (cette US n'expose aucune route
+  et ne change aucun contrat de fil).
+- `client-angular` / `client-mobile` / `client-blazor` : **non concernés** — US strictement
+  backend. Aucun écran, aucun DTO, aucune signature HTTP touchée.
+
+## Code Review Summary
+
+**APPROVED** — 35 fichiers revus. **4 défauts bloquants trouvés et corrigés avant la PR**,
+0 restant.
+
+| Défaut | Où | Pourquoi il était invisible |
+|---|---|---|
+| `ON CONFLICT (id, timestamp)` exige `SELECT` | `PostgresAuditSink` | Le rôle d'écriture ne doit pas pouvoir lire — refus `42501` à l'exécution seulement |
+| `current_setting(…, true)` rend `''`, pas `NULL` | migration, politique RLS | Invisible sur connexion neuve ; `''::uuid` lève `22P02` sur une connexion recyclée |
+| `DELETE … WHERE ctid IN (…)` faux sur table partitionnée | `PostgresAuditJournalPurge` | Le `ctid` n'est unique que **par** partition ⇒ suppression de traces encore en conservation |
+| `SET LOCAL` hors transaction explicite sans effet | `PostgresAuditReader` | L'utilisateur des conteneurs de test est `SUPERUSER` et **contourne la RLS** |
+
+Les quatre ont été **prouvés à l'exécution** avant correction, et le dernier a été **re-injecté**
+après correction pour vérifier que son test mord (il échoue alors sur « Collection was empty » —
+le symptôme exact de production : écran d'audit vide).
+
+### Trois items de DOD non tenus, comblés pendant la revue
+
+Cochés à blanc, ils auraient fait passer la PR pour complète :
+
+1. chaîne de connexion dédiée `Application Name=mss-mail-audit`, pool borné à 2 ;
+2. test d'intégration de la lecture double source (3 avant / 3 après, pagination par 2) ;
+3. test de contrat « aucune donnée de santé dans les journaux techniques ».
+
+### Suggestions non bloquantes
+
+- La fenêtre de fusion double source est plafonnée à 2 000 lignes par source. Au-delà, la
+  pagination profonde rend des pages incomplètes — acceptable car le chemin disparaît avec
+  task-301, et le contrat HTTP plafonne déjà la page à 200.
+- `AuditRetentionPolicy.ActionNamesOf` est appelé à chaque purge ; un cache statique serait
+  gratuit. Non fait : la purge est planifiée, pas sur un chemin chaud.
