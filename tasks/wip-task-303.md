@@ -680,6 +680,59 @@ poussait la PR `api-mail` au-delà du plafond de la règle 5.
    aurait imputé l'acquittement d'un résultat de biologie au compte technique
    Keycloak au lieu du praticien.
 
+## Sonar log — 2026-09-13
+
+SonarQube était arrêté depuis 46 h ; relancé pour cette étape. **Deux analyses
+complètes** (build Release + 5 suites avec couverture OpenCover).
+
+| KPI | Baseline (avant task-303) | Après nettoyage | Cible |
+|---|---|---|---|
+| Bugs | 0 | **0** | 0 |
+| Vulnérabilités | 0 | **0** | 0 |
+| Note de fiabilité | A | **A** | A |
+| Note de sécurité | A | **A** | A |
+| Note de maintenabilité | A | **A** | A |
+| Code smells (total) | 61 | 233 | — |
+| Code smells (code neuf) | — | 48 → **41** | — |
+| Couverture | 88,6 % | 87,3 % (neuf : 81,5 %) | — |
+| Duplication | 0,4 % | **0,3 %** | — |
+| **Quality Gate** | — | **ERROR** — voir ci-dessous | |
+
+### Ce qui a été corrigé
+
+La première analyse a révélé **un bug introduit par cette US** (fiabilité tombée
+à **C**) : `S2583` sur `PostgresTenantRegistryClient`. L'analyseur lisait le
+filtrage de motif `existing is { State: not … }` comme une garantie de
+non-nullité et déclarait le `existing is null` suivant toujours faux. **Il avait
+tort** — `FirstOrDefaultAsync` rend bien `null` — mais une condition que
+l'outillage lit de travers est aussi une condition qu'un relecteur lira de
+travers : forme explicite. Fiabilité revenue à **A**.
+
+Également : deux méthodes devenues mortes (`RejectMissingMssEmailAsync`,
+`RejectClientEmailMismatchAsync` — mortes **parce que** la bascule a retiré leurs
+appelants), une signature à **dix paramètres** regroupée par rôle dans
+`RequestIdentityServices`, trois `Assert.Single` dont la valeur était re-dérivée,
+et deux faux positifs `S125` (de la prose lue comme du code à cause d'un
+point-virgule en fin de ligne).
+
+### Ce qui reste, et pourquoi
+
+- **`CA1068` (18 occurrences)** — `CancellationToken` non dernier paramètre sur
+  les méthodes du contrat. C'est la **forme arbitrée par task-299** et inscrite
+  dans `conventions/csharp.md` : l'ordre des paramètres optionnels du contrat la
+  contraint. Accepté, pas oublié.
+- **Quality Gate ERROR** sur `new_security_hotspots_reviewed` (0 % pour un seuil
+  de 100 %). **Quatre points chauds**, tous de sévérité **LOW**, tous du même
+  motif (« vérifier que la configuration du logger est sûre ») et **aucun dans un
+  fichier créé par cette US** : `Program.cs` ×2 et `BaseRepository.cs`
+  (pré-existants), `TenantRegistryMigrator.cs` (task-299).
+
+  > Leur revue est un **acte de sécurité humain**. La forge ne les marque pas
+  > « revus » à la place de l'humain : ce serait signer une affirmation de
+  > sécurité sans l'avoir instruite. À traiter dans l'UI SonarQube.
+- Les autres smells du code neuf ne viennent pas de cette US (fixtures des
+  services IA, version d'API par défaut, `ISerializable`).
+
 ## Branches
 
 - `api-mail` (pushed) : `feat/task-303-comptes-multi-messageries` — depuis `origin/develop` `142e0cd` (task-299 incluse)
@@ -699,4 +752,5 @@ poussait la PR `api-mail` au-delà du plafond de la règle 5.
 |---|---|---|---|---|---|---|
 | /start | ok | 26 s | — | — | — | — |
 | /develop | ok | — | 1 (2.3 s) | 5 (6 min 22 s) | — | dtos-mss 1B/0T, api-mail 0B/5T, implementation complete, 4495 tests verts; no start marker |
-| **Total cycle** | | **26 s** | **1 (2.3 s)** | **5 (6 min 22 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 26 min 35 s | 1 (16 s) | 1 (4 min 44 s) | 4 (1 min 11 s) | 2 itération(s), api-mail 1B/1T, 1 bug corrige (fiabilite C->A), 48->41 smells neufs, QG ERROR sur 4 hotspots LOW pre-existants |
+| **Total cycle** | | **27 min 02 s** | **2 (19 s)** | **6 (11 min 07 s)** | **4 (1 min 11 s)** | |
