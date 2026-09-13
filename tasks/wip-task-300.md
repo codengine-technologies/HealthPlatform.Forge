@@ -279,3 +279,23 @@ travail qui se partitionne réellement). La réponse est hybride, pas « abandon
   mutualisation des journaux en un traitement unique est acceptée. L'AIPD doit refléter : la
   nouvelle base porteuse de DSCP, les mesures de cloisonnement (RLS + rôles), et la purge
   planifiée qui corrige le défaut art. 5.1.e existant
+
+---
+
+## Branches
+
+- `api-mail` (pushed) : `feat/task-300-journal-audit-base-commune` — base `origin/develop`
+  @ `142e0cd7` (task-299 mergée)
+- `dtos-mss` (pushed) : `feat/task-300-journal-audit-base-commune` — branche auto-incluse
+  (CLAUDE.md « Auto-included repo »). Sans changement de contrat, elle restera **sans commit** et
+  n'ouvrira aucune PR.
+
+> **Pré-flight** : les six repos automatisés étaient sur `develop` ; arbres propres.
+> Dépendance `task-299` satisfaite — `tasks/archived/archived-task-299.md`, état terminal qui suit
+> `done-*`.
+
+> **Note de séquencement.** Cette US crée la table d'audit **dans la base commune**, celle-là même
+> où task-303 fusionnera `mailboxes` + `tenants` en `mss_accounts`. Les deux sont indépendantes :
+> le renommage d'une table emporte ses clés étrangères côté PostgreSQL, et la colonne du journal
+> reste `tenant_id` quel que soit l'ordre de merge (arbitrage du 2026-09-13 — le renommage s'arrête
+> aux tables, `mss_accounts.id` **est** le `TenantId`).
