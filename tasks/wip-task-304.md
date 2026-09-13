@@ -519,7 +519,10 @@ API **mockée par fixtures**. Trois ruptures certaines, toutes à traiter **dans
 |---|---|---|---|---|---|---|
 | /start | ok | 35 s | — | — | — | — |
 | /develop | ok | 1 h 03 min | 20 (2 min 49 s) | 17 (2 min 48 s) | — | client-blazor 14B/6T, client-angular 2B/3T, client-mobile 4B/8T |
-| **Total cycle** | | **1 h 03 min** | **20 (2 min 49 s)** | **17 (2 min 48 s)** | **0 (0.0 s)** | |
+| /lint-angular | ok | 4 min 08 s | 1 (17 s) | 1 (21 s) | — | 2 itération(s), client-angular 1B/1T |
+| **Total cycle** | | **1 h 08 min** | **21 (3 min 06 s)** | **18 (3 min 09 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : lint ×3 (39 s)
 
 ## Branches
 
@@ -606,3 +609,44 @@ réintroduit). Les quatre critères « Outillage visuel » de la DOD restent non
 satisfaits, et les captures des écrans mobiles ne peuvent pas être produites.
 Détail, cause et options : `questions/task-304.md`. La suite `/qa`, elle, est
 traitée : `Client/Mobile/e2e/README.md` documente le ré-alignement (`1d886f3`).
+
+## Lint log — `client-angular`
+
+**Mode A** (chaîné), portée `weda2, mss, mss-lib` (`**LintProjects**:` du task
+file, qui élargit le défaut `tag:scope:mss`). **2 itérations** sur les 5
+autorisées.
+
+> **Divergence assumée sur la portée** : `nx affected --base=origin/next
+> --head=HEAD` compare des **commits**, or le travail Angular est en code-only,
+> donc **non commité** — `affected` ne l'aurait pas vu et aurait linté un diff
+> vide. Les trois projets nommés sont donc lintés par `run-many`. C'est plus
+> large que le pipeline, jamais plus étroit.
+
+| | Erreurs | Avertissements |
+|---|---|---|
+| Baseline | **57** | 38 |
+| Après itération 1 (auto-fix) | 2 | 78 |
+| **Final** | **0** | **55** |
+
+- **Itération 1 — auto-fix.** 55 erreurs `prettier/prettier` corrigées
+  gratuitement. L'auto-fixer a aussi inséré **23 squelettes JSDoc vides**, ce
+  qui a fait *monter* le nombre d'avertissements : il satisfait
+  `jsdoc/require-jsdoc` sans rien documenter.
+- **Itération 2 — manuelle.** Les 23 squelettes remplis par le sens réel de
+  chaque méthode, et les 2 erreurs `jsdoc/require-returns` résiduelles (que le
+  squelette ne couvre pas) traitées. Un stub vide passe la règle sans rien
+  dire : c'est pire qu'une absence, parce qu'il fait croire que la méthode est
+  documentée.
+- **Re-validation** : `nx build weda2` ✅, tests **2 572** (weda2+mss) + **343**
+  (mss-lib) ✅.
+
+**55 avertissements acceptés** (best-effort) : `complexity`, `max-lines` et
+`jsdoc/require-example` sur du code **pré-existant** du module MSS, hors périmètre
+de cette US.
+
+**Convention apprise** → `conventions/angular.md`, entrée
+`jsdoc/require-jsdoc` : écrire le JSDoc en même temps que la méthode, ne jamais
+s'en remettre à `--fix` pour ça.
+
+**Code-only** : aucune opération git sur `client-angular`. Les fixes de lint sont
+dans le worktree avec le reste du travail Angular, en attente du commit humain.

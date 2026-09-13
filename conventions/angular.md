@@ -77,3 +77,23 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   (`settings-logout-btn`, `draft-list-empty`).
 - **Origine** : convention gravée avant la création de ce fichier
 - **Occurrences** : n/a (préventif)
+
+### jsdoc/require-jsdoc — JSDoc complet sur chaque méthode (client-angular)
+- **Règle** : `jsdoc/require-jsdoc`, `jsdoc/require-returns`, `jsdoc/require-param`
+- **Repos** : `client-angular` uniquement (la config ESLint de `client-mobile`
+  ne porte pas ces règles)
+- **Consigne** : écrire le JSDoc **en même temps que la méthode**, jamais après.
+  Toute méthode — y compris `protected`, y compris un one-liner comme
+  `toggle()` ou un `private baseUrl()` — porte une description, un `@param` par
+  paramètre, un `@returns` si elle rend autre chose que `void`, et un
+  `@example`. Voir le `CLAUDE.md` de `Client/Angular`, section « JSDoc
+  Requirements ».
+  **Pourquoi ne pas s'en remettre à `--fix`** : l'auto-fixer *satisfait* la
+  règle en insérant un squelette vide (`/** \n * \n * @example \n */`). Le lint
+  passe alors au vert sur une documentation qui ne dit rien — pire qu'une
+  absence, puisqu'elle fait croire que la méthode est documentée. Et le
+  squelette ne couvre pas `@returns`, qui reste en **erreur**. Sur task-304 :
+  23 squelettes creux à remplir à la main, dont 2 erreurs résiduelles.
+- **Origine** : task-304 (/lint-angular, 57 erreurs — 55 auto-fixées, 2
+  `require-returns` + 23 squelettes creux repris manuellement)
+- **Occurrences** : 1
