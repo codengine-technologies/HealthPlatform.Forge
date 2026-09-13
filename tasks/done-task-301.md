@@ -209,9 +209,9 @@ même endroit.
 | /lint-mobile | skipped | 2.3 s | — | — | — | non touche par task-301 (Repos: api-mail) |
 | /verify-visual | skipped | 2.2 s | — | — | — | non touche par task-301 (Repos: api-mail) |
 | /review | ok | 4 min 59 s | — | 1 (0.9 s) | — | api-mail 0B/1T |
-| /tech-writer | ok | 42 s | — | — | — | — |
+| /tech-writer | ok | 1 min 24 s | — | — | — | — |
 | /start | ok | 56 s | — | — | — | — |
-| **Total cycle** | | **40 min 43 s** | **0 (0.0 s)** | **1 (0.9 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **41 min 25 s** | **0 (0.0 s)** | **1 (0.9 s)** | **0 (0.0 s)** | |
 
 ## Sonar log
 

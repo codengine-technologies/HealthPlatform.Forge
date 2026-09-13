@@ -12,6 +12,122 @@ entrée existante n'est jamais réécrite.
 
 ## Historique détaillé des changelogs
 
+### v1.3 — task-301 : reprise de l'historique d'audit (`api-mail`)
+
+**Statut** : `done` — PR [Api.Mail#235](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/235), label `awaiting-human-merge`
+**Branche** : `feat/task-301-reprise-historique-audit` (2 repos ; `dtos-mss` auto-inclus, **0 commit**)
+**Commits** : 4 — **22 fichiers**
+**Tests** : **4 463 / 0 échec** (16 ignorés), dont **10 dédiés à la reprise**
+
+#### Ce que l'US ferme
+
+task-300 a déplacé les traces **nouvelles** vers la base commune. Celles déjà écrites dans
+les mille bases praticien y restaient, et le chemin de lecture double — commune au-delà de
+la bascule, praticien en deçà — devait vivre indéfiniment.
+
+task-301 recopie l'existant, **le vérifie**, puis fait cesser la lecture double **tenant par
+tenant**.
+
+#### La contrainte qui gouverne tout
+
+> Une reprise qui prend une nuit est un succès. Une reprise qui sature le serveur est un
+> échec, même plus rapide.
+
+Le 2026-09-11, une opération large sur le parc — le rejeu du tampon d'audit — a ouvert
+**2 500 backends en trois minutes**, produit **27 575 refus `53300`** et figé la VM Docker
+**45 minutes**, trois fois dans la même journée. La reprise fait la même chose en pire :
+elle touche *toutes* les bases, délibérément.
+
+| Borne | Valeur | Ce qui la vérifie |
+|---|---|---|
+| Concurrence | 4 bases simultanées | test observant la concurrence **réelle** sur 40 tenants |
+| Lots | 1 000 traces, curseur sur `Id` | — |
+| Saturation | pause au-delà de 600 connexions | fixture simulant la saturation |
+| Reprenable | tenant marqué ⇒ ignoré **sans lecture** | rejeu ⇒ 0 insertion |
+
+**Chacune se perd sans que rien n'échoue** : une reprise sans plafond marche parfaitement
+sur trois tenants de test, et met le serveur à genoux sur mille.
+
+#### L'ordre des opérations est le cœur de la correction
+
+`compter → copier → **vérifier** → marquer`.
+
+Marquer avant de vérifier ferait cesser la lecture héritée pour un tenant dont la copie est
+peut-être incomplète : **le praticien perdrait une partie de son historique sans qu'aucune
+erreur ne soit levée.** Un comptage divergent échoue bruyamment, le tenant reste non marqué,
+et rien n'est supprimé.
+
+Un tenant en échec **n'interrompt jamais les autres** : sur mille bases, une reprise qui
+s'arrête au premier incident n'arrive jamais au bout.
+
+#### Le verrou de suppression a été déplacé du runbook vers le code
+
+Trouvé pendant `/review`. La DOD demande que la suppression de la table héritée soit
+« appliquée **uniquement** aux tenants marqués repris et vérifiés ». Le mécanisme existait,
+mais la garde vivait dans la **documentation**.
+
+Sur une opération **irréversible** portant sur une source de traçabilité PGSSI-S, ce n'est
+pas suffisant : `DropLegacyTableAsync` prend désormais le **tenant** — et non le seul nom de
+base — pour relire `audit_backfilled_at` et **refuser** si la marque est absente.
+
+> Une garde qui n'existe que dans un document finit un jour par être contournée depuis une
+> console, sur le mauvais tenant, à deux heures du matin.
+
+#### Déclencheur : configuration, jamais route HTTP
+
+`api-mail` n'a pas d'ordonnanceur, et le task file exclut le cron. Une route serait le
+déclencheur naturel — mais **il n'existe aucun modèle de rôles** dans ce service
+(`questions/task-302.md`). Exposer derrière une route non habilitée une opération qui lit
+l'intégralité du journal d'audit du parc ouvrirait un chemin d'exfiltration pour gagner une
+commodité d'exploitation.
+
+`Backfill:RunOnStartup` + redémarrage d'**un seul** réplica. Le jour où task-302 livre un
+modèle de rôles, une route pourra s'y substituer sans rien changer au service.
+
+#### Écart assumé — la configuration « morte » ne l'est pas encore
+
+La DOD demandait de supprimer `Audit:DrainParallelism` et le plafond de drain. **Non fait**,
+et c'est raisonné : task-300 a gardé l'ancien chemin comme **filet** pour les traces sans
+`TenantId` (registre désactivé ou injoignable), filet accepté à son merge. Les retirer ne
+supprimerait aucune architecture parallèle mais rendrait ce chemin **non bornable** — soit
+exactement le défaut que task-298 contient.
+
+La DOD pose elle-même la condition : « tant que le chemin hérité vit, le réglage doit rester
+réglable ». **Il vit.** Le retrait est rattaché à la suppression des tables héritées : même
+déclencheur — parc entièrement repris — et même nature, on ne retire un filet qu'une fois
+certain de ne plus en avoir besoin.
+
+#### Tests dédiés (10)
+
+`AuditBackfillServiceTests` (7 unitaires : concurrence observée, déjà-repris ignoré sans
+lecture, idempotence, pause de saturation, échec isolé, comptage divergent bruyant, hygiène
+des journaux) — `AuditDualSourceReadTests` (+1 : contenu **identique** avant/après reprise) —
+`AuditJournalIntegrationTests` (+1 bloquant : verrou de suppression dans les deux sens) —
+plus le test de bascule par tenant.
+
+#### Sonar — 2 itérations, **0 issue sur le code neuf**
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| `new_violations` | 167 – 170 | 168 | ≈ 0 |
+| `new_code_smells` | 166 | 164 | −2 |
+| Quality Gate | ERROR | ERROR | = |
+
+3 issues attribuables corrigées (`S138` — trois lignes d'enregistrement poussaient
+`AddApplication` de 97 à 100 lignes ; `CA1822` ; `xUnit2033`). `S4457` appliqué **sans que
+Sonar le signale**, par respect de la convention dont le compteur venait d'être incrémenté.
+
+> **Note de méthode** : l'API `measures` et l'API `issues` de SonarQube rendent des chiffres
+> différents par décalage d'indexation (170 vs 167 en fin de task-300). **Le compte d'issues
+> ouvertes fait foi.** Vérifié ici : une `CA1822` listée juste après le scan avait disparu
+> d'une requête faite une minute plus tard.
+
+**Documentation** : runbook `Api/Mail/docs/runbook-reprise-audit.md` — lancer, suivre,
+reprendre après incident, et surtout **vérifier avant de supprimer**.
+
+---
+
+
 ### v1.2 — task-300 : journal d'audit en base commune (`api-mail`)
 
 **Statut** : `done` — PR [Api.Mail#234](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/234), label `awaiting-human-merge`
@@ -480,8 +596,8 @@ en `foreach`). **184 tests verts avant comme après.**
 | Task | Apport | Repos | Statut |
 |---|---|---|---|
 | task-299 | Registre des tenants : comptes (`sub` Keycloak + RPPS), messageries, **tenants** (compte × messagerie, porteurs de la base isolée et de `TenantId`), horodatages de connexion et dormance. Contrat `ITenantRegistryClient` et implémentation Postgres dans `api-mail` — **le contrat a quitté le SDK à la révision du 13/09** | `api-mail` (`sdk` : CI seulement) | ✅ **done** (PR Sdk#3, Api.Mail#233) |
-| task-300 | Journal d'audit en base commune : table partitionnée par mois, `TenantId` = id du **tenant**, RLS + rôles lecture/écriture séparés, purge planifiée s'appuyant sur `AuditRetentionPolicy.FamilyOf`, lecture double source transitoire | `api-mail` | ✅ **done** (PR Api.Mail#234, en attente de merge) |
-| task-301 | Reprise de l'historique d'audit à débit borné (≤ 4 bases simultanées), vérification par comptage par tenant, puis retrait de la table par tenant et de la configuration morte | `api-mail` | 🔜 todo |
+| task-300 | Journal d'audit en base commune : table partitionnée par mois, `TenantId` = id du **tenant**, RLS + rôles lecture/écriture séparés, purge planifiée s'appuyant sur `AuditRetentionPolicy.FamilyOf`, lecture double source transitoire | `api-mail` | ✅ **mergée** (`ff6332f7`) |
+| task-301 | Reprise de l'historique d'audit à débit borné (≤ 4 bases simultanées), vérification par comptage par tenant, puis retrait de la lecture double source par tenant. **Retrait de la configuration morte reporté** — écart assumé, le chemin hérité vit encore comme filet (cf. v1.3) | `api-mail` | ✅ **done** (PR Api.Mail#235, en attente de merge) |
 | task-303 | Vague 1 multi-BAL : la boîte devient une sélection par requête validée contre le registre **et** l'identité PSC ; disparition des claims `mssEmail`/`mssSub`/`mssRpps` ; bascule = fin de session + nouvelle session (garde `SESSION_MAILBOX_MISMATCH`) ; `AuditActionType` + 5 membres | `sdk`, `api-mail` | 🔜 todo |
 | task-304 | Vague 2 multi-BAL : onboarding par le registre, écran de sélection, avatar → sélecteur, gestion des comptes, purge totale de l'état à la bascule — parité Blazor / Angular / mobile. Inclut la remise à niveau de l'outillage de capture visuelle | `client-blazor`, `client-angular`, `client-mobile` | 🔜 todo |
 | task-305 | **Le SDK redevient backend-only** : retrait de la référence morte dans `client-blazor`, déclaration explicite de `Markdig`, retrait de l'enregistrement Redis inerte, garde-fou anti-récidive | `client-blazor` | ✅ done |
