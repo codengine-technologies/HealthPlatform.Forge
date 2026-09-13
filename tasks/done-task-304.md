@@ -522,7 +522,8 @@ API **mockée par fixtures**. Trois ruptures certaines, toutes à traiter **dans
 | /lint-angular | ok | 4 min 08 s | 1 (17 s) | 1 (21 s) | — | 2 itération(s), client-angular 1B/1T |
 | /lint-mobile | ok | 25 s | — | — | — | — |
 | /verify-visual | skipped | 18 s | — | — | — | Tools/visual-verify absent du poste (non versionne) |
-| **Total cycle** | | **1 h 08 min** | **21 (3 min 06 s)** | **18 (3 min 09 s)** | **0 (0.0 s)** | |
+| /review | ok | 5 min 20 s | 5 (45 s) | 5 (44 s) | — | client-blazor 2B/2T, client-mobile 1B/1T, client-angular 2B/2T |
+| **Total cycle** | | **1 h 14 min** | **26 (3 min 52 s)** | **23 (3 min 54 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×4 (50 s)
 
@@ -710,3 +711,110 @@ tentée — il n'y a donc rien à conclure sur les écrans, ni en bien ni en mal
 
 Détail, cause et options (dont : versionner `Tools/visual-verify/` au même titre
 que `Tools/timing/`) → **`questions/task-304.md`**.
+
+## PRs
+
+- `client-blazor` : https://github.com/codengine-technologies/HealthPlatform.Client/pull/74 — label **`awaiting-human-merge`**
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/70 — label **`awaiting-human-merge`**
+- `dtos-mss` : **aucune PR** — branche créée par `/start` (auto-inclusion), **zéro commit**. Les contrats de la vague 1 sont déjà publiés en `474.0.0` ; task-304 n'ajoute aucun DTO.
+- `client-angular` : **code-only** — l'humain gère commit/push TFS et l'ouverture de la PR. Fichiers modifiés (worktree, branche `feature/nova-rewriting-mss`) listés ci-dessous.
+
+> **Règle 11 — la US est désormais COMPLÈTE.** Les PRs de **task-303** ont été
+> rebasculées de `awaiting-us-completion` vers `awaiting-human-merge` : les deux
+> vagues sont en PR prête, et laisser l'ancien label aurait laissé croire que la
+> US attend encore quelque chose. Le test humain porte sur la **US assemblée**.
+>
+> **Ordre de merge** : `dtos-mss` #32 → `api-mail` #236 → `client-blazor` #74 et
+> `client-mobile` #70.
+>
+> ⚠️ **`api-mail` #236 est en conflit avec `develop`** (`mergeable: CONFLICTING`,
+> constaté le 2026-09-13). À résoudre par `git merge origin/develop` sur
+> `feat/task-303-*` (règle 4 — jamais de rebase) avant le merge.
+
+### `client-angular` — fichiers modifiés, non commités
+- `front/apps/mss/src/environments/environment.ts` (M)
+- `front/apps/weda2/src/app/app.config.ts` (M)
+- `front/apps/weda2/src/app/core/interceptors/mss-headers.interceptor.ts` (M)
+- `front/apps/weda2/src/app/features/booking/daily/mappers/patient-alert.mapper.ts` (M)
+- `front/apps/weda2/src/app/features/booking/daily/mappers/preparation-summary.mapper.ts` (M)
+- `front/apps/weda2/src/app/features/booking/daily/services/daily-agenda.service.ts` (M)
+- `front/apps/weda2/src/app/features/booking/daily/store/daily-agenda.store.ts` (M)
+- `front/apps/weda2/src/app/features/booking/daily/store/helpers/daily-agenda-resource-sync.helper.ts` (M)
+- `front/apps/weda2/src/environments/environment.ts` (M)
+- `front/apps/weda2/src/lib/auth/interceptors/utils/auth-interceptor.utils.ts` (M)
+- `front/apps/weda2/src/lib/auth/models/jwt-payload.model.ts` (M)
+- `front/apps/weda2/src/lib/auth/store/utils/store-helpers.utils.ts` (M)
+- `front/libs/mss/src/core/guards/mss-onboarding.guard.spec.ts` (D)
+- `front/libs/mss/src/core/guards/mss-onboarding.guard.ts` (D)
+- `front/libs/mss/src/core/index.ts` (M)
+- `front/libs/mss/src/core/models/audit.model.spec.ts` (M)
+- `front/libs/mss/src/core/models/audit.model.ts` (M)
+- `front/libs/mss/src/core/models/mss-onboarding.model.ts` (D)
+- `front/libs/mss/src/core/services/mail-events-stream.service.ts` (M)
+- `front/libs/mss/src/core/services/mss-onboarding.service.spec.ts` (D)
+- `front/libs/mss/src/core/services/mss-onboarding.service.ts` (D)
+- `front/libs/mss/src/core/services/notification-stream.service.ts` (M)
+- `front/libs/mss/src/features/index.ts` (M)
+- `front/libs/mss/src/features/setup/mss-setup.component.html` (D)
+- `front/libs/mss/src/features/setup/mss-setup.component.scss` (D)
+- `front/libs/mss/src/features/setup/mss-setup.component.spec.ts` (D)
+- `front/libs/mss/src/features/setup/mss-setup.component.ts` (D)
+- `front/libs/mss/src/features/unconfigured/mss-unconfigured.component.html` (D)
+- `front/libs/mss/src/features/unconfigured/mss-unconfigured.component.scss` (D)
+- `front/libs/mss/src/features/unconfigured/mss-unconfigured.component.spec.ts` (D)
+- `front/libs/mss/src/features/unconfigured/mss-unconfigured.component.ts` (D)
+- `front/libs/mss/src/index.ts` (M)
+- `front/libs/mss/src/ui/index.ts` (M)
+- `front/libs/mss/src/core/guards/mailbox.guard.ts` (??)
+- `front/libs/mss/src/core/models/mailbox.model.ts` (??)
+- `front/libs/mss/src/core/models/mss-probe.model.ts` (??)
+- `front/libs/mss/src/core/services/mailbox-accounts.service.spec.ts` (??)
+- `front/libs/mss/src/core/services/mailbox-accounts.service.ts` (??)
+- `front/libs/mss/src/core/stores/` (??)
+- `front/libs/mss/src/core/tokens/mss-practitioner-identity.token.ts` (??)
+- `front/libs/mss/src/core/tokens/mss-psc-sign-in.token.ts` (??)
+- `front/libs/mss/src/features/mailbox-management/` (??)
+- `front/libs/mss/src/features/mailbox-onboarding/` (??)
+- `front/libs/mss/src/features/mailbox-psc-required/` (??)
+- `front/libs/mss/src/features/mailbox-select/` (??)
+- `front/libs/mss/src/ui/attach-mailbox-form/` (??)
+- `front/libs/mss/src/ui/mailbox-list-item/` (??)
+- `front/libs/mss/src/ui/mailbox-switcher/` (??)
+
+## Code Review Summary
+
+**Verdict : APPROVED.** Revue du diff complet des trois fronts (42 fichiers Blazor,
+55 mobile, 48 entrées Angular).
+
+### Ce qui a été corrigé pendant la revue
+
+| Fichier | Constat | Correctif |
+|---|---|---|
+| `Mail.razor` (Blazor) | `First()` sur le défaut ouvrable **levait** si l'invariant calculé par `Decide()` évoluait — un crash du module comme mode d'expression d'une évolution de la table de décision | `FirstOrDefault` + repli sur l'écran de choix |
+| `MailboxSelect.razor` (Blazor) | le verrou `_opening` n'était **jamais relâché** : un échec de pose du défaut laissait « Ouvrir » grisé définitivement, sans message | `try/finally` |
+| `jwt-payload.model.ts` (Angular) | `mssEmail` encore **déclaré** dans le type de payload — plus rien ne le lisait, mais un type qui annonce la claim invite à la relire | champ et doc retirés |
+
+### Ce qui a été jugé sain
+
+- **Sécurité / données de santé** — aucun jeton journalisé ; la purge à la bascule
+  est énumérée depuis le conteneur (`IMailboxScopedState` / `MSS_RESETTABLE_STORES`
+  / `MAILBOX_SCOPED_STATES`) plutôt qu'écrite en dur, donc un porteur d'état ajouté
+  plus tard s'y inscrit explicitement ; aucune persistance de boîte sur l'appareil.
+- **Architecture** — la compatibilité PSC n'est **jamais** évaluée côté front
+  (aucune comparaison de `sub` : vérifié par grep). Les fronts affichent
+  `selectable` / `capabilities` tels que le backend les rend.
+- **Couverture** — la table de décision à sept états est couverte **par un test
+  par cas et par front** ; la séquence de bascule par un test d'**ordre** qui
+  échoue si une étape bouge.
+- **Cycles de dépendances** — `MailboxAccountsService` utilise `HttpClient`
+  directement et non `HttpRequestService` : ce dernier pose `Client-Email` en
+  lisant la session de boîte, qui a besoin du registre. Passer par lui fermerait
+  un cycle de construction. Les routes du registre sont d'ailleurs
+  `[MailboxNotRequired]` côté backend.
+
+### Suggestion non bloquante
+
+Le mobile n'enregistre **aucun** porteur d'état dans `MAILBOX_SCOPED_STATES` (tableau
+vide, documenté) : son état de boîte vit dans les pages, détruites par la navigation
+vers l'onglet Messages qui suit chaque bascule. C'est correct aujourd'hui ; ça cesse
+de l'être le jour où un service racine cachera des données de boîte.
