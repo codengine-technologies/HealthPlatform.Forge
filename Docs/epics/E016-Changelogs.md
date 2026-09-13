@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > **Document frère (vue produit)** : [`E016-socle-multi-tenant.md`](./E016-socle-multi-tenant.md)
-> **Dernière mise à jour** : 2026-09-14
+> **Dernière mise à jour** : 2026-09-14 (task-303)
 
 Historique détaillé des changements de l'EPIC **E016 — Socle multi-tenant**.
 Une entrée par task ayant atteint `done-*` ou `archived-*`. Append-only : une
@@ -11,6 +11,149 @@ entrée existante n'est jamais réécrite.
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.4 — task-303 : la boîte MSSanté devient une sélection (`api-mail`, `dtos-mss`)
+
+**Statut** : `done` — PR [Api.Mail#236](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/236) et [Dtos.Mss#32](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/32), label **`awaiting-us-completion`** (règle 11 — vague 1/2)
+**Branche** : `feat/task-303-comptes-multi-messageries` (2 repos, les deux avec commits)
+**Commits** : 11 — dont un merge d'intégration de task-300
+**Tests** : **4 519 / 0 échec** (16 ignorés), dont **71 nouveaux**
+**Paquet** : `HealthPlatform.Dtos.Mss` **474.0.0**
+
+#### Ce que l'US ferme
+
+Avant elle, la boîte MSSanté d'un praticien était un **claim signé par Keycloak** :
+un utilisateur Keycloak, une boîte, une base. Changer de boîte exigeait un nouveau
+jeton, donc une déconnexion — et l'onboarding était orchestré par le client
+(sonder, puis demander l'écriture d'un attribut, puis « reconnectez-vous »).
+
+task-303 remplace ce claim par une **sélection validée à chaque requête** contre le
+registre livré par task-299 **et** contre l'identité PSC de la session.
+
+Le fondement est vérifié dans le code, pas supposé : l'authentification IMAP/SMTP
+se fait en **XOAUTH2 avec le jeton PSC**, et ce jeton identifie le
+**professionnel** (RPPS en `SubjectNameID`), jamais une boîte. Un même jeton ouvre
+donc légitimement toute boîte que l'**opérateur MSSanté** a rattachée à ce PS.
+
+#### Le modèle de données passe à deux tables
+
+`tenants` absorbe `mailboxes` et devient **`mss_accounts`**. Trois raisons, toutes
+vérifiées dans le schéma livré par task-299 :
+
+1. **Double clé de fait** — la table portait à la fois `mailbox_id` et la copie
+   dénormalisée `mailbox_address`, les deux indexées par compte. Une adresse
+   corrigée d'un côté laissait l'autre périmée, en silence.
+2. **L'entité intermédiaire ne portait rien** — `RegistryMailbox` n'était rendu par
+   aucune opération du contrat, et `operator_domain` se dérive de l'adresse.
+3. **Elle rendait possible une faute qu'on se contentait de documenter** — trois
+   paragraphes avertissaient de ne jamais clé le journal d'audit sur `mailbox_id`,
+   sous peine de faire voir à deux praticiens d'une adresse organisationnelle les
+   traces l'un de l'autre. **Supprimer la colonne rend la faute impossible.**
+
+Ce qu'on abandonne, et c'est assumé : l'identité globale d'une adresse partagée.
+Deux praticiens sur `secretariat@…` donnent deux lignes, deux bases, **aucun parent
+commun sur lequel se tromper**.
+
+#### La règle métier centrale : deux questions, deux réponses
+
+`MailboxCompatibility` répond séparément à « **cette boîte est-elle utilisable ?** »
+(`selectable`) et « **cette session peut-elle ouvrir IMAP ?** » (`capabilities`).
+
+Les confondre — ce que faisait la première rédaction de l'US — rangeait
+« pas de jeton PSC » parmi les incompatibilités et rendait, composé avec la règle
+d'affichage du front, **toutes les boîtes inaccessibles hors ligne** : l'inverse
+exact du comportement voulu, puisque le hors ligne existe précisément pour lire ce
+qui est déjà synchronisé. La règle est pure, sans I/O, et couverte par une
+**matrice de 14 tests**.
+
+#### Ce qui empêche la bascule de casser le parc existant
+
+`LegacyClaimsMigration` est le **seul** lecteur restant de `mssEmail` / `mssSub` /
+`mssRpps`. Sans elle, la bascule mettrait **tout le parc** en 403 au premier appel :
+le registre connaîtrait leur compte mais aucune de leurs boîtes. Elle ancre le
+compte et rattache sa boîte par défaut en une opération idempotente, et le nom de
+base proposé est **exactement celui que le praticien utilisait déjà** — il ne change
+pas de base en migrant.
+
+Classe isolée, marquée `[Obsolete]`, avec le compteur qui autorisera son retrait :
+`mss_registry_legacy_claims_migrations_total` à zéro pendant 30 jours.
+
+#### Trois défauts trouvés en écrivant les tests
+
+1. **La course perdue rendait un `TenantId` inexistant en base** — prérequis hérité
+   de la revue de task-299. La première correction était **elle-même fausse** : elle
+   relisait par `account.Id`, or quand c'est l'insertion du *compte* qui perd la
+   course, cet identifiant n'a jamais été écrit. La relecture repart du **sujet
+   d'authentification**. Le test tirait un sujet fixe : il a échoué au premier
+   passage puis **réussi au second**, la base de test conservant l'état — il tire
+   désormais un sujet neuf à chaque exécution, et la course a été rejouée trois fois.
+
+2. **Trois lecteurs de `mssEmail` subsistaient**, trouvés par un test de garde ajouté
+   pour ça (lecture des sources). Le plus grave : `BiologyAckService` serait retombé
+   sur `ClaimTypes.Email` et aurait imputé l'acquittement d'un résultat de biologie
+   au **compte technique Keycloak** au lieu du praticien — une erreur d'imputabilité
+   dans un journal de données de santé, pas un détail d'affichage.
+
+3. **Un bug `S2583`** (fiabilité tombée à C) sur une condition que l'analyseur lisait
+   comme toujours fausse. Il avait tort sur le fond, mais une condition qu'un outil
+   lit de travers est une condition qu'un relecteur lira de travers : forme explicite.
+
+#### La garde de session n'est pas de l'hygiène de contrat
+
+Un `Client-Session-Id` est lié à la **première boîte qu'il ouvre** ; le présenter
+avec une autre rend **409 `SESSION_MAILBOX_MISMATCH`**. Le registre des sessions IMAP
+étant clé sur `{email}_{sessionId}`, réutiliser un identifiant ne provoque **aucune
+collision** — il **abandonne** la session précédente, laissant un pool IMAP+SMTP
+orphelin, toujours connecté chez l'opérateur d'avant. Dix bascules, dix pools
+résidents : exactement la classe de fuite que l'EPIC de capacité E015 a passé six
+semaines à corriger. Le multi-onglets reste légitime ; un identifiant ne se recycle
+pas, même après un `/sync/logout`.
+
+#### Intégration avec task-300, mergée pendant le développement
+
+Conflit **sémantique**, pas textuel — task-300 a ajouté `audit_cutover_at` à la table
+que cette US renomme :
+
+- **Ordre des migrations** : celle de task-303 portait un identifiant *antérieur* à
+  celui du journal d'audit, qui fait `ALTER TABLE tenants`. Sur une base **neuve**,
+  la table aurait déjà été renommée et **le service n'aurait pas démarré** — défaut
+  invisible sur les bases de développement déjà migrées. La règle 7c interdisant
+  d'éditer une migration mergée, c'est celle de task-303, encore sur sa branche, qui
+  a été renumérotée.
+- **`PostgresAuditSink`** visait `tenants` en SQL brut : aligné sur `mss_accounts`.
+  C'est le seul SQL brut du produit qui nommait cette table.
+- **`TenantId` recalé sur la boîte retenue** : le synchroniseur pose le tenant de la
+  boîte héritée ; il est désormais recalé sur la boîte effectivement ouverte. Sans ce
+  recalage, les traces d'un praticien qui bascule seraient classées sous sa boîte
+  d'ouverture — et le journal mutualisé, **dont le `TenantId` est la seule
+  frontière**, mélangerait deux messageries.
+
+#### Qualité
+
+| Métrique | Avant | Après |
+|---|---|---|
+| Bugs / Vulnérabilités | 0 / 0 | **0 / 0** (1 introduit, corrigé) |
+| Fiabilité / Sécurité / Maintenabilité | A / A / A | **A / A / A** |
+| Code smells (code neuf) | — | 48 → **41** |
+| Couverture | 88,6 % | 87,3 % (neuf : 81,5 %) |
+
+**Quality Gate ERROR** sur `new_security_hotspots_reviewed` : quatre points chauds,
+tous **LOW**, tous du motif « vérifier que la configuration du logger est sûre », et
+**aucun dans un fichier créé par cette US**. Leur revue est un acte de sécurité
+humain — la forge ne les marque pas « revus » à la place de l'humain.
+
+#### Écarts assumés
+
+- **Provisionnement de la base au rattachement** : reste **paresseux** (première
+  requête sur la boîte), mécanisme existant et éprouvé.
+- **Tests d'intégration HTTP par endpoint** : la logique est couverte au niveau
+  service, ordre sonde → persistance compris (`Received.InOrder`).
+- **Banc de charge** : extrait en **task-306**. ⚠️ Cette US livre ce dont il dépend —
+  le sujet d'authentification sur le chemin de contournement. **À partir d'ici, le
+  banc écrit dans le registre et paie ses lectures : la référence de capacité E015 se
+  déplace, et c'est cette US qui la déplace**, pas task-299 qui était neutre.
+
+---
 
 ### v1.3 — task-301 : reprise de l'historique d'audit (`api-mail`)
 
@@ -598,7 +741,7 @@ en `foreach`). **184 tests verts avant comme après.**
 | task-299 | Registre des tenants : comptes (`sub` Keycloak + RPPS), messageries, **tenants** (compte × messagerie, porteurs de la base isolée et de `TenantId`), horodatages de connexion et dormance. Contrat `ITenantRegistryClient` et implémentation Postgres dans `api-mail` — **le contrat a quitté le SDK à la révision du 13/09** | `api-mail` (`sdk` : CI seulement) | ✅ **done** (PR Sdk#3, Api.Mail#233) |
 | task-300 | Journal d'audit en base commune : table partitionnée par mois, `TenantId` = id du **tenant**, RLS + rôles lecture/écriture séparés, purge planifiée s'appuyant sur `AuditRetentionPolicy.FamilyOf`, lecture double source transitoire | `api-mail` | ✅ **mergée** (`ff6332f7`) |
 | task-301 | Reprise de l'historique d'audit à débit borné (≤ 4 bases simultanées), vérification par comptage par tenant, puis retrait de la lecture double source par tenant. **Retrait de la configuration morte reporté** — écart assumé, le chemin hérité vit encore comme filet (cf. v1.3) | `api-mail` | ✅ **done** (PR Api.Mail#235, en attente de merge) |
-| task-303 | Vague 1 multi-BAL : la boîte devient une sélection par requête validée contre le registre **et** l'identité PSC ; disparition des claims `mssEmail`/`mssSub`/`mssRpps` ; bascule = fin de session + nouvelle session (garde `SESSION_MAILBOX_MISMATCH`) ; `AuditActionType` + 5 membres | `sdk`, `api-mail` | 🔜 todo |
+| task-303 | Vague 1 multi-BAL : la boîte devient une sélection par requête validée contre le registre **et** l'identité PSC ; disparition des claims `mssEmail`/`mssSub`/`mssRpps` ; bascule = fin de session + nouvelle session (garde `SESSION_MAILBOX_MISMATCH`) ; `AuditActionType` + 5 membres | `api-mail`, `dtos-mss` | ✅ **done** (PR Api.Mail#236, Dtos.Mss#32 — `awaiting-us-completion`, règle 11) |
 | task-304 | Vague 2 multi-BAL : onboarding par le registre, écran de sélection, avatar → sélecteur, gestion des comptes, purge totale de l'état à la bascule — parité Blazor / Angular / mobile. Inclut la remise à niveau de l'outillage de capture visuelle | `client-blazor`, `client-angular`, `client-mobile` | 🔜 todo |
 | task-305 | **Le SDK redevient backend-only** : retrait de la référence morte dans `client-blazor`, déclaration explicite de `Markdig`, retrait de l'enregistrement Redis inerte, garde-fou anti-récidive | `client-blazor` | ✅ done |
 | task-306 | Banc de charge multi-BAL : dimension « boîtes par compte » (défaut 1, iso E015), parcours avec bascule réelle (`/sync/logout` + rotation de session), restitution du coût de bascule et de la résolution de registre | `api-mail` | 🔜 todo |

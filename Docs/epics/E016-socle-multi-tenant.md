@@ -84,7 +84,7 @@ augmente.
 
 | Fonctionnalité | Ce que le praticien peut faire | Tasks | Statut |
 |---|---|---|---|
-| **Plusieurs messageries, une seule connexion** | Retrouver, après une authentification unique, toutes les messageries qui relèvent de son identité professionnelle | task-303 | 🔜 À faire |
+| **Plusieurs messageries, une seule connexion** | Retrouver, après une authentification unique, toutes les messageries qui relèvent de son identité professionnelle | task-303 | 🟡 Backend livré — **le médecin ne le voit pas encore** (task-304) |
 | **Changer de messagerie en direct** | Cliquer sur son avatar et ouvrir une autre de ses messageries : l'écran se vide et se recharge sur la nouvelle boîte, sans reconnexion | task-304 | 🔜 À faire |
 | **Rattacher sa première messagerie** | Entrer son adresse dès le premier accès et travailler immédiatement, sans se déconnecter ni se reconnecter | task-304 | 🔜 À faire |
 | **Gérer ses messageries** | Ajouter une messagerie, en détacher une, désigner celle qui s'ouvre par défaut, comprendre pourquoi l'une est indisponible | task-304 | 🔜 À faire |
@@ -193,11 +193,11 @@ Deux points structurent ce parcours :
 
 ---
 
-## État de couverture (2026-09-14, soir)
+## État de couverture (2026-09-14, nuit)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
-| Plusieurs messageries, une seule connexion | 🔜 À faire | 0 % | task-303 |
+| Plusieurs messageries, une seule connexion | 🟡 Backend livré | 50 % | task-303 (PR ouverte, `awaiting-us-completion`) |
 | Changer de messagerie en direct | 🔜 À faire | 0 % | task-304 |
 | Rattacher sa première messagerie | 🔜 À faire | 0 % | task-304 |
 | Gérer ses messageries | 🔜 À faire | 0 % | task-304 |
@@ -207,10 +207,19 @@ Deux points structurent ce parcours :
 | Réactivité vérifiée en multi-messagerie | 🔜 À faire | 0 % | task-306 |
 | Application allégée au poste | ✅ Livrée | 100 % | task-305 |
 
-**Couverture EPIC consolidée : 32 %** (2 fonctionnalités livrées sur 9, 1 quasi complète,
-1 bloquée en attente d'arbitrage, 5 à faire). Le socle est posé — la plateforme sait de
-quoi son parc est fait — et la ligne « traçabilité » est désormais **entièrement écrite** :
-le journal mutualisé est sur `develop`, la reprise de l'historique attend son merge.
+**Couverture EPIC consolidée : 38 %** (2 fonctionnalités livrées sur 9, 2 partielles,
+1 bloquée en attente d'arbitrage, 4 à faire). Le socle est posé — la plateforme sait de
+quoi son parc est fait, la ligne « traçabilité » est entièrement écrite, et le backend
+multi-messageries l'est désormais aussi.
+
+> **Pourquoi « Plusieurs messageries » est à 50 % et non à 100 %.** Tout le mécanisme
+> existe côté serveur : un praticien peut rattacher plusieurs boîtes, le backend valide
+> chaque sélection contre le registre et contre son identité PSC, et une bascule ferme
+> proprement la session de boîte précédente. Mais **aucun écran ne le montre encore** —
+> ni sélecteur, ni bascule à l'avatar, ni écran de gestion. Pour le médecin, rien n'a
+> changé : c'est exactement ce que la règle 11 appelle de la plomberie, et c'est
+> pourquoi la PR porte `awaiting-us-completion` au lieu d'attendre un merge. La moitié
+> restante est **task-304**, et le test humain se fera sur la US assemblée.
 
 > **Le 10 % manquant n'est pas du code.** La reprise se joue sur le parc réel, une nuit,
 > sous surveillance, puis se vérifie tenant par tenant avant toute suppression. Compter
