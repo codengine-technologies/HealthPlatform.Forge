@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > **Document frère (vue produit)** : [`E016-socle-multi-tenant.md`](./E016-socle-multi-tenant.md)
-> **Dernière mise à jour** : 2026-09-14 (task-303)
+> **Dernière mise à jour** : 2026-09-13 (task-304)
 
 Historique détaillé des changements de l'EPIC **E016 — Socle multi-tenant**.
 Une entrée par task ayant atteint `done-*` ou `archived-*`. Append-only : une
@@ -11,6 +11,148 @@ entrée existante n'est jamais réécrite.
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.5 — task-304 : la sélection devient visible (`client-blazor`, `client-angular`, `client-mobile`)
+
+**Statut** : `done` — PR [Client#74](https://github.com/codengine-technologies/HealthPlatform.Client/pull/74) et [Mobile#70](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/70), label **`awaiting-human-merge`** ; `client-angular` en **code-only** (l'humain pousse sur TFS)
+**Branche** : `feat/task-304-selection-et-bascule-de-boite`
+**Tests** : **3 962 / 0 échec** — 228 (Blazor) + 2 915 (Angular : weda2+mss+mss-lib) + 819 (mobile)
+**Paquet consommé** : `HealthPlatform.Dtos.Mss` **474.0.0** (publié par task-303 ; `client-blazor` bumpé depuis 454.0.0)
+
+#### Ce que l'US ferme
+
+task-303 avait rendu la boîte **sélectionnable** côté serveur. Rien ne le montrait :
+pour le médecin, rien n'avait changé. C'est exactement ce que la règle 11 appelle de
+la plomberie, et c'est pourquoi ses PRs portaient `awaiting-us-completion`.
+
+task-304 est la moitié visible. Elle retire des trois fronts le dernier endroit où
+« un compte = une boîte » était encore gravé : **la lecture du claim**.
+
+#### Le claim disparaît des trois fronts
+
+| Front | Avant | Après |
+|---|---|---|
+| `client-blazor` | `AuthService.ExtractMssEmailFromJwt` → `UserSessionService.UserEmail` → en-tête `Client-Email` | `MailboxSessionService` tient la boîte ouverte ; `AccountService` la lit. `AuthService` n'établit plus que l'**identité** (nom, RPPS) |
+| `client-angular` | `mssHeadersInterceptor` lisait `jwtDecoded.mssEmail` et `jwtDecoded.sid` | l'intercepteur lit `MailboxSessionStore` ; `IJsonWebTokenPayload.mssEmail` **retiré du type** |
+| `client-mobile` | `sessionFromTokenAggregate` dérivait `mssEmail` ; `needsMssOnboarding` en décidait l'onboarding | la session ne porte plus que `practitionerName` / `rpps` ; `mailboxGuard` interroge le **registre** |
+
+`Client-Session-Id` cesse par ailleurs d'être la claim `sid` côté Angular : c'est un
+identifiant **applicatif**, tiré au login et rotaté à chaque bascule — comme le mobile
+le faisait déjà depuis task-282.
+
+#### La table de décision à sept états
+
+Deux entrées seulement — la session porte-t-elle un jeton PSC, et combien de boîtes
+sélectionnables — et un écran par issue. Elle est implémentée **une fois par front**,
+et couverte **par un test par cas et par front** : c'est une table de décision, pas
+une liste d'exemples.
+
+Le cas **1** est le cas neuf : compte Keycloak authentifié, zéro boîte, pas de jeton
+PSC. Jusqu'ici le claim garantissait qu'une session authentifiée avait toujours une
+boîte ; ce n'est plus vrai. Ce n'est ni une erreur ni un blocage — c'est l'état normal
+d'un compte qui n'a pas encore joué l'onboarding, et l'écran `mailbox-psc-required`
+l'explique sans afficher la moindre erreur technique, **sans aucun formulaire** (la
+sonde XOAUTH2 ne peut pas aboutir sans jeton PSC : offrir un champ ne mènerait qu'à un
+échec après saisie).
+
+Le cas **6** porte l'exigence hors ligne, et son arbitrage mérite d'être consigné.
+La question posée le 2026-09-13 était : hors ligne avec un défaut, faut-il afficher
+l'écran de sélection ? Il rendrait la lecture seule visible **avant** toute tentative
+d'écriture, là où l'ouverture directe laisse le praticien découvrir la dégradation en
+cliquant sur « Répondre ». **La fluidité l'a emporté** — et la conséquence est non
+négociable : le bandeau « Hors ligne — lecture locale » est **présent au premier
+rendu**, persistant, au-dessus de la liste, jamais un toast ; les commandes d'écriture
+sont grisées **et visibles** dès l'ouverture.
+
+#### La bascule est une fin de session, pas un changement d'en-tête
+
+```
+gel + annulation des requêtes en vol + fermeture SSE
+  → POST /sync/logout AVEC LES EN-TÊTES DE LA SESSION SORTANTE
+    → purge totale de l'état
+      → NOUVEL identifiant de session + nouvelle boîte
+        → réabonnement SSE ?mailbox= + chargement
+```
+
+Chaque étape rend la suivante sûre. Annuler avant de fermer évite qu'une réponse de la
+boîte sortante peuple l'interface de l'entrante ; fermer **avec les anciens en-têtes**
+est la seule façon pour le backend de savoir quelle session fermer ; purger avant de
+tirer le nouvel identifiant garantit qu'aucun écran ne se peint avec un état mixte.
+Exécuter ces étapes dans un autre ordre ne dégrade pas la bascule, **elle la casse** —
+d'où un test d'**ordre** par front, qui échoue si une étape bouge ou disparaît.
+
+La rotation de l'identifiant n'est pas une hygiène. Le backend lie un
+`Client-Session-Id` à la première boîte qu'il a ouverte et refuse en 409
+`SESSION_MAILBOX_MISMATCH` le même identifiant présenté avec une autre : c'est ce qui
+empêche une bascule de laisser un pool IMAP orphelin. Un 409 reçu **après** une bascule
+est donc un défaut de front — journalisé en **erreur**, jamais avalé.
+
+#### La purge est énumérée, pas écrite en dur
+
+Le point qui décide si « rien de la boîte sortante ne survit » reste vrai dans six
+mois. Les trois fronts exposent une **liste de porteurs d'état** résolue depuis le
+conteneur — `IMailboxScopedState` (Blazor), `MSS_RESETTABLE_STORES` (Angular),
+`MAILBOX_SCOPED_STATES` (mobile) — que la bascule réinitialise tous sans en connaître
+un seul. Un service ajouté plus tard qui oublie de s'y inscrire est le mode d'échec
+attendu, et il est explicite.
+
+Côté mobile, la liste est **vide et documentée** : l'état de boîte y vit dans les
+pages, détruites par la navigation qui suit chaque bascule. Le tableau vide n'est pas
+un oubli — c'est ce qui rend l'ajout d'un futur service racine explicite.
+
+#### La clôture est partagée avec la déconnexion
+
+`closeMailboxSession()` est **extraite** de `LogoutService` (mobile) et
+`SyncProgressService.LogoutCleanupAsync` **réutilisée** (Blazor) plutôt que
+réimplémentées. Une boîte quittée se ferme toujours de la même façon, qu'on se
+déconnecte ou qu'on change de messagerie. En écrire une seconde version aurait garanti
+qu'elles divergent.
+
+Un échec de cette clôture est journalisé et **ne bloque pas** la bascule : le serveur a
+son propre filet d'expiration, et emprisonner le praticien sur l'ancienne boîte serait
+le pire des deux maux.
+
+#### Les erreurs en cours de session deviennent une reprise
+
+`Mss403Handler` cessait d'expliquer et se met à **reprendre**. Une boîte détachée
+depuis un autre poste, ou qui cesse de correspondre à l'identité PSC pendant que le
+praticien travaille, déclenche un rechargement de la liste puis une bascule vers le
+défaut compatible — pas un message sur un état que le praticien n'a pas provoqué.
+
+#### Deux constats portés au HAG
+
+**1. Lacune du contrat task-303.** `AttachMailbox` rend `Problem(409, …)` pour « déjà
+rattachée » **et** pour « identité non concordante », **sans code machine** — alors que
+les 403 d'appartenance portent le leur dans `instance`. Les trois fronts ne peuvent pas
+les distinguer autrement qu'en lisant le message, ce que la règle 12 proscrit. Ils
+affichent donc le `detail` du serveur tel quel plutôt que de deviner. Le correctif est
+d'une ligne côté `api-mail`, hors `**Repos**:` de cette task (règle 6) ; **la PR #236
+de task-303 est encore ouverte** et c'est l'endroit naturel pour le poser.
+
+**2. `Tools/visual-verify/` absent du poste.** Le harnais de capture Playwright n'est
+pas versionné — `.gitignore` exclut `Tools/` en bloc et ne réintroduit que
+`Tools/timing/`. Les quatre critères « Outillage visuel » de la DOD restent donc non
+satisfaits, et `Docs/epics/img/screens/client-mobile/mss-setup.png` /
+`mss-unconfigured.png` documentent désormais des écrans **supprimés**. Le premier geste
+au retour du harnais n'est pas une capture mais la fixture `mailboxes.json` : le mock
+rend `[]` sur tout `GET` non mappé, donc sans elle **toute la galerie mobile
+deviendrait l'écran d'onboarding**. Détail et options : `questions/task-304.md`.
+
+#### Qualité
+
+- `/sonar` **skippé** — `api-mail` non touché.
+- `/lint-angular` : **57 → 0 erreur** en 2 itérations. L'auto-fixer a corrigé 55
+  `prettier/prettier` mais inséré **23 squelettes JSDoc vides** — il satisfait la règle
+  sans rien documenter. Repris à la main, et gravé dans `conventions/angular.md` :
+  écrire le JSDoc en même temps que la méthode, ne jamais s'en remettre à `--fix`.
+- `/lint-mobile` : **« All files pass linting »** dès la baseline, 0 itération.
+- Revue de code : **APPROVED**, avec deux fragilités corrigées au passage — un
+  `First()` qui levait si l'invariant de la table de décision évoluait, et un verrou
+  `_opening` jamais relâché qui laissait « Ouvrir » grisé après un échec.
+
+**Coût du cycle mesuré** : 1 h 14 min — 26 builds (3 min 52 s), 23 suites (3 min 54 s).
+
+---
 
 ### v1.4 — task-303 : la boîte MSSanté devient une sélection (`api-mail`, `dtos-mss`)
 
@@ -741,8 +883,8 @@ en `foreach`). **184 tests verts avant comme après.**
 | task-299 | Registre des tenants : comptes (`sub` Keycloak + RPPS), messageries, **tenants** (compte × messagerie, porteurs de la base isolée et de `TenantId`), horodatages de connexion et dormance. Contrat `ITenantRegistryClient` et implémentation Postgres dans `api-mail` — **le contrat a quitté le SDK à la révision du 13/09** | `api-mail` (`sdk` : CI seulement) | ✅ **done** (PR Sdk#3, Api.Mail#233) |
 | task-300 | Journal d'audit en base commune : table partitionnée par mois, `TenantId` = id du **tenant**, RLS + rôles lecture/écriture séparés, purge planifiée s'appuyant sur `AuditRetentionPolicy.FamilyOf`, lecture double source transitoire | `api-mail` | ✅ **mergée** (`ff6332f7`) |
 | task-301 | Reprise de l'historique d'audit à débit borné (≤ 4 bases simultanées), vérification par comptage par tenant, puis retrait de la lecture double source par tenant. **Retrait de la configuration morte reporté** — écart assumé, le chemin hérité vit encore comme filet (cf. v1.3) | `api-mail` | ✅ **done** (PR Api.Mail#235, en attente de merge) |
-| task-303 | Vague 1 multi-BAL : la boîte devient une sélection par requête validée contre le registre **et** l'identité PSC ; disparition des claims `mssEmail`/`mssSub`/`mssRpps` ; bascule = fin de session + nouvelle session (garde `SESSION_MAILBOX_MISMATCH`) ; `AuditActionType` + 5 membres | `api-mail`, `dtos-mss` | ✅ **done** (PR Api.Mail#236, Dtos.Mss#32 — `awaiting-us-completion`, règle 11) |
-| task-304 | Vague 2 multi-BAL : onboarding par le registre, écran de sélection, avatar → sélecteur, gestion des comptes, purge totale de l'état à la bascule — parité Blazor / Angular / mobile. Inclut la remise à niveau de l'outillage de capture visuelle | `client-blazor`, `client-angular`, `client-mobile` | 🔜 todo |
+| task-303 | Vague 1 multi-BAL : la boîte devient une sélection par requête validée contre le registre **et** l'identité PSC ; disparition des claims `mssEmail`/`mssSub`/`mssRpps` ; bascule = fin de session + nouvelle session (garde `SESSION_MAILBOX_MISMATCH`) ; `AuditActionType` + 5 membres | `api-mail`, `dtos-mss` | ✅ **done** (PR Api.Mail#236, Dtos.Mss#32 — **`awaiting-human-merge`** depuis task-304 : la US est complète) |
+| task-304 | Vague 2 multi-BAL : onboarding par le registre, écran de sélection, avatar → sélecteur, gestion des comptes, purge totale de l'état à la bascule — parité Blazor / Angular / mobile. **L'outillage de capture visuelle n'a pas pu être remis à niveau** : `Tools/visual-verify/` n'est pas versionné et donc absent du poste (cf. `questions/task-304.md`) | `client-blazor`, `client-angular`, `client-mobile` | ✅ **done** (PR Client#74, Mobile#70 — `awaiting-human-merge` ; Angular en code-only) |
 | task-305 | **Le SDK redevient backend-only** : retrait de la référence morte dans `client-blazor`, déclaration explicite de `Markdig`, retrait de l'enregistrement Redis inerte, garde-fou anti-récidive | `client-blazor` | ✅ done |
 | task-306 | Banc de charge multi-BAL : dimension « boîtes par compte » (défaut 1, iso E015), parcours avec bascule réelle (`/sync/logout` + rotation de session), restitution du coût de bascule et de la résolution de registre | `api-mail` | 🔜 todo |
 

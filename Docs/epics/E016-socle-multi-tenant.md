@@ -84,10 +84,10 @@ augmente.
 
 | Fonctionnalité | Ce que le praticien peut faire | Tasks | Statut |
 |---|---|---|---|
-| **Plusieurs messageries, une seule connexion** | Retrouver, après une authentification unique, toutes les messageries qui relèvent de son identité professionnelle | task-303 | 🟡 Backend livré — **le médecin ne le voit pas encore** (task-304) |
-| **Changer de messagerie en direct** | Cliquer sur son avatar et ouvrir une autre de ses messageries : l'écran se vide et se recharge sur la nouvelle boîte, sans reconnexion | task-304 | 🔜 À faire |
-| **Rattacher sa première messagerie** | Entrer son adresse dès le premier accès et travailler immédiatement, sans se déconnecter ni se reconnecter | task-304 | 🔜 À faire |
-| **Gérer ses messageries** | Ajouter une messagerie, en détacher une, désigner celle qui s'ouvre par défaut, comprendre pourquoi l'une est indisponible | task-304 | 🔜 À faire |
+| **Plusieurs messageries, une seule connexion** | Retrouver, après une authentification unique, toutes les messageries qui relèvent de son identité professionnelle | task-303, task-304 | 🟡 Complète en code — **4 PRs en attente de merge** |
+| **Changer de messagerie en direct** | Cliquer sur son avatar et ouvrir une autre de ses messageries : l'écran se vide et se recharge sur la nouvelle boîte, sans reconnexion | task-304 | 🟡 Complète en code — PR ouverte |
+| **Rattacher sa première messagerie** | Entrer son adresse dès le premier accès et travailler immédiatement, sans se déconnecter ni se reconnecter | task-304 | 🟡 Complète en code — PR ouverte |
+| **Gérer ses messageries** | Ajouter une messagerie, en détacher une, désigner celle qui s'ouvre par défaut, comprendre pourquoi l'une est indisponible | task-304 | 🟡 Complète en code — PR ouverte |
 | **Conservation appliquée à tous les comptes** | Être assuré que les durées d'effacement s'appliquent aussi aux comptes qui ne servent plus, y compris à ceux d'un praticien qui a quitté le service | task-299 | ✅ Livrée |
 | **Traçabilité des accès à l'échelle du parc** | Consulter l'historique de ses propres accès, sans que la croissance du parc n'en dégrade la tenue | task-300, task-301 | 🟡 Complète en code — écriture **mergée**, reprise de l'historique en attente de merge |
 | **Accès des équipes sécurité à la traçabilité** | *(indisponible — en attente d'arbitrage : voir §7)* | — | ⛔ Bloquée |
@@ -103,6 +103,8 @@ Le parcours du médecin, de la connexion au changement de messagerie :
 ```mermaid
 flowchart TD
     A[Le médecin s'authentifie avec son identité professionnelle] --> B{Des messageries<br/>sont-elles rattachées ?}
+    B -->|Aucune, et pas de Pro Santé Connect| Z[Écran d'explication :<br/>rattacher exige Pro Santé Connect]
+    Z --> A
     B -->|Aucune| C[Parcours de rattachement :<br/>il saisit son adresse]
     C --> D[L'opérateur valide — la messagerie s'ouvre<br/>sans reconnexion]
     B -->|Une messagerie par défaut| E[Sa messagerie habituelle<br/>s'ouvre directement]
@@ -125,6 +127,17 @@ Deux points structurent ce parcours :
 - **Le changement de messagerie est une rupture nette.** Tout ce qui était affiché
   disparaît avant que la nouvelle messagerie ne se charge : messages, tableau de
   bord, dossiers patients, signature. Rien ne subsiste d'une boîte à l'autre.
+- **Un compte sans messagerie n'est pas un compte en panne.** Depuis task-304, le
+  médecin qui se connecte sans qu'aucune messagerie ne lui soit rattachée voit un
+  écran qui l'explique et propose la seule action utile — et non un blocage. S'il
+  s'est connecté sans Pro Santé Connect, l'écran le dit sans lui offrir un
+  formulaire qui échouerait de toute façon : c'est l'opérateur de messagerie qui
+  valide le rattachement, et il exige cette identité.
+- **Hors ligne, le médecin lit ses messages.** Sans Pro Santé Connect, sa messagerie
+  habituelle s'ouvre quand même, directement, et un bandeau permanent annonce la
+  lecture seule dès le premier écran. Écrire, répondre ou classer sont visiblement
+  désactivés — jamais masqués, pour qu'il sache que la fonction existe et pourquoi
+  elle ne répond pas.
 
 ---
 
@@ -193,33 +206,38 @@ Deux points structurent ce parcours :
 
 ---
 
-## État de couverture (2026-09-14, nuit)
+## État de couverture (2026-09-13)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
-| Plusieurs messageries, une seule connexion | 🟡 Backend livré | 50 % | task-303 (PR ouverte, `awaiting-us-completion`) |
-| Changer de messagerie en direct | 🔜 À faire | 0 % | task-304 |
-| Rattacher sa première messagerie | 🔜 À faire | 0 % | task-304 |
-| Gérer ses messageries | 🔜 À faire | 0 % | task-304 |
+| Plusieurs messageries, une seule connexion | 🟡 Complète en code | 90 % | task-303 + task-304 (4 PRs, `awaiting-human-merge`) |
+| Changer de messagerie en direct | 🟡 Complète en code | 90 % | task-304 (PRs ouvertes) |
+| Rattacher sa première messagerie | 🟡 Complète en code | 90 % | task-304 (PRs ouvertes) |
+| Gérer ses messageries | 🟡 Complète en code | 90 % | task-304 (PRs ouvertes) |
 | Conservation appliquée à tous les comptes | ✅ Livrée | 100 % | task-299 |
 | Traçabilité des accès à l'échelle du parc | 🟡 Quasi complète | 90 % | task-300 (**mergée**), task-301 (PR ouverte) |
 | Accès des équipes sécurité à la traçabilité | ⛔ Bloquée | 0 % | — |
 | Réactivité vérifiée en multi-messagerie | 🔜 À faire | 0 % | task-306 |
 | Application allégée au poste | ✅ Livrée | 100 % | task-305 |
 
-**Couverture EPIC consolidée : 38 %** (2 fonctionnalités livrées sur 9, 2 partielles,
-1 bloquée en attente d'arbitrage, 4 à faire). Le socle est posé — la plateforme sait de
-quoi son parc est fait, la ligne « traçabilité » est entièrement écrite, et le backend
-multi-messageries l'est désormais aussi.
+**Couverture EPIC consolidée : 68 %** (2 fonctionnalités livrées sur 9, 5 complètes en
+code et en attente de merge, 1 bloquée en attente d'arbitrage, 1 à faire). Le socle est
+posé, et la ligne multi-messageries est désormais **entièrement écrite, du registre
+jusqu'aux écrans**.
 
-> **Pourquoi « Plusieurs messageries » est à 50 % et non à 100 %.** Tout le mécanisme
-> existe côté serveur : un praticien peut rattacher plusieurs boîtes, le backend valide
-> chaque sélection contre le registre et contre son identité PSC, et une bascule ferme
-> proprement la session de boîte précédente. Mais **aucun écran ne le montre encore** —
-> ni sélecteur, ni bascule à l'avatar, ni écran de gestion. Pour le médecin, rien n'a
-> changé : c'est exactement ce que la règle 11 appelle de la plomberie, et c'est
-> pourquoi la PR porte `awaiting-us-completion` au lieu d'attendre un merge. La moitié
-> restante est **task-304**, et le test humain se fera sur la US assemblée.
+> **Pourquoi les quatre fonctionnalités multi-messageries sont à 90 % et non à 100 %.**
+> Elles sont **entièrement écrites** : le backend valide chaque sélection contre le
+> registre et contre l'identité PSC (task-303), et les trois fronts portent désormais
+> l'onboarding, le choix à la connexion, la bascule à l'avatar et la gestion des
+> comptes (task-304). Ce qui manque n'est pas du code : c'est le **merge**, et il est
+> précédé d'un test humain sur la **US assemblée** — c'est la règle 11 qui l'exige, et
+> c'est pourquoi les PRs des deux vagues ont basculé ensemble en
+> `awaiting-human-merge` plutôt qu'une par une.
+>
+> Un point reste ouvert et n'a pas pu être traité dans cette US : les **captures des
+> quatre écrans mobiles** n'ont pas été produites, le harnais de vérification visuelle
+> n'étant pas versionné et donc absent du poste. La galerie porte encore deux captures
+> d'écrans supprimés. Voir `questions/task-304.md`.
 
 > **Le 10 % manquant n'est pas du code.** La reprise se joue sur le parc réel, une nuit,
 > sous surveillance, puis se vérifie tenant par tenant avant toute suppression. Compter
