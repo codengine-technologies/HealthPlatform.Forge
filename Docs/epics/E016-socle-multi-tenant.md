@@ -2,7 +2,7 @@
 
 > **Statut** : 🟡 En cours
 > **Modèle** : task-driven
-> **Version** : 1.2
+> **Version** : 1.3
 > **Auteur** : PO forge
 > **Audience** : PO, médecin, direction produit, conformité — la vue ingénierie vit dans [E016-Changelogs.md](E016-Changelogs.md)
 > **Dernière mise à jour** : 2026-09-13
@@ -89,7 +89,7 @@ augmente.
 | **Rattacher sa première messagerie** | Entrer son adresse dès le premier accès et travailler immédiatement, sans se déconnecter ni se reconnecter | task-304 | 🔜 À faire |
 | **Gérer ses messageries** | Ajouter une messagerie, en détacher une, désigner celle qui s'ouvre par défaut, comprendre pourquoi l'une est indisponible | task-304 | 🔜 À faire |
 | **Conservation appliquée à tous les comptes** | Être assuré que les durées d'effacement s'appliquent aussi aux comptes qui ne servent plus, y compris à ceux d'un praticien qui a quitté le service | task-299 | ✅ Livrée |
-| **Traçabilité des accès à l'échelle du parc** | Consulter l'historique de ses propres accès, sans que la croissance du parc n'en dégrade la tenue | task-300, task-301 | 🟡 Partiellement — écriture livrée (PR ouverte), reprise de l'historique à faire |
+| **Traçabilité des accès à l'échelle du parc** | Consulter l'historique de ses propres accès, sans que la croissance du parc n'en dégrade la tenue | task-300, task-301 | 🟡 Complète en code — écriture **mergée**, reprise de l'historique en attente de merge |
 | **Accès des équipes sécurité à la traçabilité** | *(indisponible — en attente d'arbitrage : voir §7)* | — | ⛔ Bloquée |
 | **Réactivité vérifiée en multi-messagerie** | Bénéficier d'un service dont la réactivité a été mesurée avec plusieurs messageries par praticien | task-306 | 🔜 À faire |
 | **Application allégée au poste** | Recevoir une application débarrassée de composants qui ne lui servaient pas | task-305 | ✅ Livrée |
@@ -193,7 +193,7 @@ Deux points structurent ce parcours :
 
 ---
 
-## État de couverture (2026-09-14)
+## État de couverture (2026-09-14, soir)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
@@ -202,15 +202,19 @@ Deux points structurent ce parcours :
 | Rattacher sa première messagerie | 🔜 À faire | 0 % | task-304 |
 | Gérer ses messageries | 🔜 À faire | 0 % | task-304 |
 | Conservation appliquée à tous les comptes | ✅ Livrée | 100 % | task-299 |
-| Traçabilité des accès à l'échelle du parc | 🟡 Partielle | 60 % | task-300 (PR ouverte), task-301 |
+| Traçabilité des accès à l'échelle du parc | 🟡 Quasi complète | 90 % | task-300 (**mergée**), task-301 (PR ouverte) |
 | Accès des équipes sécurité à la traçabilité | ⛔ Bloquée | 0 % | — |
 | Réactivité vérifiée en multi-messagerie | 🔜 À faire | 0 % | task-306 |
 | Application allégée au poste | ✅ Livrée | 100 % | task-305 |
 
-**Couverture EPIC consolidée : 29 %** (2 fonctionnalités livrées sur 9, 1 partielle en
-attente de merge, 1 bloquée en attente d'arbitrage, 5 à faire). Le socle est posé — la
-plateforme sait de quoi son parc est fait — et le premier usage concret de ce savoir,
-le journal d'audit mutualisé, est en attente de validation humaine.
+**Couverture EPIC consolidée : 32 %** (2 fonctionnalités livrées sur 9, 1 quasi complète,
+1 bloquée en attente d'arbitrage, 5 à faire). Le socle est posé — la plateforme sait de
+quoi son parc est fait — et la ligne « traçabilité » est désormais **entièrement écrite** :
+le journal mutualisé est sur `develop`, la reprise de l'historique attend son merge.
+
+> **Le 10 % manquant n'est pas du code.** La reprise se joue sur le parc réel, une nuit,
+> sous surveillance, puis se vérifie tenant par tenant avant toute suppression. Compter
+> cette fonctionnalité « livrée » avant ce passage serait confondre *écrit* et *fait*.
 
 > **Lecture du 🟡** : la PR de task-300 est ouverte et attend le merge humain (HAG,
 > règle 10). Rien n'est compté « livré » avant ce merge : c'est la seule barrière de
@@ -241,6 +245,13 @@ le journal d'audit mutualisé, est en attente de validation humaine.
   secondaire de conformité : les durées d'effacement peuvent enfin s'appliquer aussi
   aux comptes qui ne servent plus, ce qui n'était pas possible tant qu'aucun balayage
   d'ensemble n'existait.
+- **L'historique déjà écrit rejoint le nouveau journal, sans que le praticien voie quoi que
+  ce soit** (task-301, *en attente de merge*). Les traces accumulées dans l'espace de chaque
+  médecin sont recopiées vers l'espace commun, **vérifiées une à une par comptage**, puis
+  seulement alors considérées comme reprises. Pendant toute l'opération, l'écran d'audit
+  continue d'afficher l'historique complet — un test vérifie qu'il rend *exactement* le même
+  contenu avant et après. L'ancienne copie n'est supprimée qu'après une vérification humaine
+  explicite : **on ne supprime pas une preuve le jour où on la recopie.**
 - **L'application transmise au poste du praticien s'est allégée** (task-305). Des
   composants qui n'y servaient à rien — dont un client de cache réseau — y étaient
   embarqués par une dépendance devenue inutile. Ils en sont retirés, et un garde-fou

@@ -204,11 +204,117 @@ même endroit.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /develop | ok | 16 min 53 s | — | — | — | — |
-| /sonar | skipped | 2.8 s | — | — | — | hors périmètre (api-mail tests seuls) |
-| /lint-angular | skipped | 2.4 s | — | — | — | hors périmètre (api-mail tests seuls) |
-| /lint-mobile | skipped | 2.2 s | — | — | — | hors périmètre (api-mail tests seuls) |
-| /verify-visual | skipped | 2.0 s | — | — | — | hors périmètre (api-mail tests seuls) |
-| /review | ok | 3 min 21 s | — | 1 (0.9 s) | — | api-mail 0B/1T |
-| /tech-writer | ok | 42 s | — | — | — | — |
+| /sonar | ok | 17 min 04 s | — | — | — | 2 itération(s) |
+| /lint-angular | skipped | 2.4 s | — | — | — | non touche par task-301 (Repos: api-mail) |
+| /lint-mobile | skipped | 2.3 s | — | — | — | non touche par task-301 (Repos: api-mail) |
+| /verify-visual | skipped | 2.2 s | — | — | — | non touche par task-301 (Repos: api-mail) |
+| /review | ok | 4 min 59 s | — | 1 (0.9 s) | — | api-mail 0B/1T |
+| /tech-writer | ok | 1 min 24 s | — | — | — | — |
 | /start | ok | 56 s | — | — | — | — |
-| **Total cycle** | | **22 min 03 s** | **0 (0.0 s)** | **1 (0.9 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **41 min 25 s** | **0 (0.0 s)** | **1 (0.9 s)** | **0 (0.0 s)** | |
+
+## Sonar log
+
+**2 itérations** (scan initial + scan de vérification après correction).
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline (fin de task-300) | Final | Δ |
+|---|---|---|---|
+| **Quality Gate (new code)** | ERROR | ERROR | = |
+| `new_violations` | 167 – 170 * | **168** | ≈ 0 |
+| `new_bugs` | 2 | 2 | = |
+| `new_vulnerabilities` | 2 | 2 | = |
+| `new_code_smells` | 166 | 164 | −2 |
+| `new_coverage` | 88,2 % | 88,1 % | −0,1 |
+| Coverage projet | 88,1 % | 88,0 % | −0,1 |
+| Duplication | 0,4 % | 0,4 % | = |
+| Reliability / Security / Maintainability | 3,0 / 5,0 / 1,0 | 3,0 / 5,0 / 1,0 | = |
+
+> \* **Deux sources, deux chiffres, et il faut le dire.** L'API `measures` rendait
+> 170 en fin de task-300 quand l'API `issues` en comptait 167 ouvertes. L'écart est
+> un décalage d'indexation, pas une divergence de fond — la même chose s'est
+> reproduite ici : la requête faite juste après le scan listait encore une `CA1822`
+> déjà corrigée, absente d'une requête faite une minute plus tard. **Le compte
+> d'issues ouvertes fait foi**, le snapshot de mesures traîne.
+
+### Ce que task-301 a introduit : **0**
+
+Vérifié issue par issue via l'API, sur les **8 fichiers créés** (options, contrat,
+`record` de rapport, service d'orchestration, service hébergé, magasin Postgres,
+migration, tests) : **aucune issue ouverte**.
+
+### Corrigé pendant cette étape (3 issues, toutes attribuables)
+
+| Règle | Où | Fait |
+|---|---|---|
+| `S138` | `AddApplication` | Mes trois lignes d'enregistrement la poussaient de **97 à 100 lignes**. Extraites dans `AddAuditBackfill()` — ce qui a sa propre valeur : la reprise est un chantier temporaire, et la retirer sera une suppression d'appel, pas une chirurgie dans une méthode de cent lignes. |
+| `CA1822` | `AuditDualSourceReadTests.ReadAllAsync` | `static` — le helper n'accède à aucun état d'instance. |
+| `xUnit2033` | `TenantRegistryIntegrationTests` | Valeur **rendue** par `Assert.Single` au lieu de re-indexer. |
+
+### Appliqué sans y être forcé : `S4457`
+
+Les trois méthodes publiques `async` de `PostgresAuditBackfillStore` qui valident
+leurs arguments sont passées à la forme « méthode non-`async` qui délègue à un
+`…CoreAsync` privé ». **Sonar ne les avait pas signalées** — mais la convention
+s'applique, et son compteur a été incrémenté une heure plus tôt pour exactement ce
+motif. Mieux vaut l'appliquer spontanément que d'ajouter une troisième récidive.
+
+### Security hotspots (`new_security_hotspots_reviewed` 83,3 % ⇒ ERROR)
+
+Inchangés : les 2 hotspots à revoir sont toujours dans
+`tests/loadtest-k6/test_report_session_lock_regime.py` (URLs `http://localhost`
+d'un test Python du banc, task-298). **Hors périmètre de cette US.**
+
+## Lint log
+
+**`/lint-angular`, `/lint-mobile`, `/verify-visual` : skips propres.** `**Repos**: api-mail`
+— aucune ligne d'Angular ni d'Ionic, aucun écran touché. US strictement backend
+(reprise d'historique, migration, service hébergé).
+
+---
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/235
+  — label `awaiting-human-merge`.
+- `dtos-mss` : **aucune PR** — branche auto-incluse, **0 commit** (aucune route, aucun contrat
+  de fil touché).
+- `client-blazor` / `client-angular` / `client-mobile` : **non concernés** — US strictement
+  backend d'exploitation.
+
+## Code Review Summary
+
+**APPROVED** — 22 fichiers revus, **1 écart de DOD trouvé et comblé avant la PR**, 0 blocage
+restant.
+
+### L'écart comblé : le verrou de suppression était procédural
+
+La DOD demande que la suppression de la table héritée soit « appliquée **uniquement** aux
+tenants marqués repris et vérifiés ». Le mécanisme existait
+(`IAuditBackfillStore.DropLegacyTableAsync`), mais la garde vivait dans le **runbook**, pas
+dans le code.
+
+Sur une opération **irréversible** portant sur une source de traçabilité PGSSI-S, ce n'est
+pas suffisant. La signature prend désormais le **tenant** — et non le seul nom de base —
+pour relire `audit_backfilled_at` et **refuser** si la marque est absente. Test bloquant
+dans les deux sens : refus sans marque, acceptation une fois posée.
+
+### Ce que la revue a confirmé
+
+| Point | Verdict |
+|---|---|
+| Ordre compter → copier → **vérifier** → marquer | ✅ marquer avant de vérifier ferait perdre de l'historique en silence |
+| Isolement des échecs par tenant | ✅ sur mille bases, s'arrêter au premier incident = ne jamais finir |
+| Curseur déterministe (`ORDER BY "Id"`) | ✅ deux passes voient le même ordre, donc reprise sûre |
+| Route directe hors pooler | ✅ motif task-200, plan de contrôle |
+| `Application Name=mss-mail-backfill` | ✅ convention task-298, attribution sans devinette |
+| Aucune donnée de santé dans les journaux | ✅ testé sur le chemin de **panne**, celui qui fuit |
+
+### Suggestions non bloquantes
+
+- `AuditBackfillService` énumère le registre page par page et traite chaque page avant la
+  suivante. Un flux continu serait légèrement plus régulier — mais le gain est nul face au
+  plafond de concurrence, qui est la vraie borne.
+- `CountServerConnectionsAsync` compte **toutes** les connexions du serveur, pas seulement
+  celles de la reprise. C'est voulu : le garde-fou protège le serveur, pas la reprise.

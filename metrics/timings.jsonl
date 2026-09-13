@@ -879,6 +879,7 @@
 {"ts":"2026-09-13T20:54:31+02:00","run_id":"-","type":"cmd","task":"task-303","step":"develop","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln","duration_ms":96313,"exit_code":1}
 {"ts":"2026-09-13T21:00:49+02:00","run_id":"-","type":"step","task":"task-303","step":"develop","status":"ok","note":"implementation complete : registre, regle PSC, bascule middleware, migration heritee, 4 endpoints, SSE, garde de session, bypass; no start marker","iterations":null,"duration_ms":null}
 {"ts":"2026-09-13T21:08:15+02:00","run_id":"-","type":"step","task":"task-301","step":"develop","status":"ok","note":"","iterations":null,"duration_ms":1013493}
+{"ts":"2026-09-13T21:08:37+02:00","run_id":"-","type":"step_start","task":"task-301","step":"sonar"}
 {"ts":"2026-09-13T21:09:47+02:00","run_id":"-","type":"cmd","task":"task-303","step":"develop","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln","duration_ms":96431,"exit_code":0}
 {"ts":"2026-09-13T21:10:34+02:00","run_id":"-","type":"step","task":"task-303","step":"develop","status":"ok","note":"implementation complete, 4495 tests verts; no start marker","iterations":null,"duration_ms":null}
 {"ts":"2026-09-13T21:11:13+02:00","run_id":"-","type":"step_start","task":"task-303","step":"sonar"}
@@ -887,5 +888,16 @@
 {"ts":"2026-09-13T21:13:02+02:00","run_id":"-","type":"cmd","task":"task-303","step":"sonar","repo":"api-mail","kind":"build","label":"","cwd":"Api/Mail","cmd":"dotnet build HealthPlatform.Api.Mail.sln --configuration Release --verbosity quiet","duration_ms":16723,"exit_code":0}
 {"ts":"2026-09-13T21:17:57+02:00","run_id":"-","type":"cmd","task":"task-303","step":"sonar","repo":"api-mail","kind":"test","label":"coverage","cwd":"Api/Mail","cmd":"bash -c for p in tests/mss.mail.domain.tests/mss.mail.domain.tests.csproj tests/mss.mail.application.tests/mss.mail.application.tests.csproj tests/mss.mail.infrastructure.tests/mss.mail.infrastructure.tests.csproj tests/mss.mail.api.tests/mss.mail.api.tests.csproj tests/mss.mail.integration.tests/mss.mail.integration.tests.csproj; do dotnet test \"$p\" --configuration Release --collect:\"XPlat Code Coverage;Format=opencover\" --results-directory TestResults --logger \"console;verbosity=minimal\" 2>&1 | grep -E \"Passed!|Failed!\"; done","duration_ms":284547,"exit_code":0}
 {"ts":"2026-09-13T21:21:57+02:00","run_id":"-","type":"cmd","task":"task-303","step":"sonar","repo":"api-mail","kind":"scan","label":"","cwd":"Api/Mail","cmd":"dotnet sonarscanner end /d:sonar.token=squ_3d12609ce842961e3abb8e318bffd9c774add4ce","duration_ms":37476,"exit_code":0}
+{"ts":"2026-09-13T21:25:41+02:00","run_id":"-","type":"step","task":"task-301","step":"sonar","status":"ok","note":"","iterations":2,"duration_ms":1024220}
+{"ts":"2026-09-13T21:25:45+02:00","run_id":"-","type":"step_start","task":"task-301","step":"lint-angular"}
+{"ts":"2026-09-13T21:25:47+02:00","run_id":"-","type":"step","task":"task-301","step":"lint-angular","status":"skipped","note":"non touche par task-301 (Repos: api-mail)","iterations":null,"duration_ms":2458}
+{"ts":"2026-09-13T21:25:50+02:00","run_id":"-","type":"step_start","task":"task-301","step":"lint-mobile"}
+{"ts":"2026-09-13T21:25:53+02:00","run_id":"-","type":"step","task":"task-301","step":"lint-mobile","status":"skipped","note":"non touche par task-301 (Repos: api-mail)","iterations":null,"duration_ms":2307}
+{"ts":"2026-09-13T21:25:57+02:00","run_id":"-","type":"step_start","task":"task-301","step":"verify-visual"}
+{"ts":"2026-09-13T21:25:59+02:00","run_id":"-","type":"step","task":"task-301","step":"verify-visual","status":"skipped","note":"non touche par task-301 (Repos: api-mail)","iterations":null,"duration_ms":2221}
+{"ts":"2026-09-13T21:26:43+02:00","run_id":"-","type":"step_start","task":"task-301","step":"review"}
+{"ts":"2026-09-13T21:31:43+02:00","run_id":"-","type":"step","task":"task-301","step":"review","status":"ok","note":"","iterations":null,"duration_ms":299763}
+{"ts":"2026-09-13T21:32:13+02:00","run_id":"-","type":"step_start","task":"task-301","step":"tech-writer"}
+{"ts":"2026-09-13T21:33:38+02:00","run_id":"-","type":"step","task":"task-301","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":84412}
 {"ts":"2026-09-13T21:36:31+02:00","run_id":"-","type":"cmd","task":"task-303","step":"sonar","repo":"api-mail","kind":"scan","label":"","cwd":"Api/Mail","cmd":"dotnet sonarscanner end /d:sonar.token=squ_3d12609ce842961e3abb8e318bffd9c774add4ce","duration_ms":32208,"exit_code":0}
 {"ts":"2026-09-13T21:37:49+02:00","run_id":"-","type":"step","task":"task-303","step":"sonar","status":"ok","note":"1 bug corrige (fiabilite C->A), 48->41 smells neufs, QG ERROR sur 4 hotspots LOW pre-existants","iterations":2,"duration_ms":1595392}
