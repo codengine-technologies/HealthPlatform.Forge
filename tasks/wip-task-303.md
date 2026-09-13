@@ -631,3 +631,48 @@ poussait la PR `api-mail` au-delà du plafond de la règle 5.
 - **AIPD / impact RGPD** : **à mettre à jour** dans la continuité de task-299 — le compte peut
   désormais référencer plusieurs boîtes ; finalité inchangée ; les événements de rattachement /
   détachement sont journalisés ; le détachement n'entraîne aucune suppression immédiate
+
+## Develop log — avancement au 2026-09-13
+
+**Fait, commité et poussé** (branche `feat/task-303-comptes-multi-messageries`) :
+
+| Lot | Contenu | Tests |
+|---|---|---|
+| `dtos-mss` 474.0.0 | `MailboxDto` (selectable + capabilities), `AttachMailboxRequest`, 5 codes d'erreur, 5 membres `AuditActionType` (31-35) | contrat d'ordinaux gelé |
+| Registre à deux tables | migration `20260913180000`, `tenants` → `mss_accounts`, `mailboxes` supprimée, index unique `(account_id, mailbox_address)` | 26 verts (unit + archi + intégration reprise) |
+| Course perdue | `SaveIdempotentAsync` rend un booléen, l'appelant relit le gagnant — prérequis hérité de la revue de task-299 | test de concurrence sur vrai PostgreSQL |
+| Règle de compatibilité PSC | `MailboxCompatibility` (pure), `PscIdentity`, `MailboxAttachment` | **14 verts** — matrice complète |
+| Contrat registre | 8 opérations additives (Attach/Detach/SetDefault/Anchor/MarkAuthOutcome/ListMailboxes/GetMailbox) + implémentation Postgres | couvert par les précédents |
+| Journal d'audit | 5 évènements classés **techniques** (365 j et non 3 653) | 26 verts |
+| Résolution de boîte | `MailboxSelectionService`, `UserContextInfo.RegisteredDatabaseName` (le registre fait autorité sur le nom de base) | **11 verts** |
+
+**Reste à faire** — le câblage HTTP et ses tests :
+
+1. Middleware : compte par `sub` (piège `MapInboundClaims`), cross-check PSC sur
+   référence registre, `[MailboxNotRequired]`, traduction des verdicts en
+   `ProblemDetails`.
+2. `AccountController` : `GET/POST/DELETE /account/mailboxes`, `PUT …/default`
+   (sonde IMAP **puis** persistance, dans cet ordre).
+3. SSE `?mailbox=`, garde `Client-Session-Id` (Redis), `LegacyClaimsMigration`,
+   upsert d'annuaire sur le chemin bypass.
+4. Tests d'intégration par endpoint, tests de bascule, reprise de la suite task-048.
+
+## Branches
+
+- `api-mail` (pushed) : `feat/task-303-comptes-multi-messageries` — depuis `origin/develop` `142e0cd` (task-299 incluse)
+  https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-303-comptes-multi-messageries
+- `dtos-mss` (pushed, auto-incluse) : `feat/task-303-comptes-multi-messageries` — depuis `origin/develop` `f20f310`
+  https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-303-comptes-multi-messageries
+
+> Pré-vol : `api-mail`, `client-blazor`, `client-mobile`, `dtos-mss`, `sdk` tous sur `develop`, arbres propres.
+> `host` et `interop-cda` n'ont pas de dépôt sur ce poste — non mesurables (cf. avertissement CLAUDE.md).
+> Repère : le tag d'étape `palier-1000-stable-pre-E016` marque l'état **antérieur** à ce chantier.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-303 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 26 s | — | — | — | — |
+| **Total cycle** | | **26 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
