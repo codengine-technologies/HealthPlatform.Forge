@@ -420,9 +420,10 @@ capture produite, `Docs/epics/img/screens/client-mobile/` inchangé.
 - `client-blazor` : **délibérément non rebumpé** — task-305 a retiré sa référence au SDK, et
   `SdkReferenceGuardTests` échoue si elle revient.
 
-> **Ordre de merge** : le SDK **d'abord** (`api-mail` compile contre le paquet `14.0.0` déjà
-> publié, mais `develop` d'`api-mail` référencera une version dont le code source n'est sur
-> `develop` du SDK qu'après le merge de la PR #3).
+> ~~**Ordre de merge** : le SDK **d'abord**…~~ **Sans objet depuis la révision du 2026-09-13** :
+> `api-mail` est revenu à `13.0.0` et ne compile plus contre un paquet dont le code source serait
+> absent de `develop`. Les deux PRs étaient indépendantes ; le SDK a tout de même été mergé en
+> premier, par convention.
 
 ## Code Review Summary
 
@@ -541,3 +542,55 @@ verts, 0 échec, 16 ignorés** — dont **57 dédiés au registre** (26 au momen
 + **12 tests d'intégration contre un vrai PostgreSQL**).
 
 Commits : `api-mail` `02967676`, `sdk` `3e79ab3`.
+
+---
+
+## Merged — 2026-09-13
+
+Mergée par l'humain après attestation `--i-tested` (HAG, règle 10).
+
+| Repo | PR | Commit de squash | CI `develop` |
+|---|---|---|---|
+| `sdk` | [#3](https://github.com/codengine-technologies/HealthPlatform.Host.Sdk/pull/3) | `5ebb8c00` | ✅ vert (44 s) |
+| `api-mail` | [#233](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/233) | `142e0cd7` | ✅ vert (4 min 00 s) |
+| `dtos-mss` | — | aucune PR, **0 commit** | — |
+
+Branches distantes supprimées ; **branches locales conservées** (le drapeau
+`--delete-branch` de `gh` supprime aussi la locale — il n'est jamais utilisé ici).
+
+### Synchronisation avec `develop` avant merge — pas une formalité
+
+**task-298 a été mergée sur `develop` pendant task-299** (`18e899c6`), et elle modifie
+`src/Infrastructure/Repository/BaseRepository.cs` — le répertoire **singulier** que la
+restructuration de task-299 avait supprimé au profit de `Repositories/MailDb/`.
+
+Git a détecté le renommage et fusionné les 33 lignes d'attribution `Application Name` dans le
+nouveau chemin : les deux apports **coexistent** dans le fichier final — bornage
+`TypeFilterOptions` et verrou consultatif côté 299, `mss-mail-audit` / `mss-mail-provision`
+côté 298. Vérifié ligne à ligne avant de merger.
+
+Deux fichiers de test arrivés de task-298 ont dû être portés à la main, écrits contre les anciens
+espaces de noms (`mss.mail.infrastructure.Repository`, `mss.mail.Domain.Entities`) :
+`BaseRepositoryConnectionAttributionTests` et `AuditDrainConnectionCapTests`. Sans ce portage la
+branche ne compilait pas — le conflit était **invisible à git**, qui n'avait aucun conflit textuel
+à signaler sur des fichiers nouveaux.
+
+Suite complète sur la branche fusionnée : **4 430 tests verts, 0 échec, 16 ignorés**.
+
+### Note sur le message de squash du SDK
+
+GitHub a titré le squash d'après le **premier** commit de la branche
+(« feat(sdk): contrat TenantRegistry.V1 … »), ce qui décrit l'inverse de l'effet net : la PR
+**retire** ce contrat et ne laisse que l'élargissement du déclencheur CI. Vérifié sur `develop` :
+`Sdk/TenantRegistry/` n'existe pas. Cosmétique — pas de réécriture d'historique pour cela.
+
+### Reste ouvert après ce merge
+
+- **`devops`** : provisionner `mss_registry` et poser `TenantRegistry__ConnectionString` dans les
+  environnements déployés. Chaîne vide = registre **désactivé en silence** ; task-300 bâtirait
+  alors sur un registre vide.
+- **`questions/task-302.md`** : accès admin / sécurité au journal, en attente d'arbitrage humain
+  (aucun modèle de rôles dans `api-mail`).
+- **Prérequis hérité, dans la DOD de task-303** : `EnsureTenantAsync` ne relit pas après
+  `SaveIdempotentAsync`. Les tests d'intégration couvrent l'idempotence du chemin nominal, **pas**
+  la course perdue.
