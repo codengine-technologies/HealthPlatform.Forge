@@ -1109,3 +1109,14 @@
 {"ts":"2026-09-15T00:33:17+02:00","run_id":"-","type":"cmd","task":"task-312","step":"sonar","repo":"api-mail","kind":"test","label":"coverage","cwd":"Api/Mail","cmd":"dotnet test tests/mss.mail.api.tests/mss.mail.api.tests.csproj --configuration Release --collect:XPlat Code Coverage;Format=opencover --results-directory TestResults --logger console;verbosity=minimal","duration_ms":38216,"exit_code":0}
 {"ts":"2026-09-15T00:35:02+02:00","run_id":"-","type":"cmd","task":"task-312","step":"sonar","repo":"api-mail","kind":"test","label":"coverage","cwd":"Api/Mail","cmd":"dotnet test tests/mss.mail.integration.tests/mss.mail.integration.tests.csproj --configuration Release --collect:XPlat Code Coverage;Format=opencover --results-directory TestResults --logger console;verbosity=minimal","duration_ms":104859,"exit_code":1}
 {"ts":"2026-09-15T00:37:12+02:00","run_id":"-","type":"step","task":"task-312","step":"sonar","status":"ok","note":"","iterations":2,"duration_ms":1167381}
+{"ts":"2026-09-15T00:37:26+02:00","run_id":"-","type":"step_start","task":"task-312","step":"lint-angular"}
+{"ts":"2026-09-15T00:37:27+02:00","run_id":"-","type":"step","task":"task-312","step":"lint-angular","status":"skipped","note":"client-angular non touche (Repos: api-mail)","iterations":null,"duration_ms":497}
+{"ts":"2026-09-15T00:37:27+02:00","run_id":"-","type":"step_start","task":"task-312","step":"lint-mobile"}
+{"ts":"2026-09-15T00:37:28+02:00","run_id":"-","type":"step","task":"task-312","step":"lint-mobile","status":"skipped","note":"client-mobile non touche (Repos: api-mail)","iterations":null,"duration_ms":578}
+{"ts":"2026-09-15T00:37:29+02:00","run_id":"-","type":"step_start","task":"task-312","step":"verify-visual"}
+{"ts":"2026-09-15T00:37:29+02:00","run_id":"-","type":"step","task":"task-312","step":"verify-visual","status":"skipped","note":"aucun ecran mobile touche","iterations":null,"duration_ms":496}
+{"ts":"2026-09-15T00:37:39+02:00","run_id":"-","type":"step_start","task":"task-312","step":"review"}
+{"ts":"2026-09-15T00:37:52+02:00","run_id":"-","type":"cmd","task":"task-312","step":"review","repo":"api-mail","kind":"build","label":"","cwd":"Api/Mail","cmd":"dotnet build HealthPlatform.Api.Mail.sln -v q --nologo","duration_ms":5813,"exit_code":0}
+{"ts":"2026-09-15T00:39:31+02:00","run_id":"-","type":"cmd","task":"task-312","step":"review","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln --no-build -v q --nologo","duration_ms":92265,"exit_code":1}
+{"ts":"2026-09-15T00:40:29+02:00","run_id":"-","type":"cmd","task":"task-312","step":"review","repo":"api-mail","kind":"build","label":"","cwd":"Api/Mail","cmd":"dotnet build HealthPlatform.Api.Mail.sln -v q --nologo","duration_ms":2667,"exit_code":0}
+{"ts":"2026-09-15T00:41:57+02:00","run_id":"-","type":"step","task":"task-312","step":"review","status":"ok","note":"","iterations":null,"duration_ms":257866}

@@ -350,6 +350,35 @@ rend `9000/tcp -> 0.0.0.0:9000`, et 9001 ne répond pas. **Troisième correction
 six semaines** — l'encadré a donc été réécrit pour ne plus graver *aucune*
 valeur, seulement la procédure de contrôle et `$SONAR_HOST_URL`.
 
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/239
+  — label `awaiting-human-merge`
+- `dtos-mss` : **aucune PR** — la branche auto-incluse n'a reçu aucun commit (le
+  retrait ne touche aucun contrat partagé). `/merge` la supprimera (étape 5 bis).
+
+## Code Review Summary
+
+**APPROVED** — 46 fichiers, 3 suggestions, 0 bloquant.
+
+La revue a trouvé **trois commentaires orphelins** laissés par le retrait — un
+commentaire de section sans ligne en dessous, un commentaire `task-301` devenu
+l'en-tête d'un enregistrement DI sans rapport, une ligne vide double. Corrigés
+(commit `35586b9`) : un commentaire qui survit au code qu'il décrit désigne la
+mauvaise ligne.
+
+Trois suggestions non bloquantes, laissées telles quelles et documentées dans le
+corps de la PR :
+
+1. `SystemTenantId = Guid.Empty` défini dans deux fichiers avec deux
+   justifications distinctes — le factoriser créerait une dépendance entre deux
+   services qui n'en ont aucune.
+2. Une base de dev **existante** garde sa table `MssAuditTraces` orpheline : la
+   migration ne la crée plus, mais aucun `Delete.Table` n'a été ajouté. Sans
+   conséquence — la table n'est plus ni lue ni écrite.
+3. L'édition d'une migration **mergée** est contraire à la règle 7c. Assumée sur
+   décision humaine du 2026-09-14.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-312 --sync` — ne pas éditer à la main)*
@@ -359,4 +388,8 @@ valeur, seulement la procédure de contrôle et `$SONAR_HOST_URL`.
 | /start | ok | 24 s | — | — | — | — |
 | /develop | ok | — | 15 (1 min 00 s) | 2 (3 min 06 s) | — | api-mail 15B/2T, no start marker |
 | /sonar | ok | 19 min 27 s | 4 (38 s) | 10 (6 min 28 s) | — | 2 itération(s), api-mail 4B/10T |
-| **Total cycle** | | **19 min 51 s** | **19 (1 min 38 s)** | **12 (9 min 35 s)** | **0 (0.0 s)** | |
+| /lint-angular | skipped | 0.4 s | — | — | — | client-angular non touche (Repos: api-mail) |
+| /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non touche (Repos: api-mail) |
+| /verify-visual | skipped | 0.4 s | — | — | — | aucun ecran mobile touche |
+| /review | ok | 4 min 17 s | 2 (8.4 s) | 1 (1 min 32 s) | — | api-mail 2B/1T |
+| **Total cycle** | | **24 min 11 s** | **21 (1 min 47 s)** | **13 (11 min 07 s)** | **0 (0.0 s)** | |
