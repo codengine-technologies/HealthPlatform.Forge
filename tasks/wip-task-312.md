@@ -293,6 +293,63 @@ et assumé : 15 de ces fichiers sont des **suppressions**, et l'arbitrage humain
 2026-09-14 (« tout faire d'un coup ») a écarté le découpage — un retrait à moitié ne
 compile pas, donc ne se merge pas.
 
+## Sonar log
+
+2 itérations, `api-mail`, `healthplatform-api-mail`. **Phase 1 (new code) verte**,
+Phase 2 (dette héritée) **arrêtée volontairement** — motif ci-dessous.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| **Quality Gate (new code)** | OK | **OK** | = |
+| New coverage | 83,0 % | **84,8 %** | +1,8 pt |
+| New bugs / vulnérabilités | 0 / 0 | **0 / 0** | = |
+| New code smells | 40 | **35** | −5 |
+| Bugs / Vulnérabilités / Smells (projet) | 0 / 0 / 233 | **0 / 0 / 228** | −5 smells |
+| Coverage projet | 87,4 % | **87,7 %** | +0,3 pt |
+| Duplication | 0,4 % | **0,4 %** | = |
+| Ratings (fiabilité / sécurité / maintenabilité) | A / A / A | **A / A / A** | = |
+
+### Ce que Sonar a trouvé, et qui n'était pas cosmétique
+
+**Les 5 findings de cette task étaient tous des vestiges du retrait** — c'est
+précisément ce qu'on attend d'un scan après une suppression. Quatre étaient du
+code mort ; le cinquième était une **régression fonctionnelle** :
+
+> `S1172 — Remove this unused method parameter 'sortBy'`
+
+Le paramètre n'était pas « inutilisé par négligence » : la **seule**
+implémentation qui l'honorait était celle de la base praticien. En retirant cette
+source, l'API a continué d'**accepter** `sortBy` en l'**ignorant** — l'écran
+d'audit aurait gardé des en-têtes de colonne qui ne trient plus rien, **sans la
+moindre erreur**. Le tri a été rapatrié à l'identique (six champs triables, même
+défaut) et couvert par `AuditReaderSortIntegrationTests` (4 cas, base dédiée).
+
+Les quatre autres : `CloneWithWindow` (S1144, dernier vestige de la fenêtre de
+fusion), un commentaire scindé pris pour du code mort (S125), un jeton
+d'annulation inutilisable (S1172), et un second paramètre de tri.
+
+### Phase 2 arrêtée après 0 itération — assumé
+
+Les 34 findings restants sont **tous dans des fichiers que cette US ne touche
+pas** (`ITenantRegistryClient` ×14 CA1068, `BaseRepository`,
+`TenantRegistryExceptions`, fixtures de test), hérités de task-299/303. Les
+corriger ici élargirait le diff d'une US de retrait à des fichiers sans rapport,
+pour ~7 min de passes de couverture par itération. La baseline projet est déjà
+aux cibles dures (`bugs=0`, `vulnerabilities=0`, `sqale=A`).
+
+Le seul `CRITICAL` restant est **S3776** sur `PostgresTenantRegistryClient:443` —
+**blacklisté** (`agents/sonar-blacklist.yml`), traité par `/sonar-s3776`, une
+méthode par PR.
+
+### Outillage : le port de SonarQube a encore changé
+
+`agents/sonar.md` affirmait « 9001 ». Mesuré ce jour : `docker port sonarqube`
+rend `9000/tcp -> 0.0.0.0:9000`, et 9001 ne répond pas. **Troisième correction en
+six semaines** — l'encadré a donc été réécrit pour ne plus graver *aucune*
+valeur, seulement la procédure de contrôle et `$SONAR_HOST_URL`.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-312 --sync` — ne pas éditer à la main)*
@@ -301,4 +358,5 @@ compile pas, donc ne se merge pas.
 |---|---|---|---|---|---|---|
 | /start | ok | 24 s | — | — | — | — |
 | /develop | ok | — | 15 (1 min 00 s) | 2 (3 min 06 s) | — | api-mail 15B/2T, no start marker |
-| **Total cycle** | | **24 s** | **15 (1 min 00 s)** | **2 (3 min 06 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 19 min 27 s | 4 (38 s) | 10 (6 min 28 s) | — | 2 itération(s), api-mail 4B/10T |
+| **Total cycle** | | **19 min 51 s** | **19 (1 min 38 s)** | **12 (9 min 35 s)** | **0 (0.0 s)** | |
