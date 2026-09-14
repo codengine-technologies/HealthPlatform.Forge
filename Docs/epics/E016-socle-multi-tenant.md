@@ -2,10 +2,10 @@
 
 > **Statut** : 🟡 En cours
 > **Modèle** : task-driven
-> **Version** : 1.6
+> **Version** : 1.7
 > **Auteur** : PO forge
 > **Audience** : PO, médecin, direction produit, conformité — la vue ingénierie vit dans [E016-Changelogs.md](E016-Changelogs.md)
-> **Dernière mise à jour** : 2026-09-14
+> **Dernière mise à jour** : 2026-09-15
 
 ---
 
@@ -22,7 +22,7 @@
 - [7. Contraintes et hypothèses](#7-contraintes-et-hypothèses)
 - [8. Critères d'acceptation de l'EPIC](#8-critères-dacceptation-de-lepic)
 - [9. Hors périmètre](#9-hors-périmètre)
-- [État de couverture (2026-09-14)](#état-de-couverture-2026-09-14)
+- [État de couverture (2026-09-15)](#état-de-couverture-2026-09-15)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -91,7 +91,7 @@ augmente.
 | **Conservation appliquée à tous les comptes** | Être assuré que les durées d'effacement s'appliquent aussi aux comptes qui ne servent plus, y compris à ceux d'un praticien qui a quitté le service | task-299 | ✅ Livrée |
 | **Traçabilité des accès à l'échelle du parc** | Consulter l'historique de ses propres accès, sans que la croissance du parc n'en dégrade la tenue | task-300, task-301 | 🟡 Complète en code — écriture **mergée**, reprise de l'historique en attente de merge |
 | **Accès des équipes sécurité à la traçabilité** | *(indisponible — en attente d'arbitrage : voir §7)* | — | ⛔ Bloquée |
-| **Réactivité vérifiée en multi-messagerie** | Bénéficier d'un service dont la réactivité a été mesurée avec plusieurs messageries par praticien | task-306 | 🔜 À faire |
+| **Réactivité vérifiée en multi-messagerie** | Bénéficier d'un service dont la réactivité a été mesurée avec plusieurs messageries par praticien | task-311, task-306 | 🔜 À faire — **le banc de mesure est réparé** (task-311), la campagne reste à mener |
 | **Application allégée au poste** | Recevoir une application débarrassée de composants qui ne lui servaient pas | task-305 | ✅ Livrée |
 
 ---
@@ -206,7 +206,7 @@ Deux points structurent ce parcours :
 
 ---
 
-## État de couverture (2026-09-14)
+## État de couverture (2026-09-15)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
@@ -217,7 +217,7 @@ Deux points structurent ce parcours :
 | Conservation appliquée à tous les comptes | ✅ Livrée | 100 % | task-299 |
 | Traçabilité des accès à l'échelle du parc | 🟡 Quasi complète | 90 % | task-300 (**mergée**), task-301 (PR ouverte) |
 | Accès des équipes sécurité à la traçabilité | ⛔ Bloquée | 0 % | — |
-| Réactivité vérifiée en multi-messagerie | 🔜 À faire | 0 % | task-306 |
+| Réactivité vérifiée en multi-messagerie | 🔜 À faire | 10 % | task-311 (PR ouverte — outil de mesure réparé), task-306 |
 | Application allégée au poste | ✅ Livrée | 100 % | task-305 |
 
 **Couverture EPIC consolidée : 87 %** (5 fonctionnalités livrées sur 9, 2 complètes en
@@ -262,6 +262,20 @@ les écrans sur les trois fronts.
 
 ### Technique
 
+- **L'instrument qui mesure la tenue en charge s'était éteint sans bruit — il est
+  rallumé** (task-311, *en attente de merge*). Le banc d'essai qui vérifie que le service
+  tient à mille médecins était provisionné par un mécanisme automatique que le changement
+  précédent a supprimé, à juste titre : il rattachait des messageries que personne n'avait
+  validées. Conséquence non vue sur le moment — le banc refusait désormais **toutes** les
+  requêtes, et ne mesurait plus rien. Plus grave : s'il avait continué à répondre, il
+  aurait mesuré le **mauvais** organe. L'historique des accès serait retombé dans l'ancien
+  fonctionnement, celui-là même dont la refonte explique 97 % des refus de connexion
+  observés à mille médecins — un essai « réussi » aurait alors validé quelque chose qui
+  n'est plus en service. Le banc prépare désormais son terrain lui-même, en empruntant
+  exactement le chemin d'enregistrement du produit, et refuse de tourner contre autre
+  chose qu'un environnement d'essai. La mesure de réactivité en multi-messagerie
+  redevient possible ; elle devra **repartir d'une référence neuve**, les essais
+  antérieurs à la refonte de l'historique n'étant plus comparables.
 - **La plateforme sait désormais de quoi son parc est fait** (task-299) : quels comptes
   praticiens existent, quelles messageries leur sont rattachées, et quel espace de
   données isolé correspond à chaque couple. Rien n'a bougé pour le médecin — aucune

@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > **Document frère (vue produit)** : [`E016-socle-multi-tenant.md`](./E016-socle-multi-tenant.md)
-> **Dernière mise à jour** : 2026-09-14 (task-308)
+> **Dernière mise à jour** : 2026-09-15 (task-311)
 
 Historique détaillé des changements de l'EPIC **E016 — Socle multi-tenant**.
 Une entrée par task ayant atteint `done-*` ou `archived-*`. Append-only : une
@@ -11,6 +11,171 @@ entrée existante n'est jamais réécrite.
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.7 — task-311 : le seeder du banc provisionne le registre (`api-mail`)
+
+**Statut** : `done` — PR [Api.Mail#240](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/240), label **`awaiting-human-merge`**
+**Branche** : `fix/task-311-seeder-provisionne-registre`
+**Tests** : **4 512 / 0 échec imputable** — dont **7 unitaires** (`LoadTestRegistryProvisionerTests`) et **5 d'intégration** contre un vrai PostgreSQL (`LoadTestBenchProvisioningIntegrationTests`). 5 échecs pré-existants (`…Today…` / `…NotSeenToday…` sur IMAP), reproduits à l'identique sur `develop` nu, travail remisé
+**Migration** : aucune
+**Contrat** : **inchangé** — aucune PR `dtos-mss` (branche auto-incluse restée vide)
+
+#### Ce que l'US ferme
+
+task-308 a supprimé `TenantRegistrySynchronizer.EnsureCurrentTenantAsync`, qui fabriquait
+un rattachement à chaque requête authentifiée depuis le claim `mssEmail`. **C'est ce
+mécanisme qui provisionnait le banc de charge à son insu** : le harnais k6 n'a jamais su
+que le registre existait, ses boîtes se rattachaient toutes seules à la première requête.
+
+Séquence avec un registre vide :
+
+```
+1. EnsureAccountAsync          -> la ligne `accounts` est creee, le compte existe
+2. ApplyMailboxSelectionAsync  -> Client-Email = boite demandee
+   -> GetMailboxAsync          -> aucun rattachement -> NotAttached
+3. refus AVANT le controleur   -> 403 MAILBOX_NOT_ATTACHED
+```
+
+**Toutes les routes de messagerie répondaient 4xx** — y compris le `POST /api/v1/settings`
+de l'étape 3 du seed lui-même. Il n'y avait plus rien à mesurer.
+
+Second défaut, plus insidieux : `userContext.TenantId` ne vient plus que de la boîte
+résolue (`UserContextEnricherMiddleware.cs:660`). Ce refus franchi, il serait resté nul et
+`AuditService` serait retombé sur la base praticien — le mode dégradé prévu par task-300.
+Le banc aurait donc cessé d'exercer le **journal mutualisé**, c'est-à-dire précisément
+l'organe que task-300 a construit pour corriger 52 088 des 53 456 exceptions
+« too many clients ». Un tir « vert » aurait mesuré autre chose que ce qu'on croit.
+
+#### La voie écartée, et pourquoi
+
+Faire appeler `POST /api/v1/account/mailboxes` par le seeder est **impossible** : le
+domaine `loadtest.local` n'existe pas dans `MailServers.Domains`, donc la sonde
+d'onboarding appelle `GetImapServerConfig(email)` **sans** configuration utilisateur, rend
+`null`, et rien n'est rattaché. L'IMAP du banc fonctionne malgré cette absence parce que
+`ImapConnectionService` passe `userSettings?.ImapServerConfig` en second argument —
+court-circuit `FromUserConfig` dont la sonde d'onboarding, elle, ne dispose pas.
+
+Ajouter `loadtest.local` à la table des domaines aurait fait entrer une configuration de
+banc dans la configuration produit, et payé mille sondes IMAP au provisionnement.
+
+#### Le correctif
+
+Nouvelle **étape 0** du seeder, avant toute injection : pour chaque praticien synthétique,
+les deux lignes que l'onboarding écrirait.
+
+| Table | Colonne | Valeur |
+|---|---|---|
+| `accounts` | `authentication_subject` | le `PscSub` (ce que `TestBypassAuthenticationHandler` pose en `ClaimTypes.NameIdentifier` depuis `Client-Psc-Sub`) |
+| | `email`, `username` | `loadtest-{n}@loadtest.local` |
+| `mss_accounts` | `mailbox_address` | `loadtest-{n}@loadtest.local` |
+| | `database_name` | `UserContextInfo.ProposeDatabaseName(email, rpps)` → `u_{rpps}_{slug}_{hash}` |
+| | `is_default` | `true` |
+| | `validated_by_psc_subject` / `validated_by_rpps` | le `PscSub` / le `Rpps` du praticien |
+
+**L'écriture passe par le câblage de la production**, pas par du SQL de banc :
+`AddTenantRegistryClient` + `ITenantRegistryClient.EnsureAccountAsync` /
+`AttachMailboxAsync` — le chemin d'écriture de l'onboarding moins la sonde XOAUTH2. Un
+`INSERT` maison aurait ré-implémenté en silence la normalisation d'adresse, le choix de la
+boîte par défaut, l'ancrage PSC et l'unicité « un RPPS = un compte ».
+
+**Les identités ne sont jamais recalculées** : elles viennent de `LoadTestPlanGenerator`
+(`Rpps => $"9{Index:D10}"`, `PscSub => $"00000000-0000-4000-8000-{Index:D12}"`), la source
+que `tests/loadtest-k6/lib/identity.js` reproduit côté k6. Un écart d'un caractère et la
+règle 4 de `MailboxCompatibility` refuse la session en `PscIdentityConflict` — un tir
+intégralement rouge, pour une raison invisible dans les rapports.
+
+#### Fichiers
+
+| Fichier | Rôle |
+|---|---|
+| `tests/mss.mail.testing.shared/LoadTestRegistryProvisioner.cs` | La logique, partagée par le seeder **et** les suites de tests |
+| `tests/mss.mail.loadtest.seed/RegistryComposition.cs` | Composition DI : câblage de production + mise à niveau du schéma |
+| `tests/mss.mail.loadtest.seed/Program.cs` | Étape 0 et son échec bruyant |
+| `tests/mss.mail.loadtest.seed/SeedOptions.cs` | `--registry` + variable `TenantRegistry__ConnectionString` |
+| `src/Infrastructure/Extensions/ServiceCollectionExtensions.cs` | `AddTenantRegistryClient` publique et **étroite** ; `AddTenantRegistry` redevient privée et s'appuie dessus |
+| `src/Infrastructure/Migrations/TenantDb/TenantRegistryBootstrap.cs` | **Nouveau** — définition unique de « la base commune est prête » |
+| `src/Infrastructure/Migrations/TenantDb/TenantRegistrySchemaInitializer.cs` | Réduit à l'appel du bootstrap |
+| `tests/mss.mail.integration.tests/Fixtures/TenantRegistryTestClient.cs` | **Nouveau** — `ContextFactory` + `AlwaysMissCache` dédupliqués de **4 copies** à une |
+| `docs/loadtest.md` | Étape 0 documentée, avec les requêtes psql de contrôle |
+
+#### Le défaut trouvé par la passe qualité
+
+`RegistryComposition` ne rejouait que la **migration** du registre ;
+`TenantRegistrySchemaInitializer`, lui, enchaîne migration **puis**
+`AuditPartitionMaintenance.EnsurePartitions`. Un seed lancé avant le premier démarrage
+d'api-mail — un cas normal du banc, et la raison même de migrer dans l'outil — obtenait
+donc un schéma à jour **sans partitions**, et les traces du tir seraient tombées dans la
+partition `DEFAULT`. Dans l'organe que cette US existe pour faire exercer.
+
+`TenantRegistryBootstrap.Ensure` porte désormais la définition unique de l'état « prêt » ;
+le service hébergé et l'outillage l'appellent tous deux. **Vérifié empiriquement** :
+
+```
+select count(*) from pg_class where relname like 'audit_traces%' and relkind in ('r','p');
+-> 6   (la table partitionnee + 5 partitions d'avance)   AVEC le correctif
+-> 1   (la table seule, tout en DEFAULT)                 SANS
+```
+
+#### Garde-fous
+
+- **Idempotent** — le balayage d'entrée sert trois fois : garde d'environnement, sonde de
+  joignabilité, et **inventaire de ce qui est déjà rattaché**. Un re-seed de 1 000
+  praticiens ne repaie plus ~10 000 allers-retours pour finir sur autant d'exceptions de
+  conflit attrapées.
+- **Bruyant** — `ListTenantsAsync` est l'une des rares lectures du contrat qui **propagent**
+  la panne ; les lectures du chemin de requête dégradent en « je ne sais pas », ce qui
+  rendrait un registre injoignable indistinguable d'un registre vide. Le seed s'arrête
+  **avant** la demi-heure d'injection.
+- **Borné au banc** — refus d'un domaine **routable** (suffixes réservés RFC 2606 / 6761 :
+  `.local`, `.localhost`, `.test`, `.invalid`, `.example`) et refus d'un registre portant
+  déjà un compte non synthétique. Le refus nomme le **domaine**, jamais l'adresse : une
+  adresse MSSanté est une donnée à caractère personnel, y compris dans un message d'erreur.
+
+#### Vérification en conditions réelles
+
+Seeder exécuté contre le PostgreSQL du banc, registre neuf :
+
+```
+1er passage : Registre provisionne : 3 praticien(s) (3 cree(s), 0 deja present(s))
+2e passage  : Registre provisionne : 3 praticien(s) (0 cree(s), 3 deja present(s))
+```
+
+Lignes contrôlées en base : `authentication_subject` = `PscSub`,
+`database_name` = `u_90000000001_l1l_dfdfa3be…`, `validated_by_rpps` = `90000000001`,
+`is_default = t`. Base de test supprimée après coup.
+
+#### Sonar
+
+**Aucune dette introduite** : zéro finding sur les fichiers de la task, vérifié par
+filtrage des 181 violations du *new code period* par composant **et** par dates de création
+des issues ouvertes (2025-12-28 → 2026-09-14, aucune datée du jour). Le Quality Gate est
+`ERROR` parce que la *new code period* inclut les tasks E016 déjà mergées (15 issues du
+11/09, 11 du 13/09, 18 du 14/09) — piège connu de ce projet.
+
+L'écart `code_smells` 72 → 253 et la note de sécurité A → E viennent du **périmètre
+analysé** : cette analyse a couvert `tests/loadtest-k6/**` (24 `.py`, 24 `.js`, 2 `.ps1`)
+que la précédente n'avait pas indexé. Les deux « vulnérabilités » sont le littéral
+`PGPASSWORD=postgres` d'`observe.ps1` — l'identifiant synthétique du Postgres de banc
+local, le même que le défaut `MSS_BENCH_PG_PASSWORD` de l'AppHost. **Aucun secret réel.**
+
+#### Limites assumées
+
+- **Le test de l'US monte une sonde, pas `MailController`.** Il assemble le vrai chemin
+  d'identité — bypass de test, `UserContextEnricherMiddleware`, résolution de boîte contre
+  un vrai registre PostgreSQL — devant un point terminal qui rend `userContext.TenantId`.
+  Le refus corrigé est émis **par le middleware, avant le contrôleur** : monter Dovecot et
+  une base praticien pour observer un refus qui ne les atteint jamais n'aurait rien prouvé
+  de plus, et aurait rendu la preuve tributaire d'IMAP.
+- **Le paramétrage de `PGPASSWORD` dans `observe.ps1`** (4 occurrences, dont 2 signalées)
+  est reporté à une task dédiée : script PowerShell non couvert par les tests, hors module
+  de cette US, et ce cycle n'aurait pas pu vérifier le correctif.
+- **`RegistryComposition.Build` résout un service `scoped` depuis le fournisseur racine.**
+  Correct aujourd'hui (`BuildServiceProvider()` n'active pas `ValidateScopes`) et vérifié à
+  l'exécution ; une portée explicite serait plus robuste si la validation était activée.
+- **Cette US ne tire pas.** Elle rend le banc exploitable. La campagne qui suivra devra
+  **ré-établir une référence** : les tirs antérieurs à task-300 ne sont plus comparables.
+
+---
 
 ### v1.6 — task-308 : le registre sépare ses deux identités (`api-mail`, `client-blazor`, `client-mobile`, `client-angular`)
 
@@ -1039,6 +1204,7 @@ en `foreach`). **184 tests verts avant comme après.**
 | task-304 | Vague 2 multi-BAL : onboarding par le registre, écran de sélection, avatar → sélecteur, gestion des comptes, purge totale de l'état à la bascule — parité Blazor / Angular / mobile. **L'outillage de capture visuelle n'a pas pu être remis à niveau** : `Tools/visual-verify/` n'est pas versionné et donc absent du poste (cf. `questions/task-304.md`) | `client-blazor`, `client-angular`, `client-mobile` | ✅ **done** (PR Client#74, Mobile#70 — `awaiting-human-merge` ; Angular en code-only) |
 | task-305 | **Le SDK redevient backend-only** : retrait de la référence morte dans `client-blazor`, déclaration explicite de `Markdig`, retrait de l'enregistrement Redis inerte, garde-fou anti-récidive | `client-blazor` | ✅ done |
 | task-306 | Banc de charge multi-BAL : dimension « boîtes par compte » (défaut 1, iso E015), parcours avec bascule réelle (`/sync/logout` + rotation de session), restitution du coût de bascule et de la résolution de registre | `api-mail` | 🔜 todo |
+| task-311 | **Le banc redevient mesurable** : le seeder écrit lui-même les deux lignes de registre que l'onboarding écrirait (`accounts` + `mss_accounts`), par le câblage de production (`AddTenantRegistryClient` + `ITenantRegistryClient`), identités issues de `LoadTestPlanGenerator`. Sans elles, task-308 laissait **toutes** les routes de messagerie en `403 MAILBOX_NOT_ATTACHED` et `TenantId` nul — donc le journal mutualisé jamais exercé. Corrige au passage la parité du bootstrap du registre (`TenantRegistryBootstrap` : migration **et** partitions d'audit) | `api-mail` | ✅ **done** (PR Api.Mail#240, `awaiting-human-merge`) |
 
 ### Question ouverte
 
