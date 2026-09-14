@@ -152,22 +152,35 @@ already met.
 Read the SonarQube endpoint and token from environment variables. NEVER hardcode
 the token in the repo. Expected vars :
 
-- `SONAR_HOST_URL` — **`http://localhost:9001`** sur ce poste
+- `SONAR_HOST_URL` — **lu de l'environnement, jamais recopié d'ici** (voir
+  l'encadré ci-dessous : la valeur a changé trois fois en six semaines)
 - `SONAR_TOKEN` (e.g. `squ_xxxxxxxxxxxxxxxx`) — **doit être un `USER_TOKEN`**, pas
   un `GLOBAL_ANALYSIS_TOKEN` : ce dernier publie l'analyse mais **ne lit pas** les
   mesures, or `/review` doit recopier les KPI dans le corps des PRs.
 - `SONAR_PROJECT_KEY` — **`healthplatform-api-mail`**
 
-> ⚠️ **Le port est 9001 — re-corrigé le 2026-09-08 (task-190).** L'encadré
-> précédent, daté du 2026-08-30, affirmait que « le port annoncé était 9001 (le
-> serveur répond sur 9000) » et avait donc remplacé la valeur **juste** par une
-> fausse, dans le paragraphe même qui déplore qu'une valeur fausse « a coûté une
-> analyse ratée ». Mesuré : `docker port sonarqube` rend
-> `9000/tcp -> 0.0.0.0:9001` — 9000 est le port **interne** du conteneur, 9001
-> le port publié. `curl` sur 9000 ne répond pas, sur 9001 rend `200`.
+> ⚠️ **Le port bouge — MESURER, ne jamais recopier cette ligne.** Ce paragraphe
+> a affirmé successivement 9000, puis 9001 (2026-08-30, en remplaçant une valeur
+> juste par une fausse), puis 9001 confirmé (2026-09-08, task-190). Mesuré le
+> **2026-09-15** : `docker port sonarqube` rend `9000/tcp -> 0.0.0.0:9000`, et
+> `curl` sur **9000** répond `200` pendant que 9001 ne répond pas. Le conteneur a
+> été recréé entre-temps avec une autre publication de port.
 >
-> **Vérifier plutôt que réécrire de mémoire** : `docker port sonarqube` puis
-> `curl -s -o /dev/null -w '%{http_code}' http://localhost:9001/api/system/status`.
+> **Il n'y a donc aucune valeur à graver ici** — seulement une procédure. La
+> troisième correction en six semaines est la preuve que la valeur n'est pas
+> stable ; `$SONAR_HOST_URL` de l'environnement fait foi, et on la contrôle :
+>
+> ```bash
+> docker port sonarqube
+> curl -s -o /dev/null -w '%{http_code}' "$SONAR_HOST_URL/api/system/status"
+> ```
+>
+> **Pourquoi ça compte autant** : sur une 9.9, `sonar.token` est **ignoré
+> silencieusement**. Le `begin` réussit (il ne contacte le serveur que pour les
+> plugins), le build et les tests tournent, et c'est le **`end` qui échoue après
+> ~6 min** sur `ERROR: Not authorized`. Le message **accuse les identifiants
+> alors que le token est valide** — le piège qui a coûté à task-204 un diagnostic
+> faux. Le `.sonarqube/` reste intact : rejouer le `end` seul suffit (~30 s).
 >
 > Deux autres pièges du même encadré, toujours valables : la clé de projet est
 > **`healthplatform-api-mail`** (le `.env` du workspace porte `healthplatform`,
@@ -244,7 +257,7 @@ gitignored).
       if [ -z "$cid" ]; then
         # Abort — no container exists. Ask the human to create one.
         echo "/sonar refused — no SonarQube container in Docker Desktop." >&2
-        echo "Create one with:  docker run -d --name sonarqube -p 9001:9000 sonarqube:lts-community" >&2
+        echo "Create one with:  docker run -d --name sonarqube -p 9000:9000 sonarqube:lts-community" >&2
         exit 1
       fi
 
@@ -446,7 +459,7 @@ existants). Max 5 itérations sur la même branche.
 3. `dotnet test HealthPlatform.Api.Mail.sln --configuration Release`
 4. Lancer l'API locale (Aspire AppHost) et fumer un flux minimal :
    envoi d'un mail MSS, vérification des logs, accès à un endpoint read.
-5. Vérifier sur SonarQube : http://localhost:9001/dashboard?id=healthplatform-api-mail
+5. Vérifier sur SonarQube : `$SONAR_HOST_URL/dashboard?id=healthplatform-api-mail`
    que le Quality Gate n'a pas régressé.
 
 ## Journal

@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > **Document frère (vue produit)** : [`E016-socle-multi-tenant.md`](./E016-socle-multi-tenant.md)
-> **Dernière mise à jour** : 2026-09-15 (task-311)
+> **Dernière mise à jour** : 2026-09-15 (task-311, task-312)
 
 Historique détaillé des changements de l'EPIC **E016 — Socle multi-tenant**.
 Une entrée par task ayant atteint `done-*` ou `archived-*`. Append-only : une
@@ -12,7 +12,7 @@ entrée existante n'est jamais réécrite.
 
 ## Historique détaillé des changelogs
 
-### v1.7 — task-311 : le seeder du banc provisionne le registre (`api-mail`)
+### v1.8 — task-311 : le seeder du banc provisionne le registre (`api-mail`)
 
 **Statut** : `done` — PR [Api.Mail#240](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/240), label **`awaiting-human-merge`**
 **Branche** : `fix/task-311-seeder-provisionne-registre`
@@ -174,6 +174,157 @@ local, le même que le défaut `MSS_BENCH_PG_PASSWORD` de l'AppHost. **Aucun sec
   l'exécution ; une portée explicite serait plus robuste si la validation était activée.
 - **Cette US ne tire pas.** Elle rend le banc exploitable. La campagne qui suivra devra
   **ré-établir une référence** : les tirs antérieurs à task-300 ne sont plus comparables.
+### v1.7 — task-312 : le journal d'audit hérité est retiré, et la purge de rétention branchée (`api-mail`)
+
+**Statut** : `done` — PR [Api.Mail#239](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/239), label **`awaiting-human-merge`**
+**Branche** : `chore/task-312-retrait-audit-herite`
+**Tests** : **3 960 / 0 échec** sur le périmètre de la task ; 5 rouges pré-existants hors diff (`…Today…`, corpus IMAP daté relativement au jour du semis) — **vérifiés identiques sur `origin/develop` nu**, worktree détaché, même poste, même minute
+**Migration** : `20260915090000_DropAuditCutoverMarks` (TenantDb, **neuve** — règle 7c) + édition de `20240101_SetupMigration` (MailDb, **mergée** — écart assumé, cf. ci-dessous)
+**Contrat** : **inchangé** — aucune PR `dtos-mss` ; la branche auto-incluse est restée vide
+**Sonar** : Quality Gate new code **OK**, new coverage 83,0 → **84,8 %**, new smells 40 → **35**, projet 0 bug / 0 vulnérabilité / 233 → **228** smells, ratings **A / A / A**
+
+#### Ce que l'US ferme
+
+task-300 avait mutualisé le journal d'audit en base commune et prévu une **lecture double
+source** transitoire : au-delà de `mss_accounts.audit_cutover_at` on lisait `audit_traces`,
+en deçà la table `MssAuditTraces` de la base praticien. task-301 devait reprendre
+l'historique puis la faire cesser, tenant par tenant.
+
+**Cette transition n'a jamais eu lieu.** La reprise était écrite et mergée, mais elle ne
+s'est jamais exécutée sur un parc réel — et l'application n'est pas en service. Arbitrage
+humain du 2026-09-14 : **il n'y a aucune donnée de production à reprendre**, donc l'état
+final se atteint par **suppression** plutôt que par migration.
+
+#### Ce qui part
+
+| Pièce | Rôle |
+|---|---|
+| Table `MssAuditTraces` + 4 index | le magasin hérité, **une table par praticien** |
+| `AuditTraceRepository`, `IAuditTraceRepository`, son `DbSet` | son accès |
+| `AuditBackfillService`, `IAuditBackfillService`, `IAuditBackfillStore`, `PostgresAuditBackfillStore`, `AuditBackfillHostedService`, `AuditBackfillOptions`, `AuditBackfillReport` | la machinerie de reprise entière |
+| Fusion double source de `PostgresAuditReader` (`ReadLegacyAsync`, `ReadTenantMarksAsync`, `MergeWindowCap`, `CloneWithWindow`) | la lecture transitoire |
+| `audit_cutover_at`, `audit_backfilled_at` | ses deux bornes |
+| `Audit:DrainParallelism`, `Audit:DrainMaxConnections` | deux réglages sans objet — ils bornaient le nombre de **bases praticien** drainées en même temps ; il n'y en a plus qu'une |
+| `docs/runbook-reprise-audit.md` | le mode opératoire d'une opération qui n'existe plus |
+
+Le chiffre qui justifiait la mutualisation reste le même : une table d'audit **par
+praticien** faisait s'étaler un lot de 100 traces sur ~100 bases, ~100 pools Npgsql et
+~100 logins Postgres — **52 088 des 53 456** exceptions « too many clients » mesurées le
+2026-09-08, soit **97 %**.
+
+#### Trois choses que seul le retrait pouvait révéler
+
+**1. `IAuditJournalPurge` n'avait aucun appelant.** Il était enregistré en DI depuis
+task-300, et personne ne l'invoquait : la **seule** purge qui s'exécutait réellement était
+celle du drain, sur la table héritée. Et elle était *opportuniste* — déclenchée par
+l'activité du tenant lui-même, donc **jamais** pour un praticien ayant cessé d'utiliser le
+produit. Retirer la table sans brancher la purge mutualisée aurait laissé un journal
+porteur d'INS, de nom de patient, de sujet et d'expéditeur croître **sans effacement à
+échéance** (RGPD art. 5.1.e) : on aurait remplacé une dette technique par un manquement.
+
+`AuditRetentionHostedService` est donc créé dans cette US, et c'est le **premier item de
+son DOD**. Il balaie le journal entier sans connaître les tenants — ce qu'une table unique
+rend enfin possible. Partitions d'abord (`DropPartitionsOlderThanAsync`, le chemin bon
+marché), lots par famille ensuite. Cadence par **marqueur Redis à TTL** (`SET NX`, dont
+l'expiration *est* le limiteur de débit) : deux réplicas ne peuvent pas lancer la passe
+ensemble, et aucune comparaison d'horloge n'est nécessaire. **Sans Redis, pas de purge** —
+le journal grossit, ce qui est la direction sûre : mieux vaut conserver trop que supprimer
+deux fois.
+
+**2. `TransportAttempts` ne s'incrémentait plus.** Son unique point d'incrément vivait dans
+la persistance trace-à-trace de la base praticien, retirée ici. Sans le geste, le compteur
+serait resté à `0`, le budget poison (`MaxPersistAttempts`) jamais atteint, et une trace
+qu'aucune insertion ne peut accepter — contrainte violée, colonne trop longue — serait
+revenue au tampon **indéfiniment**. Réinstallé dans `ParkFailedTraceAsync`, le point unique
+où passe désormais toute trace en échec.
+
+**3. Le tri de l'écran d'audit avait cessé d'exister.** Sonar l'a signalé sous la forme
+« paramètre `sortBy` inutilisé » (S1172) — c'était le **symptôme**, pas le défaut. La
+**seule** implémentation qui honorait le tri était celle de la base praticien ; le chemin
+mutualisé ordonnait toujours par horodatage décroissant. Tant que les deux sources
+coexistaient, le paramètre gardait un effet. En retirant la source héritée sans rapatrier
+le tri, l'API aurait continué d'**accepter** `sortBy` en l'**ignorant** : des en-têtes de
+colonne cliquables qui ne trient plus rien, **sans la moindre erreur**.
+
+`PostgresAuditReader.ApplySort` reprend **à l'identique** les six champs triables et le
+défaut de `AuditTraceRepository.ApplyAuditSort` — un retrait ne change pas un comportement
+en passant. Couvert par `AuditReaderSortIntegrationTests` (4 cas, **base dédiée** : les
+traces tombent en partition `DEFAULT`, et le fichier voisin compte à la fois les partitions
+et les lignes de `DEFAULT`).
+
+#### Les traces sans tenant — le fail-fast et son arbitrage
+
+`/develop` s'est **arrêté** sur `questions/task-312.md` : le dépôt hérité n'était pas
+seulement un vestige, c'était le **chemin d'écriture nominal** des traces sans `TenantId`.
+Elles existent par nature — un échec d'authentification survient avant toute résolution de
+boîte.
+
+La question posée n'était pas technique : router ces traces sous un tenant sentinelle les
+rend invisibles dans l'écran d'audit de tout praticien (la RLS filtre sur `tenant_id`), et
+rendre invisible un évènement de sécurité qui concerne le praticien est une décision de PO
+et de conformité.
+
+L'humain a d'abord demandé **« quel évènement devient invisible exactement ? »** — ce qui a
+corrigé une surestimation de l'analyse : seul **`MailboxAttached` au tout premier
+rattachement** est systématiquement sans tenant. `MailboxDetached` en porte un dès lors
+qu'il reste une boîte. Après cette précision : arbitrage **A + B**.
+
+- **Volet A — estampillage à la source.** `MailboxAttached`, `MailboxDetached` et
+  `MailboxDefaultChanged` portent désormais le tenant **concerné**. Le middleware posait
+  celui de la boîte *courante* : au premier rattachement il n'y en a aucune, et aux
+  suivants il désigne **une autre boîte** que celle qu'on vient de rattacher. Dans les deux
+  cas la trace mentait sur son objet.
+- **Volet B — tenant sentinelle `Guid.Empty`** pour le résiduel. `Guid.Empty` n'appartient
+  à personne. **Aucune visibilité existante n'est retirée** : le dépôt hérité filtrait sur
+  `UserId == email`, et une trace émise avant toute résolution de boîte ne porte pas
+  l'email du praticien — ces traces n'étaient déjà visibles de personne.
+
+#### Écarts assumés
+
+| Écart | Motif |
+|---|---|
+| **Édition d'une migration mergée** (`20240101_SetupMigration`, règle 7c) | Décision humaine du 2026-09-14. Aucune donnée de production, et une base neuve ne doit pas créer une table qu'on supprimerait à la migration suivante. Le bloc supprimé est remplacé par un commentaire qui dit ce qui vivait là et pourquoi |
+| **Aucun `Delete.Table`** ajouté | Une base de développement **existante** garde sa table `MssAuditTraces` orpheline. Sans conséquence : elle n'est plus ni lue ni écrite |
+| **46 fichiers** (repère règle 5 : ~30) | 15 sont des **suppressions**. L'arbitrage humain (« tout faire d'un coup ») a écarté le découpage : un retrait à moitié ne compile pas, donc ne se merge pas |
+| **Phase 2 Sonar non exécutée** | Les 34 findings restants sont tous dans des fichiers que l'US ne touche pas (`ITenantRegistryClient` ×14 `CA1068`, `BaseRepository`, `TenantRegistryExceptions`). Le seul `CRITICAL` restant est **S3776**, blacklisté, traité par `/sonar-s3776` |
+| **5 tests rouges** | `…Today…` ×5, pré-existants — vérifiés identiques sur `origin/develop`. Méritent leur propre task |
+
+#### Tests : adaptés quand l'invariant survit, supprimés quand le sujet disparaît
+
+| Fichier | Sort | Motif |
+|---|---|---|
+| `AuditBackgroundServiceBatchingTests` | **adapté** | Mesure toujours « combien d'écritures pour N traces ». L'assertion « deux groupes » s'**inverse** en « un seul lot » — c'était la forme même du défaut corrigé par task-300 |
+| `AuditBackgroundServiceFallbackTests` | **adapté** | Tampon, budget poison, charge utile : invariants task-292, intacts. Les deux tests de concurrence par groupe praticien partent avec leur sujet |
+| `AuditBackgroundServiceReplayAndPurgeTests` | **scindé** → `…ReplayTests` | La purge n'est plus une branche du drain ; ses tests suivent la purge dans `AuditRetentionHostedServiceTests` |
+| `AuditDirectRouteIntegrationTests` | **supprimé** | Tout le fichier portait sur la route directe vers la table héritée |
+| `CrossTenantOwnershipTests` (section audit) | **supprimé** | L'isolation ne se joue plus en C# (`UserId == email`) mais en **RLS Postgres**. `AuditJournalIntegrationTests` la vérifie là où elle s'applique — avec un cas de plus que l'ancien couple ne savait pas voir : **deux PS sur la même adresse organisationnelle** |
+| `AuditRetentionHostedServiceTests` | **créé** | 7 cas : partitions avant lots, borne par famille, verrou légal sur les **deux** chemins, passe à vide muette, `SET NX` et marqueur pris, absence de Redis, puits en panne |
+| `AuditReaderSortIntegrationTests` | **créé** | 4 cas sur la régression de tri ci-dessus |
+
+#### Trouvé par la revue
+
+Trois **commentaires orphelins** laissés par le retrait — un commentaire de section sans
+ligne en dessous, un commentaire `task-301` devenu l'en-tête d'un enregistrement DI sans
+rapport, une ligne vide double. Corrigés (`35586b9`). Un commentaire qui survit au code
+qu'il décrit désigne la mauvaise ligne.
+
+#### Outillage : le port de SonarQube a encore changé
+
+`agents/sonar.md` affirmait « 9001 ». Mesuré ce jour : `docker port sonarqube` rend
+`9000/tcp -> 0.0.0.0:9000`, et 9001 ne répond pas. **Troisième correction en six
+semaines.** L'encadré a été réécrit pour ne plus graver *aucune* valeur — seulement la
+procédure de contrôle et `$SONAR_HOST_URL`.
+
+#### Coût du cycle
+
+| Étape | Statut | Durée |
+|---|---|---|
+| `/start` | ok | 24 s |
+| `/develop` | ok | 15 builds, 2 suites |
+| `/sonar` | ok (2 itérations) | 19 min 27 s |
+| `/lint-angular`, `/lint-mobile`, `/verify-visual` | skipped | — |
+| `/review` | ok | 4 min 17 s |
+| **Total** | | **24 min 11 s** — 21 builds (1 min 47 s), 13 suites (11 min 07 s) |
 
 ---
 
@@ -1199,10 +1350,12 @@ en `foreach`). **184 tests verts avant comme après.**
 |---|---|---|---|
 | task-299 | Registre des tenants : comptes (`sub` Keycloak + RPPS), messageries, **tenants** (compte × messagerie, porteurs de la base isolée et de `TenantId`), horodatages de connexion et dormance. Contrat `ITenantRegistryClient` et implémentation Postgres dans `api-mail` — **le contrat a quitté le SDK à la révision du 13/09** | `api-mail` (`sdk` : CI seulement) | ✅ **done** (PR Sdk#3, Api.Mail#233) |
 | task-300 | Journal d'audit en base commune : table partitionnée par mois, `TenantId` = id du **tenant**, RLS + rôles lecture/écriture séparés, purge planifiée s'appuyant sur `AuditRetentionPolicy.FamilyOf`, lecture double source transitoire | `api-mail` | ✅ **mergée** (`ff6332f7`) |
-| task-301 | Reprise de l'historique d'audit à débit borné (≤ 4 bases simultanées), vérification par comptage par tenant, puis retrait de la lecture double source par tenant. **Retrait de la configuration morte reporté** — écart assumé, le chemin hérité vit encore comme filet (cf. v1.3) | `api-mail` | ✅ **done** (PR Api.Mail#235, en attente de merge) |
+| task-301 | Reprise de l'historique d'audit à débit borné (≤ 4 bases simultanées), vérification par comptage par tenant, puis retrait de la lecture double source par tenant. **⚠️ Intégralement retirée par task-312** : la reprise n'a jamais été exécutée sur un parc réel, et l'état final a été atteint par suppression — aucune donnée de production n'étant en jeu | `api-mail` | ✅ **mergée**, puis **annulée** (task-312) |
 | task-303 | Vague 1 multi-BAL : la boîte devient une sélection par requête validée contre le registre **et** l'identité PSC ; disparition des claims `mssEmail`/`mssSub`/`mssRpps` ; bascule = fin de session + nouvelle session (garde `SESSION_MAILBOX_MISMATCH`) ; `AuditActionType` + 5 membres | `api-mail`, `dtos-mss` | ✅ **done** (PR Api.Mail#236, Dtos.Mss#32 — **`awaiting-human-merge`** depuis task-304 : la US est complète) |
 | task-304 | Vague 2 multi-BAL : onboarding par le registre, écran de sélection, avatar → sélecteur, gestion des comptes, purge totale de l'état à la bascule — parité Blazor / Angular / mobile. **L'outillage de capture visuelle n'a pas pu être remis à niveau** : `Tools/visual-verify/` n'est pas versionné et donc absent du poste (cf. `questions/task-304.md`) | `client-blazor`, `client-angular`, `client-mobile` | ✅ **done** (PR Client#74, Mobile#70 — `awaiting-human-merge` ; Angular en code-only) |
 | task-305 | **Le SDK redevient backend-only** : retrait de la référence morte dans `client-blazor`, déclaration explicite de `Markdig`, retrait de l'enregistrement Redis inerte, garde-fou anti-récidive | `client-blazor` | ✅ done |
+| task-308 | Le registre sépare ses deux identités : `accounts` ne dit plus que Keycloak (`sub`, email, username), l'identité PSC (`psc_subject` + `rpps`) vit sur le rattachement. Un **seul écrivain** pour `mss_accounts` — l'onboarding explicite, précédé d'une sonde XOAUTH2 validée par l'opérateur | `api-mail`, `client-blazor`, `client-mobile`, `client-angular` | ✅ **mergée** (PR Api.Mail#238) |
+| task-312 | **Retrait du journal d'audit hérité** (`MssAuditTraces`, son dépôt, la lecture double source, la machinerie de reprise et ses deux bornes) et **branchement de la purge de rétention mutualisée**, qui n'avait aucun appelant. Estampillage du tenant à la source sur les trois traces de messagerie ; tenant sentinelle `Guid.Empty` pour le résiduel. Tri de l'écran d'audit rapatrié — il n'existait plus que côté hérité | `api-mail` | ✅ **done** (PR Api.Mail#239, `awaiting-human-merge`) |
 | task-306 | Banc de charge multi-BAL : dimension « boîtes par compte » (défaut 1, iso E015), parcours avec bascule réelle (`/sync/logout` + rotation de session), restitution du coût de bascule et de la résolution de registre | `api-mail` | 🔜 todo |
 | task-311 | **Le banc redevient mesurable** : le seeder écrit lui-même les deux lignes de registre que l'onboarding écrirait (`accounts` + `mss_accounts`), par le câblage de production (`AddTenantRegistryClient` + `ITenantRegistryClient`), identités issues de `LoadTestPlanGenerator`. Sans elles, task-308 laissait **toutes** les routes de messagerie en `403 MAILBOX_NOT_ATTACHED` et `TenantId` nul — donc le journal mutualisé jamais exercé. Corrige au passage la parité du bootstrap du registre (`TenantRegistryBootstrap` : migration **et** partitions d'audit) | `api-mail` | ✅ **done** (PR Api.Mail#240, `awaiting-human-merge`) |
 
