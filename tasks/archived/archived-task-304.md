@@ -523,7 +523,8 @@ API **mockée par fixtures**. Trois ruptures certaines, toutes à traiter **dans
 | /lint-mobile | ok | 25 s | — | — | — | — |
 | /verify-visual | skipped | 18 s | — | — | — | Tools/visual-verify absent du poste (non versionne) |
 | /review | ok | 5 min 20 s | 5 (45 s) | 5 (44 s) | — | client-blazor 2B/2T, client-mobile 1B/1T, client-angular 2B/2T |
-| **Total cycle** | | **1 h 14 min** | **26 (3 min 52 s)** | **23 (3 min 54 s)** | **0 (0.0 s)** | |
+| /tech-writer | ok | 2 min 08 s | — | — | — | — |
+| **Total cycle** | | **1 h 16 min** | **26 (3 min 52 s)** | **23 (3 min 54 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×4 (50 s)
 
@@ -818,3 +819,21 @@ Le mobile n'enregistre **aucun** porteur d'état dans `MAILBOX_SCOPED_STATES` (t
 vide, documenté) : son état de boîte vit dans les pages, détruites par la navigation
 vers l'onglet Messages qui suit chaque bascule. C'est correct aujourd'hui ; ça cesse
 de l'être le jour où un service racine cachera des données de boîte.
+
+## Merged
+
+Mergée le **2026-09-14** par `/merge 304 --i-tested` (HAG, règle 10 — attestation humaine
+du test de la US assemblée 303 + 304).
+
+| Repo | PR | Commit de squash sur `develop` | CI `develop` |
+|---|---|---|---|
+| `client-blazor` | #74 | `fe2ab36` | ✅ [run 34874362502](https://github.com/codengine-technologies/HealthPlatform.Client/actions/runs/34874362502) |
+| `client-mobile` | #70 | `158d3a4` | ✅ [run 34874388058](https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/34874388058) |
+| `dtos-mss` | aucune PR | — | branche vide (0 commit), supprimée localement |
+| `client-angular` | code-only | — | géré manuellement par l'humain |
+
+Branches distantes `feat/task-304-selection-et-bascule-de-boite` supprimées sur `client-blazor`
+et `client-mobile` ; branches **locales conservées** pour inspection rétroactive.
+
+> **Staging** : aucune branche `forge/staging-task-*` — task-304 n'a pas été produite par un
+> run `/forge` multi-tasks. Rien à nettoyer.

@@ -848,3 +848,24 @@ point-virgule en fin de ligne).
 | /review | ok | 15 min 58 s | 1 (0.2 s) | 2 (3 min 07 s) | — | api-mail 1B/2T |
 | /tech-writer | ok | 1 min 40 s | — | — | — | — |
 | **Total cycle** | | **44 min 46 s** | **3 (19 s)** | **8 (14 min 15 s)** | **4 (1 min 11 s)** | |
+
+## Merged
+
+Mergée le **2026-09-14** par `/merge 303 --i-tested` (HAG, règle 10 — attestation humaine
+du test de la US assemblée 303 + 304).
+
+| Repo | PR | Commit de squash sur `develop` | CI `develop` |
+|---|---|---|---|
+| `dtos-mss` | #32 | `76081d0` | ✅ [run 34873761273](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/actions/runs/34873761273) |
+| `api-mail` | #236 | `63ba41a` | ✅ [run 34873794978](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/34873794978) |
+
+Branches distantes `feat/task-303-comptes-multi-messageries` supprimées sur les deux repos ;
+branches **locales conservées** pour inspection rétroactive.
+
+> **Note de gate.** La section `## PRs` ci-dessus annonçait le label
+> `awaiting-us-completion` (règle 11). À l'heure du merge, les deux PRs portaient
+> `awaiting-human-merge` — relabellisées quand task-304 est passée en PR prête. La gate 2
+> a donc été évaluée sur l'état **live** des PRs, pas sur le texte du task file.
+
+> **Staging** : aucune branche `forge/staging-task-*` sur les repos concernés — task-303 n'a
+> pas été produite par un run `/forge` multi-tasks. Rien à nettoyer.
