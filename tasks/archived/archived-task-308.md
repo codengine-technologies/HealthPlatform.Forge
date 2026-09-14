@@ -754,3 +754,42 @@ branches **locales conservées** pour inspection rétroactive.
 
 > **Staging** : aucune branche `forge/staging-task-*` — task-308 n'a pas été produite par
 > un run `/forge` multi-tasks.
+
+## Nettoyage post-merge — branches fantômes sur `dtos-mss` (2026-09-14)
+
+Question humaine juste après le merge : *« le repo dtos a deux branches sur origin,
+pourquoi ? »*. Il y en avait **six**, dont trois fantômes :
+
+| Branche | Commits hors `develop` | Origine |
+|---|---|---|
+| `feat/task-304-selection-et-bascule-de-boite` | **0** | `/start 304`, 2026-09-08 |
+| `feat/task-308-registre-deux-identites` | **0** | `/start 308`, 2026-09-14 |
+| `fix/task-289-flag-absent-isole-du-snapshot` | **0** | même motif, plus ancien |
+
+**La cause est un trou du playbook, pas un accident.** `dtos-mss` est **auto-inclus** :
+`/start` y pousse systématiquement une branche, même quand la task ne change aucun
+contrat. Sans commit, aucune PR n'est ouverte — et l'étape 5 de `/merge`, qui ne parcourt
+que les PRs, ne voit jamais cette branche. Sa ref distante survivait donc indéfiniment.
+Les refs **locales** étaient bien supprimées (rapporté à chaque merge) ; les refs
+**distantes**, jamais.
+
+Contrôle élargi : **seul `dtos-mss` était touché.** `api-mail`, `client-blazor`,
+`client-mobile` et `sdk` sont listés explicitement dans `**Repos**:` et reçoivent toujours
+des commits, donc une PR, donc la suppression de l'étape 5.
+
+**Fait** : les trois refs distantes supprimées (SHAs `f20f310`, `76081d0`, `3a54260` —
+tous présents dans `develop`, rien de perdu). `origin` ne porte plus que `develop`, `main`
+et `master`.
+
+**Corrigé à la racine** : `agents/merge.md` gagne une **étape 5 bis** qui supprime la ref
+distante **et** locale d'une branche auto-incluse restée vide, sous la garde stricte
+« zéro commit hors `develop` ». Une branche sans PR **mais avec des commits** est une
+anomalie — du travail poussé que personne n'a proposé au merge : dans ce cas rien n'est
+supprimé, et c'est signalé.
+
+> **Reste à trancher par l'humain, hors forge** : `origin/HEAD` pointe sur `main`
+> (04/01/2025, dernier commit « dqsdqsd », **227 commits de retard**), et `master` traîne
+> 62 commits en arrière. Les deux sont des **ancêtres** de `develop` — aucun travail
+> unique. Conséquence visible : qui ouvre le dépôt sur GitHub atterrit sur un état vieux
+> de 227 commits, et les PRs proposent `main` par défaut. Changer la branche par défaut
+> est une décision de dépôt, pas de forge.
