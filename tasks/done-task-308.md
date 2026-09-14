@@ -400,3 +400,266 @@ dans la base. Pour l'observer sans attendre l'US, il suffit de purger le rattach
   **lisibilité** du registre, jamais pour résoudre un compte ni une messagerie. Le jour où une
   requête filtrera sur `accounts.email`, la conflation « 1 compte = 1 boîte » que task-303 a
   démontée sera revenue — c'est ce que le DOD « aucune clause `Where` » empêche.
+
+## Branches
+
+Créées par `/start 308` le 2026-09-14, depuis `origin/develop` (post-merge de task-303 et
+task-304 — `develop` porte donc bien le code que cette US doit retirer).
+
+- `api-mail` (pushed) : `feat/task-308-registre-deux-identites`
+  https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-308-registre-deux-identites
+- `client-blazor` (pushed) : `feat/task-308-registre-deux-identites`
+  https://github.com/codengine-technologies/HealthPlatform.Client/tree/feat/task-308-registre-deux-identites
+- `client-mobile` (pushed) : `feat/task-308-registre-deux-identites`
+  https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-308-registre-deux-identites
+- `dtos-mss` (pushed, auto-incluse) : `feat/task-308-registre-deux-identites`
+  https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-308-registre-deux-identites
+- `client-angular` (code-only) : la forge écrit sur la branche actuellement checked out dans
+  `Client/Angular/` — instantané au moment du `/start` : `feature/nova-rewriting-mss-tenant`. L'humain gère branche, commit,
+  push et PR TFS.
+
+> Pré-vol : `api-mail`, `client-blazor`, `client-mobile`, `dtos-mss`, `sdk` tous sur `develop`,
+> arbres propres. `host` et `interop-cda` n'ont pas de dépôt sur ce poste — non mesurables
+> (cf. avertissement CLAUDE.md). `client-angular` hors pré-vol (code-only).
+>
+> ⚠️ `Client/Angular/` porte des modifications non committées au moment du `/start`, dont le
+> correctif NG0200 (cycle d'injection `MSS_USER_EMAIL` → `MailboxSessionStore` →
+> `MSS_RESETTABLE_STORES` → `MailEventsStreamService`) appliqué hors cycle le 2026-09-14.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-308 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /develop | ok | 42 min 18 s | 28 (1 min 36 s) | 9 (10 min 10 s) | — | api-mail 24B/6T, client-mobile 0B/1T, client-blazor 3B/1T, client-angular 1B/1T |
+| /start | ok | 46 s | — | — | — | — |
+| /sonar | ok | 16 min 44 s | 3 (28 s) | 6 (4 min 38 s) | 2 (1 min 00 s) | 1 itération(s), api-mail 3B/6T |
+| /lint-angular | ok | 1 min 28 s | — | — | — | — |
+| /lint-mobile | ok | 27 s | — | — | — | — |
+| /verify-visual | skipped | 9.9 s | — | — | — | aucun ecran mobile touche (diff = 1 spec) ; outillage Tools/visual-verify absent |
+| /review | ok | 12 min 19 s | 5 (27 s) | 6 (3 min 20 s) | — | api-mail 3B/3T, client-blazor 1B/1T, client-mobile 1B/1T, client-angular 0B/1T |
+| /tech-writer | ok | 2 min 31 s | — | — | — | — |
+| **Total cycle** | | **1 h 16 min** | **36 (2 min 32 s)** | **21 (18 min 09 s)** | **2 (1 min 00 s)** | |
+
+Autres commandes mesurées : lint ×3 (53 s)
+
+## Develop log — implémentation terminée (2026-09-14)
+
+### Vert sur les quatre repos
+
+| Repo | Build | Tests | Détail |
+|---|---|---|---|
+| `api-mail` | ✅ | **4 500 / 0 échec** | domain 181, infrastructure 521, application 2 485, api 815, integration 498 (+16 skip pré-existants) |
+| `client-blazor` | ✅ | **232 / 0 échec** | dont les 4 tests de redirection ajoutés |
+| `client-mobile` | ✅ | **823 / 0 échec** | 819 → 823, les 4 tests de garde ajoutés |
+| `client-angular` | ✅ | **347 / 0 échec** | 343 → 347, les 4 tests de garde ajoutés (code-only, non committé) |
+| `dtos-mss` | — | — | **aucun changement de contrat** — `MailboxDto` inchangé, branche sans commit |
+
+### Trois décisions prises pendant l'implémentation, hors périmètre écrit
+
+**1. Le cross-check PSC/KC de task-048 est retiré — c'était forcé, pas un choix.**
+`ApplyPscKcCrossCheckAsync` comparait `(mssSub, mssRpps)` du jeton Keycloak à
+`(sub, SubjectNameID)` du jeton PSC. Son étape 1 exige la **complétude des trois claims**
+— or ils ont disparu du realm. Avec `"Enforce": true` dans `appsettings.json`, il aurait
+donc répondu **403 à toute requête authentifiée**. Sa garantie est reprise par
+`MailboxCompatibility` règle 4, et *renforcée* : l'ancrage comparé vient d'une sonde
+XOAUTH2 validée par l'opérateur, là où les claims étaient auto-déclarés par le jeton même
+qu'on cherchait à vérifier. `PscIdentityOptions` part avec lui — un drapeau de
+configuration qui ne gouverne plus rien et dont le commentaire décrit un mécanisme retiré
+est pire qu'absent.
+
+**2. Le journal de décision de routage (EventId 3724) est déplacé après la résolution de
+la boîte.** Il était émis avant, là où l'adresse venait du claim `mssEmail`. Ce claim
+disparu, la ligne aurait affiché `<none>` à **chaque** requête pour les deux champs qui
+font tout son intérêt — l'adresse et le nom de base. Sa propre documentation exige qu'il
+reflète « the values actually used downstream by the repository » : il fallait le
+déplacer, pas le laisser mentir.
+
+**3. `AnchorPscIdentityAsync` sort aussi du contrat.** Elle n'avait **aucun appelant de
+production** — seulement le contrat et un stub de test. Avec l'ancrage devenu dérivé,
+laisser une opération capable d'ancrer hors du chemin de rattachement revenait à laisser
+en place la faute qu'on venait de retirer.
+
+### Deux points pour la revue humaine
+
+- **43 fichiers dans la PR `api-mail`**, au-delà du repère « ~30 » de la règle 5. Le
+  découpage n'est pas possible sans livrer un état intermédiaire incohérent :
+  `validated_by_rpps NOT NULL` ne tient que si le synchroniseur a cessé de fabriquer des
+  lignes sans PSC, et sortir `rpps` de `accounts` sans cette coupe laisserait l'ancrage
+  sans porteur fiable.
+- **Le banc de charge devra rattacher explicitement.** `TestBypassAuthenticationHandler`
+  émet encore `mssEmail` / `mssSub` / `mssRpps` — claims désormais morts, laissés en
+  place car inoffensifs. Mais les boîtes du banc étaient créées **par le synchroniseur** :
+  un tir sur base vierge devra désormais passer par `POST /api/v1/account/mailboxes`.
+  À traiter dans le harnais (`Tools/`), hors de cette US.
+
+### Passe qualité `/simplify` (§Q)
+
+Appliquée à `api-mail` (seul repo au diff non trivial) : retrait de
+`WriteIdentityCheckFailedAsync`, devenue sans appelant avec le cross-check, et de l'import
+`Microsoft.Extensions.Options` devenu inutile. Re-validation build + tests → verte.
+`client-blazor` et `client-mobile` : diff limité à un fichier de test chacun, aucun
+cleanup à appliquer. `dtos-mss` : porteur de contrat, jamais éligible.
+
+## Sonar log — 2026-09-14
+
+**Quality Gate : ✅ OK** (les cinq conditions du new-code passent).
+
+| KPI | Baseline (analyse du 2026-09-13) | Final (task-308) | Δ |
+|---|---|---|---|
+| Quality Gate | — | **OK** | — |
+| Bugs | 0 | **0** | = |
+| Vulnérabilités | 0 | **0** | = |
+| Code smells | 233 | **231** | **−2** |
+| Couverture | 87,3 % | **87,4 %** | **+0,1** |
+| Couverture *new code* | — | **83,5 %** (seuil 80) | ✅ |
+| Duplication | 0,3 % | 0,5 % | +0,2 |
+| Reliability / Security / Maintainability | A / A / A | **A / A / A** | = |
+| Hotspots de sécurité | — | 3 (`TO_REVIEW`, pré-existants) | = |
+| ncloc | 44 388 | 44 447 | +59 |
+
+**1 itération.** Un seul finding du new-code appartenait à ce diff :
+`csharpsquid:S1144` sur `RegistryMetrics.RegistryMeter`, devenu un champ privé inutilisé
+après le retrait des deux compteurs de migration des claims hérités. Corrigé en supprimant
+la classe **et** son `AddMeter` : un meter exporté sans aucun instrument ne remonte rien
+tout en laissant croire qu'il surveille quelque chose.
+
+**Les 37 findings restants sont acceptés** — best-effort assumé, aucun n'appartient au
+diff de cette US :
+- 30 `external_roslyn` en **INFO** (CA1068, CA1816, xUnit2033, AV0011) ;
+- 2 `S1144` et 2 `S3925` sur `BaseRepository` et `TenantRegistryExceptions`, code
+  pré-existant que cette US ne touche pas ;
+- 2 `S3604` sur les services d'audit, idem ;
+- 1 `S3776` — **liste noire** (`agents/sonar-blacklist.yml`), traité par la commande
+  dédiée `/sonar-s3776`, hors chaîne autonome.
+
+### Deux écarts d'outillage rencontrés
+
+- **SonarQube était arrêté** (conteneur sorti depuis 2 h). Redémarré
+  (`docker start sonarqube_db sonarqube`), opérationnel en ~3 min.
+- **Le port publié est 9000, pas 9001.** `agents/sonar.md` affirme 9001 dans un encadré
+  qui raconte précisément l'histoire d'une valeur corrigée deux fois. Mesuré ce jour :
+  `0.0.0.0:9000->9000/tcp`, et `curl` sur 9001 ne répond pas. Le conteneur a dû être
+  recréé depuis. **La consigne de l'encadré reste la bonne — mesurer, pas réécrire de
+  mémoire** ; c'est sa valeur qui est périmée.
+
+### Un flaky confirmé comme tel
+
+`ImapServiceIntegrationTests.GetEmailAsync_WithFullContent_ShouldReturnCompleteEmailAsync`
+a échoué une fois puis repassé au rejeu **sans aucune modification**. Même famille que les
+flakies GreenMail identifiés depuis task-297 ; hors du diff de cette US.
+
+## Lint log — client-angular, 2026-09-14
+
+**Vert dès la baseline. 0 itération consommée sur les 5 autorisées.**
+
+```
+npx nx affected -t lint --base=origin/next --head=HEAD --parallel=3 --projects=tag:scope:mss
+→ Successfully ran target lint for 11 projects
+→ 0 error
+```
+
+Seuls des **warnings** subsistent (`max-lines`, `jsdoc/require-example`), tous
+pré-existants et hors du diff de cette US. La règle de la chaîne porte sur les
+**errors** : rien à corriger, ni par l'auto-fixer ni à la main.
+
+**Le seul fichier Angular de cette US est un `.spec.ts`** — et les specs sont
+**exclus** de la configuration ESLint de ce workspace (`File ignored because of a
+matching ignore pattern`). Le diff Angular n'était donc, par construction, pas
+linatble.
+
+**Aucune entrée ajoutée à `conventions/angular.md`** : ce fichier n'enregistre que les
+règles corrigées **manuellement**, et aucune ne l'a été.
+
+**Aucune opération git** — mode code-only. `git fetch origin next` (lecture seule, tolérée
+par le playbook pour fiabiliser la référence de comparaison Nx) est la seule commande git
+exécutée. Le correctif du spec, comme le correctif NG0200 appliqué hors cycle, reste
+non committé : branche, commit, push TFS et ouverture de PR appartiennent à l'humain.
+
+## Lint mobile log — client-mobile, 2026-09-14
+
+**Vert dès la baseline. 0 itération consommée sur les 5 autorisées.**
+
+```
+npm run lint  (ng lint)
+→ All files pass linting.
+→ 0 error, 0 warning
+```
+
+Le diff mobile de cette US ne contient qu'un fichier — `mailbox.guard.spec.ts` — et il
+passe le lint tel quel. Ni auto-fixer ni correction manuelle n'ont été nécessaires,
+**aucun commit de lint** n'a donc été produit : le seul commit de ce repo reste celui de
+`/develop` (`7889060`), déjà poussé.
+
+**Aucune entrée ajoutée à `conventions/angular.md`** — ce fichier n'enregistre que les
+règles corrigées **manuellement**, et aucune ne l'a été.
+
+## Visual verify log — 2026-09-14
+
+**Skip propre — aucun écran à vérifier.**
+
+Le diff `client-mobile` de cette US se réduit à **un fichier de test**
+(`src/app/core/auth/mailbox.guard.spec.ts`) : aucun template, aucun style, aucune page.
+La task ne porte donc **aucun `## Stitch design log`**, ce qui est la condition de skip
+du playbook.
+
+Constat secondaire, déjà relevé sur task-304 : **`Tools/visual-verify/` n'existe pas sur
+ce poste**. L'étape aurait skippé en best-effort de toute façon. À traiter hors de cette
+US — ici, le skip est légitime sur son premier critère, pas sur celui-là.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/238 — label **`awaiting-human-merge`**
+- `client-blazor` : https://github.com/codengine-technologies/HealthPlatform.Client/pull/75 — label **`awaiting-human-merge`**
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/71 — label **`awaiting-human-merge`**
+- `dtos-mss` : **aucune PR** — branche créée par auto-inclusion, **zéro commit**. Cette US ne
+  change aucun contrat : `MailboxDto` est inchangé, les colonnes déplacées ne traversent pas
+  la frontière HTTP.
+- `client-angular` : **code-only** — l'humain gère commit/push TFS et l'ouverture de la PR.
+  Branche au moment du cycle : `feature/nova-rewriting-mss-tenant`. Fichiers :
+  - `front/libs/mss/src/core/guards/mailbox.guard.spec.ts` *(nouveau — les 4 tests de garde)*
+  - `front/libs/mss/src/core/stores/mailbox-session.store.ts` *(correctif NG0200 appliqué hors
+    cycle le 2026-09-14 — cycle d'injection `MSS_USER_EMAIL` → `MailboxSessionStore` →
+    `MSS_RESETTABLE_STORES` → `MailEventsStreamService` ; indépendant de cette US)*
+  - les deux `environments/environment.ts` sont des modifications locales de l'humain,
+    antérieures au cycle.
+
+> **Règle 11 — US complète.** Les trois PRs portent `awaiting-human-merge` : le changement de
+> comportement (api-mail) et sa preuve côté front arrivent ensemble, la US est testable de bout
+> en bout. Ordre de merge : **`api-mail` #238 d'abord** (il porte la migration), puis les deux
+> fronts, dans n'importe quel ordre.
+
+## Code Review Summary
+
+**APPROVED** — 0 blocage. **Trois défauts trouvés et corrigés pendant la revue**, chacun avec
+son commit :
+
+| Zone | Verdict |
+|---|---|
+| `RegistryAccount` / `PscIdentity` | ✅ ancrage dérivé, `Matches` réutilisé plutôt que dupliqué ; le détachement ne désancre pas, et c'est testé |
+| `MailboxCompatibility` | ✅ règle 2 **gagne** en portée : elle compare désormais les rattachements entre eux. Matrice de 14 tests verte, assertions inchangées |
+| Migration `TenantDb` | ✅ nouvelle (règle 7c) ; ordre report → `NOT NULL` → drop non inversable ; `Down()` honnête sur ce qu'il ne restaure pas ; commentaires de colonne en base |
+| `PostgresTenantRegistryClient` | ⚠️ **réserve** : `LoadAnchorAsync` ajoute une requête par requête authentifiée (indexée, ≤ 1 ligne). À mesurer au banc |
+| `AttachMailboxAsync` | ❌→✅ **corrigé** : filtre sur `validated_by_rpps` sans index → `ix_mss_accounts_validated_by_rpps` ajouté (commit `5818083`) |
+| Flux SSE | ❌→✅ **corrigé** : « JWT lacks the mssEmail claim » là où il manque une boîte ouverte — un praticien en onboarding y tombe légitimement (commit `b62eabd`) |
+| `RegistryMetrics` | ❌→✅ **corrigé** : meter vide après retrait des compteurs, S1144 (commit `5afd3d9`) |
+| Middleware | ✅ cross-check retiré à raison (403 systématique sinon) ; journal 3724 déplacé pour ne plus mentir |
+| Sécurité / données de santé | ✅ aucune adresse ni jeton dans les nouveaux journaux ; `email`/`username` dénormalisés documentés comme non autoritaires, jamais joints |
+| Tests | ✅ le piège `MapInboundClaims` couvert des **deux** côtés — la moitié testée est précisément ce qui a laissé survivre `KcSub=<none>` |
+
+### Réserves assumées (non bloquantes)
+
+- **`LoadAnchorAsync` sur le chemin chaud** — une requête indexée de plus par requête
+  authentifiée. À confirmer au banc avant la prochaine campagne de capacité.
+- **48 fichiers dans la PR `api-mail`**, au-delà du repère « ~30 » de la règle 5. Indivisible
+  sans état intermédiaire incohérent.
+- **Le banc de charge devra rattacher explicitement** — ses boîtes étaient créées par le
+  synchroniseur. À traiter dans le harnais, hors US.
+- **`mss_registry` local a été vidé** par la suite d'intégration pendant le cycle : les lignes
+  du praticien de test observées en début de session n'existent plus. La base se recrée au
+  prochain démarrage de l'app, avec la nouvelle migration. Sans conséquence ici — l'humain
+  cherchait précisément un registre vide pour voir l'onboarding.
+- **Flaky confirmé** : `ImapServiceIntegrationTests.GetEmailAsync_WithFullContent` a échoué une
+  fois puis repassé au rejeu sans modification. Même famille que les flakies GreenMail
+  identifiés depuis task-297.
