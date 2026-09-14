@@ -1,0 +1,216 @@
+# todo-task-312.md — Retirer le journal d'audit hérité de la base praticien, et tout ce qui n'existait que pour en sortir
+
+**Repos**: api-mail
+**Dependencies**: **task-300** (journal mutualisé, mergée), **task-301** (reprise
+d'historique, mergée), **task-308** (mergée — elle a déjà supprimé les lignes
+`mss_accounts` non validées, donc les marques de bascule qu'elles portaient).
+Aucune dépendance sortante.
+**Epic**: E016
+**Priorité**: **1** — décision humaine du 2026-09-14 : il n'y a **aucune donnée de
+production**, donc rien à décommissionner avec précaution. Ce qui reste est de la dette
+pure : une table morte, une double lecture permanente, et une machinerie de migration qui
+n'a plus de destination.
+
+## Objective
+
+Supprimer la table d'audit de la base praticien (`MssAuditTraces`) et **tout ce qui
+n'existait que pour en sortir** : son dépôt, sa purge, la lecture double source, la
+machinerie de reprise et ses deux marques.
+
+Après cette US, le journal d'audit a **une seule source** : `audit_traces`, en base
+commune.
+
+## Le point de départ : ce que « les entités qui s'y rattachent » recouvre vraiment
+
+> ⚠️ **`MssAuditTrace` n'est PAS l'entité de la table héritée, et elle reste.**
+>
+> C'est la **monnaie de toute la chaîne d'audit**, journal mutualisé compris :
+> `IAuditService.Trace(actionType, Action<MssAuditTrace>)`. Chaque appel `_audit.Trace(…)`
+> du produit configure un `MssAuditTrace` ; le drain les met en lot, Redis les déverse en
+> débordement, et ils sont convertis en `AuditTraceRecord` pour la base commune.
+> **305 occurrences dans 54 fichiers.** Retirer ce type éventrerait le système d'audit
+> entier — c'est l'inverse du but.
+>
+> Ce qui part, c'est ce qui est attaché **à la table**.
+
+## Ce qui est supprimé
+
+| Pièce | Fichier | Rôle |
+|---|---|---|
+| Table `MssAuditTraces` + 2 index | `Migrations/MailDb/20240101_SetupMigration.cs:587` | le magasin hérité |
+| Mapping EF | `Persistance/MailDataContext.cs` | le `DbSet` |
+| `AuditTraceRepository` / `IAuditTraceRepository` | `Repositories/MailDb/`, `Services/Repository/` | seul écrivain et lecteur de la table |
+| Jambe héritée du lecteur | `PostgresAuditReader.cs:79` et `:94` | la lecture double source |
+| Purge de rétention héritée | `AuditBackgroundService.cs:~228-285` | purge **cette** table, et s'y journalise |
+| `AuditBackfillService` + `IAuditBackfillService` | `Services/Implementation/` | reprise d'historique |
+| `IAuditBackfillStore` + `PostgresAuditBackfillStore` | `Services/Repository/TenantDb/`, `Repositories/TenantDb/` | dont `DropLegacyTableAsync`, **sans appelant de production** |
+| `AuditBackfillHostedService` + `AuditBackfillOptions` | `Services/Background/`, `Configuration/` | déclencheur `Backfill:RunOnStartup`, **jamais activé** |
+| Marques `audit_cutover_at` / `audit_backfilled_at` | `mss_accounts` | elles ne bornaient que la double lecture → **migration `TenantDb` nouvelle** |
+| Repli du contrôleur | `AuditController.cs:64` et `:82` | `TenantId is null ? legacy : commun` |
+
+Plus une quinzaine de fichiers de test.
+
+## ⛔ Le blocage que cette US fait apparaître — à traiter DANS l'US
+
+**La purge de rétention du journal mutualisé n'est branchée nulle part.**
+
+- `IAuditJournalPurge` / `PostgresAuditJournalPurge` sont **enregistrés en DI**
+  (`Infrastructure/Extensions/ServiceCollectionExtensions.cs:129`) et **n'ont aucun
+  appelant**.
+- La **seule** purge qui s'exécute aujourd'hui est celle du drain, et elle porte sur la
+  table **héritée** (`repository.PurgeOlderThanAsync`, `AuditBackgroundService:~241`).
+
+Donc, en l'état : **supprimer la table héritée supprimerait la seule purge de rétention
+qui tourne**. Le journal mutualisé — celui qui porte INS, nom de patient, sujet et
+expéditeur — croîtrait indéfiniment, sans effacement à échéance. Ce serait remplacer une
+dette technique par un manquement RGPD.
+
+> La documentation de `IAuditJournalPurge` le dit déjà, et c'est ce qui rend l'omission
+> visible : *« la purge était opportuniste, déclenchée par l'activité du tenant lui-même.
+> Un tenant dormant ne déclenchait plus jamais de purge, et ses traces — porteuses d'INS
+> et de nom de patient — … »*. Le remède a été écrit ; il n'a jamais été branché.
+
+**Cette US branche donc la purge de la base commune** avant de retirer l'héritée. Ce n'est
+pas un élargissement de périmètre : c'est la condition pour que le retrait soit légal.
+
+## Ce que le retrait ferme par ailleurs
+
+- **Plus de décommissionnement à orchestrer.** `DropLegacyTableAsync`, sa garde sur la
+  marque de reprise, le runbook « une nuit, sous surveillance, tenant par tenant » :
+  sans table, le sujet disparaît.
+- **Plus de lecture double source.** Chaque consultation d'audit interrogeait deux
+  sources, indéfiniment, puisque la marque n'était jamais posée. Le coût cesse.
+- **Le 10 % manquant de la traçabilité** dans `Docs/epics/E016-*.md` disparaît **par
+  suppression du problème**, pas par exécution d'un runbook.
+
+## Definition of Done
+
+### La purge d'abord — sans elle, rien ne se retire
+
+- [ ] `IAuditJournalPurge` est **branché** et s'exécute réellement : service hébergé,
+      cadence configurable, arrêt propre. Un test prouve qu'une trace plus ancienne que
+      sa rétention est supprimée de `audit_traces`
+- [ ] Les **deux familles de rétention** sont respectées (`HealthDataAccessDays` vs
+      `TechnicalDays`) — c'est la distinction PGSSI-S, pas un réglage
+- [ ] **La purge se journalise elle-même**, comme le faisait l'héritée : c'est la seule
+      suppression autorisée pendant la rétention, elle doit dire ce qu'elle a retiré et
+      jusqu'à quelle borne
+- [ ] La purge est **bornée par lot** (`PurgeBatchSize`) : une purge non bornée sur une
+      table d'un milliard de lignes bloque la base
+
+### Le retrait
+
+- [ ] Table `MssAuditTraces` et ses deux index retirés de
+      `20240101_SetupMigration.cs` — **la migration ne les crée plus**. Aucune base neuve
+      ne porte cette table
+- [ ] `DbSet` retiré de `MailDataContext` ; `AuditTraceRepository` et
+      `IAuditTraceRepository` **supprimés**
+- [ ] `PostgresAuditReader` ne lit plus qu'**une** source. Sa signature ne prend plus de
+      dépôt hérité
+- [ ] `AuditController` ne porte plus de repli : un `TenantId` nul rend un résultat
+      **vide**, pas une lecture d'une autre source. Test explicite
+- [ ] Toute la machinerie de reprise supprimée : `AuditBackfillService`,
+      `IAuditBackfillService`, `IAuditBackfillStore`, `PostgresAuditBackfillStore`,
+      `AuditBackfillHostedService`, `AuditBackfillOptions`, et leur enregistrement DI.
+      **Vérification binaire** : `grep -rn "Backfill" Api/Mail/src` → **0 résultat**
+- [ ] Migration `TenantDb` **nouvelle** (règle 7c) retirant `audit_cutover_at` et
+      `audit_backfilled_at` de `mss_accounts`. Elles ne bornaient que la double lecture
+- [ ] Les entités et le `DbContext` du registre ne portent plus ces deux colonnes ; la
+      liste blanche de colonnes de `TenantRegistryArchitectureTests` et du test
+      d'intégration est mise à jour
+- [ ] `Backfill:RunOnStartup` retiré de toute configuration et documentation
+
+### Ce qui ne doit pas bouger
+
+- [ ] **`MssAuditTrace` reste** — c'est le type de la chaîne, pas celui de la table. Les
+      305 usages ne sont pas touchés
+- [ ] Le drain continue d'écrire en base commune par lot, en **une seule instruction** :
+      c'est le correctif de capacité de task-300, il ne se dégrade pas par effet de bord.
+      Un test d'architecture ou une revue le vérifie
+- [ ] Le **débordement Redis** (`RedisAuditSpillStore`) est inchangé : il porte des
+      `MssAuditTrace`, pas la table
+- [ ] La RLS, les deux rôles et le partitionnement d'`audit_traces` sont inchangés ;
+      leurs tests d'intégration restent verts sans modification d'assertion
+
+### Transverse
+
+- [ ] Build passes (0 erreur) ; **tous** les tests passent (0 échec)
+- [ ] Les tests qui couvraient la table héritée sont **supprimés**, jamais commentés ni
+      mis en `Skip` — un test qui survit au code qu'il décrit devient une affirmation sur
+      du vide
+
+## Manual Test Plan
+
+- **Lancer** : `cd Api/Mail && aspire run --project src/AppHost`
+- **Actions et vérifications** :
+  1. **Base praticien neuve** : se connecter avec un praticien de test, faire une action
+     tracée, puis
+     `docker exec postgres-pgvector psql -U postgres -d {base_praticien} -c "\dt"` →
+     **aucune table `MssAuditTraces`**.
+  2. **La trace est en base commune** :
+     `docker exec postgres-pgvector psql -U postgres -d mss_registry -c "select count(*), count(distinct tenant_id) from audit_traces;"`
+     → compte non nul.
+  3. **L'écran d'audit fonctionne** : ouvrir le journal dans l'interface → les traces
+     s'affichent, mono-source, sans erreur.
+  4. **La purge tourne** : abaisser temporairement la rétention technique à 0 jour,
+     attendre un cycle, vérifier que les traces techniques ont disparu d'`audit_traces`
+     **et** qu'une trace `AuditPurge` a été écrite disant combien et jusqu'à quelle borne.
+  5. **Contrôle du registre** :
+     `docker exec postgres-pgvector psql -U postgres -d mss_registry -c "\d mss_accounts"`
+     → **plus de `audit_cutover_at` ni `audit_backfilled_at`**.
+  6. **Contre-épreuve** : `grep -rn "Backfill\|MssAuditTraces" Api/Mail/src` → **aucun
+     résultat**.
+- **Données de test** : praticien synthétique, aucune donnée de santé réelle.
+
+## Conformité santé / Ségur / ANS
+
+- **Couloir Ségur** : médecine de ville
+- **Vague Ségur** : hors Ségur — dette technique sur le socle de traçabilité
+- **Exigences DSR honorées** : non applicable
+- **INS** : aucune donnée de santé lue ni écrite par le retrait lui-même. Mais les traces
+  du journal **portent** INS, nom de patient, sujet et expéditeur — d'où l'exigence de
+  purge ci-dessous, non négociable
+- **Authentification PS** : inchangée
+- **Habilitations** : inchangées. La RLS et les deux rôles du journal mutualisé ne sont
+  pas touchés — c'est eux qui tiennent l'isolation entre praticiens
+- **Interop CI-SIS** : non applicable
+- **Tracé PGSSI-S** : **c'est le cœur de l'US, et dans les deux sens.**
+  - *Au crédit* : le journal passe à **une seule source**. La lecture double source, qui
+    ne devait être que transitoire, était devenue permanente faute de reprise exécutée —
+    et un journal probant lu depuis deux endroits est un journal dont l'exactitude dépend
+    d'une borne que personne ne pose.
+  - *Au débit, et c'est bloquant* : la **seule purge de rétention qui s'exécute** porte
+    aujourd'hui sur la table héritée. La retirer sans brancher celle de la base commune
+    laisserait un journal porteur d'INS croître **sans effacement à échéance**. L'US
+    branche donc la purge mutualisée **avant** de retirer l'héritée, et le DOD le place
+    en premier item
+  - Durées de conservation inchangées : 3 653 jours pour les accès aux données de santé,
+    la durée technique pour le reste
+- **Consentement patient** : non applicable
+- **Référentiels métier** : aucun
+- **Hébergement HDS** : inchangé — aucun flux, aucune donnée déplacée. Une table est
+  supprimée d'un schéma, pas exportée
+- **AIPD / impact RGPD** : **favorable, à condition que la purge soit branchée.** Une
+  copie des traces disparaît (la base praticien), et l'effacement à échéance devient
+  effectif sur la copie restante — alors qu'il ne l'était sur aucune des deux pour un
+  tenant dormant
+
+### DOD santé applicable
+
+- [ ] Aucune donnée de santé en clair dans les journaux applicatifs (INS, NIR, contenu
+      CDA, contenu MSSanté) — inchangé, à re-vérifier sur le code touché
+- [ ] Évènements PGSSI-S journalisés : `AuditPurge` est **conservée**, émise par la purge
+      mutualisée, avec le nombre supprimé et la borne
+- [ ] La rétention est **effectivement appliquée** au journal mutualisé — prouvé par test,
+      pas seulement enregistré en DI
+
+## Ce que cette US n'est pas
+
+- **Pas la suppression de `MssAuditTrace`.** C'est le type de la chaîne d'audit, pas celui
+  de la table. Il reste, avec ses 305 usages.
+- **Pas un décommissionnement progressif.** Décision humaine du 2026-09-14 : aucune donnée
+  de production, donc ni runbook, ni reprise, ni vérification tenant par tenant. On retire.
+- **Pas une refonte du journal mutualisé.** Partitionnement, RLS, deux rôles, insertion
+  groupée, débordement Redis : tout est inchangé.
+- **Pas l'occasion de revoir les durées de rétention.** Elles sont reprises telles quelles.
+  Les discuter est un sujet de conformité, pas de dette technique.
