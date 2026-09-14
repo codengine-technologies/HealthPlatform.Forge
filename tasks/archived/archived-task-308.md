@@ -728,3 +728,29 @@ le lint ne distingue pas un bloc absent d'un bloc périmé.
 > **Les deux autres fronts ne sont pas traités.** `client-blazor` et `client-mobile` ont
 > leurs propres écrans de rattachement, non audités ici. À vérifier séparément — cette
 > passe ne couvre que `client-angular`, le front sur lequel le constat a été fait.
+
+## Merged
+
+Mergée le **2026-09-14** par `/merge 308 --i-tested` (HAG, règle 10).
+
+| Repo | PR | Commit de squash sur `develop` | CI `develop` |
+|---|---|---|---|
+| `api-mail` | #238 | `09740e5` | ✅ [run 34896647669](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/34896647669) |
+| `client-blazor` | #75 | `53a38d4` | ✅ [run 34896670649](https://github.com/codengine-technologies/HealthPlatform.Client/actions/runs/34896670649) |
+| `client-mobile` | #71 | `caba37a` | ❌ [run 34896682052](https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/34896682052) — **cassure externe, pas ce diff** |
+| `dtos-mss` | aucune PR | — | contrat inchangé |
+| `client-angular` | code-only | — | géré manuellement par l'humain |
+
+Branches distantes `feat/task-308-registre-deux-identites` supprimées sur les trois repos ;
+branches **locales conservées** pour inspection rétroactive.
+
+> **CI rouge sur `client-mobile`, et ce n'est pas cette US.**
+> `android-actions/setup-android@v3` échoue à l'étape `Set up Android SDK` :
+> `Failed to find package 'tools'` — Google a retiré ce paquet de son dépôt SDK. Aucun
+> code n'est compilé à cette étape, le diff de ce repo est **un seul fichier de test**, le
+> même job est passé sur la PR 20 minutes plus tôt, et `develop` était vert au merge de
+> task-304 à 17:22. Rejoué une fois : même échec, donc pas un flaky.
+> Diagnostic complet et correctif d'une ligne : `questions/merge-task-308.md`.
+
+> **Staging** : aucune branche `forge/staging-task-*` — task-308 n'a pas été produite par
+> un run `/forge` multi-tasks.
