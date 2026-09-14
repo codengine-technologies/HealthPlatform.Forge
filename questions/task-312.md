@@ -1,8 +1,26 @@
-# questions/task-312.md — Arbitrage requis : où vont les traces d'audit **sans tenant** ?
+# questions/task-312.md — ~~Arbitrage requis~~ **RÉSOLU** : où vont les traces d'audit **sans tenant** ?
 
-> Écrit par `/develop 312` le 2026-09-14. **Fail-fast** : la chaîne s'arrête ici. Rien
-> n'est committé ni poussé — le travail déjà fait reste dans l'arbre de travail d'
-> `api-mail`, sur `chore/task-312-retrait-audit-herite`.
+> Écrit par `/develop 312` le 2026-09-14. **Fail-fast** : la chaîne s'est arrêtée ici.
+>
+> ## ✅ Résolu le 2026-09-14 — arbitrage humain
+>
+> **Réponse : A + B, tels que recommandés.** L'humain a d'abord demandé « quel évènement
+> devient invisible exactement ? », ce qui a corrigé une surestimation de ma part : seul
+> **`MailboxAttached` au tout premier rattachement** est systématiquement sans tenant —
+> `MailboxDetached` en a un dès lors qu'il reste une boîte, et le tableau ci-dessous le
+> disait de façon trop large. Après cette précision : « **je confirme** ».
+>
+> **Implémenté** : `MailboxManagementService` estampille `t.TenantId` sur les trois traces
+> de messagerie (rattachement, détachement, mise à jour) — c'est le volet A, et il couvre
+> tout ce qui connaît son tenant. Le résiduel — un échec d'authentification n'a aucune
+> boîte à résoudre — part sous `Guid.Empty`, invisible de tout praticien par la RLS.
+> Volet B, assumé, documenté à chacun des trois sites qui le produisent.
+>
+> **La visibilité perdue est nulle en pratique** : le dépôt hérité filtrait sur
+> `UserId == email`, et une trace émise avant toute résolution de boîte ne porte pas
+> l'email du praticien. Ces traces n'étaient donc déjà visibles de personne.
+>
+> La chaîne a repris. Ce qui suit est l'état du blocage au moment où il a été écrit.
 
 ## Le blocage
 
@@ -75,7 +93,7 @@ et de conformité, pas d'implémentation.
 d'audit du praticien (option B), ou faut-il leur garantir une visibilité — auquel cas il
 faut décider comment, la RLS étant l'isolation ?**
 
-## État du travail
+## État du travail *(au moment du fail-fast — dépassé, voir l'encadré de tête)*
 
 Fait dans l'arbre de travail, **non committé** :
 

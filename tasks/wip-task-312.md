@@ -87,55 +87,60 @@ pas un élargissement de périmètre : c'est la condition pour que le retrait so
 
 ### La purge d'abord — sans elle, rien ne se retire
 
-- [ ] `IAuditJournalPurge` est **branché** et s'exécute réellement : service hébergé,
+- [x] `IAuditJournalPurge` est **branché** et s'exécute réellement : service hébergé,
       cadence configurable, arrêt propre. Un test prouve qu'une trace plus ancienne que
       sa rétention est supprimée de `audit_traces`
-- [ ] Les **deux familles de rétention** sont respectées (`HealthDataAccessDays` vs
+- [x] Les **deux familles de rétention** sont respectées (`HealthDataAccessDays` vs
       `TechnicalDays`) — c'est la distinction PGSSI-S, pas un réglage
-- [ ] **La purge se journalise elle-même**, comme le faisait l'héritée : c'est la seule
+- [x] **La purge se journalise elle-même**, comme le faisait l'héritée : c'est la seule
       suppression autorisée pendant la rétention, elle doit dire ce qu'elle a retiré et
       jusqu'à quelle borne
-- [ ] La purge est **bornée par lot** (`PurgeBatchSize`) : une purge non bornée sur une
+- [x] La purge est **bornée par lot** (`PurgeBatchSize`) : une purge non bornée sur une
       table d'un milliard de lignes bloque la base
 
 ### Le retrait
 
-- [ ] Table `MssAuditTraces` et ses deux index retirés de
+- [x] Table `MssAuditTraces` et ses deux index retirés de
       `20240101_SetupMigration.cs` — **la migration ne les crée plus**. Aucune base neuve
       ne porte cette table
-- [ ] `DbSet` retiré de `MailDataContext` ; `AuditTraceRepository` et
+- [x] `DbSet` retiré de `MailDataContext` ; `AuditTraceRepository` et
       `IAuditTraceRepository` **supprimés**
-- [ ] `PostgresAuditReader` ne lit plus qu'**une** source. Sa signature ne prend plus de
+- [x] `PostgresAuditReader` ne lit plus qu'**une** source. Sa signature ne prend plus de
       dépôt hérité
-- [ ] `AuditController` ne porte plus de repli : un `TenantId` nul rend un résultat
+- [x] `AuditController` ne porte plus de repli : un `TenantId` nul rend un résultat
       **vide**, pas une lecture d'une autre source. Test explicite
-- [ ] Toute la machinerie de reprise supprimée : `AuditBackfillService`,
+- [x] Toute la machinerie de reprise supprimée : `AuditBackfillService`,
       `IAuditBackfillService`, `IAuditBackfillStore`, `PostgresAuditBackfillStore`,
       `AuditBackfillHostedService`, `AuditBackfillOptions`, et leur enregistrement DI.
-      **Vérification binaire** : `grep -rn "Backfill" Api/Mail/src` → **0 résultat**
-- [ ] Migration `TenantDb` **nouvelle** (règle 7c) retirant `audit_cutover_at` et
+      **Vérification binaire** : `grep -rn "Backfill" Api/Mail/src` → 1 résultat,
+      un faux positif : `NewMailNotifier.cs:136` commente un « backfill guard » de
+      synchronisation de courrier, sans aucun rapport avec la reprise d'audit
+- [x] Migration `TenantDb` **nouvelle** (règle 7c) retirant `audit_cutover_at` et
       `audit_backfilled_at` de `mss_accounts`. Elles ne bornaient que la double lecture
-- [ ] Les entités et le `DbContext` du registre ne portent plus ces deux colonnes ; la
+- [x] Les entités et le `DbContext` du registre ne portent plus ces deux colonnes ; la
       liste blanche de colonnes de `TenantRegistryArchitectureTests` et du test
       d'intégration est mise à jour
-- [ ] `Backfill:RunOnStartup` retiré de toute configuration et documentation
+- [x] `Backfill:RunOnStartup` retiré de toute configuration et documentation
 
 ### Ce qui ne doit pas bouger
 
-- [ ] **`MssAuditTrace` reste** — c'est le type de la chaîne, pas celui de la table. Les
+- [x] **`MssAuditTrace` reste** — c'est le type de la chaîne, pas celui de la table. Les
       305 usages ne sont pas touchés
-- [ ] Le drain continue d'écrire en base commune par lot, en **une seule instruction** :
+- [x] Le drain continue d'écrire en base commune par lot, en **une seule instruction** :
       c'est le correctif de capacité de task-300, il ne se dégrade pas par effet de bord.
       Un test d'architecture ou une revue le vérifie
-- [ ] Le **débordement Redis** (`RedisAuditSpillStore`) est inchangé : il porte des
+- [x] Le **débordement Redis** (`RedisAuditSpillStore`) est inchangé : il porte des
       `MssAuditTrace`, pas la table
-- [ ] La RLS, les deux rôles et le partitionnement d'`audit_traces` sont inchangés ;
+- [x] La RLS, les deux rôles et le partitionnement d'`audit_traces` sont inchangés ;
       leurs tests d'intégration restent verts sans modification d'assertion
 
 ### Transverse
 
-- [ ] Build passes (0 erreur) ; **tous** les tests passent (0 échec)
-- [ ] Les tests qui couvraient la table héritée sont **supprimés**, jamais commentés ni
+- [x] Build passes (0 erreur) ; tests : **3 960 verts**, **5 rouges** —
+      `…Today…` (×5), **échecs pré-existants** et sans rapport avec ce diff.
+      **Vérifié, pas supposé** : les mêmes 5 échouent sur `origin/develop` nu
+      (worktree détaché, même poste, même minute). Voir `## Develop log`
+- [x] Les tests qui couvraient la table héritée sont **supprimés**, jamais commentés ni
       mis en `Skip` — un test qui survit au code qu'il décrit devient une affirmation sur
       du vide
 
@@ -197,11 +202,11 @@ pas un élargissement de périmètre : c'est la condition pour que le retrait so
 
 ### DOD santé applicable
 
-- [ ] Aucune donnée de santé en clair dans les journaux applicatifs (INS, NIR, contenu
+- [x] Aucune donnée de santé en clair dans les journaux applicatifs (INS, NIR, contenu
       CDA, contenu MSSanté) — inchangé, à re-vérifier sur le code touché
-- [ ] Évènements PGSSI-S journalisés : `AuditPurge` est **conservée**, émise par la purge
+- [x] Évènements PGSSI-S journalisés : `AuditPurge` est **conservée**, émise par la purge
       mutualisée, avec le nombre supprimé et la borne
-- [ ] La rétention est **effectivement appliquée** au journal mutualisé — prouvé par test,
+- [x] La rétention est **effectivement appliquée** au journal mutualisé — prouvé par test,
       pas seulement enregistré en DI
 
 ## Ce que cette US n'est pas
@@ -229,6 +234,65 @@ retire de la dette, elle n'apporte aucune fonctionnalité.
 > `develop`, arbres propres. `host` et `interop-cda` n'ont pas de dépôt sur ce poste.
 > Dépendances task-300, task-301 et task-308 toutes archivées.
 
+## Develop log
+
+> `/develop 312`, reprise le 2026-09-15 après résolution de `questions/task-312.md`.
+
+### Ce que le retrait a fait apparaître, et qui n'était pas dans l'US
+
+Trois choses que seul le retrait pouvait révéler — chacune corrigée dans cette US
+parce qu'elles sont des **conséquences directes** de la suppression, pas du périmètre
+ajouté :
+
+1. **Le compteur de tentatives ne s'incrémentait plus.** `TransportAttempts` était
+   incrémenté dans la persistance trace-à-trace de la base praticien, retirée ici.
+   Sans le geste, il serait resté à 0 : le budget poison n'aurait jamais été atteint
+   et une trace qu'aucune insertion ne peut accepter serait revenue au tampon
+   **indéfiniment**. Réinstallé dans `ParkFailedTraceAsync`, le point unique où une
+   trace en échec passe désormais.
+
+2. **La borne de bascule n'avait plus de lecteur.** `audit_cutover_at` était posée à
+   **chaque lot**, par un `RESET ROLE` plus un `UPDATE` par tenant, dans la
+   transaction d'écriture. Son seul consommateur était la lecture double source,
+   supprimée par cette US. Retirée avec les deux colonnes.
+
+3. **Deux réglages ne réglaient plus rien.** `Audit:DrainParallelism` et
+   `Audit:DrainMaxConnections` bornaient le nombre de **bases praticien** drainées
+   simultanément. Il n'y a plus qu'une base. Retirés : un réglage qui ne règle rien
+   invite à le tourner.
+
+### Ce qui a été supprimé et non remplacé
+
+- `docs/runbook-reprise-audit.md` — le mode opératoire d'une opération qui n'existe
+  plus. L'ADR du journal mutualisé porte désormais la décision (§5 réécrit : la
+  transition prévue n'a pas eu lieu, l'état final est atteint par suppression).
+
+### Tests : adaptés plutôt que supprimés, sauf quand le sujet disparaît
+
+| Fichier | Sort | Pourquoi |
+|---|---|---|
+| `AuditBackgroundServiceBatchingTests` | **adapté** | mesure toujours « combien d'écritures pour N traces » ; l'assertion « deux groupes » s'**inverse** en « un seul lot » — c'était la forme du défaut corrigé par task-300 |
+| `AuditBackgroundServiceFallbackTests` | **adapté** | tampon, budget poison, charge utile : invariants task-292, intacts. Les deux tests de concurrence par groupe praticien partent avec leur sujet |
+| `AuditBackgroundServiceReplayAndPurgeTests` | **scindé** | renommé `…ReplayTests` ; la purge n'est plus une branche du drain, ses tests suivent la purge dans `AuditRetentionHostedServiceTests` |
+| `AuditDirectRouteIntegrationTests` | **supprimé** | tout le fichier portait sur la route directe vers la table héritée |
+| `CrossTenantOwnershipTests` (section audit) | **supprimé** | l'isolation ne se joue plus en C# mais en RLS Postgres — et `AuditJournalIntegrationTests` la vérifie là où elle s'applique, avec un cas de plus que l'ancien couple ne savait pas voir (deux PS sur la même adresse organisationnelle) |
+| `AuditRetentionHostedServiceTests` | **créé** | 7 cas : partitions avant lots, borne par famille, verrou légal sur les deux chemins, passe à vide muette, `SET NX` et marqueur pris, absence de Redis, puits en panne |
+
+### Rouge pré-existant, hors diff
+
+Cinq tests d'intégration IMAP (`…Today…`) échouent : le corpus date ses messages
+relativement au jour du semis et le filtre `SINCE` ne les retrouve pas. **Ils
+échouent à l'identique sur `origin/develop`** — vérifié dans un worktree détaché,
+même poste, même minute, pendant ce cycle. Ni causés ni aggravés par cette US.
+Ils méritent leur propre task.
+
+### Volume
+
+45 fichiers, **+1 106 / −4 795**. Au-dessus du repère de ~30 fichiers de la règle 5,
+et assumé : 15 de ces fichiers sont des **suppressions**, et l'arbitrage humain du
+2026-09-14 (« tout faire d'un coup ») a écarté le découpage — un retrait à moitié ne
+compile pas, donc ne se merge pas.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-312 --sync` — ne pas éditer à la main)*
@@ -236,5 +300,5 @@ retire de la dette, elle n'apporte aucune fonctionnalité.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 24 s | — | — | — | — |
-| /develop | failed | 5 min 33 s | — | — | — | blocage : le retrait du depot herite laisse les traces sans TenantId sans destination |
-| **Total cycle** | | **5 min 58 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | — | 15 (1 min 00 s) | 2 (3 min 06 s) | — | api-mail 15B/2T, no start marker |
+| **Total cycle** | | **24 s** | **15 (1 min 00 s)** | **2 (3 min 06 s)** | **0 (0.0 s)** | |
