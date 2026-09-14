@@ -474,3 +474,49 @@ et rouge sur `develop`** — l'écart entre les deux builds n'a jamais été exp
 (voir `questions/merge-task-297.md`). Tant qu'il ne l'est pas, la seule
 protection est d'écrire le token dès le départ : la garde « CI verte avant
 merge » ne l'attrape pas de façon fiable.
+
+---
+
+## IDE1006 — le suffixe `Async` ne s'applique pas aux noms de tests
+
+**Occurrences : 1** (task-303 le 2026-09-14 — 1777 méthodes de test en erreur
+dans Visual Studio, dont 181 sur le seul `mss.mail.infrastructure.tests`)
+
+`Api/Mail/.editorconfig` déclare `async_methods_end_in_async` en
+**`severity = error`** sur tout `[*.cs]` : toute méthode `async` doit finir par
+`Async`. CLAUDE.md règle 1 impose de son côté le format
+`Method_Context_ExpectedResult` pour les tests. **Les deux règles se
+contredisent frontalement** — un test conforme aux deux s'appellerait
+`GetByIdAsync_NotFound_ReturnsNull_Async`.
+
+La règle est désormais **désactivée sous `tests/`**, et reste `error` sous
+`src/` :
+
+```ini
+# Api/Mail/.editorconfig
+[tests/**/*.cs]
+dotnet_naming_rule.async_methods_end_in_async.severity = none
+```
+
+**Consigne** : ne **jamais** renommer une méthode de test pour satisfaire
+IDE1006, et ne jamais proposer un `#pragma` ou un `SuppressMessage` par fichier.
+Si l'avertissement réapparaît sur un test, c'est la portée de la règle qui est
+en cause, pas le nom du test. Sur `src/`, en revanche, le suffixe reste
+obligatoire dès la première écriture.
+
+**Pourquoi la règle n'a pas de sens sur un test** : le suffixe `Async` existe
+pour distinguer, **sur un appelant**, la surcharge asynchrone de la synchrone.
+Un test n'a ni appelant ni surcharge — xUnit le découvre par son attribut,
+personne ne l'appelle par son nom, et ce nom sert à **une** chose : lire ce qui
+a échoué dans le rapport de test. La règle n'y protégeait rien et coûtait la
+lisibilité de 1777 méthodes.
+
+**Piège de diagnostic** : IDE1006 est un analyseur **IDE uniquement** — il ne
+remonte **pas** au `dotnet build`, même avec `EnforceCodeStyleInBuild=true`.
+Visual Studio ne le signale que pour les fichiers **ouverts**, ce qui fait
+passer un problème de 1777 occurrences pour un problème local à un fichier.
+Pour mesurer la portée réelle avant de corriger :
+
+```bash
+dotnet format style {projet}.csproj --verify-no-changes --diagnostics IDE1006
+```
