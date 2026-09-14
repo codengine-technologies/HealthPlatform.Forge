@@ -1120,3 +1120,5 @@
 {"ts":"2026-09-15T00:39:31+02:00","run_id":"-","type":"cmd","task":"task-312","step":"review","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln --no-build -v q --nologo","duration_ms":92265,"exit_code":1}
 {"ts":"2026-09-15T00:40:29+02:00","run_id":"-","type":"cmd","task":"task-312","step":"review","repo":"api-mail","kind":"build","label":"","cwd":"Api/Mail","cmd":"dotnet build HealthPlatform.Api.Mail.sln -v q --nologo","duration_ms":2667,"exit_code":0}
 {"ts":"2026-09-15T00:41:57+02:00","run_id":"-","type":"step","task":"task-312","step":"review","status":"ok","note":"","iterations":null,"duration_ms":257866}
+{"ts":"2026-09-15T00:42:13+02:00","run_id":"-","type":"step_start","task":"task-312","step":"tech-writer"}
+{"ts":"2026-09-15T00:47:08+02:00","run_id":"-","type":"step","task":"task-312","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":295441}

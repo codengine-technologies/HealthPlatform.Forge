@@ -392,4 +392,5 @@ corps de la PR :
 | /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non touche (Repos: api-mail) |
 | /verify-visual | skipped | 0.4 s | — | — | — | aucun ecran mobile touche |
 | /review | ok | 4 min 17 s | 2 (8.4 s) | 1 (1 min 32 s) | — | api-mail 2B/1T |
-| **Total cycle** | | **24 min 11 s** | **21 (1 min 47 s)** | **13 (11 min 07 s)** | **0 (0.0 s)** | |
+| /tech-writer | ok | 4 min 55 s | — | — | — | — |
+| **Total cycle** | | **29 min 06 s** | **21 (1 min 47 s)** | **13 (11 min 07 s)** | **0 (0.0 s)** | |

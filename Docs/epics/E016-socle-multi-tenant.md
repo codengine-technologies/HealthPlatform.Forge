@@ -2,10 +2,10 @@
 
 > **Statut** : 🟡 En cours
 > **Modèle** : task-driven
-> **Version** : 1.6
+> **Version** : 1.7
 > **Auteur** : PO forge
 > **Audience** : PO, médecin, direction produit, conformité — la vue ingénierie vit dans [E016-Changelogs.md](E016-Changelogs.md)
-> **Dernière mise à jour** : 2026-09-14
+> **Dernière mise à jour** : 2026-09-15
 
 ---
 
@@ -22,7 +22,7 @@
 - [7. Contraintes et hypothèses](#7-contraintes-et-hypothèses)
 - [8. Critères d'acceptation de l'EPIC](#8-critères-dacceptation-de-lepic)
 - [9. Hors périmètre](#9-hors-périmètre)
-- [État de couverture (2026-09-14)](#état-de-couverture-2026-09-14)
+- [État de couverture (2026-09-15)](#état-de-couverture-2026-09-15)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -84,12 +84,12 @@ augmente.
 
 | Fonctionnalité | Ce que le praticien peut faire | Tasks | Statut |
 |---|---|---|---|
-| **Plusieurs messageries, une seule connexion** | Retrouver, après une authentification unique, toutes les messageries qui relèvent de son identité professionnelle | task-303, task-304 | 🟡 Complète en code — **4 PRs en attente de merge** |
-| **Changer de messagerie en direct** | Cliquer sur son avatar et ouvrir une autre de ses messageries : l'écran se vide et se recharge sur la nouvelle boîte, sans reconnexion | task-304 | 🟡 Complète en code — PR ouverte |
-| **Rattacher sa première messagerie** | Entrer son adresse dès le premier accès et travailler immédiatement, sans se déconnecter ni se reconnecter | task-304 | 🟡 Complète en code — PR ouverte |
-| **Gérer ses messageries** | Ajouter une messagerie, en détacher une, désigner celle qui s'ouvre par défaut, comprendre pourquoi l'une est indisponible | task-304 | 🟡 Complète en code — PR ouverte |
-| **Conservation appliquée à tous les comptes** | Être assuré que les durées d'effacement s'appliquent aussi aux comptes qui ne servent plus, y compris à ceux d'un praticien qui a quitté le service | task-299 | ✅ Livrée |
-| **Traçabilité des accès à l'échelle du parc** | Consulter l'historique de ses propres accès, sans que la croissance du parc n'en dégrade la tenue | task-300, task-301 | 🟡 Complète en code — écriture **mergée**, reprise de l'historique en attente de merge |
+| **Plusieurs messageries, une seule connexion** | Retrouver, après une authentification unique, toutes les messageries qui relèvent de son identité professionnelle | task-303, task-304, task-308 | ✅ Livrée |
+| **Changer de messagerie en direct** | Cliquer sur son avatar et ouvrir une autre de ses messageries : l'écran se vide et se recharge sur la nouvelle boîte, sans reconnexion | task-304 | ✅ Livrée |
+| **Rattacher sa première messagerie** | Entrer son adresse dès le premier accès et travailler immédiatement, sans se déconnecter ni se reconnecter — l'opérateur de messagerie vérifie l'accès avant que le rattachement n'aboutisse | task-304, task-308 | ✅ Livrée |
+| **Gérer ses messageries** | Ajouter une messagerie, en détacher une, désigner celle qui s'ouvre par défaut, comprendre pourquoi l'une est indisponible | task-304, task-309 | 🟡 Livrée sur deux applications — l'accès à cet écran reste à ouvrir sur la troisième (task-309) |
+| **Conservation appliquée à tous les comptes** | Être assuré que les durées d'effacement s'appliquent aussi aux comptes qui ne servent plus, y compris à ceux d'un praticien qui a quitté le service | task-299, task-312 | 🟡 Complète en code — l'effacement à échéance **s'exécute** depuis task-312, en attente de merge |
+| **Traçabilité des accès à l'échelle du parc** | Consulter l'historique de ses propres accès — et les trier — sans que la croissance du parc n'en dégrade la tenue | task-300, task-312 | 🟡 Complète en code — écriture **mergée**, retrait de l'historique hérité en attente de merge |
 | **Accès des équipes sécurité à la traçabilité** | *(indisponible — en attente d'arbitrage : voir §7)* | — | ⛔ Bloquée |
 | **Réactivité vérifiée en multi-messagerie** | Bénéficier d'un service dont la réactivité a été mesurée avec plusieurs messageries par praticien | task-306 | 🔜 À faire |
 | **Application allégée au poste** | Recevoir une application débarrassée de composants qui ne lui servaient pas | task-305 | ✅ Livrée |
@@ -145,14 +145,14 @@ Deux points structurent ce parcours :
 
 | # | Règle | Statut |
 |---|---|---|
-| RG-1 | **L'opérateur de messagerie est seul juge du rattachement.** Une messagerie n'est ajoutée au compte que si l'opérateur accepte le médecin sur cette boîte. La plateforme n'accorde aucun accès de sa propre initiative | 🔜 À implémenter (task-303) |
-| RG-2 | **Le changement de messagerie reste dans la même identité professionnelle.** Le médecin ne peut passer qu'entre des messageries relevant de l'identité avec laquelle il s'est authentifié | 🔜 À implémenter (task-303) |
-| RG-3 | **Aucune donnée ne traverse une bascule.** Messages, dossiers patients, brouillons, signature et notifications de la messagerie quittée disparaissent avant que la suivante ne s'affiche | 🔜 À implémenter (task-304) |
-| RG-4 | **Une adresse de structure reste cloisonnée par praticien.** Deux médecins partageant la même adresse organisationnelle ne voient ni les rattachements, ni l'historique d'accès l'un de l'autre | 🔜 À implémenter (task-300) |
-| RG-5 | **Détacher une messagerie n'efface rien.** Le détachement retire l'accès ; les données restent soumises aux durées de conservation en vigueur | 🔜 À implémenter (task-303) |
-| RG-6 | **Les durées de conservation s'appliquent à tous les comptes.** Un compte qui ne sert plus est purgé à échéance comme les autres — la dormance ne le soustrait pas à la règle | ✅ Implémenté (task-299) |
-| RG-7 | **Les changements d'accès sont tracés.** Rattacher, détacher, changer de messagerie par défaut, ouvrir et fermer une session de messagerie laissent une trace consultable | 🔜 À implémenter (task-303) |
-| RG-8 | **La consultation de l'historique reste strictement personnelle.** Un médecin ne voit que ses propres accès ; aucun accès transverse n'est ouvert par cet EPIC | 🔜 À implémenter (task-300) |
+| RG-1 | **L'opérateur de messagerie est seul juge du rattachement.** Une messagerie n'est ajoutée au compte que si l'opérateur accepte le médecin sur cette boîte. La plateforme n'accorde aucun accès de sa propre initiative | ✅ Implémenté (task-308) |
+| RG-2 | **Le changement de messagerie reste dans la même identité professionnelle.** Le médecin ne peut passer qu'entre des messageries relevant de l'identité avec laquelle il s'est authentifié | ✅ Implémenté (task-303) |
+| RG-3 | **Aucune donnée ne traverse une bascule.** Messages, dossiers patients, brouillons, signature et notifications de la messagerie quittée disparaissent avant que la suivante ne s'affiche | ✅ Implémenté (task-304) |
+| RG-4 | **Une adresse de structure reste cloisonnée par praticien.** Deux médecins partageant la même adresse organisationnelle ne voient ni les rattachements, ni l'historique d'accès l'un de l'autre | ✅ Implémenté (task-300) — et le cloisonnement est désormais **tenu par la base elle-même**, plus par un filtre applicatif (task-312) |
+| RG-5 | **Détacher une messagerie n'efface rien.** Le détachement retire l'accès ; les données restent soumises aux durées de conservation en vigueur | ✅ Implémenté (task-303) |
+| RG-6 | **Les durées de conservation s'appliquent à tous les comptes.** Un compte qui ne sert plus est purgé à échéance comme les autres — la dormance ne le soustrait pas à la règle | ✅ Implémenté (task-299) — et **réellement exécuté** depuis task-312, qui a branché la purge du journal mutualisé |
+| RG-7 | **Les changements d'accès sont tracés.** Rattacher, détacher, changer de messagerie par défaut, ouvrir et fermer une session de messagerie laissent une trace consultable | ✅ Implémenté (task-303) — chaque trace désigne la messagerie **concernée** et non celle qui était ouverte au moment du geste (task-312) |
+| RG-8 | **La consultation de l'historique reste strictement personnelle.** Un médecin ne voit que ses propres accès ; aucun accès transverse n'est ouvert par cet EPIC | ✅ Implémenté (task-300) |
 
 ---
 
@@ -206,50 +206,61 @@ Deux points structurent ce parcours :
 
 ---
 
-## État de couverture (2026-09-14)
+## État de couverture (2026-09-15)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
-| Plusieurs messageries, une seule connexion | ✅ Livrée | 100 % | task-303 + task-304 (**mergées**) |
+| Plusieurs messageries, une seule connexion | ✅ Livrée | 100 % | task-303, task-304, task-308 (**mergées**) |
 | Changer de messagerie en direct | ✅ Livrée | 100 % | task-304 (**mergée**) |
-| Rattacher sa première messagerie | 🟡 Complète en code | 90 % | task-304 (**mergée**) + task-308 (3 PRs, `awaiting-human-merge`) |
-| Gérer ses messageries | ✅ Livrée | 100 % | task-304 (**mergée**) |
-| Conservation appliquée à tous les comptes | ✅ Livrée | 100 % | task-299 |
-| Traçabilité des accès à l'échelle du parc | 🟡 Quasi complète | 90 % | task-300 (**mergée**), task-301 (PR ouverte) |
+| Rattacher sa première messagerie | ✅ Livrée | 100 % | task-304, task-308 (**mergées**) |
+| Gérer ses messageries | 🟡 Deux applications sur trois | 80 % | task-304 (**mergée**) + task-309 (à faire) |
+| Conservation appliquée à tous les comptes | 🟡 Complète en code | 90 % | task-299 (**mergée**) + task-312 (en attente de merge) |
+| Traçabilité des accès à l'échelle du parc | 🟡 Complète en code | 90 % | task-300 (**mergée**) + task-312 (en attente de merge) |
 | Accès des équipes sécurité à la traçabilité | ⛔ Bloquée | 0 % | — |
-| Réactivité vérifiée en multi-messagerie | 🔜 À faire | 0 % | task-306 |
-| Application allégée au poste | ✅ Livrée | 100 % | task-305 |
+| Réactivité vérifiée en multi-messagerie | 🔜 À faire | 0 % | task-306, task-311 |
+| Application allégée au poste | ✅ Livrée | 100 % | task-305 (**mergée**) |
 
-**Couverture EPIC consolidée : 87 %** (5 fonctionnalités livrées sur 9, 2 complètes en
-code et en attente de merge, 1 bloquée en attente d'arbitrage, 1 à faire). La ligne
-multi-messageries est **livrée de bout en bout** : le registre, la sélection validée, et
-les écrans sur les trois fronts.
+**Couverture EPIC consolidée : 84 %** (4 fonctionnalités livrées sur 9, 2 complètes en
+code et en attente de merge, 1 partielle, 1 bloquée en attente d'arbitrage, 1 à faire).
+La ligne multi-messageries est **livrée de bout en bout et mergée** : le registre, la
+sélection validée par l'opérateur, et les écrans sur les trois applications.
 
-> **Ce que task-308 ajoute, et pourquoi « Rattacher sa première messagerie » redescend
-> à 90 %.** La fonctionnalité était écrite et mergée — mais elle ne se **déclenchait
-> jamais**. Le registre se remplissait tout seul au premier contact authentifié, à partir
-> d'une information portée par le jeton de connexion : le praticien arrivait donc
-> directement dans sa messagerie, sans que l'écran de rattachement ne lui soit jamais
-> proposé. Constaté sur une première connexion réelle le 2026-09-14.
+> **Ce que task-312 change, et pourquoi deux lignes montent à 90 % sans être livrées.**
+> L'historique des accès vivait jusqu'ici à **deux endroits** : la base commune pour les
+> traces récentes, et une table par praticien pour les anciennes. Ce partage devait être
+> transitoire — une reprise devait recopier l'ancien vers le nouveau, puis le supprimer.
 >
-> task-308 coupe ce remplissage automatique. Rattacher une messagerie redevient un acte
-> **explicite du praticien**, et il n'aboutit qu'après une vérification auprès de
-> l'opérateur MSSanté, qui seul fait autorité sur ce qu'un professionnel peut ouvrir. Le
-> compte, lui, ne retient plus que ce qui relève de la connexion ; l'identité
-> professionnelle est enregistrée là où elle est délivrée — sur le rattachement.
+> Cette reprise n'a jamais eu lieu, et n'aura pas lieu : l'application n'est pas en
+> service, il n'y a donc **aucun historique réel à reprendre**. task-312 atteint l'état
+> visé en supprimant l'ancienne copie, plutôt qu'en la recopiant. L'historique des
+> accès n'a plus qu'une source.
 >
-> Les 10 % manquants ne sont pas du code : c'est le **merge**, précédé du test humain sur
-> la US assemblée (règle 11).
+> **Le vrai gain n'est pas là.** En retirant l'ancienne table, on a découvert que
+> l'**effacement à échéance ne s'exécutait jamais** sur la base commune : le mécanisme
+> était écrit, enregistré, et personne ne l'appelait. Pire, l'ancien effacement n'était
+> déclenché que par l'activité du praticien lui-même — un médecin ayant quitté le service
+> ne le déclenchait donc **plus jamais**, et ses traces, porteuses d'identifiants de
+> patients, restaient indéfiniment.
+>
+> task-312 branche cet effacement, et le rend **global** : il balaie tout l'historique
+> sans dépendre de qui se connecte. C'est ce que la ligne « Conservation appliquée à tous
+> les comptes » promettait depuis task-299, et qui n'était pas tenu.
+>
+> Les 10 % manquants sur les deux lignes ne sont pas du code : c'est le **merge**, précédé
+> du test humain (règle 11).
 
-> **Conséquence assumée à la mise en service.** Les rattachements créés automatiquement
-> avant ce changement n'ont été validés par aucun opérateur : ils sont supprimés. Les
-> praticiens concernés repassent **une fois** par l'écran de rattachement. L'arbitrage a
-> été pris explicitement le 2026-09-14, l'application n'étant pas encore en service.
+> **Un tri qui avait cessé de trier.** L'écran d'audit propose des en-têtes de colonne
+> cliquables. Seule l'ancienne source les honorait : retirer celle-ci sans rapatrier le
+> tri aurait laissé des en-têtes qui ne trient plus rien, **sans message d'erreur**. Le
+> tri a été rapatrié à l'identique et couvert par des tests. C'est le genre de perte qu'un
+> retrait produit en silence, et qu'un scan de qualité a signalé sous une forme
+> trompeuse — « paramètre inutilisé ».
 
-> **Le 10 % manquant de la traçabilité n'est pas du code.** La reprise se joue sur le parc
-> réel, une nuit, sous surveillance, puis se vérifie tenant par tenant avant toute
-> suppression. Compter cette fonctionnalité « livrée » avant ce passage serait confondre
-> *écrit* et *fait*.
+> **« Gérer ses messageries » redescend à 80 %.** L'écran existe et fonctionne, mais
+> **rien ne mène à lui** dans l'une des trois applications : le sélecteur de messagerie,
+> livré par task-304, n'y est affiché nulle part. Le seul moyen d'atteindre l'écran est
+> d'en saisir l'adresse à la main. Constaté au test humain du 2026-09-14 ; task-309
+> l'ouvrira, et vérifiera que le parcours est bien le même partout.
 
 > **Point resté ouvert.** Les **captures des écrans mobiles** ne sont toujours pas
 > produites : le harnais de vérification visuelle n'est pas versionné et reste absent du
@@ -280,13 +291,19 @@ les écrans sur les trois fronts.
   secondaire de conformité : les durées d'effacement peuvent enfin s'appliquer aussi
   aux comptes qui ne servent plus, ce qui n'était pas possible tant qu'aucun balayage
   d'ensemble n'existait.
-- **L'historique déjà écrit rejoint le nouveau journal, sans que le praticien voie quoi que
-  ce soit** (task-301, *en attente de merge*). Les traces accumulées dans l'espace de chaque
-  médecin sont recopiées vers l'espace commun, **vérifiées une à une par comptage**, puis
-  seulement alors considérées comme reprises. Pendant toute l'opération, l'écran d'audit
-  continue d'afficher l'historique complet — un test vérifie qu'il rend *exactement* le même
-  contenu avant et après. L'ancienne copie n'est supprimée qu'après une vérification humaine
-  explicite : **on ne supprime pas une preuve le jour où on la recopie.**
+- **L'historique des accès n'a plus qu'un seul endroit où vivre** (task-312, *en attente de
+  merge*). Il en avait deux : l'espace commun pour les traces récentes, l'espace de chaque
+  médecin pour les anciennes. Ce partage devait être transitoire — une opération de reprise
+  (task-301) devait recopier l'ancien vers le nouveau, puis le supprimer. **Cette reprise
+  n'a jamais eu lieu et n'aura pas lieu** : le service n'est pas en exploitation, il n'y a
+  donc aucun historique réel à déplacer. L'ancienne copie est retirée, et l'écran d'audit
+  lit une source unique. Pour le praticien, rien ne change — sinon que le **tri par colonne
+  refonctionne** : il n'était honoré que par l'ancienne source, et aurait cessé d'agir
+  silencieusement.
+- **La plateforme sait de nouveau quand abandonner** une trace qu'aucune base ne pourra
+  jamais accepter (task-312). Le compteur de tentatives vivait dans la partie retirée :
+  sans lui, une trace définitivement invalide serait revenue en boucle, indéfiniment,
+  au lieu d'être signalée.
 - **Le registre distingue désormais deux informations qu'il confondait** (task-308, *en
   attente de merge*) : ce qui relève du **compte de connexion** — l'identifiant, l'adresse
   de courriel, le nom d'utilisateur — et ce qui relève du **professionnel de santé** — son
@@ -309,6 +326,17 @@ les écrans sur les trois fronts.
   inactivité le suspendait donc indéfiniment. La plateforme sait désormais quels
   comptes existent et depuis quand chacun ne s'est plus connecté — ce qui rend
   l'échéance applicable à tous, actifs comme dormants.
+- **Et cet effacement s'exécute réellement** (task-312, *en attente de merge*). Rendre
+  l'échéance *applicable* ne suffisait pas : le mécanisme d'effacement du nouveau journal
+  était écrit et déclaré, mais **rien ne l'appelait jamais**. Le seul effacement qui
+  tournait portait sur l'ancienne copie, et restait déclenché par l'activité du praticien
+  — donc absent, précisément, pour les comptes dormants qu'il devait couvrir. Un balayage
+  d'ensemble s'exécute désormais à intervalle régulier, indépendamment de qui se connecte,
+  et **inscrit lui-même dans l'historique** ce qu'il a effacé et jusqu'à quelle date.
+  Les traces d'accès aux données de santé restent conservées dix ans, les traces
+  techniques un an, et une durée fixée à zéro vaut conservation sans limite — un verrou
+  juridique l'emporte toujours sur l'effacement, y compris quand l'effacement serait plus
+  économique.
 
 ### Fonctionnalités métier
 
@@ -334,6 +362,12 @@ les écrans sur les trois fronts.
   compteur à zéro : le compte reste lié au professionnel qui l'a ouvert. La
   ré-association reste ce qu'elle doit être, un acte administratif, jamais un effet de
   bord d'une requête.
+- **Une trace d'accès désigne enfin la bonne messagerie** (task-312, *en attente de
+  merge*). Rattacher, détacher ou changer de messagerie par défaut laissait une trace qui
+  portait le nom de la messagerie **ouverte à l'écran** au moment du geste — pas celle sur
+  laquelle il portait. Au tout premier rattachement il n'y en avait aucune ; aux suivants,
+  c'était une autre. La trace désigne désormais la messagerie concernée, ce qui est la
+  condition pour que l'historique serve de preuve.
 
 ---
 
