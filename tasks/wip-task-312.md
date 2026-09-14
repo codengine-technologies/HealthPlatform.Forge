@@ -214,3 +214,26 @@ pas un élargissement de périmètre : c'est la condition pour que le retrait so
   groupée, débordement Redis : tout est inchangé.
 - **Pas l'occasion de revoir les durées de rétention.** Elles sont reprises telles quelles.
   Les discuter est un sujet de conformité, pas de dette technique.
+
+## Branches
+
+Créées par `/start 312` le 2026-09-14, depuis `origin/develop`. Préfixe `chore/` — l'US
+retire de la dette, elle n'apporte aucune fonctionnalité.
+
+- `api-mail` (pushed) : `chore/task-312-retrait-audit-herite`
+  https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/chore/task-312-retrait-audit-herite
+- `dtos-mss` (pushed, auto-incluse) : `chore/task-312-retrait-audit-herite`
+  https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/chore/task-312-retrait-audit-herite
+
+> Pré-vol : `api-mail`, `client-blazor`, `client-mobile`, `dtos-mss`, `sdk` tous sur
+> `develop`, arbres propres. `host` et `interop-cda` n'ont pas de dépôt sur ce poste.
+> Dépendances task-300, task-301 et task-308 toutes archivées.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-312 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 24 s | — | — | — | — |
+| **Total cycle** | | **24 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
