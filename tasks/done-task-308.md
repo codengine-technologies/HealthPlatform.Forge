@@ -663,3 +663,68 @@ son commit :
 - **Flaky confirmé** : `ImapServiceIntegrationTests.GetEmailAsync_WithFullContent` a échoué une
   fois puis repassé au rejeu sans modification. Même famille que les flakies GreenMail
   identifiés depuis task-297.
+
+## Design system — écrans de rattachement (client-angular, 2026-09-14)
+
+**Constat humain après le premier test réel** : les écrans du parcours de rattachement
+n'utilisaient **aucun** composant du design system. Vérifié — `grep '@weda/design-system'`
+rendait **0** sur les cinq fichiers concernés, alors que le reste du module MSS
+(`contacts`, `dashboard`, `layout`, `mail/*`) s'en sert partout. Livrés par task-304 en
+HTML brut : `<input>`, `<button>`, `<label>`, styles maison.
+
+### Ce qui a été converti
+
+| Composant | Avant | Après |
+|---|---|---|
+| `ui/attach-mailbox-form` | `<input type="email">`, `<input type="checkbox">`, `<button>` | `ds-input` (label + hint + type email), `ds-checkbox`, `ds-button` (icône, état `loading`) |
+| `features/mailbox-onboarding` | `<h2>`, `<p>`, deux `<button>` | `ds-card` / `ds-card-title` / `ds-card-content` / `ds-card-footer`, `ds-button`, `ds-icon` |
+| `features/mailbox-psc-required` | idem | idem + icône `lock` sur le titre |
+| `features/mailbox-select` | `<ul>`, `<input type="checkbox">`, deux `<button>` | `ds-card`, `ds-checkbox`, `ds-button` |
+| `features/mailbox-management` | liste, pastilles, 3 boutons par ligne, confirmation | `ds-card` (dont la confirmation destructive), `ds-checkbox`, `ds-button` `size="small"`, `ds-icon` sur les pastilles |
+
+**Tous les `data-testid` sont conservés à l'identique** — c'est le contrat des tests à
+venir, et aucun de ces cinq composants n'a de spec aujourd'hui.
+
+### Trois choses apprises en chemin
+
+**1. `--ds-spacing-md` et `--ds-spacing-sm` n'existent pas.** L'échelle du design system
+est **numérique** (`--ds-spacing-2` = 8 px, `--ds-spacing-4` = 16 px). Ces deux noms sont
+pourtant employés dans six déclarations existantes de `libs/mss` : elles retombent
+silencieusement sur leur valeur de repli. Les nouveaux styles utilisent les vrais tokens,
+et un encadré dans `attach-mailbox-form.component.scss` dit de ne pas propager l'erreur.
+La couleur sémantique est `--ds-color-error-*`, pas `--ds-color-danger-*`.
+
+**2. `ds-checkbox` émet un booléen, `<input>` émettait un `Event`.** Les deux
+gestionnaires (`onAlwaysOpenChange`, `onIncludeDetachedChange`) sondaient
+`event.target.checked` ; leur signature suit désormais l'émetteur. Garder `Event`
+obligerait à fabriquer un faux événement pour tester une case à cocher.
+
+**3. `MssMailboxPscRequiredComponent` n'avait aucun tableau `imports:`** — il n'en avait
+pas besoin, son template n'utilisait aucun composant. Il en a un maintenant.
+
+### L'erreur du formulaire reste un bandeau, pas un message de champ
+
+`ds-input` sait afficher une erreur, mais la sienne est une erreur de **saisie**
+(`showError = touched && invalid`). L'erreur du rattachement vient de l'opérateur MSSanté
+ou du registre — « déjà rattachée », « identité non concordante », « authentification
+refusée ». La placer sous le champ laisserait croire que l'adresse est mal écrite. Elle
+garde donc son bandeau `role="alert"`, avec une icône `warning`.
+
+### Validation
+
+Build `mss-lib` ✅ (`--skip-nx-cache`) · **347 tests verts** · lint scope MSS **0 erreur**
+(41 warnings pré-existants, hors diff).
+
+**Mode code-only** : aucune opération git sur `client-angular`. Les 15 fichiers modifiés
+attendent ton commit/push TFS.
+
+### Récidive lint consignée
+
+`jsdoc/require-param`, 2 erreurs — sur des méthodes dont le JSDoc **existait déjà** : en
+changeant leur signature, le bloc a été laissé tel quel. `conventions/angular.md` passe à
+**Occurrences : 2** avec la leçon : *modifier une signature, c'est modifier son JSDoc* —
+le lint ne distingue pas un bloc absent d'un bloc périmé.
+
+> **Les deux autres fronts ne sont pas traités.** `client-blazor` et `client-mobile` ont
+> leurs propres écrans de rattachement, non audités ici. À vérifier séparément — cette
+> passe ne couvre que `client-angular`, le front sur lequel le constat a été fait.
