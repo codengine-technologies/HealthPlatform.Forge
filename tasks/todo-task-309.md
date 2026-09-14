@@ -75,6 +75,40 @@ geste au même endroit.
 > le même écran est ici le comportement voulu : un rapide (l'avatar, depuis la
 > messagerie), un explicite (la navigation, depuis n'importe où).
 
+**2 bis. Où exactement — validé le 2026-09-14.** L'entrée se place en **avant-dernière
+position, juste avant « Paramètres »** :
+
+```
+🏠  Tableau de bord        │
+✉️  Messagerie             │  usage quotidien
+👥  Contacts               │
+📄  Modèles                │
+👤  Patient                │
+───────────────────────────
+📄  Journal d'audit        │  consultation / configuration
+📬  Mes messageries   ← NOUVEAU (route `accounts`)
+⚙️  Paramètres             │
+```
+
+- **Libellé** : « Mes messageries ». Le possessif dit qu'il s'agit du compte du praticien,
+  pas d'une boîte partagée.
+- **Icône** : `communication` / `mail-02` — déjà employée dans le dépôt (`mail-widget`) et
+  **distincte** de `communication/mail`, qui porte « Messagerie ». Deux icônes de la même
+  famille, deux formes différentes : la parenté se lit, la confusion est évitée.
+- **Pourquoi pas en position 3, sous « Messagerie »** : l'adjacence thématique serait plus
+  forte, mais elle casserait le bloc d'usage quotidien avec une entrée qu'on ouvre trois
+  fois par an.
+- **Pourquoi « Paramètres » reste dernier** : c'est une convention que les praticiens ont
+  intégrée dans tous leurs logiciels. La déplacer coûterait plus que le gain d'adjacence.
+
+> **L'alternative écartée, et pourquoi.** L'écran **Paramètres** porte déjà quatre sections
+> (`Identité de l'expéditeur`, `Lecture`, `Organisation`, `Avancé`), et la gestion des
+> messageries y aurait sa place — « Identité de l'expéditeur » parle de la même chose.
+> Écartée **parce qu'elle enfouit la gestion d'un cran de plus**, alors que le défaut qu'on
+> corrige est précisément qu'elle était introuvable. Une entrée de premier niveau est
+> visible depuis n'importe quel écran ; une section dans Paramètres demande d'ouvrir
+> Paramètres puis de faire défiler.
+
 **3. Périmètre : les trois fronts.** Angular reçoit le montage ; Blazor et Mobile sont
 **vérifiés** — le parcours y est-il réellement complet de bout en bout ? Aucun des trois
 sélecteurs n'a de test aujourd'hui, sur aucun front : c'est ce qui a permis à un composant
@@ -99,8 +133,13 @@ hauteur utile de la liste de messages.
 - [ ] `npm ci && npm run build` passe (0 erreur) ; `npm test` passe (0 échec)
 - [ ] `<mss-mailbox-switcher />` est monté sur la page Messagerie, dans une zone d'en-tête
       créée pour lui. **Vérification binaire** : `grep -rn "mss-mailbox-switcher" libs/mss/src --include=*.html` rend au moins un montage hors du composant lui-même
-- [ ] Une entrée **« Mes messageries »** apparaît dans `NAV_ITEMS` de la sidebar, pointant
-      sur `accounts`, avec une icône du design system
+- [ ] Une entrée **« Mes messageries »** est ajoutée à `NAV_ITEMS`
+      (`mss-layout.component.ts`), **en avant-dernière position, juste avant
+      « Paramètres »**, `path: 'accounts'`, `iconCategory: 'communication'`,
+      `iconName: 'mail-02'`. L'ordre des sept entrées existantes est **inchangé**
+- [ ] **En sidebar repliée**, « Messagerie » (`mail`) et « Mes messageries » (`mail-02`)
+      restent distinguables à l'icône seule — c'est le seul état où la parenté des deux
+      icônes peut se retourner en confusion. Vérifié à l'œil, consigné dans le task file
 - [ ] Depuis la messagerie, l'avatar ouvre le menu, et « Ajouter une messagerie » comme
       « Gérer mes messageries » mènent à l'écran de gestion
 - [ ] Le sélecteur est converti au **design system** : `ds-button`, `ds-card` (ou
@@ -155,7 +194,11 @@ hauteur utile de la liste de messages.
   8. **Le test qui prouve l'US** : à aucun moment il n'a fallu taper une URL.
 - **Spécifique Angular** :
   9. Depuis **Contacts** (donc hors messagerie), cliquer **« Mes messageries »** dans la
-     barre latérale → l'écran de gestion s'ouvre.
+     barre latérale → l'écran de gestion s'ouvre. Vérifier au passage qu'elle est bien
+     **juste au-dessus de « Paramètres »**, et que l'ordre des autres entrées n'a pas
+     bougé.
+  9 bis. Replier la sidebar (chevron en haut) → **« Messagerie » et « Mes messageries »
+     restent distinguables** à l'icône seule.
 - **Hors ligne** (sans session Pro Santé Connect) :
   10. Ouvrir le sélecteur → **« Ajouter une messagerie » est grisé**, avec l'explication
       « Connexion Pro Santé Connect requise », et les boîtes déjà rattachées restent
@@ -204,8 +247,12 @@ hauteur utile de la liste de messages.
 - **Pas une US de fonctionnalité.** Le sélecteur, la bascule, l'écran de gestion, le
   formulaire d'ajout et la route existent tous et sont mergés. Si le diff commence à
   ajouter du comportement, c'est qu'il déborde.
-- **Pas une refonte de la navigation Angular.** Une entrée s'ajoute à `NAV_ITEMS` ; la
-  structure de la barre latérale, son repli et ses autres entrées ne bougent pas.
+- **Pas une refonte de la navigation Angular.** Une entrée s'ajoute à `NAV_ITEMS`, en
+  avant-dernière position ; la structure de la barre latérale, son repli, et **l'ordre des
+  sept entrées existantes** ne bougent pas.
+- **Pas un déplacement de la gestion dans « Paramètres ».** L'alternative a été examinée et
+  écartée le 2026-09-14 — elle enfouirait la gestion d'un cran de plus, à rebours du défaut
+  corrigé.
 - **Pas une harmonisation des trois navigations.** L'entrée « Mes messageries » est
   **Angular seulement**, faute de surface équivalente ailleurs — décision assumée, encadrée
   ci-dessus, et contestable.
