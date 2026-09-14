@@ -94,6 +94,14 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   absence, puisqu'elle fait croire que la méthode est documentée. Et le
   squelette ne couvre pas `@returns`, qui reste en **erreur**. Sur task-304 :
   23 squelettes creux à remplir à la main, dont 2 erreurs résiduelles.
+  **Récidive task-308 — et elle est instructive.** Deux erreurs
+  `jsdoc/require-param` sur des méthodes dont le JSDoc existait déjà et était
+  soigné : en changeant la signature (`Event` → `boolean`, après le passage de
+  `<input type="checkbox">` à `ds-checkbox`), le bloc a été conservé tel quel.
+  **Modifier une signature, c'est modifier son JSDoc** — le lint ne distingue
+  pas un bloc absent d'un bloc périmé, et un `@param` qui ne correspond plus au
+  paramètre est un contresens, pas une omission.
 - **Origine** : task-304 (/lint-angular, 57 erreurs — 55 auto-fixées, 2
-  `require-returns` + 23 squelettes creux repris manuellement)
-- **Occurrences** : 1
+  `require-returns` + 23 squelettes creux repris manuellement) ;
+  task-308 (/review, 2 `require-param` sur signatures modifiées)
+- **Occurrences** : 2

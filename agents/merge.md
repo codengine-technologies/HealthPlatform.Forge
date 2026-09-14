@@ -46,6 +46,13 @@ created by `/forge` to aggregate the whole run for testing) :
 - Best-effort — a failed deletion (checked out, already gone) is logged, never
   aborts the merge.
 
+For every pushable repo of the task **without a PR** (typically `dtos-mss`,
+auto-included but untouched) :
+- Remote **and** local refs deleted **if and only if** the branch carries zero
+  commit beyond `develop`. Une branche vide est un marqueur de plomberie, pas
+  un historique : la garder encombre le dépôt sans rien conserver.
+- Des commits sans PR ⇒ **rien n'est supprimé**, l'anomalie est signalée.
+
 For `client-angular` (code-only) : fully out of scope — the forge does no
 git operation and asks no question (the human owns the entire Angular
 lifecycle silently).
@@ -138,6 +145,49 @@ Same three-mode taxonomy as the rest of the forge :
    branch (verified task-038, recurred task-083). The human wants the local
    branch kept for retroactive inspection, so we merge without the flag and
    delete only the remote ref via a separate `git push origin --delete`.
+
+5 bis. **Les branches auto-incluses restées VIDES — les supprimer aussi.**
+
+   `/start` crée et **pousse** systématiquement une branche sur `dtos-mss`
+   (règle d'auto-inclusion du CLAUDE.md), même quand la task ne change aucun
+   contrat. Quand aucun DTO ne bouge, cette branche **n'a aucun commit**, donc
+   **aucune PR n'est ouverte** — et l'étape 5, qui ne parcourt que les PRs,
+   ne la voit jamais. Sa ref distante survit alors indéfiniment.
+
+   **Constaté le 2026-09-14** : `dtos-mss` portait trois branches fantômes
+   (`feat/task-304-…`, `feat/task-308-…`, `fix/task-289-…`), toutes à zéro
+   commit hors `develop`. Deux avaient été produites le jour même. Les autres
+   repos n'étaient pas touchés : eux sont listés explicitement dans
+   `**Repos**:` et reçoivent toujours des commits, donc une PR.
+
+   Pour **chaque** repo pushable de la task **sans PR** (typiquement
+   `dtos-mss` auto-inclus) :
+
+   ```bash
+   cd {repo-path}
+   git fetch origin --prune
+   # La branche existe-t-elle encore sur origin, et est-elle vide ?
+   if git rev-parse --verify origin/feat/{task-id}-{slug} >/dev/null 2>&1 ; then
+     n=$(git rev-list --count origin/develop..origin/feat/{task-id}-{slug})
+     if [ "$n" = "0" ] ; then
+       git push origin --delete feat/{task-id}-{slug}   # ref distante
+       git branch -D feat/{task-id}-{slug} 2>/dev/null  # ref locale, best-effort
+     else
+       # Des commits SANS PR : anomalie, ne rien supprimer, le signaler
+       # dans le rapport et dans questions/merge-{task-id}.md.
+     fi
+   fi
+   ```
+
+   **La garde `n = 0` n'est pas décorative.** Une branche sans PR *mais avec
+   des commits* est une anomalie — du travail poussé que personne n'a proposé
+   au merge. La supprimer perdrait ce travail. Dans ce cas : **ne rien
+   supprimer**, et le signaler.
+
+   > **Pourquoi la ref locale part ici, alors que l'étape 5 la garde.** Une
+   > branche `feat/*` mergée garde une valeur d'inspection rétroactive : elle
+   > porte l'historique avant écrasement. Une branche **vide** n'a rien à
+   > inspecter — c'est un marqueur de plomberie, pas un historique.
 
 6. **Skip `client-angular` entirely.** Even when the task lists it, do
    **not** ask the human about TFS state, do **not** read `git status`,
@@ -234,6 +284,11 @@ Same three-mode taxonomy as the rest of the forge :
   whole batch.
 - Squash-merge only (`gh pr merge --squash`). Keeps `develop` history
   linear, one commit per US.
+- **Une branche auto-incluse restée vide se supprime, ref distante ET locale**
+  (étape 5 bis) — sous la garde stricte « zéro commit hors `develop` ». Sans
+  cela, `dtos-mss` accumule une branche fantôme par task ne touchant pas aux
+  contrats, c'est-à-dire souvent. Constaté le 2026-09-14 : trois branches,
+  dont deux produites le jour même.
 - Never force-push. Never touch `develop` history.
 - **Delete the run's staging branch only when the run is fully drained** — no
   active task file with a numeric id inside the branch's `[début, fin]` range.

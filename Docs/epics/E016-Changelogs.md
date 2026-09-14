@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > **Document frère (vue produit)** : [`E016-socle-multi-tenant.md`](./E016-socle-multi-tenant.md)
-> **Dernière mise à jour** : 2026-09-13 (task-304)
+> **Dernière mise à jour** : 2026-09-14 (task-308)
 
 Historique détaillé des changements de l'EPIC **E016 — Socle multi-tenant**.
 Une entrée par task ayant atteint `done-*` ou `archived-*`. Append-only : une
@@ -11,6 +11,158 @@ entrée existante n'est jamais réécrite.
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.6 — task-308 : le registre sépare ses deux identités (`api-mail`, `client-blazor`, `client-mobile`, `client-angular`)
+
+**Statut** : `done` — PR [Api.Mail#238](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/238), [Client#75](https://github.com/codengine-technologies/HealthPlatform.Client/pull/75) et [Mobile#71](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/71), label **`awaiting-human-merge`** ; `client-angular` en **code-only** (l'humain pousse sur TFS)
+**Branche** : `feat/task-308-registre-deux-identites`
+**Tests** : **5 902 / 0 échec** — 4 500 (api-mail) + 232 (Blazor) + 823 (mobile) + 347 (Angular mss-lib)
+**Migration** : `20260914180000_SplitKeycloakAndPscIdentities`
+**Contrat** : **inchangé** — aucune PR `dtos-mss`, `MailboxDto` n'a pas bougé
+
+#### Ce que l'US ferme
+
+task-303 avait fait de la boîte une **sélection validée par le registre**, et task-304
+l'avait rendue visible. Restait un trou que personne n'avait vu : **le registre se
+remplissait tout seul**, avant que le front n'ait pu poser la question.
+
+Constaté le 2026-09-14 sur une première connexion réelle via Keycloak + proxy + PSC : le
+praticien n'a **jamais vu l'onboarding**. Sa messagerie s'est ouverte directement.
+
+#### La mesure, à la milliseconde
+
+```
+16:34:43.395  accounts.created_at         <- EnsureAccountAsync        (compte Keycloak seul, correct)
+16:34:43.691  mss_accounts.attached_at    <- EnsureCurrentTenantAsync  <- LE rattachement automatique
+16:34:43.801  [LegacyClaims] Compte migre <- n'a fait que l'ANCRAGE du compte
+```
+
+Le coupable apparent était `LegacyClaimsMigration`, le chemin de transition de task-303.
+**Ce n'était pas lui.** La preuve est un `NULL` : `EnsureTenantAsync` pose
+`validated_by_psc_subject` *à la création* du rattachement, et la ligne produite ne le
+portait pas. Elle avait donc été créée par un chemin **sans identité PSC** — le
+synchroniseur, 110 ms plus tôt, depuis le seul claim `mssEmail`.
+
+Supprimer la migration des claims seule n'aurait rien changé.
+
+#### Deux coupes, indissociables
+
+**1. Un seul écrivain.** `TenantRegistrySynchronizer` ne crée plus aucun rattachement. Il
+enregistre le compte, horodate, et s'arrête là. Rattacher une messagerie redevient un acte
+unique et explicite — `POST /api/v1/account/mailboxes` — précédé d'une **sonde XOAUTH2**
+que l'opérateur MSSanté valide. `LegacyClaimsMigration` disparaît avec lui, ainsi que
+`EnsureTenantAsync`, `EnsureTenantRequest` et `AnchorPscIdentityAsync`, devenus sans
+appelant : laisser une opération capable de rattacher hors du chemin validé, c'est laisser
+en place la faute qu'on vient de retirer.
+
+**2. Deux identités, deux tables.**
+
+| Table | Avant | Après |
+|---|---|---|
+| `accounts` | `sub` + `rpps` + `psc_subject` + horodatages | `sub` + **`email`** + **`username`** + horodatages — la **projection du user Keycloak**, et rien d'autre |
+| `mss_accounts` | `validated_by_psc_subject` (nullable) | `validated_by_psc_subject` **et `validated_by_rpps`**, tous deux **`NOT NULL`** |
+
+Le principe : `accounts` répond à « quel compte Keycloak ? », `mss_accounts` à « quelle
+messagerie, validée par quel professionnel ? ». **Aucune ligne ne mélange plus les deux
+autorités.** Keycloak authentifie ; PSC et l'opérateur MSSanté disent qui est le
+professionnel, et ils ne le disent qu'au rattachement.
+
+`email` et `username` sont **dénormalisés et non autoritaires** : ils rendent une ligne du
+registre lisible par un humain sans aller-retour vers Keycloak. La clé reste
+`authentication_subject` — l'email est mutable et son unicité dépend d'un réglage de realm.
+Un commentaire de colonne en base grave l'interdit : *ne jamais joindre `accounts.email` à
+`mss_accounts`*, sous peine de réintroduire la conflation « 1 compte = 1 boîte ».
+
+#### L'ancrage devient dérivé — et le détachement ne le défait pas
+
+`accounts.psc_subject` portait l'ancrage et la règle « pas de re-binding silencieux »
+(task-049, règle 3). Sans cette colonne, l'ancrage se **dérive** des rattachements :
+*toutes les boîtes d'un compte partagent la même identité PSC.*
+
+La dérivation lit **tous** les rattachements, **détachés compris**. Sans cela, détacher sa
+dernière boîte suffirait à rendre le compte réattribuable à un autre professionnel — par
+une opération que le praticien déclenche lui-même. La règle anti-ré-association serait
+contournable en deux clics.
+
+Effet de bord favorable : la règle 2 de `MailboxCompatibility` **gagne** en portée. Elle
+comparait un rattachement à une colonne qu'on écrivait soi-même ; elle compare désormais
+les rattachements **entre eux**, et détecte un compte dont deux boîtes auraient été
+validées par des professionnels différents.
+
+#### Le cross-check PSC/KC est retiré — c'était forcé
+
+`ApplyPscKcCrossCheckAsync` (task-048) comparait `(mssSub, mssRpps)` du jeton Keycloak à
+`(sub, SubjectNameID)` du jeton PSC. Son étape 1 exige la **complétude des trois claims**.
+Ces claims ayant disparu du realm, et `appsettings.json` portant `"Enforce": true`, il
+aurait répondu **403 à toute requête authentifiée**.
+
+Sa garantie est reprise — et **renforcée** — par `MailboxCompatibility` règle 4 : l'identité
+PSC de la session doit concorder avec l'ancrage du compte, lequel vient d'une sonde XOAUTH2
+validée par l'opérateur. Les claims, eux, étaient auto-déclarés par le jeton même qu'on
+cherchait à vérifier. `PscIdentityOptions` part avec le mécanisme qu'il gouvernait.
+
+#### Ce que « un RPPS = un compte » est devenu
+
+L'index unique partiel `ix_accounts_rpps` part avec sa colonne, et **aucun index ne peut le
+remplacer** : un praticien à N boîtes produit N lignes au même `validated_by_rpps`. La
+garantie descend au niveau applicatif, dans `AttachMailboxAsync`, et un test la couvre —
+deux `authentication_subject` distincts ne peuvent pas rattacher sous le même RPPS. Un
+index **non unique** (`ix_mss_accounts_validated_by_rpps`) en supporte la requête, sans
+quoi chaque rattachement balaierait toute la table.
+
+#### Côté fronts : aucun comportement, seulement la preuve
+
+L'audit des trois fronts a montré que la table de décision « 0 boîte → onboarding » était
+déjà implémentée **et testée** partout, et qu'aucun ne lisait plus les claims retirés. Le
+seul maillon non couvert était la **redirection** elle-même : `mailbox.guard.ts` n'avait de
+spec ni sur Angular ni sur Mobile, et le `switch` de `Mail.razor` n'était testé nulle part —
+seuls les écrans d'arrivée l'étaient, rendus directement.
+
+Ce trou devient inacceptable ici : l'onboarding étant désormais le **seul** moyen d'obtenir
+une boîte, une garde qui cesse de rediriger ne laisse plus le praticien devant un mauvais
+écran — elle le laisse devant une messagerie vide, sans chemin pour en rattacher une.
+Quatre tests par front, dont la contre-épreuve qu'une boîte ouverte n'en déclenche aucune.
+**Le diff front ne contient que des fichiers de test.**
+
+#### Trois défauts trouvés pendant la revue de code
+
+| Trouvaille | Correctif |
+|---|---|
+| `AttachMailboxAsync` filtrait sur `validated_by_rpps` **sans index** | `ix_mss_accounts_validated_by_rpps`, déclaré dans la migration **et** dans le `DbContext` |
+| Deux flux SSE répondaient « JWT lacks the mssEmail claim » là où il manque une **messagerie ouverte** — un praticien en onboarding y tombe légitimement | Messages corrigés, comportement inchangé |
+| `RegistryMeter` devenu un champ privé inutilisé (S1144) | Classe et `AddMeter` supprimés — un meter exporté sans instrument ne remonte rien en le faisant croire |
+
+#### Qualité
+
+**Quality Gate OK.** Code smells 233 → **231**, couverture 87,3 % → **87,4 %**, couverture
+*new code* **83,5 %** (seuil 80), ratings **A / A / A**, 0 bug, 0 vulnérabilité. 1 itération.
+Les 37 findings restants du new-code sont acceptés : 30 `external_roslyn` en INFO, 6 sur du
+code pré-existant hors diff, 1 `S3776` en liste noire.
+
+#### Réserves consignées
+
+- **`LoadAnchorAsync` sur le chemin chaud** — une requête indexée de plus par requête
+  authentifiée, rendant au plus une ligne. À mesurer au banc avant la prochaine campagne de
+  capacité. C'est la seule ligne du diff qui mérite un chiffre.
+- **48 fichiers** dans la PR `api-mail`, au-delà du repère « ~30 » de la règle 5.
+  Indivisible : `validated_by_rpps NOT NULL` ne tient que si le synchroniseur a cessé de
+  fabriquer des lignes sans PSC.
+- **Le banc de charge devra rattacher explicitement.** Ses boîtes étaient créées par le
+  synchroniseur ; `TestBypassAuthenticationHandler` émet encore les trois claims, désormais
+  morts. À traiter dans le harnais.
+- **La purge est assumée et non réversible.** Les rattachements sans
+  `validated_by_psc_subject` sont supprimés par la migration — décision humaine du
+  2026-09-14, l'application n'étant pas en production. Les praticiens concernés repassent par
+  l'onboarding, une fois. Le `Down()` recrée le schéma, jamais les données : une migration
+  qui prétendrait restaurer ce qu'elle a supprimé mentirait sur ce qu'elle garantit.
+
+#### Ce qui devient possible après ce merge
+
+Le retrait des mappers Keycloak `mssEmail` / `mssSub` / `mssRpps` et de la route
+`PUT /v1/admin/mss-profile` du proxy (`psc-auth-proxy`, hors automation de la forge) n'a plus
+aucun effet de bord côté `api-mail`. Action humaine.
+
+---
 
 ### v1.5 — task-304 : la sélection devient visible (`client-blazor`, `client-angular`, `client-mobile`)
 

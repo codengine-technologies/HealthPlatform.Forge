@@ -2,10 +2,10 @@
 
 > **Statut** : 🟡 En cours
 > **Modèle** : task-driven
-> **Version** : 1.3
+> **Version** : 1.6
 > **Auteur** : PO forge
 > **Audience** : PO, médecin, direction produit, conformité — la vue ingénierie vit dans [E016-Changelogs.md](E016-Changelogs.md)
-> **Dernière mise à jour** : 2026-09-13
+> **Dernière mise à jour** : 2026-09-14
 
 ---
 
@@ -22,7 +22,7 @@
 - [7. Contraintes et hypothèses](#7-contraintes-et-hypothèses)
 - [8. Critères d'acceptation de l'EPIC](#8-critères-dacceptation-de-lepic)
 - [9. Hors périmètre](#9-hors-périmètre)
-- [État de couverture (2026-09-13)](#état-de-couverture-2026-09-13)
+- [État de couverture (2026-09-14)](#état-de-couverture-2026-09-14)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -206,47 +206,55 @@ Deux points structurent ce parcours :
 
 ---
 
-## État de couverture (2026-09-13)
+## État de couverture (2026-09-14)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
-| Plusieurs messageries, une seule connexion | 🟡 Complète en code | 90 % | task-303 + task-304 (4 PRs, `awaiting-human-merge`) |
-| Changer de messagerie en direct | 🟡 Complète en code | 90 % | task-304 (PRs ouvertes) |
-| Rattacher sa première messagerie | 🟡 Complète en code | 90 % | task-304 (PRs ouvertes) |
-| Gérer ses messageries | 🟡 Complète en code | 90 % | task-304 (PRs ouvertes) |
+| Plusieurs messageries, une seule connexion | ✅ Livrée | 100 % | task-303 + task-304 (**mergées**) |
+| Changer de messagerie en direct | ✅ Livrée | 100 % | task-304 (**mergée**) |
+| Rattacher sa première messagerie | 🟡 Complète en code | 90 % | task-304 (**mergée**) + task-308 (3 PRs, `awaiting-human-merge`) |
+| Gérer ses messageries | ✅ Livrée | 100 % | task-304 (**mergée**) |
 | Conservation appliquée à tous les comptes | ✅ Livrée | 100 % | task-299 |
 | Traçabilité des accès à l'échelle du parc | 🟡 Quasi complète | 90 % | task-300 (**mergée**), task-301 (PR ouverte) |
 | Accès des équipes sécurité à la traçabilité | ⛔ Bloquée | 0 % | — |
 | Réactivité vérifiée en multi-messagerie | 🔜 À faire | 0 % | task-306 |
 | Application allégée au poste | ✅ Livrée | 100 % | task-305 |
 
-**Couverture EPIC consolidée : 68 %** (2 fonctionnalités livrées sur 9, 5 complètes en
-code et en attente de merge, 1 bloquée en attente d'arbitrage, 1 à faire). Le socle est
-posé, et la ligne multi-messageries est désormais **entièrement écrite, du registre
-jusqu'aux écrans**.
+**Couverture EPIC consolidée : 87 %** (5 fonctionnalités livrées sur 9, 2 complètes en
+code et en attente de merge, 1 bloquée en attente d'arbitrage, 1 à faire). La ligne
+multi-messageries est **livrée de bout en bout** : le registre, la sélection validée, et
+les écrans sur les trois fronts.
 
-> **Pourquoi les quatre fonctionnalités multi-messageries sont à 90 % et non à 100 %.**
-> Elles sont **entièrement écrites** : le backend valide chaque sélection contre le
-> registre et contre l'identité PSC (task-303), et les trois fronts portent désormais
-> l'onboarding, le choix à la connexion, la bascule à l'avatar et la gestion des
-> comptes (task-304). Ce qui manque n'est pas du code : c'est le **merge**, et il est
-> précédé d'un test humain sur la **US assemblée** — c'est la règle 11 qui l'exige, et
-> c'est pourquoi les PRs des deux vagues ont basculé ensemble en
-> `awaiting-human-merge` plutôt qu'une par une.
+> **Ce que task-308 ajoute, et pourquoi « Rattacher sa première messagerie » redescend
+> à 90 %.** La fonctionnalité était écrite et mergée — mais elle ne se **déclenchait
+> jamais**. Le registre se remplissait tout seul au premier contact authentifié, à partir
+> d'une information portée par le jeton de connexion : le praticien arrivait donc
+> directement dans sa messagerie, sans que l'écran de rattachement ne lui soit jamais
+> proposé. Constaté sur une première connexion réelle le 2026-09-14.
 >
-> Un point reste ouvert et n'a pas pu être traité dans cette US : les **captures des
-> quatre écrans mobiles** n'ont pas été produites, le harnais de vérification visuelle
-> n'étant pas versionné et donc absent du poste. La galerie porte encore deux captures
-> d'écrans supprimés. Voir `questions/task-304.md`.
+> task-308 coupe ce remplissage automatique. Rattacher une messagerie redevient un acte
+> **explicite du praticien**, et il n'aboutit qu'après une vérification auprès de
+> l'opérateur MSSanté, qui seul fait autorité sur ce qu'un professionnel peut ouvrir. Le
+> compte, lui, ne retient plus que ce qui relève de la connexion ; l'identité
+> professionnelle est enregistrée là où elle est délivrée — sur le rattachement.
+>
+> Les 10 % manquants ne sont pas du code : c'est le **merge**, précédé du test humain sur
+> la US assemblée (règle 11).
 
-> **Le 10 % manquant n'est pas du code.** La reprise se joue sur le parc réel, une nuit,
-> sous surveillance, puis se vérifie tenant par tenant avant toute suppression. Compter
-> cette fonctionnalité « livrée » avant ce passage serait confondre *écrit* et *fait*.
+> **Conséquence assumée à la mise en service.** Les rattachements créés automatiquement
+> avant ce changement n'ont été validés par aucun opérateur : ils sont supprimés. Les
+> praticiens concernés repassent **une fois** par l'écran de rattachement. L'arbitrage a
+> été pris explicitement le 2026-09-14, l'application n'étant pas encore en service.
 
-> **Lecture du 🟡** : la PR de task-300 est ouverte et attend le merge humain (HAG,
-> règle 10). Rien n'est compté « livré » avant ce merge : c'est la seule barrière de
-> validation du cycle, et l'anticiper dans un tableau d'avancement reviendrait à la
-> contourner sur le papier.
+> **Le 10 % manquant de la traçabilité n'est pas du code.** La reprise se joue sur le parc
+> réel, une nuit, sous surveillance, puis se vérifie tenant par tenant avant toute
+> suppression. Compter cette fonctionnalité « livrée » avant ce passage serait confondre
+> *écrit* et *fait*.
+
+> **Point resté ouvert.** Les **captures des écrans mobiles** ne sont toujours pas
+> produites : le harnais de vérification visuelle n'est pas versionné et reste absent du
+> poste. La galerie porte encore deux captures d'écrans supprimés. Voir
+> `questions/task-304.md`.
 
 ---
 
@@ -279,6 +287,14 @@ jusqu'aux écrans**.
   continue d'afficher l'historique complet — un test vérifie qu'il rend *exactement* le même
   contenu avant et après. L'ancienne copie n'est supprimée qu'après une vérification humaine
   explicite : **on ne supprime pas une preuve le jour où on la recopie.**
+- **Le registre distingue désormais deux informations qu'il confondait** (task-308, *en
+  attente de merge*) : ce qui relève du **compte de connexion** — l'identifiant, l'adresse
+  de courriel, le nom d'utilisateur — et ce qui relève du **professionnel de santé** — son
+  numéro RPPS et son identité Pro Santé Connect. La seconde n'est délivrée qu'au moment où
+  une messagerie est rattachée, et par l'opérateur MSSanté : elle est donc enregistrée là,
+  sur le rattachement, et plus sur le compte. Rien ne change à l'écran ; ce qui change,
+  c'est qu'une ligne du registre ne peut plus prétendre connaître un professionnel que
+  personne n'a confirmé.
 - **L'application transmise au poste du praticien s'est allégée** (task-305). Des
   composants qui n'y servaient à rien — dont un client de cache réseau — y étaient
   embarqués par une dépendance devenue inutile. Ils en sont retirés, et un garde-fou
@@ -296,11 +312,28 @@ jusqu'aux écrans**.
 
 ### Fonctionnalités métier
 
-*Aucune entrée à ce stade.*
+- **L'écran de rattachement se déclenche enfin pour un praticien qui n'a pas encore de
+  messagerie** (task-308, *en attente de merge*). Il existait, il était écrit sur les
+  trois applications — il n'était simplement jamais atteint, parce que la plateforme
+  inscrivait une messagerie d'elle-même avant que la question ne soit posée. Un praticien
+  qui se connecte pour la première fois voit désormais cet écran, y saisit son adresse
+  MSSanté, et entre dans sa messagerie une fois l'opérateur consulté.
 
 ### Sécurité
 
-*Aucune entrée à ce stade.*
+- **Rattacher une messagerie exige désormais l'accord de l'opérateur MSSanté** (task-308,
+  *en attente de merge*). Jusqu'ici, une information portée par le jeton de connexion
+  suffisait à inscrire une messagerie au nom d'un praticien — sans que l'opérateur, seul
+  à faire autorité sur ce qu'un professionnel peut ouvrir, ne soit jamais consulté. Le
+  rattachement passe maintenant par une vérification auprès de cet opérateur, et **rien
+  n'est enregistré si elle échoue**.
+- **Un compte ne peut plus changer de professionnel en silence** (task-308, *en attente de
+  merge*). L'identité professionnelle est enregistrée sur chaque messagerie rattachée, au
+  moment où l'opérateur la confirme. Présenter l'identité d'un autre professionnel sur un
+  compte déjà rattaché est refusé — et détacher toutes ses messageries ne remet pas le
+  compteur à zéro : le compte reste lié au professionnel qui l'a ouvert. La
+  ré-association reste ce qu'elle doit être, un acte administratif, jamais un effet de
+  bord d'une requête.
 
 ---
 
