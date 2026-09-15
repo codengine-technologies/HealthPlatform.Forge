@@ -275,7 +275,10 @@ hauteur utile de la liste de messages.
 |---|---|---|---|---|---|---|
 | /start | ok | 1 min 23 s | — | — | — | — |
 | /develop | ok | 26 min 54 s | 3 (1 min 53 s) | 4 (2 min 35 s) | — | client-angular 2B/1T, client-mobile 0B/2T, client-blazor 1B/1T |
-| **Total cycle** | | **28 min 18 s** | **3 (1 min 53 s)** | **4 (2 min 35 s)** | **0 (0.0 s)** | |
+| /lint-angular | ok | 2 min 55 s | — | — | — | — |
+| **Total cycle** | | **31 min 14 s** | **3 (1 min 53 s)** | **4 (2 min 35 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : lint ×1 (1 min 24 s)
 
 ## Develop log
 
@@ -398,3 +401,44 @@ distinction des icônes `mail` / `mail-02` **en sidebar repliée**, et le fait q
 l'en-tête ajouté ne mange pas la hauteur utile de la liste sur un écran 1080p.
 Le test « les deux icônes diffèrent » est automatisé ; « elles se distinguent
 à l'œil » ne l'est pas.
+
+## Lint log
+
+**Zéro erreur ESLint dès la ligne de base — aucune itération consommée** (0 / 5).
+
+Commande, alignée sur le Stage 2 du pipeline Azure :
+
+```bash
+npx nx affected -t lint --base=origin/next --head=HEAD --parallel=3 --projects=tag:scope:mss
+```
+
+11 projets lintés, `origin/next` à `c1f0ad90`.
+
+| Projet | Erreurs | Avertissements |
+|---|---|---|
+| `mss` (app) | 0 | 0 |
+| `mss-lib` | **0** | 41 |
+| `weda2` | 0 | 14 |
+| `dmp-lib` | 0 | 1 |
+| `design-system`, `prescription*`, `ins*`, `shared`, `dmp` | 0 | 0 |
+
+**Les 56 avertissements sont préexistants et hors diff** : `max-lines` sur des
+fichiers longs de longue date, `jsdoc/require-example` sur des méthodes écrites
+avant ce cycle, et deux `complexity` dans des services que la task ne touche
+pas. Le seul fichier du diff qui apparaît, `mss-mail.component.ts`, y figure
+pour un `max-lines` à 675 lignes — la task lui en ajoute **deux** (un import et
+une entrée dans `imports:`). Le réduire serait un refactor hors charte, sans
+rapport avec l'US.
+
+**Ce que ce zéro dit du cycle.** `conventions/angular.md` a été lu avant
+d'écrire, et ses trois consignes actives ont été appliquées d'emblée : control
+flow natif (`@if` / `@for`) dans l'en-tête et le menu, préfixe `mss-` sur les
+sélecteurs, et surtout **JSDoc complet écrit en même temps que la méthode** sur
+`addMailbox()` — la règle qui avait coûté 23 squelettes creux à task-304 et deux
+`require-param` à task-308. Aucune récidive : **aucune entrée à incrémenter
+dans `conventions/angular.md`**, le protocole ne se déclenchant que sur une
+correction manuelle.
+
+Code-only : aucune opération git sur `client-angular`. La seule commande git de
+l'étape est le `git fetch origin next` qui rafraîchit la référence de
+comparaison, comme le pipeline le fait avant son propre lint.

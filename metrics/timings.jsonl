@@ -1168,3 +1168,6 @@
 {"ts":"2026-09-15T10:06:36+02:00","run_id":"-","type":"cmd","task":"task-309","step":"develop","repo":"client-blazor","kind":"test","label":"","cwd":"Client/Blazor","cmd":"dotnet test HealthPlatform.Client.sln","duration_ms":13895,"exit_code":0}
 {"ts":"2026-09-15T10:08:32+02:00","run_id":"-","type":"cmd","task":"task-309","step":"develop","repo":"client-angular","kind":"test","label":"","cwd":"Client/Angular/front","cmd":"npx nx test mss-lib --skip-nx-cache","duration_ms":63589,"exit_code":0}
 {"ts":"2026-09-15T10:11:58+02:00","run_id":"-","type":"step","task":"task-309","step":"develop","status":"ok","note":"","iterations":null,"duration_ms":1614701}
+{"ts":"2026-09-15T10:12:13+02:00","run_id":"-","type":"step_start","task":"task-309","step":"lint-angular"}
+{"ts":"2026-09-15T10:13:57+02:00","run_id":"-","type":"cmd","task":"task-309","step":"lint-angular","repo":"client-angular","kind":"lint","label":"","cwd":"Client/Angular/front","cmd":"npx nx affected -t lint --base=origin/next --head=HEAD --parallel=3 --projects=tag:scope:mss","duration_ms":84074,"exit_code":0}
+{"ts":"2026-09-15T10:15:10+02:00","run_id":"-","type":"step","task":"task-309","step":"lint-angular","status":"ok","note":"","iterations":0,"duration_ms":175918}
