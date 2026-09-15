@@ -1263,3 +1263,5 @@
 {"ts":"2026-09-15T23:52:31+02:00","run_id":"-","type":"cmd","task":"task-313","step":"develop","repo":"client-mobile","kind":"build","label":"","cwd":"Client/Mobile","cmd":"npm run build","duration_ms":6946,"exit_code":0}
 {"ts":"2026-09-15T23:55:59+02:00","run_id":"-","type":"cmd","task":"task-313","step":"develop","repo":"client-mobile","kind":"test","label":"","cwd":"Client/Mobile","cmd":"npm test -- --watch=false --browsers=ChromeHeadless","duration_ms":13163,"exit_code":0}
 {"ts":"2026-09-16T00:02:24+02:00","run_id":"-","type":"cmd","task":"task-313","step":"develop","repo":"client-mobile","kind":"test","label":"","cwd":"Client/Mobile","cmd":"npm test -- --watch=false --browsers=ChromeHeadless","duration_ms":13123,"exit_code":0}
+{"ts":"2026-09-16T00:11:07+02:00","run_id":"-","type":"step_start","task":"task-307","step":"start"}
+{"ts":"2026-09-16T00:13:18+02:00","run_id":"-","type":"step","task":"task-307","step":"start","status":"failed","note":"US sans objet — task-312 a supprime PostgresAuditBackfillStore et les 3 requetes visees","iterations":null,"duration_ms":130639}
