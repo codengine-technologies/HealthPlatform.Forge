@@ -588,3 +588,49 @@ fronts). **Deux critères restent des observations à l'œil**, reportés au pla
 test manuel : la distinction des icônes `mail` / `mail-02` **en sidebar
 repliée**, et le fait que l'en-tête ajouté ne mange pas la hauteur utile de la
 liste sur un écran 1080p.
+
+## Merged
+
+**Date** : 2026-09-15 — `/merge 309 --i-tested`
+
+| Repo | PR | Commit squash sur `develop` |
+|---|---|---|
+| `client-blazor` | [#76](https://github.com/codengine-technologies/HealthPlatform.Client/pull/76) | `5733722` |
+| `client-mobile` | [#72](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/72) | `f10e1bc` |
+| `dtos-mss` | aucune (branche auto-incluse, zéro commit) | branche vide supprimée (refs distante + locale) |
+| `client-angular` | code-only | hors périmètre `/merge` — géré manuellement par l'humain |
+
+**CI `develop` après merge** (règle 5) :
+
+- client-blazor : ✅ [run 35000306889](https://github.com/codengine-technologies/HealthPlatform.Client/actions/runs/35000306889)
+- client-mobile : ✅ [run 35000343018](https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/35000343018) — **premier vert depuis le 2026-09-14**
+
+Branches `fix/*` locales conservées sur les deux repos ; seules les refs distantes
+ont été supprimées. Aucune branche de staging (task hors run `/forge`).
+
+### Le premier `/merge` a été refusé — ce qu'il a fallu corriger
+
+La garde 4 (CI verte) a échoué sur **les deux** PRs, pour deux raisons sans
+rapport entre elles. Analyse complète : `questions/merge-task-309.md`.
+
+**1. `client-blazor` — la garde de cette task ne gardait rien.**
+`MailboxSwitcherMountGuardTests` composait son chemin avec `"src"` en minuscule
+alors que le répertoire versionné est `Src/`. Windows, insensible à la casse, la
+laissait verte ; le runner Linux la refusait. Plus grave que la casse : l'échec
+portait sur `File.Exists`, donc **avant** l'assertion qui fait l'objet de la
+garde — elle était verte en local pour une raison sans rapport avec le montage du
+sélecteur. Corrigé en localisant la page par `RepoScan.TrackedFiles` (`git
+ls-files`), comme les deux gardes sœurs du même projet : la casse du dépôt
+devient opposable et la classe entière du défaut disparaît. `Assert.Single` tient
+le garde-fou du garde-fou. **Garde ré-éprouvée** : sélecteur retiré de
+`Mail.razor` → rouge sur l'assertion de fond, remis → vert. Commit `6a2b559`.
+
+**2. `client-mobile` — panne d'outillage CI préexistante, non imputable à la task.**
+Le job `build-android` mourait dans `android-actions/setup-android@v3`
+(`Failed to find package 'tools'`) **avant** tout `npm ci`, build ou test :
+le défaut de l'action est `packages: tools platform-tools` et `tools` a été retiré
+du dépôt SDK. La panne était déjà sur `develop` depuis le 2026-09-14
+(run 34896682052), première rupture après une série verte remontant au
+2026-08-30 — elle frappait donc **toute** PR mobile ouverte depuis. Arbitrage
+humain du 2026-09-15 : correctif porté sur la branche task-309 plutôt qu'en PR
+devops séparée, `develop` récupérant la réparation au merge. Commit `1cb0ba4`.
