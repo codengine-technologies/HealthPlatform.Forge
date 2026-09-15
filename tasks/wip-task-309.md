@@ -276,9 +276,10 @@ hauteur utile de la liste de messages.
 | /start | ok | 1 min 23 s | — | — | — | — |
 | /develop | ok | 26 min 54 s | 3 (1 min 53 s) | 4 (2 min 35 s) | — | client-angular 2B/1T, client-mobile 0B/2T, client-blazor 1B/1T |
 | /lint-angular | ok | 2 min 55 s | — | — | — | — |
-| **Total cycle** | | **31 min 14 s** | **3 (1 min 53 s)** | **4 (2 min 35 s)** | **0 (0.0 s)** | |
+| /lint-mobile | ok | 55 s | — | — | — | — |
+| **Total cycle** | | **32 min 09 s** | **3 (1 min 53 s)** | **4 (2 min 35 s)** | **0 (0.0 s)** | |
 
-Autres commandes mesurées : lint ×1 (1 min 24 s)
+Autres commandes mesurées : lint ×2 (1 min 50 s)
 
 ## Develop log
 
@@ -442,3 +443,25 @@ correction manuelle.
 Code-only : aucune opération git sur `client-angular`. La seule commande git de
 l'étape est le `git fetch origin next` qui rafraîchit la référence de
 comparaison, comme le pipeline le fait avant son propre lint.
+
+## Lint mobile log
+
+**`All files pass linting.` dès la ligne de base — aucune itération consommée**
+(0 / 5), sur la branche `fix/task-309-selecteur-messageries-atteignable`.
+
+```bash
+cd Client/Mobile && npm run lint      # ng lint, projet "app"
+```
+
+**0 erreur, 0 avertissement.** Contrairement à `client-angular`, la
+configuration ESLint de `client-mobile` ne porte ni `jsdoc/require-*` ni
+`max-lines` : il n'y a donc pas même de bruit préexistant à écarter.
+
+**Aucun commit, aucun push** : l'automation git de cette étape ne s'exerce que
+sur des correctifs, et il n'y en a aucun. Le code mobile de la task est déjà
+poussé par `/develop` (commit `7dbab49`).
+
+**Aucune entrée à incrémenter dans `conventions/angular.md`** : le protocole ne
+se déclenche que sur une correction manuelle, et il n'y en a pas eu. Les deux
+specs mobiles écrites par ce cycle passent le lint telles qu'écrites — control
+flow natif, préfixe `app-`, `data-testid` sur les éléments interactifs.
