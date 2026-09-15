@@ -277,7 +277,8 @@ hauteur utile de la liste de messages.
 | /develop | ok | 26 min 54 s | 3 (1 min 53 s) | 4 (2 min 35 s) | — | client-angular 2B/1T, client-mobile 0B/2T, client-blazor 1B/1T |
 | /lint-angular | ok | 2 min 55 s | — | — | — | — |
 | /lint-mobile | ok | 55 s | — | — | — | — |
-| **Total cycle** | | **32 min 09 s** | **3 (1 min 53 s)** | **4 (2 min 35 s)** | **0 (0.0 s)** | |
+| /verify-visual | skipped | 31 s | — | — | — | diff client-mobile non visuel : 2 specs, 1 methode, 1 liaison de clic |
+| **Total cycle** | | **32 min 41 s** | **3 (1 min 53 s)** | **4 (2 min 35 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×2 (1 min 50 s)
 
@@ -465,3 +466,32 @@ poussé par `/develop` (commit `7dbab49`).
 se déclenche que sur une correction manuelle, et il n'y en a pas eu. Les deux
 specs mobiles écrites par ce cycle passent le lint telles qu'écrites — control
 flow natif, préfixe `app-`, `data-testid` sur les éléments interactifs.
+
+## Visual verify log
+
+**Skip propre — aucun écran mobile touché.**
+
+Le diff `client-mobile` de la task est entièrement non visuel :
+
+| Fichier | Nature |
+|---|---|
+| `inbox.page.mount.spec.ts` (+87) | test |
+| `mailbox-switcher.component.spec.ts` (+159) | test |
+| `mailbox-switcher.component.ts` (+20) | une méthode `addMailbox()` |
+| `mailbox-switcher.component.html` (1 ligne) | `(click)="goToManagement()"` devient `(click)="addMailbox()"` |
+
+**Le rendu est identique au caractère près** : même arborescence, mêmes
+libellés, mêmes `data-testid`, même état `disabled`. Seule la cible d'un
+gestionnaire de clic change. Aucun écran de `screens.json` n'est donc à
+recapturer, et l'état visuel global de l'application
+(`Docs/epics/img/screens/client-mobile/`) reste à jour.
+
+**Ce que ce skip ne couvre pas, et pourquoi c'est acceptable** : le critère
+bloquant de cette étape est l'écran blanc ou le crash de navigation. Le seul
+chemin par lequel ce diff pourrait en produire un serait une liaison de
+template invalide — ce que le `ng build` de `/develop` (0 erreur) et les 832
+tests verts, dont le rendu superficiel de la page Messages, excluent déjà.
+
+Le parcours visuel mobile complet — ouvrir le sélecteur, ajouter une seconde
+boîte, basculer — reste au **plan de test manuel** (HAG), où il est décrit
+écran par écran.
