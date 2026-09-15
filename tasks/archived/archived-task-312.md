@@ -394,3 +394,45 @@ corps de la PR :
 | /review | ok | 4 min 17 s | 2 (8.4 s) | 1 (1 min 32 s) | — | api-mail 2B/1T |
 | /tech-writer | ok | 4 min 55 s | — | — | — | — |
 | **Total cycle** | | **29 min 06 s** | **21 (1 min 47 s)** | **13 (11 min 07 s)** | **0 (0.0 s)** | |
+
+## Merged
+
+Mergée le **2026-09-15** par `/merge 312 --i-tested` (HAG, règle 10).
+
+| Repo | PR | Squash | Branche distante |
+|---|---|---|---|
+| `api-mail` | [#239](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/239) | `b940054` | supprimée |
+| `dtos-mss` | aucune (branche vide) | — | supprimée (étape 5 bis) |
+
+CI `develop` : **verte**.
+
+### Le portail 5 a fait son travail
+
+`/merge` a d'abord **refusé** : `mergeable=CONFLICTING`. `task-311` (PR #240)
+avait été mergée entre-temps et touchait trois fichiers communs.
+
+**Un seul conflit réel**, de type supprimé-par-nous / modifié-par-eux, sur
+`AuditDualSourceReadTests.cs` : task-312 supprime ce fichier (la lecture double
+source n'existe plus), task-311 y avait fait un dédoublonnage mécanique de
+`ContextFactory` (+2 / −10). Résolution sans ambiguïté — **le fichier reste
+supprimé** : le dédoublonnage portait sur un test dont le sujet disparaît.
+
+**Ce que la fusion a révélé, et qu'aucune des deux CI ne pouvait voir seule :**
+
+1. `LoadTestBenchProvisioningIntegrationTests` (nouveau, task-311) construisait
+   `PostgresAuditSink` avec l'**ancienne signature** — task-312 lui a ajouté
+   `IOptions<AuditOptions>`. Rupture de compilation que ni la PR #240 ni la
+   PR #239 ne voyaient, chacune ne compilant que sa propre branche.
+2. `AuditReaderSortIntegrationTests` (nouveau, task-312) **réintroduisait** le
+   `ContextFactory` privé que task-311 venait justement de dédoublonner.
+   Réaligné sur `TenantRegistryTestClient.ContextFactoryFor`.
+
+La résolution n'a touché **aucune ligne de production** : les trois fichiers
+`src/` du commit de fusion sont les apports de task-311, auto-fusionnés. La
+région DI partagée par les deux tasks (`AddTenantRegistryClient` de l'une, les
+trois enregistrements d'audit de l'autre) a été relue et est cohérente.
+
+**Arbre fusionné validé localement : 4 470 tests, 0 échec** — dont les tests
+d'intégration qui démarrent le conteneur DI et exercent registre + journal sur
+un vrai Postgres. C'est cette exécution, et non la CI de la PR, qui prouve la
+combinaison.
