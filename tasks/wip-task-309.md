@@ -259,3 +259,19 @@ hauteur utile de la liste de messages.
 - **Pas la passe design system des deux autres fronts.** Blazor et Mobile ont leurs propres
   systèmes visuels (Radzen, Ionic) ; seul le sélecteur Angular est converti, par cohérence
   avec les cinq écrans de rattachement traités la veille.
+
+## Branches
+
+- `client-blazor` (pushed) : `fix/task-309-selecteur-messageries-atteignable` — https://github.com/codengine-technologies/HealthPlatform.Client/tree/fix/task-309-selecteur-messageries-atteignable
+- `client-mobile` (pushed) : `fix/task-309-selecteur-messageries-atteignable` — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/fix/task-309-selecteur-messageries-atteignable
+- `dtos-mss` (pushed, auto-inclus) : `fix/task-309-selecteur-messageries-atteignable` — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/fix/task-309-selecteur-messageries-atteignable
+- `client-angular` (code-only) : la forge écrit sur la branche actuellement checked out dans `Client/Angular/` — **`feature/nova-rewriting-mss`** à l'heure du `/start` ; l'humain gère branche, commit, push, PR TFS
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-309 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 1 min 23 s | — | — | — | — |
+| **Total cycle** | | **1 min 23 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
