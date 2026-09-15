@@ -274,4 +274,127 @@ hauteur utile de la liste de messages.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 1 min 23 s | — | — | — | — |
-| **Total cycle** | | **1 min 23 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 26 min 54 s | 3 (1 min 53 s) | 4 (2 min 35 s) | — | client-angular 2B/1T, client-mobile 0B/2T, client-blazor 1B/1T |
+| **Total cycle** | | **28 min 18 s** | **3 (1 min 53 s)** | **4 (2 min 35 s)** | **0 (0.0 s)** | |
+
+## Develop log
+
+**Rien de fonctionnel n'a été écrit** — conformément à l'US. Une pièce oubliée
+est branchée, un point d'entrée est ajouté, un composant sans aucun test en
+reçoit vingt-trois, et une règle qui ne tenait qu'à un attribut de rendu passe
+dans le code.
+
+### `client-angular` (code-only — non commité)
+
+| Fichier | Ce qui change |
+|---|---|
+| `features/mail/mss-mail.component.html` / `.scss` / `.ts` | **L'en-tête de la messagerie**, qui n'existait pas, et le montage de `<mss-mailbox-switcher />` dedans |
+| `features/layout/mss-layout.component.ts` | Entrée **« Mes messageries »** dans `NAV_ITEMS`, avant-dernière, `accounts` / `communication` / `mail-02` |
+| `ui/mailbox-switcher/*` | Conversion **design system** (`ds-button`, `ds-card`, `ds-icon`) — tous les `data-testid` à l'identique — et la garde hors ligne |
+
+**La coquille était le vrai obstacle.** `mss-mail.component.html` n'avait aucune
+surface d'en-tête : deux panneaux et rien d'autre, là où Blazor et Mobile en
+avaient un. C'est cette absence qui explique qu'on ait pu livrer le sélecteur
+sans jamais le monter — il n'y avait nulle part où le poser. La page devient
+`.mail-shell` (colonne) = `.mail-header` (hauteur minimale) + `.mail-container`
+(`flex: 1` + `min-height: 0`, sans quoi la liste déborderait au lieu de défiler).
+
+**Un échec de build instructif** : `justify="start"` sur `ds-button` —
+`ButtonJustify` n'admet que `center | space-between`. Retiré.
+
+### `client-mobile` (poussé) et `client-blazor` (poussé)
+
+Diff limité aux tests, **plus une ligne de comportement** consignée ci-dessous.
+
+### Les tests qui manquaient — 23 au total
+
+| Front | Fichier | Tests |
+|---|---|---|
+| angular | `mailbox-switcher.component.spec.ts` | 8 |
+| angular | `mss-layout.component.spec.ts` | 4 (ordre des entrées, position, icônes distinctes, lien rendu) |
+| angular | `mss-mail.component.mount.spec.ts` | 2 — **contre-épreuve** |
+| mobile | `mailbox-switcher.component.spec.ts` | 8 |
+| mobile | `inbox.page.mount.spec.ts` | 1 — **contre-épreuve** |
+| blazor | `MailboxSwitcherComponentTests.cs` | 7 |
+| blazor | `MailboxSwitcherMountGuardTests.cs` | 1 — **contre-épreuve** |
+
+**Trois contre-épreuves, deux techniques, et c'est l'outil qui décide.** La
+question posée est la même partout — *la page monte-t-elle le sélecteur ?* —
+mais Vitest et xUnit lisent le disque (le source de la page fait foi, et le
+compilateur couvre l'autre moitié : un élément inconnu casse le build), tandis
+que Karma tourne dans un navigateur sans accès fichier : côté mobile, la page
+est donc **rendue superficiellement** (`NO_ERRORS_SCHEMA`), ce qui laisse la
+balise dans le DOM sans instancier la liste de mails ni ses dépendances.
+
+### Le défaut trouvé par le test — et pourquoi il est dans le code, pas dans le rendu
+
+Le test « hors ligne, "Ajouter" ne navigue pas » a échoué **au premier coup**
+côté Angular : le clic sur un `ds-button` désactivé déclenchait quand même le
+gestionnaire du parent. L'inopérance ne tenait donc qu'au **rendu** (le
+`<button disabled>` interne, qui protège un vrai clic de souris mais pas un
+événement reçu par l'hôte).
+
+Ce n'est **pas** un bug utilisateur démontré — il faudrait un chemin de clic
+atteignant l'hôte. C'est une **règle métier qui vivait dans une feuille de
+style** : « rattacher exige une session Pro Santé Connect » appartient à
+l'écran. Une méthode `addMailbox()` la porte désormais sur les **trois** fronts,
+ce qui la rend vraie quel que soit le chemin du clic et **vérifiable par un
+test**, comme la DOD santé l'exige. « Gérer » reste ouvert hors ligne :
+consulter ce qu'on possède déjà n'exige aucun jeton.
+
+### Vérification de parité — deux écarts relevés
+
+1. **Garde hors ligne absente des trois fronts** — *corrigée* (ci-dessus), une
+   méthode par front.
+2. **Destination après bascule — non corrigée, arbitrage PO requis.** Angular
+   route vers `dashboard` (le tableau de bord), Blazor vers `/Mail` et Mobile
+   vers `/tabs/messages` (la boîte de réception). Le commentaire du code Angular
+   annonce pourtant « la nouvelle boîte s'ouvre sur sa boîte de réception » :
+   **le code et son commentaire divergent sur le front de référence**. Un mot
+   suffirait à aligner, mais lequel des deux comportements est le bon est une
+   décision produit, pas une simplification — laissé au HAG.
+
+Le reste des différences est idiomatique et non un écart : menu déroulant ancré
+(Angular/Blazor) contre feuille `ion-modal` (Mobile), et l'entrée de navigation
+« Mes messageries » qui est **Angular seulement** par décision de PO — les deux
+autres fronts n'ont pas de surface équivalente.
+
+### Passe qualité (`/simplify`, intégrée)
+
+Diff court et fraîchement écrit ; **un seul nettoyage appliqué** : la spec
+Angular contenait un test qui réinitialisait le `TestBed` **en son milieu** pour
+exercer deux boutons — scindé en deux tests, chacun avec son montage.
+Re-validation : suite `mss-lib` **361 verts** (la scission ajoute le 361e).
+Build applicatif non rejoué pour ce seul nettoyage : les specs sont hors du
+bundle. `dtos-mss` — porteur de contrat, jamais de passe qualité ; aucun commit
+non plus, la task ne touche aucun DTO.
+
+### Vérifications
+
+| Repo | Build | Tests |
+|---|---|---|
+| `client-angular` | `nx build weda2` — **0 erreur** | `nx test mss-lib` — **361 verts** |
+| `client-mobile` | `npm run build` (hook pre-push) — **0 erreur** | **832 verts**, 0 échec |
+| `client-blazor` | `dotnet build HealthPlatform.Client.sln` — **0 erreur** | **240 verts**, 2 ignorés, 0 échec |
+
+**Vérification binaire de la DOD** :
+`grep -rn "mss-mailbox-switcher" libs/mss/src --include=*.html` rend un montage
+réel (`mss-mail.component.html:15`), hors du composant lui-même.
+
+### État git
+
+- `client-blazor` : commit `80d4e1e`, **poussé**.
+- `client-mobile` : commit `7dbab49`, **poussé**.
+- `dtos-mss` : branche créée par `/start`, **aucun commit** — aucun contrat touché.
+- `client-angular` : **10 fichiers non commités** (7 modifiés, 3 nouveaux) sur
+  `feature/nova-rewriting-mss` — mode code-only, l'humain commit et pousse vers
+  TFS. Les deux `environments/environment.ts` modifiés **préexistaient** à la
+  task : ne pas les confondre avec son diff.
+
+### Reporté au test humain (HAG)
+
+Deux critères de la DOD sont des observations à l'œil, pas des assertions : la
+distinction des icônes `mail` / `mail-02` **en sidebar repliée**, et le fait que
+l'en-tête ajouté ne mange pas la hauteur utile de la liste sur un écran 1080p.
+Le test « les deux icônes diffèrent » est automatisé ; « elles se distinguent
+à l'œil » ne l'est pas.

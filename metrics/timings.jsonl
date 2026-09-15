@@ -1159,3 +1159,12 @@
 {"ts":"2026-09-15T00:47:08+02:00","run_id":"-","type":"step","task":"task-312","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":295441}
 {"ts":"2026-09-15T09:43:27+02:00","run_id":"-","type":"step_start","task":"task-309","step":"start"}
 {"ts":"2026-09-15T09:44:50+02:00","run_id":"-","type":"step","task":"task-309","step":"start","status":"ok","note":"","iterations":null,"duration_ms":83609}
+{"ts":"2026-09-15T09:45:03+02:00","run_id":"-","type":"step_start","task":"task-309","step":"develop"}
+{"ts":"2026-09-15T09:57:53+02:00","run_id":"-","type":"cmd","task":"task-309","step":"develop","repo":"client-angular","kind":"build","label":"","cwd":"Client/Angular/front","cmd":"npx nx build weda2 --skip-nx-cache","duration_ms":24486,"exit_code":130}
+{"ts":"2026-09-15T09:59:17+02:00","run_id":"-","type":"cmd","task":"task-309","step":"develop","repo":"client-angular","kind":"build","label":"","cwd":"Client/Angular/front","cmd":"npx nx build weda2 --skip-nx-cache","duration_ms":46573,"exit_code":0}
+{"ts":"2026-09-15T10:02:54+02:00","run_id":"-","type":"cmd","task":"task-309","step":"develop","repo":"client-mobile","kind":"test","label":"","cwd":"Client/Mobile","cmd":"npm test -- --watch=false --browsers=ChromeHeadless","duration_ms":39764,"exit_code":1}
+{"ts":"2026-09-15T10:04:07+02:00","run_id":"-","type":"cmd","task":"task-309","step":"develop","repo":"client-mobile","kind":"test","label":"","cwd":"Client/Mobile","cmd":"npm test -- --watch=false --browsers=ChromeHeadless","duration_ms":37984,"exit_code":0}
+{"ts":"2026-09-15T10:06:01+02:00","run_id":"-","type":"cmd","task":"task-309","step":"develop","repo":"client-blazor","kind":"build","label":"","cwd":"Client/Blazor","cmd":"dotnet build HealthPlatform.Client.sln","duration_ms":42127,"exit_code":1}
+{"ts":"2026-09-15T10:06:36+02:00","run_id":"-","type":"cmd","task":"task-309","step":"develop","repo":"client-blazor","kind":"test","label":"","cwd":"Client/Blazor","cmd":"dotnet test HealthPlatform.Client.sln","duration_ms":13895,"exit_code":0}
+{"ts":"2026-09-15T10:08:32+02:00","run_id":"-","type":"cmd","task":"task-309","step":"develop","repo":"client-angular","kind":"test","label":"","cwd":"Client/Angular/front","cmd":"npx nx test mss-lib --skip-nx-cache","duration_ms":63589,"exit_code":0}
+{"ts":"2026-09-15T10:11:58+02:00","run_id":"-","type":"step","task":"task-309","step":"develop","status":"ok","note":"","iterations":null,"duration_ms":1614701}
