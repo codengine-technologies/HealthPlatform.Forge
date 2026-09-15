@@ -1176,3 +1176,11 @@
 {"ts":"2026-09-15T10:16:23+02:00","run_id":"-","type":"step","task":"task-309","step":"lint-mobile","status":"ok","note":"","iterations":0,"duration_ms":55496}
 {"ts":"2026-09-15T10:16:46+02:00","run_id":"-","type":"step_start","task":"task-309","step":"verify-visual"}
 {"ts":"2026-09-15T10:17:18+02:00","run_id":"-","type":"step","task":"task-309","step":"verify-visual","status":"skipped","note":"diff client-mobile non visuel : 2 specs, 1 methode, 1 liaison de clic","iterations":null,"duration_ms":31359}
+{"ts":"2026-09-15T10:17:39+02:00","run_id":"-","type":"step_start","task":"task-309","step":"review"}
+{"ts":"2026-09-15T10:18:29+02:00","run_id":"-","type":"cmd","task":"task-309","step":"review","repo":"client-blazor","kind":"test","label":"","cwd":"Client/Blazor","cmd":"dotnet test HealthPlatform.Client.sln","duration_ms":23638,"exit_code":0}
+{"ts":"2026-09-15T10:18:36+02:00","run_id":"-","type":"cmd","task":"task-309","step":"review","repo":"client-mobile","kind":"test","label":"","cwd":"Client/Mobile","cmd":"npm test -- --watch=false --browsers=ChromeHeadless","duration_ms":31235,"exit_code":0}
+{"ts":"2026-09-15T10:18:53+02:00","run_id":"-","type":"cmd","task":"task-309","step":"review","repo":"dtos-mss","kind":"build","label":"","cwd":"Dtos","cmd":"dotnet build HealthPlatform.Dtos.Mss.csproj","duration_ms":3617,"exit_code":0}
+{"ts":"2026-09-15T10:19:20+02:00","run_id":"-","type":"cmd","task":"task-309","step":"review","repo":"client-mobile","kind":"build","label":"","cwd":"Client/Mobile","cmd":"npm run build","duration_ms":31193,"exit_code":0}
+{"ts":"2026-09-15T10:20:57+02:00","run_id":"-","type":"cmd","task":"task-309","step":"review","repo":"client-angular","kind":"build","label":"","cwd":"Client/Angular/front","cmd":"npx nx build weda2","duration_ms":83409,"exit_code":0}
+{"ts":"2026-09-15T10:22:04+02:00","run_id":"-","type":"cmd","task":"task-309","step":"review","repo":"client-angular","kind":"test","label":"","cwd":"Client/Angular/front","cmd":"npx nx test mss-lib","duration_ms":62600,"exit_code":0}
+{"ts":"2026-09-15T10:24:54+02:00","run_id":"-","type":"step","task":"task-309","step":"review","status":"ok","note":"","iterations":null,"duration_ms":434545}

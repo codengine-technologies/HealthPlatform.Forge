@@ -278,7 +278,8 @@ hauteur utile de la liste de messages.
 | /lint-angular | ok | 2 min 55 s | — | — | — | — |
 | /lint-mobile | ok | 55 s | — | — | — | — |
 | /verify-visual | skipped | 31 s | — | — | — | diff client-mobile non visuel : 2 specs, 1 methode, 1 liaison de clic |
-| **Total cycle** | | **32 min 41 s** | **3 (1 min 53 s)** | **4 (2 min 35 s)** | **0 (0.0 s)** | |
+| /review | ok | 7 min 14 s | 3 (1 min 58 s) | 3 (1 min 57 s) | — | client-blazor 0B/1T, client-mobile 1B/1T, dtos-mss 1B/0T, client-angular 1B/1T |
+| **Total cycle** | | **39 min 55 s** | **6 (3 min 51 s)** | **7 (4 min 32 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×2 (1 min 50 s)
 
@@ -495,3 +496,94 @@ tests verts, dont le rendu superficiel de la page Messages, excluent déjà.
 Le parcours visuel mobile complet — ouvrir le sélecteur, ajouter une seconde
 boîte, basculer — reste au **plan de test manuel** (HAG), où il est décrit
 écran par écran.
+
+## PRs
+
+- `client-blazor` (pushed) : **[PR #76](https://github.com/codengine-technologies/HealthPlatform.Client/pull/76)** — label `awaiting-human-merge`
+- `client-mobile` (pushed) : **[PR #72](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/72)** — label `awaiting-human-merge`
+- `dtos-mss` (auto-inclus) : branche créée par `/start`, **aucun commit** — la
+  task ne touche aucun contrat DTO. Pas de PR ; la branche vide est nettoyée au
+  `/merge`.
+- `client-angular` (**code-only**) : l'humain gère commit / push TFS et
+  l'ouverture de la PR. **10 fichiers** à relire dans WindSurf, non commités sur
+  `feature/nova-rewriting-mss` :
+
+  | Fichier | État |
+  |---|---|
+  | `libs/mss/src/features/layout/mss-layout.component.ts` | modifié |
+  | `libs/mss/src/features/layout/mss-layout.component.spec.ts` | **nouveau** |
+  | `libs/mss/src/features/mail/mss-mail.component.html` | modifié |
+  | `libs/mss/src/features/mail/mss-mail.component.scss` | modifié |
+  | `libs/mss/src/features/mail/mss-mail.component.ts` | modifié |
+  | `libs/mss/src/features/mail/mss-mail.component.mount.spec.ts` | **nouveau** |
+  | `libs/mss/src/ui/mailbox-switcher/mailbox-switcher.component.html` | modifié |
+  | `libs/mss/src/ui/mailbox-switcher/mailbox-switcher.component.scss` | modifié |
+  | `libs/mss/src/ui/mailbox-switcher/mailbox-switcher.component.ts` | modifié |
+  | `libs/mss/src/ui/mailbox-switcher/mailbox-switcher.component.spec.ts` | **nouveau** |
+
+  ⚠️ Les deux `apps/*/src/environments/environment.ts` modifiés dans le même
+  arbre **préexistaient** à la task — ne pas les inclure dans son commit.
+
+## Code Review Summary
+
+**APPROVED** — 17 fichiers relus sur trois fronts, **0 blocage**, 2 suggestions
+non bloquantes et 1 arbitrage laissé à l'humain.
+
+### Ce que la revue confirme
+
+- **Le diff ne déborde pas.** L'US annonçait « presque aucune fonctionnalité » :
+  hors tests, le diff se réduit à un en-tête de page, une entrée de navigation,
+  un habillage design system à `data-testid` constants, et une méthode de garde
+  par front. Aucun comportement nouveau, aucune route nouvelle, aucun contrôle
+  d'accès touché.
+- **Aucun reste** : ni `TODO`, ni `console.log`, ni test focalisé (`it.only` /
+  `fdescribe`), ni code mort dans les trois diffs.
+- **Santé / sécurité** : aucune adresse MSSanté réelle, aucun RPPS réel, aucun
+  identifiant dans les fixtures (`box-1@mssante.fr`, RPPS `90000000001`). Aucun
+  journal front n'émet d'adresse. Le chemin de rattachement reste derrière Pro
+  Santé Connect — et l'est désormais **par le code**, pas seulement par un
+  attribut de rendu.
+- **Les tests sont signifiants** : chacun échouerait si le comportement
+  disparaissait. Les trois contre-épreuves de montage échouent si la page cesse
+  de porter le sélecteur — c'est la seule classe de défaut que ce cycle existe
+  pour empêcher de se reproduire.
+
+### Suggestions non bloquantes
+
+1. **`aria-expanded` a changé de porteur (Angular).** Il était sur le `<button>`
+   natif ; il est désormais sur l'hôte `ds-button`, donc **pas sur l'élément
+   focusable**. Un lecteur d'écran annoncera le bouton sans son état déplié.
+   Corriger proprement demande une entrée `ariaExpanded` côté design system —
+   hors charte de cette task, et hors du module MSS.
+2. **`mss-mail.component.ts` dépasse `max-lines` (675 / 500)**, avertissement
+   préexistant que la task n'aggrave que de deux lignes. Le découper est un
+   refactor à part entière.
+
+### Arbitrage laissé à l'humain (non bloquant)
+
+**La destination après bascule diverge entre les trois fronts** : Angular route
+vers `dashboard`, Blazor vers `/Mail`, Mobile vers `/tabs/messages`. Le
+commentaire du code Angular — le front de référence de l'US — annonce pourtant
+« la nouvelle boîte s'ouvre sur sa boîte de réception ». **Le code et son
+commentaire divergent.** Un mot suffit à aligner, mais lequel des deux
+comportements est le bon est une décision produit, pas une simplification :
+laissé au HAG.
+
+### Vérifications rejouées par `/review`
+
+| Repo | Build | Tests |
+|---|---|---|
+| `client-angular` | `nx build weda2` — **0 erreur** | `nx test mss-lib` — **361 verts** |
+| `client-mobile` | `npm run build` — **0 erreur** | **832 verts**, 0 échec |
+| `client-blazor` | (build implicite) | **240 verts**, 2 ignorés, 0 échec |
+| `dtos-mss` | `dotnet build` — **0 erreur** | n/a |
+
+### DOD — état
+
+Tous les critères commandables sont vérifiés (build, tests, montage, entrée de
+navigation et sa position, conversion design system à `data-testid` constants,
+23 tests neufs dont 3 contre-épreuves, refus hors ligne testé sur les trois
+fronts). **Deux critères restent des observations à l'œil**, reportés au plan de
+test manuel : la distinction des icônes `mail` / `mail-02` **en sidebar
+repliée**, et le fait que l'en-tête ajouté ne mange pas la hauteur utile de la
+liste sur un écran 1080p.
