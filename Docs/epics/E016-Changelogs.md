@@ -12,6 +12,140 @@ entrée existante n'est jamais réécrite.
 
 ## Historique détaillé des changelogs
 
+### v1.10 — task-313 : détacher sa dernière messagerie déconnecte, sur les trois fronts (`client-blazor`, `client-mobile`, `api-mail`)
+
+> Portage sur Blazor et mobile du correctif livré sur Angular par task-312,
+> **plus** le défaut backend que ce portage a rendu visible.
+> PRs : [api-mail #241](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/241),
+> [client-blazor #77](https://github.com/codengine-technologies/HealthPlatform.Client/pull/77),
+> [client-mobile #73](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/73).
+
+#### Ce que l'US ferme
+
+Le praticien qui détachait sa **dernière** messagerie restait connecté avec une
+session portant une boîte qui n'existe plus. Chaque appel suivant était refusé —
+**y compris celui qui sert à rattacher une nouvelle messagerie**. Le compte
+n'avait plus aucun chemin de retour : ni messagerie, ni moyen d'en ajouter une.
+
+La décision humaine du 2026-09-15 — **déconnexion complète** — n'est pas qu'une
+préférence d'ergonomie. C'est ce qui débloque le compte **sans toucher à une
+seule garde de sécurité** : sans boîte annoncée, le backend prend l'autre
+branche de la sélection, ne trouve rien de sélectionnable, et rend l'issue « une
+messagerie est requise » — la seule que les routes de rattachement laissent
+**déjà** passer.
+
+#### Quatre défauts, dont deux que le portage a révélés
+
+**1. Aucune déconnexion quand il ne reste rien** (les deux fronts). Les écrans
+naviguaient vers l'onboarding en laissant la session ouverte.
+
+**2. La décision se prenait sur une liste PÉRIMÉE** (les deux fronts). Les écrans
+rechargeaient **avant** de décider ; ce rechargement est refusé tant que la
+session porte la boîte détachée, et il sort alors **sans toucher** à sa liste —
+`Result.Error` côté Blazor, `false` côté mobile. La boîte retirée y figurait
+donc toujours comme sélectionnable **et** par défaut : les écrans trouvaient un
+repli **qui n'existe plus** et rebasculaient vers la messagerie qu'on venait de
+supprimer. C'est la même cause que sur Angular, écrite deux fois.
+
+**3. Blazor « récupérait » vers la boîte détachée.** Propre à ce front, et plus
+grave : `Mss403Handler` intercepte le refus et tente une récupération
+automatique — mais **ne lisait pas le résultat de sa relecture**. Elle concluait
+sur la même liste périmée et rebasculait vers la boîte détachée. *Le handler
+réinstallait lui-même la cause du refus qu'il devait réparer.* La récupération
+n'est pas supprimée — c'est un confort réel quand une boîte perd son jeton en
+cours de session : on lui interdit seulement de **conclure sur une liste qu'elle
+n'a pas pu rafraîchir**.
+
+**4. L'ordre de clôture était refusé quand il n'y avait plus de boîte**
+(`api-mail`). `POST /api/v1/sync/logout` portait l'exigence de messagerie par
+défaut, alors que sa portée est *(praticien, session cliente)* : il purge le
+contexte de synchronisation et journalise une frontière de session, sans jamais
+lire ni écrire une boîte. Les trois fronts émettent cet ordre au **début** de
+leur déconnexion — une erreur s'affichait donc pendant une déconnexion
+volontaire. Corrigé par `[MailboxNotRequired]`, exemption **étroite** : le test
+l'atteste en vérifiant aussi son **absence** sur une route qui, elle, manipule
+une boîte.
+
+#### Ce qui n'a PAS été réinventé
+
+Les deux fronts avaient déjà leur couture de déconnexion, et elles sont
+réutilisées telles quelles : `ISessionExpirationHandler.HandleExpiredSession()`
+sur Blazor (task-156, **idempotent par contrat**) et `LogoutService.run()` sur
+mobile (task-285). Aucun mécanisme nouveau n'a été introduit — c'est ce qui
+explique la taille du diff au regard de l'effet.
+
+#### Test-first, et les deux tests qui protègent du sur-correctif
+
+Tous les tests du défaut ont été **vérifiés ROUGE avant correction** (règle 1) :
+2 sur l'écran Blazor, 1 sur `Mss403Handler`, 3 sur mobile, 1 sur api-mail.
+
+Mais la moitié des tests écrits fige **ce qui ne doit pas changer** : un repli
+**réel** existe ⇒ on bascule ; la boîte détachée n'est pas la courante ⇒ la
+session n'est pas touchée. Ces deux-là passaient **déjà** contre l'ancienne
+logique, et c'est précisément leur intérêt : sans eux, « déconnecter »
+deviendrait la réponse à *tout* détachement de la boîte courante — une
+régression plus large que le défaut corrigé.
+
+`mailbox-management.page.ts` (mobile) n'avait **aucun spec** : l'US en apporte
+un de cinq tests.
+
+#### Deux risques levés par vérification, pas par impression
+
+1. **Purge croisée entre praticiens ?** Non. Avec `[MailboxNotRequired]`,
+   l'adresse du praticien est vide sur ce chemin — état **documenté et voulu**
+   du middleware. `CleanupUserAsync` ne l'utilise que comme **clé de recherche**
+   (`TryGetValue`, `HasActiveSessionsForEmail`, `GetStateAsync`) : une chaîne
+   vide ne correspond à rien, l'appel devient un no-op, jamais un effacement de
+   masse.
+
+2. **Service `AddScoped` résolu depuis le provider racine (Blazor) ?** Sans
+   risque nouveau : `ISessionExpirationHandler` a le même cycle de vie et le
+   même mode de résolution que `IMailboxSessionService`, que `Mss403Handler`
+   résout déjà ainsi.
+
+#### Qualité
+
+| Métrique | Baseline | Final |
+|---|---|---|
+| Quality Gate (new code) | OK | **OK** |
+| New coverage | 84,8 % | **85,8 %** |
+| New bugs / vulnérabilités | 0 / 0 | **0 / 0** |
+| Coverage projet | 87,7 % | **87,8 %** |
+| Bugs / Vulnérabilités / Smells | 0 / 0 / 228 | 0 / 0 / 228 |
+
+**0 itération de nettoyage, et c'est une mesure** : requête ciblée sur les deux
+seuls fichiers du diff api-mail — **0 issue ouverte**. Les 35 *new smells* du
+projet sont antérieurs à la branche et ne portent sur aucun fichier touché.
+Lint mobile : « All files pass linting » dès la baseline.
+
+Tests : **4 476** (api-mail) + **245** (Blazor) + **837** (mobile), 0 échec.
+Coût du cycle : **29 min 19 s** mesurées, 7 builds et 18 suites.
+
+#### Limites assumées
+
+- **Un point de conformité remonté, non bloquant** — `questions/task-313.md`.
+  Cette route devient la **première** route `[MailboxNotRequired]` qui émet une
+  trace d'audit ; l'adresse étant vide par conception sur ce chemin, la trace de
+  clôture est **non attribuable**. Ce n'est pas une régression (avant, la
+  requête était refusée et *aucune* trace n'était écrite), mais trancher entre
+  « ne pas émettre » et « émettre sous une identité de repli (sub PSC / RPPS) »
+  est une décision de conformité — et la seconde option toucherait
+  `AuditService`, donc **toutes** les traces de la plateforme.
+- **Le code d'erreur trompeur n'est pas corrigé** : une messagerie **détachée**
+  est rapportée comme un conflit d'identité PSC alors qu'elle n'en a aucun. Ce
+  libellé a égaré le diagnostic pendant plusieurs échanges le 2026-09-15. Il
+  mérite sa propre US — le corriger ici mêlerait un changement de contrat à un
+  correctif de comportement.
+- **Vérification visuelle non produite.** Aucun template n'a été modifié, et le
+  harnais reste absent du poste. La réserve est explicite : l'US ajoute une
+  **injection** à la page mobile, et une injection fautive produit un écran
+  blanc — ce qu'un test unitaire ne voit pas, puisqu'il fournit lui-même le
+  service. Couvert par le plan de test manuel, pas par la mesure.
+- **`client-angular` hors périmètre** : déjà livré par task-312, committé par
+  l'humain sur TFS.
+
+---
+
 ### v1.9 — task-309 : le sélecteur de messagerie est monté, découvrable et couvert (`client-angular`, `client-mobile`, `client-blazor`)
 
 **Statut** : `done` — PR [Client#76](https://github.com/codengine-technologies/HealthPlatform.Client/pull/76) et [Mobile#72](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/72), label **`awaiting-human-merge`** ; `client-angular` en **code-only** (10 fichiers non commités sur `feature/nova-rewriting-mss`)
