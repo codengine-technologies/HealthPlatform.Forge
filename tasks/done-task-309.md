@@ -279,7 +279,8 @@ hauteur utile de la liste de messages.
 | /lint-mobile | ok | 55 s | — | — | — | — |
 | /verify-visual | skipped | 31 s | — | — | — | diff client-mobile non visuel : 2 specs, 1 methode, 1 liaison de clic |
 | /review | ok | 7 min 14 s | 3 (1 min 58 s) | 3 (1 min 57 s) | — | client-blazor 0B/1T, client-mobile 1B/1T, dtos-mss 1B/0T, client-angular 1B/1T |
-| **Total cycle** | | **39 min 55 s** | **6 (3 min 51 s)** | **7 (4 min 32 s)** | **0 (0.0 s)** | |
+| /tech-writer | ok | 4 min 10 s | — | — | — | — |
+| **Total cycle** | | **44 min 05 s** | **6 (3 min 51 s)** | **7 (4 min 32 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×2 (1 min 50 s)
 

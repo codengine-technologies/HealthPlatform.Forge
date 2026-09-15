@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > **Document frère (vue produit)** : [`E016-socle-multi-tenant.md`](./E016-socle-multi-tenant.md)
-> **Dernière mise à jour** : 2026-09-15 (task-311, task-312)
+> **Dernière mise à jour** : 2026-09-15 (task-309, task-311, task-312)
 
 Historique détaillé des changements de l'EPIC **E016 — Socle multi-tenant**.
 Une entrée par task ayant atteint `done-*` ou `archived-*`. Append-only : une
@@ -11,6 +11,134 @@ entrée existante n'est jamais réécrite.
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.9 — task-309 : le sélecteur de messagerie est monté, découvrable et couvert (`client-angular`, `client-mobile`, `client-blazor`)
+
+**Statut** : `done` — PR [Client#76](https://github.com/codengine-technologies/HealthPlatform.Client/pull/76) et [Mobile#72](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/72), label **`awaiting-human-merge`** ; `client-angular` en **code-only** (10 fichiers non commités sur `feature/nova-rewriting-mss`)
+**Branche** : `fix/task-309-selecteur-messageries-atteignable`
+**Tests** : **+23** — `nx test mss-lib` **361 verts** (45 fichiers), mobile **832 verts**, Blazor **240 verts / 2 ignorés / 0 échec**
+**Migration** : aucune
+**Contrat** : **inchangé** — aucune PR `dtos-mss` (branche auto-incluse restée vide)
+
+#### Ce que l'US ferme
+
+task-304 a livré `mailbox-switcher` sur les trois fronts et ne l'a branché que sur deux.
+Côté Angular, le composant était **écrit, exporté par `libs/mss/src/ui/index.ts`, et
+monté nulle part** : `grep -rn "mss-mailbox-switcher" libs/mss/src --include=*.html`
+ne rendait **aucun** montage. Le seul chemin vers `/messagerie/accounts` était de saisir
+l'URL à la main.
+
+Aucune suite n'a bronché, et c'est le fait intéressant : **un composant que rien
+n'instancie ne casse rien**. Les trois sélecteurs n'avaient, par ailleurs, aucun test —
+sur aucun front.
+
+Le défaut est devenu bloquant avec task-308 : le rattachement étant devenu le **seul**
+chemin d'obtention d'une boîte, le parcours s'arrêtait après la première.
+
+#### Ce qui a été écrit
+
+| Repo | Fichier | Apport |
+|---|---|---|
+| `client-angular` | `features/mail/mss-mail.component.{html,scss,ts}` | **L'en-tête de la page Messagerie**, qui n'existait pas, et le montage de `<mss-mailbox-switcher />` |
+| `client-angular` | `features/layout/mss-layout.component.ts` | Entrée `NAV_ITEMS` `accounts` / `communication` / `mail-02`, **avant-dernière** |
+| `client-angular` | `ui/mailbox-switcher/*` | Conversion design system (`ds-button`, `ds-card`, `ds-icon`) — `data-testid` **inchangés** — et `addMailbox()` |
+| `client-angular` | 3 `*.spec.ts` (nouveaux) | 14 tests dont la contre-épreuve de montage |
+| `client-mobile` | `mailbox/switcher/mailbox-switcher.component.{ts,html}` | `addMailbox()` + sa liaison |
+| `client-mobile` | 2 `*.spec.ts` (nouveaux) | 9 tests dont la contre-épreuve de montage |
+| `client-blazor` | `Plugin/Components/MailboxSwitcher.razor` | `AddMailbox()` |
+| `client-blazor` | 2 `*Tests.cs` (nouveaux) | 8 tests bUnit dont la contre-épreuve de montage |
+
+**La coquille était le vrai obstacle côté Angular.** `mss-mail.component.html` était un
+`folder-panel` + un `content-panel` et rien d'autre, sans surface d'en-tête — là où
+`Mail.razor:50` et `inbox.page.html:120` en avaient une. Il n'y avait littéralement nulle
+part où poser le sélecteur. La page devient `.mail-shell` (colonne) = `.mail-header`
+(`flex: 0 0 auto`) + `.mail-container` (`flex: 1 1 auto` + **`min-height: 0`**, sans quoi
+un enfant flex refuse de descendre sous sa hauteur de contenu et la liste déborde au lieu
+de défiler).
+
+**Un échec de build instructif** : `justify="start"` sur `ds-button` — `ButtonJustify`
+n'admet que `center | space-between` (`libs/design-system/src/atoms/button/button.types.ts:41`).
+
+#### Le défaut trouvé par le test, et sa généralisation aux trois fronts
+
+Le test « hors ligne, "Ajouter" ne navigue pas » a échoué **au premier coup** côté
+Angular : un clic dispatché sur l'hôte `ds-button` **désactivé** déclenchait quand même
+le `(click)` du parent. `ButtonComponent.handleClick` appelle pourtant
+`stopImmediatePropagation()` quand `isDisabled()` — mais l'écouteur de template du
+parent est enregistré **avant** l'écouteur d'hôte de la directive, donc il a déjà tiré.
+
+**Ce n'est pas un bug utilisateur démontré** : le `<button disabled>` interne remplit
+l'hôte et n'émet pas de clic ; il faudrait un chemin atteignant l'hôte (padding, clavier,
+programmatique). Mais l'inopérance ne tenait qu'au **rendu**, alors que « rattacher exige
+une session PSC » est une règle de l'écran. Une méthode la porte désormais sur les trois
+fronts — `addMailbox()` / `AddMailbox()` — ce qui la rend vraie quel que soit le chemin du
+clic **et vérifiable par un test**, comme l'exige la DOD santé de la task. « Gérer »
+reste ouvert hors ligne.
+
+#### Trois contre-épreuves, deux techniques
+
+La question est la même partout — *la page monte-t-elle le sélecteur ?* — mais l'outil
+décide de la réponse :
+
+| Front | Technique | Pourquoi |
+|---|---|---|
+| Angular (Vitest/node) | lecture de `mss-mail.component.html` + de la liste `imports` | `readFileSync` disponible ; le compilateur couvre l'autre moitié (un élément inconnu casse le build AOT) |
+| Blazor (xUnit) | lecture de `Mail.razor` via `RepoScan.RepoRoot()` | idem, et rendre `Mail.razor` exigerait session de boîte + dossiers + flux d'évènements |
+| Mobile (Karma/navigateur) | **rendu superficiel** de `InboxPage` avec `NO_ERRORS_SCHEMA` | pas d'accès fichier dans le navigateur ; le schéma laisse la balise dans le DOM sans instancier la liste de mails |
+
+#### Écarts de parité relevés
+
+1. **Garde hors ligne absente des trois fronts** — *corrigée*, une méthode par front.
+2. **Destination après bascule — non corrigée, arbitrage PO.** Angular route vers
+   `[prefix, 'dashboard']`, Blazor vers `/Mail`, Mobile vers `/tabs/messages`. Le
+   commentaire du code Angular annonce pourtant « la nouvelle boîte s'ouvre sur sa boîte
+   de réception » : **le code et son commentaire divergent sur le front de référence**.
+   Un mot suffit à aligner ; lequel des deux comportements est le bon est une décision
+   produit.
+
+Le reste est idiomatique et non un écart : menu ancré (Angular/Blazor) contre feuille
+`ion-modal` (Mobile), et l'entrée de navigation « Mes messageries » **Angular seulement**
+(les deux autres fronts n'ont pas de barre latérale).
+
+#### Qualité
+
+- **`/sonar` skippé** — `api-mail` non touché.
+- **`/lint-angular` : 0 erreur dès la ligne de base**, 0 itération consommée sur 5.
+  11 projets lintés (`nx affected -t lint --base=origin/next --head=HEAD
+  --projects=tag:scope:mss`, `origin/next` à `c1f0ad90`) ; 56 avertissements, **tous
+  préexistants** (`max-lines`, `jsdoc/require-example`, deux `complexity`). Le seul
+  fichier du diff qui y figure, `mss-mail.component.ts`, y est pour `max-lines` à 675 —
+  la task lui ajoute **deux** lignes.
+- **`/lint-mobile` : `All files pass linting.`**, 0 erreur / 0 avertissement, 0 itération.
+- **Aucune entrée à incrémenter dans `conventions/angular.md`** : le protocole ne se
+  déclenche que sur une correction **manuelle**, et il n'y en a eu aucune. Le JSDoc de
+  `addMailbox()` a été écrit avec la méthode — la règle qui avait coûté 23 squelettes
+  creux à task-304 et deux `require-param` à task-308.
+- **`/verify-visual` skippé** — diff mobile non visuel : deux specs, une méthode, une
+  liaison de clic. Rendu identique au caractère près.
+
+#### Passe qualité (`/simplify`)
+
+Un seul nettoyage : la spec Angular contenait un test qui **réinitialisait le `TestBed`
+en son milieu** pour exercer deux boutons — scindé en deux tests (d'où 361 et non 360).
+Build applicatif non rejoué pour ce seul nettoyage, les specs étant hors bundle.
+
+#### Limites assumées
+
+- **`aria-expanded` a changé de porteur (Angular).** Il était sur le `<button>` natif ; il
+  est désormais sur l'hôte `ds-button`, donc **pas sur l'élément focusable**. Corriger
+  proprement demande une entrée `ariaExpanded` côté design system — hors module MSS.
+- **`mss-mail.component.ts` dépasse `max-lines`** (675 / 500), avertissement préexistant
+  aggravé de deux lignes. Le découper est un refactor à part entière.
+- **Deux critères de la DOD restent des observations à l'œil** : la distinction des
+  icônes `mail` / `mail-02` **en sidebar repliée**, et le fait que l'en-tête ajouté ne
+  mange pas la hauteur utile de la liste sur un écran 1080p. Le test « les deux icônes
+  diffèrent » est automatisé ; « elles se distinguent à l'œil » ne l'est pas.
+- **`client-angular` reste code-only** : 10 fichiers non commités sur
+  `feature/nova-rewriting-mss`. ⚠️ Les deux `apps/*/src/environments/environment.ts`
+  modifiés dans le même arbre **préexistaient** à la task.
+
+---
 
 ### v1.8 — task-311 : le seeder du banc provisionne le registre (`api-mail`)
 
@@ -1356,6 +1484,7 @@ en `foreach`). **184 tests verts avant comme après.**
 | task-305 | **Le SDK redevient backend-only** : retrait de la référence morte dans `client-blazor`, déclaration explicite de `Markdig`, retrait de l'enregistrement Redis inerte, garde-fou anti-récidive | `client-blazor` | ✅ done |
 | task-308 | Le registre sépare ses deux identités : `accounts` ne dit plus que Keycloak (`sub`, email, username), l'identité PSC (`psc_subject` + `rpps`) vit sur le rattachement. Un **seul écrivain** pour `mss_accounts` — l'onboarding explicite, précédé d'une sonde XOAUTH2 validée par l'opérateur | `api-mail`, `client-blazor`, `client-mobile`, `client-angular` | ✅ **mergée** (PR Api.Mail#238) |
 | task-312 | **Retrait du journal d'audit hérité** (`MssAuditTraces`, son dépôt, la lecture double source, la machinerie de reprise et ses deux bornes) et **branchement de la purge de rétention mutualisée**, qui n'avait aucun appelant. Estampillage du tenant à la source sur les trois traces de messagerie ; tenant sentinelle `Guid.Empty` pour le résiduel. Tri de l'écran d'audit rapatrié — il n'existait plus que côté hérité | `api-mail` | ✅ **done** (PR Api.Mail#239, `awaiting-human-merge`) |
+| task-309 | **Le sélecteur de messagerie devient atteignable** : montage de `<mss-mailbox-switcher />` dans un en-tête créé pour lui sur la page Messagerie Angular (il n'était monté nulle part), entrée `NAV_ITEMS` « Mes messageries » (`accounts`, avant-dernière), conversion design system à `data-testid` constants. **+23 tests** là où les trois sélecteurs n'en avaient aucun, dont **3 contre-épreuves de montage**. Pose sur les trois fronts la garde « rattacher exige une session PSC » dans le code, où elle ne tenait qu'à un attribut `disabled` | `client-angular`, `client-mobile`, `client-blazor` | ✅ **done** (PR Client#76, Mobile#72, `awaiting-human-merge` ; Angular en code-only) |
 | task-306 | Banc de charge multi-BAL : dimension « boîtes par compte » (défaut 1, iso E015), parcours avec bascule réelle (`/sync/logout` + rotation de session), restitution du coût de bascule et de la résolution de registre | `api-mail` | 🔜 todo |
 | task-311 | **Le banc redevient mesurable** : le seeder écrit lui-même les deux lignes de registre que l'onboarding écrirait (`accounts` + `mss_accounts`), par le câblage de production (`AddTenantRegistryClient` + `ITenantRegistryClient`), identités issues de `LoadTestPlanGenerator`. Sans elles, task-308 laissait **toutes** les routes de messagerie en `403 MAILBOX_NOT_ATTACHED` et `TenantId` nul — donc le journal mutualisé jamais exercé. Corrige au passage la parité du bootstrap du registre (`TenantRegistryBootstrap` : migration **et** partitions d'audit) | `api-mail` | ✅ **done** (PR Api.Mail#240, `awaiting-human-merge`) |
 

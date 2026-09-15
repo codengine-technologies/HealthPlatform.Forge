@@ -2,7 +2,7 @@
 
 > **Statut** : 🟡 En cours
 > **Modèle** : task-driven
-> **Version** : 1.8
+> **Version** : 1.9
 > **Auteur** : PO forge
 > **Audience** : PO, médecin, direction produit, conformité — la vue ingénierie vit dans [E016-Changelogs.md](E016-Changelogs.md)
 > **Dernière mise à jour** : 2026-09-15
@@ -87,7 +87,7 @@ augmente.
 | **Plusieurs messageries, une seule connexion** | Retrouver, après une authentification unique, toutes les messageries qui relèvent de son identité professionnelle | task-303, task-304, task-308 | ✅ Livrée |
 | **Changer de messagerie en direct** | Cliquer sur son avatar et ouvrir une autre de ses messageries : l'écran se vide et se recharge sur la nouvelle boîte, sans reconnexion | task-304 | ✅ Livrée |
 | **Rattacher sa première messagerie** | Entrer son adresse dès le premier accès et travailler immédiatement, sans se déconnecter ni se reconnecter — l'opérateur de messagerie vérifie l'accès avant que le rattachement n'aboutisse | task-304, task-308 | ✅ Livrée |
-| **Gérer ses messageries** | Ajouter une messagerie, en détacher une, désigner celle qui s'ouvre par défaut, comprendre pourquoi l'une est indisponible | task-304, task-309 | 🟡 Livrée sur deux applications — l'accès à cet écran reste à ouvrir sur la troisième (task-309) |
+| **Gérer ses messageries** | Ajouter une messagerie, en détacher une, désigner celle qui s'ouvre par défaut, comprendre pourquoi l'une est indisponible | task-304, task-309 | 🟡 Complète en code — l'écran est désormais **atteignable sur les trois applications** (task-309), en attente de merge |
 | **Conservation appliquée à tous les comptes** | Être assuré que les durées d'effacement s'appliquent aussi aux comptes qui ne servent plus, y compris à ceux d'un praticien qui a quitté le service | task-299, task-312 | 🟡 Complète en code — l'effacement à échéance **s'exécute** depuis task-312, en attente de merge |
 | **Traçabilité des accès à l'échelle du parc** | Consulter l'historique de ses propres accès — et les trier — sans que la croissance du parc n'en dégrade la tenue | task-300, task-312 | 🟡 Complète en code — écriture **mergée**, retrait de l'historique hérité en attente de merge |
 | **Accès des équipes sécurité à la traçabilité** | *(indisponible — en attente d'arbitrage : voir §7)* | — | ⛔ Bloquée |
@@ -213,15 +213,15 @@ Deux points structurent ce parcours :
 | Plusieurs messageries, une seule connexion | ✅ Livrée | 100 % | task-303, task-304, task-308 (**mergées**) |
 | Changer de messagerie en direct | ✅ Livrée | 100 % | task-304 (**mergée**) |
 | Rattacher sa première messagerie | ✅ Livrée | 100 % | task-304, task-308 (**mergées**) |
-| Gérer ses messageries | 🟡 Deux applications sur trois | 80 % | task-304 (**mergée**) + task-309 (à faire) |
+| Gérer ses messageries | 🟡 Complète en code | 90 % | task-304 (**mergée**) + task-309 (en attente de merge) |
 | Conservation appliquée à tous les comptes | 🟡 Complète en code | 90 % | task-299 (**mergée**) + task-312 (en attente de merge) |
 | Traçabilité des accès à l'échelle du parc | 🟡 Complète en code | 90 % | task-300 (**mergée**) + task-312 (en attente de merge) |
 | Accès des équipes sécurité à la traçabilité | ⛔ Bloquée | 0 % | — |
 | Réactivité vérifiée en multi-messagerie | 🔜 À faire | 0 % | task-311 (**outil de mesure réparé**, PR ouverte), task-306 |
 | Application allégée au poste | ✅ Livrée | 100 % | task-305 (**mergée**) |
 
-**Couverture EPIC consolidée : 84 %** (4 fonctionnalités livrées sur 9, 2 complètes en
-code et en attente de merge, 1 partielle, 1 bloquée en attente d'arbitrage, 1 à faire).
+**Couverture EPIC consolidée : 85 %** (4 fonctionnalités livrées sur 9, 3 complètes en
+code et en attente de merge, 1 bloquée en attente d'arbitrage, 1 à faire).
 La ligne multi-messageries est **livrée de bout en bout et mergée** : le registre, la
 sélection validée par l'opérateur, et les écrans sur les trois applications.
 
@@ -256,11 +256,15 @@ sélection validée par l'opérateur, et les écrans sur les trois applications.
 > retrait produit en silence, et qu'un scan de qualité a signalé sous une forme
 > trompeuse — « paramètre inutilisé ».
 
-> **« Gérer ses messageries » redescend à 80 %.** L'écran existe et fonctionne, mais
-> **rien ne mène à lui** dans l'une des trois applications : le sélecteur de messagerie,
-> livré par task-304, n'y est affiché nulle part. Le seul moyen d'atteindre l'écran est
-> d'en saisir l'adresse à la main. Constaté au test humain du 2026-09-14 ; task-309
-> l'ouvrira, et vérifiera que le parcours est bien le même partout.
+> **« Gérer ses messageries » remonte à 90 %.** L'écran existait et fonctionnait, mais
+> **rien n'y menait** dans l'une des trois applications : le sélecteur de messagerie,
+> livré par task-304, n'y était affiché nulle part, et le seul moyen d'atteindre l'écran
+> était d'en saisir l'adresse à la main. Constaté au test humain du 2026-09-14,
+> **corrigé par task-309** : le sélecteur est désormais affiché en haut de la
+> messagerie sur les trois applications, et une entrée **« Mes messageries »** a été
+> ajoutée à la barre de navigation de celle qui en possède une — juste au-dessus de
+> « Paramètres » — pour que la gestion soit atteignable depuis n'importe quel écran.
+> Les 10 % restants sont le **merge**, précédé du test humain (règle 11).
 
 > **Point resté ouvert.** Les **captures des écrans mobiles** ne sont toujours pas
 > produites : le harnais de vérification visuelle n'est pas versionné et reste absent du
@@ -354,6 +358,7 @@ sélection validée par l'opérateur, et les écrans sur les trois applications.
 
 ### Fonctionnalités métier
 
+- **Ajouter une seconde messagerie ne demande plus de connaître une adresse par cœur** (task-309, *en attente de merge*). L'écran qui permet d'ajouter, de retirer ou de choisir sa messagerie par défaut existait déjà — mais sur l'une des trois applications, **aucun bouton n'y conduisait** : il fallait taper son adresse dans la barre du navigateur. Le sélecteur de messagerie apparaît désormais en haut de la messagerie sur les trois applications, et une entrée **« Mes messageries »** a été ajoutée à la barre de navigation de celle qui en possède une, juste au-dessus de « Paramètres ». Le praticien dispose ainsi de deux chemins : un rapide, depuis sa messagerie, et un explicite, visible de n'importe quel écran. Au passage, le bouton **« Ajouter une messagerie » devient réellement inopérant** — et non plus seulement grisé — tant que la connexion Pro Santé Connect n'est pas établie, l'opérateur devant être consulté pour tout rattachement ; consulter les messageries déjà rattachées, elle, reste possible.
 - **L'écran de rattachement se déclenche enfin pour un praticien qui n'a pas encore de
   messagerie** (task-308, *en attente de merge*). Il existait, il était écrit sur les
   trois applications — il n'était simplement jamais atteint, parce que la plateforme
