@@ -386,3 +386,44 @@ trace d'audit. Sur ce chemin `userContext.Email` est vide **par conception**, et
 conformité, et la seconde option toucherait `AuditService`, donc **toutes** les
 traces de la plateforme. Hors périmètre de cette US (règles 6 et 7c), et hors du
 mandat de `/review` qui ne corrige pas de code.
+
+## Merged
+
+Mergée le 2026-09-15 par l'humain (HAG, règle 10), après test de bout en bout.
+
+| Repo | PR | Commit de squash sur `develop` |
+|---|---|---|
+| `api-mail` | #241 | `5245b525` |
+| `client-blazor` | #77 | `fbaed34` |
+| `client-mobile` | #73 | `016e9bf` |
+| `dtos-mss` | — | aucun commit : la US n'a changé aucun contrat |
+
+Branches distantes `feat/task-313-logout-derniere-messagerie` supprimées sur
+les quatre repos ; les branches locales sont conservées.
+
+### Quatre correctifs mobiles ajoutés en cours de test humain
+
+Le test de bout en bout a fait apparaître, sur `client-mobile`, quatre défauts
+voisins du périmètre déclaré. Ils ont été corrigés **sur la branche de cette
+task**, sur décision humaine explicite, et sont donc entrés par cette PR :
+
+1. **La feuille du sélecteur ne se fermait pas avant de naviguer.** Établi par
+   les traces seq-local : `GET /account/mailboxes` répondait 200 **par paires**
+   à chaque clic — la signature de l'écran de gestion qui se monte. La
+   navigation fonctionnait ; l'overlay Ionic, orphelin après destruction de sa
+   page hôte, la masquait et avalait les clics.
+2. **La feuille n'avait aucune issue** — `ion-content` nu, sans en-tête ni
+   bouton de fermeture.
+3. **« Par défaut » s'affichait au singulier**, avec l'action « Définir par
+   défaut » sur une boîte qui l'était déjà. La notion suppose un choix :
+   badge et action ne paraissent plus qu'au pluriel, sur les deux écrans où
+   elle apparaît. Et la carte n'avait aucune feuille de style, d'où
+   l'alignement cassé des boutons.
+4. **L'avatar affichait l'adresse MSSanté complète dans la barre d'outils**,
+   mise en majuscules par le style d'`ion-button`. Passage au motif standard :
+   pastille seule, identité dans la feuille, adresse portée par le nom
+   accessible. Et **« Ajouter une messagerie » a été retiré** — il menait au
+   même écran que « Gérer mes messageries ».
+
+Ces quatre commits débordent du périmètre déclaré de la US. Signalé à l'humain
+avant le merge ; conservés dans la même PR sur sa décision.

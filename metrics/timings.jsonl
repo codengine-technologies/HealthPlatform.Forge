@@ -1256,3 +1256,10 @@
 {"ts":"2026-09-15T20:01:07+02:00","run_id":"-","type":"step","task":"task-313","step":"review","status":"ok","note":"","iterations":null,"duration_ms":431780}
 {"ts":"2026-09-15T20:01:22+02:00","run_id":"-","type":"step_start","task":"task-313","step":"tech-writer"}
 {"ts":"2026-09-15T20:03:06+02:00","run_id":"-","type":"step","task":"task-313","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":103448}
+{"ts":"2026-09-15T23:44:24+02:00","run_id":"-","type":"cmd","task":"task-313","step":"develop","repo":"client-mobile","kind":"test","label":"","cwd":"Client/Mobile","cmd":"npm test -- --watch=false --browsers=ChromeHeadless","duration_ms":13865,"exit_code":0}
+{"ts":"2026-09-15T23:44:47+02:00","run_id":"-","type":"cmd","task":"task-313","step":"develop","repo":"client-mobile","kind":"lint","label":"","cwd":"Client/Mobile","cmd":"npm run lint","duration_ms":21663,"exit_code":0}
+{"ts":"2026-09-15T23:45:02+02:00","run_id":"-","type":"cmd","task":"task-313","step":"develop","repo":"client-mobile","kind":"build","label":"","cwd":"Client/Mobile","cmd":"npm run build","duration_ms":8725,"exit_code":0}
+{"ts":"2026-09-15T23:52:11+02:00","run_id":"-","type":"cmd","task":"task-313","step":"develop","repo":"client-mobile","kind":"test","label":"","cwd":"Client/Mobile","cmd":"npm test -- --watch=false --browsers=ChromeHeadless","duration_ms":12603,"exit_code":0}
+{"ts":"2026-09-15T23:52:31+02:00","run_id":"-","type":"cmd","task":"task-313","step":"develop","repo":"client-mobile","kind":"build","label":"","cwd":"Client/Mobile","cmd":"npm run build","duration_ms":6946,"exit_code":0}
+{"ts":"2026-09-15T23:55:59+02:00","run_id":"-","type":"cmd","task":"task-313","step":"develop","repo":"client-mobile","kind":"test","label":"","cwd":"Client/Mobile","cmd":"npm test -- --watch=false --browsers=ChromeHeadless","duration_ms":13163,"exit_code":0}
+{"ts":"2026-09-16T00:02:24+02:00","run_id":"-","type":"cmd","task":"task-313","step":"develop","repo":"client-mobile","kind":"test","label":"","cwd":"Client/Mobile","cmd":"npm test -- --watch=false --browsers=ChromeHeadless","duration_ms":13123,"exit_code":0}
