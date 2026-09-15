@@ -91,7 +91,7 @@ augmente.
 | **Conservation appliquée à tous les comptes** | Être assuré que les durées d'effacement s'appliquent aussi aux comptes qui ne servent plus, y compris à ceux d'un praticien qui a quitté le service | task-299, task-312 | 🟡 Complète en code — l'effacement à échéance **s'exécute** depuis task-312, en attente de merge |
 | **Traçabilité des accès à l'échelle du parc** | Consulter l'historique de ses propres accès — et les trier — sans que la croissance du parc n'en dégrade la tenue | task-300, task-312 | 🟡 Complète en code — écriture **mergée**, retrait de l'historique hérité en attente de merge |
 | **Accès des équipes sécurité à la traçabilité** | *(indisponible — en attente d'arbitrage : voir §7)* | — | ⛔ Bloquée |
-| **Réactivité vérifiée en multi-messagerie** | Bénéficier d'un service dont la réactivité a été mesurée avec plusieurs messageries par praticien | task-311, task-306 | 🔜 À faire — **le banc de mesure est réparé** (task-311), la campagne reste à mener |
+| **Réactivité vérifiée en multi-messagerie** | *(abandonnée — décision humaine du 2026-09-15 : l'outil de mesure existe, la campagne dédiée n'est pas poursuivie)* | task-311 | ⛔ Abandonnée |
 | **Application allégée au poste** | Recevoir une application débarrassée de composants qui ne lui servaient pas | task-305 | ✅ Livrée |
 
 ---
@@ -214,14 +214,16 @@ Deux points structurent ce parcours :
 | Changer de messagerie en direct | ✅ Livrée | 100 % | task-304 (**mergée**) |
 | Rattacher sa première messagerie | ✅ Livrée | 100 % | task-304, task-308 (**mergées**) |
 | Gérer ses messageries | 🟡 Complète en code | 90 % | task-304 (**mergée**) + task-309 (en attente de merge) |
-| Conservation appliquée à tous les comptes | 🟡 Complète en code | 90 % | task-299 (**mergée**) + task-312 (en attente de merge) |
-| Traçabilité des accès à l'échelle du parc | 🟡 Complète en code | 90 % | task-300 (**mergée**) + task-312 (en attente de merge) |
+| Conservation appliquée à tous les comptes | ✅ Livrée | 100 % | task-299, task-312 (**mergées**) |
+| Traçabilité des accès à l'échelle du parc | ✅ Livrée | 100 % | task-300, task-312 (**mergées**) |
 | Accès des équipes sécurité à la traçabilité | ⛔ Bloquée | 0 % | — |
-| Réactivité vérifiée en multi-messagerie | 🔜 À faire | 0 % | task-311 (**outil de mesure réparé**, PR ouverte), task-306 |
+| Réactivité vérifiée en multi-messagerie | ⛔ Abandonnée | — | task-311 (**mergée** — outil de mesure réparé) |
 | Application allégée au poste | ✅ Livrée | 100 % | task-305 (**mergée**) |
 
-**Couverture EPIC consolidée : 85 %** (4 fonctionnalités livrées sur 9, 3 complètes en
-code et en attente de merge, 1 bloquée en attente d'arbitrage, 1 à faire).
+**Couverture EPIC consolidée : 86 %** — 6 fonctionnalités livrées sur les 8 encore au
+périmètre, 1 complète en code et en attente de merge, 1 bloquée en attente d'arbitrage.
+La 9ᵉ, « Réactivité vérifiée en multi-messagerie », est **sortie du périmètre** le
+2026-09-15 et n'entre plus dans le calcul.
 La ligne multi-messageries est **livrée de bout en bout et mergée** : le registre, la
 sélection validée par l'opérateur, et les écrans sur les trois applications.
 
