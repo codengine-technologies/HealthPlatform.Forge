@@ -368,10 +368,55 @@ dans du code applicatif antérieur. Les corriger ici aurait :
   cycle n'aurait pas pu vérifier. Un correctif invérifiable sur un script
   d'observation vaut moins que le finding cosmétique qu'il efface.
 
-**À traiter séparément** : le paramétrage de `PGPASSWORD` dans
-`tests/loadtest-k6/observe.ps1` (4 occurrences, dont 2 signalées), sur le modèle
-`MSS_BENCH_PG_PASSWORD` déjà en vigueur dans l'AppHost. C'est ce qui ramènera la
-note de sécurité à A.
+**Traité depuis** (commit `a73fd87a`, même branche — voir « Suite : les deux
+`secrets:S6698` » ci-dessous) : le paramétrage de `PGPASSWORD` dans
+`tests/loadtest-k6/observe.ps1`, sur le modèle `MSS_BENCH_PG_PASSWORD` déjà en
+vigueur dans l'AppHost. C'est ce qui doit ramener la note de sécurité à A — à
+confirmer à la prochaine analyse.
+
+## Suite : les deux `secrets:S6698` de `observe.ps1`
+
+Demandé par l'humain après le cycle, corrigé **sur la même branche** (commit
+`a73fd87a`) plutôt que dans une task dédiée : trois fichiers, aucun code de
+production touché.
+
+**La solution retenue — le `.env` d'`Api/Mail`, oui.** C'est déjà la source du
+mot de passe du banc : l'AppHost y lit `MSS_BENCH_PG_USER` /
+`MSS_BENCH_PG_PASSWORD` par `AppHostSecrets`, dont `observe.ps1` reproduit
+désormais la remontée de répertoires et la précédence (shell d'abord, fichier
+ensuite). Même fichier, mêmes clés : l'observateur ne peut plus lire un autre
+banc que celui qu'il observe. Le mot de passe **n'a aucun défaut** ; l'identifiant
+garde le sien, il est déjà en clair dans `pgbouncer/userlist.txt`.
+
+**Trois des quatre occurrences étaient inutiles**, et c'est le fait qui a décidé
+de la forme : ces sondes s'exécutent *dans* le conteneur `postgres-pgvector`,
+dont le `pg_hba.conf` accorde `trust` au socket local **et** à 127.0.0.1
+(vérifié en base sur le banc). Le serveur ne lisait même pas ce mot de passe.
+Elles ne le passent plus que s'il existe — correctes aujourd'hui, correctes si
+le banc durcit un jour son authentification. La grandeur mesurée par la sonde de
+coût de login est donc **inchangée**.
+
+La quatrième — console d'administration PgBouncer, TCP, `auth_type = plain` —
+en a réellement besoin : sans source, elle échoue maintenant en **nommant** la
+variable manquante dans le journal compagnon, au lieu de tenter muettement. Le
+mot de passe passe par l'environnement du `docker exec`, jamais par le **texte**
+du script (un texte de script est un argument de processus, lisible dans
+n'importe quel listing du conteneur).
+
+**Garde-fou anti-récidive** : `SecretLiteralScanTests` gagne la règle
+`pgpassword-literal`, armée **aussi** sur les chemins `tests/` — c'est là que vit
+l'outillage du banc, et précisément là que la règle `connection-string-password`
+se désarme. Deux resserrages, chacun payé par un faux positif réel : la valeur
+doit ressembler à un identifiant (sinon la prose des commentaires est signalée),
+et la casse compte (en `IgnoreCase`, la règle accrochait l'identifiant PascalCase
+du correctif lui-même).
+
+**Vérifications** : échantillonneur lancé contre `postgres-pgvector` — sondes
+`backends` et coût de login vertes (14 ms), journal portant
+« mot de passe <present> » et jamais la valeur ; `SecretLiteralScanTests` 8/8,
+dont le scan intégral des sources suivies. **Non exercé** : la sonde PgBouncer,
+son conteneur n'étant pas monté hors profil `loadtest` — elle le sera au premier
+tir.
 
 ## PRs
 
