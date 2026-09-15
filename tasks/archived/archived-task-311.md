@@ -450,3 +450,22 @@ Seeder exécuté contre le PostgreSQL du banc sur un registre neuf : 1er passage
 **3 lignes créées**, 2e passage **« 0 créé(s), 3 déjà présent(s) »**. Lignes
 contrôlées en base (`authentication_subject` = `PscSub`, `database_name` en
 `u_{rpps}_{slug}_{hash}`, `is_default = t`). Base de test supprimée après coup.
+
+## Merged
+
+**2026-09-15** — merge humain après validation end-to-end (`/merge task-311 --i-tested`).
+
+| Repo | PR | Squash sur `develop` |
+|---|---|---|
+| `api-mail` | [#240](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/240) | `ef8f5872` |
+| `dtos-mss` | — (aucun contrat touché) | branche vide supprimée (distante + locale) |
+
+Le squash porte **deux lots** : le correctif de l'US (le seeder provisionne le
+registre) et l'ajout post-cycle demandé par l'humain — l'observateur du banc lit
+ses identifiants Postgres dans le `.env` d'`Api/Mail` au lieu de les porter en
+clair (`secrets:S6698`), avec la règle anti-récidive `pgpassword-literal` dans
+le scan de secrets.
+
+Branche distante `fix/task-311-seeder-provisionne-registre` supprimée sur
+`api-mail` ; la **locale est conservée** pour inspection rétroactive. Aucune
+branche staging pour ce run (task lancée seule, hors `/forge`).
