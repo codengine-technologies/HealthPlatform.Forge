@@ -117,7 +117,7 @@ transition.
 Compute the build/publish order from the listed repos :
 
 ```
-1. dtos-mss        (if listed or implied — auto-include when api-mail or client-blazor are listed, per CLAUDE.md auto-inclusion rule)
+1. dtos-mss        (SEULEMENT si la task change un contrat — la branche est créée ici, à l'étape 2, pas par `/start` ; cf. CLAUDE.md « Repo à branche PARESSEUSE »)
 2. interop-cda     (if listed)
 3. sdk             (if listed — contract carrier, published BEFORE its consumers)
 4. api-mail        (backend)
@@ -138,7 +138,9 @@ Reasoning :
   consumer compiled against the previous package would simply not see them).
 - Backend before frontend so the frontend test phase can hit the new contract.
 
-If a repo isn't listed and isn't auto-included, skip it.
+If a repo isn't listed in `**Repos**:`, skip it — **sans exception** depuis le
+2026-09-16. Seul `dtos-mss` peut recevoir une branche sans être listé, et c'est
+l'étape 2 qui la crée, uniquement si un contrat change.
 
 ### §Q — Passe qualité intégrée (`/simplify`) — spec commune
 
@@ -213,6 +215,24 @@ here : the pass is one shot per repo — no "retry the simplification".
 
 Only run this step if the task changes shared contracts (new DTO field,
 modified enum, new DTO class).
+
+0. **Créer la branche — c'est ICI qu'elle naît, pas à `/start`.**
+
+   ```bash
+   cd Dtos
+   git fetch origin develop
+   git checkout -b feat/{task-id}-{slug} origin/develop
+   ```
+
+   Si la branche existe déjà (reprise de cycle), s'y placer au lieu de la
+   recréer : `git checkout feat/{task-id}-{slug}`.
+
+   **Pourquoi ici et pas plus tôt.** Jusqu'au 2026-09-16, `/start` la créait et
+   la poussait systématiquement, « au cas où ». Les tasks qui ne touchaient
+   aucun contrat laissaient donc une branche vide à nettoyer — et `/merge`
+   portait une étape entière pour cela. Créer la branche au moment où on écrit
+   le contrat supprime le déchet à la source, et rend la présence d'une branche
+   sur `dtos-mss` **informative** : elle signifie qu'un contrat a bougé.
 
 1. **Code the DTO change** in `Dtos/`. No tests required (DTOs are pure
    data carriers). **No quality pass here** — `dtos-mss` is a contract carrier

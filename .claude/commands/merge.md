@@ -32,9 +32,10 @@ Steps (high-level — see the agent file for the full spec) :
    `develop`, no uncommitted changes.
 3. Squash-merge each pushable PR in topological order
    (`dtos-mss → interop-cda → api-mail → client-blazor → client-mobile`) with
-   `gh pr merge --squash` (never `--delete-branch`), then delete the
-   **remote** ref only via `git push origin --delete` — the **local** branch
-   is kept. `client-mobile` is a normal GitHub PR (merged like the others —
+   `gh pr merge --squash` (never `--delete-branch`), revenir sur `develop`,
+   puis supprimer la branche **distante ET locale** (`git push origin --delete`
+   puis `git branch -D`). Inversé le 2026-09-16 : conserver la branche locale
+   faisait refuser le pré-flight du `/start` suivant. `client-mobile` is a normal GitHub PR (merged like the others —
    not asked-about / manual like `client-angular`).
 4. Ask whether the human merged the `client-angular` TFS PR ; if yes,
    switch the local Angular clone back to `develop`.

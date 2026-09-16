@@ -27,13 +27,18 @@ the feature for the human, you **never** decide if a US is ready, you
 ## Outputs
 
 For every pushable repo whose PR is ready :
-- PR squash-merged via `gh pr merge --squash` (**NOT** `--delete-branch` —
-  that flag deletes the local branch too, see below)
+- PR squash-merged via `gh pr merge --squash` (**NOT** `--delete-branch` — il
+  agirait avant le retour sur `develop` et échouerait sur la branche courante)
 - Local clone switched back to `develop`, pulled
-- Remote feature branch deleted with a separate `git push origin --delete`
-- **Local feature branch is preserved** — the human keeps it for
-  retroactive inspection / re-checkout. The forge does not run
-  `git branch -D` at merge time, and never passes `--delete-branch`.
+- Branche de feature supprimée, ref **distante ET locale** :
+  `git push origin --delete` puis `git branch -D`
+
+  > **Inversé le 2026-09-16, sur demande humaine.** Cette ligne disait
+  > « **Local feature branch is preserved** — the human keeps it for
+  > retroactive inspection ». Le coût s'est manifesté le jour même : les
+  > branches locales de task-310 ont fait **refuser le pré-flight de
+  > `/start task-314`**, trois repos n'étant plus sur `develop`. L'historique
+  > reste sur `develop` et le diff dans la PR : rien d'inspectable n'est perdu.
 
 For the run's **staging branch** (`forge/staging-task-{début}-{fin}-{date}`,
 created by `/forge` to aggregate the whole run for testing) :
@@ -46,8 +51,15 @@ created by `/forge` to aggregate the whole run for testing) :
 - Best-effort — a failed deletion (checked out, already gone) is logged, never
   aborts the merge.
 
-For every pushable repo of the task **without a PR** (typically `dtos-mss`,
-auto-included but untouched) :
+For every pushable repo of the task **without a PR** :
+
+> Ce cas était produit en masse par l'auto-inclusion de `dtos-mss`, supprimée le
+> 2026-09-16 : sa branche est désormais créée paresseusement par `/develop`, au
+> moment où un contrat bouge. Ce nettoyage devient donc un **filet résiduel** —
+> pour les branches héritées, et pour un repo listé dans `**Repos**:` que la
+> task n'aurait finalement pas touché. Le garder coûte peu ; le retirer
+> laisserait les branches d'avant l'inversion sans ramasse-miettes.
+
 - Remote **and** local refs deleted **if and only if** the branch carries zero
   commit beyond `develop`. Une branche vide est un marqueur de plomberie, pas
   un historique : la garder encombre le dépôt sans rien conserver.
@@ -130,29 +142,58 @@ Same three-mode taxonomy as the rest of the forge :
    interop, then backend, then frontend) :
    ```bash
    cd {repo-path}
-   gh pr merge {num} --squash            # NO --delete-branch (it nukes the local branch too)
+   gh pr merge {num} --squash            # PAS --delete-branch : cf. note ci-dessous
    git checkout develop
    git pull --ff-only
-   git push origin --delete feat/{task-id}-{slug}   # remote ref only — local branch kept
+   git push origin --delete feat/{task-id}-{slug}   # ref distante
+   git branch -D feat/{task-id}-{slug}              # ref locale (squash ⇒ -D, pas -d)
    ```
 
    Order rationale : DTO/interop NuGet packages are consumed by backend
    and frontend ; merging the dependency first keeps `develop` consistent
    if a follow-up PR lands between merges.
 
-   **PITFALL — never use `gh pr merge --delete-branch`.** Despite its name,
-   `--delete-branch` deletes **both** the remote ref **and** the local
-   branch (verified task-038, recurred task-083). The human wants the local
-   branch kept for retroactive inspection, so we merge without the flag and
-   delete only the remote ref via a separate `git push origin --delete`.
+   **Supprimer la branche DISTANTE *et* LOCALE.**
 
-5 bis. **Les branches auto-incluses restées VIDES — les supprimer aussi.**
+   ```bash
+   git checkout develop && git pull --ff-only
+   git push origin --delete feat/{task-id}-{slug}   # ref distante
+   git branch -D feat/{task-id}-{slug}              # ref locale
+   ```
 
-   `/start` crée et **pousse** systématiquement une branche sur `dtos-mss`
-   (règle d'auto-inclusion du CLAUDE.md), même quand la task ne change aucun
-   contrat. Quand aucun DTO ne bouge, cette branche **n'a aucun commit**, donc
-   **aucune PR n'est ouverte** — et l'étape 5, qui ne parcourt que les PRs,
-   ne la voit jamais. Sa ref distante survit alors indéfiniment.
+   > **Règle inversée le 2026-09-16, sur demande humaine.** Elle disait : « The
+   > human wants the local branch kept for retroactive inspection ». Le coût de
+   > cette conservation s'est manifesté le jour même : les branches locales de
+   > task-310 survivant sur `client-blazor`, `client-mobile` et `dtos-mss`, le
+   > **pré-flight de `/start task-314` a refusé de démarrer** — trois repos
+   > n'étaient pas sur `develop`. L'inspection rétroactive reste possible :
+   > l'historique est sur `develop`, et la PR GitHub garde le diff.
+
+   **`-D` et non `-d`, et ce n'est pas une négligence.** Le merge est un
+   **squash** : les commits de la branche ne sont pas des ancêtres de
+   `develop`, donc `git branch -d` refuse avec « not fully merged ». Le `-D`
+   est sûr **ici précisément** parce que l'étape qui précède a vérifié, via
+   `gh`, que la PR est effectivement mergée. Ne jamais transposer ce `-D`
+   ailleurs sans la même vérification.
+
+   **PITFALL — ne pas utiliser `gh pr merge --delete-branch` pour autant.**
+   Le flag supprime les deux refs (vérifié task-038, récidive task-083), ce qui
+   est désormais l'effet voulu — mais il le fait **avant** que le clone local
+   ne soit revenu sur `develop`, et échoue alors sur la branche courante. On
+   garde donc les deux gestes explicites, dans cet ordre : `checkout develop`,
+   puis suppression distante, puis locale.
+
+5 bis. **Les branches restées VIDES — les supprimer aussi.** *(filet résiduel)*
+
+   Une branche sans aucun commit hors `develop` n'ouvre **aucune PR**, et
+   l'étape 5 — qui ne parcourt que les PRs — ne la voit donc jamais. Sa ref
+   distante survivrait indéfiniment.
+
+   > **Ce cas était systématique jusqu'au 2026-09-16** : `/start` créait et
+   > poussait une branche `dtos-mss` à chaque task, « au cas où ». L'inversion
+   > du même jour (création paresseuse par `/develop`) tarit la source. Cette
+   > étape reste pour les **branches héritées** et pour un repo listé dans
+   > `**Repos**:` que la task n'aurait finalement pas touché.
 
    **Constaté le 2026-09-14** : `dtos-mss` portait trois branches fantômes
    (`feat/task-304-…`, `feat/task-308-…`, `fix/task-289-…`), toutes à zéro
@@ -160,8 +201,7 @@ Same three-mode taxonomy as the rest of the forge :
    repos n'étaient pas touchés : eux sont listés explicitement dans
    `**Repos**:` et reçoivent toujours des commits, donc une PR.
 
-   Pour **chaque** repo pushable de la task **sans PR** (typiquement
-   `dtos-mss` auto-inclus) :
+   Pour **chaque** repo pushable de la task **sans PR** :
 
    ```bash
    cd {repo-path}
@@ -284,11 +324,17 @@ Same three-mode taxonomy as the rest of the forge :
   whole batch.
 - Squash-merge only (`gh pr merge --squash`). Keeps `develop` history
   linear, one commit per US.
-- **Une branche auto-incluse restée vide se supprime, ref distante ET locale**
-  (étape 5 bis) — sous la garde stricte « zéro commit hors `develop` ». Sans
-  cela, `dtos-mss` accumule une branche fantôme par task ne touchant pas aux
-  contrats, c'est-à-dire souvent. Constaté le 2026-09-14 : trois branches,
-  dont deux produites le jour même.
+- **Toute branche de feature se supprime au merge, ref distante ET locale.**
+  Le `-D` est requis (le squash rend la branche « not fully merged » pour git)
+  et il est sûr parce que la PR a été vérifiée mergée juste avant. Inversé le
+  2026-09-16 : conserver la branche locale faisait refuser le pré-flight du
+  `/start` suivant.
+- **Une branche restée vide se supprime aussi** (étape 5 bis), sous la garde
+  stricte « zéro commit hors `develop` ». Filet résiduel depuis que
+  l'auto-inclusion de `dtos-mss` a été supprimée le 2026-09-16 : il couvre les
+  branches héritées et un repo listé mais finalement non touché. Constaté le
+  2026-09-14, avant l'inversion : trois branches fantômes, dont deux produites
+  le jour même.
 - Never force-push. Never touch `develop` history.
 - **Delete the run's staging branch only when the run is fully drained** — no
   active task file with a numeric id inside the branch's `[début, fin]` range.

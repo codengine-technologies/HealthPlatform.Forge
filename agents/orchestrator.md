@@ -64,9 +64,11 @@ Every git/build/test/gh command runs from inside the repo declared by the
 task's `**Repos**:` list (plural — one US touches every relevant repo,
 same branch name across all of them). See CLAUDE.md for the repo table.
 
-**Auto-included repos** : when `**Repos**:` lists `api-mail` or
-`client-blazor`, `dtos-mss` is auto-included by `/start` (and therefore
-by `/develop`) because those backends/frontends consume the DTO package.
+**Repo à branche paresseuse** : `dtos-mss`. Il n'est **plus** auto-inclus par
+`/start` — règle inversée le 2026-09-16. Sa branche est créée par `/develop`,
+à son étape 2, **uniquement si la task change un contrat**. Une task qui ne
+touche aucun DTO ne laisse donc aucune trace sur ce repo. Voir CLAUDE.md,
+« Repo à branche PARESSEUSE : `dtos-mss` ».
 
 **Code-only repo** : `client-angular`. The orchestrator (via `/develop` and
 `/review`) writes Angular code on the branch the human currently has checked

@@ -68,8 +68,11 @@ philosophy was inverted on 2026-04-27 — see CLAUDE.md "Forge philosophy".
      vice-versa). The PO opts into Angular code generation by listing
      `client-angular` explicitly. Without an explicit listing, Angular
      stays a manual implementation by the human.
-   - Auto-include `dtos-mss` whenever `api-mail` or `client-blazor` is
-     listed (see CLAUDE.md "Auto-included repo : `dtos-mss`")
+   - **N'auto-inclure `dtos-mss` sous AUCUN prétexte.** Règle inversée le
+     2026-09-16 : sa branche est désormais créée **paresseusement** par
+     `/develop`, au moment où il touche un contrat (voir CLAUDE.md, « Repo à
+     branche PARESSEUSE »). Une task qui ne change aucun DTO ne doit laisser
+     aucune trace sur ce repo.
    - Deduplicate
    - Abort if any entry is unknown (not in the CLAUDE.md repo table)
 
@@ -199,8 +202,9 @@ Tools/timing/step.sh end --task {task-id} --step start --status ok
 - **1 US = 1 task file = 1 branch name** on every pushable repo the US touches.
   `client-angular` is **code-only** : no branch creation, the human owns the
   branch. No split `todo-back-*` / `todo-front-*` — one unified task.
-- Never create a branch on a repo not declared in `**Repos**:` (auto-include
-  `dtos-mss` is the only exception)
+- Never create a branch on a repo not declared in `**Repos**:` — **sans
+  exception** depuis le 2026-09-16. `dtos-mss` n'est plus auto-inclus : sa
+  branche est créée paresseusement par `/develop`.
 - Never create a branch on `client-angular` — code-only mode
 - Never create a branch on `devops` or `psc-proxy-*` — entirely manual
 - Never skip dependencies

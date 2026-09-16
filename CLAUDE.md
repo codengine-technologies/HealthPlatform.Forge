@@ -408,14 +408,35 @@ vice-versa). The PO must explicitly list `client-angular` and/or
 or mobile code. Without an explicit listing, the human keeps that frontend's
 implementation as a manual task.
 
-### Auto-included repo : `dtos-mss`
+### Repo à branche PARESSEUSE : `dtos-mss`
 
 `dtos-mss` is the shared DTO package consumed by `api-mail` and `client-blazor`.
-**`/start` MUST always create a branch on `dtos-mss`** alongside `api-mail` and
-`client-blazor`, even if the task file does not explicitly list it in `**Repos**:`.
-Any US that touches `api-mail` or `client-blazor` may need DTO changes, so the
-branch must exist proactively. If no DTO changes are needed, the branch will
-simply have no commits and no PR will be opened for it.
+
+**`/start` ne crée AUCUNE branche sur `dtos-mss`.** C'est `/develop` qui la crée
+— depuis `origin/develop`, au nom `feat/{task-id}-{slug}` — **au moment où il
+touche réellement un contrat** (§ Step 2). Une task qui ne change aucun DTO ne
+produit donc aucune branche sur ce repo.
+
+> ⚠️ **Règle inversée le 2026-09-16, sur constat humain.** Elle disait :
+> « `/start` MUST always create a branch on `dtos-mss` […] the branch will
+> simply have no commits and no PR will be opened for it ».
+>
+> Le proactif coûtait plus qu'il ne rapportait, et la preuve était **déjà dans
+> le plan de contrôle** : `agents/merge.md` porte une étape entière — « 5 bis.
+> Les branches auto-incluses restées VIDES » — qui n'existe que pour nettoyer
+> ce que cette règle produisait. Une règle dont l'unique effet mesurable est de
+> nourrir une étape de nettoyage ne paie pas sa place.
+>
+> **Constaté** : trois branches fantômes sur `dtos-mss` le 2026-09-14
+> (`feat/task-304-…`, `feat/task-308-…`, `fix/task-289-…`), toutes à zéro
+> commit ; puis task-310 et task-313, mêmes branches vides, dont une dont la
+> suppression a elle-même échoué en transitoire.
+>
+> **Ce que le proactif protégeait**, et qui ne se perd pas : la branche était
+> créée depuis le même `origin/develop` que les autres repos. `/develop` la
+> crée aussi depuis `origin/develop` ; un contrat qui bouge déclenche de toute
+> façon une publication NuGet et un bump des consommateurs, donc une
+> synchronisation explicite. L'ancrage n'était pas le vrai sujet.
 
 ### Cross-repo dependencies
 
