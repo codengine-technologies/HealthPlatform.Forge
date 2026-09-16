@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > **Document frère (vue produit)** : [`E016-socle-multi-tenant.md`](./E016-socle-multi-tenant.md)
-> **Dernière mise à jour** : 2026-09-15 (task-309, task-311, task-312)
+> **Dernière mise à jour** : 2026-09-16 (task-314)
 
 Historique détaillé des changements de l'EPIC **E016 — Socle multi-tenant**.
 Une entrée par task ayant atteint `done-*` ou `archived-*`. Append-only : une
@@ -11,6 +11,134 @@ entrée existante n'est jamais réécrite.
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.12 — task-314 : une messagerie détachée n'offre plus que « Rattacher » (`dtos-mss`, `api-mail`, `client-blazor`, `client-mobile`, `client-angular`)
+
+> PRs : [dtos-mss #33](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/33),
+> [api-mail #242](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/242),
+> [client-blazor #79](https://github.com/codengine-technologies/HealthPlatform.Client/pull/79),
+> [client-mobile #75](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/75).
+> `client-angular` en code-only — l'humain commite et ouvre la PR TFS.
+
+#### Le constat : quatre défauts sur une seule ligne d'écran
+
+Capture humaine du 2026-09-16, sur `client-angular`, après avoir coché
+« Afficher les messageries détachées » :
+
+```
+virginie.medecinrpps0062267@…   medecin.formation.mssante.fr   Détachée
+Rattachée le 2026-09-16T07:52:32.309421+00:00
+[ ☆ Définir par défaut ]  [ 🗑 Supprimer ]
+```
+
+| # | Défaut | Pourquoi c'en est un |
+|---|---|---|
+| 1 | « Définir par défaut » proposé | Une boîte détachée n'est pas sélectionnable — l'action poserait un défaut que `MailboxEntryDecision` ne pourrait jamais honorer |
+| 2 | « Supprimer » proposé | Elle l'est déjà ; le bouton annonçait une seconde suppression qui n'existe pas |
+| 3 | « Rattacher » absent | La capacité existait, mais le seul chemin était de **retaper l'adresse** dans le formulaire du dessous — sur une ligne qui l'affiche |
+| 4 | « Rattachée le … » sur une ligne détachée | Exact, au mauvais endroit : c'est la date du **détachement** qui gouverne la conservation |
+
+Accessoirement, les dates sortaient en ISO brut.
+
+#### La suppression définitive n'existera pas — et c'est vérifié, pas supposé
+
+Le premier arbitrage humain demandait deux actions, « Rattacher » **et**
+« Supprimer », cette dernière retirant définitivement la ligne pour qu'un autre
+compte puisse s'y rattacher. Le contrôle en base l'a renversé :
+
+```sql
+-- au constat du 2026-09-16, sur mss_registry
+audit_traces : 152 traces réparties sur 5 tenants
+clés étrangères sur tenant_id : AUCUNE
+```
+
+Une suppression **n'aurait pas échoué** — elle aurait orphelinné les traces en
+silence. Ces traces sont soumises à la journalisation PGSSI-S et à **six ans de
+conservation** ; la ligne du registre est le seul objet qui relie une trace à la
+messagerie qu'elle concerne. Arbitrage humain retenu : **le lien prime**, la
+ligne détachée reste.
+
+Et l'absence de clé étrangère n'est pas un oubli à corriger : un journal d'audit
+qui dépend référentiellement de ce qu'il observe devient inséparable de lui —
+c'est l'observé qui ne peut plus bouger sans l'accord du journal. Le lien est
+tenu par la valeur, pas par la contrainte.
+
+#### Ce qui change
+
+- **`MailboxDto` porte `DetachedAt`** (`DateTimeOffset?`), renseigné depuis
+  `RegistryTenant.DetachedAt` — la valeur existait en base et au domaine depuis
+  toujours, seul le contrat ne la portait pas. Publié en
+  `HealthPlatform.Dtos.Mss` **486.0.0**, consommateurs .NET bumpés.
+- **Une ligne détachée n'offre que « Rattacher »** sur les trois fronts.
+  **Masquées, pas grisées** : un bouton grisé annonce encore une action — même
+  arbitrage que le 2026-09-15 sur « Par défaut » au singulier.
+- **« Rattacher » emprunte le chemin d'ajout existant**, donc la **sonde de
+  l'opérateur MSSanté**. Aucun nouveau chemin d'écriture du registre. Le backend
+  **réactive** la ligne au lieu d'en créer une seconde (`AttachMailboxAsync`),
+  préservant le `TenantId` que le journal d'audit référence.
+- **La date suit l'état** : « Détachée le … » sur une ligne détachée,
+  « Rattachée le … » sinon. Les trois dates de la ligne sont **formatées**
+  (locale `fr-FR`).
+
+#### Les tests, et celui qui compte le plus
+
+Un test par front pour la ligne détachée, un pour le rattachement par la sonde,
+et surtout **la contre-épreuve** : *une ligne active garde ses actions et
+n'offre pas « Rattacher »*. Sans elle, un `isDetached` qui rendrait toujours
+`true` masquerait les actions partout et **passerait tous les autres tests**.
+
+`api-mail` : deux tests, dont « une boîte rattachée ne porte **aucune** date de
+détachement ». C'est ce `null` qui permet aux écrans de choisir la date sans
+réinterroger l'état.
+
+Tous vérifiés **ROUGE** avant correction (règle 1). `TenantId` préservé au
+re-rattachement : déjà figé par
+`PostgresTenantRegistryClientTests.ReattachingADetachedMailbox_KeepsTheSameTenantId`.
+
+#### Une seule source par front
+
+`isDetached(mailbox)` (Angular, mobile) / `mailbox.State == MailboxStates.Detached`
+(Blazor) gouverne **à la fois** les actions offertes et la date affichée.
+Dupliquer la comparaison dans le gabarit aurait fait diverger les deux le jour
+où un état s'ajoute.
+
+#### Première task sous la règle de branche paresseuse
+
+`/start` n'a créé **aucune** branche sur `dtos-mss` ; `/develop` l'a créée à son
+étape 2, au moment où le contrat a effectivement bougé. Règle posée le
+2026-09-16 après constat que la forge laissait une branche vide sur ce repo à
+chaque task.
+
+#### Qualité
+
+| Métrique | Baseline | Final |
+|---|---|---|
+| Quality Gate (new code) | OK | **OK** |
+| New coverage | 85,8 % | **85,9 %** |
+| Bugs / Vulnérabilités / Smells | 0 / 0 / 228 | 0 / 0 / 228 |
+
+`/sonar` : 0 itération de nettoyage (`total: 0` issue sur les fichiers du diff).
+`/lint-angular` : 0 error (41 warnings de dette pré-existante sur `mss-lib`).
+`/lint-mobile` : *All files pass linting*. `/verify-visual` : skippé (aucun
+écran mobile neuf, outillage absent du plan de contrôle).
+
+Tests verts : api-mail **4 479**, client-blazor **253**, client-mobile **856**,
+client-angular `mss-lib` **377** / `weda2` **2 573**.
+
+#### Dette laissée derrière
+
+- Le drapeau `busy` n'est relâché dans aucun `finally`, sur **aucune** des
+  actions de l'écran (`setDefault`, `retryAuth`, et maintenant `reattach`), sur
+  les trois fronts. Une erreur réseau fige l'écran en « occupé ». Patron
+  existant — à traiter d'un bloc, pas en exception locale.
+- Une ligne détachée **retient toujours le RPPS** : le prédicat
+  `rppsHeldElsewhere` ne distingue pas rattaché de détaché, donc un autre compte
+  ne peut pas rattacher cette adresse. C'est la conséquence directe de la
+  décision de conserver la ligne — et elle n'est pas traitée ici.
+- Le code de refus renvoyé sur une boîte détachée reste `MAILBOX_PSC_MISMATCH`,
+  trompeur.
+
+---
 
 ### v1.11 — task-310 : la session de messagerie se ferme AVANT le détachement (`client-angular`, `client-blazor`, `client-mobile`)
 
@@ -1759,6 +1887,10 @@ en `foreach`). **184 tests verts avant comme après.**
 | task-309 | **Le sélecteur de messagerie devient atteignable** : montage de `<mss-mailbox-switcher />` dans un en-tête créé pour lui sur la page Messagerie Angular (il n'était monté nulle part), entrée `NAV_ITEMS` « Mes messageries » (`accounts`, avant-dernière), conversion design system à `data-testid` constants. **+23 tests** là où les trois sélecteurs n'en avaient aucun, dont **3 contre-épreuves de montage**. Pose sur les trois fronts la garde « rattacher exige une session PSC » dans le code, où elle ne tenait qu'à un attribut `disabled` | `client-angular`, `client-mobile`, `client-blazor` | ✅ **done** (PR Client#76, Mobile#72, `awaiting-human-merge` ; Angular en code-only) |
 | task-306 | Banc de charge multi-BAL : dimension « boîtes par compte », parcours avec bascule réelle, restitution du coût de bascule. **⛔ ABANDONNÉE le 2026-09-15** (décision humaine) — la task file est supprimée. Ce dont elle dépendait a été livré par task-311 (le seeder provisionne le registre) et un tir de référence 500 praticiens a été mené le 2026-09-15 : `report-journey-mssante-n500-155118.md`. La dimension « boîtes par compte » n'est donc pas mesurée, et ne le sera pas | `api-mail` | ⛔ **abandonnée** |
 | task-311 | **Le banc redevient mesurable** : le seeder écrit lui-même les deux lignes de registre que l'onboarding écrirait (`accounts` + `mss_accounts`), par le câblage de production (`AddTenantRegistryClient` + `ITenantRegistryClient`), identités issues de `LoadTestPlanGenerator`. Sans elles, task-308 laissait **toutes** les routes de messagerie en `403 MAILBOX_NOT_ATTACHED` et `TenantId` nul — donc le journal mutualisé jamais exercé. Corrige au passage la parité du bootstrap du registre (`TenantRegistryBootstrap` : migration **et** partitions d'audit) | `api-mail` | ✅ **done** (PR Api.Mail#240, `awaiting-human-merge`) |
+| task-310 | **La session de messagerie se ferme AVANT le détachement**, et non après : l'ordre inverse partait avec l'adresse d'une boîte déjà passée en `Detached`, donc en `403 NotCompatible` sans jamais atteindre le contrôleur. `closeCurrentSession()` extrait sur les trois fronts, drapeau `outgoingAlreadyClosed` pour ne pas clore deux fois. **Un troisième chemin fautif a été MESURÉ dans Seq** (déconnexion complète émettant sa clôture après `session.clear()`, donc sans adresse : 200 et `SessionsClosed = 0`) | `client-angular`, `client-blazor`, `client-mobile` | ✅ **mergée** (PR Client#78, Mobile#74) |
+| task-313 | **Détacher sa dernière messagerie déconnecte**, sur les trois fronts. `[MailboxNotRequired]` posé sur `LogoutCleanupAsync` — l'attribut n'exempte que `MailboxRequired`, jamais `NotCompatible`. Garde côté client : pas de boîte ouverte, pas d'ordre de clôture. Corrige au passage l'observabilité de `UserContextEnricherMiddleware` (`KcSub=<none>` lu du mauvais côté) | `client-blazor`, `client-mobile`, `api-mail` | ✅ **mergée** |
+| task-314 | **Une messagerie détachée n'offre plus que « Rattacher »**, et affiche la date de son **détachement**. `MailboxDto.DetachedAt` (nullable) publié en **486.0.0**. « Définir par défaut » et « Supprimer » **masqués, pas grisés**. La suppression définitive est écartée sur constat en base : 152 traces d'audit sur 5 tenants, **aucune clé étrangère** — supprimer aurait orphelinné en silence un journal soumis à 6 ans de conservation PGSSI-S. Contre-épreuve par front : une ligne active garde ses actions | `dtos-mss`, `api-mail`, `client-blazor`, `client-mobile`, `client-angular` | ✅ **done** (PR Dtos.Mss#33, Api.Mail#242, Client#79, Mobile#75 — `awaiting-human-merge` ; Angular en code-only) |
+
 
 ### Question ouverte
 

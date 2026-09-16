@@ -2,7 +2,7 @@
 
 > **Statut** : 🟡 En cours
 > **Modèle** : task-driven
-> **Version** : 1.11
+> **Version** : 1.12
 > **Auteur** : PO forge
 > **Audience** : PO, médecin, direction produit, conformité — la vue ingénierie vit dans [E016-Changelogs.md](E016-Changelogs.md)
 > **Dernière mise à jour** : 2026-09-16
@@ -22,7 +22,7 @@
 - [7. Contraintes et hypothèses](#7-contraintes-et-hypothèses)
 - [8. Critères d'acceptation de l'EPIC](#8-critères-dacceptation-de-lepic)
 - [9. Hors périmètre](#9-hors-périmètre)
-- [État de couverture (2026-09-15)](#état-de-couverture-2026-09-15)
+- [État de couverture (2026-09-16)](#état-de-couverture-2026-09-16)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -87,9 +87,9 @@ augmente.
 | **Plusieurs messageries, une seule connexion** | Retrouver, après une authentification unique, toutes les messageries qui relèvent de son identité professionnelle | task-303, task-304, task-308 | ✅ Livrée |
 | **Changer de messagerie en direct** | Cliquer sur son avatar et ouvrir une autre de ses messageries : l'écran se vide et se recharge sur la nouvelle boîte, sans reconnexion | task-304 | ✅ Livrée |
 | **Rattacher sa première messagerie** | Entrer son adresse dès le premier accès et travailler immédiatement, sans se déconnecter ni se reconnecter — l'opérateur de messagerie vérifie l'accès avant que le rattachement n'aboutisse | task-304, task-308 | ✅ Livrée |
-| **Gérer ses messageries** | Ajouter une messagerie, en détacher une, désigner celle qui s'ouvre par défaut, comprendre pourquoi l'une est indisponible — et, en détachant la **dernière**, être déconnecté proprement au lieu de rester enfermé | task-304, task-309, task-312, task-313, task-310 | 🟡 Complète en code — écran **atteignable** (task-309), détachement **sans impasse** (task-312, task-313) et **sans connexion laissée ouverte chez l'opérateur** (task-310), en attente de merge |
-| **Conservation appliquée à tous les comptes** | Être assuré que les durées d'effacement s'appliquent aussi aux comptes qui ne servent plus, y compris à ceux d'un praticien qui a quitté le service | task-299, task-312 | 🟡 Complète en code — l'effacement à échéance **s'exécute** depuis task-312, en attente de merge |
-| **Traçabilité des accès à l'échelle du parc** | Consulter l'historique de ses propres accès — et les trier — sans que la croissance du parc n'en dégrade la tenue | task-300, task-312 | 🟡 Complète en code — écriture **mergée**, retrait de l'historique hérité en attente de merge |
+| **Gérer ses messageries** | Ajouter une messagerie, en détacher une, la **rattacher à nouveau**, désigner celle qui s'ouvre par défaut, comprendre pourquoi l'une est indisponible — et, en détachant la **dernière**, être déconnecté proprement au lieu de rester enfermé | task-304, task-309, task-310, task-312, task-313, task-314 | 🟡 Complète en code — écran **atteignable** (task-309), détachement **sans impasse** (task-312, task-313) et **sans connexion laissée ouverte chez l'opérateur** (task-310) : **mergés**. Une ligne détachée n'offre plus que « Rattacher » (task-314), en attente de merge |
+| **Conservation appliquée à tous les comptes** | Être assuré que les durées d'effacement s'appliquent aussi aux comptes qui ne servent plus, y compris à ceux d'un praticien qui a quitté le service | task-299, task-312 | ✅ Livrée — l'effacement à échéance **s'exécute** depuis task-312 (**mergée**) |
+| **Traçabilité des accès à l'échelle du parc** | Consulter l'historique de ses propres accès — et les trier — sans que la croissance du parc n'en dégrade la tenue | task-300, task-312 | ✅ Livrée — écriture et retrait de l'historique hérité **mergés** |
 | **Accès des équipes sécurité à la traçabilité** | *(indisponible — en attente d'arbitrage : voir §7)* | — | ⛔ Bloquée |
 | **Réactivité vérifiée en multi-messagerie** | *(abandonnée — décision humaine du 2026-09-15 : l'outil de mesure existe, la campagne dédiée n'est pas poursuivie)* | task-311 | ⛔ Abandonnée |
 | **Application allégée au poste** | Recevoir une application débarrassée de composants qui ne lui servaient pas | task-305 | ✅ Livrée |
@@ -206,14 +206,14 @@ Deux points structurent ce parcours :
 
 ---
 
-## État de couverture (2026-09-15)
+## État de couverture (2026-09-16)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
 | Plusieurs messageries, une seule connexion | ✅ Livrée | 100 % | task-303, task-304, task-308 (**mergées**) |
 | Changer de messagerie en direct | ✅ Livrée | 100 % | task-304 (**mergée**) |
 | Rattacher sa première messagerie | ✅ Livrée | 100 % | task-304, task-308 (**mergées**) |
-| Gérer ses messageries | 🟡 Complète en code | 90 % | task-304, task-312, task-313 (**mergées**) + task-309, task-310 (en attente de merge) |
+| Gérer ses messageries | 🟡 Complète en code | 90 % | task-304, task-309, task-310, task-312, task-313 (**mergées**) + task-314 (en attente de merge) |
 | Conservation appliquée à tous les comptes | ✅ Livrée | 100 % | task-299, task-312 (**mergées**) |
 | Traçabilité des accès à l'échelle du parc | ✅ Livrée | 100 % | task-300, task-312 (**mergées**) |
 | Accès des équipes sécurité à la traçabilité | ⛔ Bloquée | 0 % | — |
@@ -222,6 +222,11 @@ Deux points structurent ce parcours :
 
 **Couverture EPIC consolidée : 86 %** — 6 fonctionnalités livrées sur les 8 encore au
 périmètre, 1 complète en code et en attente de merge, 1 bloquée en attente d'arbitrage.
+
+Au 2026-09-16, tout ce qui précède task-314 est **mergé**. « Gérer ses messageries »
+reste la seule ligne ouverte : elle attend le merge de task-314, qui achève l'écran en
+retirant d'une ligne détachée les deux actions qui n'avaient pas de sens et en lui
+rendant celle qu'on y cherchait — **« Rattacher »**.
 La 9ᵉ, « Réactivité vérifiée en multi-messagerie », est **sortie du périmètre** le
 2026-09-15 et n'entre plus dans le calcul.
 La ligne multi-messageries est **livrée de bout en bout et mergée** : le registre, la
@@ -330,7 +335,7 @@ sélection validée par l'opérateur, et les écrans sur les trois applications.
 ### Technique
 
 - **L'instrument qui mesure la tenue en charge s'était éteint sans bruit — il est
-  rallumé** (task-311, *en attente de merge*). Le banc d'essai qui vérifie que le service
+  rallumé** (task-311, **mergée**). Le banc d'essai qui vérifie que le service
   tient à mille médecins était provisionné par un mécanisme automatique que le changement
   précédent a supprimé, à juste titre : il rattachait des messageries que personne n'avait
   validées. Conséquence non vue sur le moment — le banc refusait désormais **toutes** les
@@ -361,8 +366,7 @@ sélection validée par l'opérateur, et les écrans sur les trois applications.
   secondaire de conformité : les durées d'effacement peuvent enfin s'appliquer aussi
   aux comptes qui ne servent plus, ce qui n'était pas possible tant qu'aucun balayage
   d'ensemble n'existait.
-- **L'historique des accès n'a plus qu'un seul endroit où vivre** (task-312, *en attente de
-  merge*). Il en avait deux : l'espace commun pour les traces récentes, l'espace de chaque
+- **L'historique des accès n'a plus qu'un seul endroit où vivre** (task-312, **mergée**). Il en avait deux : l'espace commun pour les traces récentes, l'espace de chaque
   médecin pour les anciennes. Ce partage devait être transitoire — une opération de reprise
   (task-301) devait recopier l'ancien vers le nouveau, puis le supprimer. **Cette reprise
   n'a jamais eu lieu et n'aura pas lieu** : le service n'est pas en exploitation, il n'y a
@@ -396,7 +400,7 @@ sélection validée par l'opérateur, et les écrans sur les trois applications.
   inactivité le suspendait donc indéfiniment. La plateforme sait désormais quels
   comptes existent et depuis quand chacun ne s'est plus connecté — ce qui rend
   l'échéance applicable à tous, actifs comme dormants.
-- **Et cet effacement s'exécute réellement** (task-312, *en attente de merge*). Rendre
+- **Et cet effacement s'exécute réellement** (task-312, **mergée**). Rendre
   l'échéance *applicable* ne suffisait pas : le mécanisme d'effacement du nouveau journal
   était écrit et déclaré, mais **rien ne l'appelait jamais**. Le seul effacement qui
   tournait portait sur l'ancienne copie, et restait déclenché par l'activité du praticien
@@ -410,9 +414,35 @@ sélection validée par l'opérateur, et les écrans sur les trois applications.
 
 ### Fonctionnalités métier
 
-- **Ajouter une seconde messagerie ne demande plus de connaître une adresse par cœur** (task-309, *en attente de merge*). L'écran qui permet d'ajouter, de retirer ou de choisir sa messagerie par défaut existait déjà — mais sur l'une des trois applications, **aucun bouton n'y conduisait** : il fallait taper son adresse dans la barre du navigateur. Le sélecteur de messagerie apparaît désormais en haut de la messagerie sur les trois applications, et une entrée **« Mes messageries »** a été ajoutée à la barre de navigation de celle qui en possède une, juste au-dessus de « Paramètres ». Le praticien dispose ainsi de deux chemins : un rapide, depuis sa messagerie, et un explicite, visible de n'importe quel écran. Au passage, le bouton **« Ajouter une messagerie » devient réellement inopérant** — et non plus seulement grisé — tant que la connexion Pro Santé Connect n'est pas établie, l'opérateur devant être consulté pour tout rattachement ; consulter les messageries déjà rattachées, elle, reste possible.
+- **Une messagerie détachée ne propose plus que de la rattacher** (task-314, *en attente
+  de merge*). Sur la liste des messageries, une ligne détachée offrait « Définir par
+  défaut » et « Supprimer ». Ni l'une ni l'autre n'avait de sens : une messagerie
+  détachée ne peut pas s'ouvrir, donc pas devenir celle qui s'ouvre par défaut ; et elle
+  est déjà retirée du compte, le second bouton annonçant une suppression plus définitive
+  **qui n'existe pas**. Ce qui manquait, en revanche, était le geste qu'on vient y
+  chercher : **rattacher à nouveau**. Il fallait jusqu'ici retaper l'adresse dans le
+  formulaire du dessous — sur une ligne qui l'affiche. Le bouton « Rattacher » apparaît
+  désormais à sa place, et passe par la même vérification auprès de l'opérateur MSSanté
+  que tout autre rattachement. Les deux actions sans objet sont **retirées de l'écran**
+  plutôt que grisées : un bouton grisé annonce encore une action.
+- **La date affichée dit enfin la bonne chose** (task-314, *en attente de merge*). Une
+  ligne détachée indiquait « Rattachée le … » — une information exacte, au mauvais
+  endroit. Pour une messagerie détachée, la date qui compte est celle du **détachement** :
+  c'est elle qui fait courir les durées de conservation, et c'est ce que le message de
+  confirmation a promis au praticien. Les dates de cet écran sont par ailleurs
+  **présentées lisiblement**, là où s'affichait jusqu'ici l'horodatage technique brut.
+- **Une messagerie détachée n'est pas effacée, et c'est délibéré** (task-314). La
+  possibilité de la retirer définitivement de la liste a été étudiée puis **écartée sur
+  vérification**. La ligne détachée est le seul objet qui relie l'historique des accès à
+  la messagerie qu'il concerne ; la base ne comporte aucun garde-fou qui empêcherait sa
+  suppression, si bien qu'effacer la ligne aurait rendu ces traces orphelines **sans
+  qu'aucune erreur ne le signale** — sur un historique soumis à six ans de conservation
+  réglementaire. Conséquence assumée, à traiter séparément : tant qu'une ligne détachée
+  subsiste, l'adresse qu'elle porte ne peut pas être rattachée à un autre compte.
+
+- **Ajouter une seconde messagerie ne demande plus de connaître une adresse par cœur** (task-309, **mergée**). L'écran qui permet d'ajouter, de retirer ou de choisir sa messagerie par défaut existait déjà — mais sur l'une des trois applications, **aucun bouton n'y conduisait** : il fallait taper son adresse dans la barre du navigateur. Le sélecteur de messagerie apparaît désormais en haut de la messagerie sur les trois applications, et une entrée **« Mes messageries »** a été ajoutée à la barre de navigation de celle qui en possède une, juste au-dessus de « Paramètres ». Le praticien dispose ainsi de deux chemins : un rapide, depuis sa messagerie, et un explicite, visible de n'importe quel écran. Au passage, le bouton **« Ajouter une messagerie » devient réellement inopérant** — et non plus seulement grisé — tant que la connexion Pro Santé Connect n'est pas établie, l'opérateur devant être consulté pour tout rattachement ; consulter les messageries déjà rattachées, elle, reste possible.
 - **L'écran de rattachement se déclenche enfin pour un praticien qui n'a pas encore de
-  messagerie** (task-308, *en attente de merge*). Il existait, il était écrit sur les
+  messagerie** (task-308, **mergée**). Il existait, il était écrit sur les
   trois applications — il n'était simplement jamais atteint, parce que la plateforme
   inscrivait une messagerie d'elle-même avant que la question ne soit posée. Un praticien
   qui se connecte pour la première fois voit désormais cet écran, y saisit son adresse
@@ -426,15 +456,13 @@ sélection validée par l'opérateur, et les écrans sur les trois applications.
   à faire autorité sur ce qu'un professionnel peut ouvrir, ne soit jamais consulté. Le
   rattachement passe maintenant par une vérification auprès de cet opérateur, et **rien
   n'est enregistré si elle échoue**.
-- **Un compte ne peut plus changer de professionnel en silence** (task-308, *en attente de
-  merge*). L'identité professionnelle est enregistrée sur chaque messagerie rattachée, au
+- **Un compte ne peut plus changer de professionnel en silence** (task-308, **mergée**). L'identité professionnelle est enregistrée sur chaque messagerie rattachée, au
   moment où l'opérateur la confirme. Présenter l'identité d'un autre professionnel sur un
   compte déjà rattaché est refusé — et détacher toutes ses messageries ne remet pas le
   compteur à zéro : le compte reste lié au professionnel qui l'a ouvert. La
   ré-association reste ce qu'elle doit être, un acte administratif, jamais un effet de
   bord d'une requête.
-- **Une trace d'accès désigne enfin la bonne messagerie** (task-312, *en attente de
-  merge*). Rattacher, détacher ou changer de messagerie par défaut laissait une trace qui
+- **Une trace d'accès désigne enfin la bonne messagerie** (task-312, **mergée**). Rattacher, détacher ou changer de messagerie par défaut laissait une trace qui
   portait le nom de la messagerie **ouverte à l'écran** au moment du geste — pas celle sur
   laquelle il portait. Au tout premier rattachement il n'y en avait aucune ; aux suivants,
   c'était une autre. La trace désigne désormais la messagerie concernée, ce qui est la
