@@ -186,3 +186,89 @@ report, ni erreur. `StopSyncAsync` y échappe car il annule directement le jeton
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui
 - **AIPD / impact RGPD** : inchangé — pas de nouveau traitement ni de divulgation.
+
+## Branches
+
+- `api-mail` (pushed) : `fix/task-188-sync-control-plane` — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-188-sync-control-plane
+
+Aucun autre repo : la task est backend-only (`**Repos**: api-mail`, justification
+« orchestration côté serveur, contrat HTTP inchangé »). `dtos-mss` n'est pas
+auto-inclus (branche paresseuse depuis le 2026-09-16) — aucun contrat n'est
+attendu en changement ici.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-188 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 53 s | — | — | — | — |
+| **Total cycle** | | **53 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+
+## Develop log
+
+- **Repos touchés** : `api-mail` (backend-only, conformément à `**Repos**:`)
+- **DTOs publiés** : aucun changement de contrat — `SyncStatusDto`/`SyncProgressDto`
+  inchangés, donc aucune branche sur `dtos-mss`, aucun paquet NuGet republié.
+- **Interop publié** : aucun changement.
+
+### Vérification RED explicite (DOD, item 1)
+
+La DOD exigeait que le test de l'ordre de pause **échoue sur le code actuel**, et
+que ce soit vérifié. Deux tests ont été écrits et lancés **avant** toute
+modification du code de production :
+
+| Test | Résultat sur `develop` |
+|---|---|
+| `CaptiveDependencyTests.Le_port_de_pause_du_premier_plan_n_est_pas_le_worker_de_synchronisation` | **RED** — `IBackgroundSyncService` satisfaisait `ISyncPauser`, ce qui rendait l'alias DI naturel et invisible |
+| `SyncControlPlaneTests.Une_pause_recue_avant_le_demarrage_est_appliquee_au_demarrage` | **RED** — `Expected to receive exactly 1 call matching: PauseSync() — Actually received no matching calls` |
+
+### Ce qui a été corrigé
+
+| Défaut | Correctif |
+|---|---|
+| 1. Pause inopérante | `ISyncPauser` n'est plus un alias de `IBackgroundSyncService` (le lien d'héritage entre les deux est rompu). Nouvelle implémentation unique `SyncPauser`, scopée, qui délègue au `IBackgroundSyncManager` — seul détenteur du runtime vivant. |
+| 1 bis. Régression évitée en chemin | Une **cession au premier plan** est comptée séparément de la **pause du praticien** : elle ne publie pas l'état « en pause » et, en se rendant, n'annule pas une pause explicite. Sans cette distinction, une simple navigation dans les dossiers aurait relancé une synchronisation que le praticien venait de suspendre. |
+| 2. TTL d'état | Battement de cœur porté par le worker (`RunLeaseHeartbeatAsync`), qui renouvelle **l'état partagé ET le verrou distribué**. Les deux garde-fous partagent désormais une seule durée (`BackgroundSyncOptions.SyncLeaseTtl`, 15 min) au lieu de 15 et 30 min. Le `RefreshAsync` opportuniste de `BackgroundSyncNotifier` est retiré : une garantie, un propriétaire. |
+| 2 bis. Écrasement de runtime | Réservation locale par `TryAdd` **avant** le créneau distribué. Le retrait est borné à l'instance concernée (`ReleaseRuntime`, retrait par paire clé/valeur). |
+| 2 ter. Effacement de l'état d'autrui | `IBackgroundSyncService.StartSyncAsync` rend un `SyncRunOutcome` : un travail qui n'a pas pris le verrou n'efface rien. |
+| 3. Pause/reprise avant démarrage | L'ordre est mémorisé sur le runtime et appliqué à l'attachement du worker (`ApplyPauseState`). Les deux branches — locale et commande distante — passent par le même chemin ; elles divergeaient. |
+| 3 bis. Défaut découvert par le test | `BackgroundSyncService.StartSyncAsync` remettait `_isPaused = false` au démarrage, ce qui **annulait une ligne plus loin** l'ordre que le correctif venait d'appliquer. Retiré. Trouvé par `StartSyncAsync_WhilePaused_StopsCallingImapAndResumesOnOrder`, pas par relecture. |
+| 5. Vérité de l'état | `GetStatusAsync` ne sert plus l'`Idle` du worker tant qu'il n'est pas entré dans sa boucle : c'était vrai de lui, faux de la boîte, et c'est cette réponse qui invitait à relancer — geste par lequel naissait la synchronisation fantôme. |
+
+### Choix de conception à connaître
+
+**La cession au premier plan est délibérément locale à l'instance** (pas de
+diffusion sur le bus inter-instances), alors que la pause du praticien, elle,
+traverse. La porter sur le bus exposerait à une **reprise perdue** — instance
+émettrice disparue avant son `finally` — qui laisserait la synchronisation
+suspendue indéfiniment : pire que le défaut réparé ici. Le partage d'une boîte
+entre instances relève du cycle de vie des sessions IMAP, hors scope
+(task-187). L'asymétrie est documentée sur `IBackgroundSyncManager.HoldForForeground`.
+
+### Build / tests
+
+- `dotnet build HealthPlatform.Api.Mail.sln` : **0 erreur**
+- `dotnet test HealthPlatform.Api.Mail.sln` : **4 492 réussis, 0 échec**, 16 ignorés
+- **Flaky pré-existant rencontré une fois** :
+  `mss.mail.integration.tests.Repository.SeededThreadsAreCountableTests.AThreadedCorpusProducesCountableThreads`
+  — vert sur deux passes complètes antérieures et vert en isolation au
+  re-lancement. Sans rapport avec le plan de contrôle (semis de corpus en base).
+
+### Tests ajoutés (12)
+
+- `SyncControlPlaneTests` (9) : ordre de pause d'une requête atteignant le worker ;
+  cession n'annulant pas la pause du praticien ; reprise après la **dernière**
+  cession rendue ; pas d'écrasement de runtime vivant ; pas d'effacement de l'état
+  d'autrui ; libération du créneau par une synchronisation qui a tourné ; pause
+  avant démarrage ; cohérence de l'état en file / en cours / en pause avec arrêt
+  fonctionnel dans chacun ; arrêt avant démarrage effectif.
+- `BackgroundSyncServiceTests` (+4) : bail renouvelé sans progression métier ;
+  battement qui s'arrête avec la synchronisation ; verrou pris pour la durée
+  configurée ; pause qui cesse effectivement de solliciter IMAP et reprend.
+- `CaptiveDependencyTests` (+1) : garde de composition sur la séparation des deux
+  ports.
+
+- **Conventions** : `conventions/csharp.md` relu avant d'écrire ; aucune règle
+  apprise enfreinte, aucune nouvelle entrée à créer à ce stade.
+- **Prochaine étape** : `/sonar task-188`
