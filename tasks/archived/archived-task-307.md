@@ -162,3 +162,69 @@ prête.
   **pas traité ici** : task-303 ajoute de nouveaux écrivains dans le registre
   (`AttachMailboxAsync`), donc la validation `^[a-z0-9_]+$` à l'écriture appartient à son
   périmètre. **À arbitrer avec elle**, pas à empiler ici.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-307 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | failed | 2 min 10 s | — | — | — | US sans objet — task-312 a supprime PostgresAuditBackfillStore et les 3 requetes visees |
+| **Total cycle** | | **2 min 10 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+
+---
+
+## Abandonnée — sans objet (2026-09-16)
+
+**Décision humaine du 2026-09-16, sur constat au pré-flight de `/start`.**
+Aucune branche n'a été créée, aucun code n'a été écrit.
+
+### Le sujet de la US a été supprimé
+
+Les trois requêtes SQL brut à convertir vivaient dans
+`PostgresAuditBackfillStore`. **Ce fichier n'existe plus.** `task-312` — commit
+`b9400547`, PR #239, mergée — a retiré le journal d'audit hérité et toute sa
+machinerie de reprise :
+
+```
+src/Infrastructure/Repositories/TenantDb/PostgresAuditBackfillStore.cs   ← les 3 requêtes
+src/Application/Services/Repository/TenantDb/IAuditBackfillStore.cs
+src/Application/Services/Implementation/AuditBackfillService.cs
+src/Application/Services/Background/AuditBackfillHostedService.cs
+src/Application/Configuration/AuditBackfillOptions.cs
+src/Domain/Entities/TenantDb/AuditBackfillReport.cs
+```
+
+La colonne `audit_backfilled_at` a elle aussi été retirée de `mss_accounts` :
+elle ne bornait que la double lecture, qui n'existe plus.
+
+**Quatre des cinq critères du DOD** visent donc du code disparu
+(`GetBackfilledAtAsync`, `MarkBackfilledAsync`, `CountCommonAsync`,
+`DropLegacyTableAsync`, `MarkCutoverAsync`). Le cinquième — « `PostgresAuditSink`
+inchangé » — est déjà satisfait.
+
+### Aucun repli
+
+Trois fichiers portent encore du `NpgsqlCommand` : `PostgresAuditSink`,
+`PostgresAuditJournalPurge`, `PostgresAuditReader`. Ce sont **exactement** ceux
+que cette US listait comme non convertibles, avec la consigne de refuser en
+revue toute tentative d'élargir le périmètre. La seule surface convertible a
+disparu.
+
+### La US avait prévu une péremption, mais plus douce
+
+Son encadré « Fenêtre de tir » annonçait qu'au merge de task-303 le bénéfice se
+réduirait à la lisibilité — « à re-arbitrer plutôt qu'à exécuter par habitude ».
+task-303 est effectivement mergée. Mais la réalité est allée plus loin : ce
+n'est pas le bénéfice qui a disparu, c'est le sujet.
+
+### Ce qui survit à l'abandon
+
+Le **principe** reste juste : une requête SQL brut sur une table qui a une
+entité EF perd la protection du compilateur, et un renommage casse alors en
+production au lieu de casser au build. Il n'a plus de cible aujourd'hui, mais il
+en aura une au prochain accès direct — d'où la suggestion de le verser dans
+`conventions/csharp.md` plutôt que de le laisser mourir avec cette US.
+**Non fait à ce stade** : hors du geste d'archivage demandé.
+
+Analyse complète : `questions/task-307.md`.
