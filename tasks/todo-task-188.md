@@ -32,6 +32,7 @@ Rendre le pilotage de la synchronisation d'arrière-plan **effectif et cohérent
 quand le praticien met en pause, la synchronisation s'arrête ; quand il consulte
 l'état, l'état est vrai ; quand il relance, il ne crée pas une synchronisation
 fantôme.
+En cas de logout la synchronisation doit se terminer imédiatement.
 
 Trois défauts indépendants concourent au même symptôme — des boutons qui semblent
 morts et une synchronisation incontrôlable :

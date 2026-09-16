@@ -386,3 +386,29 @@ Deux autres fichiers apparaissent modifiés dans l'arbre Angular
    existant**, partagé à l'identique par `setDefault` et `retryAuth` sur les
    trois fronts — pas introduit par cette task. À traiter d'un bloc dans une US
    dédiée plutôt qu'en exception locale.
+
+## Merged
+
+Mergée le 2026-09-16 par l'humain (`/merge task-314 --i-tested`, HAG règle 10),
+squash dans l'ordre topologique `dtos-mss → api-mail → client-blazor →
+client-mobile`.
+
+| Repo | PR | Squash sur `develop` |
+|---|---|---|
+| `dtos-mss` | #33 | `fc0f8a3` |
+| `api-mail` | #242 | `c8ade42b` |
+| `client-blazor` | #79 | `58cad05` |
+| `client-mobile` | #75 | `806e213` |
+
+Branches `feat/task-314-messagerie-detachee-rattacher` supprimées **distantes et
+locales** sur les quatre repos (règle du 2026-09-16 : conserver la branche locale
+faisait refuser le pré-flight du `/start` suivant).
+
+**CI `develop` vertes** sur les quatre repos, vérifiées après merge.
+
+**`client-angular` reste à la charge de l'humain** — les quatre fichiers de la
+task sont toujours non commités sur `feature/nova-rewriting-mss` (mode
+code-only). Le clone Angular n'a **pas** été basculé sur `develop` : la forge ne
+change jamais de branche à la place de l'humain.
+
+Aucune branche staging à nettoyer : ce cycle n'est pas passé par `/forge`.
