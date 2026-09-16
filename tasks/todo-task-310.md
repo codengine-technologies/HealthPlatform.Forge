@@ -34,11 +34,28 @@ laquelle je suis connecté, comment le logiciel réagit ? ».
      3b. purge, nouvel identifiant de session, bascule
 ```
 
-**L'étape 3a échoue, systématiquement.** `POST /api/v1/sync/logout` ne porte pas
-`[MailboxNotRequired]` : le middleware résout `Client-Email` contre le registre, trouve le
-rattachement en `Detached`, et `MailboxSelectionService` répond `NotCompatible`
-(`MailboxSelectionService.cs:65`). La requête est **refusée avant d'atteindre le
-contrôleur**, donc `BackgroundSyncManager.CleanupUserAsync` n'est jamais appelé.
+**L'étape 3a échoue, systématiquement.** Le middleware résout `Client-Email` contre le
+registre, trouve le rattachement en `Detached`, et `MailboxSelectionService` répond
+`NotCompatible` (`MailboxSelectionService.cs:65`). La requête est **refusée avant
+d'atteindre le contrôleur**, donc `BackgroundSyncManager.CleanupUserAsync` n'est jamais
+appelé.
+
+> ⚠️ **Rédaction corrigée le 2026-09-16.** Cette phrase disait « `POST /api/v1/sync/logout`
+> ne porte pas `[MailboxNotRequired]` ». Ce n'est plus vrai — **task-313 a posé l'attribut
+> sur cette route**, et c'est mergé. La conclusion, elle, est **inchangée**, et c'est le
+> point à retenir : l'attribut n'exempte **qu'une seule** issue de sélection.
+>
+> ```csharp
+> // UserContextEnricherMiddleware — ApplyMailboxSelectionAsync
+> if (!mailboxRequired && selection.Outcome == MailboxSelectionOutcome.MailboxRequired)
+> {
+>     return false;   // seule MailboxRequired passe
+> }
+> // NotAttached, NotCompatible, PscIdentityConflict → 403
+> ```
+>
+> Une boîte **détachée** rend `NotCompatible`, jamais `MailboxRequired`. Elle reste donc
+> refusée, attribut ou pas. Le défaut décrit par cette US est intact.
 
 Le front l'avale — c'est du best-effort, et c'est délibéré :
 
@@ -62,6 +79,42 @@ d'identifiant de session de task-303 existe pour éviter :
 La suppression est le **seul** chemin qui le produise, parce que c'est le seul où la boîte
 sortante cesse d'être valide **avant** qu'on essaie de la fermer. Une bascule ordinaire ou
 une déconnexion ferment toutes deux une boîte encore rattachée, et aboutissent.
+
+### Un TROISIÈME chemin, apparu depuis — et mesuré
+
+Ajouté le 2026-09-16. Cette US décrivait un seul chemin fautif ; il y en a désormais deux,
+et le second n'existait pas à sa rédaction.
+
+**task-312 / task-313** ont livré la déconnexion complète au détachement de la **dernière**
+messagerie. Sa séquence est : `session.clear()` — qui vide la boîte courante — puis l'ordre
+de clôture. La requête part donc **sans `Client-Email`**, rend `MailboxRequired`, et
+l'attribut posé par task-313 la laisse passer. Elle **aboutit en 200**.
+
+Mais elle ne ferme rien. `CleanupUserAsync` n'utilise l'adresse que comme **clé de
+recherche** (`RemoveSession`, `HasActiveSessionsForEmail`, `TryGetValue`, `GetStateAsync`) :
+avec une chaîne vide, aucune correspondance. Mesuré dans Seq le 2026-09-15 à 22:01:15, sur
+une déconnexion réelle depuis un iPhone :
+
+```
+POST /api/v1/sync/logout — LogoutCleanupAsync
+  Email = ""            UserEmail = "unknown"
+  SessionsClosed = 0     ← six fois (l'ordre est diffusé aux réplicas)
+```
+
+**Le correctif de task-313 a rendu la requête silencieuse sans la rendre efficace.** Il a
+supprimé le 403 et le toast affiché pendant une déconnexion volontaire — ce qu'il visait —
+mais le pool IMAP reste ouvert, comme sur l'autre chemin.
+
+| Chemin | Ferme la session IMAP ? |
+|---|---|
+| Déconnexion ordinaire, messagerie ouverte | ✅ oui — `SessionsClosed=1` |
+| Détacher la courante, un repli existe | ❌ 403 `NotCompatible`, contrôleur jamais atteint |
+| Détacher la **dernière** (depuis task-313) | ❌ 200, mais `SessionsClosed=0` — **mesuré** |
+
+**Les deux chemins fautifs ont la même cause et le même remède** : on essaie de fermer une
+session quand on ne sait plus laquelle. Fermer **avant** de détacher les règle tous les
+deux d'un coup, puisqu'à cet instant la boîte est encore rattachée et l'adresse encore
+résolue.
 
 > **Ce n'est pas un défaut de sécurité.** La session IMAP orpheline appartient au
 > praticien lui-même, elle expire seule, et aucune donnée ne fuit. C'est un défaut de
@@ -90,9 +143,32 @@ tire un identifiant neuf **sans rien fermer**, et `clear()` purge l'état local.
 de suppression doit passer par là, ou par une variante explicite de `switchTo` qui sait que
 la sortante est **déjà fermée**.
 
-**Ce qu'il ne faut pas faire** : marquer `sync/logout` en `[MailboxNotRequired]`. La route
-saurait alors être appelée sans boîte résolue — donc sans savoir **quelle** session IMAP
-fermer. On déplacerait le défaut du front vers le backend.
+### L'attribut `[MailboxNotRequired]` — consigne révisée le 2026-09-16
+
+Cette US écrivait : *« Ce qu'il ne faut pas faire : marquer `sync/logout` en
+`[MailboxNotRequired]`. La route saurait alors être appelée sans boîte résolue — donc sans
+savoir quelle session IMAP fermer. On déplacerait le défaut du front vers le backend. »*
+
+**task-313 l'a fait quand même, et c'est mergé.** La consigne était juste, et la mesure lui
+a donné raison : `SessionsClosed = 0` est exactement le défaut déplacé vers le backend.
+Mais task-313 répondait à un autre problème, réel lui aussi — sans l'attribut, le praticien
+qui détache sa dernière messagerie voyait une **erreur 403 pendant une déconnexion
+volontaire**, et n'avait plus aucun chemin de retour vers le rattachement.
+
+**Les deux exigences se concilient, et c'est cette US qui les concilie :**
+
+- Une fois la fermeture déplacée **avant** le détachement, la session utile est fermée à un
+  instant où l'adresse **est** résolue — `SessionsClosed=1`.
+- Ce qui reste ensuite, c'est une déconnexion d'un compte qui n'a **plus aucune** messagerie.
+  Il n'y a alors rien à fermer : que la route aboutisse en no-op est correct, et l'attribut
+  ne fait qu'éviter un refus inutile.
+
+**L'attribut RESTE donc en place. Il cesse d'être un problème parce que la fermeture utile
+a déjà eu lieu ailleurs.** Ne pas le retirer — ce serait rouvrir le défaut de task-313
+sans refermer celui-ci.
+
+> **Conséquence sur le périmètre :** cette US reste **exclusivement front**. Aucun
+> changement backend n'est nécessaire, et l'attribut posé par task-313 n'est pas à toucher.
 
 ## Definition of Done
 
@@ -125,8 +201,14 @@ fermer. On déplacerait le défaut du front vers le backend.
 
 ### Ce qui ne doit pas bouger
 
-- [ ] `POST /api/v1/sync/logout` **reste** sans `[MailboxNotRequired]` — la route doit
-      continuer d'exiger une boîte résolue, sans quoi elle ne saurait pas laquelle fermer
+- [ ] `POST /api/v1/sync/logout` **conserve** le `[MailboxNotRequired]` posé par task-313 —
+      critère **inversé le 2026-09-16** : il exigeait l'inverse, avant que task-313 ne pose
+      l'attribut pour une autre raison, valable. Le retirer rouvrirait le 403 affiché
+      pendant la déconnexion de la dernière messagerie. Voir « L'attribut
+      `[MailboxNotRequired]` — consigne révisée »
+- [ ] **Le chemin de la DERNIÈRE messagerie ferme lui aussi la session** : la clôture part
+      avant `session.clear()`, donc tant que l'adresse est encore résolue. Vérifiable dans
+      Seq — `SessionsClosed=1` au lieu du `0` mesuré le 2026-09-15
 - [ ] Aucun changement backend. Le diff se limite aux trois fronts
 - [ ] La déconnexion (`MAIL_SESSION_CLOSER`, task-285) et la bascule ordinaire
       (`switchTo`, task-303 §D) sont **inchangées** : leurs tests existants restent verts
