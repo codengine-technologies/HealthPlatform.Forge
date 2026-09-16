@@ -441,3 +441,47 @@ chemin de **détachement** (`switchTo(fallback)` gagne son second argument), plu
 des formes de matchers NSubstitute côté Blazor. Ce sont des mises à jour de
 **signature** sur le chemin que cette US change délibérément, pas des
 assouplissements.
+
+## Merged
+
+Mergée le 2026-09-16 par l'humain (HAG, règle 10), après test de bout en bout.
+
+| Repo | PR | Commit de squash sur `develop` |
+|---|---|---|
+| `client-blazor` | #78 | `97a2e96` |
+| `client-mobile` | #74 | `9d93f99` |
+| `dtos-mss` | — | aucun commit : la US ne change aucun contrat |
+| `client-angular` | code-only | l'humain gère commit/push TFS |
+
+Branches distantes supprimées sur les trois repos ; les branches locales sont
+conservées.
+
+### La validation par la mesure
+
+Le chemin ordinaire a été vérifié dans Seq le 2026-09-16 à 07:45:51 :
+
+```
+POST /api/v1/sync/logout   200
+  Email = virginie.medecinrpps0062267@…
+  SessionsClosed = 1
+```
+
+À comparer au `SessionsClosed = 0` avec `Email = ""` mesuré la veille, qui avait
+motivé l'US. Le chemin « fermer avant détacher » n'a **pas** pu être observé de
+bout en bout côté `client-angular` : le serveur de développement servait un
+bundle antérieur aux modifications non committées, ce qui a été établi par
+comparaison — task-312 (committée) s'exécutait, task-310 (non committée) non.
+
+### Ce que le test humain a révélé en chemin
+
+Le détachement de la boîte courante a déclenché une **déconnexion complète**
+alors qu'une seconde messagerie existait. Vérification faite, c'est le
+comportement **correct** : les deux boîtes sont ancrées sur des identités PSC
+distinctes (RPPS `899700529417` et `899700622675`), la seconde n'était donc pas
+sélectionnable dans cette session. `survivors = []`.
+
+### Suite donnée
+
+`todo-task-314` — une messagerie détachée n'offre plus que « Rattacher » et
+affiche sa date de détachement. Elle dépend de cette US : elle touche les mêmes
+fichiers sur les trois fronts.
