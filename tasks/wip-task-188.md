@@ -272,3 +272,35 @@ entre instances relève du cycle de vie des sessions IMAP, hors scope
 - **Conventions** : `conventions/csharp.md` relu avant d'écrire ; aucune règle
   apprise enfreinte, aucune nouvelle entrée à créer à ce stade.
 - **Prochaine étape** : `/sonar task-188`
+
+### Passe qualité (`/simplify`) — appliquée
+
+Quatre relectures (reuse / simplification / efficacité / altitude). Appliqué :
+
+- **Reuse** : clé du verrou remontée dans `RedisKeys.Lock.BackgroundSync` (littéral
+  inchangé — le renommer ferait cesser de s'exclure deux instances de versions
+  différentes pendant un déploiement) ; un seul script Lua « comparer le détenteur,
+  puis agir » pour `ReleaseAsync` et `TryRenewAsync` ; `TestWait.UntilAsync` remplace
+  la 6ᵉ copie d'une boucle d'attente (dont une identique dans le même assembly, migrée) ;
+  `DeferredBackgroundTaskQueue` rejoint `EagerBackgroundTaskQueue`.
+- **Simplification** : `AdjustForegroundHolds(email, delta)` fusionne deux méthodes
+  jumelles ; une seule section critique par ordre (`ApplyPauseStateLocked` appelée
+  sous le verrou du mutateur) ; fabrique `CreateService` dans les tests du worker ;
+  `SyncLockKey`, `LocalSyncRuntime.Email` et un `<returns>` recopié retirés.
+- **Efficacité** : `TryRemove(KeyValuePair)` au lieu d'un cast `ICollection` ;
+  `RedisValue` construit depuis un `long` sans chaîne intermédiaire.
+- **Doc corrigée** : le garde-fou sur un intervalle de battement nul était présenté
+  comme « réservé aux tests ». C'en est un de **configuration** — `PeriodicTimer`
+  lève sur une telle valeur — et il passe en `Warning`.
+
+**Écarté délibérément, et pourquoi** :
+
+| Finding | Décision |
+|---|---|
+| **Supprimer le verrou distribué du worker** : `TryStartAsync` est déjà un `SET NX` + TTL et porte l'instance propriétaire, donc strictement meilleur mutex. Ferait disparaître `SyncRunOutcome`, `TryRenewAsync` et son script. | **Écarté ici.** Restructure le modèle de concurrence — hors d'une passe qualité, qui ne doit pas changer le comportement — et **contredit la DOD**, qui exige explicitement un test « un travail qui échoue à prendre le verrou distribué n'efface pas l'état ». À arbitrer par le PO : c'est la meilleure observation des quatre relectures et elle mérite sa propre US. |
+| Faire porter le bail par le gestionnaire (`await using var lease = …`) plutôt que par le worker | Même raison — dissout dans la précédente. |
+| `GetStatusAsync` : ne prendre du worker que la progression | Écarté : change le comportement observable et l'attente d'un test **existant** (`GetStatusAsync_WhenServiceReturnsStatus_ReturnsServiceStatus`), qu'on ne réécrit pas pour arranger un refactor. |
+| Supprimer `PauseApplied` au profit de `worker.IsPaused` | Écarté : rendrait l'assertion « un seul `PauseSync()` pour deux cessions » dépendante du comportement d'un substitut. Le champ reste, sa doc passe de 4 lignes à 1. |
+| Fusionner `PauseSyncAsync`/`ResumeSyncAsync`/branches distantes en une méthode paramétrée | Écarté : duplication de forme **préexistante**, et les quatre diffèrent par leur garde d'état. |
+
+- **Re-validation après la passe** : build 0 erreur, **4 493 tests verts, 0 échec**.
