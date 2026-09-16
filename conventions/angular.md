@@ -101,7 +101,17 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   **Modifier une signature, c'est modifier son JSDoc** — le lint ne distingue
   pas un bloc absent d'un bloc périmé, et un `@param` qui ne correspond plus au
   paramètre est un contresens, pas une omission.
+  **Récidive task-310 — la troisième, et le même geste.** Un paramètre optionnel
+  ajouté à `switchTo(mailbox, options?)` : le JSDoc existant n'a pas suivi, d'où
+  3 erreurs d'un coup (`@param mailbox`, `@param options.outgoingAlreadyClosed`,
+  `@returns`) puis 2 warnings `require-example`. **Le détail qui manquait à
+  cette fiche** : un paramètre objet exige un `@param` par **sous-propriété
+  documentée**, noté `@param options.maPropriete` — `@param options` seul ne
+  suffit pas, et c'est ce que la rédaction naturelle produit spontanément. Poser
+  la règle à l'écriture coûte trois lignes ; la découvrir au lint coûte un
+  aller-retour complet build + test.
 - **Origine** : task-304 (/lint-angular, 57 erreurs — 55 auto-fixées, 2
   `require-returns` + 23 squelettes creux repris manuellement) ;
-  task-308 (/review, 2 `require-param` sur signatures modifiées)
-- **Occurrences** : 2
+  task-308 (/review, 2 `require-param` sur signatures modifiées) ;
+  task-310 (/develop, 3 erreurs + 2 warnings sur un paramètre objet ajouté)
+- **Occurrences** : 3

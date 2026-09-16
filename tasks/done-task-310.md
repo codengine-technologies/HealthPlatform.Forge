@@ -282,3 +282,161 @@ sans refermer celui-ci.
   (task-285) ne bougent pas. Seul le chemin de **suppression** change d'ordre.
 - **Pas une correction backend.** Le serveur se comporte correctement : il refuse une
   requête portant une boîte détachée, et il a raison de le faire.
+
+## Branches
+
+Branche unique : `feat/task-310-fermer-session-avant-detachement`
+(créée depuis `origin/develop` le 2026-09-16).
+
+- `client-blazor` (pushed) — https://github.com/codengine-technologies/HealthPlatform.Client/tree/feat/task-310-fermer-session-avant-detachement
+- `client-mobile` (pushed) — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-310-fermer-session-avant-detachement
+- `dtos-mss` (pushed, auto-inclus car `client-blazor` est listé) — branche de
+  précaution : la US est exclusivement front et ne change **aucun** contrat.
+  Sans commit, aucune PR ne sera ouverte.
+- `client-angular` (code-only) — la forge écrit sur la branche actuellement
+  sortie dans `Client/Angular/`, soit `feature/nova-rewriting-mss` au moment du
+  `/start`. L'humain garde branche, commit, push et PR TFS.
+
+Pré-flight du 2026-09-16 : `api-mail`, `client-blazor`, `client-mobile`,
+`dtos-mss`, `sdk` sur `develop` et propres. Dépendances `task-303` et
+`task-304` archivées, donc mergées.
+
+**`api-mail` n'est pas listé et ne doit pas l'être** : la consigne révisée du
+2026-09-16 conclut que l'attribut `[MailboxNotRequired]` posé par task-313
+**reste en place**. Le diff est exclusivement front.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-310 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 37 s | — | — | — | — |
+| /develop | ok | 13 min 18 s | 1 (25 s) | 3 (45 s) | — | client-mobile 0B/1T, client-blazor 0B/1T, client-angular 1B/1T |
+| /lint-angular | ok | 2 min 16 s | 1 (20 s) | 1 (14 s) | — | 1 itération(s), client-angular 1B/1T |
+| /lint-mobile | ok | 29 s | — | — | — | 0 erreur des la baseline |
+| /verify-visual | skipped | 12 s | — | — | — | aucun Stitch design log (aucun template touche) + Tools/visual-verify absent |
+| /review | ok | 3 min 51 s | 3 (26 s) | 3 (33 s) | — | client-blazor 1B/1T, client-mobile 1B/1T, client-angular 1B/1T |
+| **Total cycle** | | **20 min 46 s** | **5 (1 min 12 s)** | **7 (1 min 33 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : lint ×2 (26 s)
+
+## Lint log
+
+`npx nx run-many -t lint --projects=tag:scope:mss` sur le working tree de
+`Client/Angular/front/` (code-only — aucune opération git sur ce repo).
+
+| | Erreurs | Warnings |
+|---|---|---|
+| Baseline (avant `/develop`) | 0 | 41 |
+| Après le code de la feature | **3** | 43 |
+| Final | **0** | **41** |
+
+Les 3 erreurs et les 2 warnings supplémentaires étaient **les miens**, tous sur
+le même bloc : un paramètre objet ajouté à `switchTo(mailbox, options?)` sans
+mettre à jour son JSDoc. Corrigés pendant `/develop` (les erreurs) et à
+l'itération 1 de cette étape (les `@example`).
+
+**Retour à la baseline exacte : le diff de cette US ne contribue aucun finding.**
+Les 41 warnings restants sont antérieurs et ne portent sur aucune ligne touchée.
+
+Itérations : 1. Filet anti-régression après l'itération — `mss-lib` 371 tests
+verts, build `weda2` OK.
+
+### Boucle d'auto-amélioration
+
+`conventions/angular.md` → `jsdoc/require-jsdoc` passe à **3 occurrences**. La
+fiche disait déjà « modifier une signature, c'est modifier son JSDoc » — la
+récidive confirme la règle plutôt qu'elle ne l'invalide. Le **détail nouveau**
+consigné : un paramètre objet exige un `@param` par sous-propriété
+(`@param options.maPropriete`), `@param options` seul ne suffisant pas.
+
+## Lint mobile log
+
+`npm run lint` (`ng lint`) sur `feat/task-310-fermer-session-avant-detachement` :
+**« All files pass linting »** — 0 erreur, 0 warning, dès la baseline.
+
+Itérations : 0. Aucun correctif, donc aucun commit et rien à pousser. Le filet
+anti-régression n'avait pas à être rejoué : le repo est vert depuis `/develop`
+(853 tests, build OK) et n'a pas bougé depuis.
+
+À noter, par contraste avec `client-angular` : la configuration ESLint de
+`client-mobile` ne porte pas les règles `jsdoc/*`. Le même diff — un paramètre
+objet ajouté à `switchTo` — y passe donc sans remarque, alors qu'il a produit
+3 erreurs côté Angular. C'est une divergence de configuration connue, déjà
+consignée dans `conventions/angular.md`, pas un oubli de cette étape.
+
+## Visual verify log
+
+**Skip best-effort.** Deux motifs, comme pour task-313 :
+
+1. **Aucun `## Stitch design log`** — condition de skip documentée. Le diff
+   mobile ne touche **aucun template** : `git diff --stat origin/develop...HEAD`
+   ne liste que quatre `.ts` (deux services, la page, son spec). Aucun `.html`,
+   aucun `.scss`.
+
+2. **L'outillage n'est pas installé sur ce poste** : `Tools/visual-verify/`
+   n'existe pas. Panne d'outillage = best-effort par la règle de l'étape.
+
+### Le risque de rendu est ici plus faible que sur task-313
+
+task-313 ajoutait une **injection** à la page (`inject(LogoutService)`), ce qui
+peut produire un écran blanc qu'aucun test unitaire ne voit. Cette US n'en
+ajoute aucune : elle ne fait qu'appeler une méthode de plus sur un service
+**déjà injecté**, et change la signature d'une autre. Une erreur y serait une
+erreur de compilation TypeScript, pas une panne d'injection au montage.
+
+Le parcours reste couvert par les étapes du `## Manual Test Plan`, qui ouvrent
+réellement l'écran et vérifient dans Seq que `SessionsClosed` passe à 1.
+
+Écrans capturés : 0.
+
+## PRs
+
+| Repo | PR | Label |
+|---|---|---|
+| `client-blazor` | https://github.com/codengine-technologies/HealthPlatform.Client/pull/78 | `awaiting-human-merge` |
+| `client-mobile` | https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/74 | `awaiting-human-merge` |
+| `dtos-mss` | **aucune PR** — 0 commit : la US ne change aucun contrat | — |
+
+**`client-angular` (code-only)** — l'humain gère commit/push TFS et l'ouverture
+de la PR. Branche au moment du cycle : `feature/nova-rewriting-mss`. Fichiers
+modifiés (hors `environment.ts`, qui appartiennent à l'humain) :
+
+```
+front/libs/mss/src/core/stores/mailbox-session.store.ts
+front/libs/mss/src/features/mailbox-management/mss-mailbox-management.component.ts
+front/libs/mss/src/features/mailbox-management/mss-mailbox-management.component.spec.ts
+```
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 10 fichiers relus, 0 blocage, 1 suggestion.
+
+| Front | Verdict |
+|---|---|
+| `client-blazor` · interface + service + page + 2 specs | ✅ ordre correct, drapeau explicite ; ⚠️ une suggestion (ci-dessous) |
+| `client-mobile` · 2 services + page + spec | ✅ |
+| `client-angular` · store + composant + spec | ✅ |
+
+### ⚠️ Suggestion non bloquante — Blazor
+
+`CloseCurrentSessionAsync(CancellationToken cancellationToken = default)`
+**n'utilise pas son jeton** : `CloseServerSessionAsync()` n'en accepte aucun.
+Un paramètre qui ne fait rien, sur une méthode d'interface toute neuve. Deux
+issues : le retirer, ou propager le jeton. Non corrigé ici — `/review` ne
+modifie pas de code. Sonar ne tournant pas sur `client-blazor`, rien ne
+l'attrapera automatiquement.
+
+### Le critère du DOD sur les assertions, précisément
+
+Le DOD exigeait que la déconnexion et la bascule ordinaire restent vertes
+« sans modification d'assertion ». **Tenu pour la bascule ordinaire** :
+`MailboxSessionServiceTests` et `MailboxSwitcherComponentTests` sont
+**intacts** — les paramètres optionnels préservent leurs appels existants.
+
+Des assertions **ont** été modifiées, et il faut le dire : une par front sur le
+chemin de **détachement** (`switchTo(fallback)` gagne son second argument), plus
+des formes de matchers NSubstitute côté Blazor. Ce sont des mises à jour de
+**signature** sur le chemin que cette US change délibérément, pas des
+assouplissements.
