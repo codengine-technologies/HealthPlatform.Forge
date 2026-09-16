@@ -2,10 +2,10 @@
 
 > **Statut** : 🟡 En cours
 > **Modèle** : task-driven
-> **Version** : 1.10
+> **Version** : 1.11
 > **Auteur** : PO forge
 > **Audience** : PO, médecin, direction produit, conformité — la vue ingénierie vit dans [E016-Changelogs.md](E016-Changelogs.md)
-> **Dernière mise à jour** : 2026-09-15
+> **Dernière mise à jour** : 2026-09-16
 
 ---
 
@@ -87,7 +87,7 @@ augmente.
 | **Plusieurs messageries, une seule connexion** | Retrouver, après une authentification unique, toutes les messageries qui relèvent de son identité professionnelle | task-303, task-304, task-308 | ✅ Livrée |
 | **Changer de messagerie en direct** | Cliquer sur son avatar et ouvrir une autre de ses messageries : l'écran se vide et se recharge sur la nouvelle boîte, sans reconnexion | task-304 | ✅ Livrée |
 | **Rattacher sa première messagerie** | Entrer son adresse dès le premier accès et travailler immédiatement, sans se déconnecter ni se reconnecter — l'opérateur de messagerie vérifie l'accès avant que le rattachement n'aboutisse | task-304, task-308 | ✅ Livrée |
-| **Gérer ses messageries** | Ajouter une messagerie, en détacher une, désigner celle qui s'ouvre par défaut, comprendre pourquoi l'une est indisponible — et, en détachant la **dernière**, être déconnecté proprement au lieu de rester enfermé | task-304, task-309, task-312, task-313 | 🟡 Complète en code — écran **atteignable** (task-309) et détachement de la dernière messagerie **sans impasse** sur les trois applications (task-312, task-313), en attente de merge |
+| **Gérer ses messageries** | Ajouter une messagerie, en détacher une, désigner celle qui s'ouvre par défaut, comprendre pourquoi l'une est indisponible — et, en détachant la **dernière**, être déconnecté proprement au lieu de rester enfermé | task-304, task-309, task-312, task-313, task-310 | 🟡 Complète en code — écran **atteignable** (task-309), détachement **sans impasse** (task-312, task-313) et **sans connexion laissée ouverte chez l'opérateur** (task-310), en attente de merge |
 | **Conservation appliquée à tous les comptes** | Être assuré que les durées d'effacement s'appliquent aussi aux comptes qui ne servent plus, y compris à ceux d'un praticien qui a quitté le service | task-299, task-312 | 🟡 Complète en code — l'effacement à échéance **s'exécute** depuis task-312, en attente de merge |
 | **Traçabilité des accès à l'échelle du parc** | Consulter l'historique de ses propres accès — et les trier — sans que la croissance du parc n'en dégrade la tenue | task-300, task-312 | 🟡 Complète en code — écriture **mergée**, retrait de l'historique hérité en attente de merge |
 | **Accès des équipes sécurité à la traçabilité** | *(indisponible — en attente d'arbitrage : voir §7)* | — | ⛔ Bloquée |
@@ -213,7 +213,7 @@ Deux points structurent ce parcours :
 | Plusieurs messageries, une seule connexion | ✅ Livrée | 100 % | task-303, task-304, task-308 (**mergées**) |
 | Changer de messagerie en direct | ✅ Livrée | 100 % | task-304 (**mergée**) |
 | Rattacher sa première messagerie | ✅ Livrée | 100 % | task-304, task-308 (**mergées**) |
-| Gérer ses messageries | 🟡 Complète en code | 90 % | task-304, task-312 (**mergées**) + task-309, task-313 (en attente de merge) |
+| Gérer ses messageries | 🟡 Complète en code | 90 % | task-304, task-312, task-313 (**mergées**) + task-309, task-310 (en attente de merge) |
 | Conservation appliquée à tous les comptes | ✅ Livrée | 100 % | task-299, task-312 (**mergées**) |
 | Traçabilité des accès à l'échelle du parc | ✅ Livrée | 100 % | task-300, task-312 (**mergées**) |
 | Accès des équipes sécurité à la traçabilité | ⛔ Bloquée | 0 % | — |
@@ -295,6 +295,28 @@ sélection validée par l'opérateur, et les écrans sur les trois applications.
 > une perte — auparavant l'opération était refusée et **aucune** trace n'était
 > écrite — mais le choix entre « ne pas tracer » et « tracer sous l'identité
 > professionnelle » relève de la conformité. Voir `questions/task-313.md`.
+
+> **Une connexion restait ouverte chez l'opérateur, pour une messagerie que le
+> praticien croyait avoir retirée.** Supprimer sa messagerie fermait bien la session
+> côté application, mais l'ordre de fermeture partait **après** le retrait — trop tard :
+> le serveur ne reconnaissait plus l'adresse et refusait l'ordre. La connexion
+> subsistait donc chez l'opérateur MSSanté jusqu'à sa propre expiration, et s'y lisait
+> comme une session que personne n'avait fermée.
+>
+> Aucune donnée n'était en jeu et rien ne cassait à l'écran : c'est une question de
+> **propreté d'exploitation**, pas de sécurité. **task-310** inverse l'ordre — on ferme
+> d'abord, on retire ensuite.
+>
+> **Deux cas étaient concernés, dont un que personne n'avait vu.** Outre le retrait
+> d'une messagerie parmi plusieurs, la déconnexion livrée le 2026-09-15 au retrait de
+> la **dernière** ne fermait rien non plus : l'ordre partait une fois la session déjà
+> vidée, donc sans indiquer quelle connexion fermer. Il aboutissait sans effet — ce que
+> les journaux techniques ont confirmé, une fermeture comptabilisée à **zéro**. La
+> correction couvre les deux.
+>
+> Vérification menée le 2026-09-16 à la demande de l'humain, qui doutait que le défaut
+> soit encore d'actualité — la déconnexion fermant normalement les connexions. Elle
+> l'était : ce chemin-là n'atteignait jamais le code qui ferme.
 
 > **Point resté ouvert.** Les **captures des écrans mobiles** ne sont toujours pas
 > produites : le harnais de vérification visuelle n'est pas versionné et reste absent du

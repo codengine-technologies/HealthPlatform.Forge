@@ -317,7 +317,8 @@ Pré-flight du 2026-09-16 : `api-mail`, `client-blazor`, `client-mobile`,
 | /lint-mobile | ok | 29 s | — | — | — | 0 erreur des la baseline |
 | /verify-visual | skipped | 12 s | — | — | — | aucun Stitch design log (aucun template touche) + Tools/visual-verify absent |
 | /review | ok | 3 min 51 s | 3 (26 s) | 3 (33 s) | — | client-blazor 1B/1T, client-mobile 1B/1T, client-angular 1B/1T |
-| **Total cycle** | | **20 min 46 s** | **5 (1 min 12 s)** | **7 (1 min 33 s)** | **0 (0.0 s)** | |
+| /tech-writer | ok | 1 min 16 s | — | — | — | — |
+| **Total cycle** | | **22 min 03 s** | **5 (1 min 12 s)** | **7 (1 min 33 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×2 (26 s)
 

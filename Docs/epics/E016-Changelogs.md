@@ -12,6 +12,144 @@ entrée existante n'est jamais réécrite.
 
 ## Historique détaillé des changelogs
 
+### v1.11 — task-310 : la session de messagerie se ferme AVANT le détachement (`client-angular`, `client-blazor`, `client-mobile`)
+
+> PRs : [client-blazor #78](https://github.com/codengine-technologies/HealthPlatform.Client/pull/78),
+> [client-mobile #74](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/74).
+> `client-angular` en code-only — l'humain commite et ouvre la PR TFS.
+
+#### Ce que l'US ferme
+
+L'ordre était inversé : la clôture de session partait **après** le détachement,
+donc avec l'adresse d'une boîte que le registre venait de passer en `Detached`.
+Le middleware la résout, la juge non sélectionnable, et répond `NotCompatible` —
+un **403 qui n'atteint jamais le contrôleur**. `CleanupUserAsync` n'était donc
+jamais appelé, et le **pool IMAP restait connecté chez l'opérateur MSSanté**
+jusqu'à sa propre expiration.
+
+Ce n'est pas un défaut de sécurité : la session orpheline appartient au
+praticien, elle expire seule, aucune donnée ne fuit. C'est un défaut de
+**propreté d'exploitation** — une connexion consommée chez l'opérateur, et une
+session qui se lit dans ses journaux comme n'ayant jamais été fermée.
+
+#### Deux chemins fautifs, et le second a été MESURÉ
+
+La US en décrivait un. Il y en avait deux au moment de l'implémenter.
+
+| Chemin | Avant | Après |
+|---|---|---|
+| Déconnexion ordinaire, messagerie ouverte | ✅ ferme | inchangé |
+| Détacher la courante, un repli existe | ❌ 403 `NotCompatible` | ✅ ferme |
+| Détacher la **dernière** (depuis task-312/313) | ❌ 200 mais `SessionsClosed=0` | ✅ ferme |
+
+**Le troisième n'existait pas à la rédaction.** La déconnexion complète livrée
+par task-312/313 émettait sa clôture après `session.clear()`, donc **sans
+adresse du tout** : la requête aboutissait en 200 et ne fermait rien,
+`CleanupUserAsync` n'utilisant l'adresse que comme clé de recherche. Mesuré dans
+Seq le 2026-09-15 à 22:01:15, sur une déconnexion réelle :
+
+```
+POST /api/v1/sync/logout — LogoutCleanupAsync
+  Email = ""            UserEmail = "unknown"
+  SessionsClosed = 0     ← six fois (l'ordre est diffusé aux réplicas)
+```
+
+**task-313 avait rendu la requête silencieuse sans la rendre efficace** : elle
+avait supprimé le 403 et le toast affiché pendant une déconnexion volontaire —
+ce qu'elle visait — mais le pool restait ouvert. Les deux chemins ont la même
+cause (on ferme quand on ne sait plus quoi) et le même remède.
+
+#### La prémisse de la US avait péri, la conclusion non
+
+Le task file affirmait que `POST /sync/logout` ne porte pas
+`[MailboxNotRequired]`. Faux depuis task-313, qui l'a posé. Mais l'attribut
+n'exempte **qu'une seule** issue de sélection :
+
+```csharp
+if (!mailboxRequired && selection.Outcome == MailboxSelectionOutcome.MailboxRequired)
+{
+    return false;   // seule MailboxRequired passe
+}
+// NotAttached, NotCompatible, PscIdentityConflict → 403
+```
+
+Une boîte détachée rend `NotCompatible`. Elle reste donc refusée, attribut ou
+pas — le défaut décrit était intact. Vérification menée le 2026-09-16 à la
+demande de l'humain, qui doutait de l'actualité de la US.
+
+#### Une consigne de la US, révisée plutôt qu'appliquée
+
+Le task file **interdisait** de poser `[MailboxNotRequired]` sur cette route :
+*« on déplacerait le défaut du front vers le backend »*. task-313 l'a fait quand
+même. **La consigne était juste, et la mesure lui a donné raison** —
+`SessionsClosed = 0` est exactement le défaut déplacé.
+
+Mais task-313 répondait à un problème réel : sans l'attribut, le praticien qui
+détachait sa dernière messagerie voyait une **erreur 403 pendant une déconnexion
+volontaire**, sans chemin de retour vers le rattachement.
+
+**Les deux exigences se concilient, et c'est cette US qui les concilie.** Une
+fois la fermeture déplacée en amont, la session utile est fermée à un instant où
+l'adresse est résolue ; ce qui reste ensuite est une déconnexion d'un compte
+sans aucune messagerie — il n'y a rien à fermer, et l'attribut ne fait qu'éviter
+un refus inutile. **Il reste donc en place**, et le critère du DOD qui exigeait
+son absence a été inversé.
+
+#### Le piège que la US avait anticipé
+
+`switchTo` ferme **lui-même** la session sortante. L'appeler après coup
+rejouerait la clôture sur une boîte désormais détachée — le défaut corrigé, une
+seconde fois et en silence. D'où un drapeau explicite plutôt qu'une seconde
+implémentation de la bascule : `outgoingAlreadyClosed` sur les trois fronts, et
+`closeMailSession: false` pour la déconnexion mobile.
+
+#### Les tests mesurent un ORDRE
+
+Un test qui vérifierait seulement que les deux appels ont eu lieu passerait
+**aussi sur le code défectueux**. D'où un journal d'appels côté Angular et
+mobile, `Received.InOrder` côté Blazor. Tous vérifiés **ROUGE avant
+correction**.
+
+La moitié des tests écrits fige ce qui ne doit **pas** changer : détacher une
+boîte non courante n'émet aucune fermeture, et la fermeture n'est émise qu'une
+fois quand un repli existe.
+
+#### Qualité
+
+`/sonar` skippé — `api-mail` non touché, le diff est exclusivement front.
+
+| Repo | Tests | Lint |
+|---|---|---|
+| `client-blazor` | 249 (+4) | — |
+| `client-mobile` | 853 (+4) | « All files pass linting » |
+| `client-angular` | `mss-lib` 371 (+4), `weda2` 2 573 | 0 erreur, 41 warnings — **baseline exacte** |
+
+Coût du cycle : **20 min 46 s** mesurées, 5 builds, 7 suites.
+
+**Boucle d'auto-amélioration** — `conventions/angular.md`, `jsdoc/require-jsdoc`
+passe à **3 occurrences**. La fiche disait déjà « modifier une signature, c'est
+modifier son JSDoc » ; la récidive la confirme. Détail nouveau consigné : un
+paramètre objet exige un `@param` par **sous-propriété**
+(`@param options.maPropriete`), `@param options` seul ne suffisant pas.
+
+#### Limites assumées
+
+- **Une suggestion non bloquante, Blazor** : `CloseCurrentSessionAsync` prend un
+  `CancellationToken` qu'elle **n'utilise pas** — `CloseServerSessionAsync()`
+  n'en accepte aucun. Paramètre inerte sur une méthode d'interface neuve. Non
+  corrigée : `/review` ne modifie pas de code, et Sonar ne tourne pas sur
+  `client-blazor`.
+- **Un critère du DOD, partiellement tenu** : il exigeait que la déconnexion et
+  la bascule ordinaire restent vertes « sans modification d'assertion ». Tenu
+  **pour la bascule ordinaire** (`MailboxSessionServiceTests`,
+  `MailboxSwitcherComponentTests` intacts). Des assertions ont été modifiées sur
+  le chemin de **détachement** — mises à jour de signature, pas
+  d'assouplissement.
+- **Vérification visuelle non produite** : aucun template touché, et le harnais
+  reste absent du poste.
+
+---
+
 ### v1.10 — task-313 : détacher sa dernière messagerie déconnecte, sur les trois fronts (`client-blazor`, `client-mobile`, `api-mail`)
 
 > Portage sur Blazor et mobile du correctif livré sur Angular par task-312,
