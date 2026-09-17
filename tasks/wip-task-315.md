@@ -384,7 +384,10 @@ tranche** : au banc, l'API annonçait des succès pendant que ce compte restait 
 | /start | ok | 1 min 52 s | — | — | — | — |
 | /develop | ok | 31 min 49 s | 1 (26 s) | 7 (5 min 40 s) | — | api-mail 0B/3T, client-blazor 0B/1T, client-mobile 0B/2T, client-angular 1B/1T |
 | /sonar | ok | 7 min 38 s | — | — | 1 (4 min 40 s) | — |
-| **Total cycle** | | **41 min 19 s** | **1 (26 s)** | **7 (5 min 40 s)** | **1 (4 min 40 s)** | |
+| /lint-angular | ok | 3 min 11 s | 1 (21 s) | 1 (13 s) | — | 1 itération(s), client-angular 1B/1T |
+| **Total cycle** | | **44 min 30 s** | **2 (48 s)** | **8 (5 min 54 s)** | **1 (4 min 40 s)** | |
+
+Autres commandes mesurées : lint ×1 (12 s)
 
 ## Develop log
 
@@ -496,3 +499,42 @@ revus manuellement par un humain** et ne sont pas une cible `/sonar` : il est
 signalé ici pour arbitrage, pas corrigé d'office.
 
 Les 5 suites restent vertes sous configuration Release : 183 / 2 488 / 492 / 837 / 507.
+
+## Lint log — `client-angular`
+
+Mode A (chaîné), scope `tag:scope:mss` (projets `mss` + `mss-lib`), base
+`origin/next`.
+
+| | Erreurs | Warnings |
+|---|---|---|
+| Baseline | **28** | 41 |
+| Final | **0** | 41 |
+
+**Une seule itération, et un seul fichier concerné — le mien.** Les 28 erreurs
+étaient toutes `prettier/prettier` « Insert tab » sur
+`mail-list.component.ts`, lignes 243-270 : en imbriquant le corps du `subscribe`
+dans `next: () => {`, je n'avais ré-indenté que les trois premières lignes.
+
+> ⚠️ **L'auto-fixer a été lancé sur ce seul fichier**, et non sur le scope MSS
+> entier comme le ferait le playbook. Raison : l'humain a **11 fichiers modifiés
+> non commités** dans `Client/Angular/` (travail en cours sur
+> `feature/nova-rewriting-mss`), et un `--fix` large les aurait réécrits au
+> passage. Le résultat est le même — 0 erreur sur le scope — sans toucher à ce
+> qui ne m'appartient pas.
+
+Les **41 warnings restants sont préexistants** et hors périmètre : `max-lines`
+(fichiers > 500 lignes), `jsdoc/require-example`, `complexity` sur
+`classifyDocument`. Best-effort : acceptés, non bloquants.
+
+Re-validation après auto-fix : **380 tests verts** (46 fichiers), `nx build mss`
+vert.
+
+**Aucune opération git sur `client-angular`** — mode code-only. Les fichiers de
+task-315 restent modifiés non commités, mêlés au travail en cours de l'humain,
+qui garde branche, commit, push TFS et ouverture de PR.
+
+### Conventions apprises
+
+Aucune entrée ajoutée à `conventions/angular.md` : les 28 erreurs ont été
+corrigées par **l'auto-fixer**, et le protocole ne comptabilise que les règles
+corrigées **manuellement** (les fixes de l'auto-fixer sont gratuits).
