@@ -103,12 +103,15 @@ en C# 12 : deux spreads valent mieux qu'un `Concat`.
 
 ## CA1859 — type concret plutôt qu'interface pour un helper local
 
-**Occurrences : 3** (task-203, task-289, task-299 — troisième récidive. Variante
-task-299 : une méthode privée `async`-sans-`await` qui **rendait directement** la
-tâche concrète d'un appelé (`Task<bool>` du cache) sous un type déclaré `Task`.
-La consigne vaut donc aussi pour le **relais d'une tâche** : soit on déclare le
-type concret, soit on `await` — mais on ne masque pas un `Task<T>` derrière un
-`Task`.)
+**Occurrences : 4** (task-203, task-289, task-299, task-188 — quatrième récidive.
+Variante task-299 : une méthode privée `async`-sans-`await` qui **rendait
+directement** la tâche concrète d'un appelé (`Task<bool>` du cache) sous un type
+déclaré `Task`. La consigne vaut donc aussi pour le **relais d'une tâche** : soit
+on déclare le type concret, soit on `await` — mais on ne masque pas un `Task<T>`
+derrière un `Task`. Variante task-188, **dans un test** : une variable locale
+typée par l'interface pour *documenter* que le conteneur sert ce contrat. Le
+commentaire porte cette intention aussi bien, et gratuitement — la règle frappe
+les locales de test exactement comme celles de production.)
 
 **Occurrences (historique) : 2** (task-203, task-289 — récidive sur du code frais, et
 c'est la **passe qualité `/simplify` elle-même** qui l'a introduite : une revue
@@ -235,8 +238,11 @@ dans `string.Equals`, mais `StringComparer` dans `Contains`.
 
 ## S125 — une prose qui « ressemble à du code » est signalée comme code commenté
 
-**Occurrences : 2** (task-184, task-292 — récidive sur code frais : un commentaire DI
-de trois lignes avec une parenthèse fermante puis « : » en milieu de phrase)
+**Occurrences : 3** (task-184, task-292, task-188 — troisième récidive sur code
+frais. Variante task-188 : une **liste à puces** `//   • …` dans un commentaire
+d'intention, dont chaque item se terminait par `;` et portait des identifiants
+entre accents graves. La puce, l'indentation et le point-virgule réunis suffisent
+— la règle n'a pas besoin d'un vrai fragment de C#.)
 
 Un commentaire d'intention parfaitement légitime a été relevé comme du code mis
 en commentaire, uniquement à cause de sa **ponctuation** : un point-virgule en
@@ -252,10 +258,10 @@ fin de proposition, au milieu d'une phrase anglaise.
 // only what reaches a sink needs masking.
 ```
 
-**Consigne** : dans un commentaire, éviter le point-virgule en fin de ligne et
-les fins de ligne en `)` ou `}`. Écrire des phrases. Le coût est nul et cela
-évite une issue qu'on est ensuite tenté d'« accepter », ce qui use la crédibilité
-des exemptions.
+**Consigne** : dans un commentaire, éviter le point-virgule en fin de ligne, les
+fins de ligne en `)` ou `}`, **et les listes à puces indentées**. Écrire des
+phrases. Le coût est nul et cela évite une issue qu'on est ensuite tenté
+d'« accepter », ce qui use la crédibilité des exemptions.
 
 ---
 
@@ -520,3 +526,66 @@ Pour mesurer la portée réelle avant de corriger :
 ```bash
 dotnet format style {projet}.csproj --verify-no-changes --diagnostics IDE1006
 ```
+
+---
+
+## S138 — une méthode de plus de 80 lignes doit être découpée
+
+**Occurrences : 1** (task-188)
+
+Le piège n'est pas la méthode « fourre-tout » : c'est la méthode **qui enfile
+trois temps distincts** sans que rien ne les sépare. Dans `StartSyncAsync`, la
+réservation de la boîte (locale puis inter-instances), le corps du travail mis
+en file, et la clôture du run cohabitaient dans un seul corps de 94 lignes. Le
+seuil n'a fait que signaler ce que la lecture montrait déjà : trois
+responsabilités, un seul nom.
+
+```csharp
+// ❌ AVANT — un seul corps : garde de préférence, réservation locale,
+//            créneau distribué, closure de travail, clôture dans le finally
+public async Task StartSyncAsync(UserContextInfo userContext, …)
+{
+    …                                   // 94 lignes
+}
+
+// ✅ APRÈS — chaque temps porte un nom, et devient testable seul
+var runtime = await TryReserveRunAsync(userEmail, cancellationToken);
+if (runtime is null) return;
+…
+finally { await CompleteRunAsync(userEmail, runtime, outcome); }
+```
+
+**Consigne** : quand une méthode orchestre une closure d'arrière-plan, sortir
+d'emblée **ce qui précède** la mise en file (acquisition, garde, réservation) et
+**ce qui suit** l'exécution (clôture, libération). Le corps restant est alors le
+seul vrai sujet de la méthode. Ne pas attendre que Sonar compte les lignes : le
+découpage d'après-coup oblige à re-valider un code déjà vert.
+
+---
+
+## S103 — une ligne de plus de 150 caractères doit être scindée
+
+**Occurrences : 1** (task-188)
+
+Presque toujours un **gabarit de journalisation** : le message structuré grossit
+naturellement (préfixe du composant, deux ou trois placeholders, puis la phrase
+qui explique la conséquence pour l'exploitant), et il passe les 150 caractères
+sans qu'on y prenne garde.
+
+```csharp
+// ❌ AVANT — 167 caractères
+_logger.LogError(ex, "[X] Failed to broadcast the close order for {Email} Session={ClientSessionId} — other instances will fall back on session expiry", …);
+
+// ✅ APRÈS — deux littéraux concaténés : le gabarit reste constant à la
+//            compilation, donc la journalisation structurée est intacte
+_logger.LogError(
+    ex,
+    "[X] Failed to broadcast the close order for {Email} "
+    + "Session={ClientSessionId} — other instances will fall back on session expiry",
+    …);
+```
+
+**Consigne** : scinder par **concaténation de littéraux** (`"…" + "…"`), jamais
+par interpolation ni par `string.Format` — un gabarit qui cesse d'être une
+constante fait perdre le nom des propriétés structurées et déclenche à son tour
+les règles de journalisation. Découper au mot, pas au milieu d'un placeholder.
