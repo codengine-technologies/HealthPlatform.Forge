@@ -1357,3 +1357,41 @@
 {"ts":"2026-09-16T12:45:09+02:00","run_id":"-","type":"cmd","task":"task-188","step":"develop","repo":"api-mail","kind":"build","label":"","cwd":"Api/Mail","cmd":"dotnet build HealthPlatform.Api.Mail.sln","duration_ms":16686,"exit_code":0}
 {"ts":"2026-09-16T12:47:55+02:00","run_id":"-","type":"cmd","task":"task-188","step":"develop","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln --no-build","duration_ms":151520,"exit_code":0}
 {"ts":"2026-09-16T12:49:50+02:00","run_id":"-","type":"step","task":"task-188","step":"develop","status":"ok","note":"","iterations":null,"duration_ms":2868123}
+{"ts":"2026-09-17T08:59:15+02:00","run_id":"-","type":"step_start","task":"task-315","step":"start"}
+{"ts":"2026-09-17T09:01:07+02:00","run_id":"-","type":"step","task":"task-315","step":"start","status":"ok","note":"","iterations":null,"duration_ms":112006}
+{"ts":"2026-09-17T09:01:21+02:00","run_id":"-","type":"step_start","task":"task-315","step":"develop"}
+{"ts":"2026-09-17T09:12:08+02:00","run_id":"-","type":"cmd","task":"task-315","step":"develop","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln --no-build","duration_ms":99171,"exit_code":1}
+{"ts":"2026-09-17T09:16:02+02:00","run_id":"-","type":"cmd","task":"task-315","step":"develop","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln --no-build","duration_ms":92682,"exit_code":1}
+{"ts":"2026-09-17T09:18:20+02:00","run_id":"-","type":"cmd","task":"task-315","step":"develop","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln --no-build","duration_ms":92898,"exit_code":1}
+{"ts":"2026-09-17T09:21:58+02:00","run_id":"-","type":"cmd","task":"task-315","step":"develop","repo":"client-blazor","kind":"test","label":"","cwd":"Client/Blazor","cmd":"dotnet test HealthPlatform.Client.sln --no-build","duration_ms":6802,"exit_code":0}
+{"ts":"2026-09-17T09:25:35+02:00","run_id":"-","type":"cmd","task":"task-315","step":"develop","repo":"client-mobile","kind":"test","label":"","cwd":"Client/Mobile","cmd":"npm test -- --watch=false --browsers=ChromeHeadless","duration_ms":9723,"exit_code":1}
+{"ts":"2026-09-17T09:25:57+02:00","run_id":"-","type":"cmd","task":"task-315","step":"develop","repo":"client-mobile","kind":"test","label":"","cwd":"Client/Mobile","cmd":"npm test -- --watch=false --browsers=ChromeHeadless","duration_ms":15279,"exit_code":0}
+{"ts":"2026-09-17T09:28:14+02:00","run_id":"-","type":"cmd","task":"task-315","step":"develop","repo":"client-angular","kind":"test","label":"","cwd":"Client/Angular/front","cmd":"npx nx test mss --watch=false","duration_ms":23935,"exit_code":0}
+{"ts":"2026-09-17T09:30:14+02:00","run_id":"-","type":"cmd","task":"task-315","step":"develop","repo":"client-angular","kind":"build","label":"","cwd":"Client/Angular/front","cmd":"npx nx build mss","duration_ms":26597,"exit_code":1}
+{"ts":"2026-09-17T09:33:10+02:00","run_id":"-","type":"step","task":"task-315","step":"develop","status":"ok","note":"","iterations":null,"duration_ms":1909260}
+{"ts":"2026-09-17T09:33:23+02:00","run_id":"-","type":"step_start","task":"task-315","step":"sonar"}
+{"ts":"2026-09-17T09:39:06+02:00","run_id":"-","type":"cmd","task":"task-315","step":"sonar","repo":"api-mail","kind":"scan","label":"","cwd":"Api/Mail","cmd":"bash C:/Users/pasca/AppData/Local/Temp/claude/D--TechWatch-HealthPlatform/c30f1074-1f9c-4ebc-8c1d-76a53788966c/scratchpad/sonar-scan.sh","duration_ms":280387,"exit_code":0}
+{"ts":"2026-09-17T09:41:01+02:00","run_id":"-","type":"step","task":"task-315","step":"sonar","status":"ok","note":"","iterations":0,"duration_ms":458036}
+{"ts":"2026-09-17T09:41:18+02:00","run_id":"-","type":"step_start","task":"task-315","step":"lint-angular"}
+{"ts":"2026-09-17T09:43:21+02:00","run_id":"-","type":"cmd","task":"task-315","step":"lint-angular","repo":"client-angular","kind":"lint","label":"","cwd":"Client/Angular/front","cmd":"npx eslint libs/mss/src/features/mail/components/mail-list/mail-list.component.ts --fix","duration_ms":12511,"exit_code":0}
+{"ts":"2026-09-17T09:43:49+02:00","run_id":"-","type":"cmd","task":"task-315","step":"lint-angular","repo":"client-angular","kind":"test","label":"","cwd":"Client/Angular/front","cmd":"npx nx test mss-lib --watch=false --skip-nx-cache","duration_ms":13619,"exit_code":0}
+{"ts":"2026-09-17T09:44:12+02:00","run_id":"-","type":"cmd","task":"task-315","step":"lint-angular","repo":"client-angular","kind":"build","label":"","cwd":"Client/Angular/front","cmd":"npx nx build mss","duration_ms":21847,"exit_code":1}
+{"ts":"2026-09-17T09:44:29+02:00","run_id":"-","type":"step","task":"task-315","step":"lint-angular","status":"ok","note":"","iterations":1,"duration_ms":191205}
+{"ts":"2026-09-17T09:44:38+02:00","run_id":"-","type":"step_start","task":"task-315","step":"lint-mobile"}
+{"ts":"2026-09-17T09:44:55+02:00","run_id":"-","type":"cmd","task":"task-315","step":"lint-mobile","repo":"client-mobile","kind":"lint","label":"","cwd":"Client/Mobile","cmd":"npm run lint","duration_ms":16414,"exit_code":0}
+{"ts":"2026-09-17T09:45:04+02:00","run_id":"-","type":"step","task":"task-315","step":"lint-mobile","status":"ok","note":"","iterations":0,"duration_ms":25780}
+{"ts":"2026-09-17T09:45:22+02:00","run_id":"-","type":"step_start","task":"task-315","step":"verify-visual"}
+{"ts":"2026-09-17T09:45:41+02:00","run_id":"-","type":"step","task":"task-315","step":"verify-visual","status":"skipped","note":"Tools/visual-verify absent du workspace ; aucun Stitch design log","iterations":null,"duration_ms":18243}
+{"ts":"2026-09-17T09:45:54+02:00","run_id":"-","type":"step_start","task":"task-315","step":"review"}
+{"ts":"2026-09-17T09:46:15+02:00","run_id":"-","type":"cmd","task":"task-315","step":"review","repo":"api-mail","kind":"build","label":"","cwd":"Api/Mail","cmd":"dotnet build HealthPlatform.Api.Mail.sln","duration_ms":5769,"exit_code":0}
+{"ts":"2026-09-17T09:47:49+02:00","run_id":"-","type":"cmd","task":"task-315","step":"review","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln --no-build","duration_ms":93097,"exit_code":0}
+{"ts":"2026-09-17T09:48:01+02:00","run_id":"-","type":"cmd","task":"task-315","step":"review","repo":"client-blazor","kind":"build","label":"","cwd":"Client/Blazor","cmd":"dotnet build HealthPlatform.Client.sln","duration_ms":6274,"exit_code":0}
+{"ts":"2026-09-17T09:48:06+02:00","run_id":"-","type":"cmd","task":"task-315","step":"review","repo":"client-blazor","kind":"test","label":"","cwd":"Client/Blazor","cmd":"dotnet test HealthPlatform.Client.sln --no-build","duration_ms":5043,"exit_code":0}
+{"ts":"2026-09-17T09:48:16+02:00","run_id":"-","type":"cmd","task":"task-315","step":"review","repo":"client-mobile","kind":"build","label":"","cwd":"Client/Mobile","cmd":"npm run build","duration_ms":7938,"exit_code":0}
+{"ts":"2026-09-17T09:48:35+02:00","run_id":"-","type":"cmd","task":"task-315","step":"review","repo":"client-mobile","kind":"test","label":"","cwd":"Client/Mobile","cmd":"npm test -- --watch=false --browsers=ChromeHeadless","duration_ms":13618,"exit_code":0}
+{"ts":"2026-09-17T09:48:50+02:00","run_id":"-","type":"cmd","task":"task-315","step":"review","repo":"client-angular","kind":"test","label":"","cwd":"Client/Angular/front","cmd":"npx nx test mss-lib --watch=false --skip-nx-cache","duration_ms":13348,"exit_code":0}
+{"ts":"2026-09-17T09:51:17+02:00","run_id":"-","type":"step","task":"task-315","step":"review","status":"ok","note":"","iterations":null,"duration_ms":322732}
+{"ts":"2026-09-17T09:51:25+02:00","run_id":"-","type":"step_start","task":"task-315","step":"tech-writer"}
+{"ts":"2026-09-17T09:54:47+02:00","run_id":"-","type":"step","task":"task-315","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":201587}
+{"ts":"2026-09-17T11:38:39+02:00","run_id":"-","type":"step_start","task":"task-315","step":"develop"}
+{"ts":"2026-09-17T11:38:40+02:00","run_id":"-","type":"cmd","task":"task-315","step":"develop","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test Api/Mail/HealthPlatform.Api.Mail.sln --no-build","duration_ms":203,"exit_code":1}
