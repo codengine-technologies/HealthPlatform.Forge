@@ -208,9 +208,8 @@ par épisode d'indisponibilité, pas une par lot), et **disparaît au rétabliss
       usage — inversion exacte du défaut mesuré
 - [ ] Compteurs exposés **et exportés** (`AddMeter` vérifié — cf. F-297-M) : reconnexions
       tentées / échouées, sessions évincées, messages non joignables, reprises en file
-- [ ] Test unitaire : `CanAccessImap` rend `false` quand `sessions_connected == 0` et
-      `sessions_active > 0` ; `true` en régime nominal
-- [ ] Test d'intégration : `connection/status` reflète l'état des connexions, pas le mode
+- [x] ~~Test unitaire : `CanAccessImap` rend `false` quand…~~ — **RETIRÉ le 2026-09-17**, infirmé par le tir de vérification (voir « Le point 3 retiré »)
+- [x] ~~Test d'intégration : `connection/status` reflète l'état des connexions~~ — **RETIRÉ le 2026-09-17**, même raison
 - [ ] Aucune donnée de santé en clair dans les logs ajoutés
 - [ ] Évènements PGSSI-S journalisés : indisponibilité constatée, reconnexion, éviction
 
@@ -627,6 +626,82 @@ décrivent le défaut.
 
 **Suite** : 513 tests d'intégration (491 → 497 passés, 16 skipped), **4 513 sur
 la solution**, 0 échec.
+
+
+## Le point 3 retiré — tir de vérification du 2026-09-17
+
+Arbitrage humain du 2026-09-17 : la sonde de santé sort du périmètre de
+task-315. Les points 1 (503) et 2 (éviction / rétablissement) restent, **prouvés
+au banc**.
+
+### Le tir
+
+Coupure **provoquée** du serveur de messagerie via l'API d'administration
+Toxiproxy (`POST /proxies/dovecot-imap {"enabled":false}`), sous ~600 sessions,
+sur la branche de la task. Le proxy est coupé, pas le serveur : Dovecot reste
+vivant, maildir et UID intacts. Rétablissement armé **avant** la coupure et
+indépendamment d'elle (filet à T+15 min, plus un `trap`).
+
+| Instant | Proxy | Messages analysés | Sessions actives / connectées |
+|---|---|---|---|
+| 16:14:08 | ouvert | 20 270 | 616 / 616 |
+| **16:14:25** | **coupé** | — | — |
+| 16:14:39 | coupé | 21 584 | 617 / **310** |
+| 16:15:09 | coupé | **21 584** (gelé) | 617 / **0** |
+| 16:15:39 | coupé | **21 584** | **0 / 0** ← éviction |
+| **16:19:25** | **rétabli** | — | — |
+| 16:19:33 | ouvert | **21 589** | 1 / 1 |
+
+### ✅ Point 1 — le 503, prouvé en conditions réelles
+
+Pendant la coupure, sur une boîte vierge :
+
+```
+HTTP 503 en 2,21 s — application/problem+json
+"La messagerie est momentanément indisponible : 5 message(s) sur 5 n'ont pas pu
+ être analysés et restent à traiter. Ils le seront dès son rétablissement."
+```
+
+Ni hôte, ni dossier, ni UID. **Avant task-315, cet appel rendait 200.**
+
+### ✅ Point 2 — l'éviction et la reprise, prouvées à l'échelle
+
+**617 sessions mortes évincées en une minute**, sans intervention. Puis, après
+rétablissement, **le même appel, la même boîte, la même session, sans redémarrer
+quoi que ce soit** : `HTTP 200`, `analysed: 5`, compteur 21 584 → 21 589. Le
+2026-09-16, ce même compteur est resté figé **80 minutes** et n'est jamais
+reparti.
+
+### ❌ Point 3 — la sonde ne fonctionne pas, et c'est structurel
+
+`canAccessImap` est resté **`true` pendant toute la panne**.
+
+**Cause établie par l'expérience.** Une tentative d'analyse pendant la coupure
+laisse `active = 0` : quand la connexion ne peut pas s'établir, **aucune session
+n'est retenue**. Donc `DisconnectedSessionCount = 0`, et la condition
+`Disconnected > 0 && Connected == 0` n'est **jamais** vraie.
+
+**Et le défaut n'est pas un réglage.** L'éviction des sessions mortes — celle du
+point 2, qui fonctionne — **supprime exactement la preuve** que la sonde
+cherchait. Les deux ne peuvent pas être vraies en même temps.
+
+> ⚠️ **Les six tests qui gardaient ce comportement passaient tous.** Ils
+> substituaient `DisconnectedSessionCount` à 2 200, une valeur que la réalité ne
+> produit jamais dans ce scénario. Ils validaient le **modèle**, jamais le
+> **monde**. C'est la leçon principale de ce cycle : un test qui stube la
+> grandeur dont dépend tout le raisonnement ne peut pas l'infirmer.
+
+**Retiré** : la condition dans `ConnectionModeService` (retour à
+`CanAccessImap => IsOnlineMode`, aucune régression), 4 tests unitaires, 2 tests
+d'intégration. `DisconnectedSessionCount` est **conservé** — il sert l'invariant
+du balayage, qui lui est prouvé.
+
+Le signal correct — **l'issue des tentatives récentes** (dernier contact IMAP
+réussi, échecs consécutifs) et non l'inventaire des sessions — demande
+d'instrumenter le chemin de connexion, qui n'a aujourd'hui aucun point de passage
+unique. Objet d'une **US de suivi**.
+
+**Validation après retrait** : 4 507 tests, 0 échec (−4 unitaires, −2 d'intégration).
 
 ## PRs
 
