@@ -1550,6 +1550,68 @@ chaque contenu proposé au cache est publiée, ainsi que le nombre de refus. C'e
 ce qui manquait pour diagnostiquer la panne autrement qu'en lisant le journal du
 serveur après coup. *(task-297)*
 
+### Une messagerie en panne cesse de passer pour une messagerie vide (17 septembre 2026)
+
+Il y a des pannes bruyantes et des pannes silencieuses. Celle-ci était de la
+seconde espèce, et c'est ce qui la rendait grave.
+
+Quand un praticien ouvre un dossier de sa boîte, l'application demande au serveur
+d'**analyser** les messages affichés : c'est cette analyse qui extrait les
+documents médicaux d'un courrier et les rattache au dossier du patient. Le
+17 septembre, une mesure à mille médecins a montré que cette analyse **s'était
+arrêtée net et n'était jamais repartie** — pendant quatre-vingts minutes, alors
+que l'application continuait par ailleurs à servir près d'un million de demandes
+sans broncher. À la fin de la mesure, **264 praticiens sur 1 000** n'avaient reçu
+aucun document.
+
+Le plus préoccupant n'est pas la panne. C'est que **l'application répondait
+« c'est fait » à chaque demande**. Pas un message d'erreur, pas une alerte, pas
+une trace exploitable : du point de vue du médecin, la situation était
+indiscernable d'une boîte sans nouveaux documents. Il n'avait aucun moyen de
+savoir s'il n'y avait rien à rattacher, ou si quelque chose était cassé.
+
+La cause tient en trois défauts qui s'additionnent. D'abord, l'application
+**savait** que le serveur de messagerie était injoignable — elle s'en servait
+pour arrêter le traitement en cours — mais elle jetait aussitôt l'information au
+lieu de la remonter. Ensuite, elle annonçait dans son journal le nombre de
+messages qu'on lui avait **demandé** d'analyser, jamais le nombre qu'elle avait
+réellement traité ; les deux chiffres étant identiques en fonctionnement normal,
+personne n'avait remarqué la différence. Enfin, sa page d'état de santé
+continuait d'afficher « messagerie accessible » alors que **plus aucune
+connexion** n'était vivante : cette page ne consultait pas l'état réel des
+connexions, elle se contentait de rappeler dans quel mode l'application avait
+démarré.
+
+Trois changements, indissociables. L'analyse **rend désormais un compte rendu** :
+combien de messages demandés, combien étaient déjà analysés, combien l'ont été, et
+combien sont restés hors de portée. Quand rien n'a pu être lu alors qu'il restait
+du travail, la demande **échoue franchement** au lieu de faire semblant
+d'aboutir. Les connexions mortes sont **rendues au lieu d'être conservées**, si
+bien que la demande suivante en rétablit une saine : une panne de quatre-vingts
+minutes redevient une gêne de quelques secondes. Et la page d'état de santé dit
+enfin la vérité.
+
+Pour le praticien, la différence se voit à l'écran. Un bandeau discret apparaît —
+**« Messagerie momentanément indisponible. Les documents seront rattachés dès son
+rétablissement. »** — sur les trois applications. Il dit deux choses, et les deux
+comptent : que ce n'est **pas** une absence de documents, et que **rien n'est
+perdu**. Sans la seconde, le médecin croirait devoir agir alors que la reprise est
+automatique. Le bandeau ne bloque rien, **la liste des messages reste affichée**,
+il n'apparaît qu'une fois par épisode même si l'on rafraîchit dix fois, et il
+disparaît de lui-même au rétablissement.
+
+Enfin, les messages qu'une coupure a laissés de côté ne sont plus abandonnés :
+lorsque l'analyse est lancée en arrière-plan, le travail restant est **repris
+automatiquement**, un nombre de fois limité et avec un délai croissant — assez
+pour passer une coupure brève, pas assez pour transformer le remède en seconde
+panne.
+
+> **Ce que cette livraison ne fait pas.** Elle ne cherche pas *pourquoi* les
+> connexions sont tombées ce jour-là — l'hypothèse d'un redémarrage du serveur de
+> messagerie de test n'a pas pu être vérifiée. C'est volontaire : quelle qu'en
+> soit la cause, l'application doit la voir et s'en remettre, et c'est cela qui a
+> été traité.
+
 ## État de couverture (2026-09-11)
 
 | Feature | Statut | Couverture | Tasks contributives |
@@ -2221,6 +2283,8 @@ Cinq réserves à porter au bilan, sans quoi il serait trompeur :
 
 - v1.74 — **Le cache de la messagerie ne se met plus lui-même à genoux.** Un cache sert les demandes une par une : en y rangeant le contenu entier des messages ouverts, la messagerie l'occupait une quinzaine de millisecondes à chaque fois, pendant lesquelles l'identité du praticien, ses préférences et les résumés de sa boîte attendaient — 6 568 abandons sur une seule mesure à mille médecins. Ce qui dépasse une taille fixée n'entre plus en cache et sera relu depuis la base, son chemin habituel. Le médecin ne voit aucune différence : le message s'affiche entier, mise en forme et documents rattachés compris. La mesure avait par ailleurs **innocenté** le journal de traçabilité, un temps soupçonné d'être la cause. (task-297)
 - v1.75 — **La base finissait par être pleine, simplement parce que le service tournait depuis longtemps.** À mille médecins, le nombre de connexions ouvertes vers la base montait régulièrement pendant près de trois heures — alors même que le nombre de demandes des praticiens, lui, avait cessé d'augmenter depuis longtemps. Ce n'était donc pas la charge qui la remplissait, mais **la durée de fonctionnement** : passé un seuil, la base refusait toute nouvelle connexion, et le service commençait à échouer. Deux causes s'additionnaient. D'abord, les connexions inactives étaient conservées dix minutes : à mille cabinets, cela suffit à ne jamais rien libérer ; elles sont désormais rendues au bout de deux minutes, ce qui reste largement au-dessus du temps entre deux gestes d'un médecin. Ensuite, le journal de traçabilité — celui qui garantit qu'aucun accès à un dossier n'est perdu — pouvait, en rattrapant son retard, ouvrir une connexion vers **chacune** des mille bases en quelques minutes ; il n'en traite maintenant qu'un petit nombre à la fois, et les écritures en attente patientent au lieu d'être perdues. Ce rattrapage avait figé la machine de mesure trois fois dans la même journée. Enfin, l'outil de mesure lui-même **désignait le mauvais responsable** : il devinait l'origine des connexions d'après leur adresse réseau et attribuait au mauvais composant celles du journal de traçabilité, dont la colonne affichait obstinément zéro pendant qu'il saturait le serveur. Chaque connexion porte désormais son nom, et un rapport de campagne dont la base est pleine est **déclaré en échec** au lieu d'être lu comme un bon résultat. (task-298)
+
+- v1.76 — **Une messagerie en panne cesse de passer pour une messagerie vide.** L'analyse des courriers — celle qui extrait les documents médicaux et les rattache au dossier du patient — pouvait s'arrêter net et ne jamais repartir, pendant que l'application répondait **« c'est fait »** à chaque demande. Mesuré à mille médecins : quatre-vingts minutes sans qu'un seul document soit traité, près d'un million d'autres demandes servies normalement pendant ce temps, et **264 praticiens sur 1 000** sans rien recevoir. Du point de vue du médecin, c'était indiscernable d'une boîte sans nouveaux documents. Trois défauts s'additionnaient : l'application **savait** que le serveur était injoignable mais jetait l'information, elle annonçait le nombre de messages **demandés** et non traités, et sa page d'état de santé affichait « accessible » alors qu'aucune connexion n'était vivante. Désormais l'analyse rend un compte rendu, une demande qui n'a rien pu lire **échoue franchement**, les connexions mortes sont rendues — une panne de quatre-vingts minutes redevient une gêne de quelques secondes — et le praticien voit un bandeau : **« Messagerie momentanément indisponible. Les documents seront rattachés dès son rétablissement. »** Il ne bloque rien, la liste reste affichée, il n'apparaît qu'une fois par épisode et disparaît au rétablissement. Les messages laissés de côté par une coupure sont repris automatiquement, un nombre de fois limité. (task-315)
 
 ---
 
