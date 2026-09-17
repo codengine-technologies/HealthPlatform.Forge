@@ -145,6 +145,7 @@ report, ni erreur. `StopSyncAsync` y échappe car il annule directement le jeton
 - [ ] Test unitaire : l'état exposé est cohérent à tout instant (en cours, en
       pause, arrêtée) ; l'arrêt fonctionne dans chacun de ces états
 - [ ] Aucune donnée de santé en clair dans les logs
+- [x] **Tests d'intégration du plan de contrôle** (ajouté hors DOD initiale, 2026-09-17) : câblage DI réel + Redis réel — 10 tests, cf. la section dédiée
 
 ## Manual Test Plan
 
@@ -276,6 +277,76 @@ n'a pas été appliqué au moment d'écrire ce code.
 - **Prochaine étape** : `/review task-188` (la task ne liste ni `client-angular` ni
   `client-mobile` — `/lint-angular`, `/lint-mobile` et `/verify-visual` sont sans objet).
 
+## Tests d'intégration — ajoutés après la revue (2026-09-17)
+
+**Origine** : question humaine à la relecture du cycle — « as-tu mis en place des tests
+d'intégration ? ». La réponse honnête était **non** : les 12 tests livrés par `/develop`
+étaient tous unitaires (11 dans `mss.mail.application.tests`, 1 assertion de réflexion dans
+`mss.mail.api.tests`), et `mss.mail.integration.tests` n'avait rien reçu.
+
+**Pourquoi c'était un vrai manque, et pas un détail de forme.** Le défaut central de cette US
+n'appartenait à **aucune classe** : `IBackgroundSyncService` et `ISyncPauser` étaient tous deux
+corrects, c'est leur **assemblage par le conteneur** qui ne l'était pas. Un défaut de
+composition est invisible à la compilation comme au test unitaire, par construction — c'est
+précisément ce qui lui a permis de vivre en production. La garde posée dans
+`CaptiveDependencyTests` ferme la porte par laquelle le bug est entré (le lien d'héritage),
+mais c'est une propriété des **types**, pas du conteneur : une registration fautive écrite
+autrement la franchirait sans bruit.
+
+**La DOD n'exigeait que des « tests unitaires »**, dix fois sur dix items, et les dix étaient
+honorés. Le manque était donc autant dans l'énoncé de la task que dans l'implémentation — mais
+il aurait dû être relevé en revue plutôt que validé.
+
+### Fichier ajouté
+
+`tests/mss.mail.integration.tests/Services/SyncControlPlaneIntegrationTests.cs` — **10 tests**,
+sur un **vrai** conteneur (`AddApi`, la registration de production) et un **vrai** Redis
+(Testcontainers `redis:7-alpine`). Seuls trois éléments sont substitués, et chacun est justifié
+dans le code : le multiplexeur Redis (pointé sur le conteneur de test), la file de travaux
+(déterministe — la fenêtre « travail en file, worker pas encore attaché » est celle où la US a
+trouvé deux de ses trois défauts), et le worker de synchronisation (il ouvrirait de vraies
+connexions IMAP ; on garde le câblage, on observe les ordres qu'il reçoit).
+
+| Test | Ce qu'il tient, que l'unitaire ne pouvait pas tenir |
+|---|---|
+| `Le_port_de_pause_servi_dans_une_portee_n_est_pas_le_worker_de_cette_portee` | Le câblage réel : `ISyncPauser` résolu dans une portée est un `SyncPauser`, **pas** le worker de cette portée. C'est l'assertion que la registration fautive d'origine aurait fait échouer, **quelle que soit la façon dont elle est réécrite**. |
+| `Le_conteneur_sert_un_port_de_pause_a_une_portee_de_requete` | `ImapService` reçoit ce port par un paramètre **optionnel** et l'appelle en `syncPauser?.PauseSync()` : si la registration disparaissait, la cession au premier plan ne lèverait rien — elle **cesserait d'exister en silence**, le même mode de panne muet que celui que la US répare. |
+| `L_ordre_de_cession_d_une_portee_atteint_le_worker_du_gestionnaire_singleton` | **Le test central.** La chaîne exacte qui était rompue, de bout en bout : portée HTTP → `ISyncPauser` → gestionnaire **singleton** → runtime vivant → worker. |
+| `Une_cession_au_premier_plan_ne_publie_pas_l_etat_en_pause` | L'asymétrie assumée, vérifiée contre le **vrai** magasin d'état — c'est Redis qui répond à `/sync/status`, un substitut n'aurait validé que l'intention. |
+| `Le_renouvellement_repousse_l_echeance_d_un_verrou_detenu` | Le TTL restant remonte réellement après renouvellement : la garantie qui permet au bail d'être court sans lâcher la boîte sous une synchronisation longue. |
+| `Le_renouvellement_refuse_et_ne_prolonge_pas_le_verrou_d_autrui` | L'atomicité du script Lua sur un vrai serveur. **Porte son contraste** : le test mesure ensuite qu'un `KeyExpire` nu, lui, prolonge bien le verrou d'autrui de 30 min — donc le test discrimine, et on le sait sans avoir à réinjecter le défaut. |
+| `La_liberation_ne_retire_pas_le_verrou_d_autrui` | Même motif « comparer le détenteur, puis agir », côté libération. |
+| `Le_creneau_de_synchronisation_est_exclusif` | Deux instances qui démarrent la même boîte : une seule l'obtient, sur un vrai Redis. |
+| `L_etat_survit_a_l_echeance_du_bail_quand_il_est_rafraichi` | **Le défaut n°2, mesuré sur une vraie expiration** : bail ramené à 4 s par configuration, un état rafraîchi survit, un état abandonné disparaît. La garantie est la même qu'à 15 minutes, seule l'attente change. |
+| `Le_garde_de_composition_rejette_bien_un_cablage_fautif` | **Vérifie que les tests de composition savent devenir rouges.** Compose un conteneur délibérément fautif (un objet satisfaisant les deux contrats, servi par alias — ce que donnait l'héritage) et assied que la condition interdite y est bien réalisée. |
+
+### Le pouvoir discriminant est vérifié — et il le reste
+
+La discipline « un test vert ne prouve rien tant qu'il n'a pas su devenir rouge » est honorée,
+mais **pas** par une réinjection temporaire du défaut dans le code de production : une telle
+vérification ne survit pas à la session qui l'a faite, et personne ne peut la rejouer. Elle est
+portée par **deux tests permanents** — `Le_garde_de_composition_rejette_bien_un_cablage_fautif`
+pour la composition, et le bloc « CONTRASTE » de `Le_renouvellement_refuse_...` pour le verrou.
+Ils prouveront la discrimination à chaque exécution.
+
+*(La tentative initiale de réinjecter les défauts dans les sources a d'ailleurs été refusée par
+le garde-fou de sécurité de l'outillage, qui y a vu un affaiblissement de contrôle — à raison.
+La solution retenue est meilleure que celle qu'il a bloquée.)*
+
+### Deux exigences de configuration découvertes en chemin
+
+Composer le vrai conteneur a mis au jour que `AddApi` **refuse de s'enregistrer** sans clef
+OpenAI (`OpenAi:ApiKey`) ni URL Flagsmith (`Flagsmith:ApiUrl`) — deux `InvalidOperationException`
+levées à l'enregistrement, pas à la résolution. Le harnais fournit des valeurs factices et
+manifestement telles ; **aucun appel sortant n'est fait** (l'URL Flagsmith est une adresse de
+bouclage non servie). À savoir pour tout futur test qui voudra composer l'API réelle.
+
+### Résultat
+
+- 10 tests d'intégration, **10 verts**.
+- Suite complète : **4 503 tests, 0 échec**, 16 ignorés.
+- Build Release : 0 erreur.
+
 ## PRs
 
 | Repo | PR | Label | État |
@@ -340,7 +411,8 @@ Manual Test Plan (étape 8) pour vérification humaine.
 | /sonar | ok | 23 min 17 s | 3 (1 min 41 s) | 11 (8 min 20 s) | 4 (4 min 23 s) | 2 itération(s), api-mail 3B/11T |
 | /review | ok | 6 min 55 s | 1 (55 s) | 1 (1 min 45 s) | — | api-mail 1B/1T |
 | /tech-writer | ok | 5 min 18 s | — | — | — | — |
-| **Total cycle** | | **1 h 24 min** | **14 (5 min 44 s)** | **21 (18 min 23 s)** | **4 (4 min 23 s)** | |
+| /integration-tests | ok | 2 min 33 s | 1 (6.2 s) | 1 (1 min 51 s) | — | api-mail 1B/1T |
+| **Total cycle** | | **1 h 26 min** | **15 (5 min 51 s)** | **22 (20 min 15 s)** | **4 (4 min 23 s)** | |
 
 ## Develop log
 
