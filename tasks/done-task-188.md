@@ -339,7 +339,8 @@ Manual Test Plan (étape 8) pour vérification humaine.
 | /develop | ok | 47 min 48 s | 10 (3 min 08 s) | 9 (8 min 17 s) | — | api-mail 10B/9T |
 | /sonar | ok | 23 min 17 s | 3 (1 min 41 s) | 11 (8 min 20 s) | 4 (4 min 23 s) | 2 itération(s), api-mail 3B/11T |
 | /review | ok | 6 min 55 s | 1 (55 s) | 1 (1 min 45 s) | — | api-mail 1B/1T |
-| **Total cycle** | | **1 h 18 min** | **14 (5 min 44 s)** | **21 (18 min 23 s)** | **4 (4 min 23 s)** | |
+| /tech-writer | ok | 5 min 18 s | — | — | — | — |
+| **Total cycle** | | **1 h 24 min** | **14 (5 min 44 s)** | **21 (18 min 23 s)** | **4 (4 min 23 s)** | |
 
 ## Develop log
 
