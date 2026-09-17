@@ -166,6 +166,15 @@ the token in the repo. Expected vars :
 > `curl` sur **9000** répond `200` pendant que 9001 ne répond pas. Le conteneur a
 > été recréé entre-temps avec une autre publication de port.
 >
+> **Contredit le 2026-09-17 (task-188)** : `docker port sonarqube` rend
+> `9000/tcp -> 0.0.0.0:9001`, et c'est **9001** qui répond — la valeur de
+> `$SONAR_HOST_URL` dans le `.env` du workspace. Quatrième valeur en sept
+> semaines, et le conteneur n'a pas été recréé entre-temps : il a simplement
+> été redémarré (`docker start sonarqube_db` puis `sonarqube`). **Le port
+> publié n'est donc pas une propriété stable du poste**, et l'écart avec la
+> ligne précédente n'a pas d'explication à chercher — seulement une mesure à
+> refaire.
+>
 > **Il n'y a donc aucune valeur à graver ici** — seulement une procédure. La
 > troisième correction en six semaines est la preuve que la valeur n'est pas
 > stable ; `$SONAR_HOST_URL` de l'environnement fait foi, et on la contrôle :
@@ -849,6 +858,7 @@ mkdir -p TestResults
 > | 2026-08-30 (vérifié) | 9.9.8.100196 | `sonar.login` |
 > | 2026-09-02 (vérifié, task-288) | 25.6.0.109173 | `sonar.token` |
 > | **2026-09-04 (vérifié, task-289)** | **9.9.8.100196** | **`sonar.login`** |
+> | **2026-09-17 (vérifié, task-188)** | **25.6.0.109173** | **`sonar.token`** |
 >
 > L'image est `sonarqube:lts-community` : elle **suit la LTS courante**, donc une
 > re-création du conteneur peut ramener une 9.9 là où on avait une 25.x. C'est ce
