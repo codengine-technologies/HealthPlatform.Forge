@@ -363,3 +363,14 @@ tranche** : au banc, l'API annonçait des succès pendant que ce compte restait 
 - **Elle ne corrige pas la chauffe du banc** (`journey_warmup_completed` valait 1,0 alors
   que 264 médecins n'avaient rien reçu). Finding de harnais séparé : la chauffe doit se
   vérifier en base, pas au code HTTP.
+
+## Branches
+
+- `api-mail` (pushed) : `feat/task-315-messagerie-indisponible-visible` — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-315-messagerie-indisponible-visible
+- `client-blazor` (pushed) : `feat/task-315-messagerie-indisponible-visible` — https://github.com/codengine-technologies/HealthPlatform.Client/tree/feat/task-315-messagerie-indisponible-visible
+- `client-mobile` (pushed) : `feat/task-315-messagerie-indisponible-visible` — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-315-messagerie-indisponible-visible
+- `client-angular` (code-only) : la forge écrit sur la branche actuellement checked out dans `Client/Angular/` — instantané au `/start` : **`feature/nova-rewriting-mss`**. L'humain garde branche, commit, push et PR TFS.
+
+> Pré-vol : `api-mail`, `client-blazor`, `client-mobile`, `dtos-mss`, `sdk`, `interop-cda` tous sur `develop`. `host` écarté (pas de `.git` — cf. l'avertissement du CLAUDE.md). `dtos-mss` **non auto-inclus** (branche paresseuse depuis le 2026-09-16) : aucun contrat n'est attendu dans cette US.
+>
+> Le banc de charge a été rendu au `/start` pour libérer les binaires d'`api-mail`. **Les 1000 bases hydratées sont intactes** (aucun `reset-state.sh` joué) — la campagne suivante n'aura pas à repayer les 3 h 30 d'hydratation.
