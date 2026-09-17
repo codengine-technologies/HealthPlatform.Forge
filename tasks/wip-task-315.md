@@ -385,9 +385,10 @@ tranche** : au banc, l'API annonçait des succès pendant que ce compte restait 
 | /develop | ok | 31 min 49 s | 1 (26 s) | 7 (5 min 40 s) | — | api-mail 0B/3T, client-blazor 0B/1T, client-mobile 0B/2T, client-angular 1B/1T |
 | /sonar | ok | 7 min 38 s | — | — | 1 (4 min 40 s) | — |
 | /lint-angular | ok | 3 min 11 s | 1 (21 s) | 1 (13 s) | — | 1 itération(s), client-angular 1B/1T |
-| **Total cycle** | | **44 min 30 s** | **2 (48 s)** | **8 (5 min 54 s)** | **1 (4 min 40 s)** | |
+| /lint-mobile | ok | 25 s | — | — | — | — |
+| **Total cycle** | | **44 min 56 s** | **2 (48 s)** | **8 (5 min 54 s)** | **1 (4 min 40 s)** | |
 
-Autres commandes mesurées : lint ×1 (12 s)
+Autres commandes mesurées : lint ×2 (28 s)
 
 ## Develop log
 
@@ -538,3 +539,21 @@ qui garde branche, commit, push TFS et ouverture de PR.
 Aucune entrée ajoutée à `conventions/angular.md` : les 28 erreurs ont été
 corrigées par **l'auto-fixer**, et le protocole ne comptabilise que les règles
 corrigées **manuellement** (les fixes de l'auto-fixer sont gratuits).
+
+## Lint mobile log
+
+Mode A (chaîné), branche `feat/task-315-messagerie-indisponible-visible`.
+
+`npm run lint` → **`All files pass linting.`**
+
+| | Erreurs | Warnings |
+|---|---|---|
+| Baseline | **0** | **0** |
+| Final | **0** | **0** |
+
+**Aucune itération, aucun fix, donc aucun commit** — l'automation git de cette
+étape n'avait rien à pousser. Le code mobile de task-315 (`MailOutageNotifierService`,
+son spec, et les deux points de branchement) passe le lint du premier coup.
+
+Rien à ajouter à `conventions/angular.md` : aucune règle n'a été corrigée, ni
+manuellement ni par l'auto-fixer.
