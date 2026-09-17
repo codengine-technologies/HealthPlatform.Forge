@@ -834,3 +834,49 @@ Sync `develop` : `Already up to date` sur les trois repos pushables (merge, jama
 > Il n'appartient pas à task-315 (journal du banc) ; il a été laissé local pour
 > ne pas déclencher le hook `verify-before-push` (build + suite complète) sur un
 > changement de documentation. À pousser au prochain passage sur `develop`.
+
+## Merged — 2026-09-17
+
+Merge humain après validation manuelle de bout en bout (HAG, règle 10).
+
+| Repo | Squash | PR |
+|---|---|---|
+| `api-mail` | `2526f413` | [#243](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/243) |
+| `client-blazor` | `53b1b52` | [#80](https://github.com/codengine-technologies/HealthPlatform.Client/pull/80) |
+| `client-mobile` | `1ef106f` | [#76](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/76) |
+| `client-angular` | `1f901dd6` (« Task 315 ») | code-only — commit et push TFS par l'humain |
+
+Branches `feat/task-315-messagerie-indisponible-visible` supprimées, distantes et
+locales, sur les trois repos pushables. Aucune branche sur `dtos-mss` (branche
+paresseuse, aucun contrat touché) ni sur `interop-cda`.
+
+> **Règle 11 honorée** : les quatre fronts portent la US. Le commit Angular
+> `1f901dd6` contient les 5 fichiers de task-315 (`problem-details.model.ts`,
+> `mail-state.service.ts`, les 4 du `mail-list`) aux côtés de 5 fichiers de
+> `mss-mailbox-management` appartenant au travail en cours de l'humain sur
+> `feature/nova-rewriting-mss`.
+
+### Ce qui est livré, et comment c'est prouvé
+
+| | Preuve |
+|---|---|
+| `503` au lieu d'un `200` muet | **banc**, coupure provoquée du serveur sous ~600 sessions |
+| Reprise sans redémarrage (compteur 21 584 → 21 589) | **banc** |
+| Éviction à l'échelle (617 sessions → 0 en 1 min) | **banc** |
+| Le `503` nomme sa cause (`code` du ProblemDetails) | tests, dont contre-épreuve d'attribution |
+| Bandeau par cause sur les trois fronts | tests |
+| Reprise en file bornée du chemin asynchrone | tests |
+| Une archive invalide n'interrompt rien | lecture du code + tests task-293 |
+
+### Ce qui reste ouvert — US de suivi
+
+1. **La sonde de santé** (`canAccessImap`) — retirée, infirmée par le tir : quand
+   la connexion ne peut pas s'établir aucune session n'est retenue, et l'éviction
+   efface la preuve que la sonde cherchait. Le bon signal est l'issue des
+   tentatives récentes, pas l'inventaire des sessions.
+2. **Le chemin asynchrone de Blazor** — `MailListComponent.razor` emprunte
+   `enrich/async`, qui rend `202` immédiatement : ouvrir un dossier pendant une
+   panne n'affiche rien. Décision produit.
+3. **Deux dettes dans `BackgroundImapService`** — `Unreachable` compte aussi les
+   mails supprimés du serveur (latent, le seul appelant ignore le résultat), et un
+   littéral d'`EnrichmentOutcome` dupliqué 5 fois que la passe `/simplify` a manqué.
