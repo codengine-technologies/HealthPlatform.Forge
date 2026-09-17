@@ -386,7 +386,8 @@ tranche** : au banc, l'API annonçait des succès pendant que ce compte restait 
 | /sonar | ok | 7 min 38 s | — | — | 1 (4 min 40 s) | — |
 | /lint-angular | ok | 3 min 11 s | 1 (21 s) | 1 (13 s) | — | 1 itération(s), client-angular 1B/1T |
 | /lint-mobile | ok | 25 s | — | — | — | — |
-| **Total cycle** | | **44 min 56 s** | **2 (48 s)** | **8 (5 min 54 s)** | **1 (4 min 40 s)** | |
+| /verify-visual | skipped | 18 s | — | — | — | Tools/visual-verify absent du workspace ; aucun Stitch design log |
+| **Total cycle** | | **45 min 14 s** | **2 (48 s)** | **8 (5 min 54 s)** | **1 (4 min 40 s)** | |
 
 Autres commandes mesurées : lint ×2 (28 s)
 
@@ -557,3 +558,26 @@ son spec, et les deux points de branchement) passe le lint du premier coup.
 
 Rien à ajouter à `conventions/angular.md` : aucune règle n'a été corrigée, ni
 manuellement ni par l'auto-fixer.
+
+## Visual verify log
+
+**Étape sautée — outillage absent.** `Tools/visual-verify/` n'existe pas dans le
+workspace (ni `capture.mjs`, ni `screens.json`, ni `frame.mjs`). Skip
+best-effort conformément au playbook, la chaîne continue. Même constat qu'au
+cycle de task-304.
+
+La task n'a par ailleurs **aucun `## Stitch design log`** : elle ne crée aucun
+écran. Le changement mobile est un service (`MailOutageNotifierService`), son
+spec, et deux points de branchement.
+
+> ⚠️ **Ce que ce skip laisse non vérifié, et il ne faut pas le taire.** J'ai
+> modifié `inbox.page.ts` — une **page**. Un écran blanc ou un crash de
+> navigation est exactement le défaut que les tests unitaires ne voient pas, et
+> c'est la seule sévérité **bloquante** de cette étape. Les 861 tests et le
+> `npm run build` sont verts, mais aucun des deux ne prouve que l'inbox
+> s'affiche.
+>
+> À couvrir au test manuel : l'**étape 5** du Manual Test Plan ouvre justement
+> la messagerie sur les trois fronts, Dovecot arrêté, et exige que « la liste
+> des messages reste affichée ». C'est elle qui portera cette vérification au
+> HAG.
