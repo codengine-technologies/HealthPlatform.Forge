@@ -1602,14 +1602,34 @@ peuvent pas fonctionner ensemble. Le bon indicateur n'est pas ce que
 l'application garde en mémoire mais **ce que ses dernières tentatives ont
 donné** ; il fera l'objet d'une demande distincte.
 
-Pour le praticien, la différence se voit à l'écran. Un bandeau discret apparaît —
-**« Messagerie momentanément indisponible. Les documents seront rattachés dès son
-rétablissement. »** — sur les trois applications. Il dit deux choses, et les deux
-comptent : que ce n'est **pas** une absence de documents, et que **rien n'est
-perdu**. Sans la seconde, le médecin croirait devoir agir alors que la reprise est
-automatique. Le bandeau ne bloque rien, **la liste des messages reste affichée**,
-il n'apparaît qu'une fois par épisode même si l'on rafraîchit dix fois, et il
-disparaît de lui-même au rétablissement.
+Pour le praticien, la différence se voit à l'écran. Un bandeau discret apparaît
+sur les trois applications. Il dit deux choses, et les deux comptent : que ce
+n'est **pas** une absence de documents, et que **rien n'est perdu**. Sans la
+seconde, le médecin croirait devoir agir alors que la reprise est automatique. Le
+bandeau ne bloque rien, **la liste des messages reste affichée**, il n'apparaît
+qu'une fois par épisode même si l'on rafraîchit dix fois, et il disparaît de
+lui-même au rétablissement.
+
+Et il dit **laquelle** des deux pannes possibles s'est produite — une distinction
+née d'une question posée à la relecture. Car deux choses très différentes
+empêchent d'analyser un courrier : la messagerie peut être injoignable, ou bien
+elle répond parfaitement et c'est l'extraction des documents qui échoue, pour une
+raison qui appartient à la plateforme. Les deux se présentaient de la même façon,
+et le médecin lisait « messagerie indisponible » dans les deux cas — donc, une
+fois sur deux, on l'envoyait attendre le rétablissement d'un service qui n'avait
+rien. Désormais : **« Messagerie momentanément indisponible. Les documents seront
+rattachés dès son rétablissement. »** dans le premier cas, **« Traitement des
+documents momentanément indisponible. Votre messagerie fonctionne ; les documents
+seront analysés dès le rétablissement du service. »** dans le second. Et quand la
+cause n'est pas connue, un message qui ne l'invente pas.
+
+> **Un point qu'il vaut la peine d'écarter, parce qu'il inquiète légitimement.**
+> Un document illisible — une archive abîmée à l'envoi, par exemple — **n'arrête
+> rien du tout**. Il est distingué d'une panne : le courrier est enregistré
+> normalement, simplement sans ce document-là, et les autres courriers du lot
+> suivent leur cours. C'est voulu : une archive abîmée le restera à chaque
+> nouvelle tentative, alors qu'un disque plein se répare. Bloquer un praticien sur
+> un courrier définitivement illisible n'aurait servi personne.
 
 Enfin, les messages qu'une coupure a laissés de côté ne sont plus abandonnés :
 lorsque l'analyse est lancée en arrière-plan, le travail restant est **repris

@@ -703,6 +703,79 @@ unique. Objet d'une **US de suivi**.
 
 **Validation après retrait** : 4 507 tests, 0 échec (−4 unitaires, −2 d'intégration).
 
+
+## La cause nommée, pas seulement le statut (2026-09-17, après relecture)
+
+Question posée à la relecture : *« si un document CDA est en échec — un ZIP
+corrompu par exemple — est-ce que ça casse la chaîne de traitement ? »*
+
+**Non**, et la vérification à la source a mis au jour autre chose.
+
+### Ce que le code fait déjà, et qui est juste
+
+`IheXdmProcessingService.Classify(Exception)` sépare deux familles :
+
+| Exception | Cause | Conséquence |
+|---|---|---|
+| `FormatException`, `InvalidDataException`, `MimeKit.ParseException` | **`InvalidArchive`** | **le message est enregistré**, simplement sans ce document. Pas de 503, rien d'interrompu |
+| `DirectoryNotFoundException` | `ScratchUnavailable` | message laissé à traiter → 503 |
+| disque plein, droits, E/S | `Io` | idem → 503 |
+
+La ligne de partage est la bonne : une archive corrompue est un **fait du
+message** — la rejouer mille fois donnera mille fois le même résultat, donc la
+traiter comme une panne bloquerait un praticien sur un courrier qui restera
+corrompu à jamais. Un disque plein, lui, se répare.
+
+`PersistEnrichedBatchAsync` ne teste que `HasTechnicalFailure`, qui ne compte que
+`TechnicalFailureCount` : sur archive invalide le `continue` n'est pas pris, et
+les autres messages du lot ne sont jamais affectés.
+
+### Le défaut que la question a révélé
+
+**Deux causes très différentes rendaient le même 503** sur la route d'analyse :
+la messagerie injoignable (task-315) et l'extraction en échec technique
+(task-293). Les trois fronts ne lisaient que le **code HTTP**. Sur une panne
+d'extraction — disque, répertoire de travail — le médecin voyait donc
+« Messagerie momentanément indisponible » **alors que sa messagerie
+fonctionnait**, et il attendait un rétablissement sans objet.
+
+### Le correctif
+
+`UnavailableException` porte un code de cause, estampillé par le
+`GlobalExceptionHandler` dans le champ **`code`** du `ProblemDetails` :
+`MAIL_SERVER_UNAVAILABLE` / `DOCUMENT_PROCESSING_UNAVAILABLE`.
+
+> Le `detail` distinguait **déjà** les deux cas et aurait suffi à l'œil nu. Il a
+> été écarté comme discriminant : c'est une **phrase**, donc traduisible et
+> reformulable. Y coupler trois fronts, c'est garantir qu'une reformulation casse
+> l'affichage sans que personne ne le voie.
+
+Les trois fronts affichent un message par cause, plus un **message neutre** quand
+le serveur ne nomme pas la cause — on ne l'invente pas. Et le bandeau **reparle
+si la cause change** dans un même épisode : se taire laisserait le médecin sur
+une explication devenue fausse.
+
+| Cause | Message |
+|---|---|
+| `MAIL_SERVER_UNAVAILABLE` | « Messagerie momentanément indisponible. Les documents seront rattachés dès son rétablissement. » |
+| `DOCUMENT_PROCESSING_UNAVAILABLE` | « Traitement des documents momentanément indisponible. **Votre messagerie fonctionne** ; les documents seront analysés dès le rétablissement du service. » |
+| absente | « Analyse des documents momentanément indisponible. Les documents seront rattachés dès le rétablissement du service. » |
+
+**Tests** : 2 d'intégration backend, 9 sur la porte Blazor, 3 sur mobile, 3 sur
+Angular. Dont les **contre-épreuves d'attribution** : une panne d'extraction porte
+un *autre* code alors que le statut est identique. Sans elles, un code constant
+passerait pour une distinction.
+
+**Validation** : `api-mail` **4 513** · `client-blazor` **264** ·
+`client-mobile` **864** · `client-angular` **382**, lint 0 erreur, `nx build mss`
+vert. 0 échec.
+
+> ⚠️ **Angle mort qui reste, et qui appartient à la US de suivi.**
+> `MailListComponent.razor` (Blazor) emprunte le chemin **asynchrone**, qui rend
+> `202 Accepted` immédiatement : un médecin qui ouvre un dossier pendant une panne
+> **ne verra rien**, seul le widget de notifications déclenche le bandeau. Angular
+> et mobile, eux, sont couverts sur l'écran principal.
+
 ## PRs
 
 - `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/243 — label `awaiting-human-merge`
