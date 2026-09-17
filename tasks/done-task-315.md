@@ -387,7 +387,9 @@ tranche** : au banc, l'API annonçait des succès pendant que ce compte restait 
 | /lint-angular | ok | 3 min 11 s | 1 (21 s) | 1 (13 s) | — | 1 itération(s), client-angular 1B/1T |
 | /lint-mobile | ok | 25 s | — | — | — | — |
 | /verify-visual | skipped | 18 s | — | — | — | Tools/visual-verify absent du workspace ; aucun Stitch design log |
-| **Total cycle** | | **45 min 14 s** | **2 (48 s)** | **8 (5 min 54 s)** | **1 (4 min 40 s)** | |
+| /review | ok | 5 min 22 s | 3 (19 s) | 4 (2 min 05 s) | — | api-mail 1B/1T, client-blazor 1B/1T, client-mobile 1B/1T, client-angular 0B/1T |
+| /tech-writer | ok | 3 min 21 s | — | — | — | — |
+| **Total cycle** | | **53 min 58 s** | **5 (1 min 08 s)** | **12 (7 min 59 s)** | **1 (4 min 40 s)** | |
 
 Autres commandes mesurées : lint ×2 (28 s)
 
@@ -581,3 +583,106 @@ spec, et deux points de branchement.
 > la messagerie sur les trois fronts, Dovecot arrêté, et exige que « la liste
 > des messages reste affichée ». C'est elle qui portera cette vérification au
 > HAG.
+
+
+## Tests d'intégration — ajoutés après coup (2026-09-17)
+
+> ⚠️ **Manquement de la forge.** Les deux items de DOD exigeant un test
+> d'intégration (lignes 196 et 213) **n'ont pas été livrés** au cycle initial, et
+> `/review` a pourtant rapporté « DOD : tous les items vérifiés ». Le contrôle
+> item par item n'a pas été fait ; il a été **déduit** du vert de la suite. La
+> règle 1b du CLAUDE.md était également en défaut (un test d'intégration par
+> endpoint). Corrigé sur signalement humain, commit `68ad7e9c`, poussé sur la
+> PR #243 déjà ouverte.
+
+`tests/mss.mail.integration.tests/Api/MailServerUnavailableEndpointIntegrationTests.cs`
+— **6 tests** montés sur `TestServer` avec le pipeline d'erreurs **de
+production** (`AddMssProblemDetails()` + `AddExceptionHandler<GlobalExceptionHandler>()`
++ `UseExceptionHandler()`).
+
+**Ce que les tests unitaires ne prouvaient pas.** `MailControllerTests` vérifie
+que le contrôleur **lève** une `UnavailableException` ; il n'établit pas qu'elle
+devienne un **503 `application/problem+json`**. Cela dépend de trois pièces de
+câblage qu'aucun test unitaire ne traverse — et c'est précisément le contrat que
+les trois fronts consomment pour décider quoi afficher au médecin.
+
+| Test | Ce qu'il fixe |
+|---|---|
+| `EnrichSync_MailServerUnreachable_Returns503ProblemJson` | 503, `Content-Type: application/problem+json`, `status`/`title`/`detail` remplis, `traceId` estampillé |
+| `EnrichSync_Unreachable_LeaksNothingAboutTheMailboxOrTheServer` | le `detail` ne contient ni dossier, ni `imap`, ni `dovecot`, ni `@`, ni `Exception`, ni trace de pile |
+| `EnrichSync_EverythingAlreadyAnalysed_Returns200_NotAnOutage` | le court-circuit reste un **200** — sinon le bandeau s'afficherait à chaque ouverture de dossier |
+| `EnrichSync_PartialRead_Returns200_AndReportsTheAnalysedCount` | 4 analysés sur 10 dans le corps, jamais le nombre demandé |
+| `ConnectionStatus_ReportsUnavailable_WhenEveryImapLinkIsDead` | `canAccessImap: false` sur la signature du banc (2 200 liens morts, 0 connecté) |
+| `ConnectionStatus_ReportsAvailable_WhenLinksAreHealthy` | et `true` en régime nominal |
+
+> ⚠️ **Un défaut de mon propre test, corrigé en cours d'écriture.** Sans
+> `PscToken`, `IsOnlineMode` est faux, donc `CanAccessImap` l'est **quelles que
+> soient les sessions** : le test « indisponible » passait **sans rien prouver**.
+> Révélé par son jumeau « disponible », qui lui échouait — le couple valait mieux
+> que le test seul.
+
+**RED vérifié par mutation** : garde du contrôleur retirée **et** `CanAccessImap`
+remis en alias d'`IsOnlineMode` ⇒ **3 des 6 tombent**, exactement les trois qui
+décrivent le défaut.
+
+**Suite** : 513 tests d'intégration (491 → 497 passés, 16 skipped), **4 513 sur
+la solution**, 0 échec.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/243 — label `awaiting-human-merge`
+- `client-blazor` : https://github.com/codengine-technologies/HealthPlatform.Client/pull/80 — label `awaiting-human-merge`
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/76 — label `awaiting-human-merge`
+- `client-angular` : **code-only** — l'humain gère commit / push TFS et l'ouverture de la PR. Fichiers modifiés :
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.component.scss`
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.component.spec.ts`
+  - `front/libs/mss/src/features/mail/services/mail-state.service.ts`
+
+  ⚠️ Ils sont mêlés à **6 autres fichiers** modifiés par l'humain sur
+  `feature/nova-rewriting-mss` (travail en cours, hors task-315) : trier le diff
+  avant de committer.
+
+## Code Review Summary
+
+**APPROVED** — 4 repos, 0 blocage, 2 suggestions.
+
+| Repo | Verdict |
+|---|---|
+| `api-mail` | ✅ approuvé, 2 ⚠️ sur `BackgroundImapService.cs` |
+| `client-blazor` | ✅ approuvé |
+| `client-mobile` | ✅ approuvé |
+| `client-angular` | ✅ approuvé |
+
+### ⚠️ Suggestions non bloquantes — toutes deux sur `BackgroundImapService.cs`
+
+1. **`Unreachable` conflate deux causes.** Sur le chemin nominal,
+   `Unreachable: pendingUids.Count - processedCount` compte aussi les UID
+   **absents du serveur** (mails supprimés, retirés par `RemoveMissingUidsAsync`).
+   `ImapService` garde le sien derrière `folderUnavailable ? ... : 0` ; ce
+   chemin-là ne le fait pas. **Latent** — le seul appelant
+   (`BackgroundSyncService:427`) ignore le résultat — mais à corriger avant que
+   quiconque s'y branche, sinon un mail supprimé déclencherait une fausse
+   « messagerie injoignable ».
+2. **Duplication** : le littéral `new EnrichmentOutcome(uids.Count,
+   alreadyEnriched.Count, 0, pendingUids.Count)` apparaît **5 fois**. La passe
+   `/simplify` a factorisé exactement ce motif dans `ImapService` et a manqué
+   celui-ci — l'inconsistance est de mon fait.
+
+### Validation
+
+| Repo | Build | Tests |
+|---|---|---|
+| `api-mail` | ✅ | ✅ **4 507** (183 + 492 + 2 488 + 837 + 507) |
+| `client-blazor` | ✅ | ✅ **260** |
+| `client-mobile` | ✅ | ✅ **861** |
+| `client-angular` | ✅ `nx build mss` | ✅ **380** |
+
+Sync `develop` : `Already up to date` sur les trois repos pushables (merge, jamais rebase — règle 4).
+
+> ℹ️ Un commit **local non poussé** subsiste sur `api-mail/develop` :
+> `f4a08b87 docs(loadtest): INDEX — les deux tirs de la campagne du 16-17/09`.
+> Il n'appartient pas à task-315 (journal du banc) ; il a été laissé local pour
+> ne pas déclencher le hook `verify-before-push` (build + suite complète) sur un
+> changement de documentation. À pousser au prochain passage sur `develop`.
