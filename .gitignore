@@ -97,3 +97,5 @@ metrics/*
 .env
 *.env
 !.env.example
+
+.claude/compact-log.txt

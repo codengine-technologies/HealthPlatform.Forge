@@ -61,12 +61,45 @@
       "Bash(docker stop:*)",
       "Bash(docker ps:*)",
       "Bash(docker logs:*)",
-      "Bash(docker inspect:*)"
+      "Bash(docker inspect:*)",
+      "Bash(kubectl get:*)",
+      "Bash(kubectl describe:*)",
+      "Bash(kubectl logs:*)",
+      "Bash(kubectl events:*)",
+      "Bash(kubectl top:*)",
+      "Bash(kubectl explain:*)",
+      "Bash(kubectl api-resources:*)",
+      "Bash(kubectl version:*)",
+      "Bash(kubectl cluster-info:*)",
+      "Bash(kubectl config get-contexts:*)",
+      "Bash(kubectl config current-context)"
     ],
     "deny": [
       "Bash(wget:*)",
       "Bash(ssh:*)",
-      "Bash(kubectl:*)"
+      "Bash(kubectl apply:*)",
+      "Bash(kubectl create:*)",
+      "Bash(kubectl delete:*)",
+      "Bash(kubectl replace:*)",
+      "Bash(kubectl patch:*)",
+      "Bash(kubectl edit:*)",
+      "Bash(kubectl scale:*)",
+      "Bash(kubectl rollout:*)",
+      "Bash(kubectl exec:*)",
+      "Bash(kubectl attach:*)",
+      "Bash(kubectl run:*)",
+      "Bash(kubectl cp:*)",
+      "Bash(kubectl drain:*)",
+      "Bash(kubectl cordon:*)",
+      "Bash(kubectl uncordon:*)",
+      "Bash(kubectl taint:*)",
+      "Bash(kubectl label:*)",
+      "Bash(kubectl annotate:*)",
+      "Bash(kubectl set:*)",
+      "Bash(kubectl expose:*)",
+      "Bash(kubectl autoscale:*)",
+      "Bash(kubectl port-forward:*)",
+      "Bash(kubectl proxy:*)"
     ]
   }
 }

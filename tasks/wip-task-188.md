@@ -203,7 +203,8 @@ attendu en changement ici.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 53 s | — | — | — | — |
-| **Total cycle** | | **53 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 47 min 48 s | 10 (3 min 08 s) | 9 (8 min 17 s) | — | api-mail 10B/9T |
+| **Total cycle** | | **48 min 41 s** | **10 (3 min 08 s)** | **9 (8 min 17 s)** | **0 (0.0 s)** | |
 
 ## Develop log
 
