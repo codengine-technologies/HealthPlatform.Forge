@@ -383,7 +383,8 @@ tranche** : au banc, l'API annonçait des succès pendant que ce compte restait 
 |---|---|---|---|---|---|---|
 | /start | ok | 1 min 52 s | — | — | — | — |
 | /develop | ok | 31 min 49 s | 1 (26 s) | 7 (5 min 40 s) | — | api-mail 0B/3T, client-blazor 0B/1T, client-mobile 0B/2T, client-angular 1B/1T |
-| **Total cycle** | | **33 min 41 s** | **1 (26 s)** | **7 (5 min 40 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 7 min 38 s | — | — | 1 (4 min 40 s) | — |
+| **Total cycle** | | **41 min 19 s** | **1 (26 s)** | **7 (5 min 40 s)** | **1 (4 min 40 s)** | |
 
 ## Develop log
 
@@ -446,3 +447,52 @@ non commités**, mêlés au travail en cours de l'humain sur
 > portent tous deux « does not use ngx-translate — French labels are hardcoded ».
 > Introduire un mécanisme de traduction pour un seul bandeau sortirait du périmètre
 > et diviserait la convention du module. Le libellé suit donc ses voisins.
+
+## Sonar log
+
+Analyse du 2026-09-17 07h38 UTC sur `feat/task-315-messagerie-indisponible-visible`
+(projet `healthplatform-api-mail`, build Release + 5 suites avec couverture
+OpenCover).
+
+| KPI | Baseline (16/09) | Final (17/09) | Cible | Verdict |
+|---|---|---|---|---|
+| `bugs` | 0 | **0** | 0 | ✅ |
+| `vulnerabilities` | 0 | **0** | 0 | ✅ |
+| `new_bugs` | 0 | **0** | 0 | ✅ |
+| `new_vulnerabilities` | 0 | **0** | 0 | ✅ |
+| `sqale_rating` | A | **A** | A | ✅ |
+| `reliability_rating` | A | **A** | — | ✅ |
+| `security_rating` | A | **A** | — | ✅ |
+| `coverage` | 87,8 % | **87,8 %** | 95 % | ❌ dette héritée |
+| `new_coverage` | 85,9 % | **85,9 %** | 95 % | ❌ dette héritée |
+| `code_smells` | 228 | **228** | — | inchangé |
+| `new_code_smells` | 35 | **35** | — | inchangé |
+| **Quality Gate** | — | **ERROR** | OK | ❌ — voir ci-dessous |
+
+**Aucune itération de nettoyage n'a été nécessaire : task-315 n'introduit
+aucune issue Sonar.** Vérifié fichier par fichier plutôt que déduit du total :
+
+| Fichier touché | Issues ouvertes |
+|---|---|
+| `EnrichmentOutcome.cs` | 0 |
+| `MailController.cs` | 0 |
+| `ConnectionModeService.cs` | 0 |
+| `MailClientSessionManager.cs` | 0 |
+| `MailProcessingMetrics.cs` | 0 |
+| `ImapService.cs` | 1 — `S3604` **ligne 83**, préexistante (le diff porte sur 1341-1490) |
+| `BackgroundImapService.cs` | 1 — `S107` **ligne 60**, préexistante (le diff porte sur 180-290) |
+
+**Couverture du code neuf de la task** : `EnrichmentOutcome.cs` **100 %**
+(6 lignes à couvrir, 0 non couverte), `ConnectionModeService.cs` **100 %**
+(10 / 0). Les 85,9 % de `new_coverage` du projet sont de la dette antérieure,
+portée par `ImapService.cs` (81,4 %, 307 lignes non couvertes sur 1 714) et
+`MailController.cs` (94,4 %).
+
+**Quality Gate ERROR — une seule condition, et elle n'est pas de cette task** :
+`new_security_hotspots_reviewed` à 0 % pour un seuil de 100 %. L'unique hotspot
+concerné est `TenantRegistryMigrator.cs:106` (log-injection), issu du chantier
+registre (task-299/300). `agents/sonar-targets.yml` pose que **les hotspots sont
+revus manuellement par un humain** et ne sont pas une cible `/sonar` : il est
+signalé ici pour arbitrage, pas corrigé d'office.
+
+Les 5 suites restent vertes sous configuration Release : 183 / 2 488 / 492 / 837 / 507.
