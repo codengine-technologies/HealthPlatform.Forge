@@ -276,6 +276,59 @@ n'a pas été appliqué au moment d'écrire ce code.
 - **Prochaine étape** : `/review task-188` (la task ne liste ni `client-angular` ni
   `client-mobile` — `/lint-angular`, `/lint-mobile` et `/verify-visual` sont sans objet).
 
+## PRs
+
+| Repo | PR | Label | État |
+|---|---|---|---|
+| `api-mail` | https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/244 | `awaiting-human-merge` | ouverte, en attente du merge humain (HAG, règle 10) |
+
+Aucun autre repo : la task est backend-only (`**Repos**: api-mail`). `client-angular`,
+`client-mobile` et `dtos-mss` ne sont pas touchés — `/lint-angular`, `/lint-mobile` et
+`/verify-visual` sont donc sans objet, et aucune branche n'a été créée sur `dtos-mss`
+(branche paresseuse depuis le 2026-09-16).
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 22 fichiers relus, 0 problème bloquant, 3 suggestions.
+
+| Axe | Verdict |
+|---|---|
+| Correction | ✅ les trois défauts traités à la racine, chacun porte son test |
+| Concurrence | ✅ une section critique par ordre ; compte de cessions borné à zéro ; réservation par `TryAdd`, retrait par paire clé/valeur |
+| Sûreté du verrou distribué | ✅ `TryRenewAsync` compare le détenteur et prolonge dans le **même** aller-retour Redis ; motif « comparer puis agir » factorisé pour `del` et `pexpire` |
+| Robustesse | ✅ battement best-effort ; intervalle nul ou négatif désactive au lieu de lever |
+| Sécurité / données de santé | ✅ aucun INS, aucun contenu de message, aucun secret ; seule l'adresse du praticien, comme ailleurs dans ce service |
+| Architecture | ✅ le port de pause cesse d'être le worker ; garde de composition posée dans `CaptiveDependencyTests` |
+| Tests | ✅ 12 ajoutés, dont 2 vérifiés **RED sur `develop`** avant correctif |
+
+**Suggestions (non bloquantes)** :
+
+1. Plusieurs commentaires ajoutés sont **sans accents** (`DependencyInjection.cs`, passages
+   de `BackgroundSyncManager.cs` et `BackgroundSyncService.cs`) alors que le code autour est
+   accentué — purement cosmétique.
+2. `TryRenewAsync` journalise un **avertissement à chaque refus** de renouvellement. Le
+   signal est juste, mais une course d'arrêt normale en produira aussi.
+3. `RedisKeys.Lock.BackgroundSync` ne porte **délibérément pas** le préfixe `lock:` des
+   autres entrées, pour ne pas renommer une clé vivante pendant un déploiement.
+   L'alignement mérite sa propre task, après une fenêtre de déploiement.
+
+**Vérifié en lecture, hors DOD** : l'objectif mentionnait « en cas de logout la
+synchronisation doit se terminer immédiatement ». Le chemin existe
+(`POST /sync/logout` → `CleanupUserAsync` → `StopLocallyAsync`, dès qu'aucune autre session
+de premier plan ne subsiste pour cette adresse) et **n'est effectif que parce que ce
+correctif supprime l'orphelinage du runtime** : avant, l'arrêt ne connaissait que le
+runtime le plus récent. Aucun code nouveau n'était requis ; le point est reporté au
+Manual Test Plan (étape 8) pour vérification humaine.
+
+### Validation
+
+| Contrôle | Résultat |
+|---|---|
+| Build `api-mail` | ✓ 0 erreur |
+| Tests `api-mail` | ✓ **4 493 réussis, 0 échec**, 16 ignorés |
+| DOD | ✓ 10/10 items vérifiés |
+| Sync avec `develop` | ✓ `git merge origin/develop` (règle 4), sans conflit |
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-188 --sync` — ne pas éditer à la main)*
@@ -285,7 +338,8 @@ n'a pas été appliqué au moment d'écrire ce code.
 | /start | ok | 53 s | — | — | — | — |
 | /develop | ok | 47 min 48 s | 10 (3 min 08 s) | 9 (8 min 17 s) | — | api-mail 10B/9T |
 | /sonar | ok | 23 min 17 s | 3 (1 min 41 s) | 11 (8 min 20 s) | 4 (4 min 23 s) | 2 itération(s), api-mail 3B/11T |
-| **Total cycle** | | **1 h 11 min** | **13 (4 min 49 s)** | **20 (16 min 38 s)** | **4 (4 min 23 s)** | |
+| /review | ok | 6 min 55 s | 1 (55 s) | 1 (1 min 45 s) | — | api-mail 1B/1T |
+| **Total cycle** | | **1 h 18 min** | **14 (5 min 44 s)** | **21 (18 min 23 s)** | **4 (4 min 23 s)** | |
 
 ## Develop log
 
