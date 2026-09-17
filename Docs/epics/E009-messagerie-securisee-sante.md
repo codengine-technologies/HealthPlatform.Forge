@@ -2,9 +2,9 @@
 
 > **Statut** : En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.72
+> **Version** : 1.73
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-09-09 (task-293)
+> **Dernière mise à jour** : 2026-09-17 (task-188)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -993,7 +993,7 @@ Les règles `RG-E009-084` à `RG-E009-089` sont propres à ENS Mon espace santé
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---------|--------|------------|---------------------|
-| E009-F001 | 🟢 Implémenté | 95% — dossiers IMAP CRUD complets, opérations en masse (déplacer/lu/marquer), mono-boîte (multi-boîte via F010), jauge d'occupation de la boîte | task-087 |
+| E009-F001 | 🟢 Implémenté | 95% — dossiers IMAP CRUD complets, opérations en masse (déplacer/lu/marquer), mono-boîte (multi-boîte via F010), jauge d'occupation de la boîte ; pilotage de la synchronisation d'arrière-plan (pause / relance / arrêt) effectif et état fidèle — task-188 | task-087 |
 | E009-F002 | 🟢 Implémenté | 100% — traitement CDA et IHE_XDM complet, paire CDA/PDF fusionnée, détection doublons et versions normative INT.18 | task-010, task-013, task-034 |
 | E009-F003 | 🟢 Implémenté | 100% — tags urgence, tagging IA, détection biologie anormale, acquittement médico-légal | task-005, task-028 |
 | E009-F004 | 🟢 Implémenté | 100% — Vue temporelle patient, Timeline biologie horizontale, Synthèse clinique livrées sur les deux frontends ; widget Patient sur le dashboard | task-035 |
@@ -1018,6 +1018,26 @@ Les règles `RG-E009-084` à `RG-E009-089` sont propres à ENS Mon espace santé
 Cette synthèse digère l'historique des versions en langage produit. Le détail ingénierie (numéros de PR, versions NuGet, métriques tests, audits grep) est consigné dans le document frère [`E009-Changelogs.md`](./E009-Changelogs.md).
 
 ### Fonctionnalités métier
+
+- **v1.73 — Les boutons « pause », « relancer » et « arrêter » de la
+  synchronisation fonctionnent, et l'état affiché dit la vérité** (task-188) :
+  la messagerie rapatrie les messages de la boîte MSSanté en arrière-plan,
+  pendant que le praticien continue de travailler. Trois défauts se combinaient
+  pour rendre ce travail incontrôlable. **Mettre en pause ne mettait rien en
+  pause** : le praticien cliquait, l'écran acquiesçait, et le rapatriement
+  continuait — en ouvrant au passage une **seconde connexion** à la boîte à
+  chaque consultation, ce que certains opérateurs MSSanté refusent. **Au bout de
+  quinze minutes**, une synchronisation longue sur une boîte déjà à jour était
+  déclarée « inactive » alors qu'elle tournait toujours ; le praticien relançait
+  logiquement, et cette relance créait une **synchronisation fantôme** que plus
+  aucun bouton ne pouvait arrêter, pendant une demi-heure. Enfin, une pause
+  demandée **juste après** avoir lancé était purement et simplement ignorée.
+  Depuis cette version, l'ordre atteint la synchronisation qui travaille
+  réellement, l'état reste vrai tant qu'elle vit, une relance ne peut plus
+  abandonner celle qui est en cours, et un ordre reçu trop tôt est mémorisé puis
+  appliqué. Effet de bord voulu : consulter ses dossiers pendant une
+  synchronisation lui fait céder la place le temps de la lecture, **sans** pour
+  autant annuler une pause que le praticien, lui, n'a pas levée.
 
 - **v1.72 — Les comptes-rendus et résultats reçus ne peuvent plus disparaître en
   silence à cause d'un dossier de travail effacé** (task-293) : pour constituer

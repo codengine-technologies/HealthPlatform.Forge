@@ -196,6 +196,139 @@ Aucun autre repo : la task est backend-only (`**Repos**: api-mail`, justificatio
 auto-inclus (branche paresseuse depuis le 2026-09-16) — aucun contrat n'est
 attendu en changement ici.
 
+## Sonar log
+
+- **Phase 1 (new code de la task)** : ✓ — **0 finding restant** dans les 22 fichiers
+  du diff `origin/develop...HEAD` (4 → 0), en 1 itération.
+- **Phase 1 — Issues fixées : 4** (0 bug, 0 vulnérabilité, 4 code smells), aucun
+  hotspot de sécurité dans le périmètre de la task.
+- **Phase 1 — Tests ajoutés : 0** — les 4 findings sont des défauts de forme sur du
+  code déjà couvert (`new_coverage` = 87,7 %, seuil 80 %) ; aucun n'était comportemental.
+- **Phase 2 (legacy)** : **délibérément non exécutée** — justification ci-dessous.
+- **Build / tests** : ✓ build Release 0 erreur, **4 493 tests verts**, 0 échec, 16 ignorés.
+
+### Les 4 findings corrigés
+
+| Règle | Fichier | Nature | Correctif |
+|---|---|---|---|
+| `S138` | `BackgroundSyncManager.cs:84` | `StartSyncAsync` à 94 lignes (> 80) | Extraction de `TryReserveRunAsync` (réservation locale puis créneau distribué) et de `CompleteRunAsync` (clôture du run). Refactor pur, couvert par `SyncControlPlaneTests`. |
+| `S125` | `BackgroundSyncManager.cs:227` | Prose lue comme du code commenté | Liste à puces `//   • …` réécrite en phrases. Contenu inchangé. |
+| `S103` | `BackgroundSyncManager.cs:363` | Ligne de 167 caractères | Gabarit de log scindé en deux littéraux concaténés — toujours constant à la compilation, journalisation structurée intacte. |
+| `CA1859` | `SyncControlPlaneTests.cs:130` | Locale de test typée par l'interface | `var` + le commentaire porte l'intention (« le conteneur sert un `ISyncPauser` »). |
+
+### Pourquoi Phase 2 (dette legacy) n'a pas été exécutée
+
+La *new code period* du projet est `PREVIOUS_VERSION` **datée du 2026-04-17** : ses
+177 violations restantes couvrent **cinq mois de tasks déjà mergées**, pas le diff de
+task-188. Leur répartition — **48 dans `tests/loadtest-k6/`, 82 dans des tests
+unitaires, 51 en production** — montre qu'aucune n'appartient au plan de contrôle de
+la synchronisation.
+
+Les traiter sur cette branche aurait violé deux règles du plan de contrôle pour un
+gain qui n'appartient pas à cette US : la règle 5 (~30 fichiers par PR) et la règle 6
+(une task ne touche que les fichiers de son module). Le playbook autorise
+explicitement ce saut (« Cette phase peut être entièrement skipped […] elle ne bloque
+jamais le cycle autonome »).
+
+**Ce qui reste, et qui mérite sa propre task** : les 2 bugs du projet sont des
+scripts Python de `loadtest-k6` (task-174), déjà identifiés comme ouverts — un
+`if palier == 0 else` qui rend `14` des deux côtés (`S3923`), et une égalité sur
+flottant (`S1244`, `compression == 1.0`) dont la correction change le comportement de
+l'outil de rapport et exige son propre test. Ce sont eux qui maintiennent le
+`reliability_rating` à **C**. Les 15 hotspots `TO_REVIEW` (Dockerfile, `loadtest-k6`,
+`Program.cs`, `BaseRepository.cs`) sont, eux aussi, entièrement hors périmètre.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (projet) | ERROR | ERROR | → *(dette legacy, cf. ci-dessus)* |
+| Findings dans le diff de la task | **4** | **0** | **−4** |
+| New coverage | 87,3 % | 87,7 % | +0,4 pt |
+| New violations (projet) | 181 | 177 | −4 |
+| Bugs | 2 | 2 | → *(les deux en `loadtest-k6`)* |
+| Vulnerabilities | 2 | **0** | **−2** ¹ |
+| Security hotspots | 15 | 15 | → *(aucun dans le périmètre)* |
+| Code smells | 253 | 250 | −3 |
+| Coverage (projet) | 87,6 % | 87,8 % | +0,2 pt |
+| Duplication | 0,4 % | 0,3 % | −0,1 pt |
+| Reliability / Security / Maintainability | C / **E** / A | C / **A** / A | Security **E → A** ¹ |
+
+¹ Les deux vulnérabilités `S6698` (« mot de passe PostgreSQL en clair » dans
+`loadtest-k6/observe.ps1`) étaient **périmées** : l'analyse de référence datait du
+2026-09-14 et le durcissement du banc — le mot de passe passe désormais par
+l'environnement — avait déjà été mergé depuis. La ré-analyse les a levées seule. Ce
+gain n'est **pas** l'œuvre de task-188 et ne doit pas lui être porté au crédit.
+
+### Conventions alimentées (`conventions/csharp.md`)
+
+| Règle | État | Note |
+|---|---|---|
+| `S125` | **récidive → 3** | Nouvelle variante : une **liste à puces** dans un commentaire suffit, sans le moindre fragment de C#. |
+| `CA1859` | **récidive → 4** | Nouvelle variante : une locale **de test** typée par l'interface pour documenter le contrat servi. |
+| `S138` | **nouvelle entrée** | Sortir l'acquisition et la clôture autour d'une closure d'arrière-plan. |
+| `S103` | **nouvelle entrée** | Scinder un gabarit de log par **concaténation de littéraux**, jamais par interpolation. |
+
+Deux des quatre règles étaient **déjà documentées** avant d'être re-déclenchées sur
+du code frais : le signal attendu par le protocole est que `conventions/csharp.md`
+n'a pas été appliqué au moment d'écrire ce code.
+
+- **Prochaine étape** : `/review task-188` (la task ne liste ni `client-angular` ni
+  `client-mobile` — `/lint-angular`, `/lint-mobile` et `/verify-visual` sont sans objet).
+
+## PRs
+
+| Repo | PR | Label | État |
+|---|---|---|---|
+| `api-mail` | https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/244 | `awaiting-human-merge` | ouverte, en attente du merge humain (HAG, règle 10) |
+
+Aucun autre repo : la task est backend-only (`**Repos**: api-mail`). `client-angular`,
+`client-mobile` et `dtos-mss` ne sont pas touchés — `/lint-angular`, `/lint-mobile` et
+`/verify-visual` sont donc sans objet, et aucune branche n'a été créée sur `dtos-mss`
+(branche paresseuse depuis le 2026-09-16).
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 22 fichiers relus, 0 problème bloquant, 3 suggestions.
+
+| Axe | Verdict |
+|---|---|
+| Correction | ✅ les trois défauts traités à la racine, chacun porte son test |
+| Concurrence | ✅ une section critique par ordre ; compte de cessions borné à zéro ; réservation par `TryAdd`, retrait par paire clé/valeur |
+| Sûreté du verrou distribué | ✅ `TryRenewAsync` compare le détenteur et prolonge dans le **même** aller-retour Redis ; motif « comparer puis agir » factorisé pour `del` et `pexpire` |
+| Robustesse | ✅ battement best-effort ; intervalle nul ou négatif désactive au lieu de lever |
+| Sécurité / données de santé | ✅ aucun INS, aucun contenu de message, aucun secret ; seule l'adresse du praticien, comme ailleurs dans ce service |
+| Architecture | ✅ le port de pause cesse d'être le worker ; garde de composition posée dans `CaptiveDependencyTests` |
+| Tests | ✅ 12 ajoutés, dont 2 vérifiés **RED sur `develop`** avant correctif |
+
+**Suggestions (non bloquantes)** :
+
+1. Plusieurs commentaires ajoutés sont **sans accents** (`DependencyInjection.cs`, passages
+   de `BackgroundSyncManager.cs` et `BackgroundSyncService.cs`) alors que le code autour est
+   accentué — purement cosmétique.
+2. `TryRenewAsync` journalise un **avertissement à chaque refus** de renouvellement. Le
+   signal est juste, mais une course d'arrêt normale en produira aussi.
+3. `RedisKeys.Lock.BackgroundSync` ne porte **délibérément pas** le préfixe `lock:` des
+   autres entrées, pour ne pas renommer une clé vivante pendant un déploiement.
+   L'alignement mérite sa propre task, après une fenêtre de déploiement.
+
+**Vérifié en lecture, hors DOD** : l'objectif mentionnait « en cas de logout la
+synchronisation doit se terminer immédiatement ». Le chemin existe
+(`POST /sync/logout` → `CleanupUserAsync` → `StopLocallyAsync`, dès qu'aucune autre session
+de premier plan ne subsiste pour cette adresse) et **n'est effectif que parce que ce
+correctif supprime l'orphelinage du runtime** : avant, l'arrêt ne connaissait que le
+runtime le plus récent. Aucun code nouveau n'était requis ; le point est reporté au
+Manual Test Plan (étape 8) pour vérification humaine.
+
+### Validation
+
+| Contrôle | Résultat |
+|---|---|
+| Build `api-mail` | ✓ 0 erreur |
+| Tests `api-mail` | ✓ **4 493 réussis, 0 échec**, 16 ignorés |
+| DOD | ✓ 10/10 items vérifiés |
+| Sync avec `develop` | ✓ `git merge origin/develop` (règle 4), sans conflit |
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-188 --sync` — ne pas éditer à la main)*
@@ -204,7 +337,10 @@ attendu en changement ici.
 |---|---|---|---|---|---|---|
 | /start | ok | 53 s | — | — | — | — |
 | /develop | ok | 47 min 48 s | 10 (3 min 08 s) | 9 (8 min 17 s) | — | api-mail 10B/9T |
-| **Total cycle** | | **48 min 41 s** | **10 (3 min 08 s)** | **9 (8 min 17 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 23 min 17 s | 3 (1 min 41 s) | 11 (8 min 20 s) | 4 (4 min 23 s) | 2 itération(s), api-mail 3B/11T |
+| /review | ok | 6 min 55 s | 1 (55 s) | 1 (1 min 45 s) | — | api-mail 1B/1T |
+| /tech-writer | ok | 5 min 18 s | — | — | — | — |
+| **Total cycle** | | **1 h 24 min** | **14 (5 min 44 s)** | **21 (18 min 23 s)** | **4 (4 min 23 s)** | |
 
 ## Develop log
 
