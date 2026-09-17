@@ -374,3 +374,75 @@ tranche** : au banc, l'API annonçait des succès pendant que ce compte restait 
 > Pré-vol : `api-mail`, `client-blazor`, `client-mobile`, `dtos-mss`, `sdk`, `interop-cda` tous sur `develop`. `host` écarté (pas de `.git` — cf. l'avertissement du CLAUDE.md). `dtos-mss` **non auto-inclus** (branche paresseuse depuis le 2026-09-16) : aucun contrat n'est attendu dans cette US.
 >
 > Le banc de charge a été rendu au `/start` pour libérer les binaires d'`api-mail`. **Les 1000 bases hydratées sont intactes** (aucun `reset-state.sh` joué) — la campagne suivante n'aura pas à repayer les 3 h 30 d'hydratation.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-315 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 1 min 52 s | — | — | — | — |
+| /develop | ok | 31 min 49 s | 1 (26 s) | 7 (5 min 40 s) | — | api-mail 0B/3T, client-blazor 0B/1T, client-mobile 0B/2T, client-angular 1B/1T |
+| **Total cycle** | | **33 min 41 s** | **1 (26 s)** | **7 (5 min 40 s)** | **0 (0.0 s)** | |
+
+## Develop log
+
+### Backend — `api-mail` (poussé, `3380a681` + `simplify pass`)
+
+- `EnrichmentOutcome` (demandés / déjà analysés / analysés / injoignables) ; les
+  trois interfaces alignées.
+- `enrich/sync` → **503** `UnavailableException` quand rien n'a pu être lu alors
+  qu'il restait à faire. Symétrique du 503 que **task-293** avait déjà posé, dans
+  cette même méthode, pour les échecs d'extraction — avec ce commentaire :
+  « le 200 qui a masqué l'incident du 2026-09-08 ». Le précédent existait, il ne
+  couvrait simplement pas la connexion perdue.
+- `enrich/async` → compte réel dans le log, `mssante_enrichment_unreachable_messages_total`,
+  et remise en file du reliquat (3 essais, retard croissant, lot complet rejoué —
+  idempotent puisque les déjà-analysés court-circuitent).
+- Balayage de sessions : éviction de celles dont la voie IMAP est ouverte et le
+  lien tombé.
+- `CanAccessImap` cesse d'être un alias d'`IsOnlineMode`.
+
+> ⚠️ **Correction de conception en cours d'implémentation.** La première version
+> de la sonde testait `ActiveSessionCount > 0 && ConnectedSessionCount == 0` —
+> et aurait déclaré la messagerie morte **au démarrage**, une session qui n'a pas
+> encore ouvert de voie IMAP étant légitimement active et non connectée. C'est le
+> test d'invariant du balayage qui l'a révélé, **en contredisant son voisin**.
+> D'où `DisconnectedSessionCount`, qui ne compte que les liens réellement tombés.
+
+**Vérification du DOD « ce test doit échouer sur le code d'origine »** : garde
+retirée temporairement, `EnrichEmailsSync_NothingReadWhileWorkRemained` échoue sur
+`Assert.Throws() Failure: No exception was thrown` — le 200 du 16/09. Garde
+restaurée, test vert.
+
+**Tests** : 183 domaine + 492 infra + 2 488 application + 837 API + 507 intégration,
+**0 échec**.
+
+### `client-blazor` (poussé, `a7db495`)
+
+`PostAndGetStatusAsync` (le booléen d'`IsSuccessStatusCode` rendait un 503
+indistinguable d'un 500), `NotifyMailServerUnavailable`, et
+`OutageNotificationGate` — la règle « une fois par épisode » isolée en unité
+**pure**, parce que `HttpRequestService` est une classe concrète à méthodes non
+virtuelles, donc non mockable. **260 tests verts.**
+
+### `client-mobile` (poussé, `27a3b8d`)
+
+`MailOutageNotifierService` + branchement des deux appels d'analyse, qui étaient
+`subscribe({ error: () => undefined })`. **861 tests verts.**
+
+### `client-angular` (code-only — aucune opération git)
+
+Signal `mailServerUnavailable` dans `MailStateService`, handler d'erreur sur
+`enrichEmails`, bandeau non bloquant `data-testid="mail-server-unavailable"`.
+**380 tests verts, build `nx build mss` vert.** Les fichiers restent **modifiés
+non commités**, mêlés au travail en cours de l'humain sur
+`feature/nova-rewriting-mss`.
+
+> ⚠️ **Divergence assumée sur un item du DOD.** « Aucune chaîne en dur dans l'UI :
+> le message passe par le mécanisme de traduction du module » est **sans objet
+> pour `client-angular`** : le module MSS n'a pas d'i18n, et c'est une convention
+> **documentée** — `mail-undo-toast.component.ts` et `mailbox-quota-widget.component.ts`
+> portent tous deux « does not use ngx-translate — French labels are hardcoded ».
+> Introduire un mécanisme de traduction pour un seul bandeau sortirait du périmètre
+> et diviserait la convention du module. Le libellé suit donc ses voisins.
