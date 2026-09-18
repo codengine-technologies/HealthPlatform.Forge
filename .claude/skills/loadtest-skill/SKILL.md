@@ -465,6 +465,19 @@ Repères de volumétrie et de résultat :
 
 ## Étape 4 — Tir k6 (livré par task-174)
 
+> **Scénario `terrain` (task-321)** — `run.sh terrain` : le parcours `journey`
+> sous un modèle de session (absence → session → geste, profils de praticiens).
+> **N désigne des praticiens INSCRITS**, la concurrence active émerge et le
+> rapport titre « N inscrits — M actifs ». Une ligne `terrain` ne se compare
+> jamais à une ligne `journey`. Doc : `tests/loadtest-k6/README.md` § terrain,
+> `docs/SLO-parcours-medecin.md` § Mode terrain.
+>
+> **Pré-vol — population hydratée** : si les boîtes ont déjà été analysées (tir
+> précédent, bouchage), poser `JOURNEY_WARMUP_HYDRATED=1` — la chauffe devient
+> une vérification au débit du court-circuit au lieu d'allouer 78 % de la
+> fenêtre sur le plafond d'analyse (mesuré le 2026-09-17). Jamais sur une
+> population froide.
+
 Harnais dans `tests/loadtest-k6/`. Six scénarios : `folders`, `read`, `search`,
 `send`, `enrich` (pipeline CDA), `mixed`. Mode d'emploi complet dans
 `tests/loadtest-k6/README.md`, chiffres de référence dans
