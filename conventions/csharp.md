@@ -238,7 +238,12 @@ dans `string.Equals`, mais `StringComparer` dans `Contains`.
 
 ## S125 — une prose qui « ressemble à du code » est signalée comme code commenté
 
-**Occurrences : 3** (task-184, task-292, task-188 — troisième récidive sur code
+**Occurrences : 4** (task-184, task-292, task-188, task-322 — quatrième récidive sur
+code frais. Variante task-322 : une **condition entre accents graves** citée dans un
+commentaire d'intention — `` `if (mail.Content == null) …` `` — pour désigner le
+comportement d'un client. Un fragment conditionnel avec parenthèses et opérateur
+suffit à déclencher la règle ; le paraphraser en français (« ils ne rechargent le
+contenu que s'il manque ») porte la même information.) Historique : troisième récidive sur code
 frais. Variante task-188 : une **liste à puces** `//   • …` dans un commentaire
 d'intention, dont chaque item se terminait par `;` et portait des identifiants
 entre accents graves. La puce, l'indentation et le point-virgule réunis suffisent

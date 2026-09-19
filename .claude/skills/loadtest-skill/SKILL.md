@@ -935,6 +935,46 @@ Repères mesurés le 2026-07-27, tir `mixed` 20 utilisateurs / 20 VU
 par l'ADR (`max_db_connections=3` par base est volontairement serré) : il ne se
 manifeste pas à 20 praticiens, il reste à éprouver à 200.
 
+### 5a-ter — Classer les requêtes Postgres (`pg_stat_statements`, depuis le 2026-09-19)
+
+Le rapport et 5a-bis disent **combien** Postgres travaille (backends, `cl_waiting`,
+login, cgroup) — jamais **sur quoi**. Depuis le 2026-09-19 le Postgres du banc
+précharge `pg_stat_statements` (`DevOps/Dev/PostgreSQL/docker-compose.yml`) et
+`run.sh` pose un `reset` avant k6 et une photo à la sortie, dans
+`reports/<date>/pgstats-<scenario>-<hhmmss>.tsv`. **Toujours** produire les
+classements et les coller dans le rapport du tir :
+
+```bash
+tests/loadtest-k6/pg-statements.sh check                                  # extension chargée, sinon recréer le conteneur
+tests/loadtest-k6/pg-statements.sh top tests/loadtest-k6/reports/<date>/pgstats-<scenario>-<hhmmss>.tsv
+# chauffe non hydratée : `snapshot warmup` posé à la fin de la chauffe, puis
+tests/loadtest-k6/pg-statements.sh top <fin.tsv> <warmup.tsv>              # delta = régime seul
+```
+
+Quatre classements agrégés par forme de requête (md5 du texte — le `queryid` natif diffère par base) toutes bases confondues (le modèle
+une-base-par-praticien fait ~1 000 lignes par requête EF) : **charge** (temps
+cumulé, part du temps serveur), **latence** (ms par appel, ≥ 100 appels),
+**hors cache** (blocs disque), **débordements** (blocs temporaires — `work_mem`).
+
+Le rapport (`report.sh`) intègre ces photos de lui-même : section « Postgres — réaction du
+serveur et requêtes » (réaction comparable inter-tirs, top 20 avec part d'impact et
+piste par requête, tables balayées de la base échantillon, synthèse par cible) et une
+ligne dans `reports/POSTGRES-INDEX.md`. **Lire cette section AVANT d'écrire les axes
+d'amélioration** (5b-ter) : c'est elle qui dit sur quelles requêtes le serveur a
+travaillé.
+
+Trois consignes :
+
+- **Une piste, pas une cause.** Un `queryid` en tête désigne où poser
+  `explain (analyze, buffers)` sur une base praticien hydratée — pas une US.
+  Même consigne que pour la page d'en-têtes : instrumenter avant d'optimiser.
+- **`bases` = 1 en tête de la charge = point de contention unique** (base
+  commune d'audit, provisionnement) : à traiter avant toute requête praticien.
+- **Iso-conditions** : recréer le conteneur vide le cache de pages ; un tir
+  comparatif exige une chauffe hydratée complète derrière.
+
+Les textes sont normalisés (`$1`, `$2`) : aucune donnée de santé dans le TSV.
+
 ### 5b — Analyse Seq systématique + dump (OBLIGATOIRE, jamais silencieuse)
 
 **Toujours**, en fin de tir, interroger le MCP `seq-local` sur la fenêtre du tir
