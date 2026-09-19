@@ -317,3 +317,21 @@ Commits Sonar : `fix(sonar/new): resolve 14 new-code findings — S125, S1144, C
 - Nettoyage Sonar (13 fichiers) — ✅ mécanique, comportement inchangé
 
 Validation `/review` : build 0 erreur, 4 498 tests verts (troisième validation complète du cycle). Sync `develop` : déjà à jour.
+
+## Mesure avant / après (tir A/B `terrain` 1 000, 2026-09-19 soir)
+
+Audit : `Docs/audits/api-mail-loadtest-terrain-1000-task322-ab-20260919.md`. Tir A = matin (`develop`), tir B = soir (branche task-322), un seul facteur : le code.
+
+| Grandeur | A | **B** | Δ |
+|---|---|---|---|
+| Temps SQL cumulé (3 h) | 139 min | **55,7 min** | −60 % |
+| Coût SQL par requête HTTP | 39,3 ms | **16,5 ms** | −58 % |
+| Backends actifs (équivalent) | 0,80 | **0,33** | ÷ 2,4 |
+| Requête « pièces jointes » de la liste | 63 min (45,6 %) | **disparue** | |
+| Requête « documents » de la liste | 141 ms/appel | 97 ms/appel | −31 % |
+| Taux de cache / lecture disque | 93,75 % / 5,40 Mo/s | **95,72 % / 3,08 Mo/s** | |
+| cgroup mémoire Postgres | 99–100 % | **37–39 %** | cache de pages libéré des blobs |
+| Page d'en-têtes p50 / p95 | 96,6 / 155 ms | **69,9 / 110 ms** | −28 % |
+| SLO | 11/11 | 10/11 — « Recherche » rouge par `api.openai.com` (p95 sortant 0,96 → ≥ 10 s), non attribuable | |
+
+DOD « tir avant/après publié, ligne `POSTGRES-INDEX.md` ajoutée » : ✅ fait. Mémoire « page d'en-têtes » mise à jour.
