@@ -181,7 +181,46 @@ Surface NodePort (pendants exacts des Services k8s — `SeedOptions.Remote*`) :
   `src/AppHost/dovecot/dovecot.conf` : toute évolution de l'un doit être
   reportée dans l'autre (plafonds de concurrence, dossiers spéciaux…).
 
+## Deux axes à nommer avant tout tir — TIREUR et BANC MAIL (2026-09-20)
+
+Le mot « distant » est **ambigu** : il désignait le banc mail sur le cluster
+(task-221). Depuis que k6 a sa propre machine, une demande de tir nomme **deux
+axes indépendants** ; un axe omis prend son défaut et le compte rendu l'annonce
+en première ligne.
+
+| Axe | Valeurs | Ce que ça change |
+|---|---|---|
+| **Tireur** (où tourne k6) | `tireur local` = poste, `run.sh` · **`tireur k6bench`** (défaut dès que `remote/remote.sh preflight` rend 200 sur 5052 et 9090) = serveur Linux `linux-k6`, `remote/remote.sh run` | publication du harnais par SSH, tmux détaché, échantillonneur du tireur fusionné au `fetch` |
+| **Banc mail** (Dovecot/GreenMail/Toxiproxy) | `banc local` = conteneurs sur le poste · `banc cluster` = `MSS_LOADTEST_MAIL_HOST=192.168.1.69` (pfSense → NodePorts 30993/30465/30474) | quels conteneurs l'AppHost démarre, où pointent les `UserSettings`, quelle API Toxiproxy le `setup()` k6 règle (`TOXIPROXY=http://192.168.1.69:30474`) |
+
+Un tir comparatif exige le **même tireur et le même banc** que sa référence
+(lisibles dans `manifest-<session>.txt` et le rapport). Mode d'emploi du tireur
+distant : `tests/loadtest-k6/README.md` § « Tirer depuis le serveur Linux dédié ».
+
+> ⚠️ **La population hydratée (1 000 praticiens) vit sur le cluster.** Le volume
+> local `loadtest-dovecot-mail` n'existe plus sur le poste ; les `UserSettings`
+> des tenants pointent `192.168.1.69:30993`. Un seed local ré-écrirait ces
+> réglages pour les N premières boîtes — ne pas le faire sans le vouloir. Le
+> `setup()` k6 ré-applique `LATENCY_MS` (défaut 100 ms) sur le Toxiproxy visé :
+> poser `LATENCY_MS=96` en banc cluster (100 − RTT), sinon le toxic change.
+
 ## Étape 1 — Lancer le backend + le banc
+
+> ⚠️ **Registre des tenants — variable OBLIGATOIRE depuis task-299/311 (E016).**
+> `mss_registry` porte des comptes de dev (`medecin.formation.mssante.fr`) : le
+> seed **refuse** d'y écrire, et sans rattachement toute route de messagerie
+> répond `403 MAILBOX_NOT_ATTACHED` alors que la sonde `connection/status`
+> ci-dessous reste verte. Le registre du banc est **`mss_registry_loadtest`**
+> (1 000 comptes `loadtest.local`). Toujours lancer avec :
+>
+> ```bash
+> MSS_TENANT_REGISTRY_DB=mss_registry_loadtest dotnet run --project src/AppHost --launch-profile https-load-test
+> # banc cluster : ajouter MSS_LOADTEST_MAIL_HOST=192.168.1.69
+> ```
+>
+> et attendre 200 sur une **route de messagerie** (`GET /api/v1/mail/folders`
+> avec `Client-Session-Id`), pas seulement sur `connection/status`.
+> (Constaté le 2026-09-20 ; déjà noté F-REGISTRE dans l'audit du 17/09.)
 
 **Rituel pré-vol obligatoire** (deux états résiduels font échouer ou figer le
 démarrage, tous deux mesurés) :

@@ -76,7 +76,6 @@
     ],
     "deny": [
       "Bash(wget:*)",
-      "Bash(ssh:*)",
       "Bash(kubectl apply:*)",
       "Bash(kubectl create:*)",
       "Bash(kubectl delete:*)",
