@@ -335,3 +335,11 @@ Audit : `Docs/audits/api-mail-loadtest-terrain-1000-task322-ab-20260919.md`. Tir
 | SLO | 11/11 | 10/11 — « Recherche » rouge par `api.openai.com` (p95 sortant 0,96 → ≥ 10 s), non attribuable | |
 
 DOD « tir avant/après publié, ligne `POSTGRES-INDEX.md` ajoutée » : ✅ fait. Mémoire « page d'en-têtes » mise à jour.
+
+## Merged
+
+- Date : 2026-09-20
+- `api-mail` : PR #246 squash-mergée → `42707fac0bea27875cecfa2b517993ad5f364bdd` sur `develop` — CI develop verte (run 35499915900)
+- Branche `feat/task-322-projection-entetes-index-mailid` supprimée (distante + locale)
+- Attestation humaine : `--i-tested`
+- Staging : aucune branche `forge/staging-*` sur ce run — rien à nettoyer
