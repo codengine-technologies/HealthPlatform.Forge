@@ -193,6 +193,14 @@ en première ligne.
 | **Tireur** (où tourne k6) | `tireur local` = poste, `run.sh` · **`tireur k6bench`** (défaut dès que `remote/remote.sh preflight` rend 200 sur 5052 et 9090) = serveur Linux `linux-k6`, `remote/remote.sh run` | publication du harnais par SSH, tmux détaché, échantillonneur du tireur fusionné au `fetch` |
 | **Banc mail** (Dovecot/GreenMail/Toxiproxy) | `banc local` = conteneurs sur le poste · `banc cluster` = `MSS_LOADTEST_MAIL_HOST=192.168.1.69` (pfSense → NodePorts 30993/30465/30474) | quels conteneurs l'AppHost démarre, où pointent les `UserSettings`, quelle API Toxiproxy le `setup()` k6 règle (`TOXIPROXY=http://192.168.1.69:30474`) |
 
+> ⚠️ **Tireur k6bench — le lien réseau est un prérequis dur.** `remote.sh preflight`
+> mesure le débit brut poste ↔ serveur et alerte sous 60 Mo/s. Le 2026-09-20 un
+> journey 1000 a été rendu VOID par un lien de classe 100 Mbit/s : la page
+> d'en-têtes (6 Mo × 6 req/s) saturait le transport, le p50 *serveur* affichait 60 s
+> avec un CPU bas partout. Une latence serveur bornée au délai client + CPU bas =
+> regarder le transport avant le code. Un tir journey depuis k6bench n'est
+> opposable qu'avec ≥ 60 Mo/s mesurés (`folders`/`terrain`, corps légers, tolèrent moins).
+
 Un tir comparatif exige le **même tireur et le même banc** que sa référence
 (lisibles dans `manifest-<session>.txt` et le rapport). Mode d'emploi du tireur
 distant : `tests/loadtest-k6/README.md` § « Tirer depuis le serveur Linux dédié ».
