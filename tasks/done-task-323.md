@@ -235,7 +235,8 @@ DOD** : le correctif se merge sur sa justesse, la mesure dit ce qu'il valait.
 | /lint-mobile | ok | 30 s | — | — | — | — |
 | /verify-visual | skipped | 36 s | — | — | — | Tools/visual-verify absent du checkout (capture.mjs introuvable) - best-effort, aucune capture produite |
 | /review | ok | 6 min 16 s | 4 (24 s) | 4 (2 min 17 s) | — | api-mail 2B/2T, client-blazor 1B/1T, client-mobile 1B/1T |
-| **Total cycle** | | **43 min 46 s** | **13 (1 min 49 s)** | **15 (7 min 27 s)** | **1 (4 min 45 s)** | |
+| /tech-writer | ok | 4 min 32 s | — | — | — | — |
+| **Total cycle** | | **48 min 18 s** | **13 (1 min 49 s)** | **15 (7 min 27 s)** | **1 (4 min 45 s)** | |
 
 Autres commandes mesurées : lint ×1 (17 s)
 
