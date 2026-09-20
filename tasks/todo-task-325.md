@@ -1,4 +1,4 @@
-# todo-task-325.md — Les traitements IA de la messagerie tournent en local : fournisseur réellement commutable, Ollama sur GPU dans l'AppHost, zéro appel OpenAI au banc et en développement
+# todo-task-325.md — Traitements IA hybrides : le chat (tags, résumé, assistant, rédaction) tourne en local sur Ollama GPU dans l'AppHost, les embeddings restent sur OpenAI ; fournisseur choisi par capacité, jamais de repli silencieux
 
 **Repos**: api-mail
 **Dependencies**: — (aucune)
@@ -24,8 +24,21 @@
 > **tokens ne sont pas mesurés** : le coût en euros ne peut être qu'estimé
 > (ordre de grandeur, à ~1 500 tokens par appel : ~1,9 milliard de tokens sur
 > 15 jours, soit une centaine à quelques centaines d'euros par quinzaine de
-> banc aux tarifs `gpt-4o-mini` / `text-embedding-3-small`). Cette US **rend le
-> coût mesurable** avant de le supprimer.
+> banc). Aux tarifs publics, le **chat `gpt-4o-mini` pèse environ neuf dixièmes
+> de cette facture**, les embeddings `text-embedding-3-small` un dixième.
+> Cette US **rend le coût mesurable** et supprime la part dominante.
+>
+> **Amendée le 2026-09-20 (même session), en mode hybride.** La première
+> rédaction basculait aussi les embeddings en local. Or deux modèles
+> d'embedding produisent deux espaces vectoriels sans correspondance, même à
+> dimension égale : les bases praticien du banc, hydratées par la chauffe,
+> portent des vecteurs OpenAI en 1536 dimensions dans `MailContents` et
+> `MailMedicalDocuments`. Un modèle local en 1024 dimensions ferait échouer
+> chaque recherche en erreur SQL de dimensions ; un modèle local en 1536
+> rendrait des résultats silencieusement faux. Décision : **les embeddings
+> restent sur OpenAI**, le corpus reste valide, et la bascule des embeddings
+> attend une US de re-vectorisation (task-326, à rédiger) que cette US prépare
+> par une **colonne modèle par ligne**.
 
 ## Ce qui est établi, et pourquoi la branche Ollama existante n'a jamais tourné
 
@@ -35,89 +48,96 @@
   2. **Aucun conteneur Ollama** n'est déclaré, ni dans l'AppHost, ni dans `docker-compose.yml`, ni dans `devtools/docker-compose.yml`.
   3. L'option `OpenAi:Endpoint` (`https://api.openai.com/v1` dans `appsettings.json`) **n'est jamais passée au connecteur** : impossible de viser un serveur compatible OpenAI local (Ollama `/v1`, vLLM, LiteLLM) sans toucher au code. C'est une option morte.
   4. La branche Ollama n'a **ni HttpClient poolé ni timeout**, contrairement à la branche OpenAI depuis task-073 (`SocketsHttpHandler`, `PooledConnectionLifetime` 5 min, `TimeoutSeconds`).
-- `AiConversationService` construit des `OpenAIPromptExecutionSettings` (~l. 173) pour porter `FunctionChoiceBehavior.Auto()` : un réglage **spécifique au connecteur OpenAI** sur un chemin censé être commutable.
-- `FlexibleEmbeddingService`, `OpenAiEmbeddingProviderService`, `OllamaEmbeddingProviderService` et `IEmbeddingProviderService` ne sont **enregistrés nulle part** (constat déjà fait par task-073 pour `FlexibleEmbeddingService`). Ils prétendent gérer la dimension des vecteurs (1536 / 768) ; c'est du code mort. La colonne pgvector est déclarée `vector` **sans dimension fixe** et **aucun index HNSW / IVFFlat** n'existe : changer de modèle d'embedding ne demande pas de migration, mais un vecteur de requête d'une autre dimension que le corpus fait **échouer la requête SQL** au lieu de rendre un résultat vide.
-- Mémoires de la forge convergentes : un **seul circuit** pour chat et embeddings, le `429 insufficient_quota` non transitoire est retenté et rouvre le circuit (`openai-circuit-partage-chat-embeddings`) ; au banc, la recherche est rouge à 67 % **à cause d'OpenAI**, pas de la base (`loadtest-page-en-tetes-charge-les-blobs`). Le fournisseur externe est aujourd'hui **le facteur limitant du banc sur la recherche**.
+- Le sélecteur est **tout ou rien** : un seul `AiProvider:Provider` construit un kernel entièrement OpenAI ou entièrement Ollama. Pourtant le `Kernel` de Semantic Kernel est un conteneur de services où **chat et embeddings sont enregistrés séparément** : les consommateurs demandent `IChatCompletionService` d'un côté, `IEmbeddingGenerator<string, Embedding<float>>` de l'autre, sans connaître le fournisseur. Rien n'impose le même fournisseur aux deux — c'est ce que l'hybride exploite.
+- `AiConversationService` construit des `OpenAIPromptExecutionSettings` (~l. 173) pour porter `FunctionChoiceBehavior.Auto()` : un réglage **spécifique au connecteur OpenAI** sur un chemin censé être commutable. La propriété existe sur le type de base `PromptExecutionSettings`.
+- `FlexibleEmbeddingService`, `OpenAiEmbeddingProviderService`, `OllamaEmbeddingProviderService` et `IEmbeddingProviderService` ne sont **enregistrés nulle part** (constat déjà fait par task-073 pour `FlexibleEmbeddingService`). Ils prétendent gérer la dimension des vecteurs (1536 / 768) ; c'est du code mort. La colonne pgvector est déclarée `vector` **sans dimension fixe**, **aucun index HNSW / IVFFlat** n'existe, et **aucune colonne ne dit quel modèle a produit un vecteur** : les tables ne savent pas ce qu'elles contiennent.
+- Mémoires de la forge convergentes : un **seul circuit** pour chat et embeddings, le `429 insufficient_quota` non transitoire est retenté et rouvre le circuit (`openai-circuit-partage-chat-embeddings`) ; au banc, la recherche est rouge à 67 % **à cause d'OpenAI**, pas de la base (`loadtest-page-en-tetes-charge-les-blobs`).
 
 **Le poste** : GPU NVIDIA RTX 5070 Ti (16 303 Mio), Ryzen 9 7900X 12 cœurs, 191 Go de RAM, Docker 29.6.2. Le passthrough GPU fonctionne sous Docker Desktop (WSL2) avec `--gpus=all`. Aspire 13.5.3 ; le paquet communautaire `CommunityToolkit.Aspire.Hosting.Ollama` existe en **13.5.0** (support GPU et téléchargement des modèles au démarrage).
 
 ## Objective
 
-Que les cinq familles de traitements IA d'`api-mail` puissent tourner **intégralement sur le poste**, sans clé ni appel OpenAI, par simple choix de fournisseur, et que ce soit le **mode par défaut** du développement et du banc de charge. OpenAI reste disponible sur **opt-in explicite** (la clé n'est plus exigée au démarrage quand le fournisseur est local).
+Que le fournisseur IA soit choisi **par capacité** — chat d'un côté, embeddings de l'autre — et que, par défaut en développement et au banc, **tout le chat** (tags, résumé, assistant, aide à la rédaction) tourne **sur le GPU du poste** via Ollama pendant que **les embeddings restent sur OpenAI**, ce qui garde le corpus vectoriel du banc intact. Le passage des embeddings en local devient ensuite un changement de configuration, une fois la re-vectorisation livrée.
 
-Ce que cette US change : la facture OpenAI du banc tombe à zéro, la recherche sémantique cesse d'être rouge pour une cause externe, et **aucun contenu de mail ne quitte le poste** pour être résumé, étiqueté ou vectorisé. Ce qu'elle **ne change pas** : les contrats (aucun DTO), les frontends, la logique métier des prompts, les flags Flagsmith qui pilotent le pipeline.
+Ce que cette US change : la part dominante de la facture OpenAI disparaît, le contenu des mails ne sort plus du poste pour être étiqueté, résumé ou discuté, et un fournisseur mal orthographié fait échouer le démarrage au lieu de coûter en silence. Ce qu'elle **ne change pas** : les vecteurs (même modèle, même espace, mêmes recherches), les contrats (aucun DTO), les frontends, la logique des prompts, les flags Flagsmith.
 
 ### Périmètre
 
-1. **Sélecteur de fournisseur fiable** : la valeur d'`AiProvider:Provider` est validée au démarrage — `OpenAI` ou `Ollama`, insensible à la casse ; toute autre valeur (dont `OpenIA`) **fait échouer le démarrage** avec un message clair, jamais un repli silencieux. L'AppHost injecte la valeur correcte, et la clé `OpenAi__ApiKey` n'est plus `Require` (obligatoire) que si le fournisseur retenu est OpenAI.
-2. **Endpoint OpenAI honoré** : `OpenAi:Endpoint` est réellement passé aux deux connecteurs (chat + embeddings). Conséquence : n'importe quel serveur **compatible OpenAI** (Ollama `/v1`, vLLM, LiteLLM, LocalAI) est utilisable **sans changement de code**, ce qui prépare un éventuel passage à vLLM pour le débit du banc (hors périmètre ici).
-3. **Ollama dans l'AppHost, sur GPU** : ressource Aspire (paquet communautaire ci-dessus, ou conteneur `ollama/ollama` équivalent si le paquet pose problème avec Aspire 13.5.3) avec **GPU exposé**, **volume persistant** pour les modèles (pas de re-téléchargement à chaque démarrage), modèles tirés automatiquement au premier lancement, `api-mail` en `WaitFor` sur la ressource. L'`Ollama:Endpoint` est injecté depuis la référence Aspire (fin du `localhost:7869` codé en dur, et attention au piège `localhost → ::1` documenté dans l'AppHost pour Postgres et Seq).
-4. **Parité de la branche Ollama** : HttpClient nommé et poolé + `TimeoutSeconds`, comme la branche OpenAI. `AiConversationService` utilise des `PromptExecutionSettings` **neutres** (le `FunctionChoiceBehavior` vit sur la classe de base) pour que le function calling passe par les deux fournisseurs.
-5. **Modèles par défaut, avec leurs exigences** : le modèle de chat doit **tenir dans 16 Go de VRAM**, être **bon en français**, supporter les **outils** (function calling) en streaming et produire du **JSON exploitable** par `ParseTagsFromResponse`. Suggestion de départ : `qwen2.5:14b` (ou `qwen3:14b`), `mistral-nemo` en alternative. Le modèle d'embedding doit être **multilingue** : `bge-m3` (1024 dimensions) plutôt que `nomic-embed-text`, faible en français clinique. Ces valeurs sont des **défauts de configuration**, changeables sans code. Les défauts actuels (`mistral`, `nomic-embed-text`) sont remplacés.
-6. **Cohérence corpus / requête d'embedding** : au démarrage, `api-mail` journalise le fournisseur, les modèles et la dimension d'embedding actifs. Une recherche dont le vecteur de requête n'a **pas la dimension du corpus** rend une erreur métier explicite (`ProblemDetails`, règle 12, message sans donnée de santé) au lieu d'une erreur SQL en 500. La **réindexation** d'un corpus existant après changement de modèle est **hors périmètre** (voir ci-dessous) : au banc, `reset-state` repart d'une base vierge.
-7. **Le coût devient mesurable** : un compteur `mssante_ai_tokens_total{provider, model, kind=prompt|completion|embedding}` alimenté par l'`usage` renvoyé par les fournisseurs quand il est disponible, et les métriques `mssante_ai_pipeline_*` existantes **étiquetées `provider`**. Un panneau « IA — fournisseur, appels, tokens » ajouté au tableau de bord Grafana `mssante-mail-processing.json`. C'est ce qui permettra d'écrire, chiffres à l'appui, ce que la campagne suivante n'a pas payé.
-8. **Code mort retiré** : `FlexibleEmbeddingService`, `IEmbeddingProviderService` et ses deux implémentations sont **supprimés** (ou enregistrés et utilisés, mais pas les deux : la dimension ne doit être déclarée qu'à un seul endroit, celui du § 6). Leurs tests suivent.
-9. **Documentation d'exploitation** : une page `Api/Mail/docs/` (ou section du README de l'AppHost) qui dit comment choisir le fournisseur, quels modèles sont tirés, où vit le volume, comment revenir à OpenAI, et ce qu'implique un changement de modèle d'embedding. Le skill `loadtest-skill` est mis à jour pour que le banc parte **en local par défaut**.
+1. **Un sélecteur par capacité, validé au démarrage** : `AiProvider:Chat` et `AiProvider:Embedding`, chacun `OpenAI` ou `Ollama`, insensible à la casse. Toute autre valeur (dont `OpenIA`), ou une valeur manquante, **fait échouer le démarrage** avec un message clair — jamais de repli. L'ancienne clé `AiProvider:Provider` est **retirée** (pas d'alias : deux façons de dire la même chose, c'est une de trop). La clé `OpenAi__ApiKey` n'est exigée (`Require` côté AppHost, contrôle côté API) **que si au moins une capacité choisit OpenAI**. Défauts livrés : `Chat = Ollama`, `Embedding = OpenAI`.
+2. **Un kernel composé** : `Kernel.CreateBuilder()` reçoit le connecteur de chat du fournisseur choisi pour le chat et le générateur d'embeddings du fournisseur choisi pour les embeddings, dans le même kernel. Les consommateurs actuels (`IChatCompletionService`, `IEmbeddingGenerator<string, Embedding<float>>`) ne bougent pas.
+3. **Endpoint OpenAI honoré** : `OpenAi:Endpoint` est réellement passé aux connecteurs OpenAI (chat et embeddings). Conséquence : tout serveur **compatible OpenAI** (vLLM, LiteLLM, LocalAI) devient utilisable **sans code**, ce qui prépare la US débit du banc (hors périmètre ici).
+4. **Ollama dans l'AppHost, sur GPU** : ressource Aspire (paquet communautaire ci-dessus, ou conteneur `ollama/ollama` équivalent si le paquet pose problème avec Aspire 13.5.3) avec **GPU exposé**, **volume persistant** pour les modèles, **modèle de chat tiré automatiquement** au premier lancement, `api-mail` en `WaitFor` sur la ressource. L'`Ollama:Endpoint` est injecté depuis la référence Aspire (fin du `localhost:7869` codé en dur ; attention au piège `localhost → ::1` documenté dans l'AppHost pour Postgres et Seq).
+5. **Parité de la branche Ollama** : HttpClient nommé et poolé + `TimeoutSeconds`, comme la branche OpenAI depuis task-073 — **deux clients nommés**, un par fournisseur. `AiConversationService` utilise des `PromptExecutionSettings` **neutres** (le `FunctionChoiceBehavior` vit sur la classe de base) : le function calling en streaming doit passer par le connecteur Ollama natif.
+6. **Modèle de chat local, avec ses exigences** : tenir dans **16 Go de VRAM**, être **bon en français**, supporter les **outils** en streaming, produire un **JSON exploitable** par `ParseTagsFromResponse`. Suggestion de départ : `qwen2.5:14b` (ou `qwen3:14b`), `mistral-nemo` en alternative. Le modèle d'embedding Ollama reste configuré (`bge-m3`, multilingue, plutôt que `nomic-embed-text`) mais **n'est pas actif par défaut** et n'est pas tiré au démarrage. Toutes ces valeurs sont des **défauts de configuration**, changeables sans code ; `mistral` et `nomic-embed-text` sont remplacés.
+7. **Les tables savent ce qu'elles contiennent — colonne modèle d'embedding par ligne** : `MailContents` et `MailMedicalDocuments` reçoivent une colonne `EmbeddingModel` (chaîne courte, ex. `openai:text-embedding-3-small`) renseignée à chaque écriture de vecteur. Migration EF avec **rétro-remplissage** des lignes existantes à `openai:text-embedding-3-small` (elles n'ont jamais été produites par autre chose — constat § établi). La **recherche sémantique ne compare qu'aux lignes du modèle actif** : si un jour le modèle change, les anciens mails deviennent invisibles à la recherche au lieu de casser la requête ou de fausser les résultats, jusqu'à leur re-vectorisation (task-326). Audit de migration règle 7c obligatoire (fichier lu, `.Designer.cs` présent, pas d'opération fantôme, « has pending changes » vide).
+8. **Ceinture en plus des bretelles** : au démarrage, `api-mail` journalise les deux fournisseurs, les modèles et la dimension d'embedding actifs. Une recherche dont le vecteur de requête n'a pas la dimension du corpus filtré rend une erreur métier explicite (`ProblemDetails`, règle 12, sans donnée de santé), jamais une erreur SQL en 500.
+9. **Le coût devient mesurable** : compteur `mssante_ai_tokens_total{provider, model, kind=prompt|completion|embedding}` alimenté par l'`usage` renvoyé par les fournisseurs quand il existe ; métriques `mssante_ai_pipeline_*` étiquetées `provider`. Panneau « IA — fournisseur, appels, tokens » ajouté au tableau Grafana `mssante-mail-processing.json`. C'est ce qui prouvera, à la campagne suivante, que **plus aucun token de chat** ne part chez OpenAI.
+10. **Code mort retiré** : `FlexibleEmbeddingService`, `IEmbeddingProviderService` et ses deux implémentations sont **supprimés**. La dimension et le nom du modèle actif ne sont déclarés qu'à un seul endroit (§ 7-8). Leurs tests suivent.
+11. **Documentation d'exploitation** : page `Api/Mail/docs/` (ou section du README de l'AppHost) : choisir un fournisseur par capacité, modèles tirés, volume, retour au tout-OpenAI, ce qu'implique un changement de modèle d'embedding et le rôle de la colonne `EmbeddingModel`. Le skill `loadtest-skill` est mis à jour pour le défaut hybride.
 
 ### Décisions prises par le PO, à contredire si besoin
 
-- **Défaut = local**, en développement comme au banc. OpenAI sur opt-in explicite. Motif : le coût est payé sur des données synthétiques, et le local est aussi la voie **HDS-compatible** pour de la donnée réelle. Si l'humain préfère garder OpenAI par défaut en développement pour la qualité de l'assistant, une seule variable d'environnement suffit.
-- **Qualité non certifiée par cette US.** Un modèle 14B en Q4 étiquette et résume moins bien que `gpt-4o-mini`, et suit moins strictement le format JSON. Cette US exige que le pipeline **fonctionne** (JSON parsé, embeddings stockés, assistant qui appelle un outil) ; la **mesure d'écart de qualité** (précision du tagging sur un jeu de mails de référence, avant/après) est une US séparée de la même EPIC.
+- **Hybride par défaut** (chat Ollama, embeddings OpenAI), en développement comme au banc. Motifs : le chat est la part dominante de la facture et la totalité de la donnée de santé « discutée » ; les embeddings sont bon marché et leur bascule casserait le corpus du banc. Le tout-OpenAI reste possible par deux variables d'environnement.
+- **Les embeddings restent chez OpenAI pour l'instant, en connaissance de cause** : les 429 sous charge et la recherche rouge du banc restent attribuables à ce fournisseur tant que task-326 (re-vectorisation) n'est pas livrée. Cette US pose la colonne modèle qui rend cette bascule sûre.
+- **Qualité non certifiée par cette US.** Un modèle 14B en Q4 étiquette et résume moins bien que `gpt-4o-mini`, et suit moins strictement le JSON. Cette US exige que le pipeline **fonctionne** (JSON parsé, assistant qui appelle un outil) ; la **mesure d'écart de qualité** sur un jeu de mails de référence est une US séparée de la même EPIC.
 
 ### Hors périmètre, explicitement
 
-- **vLLM / TEI / LiteLLM** : débit et routage. Le § 2 les rend possibles sans code ; les monter est une autre US.
-- **Réindexation** d'un corpus d'embeddings existant après changement de modèle (batch de re-vectorisation des mails déjà stockés).
+- **task-326 — re-vectorisation** : batch qui relit mails et documents et réécrit les vecteurs avec le modèle actif, base par base, puis bascule `AiProvider:Embedding = Ollama`. À rédiger ; dépend de la colonne `EmbeddingModel` posée ici.
+- **vLLM / TEI / LiteLLM** : débit et routage. Le § 3 les rend possibles sans code.
 - **Banc de qualité** tagging / résumé / assistant, modèle local vs `gpt-4o-mini`.
 - Tout changement des prompts, des flags Flagsmith, de `Dtos/`, des frontends.
-- Le circuit partagé chat / embeddings et le traitement du `429 insufficient_quota` (mémoire `openai-circuit-partage-chat-embeddings`) : à instruire si OpenAI reste utilisé quelque part ; sans objet en local.
+- Le circuit partagé chat / embeddings et le `429 insufficient_quota` : le circuit n'a plus qu'un locataire (les embeddings) après cette US ; à instruire dans task-326 si la voie OpenAI subsiste.
 
 ### Mesure — après, sur la campagne suivante
 
-Sur la prochaine campagne `terrain` (celle de task-323 ou toute autre), lancée en fournisseur local : **0 requête** vers `api.openai.com` dans `http_client_request_duration_seconds_count` ; `mssante_ai_pipeline_total{status="success"}` en proportion **≥** à la campagne du 19/09 (tagging et embedding) ; recherche sémantique **sans erreur attribuée au fournisseur** ; `mssante_ai_tokens_total` non nul avec `provider="Ollama"` ; utilisation GPU visible (`nvidia-smi`) pendant le tir. Les durées de pipeline (2,0 s / 2,6 s aujourd'hui) sont **relevées, pas exigées** : un 14B local sur un seul GPU peut être plus lent sous 1 000 praticiens ; c'est la donnée d'entrée de la US vLLM.
+Sur la prochaine campagne `terrain` (celle de task-323 ou toute autre) en défaut hybride : `mssante_ai_tokens_total{provider="OpenAI", kind=~"prompt|completion"}` **= 0** et `{provider="Ollama", kind=~"prompt|completion"}` **> 0** ; requêtes vers `api.openai.com` dans `http_client_request_duration_seconds_count` en **baisse d'au moins moitié** par rapport aux 15 jours de référence (il ne reste que les embeddings de pipeline et de recherche) ; `mssante_ai_pipeline_total{step="tagging", status="success"}` en proportion **≥** à la campagne du 19/09 ; utilisation GPU visible (`nvidia-smi`) pendant le tir ; **résultats de recherche identiques** avant/après sur une même requête et une même base (le corpus n'a pas bougé). La durée du tagging (2,0 s aujourd'hui) est **relevée, pas exigée** : un 14B sur un seul GPU peut être plus lent sous 1 000 praticiens ; c'est la donnée d'entrée de la US vLLM.
 
 ## Definition of Done
 
 - [ ] Build passes (0 errors) — `cd Api/Mail && dotnet build HealthPlatform.Api.Mail.sln`
 - [ ] Tests pass (0 failures) — `dotnet test HealthPlatform.Api.Mail.sln`
-- [ ] **Preuve du ROUGE d'abord** : un test montre que `AiProvider:Provider = "OpenIA"` (et toute valeur inconnue) sélectionne aujourd'hui OpenAI en silence ; après correctif, le démarrage échoue avec un message explicite — ≥ 1 test par cas (`OpenAI`, `ollama` en minuscules, valeur inconnue, vide)
-- [ ] `OpenAi:Endpoint` est transmis aux connecteurs chat et embeddings — test unitaire sur la construction du Kernel (endpoint factice observé sur le HttpClient / la requête)
-- [ ] La clé OpenAI n'est **pas exigée** quand le fournisseur est Ollama — test ; elle reste exigée quand le fournisseur est OpenAI — test
-- [ ] Branche Ollama : HttpClient nommé et poolé avec `TimeoutSeconds` — test de configuration
-- [ ] `AiConversationService` n'a plus de dépendance de type au connecteur OpenAI (`OpenAIPromptExecutionSettings` remplacé par le type de base) — vérifié par `grep` dans la PR et par les tests existants du service, verts
-- [ ] Ressource Ollama déclarée dans l'AppHost avec GPU, volume persistant, modèles tirés au démarrage, `api-mail` en `WaitFor` et `Ollama__Endpoint` injecté depuis la référence — démarrage de l'AppHost observé, `ollama list` dans le conteneur montre les deux modèles
-- [ ] Parcours bout en bout en local, **sans clé OpenAI dans l'environnement** : un mail injecté par le seed est étiqueté (tags persistés) et vectorisé (ligne pgvector), une recherche sémantique rend des résultats, l'assistant répond en streaming et déclenche au moins un outil d'`EmailActionsPlugin`, l'aide à la rédaction améliore un texte — consigné dans le task file avec les identifiants Seq
-- [ ] Recherche avec un vecteur de dimension différente du corpus → `ProblemDetails` métier (4xx), jamais 500 SQL — test unitaire ou d'intégration
-- [ ] Compteur `mssante_ai_tokens_total{provider,model,kind}` et étiquette `provider` sur `mssante_ai_pipeline_*` — tests sur `MailProcessingMetrics` ; panneau Grafana ajouté au tableau `mssante-mail-processing.json`
-- [ ] `FlexibleEmbeddingService`, `IEmbeddingProviderService` et implémentations supprimés (ou enregistrés et utilisés — un seul lieu déclare la dimension), tests associés ajustés, build vert
-- [ ] Documentation d'exploitation écrite (choix du fournisseur, modèles, volume, retour à OpenAI, changement de modèle d'embedding) ; `loadtest-skill` mis à jour pour le défaut local
-- [ ] Aucune donnée de santé ni contenu de mail dans les nouveaux logs et métriques (les étiquettes sont `provider`, `model`, `kind` — jamais de texte de prompt)
-- [ ] Contrat inchangé : aucun fichier de `Dtos/` modifié, aucun frontend touché, prompts inchangés
-- [ ] Le body de la PR cite les chiffres Prometheus du 2026-09-20 (1 270 758 requêtes / 15 536 en 429 sur 15 j) et l'objectif « 0 requête `api.openai.com` à la campagne suivante »
+- [ ] **Preuve du ROUGE d'abord** : un test montre que `AiProvider:Provider = "OpenIA"` sélectionne aujourd'hui OpenAI en silence ; après correctif, la clé `Provider` n'existe plus et toute valeur inconnue ou manquante de `Chat` / `Embedding` fait échouer le démarrage avec un message explicite — ≥ 1 test par cas (`OpenAI`, `ollama` en minuscules, inconnue, vide, ancienne clé `Provider` seule)
+- [ ] Kernel composé : `Chat = Ollama` + `Embedding = OpenAI` produit un `IChatCompletionService` Ollama et un `IEmbeddingGenerator` OpenAI dans le même kernel — test ; les trois autres combinaisons construisent aussi — test paramétré
+- [ ] `OpenAi:Endpoint` transmis aux connecteurs OpenAI chat et embeddings — test (endpoint factice observé sur la requête)
+- [ ] Clé OpenAI **exigée** dès qu'une capacité est OpenAI, **non exigée** en tout-Ollama — tests ; l'AppHost ne `Require` la clé que dans le même cas
+- [ ] Deux HttpClients nommés et poolés avec `TimeoutSeconds`, un par fournisseur — test de configuration
+- [ ] `AiConversationService` sans dépendance de type au connecteur OpenAI (`OpenAIPromptExecutionSettings` remplacé par `PromptExecutionSettings`) — `grep` dans la PR + tests existants verts
+- [ ] Ressource Ollama dans l'AppHost avec GPU, volume persistant, modèle de chat tiré au démarrage, `api-mail` en `WaitFor`, `Ollama__Endpoint` injecté depuis la référence — démarrage observé, `ollama list` montre le modèle de chat
+- [ ] Migration EF `EmbeddingModel` sur `MailContents` et `MailMedicalDocuments`, rétro-remplissage `openai:text-embedding-3-small`, **audit règle 7c** consigné dans le task file (fichier lu, `.Designer.cs`, pas d'opération fantôme, `has pending model changes` vide)
+- [ ] Chaque écriture de vecteur renseigne `EmbeddingModel` avec le modèle actif — test ; la recherche sémantique (contenus et documents) **filtre sur le modèle actif** — ≥ 1 test par table, dont un cas « lignes d'un autre modèle ignorées, pas d'erreur »
+- [ ] Vecteur de requête de dimension différente du corpus filtré → `ProblemDetails` métier (4xx), jamais 500 SQL — test
+- [ ] Parcours bout en bout en défaut hybride : un mail seedé est **étiqueté par Ollama** (Seq montre `provider=Ollama` sur le tagging, tags persistés) et **vectorisé par OpenAI** (ligne pgvector avec `EmbeddingModel = openai:text-embedding-3-small`) ; une recherche rend les mêmes résultats qu'avant la branche sur la même base ; l'assistant répond en streaming et déclenche au moins un outil d'`EmailActionsPlugin` ; l'aide à la rédaction améliore un texte — consigné avec identifiants Seq
+- [ ] Compteur `mssante_ai_tokens_total{provider,model,kind}` et étiquette `provider` sur `mssante_ai_pipeline_*` — tests sur `MailProcessingMetrics` ; panneau Grafana ajouté à `mssante-mail-processing.json`
+- [ ] `FlexibleEmbeddingService`, `IEmbeddingProviderService` et implémentations supprimés, tests ajustés
+- [ ] Documentation d'exploitation écrite ; `loadtest-skill` mis à jour pour le défaut hybride
+- [ ] Aucune donnée de santé ni contenu de mail dans les nouveaux logs et métriques (étiquettes `provider`, `model`, `kind` uniquement)
+- [ ] Contrat inchangé : aucun fichier de `Dtos/` modifié, aucun frontend touché, prompts inchangés, espace vectoriel inchangé
+- [ ] Le body de la PR cite les chiffres Prometheus du 2026-09-20 (1 270 758 requêtes / 15 536 en 429 sur 15 j), la part du chat dans la facture, et l'objectif « 0 token de chat chez OpenAI à la campagne suivante »
 
 ## Manual Test Plan
 
-- **Prérequis** : Docker Desktop avec intégration GPU active (`docker run --rm --gpus=all nvidia/cuda:12.8.0-base-ubuntu24.04 nvidia-smi` affiche la RTX 5070 Ti). Retirer ou vider `OpenAi__ApiKey` de l'environnement / des secrets du poste pour la durée du test.
-- Lancer le backend : `cd Api/Mail && dotnet run --project src/AppHost`. Dans le tableau de bord Aspire, la ressource Ollama passe en « Running » ; au premier lancement, les journaux montrent le téléchargement des deux modèles (plusieurs minutes, une seule fois grâce au volume). `api-mail` démarre **après** et journalise `AiProvider=Ollama`, les modèles et la dimension d'embedding.
-- **Pipeline** : seeder une boîte (`loadtest-skill`, quelques mails suffisent), vérifier dans Seq (`seq-local`) les événements `[SuggestTagsAsync]` puis les tags persistés, et dans Postgres (`mcp postgresql`) une ligne d'embedding pour le mail. `nvidia-smi` montre le processus Ollama avec de la VRAM occupée.
-- **Recherche** : dans `client-blazor`, recherche sémantique sur un terme présent dans le mail seedé → résultats rendus, aucune erreur.
+- **Prérequis** : Docker Desktop avec intégration GPU active (`docker run --rm --gpus=all nvidia/cuda:12.8.0-base-ubuntu24.04 nvidia-smi` affiche la RTX 5070 Ti). La clé OpenAI reste en place (embeddings).
+- Lancer le backend : `cd Api/Mail && dotnet run --project src/AppHost`. Dans le tableau de bord Aspire, la ressource Ollama passe en « Running » ; au premier lancement, les journaux montrent le téléchargement du modèle de chat (plusieurs minutes, une seule fois grâce au volume). `api-mail` démarre **après** et journalise `Chat=Ollama/{modèle}`, `Embedding=OpenAI/text-embedding-3-small (1536)`.
+- **Pipeline** : seeder une boîte (`loadtest-skill`, quelques mails suffisent). Dans Seq (`seq-local`) : `[SuggestTagsAsync]` avec `provider=Ollama`, tags persistés ; dans Postgres (`mcp postgresql`) : ligne d'embedding du mail avec `EmbeddingModel = openai:text-embedding-3-small`. `nvidia-smi` montre le processus Ollama avec de la VRAM occupée pendant le tagging.
+- **Recherche inchangée** : sur une base déjà hydratée (pas de purge — iso-conditions), lancer la même recherche sémantique avant et après la branche → mêmes résultats, même ordre.
 - **Assistant** : ouvrir l'assistant sur la boîte, demander « propose une réponse à ce mail » → réponse en streaming, puis « appelle le patient » → l'action `call_patient` est capturée (log `[AiConversationService] Action captured from filter`).
 - **Aide à la rédaction** : améliorer un texte depuis le composeur → texte réécrit.
-- **Fournisseur invalide** : mettre `AiProvider__Provider=OpenIA` → `api-mail` refuse de démarrer avec un message explicite dans les journaux Aspire.
-- **Retour à OpenAI** : `AiProvider__Provider=OpenAI` + clé → démarrage normal ; sans clé → échec explicite.
-- **Grafana** (`localhost:3000`, tableau mail processing) : le panneau IA montre `provider=Ollama`, des tokens comptés, zéro série `api.openai.com` sur la fenêtre du test.
+- **Fournisseur invalide** : `AiProvider__Chat=OpenIA` → `api-mail` refuse de démarrer avec un message explicite dans Aspire. `AiProvider__Provider=Ollama` seul (ancienne clé) → même refus.
+- **Tout-OpenAI** : `AiProvider__Chat=OpenAI` + clé → démarrage normal, tagging avec `provider=OpenAI`. **Tout-Ollama** sans clé → démarrage normal (l'embedding Ollama produit alors des lignes `ollama:bge-m3`, invisibles à la recherche filtrée sur le modèle actif OpenAI si on rebascule — c'est le comportement voulu).
+- **Grafana** (`localhost:3000`, tableau mail processing) : le panneau IA montre des tokens `prompt`/`completion` uniquement sous `provider=Ollama`, des tokens `embedding` sous `provider=OpenAI`.
 
 ## Conformité santé / Ségur / ANS
 
 - **Couloir Ségur** : médecine de ville
 - **Vague Ségur** : hors Ségur — infrastructure des traitements IA, aucune exigence fonctionnelle nouvelle
 - **Exigences DSR honorées** : non applicable — les fonctions IA (résumé, tags, recherche, assistant) sont hors référentiel Ségur ; aucun changement de leur périmètre fonctionnel
-- **INS** : non applicable — aucun trait d'identité manipulé par l'US ; les contenus de mails traités par l'IA peuvent contenir des traits patient, et c'est précisément ce qui **cesse de quitter le poste**
-- **Authentification PS** : inchangée (PSC / e-CPS) — l'US ne touche pas au chemin d'authentification
+- **INS** : non applicable — aucun trait d'identité manipulé par l'US ; les contenus de mails soumis au chat peuvent contenir des traits patient, et c'est ce qui **cesse de quitter le poste** pour cette capacité
+- **Authentification PS** : inchangée (PSC / e-CPS)
 - **Habilitations** : inchangées — les traitements IA restent exécutés dans le contexte du praticien connecté
 - **Interop CI-SIS** : non applicable
-- **Tracé PGSSI-S** : nouveaux événements techniques au démarrage (fournisseur, modèles, dimension) et compteurs de tokens par fournisseur ; aucun contenu de prompt ni de mail dans les journaux ou les étiquettes de métriques. Conservation : celle de Seq / Prometheus existante
+- **Tracé PGSSI-S** : événements techniques au démarrage (fournisseurs, modèles, dimension), compteurs de tokens par fournisseur, colonne `EmbeddingModel` en base (donnée technique, pas personnelle) ; aucun contenu de prompt ni de mail dans journaux et étiquettes. Conservation : celle de Seq / Prometheus existante
 - **Consentement patient** : non applicable
 - **Référentiels métier** : aucun
-- **Hébergement HDS** : oui — **amélioration** : en fournisseur local, les contenus de mails (potentiellement DSCP) ne sont plus transmis à un sous-traitant hors périmètre HDS pour résumé, étiquetage ou vectorisation ; les modèles et leurs données transitoires vivent dans un volume Docker du poste (environnement de développement et de banc, données synthétiques)
-- **AIPD / impact RGPD** : **à mettre à jour** — le registre des sous-traitants doit refléter qu'OpenAI n'est plus destinataire par défaut des contenus de mails en développement et au banc ; l'usage en production, s'il existe, reste à qualifier (fournisseur, localisation, clauses) dans une US de la même EPIC
+- **Hébergement HDS** : oui — **amélioration partielle** : les contenus de mails (potentiellement DSCP) ne sont plus transmis à un sous-traitant hors périmètre HDS pour étiquetage, résumé et assistant ; ils le **restent pour la vectorisation** (embeddings OpenAI) jusqu'à task-326. Le modèle de chat et ses données transitoires vivent dans un volume Docker du poste (développement et banc, données synthétiques)
+- **AIPD / impact RGPD** : **à mettre à jour** — OpenAI reste sous-traitant pour la vectorisation des contenus, ne l'est plus pour le chat en développement et au banc ; l'usage en production, s'il existe, reste à qualifier (fournisseur, localisation, clauses) dans une US de la même EPIC
