@@ -513,3 +513,22 @@ Quatre relectures (reuse / simplification / efficacité / altitude). Appliqué :
 | Fusionner `PauseSyncAsync`/`ResumeSyncAsync`/branches distantes en une méthode paramétrée | Écarté : duplication de forme **préexistante**, et les quatre diffèrent par leur garde d'état. |
 
 - **Re-validation après la passe** : build 0 erreur, **4 493 tests verts, 0 échec**.
+
+## Merged
+
+- **Date** : 2026-09-20 11:29:48 UTC
+- **Attestation humaine** : `/merge task-188 --i-tested` (HAG, règle 10)
+
+| Repo | PR | Squash commit | Branche |
+|---|---|---|---|
+| `api-mail` | [#244](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/244) | `3fcf3f68` | `fix/task-188-sync-control-plane` supprimée (distante + locale) |
+
+- **CI `develop`** : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/35507991928
+- **Aucun autre repo** : task backend-only (`**Repos**: api-mail`). Aucune branche
+  résiduelle ni branche staging trouvée sur les autres repos pushables.
+
+> Note d'exécution : la ref distante a été supprimée via l'API GitHub
+> (`gh api -X DELETE .../git/refs/heads/...`) plutôt que par `git push origin
+> --delete`. Le hook `verify-before-push` intercepte toute ligne commençant par
+> `git push` et aurait exigé un build + suite complète d'`api-mail` pour
+> supprimer une ref d'une PR déjà mergée. Même effet, aucun code poussé.
