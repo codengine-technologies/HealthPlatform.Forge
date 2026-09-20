@@ -229,7 +229,9 @@ DOD** : le correctif se merge sur sa justesse, la mesure dit ce qu'il valait.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 22 s | — | — | — | — |
-| **Total cycle** | | **22 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 28 min 18 s | 9 (1 min 25 s) | 11 (5 min 09 s) | — | api-mail 4B/5T, client-mobile 2B/4T, client-blazor 3B/2T |
+| /sonar | ok | 7 min 26 s | — | — | 1 (4 min 45 s) | — |
+| **Total cycle** | | **36 min 07 s** | **9 (1 min 25 s)** | **11 (5 min 09 s)** | **1 (4 min 45 s)** | |
 
 ## Develop log
 
@@ -378,3 +380,65 @@ précédent tient.
 - `client-blazor` : `245f25f`
 
 **Étape suivante** : `/sonar task-323` (api-mail touché).
+
+## Sonar log
+
+**Mode A** (chaîné depuis `/develop`), scan sur `feat/task-323-doc-html-on-open`.
+Serveur SonarQube **9.9.8** — démarré par l'étape (couple `sonarqube_db` puis
+`sonarqube`), et c'est la version qui **ignore silencieusement `sonar.token`** :
+`sonar.login` employé, conformément au piège documenté.
+
+### KPIs qualité — baseline → final
+
+| Métrique | Baseline (avant scan) | Final | Cible |
+|---|---|---|---|
+| Bugs | 0 | **0** | 0 |
+| Vulnerabilities | 0 | **0** | 0 |
+| Security Hotspots | 3 | **3** (0 en new code) | revus |
+| Code Smells | 216 | **216** | ↓ |
+| Coverage | 87,8 % | **87,8 %** | ≥ 95 % |
+| Duplication | 0,4 % | **0,4 %** | < 3 % |
+| Reliability rating | A | **A** | A |
+| Security rating | A | **A** | A |
+| Maintainability rating | A | **A** | A |
+
+### Quality Gate : **OK** ✅
+
+| Condition | Valeur | Seuil | État |
+|---|---|---|---|
+| `new_reliability_rating` | 1 (A) | ≤ A | OK |
+| `new_security_rating` | 1 (A) | ≤ A | OK |
+| `new_maintainability_rating` | 1 (A) | ≤ A | OK |
+| `new_coverage` | **85,1 %** | ≥ 80 % | OK |
+| `new_duplicated_lines_density` | 0,23 % | < 3 % | OK |
+
+### Itérations de nettoyage : **0** — et c'est le bon résultat
+
+`new_bugs = 0`, `new_vulnerabilities = 0`, `new_security_hotspots = 0`.
+Restent **23 `new_code_smells`** dans la fenêtre new-code — dont **aucun dans
+les deux fichiers de cette task** (`MailRepository.cs`,
+`HeaderListingProjectionTests.cs`). La fenêtre porte `new_lines = 38 982` :
+elle ne cadre pas le diff de la task, elle couvre tout le lot E016. Les 23
+findings se répartissent en :
+
+- **13 × `CA1068`** (`CancellationToken` en dernier paramètre) sur les
+  **interfaces** `ITenantRegistryClient` / `IMailboxSelectionService` — contrat
+  publié de l'EPIC E016 ; les corriger est un changement de contrat, pas un
+  nettoyage ;
+- **1 × `S3776`** (`PostgresTenantRegistryClient`, complexité 17 > 15) —
+  **blacklistée** (`agents/sonar-blacklist.yml`), traitée par `/sonar-s3776`,
+  une méthode = une PR ;
+- **2 × `S3925`** (`ISerializable`) dans `TenantRegistryExceptions` ;
+- **7 × `INFO`** dans des fichiers de tests (`AV0011`, `CA1822`).
+
+**Pourquoi ne rien toucher.** Ces fichiers n'appartiennent pas à cette US. Les
+corriger ici violerait la règle 6 (périmètres isolés) et gonflerait une PR de
+2 fichiers à une quinzaine, sur du code qu'aucun relecteur de cette US n'attend.
+Le nettoyage est best-effort par construction : il accepte les findings
+restants. **Le code écrit par cette task n'introduit aucun finding** — c'est
+exactement ce que l'étape doit établir.
+
+**Conventions apprises** : aucune entrée à ajouter à `conventions/csharp.md` —
+aucune règle n'a été corrigée manuellement sur du code frais.
+
+**Étape suivante** : `/lint-angular task-323`.
