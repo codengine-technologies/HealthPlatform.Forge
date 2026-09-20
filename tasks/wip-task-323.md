@@ -213,3 +213,168 @@ DOD** : le correctif se merge sur sa justesse, la mesure dit ce qu'il valait.
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui — environnement inchangé ; effet positif : les compte-rendus (DSCP) ne quittent plus la base ni le serveur pour un usage qui ne les affichait pas, et ne transitent plus vers un terminal mobile qui ne les montrait pas
 - **AIPD / impact RGPD** : inchangé — minimisation de la circulation de données de santé, aucun traitement nouveau
+
+## Branches
+
+- `api-mail` (pushed) : `feat/task-323-doc-html-on-open` — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-323-doc-html-on-open
+- `client-blazor` (pushed) : `feat/task-323-doc-html-on-open` — https://github.com/codengine-technologies/HealthPlatform.Client/tree/feat/task-323-doc-html-on-open
+- `client-mobile` (pushed) : `feat/task-323-doc-html-on-open` — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-323-doc-html-on-open
+
+`dtos-mss` non listé et non auto-inclus (contrat inchangé — cf. DOD). `client-angular` non listé (déjà correct).
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-323 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 22 s | — | — | — | — |
+| **Total cycle** | | **22 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+
+## Develop log
+
+- **Repos touchés** : `api-mail`, `client-mobile`, `client-blazor`
+- **DTOs publiés** : aucun changement de contrat — `Dtos/` non modifié, aucune branche sur `dtos-mss` (conforme à la règle « branche paresseuse »)
+- **Interop / SDK** : aucun changement
+
+### Preuve du ROUGE (exigée par la DOD)
+
+`HeaderListingProjectionTests` écrit **avant** le correctif, sur le code de
+`origin/develop`. Run du 2026-09-20 :
+
+```
+Failed  HeaderPageDoesNotReadAttachmentBytesNorDocumentEmbeddings
+        Assert.DoesNotContain() Failure: Sub-string found
+        String: ···"rContactId", m."Body", m."HtmlBody", m."CreatedAt""···
+        Found:  ""HtmlBody""
+
+Failed  HeaderSingleMailDoesNotReadDocumentBodies
+        Assert.DoesNotContain() Failure: Sub-string found
+        String: ···"m."DuplicateRejected", m."Embedding", m."Format", "···
+        Found:  ""Embedding""      ← l'entité ENTIÈRE était matérialisée
+
+Failed  HeaderPageStillRendersAttachmentsAndDocumentsIdentically
+        Assert.Null() Failure: Value is not null
+        Expected: null   Actual: "<p>Résultats</p>"
+
+Failed!  - Failed: 3, Passed: 3, Total: 6
+```
+
+Après correctif : `Passed! - Failed: 0, Passed: 6, Total: 6`.
+
+Le test bUnit Blazor a été vérifié rouge **par mutation** (retrait de la
+condition sur les documents vides dans `LoadContent`) : `Failed: 1, Passed: 1`.
+Le fichier de production a été restauré (`git diff` vide) — mémoire
+`feedback-test-qui-stube-sa-propre-premisse`.
+
+### Findings d'attribution — points 3 et 4 du périmètre
+
+| Forme | Attribution établie | Traitement |
+|---|---|---|
+| Page d'en-têtes (82 % du SQL) | `LoadBulkContentLookupsAsync`, branche `headerOnly` | `Body`/`HtmlBody` retirés de la projection |
+| **n°4** — un document chargé entier, une ligne, 39 blocs, 67 770 appels | **`PopulateMailContentAsync`**, appelé par `GetMailAsync(Header)` dès que le message porte des documents (contexte d'audit d'une pièce jointe, copie, suppression). Les candidats cités par le task file (`FirstOrDefaultAsync` ~l. 2815/2846, `BiologyAckRepository`) sont **hors de cause**. | Projeté en mode Header, **dans la même PR** — l'attribution a tenu en moins d'une heure |
+| **n°15** — `MailContents` avec `Body`, `BodyHtml`, `Summary`, `Embedding` | Même chemin : la lecture de `MailContents` de `PopulateMailContentAsync`, qui ne distinguait pas les deux modes | Projeté en mode Header (chaînes vides), aligné sur le chemin groupé |
+| `MedicalDocumentTagListProjection` | Déjà sans corps ni embedding — vérifié, aucun changement | — |
+| `MailContents` en mode Header du chemin groupé | Déjà projeté sans `BodyHtml` (task-261) — vérifié | — |
+
+**Correction d'un fait du task file.** Le task file attribue ~12,4 k appels à
+« `GetMailAsync(Header)` derrière *marquer lu* ». Ce n'est plus vrai depuis
+**task-230** : `UpdateEmailReadStatusAsync` ne lit plus le message, il prend un
+cliché d'audit de quatre champs (`GetMailAuditSnapshotAsync`). Le geste
+n'émettait donc déjà **aucune** requête sur `MailMedicalDocuments`. Le test
+`MarkAsReadAuditSnapshotNeverReadsMedicalDocuments` fige cet état — il est vert
+d'emblée, et c'est ce qu'il doit être : sa valeur est de détecter le jour où ce
+chemin re-hydraterait un message. Les 12,4 k appels de `GetMailAsync(Header)`
+viennent des autres appelants du tableau ci-dessus.
+
+**Tracé PGSSI-S** (point à vérifier demandé par la section Conformité) : la route
+de contenu (`GET …/emails/content/{uid}`) **n'émet aucune trace d'accès** propre —
+`MailRead` reste tracé par `UpdateEmailReadStatusAsync`, sur le geste « marquer
+lu », inchangé par cette US. Le dépliage d'un document dans la frise n'ajoute
+donc aucune trace. Le constat espéré par le task file (« ce serait plus juste »)
+ne se réalise pas de lui-même : il demanderait d'instrumenter la route de
+contenu, ce qui est une US à part.
+
+### Vérification Blazor consignée (point 2 du périmètre)
+
+- `MailListComponent.LoadContent` (~l. 866) recharge bien par la route de contenu
+  quand tous les documents ont `Body` et `BodyHtml` vides — figé par
+  `MailListContentReloadTests`.
+- `MailBodyComponent` : lit `BodyHtml` du **message**, pas des documents.
+- `PatientTimeline.razor` : **ne lit ni `Body` ni `BodyHtml`** — vérifié par grep,
+  il ne lit que `Category`, `DocumentDate` et `MedicalDocuments` (l. 230-351).
+  Aucun code de production Blazor n'a été modifié.
+
+### Build / tests locaux
+
+| Repo | Build | Tests |
+|---|---|---|
+| `api-mail` | ✓ 0 erreur | ✓ 2 497 + 514 passés, 0 échec |
+| `client-mobile` | ✓ | ✓ **880 / 880** (863 avant, +17 specs) |
+| `client-blazor` | ✓ 0 erreur | ✓ 264 passés, 2 skipped (pré-existants) |
+
+### Mesure avant/après — **en attente**
+
+Le tir `terrain` 1 000 en iso-conditions n'a **pas** été rejoué dans ce cycle : le
+banc exige un tireur distant et une chauffe hydratée de plusieurs heures, hors de
+la fenêtre du cycle autonome. Conformément à la DOD, le fait est noté ici plutôt
+que taire : **mesure en attente**, à produire au HAG ou dans un cycle de mesure
+dédié, avec la ligne de référence du 2026-09-19 soir
+(`Api/Mail/tests/loadtest-k6/reports/POSTGRES-INDEX.md`). Les deux mesures à
+ajouter au harnais (taille de réponse de la page d'en-têtes, nombre d'appels à la
+route de contenu) restent à câbler.
+
+### Passe qualité (`/simplify`) — intégrée à `/develop`
+
+Quatre revues en parallèle (reuse / simplification / efficacité / altitude). Les
+trois premières ont convergé sur les mêmes points ; la revue d'altitude a nommé
+**la cause commune** des défauts du client mobile : `hydrate` mutait le document
+et ne rendait qu'un booléen, donc chaque consommateur en `OnPush` devait
+inventer son propre moyen de s'apercevoir que quelque chose avait changé.
+
+**Appliqué et committé**
+
+| Repo | Commit | Ce qui change |
+|---|---|---|
+| `api-mail` | `b7dc147` | `ContentHeaderProjection` extraite (recopie mot pour mot entre les deux chemins d'en-tête) ; clause `Where` construite une fois par requête ; bloc de documentation orphelin remis sur sa méthode |
+| `client-mobile` | `1d3c4d2` | `hydrate` rend le document complété (signal réel au lieu d'un compteur de version) ; cache borné à 3 messages ; pas de chargement du contenu structuré sur un document à PDF externe ; une seule machine à états pour l'aperçu ; une seule politique de reprise ; `documentLocators` dérivé de `mailIndex` et **clé composite** |
+| `client-blazor` | — | aucun cleanup (diff de test seul) |
+
+**Deux trouvailles qui valaient plus qu'un nettoyage**
+
+1. **Le cache du service rendait au terminal ce qu'on retirait du réseau.** Non
+   borné dans un singleton d'application, il retenait des `MailContentDto`
+   entiers — soit exactement les ~222 Ko de HTML par document que cette US
+   cesse d'envoyer — pour toute la session. Borné à 3 messages.
+2. **La clé de `documentLocators` était nue (`documentId`).** Or un même
+   `documentId` existe sous plusieurs messages (versions, doublons — `SetId`,
+   `Version`, `DuplicateOfId` sont de première classe ici). Le dernier message
+   gagnait, et l'aperçu déplié pouvait charger le contenu **du mauvais
+   message**. Clé composite `mailId::documentId`, dérivée de `mailIndex` qui
+   l'utilisait déjà. Spec ajoutée.
+
+**Écarté, et pourquoi**
+
+- **Supprimer la mutation du document par le service** (revue d'altitude, moitié
+  restante) : c'est elle qui rend gratuit le second geste sur le même document
+  quelle que soit l'ancienneté du cache — retirer les deux (mutation *et*
+  cache non borné) aurait fait retomber un appel réseau sur un geste que la DOD
+  décrit comme gratuit. La moitié utile — rendre le document — est prise.
+- **Faire porter les coordonnées par l'élément de la frise** plutôt que par un
+  second `@Input` : restructuration du contrat de données du composant, hors du
+  remit d'une passe qualité ; le risque qu'elle visait (mauvais message) est
+  traité par la clé composite, à bien moindre coût.
+- **Double parcours de `mails()`** (revue d'efficacité, signalé non urgent) :
+  résolu de fait par la dérivation depuis `mailIndex`.
+
+**Re-validation après cleanups** : `api-mail` build ✓ / 4 524 tests ✓ ;
+`client-mobile` build ✓ / **885 specs ✓** ; `client-blazor` non touché, son vert
+précédent tient.
+
+**Push** : un par repo, portant la feature et la passe qualité.
+
+- `api-mail` : `b7dc1471`
+- `client-mobile` : `1d3c4d2`
+- `client-blazor` : `245f25f`
+
+**Étape suivante** : `/sonar task-323` (api-mail touché).
