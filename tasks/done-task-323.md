@@ -231,7 +231,13 @@ DOD** : le correctif se merge sur sa justesse, la mesure dit ce qu'il valait.
 | /start | ok | 22 s | — | — | — | — |
 | /develop | ok | 28 min 18 s | 9 (1 min 25 s) | 11 (5 min 09 s) | — | api-mail 4B/5T, client-mobile 2B/4T, client-blazor 3B/2T |
 | /sonar | ok | 7 min 26 s | — | — | 1 (4 min 45 s) | — |
-| **Total cycle** | | **36 min 07 s** | **9 (1 min 25 s)** | **11 (5 min 09 s)** | **1 (4 min 45 s)** | |
+| /lint-angular | skipped | 16 s | — | — | — | client-angular hors Repos de la task ; working tree porte uniquement du WIP humain anterieur |
+| /lint-mobile | ok | 30 s | — | — | — | — |
+| /verify-visual | skipped | 36 s | — | — | — | Tools/visual-verify absent du checkout (capture.mjs introuvable) - best-effort, aucune capture produite |
+| /review | ok | 6 min 16 s | 4 (24 s) | 4 (2 min 17 s) | — | api-mail 2B/2T, client-blazor 1B/1T, client-mobile 1B/1T |
+| **Total cycle** | | **43 min 46 s** | **13 (1 min 49 s)** | **15 (7 min 27 s)** | **1 (4 min 45 s)** | |
+
+Autres commandes mesurées : lint ×1 (17 s)
 
 ## Develop log
 
@@ -442,3 +448,148 @@ exactement ce que l'étape doit établir.
 aucune règle n'a été corrigée manuellement sur du code frais.
 
 **Étape suivante** : `/lint-angular task-323`.
+
+## Lint log (client-angular)
+
+**Skip propre.** `client-angular` n'est pas dans le `**Repos**:` de cette task
+et le task file le justifie explicitement : la frise et le détail Angular
+**rechargent déjà** le contenu à l'ouverture, donc le retrait du HTML des listes
+ne les affecte pas. Aucun code Angular n'a été écrit par `/develop`.
+
+Le working tree de `Client/Angular/` porte deux modifications **antérieures et
+étrangères** à cette task — `apps/mss/.../environment.ts` et
+`apps/weda2/.../environment.ts`, deux URL d'API basculées sur `localhost` pour
+le développement local. Travail en cours de l'humain : laissé intact, ni lu ni
+corrigé (mode code-only, aucune opération git sur ce repo).
+
+- Itérations : **0**
+- Erreurs ESLint restantes : non mesuré (hors périmètre)
+- `conventions/angular.md` : aucune entrée à ajouter
+
+**Étape suivante** : `/lint-mobile task-323`.
+
+## Lint mobile log
+
+Baseline sur `feat/task-323-doc-html-on-open` : **`All files pass linting.`**
+
+- Erreurs ESLint : **0** (baseline = final)
+- Warnings : 0
+- Itérations consommées : **0** sur 5
+- Commit / push : **aucun** — rien à corriger, la branche poussée par
+  `/develop` est déjà propre
+
+Les conventions de `conventions/angular.md` ont été appliquées d'emblée par
+`/develop`, comme le protocole l'exige : control flow natif (`@if` / `@for` /
+`@switch` — le nouveau bloc d'aperçu et l'état de chargement de la modale sont
+écrits ainsi), sélecteurs préfixés `mss-`, libellés FR en dur sans i18n,
+`data-testid` sur chaque élément interactif et chaque état notable
+(`doc-group-expand`, `doc-group-preview-loading`, `doc-group-preview-html`,
+`doc-group-preview-raw`, `doc-group-preview-failed`,
+`document-modal-content-loading`).
+
+**Conventions apprises** : aucune entrée à ajouter à `conventions/angular.md` —
+aucune règle corrigée manuellement (ni même par l'auto-fixer).
+
+**Étape suivante** : `/verify-visual task-323`.
+
+## Visual verify log
+
+**Non exécuté — absence d'outillage, best-effort.** L'étape n'a produit
+**aucune capture** : `Tools/visual-verify/` (avec `capture.mjs`, `screens.json`,
+les fixtures et la config Playwright de la forge) **n'existe pas** dans ce
+checkout du plan de contrôle. `find . -name capture.mjs` ne rend rien.
+
+Ce n'est donc **pas** un verdict « écrans conformes » : c'est une panne
+d'outillage, que le playbook classe explicitement en best-effort (« écran/API
+non mappé, panne outillage → logué, la chaîne continue »). Le seul cas bloquant
+— écran blanc / crash de navigation — n'a pas pu être écarté par la capture.
+
+**Ce qui est mesuré par ailleurs, et qui n'est pas rien** : les 885 specs
+Jasmine de `client-mobile` passent, dont 17 nouvelles couvrant précisément les
+états d'affichage introduits ici — aperçu chargé (HTML et texte brut), état de
+chargement, état d'échec, document déjà porteur de son contenu, document à PDF
+externe. Le rendu de la frise n'est donc pas non vérifié ; il est vérifié au
+niveau composant, pas à l'écran.
+
+**Ce qui reste à l'œil de l'humain au HAG** (déjà présent dans le
+`## Manual Test Plan`, section « Frise patient mobile ») :
+
+- la frise s'affiche sans appel `…/emails/content/…` au chargement ni au scroll ;
+- déplier un document : spinner, puis HTML ; replier/redéplier : aucun appel ;
+- ouvrir la modale du même document : aucun appel, HTML affiché ;
+- backend coupé, déplier : « Aperçu indisponible — ouvrez le document », frise
+  utilisable ;
+- document à PDF externe : le PDF s'affiche comme avant, et l'onglet « Détail »
+  charge le contenu structuré à la demande (comportement nouveau, issu de la
+  passe qualité).
+
+Écrans concernés dans la galerie existante :
+`Docs/epics/img/screens/client-mobile/patient-timeline.png` — **non rafraîchi**
+par ce cycle.
+
+**Étape suivante** : `/review task-323`.
+
+## PRs
+
+| Repo | PR | Label | Ordre de merge |
+|---|---|---|---|
+| `client-mobile` | https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/77 | `awaiting-human-merge` | **1er** |
+| `api-mail` | https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/247 | `awaiting-human-merge` | **2e — après le mobile** |
+| `client-blazor` | https://github.com/codengine-technologies/HealthPlatform.Client/pull/81 | `awaiting-human-merge` | indépendant (test seul) |
+
+`client-angular` : non listé — la frise et le détail Angular rechargent déjà le
+contenu à l'ouverture. `dtos-mss` : aucun contrat modifié, aucune branche créée.
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 4 fichiers de production et 8 fichiers de test relus,
+0 blocage, 3 suggestions non bloquantes consignées dans les PRs.
+
+**Un vrai défaut trouvé en revue et corrigé** : une marque d'ordre d'octets (BOM)
+avait été introduite par erreur en tête des deux fichiers `api-mail`, qui n'en
+portaient pas sur `develop` — premier `+`/`-` du diff, du bruit étranger à l'US.
+Retirée (`9a5fd2fe`), build et tests re-validés.
+
+**Vérifications de non-régression menées à la main sur le changement le plus
+risqué** (`GetMailAsync(Header)` rend désormais un corps de message vide) : ses
+trois appelants — contexte d'audit d'une pièce jointe (`TryGetMailContextAsync`),
+copie de message (`ImapFolderService`), suppression (`ImapService`) — ne lisent
+aucun corps. Le tracé d'audit ne lit que `MessageId`, `Subject`, `From`, `To`,
+tous toujours peuplés.
+
+### Signalement honnête — un test mobile intermittent
+
+La première exécution de validation de `/review` a rendu **1 échec sur 885**.
+Quatre exécutions consécutives ensuite : **885/885 vertes**. **Je ne peux pas
+nommer la spec en cause** — la sortie de cette première exécution était filtrée
+et le détail est perdu. Ce n'est donc ni « un flaky pré-existant identifié »,
+ni « un échec de cette task » : c'est un échec intermittent non attribué, et il
+est consigné comme tel plutôt qu'écarté. À surveiller au prochain cycle sur ce
+repo.
+
+## Validation
+
+| Repo | Build | Tests |
+|---|---|---|
+| `api-mail` | ✓ 0 erreur | ✓ 4 524 passés (183 + 492 + 2 497 + 838 + 514), 0 échec, 16 skipped |
+| `client-mobile` | ✓ | ✓ 885 / 885 (voir signalement ci-dessus) |
+| `client-blazor` | ✓ 0 erreur | ✓ 264 passés, 2 skipped |
+
+Les trois branches contenaient déjà la pointe de `develop` — aucune fusion
+nécessaire, aucun conflit.
+
+## DOD — état
+
+Tous les items commandables sont ✅ **sauf** le dernier, explicitement traité par
+la clause d'échappement de la DOD elle-même :
+
+- Tir `terrain` 1 000 avant/après : **mesure en attente** — le banc exige le
+  tireur distant et une chauffe hydratée de plusieurs heures, hors de la fenêtre
+  du cycle. La DOD prévoit ce cas (« peut être fait par l'humain au HAG […] à
+  défaut, noter “mesure en attente” dans le task file, jamais de silence »).
+  Les deux mesures à ajouter au harnais (taille de réponse de la page d'en-têtes,
+  nombre d'appels à la route de contenu) restent à câbler.
+
+Item de vérification visuelle : **non couvert** — outillage absent (voir
+`## Visual verify log`). Il n'est pas dans la DOD, mais l'absence est signalée
+dans la PR mobile plutôt que passée sous silence.
