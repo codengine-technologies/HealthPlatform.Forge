@@ -5,7 +5,7 @@
 > **Version** : 1.0
 > **Auteur** : PO forge (audit performance du 2026-06-10)
 > **Audience** : PO, médecin, direction — la vue ingénierie vit dans [E011-Changelogs.md](E011-Changelogs.md)
-> **Dernière mise à jour** : 2026-09-19
+> **Dernière mise à jour** : 2026-09-20
 
 ---
 
@@ -22,7 +22,7 @@
 - [7. Contraintes et hypothèses](#7-contraintes-et-hypothèses)
 - [8. Critères d'acceptation de l'EPIC](#8-critères-dacceptation-de-lepic)
 - [9. Hors périmètre](#9-hors-périmètre)
-- [État de couverture (2026-09-19)](#état-de-couverture-2026-09-19)
+- [État de couverture (2026-09-20)](#état-de-couverture-2026-09-20)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -148,13 +148,13 @@ graph LR
 
 ---
 
-## État de couverture (2026-09-19)
+## État de couverture (2026-09-20)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---------|--------|------------|---------------------|
 | E011-F001 Lecture ciblée & flux | ✅ Mergée sur develop | 100% | task-068 |
 | E011-F002 Certificats sans blocage | ✅ Mergée sur develop | 100% | task-069 |
-| E011-F003 Accès données optimisé | 🟡 Livrée, un complément en validation | 100% implémenté | task-070, task-266, task-194, task-322 |
+| E011-F003 Accès données optimisé | 🟡 Livrée, des compléments en validation | 100% implémenté | task-070, task-266, task-194, task-322, task-323 |
 | E011-F004 Recherche bornée | ✅ Mergée sur develop | 100% | task-071 |
 | E011-F005 Réponses compressées | ✅ Mergée sur develop | 100% | task-072 |
 | E011-F006 Connexions assainies | ✅ Mergée sur develop | 100% | task-073 |
@@ -165,7 +165,7 @@ graph LR
 | E011-F011 Enrichissement non bloquant | ✅ Mergée sur develop | 100% | task-079 |
 | E011-F012 Liste des dossiers accélérée | ✅ Mergée sur develop | 100% | task-080 |
 
-**Couverture EPIC consolidée : 100 % implémenté** — les douze features sont livrées et validées. L'EPIC reste ouvert parce que l'axe *accès aux données* continue de recevoir des améliorations ciblées, sans nouvelle fonctionnalité : la dernière en date (task-194) attend sa validation.
+**Couverture EPIC consolidée : 100 % implémenté** — les douze features sont livrées et validées. L'EPIC reste ouvert parce que l'axe *accès aux données* continue de recevoir des améliorations ciblées, sans nouvelle fonctionnalité : les dernières en date (task-322 et task-323) attendent leur validation humaine.
 
 ---
 
@@ -183,6 +183,7 @@ graph LR
 - v1.10 — La vérification des certificats de l'Espace de Confiance refuse désormais systématiquement un certificat révoqué, sur tous les chemins de contrôle (correction d'une faille latente détectée pendant le chantier). En cas d'indisponibilité du service de vérification de l'ANS, le comportement est arbitré et validé humainement : une vérification récente reste acceptée pendant 4 heures au maximum, avec un évènement journalisé à chaque acceptation dégradée ; au-delà, la connexion est refusée (task-069).
 
 ### Technique / observabilité (sans impact utilisateur direct)
+- v1.15 — **Le texte des comptes rendus n'est plus envoyé pour dessiner une liste : il arrive quand le médecin ouvre le document.** Chaque compte rendu pèse en moyenne 222 Ko de texte mis en forme. Le serveur les envoyait **tous** avec la liste des messages et avec la frise du dossier patient — soit près de quatre méga-octets par page — pour des écrans qui n'affichent qu'un titre, une date et une catégorie. L'allègement complémentaire annoncé à l'étape précédente est donc réalisé : il restait suspendu à une seule application, la frise patient du mobile, la seule des trois à afficher le texte depuis cette charge. Elle le demande désormais **au moment où le praticien déplie ou ouvre un document**, comme le font déjà les autres écrans ; l'attente perçue à l'ouverture est celle d'un seul document, et un document déjà consulté se rouvre sans nouvel échange. En cas de coupure réseau au moment du dépliage, la frise reste utilisable et propose d'ouvrir le document. **Rien ne change à l'écran** : le contenu affiché après ouverture est identique. Bénéfice au-delà de la vitesse : les comptes rendus cessent de circuler vers un terminal mobile qui ne les montrait pas, et le journal d'audit d'un téléchargement de pièce jointe ne charge plus le contenu clinique du message — moins de données de santé en mouvement, à usage constant. **Le gain n'est pas encore chiffré** : la mesure comparative au banc de charge demande une préparation de plusieurs heures et sera produite avant ou après la validation humaine (task-323).
 - v1.14 — **La liste des messages ne fait plus voyager le contenu des pièces jointes.** Pour afficher une page de la boîte, le serveur lisait en base les octets de chaque pièce jointe et le vecteur de recherche de chaque compte rendu, puis les jetait : la liste n'affiche que le nom, le type et la taille. Mesuré au banc à 1 000 praticiens, ce travail invisible représentait plus de neuf dixièmes du temps passé en base pour tout le parcours d'un médecin. Le serveur ne lit désormais que ce que la liste montre ; l'écran est identique au pixel, et deux index accompagnent la lecture des pièces et des documents par message. Le texte des comptes rendus reste, lui, servi avec la liste, parce que deux des applications l'affichent depuis cette charge : un allègement supplémentaire attend une évolution des écrans (task-322).
 - v1.13 — **Compter les conversations ne coûte plus le prix de la boîte entière.** En vue par conversations, chaque page de la boîte affiche un compteur « N messages » par échange. Pour le calculer, le serveur lisait **tous** les messages de la boîte, puis ne gardait que ceux des conversations affichées : une boîte de dix mille messages était parcourue pour en documenter vingt-cinq, et le coût grandissait donc avec l'ancienneté du praticien plutôt qu'avec ce qu'il regarde. Le serveur ne demande désormais que les messages des conversations de la page. **Rien ne change à l'écran** : les compteurs, le regroupement, le message affiché en tête de conversation et le dépliage sont identiques — une conversation dont la racine vit dans les messages envoyés reste comptée, et un message classé dans un autre dossier continue d'en faire partie. Prolonge directement l'amélioration précédente, qui avait rendu ce calcul **optionnel** sans en réduire le prix quand il est demandé (task-194).
 - v1.12 — **Le serveur cesse de préparer un affichage que l'écran ne montre pas.** La messagerie peut présenter les échanges de deux façons : une liste simple, un message par ligne — c'est le **réglage par défaut** — ou une vue par conversations, qui regroupe les messages d'un même échange et affiche un compteur « N messages ». Préparer ces regroupements coûte au serveur **deux interrogations de la base à chaque page** de la boîte de réception. Or, en mode Liste, l'application **recevait ce travail puis le jetait** : l'écran n'en montre rien. Chaque page de chaque praticien resté sur le réglage par défaut payait donc un calcul entièrement inutile. Désormais l'application **dit** au serveur si elle affiche les conversations, et le serveur ne prépare que ce qui sera montré. **Rien ne change à l'écran** : en mode Liste l'affichage était déjà identique, et en mode Conversation les compteurs sont inchangés. Un point de vigilance a été traité explicitement : l'ancien client Blazor, qui ne connaît pas ce réglage et affiche toujours les compteurs, **continue de les recevoir** — il ne dit rien, donc il garde le comportement d'avant (task-266).
