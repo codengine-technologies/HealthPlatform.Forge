@@ -594,3 +594,48 @@ la clause d'échappement de la DOD elle-même :
 Item de vérification visuelle : **non couvert** — outillage absent (voir
 `## Visual verify log`). Il n'est pas dans la DOD, mais l'absence est signalée
 dans la PR mobile plutôt que passée sous silence.
+
+## Merged
+
+Mergée le **2026-09-21** par `/merge task-323 --i-tested` (HAG, règle 10 — l'humain
+a testé la US de bout en bout avant de déclencher le merge).
+
+L'ordre de merge arbitré dans le task file a été respecté : **`client-mobile` d'abord**
+(la frise tolère les documents sans HTML), **`api-mail` ensuite** (le serveur cesse de
+l'envoyer). `client-blazor` est indépendant (test seul).
+
+| Ordre | Repo | PR | Commit squash sur `develop` |
+|---|---|---|---|
+| 1er | `client-mobile` | [#77](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/77) | `145eca3415dc06f09ad14afb92f07548bc3e358c` — `feat(mobile): la frise patient charge le HTML d'un document à son ouverture` |
+| 2e | `client-blazor` | [#81](https://github.com/codengine-technologies/HealthPlatform.Client/pull/81) | `384de988869f6976cec9e7401a655b3b6e3225f9` — `test(mss): figer le rechargement du contenu quand les documents sont vides` |
+| 3e | `api-mail` | [#247](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/247) | `73b876e7525ddf9dfc279bcb4cd8a7117384062a` — `perf(mail): le HTML des documents ne quitte plus la base pour une liste` |
+
+Branches `feat/task-323-doc-html-on-open` supprimées (refs distante et locale) sur les
+trois repos. Aucune branche `dtos-mss` n'avait été créée (contrat inchangé, création
+paresseuse depuis le 2026-09-16). Aucune branche de staging (`/forge` non utilisé pour
+cette task). `client-angular` : hors périmètre, non touché.
+
+### Mesure — faite, et publiée avant le merge
+
+Le DOD laissait la porte ouverte à un « mesure en attente ». Elle ne l'est pas : le tir
+A/B `terrain` 1 000 inscrits a été joué le **2026-09-21** (19:50 → 22:51, 3 h 01) en
+iso-conditions strictes avec le tir de référence du 2026-09-19 soir (task-322).
+
+| Grandeur | Réf. 19/09 (task-322) | **21/09 (task-323)** | Δ | Attendu au task file |
+|---|---|---|---|---|
+| Temps SQL cumulé sur 3 h | 55,7 min | **11,2 min** | **−80 %** | ~11 min ✅ |
+| Coût SQL par requête HTTP | 16,5 ms | **4,3 ms** | −74 % | < 4 ms — quasi atteint |
+| Requête « documents » de la page d'en-têtes | 82,2 % du SQL, 97 ms, 640 blocs / appel | **3,9 %, 0,91 ms, 206 blocs** | **÷ 107 par appel** | < 3 ms, ~20 blocs ✅ (ms), blocs au-dessus |
+| Taux de cache (blocs) | 95,72 % | **97,89 %** | +2,2 pts | ≥ 99 % — non atteint |
+| Lecture disque | 3,08 Mo/s | **1,37 Mo/s** | −56 % | < 1 Mo/s — non atteint |
+| p95 `terrain` | 974,8 ms | **561,7 ms** | −42 % | sans seuil |
+| Backends actifs (équivalent) | 0,33 | **0,09** | ÷ 3,7 | — |
+
+Aucun de ces seuils n'était un critère de DOD (« le correctif se merge sur sa justesse,
+la mesure dit ce qu'il valait »). Le constat qui fondait la US est vérifié : la requête
+des documents quitte la tête du top 20, et **le goulet se déplace**.
+
+Publication : `Docs/audits/api-mail-loadtest-terrain-1000-task323-ab-20260921.md`,
+lignes ajoutées à `Api/Mail/tests/loadtest-k6/reports/INDEX.md` et
+`POSTGRES-INDEX.md` (commit `docs(loadtest): task-323 — mesure A/B terrain 1000 du
+2026-09-21`, inclus dans la PR #247 avant son merge).
