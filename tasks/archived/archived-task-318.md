@@ -1,5 +1,31 @@
 # todo-task-318.md — Le jeton PSC est vérifié, et il désigne le même professionnel que le compte connecté
 
+> 🚫 **RETIRÉE le 2026-09-23 — jamais démarrée — remplacée par task-171** (amendement
+> du même jour, `tasks/todo-task-171.md`, section « Liaison compte ↔
+> professionnel » et encadré « Remplace task-318 »).
+>
+> **Pourquoi.** Cette US reconstruisait la liaison compte ↔ professionnel à partir de
+> deux jetons fournis par le client — vérification de la signature du jeton PSC, puis
+> égalité avec un claim `psc_sub` ajouté au bearer par mapper Keycloak. L'instruction
+> du 2026-09-22 (bordereau Keycloak 1.17.0, tests d'échange sur le realm local) a
+> montré que ce montage ne tenait qu'au prix d'une fenêtre d'observation sans
+> échéance sûre : le mapper d'import ne tourne qu'au login navigateur, jamais sur le
+> JWT Authorization Grant, donc jamais sur le parcours CIBA. Le backend pull de
+> task-171 rend la reconstruction inutile : l'agrégat de session du proxy porte
+> ensemble le jeton Keycloak et les jetons PSC d'un même login — la liaison se lit,
+> elle ne se reconstruit plus.
+>
+> **Ce qui survit, et où.** La trace d'audit (RG-6) et la protection du banc (RG-5)
+> passent dans 171 telles quelles ; RG-1 à RG-4 tombent ; les trois points
+> d'arbitrage sont caducs. La garde anti-doublon de liaison posée dans le proxy le
+> 2026-09-22 et l'audit d'intégrité du realm deviennent le prérequis RG-L5 de 171.
+> **Le constat d'audit ci-dessous reste exact** et vaut référence pour E016.
+>
+> **Réserve.** 171 dépend de la bascule d'`api-mail` sous `*.weda.fr`
+> (`questions/answered/task-171.md`). Si cette bascule n'a pas lieu, cette US
+> redevient la seule remédiation livrable et doit être réactivée telle quelle.
+
+
 **Repos**: api-mail
 **Dependencies**: —
 **Epic**: E016

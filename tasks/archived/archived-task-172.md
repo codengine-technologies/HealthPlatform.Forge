@@ -1,5 +1,13 @@
 # todo-task-172.md — Clients : arrêt du refresh et du push X-PSC-Token (Angular + mobile)
 
+> 🔀 **FUSIONNÉE dans task-171 le 2026-09-23 — jamais démarrée** (décision humaine :
+> une seule US complète pour le backend pull, le retrait du volet PSC des clients et
+> le retrait du fallback API — règle 11). Son contenu est repris intégralement au
+> point 6 de `tasks/todo-task-171.md`, **étendu à Blazor**, qui pose `X-PSC-Token` à
+> deux endroits (`HttpRequestService.cs`, `MailboxAccountsService.cs`) et n'était
+> couvert par aucune task. Le texte ci-dessous est conservé pour référence.
+
+
 > ⏸️ **ON HOLD (décision humaine 2026-07-25)** — suit task-171, elle-même en attente
 > de la bascule d'api-mail sous `*.weda.fr`. Ne pas réactiver avant que task-171 soit
 > mergée et déployée.

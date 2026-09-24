@@ -238,7 +238,12 @@ dans `string.Equals`, mais `StringComparer` dans `Contains`.
 
 ## S125 — une prose qui « ressemble à du code » est signalée comme code commenté
 
-**Occurrences : 4** (task-184, task-292, task-188, task-322 — quatrième récidive sur
+**Occurrences : 5** (task-184, task-292, task-188, task-322, task-171 — cinquième
+récidive sur code frais. Variante task-171 : deux commentaires d'intention en anglais
+« « online » means a PSC token is obtainable through the proxy ; the token itself is
+resolved at authentication time » — guillemets typographiques, point-virgule et
+verbe technique suffisent. Reformulés en prose française sans ponctuation de code.
+Quatrième récidive sur
 code frais. Variante task-322 : une **condition entre accents graves** citée dans un
 commentaire d'intention — `` `if (mail.Content == null) …` `` — pour désigner le
 comportement d'un client. Un fragment conditionnel avec parenthèses et opérateur
@@ -405,7 +410,9 @@ on relit, c'est un commentaire qu'il faut, pas une variable morte.
 
 ## S4457 — la validation des arguments se fait hors du corps `async`
 
-**Occurrences : 2** (task-299, task-300)
+**Occurrences : 3** (task-299, task-300, task-171 — `PscTokenProvider.GetModeAsync` /
+`GetAccessTokenAsync` : `ThrowIfNull(key)` en tête d'une méthode `async`, corrigé en
+enveloppe synchrone + `…CoreAsync` privée)
 
 > ⚠️ **Récidive sur du code frais (task-300).** `PostgresAuditSink.WriteBatchAsync`
 > et `PostgresAuditReader.GetTracesAsync` ont été écrites avec un `ThrowIfNull` en
@@ -594,3 +601,62 @@ _logger.LogError(
 par interpolation ni par `string.Format` — un gabarit qui cesse d'être une
 constante fait perdre le nom des propriétés structurées et déclenche à son tour
 les règles de journalisation. Découper au mot, pas au milieu d'un placeholder.
+
+## S3925 — une exception garde le triplet de constructeurs recommandé
+
+**Occurrences : 1** (task-171 — `UnauthorizedException`, `PscIdentityConflictException`)
+
+La passe qualité avait **retiré** les constructeurs « inutilisés » de deux
+exceptions neuves pour ne garder que celui réellement appelé. Sonar réclame le
+motif de sérialisation recommandé : sans-argument, `(string message)` et
+`(string message, Exception innerException)`, même si personne ne les appelle.
+
+```csharp
+// ❌ AVANT — un seul constructeur, celui que le code appelle
+public sealed class UnauthorizedException(string message, string? errorCode) : Exception(message) { … }
+
+// ✅ APRÈS — le triplet, plus le constructeur métier
+public UnauthorizedException() { }
+public UnauthorizedException(string message) : base(message) { }
+public UnauthorizedException(string message, string? errorCode) : base(message) { ErrorCode = errorCode; }
+public UnauthorizedException(string message, Exception innerException) : base(message, innerException) { }
+```
+
+**Consigne** : une nouvelle exception porte toujours les trois constructeurs
+standards — et une passe « simplification » ne les retire jamais, même
+inutilisés : ce n'est pas du code mort, c'est le contrat de la règle.
+
+## S1075 — pas de délimiteur de chemin ou d'URI en dur
+
+**Occurrences : 1** (task-171 — `DependencyInjection.AddPscProxyClient`)
+
+Garantir le slash final d'une base d'URL par `TrimEnd('/') + "/"` déclenche la
+règle sur le littéral `"/"`. `UriBuilder` fait le même travail sans littéral.
+
+```csharp
+// ❌ AVANT
+if (Uri.TryCreate(options.BaseUrl.TrimEnd('/') + "/", UriKind.Absolute, out var baseAddress)) …
+
+// ✅ APRÈS
+if (Uri.TryCreate(options.BaseUrl, UriKind.Absolute, out var baseAddress))
+{
+    var builder = new UriBuilder(baseAddress);
+    if (!builder.Path.EndsWith('/')) { builder.Path += '/'; }
+    client.BaseAddress = builder.Uri;
+}
+```
+
+**Consigne** : normaliser une URL avec `UriBuilder` (et des `char`), jamais par
+concaténation d'un littéral `"/"`.
+
+## S1172 — un paramètre que la méthode n'utilise plus se retire
+
+**Occurrences : 1** (task-171 — `AddPscProxyClient(services, configuration)`)
+
+Une méthode d'enregistrement DI lisait la configuration pour lier ses options ;
+la passe qualité a basculé la lecture sur `IOptions<>` au moment de la
+résolution, et le paramètre `IConfiguration` est resté dans la signature.
+
+**Consigne** : après avoir déplacé la lecture d'une dépendance, relire la
+signature de la méthode et son appelant — un paramètre orphelin est le résidu
+le plus courant d'un refactor « lu au point d'usage plutôt qu'à l'enregistrement ».
