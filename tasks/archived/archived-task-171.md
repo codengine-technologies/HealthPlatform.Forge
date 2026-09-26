@@ -864,3 +864,21 @@ Créées le 2026-09-24 par `/start 171`, depuis `origin/develop` de chaque repo.
 | **Total cycle** | | **5 h 19 min** | **42 (6 min 27 s)** | **44 (33 min 18 s)** | **6 (1 min 46 s)** | |
 
 Autres commandes mesurées : lint ×4 (1 min 43 s), restore ×3 (53 s)
+
+## Merged
+
+*Le 2026-09-26 par `/merge 171 --i-tested` — l'humain atteste avoir validé la US de bout en bout (HAG, règle 10).*
+
+| Repo | PR | Commit squash sur `develop` |
+|---|---|---|
+| `api-mail` | [#248](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/248) | `6d17b072` |
+| `client-blazor` | [#82](https://github.com/codengine-technologies/HealthPlatform.Client/pull/82) | `e5d4af01` |
+| `client-mobile` | [#78](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/78) | `f60566b8` |
+| `client-angular` | — | managed manually by the human |
+
+Branches `feat/task-171-backend-pull-token-psc` supprimées (distante et locale) sur les trois repos pushables. Aucune branche staging.
+
+CI `develop` post-merge : **verte sur les trois repos** (success).
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/36256368108
+- `client-blazor` : https://github.com/codengine-technologies/HealthPlatform.Client/actions/runs/36256374453
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/36256381231
