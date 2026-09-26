@@ -46,9 +46,9 @@ se met enfin à afficher quelque chose de vrai.
   invalide le cache, pose `Active` + `LastSuccessfulLoginAt` ou `AuthFailing`.
   **Zéro appelant** dans `src/`.
 - `Api/Mail/src/Application/Services/Implementation/ImapConnectionService.cs` —
-  chemin de requête : `AuthenticateAsync(SaslMechanismOAuth2)` ; un jeton expiré
-  est détecté **localement avant** l'appel (task-165, 401) ; un refus de l'opérateur
-  sort en `AuthenticationException` et n'est rapporté à personne.
+  chemin de requête : `AuthenticateAsync(SaslMechanismOAuth2)` ; un refus de
+  l'opérateur sort en `AuthenticationException` (`ConnectAndAuthenticateAsync`),
+  est tracé, et n'est rapporté à personne.
 - `Api/Mail/src/Application/Services/Implementation/BackgroundImapService.cs` —
   chemin de synchronisation : même mécanisme, même silence.
 - `Api/Mail/src/Application/Services/Implementation/BackgroundSyncManager.cs` — le
@@ -60,10 +60,34 @@ se met enfin à afficher quelque chose de vrai.
 - `Api/Mail/src/Domain/Entities/TenantDb/MailboxCompatibility.cs` — `AuthFailing`
   rend `Selectable = false` avant toute considération de session : le comportement
   aval est **déjà écrit**, il attend son signal.
-- Contexte à garder en tête (mémoire `psc-token-2min-vs-kc-5min-imap-gap`) : le
-  jeton PSC vit ~2 min contre ~5 min pour Keycloak. Des **échecs pour jeton expiré
-  sont normaux et fréquents** ; ils ne disent rien du rattachement et ne doivent
-  **jamais** compter.
+
+## Revue du constat après task-171 (2026-09-26)
+
+Le trou est **intact** sur `origin/develop` d'api-mail (`dff07dce`) : toujours zéro
+appelant de `MarkAuthenticationOutcomeAsync`, et le contexte du worker (reconstruit
+dans `BackgroundSyncManager`, qui copie désormais aussi `ProxySessionId`,
+`SessionPscIdentity`, `KeycloakToken`) ne porte toujours ni `TenantId` ni
+`RegisteredDatabaseName`. Mais task-171 (#248, jeton PSC tiré par le backend via le
+proxy) a changé le modèle du jeton :
+
+- **La garde locale « jeton expiré → 401 » de task-165 n'existe plus.** Le jeton est
+  résolu **au moment de l'authentification** par `IPscTokenProvider.GetAccessTokenAsync`
+  (`PerformConnectAndAuthenticateAsync`) : toujours frais, jamais un instantané de
+  requête. Le seul 401 restant est une **session proxy disparue**
+  (`UnauthorizedException`), qui est levée **avant** tout échange avec l'opérateur.
+- **Conséquence pour les faux positifs** : l'écart jeton PSC ~2 min / Keycloak ~5 min
+  (mémoire `psc-token-2min-vs-kc-5min-imap-gap`) ne produit plus d'échecs d'opérateur
+  pour jeton expiré. Un `AuthenticationException` sur un jeton fraîchement tiré est
+  désormais un **signal fiable** de refus d'habilitation. Le compteur de RG-3 reste
+  utile, mais contre les incidents passagers de l'opérateur, plus contre l'expiration.
+- **Message trompeur à corriger** : le détail renvoyé sur `AuthenticationException`
+  dit encore « Le token PSC est peut-être expiré ou invalide ». Il faut l'aligner :
+  la cause probable est désormais un refus de l'opérateur.
+- **Fichiers fortement retouchés depuis la rédaction** : #248 (task-171), #243
+  (task-315, `BackgroundImapService`), #244 (pilotage de la synchronisation,
+  +327 lignes sur `BackgroundSyncManager`). Repartir du code actuel, pas de ce
+  constat ligne à ligne.
+- task-318 est livrée (archivée) ; task-320 reste à faire.
 
 ## Règles métier
 
@@ -75,9 +99,13 @@ meilleur effort, comme toute écriture du registre : une panne du registre ne ca
 jamais la connexion du praticien.
 
 **RG-2 — Seul un refus de l'opérateur sur un jeton non expiré compte comme échec.**
-Ne comptent **pas** : jeton absent (hors ligne), jeton expiré selon la vérification
-locale, hôte injoignable, erreur TLS, délai dépassé, annulation. Ces cas ne disent
-rien de l'habilitation du professionnel sur la boîte.
+Ne comptent **pas** : pas de jeton (hors ligne), session proxy disparue
+(`UnauthorizedException` → 401) ou proxy indisponible (`UnavailableException` → 503),
+conflit d'identité PSC (`PscIdentityConflictException`), hôte injoignable, erreur TLS,
+délai dépassé, coupure réseau, annulation. Tous ces cas surviennent **sans** que
+l'opérateur ait jugé l'habilitation, ou pour une autre raison qu'elle. Seule compte une
+`AuthenticationException` levée par l'opérateur sur le jeton que le proxy vient de
+délivrer.
 
 **RG-3 — `AuthFailing` après échecs consécutifs, pas au premier.** Un compteur par
 rattachement, tenu dans le cache partagé (donc à travers les réplicas), déclenche
@@ -107,7 +135,9 @@ membre `AuditActionType`** : le type est miroité à la main côté Angular et B
 >
 > 1. **Seuil et fenêtre** de RG-3 (défauts proposés : 3 refus en 15 min). Un seuil
 >    trop bas bascule des boîtes sur un incident passager chez l'opérateur ; trop
->    haut, il laisse la fenêtre d'accès ouverte plus longtemps.
+>    haut, il laisse la fenêtre d'accès ouverte plus longtemps. Depuis task-171,
+>    l'expiration du jeton ne produit plus de refus de l'opérateur : seuls les
+>    incidents de l'opérateur restent à absorber.
 > 2. **Hors ligne et `AuthFailing`** : le code actuel retire aussi la **lecture
 >    hors ligne**. C'est le comportement voulu par task-303, et c'est celui que
 >    l'US câble. Confirmez, ou dites si la lecture locale doit survivre à un refus
@@ -120,14 +150,15 @@ membre `AuditActionType`** : le type est miroité à la main côté Angular et B
 - [ ] Build passes (0 errors) — `dotnet build HealthPlatform.Api.Mail.sln`
 - [ ] Tests pass (0 failures) — `dotnet test HealthPlatform.Api.Mail.sln`
 - [ ] `MarkAuthenticationOutcomeAsync` est appelé sur succès et sur refus opérateur depuis le chemin de requête (`ImapConnectionService`) **et** le chemin de synchronisation (`BackgroundImapService`)
-- [ ] Un jeton expiré, absent, ou une erreur réseau/TLS/délai **ne** produit **aucun** appel en échec
+- [ ] Pas de jeton, session proxy disparue (401), proxy indisponible (503), conflit d'identité PSC, ou une erreur réseau/TLS/délai **ne** produit **aucun** appel en échec
+- [ ] Le détail renvoyé sur `AuthenticationException` ne présente plus l'expiration du jeton comme cause probable
 - [ ] Compteur d'échecs consécutifs par rattachement dans le cache partagé ; `AuthFailing` au N‑ième refus dans la fenêtre W ; N et W configurables avec défauts documentés dans `appsettings.json`
 - [ ] Un succès remet le compteur à zéro et la boîte `Active` ; `LastSuccessfulLoginAt` est écrit
 - [ ] Une boîte `AuthFailing` est refusée par la sélection de boîte (403 `PscMismatch`, comportement existant) et apparaît dans `GET /api/v1/account/mailboxes` avec `state = AuthFailing`, `selectable = false`, raison `AuthFailing`, `lastSuccessfulLoginAt` renseigné
 - [ ] Le contexte du worker de synchronisation porte `TenantId` et `RegisteredDatabaseName` ; ses traces d'audit portent le tenant de la boîte (plus aucune trace de synchronisation en `Guid.Empty` sur un scénario nominal)
 - [ ] Traces sous types existants uniquement ; aucun nouveau membre `AuditActionType`
 - [ ] Aucune donnée de santé ni jeton dans les logs ajoutés ; adresse anonymisée comme dans le middleware
-- [ ] Tests unitaires : classification des issues (succès / refus / expiré / réseau / annulé), compteur (N‑1 refus → `Active`, N → `AuthFailing`, succès → remise à zéro, fenêtre expirée → remise à zéro), propagation du tenant au contexte de synchronisation
+- [ ] Tests unitaires : classification des issues (succès / refus opérateur / session proxy disparue / proxy indisponible / réseau / annulé), compteur (N‑1 refus → `Active`, N → `AuthFailing`, succès → remise à zéro, fenêtre expirée → remise à zéro), propagation du tenant au contexte de synchronisation
 - [ ] Tests d'intégration : après N refus simulés de l'opérateur, `GET /api/v1/mail/folders` avec `Client-Email` sur cette boîte → 403 ; `GET /api/v1/account/mailboxes` la montre `AuthFailing` ; après un succès, elle redevient ouvrable
 - [ ] Le document d'EPIC E016 (`/tech-writer`) décrit la re-validation continue comme livrée, plus comme promise
 
@@ -136,6 +167,10 @@ membre `AuditActionType`** : le type est miroité à la main côté Angular et B
 - **Lancer** en profil banc (opérateur Dovecot local, pilotable) :
   `cd Api/Mail && aspire run --project src/AppHost` avec le profil loadtest (voir
   `Docs/epics/E015-tests-charge-api-mail.md`), puis un front (mobile : `cd Client/Mobile && npm start`).
+- **Base du registre** : le nom vient de `MSS_TENANT_REGISTRY_DB` (défaut `mss_registry`,
+  `AppHost.cs`). Si l'AppHost tourne avec le registre du banc
+  (`MSS_TENANT_REGISTRY_DB=mss_registry_loadtest`), remplacer `mss_registry` par ce nom
+  dans les requêtes ci-dessous.
 - **Nominal** : se connecter, ouvrir la boîte. Vérifier le registre :
   `docker exec postgres-pgvector psql -U postgres -d mss_registry -c "select mailbox_address, state, last_successful_login_at from mss_accounts;"`
   **Attendu** : `state = 0` (Active) et `last_successful_login_at` **renseignée** à l'instant de la
@@ -147,8 +182,8 @@ membre `AuditActionType`** : le type est miroité à la main côté Angular et B
   `ProblemDetails` « Cette messagerie n'est pas utilisable avec la session en cours » ; la liste
   des boîtes montre l'état **Échec d'authentification** ; la lecture **hors ligne** (sans jeton PSC)
   est elle aussi refusée ; le registre porte `state = 2`.
-- **Faux positifs** : couper le réseau vers l'opérateur (ou laisser le jeton PSC expirer sans
-  rafraîchir) et recharger plusieurs fois. **Attendu** : `401`/`503` selon le cas, **mais** le registre
+- **Faux positifs** : couper le réseau vers l'opérateur (Toxiproxy), ou fermer la session
+  PSC côté proxy, et recharger plusieurs fois. **Attendu** : `401`/`503` selon le cas, **mais** le registre
   reste `Active` — aucun basculement.
 - **Retour** : restaurer le compte Dovecot, recharger. **Attendu** : la boîte redevient
   utilisable au premier succès, `state = 0`, `last_successful_login_at` mise à jour.
