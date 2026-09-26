@@ -138,3 +138,183 @@ Pas de tir dédié : la prochaine campagne `terrain` 1 000 après le merge (réf
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui — environnement inchangé, aucune donnée nouvelle stockée
 - **AIPD / impact RGPD** : inchangé — aucun traitement nouveau ; réduction d'un cas où le praticien pouvait renvoyer un document déjà remis (doublon évité)
+
+## Branches
+- `api-mail` (pushed) : fix/task-324-imap-eviction-respects-in-use-session — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-324-imap-eviction-respects-in-use-session
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-324 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 12 min 33 s | — | — | — | git fetch bloqué sur prompt credential GCM (~10 min) — contourné via gh auth git-credential |
+| /develop | ok | 21 min 47 s | 3 (32 s) | 5 (5 min 25 s) | — | api-mail 3B/5T |
+| /sonar | ok | 16 min 33 s | 2 (38 s) | 11 (7 min 05 s) | 4 (3 min 54 s) | 1 itération(s), api-mail 2B/11T, Phase 1 verte sur le code de la task ; QG projet ERROR hors task ; Phase 2 skippée |
+| /lint-angular | skipped | 17 s | — | — | — | client-angular non listé ; seules modifs = environment.ts locaux de l'humain |
+| /lint-mobile | skipped | 2.2 s | — | — | — | client-mobile non touché |
+| /verify-visual | skipped | 1.8 s | — | — | — | aucun écran mobile touché |
+| /review | ok | 17 min 05 s | 1 (11 s) | 2 (4 min 36 s) | — | api-mail 1B/2T |
+| /tech-writer | ok | 2 min 28 s | — | — | — | — |
+| **Total cycle** | | **1 h 10 min** | **6 (1 min 22 s)** | **18 (17 min 07 s)** | **4 (3 min 54 s)** | |
+
+## Develop log
+
+- Repos touched : `api-mail` (seul repo listé)
+- DTOs published : no DTO change (aucune branche `dtos-mss` créée) — Interop / SDK : no change
+- Commits (`api-mail`, branche `fix/task-324-imap-eviction-respects-in-use-session`) :
+  - `14b8fc03` fix(session): le balayage ne dispose plus une session IMAP en cours d'usage
+  - `bac8502f` refactor(session): simplify pass (/simplify)
+- Local build / test : ✓ build 0 erreur ; unitaires 4 963/4 963 verts (domain 190, infrastructure 663,
+  application 3 143, api 967). Intégration 594 verts / 16 ignorés / **4 rouges pré-existants** (voir plus bas).
+
+### Preuve du ROUGE (attribution) — run sur le code d'origine (`dff07dce`, avant correctif)
+
+Tests écrits d'abord (`tests/mss.mail.application.tests/Session/SweepDuringEstablishmentTests.cs`), à travers
+le **vrai** `MailClientSessionManager` et le **vrai** `ImapConnectionService` (`ConnectAsync`, verrou compris) :
+
+```
+[FAIL] SweepDuringEstablishmentTests.Sweep_WhileTheClientIsConnecting_DoesNotDisposeIt
+       Erreur inattendue lors de la connexion: ObjectDisposedException          ← fenêtre 1 (client créé, non connecté ; motif disconnected)
+[FAIL] SweepDuringEstablishmentTests.Sweep_WhileAwaitingThePscTokenBeforeAuthenticate_DoesNotDisposeTheClient
+       Erreur inattendue lors de la connexion: ObjectDisposedException          ← fenêtre 2 (connecté, attente du jeton PSC ; motif expired)
+[FAIL] Sweep_WhenTheLockIsHeld_DoesNotEvictAnExpiredSession        Assert.NotNull() Failure: Value is null
+[FAIL] Sweep_WhenTheLockIsHeld_DoesNotEvictADisconnectedSession    Assert.NotNull() Failure: Value is null
+[FAIL] Sweep_WhenItMeetsASessionInUse_CountsTheSkippedInUseEvent   Collection: ["created", "disconnected"] — Not found: "skipped_in_use"
+[FAIL] ImapConnectionServiceCoverageTests.ConnectInternalAsync_WhenTheClientIsDisposedDuringAuthentication_ReturnsUnavailable
+       Expected: Unavailable — Actual: Error
+[PASS] Sweep_ALinkThatDroppedAfterBeingConnected_IsStillEvictedAndRecreatedOnNextUse   (non-régression task-315, vert avant et après)
+Échoué! - échec : 6, réussite : 1, total : 7
+```
+
+Les deux fenêtres reproduisent **mot pour mot** le message rendu en 500 aux tirs (`Erreur inattendue lors de la
+connexion: ObjectDisposedException`). L'attribution à l'éviction task-315 est prouvée ; après correctif : 7/7 verts.
+
+### Choix d'implémentation
+
+- **Voie retenue : `_imapLock.Wait(0)` dans le balayage** (vérification demandée par la revue du 2026-09-27) : les
+  ~30 appelants de `ConnectInternalAsync` détiennent **tous** le verrou IMAP de session (scan des appels ; le seul
+  sans `AcquireLockAsync` à proximité, `ImapService.cs:753`, est une reprise exécutée sous le verrou déjà pris). Le
+  verrou couvre donc l'établissement entier, **appel au proxy PSC compris** — un état « établissement en cours »
+  séparé aurait dupliqué ce que le verrou dit déjà.
+- Verrou détenu → session laissée au passage suivant, `RecordImapSessionEvent("skipped_in_use")`, log Information
+  (`Key`, motif, opération détentrice) ; Warning si le verrou est détenu depuis plus de `ImapLockWaitTimeout` (120 s,
+  le délai d'abandon des attentes) — journalisé, jamais évincé. Verrou obtenu → **re-examen du motif sous le verrou**,
+  puis retrait du dictionnaire **avant** `Dispose` (ordre aligné sur `RemoveSession`).
+- `ConnectAndAuthenticateAsync` : `catch (ObjectDisposedException)` → `Result.Unavailable` (503), trace
+  `ConnectionError` ; ajouté **avant** le générique, filtre task-171 intact (tests
+  `…LetsTheTypedExceptionThrough` / `…LetsTheConflictThrough` verts). Message rendu et log **sans e-mail**.
+  `InvalidOperationException` MailKit non ajoutée : rien dans le code ne la montre nécessaire.
+- `SessionLockReleaseMismatchTests` (task-223) : leur scénario « session recyclée sous le détenteur » passait par le
+  balayage, qui ne le fait plus ; il passe désormais par `RemoveSession` (déconnexion, diffusée par task-285), qui le
+  fait toujours. Les 5 garanties task-223 restent testées.
+- task-319 (re-validation continue) n'est pas livrée : la classification « `ObjectDisposedException` ≠ refus de
+  l'opérateur » lui revient.
+
+### Traces `MailArchiveSent` du tir du 19/09 soir (DOD)
+
+**Non vérifiable directement** : Seq local ne conserve plus aucun événement de la fenêtre (requête vide du
+2026-09-19T18:00Z au 2026-09-20T04:00Z — rétention), et les rapports du tir (`Docs/audits/…-20260919.md`) ne
+détaillent pas l'occurrence `AppendToSent`. **Par le code** : `SentArchiveService.ArchiveWithRetryAsync` rejoue
+sur **tout** échec (3 tentatives, délais 2 s puis 10 s), quel que soit le statut rendu — l'occurrence a donc été
+reprise par le rejeu ; un archivage définitivement perdu aurait laissé une trace « 3/3 » non consultable
+aujourd'hui. **Finding** : à re-consigner au prochain tir, filtre Seq
+`@MessageTemplate like '[SentArchive]%' and Attempt > 1`.
+
+### Tests d'intégration rouges pré-existants (hors task)
+
+4 tests « du jour » (`FilterTodayEmailsShouldReturnOnlyTodayAsyncAsync`, `GetFolderTodayAsync_Inbox_…`,
+`GetFolderNotSeenTodayAsync_Inbox_…`, `GetEmailAsync_WithFullContent_…`) rouges à 00:33 locale (jour UTC ≠ jour
+local) — **rejoués sur `develop` non modifié : mêmes 4 échecs**. Pas une régression.
+
+### Passe qualité (/simplify)
+
+- Applied & committed : `api-mail` : 2 fichiers (`bac8502f`) — motif calculé une seule fois dans
+  `EvictSessionUnlessInUse`, `heldFor` unique, constante `ImapLockWaitTimeout` partagée avec
+  `LockImapClientAsync`, test task-315 resserré sur le même gestionnaire.
+- La re-validation a révélé une vraie règle : `SweepDuringEstablishmentTests` capture un Meter statique →
+  rattachée à `MailMetricsCaptureCollection` (scan task-291, qui ne voit que les fichiers suivis par git).
+- Écartés (notés pour `/review`) :
+  - `IsExpired` journalise un Warning à chaque évaluation : le re-examen sous verrou le double à l'éviction —
+    correctif propre = rendre `IsExpired` pur (hors diff, change les logs existants).
+  - **Suite possible (altitude)** : la déconnexion (`RemoveSession`) dispose encore une session sous son détenteur ;
+    le principe général « jamais disposée sous un détenteur » se porterait dans `MailClientSession` (fermeture
+    différée au dernier rendu du verrou), ce qui rendrait le `catch` 503 superflu. Changement de comportement, hors
+    périmètre.
+  - Factorisation des fixtures de test (`BuildService`/TLS/`ScriptedImapClient` dupliqués avec
+    `ImapConnectionServiceCoverageTests`, écouteur de Meter ad hoc) — hors diff.
+  - Consolidation des `catch` Timeout/IO/ObjectDisposed — niveaux de log différents.
+- Skipped (contract/excluded) : dtos-mss, interop-cda, sdk non touchés.
+
+- DOD self-check : 10/12 vérifiés par commande (build, tests, rouge, ≥1 test par motif, non-régression task-315,
+  503, filtre task-171, métrique, aucun fichier `Dtos/`/frontend, pas d'e-mail ajouté) ; 1 consigné non vérifiable
+  (traces `MailArchiveSent`, rétention Seq) ; 1 reporté à `/review` (body de PR).
+- Next step : `/sonar task-324`
+
+## Sonar log
+
+- Mode A (chaîné), serveur SonarQube 25.6.0 (`sonar.token`), 2 analyses complètes sur la branche (2026-09-26 22:50Z puis re-analyse après tests).
+- **Phase 1 (new code de la task) : ✓ verte.** Sur les 3 fichiers de production modifiés : **0 issue, 0 hotspot** ;
+  **41/41 lignes modifiées couvertes** (ImapConnectionService 4/4, MailClientSessionManager 32/32, MailClientSession 5/5).
+  Seule branche partielle : `holder?.Operation` dans la branche Warning (l. 723), où `holder` est non nul par construction.
+  - 1ʳᵉ analyse : 26/32 lignes couvertes sur MailClientSessionManager (re-examen sous verrou + Warning de verrou détenu
+    trop longtemps non couverts) → 2 tests ajoutés (`e7acf008`, crochet de test `MailClientSession.BackdateHolder`,
+    sur le modèle de `ForceExpire`) → 32/32.
+- Phase 1 — Issues fixées : 0 (aucune issue sur le code de la task) — Tests ajoutés : 2.
+- **Quality Gate projet : ERROR, non imputable à la task** (période new-code = `PREVIOUS_VERSION` depuis le 2026-04-17,
+  cf. mémoire « new-code period inclut des tasks déjà mergées ») : `new_violations` 91 — 68 dans `tests/loadtest-k6`,
+  le reste sur des fichiers non touchés ; les 12 issues vues pour la première fois (dernière analyse : 17/09) sont
+  toutes hors diff (`MailController`, `ImapService`, `report.py`, `journey.js`…) ; `new_security_hotspots_reviewed` 0 %
+  — 13 hotspots, tous hors diff (Dockerfile, loadtest-k6, `BaseRepository`). Provenance vérifiée fichier par fichier.
+- Phase 2 (legacy) : **skippée** (optionnelle) — elle élargirait la PR hors du périmètre de la task (règle 6).
+- Build / tests : ✓ build Release 0 erreur ; unitaires verts ; intégration : 3 rouges pré-existants « du jour »
+  (fenêtre 00:00-02:00 locale, rouges aussi sur `develop`).
+- `conventions/csharp.md` : non alimenté — aucune règle corrigée à la main.
+
+### KPIs qualité (baseline → final)
+
+> Baseline = dernière analyse disponible, **`develop` du 2026-09-17** (task-188) : elle ne porte pas les tasks mergées
+> depuis. Les Δ mesurent donc l'écart entre deux états du dépôt, **pas** l'effet de cette task — qui n'ajoute aucune issue.
+
+| Métrique | Baseline (17/09) | Final (branche) | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | ERROR | ERROR | → (hors task) |
+| New coverage | 87,7 % | 98,5 % | +10,8 pt |
+| Bugs | 2 | 2 | 0 |
+| Vulnerabilities | 0 | 0 | 0 |
+| Security hotspots | 15 | 15 | 0 |
+| Code smells | 250 | 89 | −161 |
+| Coverage (projet) | 87,8 % | 98,0 % | +10,2 pt |
+| Duplication | 0,3 % | 0,4 % | +0,1 pt |
+| Reliability / Security / Maintainability | C/A/A | C/A/A | → |
+
+## Lint log
+
+- `/lint-angular` : **skipped — no angular change by this task.** `client-angular` absent de `**Repos**:` ; l'arbre
+  `Client/Angular/front` porte 2 modifications (`apps/mss/src/environments/environment.ts`,
+  `apps/weda2/src/environments/environment.ts`) — configuration locale préexistante de l'humain, non écrite par la
+  forge, laissée intacte.
+- `/lint-mobile` : **skipped — no mobile change.** `client-mobile` absent de `**Repos**:`, arbre propre sur `develop`.
+
+## Visual verify log
+
+- skipped — `client-mobile` non touché, aucun écran dans un `## Stitch design log` (task backend `api-mail` seule).
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/252 — label `awaiting-human-merge`
+  (branche `fix/task-324-imap-eviction-respects-in-use-session`, 3 commits : `14b8fc03` fix, `bac8502f` simplify, `e7acf008` test sonar/new)
+
+## Code Review Summary
+
+- **Verdict : APPROVED** — 6 fichiers relus (3 production, 3 tests), 0 bloquant, 4 suggestions.
+- Validation `/review` : build 0 erreur ; unitaires 4 965/4 965 verts ; intégration 594 verts / 16 ignorés / 4 rouges
+  pré-existants « du jour » (rouges aussi sur `develop`, fenêtre 00:00-02:00 locale). Un premier passage d'intégration a
+  rendu 58 rouges en rafale dans les `UseCases` : saturation Docker (SonarQube + OpenSearch + Graylog + conteneurs de
+  test) — rejoué après arrêt des conteneurs SonarQube démarrés par `/sonar` : 594 verts, mêmes 4 pré-existants.
+- Suggestions (non bloquantes, détaillées dans la PR) : (1) la déconnexion `RemoveSession` dispose encore une session
+  sous son détenteur — US de suite possible (fermeture différée dans `MailClientSession`, rendrait le `catch` 503
+  superflu) ; (2) `IsExpired` journalise à chaque évaluation — le rendre pur ; (3) fenêtre résiduelle entre prise du
+  verrou par le balayage et retrait du dictionnaire (pré-existante, resserrée) ; (4) fixtures de test à factoriser.
+- DOD : 11/12 vérifiés par commande ; « traces `MailArchiveSent` du 19/09 soir » consigné **non vérifiable**
+  (rétention Seq), avec l'analyse du rejeu par le code et le filtre à rejouer au prochain tir.
