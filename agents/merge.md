@@ -143,6 +143,7 @@ Same three-mode taxonomy as the rest of the forge :
    ```bash
    cd {repo-path}
    gh pr merge {num} --squash            # PAS --delete-branch : cf. note ci-dessous
+   gh pr edit {num} --remove-label awaiting-human-merge   # clôture : plus rien n'attend l'humain
    git checkout develop
    git pull --ff-only
    git push origin --delete feat/{task-id}-{slug}   # ref distante
@@ -228,6 +229,14 @@ Same three-mode taxonomy as the rest of the forge :
    > branche `feat/*` mergée garde une valeur d'inspection rétroactive : elle
    > porte l'historique avant écrasement. Une branche **vide** n'a rien à
    > inspecter — c'est un marqueur de plomberie, pas un historique.
+
+   **Retirer le label `awaiting-human-merge` après le merge.** Une PR mergée
+   est fermée par GitHub, mais le label reste : elle continue d'apparaître
+   « en attente de l'humain » dans tous les filtres par label. Constaté le
+   2026-09-26 sur task-171 (#248, #82, #78) et sur #250 — signalé par
+   l'humain (« tu n'as pas clôturé les PR »). Le retrait vient **après**
+   `gh pr merge`, jamais avant : tant que la PR n'est pas mergée, le label
+   dit vrai.
 
 6. **Skip `client-angular` entirely.** Even when the task lists it, do
    **not** ask the human about TFS state, do **not** read `git status`,
