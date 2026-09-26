@@ -18,6 +18,46 @@
 > corrigé par task-223 et task-272 — la mémoire de la forge qui le disait encore
 > ouvert a été corrigée le 2026-09-20.
 
+## Revue du constat (2026-09-27)
+
+**Toujours d'actualité.** Sur `origin/develop` d'api-mail (`dff07dce`) :
+
+- `MailClientSession.cs` n'a pas été modifié depuis task-315 ; `MailClientSessionManager.cs` non plus
+  (dernier commit : #243, task-315, 2026-09-17).
+- `IsImapLinkDead` est inchangé (`ImapClientWrapperOrDefault is { IsConnected: false }`) ;
+  `EvictSession` dispose toujours sans consulter le verrou ni un état « établissement en cours » ;
+  le motif `expired` n'est pas protégé non plus.
+- `ConnectAndAuthenticateAsync` n'a toujours **aucun** `catch (ObjectDisposedException)` : le
+  `catch (Exception)` générique rend `Result.Error` → **500**.
+- **Quatrième tir, même famille** : l'A/B task-323 du **21/09** (`terrain` 1 000) compte **17**
+  réponses 5xx `ObjectDisposedException: ImapClient` dans `AuthenticateClientAsync`
+  (`ImapConnectionService.cs:291`), identique à la référence
+  (`Docs/audits/api-mail-loadtest-terrain-1000-task323-ab-20260921.md`). task-323 ne l'a pas
+  affectée.
+
+**Ce que task-171 (#248, mergée le 2026-09-26) change** — aucun tir n'a encore tourné dessus :
+
+- **Un appel réseau s'insère au milieu de l'établissement.** En XOAUTH2, `AuthenticateClientAsync`
+  demande désormais le jeton au proxy PSC (`IPscTokenProvider.GetAccessTokenAsync`) **entre** la
+  connexion TCP/TLS et la commande `AUTHENTICATE`. L'établissement dure donc plus longtemps en
+  production. Pendant cet appel, le client est `IsConnected: true` : le motif `disconnected` ne le
+  vise pas, mais le motif `expired` le peut. La voie « état explicite d'établissement » (§2) couvre
+  ce segment ; la voie « `_imapLock.Wait(0)` » ne le couvre que si le verrou est tenu pendant
+  `ConnectInternalAsync` — **à vérifier par `/develop`** avant de choisir.
+- **Le banc ne voit pas ce segment.** Au banc, le bypass de test authentifie l'IMAP par mot de
+  passe : pas d'appel au proxy. La reproduction et la mesure au tir restent valables pour la
+  fenêtre « client créé, pas encore connecté », pas pour l'appel au proxy. Le test unitaire du
+  §1 doit donc couvrir les deux fenêtres (avant connexion ; entre connexion et authentification,
+  avec un fournisseur de jeton factice qui attend un signal).
+- **Le rendu 503 (§3) doit préserver le filtre de task-171.** Le `catch (Exception)` générique porte
+  désormais `when (ex is not (UnavailableException or PscIdentityConflictException))` : ces refus
+  typés remontent au `GlobalExceptionHandler` (règle 12). Le nouveau `catch (ObjectDisposedException)`
+  s'ajoute **avant** le générique sans toucher à ce filtre.
+- Lien avec task-319 (re-validation continue) : une `ObjectDisposedException` à l'authentification
+  n'est **pas** un refus de l'opérateur et ne doit **jamais** compter comme échec d'authentification
+  au registre. Si task-319 est livrée avant, ajouter ce cas à ses tests de classification ; sinon,
+  task-319 le reprendra.
+
 ## Ce qui est établi, et l'hypothèse à vérifier d'abord
 
 **Établi (trois tirs, Seq + k6)** :
@@ -58,16 +98,18 @@ Ce que cette US change pour le médecin : plus d'échec d'ouverture de boîte «
 
 ### Mesure — après, sur le tir suivant
 
-Pas de tir dédié : la prochaine campagne `terrain` 1 000 (celle de task-323 ou toute autre) doit montrer **0** `ObjectDisposedException: ImapClient` dans Seq sur la fenêtre, `http_req_failed` sans cette famille, et le compteur `skipped-in-use` non nul (preuve que la fenêtre existait et a été fermée). Si le compteur reste à zéro et la famille persiste, l'attribution était fausse : rouvrir.
+Pas de tir dédié : la prochaine campagne `terrain` 1 000 après le merge (référence à battre :
+**17** occurrences au tir A/B task-323 du 21/09, 16 à 18 aux trois tirs des 18-19/09) doit montrer **0** `ObjectDisposedException: ImapClient` dans Seq sur la fenêtre, `http_req_failed` sans cette famille, et le compteur `skipped-in-use` non nul (preuve que la fenêtre existait et a été fermée). Si le compteur reste à zéro et la famille persiste, l'attribution était fausse : rouvrir.
 
 ## Definition of Done
 
 - [ ] Build passes (0 errors) — `cd Api/Mail && dotnet build HealthPlatform.Api.Mail.sln`
 - [ ] Tests pass (0 failures) — `dotnet test HealthPlatform.Api.Mail.sln`
-- [ ] **Preuve du ROUGE** : test « balayage pendant l'établissement » écrit d'abord, échoue sur le code actuel avec `ObjectDisposedException` sur le client (log du run rouge dans le task file — mémoire `feedback-test-qui-stube-sa-propre-premisse`) ; **ou** ne reproduit pas, et l'US s'arrête sur `questions/task-324.md` sans correctif
+- [ ] **Preuve du ROUGE** : test « balayage pendant l'établissement » écrit d'abord, couvrant les deux fenêtres (client créé non connecté ; connecté, en attente du jeton du proxy avant `AUTHENTICATE`), échoue sur le code actuel avec `ObjectDisposedException` sur le client (log du run rouge dans le task file — mémoire `feedback-test-qui-stube-sa-propre-premisse`) ; **ou** ne reproduit pas, et l'US s'arrête sur `questions/task-324.md` sans correctif
 - [ ] `CleanupExpiredSessions` n'évince ni ne dispose une session en cours d'établissement ni une session dont le verrou IMAP est détenu (motifs `expired` et `disconnected`) — ≥ 1 test par motif
 - [ ] Un lien IMAP tombé **après** avoir été connecté est toujours évincé (`disconnected`) et recréé au prochain usage — tests task-315 verts, ≥ 1 test explicite de non-régression
 - [ ] `ObjectDisposedException` pendant la connexion / authentification IMAP est rendue **503** (`Result.Unavailable`), plus jamais 500 — test unitaire sur `ImapConnectionService` avec un wrapper qui lève à l'authentification
+- [ ] Le filtre task-171 du `catch (Exception)` générique est intact : `UnavailableException` et `PscIdentityConflictException` remontent toujours au `GlobalExceptionHandler` — tests existants de task-171 verts
 - [ ] Motif d'éviction `skipped-in-use` (ou nom retenu) compté dans `MailProcessingMetrics` — test
 - [ ] Le task file consigne la vérification des traces `MailArchiveSent` du tir du 19/09 soir pour l'occurrence sur `AppendToSent` : archivage rejoué avec succès, ou perdu (finding consigné)
 - [ ] Aucune donnée de santé ni e-mail en clair ajouté dans les logs ou les messages d'erreur rendus au client
@@ -76,7 +118,7 @@ Pas de tir dédié : la prochaine campagne `terrain` 1 000 (celle de task-323 ou
 
 ## Manual Test Plan
 
-- Lancer le backend : `cd Api/Mail && dotnet run --project src/AppHost` (profil par défaut, ou `https-load-test` du skill de banc).
+- Lancer le backend : `cd Api/Mail && dotnet run --project src/AppHost` (profil par défaut, ou `https-load-test` du skill de banc). Avec les comptes seedés du banc, lancer l'AppHost avec `MSS_TENANT_REGISTRY_DB=mss_registry_loadtest`, sinon toutes les routes rendent 403 `MAILBOX_NOT_ATTACHED`.
 - **Reproduction dirigée** (avant/après, sur la branche) : régler le timeout d'inactivité IMAP très court (configuration `MailSessionTimeouts`, ou le profil de test), ouvrir la boîte dans `client-blazor`, attendre l'expiration, puis rouvrir la boîte au moment où le balayage passe (le balayage est périodique — répéter l'ouverture une dizaine de fois). Avant le correctif : au moins une ouverture en erreur avec `ObjectDisposedException` dans Seq (`seq-local`). Après : aucune ; les événements `[CleanupExpiredSessions]` montrent le motif `skipped-in-use` quand le balayage a croisé une ouverture.
 - **Lien mort toujours guéri** (task-315) : couper le service IMAP du banc (Toxiproxy, cf. mémoire « Provoquer la panne de messagerie au banc ») pendant que la boîte est ouverte, le rétablir, rouvrir la boîte : elle s'ouvre (session recréée), Seq montre l'éviction `disconnected`.
 - **Rendu au médecin** : provoquer un client disposé pendant l'authentification (test dirigé ci-dessus si le correctif d'éviction est désactivé, ou test unitaire) : la réponse est 503 avec `ProblemDetails` (règle 12), le client affiche une indisponibilité transitoire, pas une erreur serveur.
