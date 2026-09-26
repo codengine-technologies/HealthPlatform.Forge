@@ -40,6 +40,40 @@
 > attend une US de re-vectorisation (task-326, à rédiger) que cette US prépare
 > par une **colonne modèle par ligne**.
 
+## Revue du constat (2026-09-27)
+
+**Toujours d'actualité, constat intact** sur `origin/develop` d'api-mail (`dff07dce`). Depuis la
+rédaction, seuls deux commits ont touché les fichiers concernés, et aucun ne change le câblage IA :
+task-171 (#248, jeton PSC, ajouts dans `AppHost.cs` sans rapport avec l'IA) et le nettoyage Sonar
+(#249, renommages cosmétiques dans des tests d'embedding et de tagging). Chaque point vérifié :
+
+- `AppHost.cs:444` porte toujours `.WithEnvironment("AiProvider__Provider", "OpenIA")`.
+- Toujours aucun conteneur Ollama ; `OpenAi:Endpoint` toujours ignoré par `SemanticKernelExtensions`
+  (seul l'`Ollama:Endpoint` est lu).
+- `AiConversationService.cs:173` construit toujours des `OpenAIPromptExecutionSettings`.
+- `FlexibleEmbeddingService`, `IEmbeddingProviderService`, `BaseEmbeddingProviderService` toujours
+  présents et non enregistrés (seul un commentaire task-073 les cite dans `SemanticKernelExtensions`).
+  Ajouter `BaseEmbeddingProviderService` à la liste du §10.
+- Toujours aucune colonne `EmbeddingModel` en base, aucun compteur de tokens.
+- `OllamaOptions` : toujours `nomic-embed-text` (et `mistral`) par défaut.
+
+**Deux compléments, non vus à la rédaction** :
+
+- **Une brique de re-vectorisation existe déjà.** `EmbeddingReindexService` (task-196, 2026-08-08),
+  exposé par `MailMaintenanceController` (`POST embeddings/reindex/{documentId}`,
+  `POST embeddings/reindex-missing`), sait inventorier et re-vectoriser les **documents médicaux**
+  **sans vecteur**, sans session IMAP. Il ne connaît ni le modèle ni `MailContents`. Hors périmètre
+  ici, mais c'est la base naturelle de task-326. **Point d'attention pour le §7** : une fois la
+  recherche filtrée sur le modèle actif, un document vectorisé par un autre modèle est invisible à la
+  recherche **sans** figurer dans l'inventaire des « non indexés ». Cette US ne doit pas l'aggraver
+  (défaut : un seul modèle en base), et task-326 devra étendre l'inventaire à « non indexé **pour le
+  modèle actif** ».
+- **Versions Aspire à vérifier pour le §4.** Le paquet `Aspire.Hosting.AppHost` est en 13.5.3, mais
+  le SDK du projet AppHost est déclaré `Aspire.AppHost.Sdk` **9.3.1**
+  (`mss.mail.AppHost.csproj`). Avant d'ajouter `CommunityToolkit.Aspire.Hosting.Ollama` 13.5.0,
+  vérifier que ce décalage ne gêne pas le paquet communautaire ; sinon, prendre la voie de repli
+  déjà prévue (conteneur `ollama/ollama` déclaré à la main).
+
 ## Ce qui est établi, et pourquoi la branche Ollama existante n'a jamais tourné
 
 **Établi (lecture du code, 2026-09-20)** :
@@ -72,7 +106,7 @@ Ce que cette US change : la part dominante de la facture OpenAI disparaît, le c
 7. **Les tables savent ce qu'elles contiennent — colonne modèle d'embedding par ligne** : `MailContents` et `MailMedicalDocuments` reçoivent une colonne `EmbeddingModel` (chaîne courte, ex. `openai:text-embedding-3-small`) renseignée à chaque écriture de vecteur. Migration EF avec **rétro-remplissage** des lignes existantes à `openai:text-embedding-3-small` (elles n'ont jamais été produites par autre chose — constat § établi). La **recherche sémantique ne compare qu'aux lignes du modèle actif** : si un jour le modèle change, les anciens mails deviennent invisibles à la recherche au lieu de casser la requête ou de fausser les résultats, jusqu'à leur re-vectorisation (task-326). Audit de migration règle 7c obligatoire (fichier lu, `.Designer.cs` présent, pas d'opération fantôme, « has pending changes » vide).
 8. **Ceinture en plus des bretelles** : au démarrage, `api-mail` journalise les deux fournisseurs, les modèles et la dimension d'embedding actifs. Une recherche dont le vecteur de requête n'a pas la dimension du corpus filtré rend une erreur métier explicite (`ProblemDetails`, règle 12, sans donnée de santé), jamais une erreur SQL en 500.
 9. **Le coût devient mesurable** : compteur `mssante_ai_tokens_total{provider, model, kind=prompt|completion|embedding}` alimenté par l'`usage` renvoyé par les fournisseurs quand il existe ; métriques `mssante_ai_pipeline_*` étiquetées `provider`. Panneau « IA — fournisseur, appels, tokens » ajouté au tableau Grafana `mssante-mail-processing.json`. C'est ce qui prouvera, à la campagne suivante, que **plus aucun token de chat** ne part chez OpenAI.
-10. **Code mort retiré** : `FlexibleEmbeddingService`, `IEmbeddingProviderService` et ses deux implémentations sont **supprimés**. La dimension et le nom du modèle actif ne sont déclarés qu'à un seul endroit (§ 7-8). Leurs tests suivent.
+10. **Code mort retiré** : `FlexibleEmbeddingService`, `IEmbeddingProviderService`, sa classe de base `BaseEmbeddingProviderService` et ses deux implémentations sont **supprimés**. La dimension et le nom du modèle actif ne sont déclarés qu'à un seul endroit (§ 7-8). Leurs tests suivent.
 11. **Documentation d'exploitation** : page `Api/Mail/docs/` (ou section du README de l'AppHost) : choisir un fournisseur par capacité, modèles tirés, volume, retour au tout-OpenAI, ce qu'implique un changement de modèle d'embedding et le rôle de la colonne `EmbeddingModel`. Le skill `loadtest-skill` est mis à jour pour le défaut hybride.
 
 ### Décisions prises par le PO, à contredire si besoin
@@ -83,7 +117,7 @@ Ce que cette US change : la part dominante de la facture OpenAI disparaît, le c
 
 ### Hors périmètre, explicitement
 
-- **task-326 — re-vectorisation** : batch qui relit mails et documents et réécrit les vecteurs avec le modèle actif, base par base, puis bascule `AiProvider:Embedding = Ollama`. À rédiger ; dépend de la colonne `EmbeddingModel` posée ici.
+- **task-326 — re-vectorisation** : batch qui relit mails et documents et réécrit les vecteurs avec le modèle actif, base par base, puis bascule `AiProvider:Embedding = Ollama`. À rédiger ; dépend de la colonne `EmbeddingModel` posée ici. Partir de `EmbeddingReindexService` (task-196), qui re-vectorise déjà les documents médicaux sans vecteur, à étendre à `MailContents` et au critère « modèle différent du modèle actif ».
 - **vLLM / TEI / LiteLLM** : débit et routage. Le § 3 les rend possibles sans code.
 - **Banc de qualité** tagging / résumé / assistant, modèle local vs `gpt-4o-mini`.
 - Tout changement des prompts, des flags Flagsmith, de `Dtos/`, des frontends.
@@ -91,7 +125,7 @@ Ce que cette US change : la part dominante de la facture OpenAI disparaît, le c
 
 ### Mesure — après, sur la campagne suivante
 
-Sur la prochaine campagne `terrain` (celle de task-323 ou toute autre) en défaut hybride : `mssante_ai_tokens_total{provider="OpenAI", kind=~"prompt|completion"}` **= 0** et `{provider="Ollama", kind=~"prompt|completion"}` **> 0** ; requêtes vers `api.openai.com` dans `http_client_request_duration_seconds_count` en **baisse d'au moins moitié** par rapport aux 15 jours de référence (il ne reste que les embeddings de pipeline et de recherche) ; `mssante_ai_pipeline_total{step="tagging", status="success"}` en proportion **≥** à la campagne du 19/09 ; utilisation GPU visible (`nvidia-smi`) pendant le tir ; **résultats de recherche identiques** avant/après sur une même requête et une même base (le corpus n'a pas bougé). La durée du tagging (2,0 s aujourd'hui) est **relevée, pas exigée** : un 14B sur un seul GPU peut être plus lent sous 1 000 praticiens ; c'est la donnée d'entrée de la US vLLM.
+Sur la prochaine campagne `terrain` après le merge, en défaut hybride : `mssante_ai_tokens_total{provider="OpenAI", kind=~"prompt|completion"}` **= 0** et `{provider="Ollama", kind=~"prompt|completion"}` **> 0** ; requêtes vers `api.openai.com` dans `http_client_request_duration_seconds_count` en **baisse d'au moins moitié** par rapport aux 15 jours de référence (il ne reste que les embeddings de pipeline et de recherche) ; `mssante_ai_pipeline_total{step="tagging", status="success"}` en proportion **≥** à la campagne du 19/09 ; utilisation GPU visible (`nvidia-smi`) pendant le tir ; **résultats de recherche identiques** avant/après sur une même requête et une même base (le corpus n'a pas bougé). La durée du tagging (2,0 s aujourd'hui) est **relevée, pas exigée** : un 14B sur un seul GPU peut être plus lent sous 1 000 praticiens ; c'est la donnée d'entrée de la US vLLM.
 
 ## Definition of Done
 
@@ -109,7 +143,7 @@ Sur la prochaine campagne `terrain` (celle de task-323 ou toute autre) en défau
 - [ ] Vecteur de requête de dimension différente du corpus filtré → `ProblemDetails` métier (4xx), jamais 500 SQL — test
 - [ ] Parcours bout en bout en défaut hybride : un mail seedé est **étiqueté par Ollama** (Seq montre `provider=Ollama` sur le tagging, tags persistés) et **vectorisé par OpenAI** (ligne pgvector avec `EmbeddingModel = openai:text-embedding-3-small`) ; une recherche rend les mêmes résultats qu'avant la branche sur la même base ; l'assistant répond en streaming et déclenche au moins un outil d'`EmailActionsPlugin` ; l'aide à la rédaction améliore un texte — consigné avec identifiants Seq
 - [ ] Compteur `mssante_ai_tokens_total{provider,model,kind}` et étiquette `provider` sur `mssante_ai_pipeline_*` — tests sur `MailProcessingMetrics` ; panneau Grafana ajouté à `mssante-mail-processing.json`
-- [ ] `FlexibleEmbeddingService`, `IEmbeddingProviderService` et implémentations supprimés, tests ajustés
+- [ ] `FlexibleEmbeddingService`, `IEmbeddingProviderService`, `BaseEmbeddingProviderService` et implémentations supprimés, tests ajustés
 - [ ] Documentation d'exploitation écrite ; `loadtest-skill` mis à jour pour le défaut hybride
 - [ ] Aucune donnée de santé ni contenu de mail dans les nouveaux logs et métriques (étiquettes `provider`, `model`, `kind` uniquement)
 - [ ] Contrat inchangé : aucun fichier de `Dtos/` modifié, aucun frontend touché, prompts inchangés, espace vectoriel inchangé
@@ -118,7 +152,7 @@ Sur la prochaine campagne `terrain` (celle de task-323 ou toute autre) en défau
 ## Manual Test Plan
 
 - **Prérequis** : Docker Desktop avec intégration GPU active (`docker run --rm --gpus=all nvidia/cuda:12.8.0-base-ubuntu24.04 nvidia-smi` affiche la RTX 5070 Ti). La clé OpenAI reste en place (embeddings).
-- Lancer le backend : `cd Api/Mail && dotnet run --project src/AppHost`. Dans le tableau de bord Aspire, la ressource Ollama passe en « Running » ; au premier lancement, les journaux montrent le téléchargement du modèle de chat (plusieurs minutes, une seule fois grâce au volume). `api-mail` démarre **après** et journalise `Chat=Ollama/{modèle}`, `Embedding=OpenAI/text-embedding-3-small (1536)`.
+- Lancer le backend : `cd Api/Mail && dotnet run --project src/AppHost` (avec les comptes seedés du banc : `MSS_TENANT_REGISTRY_DB=mss_registry_loadtest`, sinon 403 `MAILBOX_NOT_ATTACHED` partout). Dans le tableau de bord Aspire, la ressource Ollama passe en « Running » ; au premier lancement, les journaux montrent le téléchargement du modèle de chat (plusieurs minutes, une seule fois grâce au volume). `api-mail` démarre **après** et journalise `Chat=Ollama/{modèle}`, `Embedding=OpenAI/text-embedding-3-small (1536)`.
 - **Pipeline** : seeder une boîte (`loadtest-skill`, quelques mails suffisent). Dans Seq (`seq-local`) : `[SuggestTagsAsync]` avec `provider=Ollama`, tags persistés ; dans Postgres (`mcp postgresql`) : ligne d'embedding du mail avec `EmbeddingModel = openai:text-embedding-3-small`. `nvidia-smi` montre le processus Ollama avec de la VRAM occupée pendant le tagging.
 - **Recherche inchangée** : sur une base déjà hydratée (pas de purge — iso-conditions), lancer la même recherche sémantique avant et après la branche → mêmes résultats, même ordre.
 - **Assistant** : ouvrir l'assistant sur la boîte, demander « propose une réponse à ce mail » → réponse en streaming, puis « appelle le patient » → l'action `call_patient` est capturée (log `[AiConversationService] Action captured from filter`).
