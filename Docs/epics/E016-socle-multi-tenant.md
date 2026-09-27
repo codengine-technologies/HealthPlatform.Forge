@@ -184,6 +184,12 @@ flowchart TD
 3. Le médecin choisit, **message par message**, **Envoyer** ou **Annuler**. C'est ce
    geste, fait carte présentée, qui constitue l'envoi : il lui est imputé à cet
    instant, et tracé sous son identité professionnelle.
+4. Pour gagner du temps, le bouton **Tout envoyer**, à droite du titre « Messages
+   prêts à partir », envoie toute la liste en un geste. Un **récapitulatif** s'affiche
+   d'abord — nombre de messages, destinataires et objet de chacun — et rien ne part
+   tant que le médecin ne l'a pas confirmé. Les messages partent ensuite l'un après
+   l'autre, la carte étant vérifiée pour chacun ; un bilan indique combien sont partis
+   et combien restent prêts à partir.
 
 **Ce qui ne se produit jamais :** un message rédigé ne part pas de lui-même — ni au
 retour de la carte, ni à la synchronisation suivante, ni parce que la carte a été
@@ -198,6 +204,7 @@ rejoint la liste et attendent eux aussi une confirmation.
 | Sa session de carte a expiré en cours de journée | Le message est mis de côté et l'application l'annonce **« prêt à partir »** — jamais « envoyé » | Présenter à nouveau sa carte, puis confirmer depuis la liste |
 | Le service d'authentification par carte est momentanément indisponible | Un message l'indique au moment d'**Envoyer** ; rien ne part, le message reste dans la liste | Réessayer un peu plus tard |
 | Il veut corriger un message prêt à partir | — | L'annuler, puis le réécrire |
+| Sa carte cesse d'être reconnue pendant un **Tout envoyer** | L'envoi s'interrompt ; le bilan indique combien de messages sont partis et pourquoi les autres attendent | Présenter à nouveau sa carte, puis relancer depuis la liste — les messages déjà partis n'y figurent plus |
 
 Un message prêt à partir **n'expire pas** : son ancienneté reste visible dans la
 liste. Et avec sa carte, le médecin envoie comme avant, immédiatement, sans passer
@@ -217,7 +224,7 @@ par la liste.
 | RG-6 | **Les durées de conservation s'appliquent à tous les comptes.** Un compte qui ne sert plus est purgé à échéance comme les autres — la dormance ne le soustrait pas à la règle | ✅ Implémenté (task-299) — et **réellement exécuté** depuis task-312, qui a branché la purge du journal mutualisé |
 | RG-7 | **Les changements d'accès sont tracés.** Rattacher, détacher, changer de messagerie par défaut, ouvrir et fermer une session de messagerie laissent une trace consultable | ✅ Implémenté (task-303) — chaque trace désigne la messagerie **concernée** et non celle qui était ouverte au moment du geste (task-312) |
 | RG-8 | **La consultation de l'historique reste strictement personnelle.** Un médecin ne voit que ses propres accès ; aucun accès transverse n'est ouvert par cet EPIC | ✅ Implémenté (task-300) |
-| RG-9 | **Aucun message ne part sans la carte du médecin.** Sans sa carte, le médecin lit, classe et rédige ; un message rédigé est mis de côté et ne part que sur sa confirmation, faite carte présentée, message par message. L'envoi lui est imputé à l'instant de cette confirmation, conformément à l'exigence d'imputabilité des actes de la politique de sécurité des systèmes d'information de santé | ✅ Implémenté (task-320) — en attente de merge |
+| RG-9 | **Aucun message ne part sans la carte du médecin.** Sans sa carte, le médecin lit, classe et rédige ; un message rédigé est mis de côté et ne part que sur sa confirmation, faite carte présentée — message par message, ou pour toute la liste après relecture d'un récapitulatif (**Tout envoyer**). L'envoi lui est imputé à l'instant de cette confirmation, conformément à l'exigence d'imputabilité des actes de la politique de sécurité des systèmes d'information de santé | ✅ Implémenté (task-320) — en attente de merge |
 
 ---
 
@@ -514,7 +521,8 @@ et n'entre pas dans le calcul.
   connexion au compte. Ce qu'il envoie est mis de côté, **« prêt à partir »**. Quand il
   présente sa carte, un bandeau lui annonce combien de messages l'attendent ; il les
   relit un par un — destinataires, objet, date, mention « rédigé sans carte », contenu
-  complet — et choisit pour chacun **Envoyer** ou **Annuler**. Rien ne part de
+  complet — et choisit pour chacun **Envoyer** ou **Annuler**, ou envoie toute la liste
+  d'un coup avec **Tout envoyer**, après avoir confirmé un récapitulatif. Rien ne part de
   lui-même, ni au retour de la carte ni à la synchronisation suivante. Le même
   parcours est livré sur les trois applications. Jusqu'ici, la messagerie annonçait une
   lecture seule sans carte ; elle devient un vrai poste de travail.

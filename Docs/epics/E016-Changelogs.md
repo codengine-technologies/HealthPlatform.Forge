@@ -46,6 +46,22 @@ confirmation explicite faite pendant une session PSC. Les trois points d'arbitra
 défauts** : confirmation par message, pas d'expiration (âge affiché), pas d'édition (annuler puis
 réécrire).
 
+**Arbitrage du point 1 rendu le 2026-09-27 (humain), après ouverture des PRs** : bouton
+**« Tout envoyer »** à droite du titre « Messages prêts à partir », sur les trois fronts
+(client-blazor eb6bb20, client-mobile b68b2cc, client-angular non commité). Récapitulatif
+obligatoire (nombre, destinataires, objet) ; envoi séquentiel par la route de confirmation
+existante — aucune route serveur ajoutée, carte prouvée à chaque message ; arrêt au premier
+refus 401 / 503 / 403 (le reste demeure prêt à partir), 404 ignoré, autre échec compté sans
+arrêter ; bilan « N envoyé(s), M reste(nt) » ; désactivé hors ligne / liste vide ; spinner,
+progression, pas de double déclenchement. Blazor : l'en-tête du dialogue est désormais rendu
+par le composant (la barre de titre Radzen ne peut pas porter de bouton). Tests : 12 (Blazor),
+15 (mobile), 12 (Angular), vérifiés rouges par mutation.
+
+**Correctif ajouté le même jour** : le bouton d'envoi de l'éditeur pouvait être cliqué plusieurs
+fois et créer des doublons (verrou posé trop tard ou relâché trop tôt selon le front) —
+client-blazor 8485980, client-mobile 385ecce, client-angular non commité ; spinner pendant
+l'envoi.
+
 #### Ce qui change
 
 - **Nouvel état `PendingActionStatus.AwaitingConfirmation`.** Hors ligne, envoi, réponse,

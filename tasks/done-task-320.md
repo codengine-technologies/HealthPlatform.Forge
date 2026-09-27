@@ -166,6 +166,8 @@ nouveau membre `AuditActionType`** (miroir manuel côté Angular et Blazor).
 >    Contournement : annuler puis réécrire.
 >
 > Sans réponse, l'US part avec les défauts.
+>
+> **Arbitrage rendu le 2026-09-27 (humain), point 1** : un bouton **« Tout envoyer »** est ajouté à droite du titre « Messages prêts à partir ». Un récapitulatif (nombre, destinataires et objet de chaque message) doit être confirmé avant l'envoi ; les messages partent ensuite un par un par la route de confirmation (carte prouvée à chaque envoi), l'envoi s'arrête au premier refus lié à la carte (401 / 503 / 403) et les messages restants demeurent prêts à partir ; bilan « N envoyés, M restent » ; bouton désactivé hors ligne ou liste vide, spinner et progression pendant l'envoi, pas de double déclenchement. Points 2 et 3 : défauts conservés.
 
 ## Definition of Done
 
@@ -420,6 +422,13 @@ Signalé par l'humain : le bouton « Envoyer » / « Mettre de côté » pouvait
 - client-mobile 385ecce : verrou tenu jusqu'à la fin de la requête (il était relâché après les contrôles) ; corrige aussi un brouillon recréé après un envoi réussi ; 927 / 927, lint propre ; tests de double envoi vérifiés rouges par mutation (un test DOM instable dépendant du rendu d'`ion-modal` remplacé par une assertion sur l'état).
 - client-angular (non commité) : verrou posé avant toute attente, tenu jusqu'à la fermeture ; spinner du design system ; 11 tests ; build + tests verts, lint 0 erreur.
 - Commentaire ajouté sur les PRs Client #83 et Mobile #79.
+
+### Ajout après ouverture des PRs — « Tout envoyer » (arbitrage humain du 2026-09-27)
+
+- client-blazor eb6bb20 : bouton à droite du titre, récapitulatif, envoi séquentiel, arrêt au premier refus lié à la carte, bilan ; en-tête du dialogue rendu par le composant. 340 passés, 2 ignorés ; 12 tests, mutation vérifiée.
+- client-mobile b68b2cc : `ion-button` dans la barre d'en-tête, récapitulatif en `ion-modal`, toast de bilan. 942 / 942, lint propre ; 15 tests, mutation vérifiée.
+- client-angular (non commité) : bouton dans l'en-tête, récapitulatif en panneau `alertdialog`. Build + tests verts (11 projets), lint 0 erreur ; 12 tests.
+- Doc E016 (§5, RG-9, synthèse) et changelog v1.13 mis à jour. Commentaire ajouté sur les PRs Client #83 et Mobile #79.
 
 ## Timings
 
