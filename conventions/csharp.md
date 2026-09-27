@@ -604,7 +604,7 @@ les règles de journalisation. Découper au mot, pas au milieu d'un placeholder.
 
 ## S3925 — une exception garde le triplet de constructeurs recommandé
 
-**Occurrences : 1** (task-171 — `UnauthorizedException`, `PscIdentityConflictException`)
+**Occurrences : 2** (task-171 — `UnauthorizedException`, `PscIdentityConflictException` ; task-320 — `MailboxIncompatibleException`)
 
 La passe qualité avait **retiré** les constructeurs « inutilisés » de deux
 exceptions neuves pour ne garder que celui réellement appelé. Sonar réclame le
@@ -625,6 +625,12 @@ public UnauthorizedException(string message, Exception innerException) : base(me
 **Consigne** : une nouvelle exception porte toujours les trois constructeurs
 standards — et une passe « simplification » ne les retire jamais, même
 inutilisés : ce n'est pas du code mort, c'est le contrat de la règle.
+
+**Et une fois le triplet présent, la règle reste levée** (task-320) : sur .NET 8+
+elle réclame encore le constructeur de sérialisation `ISerializable`, lui-même
+obsolète (SYSLIB0051). Ne pas l'ajouter, ne pas « corriger » la classe : marquer
+l'issue FALSE-POSITIVE avec ce motif, comme toutes les exceptions voisines de
+`Application/Exceptions/`.
 
 ## S1075 — pas de délimiteur de chemin ou d'URI en dur
 

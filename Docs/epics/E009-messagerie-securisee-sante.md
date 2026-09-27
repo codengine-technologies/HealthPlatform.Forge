@@ -4,7 +4,7 @@
 > **Modèle** : hand-crafted
 > **Version** : 1.73
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-09-17 (task-188)
+> **Dernière mise à jour** : 2026-09-27 (renvoi E016, task-320)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1016,6 +1016,23 @@ Les règles `RG-E009-084` à `RG-E009-089` sont propres à ENS Mon espace santé
 ## Synthèse fonctionnelle des changelogs
 
 Cette synthèse digère l'historique des versions en langage produit. Le détail ingénierie (numéros de PR, versions NuGet, métriques tests, audits grep) est consigné dans le document frère [`E009-Changelogs.md`](./E009-Changelogs.md).
+
+> **↪ Renvoi vers l'EPIC E016 — travailler sans sa carte, envoyer avec elle** (task-320,
+> en attente de merge). Le fonctionnement **sans carte CPS** de la messagerie évolue ; il
+> est décrit dans [E016 — Socle multi-tenant](./E016-socle-multi-tenant.md), section
+> *Travailler sans sa carte, envoyer avec elle*. En résumé :
+>
+> - sans sa carte, le médecin **lit**, **classe** et **rédige** comme d'habitude ;
+> - lu / non lu, signalement et suppression faits sans carte sont **appliqués au retour de
+>   la carte**, comme auparavant ;
+> - un message rédigé sans carte **ne part plus de lui-même** au retour de la carte ni à la
+>   synchronisation suivante : il est mis de côté, **« prêt à partir »** ;
+> - carte présentée, le médecin retrouve ses messages prêts à partir, les relit, puis choisit
+>   pour chacun **Envoyer** ou **Annuler**. L'envoi lui est imputé à l'instant de cette
+>   confirmation.
+>
+> Là où la présente fiche évoque une file d'envois hors ligne « synchronisée
+> automatiquement au retour de la connexion », c'est cette description qui fait foi.
 
 ### Fonctionnalités métier
 

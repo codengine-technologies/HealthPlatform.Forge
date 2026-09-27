@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > **Document frère (vue produit)** : [`E016-socle-multi-tenant.md`](./E016-socle-multi-tenant.md)
-> **Dernière mise à jour** : 2026-09-16 (task-314)
+> **Dernière mise à jour** : 2026-09-27 (task-320)
 
 Historique détaillé des changements de l'EPIC **E016 — Socle multi-tenant**.
 Une entrée par task ayant atteint `done-*` ou `archived-*`. Append-only : une
@@ -11,6 +11,186 @@ entrée existante n'est jamais réécrite.
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.13 — task-320 : sans carte, le médecin travaille ; aucun message ne part sans elle (`dtos-mss`, `api-mail`, `client-blazor`, `client-mobile`, `client-angular`)
+
+> PRs : [dtos-mss #34](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/34),
+> [api-mail #253](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/253),
+> [client-blazor #83](https://github.com/codengine-technologies/HealthPlatform.Client/pull/83),
+> [client-mobile #79](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/79) —
+> toutes `awaiting-human-merge`, **une seule US à tester assemblée et à merger ensemble**
+> (règle 11). `client-angular` en code-only sur `feature/nova-rewriting-mss` : 21 fichiers
+> non commités, l'humain commite et ouvre la PR TFS.
+> NuGet : `HealthPlatform.Dtos.Mss` 486.0.0 → **489.0.0**.
+
+#### Ce que l'US ferme
+
+Remédiation n°3 de l'audit sécurité du registre du 2026-09-16 (écart **élevé**). Hors ligne,
+`SendMail` / `SendCancelAndReplace` empilaient une `PendingAction` `SendMail`
+(`202 { queued = true }`) que `PendingActionService.ProcessPendingActionsAsync` **rejouait dès
+que `IsOnlineMode` redevenait vrai** — via `POST /api/v1/connection/sync/pending-actions` et en
+fin de cycle de synchronisation. Le message partait donc sous l'identité PSC d'une session ouverte
+pour autre chose : contraire au garde-fou PO « envoi MSSanté : exiger PSC ou e-CPS » et à
+l'imputabilité PGSSI-S. Le MFA Keycloak ne ferme pas le trou : il authentifie le compte, pas le
+PS, et ne protège pas la session ouverte.
+
+Depuis task-171, `IsOnlineMode` est le verdict du proxy (`IPscTokenProvider.GetModeAsync`) sur la
+session du cookie `proxy_session_id` ; proxy en panne = `Offline(Unavailable)`. Le nouveau modèle
+neutralise aussi ce cas : un envoi mis de côté attend une confirmation, **quelle que soit la
+raison** du hors ligne.
+
+**Réorientée le 2026-09-26 (arbitrage humain)** : la v1 de l'US passait la messagerie en lecture
+seule sans carte. Retenu à la place : lire, classer, rédiger sans carte ; l'envoi attend une
+confirmation explicite faite pendant une session PSC. Les trois points d'arbitrage de la task
+(« Tout envoyer », expiration, édition d'un message prêt à partir) sont partis **avec les
+défauts** : confirmation par message, pas d'expiration (âge affiché), pas d'édition (annuler puis
+réécrire).
+
+#### Ce qui change
+
+- **Nouvel état `PendingActionStatus.AwaitingConfirmation`.** Hors ligne, envoi, réponse,
+  transfert, annuler-et-remplacer → `202 { queued = true, awaitingConfirmation = true }` et ligne
+  `SendMail` à cet état. `ProcessPendingActionsAsync` **ne traite plus aucun `SendMail`**, quel
+  que soit l'appelant ; les classements (lu / non lu, favori, suppression) restent rejoués
+  (non-régression E009). Le déplacement reste hors file (préexistant, hors périmètre).
+- **Confirmation : `POST /api/v1/mail/pending-emails/{id}/send`**, un message à la fois. Exige une
+  session PSC valide **à l'instant**, lue par `GetAccessTokenAsync` (pas le verdict stocké) :
+  pas de session → 401, proxy indisponible → 503, conflit d'identité → 403 ; boîte non compatible
+  avec la session (`CanUseImap`, task-303) → 403 (`MailboxIncompatibleException`) ; id inconnu,
+  déjà envoyé ou annulé → 404. Tout en `application/problem+json` (règle 12). Réclamation
+  **atomique** de la ligne contre la double confirmation, puis **chemin d'envoi normal**
+  (archivage Sent, trace d'audit sous le type existant et l'identité PSC de la session, métriques).
+- **Relecture : `GET /api/v1/mail/pending-emails`** expose destinataires, objet, date de rédaction
+  et la mention « rédigé sans carte » ; `GET .../pending-emails/{id}` rend le contenu complet ;
+  l'annulation reste `DELETE .../pending-emails/{id}`.
+- **Migration de données FluentMigrator** : les `SendMail` `Pending` existants passent en
+  `AwaitingConfirmation`. Prouvée en montée **et** en descente sur base neuve
+  (`PendingSendsAwaitConfirmationMigrationTests`), aucune autre ligne touchée. Règle 7c : pas de
+  `.Designer.cs` ni de snapshot EF sous FluentMigrator — item sans objet.
+- **Contrat `dtos-mss` 489.0.0** : `ConnectionStatusDto.PendingSendsCount` (distinct de
+  `PendingActionsCount` ; `CanSendEmail` garde le sens « envoi immédiat possible ») et
+  `PendingEmailDto` **déplacé dans le contrat partagé** — la copie locale Blazor portait un
+  `int Id`, ce qui rendait l'annulation Blazor inutilisable. Types TS Angular et mobile mis à jour
+  à la main.
+- **Métrique** des envois par issue (mis en attente, confirmé, annulé). **Aucun nouveau membre
+  `AuditActionType`**. Aucune donnée de santé dans les logs ajoutés.
+- **Fronts (Blazor, Angular, mobile)** : éditeur et classement disponibles hors ligne ; bouton
+  d'envoi hors ligne « Mettre de côté — à confirmer avec votre carte » ; bandeau « N messages
+  prêts à partir » si `PendingSendsCount > 0` ; liste avec Revoir / Envoyer / Annuler ; Envoyer
+  désactivé hors ligne avec la raison. Angular : `features/pending-sends/` +
+  `ui/pending-sends-banner/` (route `pending-sends`) ; mobile : écran `pending-emails` (route
+  `/pending-emails`) + bannière sur `/tabs/home` et `/tabs/messages` ; Blazor :
+  `PendingEmailsDialog.razor` enrichi.
+
+#### Trouvé en cours de route
+
+- **Faille fermée hors du périmètre annoncé** : `POST /drafts/{id}/send` n'avait aucun chemin hors
+  ligne et envoyait en SMTP — donc **sans la carte** sur une boîte authentifiée par mot de passe.
+  Hors ligne, il rend désormais `202 awaitingConfirmation` (67cbd0fd). Les trois fronts
+  contournaient la route (sendmail puis suppression du brouillon) : contournement redondant mais
+  correct, conservé.
+- **Blazor** : `HttpRequestService` ne rafraîchit plus Keycloak et ne déconnecte plus sur un 401
+  dont le `code` commence par `PSC_SESSION_` — sans quoi « Envoyer » sans carte renvoyait à
+  l'écran de connexion. Touche tous les endpoints qui rendent ce code.
+- **task-304** n'avait en fait désactivé aucun geste de classement hors ligne (seule la gestion des
+  boîtes l'était, et le reste) : rien à revenir.
+- **Test d'intégration** : « hors ligne » y est une requête **sans cookie `proxy_session_id`**
+  (chemin réel depuis task-171), pas le bypass `Client-Psc-Sub` / `Client-Rpps` du DOD. Le test
+  prouve aussi qu'un en-tête `X-PSC-Token` ne confirme pas un envoi.
+- **Passe qualité api-mail annulée (RED)** : remplacer la clôture d'un envoi par un
+  `ExecuteUpdate` laisse l'entité suivie périmée dans le contexte EF — le test de confirmation
+  relisait `AwaitingConfirmation` au lieu de `Completed`. Constat réutilisable : une transition
+  par `ExecuteUpdate` après une lecture suivie désynchronise le tracker.
+
+#### Revue de code — CHANGES REQUESTED, puis APPROVED
+
+Premier passage (`questions/task-320.md`, résolu le 2026-09-27), trois bloquants corrigés par une
+reprise de `/develop` :
+
+1. **Ligne orpheline en `Processing`** : un envoi confirmé qui **lève** (garde d'opposition
+   patient `ConflictException` → 409, MIME, acquisition de session, annulation) ne rendait pas la
+   ligne ; le message disparaissait de la liste sans bruit. Corrigé (api-mail 9f78a225) : la ligne
+   est rendue avant de relancer ; `CancellationToken.None` sur annulation.
+2. **XSS dans « Revoir »** : le `BodyHtml` posté par le client était rendu tel quel, et l'iframe
+   Blazor (`loadHtmlInShadowDom`, blob) n'avait pas d'attribut `sandbox`. Un bearer Keycloak volé
+   suffisait à mettre en file un script qui, à la relecture carte présentée, pouvait appeler
+   lui-même `POST pending-emails/{id}/send` (le cookie proxy part avec la requête). Corrigé à la
+   source : `GET pending-emails/{id}` passe le corps dans `IHtmlBodySanitizer` (task-088), pour
+   les trois fronts ; Blazor en défense en profondeur : iframe `sandbox` sans `allow-scripts` ni
+   `allow-same-origin` (4b98cbd), réponse tardive de « Revoir » ignorée. Angular (sanitizer +
+   blocage du distant) et mobile (rendu texte `DOMParser` / `textContent`) n'étaient pas exposés.
+3. **Brouillon mis de côté annoncé « envoyé »** sur les trois fronts : l'indicateur local « en
+   ligne », périmé quand la session PSC expire ou que le proxy tombe, choisissait la route
+   brouillon ; le `202 awaitingConfirmation` était lu comme un succès. Corrigé : Blazor
+   `DraftService` distingue `Sent` / `AwaitingConfirmation`, brouillon supprimé seulement si le
+   chemin sendmail a réellement envoyé (4b98cbd) ; mobile `sendDraft` lit la réponse →
+   `finalizeSetAside`, liste relue à l'ouverture, annulation gardée par le verrou de ligne
+   (731baa9) ; Angular `sendDraft` typé `SendMailResultDto | null`, bannière masquée sur la page
+   de la liste (non commité).
+
+Second passage : **APPROVED**, aucun nouveau bloquant.
+
+#### Tests et qualité
+
+| Repo | Tests |
+|---|---|
+| `api-mail` | **5 624** passés, 16 ignorés (préexistants), 0 échec |
+| `client-blazor` | **320** passés, 2 ignorés |
+| `client-mobile` | **918 / 918** (un `MailboxSwitcherComponent` instable, préexistant — course Ionic `onAriaChanged`) |
+| `client-angular` | build OK, tests verts sur 11 projets (`mss-lib` 396 dont 30 nouveaux avant reprise) |
+| `dtos-mss` | build OK |
+
+| Métrique Sonar (`api-mail`) | Baseline | Final |
+|---|---|---|
+| Quality Gate (new code) | OK | **OK** |
+| New coverage | 98,8 % | **98,8 %** |
+| Bugs / Vulnérabilités / Hotspots | 0 / 0 / 0 | 0 / 0 / 0 |
+| Code smells | 8 | 8 |
+| Couverture projet / Duplication | 98,0 % / 0,5 % | 98,0 % / 0,5 % |
+
+1 issue new-code : `csharpsquid:S3925` sur `MailboxIncompatibleException` → **FALSE-POSITIVE**
+(motif `ISerializable` obsolète depuis .NET 8, SYSLIB0051), comme `PscIdentityConflictException` /
+`UnauthorizedException` le 2026-09-26. 3 tests ajoutés par `/sonar` (a939435d), dont la
+confirmation refusée par SMTP (couvre `ReturnToAwaitingConfirmationAsync`). Re-analyse après la
+reprise : QG OK, 0 issue. `/lint-angular` : 0 erreur (55 warnings préexistants). `/lint-mobile` :
+*All files pass linting*. `/verify-visual` : **skipped — tooling unavailable**
+(`Tools/visual-verify/` absent, exclu par `.gitignore`) ; écrans à vérifier au HAG :
+`pending-emails`, `mail-compose` (libellé hors ligne), `pending-sends-banner`.
+
+**Stitch** : `generate_screen_from_text` appelé une fois pour `pending-emails` → timeout MCP,
+écran jamais apparu après ~20 min (`get_project` ×2, `list_screens` ×1) ; pas de régénération
+(règle anti-doublon). Écran Ionic codé **sans référence Stitch** ; prompt consigné dans le task
+file pour exécution manuelle. DOD « écran conçu dans Stitch » partiellement tenu.
+
+Coût du cycle : 19 min 08 s, 40 builds, 50 suites de tests, 6 scans.
+
+#### Dette et points à arbitrer
+
+- **MDN / accusé de lecture** (`SendReadReceiptAsync`, `MdnService`) part en SMTP sans contrôle
+  du mode — préexistant. Notification automatique, pas un message rédigé, mais en tension avec
+  « aucun message ne part sans sa carte ». Décision PO : garde hors ligne (401) ou follow-up.
+- **Rétention** : les lignes `Completed` gardent le payload complet (corps, PJ) indéfiniment en
+  base praticien, alors que l'AIPD parle de stockage « jusqu'à confirmation ou annulation ».
+  Vider `Payload` à la confirmation, ou purger après N jours. **AIPD à mettre à jour** (lecture,
+  classement et rédaction avec la seule session Keycloak MFA).
+- Fraîcheur du jeton PSC en cache au moment de la garde ; remise en attente qui échoue elle-même.
+- Exclusion `PSC_SESSION_*` à porter dans les intercepteurs **mobile et Angular** (faite côté
+  Blazor seulement).
+- **Cas limite connu** : proxy indisponible à l'entrée de la requête puis disponible à la
+  confirmation → identité de session nulle, verdict de boîte en 403 au lieu de passer. Rare, non
+  traité.
+- Préexistant, non corrigé : autosave Blazor qui journalise `dto.Subject` ; widget Angular hors
+  ligne qui interroge la liste complète toutes les 10 s pour la compter ; polling de la bannière
+  Blazor ; bannière mobile posée sur deux onglets qui relit l'état de connexion deux fois ; message
+  d'erreur mobile sur réponse texte.
+- `Tools/visual-verify/` à versionner (exception `.gitignore`).
+- **Cohérence E009** : la fiche produit E009 décrit encore, dans des sections rédigées à la main
+  (§2 objectif « Mode hors-ligne fonctionnel » ; §5.2 vignettes *État de connexion* et
+  *Synchronisation* ; F001 ; sélection multiple), une file d'envois « synchronisée
+  automatiquement au retour de la connexion ». Un renvoi vers E016 a été posé dans la synthèse
+  E009 (section writer) ; la correction des passages eux-mêmes revient à l'humain.
+
+---
 
 ### v1.12 — task-314 : une messagerie détachée n'offre plus que « Rattacher » (`dtos-mss`, `api-mail`, `client-blazor`, `client-mobile`, `client-angular`)
 
@@ -1856,19 +2036,31 @@ en `foreach`). **184 tests verts avant comme après.**
 | `SdkReferenceGuardTests` | même répertoire | Garde-fou anti-récidive du retrait du SDK |
 | `ServiceCollectionExtensions.AddShellService` | `Client/Blazor/Src/Shell/Extensions/` | Signature sans `IConfiguration` depuis task-305 |
 
+### Briques touchées par task-320 (messages prêts à partir)
+
+| Brique | Emplacement | Rôle |
+|---|---|---|
+| `MailController` — `SendMail`, `SendCancelAndReplace`, `drafts/{id}/send`, `pending-emails/{id}/send` | `Api/Mail/src/Api/Controllers/V1/MailController.cs` | Mise de côté hors ligne (`202 awaitingConfirmation`) ; confirmation sous session PSC valide + `CanUseImap` |
+| `PendingActionService` | `Api/Mail/src/Application/Services/Implementation/PendingActionService.cs` | `ProcessPendingActionsAsync` n'envoie plus jamais ; relecture assainie (`IHtmlBodySanitizer`) ; rendu de la ligne si l'envoi confirmé échoue ou lève |
+| `PendingActionStatus.AwaitingConfirmation` + migration FluentMigrator | `api-mail` (domaine + migrations) | Nouvel état ; stock `SendMail` `Pending` basculé (`PendingSendsAwaitConfirmationMigrationTests`) |
+| `ConnectionStatusDto.PendingSendsCount`, `PendingEmailDto` | `Dtos/` — `HealthPlatform.Dtos.Mss` 489.0.0 | Compteur des messages prêts à partir ; DTO de la liste partagé (fin de la copie Blazor à `int Id`) |
+| `PendingEmailsDialog.razor`, `DraftService`, `HttpRequestService` | `Client/Blazor` | Liste Revoir / Envoyer / Annuler (iframe `sandbox`) ; 202 brouillon lu comme « prêt à partir » ; 401 `PSC_SESSION_*` sans déconnexion |
+| `mss-pending-sends`, `pending-sends-banner`, `mail-compose`, `offline-status-widget` | `Client/Angular/front/libs/mss/src/` | Route `pending-sends`, bandeau, libellé d'envoi hors ligne (code-only) |
+| Écran `pending-emails`, bannière, `mail-compose` | `Client/Mobile` | Route `/pending-emails`, bannière sur `/tabs/home` et `/tabs/messages` |
+
 ---
 
-## Annexe B — Inventaire fonctionnel (2026-09-13)
+## Annexe B — Inventaire fonctionnel (2026-09-27)
 
 | Grandeur | Valeur |
 |---|---|
-| Tasks déclarant `**Epic**: E016` | 7 (299, 300, 301, 303, 304, 305, 306) |
-| Tasks `done` | 2 (task-299, task-305) |
-| Tasks `todo` | 5 |
-| Questions ouvertes bloquantes | 1 (`questions/task-302.md` — identité et habilitation des administrateurs) |
-| PRs ouvertes | 2 (Host.Sdk#3, Api.Mail#233 — `awaiting-human-merge`) ; 1 mergée (Client#73) |
-| Paquets NuGet publiés par l'EPIC | 1 (`HealthPlatform.Host.Sdk 14.0.0`) |
-| Consommateurs du SDK après task-305 | **1** (`api-mail`) — contre 2 avant |
+| Tasks déclarant `**Epic**: E016` | 20 (299, 300, 301, 303, 304, 305, 307, 308, 309, 310, 311, 312, 313, 314, 318, 319, 320, 326, 332, 337) — task-306 abandonnée, fichier supprimé |
+| Tasks archivées après merge | 13 (299, 300, 301, 303, 304, 305, 308, 309, 310, 311, 312, 313, 314) |
+| Tasks archivées sans livraison | 2 (307 abandonnée, 318 retirée au profit de task-171) |
+| Tasks `done` (PRs ouvertes) | 1 (task-320 — Dtos.Mss#34, Api.Mail#253, Client#83, Mobile#79) |
+| Tasks `todo` | 4 (319, 326, 332, 337) |
+| Questions ouvertes | `questions/task-302.md` (accès sécurité au journal — bloquante), `questions/task-304.md` (outillage visuel), `questions/task-313.md` (trace de clôture sans praticien nommé) |
+| Paquets NuGet publiés par l'EPIC | `HealthPlatform.Host.Sdk` 14.0.0 ; `HealthPlatform.Dtos.Mss` 474.0.0 (task-303), 486.0.0 (task-314), 489.0.0 (task-320) |
 
 ---
 
@@ -1889,7 +2081,10 @@ en `foreach`). **184 tests verts avant comme après.**
 | task-311 | **Le banc redevient mesurable** : le seeder écrit lui-même les deux lignes de registre que l'onboarding écrirait (`accounts` + `mss_accounts`), par le câblage de production (`AddTenantRegistryClient` + `ITenantRegistryClient`), identités issues de `LoadTestPlanGenerator`. Sans elles, task-308 laissait **toutes** les routes de messagerie en `403 MAILBOX_NOT_ATTACHED` et `TenantId` nul — donc le journal mutualisé jamais exercé. Corrige au passage la parité du bootstrap du registre (`TenantRegistryBootstrap` : migration **et** partitions d'audit) | `api-mail` | ✅ **done** (PR Api.Mail#240, `awaiting-human-merge`) |
 | task-310 | **La session de messagerie se ferme AVANT le détachement**, et non après : l'ordre inverse partait avec l'adresse d'une boîte déjà passée en `Detached`, donc en `403 NotCompatible` sans jamais atteindre le contrôleur. `closeCurrentSession()` extrait sur les trois fronts, drapeau `outgoingAlreadyClosed` pour ne pas clore deux fois. **Un troisième chemin fautif a été MESURÉ dans Seq** (déconnexion complète émettant sa clôture après `session.clear()`, donc sans adresse : 200 et `SessionsClosed = 0`) | `client-angular`, `client-blazor`, `client-mobile` | ✅ **mergée** (PR Client#78, Mobile#74) |
 | task-313 | **Détacher sa dernière messagerie déconnecte**, sur les trois fronts. `[MailboxNotRequired]` posé sur `LogoutCleanupAsync` — l'attribut n'exempte que `MailboxRequired`, jamais `NotCompatible`. Garde côté client : pas de boîte ouverte, pas d'ordre de clôture. Corrige au passage l'observabilité de `UserContextEnricherMiddleware` (`KcSub=<none>` lu du mauvais côté) | `client-blazor`, `client-mobile`, `api-mail` | ✅ **mergée** |
-| task-314 | **Une messagerie détachée n'offre plus que « Rattacher »**, et affiche la date de son **détachement**. `MailboxDto.DetachedAt` (nullable) publié en **486.0.0**. « Définir par défaut » et « Supprimer » **masqués, pas grisés**. La suppression définitive est écartée sur constat en base : 152 traces d'audit sur 5 tenants, **aucune clé étrangère** — supprimer aurait orphelinné en silence un journal soumis à 6 ans de conservation PGSSI-S. Contre-épreuve par front : une ligne active garde ses actions | `dtos-mss`, `api-mail`, `client-blazor`, `client-mobile`, `client-angular` | ✅ **done** (PR Dtos.Mss#33, Api.Mail#242, Client#79, Mobile#75 — `awaiting-human-merge` ; Angular en code-only) |
+| task-314 | **Une messagerie détachée n'offre plus que « Rattacher »**, et affiche la date de son **détachement**. `MailboxDto.DetachedAt` (nullable) publié en **486.0.0**. « Définir par défaut » et « Supprimer » **masqués, pas grisés**. La suppression définitive est écartée sur constat en base : 152 traces d'audit sur 5 tenants, **aucune clé étrangère** — supprimer aurait orphelinné en silence un journal soumis à 6 ans de conservation PGSSI-S. Contre-épreuve par front : une ligne active garde ses actions | `dtos-mss`, `api-mail`, `client-blazor`, `client-mobile`, `client-angular` | ✅ **mergée** le 2026-09-16 (PR Dtos.Mss#33, Api.Mail#242, Client#79, Mobile#75 ; Angular en code-only) |
+| task-307 | Passer en EF trois requêtes SQL brut du journal d'audit (`PostgresAuditBackfillStore`). **⛔ ABANDONNÉE le 2026-09-16, sans objet** (décision humaine au pré-flight de `/start`) : le fichier et toute la machinerie de reprise ont été retirés par task-312. Aucune branche, aucun code | `api-mail` | ⛔ **abandonnée** |
+| task-318 | Vérifier le jeton PSC et le lier au compte connecté (remédiation n°1 de l'audit du registre du 2026-09-16). **🚫 RETIRÉE le 2026-09-23, jamais démarrée — remplacée par task-171** (backend pull : l'agrégat de session du proxy porte ensemble jeton Keycloak et jetons PSC d'un même login ; la liaison se lit au lieu de se reconstruire). RG-5 / RG-6 reprises par 171. **Réserve** : si la bascule d'`api-mail` sous `*.weda.fr` n'a pas lieu, 318 redevient la seule remédiation livrable | `api-mail` | 🚫 **retirée** |
+| task-320 | **Sans carte, le médecin travaille ; aucun message ne part sans elle** (remédiation n°3 de l'audit du registre). État `AwaitingConfirmation`, rejeu automatique des `SendMail` supprimé, confirmation par message `POST pending-emails/{id}/send` sous session PSC valide à l'instant + `CanUseImap`, migration du stock `Pending`, `ConnectionStatusDto.PendingSendsCount` et `PendingEmailDto` partagé (**489.0.0**), liste Revoir / Envoyer / Annuler sur les trois fronts. Ferme au passage l'envoi de brouillon sans carte ; la revue a fermé une ligne orpheline en `Processing` et un XSS de la relecture | `dtos-mss`, `api-mail`, `client-blazor`, `client-mobile`, `client-angular` | ✅ **done** (PR Dtos.Mss#34, Api.Mail#253, Client#83, Mobile#79 — `awaiting-human-merge` ; Angular en code-only) |
 
 
 ### Question ouverte
