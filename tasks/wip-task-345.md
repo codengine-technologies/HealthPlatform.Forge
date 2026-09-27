@@ -193,4 +193,25 @@ Les parcours de la colonne de droite **restent couverts par `/qa`**, avec un log
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 27 s | — | — | — | api-mail, client-mobile |
-| **Total cycle** | | **27 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | failed | 1 h 11 min | 5 (1 min 08 s) | 3 (2 min 32 s) | — | api-mail 4B/1T, client-mobile 1B/2T, arbitrage humain : E2E-BIO-001 rouge sur AUD-27 (questions/task-345.md) |
+| **Total cycle** | | **1 h 11 min** | **5 (1 min 08 s)** | **3 (2 min 32 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : restore ×1 (2.2 s)
+
+## Develop log
+
+- Repos touched : api-mail, client-mobile
+- DTOs published : no DTO change — Interop : no change
+- Commits (locaux, **non poussés** — arrêt sur arbitrage, voir `questions/task-345.md`) :
+  - api-mail : `1d5d9e45` feat(e2e) backend du filet e2e headless ; `61e18424` fix(mail) compteur de pièces jointes (chemin en-têtes IMAP)
+  - client-mobile : `3004950` feat(mobile) filet e2e headless ; `bca017d` fix(mobile) fermeture du menu des dossiers
+- Local build / test : ✓ api-mail (5 735 verts, 16 ignorés préexistants), ✓ client-mobile (943/943)
+- Filet headless `npm run e2e:headless` — 4 runs complets, démontage complet à chaque fois (y compris après échec du seed, run 1) :
+  - run 4 : **20 verts, 1 flaky (E2E-DETAIL-002), 1 rouge (E2E-BIO-001)** — parité **verte** (22 scénarios headless couverts à la bonne version, 3 humains « non joués »)
+  - rouge et flaky = **AUD-27** (réponse du repli IMAP mise en cache 15 min) → arbitrage humain
+- Défauts trouvés par le filet et corrigés (test rouge d'abord) : compteur de pièces jointes à 0 sur la liste servie par IMAP (badge trombone jamais affiché) ; menu des dossiers resté ouvert sur téléphone
+- Défauts de la suite elle-même corrigés : `isVisible({ timeout })` n'attend pas (29 occurrences), test d'acquittement antérieur aux onglets du corps de mail, état « vide » de chargement pris pour une réponse
+- Preuve que le filet mord : mutations du contrôle de parité (version, requis absent, test sans identifiant) toutes détectées ; défauts réels ci-dessus
+- Passe qualité (/simplify) : **différée à la reprise** (avant le push)
+- DOD self-check : non tenu sur « run vert deux fois de suite » tant que E2E-BIO-001 est rouge
+- Next step : **arrêt — `questions/task-345.md`**
