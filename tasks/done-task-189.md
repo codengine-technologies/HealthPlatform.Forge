@@ -156,3 +156,153 @@ matérialise toute la table. Patron correct : `PatientsController.cs:375` (`Math
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui
 - **AIPD / impact RGPD** : **à vérifier avec l'humain** — l'endpoint de purge a-t-il été atteint sur un environnement réel ? Une perte de données de santé (art. 32 : disponibilité et intégrité) devrait être qualifiée ; les journaux d'accès à `DELETE /api/v1/maintenance/purge-mails` sont la source à contrôler
+
+## Branches
+- `api-mail` (pushed) : fix/task-189-http-surface-hardening — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-189-http-surface-hardening
+- `client-blazor` (pushed) : fix/task-189-http-surface-hardening — https://github.com/codengine-technologies/HealthPlatform.Client/tree/fix/task-189-http-surface-hardening
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-189 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 32 s | — | — | — | — |
+| /develop | ok | 19 min 06 s | 3 (46 s) | 7 (5 min 29 s) | — | api-mail 2B/6T, client-blazor 1B/1T |
+| /sonar | ok | 15 min 58 s | 2 (36 s) | 11 (7 min 25 s) | 4 (4 min 13 s) | 1 itération(s), api-mail 2B/11T, Phase 1 verte (22/22) ; QG projet ERROR hors task ; Phase 2 skippée |
+| /lint-angular | skipped | 2.2 s | — | — | — | client-angular non listé |
+| /lint-mobile | skipped | 2.8 s | — | — | — | client-mobile non touché |
+| /verify-visual | skipped | 2.0 s | — | — | — | aucun écran mobile touché |
+| /review | ok | 1 h 12 min | 2 (1 min 01 s) | 4 (1 h 07 min) | — | api-mail 1B/3T, client-blazor 1B/1T |
+| /tech-writer | ok | 1 min 17 s | — | — | — | — |
+| **Total cycle** | | **1 h 49 min** | **7 (2 min 24 s)** | **22 (1 h 20 min)** | **4 (4 min 13 s)** | |
+
+## Develop log
+
+- Repos touched : `api-mail`, `client-blazor`
+- DTOs published : no DTO change (`PurgeMailsResponseDto` laissé dans dtos-mss, cf. Contenu attendu) — Interop / SDK : no change
+- Commits :
+  - `api-mail` : `f00f68c8` fix(api) surface HTTP durcie ; `008f5308` refactor(api) simplify pass
+  - `client-blazor` : `daf951c` fix(mss) retrait de l'onglet Purge
+- Local build / test : ✓ `api-mail` 5 595 verts (190 domain, 663 infrastructure, 3 145 application, 996 api,
+  601 intégration + 16 ignorés) — **aucun rouge pré-existant**, `GetEmailAsync_WithFullContent` passe depuis
+  `14d58398` ; ✓ `client-blazor` 272 verts, 2 ignorés
+
+### Preuve du ROUGE — code d'origine (filtre à l'état de bouchon, aucun correctif)
+
+```
+[FAIL] MailMaintenanceControllerTests.PurgeMailsRoute_NoLongerExists
+[FAIL] SettingsControllerTests.SaveSettingsAsync_IsNotReachableWithGet
+[FAIL] MailMaintenanceControllerTests.ListEmailsAsync_WithNonPositiveLimit_IsRejectedBeforeTouchingTheDatabase(limit: 0 et -1)
+[FAIL] RequiredBodyFilterTests.RequiredBody_MissingOrUnreadable_Returns400ProblemJson("", "null", "{ ceci n'est pas du json")
+       System.NullReferenceException … RequiredBodyProbeController.Required(ProbeRequest request)   ← la forme exacte du bug task-168
+[FAIL] RequiredBodyFilterTests.RequiredBody_NumericFieldSentAsEmptyString_Returns400ProblemJson   ({"emailUid":""})
+[FAIL] RequiredBodyFilterTests.RequiredListBody_Missing_Returns400ProblemJson                     (List<uint>)
+[FAIL] RequiredBodyFilterTests.NamedAction_HasABodyTheFilterTreatsAsRequired × 17 actions
+[FAIL] RequiredBodyFilterTests.Program_RegistersTheFilterOnEveryController
+[PASS] RequiredBody_Valid_ReachesTheAction, OptionalBody_Missing_ReachesTheAction   (comportement nominal déjà correct)
+Échoué! - échec : 28, réussite : 2, total : 30
+```
+(Un 29ᵉ rouge, `InvalidModelStateWithABody_IsLeftToTheAction`, venait d'une erreur d'écriture de la sonde — attribut
+de validation sur une propriété de record positionnel, refusé par MVC — corrigée avant l'implémentation.)
+Après correctif : 30/30 verts.
+
+### Choix d'implémentation
+
+- **Filtre étroit, pas « tout ModelState invalide → 400 »** : de nombreuses actions de `MailController` répondent
+  **422** elles-mêmes (`UnprocessableEntity(ModelState)`) et certaines **retirent** une erreur attendue avant de
+  contrôler (`ModelState.Remove(ApiMessages.Content)`, l. 901, 988, 1031, 1074) — un filtre global aurait changé
+  leurs statuts et **refusé des requêtes aujourd'hui valides**. `RequiredBodyFilter` ne refuse que « `[FromBody]`
+  requis (non nullable, sans défaut, sans `EmptyBodyBehavior.Allow`) et aucun modèle lié ». La revue d'altitude
+  confirme qu'aucun mécanisme plus général (options de binding, formateur d'entrée, `InvalidModelStateResponseFactory`)
+  n'empêche la NRE sans casser ces 422.
+- **Réponse par `ValidationException` → `GlobalExceptionHandler`** (règle 12), détail fixe sans message du désérialiseur.
+- **Effet de bord vérifié** : les 47 `[FromBody]` de l'API passés en revue ; ceux qui testaient déjà un corps nul
+  répondaient déjà **400** (`ValidationException`, `BadRequest`, `RequireBody`) — seule la forme change. Seules les
+  opérations groupées de `MailController` (`emailIds`, l. 1155-1297) passent de **422 à 400** sur un corps **absent** ;
+  un corps valide, y compris `[]`, est inchangé.
+- **Actions nommées par la task** : 17 couvertes par le test de réflexion (dont `PatientsController.AdvancedSearchAsync`
+  — nommée `SearchPatients` par erreur dans le task file — et `SignatureController.UpdateAsync`).
+- `list-emails` : `limit <= 0` → `ValidationException` (400) **avant** tout accès base ; plafond `MaxListEmailsLimit = 500`.
+- Purge : action supprimée (route → 404), notes des tests d'intégration retirées ; onglet Blazor supprimé (dernier onglet,
+  aucun index décalé).
+
+### Passe qualité (/simplify)
+
+- Applied & committed : `api-mail` (`008f5308`) — réponse via `ValidationException` (règle 12) au lieu d'un
+  `ObjectResult` construit à la main ; filtre en instance unique ; corps requis calculés **une fois par action**
+  (`ConditionalWeakTable`) au lieu d'un LINQ + liste à chaque requête ; tests resserrés.
+- No change : `client-blazor` (diff de suppression pure).
+- Écartés (notés pour `/review`) : suppression des gardes « corps nul » devenues inatteignables par HTTP dans
+  `ContactController.RequireBody`, `BiologyAcksController`, `DraftController`, `MedicalDocumentsController`
+  (hors diff, leurs tests unitaires les appellent directement — suite possible) ; lecture de la nullabilité via
+  `ModelMetadata` de MVC (ignore `HasDefaultValue` / `EmptyBodyBehavior` — changerait subtilement le comportement).
+
+- DOD self-check : 9/10 vérifiés par commande ; « parcours nominal complet » différé au test manuel (HAG).
+- Next step : `/sonar task-189`
+
+## Sonar log
+
+- Mode A (chaîné), serveur SonarQube 25.6.0 (`sonar.token`), 2 analyses complètes sur la branche.
+- **Phase 1 (new code de la task) : ✓ verte.** Sur les 4 fichiers de production modifiés (`RequiredBodyFilter.cs`,
+  `MailMaintenanceController.cs`, `SettingsController.cs`, `Program.cs`) : **0 issue, 0 hotspot** ; **22/22 lignes
+  modifiées couvertes** (`RequiredBodyFilter` 19/19, `MailMaintenanceController` 3/3).
+  - 1ʳᵉ analyse : 17/19 sur `RequiredBodyFilter` (branches valeur par défaut / `EmptyBodyBehavior.Allow` / type
+    valeur non couvertes) → 7 tests ajoutés (`58692ca1`) → 19/19. Deux conditions restent partielles : `BindingInfo`
+    nul (l. 72) et l'opérateur `?.` sur l'attribut (l. 82, corps inféré par `[ApiController]` sans `[FromBody]` explicite).
+- Phase 1 — Issues fixées : 0 — Tests ajoutés : 7.
+- **Quality Gate projet : ERROR, non imputable à la task** — mêmes conditions qu'avant la task (`new_violations` 91,
+  `new_security_hotspots_reviewed` 0 %) : période new-code `PREVIOUS_VERSION` depuis le 2026-04-17, findings hors diff
+  (provenance établie au cycle task-324, aucune issue sur les fichiers de cette task).
+- Phase 2 (legacy) : skippée (optionnelle, règle 6).
+- Build / tests : ✓ build Release 0 erreur ; 5 595 verts + 16 ignorés, aucun rouge.
+- `conventions/csharp.md` : non alimenté — aucune règle corrigée à la main.
+
+### KPIs qualité (baseline → final)
+
+> Baseline = dernière analyse avant la task (branche task-324, 2026-09-26).
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | ERROR | ERROR | → (hors task) |
+| New coverage | 98,5 % | 98,6 % | +0,1 pt |
+| Bugs | 2 | 2 | 0 |
+| Vulnerabilities | 0 | 0 | 0 |
+| Security hotspots | 15 | 15 | 0 |
+| Code smells | 89 | 89 | 0 |
+| Coverage (projet) | 98,0 % | 98,1 % | +0,1 pt |
+| Duplication | 0,4 % | 0,4 % | 0 |
+| Reliability / Security / Maintainability | C/A/A | C/A/A | → |
+
+## Lint log
+
+- `/lint-angular` : **skipped — no angular change by this task.** `client-angular` absent de `**Repos**:` ; l'arbre
+  `Client/Angular/front` ne porte que la configuration locale préexistante de l'humain (`environment.ts`), non touchée.
+- `/lint-mobile` : **skipped — no mobile change.** `client-mobile` absent de `**Repos**:`, arbre propre sur `develop`.
+
+## Visual verify log
+
+- skipped — `client-mobile` non touché (la page de gestion modifiée est dans `client-blazor`, hors périmètre de `/verify-visual` v1). Contrôle visuel de la page de gestion Blazor différé au test manuel (HAG, étape 3 du Manual Test Plan).
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/254 — label `awaiting-human-merge`
+  (commits `f00f68c8` fix, `008f5308` simplify, `58692ca1` test sonar/new)
+- `client-blazor` : https://github.com/codengine-technologies/HealthPlatform.Client/pull/84 — label `awaiting-human-merge`
+  (commit `daf951c`)
+- Les deux PRs se citent ; les merger ensemble évite une page de gestion dont le bouton appellerait une route disparue.
+
+## Code Review Summary
+
+- **Verdict : APPROVED** — 0 bloquant, 4 suggestions (détaillées dans la PR api-mail).
+- Validation `/review` : `api-mail` build 0 erreur, unitaires 5 001 verts ; intégration **601 verts / 16 ignorés / 0 rouge**
+  au troisième passage. **Signalement** : le 1ᵉʳ passage a duré 1 h 01 (poste saturé — Vidal, SQL Server, Graylog,
+  OpenSearch, Jaeger…) avec 1 rouge sur `ImapSessionSweepIntegrationTests` (task-324, code non touché ici, message non
+  capturé) ; le 2ᵉ a rendu 55 rouges `UseCases` sur `DockerContainerNotFoundException` (conteneur disparu pendant
+  l'initialisation de la fixture). Même commit vert sur la suite complète en fin de `/develop` et pendant l'analyse Sonar.
+  `client-blazor` : 272 verts, 2 ignorés.
+- Suggestions : gardes « corps nul » devenues inatteignables dans 4 contrôleurs (suite possible) ; 422 → 400 sur corps
+  absent des opérations groupées (aucun client ne teste le 422) ; `PurgeMailsResponseDto` laissé dans dtos-mss ; surveiller
+  `ImapSessionSweepIntegrationTests` sous forte charge.
+- DOD : 9/10 vérifiés par commande ; parcours nominal complet différé au test manuel (HAG). Point AIPD ouvert (journaux
+  d'accès à la route de purge).
