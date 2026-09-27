@@ -166,6 +166,8 @@ nouveau membre `AuditActionType`** (miroir manuel côté Angular et Blazor).
 >    Contournement : annuler puis réécrire.
 >
 > Sans réponse, l'US part avec les défauts.
+>
+> **Arbitrage rendu le 2026-09-27 (humain), point 1** : un bouton **« Tout envoyer »** est ajouté à droite du titre « Messages prêts à partir ». Un récapitulatif (nombre, destinataires et objet de chaque message) doit être confirmé avant l'envoi ; les messages partent ensuite un par un par la route de confirmation (carte prouvée à chaque envoi), l'envoi s'arrête au premier refus lié à la carte (401 / 503 / 403) et les messages restants demeurent prêts à partir ; bilan « N envoyés, M restent » ; bouton désactivé hors ligne ou liste vide, spinner et progression pendant l'envoi, pas de double déclenchement. Points 2 et 3 : défauts conservés.
 
 ## Definition of Done
 
@@ -412,6 +414,30 @@ Label `awaiting-human-merge` sur les quatre (une seule US, à tester assemblée 
 - **2e passage : APPROVED** — les trois points fermés (api-mail 9f78a225, client-blazor 4b98cbd, client-mobile 731baa9, client-angular non commité), aucun nouveau bloquant. Revalidation : api-mail 5 624 passés / 16 ignorés, client-blazor 320 / 2 ignorés, client-mobile 918 / 918, client-angular 11 projets verts, dtos-mss build OK.
 - Promesse de l'US confirmée : aucun chemin ne permet à un message rédigé de partir sans une confirmation faite pendant une session PSC.
 - Suggestions non bloquantes à arbitrer : MDN envoyé sans carte (préexistant) ; rétention des payloads `Completed` (AIPD) ; jeton PSC en cache au garde ; remise en attente qui échoue elle-même ; exclusion `PSC_SESSION_*` à porter dans les intercepteurs mobile/Angular ; message d'erreur mobile sur réponse texte ; polling de la bannière Blazor.
+
+### Correctif ajouté après ouverture des PRs — double envoi depuis l'éditeur (2026-09-27)
+
+Signalé par l'humain : le bouton « Envoyer » / « Mettre de côté » pouvait être cliqué plusieurs fois (doublons). Corrigé sur les trois fronts, avec un spinner dans le bouton pendant l'envoi :
+- client-blazor 8485980 : verrou posé en premier (il l'était après les dialogues d'avant envoi), point d'entrée unique bouton + Ctrl+Entrée ; 328 passés, 2 ignorés ; 8 tests, vérifiés rouges par mutation.
+- client-mobile 385ecce : verrou tenu jusqu'à la fin de la requête (il était relâché après les contrôles) ; corrige aussi un brouillon recréé après un envoi réussi ; 927 / 927, lint propre ; tests de double envoi vérifiés rouges par mutation (un test DOM instable dépendant du rendu d'`ion-modal` remplacé par une assertion sur l'état).
+- client-angular (non commité) : verrou posé avant toute attente, tenu jusqu'à la fermeture ; spinner du design system ; 11 tests ; build + tests verts, lint 0 erreur.
+- Commentaire ajouté sur les PRs Client #83 et Mobile #79.
+
+### Ajout après ouverture des PRs — « Tout envoyer » (arbitrage humain du 2026-09-27)
+
+- client-blazor eb6bb20 : bouton à droite du titre, récapitulatif, envoi séquentiel, arrêt au premier refus lié à la carte, bilan ; en-tête du dialogue rendu par le composant. 340 passés, 2 ignorés ; 12 tests, mutation vérifiée.
+- client-mobile b68b2cc : `ion-button` dans la barre d'en-tête, récapitulatif en `ion-modal`, toast de bilan. 942 / 942, lint propre ; 15 tests, mutation vérifiée.
+- client-angular (non commité) : bouton dans l'en-tête, récapitulatif en panneau `alertdialog`. Build + tests verts (11 projets), lint 0 erreur ; 12 tests.
+- Doc E016 (§5, RG-9, synthèse) et changelog v1.13 mis à jour. Commentaire ajouté sur les PRs Client #83 et Mobile #79.
+
+### Correctif ajouté après ouverture des PRs — un mail notifié n'apparaissait pas dans le dossier affiché (2026-09-27)
+
+Signalé par l'humain sur client-angular : après confirmation de messages envoyés à soi-même, la notification arrivait mais le mail n'apparaissait dans l'INBOX qu'après un changement de dossier. Cause : la notification « nouveau mail » ne faisait qu'afficher un toast, la liste n'était rafraîchie que par le poll périodique (30 s) ; et côté serveur le statut du dossier (cache 10 s) n'était pas invalidé à l'arrivée d'un mail. Défaut préexistant, rendu visible par l'envoi à soi-même.
+- api-mail 1ed9435c : statut du dossier retiré du cache avant la notification (best-effort). 5 626 passés / 16 ignorés (Release — le build Debug était bloqué par l'application lancée par l'humain).
+- client-blazor ea5ca72 : la liste relance son rafraîchissement incrémental sur notification du dossier affiché (debounce 500 ms, pas de chevauchement). 344 passés, 2 ignorés.
+- client-angular (non commité) : notification fusionnée avec le poll, `exhaustMap` + relance finale (le `switchMap` précédent pouvait perdre des UID annulés en vol). Build + tests verts, lint 0 erreur ; 7 tests.
+- client-mobile : déjà correct (insertion du mail notifié dans l'INBOX), aucun changement. À noter : cette insertion est coupée si l'utilisateur désactive les toasts de nouveaux mails.
+- Tests vérifiés rouges par mutation. Commentaires sur les PRs Api.Mail #253 et Client #83.
 
 ## Timings
 
