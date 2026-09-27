@@ -430,6 +430,15 @@ Signalé par l'humain : le bouton « Envoyer » / « Mettre de côté » pouvait
 - client-angular (non commité) : bouton dans l'en-tête, récapitulatif en panneau `alertdialog`. Build + tests verts (11 projets), lint 0 erreur ; 12 tests.
 - Doc E016 (§5, RG-9, synthèse) et changelog v1.13 mis à jour. Commentaire ajouté sur les PRs Client #83 et Mobile #79.
 
+### Correctif ajouté après ouverture des PRs — un mail notifié n'apparaissait pas dans le dossier affiché (2026-09-27)
+
+Signalé par l'humain sur client-angular : après confirmation de messages envoyés à soi-même, la notification arrivait mais le mail n'apparaissait dans l'INBOX qu'après un changement de dossier. Cause : la notification « nouveau mail » ne faisait qu'afficher un toast, la liste n'était rafraîchie que par le poll périodique (30 s) ; et côté serveur le statut du dossier (cache 10 s) n'était pas invalidé à l'arrivée d'un mail. Défaut préexistant, rendu visible par l'envoi à soi-même.
+- api-mail 1ed9435c : statut du dossier retiré du cache avant la notification (best-effort). 5 626 passés / 16 ignorés (Release — le build Debug était bloqué par l'application lancée par l'humain).
+- client-blazor ea5ca72 : la liste relance son rafraîchissement incrémental sur notification du dossier affiché (debounce 500 ms, pas de chevauchement). 344 passés, 2 ignorés.
+- client-angular (non commité) : notification fusionnée avec le poll, `exhaustMap` + relance finale (le `switchMap` précédent pouvait perdre des UID annulés en vol). Build + tests verts, lint 0 erreur ; 7 tests.
+- client-mobile : déjà correct (insertion du mail notifié dans l'INBOX), aucun changement. À noter : cette insertion est coupée si l'utilisateur désactive les toasts de nouveaux mails.
+- Tests vérifiés rouges par mutation. Commentaires sur les PRs Api.Mail #253 et Client #83.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-320 --sync` — ne pas éditer à la main)*
