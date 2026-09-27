@@ -240,7 +240,8 @@ Baseline = dernière analyse présente sur le serveur avant ce run (analyse du 2
 | /verify-visual | skipped | 0.5 s | — | — | — | aucun écran client-mobile touché |
 | /review | ok | 7 min 53 s | 1 (2.0 s) | 1 (2 min 06 s) | — | api-mail 1B/1T, PR api-mail #256 |
 | /tech-writer | ok | 1 min 04 s | — | — | — | E011 v1.17 |
-| **Total cycle** | | **1 h 22 min** | **11 (1 min 18 s)** | **35 (17 min 51 s)** | **2 (36 s)** | |
+| /merge | ok | 5 min 28 s | — | — | — | — |
+| **Total cycle** | | **1 h 27 min** | **11 (1 min 18 s)** | **35 (17 min 51 s)** | **2 (36 s)** | |
 
 ## PRs
 - `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/256 — label `awaiting-human-merge` (branche `fix/task-335-session-imap-fermee-hors-usage`, synchro develop sans conflit)
@@ -258,3 +259,10 @@ Suggestions non bloquantes :
 6. `try/finally` autour du rendu du verrou distribué dans `ReleaseFetchLocksAsync` (préexistant).
 7. Tests manquants : attendant bloquant `TryRetire`, entrant redirigé vers une session neuve, OCE hors jeton → `Result.Error`, annulation dans `BackgroundImapService`.
 8. Surveiller au banc la garde unique de `MailboxLockTable`.
+
+## Merged
+
+- **Date** : 2026-09-27 (`/merge task-335 --i-tested`, HAG attesté par l'humain)
+- `api-mail` : squash `41ae2e876556957575b0a57d75342d6c8902f0ee` — PR #256 fermée, label `awaiting-human-merge` retiré, branche `fix/task-335-session-imap-fermee-hors-usage` supprimée (distante + locale)
+- **CI develop** : ✓ verte — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/36347893850 (⚠️ la CI api-mail sur `develop` ne compile que ; les tests ne tournent que vers `master`)
+- **Staging** : aucune branche staging — task hors run `/forge`
