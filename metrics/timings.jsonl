@@ -1877,3 +1877,8 @@
 {"ts":"2026-09-27T17:19:35+02:00","run_id":"-","type":"step","task":"task-189","step":"review","status":"ok","note":"","iterations":null,"duration_ms":4356501}
 {"ts":"2026-09-27T17:19:55+02:00","run_id":"-","type":"step_start","task":"task-189","step":"tech-writer"}
 {"ts":"2026-09-27T17:21:12+02:00","run_id":"-","type":"step","task":"task-189","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":77195}
+{"ts":"2026-09-27T18:50:26+02:00","run_id":"-","type":"cmd","task":"task-189","step":"develop","repo":"api-mail","kind":"test","label":"extension-red","cwd":"Api/Mail","cmd":"dotnet test tests/mss.mail.api.tests/mss.mail.api.tests.csproj --filter FullyQualifiedName~MaintenanceRoutesRemovedTests","duration_ms":24006,"exit_code":1}
+{"ts":"2026-09-27T18:51:17+02:00","run_id":"-","type":"cmd","task":"task-189","step":"develop","repo":"api-mail","kind":"build","label":"","cwd":"Api/Mail","cmd":"dotnet build HealthPlatform.Api.Mail.sln","duration_ms":15853,"exit_code":0}
+{"ts":"2026-09-27T18:53:30+02:00","run_id":"-","type":"cmd","task":"task-189","step":"develop","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln --no-build","duration_ms":129379,"exit_code":0}
+{"ts":"2026-09-27T18:54:56+02:00","run_id":"-","type":"cmd","task":"task-189","step":"develop","repo":"client-blazor","kind":"build","label":"","cwd":"Client/Blazor","cmd":"dotnet build HealthPlatform.Client.sln","duration_ms":14937,"exit_code":0}
+{"ts":"2026-09-27T18:55:06+02:00","run_id":"-","type":"cmd","task":"task-189","step":"develop","repo":"client-blazor","kind":"test","label":"","cwd":"Client/Blazor","cmd":"dotnet test HealthPlatform.Client.sln --no-build","duration_ms":7355,"exit_code":0}

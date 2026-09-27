@@ -2,7 +2,7 @@
 
 > **Statut** : En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.74
+> **Version** : 1.75
 > **Auteur** : Pascal Cabanel
 > **Dernière mise à jour** : 2026-09-27 (surface de l'API durcie, task-189 ; renvoi E016, task-320)
 > **Audience** : PO, médecin, direction produit, conformité.
@@ -1473,8 +1473,10 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
   exposait un outil de remise à zéro prévu pour le développement, qui effaçait
   en une fois tous les messages, comptes rendus, pièces jointes et résultats de
   biologie enregistrés pour le praticien connecté — sans rôle particulier ni
-  confirmation. Il est **supprimé**, tout comme le bouton correspondant de la
-  page de gestion. Par ailleurs, une demande envoyée sans contenu, ou avec un
+  confirmation. Il est **supprimé**, ainsi que l'ensemble des outils de
+  diagnostic hérités du développement qui l'accompagnaient (liste technique des
+  messages, remise à jour manuelle de l'index de recherche) et les écrans de la
+  page de gestion qui s'en servaient (v1.75). Par ailleurs, une demande envoyée sans contenu, ou avec un
   contenu illisible, provoquait une erreur interne du serveur ; elle reçoit
   désormais une réponse claire indiquant que la demande est incomplète, sur
   toutes les fonctions concernées (assistant de rédaction, recherche, dossier

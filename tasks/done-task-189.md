@@ -306,3 +306,57 @@ Après correctif : 30/30 verts.
   `ImapSessionSweepIntegrationTests` sous forte charge.
 - DOD : 9/10 vérifiés par commande ; parcours nominal complet différé au test manuel (HAG). Point AIPD ouvert (journaux
   d'accès à la route de purge).
+
+## Extension du 2026-09-27 — suppression de tout `MailMaintenanceController` (décision humaine)
+
+> **Décision humaine (2026-09-27, après ouverture des PRs)** : « le contrôleur `MailMaintenanceController` était
+> destiné à des tests durant le développement, la purge en faisait partie pour repartir sur une base sans message.
+> Ce contrôleur n'a plus de sens aujourd'hui : le supprimer et impacter les clients qui en faisaient l'usage. »
+> L'extension s'ajoute aux mêmes branches et aux mêmes PRs (api-mail #254, client-blazor #84).
+
+### Routes supprimées (toutes celles du contrôleur)
+
+| Route | Consommateur | Impact |
+|---|---|---|
+| `DELETE purge-mails` | Blazor, onglet « Purge » | déjà retiré (premier volet) |
+| `GET list-emails` | Blazor, onglet « 📝 Gestion des Résumés » (liste des mails) | onglet retiré |
+| `GET email-details/{uid}` | Blazor, même onglet (détail du mail sélectionné) | onglet retiré |
+| `GET embeddings/missing` | aucun client | — |
+| `POST embeddings/reindex/{documentId}` | aucun client | — |
+| `POST embeddings/reindex-missing` | aucun client | — |
+
+`client-angular` et `client-mobile` n'appellent aucune de ces routes (vérifié le 2026-09-27).
+
+### Ce qui reste, délibérément
+
+- **`EmbeddingReindexService`** (task-196) et son inventaire des documents non indexés : **conservés**, sans exposition
+  HTTP. task-290 prévoit de réutiliser ce mécanisme pour rejouer l'indexation des mails sautés pendant une panne de
+  flags ; le supprimer aujourd'hui obligerait à le réécrire demain. Tests du service conservés.
+- **L'onglet « Gestion des Résumés » ne peut pas survivre** au retrait de `list-emails` : on y choisit un mail dans
+  cette liste avant d'en recalculer le résumé. Il est retiré en entier (dernier onglet, aucun index décalé). La route
+  `POST diagnostics/recalculate-summary` (`AiDiagnosticsController`) reste en place côté API — hors périmètre.
+- **DTOs `EmailManagementDto`, `EmailDetailDto`, `PurgeMailsResponseDto`** (`Dtos/ManagementDtos.cs`, dtos-mss) :
+  laissés en place, comme pour le premier volet — les retirer imposerait une publication NuGet et un bump des
+  consommateurs pour aucun gain ; à supprimer lors d'une prochaine évolution de contrat.
+
+### DOD de l'extension
+
+- [ ] `MailMaintenanceController` supprimé ; **aucune** route sous `api/v1/maintenance` dans l'assemblage API (test de réflexion, rouge d'abord)
+- [ ] Tests du contrôleur supprimés (unitaires et intégration) ; aucune référence résiduelle (`grep` consigné)
+- [ ] `client-blazor` : onglet « Gestion des Résumés », ses champs, ses actions et `ListEmailsAsync` / `GetEmailDetailsAsync` (+ `RecalculateSummaryAsync` si plus aucun appelant) retirés ; build + tests verts
+- [ ] `EmbeddingReindexService` et ses tests intacts et verts
+- [ ] Build + tests des deux repos verts ; PRs #254 et #84 mises à jour
+
+### Résultat de l'extension
+
+- `api-mail` : `3c776709` — `MailMaintenanceController` et ses 3 fichiers de tests supprimés ; nouveau
+  `MaintenanceRoutesRemovedTests` (aucune route `api/v1/maintenance`), **rouge 2/2 d'abord**, vert après suppression.
+  Suite complète : 5 583 verts (190 domain, 663 infrastructure, 3 145 application, 990 api, 595 intégration), 16
+  ignorés, 0 rouge. `EmbeddingReindexService` et ses tests intacts et verts.
+- `client-blazor` : `19c8dc7` — onglet « Gestion des Résumés » retiré (276 lignes supprimées, page + service) ; build
+  0 erreur, 272 verts.
+- `grep` consigné : aucune occurrence de `MailMaintenanceController`, `api/v1/maintenance`, `list-emails`,
+  `email-details`, `ListEmailsAsync`, `GetEmailDetailsAsync`, `RecalculateSummaryAsync` hors du test de non-régression.
+- Passe qualité : diff de suppression pure sur les deux repos — rien à simplifier. Sonar : pas de nouvelle analyse,
+  aucune ligne de production ajoutée (Phase 1 inchangée).
+- PRs #254 et #84 mises à jour (titre, section « Extension », étape de test manuel supplémentaire).
