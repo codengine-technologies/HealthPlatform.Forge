@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > **Document frère (vue produit)** : [`E016-socle-multi-tenant.md`](./E016-socle-multi-tenant.md)
-> **Dernière mise à jour** : 2026-09-27 (task-320)
+> **Dernière mise à jour** : 2026-09-27 (task-336)
 
 Historique détaillé des changements de l'EPIC **E016 — Socle multi-tenant**.
 Une entrée par task ayant atteint `done-*` ou `archived-*`. Append-only : une
@@ -11,6 +11,64 @@ entrée existante n'est jamais réécrite.
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.14 — task-336 : les flux SSE suivent la boîte affichée (`api-mail`, `client-blazor`, `client-mobile`)
+
+> PRs : [api-mail #257](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/257),
+> [client-blazor #85](https://github.com/codengine-technologies/HealthPlatform.Client/pull/85),
+> [client-mobile #80](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/80) —
+> toutes `awaiting-human-merge`, **à merger ensemble** (règle 11 : chaque moitié seule est sans effet).
+> Aucun paquet NuGet (aucun contrat touché). Origine : audit de détection de bugs du 2026-09-27,
+> **AUD-18 c** (découpage validé : task-336 / task-343 backplane / task-344 promotion unique).
+
+#### Ce que l'US ferme
+
+Un `EventSource` ne pose aucun en-tête. Sur les deux flux (`GET /api/v1/mail/events/stream`,
+`GET /api/v1/mail/notifications/stream`), `Client-Email` était donc absent et
+`UserContextEnricherMiddleware` retenait la **boîte par défaut** du compte : après une bascule (task-304),
+le praticien recevait les événements de A et plus rien de B. Aucun client n'envoyait `?mailbox=` ; côté
+contrôleur, `MailEventsController.Stream` avait un repli sur la valeur **brute** de `?mailbox=` quand le
+contexte était vide — atteignable seulement si le middleware ne peuplait pas le contexte, mais non validé.
+
+#### Changements
+
+| Repo | Changement |
+|---|---|
+| api-mail | `[MailboxFromQuery]` (`src/Api/Middleware/MailboxFromQueryAttribute.cs`) posé sur les deux actions SSE. `ReadRequestedMailbox` : `Client-Email` d'abord ; sinon, sur action marquée seulement, `?mailbox=` — soumis à la **même** `IMailboxSelectionService.SelectAsync` (registre compte × adresse, compatibilité). Paramètre `mailbox` et repli brut **retirés** de `MailEventsController.Stream` |
+| client-mobile | `MailEventsStreamService` / `NotificationStreamService` : `&mailbox=` de `MailboxSessionService.currentEmail()` ; `effect` sur la boîte courante → fermeture / réouverture (l'anti double-connexion par URL absorbe les déclenchements neutres). Helper `mailboxQuery` partagé |
+| client-blazor | `MailSseService` (HttpClient dédié, sans `Client-Email`) : `mailbox=` de `IMailboxSessionService.Current`, reconstruit à chaque reconnexion ; abonnement `OnChanged` → redémarrage du flux si la boîte a changé, désabonné au `DisposeAsync` |
+
+#### Tests
+
+- Rouges d'abord : middleware `échec : 2, réussite : 15` (SelectAsync reçu avec `null`) ; mobile
+  `4 FAILED, 9 SUCCESS` ; Blazor, correctif neutralisé, `échec : 2, réussite : 1`.
+- api-mail : 5 tests middleware (query soumise à la sélection, non rattachée refusée, en-tête prioritaire,
+  route non marquée ignore la query, les deux flux marqués) + `Stream_WithoutAResolvedMailbox_IgnoresTheRawQueryMailbox` ;
+  le test de couverture du repli supprimé avec lui. Suites : domain 190, application 3214, infrastructure 665,
+  api 1010, integration 605/621 (16 ignorés).
+- client-mobile : 4 specs, 946/946 ; lint 0 erreur ; vérification visuelle skipped (aucun écran).
+- client-blazor : `MailSseServiceMailboxTests` (3), 347/347.
+
+#### Qualité
+
+Sonar : aucun finding sur les fichiers touchés ; QG ERROR et 2 bugs pré-existants (new-code period large).
+Couverture affichée 98,1 → 91,6 % : **trou de mesure** — la passe de couverture intégration s'est figée
+au démarrage d'un conteneur Testcontainers et a été tuée ; rejouée à l'identique : 604/620 en 2 min.
+
+#### Dette et suivis
+
+- **Gel intermittent de `mss.mail.integration.tests`** : deux fois dans le cycle (conteneur GreenMail, puis
+  Dovecot, démarré ; testhost inactif), jamais reproduit sur un run isolé. À instrumenter
+  (`--blame-hang-timeout` systématique dans les scripts de la forge).
+- ⚠️ `MailSseService.RestartStreamAsync` peut être appelé en concurrence (bascule + `JoinFolderAsync`,
+  déjà vrai entre `JoinFolderAsync` et `JoinUserGroupAsync`) et laisser une boucle de lecture orpheline —
+  pré-existant, candidat à un `SemaphoreSlim`.
+- Complémentaire, non couvert ici : l'événement doit aussi atteindre le **réplica** qui tient le flux
+  (task-343, backplane Redis).
+- Piège rencontré : un chemin saisi `Tests/` dans `client-blazor` (le dépôt suit `tests/`) a été ignoré
+  sans erreur par `git add` — test rattrapé avant la PR.
+
+---
 
 ### v1.13 — task-320 : sans carte, le médecin travaille ; aucun message ne part sans elle (`dtos-mss`, `api-mail`, `client-blazor`, `client-mobile`, `client-angular`)
 
@@ -2070,10 +2128,10 @@ en `foreach`). **184 tests verts avant comme après.**
 
 | Grandeur | Valeur |
 |---|---|
-| Tasks déclarant `**Epic**: E016` | 20 (299, 300, 301, 303, 304, 305, 307, 308, 309, 310, 311, 312, 313, 314, 318, 319, 320, 326, 332, 337) — task-306 abandonnée, fichier supprimé |
-| Tasks archivées après merge | 13 (299, 300, 301, 303, 304, 305, 308, 309, 310, 311, 312, 313, 314) |
+| Tasks déclarant `**Epic**: E016` | 21 (299, 300, 301, 303, 304, 305, 307, 308, 309, 310, 311, 312, 313, 314, 318, 319, 320, 326, 332, 336, 337) — task-306 abandonnée, fichier supprimé |
+| Tasks archivées après merge | 14 (299, 300, 301, 303, 304, 305, 308, 309, 310, 311, 312, 313, 314, 320) |
 | Tasks archivées sans livraison | 2 (307 abandonnée, 318 retirée au profit de task-171) |
-| Tasks `done` (PRs ouvertes) | 1 (task-320 — Dtos.Mss#34, Api.Mail#253, Client#83, Mobile#79) |
+| Tasks `done` (PRs ouvertes) | 1 (task-336 — Api.Mail#257, Client#85, Mobile#80) |
 | Tasks `todo` | 4 (319, 326, 332, 337) |
 | Questions ouvertes | `questions/task-302.md` (accès sécurité au journal — bloquante), `questions/task-304.md` (outillage visuel), `questions/task-313.md` (trace de clôture sans praticien nommé) |
 | Paquets NuGet publiés par l'EPIC | `HealthPlatform.Host.Sdk` 14.0.0 ; `HealthPlatform.Dtos.Mss` 474.0.0 (task-303), 486.0.0 (task-314), 489.0.0 (task-320) |
@@ -2100,7 +2158,8 @@ en `foreach`). **184 tests verts avant comme après.**
 | task-314 | **Une messagerie détachée n'offre plus que « Rattacher »**, et affiche la date de son **détachement**. `MailboxDto.DetachedAt` (nullable) publié en **486.0.0**. « Définir par défaut » et « Supprimer » **masqués, pas grisés**. La suppression définitive est écartée sur constat en base : 152 traces d'audit sur 5 tenants, **aucune clé étrangère** — supprimer aurait orphelinné en silence un journal soumis à 6 ans de conservation PGSSI-S. Contre-épreuve par front : une ligne active garde ses actions | `dtos-mss`, `api-mail`, `client-blazor`, `client-mobile`, `client-angular` | ✅ **mergée** le 2026-09-16 (PR Dtos.Mss#33, Api.Mail#242, Client#79, Mobile#75 ; Angular en code-only) |
 | task-307 | Passer en EF trois requêtes SQL brut du journal d'audit (`PostgresAuditBackfillStore`). **⛔ ABANDONNÉE le 2026-09-16, sans objet** (décision humaine au pré-flight de `/start`) : le fichier et toute la machinerie de reprise ont été retirés par task-312. Aucune branche, aucun code | `api-mail` | ⛔ **abandonnée** |
 | task-318 | Vérifier le jeton PSC et le lier au compte connecté (remédiation n°1 de l'audit du registre du 2026-09-16). **🚫 RETIRÉE le 2026-09-23, jamais démarrée — remplacée par task-171** (backend pull : l'agrégat de session du proxy porte ensemble jeton Keycloak et jetons PSC d'un même login ; la liaison se lit au lieu de se reconstruire). RG-5 / RG-6 reprises par 171. **Réserve** : si la bascule d'`api-mail` sous `*.weda.fr` n'a pas lieu, 318 redevient la seule remédiation livrable | `api-mail` | 🚫 **retirée** |
-| task-320 | **Sans carte, le médecin travaille ; aucun message ne part sans elle** (remédiation n°3 de l'audit du registre). État `AwaitingConfirmation`, rejeu automatique des `SendMail` supprimé, confirmation par message `POST pending-emails/{id}/send` sous session PSC valide à l'instant + `CanUseImap`, migration du stock `Pending`, `ConnectionStatusDto.PendingSendsCount` et `PendingEmailDto` partagé (**489.0.0**), liste Revoir / Envoyer / Annuler sur les trois fronts. Ferme au passage l'envoi de brouillon sans carte ; la revue a fermé une ligne orpheline en `Processing` et un XSS de la relecture | `dtos-mss`, `api-mail`, `client-blazor`, `client-mobile`, `client-angular` | ✅ **done** (PR Dtos.Mss#34, Api.Mail#253, Client#83, Mobile#79 — `awaiting-human-merge` ; Angular en code-only) |
+| task-320 | **Sans carte, le médecin travaille ; aucun message ne part sans elle** (remédiation n°3 de l'audit du registre). État `AwaitingConfirmation`, rejeu automatique des `SendMail` supprimé, confirmation par message `POST pending-emails/{id}/send` sous session PSC valide à l'instant + `CanUseImap`, migration du stock `Pending`, `ConnectionStatusDto.PendingSendsCount` et `PendingEmailDto` partagé (**489.0.0**), liste Revoir / Envoyer / Annuler sur les trois fronts. Ferme au passage l'envoi de brouillon sans carte ; la revue a fermé une ligne orpheline en `Processing` et un XSS de la relecture | `dtos-mss`, `api-mail`, `client-blazor`, `client-mobile`, `client-angular` | ✅ **mergée** le 2026-09-27 (Dtos.Mss `20ddded7f3`, Api.Mail `faa4c65eec`, Client `d6f3af28cf`, Mobile `1a49fc115e` ; Angular en code-only) |
+| task-336 | **Les flux SSE suivent la boîte affichée** (AUD-18 c) : `[MailboxFromQuery]` sur les deux flux, `?mailbox=` validé par la même sélection que `Client-Email`, repli brut du contrôleur retiré ; `?mailbox=` + réouverture à la bascule sur mobile et Blazor | `api-mail`, `client-blazor`, `client-mobile` | ✅ **done** (PR Api.Mail#257, Client#85, Mobile#80 — `awaiting-human-merge`) |
 
 
 ### Question ouverte

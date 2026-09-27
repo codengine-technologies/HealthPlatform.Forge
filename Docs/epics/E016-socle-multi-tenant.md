@@ -2,7 +2,7 @@
 
 > **Statut** : 🟡 En cours
 > **Modèle** : task-driven
-> **Version** : 1.13
+> **Version** : 1.14
 > **Auteur** : PO forge
 > **Audience** : PO, médecin, direction produit, conformité — la vue ingénierie vit dans [E016-Changelogs.md](E016-Changelogs.md)
 > **Dernière mise à jour** : 2026-09-27
@@ -85,10 +85,10 @@ augmente.
 | Fonctionnalité | Ce que le praticien peut faire | Tasks | Statut |
 |---|---|---|---|
 | **Plusieurs messageries, une seule connexion** | Retrouver, après une authentification unique, toutes les messageries qui relèvent de son identité professionnelle | task-303, task-304, task-308 | ✅ Livrée |
-| **Changer de messagerie en direct** | Cliquer sur son avatar et ouvrir une autre de ses messageries : l'écran se vide et se recharge sur la nouvelle boîte, sans reconnexion | task-304 | ✅ Livrée |
+| **Changer de messagerie en direct** | Cliquer sur son avatar et ouvrir une autre de ses messageries : l'écran se vide et se recharge sur la nouvelle boîte, sans reconnexion — et les **nouveaux messages et alertes en temps réel** suivent la messagerie ouverte | task-304, task-336 | ✅ Livrée — correctif du temps réel **en attente de merge** (task-336) |
 | **Rattacher sa première messagerie** | Entrer son adresse dès le premier accès et travailler immédiatement, sans se déconnecter ni se reconnecter — l'opérateur de messagerie vérifie l'accès avant que le rattachement n'aboutisse | task-304, task-308 | ✅ Livrée |
 | **Gérer ses messageries** | Ajouter une messagerie, en détacher une, la **rattacher à nouveau**, désigner celle qui s'ouvre par défaut, comprendre pourquoi l'une est indisponible — et, en détachant la **dernière**, être déconnecté proprement au lieu de rester enfermé | task-304, task-309, task-310, task-312, task-313, task-314 | ✅ Livrée — dernière pièce **mergée** : une messagerie détachée n'offre plus que « Rattacher » (task-314) |
-| **Travailler sans sa carte, envoyer avec elle** | Lire, classer et rédiger avec sa seule connexion au compte, carte absente ; retrouver ensuite ses messages **« prêts à partir »**, les relire, puis les envoyer ou les annuler **un par un, carte présentée** — aucun message ne part de lui-même | task-320 | 🟡 Complète en code — en attente de merge |
+| **Travailler sans sa carte, envoyer avec elle** | Lire, classer et rédiger avec sa seule connexion au compte, carte absente ; retrouver ensuite ses messages **« prêts à partir »**, les relire, puis les envoyer ou les annuler **un par un, carte présentée** — aucun message ne part de lui-même | task-320 | ✅ Livrée (**mergée** le 2026-09-27) |
 | **Conservation appliquée à tous les comptes** | Être assuré que les durées d'effacement s'appliquent aussi aux comptes qui ne servent plus, y compris à ceux d'un praticien qui a quitté le service | task-299, task-312 | ✅ Livrée — l'effacement à échéance **s'exécute** depuis task-312 (**mergée**) |
 | **Traçabilité des accès à l'échelle du parc** | Consulter l'historique de ses propres accès — et les trier — sans que la croissance du parc n'en dégrade la tenue | task-300, task-312 | ✅ Livrée — écriture et retrait de l'historique hérité **mergés** |
 | **Accès des équipes sécurité à la traçabilité** | *(indisponible — en attente d'arbitrage : voir §7)* | — | ⛔ Bloquée |
@@ -224,7 +224,7 @@ par la liste.
 | RG-6 | **Les durées de conservation s'appliquent à tous les comptes.** Un compte qui ne sert plus est purgé à échéance comme les autres — la dormance ne le soustrait pas à la règle | ✅ Implémenté (task-299) — et **réellement exécuté** depuis task-312, qui a branché la purge du journal mutualisé |
 | RG-7 | **Les changements d'accès sont tracés.** Rattacher, détacher, changer de messagerie par défaut, ouvrir et fermer une session de messagerie laissent une trace consultable | ✅ Implémenté (task-303) — chaque trace désigne la messagerie **concernée** et non celle qui était ouverte au moment du geste (task-312) |
 | RG-8 | **La consultation de l'historique reste strictement personnelle.** Un médecin ne voit que ses propres accès ; aucun accès transverse n'est ouvert par cet EPIC | ✅ Implémenté (task-300) |
-| RG-9 | **Aucun message ne part sans la carte du médecin.** Sans sa carte, le médecin lit, classe et rédige ; un message rédigé est mis de côté et ne part que sur sa confirmation, faite carte présentée — message par message, ou pour toute la liste après relecture d'un récapitulatif (**Tout envoyer**). L'envoi lui est imputé à l'instant de cette confirmation, conformément à l'exigence d'imputabilité des actes de la politique de sécurité des systèmes d'information de santé | ✅ Implémenté (task-320) — en attente de merge |
+| RG-9 | **Aucun message ne part sans la carte du médecin.** Sans sa carte, le médecin lit, classe et rédige ; un message rédigé est mis de côté et ne part que sur sa confirmation, faite carte présentée — message par message, ou pour toute la liste après relecture d'un récapitulatif (**Tout envoyer**). L'envoi lui est imputé à l'instant de cette confirmation, conformément à l'exigence d'imputabilité des actes de la politique de sécurité des systèmes d'information de santé | ✅ Implémenté (task-320, **mergée**) |
 
 ---
 
@@ -283,20 +283,20 @@ par la liste.
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
 | Plusieurs messageries, une seule connexion | ✅ Livrée | 100 % | task-303, task-304, task-308 (**mergées**) |
-| Changer de messagerie en direct | ✅ Livrée | 100 % | task-304 (**mergée**) |
+| Changer de messagerie en direct | ✅ Livrée | 100 % | task-304 (**mergée**), task-336 (correctif temps réel, en attente de merge) |
 | Rattacher sa première messagerie | ✅ Livrée | 100 % | task-304, task-308 (**mergées**) |
 | Gérer ses messageries | ✅ Livrée | 100 % | task-304, task-309, task-310, task-312, task-313, task-314 (**mergées**) |
-| Travailler sans sa carte, envoyer avec elle | 🟡 Complète en code | 90 % | task-320 (en attente de merge) |
+| Travailler sans sa carte, envoyer avec elle | ✅ Livrée | 100 % | task-320 (**mergée**) |
 | Conservation appliquée à tous les comptes | ✅ Livrée | 100 % | task-299, task-312 (**mergées**) |
 | Traçabilité des accès à l'échelle du parc | ✅ Livrée | 100 % | task-300, task-312 (**mergées**) |
 | Accès des équipes sécurité à la traçabilité | ⛔ Bloquée | 0 % | — |
 | Réactivité vérifiée en multi-messagerie | ⛔ Abandonnée | — | task-311 (**mergée** — outil de mesure réparé) |
 | Application allégée au poste | ✅ Livrée | 100 % | task-305 (**mergée**) |
 
-**Couverture EPIC consolidée : 88 %** — 7 fonctionnalités livrées sur les 9 au
-périmètre, 1 complète en code et en attente de merge, 1 bloquée en attente d'arbitrage.
+**Couverture EPIC consolidée : 89 %** — 8 fonctionnalités livrées sur les 9 au
+périmètre, 1 bloquée en attente d'arbitrage.
 
-Au 2026-09-27, tout ce qui précède task-320 est **mergé**. « Gérer ses messageries »
+Au 2026-09-27, task-320 est **mergée** : toutes les fonctionnalités livrées le sont sur `develop`. Seul le correctif task-336 (temps réel après changement de messagerie) attend son merge. « Gérer ses messageries »
 est **livrée** depuis le merge de task-314 : une ligne détachée n'offre plus que
 **« Rattacher »**, et affiche la date de son détachement.
 La ligne multi-messageries est **livrée de bout en bout et mergée** : le registre, la
@@ -487,7 +487,7 @@ et n'entre pas dans le calcul.
 ### Conformité
 
 - **L'envoi d'un message sécurisé est imputé au professionnel à l'instant où il le
-  décide** (task-320, *en attente de merge*). Un message rédigé sans carte partait
+  décide** (task-320, **mergée**). Un message rédigé sans carte partait
   jusqu'ici tout seul à la présentation suivante de la carte : l'envoi était rattaché à
   un geste qui ne le visait pas, contrairement à l'exigence d'imputabilité des actes de
   la politique de sécurité des systèmes d'information de santé et à la règle produit
@@ -515,8 +515,19 @@ et n'entre pas dans le calcul.
 
 ### Fonctionnalités métier
 
+- **Après un changement de messagerie, les nouveaux messages arrivent enfin dans la
+  bonne** (task-336, *en attente de merge*). Un praticien qui passait de sa messagerie
+  principale à une autre voyait bien le contenu de la nouvelle ; mais l'arrivée des
+  nouveaux messages, les alertes et l'avancement de la synchronisation continuaient de
+  lui parvenir **depuis sa messagerie principale** — et plus rien de celle qu'il avait
+  ouverte. Un message reçu dans la messagerie affichée n'apparaissait qu'au
+  rafraîchissement suivant, tandis qu'une alerte pouvait signaler un message arrivé
+  dans une autre. Les trois applications suivent désormais, en temps réel, la
+  messagerie ouverte ; à chaque changement, ce fil se referme et se rouvre sur la
+  nouvelle. Le serveur vérifie, comme pour toute autre demande, que la messagerie
+  réclamée est bien rattachée au praticien.
 - **Sans sa carte, le médecin travaille sur sa messagerie ; aucun message ne part sans
-  elle** (task-320, *en attente de merge*). Carte oubliée, poste sans lecteur,
+  elle** (task-320, **mergée**). Carte oubliée, poste sans lecteur,
   application e-CPS indisponible : le médecin lit, classe et rédige avec sa seule
   connexion au compte. Ce qu'il envoie est mis de côté, **« prêt à partir »**. Quand il
   présente sa carte, un bandeau lui annonce combien de messages l'attendent ; il les
@@ -561,8 +572,7 @@ et n'entre pas dans le calcul.
 
 ### Sécurité
 
-- **Plus aucun chemin ne fait partir un message sans la carte** (task-320, *en attente
-  de merge*). L'envoi automatique au retour de la carte est supprimé. L'envoi d'un
+- **Plus aucun chemin ne fait partir un message sans la carte** (task-320, **mergée**). L'envoi automatique au retour de la carte est supprimé. L'envoi d'un
   brouillon enregistré, qui pouvait encore partir sans carte, est mis de côté comme
   les autres. Une confirmation n'est acceptée que si la carte est présentée **à cet
   instant** et que la messagerie visée relève bien de l'identité de la carte ; sinon
