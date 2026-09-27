@@ -237,6 +237,10 @@ Regroupement par **cause**, pas par fichier — chaque ligne est une US candidat
 > ligne 1 → task-326, …, ligne 17 → task-342. Dépendances posées : task-329 → task-330, task-334 → task-333,
 > task-340 → task-334 ; task-338 à coordonner avec task-192, task-331 avec task-191. task-342 porte un
 > encadré « arbitrage humain requis » sur son découpage.
+>
+> **Découpage de la ligne 11 (validé par l'humain le 2026-09-27)** : task-336 ne couvre plus que la boîte suivie
+> par le flux SSE (AUD-21, api-mail + deux fronts) ; **task-343** porte le backplane SSE et les conversations IA
+> partagés entre réplicas (AUD-18 a, AUD-19) ; **task-344** la promotion unique d'un mail (AUD-18 b, avec migration).
 
 | # | US candidate | Constats | Priorité proposée | Repos probables |
 |---|---|---|---|---|
