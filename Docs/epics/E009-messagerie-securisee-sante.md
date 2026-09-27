@@ -2,9 +2,9 @@
 
 > **Statut** : En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.73
+> **Version** : 1.74
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-09-27 (renvoi E016, task-320)
+> **Dernière mise à jour** : 2026-09-27 (surface de l'API durcie, task-189 ; renvoi E016, task-320)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1467,6 +1467,19 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 - **Onboarding MSSanté** (task-037, durci par task-038) : parcours d'opt-in explicite quand le compte Keycloak n'a pas encore d'adresse MSSanté mappée — écran « Messagerie non configurée » + formulaire setup avec sonde IMAP MSSanté + persistance du profil + écran de reconnexion. La sonde TLS valide la chaîne IGC-Santé conformément au socle.
 
 ### Sécurité — défense en profondeur
+
+- **v1.74 — Plus aucun moyen, pour un praticien, de vider sa messagerie d'un seul
+  appel, et une demande mal formée est refusée proprement** (task-189) : l'API
+  exposait un outil de remise à zéro prévu pour le développement, qui effaçait
+  en une fois tous les messages, comptes rendus, pièces jointes et résultats de
+  biologie enregistrés pour le praticien connecté — sans rôle particulier ni
+  confirmation. Il est **supprimé**, tout comme le bouton correspondant de la
+  page de gestion. Par ailleurs, une demande envoyée sans contenu, ou avec un
+  contenu illisible, provoquait une erreur interne du serveur ; elle reçoit
+  désormais une réponse claire indiquant que la demande est incomplète, sur
+  toutes les fonctions concernées (assistant de rédaction, recherche, dossier
+  patient, signatures, modèles, analyse des messages). Rien ne change pour un
+  usage normal de la messagerie.
 
 - **v1.71 — Le journal des accès ne perd plus rien quand la plateforme sature, et
   il ne ralentit plus le médecin** (task-292) : le journal qui retrace qui a lu,
