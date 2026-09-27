@@ -181,3 +181,16 @@ Les parcours de la colonne de droite **restent couverts par `/qa`**, avec un log
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : non — poste de développement, données synthétiques ; **interdiction de lancer ce profil sur un environnement HDS**
 - **AIPD / impact RGPD** : inchangé — aucun traitement de données réelles
+
+## Branches
+- `api-mail` (pushed) : feat/task-345-filet-e2e-headless-mobile — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-345-filet-e2e-headless-mobile
+- `client-mobile` (pushed) : feat/task-345-filet-e2e-headless-mobile — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-345-filet-e2e-headless-mobile
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-345 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 27 s | — | — | — | api-mail, client-mobile |
+| **Total cycle** | | **27 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
