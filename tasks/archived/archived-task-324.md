@@ -335,3 +335,11 @@ local) — **rejoués sur `develop` non modifié : mêmes 4 échecs**. Pas une r
   `GetEmailAsync_WithFullContent_ShouldReturnCompleteEmailAsync` (`Content` nul en `WithContent`), est **rouge à toute
   heure et aussi sur `develop`** — correction du Develop log, qui le rangeait avec les tests « du jour » ; les trois
   autres passent après 02:00 locale. Pré-existant, non instruit, à traiter à part.
+
+## Merged
+
+- **2026-09-27** — `/merge task-324 --i-tested` (validation humaine attestée).
+- `api-mail` : squash `78f0f410` — [PR #252](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/252) fermée, label `awaiting-human-merge` retiré, branche `fix/task-324-imap-eviction-respects-in-use-session` supprimée (distante et locale).
+- CI `develop` : ✓ [run 36311153165](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/36311153165).
+- Staging : aucune (task hors run `/forge`).
+- **Reste dû** : la mesure au prochain tir `terrain` 1000 — 0 `ObjectDisposedException: ImapClient` (référence 17), `skipped_in_use` > 0.
