@@ -233,6 +233,11 @@ Toutes ont été rejouées contre `develop` @ `14d58398`. **Point commun** : leu
 
 Regroupement par **cause**, pas par fichier — chaque ligne est une US candidate. Les priorités sont une proposition.
 
+> **Tasks créées le 2026-09-27** : la ligne *n* du tableau ci-dessous est devenue **`tasks/todo-task-(325 + n).md`** —
+> ligne 1 → task-326, …, ligne 17 → task-342. Dépendances posées : task-329 → task-330, task-334 → task-333,
+> task-340 → task-334 ; task-338 à coordonner avec task-192, task-331 avec task-191. task-342 porte un
+> encadré « arbitrage humain requis » sur son découpage.
+
 | # | US candidate | Constats | Priorité proposée | Repos probables |
 |---|---|---|---|---|
 | 1 | Validation des jetons : mode permissif opt-in, configuration de déploiement corrigée | AUD-01 | **0 — immédiat, vérifier le cluster** | api-mail, devops (manuel) |
