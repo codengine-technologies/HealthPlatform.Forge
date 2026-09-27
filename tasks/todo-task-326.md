@@ -49,9 +49,21 @@ du dépôt porte une configuration d'authentification complète.
    démarrage, pas de repli.
 4. **Bypass de test** : sa garde « jamais en production » s'appuie sur `IHostEnvironment` et refuse
    tout environnement autre que Development/Testing explicite.
-5. **Manifestes `DevOps/Prod` et `DevOps/Staging`** : environnement et Authority corrigés.
-   `devops` est **hors automation** — la forge rédige la modification attendue dans le task file,
-   **l'humain l'applique**.
+5. **Manifestes `DevOps/Prod` et `DevOps/Staging`** : ajout de `Keycloak__Authority` (et
+   `Keycloak__Audience` si le jeton porte une audience dédiée) dans le configmap — **c'est la mesure
+   immédiate**, applicable sans attendre le code : avec une Authority, la validation complète s'active
+   même en `Staging`. `devops` est **hors automation** — la forge rédige la modification attendue dans
+   le task file, **l'humain l'applique**.
+   > ⚠️ **Ne PAS passer `ASPNETCORE_ENVIRONMENT` à `Production` dans le cadre de cette US** (corrigé le
+   > 2026-09-27). `BaseRepository.cs:582-585` ne crée et ne migre les bases praticien **qu'en
+   > `Development` ou `Staging`** : en `Production`, un nouveau praticien n'aurait pas de base et les
+   > migrations ne s'appliqueraient plus. `AuditJournalSwitch` et le bypass de test lisent aussi le nom
+   > d'environnement. Le nom d'environnement est donc aujourd'hui une **bascule de comportement** et non
+   > une étiquette : c'est le point 7 ci-dessous.
+7. **Découpler les comportements du nom d'environnement** : le provisionnement des bases praticien
+   (`BaseRepository.cs:582`) devient une option de configuration explicite (activée par défaut en
+   déploiement), de sorte que l'environnement puisse passer à `Production` plus tard sans rien casser.
+   Le passage effectif à `Production` reste une décision humaine, **après** ce découplage.
 6. Le poste local et l'AppHost continuent de fonctionner (le drapeau est posé par l'AppHost / le
    `launchSettings` de développement).
 
@@ -73,7 +85,10 @@ du dépôt porte une configuration d'authentification complète.
 - [ ] Test : démarrage hors Development sans `Keycloak:Authority` → échec explicite au démarrage
 - [ ] Test : le bypass de test est refusé quand `IHostEnvironment` n'est ni Development ni Testing
 - [ ] Modification des manifestes `DevOps/Prod` et `DevOps/Staging` rédigée dans le task file
-      (bloc prêt à appliquer) — application par l'humain
+      (bloc prêt à appliquer : `Keycloak__Authority`, `Keycloak__Audience`) — application par l'humain ;
+      `ASPNETCORE_ENVIRONMENT` **inchangé**
+- [ ] Test : provisionnement des bases praticien piloté par une option explicite — actif en `Staging`
+      **et** en `Production` quand l'option est vraie ; aucun comportement ne dépend plus du seul nom `Staging`
 - [ ] AppHost et poste local : `dotnet run --project src/AppHost` démarre et authentifie comme avant
 - [ ] Aucun jeton, `sub` ni e-mail en clair ajouté dans les logs
 
