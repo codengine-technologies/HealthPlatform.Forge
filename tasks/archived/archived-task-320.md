@@ -439,6 +439,18 @@ Signalé par l'humain sur client-angular : après confirmation de messages envoy
 - client-mobile : déjà correct (insertion du mail notifié dans l'INBOX), aucun changement. À noter : cette insertion est coupée si l'utilisateur désactive les toasts de nouveaux mails.
 - Tests vérifiés rouges par mutation. Commentaires sur les PRs Api.Mail #253 et Client #83.
 
+## Merged
+
+- **2026-09-27** — `/merge task-320 --i-tested` (HAG : l'humain atteste avoir déroulé le Manual Test Plan).
+- Squash-merges sur `develop` (ordre topologique), label `awaiting-human-merge` retiré, branches distante et locale supprimées :
+  - `dtos-mss` : `20ddded7f3` (PR #34) — CI develop `.NET` ✓ (run 36334989821)
+  - `api-mail` : `faa4c65eec` (PR #253) — CI develop `Build and Publish` ✓ (run 36335000272)
+  - `client-blazor` : `d6f3af28cf` (PR #83) — CI develop `Build and Publish` ✓ (run 36335011824)
+  - `client-mobile` : `1a49fc115e` (PR #79) — CI develop `Android Build` ✓ (run 36335020574)
+- `client-angular` : managed manually by the human (code-only, TFS).
+- Staging : aucune branche `forge/staging-*` (task hors run `/forge`).
+- **Suivi ouvert, hors merge** : découpler le rafraîchissement de la liste de la notification « nouveau mail ». Celle-ci n'est pas émise quand le praticien désactive les notifications de nouveaux mails, quand ses préférences sont absentes (`prefs == null`), ou pour un mail de plus de 10 min ; la liste retombe alors sur le poll (≤ 30 s). Cible : un événement « mails arrivés » sur le flux d'événements de messagerie, indépendant des préférences ; vérifier aussi la valeur par défaut de `prefs`. Autres suggestions de la revue toujours à arbitrer : MDN sans carte, rétention des payloads `Completed` (AIPD), exclusion `PSC_SESSION_*` dans les intercepteurs mobile/Angular.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-320 --sync` — ne pas éditer à la main)*
@@ -446,13 +458,14 @@ Signalé par l'humain sur client-angular : après confirmation de messages envoy
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 56 s | — | — | — | — |
-| /develop | ok | 7 min 07 s | 26 (3 min 09 s) | 26 (12 min 45 s) | — | dtos-mss 1B/0T, api-mail 13B/13T, client-blazor 6B/5T, client-mobile 3B/4T, client-angular 3B/4T, rework after review |
+| /develop | ok | 7 min 07 s | 43 (6 min 32 s) | 46 (21 min 33 s) | — | dtos-mss 1B/0T, api-mail 17B/17T, client-blazor 12B/10T, client-mobile 7B/12T, client-angular 6B/7T, rework after review |
 | /sonar | ok | 4 min 27 s | 4 (46 s) | 16 (8 min 58 s) | 6 (1 min 40 s) | 1 itération(s), api-mail 4B/16T, re-analysis after review rework |
 | /lint-angular | ok | 16 s | — | — | — | — |
 | /lint-mobile | ok | 15 s | — | — | — | — |
 | /verify-visual | skipped | 0.4 s | — | — | — | tooling unavailable (Tools/visual-verify absent) |
 | /review | ok | 6 min 02 s | 10 (41 s) | 8 (4 min 27 s) | — | dtos-mss 2B/0T, api-mail 2B/2T, client-blazor 2B/2T, client-mobile 2B/2T, client-angular 2B/2T |
 | /tech-writer | ok | 9 min 57 s | — | — | — | — |
-| **Total cycle** | | **29 min 05 s** | **40 (4 min 37 s)** | **50 (26 min 11 s)** | **6 (1 min 40 s)** | |
+| /merge | ok | 5 min 46 s | — | — | — | — |
+| **Total cycle** | | **34 min 52 s** | **57 (8 min 00 s)** | **70 (34 min 59 s)** | **6 (1 min 40 s)** | |
 
-Autres commandes mesurées : lint ×4 (38 s), nuget-wait ×1 (18 s), restore ×2 (4.1 s)
+Autres commandes mesurées : lint ×7 (54 s), nuget-wait ×1 (18 s), restore ×2 (4.1 s)

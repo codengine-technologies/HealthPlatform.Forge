@@ -1917,3 +1917,5 @@
 {"ts":"2026-09-27T18:45:05+02:00","run_id":"-","type":"cmd","task":"task-320","step":"develop","repo":"client-angular","kind":"test","label":"","cwd":"Client/Angular/front","cmd":"npm test","duration_ms":24873,"exit_code":0}
 {"ts":"2026-09-27T18:45:49+02:00","run_id":"-","type":"cmd","task":"task-320","step":"develop","repo":"api-mail","kind":"build","label":"","cwd":"Api/Mail","cmd":"dotnet build HealthPlatform.Api.Mail.sln -c Release --no-restore --verbosity quiet","duration_ms":5492,"exit_code":0}
 {"ts":"2026-09-27T18:47:51+02:00","run_id":"-","type":"cmd","task":"task-320","step":"develop","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln -c Release --no-build","duration_ms":120724,"exit_code":0}
+{"ts":"2026-09-27T18:54:28+02:00","run_id":"-","type":"step_start","task":"task-320","step":"merge"}
+{"ts":"2026-09-27T19:00:15+02:00","run_id":"-","type":"step","task":"task-320","step":"merge","status":"ok","note":"","iterations":null,"duration_ms":346761}
