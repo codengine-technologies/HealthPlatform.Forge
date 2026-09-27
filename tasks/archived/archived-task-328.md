@@ -91,6 +91,13 @@ déclenchée**, et que le Kernel partagé ne soit plus jamais modifié par une r
 ## Branches
 - `api-mail` (pushed) : fix/task-328-contexte-conversation-ia-isole — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-328-contexte-conversation-ia-isole
 
+## Merged
+
+- **2026-09-27** — `/merge task-328 --i-tested` (HAG : l'humain atteste avoir déroulé le Manual Test Plan).
+- `api-mail` : squash `8aa1bfcfee` (PR #255), label `awaiting-human-merge` retiré, branche `fix/task-328-contexte-conversation-ia-isole` supprimée (distante et locale) — CI develop `Build and Publish` ✓ (run 36337148404).
+- Staging : aucune branche `forge/staging-*` (task hors run `/forge`).
+- Rappel AIPD : informer le DPO de la fuite potentielle avant correctif.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-328 --sync` — ne pas éditer à la main)*
@@ -105,7 +112,8 @@ déclenchée**, et que le Kernel partagé ne soit plus jamais modifié par une r
 | /verify-visual | skipped | 0.5 s | — | — | — | repo non touché par task-328 |
 | /review | ok | 3 min 48 s | 1 (5.7 s) | 1 (1 min 57 s) | — | api-mail 1B/1T |
 | /tech-writer | ok | 4 min 31 s | — | — | — | — |
-| **Total cycle** | | **20 min 17 s** | **7 (46 s)** | **11 (7 min 28 s)** | **2 (34 s)** | |
+| /merge | ok | 4 min 29 s | — | — | — | — |
+| **Total cycle** | | **24 min 47 s** | **7 (46 s)** | **11 (7 min 28 s)** | **2 (34 s)** | |
 
 ## Develop log
 
