@@ -2,9 +2,9 @@
 
 > **Statut** : En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.75
+> **Version** : 1.76
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-09-27 (surface de l'API durcie, task-189 ; renvoi E016, task-320)
+> **Dernière mise à jour** : 2026-09-27 (surface de l'API durcie, task-189 ; renvoi E016, task-320 ; cloisonnement des conversations de l'assistant IA, task-328)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1468,6 +1468,17 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Sécurité — défense en profondeur
 
+- **v1.76 — L'assistant ne montre plus jamais à un médecin l'action préparée pour
+  la conversation d'un confrère** (task-328) : quand deux praticiens dialoguaient
+  avec l'assistant IA au même moment, une action qu'il proposait à l'un —
+  appeler le patient, un brouillon de réponse, un message à un confrère —
+  pouvait, dans de rares cas, s'afficher chez l'autre, avec le **nom et le
+  numéro de téléphone du patient concerné**. Chaque conversation dispose
+  désormais de son propre espace d'exécution, strictement réservé au praticien
+  qui l'a ouverte : l'action que l'assistant propose à un médecin ne peut plus
+  être vue par personne d'autre. Rien ne change dans l'usage quotidien de
+  l'assistant. **AIPD** : le DPO est informé de la fuite potentielle
+  antérieure au correctif.
 - **v1.74 — Plus aucun moyen, pour un praticien, de vider sa messagerie d'un seul
   appel, et une demande mal formée est refusée proprement** (task-189) : l'API
   exposait un outil de remise à zéro prévu pour le développement, qui effaçait
