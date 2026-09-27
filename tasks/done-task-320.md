@@ -413,6 +413,14 @@ Label `awaiting-human-merge` sur les quatre (une seule US, à tester assemblée 
 - Promesse de l'US confirmée : aucun chemin ne permet à un message rédigé de partir sans une confirmation faite pendant une session PSC.
 - Suggestions non bloquantes à arbitrer : MDN envoyé sans carte (préexistant) ; rétention des payloads `Completed` (AIPD) ; jeton PSC en cache au garde ; remise en attente qui échoue elle-même ; exclusion `PSC_SESSION_*` à porter dans les intercepteurs mobile/Angular ; message d'erreur mobile sur réponse texte ; polling de la bannière Blazor.
 
+### Correctif ajouté après ouverture des PRs — double envoi depuis l'éditeur (2026-09-27)
+
+Signalé par l'humain : le bouton « Envoyer » / « Mettre de côté » pouvait être cliqué plusieurs fois (doublons). Corrigé sur les trois fronts, avec un spinner dans le bouton pendant l'envoi :
+- client-blazor 8485980 : verrou posé en premier (il l'était après les dialogues d'avant envoi), point d'entrée unique bouton + Ctrl+Entrée ; 328 passés, 2 ignorés ; 8 tests, vérifiés rouges par mutation.
+- client-mobile 385ecce : verrou tenu jusqu'à la fin de la requête (il était relâché après les contrôles) ; corrige aussi un brouillon recréé après un envoi réussi ; 927 / 927, lint propre ; tests de double envoi vérifiés rouges par mutation (un test DOM instable dépendant du rendu d'`ion-modal` remplacé par une assertion sur l'état).
+- client-angular (non commité) : verrou posé avant toute attente, tenu jusqu'à la fermeture ; spinner du design system ; 11 tests ; build + tests verts, lint 0 erreur.
+- Commentaire ajouté sur les PRs Client #83 et Mobile #79.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-320 --sync` — ne pas éditer à la main)*
