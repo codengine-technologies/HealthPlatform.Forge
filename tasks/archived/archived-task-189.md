@@ -360,3 +360,11 @@ Après correctif : 30/30 verts.
 - Passe qualité : diff de suppression pure sur les deux repos — rien à simplifier. Sonar : pas de nouvelle analyse,
   aucune ligne de production ajoutée (Phase 1 inchangée).
 - PRs #254 et #84 mises à jour (titre, section « Extension », étape de test manuel supplémentaire).
+
+## Merged
+
+- **2026-09-27** — `/merge task-189 --i-tested` (validation humaine attestée).
+- `api-mail` : squash `ee4f7552` — [PR #254](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/254) fermée, label `awaiting-human-merge` retiré, branche `fix/task-189-http-surface-hardening` supprimée (distante et locale). CI `develop` ✓ [run 36335877863](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/36335877863).
+- `client-blazor` : squash `3d5e72b6` — [PR #84](https://github.com/codengine-technologies/HealthPlatform.Client/pull/84) fermée, label retiré, branche supprimée (distante et locale). CI `develop` ✓ [run 36335890412](https://github.com/codengine-technologies/HealthPlatform.Client/actions/runs/36335890412).
+- Staging : aucune (task hors run `/forge`).
+- **Restent ouverts** : point AIPD (journaux d'accès à `DELETE /api/v1/maintenance/purge-mails` sur un environnement réel) ; suites possibles — gardes « corps nul » inatteignables dans 4 contrôleurs, retrait des DTOs de maintenance de dtos-mss à la prochaine évolution de contrat.
