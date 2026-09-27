@@ -1960,3 +1960,5 @@
 {"ts":"2026-09-27T19:23:46+02:00","run_id":"-","type":"step","task":"task-328","step":"review","status":"ok","note":"","iterations":null,"duration_ms":228930}
 {"ts":"2026-09-27T19:24:01+02:00","run_id":"-","type":"step_start","task":"task-328","step":"tech-writer"}
 {"ts":"2026-09-27T19:28:33+02:00","run_id":"-","type":"step","task":"task-328","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":271897}
+{"ts":"2026-09-27T19:29:29+02:00","run_id":"-","type":"step_start","task":"task-328","step":"merge"}
+{"ts":"2026-09-27T19:33:59+02:00","run_id":"-","type":"step","task":"task-328","step":"merge","status":"ok","note":"","iterations":null,"duration_ms":269893}
