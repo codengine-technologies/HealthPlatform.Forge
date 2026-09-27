@@ -318,3 +318,20 @@ local) — **rejoués sur `develop` non modifié : mêmes 4 échecs**. Pas une r
   verrou par le balayage et retrait du dictionnaire (pré-existante, resserrée) ; (4) fixtures de test à factoriser.
 - DOD : 11/12 vérifiés par commande ; « traces `MailArchiveSent` du 19/09 soir » consigné **non vérifiable**
   (rétention Seq), avec l'analyse du rejeu par le code et le filtre à rejouer au prochain tir.
+
+## Test d'intégration (ajout post-review, 2026-09-27, à la demande de l'humain)
+
+- `tests/mss.mail.integration.tests/Services/ImapSessionSweepIntegrationTests.cs` (`763b6af2`) — vrai client MailKit,
+  vrai Dovecot (Testcontainers, conteneur propre à la classe, sans Postgres ni Redis), vrai TLS ; un relais TCP
+  (`SlowTcpProxy`) retient chaque connexion 1,5 s, balayage toutes les 20 ms via l'API publique
+  (`CleanupExpiredSessions`).
+  - `ConnectAsync_WhileTheSweepRunsDuringTheConnection_OpensTheSessionAsync` : vert avec le correctif ; **rouge 4/4**
+    avec `MailClientSessionManager.cs` de `develop` — « La session de messagerie a été fermée pendant la connexion »
+    (le vrai client MailKit lève `ObjectDisposedException` : attribution confirmée sur un vrai serveur).
+  - `Sweep_ALinkDroppedAfterBeingConnected_IsEvictedAndReestablishedOnNextUseAsync` : relais coupé, NOOP en échec,
+    session évincée puis rétablie — non-régression task-315, vert des deux côtés.
+  - Stabilité : 3/3 verts consécutifs.
+- Suites après ajout : api 967/967 ; intégration **599/600**. Le seul rouge,
+  `GetEmailAsync_WithFullContent_ShouldReturnCompleteEmailAsync` (`Content` nul en `WithContent`), est **rouge à toute
+  heure et aussi sur `develop`** — correction du Develop log, qui le rangeait avec les tests « du jour » ; les trois
+  autres passent après 02:00 locale. Pré-existant, non instruit, à traiter à part.
