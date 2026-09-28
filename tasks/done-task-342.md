@@ -577,9 +577,27 @@ branche n'y contribue plus aucune issue.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 6 min 56 s | — | — | — | — |
-| /develop | ok | 5 h 31 min | 20 (5 min 18 s) | 97 (37 min 46 s) | — | api-mail 20B/97T |
+| /develop | ok | 5 h 31 min | 22 (6 min 21 s) | 99 (38 min 38 s) | — | api-mail 22B/99T |
 | /sonar | ok | 1 h 11 min | 8 (3 min 58 s) | 28 (36 min 02 s) | 4 (8 min 12 s) | 3 itération(s), api-mail 8B/28T |
 | /lint-angular | skipped | 1.9 s | — | — | — | client-angular non listé dans Repos, non touché |
 | /lint-mobile | skipped | 2.9 s | — | — | — | client-mobile non listé dans Repos, non touché |
 | /verify-visual | skipped | 1.6 s | — | — | — | aucun écran client-mobile touché |
-| **Total cycle** | | **6 h 49 min** | **28 (9 min 16 s)** | **125 (1 h 13 min)** | **4 (8 min 12 s)** | |
+| /review | ok | 9 min 41 s | 2 (32 s) | 4 (14 min 06 s) | — | api-mail 2B/4T, api-mail PR #258 ; 1 flaky pré-existant (SearchUseCaseTests) |
+| /tech-writer | ok | 2 min 21 s | — | — | — | E009 v1.77, hand-crafted |
+| **Total cycle** | | **7 h 01 min** | **32 (10 min 51 s)** | **131 (1 h 28 min)** | **4 (8 min 12 s)** | |
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/258 — label `awaiting-human-merge`
+- AUD-42 sorti du périmètre (allowlist revertée, `e4543409` / `07209bf4`) → **task-348**
+
+## Code Review Summary
+
+**APPROVED** — 41 fichiers source relus (87 fichiers au total), 0 bloquant, 4 suggestions :
+
+- ⚠️ AUD-41 : homonymes rangés par `OrderBy(a => a.Id)` ; Guid v7 non monotone dans une même milliseconde → l'ordre en base peut inverser l'ordre MIME (fichiers toujours distincts et téléchargeables). Piste : colonne de rang ou générateur v7 monotone.
+- ⚠️ AUD-59 : un seul seau de 10 req/min partagé par assistance à la rédaction, chat et rattachement — 429 possibles en usage soutenu.
+- ⚠️ AUD-62 : `Sanitize` retire aussi les `..` internes (`a..b.pdf` → `ab.pdf`) ; noms réservés Windows (`CON`, `NUL`) non traités.
+- ⚠️ AUD-54 : `UpdateRunningSummaryAsync` en fire-and-forget incrémente `TotalTokensUsed` en parallèle (préexistant).
+
+**Validation `/review`** : build 0 erreur ; tests domain 190, infrastructure 665, application 3 266, api 1 031, integration 639 verts (+16 ignorés). 1 intermittent `SearchUseCaseTests.RechercheParPatient_NeRendQueLesDocumentsDeCePatientAsync`, vert en relance et **également intermittent sur `develop`** (1/8) — pré-existant.

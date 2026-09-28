@@ -4,7 +4,7 @@
 > **Modèle** : hand-crafted
 > **Version** : 1.76
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-09-27 (surface de l'API durcie, task-189 ; renvoi E016, task-320 ; cloisonnement des conversations de l'assistant IA, task-328)
+> **Dernière mise à jour** : 2026-09-28 (dix-sept correctifs de fiabilité et de sécurité issus de l'audit, task-342)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1036,6 +1036,16 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
+- **v1.77 — Documents, pièces jointes et « reçus aujourd'hui » : ce que le
+  praticien voit est désormais exact** (task-342) : un compte rendu ouvert juste
+  avant la fin de son analyse affiche ses documents dès qu'ils sont prêts, au
+  lieu de rester incomplet un quart d'heure. Deux pièces jointes portant le
+  même nom (deux « resultat.pdf ») sont bien deux fichiers distincts dans
+  l'archive téléchargée. Un message reçu entre minuit et deux heures du matin
+  figure dans « reçus aujourd'hui », en ligne comme hors ligne. Changer de
+  boîte par défaut puis revenir à la précédente fonctionne, et un praticien
+  exerçant en plusieurs lieux retrouve toutes ses adresses MSSanté dans
+  l'annuaire.
 - **v1.73 — Les boutons « pause », « relancer » et « arrêter » de la
   synchronisation fonctionnent, et l'état affiché dit la vérité** (task-188) :
   la messagerie rapatrie les messages de la boîte MSSanté en arrière-plan,
@@ -1468,6 +1478,16 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Sécurité — défense en profondeur
 
+- **v1.77 — Une archive de pièces jointes ne peut plus écrire hors de son
+  dossier, et le praticien garde toujours la main sur ses boîtes** (task-342) :
+  le nom d'une pièce jointe est choisi par l'expéditeur ; il est désormais
+  réduit à un simple nom de fichier avant d'entrer dans l'archive téléchargée,
+  pour qu'aucun fichier ne puisse être déposé ailleurs sur le poste à
+  l'extraction. Les opérations coûteuses ou sensibles — rattachement d'une
+  boîte, assistant IA, outils de diagnostic — sont limitées en fréquence pour
+  chaque praticien. Enfin, une boîte détachée ou devenue inutilisable
+  n'empêche plus d'afficher, de rattacher ou de détacher ses boîtes, ni de se
+  déconnecter.
 - **v1.76 — L'assistant ne montre plus jamais à un médecin l'action préparée pour
   la conversation d'un confrère** (task-328) : quand deux praticiens dialoguaient
   avec l'assistant IA au même moment, une action qu'il proposait à l'un —
@@ -1534,6 +1554,14 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Technique / observabilité (sans impact utilisateur direct)
 
+- **v1.77 — Fiabilité du traitement des messages** (task-342) : un message
+  dont l'enregistrement échoue en cours de route est repris intégralement au
+  passage suivant au lieu de rester à moitié traité ; le bilan d'analyse ne
+  compte plus comme « analysés » des messages non enregistrés ; l'archivage
+  dans « Envoyés » ne dépose plus de copie en double ; les listes paginées du
+  dossier patient et du journal d'audit ne sautent ni ne répètent plus de
+  ligne ; la consommation de l'assistant IA est mesurée sur le décompte réel
+  du fournisseur.
 - **v1.67 — Fiabilisation de la suite de tests automatisés** (task-291) : la suite de tests du backend de la messagerie rougissait **au hasard** — un test différent échouait à presque chaque exécution complète, alors que chacun passait lancé seul. La cause dominante est identifiée et corrigée : les tests qui mesurent les compteurs internes de la plateforme s'observaient mutuellement, faute d'un mot-clé d'isolation manquant dans un mécanisme pourtant déjà en place. Un contrôle automatique empêche désormais la récidive, et il a immédiatement trouvé un cas oublié. **Enjeu réel malgré l'absence d'impact visible** : un filet de tests qui alerte au hasard apprend à ignorer ses alertes — et c'est lui qui garantit les vérifications de confidentialité livrées par task-184 (masquage des identifiants patient dans les journaux). Deux causes secondaires subsistent, documentées et sans correctif à ce stade sur décision produit : la suite peut encore échouer environ une exécution sur cinq. Aucun test n'a été désactivé. Aucun changement visible pour le praticien.
 - **v1.39 — Renforcement des tests automatisés de la messagerie** (task-082) : la couverture de tests du moteur de messagerie a été étendue (gestion des dossiers, brouillons, étiquettes, connexions sécurisées, rattachement des pièces jointes), ce qui consolide la fiabilité du service sans rien changer à son fonctionnement visible. Ce travail purement interne réduit le risque de régression lors des évolutions futures. Aucun changement visible pour le praticien.
 - **v1.38 — Diagnostic des listages de dossier lents** (task-081) : lorsqu'un dossier de la messagerie met longtemps à s'afficher, la supervision indique désormais précisément laquelle des quatre étapes de consultation de la boîte aux lettres a consommé le temps. Ce diagnostic permettra de cibler l'optimisation ou d'objectiver un ralentissement imputable à l'opérateur MSSanté. Seules des durées et des compteurs sont journalisés — aucune donnée de santé. Aucun changement visible pour le praticien.
