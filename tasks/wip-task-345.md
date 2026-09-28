@@ -194,7 +194,9 @@ Les parcours de la colonne de droite **restent couverts par `/qa`**, avec un log
 |---|---|---|---|---|---|---|
 | /start | ok | 27 s | — | — | — | api-mail, client-mobile |
 | /develop | ok | 1 h 04 min | 9 (2 min 00 s) | 8 (7 min 46 s) | — | api-mail 6B/3T, client-mobile 3B/5T, reprise après task-342 : 22/22 verts ×2, parité verte, §Q deux repos |
-| **Total cycle** | | **1 h 05 min** | **9 (2 min 00 s)** | **8 (7 min 46 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 12 min 03 s | 3 (49 s) | 11 (6 min 56 s) | 4 (1 min 12 s) | 1 itération(s), api-mail 3B/11T, Phase 1 : 1 CA1859 ; QG OK ; Phase 2 skip (structurel) |
+| /lint-angular | skipped | 0.5 s | — | — | — | client-angular non touché |
+| **Total cycle** | | **1 h 17 min** | **12 (2 min 49 s)** | **19 (14 min 43 s)** | **4 (1 min 12 s)** | |
 
 Autres commandes mesurées : restore ×1 (2.2 s)
 
@@ -227,3 +229,39 @@ Autres commandes mesurées : restore ×1 (2.2 s)
 - Commits poussés : api-mail `…c0fe8524`, client-mobile `…67f7f02`.
 - **Constats à router vers le PO** (hors périmètre) : (1) `AddNewMail` estampille la génération 0 en silence — le seed le contourne, un scénario « inbox ouverte sans lister les dossiers » le ferait voir ; (2) règle de `AttachmentCount` différente selon le chemin (en-têtes IMAP vs base) et deux constructeurs de `MailDto` qui ne la posent pas (`BackgroundEnrichmentProcessor.cs:314`, `MailRepository.cs:3295`) ; (3) dates : `SentDate = envelope.Date?.LocalDateTime` (famille AUD-28) ; (4) « Aucun contenu disponible » affiché pendant le chargement du détail.
 - Next step : `/sonar task-345`
+
+## Sonar log
+
+Mode A (chaîné depuis `/develop`), serveur SonarQube **9.9.8.100196** (`sonar.login`, port 9000 — conteneurs `sonarqube_db` puis `sonarqube` redémarrés au pré-vol), projet `healthplatform-api-mail`. 2 analyses complètes (begin → build Release → 5 passes OpenCover → end).
+
+**Provenance** : la new-code period du projet est `PREVIOUS_VERSION` ; Phase 1 = les findings posés sur des lignes **ajoutées par cette branche** (`git diff origin/develop...HEAD`), comme task-342. Le code applicatif (`src/`) de la branche se réduit à une ligne (`EmailBuildingService`, compteur de pièces jointes) ; l'outillage `tests/mss.mail.e2e` est analysé avec le jeu de règles de test et exclu de la couverture ; l'AppHost est exclu de l'analyse.
+
+- Phase 1 (lignes de task-345) : ✓ **0 finding restant**. Quality Gate **OK**, new_coverage = **98,3 %**
+- Phase 1 — Issues fixées : **1** code smell — CA1859 ×1 (`PlaywrightReport.ArrayOf`, type concret). Commit `5997a86b`
+- Phase 1 — Tests ajoutés : 0 (la ligne applicative de la branche est déjà couverte par `BuildHeaderOnlyMailDto_WithAttachments_CountsThem`)
+- Phase 2 (legacy) : itérations **0 / 5** — aucun lot traitable en batch : S107 ×8 (constructeurs et méthodes à 8-11 paramètres : structurel), S3604 ×2 (`ImapService`, `OfflineMailDataProvider`, code de task-342 : le corriger selon la convention rend `timeProvider` obligatoire, donc change les signatures et tous les appelants, hors périmètre)
+- Phase 2 — Issues fixées : 0 — Issues restantes : **10** (acceptation best-effort)
+- Hotspots : **0**
+- Build / tests : ✓ green (domain 190, application 3 267, infrastructure 665, api 1 084, integration 643 + 16 ignorés), sous instrumentation OpenCover, deux fois
+- `conventions/csharp.md` : CA1859 → occurrence 5 (variante task-345)
+
+### KPIs qualité (baseline → final)
+
+Baseline = analyse 1 de cette branche (serveur 9.9.8, 2026-09-28). Le serveur a rebasculé de 25.6 (task-342) vers 9.9 : ses chiffres ne sont pas comparables à ceux du log de task-342 (analyseurs python/javascript absents en 9.9).
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | → |
+| New coverage | 98,3 % | 98,3 % | ±0 pt |
+| New violations | 3 | 2 | −1 |
+| Bugs | 0 | 0 | ±0 |
+| Vulnerabilities | 0 | 0 | ±0 |
+| Security hotspots | 0 | 0 | ±0 |
+| Code smells | 11 | 10 | −1 |
+| Coverage (projet) | 98,2 % | 98,2 % | ±0 pt |
+| Duplication | 0,5 % | 0,5 % | ±0 pt |
+| Reliability / Security / Maintainability | A/A/A | A/A/A | → |
+
+## Lint log
+
+- `/lint-angular` : **skipped** — `client-angular` non listé dans `**Repos**:` (task-346 le couvrira), non touché par la task.

@@ -103,7 +103,10 @@ en C# 12 : deux spreads valent mieux qu'un `Concat`.
 
 ## CA1859 — type concret plutôt qu'interface pour un helper local
 
-**Occurrences : 4** (task-203, task-289, task-299, task-188 — quatrième récidive.
+**Occurrences : 5** (task-203, task-289, task-299, task-188, task-345 — cinquième récidive.
+Variante task-345 : un helper privé `ArrayOf(JsonElement, …)` déclaré
+`IEnumerable<JsonElement>` pour unifier `EnumerateArray()` et un repli vide — le type
+concret est ici `JsonElement[]` (`[.. array.EnumerateArray()] : []`).
 Variante task-299 : une méthode privée `async`-sans-`await` qui **rendait
 directement** la tâche concrète d'un appelé (`Task<bool>` du cache) sous un type
 déclaré `Task`. La consigne vaut donc aussi pour le **relais d'une tâche** : soit
