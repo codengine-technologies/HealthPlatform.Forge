@@ -21,7 +21,7 @@
 - **AUD-42 — SSRF par serveur de messagerie choisi par l'utilisateur** (Majeur, Probable) —
   `SettingsController.cs:53-66`, `MailServerDiscovery` (`FromUserConfig` prioritaire),
   `SmtpConnectionFactory.cs:60-61`, `ImapConnectionService.cs:87` : `Host: "redis"` ou IP interne accepté ;
-  jeton PSC présenté au serveur en OAuth2. → allowlist exploitant, refus des IP privées / loopback.
+  jeton PSC présenté au serveur en OAuth2. → ~~allowlist exploitant~~ **retiré de cette task le 2026-09-28** (arbitrage humain) : repris par **task-348** (serveur résolu côté api-mail uniquement, plus de saisie utilisateur). Commits `b052826a` et `a592b5f2` revertés (`e4543409`, `07209bf4`).
 - **AUD-59 — La politique de débit « sensitive » n'est appliquée nulle part** (Mineur) —
   `RateLimitingSetup.cs:60-76` : rattachement de boîte (connexion XOAUTH2 à chaque appel), routes IA,
   diagnostics sous le seul plafond global. → `[EnableRateLimiting]` sur ces routes.
@@ -84,7 +84,7 @@ test qui le reproduit.
 
 - [ ] Build passes (0 errors) — `cd Api/Mail && dotnet build HealthPlatform.Api.Mail.sln` ; Tests pass (0 failures, hors flaky pré-existants documentés)
 - [ ] **Pour chacun des 18 constats** : un test qui échoue sur le code actuel (log du run rouge consigné dans le task file) puis passe après correctif — un commit par constat
-- [ ] AUD-42 : `SaveSettings` avec un hôte hors allowlist ou une IP privée → 400 ; aucune connexion tentée
+- [x] ~~AUD-42 : `SaveSettings` avec un hôte hors allowlist ou une IP privée → 400 ; aucune connexion tentée~~ — **sorti du périmètre, repris par task-348**
 - [ ] AUD-33 : test sur **Postgres réel** (Testcontainers) — B → A et détachement de la boîte par défaut réussissent
 - [ ] AUD-36 : deux mails introduisant la même catégorie en parallèle → les deux complètement traités
 - [ ] AUD-41 : deux pièces homonymes → téléchargeables séparément, ZIP avec deux contenus distincts
@@ -96,7 +96,7 @@ test qui le reproduit.
 ## Manual Test Plan
 
 1. `cd Api/Mail && dotnet run --project src/AppHost` ; Blazor et mobile connectés à des boîtes de test.
-2. **Lot A** : enregistrer un serveur IMAP personnalisé `redis:6379` → refus ; détacher la boîte courante sur mobile puis recharger la gestion des boîtes → la liste s'affiche (plus de 403) ; télécharger en ZIP un mail dont une pièce s'appelle `..\x.bat` → entrée assainie.
+2. **Lot A** : détacher la boîte courante sur mobile puis recharger la gestion des boîtes → la liste s'affiche (plus de 403) ; télécharger en ZIP un mail dont une pièce s'appelle `..\x.bat` → entrée assainie.
 3. **Lot B** : praticien à deux boîtes, définir B par défaut puis revenir à A → succès ; recevoir un mail avec deux `resultat.pdf` → les deux s'ouvrent, distincts.
 4. **Lot C** : ouvrir un mail avant la fin de son analyse, attendre l'enrichissement, rouvrir → les documents CDA apparaissent ; mail de test daté de 00 h 30 → visible dans « reçus aujourd'hui ».
 5. **Lot D** : `POST /api/v1/diagnostics/test-similarity` sur une boîte non vide → 200 ; forcer une erreur sur la route des tags → réponse `application/problem+json`.
@@ -107,7 +107,7 @@ test qui le reproduit.
 - **Vague Ségur** : V2
 - **Exigences DSR honorées** : non applicable — fiabilité et sécurité de fonctionnalités existantes
 - **INS** : non applicable
-- **Authentification PS** : PSC / e-CPS inchangée ; le jeton PSC n'est plus présenté à un serveur hors allowlist (AUD-42)
+- **Authentification PS** : PSC / e-CPS inchangée (AUD-42 sorti du périmètre → task-348)
 - **Habilitations** : inchangées ; routes de gestion des boîtes accessibles même avec une boîte courante devenue invalide
 - **Interop CI-SIS** : Annuaire Santé FHIR R4 (`PractitionerRole`) — lecture de tous les rôles (AUD-64)
 - **Tracé PGSSI-S** : inchangé ; les erreurs rendues passent par `ProblemDetails` sans donnée
@@ -159,7 +159,7 @@ test qui le reproduit.
 
 ### Points d'attention pour la revue / le HAG
 
-- **AUD-42 — changement de comportement** : un hôte IMAP/SMTP personnalisé hors liste d'autorisation → 400 à l'enregistrement, et repli silencieux sur le serveur du domaine à la connexion. **La production doit renseigner `MailServers:AllowedUserServerHosts`** pour tout serveur personnalisé légitime (vide par défaut ; les hôtes de `MailServers.Domains` sont toujours autorisés). Profil loadtest de l'AppHost : `localhost` + `$MSS_LOADTEST_MAIL_HOST` autorisés.
+- **AUD-42 — ⚠️ REVERTÉ le 2026-09-28** (`e4543409` revert de `a592b5f2`, `07209bf4` revert de `b052826a`, conflit sur `UserMailServerHostPolicyTests.cs` résolu par suppression) : arbitrage humain, allowlist abandonnée, repris par **task-348**. Le paragraphe suivant ne s'applique plus. ~~Changement de comportement~~ : un hôte IMAP/SMTP personnalisé hors liste d'autorisation → 400 à l'enregistrement, et repli silencieux sur le serveur du domaine à la connexion. **La production doit renseigner `MailServers:AllowedUserServerHosts`** pour tout serveur personnalisé légitime (vide par défaut ; les hôtes de `MailServers.Domains` sont toujours autorisés). Profil loadtest de l'AppHost : `localhost` + `$MSS_LOADTEST_MAIL_HOST` autorisés.
 - **AUD-59** : la politique `sensitive` (10 req / 60 s par utilisateur, configurable) est partagée par rattachement de boîte, test IMAP, IA, chat (création + stream) et diagnostics.
 - **AUD-41 — suivi fronts** : paramètre optionnel `?occurrence=k` sur `GET …/download/attachment/{name}` (rang parmi les homonymes, 0 par défaut = comportement historique). Le ZIP est correct sans changement front ; **le téléchargement unitaire du 2ᵉ homonyme demande que Blazor / Angular / mobile passent `occurrence`** — hors `**Repos**:` de cette task, à router vers le PO.
 - **AUD-36** : `AddNewMail` devient transactionnel — un échec après l'insert ne laisse plus de mail à moitié traité ; il est rejoué au passage suivant.
@@ -561,6 +561,15 @@ Le QG reste ERROR à cause de la dette antérieure de la période
 `PREVIOUS_VERSION` (issues listées au reliquat, et hotspots non revus). La
 branche n'y contribue plus aucune issue.
 
+## Lint log
+
+- `/lint-angular` : **skipped** — `client-angular` non listé dans `**Repos**:`, non touché par la task.
+- `/lint-mobile` : **skipped** — `client-mobile` non listé dans `**Repos**:`, non touché par la task.
+
+## Visual verify log
+
+- `/verify-visual` : **skipped** — aucun écran `client-mobile` touché (task api-mail uniquement).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-342 --sync` — ne pas éditer à la main)*
@@ -570,4 +579,7 @@ branche n'y contribue plus aucune issue.
 | /start | ok | 6 min 56 s | — | — | — | — |
 | /develop | ok | 5 h 31 min | 20 (5 min 18 s) | 97 (37 min 46 s) | — | api-mail 20B/97T |
 | /sonar | ok | 1 h 11 min | 8 (3 min 58 s) | 28 (36 min 02 s) | 4 (8 min 12 s) | 3 itération(s), api-mail 8B/28T |
+| /lint-angular | skipped | 1.9 s | — | — | — | client-angular non listé dans Repos, non touché |
+| /lint-mobile | skipped | 2.9 s | — | — | — | client-mobile non listé dans Repos, non touché |
+| /verify-visual | skipped | 1.6 s | — | — | — | aucun écran client-mobile touché |
 | **Total cycle** | | **6 h 49 min** | **28 (9 min 16 s)** | **125 (1 h 13 min)** | **4 (8 min 12 s)** | |
