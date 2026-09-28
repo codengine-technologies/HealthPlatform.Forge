@@ -205,7 +205,8 @@ déclare une fois.
 
 ## S3267 — une boucle qui ne fait que chercher s'écrit avec `Contains`/`Any`
 
-**Occurrences : 1** (task-184)
+**Occurrences : 2** (task-184, task-342 — variante : une boucle qui **filtre**,
+`foreach … if (pred) list.Add(x.Uid)`, s'écrit `Where(pred).Select(…).ToList()`)
 
 Écrit sans y penser dans un helper d'appartenance : un `foreach` sur un tableau
 de constantes, un `if` de comparaison, un `return true`. La forme explicite
@@ -238,7 +239,9 @@ dans `string.Equals`, mais `StringComparer` dans `Contains`.
 
 ## S125 — une prose qui « ressemble à du code » est signalée comme code commenté
 
-**Occurrences : 5** (task-184, task-292, task-188, task-322, task-171 — cinquième
+**Occurrences : 6** (task-184, task-292, task-188, task-322, task-171, task-342 —
+sixième récidive : « the first role gives profession, specialty and structure ; »,
+un point-virgule en fin de ligne dans un commentaire d'intention. Cinquième
 récidive sur code frais. Variante task-171 : deux commentaires d'intention en anglais
 « « online » means a PSC token is obtainable through the proxy ; the token itself is
 resolved at authentication time » — guillemets typographiques, point-virgule et
@@ -666,3 +669,81 @@ résolution, et le paramètre `IConfiguration` est resté dans la signature.
 **Consigne** : après avoir déplacé la lecture d'une dépendance, relire la
 signature de la méthode et son appelant — un paramètre orphelin est le résidu
 le plus courant d'un refactor « lu au point d'usage plutôt qu'à l'enregistrement ».
+
+---
+
+## S2302 — un nom de paramètre cité dans un message s'écrit `nameof(...)`
+
+**Occurrences : 1** (task-342 — `MailController.DownloadAttachment`)
+
+Un message d'exception de validation qui **contient le nom du paramètre** comme
+mot (« The attachment occurrence must be zero or positive. », paramètre
+`occurrence`) est signalé : si le paramètre est renommé, le message ment.
+
+```csharp
+// ❌ AVANT
+throw new ValidationException("The attachment occurrence must be zero or positive.");
+
+// ✅ APRÈS — même texte, lié au symbole
+throw new ValidationException($"The attachment {nameof(occurrence)} must be zero or positive.");
+```
+
+**Consigne** : dans un message qui nomme un paramètre, utiliser `nameof`. En
+français, le piège est l'homonymie (« du contact {contactId} » avec un paramètre
+`contact`) : reformuler (« de la fiche {contactId} ») plutôt que d'injecter un
+identifiant anglais dans une phrase française.
+
+---
+
+## S4136 — les surcharges d'une méthode sont adjacentes
+
+**Occurrences : 1** (task-342 — `Infrastructure.Mock/Repository/MailRepository`)
+
+Ajouter une surcharge (ici le paramètre `occurrence` de `GetAttachmentAsync` /
+`UpdateAttachmentAsync`) **en bas de la classe** ou groupée avec l'autre
+surcharge nouvelle sépare chaque surcharge de sa sœur.
+
+**Consigne** : une nouvelle surcharge s'insère **juste sous** la surcharge
+existante du même nom, jamais en bloc « les nouveautés ensemble ».
+
+---
+
+## xUnit1045 — une donnée de théorie `object` n'est pas sérialisable
+
+**Occurrences : 1** (task-342 — `RuleTwelveRemainingResponsesIntegrationTests`)
+
+`TheoryData<string, string, object>` avec des objets anonymes comme corps de
+requête : xUnit ne peut pas sérialiser la ligne, l'explorateur de tests ne voit
+qu'un seul cas.
+
+```csharp
+// ❌ AVANT
+public static TheoryData<string, string, object> InvalidModels => new()
+{
+    { "POST", "/api/v1/search/semantic", new { query = "bilan", maxResults = 999 } },
+};
+// ... Content = JsonContent.Create(body)
+
+// ✅ APRÈS — le corps voyage en JSON
+private static string Json(object body) => JsonSerializer.Serialize(body);
+public static TheoryData<string, string, string> InvalidModels => new()
+{
+    { "POST", "/api/v1/search/semantic", Json(new { query = "bilan", maxResults = 999 }) },
+};
+// ... Content = new StringContent(body, Encoding.UTF8, "application/json")
+```
+
+**Consigne** : les données de théorie sont des types primitifs, des chaînes ou
+des types `IXunitSerializable` — un corps de requête se passe en chaîne JSON.
+
+---
+
+## S2699 — un test « ne lève pas » affirme quelque chose
+
+**Occurrences : 1** (task-342 — `UserMailServerHostPolicyTests`, deux tests
+`…_Succeeds` réduits à un `await` sans assertion)
+
+**Consigne** : un test dont l'attendu est « aucune exception » s'écrit
+`var error = await Record.ExceptionAsync(() => …); Assert.Null(error);` — et
+ajoute, quand il existe, l'effet de bord qui prouve le chemin pris (par exemple
+`DidNotReceiveWithAnyArgs()` sur le collaborateur qui ne doit pas être appelé).

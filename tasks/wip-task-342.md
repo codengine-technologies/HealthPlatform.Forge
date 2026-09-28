@@ -507,6 +507,60 @@ Filters/ErrorHandling/Account/Guard/Architecture 141/141.
 
 **Commit** : `51b43d19`
 
+## Sonar log
+
+Mode A (chaîné depuis `/develop`), serveur SonarQube 25.6.0 (`sonar.token`), projet
+`healthplatform-api-mail`. 4 analyses complètes (begin → build Release → 5 passes
+OpenCover → end), dont une rejouée (voir « Incident » plus bas).
+
+**Provenance** : la new-code period du projet est `PREVIOUS_VERSION` depuis le
+2026-04-17. **Toutes** les issues ouvertes du projet tombent donc dans le new code
+au sens Sonar. Phase 1 = les findings posés sur des lignes **ajoutées par cette
+branche** (`git diff -U0 origin/develop...HEAD`, puis `git blame` sur les cas limites).
+Phase 2 = tout le reste, blacklist appliquée.
+
+- Phase 1 (lignes de task-342) : ✓ **0 finding restant** sur les lignes de la branche. Couverture des lignes et conditions ajoutées = **96,5 %** (434/439 lignes, 175/192 conditions), au-dessus de la cible de 95 % (94,4 % avant les nouveaux tests)
+- Phase 1 — Issues fixées : **9**, toutes des code smells (0 bug, 0 vulnérabilité, 0 hotspot sur les lignes de la branche) :
+  S2302 ×1, S125 ×1, S3267 ×1, S4136 ×2, xUnit1045 ×2, S2699 ×2. Commits `460bf032` et `029575bf`
+- Phase 1 — Tests ajoutés : **22 cas** (7 + 15) — `AiTokenUsageReaderTests` (7), et `UserMailServerHostPolicyTests` (plages internes restantes, voisins publics, résolution vide ou `ArgumentException`, hôte absent). Commit `a164a56a`
+- Phase 2 (legacy) : itérations **2 / 5**, arrêt faute de lot traitable en batch (voir le reliquat)
+  - Itération 1 : S103 ×11, S125 ×2, S4027 ×2, S113, S2302 (C#), plus les bugs python S3923 et S1244. Commits `deabebc0`, `ad18486c`, `27c68358`. Issues **94 → 75** (−20 %)
+  - Itération 2 : python S1192 ×7, S3358 ×4, S1172 ×2 ; javascript S6582 ×3, S6035, S4624 ×2. Commits `be405b08`, `796474f9`, `01ccff57`. Issues **75 → 56** (−25 %)
+- Phase 2 — Issues fixées : **38**
+- Phase 2 — Issues restantes : **56** (acceptation best-effort) :
+  - python/javascript S3776 ×24 : complexité cognitive, relève de `/sonar-s3776`
+  - javascript S1940 ×20 : `!(x > 0)` est une **garde volontaire contre NaN/undefined**. `x <= 0` changerait le comportement, donc non corrigé
+  - C# S4462 ×3 (`AuditService`, sync-over-async), S2952 ×2 (`MailClientSession` : disposition des verrous dans la fermeture asynchrone de task-335, pas dans `Dispose`), S138 ×3 (méthodes longues antérieures), S1067 ×1 : structurel ou comportemental, hors batch
+  - javascript S2486 ×3 : `catch` volontairement muets, commentés
+- Hotspots : 13 `TO_REVIEW` dans la new-code period, **aucun sur une ligne de task-342** (k6 PRNG S2245, `http://` des tests python S5332, regex S5852, Dockerfile S6504, logger S4792). Leur statut est laissé à la revue humaine
+- Build / tests : ✓ green. Dernière analyse : domain 190, application 3 317, infrastructure 665, api 1 031, integration 645 (+16 ignorés) ; python `unittest` 390 OK ; `node --test` 121 OK. Poussé jusqu'à `01ccff57` (pre-push vert)
+- Incident (analyse 3) : passe d'intégration OpenCover **figée ~20 min**. Seul le conteneur dovecot était monté, sans Postgres, et le testhost ne consommait pas de CPU. Arbre tué par l'orchestrateur. Rejouée avec `--blame-hang-timeout 8m` : **aucun test figé** (645/645, deux fois de suite). Il s'agit d'un démarrage testcontainers bloqué, transitoire, sans lien avec un test de la branche. Aucune exclusion `--filter` nécessaire
+- Rouge isolé (analyse 1) : `PgBouncerTransactionPoolingTests.ConcurrentClients_AreMultiplexed_OntoBoundedPostgresBackends`, vert seul (7/7) et vert aux analyses suivantes. Fichier non touché par la branche : flaky de charge
+
+### KPIs qualité (baseline → final)
+
+Baseline = analyse 1 de cette branche (368ba75b, 2026-09-28 18:44 UTC). Pour
+mémoire, la dernière analyse du serveur avant le run portait sur une autre
+révision (64e36465, 2026-09-27) : bugs 2, code smells 89, couverture 91,6 %,
+new_coverage 92,6 %, fiabilité C.
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | ERROR | ERROR | → (`new_violations` 103 → 56, `new_security_hotspots_reviewed` 0 %) |
+| New coverage | 98,4 % | 98,4 % | ±0 pt |
+| Couverture des lignes de task-342 | 94,4 % | 96,5 % | +2,1 pt |
+| Bugs | 4 | 2 | −2 |
+| Vulnerabilities | 0 | 0 | ±0 |
+| Security hotspots | 15 | 15 | ±0 |
+| Code smells | 99 | 54 | −45 |
+| Coverage (projet) | 98,2 % | 98,2 % | ±0 pt |
+| Duplication | 0,4 % | 0,4 % | ±0 pt |
+| Reliability / Security / Maintainability | D/A/A | D/A/A | → (D = S2952 legacy de `MailClientSession`) |
+
+Le QG reste ERROR à cause de la dette antérieure de la période
+`PREVIOUS_VERSION` (issues listées au reliquat, et hotspots non revus). La
+branche n'y contribue plus aucune issue.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-342 --sync` — ne pas éditer à la main)*
@@ -515,4 +569,5 @@ Filters/ErrorHandling/Account/Guard/Architecture 141/141.
 |---|---|---|---|---|---|---|
 | /start | ok | 6 min 56 s | — | — | — | — |
 | /develop | ok | 5 h 31 min | 20 (5 min 18 s) | 97 (37 min 46 s) | — | api-mail 20B/97T |
-| **Total cycle** | | **5 h 38 min** | **20 (5 min 18 s)** | **97 (37 min 46 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 1 h 11 min | 8 (3 min 58 s) | 28 (36 min 02 s) | 4 (8 min 12 s) | 3 itération(s), api-mail 8B/28T |
+| **Total cycle** | | **6 h 49 min** | **28 (9 min 16 s)** | **125 (1 h 13 min)** | **4 (8 min 12 s)** | |
