@@ -601,3 +601,10 @@ branche n'y contribue plus aucune issue.
 - ⚠️ AUD-54 : `UpdateRunningSummaryAsync` en fire-and-forget incrémente `TotalTokensUsed` en parallèle (préexistant).
 
 **Validation `/review`** : build 0 erreur ; tests domain 190, infrastructure 665, application 3 266, api 1 031, integration 639 verts (+16 ignorés). 1 intermittent `SearchUseCaseTests.RechercheParPatient_NeRendQueLesDocumentsDeCePatientAsync`, vert en relance et **également intermittent sur `develop`** (1/8) — pré-existant.
+
+## Merged
+
+- **Date** : 2026-09-28 — `/merge task-342 --i-tested` (Manual Test Plan validé par l'humain, HAG)
+- `api-mail` : PR #258 squash-mergée → `bf02f565` ; label `awaiting-human-merge` retiré ; branche `fix/task-342-durcissement-messagerie` supprimée (distante + locale)
+- CI `develop` : ✅ https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/36479436860
+- Suivis ouverts : AUD-42 → task-348 ; AUD-41 côté fronts (paramètre `occurrence`) → PO
