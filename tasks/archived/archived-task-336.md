@@ -217,3 +217,18 @@ infrastructure 665, api 1010, integration 605/621 (16 ignorés) ; Blazor 347/347
 | **Total cycle** | | **2 h 00 min** | **9 (4 min 06 s)** | **22 (1 h 19 min)** | **3 (2 min 04 s)** | |
 
 Autres commandes mesurées : lint ×1 (38 s)
+
+## Merged
+
+Merged le 2026-09-28 par `/merge task-336 --i-tested` (HAG attesté par l'humain). Squash, ordre topologique api-mail → client-blazor → client-mobile.
+
+| Repo | PR | Squash commit | CI `develop` |
+|---|---|---|---|
+| `api-mail` | [#257](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/257) | `cea97189cac629849c31fa926d8432c2d416628a` | ✓ [36409548685](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/36409548685) |
+| `client-blazor` | [#85](https://github.com/codengine-technologies/HealthPlatform.Client/pull/85) | `086cc816cc9cdcd2f73554d3226165ab434d5bad` | ✓ [36410929596](https://github.com/codengine-technologies/HealthPlatform.Client/actions/runs/36410929596) |
+| `client-mobile` | [#80](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/80) | `60339cf554d412fe3f808aeb0acbdac69ed4c800` | ✓ [36410952249](https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/36410952249) |
+
+- Label `awaiting-human-merge` retiré des trois PRs.
+- Branche `fix/task-336-sse-follows-selected-mailbox` supprimée (distante + locale) sur les trois repos ; clones revenus sur `develop`.
+- Staging : aucune branche `forge/staging-task-*` (task hors run `/forge`).
+- Incident : `git pull` bloqué sur `git credential-manager get` (invite GUI invisible) — contourné via `credential.helper='!gh auth git-credential'` + `GIT_TERMINAL_PROMPT=0`.
