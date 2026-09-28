@@ -193,8 +193,8 @@ Les parcours de la colonne de droite **restent couverts par `/qa`**, avec un log
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 27 s | — | — | — | api-mail, client-mobile |
-| /develop | failed | 1 h 11 min | 5 (1 min 08 s) | 3 (2 min 32 s) | — | api-mail 4B/1T, client-mobile 1B/2T, arbitrage humain : E2E-BIO-001 rouge sur AUD-27 (questions/task-345.md) |
-| **Total cycle** | | **1 h 11 min** | **5 (1 min 08 s)** | **3 (2 min 32 s)** | **0 (0.0 s)** | |
+| /develop | ok | 1 h 04 min | 9 (2 min 00 s) | 8 (7 min 46 s) | — | api-mail 6B/3T, client-mobile 3B/5T, reprise après task-342 : 22/22 verts ×2, parité verte, §Q deux repos |
+| **Total cycle** | | **1 h 05 min** | **9 (2 min 00 s)** | **8 (7 min 46 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : restore ×1 (2.2 s)
 
@@ -215,3 +215,15 @@ Autres commandes mesurées : restore ×1 (2.2 s)
 - Passe qualité (/simplify) : **différée à la reprise** (avant le push)
 - DOD self-check : non tenu sur « run vert deux fois de suite » tant que E2E-BIO-001 est rouge
 - Next step : **arrêt — `questions/task-345.md`**
+
+### Reprise du 2026-09-28 (après merge de task-342)
+
+- Synchro : `origin/develop` mergé dans les deux branches (sans conflit). AUD-27 (task-342) ne suffisait PAS : la vraie cause de `E2E-BIO-001` rouge était la **génération UIDVALIDITY 0** — `AddNewMail` estampille les mails seedés en génération 0 quand la ligne `MailFolders` n'existe pas encore ; dès la vraie génération persistée, la lecture en base les ignore et le détail retombe sur IMAP, sans document CDA. Correctif **harnais** (même remède que la chauffe du banc, `f209ce8`) : le seed liste les dossiers avant le premier enrichissement, et vérifie que le CR de biologie est servi par la base.
+- Tests adaptés : le CR de biologie hors normes, désormais servi enrichi, est **épinglé en tête** de l'inbox → en headless chaque parcours désigne son message seedé par son objet ; la réception attend SON objet ; gestes amenés à l'écran.
+- **Filet : 2 runs consécutifs verts, 22/22, 0 flaky, parité verte**, ~3 min par run (159 s après la passe qualité).
+- **Preuve que le filet mord** : régression plantée dans l'app (filtre « Non lus » qui renvoie tout) → `E2E-INBOX-001` rouge, code 1 ; mutation annulée.
+- Suites des repos : api-mail **5 849 verts**, 0 échec (16 ignorés préexistants) ; mobile **947/947** (un flaky préexistant identifié, `MailboxSwitcherComponent`, fichier non touché — rouge seul, vert en suite complète).
+- Passe qualité (/simplify), deux repos : appliquée et re-validée — mobile `ba01ecf` + `67f7f02`, api-mail `c0fe8524` (détail dans les messages de commit). Écartés : déplacer `BenchImap` / écriture des réglages / en-têtes de bypass vers `testing.shared` (hors diff), connexions persistantes du relais, état de chargement de l'app (changement de comportement).
+- Commits poussés : api-mail `…c0fe8524`, client-mobile `…67f7f02`.
+- **Constats à router vers le PO** (hors périmètre) : (1) `AddNewMail` estampille la génération 0 en silence — le seed le contourne, un scénario « inbox ouverte sans lister les dossiers » le ferait voir ; (2) règle de `AttachmentCount` différente selon le chemin (en-têtes IMAP vs base) et deux constructeurs de `MailDto` qui ne la posent pas (`BackgroundEnrichmentProcessor.cs:314`, `MailRepository.cs:3295`) ; (3) dates : `SentDate = envelope.Date?.LocalDateTime` (famille AUD-28) ; (4) « Aucun contenu disponible » affiché pendant le chargement du détail.
+- Next step : `/sonar task-345`
