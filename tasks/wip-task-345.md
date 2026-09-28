@@ -197,6 +197,7 @@ Les parcours de la colonne de droite **restent couverts par `/qa`**, avec un log
 | /sonar | ok | 12 min 03 s | 3 (49 s) | 11 (6 min 56 s) | 4 (1 min 12 s) | 1 itération(s), api-mail 3B/11T, Phase 1 : 1 CA1859 ; QG OK ; Phase 2 skip (structurel) |
 | /lint-angular | skipped | 0.5 s | — | — | — | client-angular non touché |
 | /lint-mobile | ok | 26 s | — | — | — | 0 erreur baseline |
+| /verify-visual | skipped | 0.4 s | — | — | — | aucun écran redessiné, outillage absent |
 | **Total cycle** | | **1 h 17 min** | **12 (2 min 49 s)** | **19 (14 min 43 s)** | **4 (1 min 12 s)** | |
 
 Autres commandes mesurées : lint ×1 (16 s), restore ×1 (2.2 s)
@@ -267,3 +268,7 @@ Baseline = analyse 1 de cette branche (serveur 9.9.8, 2026-09-28). Le serveur a 
 
 - `/lint-angular` : **skipped** — `client-angular` non listé dans `**Repos**:` (task-346 le couvrira), non touché par la task.
 - `/lint-mobile` : ✓ **0 erreur, 0 avertissement** dès la baseline (`ng lint`, périmètre `src/**/*.ts|html`) — 0 itération, aucun commit. Les fichiers `src/` touchés par la branche : `inbox.page.ts` (+ spec), `mail-folder-list.component.*` (ramenés à l'état de develop).
+
+## Visual verify log
+
+- `/verify-visual` : **skipped** — aucun écran `client-mobile` redessiné (aucun `.html`/`.scss` touché sous `src/` ; seul changement applicatif : la page inbox ferme le menu des dossiers après un choix), aucun `## Stitch design log`, et `Tools/visual-verify/` absent du poste. Les parcours eux-mêmes sont vérifiés par le filet headless de cette task (22/22).

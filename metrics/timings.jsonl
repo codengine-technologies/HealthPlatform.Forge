@@ -2312,3 +2312,5 @@
 {"ts":"2026-09-28T23:56:18+02:00","run_id":"-","type":"step_start","task":"task-345","step":"lint-mobile"}
 {"ts":"2026-09-28T23:56:35+02:00","run_id":"-","type":"cmd","task":"task-345","step":"lint-mobile","repo":"client-mobile","kind":"lint","label":"","cwd":"Client/Mobile","cmd":"npm run lint","duration_ms":16427,"exit_code":0}
 {"ts":"2026-09-28T23:56:44+02:00","run_id":"-","type":"step","task":"task-345","step":"lint-mobile","status":"ok","note":"0 erreur baseline","iterations":0,"duration_ms":26085}
+{"ts":"2026-09-28T23:57:07+02:00","run_id":"-","type":"step_start","task":"task-345","step":"verify-visual"}
+{"ts":"2026-09-28T23:57:07+02:00","run_id":"-","type":"step","task":"task-345","step":"verify-visual","status":"skipped","note":"aucun écran redessiné, outillage absent","iterations":null,"duration_ms":467}
