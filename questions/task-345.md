@@ -62,3 +62,10 @@ couper le filet précisément là où il vient de mordre.
   dans la liste (jusqu'à 2 h d'écart constatées). C'est la famille d'**AUD-28** (task-342, lot C).
 - **« Aucun contenu disponible »** s'affiche pendant le chargement du détail d'un mail, avant
   l'arrivée du corps. C'est trompeur pour le praticien. Petite US mobile possible.
+
+## Réponse humaine (2026-09-28)
+
+**(c) Laisser rouge.** task-345 reste en `wip`, chaîne arrêtée. Elle reprend **après la correction
+d'AUD-27 par task-342** (lot C) : rejouer `npm run e2e:headless` ; si `E2E-BIO-001` et
+`E2E-DETAIL-002` passent, deux runs verts de suite, puis passe qualité `/simplify`, push, et
+`/sonar` → `/review`.

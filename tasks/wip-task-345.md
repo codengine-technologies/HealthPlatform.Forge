@@ -1,7 +1,7 @@
 # todo-task-345.md — Filet e2e headless client-mobile : les parcours du médecin rejoués sans login humain, contre le vrai backend
 
 **Repos**: api-mail, client-mobile
-**Dependencies**: — (aucune)
+**Dependencies**: — (aucune) · **reprise bloquée par AUD-27 (task-342, lot C)** — voir `questions/task-345.md`
 **Epic**: E018
 **EpicTitle**: Filet de non-régression fonctionnel — parcours e2e headless
 **Single frontend**: true
