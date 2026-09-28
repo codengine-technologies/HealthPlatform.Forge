@@ -196,9 +196,10 @@ Les parcours de la colonne de droite **restent couverts par `/qa`**, avec un log
 | /develop | ok | 1 h 04 min | 9 (2 min 00 s) | 8 (7 min 46 s) | — | api-mail 6B/3T, client-mobile 3B/5T, reprise après task-342 : 22/22 verts ×2, parité verte, §Q deux repos |
 | /sonar | ok | 12 min 03 s | 3 (49 s) | 11 (6 min 56 s) | 4 (1 min 12 s) | 1 itération(s), api-mail 3B/11T, Phase 1 : 1 CA1859 ; QG OK ; Phase 2 skip (structurel) |
 | /lint-angular | skipped | 0.5 s | — | — | — | client-angular non touché |
+| /lint-mobile | ok | 26 s | — | — | — | 0 erreur baseline |
 | **Total cycle** | | **1 h 17 min** | **12 (2 min 49 s)** | **19 (14 min 43 s)** | **4 (1 min 12 s)** | |
 
-Autres commandes mesurées : restore ×1 (2.2 s)
+Autres commandes mesurées : lint ×1 (16 s), restore ×1 (2.2 s)
 
 ## Develop log
 
@@ -265,3 +266,4 @@ Baseline = analyse 1 de cette branche (serveur 9.9.8, 2026-09-28). Le serveur a 
 ## Lint log
 
 - `/lint-angular` : **skipped** — `client-angular` non listé dans `**Repos**:` (task-346 le couvrira), non touché par la task.
+- `/lint-mobile` : ✓ **0 erreur, 0 avertissement** dès la baseline (`ng lint`, périmètre `src/**/*.ts|html`) — 0 itération, aucun commit. Les fichiers `src/` touchés par la branche : `inbox.page.ts` (+ spec), `mail-folder-list.component.*` (ramenés à l'état de develop).
