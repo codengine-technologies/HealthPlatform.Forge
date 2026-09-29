@@ -246,3 +246,12 @@ Autres commandes mesurées : lint ×3 (59 s), restore ×2 (1 min 18 s)
 - Suggestions restantes, non bloquantes :
   - protéger le `finally` de SETTINGS-001/002 contre une page qui n'est pas sur les Paramètres ;
   - attendre `.mail-list-empty` dans Brouillons.
+
+## Merged
+
+- 2026-09-29, `/merge task-346 --i-tested` (validation humaine attestée).
+- `api-mail` #260 → squash `9aa16e4e` sur `develop`, CI « Build and Publish » verte. Branche `feat/task-346-filet-e2e-headless-angular` supprimée (distant et local).
+- `client-angular` (TFS, code-only) : **pas encore commité** au moment du `/merge`. Les fichiers de la suite restent non commités sur `feature/nova-rewriting-mss`, et le clone est laissé sur cette branche.
+  - Fichiers : `front/e2e/mss-e2e/**`, `front/package.json`, `front/package-lock.json`, `front/tsconfig.json`.
+  - Reste à faire par l'humain : commit, push TFS, PR.
+  - Les deux fichiers `environment.ts` restent hors du commit.
