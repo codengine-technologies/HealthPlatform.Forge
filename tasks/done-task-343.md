@@ -125,7 +125,8 @@ redémarrage d'un pod.
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 6 min 03 s | — | — | — | e2e ×9 (18 min 15 s), rejoué après revue 2 |
 | /review | ok | 50 min 05 s | 1 (4.2 s) | 1 (2 min 23 s) | — | api-mail 1B/1T, APPROVED (3e passage), PR api-mail #263 |
-| **Total cycle** | | **1 h 50 min** | **21 (2 min 39 s)** | **30 (37 min 39 s)** | **8 (2 min 22 s)** | |
+| /tech-writer | ok | 1 min 01 s | — | — | — | — |
+| **Total cycle** | | **1 h 51 min** | **21 (2 min 39 s)** | **30 (37 min 39 s)** | **8 (2 min 22 s)** | |
 
 ## Develop log
 

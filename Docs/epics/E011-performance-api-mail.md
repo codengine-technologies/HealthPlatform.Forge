@@ -2,10 +2,10 @@
 
 > **Statut** : 🟢 En cours
 > **Modèle** : task-driven
-> **Version** : 1.0
+> **Version** : 1.18
 > **Auteur** : PO forge (audit performance du 2026-06-10)
 > **Audience** : PO, médecin, direction — la vue ingénierie vit dans [E011-Changelogs.md](E011-Changelogs.md)
-> **Dernière mise à jour** : 2026-09-27
+> **Dernière mise à jour** : 2026-09-30
 
 ---
 
@@ -22,7 +22,7 @@
 - [7. Contraintes et hypothèses](#7-contraintes-et-hypothèses)
 - [8. Critères d'acceptation de l'EPIC](#8-critères-dacceptation-de-lepic)
 - [9. Hors périmètre](#9-hors-périmètre)
-- [État de couverture (2026-09-27)](#état-de-couverture-2026-09-27)
+- [État de couverture (2026-09-30)](#état-de-couverture-2026-09-30)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -79,6 +79,7 @@ changer ni l'apparence ni le comportement métier de l'application.
 | E011-F010 | Exports en flux continu | L'export d'un message (EML, PDF) est transmis au fur et à mesure de sa construction, sans limite de taille pratique | Aucune |
 | E011-F011 | Enrichissement non bloquant | Pendant qu'un lot de messages s'enrichit en arrière-plan (corps, documents médicaux), la navigation dans les dossiers et les listes reste immédiate | Aucune |
 | E011-F012 | Liste des dossiers accélérée | Le chargement de la liste des dossiers n'interroge plus le serveur dossier par dossier : un seul échange suffit, sans réapparition des dossiers fantômes | Aucune |
+| E011-F013 | Plusieurs serveurs, un seul comportement | Le service tourne sur plusieurs serveurs en parallèle : les notifications en temps réel et les conversations de l'assistant ne dépendent plus du serveur qui répond | Aucune |
 
 ---
 
@@ -148,7 +149,7 @@ graph LR
 
 ---
 
-## État de couverture (2026-09-27)
+## État de couverture (2026-09-30)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---------|--------|------------|---------------------|
@@ -164,8 +165,9 @@ graph LR
 | E011-F010 Exports en flux | ✅ Mergée sur develop | 100% | task-077 |
 | E011-F011 Enrichissement non bloquant | ✅ Mergée sur develop | 100% | task-079 |
 | E011-F012 Liste des dossiers accélérée | ✅ Mergée sur develop | 100% | task-080 |
+| E011-F013 Plusieurs serveurs, un seul comportement | 🟡 Livrée, en attente de validation humaine | notifications en temps réel et assistant ; l'analyse unique d'un mail ouvert sur deux appareils reste à faire | task-343, task-344 |
 
-**Couverture EPIC consolidée : 100 % implémenté** — les douze features sont livrées et validées. L'EPIC reste ouvert parce que le serveur continue de recevoir des améliorations ciblées, sans nouvelle fonctionnalité : les compléments sur l'accès aux données et la première étape de fiabilisation des connexions à la messagerie (task-324) sont validés ; la seconde étape — aucune connexion fermée pendant qu'elle sert, lecture comme envoi (task-335) — attend sa validation humaine.
+**Couverture EPIC consolidée : 12 features sur 13 livrées et validées**, la treizième livrée en partie et en attente de validation humaine. L'EPIC reste ouvert parce que le serveur continue de recevoir des améliorations ciblées, sans nouvelle fonctionnalité : les compléments sur l'accès aux données et la première étape de fiabilisation des connexions à la messagerie (task-324) sont validés ; la seconde étape — aucune connexion fermée pendant qu'elle sert, lecture comme envoi (task-335) — attend sa validation humaine. Nouvelle feature F013 : quand le service tourne sur plusieurs serveurs, les notifications en temps réel et l'assistant se comportent comme sur un seul (task-343, en attente de validation) ; l'analyse unique d'un mail ouvert sur deux appareils suit (task-344).
 
 ---
 
@@ -183,6 +185,14 @@ graph LR
 - v1.10 — La vérification des certificats de l'Espace de Confiance refuse désormais systématiquement un certificat révoqué, sur tous les chemins de contrôle (correction d'une faille latente détectée pendant le chantier). En cas d'indisponibilité du service de vérification de l'ANS, le comportement est arbitré et validé humainement : une vérification récente reste acceptée pendant 4 heures au maximum, avec un évènement journalisé à chaque acceptation dégradée ; au-delà, la connexion est refusée (task-069).
 
 ### Technique / observabilité (sans impact utilisateur direct)
+- v1.18 — **Le service tourne sur plusieurs serveurs, et le praticien ne le voit plus.**
+  - Jusqu'ici, deux choses dépendaient du serveur qui répondait : les notifications en temps réel (le tag « Urgent » d'un compte rendu de biologie, la progression d'une synchronisation) et les conversations de l'assistant.
+  - Avec quatre serveurs en production, **la plupart des tags d'urgence n'arrivaient jamais à l'écran** en direct. L'assistant répondait « conversation non trouvée » environ trois fois sur quatre, et un redémarrage de serveur effaçait toutes les conversations.
+  - Désormais, un évènement produit par n'importe quel serveur atteint le praticien, **une seule fois**, sur le serveur qui tient son écran. Une conversation est retrouvée par n'importe quel serveur, se poursuit après un redémarrage et expire après 8 heures d'inactivité.
+  - Deux onglets ouverts sur la même conversation ne perdent aucun échange. Si une réponse n'a pas pu être enregistrée, l'assistant le **dit**, au lieu de faire comme si de rien n'était.
+  - Si le service de partage (Redis) est momentanément indisponible, les mails sont bien reçus et enregistrés, et l'application démarre quand même. Les notifications reprennent d'elles-mêmes au retour du service.
+  - Les conversations, qui citent des mails, sont conservées dans l'hébergement de données de santé et jamais écrites dans les journaux.
+  - Le contrat vu par les applications est inchangé (task-343).
 - v1.17 — **Un courrier ne part plus en double quand la connexion à la messagerie tombe pendant l'envoi.** Le ménage périodique des connexions, corrigé à l'étape précédente pour la lecture, ne regardait pas l'envoi : si la connexion de lecture d'un praticien était coupée **pendant qu'un message partait**, il pouvait fermer la connexion d'envoi au milieu de la transmission — le médecin voyait un échec, réessayait, et le courrier pouvait arriver deux fois chez le destinataire. Une connexion n'est désormais fermée que lorsque **ni la lecture ni l'envoi** ne l'utilisent ; une déconnexion demandée pendant une opération attend la fin de celle-ci. Autres effets pour le praticien : se déconnecter répond en quelques secondes même quand le serveur de messagerie ne répond plus (jusqu'à environ quatre minutes auparavant), la synchronisation de fond n'ouvre plus aucune connexion quand le praticien est hors ligne, et les échecs de connexion sont signalés pour ce qu'ils sont — session à rouvrir, service momentanément indisponible — plutôt que comme une erreur du serveur. Aucune donnée de santé ni adresse n'est ajoutée aux journaux (task-335).
 - v1.16 — **L'ouverture de la boîte ne se solde plus par une erreur « au hasard ».** Aux derniers tests de charge à 1 000 praticiens, environ une requête sur dix mille échouait — 16 à 18 fois par séance de trois heures, presque toujours à l'ouverture de la boîte — sans que le médecin puisse comprendre pourquoi ni quoi faire ; la tentative suivante réussissait. La cause est établie : le ménage périodique des connexions inactives pouvait fermer une connexion **pendant qu'elle était en train de s'ouvrir** pour le praticien. Ce ménage vérifie désormais qu'une connexion n'est pas en cours d'utilisation avant de la fermer ; il la retrouve simplement au passage suivant. Si un tel incident devait malgré tout se reproduire, le praticien reçoit une indisponibilité passagère qu'il peut réessayer, et non plus une erreur du serveur. Les connexions réellement coupées, elles, sont toujours fermées puis rétablies à l'usage suivant. **L'effet se mesurera à la prochaine séance de tests de charge** : zéro erreur de cette famille attendue (task-324).
 - v1.15 — **Le texte des comptes rendus n'est plus envoyé pour dessiner une liste : il arrive quand le médecin ouvre le document.** Chaque compte rendu pèse en moyenne 222 Ko de texte mis en forme. Le serveur les envoyait **tous** avec la liste des messages et avec la frise du dossier patient — soit près de quatre méga-octets par page — pour des écrans qui n'affichent qu'un titre, une date et une catégorie. L'allègement complémentaire annoncé à l'étape précédente est donc réalisé : il restait suspendu à une seule application, la frise patient du mobile, la seule des trois à afficher le texte depuis cette charge. Elle le demande désormais **au moment où le praticien déplie ou ouvre un document**, comme le font déjà les autres écrans ; l'attente perçue à l'ouverture est celle d'un seul document, et un document déjà consulté se rouvre sans nouvel échange. En cas de coupure réseau au moment du dépliage, la frise reste utilisable et propose d'ouvrir le document. **Rien ne change à l'écran** : le contenu affiché après ouverture est identique. Bénéfice au-delà de la vitesse : les comptes rendus cessent de circuler vers un terminal mobile qui ne les montrait pas, et le journal d'audit d'un téléchargement de pièce jointe ne charge plus le contenu clinique du message — moins de données de santé en mouvement, à usage constant. **Le gain n'est pas encore chiffré** : la mesure comparative au banc de charge demande une préparation de plusieurs heures et sera produite avant ou après la validation humaine (task-323).

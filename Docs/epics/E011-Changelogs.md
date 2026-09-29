@@ -2,11 +2,48 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > **Vue produit** : [E011-performance-api-mail.md](E011-performance-api-mail.md)
-> **Dernière mise à jour** : 2026-09-27 (v1.17)
+> **Dernière mise à jour** : 2026-09-30 (v1.18)
 
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.18 — task-343 — Plusieurs réplicas, un seul comportement : backplane SSE Redis et conversations de l'assistant partagées (2026-09-30)
+
+- **PR** : [HealthPlatform.Api.Mail#263](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/263) — `awaiting-human-merge`, branche `feat/task-343-backplane-sse-conversations-redis` (`112c5241`). `api-mail` seul ; aucun contrat DTO, aucune branche `dtos-mss`, aucun frontend.
+- **ORIGINE.** Audit du 2026-09-27, AUD-18 a et AUD-19, issus du découpage de l'ancienne task-336. Deux états étaient tenus en mémoire d'un processus alors que les requêtes se répartissent entre réplicas (4 en production, 5 dans l'AppHost) :
+  - les abonnements SSE des trois brokers (`SseNotificationBroker`, `SseMailEventBroker`, `SseSyncProgressBroker`) ;
+  - les conversations IA (`AiConversationStateManager`, `ConcurrentDictionary` et `Timer` du processus).
+- **BACKPLANE SSE** (`ISseBackplane`) :
+  - `RedisSseBackplane` sur le canal `mss:sse:events`, lu par `ChannelMessageQueue` (ordre d'arrivée) ;
+  - les brokers publient **uniquement** vers le backplane ; chaque réplica, l'émetteur compris, livre depuis son abonnement (`ISseBackplaneListener.Deliver`), avec un seul singleton par broker, exposé sous deux contrats ;
+  - `SseBackplaneSubscriptionService` s'abonne **au démarrage** (leçon task-285). Si Redis est injoignable, l'abonnement est retenté en arrière-plan et le démarrage n'échoue jamais ;
+  - un réplica sans abonné local ne désérialise pas le message ;
+  - publication en échec → compteur `mssante_sse_backplane_publish_failures_total{topic}` et journal sans contenu ; un multiplexeur déconnecté n'est pas attendu ;
+  - contrat SSE vérifié à l'octet près avec `SseHelper.JsonOptions`.
+- **CONVERSATIONS** (`IAiConversationStorage`) :
+  - `RedisAiConversationStorage` : hash `mss:ai:conv:{boîte}:{id}` (`v`, `d`), index `mss:ai:conv-index:{boîte}`, compare-and-set en **un script Lua**, TTL glissant de 8 h (`AiConversationOptions.IdleTimeout`) ;
+  - `AiConversationStateManager`, asynchrone et sans état, rejoue un changement sur la dernière version (10 essais), puis lève un `ConflictException` ;
+  - le service ajoute tour, jetons et résumé à la dernière version ; tour non enregistré → `CONVERSATION_CONFLICT` / `CONVERSATION_NOT_SAVED`, sans `final` ;
+  - création interrompue → ébauche fermée ; conversation fermée pendant sa création → 404.
+- **MONTAGE.** `AddRealtimeBackplane` / `AddAiConversationState` posent des défauts en processus (`TryAdd`) ; `AddApi` enregistre Redis **explicitement** (`AddRedisRealtimeState`). Garde : `SyncControlPlaneIntegrationTests.L_api_partage_le_backplane_sse_et_les_conversations_par_redis`.
+- **TESTS.**
+  - Rouges d'abord : 9 au premier run (livraison entre réplicas, conversation d'un autre réplica), puis 4 à la reprise de revue, et 2 au 2e passage.
+  - `MultiReplicaRedisIntegrationTests` (Testcontainers Redis, 14 tests) :
+    - livraison des trois topics et livraison unique ;
+    - contrat SSE à l'octet près et ordre de 40 progressions ;
+    - abonnement posé au démarrage (`NUMSUB`), démarrage avec Redis en pause, reprise après `CLIENT KILL` ;
+    - aucune file orpheline après des abonnements ratés ;
+    - conversations : autre réplica, redémarrage, tours concurrents, TTL de 8 h renouvelé, expiration réelle, clôture.
+  - Mutations, chaque fois rouges : écriture sans version, lecture sans renouvellement du TTL, service d'abonnement retiré, capture des messages illisibles retirée.
+  - Résultats : application 3 278, api 1 107, infrastructure 665, domain 190, integration 655. Les 3 tests « du jour » dépendent de l'horloge du poste, et sont prouvés rouges aussi sur `develop`.
+- **SONAR.** QG OK, 0 finding sur la branche après la correction de 3 S3604 (récidive, consignée), new_coverage 98,0 %.
+- **E2E.** Mobile 22/22, Angular 22/22, parité verte (task-347).
+- **REVUE.** Trois passages :
+  - 1er, durci par `/review` : démarrage impossible sans Redis, tour non enregistré signalé en `SERVER_ERROR` ;
+  - 2e : files orphelines de StackExchange.Redis 2.7 après un `SubscribeAsync` raté, qui auraient mis en mémoire tout le canal sans limite ;
+  - 3e : APPROVED.
+- **SUITES** (`questions/task-343.md`) : tests dépendants de l'horloge ; Redis figé (chaque publication attend `asyncTimeout`) ; résumé courant tardif ; métrique de taille des charges pub/sub ; mise à jour de l'AIPD.
 
 ### v1.17 — task-335 — Une session de messagerie n'est jamais fermée pendant qu'elle sert, et sa fermeture ne bloque plus personne (2026-09-27)
 
