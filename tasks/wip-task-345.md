@@ -194,12 +194,12 @@ Les parcours de la colonne de droite **restent couverts par `/qa`**, avec un log
 |---|---|---|---|---|---|---|
 | /start | ok | 27 s | — | — | — | api-mail, client-mobile |
 | /develop | ok | 42 min 20 s | 11 (2 min 26 s) | 16 (31 min 57 s) | — | api-mail 7B/6T, client-mobile 4B/10T, reprise après review : démontage borné au run, 13 parcours durcis, 7 mutations → 7 rouges, 22/22 ×2 |
-| /sonar | ok | 12 min 03 s | 3 (49 s) | 11 (6 min 56 s) | 4 (1 min 12 s) | 1 itération(s), api-mail 3B/11T, Phase 1 : 1 CA1859 ; QG OK ; Phase 2 skip (structurel) |
+| /sonar | ok | 7 min 19 s | 4 (1 min 26 s) | 16 (11 min 44 s) | 6 (1 min 48 s) | api-mail 4B/16T, re-analyse post-reprise : Phase 1 0 finding, QG OK, Phase 2 skip (structurel) |
 | /lint-angular | skipped | 0.5 s | — | — | — | client-angular non touché |
 | /lint-mobile | ok | 26 s | — | — | — | 0 erreur baseline |
 | /verify-visual | skipped | 0.4 s | — | — | — | aucun écran redessiné, outillage absent |
 | /review | failed | 6 min 57 s | 2 (12 s) | 2 (2 min 18 s) | — | api-mail 1B/1T, client-mobile 1B/1T, CHANGES REQUESTED : démontage trop large (bloquant), verts qui mentent |
-| **Total cycle** | | **1 h 02 min** | **16 (3 min 28 s)** | **29 (41 min 12 s)** | **4 (1 min 12 s)** | |
+| **Total cycle** | | **57 min 31 s** | **17 (4 min 05 s)** | **34 (46 min 00 s)** | **6 (1 min 48 s)** | |
 
 Autres commandes mesurées : lint ×1 (16 s), restore ×1 (2.2 s)
 
@@ -259,6 +259,8 @@ Mode A (chaîné depuis `/develop`), serveur SonarQube **9.9.8.100196** (`sonar.
 - Hotspots : **0**
 - Build / tests : ✓ green (domain 190, application 3 267, infrastructure 665, api 1 084, integration 643 + 16 ignorés), sous instrumentation OpenCover, deux fois
 - `conventions/csharp.md` : CA1859 → occurrence 5 (variante task-345)
+
+**Re-analyse du 2026-09-29** (après la reprise `/develop`, commit `f8b44271`) : 1 analyse complète, serveur 9.9.8 sur le port 9000. Phase 1 : **0 finding** sur les fichiers de la branche ; Quality Gate **OK** ; new_coverage **98,3 %** ; Phase 2 : 0 itération (mêmes 10 findings legacy structurels). Build Release + 5 passes OpenCover vertes (domain 190, application 3 267, infrastructure 665, api 1 084, integration 643 + 16 ignorés). KPIs identiques à la colonne « Final » ci-dessous.
 
 ### KPIs qualité (baseline → final)
 
