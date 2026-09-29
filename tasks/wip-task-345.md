@@ -193,12 +193,13 @@ Les parcours de la colonne de droite **restent couverts par `/qa`**, avec un log
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 27 s | — | — | — | api-mail, client-mobile |
-| /develop | ok | 1 h 04 min | 9 (2 min 00 s) | 8 (7 min 46 s) | — | api-mail 6B/3T, client-mobile 3B/5T, reprise après task-342 : 22/22 verts ×2, parité verte, §Q deux repos |
+| /develop | ok | 42 min 20 s | 11 (2 min 26 s) | 16 (31 min 57 s) | — | api-mail 7B/6T, client-mobile 4B/10T, reprise après review : démontage borné au run, 13 parcours durcis, 7 mutations → 7 rouges, 22/22 ×2 |
 | /sonar | ok | 12 min 03 s | 3 (49 s) | 11 (6 min 56 s) | 4 (1 min 12 s) | 1 itération(s), api-mail 3B/11T, Phase 1 : 1 CA1859 ; QG OK ; Phase 2 skip (structurel) |
 | /lint-angular | skipped | 0.5 s | — | — | — | client-angular non touché |
 | /lint-mobile | ok | 26 s | — | — | — | 0 erreur baseline |
 | /verify-visual | skipped | 0.4 s | — | — | — | aucun écran redessiné, outillage absent |
-| **Total cycle** | | **1 h 17 min** | **12 (2 min 49 s)** | **19 (14 min 43 s)** | **4 (1 min 12 s)** | |
+| /review | failed | 6 min 57 s | 2 (12 s) | 2 (2 min 18 s) | — | api-mail 1B/1T, client-mobile 1B/1T, CHANGES REQUESTED : démontage trop large (bloquant), verts qui mentent |
+| **Total cycle** | | **1 h 02 min** | **16 (3 min 28 s)** | **29 (41 min 12 s)** | **4 (1 min 12 s)** | |
 
 Autres commandes mesurées : lint ×1 (16 s), restore ×1 (2.2 s)
 
@@ -231,6 +232,18 @@ Autres commandes mesurées : lint ×1 (16 s), restore ×1 (2.2 s)
 - Commits poussés : api-mail `…c0fe8524`, client-mobile `…67f7f02`.
 - **Constats à router vers le PO** (hors périmètre) : (1) `AddNewMail` estampille la génération 0 en silence — le seed le contourne, un scénario « inbox ouverte sans lister les dossiers » le ferait voir ; (2) règle de `AttachmentCount` différente selon le chemin (en-têtes IMAP vs base) et deux constructeurs de `MailDto` qui ne la posent pas (`BackgroundEnrichmentProcessor.cs:314`, `MailRepository.cs:3295`) ; (3) dates : `SentDate = envelope.Date?.LocalDateTime` (famille AUD-28) ; (4) « Aucun contenu disponible » affiché pendant le chargement du détail.
 - Next step : `/sonar task-345`
+
+### Reprise du 2026-09-29 (après /review CHANGES REQUESTED)
+
+- **Bloquant corrigé — démontage de `run.mjs`** : il retirait tout conteneur aux préfixes `mss-mail-redis-`/`mss-mail-rabbitmq-`/`rediscommander-`, donc aussi ceux d'un AppHost de dev lancé à côté. Désormais : instantané des conteneurs **avant** le démarrage de l'AppHost, retrait des **seuls** conteneurs apparus pendant le run, rien si l'AppHost n'a jamais démarré ; `SIGTERM`/`SIGHUP`/`SIGBREAK` gérés comme `SIGINT` ; contrôle final des ports du filet. Vérifié sur 4 runs (2 de mutation, 2 verts) : liste `docker ps -a` identique avant/après (64 conteneurs du poste, dont psc-auth-proxy, sonarqube, flagsmith, intacts).
+- **Parcours durcis** (un vert ne ment plus) : BIO-001 (réponse du POST + état relu après rechargement — le panneau bascule de façon optimiste, son libellé ne prouvait rien), DETAIL-002 (HTML → brut → HTML), SEARCH-001 (bascule avancée et filtre requis ; résultats non assertés : la recherche sémantique dépend du fournisseur d'IA), CONTACT-002/003, SIGNATURE-001, FOLDER-002 (suppression requise puis disparition), et avant compaction FOLDER-001, MAIL-001, COMPOSE-001, MAIL-003, MAIL-004, DRAFT-001.
+- **Défauts de la suite trouvés en rejouant** : titre de dossier ambigu (celui du menu latéral), suppression de brouillon sous une option de swipe, suppression de mail **différée de 6 s** (fenêtre d'annulation) que le rechargement du test annulait.
+- **Preuve par mutation** — 7 no-ops plantés dans `MssApiService` (suppression contact / signature / groupe / dossier / mail / brouillon, acquittement bio) : **exactement les 7 parcours visés rouges**, chacun sur son assertion, les 15 autres verts, parité verte. Mutations annulées.
+- **Suggestions de la review appliquées** : en-têtes du bypass limités à l'origine de l'app (`BASE_URL` partagé) ; catalogue qui refuse un scénario muet sur un client du catalogue (+ test, rouge vérifié par mutation) ; sondes du seed tolérantes au délai HTTP ; interruption et délai distingués dans `Program.cs` ; réponse du POST contact disposée ; `MSS_E2E_PASSWORD` retiré (la passdb statique ne suivait pas).
+- **Filet : 22/22 verts deux fois de suite, 0 flaky, parité verte.** Suites : api-mail **5 849 verts** (un flaky préexistant sous charge parallèle, `SeededThreadsAreCountableTests`, fichier non touché — vert 3/3 seul puis en suite d'intégration rejouée), mobile build OK + **947/947**.
+- Passe qualité (§Q) : déjà faite une fois par repo à la reprise du 2026-09-28 ; ces correctifs réutilisent les helpers existants (`swipeRowOpen` extrait de `swipeReveal`, qui supprime le geste dupliqué de CONTACT-003).
+- Commits poussés : api-mail `f8b44271`, client-mobile `9d591af`.
+- **Constat à router vers le PO** (hors périmètre, changement de comportement) : `MailPendingDeleteService` ne flushe ni au déchargement ni à la destruction, contrairement à son commentaire (« teardown → FLUSH ») — une app fermée ou rechargée dans les 6 s qui suivent une suppression la perd, et le mail réapparaît.
 
 ## Sonar log
 
