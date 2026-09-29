@@ -260,7 +260,8 @@ ligne n'est pas honorée quand l'autre est retenue.
 | /lint-mobile | skipped | 2.2 s | — | — | — | client-mobile not touched |
 | /verify-visual | skipped | 2.0 s | — | — | — | no mobile screen touched |
 | /review | ok | 14 min 08 s | 1 (4 min 42 s) | 3 (6 min 42 s) | — | api-mail 1B/3T |
-| **Total cycle** | | **1 h 24 min** | **13 (11 min 02 s)** | **20 (26 min 30 s)** | **4 (14 min 03 s)** | |
+| /tech-writer | ok | 2 min 26 s | — | — | — | — |
+| **Total cycle** | | **1 h 26 min** | **13 (11 min 02 s)** | **20 (26 min 30 s)** | **4 (14 min 03 s)** | |
 
 ## Develop log
 

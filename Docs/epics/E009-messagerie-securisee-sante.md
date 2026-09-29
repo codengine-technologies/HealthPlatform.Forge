@@ -2,9 +2,9 @@
 
 > **Statut** : En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.76
+> **Version** : 1.78
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-09-28 (dix-sept correctifs de fiabilité et de sécurité issus de l'audit, task-342)
+> **Dernière mise à jour** : 2026-09-29 (un seul dossier par patient, messages de patient toujours reçus, task-191)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1036,6 +1036,20 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
+- **v1.78 — Un patient, un dossier : l'historique complet au même endroit, et
+  aucun message de patient perdu** (task-191) : quand plusieurs documents d'un
+  même patient arrivent ensemble — un laboratoire ou un hôpital qui envoie une
+  série de résultats —, ils rejoignent désormais toujours le même dossier. Le
+  praticien ne voit plus l'historique d'un patient réparti sur deux dossiers
+  dont il n'en consultait qu'un, et une opposition à l'envoi posée sur le
+  dossier est respectée dans tous les cas. Un message envoyé par un patient
+  depuis Mon espace santé rejoint le dossier déjà connu pour ce patient au
+  lieu d'en ouvrir un second. Un patient qui répond dans une conversation où
+  figure un document n'est plus perdu : son message est reçu normalement, et
+  le document concerné n'est pas considéré comme retiré. Les dossiers déjà
+  dédoublés avant ce correctif sont recensés sans rien modifier. Leur
+  réunion, qui touche au dossier médical, suivra une procédure validée par
+  le praticien et le délégué à la protection des données.
 - **v1.77 — Documents, pièces jointes et « reçus aujourd'hui » : ce que le
   praticien voit est désormais exact** (task-342) : un compte rendu ouvert juste
   avant la fin de son analyse affiche ses documents dès qu'ils sont prêts, au
@@ -1554,6 +1568,11 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Technique / observabilité (sans impact utilisateur direct)
 
+- **v1.78 — Enregistrement des messages tout ou rien** (task-191) : un message
+  reçu, avec ses documents et le dossier de son patient, est enregistré d'un
+  seul bloc. Un incident en cours d'enregistrement ne laisse plus de dossier
+  patient orphelin ; le message est simplement repris au passage suivant.
+  Aucun changement visible pour le praticien.
 - **v1.77 — Fiabilité du traitement des messages** (task-342) : un message
   dont l'enregistrement échoue en cours de route est repris intégralement au
   passage suivant au lieu de rester à moitié traité ; le bilan d'analyse ne
