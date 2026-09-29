@@ -93,14 +93,14 @@
 
 ### v1.2 — Étape `/e2e` bloquante dans la chaîne autonome, porte `gate` — task-347
 
-- **Task** : task-347, statut `done`.
+- **Task** : task-347, statut `archived` (mergée le 2026-09-29, `f8e3bef0`).
 - **PRs** : `api-mail` #262, label `awaiting-human-merge`, branche `feat/task-347-etape-e2e-bloquante`. Plan de contrôle poussé sur `develop` sans PR (règle 5), `bad1a7a` puis `b44830c`.
 - **Chaîne** : `/start → /develop → /sonar → /lint-angular → /lint-mobile → /e2e → /review → /tech-writer`.
   - `/verify-visual` **sort de la chaîne** (décision humaine) : 66 logs, jamais bloquant, outillage absent depuis environ task-274. Il reste disponible à la demande.
 - **Étape `/e2e`** (`agents/e2e.md`, `.claude/commands/e2e.md`) :
   - voie mobile si `api-mail`, `client-mobile` ou `dtos-mss` est touché ; voie Angular si `api-mail`, `client-angular` ou `dtos-mss` est touché ;
   - un client non touché est **listé** (`playwright test --list`), sans être rejoué ;
-  - bloquante sans exemption ; seule l'humain pose une quarantaine (tag `@quarantaine` + annotation citant la task) ;
+  - bloquante sans exemption ; seul l'humain pose une quarantaine (tag `@quarantaine` + annotation citant la task) ;
   - la porte qui sort en 2 (outillage) bloque aussi ; démontage vérifié ; mesure `--kind e2e`.
 - **Double verrou** : `/review` refuse d'ouvrir une PR sans `## E2E log` vert quand une voie est touchée, et recopie le log dans chaque PR (`## Parcours e2e`).
 - **Porte `gate`** (`tests/mss.mail.e2e/Parity/E2eGate.cs`) : codes 0 vert, 1 rouge, 2 outillage.
@@ -190,4 +190,4 @@
 |---|---|---|---|
 | task-345 | archived (mergée) | Backend e2e, outillage, catalogue, filet mobile headless | RG-E018-01, 02, 03 (mobile), 04 |
 | task-346 | archived (mergée ; Angular à pousser sur TFS) | Filet web weda2 sur le même backend et le même catalogue | RG-E018-03 (web) |
-| task-347 | done (PR api-mail #262 en attente de merge) | Étape `/e2e` bloquante, porte `gate`, clause de DOD, règle d'or | RG-E018-03 (contrôle continu), 05 |
+| task-347 | archived (mergée) | Étape `/e2e` bloquante, porte `gate`, clause de DOD, règle d'or | RG-E018-03 (contrôle continu), 05 |

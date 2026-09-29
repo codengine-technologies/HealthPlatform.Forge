@@ -1,6 +1,6 @@
 # E018 — Filet de non-régression fonctionnel — parcours e2e headless
 
-> **Statut** : 🟡 Livré, en attente de validation humaine — 3 features sur 3 livrées (la dernière en attente de merge)
+> **Statut** : ✅ Livré — 3 features sur 3 livrées
 > **Modèle** : task-driven
 > **Version** : 1.2
 > **Auteur** : PO forge
@@ -75,7 +75,7 @@ avant d'arriver jusqu'à lui.
 |---|---|---|---|
 | **F1 — Parcours mobiles rejoués automatiquement** | Ses gestes sur l'application mobile sont rejoués sans connexion humaine : lecture, lu/non lu, signalement, classement, envoi et réception, brouillons, acquittement d'une biologie anormale, contacts, groupes, signatures, dossiers. Un catalogue commun décrit ces parcours pour les deux applications. | task-345 | ✅ Livré |
 | **F2 — Parcours web rejoués automatiquement** | Les mêmes parcours sont rejoués sur la messagerie de l'application web, sans connexion humaine et selon le même catalogue : les deux applications sont vérifiées sur les mêmes gestes. | task-346 | ✅ Livré |
-| **F3 — Aucune livraison si un parcours régresse** | Une évolution qui casse un parcours, ou qui laisse une application prendre du retard sur le catalogue, est arrêtée avant d'être proposée. Chaque nouvelle fonctionnalité ajoute son propre parcours. | task-347 | 🟡 Livré, en attente de validation humaine |
+| **F3 — Aucune livraison si un parcours régresse** | Une évolution qui casse un parcours, ou qui laisse une application prendre du retard sur le catalogue, est arrêtée avant d'être proposée. Chaque nouvelle fonctionnalité ajoute son propre parcours. | task-347 | ✅ Livré |
 
 ---
 
@@ -135,9 +135,9 @@ rejoue (F1, F2). La chaîne de livraison refuse ensuite toute évolution qui en 
 |---|---|---|---|
 | F1 — Parcours mobiles rejoués automatiquement | ✅ Livré | 22 parcours rejoués sans humain (3 restent manuels : connexion, renouvellement, annuaire) | task-345 |
 | F2 — Parcours web rejoués automatiquement | ✅ Livré | les mêmes 22 parcours sur l'application web, aucun écart avec le mobile | task-346 |
-| F3 — Aucune livraison si un parcours régresse | 🟡 Livré, en attente de validation humaine | chaque évolution qui touche la messagerie rejoue les parcours des deux applications ; arrêt prouvé sur un parcours cassé et sur un retard de catalogue | task-347 |
+| F3 — Aucune livraison si un parcours régresse | ✅ Livré | chaque évolution qui touche la messagerie rejoue les parcours des deux applications ; arrêt prouvé sur un parcours cassé et sur un retard de catalogue | task-347 |
 
-**Couverture EPIC consolidée : 100 %** (3 features sur 3 livrées, la dernière en attente de merge).
+**Couverture EPIC consolidée : 100 %** (3 features sur 3 livrées).
 
 ---
 

@@ -177,7 +177,8 @@ vieillirait comme la suite `/qa` depuis juillet.
 | /e2e | ok | 6 min 47 s | — | — | — | e2e ×6 (11 min 59 s), 2 voies vertes, 1 flaky angular FOLDER-001 (registre) |
 | /review | ok | — | 1 (4.7 s) | 1 (2 min 16 s) | — | api-mail 1B/1T, APPROVED (2e passage), PR api-mail #262; no start marker |
 | /tech-writer | ok | 1 min 21 s | — | — | — | — |
-| **Total cycle** | | **19 min 02 s** | **5 (1 min 07 s)** | **13 (15 min 46 s)** | **4 (1 min 14 s)** | |
+| /merge | ok | 4 min 53 s | — | — | — | — |
+| **Total cycle** | | **23 min 56 s** | **5 (1 min 07 s)** | **13 (15 min 46 s)** | **4 (1 min 14 s)** | |
 
 ## Develop log
 
@@ -342,3 +343,11 @@ Run après la reprise de review (`040862b6`), sur le code que `/review` valide.
 - Leçon de revue « une porte bloquante valide ses entrées » → consigne `porte-valide-ses-entrees` dans `conventions/e2e.md`.
 - Flaky `[angular] E2E-FOLDER-001` (1re occurrence) → inscrit au registre des flaky de `conventions/e2e.md`. Task de stabilisation à la 3e occurrence.
 - `/verify-visual` retiré de la chaîne, chiffres à l'appui (règle d'or, point 6).
+
+## Merged
+
+- 2026-09-29, `/merge task-347 --i-tested` (validation humaine attestée).
+- `api-mail` #262 → squash `f8e3bef0` sur `develop`, CI « Build and Publish » verte. Branche `feat/task-347-etape-e2e-bloquante` supprimée (distant et local).
+- Plan de contrôle : déjà sur `develop` (`bad1a7a`, `b44830c`, `991ca5a`).
+- `client-angular` non touché par la task. Pas de branche staging, car la task ne vient pas d'un run `/forge`.
+- Reste ouvert : la **répétition sur une task mobile réelle** (DOD). Elle sera jouée au prochain cycle qui touche `client-mobile` ; la porte `gate` est maintenant sur `develop`.
