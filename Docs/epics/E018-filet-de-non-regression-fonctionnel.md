@@ -1,8 +1,8 @@
 # E018 — Filet de non-régression fonctionnel — parcours e2e headless
 
-> **Statut** : 🟡 En cours — 1 feature sur 3 livrée (en attente de merge)
+> **Statut** : 🟡 En cours — 2 features sur 3 livrées (dont 1 en attente de merge)
 > **Modèle** : task-driven
-> **Version** : 1.0
+> **Version** : 1.1
 > **Auteur** : PO forge
 > **Audience** : PO, direction, équipe produit — la vue ingénierie vit dans [E018-Changelogs.md](E018-Changelogs.md)
 > **Dernière mise à jour** : 2026-09-29
@@ -72,8 +72,8 @@ avant d'arriver jusqu'à lui.
 
 | Fonctionnalité | Ce que le praticien y gagne | Tasks | Statut |
 |---|---|---|---|
-| **F1 — Parcours mobiles rejoués automatiquement** | Ses gestes sur l'application mobile sont rejoués sans connexion humaine : lecture, lu/non lu, signalement, classement, envoi et réception, brouillons, acquittement d'une biologie anormale, contacts, groupes, signatures, dossiers. Un catalogue commun décrit ces parcours pour les deux applications. | task-345 | 🟡 Livré, en attente de validation humaine |
-| **F2 — Parcours web rejoués automatiquement** | Les mêmes parcours sont rejoués sur l'écran de messagerie de l'application web, selon le même catalogue. | task-346 | ⏳ À faire |
+| **F1 — Parcours mobiles rejoués automatiquement** | Ses gestes sur l'application mobile sont rejoués sans connexion humaine : lecture, lu/non lu, signalement, classement, envoi et réception, brouillons, acquittement d'une biologie anormale, contacts, groupes, signatures, dossiers. Un catalogue commun décrit ces parcours pour les deux applications. | task-345 | ✅ Livré |
+| **F2 — Parcours web rejoués automatiquement** | Les mêmes parcours sont rejoués sur la messagerie de l'application web, sans connexion humaine et selon le même catalogue : les deux applications sont vérifiées sur les mêmes gestes. | task-346 | 🟡 Livré, en attente de validation humaine |
 | **F3 — Aucune livraison si un parcours régresse** | Une évolution qui casse un parcours, ou qui laisse une application prendre du retard sur le catalogue, est arrêtée avant d'être proposée. Chaque nouvelle fonctionnalité ajoute son propre parcours. | task-347 | ⏳ À faire |
 
 ---
@@ -99,7 +99,7 @@ rejoue (F1, F2). La chaîne de livraison refuse ensuite toute évolution qui en 
 |---|---|---|
 | RG-E018-01 | Aucune donnée de santé réelle : identités, messages et comptes rendus sont fictifs ou issus du corpus de test officiel | ✅ Tenue (task-345) |
 | RG-E018-02 | Le contournement de la connexion n'existe que dans l'outillage de test : il est absent de l'application livrée et impossible en production | ✅ Tenue (task-345) |
-| RG-E018-03 | Un même parcours se vérifie à l'identique sur mobile et sur web, ou le catalogue dit pourquoi il ne s'applique pas | 🟡 Mobile tenu (task-345), web à venir |
+| RG-E018-03 | Un même parcours se vérifie à l'identique sur mobile et sur web, ou le catalogue dit pourquoi il ne s'applique pas | ✅ Tenue sur les deux applications (task-346) |
 | RG-E018-04 | Un parcours « vert » doit prouver ce que le serveur a enregistré, pas seulement ce que l'écran affiche | ✅ Tenue (task-345) |
 
 ---
@@ -130,11 +130,11 @@ rejoue (F1, F2). La chaîne de livraison refuse ensuite toute évolution qui en 
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
-| F1 — Parcours mobiles rejoués automatiquement | 🟡 Livré, en attente de validation humaine | 22 parcours rejoués sans humain (3 restent manuels : connexion, renouvellement, annuaire) | task-345 |
-| F2 — Parcours web rejoués automatiquement | ⏳ À faire | — | task-346 |
+| F1 — Parcours mobiles rejoués automatiquement | ✅ Livré | 22 parcours rejoués sans humain (3 restent manuels : connexion, renouvellement, annuaire) | task-345 |
+| F2 — Parcours web rejoués automatiquement | 🟡 Livré, en attente de validation humaine | les mêmes 22 parcours sur l'application web, aucun écart avec le mobile | task-346 |
 | F3 — Aucune livraison si un parcours régresse | ⏳ À faire | — | task-347 |
 
-**Couverture EPIC consolidée : 33 %** (1 feature sur 3 livrée, en attente de merge).
+**Couverture EPIC consolidée : 67 %** (2 features sur 3 livrées, la seconde en attente de merge).
 
 ---
 
@@ -148,6 +148,8 @@ rejoue (F1, F2). La chaîne de livraison refuse ensuite toute évolution qui en 
 - v1.0 — En chemin, deux défauts visibles corrigés : le trombone des messages avec pièce jointe
   s'affiche de nouveau dans la liste, et le menu des dossiers se referme après un choix sur
   téléphone (task-345).
+
+- v1.1 — Les mêmes parcours sont rejoués sur la messagerie de l'application web, selon le même catalogue. Mobile et web sont vérifiés sur les mêmes gestes, sans aucun écart (task-346).
 
 ### Sécurité
 
