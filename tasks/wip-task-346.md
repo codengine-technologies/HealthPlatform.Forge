@@ -125,9 +125,14 @@ Les appels vers api-mail sont, eux, **réels** : Playwright y pose les en-têtes
 |---|---|---|---|---|---|---|
 | /start | ok | 25 s | — | — | — | api-mail, client-angular (code-only) |
 | /develop | ok | 1 h 13 min | 2 (27 s) | 10 (27 min 28 s) | — | client-angular 2B/9T, client-mobile 0B/1T, 22/22 ×2, 6 mutations → 6 rouges, parité mobile × Angular verte |
-| **Total cycle** | | **1 h 14 min** | **2 (27 s)** | **10 (27 min 28 s)** | **0 (0.0 s)** | |
+| /sonar | skipped | 0.4 s | — | — | — | api-mail : documentation seulement (e2e/README.md), aucun code analysable |
+| /lint-angular | ok | 17 s | — | — | — | 0 erreur baseline (mss, mss-lib, mss-e2e) |
+| /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
+| /verify-visual | skipped | 0.4 s | — | — | — | client-mobile non touché |
+| /review | failed | 4 min 51 s | 2 (7.9 s) | 2 (2 min 11 s) | — | api-mail 1B/1T, client-angular 1B/1T, CHANGES REQUESTED : 5 bloquants (verts pendant chargement, session.env périmé, INBOX-001, DETAIL-002) |
+| **Total cycle** | | **1 h 19 min** | **4 (35 s)** | **12 (29 min 40 s)** | **0 (0.0 s)** | |
 
-Autres commandes mesurées : lint ×1 (44 s), restore ×2 (1 min 18 s)
+Autres commandes mesurées : lint ×2 (51 s), restore ×2 (1 min 18 s)
 
 ## Develop log
 
@@ -166,3 +171,19 @@ Autres commandes mesurées : lint ×1 (44 s), restore ×2 (1 min 18 s)
   - à **ne pas** inclure : `front/apps/{mss,weda2}/src/environments/environment.ts`, réglages locaux de l'humain, antérieurs au `/start`, laissés intacts.
 - **Constat pour le PO** : weda2 ne conserve pas sa session d'un rechargement à l'autre ; chaque F5 repasse par le login PSC, même si le SSO le rend transparent. Et comme sur le mobile, une suppression de mail est différée de 6 s (fenêtre d'annulation).
 - Next step : `/sonar task-346`
+
+## Sonar log
+
+- `/sonar` : **skipped** — la branche api-mail ne touche que `e2e/README.md`, sans aucun code C# à analyser.
+- Qualité : /sonar skipped — api-mail sans changement de code.
+
+## Lint log
+
+- `/lint-angular` : ✓ **0 erreur** dès la baseline sur `tag:scope:mss` (`mss`, `mss-lib`, `mss-e2e`) — 0 itération, aucun fichier modifié.
+  - 23 avertissements sur `mss-e2e` (`jsdoc/require-example`, règle optionnelle) et 41 avertissements préexistants ailleurs dans le périmètre.
+  - Code-only : aucune opération git.
+- `/lint-mobile` : skipped — client-mobile non touché par la task.
+
+## Visual verify log
+
+- `/verify-visual` : **skipped** — client-mobile non touché, aucun écran redessiné.
