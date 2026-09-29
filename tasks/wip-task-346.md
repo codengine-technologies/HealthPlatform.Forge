@@ -124,13 +124,13 @@ Les appels vers api-mail sont, eux, **réels** : Playwright y pose les en-têtes
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 25 s | — | — | — | api-mail, client-angular (code-only) |
-| /develop | ok | 1 h 13 min | 2 (27 s) | 10 (27 min 28 s) | — | client-angular 2B/9T, client-mobile 0B/1T, 22/22 ×2, 6 mutations → 6 rouges, parité mobile × Angular verte |
+| /develop | ok | 15 min 05 s | 2 (27 s) | 13 (37 min 56 s) | — | client-angular 2B/12T, client-mobile 0B/1T, reprise après review : 5 bloquants, 4 mutations → 4 rouges, 22/22 ×2 |
 | /sonar | skipped | 0.4 s | — | — | — | api-mail : documentation seulement (e2e/README.md), aucun code analysable |
 | /lint-angular | ok | 17 s | — | — | — | 0 erreur baseline (mss, mss-lib, mss-e2e) |
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /verify-visual | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /review | failed | 4 min 51 s | 2 (7.9 s) | 2 (2 min 11 s) | — | api-mail 1B/1T, client-angular 1B/1T, CHANGES REQUESTED : 5 bloquants (verts pendant chargement, session.env périmé, INBOX-001, DETAIL-002) |
-| **Total cycle** | | **1 h 19 min** | **4 (35 s)** | **12 (29 min 40 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **20 min 41 s** | **4 (35 s)** | **15 (40 min 08 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×2 (51 s), restore ×2 (1 min 18 s)
 
@@ -170,6 +170,26 @@ Autres commandes mesurées : lint ×2 (51 s), restore ×2 (1 min 18 s)
   - `front/tsconfig.json` : `include` étendu à `e2e/**/*.ts` ;
   - à **ne pas** inclure : `front/apps/{mss,weda2}/src/environments/environment.ts`, réglages locaux de l'humain, antérieurs au `/start`, laissés intacts.
 - **Constat pour le PO** : weda2 ne conserve pas sa session d'un rechargement à l'autre ; chaque F5 repasse par le login PSC, même si le SSO le rend transparent. Et comme sur le mobile, une suppression de mail est différée de 6 s (fenêtre d'annulation).
+- Next step : `/sonar task-346`
+
+### Reprise du 2026-09-29 (après /review CHANGES REQUESTED)
+
+- **5 bloquants corrigés** :
+  - DRAFT-001 : réponse du `DELETE` exigée ; `openFolder` attend désormais la fin du chargement de la liste, donc une absence n'est plus lue pendant le spinner, et cela vaut pour tous les parcours ;
+  - SIGNATURE-001 : ancre `.sig-empty`, liste vide chargée, en cours de parcours puis après rechargement ;
+  - `run.mjs` : `session.env` et `STOP` périmés supprimés avant le lancement du backend ;
+  - INBOX-001 : la recherche s'ouvre (`mail-search-dropdown`), et les réalisations weda2 sont portées en commentaire dans `scenarios.yml` sans monter la version (INBOX-001, SETTINGS-002) ;
+  - DETAIL-002 : le corps est lu dans l'iframe HTML, puis dans le texte brut, puis de nouveau en HTML.
+- **Suggestions appliquées** :
+  - SETTINGS-001/002 restaurent le réglage en `finally` ;
+  - SEARCH-001 exige la requête `/api/v1/search/` portant les termes saisis ;
+  - code 2 quand Playwright ne produit aucun rapport ;
+  - README : `npm ci` du mobile requis.
+- **Suggestion écartée** : retries sur les tests qui mutent l'état seedé. Un rejeu ne peut pas « sauver » un parcours qui a déjà muté l'état ; c'est accepté : un rouge au 1er essai reste un rouge.
+- **Preuve par mutation** : 4 no-ops (`deleteDraft`, `deleteSignature`, `semanticSearch`, `togglePlainText`). **Exactement DETAIL-002, SEARCH-001, DRAFT-001 et SIGNATURE-001 rouges**, chacun sur sa nouvelle assertion ; 18 verts. `libs/` restauré (`git status front/libs` vide).
+- **Runs** : 22/22 verts **deux fois de suite**, 0 flaky, parité verte, conteneurs intacts.
+- Commit api-mail poussé : `52c5b662` (`scenarios.yml` commentaires + README).
+- client-angular : mêmes fichiers à commiter par l'humain que ci-dessus (`front/e2e/mss-e2e/**`, `front/package.json`, `front/package-lock.json`, `front/tsconfig.json`).
 - Next step : `/sonar task-346`
 
 ## Sonar log
