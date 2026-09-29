@@ -130,6 +130,7 @@ Les appels vers api-mail sont, eux, **réels** : Playwright y pose les en-têtes
 | /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non touché |
 | /verify-visual | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /review | ok | 3 min 07 s | 4 (14 s) | 4 (4 min 18 s) | — | api-mail 2B/2T, client-angular 2B/2T, APPROVED (2e passage), PR api-mail #260, angular code-only |
+| /tech-writer | ok | — | — | — | — | E018 v1.1 (F2 livré, couverture 67 %); no start marker |
 | **Total cycle** | | **19 min 01 s** | **6 (42 s)** | **17 (42 min 14 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×3 (59 s), restore ×2 (1 min 18 s)

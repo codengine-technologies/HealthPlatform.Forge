@@ -2431,3 +2431,4 @@
 {"ts":"2026-09-29T10:53:07+02:00","run_id":"-","type":"cmd","task":"task-346","step":"review","repo":"client-angular","kind":"build","label":"","cwd":"Client/Angular/front","cmd":"npm run build","duration_ms":1080,"exit_code":0}
 {"ts":"2026-09-29T10:53:09+02:00","run_id":"-","type":"cmd","task":"task-346","step":"review","repo":"client-angular","kind":"test","label":"","cwd":"Client/Angular/front","cmd":"npm test","duration_ms":1130,"exit_code":0}
 {"ts":"2026-09-29T10:54:01+02:00","run_id":"-","type":"step","task":"task-346","step":"review","status":"ok","note":"APPROVED (2e passage), PR api-mail #260, angular code-only","iterations":null,"duration_ms":187505}
+{"ts":"2026-09-29T10:55:31+02:00","run_id":"-","type":"step","task":"task-346","step":"tech-writer","status":"ok","note":"E018 v1.1 (F2 livré, couverture 67 %); no start marker","iterations":null,"duration_ms":null}
