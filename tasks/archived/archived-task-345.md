@@ -305,3 +305,10 @@ Baseline = analyse 1 de cette branche (serveur 9.9.8, 2026-09-28). Le serveur a 
 - **DOD reportée au test humain** : « run vert réseau Internet coupé » (règle 6), non exécuté par la forge.
 - Suggestions restantes (non bloquantes) : pas de mutation dédiée pour le « non lu » groupé ; signaux traités seulement à la sortie des `spawnSync` longs.
 - Constats pour le PO : suppression différée perdue au rechargement (`MailPendingDeleteService`) ; génération UIDVALIDITY 0 sans signal (`AddNewMail`) ; `AttachmentCount` selon le chemin ; « Aucun contenu disponible » pendant le chargement.
+
+## Merged
+
+- 2026-09-29, `/merge task-345 --i-tested` (validation humaine attestée).
+- `api-mail` #259 → squash `da7a1a61` sur `develop`, CI « Build and Publish » verte.
+- `client-mobile` #81 → squash `01933ddf` sur `develop`, CI « Android Build » verte.
+- Branches `feat/task-345-filet-e2e-headless-mobile` supprimées (distant et local) sur les deux repos.
