@@ -112,3 +112,16 @@ Les appels vers api-mail sont, eux, **réels** : Playwright y pose les en-têtes
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : non — poste de développement ; interdiction d'exécution sur un environnement HDS
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+- `api-mail` (pushed) : feat/task-346-filet-e2e-headless-angular — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-346-filet-e2e-headless-angular
+- `client-angular` (code-only) : forge writes code on the branch currently checked out in `Client/Angular/` (au /start : `feature/nova-rewriting-mss`, avec 2 réglages locaux non commités dans `apps/{mss,weda2}/src/environments/environment.ts` — laissés intacts) — humain gère branche, commit, push, PR TFS
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-346 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 25 s | — | — | — | api-mail, client-angular (code-only) |
+| **Total cycle** | | **25 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
