@@ -197,9 +197,9 @@ Les parcours de la colonne de droite **restent couverts par `/qa`**, avec un log
 | /sonar | ok | 7 min 19 s | 4 (1 min 26 s) | 16 (11 min 44 s) | 6 (1 min 48 s) | api-mail 4B/16T, re-analyse post-reprise : Phase 1 0 finding, QG OK, Phase 2 skip (structurel) |
 | /lint-angular | skipped | 0.4 s | — | — | — | client-angular non touché |
 | /lint-mobile | ok | 30 s | — | — | — | 0 erreur baseline |
-| /verify-visual | skipped | 0.4 s | — | — | — | aucun écran redessiné, outillage absent |
-| /review | failed | 6 min 57 s | 2 (12 s) | 2 (2 min 18 s) | — | api-mail 1B/1T, client-mobile 1B/1T, CHANGES REQUESTED : démontage trop large (bloquant), verts qui mentent |
-| **Total cycle** | | **57 min 36 s** | **17 (4 min 05 s)** | **34 (46 min 00 s)** | **6 (1 min 48 s)** | |
+| /verify-visual | skipped | 0.4 s | — | — | — | aucun écran redessiné (reprise limitée à e2e/) |
+| /review | failed | 6 min 34 s | 4 (27 s) | 4 (4 min 37 s) | — | api-mail 2B/2T, client-mobile 2B/2T, CHANGES REQUESTED : lu/flag vérifiés sur l'état optimiste (MAIL-001/002/003) |
+| **Total cycle** | | **57 min 12 s** | **19 (4 min 19 s)** | **36 (48 min 19 s)** | **6 (1 min 48 s)** | |
 
 Autres commandes mesurées : lint ×2 (32 s), restore ×1 (2.2 s)
 
