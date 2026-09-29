@@ -193,13 +193,13 @@ Les parcours de la colonne de droite **restent couverts par `/qa`**, avec un log
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 27 s | — | — | — | api-mail, client-mobile |
-| /develop | ok | 42 min 20 s | 11 (2 min 26 s) | 16 (31 min 57 s) | — | api-mail 7B/6T, client-mobile 4B/10T, reprise après review : démontage borné au run, 13 parcours durcis, 7 mutations → 7 rouges, 22/22 ×2 |
+| /develop | ok | 13 min 03 s | 11 (2 min 26 s) | 19 (42 min 22 s) | — | api-mail 7B/6T, client-mobile 4B/13T, 2e reprise : lu/flag relus du serveur, 5 mutations → 3 rouges visés, 22/22 ×2 |
 | /sonar | ok | 7 min 19 s | 4 (1 min 26 s) | 16 (11 min 44 s) | 6 (1 min 48 s) | api-mail 4B/16T, re-analyse post-reprise : Phase 1 0 finding, QG OK, Phase 2 skip (structurel) |
 | /lint-angular | skipped | 0.4 s | — | — | — | client-angular non touché |
 | /lint-mobile | ok | 30 s | — | — | — | 0 erreur baseline |
 | /verify-visual | skipped | 0.4 s | — | — | — | aucun écran redessiné (reprise limitée à e2e/) |
 | /review | failed | 6 min 34 s | 4 (27 s) | 4 (4 min 37 s) | — | api-mail 2B/2T, client-mobile 2B/2T, CHANGES REQUESTED : lu/flag vérifiés sur l'état optimiste (MAIL-001/002/003) |
-| **Total cycle** | | **57 min 12 s** | **19 (4 min 19 s)** | **36 (48 min 19 s)** | **6 (1 min 48 s)** | |
+| **Total cycle** | | **27 min 56 s** | **19 (4 min 19 s)** | **39 (58 min 44 s)** | **6 (1 min 48 s)** | |
 
 Autres commandes mesurées : lint ×2 (32 s), restore ×1 (2.2 s)
 
@@ -243,6 +243,7 @@ Autres commandes mesurées : lint ×2 (32 s), restore ×1 (2.2 s)
 - **Filet : 22/22 verts deux fois de suite, 0 flaky, parité verte.** Suites : api-mail **5 849 verts** (un flaky préexistant sous charge parallèle, `SeededThreadsAreCountableTests`, fichier non touché — vert 3/3 seul puis en suite d'intégration rejouée), mobile build OK + **947/947**.
 - Passe qualité (§Q) : déjà faite une fois par repo à la reprise du 2026-09-28 ; ces correctifs réutilisent les helpers existants (`swipeRowOpen` extrait de `swipeReveal`, qui supprime le geste dupliqué de CONTACT-003).
 - Commits poussés : api-mail `f8b44271`, client-mobile `9d591af`.
+- **2e review (même jour) — CHANGES REQUESTED, corrigé** : MAIL-001/002/003 ne jugeaient lu/non-lu et flag que sur l'état optimiste de la ligne. Ils exigent désormais la réponse de l'appel de statut puis relisent l'état après rechargement. Preuve : no-op sur les 4 appels de statut unitaires + le « tout marquer lu » → **exactement MAIL-001/002/003 rouges**, 19 verts ; puis **22/22 ×2**. Suggestions appliquées : instantané des conteneurs fermé par défaut si `docker ps -a` échoue, `MOBILE_BASE_URL` épinglé, DASH-001 n'accepte plus un widget en chargement. Commit client-mobile `76db234` (seul `e2e/` touché : `src/` inchangé depuis le 947/947).
 - **Constat à router vers le PO** (hors périmètre, changement de comportement) : `MailPendingDeleteService` ne flushe ni au déchargement ni à la destruction, contrairement à son commentaire (« teardown → FLUSH ») — une app fermée ou rechargée dans les 6 s qui suivent une suppression la perd, et le mail réapparaît.
 
 ## Sonar log
