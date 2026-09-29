@@ -125,14 +125,14 @@ Les appels vers api-mail sont, eux, **réels** : Playwright y pose les en-têtes
 |---|---|---|---|---|---|---|
 | /start | ok | 25 s | — | — | — | api-mail, client-angular (code-only) |
 | /develop | ok | 15 min 05 s | 2 (27 s) | 13 (37 min 56 s) | — | client-angular 2B/12T, client-mobile 0B/1T, reprise après review : 5 bloquants, 4 mutations → 4 rouges, 22/22 ×2 |
-| /sonar | skipped | 0.4 s | — | — | — | api-mail : documentation seulement (e2e/README.md), aucun code analysable |
-| /lint-angular | ok | 17 s | — | — | — | 0 erreur baseline (mss, mss-lib, mss-e2e) |
-| /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
+| /sonar | skipped | 0.4 s | — | — | — | api-mail : e2e/README.md + commentaires scenarios.yml, aucun code |
+| /lint-angular | ok | 21 s | — | — | — | 0 erreur (re-lint après reprise) |
+| /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non touché |
 | /verify-visual | skipped | 0.4 s | — | — | — | client-mobile non touché |
-| /review | failed | 4 min 51 s | 2 (7.9 s) | 2 (2 min 11 s) | — | api-mail 1B/1T, client-angular 1B/1T, CHANGES REQUESTED : 5 bloquants (verts pendant chargement, session.env périmé, INBOX-001, DETAIL-002) |
-| **Total cycle** | | **20 min 41 s** | **4 (35 s)** | **15 (40 min 08 s)** | **0 (0.0 s)** | |
+| /review | ok | 3 min 07 s | 4 (14 s) | 4 (4 min 18 s) | — | api-mail 2B/2T, client-angular 2B/2T, APPROVED (2e passage), PR api-mail #260, angular code-only |
+| **Total cycle** | | **19 min 01 s** | **6 (42 s)** | **17 (42 min 14 s)** | **0 (0.0 s)** | |
 
-Autres commandes mesurées : lint ×2 (51 s), restore ×2 (1 min 18 s)
+Autres commandes mesurées : lint ×3 (59 s), restore ×2 (1 min 18 s)
 
 ## Develop log
 
@@ -207,3 +207,41 @@ Autres commandes mesurées : lint ×2 (51 s), restore ×2 (1 min 18 s)
 ## Visual verify log
 
 - `/verify-visual` : **skipped** — client-mobile non touché, aucun écran redessiné.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/260 — label `awaiting-human-merge` (documentation du catalogue).
+- `client-angular` : **code-only**. L'humain gère le commit, le push TFS et l'ouverture de la PR, sur la branche `feature/nova-rewriting-mss`. Fichiers à commiter :
+  - `front/package-lock.json`
+  - `front/package.json`
+  - `front/tsconfig.json`
+  - `front/e2e/mss-e2e/.gitignore`
+  - `front/e2e/mss-e2e/README.md`
+  - `front/e2e/mss-e2e/playwright.config.ts`
+  - `front/e2e/mss-e2e/project.json`
+  - `front/e2e/mss-e2e/proxy.e2e.conf.json`
+  - `front/e2e/mss-e2e/run.mjs`
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`
+  - `front/e2e/mss-e2e/support/fixtures.ts`
+  - `front/e2e/mss-e2e/support/session.ts`
+  - `front/e2e/mss-e2e/support/weda.ts`
+  - `front/e2e/mss-e2e/tsconfig.json`
+  - **À ne pas inclure** : `front/apps/{mss,weda2}/src/environments/environment.ts`, réglages locaux de l'humain, antérieurs au `/start`.
+
+## Code Review Summary
+
+- Verdict : **APPROVED** au 2e passage (revue indépendante), le 2026-09-29.
+- 1er passage : CHANGES REQUESTED, 5 bloquants, tous corrigés :
+  - verts lus pendant un chargement (brouillons, signatures) ;
+  - `session.env` périmé ;
+  - INBOX-001 : recherche non ouverte, écarts absents du catalogue ;
+  - DETAIL-002 : corps non vérifié.
+- Preuve : 6 + 4 no-ops dans `libs/mss` font échouer exactement les 10 parcours visés, puis 22/22 verts deux fois de suite ; matrice mobile × Angular verte.
+- Validation :
+  - api-mail : 5 849/5 849 (16 ignorés préexistants) ;
+  - Angular : `npm ci`, build et tests verts (11 projets) ;
+  - lint `scope:mss` : 0 erreur ;
+  - aucune occurrence du bypass dans `apps/` ni `libs/`.
+- Suggestions restantes, non bloquantes :
+  - protéger le `finally` de SETTINGS-001/002 contre une page qui n'est pas sur les Paramètres ;
+  - attendre `.mail-list-empty` dans Brouillons.

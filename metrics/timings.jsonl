@@ -2416,3 +2416,18 @@
 {"ts":"2026-09-29T10:46:41+02:00","run_id":"-","type":"cmd","task":"task-346","step":"develop","repo":"client-angular","kind":"test","label":"e2e-mss","cwd":"Client/Angular/front","cmd":"npm run e2e:mss","duration_ms":154434,"exit_code":0}
 {"ts":"2026-09-29T10:49:18+02:00","run_id":"-","type":"cmd","task":"task-346","step":"develop","repo":"client-angular","kind":"test","label":"e2e-mss","cwd":"Client/Angular/front","cmd":"npm run e2e:mss","duration_ms":156550,"exit_code":0}
 {"ts":"2026-09-29T10:49:43+02:00","run_id":"-","type":"step","task":"task-346","step":"develop","status":"ok","note":"reprise après review : 5 bloquants, 4 mutations → 4 rouges, 22/22 ×2","iterations":null,"duration_ms":905206}
+{"ts":"2026-09-29T10:49:54+02:00","run_id":"-","type":"step_start","task":"task-346","step":"sonar"}
+{"ts":"2026-09-29T10:49:55+02:00","run_id":"-","type":"step","task":"task-346","step":"sonar","status":"skipped","note":"api-mail : e2e/README.md + commentaires scenarios.yml, aucun code","iterations":null,"duration_ms":487}
+{"ts":"2026-09-29T10:49:55+02:00","run_id":"-","type":"step_start","task":"task-346","step":"lint-angular"}
+{"ts":"2026-09-29T10:50:04+02:00","run_id":"-","type":"cmd","task":"task-346","step":"lint-angular","repo":"client-angular","kind":"lint","label":"","cwd":"Client/Angular/front","cmd":"npx nx run-many -t lint --projects=tag:scope:mss --parallel=3 --skip-nx-cache","duration_ms":7908,"exit_code":0}
+{"ts":"2026-09-29T10:50:16+02:00","run_id":"-","type":"step","task":"task-346","step":"lint-angular","status":"ok","note":"0 erreur (re-lint après reprise)","iterations":0,"duration_ms":21080}
+{"ts":"2026-09-29T10:50:17+02:00","run_id":"-","type":"step_start","task":"task-346","step":"lint-mobile"}
+{"ts":"2026-09-29T10:50:18+02:00","run_id":"-","type":"step","task":"task-346","step":"lint-mobile","status":"skipped","note":"client-mobile non touché","iterations":null,"duration_ms":521}
+{"ts":"2026-09-29T10:50:18+02:00","run_id":"-","type":"step_start","task":"task-346","step":"verify-visual"}
+{"ts":"2026-09-29T10:50:19+02:00","run_id":"-","type":"step","task":"task-346","step":"verify-visual","status":"skipped","note":"client-mobile non touché","iterations":null,"duration_ms":431}
+{"ts":"2026-09-29T10:50:53+02:00","run_id":"-","type":"step_start","task":"task-346","step":"review"}
+{"ts":"2026-09-29T10:50:59+02:00","run_id":"-","type":"cmd","task":"task-346","step":"review","repo":"api-mail","kind":"build","label":"","cwd":"Api/Mail","cmd":"dotnet build HealthPlatform.Api.Mail.sln -v q -nologo","duration_ms":5405,"exit_code":0}
+{"ts":"2026-09-29T10:53:05+02:00","run_id":"-","type":"cmd","task":"task-346","step":"review","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln --no-build -v q -nologo","duration_ms":125160,"exit_code":0}
+{"ts":"2026-09-29T10:53:07+02:00","run_id":"-","type":"cmd","task":"task-346","step":"review","repo":"client-angular","kind":"build","label":"","cwd":"Client/Angular/front","cmd":"npm run build","duration_ms":1080,"exit_code":0}
+{"ts":"2026-09-29T10:53:09+02:00","run_id":"-","type":"cmd","task":"task-346","step":"review","repo":"client-angular","kind":"test","label":"","cwd":"Client/Angular/front","cmd":"npm test","duration_ms":1130,"exit_code":0}
+{"ts":"2026-09-29T10:54:01+02:00","run_id":"-","type":"step","task":"task-346","step":"review","status":"ok","note":"APPROVED (2e passage), PR api-mail #260, angular code-only","iterations":null,"duration_ms":187505}
