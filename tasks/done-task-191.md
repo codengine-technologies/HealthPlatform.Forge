@@ -256,7 +256,11 @@ ligne n'est pas honorée quand l'autre est retenue.
 | /start | ok | 34 s | — | — | — | — |
 | /develop | ok | 33 min 24 s | 9 (2 min 44 s) | 5 (8 min 10 s) | — | api-mail 9B/5T |
 | /sonar | ok | 35 min 48 s | 3 (3 min 35 s) | 12 (11 min 37 s) | 4 (14 min 03 s) | api-mail 3B/12T, phase 1: 2 fixes + 4 tests, 2 analyses; phase 2 non lancée (reliquat task-342) |
-| **Total cycle** | | **1 h 09 min** | **12 (6 min 20 s)** | **17 (19 min 47 s)** | **4 (14 min 03 s)** | |
+| /lint-angular | skipped | 18 s | — | — | — | no angular change (human local env settings only) |
+| /lint-mobile | skipped | 2.2 s | — | — | — | client-mobile not touched |
+| /verify-visual | skipped | 2.0 s | — | — | — | no mobile screen touched |
+| /review | ok | 14 min 08 s | 1 (4 min 42 s) | 3 (6 min 42 s) | — | api-mail 1B/3T |
+| **Total cycle** | | **1 h 24 min** | **13 (11 min 02 s)** | **20 (26 min 30 s)** | **4 (14 min 03 s)** | |
 
 ## Develop log
 
@@ -338,3 +342,33 @@ première analyse de cette branche donnait `new_violations` 58 (+2 de task-191).
 
 Le QG reste ERROR à cause de la dette antérieure de la période `PREVIOUS_VERSION`
 (reliquat ci-dessus, hotspots non revus). La branche n'y contribue aucune issue.
+
+## Lint log
+
+- skipped — no angular change. `client-angular` absent de `**Repos**:` ; le `git status` de `Client/Angular/front` n'est pas vide, mais ne porte que les **deux réglages locaux de l'humain** (`apps/{mss,weda2}/src/environments/environment.ts`), déjà consignés au `/start` de task-346 — aucun fichier écrit par `/develop` pour task-191. Rien à linter pour cette task ; l'arbre de l'humain n'est pas touché.
+
+## Lint mobile log
+
+- skipped — no mobile change (`client-mobile` absent de `**Repos**:`, arbre propre sur `develop`).
+
+## Visual verify log
+
+- skipped — aucun écran `client-mobile` touché (task backend-only, pas de `## Stitch design log`).
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/261 — `fix/task-191-ingestion-integrity` → `develop`, label `awaiting-human-merge` (HAG, règle 10). Head `a8a52487`, à jour de `develop`.
+- `dtos-mss` : aucune branche (aucun contrat modifié).
+
+## Code Review Summary
+
+**APPROVED** — 0 bloquant (revue d'un second agent en lecture seule, points vérifiés contre le code).
+
+- ✅ Ordre d'écriture, rejeu borné (transaction bien disposée avant le rejeu, `ChangeTracker.Clear()` détache tout, aucun effet de bord doublé : tags et `ExecuteUpdate` de supersession n'interviennent qu'après un `SaveChanges` réussi, synchro des Id DTO idem), reconnaissance de la violation par nom de contrainte, chemin message patient, SQL de la migration et de l'inventaire, absence de donnée de santé dans les journaux (détail Npgsql caviardé par défaut).
+- ⚠️ Migration : `IF EXISTS` + `CREATE UNIQUE INDEX` non atomiques — un doublon commité entre les deux ferait échouer la migration (fenêtre minuscule). Correctif : bloc `EXCEPTION WHEN unique_violation` ou `LOCK TABLE … IN SHARE MODE`.
+- ⚠️ Justification inexacte du rethrow sous transaction appelante (EF revient à son savepoint ; la vraie raison est que `ChangeTracker.Clear()` jetterait le travail de l'appelant).
+- ⚠️ `40P01` (interblocage entre deux mails créant les deux mêmes identités neuves) non rejoué — rattrapé à la passe suivante.
+- ⚠️ Hors périmètre, antérieur (task-183) : adoption concurrente vers deux domaines = mise à jour perdue ; `(Ins, NULL)` et `(Ins, X)` créés en concurrence = deux dossiers autorisés par l'index.
+- ⚠️ Tests : avec l'option (a), le premier test d'ordre d'écriture ne réexerce plus le scénario FK (le test d'atomicité garde l'ordre) ; l'assertion « aucune valeur dans l'inventaire » porte sur le texte SQL, pas sur la sortie.
+
+Validation `/review` : build 0 erreur ; tests 5 879/5 884 à la passe complète — 5 rouges (`PostgresTenantRegistryClient*` ×4, `MailClientSessionManagerCoverageTests` ×1), fichiers non touchés, **verts isolément** (56/56, 16/16) et verts aux deux analyses Sonar sur le même commit : charge machine (revue parallèle en cours), pas une régression.
