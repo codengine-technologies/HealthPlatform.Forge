@@ -195,13 +195,13 @@ Les parcours de la colonne de droite **restent couverts par `/qa`**, avec un log
 | /start | ok | 27 s | — | — | — | api-mail, client-mobile |
 | /develop | ok | 42 min 20 s | 11 (2 min 26 s) | 16 (31 min 57 s) | — | api-mail 7B/6T, client-mobile 4B/10T, reprise après review : démontage borné au run, 13 parcours durcis, 7 mutations → 7 rouges, 22/22 ×2 |
 | /sonar | ok | 7 min 19 s | 4 (1 min 26 s) | 16 (11 min 44 s) | 6 (1 min 48 s) | api-mail 4B/16T, re-analyse post-reprise : Phase 1 0 finding, QG OK, Phase 2 skip (structurel) |
-| /lint-angular | skipped | 0.5 s | — | — | — | client-angular non touché |
-| /lint-mobile | ok | 26 s | — | — | — | 0 erreur baseline |
+| /lint-angular | skipped | 0.4 s | — | — | — | client-angular non touché |
+| /lint-mobile | ok | 30 s | — | — | — | 0 erreur baseline |
 | /verify-visual | skipped | 0.4 s | — | — | — | aucun écran redessiné, outillage absent |
 | /review | failed | 6 min 57 s | 2 (12 s) | 2 (2 min 18 s) | — | api-mail 1B/1T, client-mobile 1B/1T, CHANGES REQUESTED : démontage trop large (bloquant), verts qui mentent |
-| **Total cycle** | | **57 min 31 s** | **17 (4 min 05 s)** | **34 (46 min 00 s)** | **6 (1 min 48 s)** | |
+| **Total cycle** | | **57 min 36 s** | **17 (4 min 05 s)** | **34 (46 min 00 s)** | **6 (1 min 48 s)** | |
 
-Autres commandes mesurées : lint ×1 (16 s), restore ×1 (2.2 s)
+Autres commandes mesurées : lint ×2 (32 s), restore ×1 (2.2 s)
 
 ## Develop log
 
@@ -283,6 +283,7 @@ Baseline = analyse 1 de cette branche (serveur 9.9.8, 2026-09-28). Le serveur a 
 
 - `/lint-angular` : **skipped** — `client-angular` non listé dans `**Repos**:` (task-346 le couvrira), non touché par la task.
 - `/lint-mobile` : ✓ **0 erreur, 0 avertissement** dès la baseline (`ng lint`, périmètre `src/**/*.ts|html`) — 0 itération, aucun commit. Les fichiers `src/` touchés par la branche : `inbox.page.ts` (+ spec), `mail-folder-list.component.*` (ramenés à l'état de develop).
+- `/lint-mobile` (re-passe du 2026-09-29, après la reprise) : ✓ **0 erreur** dès la baseline — la reprise n'a touché que `e2e/`, hors du périmètre `ng lint` ; 0 itération, aucun commit.
 
 ## Visual verify log
 
