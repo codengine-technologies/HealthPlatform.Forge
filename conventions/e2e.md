@@ -118,6 +118,20 @@
 - **Origine** : task-346
 - **Occurrences** : 1
 
+### porte-valide-ses-entrees — Une porte bloquante refuse les entrées qui la rendraient verte à tort
+- **Piège** : la porte `gate` rendait **vert** sur des entrées vides ou fausses. Sans aucun
+  `--report`, tout était « non contrôlé » ou « listé ». Un vrai rapport passé en `--listed` voyait
+  ses rouges ignorés.
+- **Consigne** : un outil qui rend un verdict **bloquant** valide ses entrées avant de conclure. Un
+  verdict ne tombe jamais par défaut sur « vert ». Il faut au moins un rapport exécuté, un listing
+  ne doit contenir aucun test joué, et toute entrée incohérente est une panne d'outillage (code 2).
+  Chaque branche de tolérance (divergence, quarantaine) a son test positif **et** son test négatif.
+- **Preuve** : `Evaluate_ListingWithAPlayedTest_IsRefused`,
+  `Evaluate_WithoutAnyExecutedReport_IsRefused` ; branche « test absent sous divergence » rouge
+  sous mutation.
+- **Origine** : task-347 (revue)
+- **Occurrences** : 1
+
 ### preuve-par-mutation — Un test e2e n'est terminé qu'une fois prouvé rouge
 - **Piège** : un test écrit contre l'app qui marche ne dit rien de sa capacité à échouer.
 - **Consigne** : pour chaque test ajouté ou durci, planter un no-op dans l'appel qu'il protège,
@@ -135,7 +149,7 @@ task de stabilisation proposée)*
 
 | Test | Client | Occurrences | Dernière task | Cause connue |
 |---|---|---|---|---|
-| *(aucun à ce jour — task-345 et task-346 : 0 flaky sur leurs runs verts)* | | | | |
+| dossiers — naviguer vers Archive et Corbeille (E2E-FOLDER-001) | angular | 1 | task-347 | à établir — 1er essai : « le dossier INBOX est ouvert » (titre de liste absent au retour vers INBOX) |
 
 ## Quarantaines
 

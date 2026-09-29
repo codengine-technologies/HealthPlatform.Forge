@@ -170,12 +170,13 @@ vieillirait comme la suite `/qa` depuis juillet.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 37 s | — | — | — | plan de contrôle, pas de branche (diff relu avant push) |
-| /develop | ok | 1 h 05 min | 1 (4.9 s) | 1 (2 min 08 s) | — | api-mail 1B/1T, api-mail gate + plan de contrôle ; preuves skip / régression / parité |
-| /sonar | ok | 6 min 48 s | 1 (40 s) | 5 (4 min 54 s) | 2 (38 s) | api-mail 1B/5T, Phase 1 : 0 finding, QG OK |
+| /develop | ok | 4 min 27 s | 2 (8.1 s) | 2 (4 min 18 s) | — | api-mail 2B/2T, reprise après review : porte qui valide ses entrées |
+| /sonar | ok | 5 min 47 s | 2 (55 s) | 10 (9 min 11 s) | 4 (1 min 14 s) | api-mail 2B/10T, re-analyse : QG OK, 0 finding branche |
 | /lint-angular | skipped | 0.4 s | — | — | — | repo non touché |
 | /lint-mobile | skipped | 0.4 s | — | — | — | repo non touché |
-| /e2e | ok | 6 min 43 s | — | — | — | e2e ×3 (6 min 05 s), 2 voies vertes 22/22, parité verte |
-| **Total cycle** | | **1 h 19 min** | **2 (45 s)** | **6 (7 min 02 s)** | **2 (38 s)** | |
+| /e2e | ok | 6 min 47 s | — | — | — | e2e ×6 (11 min 59 s), 2 voies vertes, 1 flaky angular FOLDER-001 (registre) |
+| /review | ok | — | 1 (4.7 s) | 1 (2 min 16 s) | — | api-mail 1B/1T, APPROVED (2e passage), PR api-mail #262; no start marker |
+| **Total cycle** | | **17 min 41 s** | **5 (1 min 07 s)** | **13 (15 min 46 s)** | **4 (1 min 14 s)** | |
 
 ## Develop log
 
@@ -232,6 +233,13 @@ vieillirait comme la suite `/qa` depuis juillet.
   - `/po` : ligne de DOD « trou du filet » pour tout bug visible passé au travers.
 - Next step : **relecture du diff par l'humain** (mode d'exécution de la task), puis push du plan de contrôle, puis `/review task-347` pour la PR api-mail.
 
+### Reprise après /review (2026-09-29, CHANGES REQUESTED)
+
+- **3 bloquants corrigés** (`040862b6`) : la porte refuse de conclure sans rapport exécuté, elle refuse un « listing » qui contient un test joué, et la tolérance « test absent » d'une divergence est testée dans les deux sens (vérifiée rouge par mutation).
+- **Suggestions appliquées** : quarantaine sans task bloquante aussi au listing ; divergence devenue inutile signalée « à retirer » ; divergence visible sur une case humaine ; `IsTaskId` partagé.
+- **Règle d'or** : la leçon devient la consigne « porte-valide-ses-entrees » de `conventions/e2e.md`.
+- api-mail : **5 872 verts** (16 ignorés préexistants).
+
 ## Sonar log
 
 Mode A, serveur SonarQube 9.9.8, projet `healthplatform-api-mail`. 1 analyse complète : begin, build Release, 5 passes OpenCover, end.
@@ -239,6 +247,8 @@ Mode A, serveur SonarQube 9.9.8, projet `healthplatform-api-mail`. 1 analyse com
 - Phase 1 (lignes de task-347, uniquement l'outillage `tests/mss.mail.e2e` et ses tests) : ✓ **0 finding**. Quality Gate **OK**, new_coverage **98,3 %**.
 - Phase 2 (legacy) : 0 itération. Les mêmes 10 findings structurels (S107, S3604) restent, acceptés en best-effort.
 - Build et tests verts sous OpenCover : domain 190, application 3 267, infrastructure 665, api 1 100, integration 643 (+16 ignorés).
+
+**Re-analyse après la reprise** (`040862b6`) : Quality Gate **OK**, 0 finding sur les fichiers de la branche, KPIs inchangés.
 
 ### KPIs qualité (baseline → final)
 
@@ -260,25 +270,31 @@ Baseline = dernière analyse, task-346 et develop (2026-09-29).
 
 ## E2E log
 
+Run après la reprise de review (`040862b6`), sur le code que `/review` valide.
+
 | Voie | Déclencheur | Résultat | Tests | Durée |
 |---|---|---|---|---|
-| mobile | api-mail touché | ✅ verte | 22 verts, 0 flaky, 0 rouge, 0 quarantaine | 3 min 09 s |
-| angular | api-mail touché | ✅ verte | 22 verts, 0 flaky, 0 rouge, 0 quarantaine | 2 min 45 s |
+| mobile | api-mail touché | ✅ verte | 22 verts, 0 flaky, 0 rouge, 0 quarantaine | 2 min 57 s |
+| angular | api-mail touché | ✅ verte | 21 verts, **1 flaky**, 0 rouge, 0 quarantaine | 2 min 48 s |
 
 - Catalogue : `Api/Mail/e2e/scenarios.yml` @ branche de la task (`feat/task-347-etape-e2e-bloquante`)
-- Quarantaines : aucune — Divergences ouvertes : aucune — Flaky : aucun (registre de `conventions/e2e.md` inchangé)
+- Quarantaines : aucune — Divergences ouvertes : aucune
+- **Flaky** : `[angular] E2E-FOLDER-001`. Au 1er essai, « le dossier INBOX est ouvert » a échoué au retour vers INBOX ; il est vert au 2e. **1re occurrence**, inscrite au registre de `conventions/e2e.md` (task de stabilisation à la 3e).
 - Parcours touchés sans spec e2e modifié : aucun (aucun fichier client touché)
 - Démontage : complet (ports libres, aucun conteneur e2e résiduel)
-- Premier run réel de `/e2e` sur une task (et non une task jetable)
 
 **E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
+
+**Flaky (vert au second essai, non bloquant)** (1) :
+
+- [angular] « dossiers — naviguer vers Archive et Corbeille » (E2E-FOLDER-001)
 
 ### Matrice de parité
 
 | Scénario | v | Mode | Titre | angular | mobile |
 |---|---|---|---|---|---|
 | E2E-INBOX-001 | 1 | headless | Filtrer la boîte de réception, basculer liste / conversation, ouvrir la recherche | ✅ | ✅ |
-| E2E-FOLDER-001 | 1 | headless | Naviguer vers les dossiers Archive et Corbeille | ✅ | ✅ |
+| E2E-FOLDER-001 | 1 | headless | Naviguer vers les dossiers Archive et Corbeille | ⚠️ flaky | ✅ |
 | E2E-PATIENT-001 | 1 | headless | Afficher la vue patients | ✅ | ✅ |
 | E2E-CONTACT-001 | 1 | humain | Rechercher dans le carnet et interroger l'annuaire national | 👤 non joué (humain) | 👤 non joué (humain) |
 | E2E-SETTINGS-001 | 1 | headless | Changer le filtre par défaut et le retrouver après rechargement | ✅ | ✅ |
@@ -304,3 +320,24 @@ Baseline = dernière analyse, task-346 et develop (2026-09-29).
 | E2E-AUTH-002 | 1 | humain | Se déconnecter | 👤 non joué (humain) | 👤 non joué (humain) |
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/262 — label `awaiting-human-merge` (porte `gate`).
+- `forge` (plan de contrôle) : poussé sur `develop` après relecture humaine (`bad1a7a`, puis les suites de la revue). Pas de PR (règle 5).
+
+## Code Review Summary
+
+- Verdict : **APPROVED** au 2e passage (revue indépendante), le 2026-09-29.
+- 1er passage, CHANGES REQUESTED, trois bloquants corrigés dans `040862b6` :
+  - la porte rendait vert sans rapport exécuté ;
+  - un vrai rapport passé en `--listed` masquait ses rouges ;
+  - la tolérance « test absent » d'une divergence n'était pas testée.
+- 2e passage : code approuvé. Un point du playbook est corrigé : la porte qui sort en 2 bloque, et un vieux log n'est jamais recopié.
+- Validation : api-mail 5 872/5 872 ; Sonar QG OK, 0 finding sur la branche ; `/e2e` vert (mobile 22/22, Angular 21 + 1 flaky).
+
+## Amélioration continue (règle d'or)
+
+- Leçon de revue « une porte bloquante valide ses entrées » → consigne `porte-valide-ses-entrees` dans `conventions/e2e.md`.
+- Flaky `[angular] E2E-FOLDER-001` (1re occurrence) → inscrit au registre des flaky de `conventions/e2e.md`. Task de stabilisation à la 3e occurrence.
+- `/verify-visual` retiré de la chaîne, chiffres à l'appui (règle d'or, point 6).

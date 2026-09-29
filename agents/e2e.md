@@ -117,11 +117,18 @@ git -C Api/Mail show origin/develop:e2e/scenarios.yml > $TEMP/forge-e2e/{task-id
 construit.
 
 ```bash
+rm -f $TEMP/forge-e2e/{task-id}/e2e-log.md   # jamais le log d'un run précédent
 dotnet {outil} gate --catalog {catalogue} \
   --report mobile={rapport}  |  --listed mobile={listing} \
   --report angular={rapport} |  --listed angular={listing} \
   --out $TEMP/forge-e2e/{task-id}/e2e-log.md
 ```
+
+**Codes de la porte** :
+- **0** : vert ;
+- **1** : rouge, les motifs sont dans `--out` ;
+- **2** : **outillage**. Entrées refusées : aucun rapport exécuté, « listing » contenant un test joué,
+  catalogue illisible. Aucun `--out` n'est écrit. Le 2 **bloque** comme un 1, motif « outillage ».
 
 | La porte bloque (code 1) | La porte liste sans bloquer |
 |---|---|
@@ -165,7 +172,8 @@ client manquant aux `**Repos**` de la task et mettre son test à jour, ou décla
 
 ## Step 4 — Bloquer (fail-fast, règle 13)
 
-Si une voie sort en 2 (outillage) **ou** si la porte sort en 1 :
+Si une voie sort en 2 (outillage), si la porte sort en 1 (régression ou parité), **ou si la porte
+sort en 2** (outillage : entrées refusées) :
 
 1. `questions/{task-id}.md` qui dit **explicitement** la nature du blocage :
    - **Régression** : les tests en échec (client, titre, scénario), l'extrait d'erreur Playwright
@@ -242,7 +250,7 @@ en dehors du task file et de `questions/` :
 
 ## Step 8 — Chaînage (règle 13)
 
-**Vert** (les voies n'ont rien sorti en 2, et la porte est sortie en 0), ou **skip propre** :
+**Vert** (aucune voie n'a sorti 2, la porte est sortie en **0**, et son `--out` vient de **ce** run), ou **skip propre** :
 `step.sh end`, puis **appel immédiat, dans le même tour**, de `Skill(review, "{task-id}")`, sans
 rapport intermédiaire.
 
