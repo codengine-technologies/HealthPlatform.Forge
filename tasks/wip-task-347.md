@@ -171,7 +171,11 @@ vieillirait comme la suite `/qa` depuis juillet.
 |---|---|---|---|---|---|---|
 | /start | ok | 37 s | — | — | — | plan de contrôle, pas de branche (diff relu avant push) |
 | /develop | ok | 1 h 05 min | 1 (4.9 s) | 1 (2 min 08 s) | — | api-mail 1B/1T, api-mail gate + plan de contrôle ; preuves skip / régression / parité |
-| **Total cycle** | | **1 h 06 min** | **1 (4.9 s)** | **1 (2 min 08 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 6 min 48 s | 1 (40 s) | 5 (4 min 54 s) | 2 (38 s) | api-mail 1B/5T, Phase 1 : 0 finding, QG OK |
+| /lint-angular | skipped | 0.4 s | — | — | — | repo non touché |
+| /lint-mobile | skipped | 0.4 s | — | — | — | repo non touché |
+| /e2e | ok | 6 min 43 s | — | — | — | e2e ×3 (6 min 05 s), 2 voies vertes 22/22, parité verte |
+| **Total cycle** | | **1 h 19 min** | **2 (45 s)** | **6 (7 min 02 s)** | **2 (38 s)** | |
 
 ## Develop log
 
@@ -227,3 +231,76 @@ vieillirait comme la suite `/qa` depuis juillet.
   - `/review` : un piège récurrent trouvé en revue laisse une prévention, et le rapport porte une section « Amélioration continue » ;
   - `/po` : ligne de DOD « trou du filet » pour tout bug visible passé au travers.
 - Next step : **relecture du diff par l'humain** (mode d'exécution de la task), puis push du plan de contrôle, puis `/review task-347` pour la PR api-mail.
+
+## Sonar log
+
+Mode A, serveur SonarQube 9.9.8, projet `healthplatform-api-mail`. 1 analyse complète : begin, build Release, 5 passes OpenCover, end.
+
+- Phase 1 (lignes de task-347, uniquement l'outillage `tests/mss.mail.e2e` et ses tests) : ✓ **0 finding**. Quality Gate **OK**, new_coverage **98,3 %**.
+- Phase 2 (legacy) : 0 itération. Les mêmes 10 findings structurels (S107, S3604) restent, acceptés en best-effort.
+- Build et tests verts sous OpenCover : domain 190, application 3 267, infrastructure 665, api 1 100, integration 643 (+16 ignorés).
+
+### KPIs qualité (baseline → final)
+
+Baseline = dernière analyse, task-346 et develop (2026-09-29).
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | → |
+| New coverage | 98,3 % | 98,3 % | ±0 pt |
+| Bugs / Vulnerabilities / Hotspots | 0 / 0 / 0 | 0 / 0 / 0 | ±0 |
+| Code smells | 10 | 10 | ±0 |
+| Coverage (projet) | 98,2 % | 98,3 % | +0,1 pt |
+| Duplication | 0,5 % | 0,5 % | ±0 pt |
+
+## Lint log
+
+- `/lint-angular` : skipped — client-angular non touché par task-347.
+- `/lint-mobile` : skipped — client-mobile non touché par task-347.
+
+## E2E log
+
+| Voie | Déclencheur | Résultat | Tests | Durée |
+|---|---|---|---|---|
+| mobile | api-mail touché | ✅ verte | 22 verts, 0 flaky, 0 rouge, 0 quarantaine | 3 min 09 s |
+| angular | api-mail touché | ✅ verte | 22 verts, 0 flaky, 0 rouge, 0 quarantaine | 2 min 45 s |
+
+- Catalogue : `Api/Mail/e2e/scenarios.yml` @ branche de la task (`feat/task-347-etape-e2e-bloquante`)
+- Quarantaines : aucune — Divergences ouvertes : aucune — Flaky : aucun (registre de `conventions/e2e.md` inchangé)
+- Parcours touchés sans spec e2e modifié : aucun (aucun fichier client touché)
+- Démontage : complet (ports libres, aucun conteneur e2e résiduel)
+- Premier run réel de `/e2e` sur une task (et non une task jetable)
+
+**E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
+
+### Matrice de parité
+
+| Scénario | v | Mode | Titre | angular | mobile |
+|---|---|---|---|---|---|
+| E2E-INBOX-001 | 1 | headless | Filtrer la boîte de réception, basculer liste / conversation, ouvrir la recherche | ✅ | ✅ |
+| E2E-FOLDER-001 | 1 | headless | Naviguer vers les dossiers Archive et Corbeille | ✅ | ✅ |
+| E2E-PATIENT-001 | 1 | headless | Afficher la vue patients | ✅ | ✅ |
+| E2E-CONTACT-001 | 1 | humain | Rechercher dans le carnet et interroger l'annuaire national | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-SETTINGS-001 | 1 | headless | Changer le filtre par défaut et le retrouver après rechargement | ✅ | ✅ |
+| E2E-MAIL-001 | 1 | headless | Marquer un message lu puis non lu | ✅ | ✅ |
+| E2E-MAIL-002 | 1 | headless | Tout sélectionner et marquer lu en masse | ✅ | ✅ |
+| E2E-DETAIL-001 | 1 | headless | Répondre et transférer depuis la lecture d'un message | ✅ | ✅ |
+| E2E-COMPOSE-001 | 1 | headless | Envoyer un message, le recevoir, le lire, le supprimer | ✅ | ✅ |
+| E2E-MAIL-003 | 1 | headless | Signaler puis ne plus signaler un message | ✅ | ✅ |
+| E2E-MAIL-004 | 1 | headless | Déplacer un message vers Archive puis le ramener | ✅ | ✅ |
+| E2E-DRAFT-001 | 1 | headless | Créer un brouillon, le reprendre, le supprimer | ✅ | ✅ |
+| E2E-BIO-001 | 1 | headless | Acquitter un compte rendu de biologie | ✅ | ✅ |
+| E2E-DASH-001 | 1 | headless | Afficher les widgets du tableau de bord | ✅ | ✅ |
+| E2E-DETAIL-002 | 1 | headless | Basculer entre texte brut et HTML à la lecture | ✅ | ✅ |
+| E2E-DETAIL-003 | 1 | headless | Répondre à tous depuis la lecture d'un message | ✅ | ✅ |
+| E2E-SETTINGS-002 | 1 | headless | Changer la vue par défaut et la retrouver après rechargement | ✅ | ✅ |
+| E2E-SEARCH-001 | 1 | headless | Rechercher un message et ouvrir la recherche avancée | ✅ | ✅ |
+| E2E-ATTACH-001 | 1 | headless | Voir les pièces jointes d'un message | ✅ | ✅ |
+| E2E-CONTACT-002 | 1 | headless | Créer puis supprimer un contact | ✅ | ✅ |
+| E2E-SIGNATURE-001 | 1 | headless | Créer puis supprimer une signature | ✅ | ✅ |
+| E2E-CONTACT-003 | 1 | headless | Créer puis supprimer un groupe de contacts | ✅ | ✅ |
+| E2E-FOLDER-002 | 1 | headless | Créer puis supprimer un dossier | ✅ | ✅ |
+| E2E-AUTH-001 | 1 | humain | Rester connecté quand le jeton d'accès expire | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-AUTH-002 | 1 | humain | Se déconnecter | 👤 non joué (humain) | 👤 non joué (humain) |
+
+**Parité : verte** — aucun écart entre le catalogue et les suites.
