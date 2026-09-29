@@ -22,7 +22,11 @@
 
 ## CA1822 — un membre qui n'accède pas à l'état d'instance doit être `static`
 
-**Occurrences : 1** (task-200)
+**Occurrences : 2** (task-200, task-191 — récidive sur code frais : une méthode
+d'orchestration de test privée, `RaceTwoIngestionsAsync(connectionString, …)`, qui
+reçoit tout en paramètre et ne lit aucun champ de la classe de test. Un helper de
+test qui ne touche pas à la fixture injectée est `static` — la règle ne se limite
+pas aux propriétés qui relaient une constante)
 
 Le piège classique en test : exposer une valeur constante par une **propriété
 d'instance** qui enveloppe un `private const`. La propriété n'accède à aucun
@@ -242,7 +246,12 @@ dans `string.Equals`, mais `StringComparer` dans `Contains`.
 
 ## S125 — une prose qui « ressemble à du code » est signalée comme code commenté
 
-**Occurrences : 6** (task-184, task-292, task-188, task-322, task-171, task-342 —
+**Occurrences : 7** (task-184, task-292, task-188, task-322, task-171, task-342, task-191 —
+septième récidive : « The rule addresses a sender retiring the document it sent ; »
+et « …kept this reading from having any effect ; the fix », deux « espace +
+point-virgule » dans un commentaire d'intention ajouté au-dessus d'une méthode
+existante. Réécrits avec une virgule et une conjonction. Le réflexe à prendre
+avant de committer : `git diff | grep -E "^\+\s*//.* ;"` doit rester vide —
 sixième récidive : « the first role gives profession, specialty and structure ; »,
 un point-virgule en fin de ligne dans un commentaire d'intention. Cinquième
 récidive sur code frais. Variante task-171 : deux commentaires d'intention en anglais

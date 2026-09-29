@@ -242,3 +242,99 @@ ligne n'est pas honorée quand l'autre est retenue.
 - **AIPD / impact RGPD** : **à mettre à jour** — inexactitude des données
   (art. 5.1.d : historique patient scindé) et ineffectivité d'une demande de retrait
   patient. Qualifier la portée via l'inventaire, avec le DPO.
+
+## Branches
+- `api-mail` (pushed) : fix/task-191-ingestion-integrity — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-191-ingestion-integrity
+- `dtos-mss` : aucune branche à `/start` (branche paresseuse, créée par `/develop` seulement si un contrat change)
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-191 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 34 s | — | — | — | — |
+| /develop | ok | 33 min 24 s | 9 (2 min 44 s) | 5 (8 min 10 s) | — | api-mail 9B/5T |
+| /sonar | ok | 35 min 48 s | 3 (3 min 35 s) | 12 (11 min 37 s) | 4 (14 min 03 s) | api-mail 3B/12T, phase 1: 2 fixes + 4 tests, 2 analyses; phase 2 non lancée (reliquat task-342) |
+| **Total cycle** | | **1 h 09 min** | **12 (6 min 20 s)** | **17 (19 min 47 s)** | **4 (14 min 03 s)** | |
+
+## Develop log
+
+- Repos touched : api-mail (branche `fix/task-191-ingestion-integrity`)
+- DTOs published : no DTO change (aucune branche `dtos-mss`)
+- Interop published : no interop change
+- Commits :
+  - api-mail : 23c9107b fix(mail): atomic ingestion and one patient record per (Ins, Oid) identity — task-191
+  - api-mail : 86a9c225 refactor(mail): simplify pass (/simplify) — task-191
+- Local build / test : ✓ (0 erreur ; 5 884 tests, 0 échec, 16 ignorés pré-existants — deux passes complètes, avant et après la passe qualité)
+- Passe qualité (/simplify) :
+  - Applied & committed : api-mail: 3 files (86a9c225) — helper `CandidatesFor` (dédoublonnage des deux chemins), lecture unique du fichier d'inventaire, réutilisation de `DateTimeHelper.NowUnspecified`
+  - Skipped (contract/excluded) : dtos-mss, interop-cda, sdk
+- **Arbitrage humain (encadré du task file)** : sans réponse → **option (a)** implémentée et consignée : `DetectSuppressionRequestAsync` écarte tout mail `IsFromPatient`. Réversible par une ligne si l'humain choisit (b).
+- **Choix techniques** :
+  - Ordre d'écriture : mail suivi en premier, **aucune** sauvegarde intermédiaire ; tout le graphe part dans le `SaveChanges` unique de `PersistNewMailAsync`, sous sa transaction (AUD-36).
+  - Unicité : index `UX_MailPatients_Ins_Oid` sur `("Ins", COALESCE("Oid", ''))` partiel `WHERE Ins non vide`. Index d'expression plutôt que `NULLS NOT DISTINCT` : PG 16 en local et en test, **version de production non consignée** — l'expression tient sur toute version. Pas de miroir EF (index d'expression non déclarable) : les tests rejouent le coureur FluentMigrator de production sur une base neuve.
+  - Reprise : violation de cet index (reconnue par **nom de contrainte**, jamais par message) → rollback, `ChangeTracker.Clear()`, rejeu de l'ingestion (3 tentatives max, jamais sous transaction appelante). Le `catch` « mail dupliqué » de `PersistNewMailAsync` exclut désormais cette violation (sinon le mail était perdu en `Guid.Empty` — constaté en RED).
+  - Chemin message patient : candidats partagés avec le chemin CDA (un seul chargement par mail), arbitrage `MatchPatientOnDomain(…, null)`, candidats triés par `Id` (Guid v7 → plus ancien d'abord, départage déterministe).
+  - Journal : `LogWarning` sur collision, classe de domaine seulement (`InsIdentityDomain.Describe`), jamais le matricule ni l'exception (dont le détail porterait la clé).
+- **Règle 7c — audit de la migration `20260929120000`** : relue. Aucune opération fantôme (un `DO` conditionnel + `CREATE UNIQUE INDEX IF NOT EXISTS`, `Down` = `DROP INDEX IF EXISTS`). FluentMigrator n'a pas de fichier compagnon (pas de `.Designer.cs`/snapshot). Comportement `NULL` explicite (domaine `NULL` = valeur, matricule `NULL`/vide hors index). Reprise documentée dans l'en-tête : base à doublons → index non installé, `WARNING` sans valeur, aucune ligne touchée, migration marquée appliquée ; instruction de rattrapage en fin du fichier d'inventaire. Prouvé par `Migration_OnADatabaseAlreadyHoldingDuplicates_…` et `Migration_OnACleanDatabase_…`.
+- **RED vérifié explicitement sur le code d'avant la task** (`MailRepository.cs` de `origin/develop` + migration neuve) : 6/6 nouveaux tests d'intégration rouges —
+  - réponse patient : `23503 FK_MailMedicalDocuments_SuppressionRequestedByMail` (le défaut décrit, message jamais ingéré) ;
+  - atomicité : dossier patient orphelin survivant à l'échec ;
+  - concurrence (NIR, `NULL`, message patient + CDA) et adoption : l'ingestion perdante rendait `Guid.Empty` (mail perdu) faute de rejeu.
+- DOD self-check (10/11 vérifiables par commande) :
+  - [x] Build 0 erreur / tests 0 échec
+  - [x] Intégration réponse patient sans CDA → ingérée, aucune estampille (option a), RED vérifié — `MailIngestionWriteOrderTests`
+  - [x] Intégration atomicité — `AddNewMail_PartialFailureAfterTheMainWrite_…`
+  - [x] Intégration concurrence, domaine connu + `Oid = NULL` — `ConcurrentIngestionsOfTheSameIdentity_…` (Theory) + chemin message patient
+  - [x] Intégration adoption concurrente — `DomainAdoptionConcurrentWithACreationOfTheSameDomain_…`
+  - [x] Unitaire violation → retombée sur l'existant — `AddNewMail_PatientIdentityViolation_FallsBackOnTheConcurrentRecord_WithoutError` (+ épuisement, + reconnaissance par nom de contrainte)
+  - [x] Unitaire chemin message patient selon `MatchPatientOnDomain` — 4 tests `PatientMessage_*`
+  - [x] Migration relue 7c, stratégie de reprise documentée
+  - [~] Inventaire livré **dans `Api/Mail/docs/`** (pas `Docs/` du plan de contrôle) pour être **exécuté tel quel** par le test d'intégration (lien csproj) — un test api-mail ne voit pas le plan de contrôle en CI. Note de remédiation : `Docs/task-191-remediation-doublons-identite-patient.md`, liée depuis `questions/task-183.md` question 3.
+  - [x] Aucune donnée de santé en clair : ni log ni inventaire ne portent matricule, OID brut ou nom
+  - Observables (Manual Test Plan 2-6) : deferred to manual test (HAG)
+- Écart de pré-flight consigné : `tasks/wip-task-346.md` coexiste (passé par `/start` ce matin, branche api-mail sans aucun commit, api-mail rendu sur `develop`) — aucun recouvrement, poursuite.
+- Next step : /sonar task-191
+
+## Sonar log
+
+Mode A (chaîné depuis `/develop`), serveur SonarQube 25.6.0.109173 (`sonar.token`), port
+mesuré 9001 (`docker port sonarqube`), projet `healthplatform-api-mail`. Conteneurs
+arrêtés au départ (`Exited (255)`) : `sonarqube_db` puis `sonarqube` démarrés. **2 analyses
+complètes** (begin → build Release → 5 passes OpenCover → end), toutes vertes.
+
+**Provenance** (même méthode que task-342) : la new-code period du projet est large
+(`PREVIOUS_VERSION`) ; Phase 1 = findings posés sur les lignes **ajoutées par cette branche**
+(`git diff -U0 origin/develop...HEAD`). La migration est hors analyse (`**/Migrations/**`).
+
+- Phase 1 (lignes de task-191) : ✓ **0 finding restant** sur les lignes de la branche. Couverture des lignes et conditions ajoutées dans `MailRepository.cs` = **100 %** (45/45 lignes, 24/24 conditions) — 95,5 % / 75 % à la première analyse
+- Phase 1 — Issues fixées : **2** code smells (0 bug, 0 vulnérabilité, 0 hotspot sur les lignes de la branche) : S125 ×1 (commentaire d'intention à point-virgule, `DetectSuppressionRequestAsync`), CA1822 ×1 (`RaceTwoIngestionsAsync` → `static`). Commits `18518314`, `10b995ee`
+- Phase 1 — Tests ajoutés : **4 cas** — collision sous transaction appelante (relevée, pas rejouée, intégration), collision sur message patient avec et sans contenu (Theory ×2), mail « patient » sans matricule. Commits `10b995ee`, `a8a52487`
+- Phase 2 (legacy) : itérations **0 / 5** — **non lancée**. Les 56 issues restantes sont exactement le reliquat que task-342 a examiné hier et jugé non traitable en lot (S3776 ×24 → `/sonar-s3776` ; javascript S1940 ×20, gardes NaN volontaires ; S4462/S2952/S138/S1067, structurels ; S2486 ×3, `catch` muets commentés). Rien n'a changé dans ces fichiers depuis
+- Phase 2 — Issues fixées : 0
+- Phase 2 — Issues restantes : 56 (acceptation best-effort, toutes antérieures à la task)
+- Hotspots : 13 `TO_REVIEW` dans la new-code period, **aucun sur une ligne de task-191** (k6 `weak-cryptography`, tests python `encrypt-data`, `report.py` dos, Dockerfile `auth`, `BaseRepository.cs:755` log-injection). Leur statut est laissé à la revue humaine
+- Build / tests : ✓ green aux deux analyses. Dernière : domain 190, application 3 267, infrastructure 677, api 1 084, integration 654 (+16 ignorés). Poussé jusqu'à `a8a52487` (pre-push vert)
+- Conventions : `conventions/csharp.md` — S125 → 7 occurrences (+ réflexe `grep` avant commit), CA1822 → 2 occurrences
+
+### KPIs qualité (baseline → final)
+
+Baseline = dernière analyse du serveur avant le run (task-342, 2026-09-28 19:42 UTC) ; la
+première analyse de cette branche donnait `new_violations` 58 (+2 de task-191).
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | ERROR | ERROR | → (`new_violations` 56 → 56, `new_security_hotspots_reviewed` 0 %) |
+| New coverage | 98,4 % | 98,5 % | +0,1 pt |
+| Couverture des lignes de task-191 | 95,5 % (lignes) / 75 % (conditions) | 100 % / 100 % | +4,5 pt / +25 pt |
+| Bugs | 2 | 2 | ±0 |
+| Vulnerabilities | 0 | 0 | ±0 |
+| Security hotspots | 15 | 15 | ±0 |
+| Code smells | 54 | 54 | ±0 |
+| Coverage (projet) | 98,2 % | 98,3 % | +0,1 pt |
+| Duplication | 0,4 % | 0,4 % | ±0 pt |
+| Reliability / Security / Maintainability | D/A/A | D/A/A | → (D = S2952 legacy de `MailClientSession`) |
+
+Le QG reste ERROR à cause de la dette antérieure de la période `PREVIOUS_VERSION`
+(reliquat ci-dessus, hotspots non revus). La branche n'y contribue aucune issue.

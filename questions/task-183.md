@@ -121,6 +121,15 @@ Trois décisions demandées :
 3. **Qui porte l'acte** : la forge (US produit dédiée) ou une procédure
    d'exploitation ?
 
+> **2026-09-29 — task-191 livre l'inventaire de la décision 3.1 (volet « même
+> identité »).** Requête read-only `Api/Mail/docs/task-191-inventaire-doublons-identite-patient.sql`
+> (testée sur PostgreSQL) : identités `(matricule, domaine)` portées par plusieurs
+> dossiers, paires « domaine inconnu » comprises, sans matricule ni nom en sortie.
+> Note de remédiation : `Docs/task-191-remediation-doublons-identite-patient.md`.
+> Les décisions 3.2 et 3.3 (protocole, porteur de l'acte) restent **ouvertes** ;
+> le volet « matricules différents, même personne » (NIA/NIR) n'est pas couvert
+> par cet inventaire.
+
 ---
 
 ## Ce qui reste à livrer, et ce que ça attend
