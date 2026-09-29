@@ -150,6 +150,7 @@ task de stabilisation proposée)*
 | Test | Client | Occurrences | Dernière task | Cause connue |
 |---|---|---|---|---|
 | dossiers — naviguer vers Archive et Corbeille (E2E-FOLDER-001) | angular | 1 | task-347 | à établir — 1er essai : « le dossier INBOX est ouvert » (titre de liste absent au retour vers INBOX) |
+| inbox — filtres Non lus / Lus / Tous et recherche (E2E-INBOX-001) | angular | 1 | task-343 | à établir — vert au 2e essai |
 
 ## Quarantaines
 

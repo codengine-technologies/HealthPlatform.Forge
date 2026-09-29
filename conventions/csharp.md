@@ -358,7 +358,13 @@ convention de nommage.
 
 ## S3604 — un constructeur primaire n'accepte pas d'initialiseur de champ
 
-**Occurrences : 1** (task-297)
+**Occurrences : 2** (task-297, task-343 — **récidive sur du code frais**, ×3 : `InMemoryAiConversationStorage`.
+Variante task-343 : l'initialiseur ne dérivait d'**aucun** paramètre — `private readonly object _gate = new();`,
+`private readonly Dictionary<…> _entries = [];` — et il a été signalé quand même, parce que la classe avait un
+constructeur primaire. Idem pour une propriété `Stored { get; } = stored;` d'une classe interne à
+constructeur primaire : un **record positionnel** la remplace sans initialiseur. Seuls les titres de
+ce fichier avaient été lus avant d'écrire : la règle vaut pour **tout** initialiseur de membre
+d'instance, dès qu'il y a un constructeur primaire)
 
 Le motif se forme naturellement quand on veut **capturer une fois** une valeur
 de configuration dans une classe à constructeur primaire : on déclare un champ
@@ -759,3 +765,42 @@ des types `IXunitSerializable` — un corps de requête se passe en chaîne JSON
 `var error = await Record.ExceptionAsync(() => …); Assert.Null(error);` — et
 ajoute, quand il existe, l'effet de bord qui prouve le chemin pris (par exemple
 `DidNotReceiveWithAnyArgs()` sur le collaborateur qui ne doit pas être appelé).
+
+---
+
+## memoire-vers-redis-chemins-faillibles — un état qui quitte la mémoire rend faillibles des chemins qui ne l'étaient pas
+
+**Occurrences : 1** (task-343, revue — ×2 dans la même task)
+
+Déplacer un état de la mémoire du processus vers Redis (pour le partager entre réplicas) ne
+change pas seulement **où** il vit : chaque lecture et chaque écriture peuvent désormais **échouer**
+(délai, connexion, conflit de version). Les appelants avaient été écrits pour une opération
+infaillible, et deux chemins sont passés au travers :
+
+- **le démarrage** : un abonnement Redis posé dans `IHostedService.StartAsync` lève une
+  `RedisConnectionException` → l'hôte avorte → tous les pods redémarrent en boucle pendant une
+  panne Redis au déploiement ;
+- **un flux en streaming** (`IAsyncEnumerable`) : l'écriture finale du tour lève après que la
+  réponse a été envoyée → le client reçoit un `SERVER_ERROR` générique, et une réponse qu'il a lue
+  n'est pas conservée, sans qu'il le sache.
+
+**Consigne** : quand un état passe de la mémoire à un magasin distant, **lister chaque appelant**
+et décider explicitement ce qu'il fait d'un échec :
+
+- **démarrage** → ne jamais faire échouer `StartAsync` pour une fonction dont l'API peut se passer
+  un temps ; réessayer en arrière-plan jusqu'au succès ou à l'arrêt (et le tester, Redis en pause
+  au démarrage) ;
+- **streaming** → attraper `ConflictException` / `RedisException` / `TimeoutException` à
+  l'écriture et émettre un **événement d'erreur explicite** (un code par cause) au lieu de l'événement
+  final ;
+- **journalisation** → le type de l'exception, jamais son message si elle vient d'une
+  désérialisation : il cite le document, qui cite des mails.
+- **abonnement pub/sub raté** → StackExchange.Redis (2.7) a déjà **attaché** la
+  `ChannelMessageQueue` au multiplexeur quand `SubscribeAsync` lève : la détacher
+  (`UnsubscribeAsync`) avant de réessayer, sinon chaque réessai laisse une file orpheline qui, Redis
+  revenu, bufférise sans borne tout le canal. Invisible à `PUBSUB NUMSUB` (un seul abonné côté
+  serveur) : le garde compte les files attachées (`FailedSubscriptionAttempts_LeaveNoOrphanQueueBehind`).
+
+**Preuve** : `SseBackplaneTests.SubscriptionService_WhenRedisIsDownAtStartup_…`,
+`MultiReplicaRedisIntegrationTests.Replica_StartedWhileRedisDoesNotAnswer_…`,
+`AiConversationTurnPersistenceTests` (rouges sur le code d'avant la reprise).
