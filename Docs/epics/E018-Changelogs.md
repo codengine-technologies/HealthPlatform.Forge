@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E018-filet-de-non-regression-fonctionnel.md](E018-filet-de-non-regression-fonctionnel.md).
-> **Dernière mise à jour** : 2026-09-29 (v1.1)
+> **Dernière mise à jour** : 2026-09-29 (v1.2)
 
 ---
 
@@ -10,7 +10,7 @@
 
 ### v1.0 — Filet e2e headless client-mobile, backend e2e et catalogue de scénarios — task-345
 
-- **Task** : task-345, statut `done`.
+- **Task** : task-345, statut `archived` (mergée le 2026-09-29).
 - **PRs** : `api-mail` #259 et `client-mobile` #81, label `awaiting-human-merge`, branche
   `feat/task-345-filet-e2e-headless-mobile`.
 - **Backend e2e (api-mail)** :
@@ -57,7 +57,7 @@
 
 ### v1.1 — Filet e2e headless client-angular (module messagerie de weda2) — task-346
 
-- **Task** : task-346, statut `done`.
+- **Task** : task-346, statut `archived` (mergée le 2026-09-29 ; code Angular à pousser sur TFS par l'humain).
 - **PRs** :
   - `api-mail` #260, label `awaiting-human-merge` : documentation seulement, `e2e/README.md` et commentaires dans `scenarios.yml`.
   - `client-angular` : **code-only**. L'humain commite et pousse vers TFS sur `feature/nova-rewriting-mss` ; liste des fichiers dans le task file.
@@ -91,6 +91,70 @@
   - Suggestions restantes : protéger le `finally` de SETTINGS-001/002 ; attendre `.mail-list-empty` dans Brouillons.
 - **Constat PO** : weda2 ne conserve pas sa session d'un rechargement à l'autre, chaque rechargement repasse par le login PSC. Suppression de mail différée de 6 s, comme sur le mobile.
 
+### v1.2 — Étape `/e2e` bloquante dans la chaîne autonome, porte `gate` — task-347
+
+- **Task** : task-347, statut `done`.
+- **PRs** : `api-mail` #262, label `awaiting-human-merge`, branche `feat/task-347-etape-e2e-bloquante`. Plan de contrôle poussé sur `develop` sans PR (règle 5), `bad1a7a` puis `b44830c`.
+- **Chaîne** : `/start → /develop → /sonar → /lint-angular → /lint-mobile → /e2e → /review → /tech-writer`.
+  - `/verify-visual` **sort de la chaîne** (décision humaine) : 66 logs, jamais bloquant, outillage absent depuis environ task-274. Il reste disponible à la demande.
+- **Étape `/e2e`** (`agents/e2e.md`, `.claude/commands/e2e.md`) :
+  - voie mobile si `api-mail`, `client-mobile` ou `dtos-mss` est touché ; voie Angular si `api-mail`, `client-angular` ou `dtos-mss` est touché ;
+  - un client non touché est **listé** (`playwright test --list`), sans être rejoué ;
+  - bloquante sans exemption ; seule l'humain pose une quarantaine (tag `@quarantaine` + annotation citant la task) ;
+  - la porte qui sort en 2 (outillage) bloque aussi ; démontage vérifié ; mesure `--kind e2e`.
+- **Double verrou** : `/review` refuse d'ouvrir une PR sans `## E2E log` vert quand une voie est touchée, et recopie le log dans chaque PR (`## Parcours e2e`).
+- **Porte `gate`** (`tests/mss.mail.e2e/Parity/E2eGate.cs`) : codes 0 vert, 1 rouge, 2 outillage.
+  - Bloque sur un écart de parité, un test rouge hors quarantaine, ou une quarantaine sans `task-NNN`.
+  - Liste sans bloquer les flaky, les quarantaines et les divergences (y compris « à retirer »).
+  - Valide ses entrées : au moins un rapport exécuté, et un listing qui ne contient aucun test joué.
+- **Parité** : état `Listed` (📋) ; divergences temporaires au catalogue (`divergences: { client: { raison, tache } }`), limitées à un client requis, qui tolèrent une version périmée ou un test absent pour ce client seul.
+- **Règle d'or** « la forge s'améliore toujours », gravée en tête de CLAUDE.md :
+  - `conventions/e2e.md` : 10 conventions, registres des flaky, des quarantaines et des trous du filet ;
+  - `/develop` Step 6b : lecture des conventions, catalogue avant les tests, preuve par mutation ;
+  - `/review` : section « Amélioration continue » au rapport ; `/po` : clause de DOD e2e et ligne « trou du filet ».
+- **Preuves** (tasks jetables 990 à 992, supprimées ensuite) :
+  - skip mesuré ;
+  - régression (filtre « Non lus » cassé) : E2E-INBOX-001 rouge, chaîne arrêtée, aucune PR ;
+  - parité (catalogue v2, seul le mobile suit) : `[angular] StaleVersion`, chaîne arrêtée.
+- **Tests** : api-mail 5 872 verts (16 ignorés préexistants), dont 17 tests de porte.
+- **Sonar** : Quality Gate OK, new_coverage 98,3 %, 0 finding sur la branche.
+- **Revue** : 1 CHANGES REQUESTED (porte verte sans rapport, listing masquant des rouges, tolérance non testée), corrigé dans `040862b6`, puis APPROVED.
+- **`/e2e` du cycle** : mobile 22/22 ; Angular 21 + **1 flaky** (E2E-FOLDER-001, 1re occurrence, inscrite au registre) ; parité verte ; aucune quarantaine ni divergence.
+
+#### Matrice de parité — source task-347, 2026-09-29
+
+| Scénario | v | Mode | Titre | angular | mobile |
+|---|---|---|---|---|---|
+| E2E-INBOX-001 | 1 | headless | Filtrer la boîte de réception, basculer liste / conversation, ouvrir la recherche | ✅ | ✅ |
+| E2E-FOLDER-001 | 1 | headless | Naviguer vers les dossiers Archive et Corbeille | ⚠️ flaky | ✅ |
+| E2E-PATIENT-001 | 1 | headless | Afficher la vue patients | ✅ | ✅ |
+| E2E-CONTACT-001 | 1 | humain | Rechercher dans le carnet et interroger l'annuaire national | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-SETTINGS-001 | 1 | headless | Changer le filtre par défaut et le retrouver après rechargement | ✅ | ✅ |
+| E2E-MAIL-001 | 1 | headless | Marquer un message lu puis non lu | ✅ | ✅ |
+| E2E-MAIL-002 | 1 | headless | Tout sélectionner et marquer lu en masse | ✅ | ✅ |
+| E2E-DETAIL-001 | 1 | headless | Répondre et transférer depuis la lecture d'un message | ✅ | ✅ |
+| E2E-COMPOSE-001 | 1 | headless | Envoyer un message, le recevoir, le lire, le supprimer | ✅ | ✅ |
+| E2E-MAIL-003 | 1 | headless | Signaler puis ne plus signaler un message | ✅ | ✅ |
+| E2E-MAIL-004 | 1 | headless | Déplacer un message vers Archive puis le ramener | ✅ | ✅ |
+| E2E-DRAFT-001 | 1 | headless | Créer un brouillon, le reprendre, le supprimer | ✅ | ✅ |
+| E2E-BIO-001 | 1 | headless | Acquitter un compte rendu de biologie | ✅ | ✅ |
+| E2E-DASH-001 | 1 | headless | Afficher les widgets du tableau de bord | ✅ | ✅ |
+| E2E-DETAIL-002 | 1 | headless | Basculer entre texte brut et HTML à la lecture | ✅ | ✅ |
+| E2E-DETAIL-003 | 1 | headless | Répondre à tous depuis la lecture d'un message | ✅ | ✅ |
+| E2E-SETTINGS-002 | 1 | headless | Changer la vue par défaut et la retrouver après rechargement | ✅ | ✅ |
+| E2E-SEARCH-001 | 1 | headless | Rechercher un message et ouvrir la recherche avancée | ✅ | ✅ |
+| E2E-ATTACH-001 | 1 | headless | Voir les pièces jointes d'un message | ✅ | ✅ |
+| E2E-CONTACT-002 | 1 | headless | Créer puis supprimer un contact | ✅ | ✅ |
+| E2E-SIGNATURE-001 | 1 | headless | Créer puis supprimer une signature | ✅ | ✅ |
+| E2E-CONTACT-003 | 1 | headless | Créer puis supprimer un groupe de contacts | ✅ | ✅ |
+| E2E-FOLDER-002 | 1 | headless | Créer puis supprimer un dossier | ✅ | ✅ |
+| E2E-AUTH-001 | 1 | humain | Rester connecté quand le jeton d'accès expire | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-AUTH-002 | 1 | humain | Se déconnecter | 👤 non joué (humain) | 👤 non joué (humain) |
+
+**Parité : verte** — aucun écart entre le catalogue et les suites.
+
+- **Reporté** : la répétition sur une task mobile réelle (DOD), jouée après le merge de #262.
+
 ---
 
 ## Annexe A — Cartographie des briques applicatives
@@ -100,7 +164,9 @@
 | Profil AppHost e2e | `Api/Mail/src/AppHost/E2eProfile.cs`, `AppHost.cs` | Backend du filet (Dovecot, GreenMail, relais, registre dédié, clé de bypass) |
 | Outillage e2e | `Api/Mail/tests/mss.mail.e2e/` | Reset, seed, relais, contrôle de parité |
 | Plan de seed | `Api/Mail/tests/mss.mail.testing.shared/E2eSeedPlan.cs` | Jeu de données déterministe, partagé seed et tests |
-| Catalogue | `Api/Mail/e2e/scenarios.yml`, `Api/Mail/e2e/README.md` | Référence commune des scénarios |
+| Catalogue | `Api/Mail/e2e/scenarios.yml`, `Api/Mail/e2e/README.md` | Référence commune des scénarios, divergences temporaires |
+| Porte `gate` | `Api/Mail/tests/mss.mail.e2e/Parity/E2eGate.cs`, `ParityCheck.cs`, `Program.cs` | Verdict unique de `/e2e` et corps du `## E2E log` |
+| Étape `/e2e` | `agents/e2e.md`, `.claude/commands/e2e.md`, `conventions/e2e.md` | Filet bloquant de la chaîne, registres flaky / quarantaines / trous du filet |
 | Orchestrateur | `Client/Mobile/e2e/headless/run.mjs` | Run headless de bout en bout, démontage |
 | Suite mobile | `Client/Mobile/e2e/specs/functional.spec.ts`, `e2e/support/*` | Parcours taggés `@E2E-…` + annotation `version` |
 | Suite web (weda2) | `Client/Angular/front/e2e/mss-e2e/` (`specs/functional.e2e.ts`, `support/{session,weda,fixtures}.ts`, `run.mjs`) | Mêmes parcours ; auth simulée dans Playwright ; backend via l'orchestrateur mobile |
@@ -112,8 +178,9 @@
 - Scénarios au catalogue : 25, dont 22 headless et 3 humains.
 - Suite mobile headless : 22 tests joués, 22 verts.
 - Suite web headless (weda2) : 22 tests joués, 22 verts.
-- Matrice de parité : 22 scénarios ✅ sur les deux colonnes.
-- Tests unitaires de l'outillage e2e (api-mail) : 53.
+- Matrice de parité : 22 scénarios verts sur les deux colonnes (dont 1 flaky web, E2E-FOLDER-001).
+- Tests unitaires de l'outillage e2e (api-mail) : 53 à task-346, puis porte, divergences et quarantaine en plus (task-347, dont 17 tests de porte).
+- Flaky au registre : 1 (E2E-FOLDER-001, web, 1 occurrence). Quarantaines : 0. Divergences ouvertes : 0.
 
 ---
 
@@ -121,6 +188,6 @@
 
 | Task | Statut | Contribution | RGs |
 |---|---|---|---|
-| task-345 | done (PRs en attente de merge) | Backend e2e, outillage, catalogue, filet mobile headless | RG-E018-01, 02, 03 (mobile), 04 |
-| task-346 | done (PR api-mail en attente de merge, Angular à pousser sur TFS) | Filet web weda2 sur le même backend et le même catalogue | RG-E018-03 (web) |
-| task-347 | todo | Étape `/e2e` bloquante dans la chaîne, clause de DOD | — |
+| task-345 | archived (mergée) | Backend e2e, outillage, catalogue, filet mobile headless | RG-E018-01, 02, 03 (mobile), 04 |
+| task-346 | archived (mergée ; Angular à pousser sur TFS) | Filet web weda2 sur le même backend et le même catalogue | RG-E018-03 (web) |
+| task-347 | done (PR api-mail #262 en attente de merge) | Étape `/e2e` bloquante, porte `gate`, clause de DOD, règle d'or | RG-E018-03 (contrôle continu), 05 |

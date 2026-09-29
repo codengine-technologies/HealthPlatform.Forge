@@ -176,7 +176,8 @@ vieillirait comme la suite `/qa` depuis juillet.
 | /lint-mobile | skipped | 0.4 s | — | — | — | repo non touché |
 | /e2e | ok | 6 min 47 s | — | — | — | e2e ×6 (11 min 59 s), 2 voies vertes, 1 flaky angular FOLDER-001 (registre) |
 | /review | ok | — | 1 (4.7 s) | 1 (2 min 16 s) | — | api-mail 1B/1T, APPROVED (2e passage), PR api-mail #262; no start marker |
-| **Total cycle** | | **17 min 41 s** | **5 (1 min 07 s)** | **13 (15 min 46 s)** | **4 (1 min 14 s)** | |
+| /tech-writer | ok | 1 min 21 s | — | — | — | — |
+| **Total cycle** | | **19 min 02 s** | **5 (1 min 07 s)** | **13 (15 min 46 s)** | **4 (1 min 14 s)** | |
 
 ## Develop log
 
