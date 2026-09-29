@@ -1,13 +1,18 @@
 # /verify-visual — Vérification visuelle des écrans mobiles
 
 Usage :
-- `/verify-visual {task-id}` — **Mode A (chaîné)**. Invoqué par
-  `/lint-mobile` dans le cycle autonome, avant `/review`. Capture chaque
+> **Hors de la chaîne autonome depuis task-347** (décision humaine du 2026-09-29). Son seul
+> cas bloquant, l'écran blanc ou le crash de navigation, est couvert par `/e2e`, qui parcourt
+> les vrais écrans contre le vrai backend. `/verify-visual` reste disponible **à la demande** :
+> captures pour une PR, comparaison au design Stitch, rafraîchissement de la galerie « État
+> visuel » de la doc d'EPIC. Plus aucune étape ne l'invoque, et il n'enchaîne sur aucune.
+
+- `/verify-visual {task-id}` — **Mode A (sur une task, à la demande)**. Capture chaque
   écran `client-mobile` touché par la task (Playwright headless, session
   factice, API mockée par fixtures — aucun backend, aucune donnée réelle),
   paire chaque capture avec sa référence Stitch, consigne un
   `## Visual verify log` dans la task (recopié par `/review` dans le body
-  de la PR sous `## Vérification visuelle`), puis enchaîne `/review`.
+  de la PR sous `## Vérification visuelle` si la PR est encore à ouvrir), puis rend la main.
 - `/verify-visual {screen-name}` — **Mode B (stand-alone)**. Capture un
   écran (ex. `/verify-visual settings`), imprime le verdict + le PNG, exit.
 - `/verify-visual --all` — **Mode C (rattrapage complet)**. Capture tous
@@ -41,7 +46,7 @@ Read `agents/verify-visual.md` and execute the full playbook :
    `/tech-writer` dans la doc produit de l'EPIC) puis habillage **gabarit
    smartphone** via `frame.mjs` (cosmétique, rendu Material inchangé ;
    les captures par task restent brutes pour la comparaison Stitch) ; `## Visual verify log`
-   dans la task, hand-off `/review {task-id}`.
+   dans la task, hand-off `/e2e {task-id}`.
 
 ## ⏱️ Instrumentation (obligatoire)
 
@@ -76,40 +81,9 @@ Tools/timing/step.sh end --task {task-id} --step verify-visual --status ok
 
 ---
 
-## ⛓️ Chaînage — NE PAS INTERROMPRE
+## ⛓️ Chaînage — aucun
 
-> Cette section est **opérationnelle**, pas descriptive. Elle a été ajoutée le
-> 2026-08-04 parce que la chaîne s'arrêtait en pratique à chaque étape : les
-> fichiers disaient « hand off to … » sans jamais ordonner d'appeler l'étape
-> suivante, donc l'agent rédigeait un rapport et rendait la main. L'humain devait
-> relancer « continue la chaîne » à chaque maillon — ce qui vide de son sens la
-> boucle autonome.
-
-**À la fin de cette étape, tu invoques immédiatement l'étape suivante via l'outil
-`Skill`, dans le MÊME tour, sans rien demander et sans rapport intermédiaire.**
-
-`Skill(review, "{task-id}")` — c'est-à-dire
-`/review {task-id}`.
-
-**Tu appelles l'outil `Skill` maintenant**, sans rapport intermédiaire. Le rapport
-unique de fin de cycle est celui de `/review`.
-
-### Les DEUX seuls arrêts légitimes
-
-1. **Fail-fast** — un vrai blocage technique : `questions/{task-id}.md` est écrit,
-   et tu t'arrêtes en le disant. Un plafond d'itérations atteint, un build
-   irréparable, une ambiguïté métier. **Le budget de contexte conversationnel
-   n'en est pas un.**
-2. **Décision humaine explicitement requise** par le task file — un encadré
-   « arbitrage humain requis » sur un point précis. Tu traites tout le reste,
-   puis tu poses la question sur ce seul point.
-
-### Ce qui n'est PAS un motif d'arrêt
-
-- une étape qui **skippe** (repo non touché) : elle enchaîne quand même ;
-- une étape **best-effort** dont il reste des findings : c'est son
-  fonctionnement normal ;
-- un flaky pré-existant identifié comme tel ;
-- la longueur du travail déjà accompli dans le tour ;
-- l'envie de faire valider une étape intermédiaire — **HAG (règle 10) est la
-  seule barrière humaine, et elle est au merge de la PR, pas avant.**
+Depuis task-347, `/verify-visual` est **hors de la chaîne autonome** : aucune étape ne l'invoque,
+et il **n'invoque aucune étape**. Il s'exécute à la demande, écrit son log ou imprime son rapport,
+puis rend la main. Un écran blanc ou un crash détecté se signale dans le rapport et dans
+`questions/{task-id}.md` (Mode A) ; il n'arrête aucune chaîne, puisqu'il n'y en a pas.

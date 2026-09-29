@@ -104,7 +104,7 @@ cf. mémoire [[reference-stitch-generate-screen-timeouts]]) :
 `/develop` and `/review`). It is a **sub-step of `/develop`**, scoped to mobile
 screens, that runs before the Ionic code is written so the design reference is
 on the table. The downstream chain (`/sonar` →
-`/lint-angular` → `/lint-mobile` → `/verify-visual` → `/review`) is unchanged.
+`/lint-angular` → `/lint-mobile` → `/e2e` → `/review`) is unchanged.
 
 ## Steps
 

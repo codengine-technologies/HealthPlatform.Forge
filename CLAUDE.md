@@ -5,6 +5,45 @@
 
 ---
 
+## ⭐ Règle d'or — la forge s'améliore toujours (non négociable)
+
+**Chaque cycle laisse la forge meilleure qu'il ne l'a trouvée.** C'est l'objectif de la forge,
+avant la vitesse et avant l'autonomie. Une forge qui corrige les mêmes défauts deux fois recule.
+(Posée par l'humain le 2026-09-29, avec la task-347.)
+
+1. **Tout défaut trouvé laisse une prévention**, en plus de sa correction.
+   - Le défaut peut venir de `/review`, `/sonar`, du lint ou de `/e2e`, de l'humain au HAG, de
+     la recette ou de la production.
+   - La prévention est une **consigne** (`conventions/*.md`), un **test ou un scénario prouvé
+     rouge**, ou une **règle ou un playbook corrigé** (`CLAUDE.md`, `agents/`, `.claude/commands/`).
+   - Un défaut corrigé sans prévention n'est corrigé qu'à moitié.
+2. **Où vit chaque prévention** :
+
+   | Défaut | Prévention | Lue par |
+   |---|---|---|
+   | Règle ESLint corrigée à la main | `conventions/angular.md` | `/develop` avant tout code Angular / Ionic |
+   | Règle Sonar corrigée à la main | `conventions/csharp.md` | `/develop` avant tout code C# |
+   | Test e2e « vert qui ment », flaky, quarantaine, bug passé au travers du filet | `conventions/e2e.md` + scénario au catalogue | `/develop` avant tout test e2e, `/review` |
+   | Étape qui bloque à tort, ou qui laisse passer | le playbook de l'étape, par une task du plan de contrôle | toute la chaîne |
+   | Piège d'environnement ou d'outillage (banc, Docker, poste) | la mémoire de session, ou le README de l'outil | les sessions suivantes |
+
+3. **Une récidive est un signal sur la lecture, pas seulement sur le code.** Une consigne violée
+   dans du code frais veut dire que le fichier n'a pas été lu. On corrige la lecture (le playbook
+   qui doit l'imposer), pas seulement la ligne.
+4. **Le cycle rend compte de ce qu'il a appris.** Le rapport de fin de cycle de `/review` porte
+   une section **« Amélioration continue »** : ce que le cycle a appris, et où c'est désormais
+   capturé. S'il n'a rien appris, il le dit : « aucune leçon ». Jamais de silence.
+5. **Mesurer avant d'améliorer.** Une amélioration de la chaîne se juge sur le journal
+   (`metrics/timings.jsonl`) et sur des compteurs (Occurrences, registres), avant et après. Pas sur
+   une impression.
+6. **S'améliorer, c'est aussi retirer.** Une étape, une règle ou une consigne qui ne sert plus se
+   retire, chiffres à l'appui. Exemple : `/verify-visual`, sorti de la chaîne par la task-347,
+   n'avait jamais bloqué en 66 tasks, et son seul cas bloquant est couvert par `/e2e`.
+7. **HAG inchangé** : s'améliorer ne donne aucun droit de merger. Les changements du plan de
+   contrôle qui modifient la chaîne sont relus par l'humain avant le push.
+
+---
+
 ## Forge philosophy — autonomous (since 2026-04-27)
 
 > **Inversion** — la philosophie historique « la forge n'écrit pas de code,
@@ -37,10 +76,12 @@
 /lint-mobile {NNN}                  (cleanup ESLint best-effort 5 itérations,
                                      client-mobile uniquement — skip si non touché)
     ↓ (auto)
-/verify-visual {NNN}                (captures Playwright des écrans mobiles
-                                     touchés, pairées à la référence Stitch —
-                                     bloquant uniquement sur écran blanc/crash ;
-                                     skip si aucun écran touché)
+/e2e {NNN}                          (rejoue les parcours du médecin, voies mobile
+                                     et/ou Angular, contre le backend e2e, et
+                                     contrôle la parité avec le catalogue —
+                                     BLOQUANT sur tout parcours rouge, écart de
+                                     parité ou panne d'outillage ; skip si aucune
+                                     voie touchée)
     ↓ (auto)
 /review {NNN}                       (build + test + DOD + code review,
                                      commit/push/sync develop, ouvre la PR,
@@ -152,8 +193,9 @@ l'humain implémente dans WindSurf, puis lance `/review {task-id}` lui-même
 | Cleanup Sonar | `/sonar` (api-mail) | oui | Best-effort 5 itérations, accepte les issues restantes. Skip clean si api-mail non touché. |
 | Cleanup Lint Angular | `/lint-angular` (client-angular) | oui | Best-effort 5 itérations (`lint:fix` + fix manuels), accepte les erreurs restantes. Code-only — ne touche jamais à git. Skip clean si client-angular non touché. |
 | Cleanup Lint Mobile | `/lint-mobile` (client-mobile) | oui | Best-effort 5 itérations (`ng lint --fix` + fix manuels), accepte les erreurs restantes. **Automation git complète** (remote GitHub) : commit/push des fixes. Skip clean si client-mobile non touché. |
-| Vérification visuelle | `/verify-visual` (client-mobile) | non (captures uniquement, commit des PNG) | Playwright headless : session factice + API mockée (fixtures), capture 390×844 de chaque écran touché, pairée à la référence Stitch dans la PR. **Bloquant uniquement sur écran blanc/crash** ; écart design = best-effort (juge = humain au HAG). Skip clean si aucun écran touché. |
-| Validation + PR | `/review` | non (lecture seule sur le code) | Plus de prompt humain — autonome. Recopie KPIs Sonar + table de vérification visuelle dans le body des PRs. |
+| Vérification visuelle — **hors chaîne, à la demande** (depuis task-347) | `/verify-visual` (client-mobile) | non (captures uniquement, commit des PNG) | Playwright headless : session factice + API mockée (fixtures), capture 390×844 de chaque écran touché, pairée à la référence Stitch dans la PR. **Bloquant uniquement sur écran blanc/crash** ; écart design = best-effort (juge = humain au HAG). Skip clean si aucun écran touché. |
+| Parcours e2e | `/e2e` (voies mobile et Angular) | non (lecture seule — rejoue, constate, écrit le `## E2E log`) | Suites headless des tasks 345/346 contre le backend `e2e`, puis la porte `gate` : parité avec `Api/Mail/e2e/scenarios.yml` et tests rouges. **Bloquant sans exemption** (un rouge sur `develop` bloque aussi) ; seule la **quarantaine**, posée par l'humain, exempte un test. Client non touché contrôlé par son listing. Voir « `/e2e` — le filet fonctionnel ». |
+| Validation + PR | `/review` | non (lecture seule sur le code) | Plus de prompt humain — autonome. Recopie KPIs Sonar + table de vérification visuelle + `## E2E log` dans le body des PRs. **Refuse** d'ouvrir une PR si la task touche une voie et que le `## E2E log` est absent ou rouge. |
 | Doc EPIC | `/tech-writer` | non (écrit dans `docs/epics/` uniquement) | Idempotent |
 | **Merge develop** | **humain** | — | **HAG, règle 10 — non négociable** |
 
@@ -173,6 +215,27 @@ pas été touché par la task — la chaîne saute simplement à l'étape suivan
 Ionic/Angular). Différence clé : `client-mobile` a un remote **GitHub** (pas
 TFS), donc `/lint-mobile` est en **automation git complète** — il commit et
 push ses fixes, contrairement à `/lint-angular` qui reste code-only.
+
+### `/e2e` — le filet fonctionnel, bloquant (task-347, EPIC E018)
+
+Contrairement aux étapes de cleanup, `/e2e` est **bloquante**. Elle se place entre
+`/lint-mobile` et `/review`, **après** tous les fixes qualité, pour que `/review` valide
+exactement le code testé.
+
+- **Voie mobile** : jouée si la task touche `api-mail`, `client-mobile` ou `dtos-mss`
+  (`npm run e2e:headless`).
+- **Voie Angular** : jouée si la task touche `api-mail`, `client-angular` ou `dtos-mss`
+  (`npm run e2e:mss`).
+- **Client non touché** : contrôlé par son **listing** Playwright, sans être rejoué.
+- **Porte `gate`** : un seul verdict. Elle bloque sur tout écart de parité et tout test rouge,
+  **y compris** un rouge déjà présent sur `develop`. Elle liste sans bloquer les flaky, les
+  quarantaines et les divergences ouvertes.
+- **Échappatoires** : la **quarantaine** d'un test (tag `@quarantaine` + task de correction) et
+  la **divergence temporaire** d'un client sur un scénario (raison + task de résorption, déclarée
+  au catalogue). Les deux sont des décisions de **l'humain seul**.
+- **Outillage en panne** = bloquant : la non-régression n'est pas prouvée.
+
+Playbook : `agents/e2e.md`.
 
 **Fusion `/forge-simplify` → `/develop` (2026-08-31).** La passe qualité était
 un maillon séparé de la chaîne : elle refaisait intégralement la cérémonie que
@@ -196,13 +259,14 @@ hors chaîne autonome, sinon on se retrouve avec N PRs par task.
 
 ### Conventions apprises — boucle d'auto-amélioration
 
-Deux fichiers de conventions vivent à la racine du workspace et ferment la
-boucle « le nettoyage d'aujourd'hui devient la prévention de demain » :
+Les fichiers de conventions vivent à la racine du workspace et ferment la
+boucle « le nettoyage d'aujourd'hui devient la prévention de demain » (règle d'or) :
 
 | Fichier | Alimenté par | Lu par |
 |---|---|---|
 | `conventions/angular.md` | `/lint-angular`, `/lint-mobile` (règles ESLint corrigées **manuellement**) | `/develop` avant tout code Angular/Ionic |
 | `conventions/csharp.md` | `/sonar` (règles corrigées manuellement, new-code en priorité) | `/develop` avant tout code C# |
+| `conventions/e2e.md` | `/review` (« verts qui mentent » trouvés en revue), `/e2e` (registre des flaky, quarantaines), toute task corrigeant un bug passé au travers du filet (« trous du filet ») | `/develop` avant tout test e2e, `/review` |
 
 Protocole : première correction manuelle d'une règle → entrée créée ;
 récidive → compteur incrémenté. `/develop` applique les « Consignes »
@@ -494,6 +558,11 @@ will produce. Examples:
 - `[ ] Unit tests for {ServiceName} (>= 1 test per public method / branch)`
 - `[ ] Integration test for {Endpoint} (happy path + 1 failure mode)`
 - `[ ] UI component test for {Component} (render + primary interaction)`
+- `[ ] Scénario E2E-{DOMAINE}-{NNN} ajouté / versionné dans Api/Mail/e2e/scenarios.yml, et implémenté dans chaque client où il est requis`
+  — **obligatoire** pour toute US qui crée ou modifie un parcours médecin sur `client-mobile`
+  ou `client-angular` (task-347). `/po` fixe la colonne `clients` dès la rédaction, et chaque
+  client `requis` figure dans les `**Repos**`, avec `api-mail`. `/develop` écrit l'entrée du
+  catalogue **avant** les tests. `/e2e` rejoue les parcours et bloque sur tout écart.
 
 `/review` verifies these items before opening the PR.
 
@@ -658,7 +727,7 @@ même tour, sans rapport intermédiaire et sans rien demander à l'humain.**
 
 ```
 /start → /develop (code + tests + passe qualité /simplify) → /sonar
-       → /lint-angular → /lint-mobile → /verify-visual → /review → /tech-writer
+       → /lint-angular → /lint-mobile → /e2e → /review → /tech-writer
 ```
 
 **Pourquoi cette règle existe** (posée le 2026-08-04, sur constat humain) : les
@@ -707,7 +776,7 @@ Never modify without human arbitration:
 ## Commands
 
 > **⛓️ Chaînage** — les étapes `/develop` → `/sonar` →
-> `/lint-angular` → `/lint-mobile` → `/verify-visual` → `/review` →
+> `/lint-angular` → `/lint-mobile` → `/e2e` → `/review` →
 > `/tech-writer` s'appellent **les unes les autres via l'outil `Skill`, sans
 > rapport intermédiaire ni retour à l'humain** (règle 13). Une étape qui rend la
 > main au milieu de la chaîne est un défaut, pas une politesse.
@@ -715,19 +784,20 @@ Never modify without human arbitration:
 | Command | Effect |
 |---|---|
 | `/po` | Write a new US : `todo-*.md` task file only (no .feature). With `--from <doc.md>` : batch-extract US from a markdown document (one-by-one human validation) |
-| `/start {task-id}` | Create the working branches in the target repo(s) and **chain into `/develop`** by default. The full cycle then runs autonomously : `/develop` (code + passe qualité `/simplify`) → `/sonar` → `/lint-angular` → `/lint-mobile` → `/verify-visual` → `/review` → `/tech-writer`. |
+| `/start {task-id}` | Create the working branches in the target repo(s) and **chain into `/develop`** by default. The full cycle then runs autonomously : `/develop` (code + passe qualité `/simplify`) → `/sonar` → `/lint-angular` → `/lint-mobile` → `/e2e` → `/review` → `/tech-writer`. |
 | `/start {task-id} no-code` | Create the working branches and **stop**. Task stays in `wip-*` ; the human implements in WindSurf and runs `/review {task-id}` manually when ready. Escape hatch when `/develop` is unsuitable. |
 | `/develop {task-id}` | **Autonomous implementation + passe qualité** : write code + tests, build, test, run the integrated `/simplify` quality pass per eligible repo (quality-only, before the push — ex-`/forge-simplify`, fusionnée le 2026-08-31), publish DTOs / interop / SDK NuGet packages when contracts change, bump consumers, push, hand off to `/sonar` (or the first touched cleanup step). Frontends covered : `client-blazor`, `client-angular` (code-only), `client-mobile` (full git automation). For mobile screens, calls `/stitch-design` first to get the design reference. See `agents/develop.md`. |
 | `/stitch-design {task-id}` | **Design sub-step of `/develop`** (mobile only). Ensures each `client-mobile` screen has a matching design in the Stitch project `client-mobile` (id `10088502293310567548`) — reuse if present, **create** via the Stitch MCP if missing (convention : screen title = component kebab-case name, e.g. `mail-list`). Logs the screenshot + HTML/CSS reference so `/develop` codes the Ionic screen against it. Stitch = design source of truth ; output is a **reference, not code**. Best-effort & non-blocking. Stand-alone form `/stitch-design {screen-name}` for manual design create/refresh. See `agents/stitch-design.md`. |
 | `/sonar {task-id}` | Best-effort SonarQube cleanup on `api-mail` (5 iterations max, accepts remaining issues). Standard step in the autonomous chain. Consigne un tableau de **KPIs qualité (baseline → final + Quality Gate)** dans le `## Sonar log` de la task — restitué par `/review` dans le body de la PR api-mail et dans le rapport de fin de cycle (on monitore toujours la qualité, jamais de fin de cycle silencieuse sur ce plan). See `agents/sonar.md`. |
-| `/lint-mobile {task-id}` | Best-effort ESLint cleanup on `client-mobile` (Working dir `Client/Mobile/`). Plain Angular CLI : `ng lint --fix` then manual fixes, build (`npm run build`) + test (`npm test -- --watch=false --browsers=ChromeHeadless`) as the anti-regression net, 5 iterations max, accepts remaining errors. **Full git automation** (GitHub remote) : commits/pushes its fixes, unlike `/lint-angular`. Standard step in the autonomous chain, after `/lint-angular`, skip clean if client-mobile non touché. Hands off to `/verify-visual`. See `agents/lint-mobile.md`. |
-| `/verify-visual {task-id}` | **Vérification visuelle** des écrans `client-mobile` touchés, entre `/lint-mobile` et `/review`. Playwright headless (`Tools/visual-verify/`) : session factice, API mockée par fixtures (aucun backend, aucune donnée de santé), capture 390×844 par écran, **pairée à la référence Stitch** dans le `## Visual verify log` (recopié par `/review` dans la PR). Captures rangées par task (`e2e/screenshots/{task-id}/`, liens SHA-pinnés) **et copiées dans `Docs/epics/img/screens/client-mobile/{écran}.png`** (sous-répertoire par app) — l'**état visuel global de l'application**, intégré par `/tech-writer` dans la galerie « État visuel » du doc produit de l'EPIC. Bloquant **uniquement** sur écran blanc/crash de navigation (`questions/` + halt) ; écarts design/outillage = best-effort. Skip clean si aucun écran touché. Forme stand-alone `/verify-visual {screen-name}`. See `agents/verify-visual.md`. |
+| `/lint-mobile {task-id}` | Best-effort ESLint cleanup on `client-mobile` (Working dir `Client/Mobile/`). Plain Angular CLI : `ng lint --fix` then manual fixes, build (`npm run build`) + test (`npm test -- --watch=false --browsers=ChromeHeadless`) as the anti-regression net, 5 iterations max, accepts remaining errors. **Full git automation** (GitHub remote) : commits/pushes its fixes, unlike `/lint-angular`. Standard step in the autonomous chain, after `/lint-angular`, skip clean if client-mobile non touché. Hands off to `/e2e`. See `agents/lint-mobile.md`. |
+| `/verify-visual {task-id}` | **[À la demande, hors chaîne autonome depuis task-347]** — son seul cas bloquant (écran blanc, crash de navigation) est couvert par `/e2e`, contre le vrai backend. **Vérification visuelle** des écrans `client-mobile` touchés. Playwright headless (`Tools/visual-verify/`) : session factice, API mockée par fixtures (aucun backend, aucune donnée de santé), capture 390×844 par écran, **pairée à la référence Stitch** dans le `## Visual verify log` (recopié par `/review` dans la PR). Captures rangées par task (`e2e/screenshots/{task-id}/`, liens SHA-pinnés) **et copiées dans `Docs/epics/img/screens/client-mobile/{écran}.png`** (sous-répertoire par app) — l'**état visuel global de l'application**, intégré par `/tech-writer` dans la galerie « État visuel » du doc produit de l'EPIC. Bloquant **uniquement** sur écran blanc/crash de navigation (`questions/` + halt) ; écarts design/outillage = best-effort. Skip clean si aucun écran touché. Forme stand-alone `/verify-visual {screen-name}`. See `agents/verify-visual.md`. |
+| `/e2e {task-id}` | **Filet de non-régression fonctionnel, bloquant** (task-347), entre `/lint-mobile` et `/review`. Rejoue les suites headless des voies touchées : mobile (`api-mail`, `client-mobile` ou `dtos-mss` touché) et Angular (`api-mail`, `client-angular` ou `dtos-mss` touché). Contrôle le client non touché par son listing. La porte `gate` de `tests/mss.mail.e2e` rend le verdict : parité avec `Api/Mail/e2e/scenarios.yml` + tests rouges hors quarantaine. Écrit le `## E2E log` (recopié en PR par `/review`, repris par `/tech-writer` dans E018). **Rouge → `questions/{task-id}.md` (régression / parité / outillage) et arrêt de la chaîne.** Skip mesuré si aucune voie n'est touchée. See `agents/e2e.md`. |
 | `/lint-angular {task-id}` | Best-effort ESLint cleanup on `client-angular` (Working dir `Client/Angular/front/`). Reproduit la forme des commandes lint/build/test du pipeline Azure `Client/Angular/azure-pipelines.yml` (Stage 2 CI), avec deux divergences intentionnelles : (1) default `$BASE_BRANCH = origin/next` (branche d'intégration vivante du repo TFS, pas l'`origin/master` du pipeline) ; (2) lint scopé via `--projects=tag:scope:mss` (le forge ne fixe que le module MSS — `mss` + `mss-lib`). Build/test restent en scope complet pour détecter les régressions downstream. Auto-fix puis fix manuels 5 itérations max, accepte les errors restantes. Code-only — ne touche jamais à git. Standard step in the autonomous chain, skip clean si client-angular non touché. See `agents/lint-angular.md`. |
 | `/sonar-s3776 api-mail` | **[Manual]** Reduce cognitive complexity of ONE method (S3776). One method = one PR. Characterisation tests written first. Out of the autonomous chain. See `.claude/commands/sonar-s3776.md`. |
 | `/review {task-id}` | Validate the implementation (build + tests + DOD + code review), commit/push/sync develop, open the PR (label `awaiting-human-merge`), rename `done-*`, chain into `/tech-writer`. Autonomous — no human prompt. |
 | `/merge {task-id} --i-tested` | **[Human only]** After the human has tested the US end-to-end on the open PRs, squash-merge each pushable PR, sync `develop`, delete the branches, move the task into `tasks/archived/archived-{task-id}.md`. Refuses without `--i-tested`, on `awaiting-us-completion` label, or red CI. Never invoked by `/forge` — HAG (rule 10) stays. See `agents/merge.md`. |
 | `/tech-writer E{NNN}` | Refresh `docs/epics/E{NNN}-{slug}.md` from all tasks that declare `**Epic**: E{NNN}` — y compris la galerie **« État visuel de l'application »** (copies d'écran de `Docs/epics/img/screens/{app}/` appartenant à l'EPIC, embeds relatifs, libellés produit). Called automatically at the tail of `/review` ; can be run manually for retro-generation or `--refresh`. See `agents/technical-writer.md`. |
-| `/forge` | Loop autonome : pour chaque `tasks/todo-task-*.md`, déclenche `/start` → `/develop` (code + passe qualité `/simplify`) → `/sonar` → `/lint-angular` → `/lint-mobile` → `/verify-visual` → `/review` → `/tech-writer`. Séquentiel (pas de parallélisme). Stop sur la première task qui échoue (écrit `questions/`, passe à la suivante). Agrège chaque task validée sur une **branche staging par run** `forge/staging-task-{début}-{fin}-{date}` (fraîche depuis `develop`, par repo pushable, best-effort) pour test du lot complet — voir « Branche staging par run `/forge` ». **Ne déclenche jamais `/merge`**, n'ouvre **aucune** PR staging → develop — HAG, règle 10. |
+| `/forge` | Loop autonome : pour chaque `tasks/todo-task-*.md`, déclenche `/start` → `/develop` (code + passe qualité `/simplify`) → `/sonar` → `/lint-angular` → `/lint-mobile` → `/e2e` → `/review` → `/tech-writer`. Séquentiel (pas de parallélisme). Stop sur la première task qui échoue (écrit `questions/`, passe à la suivante). Agrège chaque task validée sur une **branche staging par run** `forge/staging-task-{début}-{fin}-{date}` (fraîche depuis `develop`, par repo pushable, best-effort) pour test du lot complet — voir « Branche staging par run `/forge` ». **Ne déclenche jamais `/merge`**, n'ouvre **aucune** PR staging → develop — HAG, règle 10. |
 | `/status` | Quick status in < 10 lines |
 | `Tools/timing/report.sh` | **[Outil, pas une commande de chaîne]** Lecture du journal de mesure `metrics/timings.jsonl` : `--task {id}` (coût d'un cycle), `--task {id} --sync` (régénère la section `## Timings` du task file), `--last N` (derniers cycles), `--by-kind` (combien de builds / suites / scans par task, et ce qu'ils coûtent — le tableau qui valide une optimisation). Voir `Tools/timing/README.md`. |
 | `/publish-dtos` | Publish the DTO NuGet package and bump consumers (manual command — `/develop` does the equivalent inline as part of the autonomous cycle). |

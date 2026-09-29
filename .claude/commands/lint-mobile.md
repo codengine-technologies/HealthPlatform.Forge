@@ -111,8 +111,8 @@ Tools/timing/step.sh end --task {task-id} --step lint-mobile --status ok
 **À la fin de cette étape, tu invoques immédiatement l'étape suivante via l'outil
 `Skill`, dans le MÊME tour, sans rien demander et sans rapport intermédiaire.**
 
-`Skill(verify-visual, "{task-id}")` — c'est-à-dire
-`/verify-visual {task-id}`.
+`Skill(e2e, "{task-id}")` — c'est-à-dire
+`/e2e {task-id}` (task-347 : `/verify-visual` est sorti de la chaîne).
 
 **Tu appelles l'outil `Skill` maintenant**, sans rapport intermédiaire. Le rapport
 unique de fin de cycle est celui de `/review`.

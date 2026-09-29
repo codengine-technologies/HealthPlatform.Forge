@@ -96,6 +96,7 @@ mot par nature de commande, sinon les agrégats ne veulent plus rien dire :
 | `capture` | Playwright / `/verify-visual` |
 | `restore` | `dotnet restore`, `npm ci` |
 | `nuget-wait` | `gh run watch` sur la CI de publication DTO/interop (temps mort série) |
+| `e2e` | une **voie** du filet e2e headless jouée par `/e2e` (`npm run e2e:headless` mobile, `npm run e2e:mss` Angular : montage du backend, suite, parité, démontage) et le contrôle de parité combiné. Hors colonnes du tableau de task : il apparaît dans « Détail » et dans `--by-kind` |
 
 `--repo` prend une clé de la table des repos de `CLAUDE.md` (`api-mail`,
 `client-blazor`, `client-angular`, `client-mobile`, `dtos-mss`, …).

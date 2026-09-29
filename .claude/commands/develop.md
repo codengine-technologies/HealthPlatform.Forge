@@ -5,7 +5,7 @@ Usage : `/develop {task-id}` (e.g. `/develop task-018`)
 Purpose : write the code, the tests, build, run the suite, run the **integrated
 quality pass** (built-in `/simplify`) on the fresh code, commit, push, and hand
 off to the cleanup chain (`/sonar` → `/lint-angular` → `/lint-mobile` →
-`/verify-visual` → `/review`). This is the **default implementation path** of
+`/e2e` → `/review`). This is the **default implementation path** of
 the forge — the only escape hatch is `/start {task-id} no-code`, which leaves
 the task in `wip-*` for the human to implement in WindSurf.
 
@@ -42,12 +42,12 @@ Read `agents/develop.md` and execute the full playbook :
 6. Final verification : DOD self-check, et **pas de re-build** d'un repo déjà
    vert depuis sa dernière validation
 7. Hand off unconditionally to the fixed cleanup pipeline
-   `/sonar → /lint-angular → /lint-mobile → /verify-visual → /review` (each step self-skips
+   `/sonar → /lint-angular → /lint-mobile → /e2e → /review` (each step self-skips
    when its repo wasn't touched) :
    - api-mail touched → `/sonar {task-id}`
    - else client-angular touched → `/lint-angular {task-id}`
    - else client-mobile touched → `/lint-mobile {task-id}`
-   - none touched → `/review {task-id}` directly
+   - none touched → `/e2e {task-id}` (it plays the journeys when `dtos-mss` is touched, skips cleanly otherwise, then chains into `/review`)
 
 `/develop` writes code by design — this is the post-lean philosophy. The
 human's only mandatory interaction is **merging the PR on `develop`** at
@@ -110,7 +110,7 @@ L'étape suivante dépend des repos touchés :
 | oui | * | * | `Skill(sonar, "{task-id}")` |
 | non | oui | * | `Skill(lint-angular, "{task-id}")` |
 | non | non | oui | `Skill(lint-mobile, "{task-id}")` |
-| non | non | non | `Skill(review, "{task-id}")` |
+| non | non | non | `Skill(e2e, "{task-id}")` — il joue les voies si `dtos-mss` est touché, skippe proprement sinon, puis enchaîne `/review` (task-347) |
 
 La passe qualité **n'est plus un maillon de la chaîne** : elle est déjà faite,
 dans cette étape, repo par repo. Il n'y a rien à invoquer pour elle.

@@ -190,8 +190,10 @@ The order at the tail is **stable** :
 2. `## État visuel de l'application ({YYYY-MM-DD})` — **writer-owned gallery**
    of the current screenshots (see below). Only present for EPICs whose
    features have screens captured by `/verify-visual`.
-3. `## Synthèse fonctionnelle des changelogs` — product-oriented digest of the changelog history, grouped by axe.
-4. Italic footer caption (one line, untouched).
+3. `## Parcours vérifiés automatiquement ({YYYY-MM-DD})` — **EPIC E018 only** (task-347) :
+   the parity matrix of the doctor's journeys (see below).
+4. `## Synthèse fonctionnelle des changelogs` — product-oriented digest of the changelog history, grouped by axe.
+5. Italic footer caption (one line, untouched).
 
 A short pointer inside §4 *Features de l'EPIC* tells the reader where the bilan d'avancement lives :
 
@@ -238,6 +240,24 @@ belong to the EPIC :
 - The engineering counterpart (per-task capture paths, SHA-pinned PR links,
   verdicts) stays in the **changelogs** file entries — never in the produit
   gallery.
+
+### Parcours vérifiés automatiquement (EPIC E018, task-347)
+
+Writer-owned section of the **E018** produit file, rebuilt on every run from the **most recent
+`## E2E log`** found in any task file (`tasks/*.md` and `tasks/archived/*.md`, any EPIC — the
+matrix describes the whole application, not one task) whose `/e2e` step actually ran (not
+`skipped`).
+
+- **Produit file** : one row per scenario of the catalog, in **product language** — the
+  scenario's `titre`, never its `E2E-…` id alone. One column per client (« Application
+  mobile », « Application web »). Cells : ✅ vérifié, ❌ en échec, 📋 présent (non rejoué dans ce
+  cycle), 👤 vérifié à la main (scénario humain), — non applicable. Then one sentence for each
+  **open divergence**, in product words (« la version web n'a pas encore le filtre Signalés »).
+  **No** task id, PR, test count or file path, except one discrete `task-XXX` for the source
+  cycle.
+- **Changelogs file** : the raw matrix, as copied from the `## E2E log`, with the source task,
+  its date, and the lists of flaky tests, quarantines and divergences.
+- No `## E2E log` found yet → section omitted.
 
 ### Rendu HTML du doc produit (utilitaire manuel)
 

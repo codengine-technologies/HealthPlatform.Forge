@@ -62,5 +62,5 @@ Read `agents/qa.md` and execute the full playbook :
 ## When NOT to use `/qa`
 
 - During `/develop` or `/review` — those handle unit tests (`ng test`).
-- For headless fixture captures — that's `/verify-visual` (in the autonomous chain).
+- For headless fixture captures — that's `/verify-visual` (à la demande, hors chaîne depuis task-347).
 - Against Production or any remote environment. Local dev only.

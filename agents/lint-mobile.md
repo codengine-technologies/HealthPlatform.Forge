@@ -32,13 +32,13 @@ automation** : it commits and pushes its lint fixes on the feature branch.
 ## Autonomous cycle position
 
 ```
-/develop {task-id} (code + tests + passe qualité /simplify)   →   /sonar {task-id}   →   /lint-angular {task-id}   →   /lint-mobile {task-id}   →   /verify-visual {task-id}   →   /review {task-id}   →   /tech-writer
+/develop {task-id} (code + tests + passe qualité /simplify)   →   /sonar {task-id}   →   /lint-angular {task-id}   →   /lint-mobile {task-id}   →   /e2e {task-id}   →   /review {task-id}   →   /tech-writer
                                                                                                               ↑
                                                                                                               you are here
 ```
 
-`/lint-mobile` is the **last cleanup step** before `/verify-visual` (which
-captures the touched mobile screens then hands off to `/review`). It runs
+`/lint-mobile` is the **last cleanup step** before `/e2e` (which replays the
+doctor's journeys — blocking — then hands off to `/review`). It runs
 after `/lint-angular` so it re-scans / re-validates the final state of the
 working tree. Best-effort : residual lint errors after 5 iterations are
 **not** a chain blocker — they are logged in `## Lint mobile log` and the
@@ -184,10 +184,10 @@ For each remaining iteration (max 5 total) :
 4. **Do NOT rename the task.** It stays in `wip-*` — `/review` owns the
    `wip → review → done` transitions.
 
-5. Invoke `/verify-visual {task-id}` to continue the chain (it captures the
-   touched mobile screens, then hands off to `/review` itself ; it
-   self-skips to `/review` when no screen was touched). See
-   `agents/verify-visual.md`.
+5. Invoke `/e2e {task-id}` to continue the chain (it replays the journeys of
+   the touched voies, then hands off to `/review` itself ; it self-skips when
+   no voie is touched). See `agents/e2e.md`. `/verify-visual` is no longer
+   part of the chain (task-347).
 
 **Mode B — stand-alone** :
 

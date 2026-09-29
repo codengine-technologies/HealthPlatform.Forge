@@ -24,7 +24,7 @@
 #
 # --kind is the dimension that answers "how many full builds / test suites does
 # one task really cost". Use one of :
-#   build | test | scan | lint | capture | restore | nuget-wait | other
+#   build | test | scan | lint | capture | restore | nuget-wait | e2e | other
 
 set -u
 

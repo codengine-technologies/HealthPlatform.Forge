@@ -6,7 +6,7 @@ You are the **autonomous developer** of the forge. Given a task in `wip-*`, you
 write the code, the tests, build, run the test suite, run the **integrated
 quality pass** (built-in `/simplify` — reuse / simplification / efficiency /
 altitude) on the fresh code, commit, push, and hand off to the cleanup chain
-(`/sonar` → `/lint-angular` → `/lint-mobile` → `/verify-visual` → `/review`).
+(`/sonar` → `/lint-angular` → `/lint-mobile` → `/e2e` → `/review`).
 
 > **Fusion `/forge-simplify` → `/develop` (2026-08-31).** The quality pass used
 > to be a separate chain step, `/forge-simplify`, which re-created the whole
@@ -52,7 +52,7 @@ For every repo touched :
 
 The task file moves from `wip-*` to **stays `wip-*`** (still in implementation
 phase). The downstream steps (`/sonar` → `/lint-angular` → `/lint-mobile` →
-`/verify-visual`) stay in `wip-*` too ; `/review` handles the wip→review
+`/e2e`) stay in `wip-*` too ; `/review` handles the wip→review
 transition.
 
 ## Repo modes
@@ -632,7 +632,38 @@ repo (GitHub remote, `develop` branch), so the forge owns git here.
    not found), log it as a blocker but **do not halt** — `/sonar` may add
    tests as side effect, and `/review` will catch any remaining miss.
 
-### Step 7 — Hand off to the cleanup chain (`/sonar` → `/lint-angular` → `/lint-mobile` → `/verify-visual` → `/review`)
+### Step 6b — Parcours e2e : le catalogue d'abord (task-347)
+
+Quand la task crée ou modifie un **parcours médecin** sur `client-mobile` ou `client-angular`
+(sa DOD porte la ligne « Scénario E2E-… ajouté / versionné »), dans cet ordre :
+
+0. **Lire `conventions/e2e.md`** et appliquer chaque consigne d'emblée : état optimiste relu du
+   serveur, absence lue après chargement, fenêtre d'annulation, gestes cachés… Une récidive
+   relevée en revue sur un test frais veut dire que ce fichier n'a pas été lu.
+
+1. **Catalogue avant les tests** — dans `Api/Mail/e2e/scenarios.yml` (branche api-mail de la
+   task) : ajouter le scénario, ou **monter sa version** si le comportement attendu change. La
+   colonne `clients` est celle décidée par `/po`. Aucune divergence n'est posée par la forge : une
+   divergence temporaire est un arbitrage de l'humain, écrit dans la task.
+2. **Tests avec la fonctionnalité**, dans **chaque** suite où le scénario est `requis` :
+   `Client/Mobile/e2e/specs/functional.spec.ts` et/ou
+   `Client/Angular/front/e2e/mss-e2e/specs/functional.e2e.ts`. Chaque test porte son tag
+   `@E2E-…`, et une annotation `version` égale à celle du catalogue. Il juge l'état **relu du
+   serveur**, jamais le seul affichage optimiste.
+3. **Preuve par mutation** (`conventions/e2e.md`, « preuve-par-mutation ») : pour chaque test
+   ajouté ou durci, planter un no-op dans l'appel qu'il protège, constater le rouge **sur
+   l'assertion prévue**, annuler, et consigner la mutation dans le `## Develop log`. Un test
+   qui n'a jamais été vu rouge n'est pas terminé.
+4. **Trou du filet** : si la task corrige un bug visible du médecin que `/e2e` n'avait pas
+   attrapé, le scénario qui l'aurait attrapé est ajouté ou durci et **prouvé rouge sur le bug non
+   corrigé**, avant le correctif. La ligne correspondante s'ajoute dans « Trous du filet » de
+   `conventions/e2e.md`.
+5. Le lancement complet des suites n'est pas fait ici : c'est `/e2e` qui les joue, après les
+   fixes qualité, et qui bloque la chaîne sur un rouge ou un écart de parité. Un test écrit se
+   vérifie au moins en type-check (`npx tsc --noEmit -p e2e/…/tsconfig.json`), en plus de sa
+   preuve par mutation.
+
+### Step 7 — Hand off to the cleanup chain (`/sonar` → `/lint-angular` → `/lint-mobile` → `/e2e` → `/review`)
 
 Append a `## Develop log` section to the task file with :
 
@@ -654,7 +685,7 @@ Append a `## Develop log` section to the task file with :
   - Rolled back (validation RED) : {repos, if any} — kept as developed
   - Skipped (contract/excluded) : dtos-mss, interop-cda, devops, psc-proxy-*
 - DOD self-check : {N/M items verifiable via command} verified
-- Next step : {/sonar | /lint-angular | /lint-mobile | /review} {task-id}
+- Next step : {/sonar | /lint-angular | /lint-mobile | /e2e} {task-id}
 ```
 
 The quality pass has **no separate log section** any more — it is a block of
@@ -665,19 +696,20 @@ each step self-skipping when its target repo wasn't touched and
 unconditionally handing off to the next :
 
 ```
-/sonar (api-mail)  →  /lint-angular (client-angular)  →  /lint-mobile (client-mobile)  →  /verify-visual (écrans mobiles)  →  /review
+/sonar (api-mail)  →  /lint-angular (client-angular)  →  /lint-mobile (client-mobile)  →  /e2e (parcours, bloquant)  →  /review
 ```
 
 Jump straight to the **first** step whose repo was touched (that step chains
 the rest). If none of `api-mail` / `client-angular` / `client-mobile` was
-touched, route directly to `/review`.
+touched, route to `/e2e` : it plays the journeys when `dtos-mss` is touched,
+skips cleanly otherwise, then chains into `/review` (task-347).
 
 | api-mail | client-angular | client-mobile | First step after `/develop` |
 |---|---|---|---|
 | yes | *   | *   | `/sonar {task-id}`        |
 | no  | yes | *   | `/lint-angular {task-id}` |
 | no  | no  | yes | `/lint-mobile {task-id}`  |
-| no  | no  | no  | `/review {task-id}`       |
+| no  | no  | no  | `/e2e {task-id}`          |
 
 "client-angular touched" means **either** the task lists `client-angular`
 in `**Repos**:` **or** `git -C Client/Angular/front status --porcelain`

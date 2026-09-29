@@ -158,3 +158,72 @@ vieillirait comme la suite `/qa` depuis juillet.
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : non — poste de développement
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+- `forge` (plan de contrôle, racine du workspace) : **aucune branche**. La modification se fait sur `develop`, dans la session Claude, et le diff est **relu par l'humain avant le push** (mode d'exécution de la task, règle 5).
+- Aucun repo de code n'est touché par cette task.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-347 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 37 s | — | — | — | plan de contrôle, pas de branche (diff relu avant push) |
+| /develop | ok | 1 h 05 min | 1 (4.9 s) | 1 (2 min 08 s) | — | api-mail 1B/1T, api-mail gate + plan de contrôle ; preuves skip / régression / parité |
+| **Total cycle** | | **1 h 06 min** | **1 (4.9 s)** | **1 (2 min 08 s)** | **0 (0.0 s)** | |
+
+## Develop log
+
+- **Périmètre étendu à api-mail** (arbitrage humain du 2026-09-29, « ajouter api-mail à 347 ») : la DOD exige un contrôle de parité capable de lire un listing, d'accepter une divergence déclarée et de gérer la quarantaine. Branche `feat/task-347-etape-e2e-bloquante`, commit `e1d67c86` (poussé, PR à ouvrir par `/review`).
+  - Porte `gate` : un seul verdict pour `/e2e`, et le corps du `## E2E log`.
+    - Bloque sur tout écart de parité, tout test rouge hors quarantaine, et une quarantaine sans task de correction.
+    - Liste sans bloquer les flaky, les quarantaines et les divergences.
+  - Parité : `--listed client=listing` (`playwright test --list`) pour le client non touché : identifiants et versions contrôlés sans rejouer sa suite (📋 listé).
+  - Catalogue : `divergences:` par scénario et par client. Raison et `task-NNN` obligatoires, client requis seulement. Le contrôle tolère alors une version périmée ou un test absent pour ce client, et liste la divergence.
+  - Rapport Playwright : tag `@quarantaine` et annotation `quarantaine` (task de correction), posés par l'humain seul.
+  - 16 tests, rouge vérifié par mutation (3 tests rouges quand les rouges ne bloquent plus et que le listing est ignoré). api-mail : **5 865 verts** (16 ignorés préexistants).
+- **Plan de contrôle** (non poussé : diff à relire par l'humain) :
+  - nouveaux : `.claude/commands/e2e.md`, `agents/e2e.md` (règles 1 à 12, format du `## E2E log` et de la matrice, quarantaine, divergence) ;
+  - `CLAUDE.md` : schéma du cycle, table ownership, section « `/e2e` — le filet fonctionnel, bloquant », règle 1c (clause de DOD e2e), table Commands, et `/verify-visual` décrit « entre `/lint-mobile` et `/e2e` » ;
+  - hand-offs : `/verify-visual` appelle `Skill(e2e, …)` (commande et playbook), `/e2e` appelle `Skill(review, …)`, et `/develop` route vers `/e2e` quand aucun des trois repos n'est touché (commande et playbook) ;
+  - chaîne mise à jour dans `.claude/commands/{develop,start,forge}.md` et `agents/{develop,merge,stitch-design,verify-visual,orchestrator}.md`. `forge.md` avait perdu `/verify-visual` : rétabli ;
+  - `/review` : étape 4b (double verrou : refus si le `## E2E log` est absent ou rouge sur une voie concernée), recopie `## Parcours e2e` dans chaque PR, ligne au rapport final, règle ;
+  - `agents/po.md` : clause de DOD e2e, colonne `clients`, divergence comme arbitrage humain, ligne dans le template et dans les règles ;
+  - `agents/develop.md` : Step 6b, le catalogue s'écrit **avant** les tests e2e ;
+  - `agents/technical-writer.md` : section « Parcours vérifiés automatiquement » de la doc E018, reprise du dernier `## E2E log` ;
+  - `agents/qa.md` : « never bypass auth » précisé (le bypass est autorisé dans le seul profil headless `e2e` de `/e2e`, et `/qa` reste le parcours au vrai login) ;
+  - `Tools/timing/{measure.sh,README.md}` : kind `e2e` (accepté tel quel par `measure.sh`, affiché dans « Détail » et `--by-kind`).
+  - `grep -n "verify-visual → /review"` dans CLAUDE.md et `.claude/commands/` : **aucun résultat**.
+- **Preuves**, sur des tasks jetables 990 à 992, supprimées ensuite. Les événements restent dans `metrics/timings.jsonl` :
+  - **Skip** (task-990, Repos `devops`) : `/e2e` saute, mesuré `skipped` (« aucune voie touchée »).
+  - **Blocage sur régression** (task-991, branche mobile locale où le filtre « Non lus » renvoie tout) :
+    - voie mobile rouge, **E2E-INBOX-001** (« filtre Non lus : les lignes affichées respectent le filtre »), 21 verts ;
+    - Angular listé, parité verte ;
+    - la porte sort en 1, `questions/task-991.md` est écrit, la chaîne s'arrête, aucune PR ;
+    - régression annulée, démontage complet.
+  - **Blocage sur parité** (task-992, E2E-INBOX-001 passé en v2 au catalogue, seul le test mobile suit) :
+    - les deux voies ont joué (api-mail touché) : mobile 22/22 et Angular 22/22 ;
+    - **la porte bloque sur `[angular] StaleVersion`** (v1 contre v2), `questions/task-992.md` est écrit avec les deux sorties légitimes, aucune PR ;
+    - branches jetables supprimées, démontage complet.
+- **Non fait / reporté** :
+  - **Répétition sur une task réelle** (cycle complet mobile, `/e2e` vert, `## E2E log` dans la PR) : à jouer sur la prochaine task mobile du backlog, une fois ce plan de contrôle poussé et la PR api-mail mergée. D'ici là, `develop` d'api-mail n'a pas la porte `gate`.
+  - « Voie Angular sautée avec la mention task-346 » : la règle est écrite, mais la suite existe désormais, donc le cas n'est plus reproductible sur ce poste.
+- **Décision humaine du 2026-09-29 : `/verify-visual` sort de la chaîne autonome.** Constat :
+  - sur 66 tasks portant un `## Visual verify log`, l'étape n'a **jamais** bloqué ;
+  - elle saute depuis environ task-274, faute de `Tools/visual-verify/` sur ce poste ;
+  - son seul cas bloquant (écran blanc, crash de navigation) est couvert par `/e2e`, contre le vrai backend.
+- La chaîne devient `/lint-mobile → /e2e → /review` : `/lint-mobile` appelle `Skill(e2e, …)`, et le schéma est retiré de tous les fichiers de chaîne. `/verify-visual` reste une commande **à la demande** (captures, comparaison Stitch, galerie de l'EPIC) et n'enchaîne plus sur rien.
+  - Le DOD de la task parle du hand-off « `/verify-visual` → `/e2e` » ; la décision le remplace par « `/lint-mobile` → `/e2e` », avec le même principe : un ordre d'appel via `Skill`.
+- **Demande humaine du 2026-09-29 : règle d'or « la forge s'améliore toujours »**, gravée en tête de CLAUDE.md.
+  - Tout défaut laisse une prévention, qui vit dans un endroit défini.
+  - Une récidive signale un fichier non lu.
+  - `/review` rend compte de chaque leçon, ou écrit « aucune leçon ».
+  - Mesurer avant d'améliorer, et retirer ce qui ne sert plus.
+- **Boucle d'amélioration du filet e2e** :
+  - `conventions/e2e.md` (nouveau) : 9 conventions tirées des tasks 345 à 347 (état optimiste, absence pendant le chargement, `isVisible` sans attente, jamais de skip en headless, fenêtre d'annulation, sélecteur ambigu, geste caché, session non persistée, preuve par mutation), plus les registres des flaky, des quarantaines et des trous du filet ;
+  - `/e2e` Step 7b : il tient les registres et signale le flaky récurrent (3e occurrence), la quarantaine de plus de 14 jours, la divergence à retirer et la voie qui dérive en durée ;
+  - `/develop` Step 6b : il lit `conventions/e2e.md` d'abord ; preuve par mutation obligatoire ; trou du filet prouvé rouge sur le bug non corrigé ;
+  - `/review` : un piège récurrent trouvé en revue laisse une prévention, et le rapport porte une section « Amélioration continue » ;
+  - `/po` : ligne de DOD « trou du filet » pour tout bug visible passé au travers.
+- Next step : **relecture du diff par l'humain** (mode d'exécution de la task), puis push du plan de contrôle, puis `/review task-347` pour la PR api-mail.

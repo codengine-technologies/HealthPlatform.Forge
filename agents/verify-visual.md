@@ -1,5 +1,10 @@
 # agents/verify-visual.md — Vérification visuelle des écrans mobiles
 
+> **Hors de la chaîne autonome depuis task-347** (décision humaine du 2026-09-29) : son seul cas
+> bloquant (écran blanc, crash de navigation) est couvert par `/e2e`, contre le vrai backend.
+> Ce playbook reste valable pour un usage **à la demande** ; toute mention d'un hand-off ci-dessous
+> se lit « rendre la main ».
+
 ## Role
 
 You are the **visual verification step** of the forge for `client-mobile`.
@@ -24,13 +29,13 @@ plus tard). You never merge (HAG rule 10), never open PRs.
 ## Autonomous cycle position
 
 ```
-/develop (code + passe qualité /simplify) → /sonar → /lint-angular → /lint-mobile → /verify-visual → /review → /tech-writer
+/develop (code + passe qualité /simplify) → /sonar → /lint-angular → /lint-mobile → /e2e → /review → /tech-writer
                                                                       ↑
                                                                       you are here
 ```
 
 `/lint-mobile` hands off here when `client-mobile` was touched ; the direct
-`→ /review` shortcuts of upstream steps (mobile untouched) bypass this step
+`→ /e2e` shortcuts of upstream steps (mobile untouched) bypass this step
 legitimately — no mobile change means no screen to verify.
 
 ## Tooling
@@ -56,7 +61,7 @@ never inside the product repos) :
 
 - **Mode A — chained** : `/verify-visual {task-id}`. Invoked by
   `/lint-mobile`. Screens derived from the task ; log appended ; hands off
-  to `/review {task-id}`.
+  to `/e2e {task-id}` (task-347).
 - **Mode B — stand-alone** : `/verify-visual {screen-name}` (ex.
   `/verify-visual settings`). Capture one screen, print the verdict and the
   PNG path, no task file, no hand-off, no commit.
@@ -82,7 +87,7 @@ never inside the product repos) :
 2. **Mode A — skip cleanly** if `client-mobile` untouched (task's
    `**Repos**:` + `git -C Client/Mobile diff --name-only origin/develop...HEAD`
    empty) : append `## Visual verify log\n- skipped — no mobile change\n`,
-   invoke `/review {task-id}`, exit.
+   invoke `/e2e {task-id}`, exit.
 3. **Determine the target screens** (Mode A) : the `Component / Page`
    column of the task's `## Stitch design log` table (kebab-case names).
    If the task has no Stitch log or no screen rows (service-only change),
@@ -100,7 +105,7 @@ never inside the product repos) :
    npx playwright install chromium   # idempotent, no-op si déjà installé
    ```
    Tooling install failure → best-effort : log
-   `- skipped — tooling unavailable ({raison})`, hand off to `/review`
+   `- skipped — tooling unavailable ({raison})`, hand off to `/e2e`
    (une panne d'outillage ne bloque jamais la chaîne — même politique que
    Stitch MCP).
 
@@ -135,10 +140,10 @@ Parse le JSON de sortie (`results[]` : `name`, `route`, `blank`,
 
 - **Exit 2 (écran blanc / crash)** → **BLOQUANT** : écrire
   `questions/{task-id}.md` (écran, route, consoleErrors, chemin du PNG),
-  laisser la task en `wip-*`, **halt** — ne PAS invoquer `/review`. C'est la
+  laisser la task en `wip-*`, **halt** — ne PAS invoquer `/e2e`. C'est la
   seule issue bloquante de cette étape.
 - **Exit 1 (panne outillage)** → best-effort : log `- skipped — tooling
-  failure ({raison})`, hand off à `/review`.
+  failure ({raison})`, hand off à `/e2e`.
 - **Exit 0** → continuer.
 
 ### Step 4 — Jugement de fidélité (best-effort, agent à vision)
@@ -207,7 +212,7 @@ Sans, listes 56 px, cartes blanches, primaire #005EB8).
    - Écrans non mappés (screens.json) : {liste ou "aucun"}
    - APIs non mappées loguées : {liste ou "aucune"} — enrichir fixtures/ si un état vide fausse la capture
    ```
-4. Invoke `/review {task-id}`. (`/review` recopie la table dans le body de
+4. Invoke `/e2e {task-id}`, which chains into `/review` (task-347). (`/review` recopie la table dans le body de
    la PR sous `## Vérification visuelle` ; `/tech-writer`, en bout de
    chaîne, rafraîchit la galerie « État visuel » de l'EPIC depuis
    `Docs/epics/img/screens/`.)

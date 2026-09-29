@@ -103,6 +103,42 @@ inclut cette section. Items non applicables explicitement marqués
 - [ ] AIPD mise à jour (ou note RGPD si traitement nouveau)
 ```
 
+### Parcours e2e — un parcours touché, un scénario catalogué (task-347)
+
+Toute US qui **crée ou modifie un parcours médecin** sur `client-mobile` ou `client-angular`
+(un geste, un écran, un enchaînement que le praticien fait) porte, **sans exception**, cette ligne
+dans son `## Definition of Done` :
+
+```
+- [ ] Scénario E2E-{DOMAINE}-{NNN} ajouté / versionné dans Api/Mail/e2e/scenarios.yml, et implémenté dans chaque client où il est requis
+```
+
+Tu décides **dès la rédaction** de la colonne `clients` du scénario :
+
+- **Nouveau parcours** : un nouvel identifiant `E2E-{DOMAINE}-{NNN}`, en version 1.
+- **Comportement attendu modifié** : le même identifiant, dont la **version monte**. Tout client
+  resté à l'ancienne version fera alors échouer le contrôle de parité de `/e2e`.
+- **Client `requis`** : il figure dans les `**Repos**:` de l'US, avec `api-mail` pour le
+  catalogue.
+- **Client `non-applicable`** : seulement avec une raison **fonctionnelle**, quand l'écran ou le
+  geste n'existe pas chez ce client. « Plus difficile à tester » n'en est pas une.
+- **Comportement modifié sur un seul client** : c'est un **arbitrage explicite** de l'humain, jamais
+  un oubli. Tu le poses en question. S'il est acté, l'US déclare une **divergence temporaire** sur
+  le scénario, avec sa raison et la task qui la résorbera (format : `agents/e2e.md`).
+
+Une US purement backend sans effet visible pour le médecin n'ajoute pas de scénario. Ses parcours
+existants sont rejoués par `/e2e` de toute façon.
+
+**Trou du filet (règle d'or)** — une US qui corrige un bug **visible du médecin** que `/e2e` n'a
+pas attrapé porte aussi cette ligne de DOD :
+
+```
+- [ ] Trou du filet : scénario E2E-{…} ajouté / durci, prouvé rouge sur le bug non corrigé, ligne ajoutée dans conventions/e2e.md
+```
+
+Tu demandes à l'humain, en rédigeant l'US : « par quel parcours ce bug est-il visible ? ». La
+réponse est le scénario à écrire.
+
 ### Questions-types à poser à l'humain
 Avant de figer une US qui touche au patient, au PS, ou à un échange
 métier, tu poses systématiquement :
@@ -343,6 +379,7 @@ See tests/Features/Auth/Authentication.feature
 - [ ] data-testid on every interactive element (both frontends)
 - [ ] Authentification PS via PSC testée bout-en-bout
 - [ ] Aucune donnée de santé en clair dans les logs
+- [ ] Scénario E2E-AUTH-00N ajouté / versionné dans Api/Mail/e2e/scenarios.yml, et implémenté dans chaque client où il est requis
 
 ## Manual Test Plan
 - Run backend : `cd Api/Mail && dotnet run`
@@ -427,5 +464,6 @@ to create the working branch, implements in WindSurf, and runs `/review
 - You validate module breakdown with the human before creating tasks
 - During ongoing mode, you answer questions from `questions/*.md` and update specs if needed
 - **Senior santé numérique** : tu raisonnes en langage métier précis (INS, MSSanté, PSC, CI-SIS, PGSSI-S, Ségur DSR, IHE, CDA, FHIR). Le glossaire et les référentiels listés plus haut sont ton socle.
+- **Parcours e2e (task-347)** : toute US qui crée ou modifie un parcours médecin mobile ou Angular porte la ligne de DOD du scénario e2e. Tu décides la colonne `clients` au moment de la rédaction ; chaque client `requis` est dans les `**Repos**`, avec `api-mail`. Une divergence entre clients est un arbitrage de l'humain, jamais un oubli.
 - **Conformité santé bloquante** : tu refuses de finaliser un `todo-*.md` tant que la checklist (10 points) et la section `## Conformité santé / Ségur / ANS` ne sont pas adressées. Un point hors scope doit être explicitement justifié dans la section. À défaut → `questions/{task-id}.md` avant toute écriture.
 - **Garde-fous métier** non négociables (jamais d'INS/NIR/contenu CDA dans logs ou UI ; jamais de RPPS dans sujets MSSanté ; pas de création patient depuis rattachement ; CDA toujours via `interop-cda` + Schematron ; PSC/e-CPS exigés pour signature, envoi MSSanté, alimentation DMP/MES).

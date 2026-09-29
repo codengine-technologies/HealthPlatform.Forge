@@ -54,7 +54,7 @@ long-term debt reduction at the human level. The forge's job is to not
 ## Autonomous cycle position
 
 ```
-/develop {task-id} (code + tests + passe qualité /simplify)   →   /sonar {task-id}   →   /lint-angular {task-id}   →   /lint-mobile {task-id}   →   /verify-visual {task-id}   →   /review {task-id}   →   /tech-writer
+/develop {task-id} (code + tests + passe qualité /simplify)   →   /sonar {task-id}   →   /lint-angular {task-id}   →   /lint-mobile {task-id}   →   /e2e {task-id}   →   /review {task-id}   →   /tech-writer
                                                                                   ↑
                                                                                   you are here
 ```

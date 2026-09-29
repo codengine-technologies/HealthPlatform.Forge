@@ -9,7 +9,7 @@ For each `tasks/todo-task-*.md` (lowest task-id first), run the full
 autonomous chain :
 
 ```
-/start {task-id}    → /develop {task-id}    → /sonar {task-id}    → /lint-angular {task-id}    → /lint-mobile {task-id}    → /review {task-id}    → /tech-writer E{NNN}
+/start {task-id}    → /develop {task-id}    → /sonar {task-id}    → /lint-angular {task-id}    → /lint-mobile {task-id}    → /e2e {task-id}    → /review {task-id}    → /tech-writer E{NNN}
 ```
 
 `/develop` now carries the `/simplify` quality pass itself (reuse /
@@ -128,6 +128,7 @@ Task task-018 — feat(mail) ...
   /sonar        : ✓ 3 iterations, 12 issues fixed, 4 remaining (best-effort)
   /lint-angular : ⤍ skipped — no angular change
   /lint-mobile  : ⤍ skipped — no mobile change
+  /e2e          : ✓ voie mobile 22/22, voie angular listée, parité verte (cf. 
   /review       : ✓ APPROVED, 3 PRs opened (#42, #43, #44, label awaiting-human-merge)
   staging       : ✓ feat/task-018-... merged into forge/staging-... (api-mail, client-blazor, dtos-mss)
   /tech-w.      : ✓ docs/epics/E009-... updated

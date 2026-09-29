@@ -144,7 +144,7 @@ philosophy was inverted on 2026-04-27 — see CLAUDE.md "Forge philosophy".
    quality pass** (integrated sub-step since the 2026-08-31 fusion of
    `/forge-simplify`), then chains into `/sonar` (api-mail), then
    `/lint-angular` (client-angular), then `/lint-mobile` (client-mobile), then
-   `/verify-visual`, then `/review`, then `/tech-writer`. `/sonar`,
+   `/e2e`, then `/review`, then `/tech-writer`. `/sonar`,
    `/lint-angular` and `/lint-mobile` skip cleanly when there's nothing to
    do. The full autonomous loop runs
    end-to-end without human prompt — the only mandatory human action is
@@ -158,7 +158,7 @@ philosophy was inverted on 2026-04-27 — see CLAUDE.md "Forge philosophy".
     - {repo} (pushed / local-only)
     - ...
 
-    Chaining into /develop now (code + tests + passe qualité /simplify) → /sonar → /lint-angular → /lint-mobile → /verify-visual → /review → /tech-writer.
+    Chaining into /develop now (code + tests + passe qualité /simplify) → /sonar → /lint-angular → /lint-mobile → /e2e → /review → /tech-writer.
     (/sonar, /lint-angular et /lint-mobile skip clean si leur repo n'a pas été touché.)
     The PR(s) will land with label awaiting-human-merge — you merge
     when ready (HAG rule 10).

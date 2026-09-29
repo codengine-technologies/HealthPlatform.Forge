@@ -27,6 +27,12 @@ is headed and needs a human login, so it can never run unattended.
 > targets `client-mobile` with a **real** PSC login done by a human. The
 > fixture-mocked, no-auth path still exists separately as `/verify-visual`
 > (`Tools/visual-verify/`) — do not confuse the two.
+>
+> **Depuis task-347**, les **mêmes parcours** tournent aussi **sans humain** dans l'étape
+> `/e2e` de la chaîne : suites headless (mobile task-345, Angular task-346), profil AppHost
+> `e2e`, boîte synthétique. `/qa` n'est pas remplacé : il reste **le seul** à exercer ce que le
+> headless contourne, c'est-à-dire le vrai login PSC / e-CPS, le refresh par cookie, le logout
+> et l'annuaire national (scénarios `mode: humain` du catalogue `Api/Mail/e2e/scenarios.yml`).
 
 ## Difference vs `/verify-visual`
 
@@ -330,7 +336,11 @@ unexpected backend exception. On failure, point at `questions/qa-{YYYYMMDD}.md`
 ## Rules
 
 - **Real PSC, human-assisted.** Never automate the login, never store a PSC
-  secret, never bypass auth.
+  secret, never bypass auth **in `/qa`**. The auth bypass is allowed in **one** place only :
+  the headless `e2e` profile played by `/e2e` (task-347). There, the api-mail test-bypass is
+  keyed per run, hard-blocked in Production, and never used against a real mailbox or an HDS
+  environment. `/qa` itself stays the real-login journey, and its `@humain` scenarios are
+  never played headless.
 - **Test mailbox only.** Enforce the health-data guardrail above.
 - **Always tear down.** Every path through Step 3 reaches Step 4. No zombie
   `dotnet` / `ng serve` processes, no orphan Docker containers.

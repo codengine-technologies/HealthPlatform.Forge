@@ -67,6 +67,19 @@ In autonomous mode (`/develop` upstream) this halts the chain ; in
    run ; observational items are deferred to the Manual Test Plan in the PR
    body. Any DOD item that fails → validation FAILS with the reason.
 
+4b. **E2E double lock (task-347)**. The task **touches a voie** when it touched `api-mail`,
+    `client-mobile`, `client-angular` or `dtos-mss` — the rule of `agents/e2e.md` step 0.
+    In that case the task file MUST carry a `## E2E log` whose verdict line is green
+    (`**E2E : vert**`). **Absent or red → validation FAILS** : write `questions/{task-id}.md`
+    (« /e2e non joué » or « /e2e rouge »), do not open any PR. `/review` never replays the
+    suites itself — it refuses and sends the task back to `/e2e`.
+    - A task that touches no voie carries a `## E2E log` saying `skipped` : that is accepted.
+    - **DOD clause** : when the task created or changed a doctor's journey on `client-mobile`
+      or `client-angular`, its DOD line « Scénario E2E-… ajouté / versionné dans
+      Api/Mail/e2e/scenarios.yml, et implémenté dans chaque client où il est requis » is checked
+      like any other : the scenario is in the catalog diff, at the version the tests declare.
+      The `/e2e` warning « parcours touchés sans spec e2e modifié » is the evidence to read.
+
 5. **Code Review** — review the diff on each repo like a second developer :
 
    ```bash
@@ -209,6 +222,11 @@ In autonomous mode (`/develop` upstream) this halts the chain ; in
    design intent and actual render at merge time, before even launching
    the app.
 
+   **E2E — when the task went through `/e2e`** (task-347) : copy the task file's
+   `## E2E log` (voie table, verdict, flaky / quarantaine / divergences lists, parity matrix)
+   into **every** pushable PR body under a `## Parcours e2e` section. The human sees at merge
+   time which journeys were replayed, and that both clients still match the catalog.
+
    **Code-only repo** (`client-angular`) :
    - Do **NOT** push, do **NOT** attempt `gh pr create` (TFS remote, manual).
    - Write a note in the task's `## PRs` section : "code-only — humain gère
@@ -265,6 +283,14 @@ In autonomous mode (`/develop` upstream) this halts the chain ; in
     Excluded repos (manual) :
     - devops, psc-proxy-* : managed manually by the human
 
+    Parcours e2e : {voie mobile ✅ 22/22 | voie angular 📋 listée | skipped — aucune voie},
+                   parité {verte}, flaky {aucun | liste}, quarantaines {aucune | liste}
+
+    Amélioration continue (règle d'or) :
+    - {leçon} → capturée dans {conventions/xxx.md | scénario E2E-… | agents/xxx.md | mémoire}
+    - {signal de /e2e : flaky récurrent, quarantaine > 14 j, divergence à retirer} → task à ouvrir
+    (ou : « aucune leçon » — explicitement, jamais omis)
+
     EPIC doc : docs/epics/E{NNN}-{slug}.md updated
                (or : no EPIC linked — skipped tech-writer)
 
@@ -310,6 +336,13 @@ Tools/timing/step.sh end --task {task-id} --step review --status ok
   and halt the chain. Do not commit, do not open PRs.
 - Every DOD item must be checked or explicitly marked as deferred to manual
   test (Manual Test Plan items become PR-body checkboxes for the human).
+- **Règle d'or — la forge s'améliore toujours** : chaque finding de la revue qui révèle un
+  **piège récurrent** laisse une prévention avant la fin du cycle. Un test e2e « vert qui ment »
+  devient une entrée de `conventions/e2e.md` ; un pattern C# ou Angular devient une consigne dans
+  `conventions/csharp.md` ou `conventions/angular.md`. Le rapport de fin de cycle porte la
+  section « Amélioration continue », et écrit « aucune leçon » si c'est le cas.
+- **E2E double lock (task-347)** : a task that touches a voie never gets a PR without a green
+  `## E2E log`. The `## E2E log` is copied into every pushable PR and into the final report.
 - **Quality is always surfaced** : when the task went through `/sonar`, the
   KPI table (baseline → final) from `## Sonar log` appears in the api-mail
   PR body AND in the final report. Never end a cycle without a quality
