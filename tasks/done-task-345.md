@@ -194,14 +194,15 @@ Les parcours de la colonne de droite **restent couverts par `/qa`**, avec un log
 |---|---|---|---|---|---|---|
 | /start | ok | 27 s | — | — | — | api-mail, client-mobile |
 | /develop | ok | 13 min 03 s | 11 (2 min 26 s) | 19 (42 min 22 s) | — | api-mail 7B/6T, client-mobile 4B/13T, 2e reprise : lu/flag relus du serveur, 5 mutations → 3 rouges visés, 22/22 ×2 |
-| /sonar | ok | 7 min 19 s | 4 (1 min 26 s) | 16 (11 min 44 s) | 6 (1 min 48 s) | api-mail 4B/16T, re-analyse post-reprise : Phase 1 0 finding, QG OK, Phase 2 skip (structurel) |
+| /sonar | skipped | 0.4 s | 4 (1 min 26 s) | 16 (11 min 44 s) | 6 (1 min 48 s) | api-mail 4B/16T, api-mail inchangé depuis l'analyse du matin (f8b44271, QG OK) |
 | /lint-angular | skipped | 0.4 s | — | — | — | client-angular non touché |
-| /lint-mobile | ok | 30 s | — | — | — | 0 erreur baseline |
-| /verify-visual | skipped | 0.4 s | — | — | — | aucun écran redessiné (reprise limitée à e2e/) |
-| /review | failed | 6 min 34 s | 4 (27 s) | 4 (4 min 37 s) | — | api-mail 2B/2T, client-mobile 2B/2T, CHANGES REQUESTED : lu/flag vérifiés sur l'état optimiste (MAIL-001/002/003) |
-| **Total cycle** | | **27 min 56 s** | **19 (4 min 19 s)** | **39 (58 min 44 s)** | **6 (1 min 48 s)** | |
+| /lint-mobile | ok | 5.9 s | — | — | — | 0 erreur baseline |
+| /verify-visual | skipped | 0.4 s | — | — | — | aucun écran redessiné |
+| /review | ok | 3 min 32 s | 6 (37 s) | 6 (6 min 55 s) | — | api-mail 3B/3T, client-mobile 3B/3T, APPROVED (3e passage), PRs api-mail #259 + mobile #81 |
+| /tech-writer | ok | 1 min 42 s | — | — | — | E018 créé (mode 2), 3 tasks liées |
+| **Total cycle** | | **18 min 52 s** | **21 (4 min 29 s)** | **41 (1 h 01 min)** | **6 (1 min 48 s)** | |
 
-Autres commandes mesurées : lint ×2 (32 s), restore ×1 (2.2 s)
+Autres commandes mesurées : lint ×3 (37 s), restore ×1 (2.2 s)
 
 ## Develop log
 
@@ -289,3 +290,18 @@ Baseline = analyse 1 de cette branche (serveur 9.9.8, 2026-09-28). Le serveur a 
 ## Visual verify log
 
 - `/verify-visual` : **skipped** — aucun écran `client-mobile` redessiné (aucun `.html`/`.scss` touché sous `src/` ; seul changement applicatif : la page inbox ferme le menu des dossiers après un choix), aucun `## Stitch design log`, et `Tools/visual-verify/` absent du poste. Les parcours eux-mêmes sont vérifiés par le filet headless de cette task (22/22).
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/259 — label `awaiting-human-merge`
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/81 — label `awaiting-human-merge`
+
+## Code Review Summary
+
+- Verdict : **APPROVED** au 3e passage (revue indépendante), le 2026-09-29.
+- 1er passage (2026-09-28) CHANGES REQUESTED : le démontage retirait les conteneurs d'autres AppHosts, et des tests verts ne prouvaient rien. 2e passage (2026-09-29) CHANGES REQUESTED : lu et flag n'étaient jugés que sur l'état optimiste. Tout est corrigé.
+- Preuve : 12 no-ops plantés dans `MssApiService` → exactement les 10 parcours visés rouges ; puis 22/22 verts deux fois de suite, parité verte, `docker ps -a` identique avant et après chacun des 7 runs.
+- Validation : api-mail 5 849/5 849 (16 ignorés préexistants), client-mobile 947/947, lint 0, Sonar QG OK.
+- **DOD reportée au test humain** : « run vert réseau Internet coupé » (règle 6), non exécuté par la forge.
+- Suggestions restantes (non bloquantes) : pas de mutation dédiée pour le « non lu » groupé ; signaux traités seulement à la sortie des `spawnSync` longs.
+- Constats pour le PO : suppression différée perdue au rechargement (`MailPendingDeleteService`) ; génération UIDVALIDITY 0 sans signal (`AddNewMail`) ; `AttachmentCount` selon le chemin ; « Aucun contenu disponible » pendant le chargement.
