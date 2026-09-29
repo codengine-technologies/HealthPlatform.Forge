@@ -124,4 +124,45 @@ Les appels vers api-mail sont, eux, **réels** : Playwright y pose les en-têtes
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 25 s | — | — | — | api-mail, client-angular (code-only) |
-| **Total cycle** | | **25 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 1 h 13 min | 2 (27 s) | 10 (27 min 28 s) | — | client-angular 2B/9T, client-mobile 0B/1T, 22/22 ×2, 6 mutations → 6 rouges, parité mobile × Angular verte |
+| **Total cycle** | | **1 h 14 min** | **2 (27 s)** | **10 (27 min 28 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : lint ×1 (44 s), restore ×2 (1 min 18 s)
+
+## Develop log
+
+- Repos touched : client-angular (code-only, aucune opération git), api-mail (documentation du catalogue)
+- DTOs published : no DTO change — Interop : no change
+- **Projet `mss-e2e`** (`Client/Angular/front/e2e/mss-e2e/`, tags `scope:mss`, `type:e2e`, cibles `e2e` et `lint`) : placé **hors d'`apps/` et de `libs/`**, pour que la règle 7 et le `grep` de la DOD tiennent à la lettre. `@playwright/test` 1.61.1 en devDependency (même version que le mobile). Commande : `npm run e2e:mss`.
+- **Réutilisation, sans duplication (règle 5)** : `run.mjs` délègue le cycle de vie du backend e2e (AppHost `https-e2e`, reset, seed relu, démontage borné au run) au mode `--serve-only` de l'orchestrateur de la task-345. Il se limite à servir weda2 en HTTPS local, avec le proxy `/api` → backend e2e (évite le contenu mixte). Il joue ensuite la suite, contrôle la parité sur la colonne `angular`, puis dépose `STOP`. Rapport `out/summary.json` au format du mobile.
+- **Auth simulée** (`support/session.ts`, Playwright uniquement) :
+  - à froid, weda2 part au login ; le faux `/auth/login` redirige aussitôt vers le callback `/authentication` avec un code et le `state` reçu ;
+  - l'échange `POST /auth/token` rend un JWT **non signé** portant le `nonce` reçu ; weda2 le lit sans le vérifier ;
+  - les réponses simulées portent les en-têtes CORS : le proxy est cross-origin et appelé `withCredentials` ;
+  - `assets/config.json` est servi surchargé (`mssApiUrl` = origine de l'app) ; le back weda `:7249` est bouchonné ; tout hôte extérieur est coupé ;
+  - les en-têtes du bypass ne visent que `origine/api/**`.
+- **Navigation** : weda2 ne conserve pas ses jetons entre deux chargements. Chaque `goto` rejoue donc le login simulé, puis la navigation se fait **dans l'app** (`pushState` + `popstate`). « Relu après rechargement » signifie un rechargement complet.
+- **Couverture** : les 22 scénarios `angular: requis` / `mode: headless` du catalogue ; les 3 `mode: humain` sont « non joués ». Les états optimistes (lu, signalé, acquittement, suppressions) sont jugés sur la **réponse du serveur**, puis relus après rechargement.
+- **Colonne `angular` confirmée, aucun reclassement** : tous les écrans existent dans weda2. Deux réalisations propres à weda2, consignées dans `Api/Mail/e2e/README.md` sans changer le scénario :
+  - `E2E-INBOX-001` : filtres rapides « Tous / Non lus / Lus », pas de « Signalés » ;
+  - `E2E-SETTINGS-002` : la vue conversation se règle dans les Paramètres.
+- **Runs `npm run e2e:mss`** : 22/22 verts, 0 flaky, parité verte, ~2 min 30 par run, `docker ps -a` identique avant/après.
+  - 1 run initial, 2 après la passe qualité, **2 consécutifs après le déplacement hors d'`apps/`**.
+- **Preuve que le filet mord** — 6 no-ops plantés dans `libs/mss/src/core/services/mss-api.service.ts` : `updateReadStatus`, `updateFlagStatus`, `recordBiologyAck`, `deleteSignature`, `deleteContact`, `deleteFolder`.
+  - Résultat : **exactement les 6 parcours visés rouges** (MAIL-001, MAIL-003, BIO-001, FOLDER-002, CONTACT-002, SIGNATURE-001), 16 verts, code retour 1.
+  - Contact et signature disparaissent de l'écran de façon optimiste : seule la relecture après rechargement les attrape.
+  - Fichier restauré, `libs/` intact.
+- **Matrice de parité mobile × Angular** (suite mobile rejouée pour un rapport frais, 22/22) : **verte sur les deux colonnes**.
+  - 22 scénarios headless ✅ ✅ ; CONTACT-001, AUTH-001, AUTH-002 « 👤 non joué (humain) » sur les deux colonnes.
+- **Build / test Angular** : `npm ci` ✓ ; `npm run build` ✓ (deux fois, dont après le déplacement) ; `npm test` ✓ (11 projets : 131 fichiers de tests verts, 1 sauté préexistant).
+- `ng lint` du projet e2e : **0 erreur**. Restent 23 avertissements `jsdoc/require-example`, règle optionnelle du workspace. `tsconfig.json` racine : `e2e/**/*.ts` ajouté à `include`, pour le parser ESLint.
+- `grep -i x-test-bypass` sur `apps/` et `libs/` : **aucune occurrence**.
+- Passe qualité (§Q, sans git sur client-angular) : les prédicats « toutes les lignes lues / non lues » (×3) et `rowAction` sont extraits dans `support/weda.ts`. Re-validés par 2 runs verts. api-mail : documentation seulement, rien à simplifier.
+- Commits api-mail poussés : `70dac50f`, `19bc3b58` (`e2e/README.md`).
+- **client-angular — code-only, fichiers à commiter par l'humain** (branche `feature/nova-rewriting-mss`) :
+  - `front/e2e/mss-e2e/` : nouveau projet (`.gitignore`, `README.md`, `playwright.config.ts`, `project.json`, `proxy.e2e.conf.json`, `run.mjs`, `specs/functional.e2e.ts`, `support/{fixtures,session,weda}.ts`, `tsconfig.json`) ;
+  - `front/package.json` et `front/package-lock.json` : devDependency `@playwright/test`, script `e2e:mss` ;
+  - `front/tsconfig.json` : `include` étendu à `e2e/**/*.ts` ;
+  - à **ne pas** inclure : `front/apps/{mss,weda2}/src/environments/environment.ts`, réglages locaux de l'humain, antérieurs au `/start`, laissés intacts.
+- **Constat pour le PO** : weda2 ne conserve pas sa session d'un rechargement à l'autre ; chaque F5 repasse par le login PSC, même si le SSO le rend transparent. Et comme sur le mobile, une suppression de mail est différée de 6 s (fenêtre d'annulation).
+- Next step : `/sonar task-346`
