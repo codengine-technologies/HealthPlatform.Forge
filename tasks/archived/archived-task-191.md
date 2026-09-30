@@ -373,3 +373,11 @@ Le QG reste ERROR à cause de la dette antérieure de la période `PREVIOUS_VERS
 - ⚠️ Tests : avec l'option (a), le premier test d'ordre d'écriture ne réexerce plus le scénario FK (le test d'atomicité garde l'ordre) ; l'assertion « aucune valeur dans l'inventaire » porte sur le texte SQL, pas sur la sortie.
 
 Validation `/review` : build 0 erreur ; tests 5 879/5 884 à la passe complète — 5 rouges (`PostgresTenantRegistryClient*` ×4, `MailClientSessionManagerCoverageTests` ×1), fichiers non touchés, **verts isolément** (56/56, 16/16) et verts aux deux analyses Sonar sur le même commit : charge machine (revue parallèle en cours), pas une régression.
+
+## Merged
+
+- **Date** : 2026-09-30, via `/merge task-191 --i-tested` (HAG, règle 10 : Manual Test Plan validé par l'humain)
+- `api-mail` : PR [#261](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/261) squash-mergée → `2d5109936b584ea4f0eec13ddc1d555035a6b42a` ; label `awaiting-human-merge` retiré ; branche `fix/task-191-ingestion-integrity` supprimée (distante ; aucune ref locale)
+- `dtos-mss` : aucune branche (aucun contrat modifié)
+- CI `develop` : run [36747271257](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/36747271257) — `build` vert ; `publish` en cours au moment de l'archivage
+- Avant merge : `develop` avait 3 commits d'avance (task-343, task-347, task-346), sans migration ni snapshot EF, donc aucune divergence avec la migration de cette task (règle 7c)
