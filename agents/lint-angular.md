@@ -335,6 +335,14 @@ Angular Sonar analysis stays a CI-only concern for now).
        file.
      - Invoke `/lint-mobile {task-id}` and exit (it self-skips to `/review`
        if `client-mobile` wasn't touched either).
+   - **Travail non commité qui n'est pas celui de la task** : l'arbre Angular est
+     code-only, donc il porte souvent le WIP de l'humain (correctifs en attente de
+     commit TFS, réglages locaux d'`environment.ts`). Si `client-angular` n'est pas
+     listé **et** que le `## Develop log` ne cite aucun fichier Angular écrit par
+     `/develop` pour cette task, ce WIP **ne déclenche pas** l'étape : skip propre,
+     en le notant dans le `## Lint log` (nombre de fichiers). Le linter
+     toucherait des fichiers hors du périmètre de la task (règle 6). Constaté sur
+     task-325 (api-mail seul, 7 fichiers de WIP humain antérieur).
    - Otherwise continue with Step 1.
 
 5. **Mode A — snapshot the working tree state** (for the final report) :

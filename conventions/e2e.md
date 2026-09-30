@@ -44,6 +44,22 @@
 
 ## Conventions actives
 
+### garde-de-port-ipv4-seul — Un port « libre » en IPv4 peut être tenu en IPv6
+- **Piège** : l'orchestrateur Angular (`run.mjs`, `portBusy`) ne sonde que `127.0.0.1:4200`.
+  Or `nx serve` en dev écoute sur `[::1]:4200`, et `https://localhost:4200` (`BASE_URL`,
+  `APP_URL`) résout **d'abord** `::1`. Avec le serveur de dev de l'humain debout, le garde répond
+  « libre ». Deux issues sont alors possibles : un `EADDRINUSE` confus, ou une suite qui joue contre
+  le serveur de dev (sans proxy e2e) au lieu du sien.
+- **Consigne** : un garde de port sonde **les deux** familles (`127.0.0.1` et `::1`). Avant de
+  lancer une voie, `/e2e` contrôle les ports par `netstat` (toutes adresses), pas par l'outil
+  lui-même.
+- **Preuve** : constaté sur task-325. `netstat` montrait `[::1]:4200 LISTENING` (le `nx serve`
+  de l'humain) pendant que le garde IPv4 n'aurait rien vu. Le correctif de `portBusy` reste à
+  faire sur `client-angular` (code-only, par une task) ; la preuve attendue est un garde rouge
+  avec un serveur écoutant sur `::1` seul.
+- **Origine** : task-325
+- **Occurrences** : 1
+
 ### etat-optimiste — Juger ce que le serveur a enregistré, pas ce que l'écran affiche
 - **Piège** : lu, signalé, acquittement, suppression… Les deux clients mettent l'écran à jour
   **avant** l'appel serveur, et ne reviennent en arrière que sur erreur. Un appel jamais émis passe

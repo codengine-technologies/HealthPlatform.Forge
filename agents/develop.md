@@ -176,6 +176,14 @@ whole cycle, and it doubles as the repo's final verification (Step 6).
    creating a new one** (memory `feedback_reuse_existing_components`) — that is
    exactly the "reuse" axis.
 
+   **The learned conventions apply to the pass's own edits.** A cleanup is fresh
+   code : before applying it, re-read the « Consignes » of `conventions/csharp.md`
+   (C#) / `conventions/angular.md` (Angular/Ionic) that match the edit. Constaté
+   sur task-325 : la passe a remplacé un `Array.Find` par une boucle
+   `foreach … return` — un S3267 déjà consigné (Occurrences 2) — que `/sonar` a
+   dû corriger derrière. La lecture de Step 4 couvrait le code de la feature, pas
+   celui de la passe.
+
    **Quality only — never hunt bugs here.** Bug/security hunting is
    `/code-review`. If the pass surfaces a real bug, note it in the develop log
    and let `/review` judge ; do not turn the cleanup into a fix.
