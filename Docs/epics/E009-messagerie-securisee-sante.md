@@ -2,9 +2,9 @@
 
 > **Statut** : En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.78
+> **Version** : 1.79
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-09-29 (un seul dossier par patient, messages de patient toujours reçus, task-191)
+> **Dernière mise à jour** : 2026-09-30 (la recherche ne cache plus aucun message, task-192)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1005,7 +1005,7 @@ Les règles `RG-E009-084` à `RG-E009-089` sont propres à ENS Mon espace santé
 | E009-F010 | 🔴 Non impl. | 0% — Modèle RBAC explicite (médecin / secrétaire / coordinateur) | — |
 | E009-F011 | 🟡 Partiel | 30% — MDN / DSN OK, suivi complet à faire | — |
 | E009-F012 | 🔴 Non impl. | 0% — Workflow d'attribution d'un message à un autre praticien | — |
-| E009-F013 | 🟢 Implémenté | 100% — chat multi-emails avec contexte, résumés, tags, recherche sémantique, plugin 5 actions | — |
+| E009-F013 | 🟢 Implémenté | 100% — chat multi-emails avec contexte, résumés, tags, recherche sémantique, plugin 5 actions ; recherche exhaustive sur tous les dossiers — task-192 | task-192 |
 | E009-F014 | 🟢 Implémenté | 100% — CRUD signatures HTML, signature par défaut, éditeurs sur les deux frontends | — |
 | E009-F015 | 🟢 Implémenté | 100% — CRUD modèles par catégorie, 4 endpoints IA, éditeurs sur les deux frontends | — |
 
@@ -1036,6 +1036,20 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
+- **v1.79 — La recherche ne cache plus aucun message** (task-192) : une
+  recherche lancée sur l'ensemble de la messagerie retrouve désormais tous les
+  messages pertinents, y compris quand deux messages rangés dans des dossiers
+  différents portaient le même numéro interne — l'un des deux disparaissait
+  jusqu'ici des résultats sans aucune indication. Les messages retenus en
+  priorité sont les plus récents, quel que soit le dossier où ils sont
+  classés : un compte rendu récent déplacé dans les archives n'est plus écarté.
+  La recherche ne tient plus compte des majuscules : « dupont » trouve
+  « DUPONT » et « Dupont », sur le nom du patient comme sur l'objet,
+  l'expéditeur ou le destinataire. Les caractères « % » et « _ » saisis sont
+  cherchés tels quels. Enfin, quand une recherche très large atteint sa limite
+  de résultats, la messagerie le sait et peut en informer le praticien, pour
+  qu'il affine sa recherche plutôt que de conclure à l'absence d'un document.
+  L'affichage de cette indication dans les écrans suivra.
 - **v1.78 — Un patient, un dossier : l'historique complet au même endroit, et
   aucun message de patient perdu** (task-191) : quand plusieurs documents d'un
   même patient arrivent ensemble — un laboratoire ou un hôpital qui envoie une

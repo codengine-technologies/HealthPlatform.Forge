@@ -117,6 +117,12 @@ mot par nature de commande, sinon les agrégats ne veulent plus rien dire :
 4. `step.sh end` rafraîchit automatiquement la section `## Timings` du task file
    (via `report.sh --sync`), donc **aucune table n'est à rédiger à la main** —
    et surtout, aucune durée n'est à estimer par l'agent.
+   ⚠️ **Ne jamais écrire le titre littéral de cette section ailleurs dans le task
+   file**, même au milieu d'une phrase entre accents graves (« voir `## Timings` »).
+   La synchronisation, comme les scripts d'insertion des étapes, repèrent la section
+   par ce texte : une mention en ligne est prise pour le titre, les sections
+   s'empilent et le contenu situé entre elles est tronqué (constaté sur task-192 :
+   `## E2E log` et `## PRs` coupés). Écrire « la section Timings ».
 
 ### Run id (regroupement par run `/forge`)
 

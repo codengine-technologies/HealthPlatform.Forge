@@ -227,7 +227,7 @@ de réintroduire une clé fragile.
 
 | Voie | Déclencheur | Résultat | Tests | Durée |
 |---|---|---|---|---|
-| mobile | api-mail + dtos-mss touchés | ✅ verte (1 flaky) | 23 verts, 1 flaky, 0 rouge, 0 quarantaine | voir `## Timings` |
+| mobile | api-mail + dtos-mss touchés | ✅ verte (1 flaky) | 23 verts, 1 flaky, 0 rouge, 0 quarantaine | voir la section Timings |
 | angular | api-mail + dtos-mss touchés | ⏭️ sautée | suite Angular non livrée (task-346) — colonne « non contrôlée » | — |
 
 - Catalogue : `Api/Mail/e2e/scenarios.yml` @ branche de la task (`fix/task-192-search-exhaustive-dedup-case`)
@@ -277,6 +277,23 @@ de réintroduire une clé fragile.
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
 
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/266 — label `awaiting-human-merge`
+- `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/35 — label `awaiting-human-merge` (HealthPlatform.Dtos.Mss 492.0.0 déjà publié depuis la branche)
+- `client-blazor`, `client-angular`, `client-mobile` : non listés — consomment toujours `Uids` seul ; exploitation de `Hits` / `IsTruncated` à planifier dans une task front
+
+## Code Review Summary
+
+- Validation `/review` : `dtos-mss` build 0 erreur ; `api-mail` build 0 erreur, **5 970 tests réussis, 0 échec**, 16 ignorés ; branches déjà à jour avec `origin/develop` (aucun merge nécessaire)
+- DOD : 8/9 vérifiés par commande (tests nommés dans le `## Develop log`), 1 différé au Manual Test Plan (HAG)
+- E2E double verrou : `## E2E log` vert (1 flaky E2E-DETAIL-002, contre-épreuve `develop` documentée)
+- **Verdict : APPROVED** — 0 bloquant, 4 suggestions :
+  1. défaut **pré-existant** : recherche vectorielle par patient en mode hybride — plusieurs documents d'un même mail ⇒ `ToDictionary` sur clé en double ⇒ exception avalée ⇒ **liste vide sans signal** (déjà sur `develop`, clé UID) → task dédiée recommandée
+  2. détection de troncature à porter par le repository (`Take(bound + 1)`)
+  3. `ContactRepository` / `PatientRepository` : LIKE sans échappement des jokers → adopter `SearchQueryHelper.ToContainsPattern`
+  4. cosmétique (lignes vides `SearchResultHelper` / `#endregion`)
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-192 --sync` — ne pas éditer à la main)*
@@ -289,22 +306,8 @@ de réintroduire une clé fragile.
 | /lint-angular | skipped | 1.9 s | — | — | — | client-angular non listé dans Repos |
 | /lint-mobile | skipped | 2.1 s | — | — | — | client-mobile non listé dans Repos |
 | /e2e | ok | 31 s | — | — | — | e2e ×3 (5 min 05 s), vert, 1 flaky E2E-DETAIL-002 (rejeu après contre-épreuve develop) |
-| **Total cycle** | | **54 min 12 s** | **8 (1 min 42 s)** | **19 (18 min 55 s)** | **4 (5 min 00 s)** | |
-
-Autres commandes mesurées : nuget-wait ×1 (12 s), restore ×1 (8.4 s)
-
-## Timings
-
-*(généré par `tools/timing/report.sh --task task-192 --sync` — ne pas éditer à la main)*
-
-| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
-|---|---|---|---|---|---|---|
-| /start | ok | 32 s | — | — | — | — |
-| /develop | ok | 33 min 20 s | 6 (49 s) | 9 (10 min 27 s) | — | api-mail 5B/9T, dtos-mss 1B/0T |
-| /sonar | ok | 19 min 43 s | 2 (53 s) | 10 (8 min 27 s) | 4 (5 min 00 s) | 2 itération(s), api-mail 2B/10T |
-| /lint-angular | skipped | 1.9 s | — | — | — | client-angular non listé dans Repos |
-| /lint-mobile | skipped | 2.1 s | — | — | — | client-mobile non listé dans Repos |
-| /e2e | failed | 6 min 57 s | — | — | — | e2e ×2 (5 min 04 s), régression E2E-DETAIL-002 (mobile) — questions/task-192.md |
-| **Total cycle** | | **1 h 00 min** | **8 (1 min 42 s)** | **19 (18 min 55 s)** | **4 (5 min 00 s)** | |
+| /review | ok | 5 min 45 s | 2 (18 s) | 1 (3 min 00 s) | — | dtos-mss 1B/0T, api-mail 1B/1T |
+| /tech-writer | ok | 1 min 43 s | — | — | — | — |
+| **Total cycle** | | **1 h 01 min** | **10 (2 min 01 s)** | **20 (21 min 55 s)** | **4 (5 min 00 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (12 s), restore ×1 (8.4 s)
