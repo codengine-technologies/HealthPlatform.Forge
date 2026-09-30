@@ -1,6 +1,6 @@
 # todo-task-329.md — Un message envoyé part complet et laisse une trace, quel que soit le chemin : brouillon, transfert, envoi hors ligne ou « annule et remplace »
 
-**Repos**: api-mail, dtos-mss, client-blazor, client-mobile
+**Repos**: api-mail, dtos-mss, client-blazor, client-mobile, client-angular
 **Dependencies**: task-330 (le rejeu hors ligne fiable, sur lequel l'envoi hors ligne unifié s'appuie)
 **Epic**: E009
 **Single frontend**: false
@@ -34,6 +34,23 @@
 5. **Verrou d'envoi de brouillon (AUD-48)** — TTL 30 s (`DraftService.cs:29`) plus court qu'un envoi
    (attente du verrou SMTP jusqu'à 120 s) et libéré sans jeton (`DraftCacheRepository.cs:224, 241`) :
    double envoi possible.
+6. **Brouillon côté Angular** (ajouté le 2026-09-30, vérifié sur `feature/nova-rewriting-mss`) —
+   même défaut que le point 1, côté `client-angular`
+   (`Client/Angular/front/libs/mss/src/features/mail/components/mail-compose/mail-compose.component.ts`) :
+   - l'autosave (30 s, `:1586-1597`) crée un brouillon dès qu'il y a un objet, un corps ou un
+     destinataire ; ensuite, `dispatchSend` (`:841-855`) passe par `executeSendDraft` → `sendDraft`
+     (`:985-1000`), et plus par `sendMailDirect` ;
+   - `buildSaveDraftDto` (`:1524-1537`) ne transmet ni pièce jointe (`attachmentIds` jamais rempli),
+     ni `requestReadReceipt`, ni `oppositionAcknowledged`, ni `blockPatientReply` ; le modèle TS
+     `SaveDraftDto` (`libs/mss/src/core/models/draft.model.ts:11-23`) n'a même pas ces trois champs ;
+   - la route `cancel-and-replace` n'est appelée que depuis `sendMailDirect` (`:1141-1147`) : un
+     « annuler et remplacer » rédigé plus de 30 s part comme un envoi simple, et l'original reste valide ;
+   - `loadDraft` ne restaure pas les pièces jointes.
+
+   **Conséquence** : sur l'Angular, tout message rédigé plus de 30 s part amputé, avec « envoyé »
+   affiché. Cela touche aussi le transfert, qui reprend désormais l'`IHE_XDM.ZIP` d'origine (correctif
+   hors chaîne du 2026-09-30). Déjà noté sans suite en task-154 (`archived-task-154.md:134` : « chemin
+   sendDraft (SaveDraftDto) hors garde »).
 
 ## Objective
 
@@ -58,18 +75,27 @@ refusé explicitement), respecte la garde d'opposition et l'accusé de lecture d
 5. **Hors ligne** : l'envoi d'un brouillon hors ligne est mis en file comme `sendmail` ; un
    annule-et-remplace hors ligne est mis en file avec son original et rejoué comme tel.
 6. **Verrou d'envoi** : durée au-delà du délai maximal d'envoi (ou renouvelée), libération conditionnée à un jeton.
-7. **Clients** : Blazor et mobile transmettent les pièces jointes du brouillon (référence résolvable) et
-   les nouveaux champs ; aucune régression de l'autosave.
+7. **Clients** : Blazor, mobile et Angular transmettent les pièces jointes du brouillon (référence
+   résolvable) et les nouveaux champs ; aucune régression de l'autosave.
+8. **Angular** (point 6 ci-dessus) :
+   - le modèle TS `SaveDraftDto` suit le contrat `dtos-mss` ;
+   - `buildSaveDraftDto` transmet les pièces jointes (par la référence du point 2, ou par leur
+     contenu si le contrat le prévoit), `requestReadReceipt`, `oppositionAcknowledged`,
+     `blockPatientReply` et les informations d'annule-et-remplace ;
+   - un compose ouvert en annule-et-remplace n'est jamais envoyé comme un brouillon simple ;
+   - `loadDraft` restaure les pièces jointes.
+
+   Le client est **code-only** : la forge écrit le code sur la branche en cours dans
+   `Client/Angular/`, l'humain gère le commit, le push et la PR TFS.
 
 ### Hors périmètre
 
 - La fiabilité du rejeu hors ligne lui-même (task-330, prérequis).
-- `client-angular` : non listé — son chemin d'envoi reste à vérifier par l'humain (code-only).
 - Le format des accusés de lecture (task-340).
 
 ## Definition of Done
 
-- [ ] Build passes (0 errors) sur les 4 repos ; Tests pass (0 failures, hors flaky pré-existants documentés)
+- [ ] Build passes (0 errors) sur les 5 repos ; Tests pass (0 failures, hors flaky pré-existants documentés)
 - [ ] **Tests rouges d'abord** (log des runs rouges dans le task file), chacun rouge sur le code actuel :
   - [ ] brouillon avec une pièce jointe PDF envoyé par `drafts/{id}/send` → le message SMTP émis **contient** la pièce
   - [ ] transfert d'un mail avec pièce reprise par référence → la pièce est présente dans le message émis
@@ -82,18 +108,31 @@ refusé explicitement), respecte la garde d'opposition et l'accusé de lecture d
 - [ ] Test d'intégration endpoint (règle 1b) : `POST drafts/{id}/send` de bout en bout (DI, GreenMail) — message relu dans le puits **avec** sa pièce jointe
 - [ ] `dtos-mss` publié via la CI, consommateurs .NET bumpés
 - [ ] Composants Blazor et mobile : tests de composant sur l'envoi d'un brouillon à pièce jointe et à accusé de lecture
+- [ ] Compose Angular : tests de composant, chacun rouge sur le code actuel :
+  - [ ] brouillon à pièce jointe → le `SaveDraftDto` envoyé la porte
+  - [ ] brouillon à accusé de lecture, à opposition acquittée, à blocage de réponse patient → les trois champs sont transmis
+  - [ ] annule-et-remplace après autosave → la route `cancel-and-replace` est appelée
+  - [ ] brouillon rechargé → ses pièces jointes sont restaurées
+- [ ] Trou du filet : scénario **E2E-DRAFT-002** (v1, `mobile: requis`, `angular: requis`) ajouté dans
+  `Api/Mail/e2e/scenarios.yml` — « un message à pièce jointe, envoyé après l'enregistrement
+  automatique du brouillon, arrive avec sa pièce jointe ». Implémenté dans les deux clients, prouvé
+  rouge sur le bug non corrigé, ligne ajoutée dans `conventions/e2e.md`
 - [ ] `data-testid` sur tout élément interactif ajouté ; libellés FR (mobile) / Localizer (Blazor)
 - [ ] Aucune donnée de santé ni contenu de pièce jointe dans les logs
 
 ## Manual Test Plan
 
-1. Backend : `cd Api/Mail && dotnet run --project src/AppHost` ; Blazor : `cd Client/Blazor && dotnet run --project <projet Shell>` ; mobile : `cd Client/Mobile && npm start`.
+1. Backend : `cd Api/Mail && dotnet run --project src/AppHost` ; Blazor : `cd Client/Blazor && dotnet run --project <projet Shell>` ; mobile : `cd Client/Mobile && npm start` ; Angular : `cd Client/Angular/front && npm start`.
 2. **Brouillon + PDF (Blazor)** : nouveau message, joindre un PDF de test anonymisé, attendre 40 s (autosave), Envoyer → le destinataire de test reçoit le PDF ; le message est dans « Envoyés ». Avant : sans pièce, absent d'« Envoyés ».
 3. **Transfert mobile** : transférer un mail porteur d'un `IHE_XDM.ZIP` de test → le destinataire reçoit l'archive et les en-têtes X-MSS. Avant : sans pièce.
 4. **Opposition** : destinataire patient de test sous opposition, confirmer « Continuer » après autosave → envoyé. Avant : 409 et brouillon bloqué.
 5. **Hors ligne** : couper l'accès PSC (mode hors ligne), envoyer un brouillon → message mis en file (202) ; rétablir → envoyé et archivé.
 6. **Annule et remplace hors ligne** : sur un message envoyé, « annuler et remplacer » hors ligne, puis reconnexion → l'original est marqué annulé chez le destinataire de test.
 7. **Double clic** : cliquer deux fois « Envoyer » sur un brouillon pendant un envoi lent (latence SMTP simulée au banc) → un seul message reçu.
+8. **Angular, brouillon + PDF** : nouveau message, joindre un PDF de test anonymisé, cocher « Accusé de lecture », attendre 40 s (« Brouillon enregistré » s'affiche), Envoyer → le destinataire de test reçoit le PDF, et l'accusé de lecture est demandé. Avant : sans pièce ni demande d'accusé.
+9. **Angular, transfert** : transférer un mail porteur d'un `IHE_XDM.ZIP` de test, attendre 40 s, Envoyer → le destinataire reçoit l'archive. Avant : sans pièce.
+10. **Angular, annule et remplace** : sur un message envoyé porteur d'un document, « Annuler et remplacer », attendre 40 s, Envoyer → l'original est marqué annulé. Avant : envoyé comme un message simple, original resté valide.
+11. **Angular, reprise de brouillon** : rédiger avec une pièce jointe, fermer, rouvrir le brouillon depuis « Brouillons » → la pièce jointe est toujours là.
 
 ## Conformité santé / Ségur / ANS
 
@@ -105,7 +144,7 @@ refusé explicitement), respecte la garde d'opposition et l'accusé de lecture d
 - **Habilitations** : inchangées (envoi depuis la boîte sélectionnée du praticien)
 - **Interop CI-SIS** : IHE-XDM (pièces jointes `IHE_XDM.ZIP`) transmises intactes ; en-têtes MSSanté X-MSS-CODECDA / X-MSS-INS préservés
 - **Tracé PGSSI-S** : envoi, archivage et annule-et-remplace tracés comme sur le chemin `sendmail` (même événements d'audit)
-- **Consentement patient** : opposition Mon Espace Santé respectée sur tous les chemins (acquittement explicite du praticien)
+- **Consentement patient** : opposition Mon Espace Santé respectée sur tous les chemins et tous les clients (acquittement explicite du praticien) ; le blocage de réponse patient (`X-MSS-MES: FIN`, ECO.2.2.8) survit au chemin brouillon
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui — environnement inchangé
 - **AIPD / impact RGPD** : inchangé — aucun traitement nouveau ; supprime des pertes de données

@@ -115,3 +115,51 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   task-308 (/review, 2 `require-param` sur signatures modifiées) ;
   task-310 (/develop, 3 erreurs + 2 warnings sur un paramètre objet ajouté)
 - **Occurrences** : 3
+
+### mail-content-body — `content.body` n'est pas le texte du mail
+- **Règle** : convention projet (défaut fonctionnel, invisible au lint)
+- **Repos** : les deux
+- **Consigne** : ne jamais citer, afficher ni renvoyer `MailContentDto.body`
+  comme texte du message. Une fois le mail enrichi, le backend y concatène le
+  `body` de chaque document CDA, qui est une conversion **Markdown pour la
+  recherche** (`## [Document: …]`, images en `data:image/…;base64`). Pour une
+  citation (réponse, transfert) : `bodyHtml` s'il existe, sinon le texte sans
+  les documents, **échappé** avec ses sauts de ligne. Sur `client-angular`,
+  passer par `originalBodyHtml` / `buildQuotedBody`
+  (`libs/mss/src/core/utils/quoted-body.util.ts`).
+  **Réponse et transfert suivent les messageries classiques** (Outlook,
+  Gmail, Thunderbird), décision humaine du 2026-09-30 :
+  - répondre : « À » = `Reply-To` sinon l'expéditeur ; citation « Le {date},
+    {expéditeur} a écrit : » + `<blockquote>` ; **aucune pièce jointe reprise** ;
+  - transférer : « À » vide ; en-tête « Message transféré » avec De / Date /
+    Objet / À / Cc ; **pièces jointes d'origine reprises** (dont
+    l'IHE_XDM.ZIP, seul porteur du document médical) ;
+  - la signature se place **au-dessus** de la citation, repérée par
+    `QUOTE_MARKER`, jamais par le balisage de la citation ;
+  - le curseur s'ouvre **en tête**, au-dessus de la citation : tout contenu
+    chargé de l'extérieur passe par `loadContent` de `mss-html-editor`, car
+    un `setContent` tiptap nu laisse la sélection en fin de document, donc
+    dans la citation ;
+  - une réponse ne reprend pas les pièces jointes mais les **mentionne**, à la
+    manière d'Outlook : une ligne par fichier en tête de la citation,
+    « [Pièce jointe : IHE_XDM.ZIP — {titres des documents}] ». Titres seuls,
+    aucune donnée patient ; pas de mention dans un transfert, qui emporte les
+    fichiers (décision humaine du 2026-09-30). Sans texte ni pièce jointe, pas
+    de `<blockquote>` vide ;
+  - objet : « Re: » / « Fwd: » + l'objet **que le praticien voit**, soit le
+    titre du document médical quand il remplace l'objet technique
+    (« IHE_XDM.ZIP file detected »). Le préfixe n'est jamais empilé
+    (`prefixedSubject`). Le fil ne dépend pas de l'objet, il repose sur
+    `In-Reply-To` et `References`.
+  Le rendu HTML d'un CDA (`medicalDocuments[i].bodyHtml`) est une fonction de
+  l'écran de lecture, comme l'aperçu de pièce jointe d'Outlook : il n'entre ni
+  dans la citation, ni dans un aperçu de rédaction. (Un aperçu sous l'éditeur a
+  été essayé puis retiré le jour même, car aucune messagerie ne fait ça.) Il
+  s'afficherait mal de toute façon : tiptap n'a pas d'extension Table et
+  retire `<div>`, `<details>` et `<style>`, et le serveur retire `<style>`.
+- **Origine** : correctif direct `client-angular` du 2026-09-30, sur la
+  branche `feature/nova-rewriting-mss`, hors chaîne. Constat humain : un
+  transfert citait le Markdown base64 du CDA et partait sans l'IHE_XDM.ZIP.
+  **Même motif encore présent sur `client-mobile`** :
+  `mail-compose.component.ts:314` (`req.content?.bodyHtml || req.content?.body`).
+- **Occurrences** : 1
