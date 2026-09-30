@@ -854,3 +854,26 @@ lu.
 **Preuve** : `SemanticSearchEmbeddingModelTests.DisposeAsync`. Sans lui,
 `AiDiagnosticsControllerIntegrationTests` échoue en Release, deux exécutions sur deux ; avec lui,
 673 tests passent.
+
+---
+
+## defaut-de-dev-dans-appsettings — `appsettings.json` est la configuration de production
+
+**Occurrences : 1** (task-325, `/review`)
+
+`src/Api/appsettings.json` n'est pas un fichier de développement. C'est la configuration de
+**tout déploiement qui ne passe pas par l'AppHost** : les configmaps de Prod et de Staging
+(dépôt `DevOps`) ne surchargent que quelques clés. task-325 y avait inscrit le défaut hybride
+« de développement et de banc », un chat Ollama sur `127.0.0.1:11434`. Aucun pod n'a
+d'Ollama : le démarrage aurait réussi, puis l'étiquetage, le résumé et l'assistant auraient
+échoué en silence.
+
+**Consigne** :
+- Un défaut propre au développement ou au banc se pose **dans l'AppHost**
+  (`WithEnvironment`), jamais dans `appsettings.json`.
+- Une valeur de `appsettings.json` qui change le comportement d'un déploiement se vérifie contre
+  `DevOps/Prod/configmap.yaml` et `DevOps/Staging/configmap.yaml`, et un test la garde.
+- Une DOD qui dit « défaut livré » doit préciser **où** : AppHost ou `appsettings.json`.
+
+**Preuve** : `EmbeddingOptionsConsistencyTests.AppSettings_ShipsAllOpenAi_BecauseDeploymentsHaveNoOllama`,
+rouge sur le défaut hybride.

@@ -286,7 +286,9 @@ Serveur SonarQube 9.9.8.100196 (`sonar.login`). Le new code couvre 30 jours : il
 | /lint-angular | skipped | 11 s | — | — | — | no angular change (WIP humain antérieur ignoré) |
 | /lint-mobile | skipped | 0.5 s | — | — | — | no mobile change |
 | /e2e | ok | 1 h 26 min | — | — | — | e2e ×3 (6 min 30 s) |
-| **Total cycle** | | **2 h 49 min** | **16 (1 min 56 s)** | **22 (19 min 41 s)** | **4 (1 min 19 s)** | |
+| /review | ok | 17 min 19 s | 2 (11 s) | 2 (5 min 08 s) | — | api-mail 2B/2T |
+| /tech-writer | ok | 2 min 02 s | — | — | — | — |
+| **Total cycle** | | **3 h 09 min** | **18 (2 min 08 s)** | **24 (24 min 50 s)** | **4 (1 min 19 s)** | |
 
 ## Lint log
 - `/lint-angular` : skipped — no angular change. `client-angular` absent des `**Repos**`, aucun fichier Angular écrit par `/develop` ; les 7 fichiers non commités de `Client/Angular/front` sont du WIP humain antérieur à la task, laissé intact.
@@ -344,3 +346,34 @@ Serveur SonarQube 9.9.8.100196 (`sonar.login`). Le new code couvre 30 jours : il
 | E2E-AI-001 | 1 | headless | Interroger l'assistant sur des messages sélectionnés et poser des questions de suite | ✅ | ✅ |
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## PRs
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/265 (label `awaiting-human-merge`)
+- `dtos-mss` : aucune branche, aucun contrat modifié
+- Aucun frontend touché
+
+## Code Review Summary
+
+**APPROVED**, après correction d'un point bloquant (73 fichiers revus, 6 suggestions, 0 bloquant restant).
+
+- **Bloquant, corrigé** (`89b34656`) : `appsettings.json` portait le défaut hybride. Prod et Staging, dont les configmaps ne posent aucun `AiProvider__*`, auraient envoyé le chat vers un Ollama `127.0.0.1` inexistant, sans échec au démarrage.
+  - Décision de l'humain : `appsettings.json` est tout-OpenAI, le défaut hybride est celui de l'AppHost.
+  - Garde : `EmbeddingOptionsConsistencyTests`, prouvé rouge.
+  - Le DOD « Défauts livrés : Chat = Ollama » s'entend donc **sous l'AppHost**.
+- **Suggestions** (non bloquantes, reportées dans la PR) :
+  - `ollama pull` à chaque démarrage bloque l'API hors ligne ;
+  - backfill `openai:` sur d'éventuelles bases e2e persistantes ;
+  - `AiDiagnosticsController` sans filtre de modèle (500 attendu après task-326) ;
+  - dimension déclarée jamais vérifiée ;
+  - `Arg.Any<string>()` sur l'identifiant de modèle dans deux fichiers de tests ;
+  - comptage des tokens en streaming non prouvé contre le connecteur Ollama réel.
+- **Validation** : build à 0 erreur ; tests à 0 échec (domain 190, infrastructure 677, api 1148, application 3272, integration 673 dont 16 ignorés) ; e2e vert sur les deux voies ; Sonar QG OK.
+- **DOD**, points vérifiés par commande :
+  - `OpenAIPromptExecutionSettings` absent ;
+  - aucun `Dtos/`, frontend ni prompt modifié ;
+  - code mort supprimé ;
+  - deux clients HTTP nommés ;
+  - panneau Grafana présent, JSON valide ;
+  - doc et `loadtest-skill` à jour ;
+  - chiffres Prometheus dans la PR.
+- **DOD, points observationnels renvoyés à la HAG** : démarrage GPU et `ollama list` ; parcours bout en bout avec identifiants Seq ; recherche identique ; assistant et aide à la rédaction ; Grafana.
