@@ -2680,3 +2680,4 @@
 {"ts":"2026-09-30T14:06:54+02:00","run_id":"-","type":"step_start","task":"task-343","step":"review"}
 {"ts":"2026-09-30T14:13:12+02:00","run_id":"-","type":"step","task":"task-343","step":"review","status":"ok","note":"APPROVED (4e passage), PR api-mail #263 + mobile #82","iterations":null,"duration_ms":378317}
 {"ts":"2026-09-30T14:13:14+02:00","run_id":"-","type":"step_start","task":"task-343","step":"tech-writer"}
+{"ts":"2026-09-30T14:14:09+02:00","run_id":"-","type":"step","task":"task-343","step":"tech-writer","status":"ok","note":"extension e2e","iterations":null,"duration_ms":55183}

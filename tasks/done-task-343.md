@@ -159,7 +159,7 @@ redémarrage d'un pod.
 | /lint-mobile | ok | 34 s | — | — | — | all files pass |
 | /e2e | ok | 6 min 44 s | — | — | — | e2e ×12 (24 min 38 s), extension : 24/24 + 24/24 |
 | /review | ok | 6 min 18 s | 1 (4.2 s) | 1 (2 min 23 s) | — | api-mail 1B/1T, APPROVED (4e passage), PR api-mail #263 + mobile #82 |
-| /tech-writer | ok | 1 min 01 s | — | — | — | — |
+| /tech-writer | ok | 55 s | — | — | — | extension e2e |
 | **Total cycle** | | **1 h 27 min** | **30 (4 min 28 s)** | **38 (46 min 40 s)** | **10 (3 min 01 s)** | |
 
 Autres commandes mesurées : lint ×4 (54 s)

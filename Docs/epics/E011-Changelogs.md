@@ -43,6 +43,27 @@
   - 1er, durci par `/review` : démarrage impossible sans Redis, tour non enregistré signalé en `SERVER_ERROR` ;
   - 2e : files orphelines de StackExchange.Redis 2.7 après un `SubscribeAsync` raté, qui auraient mis en mémoire tout le canal sans limite ;
   - 3e : APPROVED.
+- **EXTENSION E2E** (demande humaine du 2026-09-30). Les parcours du médecin couvrent ce que la task corrige, sur le banc AppHost à 5 réplicas.
+  - PRs : [HealthPlatform.Mobile#82](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/82) (`awaiting-human-merge`) ; client-angular en code-only, à pousser sur TFS.
+  - Catalogue : **E2E-LIVE-001** (compte rendu reçu en direct, notification, ligne et signalement d'urgence par le flux, sans rechargement) et **E2E-AI-001** (résumé initial, deux questions de suite, conversation relue du serveur). Requis sur mobile et angular.
+  - Outillage :
+    - `fake-ai` : faux fournisseur au protocole Ollama, réponses scriptées, délai de 5 s sur la classification. Le banc n'appelle plus aucun fournisseur réel ;
+    - `deliver` : remise du compte rendu `cr-bio-temps-reel` ;
+    - préférences de notification dans le seed : sans elles, rien n'était notifié.
+  - `FeatureFlags:ForcedOn` (`ForcedOnFeatureFlagService`) : liste blanche Development, refusé en Staging et en Production (configmaps en Staging).
+  - Clients :
+    - mobile : `specs/live-ai.spec.ts`, `support/e2e-backend.ts` ;
+    - weda2 : `e2e/mss-e2e/specs/live-ai.e2e.ts`, et des `data-testid` sur le bandeau d'urgence, le panneau de l'assistant, le bouton IA et le volet de lecture.
+  - Preuves :
+    - vert 24/24 sur chaque client ;
+    - sans le correctif (état par processus) : AI-001 rouge 3/3, LIVE-001 rouge 2/3 ;
+    - mutations dans les apps (notification ignorée, `TagsUpdated` ignoré) rouges sur l'assertion visée.
+  - Verts qui mentaient, trouvés et corrigés :
+    - tag déjà présent au chargement de la ligne ;
+    - mutations non compilées, donc non servies ;
+    - prédicat `waitForResponse` changé en commentaire.
+    - Quatre consignes consignées dans `conventions/e2e.md`.
+  - Revue : 4e passage APPROVED.
 - **SUITES** (`questions/task-343.md`) : tests dépendants de l'horloge ; Redis figé (chaque publication attend `asyncTimeout`) ; résumé courant tardif ; métrique de taille des charges pub/sub ; mise à jour de l'AIPD.
 
 ### v1.17 — task-335 — Une session de messagerie n'est jamais fermée pendant qu'elle sert, et sa fermeture ne bloque plus personne (2026-09-27)
