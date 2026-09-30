@@ -160,7 +160,8 @@ redémarrage d'un pod.
 | /e2e | ok | 6 min 44 s | — | — | — | e2e ×12 (24 min 38 s), extension : 24/24 + 24/24 |
 | /review | ok | 6 min 18 s | 1 (4.2 s) | 1 (2 min 23 s) | — | api-mail 1B/1T, APPROVED (4e passage), PR api-mail #263 + mobile #82 |
 | /tech-writer | ok | 55 s | — | — | — | extension e2e |
-| **Total cycle** | | **1 h 27 min** | **30 (4 min 28 s)** | **38 (46 min 40 s)** | **10 (3 min 01 s)** | |
+| /merge | ok | 5 min 35 s | — | — | — | — |
+| **Total cycle** | | **1 h 32 min** | **30 (4 min 28 s)** | **38 (46 min 40 s)** | **10 (3 min 01 s)** | |
 
 Autres commandes mesurées : lint ×4 (54 s)
 
@@ -432,3 +433,16 @@ Run du 2026-09-30, après l'extension e2e : api-mail `0029505d`, mobile `24dce09
 - **Deux tests instables par construction** rendus déterministes : bornes de concurrence, et délai de classification du faux fournisseur.
 - **Garde de convention qui ne voit que les fichiers suivis** (`MetricCaptureSerialisationScanTests`) : piège signalé, garde rejouée après staging.
 - **Tasks à ouvrir** : tests dépendants de l'horloge du poste, et suites de la revue (`questions/task-343.md`).
+
+## Merged
+
+- 2026-09-30, `/merge task-343 --i-tested` (validation humaine attestée).
+- `api-mail` #263 → squash `f7de1735` sur `develop`, CI « Build and Publish » verte.
+- `client-mobile` #82 → squash `7990673c` sur `develop`, CI « Android Build » verte.
+- Branches `feat/task-343-backplane-sse-conversations-redis` supprimées (distant et local) sur les deux repos.
+- `client-angular` (TFS, code-only) : **pas encore commité** au moment du `/merge`. Les fichiers restent non commités sur `feature/nova-rewriting-mss`, et le clone est laissé sur cette branche.
+  - Fichiers : les 4 templates de `front/libs/mss` (`data-testid`), `front/e2e/mss-e2e/specs/live-ai.e2e.ts`, `front/e2e/mss-e2e/support/e2e-backend.ts`, `front/e2e/mss-e2e/support/session.ts`, `front/e2e/mss-e2e/run.mjs`.
+  - Reste à faire par l'humain : commit, push TFS, PR, **sans** les deux `environment.ts`.
+  - Conséquence tant que ce n'est pas poussé : le catalogue de `develop` exige E2E-LIVE-001 et E2E-AI-001 côté angular. Un `/e2e` ne reste vert qu'avec ces fichiers présents dans le clone local, ce qui est le cas sur ce poste.
+- Pas de branche staging : la task n'est pas passée par un run `/forge`.
+- Suites ouvertes : `questions/task-343.md` (tests dépendants de l'horloge, Redis figé, résumé tardif, taille des charges pub/sub, AIPD, suggestions de la revue e2e).

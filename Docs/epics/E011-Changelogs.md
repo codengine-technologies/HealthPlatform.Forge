@@ -10,7 +10,7 @@
 
 ### v1.18 — task-343 — Plusieurs réplicas, un seul comportement : backplane SSE Redis et conversations de l'assistant partagées (2026-09-30)
 
-- **PR** : [HealthPlatform.Api.Mail#263](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/263) — `awaiting-human-merge`, branche `feat/task-343-backplane-sse-conversations-redis` (`112c5241`). `api-mail` seul ; aucun contrat DTO, aucune branche `dtos-mss`, aucun frontend.
+- **PR** : [HealthPlatform.Api.Mail#263](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/263) — **mergée** le 2026-09-30 (squash `f7de1735`), branche `feat/task-343-backplane-sse-conversations-redis` (`112c5241`). `api-mail` seul ; aucun contrat DTO, aucune branche `dtos-mss`, aucun frontend.
 - **ORIGINE.** Audit du 2026-09-27, AUD-18 a et AUD-19, issus du découpage de l'ancienne task-336. Deux états étaient tenus en mémoire d'un processus alors que les requêtes se répartissent entre réplicas (4 en production, 5 dans l'AppHost) :
   - les abonnements SSE des trois brokers (`SseNotificationBroker`, `SseMailEventBroker`, `SseSyncProgressBroker`) ;
   - les conversations IA (`AiConversationStateManager`, `ConcurrentDictionary` et `Timer` du processus).
@@ -44,7 +44,7 @@
   - 2e : files orphelines de StackExchange.Redis 2.7 après un `SubscribeAsync` raté, qui auraient mis en mémoire tout le canal sans limite ;
   - 3e : APPROVED.
 - **EXTENSION E2E** (demande humaine du 2026-09-30). Les parcours du médecin couvrent ce que la task corrige, sur le banc AppHost à 5 réplicas.
-  - PRs : [HealthPlatform.Mobile#82](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/82) (`awaiting-human-merge`) ; client-angular en code-only, à pousser sur TFS.
+  - PRs : [HealthPlatform.Mobile#82](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/82) (**mergée**, squash `7990673c`) ; client-angular en code-only, à pousser sur TFS.
   - Catalogue : **E2E-LIVE-001** (compte rendu reçu en direct, notification, ligne et signalement d'urgence par le flux, sans rechargement) et **E2E-AI-001** (résumé initial, deux questions de suite, conversation relue du serveur). Requis sur mobile et angular.
   - Outillage :
     - `fake-ai` : faux fournisseur au protocole Ollama, réponses scriptées, délai de 5 s sur la classification. Le banc n'appelle plus aucun fournisseur réel ;
