@@ -598,7 +598,12 @@ découpage d'après-coup oblige à re-valider un code déjà vert.
 
 ## S103 — une ligne de plus de 150 caractères doit être scindée
 
-**Occurrences : 1** (task-188)
+**Occurrences : 2** (task-188, task-192 — ×11, variante **requête EF** : une
+condition LINQ `x => filtre vide || EF.Functions.ILike(colonne, motif, SearchQueryHelper.LikeEscapeCharacter)`,
+et un `select new Projection { A = …, B = …, … }` tenu sur une ligne. Corrigé par un
+alias `private const string LikeEscape = SearchQueryHelper.LikeEscapeCharacter;` — une
+constante reste traduisible par EF, contrairement à une méthode d'aide — et par un
+initialiseur d'objet déplié à un membre par ligne)
 
 Presque toujours un **gabarit de journalisation** : le message structuré grossit
 naturellement (préfixe du composant, deux ou trois placeholders, puis la phrase
@@ -622,6 +627,9 @@ _logger.LogError(
 par interpolation ni par `string.Format` — un gabarit qui cesse d'être une
 constante fait perdre le nom des propriétés structurées et déclenche à son tour
 les règles de journalisation. Découper au mot, pas au milieu d'un placeholder.
+Dans une requête EF, un nom qualifié long répété (`SearchQueryHelper.LikeEscapeCharacter`)
+se remplace par une `const` locale à la classe, et une projection `select new X { … }`
+de plus de trois membres s'écrit d'emblée un membre par ligne.
 
 ## S3925 — une exception garde le triplet de constructeurs recommandé
 
