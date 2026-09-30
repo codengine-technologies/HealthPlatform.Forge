@@ -212,8 +212,13 @@ déclare une fois.
 
 ## S3267 — une boucle qui ne fait que chercher s'écrit avec `Contains`/`Any`
 
-**Occurrences : 2** (task-184, task-342 — variante : une boucle qui **filtre**,
-`foreach … if (pred) list.Add(x.Uid)`, s'écrit `Where(pred).Select(…).ToList()`)
+**Occurrences : 3** (task-184, task-342 — variante : une boucle qui **filtre**,
+`foreach … if (pred) list.Add(x.Uid)`, s'écrit `Where(pred).Select(…).ToList()` ;
+task-325 — **récidive sur du code frais**, écrite pendant la passe `/simplify` elle-même :
+une boucle qui **cherche et rend** l'élément, `foreach (var k in Enum.GetValues<T>()) if (…) return k;`,
+s'écrit `FirstOrDefault`. Piège sur un enum : `FirstOrDefault` rend la **première valeur**
+quand rien ne correspond, pas une absence ; projeter d'abord en `T?`
+(`.Select(k => (T?)k).FirstOrDefault(…)`), puis `if (kind is { } found)`)
 
 Écrit sans y penser dans un helper d'appartenance : un `foreach` sur un tableau
 de constantes, un `if` de comparaison, un `return true`. La forme explicite
@@ -358,7 +363,11 @@ convention de nommage.
 
 ## S3604 — un constructeur primaire n'accepte pas d'initialiseur de champ
 
-**Occurrences : 2** (task-297, task-343 — **récidive sur du code frais**, ×3 : `InMemoryAiConversationStorage`.
+**Occurrences : 3** (task-342, relevé par le `/sonar` de task-325 — `private readonly TimeProvider clock =
+timeProvider ?? TimeProvider.System;` dans `ImapService` et `OfflineMailDataProvider` : un **défaut de repli**
+sur un paramètre optionnel est aussi un initialiseur. Correctif sans constructeur explicite quand la valeur ne
+coûte rien à recalculer : une propriété `private TimeProvider Clock => timeProvider ?? TimeProvider.System;` ;
+task-297, task-343 — **récidive sur du code frais**, ×3 : `InMemoryAiConversationStorage`.
 Variante task-343 : l'initialiseur ne dérivait d'**aucun** paramètre — `private readonly object _gate = new();`,
 `private readonly Dictionary<…> _entries = [];` — et il a été signalé quand même, parce que la classe avait un
 constructeur primaire. Idem pour une propriété `Stored { get; } = stored;` d'une classe interne à
@@ -812,3 +821,36 @@ et décider explicitement ce qu'il fait d'un échec :
 **Preuve** : `SseBackplaneTests.SubscriptionService_WhenRedisIsDownAtStartup_…`,
 `MultiReplicaRedisIntegrationTests.Replica_StartedWhileRedisDoesNotAnswer_…`,
 `AiConversationTurnPersistenceTests` (rouges sur le code d'avant la reprise).
+
+---
+
+## collection-postgresql-partagee — un test d'intégration qui écrit en base partagée nettoie ce qu'il écrit
+
+**Occurrences : 1** (task-325, `/sonar` — rouge en Release seulement)
+
+Les tests de `[Collection("PostgreSql")]` partagent **un seul** conteneur Postgres, sans purge
+entre classes. Une ligne laissée par un test est lue par les autres, et le résultat dépend
+de l'ordre d'exécution.
+
+Constaté sur task-325 :
+- `SemanticSearchEmbeddingModelTests` laissait des vecteurs de 3 et 5 dimensions ;
+- `AiDiagnosticsControllerIntegrationTests` balaie **tous** les vecteurs stockés contre une
+  requête de 1536 dimensions, et pgvector a levé `different vector dimensions 3 and 1536` ;
+- la suite était verte en Debug et rouge en Release, avec le même code.
+
+Le test lésé portait déjà un commentaire qui décrivait exactement ce piège. Il n'avait pas été
+lu.
+
+**Consigne** :
+- Tout test de la collection qui **insère** des lignes les **supprime** en fin de test :
+  `IAsyncDisposable`, et `ExecuteDeleteAsync` sur ce que le test a créé, repéré par un dossier
+  ou un identifiant qui lui est propre.
+- Un vecteur stocké en base partagée fait **1536 dimensions**, la dimension de production, sauf
+  quand le test prouve justement un écart de dimension. Dans ce cas, le nettoyage est encore plus
+  indispensable.
+- Avant d'écrire un test d'intégration sur une table déjà exercée, lire les tests existants de
+  cette table : leurs commentaires disent ce qu'ils attendent de la base.
+
+**Preuve** : `SemanticSearchEmbeddingModelTests.DisposeAsync`. Sans lui,
+`AiDiagnosticsControllerIntegrationTests` échoue en Release, deux exécutions sur deux ; avec lui,
+673 tests passent.

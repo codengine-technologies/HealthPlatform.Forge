@@ -92,6 +92,39 @@ latence, piloté par le profil `loadtest` de l'AppHost. Chemins relatifs à
   `python --version` doit répondre `Python 3.x` — s'il répond « Python was not
   found », c'est le stub Microsoft Store qui masque l'installation (ordre du
   PATH, ou terminal ouvert avant l'installation).
+- **GPU pour l'IA locale (task-325)** — Docker Desktop avec l'intégration GPU :
+  `docker run --rm --gpus=all nvidia/cuda:12.8.0-base-ubuntu24.04 nvidia-smi`
+  doit afficher la RTX 5070 Ti. Voir « Fournisseur IA au banc » ci-dessous.
+
+### Fournisseur IA au banc — défaut hybride (task-325)
+
+- **Chat sur Ollama local, embeddings sur OpenAI.** L'étiquetage, le résumé,
+  l'assistant et l'aide à la rédaction tournent sur le GPU du poste, dans le
+  conteneur `mss-mail-ollama` (modèle `qwen2.5:14b`). Les embeddings restent
+  chez OpenAI, ce qui garde le corpus vectoriel comparable d'un tir à l'autre.
+  La clé `OpenAi__ApiKey` reste donc exigée.
+- **Premier lancement :** le modèle de chat (environ 9 Go) est tiré par
+  `mss-mail-ollama-pull`, et **api-mail attend sa fin**. Plusieurs minutes, une
+  seule fois grâce au volume `mss-mail-ollama-models`. Une API « Waiting » dans
+  le tableau de bord Aspire pendant ce temps est normale. `reset-state.sh` ne
+  touche pas à ce volume.
+- **Tout-OpenAI** (comparaison avec un tir d'avant task-325) : lancer l'AppHost
+  avec `AiProvider__Chat=OpenAI`. Aucun conteneur Ollama n'est alors démarré.
+  **Iso-conditions** : un tir hybride et un tir tout-OpenAI ne se comparent pas
+  sur l'étiquetage (autre modèle, autre latence). Ils se comparent sur le
+  reste, à condition de le noter.
+- **Preuve à relever à chaque tir :**
+  - `sum(increase(mssante_ai_tokens_total{provider="OpenAI", kind=~"prompt|completion"}[<durée du tir>]))`
+    doit valoir **0** : c'est le panneau « Tokens de chat envoyés à OpenAI » du
+    tableau Grafana « mail processing » ;
+  - les tokens `prompt` / `completion` doivent apparaître sous `provider="Ollama"` ;
+  - `nvidia-smi` doit montrer le processus Ollama avec de la VRAM occupée pendant
+    l'étiquetage ;
+  - la durée du tagging se relève sans être exigée : un 14B sur un seul GPU peut
+    être plus lent qu'OpenAI à 1000 praticiens.
+- **Poste sans GPU :** `MSS_OLLAMA_GPU=none` (le modèle tourne alors sur le CPU,
+  très lentement, et ne convient pas à un tir), ou le tout-OpenAI ci-dessus.
+- **Exploitation détaillée :** `Api/Mail/docs/ia-fournisseurs.md`.
 
 ## Mode DISTANT — serveurs mail sur le cluster k8s (task-221)
 

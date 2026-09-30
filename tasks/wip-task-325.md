@@ -175,3 +175,172 @@ Sur la prochaine campagne `terrain` après le merge, en défaut hybride : `mssan
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui — **amélioration partielle** : les contenus de mails (potentiellement DSCP) ne sont plus transmis à un sous-traitant hors périmètre HDS pour étiquetage, résumé et assistant ; ils le **restent pour la vectorisation** (embeddings OpenAI) jusqu'à task-326. Le modèle de chat et ses données transitoires vivent dans un volume Docker du poste (développement et banc, données synthétiques)
 - **AIPD / impact RGPD** : **à mettre à jour** — OpenAI reste sous-traitant pour la vectorisation des contenus, ne l'est plus pour le chat en développement et au banc ; l'usage en production, s'il existe, reste à qualifier (fournisseur, localisation, clauses) dans une US de la même EPIC
+
+## Branches
+- `api-mail` (pushed) : feat/task-325-ia-locale-ollama — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-325-ia-locale-ollama (depuis `origin/develop` @ `a9ebaa50`)
+- `dtos-mss` : aucune branche à `/start` (branche paresseuse, créée par `/develop` seulement si un contrat change)
+
+## Develop log
+
+**Repos touchés** : `api-mail` seul. **Aucun contrat modifié** : pas de `Dtos/`, pas de frontend, prompts inchangés ; donc aucune branche `dtos-mss` et aucune publication NuGet.
+
+**Commits** (`feat/task-325-ia-locale-ollama`, poussée) :
+- `4bb159bd` feat(ai) : un fournisseur IA par capacité, chat Ollama GPU et embeddings OpenAI
+- `4380ee62` refactor(ai) : passe qualité `/simplify`
+- `efdbb2bd` fix(ai) : 409 aussi sur la recherche par patient ; tirage des seuls modèles utiles
+- `64a7b876` test(arch) : les scans d'architecture voient les fichiers pas encore ajoutés
+
+**Preuves du rouge** :
+- *Caractérisation.* `AiProviderStartupValidationTests` a d'abord échoué (« No exception was thrown ») : `OpenIA` sélectionnait OpenAI sans rien dire.
+- *Mutations*, restaurées par `cp` puis rebuild (mémoire mtime) :
+  - retirer le filtre du modèle actif fait passer `SemanticSearchEmbeddingModelTests` au rouge (les lignes d'un autre modèle remontent) ;
+  - retirer le mappage de dimension fait passer au rouge le test 409 (une `PostgresException` brute remonte).
+- *Garde d'architecture.* Un fichier de test non suivi qui capture des mesures sans collection fait échouer `MetricCaptureSerialisationScanTests` depuis `64a7b876`. Avant ce commit, il passait.
+
+**Audit règle 7c (FluentMigrator, pas EF)** : migration `20260930180000_AddEmbeddingModelColumns` :
+- Fichier lu : deux `ALTER TABLE … ADD "EmbeddingModel" varchar(128) NULL`, puis un `UPDATE … WHERE "Embedding" IS NOT NULL`. `Down` supprime les deux colonnes.
+- Aucune opération fantôme.
+- Pas de `.Designer.cs` ni de snapshot : FluentMigrator n'en a pas.
+- Il n'existe pas de « pending model changes » ; ce contrôle est remplacé par `AddEmbeddingModelColumnsMigrationTests`, qui prouve le schéma et le rétro-remplissage sur un vrai Postgres.
+
+**Passe qualité §Q** (4 revues : reuse, simplification, efficacité, altitude) :
+- *Appliqué* :
+  - le prédicat du modèle actif, recopié 13 fois, est ramené à deux racines de requête ;
+  - un seul `ServiceOf<T>` pour les 4 connecteurs ;
+  - le modèle de chat se lit en un seul endroit (`ChatModelOf`), le modèle d'embedding vient de `ActiveEmbeddingModel` ;
+  - la borne d'embedding lit le fournisseur comme la sélection ;
+  - le drapeau e2e est porté par le profil AppHost, et le doublon d'environnement e2e est retiré ;
+  - un commentaire pointait vers un membre inexistant ; il est corrigé.
+- *Écarts au DOD relevés et corrigés*, commit séparé `efdbb2bd` :
+  - la recherche par patient masquait le 409 ;
+  - `bge-m3` n'était jamais tiré en embeddings Ollama.
+- *Écarté, noté* :
+  - le filtre nul du constructeur de test de `SemanticSearchRepository` : le rendre obligatoire touche environ 28 appels de tests hérités ;
+  - les requêtes de débogage `CountAsync` et les distances d'échantillon, déjà présentes dans `SemanticSearchRepository` ;
+  - le helper de pas `RecordStep` du consumer ;
+  - la copie de `TestAiProviders` dans les tests d'intégration (projets distincts).
+- *Re-validation* : build à 0 erreur ; tests à 0 échec (domain 190, infrastructure 677, api 1148, application 3271, integration 673 dont 16 ignorés, les cas d'usage IA réels).
+
+**Leçon capturée (règle d'or)** : `TrackedSourceScan` ne listait que les fichiers suivis.
+- Deux nouvelles captures de mesures non sérialisées sont donc passées sous une suite verte. Elles n'étaient pas encore commitées au moment de la validation.
+- Prévention : `git ls-files --cached --others --exclude-standard`, avec un rouge prouvé.
+
+**Reste pour la HAG** (non automatisable ici) :
+- démarrage de l'AppHost avec GPU, et `ollama list` ;
+- parcours bout en bout avec identifiants Seq : étiquetage `provider=Ollama`, ligne `EmbeddingModel = openai:text-embedding-3-small` ;
+- mêmes résultats de recherche qu'avant la branche ;
+- assistant en streaming avec au moins un outil, et aide à la rédaction ;
+- lecture du panneau Grafana.
+
+**Taille** : la PR dépasse les ~30 fichiers de la règle 5. La suppression du code mort (§ 10) et l'adaptation mécanique des tests à la nouvelle signature des métriques en portent l'essentiel.
+
+**Suite** : `/sonar task-325`.
+
+## Sonar log
+
+Serveur SonarQube 9.9.8.100196 (`sonar.login`). Le new code couvre 30 jours : il inclut du code d'autres tasks.
+
+- **Phase 1 (new code)** : Quality Gate OK, `new_coverage` = 97,6 % (cible 95 %).
+- **Phase 1, issues corrigées** : 3 code smells (0 bug, 0 vulnérabilité, 0 hotspot), commit `0f02113b` :
+  - S3267 dans `AiProviderSelection` : écrit par la passe `/simplify`, c'est une récidive consignée ;
+  - S3604 ×2 dans `ImapService` et `OfflineMailDataProvider` (code de task-342).
+- **Phase 1, tests ajoutés** : aucun, la couverture du new code était déjà au-dessus de la cible.
+- **Test rouge trouvé par la passe Release** : `AiDiagnosticsControllerIntegrationTests` échouait avec `different vector dimensions 3 and 1536`.
+  - Cause : `SemanticSearchEmbeddingModelTests` (task-325) laissait ses vecteurs de 3 et 5 dimensions dans le conteneur partagé.
+  - Le résultat dépendait de l'ordre des tests : vert en Debug, rouge en Release.
+  - Correctif : nettoyage en `DisposeAsync`, commit `5eb86769`. Rouge deux fois sur deux avant, vert après (673 tests passés).
+- **Phase 2 (legacy)** : non lancée. Les cibles projet sont déjà atteintes (0 bug, 0 vulnérabilité, notes A, couverture ≥ 95 %). Restent 8 code smells legacy.
+- **Build / tests** : verts. La seconde analyse a rejoué les 5 projets en Release avec couverture, 0 échec.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | → |
+| New coverage | 98,1 % | 97,6 % | −0,5 pt |
+| New code smells | 2 | 0 | −2 |
+| Bugs | 0 | 0 | 0 |
+| Vulnerabilities | 0 | 0 | 0 |
+| Security hotspots | 0 | 0 | 0 |
+| Code smells | 10 | 8 | −2 |
+| Coverage (projet) | 98,2 % | 98,1 % | −0,1 pt |
+| Duplication | 0,4 % | 0,4 % | 0 |
+| Reliability / Security / Maintainability | A/A/A | A/A/A | → |
+
+**Conventions** (`conventions/csharp.md`) :
+- S3267 passe à 3 occurrences (récidive dans le code de la passe qualité) ;
+- S3604 passe à 3 occurrences (repli d'horloge de task-342) ;
+- nouvelle entrée `collection-postgresql-partagee`.
+
+**Playbook** : le §Q de `agents/develop.md` impose désormais de relire les conventions avant d'appliquer les nettoyages de la passe.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-325 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 18 s | — | — | — | — |
+| /develop | ok | 58 min 35 s | 11 (55 s) | 12 (10 min 09 s) | — | api-mail 11B/12T |
+| /sonar | ok | 24 min 09 s | 5 (1 min 01 s) | 10 (9 min 31 s) | 4 (1 min 19 s) | 2 itération(s), api-mail 5B/10T |
+| /lint-angular | skipped | 11 s | — | — | — | no angular change (WIP humain antérieur ignoré) |
+| /lint-mobile | skipped | 0.5 s | — | — | — | no mobile change |
+| /e2e | ok | 1 h 26 min | — | — | — | e2e ×3 (6 min 30 s) |
+| **Total cycle** | | **2 h 49 min** | **16 (1 min 56 s)** | **22 (19 min 41 s)** | **4 (1 min 19 s)** | |
+
+## Lint log
+- `/lint-angular` : skipped — no angular change. `client-angular` absent des `**Repos**`, aucun fichier Angular écrit par `/develop` ; les 7 fichiers non commités de `Client/Angular/front` sont du WIP humain antérieur à la task, laissé intact.
+
+## Lint mobile log
+- skipped — no mobile change : `client-mobile` absent des `**Repos**`, aucun commit sur `Client/Mobile` pour la task.
+
+## E2E log
+
+| Voie | Déclencheur | Résultat | Tests | Durée |
+|---|---|---|---|---|
+| mobile | api-mail touché | ✅ verte | 24 verts, 0 flaky, 0 rouge, 0 quarantaine | 3 min 24 s |
+| angular | api-mail touché | ✅ verte | 24 verts, 0 flaky, 0 rouge, 0 quarantaine | 3 min 7 s |
+
+- Catalogue : `Api/Mail/e2e/scenarios.yml` @ branche de la task (`feat/task-325-ia-locale-ollama`)
+- Backend e2e : construit depuis la branche de la task. Le profil e2e force `AiProvider__Chat=Ollama` et `AiProvider__Embedding=Ollama` vers le faux fournisseur ; E2E-AI-001 et E2E-LIVE-001 sont verts sur les deux clients.
+- Quarantaines : aucune
+- Divergences ouvertes : aucune
+- Parcours touchés sans spec e2e modifié : aucun (aucun frontend touché)
+- Démontage : complet (ports libres, aucun conteneur e2e résiduel)
+- Incident d'outillage évité : le port 4200 était tenu par le `nx serve` de l'humain, sur `[::1]` seul. L'humain l'a arrêté avant la voie Angular. Le garde de l'orchestrateur ne sonde que l'IPv4 (`conventions/e2e.md`, `garde-de-port-ipv4-seul`) ; son correctif reste à faire sur `client-angular`.
+
+**E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
+
+### Matrice de parité
+
+| Scénario | v | Mode | Titre | angular | mobile |
+|---|---|---|---|---|---|
+| E2E-INBOX-001 | 1 | headless | Filtrer la boîte de réception, basculer liste / conversation, ouvrir la recherche | ✅ | ✅ |
+| E2E-FOLDER-001 | 1 | headless | Naviguer vers les dossiers Archive et Corbeille | ✅ | ✅ |
+| E2E-PATIENT-001 | 1 | headless | Afficher la vue patients | ✅ | ✅ |
+| E2E-CONTACT-001 | 1 | humain | Rechercher dans le carnet et interroger l'annuaire national | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-SETTINGS-001 | 1 | headless | Changer le filtre par défaut et le retrouver après rechargement | ✅ | ✅ |
+| E2E-MAIL-001 | 1 | headless | Marquer un message lu puis non lu | ✅ | ✅ |
+| E2E-MAIL-002 | 1 | headless | Tout sélectionner et marquer lu en masse | ✅ | ✅ |
+| E2E-DETAIL-001 | 1 | headless | Répondre et transférer depuis la lecture d'un message | ✅ | ✅ |
+| E2E-COMPOSE-001 | 1 | headless | Envoyer un message, le recevoir, le lire, le supprimer | ✅ | ✅ |
+| E2E-MAIL-003 | 1 | headless | Signaler puis ne plus signaler un message | ✅ | ✅ |
+| E2E-MAIL-004 | 1 | headless | Déplacer un message vers Archive puis le ramener | ✅ | ✅ |
+| E2E-DRAFT-001 | 1 | headless | Créer un brouillon, le reprendre, le supprimer | ✅ | ✅ |
+| E2E-BIO-001 | 1 | headless | Acquitter un compte rendu de biologie | ✅ | ✅ |
+| E2E-DASH-001 | 1 | headless | Afficher les widgets du tableau de bord | ✅ | ✅ |
+| E2E-DETAIL-002 | 1 | headless | Basculer entre texte brut et HTML à la lecture | ✅ | ✅ |
+| E2E-DETAIL-003 | 1 | headless | Répondre à tous depuis la lecture d'un message | ✅ | ✅ |
+| E2E-SETTINGS-002 | 1 | headless | Changer la vue par défaut et la retrouver après rechargement | ✅ | ✅ |
+| E2E-SEARCH-001 | 1 | headless | Rechercher un message et ouvrir la recherche avancée | ✅ | ✅ |
+| E2E-ATTACH-001 | 1 | headless | Voir les pièces jointes d'un message | ✅ | ✅ |
+| E2E-CONTACT-002 | 1 | headless | Créer puis supprimer un contact | ✅ | ✅ |
+| E2E-SIGNATURE-001 | 1 | headless | Créer puis supprimer une signature | ✅ | ✅ |
+| E2E-CONTACT-003 | 1 | headless | Créer puis supprimer un groupe de contacts | ✅ | ✅ |
+| E2E-FOLDER-002 | 1 | headless | Créer puis supprimer un dossier | ✅ | ✅ |
+| E2E-AUTH-001 | 1 | humain | Rester connecté quand le jeton d'accès expire | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-AUTH-002 | 1 | humain | Se déconnecter | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-LIVE-001 | 1 | headless | Recevoir un nouveau message en temps réel, sans recharger | ✅ | ✅ |
+| E2E-AI-001 | 1 | headless | Interroger l'assistant sur des messages sélectionnés et poser des questions de suite | ✅ | ✅ |
+
+**Parité : verte** — aucun écart entre le catalogue et les suites.

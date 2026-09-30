@@ -30,3 +30,11 @@ gh run watch 36747271257 --exit-status
 ```
 
 Si le 502 persiste : état du registre à vérifier (disponibilité, quota, limite de taille).
+
+## Résolu — 2026-09-30
+
+Le push de `develop` suivant (`a9ebaa50`, merges de l'ordre d'enrichissement #264 et de la
+consolidation des migrations) a publié l'image avec succès : run
+https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/36755001426
+(`build` et `publish` verts). L'image `healthplatform-api-mail:develop` contient task-191.
+Le 502 était bien une panne passagère du registre : aucune relance n'a été nécessaire.
