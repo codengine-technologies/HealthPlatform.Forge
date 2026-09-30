@@ -132,13 +132,60 @@
 - **Origine** : task-347 (revue)
 - **Occurrences** : 1
 
+### temps-reel-deja-charge — Une donnée déjà présente au chargement ne prouve pas le temps réel
+- **Piège** : le signalement d'urgence d'un message arrivé « en direct » était déjà posé quand l'app
+  chargeait la ligne. Le bandeau s'affichait donc sans que le flux `TagsUpdated` n'y soit pour
+  rien, et le parcours restait vert avec un écouteur SSE neutralisé.
+- **Consigne** : un parcours temps réel prouve d'abord **l'absence** de l'effet au moment où
+  l'écran l'aurait lu autrement, puis son **arrivée**. Pour les résultats d'analyse, le faux
+  fournisseur IA retarde ses réponses de classification (`--tagging-delay-ms`, 5 s dans le profil
+  e2e). La preuve s'appuie sur ce que seul le flux apporte : une notification, pas une ligne que le
+  rafraîchissement périodique de weda2 (30 s) ramènerait aussi.
+- **Preuve** : `TagsUpdated` ignoré dans l'app → E2E-LIVE-001 rouge sur « le signalement d'urgence
+  arrive en temps réel », sur les deux clients.
+- **Origine** : task-343
+- **Occurrences** : 1
+
+### mutation-non-servie — Une mutation qui ne compile pas laisse servir l'ancien code
+- **Piège** : sous `ng serve` / `nx serve`, une mutation qui casse la compilation (`return` en tête
+  qui rétrécit un type à `never`, variable devenue inutilisée → TS6133) laisse le serveur servir
+  le **dernier bundle valide**. Le parcours joue alors le code précédent : vert, ou rouge pour une
+  autre raison, et la preuve est fausse dans les deux cas.
+- **Consigne** : après chaque mutation, attendre dans le journal du serveur de dev un **nouveau**
+  « Application bundle generation complete » (et aucun `[ERROR]`) avant de jouer. Écrire la
+  mutation pour qu'elle compile : `if (Date.now() > 0) { return }`, `void uid; void tags`.
+- **Preuve** : M1/MA2 invalides lors des premiers essais (TS2339, TS6133), puis rouges sur
+  l'assertion visée une fois servies.
+- **Origine** : task-343
+- **Occurrences** : 1
+
+### predicat-de-reponse — Un prédicat de `waitForResponse` se lit comme du code, pas comme un texte
+- **Piège** : une expression régulière littérale réécrite en ligne de commande est devenue
+  `//api/v1/settings$/i`, c'est-à-dire un **commentaire**. Le prédicat acceptait alors tout POST,
+  et l'étape « le réglage est enregistré » était verte sans rien vérifier. Deuxième piège sur la
+  même ligne : weda2 poste sur `/api/v1/Settings`, avec une majuscule.
+- **Consigne** : relire dans le fichier le prédicat d'attente après toute édition automatisée. Le
+  comparer à l'URL **réelle** vue dans une trace (`i` si la casse varie). Exiger `ok()` sur la
+  réponse obtenue.
+- **Origine** : task-343
+- **Occurrences** : 1
+
+### ligne-de-biologie — Une ligne de biologie affiche le titre du document CDA, pas le sujet
+- **Piège** : `rowBySubject` ne trouve pas un compte rendu de biologie : la liste affiche le titre
+  du document CDA (« Compte rendu d'examens biologiques »), pas le sujet du mail.
+- **Consigne** : désigner une ligne de biologie par son **uid** (`mail-row-{uid}` sur le mobile,
+  `mail-row-subject-{uid}` sur weda2), obtenu du serveur. Réserver la désignation par sujet aux
+  messages ordinaires.
+- **Origine** : task-343
+- **Occurrences** : 1
+
 ### preuve-par-mutation — Un test e2e n'est terminé qu'une fois prouvé rouge
 - **Piège** : un test écrit contre l'app qui marche ne dit rien de sa capacité à échouer.
 - **Consigne** : pour chaque test ajouté ou durci, planter un no-op dans l'appel qu'il protège,
   constater le rouge **sur l'assertion prévue**, puis annuler. Consigner la mutation dans le
   `## Develop log`.
-- **Origine** : task-345, task-346, task-347
-- **Occurrences** : 3
+- **Origine** : task-345, task-346, task-347, task-343
+- **Occurrences** : 4
 
 ---
 

@@ -1,6 +1,6 @@
 # todo-task-343.md — Plusieurs serveurs, un seul comportement : les notifications temps réel et les conversations de l'assistant ne dépendent plus du serveur qui répond
 
-**Repos**: api-mail
+**Repos**: api-mail, client-mobile, client-angular *(clients ajoutés le 2026-09-30, extension humaine : parcours e2e temps réel et assistant)*
 **Dependencies**: — (aucune ; complémentaire de task-336 — voir « Hors périmètre »)
 **Epic**: E011
 **Single frontend**: true
@@ -67,6 +67,34 @@ redémarrage d'un pod.
 - La promotion concurrente d'un mail (task-344).
 - L'isolation de l'assistant sur le Kernel partagé (task-328).
 
+
+### Extension du périmètre (2026-09-30, demande humaine)
+
+> **Pourquoi.** Au premier `/review`, les mécanismes étaient prouvés contre un vrai Redis, mais
+> **aucun parcours du médecin** ne couvrait les notifications en temps réel ni l'assistant. Les
+> 22 parcours e2e passaient déjà avant la task. L'humain demande de couvrir ces deux parcours
+> **dans cette branche**. Arbitrages du 2026-09-30 :
+> - faux fournisseur IA au protocole Ollama dans l'outillage e2e, avec des réponses scriptées : le banc cesse d'appeler OpenAI ;
+> - les deux clients sont ajoutés aux `**Repos**` ;
+> - des `data-testid` sont ajoutés dans weda2.
+>
+> Le banc e2e fait tourner l'API sur **5 réplicas** derrière un proxy qui répartit les requêtes.
+> Ces parcours exercent donc exactement ce que la task corrige, et doivent être **rouges ou
+> instables sur `develop`**, puis verts sur la branche.
+
+- **E2E-LIVE-001 — Recevoir un nouveau message en temps réel, sans recharger** :
+  - un compte rendu de biologie arrive pendant que la boîte est ouverte, et un autre appareil déclenche la synchronisation ;
+  - la notification et la nouvelle ligne apparaissent sans rechargement, puis le signalement d'urgence posé par l'analyse automatique.
+- **E2E-AI-001 — Interroger l'assistant sur des messages sélectionnés** :
+  - la sélection de messages ouvre l'assistant, qui affiche un résumé initial ;
+  - deux questions de suite reçoivent leur réponse ;
+  - la conversation est relue du serveur avec ses quatre tours.
+- **Outillage** (`api-mail`) :
+  - faux fournisseur Ollama ;
+  - préférences de notification dans le seed ;
+  - dépôt d'un compte rendu de biologie à la demande ;
+  - drapeaux IA forcés dans le profil e2e.
+
 ## Definition of Done
 
 - [ ] Build passes (0 errors) — `cd Api/Mail && dotnet build HealthPlatform.Api.Mail.sln` ; Tests pass (0 failures, hors flaky pré-existants documentés)
@@ -81,6 +109,9 @@ redémarrage d'un pod.
 - [ ] Test d'intégration (Redis Testcontainers) : bout en bout des deux mécanismes
 - [ ] Non-régression : tests existants des brokers SSE (task-175) et de l'assistant verts
 - [ ] Aucune donnée de santé ajoutée dans les **logs** (le contenu diffusé vit dans Redis, jamais dans Seq/OTLP)
+- [ ] Scénarios **E2E-LIVE-001** et **E2E-AI-001** ajoutés dans `Api/Mail/e2e/scenarios.yml` et implémentés dans chaque client où ils sont requis (mobile, angular)
+- [ ] Les deux parcours sont **prouvés rouges ou instables sur `develop`** (5 réplicas) et verts sur la branche ; preuve par mutation sur les écouteurs SSE et sur la persistance des tours
+- [ ] Le banc e2e ne contacte plus aucun fournisseur IA externe (faux fournisseur Ollama)
 
 ## Manual Test Plan
 
@@ -112,6 +143,9 @@ redémarrage d'un pod.
 - `dtos-mss` : aucune branche (création paresseuse par `/develop` si un contrat bouge)
 - Choix par défaut conservés (aucune inversion humaine avant `/start`) : backplane portant le DTO complet ; conversations dans Redis.
 
+- `client-mobile` (pushed) : feat/task-343-backplane-sse-conversations-redis — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-343-backplane-sse-conversations-redis (depuis `origin/develop` @ `01933dd`, 2026-09-30)
+- `client-angular` (code-only) : la forge écrit sur la branche courante `feature/nova-rewriting-mss` ; l'humain gère le commit, le push et la PR TFS (hors `environment.ts`)
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-343 --sync` — ne pas éditer à la main)*
@@ -119,14 +153,16 @@ redémarrage d'un pod.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 18 s | — | — | — | — |
-| /develop | ok | 48 min 05 s | 14 (1 min 29 s) | 8 (14 min 41 s) | — | api-mail 14B/8T |
-| /sonar | ok | 5 min 48 s | 6 (1 min 05 s) | 21 (20 min 34 s) | 8 (2 min 22 s) | 1 itération(s), api-mail 6B/21T, re-analyse revue 2 |
-| /lint-angular | skipped | 0.5 s | — | — | — | client-angular non touché |
-| /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
-| /e2e | ok | 6 min 03 s | — | — | — | e2e ×9 (18 min 15 s), rejoué après revue 2 |
-| /review | ok | 50 min 05 s | 1 (4.2 s) | 1 (2 min 23 s) | — | api-mail 1B/1T, APPROVED (3e passage), PR api-mail #263 |
+| /develop | ok | 1 h 03 min | 22 (3 min 00 s) | 11 (18 min 22 s) | — | api-mail 20B/9T, client-mobile 1B/1T, client-angular 1B/1T, extension e2e LIVE-001 / AI-001 |
+| /sonar | ok | 6 min 52 s | 7 (1 min 24 s) | 26 (25 min 54 s) | 10 (3 min 01 s) | 1 itération(s), api-mail 7B/26T, extension e2e |
+| /lint-angular | ok | 1 min 50 s | — | — | — | 1 itération(s), 29 erreurs prettier (fichiers e2e neufs) corrigées par --fix |
+| /lint-mobile | ok | 34 s | — | — | — | all files pass |
+| /e2e | ok | 6 min 44 s | — | — | — | e2e ×12 (24 min 38 s), extension : 24/24 + 24/24 |
+| /review | ok | 6 min 18 s | 1 (4.2 s) | 1 (2 min 23 s) | — | api-mail 1B/1T, APPROVED (4e passage), PR api-mail #263 + mobile #82 |
 | /tech-writer | ok | 1 min 01 s | — | — | — | — |
-| **Total cycle** | | **1 h 51 min** | **21 (2 min 39 s)** | **30 (37 min 39 s)** | **8 (2 min 22 s)** | |
+| **Total cycle** | | **1 h 27 min** | **30 (4 min 28 s)** | **38 (46 min 40 s)** | **10 (3 min 01 s)** | |
+
+Autres commandes mesurées : lint ×4 (54 s)
 
 ## Develop log
 
@@ -215,6 +251,41 @@ Revue indépendante (APPROVED avec suggestions), durcie par `/review` sur deux p
 - Suite complète : application 3 278, api 1 107, infrastructure 665, domain 190. Intégration : 655 verts et les 3 rouges préexistants liés à l'heure.
 - Commit `112c5241`.
 
+### Extension e2e (2026-09-30) — parcours temps réel et assistant
+
+- **Outillage api-mail** (`0029505d`) :
+  - `fake-ai` : faux fournisseur au protocole Ollama, avec des réponses scriptées (`FakeAiScript`) ;
+  - `deliver` : remise du compte rendu `cr-bio-temps-reel` ;
+  - préférences de notification dans le seed : sans elles, `NewMailNotifier` ignorait tout ;
+  - profil e2e pointé sur le faux fournisseur : le banc n'appelle plus aucun fournisseur réel ;
+  - `FeatureFlags:ForcedOn`, en liste blanche `Development` (`ForcedOnFeatureFlagService`) ;
+  - catalogue : `E2E-LIVE-001` et `E2E-AI-001`, requis sur mobile et angular.
+- **Protocole** : prouvé avec le **vrai** connecteur Ollama de l'API (`FakeAiTests` : réponse unique, diffusion, embeddings).
+- **Mobile** (`24dce09`) : `specs/live-ai.spec.ts` et `support/e2e-backend.ts` (« un autre appareil »), avec les en-têtes du bypass factorisés dans `headless.ts`.
+- **weda2** (code-only, à commiter sur TFS par l'humain, hors `environment.ts`) : `data-testid` ajoutés sur le bandeau d'urgence, le panneau de l'assistant, le bouton IA de la sélection et les cartes du volet de lecture. Plus `e2e/mss-e2e/specs/live-ai.e2e.ts` et `support/e2e-backend.ts`.
+- **Vert sur la branche** : mobile 24/24 et weda2 24/24 (22 parcours existants + 2), contre les 5 réplicas.
+- **Rouge sans le correctif** (backplane et stockage des conversations remis par processus, 5 réplicas, 3 runs) :
+  - `E2E-AI-001` rouge **3/3** (« réponse à la question n°1 », deux fois ; « n°2 », une fois) ;
+  - `E2E-LIVE-001` rouge **2/3** (« aucune notification » ; vert une fois, quand le hasard mettait la synchronisation sur le réplica du flux).
+- **Preuve par mutation côté client** (chaque fois rouge sur l'assertion visée, puis restauré et vert) :
+  - mobile M1, notification ignorée → « notification « Nouveau message » » ;
+  - mobile M2, `TagsUpdated` ignoré → « le signalement d'urgence arrive en temps réel » ;
+  - weda2 MA1 et MA2 : mêmes rouges.
+- **Trois « verts qui mentent » trouvés en route, et corrigés** :
+  - le tag d'urgence était déjà posé quand l'app chargeait la ligne : M2 restait verte. Le faux fournisseur retarde désormais ses réponses de classification de 5 s, et le parcours prouve **l'absence**, puis **l'arrivée**, du signalement ;
+  - deux mutations n'avaient pas compilé (TS2339, TS6133), et le serveur de dev continuait de servir l'ancien bundle ;
+  - un prédicat `waitForResponse` réécrit en ligne de commande était devenu un commentaire JavaScript, donc acceptait tout POST.
+  - Consignés dans `conventions/e2e.md` : `temps-reel-deja-charge`, `mutation-non-servie`, `predicat-de-reponse`, `ligne-de-biologie`.
+- **Passe qualité** (quatre angles, deux relectures) :
+  - retiré : champ de manifeste et sortie de `deliver` morts, doublons du manifeste et des en-têtes du bypass (un `bypassHeaders()` par dépôt) ;
+  - forçage des drapeaux en **liste blanche** `Development` via `IHostEnvironment`, et non plus un simple refus de Production ;
+  - écartés : routage du faux fournisseur par nom de modèle (l'API n'en a qu'un pour tout Ollama), délai de classification limité au seul message du parcours (indiscernable du compte rendu seedé).
+- **Validation** :
+  - api-mail : 5 915 verts ;
+  - mobile : build vert, 947/947, après un échec **instable** de `MailboxSwitcherComponent` (erreur interne Ionic `onAriaChanged`, aucun fichier `src/` modifié, vert deux fois de suite) ;
+  - weda2 : build vert, 2 575 tests verts (11 projets) ;
+  - types des deux projets e2e : OK.
+
 ## Sonar log
 
 Mode A, serveur SonarQube 9.9.8, projet `healthplatform-api-mail`. Deux analyses complètes (begin, build Release, 5 passes OpenCover, end).
@@ -227,6 +298,7 @@ Mode A, serveur SonarQube 9.9.8, projet `healthplatform-api-mail`. Deux analyses
 - **Analyse 2** (`eef21c49`) : ✓ **0 finding** sur les fichiers de la branche, QG **OK**.
 - **Analyse 3**, après la reprise de revue (`a403200f`) : ✓ **0 finding** sur la branche, QG **OK**, new_coverage 98,1 %.
 - **Analyse 4**, après le 2e passage (`112c5241`) : ✓ **0 finding** sur la branche, QG **OK**, new_coverage 98,0 %, 10 smells (legacy).
+- **Analyse 5**, extension e2e (`0029505d`) : ✓ **0 finding** sur la branche, QG **OK**, new_coverage 98,1 %, 10 smells (legacy). api 1 126 (+2 cas du forçage en liste blanche).
 - Phase 2 (legacy) : 0 itération. Les mêmes 10 findings structurels (S107, S3604) restent, acceptés en best-effort.
 - Tests sous OpenCover (analyse 3) : domain 190, application 3 277, infrastructure 665, api 1 107, integration 654 (+16 ignorés). Analyses 1 et 2 : domain 190, application 3 272, infrastructure 665, api 1 107, integration 653 (+16 ignorés). Les 3 rouges liés à l'heure du run (filtres « du jour », entre 00:00 et 02:00 à Paris) sont documentés dans le Develop log.
 
@@ -237,7 +309,7 @@ Baseline = dernière analyse avant la task (2026-09-29, task-347).
 | Métrique | Baseline | Final | Δ |
 |---|---|---|---|
 | Quality Gate (new code) | OK | OK | → |
-| New coverage | 98,3 % | 98,0 % | −0,3 pt |
+| New coverage | 98,3 % | 98,1 % | −0,2 pt |
 | Bugs / Vulnerabilities / Hotspots | 0 / 0 / 0 | 0 / 0 / 0 | ±0 |
 | Code smells | 10 | 10 | ±0 (3 introduits puis corrigés) |
 | Coverage (projet) | 98,2 % | 98,2 % | ±0 pt |
@@ -245,24 +317,30 @@ Baseline = dernière analyse avant la task (2026-09-29, task-347).
 
 ## Lint log
 
-- `/lint-angular` : skipped — client-angular non touché par task-343.
-- `/lint-mobile` : skipped — client-mobile non touché par task-343.
+- Premier passage (backend seul) : `/lint-angular` et `/lint-mobile` sautés, clients non touchés.
+- **Extension e2e** — `/lint-angular` (`nx affected -t lint --base=origin/next --projects=tag:scope:mss`) :
+  - référence : 29 erreurs Prettier, toutes dans les deux fichiers e2e neufs du projet `mss-e2e` ;
+  - itération 1, `nx run mss-e2e:lint --fix` : **0 erreur**, lint vert sur 12 projets. Seuls les deux fichiers neufs ont été réécrits ;
+  - avertissements restants acceptés : `@example` vides (`jsdoc/require-example`), au même style que les utilitaires existants de la suite.
+  - Code-only : aucune opération git.
+- **Extension e2e** — `/lint-mobile` : `npm run lint` → « All files pass linting ». Les fichiers e2e sont hors du périmètre de lint du dépôt (`src/**`).
 
 ## E2E log
 
-Run du 2026-09-30, rejoué après le 2e passage de revue, sur `112c5241` : le code que `/review` valide. Il avait déjà été vert sur `eef21c49` et `a403200f`.
+Run du 2026-09-30, après l'extension e2e : api-mail `0029505d`, mobile `24dce09`, weda2 sur la branche courante (code-only). C'est le code que `/review` valide.
 
 | Voie | Déclencheur | Résultat | Tests | Durée |
 |---|---|---|---|---|
-| mobile | api-mail touché | ✅ verte | 22 verts, 0 flaky, 0 rouge, 0 quarantaine | 2 min 56 s |
-| angular | api-mail touché | ✅ verte | 22 verts, 0 flaky, 0 rouge, 0 quarantaine | 2 min 27 s |
+| mobile | api-mail et client-mobile touchés | ✅ verte | 24 verts (22 + LIVE-001 + AI-001), 0 flaky, 0 rouge, 0 quarantaine | 3 min 14 s |
+| angular | api-mail et client-angular touchés | ✅ verte | 24 verts (22 + LIVE-001 + AI-001), 0 flaky, 0 rouge, 0 quarantaine | 3 min 00 s |
 
-- Catalogue : `Api/Mail/e2e/scenarios.yml` @ `feat/task-343-backplane-sse-conversations-redis` (inchangé par la task).
+- Catalogue : `Api/Mail/e2e/scenarios.yml` @ branche de la task, avec **E2E-LIVE-001** et **E2E-AI-001** ajoutés (v1, requis sur les deux clients).
+- Banc : l'API tourne sur **5 réplicas** derrière un proxy qui répartit les requêtes, et le fournisseur IA est le faux fournisseur scripté (aucun appel externe).
+- **Rouge sans le correctif** (état par processus, 3 runs) : AI-001 rouge 3/3, LIVE-001 rouge 2/3. **Preuve par mutation côté client** : notification ignorée, puis `TagsUpdated` ignoré, rouges sur l'assertion visée, sur les deux clients (voir le Develop log).
 - Quarantaines : aucune. Divergences ouvertes : aucune.
-- Flaky : aucun sur ce run. Le run précédent (`eef21c49`) avait relevé `[angular] E2E-INBOX-001` vert au 2e essai ; il est inscrit au registre de `conventions/e2e.md` (1re occurrence).
-- Les brokers SSE passent par le backplane Redis, y compris sur le banc e2e : l'API y est composée par `AddApi`, et l'AppHost fournit Redis. Aucun parcours n'a régressé.
-- Parcours touchés sans spec e2e modifié : aucun (aucun fichier client touché).
-- Démontage : complet (ports 5052, 8100, 4200, 3993, 3465, 3143 libres, aucun conteneur `e2e-*` résiduel).
+- Flaky : aucun sur ce run. Au registre de `conventions/e2e.md` : `[angular] E2E-INBOX-001` (1 occurrence, run précédent de cette task) et `[angular] E2E-FOLDER-001` (task-347).
+- Parcours touchés sans spec e2e modifié : aucun. Côté weda2, seuls des `data-testid` ont été ajoutés aux templates.
+- Démontage : complet (ports 5052, 8100, 4200, 3993, 3465, 3143 et 11534 libres, aucun conteneur `e2e-*` résiduel).
 
 **E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
 
@@ -295,38 +373,62 @@ Run du 2026-09-30, rejoué après le 2e passage de revue, sur `112c5241` : le co
 | E2E-FOLDER-002 | 1 | headless | Créer puis supprimer un dossier | ✅ | ✅ |
 | E2E-AUTH-001 | 1 | humain | Rester connecté quand le jeton d'accès expire | 👤 non joué (humain) | 👤 non joué (humain) |
 | E2E-AUTH-002 | 1 | humain | Se déconnecter | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-LIVE-001 | 1 | headless | Recevoir un nouveau message en temps réel, sans recharger | ✅ | ✅ |
+| E2E-AI-001 | 1 | headless | Interroger l'assistant sur des messages sélectionnés et poser des questions de suite | ✅ | ✅ |
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
-
 ## PRs
 
-- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/263, label `awaiting-human-merge`, branche `feat/task-343-backplane-sse-conversations-redis` (`112c5241`).
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/263, branche `feat/task-343-backplane-sse-conversations-redis` (`0029505d`). Label `awaiting-human-merge`.
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/82, même branche (`24dce09`), label `awaiting-human-merge`. Parcours e2e seulement, aucun fichier `src/`.
+- `client-angular` : **code-only**. L'humain commite, pousse sur TFS et ouvre la PR, sur la branche courante `feature/nova-rewriting-mss`, **sans** les deux `environment.ts`. Fichiers :
+  - `front/libs/mss/src/features/mail/components/ai-chat-panel/ai-chat-panel.component.html` (`data-testid`)
+  - `front/libs/mss/src/features/mail/components/mail-header/mail-header.component.html` (`data-testid` du bandeau d'urgence)
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.component.html` (`data-testid` du bouton IA)
+  - `front/libs/mss/src/features/settings/mss-settings.component.html` (`data-testid` du volet de lecture)
+  - `front/e2e/mss-e2e/specs/live-ai.e2e.ts` (nouveau)
+  - `front/e2e/mss-e2e/support/e2e-backend.ts` (nouveau)
+  - `front/e2e/mss-e2e/support/session.ts` (`bypassHeaders` factorisé)
+  - `front/e2e/mss-e2e/run.mjs` (variables de l'outillage)
 - `dtos-mss` : aucun contrat modifié, donc aucune branche.
 
 ## Code Review Summary
 
-- Verdict : **APPROVED** au 3e passage (revue indépendante), le 2026-09-30.
-- 1er passage : APPROVED avec suggestions, **durci en CHANGES REQUESTED par `/review`**. Corrigé dans `a403200f` :
-  - démarrage impossible si Redis est indisponible (les pods auraient redémarré en boucle) ;
-  - tour de parole non enregistré signalé en `SERVER_ERROR` générique, au lieu d'une erreur explicite.
-- 2e passage : CHANGES REQUESTED. Corrigé dans `112c5241` :
-  - chaque `SubscribeAsync` raté laissait une file orpheline sur le multiplexeur ;
-  - une ébauche de conversation restait listée si sa création échouait.
-- Suites non traitées (Redis figé, résumé tardif, taille des charges pub/sub, AIPD) : `questions/task-343.md`.
-- Validation finale sur `112c5241` :
-  - tests : domain 190, application 3 278, infrastructure 665, api 1 107, integration 655, plus les 3 rouges préexistants liés à l'heure, prouvés sur `develop` ;
-  - Sonar : QG OK, 0 finding sur la branche ;
-  - `/e2e` : 22/22 sur les deux voies.
+- Verdict : **APPROVED** au 4e passage (revue indépendante), le 2026-09-30.
+- Passages 1 à 3 (backend), résumés dans la Reprise :
+  - démarrage impossible sans Redis ;
+  - tour de parole non enregistré signalé en `SERVER_ERROR` ;
+  - files orphelines après un abonnement raté ;
+  - puis APPROVED.
+- 4e passage (extension e2e) : APPROVED.
+  - Sécurité : `FeatureFlags:ForcedOn` est refusé en Staging et en Production, dont les configmaps posent `ASPNETCORE_ENVIRONMENT=Staging`. Faux fournisseur et forçage n'existent que dans le profil e2e. Aucun secret ni aucune donnée de santé dans les arguments de processus.
+  - Parcours : AI-001 prouve bien la relecture d'un tour par un autre réplica. Pour LIVE-001, la notification est la preuve entre réplicas, et la mutation MA2 montre que le rafraîchissement de weda2 (30 s) ne ramène pas le tag.
+  - Protocole du faux fournisseur : correct, prouvé avec le vrai connecteur.
+- Suggestions non traitées, dans `questions/task-343.md` :
+  - « tag absent à l'arrivée de la ligne » exposé à une synchronisation de plus de 5 s ;
+  - message remis non nettoyé si `waitForNewUid` échoue ;
+  - `finally` weda2 qui peut masquer l'erreur d'origine ;
+  - délai de classification appliqué à tous les mails ;
+  - notifications du seed pendant COMPOSE-001 ;
+  - `content` lu par `GetValue<string>` ;
+  - `DistinctQuestions`.
+- Validation finale :
+  - api-mail : 5 917 verts, QG OK, 0 finding sur la branche ;
+  - mobile : build vert, 947/947 ;
+  - weda2 : build vert, 2 575 verts, lint MSS 0 erreur ;
+  - `/e2e` : mobile 24/24 et weda2 24/24, 0 flaky, parité verte.
 
 ## Amélioration continue (règle d'or)
 
-- **Récidive S3604** sur du code frais (×3) : `conventions/csharp.md` avait été lu par ses seuls titres. Compteur à 2, variante consignée (tout initialiseur d'instance, dès qu'il y a un constructeur primaire). La leçon porte sur la **lecture** : lire les consignes en entier, pas les titres.
-- **Nouvelle consigne** `memoire-vers-redis-chemins-faillibles` (`conventions/csharp.md`) :
-  - un état qui quitte la mémoire rend faillibles le démarrage et les flux en streaming ;
-  - un `SubscribeAsync` raté laisse une file orpheline dans StackExchange.Redis ;
-  - le message d'une `JsonException` cite le document.
-- **Test instable par construction** (deux onglets × 10 tours, borne à 10 essais) : borne rendue explicite (`MaxWriteAttempts / 2`), justification écrite dans le test.
-- **Test qui supposait sa prémisse** (message illisible jamais désérialisé) : réécrit et prouvé rouge par mutation.
-- **Garde de convention qui ne voit que les fichiers suivis** : `MetricCaptureSerialisationScanTests` passait parce que `SseBackplaneTests` n'était pas encore suivi par Git ; il aurait tourné au rouge après le commit. Le marqueur `TaggedMetricCounter` y est ajouté, et la garde a été rejouée après staging.
-- **Registre des flaky** : `[angular] E2E-INBOX-001`, 1re occurrence (`conventions/e2e.md`).
-- **Task à ouvrir** : les tests dépendants de l'horloge du poste (`questions/task-343.md`).
+- **Récidive S3604** (×3, code frais) : `conventions/csharp.md` avait été lu par ses titres seulement. Compteur à 2, variante consignée.
+- **Nouvelle consigne C#** `memoire-vers-redis-chemins-faillibles` : démarrage, flux en streaming, file orpheline de StackExchange.Redis, message d'une `JsonException`.
+- **Quatre consignes e2e** (`conventions/e2e.md`) :
+  - `temps-reel-deja-charge` : un tag déjà posé au chargement ne prouve pas le temps réel ;
+  - `mutation-non-servie` : une mutation qui ne compile pas laisse servir l'ancien bundle ;
+  - `predicat-de-reponse` : une regex réécrite en ligne de commande est devenue un commentaire ;
+  - `ligne-de-biologie` ;
+  - et `preuve-par-mutation` passe à 4 occurrences.
+- **Le banc e2e ne contacte plus aucun fournisseur IA externe** : une dépendance et un coût retirés, conformément au principe « aucun service externe » du filet.
+- **Deux tests instables par construction** rendus déterministes : bornes de concurrence, et délai de classification du faux fournisseur.
+- **Garde de convention qui ne voit que les fichiers suivis** (`MetricCaptureSerialisationScanTests`) : piège signalé, garde rejouée après staging.
+- **Tasks à ouvrir** : tests dépendants de l'horloge du poste, et suites de la revue (`questions/task-343.md`).
