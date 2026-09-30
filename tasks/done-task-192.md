@@ -307,6 +307,7 @@ de réintroduire une clé fragile.
 | /lint-mobile | skipped | 2.1 s | — | — | — | client-mobile non listé dans Repos |
 | /e2e | ok | 31 s | — | — | — | e2e ×3 (5 min 05 s), vert, 1 flaky E2E-DETAIL-002 (rejeu après contre-épreuve develop) |
 | /review | ok | 5 min 45 s | 2 (18 s) | 1 (3 min 00 s) | — | dtos-mss 1B/0T, api-mail 1B/1T |
-| **Total cycle** | | **59 min 57 s** | **10 (2 min 01 s)** | **20 (21 min 55 s)** | **4 (5 min 00 s)** | |
+| /tech-writer | ok | 1 min 43 s | — | — | — | — |
+| **Total cycle** | | **1 h 01 min** | **10 (2 min 01 s)** | **20 (21 min 55 s)** | **4 (5 min 00 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (12 s), restore ×1 (8.4 s)
