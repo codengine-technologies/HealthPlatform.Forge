@@ -214,6 +214,7 @@ task de stabilisation proposée)*
 |---|---|---|---|---|
 | dossiers — naviguer vers Archive et Corbeille (E2E-FOLDER-001) | angular | 1 | task-347 | à établir — 1er essai : « le dossier INBOX est ouvert » (titre de liste absent au retour vers INBOX) |
 | inbox — filtres Non lus / Lus / Tous et recherche (E2E-INBOX-001) | angular | 1 | task-343 | à établir — vert au 2e essai |
+| détail — bascule texte brut / HTML (E2E-DETAIL-002) | mobile | 1 | task-192 | à établir — 1er essai : « mail sans corps affichable » (`mail-body-empty` reste affiché, le corps seedé n'apparaît pas dans les 15 s). Sur task-192 : rouge aux 2 essais d'un premier run, flaky au run suivant (3 échecs sur 4 essais) ; vert au 1er essai sur `develop` (1 run). Piste : course entre l'état « Aucun contenu » affiché pendant le chargement et le corps enrichi |
 
 ## Quarantaines
 
