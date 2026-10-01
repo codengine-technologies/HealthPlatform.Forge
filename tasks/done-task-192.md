@@ -186,6 +186,23 @@ de réintroduire une clé fragile.
   - `client-blazor` non listé : non bumpé à 492.0.0 (ajout pur, aucune casse).
 - Next step : /sonar task-192
 
+
+### Tests d'intégration d'endpoint (règle 1b, ajoutés après le HAG du 2026-10-01)
+
+`tests/mss.mail.integration.tests/Api/SearchEndpointIntegrationTests.cs` — 8 cas. Vraie route HTTP (TestServer), vrai `SearchController`, vrai `SemanticSearchService`, vrai `SemanticSearchRepository` sur une base PostgreSQL dédiée par test. Simulés : le fournisseur IA (aucun générateur d'embedding) et l'historique Redis — aucune des couches modifiées par la task.
+
+| Comportement (lu dans la réponse JSON réelle) | Test | Preuve rouge (mutation réinjectée → test en échec) |
+|---|---|---|
+| Deux mails de dossiers différents, même UID → les deux dans `Hits`, avec leur dossier (`/search/semantic`, full-text et hybride) | `Semantic_SameUidInTwoFolders_ReturnsBothHitsWithTheirFolder` ×2 | M1 repository : `DistinctBy(MailId)` → `DistinctBy(Uid)` ⇒ rouge ×2 ; M2 service : clé de dédoublonnage sans dossier ⇒ rouge ×2 |
+| Idem sur `/search/patient` | `Patient_SameUidInTwoFolders_ReturnsBothHitsWithTheirFolder` | M1 ⇒ rouge |
+| Plus de résultats que `maxResults` → `IsTruncated = true` (`/search/semantic`) | `Semantic_MoreMatchesThanMaxResults_FlagsTheResponseAsTruncated` | M3 contrôleur : `IsTruncated = false` ⇒ rouge |
+| Idem sur `/search/patient` | `Patient_MoreMatchesThanMaxResults_FlagsTheResponseAsTruncated` | M3 ⇒ rouge |
+| Recherche complète → `IsTruncated = false` | `Semantic_EveryMatchReturned_IsNotTruncated` | garde-fou du faux positif (vert attendu sous M3, cohérent) |
+| Filtre objet « dupont » trouve « DUPONT » et « Dupont » | `Semantic_SubjectFilterInLowerCase_FindsUpperAndMixedCaseSubjects` | M4 repository : `ILike` → `Like` ⇒ rouge |
+| Filtre objet « 50% » ne trouve pas « 500 » | `Semantic_SubjectFilterWithPercent_MatchesItLiterally` | M5 repository : motif non échappé ⇒ rouge |
+
+Chaque mutation a été appliquée seule puis annulée (`git checkout`), arbre source propre à la fin (0 fichier modifié).
+
 ## Sonar log
 
 - Mode A (chaîné), projet `healthplatform-api-mail`, serveur 25.6.0.109173 sur `localhost:9001` (conteneurs `sonarqube_db` puis `sonarqube` redémarrés — arrêtés depuis 25 h), propriété `sonar.token`
@@ -288,6 +305,7 @@ de réintroduire une clé fragile.
 - Validation `/review` : `dtos-mss` build 0 erreur ; `api-mail` build 0 erreur, **5 970 tests réussis, 0 échec**, 16 ignorés ; branches déjà à jour avec `origin/develop` (aucun merge nécessaire)
 - DOD : 8/9 vérifiés par commande (tests nommés dans le `## Develop log`), 1 différé au Manual Test Plan (HAG)
 - E2E double verrou : `## E2E log` vert (1 flaky E2E-DETAIL-002, contre-épreuve `develop` documentée)
+- **Complément post-HAG (2026-10-01)** : l'humain a relevé l'absence de test d'intégration au niveau endpoint. La première revue avait validé la task avec des tests d'intégration **repository** seulement, alors que la règle 1b n'était satisfaite que sur le papier (un test 400 préexistant sur service simulé). Comblé par `SearchEndpointIntegrationTests` (8 cas, preuve par mutation 5/5, voir le `## Develop log`) ; règle 1b réécrite (« un développement n'est valide que prouvé par un test d'intégration ») et verrou 4a ajouté à `/review`.
 - **Verdict : APPROVED** — 0 bloquant, 4 suggestions :
   1. défaut **pré-existant** : recherche vectorielle par patient en mode hybride — plusieurs documents d'un même mail ⇒ `ToDictionary` sur clé en double ⇒ exception avalée ⇒ **liste vide sans signal** (déjà sur `develop`, clé UID) → task dédiée recommandée
   2. détection de troncature à porter par le repository (`Take(bound + 1)`)
