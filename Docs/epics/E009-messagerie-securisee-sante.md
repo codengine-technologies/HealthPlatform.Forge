@@ -2,9 +2,9 @@
 
 > **Statut** : En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.79
+> **Version** : 1.80
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-09-30 (la recherche ne cache plus aucun message, task-192)
+> **Dernière mise à jour** : 2026-10-01 (corriger l'orthographe avant d'envoyer, task-349)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -998,7 +998,7 @@ Les règles `RG-E009-084` à `RG-E009-089` sont propres à ENS Mon espace santé
 | E009-F003 | 🟢 Implémenté | 100% — tags urgence, tagging IA, détection biologie anormale, acquittement médico-légal | task-005, task-028 |
 | E009-F004 | 🟢 Implémenté | 100% — Vue temporelle patient, Timeline biologie horizontale, Synthèse clinique livrées sur les deux frontends ; widget Patient sur le dashboard | task-035 |
 | E009-F005 | 🟢 Implémenté | 100% — canaux temps réel + préférences | — |
-| E009-F006 | 🟢 Implémenté | 100% — composition + envoi + accusés + annule et remplace | task-002, task-006, task-008, task-009 |
+| E009-F006 | 🟢 Implémenté | 100% — composition + envoi + accusés + annule et remplace ; « Corriger l'orthographe » avec aperçu et validation, sur les trois fronts (flag `ai_text_correction`, désactivé en production) — task-349 | task-002, task-006, task-008, task-009, task-349 |
 | E009-F007 | 🔴 Non impl. | 10% — paquet IHE_XDM possible, intégration envoi à confirmer, opposition implémentée, bounces/fin d'échange à ajouter | task-003 |
 | E009-F008 | 🟢 Implémenté | 100% — service d'annuaire avec 5 stratégies de recherche | — |
 | E009-F009 | 🟢 Implémenté | 100% — CRUD complet, favoris, groupes, fusion | — |
@@ -1036,6 +1036,34 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
+- **v1.80 — Corriger l'orthographe avant d'envoyer, sans que rien ne change à l'insu du
+  praticien** (task-349) : dans la rédaction, l'action « Corriger l'orthographe » propose les
+  corrections d'orthographe, de grammaire et d'accords d'un message, sur la messagerie web, la
+  messagerie intégrée au logiciel et l'application mobile.
+  - **Aperçu avant tout changement** : les mots corrigés sont mis en évidence dans un aperçu
+    (« Corrections proposées, 3 anomalies détectées »). Le praticien applique ou ignore : rien
+    n'est modifié sans son accord.
+  - **Ce qui est corrigé** : la sélection si le praticien en a fait une, sinon son seul texte.
+    La signature et le message cité en réponse ou en transfert ne sont jamais envoyés à la
+    correction.
+  - **Orthographe seulement** : une correction qui reformulerait, ajouterait ou retirerait une
+    posologie, une valeur, une unité, un nom ou un identifiant n'est pas proposée. Le praticien
+    voit alors « Aucune correction proposée ».
+  - **Sans perte** : si le texte change pendant la correction, la proposition n'écrase rien. Une
+    sélection sur plusieurs paragraphes est refusée, avec un message clair. Si le service ne
+    répond pas, le texte reste intact.
+  - **Traçabilité** : chaque demande est tracée (horodatage, boîte, longueur du texte), sans
+    jamais son contenu.
+  - **Production** : la fonction est **désactivée**. Le texte rédigé est transmis au fournisseur
+    d'IA, aujourd'hui hors hébergement HDS. L'activation attend sa qualification (EPIC E017) et
+    la mise à jour de l'AIPD.
+  - **Nouvelle barre de rédaction** sur la messagerie web, d'après la maquette validée :
+    - barre placée sous les destinataires et l'objet ;
+    - menus Modèle et Signature ;
+    - correction (badge IA, raccourci F7) ;
+    - interrupteur d'accusé de lecture ;
+    - mode plein écran ;
+    - croix « Fermer et abandonner le brouillon ».
 - **v1.79 — La recherche ne cache plus aucun message** (task-192) : une
   recherche lancée sur l'ensemble de la messagerie retrouve désormais tous les
   messages pertinents, y compris quand deux messages rangés dans des dossiers

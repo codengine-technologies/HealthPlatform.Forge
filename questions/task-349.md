@@ -179,3 +179,25 @@ B1, B3, B4, B5 et B6 (mobile et Angular) sont vérifiés corrigés. B2 protège 
 `/develop task-349` sur N1, N2 et N3 (test rouge d'abord pour chacun) et les suggestions, puis
 `/lint-angular` → `/e2e` (voie Angular) → `/review`. `/sonar` n'est pas à rejouer :
 api-mail est inchangé.
+
+## Troisième revue, 2026-10-01 — code APPROUVÉ, verrou 4a (règle 1b) ouvert
+
+La relecture de N1 à N3 est **APPROVED**. Le seul blocage est la règle 1b, posée le même jour :
+quatre comportements de l'endpoint `POST api/v1/ai/correct-spelling`, ajoutés par la reprise B1,
+ne sont prouvés que par des tests unitaires.
+
+| Comportement | Test d'intégration attendu |
+|---|---|
+| Le modèle ajoute une posologie | 200, `changed=false`, HTML d'origine |
+| Le modèle vide la proposition | 200, `changed=false` |
+| Flag désactivé et texte vide | 404 ProblemJson (et non 400) |
+| Délai dépassé chez le fournisseur (TaskCanceledException) | 503 ProblemJson |
+
+Chaque test doit être vu rouge sur le code d'avant la reprise B1 (`4b1e901e~1`).
+
+**Suite** : l'humain a demandé d'aller au bout (« lorsque tu auras tout terminé /merge 349
+--i-tested puis /start 329 »). Retour à `/develop` pour ces quatre tests, plus trois suggestions
+peu coûteuses :
+- Blazor : `StateHasChanged` avant le rethrow ;
+- Angular : la JSDoc déplacée de `composeTitle` ;
+- Angular : `role="alert"` sur le bandeau INS.

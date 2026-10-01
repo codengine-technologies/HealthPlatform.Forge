@@ -1,4 +1,4 @@
-# todo-task-349.md — Corriger l'orthographe d'un message avant de l'envoyer, sur les trois fronts : aperçu des corrections, validation par le praticien, jamais de reformulation
+# done-task-349.md — Corriger l'orthographe d'un message avant de l'envoyer, sur les trois fronts : aperçu des corrections, validation par le praticien, jamais de reformulation
 
 **Repos**: api-mail, client-angular, client-mobile, client-blazor
 **Dependencies**: — (aucune ; task-325 fera passer la correction sur le modèle local sans changement de cette US)
@@ -375,6 +375,26 @@ Chaque point a d'abord eu un test rouge, puis le correctif.
 
 **Leçon** : nouvelle consigne `conventions/angular.md` › `tiptap-conteneur-capte-le-curseur` (tester le cas « conteneur seul »).
 
+### Verrou d'intégration 4a (règle 1b, 2026-10-01) — tests d'endpoint ajoutés
+
+| Comportement (`POST api/v1/ai/correct-spelling`) | Test d'intégration (pipeline réel, seul le chat est simulé) | Preuve du rouge |
+|---|---|---|
+| Le modèle ajoute une posologie → 200, `changed=false`, HTML d'origine | `CorrectSpelling_WhenTheModelAddsADosage_Returns200_WithoutACorrection` | rouge sur `4b1e901e~1` |
+| Proposition vidée → 200, `changed=false` | `CorrectSpelling_WhenTheModelEmptiesTheText_Returns200_WithoutACorrection` | rouge sur `4b1e901e~1` |
+| Flag désactivé et texte vide → 404 ProblemJson | `CorrectSpelling_WhenTheFlagIsOff_ABlankText_Returns404ProblemJson` | rouge sur `4b1e901e~1` (400) |
+| Délai dépassé chez le fournisseur → 503 ProblemJson | `CorrectSpelling_WhenTheProviderTimesOut_Returns503ProblemJson` | rouge sur `4b1e901e~1` (499) |
+| *(déjà prouvés, task-349 initiale)* 200 corrigé, 200 posologie altérée, 503 panne, 404 flag, 400 vide | 5 tests existants | rouges par mutation (Develop log initial) |
+
+**Méthode de la preuve** : les deux sources sont remises à leur état d'avant la reprise
+(`git show 4b1e901e~1:… > …`). Résultat : 4 rouges et 5 verts. Les sources sont ensuite
+restaurées par `git checkout --` (mtime neuf, recompilation garantie). Sur le code actuel : 9/9.
+
+**Suggestions de la 3ᵉ revue appliquées** :
+- Blazor : `StateHasChanged()` avant le rethrow d'une lecture interrompue (`dcfcbb0`).
+- Angular : JSDoc de `composeTitle` remise à sa place, `role="alert"` sur le bandeau INS.
+
+**Commits** : api-mail `17210be7` et Blazor `dcfcbb0`, tous deux poussés.
+
 ## Sonar log
 
 Serveur SonarQube 9.9.8.100196 (`sonar.login`), new code sur 30 jours.
@@ -405,6 +425,8 @@ Serveur SonarQube 9.9.8.100196 (`sonar.login`), new code sur 30 jours.
 
 **Re-scan après la reprise B1–B6 (2026-10-01, après-midi)** : Quality Gate **OK**, `new_coverage` 97,6 %, **0 finding** sur le new code. Bugs, vulnérabilités et hotspots à 0, 8 code smells legacy, couverture projet 98,1 %, duplication 0,4 %, notes A/A/A. Les KPIs sont identiques au tableau ci-dessus : aucun correctif nécessaire. Couverture Release : 0 échec sur les 5 projets, intégration 678/678 (16 sautés), la passe étant hors de la fenêtre 22:00–24:00 UTC.
 
+**Re-scan après le verrou 4a** : Quality Gate **OK**, `new_coverage` 97,6 %, 0 finding sur le new code, KPIs identiques. Intégration : 682/682 (16 sautés), dont les 4 nouveaux tests d'endpoint.
+
 ## Lint log
 
 `/lint-angular` — Mode A. Base `origin/next`, lint limité à `tag:scope:mss`, build et test sur tout le périmètre affecté. Code-only : aucune opération git hormis `git fetch origin next`.
@@ -426,6 +448,8 @@ Serveur SonarQube 9.9.8.100196 (`sonar.login`), new code sur 30 jours.
 
 - **Rejeu après la 2ᵉ revue (N1–N3)** : 0 erreur, 88 warnings (inchangé), tests affectés verts. Le build `weda2` est vert depuis `/develop`, et seul le rouge préexistant `mss:build:production` subsiste.
 
+- **Rejeu après le verrou 4a** : 0 erreur, 88 warnings (inchangé), mss-lib vert.
+
 ## Lint mobile log
 
 `/lint-mobile` — Mode A, branche `feat/task-349-correction-orthographe`. Baseline `npm run lint` : **All files pass linting** (0 erreur, 0 warning). Aucune itération nécessaire, aucun commit. Build et tests non rejoués : l'arbre n'a pas bougé depuis leur dernier vert (`/develop` §Q, 967/967).
@@ -434,12 +458,12 @@ Serveur SonarQube 9.9.8.100196 (`sonar.login`), new code sur 30 jours.
 
 ## E2E log
 
-Rejeu du 2026-10-01 après la reprise B1–B6, sur les commits poussés. Pour Angular : l'arbre de travail courant, refonte de la barre comprise.
+Rejeu du 2026-10-01 après le verrou 4a (tests d'intégration), la reprise N1–N3 et B1–B6, sur les commits poussés. Pour Angular : l'arbre de travail courant, refonte de la barre comprise.
 
 | Voie | Déclencheur | Résultat | Tests | Durée |
 |---|---|---|---|---|
-| mobile | api-mail, client-mobile, dtos-mss touchés | ✅ verte | 25 verts, 0 flaky, 0 rouge, 0 quarantaine | 3 min 31 s |
-| angular | api-mail, client-angular, dtos-mss touchés | ✅ verte | 25 verts, 0 flaky, 0 rouge, 0 quarantaine | 3 min 11 s |
+| mobile | api-mail, client-mobile, dtos-mss touchés | ✅ verte | 25 verts, 0 flaky, 0 rouge, 0 quarantaine | 3 min 33 s |
+| angular | api-mail, client-angular, dtos-mss touchés | ✅ verte | 25 verts, 0 flaky, 0 rouge, 0 quarantaine | 3 min 05 s |
 
 Catalogue : celui de la branche de la task (`Api/Mail/e2e/scenarios.yml`, E2E-COMPOSE-002 v1).
 
@@ -496,6 +520,68 @@ Catalogue : celui de la branche de la task (`Api/Mail/e2e/scenarios.yml`, E2E-CO
 
 **/review du 2026-10-01 : CHANGES REQUESTED.** Builds et tests verts sur les 5 repos, E2E vert. Six points bloquants détaillés dans `questions/task-349.md` (B1 garde à sens unique, B2 signature Angular, B3-B5 Blazor, B6 sélection multi-blocs). Aucun commit, aucune PR ; chaîne arrêtée.
 
+## PRs
+
+| Repo | PR | Label |
+|---|---|---|
+| dtos-mss | https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/36 | awaiting-human-merge |
+| api-mail | https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/267 | awaiting-human-merge |
+| client-blazor | https://github.com/codengine-technologies/HealthPlatform.Client/pull/86 | awaiting-human-merge |
+| client-mobile | https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/83 | awaiting-human-merge |
+
+- **client-angular** : code-only, l'humain gère le commit, le push TFS et l'ouverture de la PR.
+  - La refonte de la barre est déjà commitée par l'humain (`6321706c`).
+  - Restent **non commités** les correctifs de revue (B2, B6, N1, N3, Échap/F7, aria) et leurs tests :
+  - `front/e2e/mss-e2e/specs/live-ai.e2e.ts`
+  - `front/libs/mss/src/core/utils/spelling-correction.util.ts`
+  - `front/libs/mss/src/features/mail/components/mail-compose/mail-compose-spelling.component.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-compose/mail-compose-toolbar.component.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-compose/mail-compose.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-compose/mail-compose.component.ts`
+  - `front/libs/mss/src/ui/html-editor/html-editor.component.ts`
+  - `front/libs/mss/src/ui/html-editor/html-editor.models.ts`
+  - `front/libs/mss/src/ui/html-editor/mss-role.extension.ts`
+  - **Ne pas commiter** `apps/mss` ni `apps/weda2` › `environments/environment.ts` : réglages locaux (`mssApiUrl` sur `https://localhost:7012`).
+- **Synchronisation avec develop** (task-192 mergée entre-temps) :
+  - `dtos-mss` fusionne `develop` et publie **497.0.0**, qui porte les deux contrats.
+  - api-mail : fusion `d59eae89` avec `develop`, version 497 et lock files régénérés ; build et suite complète verts (application 3334, intégration 703).
+  - Blazor : passage à 497 (`d32d678`), 389 verts.
+
+## Code Review Summary
+
+**Verdict final : APPROVED** (3ᵉ passe). Les passes 1 et 2 ont trouvé neuf bloquants, tous corrigés test rouge d'abord :
+- B1 à B6 : garde-fou à sens unique, signature Angular, trois points Blazor, sélection multi-paragraphes ;
+- N1 à N3 : régression du nouveau message signé, lignes « navigateur » sous Blazor, bandeau INS masqué en plein écran.
+
+**Verrou 4a (règle 1b), comportement → test d'intégration → preuve du rouge** (pipeline réel, seul le fournisseur de chat est simulé) :
+
+| Comportement | Test | Rouge |
+|---|---|---|
+| texte fautif → 200 corrigé | `CorrectSpelling_AMisspelledText_Returns200_WithTheCorrectedHtml` | mutation (task-349 initiale) |
+| posologie altérée → 200 sans correction | `…WhenTheModelAltersTheDosage_Returns200_WithoutACorrection` | mutation |
+| posologie ajoutée → 200 sans correction | `…WhenTheModelAddsADosage_Returns200_WithoutACorrection` | `4b1e901e~1` |
+| proposition vidée → 200 sans correction | `…WhenTheModelEmptiesTheText_Returns200_WithoutACorrection` | `4b1e901e~1` |
+| panne du fournisseur → 503 ProblemJson sans détail | `…WhenTheProviderFails_Returns503ProblemJson_WithoutTechnicalDetail` | mutation |
+| délai du fournisseur → 503 | `…WhenTheProviderTimesOut_Returns503ProblemJson` | `4b1e901e~1` |
+| flag désactivé → 404 sans appel au fournisseur | `…WhenTheFlagIsOff_Returns404ProblemJson_WithoutCallingTheProvider` | mutation |
+| flag désactivé et texte vide → 404 | `…WhenTheFlagIsOff_ABlankText_Returns404ProblemJson` | `4b1e901e~1` |
+| texte vide → 400 | `…ABlankText_Returns400ProblemJson` | mutation |
+
+**DOD** :
+- Builds et tests verts sur les 5 repos.
+- Tests serveur, Angular, mobile et Blazor présents.
+- Endpoint couvert (9 tests d'intégration).
+- Flag au catalogue et au seeder.
+- E2E-COMPOSE-002 v1 aux deux clients, prouvé rouge par mutation.
+- `data-testid` en place.
+- Aucune donnée de santé dans les logs ni dans l'audit.
+- Audit « correction demandée » (enum 36).
+- Les points observables (gras, listes, dictée Blazor, panne réelle du fournisseur) relèvent du Manual Test Plan, recopié dans les PR.
+
+**Suggestions non bloquantes** :
+- Blazor : triple-clic sur une ligne refusé.
+- Angular : changement de signature après la première frappe (préexistant) ; Ctrl+Entrée pendant la confirmation d'abandon (préexistant).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-349 --sync` — ne pas éditer à la main)*
@@ -503,15 +589,16 @@ Catalogue : celui de la branche de la task (`Api/Mail/e2e/scenarios.yml`, E2E-CO
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 29 s | — | — | — | — |
-| /develop | ok | 5 min 20 s | 19 (3 min 16 s) | 38 (15 min 18 s) | — | dtos-mss 1B/0T, api-mail 4B/14T, client-blazor 7B/17T, client-angular 3B/2T, client-mobile 4B/5T, e2e ×2 (3 min 39 s), reprise N1-N3 + suggestions |
-| /sonar | ok | 7 min 36 s | 2 (51 s) | 10 (10 min 23 s) | 4 (1 min 18 s) | 1 itération(s), api-mail 2B/10T, re-scan reprise : QG OK, 0 new issue |
-| /lint-angular | ok | 1 min 13 s | 2 (43 s) | 3 (2 min 43 s) | — | client-angular 2B/3T, rejeu N1-N3 : 0 erreur |
-| /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile inchangé depuis le dernier lint vert (c0dbcbd) |
-| /e2e | ok | 7 min 11 s | — | — | — | e2e ×11 (28 min 38 s), rejeu : 2 voies 25/25, 0 flaky, parité verte |
-| /review | failed | 7 min 54 s | 10 (1 min 05 s) | 8 (6 min 56 s) | — | dtos-mss 2B/0T, api-mail 2B/2T, client-mobile 2B/2T, client-blazor 2B/2T, client-angular 2B/2T, 2e passe : CHANGES REQUESTED, N1 N2 N3 |
-| **Total cycle** | | **29 min 46 s** | **33 (5 min 56 s)** | **59 (35 min 21 s)** | **4 (1 min 18 s)** | |
+| /develop | ok | 2 min 19 s | 20 (3 min 24 s) | 41 (15 min 34 s) | — | dtos-mss 1B/0T, api-mail 4B/16T, client-blazor 8B/18T, client-angular 3B/2T, client-mobile 4B/5T, e2e ×2 (3 min 39 s), verrou 4a : 4 tests d'intégration prouvés rouges |
+| /sonar | ok | 6 min 03 s | 3 (1 min 08 s) | 15 (15 min 04 s) | 6 (1 min 56 s) | 1 itération(s), api-mail 3B/15T, re-scan 4a : QG OK |
+| /lint-angular | ok | 34 s | 2 (43 s) | 4 (2 min 56 s) | — | client-angular 2B/4T, rejeu 4a : 0 erreur |
+| /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile inchangé (c0dbcbd) |
+| /e2e | ok | 6 min 56 s | — | — | — | e2e ×17 (42 min 07 s), rejeu 4a : 2 voies 25/25 |
+| /review | ok | 8 min 14 s | 14 (1 min 38 s) | 10 (9 min 36 s) | — | dtos-mss 3B/0T, api-mail 3B/3T, client-mobile 2B/2T, client-blazor 3B/3T, client-angular 3B/2T, APPROVED, 4 PRs ouvertes |
+| /tech-writer | ok | 58 s | — | — | — | — |
+| **Total cycle** | | **25 min 36 s** | **39 (6 min 54 s)** | **70 (43 min 12 s)** | **6 (1 min 56 s)** | |
 
-Autres commandes mesurées : lint ×8 (1 min 35 s), nuget-wait ×1 (19 s), restore ×2 (26 s)
+Autres commandes mesurées : lint ×9 (1 min 43 s), nuget-wait ×2 (42 s), restore ×2 (26 s)
 
 ## Stitch design log
 
