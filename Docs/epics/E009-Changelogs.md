@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-09-30 (v1.79)
+> **Dernière mise à jour** : 2026-10-01 (v1.80)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -615,6 +615,45 @@
 - **E2E** : voie mobile, 1er run **rouge** (`E2E-DETAIL-002`, « mail sans corps affichable », deux essais) ; contre-épreuve humaine : même voie avec l'`api-mail` de `develop` → vert ; rejeu sur la branche → vert, `E2E-DETAIL-002` **flaky** (3 échecs sur 4 essais sur le code de la task, 1 réussite sur 1 sur `develop`). Aucun fichier du diff sur le chemin de lecture d'un message. Inscrit au registre des flaky de `conventions/e2e.md`. Voie Angular non jouée (suite non livrée, task-346).
 - **Revue de code — APPROVED**, 0 bloquant, suggestions : (1) **pré-existant, même famille** : en hybride, la recherche vectorielle par patient ne dédoublonne pas les documents d'un même mail → `ToDictionary` sur clé en double → exception avalée par le `catch` → **liste vide sans signal** (déjà sur `develop`, clé UID) ; (2) troncature à porter par le repository (faux négatif possible après `DistinctBy`, faux positif à exactement 200) ; (3) `ContactRepository` / `PatientRepository` : `ILike` sans échappement des jokers ; (4) cosmétique.
 - **Suivis** : task front (Blazor / Angular / mobile) pour consommer `Hits` et afficher `IsTruncated` — sans elle, l'étape 6 du Manual Test Plan n'est pas observable dans l'UI ; task dédiée pour la suggestion (1) ; stabilisation de `E2E-DETAIL-002` si le flaky récidive.
+
+### v1.80 — « Corriger l'orthographe » : endpoint gardé, aperçu et validation sur trois fronts, jamais la signature ni la citation — task-349
+
+- **PR** (`awaiting-human-merge`, branche `feat/task-349-correction-orthographe`) :
+  - `dtos-mss` #36, `api-mail` #267, `client-blazor` #86, `client-mobile` #83 ;
+  - `client-angular` en code-only (TFS, livré par l'humain : refonte commitée en `6321706c`, correctifs de revue non commités).
+- **NuGet** : `HealthPlatform.Dtos.Mss` 494.0.0 (`AuditActionType.TextCorrectionRequested = 36`), puis **497.0.0**.
+  - 497 vient de la fusion de `develop` dans la branche DTO : elle porte aussi le contrat de recherche de task-192 (492.0.0).
+  - api-mail et Blazor sont bumpés à 497.
+- **Serveur** : `POST api/v1/ai/correct-spelling` (`SpellingCorrectionController` → `SpellingCorrectionService` → `SpellingCorrectionGuard`).
+  - Flag `ai_text_correction` : catalogue, `ColdStartDefaults` (échec fermé), seeder, profil e2e forcé.
+  - Le flag est vérifié **avant** la validation (404).
+  - `ChatHistory` : le texte n'est pas interprété comme gabarit.
+  - Garde-fou : markup identique (balises **et** attributs normalisés), termes protégés comptés **dans les deux sens** (sortant Ordinal, retour OrdinalIgnoreCase), proposition vide refusée, reformulation bornée.
+  - Erreurs : panne ou délai du fournisseur → `UnavailableException` (503), abandon → 499.
+  - Logs et audit : longueur, verdict et durée seulement.
+- **Fronts** :
+  - **Blazor** : barre d'outils Radzen, `mssSpelling` JS (capture bornée à l'éditeur, `htmlBefore` pour situer la signature, `singleBlock` lu dans le DOM, refus d'une sélection périmée), chemin HTTP « quiet » qui absorbe `JsonException`.
+  - **Mobile** : `selectionFragment` (`withinOwnText` par `comparePoint`, `singleBlock` par `blockOf`).
+  - **Angular** :
+    - nœud tiptap `mssRoleBlock` (`div[data-mss-role]`, contenu `block+`) : une signature inline garde son rôle ;
+    - espacement de signature hors du conteneur : le curseur d'un nouveau message n'entre pas dans la signature ;
+    - `$from.sameParent($to)` pour le refus multi-paragraphes.
+- **Revue** : trois passes. Neuf bloquants corrigés test rouge d'abord :
+  - B1 à B6 : garde-fou à sens unique, fuite de signature Angular, texte écrasé, sélection dans la signature, flag non fermé et multi-paragraphes sous Blazor ;
+  - N1 à N3 : régression du nouveau message signé, lignes « navigateur » sous Blazor, bandeau INS masqué en plein écran.
+- **Règle 1b** : 9 tests d'intégration de l'endpoint sur le pipeline réel. Les 4 ajoutés par la revue (posologie ajoutée, proposition vide, flag désactivé + texte vide, délai du fournisseur) sont **rouges sur `4b1e901e~1`**.
+- **E2E** : **E2E-COMPOSE-002** v1 (mobile et Angular requis), prouvé rouge par mutation, durci d'une précondition (`precondition-du-negatif`). Dernier rejeu : deux voies à 25/25, 0 flaky.
+  - Le premier essai rouge du jour venait d'un **bug du transfert**, préexistant : un clic avant le chargement du contenu part sans le message d'origine. Il est traité par **task-350**.
+- **Sonar** : Quality Gate OK, new coverage 97,6 %, 0 finding sur le new code, notes A/A/A.
+- **Leçons** :
+  - `conventions/angular.md` : `prettier-fichier-existant` (3 occurrences, lint ciblé obligatoire), `tiptap-conteneur-capte-le-curseur` ;
+  - `conventions/e2e.md` : `precondition-du-negatif`, et le trou du filet du transfert ;
+  - mémoire de session : `\b` devenu backspace dans un script Node.
+- **Suivis** :
+  - task-350 (transfert ou réponse avant chargement) ;
+  - Blazor : triple-clic refusé ;
+  - Angular : changer de signature après la première frappe ajoute une seconde signature (préexistant) ;
+  - qualification HDS du fournisseur avant toute activation en production (E017).
 
 ---
 
