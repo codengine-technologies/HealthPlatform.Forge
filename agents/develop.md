@@ -446,7 +446,15 @@ For each backend repo listed, in order :
    $M --kind test  -- {test-cmd}
    ```
    Le wrapper est transparent : même sortie, même code retour, donc la logique
-   RED/GREEN et les enchaînements `&&` sont inchangés. Les itérations
+   RED/GREEN et les enchaînements `&&` sont inchangés.
+
+   **Lire le verdict, pas la ligne verte.** Sur un crash du processus de test
+   (dépassement de pile, par exemple), xUnit v3 affiche quand même
+   `Passed! - Failed: 0` avec un **total tronqué**, suivi de `[FATAL ERROR]` et
+   `Test Run Failed.`. Filtrer aussi `FATAL|Test Run Failed|crashed`, et
+   comparer le total au dernier passage connu : une chute du nombre de tests est
+   un crash. Constaté sur task-349 : 1 462 « Passed » sur 3 311, provoqués par un
+   `Ct => Ct;` né d'un remplacement global. Les itérations
    intermédiaires se mesurent comme la passe finale — c'est précisément leur
    nombre qu'on cherche à connaître.
 
