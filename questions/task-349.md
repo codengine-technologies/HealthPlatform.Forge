@@ -123,3 +123,59 @@ multi-blocs.
   contenu) : c'est un bug du transfert, corrigé par **task-350**, pas par task-349.
 - Ordre recommandé : merger task-350 avant de rejouer `/e2e` sur task-349. Sinon, le premier passage
   à froid de COMPOSE-002 peut rester rouge, désormais sur la précondition.
+
+## Deuxième revue, 2026-10-01 — CHANGES REQUESTED (3 nouveaux bloquants)
+
+Validation verte :
+- api-mail : 3320 + intégration 678/678 ;
+- Blazor : 387 ;
+- mobile : 969 ;
+- Angular : 11 projets ;
+- dtos-mss : build vert ;
+- e2e : 2 voies à 25/25, 0 flaky ;
+- Sonar : QG OK.
+
+B1, B3, B4, B5 et B6 (mobile et Angular) sont vérifiés corrigés. B2 protège bien la signature, mais il a introduit N1.
+
+### N1 — Angular · le texte d'un NOUVEAU message tombe DANS la signature (régression de B2)
+- **Cause** : dans un nouveau message, le corps n'est que `signatureBlock(…)`. Le curseur initial
+  (`Selection.atStart`) se pose alors **dans** le nœud `mssRoleBlock`, et ce que tape le praticien
+  devient du contenu de la signature.
+- **Conséquence** : `splitOwnText` rend un texte vide (« Rien à corriger ») et `ownTextEnd` vaut 0
+  (toute sélection est refusée). La fonction ne marche plus sur **tout nouveau message avec
+  signature par défaut**. Il n'y a pas de fuite : l'échec est fermé.
+- **Correctif** : un paragraphe au praticien **avant** le conteneur de rôle (le `<br/>` d'espacement
+  sort du `div`, ou un `<p></p>` le précède).
+- **Test** : un nouveau message avec la signature seule ; taper au début ; le texte tapé est bien
+  celui qui part à la correction.
+
+### N2 — Blazor · une sélection sur deux lignes « navigateur » passe encore
+- **Cause** : Radzen ne fixe pas `defaultParagraphSeparator`, et Chrome écrit
+  `Bonjour,<div>Les résultat…</div>`. Une sélection « jour, … Les résultat » ne compte qu'**une**
+  balise de bloc : elle est acceptée, et l'application coupe la ligne en deux.
+- **Correctif** : comme sur mobile, comparer dans `captureSelection` le bloc englobant de
+  `startContainer` et de `endContainer`, et rendre `singleBlock` au C#.
+
+### N3 — Angular · le bandeau INS est masqué en plein écran
+- **Cause** : `.compose-blocked-banner` est un frère **après** `.compose-inline`
+  (`mail-compose.component.html` ~l. 519). En plein écran, la fenêtre (fixed, z-index 900, fond
+  opaque) le couvre.
+- **Conséquence** : un envoi refusé pour INS non qualifiée l'est **sans explication visible**, alors
+  que le message est réglementaire.
+- **Correctif** : placer le bandeau dans `.compose-inline`.
+
+### Suggestions à traiter dans la même reprise
+- **Échap** : il ferme un menu Modèle/Signature **et** quitte le plein écran du même coup, y compris
+  derrière une confirmation. L'ignorer si un menu ou une confirmation est ouvert.
+- **F7** : l'ignorer si une confirmation est ouverte.
+- **Blazor** : remettre `_spelling` à l'état initial si `captureSelection` lève autre chose qu'une
+  `JSException` (bouton figé sinon).
+- **Garde-fou** : documenter que « helene » → « Hélène » est refusé (échec sûr).
+- **Angular** : `aria-label` sur les boutons icônes plein écran et ✕.
+- **Rappel humain** : les deux `environment.ts` de travail pointent `mssApiUrl` sur
+  `https://localhost:7012`. Ne pas les commiter.
+
+### Reprise
+`/develop task-349` sur N1, N2 et N3 (test rouge d'abord pour chacun) et les suggestions, puis
+`/lint-angular` → `/e2e` (voie Angular) → `/review`. `/sonar` n'est pas à rejouer :
+api-mail est inchangé.

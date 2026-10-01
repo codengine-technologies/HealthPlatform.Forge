@@ -177,10 +177,23 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   par personne. Écrire ces lignes à la main au format Prettier du repo (100 colonnes, tab,
   sans point-virgule), puis lire la sortie du lint sur les fichiers touchés et corriger à la
   main **seulement** les erreurs situées dans les hunks de la task. Ne jamais lancer
-  `--fix` sur un fichier qui porte du WIP humain.
+  `--fix` sur un fichier qui porte du WIP humain. **Avant de déclarer un repo vert**, lancer
+  `npx eslint <fichiers touchés>` (e2e compris) : le vert de la suite ne dit rien du format.
 - **Origine** : task-349 (/develop, passe qualité ; puis /lint-angular : un `http.get<…>(\`${…}\`)`
-  ajouté à `mss-api.service.ts` dépassait la largeur)
-- **Occurrences** : 2
+  ajouté à `mss-api.service.ts` dépassait la largeur ; puis la reprise B1-B6 : `html-editor.component.ts` et `live-ai.e2e.ts`)
+- **Occurrences** : 3
+
+### tiptap-conteneur-capte-le-curseur — Un nœud conteneur en tête de document capte la frappe
+- **Règle** : comportement tiptap / ProseMirror (pas une règle lint)
+- **Repos** : client-angular
+- **Consigne** : un nœud conteneur (`content: 'block+'`) qui marque un contenu **qui n'est pas au
+  praticien** (signature, citation) ne doit jamais ouvrir le document. `Selection.atStart` y pose
+  le curseur, et ce que le praticien tape devient du contenu du conteneur. Toujours le faire
+  précéder d'un paragraphe au praticien. Tester **les deux** cas : texte + conteneur, et conteneur
+  seul (nouveau message avec signature par défaut).
+- **Origine** : task-349 (/review, 2^e^ passe : le correctif B2 a cassé la correction de tout
+  nouveau message signé)
+- **Occurrences** : 1
 
 ### tiptap-commentaires-perdus — Tiptap retire commentaires et `<div>` dès la première frappe
 - **Règle** : convention projet (défaut fonctionnel, invisible au lint)
