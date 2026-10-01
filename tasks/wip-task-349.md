@@ -282,7 +282,7 @@ design system « L'Éclat Médical »). Validé par l'humain, qui a demandé de 
     l'infobulle « Propose des corrections sans rien modifier tant que vous ne les avez pas
     acceptées (F7) ».
   - À droite : les interrupteurs **Accusé de lecture** et « Bloquer la réponse du patient »
-    (`ds-toggle`), puis la corbeille.
+    (`ds-toggle`).
 - **Raccourci F7** : il demande la correction quand l'action est disponible (`canCorrectSpelling`).
 - **Aperçu de la correction** : une carte avec le titre « Corrections proposées (N anomalies
   détectées) », compté par `countCorrections` qui compte chaque suite de mots modifiés une fois.
@@ -299,8 +299,81 @@ design system « L'Éclat Médical »). Validé par l'humain, qui a demandé de 
 - **E2E non rejoué** : l'AppHost et le `nx serve` de l'humain occupent les ports 5052 et 4200
   (sortie 2, outillage). Il faut rejouer `/e2e` avant la PR, de toute façon nécessaire après les
   correctifs B1 à B6.
-- **Signalé** : la croix et la corbeille déclenchent la même action (abandon confirmé), et la
-  maquette garde les deux. L'humain tranche.
+- **Corbeille retirée** (décision humaine, 2026-10-01) : la croix ✕ de la barre de titre devenait le
+  seul abandon du brouillon (confirmation inchangée). E2E-DRAFT-001 (`functional.e2e.ts`) clique
+  désormais `compose-close-button`. Test « pas de corbeille » rouge d'abord, puis : mss-lib
+  526/526, build `weda2` vert, lint 0 erreur, voie e2e Angular 25/25 sans flaky.
+
+### Reprise après `/review` (2026-10-01) — points bloquants B1 à B6
+
+Chaque point a d'abord eu un test rouge, puis le correctif.
+
+| # | Repo | Correctif | Preuve du rouge |
+|---|---|---|---|
+| B1 | api-mail | Les termes protégés sont contrôlés **dans les deux sens**. Au retour, la casse est ignorée : rendre sa majuscule à un nom propre reste une correction. Une proposition vidée de ses mots est refusée. | 5 cas rouges avant le correctif : posologie ajoutée, « J'ai corrigé 2 fautes », numéro ajouté, proposition vide ×2 |
+| — | api-mail | Le flag est vérifié **avant** la validation (404 plutôt que 400). Un délai dépassé chez le fournisseur donne 503 : seul l'abandon du praticien propage l'annulation. Le test d'abandon annule désormais vraiment son jeton. | 3 cas rouges |
+| B3 | Blazor | « Appliquer » refuse une proposition périmée (`SentOwn` comparé au texte courant). Une sélection qui a bougé n'est pas remplacée (JS : comparaison avec le HTML capturé). | 2 tests rouges (à la compilation) |
+| B4 | Blazor | Une sélection DANS la signature est repérée par ce qui la précède (`HtmlBefore`), puis refusée. | test rouge (à la compilation) |
+| B5 | Blazor | Le flag échoue fermé sur une réponse illisible. | 2 tests `AiServiceSpellingFlagTests` |
+| B6 | Blazor, mobile, Angular | Une sélection sur plusieurs paragraphes est refusée : « Sélectionnez un passage dans un seul paragraphe. » | rouge sur les 3 fronts. Mobile : mutation `Date.now() < 0` → 1 FAILED, restauré par `cp`. |
+| B2 | Angular | Le `<div data-mss-role>` devient un nœud tiptap `mssRoleBlock` (contenu `block+`). Une signature inline (créée sur mobile) garde son rôle après une frappe et ne part jamais. | 2 cas rouges sous tiptap réel : la signature était envoyée |
+| — | Blazor | Un double clic pendant la lecture de la sélection ne lance qu'une requête. Une proposition sans HTML est signalée indisponible. | test (proposition sans HTML) |
+| — | mobile + Angular e2e | Précondition dans E2E-COMPOSE-002 : la citation est dans l'éditeur avant la correction (`precondition-du-negatif`). | — (voir task-350 pour le bug de transfert) |
+
+**Passe qualité §Q** (4 relecteurs) :
+- **Appliqué :**
+  - Blazor : le chemin « quiet » de `HttpRequestService` absorbe une `JsonException` (`when (!notifyOnError)`), ce qui supprime les deux `catch` d'`AiService`. La sélection capturée JS devient un objet unique.
+  - Mobile : `blockOf` rejoint l'utilitaire.
+  - Angular : un `renderRole` partagé.
+- **Écarté**, car il change le comportement ou une infrastructure partagée :
+  - 499 contre 503 dans `GlobalExceptionHandler` pour toutes les routes ;
+  - seuils de `IsReformulation` ;
+  - déplacer en JS les contrôles Blazor (moins testable) ;
+  - ordre du test « proposition vide » (le verdict d'audit changerait) ;
+  - retrait du repli `closest()` de l'attribut global (défense en profondeur).
+
+**Validation** :
+
+| Repo | Résultat |
+|---|---|
+| api-mail | application 3320, intégration 678/678 (16 sautés), api 1151, infra 677, domaine 190 |
+| Blazor | 387 (2 sautés), 0 warning |
+| mobile | 969/969, lint propre |
+| Angular | mss-lib 529, build `weda2` vert, lint 0 erreur sur les fichiers touchés |
+
+**Commits poussés** :
+- api-mail `4b1e901e` ;
+- Blazor `ba35fb6` puis `582599d` (§Q) ;
+- mobile `5e380e0` puis `c0dbcbd` (§Q).
+
+Angular reste non commité (code-only).
+
+**Leçons** :
+- **Récidive** `prettier-fichier-existant` (3ᵉ occurrence) : deux lignes ajoutées à des fichiers existants n'étaient pas au format. Elles ont été trouvées par le lint ciblé sur les fichiers touchés, qui figure désormais dans la consigne.
+- **Piège d'outillage**, consigné dans la mémoire de session : un `\b` écrit par un script Node dans du C# est devenu un caractère backspace invisible, et `Read` ne l'affiche pas.
+
+### Reprise après la 2ᵉ revue (2026-10-01) — N1, N2, N3
+
+Chaque point a d'abord eu un test rouge, puis le correctif.
+
+| # | Repo | Correctif | Preuve du rouge |
+|---|---|---|---|
+| N1 | Angular | `signatureBlock` : l'espacement devient `<p><br/></p>` **hors** du conteneur de rôle. Dans un nouveau message, le curseur initial se pose dans ce paragraphe au praticien, plus dans la signature. | test tiptap réel « nouveau message + signature seule » : rouge (rien n'était envoyé) |
+| N2 | Blazor | Le test « un seul bloc » est lu dans le DOM (`singleBlock` : bornes de la plage dans le même bloc). `SpansSeveralBlocks` reste un filet. | test rouge (compilation) |
+| N3 | Angular | Le bandeau de refus INS est déplacé **dans** `.compose-inline` : il reste visible en plein écran. | test rouge |
+| — | Angular | Échap et F7 sont sans effet tant qu'un menu ou une confirmation est ouvert (`dialogOpen`). `aria-label` sur les boutons icônes plein écran et ✕. | 5 tests rouges |
+| — | Blazor | Une lecture de sélection interrompue remet l'action à l'état initial. | mutation `if (Environment.TickCount64 < 0)` : rouge, restaurée par `cp` + `touch` |
+
+**Validation** :
+- Angular : mss-lib 536/536, build `weda2` vert, lint 0 erreur sur les fichiers touchés.
+- Blazor : 389 (2 sautés), 0 warning.
+- api-mail et mobile : inchangés.
+
+**Passe qualité §Q** : le diff de ce tour (environ 60 lignes de source) a été relu, rien à simplifier.
+
+**Commits** : Blazor `4ec5a79`, poussé. Angular reste non commité (code-only).
+
+**Leçon** : nouvelle consigne `conventions/angular.md` › `tiptap-conteneur-capte-le-curseur` (tester le cas « conteneur seul »).
 
 ## Sonar log
 
@@ -330,6 +403,8 @@ Serveur SonarQube 9.9.8.100196 (`sonar.login`), new code sur 30 jours.
 
 **Conventions** : aucune règle corrigée à la main ce tour-ci. Les leçons du cycle sont consignées dans le Develop log.
 
+**Re-scan après la reprise B1–B6 (2026-10-01, après-midi)** : Quality Gate **OK**, `new_coverage` 97,6 %, **0 finding** sur le new code. Bugs, vulnérabilités et hotspots à 0, 8 code smells legacy, couverture projet 98,1 %, duplication 0,4 %, notes A/A/A. Les KPIs sont identiques au tableau ci-dessus : aucun correctif nécessaire. Couverture Release : 0 échec sur les 5 projets, intégration 678/678 (16 sautés), la passe étant hors de la fenêtre 22:00–24:00 UTC.
+
 ## Lint log
 
 `/lint-angular` — Mode A. Base `origin/next`, lint limité à `tag:scope:mss`, build et test sur tout le périmètre affecté. Code-only : aucune opération git hormis `git fetch origin next`.
@@ -347,18 +422,26 @@ Serveur SonarQube 9.9.8.100196 (`sonar.login`), new code sur 30 jours.
 - **Rouge préexistant sur la branche, hors task** : `mss:build:production` échoue, car le fileReplacement `apps/mss/src/environments/environment.prod.ts` n'existe pas. Le fichier n'est ni suivi, ni présent, ni ignoré depuis `7de0cee3`, donc la cible est rouge sur `feature/nova-rewriting-mss` quel que soit le code de la task.
 - **Convention** : `conventions/angular.md` › `prettier-fichier-existant` passe à 2 occurrences. J'y ajoute le revers : les lignes ajoutées à un fichier existant doivent être formatées à la main.
 
+- **Rejeu après la reprise B1–B6 (2026-10-01)** : 0 erreur, 88 warnings (inchangé), aucune itération nécessaire. Tests affectés verts. Build affecté : seul `mss:build:production` est rouge, le défaut préexistant connu (`environment.prod.ts` absent).
+
+- **Rejeu après la 2ᵉ revue (N1–N3)** : 0 erreur, 88 warnings (inchangé), tests affectés verts. Le build `weda2` est vert depuis `/develop`, et seul le rouge préexistant `mss:build:production` subsiste.
+
 ## Lint mobile log
 
 `/lint-mobile` — Mode A, branche `feat/task-349-correction-orthographe`. Baseline `npm run lint` : **All files pass linting** (0 erreur, 0 warning). Aucune itération nécessaire, aucun commit. Build et tests non rejoués : l'arbre n'a pas bougé depuis leur dernier vert (`/develop` §Q, 967/967).
 
+**Lint mobile — rejeu après la reprise B1–B6 (2026-10-01)** : « All files pass linting », aucun commit. Build et tests (969/969) sont verts depuis la passe qualité, et l'arbre n'a pas changé depuis.
+
 ## E2E log
+
+Rejeu du 2026-10-01 après la reprise B1–B6, sur les commits poussés. Pour Angular : l'arbre de travail courant, refonte de la barre comprise.
 
 | Voie | Déclencheur | Résultat | Tests | Durée |
 |---|---|---|---|---|
-| mobile | api-mail, client-mobile, dtos-mss touchés | ✅ verte | 25 verts, 0 flaky, 0 rouge, 0 quarantaine | 3 min 58 s |
-| angular | api-mail, client-angular, dtos-mss touchés | ✅ verte | 25 verts, 0 flaky, 0 rouge, 0 quarantaine | 3 min 18 s |
+| mobile | api-mail, client-mobile, dtos-mss touchés | ✅ verte | 25 verts, 0 flaky, 0 rouge, 0 quarantaine | 3 min 31 s |
+| angular | api-mail, client-angular, dtos-mss touchés | ✅ verte | 25 verts, 0 flaky, 0 rouge, 0 quarantaine | 3 min 11 s |
 
-Catalogue : celui de la branche de la task (`Api/Mail/e2e/scenarios.yml`, E2E-COMPOSE-002 v1 ajouté).
+Catalogue : celui de la branche de la task (`Api/Mail/e2e/scenarios.yml`, E2E-COMPOSE-002 v1).
 
 **E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
 
@@ -399,13 +482,17 @@ Catalogue : celui de la branche de la task (`Api/Mail/e2e/scenarios.yml`, E2E-CO
 
 **Flaky** : aucun. **Quarantaines** : aucune. **Divergences ouvertes** : aucune.
 
-**Preuve du rouge (E2E-COMPOSE-002)** : j'ai muté `applySpelling` en no-op (garde opaque `Date.now() > 0`) et rejoué la voie complète, sur chaque client. Les deux voies passent ROUGE, sur l'assertion « le texte est remplacé », au premier essai puis au retry. J'ai restauré par `cp` depuis une copie, contrôlée byte à byte, puis vérifié `git status` propre sur mobile. Le verdict vert ci-dessus a été rendu avant les mutations, sur un code identique.
+**E2E-COMPOSE-002** :
+- **Prouvé rouge par mutation** sur les deux clients (premier rejeu) : avec « Appliquer » neutralisé, il échoue sur l'assertion « le texte est remplacé ».
+- **Durci** d'une précondition (`precondition-du-negatif`) : la citation doit être dans l'éditeur avant la correction.
+- Le premier essai rouge vu plus tôt dans la journée venait d'un bug du transfert (clic avant le chargement du contenu), traité par **task-350**. Ce rejeu n'en a pas reproduit.
 
 **Démontage** : ports 5052/8100/4200/3993/3465/3143 libres, aucun conteneur `e2e-dovecot-*` ni `e2e-greenmail-*` résiduel.
 
-**Parcours touché sans spec modifié** : aucun avertissement. `mail-compose.component.html` est modifié sur les deux clients, et `live-ai` aussi.
-
+**Parcours touché sans spec modifié** : aucun avertissement. Les gabarits de rédaction et les specs `live-ai` bougent ensemble sur les deux clients, et `functional.e2e.ts` (E2E-DRAFT-001) suit le retrait de la corbeille.
 ## Review log
+
+**/review du 2026-10-01, 2^e^ passe : CHANGES REQUESTED.** Validation verte partout (5 repos, e2e, Sonar). B1 et B3 à B6 sont corrigés. 3 nouveaux bloquants (N1 régression Angular du correctif B2, N2 Blazor multi-lignes, N3 bandeau INS masqué en plein écran) sont détaillés dans questions/task-349.md. Aucune PR, chaîne arrêtée.
 
 **/review du 2026-10-01 : CHANGES REQUESTED.** Builds et tests verts sur les 5 repos, E2E vert. Six points bloquants détaillés dans `questions/task-349.md` (B1 garde à sens unique, B2 signature Angular, B3-B5 Blazor, B6 sélection multi-blocs). Aucun commit, aucune PR ; chaîne arrêtée.
 
@@ -416,15 +503,15 @@ Catalogue : celui de la branche de la task (`Api/Mail/e2e/scenarios.yml`, E2E-CO
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 29 s | — | — | — | — |
-| /develop | ok | 1 h 17 min | 12 (2 min 00 s) | 21 (10 min 22 s) | — | dtos-mss 1B/0T, api-mail 3B/9T, client-blazor 4B/7T, client-angular 2B/2T, client-mobile 2B/3T |
-| /sonar | ok | 9 min 15 s | 1 (17 s) | 5 (5 min 01 s) | 2 (38 s) | 1 itération(s), api-mail 1B/5T |
-| /lint-angular | ok | 5 min 34 s | 1 (21 s) | 1 (54 s) | — | 1 itération(s), client-angular 1B/1T |
-| /lint-mobile | ok | 22 s | — | — | — | baseline propre |
-| /e2e | ok | 6 h 48 min | — | — | — | e2e ×5 (14 min 18 s), 2 voies vertes 25/25, parité verte, mutation COMPOSE-002 rouge x2 |
-| /review | failed | 10 min 41 s | 5 (42 s) | 4 (3 min 41 s) | — | dtos-mss 1B/0T, api-mail 1B/1T, client-mobile 1B/1T, client-blazor 1B/1T, client-angular 1B/1T, code review CHANGES REQUESTED : 6 bloquants (garde 1 sens, signature Angular, Blazor x3, multi-blocs) |
-| **Total cycle** | | **8 h 32 min** | **19 (3 min 22 s)** | **31 (19 min 59 s)** | **2 (38 s)** | |
+| /develop | ok | 5 min 20 s | 19 (3 min 16 s) | 38 (15 min 18 s) | — | dtos-mss 1B/0T, api-mail 4B/14T, client-blazor 7B/17T, client-angular 3B/2T, client-mobile 4B/5T, e2e ×2 (3 min 39 s), reprise N1-N3 + suggestions |
+| /sonar | ok | 7 min 36 s | 2 (51 s) | 10 (10 min 23 s) | 4 (1 min 18 s) | 1 itération(s), api-mail 2B/10T, re-scan reprise : QG OK, 0 new issue |
+| /lint-angular | ok | 1 min 13 s | 2 (43 s) | 3 (2 min 43 s) | — | client-angular 2B/3T, rejeu N1-N3 : 0 erreur |
+| /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile inchangé depuis le dernier lint vert (c0dbcbd) |
+| /e2e | ok | 7 min 11 s | — | — | — | e2e ×11 (28 min 38 s), rejeu : 2 voies 25/25, 0 flaky, parité verte |
+| /review | failed | 7 min 54 s | 10 (1 min 05 s) | 8 (6 min 56 s) | — | dtos-mss 2B/0T, api-mail 2B/2T, client-mobile 2B/2T, client-blazor 2B/2T, client-angular 2B/2T, 2e passe : CHANGES REQUESTED, N1 N2 N3 |
+| **Total cycle** | | **29 min 46 s** | **33 (5 min 56 s)** | **59 (35 min 21 s)** | **4 (1 min 18 s)** | |
 
-Autres commandes mesurées : lint ×3 (48 s), nuget-wait ×1 (19 s), restore ×2 (26 s)
+Autres commandes mesurées : lint ×8 (1 min 35 s), nuget-wait ×1 (19 s), restore ×2 (26 s)
 
 ## Stitch design log
 
