@@ -103,6 +103,22 @@ inclut cette section. Items non applicables explicitement marqués
 - [ ] AIPD mise à jour (ou note RGPD si traitement nouveau)
 ```
 
+### Test d'intégration — un comportement exposé, un test de bout en bout (règle 1b, 2026-10-01)
+
+*Un développement n'est valide que prouvé par un test d'intégration.* Toute US qui ajoute ou
+modifie un comportement **atteignable par un endpoint** — y compris une US « backend-only » ou un
+correctif de requête — porte, **sans exception**, une ligne de DOD par comportement :
+
+```
+- [ ] Test d'intégration de bout en bout pour {VERBE /route} : {comportement attendu} lu dans la réponse réelle (cas nominal + 1 cas d'échec), vu rouge (règle 1b)
+```
+
+- Nomme le **comportement**, pas seulement la route : « deux mails de dossiers différents de même
+  UID sont tous deux dans `Hits` », pas « la route répond 200 ».
+- Si l'US change un **champ du contrat** (requête ou réponse), la ligne dit quel champ est lu et
+  avec quelle valeur attendue.
+- Les tests unitaires restent dans la DOD, en plus — jamais à la place.
+
 ### Parcours e2e — un parcours touché, un scénario catalogué (task-347)
 
 Toute US qui **crée ou modifie un parcours médecin** sur `client-mobile` ou `client-angular`
@@ -373,7 +389,7 @@ See tests/Features/Auth/Authentication.feature
 - [ ] Build passes on every listed repo (0 errors)
 - [ ] All Gherkin scenarios GREEN on the backend
 - [ ] >=1 unit test per new backend handler
-- [ ] Endpoints have at least 1 integration test (rule 1b)
+- [ ] Test d'intégration de bout en bout par comportement exposé (règle 1b) : `POST /auth/signup` et `POST /auth/login` lus dans la réponse réelle (succès + 1 échec), vus rouges
 - [ ] Blazor : signup + login screens implemented, no hardcoded strings
 - [ ] Angular : signup + login screens implemented, no hardcoded strings
 - [ ] data-testid on every interactive element (both frontends)

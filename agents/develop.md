@@ -426,7 +426,24 @@ For each backend repo listed, in order :
    - Implement the production code
    - Run it → expect GREEN
 
-   For each endpoint, write at least 1 integration test (rule 1b).
+   **Integration test first, for every behaviour reachable by an endpoint
+   (CLAUDE.md rule 1b — non-negotiable since 2026-10-01).** Before the code is
+   considered done, write an endpoint integration test that :
+   - starts the real HTTP pipeline (TestServer + routing + DI + RFC 7807) with
+     the real application and infrastructure layers on the PostgreSQL fixture
+     (template : `tests/mss.mail.integration.tests/Api/SearchEndpointIntegrationTests.cs`,
+     dedicated database per test) ; substitute only **external** providers
+     (AI, directory, Redis when it does not carry the behaviour), **never**
+     the layer the task changes ;
+   - asserts the changed behaviour **in the real response** (JSON fields of the
+     contract, status code, database effect) ;
+   - has been **seen RED** : on the pre-fix code, or by **mutation proof**
+     (re-inject the defect, run, see the intended assertion fail, restore).
+     Log each mutation and its red test in the `## Develop log`.
+
+   An integration test that already exists on the route does **not** count
+   unless it asserts the new behaviour. Unit tests with mocks remain required
+   per branch, but never prove the behaviour on their own.
 
    For each handler / public method, write at least 1 unit test per branch
    the DOD references.
@@ -754,8 +771,12 @@ before it reaches the PR.
   nothing, and skip Step 6's re-build when nothing changed since the last
   green run. Redundant builds are the reason `/forge-simplify` was merged
   into `/develop`.
-- **Endpoint coverage** : every new endpoint has at least 1 integration test
-  (CLAUDE.md rule 1b).
+- **A development is valid only when proven by an integration test**
+  (CLAUDE.md rule 1b) : every behaviour reachable by an endpoint, new or
+  changed, has an endpoint integration test on the real stack that reads it
+  in the real response and was seen red. "1 test per endpoint" is a floor, not
+  the criterion. Step 6's DOD self-check lists each such test by name with its
+  red proof — a missing one is a blocker, not a deferral.
 - **Build + tests must pass before each commit**. No commit on RED.
 - **5 iterations cap** on the same blocker (RED test, broken build) →
   fail-fast (rule 7) into `questions/{task-id}.md`.

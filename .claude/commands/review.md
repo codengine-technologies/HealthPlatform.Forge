@@ -67,6 +67,22 @@ In autonomous mode (`/develop` upstream) this halts the chain ; in
    run ; observational items are deferred to the Manual Test Plan in the PR
    body. Any DOD item that fails → validation FAILS with the reason.
 
+4a. **Integration-test lock (CLAUDE.md rule 1b, since 2026-10-01)** — *a development is valid
+    only when proven by an integration test.* For every pushable backend repo :
+    1. From `git diff origin/develop...HEAD`, list every **behaviour reachable by an endpoint**
+       that the task adds or changes : controller action, service or repository method it calls,
+       SQL, response/request contract field (a `dtos-mss` field the backend fills counts).
+    2. For each, find the **endpoint integration test** that proves it : it goes through the HTTP
+       pipeline (TestServer / WebApplicationFactory), uses the real layer the task changed (no
+       substitute for it), and asserts the behaviour **in the real response**. A controller test
+       on a mocked service, a service test on a mocked repository, or a pre-existing route test
+       that does not assert the new behaviour **do not count**.
+    3. Check the `## Develop log` carries its **red proof** (red on the pre-fix code, or mutation
+       proof naming the mutation and the test that failed).
+    4. Any behaviour without such a test, or without red proof → **CHANGES REQUESTED**
+       (blocking) : write `questions/{task-id}.md` listing the unproven behaviours, open no PR.
+       Record the mapping *behaviour → test → red proof* in the `## Code Review Summary`.
+
 4b. **E2E double lock (task-347)**. The task **touches a voie** when it touched `api-mail`,
     `client-mobile`, `client-angular` or `dtos-mss` — the rule of `agents/e2e.md` step 0.
     In that case the task file MUST carry a `## E2E log` whose verdict line is green
@@ -118,7 +134,10 @@ In autonomous mode (`/develop` upstream) this halts the chain ; in
    - No unbounded collections or missing pagination
 
    ### 5.6 Test Coverage
-   - New code has tests (unit and/or integration)
+   - **Every behaviour reachable by an endpoint is proven by an endpoint integration test**
+     on the real stack, reading it in the real response, seen red (step 4a, rule 1b).
+     Unit tests alone are never sufficient : flag it ❌ Request changes.
+   - New code also has unit tests per branch
    - Tests are meaningful (not just asserting true)
    - Step definitions match the Gherkin scenarios
 

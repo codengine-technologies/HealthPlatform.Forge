@@ -547,16 +547,51 @@ Step 3: Human runs /review → forge validates (build + tests + DOD) and opens t
 Future tasks MUST cover behavior via unit + integration tests. Do not
 resurrect `.feature` files.
 
-### 1b. Endpoint coverage mandatory
+### 1b. Un développement n'est valide que prouvé par un test d'intégration — non-négociable
 
-Each endpoint MUST have at least 1 integration test. Empty scaffolds (endpoints that compile but return nothing meaningful) are bugs. If an endpoint exists, a test proves it works end-to-end through the DI pipeline. `/review` checks this as part of the DOD.
+> Posée par l'humain le 2026-10-01, sur constat de task-192 : « Un développement
+> est valide uniquement sur test d'intégration. »
+
+**Tout comportement ajouté ou modifié qui est atteignable par un endpoint** — que le
+changement soit dans le contrôleur, le service, le repository, le SQL ou un champ du
+contrat — **DOIT être prouvé par au moins un test d'intégration** qui :
+
+1. **traverse la vraie pile** : routage HTTP, DI, gestion d'erreurs RFC 7807, vraies couches
+   applicatives, jusqu'au **vrai stockage** (PostgreSQL du fixture). Seuls les fournisseurs
+   **externes** peuvent être simulés : IA, annuaire, et Redis lorsqu'il ne porte pas le
+   comportement testé. **Jamais** la couche que la task a modifiée ;
+2. **lit le comportement modifié dans la réponse réelle** : champs du JSON, code de statut,
+   effet en base. Un « 200 » seul ne prouve rien ;
+3. **a été vu rouge** : sur le code d'avant le correctif, ou par **preuve par mutation**
+   (réinjecter le défaut, voir l'assertion attendue échouer, restaurer). La preuve est
+   consignée dans le `## Develop log`.
+
+- Les tests unitaires restent requis pour les branches, mais **ne suffisent jamais seuls**. Un
+  test de contrôleur sur un service simulé, ou de service sur un repository simulé, ne prouve
+  rien sur le comportement assemblé.
+- « Au moins un test d'intégration par endpoint » est un **plancher, pas le critère**. Un test
+  d'intégration existant sur la route ne couvre pas un comportement qu'il n'affirme pas.
+- **Côté frontend**, le test d'intégration d'un parcours médecin est son **scénario e2e**
+  (règle 1c, `/e2e`).
+- Les endpoints vides (qui compilent sans rien rendre d'utile) restent des bugs.
+- **`/review` refuse la PR** (CHANGES REQUESTED, bloquant) si un comportement atteignable par
+  un endpoint n'a pas son test d'intégration ainsi prouvé.
+
+**Pourquoi** : task-192 a changé la recherche (dédoublonnage, casse, jokers, troncature) et
+ajouté deux champs au contrat de `POST /search/semantic`. Les seuls tests d'intégration
+portaient sur le repository, et la route n'avait qu'un test d'erreur 400 sur un service
+simulé. La règle « un test d'intégration par endpoint » était donc satisfaite sur le papier,
+alors qu'aucun test ne lisait `Hits` ni `IsTruncated` dans une vraie réponse. Ni `/develop`
+ni `/review` ne l'ont vu, parce que la règle comptait des tests par endpoint, pas des
+comportements prouvés.
 
 ### 1c. Test coverage expectation per task
 
 Every `todo-*.md` MUST list in its DOD the concrete test artifacts the task
 will produce. Examples:
 - `[ ] Unit tests for {ServiceName} (>= 1 test per public method / branch)`
-- `[ ] Integration test for {Endpoint} (happy path + 1 failure mode)`
+- `[ ] Test d'intégration de bout en bout pour {Endpoint} : {comportement} lu dans la réponse réelle (happy path + 1 cas d'échec), vu rouge (règle 1b)`
+  — **obligatoire** dès qu'un comportement atteignable par un endpoint change.
 - `[ ] UI component test for {Component} (render + primary interaction)`
 - `[ ] Scénario E2E-{DOMAINE}-{NNN} ajouté / versionné dans Api/Mail/e2e/scenarios.yml, et implémenté dans chaque client où il est requis`
   — **obligatoire** pour toute US qui crée ou modifie un parcours médecin sur `client-mobile`
