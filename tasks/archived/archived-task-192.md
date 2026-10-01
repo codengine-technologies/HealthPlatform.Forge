@@ -329,3 +329,12 @@ Chaque mutation a été appliquée seule puis annulée (`git checkout`), arbre s
 | **Total cycle** | | **1 h 01 min** | **10 (2 min 01 s)** | **20 (21 min 55 s)** | **4 (5 min 00 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (12 s), restore ×1 (8.4 s)
+
+## Merged
+
+- **Date** : 2026-10-01 — merge déclenché par l'humain (`/merge task-192 --i-tested`, HAG règle 10)
+- `dtos-mss` : PR #35 squash-mergée → `a4369e76d0` sur `develop` ; CI `develop` verte (run #495 — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/actions/runs/36926056936)
+- `api-mail` : PR #266 squash-mergée → `856a70893f` sur `develop` ; CI `develop` verte (run #708 — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/36926079613)
+- Branches `fix/task-192-search-exhaustive-dedup-case` supprimées (distantes et locales) sur les deux repos ; label `awaiting-human-merge` retiré des deux PRs
+- Aucune branche staging `/forge` concernée (task lancée hors `/forge`)
+- Note : `api-mail` référence `HealthPlatform.Dtos.Mss` **492.0.0** (publié depuis la branche, contenu identique au squash) ; le run `develop` #495 a republié le même contrat en 495.0.0, à adopter au prochain bump
