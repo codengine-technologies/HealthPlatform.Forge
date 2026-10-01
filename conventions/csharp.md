@@ -877,3 +877,22 @@ d'Ollama : le démarrage aurait réussi, puis l'étiquetage, le résumé et l'as
 
 **Preuve** : `EmbeddingOptionsConsistencyTests.AppSettings_ShipsAllOpenAi_BecauseDeploymentsHaveNoOllama`,
 rouge sur le défaut hybride.
+
+---
+
+## sortie-de-modele-non-fiable — Une réponse de LLM appliquée au texte se contrôle en entier
+
+**Occurrences : 1** (task-349, revue)
+
+Le garde de la correction orthographique (`SpellingCorrectionGuard`) comparait les noms de
+balises et les `href`, pas les autres attributs. Une réponse du modèle qui ajoutait `onclick`,
+`style` ou `class` à une balise était donc acceptée et appliquée au message. Or le texte envoyé
+peut venir d'un tiers (une sélection dans un message reçu), et donc porter une injection de prompt.
+
+**Consigne** : tout HTML rendu par un modèle et destiné à remplacer le texte du praticien est
+comparé à l'original sur **tout** ce qui n'a pas le droit de changer : balises, **tous** les
+attributs normalisés (nom en minuscules, valeur décodée, ordre alphabétique), termes protégés. Le
+test rouge d'abord pose l'attribut qu'un attaquant ajouterait (`onclick`).
+
+**Preuve** : `SpellingCorrectionGuardTests.Check_AnAddedOrAlteredAttribute_IsRefused`, rouge sur
+les trois cas avant le correctif.

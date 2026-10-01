@@ -377,3 +377,8 @@ Serveur SonarQube 9.9.8.100196 (`sonar.login`). Le new code couvre 30 jours : il
   - doc et `loadtest-skill` à jour ;
   - chiffres Prometheus dans la PR.
 - **DOD, points observationnels renvoyés à la HAG** : démarrage GPU et `ollama list` ; parcours bout en bout avec identifiants Seq ; recherche identique ; assistant et aide à la rédaction ; Grafana.
+
+## Merged
+- `api-mail` : PR #265 squash-mergée sur `develop` le 2026-09-30 — `2c1e227d`. Branche `feat/task-325-ia-locale-ollama` supprimée (distante et locale).
+- Test humain de bout en bout attesté (`/merge task-325 --i-tested`).
+- Aucun repo code-only ni exclu concerné.

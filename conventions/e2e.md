@@ -172,8 +172,13 @@
   mutation pour qu'elle compile : `if (Date.now() > 0) { return }`, `void uid; void tags`.
 - **Preuve** : M1/MA2 invalides lors des premiers essais (TS2339, TS6133), puis rouges sur
   l'assertion visée une fois servies.
-- **Origine** : task-343
-- **Occurrences** : 1
+- **Variante .NET (task-349)** : les analyseurs Sonar du build `client-blazor` refusent une
+  mutation triviale (`if (false)` → S4487 champ jamais lu, `x.Length < 0` → S3981). Le build
+  échoue, aucun test ne tourne, et un filtre sur « Passed!/Failed! » n'affiche **rien** : la
+  mutation a l'air sans effet. Prédicat opaque aux analyseurs : `Environment.TickCount64 < 0`
+  (C#), `Date.now() < 0` (TS).
+- **Origine** : task-343, task-349
+- **Occurrences** : 2
 
 ### predicat-de-reponse — Un prédicat de `waitForResponse` se lit comme du code, pas comme un texte
 - **Piège** : une expression régulière littérale réécrite en ligne de commande est devenue
@@ -205,6 +210,21 @@
 
 ---
 
+### precondition-du-negatif — Une assertion d'absence ne prouve rien sans la présence d'avant
+- **Piège** : « la citation n'est pas envoyée » est restée verte alors que la citation n'avait
+  jamais été dans le message. Le transfert, cliqué 80 ms après l'ouverture du mail, était parti
+  sans contenu. Une absence se vérifie aussi quand la chose n'existe pas : le test ne voyait ni le
+  bug du transfert, ni ce qu'il croyait protéger.
+- **Consigne** : toute assertion d'absence (« X n'est pas envoyé », « X n'est pas modifié ») est
+  précédée de l'assertion de sa **présence** dans l'état de départ. Exemple : la citation est dans
+  l'éditeur avant de demander la correction.
+- **Preuve** : à faire avec le correctif du transfert. Retirer la citation du préremplissage doit
+  faire tomber le test sur la précondition, pas plus loin.
+- **Origine** : task-349 (/e2e, 2026-10-01)
+- **Occurrences** : 1
+
+---
+
 ## Registre des flaky
 
 *(tenu par `/e2e` : une ligne par test vert au second essai ; troisième occurrence du même test →
@@ -215,6 +235,8 @@ task de stabilisation proposée)*
 | dossiers — naviguer vers Archive et Corbeille (E2E-FOLDER-001) | angular | 1 | task-347 | à établir — 1er essai : « le dossier INBOX est ouvert » (titre de liste absent au retour vers INBOX) |
 | inbox — filtres Non lus / Lus / Tous et recherche (E2E-INBOX-001) | angular | 1 | task-343 | à établir — vert au 2e essai |
 | détail — bascule texte brut / HTML (E2E-DETAIL-002) | mobile | 1 | task-192 | à établir — 1er essai : « mail sans corps affichable » (`mail-body-empty` reste affiché, le corps seedé n'apparaît pas dans les 15 s). Sur task-192 : rouge aux 2 essais d'un premier run, flaky au run suivant (3 échecs sur 4 essais) ; vert au 1er essai sur `develop` (1 run). Piste : course entre l'état « Aucun contenu » affiché pendant le chargement et le corps enrichi |
+
+| rédaction — corriger l'orthographe, appliquer, envoyer (E2E-COMPOSE-002) | angular | 1 | task-349 | **établie, ce n'est pas un flaky** : « Transférer » cliqué avant le chargement du contenu → transfert sans le message d'origine (`initializeFromPrefill` ne cite que `if (prefill.content)`). Reproduit 1/5 au premier passage à froid. Bug produit, voir Trous du filet |
 
 ## Quarantaines
 
@@ -231,4 +253,4 @@ scénario qui l'aurait attrapé, prouvé rouge sur le bug)*
 
 | Bug | Trouvé par | Scénario ajouté / durci | Task |
 |---|---|---|---|
-| *(aucun à ce jour)* | | | |
+| Transférer (et Répondre, même chemin) cliqué avant le chargement du contenu du mail : le message part **sans le message d'origine**, sans erreur visible | /e2e task-349 (E2E-COMPOSE-002, 1er passage à froid) | E2E-DETAIL-001 à durcir : le transfert relu côté serveur porte la citation ; précondition ajoutée à E2E-COMPOSE-002 (dans task-349) | task-350 |

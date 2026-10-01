@@ -163,3 +163,33 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   **Même motif encore présent sur `client-mobile`** :
   `mail-compose.component.ts:314` (`req.content?.bodyHtml || req.content?.body`).
 - **Occurrences** : 1
+
+### prettier-fichier-existant — Ne jamais reformater tout un fichier existant
+- **Règle** : `prettier/prettier` (client-angular)
+- **Repos** : client-angular (code-only : l'humain relit le diff avant TFS)
+- **Consigne** : `prettier --write` seulement sur les fichiers **créés** par la task. Sur un
+  fichier existant, vérifier d'abord `git diff --stat` après coup : un template ou un SCSS
+  qui n'était pas propre en HEAD est reformaté **en entier**. Sur task-349, un template de
+  419 lignes est passé à 932 lignes de diff, pour 78 lignes réellement ajoutées. Le diff noie
+  le changement pour la relecture humaine. Remède : restaurer depuis HEAD
+  (`git show HEAD:…`, lecture seule) et réappliquer les seuls ajouts.
+  **Revers** : sans `--write`, les lignes **ajoutées** à un fichier existant ne sont formatées
+  par personne. Écrire ces lignes à la main au format Prettier du repo (100 colonnes, tab,
+  sans point-virgule), puis lire la sortie du lint sur les fichiers touchés et corriger à la
+  main **seulement** les erreurs situées dans les hunks de la task. Ne jamais lancer
+  `--fix` sur un fichier qui porte du WIP humain.
+- **Origine** : task-349 (/develop, passe qualité ; puis /lint-angular : un `http.get<…>(\`${…}\`)`
+  ajouté à `mss-api.service.ts` dépassait la largeur)
+- **Occurrences** : 2
+
+### tiptap-commentaires-perdus — Tiptap retire commentaires et `<div>` dès la première frappe
+- **Règle** : convention projet (défaut fonctionnel, invisible au lint)
+- **Repos** : client-angular (`mss-html-editor`, Tiptap) ; client-mobile n'est pas concerné
+  (son `contenteditable` garde les commentaires)
+- **Consigne** : ne jamais repérer un bloc du corps (signature, citation) par un commentaire HTML
+  (`<!-- signature -->`, `QUOTE_MARKER`) une fois l'éditeur monté : ils disparaissent au
+  premier `onUpdate`. Poser un attribut `data-mss-role` (conservé par l'extension
+  `MssRole`), ou repérer la structure (en-tête de citation généré). Et lire un texte de bloc
+  **décodé** : une adresse `Dr A <a@…>` y figure en clair, sans `&lt;`.
+- **Origine** : task-349 (revue : un en-tête avec adresse n'était pas reconnu)
+- **Occurrences** : 1
