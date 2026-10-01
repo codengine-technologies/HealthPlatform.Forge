@@ -1,4 +1,4 @@
-# done-task-349.md — Corriger l'orthographe d'un message avant de l'envoyer, sur les trois fronts : aperçu des corrections, validation par le praticien, jamais de reformulation
+# archived-task-349.md — Corriger l'orthographe d'un message avant de l'envoyer, sur les trois fronts : aperçu des corrections, validation par le praticien, jamais de reformulation
 
 **Repos**: api-mail, client-angular, client-mobile, client-blazor
 **Dependencies**: — (aucune ; task-325 fera passer la correction sur le modèle local sans changement de cette US)
@@ -581,6 +581,24 @@ Catalogue : celui de la branche de la task (`Api/Mail/e2e/scenarios.yml`, E2E-CO
 **Suggestions non bloquantes** :
 - Blazor : triple-clic sur une ligne refusé.
 - Angular : changement de signature après la première frappe (préexistant) ; Ctrl+Entrée pendant la confirmation d'abandon (préexistant).
+
+## Merged
+
+Mergé le 2026-10-01 par `/merge 349 --i-tested`, sur demande explicite de l'humain. Squash-merge dans l'ordre topologique ; CI `develop` verte sur les 4 repos ; branches distantes et locales supprimées.
+
+| Repo | PR | Squash commit |
+|---|---|---|
+| dtos-mss | #36 | `23c1874b` |
+| api-mail | #267 | `d3892216` |
+| client-blazor | #86 | `63941654` |
+| client-mobile | #83 | `c6dadb49` |
+
+- **client-angular** (code-only, TFS) : l'humain livre lui-même.
+  - La refonte de la barre est commitée en `6321706c`.
+  - Les correctifs de revue restent non commités (liste dans `## PRs`).
+  - Le clone reste sur `feature/nova-rewriting-mss` : la forge ne change pas la branche de l'humain.
+- **Production** : le flag `ai_text_correction` reste **désactivé**, en attente de la qualification HDS du fournisseur (E017).
+- Pas de branche staging : pas de run `/forge`.
 
 ## Timings
 
