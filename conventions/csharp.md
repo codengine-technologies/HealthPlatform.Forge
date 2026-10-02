@@ -1007,3 +1007,52 @@ await db.Entry(action).ReloadAsync();
 `AReplayAbandonedMidway_…` sont rouges sans `ReloadAsync`, et
 `ADeliveryUncertainConfirmation_…` est rouge (404 au lieu de 409) sans `AsNoTracking`.
 Preuve par mutation.
+
+---
+
+## index-de-cle-etrangere-absent-en-base — une colonne de filtre sans index, que la fixture fait croire indexée
+
+**Occurrences : 2**
+- task-322 : les index `MailId` de `MailAttachments` et `MailMedicalDocuments` n'existaient pas en base.
+- task-331 : `MailMedicalDocuments.PatientId` est devenu le filtre du dossier patient, sans index en base.
+
+PostgreSQL ne crée **aucun** index pour une clé étrangère, et FluentMigrator, qui construit les
+bases praticien, non plus. La base de la fixture `PostgreSql`, elle, est construite par
+`EnsureCreated`, et EF y crée un index par clé étrangère **par convention**. Un test lu sur la
+fixture (`pg_indexes`, un plan d'exécution, un temps de réponse) est donc vert sans la migration.
+En production, chaque page parcourt la table.
+
+**Consigne** :
+- Toute requête qui filtre, groupe ou joint sur une colonne que la task met au premier plan
+  (clé étrangère comprise) : vérifier dans `SetupMigration` **et** les migrations suivantes qu'un
+  index la mène. S'il manque, une migration FluentMigrator le crée, et `MailDataContext` le déclare
+  sous le même nom.
+- La preuve rejoue **le coureur de production** sur une base neuve, sur le modèle de
+  `MailIdIndexesMigrationTests` et `PatientFolderIndexMigrationTests`, jamais `pg_indexes` sur la
+  fixture.
+
+---
+
+## projection-dto-dupliquee — une projection entité → DTO s'écrit une fois
+
+**Occurrences : 2**
+- task-184 : `PatientRepository.ToDto` ne portait pas `Id`.
+- task-331 : les deux copies inline de la même projection, dans la recherche et dans « patients
+  du jour », ne le portaient toujours pas. Le dossier ouvert depuis ces listes répondait 404.
+
+Trois copies à la main de la même projection `new MailPatientDto { … }` : une correction en atteint
+une, les autres divergent en silence. Chaque champ ajouté au DTO doit être reporté en N endroits.
+
+```csharp
+// ❌ une copie par requête
+.Select(p => new MailPatientDto { FirstName = p.FirstName ?? string.Empty, /* … */ })
+
+// ✅ une seule expression : traduite en SQL par les listes, compilée pour une entité chargée
+private static readonly Expression<Func<MailPatient, MailPatientDto>> DtoProjection = p => new MailPatientDto { Id = p.Id, /* … */ };
+private static readonly Func<MailPatient, MailPatientDto> ToDtoCompiled = DtoProjection.Compile();
+.Select(DtoProjection)
+```
+
+**Consigne** : avant d'écrire un `Select(x => new XxxDto { … })`, chercher une projection ou un
+mapper existant du même DTO dans le dépôt. S'il en existe un, le réutiliser. S'il en faut une
+version SQL, en faire une `Expression` partagée, jamais une copie.

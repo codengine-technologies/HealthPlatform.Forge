@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-10-02 (v1.83)
+> **Dernière mise à jour** : 2026-10-02 (v1.84)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -761,6 +761,40 @@
   - remonter `originalMarkedCancelled` et `warning` par `drafts/{id}/send` ;
   - bail renouvelable pour le verrou.
 
+### v1.84 — Le dossier d'un patient est celui de sa fiche : un document rattaché à la main y apparaît, et deux identités d'un même matricule ne se mélangent plus — task-331
+
+- **Origine** : audit de bugs du 2026-09-27, **AUD-05** (contre-vérifié) et **AUD-34**.
+  - Le rattachement manuel (task-176) ne posait que `PatientId`, et le dossier filtrait sur l'INS du document. Un CDA sans INS sortait de la file « à intégrer » sans entrer dans aucun dossier.
+  - Deux fiches d'un même matricule (NIR et NIA, task-183) partageaient leur dossier, leur biologie et leur opposition. La garde d'envoi lisait une fiche arbitraire.
+- **PR** (`awaiting-human-merge`, branche `fix/task-331-dossier-patient-par-fiche`) : `api-mail` #271. Aucun contrat ne change, donc aucun bump DTO et aucun client modifié.
+- **Dossier, biologie, opposition** : ils se lisent et s'écrivent par **identifiant de fiche** (`PatientId`). La file « à intégrer » et le dossier comptent la même relation : un document est dans l'une ou dans l'autre.
+  - Une poignée inconnue reste un 404. Une fiche sans INS est servie par son identifiant.
+- **Garde d'envoi** : l'adresse Mon Espace Santé ne porte que le matricule. L'opposition de **n'importe quelle** fiche du matricule exige donc l'acquittement (`IsMssPatientOpposedAsync`). Ce choix conservateur est à confirmer par l'humain.
+- **`POST patients/resolve`** est déterministe, avec la règle de l'ingestion pour un document sans domaine : la fiche de domaine inconnu d'abord, la plus ancienne ensuite.
+- **Messages patient** : l'arbitrage par domaine était déjà livré par task-191, et il est constaté.
+- **Trouvé en route** :
+  - la recherche et « patients du jour » rendaient `Id = Guid.Empty`, et le dossier ouvert depuis ces listes répondait 404 ;
+  - `PatientId` n'avait aucun index en base. La migration `20261002120000` crée `(PatientId, MailId, Date)`, et `MailDataContext` le déclare ;
+  - la biologie projette le titre et la date du document au lieu d'un `Include` du document entier.
+- **Pas de reprise de données.** Le document rattaché à la main est visible par la clé elle-même. Une INS sans fiche ne peut pas exister : l'ingestion résout toujours la fiche, et `SetupMigration` refuse les bases antérieures au 2026-09-30.
+- **Règle 1b / verrou 4a** :
+  - `PatientFolderEndToEndTests` (nouvelle classe) et un test de `SendPathsEndToEndTests` passent par HTTP sur la vraie pile.
+  - 7 tests de comportement étaient rouges sur l'ancien code.
+  - La revue a ajouté 3 tests (`resolve` ×2, fiche sans INS), prouvés par mutation.
+  - L'index est prouvé par le coureur de production sur une base neuve (mutation).
+  - Le harnais HTTP est extrait dans `UseCaseHttpHost`.
+- **Tests** : 6 143 verts, 0 échec (domain 190, infrastructure 681, application 3 373, api 1 159, integration 740, plus 16 ignorés préexistants). Les 3 tests de la revue ont été joués ensuite. 26 fichiers de tests sont adaptés à la nouvelle clé.
+- **Sonar** : Quality Gate OK, new coverage 97,5 %, A/A/A. Aucun constat sur le code de la task.
+- **E2E** : deux voies à 26/26, 0 flaky, parité verte.
+- **Leçons** :
+  - `conventions/csharp.md` › `index-de-cle-etrangere-absent-en-base` (2ᵉ occurrence après task-322 : la fixture `EnsureCreated` porte l'index que la production n'a pas) ;
+  - `conventions/csharp.md` › `projection-dto-dupliquee` (2ᵉ occurrence après task-184) ;
+  - mémoire : `sed -i` en Git Bash convertit les CRLF.
+- **Suivis** :
+  - la détection des doublons et des versions à l'ingestion compare encore par `Ins` (résidu d'AUD-34) ;
+  - index sur `MailMedicalDocumentBiology.MedicalDocumentId` ;
+  - signaler à l'écran l'opposition portée par l'autre fiche d'un même matricule.
+
 ---
 
 ## Sécurité applicative — Détails techniques
@@ -922,6 +956,7 @@ Audit grep complémentaires pour les couches 2 / 2bis / 3 (tasks 021 / 022 / 023
 | task-192 | **Recherche exhaustive.** Déduplication full-text sur `MailId` au lieu de l'UID, fusion et intersection du service sur `(dossier, UID)` ; fenêtre de candidats ordonnée par date du message ; `ILike` sur sujet, expéditeur, destinataire et noms de patient ; échappement de `%`, `_` et de l'antislash ; troncature signalée (`SemanticSearchResultSet.IsTruncated`, `SearchResponseDto.Hits` / `IsTruncated`, Dtos.Mss 492.0.0). 12/13 tests d'intégration rouges sur le code d'origine. PR #266 (api-mail), #35 (dtos-mss). | — (exactitude et complétude de l'accès aux documents reçus, art. 5.1.d RGPD ; aucune RG déclarée) |
 | task-330 | **Le travail fait hors ligne n'est plus perdu au premier échec.** Gestes rejoués jusqu'au succès, gardés `Failed` et comptés après 10 tentatives (`FailedActionsCount`) ; annulation sans tentative comptée ; réclamations orphelines reprises (`ClaimedAt`) ; **remise incertaine** d'un envoi confirmé peut-être parti (503 + avertissement, `deliveryUncertain`, 409, retirable — arbitrage du 2026-10-02) ; stade SMTP typé (400 / 503 / 499) ; mise en file hors ligne soumise aux règles d'envoi. Dtos.Mss 501.0.0. PR #269 (api-mail), #38 (dtos-mss). | — (continuité de service hors ligne, AUD-08 / AUD-23 ; aucune RG déclarée) |
 | task-329 | **Un seul chemin d'envoi.** `OutgoingMailService` pour `sendmail`, brouillon, confirmation avec la carte et annule-et-remplace : pièces par référence relues (400 si illisible), annule-et-remplace sur toutes les routes, archivage « Envoyés » ; brouillon complet (pièces, accusé, opposition, blocage de réponse, cible d'annule-et-remplace) restauré à la réouverture ; verrou d'envoi à jeton (5 min). Dtos.Mss 505.0.0. PR #270 (api-mail), #39 (dtos-mss), #87 (Blazor), #84 (mobile). | — (traçabilité de l'envoi MSSanté, AMBU.MSS/va1.02, opposition Mon Espace Santé ; aucune RG déclarée) |
+| task-331 | **Le dossier est celui de la fiche.** Dossier, biologie et opposition par `PatientId` (et non plus par l'INS du document) : le document rattaché à la main y apparaît, deux fiches d'un même matricule (NIR / NIA) restent séparées ; garde d'envoi : une fiche opposée du matricule suffit à exiger l'acquittement ; `resolve` déterministe ; `Id` rendu par la recherche et « patients du jour » ; index `(PatientId, MailId, Date)`. PR #271 (api-mail). | — (identito-vigilance INS, opposition Mon Espace Santé ; AUD-05, AUD-34 ; aucune RG déclarée) |
 | task-338 | **La recherche dit la vérité.** Pannes signalées au lieu d'une liste vide (503, 499, mode dégradé `IsDegraded` / `DegradedSources` en hybride) ; chaque filtre du contrat appliqué (patient sur un même document, répondu, brouillon, dates de document et de biologie, `false` = « sans », type inconnu → 400, filtres seuls bornés) ; prédicat dossier/étiquette unique pour toutes les requêtes ; pertinence filtrée une seule fois. Dtos.Mss 500.0.0. 21 tests d'intégration d'endpoint rouges sur le code d'avant. PR #268 (api-mail), #37 (dtos-mss). | — (exactitude de la recherche — AUD-38, 39, 40, 52 ; aucune RG déclarée) |
 | done-task-002 | Masquage du préfixe `XDM/1.0/DDM+` dans l'objet | RG-E009-029 |
 | done-task-003 | Opposition patient à l'envoi MSS pro et patient | RG-E009-019, 020 |
