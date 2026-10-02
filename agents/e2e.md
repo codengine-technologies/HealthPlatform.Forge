@@ -68,6 +68,32 @@ se mesure aussi (`--status skipped`) : sinon on ne distingue plus « gratuit » 
    - Le backend e2e est **toujours** construit depuis le checkout courant d'`Api/Mail`. Une task
      backend est donc testée par les deux voies avec **son** api-mail.
 
+## Step 0 bis — Dépendances du client avant chaque voie
+
+Une voie qui démarre sur un clone dont `node_modules` est en retard sur le `package-lock.json`
+sort en **code 2** (« outillage ») sans rien prouver, alors que la cause est une installation à
+refaire. Constaté le 2026-10-02 sur task-338 : `@playwright/test` déclaré dans
+`Client/Angular/front/package.json`, absent de `node_modules`, la voie Angular a échoué après
+87 s de montage.
+
+Avant de lancer une voie, vérifier que le paquet est installé, et sinon restaurer les
+dépendances avec la commande standard du repo (mesurée, kind `restore`) :
+
+```bash
+# Angular
+[ -d Client/Angular/front/node_modules/@playwright/test ] || \
+  Tools/timing/measure.sh --task {task-id} --step e2e --repo client-angular \
+      --cwd Client/Angular/front --kind restore -- npm ci --no-audit --no-fund
+# mobile
+[ -d Client/Mobile/node_modules/@playwright/test ] || \
+  Tools/timing/measure.sh --task {task-id} --step e2e --repo client-mobile \
+      --cwd Client/Mobile --kind restore -- npm ci --no-audit --no-fund
+```
+
+`npm ci` ne touche que `node_modules` : aucun fichier suivi, aucune opération git, donc compatible
+avec le mode code-only de `client-angular`. Un `npm ci` qui échoue reste une panne d'outillage
+(bloquante, Step 4).
+
 ## Step 1 — Jouer les voies (séquentiellement, jamais en parallèle)
 
 Les deux voies publient les mêmes ports (5052, 3993, 3465, 3143) : **une à la fois**. Chaque

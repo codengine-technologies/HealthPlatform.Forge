@@ -2,9 +2,9 @@
 
 > **Statut** : En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.81
+> **Version** : 1.82
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-02 (le travail fait hors ligne n'est plus perdu, task-330)
+> **Dernière mise à jour** : 2026-10-02 (le travail fait hors ligne n'est plus perdu, task-330 ; la recherche signale ses pannes, task-338)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1005,7 +1005,7 @@ Les règles `RG-E009-084` à `RG-E009-089` sont propres à ENS Mon espace santé
 | E009-F010 | 🔴 Non impl. | 0% — Modèle RBAC explicite (médecin / secrétaire / coordinateur) | — |
 | E009-F011 | 🟡 Partiel | 30% — MDN / DSN OK, suivi complet à faire | — |
 | E009-F012 | 🔴 Non impl. | 0% — Workflow d'attribution d'un message à un autre praticien | — |
-| E009-F013 | 🟢 Implémenté | 100% — chat multi-emails avec contexte, résumés, tags, recherche sémantique, plugin 5 actions ; recherche exhaustive sur tous les dossiers — task-192 | task-192 |
+| E009-F013 | 🟢 Implémenté | 100% — chat multi-emails avec contexte, résumés, tags, recherche sémantique, plugin 5 actions ; recherche exhaustive et fiable : pannes signalées, chaque filtre appliqué — task-338 | task-192, task-338 |
 | E009-F014 | 🟢 Implémenté | 100% — CRUD signatures HTML, signature par défaut, éditeurs sur les deux frontends | — |
 | E009-F015 | 🟢 Implémenté | 100% — CRUD modèles par catégorie, 4 endpoints IA, éditeurs sur les deux frontends | — |
 
@@ -1036,7 +1036,7 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
-- **v1.81 — Ce que le médecin fait hors ligne finit par être appliqué, ou il est averti**
+- **v1.82 — Ce que le médecin fait hors ligne finit par être appliqué, ou il est averti**
   (task-330) : lu / non lu, signalement, suppression et acquittement d'un résultat de biologie
   faits sans connexion ne se perdent plus au premier incident.
   - **Rejoués jusqu'au succès** : un geste qui échoue (serveur de messagerie momentanément
@@ -1054,6 +1054,18 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
   - L'affichage de l'avertissement et du nombre de gestes non appliqués dans les écrans fait
     l'objet d'une prochaine évolution. Le serveur les fournit déjà.
 
+- **v1.81 — La recherche dit la vérité : une panne n'est plus « aucun résultat »** (task-338) :
+  quand la recherche ne peut pas aboutir — serveur indisponible, service d'intelligence
+  artificielle injoignable —, la messagerie le dit au lieu d'afficher une liste vide, et le
+  praticien ne conclut plus à tort qu'un compte rendu n'existe pas. Si un seul des deux moteurs
+  de recherche est disponible, les résultats de l'autre s'affichent, et la messagerie sait
+  signaler qu'ils sont incomplets. Chaque filtre choisi est réellement appliqué : patient (nom,
+  identité, dossier), message répondu ou brouillon, période du document ou du résultat de
+  biologie ; désactiver la pastille « pièce jointe » montre les messages qui n'en ont pas, au
+  lieu de toute la boîte, et un type de document inconnu est refusé plutôt qu'ignoré. La
+  recherche par mot-clé fonctionne aussi depuis une vue par étiquette, comme « Urgent ». Enfin,
+  régler une similarité minimale élevée n'efface plus les messages trouvés par leur seul mot-clé.
+  L'affichage du mode dégradé dans les écrans suivra.
 - **v1.80 — Corriger l'orthographe avant d'envoyer, sans que rien ne change à l'insu du
   praticien** (task-349) : dans la rédaction, l'action « Corriger l'orthographe » propose les
   corrections d'orthographe, de grammaire et d'accords d'un message, sur la messagerie web, la

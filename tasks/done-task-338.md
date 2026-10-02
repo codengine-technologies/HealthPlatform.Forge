@@ -191,28 +191,26 @@ Tests existants qui **figeaient le défaut**, réécrits sur le comportement att
 
 | Voie | Déclencheur | Résultat | Tests | Durée |
 |---|---|---|---|---|
-| mobile | api-mail + dtos-mss touchés | ✅ verte | 24 verts, 0 flaky, 0 rouge, 0 quarantaine | voir la section Timings |
-| angular | api-mail + dtos-mss touchés | ❌ rouge | 23 verts, 1 flaky, 1 rouge, 0 quarantaine — parité rouge | voir la section Timings |
+| mobile | api-mail + dtos-mss touchés | ✅ verte (1 flaky) | 24 verts, 1 flaky, 0 rouge, 0 quarantaine | voir la section Timings |
+| angular | api-mail + dtos-mss touchés | ✅ verte | 25 verts, 0 flaky, 0 rouge, 0 quarantaine | voir la section Timings |
 
-- Catalogue : `Api/Mail/e2e/scenarios.yml` @ branche de la task (`fix/task-338-search-tells-the-truth`)
-- Checkout Angular joué : `feature/nova-rewriting-mss` (branche humaine, mode code-only)
+- Catalogue : `Api/Mail/e2e/scenarios.yml` @ branche de la task (`fix/task-338-search-tells-the-truth`, à jour de `develop` après merge de task-349)
+- Checkout Angular joué : `feature/nova-rewriting-mss` @ `36021874` (branche humaine, mode code-only)
 - Quarantaines : aucune
 - Divergences ouvertes : aucune
 - Parcours touchés sans spec e2e modifié : aucun (aucun écran touché)
 - Démontage : complet (ports libres, aucun conteneur e2e résiduel)
-- Outillage : 1er passage Angular en code 2 (`@playwright/test` non installé) — résolu par `npm ci`, prévention Step 0 bis dans `agents/e2e.md`
-- **Blocage** : `E2E-COMPOSE-002` (rouge + inconnu du catalogue) — test de **task-349** présent sur la branche Angular (`6321706c`), étranger à task-338 → `questions/task-338.md`
+- **Historique de l'étape** (trois passages) :
+  1. voie Angular en **code 2** (`@playwright/test` non installé) → `npm ci`, prévention Step 0 bis ;
+  2. voie Angular **rouge + parité** sur `E2E-COMPOSE-002`, test de task-349 présent sur la branche Angular → arrêt, `questions/task-338.md` ;
+  3. après merge de task-349 sur `develop` : branche api-mail de task-338 synchronisée (`git merge origin/develop`, DTO 500.0.0 republié avec les deux contrats), clone mobile `develop` rattrapé en avance rapide (une révision de retard, `c6dadb4`) — prévention ajoutée au Step 0 bis → **vert**.
+- Flaky : `E2E-DETAIL-002` (mobile), 2ᵉ occurrence au registre de `conventions/e2e.md`
 
-**E2E : ROUGE** — 2 motif(s) de blocage.
-
-**Bloquant** (2) :
-
-- [angular] rouge : « rédaction — corriger l’orthographe, appliquer, envoyer : le texte corrigé arrive, la citation intacte » (E2E-COMPOSE-002)
-- [angular] parité UnknownIdentifier : « rédaction — corriger l’orthographe, appliquer, envoyer : le texte corrigé arrive, la citation intacte » (live-ai.e2e.ts, projet weda2-headless) porte l'identifiant E2E-COMPOSE-002, inconnu du catalogue.
+**E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
 
 **Flaky (vert au second essai, non bloquant)** (1) :
 
-- [angular] « assistant — résumé initial puis deux questions de suite, conversation relue du serveur » (E2E-AI-001)
+- [mobile] « détail — bascule texte brut / HTML » (E2E-DETAIL-002)
 
 ### Matrice de parité
 
@@ -227,12 +225,13 @@ Tests existants qui **figeaient le défaut**, réécrits sur le comportement att
 | E2E-MAIL-002 | 1 | headless | Tout sélectionner et marquer lu en masse | ✅ | ✅ |
 | E2E-DETAIL-001 | 1 | headless | Répondre et transférer depuis la lecture d'un message | ✅ | ✅ |
 | E2E-COMPOSE-001 | 1 | headless | Envoyer un message, le recevoir, le lire, le supprimer | ✅ | ✅ |
+| E2E-COMPOSE-002 | 1 | headless | Faire corriger l'orthographe de son texte, appliquer la correction, puis envoyer | ✅ | ✅ |
 | E2E-MAIL-003 | 1 | headless | Signaler puis ne plus signaler un message | ✅ | ✅ |
 | E2E-MAIL-004 | 1 | headless | Déplacer un message vers Archive puis le ramener | ✅ | ✅ |
 | E2E-DRAFT-001 | 1 | headless | Créer un brouillon, le reprendre, le supprimer | ✅ | ✅ |
 | E2E-BIO-001 | 1 | headless | Acquitter un compte rendu de biologie | ✅ | ✅ |
 | E2E-DASH-001 | 1 | headless | Afficher les widgets du tableau de bord | ✅ | ✅ |
-| E2E-DETAIL-002 | 1 | headless | Basculer entre texte brut et HTML à la lecture | ✅ | ✅ |
+| E2E-DETAIL-002 | 1 | headless | Basculer entre texte brut et HTML à la lecture | ✅ | ⚠️ flaky |
 | E2E-DETAIL-003 | 1 | headless | Répondre à tous depuis la lecture d'un message | ✅ | ✅ |
 | E2E-SETTINGS-002 | 1 | headless | Changer la vue par défaut et la retrouver après rechargement | ✅ | ✅ |
 | E2E-SEARCH-001 | 1 | headless | Rechercher un message et ouvrir la recherche avancée | ✅ | ✅ |
@@ -244,11 +243,27 @@ Tests existants qui **figeaient le défaut**, réécrits sur le comportement att
 | E2E-AUTH-001 | 1 | humain | Rester connecté quand le jeton d'accès expire | 👤 non joué (humain) | 👤 non joué (humain) |
 | E2E-AUTH-002 | 1 | humain | Se déconnecter | 👤 non joué (humain) | 👤 non joué (humain) |
 | E2E-LIVE-001 | 1 | headless | Recevoir un nouveau message en temps réel, sans recharger | ✅ | ✅ |
-| E2E-AI-001 | 1 | headless | Interroger l'assistant sur des messages sélectionnés et poser des questions de suite | ⚠️ flaky | ✅ |
+| E2E-AI-001 | 1 | headless | Interroger l'assistant sur des messages sélectionnés et poser des questions de suite | ✅ | ✅ |
 
-**Parité : ROUGE** — 1 écart(s) :
+**Parité : verte** — aucun écart entre le catalogue et les suites.
 
-- `UnknownIdentifier` [angular] « rédaction — corriger l’orthographe, appliquer, envoyer : le texte corrigé arrive, la citation intacte » (live-ai.e2e.ts, projet weda2-headless) porte l'identifiant E2E-COMPOSE-002, inconnu du catalogue.
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/268 — label `awaiting-human-merge`
+- `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/37 — label `awaiting-human-merge` (HealthPlatform.Dtos.Mss 500.0.0 publié depuis la branche, porte aussi le contrat de task-349)
+- `client-blazor`, `client-angular`, `client-mobile` : non listés — n'affichent pas encore `IsDegraded` ; task front à ouvrir (avec celle de task-192)
+
+## Code Review Summary
+
+- Validation `/review` : `dtos-mss` build 0 erreur ; `api-mail` build 0 erreur, **6 083 tests réussis, 0 échec**, 16 ignorés ; branches à jour de `origin/develop` (task-349 fusionnée en amont)
+- DOD : 10/10 vérifiés par commande, Manual Test Plan différé au HAG
+- **Verrou 4a (règle 1b)** : chaque comportement atteignable par l'endpoint → son test d'intégration d'endpoint → sa preuve rouge, détaillés dans le tableau du `## Develop log` (21 rouges sur le code d'avant, 2 par mutation pour la sémantique « même document », 2 garde-fous) ✅
+- **Verrou 4b (E2E)** : `## E2E log` vert (mobile 24 + 1 flaky, Angular 25, parité verte) ✅
+- **Verdict : APPROVED** — 0 bloquant, 4 suggestions :
+  1. dérive structurelle « filtre compté actif » (service) / « filtre appliqué » (repository), cause profonde d'AUD-39 → task de suite (repository qui rend ce qu'il a appliqué, ou test par réflexion sur `SearchFilterDto`)
+  2. `folderPath` vide = « tous les dossiers » partout désormais (cohérent, à connaître)
+  3. fronts : afficher `IsDegraded` et le message d'indisponibilité (503)
+  4. `SeededThreadsAreCountableTests` (flaky pré-existant, 3ᵉ task) : base isolée par test via `PostgreSqlFixture.CreateIsolatedContextAsync`
 
 ## Timings
 
@@ -257,11 +272,13 @@ Tests existants qui **figeaient le défaut**, réécrits sur le comportement att
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 1 min 01 s | — | — | — | — |
-| /develop | ok | 39 min 38 s | 5 (1 min 10 s) | 7 (13 min 41 s) | — | dtos-mss 1B/0T, api-mail 4B/7T |
+| /develop | ok | 6 min 02 s | 7 (2 min 08 s) | 8 (16 min 49 s) | — | dtos-mss 2B/0T, api-mail 5B/8T, merge develop (task-349) + DTO 500.0.0 |
 | /sonar | ok | 24 min 55 s | 4 (1 min 04 s) | 12 (12 min 21 s) | 4 (4 min 44 s) | 2 itération(s), api-mail 4B/12T |
 | /lint-angular | skipped | 2.0 s | — | — | — | client-angular non listé dans Repos |
 | /lint-mobile | skipped | 2.1 s | — | — | — | client-mobile non listé dans Repos |
-| /e2e | failed | 17 min 07 s | — | — | — | e2e ×4 (11 min 20 s), angular rouge + parité : E2E-COMPOSE-002 (task-349) présent sur la branche Angular — questions/task-338.md |
-| **Total cycle** | | **1 h 22 min** | **9 (2 min 14 s)** | **19 (26 min 02 s)** | **4 (4 min 44 s)** | |
+| /e2e | ok | 16 min 21 s | — | — | — | e2e ×9 (25 min 34 s), vert après merge task-349 et rattrapage du clone mobile ; 1 flaky E2E-DETAIL-002 |
+| /review | ok | 5 min 58 s | 2 (25 s) | 1 (3 min 37 s) | — | dtos-mss 1B/0T, api-mail 1B/1T |
+| /tech-writer | ok | 1 min 03 s | — | — | — | — |
+| **Total cycle** | | **55 min 27 s** | **13 (3 min 38 s)** | **21 (32 min 48 s)** | **4 (4 min 44 s)** | |
 
-Autres commandes mesurées : nuget-wait ×1 (11 s), restore ×2 (2 min 15 s)
+Autres commandes mesurées : nuget-wait ×2 (30 s), restore ×3 (2 min 24 s)
