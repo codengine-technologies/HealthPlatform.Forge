@@ -896,3 +896,38 @@ test rouge d'abord pose l'attribut qu'un attaquant ajouterait (`onclick`).
 
 **Preuve** : `SpellingCorrectionGuardTests.Check_AnAddedOrAlteredAttribute_IsRefused`, rouge sur
 les trois cas avant le correctif.
+
+---
+
+## S1067 — un filtre EF à critères optionnels se compose, il ne s'écrit pas en une expression
+
+**Occurrences : 1** (task-338, ×3 — filtres patient, dates de document, dates de biologie de
+`SemanticSearchRepository`)
+
+Le motif vient naturellement quand plusieurs critères **facultatifs** doivent porter sur **le
+même** enregistrement lié : on écrit un seul `Any(...)` qui enchaîne `(x == null || col == x)`
+pour chaque critère. Sonar compte les opérateurs conditionnels (7 pour trois critères), et le SQL
+produit traîne des `@x IS NULL OR …` que le planificateur ne simplifie pas toujours.
+
+```csharp
+// ❌ AVANT — une expression, trois critères optionnels, 7 opérateurs
+query.Where(m => db.MailMedicalDocuments.Any(md =>
+    md.MailId == m.Id
+    && (!hasLastName || EF.Functions.ILike(md.PatientLastName, pattern, LikeEscape))
+    && (ins == null || md.Ins == ins)
+    && (patientId == null || md.PatientId == patientId)));
+
+// ✅ APRÈS — chaque critère présent restreint un même ensemble, un seul EXISTS le lit
+var documents = db.MailMedicalDocuments.AsQueryable();
+if (hasLastName) documents = documents.Where(md => EF.Functions.ILike(md.PatientLastName, pattern, LikeEscape));
+if (ins != null) documents = documents.Where(md => md.Ins == ins);
+if (patientId != null) documents = documents.Where(md => md.PatientId == patientId);
+query = query.Where(m => documents.Any(md => md.MailId == m.Id));
+```
+
+**Consigne** : dès qu'un filtre combine plus de deux critères facultatifs, construire un
+`IQueryable` intermédiaire par `if` successifs, puis le tester par un `Any` unique. EF Core inline
+la sous-requête capturée ; la sémantique « tous les critères sur le même enregistrement » est
+conservée, et seuls les critères présents atteignent le SQL. Garder un test d'intégration qui
+combine deux critères sur deux enregistrements différents — c'est lui qui prouve que l'on n'a pas
+glissé vers « un critère par enregistrement ».
