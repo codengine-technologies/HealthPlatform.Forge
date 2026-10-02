@@ -444,7 +444,9 @@ on relit, c'est un commentaire qu'il faut, pas une variable morte.
 
 ## S4457 — la validation des arguments se fait hors du corps `async`
 
-**Occurrences : 3** (task-299, task-300, task-171 — `PscTokenProvider.GetModeAsync` /
+**Occurrences : 4** (task-329 — `OutgoingMailService.SendAsync` : `ThrowIfNull(mail)` en tête de la
+méthode `async` publique, écrit alors que cette entrée existait ; d'où le contrôle mécanique de
+`agents/develop.md` §Q 2b ; task-299, task-300, task-171 — `PscTokenProvider.GetModeAsync` /
 `GetAccessTokenAsync` : `ThrowIfNull(key)` en tête d'une méthode `async`, corrigé en
 enveloppe synchrone + `…CoreAsync` privée)
 
@@ -502,8 +504,10 @@ private Task<T> ReadCoreAsync(string key, string? correlationId, CancellationTok
 
 ## xUnit1051 — un test qui appelle une méthode à `CancellationToken` doit passer celui du contexte
 
-**Occurrences : 2** (task-297 le 2026-09-13 — 10 appels, CI `develop` cassée ;
-task-303 le même jour — 12 appels, attrapés avant le push)
+**Occurrences : 3** (task-297 le 2026-09-13 — 10 appels, CI `develop` cassée ;
+task-303 le même jour — 12 appels, attrapés avant le push ; task-329 — 3 appels
+`DidNotReceiveWithAnyArgs().SendMailAsync(default!, default)`, attrapés par le build : le
+`default` d'un `CancellationToken` dans une vérification de substitut compte aussi)
 
 La migration vers **xUnit v3** (`cf685ac`) a fait passer cet analyseur en
 **erreur**. Tout appel de test vers une méthode qui accepte un
@@ -792,6 +796,17 @@ public static TheoryData<string, string, string> InvalidModels => new()
 des types `IXunitSerializable` — un corps de requête se passe en chaîne JSON.
 
 ---
+
+## xUnit2032 — `Assert.IsAssignableFrom` se dit `Assert.IsType(…, exactMatch: false)`
+
+**Occurrences : 1** (task-329 — `MailControllerCoverageTests`, sur un `IStatusCodeActionResult`)
+
+xUnit 3 signale `Assert.IsAssignableFrom<T>(x)` : le nom laisse croire à une comparaison exacte. La
+même vérification s'écrit `Assert.IsType<T>(x, exactMatch: false)`.
+
+**Consigne** : pour vérifier qu'une valeur est d'un type ou d'un de ses dérivés (une interface
+comme `IStatusCodeActionResult`), écrire `Assert.IsType<T>(x, exactMatch: false)`, jamais
+`IsAssignableFrom`.
 
 ## S2699 — un test « ne lève pas » affirme quelque chose
 

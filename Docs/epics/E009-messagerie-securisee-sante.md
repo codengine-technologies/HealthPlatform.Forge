@@ -2,9 +2,9 @@
 
 > **Statut** : En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.82
+> **Version** : 1.83
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-02 (le travail fait hors ligne n'est plus perdu, task-330 ; la recherche signale ses pannes, task-338)
+> **Dernière mise à jour** : 2026-10-02 (un message part complet quel que soit le chemin, task-329)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -998,7 +998,7 @@ Les règles `RG-E009-084` à `RG-E009-089` sont propres à ENS Mon espace santé
 | E009-F003 | 🟢 Implémenté | 100% — tags urgence, tagging IA, détection biologie anormale, acquittement médico-légal | task-005, task-028 |
 | E009-F004 | 🟢 Implémenté | 100% — Vue temporelle patient, Timeline biologie horizontale, Synthèse clinique livrées sur les deux frontends ; widget Patient sur le dashboard | task-035 |
 | E009-F005 | 🟢 Implémenté | 100% — canaux temps réel + préférences | — |
-| E009-F006 | 🟢 Implémenté | 100% — composition + envoi + accusés + annule et remplace ; « Corriger l'orthographe » avec aperçu et validation, sur les trois fronts (flag `ai_text_correction`, désactivé en production) — task-349 | task-002, task-006, task-008, task-009, task-349 |
+| E009-F006 | 🟢 Implémenté | 100% — composition + envoi + accusés + annule et remplace ; « Corriger l'orthographe » avec aperçu et validation, sur les trois fronts (flag `ai_text_correction`, désactivé en production) — task-349 ; un seul chemin d'envoi : brouillon complet, transfert par référence, trace dans « Envoyés » — task-329 | task-002, task-006, task-008, task-009, task-349, task-329 |
 | E009-F007 | 🔴 Non impl. | 10% — paquet IHE_XDM possible, intégration envoi à confirmer, opposition implémentée, bounces/fin d'échange à ajouter | task-003 |
 | E009-F008 | 🟢 Implémenté | 100% — service d'annuaire avec 5 stratégies de recherche | — |
 | E009-F009 | 🟢 Implémenté | 100% — CRUD complet, favoris, groupes, fusion | — |
@@ -1035,6 +1035,22 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 > automatiquement au retour de la connexion », c'est cette description qui fait foi.
 
 ### Fonctionnalités métier
+
+- **v1.83 — Un message part complet, quel que soit le chemin** (task-329) : un message rédigé
+  plus de 30 secondes est enregistré automatiquement en brouillon, et « Envoyer » partait alors de
+  ce brouillon, qui perdait une partie de ce que le praticien avait préparé. C'est corrigé sur la
+  messagerie web, la messagerie intégrée au logiciel et l'application mobile.
+  - **Les pièces jointes partent** : un compte rendu joint arrive chez le destinataire, même après
+    l'enregistrement du brouillon. Rouvrir un brouillon retrouve ses pièces.
+  - **Les choix du praticien sont respectés** : accusé de lecture demandé, opposition du patient
+    acquittée, fin d'échange avec le patient.
+  - **Transfert complet** : un message transféré depuis l'application mobile emporte ses pièces
+    d'origine, y compris une archive de documents de santé et ses en-têtes MSSanté. Si une pièce ne
+    peut pas être relue, l'envoi est refusé avec un message clair. Rien ne part amputé.
+  - **Une trace dans « Envoyés »** pour chaque message parti, y compris depuis un brouillon.
+  - **« Annule et remplace » tient sa promesse** : rédigé sans la carte ou enregistré en brouillon,
+    le remplacement marque l'original annulé dès qu'il part.
+  - **Jamais deux fois** : deux clics sur « Envoyer » pendant un envoi lent n'envoient qu'un message.
 
 - **v1.82 — Ce que le médecin fait hors ligne finit par être appliqué, ou il est averti**
   (task-330) : lu / non lu, signalement, suppression et acquittement d'un résultat de biologie

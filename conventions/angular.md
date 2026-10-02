@@ -179,9 +179,21 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   main **seulement** les erreurs situées dans les hunks de la task. Ne jamais lancer
   `--fix` sur un fichier qui porte du WIP humain. **Avant de déclarer un repo vert**, lancer
   `npx eslint <fichiers touchés>` (e2e compris) : le vert de la suite ne dit rien du format.
+  Sur `client-mobile`, la configuration est encore au format `.eslintrc.json` : sans
+  `ESLINT_USE_FLAT_CONFIG=false`, ESLint 9 sort en erreur (« couldn't find an eslint.config »)
+  et **ne lint rien**. Constaté le 2026-10-02 (task-329).
 - **Origine** : task-349 (/develop, passe qualité ; puis /lint-angular : un `http.get<…>(\`${…}\`)`
-  ajouté à `mss-api.service.ts` dépassait la largeur ; puis la reprise B1-B6 : `html-editor.component.ts` et `live-ai.e2e.ts`)
-- **Occurrences** : 3
+  ajouté à `mss-api.service.ts` dépassait la largeur ; puis la reprise B1-B6 : `html-editor.component.ts` et `live-ai.e2e.ts`) ;
+  task-329 (/develop : 4 lignes ajoutées à `mail-compose.component.ts` au-delà de 100 colonnes,
+  attrapées par le lint ciblé **avant** tout commit. Le contrôle imposé ici a fonctionné ;
+  reste à écrire au format : couper une ligne dès qu'elle approche 90 colonnes. Puis
+  récidive le même jour sur `functional.e2e.ts`, d'où le remède mécanique ci-dessous)
+- **Remède mécanique** (task-329) : avant de formater à la main, tester si le fichier était
+  propre en HEAD : `git show HEAD:front/<f> | npx prettier --check --stdin-filepath <f>`.
+  S'il l'était, `npx prettier --write <f>` ne touche **que** les lignes de la task. Le vérifier
+  par `git diff --stat` : les insertions grossissent, aucune suppression n'apparaît hors des
+  hunks. Sinon, seulement, formater à la main.
+- **Occurrences** : 5
 
 ### tiptap-conteneur-capte-le-curseur — Un nœud conteneur en tête de document capte la frappe
 - **Règle** : comportement tiptap / ProseMirror (pas une règle lint)
