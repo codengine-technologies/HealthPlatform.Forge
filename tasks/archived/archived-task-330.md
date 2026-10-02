@@ -558,3 +558,16 @@ tests d'endpoint le substituaient, donc elle n'était prouvée qu'en unitaire. L
 | **Total cycle** | | **1 h 37 min** | **9 (1 min 18 s)** | **30 (26 min 34 s)** | **4 (1 min 16 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (27 s), restore ×1 (23 s)
+
+## Merged
+
+Mergé le 2026-10-02 par `/merge 330 --i-tested` (HAG : test humain attesté).
+
+| Repo | PR | Commit squash sur `develop` | CI `develop` |
+|---|---|---|---|
+| `dtos-mss` | #38 | `67f6aeb7` | ✅ https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/actions/runs/36992800485 |
+| `api-mail` | #269 | `c3fdc010` | ✅ https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/36992827204 |
+
+- Branches `fix/task-330-rejeu-hors-ligne-fiable` supprimées, distantes et locales, sur les deux repos. Label `awaiting-human-merge` retiré.
+- Aucune branche staging : la task n'appartenait pas à un run `/forge`.
+- task-338 (#268, api-mail) reste ouverte. Elle épingle `HealthPlatform.Dtos.Mss` 500.0.0 alors que `develop` est désormais en 501.0.0 : fusionner `develop` dans sa branche avant son merge.
