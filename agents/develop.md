@@ -188,6 +188,24 @@ whole cycle, and it doubles as the repo's final verification (Step 6).
    `/code-review`. If the pass surfaces a real bug, note it in the develop log
    and let `/review` judge ; do not turn the cleanup into a fix.
 
+2b. **Mechanical checks on the repo's diff, before the push** — the rules the
+   conventions keep counting, made a command instead of a reading (task-330 :
+   S125 at its 8th recurrence, xUnit1045 at its 2nd, both already consigned) :
+   ```bash
+   # C# — S125 : a comment line ending a clause with " ;" is read as code.
+   git diff origin/develop...HEAD -- '*.cs' | grep -nE '^\+\s*//[^/].* ;'
+   # C# — xUnit1045 : non-serialisable theory data (Exception, object, anonymous).
+   git diff origin/develop...HEAD -- '*.cs' | grep -nE '^\+.*TheoryData<[^>]*(Exception|object)'
+   # C# — S4457 : an argument guard inside an added public async method (task-329, 4th occurrence).
+   git diff origin/develop...HEAD -- '*.cs' | grep -nE -A3 '^\+\s*public async Task' | grep -E 'ThrowIf(Null|NullOrWhiteSpace|NullOrEmpty)'
+   # C# — xUnit2032 : Assert.IsAssignableFrom is written Assert.IsType(…, exactMatch: false).
+   git diff origin/develop...HEAD -- '*.cs' | grep -nE '^\+.*Assert\.IsAssignableFrom'
+   ```
+   Each must return nothing. A hit is rewritten (comma or full stop ; a string
+   key for the theory, the object built in the test) before the push, and
+   counts as a manual fix of the rule — increment its entry in
+   `conventions/csharp.md`.
+
 3. **No cleanup applied** → log "`{repo}` : no simplification applied", skip
    straight to the push. **No empty commit, no needless rebuild** (nothing
    changed since the GREEN validation of the feature code).
