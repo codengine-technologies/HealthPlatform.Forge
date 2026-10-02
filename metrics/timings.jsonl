@@ -3152,3 +3152,5 @@
 {"ts":"2026-10-02T10:37:55+02:00","run_id":"-","type":"step","task":"task-330","step":"review","status":"ok","note":"","iterations":null,"duration_ms":533138}
 {"ts":"2026-10-02T10:38:04+02:00","run_id":"-","type":"step_start","task":"task-330","step":"tech-writer"}
 {"ts":"2026-10-02T10:38:59+02:00","run_id":"-","type":"step","task":"task-330","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":54468}
+{"ts":"2026-10-02T12:20:04+02:00","run_id":"-","type":"step_start","task":"task-329","step":"start"}
+{"ts":"2026-10-02T12:20:37+02:00","run_id":"-","type":"step","task":"task-329","step":"start","status":"ok","note":"","iterations":null,"duration_ms":32296}

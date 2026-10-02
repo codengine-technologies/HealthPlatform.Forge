@@ -149,11 +149,18 @@ refusé explicitement), respecte la garde d'opposition et l'accusé de lecture d
 - **Hébergement HDS** : oui — environnement inchangé
 - **AIPD / impact RGPD** : inchangé — aucun traitement nouveau ; supprime des pertes de données
 
+## Branches
+- `api-mail` (pushed) : fix/task-329-envoi-chemin-unique — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-329-envoi-chemin-unique (depuis `origin/develop` @ `c3fdc010`, task-330 mergée)
+- `client-blazor` (pushed) : fix/task-329-envoi-chemin-unique — https://github.com/codengine-technologies/HealthPlatform.Client/tree/fix/task-329-envoi-chemin-unique
+- `client-mobile` (pushed) : fix/task-329-envoi-chemin-unique — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/fix/task-329-envoi-chemin-unique
+- `dtos-mss` : aucune branche au `/start`. `/develop` la crée quand il touche le contrat (`SaveDraftDto`).
+- `client-angular` (code-only) : la forge écrit sur la branche en cours dans `Client/Angular/` (au `/start` : `feature/nova-rewriting-mss`, avec du travail de task-349 non commité). L'humain gère la branche, le commit, le push et la PR TFS.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-329 --sync` — ne pas éditer à la main)*
 
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
-| /start | failed | 15 s | — | — | — | dépendance task-330 en todo |
-| **Total cycle** | | **15 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /start | ok | 32 s | — | — | — | — |
+| **Total cycle** | | **32 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
