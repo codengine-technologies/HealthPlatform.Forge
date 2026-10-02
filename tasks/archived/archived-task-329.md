@@ -633,3 +633,19 @@ Tous les tests sont dans `SendPathsEndToEndTests` : vrais `DraftController` et `
 | **Total cycle** | | **4 h 44 min** | **14 (2 min 06 s)** | **35 (28 min 24 s)** | **4 (1 min 20 s)** | |
 
 Autres commandes mesurées : lint ×2 (17 s), nuget-wait ×1 (16 s), restore ×2 (4.6 s)
+
+## Merged
+
+Mergé le 2026-10-02 par `/merge 329 --i-tested` (HAG : test humain attesté).
+
+| Repo | PR | Commit squash sur `develop` | CI `develop` |
+|---|---|---|---|
+| `dtos-mss` | #39 | `552cbd1d` | ✅ https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/actions/runs/37034191161 |
+| `api-mail` | #270 | `91fb090c` | ✅ https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/37034211343 |
+| `client-blazor` | #87 | `2ced0fbc` | ✅ https://github.com/codengine-technologies/HealthPlatform.Client/actions/runs/37034230834 |
+| `client-mobile` | #84 | `a3570b8b` | ✅ https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/37034251050 |
+
+- Branches `fix/task-329-envoi-chemin-unique` supprimées, distantes et locales, sur les quatre repos. Label `awaiting-human-merge` retiré.
+- `client-angular` : code-only. Le travail de la task reste non commité sur `feature/nova-rewriting-mss`, à pousser sur TFS par l'humain.
+- Aucune branche staging : la task n'appartenait pas à un run `/forge`.
+- task-338 (#268, api-mail) reste ouverte. Elle épingle `HealthPlatform.Dtos.Mss` 500.0.0 alors que `develop` est en 505.0.0 : fusionner `develop` dans sa branche avant son merge.
