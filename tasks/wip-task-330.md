@@ -104,3 +104,7 @@ et que les échecs d'envoi sortent avec leur vrai statut (400, 401/403, 499, 503
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui — environnement inchangé
 - **AIPD / impact RGPD** : inchangé — aucun traitement nouveau
+
+## Branches
+- `api-mail` (pushed) : fix/task-330-rejeu-hors-ligne-fiable — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-330-rejeu-hors-ligne-fiable (depuis `origin/develop` @ `d3892216`)
+- `dtos-mss` : aucune branche au `/start`. Elle est créée paresseusement par `/develop`, seulement si un contrat change (exposition du statut d'échec dans `pending-emails`).
