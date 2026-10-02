@@ -148,3 +148,12 @@ refusé explicitement), respecte la garde d'opposition et l'accusé de lecture d
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui — environnement inchangé
 - **AIPD / impact RGPD** : inchangé — aucun traitement nouveau ; supprime des pertes de données
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-329 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | failed | 15 s | — | — | — | dépendance task-330 en todo |
+| **Total cycle** | | **15 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
