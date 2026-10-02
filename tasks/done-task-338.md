@@ -278,6 +278,7 @@ Tests existants qui **figeaient le défaut**, réécrits sur le comportement att
 | /lint-mobile | skipped | 2.1 s | — | — | — | client-mobile non listé dans Repos |
 | /e2e | ok | 16 min 21 s | — | — | — | e2e ×9 (25 min 34 s), vert après merge task-349 et rattrapage du clone mobile ; 1 flaky E2E-DETAIL-002 |
 | /review | ok | 5 min 58 s | 2 (25 s) | 1 (3 min 37 s) | — | dtos-mss 1B/0T, api-mail 1B/1T |
-| **Total cycle** | | **54 min 24 s** | **13 (3 min 38 s)** | **21 (32 min 48 s)** | **4 (4 min 44 s)** | |
+| /tech-writer | ok | 1 min 03 s | — | — | — | — |
+| **Total cycle** | | **55 min 27 s** | **13 (3 min 38 s)** | **21 (32 min 48 s)** | **4 (4 min 44 s)** | |
 
 Autres commandes mesurées : nuget-wait ×2 (30 s), restore ×3 (2 min 24 s)
