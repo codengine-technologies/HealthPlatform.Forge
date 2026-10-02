@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-10-01 (v1.80)
+> **Dernière mise à jour** : 2026-10-02 (v1.81)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -655,6 +655,49 @@
   - Angular : changer de signature après la première frappe ajoute une seconde signature (préexistant) ;
   - qualification HDS du fournisseur avant toute activation en production (E017).
 
+### v1.81 — Ce que le médecin fait hors ligne finit par être appliqué, ou il est averti : fin des gestes perdus au premier échec, et la « remise incertaine » d'un envoi — task-330
+
+- **Origine** : audit de bugs du 2026-09-27, **AUD-08** (trouvé indépendamment par trois zones) et **AUD-23**. La remarque de `IPendingActionRepository.ReleaseClaimAsync` le disait elle-même : « une action ayant échoué une fois n'est plus jamais rejouée ».
+- **PR** (`awaiting-human-merge`, branche `fix/task-330-rejeu-hors-ligne-fiable`) : `dtos-mss` #38, `api-mail` #269.
+- **NuGet** : `HealthPlatform.Dtos.Mss` **501.0.0**, ajouts purs : `PendingEmailDto.DeliveryUncertain`, `ConnectionStatusDto.FailedActionsCount`.
+- **Arbitrage humain du 2026-10-02**, au démarrage de `/develop` : task-320 a été mergée après la rédaction de la task.
+  - **Décision 1** : aucun rejeu automatique d'un envoi. Le rejeu de task-330 porte sur les **gestes** (lu / non lu, drapeau, suppression, acquittement biologique).
+  - **Décision 2** : un envoi confirmé qui a peut-être quitté le serveur passe en **remise incertaine**, bloquée et signalée.
+- **Rejeu des gestes** :
+  - un geste n'est supprimé qu'après un succès **réel** : le `Result` de la propagation et de la suppression IMAP est lu ;
+  - un échec remet le geste en `Pending` avec une tentative comptée ;
+  - après **10** tentatives, le geste est gardé `Failed` et compté (`FailedActionsCount` dans `GET connection/status`) ;
+  - une annulation rend le geste sans compter de tentative (`ReturnClaimAsync`) ;
+  - **réclamations orphelines** : la colonne `ClaimedAt` est nouvelle (migration FluentMigrator `20261002090000`). Au-delà de 10 min, un geste redevient `Pending`, un envoi passe `DeliveryUncertain` ;
+  - `MarkAsFailedAsync` est retirée.
+- **Stade de l'échec SMTP** (`SmtpService`, un seul `switch`) :
+  - validation → `Invalid` (400) ;
+  - serveur injoignable ou reconnexion 421 en échec → `UnavailableException` (503) ;
+  - `ServiceNotConnectedException` → indisponible ;
+  - refus **avant** `DATA` → `Error` ;
+  - refus **après** `DATA` (`MessageNotAccepted`), coupure, délai ou annulation pendant l'émission → `SmtpDeliveryUncertainException` : 503 avec un avertissement fixe, ou 499 si le praticien a abandonné.
+- **Remise incertaine** : listée dans `GET pending-emails` (`deliveryUncertain`), 409 à la reconfirmation, retirable par `DELETE`.
+- **Mise en file hors ligne** : `MailSendRules`, partagées avec l'envoi. Un message sans destinataire est refusé en 400 au lieu d'être accepté en 202.
+- **Brouillon** : `SendThroughSmtpAsync`. Un envoi qui lève ne laisse plus le brouillon bloqué `Sending` (502, retour en rédaction).
+- **Défaut de production trouvé en route** : une copie EF suivie que les `ExecuteUpdate` ne rafraîchissent pas.
+  - La synchronisation de fond garde son contexte d'une passe à l'autre : au second échec, un geste restait `Processing`.
+  - Correctif : `GetByIdAsync` en `AsNoTracking`, relecture dans `ReleaseClaimAsync`.
+  - Convention : `executeupdate-copie-suivie-perimee`.
+- **Règle 1b / verrou 4a** : 21 tests d'intégration de l'endpoint (`PendingSendConfirmationIntegrationTests`, Postgres réel).
+  - Huit mutations sont toutes rouges.
+  - Le test du stade passe par le **vrai** `SmtpService`, ajouté par la revue. Il est rouge sur le `SmtpService` de `develop`.
+- **Tests** : 6 094 verts, 0 échec : domain 190, infrastructure 675, api 1 157, application 3 357, integration 715 (+ 16 ignorés préexistants).
+- **Sonar** : Quality Gate OK, new coverage 97,5 %, notes A/A/A. Quatre findings de la task traités : S3776, S125, xUnit1045, et S3925 en faux positif. Le S107 de `SemanticSearchService.cs:379` est hors task.
+- **E2E** : deux voies à 25/25, 0 flaky, parité verte.
+- **Leçons** :
+  - `conventions/csharp.md` : `executeupdate-copie-suivie-perimee`, S3776 (nouvelle entrée), S125 à 8 occurrences, xUnit1045 à 2, S3925 à 3 ;
+  - `agents/develop.md` §Q, étape 2b : contrôles mécaniques S125 et xUnit1045 avant le push, à relire par l'humain.
+- **Suivis** :
+  - US front : afficher la remise incertaine et les gestes en échec (les clients ignorent `deliveryUncertain`, et la confirmation y répond 409) ;
+  - horodatage UTC des `PendingActions` ;
+  - `DraftService.SetAsideAsync` sans `MailSendRules` (à arbitrer) ;
+  - journal « failed for good … {Error} » à réduire au type.
+
 ---
 
 ## Sécurité applicative — Détails techniques
@@ -814,6 +857,7 @@ Audit grep complémentaires pour les couches 2 / 2bis / 3 (tasks 021 / 022 / 023
 | task-342 | **Dix-sept défauts ponctuels de l'audit du 2026-09-27, un commit et un test rouge par constat** — accès (débit `sensitive` AUD-59, zip-slip AUD-62, 403 sur `Client-Email` périmé AUD-22), données (boîte par défaut vs index partiel AUD-33, `AddNewMail` atomique AUD-36, homonymes AUD-41, pagination AUD-51, rôles FHIR AUD-64), fraîcheur (cache avant analyse AUD-27, journée du praticien AUD-28, compte rendu AUD-31), fiabilité / règle 12 (AUD-47, 53, 54, 56, 57, 66). **AUD-42 reverté** (allowlist abandonnée, arbitrage humain) → task-348. PR #258 (api-mail). | — (fiabilité et sécurité de fonctionnalités existantes, hors DSR nouvelle) |
 | task-191 | **Ingestion atomique et un dossier patient par identité.** Mail suivi en premier, plus aucune sauvegarde intermédiaire (FK `SuppressionRequestedByMail` sur un message Mon Espace Santé lu comme demande de retrait : message jamais ingéré) ; arbitrage (a) : un message de patient n'est jamais une demande de retrait ; index unique d'expression `UX_MailPatients_Ins_Oid` sur `("Ins", COALESCE("Oid", ''))` avec migration conditionnée (doublons existants → index différé, rien fusionné) et rejeu de l'ingestion sur violation ; chemin message patient aligné sur `MatchPatientOnDomain` ; inventaire read-only des doublons testé. PR #261 (api-mail). | — (identito-vigilance, intégrité du dossier patient ; aucune RG déclarée) |
 | task-192 | **Recherche exhaustive.** Déduplication full-text sur `MailId` au lieu de l'UID, fusion et intersection du service sur `(dossier, UID)` ; fenêtre de candidats ordonnée par date du message ; `ILike` sur sujet, expéditeur, destinataire et noms de patient ; échappement de `%`, `_` et de l'antislash ; troncature signalée (`SemanticSearchResultSet.IsTruncated`, `SearchResponseDto.Hits` / `IsTruncated`, Dtos.Mss 492.0.0). 12/13 tests d'intégration rouges sur le code d'origine. PR #266 (api-mail), #35 (dtos-mss). | — (exactitude et complétude de l'accès aux documents reçus, art. 5.1.d RGPD ; aucune RG déclarée) |
+| task-330 | **Le travail fait hors ligne n'est plus perdu au premier échec.** Gestes rejoués jusqu'au succès, gardés `Failed` et comptés après 10 tentatives (`FailedActionsCount`) ; annulation sans tentative comptée ; réclamations orphelines reprises (`ClaimedAt`) ; **remise incertaine** d'un envoi confirmé peut-être parti (503 + avertissement, `deliveryUncertain`, 409, retirable — arbitrage du 2026-10-02) ; stade SMTP typé (400 / 503 / 499) ; mise en file hors ligne soumise aux règles d'envoi. Dtos.Mss 501.0.0. PR #269 (api-mail), #38 (dtos-mss). | — (continuité de service hors ligne, AUD-08 / AUD-23 ; aucune RG déclarée) |
 | done-task-002 | Masquage du préfixe `XDM/1.0/DDM+` dans l'objet | RG-E009-029 |
 | done-task-003 | Opposition patient à l'envoi MSS pro et patient | RG-E009-019, 020 |
 | done-task-004 | Journal d'audit MSS complet (16 actions, 30+ champs, export CSV) | RG-E009-045, 046, 047 |

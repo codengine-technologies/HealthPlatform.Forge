@@ -251,7 +251,11 @@ dans `string.Equals`, mais `StringComparer` dans `Contains`.
 
 ## S125 — une prose qui « ressemble à du code » est signalée comme code commenté
 
-**Occurrences : 7** (task-184, task-292, task-188, task-322, task-171, task-342, task-191 —
+**Occurrences : 8** (task-184, task-292, task-188, task-322, task-171, task-342, task-191, task-330 —
+huitième récidive : « …est INDISPONIBLE (503) ; » en fin de ligne d'un commentaire d'intention
+de `SmtpService`, alors que le contrôle `git diff | grep -E "^\+\s*//.* ;"` ci-dessous aurait
+rendu deux lignes. Le contrôle n'a pas été joué avant le commit : il fait désormais partie de la
+passe qualité de `/develop`, au même titre que le build —
 septième récidive : « The rule addresses a sender retiring the document it sent ; »
 et « …kept this reading from having any effect ; the fix », deux « espace +
 point-virgule » dans un commentaire d'intention ajouté au-dessus d'une méthode
@@ -642,7 +646,7 @@ de plus de trois membres s'écrit d'emblée un membre par ligne.
 
 ## S3925 — une exception garde le triplet de constructeurs recommandé
 
-**Occurrences : 2** (task-171 — `UnauthorizedException`, `PscIdentityConflictException` ; task-320 — `MailboxIncompatibleException`)
+**Occurrences : 3** (task-171 — `UnauthorizedException`, `PscIdentityConflictException` ; task-320 — `MailboxIncompatibleException` ; task-330 — `SmtpDeliveryUncertainException`, triplet présent, marquée FALSE-POSITIVE comme prévu)
 
 La passe qualité avait **retiré** les constructeurs « inutilisés » de deux
 exceptions neuves pour ne garder que celui réellement appelé. Sonar réclame le
@@ -669,6 +673,19 @@ elle réclame encore le constructeur de sérialisation `ISerializable`, lui-mêm
 obsolète (SYSLIB0051). Ne pas l'ajouter, ne pas « corriger » la classe : marquer
 l'issue FALSE-POSITIVE avec ce motif, comme toutes les exceptions voisines de
 `Application/Exceptions/`.
+
+## S3776 — un `try/catch` ajouté à une méthode déjà chargée la fait déborder
+
+**Occurrences : 1** (task-330 — `DraftService.SendDraftAsync`, complexité cognitive 16)
+
+La méthode tenait sous le seuil. Le changement de contrat de `SmtpService` (il lève là où il
+rendait un `Result`) a demandé trois `catch` autour de l'appel SMTP. Chacun compte, imbriqué dans
+le `try/finally` du verrou d'envoi : le seuil de 15 est franchi d'un point.
+
+**Consigne** : protéger un appel par plusieurs `catch` **dans une méthode qui a déjà un
+`try/finally` ou plusieurs branches** se fait dans une méthode dédiée. Celle-ci rend le résultat
+normalisé (ici `SendThroughSmtpAsync`, qui rend un `Result`), et l'appelant reste linéaire. La
+blacklist S3776 ne vaut que pour la dette legacy : sur du code neuf, la règle se corrige toujours.
 
 ## S1075 — pas de délimiteur de chemin ou d'URI en dur
 
@@ -745,7 +762,10 @@ existante du même nom, jamais en bloc « les nouveautés ensemble ».
 
 ## xUnit1045 — une donnée de théorie `object` n'est pas sérialisable
 
-**Occurrences : 1** (task-342 — `RuleTwelveRemainingResponsesIntegrationTests`)
+**Occurrences : 2** (task-342 — `RuleTwelveRemainingResponsesIntegrationTests` ; task-330 —
+`TheoryData<Exception>` des coupures de transport de `SmtpServiceCoverageTests`. Une exception
+n'est pas plus sérialisable qu'un objet anonyme : la théorie prend une chaîne, et le test construit
+l'exception)
 
 `TheoryData<string, string, object>` avec des objets anonymes comme corps de
 requête : xUnit ne peut pas sérialiser la ligne, l'explorateur de tests ne voit
@@ -931,3 +951,44 @@ la sous-requête capturée ; la sémantique « tous les critères sur le même e
 conservée, et seuls les critères présents atteignent le SQL. Garder un test d'intégration qui
 combine deux critères sur deux enregistrements différents — c'est lui qui prouve que l'on n'a pas
 glissé vers « un critère par enregistrement ».
+
+---
+
+## executeupdate-copie-suivie-perimee — après un `ExecuteUpdate`, une entité suivie ment
+
+**Occurrences : 1** (task-330, `/develop` — deux faces du même piège dans `PendingActionRepository`)
+
+`ExecuteUpdateAsync` écrit en base **sans passer par le suivi d'entités** : une copie déjà suivie
+par le contexte garde ses anciennes valeurs, et une requête suivie (`FirstOrDefaultAsync`) renvoie
+cette copie, pas la ligne relue. Deux effets, constatés le même jour :
+
+- **Modifier la copie ne modifie rien.** La réclamation passe la ligne en `Processing` par
+  `ExecuteUpdate`. La copie suivie dit encore `Pending`. Remettre `Status = Pending` n'est vu comme
+  aucun changement, donc `SaveChanges` n'écrit pas le statut. La ligne reste `Processing` en base.
+  Cela arrive dès que le contexte vit d'une passe à l'autre : c'est le cas de la synchronisation de
+  fond, qui garde son scope.
+- **Décider sur la copie, c'est décider sur un état passé.** `GetByIdAsync` suivi lisait
+  « confirmable » alors que la base disait « remise incertaine ».
+
+```csharp
+// ❌ copie suivie, peut-être périmée par un ExecuteUpdate antérieur
+var action = await db.PendingActions.FirstOrDefaultAsync(pa => pa.Id == id);
+action.Status = PendingActionStatus.Pending;          // « inchangé » pour EF
+await db.SaveChangesAsync();
+
+// ✅ relire avant de modifier, et lire sans suivi pour décider
+await db.Entry(action).ReloadAsync();
+// … et pour une lecture de décision : .AsNoTracking().FirstOrDefaultAsync(...)
+```
+
+**Consigne** :
+- Un dépôt qui mêle `ExecuteUpdate` et lecture-modification-`SaveChanges` sur **la même table**
+  relit (`ReloadAsync`) avant de modifier, ou fait toute la transition en `ExecuteUpdate`.
+- Une lecture qui sert à **décider** (« peut-on confirmer ? ») est `AsNoTracking()`.
+- Un test d'intégration ne relit **jamais** son verdict par le contexte du serveur : il le relit
+  dans un scope neuf. Sinon il constate la copie périmée, et donne un vert qui ment.
+
+**Preuve** : `PendingSendConfirmationIntegrationTests.AGestureWhoseReplayFails_…` et
+`AReplayAbandonedMidway_…` sont rouges sans `ReloadAsync`, et
+`ADeliveryUncertainConfirmation_…` est rouge (404 au lieu de 409) sans `AsNoTracking`.
+Preuve par mutation.

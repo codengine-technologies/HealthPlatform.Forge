@@ -2,9 +2,9 @@
 
 > **Statut** : En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.80
+> **Version** : 1.81
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-01 (corriger l'orthographe avant d'envoyer, task-349)
+> **Dernière mise à jour** : 2026-10-02 (le travail fait hors ligne n'est plus perdu, task-330)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -993,7 +993,7 @@ Les règles `RG-E009-084` à `RG-E009-089` sont propres à ENS Mon espace santé
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---------|--------|------------|---------------------|
-| E009-F001 | 🟢 Implémenté | 95% — dossiers IMAP CRUD complets, opérations en masse (déplacer/lu/marquer), mono-boîte (multi-boîte via F010), jauge d'occupation de la boîte ; pilotage de la synchronisation d'arrière-plan (pause / relance / arrêt) effectif et état fidèle — task-188 | task-087 |
+| E009-F001 | 🟢 Implémenté | 95% — dossiers IMAP CRUD complets, opérations en masse (déplacer/lu/marquer), mono-boîte (multi-boîte via F010), jauge d'occupation de la boîte ; pilotage de la synchronisation d'arrière-plan (pause / relance / arrêt) effectif et état fidèle — task-188 ; gestes hors ligne rejoués jusqu'au succès, jamais effacés en silence — task-330 | task-087, task-330 |
 | E009-F002 | 🟢 Implémenté | 100% — traitement CDA et IHE_XDM complet, paire CDA/PDF fusionnée, détection doublons et versions normative INT.18 | task-010, task-013, task-034 |
 | E009-F003 | 🟢 Implémenté | 100% — tags urgence, tagging IA, détection biologie anormale, acquittement médico-légal | task-005, task-028 |
 | E009-F004 | 🟢 Implémenté | 100% — Vue temporelle patient, Timeline biologie horizontale, Synthèse clinique livrées sur les deux frontends ; widget Patient sur le dashboard | task-035 |
@@ -1035,6 +1035,24 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 > automatiquement au retour de la connexion », c'est cette description qui fait foi.
 
 ### Fonctionnalités métier
+
+- **v1.81 — Ce que le médecin fait hors ligne finit par être appliqué, ou il est averti**
+  (task-330) : lu / non lu, signalement, suppression et acquittement d'un résultat de biologie
+  faits sans connexion ne se perdent plus au premier incident.
+  - **Rejoués jusqu'au succès** : un geste qui échoue (serveur de messagerie momentanément
+    indisponible) reste en attente et repart à la synchronisation suivante. Après dix échecs, il
+    est conservé et compté comme non appliqué, jamais effacé en silence.
+  - **Un arrêt n'est pas un échec** : une synchronisation interrompue rend le geste intact, et un
+    traitement coupé en route ne bloque plus rien.
+  - **Jamais deux fois le même courrier** : quand un envoi confirmé échoue alors que le message a
+    peut-être déjà quitté le serveur, il n'est plus proposé à l'envoi. Il reste dans la liste
+    avec l'avertissement « Ce message est peut-être parti : vérifiez auprès du destinataire avant
+    de le renvoyer », et le médecin peut seulement le retirer. Quand rien n'est parti, le message
+    reste prêt à envoyer, avec sa cause.
+  - **Refus immédiat** : un message sans destinataire écrit hors ligne est refusé tout de suite,
+    au lieu d'être accepté puis perdu.
+  - L'affichage de l'avertissement et du nombre de gestes non appliqués dans les écrans fait
+    l'objet d'une prochaine évolution. Le serveur les fournit déjà.
 
 - **v1.80 — Corriger l'orthographe avant d'envoyer, sans que rien ne change à l'insu du
   praticien** (task-349) : dans la rédaction, l'action « Corriger l'orthographe » propose les
