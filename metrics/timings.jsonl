@@ -3065,3 +3065,11 @@
 {"ts":"2026-10-01T23:42:02+02:00","run_id":"-","type":"step","task":"task-349","step":"review","status":"ok","note":"APPROVED, 4 PRs ouvertes","iterations":null,"duration_ms":494463}
 {"ts":"2026-10-01T23:42:17+02:00","run_id":"-","type":"step_start","task":"task-349","step":"tech-writer"}
 {"ts":"2026-10-01T23:43:15+02:00","run_id":"-","type":"step","task":"task-349","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":58766}
+{"ts":"2026-10-02T09:03:23+02:00","run_id":"-","type":"step_start","task":"task-338","step":"develop"}
+{"ts":"2026-10-02T09:03:47+02:00","run_id":"-","type":"cmd","task":"task-338","step":"develop","repo":"dtos-mss","kind":"build","label":"","cwd":"Dtos","cmd":"dotnet build HealthPlatform.Dtos.Mss.csproj","duration_ms":21718,"exit_code":0}
+{"ts":"2026-10-02T09:04:24+02:00","run_id":"-","type":"cmd","task":"task-338","step":"develop","repo":"dtos-mss","kind":"nuget-wait","label":"","cwd":"Dtos","cmd":"gh run watch 36976617375 --repo codengine-technologies/HealthPlatform.Dtos.Mss --exit-status","duration_ms":19591,"exit_code":0}
+{"ts":"2026-10-02T09:04:52+02:00","run_id":"-","type":"cmd","task":"task-338","step":"develop","repo":"api-mail","kind":"restore","label":"","cwd":"Api/Mail","cmd":"dotnet restore HealthPlatform.Api.Mail.sln --force-evaluate","duration_ms":9332,"exit_code":0}
+{"ts":"2026-10-02T09:05:46+02:00","run_id":"-","type":"cmd","task":"task-338","step":"develop","repo":"api-mail","kind":"build","label":"","cwd":"Api/Mail","cmd":"dotnet build HealthPlatform.Api.Mail.sln --no-restore","duration_ms":36539,"exit_code":0}
+{"ts":"2026-10-02T09:08:57+02:00","run_id":"-","type":"cmd","task":"task-338","step":"develop","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln --no-build","duration_ms":188400,"exit_code":0}
+{"ts":"2026-10-02T09:09:26+02:00","run_id":"-","type":"step","task":"task-338","step":"develop","status":"ok","note":"merge develop (task-349) + DTO 500.0.0","iterations":null,"duration_ms":362599}
+{"ts":"2026-10-02T09:09:48+02:00","run_id":"-","type":"step_start","task":"task-338","step":"e2e"}

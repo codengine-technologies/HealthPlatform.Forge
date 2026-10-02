@@ -257,11 +257,11 @@ Tests existants qui **figeaient le défaut**, réécrits sur le comportement att
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 1 min 01 s | — | — | — | — |
-| /develop | ok | 39 min 38 s | 5 (1 min 10 s) | 7 (13 min 41 s) | — | dtos-mss 1B/0T, api-mail 4B/7T |
+| /develop | ok | 6 min 02 s | 7 (2 min 08 s) | 8 (16 min 49 s) | — | dtos-mss 2B/0T, api-mail 5B/8T, merge develop (task-349) + DTO 500.0.0 |
 | /sonar | ok | 24 min 55 s | 4 (1 min 04 s) | 12 (12 min 21 s) | 4 (4 min 44 s) | 2 itération(s), api-mail 4B/12T |
 | /lint-angular | skipped | 2.0 s | — | — | — | client-angular non listé dans Repos |
 | /lint-mobile | skipped | 2.1 s | — | — | — | client-mobile non listé dans Repos |
 | /e2e | failed | 17 min 07 s | — | — | — | e2e ×4 (11 min 20 s), angular rouge + parité : E2E-COMPOSE-002 (task-349) présent sur la branche Angular — questions/task-338.md |
-| **Total cycle** | | **1 h 22 min** | **9 (2 min 14 s)** | **19 (26 min 02 s)** | **4 (4 min 44 s)** | |
+| **Total cycle** | | **49 min 11 s** | **11 (3 min 12 s)** | **20 (29 min 10 s)** | **4 (4 min 44 s)** | |
 
-Autres commandes mesurées : nuget-wait ×1 (11 s), restore ×2 (2 min 15 s)
+Autres commandes mesurées : nuget-wait ×2 (30 s), restore ×3 (2 min 24 s)
