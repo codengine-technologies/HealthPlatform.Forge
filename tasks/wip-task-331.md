@@ -86,3 +86,16 @@ matricule ne se mélangent jamais, et l'opposition lue et écrite est celle de l
 - **Référentiels métier** : référentiel INS (OID des domaines NIR / NIA)
 - **Hébergement HDS** : oui — environnement inchangé
 - **AIPD / impact RGPD** : inchangé — corrige un risque de mélange d'identités, sans traitement nouveau
+
+## Branches
+- `api-mail` (pushed) : fix/task-331-dossier-patient-par-fiche — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-331-dossier-patient-par-fiche (depuis `origin/develop` @ `91fb090c`, task-329 mergée)
+- `dtos-mss` : aucune branche au `/start`. `/develop` la crée seulement si un contrat change.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-331 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 18 s | — | — | — | — |
+| **Total cycle** | | **18 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
