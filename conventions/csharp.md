@@ -251,7 +251,7 @@ dans `string.Equals`, mais `StringComparer` dans `Contains`.
 
 ## S125 — une prose qui « ressemble à du code » est signalée comme code commenté
 
-**Occurrences : 9** (task-184, task-292, task-188, task-322, task-171, task-342, task-191, task-330,
+**Occurrences : 10** (task-348 — deux commentaires « … public ; c'est … », « … Toxiproxy ; with », attrapés par le contrôle mécanique lancé pendant `/sonar` ; task-184, task-292, task-188, task-322, task-171, task-342, task-191, task-330,
 task-331 — neuvième, **attrapée par le contrôle mécanique avant le commit**, comme prévu : « …pas
 l'objet ; le parcours… » au milieu d'un commentaire du seed e2e. Le contrôle marche. Le réflexe
 d'écriture, lui, ne tient toujours pas : en français, l'espace avant le point-virgule est la
@@ -448,7 +448,7 @@ on relit, c'est un commentaire qu'il faut, pas une variable morte.
 
 ## S4457 — la validation des arguments se fait hors du corps `async`
 
-**Occurrences : 4** (task-329 — `OutgoingMailService.SendAsync` : `ThrowIfNull(mail)` en tête de la
+**Occurrences : 5** (task-348 — `MailServerResolver.ResolveAsync` : `throw new ArgumentException` explicite en tête de la méthode `async`, **invisible au contrôle mécanique §Q 2b**, qui ne cherche que `ThrowIf…` ; contrôle sauté de surcroît, la passe qualité ayant été faite à la main ; task-329 — `OutgoingMailService.SendAsync` : `ThrowIfNull(mail)` en tête de la
 méthode `async` publique, écrit alors que cette entrée existait ; d'où le contrôle mécanique de
 `agents/develop.md` §Q 2b ; task-299, task-300, task-171 — `PscTokenProvider.GetModeAsync` /
 `GetAccessTokenAsync` : `ThrowIfNull(key)` en tête d'une méthode `async`, corrigé en
@@ -1212,3 +1212,30 @@ en outre tous non publics : le contrôle des plages les aurait refusés de toute
 
 **Preuve** : `AutoconfigServiceTests.DiscoverAsync_XmlPointingToAnIpLiteral_IsRejected`,
 cas `203.0.113.10` et `[2001:db8::25]` rouges sans le garde, verts avec.
+
+---
+
+## S1313 — une borne de plage réseau ne s'écrit pas comme une adresse en dur
+
+**Occurrences : 1** (task-348, `/sonar` — 11 hotspots sur `NonPublicNetworkAddress`)
+
+La règle signale toute adresse IP littérale dans une chaîne (`IPAddress.Parse("10.0.0.0")`) comme un
+hotspot « adresse codée en dur ». Pour une table de plages non publiques, ce sont des bornes de
+réseau, pas des adresses à joindre : la règle se trompe de sens, mais chaque ligne laisse un hotspot
+`TO_REVIEW` qui bloque le Quality Gate du nouveau code. Marquer « safe » sur le serveur ne suit pas
+le code : le statut se perd sur un autre serveur ou une re-création du projet.
+
+```csharp
+// ❌ AVANT — 11 hotspots
+(IPAddress.Parse("10.0.0.0"), 8),
+(IPAddress.Parse("fc00::"), 7),
+
+// ✅ APRÈS — mêmes réseaux, construits en octets, la notation usuelle en commentaire
+(V4(10, 0), 8),         // 10.0.0.0/8 — privée
+(V6(0xFC, 0x00), 7),    // fc00::/7 — unique locale
+// IPAddress.IPv6Any / IPv6Loopback pour :: et ::1
+```
+
+**Consigne** : une adresse IP qui sert de borne ou de constante de réseau se construit en octets
+(ou par les constantes d'`IPAddress`), avec sa notation usuelle en commentaire. Une adresse à
+joindre, elle, vient de la configuration, jamais du code.

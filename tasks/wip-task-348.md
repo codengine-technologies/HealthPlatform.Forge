@@ -202,7 +202,7 @@ connexion IMAP / SMTP
 - `AutoconfigResultDto` n'est **pas** dans `dtos-mss` : c'est un type interne d'api-mail (`IAutoconfigService.cs`), rien à marquer côté contrat. Il reste la charge utile du cache d'autoconfig. Côté Blazor, sa copie locale (`IUserSettingsService.cs`) est supprimée avec son unique consommateur.
 - Commits :
   - dtos-mss : feat(dto): serveur resolu cote serveur — champs serveur obsoletes, MailServerInfoDto
-  - api-mail : `0594a598` fix(mail): serveur de messagerie resolu par le seul serveur — plus aucun serveur saisi (59 fichiers, dont 14 `packages.lock.json` où seule la version DTO change)
+  - api-mail : `0a0323ca` fix(mail): serveur de messagerie resolu par le seul serveur — plus aucun serveur saisi (59 fichiers, dont 14 `packages.lock.json` où seule la version DTO change)
   - client-blazor : `de15ef9` feat(settings): serveur de messagerie en lecture seule — plus de champs serveur ni de detection
 
 ### Ce qui a changé (api-mail)
@@ -321,6 +321,34 @@ Mutations unitaires sur l'autoconfig :
 - [x] Task de suivi écrite : `tasks/todo-task-351.md` (étape 2, avec un encadré d'arbitrage humain sur la condition de lancement)
 - Next step : /sonar task-348
 
+## Sonar log
+
+- Serveur : SonarQube 25.6.0.109173 (`sonar.token`), port 9001, démarré au pré-flight (base puis serveur). Projet `healthplatform-api-mail`, période de nouveau code « previous version » depuis le 2026-04-17 : elle englobe des dizaines de tasks déjà mergées, d'où un tri par provenance de chaque finding.
+- **Phase 1 (nouveau code de task-348) : verte** en 2 itérations.
+  - Itération 1, sur les fichiers de la task : **2 issues** (S4457 `MailServerResolver.ResolveAsync`, S138 `AddApplication`) et **11 hotspots** S1313 (`NonPublicNetworkAddress`). Couverture du nouveau code sous 95 % sur `SettingsController` (92,7), `AutoconfigService` (94,0), `MailServerResolver` (94,9), `DnsHostAddressResolver` (50).
+  - Corrigé : S4457 (validation hors du corps async, `ResolveCoreAsync` privée) ; S1313 (plages en octets, `IPAddress.IPv6Any` / `IPv6Loopback`) ; S138 : **dette antérieure** (issue créée le 2026-09-07), réduite et non introduite (`AddApplication` : 196 lignes sur `develop`, 192 après extraction de `AddMailServerResolution`).
+  - +8 tests de couverture (annulation par l'appelant, pannes de transport et inattendue, annulation pendant la résolution DNS, serveur partiel, validation à l'appel, DNS système, `GetMailServer` IMAP seul, réglages absents). Au passage, `AutoconfigService` contrôle désormais un jeton déjà annulé dès l'entrée (il téléchargeait et mettait en cache quand le fournisseur ignorait le jeton).
+  - Itération 2 : **aucune issue ni aucun hotspot** sur les fichiers de la task ; couverture du nouveau code de ces fichiers 95,8 à 100 %.
+- Contrôle mécanique §Q 2b (sauté en `/develop`, lancé ici) : 2 commentaires au motif S125 réécrits (`f4824ab7`). S4457 n'aurait **pas** été attrapé : le grep ne cherche que `ThrowIf…`, alors que le code levait un `throw new ArgumentException` explicite.
+- Findings restants du nouveau code, tous **hors task-348** (provenance vérifiée) : 66 violations et 13 hotspots `TO_REVIEW` hérités, dont 2 apparus à cette analyse mais venus de task-329 (#270, mergée après la précédente analyse) : S103 `DraftService.cs:330`, S138 `SmtpService.SendMailAsync`.
+- Phase 2 (dette héritée) : **non lancée** (optionnelle, hors périmètre de la task).
+- Build / tests : Release, 0 erreur ; unitaires verts. Les rouges d'intégration des passes de couverture sont tous `53300: sorry, too many clients already` (Postgres local partagé avec l'AppHost en cours) ; les mêmes tests passent seuls.
+- Commits : `9dd688e3` fix(sonar/new) S4457 / S1313 / S138 ; `b47c0158` test(sonar/new) ; `f4824ab7` refactor(sonar/new) S125.
+- Conventions : S4457 → 5 (récidive), S125 → 10, **S1313 ajoutée**.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline (analyse du 2026-10-01) | Final (branche task-348) | Δ |
+|---|---|---|---|
+| Quality Gate (nouveau code) | ERROR | ERROR | → (conditions héritées : hotspots non revus, violations) |
+| New coverage | 98,2 % | 98,1 % | −0,1 pt |
+| Bugs | 2 | 2 | 0 |
+| Vulnerabilities | 0 | 0 | 0 |
+| Security hotspots | 15 | 15 | 0 (24 → 13 sur le nouveau code après correction des 11 de la task) |
+| Code smells | 65 | 68 | +3, tous venus de task-329 (#270) mergée entre-temps, aucun de task-348 |
+| Reliability / Security / Maintainability | D / A / A | D / A / A | → |
+| Coverage (global) | 98,0 % | 98,0 % | 0 |
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-348 --sync` — ne pas éditer à la main)*
@@ -329,6 +357,7 @@ Mutations unitaires sur l'autoconfig :
 |---|---|---|---|---|---|---|
 | /start | ok | 57 s | — | — | — | — |
 | /develop | ok | 52 min 07 s | 4 (42 s) | 5 (4 min 31 s) | — | dtos-mss 1B/0T, api-mail 1B/3T, client-blazor 2B/2T |
-| **Total cycle** | | **53 min 05 s** | **4 (42 s)** | **5 (4 min 31 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 30 min 11 s | 2 (1 min 23 s) | 10 (9 min 59 s) | 4 (5 min 07 s) | 2 itération(s), api-mail 2B/10T |
+| **Total cycle** | | **1 h 23 min** | **6 (2 min 05 s)** | **15 (14 min 31 s)** | **4 (5 min 07 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (18 s), restore ×1 (3.0 s)
