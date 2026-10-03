@@ -1188,3 +1188,27 @@ return Attached(chosen);
 
 **Consigne** : dès qu'un `ContainsKey` garde un accès par indexeur à la même clé, écrire
 `TryGetValue(key, out var value)` et utiliser `value`.
+
+---
+
+## test-de-rejet-attribuable — un test de refus doit échouer pour la raison qu'il nomme
+
+**Occurrences : 1** (task-348, `/develop` — repéré par mutation, avant la revue)
+
+Un test « l'hôte X est rejeté » peut passer alors que la règle qu'il prétend éprouver est
+absente : il suffit qu'une **autre** règle rejette X avant elle. Constaté sur task-348 :
+`DiscoverAsync_XmlPointingToAnIpLiteral_IsRejected` restait **vert** une fois le garde des IP
+littérales retiré, parce que le DNS scripté du test ne connaissait pas le littéral et que
+l'hôte était refusé comme « ne se résout pas ». Les quatre cas (127.0.0.1, 10.0.0.1, …) étaient
+en outre tous non publics : le contrôle des plages les aurait refusés de toute façon.
+
+**Consigne** :
+- Pour chaque règle de refus, au moins un cas que **seule** cette règle refuse. Ici : une IP
+  littérale **publique** (`203.0.113.10`), que le contrôle des plages laisse passer.
+- Les doublures se comportent comme le vrai fournisseur sur le point testé : le DNS réel rend un
+  littéral tel quel, le DNS scripté aussi.
+- Prouver par mutation : retirer la règle, voir le test rougir **sur son assertion**, restaurer.
+  Un test qui reste vert sous mutation est un vert qui ment, pas une couverture.
+
+**Preuve** : `AutoconfigServiceTests.DiscoverAsync_XmlPointingToAnIpLiteral_IsRejected`,
+cas `203.0.113.10` et `[2001:db8::25]` rouges sans le garde, verts avec.
