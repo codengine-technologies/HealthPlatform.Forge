@@ -1,9 +1,9 @@
 # todo-task-331.md — Un document rattaché à un patient apparaît dans son dossier, et le dossier ne mélange jamais deux identités qui partagent un matricule
 
-**Repos**: api-mail
+**Repos**: api-mail, client-angular, client-blazor, client-mobile
 **Dependencies**: — (aucune ; à coordonner avec task-191, qui traite les **doublons** de fiches pour une même identité)
 **Epic**: E009
-**Single frontend**: true
+**Single frontend**: false — périmètre étendu aux trois clients le 2026-10-03 (voir « Extension du périmètre »)
 **Priorité**: **1** — le rattachement manuel imposé par task-176 est **sans effet visible** : le document sort de la file « à intégrer » sans entrer dans aucun dossier ; et la garde d'opposition peut lire la mauvaise fiche.
 
 > **Origine.** Audit de détection de bugs du 2026-09-27
@@ -49,6 +49,52 @@ matricule ne se mélangent jamais, et l'opposition lue et écrite est celle de l
 
 - La déduplication des fiches d'une même identité (task-191).
 - La création de patient depuis le rattachement — **interdite** (garde-fou métier), inchangée.
+- Un écran « file à intégrer » regroupant tous les documents sans fiche (le rattachement reste
+  ouvert depuis le mail qui porte le document).
+
+## Extension du périmètre — choisir un patient quand l'appariement échoue (décision humaine, 2026-10-03)
+
+> Posée par l'humain au HAG de la première itération : « si les traits d'identité du CDA ne
+> permettent pas de trouver un dossier, il faut pouvoir tout de même choisir un patient, sinon il
+> n'est pas possible de rattacher. » À coder **dans cette US**.
+
+**Constat** (analyse des trois clients, develop @ 2026-10-03) — Angular, Blazor et mobile ont le
+même parcours (task-012 / task-137) : bandeau « Rattachement en attente » dans le détail d'un mail →
+dialogue « comparaison visuelle » qui n'affiche **que** les candidats de `GET /patients/match`.
+
+| Cas | Les trois clients aujourd'hui |
+|---|---|
+| `/match` renvoie 0 candidat | seul « Ignorer » ; le document ne peut pas être rattaché |
+| `/match` en erreur | message ou toast, aucun « Réessayer », seul « Ignorer » |
+| CDA sans nom, prénom ni date de naissance (le sexe n'est pas compté) | **aucun bouton** dans le bandeau ; le compteur ⏳ / « À rattacher (N) » l'annonce quand même |
+| Recherche libre de patient | existe dans chaque client (écran Patients) mais n'est jamais branchée sur le rattachement |
+
+`/match` ne retient que les fiches dont le nom ou le prénom **contient** celui du CDA (`ILIKE %…%`) :
+une faute de frappe, un nom d'usage ou un accent suffisent à vider la liste.
+
+La règle de task-176 interdit le rattachement **automatique** par traits, et la création de patient.
+Elle n'interdit pas que le **praticien choisisse lui-même** une fiche existante : c'est le recours
+manquant.
+
+**Périmètre ajouté (les trois clients, comportement identique)** :
+
+6. **Recherche libre dans le dialogue de rattachement** : un champ de recherche de patient
+   (nom, et INS si le client sait déjà le faire), toujours disponible sous la liste des candidats,
+   mis en avant quand `/match` ne renvoie rien. Il réutilise la recherche patient existante du client
+   (`/patients/search` ou `/patients/search/advanced`). Le résultat choisi est une **fiche
+   existante** ; jamais de création.
+7. **Confirmation d'un choix manuel** : rattacher une fiche trouvée par la recherche libre (et non
+   proposée par `/match`) demande une confirmation explicite qui rappelle les traits du document et
+   ceux de la fiche (identito-vigilance). Rattacher un candidat de `/match` reste en un clic.
+8. **Document sans trait exploitable** : le bandeau propose aussi un bouton pour un document sans
+   nom, prénom ni date de naissance ; le dialogue s'ouvre directement sur la recherche libre (sans
+   appeler `/match`, qui répond 400 sans trait). Le compteur et le bandeau comptent alors les mêmes
+   documents.
+9. **Erreur de `/match`** : un bouton « Réessayer » ; la recherche libre reste utilisable.
+
+Contrats : **aucun changement** attendu (`attach-patient`, `/patients/search`, `/patients/search/advanced`
+existent). Si `/develop` constate qu'un champ manque au résultat de recherche pour comparer les
+identités (date de naissance, sexe, INS), il l'établit et l'ajoute dans `dtos-mss` (branche paresseuse).
 
 ## Definition of Done
 
@@ -64,13 +110,29 @@ matricule ne se mélangent jamais, et l'opposition lue et écrite est celle de l
 - [ ] Migration éventuelle auditée (règle 7c) : fichier lu, aucune opération fantôme, companion présent, aucun écart de modèle
 - [ ] Aucune INS, NIR ni trait patient dans les logs
 
+### DOD de l'extension (points 6 à 9) — Angular, Blazor, mobile
+
+- [ ] Build et tests verts sur `client-angular`, `client-blazor`, `client-mobile` (commandes de la table des repos)
+- [ ] Test de composant du dialogue, par client : 0 candidat → la recherche libre est affichée ; une recherche renvoie une fiche ; la choisir demande une confirmation ; confirmer appelle `attach-patient` avec l'identifiant de la fiche choisie et émet le rattachement
+- [ ] Test de composant : un candidat de `/match` se rattache sans confirmation supplémentaire (non-régression)
+- [ ] Test de composant : document sans nom, prénom ni date de naissance → `/match` n'est pas appelé, la recherche libre est ouverte d'emblée
+- [ ] Test de composant : `/match` en erreur → « Réessayer » relance l'appel ; la recherche libre reste utilisable
+- [ ] Test du bandeau (détail du mail), par client : un document sans trait a son bouton de rattachement ; le nombre de boutons égale le compteur « en attente »
+- [ ] Aucun bouton ni chemin de création de patient dans le dialogue (test existant conservé ou étendu)
+- [ ] `data-testid` sur le champ de recherche, chaque résultat, la confirmation et « Réessayer » ; libellés via i18n là où le client en a (Blazor `Localizer`), en dur en français sinon (Angular, mobile — convention actuelle)
+- [ ] Scénario `E2E-PATIENT-002` ajouté à `Api/Mail/e2e/scenarios.yml` (clients mobile et angular **requis**), donnée de seed déclarée (document sans INS dont les traits ne correspondent à aucune fiche, et une fiche existante à choisir), et implémenté dans les deux suites : rattachement par recherche libre, puis le document est **présent dans le dossier de la fiche choisie** (règle 1b côté frontend)
+- [ ] `/e2e` vert sur les deux voies, parité verte
+
 ## Manual Test Plan
 
 1. `cd Api/Mail && dotnet run --project src/AppHost` ; Blazor ou mobile connecté à une boîte de test.
 2. Recevoir un mail de test portant un CDA **sans INS** (corpus du banc) → il apparaît dans « à intégrer ».
 3. Le rattacher à un patient existant de test → **Attendu** : il disparaît de « à intégrer » **et apparaît** dans la chronologie du patient. Avant : il n'apparaît nulle part.
 4. Préparer (données de test anonymisées) deux fiches de même matricule dans deux domaines ; ouvrir chacune → chacune ne montre que ses propres documents.
-5. Poser une opposition sur l'une, tenter un envoi vers le patient correspondant → la demande d'acquittement s'affiche pour la bonne fiche, et seulement pour elle.
+5. Poser une opposition sur l'une, tenter un envoi vers le patient correspondant → la demande d'acquittement s'affiche. Décision de la première itération (à confirmer) : l'adresse Mon Espace Santé ne portant pas le domaine, l'acquittement est demandé dès qu'**une** fiche du matricule est opposée.
+6. **Choix manuel quand l'appariement échoue** (Angular, Blazor et mobile) : ouvrir un mail dont le CDA sans INS porte un nom qui ne correspond à aucune fiche → « Rattacher » → le dialogue annonce 0 candidat et propose la recherche ; chercher un patient existant par son nom, le choisir → une confirmation rappelle les traits du document et ceux de la fiche → confirmer → le document quitte le bandeau et apparaît dans le dossier de ce patient.
+7. **Document sans trait** : un CDA sans nom, prénom ni date de naissance a désormais un bouton dans le bandeau ; le dialogue s'ouvre directement sur la recherche.
+8. **Non-régression** : un candidat proposé par `/match` se rattache toujours en un clic, sans confirmation ; aucun bouton « Créer un patient » nulle part.
 
 ## Conformité santé / Ségur / ANS
 
@@ -90,6 +152,11 @@ matricule ne se mélangent jamais, et l'opposition lue et écrite est celle de l
 ## Branches
 - `api-mail` (pushed) : fix/task-331-dossier-patient-par-fiche — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-331-dossier-patient-par-fiche (depuis `origin/develop` @ `91fb090c`, task-329 mergée)
 - `dtos-mss` : aucune branche au `/start`. `/develop` la crée seulement si un contrat change. **Aucun contrat ne change** (routes et DTO identiques) : aucune branche.
+- *Extension du 2026-10-03 :*
+  - `client-blazor` (pushed) : fix/task-331-dossier-patient-par-fiche — https://github.com/codengine-technologies/HealthPlatform.Client/tree/fix/task-331-dossier-patient-par-fiche (depuis `origin/develop` @ `2ced0fb`)
+  - `client-mobile` (pushed) : fix/task-331-dossier-patient-par-fiche — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/fix/task-331-dossier-patient-par-fiche (depuis `origin/develop` @ `a3570b8`)
+  - `client-angular` (code-only) : la forge écrit sur la branche courante de `Client/Angular/` (`feature/nova-rewriting-mss` au 2026-10-03) — l'humain gère branche, commit, push et PR TFS. Les deux `environment.ts` modifiés localement par l'humain ne sont pas touchés.
+  - `api-mail` : même branche ; la PR #271 reste ouverte et passe en `awaiting-us-completion` (règle 11) jusqu'à ce que l'US assemblée soit prête.
 
 ## Réévaluation au démarrage de /develop (develop @ `91fb090c`)
 
