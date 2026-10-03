@@ -1140,3 +1140,29 @@ document.HasBiologyResults = document.BiologyResults.Exists(r => !string.IsNullO
 **Preuve** : `SearchBiologyFilterFromCdaIntegrationTests` (vraies archives → ingestion PostgreSQL →
 `POST /search/semantic`). Rouge sur l'ancien code (la fiche de cardiologie remonte), et rouge par
 mutation avec le seul correctif api-mail sur Interop 93 (le compte rendu HPV qualitatif disparaît).
+
+---
+
+## S4143 — une même clé de dictionnaire écrite deux fois d'affilée
+
+**Occurrences : 1** (task-331, `client-blazor` — `ManualAttachmentPanel.razor`, réserver une clé
+puis l'écraser après un `await`)
+
+Les analyseurs Sonar du build `client-blazor` signalent en **erreur** deux affectations successives
+de la même clé, même séparées par un `await`. Le cas légitime (réserver une entrée pour qu'un rendu
+concurrent ne relance pas l'appel, puis la remplir) se réécrit en deux passes distinctes.
+
+```csharp
+// ❌ S4143
+_names[id] = string.Empty;
+_names[id] = (await service.GetAsync(id))?.Name ?? string.Empty;
+
+// ✅ réserver toutes les clés, puis remplir
+missing.ForEach(id => _names.Add(id, string.Empty));
+var records = await Task.WhenAll(missing.Select(id => service.GetAsync(id)));
+foreach (var (id, record) in missing.Zip(records)) { _names[id] = record?.Name ?? string.Empty; }
+```
+
+**Consigne** : pour réserver puis remplir une entrée autour d'un appel asynchrone, écrire la
+réservation (`Add` / `TryAdd`) et le remplissage dans deux boucles distinctes ; en bonus, les appels
+partent en parallèle.

@@ -193,7 +193,8 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   S'il l'était, `npx prettier --write <f>` ne touche **que** les lignes de la task. Le vérifier
   par `git diff --stat` : les insertions grossissent, aucune suppression n'apparaît hors des
   hunks. Sinon, seulement, formater à la main.
-- **Occurrences** : 5
+- **Récidive task-331** (/develop, extension 2) : `prettier --write` lancé d'un bloc sur une liste de fichiers dont `audit.model.spec.ts`, qui n'était pas propre en HEAD (47 lignes de diff pour 2 ajoutées). Attrapé par le `git diff --stat` d'après coup, restauré depuis HEAD avant tout commit. Le réflexe à prendre : tester chaque fichier **existant** avec le remède mécanique **avant** de le mettre dans la commande `--write`, jamais après.
+- **Occurrences** : 6
 
 ### tiptap-conteneur-capte-le-curseur — Un nœud conteneur en tête de document capte la frappe
 - **Règle** : comportement tiptap / ProseMirror (pas une règle lint)

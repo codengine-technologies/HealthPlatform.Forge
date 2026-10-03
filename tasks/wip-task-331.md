@@ -184,7 +184,7 @@ dossier patient (le geste reste dans le détail du mail, où le document est lu)
       rattacher un document déjà rattaché sans le patient attendu → 409 `problem+json`, rien ne change ;
       rattacher ou détacher un document porteur d'une INS → 409, rien ne change ;
       détacher avec un patient attendu périmé → 409 ;
-      chaque rattachement et détachement effectif écrit sa trace d'audit (action, document, fiche), relue en base
+      chaque rattachement et détachement effectif émet sa trace d'audit (action, document, fiche), relue au puits d'audit sur la pile HTTP réelle (la persistance des traces relève de la chaîne d'audit et de ses tests)
 - [ ] Tests unitaires du dépôt et du service pour chaque branche (inconnu, INS, attendu périmé, déjà courant, effectif)
 - [ ] Composants, par client : le document rattaché à la main affiche la fiche, « Changer de patient » et « Détacher » ;
       un document porteur d'une INS ne les affiche pas ; « Détacher » demande une confirmation puis appelle
@@ -456,16 +456,16 @@ La revue a trouvé deux comportements prouvés seulement par des tests unitaires
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 18 s | — | — | — | — |
-| /develop | ok | 54 min 00 s | 19 (2 min 54 s) | 15 (10 min 47 s) | — | api-mail 11B/8T, client-blazor 4B/3T, client-angular 2B/2T, client-mobile 2B/2T |
+| /develop | ok | 37 min 06 s | 31 (4 min 35 s) | 27 (19 min 00 s) | — | api-mail 15B/12T, client-blazor 7B/6T, client-angular 4B/4T, client-mobile 4B/5T, dtos-mss 1B/0T |
 | /sonar | ok | 6 min 18 s | 2 (34 s) | 10 (8 min 04 s) | 4 (1 min 14 s) | api-mail 2B/10T |
 | /lint-angular | ok | 26 s | — | — | — | — |
 | /lint-mobile | ok | 11 s | — | — | — | — |
 | /e2e | ok | 9 min 30 s | — | — | — | e2e ×6 (16 min 30 s) |
 | /review | ok | 5 min 57 s | 5 (31 s) | 6 (6 min 11 s) | — | api-mail 2B/3T, client-blazor 1B/1T, client-mobile 1B/1T, client-angular 1B/1T |
 | /tech-writer | ok | 49 s | — | — | — | — |
-| **Total cycle** | | **1 h 17 min** | **26 (4 min 01 s)** | **31 (25 min 03 s)** | **4 (1 min 14 s)** | |
+| **Total cycle** | | **1 h 00 min** | **38 (5 min 42 s)** | **43 (33 min 15 s)** | **4 (1 min 14 s)** | |
 
-Autres commandes mesurées : lint ×2 (14 s)
+Autres commandes mesurées : lint ×2 (14 s), nuget-wait ×1 (22 s), restore ×2 (4.9 s)
 
 ## Stitch design log
 
@@ -659,3 +659,58 @@ Autres commandes mesurées : lint ×2 (14 s)
 4. `CdaParsingService` : rogner les traits patient à l'analyse (l'espace qui suit `<family>` du corpus ANS arrive en base).
 5. `GET /patients/match` sans trait : rendre `[]` au lieu de 400, comme le dépôt et le commentaire du contrôleur, pour retirer la règle « a des traits » recopiée dans trois clients.
 6. Longueur minimale de recherche de fiche non partagée (2 dans le dialogue, 3 dans `SearchPatientComponent` Blazor).
+
+## Develop log — extension 2 du 2026-10-03 (détacher, changer de patient, tracer)
+
+**Repos touchés** : `dtos-mss` (contrat, branche créée à la demande), `api-mail`, `client-blazor`, `client-angular` (code-only), `client-mobile`.
+
+### Contrat (`dtos-mss`)
+- `AttachPatientRequestDto.ExpectedCurrentPatientId` (`Guid?`), `DetachPatientRequestDto { ExpectedCurrentPatientId }`, `AuditActionType.PatientDocumentAttached = 37` et `PatientDocumentDetached = 38`.
+- Commit `b874de5`, CI run 508 verte, package **508.0.0** ; consommateurs bumpés (`api-mail` `26ac74db`, `client-blazor` `57864dc`, avec leurs `packages.lock.json`, comme les bumps précédents).
+
+### API (`api-mail`)
+- `POST attach-patient` : **409** si le document porte une INS, ou si son patient courant n'est pas `ExpectedCurrentPatientId` (`null` pour un document sans patient). Plus d'écrasement silencieux. Rattacher à la fiche déjà courante ne fait rien.
+- `POST detach-patient` (nouveau) : le document repasse sans patient, donc dans « à intégrer » ; 409 (INS, patient attendu périmé ou document déjà détaché), 404 (document inconnu), `problem+json`.
+- Audit : `PatientDocumentAttached` / `PatientDocumentDetached`, avec l'identifiant CDA, le titre, le LOINC, la fiche choisie ou quittée (INS, nom) et, dans `ServerRequest`, les identifiants de la fiche choisie et de la précédente. Aucune trace sur un refus ou un geste sans effet.
+- Le dépôt rend une issue typée (`PatientAttachmentStatus`), le service la convertit en `NotFoundException` / `ConflictException` (règle 12) et trace. Le contrat de gel `AuditActionTypeContractTests` est mis à jour (37, 38, 40 membres).
+
+### Tests et preuves rouges (règle 1b)
+| Comportement | Test HTTP (`PatientFolderEndToEndTests`, vraie pile, PostgreSQL) | Preuve rouge (mutation) |
+|---|---|---|
+| Détacher un document rattaché à la main → hors du dossier, compté « à intégrer », gestes tracés | `ADocumentAttachedByHand_IsDetached_LeavesTheFolder_ReturnsToTheQueue_AndBothGesturesAreTraced` | M3 « détachement sans effet » et M4 « sans trace » → rouge |
+| Changer de patient → passe d'un dossier à l'autre, changement tracé avec la fiche précédente | `ADocumentAttachedByHand_ChangesPatient_MovesFromOneFolderToTheOther_AndTheChangeIsTraced` | M4 → rouge |
+| Rattacher un document déjà rattaché sans le patient attendu → 409, rien ne change, rien n'est tracé | `AttachingAnAttachedDocument_WithoutTheExpectedPatient_Is409ProblemJson_AndNothingChanges` | M1 « sans contrôle du patient attendu » → rouge |
+| Document porteur d'une INS : ni détaché, ni rattaché ailleurs | `ADocumentCarryingAnIns_CannotBeDetached_NorAttachedToAnotherRecord` | M2 « sans refus INS » → rouge |
+| Détacher avec un patient attendu périmé → 409 | `DetachingWithAStaleExpectedPatient_Is409_AndTheDocumentStays` | M1 → rouge |
+| Détacher un document inconnu → 404 | `DetachingAnUnknownDocument_Is404ProblemJson` | non-régression |
+
+- **Audit** : dans ce harnais, `PatientService` est le vrai service sur le vrai dépôt ; seul le puits d'audit est un substitut qui enregistre les traces (même pratique que `PscSessionIntegrationTests`). La persistance des traces relève de la chaîne d'audit, couverte par ses propres tests. La ligne de DOD « relue en base » est corrigée en conséquence.
+- Unitaires : dépôt (12 cas), service (8 cas), contrôleur (4 cas).
+
+### Clients (comportement identique)
+- **Panneau « Rattaché à la main à {fiche} »** dans le détail du mail, pour un document avec patient et sans INS : « Changer de patient » (le parent rouvre le dialogue avec le patient courant ; le compteur ne bouge pas) et « Détacher » (confirmation en ligne, puis le parent remet le document dans le bandeau et le compteur remonte). Un 409 affiche « Le rattachement de ce document a changé entre-temps : rechargez le message. »
+- Le dialogue de rattachement envoie le patient courant attendu (`null` depuis le bandeau).
+- Libellés d'audit des deux actions : Angular (`audit.model.ts`) et Blazor (`AuditActionLabels`).
+- Tests : Blazor 409 (+ `ManualAttachmentPanelTests` 6, dialogue +2) ; Angular `mss-lib` 557 (panneau 6, dialogue +2) ; mobile 991 (panneau 6, dialogue +2, `mail-detail` +2, trois tests existants alignés sur le nouveau contrat).
+- `client-angular` (code-only, **non commité**, `feature/nova-rewriting-mss`) — fichiers ajoutés par l'extension 2 : `libs/mss/src/core/utils/attachment-error.util.ts`, `libs/mss/src/features/mail/components/manual-attachment-panel/*` (ts, html, scss, spec), et modifications de `core/models/patient.model.ts`, `core/models/audit.model.ts`, `core/models/audit.model.spec.ts`, `core/services/mss-api.service.ts`, `mail-detail.component.{ts,html}`, `patient-attachment-dialog.component.{ts,spec.ts}`, `e2e/mss-e2e/specs/functional.e2e.ts`.
+
+### Parcours e2e `E2E-PATIENT-002` v2
+- Catalogue v2 (`cca4e433`) : le parcours nomme la fiche après rechargement, puis détache (confirmé), relit côté serveur que le message a quitté le dossier, et constate le retour du bandeau. **Il rend l'état d'origine** : rejoué deux fois de suite sur le même seed, vert les deux fois (mobile 9,3 s puis 7,6 s ; Angular 8,2 s puis 5,2 s).
+- Mutation « Confirmer le détachement » sans appel (bundle neuf vérifié) → rouge sur « le détachement est accepté par le serveur » (mobile et Angular), restauré.
+
+### Passe qualité (/simplify, 4 revues)
+- **Appliqué** :
+  - API : chargement et contrôle du document partagés ; le détachement ne relit qu'une fiche ; la trace déduit sa fiche du résultat ; `CurrentPatientChanged` explicite, un statut inconnu lève ; fabrique `Of` retirée ;
+  - Blazor : aligné sur Angular et mobile (le panneau émet, le détail possède le dialogue et le compteur) ; `MailPatientDto.FullName` ; clé `Cancel` réutilisée ; noms des fiches réservés puis lus en parallèle (plus d'appel en double après un changement) ;
+  - Angular et mobile : `attachmentErrorMessage` partagé, rangé avec la constante (Angular `core/utils/attachment-error.util.ts`, mobile `http-error.util.ts`) ; `isAttachedByHand` non exporté.
+  - Re-validation verte : api-mail 6 178, Blazor 409, Angular `mss-lib` 557, mobile 991.
+- **Écarté** : déplacer la règle « INS → pas de changement manuel » dans l'entité (déplacement sans gain) ; ne pas invalider le cache sur un rattachement inchangé (cas rare) ; `AlertController` mobile pour la confirmation (même rendu sur les trois clients).
+- **Suivis proposés** :
+  7. Exposer dans `MailMedicalDocumentDto` un indicateur « rattaché à la main » et le nom de la fiche, calculés par le serveur : la règle est aujourd'hui écrite côté serveur et dans trois clients, et chaque client relit la fiche par un appel.
+  8. Rendre le compteur « à intégrer » à jour dans la réponse de `attach-patient` / `detach-patient`, au lieu du delta optimiste recalculé par chaque client.
+
+### Vérifications
+- Contrôles mécaniques C# : rien. Analyseur Blazor : **S4143** corrigé à la main, consigné dans `conventions/csharp.md` (créé).
+- `prettier-fichier-existant` : récidive attrapée avant commit (`audit.model.spec.ts` restauré depuis HEAD), consignée (6ᵉ occurrence).
+- Branches poussées : `dtos-mss`, `api-mail`, `client-blazor`, `client-mobile` à jour avec `origin`.
+- Next step : `/sonar task-331`
