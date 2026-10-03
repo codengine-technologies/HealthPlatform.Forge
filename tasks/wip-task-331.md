@@ -382,11 +382,75 @@ La revue a trouvé deux comportements prouvés seulement par des tests unitaires
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 18 s | — | — | — | — |
-| /develop | ok | 43 min 52 s | 9 (33 s) | 4 (5 min 47 s) | — | api-mail 9B/4T |
+| /develop | ok | 54 min 00 s | 19 (2 min 54 s) | 15 (10 min 47 s) | — | api-mail 11B/8T, client-blazor 4B/3T, client-angular 2B/2T, client-mobile 2B/2T |
 | /sonar | ok | 5 min 28 s | 1 (15 s) | 5 (3 min 44 s) | 2 (35 s) | api-mail 1B/5T |
 | /lint-angular | skipped | 0.4 s | — | — | — | client-angular non touché (Repos: api-mail) |
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché (Repos: api-mail) |
 | /e2e | ok | 8 min 44 s | — | — | — | e2e ×3 (8 min 01 s) |
 | /review | ok | 8 min 25 s | 1 (2.0 s) | 2 (3 min 08 s) | — | api-mail 1B/2T |
 | /tech-writer | ok | 44 s | — | — | — | — |
-| **Total cycle** | | **1 h 07 min** | **11 (51 s)** | **11 (12 min 40 s)** | **2 (35 s)** | |
+| **Total cycle** | | **1 h 17 min** | **21 (3 min 12 s)** | **22 (17 min 40 s)** | **2 (35 s)** | |
+
+## Stitch design log
+
+- Project : client-mobile (id 10088502293310567548)
+- Screens :
+  | Component / Page | Stitch title | Screen id | Action | Screenshot |
+  |---|---|---|---|---|
+  | patient-attachment-dialog | patient-attachment-dialog | a715989e69434a318fddc14a9e78a087 | reused, puis `edit_screens` (recherche libre, liste de résultats, carte de confirmation) — **délai MCP dépassé, attendu, non relancé** : la mise à jour est probablement appliquée côté Stitch, à vérifier dans l'UI | https://lh3.googleusercontent.com/aida/AEtjO1VSF-ohz5I73BGiuu1ZaI0fAoESPNFIjIS3cEyd4DtGuyCrCXO3IugHyZgzU0_YHtM1369Uvf6XdG9q4zRgbGxEEZhc1X8hKbKCxUPei3NIlafdBGH5-UPNwuluGZ9oUgoQkv9m782X3b4XRZbQRvbS9mFyLjcvbSP3JufULPLS_WC9DMiO4ORqGTRV8A4-3sp0cipcgvneTxymFkfY5yaYqyHBgO03cgMLvR3E96E1Uy9cOv4OJm-Ol1aG (capture d'avant la mise à jour) |
+- ⚠ Rename / labelliser in Stitch UI : none
+- ⚠ Doublons suspectés à nettoyer dans l'UI : none
+- Stitch reachable : ✓
+- Référence appliquée : la structure existante (traits du CDA, candidats classés, « Ignorer ») est conservée. La section de recherche et la carte de confirmation reprennent les composants Ionic du dialogue (cartes, listes, boutons primaire et secondaire).
+
+## Develop log — extension du 2026-10-03 (choix manuel du patient)
+
+**Repos touchés** : `api-mail` (seed e2e et catalogue seulement, aucun code de production), `client-blazor`, `client-angular` (code-only), `client-mobile`. Aucun contrat ne change : la recherche libre réutilise `GET /patients/search`, dont l'identifiant de fiche est garanti par la première itération (test HTTP `APatientFoundBySearch_CarriesItsRecordId_AndItsFolderOpens`). Pas de branche `dtos-mss`.
+
+### Commits
+- `api-mail` : `ace30916` seed et catalogue E2E-PATIENT-002 ; `e98c2936` relecture des traits sans les espaces du corpus ; `b0979b0f` passe qualité.
+- `client-blazor` : `fbd26cd` feature ; `322d608` passe qualité.
+- `client-mobile` : `640676d` feature ; `7353bf7` parcours e2e ; `438bd20` passe qualité.
+- `client-angular` (code-only, **non commité**, branche `feature/nova-rewriting-mss`) : `libs/mss/.../patient-attachment-dialog/*` (ts, html, scss, spec), `libs/mss/.../mail-detail/mail-detail.component.{ts,html,spec.ts}`, `e2e/mss-e2e/specs/functional.e2e.ts`, `e2e/mss-e2e/support/{session,e2e-backend}.ts`. Les deux `environment.ts` modifiés par l'humain ne sont pas touchés.
+
+### Ce qui change (identique sur les trois clients)
+- **Dialogue de rattachement** : section « Rechercher un patient » toujours présente (champ, « Rechercher » à partir de 2 caractères, résultats avec « Choisir »), mise en avant par une consigne quand aucun candidat ne correspond. Une fiche choisie par la recherche ouvre une **confirmation** qui montre son identité sous les traits du document ; « Confirmer le rattachement » appelle `attach-patient`, « Retour » revient aux résultats. Un candidat de `/match` se rattache toujours en un clic. Aucune création de patient.
+- **Document sans trait** (ni nom, ni prénom, ni date de naissance) : `/match` n'est pas appelé (il répond 400), le dialogue s'ouvre sur la recherche.
+- **Échec de `/match`** : « Réessayer » relance l'appel ; la recherche reste utilisable. Blazor : `MatchByTraitsAsync` rend `null` en cas d'échec (au lieu d'une liste vide indiscernable de « personne »).
+- **Bandeau** : tout document sans `patientId` a son bouton, y compris sans trait ; le bandeau et le compteur « en attente » comptent les mêmes documents. Texte : « … ne porte aucun INS qualifié et n'est rattaché à aucun patient ».
+
+### Tests et preuves rouges
+| Client | Tests | Preuve |
+|---|---|---|
+| Blazor | `PatientAttachmentDialogTests` (7) et `PatientAttachmentBannerTests` (2), bUnit | Mutation « bandeau limité aux documents à trait » → les 2 tests du bandeau rouges ; « Choisir rattache sans confirmation » → les 2 tests de confirmation rouges. Restauré, 401/401 |
+| Angular | 7 cas dans la spec du dialogue, 2 dans la spec `mail-detail` (vitest) | Mêmes mutations → 4 rouges ; restauré, 549/549 (`mss-lib`), 11 projets verts |
+| Mobile | 7 cas dans la spec du dialogue, 2 dans `mail-detail` (le test « masque le bandeau sans trait » est scindé : l'intention change) | Mêmes mutations → 4 rouges ; restauré, 981/981 |
+| api-mail | `E2eUnattachedXdmTests` (5) dont le passage de la fixture par le vrai `CdaParsingService` ; `E2eSeedPlanTests` (+2) | Mutation : INS réinjectée dans la fixture → `Document_CarriesNoInsIdentifier` rouge |
+
+### Parcours e2e E2E-PATIENT-002 (règle 1b côté frontend)
+- **Catalogue** (`Api/Mail/e2e/scenarios.yml`) : scénario v1, mobile et angular **requis** ; données `cda-sans-ins-a-rattacher` et `fiche-patient-bio`.
+- **Seed** : une lettre de liaison du corpus ANS (`LDL-SES_2022.01`), réécrite sans INS ni adresse Mon Espace Santé, aux traits « SANSDOSSIER Camille » qu'aucune fiche ne porte, embarquée dans `mss.mail.e2e` (le corpus local n'est pas versionné). Le seed relit : document servi sans patient, `/patients/match` vide, fiche `PAT-TROIS` (créée par le compte rendu de biologie) présente avec son identifiant. Il écrit l'uid du message au manifeste : une ligne porteuse d'un CDA affiche le titre du document, pas l'objet.
+- **Choix d'un document non biologique** : un second compte rendu de biologie serait lui aussi en attente d'acquittement et ferait mentir E2E-BIO-001, qui en attend exactement un. Le nouveau message est lu, et n'est pas le plus ancien : les compteurs et l'ordre des parcours existants ne bougent pas.
+- **Parcours** (mobile et Angular) : le dossier de PAT-TROIS ne contient pas le message (relu du serveur) → bandeau → aucun candidat → recherche « PAT-TROIS » → une seule fiche → confirmation → `POST attach-patient` accepté → le dossier relu **contient** le message → après rechargement, contenu chargé, le bandeau ne le propose plus.
+- **Preuve par mutation** (`--serve-only`, test seul) : « Confirmer » sans appel (`if (Date.now() > 0) return`, bundle neuf vérifié dans le journal du serveur de dev) → rouge sur « le rattachement est accepté par le serveur » (mobile, Angular) ; restauré → vert (mobile 6,0 s, Angular 6,2 s, seed neuf).
+- **Trouvé en route, corrigé dans le seed** : le parseur CDA garde l'espace qui suit `<family>` dans le corpus ANS (`"SANSDOSSIER "`). La relecture du seed comparait au caractère près : premier banc en échec d'outillage, cause établie par le test qui passe la fixture dans `CdaParsingService`. Le seed compare désormais les traits sans espaces de bord, comme les clients.
+- **Trouvé en route, corrigé dans le test** : l'ancre Angular « onglet du document rattaché » n'existe pas pour un message à document unique (pas d'onglets) ; l'absence du bandeau se lit désormais après le chargement de `mss-mail-body`, alimenté par le même `mailContent()` que le bandeau.
+
+### Passe qualité (/simplify, 4 revues)
+- **Appliqué** :
+  - seed : l'uid est rendu par la vérification au lieu d'un champ écrit en effet de bord ; lectures JSON par `GetJsonOkAsync` ; `StringOf` partagé avec `PlaywrightReport` (`E2eJson`) ; le test de la fixture lit les domaines INS dans `InsIdentityDomain` ;
+  - Angular et mobile : une seule remise à zéro par état (`resetSearch` pour la recherche, `clearCandidates` pour l'appariement) ; la ligne « date · sexe · INS » en un seul `ng-template` ; le nom d'une fiche par `getPatientFullName` ;
+  - Blazor : la même ligne en un seul fragment `IdentityMeta` ; « Retour » sans méthode dédiée.
+  - Re-validation verte partout (api 1 166, Blazor 401, Angular 11 projets, mobile 981).
+- **Écarté** : requête d'en-têtes en double dans le seed (une fois par run) ; double déclencheur Entrée / submit sur mobile (le second appel est déjà bloqué par `isSearching`, garder Entrée préserve la saisie au clavier) ; réutiliser `mss-patient-search` / `SearchPatientComponent` (recherche à la frappe, « patients du jour » sur saisie vide, pas de bouton : comportement différent).
+- **Suivis proposés** (hors périmètre) :
+  4. `CdaParsingService` : retirer les espaces de bord des traits patient à l'analyse ; aujourd'hui chaque lecteur doit penser au `Trim()`, et les fiches créées depuis le corpus portent l'espace.
+  5. `GET /patients/match` sans trait : renvoyer `[]` (ce que fait déjà le dépôt, et ce qu'annonce le commentaire du contrôleur) au lieu d'un 400 ; les trois clients n'auraient plus à recopier la règle « a des traits ». Le serveur compte le sexe comme trait, les clients non.
+  6. Recherche de fiche : constante de longueur minimale non partagée (2 dans le dialogue, 3 dans `SearchPatientComponent` Blazor).
+
+### Vérifications
+- Build + tests verts : api-mail, client-blazor, client-angular (build `weda2`, tests 11 projets), client-mobile (build, 981 tests).
+- Lint des fichiers touchés : 0 erreur (Angular : avertissements `max-lines` et `@example` vides préexistants ; mobile : 0). Budget de style mobile : le SCSS du dialogue dépasse le seuil d'**avertissement** de 2 Ko (2,47 Ko ; erreur à 8 Ko), comme 12 autres composants.
+- Contrôles mécaniques C# : un S125 attrapé avant commit (commentaire du seed) ; S4581 et S6562 corrigés à la main dans les tests Blazor. Les trois sont consignés dans `conventions/csharp.md` (S125 → 9 ; S4581 et S6562 créés).
+- Branches poussées : api-mail, client-blazor, client-mobile à jour avec `origin`.
+- Next step : `/sonar task-331`

@@ -251,7 +251,11 @@ dans `string.Equals`, mais `StringComparer` dans `Contains`.
 
 ## S125 — une prose qui « ressemble à du code » est signalée comme code commenté
 
-**Occurrences : 8** (task-184, task-292, task-188, task-322, task-171, task-342, task-191, task-330 —
+**Occurrences : 9** (task-184, task-292, task-188, task-322, task-171, task-342, task-191, task-330,
+task-331 — neuvième, **attrapée par le contrôle mécanique avant le commit**, comme prévu : « …pas
+l'objet ; le parcours… » au milieu d'un commentaire du seed e2e. Le contrôle marche. Le réflexe
+d'écriture, lui, ne tient toujours pas : en français, l'espace avant le point-virgule est la
+typographie normale, donc la faute vient naturellement. Écrire un point. —
 huitième récidive : « …est INDISPONIBLE (503) ; » en fin de ligne d'un commentaire d'intention
 de `SmtpService`, alors que le contrôle `git diff | grep -E "^\+\s*//.* ;"` ci-dessous aurait
 rendu deux lignes. Le contrôle n'a pas été joué avant le commit : il fait désormais partie de la
@@ -1056,3 +1060,36 @@ private static readonly Func<MailPatient, MailPatientDto> ToDtoCompiled = DtoPro
 **Consigne** : avant d'écrire un `Select(x => new XxxDto { … })`, chercher une projection ou un
 mapper existant du même DTO dans le dépôt. S'il en existe un, le réutiliser. S'il en faut une
 version SQL, en faire une `Expression` partagée, jamais une copie.
+
+---
+
+## S4581 — un `Guid` attendu « n'importe lequel » s'écrit `Arg.Any<Guid>()`, pas `default`
+
+**Occurrences : 1** (task-331, `client-blazor` — `PatientAttachmentDialogTests`, deux
+`DidNotReceiveWithAnyArgs().AttachDocumentToPatientAsync(default, default, default)`)
+
+Les analyseurs Sonar du build `client-blazor` traitent l'avertissement en erreur : un `default` passé
+pour un `Guid` est lu comme un `new Guid()` vide, et le build casse sans qu'aucun test ne tourne.
+
+```csharp
+// ❌ S4581 — « Use Guid.NewGuid() or Guid.Empty »
+_patients.DidNotReceiveWithAnyArgs().AttachDocumentToPatientAsync(default, default, default);
+
+// ✅ l'intention dite par l'argument lui-même
+_patients.DidNotReceive().AttachDocumentToPatientAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+```
+
+**Consigne** : dans un `Received` / `DidNotReceive` NSubstitute, ne jamais passer `default` pour un
+`Guid`. Écrire `Arg.Any<Guid>()`, ou la valeur attendue.
+
+---
+
+## S6562 — un `DateTime` de test précise son `DateTimeKind`
+
+**Occurrences : 1** (task-331, `client-blazor` — `PatientAttachmentDialogTests`, trois dates de
+naissance `new DateTime(1982, 6, 14)`)
+
+Même mécanisme que S4581 : erreur de build dans `client-blazor`.
+
+**Consigne** : `new DateTime(a, m, j, 0, 0, 0, DateTimeKind.Unspecified)` pour une date sans heure
+(une date de naissance), `DateTimeKind.Utc` pour un instant. Jamais le constructeur sans `Kind`.
