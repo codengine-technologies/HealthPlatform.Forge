@@ -365,23 +365,25 @@ Mutations unitaires sur l'autoconfig :
 
 ## E2E log
 
+> 2ᵉ passage (2026-10-04), après fusion d'`origin/develop` (task-331) dans les branches task-348 (DTO 514.0.0). Le 1ᵉʳ passage (voie Angular rouge sur des tests de task-331 non mergée) est remplacé.
+
 | Voie | Jouée | Résultat | Détail |
 |---|---|---|---|
-| mobile | oui (`api-mail`, `dtos-mss` touchés) | ✅ vert | 26 réussis, 0 flaky, 0 rouge ; clone mobile aligné sur `origin/develop` (avance rapide, `a3570b8`) |
-| angular | oui (`api-mail`, `client-angular`, `dtos-mss` touchés) | ❌ rouge | 25 réussis, 2 rouges ; branche humaine `feature/nova-rewriting-mss` |
-| porte | — | ❌ ROUGE (code 1) | 3 motifs, voir ci-dessous et `questions/task-348.md` |
+| mobile | oui | ❌ rouge | 26 réussis, 1 rouge (`E2E-DETAIL-002`, déterministe 3/3) ; clone aligné sur `origin/develop` (`dd92872`) |
+| angular | oui | ✅ vert | 26 réussis, 1 flaky (`E2E-SEARCH-001`), parité verte |
+| porte | — | ❌ ROUGE (code 1) | 1 motif — interaction task-331 × task-348, voir `questions/task-348.md` |
 
-Démontage vérifié : ports 5052 / 8100 / 4200 / 3993 / 3465 / 3143 libres, aucun conteneur `e2e-*` résiduel.
+Démontage vérifié : ports libres, aucun conteneur `e2e-*` résiduel (y compris après le diagnostic en `--serve-only`).
 
-Écrans touchés sans spec e2e modifié (avertissement non bloquant) : `libs/mss/src/features/settings/mss-settings.component.html` — la DOD ne demande pas de scénario e2e (aucun parcours médecin créé ; l'écran Paramètres perd des champs), le test de composant Angular couvre l'encart.
+**E2E : ROUGE** — 1 motif(s) de blocage.
 
-**E2E : ROUGE** — 3 motif(s) de blocage.
+**Bloquant** (1) :
 
-**Bloquant** (3) :
+- [mobile] rouge : « détail — bascule texte brut / HTML » (E2E-DETAIL-002)
 
-- [angular] rouge : « patients — rattacher à la main un document sans INS à une fiche cherchée par son nom » (E2E-PATIENT-002)
-- [angular] rouge : « recherche — requête et recherche avancée » (E2E-SEARCH-001)
-- [angular] parité UnknownIdentifier : « patients — rattacher à la main un document sans INS à une fiche cherchée par son nom » (functional.e2e.ts, projet weda2-headless) porte l'identifiant E2E-PATIENT-002, inconnu du catalogue.
+**Flaky (vert au second essai, non bloquant)** (1) :
+
+- [angular] « recherche — requête et recherche avancée » (E2E-SEARCH-001)
 
 ### Matrice de parité
 
@@ -390,6 +392,7 @@ Démontage vérifié : ports 5052 / 8100 / 4200 / 3993 / 3465 / 3143 libres, auc
 | E2E-INBOX-001 | 1 | headless | Filtrer la boîte de réception, basculer liste / conversation, ouvrir la recherche | ✅ | ✅ |
 | E2E-FOLDER-001 | 1 | headless | Naviguer vers les dossiers Archive et Corbeille | ✅ | ✅ |
 | E2E-PATIENT-001 | 1 | headless | Afficher la vue patients | ✅ | ✅ |
+| E2E-PATIENT-002 | 2 | headless | Rattacher à la main un document sans INS à un patient choisi par recherche, puis le détacher | ✅ | ✅ |
 | E2E-CONTACT-001 | 1 | humain | Rechercher dans le carnet et interroger l'annuaire national | 👤 non joué (humain) | 👤 non joué (humain) |
 | E2E-SETTINGS-001 | 1 | headless | Changer le filtre par défaut et le retrouver après rechargement | ✅ | ✅ |
 | E2E-MAIL-001 | 1 | headless | Marquer un message lu puis non lu | ✅ | ✅ |
@@ -403,10 +406,10 @@ Démontage vérifié : ports 5052 / 8100 / 4200 / 3993 / 3465 / 3143 libres, auc
 | E2E-DRAFT-002 | 1 | headless | Envoyer un message à pièce jointe après l'enregistrement automatique du brouillon | ✅ | ✅ |
 | E2E-BIO-001 | 1 | headless | Acquitter un compte rendu de biologie | ✅ | ✅ |
 | E2E-DASH-001 | 1 | headless | Afficher les widgets du tableau de bord | ✅ | ✅ |
-| E2E-DETAIL-002 | 1 | headless | Basculer entre texte brut et HTML à la lecture | ✅ | ✅ |
+| E2E-DETAIL-002 | 1 | headless | Basculer entre texte brut et HTML à la lecture | ✅ | ❌ |
 | E2E-DETAIL-003 | 1 | headless | Répondre à tous depuis la lecture d'un message | ✅ | ✅ |
 | E2E-SETTINGS-002 | 1 | headless | Changer la vue par défaut et la retrouver après rechargement | ✅ | ✅ |
-| E2E-SEARCH-001 | 1 | headless | Rechercher un message et ouvrir la recherche avancée | ❌ | ✅ |
+| E2E-SEARCH-001 | 1 | headless | Rechercher un message et ouvrir la recherche avancée | ⚠️ flaky | ✅ |
 | E2E-ATTACH-001 | 1 | headless | Voir les pièces jointes d'un message | ✅ | ✅ |
 | E2E-CONTACT-002 | 1 | headless | Créer puis supprimer un contact | ✅ | ✅ |
 | E2E-SIGNATURE-001 | 1 | headless | Créer puis supprimer une signature | ✅ | ✅ |
@@ -417,9 +420,7 @@ Démontage vérifié : ports 5052 / 8100 / 4200 / 3993 / 3465 / 3143 libres, auc
 | E2E-LIVE-001 | 1 | headless | Recevoir un nouveau message en temps réel, sans recharger | ✅ | ✅ |
 | E2E-AI-001 | 1 | headless | Interroger l'assistant sur des messages sélectionnés et poser des questions de suite | ✅ | ✅ |
 
-**Parité : ROUGE** — 1 écart(s) :
-
-- `UnknownIdentifier` [angular] « patients — rattacher à la main un document sans INS à une fiche cherchée par son nom » (functional.e2e.ts, projet weda2-headless) porte l'identifiant E2E-PATIENT-002, inconnu du catalogue.
+**Parité : verte** — aucun écart entre le catalogue et les suites.
 
 ## Timings
 
@@ -428,11 +429,11 @@ Démontage vérifié : ports 5052 / 8100 / 4200 / 3993 / 3465 / 3143 libres, auc
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 57 s | — | — | — | — |
-| /develop | ok | 52 min 07 s | 4 (42 s) | 5 (4 min 31 s) | — | dtos-mss 1B/0T, api-mail 1B/3T, client-blazor 2B/2T |
+| /develop | ok | 52 min 07 s | 6 (1 min 40 s) | 7 (8 min 19 s) | — | dtos-mss 1B/0T, api-mail 2B/4T, client-blazor 3B/3T |
 | /sonar | ok | 30 min 11 s | 2 (1 min 23 s) | 10 (9 min 59 s) | 4 (5 min 07 s) | 2 itération(s), api-mail 2B/10T |
 | /lint-angular | ok | 11 min 54 s | 1 (1 min 35 s) | 1 (4 min 51 s) | — | 1 itération(s), client-angular 1B/1T |
 | /lint-mobile | skipped | 2.2 s | — | — | — | client-mobile non listé dans Repos |
-| /e2e | failed | 13 min 38 s | — | — | — | e2e ×3 (10 min 52 s), voie angular rouge (E2E-PATIENT-002 hors catalogue, branche task-331 ; E2E-SEARCH-001) — étrangers à task-348 |
-| **Total cycle** | | **1 h 48 min** | **7 (3 min 41 s)** | **16 (19 min 22 s)** | **4 (5 min 07 s)** | |
+| /e2e | failed | 17 min 41 s | — | — | — | e2e ×6 (21 min 36 s), mobile E2E-DETAIL-002 rouge 3/3 — interaction task-331 x task-348 |
+| **Total cycle** | | **1 h 52 min** | **9 (4 min 39 s)** | **18 (23 min 10 s)** | **4 (5 min 07 s)** | |
 
-Autres commandes mesurées : lint ×2 (3 min 10 s), nuget-wait ×1 (18 s), restore ×1 (3.0 s)
+Autres commandes mesurées : lint ×2 (3 min 10 s), nuget-wait ×2 (20 s), restore ×1 (3.0 s)
