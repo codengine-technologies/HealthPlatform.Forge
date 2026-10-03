@@ -839,3 +839,15 @@ Suites après synchronisation avec develop : api-mail domain 190, infrastructure
 **Arbitrages humains à poser au HAG** :
 - Règle « seul un document sans INS se détache ou change de patient » (recommandation de la forge).
 - Opposition : l'acquittement est demandé dès qu'**une** fiche du matricule est opposée (première itération).
+
+## Merged
+
+- **Date** : 2026-10-03, par `/merge task-331 --i-tested` (l'humain a attesté le Manual Test Plan, points 1 à 11, et confirmé la règle « seul un document sans INS se détache »).
+- Squash sur `develop` :
+  - `dtos-mss` : `9cf9ec11` (PR #40)
+  - `api-mail` : `9a701dcf` (PR #271)
+  - `client-blazor` : `831c7459` (PR #88)
+  - `client-mobile` : `dd92872a` (PR #85)
+- CI `develop` verte sur les quatre repos : Dtos `.NET`, api-mail `Build and Publish`, client-blazor `Build and Publish`, client-mobile `Android Build`.
+- Branches `fix/task-331-dossier-patient-par-fiche` supprimées (distante et locale) ; labels `awaiting-human-merge` retirés.
+- `client-angular` : géré manuellement par l'humain.
