@@ -186,3 +186,10 @@ connexion IMAP / SMTP
 - **Référentiels métier** : non applicable
 - **Hébergement HDS** : oui — environnement inchangé
 - **AIPD / impact RGPD** : réduit — plus aucune connexion sortante vers un hôte arbitraire porteuse du jeton PSC
+
+## Branches
+- `api-mail` (pushed) : fix/task-348-serveur-resolu-cote-serveur — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-348-serveur-resolu-cote-serveur (depuis `origin/develop` @ `6d6c8dd1`)
+- `client-blazor` (pushed) : fix/task-348-serveur-resolu-cote-serveur — https://github.com/codengine-technologies/HealthPlatform.Client/tree/fix/task-348-serveur-resolu-cote-serveur (depuis `origin/develop` @ `2ced0fb`)
+- `dtos-mss` (paresseux) : branche créée par `/develop` au moment où il touche le contrat (CLAUDE.md, « Repo à branche PARESSEUSE »)
+- `client-angular` (code-only) : forge writes code on the branch currently checked out in `Client/Angular/` (instantané au `/start` : `feature/nova-rewriting-mss`) — humain gère branche, commit, push, PR TFS
+- Dépendances vérifiées au `/start` : task-342 archivée (squash `bf02f565` sur develop) ; aucune trace de l'allowlist AUD-42 sur `develop` (`AllowedUserServerHosts`, `UserMailServerHostPolicy` absents) — le revert de `b052826a` / `a592b5f2` a précédé le squash, la vérification de `368ba75b` est sans objet ; `FromUserConfig` présent (3 occurrences dans `MailServerDiscovery.cs`), c'est l'objet de la task.
