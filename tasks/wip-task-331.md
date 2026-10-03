@@ -383,13 +383,15 @@ La revue a trouvé deux comportements prouvés seulement par des tests unitaires
 |---|---|---|---|---|---|---|
 | /start | ok | 18 s | — | — | — | — |
 | /develop | ok | 54 min 00 s | 19 (2 min 54 s) | 15 (10 min 47 s) | — | api-mail 11B/8T, client-blazor 4B/3T, client-angular 2B/2T, client-mobile 2B/2T |
-| /sonar | ok | 5 min 28 s | 1 (15 s) | 5 (3 min 44 s) | 2 (35 s) | api-mail 1B/5T |
-| /lint-angular | skipped | 0.4 s | — | — | — | client-angular non touché (Repos: api-mail) |
-| /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché (Repos: api-mail) |
-| /e2e | ok | 8 min 44 s | — | — | — | e2e ×3 (8 min 01 s) |
+| /sonar | ok | 6 min 18 s | 2 (34 s) | 10 (8 min 04 s) | 4 (1 min 14 s) | api-mail 2B/10T |
+| /lint-angular | ok | 26 s | — | — | — | — |
+| /lint-mobile | ok | 11 s | — | — | — | — |
+| /e2e | ok | 9 min 30 s | — | — | — | e2e ×6 (16 min 30 s) |
 | /review | ok | 8 min 25 s | 1 (2.0 s) | 2 (3 min 08 s) | — | api-mail 1B/2T |
 | /tech-writer | ok | 44 s | — | — | — | — |
-| **Total cycle** | | **1 h 17 min** | **21 (3 min 12 s)** | **22 (17 min 40 s)** | **2 (35 s)** | |
+| **Total cycle** | | **1 h 19 min** | **22 (3 min 31 s)** | **27 (22 min 00 s)** | **4 (1 min 14 s)** | |
+
+Autres commandes mesurées : lint ×2 (14 s)
 
 ## Stitch design log
 
@@ -454,3 +456,88 @@ La revue a trouvé deux comportements prouvés seulement par des tests unitaires
 - Contrôles mécaniques C# : un S125 attrapé avant commit (commentaire du seed) ; S4581 et S6562 corrigés à la main dans les tests Blazor. Les trois sont consignés dans `conventions/csharp.md` (S125 → 9 ; S4581 et S6562 créés).
 - Branches poussées : api-mail, client-blazor, client-mobile à jour avec `origin`.
 - Next step : `/sonar task-331`
+
+## Sonar log — extension du 2026-10-03
+
+**Analyse** : une passe complète sur `fix/task-331-dossier-patient-par-fiche` (commit `b0979b0f`), SonarQube 9.9.8, avec la couverture des cinq suites : domain 190, application 3 373, infrastructure 681, api 1 166, integration 743 (+16 ignorés préexistants), 0 échec.
+
+**Itérations de correction** : 0. L'extension ne touche api-mail que dans des projets de test et l'outil e2e (`SonarQubeTestProject`), hors du périmètre analysé comme code de production.
+
+| Métrique | Baseline (passe task-331 du 2026-10-02) | Final (extension) | Δ |
+|---|---|---|---|
+| Quality Gate | OK | **OK** | = |
+| New coverage | 97,5 % | 97,5 % | = |
+| Coverage projet | 98,0 % | 98,0 % | = |
+| Bugs / Vulnérabilités | 0 / 0 | 0 / 0 | = |
+| Code smells | 13 | 13 | = |
+| Duplication | 0,4 % (nouveau code 0,15 %) | 0,4 % (nouveau code 0,15 %) | = |
+| Ratings fiabilité / sécurité / maintenabilité | A / A / A | A / A / A | = |
+
+- **Constat restant sur la période de nouveau code** : S107 sur `SemanticSearchService:379` (8 paramètres), déjà relevé par task-329 et par la première passe de task-331. Il n'appartient pas au code de la task : laissé, comme alors.
+
+## Lint log — extension du 2026-10-03 (client-angular)
+
+- Commande : `npx nx affected -t lint --base=origin/next --head=HEAD --parallel=3 --projects=tag:scope:mss` (Client/Angular/front, branche `feature/nova-rewriting-mss`, code-only).
+- Résultat : **0 erreur**, avertissements préexistants seulement (`jsdoc/require-example` sur des `@example` vides, `max-lines` sur `mail-detail.component.ts` et les deux specs e2e). Aucune itération, aucune modification.
+- Build `weda2` et tests (11 projets) verts après la passe qualité de `/develop`, arbre inchangé depuis : pas de re-validation.
+- Rappel code-only : les fichiers Angular de la task restent **non commités**, à commiter et pousser par l’humain sur TFS (liste dans le Develop log).
+
+## Lint mobile log — extension du 2026-10-03
+
+- Branche `fix/task-331-dossier-patient-par-fiche` (Client/Mobile), à jour avec `origin`.
+- `npm run lint` : **All files pass linting** (0 erreur, 0 avertissement). Aucune itération, aucun commit.
+- Build et tests (981) verts après la passe qualité de `/develop`, arbre inchangé depuis.
+
+## E2E log — extension du 2026-10-03
+
+| Voie | Déclencheur | Résultat | Tests | Durée |
+|---|---|---|---|---|
+| mobile | `api-mail` et `client-mobile` touchés | ✅ verte | 27 verts, 0 flaky, 0 rouge, 0 quarantaine | 4 min 20 s |
+| angular | `api-mail` et `client-angular` touchés | ✅ verte | 27 verts, 0 flaky, 0 rouge, 0 quarantaine | 4 min 00 s |
+
+- Catalogue : `Api/Mail/e2e/scenarios.yml` @ `fix/task-331-dossier-patient-par-fiche` (E2E-PATIENT-002 v1 ajouté).
+- Checkouts : `Client/Mobile` sur `fix/task-331-dossier-patient-par-fiche` ; `Client/Angular/front` sur `feature/nova-rewriting-mss` avec le travail non commité de la task (aucune opération git).
+- Porte `gate` : code 0.
+- Quarantaines : aucune. Flaky : aucun. Divergences ouvertes : aucune.
+- Parcours touchés sans spec e2e modifié : aucun (les deux specs portent E2E-PATIENT-002).
+- Démontage : complet (ports 4200 et 8100 libres, aucun conteneur e2e résiduel).
+- Amélioration continue (`conventions/e2e.md`) : ligne « Trous du filet » pour le rattachement manuel impossible ; consigne `ancre-conditionnelle`.
+
+**E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
+
+### Matrice de parité
+
+| Scénario | v | Mode | Titre | angular | mobile |
+|---|---|---|---|---|---|
+| E2E-INBOX-001 | 1 | headless | Filtrer la boîte de réception, basculer liste / conversation, ouvrir la recherche | ✅ | ✅ |
+| E2E-FOLDER-001 | 1 | headless | Naviguer vers les dossiers Archive et Corbeille | ✅ | ✅ |
+| E2E-PATIENT-001 | 1 | headless | Afficher la vue patients | ✅ | ✅ |
+| E2E-PATIENT-002 | 1 | headless | Rattacher à la main un document sans INS à un patient choisi par recherche | ✅ | ✅ |
+| E2E-CONTACT-001 | 1 | humain | Rechercher dans le carnet et interroger l'annuaire national | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-SETTINGS-001 | 1 | headless | Changer le filtre par défaut et le retrouver après rechargement | ✅ | ✅ |
+| E2E-MAIL-001 | 1 | headless | Marquer un message lu puis non lu | ✅ | ✅ |
+| E2E-MAIL-002 | 1 | headless | Tout sélectionner et marquer lu en masse | ✅ | ✅ |
+| E2E-DETAIL-001 | 1 | headless | Répondre et transférer depuis la lecture d'un message | ✅ | ✅ |
+| E2E-COMPOSE-001 | 1 | headless | Envoyer un message, le recevoir, le lire, le supprimer | ✅ | ✅ |
+| E2E-COMPOSE-002 | 1 | headless | Faire corriger l'orthographe de son texte, appliquer la correction, puis envoyer | ✅ | ✅ |
+| E2E-MAIL-003 | 1 | headless | Signaler puis ne plus signaler un message | ✅ | ✅ |
+| E2E-MAIL-004 | 1 | headless | Déplacer un message vers Archive puis le ramener | ✅ | ✅ |
+| E2E-DRAFT-001 | 1 | headless | Créer un brouillon, le reprendre, le supprimer | ✅ | ✅ |
+| E2E-DRAFT-002 | 1 | headless | Envoyer un message à pièce jointe après l'enregistrement automatique du brouillon | ✅ | ✅ |
+| E2E-BIO-001 | 1 | headless | Acquitter un compte rendu de biologie | ✅ | ✅ |
+| E2E-DASH-001 | 1 | headless | Afficher les widgets du tableau de bord | ✅ | ✅ |
+| E2E-DETAIL-002 | 1 | headless | Basculer entre texte brut et HTML à la lecture | ✅ | ✅ |
+| E2E-DETAIL-003 | 1 | headless | Répondre à tous depuis la lecture d'un message | ✅ | ✅ |
+| E2E-SETTINGS-002 | 1 | headless | Changer la vue par défaut et la retrouver après rechargement | ✅ | ✅ |
+| E2E-SEARCH-001 | 1 | headless | Rechercher un message et ouvrir la recherche avancée | ✅ | ✅ |
+| E2E-ATTACH-001 | 1 | headless | Voir les pièces jointes d'un message | ✅ | ✅ |
+| E2E-CONTACT-002 | 1 | headless | Créer puis supprimer un contact | ✅ | ✅ |
+| E2E-SIGNATURE-001 | 1 | headless | Créer puis supprimer une signature | ✅ | ✅ |
+| E2E-CONTACT-003 | 1 | headless | Créer puis supprimer un groupe de contacts | ✅ | ✅ |
+| E2E-FOLDER-002 | 1 | headless | Créer puis supprimer un dossier | ✅ | ✅ |
+| E2E-AUTH-001 | 1 | humain | Rester connecté quand le jeton d'accès expire | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-AUTH-002 | 1 | humain | Se déconnecter | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-LIVE-001 | 1 | headless | Recevoir un nouveau message en temps réel, sans recharger | ✅ | ✅ |
+| E2E-AI-001 | 1 | headless | Interroger l'assistant sur des messages sélectionnés et poser des questions de suite | ✅ | ✅ |
+
+**Parité : verte** — aucun écart entre le catalogue et les suites.
