@@ -1,6 +1,6 @@
 # todo-task-338.md — La recherche dit la vérité : une panne n'est plus « aucun résultat », chaque filtre demandé est appliqué, et les vues par étiquette sont couvertes
 
-**Repos**: api-mail
+**Repos**: api-mail, interop-cda
 **Dependencies**: — (aucune ; **à coordonner avec task-192**, qui touche les mêmes fichiers — voir « Coordination »)
 **Epic**: E009
 **Single frontend**: true
@@ -94,6 +94,7 @@ cette US passe avant, le signal de mode dégradé est ajouté de façon compatib
 ## Branches
 - `api-mail` (pushed) : fix/task-338-search-tells-the-truth — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-338-search-tells-the-truth (depuis `origin/develop` @ `856a7089`, task-192 mergée — la coordination demandée est satisfaite)
 - `dtos-mss` (pushed, créée par `/develop` — contrat modifié) : fix/task-338-search-tells-the-truth — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/fix/task-338-search-tells-the-truth
+- `interop-cda` (pushed, reprise HAG du 2026-10-03) : fix/task-338-search-tells-the-truth — https://github.com/codengine-technologies/interop.cda.parser/tree/fix/task-338-search-tells-the-truth (depuis `origin/develop` @ `2aa167a`)
 - Note règle 1b (réécrite le 2026-10-01, après la rédaction de cette task) : la DOD ne demande qu'un test d'intégration (filtre patient) ; `/develop` applique la règle de `CLAUDE.md` — un test d'intégration d'endpoint, vu rouge, par comportement modifié (503, 499, mode dégradé, filtres, vue étiquette, seuil).
 
 ## Develop log
@@ -150,6 +151,66 @@ Tests existants qui **figeaient le défaut**, réécrits sur le comportement att
   - [x] Test d'intégration endpoint avec filtre patient → seuls ses mails
   - [x] Aucune requête brute ni INS dans les logs : aucun nouveau log ne porte la requête ni un critère (le seul ajout journalise le **nom** du moteur en panne) ; le test de journalisation existant garde son assertion
 - Next step : /sonar task-338
+
+### Reprise HAG (2026-10-03) — le filtre « Biologie » remontait des documents sans biologie
+
+**Constat humain** (client Angular, boîte de formation `virginie.medecinrpps0062267`) : le filtre
+Biologie rendait des fiches de liaison d'urgence, synthèses, consultations et certificats. Seq :
+`Active filter criteria: HasBiologyResults=True` → 35 résultats. Base
+`u_899700622675_vmm_c9e6ca8101453ceff74a38098a6223c9` : **12** mails marqués avec des lignes de
+biologie, **23** marqués avec **zéro** ligne. Le filtre était correct ; la colonne filtrée mentait.
+
+**Cause, en deux couches** :
+1. `interop-cda` — `CdaParser.SetBiologyResult` lisait en biologie **toute** section de forme
+   act → entryRelationship → observation, donc Antécédents (`1.2.250.1.213.1.1.2.134`), Problèmes
+   actifs (`.132`), Allergies (`.137`), Diagnostics (`.129`). Seq le montre :
+   `Missing values: Mammographie in ANTÉCÉDENTS`. Et `CdaFile.HasBiologyResult` comptait les
+   sections, pas les résultats valués, contrairement à sa doc.
+2. `api-mail` — `CdaParsingService.ProcessBiologyResults` posait `HasBiologyResults = true`
+   **avant** d'écarter les lignes sans valeur. Le mail héritait du marqueur.
+
+**Correctifs** :
+- interop-cda `413b96d` — une section est lue en biologie si elle porte un templateId CR-BIO
+  (chapitre `.70`, sous-chapitre `.71`) ou IHE PaLM (`1.3.6.1.4.1.19376.1.3.3.2.1/.2`), ou si le
+  document est un CR-BIO (LOINC `11502-2`, repli pour les émetteurs qui omettent les templateId) ;
+  les valeurs codées (`CD` et dérivés) sont lues ; `HasBiologyResult` = au moins un résultat valué.
+  +8 tests (`CdaParserBiologySectionTests`, 5 rouges avant) ; suite **397 réussis, 0 échec**.
+  Publié **Interop.Cda.Parser 93.0.0 → 97.0.0** (run 37115232527).
+- api-mail — le marqueur est posé **après** la boucle, avec le critère du dépôt (libellé non vide) ;
+  bump `Interop.Cda.Parser` 97.0.0.
+
+**Différentiel sur le corpus réel** (ancien parseur NuGet 93 contre nouveau, 173 archives de
+`Tools/EmailSender.Console/JEUX_TESTS_FULL`) :
+- **40 faux positifs corrigés** (antécédents, problèmes, allergies, diagnostics : DLU, CSE, IPS,
+  LDL, SDM-MR, CANCER, CARD, VAC…) ;
+- **11 gains** : vrais résultats qualitatifs jusqu'ici perdus (Test HPV-HR, cytologie, 6 TROD,
+  immuno-hématologie) ;
+- **2 pertes** : SDM-MR_2022.01 (« âge aux premiers signes = 5 mois », ce n'est pas de la biologie,
+  perte voulue) et **CARD-F-PRC-PPV** — un INR rangé par l'émetteur dans la section *Pathologie
+  courante*, avec le même templateId d'observation générique que les âges SDM-MR : rien ne le
+  distingue à l'échelle de l'entrée. **Perte assumée** et signalée à l'humain.
+- **Limite connue** : 4 résultats qualitatifs d'ECBU (`CD` sans code ni libellé, seulement un
+  renvoi `#CBU-couleur-resultat` vers le texte narratif) restent sans valeur.
+
+**Test d'intégration (règle 1b)** — `SearchBiologyFilterFromCdaIntegrationTests` : vraies archives
+→ `CdaParsingService` de production → `MailRepository.AddNewMail` (PostgreSQL réel) →
+`POST /api/v1/search/semantic`, uids lus dans la réponse.
+
+| Comportement lu dans la réponse | Test | Rouge |
+|---|---|---|
+| Filtre Biologie = vrai → microbiologie + HPV qualitatif, **ni** fiche de cardiologie **ni** DLU | `FiltersOnly_Biology_ReturnsOnlyMailsWhoseArchivesCarryBiologyResults` | ancien code : `Expected [1, 2] Actual [1, 2, 3]` ; **mutation** (correctif api-mail seul, Interop 93) : `Expected [1, 2] Actual [1]` — le HPV disparaît, d'où la nécessité du correctif interop |
+| Filtre Biologie = faux → cardiologie + DLU | `FiltersOnly_NotBiology_ReturnsTheDocumentsWithoutBiologyResults` | ancien code : `Expected [3, 4] Actual [4]` |
+
+Vérité terrain corrigée : `CdaSampleCorpus.Cardiology.HasBiologyResults` `true` → `false`. La valeur
+avait été relevée en exécutant le parseur fautif ; la fiche ne porte qu'un problème « Tachycardie
+ventriculaire ». `MedicalDocumentsPipelineTests` nommait déjà l'écart (« celle de cardiologie le
+perd… mérite sa propre US ») : il s'asserte désormais archive par archive. Ajout au corpus :
+`CR-BIO_2024.01_HPV-qualitatif` (hors `Valid`).
+
+Prévention (règle d'or) : `conventions/csharp.md` § `marqueur-derive-apres-filtrage`.
+
+- Commits : interop-cda `413b96d` ; api-mail `afa323fc` (correctif + bump 97.0.0 + `packages.lock.json`, seule la version Interop change + tests).
+- Local build / test : interop **397 réussis, 0 échec** ; api-mail build 0 erreur, domain 190/190, infrastructure 677/677, application 3 335/3 335, api 1 154/1 154, intégration **724 réussis, 5 rouges, 16 ignorés**. Les 5 rouges passent seuls (5/5) : 3 × `different vector dimensions 3 and 1536` (pollution de la base partagée, cf. `collection-postgresql-partagee`), `Le_maintien_des_partitions_est_idempotent_et_concurrent`, `…ShareOneProvisioning`. Exécuté avec `--artifacts-path artifacts` **dans** le dépôt (AppHost en cours) : hors du dépôt, les fixtures ne trouvent plus `src/AppHost/dovecot/dovecot.conf`, et ~120 faux rouges apparaissent.
 
 ## Sonar log
 
@@ -248,6 +309,7 @@ Tests existants qui **figeaient le défaut**, réécrits sur le comportement att
 **Parité : verte** — aucun écart entre le catalogue et les suites.
 
 ## PRs
+- interop-cda : https://github.com/codengine-technologies/interop.cda.parser/pull/8 (label `awaiting-human-merge`, reprise HAG du 2026-10-03, à merger avec api-mail #268)
 
 - `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/268 — label `awaiting-human-merge`
 - `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/37 — label `awaiting-human-merge` (HealthPlatform.Dtos.Mss 500.0.0 publié depuis la branche, porte aussi le contrat de task-349)

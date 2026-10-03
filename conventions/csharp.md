@@ -931,3 +931,50 @@ la sous-requête capturée ; la sémantique « tous les critères sur le même e
 conservée, et seuls les critères présents atteignent le SQL. Garder un test d'intégration qui
 combine deux critères sur deux enregistrements différents — c'est lui qui prouve que l'on n'a pas
 glissé vers « un critère par enregistrement ».
+
+---
+
+## marqueur-derive-apres-filtrage — un drapeau qui résume des lignes se calcule depuis les lignes retenues
+
+**Occurrences : 1** (task-338, reprise au HAG — filtre « Biologie » de la recherche : 23 faux
+positifs sur 35 dans une boîte de formation)
+
+Un booléen dénormalisé (`HasBiologyResults`, `HasPatientSummary`, `HasAttachments`…) résume des
+lignes enfants. Quand on le pose **avant** le filtrage de ces lignes, il ment dès que toutes sont
+écartées : la colonne dit « il y a des résultats », la table n'en contient aucun.
+
+Constaté sur task-338 :
+- `CdaParsingService.ProcessBiologyResults` posait `HasBiologyResults = true` en entrée de méthode,
+  puis écartait chaque ligne sans valeur (`continue`) ;
+- le parseur `interop-cda` rangeait les sections Antécédents en biologie, donc toutes leurs lignes
+  étaient écartées ; le document restait marqué, et le mail héritait du marqueur ;
+- la lecture recalculait le drapeau depuis les lignes (`MailRepository`, `Count > 0`) : l'écran de
+  détail était juste, la recherche, qui filtre sur la colonne, ne l'était pas. **Deux vérités pour
+  la même donnée.**
+
+```csharp
+// ❌ AVANT — le drapeau dit ce que le parseur a vu passer
+document.HasBiologyResults = true;
+foreach (var item in items)
+{
+    if (item.Value == null) continue;
+    document.BiologyResults.Add(Map(item));
+}
+
+// ✅ APRÈS — le drapeau dit ce qui sera persisté, avec le même critère que le dépôt
+foreach (var item in items) { … }
+document.HasBiologyResults = document.BiologyResults.Exists(r => !string.IsNullOrEmpty(r.Name));
+```
+
+**Consigne** :
+- Un drapeau dénormalisé se pose **après** le filtrage, depuis la collection retenue, avec le
+  **même critère** que la couche qui persiste (ici : libellé non vide, comme `AddBiologyResultsToDocument`).
+- Si la lecture recalcule le drapeau et que l'écriture le stocke, vérifier que les deux calculs sont
+  identiques : la recherche lit la colonne stockée, pas le calcul de lecture.
+- Une **vérité terrain relevée en exécutant le code sous test** grave ses défauts. `CdaSampleCorpus`
+  déclarait la fiche de cardiologie « porteuse de biologie » parce que le parseur le disait. Avant
+  d'écrire une valeur attendue, la vérifier dans la source (le CDA lui-même), pas dans la sortie.
+
+**Preuve** : `SearchBiologyFilterFromCdaIntegrationTests` (vraies archives → ingestion PostgreSQL →
+`POST /search/semantic`). Rouge sur l'ancien code (la fiche de cardiologie remonte), et rouge par
+mutation avec le seul correctif api-mail sur Interop 93 (le compte rendu HPV qualitatif disparaît).
