@@ -460,12 +460,12 @@ La revue a trouvé deux comportements prouvés seulement par des tests unitaires
 | /sonar | ok | 11 min 10 s | 5 (1 min 11 s) | 24 (15 min 54 s) | 8 (2 min 25 s) | 1 itération(s), api-mail 5B/24T |
 | /lint-angular | ok | 17 s | — | — | — | — |
 | /lint-mobile | ok | 11 s | — | — | — | — |
-| /e2e | ok | 8 min 33 s | — | — | — | e2e ×9 (24 min 40 s) |
-| /review | ok | 5 min 57 s | 5 (31 s) | 6 (6 min 11 s) | — | api-mail 2B/3T, client-blazor 1B/1T, client-mobile 1B/1T, client-angular 1B/1T |
-| /tech-writer | ok | 49 s | — | — | — | — |
-| **Total cycle** | | **1 h 04 min** | **41 (6 min 19 s)** | **57 (41 min 05 s)** | **8 (2 min 25 s)** | |
+| /e2e | ok | 8 min 33 s | — | — | — | e2e ×12 (32 min 52 s) |
+| /review | ok | 41 min 37 s | 15 (1 min 21 s) | 16 (18 min 06 s) | — | api-mail 5B/7T, client-blazor 3B/3T, client-mobile 3B/3T, client-angular 3B/3T, dtos-mss 1B/0T, extension 2 : sync develop, 53300 corrigé, e2e rejoué, PR dtos #40 |
+| /tech-writer | ok | 1 min 45 s | — | — | — | — |
+| **Total cycle** | | **1 h 41 min** | **51 (7 min 09 s)** | **67 (53 min 00 s)** | **8 (2 min 25 s)** | |
 
-Autres commandes mesurées : lint ×4 (28 s), nuget-wait ×1 (22 s), restore ×2 (4.9 s)
+Autres commandes mesurées : lint ×4 (28 s), nuget-wait ×2 (52 s), restore ×2 (4.9 s)
 
 ## Stitch design log
 
@@ -749,9 +749,10 @@ Autres commandes mesurées : lint ×4 (28 s), nuget-wait ×1 (22 s), restore ×2
 
 | Voie | Déclencheur | Résultat | Tests | Durée |
 |---|---|---|---|---|
-| mobile | `api-mail`, `dtos-mss` et `client-mobile` touchés | ✅ verte | 27 verts, 0 flaky, 0 rouge, 0 quarantaine | 4 min 09 s |
-| angular | `api-mail`, `dtos-mss` et `client-angular` touchés | ✅ verte | 27 verts, 0 flaky, 0 rouge, 0 quarantaine | 3 min 51 s |
+| mobile | `api-mail`, `dtos-mss` et `client-mobile` touchés | ✅ verte | 27 verts, 0 flaky, 0 rouge, 0 quarantaine | 4 min 14 s |
+| angular | `api-mail`, `dtos-mss` et `client-angular` touchés | ✅ verte | 27 verts, 0 flaky, 0 rouge, 0 quarantaine | 3 min 58 s |
 
+- **Rejoué par /review après la synchronisation avec develop (task-338)**, sur le code exact des PRs : même verdict que la passe d'avant la synchronisation (4 min 09 s / 3 min 51 s).
 - Catalogue : `Api/Mail/e2e/scenarios.yml` @ `fix/task-331-dossier-patient-par-fiche` (E2E-PATIENT-002 **v2**).
 - Porte `gate` : code 0. Quarantaines : aucune. Flaky : aucun. Divergences ouvertes : aucune.
 - Parcours touchés sans spec e2e modifié : aucun (les deux specs portent E2E-PATIENT-002 v2).
@@ -796,3 +797,45 @@ Autres commandes mesurées : lint ×4 (28 s), nuget-wait ×1 (22 s), restore ×2
 | E2E-AI-001 | 1 | headless | Interroger l'assistant sur des messages sélectionnés et poser des questions de suite | ✅ | ✅ |
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## PRs — extension 2 du 2026-10-03
+
+- `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/40 — **nouvelle** (contrat 510.0.0), label `awaiting-human-merge`.
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/271 — corps mis à jour (extension 2, KPIs Sonar, parcours e2e rejoué, plan de test 1 à 11), label `awaiting-human-merge`.
+- `client-blazor` : https://github.com/codengine-technologies/HealthPlatform.Client/pull/88 — idem, label `awaiting-human-merge`.
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/85 — idem, label `awaiting-human-merge`.
+- `client-angular` : code-only. **L'humain a commité le code des deux extensions** (`9bcd8a1d 331`, 19 fichiers, branche `feature/nova-rewriting-mss`) ; restent à pousser sur TFS et à ouvrir en PR. Les deux `environment.ts` modifiés sont ceux de l'humain, hors task.
+- **Ordre de merge** : les cinq ensemble (règle 11). `dtos-mss` #40 en premier si l'on merge un à un : api-mail et client-blazor consomment le package 510.0.0, déjà publié.
+
+## Code Review Summary — extension 2 du 2026-10-03
+
+**Verdict : APPROVED** (0 bloquant).
+
+- **DOD de l'extension 2** :
+  - [x] `dtos-mss` : champs et membres d'audit ajoutés, package publié par la CI (510.0.0 après synchronisation), `api-mail` et `client-blazor` bumpés
+  - [x] Tests d'intégration HTTP vus rouges : détacher, changer, 409 patient attendu, 409 INS, 409 détachement périmé, traces relues au puits d'audit (`PatientFolderEndToEndTests`, mutations M1 à M4)
+  - [x] Tests unitaires du dépôt (12) et du service (8) pour chaque branche
+  - [x] Composants, par client : encart, absence pour un document à INS, confirmation du détachement, 409 « a changé entre-temps », patient courant attendu envoyé par le dialogue
+  - [x] Libellés d'audit des deux actions dans Angular et Blazor
+  - [x] `E2E-PATIENT-002` v2 au catalogue et dans les deux suites, rouge sous mutation
+  - [x] `/e2e` vert sur les deux voies, parité verte, **rejoué après la synchronisation avec develop**
+**APPROVED** (0 bloquant).
+- **Verrou 4a (règle 1b)** : les cinq comportements nouveaux (détacher, changer, 409 patient attendu, refus INS, 409 détachement périmé) ont chacun leur test HTTP sur la vraie pile, relu dans la réponse et en base, vu rouge par mutation. Le 404 est en non-régression.
+- **Verrou 4b** : `/e2e` rejoué **après** la synchronisation avec develop, vert sur les deux voies (section « Parcours e2e »).
+- ✅ Concurrence : le contrôle du patient attendu remplace l'écrasement silencieux. Un refus ne trace rien, un geste sans effet non plus.
+- ✅ Erreurs : issue typée dans le dépôt, exceptions métier dans le service, `GlobalExceptionHandler` (règle 12). Le `ServerRequest` de la trace ne porte que des identifiants.
+- ✅ Clients : le panneau émet, le détail possède le dialogue et le compteur (même découpage sur les trois clients).
+- ⚠️ Le contrôle « patient attendu » est optimiste, sans verrou de ligne : deux gestes **simultanés** sur le même document peuvent passer tous les deux, et le dernier l'emporte. C'est acceptable pour une boîte par praticien. Un jeton de concurrence sur `MailMedicalDocument` fermerait la fenêtre.
+- ⚠️ Le nom de la fiche dans la trace est concaténé en SQL (`LastName + " " + FirstName`). Une fiche sans nom donnerait un nom vide dans la trace, sans erreur.
+- **Suivis proposés** : 7. le serveur expose « rattaché à la main » et le nom de la fiche dans `MailMedicalDocumentDto` (la règle est aujourd'hui recopiée dans trois clients) ; 8. le compteur « à intégrer » rendu par `attach-patient` / `detach-patient`.
+
+Suites après synchronisation avec develop : api-mail domain 190, infrastructure 690, application 3 383, api 1 169, integration 775 (+16 ignorés) ; client-blazor 409 (+2 ignorés) ; client-mobile 991 ; client-angular `mss-lib` 55 fichiers verts, build : 10 cibles vertes, seule `mss:build:production` rouge (préexistante, `environment.prod.ts` absent de la branche). 0 échec.
+
+
+**Synchronisation avec develop (task-338)** — trois corrections, toutes commitées sur api-mail :
+- `fe5f7679` : `Interop.Cda.Parser` ramené à 97 (la résolution `--ours` de `Directory.Packages.props` l'avait remis à 93) ; dossier lu par fiche dans `MedicalDocumentsPipelineTests` (cassure sémantique du merge).
+- `f1e06ffe` : `PostgreSqlFixture.CreateIsolatedContextAsync` sans pool. La suite d'intégration tombait en `53300: too many clients already` selon l'ordre d'exécution, **rouge aussi sur origin/develop** (reproduit deux fois en worktree).
+
+**Arbitrages humains à poser au HAG** :
+- Règle « seul un document sans INS se détache ou change de patient » (recommandation de la forge).
+- Opposition : l'acquittement est demandé dès qu'**une** fiche du matricule est opposée (première itération).

@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-10-03 (v1.85)
+> **Dernière mise à jour** : 2026-10-03 (v1.86)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -761,6 +761,46 @@
   - remonter `originalMarkedCancelled` et `warning` par `drafts/{id}/send` ;
   - bail renouvelable pour le verrou.
 
+### v1.86 — Un rattachement manuel se corrige et se trace : détacher, changer de patient, refus d'écraser en silence — task-331 (extension 2)
+
+- **Origine** : constat humain du 2026-10-03, à la recette de l'extension 1 : aucune fonction ne permettait de détacher. L'analyse a trouvé deux défauts de plus. Le rattachement **n'était pas audité**, malgré la mention « tracé (existant) » de la US. Et rattacher un document déjà rattaché **écrasait le patient en silence**.
+- **PRs** (`awaiting-human-merge`, à merger ensemble, règle 11) : `dtos-mss` **#40** (nouvelle), `api-mail` #271, `client-blazor` #88, `client-mobile` #85 ; `client-angular` commité par l'humain (`9bcd8a1d`), push TFS et PR par l'humain.
+- **Contrat** `HealthPlatform.Dtos.Mss` **510.0.0** (après synchronisation avec develop, qui apporte aussi le contrat de task-338) :
+  - `AttachPatientRequestDto.ExpectedCurrentPatientId` ;
+  - `DetachPatientRequestDto` ;
+  - `AuditActionType.PatientDocumentAttached = 37` et `PatientDocumentDetached = 38`, gelés par `AuditActionTypeContractTests` (40 membres).
+- **API** :
+  - `attach-patient` répond 409 si le patient courant n'est pas celui attendu, ou si le document porte une INS. Rattacher à la fiche déjà courante ne fait rien.
+  - `detach-patient` est nouveau : le document repasse sans patient. Il répond 409 (INS, attendu périmé, déjà détaché) ou 404.
+  - Le dépôt rend une issue typée (`PatientAttachmentStatus`), que le service convertit en `NotFoundException` ou `ConflictException` avant de tracer.
+  - La trace porte le document (identifiant CDA, titre, LOINC), la fiche choisie ou quittée et, dans `ServerRequest`, les identifiants de la fiche courante et de la précédente. Rien n'est tracé sur un refus ni sur un geste sans effet.
+- **Clients** (même découpage sur les trois) :
+  - le panneau « Rattaché à la main à {fiche} » émet ; le détail du mail possède le dialogue et le compteur ;
+  - le dialogue envoie le patient courant attendu ;
+  - un 409 affiche « a changé entre-temps » ;
+  - libellés d'audit dans Angular et Blazor.
+- **Règle 1b** : 6 tests HTTP dans `PatientFolderEndToEndTests` (détacher, changer, 409 attendu, 409 INS, 409 périmé, 404). Le vrai service et le vrai dépôt sont utilisés, seul le puits d'audit est substitué. Mutations M1 à M4 rouges.
+- **Tests** :
+  - api-mail 6 207 verts (domain 190, infrastructure 690, application 3 383, api 1 169, integration 775, plus 16 ignorés) ;
+  - Blazor 409 ;
+  - mobile 991 ;
+  - Angular `mss-lib` 557.
+- **E2E** : `E2E-PATIENT-002` **v2**. Le parcours finit par détacher et rend l'état d'origine, ce qui lève la limite « usage unique par run ». Deux voies à 27/27, **rejouées après la synchronisation avec develop**. « Confirmer le détachement » sans appel est rouge sur les deux clients.
+- **Sonar** : Quality Gate OK, KPIs inchangés (new coverage 97,5 %, 13 smells). CA1854 corrigé dans le code de la task.
+- **Synchronisation avec develop (task-338)** :
+  - la résolution `--ours` de `Directory.Packages.props` avait ramené `Interop.Cda.Parser` de 97 à 93, ce que seul un test de task-338 a vu ;
+  - `MedicalDocumentsPipelineTests` lisait encore le dossier par INS ;
+  - **la suite d'intégration était rouge sur develop** (`53300: too many clients already`, selon l'ordre d'exécution). `CreateIsolatedContextAsync` laissait un pool Npgsql orphelin par base jetable. Corrigé par `Pooling = false` (`f1e06ffe`).
+- **Leçons** :
+  - `conventions/csharp.md` : S4143 et CA1854 créées ; S125 à 9 occurrences ;
+  - `conventions/angular.md` › `prettier-fichier-existant` (6ᵉ occurrence) ;
+  - mémoire : résolution `--ours` d'un fichier de versions, et pool Npgsql par base jetable.
+- **Arbitrages humains au HAG** : la règle « seul un document sans INS se détache », et l'opposition « une fiche du matricule suffit ».
+- **Suivis** :
+  - le serveur expose « rattaché à la main » et le nom de la fiche dans `MailMedicalDocumentDto` ;
+  - le compteur « à intégrer » est rendu par `attach-patient` / `detach-patient` ;
+  - jeton de concurrence sur `MailMedicalDocument`, pour fermer la fenêtre des gestes simultanés.
+
 ### v1.85 — Rattacher un document quand l'appariement ne trouve personne : recherche de la fiche et confirmation, sur les trois clients — task-331 (extension)
 
 - **Origine** : décision humaine au HAG de la première itération (2026-10-03). Analyse des trois clients : le dialogue de rattachement (task-012 / task-137) n'offrait que les candidats de `GET /patients/match`, puis « Ignorer » ; un document sans nom, prénom ni date de naissance n'avait pas même de bouton. `/match` ne retient que les fiches dont le nom **contient** celui du CDA.
@@ -972,7 +1012,7 @@ Audit grep complémentaires pour les couches 2 / 2bis / 3 (tasks 021 / 022 / 023
 | task-192 | **Recherche exhaustive.** Déduplication full-text sur `MailId` au lieu de l'UID, fusion et intersection du service sur `(dossier, UID)` ; fenêtre de candidats ordonnée par date du message ; `ILike` sur sujet, expéditeur, destinataire et noms de patient ; échappement de `%`, `_` et de l'antislash ; troncature signalée (`SemanticSearchResultSet.IsTruncated`, `SearchResponseDto.Hits` / `IsTruncated`, Dtos.Mss 492.0.0). 12/13 tests d'intégration rouges sur le code d'origine. PR #266 (api-mail), #35 (dtos-mss). | — (exactitude et complétude de l'accès aux documents reçus, art. 5.1.d RGPD ; aucune RG déclarée) |
 | task-330 | **Le travail fait hors ligne n'est plus perdu au premier échec.** Gestes rejoués jusqu'au succès, gardés `Failed` et comptés après 10 tentatives (`FailedActionsCount`) ; annulation sans tentative comptée ; réclamations orphelines reprises (`ClaimedAt`) ; **remise incertaine** d'un envoi confirmé peut-être parti (503 + avertissement, `deliveryUncertain`, 409, retirable — arbitrage du 2026-10-02) ; stade SMTP typé (400 / 503 / 499) ; mise en file hors ligne soumise aux règles d'envoi. Dtos.Mss 501.0.0. PR #269 (api-mail), #38 (dtos-mss). | — (continuité de service hors ligne, AUD-08 / AUD-23 ; aucune RG déclarée) |
 | task-329 | **Un seul chemin d'envoi.** `OutgoingMailService` pour `sendmail`, brouillon, confirmation avec la carte et annule-et-remplace : pièces par référence relues (400 si illisible), annule-et-remplace sur toutes les routes, archivage « Envoyés » ; brouillon complet (pièces, accusé, opposition, blocage de réponse, cible d'annule-et-remplace) restauré à la réouverture ; verrou d'envoi à jeton (5 min). Dtos.Mss 505.0.0. PR #270 (api-mail), #39 (dtos-mss), #87 (Blazor), #84 (mobile). | — (traçabilité de l'envoi MSSanté, AMBU.MSS/va1.02, opposition Mon Espace Santé ; aucune RG déclarée) |
-| task-331 | **Le dossier est celui de la fiche.** Dossier, biologie et opposition par `PatientId` (et non plus par l'INS du document) : le document rattaché à la main y apparaît, deux fiches d'un même matricule (NIR / NIA) restent séparées ; garde d'envoi : une fiche opposée du matricule suffit à exiger l'acquittement ; `resolve` déterministe ; `Id` rendu par la recherche et « patients du jour » ; index `(PatientId, MailId, Date)`. **Extension** : recherche de la fiche et confirmation quand l'appariement ne trouve personne, sur les trois clients ; scénario E2E-PATIENT-002. PRs #271 (api-mail), #88 (client-blazor), #85 (client-mobile), Angular code-only. | — (identito-vigilance INS, opposition Mon Espace Santé ; AUD-05, AUD-34 ; aucune RG déclarée) |
+| task-331 | **Le dossier est celui de la fiche.** Dossier, biologie et opposition par `PatientId` (et non plus par l'INS du document) : le document rattaché à la main y apparaît, deux fiches d'un même matricule (NIR / NIA) restent séparées ; garde d'envoi : une fiche opposée du matricule suffit à exiger l'acquittement ; `resolve` déterministe ; `Id` rendu par la recherche et « patients du jour » ; index `(PatientId, MailId, Date)`. **Extension** : recherche de la fiche et confirmation quand l'appariement ne trouve personne, sur les trois clients ; scénario E2E-PATIENT-002. **Extension 2** : détacher, changer de patient, 409 au lieu de l'écrasement silencieux, rattachement et détachement tracés (actions d'audit 37 et 38) ; E2E-PATIENT-002 v2. PRs #40 (dtos-mss), #271 (api-mail), #88 (client-blazor), #85 (client-mobile), Angular code-only. | — (identito-vigilance INS, opposition Mon Espace Santé ; AUD-05, AUD-34 ; aucune RG déclarée) |
 | task-338 | **La recherche dit la vérité.** Pannes signalées au lieu d'une liste vide (503, 499, mode dégradé `IsDegraded` / `DegradedSources` en hybride) ; chaque filtre du contrat appliqué (patient sur un même document, répondu, brouillon, dates de document et de biologie, `false` = « sans », type inconnu → 400, filtres seuls bornés) ; prédicat dossier/étiquette unique pour toutes les requêtes ; pertinence filtrée une seule fois. Dtos.Mss 500.0.0. 21 tests d'intégration d'endpoint rouges sur le code d'avant. PR #268 (api-mail), #37 (dtos-mss). | — (exactitude de la recherche — AUD-38, 39, 40, 52 ; aucune RG déclarée) |
 | done-task-002 | Masquage du préfixe `XDM/1.0/DDM+` dans l'objet | RG-E009-029 |
 | done-task-003 | Opposition patient à l'envoi MSS pro et patient | RG-E009-019, 020 |
