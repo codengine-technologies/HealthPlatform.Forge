@@ -94,6 +94,33 @@ dépendances avec la commande standard du repo (mesurée, kind `restore`) :
 avec le mode code-only de `client-angular`. Un `npm ci` qui échoue reste une panne d'outillage
 (bloquante, Step 4).
 
+**Jamais de `npm ci` sous un serveur de dev vivant.** `npm ci` **supprime** puis recrée
+`node_modules` : un `nx serve` / `ng serve` / `ionic serve` qui tourne sur ce clone meurt, et le
+navigateur de l'humain garde une coquille chargée dont les modules différés ne se chargent plus —
+« je clique sur messagerie, il ne se passe rien ». Constaté le 2026-10-02 sur task-338 : le
+serveur Angular de l'humain a disparu pendant l'étape `/e2e`. Avant `npm ci`, vérifier qu'aucun
+processus ne sert ce clone (port 4200 / 8100 à l'écoute, ou un `node` dont la ligne de commande
+contient `serve`) ; s'il y en a un, **ne pas lancer `npm ci`** : arrêt fail-fast motif
+« outillage », avec la consigne pour l'humain (arrêter son serveur, ou installer lui-même). Si
+`npm ci` a malgré tout tourné, le dire dans le rapport : l'humain doit relancer son serveur
+(`npx nx reset` puis `npm start`) et recharger sans cache.
+
+**Client poussable non touché par la task, sur `develop` : l'aligner sur `origin/develop`.** Sa
+suite doit correspondre au catalogue, qui vit sur `develop`. Constaté le 2026-10-02 sur task-338 :
+task-349 venait d'ajouter `E2E-COMPOSE-002` au catalogue et à la suite mobile ; le clone mobile local,
+resté une révision en arrière, a rendu une parité rouge (`MissingRequired`) sans aucun défaut réel.
+
+```bash
+git -C Client/Mobile fetch origin develop
+# seulement si : branche = develop, arbre propre, et avance rapide possible
+git -C Client/Mobile merge --ff-only origin/develop
+```
+
+Pas de checkout, pas d'historique réécrit : on ne fait que rattraper le distant. Si la branche
+n'est pas `develop`, si l'arbre est sale, ou si l'avance rapide est impossible, **ne rien faire** et
+le signaler dans le `## E2E log`. Jamais sur `client-angular` (code-only : la branche est celle de
+l'humain).
+
 ## Step 1 — Jouer les voies (séquentiellement, jamais en parallèle)
 
 Les deux voies publient les mêmes ports (5052, 3993, 3465, 3143) : **une à la fois**. Chaque
