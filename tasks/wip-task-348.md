@@ -349,6 +349,78 @@ Mutations unitaires sur l'autoconfig :
 | Reliability / Security / Maintainability | D / A / A | D / A / A | → |
 | Coverage (global) | 98,0 % | 98,0 % | 0 |
 
+## Lint log
+
+- `/lint-angular` (Mode A, code-only, aucune opération git hors `git fetch origin next`) : base `origin/next`, scope `tag:scope:mss`.
+- Baseline : **3 erreurs**, toutes `prettier/prettier` dans les fichiers de la task (`mss-api.service.ts` ×2, `mss-settings.component.ts` ×1 : retours à la ligne et fins de ligne CRLF), et 34 avertissements `jsdoc/require-example`, dette existante du module.
+- Itération 1 : auto-fix (`-- --fix`) → **0 erreur**. Fixes de l'auto-fixer seulement, donc rien à consigner dans `conventions/angular.md`.
+- Constat d'outillage : le filtre `--projects=tag:scope:mss` ne restreint pas `nx affected` (les 12 projets affectés ont été lintés et auto-fixés). Vérifié par date de modification : seuls `libs/mss/src/core/services/mss-api.service.ts` et `libs/mss/src/features/settings/mss-settings.component.ts` ont changé.
+- Build (pipeline aligné, périmètre affecté complet) : **10/11 projets verts**, dont `weda2`, qui consomme `mss-lib`. `mss:build:production` échoue sur un fichier d'environnement absent du poste (`apps/mss/src/environments/environment.prod.ts` : seul `environment.ts` existe). Fichier non touché par la task, échec d'environnement local et non régression.
+- Tests (pipeline aligné) : **11/11 projets verts**.
+- Itérations consommées : 1 / 5.
+
+## Lint mobile log
+
+- `/lint-mobile` : **skipped**, `client-mobile` n'est pas listé dans `**Repos**:` (le mobile n'a aucun écran de configuration serveur, voir l'en-tête de la task).
+
+## E2E log
+
+| Voie | Jouée | Résultat | Détail |
+|---|---|---|---|
+| mobile | oui (`api-mail`, `dtos-mss` touchés) | ✅ vert | 26 réussis, 0 flaky, 0 rouge ; clone mobile aligné sur `origin/develop` (avance rapide, `a3570b8`) |
+| angular | oui (`api-mail`, `client-angular`, `dtos-mss` touchés) | ❌ rouge | 25 réussis, 2 rouges ; branche humaine `feature/nova-rewriting-mss` |
+| porte | — | ❌ ROUGE (code 1) | 3 motifs, voir ci-dessous et `questions/task-348.md` |
+
+Démontage vérifié : ports 5052 / 8100 / 4200 / 3993 / 3465 / 3143 libres, aucun conteneur `e2e-*` résiduel.
+
+Écrans touchés sans spec e2e modifié (avertissement non bloquant) : `libs/mss/src/features/settings/mss-settings.component.html` — la DOD ne demande pas de scénario e2e (aucun parcours médecin créé ; l'écran Paramètres perd des champs), le test de composant Angular couvre l'encart.
+
+**E2E : ROUGE** — 3 motif(s) de blocage.
+
+**Bloquant** (3) :
+
+- [angular] rouge : « patients — rattacher à la main un document sans INS à une fiche cherchée par son nom » (E2E-PATIENT-002)
+- [angular] rouge : « recherche — requête et recherche avancée » (E2E-SEARCH-001)
+- [angular] parité UnknownIdentifier : « patients — rattacher à la main un document sans INS à une fiche cherchée par son nom » (functional.e2e.ts, projet weda2-headless) porte l'identifiant E2E-PATIENT-002, inconnu du catalogue.
+
+### Matrice de parité
+
+| Scénario | v | Mode | Titre | angular | mobile |
+|---|---|---|---|---|---|
+| E2E-INBOX-001 | 1 | headless | Filtrer la boîte de réception, basculer liste / conversation, ouvrir la recherche | ✅ | ✅ |
+| E2E-FOLDER-001 | 1 | headless | Naviguer vers les dossiers Archive et Corbeille | ✅ | ✅ |
+| E2E-PATIENT-001 | 1 | headless | Afficher la vue patients | ✅ | ✅ |
+| E2E-CONTACT-001 | 1 | humain | Rechercher dans le carnet et interroger l'annuaire national | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-SETTINGS-001 | 1 | headless | Changer le filtre par défaut et le retrouver après rechargement | ✅ | ✅ |
+| E2E-MAIL-001 | 1 | headless | Marquer un message lu puis non lu | ✅ | ✅ |
+| E2E-MAIL-002 | 1 | headless | Tout sélectionner et marquer lu en masse | ✅ | ✅ |
+| E2E-DETAIL-001 | 1 | headless | Répondre et transférer depuis la lecture d'un message | ✅ | ✅ |
+| E2E-COMPOSE-001 | 1 | headless | Envoyer un message, le recevoir, le lire, le supprimer | ✅ | ✅ |
+| E2E-COMPOSE-002 | 1 | headless | Faire corriger l'orthographe de son texte, appliquer la correction, puis envoyer | ✅ | ✅ |
+| E2E-MAIL-003 | 1 | headless | Signaler puis ne plus signaler un message | ✅ | ✅ |
+| E2E-MAIL-004 | 1 | headless | Déplacer un message vers Archive puis le ramener | ✅ | ✅ |
+| E2E-DRAFT-001 | 1 | headless | Créer un brouillon, le reprendre, le supprimer | ✅ | ✅ |
+| E2E-DRAFT-002 | 1 | headless | Envoyer un message à pièce jointe après l'enregistrement automatique du brouillon | ✅ | ✅ |
+| E2E-BIO-001 | 1 | headless | Acquitter un compte rendu de biologie | ✅ | ✅ |
+| E2E-DASH-001 | 1 | headless | Afficher les widgets du tableau de bord | ✅ | ✅ |
+| E2E-DETAIL-002 | 1 | headless | Basculer entre texte brut et HTML à la lecture | ✅ | ✅ |
+| E2E-DETAIL-003 | 1 | headless | Répondre à tous depuis la lecture d'un message | ✅ | ✅ |
+| E2E-SETTINGS-002 | 1 | headless | Changer la vue par défaut et la retrouver après rechargement | ✅ | ✅ |
+| E2E-SEARCH-001 | 1 | headless | Rechercher un message et ouvrir la recherche avancée | ❌ | ✅ |
+| E2E-ATTACH-001 | 1 | headless | Voir les pièces jointes d'un message | ✅ | ✅ |
+| E2E-CONTACT-002 | 1 | headless | Créer puis supprimer un contact | ✅ | ✅ |
+| E2E-SIGNATURE-001 | 1 | headless | Créer puis supprimer une signature | ✅ | ✅ |
+| E2E-CONTACT-003 | 1 | headless | Créer puis supprimer un groupe de contacts | ✅ | ✅ |
+| E2E-FOLDER-002 | 1 | headless | Créer puis supprimer un dossier | ✅ | ✅ |
+| E2E-AUTH-001 | 1 | humain | Rester connecté quand le jeton d'accès expire | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-AUTH-002 | 1 | humain | Se déconnecter | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-LIVE-001 | 1 | headless | Recevoir un nouveau message en temps réel, sans recharger | ✅ | ✅ |
+| E2E-AI-001 | 1 | headless | Interroger l'assistant sur des messages sélectionnés et poser des questions de suite | ✅ | ✅ |
+
+**Parité : ROUGE** — 1 écart(s) :
+
+- `UnknownIdentifier` [angular] « patients — rattacher à la main un document sans INS à une fiche cherchée par son nom » (functional.e2e.ts, projet weda2-headless) porte l'identifiant E2E-PATIENT-002, inconnu du catalogue.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-348 --sync` — ne pas éditer à la main)*
@@ -358,6 +430,9 @@ Mutations unitaires sur l'autoconfig :
 | /start | ok | 57 s | — | — | — | — |
 | /develop | ok | 52 min 07 s | 4 (42 s) | 5 (4 min 31 s) | — | dtos-mss 1B/0T, api-mail 1B/3T, client-blazor 2B/2T |
 | /sonar | ok | 30 min 11 s | 2 (1 min 23 s) | 10 (9 min 59 s) | 4 (5 min 07 s) | 2 itération(s), api-mail 2B/10T |
-| **Total cycle** | | **1 h 23 min** | **6 (2 min 05 s)** | **15 (14 min 31 s)** | **4 (5 min 07 s)** | |
+| /lint-angular | ok | 11 min 54 s | 1 (1 min 35 s) | 1 (4 min 51 s) | — | 1 itération(s), client-angular 1B/1T |
+| /lint-mobile | skipped | 2.2 s | — | — | — | client-mobile non listé dans Repos |
+| /e2e | failed | 13 min 38 s | — | — | — | e2e ×3 (10 min 52 s), voie angular rouge (E2E-PATIENT-002 hors catalogue, branche task-331 ; E2E-SEARCH-001) — étrangers à task-348 |
+| **Total cycle** | | **1 h 48 min** | **7 (3 min 41 s)** | **16 (19 min 22 s)** | **4 (5 min 07 s)** | |
 
-Autres commandes mesurées : nuget-wait ×1 (18 s), restore ×1 (3.0 s)
+Autres commandes mesurées : lint ×2 (3 min 10 s), nuget-wait ×1 (18 s), restore ×1 (3.0 s)
