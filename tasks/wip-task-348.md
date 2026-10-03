@@ -193,3 +193,246 @@ connexion IMAP / SMTP
 - `dtos-mss` (paresseux) : branche créée par `/develop` au moment où il touche le contrat (CLAUDE.md, « Repo à branche PARESSEUSE »)
 - `client-angular` (code-only) : forge writes code on the branch currently checked out in `Client/Angular/` (instantané au `/start` : `feature/nova-rewriting-mss`) — humain gère branche, commit, push, PR TFS
 - Dépendances vérifiées au `/start` : task-342 archivée (squash `bf02f565` sur develop) ; aucune trace de l'allowlist AUD-42 sur `develop` (`AllowedUserServerHosts`, `UserMailServerHostPolicy` absents) — le revert de `b052826a` / `a592b5f2` a précédé le squash, la vérification de `368ba75b` est sans objet ; `FromUserConfig` présent (3 occurrences dans `MailServerDiscovery.cs`), c'est l'objet de la task.
+
+## Develop log
+
+- Repos touched : `dtos-mss` (branche paresseuse créée par `/develop`), `api-mail`, `client-blazor`, `client-angular` (code-only, branche `feature/nova-rewriting-mss`, aucune opération git)
+- DTOs published : `HealthPlatform.Dtos.Mss` 509.0.0 → **511.0.0** (run 37128746649). `UserSettingsDto.ImapServerConfig` / `SmtpServerConfig` marqués `[Obsolete]` (étape 1 sur 2), ajout de `MailServerInfoDto` + `MailServerSources` (`configuration` | `autoconfig`)
+- Interop published : no interop change
+- `AutoconfigResultDto` n'est **pas** dans `dtos-mss` : c'est un type interne d'api-mail (`IAutoconfigService.cs`), rien à marquer côté contrat. Il reste la charge utile du cache d'autoconfig. Côté Blazor, sa copie locale (`IUserSettingsService.cs`) est supprimée avec son unique consommateur.
+- Commits :
+  - dtos-mss : feat(dto): serveur resolu cote serveur — champs serveur obsoletes, MailServerInfoDto
+  - api-mail : `0a0323ca` fix(mail): serveur de messagerie resolu par le seul serveur — plus aucun serveur saisi (59 fichiers, dont 14 `packages.lock.json` où seule la version DTO change)
+  - client-blazor : `de15ef9` feat(settings): serveur de messagerie en lecture seule — plus de champs serveur ni de detection
+
+### Ce qui a changé (api-mail)
+
+1. **Plus aucune lecture du serveur saisi** (règle 1) : `IMailServerDiscovery` perd le paramètre `userConfig` et `FromUserConfig`. Méthodes renommées `GetConfiguredImapServer` / `GetConfiguredSmtpServer` (elles ne lisent que la table), plus `IsConfiguredDomain`.
+2. **Lecture des réglages retirée du chemin de connexion** (règle 2), vérifiée site par site. Dans `ImapConnectionService`, `BackgroundImapService` et `SmtpConnectionFactory`, `IUserSettingsRepository.GetSettingsAsync()` ne servait **qu'à** récupérer le serveur saisi : la dépendance est retirée des trois constructeurs. `SmtpService` garde sa lecture des réglages, qui sert l'identité d'expéditeur.
+3. **`IMailServerResolver`** (règle 3) : la table d'abord (un domaine présent, même incomplet, ne touche ni Redis ni HTTP), puis l'autoconfig, puis `null`. Les trois sites l'utilisent. Il est enregistré dans `AddApplication`, à côté de la découverte, et non plus côté API : les compositions de test qui passent par `AddApplication` le reçoivent.
+4. **Autoconfig durci** (règles 4, 5, 6, 9) :
+   - `*.mssante.fr` seulement, aucune requête HTTP sinon ;
+   - IP littérale, ou résolution DNS non publique (privée, bouclage, lien local, CGNAT, multidiffusion, réservée, IPv6 ULA ou lien local, IPv4 transportée en IPv6) → rejet ;
+   - échec en cache 15 min, succès 24 h, sous une clé nouvelle (`mail-autoconfig:`) pour ne pas relire l'ancien type ;
+   - log `MailDomainNotConfigured` au téléchargement seulement (une fois par domaine et par durée de cache), texte fixe, `EventName` / `ImapHost` / `SmtpHost` en portée, Warning (`xml-autoconfig`) ou Error (`none`), jamais l'email ;
+   - `GetSmtpConfigFromDomain` supprimé ;
+   - un serveur découvert est toujours joint avec validation TLS.
+5. **Réglages** (règle 7) : `SaveSettings` met les deux champs à `null` et répond 200. `GET /settings` ne les renvoie plus : les valeurs résiduelles en base sont ignorées.
+6. **Endpoint** (règle 8) : `GET /api/v1/settings/mail-server`, pour l'identité connectée, 404 `ProblemDetails` sans serveur. `GET /settings/autoconfig?email=` est supprimé. Grep : aucun autre consommateur que les écrans Paramètres Blazor et Angular modifiés ici, et `client-mobile` n'y faisait aucune référence.
+7. **Bancs** (règle 10) : l'AppHost déclare le domaine du banc de charge et celui du filet e2e.
+   - Banc de charge : `MailServers__Domains__{MSS_LOADTEST_DOMAIN ?? loadtest.local}__…` vers Toxiproxy 13993/13465 ; en direct 3993/3465 avec `MSS_LOADTEST_NO_PROXY=true` ; vers les NodePorts 30993/30465 avec `MSS_LOADTEST_MAIL_HOST`.
+   - Filet e2e : `e2e.test` vers Dovecot 3993 et GreenMail 3465. **Découvert en cours de route** : le seed e2e choisissait lui aussi son serveur par les réglages. Sans cette déclaration, tout `/e2e` serait tombé.
+   - Les deux seeds n'envoient plus de serveur, et vérifient celui que résout api-mail (`GET /settings/mail-server`).
+   - Garde ajoutée : `E2eProfile.MailDomain == E2eSeedPlan.Domain`.
+   - Aucune liste d'autorisation n'est réintroduite.
+8. **Asymétrie assumée** : `MssAccountOnboardingService` (test de connexion d'une nouvelle boîte, E016) reste sur la **table seule**. Son email vient d'une saisie libre : lui donner l'autoconfig rouvrirait un téléchargement déclenchable de l'extérieur. Un domaine résolu seulement par autoconfig fonctionne donc à la connexion, mais pas encore à l'onboarding. À arbitrer si le cas se présente.
+
+### Fronts
+
+- **client-blazor** :
+  - champs hôte/port et boutons « Détecter » / « Enregistrer la configuration » retirés ;
+  - encart `MailServerInfoCard` (`data-testid` `settings-mail-server`, `-summary`, `-source`, `-missing`) ;
+  - libellés via `Localizer` (FR et EN), anciennes clés retirées ;
+  - `GetMailServerAsync()` en lecture silencieuse : un 404 n'affiche pas d'erreur technique.
+- **client-angular** (code-only) :
+  - signaux et méthodes serveur retirés ;
+  - encart en lecture seule (mêmes `data-testid`), libellés FR en dur ;
+  - `MssApiService.getMailServer()` remplace `autoDetectServerConfig(email)` ;
+  - `withoutServerSelection()` retire les deux champs de **chaque** enregistrement ;
+  - champs du modèle TS marqués `@deprecated` (suppression en étape 2) ;
+  - règles SCSS mortes retirées.
+
+### Tests d'intégration (règle 1b) — comportement → test → preuve rouge
+
+`SettingsMailServerEndpointIntegrationTests` monte la vraie route, le vrai `SettingsController`, le vrai `UserSettingsRepository` (PostgreSQL du fixture, base isolée), les vrais `MailServerResolver` / `MailServerDiscovery` / `AutoconfigService` et le vrai `ImapConnectionService`. Seuls sont simulés le serveur HTTP d'autoconfig (il compte ses appels) et le client IMAP (il note l'hôte visé, puis refuse la connexion).
+
+| Comportement lu dans la réponse réelle | Test | Rouge par mutation |
+|---|---|---|
+| `POST /settings` avec `imapServerConfig.host = "redis"` → 200 ; `GET /settings` → aucun serveur ; la connexion IMAP suivante vise le serveur du domaine, jamais `redis` | `PostingAServer_IsAccepted_ButNeverStoredNorReturned_AndTheNextImapConnectionTargetsTheDomainServer` | A (vidage retiré) : `Assert.Null() … Actual: MailServerConfigDto { Host = "redis", Port = 6379 … }` ; B (table ignorée) : `Expected to receive exactly 1 call matching ConnectAsync(imap.cabinet-348.test.local, 143, StartTls…)` |
+| `GET /settings/mail-server`, domaine configuré → 200, `source = configuration`, sans HTTP | `GetMailServer_ConfiguredDomain_Returns200_WithSourceConfiguration` | B : `Expected: OK Actual: NotFound` |
+| `GET /settings/mail-server`, domaine inconnu → 404 `application/problem+json`, sans HTTP | `GetMailServer_UnknownDomain_Returns404ProblemDetails_WithoutAnyHttpOutsideMssante` | route absente avant la task |
+| `GET /settings/autoconfig?email=…` → 404, aucun téléchargement | `OldAutoconfigRoute_NoLongerExists` | route présente avant la task |
+
+Mutations unitaires sur l'autoconfig :
+- C (tout domaine téléchargé) → 5 rouges `DomainOutsideMssante…` ;
+- D (plages non publiques ignorées) → 7 rouges `XmlHostResolvingToANonPublicAddress…` ;
+- E (échec non mis en cache) → 13 rouges (`Failure_IsCached15Minutes`, `TwiceForAFailingDomain_DownloadsOnlyOnce`, log Error unique…).
+
+**Vert qui ment, trouvé et corrigé.** Le test « IP littérale » restait vert sans le garde des littéraux : le DNS scripté ne résolvait pas le littéral, et tous les cas étaient non publics. Ajout de deux littéraux publics et d'un DNS qui les résout comme le vrai : rouges sous mutation. Prévention : `conventions/csharp.md` § `test-de-rejet-attribuable`.
+
+### Tests unitaires et de composants (DOD)
+
+- **Résolveur** (`MailServerResolverTests`) : table → aucun appel au cache ni à HTTP ; absent + cache succès ; absent + cache échec → pas de HTTP ; hors `*.mssante.fr` → pas de HTTP ; port invalide écarté ; email vide ou sans domaine.
+- **Autoconfig** (`AutoconfigServiceTests`) :
+  - XML valide → cache 24 h ; échecs (404, XML invalide, sans serveur) → cache 15 min ;
+  - `127.0.0.1`, `10.0.0.1`, `169.254.169.254`, `[::1]` et des littéraux publics → rejet ;
+  - nom résolu en `10.x`, `192.168.x`, `172.20.x`, `127.x`, `100.64.x`, `169.254.x`, `fd00::1` → rejet ;
+  - log `MailDomainNotConfigured` unique sur deux appels, Warning ou Error, aucune propriété ne contient `@`.
+- `NonPublicNetworkAddressTests` (plages, bornes CGNAT et 172.16/12, IPv4 transportée en IPv6) ; `SettingsControllerTests` (vidage à l'aller et au retour, `mail-server` 200 / 404 / sans email, ancienne route absente).
+- **Blazor** (bUnit) `MailServerInfoCardTests` : encart `configuration`, libellé `autoconfig`, message sur 404, écran sans champ serveur ni bouton « détecter ».
+- **Angular** (vitest) `mss-settings.component.spec.ts` : encart, libellé autoconfig, 404 géré sans erreur technique, aucun `#imap-host` / `#auto-detect-server`…, payload d'enregistrement sans `imapServerConfig` / `smtpServerConfig` (même si les réglages lus en portaient), `withoutServerSelection`.
+- **Tests réécrits parce qu'ils éprouvaient le défaut** :
+  - 6 tests de `MailServerDiscoveryTests` (« UserConfigOverridesDefault »…) supprimés ; `GetAutoconfigForDomain` → `IsConfiguredDomain` ;
+  - `AutoconfigServiceCoverageTests` et `AutoconfigServiceCacheTests` (ancienne API, domaine quelconque téléchargé) supprimés, couverts par le nouveau `AutoconfigServiceTests` ;
+  - `SmtpConnectionFactoryTests` : « WithCustomSmtpConfig_UsesCustomConfig » et « WithNullUserSettings_UsesAutodiscovery » supprimés ;
+  - `ImapConnectionServiceTests.UserSettingsRepositoryShouldReturnDefaultSettings` (il ne testait que la doublure) supprimé.
+
+### Vérification locale
+
+- **dtos-mss** : build 0 erreur, 0 avertissement.
+- **api-mail** : build 0 erreur ; domain 190/190, infrastructure 675/675, api 1 161/1 161, application 3 415/3 415 ; intégration **748 réussis, 9 rouges, 16 ignorés**. Les 9 repassent seuls (12/12 avec leurs voisins de classe) :
+  - 3 × `different vector dimensions 3 and 1536` (base partagée) ;
+  - `Le_maintien_des_partitions…` et `…ShareOneProvisioning` ;
+  - 4 × `53300: sorry, too many clients already` (Postgres local partagé avec l'AppHost en cours).
+
+  Exécuté avec `--artifacts-path artifacts` dans le dépôt, l'AppHost tournant.
+- **client-blazor** : build 0 erreur ; 396 réussis, 0 échec, 2 ignorés.
+- **client-angular** : spec des Paramètres 6/6 (vitest). Le build et la suite complète reviennent à `/lint-angular` (pipeline aligné, avec rollback).
+- **Smoke loadtest** (`SmtpSessionReuseBenchSmokeTests`) vert, sur un domaine déclaré dans la table.
+
+### Passe qualité (§Q)
+
+- Faite en relecture ciblée du diff, sans lancer la skill `/simplify` :
+  - S1067 évité dès l'écriture (plages réseau en table plutôt qu'une chaîne de `||`) ;
+  - S1075 : URL d'autoconfig construite par `UriBuilder` ;
+  - paramètre homonyme renommé dans l'AppHost ;
+  - BOM des fichiers rétablis à l'identique de `develop` ;
+  - règles SCSS mortes retirées côté Angular.
+
+  Aucun cleanup supplémentaire appliqué, donc pas de re-validation.
+- Skipped (contract) : dtos-mss.
+
+### DOD self-check
+
+- [x] Build 0 erreur sur dtos-mss, api-mail et client-blazor ; client-angular compilé par vitest (build complet : `/lint-angular`)
+- [x] Tests 0 échec, hors rouges pré-existants ou environnementaux identifiés (rejoués seuls, verts)
+- [x] `grep FromUserConfig|AllowedUserServerHosts|UserMailServerHostPolicy Api/Mail/src` → vide
+- [x] `ImapServerConfig` / `SmtpServerConfig` dans `Api/Mail/src` : seulement `SettingsController.DropServerSelection`, qui les met à `null`
+- [x] Unit tests du résolveur, de l'autoconfig et du log (listes ci-dessus)
+- [x] Integration test `POST /settings` avec `host = "redis"` → 200, `GET` sans serveur, connexion IMAP vers le serveur du domaine. La route réelle est `POST /api/v1/settings` ; la DOD écrivait `PUT`.
+- [x] Integration test `GET /settings/mail-server` : 200 `configuration` / 404 `problem+json`
+- [x] Ancienne route → 404 (test d'intégration), et plus aucun consommateur (grep fronts)
+- [x] `GetSmtpConfigFromDomain` supprimé ; le SMTP est lu dans `MailServers.Domains`
+- [x] Seed loadtest et tests SMTP / synchro / sweep sur un domaine déclaré ; profil loadtest de l'AppHost mis à jour ; smoke vert
+- [x] dtos-mss : `[Obsolete]`, DTO de réponse ajouté, package publié, consommateurs .NET bumpés
+- [x] Blazor : tests de composant de l'encart (configuration, 404) ; champs serveur et bouton absents
+- [x] Angular : test du composant (encart, 404, payload sans serveur)
+- [x] `data-testid` sur l'encart et sur son message d'absence (Blazor et Angular)
+- [x] Task de suivi écrite : `tasks/todo-task-351.md` (étape 2, avec un encadré d'arbitrage humain sur la condition de lancement)
+- Next step : /sonar task-348
+
+## Sonar log
+
+- Serveur : SonarQube 25.6.0.109173 (`sonar.token`), port 9001, démarré au pré-flight (base puis serveur). Projet `healthplatform-api-mail`, période de nouveau code « previous version » depuis le 2026-04-17 : elle englobe des dizaines de tasks déjà mergées, d'où un tri par provenance de chaque finding.
+- **Phase 1 (nouveau code de task-348) : verte** en 2 itérations.
+  - Itération 1, sur les fichiers de la task : **2 issues** (S4457 `MailServerResolver.ResolveAsync`, S138 `AddApplication`) et **11 hotspots** S1313 (`NonPublicNetworkAddress`). Couverture du nouveau code sous 95 % sur `SettingsController` (92,7), `AutoconfigService` (94,0), `MailServerResolver` (94,9), `DnsHostAddressResolver` (50).
+  - Corrigé : S4457 (validation hors du corps async, `ResolveCoreAsync` privée) ; S1313 (plages en octets, `IPAddress.IPv6Any` / `IPv6Loopback`) ; S138 : **dette antérieure** (issue créée le 2026-09-07), réduite et non introduite (`AddApplication` : 196 lignes sur `develop`, 192 après extraction de `AddMailServerResolution`).
+  - +8 tests de couverture (annulation par l'appelant, pannes de transport et inattendue, annulation pendant la résolution DNS, serveur partiel, validation à l'appel, DNS système, `GetMailServer` IMAP seul, réglages absents). Au passage, `AutoconfigService` contrôle désormais un jeton déjà annulé dès l'entrée (il téléchargeait et mettait en cache quand le fournisseur ignorait le jeton).
+  - Itération 2 : **aucune issue ni aucun hotspot** sur les fichiers de la task ; couverture du nouveau code de ces fichiers 95,8 à 100 %.
+- Contrôle mécanique §Q 2b (sauté en `/develop`, lancé ici) : 2 commentaires au motif S125 réécrits (`f4824ab7`). S4457 n'aurait **pas** été attrapé : le grep ne cherche que `ThrowIf…`, alors que le code levait un `throw new ArgumentException` explicite.
+- Findings restants du nouveau code, tous **hors task-348** (provenance vérifiée) : 66 violations et 13 hotspots `TO_REVIEW` hérités, dont 2 apparus à cette analyse mais venus de task-329 (#270, mergée après la précédente analyse) : S103 `DraftService.cs:330`, S138 `SmtpService.SendMailAsync`.
+- Phase 2 (dette héritée) : **non lancée** (optionnelle, hors périmètre de la task).
+- Build / tests : Release, 0 erreur ; unitaires verts. Les rouges d'intégration des passes de couverture sont tous `53300: sorry, too many clients already` (Postgres local partagé avec l'AppHost en cours) ; les mêmes tests passent seuls.
+- Commits : `9dd688e3` fix(sonar/new) S4457 / S1313 / S138 ; `b47c0158` test(sonar/new) ; `f4824ab7` refactor(sonar/new) S125.
+- Conventions : S4457 → 5 (récidive), S125 → 10, **S1313 ajoutée**.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline (analyse du 2026-10-01) | Final (branche task-348) | Δ |
+|---|---|---|---|
+| Quality Gate (nouveau code) | ERROR | ERROR | → (conditions héritées : hotspots non revus, violations) |
+| New coverage | 98,2 % | 98,1 % | −0,1 pt |
+| Bugs | 2 | 2 | 0 |
+| Vulnerabilities | 0 | 0 | 0 |
+| Security hotspots | 15 | 15 | 0 (24 → 13 sur le nouveau code après correction des 11 de la task) |
+| Code smells | 65 | 68 | +3, tous venus de task-329 (#270) mergée entre-temps, aucun de task-348 |
+| Reliability / Security / Maintainability | D / A / A | D / A / A | → |
+| Coverage (global) | 98,0 % | 98,0 % | 0 |
+
+## Lint log
+
+- `/lint-angular` (Mode A, code-only, aucune opération git hors `git fetch origin next`) : base `origin/next`, scope `tag:scope:mss`.
+- Baseline : **3 erreurs**, toutes `prettier/prettier` dans les fichiers de la task (`mss-api.service.ts` ×2, `mss-settings.component.ts` ×1 : retours à la ligne et fins de ligne CRLF), et 34 avertissements `jsdoc/require-example`, dette existante du module.
+- Itération 1 : auto-fix (`-- --fix`) → **0 erreur**. Fixes de l'auto-fixer seulement, donc rien à consigner dans `conventions/angular.md`.
+- Constat d'outillage : le filtre `--projects=tag:scope:mss` ne restreint pas `nx affected` (les 12 projets affectés ont été lintés et auto-fixés). Vérifié par date de modification : seuls `libs/mss/src/core/services/mss-api.service.ts` et `libs/mss/src/features/settings/mss-settings.component.ts` ont changé.
+- Build (pipeline aligné, périmètre affecté complet) : **10/11 projets verts**, dont `weda2`, qui consomme `mss-lib`. `mss:build:production` échoue sur un fichier d'environnement absent du poste (`apps/mss/src/environments/environment.prod.ts` : seul `environment.ts` existe). Fichier non touché par la task, échec d'environnement local et non régression.
+- Tests (pipeline aligné) : **11/11 projets verts**.
+- Itérations consommées : 1 / 5.
+
+## Lint mobile log
+
+- `/lint-mobile` : **skipped**, `client-mobile` n'est pas listé dans `**Repos**:` (le mobile n'a aucun écran de configuration serveur, voir l'en-tête de la task).
+
+## E2E log
+
+| Voie | Jouée | Résultat | Détail |
+|---|---|---|---|
+| mobile | oui (`api-mail`, `dtos-mss` touchés) | ✅ vert | 26 réussis, 0 flaky, 0 rouge ; clone mobile aligné sur `origin/develop` (avance rapide, `a3570b8`) |
+| angular | oui (`api-mail`, `client-angular`, `dtos-mss` touchés) | ❌ rouge | 25 réussis, 2 rouges ; branche humaine `feature/nova-rewriting-mss` |
+| porte | — | ❌ ROUGE (code 1) | 3 motifs, voir ci-dessous et `questions/task-348.md` |
+
+Démontage vérifié : ports 5052 / 8100 / 4200 / 3993 / 3465 / 3143 libres, aucun conteneur `e2e-*` résiduel.
+
+Écrans touchés sans spec e2e modifié (avertissement non bloquant) : `libs/mss/src/features/settings/mss-settings.component.html` — la DOD ne demande pas de scénario e2e (aucun parcours médecin créé ; l'écran Paramètres perd des champs), le test de composant Angular couvre l'encart.
+
+**E2E : ROUGE** — 3 motif(s) de blocage.
+
+**Bloquant** (3) :
+
+- [angular] rouge : « patients — rattacher à la main un document sans INS à une fiche cherchée par son nom » (E2E-PATIENT-002)
+- [angular] rouge : « recherche — requête et recherche avancée » (E2E-SEARCH-001)
+- [angular] parité UnknownIdentifier : « patients — rattacher à la main un document sans INS à une fiche cherchée par son nom » (functional.e2e.ts, projet weda2-headless) porte l'identifiant E2E-PATIENT-002, inconnu du catalogue.
+
+### Matrice de parité
+
+| Scénario | v | Mode | Titre | angular | mobile |
+|---|---|---|---|---|---|
+| E2E-INBOX-001 | 1 | headless | Filtrer la boîte de réception, basculer liste / conversation, ouvrir la recherche | ✅ | ✅ |
+| E2E-FOLDER-001 | 1 | headless | Naviguer vers les dossiers Archive et Corbeille | ✅ | ✅ |
+| E2E-PATIENT-001 | 1 | headless | Afficher la vue patients | ✅ | ✅ |
+| E2E-CONTACT-001 | 1 | humain | Rechercher dans le carnet et interroger l'annuaire national | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-SETTINGS-001 | 1 | headless | Changer le filtre par défaut et le retrouver après rechargement | ✅ | ✅ |
+| E2E-MAIL-001 | 1 | headless | Marquer un message lu puis non lu | ✅ | ✅ |
+| E2E-MAIL-002 | 1 | headless | Tout sélectionner et marquer lu en masse | ✅ | ✅ |
+| E2E-DETAIL-001 | 1 | headless | Répondre et transférer depuis la lecture d'un message | ✅ | ✅ |
+| E2E-COMPOSE-001 | 1 | headless | Envoyer un message, le recevoir, le lire, le supprimer | ✅ | ✅ |
+| E2E-COMPOSE-002 | 1 | headless | Faire corriger l'orthographe de son texte, appliquer la correction, puis envoyer | ✅ | ✅ |
+| E2E-MAIL-003 | 1 | headless | Signaler puis ne plus signaler un message | ✅ | ✅ |
+| E2E-MAIL-004 | 1 | headless | Déplacer un message vers Archive puis le ramener | ✅ | ✅ |
+| E2E-DRAFT-001 | 1 | headless | Créer un brouillon, le reprendre, le supprimer | ✅ | ✅ |
+| E2E-DRAFT-002 | 1 | headless | Envoyer un message à pièce jointe après l'enregistrement automatique du brouillon | ✅ | ✅ |
+| E2E-BIO-001 | 1 | headless | Acquitter un compte rendu de biologie | ✅ | ✅ |
+| E2E-DASH-001 | 1 | headless | Afficher les widgets du tableau de bord | ✅ | ✅ |
+| E2E-DETAIL-002 | 1 | headless | Basculer entre texte brut et HTML à la lecture | ✅ | ✅ |
+| E2E-DETAIL-003 | 1 | headless | Répondre à tous depuis la lecture d'un message | ✅ | ✅ |
+| E2E-SETTINGS-002 | 1 | headless | Changer la vue par défaut et la retrouver après rechargement | ✅ | ✅ |
+| E2E-SEARCH-001 | 1 | headless | Rechercher un message et ouvrir la recherche avancée | ❌ | ✅ |
+| E2E-ATTACH-001 | 1 | headless | Voir les pièces jointes d'un message | ✅ | ✅ |
+| E2E-CONTACT-002 | 1 | headless | Créer puis supprimer un contact | ✅ | ✅ |
+| E2E-SIGNATURE-001 | 1 | headless | Créer puis supprimer une signature | ✅ | ✅ |
+| E2E-CONTACT-003 | 1 | headless | Créer puis supprimer un groupe de contacts | ✅ | ✅ |
+| E2E-FOLDER-002 | 1 | headless | Créer puis supprimer un dossier | ✅ | ✅ |
+| E2E-AUTH-001 | 1 | humain | Rester connecté quand le jeton d'accès expire | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-AUTH-002 | 1 | humain | Se déconnecter | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-LIVE-001 | 1 | headless | Recevoir un nouveau message en temps réel, sans recharger | ✅ | ✅ |
+| E2E-AI-001 | 1 | headless | Interroger l'assistant sur des messages sélectionnés et poser des questions de suite | ✅ | ✅ |
+
+**Parité : ROUGE** — 1 écart(s) :
+
+- `UnknownIdentifier` [angular] « patients — rattacher à la main un document sans INS à une fiche cherchée par son nom » (functional.e2e.ts, projet weda2-headless) porte l'identifiant E2E-PATIENT-002, inconnu du catalogue.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-348 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 57 s | — | — | — | — |
+| /develop | ok | 52 min 07 s | 4 (42 s) | 5 (4 min 31 s) | — | dtos-mss 1B/0T, api-mail 1B/3T, client-blazor 2B/2T |
+| /sonar | ok | 30 min 11 s | 2 (1 min 23 s) | 10 (9 min 59 s) | 4 (5 min 07 s) | 2 itération(s), api-mail 2B/10T |
+| /lint-angular | ok | 11 min 54 s | 1 (1 min 35 s) | 1 (4 min 51 s) | — | 1 itération(s), client-angular 1B/1T |
+| /lint-mobile | skipped | 2.2 s | — | — | — | client-mobile non listé dans Repos |
+| /e2e | failed | 13 min 38 s | — | — | — | e2e ×3 (10 min 52 s), voie angular rouge (E2E-PATIENT-002 hors catalogue, branche task-331 ; E2E-SEARCH-001) — étrangers à task-348 |
+| **Total cycle** | | **1 h 48 min** | **7 (3 min 41 s)** | **16 (19 min 22 s)** | **4 (5 min 07 s)** | |
+
+Autres commandes mesurées : lint ×2 (3 min 10 s), nuget-wait ×1 (18 s), restore ×1 (3.0 s)
