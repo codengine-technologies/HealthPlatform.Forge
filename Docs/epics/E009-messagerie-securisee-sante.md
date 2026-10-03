@@ -4,7 +4,7 @@
 > **Modèle** : hand-crafted
 > **Version** : 1.85
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-03 (rattacher un document même quand l'appariement ne trouve personne, task-331)
+> **Dernière mise à jour** : 2026-10-03 (corriger un rattachement manuel : détacher, changer de patient, tracer — task-331)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -173,7 +173,7 @@ L'assistance IA est **désactivable par paramètre d'établissement** et peut to
 
 À chaque étape, la messagerie respecte les exigences applicables à un client MSSanté professionnel : connexion TLS 1.2 minimum, authentification Pro Santé Connect, certificats IGC Santé en validation continue (CRL et OCSP), formats CDA R2 et IHE_XDM conformes au CI-SIS. Les identifiants techniques des ressources sont opaques pour empêcher toute énumération, l'authentification est cryptographiquement validée à chaque requête, et chaque donnée n'est accessible qu'à son propriétaire — un confrère ne voit pas les contacts, les modèles, les notes cliniques ou l'audit d'un autre praticien.
 
-Toute action fonctionnelle du praticien est consignée dans le **journal d'audit MSS** (lecture, envoi, suppression, rattachement patient, opposition, déconnexion, impression / export d'email, acquittement biologique, suppression CDA, annule et remplace) avec horodatage, identifiant du praticien, INS du patient, code LOINC du document, durée et adresse IP. Le journal est exportable au format CSV pour les contrôles internes et les audits de conformité.
+Toute action fonctionnelle du praticien est consignée dans le **journal d'audit MSS** (lecture, envoi, suppression, rattachement et détachement patient, opposition, déconnexion, impression / export d'email, acquittement biologique, suppression CDA, annule et remplace) avec horodatage, identifiant du praticien, INS du patient, code LOINC du document, durée et adresse IP. Le journal est exportable au format CSV pour les contrôles internes et les audits de conformité.
 
 ### Périmètre en construction
 
@@ -265,7 +265,7 @@ Le caractère **dynamique** du dashboard est central pour l'usage clinique : le 
 
    Un **indicateur d'intégration** placé directement sur la ligne d'inbox renseigne le médecin d'un coup d'œil : pastille verte ✓ « tous intégrés » si chaque document médical du message est rattaché à un patient, ou pastille orange ⏳ avec compteur « N en attente » si un ou plusieurs documents nécessitent encore une action. Le même indicateur est rappelé par document dans la vue détail (task-011).
 
-   Quand l'INS portée par le CDA n'est pas qualifiée (matricule incomplet, absence d'OID, traits d'identité partiels), une **bannière amber** s'affiche en tête de la vue détail du message et propose un **rattachement manuel par comparaison visuelle**. Le médecin ouvre une dialog qui liste les patients de la base correspondant aux traits du CDA, classés par score de similarité (nom 40 %, prénom 30 %, date de naissance 20 %, sexe 10 %). Le praticien sélectionne le patient existant à rattacher en un clic ; la bannière disparaît immédiatement (task-012). Quand aucun patient ne correspond aux traits, ou que le document n'en porte aucun, le praticien **cherche la fiche par son nom** dans la même dialog, la choisit, puis **confirme** le rattachement après avoir comparé son identité aux traits du document ; un échec de la recherche des candidats se relance d'un clic. La dialog ne crée jamais de patient (task-331).
+   Quand l'INS portée par le CDA n'est pas qualifiée (matricule incomplet, absence d'OID, traits d'identité partiels), une **bannière amber** s'affiche en tête de la vue détail du message et propose un **rattachement manuel par comparaison visuelle**. Le médecin ouvre une dialog qui liste les patients de la base correspondant aux traits du CDA, classés par score de similarité (nom 40 %, prénom 30 %, date de naissance 20 %, sexe 10 %). Le praticien sélectionne le patient existant à rattacher en un clic ; la bannière disparaît immédiatement (task-012). Quand aucun patient ne correspond aux traits, ou que le document n'en porte aucun, le praticien **cherche la fiche par son nom** dans la même dialog, la choisit, puis **confirme** le rattachement après avoir comparé son identité aux traits du document ; un échec de la recherche des candidats se relance d'un clic. La dialog ne crée jamais de patient (task-331). Un rattachement manuel se **corrige** : le détail du message affiche « Rattaché à la main à {patient} », avec **« Changer de patient »** et **« Détacher »** (après confirmation, le document revient dans « à intégrer »). Un document reçu avec une INS suit l'identité de référence et ne se modifie pas à la main. Si le rattachement a changé entre-temps, la messagerie le signale au lieu d'écraser (task-331).
 
    Lorsqu'un nouveau document est reconnu comme **doublon** d'un document déjà reçu, ou comme **nouvelle version** d'un document existant, un badge « DOUBLON » ou « REMPLACÉ » est posé conformément à SC.CDA/INT.18 ; le praticien confirme ou rejette la détection, et navigue entre versions (algorithme normatif task-034 ; bannière de demande de suppression task-015a + task-015b ; lien cliquable « Version précédente » task-015c, robustesse de la navigation task-036).
 
@@ -507,7 +507,7 @@ Chaque praticien personnalise sa messagerie depuis un **panneau de paramètres u
 
 ### 5.4 Trace transverse
 
-Toute action fonctionnelle du praticien (lecture, envoi, suppression, rattachement à un patient, opposition patient, déconnexion, impression / export d'email, acquittement biologie, suppression CDA, annule et remplace) est consignée dans le journal d'audit MSSanté (task-004, étendu par task-017 impression/export, task-015b suppression, task-028 acquittement biologie). Chaque entrée porte horodatage, identifiant du praticien, INS patient si pertinent, code LOINC du document, durée de l'action et adresse IP de connexion. L'export CSV du journal est disponible depuis l'écran d'audit pour les besoins de conformité et de contrôle interne.
+Toute action fonctionnelle du praticien (lecture, envoi, suppression, rattachement à un patient et détachement, opposition patient, déconnexion, impression / export d'email, acquittement biologie, suppression CDA, annule et remplace) est consignée dans le journal d'audit MSSanté (task-004, étendu par task-017 impression/export, task-015b suppression, task-028 acquittement biologie). Chaque entrée porte horodatage, identifiant du praticien, INS patient si pertinent, code LOINC du document, durée de l'action et adresse IP de connexion. L'export CSV du journal est disponible depuis l'écran d'audit pour les besoins de conformité et de contrôle interne.
 
 <p style="margin: 5px">
   <img src="img/audit.png" alt="Schéma messagerie sécurisée santé" style="border: 1px ridge #b0b0b0; padding: 4px; background: #ffffff; box-shadow: 4px 4px 10px rgba(0,0,0,0.35); border-radius: 4px;" />
@@ -994,7 +994,7 @@ Les règles `RG-E009-084` à `RG-E009-089` sont propres à ENS Mon espace santé
 | Feature | Statut | Couverture | Tasks contributives |
 |---------|--------|------------|---------------------|
 | E009-F001 | 🟢 Implémenté | 95% — dossiers IMAP CRUD complets, opérations en masse (déplacer/lu/marquer), mono-boîte (multi-boîte via F010), jauge d'occupation de la boîte ; pilotage de la synchronisation d'arrière-plan (pause / relance / arrêt) effectif et état fidèle — task-188 ; gestes hors ligne rejoués jusqu'au succès, jamais effacés en silence — task-330 | task-087, task-330 |
-| E009-F002 | 🟢 Implémenté | 100% — traitement CDA et IHE_XDM complet, paire CDA/PDF fusionnée, détection doublons et versions normative INT.18 ; rattachement manuel possible même sans candidat (recherche de la fiche, confirmation) — task-331 | task-010, task-013, task-034, task-331 |
+| E009-F002 | 🟢 Implémenté | 100% — traitement CDA et IHE_XDM complet, paire CDA/PDF fusionnée, détection doublons et versions normative INT.18 ; rattachement manuel possible même sans candidat (recherche de la fiche, confirmation), corrigeable (détacher, changer de patient) et tracé — task-331 | task-010, task-013, task-034, task-331 |
 | E009-F003 | 🟢 Implémenté | 100% — tags urgence, tagging IA, détection biologie anormale, acquittement médico-légal | task-005, task-028 |
 | E009-F004 | 🟢 Implémenté | 100% — Vue temporelle patient, Timeline biologie horizontale, Synthèse clinique livrées sur les deux frontends ; widget Patient sur le dashboard ; dossier et biologie définis par la fiche (document rattaché visible, identités d'un même matricule séparées) — task-331 | task-035, task-331 |
 | E009-F005 | 🟢 Implémenté | 100% — canaux temps réel + préférences | — |
@@ -1035,6 +1035,14 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 > automatiquement au retour de la connexion », c'est cette description qui fait foi.
 
 ### Fonctionnalités métier
+
+- **v1.86 — Corriger un rattachement manuel** (task-331, suite) :
+  - **Détacher.** Un document rattaché à la main au mauvais patient se détache depuis le détail du message, après confirmation : il revient dans « à intégrer » et quitte le dossier du patient.
+  - **Changer de patient.** « Changer de patient » rouvre la fenêtre de rattachement ; le document passe d'un dossier à l'autre.
+  - **Plus d'écrasement silencieux.** Si un autre poste a modifié le rattachement entre-temps, la messagerie le dit (« a changé entre-temps : rechargez le message ») au lieu de remplacer le patient sans prévenir.
+  - **Tracé.** Chaque rattachement et chaque détachement manuels sont désormais consignés au journal d'audit, avec le document et le patient concernés. La première version de cette fonctionnalité annonçait un tracé qui n'existait pas.
+  - Un document reçu avec une identité INS suit l'identité de référence : il ne se détache pas et ne change pas de patient à la main (règle à confirmer à la recette).
+  - Disponible sur les trois applications (web Weda, Blazor, mobile).
 
 - **v1.85 — Rattacher un document même quand aucun patient ne correspond** (task-331, suite) :
   - **Le praticien n'est plus bloqué.** Quand les traits d'identité d'un compte rendu ne trouvent aucun patient (nom d'usage, faute de frappe, accent), ou que le document n'en porte aucun, il cherche la fiche par son nom dans la fenêtre de rattachement et la choisit.
