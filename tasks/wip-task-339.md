@@ -92,3 +92,8 @@ serveur (chemins, sous-dossiers, orphelins), et que les vues et l'audit reflète
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui — environnement inchangé
 - **AIPD / impact RGPD** : inchangé — supprime une destruction de données non voulue
+
+## Branches
+
+- `api-mail` (pushed) : fix/task-339-operations-dossiers-fiables — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-339-operations-dossiers-fiables
+- `dtos-mss` : aucune branche à ce stade (branche paresseuse, créée par /develop si un contrat bouge)
