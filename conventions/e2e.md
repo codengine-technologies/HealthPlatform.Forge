@@ -210,6 +210,22 @@
 
 ---
 
+### ancre-conditionnelle — L'ancre « contenu chargé » doit exister dans tous les cas du parcours
+- **Piège** : pour lire l'absence du bandeau de rattachement après rechargement, le test Angular
+  attendait l'indicateur « rattaché » de l'onglet du document. Or weda2 n'affiche des onglets que
+  pour un message à **plusieurs** documents : avec un seul, l'ancre n'existe jamais, et le test
+  tombait sur l'attente alors que l'écran était juste.
+- **Consigne** : une ancre de chargement est un élément rendu **sans condition** une fois la donnée
+  arrivée, et alimenté par la **même source** que ce dont on lit l'absence (ici `mss-mail-body`,
+  qui reçoit `mailContent()` comme le bandeau). Vérifier dans le template qu'aucun `@if` ne la
+  conditionne à autre chose que le chargement.
+- **Preuve** : constaté en preuve par mutation sur task-331 (le parcours restauré restait rouge sur
+  l'ancre). Avec `mss-mail-body .mail-body`, vert sur un seed neuf.
+- **Origine** : task-331
+- **Occurrences** : 1
+
+---
+
 ### precondition-du-negatif — Une assertion d'absence ne prouve rien sans la présence d'avant
 - **Piège** : « la citation n'est pas envoyée » est restée verte alors que la citation n'avait
   jamais été dans le message. Le transfert, cliqué 80 ms après l'ouverture du mail, était parti
@@ -256,3 +272,4 @@ scénario qui l'aurait attrapé, prouvé rouge sur le bug)*
 |---|---|---|---|
 | Transférer (et Répondre, même chemin) cliqué avant le chargement du contenu du mail : le message part **sans le message d'origine**, sans erreur visible | /e2e task-349 (E2E-COMPOSE-002, 1er passage à froid) | E2E-DETAIL-001 à durcir : le transfert relu côté serveur porte la citation ; précondition ajoutée à E2E-COMPOSE-002 (dans task-349) | task-350 |
 | Un message rédigé plus de 30 s (brouillon enregistré automatiquement) part **sans ses pièces jointes**, sans accusé de lecture ni acquittement d'opposition, « envoyé » affiché (Angular et Blazor : route des brouillons dès qu'un brouillon existe) | Audit de bugs du 2026-09-27 (AUD-06), non vu par `/e2e` : aucun scénario n'envoyait un brouillon, ni une pièce jointe | **E2E-DRAFT-002** ajouté (mobile et Angular requis) : la pièce jointe est relue dans le message **reçu**, après l'enregistrement automatique. Rouge sur les deux clients avec le bug réinjecté côté serveur | task-329 |
+| Un document sans INS dont les traits ne correspondent à aucune fiche (ou sans trait) ne peut **pas être rattaché** : le dialogue n'offre que les candidats de `/patients/match`, puis « Ignorer » (Angular, Blazor, mobile) | L'humain au HAG de task-331, non vu par `/e2e` : aucun scénario ne rattachait un document à la main | **E2E-PATIENT-002** ajouté (mobile et Angular requis) : document sans INS seedé, aucun candidat, recherche libre, confirmation, message relu dans le dossier de la fiche. Rouge sous mutation (confirmation sans appel) sur les deux clients | task-331 |

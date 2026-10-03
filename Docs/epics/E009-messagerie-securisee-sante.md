@@ -2,9 +2,9 @@
 
 > **Statut** : En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.84
+> **Version** : 1.85
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-02 (le dossier d'un patient est celui de sa fiche, task-331)
+> **Dernière mise à jour** : 2026-10-03 (rattacher un document même quand l'appariement ne trouve personne, task-331)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -265,7 +265,7 @@ Le caractère **dynamique** du dashboard est central pour l'usage clinique : le 
 
    Un **indicateur d'intégration** placé directement sur la ligne d'inbox renseigne le médecin d'un coup d'œil : pastille verte ✓ « tous intégrés » si chaque document médical du message est rattaché à un patient, ou pastille orange ⏳ avec compteur « N en attente » si un ou plusieurs documents nécessitent encore une action. Le même indicateur est rappelé par document dans la vue détail (task-011).
 
-   Quand l'INS portée par le CDA n'est pas qualifiée (matricule incomplet, absence d'OID, traits d'identité partiels), une **bannière amber** s'affiche en tête de la vue détail du message et propose un **rattachement manuel par comparaison visuelle**. Le médecin ouvre une dialog qui liste les patients de la base correspondant aux traits du CDA, classés par score de similarité (nom 40 %, prénom 30 %, date de naissance 20 %, sexe 10 %). Le praticien sélectionne le patient existant à rattacher en un clic ; la bannière disparaît immédiatement (task-012).
+   Quand l'INS portée par le CDA n'est pas qualifiée (matricule incomplet, absence d'OID, traits d'identité partiels), une **bannière amber** s'affiche en tête de la vue détail du message et propose un **rattachement manuel par comparaison visuelle**. Le médecin ouvre une dialog qui liste les patients de la base correspondant aux traits du CDA, classés par score de similarité (nom 40 %, prénom 30 %, date de naissance 20 %, sexe 10 %). Le praticien sélectionne le patient existant à rattacher en un clic ; la bannière disparaît immédiatement (task-012). Quand aucun patient ne correspond aux traits, ou que le document n'en porte aucun, le praticien **cherche la fiche par son nom** dans la même dialog, la choisit, puis **confirme** le rattachement après avoir comparé son identité aux traits du document ; un échec de la recherche des candidats se relance d'un clic. La dialog ne crée jamais de patient (task-331).
 
    Lorsqu'un nouveau document est reconnu comme **doublon** d'un document déjà reçu, ou comme **nouvelle version** d'un document existant, un badge « DOUBLON » ou « REMPLACÉ » est posé conformément à SC.CDA/INT.18 ; le praticien confirme ou rejette la détection, et navigue entre versions (algorithme normatif task-034 ; bannière de demande de suppression task-015a + task-015b ; lien cliquable « Version précédente » task-015c, robustesse de la navigation task-036).
 
@@ -994,7 +994,7 @@ Les règles `RG-E009-084` à `RG-E009-089` sont propres à ENS Mon espace santé
 | Feature | Statut | Couverture | Tasks contributives |
 |---------|--------|------------|---------------------|
 | E009-F001 | 🟢 Implémenté | 95% — dossiers IMAP CRUD complets, opérations en masse (déplacer/lu/marquer), mono-boîte (multi-boîte via F010), jauge d'occupation de la boîte ; pilotage de la synchronisation d'arrière-plan (pause / relance / arrêt) effectif et état fidèle — task-188 ; gestes hors ligne rejoués jusqu'au succès, jamais effacés en silence — task-330 | task-087, task-330 |
-| E009-F002 | 🟢 Implémenté | 100% — traitement CDA et IHE_XDM complet, paire CDA/PDF fusionnée, détection doublons et versions normative INT.18 | task-010, task-013, task-034 |
+| E009-F002 | 🟢 Implémenté | 100% — traitement CDA et IHE_XDM complet, paire CDA/PDF fusionnée, détection doublons et versions normative INT.18 ; rattachement manuel possible même sans candidat (recherche de la fiche, confirmation) — task-331 | task-010, task-013, task-034, task-331 |
 | E009-F003 | 🟢 Implémenté | 100% — tags urgence, tagging IA, détection biologie anormale, acquittement médico-légal | task-005, task-028 |
 | E009-F004 | 🟢 Implémenté | 100% — Vue temporelle patient, Timeline biologie horizontale, Synthèse clinique livrées sur les deux frontends ; widget Patient sur le dashboard ; dossier et biologie définis par la fiche (document rattaché visible, identités d'un même matricule séparées) — task-331 | task-035, task-331 |
 | E009-F005 | 🟢 Implémenté | 100% — canaux temps réel + préférences | — |
@@ -1035,6 +1035,12 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 > automatiquement au retour de la connexion », c'est cette description qui fait foi.
 
 ### Fonctionnalités métier
+
+- **v1.85 — Rattacher un document même quand aucun patient ne correspond** (task-331, suite) :
+  - **Le praticien n'est plus bloqué.** Quand les traits d'identité d'un compte rendu ne trouvent aucun patient (nom d'usage, faute de frappe, accent), ou que le document n'en porte aucun, il cherche la fiche par son nom dans la fenêtre de rattachement et la choisit.
+  - **Un choix manuel se confirme.** Le patient trouvé par la recherche n'a pas été proposé par la comparaison : avant de rattacher, la fenêtre montre son identité sous celle du document, et le praticien confirme.
+  - **Chaque document sans patient a son bouton**, y compris celui qui ne porte aucun trait : le bandeau compte désormais exactement les documents signalés « en attente ».
+  - Disponible sur les trois applications (web Weda, Blazor, mobile). Aucune création de patient depuis cette fenêtre.
 
 - **v1.84 — Le dossier d'un patient est celui de sa fiche** (task-331) :
   - **Un document rattaché à la main apparaît enfin dans le dossier du patient.** Un compte rendu reçu sans identité INS, puis rattaché par le praticien, quittait la liste « à intégrer » sans entrer dans aucun dossier. Les documents déjà rattachés réapparaissent sans action.

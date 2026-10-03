@@ -3,7 +3,7 @@
 **Repos**: api-mail, client-angular, client-blazor, client-mobile
 **Dependencies**: — (aucune ; à coordonner avec task-191, qui traite les **doublons** de fiches pour une même identité)
 **Epic**: E009
-**Single frontend**: false — périmètre étendu aux trois clients le 2026-10-03 (voir « Extension du périmètre »)
+**Single frontend**: false — périmètre étendu aux trois clients le 2026-10-03 (voir « Extension du périmètre » et « Extension 2 »)
 **Priorité**: **1** — le rattachement manuel imposé par task-176 est **sans effet visible** : le document sort de la file « à intégrer » sans entrer dans aucun dossier ; et la garde d'opposition peut lire la mauvaise fiche.
 
 > **Origine.** Audit de détection de bugs du 2026-09-27
@@ -96,6 +96,58 @@ Contrats : **aucun changement** attendu (`attach-patient`, `/patients/search`, `
 existent). Si `/develop` constate qu'un champ manque au résultat de recherche pour comparer les
 identités (date de naissance, sexe, INS), il l'établit et l'ajoute dans `dtos-mss` (branche paresseuse).
 
+## Extension 2 du périmètre — corriger un rattachement : détacher, changer de patient, tracer (décision humaine, 2026-10-03)
+
+> Posée par l'humain au HAG de l'extension 1 : « il n'y a aucune fonctionnalité pour détacher, elle
+> devrait exister ». À coder **dans cette US**, avant tout merge.
+
+**Constat** (develop @ 2026-10-03) :
+- Aucune action ne permet de **défaire** un rattachement manuel. Un document rattaché à la mauvaise fiche y
+  reste : erreur d'identification sans correction possible (identitovigilance).
+- **Le rattachement manuel n'est pas tracé** dans le journal d'audit : `AuditActionType` n'a aucune action
+  de rattachement à un patient. La ligne « rattachement manuel tracé (existant) » de la section Conformité
+  de cette task, et le doc produit E009 qui le cite parmi les actions journalisées, étaient **faux**
+  (recopiés sans vérification ; corrigés ici).
+- `POST attach-patient` **écrase sans contrôle** : `doc.PatientId = patientId`, quel que soit le patient
+  courant, y compris pour un document rattaché automatiquement par son INS. Aucun écran ne le permet, l'API
+  l'accepte, sans trace.
+- L'extension 1 (recherche libre) augmente le risque d'erreur : le praticien choisit désormais lui-même la fiche.
+
+**Règle retenue** (recommandation de la forge, **à confirmer par l'humain au HAG**) : seul un document
+**sans INS** se détache ou change de patient. C'est exactement l'ensemble des documents rattachés à la main :
+l'ingestion ne rattache automatiquement que par INS. Un document porteur d'une INS suit l'identité de
+référence ; le contester relève d'un signalement d'identitovigilance, hors périmètre.
+
+**Périmètre ajouté** :
+
+10. **Contrat** (`dtos-mss`, branche paresseuse, publication NuGet, bump `api-mail` et `client-blazor`) :
+    - `AttachPatientRequestDto.ExpectedCurrentPatientId` (`Guid?`) : le patient que le client croit
+      courant (`null` pour un document non rattaché) ;
+    - `DetachPatientRequestDto { ExpectedCurrentPatientId }` ;
+    - `AuditActionType.PatientDocumentAttached` (37) et `PatientDocumentDetached` (38), recopiés à la main
+      dans les libellés d'audit Angular et Blazor.
+11. **API** (`api-mail`) :
+    - `POST /medical-documents/{id}/attach-patient` : **409** si le document porte une INS ; **409** si le
+      patient courant diffère de `ExpectedCurrentPatientId` (plus d'écrasement silencieux, ni d'écran
+      périmé) ; 204 sinon ; rattacher à la fiche déjà courante ne fait rien.
+    - `POST /medical-documents/{id}/detach-patient` (corps `DetachPatientRequestDto`) : le document repasse
+      sans patient, donc dans la file « à intégrer » ; **409** si INS, ou si le patient courant diffère de
+      l'attendu (document déjà détaché compris) ; 404 si document inconnu ; 204 sinon.
+    - Chaque rattachement et chaque détachement effectifs écrivent une trace d'audit : document (identifiant
+      CDA, titre, LOINC), fiche choisie ou quittée (INS, nom), et fiche précédente pour un changement.
+    - Erreurs en `ProblemDetails` (règle 12), cache du mail invalidé comme au rattachement.
+12. **Clients** (Angular, Blazor, mobile, comportement identique) : dans le détail du mail, un document
+    **rattaché à la main** (patient posé, sans INS) affiche « Rattaché à {nom de la fiche} » avec
+    **« Changer de patient »** (le dialogue de rattachement, qui envoie le patient courant attendu) et
+    **« Détacher »** (après confirmation ; le document revient dans le bandeau « Rattachement en attente »).
+    Un 409 affiche « Le rattachement de ce document a changé entre-temps : rechargez le message ».
+13. **Parcours e2e** : `E2E-PATIENT-002` passe en **v2** et se termine par le détachement, relu côté serveur
+    (le document quitte le dossier de la fiche) et à l'écran (il revient dans le bandeau). Le parcours remet
+    ainsi l'état d'origine et redevient rejouable sur un même seed.
+
+**Hors périmètre** : détacher ou changer le patient d'un document porteur d'une INS ; détacher depuis le
+dossier patient (le geste reste dans le détail du mail, où le document est lu).
+
 ## Definition of Done
 
 - [ ] Build passes (0 errors) — `cd Api/Mail && dotnet build HealthPlatform.Api.Mail.sln`
@@ -123,6 +175,25 @@ identités (date de naissance, sexe, INS), il l'établit et l'ajoute dans `dtos-
 - [ ] Scénario `E2E-PATIENT-002` ajouté à `Api/Mail/e2e/scenarios.yml` (clients mobile et angular **requis**), donnée de seed déclarée (document sans INS dont les traits ne correspondent à aucune fiche, et une fiche existante à choisir), et implémenté dans les deux suites : rattachement par recherche libre, puis le document est **présent dans le dossier de la fiche choisie** (règle 1b côté frontend)
 - [ ] `/e2e` vert sur les deux voies, parité verte
 
+### DOD de l'extension 2 (points 10 à 13) — détacher, changer, tracer
+
+- [ ] `dtos-mss` : champs et membres d'audit ajoutés, package publié par la CI, `api-mail` et `client-blazor` bumpés
+- [ ] Tests d'intégration HTTP (règle 1b, vus rouges) sur la vraie pile :
+      détacher un document rattaché à la main → absent du dossier de la fiche et compté « à intégrer » ;
+      changer de patient → présent dans le dossier de la nouvelle fiche, absent de l'ancienne ;
+      rattacher un document déjà rattaché sans le patient attendu → 409 `problem+json`, rien ne change ;
+      rattacher ou détacher un document porteur d'une INS → 409, rien ne change ;
+      détacher avec un patient attendu périmé → 409 ;
+      chaque rattachement et détachement effectif émet sa trace d'audit (action, document, fiche), relue au puits d'audit sur la pile HTTP réelle (la persistance des traces relève de la chaîne d'audit et de ses tests)
+- [ ] Tests unitaires du dépôt et du service pour chaque branche (inconnu, INS, attendu périmé, déjà courant, effectif)
+- [ ] Composants, par client : le document rattaché à la main affiche la fiche, « Changer de patient » et « Détacher » ;
+      un document porteur d'une INS ne les affiche pas ; « Détacher » demande une confirmation puis appelle
+      `detach-patient` avec le patient courant ; un 409 affiche le message « a changé entre-temps » ;
+      le dialogue envoie le patient courant attendu (`null` pour un document non rattaché)
+- [ ] Libellés d'audit des deux nouvelles actions dans Angular et Blazor
+- [ ] `E2E-PATIENT-002` v2 au catalogue et dans les deux suites : détachement relu côté serveur et à l'écran, rouge sous mutation
+- [ ] `/e2e` vert sur les deux voies, parité verte
+
 ## Manual Test Plan
 
 1. `cd Api/Mail && dotnet run --project src/AppHost` ; Blazor ou mobile connecté à une boîte de test.
@@ -133,6 +204,9 @@ identités (date de naissance, sexe, INS), il l'établit et l'ajoute dans `dtos-
 6. **Choix manuel quand l'appariement échoue** (Angular, Blazor et mobile) : ouvrir un mail dont le CDA sans INS porte un nom qui ne correspond à aucune fiche → « Rattacher » → le dialogue annonce 0 candidat et propose la recherche ; chercher un patient existant par son nom, le choisir → une confirmation rappelle les traits du document et ceux de la fiche → confirmer → le document quitte le bandeau et apparaît dans le dossier de ce patient.
 7. **Document sans trait** : un CDA sans nom, prénom ni date de naissance a désormais un bouton dans le bandeau ; le dialogue s'ouvre directement sur la recherche.
 8. **Non-régression** : un candidat proposé par `/match` se rattache toujours en un clic, sans confirmation ; aucun bouton « Créer un patient » nulle part.
+9. **Détacher** : sur un mail dont le document a été rattaché à la main, l'encart « Rattaché à {fiche} » propose « Détacher » ; confirmer → le document revient dans le bandeau « Rattachement en attente » et quitte le dossier de la fiche. Un document reçu avec une INS n'affiche ni « Changer » ni « Détacher ».
+10. **Changer de patient** : « Changer de patient » rouvre le dialogue ; choisir une autre fiche → le document passe d'un dossier à l'autre.
+11. **Trace** : l'écran d'audit (Angular ou Blazor) montre « Document rattaché à un patient » et « Document détaché d'un patient » pour ces gestes.
 
 ## Conformité santé / Ségur / ANS
 
@@ -143,7 +217,7 @@ identités (date de naissance, sexe, INS), il l'établit et l'ajoute dans `dtos-
 - **Authentification PS** : PSC / e-CPS inchangée
 - **Habilitations** : inchangées — dossier limité aux patients du praticien
 - **Interop CI-SIS** : CDA r2 — identifiant patient et OID de domaine lus depuis le document (chemin `interop-cda` existant)
-- **Tracé PGSSI-S** : rattachement manuel tracé (existant) ; lecture et modification d'opposition tracées
+- **Tracé PGSSI-S** : rattachement et détachement manuels tracés au journal d'audit (**ajoutés par l'extension 2** : la mention « tracé (existant) » de la première rédaction était fausse) ; lecture et modification d'opposition tracées
 - **Consentement patient** : opposition Mon Espace Santé lue sur la fiche du destinataire effectif
 - **Référentiels métier** : référentiel INS (OID des domaines NIR / NIA)
 - **Hébergement HDS** : oui — environnement inchangé
@@ -382,14 +456,16 @@ La revue a trouvé deux comportements prouvés seulement par des tests unitaires
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 18 s | — | — | — | — |
-| /develop | ok | 54 min 00 s | 19 (2 min 54 s) | 15 (10 min 47 s) | — | api-mail 11B/8T, client-blazor 4B/3T, client-angular 2B/2T, client-mobile 2B/2T |
-| /sonar | ok | 5 min 28 s | 1 (15 s) | 5 (3 min 44 s) | 2 (35 s) | api-mail 1B/5T |
-| /lint-angular | skipped | 0.4 s | — | — | — | client-angular non touché (Repos: api-mail) |
-| /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché (Repos: api-mail) |
-| /e2e | ok | 8 min 44 s | — | — | — | e2e ×3 (8 min 01 s) |
-| /review | ok | 8 min 25 s | 1 (2.0 s) | 2 (3 min 08 s) | — | api-mail 1B/2T |
-| /tech-writer | ok | 44 s | — | — | — | — |
-| **Total cycle** | | **1 h 17 min** | **21 (3 min 12 s)** | **22 (17 min 40 s)** | **2 (35 s)** | |
+| /develop | ok | 37 min 06 s | 31 (4 min 35 s) | 27 (19 min 00 s) | — | api-mail 15B/12T, client-blazor 7B/6T, client-angular 4B/4T, client-mobile 4B/5T, dtos-mss 1B/0T |
+| /sonar | ok | 6 min 18 s | 2 (34 s) | 10 (8 min 04 s) | 4 (1 min 14 s) | api-mail 2B/10T |
+| /lint-angular | ok | 26 s | — | — | — | — |
+| /lint-mobile | ok | 11 s | — | — | — | — |
+| /e2e | ok | 9 min 30 s | — | — | — | e2e ×6 (16 min 30 s) |
+| /review | ok | 5 min 57 s | 5 (31 s) | 6 (6 min 11 s) | — | api-mail 2B/3T, client-blazor 1B/1T, client-mobile 1B/1T, client-angular 1B/1T |
+| /tech-writer | ok | 49 s | — | — | — | — |
+| **Total cycle** | | **1 h 00 min** | **38 (5 min 42 s)** | **43 (33 min 15 s)** | **4 (1 min 14 s)** | |
+
+Autres commandes mesurées : lint ×2 (14 s), nuget-wait ×1 (22 s), restore ×2 (4.9 s)
 
 ## Stitch design log
 
@@ -453,4 +529,188 @@ La revue a trouvé deux comportements prouvés seulement par des tests unitaires
 - Lint des fichiers touchés : 0 erreur (Angular : avertissements `max-lines` et `@example` vides préexistants ; mobile : 0). Budget de style mobile : le SCSS du dialogue dépasse le seuil d'**avertissement** de 2 Ko (2,47 Ko ; erreur à 8 Ko), comme 12 autres composants.
 - Contrôles mécaniques C# : un S125 attrapé avant commit (commentaire du seed) ; S4581 et S6562 corrigés à la main dans les tests Blazor. Les trois sont consignés dans `conventions/csharp.md` (S125 → 9 ; S4581 et S6562 créés).
 - Branches poussées : api-mail, client-blazor, client-mobile à jour avec `origin`.
+- Next step : `/sonar task-331`
+
+## Sonar log — extension du 2026-10-03
+
+**Analyse** : une passe complète sur `fix/task-331-dossier-patient-par-fiche` (commit `b0979b0f`), SonarQube 9.9.8, avec la couverture des cinq suites : domain 190, application 3 373, infrastructure 681, api 1 166, integration 743 (+16 ignorés préexistants), 0 échec.
+
+**Itérations de correction** : 0. L'extension ne touche api-mail que dans des projets de test et l'outil e2e (`SonarQubeTestProject`), hors du périmètre analysé comme code de production.
+
+| Métrique | Baseline (passe task-331 du 2026-10-02) | Final (extension) | Δ |
+|---|---|---|---|
+| Quality Gate | OK | **OK** | = |
+| New coverage | 97,5 % | 97,5 % | = |
+| Coverage projet | 98,0 % | 98,0 % | = |
+| Bugs / Vulnérabilités | 0 / 0 | 0 / 0 | = |
+| Code smells | 13 | 13 | = |
+| Duplication | 0,4 % (nouveau code 0,15 %) | 0,4 % (nouveau code 0,15 %) | = |
+| Ratings fiabilité / sécurité / maintenabilité | A / A / A | A / A / A | = |
+
+- **Constat restant sur la période de nouveau code** : S107 sur `SemanticSearchService:379` (8 paramètres), déjà relevé par task-329 et par la première passe de task-331. Il n'appartient pas au code de la task : laissé, comme alors.
+
+## Lint log — extension du 2026-10-03 (client-angular)
+
+- Commande : `npx nx affected -t lint --base=origin/next --head=HEAD --parallel=3 --projects=tag:scope:mss` (Client/Angular/front, branche `feature/nova-rewriting-mss`, code-only).
+- Résultat : **0 erreur**, avertissements préexistants seulement (`jsdoc/require-example` sur des `@example` vides, `max-lines` sur `mail-detail.component.ts` et les deux specs e2e). Aucune itération, aucune modification.
+- Build `weda2` et tests (11 projets) verts après la passe qualité de `/develop`, arbre inchangé depuis : pas de re-validation.
+- Rappel code-only : les fichiers Angular de la task restent **non commités**, à commiter et pousser par l’humain sur TFS (liste dans le Develop log).
+
+## Lint mobile log — extension du 2026-10-03
+
+- Branche `fix/task-331-dossier-patient-par-fiche` (Client/Mobile), à jour avec `origin`.
+- `npm run lint` : **All files pass linting** (0 erreur, 0 avertissement). Aucune itération, aucun commit.
+- Build et tests (981) verts après la passe qualité de `/develop`, arbre inchangé depuis.
+
+## E2E log — extension du 2026-10-03
+
+| Voie | Déclencheur | Résultat | Tests | Durée |
+|---|---|---|---|---|
+| mobile | `api-mail` et `client-mobile` touchés | ✅ verte | 27 verts, 0 flaky, 0 rouge, 0 quarantaine | 4 min 20 s |
+| angular | `api-mail` et `client-angular` touchés | ✅ verte | 27 verts, 0 flaky, 0 rouge, 0 quarantaine | 4 min 00 s |
+
+- Catalogue : `Api/Mail/e2e/scenarios.yml` @ `fix/task-331-dossier-patient-par-fiche` (E2E-PATIENT-002 v1 ajouté).
+- Checkouts : `Client/Mobile` sur `fix/task-331-dossier-patient-par-fiche` ; `Client/Angular/front` sur `feature/nova-rewriting-mss` avec le travail non commité de la task (aucune opération git).
+- Porte `gate` : code 0.
+- Quarantaines : aucune. Flaky : aucun. Divergences ouvertes : aucune.
+- Parcours touchés sans spec e2e modifié : aucun (les deux specs portent E2E-PATIENT-002).
+- Démontage : complet (ports 4200 et 8100 libres, aucun conteneur e2e résiduel).
+- Amélioration continue (`conventions/e2e.md`) : ligne « Trous du filet » pour le rattachement manuel impossible ; consigne `ancre-conditionnelle`.
+
+**E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
+
+### Matrice de parité
+
+| Scénario | v | Mode | Titre | angular | mobile |
+|---|---|---|---|---|---|
+| E2E-INBOX-001 | 1 | headless | Filtrer la boîte de réception, basculer liste / conversation, ouvrir la recherche | ✅ | ✅ |
+| E2E-FOLDER-001 | 1 | headless | Naviguer vers les dossiers Archive et Corbeille | ✅ | ✅ |
+| E2E-PATIENT-001 | 1 | headless | Afficher la vue patients | ✅ | ✅ |
+| E2E-PATIENT-002 | 1 | headless | Rattacher à la main un document sans INS à un patient choisi par recherche | ✅ | ✅ |
+| E2E-CONTACT-001 | 1 | humain | Rechercher dans le carnet et interroger l'annuaire national | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-SETTINGS-001 | 1 | headless | Changer le filtre par défaut et le retrouver après rechargement | ✅ | ✅ |
+| E2E-MAIL-001 | 1 | headless | Marquer un message lu puis non lu | ✅ | ✅ |
+| E2E-MAIL-002 | 1 | headless | Tout sélectionner et marquer lu en masse | ✅ | ✅ |
+| E2E-DETAIL-001 | 1 | headless | Répondre et transférer depuis la lecture d'un message | ✅ | ✅ |
+| E2E-COMPOSE-001 | 1 | headless | Envoyer un message, le recevoir, le lire, le supprimer | ✅ | ✅ |
+| E2E-COMPOSE-002 | 1 | headless | Faire corriger l'orthographe de son texte, appliquer la correction, puis envoyer | ✅ | ✅ |
+| E2E-MAIL-003 | 1 | headless | Signaler puis ne plus signaler un message | ✅ | ✅ |
+| E2E-MAIL-004 | 1 | headless | Déplacer un message vers Archive puis le ramener | ✅ | ✅ |
+| E2E-DRAFT-001 | 1 | headless | Créer un brouillon, le reprendre, le supprimer | ✅ | ✅ |
+| E2E-DRAFT-002 | 1 | headless | Envoyer un message à pièce jointe après l'enregistrement automatique du brouillon | ✅ | ✅ |
+| E2E-BIO-001 | 1 | headless | Acquitter un compte rendu de biologie | ✅ | ✅ |
+| E2E-DASH-001 | 1 | headless | Afficher les widgets du tableau de bord | ✅ | ✅ |
+| E2E-DETAIL-002 | 1 | headless | Basculer entre texte brut et HTML à la lecture | ✅ | ✅ |
+| E2E-DETAIL-003 | 1 | headless | Répondre à tous depuis la lecture d'un message | ✅ | ✅ |
+| E2E-SETTINGS-002 | 1 | headless | Changer la vue par défaut et la retrouver après rechargement | ✅ | ✅ |
+| E2E-SEARCH-001 | 1 | headless | Rechercher un message et ouvrir la recherche avancée | ✅ | ✅ |
+| E2E-ATTACH-001 | 1 | headless | Voir les pièces jointes d'un message | ✅ | ✅ |
+| E2E-CONTACT-002 | 1 | headless | Créer puis supprimer un contact | ✅ | ✅ |
+| E2E-SIGNATURE-001 | 1 | headless | Créer puis supprimer une signature | ✅ | ✅ |
+| E2E-CONTACT-003 | 1 | headless | Créer puis supprimer un groupe de contacts | ✅ | ✅ |
+| E2E-FOLDER-002 | 1 | headless | Créer puis supprimer un dossier | ✅ | ✅ |
+| E2E-AUTH-001 | 1 | humain | Rester connecté quand le jeton d'accès expire | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-AUTH-002 | 1 | humain | Se déconnecter | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-LIVE-001 | 1 | headless | Recevoir un nouveau message en temps réel, sans recharger | ✅ | ✅ |
+| E2E-AI-001 | 1 | headless | Interroger l'assistant sur des messages sélectionnés et poser des questions de suite | ✅ | ✅ |
+
+**Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## PRs — extension du 2026-10-03
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/271 — corps mis à jour (extension, parcours e2e, plan de test), label repassé de `awaiting-us-completion` à `awaiting-human-merge` : l'US assemblée est prête.
+- `client-blazor` : https://github.com/codengine-technologies/HealthPlatform.Client/pull/88 — label `awaiting-human-merge`.
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/85 — label `awaiting-human-merge`.
+- `client-angular` : code-only, l'humain gère commit, push TFS et PR. Fichiers modifiés, non commités, sur `feature/nova-rewriting-mss` :
+  - `front/libs/mss/src/features/mail/components/patient-attachment-dialog/patient-attachment-dialog.component.{ts,html,scss,spec.ts}`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.component.{ts,html,spec.ts}`
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`
+  - `front/e2e/mss-e2e/support/session.ts`, `front/e2e/mss-e2e/support/e2e-backend.ts`
+  - (les deux `environment.ts` modifiés sont ceux de l'humain, hors task)
+- `dtos-mss` : aucune PR, aucun contrat ne change.
+- **Ordre de merge** : les quatre ensemble (règle 11). Les clients dépendent de la recherche patient qui renvoie l'identifiant de la fiche (api-mail #271).
+
+## Code Review Summary — extension du 2026-10-03
+
+**Verdict : APPROVED** (0 bloquant).
+
+- **Build et tests** : api-mail (domain 190, application 3 373, infrastructure 681, api 1 166, integration 743 + 16 ignorés), client-blazor 401 (+2 ignorés), client-mobile 981, client-angular build `weda2` et tests de 11 projets. 0 échec.
+- **DOD de l'extension** :
+  - [x] Build et tests verts sur les trois clients
+  - [x] Tests de composant du dialogue, par client : 0 candidat → recherche affichée ; une fiche trouvée ; choix → confirmation ; confirmer → `attach-patient` avec l'identifiant choisi
+  - [x] Un candidat de `/match` se rattache sans confirmation (non-régression)
+  - [x] Document sans trait → `/match` non appelé, recherche ouverte d'emblée
+  - [x] `/match` en erreur → « Réessayer » relance ; la recherche reste utilisable
+  - [x] Bandeau : bouton pour un document sans trait ; boutons = documents sans patient
+  - [x] Aucune création de patient (tests « no creation » dans les trois clients)
+  - [x] `data-testid` sur le champ, chaque résultat, la confirmation et « Réessayer » ; libellés Blazor par `Localizer` (FR et EN), en dur en français sur Angular et mobile
+  - [x] E2E-PATIENT-002 au catalogue (mobile et angular requis), données de seed déclarées, implémenté dans les deux suites, document relu dans le dossier de la fiche
+  - [x] `/e2e` vert sur les deux voies, parité verte
+- **Verrou 4a (règle 1b)** : aucun comportement atteignable par un endpoint ne change dans cette itération (api-mail : outillage e2e et tests seulement). Côté clients, le test d'intégration du parcours est E2E-PATIENT-002, vu rouge sous mutation sur les deux clients.
+- **Verrou 4b** : `## E2E log` de l'extension vert, recopié dans les trois PRs.
+- **Revue par zone** :
+  - ✅ Dialogues (3 clients) : recherche par `GET /patients/search` existant, confirmation obligatoire pour une fiche non proposée, aucun chemin de création, états remis à zéro à l'ouverture.
+  - ✅ Bandeaux : cas particulier « au moins un trait » retiré, alignés sur le compteur serveur.
+  - ✅ Seed e2e : chaque donnée du parcours est relue avant de rendre la main ; fixture sans donnée réelle (corpus de test ANS réécrit).
+  - ⚠️ Mobile : Entrée et le submit du formulaire déclenchent tous deux la recherche ; le second appel est bloqué par `isSearching`.
+  - ⚠️ Les clients ne comptent pas le sexe seul comme trait, le serveur si : un document au seul sexe s'ouvre sur la recherche. Voir le suivi 5.
+
+**Suivis à ouvrir (extension)** :
+4. `CdaParsingService` : rogner les traits patient à l'analyse (l'espace qui suit `<family>` du corpus ANS arrive en base).
+5. `GET /patients/match` sans trait : rendre `[]` au lieu de 400, comme le dépôt et le commentaire du contrôleur, pour retirer la règle « a des traits » recopiée dans trois clients.
+6. Longueur minimale de recherche de fiche non partagée (2 dans le dialogue, 3 dans `SearchPatientComponent` Blazor).
+
+## Develop log — extension 2 du 2026-10-03 (détacher, changer de patient, tracer)
+
+**Repos touchés** : `dtos-mss` (contrat, branche créée à la demande), `api-mail`, `client-blazor`, `client-angular` (code-only), `client-mobile`.
+
+### Contrat (`dtos-mss`)
+- `AttachPatientRequestDto.ExpectedCurrentPatientId` (`Guid?`), `DetachPatientRequestDto { ExpectedCurrentPatientId }`, `AuditActionType.PatientDocumentAttached = 37` et `PatientDocumentDetached = 38`.
+- Commit `b874de5`, CI run 508 verte, package **508.0.0** ; consommateurs bumpés (`api-mail` `26ac74db`, `client-blazor` `57864dc`, avec leurs `packages.lock.json`, comme les bumps précédents).
+
+### API (`api-mail`)
+- `POST attach-patient` : **409** si le document porte une INS, ou si son patient courant n'est pas `ExpectedCurrentPatientId` (`null` pour un document sans patient). Plus d'écrasement silencieux. Rattacher à la fiche déjà courante ne fait rien.
+- `POST detach-patient` (nouveau) : le document repasse sans patient, donc dans « à intégrer » ; 409 (INS, patient attendu périmé ou document déjà détaché), 404 (document inconnu), `problem+json`.
+- Audit : `PatientDocumentAttached` / `PatientDocumentDetached`, avec l'identifiant CDA, le titre, le LOINC, la fiche choisie ou quittée (INS, nom) et, dans `ServerRequest`, les identifiants de la fiche choisie et de la précédente. Aucune trace sur un refus ou un geste sans effet.
+- Le dépôt rend une issue typée (`PatientAttachmentStatus`), le service la convertit en `NotFoundException` / `ConflictException` (règle 12) et trace. Le contrat de gel `AuditActionTypeContractTests` est mis à jour (37, 38, 40 membres).
+
+### Tests et preuves rouges (règle 1b)
+| Comportement | Test HTTP (`PatientFolderEndToEndTests`, vraie pile, PostgreSQL) | Preuve rouge (mutation) |
+|---|---|---|
+| Détacher un document rattaché à la main → hors du dossier, compté « à intégrer », gestes tracés | `ADocumentAttachedByHand_IsDetached_LeavesTheFolder_ReturnsToTheQueue_AndBothGesturesAreTraced` | M3 « détachement sans effet » et M4 « sans trace » → rouge |
+| Changer de patient → passe d'un dossier à l'autre, changement tracé avec la fiche précédente | `ADocumentAttachedByHand_ChangesPatient_MovesFromOneFolderToTheOther_AndTheChangeIsTraced` | M4 → rouge |
+| Rattacher un document déjà rattaché sans le patient attendu → 409, rien ne change, rien n'est tracé | `AttachingAnAttachedDocument_WithoutTheExpectedPatient_Is409ProblemJson_AndNothingChanges` | M1 « sans contrôle du patient attendu » → rouge |
+| Document porteur d'une INS : ni détaché, ni rattaché ailleurs | `ADocumentCarryingAnIns_CannotBeDetached_NorAttachedToAnotherRecord` | M2 « sans refus INS » → rouge |
+| Détacher avec un patient attendu périmé → 409 | `DetachingWithAStaleExpectedPatient_Is409_AndTheDocumentStays` | M1 → rouge |
+| Détacher un document inconnu → 404 | `DetachingAnUnknownDocument_Is404ProblemJson` | non-régression |
+
+- **Audit** : dans ce harnais, `PatientService` est le vrai service sur le vrai dépôt ; seul le puits d'audit est un substitut qui enregistre les traces (même pratique que `PscSessionIntegrationTests`). La persistance des traces relève de la chaîne d'audit, couverte par ses propres tests. La ligne de DOD « relue en base » est corrigée en conséquence.
+- Unitaires : dépôt (12 cas), service (8 cas), contrôleur (4 cas).
+
+### Clients (comportement identique)
+- **Panneau « Rattaché à la main à {fiche} »** dans le détail du mail, pour un document avec patient et sans INS : « Changer de patient » (le parent rouvre le dialogue avec le patient courant ; le compteur ne bouge pas) et « Détacher » (confirmation en ligne, puis le parent remet le document dans le bandeau et le compteur remonte). Un 409 affiche « Le rattachement de ce document a changé entre-temps : rechargez le message. »
+- Le dialogue de rattachement envoie le patient courant attendu (`null` depuis le bandeau).
+- Libellés d'audit des deux actions : Angular (`audit.model.ts`) et Blazor (`AuditActionLabels`).
+- Tests : Blazor 409 (+ `ManualAttachmentPanelTests` 6, dialogue +2) ; Angular `mss-lib` 557 (panneau 6, dialogue +2) ; mobile 991 (panneau 6, dialogue +2, `mail-detail` +2, trois tests existants alignés sur le nouveau contrat).
+- `client-angular` (code-only, **non commité**, `feature/nova-rewriting-mss`) — fichiers ajoutés par l'extension 2 : `libs/mss/src/core/utils/attachment-error.util.ts`, `libs/mss/src/features/mail/components/manual-attachment-panel/*` (ts, html, scss, spec), et modifications de `core/models/patient.model.ts`, `core/models/audit.model.ts`, `core/models/audit.model.spec.ts`, `core/services/mss-api.service.ts`, `mail-detail.component.{ts,html}`, `patient-attachment-dialog.component.{ts,spec.ts}`, `e2e/mss-e2e/specs/functional.e2e.ts`.
+
+### Parcours e2e `E2E-PATIENT-002` v2
+- Catalogue v2 (`cca4e433`) : le parcours nomme la fiche après rechargement, puis détache (confirmé), relit côté serveur que le message a quitté le dossier, et constate le retour du bandeau. **Il rend l'état d'origine** : rejoué deux fois de suite sur le même seed, vert les deux fois (mobile 9,3 s puis 7,6 s ; Angular 8,2 s puis 5,2 s).
+- Mutation « Confirmer le détachement » sans appel (bundle neuf vérifié) → rouge sur « le détachement est accepté par le serveur » (mobile et Angular), restauré.
+
+### Passe qualité (/simplify, 4 revues)
+- **Appliqué** :
+  - API : chargement et contrôle du document partagés ; le détachement ne relit qu'une fiche ; la trace déduit sa fiche du résultat ; `CurrentPatientChanged` explicite, un statut inconnu lève ; fabrique `Of` retirée ;
+  - Blazor : aligné sur Angular et mobile (le panneau émet, le détail possède le dialogue et le compteur) ; `MailPatientDto.FullName` ; clé `Cancel` réutilisée ; noms des fiches réservés puis lus en parallèle (plus d'appel en double après un changement) ;
+  - Angular et mobile : `attachmentErrorMessage` partagé, rangé avec la constante (Angular `core/utils/attachment-error.util.ts`, mobile `http-error.util.ts`) ; `isAttachedByHand` non exporté.
+  - Re-validation verte : api-mail 6 178, Blazor 409, Angular `mss-lib` 557, mobile 991.
+- **Écarté** : déplacer la règle « INS → pas de changement manuel » dans l'entité (déplacement sans gain) ; ne pas invalider le cache sur un rattachement inchangé (cas rare) ; `AlertController` mobile pour la confirmation (même rendu sur les trois clients).
+- **Suivis proposés** :
+  7. Exposer dans `MailMedicalDocumentDto` un indicateur « rattaché à la main » et le nom de la fiche, calculés par le serveur : la règle est aujourd'hui écrite côté serveur et dans trois clients, et chaque client relit la fiche par un appel.
+  8. Rendre le compteur « à intégrer » à jour dans la réponse de `attach-patient` / `detach-patient`, au lieu du delta optimiste recalculé par chaque client.
+
+### Vérifications
+- Contrôles mécaniques C# : rien. Analyseur Blazor : **S4143** corrigé à la main, consigné dans `conventions/csharp.md` (créé).
+- `prettier-fichier-existant` : récidive attrapée avant commit (`audit.model.spec.ts` restauré depuis HEAD), consignée (6ᵉ occurrence).
+- Branches poussées : `dtos-mss`, `api-mail`, `client-blazor`, `client-mobile` à jour avec `origin`.
 - Next step : `/sonar task-331`
