@@ -457,15 +457,15 @@ La revue a trouvé deux comportements prouvés seulement par des tests unitaires
 |---|---|---|---|---|---|---|
 | /start | ok | 18 s | — | — | — | — |
 | /develop | ok | 37 min 06 s | 31 (4 min 35 s) | 27 (19 min 00 s) | — | api-mail 15B/12T, client-blazor 7B/6T, client-angular 4B/4T, client-mobile 4B/5T, dtos-mss 1B/0T |
-| /sonar | ok | 6 min 18 s | 2 (34 s) | 10 (8 min 04 s) | 4 (1 min 14 s) | api-mail 2B/10T |
-| /lint-angular | ok | 26 s | — | — | — | — |
+| /sonar | ok | 11 min 10 s | 5 (1 min 11 s) | 24 (15 min 54 s) | 8 (2 min 25 s) | 1 itération(s), api-mail 5B/24T |
+| /lint-angular | ok | 17 s | — | — | — | — |
 | /lint-mobile | ok | 11 s | — | — | — | — |
 | /e2e | ok | 9 min 30 s | — | — | — | e2e ×6 (16 min 30 s) |
 | /review | ok | 5 min 57 s | 5 (31 s) | 6 (6 min 11 s) | — | api-mail 2B/3T, client-blazor 1B/1T, client-mobile 1B/1T, client-angular 1B/1T |
 | /tech-writer | ok | 49 s | — | — | — | — |
-| **Total cycle** | | **1 h 00 min** | **38 (5 min 42 s)** | **43 (33 min 15 s)** | **4 (1 min 14 s)** | |
+| **Total cycle** | | **1 h 05 min** | **41 (6 min 19 s)** | **57 (41 min 05 s)** | **8 (2 min 25 s)** | |
 
-Autres commandes mesurées : lint ×2 (14 s), nuget-wait ×1 (22 s), restore ×2 (4.9 s)
+Autres commandes mesurées : lint ×4 (28 s), nuget-wait ×1 (22 s), restore ×2 (4.9 s)
 
 ## Stitch design log
 
@@ -714,3 +714,33 @@ Autres commandes mesurées : lint ×2 (14 s), nuget-wait ×1 (22 s), restore ×2
 - `prettier-fichier-existant` : récidive attrapée avant commit (`audit.model.spec.ts` restauré depuis HEAD), consignée (6ᵉ occurrence).
 - Branches poussées : `dtos-mss`, `api-mail`, `client-blazor`, `client-mobile` à jour avec `origin`.
 - Next step : `/sonar task-331`
+
+## Sonar log — extension 2 du 2026-10-03
+
+**Analyse** : deux passes complètes sur `fix/task-331-dossier-patient-par-fiche`, avec la couverture des cinq suites (domain 190, application 3 382, infrastructure 690, api 1 169, integration 749 + 16 ignorés), 0 échec.
+
+**Itération 1** (`92167cf0`) :
+- CA1854 sur `PatientRepository.AttachDocumentToPatientAsync` (code de la task) : `TryGetValue` au lieu de `ContainsKey` + indexeur. Consigné dans `conventions/csharp.md` (créé).
+- Couverture du nouveau code : la branche « modèle invalide » de `detach-patient` (contrôleur 81,8 % → 95,5 %) et le statut inconnu du service (93,2 % → 96,6 %) ont désormais leur test.
+
+| Métrique | Baseline (passe du 2026-10-03, extension 1) | Final (extension 2) | Δ |
+|---|---|---|---|
+| Quality Gate | OK | **OK** | = |
+| New coverage | 97,5 % | 97,5 % | = |
+| Coverage projet | 98,0 % | 98,0 % | = |
+| Bugs / Vulnérabilités | 0 / 0 | 0 / 0 | = |
+| Code smells | 13 | 13 | = (14 à la première passe, CA1854 corrigé) |
+| Duplication | 0,4 % (nouveau code 0,15 %) | 0,4 % (nouveau code 0,15 %) | = |
+| Ratings fiabilité / sécurité / maintenabilité | A / A / A | A / A / A | = |
+
+- **Constat restant** : S107 sur `SemanticSearchService:379`, antérieur (task-329), hors du code de la task.
+
+
+## Lint log — extension 2 (client-angular)
+
+- `npx nx affected -t lint --base=origin/next --head=HEAD --parallel=3 --projects=tag:scope:mss` : **0 erreur** ; aucun avertissement sur les fichiers de l’extension 2 (panneau, utilitaire d’erreur), les autres sont préexistants. Aucune itération.
+- Build `weda2` et tests (11 projets) verts après la passe qualité, arbre inchangé depuis.
+
+## Lint mobile log — extension 2
+
+- `npm run lint` : **All files pass linting**. Aucune itération, aucun commit.
