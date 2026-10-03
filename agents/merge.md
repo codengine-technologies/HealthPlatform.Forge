@@ -150,6 +150,25 @@ Same three-mode taxonomy as the rest of the forge :
    git branch -D feat/{task-id}-{slug}              # ref locale (squash ⇒ -D, pas -d)
    ```
 
+   **GARDE OBLIGATOIRE — rien après `gh pr merge` tant que l'état n'est pas
+   `MERGED`.** Le code de retour de `gh pr merge` ne suffit pas, et un script
+   enchaîné avec `;` ne s'arrête pas sur un échec. Relire l'état, puis ne
+   retirer le label et ne supprimer les branches **que** si la PR est mergée :
+
+   ```bash
+   gh pr merge {num} --squash
+   state=$(gh pr view {num} --json state --jq .state)
+   [ "$state" = "MERGED" ] || { echo "PR #{num} non mergée ($state) — arrêt"; exit 1; }
+   ```
+
+   > **Constaté le 2026-10-03 (task-338).** `gh pr merge 268` a échoué sur une
+   > erreur GraphQL transitoire de GitHub. La PR est restée `OPEN`, mais la suite
+   > du script a retiré le label et supprimé la branche distante. GitHub a alors
+   > **fermé la PR**. Pour réparer, il a fallu repousser le commit de tête depuis
+   > le reflog, rouvrir la PR, remettre le label, attendre une nouvelle CI, puis
+   > merger. Supprimer la tête d'une PR ouverte la ferme : la garde n'est pas
+   > décorative.
+
    Order rationale : DTO/interop NuGet packages are consumed by backend
    and frontend ; merging the dependency first keeps `develop` consistent
    if a follow-up PR lands between merges.

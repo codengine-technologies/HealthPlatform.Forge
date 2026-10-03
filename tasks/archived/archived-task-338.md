@@ -344,3 +344,15 @@ Prévention (règle d'or) : `conventions/csharp.md` § `marqueur-derive-apres-fi
 | **Total cycle** | | **55 min 27 s** | **13 (3 min 38 s)** | **21 (32 min 48 s)** | **4 (4 min 44 s)** | |
 
 Autres commandes mesurées : nuget-wait ×2 (30 s), restore ×3 (2 min 24 s)
+
+## Merged
+
+- **Date** : 2026-10-03, `/merge task-338 --i-tested` (validation humaine au HAG, reprise du filtre Biologie incluse)
+- Squash commits sur `develop` :
+  - dtos-mss : `00482bd9` (PR #37) — CI develop run 509 ✓ → **HealthPlatform.Dtos.Mss 509.0.0** (contrats 338 + 329 + 330)
+  - interop-cda : `8f405264` (PR #8) — CI develop run 99 ✓ (publie Interop.Cda.Parser 99.0.0, même code que le 97.0.0 de branche consommé par api-mail)
+  - api-mail : `6d6c8dd1` (PR #268) — CI develop run 721 ✓ — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/37125909410
+- **Blocage levé en cours de route** (`questions/merge-task-338.md`, retiré) : #268 était en conflit avec `develop` (tasks 329/330 mergées entre-temps). Le conflit ne portait que sur les versions de packages, mais ni Dtos 500 ni 505 ne portaient tous les contrats. Résolution séquentielle validée par l'humain : merge de dtos-mss #37 → 509.0.0, puis `git merge origin/develop` sur api-mail (Interop 97.0.0 + Dtos 509.0.0), suite complète (domain 190, infrastructure 675, application 3 374, api 1 157 ; intégration 748 réussis, 5 rouges d'ordre verts en isolation), push, CI verte.
+- **Incident pendant le merge** : `gh pr merge 268` a échoué (erreur GraphQL GitHub). Le script a poursuivi : label retiré, branche supprimée, ce qui a fermé la PR. Réparé (branche repoussée depuis `47bb5efb`, PR rouverte, label remis, CI reverte), puis mergé. Prévention : garde « état MERGED avant toute suppression » ajoutée à `agents/merge.md` § 5.
+- Staging : aucune branche `forge/staging-task-*` concernée (task lancée hors run `/forge`).
+- Points produit laissés ouverts (pas de blocage) : TROD (LOINC 96173-0) classé « Document » et non « Bio » ; CR-BIO non structurés absents du filtre Biologie ; saturation Ollama sur l'étiquetage IA (task à rédiger).
