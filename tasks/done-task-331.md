@@ -388,7 +388,7 @@ La revue a trouvé deux comportements prouvés seulement par des tests unitaires
 | /lint-mobile | ok | 11 s | — | — | — | — |
 | /e2e | ok | 9 min 30 s | — | — | — | e2e ×6 (16 min 30 s) |
 | /review | ok | 5 min 57 s | 5 (31 s) | 6 (6 min 11 s) | — | api-mail 2B/3T, client-blazor 1B/1T, client-mobile 1B/1T, client-angular 1B/1T |
-| /tech-writer | ok | 44 s | — | — | — | — |
+| /tech-writer | ok | 49 s | — | — | — | — |
 | **Total cycle** | | **1 h 17 min** | **26 (4 min 01 s)** | **31 (25 min 03 s)** | **4 (1 min 14 s)** | |
 
 Autres commandes mesurées : lint ×2 (14 s)

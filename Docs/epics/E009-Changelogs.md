@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-10-02 (v1.84)
+> **Dernière mise à jour** : 2026-10-03 (v1.85)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -761,6 +761,22 @@
   - remonter `originalMarkedCancelled` et `warning` par `drafts/{id}/send` ;
   - bail renouvelable pour le verrou.
 
+### v1.85 — Rattacher un document quand l'appariement ne trouve personne : recherche de la fiche et confirmation, sur les trois clients — task-331 (extension)
+
+- **Origine** : décision humaine au HAG de la première itération (2026-10-03). Analyse des trois clients : le dialogue de rattachement (task-012 / task-137) n'offrait que les candidats de `GET /patients/match`, puis « Ignorer » ; un document sans nom, prénom ni date de naissance n'avait pas même de bouton. `/match` ne retient que les fiches dont le nom **contient** celui du CDA.
+- **PRs** (`awaiting-human-merge`, à merger ensemble, règle 11) : `api-mail` #271 (repassée de `awaiting-us-completion`), `client-blazor` #88, `client-mobile` #85 ; `client-angular` code-only (branche `feature/nova-rewriting-mss`, commit TFS par l'humain).
+- **Clients** (comportement identique) : recherche libre par `GET /patients/search` (2 caractères minimum), confirmation obligatoire d'une fiche non proposée par l'appariement, « Réessayer » sur échec de `/match`, document sans trait ouvert sur la recherche sans appeler `/match`, bandeau filtré sur `patientId == null`. Blazor : `MatchByTraitsAsync` rend `null` sur échec.
+- **Aucun contrat ne change** ; les clients s'appuient sur l'identifiant de fiche rendu par la recherche depuis la première itération.
+- **Filet e2e** : `E2E-PATIENT-002` (mobile et Angular requis). Seed : lettre de liaison du corpus ANS réécrite sans INS (« SANSDOSSIER Camille »), embarquée dans `mss.mail.e2e`, relue servie sans patient et sans candidat ; fiche `PAT-TROIS` relue avec son identifiant ; uid au manifeste. Parcours relu côté serveur (dossier de la fiche) puis à l'écran rechargé. Rouge sous mutation sur les deux clients.
+- **Tests** : Blazor 401 (+9), Angular `mss-lib` 549 (+9), mobile 981 (+9), api-mail 1 166 en `api.tests` (+7). Mutations « bandeau limité aux documents à trait » et « Choisir rattache sans confirmation » rouges sur les trois clients.
+- **E2E** : deux voies à 27/27, 0 flaky, parité verte, porte verte.
+- **Sonar** : passe complète, Quality Gate OK, KPIs inchangés (new coverage 97,5 %, 0 bug, 13 smells), 0 itération.
+- **Trouvé en route** : le parseur CDA garde l'espace qui suit `<family>` du corpus ANS (`"SANSDOSSIER "`) ; la relecture du seed le rogne, un test fait passer la fixture par le vrai `CdaParsingService`.
+- **Leçons** :
+  - `conventions/csharp.md` › S125 (9ᵉ occurrence, attrapée par le contrôle mécanique avant commit), S4581 et S6562 (créées : erreurs de build `client-blazor` dans les tests) ;
+  - `conventions/e2e.md` › `ancre-conditionnelle` (créée) et ligne « Trous du filet » pour le rattachement manuel impossible.
+- **Suivis** : rogner les traits à l'analyse CDA ; `/patients/match` sans trait → `[]` au lieu de 400 ; longueur minimale de recherche de fiche non partagée (2 / 3).
+
 ### v1.84 — Le dossier d'un patient est celui de sa fiche : un document rattaché à la main y apparaît, et deux identités d'un même matricule ne se mélangent plus — task-331
 
 - **Origine** : audit de bugs du 2026-09-27, **AUD-05** (contre-vérifié) et **AUD-34**.
@@ -956,7 +972,7 @@ Audit grep complémentaires pour les couches 2 / 2bis / 3 (tasks 021 / 022 / 023
 | task-192 | **Recherche exhaustive.** Déduplication full-text sur `MailId` au lieu de l'UID, fusion et intersection du service sur `(dossier, UID)` ; fenêtre de candidats ordonnée par date du message ; `ILike` sur sujet, expéditeur, destinataire et noms de patient ; échappement de `%`, `_` et de l'antislash ; troncature signalée (`SemanticSearchResultSet.IsTruncated`, `SearchResponseDto.Hits` / `IsTruncated`, Dtos.Mss 492.0.0). 12/13 tests d'intégration rouges sur le code d'origine. PR #266 (api-mail), #35 (dtos-mss). | — (exactitude et complétude de l'accès aux documents reçus, art. 5.1.d RGPD ; aucune RG déclarée) |
 | task-330 | **Le travail fait hors ligne n'est plus perdu au premier échec.** Gestes rejoués jusqu'au succès, gardés `Failed` et comptés après 10 tentatives (`FailedActionsCount`) ; annulation sans tentative comptée ; réclamations orphelines reprises (`ClaimedAt`) ; **remise incertaine** d'un envoi confirmé peut-être parti (503 + avertissement, `deliveryUncertain`, 409, retirable — arbitrage du 2026-10-02) ; stade SMTP typé (400 / 503 / 499) ; mise en file hors ligne soumise aux règles d'envoi. Dtos.Mss 501.0.0. PR #269 (api-mail), #38 (dtos-mss). | — (continuité de service hors ligne, AUD-08 / AUD-23 ; aucune RG déclarée) |
 | task-329 | **Un seul chemin d'envoi.** `OutgoingMailService` pour `sendmail`, brouillon, confirmation avec la carte et annule-et-remplace : pièces par référence relues (400 si illisible), annule-et-remplace sur toutes les routes, archivage « Envoyés » ; brouillon complet (pièces, accusé, opposition, blocage de réponse, cible d'annule-et-remplace) restauré à la réouverture ; verrou d'envoi à jeton (5 min). Dtos.Mss 505.0.0. PR #270 (api-mail), #39 (dtos-mss), #87 (Blazor), #84 (mobile). | — (traçabilité de l'envoi MSSanté, AMBU.MSS/va1.02, opposition Mon Espace Santé ; aucune RG déclarée) |
-| task-331 | **Le dossier est celui de la fiche.** Dossier, biologie et opposition par `PatientId` (et non plus par l'INS du document) : le document rattaché à la main y apparaît, deux fiches d'un même matricule (NIR / NIA) restent séparées ; garde d'envoi : une fiche opposée du matricule suffit à exiger l'acquittement ; `resolve` déterministe ; `Id` rendu par la recherche et « patients du jour » ; index `(PatientId, MailId, Date)`. PR #271 (api-mail). | — (identito-vigilance INS, opposition Mon Espace Santé ; AUD-05, AUD-34 ; aucune RG déclarée) |
+| task-331 | **Le dossier est celui de la fiche.** Dossier, biologie et opposition par `PatientId` (et non plus par l'INS du document) : le document rattaché à la main y apparaît, deux fiches d'un même matricule (NIR / NIA) restent séparées ; garde d'envoi : une fiche opposée du matricule suffit à exiger l'acquittement ; `resolve` déterministe ; `Id` rendu par la recherche et « patients du jour » ; index `(PatientId, MailId, Date)`. **Extension** : recherche de la fiche et confirmation quand l'appariement ne trouve personne, sur les trois clients ; scénario E2E-PATIENT-002. PRs #271 (api-mail), #88 (client-blazor), #85 (client-mobile), Angular code-only. | — (identito-vigilance INS, opposition Mon Espace Santé ; AUD-05, AUD-34 ; aucune RG déclarée) |
 | task-338 | **La recherche dit la vérité.** Pannes signalées au lieu d'une liste vide (503, 499, mode dégradé `IsDegraded` / `DegradedSources` en hybride) ; chaque filtre du contrat appliqué (patient sur un même document, répondu, brouillon, dates de document et de biologie, `false` = « sans », type inconnu → 400, filtres seuls bornés) ; prédicat dossier/étiquette unique pour toutes les requêtes ; pertinence filtrée une seule fois. Dtos.Mss 500.0.0. 21 tests d'intégration d'endpoint rouges sur le code d'avant. PR #268 (api-mail), #37 (dtos-mss). | — (exactitude de la recherche — AUD-38, 39, 40, 52 ; aucune RG déclarée) |
 | done-task-002 | Masquage du préfixe `XDM/1.0/DDM+` dans l'objet | RG-E009-029 |
 | done-task-003 | Opposition patient à l'envoi MSS pro et patient | RG-E009-019, 020 |
