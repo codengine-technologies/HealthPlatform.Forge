@@ -3,7 +3,7 @@
 **Repos**: api-mail, client-angular, client-blazor, client-mobile
 **Dependencies**: — (aucune ; à coordonner avec task-191, qui traite les **doublons** de fiches pour une même identité)
 **Epic**: E009
-**Single frontend**: false — périmètre étendu aux trois clients le 2026-10-03 (voir « Extension du périmètre »)
+**Single frontend**: false — périmètre étendu aux trois clients le 2026-10-03 (voir « Extension du périmètre » et « Extension 2 »)
 **Priorité**: **1** — le rattachement manuel imposé par task-176 est **sans effet visible** : le document sort de la file « à intégrer » sans entrer dans aucun dossier ; et la garde d'opposition peut lire la mauvaise fiche.
 
 > **Origine.** Audit de détection de bugs du 2026-09-27
@@ -96,6 +96,58 @@ Contrats : **aucun changement** attendu (`attach-patient`, `/patients/search`, `
 existent). Si `/develop` constate qu'un champ manque au résultat de recherche pour comparer les
 identités (date de naissance, sexe, INS), il l'établit et l'ajoute dans `dtos-mss` (branche paresseuse).
 
+## Extension 2 du périmètre — corriger un rattachement : détacher, changer de patient, tracer (décision humaine, 2026-10-03)
+
+> Posée par l'humain au HAG de l'extension 1 : « il n'y a aucune fonctionnalité pour détacher, elle
+> devrait exister ». À coder **dans cette US**, avant tout merge.
+
+**Constat** (develop @ 2026-10-03) :
+- Aucune action ne permet de **défaire** un rattachement manuel. Un document rattaché à la mauvaise fiche y
+  reste : erreur d'identification sans correction possible (identitovigilance).
+- **Le rattachement manuel n'est pas tracé** dans le journal d'audit : `AuditActionType` n'a aucune action
+  de rattachement à un patient. La ligne « rattachement manuel tracé (existant) » de la section Conformité
+  de cette task, et le doc produit E009 qui le cite parmi les actions journalisées, étaient **faux**
+  (recopiés sans vérification ; corrigés ici).
+- `POST attach-patient` **écrase sans contrôle** : `doc.PatientId = patientId`, quel que soit le patient
+  courant, y compris pour un document rattaché automatiquement par son INS. Aucun écran ne le permet, l'API
+  l'accepte, sans trace.
+- L'extension 1 (recherche libre) augmente le risque d'erreur : le praticien choisit désormais lui-même la fiche.
+
+**Règle retenue** (recommandation de la forge, **à confirmer par l'humain au HAG**) : seul un document
+**sans INS** se détache ou change de patient. C'est exactement l'ensemble des documents rattachés à la main :
+l'ingestion ne rattache automatiquement que par INS. Un document porteur d'une INS suit l'identité de
+référence ; le contester relève d'un signalement d'identitovigilance, hors périmètre.
+
+**Périmètre ajouté** :
+
+10. **Contrat** (`dtos-mss`, branche paresseuse, publication NuGet, bump `api-mail` et `client-blazor`) :
+    - `AttachPatientRequestDto.ExpectedCurrentPatientId` (`Guid?`) : le patient que le client croit
+      courant (`null` pour un document non rattaché) ;
+    - `DetachPatientRequestDto { ExpectedCurrentPatientId }` ;
+    - `AuditActionType.PatientDocumentAttached` (37) et `PatientDocumentDetached` (38), recopiés à la main
+      dans les libellés d'audit Angular et Blazor.
+11. **API** (`api-mail`) :
+    - `POST /medical-documents/{id}/attach-patient` : **409** si le document porte une INS ; **409** si le
+      patient courant diffère de `ExpectedCurrentPatientId` (plus d'écrasement silencieux, ni d'écran
+      périmé) ; 204 sinon ; rattacher à la fiche déjà courante ne fait rien.
+    - `POST /medical-documents/{id}/detach-patient` (corps `DetachPatientRequestDto`) : le document repasse
+      sans patient, donc dans la file « à intégrer » ; **409** si INS, ou si le patient courant diffère de
+      l'attendu (document déjà détaché compris) ; 404 si document inconnu ; 204 sinon.
+    - Chaque rattachement et chaque détachement effectifs écrivent une trace d'audit : document (identifiant
+      CDA, titre, LOINC), fiche choisie ou quittée (INS, nom), et fiche précédente pour un changement.
+    - Erreurs en `ProblemDetails` (règle 12), cache du mail invalidé comme au rattachement.
+12. **Clients** (Angular, Blazor, mobile, comportement identique) : dans le détail du mail, un document
+    **rattaché à la main** (patient posé, sans INS) affiche « Rattaché à {nom de la fiche} » avec
+    **« Changer de patient »** (le dialogue de rattachement, qui envoie le patient courant attendu) et
+    **« Détacher »** (après confirmation ; le document revient dans le bandeau « Rattachement en attente »).
+    Un 409 affiche « Le rattachement de ce document a changé entre-temps : rechargez le message ».
+13. **Parcours e2e** : `E2E-PATIENT-002` passe en **v2** et se termine par le détachement, relu côté serveur
+    (le document quitte le dossier de la fiche) et à l'écran (il revient dans le bandeau). Le parcours remet
+    ainsi l'état d'origine et redevient rejouable sur un même seed.
+
+**Hors périmètre** : détacher ou changer le patient d'un document porteur d'une INS ; détacher depuis le
+dossier patient (le geste reste dans le détail du mail, où le document est lu).
+
 ## Definition of Done
 
 - [ ] Build passes (0 errors) — `cd Api/Mail && dotnet build HealthPlatform.Api.Mail.sln`
@@ -123,6 +175,25 @@ identités (date de naissance, sexe, INS), il l'établit et l'ajoute dans `dtos-
 - [ ] Scénario `E2E-PATIENT-002` ajouté à `Api/Mail/e2e/scenarios.yml` (clients mobile et angular **requis**), donnée de seed déclarée (document sans INS dont les traits ne correspondent à aucune fiche, et une fiche existante à choisir), et implémenté dans les deux suites : rattachement par recherche libre, puis le document est **présent dans le dossier de la fiche choisie** (règle 1b côté frontend)
 - [ ] `/e2e` vert sur les deux voies, parité verte
 
+### DOD de l'extension 2 (points 10 à 13) — détacher, changer, tracer
+
+- [ ] `dtos-mss` : champs et membres d'audit ajoutés, package publié par la CI, `api-mail` et `client-blazor` bumpés
+- [ ] Tests d'intégration HTTP (règle 1b, vus rouges) sur la vraie pile :
+      détacher un document rattaché à la main → absent du dossier de la fiche et compté « à intégrer » ;
+      changer de patient → présent dans le dossier de la nouvelle fiche, absent de l'ancienne ;
+      rattacher un document déjà rattaché sans le patient attendu → 409 `problem+json`, rien ne change ;
+      rattacher ou détacher un document porteur d'une INS → 409, rien ne change ;
+      détacher avec un patient attendu périmé → 409 ;
+      chaque rattachement et détachement effectif écrit sa trace d'audit (action, document, fiche), relue en base
+- [ ] Tests unitaires du dépôt et du service pour chaque branche (inconnu, INS, attendu périmé, déjà courant, effectif)
+- [ ] Composants, par client : le document rattaché à la main affiche la fiche, « Changer de patient » et « Détacher » ;
+      un document porteur d'une INS ne les affiche pas ; « Détacher » demande une confirmation puis appelle
+      `detach-patient` avec le patient courant ; un 409 affiche le message « a changé entre-temps » ;
+      le dialogue envoie le patient courant attendu (`null` pour un document non rattaché)
+- [ ] Libellés d'audit des deux nouvelles actions dans Angular et Blazor
+- [ ] `E2E-PATIENT-002` v2 au catalogue et dans les deux suites : détachement relu côté serveur et à l'écran, rouge sous mutation
+- [ ] `/e2e` vert sur les deux voies, parité verte
+
 ## Manual Test Plan
 
 1. `cd Api/Mail && dotnet run --project src/AppHost` ; Blazor ou mobile connecté à une boîte de test.
@@ -133,6 +204,9 @@ identités (date de naissance, sexe, INS), il l'établit et l'ajoute dans `dtos-
 6. **Choix manuel quand l'appariement échoue** (Angular, Blazor et mobile) : ouvrir un mail dont le CDA sans INS porte un nom qui ne correspond à aucune fiche → « Rattacher » → le dialogue annonce 0 candidat et propose la recherche ; chercher un patient existant par son nom, le choisir → une confirmation rappelle les traits du document et ceux de la fiche → confirmer → le document quitte le bandeau et apparaît dans le dossier de ce patient.
 7. **Document sans trait** : un CDA sans nom, prénom ni date de naissance a désormais un bouton dans le bandeau ; le dialogue s'ouvre directement sur la recherche.
 8. **Non-régression** : un candidat proposé par `/match` se rattache toujours en un clic, sans confirmation ; aucun bouton « Créer un patient » nulle part.
+9. **Détacher** : sur un mail dont le document a été rattaché à la main, l'encart « Rattaché à {fiche} » propose « Détacher » ; confirmer → le document revient dans le bandeau « Rattachement en attente » et quitte le dossier de la fiche. Un document reçu avec une INS n'affiche ni « Changer » ni « Détacher ».
+10. **Changer de patient** : « Changer de patient » rouvre le dialogue ; choisir une autre fiche → le document passe d'un dossier à l'autre.
+11. **Trace** : l'écran d'audit (Angular ou Blazor) montre « Document rattaché à un patient » et « Document détaché d'un patient » pour ces gestes.
 
 ## Conformité santé / Ségur / ANS
 
@@ -143,7 +217,7 @@ identités (date de naissance, sexe, INS), il l'établit et l'ajoute dans `dtos-
 - **Authentification PS** : PSC / e-CPS inchangée
 - **Habilitations** : inchangées — dossier limité aux patients du praticien
 - **Interop CI-SIS** : CDA r2 — identifiant patient et OID de domaine lus depuis le document (chemin `interop-cda` existant)
-- **Tracé PGSSI-S** : rattachement manuel tracé (existant) ; lecture et modification d'opposition tracées
+- **Tracé PGSSI-S** : rattachement et détachement manuels tracés au journal d'audit (**ajoutés par l'extension 2** : la mention « tracé (existant) » de la première rédaction était fausse) ; lecture et modification d'opposition tracées
 - **Consentement patient** : opposition Mon Espace Santé lue sur la fiche du destinataire effectif
 - **Référentiels métier** : référentiel INS (OID des domaines NIR / NIA)
 - **Hébergement HDS** : oui — environnement inchangé
