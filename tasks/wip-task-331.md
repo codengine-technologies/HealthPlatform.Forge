@@ -749,8 +749,8 @@ Autres commandes mesurées : lint ×4 (28 s), nuget-wait ×1 (22 s), restore ×2
 
 | Voie | Déclencheur | Résultat | Tests | Durée |
 |---|---|---|---|---|
-| mobile | `api-mail`, `dtos-mss` et `client-mobile` touchés | ✅ verte | 27 verts, 0 flaky, 0 rouge, 0 quarantaine |  s |
-| angular | `api-mail`, `dtos-mss` et `client-angular` touchés | ✅ verte | 27 verts, 0 flaky, 0 rouge, 0 quarantaine |  s |
+| mobile | `api-mail`, `dtos-mss` et `client-mobile` touchés | ✅ verte | 27 verts, 0 flaky, 0 rouge, 0 quarantaine | 4 min 09 s |
+| angular | `api-mail`, `dtos-mss` et `client-angular` touchés | ✅ verte | 27 verts, 0 flaky, 0 rouge, 0 quarantaine | 3 min 51 s |
 
 - Catalogue : `Api/Mail/e2e/scenarios.yml` @ `fix/task-331-dossier-patient-par-fiche` (E2E-PATIENT-002 **v2**).
 - Porte `gate` : code 0. Quarantaines : aucune. Flaky : aucun. Divergences ouvertes : aucune.
