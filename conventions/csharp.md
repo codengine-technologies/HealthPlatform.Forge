@@ -1166,3 +1166,25 @@ foreach (var (id, record) in missing.Zip(records)) { _names[id] = record?.Name ?
 **Consigne** : pour réserver puis remplir une entrée autour d'un appel asynchrone, écrire la
 réservation (`Add` / `TryAdd`) et le remplissage dans deux boucles distinctes ; en bonus, les appels
 partent en parallèle.
+
+---
+
+## CA1854 — `ContainsKey` puis indexeur : un `TryGetValue`
+
+**Occurrences : 1** (task-331, `api-mail` — `PatientRepository.AttachDocumentToPatientAsync`, relevé par
+`/sonar` sur le nouveau code)
+
+```csharp
+// ❌ deux recherches dans le dictionnaire
+if (!parties.ContainsKey(patientId)) { return NotFound; }
+...
+return Attached(parties[patientId]);
+
+// ✅ une seule, et la valeur nommée
+if (!parties.TryGetValue(patientId, out var chosen)) { return NotFound; }
+...
+return Attached(chosen);
+```
+
+**Consigne** : dès qu'un `ContainsKey` garde un accès par indexeur à la même clé, écrire
+`TryGetValue(key, out var value)` et utiliser `value`.
