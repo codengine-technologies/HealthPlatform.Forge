@@ -460,10 +460,10 @@ La revue a trouvé deux comportements prouvés seulement par des tests unitaires
 | /sonar | ok | 11 min 10 s | 5 (1 min 11 s) | 24 (15 min 54 s) | 8 (2 min 25 s) | 1 itération(s), api-mail 5B/24T |
 | /lint-angular | ok | 17 s | — | — | — | — |
 | /lint-mobile | ok | 11 s | — | — | — | — |
-| /e2e | ok | 9 min 30 s | — | — | — | e2e ×6 (16 min 30 s) |
+| /e2e | ok | 8 min 33 s | — | — | — | e2e ×9 (24 min 40 s) |
 | /review | ok | 5 min 57 s | 5 (31 s) | 6 (6 min 11 s) | — | api-mail 2B/3T, client-blazor 1B/1T, client-mobile 1B/1T, client-angular 1B/1T |
 | /tech-writer | ok | 49 s | — | — | — | — |
-| **Total cycle** | | **1 h 05 min** | **41 (6 min 19 s)** | **57 (41 min 05 s)** | **8 (2 min 25 s)** | |
+| **Total cycle** | | **1 h 04 min** | **41 (6 min 19 s)** | **57 (41 min 05 s)** | **8 (2 min 25 s)** | |
 
 Autres commandes mesurées : lint ×4 (28 s), nuget-wait ×1 (22 s), restore ×2 (4.9 s)
 
@@ -744,3 +744,55 @@ Autres commandes mesurées : lint ×4 (28 s), nuget-wait ×1 (22 s), restore ×2
 ## Lint mobile log — extension 2
 
 - `npm run lint` : **All files pass linting**. Aucune itération, aucun commit.
+
+## E2E log — extension 2 du 2026-10-03
+
+| Voie | Déclencheur | Résultat | Tests | Durée |
+|---|---|---|---|---|
+| mobile | `api-mail`, `dtos-mss` et `client-mobile` touchés | ✅ verte | 27 verts, 0 flaky, 0 rouge, 0 quarantaine |  s |
+| angular | `api-mail`, `dtos-mss` et `client-angular` touchés | ✅ verte | 27 verts, 0 flaky, 0 rouge, 0 quarantaine |  s |
+
+- Catalogue : `Api/Mail/e2e/scenarios.yml` @ `fix/task-331-dossier-patient-par-fiche` (E2E-PATIENT-002 **v2**).
+- Porte `gate` : code 0. Quarantaines : aucune. Flaky : aucun. Divergences ouvertes : aucune.
+- Parcours touchés sans spec e2e modifié : aucun (les deux specs portent E2E-PATIENT-002 v2).
+- Démontage : complet (ports 4200 et 8100 libres, aucun conteneur e2e résiduel).
+- Amélioration continue (`conventions/e2e.md`) : aucune leçon nouvelle sur ce passage. Le parcours rend désormais l’état d’origine, ce qui lève la limite « usage unique par run » relevée à l’extension 1.
+
+**E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
+
+### Matrice de parité
+
+| Scénario | v | Mode | Titre | angular | mobile |
+|---|---|---|---|---|---|
+| E2E-INBOX-001 | 1 | headless | Filtrer la boîte de réception, basculer liste / conversation, ouvrir la recherche | ✅ | ✅ |
+| E2E-FOLDER-001 | 1 | headless | Naviguer vers les dossiers Archive et Corbeille | ✅ | ✅ |
+| E2E-PATIENT-001 | 1 | headless | Afficher la vue patients | ✅ | ✅ |
+| E2E-PATIENT-002 | 2 | headless | Rattacher à la main un document sans INS à un patient choisi par recherche, puis le détacher | ✅ | ✅ |
+| E2E-CONTACT-001 | 1 | humain | Rechercher dans le carnet et interroger l'annuaire national | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-SETTINGS-001 | 1 | headless | Changer le filtre par défaut et le retrouver après rechargement | ✅ | ✅ |
+| E2E-MAIL-001 | 1 | headless | Marquer un message lu puis non lu | ✅ | ✅ |
+| E2E-MAIL-002 | 1 | headless | Tout sélectionner et marquer lu en masse | ✅ | ✅ |
+| E2E-DETAIL-001 | 1 | headless | Répondre et transférer depuis la lecture d'un message | ✅ | ✅ |
+| E2E-COMPOSE-001 | 1 | headless | Envoyer un message, le recevoir, le lire, le supprimer | ✅ | ✅ |
+| E2E-COMPOSE-002 | 1 | headless | Faire corriger l'orthographe de son texte, appliquer la correction, puis envoyer | ✅ | ✅ |
+| E2E-MAIL-003 | 1 | headless | Signaler puis ne plus signaler un message | ✅ | ✅ |
+| E2E-MAIL-004 | 1 | headless | Déplacer un message vers Archive puis le ramener | ✅ | ✅ |
+| E2E-DRAFT-001 | 1 | headless | Créer un brouillon, le reprendre, le supprimer | ✅ | ✅ |
+| E2E-DRAFT-002 | 1 | headless | Envoyer un message à pièce jointe après l'enregistrement automatique du brouillon | ✅ | ✅ |
+| E2E-BIO-001 | 1 | headless | Acquitter un compte rendu de biologie | ✅ | ✅ |
+| E2E-DASH-001 | 1 | headless | Afficher les widgets du tableau de bord | ✅ | ✅ |
+| E2E-DETAIL-002 | 1 | headless | Basculer entre texte brut et HTML à la lecture | ✅ | ✅ |
+| E2E-DETAIL-003 | 1 | headless | Répondre à tous depuis la lecture d'un message | ✅ | ✅ |
+| E2E-SETTINGS-002 | 1 | headless | Changer la vue par défaut et la retrouver après rechargement | ✅ | ✅ |
+| E2E-SEARCH-001 | 1 | headless | Rechercher un message et ouvrir la recherche avancée | ✅ | ✅ |
+| E2E-ATTACH-001 | 1 | headless | Voir les pièces jointes d'un message | ✅ | ✅ |
+| E2E-CONTACT-002 | 1 | headless | Créer puis supprimer un contact | ✅ | ✅ |
+| E2E-SIGNATURE-001 | 1 | headless | Créer puis supprimer une signature | ✅ | ✅ |
+| E2E-CONTACT-003 | 1 | headless | Créer puis supprimer un groupe de contacts | ✅ | ✅ |
+| E2E-FOLDER-002 | 1 | headless | Créer puis supprimer un dossier | ✅ | ✅ |
+| E2E-AUTH-001 | 1 | humain | Rester connecté quand le jeton d'accès expire | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-AUTH-002 | 1 | humain | Se déconnecter | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-LIVE-001 | 1 | headless | Recevoir un nouveau message en temps réel, sans recharger | ✅ | ✅ |
+| E2E-AI-001 | 1 | headless | Interroger l'assistant sur des messages sélectionnés et poser des questions de suite | ✅ | ✅ |
+
+**Parité : verte** — aucun écart entre le catalogue et les suites.
