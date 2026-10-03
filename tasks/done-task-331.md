@@ -387,9 +387,9 @@ La revue a trouvé deux comportements prouvés seulement par des tests unitaires
 | /lint-angular | ok | 26 s | — | — | — | — |
 | /lint-mobile | ok | 11 s | — | — | — | — |
 | /e2e | ok | 9 min 30 s | — | — | — | e2e ×6 (16 min 30 s) |
-| /review | ok | 8 min 25 s | 1 (2.0 s) | 2 (3 min 08 s) | — | api-mail 1B/2T |
+| /review | ok | 5 min 57 s | 5 (31 s) | 6 (6 min 11 s) | — | api-mail 2B/3T, client-blazor 1B/1T, client-mobile 1B/1T, client-angular 1B/1T |
 | /tech-writer | ok | 44 s | — | — | — | — |
-| **Total cycle** | | **1 h 19 min** | **22 (3 min 31 s)** | **27 (22 min 00 s)** | **4 (1 min 14 s)** | |
+| **Total cycle** | | **1 h 17 min** | **26 (4 min 01 s)** | **31 (25 min 03 s)** | **4 (1 min 14 s)** | |
 
 Autres commandes mesurées : lint ×2 (14 s)
 
@@ -541,3 +541,47 @@ Autres commandes mesurées : lint ×2 (14 s)
 | E2E-AI-001 | 1 | headless | Interroger l'assistant sur des messages sélectionnés et poser des questions de suite | ✅ | ✅ |
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## PRs — extension du 2026-10-03
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/271 — corps mis à jour (extension, parcours e2e, plan de test), label repassé de `awaiting-us-completion` à `awaiting-human-merge` : l'US assemblée est prête.
+- `client-blazor` : https://github.com/codengine-technologies/HealthPlatform.Client/pull/88 — label `awaiting-human-merge`.
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/85 — label `awaiting-human-merge`.
+- `client-angular` : code-only, l'humain gère commit, push TFS et PR. Fichiers modifiés, non commités, sur `feature/nova-rewriting-mss` :
+  - `front/libs/mss/src/features/mail/components/patient-attachment-dialog/patient-attachment-dialog.component.{ts,html,scss,spec.ts}`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.component.{ts,html,spec.ts}`
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`
+  - `front/e2e/mss-e2e/support/session.ts`, `front/e2e/mss-e2e/support/e2e-backend.ts`
+  - (les deux `environment.ts` modifiés sont ceux de l'humain, hors task)
+- `dtos-mss` : aucune PR, aucun contrat ne change.
+- **Ordre de merge** : les quatre ensemble (règle 11). Les clients dépendent de la recherche patient qui renvoie l'identifiant de la fiche (api-mail #271).
+
+## Code Review Summary — extension du 2026-10-03
+
+**Verdict : APPROVED** (0 bloquant).
+
+- **Build et tests** : api-mail (domain 190, application 3 373, infrastructure 681, api 1 166, integration 743 + 16 ignorés), client-blazor 401 (+2 ignorés), client-mobile 981, client-angular build `weda2` et tests de 11 projets. 0 échec.
+- **DOD de l'extension** :
+  - [x] Build et tests verts sur les trois clients
+  - [x] Tests de composant du dialogue, par client : 0 candidat → recherche affichée ; une fiche trouvée ; choix → confirmation ; confirmer → `attach-patient` avec l'identifiant choisi
+  - [x] Un candidat de `/match` se rattache sans confirmation (non-régression)
+  - [x] Document sans trait → `/match` non appelé, recherche ouverte d'emblée
+  - [x] `/match` en erreur → « Réessayer » relance ; la recherche reste utilisable
+  - [x] Bandeau : bouton pour un document sans trait ; boutons = documents sans patient
+  - [x] Aucune création de patient (tests « no creation » dans les trois clients)
+  - [x] `data-testid` sur le champ, chaque résultat, la confirmation et « Réessayer » ; libellés Blazor par `Localizer` (FR et EN), en dur en français sur Angular et mobile
+  - [x] E2E-PATIENT-002 au catalogue (mobile et angular requis), données de seed déclarées, implémenté dans les deux suites, document relu dans le dossier de la fiche
+  - [x] `/e2e` vert sur les deux voies, parité verte
+- **Verrou 4a (règle 1b)** : aucun comportement atteignable par un endpoint ne change dans cette itération (api-mail : outillage e2e et tests seulement). Côté clients, le test d'intégration du parcours est E2E-PATIENT-002, vu rouge sous mutation sur les deux clients.
+- **Verrou 4b** : `## E2E log` de l'extension vert, recopié dans les trois PRs.
+- **Revue par zone** :
+  - ✅ Dialogues (3 clients) : recherche par `GET /patients/search` existant, confirmation obligatoire pour une fiche non proposée, aucun chemin de création, états remis à zéro à l'ouverture.
+  - ✅ Bandeaux : cas particulier « au moins un trait » retiré, alignés sur le compteur serveur.
+  - ✅ Seed e2e : chaque donnée du parcours est relue avant de rendre la main ; fixture sans donnée réelle (corpus de test ANS réécrit).
+  - ⚠️ Mobile : Entrée et le submit du formulaire déclenchent tous deux la recherche ; le second appel est bloqué par `isSearching`.
+  - ⚠️ Les clients ne comptent pas le sexe seul comme trait, le serveur si : un document au seul sexe s'ouvre sur la recherche. Voir le suivi 5.
+
+**Suivis à ouvrir (extension)** :
+4. `CdaParsingService` : rogner les traits patient à l'analyse (l'espace qui suit `<family>` du corpus ANS arrive en base).
+5. `GET /patients/match` sans trait : rendre `[]` au lieu de 400, comme le dépôt et le commentaire du contrôleur, pour retirer la règle « a des traits » recopiée dans trois clients.
+6. Longueur minimale de recherche de fiche non partagée (2 dans le dialogue, 3 dans `SearchPatientComponent` Blazor).
