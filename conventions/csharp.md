@@ -251,7 +251,15 @@ dans `string.Equals`, mais `StringComparer` dans `Contains`.
 
 ## S125 — une prose qui « ressemble à du code » est signalée comme code commenté
 
-**Occurrences : 7** (task-184, task-292, task-188, task-322, task-171, task-342, task-191 —
+**Occurrences : 9** (task-184, task-292, task-188, task-322, task-171, task-342, task-191, task-330,
+task-331 — neuvième, **attrapée par le contrôle mécanique avant le commit**, comme prévu : « …pas
+l'objet ; le parcours… » au milieu d'un commentaire du seed e2e. Le contrôle marche. Le réflexe
+d'écriture, lui, ne tient toujours pas : en français, l'espace avant le point-virgule est la
+typographie normale, donc la faute vient naturellement. Écrire un point. —
+huitième récidive : « …est INDISPONIBLE (503) ; » en fin de ligne d'un commentaire d'intention
+de `SmtpService`, alors que le contrôle `git diff | grep -E "^\+\s*//.* ;"` ci-dessous aurait
+rendu deux lignes. Le contrôle n'a pas été joué avant le commit : il fait désormais partie de la
+passe qualité de `/develop`, au même titre que le build —
 septième récidive : « The rule addresses a sender retiring the document it sent ; »
 et « …kept this reading from having any effect ; the fix », deux « espace +
 point-virgule » dans un commentaire d'intention ajouté au-dessus d'une méthode
@@ -440,7 +448,9 @@ on relit, c'est un commentaire qu'il faut, pas une variable morte.
 
 ## S4457 — la validation des arguments se fait hors du corps `async`
 
-**Occurrences : 3** (task-299, task-300, task-171 — `PscTokenProvider.GetModeAsync` /
+**Occurrences : 4** (task-329 — `OutgoingMailService.SendAsync` : `ThrowIfNull(mail)` en tête de la
+méthode `async` publique, écrit alors que cette entrée existait ; d'où le contrôle mécanique de
+`agents/develop.md` §Q 2b ; task-299, task-300, task-171 — `PscTokenProvider.GetModeAsync` /
 `GetAccessTokenAsync` : `ThrowIfNull(key)` en tête d'une méthode `async`, corrigé en
 enveloppe synchrone + `…CoreAsync` privée)
 
@@ -498,8 +508,10 @@ private Task<T> ReadCoreAsync(string key, string? correlationId, CancellationTok
 
 ## xUnit1051 — un test qui appelle une méthode à `CancellationToken` doit passer celui du contexte
 
-**Occurrences : 2** (task-297 le 2026-09-13 — 10 appels, CI `develop` cassée ;
-task-303 le même jour — 12 appels, attrapés avant le push)
+**Occurrences : 3** (task-297 le 2026-09-13 — 10 appels, CI `develop` cassée ;
+task-303 le même jour — 12 appels, attrapés avant le push ; task-329 — 3 appels
+`DidNotReceiveWithAnyArgs().SendMailAsync(default!, default)`, attrapés par le build : le
+`default` d'un `CancellationToken` dans une vérification de substitut compte aussi)
 
 La migration vers **xUnit v3** (`cf685ac`) a fait passer cet analyseur en
 **erreur**. Tout appel de test vers une méthode qui accepte un
@@ -642,7 +654,7 @@ de plus de trois membres s'écrit d'emblée un membre par ligne.
 
 ## S3925 — une exception garde le triplet de constructeurs recommandé
 
-**Occurrences : 2** (task-171 — `UnauthorizedException`, `PscIdentityConflictException` ; task-320 — `MailboxIncompatibleException`)
+**Occurrences : 3** (task-171 — `UnauthorizedException`, `PscIdentityConflictException` ; task-320 — `MailboxIncompatibleException` ; task-330 — `SmtpDeliveryUncertainException`, triplet présent, marquée FALSE-POSITIVE comme prévu)
 
 La passe qualité avait **retiré** les constructeurs « inutilisés » de deux
 exceptions neuves pour ne garder que celui réellement appelé. Sonar réclame le
@@ -669,6 +681,19 @@ elle réclame encore le constructeur de sérialisation `ISerializable`, lui-mêm
 obsolète (SYSLIB0051). Ne pas l'ajouter, ne pas « corriger » la classe : marquer
 l'issue FALSE-POSITIVE avec ce motif, comme toutes les exceptions voisines de
 `Application/Exceptions/`.
+
+## S3776 — un `try/catch` ajouté à une méthode déjà chargée la fait déborder
+
+**Occurrences : 1** (task-330 — `DraftService.SendDraftAsync`, complexité cognitive 16)
+
+La méthode tenait sous le seuil. Le changement de contrat de `SmtpService` (il lève là où il
+rendait un `Result`) a demandé trois `catch` autour de l'appel SMTP. Chacun compte, imbriqué dans
+le `try/finally` du verrou d'envoi : le seuil de 15 est franchi d'un point.
+
+**Consigne** : protéger un appel par plusieurs `catch` **dans une méthode qui a déjà un
+`try/finally` ou plusieurs branches** se fait dans une méthode dédiée. Celle-ci rend le résultat
+normalisé (ici `SendThroughSmtpAsync`, qui rend un `Result`), et l'appelant reste linéaire. La
+blacklist S3776 ne vaut que pour la dette legacy : sur du code neuf, la règle se corrige toujours.
 
 ## S1075 — pas de délimiteur de chemin ou d'URI en dur
 
@@ -745,7 +770,10 @@ existante du même nom, jamais en bloc « les nouveautés ensemble ».
 
 ## xUnit1045 — une donnée de théorie `object` n'est pas sérialisable
 
-**Occurrences : 1** (task-342 — `RuleTwelveRemainingResponsesIntegrationTests`)
+**Occurrences : 2** (task-342 — `RuleTwelveRemainingResponsesIntegrationTests` ; task-330 —
+`TheoryData<Exception>` des coupures de transport de `SmtpServiceCoverageTests`. Une exception
+n'est pas plus sérialisable qu'un objet anonyme : la théorie prend une chaîne, et le test construit
+l'exception)
 
 `TheoryData<string, string, object>` avec des objets anonymes comme corps de
 requête : xUnit ne peut pas sérialiser la ligne, l'explorateur de tests ne voit
@@ -772,6 +800,17 @@ public static TheoryData<string, string, string> InvalidModels => new()
 des types `IXunitSerializable` — un corps de requête se passe en chaîne JSON.
 
 ---
+
+## xUnit2032 — `Assert.IsAssignableFrom` se dit `Assert.IsType(…, exactMatch: false)`
+
+**Occurrences : 1** (task-329 — `MailControllerCoverageTests`, sur un `IStatusCodeActionResult`)
+
+xUnit 3 signale `Assert.IsAssignableFrom<T>(x)` : le nom laisse croire à une comparaison exacte. La
+même vérification s'écrit `Assert.IsType<T>(x, exactMatch: false)`.
+
+**Consigne** : pour vérifier qu'une valeur est d'un type ou d'un de ses dérivés (une interface
+comme `IStatusCodeActionResult`), écrire `Assert.IsType<T>(x, exactMatch: false)`, jamais
+`IsAssignableFrom`.
 
 ## S2699 — un test « ne lève pas » affirme quelque chose
 
@@ -931,6 +970,129 @@ la sous-requête capturée ; la sémantique « tous les critères sur le même e
 conservée, et seuls les critères présents atteignent le SQL. Garder un test d'intégration qui
 combine deux critères sur deux enregistrements différents — c'est lui qui prouve que l'on n'a pas
 glissé vers « un critère par enregistrement ».
+
+---
+
+## executeupdate-copie-suivie-perimee — après un `ExecuteUpdate`, une entité suivie ment
+
+**Occurrences : 1** (task-330, `/develop` — deux faces du même piège dans `PendingActionRepository`)
+
+`ExecuteUpdateAsync` écrit en base **sans passer par le suivi d'entités** : une copie déjà suivie
+par le contexte garde ses anciennes valeurs, et une requête suivie (`FirstOrDefaultAsync`) renvoie
+cette copie, pas la ligne relue. Deux effets, constatés le même jour :
+
+- **Modifier la copie ne modifie rien.** La réclamation passe la ligne en `Processing` par
+  `ExecuteUpdate`. La copie suivie dit encore `Pending`. Remettre `Status = Pending` n'est vu comme
+  aucun changement, donc `SaveChanges` n'écrit pas le statut. La ligne reste `Processing` en base.
+  Cela arrive dès que le contexte vit d'une passe à l'autre : c'est le cas de la synchronisation de
+  fond, qui garde son scope.
+- **Décider sur la copie, c'est décider sur un état passé.** `GetByIdAsync` suivi lisait
+  « confirmable » alors que la base disait « remise incertaine ».
+
+```csharp
+// ❌ copie suivie, peut-être périmée par un ExecuteUpdate antérieur
+var action = await db.PendingActions.FirstOrDefaultAsync(pa => pa.Id == id);
+action.Status = PendingActionStatus.Pending;          // « inchangé » pour EF
+await db.SaveChangesAsync();
+
+// ✅ relire avant de modifier, et lire sans suivi pour décider
+await db.Entry(action).ReloadAsync();
+// … et pour une lecture de décision : .AsNoTracking().FirstOrDefaultAsync(...)
+```
+
+**Consigne** :
+- Un dépôt qui mêle `ExecuteUpdate` et lecture-modification-`SaveChanges` sur **la même table**
+  relit (`ReloadAsync`) avant de modifier, ou fait toute la transition en `ExecuteUpdate`.
+- Une lecture qui sert à **décider** (« peut-on confirmer ? ») est `AsNoTracking()`.
+- Un test d'intégration ne relit **jamais** son verdict par le contexte du serveur : il le relit
+  dans un scope neuf. Sinon il constate la copie périmée, et donne un vert qui ment.
+
+**Preuve** : `PendingSendConfirmationIntegrationTests.AGestureWhoseReplayFails_…` et
+`AReplayAbandonedMidway_…` sont rouges sans `ReloadAsync`, et
+`ADeliveryUncertainConfirmation_…` est rouge (404 au lieu de 409) sans `AsNoTracking`.
+Preuve par mutation.
+
+---
+
+## index-de-cle-etrangere-absent-en-base — une colonne de filtre sans index, que la fixture fait croire indexée
+
+**Occurrences : 2**
+- task-322 : les index `MailId` de `MailAttachments` et `MailMedicalDocuments` n'existaient pas en base.
+- task-331 : `MailMedicalDocuments.PatientId` est devenu le filtre du dossier patient, sans index en base.
+
+PostgreSQL ne crée **aucun** index pour une clé étrangère, et FluentMigrator, qui construit les
+bases praticien, non plus. La base de la fixture `PostgreSql`, elle, est construite par
+`EnsureCreated`, et EF y crée un index par clé étrangère **par convention**. Un test lu sur la
+fixture (`pg_indexes`, un plan d'exécution, un temps de réponse) est donc vert sans la migration.
+En production, chaque page parcourt la table.
+
+**Consigne** :
+- Toute requête qui filtre, groupe ou joint sur une colonne que la task met au premier plan
+  (clé étrangère comprise) : vérifier dans `SetupMigration` **et** les migrations suivantes qu'un
+  index la mène. S'il manque, une migration FluentMigrator le crée, et `MailDataContext` le déclare
+  sous le même nom.
+- La preuve rejoue **le coureur de production** sur une base neuve, sur le modèle de
+  `MailIdIndexesMigrationTests` et `PatientFolderIndexMigrationTests`, jamais `pg_indexes` sur la
+  fixture.
+
+---
+
+## projection-dto-dupliquee — une projection entité → DTO s'écrit une fois
+
+**Occurrences : 2**
+- task-184 : `PatientRepository.ToDto` ne portait pas `Id`.
+- task-331 : les deux copies inline de la même projection, dans la recherche et dans « patients
+  du jour », ne le portaient toujours pas. Le dossier ouvert depuis ces listes répondait 404.
+
+Trois copies à la main de la même projection `new MailPatientDto { … }` : une correction en atteint
+une, les autres divergent en silence. Chaque champ ajouté au DTO doit être reporté en N endroits.
+
+```csharp
+// ❌ une copie par requête
+.Select(p => new MailPatientDto { FirstName = p.FirstName ?? string.Empty, /* … */ })
+
+// ✅ une seule expression : traduite en SQL par les listes, compilée pour une entité chargée
+private static readonly Expression<Func<MailPatient, MailPatientDto>> DtoProjection = p => new MailPatientDto { Id = p.Id, /* … */ };
+private static readonly Func<MailPatient, MailPatientDto> ToDtoCompiled = DtoProjection.Compile();
+.Select(DtoProjection)
+```
+
+**Consigne** : avant d'écrire un `Select(x => new XxxDto { … })`, chercher une projection ou un
+mapper existant du même DTO dans le dépôt. S'il en existe un, le réutiliser. S'il en faut une
+version SQL, en faire une `Expression` partagée, jamais une copie.
+
+---
+
+## S4581 — un `Guid` attendu « n'importe lequel » s'écrit `Arg.Any<Guid>()`, pas `default`
+
+**Occurrences : 1** (task-331, `client-blazor` — `PatientAttachmentDialogTests`, deux
+`DidNotReceiveWithAnyArgs().AttachDocumentToPatientAsync(default, default, default)`)
+
+Les analyseurs Sonar du build `client-blazor` traitent l'avertissement en erreur : un `default` passé
+pour un `Guid` est lu comme un `new Guid()` vide, et le build casse sans qu'aucun test ne tourne.
+
+```csharp
+// ❌ S4581 — « Use Guid.NewGuid() or Guid.Empty »
+_patients.DidNotReceiveWithAnyArgs().AttachDocumentToPatientAsync(default, default, default);
+
+// ✅ l'intention dite par l'argument lui-même
+_patients.DidNotReceive().AttachDocumentToPatientAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+```
+
+**Consigne** : dans un `Received` / `DidNotReceive` NSubstitute, ne jamais passer `default` pour un
+`Guid`. Écrire `Arg.Any<Guid>()`, ou la valeur attendue.
+
+---
+
+## S6562 — un `DateTime` de test précise son `DateTimeKind`
+
+**Occurrences : 1** (task-331, `client-blazor` — `PatientAttachmentDialogTests`, trois dates de
+naissance `new DateTime(1982, 6, 14)`)
+
+Même mécanisme que S4581 : erreur de build dans `client-blazor`.
+
+**Consigne** : `new DateTime(a, m, j, 0, 0, 0, DateTimeKind.Unspecified)` pour une date sans heure
+(une date de naissance), `DateTimeKind.Utc` pour un instant. Jamais le constructeur sans `Kind`.
 
 ---
 

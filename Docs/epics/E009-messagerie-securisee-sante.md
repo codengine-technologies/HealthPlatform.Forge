@@ -2,9 +2,9 @@
 
 > **Statut** : En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.81
+> **Version** : 1.84
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-02 (la recherche signale ses pannes et applique chaque filtre, task-338)
+> **Dernière mise à jour** : 2026-10-02 (le dossier d'un patient est celui de sa fiche, task-331)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -993,12 +993,12 @@ Les règles `RG-E009-084` à `RG-E009-089` sont propres à ENS Mon espace santé
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---------|--------|------------|---------------------|
-| E009-F001 | 🟢 Implémenté | 95% — dossiers IMAP CRUD complets, opérations en masse (déplacer/lu/marquer), mono-boîte (multi-boîte via F010), jauge d'occupation de la boîte ; pilotage de la synchronisation d'arrière-plan (pause / relance / arrêt) effectif et état fidèle — task-188 | task-087 |
+| E009-F001 | 🟢 Implémenté | 95% — dossiers IMAP CRUD complets, opérations en masse (déplacer/lu/marquer), mono-boîte (multi-boîte via F010), jauge d'occupation de la boîte ; pilotage de la synchronisation d'arrière-plan (pause / relance / arrêt) effectif et état fidèle — task-188 ; gestes hors ligne rejoués jusqu'au succès, jamais effacés en silence — task-330 | task-087, task-330 |
 | E009-F002 | 🟢 Implémenté | 100% — traitement CDA et IHE_XDM complet, paire CDA/PDF fusionnée, détection doublons et versions normative INT.18 | task-010, task-013, task-034 |
 | E009-F003 | 🟢 Implémenté | 100% — tags urgence, tagging IA, détection biologie anormale, acquittement médico-légal | task-005, task-028 |
-| E009-F004 | 🟢 Implémenté | 100% — Vue temporelle patient, Timeline biologie horizontale, Synthèse clinique livrées sur les deux frontends ; widget Patient sur le dashboard | task-035 |
+| E009-F004 | 🟢 Implémenté | 100% — Vue temporelle patient, Timeline biologie horizontale, Synthèse clinique livrées sur les deux frontends ; widget Patient sur le dashboard ; dossier et biologie définis par la fiche (document rattaché visible, identités d'un même matricule séparées) — task-331 | task-035, task-331 |
 | E009-F005 | 🟢 Implémenté | 100% — canaux temps réel + préférences | — |
-| E009-F006 | 🟢 Implémenté | 100% — composition + envoi + accusés + annule et remplace ; « Corriger l'orthographe » avec aperçu et validation, sur les trois fronts (flag `ai_text_correction`, désactivé en production) — task-349 | task-002, task-006, task-008, task-009, task-349 |
+| E009-F006 | 🟢 Implémenté | 100% — composition + envoi + accusés + annule et remplace ; « Corriger l'orthographe » avec aperçu et validation, sur les trois fronts (flag `ai_text_correction`, désactivé en production) — task-349 ; un seul chemin d'envoi : brouillon complet, transfert par référence, trace dans « Envoyés » — task-329 | task-002, task-006, task-008, task-009, task-349, task-329 |
 | E009-F007 | 🔴 Non impl. | 10% — paquet IHE_XDM possible, intégration envoi à confirmer, opposition implémentée, bounces/fin d'échange à ajouter | task-003 |
 | E009-F008 | 🟢 Implémenté | 100% — service d'annuaire avec 5 stratégies de recherche | — |
 | E009-F009 | 🟢 Implémenté | 100% — CRUD complet, favoris, groupes, fusion | — |
@@ -1035,6 +1035,46 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 > automatiquement au retour de la connexion », c'est cette description qui fait foi.
 
 ### Fonctionnalités métier
+
+- **v1.84 — Le dossier d'un patient est celui de sa fiche** (task-331) :
+  - **Un document rattaché à la main apparaît enfin dans le dossier du patient.** Un compte rendu reçu sans identité INS, puis rattaché par le praticien, quittait la liste « à intégrer » sans entrer dans aucun dossier. Les documents déjà rattachés réapparaissent sans action.
+  - **Deux identités qui partagent un matricule ne se mélangent plus.** Pour un même matricule enregistré en identité qualifiée et en identité provisoire, chaque fiche ne montre que ses propres documents, ses propres résultats de biologie et sa propre opposition.
+  - **L'opposition du patient est toujours respectée** : si l'une des fiches du destinataire s'oppose aux échanges Mon Espace Santé, l'envoi demande l'acquittement du praticien.
+  - Le dossier s'ouvre aussi depuis la recherche de patients et depuis la liste des patients du jour.
+
+- **v1.83 — Un message part complet, quel que soit le chemin** (task-329) : un message rédigé
+  plus de 30 secondes est enregistré automatiquement en brouillon, et « Envoyer » partait alors de
+  ce brouillon, qui perdait une partie de ce que le praticien avait préparé. C'est corrigé sur la
+  messagerie web, la messagerie intégrée au logiciel et l'application mobile.
+  - **Les pièces jointes partent** : un compte rendu joint arrive chez le destinataire, même après
+    l'enregistrement du brouillon. Rouvrir un brouillon retrouve ses pièces.
+  - **Les choix du praticien sont respectés** : accusé de lecture demandé, opposition du patient
+    acquittée, fin d'échange avec le patient.
+  - **Transfert complet** : un message transféré depuis l'application mobile emporte ses pièces
+    d'origine, y compris une archive de documents de santé et ses en-têtes MSSanté. Si une pièce ne
+    peut pas être relue, l'envoi est refusé avec un message clair. Rien ne part amputé.
+  - **Une trace dans « Envoyés »** pour chaque message parti, y compris depuis un brouillon.
+  - **« Annule et remplace » tient sa promesse** : rédigé sans la carte ou enregistré en brouillon,
+    le remplacement marque l'original annulé dès qu'il part.
+  - **Jamais deux fois** : deux clics sur « Envoyer » pendant un envoi lent n'envoient qu'un message.
+
+- **v1.82 — Ce que le médecin fait hors ligne finit par être appliqué, ou il est averti**
+  (task-330) : lu / non lu, signalement, suppression et acquittement d'un résultat de biologie
+  faits sans connexion ne se perdent plus au premier incident.
+  - **Rejoués jusqu'au succès** : un geste qui échoue (serveur de messagerie momentanément
+    indisponible) reste en attente et repart à la synchronisation suivante. Après dix échecs, il
+    est conservé et compté comme non appliqué, jamais effacé en silence.
+  - **Un arrêt n'est pas un échec** : une synchronisation interrompue rend le geste intact, et un
+    traitement coupé en route ne bloque plus rien.
+  - **Jamais deux fois le même courrier** : quand un envoi confirmé échoue alors que le message a
+    peut-être déjà quitté le serveur, il n'est plus proposé à l'envoi. Il reste dans la liste
+    avec l'avertissement « Ce message est peut-être parti : vérifiez auprès du destinataire avant
+    de le renvoyer », et le médecin peut seulement le retirer. Quand rien n'est parti, le message
+    reste prêt à envoyer, avec sa cause.
+  - **Refus immédiat** : un message sans destinataire écrit hors ligne est refusé tout de suite,
+    au lieu d'être accepté puis perdu.
+  - L'affichage de l'avertissement et du nombre de gestes non appliqués dans les écrans fait
+    l'objet d'une prochaine évolution. Le serveur les fournit déjà.
 
 - **v1.81 — La recherche dit la vérité : une panne n'est plus « aucun résultat »** (task-338) :
   quand la recherche ne peut pas aboutir — serveur indisponible, service d'intelligence
