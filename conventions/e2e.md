@@ -239,6 +239,24 @@
 - **Origine** : task-349 (/e2e, 2026-10-01)
 - **Occurrences** : 1
 
+### suite-e2e-non-compilee — Ni le build ni les tests unitaires ne compilent les specs e2e
+- **Piège** : les specs Playwright vivent hors du build de l'app (`tsconfig` isolé). Une erreur de
+  syntaxe y passe donc `npm run build`, `npm test` et le lint, et ne se voit qu'au lancement de la
+  voie, qui tombe **entière** en outillage. Sur task-352, la même faute dans les deux clients : un
+  libellé français entre apostrophes simples qui contient une apostrophe
+  (`'la boîte de réception s'affiche'`).
+- **Consigne** : après toute écriture de spec e2e, compiler la suite avant de commiter :
+  `npx tsc -p e2e/tsconfig.json` (mobile, depuis `Client/Mobile`) et
+  `npx tsc -p e2e/mss-e2e/tsconfig.json` (Angular, depuis `Client/Angular/front`). **Les deux
+  suites, chacune.** Les libellés français s'écrivent entre **guillemets doubles**.
+  `agents/develop.md` Step 6b.5 l'exigeait déjà. Sur task-352, seule la suite mobile avait été
+  compilée, et la faute Angular n'a été vue qu'à la passe qualité. Il s'agit d'une récidive de
+  lecture (règle d'or 3), pas d'un trou du playbook.
+- **Preuve** : les deux `tsc` rouges (TS1005, chaîne non terminée) sur le code fautif, verts
+  après correction.
+- **Origine** : task-352
+- **Occurrences** : 2 (une par client, même task)
+
 ---
 
 ## Registre des flaky
@@ -273,3 +291,4 @@ scénario qui l'aurait attrapé, prouvé rouge sur le bug)*
 | Transférer (et Répondre, même chemin) cliqué avant le chargement du contenu du mail : le message part **sans le message d'origine**, sans erreur visible | /e2e task-349 (E2E-COMPOSE-002, 1er passage à froid) | E2E-DETAIL-001 à durcir : le transfert relu côté serveur porte la citation ; précondition ajoutée à E2E-COMPOSE-002 (dans task-349) | task-350 |
 | Un message rédigé plus de 30 s (brouillon enregistré automatiquement) part **sans ses pièces jointes**, sans accusé de lecture ni acquittement d'opposition, « envoyé » affiché (Angular et Blazor : route des brouillons dès qu'un brouillon existe) | Audit de bugs du 2026-09-27 (AUD-06), non vu par `/e2e` : aucun scénario n'envoyait un brouillon, ni une pièce jointe | **E2E-DRAFT-002** ajouté (mobile et Angular requis) : la pièce jointe est relue dans le message **reçu**, après l'enregistrement automatique. Rouge sur les deux clients avec le bug réinjecté côté serveur | task-329 |
 | Un document sans INS dont les traits ne correspondent à aucune fiche (ou sans trait) ne peut **pas être rattaché** : le dialogue n'offre que les candidats de `/patients/match`, puis « Ignorer » (Angular, Blazor, mobile) | L'humain au HAG de task-331, non vu par `/e2e` : aucun scénario ne rattachait un document à la main | **E2E-PATIENT-002** ajouté (mobile et Angular requis) : document sans INS seedé, aucun candidat, recherche libre, confirmation, message relu dans le dossier de la fiche. Rouge sous mutation (confirmation sans appel) sur les deux clients | task-331 |
+| Un dossier supprimé ou renommé depuis un autre logiciel de messagerie, puis ouvert dans l'app : **chargement sans fin** (Angular), anciens messages affichés (Blazor), message technique brut (mobile). Le serveur répondait 404 sans nommer la cause | L'humain, en recette (Seq : `GET /folders/…` → 404), non vu par `/e2e` : aucun scénario ne modifiait la boîte hors de l'application | **E2E-FOLDER-003** ajouté (mobile et Angular requis) : dossier créé dans l'app, supprimé par IMAP (`mss.mail.e2e folder --delete`), puis ouvert. Rouge sur les deux clients avec le bug réinjecté (Angular : spinner sans fin reproduit) | task-352 |
