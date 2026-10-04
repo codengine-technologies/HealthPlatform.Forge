@@ -85,3 +85,16 @@ d'appareils et de réplicas qui l'ouvrent en même temps — garanti par la base
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui — environnement inchangé
 - **AIPD / impact RGPD** : inchangé — suppression de copies en double de données déjà détenues
+
+## Branches
+- `api-mail` (pushed) : feat/task-344-promotion-unique-mail — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-344-promotion-unique-mail
+- `dtos-mss` : aucune branche — créée paresseusement par `/develop` seulement si un contrat bouge
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-344 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 16 s | — | — | — | — |
+| **Total cycle** | | **16 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |

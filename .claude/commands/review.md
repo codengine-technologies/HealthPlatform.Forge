@@ -261,6 +261,12 @@ In autonomous mode (`/develop` upstream) this halts the chain ; in
 10. **Rename the task** : `mv tasks/{wip|review}-{task-id}.md tasks/done-{task-id}.md`
     and append `## PRs` and `## Code Review Summary` sections.
 
+    > ⚠️ **Staging après le renommage** (7 récidives, task-325 à task-351) : après le
+    > `git mv`, **ne citer QUE le nouveau nom** dans `git add`. L'ancien chemin n'existe
+    > plus, et un `git add` qui le cite échoue en `fatal` sans rien indexer. Enchaîner
+    > `git add … && git commit …`, sans pipe ni filtre sur `git add`, puis lire
+    > `git show --stat HEAD` avant le push.
+
 10b. **Recopier la table `## Timings`** du task file dans le rapport final de
     fin de cycle (elle est déjà à jour : `step.sh end` la régénère). Le coût du
     cycle fait partie du compte rendu, comme les KPIs Sonar.
