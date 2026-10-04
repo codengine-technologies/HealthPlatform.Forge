@@ -242,22 +242,19 @@ WHERE m."FolderPath" = 'INBOX' AND m."Uid" = :uid;
 | Voie | Déclencheur | Résultat | Tests | Durée |
 |---|---|---|---|---|
 | mobile | api-mail touché | ✅ verte | 29 verts, 0 flaky, 0 rouge, 0 quarantaine | 5 min 11 s |
-| angular | api-mail touché | ❌ parité rouge (suite verte) | 27 verts, 0 flaky, 0 rouge, 0 quarantaine | 5 min 12 s |
+| angular | api-mail touché | ✅ verte | 29 verts, 0 flaky, 0 rouge, 0 quarantaine | 5 min 42 s |
 
-- Catalogue : `Api/Mail/e2e/scenarios.yml` @ branche de la task (après fusion d'`origin/develop`, qui apporte task-352).
+- Catalogue : `Api/Mail/e2e/scenarios.yml` @ branche de la task, après fusion d'`origin/develop` (`8a546c07`, qui apporte task-352).
 - Quarantaines : aucune.
 - Divergences ouvertes : aucune.
 - Parcours touchés sans spec e2e modifié : aucun (task backend, aucun écran touché).
 - Démontage : complet (ports libres, aucun conteneur e2e résiduel).
-- Premier passage (avant fusion de develop) : mobile rouge sur `E2E-FOLDER-003` / `004` (sous-commande `folder` et scénarios absents de la branche api-mail, partie de `develop` antérieure à task-352). Corrigé par la fusion `8a546c07`, puis voie mobile verte.
-- **Blocage, sans rapport avec task-333** : `E2E-FOLDER-003` et `E2E-FOLDER-004` (task-352, clients mobile et angular requis) sont absents de la suite Angular du checkout courant. Le code Angular de task-352 (code-only) n'y est plus. Voir `questions/task-333.md`.
+- Historique du passage :
+  - 1ᵉʳ passage : voie mobile rouge sur `E2E-FOLDER-003` / `004`. La branche api-mail partait d'un `develop` antérieur à task-352, sans la sous-commande `folder` ni les scénarios. Corrigé par la fusion de `develop`.
+  - 2ᵉ passage : mobile verte, Angular de parité rouge. Le code Angular de task-352 n'était plus dans le checkout. L'humain l'a remis à jour.
+  - 3ᵉ passage : Angular verte. Le rapport mobile du 2ᵉ passage est repris pour la porte : api-mail est au même commit (`8a546c07`) et le mobile au même `develop`.
 
-**E2E : ROUGE** — 2 motif(s) de blocage.
-
-**Bloquant** (2) :
-
-- [angular] parité MissingRequired : E2E-FOLDER-003 (« Ouvrir un dossier supprimé depuis un autre logiciel ») est requis pour angular mais absent de sa suite, ou non joué.
-- [angular] parité MissingRequired : E2E-FOLDER-004 (« Actualiser la liste des dossiers après un changement fait dans un autre logiciel ») est requis pour angular mais absent de sa suite, ou non joué.
+**E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
 
 ### Matrice de parité
 
@@ -289,17 +286,14 @@ WHERE m."FolderPath" = 'INBOX' AND m."Uid" = :uid;
 | E2E-SIGNATURE-001 | 1 | headless | Créer puis supprimer une signature | ✅ | ✅ |
 | E2E-CONTACT-003 | 1 | headless | Créer puis supprimer un groupe de contacts | ✅ | ✅ |
 | E2E-FOLDER-002 | 1 | headless | Créer puis supprimer un dossier | ✅ | ✅ |
-| E2E-FOLDER-003 | 1 | headless | Ouvrir un dossier supprimé depuis un autre logiciel | ⛔ non joué | ✅ |
-| E2E-FOLDER-004 | 1 | headless | Actualiser la liste des dossiers après un changement fait dans un autre logiciel | ⛔ non joué | ✅ |
+| E2E-FOLDER-003 | 1 | headless | Ouvrir un dossier supprimé depuis un autre logiciel | ✅ | ✅ |
+| E2E-FOLDER-004 | 1 | headless | Actualiser la liste des dossiers après un changement fait dans un autre logiciel | ✅ | ✅ |
 | E2E-AUTH-001 | 1 | humain | Rester connecté quand le jeton d'accès expire | 👤 non joué (humain) | 👤 non joué (humain) |
 | E2E-AUTH-002 | 1 | humain | Se déconnecter | 👤 non joué (humain) | 👤 non joué (humain) |
 | E2E-LIVE-001 | 1 | headless | Recevoir un nouveau message en temps réel, sans recharger | ✅ | ✅ |
 | E2E-AI-001 | 1 | headless | Interroger l'assistant sur des messages sélectionnés et poser des questions de suite | ✅ | ✅ |
 
-**Parité : ROUGE** — 2 écart(s) :
-
-- `MissingRequired` [angular] E2E-FOLDER-003 (« Ouvrir un dossier supprimé depuis un autre logiciel ») est requis pour angular mais absent de sa suite, ou non joué.
-- `MissingRequired` [angular] E2E-FOLDER-004 (« Actualiser la liste des dossiers après un changement fait dans un autre logiciel ») est requis pour angular mais absent de sa suite, ou non joué.
+**Parité : verte** — aucun écart entre le catalogue et les suites.
 
 ## Timings
 
@@ -312,7 +306,41 @@ WHERE m."FolderPath" = 'INBOX' AND m."Uid" = :uid;
 | /sonar | ok | 25 min 57 s | 3 (1 min 20 s) | 10 (10 min 39 s) | 4 (5 min 32 s) | 2 itération(s), api-mail 3B/10T |
 | /lint-angular | skipped | 2.0 s | — | — | — | client-angular non listé dans Repos |
 | /lint-mobile | skipped | 2.1 s | — | — | — | client-mobile non listé dans Repos |
-| /e2e | failed | 29 min 51 s | 1 (31 s) | — | — | api-mail 1B/0T, e2e ×4 (17 min 10 s), parité angular : E2E-FOLDER-003/004 (task-352) absents de la suite Angular |
-| **Total cycle** | | **1 h 38 min** | **10 (3 min 01 s)** | **13 (15 min 12 s)** | **4 (5 min 32 s)** | |
+| /e2e | ok | 6 min 27 s | 1 (31 s) | — | — | api-mail 1B/0T, e2e ×7 (22 min 53 s) |
+| /review | ok | 6 min 16 s | 2 (25 s) | 2 (4 min 04 s) | — | interop-cda 1B/1T, api-mail 1B/1T |
+| /tech-writer | ok | 50 s | — | — | — | — |
+| **Total cycle** | | **1 h 22 min** | **12 (3 min 26 s)** | **15 (19 min 17 s)** | **4 (5 min 32 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (38 s), restore ×1 (8.1 s)
+
+## PRs
+
+- `interop-cda` : https://github.com/codengine-technologies/interop.cda.parser/pull/9 — label `awaiting-human-merge` (Interop.Cda.Parser 101.0.0, à merger en premier)
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/276 — label `awaiting-human-merge`
+- Aucun client touché ; aucun contrat DTO (pas de branche `dtos-mss`).
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 0 bloquant, 4 suggestions (non bloquantes).
+
+- ✅ `interop-cda` `XDM.Load` : `Failure` distingue archive invalide, panne de l'hôte et archive hors bornes ; extraction bornée (entrées, taille, ratio, vérifiés sur les tailles déclarées puis sur les octets réels) ; entrée hors de son répertoire refusée comme archive invalide ; évolution additive (`Load(fichier, xsd)` inchangée).
+- ✅ `CdaParsingService` : panne de l'hôte ou hors bornes → `IheXdmTechnicalFailureException`, comptée (`limit_exceeded` nouveau) ; archive invalide → analysée sans document (inchangé).
+- ✅ Phase B et synchro de fond : le mail dont l'archive est illisible n'est pas persisté, il reste à traiter ; le lot rend le 503 `DOCUMENT_PROCESSING_UNAVAILABLE` (même voie que la garde d'extraction de task-293).
+- ✅ Repli de lecture (export, résumé, archive des pièces jointes d'un mail « en-têtes seuls ») : lecture pure, plus aucune écriture du marqueur ; panne technique → 503 ; lecture `Header` sans extraction ; dossier refermé sur tous les chemins.
+- ✅ Balayage au démarrage : sous-répertoires d'extraction orphelins purgés, rien de plus récent qu'une heure (archive d'un autre réplica).
+- ✅ Aucun chemin, sujet, INS ni contenu dans les messages d'erreur ; les journaux d'`XDM.Load` ne citent qu'un nom de fichier GUID.
+- ⚠️ Suggestion — **archive hors bornes** : conforme à la DOD (refusée, non marquée analysée), mais le mail reste en attente et chaque enrichissement du dossier rend le 503 « Réessayez », alors que réessayer ne changera rien. Un état terminal dédié (mail signalé, sans document, hors des reprises) relève du PO.
+- ⚠️ Suggestion — `XDM.Load` journalise une archive invalide en `Error` : c'est une propriété du message de l'expéditeur, un `Warning` suffirait (bruit d'exploitation).
+- ⚠️ Suggestion — le repli relit le serveur à chaque export ou résumé d'un mail pas encore analysé, et un résumé IA calculé sur un tel mail n'est pas mis en cache (aucune ligne de contenu). Rare : l'enrichissement suit la liste presque aussitôt.
+- ⚠️ Suggestion — à l'envoi, une pièce `IHE_XDM.ZIP` hors bornes ne produit plus d'en-têtes `X-MSS-CODECDA` / `X-MSS-INS` (le parseur la refuse, l'appelant rend `[]` comme pour toute erreur).
+
+**Règle 1b (tests d'intégration d'endpoint, vus rouges)** — `ArchiveAnalysisMarkerEndToEndTests`, vraie pile (HTTP, vrais contrôleurs, vraie extraction, vrai parseur, base praticien, Dovecot) ; panne d'hôte injectée en retirant l'archive écrite avant sa lecture :
+
+| Comportement | Test | Rouge sur le code d'avant |
+|---|---|---|
+| Export d'un mail non analysé, archive illisible → 503, aucune ligne de contenu | `ExportingAMailNotYetAnalysed_WhenItsArchiveCannotBeRead_Returns503_AndWritesNothing` | `Attendu 503, reçu 200 : %PDF-1.4` |
+| Export d'un mail non analysé → 200 sans ligne de contenu ; l'enrichissement le constitue ensuite avec ses documents | `ExportingAMailNotYetAnalysed_ServesItWithoutMarkingItAnalysed_AndItsAnalysisStillHappens` | `Expected: 0, Actual: 1` |
+| Archive des pièces jointes d'un mail non analysé → 200, aucune extraction | `DownloadingTheAttachmentsOfAMailNotYetAnalysed_TriggersNoArchiveAnalysis` | `Expected: 0, Actual: 1` |
+| Lecture concurrente d'une analyse → une seule ligne de contenu | `ReadingAMailWhileItIsBeingAnalysed_LeavesASingleContentRow` | `Expected: 1, Actual: 2` |
+| Enrichissement, archive balayée avant lecture → 503, mail en attente ; hôte rétabli → analysé avec ses documents | `EnrichingAMail_WhoseArchiveVanishesBeforeItIsRead_Returns503_LeavesItPending_ThenAnalysesItOnceRestored` | `Attendu 503, reçu 200` |
+| Enrichissement, archive hors bornes → 503, non marqué | `EnrichingAMail_WhoseArchiveInflatesBeyondTheBounds_RefusesIt_AndDoesNotMarkItAnalysed` | `Attendu 503, reçu 200` |

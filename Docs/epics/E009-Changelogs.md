@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-10-04 (v1.90)
+> **Dernière mise à jour** : 2026-10-04 (v1.91)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -761,6 +761,42 @@
   - remonter `originalMarkedCancelled` et `warning` par `drafts/{id}/send` ;
   - bail renouvelable pour le verrou.
 
+### v1.91 — Un mail n'est marqué « analysé » que si ses documents médicaux ont pu être lus : fin des pertes silencieuses de comptes rendus — task-333
+
+- **Origine** : audit de bugs du 2026-09-27, AUD-09 et AUD-16. La ligne `MailContents` est le marqueur d'enrichissement : écrite à tort, elle écarte le mail de toute analyse future.
+- **PRs** (`awaiting-human-merge`, à merger ensemble, règle 11) : `interop-cda` #9 (en premier), `api-mail` #276. Aucun client, aucun contrat DTO.
+- **interop-cda — Interop.Cda.Parser 101.0.0** :
+  - `XDM.Failure` (`XdmLoadFailure` : `None`, `InvalidArchive`, `HostFailure`, `LimitExceeded`). `Load` attrapait tout et rendait un `false` indistinct ;
+  - `XdmExtractionLimits` (1 000 entrées, 256 Mio décompressés, ratio 100 au-delà de 1 Mio), vérifiées sur les tailles déclarées puis sur les octets réels ;
+  - `XdmArchiveExtractor` remplace `ExtractToDirectory`, qui rapportait une entrée évadée en `IOException`, le type désormais réservé à l'hôte ;
+  - archive absente, schéma absent, répertoire disparu en cours d'analyse, erreur d'entrée/sortie à la lecture d'un CDA (avalée par `CdaValidator`) : panne de l'hôte.
+- **AUD-16 (api-mail)** : `CdaParsingService` lève `IheXdmTechnicalFailureException` (cause `Io` ou `ArchiveLimitExceeded`) au lieu de rendre `[]`, et compte l'échec (`mssante_ihe_xdm_extraction_failures_total`, étiquette `limit_exceeded` nouvelle).
+  - Phase B (`PersistUnlessArchiveUnreadableAsync`) : mail non persisté, laissé en attente, 503 `DOCUMENT_PROCESSING_UNAVAILABLE` (même voie que la garde d'extraction de task-293).
+  - Synchro de fond : mail laissé en attente.
+  - Bornes configurables : `IheXdmOptions`, section `IheXdm`.
+- **AUD-09, choix « lecture pure »** : `ReadEmailWithoutPersistingAsync` remplace `ProcessEmailSummaryAsync`.
+  - Le repli (export, résumé, archive des pièces jointes d'un mail « en-têtes seuls ») n'écrit plus rien : ni ligne de contenu, ni `AddNewMail`.
+  - Une panne technique d'extraction ou d'analyse y rend un 503.
+  - Une lecture `Header` sans ligne en base ne déclenche plus d'extraction. `GetAttachmentFileNamesAsync` lit `Header`.
+  - Le choix suit l'étape 5 du plan de test manuel : un export ne crée aucune ligne d'enrichissement. Il supprime aussi la course avec la Phase B.
+- **Balayage au démarrage** : `IheXdmScratchDirectory.Sweep` purge aussi les sous-répertoires d'extraction orphelins, et n'efface rien de plus récent que `SweepMinimumAge` (1 h). Le balayage d'un réplica supprimait l'archive qu'un autre venait d'écrire.
+- **Règle 1b** : `ArchiveAnalysisMarkerEndToEndTests`, 6 tests HTTP sur la vraie pile (Dovecot, base praticien, vraie extraction, vrai parseur).
+  - La panne d'hôte est injectée par `IheXdmFaultInjection` (fixture `UseCases`, indexée par boîte) : l'archive écrite est retirée avant sa lecture.
+  - Les 6 tests sont rouges sur le code d'avant (`git stash` de `src/`), dont la course : `Expected: 1, Actual: 2` lignes de contenu.
+- **Tests** : interop 407. api-mail : domain 190, infrastructure 683, application 3 446, api 1 178, intégration 807 (16 ignorés).
+  - Mutations prouvées : classement et bornes d'`XDM.Load`, garde d'extraction du repli, âge minimal et sous-répertoires du balayage.
+  - 12 tests figeaient l'ancien comportement (repli qui enregistrait, noms de pièces jointes en `WithContent`, archive absente → `[]`) : mis à jour.
+- **E2E** : mobile 29/29, Angular 29/29, parité verte.
+  - Deux fusions de `develop` pendant le cycle : task-352 (catalogue `E2E-FOLDER-003` / `004`) et task-353.
+  - Un passage a été bloqué par la parité Angular, le code de task-352 étant absent du checkout. L'humain l'a remis à jour.
+- **Sonar** : Quality Gate ERROR → ERROR (conditions héritées). New coverage 98,1 %. Les 2 issues introduites (S103, S134) sont corrigées. Code smells 68 → 70, tous hors task-333.
+- **Leçons** : `conventions/csharp.md` › S103 → 3 (récidive sur un message modifié), **S134 ajoutée**.
+- **Suivis** :
+  - état terminal pour une archive hors bornes, qui rend aujourd'hui un 503 « Réessayez » à chaque enrichissement du dossier (décision PO) ;
+  - journal d'`XDM.Load` en `Warning` pour une archive invalide ;
+  - rejeu des mails déjà marqués à tort (requête d'inventaire dans le task file) ;
+  - task-334 (synchro de fond unifiée) peut démarrer.
+
 ### v1.90 — Un message supprimé depuis un autre logiciel quitte la liste et ne s'ouvre jamais vide : purge à la relecture du dossier, 404 MESSAGE_NOT_FOUND — task-353
 
 - **Origine** : bug constaté par l'humain le 2026-10-04 (Seq : `GET …/emails/content/10` → 200 en 20 ms, sans accès IMAP).
@@ -1145,6 +1181,7 @@ Audit grep complémentaires pour les couches 2 / 2bis / 3 (tasks 021 / 022 / 023
 | task-330 | **Le travail fait hors ligne n'est plus perdu au premier échec.** Gestes rejoués jusqu'au succès, gardés `Failed` et comptés après 10 tentatives (`FailedActionsCount`) ; annulation sans tentative comptée ; réclamations orphelines reprises (`ClaimedAt`) ; **remise incertaine** d'un envoi confirmé peut-être parti (503 + avertissement, `deliveryUncertain`, 409, retirable — arbitrage du 2026-10-02) ; stade SMTP typé (400 / 503 / 499) ; mise en file hors ligne soumise aux règles d'envoi. Dtos.Mss 501.0.0. PR #269 (api-mail), #38 (dtos-mss). | — (continuité de service hors ligne, AUD-08 / AUD-23 ; aucune RG déclarée) |
 | task-329 | **Un seul chemin d'envoi.** `OutgoingMailService` pour `sendmail`, brouillon, confirmation avec la carte et annule-et-remplace : pièces par référence relues (400 si illisible), annule-et-remplace sur toutes les routes, archivage « Envoyés » ; brouillon complet (pièces, accusé, opposition, blocage de réponse, cible d'annule-et-remplace) restauré à la réouverture ; verrou d'envoi à jeton (5 min). Dtos.Mss 505.0.0. PR #270 (api-mail), #39 (dtos-mss), #87 (Blazor), #84 (mobile). | — (traçabilité de l'envoi MSSanté, AMBU.MSS/va1.02, opposition Mon Espace Santé ; aucune RG déclarée) |
 | task-331 | **Le dossier est celui de la fiche.** Dossier, biologie et opposition par `PatientId` (et non plus par l'INS du document) : le document rattaché à la main y apparaît, deux fiches d'un même matricule (NIR / NIA) restent séparées ; garde d'envoi : une fiche opposée du matricule suffit à exiger l'acquittement ; `resolve` déterministe ; `Id` rendu par la recherche et « patients du jour » ; index `(PatientId, MailId, Date)`. **Extension** : recherche de la fiche et confirmation quand l'appariement ne trouve personne, sur les trois clients ; scénario E2E-PATIENT-002. **Extension 2** : détacher, changer de patient, 409 au lieu de l'écrasement silencieux, rattachement et détachement tracés (actions d'audit 37 et 38) ; E2E-PATIENT-002 v2. PRs #40 (dtos-mss), #271 (api-mail), #88 (client-blazor), #85 (client-mobile), Angular code-only. | — (identito-vigilance INS, opposition Mon Espace Santé ; AUD-05, AUD-34 ; aucune RG déclarée) |
+| task-333 | **Le marqueur « analysé » n'est posé que si les documents ont été lus.** `XDM.Failure` distingue archive invalide, panne de l'hôte et archive hors bornes (extraction bornée, Interop.Cda.Parser 101.0.0) ; panne d'analyse → mail en attente et 503 en Phase B, en attente en synchro de fond ; repli de lecture en lecture pure (AUD-09) ; liste des pièces jointes sans analyse CDA ; balayage des extractions orphelines, sans toucher aux archives récentes. PRs #9 (interop-cda), #276 (api-mail). | — (intégrité des documents MSSanté reçus, AUD-09 / AUD-16 ; aucune RG déclarée) |
 | task-353 | **Message supprimé depuis un autre logiciel (version réduite, sans coût à l'ouverture).** 404 `problem+json` `code: MESSAGE_NOT_FOUND` quand la ligne locale est purgée (sans sujet ni chemin) ; lignes locales des UID disparus purgées à la relecture du dossier (règle `uid < UidNext`) ; retrait de la liste au rafraîchissement (Angular, Blazor) et au tirer-pour-rafraîchir (mobile), jamais un contenu vide. E2E-MAIL-005, outil `message --create|--delete`. PRs #275 (api-mail), #91 (client-blazor), #88 (client-mobile), Angular code-only. | — (fiabilité de l'affichage ; évite la lecture d'un compte rendu « vide » à tort) |
 | task-352 | **Dossier supprimé depuis un autre logiciel.** 404 `problem+json` `code: FOLDER_NOT_FOUND` sans chemin (`NotFoundException` `IErrorCoded`) ; Angular (fin du spinner sans fin), Blazor (relecture à l'ouverture) et mobile : message clair, menu relu, retour à la boîte de réception, aussi au rafraîchissement d'un dossier ouvert. Extension : bouton « Actualiser les dossiers » (`GET /folders?refresh=true`). E2E-FOLDER-003 et 004, outil `folder --create|--delete`. PRs #274 (api-mail), #90 (client-blazor), #87 (client-mobile), Angular code-only. | — (robustesse d'une fonctionnalité existante ; aucune donnée de santé dans le `detail`) |
 | task-348 | **Serveur de messagerie résolu par le seul serveur (AUD-42).** Table `MailServers:Domains`, puis autoconfig MSSanté limité à `*.mssante.fr` (IP littérale et réseau non public rejetés, cache échec 15 min, log `MailDomainNotConfigured`) ; serveur saisi ignoré (200), jamais lu à la connexion ; `GET /settings/mail-server` ; encart en lecture seule sur Blazor et Angular ; squelette de chargement du corps sur mobile. Dtos.Mss 514.0.0. PRs #41 (dtos-mss), #273 (api-mail), #89 (client-blazor), #86 (client-mobile), Angular code-only. | — (sécurité : SSRF et fuite du jeton PSC fermées ; aucune RG déclarée) |
