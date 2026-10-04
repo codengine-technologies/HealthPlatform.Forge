@@ -4,7 +4,7 @@
 > **Modèle** : hand-crafted
 > **Version** : 1.85
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-04 (comptes rendus jamais perdus sur un incident technique — task-333)
+> **Dernière mise à jour** : 2026-10-04 (plus aucune trace d'un serveur saisi à la main — task-351)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1636,6 +1636,12 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
   démesuré est désormais refusée avant d'occuper l'espace de travail partagé par tous les
   praticiens. Le message concerné n'est pas marqué analysé, et le refus est consigné pour
   l'exploitant.
+
+- **v1.92 — Plus aucune trace d'un serveur de messagerie saisi à la main** (task-351) : un
+  serveur saisi avant la v1.88 restait enregistré dans les réglages du praticien, même s'il
+  n'était plus utilisé. Il est désormais effacé des réglages, et le contrat
+  de la plateforme ne permet plus de l'envoyer. Rien ne change à l'écran : l'encart du serveur
+  reste en lecture seule.
 
 - **v1.88 — Les identifiants de connexion ne partent plus que vers un serveur de confiance**
   (task-348) : un serveur de messagerie saisi à la main pouvait recevoir les identifiants

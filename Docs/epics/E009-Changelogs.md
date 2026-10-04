@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-10-04 (v1.91)
+> **Dernière mise à jour** : 2026-10-04 (v1.92)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -761,6 +761,28 @@
   - remonter `originalMarkedCancelled` et `warning` par `drafts/{id}/send` ;
   - bail renouvelable pour le verrou.
 
+### v1.92 — Les champs serveur inertes quittent le contrat des réglages, et les valeurs stockées sont effacées (AUD-42, étape 2) — task-351
+
+- **Origine** : task-348 (AUD-42) a fait résoudre le serveur de messagerie par la seule plateforme. Elle avait gardé `UserSettingsDto.ImapServerConfig` / `SmtpServerConfig` en `[Obsolete]` le temps que les fronts déployés à leur rythme (Angular TFS) cessent de les envoyer. L'humain a levé cette condition au `/start` le 2026-10-04.
+- **PRs** (`awaiting-human-merge`, à merger ensemble dans l'ordre dtos-mss → api-mail → client-blazor) : `dtos-mss` #42, `api-mail` #277, `client-blazor` #92 ; `client-angular` en code-only.
+- **dtos-mss** : suppression des deux propriétés et de la constante `ServerSelectionRetired` (publié en **517.0.0**). `MailServerConfigDto` est conservé pour `MailServerInfoDto`.
+- **api-mail** :
+  - `SettingsController.DropServerSelection` est supprimé. Un champ serveur envoyé par un ancien front est ignoré à la désérialisation.
+  - Migration FluentMigrator **20261004120000** `RetireServerSelectionFromSettings` : `jsonb - 'imapServerConfig' - 'smtpServerConfig'`, limitée aux lignes qui portent l'une des deux clés. Sa descente est vide.
+- **client-blazor** : bump `Dtos.Mss` 517.0.0.
+- **client-angular** : champs retirés de `UserSettingsDto` ; `withoutServerSelection` et ses tests sont supprimés.
+- **Règle 1b** :
+  - `GET /settings` sur des réglages stockés avant task-348 ne rend aucune propriété serveur, vérifié dans le JSON brut ; rouge sur le code d'avant ;
+  - `POST` avec un serveur : accepté, rien n'est stocké ;
+  - test de migration sur les migrations de production rejouées.
+- **Tests** :
+  - api-mail (après la fusion de task-333) : domain 190, infrastructure 683, api 1 176, application 3 446, intégration 809 ;
+  - Blazor 423 ;
+  - Angular `libs/mss` 581.
+- **E2E** : mobile 30/30, Angular 30/30, parité verte, catalogue inchangé.
+- **Sonar** : Quality Gate OK → OK, aucun constat sur le code de la task, `SettingsController` couvert à 100 %.
+- **Leçons** : piège `git add` sur un chemin renommé, 7ᵉ occurrence. La garde est ajoutée à l'étape 10 de `/review`, en attente de la relecture humaine.
+
 ### v1.91 — Un mail n'est marqué « analysé » que si ses documents médicaux ont pu être lus : fin des pertes silencieuses de comptes rendus — task-333
 
 - **Origine** : audit de bugs du 2026-09-27, AUD-09 et AUD-16. La ligne `MailContents` est le marqueur d'enrichissement : écrite à tort, elle écarte le mail de toute analyse future.
@@ -1182,6 +1204,7 @@ Audit grep complémentaires pour les couches 2 / 2bis / 3 (tasks 021 / 022 / 023
 | task-329 | **Un seul chemin d'envoi.** `OutgoingMailService` pour `sendmail`, brouillon, confirmation avec la carte et annule-et-remplace : pièces par référence relues (400 si illisible), annule-et-remplace sur toutes les routes, archivage « Envoyés » ; brouillon complet (pièces, accusé, opposition, blocage de réponse, cible d'annule-et-remplace) restauré à la réouverture ; verrou d'envoi à jeton (5 min). Dtos.Mss 505.0.0. PR #270 (api-mail), #39 (dtos-mss), #87 (Blazor), #84 (mobile). | — (traçabilité de l'envoi MSSanté, AMBU.MSS/va1.02, opposition Mon Espace Santé ; aucune RG déclarée) |
 | task-331 | **Le dossier est celui de la fiche.** Dossier, biologie et opposition par `PatientId` (et non plus par l'INS du document) : le document rattaché à la main y apparaît, deux fiches d'un même matricule (NIR / NIA) restent séparées ; garde d'envoi : une fiche opposée du matricule suffit à exiger l'acquittement ; `resolve` déterministe ; `Id` rendu par la recherche et « patients du jour » ; index `(PatientId, MailId, Date)`. **Extension** : recherche de la fiche et confirmation quand l'appariement ne trouve personne, sur les trois clients ; scénario E2E-PATIENT-002. **Extension 2** : détacher, changer de patient, 409 au lieu de l'écrasement silencieux, rattachement et détachement tracés (actions d'audit 37 et 38) ; E2E-PATIENT-002 v2. PRs #40 (dtos-mss), #271 (api-mail), #88 (client-blazor), #85 (client-mobile), Angular code-only. | — (identito-vigilance INS, opposition Mon Espace Santé ; AUD-05, AUD-34 ; aucune RG déclarée) |
 | task-333 | **Le marqueur « analysé » n'est posé que si les documents ont été lus.** `XDM.Failure` distingue archive invalide, panne de l'hôte et archive hors bornes (extraction bornée, Interop.Cda.Parser 101.0.0) ; panne d'analyse → mail en attente et 503 en Phase B, en attente en synchro de fond ; repli de lecture en lecture pure (AUD-09) ; liste des pièces jointes sans analyse CDA ; balayage des extractions orphelines, sans toucher aux archives récentes. PRs #9 (interop-cda), #276 (api-mail). | — (intégrité des documents MSSanté reçus, AUD-09 / AUD-16 ; aucune RG déclarée) |
+| task-351 | **Retrait des champs serveur du contrat des réglages (AUD-42, étape 2).** `UserSettingsDto.ImapServerConfig` / `SmtpServerConfig` supprimés (Dtos.Mss 517) ; `DropServerSelection` retiré ; migration `20261004120000` qui efface les deux clés des réglages stockés. Test d'intégration sur le JSON brut de `GET /settings`. PRs #42 (dtos-mss), #277 (api-mail), #92 (client-blazor), Angular code-only. | — (dette de contrat ; plus aucune trace d'un serveur saisi en base) |
 | task-353 | **Message supprimé depuis un autre logiciel (version réduite, sans coût à l'ouverture).** 404 `problem+json` `code: MESSAGE_NOT_FOUND` quand la ligne locale est purgée (sans sujet ni chemin) ; lignes locales des UID disparus purgées à la relecture du dossier (règle `uid < UidNext`) ; retrait de la liste au rafraîchissement (Angular, Blazor) et au tirer-pour-rafraîchir (mobile), jamais un contenu vide. E2E-MAIL-005, outil `message --create|--delete`. PRs #275 (api-mail), #91 (client-blazor), #88 (client-mobile), Angular code-only. | — (fiabilité de l'affichage ; évite la lecture d'un compte rendu « vide » à tort) |
 | task-352 | **Dossier supprimé depuis un autre logiciel.** 404 `problem+json` `code: FOLDER_NOT_FOUND` sans chemin (`NotFoundException` `IErrorCoded`) ; Angular (fin du spinner sans fin), Blazor (relecture à l'ouverture) et mobile : message clair, menu relu, retour à la boîte de réception, aussi au rafraîchissement d'un dossier ouvert. Extension : bouton « Actualiser les dossiers » (`GET /folders?refresh=true`). E2E-FOLDER-003 et 004, outil `folder --create|--delete`. PRs #274 (api-mail), #90 (client-blazor), #87 (client-mobile), Angular code-only. | — (robustesse d'une fonctionnalité existante ; aucune donnée de santé dans le `detail`) |
 | task-348 | **Serveur de messagerie résolu par le seul serveur (AUD-42).** Table `MailServers:Domains`, puis autoconfig MSSanté limité à `*.mssante.fr` (IP littérale et réseau non public rejetés, cache échec 15 min, log `MailDomainNotConfigured`) ; serveur saisi ignoré (200), jamais lu à la connexion ; `GET /settings/mail-server` ; encart en lecture seule sur Blazor et Angular ; squelette de chargement du corps sur mobile. Dtos.Mss 514.0.0. PRs #41 (dtos-mss), #273 (api-mail), #89 (client-blazor), #86 (client-mobile), Angular code-only. | — (sécurité : SSRF et fuite du jeton PSC fermées ; aucune RG déclarée) |

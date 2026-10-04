@@ -101,7 +101,8 @@ inertes, et nettoyer les valeurs résiduelles en base.
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 9 min 46 s | — | — | — | e2e ×3 (9 min 17 s) |
 | /review | ok | 7 min 15 s | 3 (30 s) | 6 (5 min 08 s) | — | dtos-mss 1B/0T, api-mail 1B/5T, client-blazor 1B/1T |
-| **Total cycle** | | **36 min 06 s** | **7 (1 min 43 s)** | **16 (15 min 51 s)** | **2 (35 s)** | |
+| /tech-writer | ok | 24 s | — | — | — | — |
+| **Total cycle** | | **36 min 31 s** | **7 (1 min 43 s)** | **16 (15 min 51 s)** | **2 (35 s)** | |
 
 Autres commandes mesurées : lint ×1 (9.4 s), nuget-wait ×1 (10 s)
 
