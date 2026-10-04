@@ -1038,7 +1038,8 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 - **v1.90 — Un message supprimé ailleurs n'apparaît plus vide** (task-353) :
   - **Plus de compte rendu « vide » trompeur.** Ouvrir un message supprimé ou déplacé depuis un autre logiciel affiche « Ce message n'existe plus : il a été supprimé ou déplacé depuis un autre logiciel de messagerie. » Avant, l'application affichait un contenu vide, qu'on pouvait prendre pour un document vide ou perdu.
-  - **Il quitte la liste.** Sur le web (Angular et Blazor), au rafraîchissement automatique ; sur mobile, au geste « tirer pour rafraîchir » ; partout, dès qu'on tente de l'ouvrir. Les compteurs du dossier suivent.
+  - **Il quitte la liste.** Sur le web (Angular et Blazor), au rafraîchissement automatique ; sur mobile, au geste « tirer pour rafraîchir ». Les compteurs du dossier suivent.
+  - Ouvert juste avant ce rafraîchissement (une demi-minute au plus), il montre encore son contenu d'origine, puis disparaît. Ce choix évite de ralentir l'ouverture des messages, et le cas est rare.
   - **Un message tout juste arrivé n'est jamais retiré par erreur.**
   - Sur les trois applications : web Angular, web Blazor et mobile.
 

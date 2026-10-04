@@ -337,6 +337,111 @@ Un seul push par repo : api-mail `5a26c443`, Blazor `083671c`, mobile `7cc46c3`.
   - autres lectures (étiquettes, fil, résumé IA, recherche, pièces jointes) servies jusqu'à la relecture suivante du dossier : suivi ;
   - primitive de purge commune avec la synchro de fond et l'enrichissement.
 
+## Révision du 2026-10-04 — version réduite (décision humaine)
+
+> **Décision** : sur le terrain, le cas est rare. L'humain demande de ne pas pénaliser les performances : la **garde à l'ouverture d'un message est retirée**.
+>
+> Cette garde relisait le statut du dossier sur le serveur (un STATUS) **sous le verrou de session `imap_session`**. C'est le goulet mesuré au banc à 500 et 1000 praticiens.
+
+### Ce qui reste (aucun coût sur l'ouverture ni sur la page d'en-têtes)
+1. **Purge à la relecture réelle d'un dossier.** Elle n'a lieu que lorsque le compte ou `UidNext` a changé : les lignes locales des UID disparus et leurs caches par message sont retirés, soit une requête en base par changement de dossier.
+2. **404 `MESSAGE_NOT_FOUND`** quand la ligne locale a été purgée et que le serveur n'a plus le message (repli IMAP existant). Jamais un contenu vide.
+3. **Clients** : retrait de la liste au rafraîchissement, avis « Ce message n'existe plus… » sur ce 404, détail refermé si le message ouvert disparaît.
+4. **Un dossier devenu vide est mis en cache.** Avant, chaque rafraîchissement refaisait une lecture IMAP complète : c'est un gain net.
+
+### Ce qui est abandonné
+- La garantie « clic immédiat ». Un message supprimé ailleurs puis ouvert **avant** la relecture suivante du dossier (au plus ≈ 30 s sur le web) affiche encore son ancien contenu (le vrai, pas un contenu vide). Il disparaît au rafraîchissement suivant.
+- Code retiré : `IsMessageGoneFromServerAsync`, le paramètre `bypassStatusCache`, la garde du contrôleur et ses tests unitaires, le test d'intégration « clic immédiat avec cache chaud » et son aide de cache.
+
+### DOD et plan de test ajustés
+- La DOD « l'ouverture d'un message introuvable affiche le message clair » s'entend **après la relecture du dossier** (rafraîchissement ou autre appareil).
+- Plan de test, étape 3 : supprimer dans Thunderbird, **attendre le rafraîchissement** (ou relire la boîte depuis un autre appareil), puis ouvrir la ligne encore affichée sur un client sans rafraîchissement (mobile) : « Ce message n'existe plus… ».
+
+### Preuves (révision)
+- **Intégration** : `OpeningAMessageDeletedByAnotherClient_…` passe désormais par la relecture du dossier avant le clic.
+  - Mutation, purge neutralisée : **3 rouges** (ouverture, en-têtes, dossier), le cas nominal reste vert.
+  - Restauré par copie, puis `touch` et recompilation.
+- **E2E-MAIL-005** :
+  - **mobile** : message déposé hors de l'application, supprimé ailleurs, dossier relu par un second appareil (`OtherDevice.inboxUids`), puis clic sur la ligne encore affichée → avis clair, puis retrait de la liste ;
+  - **Angular** : message ouvert, supprimé ailleurs pendant la lecture → au rafraîchissement, détail refermé avec l'avis, ligne retirée ;
+  - les deux sont verts, puis **rouges sous mutation** (mobile : `onMailGone` neutralisé ; Angular : réconciliation du rafraîchissement neutralisée), puis restaurés et verts.
+
+## E2E log — version réduite
+
+| Voie | Déclencheur | Résultat | Tests |
+|---|---|---|---|
+| mobile | `api-mail`, `client-mobile` touchés | ✅ verte | 30 verts, 0 flaky, 0 rouge, 0 quarantaine |
+| angular | `api-mail`, `client-angular` touchés | ✅ verte | 30 verts, 0 flaky, 0 rouge, 0 quarantaine |
+
+- Version réduite, voies jouées une fois, vertes du premier coup.
+- Backend : `api-mail` à la branche ; mobile `e10e22c` ; Angular `feature/nova-rewriting-mss` avec les modifications non commitées de la task.
+- **E2E-MAIL-005 v1** :
+  - **mobile** : message supprimé ailleurs, dossier relu par un second appareil, clic sur la ligne encore affichée → avis clair, puis retrait de la liste ;
+  - **Angular** : message ouvert puis supprimé ailleurs → au rafraîchissement, le détail se referme avec l'avis et la ligne part.
+  - Prouvé rouge par mutation sur les deux clients.
+- Porte `gate` : **code 0**. Démontage complet.
+
+**E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
+
+### Matrice de parité
+
+| Scénario | v | Mode | Titre | angular | mobile |
+|---|---|---|---|---|---|
+| E2E-INBOX-001 | 1 | headless | Filtrer la boîte de réception, basculer liste / conversation, ouvrir la recherche | ✅ | ✅ |
+| E2E-FOLDER-001 | 1 | headless | Naviguer vers les dossiers Archive et Corbeille | ✅ | ✅ |
+| E2E-PATIENT-001 | 1 | headless | Afficher la vue patients | ✅ | ✅ |
+| E2E-PATIENT-002 | 2 | headless | Rattacher à la main un document sans INS à un patient choisi par recherche, puis le détacher | ✅ | ✅ |
+| E2E-CONTACT-001 | 1 | humain | Rechercher dans le carnet et interroger l'annuaire national | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-SETTINGS-001 | 1 | headless | Changer le filtre par défaut et le retrouver après rechargement | ✅ | ✅ |
+| E2E-MAIL-001 | 1 | headless | Marquer un message lu puis non lu | ✅ | ✅ |
+| E2E-MAIL-002 | 1 | headless | Tout sélectionner et marquer lu en masse | ✅ | ✅ |
+| E2E-DETAIL-001 | 1 | headless | Répondre et transférer depuis la lecture d'un message | ✅ | ✅ |
+| E2E-COMPOSE-001 | 1 | headless | Envoyer un message, le recevoir, le lire, le supprimer | ✅ | ✅ |
+| E2E-COMPOSE-002 | 1 | headless | Faire corriger l'orthographe de son texte, appliquer la correction, puis envoyer | ✅ | ✅ |
+| E2E-MAIL-003 | 1 | headless | Signaler puis ne plus signaler un message | ✅ | ✅ |
+| E2E-MAIL-004 | 1 | headless | Déplacer un message vers Archive puis le ramener | ✅ | ✅ |
+| E2E-MAIL-005 | 1 | headless | Un message supprimé depuis un autre logiciel quitte la liste et ne s'ouvre jamais vide | ✅ | ✅ |
+| E2E-DRAFT-001 | 1 | headless | Créer un brouillon, le reprendre, le supprimer | ✅ | ✅ |
+| E2E-DRAFT-002 | 1 | headless | Envoyer un message à pièce jointe après l'enregistrement automatique du brouillon | ✅ | ✅ |
+| E2E-BIO-001 | 1 | headless | Acquitter un compte rendu de biologie | ✅ | ✅ |
+| E2E-DASH-001 | 1 | headless | Afficher les widgets du tableau de bord | ✅ | ✅ |
+| E2E-DETAIL-002 | 1 | headless | Basculer entre texte brut et HTML à la lecture | ✅ | ✅ |
+| E2E-DETAIL-003 | 1 | headless | Répondre à tous depuis la lecture d'un message | ✅ | ✅ |
+| E2E-SETTINGS-002 | 1 | headless | Changer la vue par défaut et la retrouver après rechargement | ✅ | ✅ |
+| E2E-SEARCH-001 | 1 | headless | Rechercher un message et ouvrir la recherche avancée | ✅ | ✅ |
+| E2E-ATTACH-001 | 1 | headless | Voir les pièces jointes d'un message | ✅ | ✅ |
+| E2E-CONTACT-002 | 1 | headless | Créer puis supprimer un contact | ✅ | ✅ |
+| E2E-SIGNATURE-001 | 1 | headless | Créer puis supprimer une signature | ✅ | ✅ |
+| E2E-CONTACT-003 | 1 | headless | Créer puis supprimer un groupe de contacts | ✅ | ✅ |
+| E2E-FOLDER-002 | 1 | headless | Créer puis supprimer un dossier | ✅ | ✅ |
+| E2E-FOLDER-003 | 1 | headless | Ouvrir un dossier supprimé depuis un autre logiciel | ✅ | ✅ |
+| E2E-FOLDER-004 | 1 | headless | Actualiser la liste des dossiers après un changement fait dans un autre logiciel | ✅ | ✅ |
+| E2E-AUTH-001 | 1 | humain | Rester connecté quand le jeton d'accès expire | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-AUTH-002 | 1 | humain | Se déconnecter | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-LIVE-001 | 1 | headless | Recevoir un nouveau message en temps réel, sans recharger | ✅ | ✅ |
+| E2E-AI-001 | 1 | headless | Interroger l'assistant sur des messages sélectionnés et poser des questions de suite | ✅ | ✅ |
+
+**Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## Sonar log — version réduite
+
+- Analyse complète du commit réduit, cinq suites vertes (intégration 801 + 16). **Quality Gate OK**, new coverage 97,5 %, coverage 97,9 %, smells 13 ; seul reste S107 (antérieur). 0 itération.
+
+## Lint — version réduite
+
+- Angular : 0 erreur (43 avertissements préexistants) ; suite e2e compilée. Mobile : All files pass linting.
+
+## Code Review Summary — version réduite
+
+**APPROVED** — 0 bloquant.
+
+- La validation de `/review` n'est **pas relancée une troisième fois** sur des arbres identiques :
+  - API : construite et testée en entier par `/sonar` sur le commit poussé (domain 190, infrastructure 683, api 1 178, application 3 433, intégration 801 + 16) ;
+  - Blazor : inchangé depuis la validation précédente (423) ;
+  - mobile et Angular : seuls leurs specs e2e ont changé, compilés et verts dans `/e2e`.
+- `SeededThreadsAreCountableTests` (collection PostgreSql, sans lien avec IMAP ni la purge) a été rouge une fois dans un run complet, vert seul et dans trois autres runs : rouge d'ordre préexistant → suivi.
+- PRs #275, #91 et #88 mises à jour (corps réécrit pour la version réduite), label `awaiting-human-merge` conservé.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-353 --sync` — ne pas éditer à la main)*
@@ -344,13 +449,13 @@ Un seul push par repo : api-mail `5a26c443`, Blazor `083671c`, mobile `7cc46c3`.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 27 s | — | — | — | — |
-| /develop | ok | 43 min 41 s | 8 (55 s) | 14 (11 min 37 s) | — | api-mail 6B/5T, client-blazor 0B/3T, client-mobile 2B/4T, client-angular 0B/2T |
-| /sonar | ok | 14 min 37 s | 3 (40 s) | 11 (11 min 17 s) | 4 (1 min 12 s) | 1 itération(s), api-mail 3B/11T |
-| /lint-angular | ok | 3 min 04 s | 1 (21 s) | 1 (51 s) | — | 1 itération(s), client-angular 1B/1T |
-| /lint-mobile | ok | 11 s | — | — | — | — |
-| /e2e | ok | 24 min 35 s | — | — | — | e2e ×7 (19 min 56 s) |
+| /develop | ok | 13 min 11 s | 9 (1 min 09 s) | 15 (14 min 37 s) | — | api-mail 7B/6T, client-blazor 0B/3T, client-mobile 2B/4T, client-angular 0B/2T, version réduite |
+| /sonar | ok | 6 min 25 s | 4 (56 s) | 16 (16 min 28 s) | 6 (1 min 48 s) | api-mail 4B/16T, version réduite |
+| /lint-angular | ok | 24 s | 1 (21 s) | 1 (51 s) | — | 1 itération(s), client-angular 1B/1T, version réduite |
+| /lint-mobile | ok | 6.1 s | — | — | — | version réduite |
+| /e2e | ok | 10 min 43 s | — | — | — | e2e ×10 (29 min 02 s), version réduite |
 | /review | ok | 6 min 15 s | 4 (31 s) | 4 (3 min 45 s) | — | api-mail 1B/1T, client-blazor 1B/1T, client-mobile 1B/1T, client-angular 1B/1T |
-| /tech-writer | ok | 34 s | — | — | — | — |
-| **Total cycle** | | **1 h 33 min** | **16 (2 min 28 s)** | **30 (27 min 33 s)** | **4 (1 min 12 s)** | |
+| /tech-writer | ok | 0.5 s | — | — | — | version réduite |
+| **Total cycle** | | **37 min 35 s** | **18 (2 min 59 s)** | **36 (35 min 43 s)** | **6 (1 min 48 s)** | |
 
-Autres commandes mesurées : lint ×3 (55 s)
+Autres commandes mesurées : lint ×5 (1 min 23 s)
