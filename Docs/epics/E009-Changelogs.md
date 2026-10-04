@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-10-04 (v1.92)
+> **Dernière mise à jour** : 2026-10-04 (v1.93)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -761,6 +761,37 @@
   - remonter `originalMarkedCancelled` et `warning` par `drafts/{id}/send` ;
   - bail renouvelable pour le verrou.
 
+### v1.93 — Aucune donnée de santé ni saisie du praticien dans les journaux et la télémétrie (AUD-37, AUD-55, AUD-60, AUD-61) — task-341
+
+- **Origine** : audit de détection de bugs du 2026-09-27. Règle rappelée : l'INS et les données de santé vont dans le journal d'audit en base, jamais dans Seq, Graylog ou OTLP (suite de task-184 et task-265).
+- **PR** : `api-mail` #279 (`awaiting-human-merge`). Aucun autre repo touché.
+- **AUD-37, tagging** : `EmailTaggingService.ParseTagsFromResponse` journalisait en Warning la réponse brute du modèle sur JSON invalide. Le gabarit fait citer au modèle les valeurs et les diagnostics : c'était donc une donnée de santé par construction. La journalisation garde désormais `ResponseLength` et `ExceptionType` seulement, et l'échec est compté par une nouvelle cause, `TaggingFailureInvalidResponse` (`invalid_response`), de `mssante_tagging_failures_total`.
+- **AUD-55, saisies libres IA** :
+  - `AiController` journalisait la description d'un modèle en Information, et chaque morceau du texte corrigé en Debug (niveau actif en Staging) ;
+  - `AiTextService` journalisait aussi la description, et l'exception JSON du modèle généré.
+  - Les trois emplacements ne journalisent plus que des longueurs, et le type de l'exception.
+- **Balayage complémentaire** (même règle) :
+  - `EmailSummaryService` : `Subject` remplacé par `Uid`, ×4 ;
+  - `MailCancellationService` : `Subject` retiré ;
+  - `MdnService` : corps de l'accusé de lecture remplacé par sa longueur ;
+  - deux noms trompeurs renommés, `{Subject}` d'un certificat devenu `{Issuer}`, et le booléen `{DtoContent}` devenu `{HasDtoContent}`.
+- **AUD-60** : `POST account/mss-imap-test` est supprimée. Exclue du middleware, elle partait sans jeton PSC et échouait toujours, en journalisant l'adresse candidate en clair (EventId 3700). Avec elle disparaissent l'exclusion `ExcludedPathPrefixes`, l'attribut `AllowMissingMssEmailAttribute`, devenu orphelin, et le paramètre mort `allowMissingMssEmail` du middleware. Les DTOs `MssImapTest*` restent dans `dtos-mss`, car le rattachement les utilise.
+- **AUD-61** : le label `folder` de `mssante_sync_duration_seconds` et `mssante_sync_emails_total` passe par `FolderMetricCategory.Of`, qui rend `inbox`, `sent`, `drafts`, `trash` ou `other`, appliqué dans les recorders eux-mêmes. Un nom connu n'est reconnu qu'à la racine ou directement sous `INBOX`. Aucune requête Grafana ni aucun script du workspace ne lit ce label.
+- **Garde-fou** : `SensitiveLogTemplateScanTests` gagne une seconde nomenclature, `FreeContentPlaceholder` : Response, Completion, Answer, Explanation, Chunk, Prompt, Question, Description, Text, Content, Body, Html, Markdown, Snippet, Excerpt, Subject. Elle est appliquée au dernier mot PascalCase, et les booléens `Has*` / `Is*` sont admis. Elle était rouge sur 12 gabarits, et elle l'est par mutation sur un `{Response}` réintroduit.
+- **Règle 1b** :
+  - `AiFreeTextOutOfLogsIntegrationTests` (pipeline HTTP réel, journaux capturés en Trace) : `generate-template` et `correct-text`, rouges sur le code d'avant ;
+  - `StaleClientEmailMailboxManagementIntegrationTests.RetiredImapTestRoute_…` : 404, rouge sur le code d'avant (500), et par mutation (200) ;
+  - tagging et label `folder` : déclenchés par le consumer et par la synchronisation de fond, prouvés en unitaire (`TaggingInvalidResponseLogHygieneTests`, `FolderMetricLabelTests`), rouges sur le code d'avant.
+- **Tests** (api-mail) : domain 190, infrastructure 683, application 3 473, api 1 173, intégration 813 + 16 ignorés.
+- **E2E** :
+  - 1er passage rouge sur une parité **héritée** : `E2E-MAIL-005` était requis côté Angular (task-353), mais son test, jamais commité en mode code-only, avait disparu du clone ;
+  - 2e passage après restauration par l'humain : mobile 30/30, Angular 30/30, parité verte.
+- **Sonar** : Quality Gate ERROR → ERROR (conditions héritées, 68 violations et 13 hotspots inchangés). Aucun finding introduit. 3 conditions découvertes, couvertes (100 % sur les fichiers de la task).
+- **Leçons** :
+  - S103, 4e occurrence (regex du garde, attrapée avant commit par le contrôle mécanique) ;
+  - nouvelle convention e2e `test-angular-non-commite`.
+- **Limites** : les **journaux** portent encore le chemin de dossier (`{Folder}`) en de nombreux endroits. AUD-61 visait les labels de métriques, et une task dédiée est à envisager. La purge des journaux Seq déjà accumulés reste à statuer avec le DPO.
+
 ### v1.92 — Les champs serveur inertes quittent le contrat des réglages, et les valeurs stockées sont effacées (AUD-42, étape 2) — task-351
 
 - **Origine** : task-348 (AUD-42) a fait résoudre le serveur de messagerie par la seule plateforme. Elle avait gardé `UserSettingsDto.ImapServerConfig` / `SmtpServerConfig` en `[Obsolete]` le temps que les fronts déployés à leur rythme (Angular TFS) cessent de les envoyer. L'humain a levé cette condition au `/start` le 2026-10-04.
@@ -1208,6 +1239,7 @@ Audit grep complémentaires pour les couches 2 / 2bis / 3 (tasks 021 / 022 / 023
 | task-353 | **Message supprimé depuis un autre logiciel (version réduite, sans coût à l'ouverture).** 404 `problem+json` `code: MESSAGE_NOT_FOUND` quand la ligne locale est purgée (sans sujet ni chemin) ; lignes locales des UID disparus purgées à la relecture du dossier (règle `uid < UidNext`) ; retrait de la liste au rafraîchissement (Angular, Blazor) et au tirer-pour-rafraîchir (mobile), jamais un contenu vide. E2E-MAIL-005, outil `message --create|--delete`. PRs #275 (api-mail), #91 (client-blazor), #88 (client-mobile), Angular code-only. | — (fiabilité de l'affichage ; évite la lecture d'un compte rendu « vide » à tort) |
 | task-352 | **Dossier supprimé depuis un autre logiciel.** 404 `problem+json` `code: FOLDER_NOT_FOUND` sans chemin (`NotFoundException` `IErrorCoded`) ; Angular (fin du spinner sans fin), Blazor (relecture à l'ouverture) et mobile : message clair, menu relu, retour à la boîte de réception, aussi au rafraîchissement d'un dossier ouvert. Extension : bouton « Actualiser les dossiers » (`GET /folders?refresh=true`). E2E-FOLDER-003 et 004, outil `folder --create|--delete`. PRs #274 (api-mail), #90 (client-blazor), #87 (client-mobile), Angular code-only. | — (robustesse d'une fonctionnalité existante ; aucune donnée de santé dans le `detail`) |
 | task-348 | **Serveur de messagerie résolu par le seul serveur (AUD-42).** Table `MailServers:Domains`, puis autoconfig MSSanté limité à `*.mssante.fr` (IP littérale et réseau non public rejetés, cache échec 15 min, log `MailDomainNotConfigured`) ; serveur saisi ignoré (200), jamais lu à la connexion ; `GET /settings/mail-server` ; encart en lecture seule sur Blazor et Angular ; squelette de chargement du corps sur mobile. Dtos.Mss 514.0.0. PRs #41 (dtos-mss), #273 (api-mail), #89 (client-blazor), #86 (client-mobile), Angular code-only. | — (sécurité : SSRF et fuite du jeton PSC fermées ; aucune RG déclarée) |
+| task-341 | **Aucune donnée de santé ni saisie du praticien dans les journaux et la télémétrie.** Réponse de tagging illisible journalisée par sa longueur et comptée (`invalid_response`, AUD-37) ; description et texte corrigé des outils IA réduits à leur longueur, objets de mail et corps d'accusé retirés (AUD-55) ; route morte `mss-imap-test` et son exclusion supprimées (AUD-60) ; label `folder` des métriques borné à 5 catégories (AUD-61) ; garde `FreeContentPlaceholder` dans le scan des gabarits de log. PR #279 (api-mail). | — (PGSSI-S : journaux techniques sans donnée de santé ; aucune RG déclarée) |
 | task-339 | **Opérations de dossiers fiables.** Expunge ciblé par UID (AUD-29), renommage qui emporte sous-dossiers, mails et actions en attente (AUD-30), purge des mails des dossiers absents du serveur et reprise des orphelins, vue et badges par étiquette sur INBOX et sa génération (AUD-35), caches et trace des déplacements (AUD-49) ; AUD-50 non reproduit. PR #272 (api-mail). | — (intégrité des opérations de messagerie ; tracé PGSSI-S des déplacements) |
 | task-338 | **La recherche dit la vérité.** Pannes signalées au lieu d'une liste vide (503, 499, mode dégradé `IsDegraded` / `DegradedSources` en hybride) ; chaque filtre du contrat appliqué (patient sur un même document, répondu, brouillon, dates de document et de biologie, `false` = « sans », type inconnu → 400, filtres seuls bornés) ; prédicat dossier/étiquette unique pour toutes les requêtes ; pertinence filtrée une seule fois. Dtos.Mss 500.0.0. 21 tests d'intégration d'endpoint rouges sur le code d'avant. PR #268 (api-mail), #37 (dtos-mss). | — (exactitude de la recherche — AUD-38, 39, 40, 52 ; aucune RG déclarée) |
 | done-task-002 | Masquage du préfixe `XDM/1.0/DDM+` dans l'objet | RG-E009-029 |

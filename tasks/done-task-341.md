@@ -100,7 +100,8 @@ dossier personnel** n'atteigne les journaux techniques ou la télémétrie, et q
 | /lint-mobile | skipped | 3.2 s | — | — | — | client-mobile non listé dans Repos |
 | /e2e | ok | 13 min 45 s | — | — | — | e2e ×6 (23 min 52 s), 2e passage vert, parite verte apres restauration E2E-MAIL-005 angular |
 | /review | ok | 5 min 46 s | 1 (35 s) | 1 (3 min 47 s) | — | api-mail 1B/1T |
-| **Total cycle** | | **1 h 07 min** | **13 (3 min 04 s)** | **22 (18 min 49 s)** | **4 (4 min 57 s)** | |
+| /tech-writer | ok | 1 min 29 s | — | — | — | — |
+| **Total cycle** | | **1 h 08 min** | **13 (3 min 04 s)** | **22 (18 min 49 s)** | **4 (4 min 57 s)** | |
 
 ## Develop log
 
