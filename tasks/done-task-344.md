@@ -63,6 +63,25 @@ d'appareils et de réplicas qui l'ouvrent en même temps — garanti par la base
 - [ ] Non-régression : tests d'enrichissement existants (task-079, task-228, task-293) verts
 - [ ] Aucune INS, contenu CDA ni corps de mail dans les logs
 
+## Extension — reprise des étiquettes IA manquantes (demande humaine du 2026-10-04)
+
+> Demandée par l'humain après la revue, **sur la branche de task-344** : « si le calcul du tag est en échec à cause
+> d'une API IA, que se passera-t-il ? » — réponse : le mail restait **définitivement** sans étiquette IA (« Urgent »),
+> l'échec étant avalé sans relance ni reprise. « Fais-le directement sur cette branche. »
+
+### Objectif
+Un mail analysé dont l'étiquetage IA a échoué (fournisseur indisponible, délai dépassé, message de bus non publié)
+est **repris automatiquement**, sans retéléchargement, tant qu'il est récent — et sans marteler un fournisseur en panne.
+
+### Definition of Done (extension)
+- [ ] Le service de suggestion distingue « aucune étiquette » de « échec » (contrat `TagSuggestionOutcome`)
+- [ ] Deux marqueurs par mail : étiquetage **demandé** (posé à l'enregistrement du contenu et à chaque reprise) et étiquetage **fait** (posé quand l'IA a répondu, même sans étiquette)
+- [ ] Reprise par boîte en fin de synchronisation de fond : mails reçus depuis moins de 7 jours, analysés, jamais étiquetés, demande de plus de 15 minutes ; arrêt au premier échec ; flags `ai_pipeline` + `ai_auto_tagging` respectés ; brouillons, envoyés, corbeille exclus
+- [ ] Migration : colonnes ajoutées, **historique marqué étiqueté** (aucune rafale d'appels IA au déploiement), index partiel des mails en attente ; règle 7c
+- [ ] Tests d'intégration PostgreSQL (coureur de production) : mail en échec repris et étiqueté ; mail étiqueté sans étiquette non repris ; fenêtre, délai et exclusions ; arrêt au premier échec ; migration ; preuves rouges par mutation consignées
+- [ ] Tests unitaires par branche (service de suggestion, étiqueteur, reprise, accroche de la synchronisation)
+- [ ] Une panne de la reprise ne fait jamais échouer la synchronisation ; aucune donnée de santé dans les journaux
+
 ## Manual Test Plan
 
 1. `cd Api/Mail && dotnet run --project src/AppHost` (5 réplicas) ; seeder une boîte avec des mails porteurs d'`IHE_XDM.ZIP` (skill `loadtest-skill`).
@@ -97,14 +116,14 @@ d'appareils et de réplicas qui l'ouvrent en même temps — garanti par la base
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 16 s | — | — | — | — |
-| /develop | ok | 37 min 23 s | 2 (14 s) | 12 (11 min 18 s) | — | api-mail 2B/12T |
-| /sonar | ok | 25 min 38 s | 3 (37 s) | 12 (13 min 56 s) | 4 (1 min 12 s) | 1 itération(s), api-mail 3B/12T |
-| /lint-angular | skipped | 15 s | — | — | — | client-angular non touche par la task (5 modifs preexistantes de task-351/env locaux) |
-| /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touche par la task |
-| /e2e | ok | 10 min 15 s | — | — | — | e2e ×3 (9 min 24 s) |
-| /review | ok | 6 min 03 s | 1 (13 s) | 1 (3 min 08 s) | — | api-mail 1B/1T |
-| /tech-writer | ok | 1 min 23 s | — | — | — | — |
-| **Total cycle** | | **1 h 21 min** | **6 (1 min 06 s)** | **25 (28 min 23 s)** | **4 (1 min 12 s)** | |
+| /develop | ok | — | 4 (22 s) | 23 (21 min 52 s) | — | api-mail 4B/23T, extension reprise etiquetage IA; no start marker |
+| /sonar | ok | 7 min 40 s | 4 (55 s) | 18 (19 min 45 s) | 6 (1 min 48 s) | 1 itération(s), api-mail 4B/18T, extension |
+| /lint-angular | skipped | 0.4 s | — | — | — | repo non touche (extension) |
+| /lint-mobile | skipped | 0.4 s | — | — | — | repo non touche (extension) |
+| /e2e | ok | 9 min 43 s | — | — | — | e2e ×6 (18 min 37 s), rejeu extension |
+| /review | ok | 14 min 21 s | 2 (21 s) | 3 (6 min 24 s) | — | api-mail 2B/3T, e2e ×2 (8 min 49 s), extension |
+| /tech-writer | ok | 0.5 s | — | — | — | v1.20 |
+| **Total cycle** | | **32 min 03 s** | **10 (1 min 38 s)** | **44 (48 min 03 s)** | **6 (1 min 48 s)** | |
 
 ## Comportement transactionnel actuel de la promotion (relevé avant correctif, develop @ `1a36fcbc`)
 
@@ -206,6 +225,50 @@ Contraste : `PersistNewMailAsync` (insertion d'un mail neuf) ouvre une transacti
   dossier, MailId, nombres) ; le test manuel multi-appareils reste au HAG.
 - Next step : /sonar task-344
 
+### Extension — reprise des étiquetages IA manqués (demande humaine du 2026-10-04)
+
+- Commits (api-mail) : `8c52c6f0` feat(tagging) reprise des étiquetages IA manqués ; `577c3f4b` fix(tagging) reprise
+  programmée par l'enrichissement, attente en un seul marqueur (passe qualité).
+- **Contrat** : `IEmailTaggingService.SuggestTagsAsync` rend `TagSuggestionOutcome(Tags, Failed)` — l'échec n'est plus
+  confondu avec « aucune étiquette ».
+- **Marqueur** : `Mails.AiTaggingPendingSince`, posé à l'enregistrement du contenu (mail neuf ou promotion ; hors
+  brouillons, envois, corbeille), effacé quand le modèle répond, redaté à chaque essai de reprise. Migration
+  `AddAiTaggingPendingMigration` (20261005130000) : colonne nullable sans défaut (aucune réécriture de l'historique, aucune
+  rafale d'appels IA au déploiement), index partiel `IX_Mails_AiTaggingPending` des seuls mails en attente.
+- **Étiqueteur** `MailAutoTagger` : partagé par le consommateur du bus et la reprise ; matière composée par
+  `AiTaggingMaterial` (type de document du premier LOINC, corps texte sinon HTML converti), partagée avec la publication.
+- **Reprise** `AiTaggingRecoveryService` : mails analysés, reçus depuis moins de 7 jours, en attente depuis plus de
+  15 min, 20 par passe, arrêt au premier échec ; flags `ai_pipeline` + `ai_auto_tagging`.
+- **Déclencheur** `AiTaggingRecoveryScheduler` : chaque enrichissement programme une passe **en tâche de fond**, au plus
+  une toutes les 10 min par boîte, tous réplicas confondus (clé Redis `lock:ai-tagging-recovery:{boîte}` non rendue).
+  ⚠️ Première version accrochée à la synchronisation complète : **défaut trouvé par la passe qualité** (angle
+  « altitude ») — la synchronisation complète ne part que du bouton du praticien (`EnableFullSync=false` par défaut),
+  la reprise n'aurait presque jamais tourné. Corrigé avant le push.
+- **Compteur** : le consommateur compte désormais l'échec du modèle comme une erreur d'étiquetage (il comptait un succès).
+- Preuves (intégration PostgreSQL, coureur de production, seul le fournisseur d'IA simulé) — `AiTaggingRecoveryTests` :
+  mail en échec repris après le délai ; mail répondu sans étiquette jamais repris ; arrêt au premier échec puis reprise
+  de tous après un nouveau délai ; fenêtre et exclusions (ancien, envoyé, brouillon, en-têtes seuls — ces trois derniers
+  jamais mis en attente) ; même matière que la voie nominale ; migration sans réécriture et index partiel.
+- Mutations (restaurées par écriture des octets d'origine + `touch`), toutes rouges sur leur assertion :
+  M6 échec marqué étiqueté → `Tagged = 2` au lieu de `Failed = 1` ; M7 pas d'arrêt au premier échec → `Failed = 0` ;
+  M8 délai ignoré → `Expected 0 / Actual 1` ; M9 historique non marqué (première version) → `Assert.NotNull` ;
+  M9′ envois mis en attente → `Assert.Null` sur la date d'attente ; M10 envois non exclus → `Candidates = 2` ;
+  M11/M12 déclencheur absent → `ScheduleAsync` jamais reçu.
+- Tests unitaires : `AiTaggingRecoveryServiceTests` (8), `MailAutoTaggerTests` (3), `AiTaggingRecoverySchedulerTests` (4),
+  `ImapServiceEnrichmentCoverageTests` (+1), `AddNewMailConsumerTests` (+1, marqueur affirmé sur 3 tests) ; tests du
+  service de suggestion durcis (`Failed` affirmé).
+- Effet de bord sur les tests de task-344 : `MailPromotionUniquenessTests` arrêtait la base avant sa migration puis
+  écrivait avec le modèle EF courant (colonnes des migrations suivantes absentes) — montage refait : schéma complet,
+  état antérieur recréé en SQL, migration rejouée seule. M3 re-prouvée rouge sur ce montage.
+- Local build / test : ✓ — 6 338 réussis, 16 ignorés, 0 échec.
+- Passe qualité (/simplify, 4 angles) : appliqué — déclencheur, marqueur unique, matière partagée, paramètre resserré,
+  horloge de test partagée (`MutableTimeProvider`), compteur. Écarté (noté pour `/review`) : simplification du compte
+  rendu `AiTaggingRecoveryReport` ; mise en ligne de `ProcessAutoTaggingAsync` ; alignement de
+  `BackgroundEnrichmentProcessor` (n'envoie ni type de document ni corps HTML converti — écart antérieur, l'aligner
+  changerait les consignes envoyées au modèle) ; relance propre au tagging dans le consommateur (les relances du bus
+  rejouent l'étiquetage quand l'embedding échoue).
+- Contrôles mécaniques §Q 2b : S125 ×2 attrapés et réécrits (commentaires « … ; … ») — compteur incrémenté.
+
 ## Sonar log
 
 - Mode A (chaîné), branche `feat/task-344-promotion-unique-mail`, serveur SonarQube 9.9.8 (`sonar.login`), période de nouveau code : 30 jours.
@@ -239,6 +302,16 @@ Contraste : `PersistNewMailAsync` (insertion d'un mail neuf) ouvre une transacti
 | Duplication | 0,4 % | 0,4 % | 0 |
 | Reliability / Security / Maintainability | A / A / A | A / A / A | → |
 
+### Extension — analyse 3 (`577c3f4b`, reprise des étiquetages IA)
+
+- Quality Gate **OK** ; nouveau code : seul S107 `SemanticSearchService:395` (antérieur, task-329) ; aucun point chaud.
+- KPIs inchangés : bugs 0, vulnérabilités 0, code smells 13, coverage 97,9 %, new coverage 97,5 %, duplication 0,4 %, A/A/A.
+- Couverture des fichiers ajoutés : `AiTaggingRecoveryScheduler`, `MailAutoTagger`, `AiTaggingMaterial` 100 % ;
+  `AiTaggingRecoveryService` 96,2 % — deux conditions (`??` sur objet et expéditeur absents) couvertes par
+  `RecoverAsync_AMailWithoutSubjectNorSender_IsTaggedOnItsBodyAlone` (`ce3ea356`, test seul : pas de réanalyse, aucun
+  code de production modifié).
+- Suites sous OpenCover (Release) : toutes vertes (821 + 16 ignorés en intégration).
+
 ## Lint log
 
 - `/lint-angular` : **skipped** — `client-angular` absent des `**Repos**`, aucun code Angular écrit par la task. L'arbre
@@ -248,6 +321,18 @@ Contraste : `PersistNewMailAsync` (insertion d'un mail neuf) ouvre une transacti
 - `/lint-mobile` : **skipped** — `client-mobile` absent des `**Repos**`, arbre `Client/Mobile` propre sur `develop`.
 
 ## E2E log
+
+### Rejeu sur le code final (`657d19cc`, reprise des étiquetages IA comprise)
+
+| Voie | Déclencheur | Résultat | Tests | Durée |
+|---|---|---|---|---|
+| mobile | api-mail touché | ✅ verte | 30 verts, 0 flaky, 0 rouge, 0 quarantaine | ~4 min |
+| angular | api-mail touché | ✅ verte | 30 verts, 0 flaky, 0 rouge, 0 quarantaine | ~4 min |
+
+**E2E : vert** — aucun parcours rouge hors quarantaine, parité verte (porte `gate` code 0, catalogue de la branche).
+Joué deux fois après l'extension (`ce3ea356` puis `657d19cc`), vert les deux fois. Démontage complet. Matrice identique au premier passage ci-dessous.
+
+### Premier passage (`c1a2dc9b`)
 
 | Voie | Déclencheur | Résultat | Tests | Durée |
 |---|---|---|---|---|
@@ -307,6 +392,7 @@ Contraste : `PersistNewMailAsync` (insertion d'un mail neuf) ouvre une transacti
 
 - `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/278 — label `awaiting-human-merge`
   (commits `b99c17c3`, `79b05cbc`, `503540c0`, `c1a2dc9b` ; `develop` n'avait pas bougé : aucun merge nécessaire)
+  — extension (reprise des étiquetages IA) : `8c52c6f0`, `577c3f4b`, `ce3ea356`, `657d19cc` ; titre et corps de la PR mis à jour
 - `dtos-mss` : aucune branche (aucun contrat touché)
 
 ## Code Review Summary
@@ -380,3 +466,35 @@ Le comportement exposé par l'endpoint (`enrich/sync`, second réplica) est, lui
 - Leçon d'outillage : un script d'analyse qui ne garde que les lignes de synthèse perd le nom d'un rouge
   intermittent → filtre `[FAIL]` ajouté au script de la session ; à reporter dans `agents/sonar.md` (commande de test
   sous couverture : garder `[FAIL]`).
+
+### Extension — reprise des étiquetages IA (revue du 2026-10-04)
+
+**Verdict : APPROVED** — 0 bloquant. Validation : build 0 erreur ; 6 340 réussis, 16 ignorés, 0 échec (`657d19cc`).
+
+| Critère (DOD extension) | Statut | Preuve |
+|---|---|---|
+| La suggestion distingue « aucune étiquette » de « échec » | ✓ | `TagSuggestionOutcome` ; tests du service durcis (`Failed` affirmé) |
+| Marqueur d'attente posé à l'enregistrement, effacé à la réponse du modèle | ✓ | un seul marqueur `AiTaggingPendingSince` (passe qualité : remplace les deux marqueurs prévus, même contrat) ; `AiTaggingRecoveryTests` |
+| Reprise : < 7 jours, analysés, > 15 min, arrêt au premier échec, flags, exclusions | ✓ | `AiTaggingRecoveryTests` (5) + `AiTaggingRecoveryServiceTests` (9) ; mutations M6–M10 rouges |
+| Migration : historique **non** repris, index partiel, 7c | ✓ | `Migration_LeavesTheHistoryAlone_AndInstallsThePendingIndex` ; aucune réécriture de ligne ; `HasMigrationsToApplyUp() == false` |
+| Une panne de la reprise ne casse rien | ✓ | planification hors requête (file de fond), Redis en panne → rien de programmé (`AiTaggingRecoverySchedulerTests`) |
+| Aucune donnée de santé dans les journaux | ✓ | journaux : identifiant technique, nombres, type d'exception |
+
+**Écart par rapport à la DOD de l'extension, à faire valider** : la DOD disait « reprise en fin de synchronisation de
+fond ». La passe qualité a montré que la synchronisation complète ne part que du bouton du praticien ; la reprise est
+donc **programmée par chaque enrichissement** (au plus une passe par boîte toutes les 10 min). Le but de la DOD — que
+la reprise ait lieu — n'était pas atteignable avec le déclencheur qu'elle nommait.
+
+**Revue de code** : ✅ `MailAutoTagger` (best-effort, annulation propagée) ; ✅ `AiTaggingRecoveryService` (matière
+partagée, arrêt au premier échec) ; ✅ `AiTaggingRecoveryScheduler` (identité recopiée avant construction de la portée —
+durci en revue, `657d19cc`) ; ✅ requête de reprise servie par l'index partiel dans son ordre ; ✅ migration sans
+réécriture.
+
+**Suggestions (non bloquantes)** :
+1. `BackgroundEnrichmentProcessor` publie sans type de document ni corps HTML converti : les mails analysés par la
+   synchronisation complète reçoivent une consigne moins précise que ceux de la voie interactive (écart antérieur).
+2. Les relances du bus rejouent l'étiquetage quand l'embedding échoue (un appel au modèle et une notification de plus) ;
+   l'étiquetage gagnerait à avoir son propre message.
+3. Un mail dont l'étiquetage échoue durablement reste en attente après la fenêtre de 7 jours (hors reprise, mais dans
+   l'index) : borné aux échecs, à purger si la mesure le demande.
+
