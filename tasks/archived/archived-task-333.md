@@ -344,3 +344,10 @@ Autres commandes mesurées : nuget-wait ×1 (38 s), restore ×1 (8.1 s)
 | Lecture concurrente d'une analyse → une seule ligne de contenu | `ReadingAMailWhileItIsBeingAnalysed_LeavesASingleContentRow` | `Expected: 1, Actual: 2` |
 | Enrichissement, archive balayée avant lecture → 503, mail en attente ; hôte rétabli → analysé avec ses documents | `EnrichingAMail_WhoseArchiveVanishesBeforeItIsRead_Returns503_LeavesItPending_ThenAnalysesItOnceRestored` | `Attendu 503, reçu 200` |
 | Enrichissement, archive hors bornes → 503, non marqué | `EnrichingAMail_WhoseArchiveInflatesBeyondTheBounds_RefusesIt_AndDoesNotMarkItAnalysed` | `Attendu 503, reçu 200` |
+
+## Merged
+
+- 2026-10-04, squash-merge par `/merge task-333 --i-tested` (HAG, règle 10).
+- `interop-cda` #9 → `f69105ef` (CI develop verte : https://github.com/codengine-technologies/interop.cda.parser/actions/runs/37210662009)
+- `api-mail` #276 → `199f77ca` (CI develop verte : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/37210676903)
+- Branches `fix/task-333-marqueur-analyse-garde-technique` supprimées (distantes et locales) ; aucune branche staging concernée.
