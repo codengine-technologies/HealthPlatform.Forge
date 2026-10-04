@@ -1,5 +1,9 @@
 # questions/task-341 — `/e2e` bloqué : écart de PARITÉ côté Angular (sans lien avec la task)
 
+> ✅ **Résolu le 2026-10-04.** L'humain a restauré le test Angular `E2E-MAIL-005` (`8a288e97` sur
+> `feature/nova-rewriting-mss`). Le 2ᵉ passage de `/e2e` est vert sur les deux voies, et la chaîne
+> reprend vers `/review`.
+
 **Étape** : `/e2e` (porte `gate`, code 1). **Nature : parité**, ni régression ni outillage.
 **État** : task en `wip-task-341.md`. `/develop` et `/sonar` sont terminés et la branche api-mail
 `feat/task-341-no-health-data-in-logs` est poussée (`6ed2d95b`). `/review` n'a **pas** été lancé.

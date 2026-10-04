@@ -278,6 +278,23 @@
 - **Origine** : task-352
 - **Occurrences** : 2 (une par client, même task)
 
+### test-angular-non-commite — Un scénario requis côté Angular repose sur un test que la forge ne commite pas
+- **Piège** : en mode code-only, le test Angular d'un nouveau scénario reste **non commité** sur
+  l'arbre de l'humain. Le catalogue, lui, part sur `develop` avec la PR api-mail. Si l'arbre Angular
+  est ensuite nettoyé, remis à zéro ou changé de branche avant le commit TFS, le test disparaît.
+  Le scénario reste `requis`, et **toutes** les tasks suivantes qui touchent `api-mail` bloquent à
+  `/e2e` sur une parité rouge qui ne les concerne pas. Constaté sur task-341 : `E2E-MAIL-005`
+  (ajouté par task-353) n'était dans aucun commit ni stash du clone Angular.
+- **Consigne** : quand une task ajoute ou monte un scénario requis pour `angular`, `/review` le
+  signale **en tête** du rapport de fin de cycle et dans le body de la PR api-mail : « à commiter
+  sur TFS **avant** le merge de la PR api-mail : `functional.e2e.ts` (scénario …) ». Au `/e2e` d'une
+  task suivante, un `MissingRequired` côté angular est d'abord cherché dans l'historique
+  (`git log --all -S {id}`, stash) avant tout autre diagnostic.
+- **Preuve** : porte rouge `MissingRequired [angular] E2E-MAIL-005` au 1er passage de task-341,
+  puis verte une fois le test restauré (`8a288e97`).
+- **Origine** : task-341 (héritage de task-353)
+- **Occurrences** : 1
+
 ---
 
 ## Registre des flaky

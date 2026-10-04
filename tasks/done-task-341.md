@@ -98,8 +98,10 @@ dossier personnel** n'atteigne les journaux techniques ou la télémétrie, et q
 | /sonar | ok | 19 min 36 s | 2 (52 s) | 10 (9 min 58 s) | 4 (4 min 57 s) | 2 itération(s), api-mail 2B/10T |
 | /lint-angular | skipped | 2.5 s | — | — | — | client-angular non listé dans Repos, aucun travail Angular |
 | /lint-mobile | skipped | 3.2 s | — | — | — | client-mobile non listé dans Repos |
-| /e2e | failed | 13 min 58 s | — | — | — | e2e ×3 (11 min 42 s), parité : E2E-MAIL-005 requis angular absent de la suite (héritage task-353, test Angular non commité) |
-| **Total cycle** | | **1 h 01 min** | **12 (2 min 28 s)** | **21 (15 min 02 s)** | **4 (4 min 57 s)** | |
+| /e2e | ok | 13 min 45 s | — | — | — | e2e ×6 (23 min 52 s), 2e passage vert, parite verte apres restauration E2E-MAIL-005 angular |
+| /review | ok | 5 min 46 s | 1 (35 s) | 1 (3 min 47 s) | — | api-mail 1B/1T |
+| /tech-writer | ok | 1 min 29 s | — | — | — | — |
+| **Total cycle** | | **1 h 08 min** | **13 (3 min 04 s)** | **22 (18 min 49 s)** | **4 (4 min 57 s)** | |
 
 ## Develop log
 
@@ -220,3 +222,86 @@ dossier personnel** n'atteigne les journaux techniques ou la télémétrie, et q
 **Parité : ROUGE** — 1 écart(s) :
 
 - `MissingRequired` [angular] E2E-MAIL-005 (« Un message supprimé depuis un autre logiciel quitte la liste et ne s'ouvre jamais vide ») est requis pour angular mais absent de sa suite, ou non joué.
+
+### E2E — 2ᵉ passage (après restauration d'E2E-MAIL-005 côté Angular) : ✅ VERT
+
+| Voie | Déclencheur | Résultat | Tests | Durée |
+|---|---|---|---|---|
+| mobile | api-mail touché | ✅ verte | 30 verts, 0 flaky, 0 rouge, 0 quarantaine (3 scénarios humains non joués) | voir journal de mesure |
+| angular | api-mail touché | ✅ verte | 30 verts, 0 flaky, 0 rouge, 0 quarantaine (3 scénarios humains non joués) | voir journal de mesure |
+
+- Backend : `api-mail` @ `6ed2d95b` (branche de la task). Clients : `client-mobile` @ `origin/develop` ; `client-angular` @ `feature/nova-rewriting-mss` (`8a288e97`, qui porte désormais le test `E2E-MAIL-005`), arbre de l'humain.
+- Catalogue : `Api/Mail/e2e/scenarios.yml` @ branche de la task (non modifié par la task).
+- Quarantaines : aucune · Divergences ouvertes : aucune · Parcours touchés sans spec e2e modifié : aucun.
+- Démontage : complet (ports libres, aucun conteneur e2e résiduel).
+- Le blocage du 1er passage (`questions/task-341.md`) est **levé**.
+
+**E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
+
+### Matrice de parité
+
+| Scénario | v | Mode | Titre | angular | mobile |
+|---|---|---|---|---|---|
+| E2E-INBOX-001 | 1 | headless | Filtrer la boîte de réception, basculer liste / conversation, ouvrir la recherche | ✅ | ✅ |
+| E2E-FOLDER-001 | 1 | headless | Naviguer vers les dossiers Archive et Corbeille | ✅ | ✅ |
+| E2E-PATIENT-001 | 1 | headless | Afficher la vue patients | ✅ | ✅ |
+| E2E-PATIENT-002 | 2 | headless | Rattacher à la main un document sans INS à un patient choisi par recherche, puis le détacher | ✅ | ✅ |
+| E2E-CONTACT-001 | 1 | humain | Rechercher dans le carnet et interroger l'annuaire national | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-SETTINGS-001 | 1 | headless | Changer le filtre par défaut et le retrouver après rechargement | ✅ | ✅ |
+| E2E-MAIL-001 | 1 | headless | Marquer un message lu puis non lu | ✅ | ✅ |
+| E2E-MAIL-002 | 1 | headless | Tout sélectionner et marquer lu en masse | ✅ | ✅ |
+| E2E-DETAIL-001 | 1 | headless | Répondre et transférer depuis la lecture d'un message | ✅ | ✅ |
+| E2E-COMPOSE-001 | 1 | headless | Envoyer un message, le recevoir, le lire, le supprimer | ✅ | ✅ |
+| E2E-COMPOSE-002 | 1 | headless | Faire corriger l'orthographe de son texte, appliquer la correction, puis envoyer | ✅ | ✅ |
+| E2E-MAIL-003 | 1 | headless | Signaler puis ne plus signaler un message | ✅ | ✅ |
+| E2E-MAIL-004 | 1 | headless | Déplacer un message vers Archive puis le ramener | ✅ | ✅ |
+| E2E-MAIL-005 | 1 | headless | Un message supprimé depuis un autre logiciel quitte la liste et ne s'ouvre jamais vide | ✅ | ✅ |
+| E2E-DRAFT-001 | 1 | headless | Créer un brouillon, le reprendre, le supprimer | ✅ | ✅ |
+| E2E-DRAFT-002 | 1 | headless | Envoyer un message à pièce jointe après l'enregistrement automatique du brouillon | ✅ | ✅ |
+| E2E-BIO-001 | 1 | headless | Acquitter un compte rendu de biologie | ✅ | ✅ |
+| E2E-DASH-001 | 1 | headless | Afficher les widgets du tableau de bord | ✅ | ✅ |
+| E2E-DETAIL-002 | 1 | headless | Basculer entre texte brut et HTML à la lecture | ✅ | ✅ |
+| E2E-DETAIL-003 | 1 | headless | Répondre à tous depuis la lecture d'un message | ✅ | ✅ |
+| E2E-SETTINGS-002 | 1 | headless | Changer la vue par défaut et la retrouver après rechargement | ✅ | ✅ |
+| E2E-SEARCH-001 | 1 | headless | Rechercher un message et ouvrir la recherche avancée | ✅ | ✅ |
+| E2E-ATTACH-001 | 1 | headless | Voir les pièces jointes d'un message | ✅ | ✅ |
+| E2E-CONTACT-002 | 1 | headless | Créer puis supprimer un contact | ✅ | ✅ |
+| E2E-SIGNATURE-001 | 1 | headless | Créer puis supprimer une signature | ✅ | ✅ |
+| E2E-CONTACT-003 | 1 | headless | Créer puis supprimer un groupe de contacts | ✅ | ✅ |
+| E2E-FOLDER-002 | 1 | headless | Créer puis supprimer un dossier | ✅ | ✅ |
+| E2E-FOLDER-003 | 1 | headless | Ouvrir un dossier supprimé depuis un autre logiciel | ✅ | ✅ |
+| E2E-FOLDER-004 | 1 | headless | Actualiser la liste des dossiers après un changement fait dans un autre logiciel | ✅ | ✅ |
+| E2E-AUTH-001 | 1 | humain | Rester connecté quand le jeton d'accès expire | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-AUTH-002 | 1 | humain | Se déconnecter | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-LIVE-001 | 1 | headless | Recevoir un nouveau message en temps réel, sans recharger | ✅ | ✅ |
+| E2E-AI-001 | 1 | headless | Interroger l'assistant sur des messages sélectionnés et poser des questions de suite | ✅ | ✅ |
+
+**Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/279 — label `awaiting-human-merge`
+- Aucun autre repo touché (task mono-repo, `**Single frontend**: true`).
+
+## Code Review Summary
+
+- **Verdict : APPROVED.** 15 fichiers de production et 10 de tests relus, 0 bloquant, 2 suggestions.
+- Validation `/review` : build 0 erreur. Tests : 0 échec (domain 190, infrastructure 683, application 3 473, api 1 173, integration 813 + 16 ignorés), aucun crash. Branche à jour avec `origin/develop` (0 commit de retard).
+- DoD : 8/8.
+  1. Build et tests verts.
+  2. Rouges d'abord consignés (`## Develop log`).
+  3. Description et texte corrigé absents des journaux en Information et Debug (intégration).
+  4. Route 404 (intégration + mutation).
+  5. `folder="other"` pour « Dupont Jean ».
+  6. Garde rouge sur réintroduction (mutation `{Response}`).
+  7. Compteur `invalid_response` incrémenté.
+  8. Aucun tableau de bord à adapter.
+- Règle 1b, comportement → test → preuve rouge :
+  - `POST ai/generate-template` (journaux) → `AiFreeTextOutOfLogsIntegrationTests.GenerateTemplate_ANominativeDescription_…` → rouge sur le code d'avant.
+  - `POST ai/correct-text` (journaux) → `AiFreeTextOutOfLogsIntegrationTests.CorrectText_…` → rouge sur le code d'avant.
+  - `POST account/mss-imap-test` retirée → `StaleClientEmailMailboxManagementIntegrationTests.RetiredImapTestRoute_…` → rouge sur le code d'avant (500) et par mutation (200).
+  - Tagging et label `folder` : déclenchés par le consumer et par la synchronisation de fond, pas par un endpoint. Preuve unitaire, rouge sur le code d'avant.
+- Double verrou e2e : `## E2E log` vert (2ᵉ passage), mobile 30/30 et angular 30/30, parité verte.
+- Suggestions (non bloquantes) :
+  - retirer les DTOs `MssImapTest*` de `dtos-mss`, devenus sans appelant serveur ;
+  - traiter dans une task dédiée le chemin de dossier encore présent dans les **journaux** (`{Folder}`).

@@ -4,7 +4,7 @@
 > **Modèle** : hand-crafted
 > **Version** : 1.85
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-04 (plus aucune trace d'un serveur saisi à la main — task-351)
+> **Dernière mise à jour** : 2026-10-04 (aucune donnée de santé ni saisie du praticien dans les journaux techniques — task-341)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1642,6 +1642,25 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
   n'était plus utilisé. Il est désormais effacé des réglages, et le contrat
   de la plateforme ne permet plus de l'envoyer. Rien ne change à l'écran : l'encart du serveur
   reste en lecture seule.
+
+- **v1.93 — Les journaux techniques ne gardent plus aucune donnée de santé, ni ce que le praticien
+  saisit** (task-341) : la supervision technique est consultée par une population plus large que
+  celle habilitée aux données de santé. Quatre fuites y sont fermées :
+  - Quand l'assistant de priorisation lisait mal un compte rendu de biologie, son analyse, qui
+    cite les valeurs et les diagnostics trouvés, était recopiée en entier dans les journaux. Seule
+    sa longueur reste désormais, et ces échecs sont comptés pour l'exploitant.
+  - La description d'un modèle de courrier (« courrier pour Mme Martin, suivi de son diabète »)
+    et le texte médical corrigé par la dictée ne sont plus journalisés. Il en va de même pour
+    l'objet des messages et le contenu des accusés de lecture.
+  - Une ancienne vérification de messagerie, devenue inutile, est retirée. Elle notait l'adresse
+    saisie en clair.
+  - Les indicateurs de suivi ne nomment plus les dossiers personnels du praticien, qui portent
+    souvent le nom d'un patient. Ils indiquent seulement une catégorie (réception, envoyés,
+    brouillons, corbeille, autre).
+
+  Un contrôle automatique empêche le retour de ces fuites. **Rien ne change pour le praticien**,
+  et le journal d'audit réglementaire reste complet. **À traiter côté exploitation** : les
+  journaux déjà accumulés contiennent ces données. Leur purge reste à statuer avec le DPO.
 
 - **v1.88 — Les identifiants de connexion ne partent plus que vers un serveur de confiance**
   (task-348) : un serveur de messagerie saisi à la main pouvait recevoir les identifiants
