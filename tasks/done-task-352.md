@@ -518,7 +518,7 @@ disparaît) aussitôt dans le menu.
 | /lint-mobile | ok | 34 s | — | — | — | extension |
 | /e2e | ok | 9 min 10 s | — | — | — | e2e ×8 (21 min 55 s), extension |
 | /review | ok | 14 min 30 s | 7 (1 min 26 s) | 7 (7 min 15 s) | — | api-mail 2B/2T, client-blazor 2B/2T, client-mobile 2B/2T, client-angular 1B/1T, e2e ×2 (8 min 25 s), extension |
-| /tech-writer | ok | 40 s | — | — | — | — |
-| **Total cycle** | | **55 min 10 s** | **23 (4 min 38 s)** | **37 (29 min 46 s)** | **4 (1 min 13 s)** | |
+| /tech-writer | ok | 0.5 s | — | — | — | extension |
+| **Total cycle** | | **54 min 30 s** | **23 (4 min 38 s)** | **37 (29 min 46 s)** | **4 (1 min 13 s)** | |
 
 Autres commandes mesurées : lint ×7 (3 min 15 s)
