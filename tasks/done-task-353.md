@@ -350,6 +350,7 @@ Un seul push par repo : api-mail `5a26c443`, Blazor `083671c`, mobile `7cc46c3`.
 | /lint-mobile | ok | 11 s | — | — | — | — |
 | /e2e | ok | 24 min 35 s | — | — | — | e2e ×7 (19 min 56 s) |
 | /review | ok | 6 min 15 s | 4 (31 s) | 4 (3 min 45 s) | — | api-mail 1B/1T, client-blazor 1B/1T, client-mobile 1B/1T, client-angular 1B/1T |
-| **Total cycle** | | **1 h 32 min** | **16 (2 min 28 s)** | **30 (27 min 33 s)** | **4 (1 min 12 s)** | |
+| /tech-writer | ok | 34 s | — | — | — | — |
+| **Total cycle** | | **1 h 33 min** | **16 (2 min 28 s)** | **30 (27 min 33 s)** | **4 (1 min 12 s)** | |
 
 Autres commandes mesurées : lint ×3 (55 s)

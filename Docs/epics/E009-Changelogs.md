@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-10-04 (v1.89)
+> **Dernière mise à jour** : 2026-10-04 (v1.90)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -761,6 +761,46 @@
   - remonter `originalMarkedCancelled` et `warning` par `drafts/{id}/send` ;
   - bail renouvelable pour le verrou.
 
+### v1.90 — Un message supprimé depuis un autre logiciel n'est plus servi depuis sa ligne locale : 404 MESSAGE_NOT_FOUND, purge à la relecture du dossier, retrait de la liste sur les trois clients — task-353
+
+- **Origine** : bug constaté par l'humain le 2026-10-04 (Seq : `GET …/emails/content/10` → 200 en 20 ms, sans accès IMAP).
+  - Les trois chemins de lecture (contenu, en-têtes par UID, dossier) servaient la ligne locale d'un message disparu sans consulter le serveur.
+  - Seules la synchro de fond et l'enrichissement purgeaient les UID disparus, sans vider le cache par message.
+  - Les clients ne retiraient jamais un UID que le serveur ne rendait plus.
+- **PRs** (`awaiting-human-merge`, à merger ensemble, règle 11) : `api-mail` #275, `client-blazor` #91, `client-mobile` #88 ; `client-angular` en code-only.
+- **api-mail** :
+  - **Purge à la relecture réelle d'un dossier.** Les lignes locales des UID disparus sont retirées (`PurgeVanishedMailsAsync` : `DeleteMailsByUidsAsync` + évictions parallèles des caches par message). Un dossier devenu vide est mis en cache (fin des « count 1 vs 0 » répétés).
+  - **Garde à l'ouverture seulement** (`IImapService.IsMessageGoneFromServerAsync`). Le statut est relu (`bypassStatusCache`, un STATUS), la liste d'UID en cache est réutilisée si rien n'a bougé, et la clé de statut partagée n'est pas touchée.
+  - **Réponse sur un message disparu** : 404 `problem+json`, `code: MESSAGE_NOT_FOUND`, sans sujet ni chemin. Le 404 du repli IMAP porte le même code.
+  - **Règle de disparition** : `uid < UidNext` et absent de la liste.
+  - **Page d'en-têtes : aucune garde, aucun coût ajouté.** La relecture du dossier qui précède chaque page suffit. Une première version la filtrait ; la passe qualité l'a retirée pour le verrou `imap_session`.
+- **Clients** :
+  - **Blazor** : `MailService.GetEmailContentAsync` rend `NotFound(MESSAGE_NOT_FOUND)`. `MailListComponent.OnMailsGoneAsync` agit au rafraîchissement et à l'ouverture : il retire le message de la liste et referme le détail, avec la notification `MailGone` (FR et EN).
+  - **Angular** : `MailStateService.dropMailsGoneFromFolder` / `dropMailsGoneFromServer` gèrent la liste, les compteurs (`forgetUidsInSelectedFolder`, extrait de `removeMailFromList`) et le détail. Ajouts : `isMessageNotFound` / `isNotFoundWithCode`, bandeau `mail-gone-notice`.
+  - **Mobile** : le détail affiche `mail-gone-notice` au lieu d'un contenu vide et retire le message de la liste (`removeMailFromList`). Le « tirer pour rafraîchir » repart des UID rendus par le serveur.
+- **Outil e2e** :
+  - sous-commande `message --create|--delete` (IMAP, relu) ;
+  - connexion praticien partagée (`E2eImap.ConnectPractitionerAsync`, `E2eImapTargets`).
+  - Catalogue : **E2E-MAIL-005 v1**.
+- **Règle 1b** : quatre tests d'intégration dans `FolderOperationsEndToEndTests`, chacun vu rouge (code d'avant ou mutation). L'un vérifie un **clic immédiat avec un état de dossier en cache** : cache avec mémoire pour le statut et les UID, rouge sans la relecture du statut.
+- **Tests** : domain 190, infrastructure 683, api 1 180, application 3 433, intégration 802 ; Blazor 423 ; mobile 1 004 ; Angular `libs/mss` 582, 11/11 projets.
+- **E2E** : mobile 30/30, Angular 30/30, parité verte. E2E-MAIL-005 est prouvé rouge par mutation sur les deux clients, et côté Angular sur chaque branche (ouverture, rafraîchissement). La voie Angular a été rejouée deux fois :
+  - attente du message déposé trop courte (corrigée, consigne créée) ;
+  - incident de banc : rafale de connexions IMAP coupées à l'authentification, E2E-COMPOSE-002 en 503. Il est sans lien avec la garde, qui passe par la session poolée.
+- **Sonar** : Quality Gate OK → OK ; new coverage 97,5 % ; CA1859 corrigé (récidive) ; reste S107, antérieur.
+- **Leçons** :
+  - `conventions/e2e.md` :
+    - `depot-hors-application` (créée) ;
+    - trou du filet E2E-MAIL-005 ;
+    - registre E2E-COMPOSE-002 (incident de banc distinct du bug task-350) ;
+  - `conventions/angular.md` : `jsdoc/require-jsdoc` → 5 (JSDoc déplacé hors lint, support e2e mobile) ;
+  - `conventions/csharp.md` : CA1859 → 6.
+- **Suivis** :
+  - autres lectures qui servent encore une ligne disparue jusqu'à la relecture suivante du dossier : vues par étiquette, fil, résumé IA, recherche, pièces jointes ;
+  - primitive de purge commune avec la synchro de fond et l'enrichissement ;
+  - fenêtre de concurrence purge / déplacement depuis l'application, à vérifier au banc ;
+  - `mail_max_userip_connections` (10) du Dovecot e2e.
+
 ### v1.89 — Un dossier supprimé depuis un autre logiciel : 404 qui nomme sa cause, et retour à la boîte de réception sur les trois clients — task-352
 
 - **Origine** : bug constaté par l'humain le 2026-10-04 (Seq : `GET /folders/Demo%2FDemo2` → 404). Le serveur nettoyait déjà son état local, mais rendait un 404 anonyme. Angular n'avait aucun gestionnaire d'erreur sur le chargement du dossier (spinner sans fin), Blazor affichait les UID périmés du menu, et le mobile le message technique brut.
@@ -1107,6 +1147,7 @@ Audit grep complémentaires pour les couches 2 / 2bis / 3 (tasks 021 / 022 / 023
 | task-330 | **Le travail fait hors ligne n'est plus perdu au premier échec.** Gestes rejoués jusqu'au succès, gardés `Failed` et comptés après 10 tentatives (`FailedActionsCount`) ; annulation sans tentative comptée ; réclamations orphelines reprises (`ClaimedAt`) ; **remise incertaine** d'un envoi confirmé peut-être parti (503 + avertissement, `deliveryUncertain`, 409, retirable — arbitrage du 2026-10-02) ; stade SMTP typé (400 / 503 / 499) ; mise en file hors ligne soumise aux règles d'envoi. Dtos.Mss 501.0.0. PR #269 (api-mail), #38 (dtos-mss). | — (continuité de service hors ligne, AUD-08 / AUD-23 ; aucune RG déclarée) |
 | task-329 | **Un seul chemin d'envoi.** `OutgoingMailService` pour `sendmail`, brouillon, confirmation avec la carte et annule-et-remplace : pièces par référence relues (400 si illisible), annule-et-remplace sur toutes les routes, archivage « Envoyés » ; brouillon complet (pièces, accusé, opposition, blocage de réponse, cible d'annule-et-remplace) restauré à la réouverture ; verrou d'envoi à jeton (5 min). Dtos.Mss 505.0.0. PR #270 (api-mail), #39 (dtos-mss), #87 (Blazor), #84 (mobile). | — (traçabilité de l'envoi MSSanté, AMBU.MSS/va1.02, opposition Mon Espace Santé ; aucune RG déclarée) |
 | task-331 | **Le dossier est celui de la fiche.** Dossier, biologie et opposition par `PatientId` (et non plus par l'INS du document) : le document rattaché à la main y apparaît, deux fiches d'un même matricule (NIR / NIA) restent séparées ; garde d'envoi : une fiche opposée du matricule suffit à exiger l'acquittement ; `resolve` déterministe ; `Id` rendu par la recherche et « patients du jour » ; index `(PatientId, MailId, Date)`. **Extension** : recherche de la fiche et confirmation quand l'appariement ne trouve personne, sur les trois clients ; scénario E2E-PATIENT-002. **Extension 2** : détacher, changer de patient, 409 au lieu de l'écrasement silencieux, rattachement et détachement tracés (actions d'audit 37 et 38) ; E2E-PATIENT-002 v2. PRs #40 (dtos-mss), #271 (api-mail), #88 (client-blazor), #85 (client-mobile), Angular code-only. | — (identito-vigilance INS, opposition Mon Espace Santé ; AUD-05, AUD-34 ; aucune RG déclarée) |
+| task-353 | **Message supprimé depuis un autre logiciel.** 404 `problem+json` `code: MESSAGE_NOT_FOUND` à l'ouverture (statut relu, sans sujet ni chemin) ; lignes locales des UID disparus purgées à la relecture du dossier (règle `uid < UidNext`) ; retrait de la liste au rafraîchissement (Angular, Blazor) et au tirer-pour-rafraîchir (mobile), jamais un contenu vide. E2E-MAIL-005, outil `message --create|--delete`. PRs #275 (api-mail), #91 (client-blazor), #88 (client-mobile), Angular code-only. | — (fiabilité de l'affichage ; évite la lecture d'un compte rendu « vide » à tort) |
 | task-352 | **Dossier supprimé depuis un autre logiciel.** 404 `problem+json` `code: FOLDER_NOT_FOUND` sans chemin (`NotFoundException` `IErrorCoded`) ; Angular (fin du spinner sans fin), Blazor (relecture à l'ouverture) et mobile : message clair, menu relu, retour à la boîte de réception, aussi au rafraîchissement d'un dossier ouvert. Extension : bouton « Actualiser les dossiers » (`GET /folders?refresh=true`). E2E-FOLDER-003 et 004, outil `folder --create|--delete`. PRs #274 (api-mail), #90 (client-blazor), #87 (client-mobile), Angular code-only. | — (robustesse d'une fonctionnalité existante ; aucune donnée de santé dans le `detail`) |
 | task-348 | **Serveur de messagerie résolu par le seul serveur (AUD-42).** Table `MailServers:Domains`, puis autoconfig MSSanté limité à `*.mssante.fr` (IP littérale et réseau non public rejetés, cache échec 15 min, log `MailDomainNotConfigured`) ; serveur saisi ignoré (200), jamais lu à la connexion ; `GET /settings/mail-server` ; encart en lecture seule sur Blazor et Angular ; squelette de chargement du corps sur mobile. Dtos.Mss 514.0.0. PRs #41 (dtos-mss), #273 (api-mail), #89 (client-blazor), #86 (client-mobile), Angular code-only. | — (sécurité : SSRF et fuite du jeton PSC fermées ; aucune RG déclarée) |
 | task-339 | **Opérations de dossiers fiables.** Expunge ciblé par UID (AUD-29), renommage qui emporte sous-dossiers, mails et actions en attente (AUD-30), purge des mails des dossiers absents du serveur et reprise des orphelins, vue et badges par étiquette sur INBOX et sa génération (AUD-35), caches et trace des déplacements (AUD-49) ; AUD-50 non reproduit. PR #272 (api-mail). | — (intégrité des opérations de messagerie ; tracé PGSSI-S des déplacements) |
