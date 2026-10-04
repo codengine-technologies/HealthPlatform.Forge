@@ -307,6 +307,39 @@ WHERE m."FolderPath" = 'INBOX' AND m."Uid" = :uid;
 | /lint-angular | skipped | 2.0 s | — | — | — | client-angular non listé dans Repos |
 | /lint-mobile | skipped | 2.1 s | — | — | — | client-mobile non listé dans Repos |
 | /e2e | ok | 6 min 27 s | 1 (31 s) | — | — | api-mail 1B/0T, e2e ×7 (22 min 53 s) |
-| **Total cycle** | | **1 h 14 min** | **10 (3 min 01 s)** | **13 (15 min 12 s)** | **4 (5 min 32 s)** | |
+| /review | ok | 6 min 16 s | 2 (25 s) | 2 (4 min 04 s) | — | interop-cda 1B/1T, api-mail 1B/1T |
+| **Total cycle** | | **1 h 21 min** | **12 (3 min 26 s)** | **15 (19 min 17 s)** | **4 (5 min 32 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (38 s), restore ×1 (8.1 s)
+
+## PRs
+
+- `interop-cda` : https://github.com/codengine-technologies/interop.cda.parser/pull/9 — label `awaiting-human-merge` (Interop.Cda.Parser 101.0.0, à merger en premier)
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/276 — label `awaiting-human-merge`
+- Aucun client touché ; aucun contrat DTO (pas de branche `dtos-mss`).
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 0 bloquant, 4 suggestions (non bloquantes).
+
+- ✅ `interop-cda` `XDM.Load` : `Failure` distingue archive invalide, panne de l'hôte et archive hors bornes ; extraction bornée (entrées, taille, ratio, vérifiés sur les tailles déclarées puis sur les octets réels) ; entrée hors de son répertoire refusée comme archive invalide ; évolution additive (`Load(fichier, xsd)` inchangée).
+- ✅ `CdaParsingService` : panne de l'hôte ou hors bornes → `IheXdmTechnicalFailureException`, comptée (`limit_exceeded` nouveau) ; archive invalide → analysée sans document (inchangé).
+- ✅ Phase B et synchro de fond : le mail dont l'archive est illisible n'est pas persisté, il reste à traiter ; le lot rend le 503 `DOCUMENT_PROCESSING_UNAVAILABLE` (même voie que la garde d'extraction de task-293).
+- ✅ Repli de lecture (export, résumé, archive des pièces jointes d'un mail « en-têtes seuls ») : lecture pure, plus aucune écriture du marqueur ; panne technique → 503 ; lecture `Header` sans extraction ; dossier refermé sur tous les chemins.
+- ✅ Balayage au démarrage : sous-répertoires d'extraction orphelins purgés, rien de plus récent qu'une heure (archive d'un autre réplica).
+- ✅ Aucun chemin, sujet, INS ni contenu dans les messages d'erreur ; les journaux d'`XDM.Load` ne citent qu'un nom de fichier GUID.
+- ⚠️ Suggestion — **archive hors bornes** : conforme à la DOD (refusée, non marquée analysée), mais le mail reste en attente et chaque enrichissement du dossier rend le 503 « Réessayez », alors que réessayer ne changera rien. Un état terminal dédié (mail signalé, sans document, hors des reprises) relève du PO.
+- ⚠️ Suggestion — `XDM.Load` journalise une archive invalide en `Error` : c'est une propriété du message de l'expéditeur, un `Warning` suffirait (bruit d'exploitation).
+- ⚠️ Suggestion — le repli relit le serveur à chaque export ou résumé d'un mail pas encore analysé, et un résumé IA calculé sur un tel mail n'est pas mis en cache (aucune ligne de contenu). Rare : l'enrichissement suit la liste presque aussitôt.
+- ⚠️ Suggestion — à l'envoi, une pièce `IHE_XDM.ZIP` hors bornes ne produit plus d'en-têtes `X-MSS-CODECDA` / `X-MSS-INS` (le parseur la refuse, l'appelant rend `[]` comme pour toute erreur).
+
+**Règle 1b (tests d'intégration d'endpoint, vus rouges)** — `ArchiveAnalysisMarkerEndToEndTests`, vraie pile (HTTP, vrais contrôleurs, vraie extraction, vrai parseur, base praticien, Dovecot) ; panne d'hôte injectée en retirant l'archive écrite avant sa lecture :
+
+| Comportement | Test | Rouge sur le code d'avant |
+|---|---|---|
+| Export d'un mail non analysé, archive illisible → 503, aucune ligne de contenu | `ExportingAMailNotYetAnalysed_WhenItsArchiveCannotBeRead_Returns503_AndWritesNothing` | `Attendu 503, reçu 200 : %PDF-1.4` |
+| Export d'un mail non analysé → 200 sans ligne de contenu ; l'enrichissement le constitue ensuite avec ses documents | `ExportingAMailNotYetAnalysed_ServesItWithoutMarkingItAnalysed_AndItsAnalysisStillHappens` | `Expected: 0, Actual: 1` |
+| Archive des pièces jointes d'un mail non analysé → 200, aucune extraction | `DownloadingTheAttachmentsOfAMailNotYetAnalysed_TriggersNoArchiveAnalysis` | `Expected: 0, Actual: 1` |
+| Lecture concurrente d'une analyse → une seule ligne de contenu | `ReadingAMailWhileItIsBeingAnalysed_LeavesASingleContentRow` | `Expected: 1, Actual: 2` |
+| Enrichissement, archive balayée avant lecture → 503, mail en attente ; hôte rétabli → analysé avec ses documents | `EnrichingAMail_WhoseArchiveVanishesBeforeItIsRead_Returns503_LeavesItPending_ThenAnalysesItOnceRestored` | `Attendu 503, reçu 200` |
+| Enrichissement, archive hors bornes → 503, non marqué | `EnrichingAMail_WhoseArchiveInflatesBeyondTheBounds_RefusesIt_AndDoesNotMarkItAnalysed` | `Attendu 503, reçu 200` |
