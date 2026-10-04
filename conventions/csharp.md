@@ -185,7 +185,10 @@ du temps, et `todo-` fabrique un faux positif. Vaut aussi pour `FIXME` et
 
 ## CA1869 — `JsonSerializerOptions` se construit une fois, pas à chaque appel
 
-**Occurrences : 1** (task-283)
+**Occurrences : 3** (task-283 ; task-295, entrée suivante ; task-339 — `ReadTagViewAsync` d'un helper de
+test HTTP, écrit APRÈS lecture de ce fichier : la consigne était lue, pas appliquée au moment d'écrire
+un `Deserialize` « vite fait ». Réflexe : chercher `new JsonSerializerOptions(` dans son diff avant de
+commiter.)
 
 Écrit sans y penser dans un helper de test qui désérialise à chaque cas :
 l'objet est coûteux à construire et conçu pour être **mis en cache et
@@ -1215,6 +1218,33 @@ cas `203.0.113.10` et `[2001:db8::25]` rouges sans le garde, verts avec.
 
 ---
 
+## premisse-de-test-integration — un test d'intégration affirme d'abord que le chemin éprouvé a eu lieu
+
+**Occurrences : 2** (task-339 — deux fois sur la même task, repérées par mutation)
+
+Un test d'intégration peut passer alors que le chemin qu'il prétend éprouver n'a jamais été emprunté :
+une précondition manquante le fait sauter, et le défaut ne peut alors pas se produire. Constaté deux fois :
+- **trace du déplacement** : le test restait vert sous la mutation « contexte lu après la ré-indexation ».
+  Le dossier cible, créé par un autre client, n'avait pas encore de ligne `MailFolders`. Sans sa
+  génération, `RekeyMovedMailsAsync` saute la ré-indexation, et la ligne restait lisible sous le chemin
+  source ;
+- **serveur sans UIDPLUS** : le test était vert sur le code d'avant. Rien ne prouvait que la session avait
+  bien perdu UIDPLUS, jusqu'à ce que le test affirme l'UID de destination nul.
+
+**Consigne** :
+- Écrire, dans le test, l'assertion qui prouve que la **prémisse** est réunie : la ligne a bien été
+  ré-indexée, la session n'a pas rendu d'UID, le chemin de repli a bien été pris. Son message dit
+  « le test n'éprouve rien », pas « le code est faux ».
+- Créer la précondition comme l'application la crée (lister les dossiers avant de déplacer), pas par
+  un raccourci qui la saute.
+- Prouver par mutation (cf. `test-de-rejet-attribuable`) : un test qui reste vert sous mutation désigne
+  d'abord une prémisse absente.
+
+**Preuve** : `FolderOperationsEndToEndTests.MovingMessages_…_AndTracesTheMoveWithItsSubject` (mutation
+verte avant la garde, rouge après) ; `OnAServerWithoutUidPlus_…` (UID de destination affirmé nul).
+
+---
+
 ## S1313 — une borne de plage réseau ne s'écrit pas comme une adresse en dur
 
 **Occurrences : 1** (task-348, `/sonar` — 11 hotspots sur `NonPublicNetworkAddress`)
@@ -1239,3 +1269,29 @@ le code : le statut se perd sur un autre serveur ou une re-création du projet.
 **Consigne** : une adresse IP qui sert de borne ou de constante de réseau se construit en octets
 (ou par les constantes d'`IPAddress`), avec sa notation usuelle en commentaire. Une adresse à
 joindre, elle, vient de la configuration, jamais du code.
+
+---
+
+## CA1845 — `AsSpan` / `string.Concat` : sans objet dans une expression traduite en SQL
+
+**Occurrences : 1** (task-339 — `FolderRepository.RenameFolderAsync`, deux `ExecuteUpdate`)
+
+L'analyseur propose de remplacer `a + b.Substring(n)` par `string.Concat(a, b.AsSpan(n))`. Dans un
+lambda que **EF Core traduit en SQL** (`Where`, `Select`, `SetProperty` d'`ExecuteUpdate`), c'est
+impossible : un arbre d'expression ne peut porter ni `Span` ni `AsSpan`, et la forme d'origine est
+exactement celle qu'EF traduit (`@p || substr(...)`).
+
+```csharp
+// CA1845 ne s'applique pas ici : expressions traduites en SQL par EF Core,
+// un arbre d'expression ne peut porter ni Span ni AsSpan.
+#pragma warning disable CA1845
+await db.Mails
+    .Where(m => m.FolderPath == oldPath || m.FolderPath.StartsWith(oldPrefix))
+    .ExecuteUpdateAsync(set => set.SetProperty(
+        m => m.FolderPath, m => newPath + m.FolderPath.Substring(oldPath.Length)));
+#pragma warning restore CA1845
+```
+
+**Consigne** : dans une expression EF, garder `Substring` et suspendre CA1845 **localement**, la raison
+écrite au-dessus (même forme que CA1862 dans `PatientRepository`). Hors EF (code exécuté en mémoire),
+la règle s'applique normalement.

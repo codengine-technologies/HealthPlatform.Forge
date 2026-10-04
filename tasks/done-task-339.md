@@ -108,7 +108,12 @@ serveur (chemins, sous-dossiers, orphelins), et que les vues et l'audit reflète
 |---|---|---|---|---|---|---|
 | /start | ok | 13 s | — | — | — | — |
 | /develop | ok | 52 min 41 s | 8 (44 s) | 21 (11 min 26 s) | — | api-mail 8B/21T, api-mail : AUD-29/30/35/49, AUD-50 non reproduit ; 10 mutations rouges |
-| **Total cycle** | | **52 min 54 s** | **8 (44 s)** | **21 (11 min 26 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 12 min 36 s | 3 (38 s) | 11 (8 min 23 s) | 4 (1 min 10 s) | 1 itération(s), api-mail 3B/11T |
+| /lint-angular | skipped | 0.4 s | — | — | — | client-angular non listé, aucun fichier de la task |
+| /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
+| /e2e | ok | 9 min 04 s | — | — | — | e2e ×3 (8 min 32 s) |
+| /review | ok | 55 min 01 s | 1 (14 s) | 5 (5 min 01 s) | — | api-mail 1B/5T, PR #272, APPROVED, suites vertes à 02:05 |
+| **Total cycle** | | **2 h 09 min** | **12 (1 min 38 s)** | **37 (24 min 51 s)** | **4 (1 min 10 s)** | |
 
 ## Develop log
 
@@ -154,7 +159,7 @@ serveur (chemins, sous-dossiers, orphelins), et que les vues et l'audit reflète
 | Vue étiquette : UID 120 d'INBOX et d'un dossier archivé, fantôme d'une autre génération | `TheTagView_ReturnsOnlyTaggedInboxMailsOfTheCurrentGeneration` | rouge sur le code d'avant (3 mails au lieu d'1) ; M4 (sans filtre de génération) rouge |
 | Sans UIDPLUS ni MOVE : deux déplacements, une copie, le message marqué ailleurs épargné | `OnAServerWithoutUidPlus_MovingTwice_LeavesOneCopy_AndSparesMessagesOthersMarkedDeleted` | M3 (expunge complet dans le repli COPY) rouge |
 | Dossier supprimé par un autre client : ses mails partent à la liste suivante | `AFolderDeletedByAnotherClient_LosesItsMailsAtTheNextFolderListing` | rouge sur le code d'avant |
-| Un déplacement groupé retire liste et statut des deux dossiers, et le cache du message | `MovingMessages_InvalidatesTheListingAndStatusOfBothFolders_AndTheMovedMessageCaches` | rouge sur le code d'avant (statut gardé) ; M10 (destination non invalidée) rouge |
+| Un déplacement groupé retire liste et statut des deux dossiers et le cache du message ; sa trace `MailMove` porte sujet et MessageId | `MovingMessages_InvalidatesTheListingAndStatusOfBothFolders_AndTracesTheMoveWithItsSubject` (traces lues dans le canal d'audit de la fixture ; prémisse : ligne ré-indexée relue) | rouge sur le code d'avant (statut gardé) ; M10 (destination non invalidée) rouge ; M2 au niveau HTTP (contexte lu après la ré-indexation) rouge, sujet nul. Vert sous M2 avant l'ajout de la garde de prémisse : cf. `conventions/csharp.md` › `premisse-de-test-integration` |
 | Orphelins existants purgés, dossier patient sans doublon | `ExistingOrphans_ArePurgedAtTheNextFolderListing_AndTheirDuplicateMarksAreLifted` | rouge sur le code d'avant |
 
 - **Dépôt sur PostgreSQL** (`FolderRepositoryReconcileRenameIntegrationTests`, 7 tests) : il remplace les tests InMemory, qui ne savent exécuter ni `ExecuteUpdate`, ni la transaction, ni la requête SQL. Mutations rouges :
@@ -203,3 +208,137 @@ serveur (chemins, sous-dossiers, orphelins), et que les vues et l'audit reflète
 5. `ReplaceDraftAsync` / `DeleteDraftAsync` d'`ImapService` : aucun appelant (code mort), à retirer.
 
 - Next step : `/sonar task-339`
+
+## Sonar log
+
+**Analyse** : deux passes complètes sur `fix/task-339-operations-dossiers-fiables` (serveur 9.9.8, `sonar.login`), avec la couverture des cinq suites.
+- Résultats : domain 190, application 3 384, infrastructure 683, api 1 170, integration 787 (+16 ignorés).
+- Seuls rouges : les trois tests « du jour », dans la fenêtre 00:00–02:00 (préexistant, rouges aussi sur develop, cf. Develop log).
+
+**Itération 1** (`refactor(folders): CA1869 …, CA1845 …`) :
+- **CA1869** sur `FolderOperationsEndToEndTests.ReadTagViewAsync` : `JsonSerializerOptions` hissé en `static readonly`.
+  - **Récidive** (3ᵉ occurrence) d'une consigne lue avant de coder, consignée dans `conventions/csharp.md`.
+- **CA1845** ×2 sur `FolderRepository.RenameFolderAsync` : faux positif, car ce sont des expressions `ExecuteUpdate` traduites en SQL, qui ne peuvent pas porter `AsSpan`.
+  - Suspendu localement, raison écrite au-dessus.
+  - Nouvelle entrée dans `conventions/csharp.md`.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline (analyse task-331, 2026-10-03) | Final (task-339) | Δ |
+|---|---|---|---|
+| Quality Gate | OK | **OK** | = |
+| New coverage | 97,5 % | 97,5 % (FolderRepository 98,6 %, ImapFolderService 100 %, MailCacheEviction 100 %) | = |
+| Coverage projet | 98,0 % | 98,0 % | = |
+| Bugs / Vulnérabilités | 0 / 0 | 0 / 0 | = |
+| Code smells | 13 | 13 | = (16 à la première passe, 3 traités) |
+| Duplication | 0,4 % (nouveau code 0,15 %) | 0,4 % (nouveau code 0,15 %) | = |
+| Ratings fiabilité / sécurité / maintenabilité | A / A / A | A / A / A | = |
+
+- **Constat restant** : S107 sur `SemanticSearchService:395`, antérieur (task-329), hors du code de la task.
+
+## Lint log
+
+- **Skipped** — `client-angular` n'est pas dans les `**Repos**` de la task. Son arbre ne porte que les deux `environment.ts` de l'humain, hors task.
+
+## Lint mobile log
+
+- **Skipped** — `client-mobile` n'est pas dans les `**Repos**` de la task (arbre propre, sur `develop`).
+
+## E2E log
+
+| Voie | Déclencheur | Résultat | Tests | Durée |
+|---|---|---|---|---|
+| mobile | `api-mail` touché | ✅ verte | 27 verts, 0 flaky, 0 rouge, 0 quarantaine | 4 min 23 s |
+| angular | `api-mail` touché | ✅ verte | 27 verts, 0 flaky, 0 rouge, 0 quarantaine | 4 min 09 s |
+
+- Backend joué : `api-mail` @ `fix/task-339-operations-dossiers-fiables`. Clients : `client-mobile` @ `develop`, `client-angular` @ `feature/nova-rewriting-mss`, checkout de l'humain, sans opération git.
+- Catalogue : `Api/Mail/e2e/scenarios.yml` inchangé par la task, qui ne crée ni ne modifie aucun parcours médecin (`**Single frontend**`, API seule).
+- Porte `gate` : code 0. Quarantaines : aucune. Flaky : aucun. Divergences ouvertes : aucune.
+- Parcours touchés sans spec e2e modifié : aucun (aucun écran modifié).
+- Démontage : complet (aucun conteneur e2e résiduel).
+- Amélioration continue (`conventions/e2e.md`) : aucune leçon sur ce passage.
+
+**E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
+
+### Matrice de parité
+
+| Scénario | v | Mode | Titre | angular | mobile |
+|---|---|---|---|---|---|
+| E2E-INBOX-001 | 1 | headless | Filtrer la boîte de réception, basculer liste / conversation, ouvrir la recherche | ✅ | ✅ |
+| E2E-FOLDER-001 | 1 | headless | Naviguer vers les dossiers Archive et Corbeille | ✅ | ✅ |
+| E2E-PATIENT-001 | 1 | headless | Afficher la vue patients | ✅ | ✅ |
+| E2E-PATIENT-002 | 2 | headless | Rattacher à la main un document sans INS à un patient choisi par recherche, puis le détacher | ✅ | ✅ |
+| E2E-CONTACT-001 | 1 | humain | Rechercher dans le carnet et interroger l'annuaire national | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-SETTINGS-001 | 1 | headless | Changer le filtre par défaut et le retrouver après rechargement | ✅ | ✅ |
+| E2E-MAIL-001 | 1 | headless | Marquer un message lu puis non lu | ✅ | ✅ |
+| E2E-MAIL-002 | 1 | headless | Tout sélectionner et marquer lu en masse | ✅ | ✅ |
+| E2E-DETAIL-001 | 1 | headless | Répondre et transférer depuis la lecture d'un message | ✅ | ✅ |
+| E2E-COMPOSE-001 | 1 | headless | Envoyer un message, le recevoir, le lire, le supprimer | ✅ | ✅ |
+| E2E-COMPOSE-002 | 1 | headless | Faire corriger l'orthographe de son texte, appliquer la correction, puis envoyer | ✅ | ✅ |
+| E2E-MAIL-003 | 1 | headless | Signaler puis ne plus signaler un message | ✅ | ✅ |
+| E2E-MAIL-004 | 1 | headless | Déplacer un message vers Archive puis le ramener | ✅ | ✅ |
+| E2E-DRAFT-001 | 1 | headless | Créer un brouillon, le reprendre, le supprimer | ✅ | ✅ |
+| E2E-DRAFT-002 | 1 | headless | Envoyer un message à pièce jointe après l'enregistrement automatique du brouillon | ✅ | ✅ |
+| E2E-BIO-001 | 1 | headless | Acquitter un compte rendu de biologie | ✅ | ✅ |
+| E2E-DASH-001 | 1 | headless | Afficher les widgets du tableau de bord | ✅ | ✅ |
+| E2E-DETAIL-002 | 1 | headless | Basculer entre texte brut et HTML à la lecture | ✅ | ✅ |
+| E2E-DETAIL-003 | 1 | headless | Répondre à tous depuis la lecture d'un message | ✅ | ✅ |
+| E2E-SETTINGS-002 | 1 | headless | Changer la vue par défaut et la retrouver après rechargement | ✅ | ✅ |
+| E2E-SEARCH-001 | 1 | headless | Rechercher un message et ouvrir la recherche avancée | ✅ | ✅ |
+| E2E-ATTACH-001 | 1 | headless | Voir les pièces jointes d'un message | ✅ | ✅ |
+| E2E-CONTACT-002 | 1 | headless | Créer puis supprimer un contact | ✅ | ✅ |
+| E2E-SIGNATURE-001 | 1 | headless | Créer puis supprimer une signature | ✅ | ✅ |
+| E2E-CONTACT-003 | 1 | headless | Créer puis supprimer un groupe de contacts | ✅ | ✅ |
+| E2E-FOLDER-002 | 1 | headless | Créer puis supprimer un dossier | ✅ | ✅ |
+| E2E-AUTH-001 | 1 | humain | Rester connecté quand le jeton d'accès expire | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-AUTH-002 | 1 | humain | Se déconnecter | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-LIVE-001 | 1 | headless | Recevoir un nouveau message en temps réel, sans recharger | ✅ | ✅ |
+| E2E-AI-001 | 1 | headless | Interroger l'assistant sur des messages sélectionnés et poser des questions de suite | ✅ | ✅ |
+
+**Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/272 — label `awaiting-human-merge`. Corps : changements, table règle 1b, revue, KPIs Sonar, parcours e2e, plan de test.
+- `dtos-mss` : aucune branche, aucun contrat ne change.
+- `client-angular`, `client-blazor`, `client-mobile` : non concernés (task API seule, `**Single frontend**: true`).
+
+## Code Review Summary
+
+**Verdict : APPROVED** (0 bloquant, 3 suggestions).
+
+- **DOD** :
+  - [x] Build et tests : domain 190, infrastructure 683, application 3 384, api 1 170, integration 790 (+16 ignorés), 0 échec, rejoué à 02:05, hors de la fenêtre des tests « du jour »
+  - [x] Tests rouges d'abord (Develop log) : expunge collatéral (Corbeille et suppression définitive) ; renommage `Archives` → `Archives 2026` avec sous-dossier, sans orphelin ni doublon ; vue par étiquette (UID 120 de deux dossiers) ; serveur sans UIDPLUS, sans doublon après un nouvel essai.
+    - Le dernier était vert sur le code d'avant : AUD-50 n'est pas reproduit avec MailKit 4.17 (voir Develop log). Le test est gardé en non-régression, prémisse et mutation prouvées.
+  - [x] Dossier supprimé par un autre client : ses mails partent à la liste suivante.
+  - [x] Reprise des orphelins : dossier patient débarrassé du doublon.
+  - [x] Déplacement : statut et listes du jour invalidés, trace `MailMove` avec sujet et MessageId, éprouvés par HTTP.
+  - [x] Tests d'intégration endpoints : renommage et déplacement de bout en bout.
+  - [x] Aucune donnée de santé dans les journaux : comptes seulement, ni chemin, ni sujet.
+- **Verrou 4a (règle 1b)** : les huit comportements atteignables par un endpoint ont chacun leur test HTTP sur la vraie pile (Dovecot, base praticien, Redis substitué sous le décorateur), lu dans la réponse, sur le serveur IMAP ou en base, et vu rouge (table ci-dessus).
+- **Verrou 4b** : `## E2E log` vert sur les deux voies (27/27), parité verte.
+- **Revue par zone** :
+  - ✅ Expunge : plus aucun `CloseAsync(true)` ni `ExpungeAsync()` sans UID dans `src/`. Une garde de convention le maintient.
+  - ✅ Renommage : une transaction, préfixe avec séparateur (le frère `ArchivesX` est épargné, mutation M5), lignes concurrentes sous le nouveau chemin retirées (M8).
+  - ✅ Purge :
+    - réservée à une liste lue à l'instant sur le serveur ;
+    - une liste sans INBOX ne purge rien ;
+    - coût borné, une sonde d'index par dossier.
+  - ✅ Synchronisation de fond : sa réconciliation sur une liste de premier niveau est retirée, et le test le garde.
+  - ✅ Vue et badges par étiquette : une seule requête de base, INBOX et génération courante.
+  - ⚠️ **Course résiduelle** : une liste des dossiers lue avant un renommage, mais persistée après lui, porte encore l'ancien nom.
+    - Sa purge retirerait alors les mails tout juste renommés. Ils seraient re-téléchargés, mais leurs rattachements manuels et accusés perdus.
+    - Fenêtre de quelques dizaines de millisecondes.
+    - La même course existait déjà pour les lignes de dossier (réconciliation), sans perte de données.
+    - Suivi proposé : un numéro de version de l'arborescence, relu avant la persistance.
+  - ⚠️ `CA1845` suspendu localement dans les deux `ExecuteUpdate` du renommage : expressions traduites en SQL, raison écrite.
+  - ⚠️ La purge s'exécute en ligne sur le chemin « cache manquant » de la liste des dossiers : une requête par dossier présent en base, hors du verrou IMAP.
+
+**Suivis à ouvrir** (Develop log) :
+1. Liste récursive des dossiers partagée, dont la synchronisation de fond.
+2. Lectures par UID sans génération dans `MailRepository`.
+3. Hôte HTTP commun aux suites `UseCases`.
+4. Message « du jour » semé à midi local.
+5. Méthodes de brouillon mortes d'`ImapService`.
+6. Version de l'arborescence contre la course liste périmée / renommage.
