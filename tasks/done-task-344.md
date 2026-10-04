@@ -102,7 +102,9 @@ d'appareils et de réplicas qui l'ouvrent en même temps — garanti par la base
 | /lint-angular | skipped | 15 s | — | — | — | client-angular non touche par la task (5 modifs preexistantes de task-351/env locaux) |
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touche par la task |
 | /e2e | ok | 10 min 15 s | — | — | — | e2e ×3 (9 min 24 s) |
-| **Total cycle** | | **1 h 13 min** | **5 (52 s)** | **24 (25 min 14 s)** | **4 (1 min 12 s)** | |
+| /review | ok | 6 min 03 s | 1 (13 s) | 1 (3 min 08 s) | — | api-mail 1B/1T |
+| /tech-writer | ok | 1 min 23 s | — | — | — | — |
+| **Total cycle** | | **1 h 21 min** | **6 (1 min 06 s)** | **25 (28 min 23 s)** | **4 (1 min 12 s)** | |
 
 ## Comportement transactionnel actuel de la promotion (relevé avant correctif, develop @ `1a36fcbc`)
 

@@ -2,10 +2,10 @@
 
 > **Statut** : 🟢 En cours
 > **Modèle** : task-driven
-> **Version** : 1.18
+> **Version** : 1.19
 > **Auteur** : PO forge (audit performance du 2026-06-10)
 > **Audience** : PO, médecin, direction — la vue ingénierie vit dans [E011-Changelogs.md](E011-Changelogs.md)
-> **Dernière mise à jour** : 2026-09-30
+> **Dernière mise à jour** : 2026-10-04
 
 ---
 
@@ -22,7 +22,7 @@
 - [7. Contraintes et hypothèses](#7-contraintes-et-hypothèses)
 - [8. Critères d'acceptation de l'EPIC](#8-critères-dacceptation-de-lepic)
 - [9. Hors périmètre](#9-hors-périmètre)
-- [État de couverture (2026-09-30)](#état-de-couverture-2026-09-30)
+- [État de couverture (2026-10-04)](#état-de-couverture-2026-10-04)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -79,7 +79,7 @@ changer ni l'apparence ni le comportement métier de l'application.
 | E011-F010 | Exports en flux continu | L'export d'un message (EML, PDF) est transmis au fur et à mesure de sa construction, sans limite de taille pratique | Aucune |
 | E011-F011 | Enrichissement non bloquant | Pendant qu'un lot de messages s'enrichit en arrière-plan (corps, documents médicaux), la navigation dans les dossiers et les listes reste immédiate | Aucune |
 | E011-F012 | Liste des dossiers accélérée | Le chargement de la liste des dossiers n'interroge plus le serveur dossier par dossier : un seul échange suffit, sans réapparition des dossiers fantômes | Aucune |
-| E011-F013 | Plusieurs serveurs, un seul comportement | Le service tourne sur plusieurs serveurs en parallèle : les notifications en temps réel et les conversations de l'assistant ne dépendent plus du serveur qui répond | Aucune |
+| E011-F013 | Plusieurs serveurs, un seul comportement | Le service tourne sur plusieurs serveurs en parallèle : les notifications en temps réel et les conversations de l'assistant ne dépendent plus du serveur qui répond, et un message ouvert au même moment sur deux appareils n'est analysé qu'une fois | Aucune |
 
 ---
 
@@ -149,7 +149,7 @@ graph LR
 
 ---
 
-## État de couverture (2026-09-30)
+## État de couverture (2026-10-04)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---------|--------|------------|---------------------|
@@ -165,9 +165,9 @@ graph LR
 | E011-F010 Exports en flux | ✅ Mergée sur develop | 100% | task-077 |
 | E011-F011 Enrichissement non bloquant | ✅ Mergée sur develop | 100% | task-079 |
 | E011-F012 Liste des dossiers accélérée | ✅ Mergée sur develop | 100% | task-080 |
-| E011-F013 Plusieurs serveurs, un seul comportement | 🟡 Mergée en partie sur develop (task-343) ; task-344 à venir | notifications en temps réel et assistant, vérifiés automatiquement sur l'application mobile et sur l'application web ; l'analyse unique d'un mail ouvert sur deux appareils reste à faire | task-343, task-344 |
+| E011-F013 Plusieurs serveurs, un seul comportement | 🟡 Livrée ; la seconde moitié attend sa validation humaine (task-344) | 100% implémenté : notifications en temps réel et assistant (mergés), analyse unique d'un message ouvert sur deux appareils (en validation) | task-343, task-344 |
 
-**Couverture EPIC consolidée : 12 features sur 13 livrées et validées**, la treizième livrée en partie (task-343 mergée, task-344 à venir). L'EPIC reste ouvert parce que le serveur continue de recevoir des améliorations ciblées, sans nouvelle fonctionnalité : les compléments sur l'accès aux données et la première étape de fiabilisation des connexions à la messagerie (task-324) sont validés ; la seconde étape — aucune connexion fermée pendant qu'elle sert, lecture comme envoi (task-335) — attend sa validation humaine. Nouvelle feature F013 : quand le service tourne sur plusieurs serveurs, les notifications en temps réel et l'assistant se comportent comme sur un seul (task-343, mergée) ; l'analyse unique d'un mail ouvert sur deux appareils suit (task-344).
+**Couverture EPIC consolidée : 12 features sur 13 livrées et validées**, la treizième entièrement implémentée, sa seconde moitié en attente de validation humaine (task-344). L'EPIC reste ouvert parce que le serveur continue de recevoir des améliorations ciblées, sans nouvelle fonctionnalité : les compléments sur l'accès aux données et la première étape de fiabilisation des connexions à la messagerie (task-324) sont validés ; la seconde étape — aucune connexion fermée pendant qu'elle sert, lecture comme envoi (task-335) — attend sa validation humaine. Feature F013 : quand le service tourne sur plusieurs serveurs, les notifications en temps réel et l'assistant se comportent comme sur un seul (task-343, mergée), et un message ouvert sur deux appareils à la fois n'est analysé qu'une fois (task-344, en validation).
 
 ---
 
@@ -185,6 +185,13 @@ graph LR
 - v1.10 — La vérification des certificats de l'Espace de Confiance refuse désormais systématiquement un certificat révoqué, sur tous les chemins de contrôle (correction d'une faille latente détectée pendant le chantier). En cas d'indisponibilité du service de vérification de l'ANS, le comportement est arbitré et validé humainement : une vérification récente reste acceptée pendant 4 heures au maximum, avec un évènement journalisé à chaque acceptation dégradée ; au-delà, la connexion est refusée (task-069).
 
 ### Technique / observabilité (sans impact utilisateur direct)
+- v1.19 — **Un compte rendu n'apparaît plus deux fois dans le dossier patient quand le médecin ouvre le même message sur deux appareils.**
+  - Situation corrigée : le médecin affiche sa boîte sur son téléphone et sur son poste, puis ouvre, au même moment, un message qui n'avait pas encore été analysé. Chaque appareil pouvait être servi par un serveur différent, et chacun analysait le message de son côté : le compte rendu, ses résultats de biologie et ses pièces jointes étaient enregistrés **deux fois**, et le dossier patient les montrait en double.
+  - Désormais, **un message n'est analysé et enregistré qu'une seule fois**, quel que soit le nombre d'appareils et de serveurs. C'est la base de données qui le garantit : le second enregistrement est refusé, sans message d'erreur pour le praticien, qui voit le contenu déjà analysé.
+  - Le second serveur, voyant l'analyse déjà en cours ailleurs, ne la refait pas : moins de travail inutile, et le document s'affiche sur les deux appareils dès que l'analyse est terminée.
+  - Une analyse interrompue en cours de route (panne passagère) n'enregistre plus rien de partiel : le message reste à analyser et l'est entièrement au passage suivant.
+  - **Les doublons déjà présents sont résorbés** automatiquement à la première ouverture de la messagerie : la copie la plus ancienne de chaque compte rendu est conservée, et **les acquittements de biologie déjà posés par le médecin sont préservés**. Aucune identité patient n'est modifiée.
+  - Aucune donnée de santé n'est ajoutée aux journaux : seuls des nombres sont consignés (task-344).
 - v1.18 — **Le service tourne sur plusieurs serveurs, et le praticien ne le voit plus.**
   - Jusqu'ici, deux choses dépendaient du serveur qui répondait : les notifications en temps réel (le tag « Urgent » d'un compte rendu de biologie, la progression d'une synchronisation) et les conversations de l'assistant.
   - Avec quatre serveurs en production, **la plupart des tags d'urgence n'arrivaient jamais à l'écran** en direct. L'assistant répondait « conversation non trouvée » environ trois fois sur quatre, et un redémarrage de serveur effaçait toutes les conversations.
