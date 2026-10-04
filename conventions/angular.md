@@ -110,11 +110,21 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   suffit pas, et c'est ce que la rédaction naturelle produit spontanément. Poser
   la règle à l'écriture coûte trois lignes ; la découvrir au lint coûte un
   aller-retour complet build + test.
+  **Récidive task-352 (extension) — la quatrième, et un piège neuf.** Le paramètre
+  `refresh` ajouté à `getFolders()` sans toucher son JSDoc (`require-param`), comme
+  sur task-310. Le piège neuf : une méthode **insérée juste avant une autre**, en
+  ancrant l'insertion sur la ligne `private refreshFolders(): void {`. Le JSDoc de
+  `refreshFolders` se retrouve au-dessus de la nouvelle méthode, fusionné avec le
+  sien, et `refreshFolders` n'a plus de bloc (`require-jsdoc`). `--fix` a
+  « réparé » les deux erreurs avec des squelettes creux, exactement comme décrit
+  plus haut. **Insérer une méthode, c'est l'ancrer avant le JSDoc de la suivante**,
+  jamais sur sa signature.
 - **Origine** : task-304 (/lint-angular, 57 erreurs — 55 auto-fixées, 2
   `require-returns` + 23 squelettes creux repris manuellement) ;
   task-308 (/review, 2 `require-param` sur signatures modifiées) ;
-  task-310 (/develop, 3 erreurs + 2 warnings sur un paramètre objet ajouté)
-- **Occurrences** : 3
+  task-310 (/develop, 3 erreurs + 2 warnings sur un paramètre objet ajouté) ;
+  task-352 (/lint-angular, 1 `require-param` + 1 `require-jsdoc` par JSDoc déplacé)
+- **Occurrences** : 4
 
 ### mail-content-body — `content.body` n'est pas le texte du mail
 - **Règle** : convention projet (défaut fonctionnel, invisible au lint)

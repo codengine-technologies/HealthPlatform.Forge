@@ -1040,6 +1040,7 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
   - **Plus de chargement sans fin.** Quand le praticien ouvre un dossier qui a été supprimé ou renommé depuis un autre logiciel de messagerie (logiciel de cabinet, webmail de l'opérateur), l'application le dit : « Ce dossier n'existe plus : il a été supprimé ou renommé depuis un autre logiciel de messagerie. »
   - **Retour automatique à la boîte de réception**, et le dossier disparu quitte la liste des dossiers. Même chose si le dossier ouvert disparaît pendant la consultation : le message ouvert se referme.
   - **Toute autre panne de chargement d'un dossier** est annoncée par un message simple, jamais par un message technique ni par une attente sans fin.
+  - **Un bouton « Actualiser les dossiers »** : un dossier créé, renommé ou supprimé dans un autre logiciel apparaît (ou disparaît) aussitôt dans le menu, sans attendre quelques minutes.
   - Sur les trois applications : web Angular, web Blazor et mobile.
 
 - **v1.88 — Le praticien n'a plus à connaître son serveur de messagerie** (task-348) :
