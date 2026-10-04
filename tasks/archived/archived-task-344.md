@@ -498,3 +498,19 @@ réécriture.
 3. Un mail dont l'étiquetage échoue durablement reste en attente après la fenêtre de 7 jours (hors reprise, mais dans
    l'index) : borné aux échecs, à purger si la mesure le demande.
 
+
+## Merged
+
+- **Date** : 2026-10-04, `/merge task-344 --i-tested` (validation humaine attestée).
+- `api-mail` : PR #278 squash-mergée sur `develop` → `cbe15a2397828c5a5bfe4934975f2fccd5a05c8e`. Label `awaiting-human-merge`
+  retiré, branche `feat/task-344-promotion-unique-mail` supprimée (distante et locale), clone revenu sur `develop`.
+  Aucune branche `dtos-mss` (aucun contrat touché).
+- CI `develop` : ❌ **rouge** — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/37233705234
+  - Cause : conflit **sémantique** avec task-341 (#279, mergée 18 min avant). Elle a ajouté
+    `TaggingInvalidResponseLogHygieneTests` sur l'ancien contrat de `SuggestTagsAsync`, que #278 remplace par
+    `TagSuggestionOutcome` → `CS1503` ×2. Aucun fichier commun : aucun conflit git, PR annoncée `CLEAN` / `MERGEABLE`
+    avec un commit de retard.
+  - Correctif : PR [#280](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/280)
+    (`awaiting-human-merge`), deux lignes de test ; validé sur `develop` + correctif : 6 368 réussis, 0 échec.
+  - Détail et prévention proposée : `questions/merge-task-344.md`.
+- Branche staging : aucune (task lancée par `/start`, hors run `/forge`).
