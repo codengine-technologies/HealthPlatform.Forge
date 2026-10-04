@@ -343,3 +343,11 @@ serveur (chemins, sous-dossiers, orphelins), et que les vues et l'audit reflète
 4. Message « du jour » semé à midi local.
 5. Méthodes de brouillon mortes d'`ImapService`.
 6. Version de l'arborescence contre la course liste périmée / renommage.
+
+## Merged
+
+- **Date** : 2026-10-04, par `/merge task-339 --i-tested` (Manual Test Plan attesté par l'humain).
+- Squash sur `develop` : `api-mail` `0e76cdf5` (PR #272).
+- CI `develop` verte : `Build and Publish` — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/37188055310
+- Branche `fix/task-339-operations-dossiers-fiables` supprimée (distante et locale) ; label `awaiting-human-merge` retiré.
+- Aucun autre repo concerné (task API seule).
