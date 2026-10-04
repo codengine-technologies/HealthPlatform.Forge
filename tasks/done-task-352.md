@@ -49,24 +49,24 @@ Quand le praticien ouvre un dossier qui n'existe plus sur le serveur de messager
 
 ## Definition of Done
 
-- [ ] Build passes (0 errors) et tests pass (0 failures, hors flaky préexistants documentés) sur `api-mail`, `client-angular`, `client-blazor` et `client-mobile` (commandes de la table des repos)
-- [ ] **Tests rouges d'abord** (log des runs rouges dans le task file), sur le code actuel
-- [ ] Test d'intégration de bout en bout pour `GET /api/v1/mail/folders/{dossier}` (règle 1b) :
+- [x] Build passes (0 errors) et tests pass (0 failures, hors flaky préexistants documentés) sur `api-mail`, `client-angular`, `client-blazor` et `client-mobile` (commandes de la table des repos)
+- [x] **Tests rouges d'abord** (log des runs rouges dans le task file), sur le code actuel
+- [x] Test d'intégration de bout en bout pour `GET /api/v1/mail/folders/{dossier}` (règle 1b) :
   - un dossier supprimé sur le serveur IMAP après avoir été listé rend un 404 `application/problem+json`, reconnaissable comme « dossier introuvable », sans le chemin du dossier dans le `detail`, lu dans la réponse réelle ;
   - le nettoyage local a eu lieu : la liste des dossiers suivante ne contient plus le dossier ;
   - cas nominal : un dossier existant rend 200 ;
   - test vu rouge (règle 1b).
-- [ ] Tests de composant, par client (Angular vitest, Blazor bUnit, mobile Jasmine) :
+- [x] Tests de composant, par client (Angular vitest, Blazor bUnit, mobile Jasmine) :
   - ouverture d'un dossier qui répond « dossier introuvable » : chargement arrêté, message clair affiché, liste des dossiers rechargée, Boîte de réception sélectionnée ;
   - même chose quand le rafraîchissement du dossier ouvert répond « dossier introuvable » ;
   - toute autre erreur à l'ouverture : chargement arrêté, message générique, aucune redirection.
-- [ ] Libellé du message en dur en français sur Angular et mobile (convention actuelle), via `Localizer` sur Blazor (FR et EN) ; `data-testid` sur le message
-- [ ] Scénario `E2E-FOLDER-003` (v1) ajouté à `Api/Mail/e2e/scenarios.yml`, clients **mobile et angular requis**, et implémenté dans les deux suites :
+- [x] Libellé du message en dur en français sur Angular et mobile (convention actuelle), via `Localizer` sur Blazor (FR et EN) ; `data-testid` sur le message
+- [x] Scénario `E2E-FOLDER-003` (v1) ajouté à `Api/Mail/e2e/scenarios.yml`, clients **mobile et angular requis**, et implémenté dans les deux suites :
   - le dossier est créé, listé, puis supprimé **hors de l'application** ;
   - son ouverture affiche le message, le dossier n'est plus dans la liste et la Boîte de réception est affichée.
-- [ ] **Trou du filet** : `E2E-FOLDER-003` prouvé rouge sur le bug non corrigé (Angular : spinner sans fin), ligne ajoutée dans `conventions/e2e.md`
-- [ ] `/e2e` vert sur les deux voies, parité verte
-- [ ] Aucune donnée de santé dans les journaux, ni le nom du dossier dans le `detail` de l'erreur : un nom de dossier peut nommer un patient
+- [x] **Trou du filet** : `E2E-FOLDER-003` prouvé rouge sur le bug non corrigé (Angular : spinner sans fin), ligne ajoutée dans `conventions/e2e.md`
+- [x] `/e2e` vert sur les deux voies, parité verte
+- [x] Aucune donnée de santé dans les journaux, ni le nom du dossier dans le `detail` de l'erreur : un nom de dossier peut nommer un patient
 
 ## Manual Test Plan
 
@@ -182,6 +182,155 @@ Sessions `--serve-only` arrêtées par `out/STOP` : ports libres, aucun conteneu
   api 1170, intégration 792 (16 ignorés) — 0 échec.
 - Push unique par repo : api-mail `7cd63aab`, Blazor `ea1dd0b`, mobile `b082712`.
 
+## Sonar log
+
+**Analyse** : une passe complète sur `fix/task-352-dossier-supprime-ailleurs` (serveur 9.9.8,
+`sonar.login`), avec la couverture des cinq suites, toutes vertes : domain 190, application
+3 384, infrastructure 683, api 1 170, intégration 792 (+16 ignorés).
+
+**Constats du nouveau code** : 2.
+- **S3925** sur `NotFoundException` : la classe n'est pas scellée et reçoit une propriété
+  `ErrorCode`. Le triplet de constructeurs est présent ; seul reste le constructeur
+  `ISerializable`, obsolète sur .NET 8+ (SYSLIB0051). L'issue est marquée **FALSE-POSITIVE**,
+  avec un commentaire, comme les exceptions voisines. Récidive consignée dans
+  `conventions/csharp.md` (S3925, 4ᵉ occurrence).
+- **S107** sur `SemanticSearchService:395` : antérieur (task-329), hors du code de la task.
+
+Aucune modification de code : **0 itération**.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline (analyse du 2026-10-03) | Final (task-352) | Δ |
+|---|---|---|---|
+| Quality Gate | OK | **OK** | = |
+| New coverage | 97,5 % | 97,5 % (`NotFoundException` 100 %) | = |
+| Coverage projet | 98,0 % | 98,0 % | = |
+| Bugs / Vulnérabilités / Hotspots | 0 / 0 / 0 | 0 / 0 / 0 | = |
+| Code smells | 13 | 13 (14 à l'analyse, S3925 marqué faux positif) | = |
+| Duplication | 0,4 % (nouveau code 0,15 %) | 0,4 % (nouveau code 0,15 %) | = |
+| Ratings fiabilité / sécurité / maintenabilité | A / A / A | A / A / A | = |
+
+## Lint log
+
+- **Commande** : `npx nx affected -t lint --base=origin/next --head=HEAD --parallel=3 --projects=tag:scope:mss`
+  (`Client/Angular/front`, branche `feature/nova-rewriting-mss`, code-only).
+- **Baseline** : 14 erreurs, toutes `prettier/prettier` et toutes auto-réparables. Elles sont dans
+  les fichiers de la task : `mss-mail.component.ts`, abonnement `folderChanged$` (10), et
+  `e2e/mss-e2e/support/e2e-backend.ts`, `deleteFolderElsewhere` (4). 41 avertissements
+  préexistants (`max-lines`, `complexity`, `jsdoc/require-example`).
+- **Itération 1** : `-- --fix`, **0 erreur**. Seuls ces deux fichiers ont été modifiés. Les
+  `environment.ts` de l'humain n'ont pas été touchés. Les correctifs de l'auto-fixer ne
+  comptent pas dans `conventions/angular.md`.
+- **Build** (`nx affected -t build`) : 10 projets sur 11 verts, `weda2` compris. Seul
+  `mss:build:production` est rouge, à cause du rouge **préexistant** connu
+  (`environment.prod.ts` absent sur `feature/nova-rewriting-mss`), qui n'est pas une régression.
+- **Tests** (`nx affected -t test --skipNxCache`) : 11 projets verts. La suite e2e compile
+  (`tsc`).
+- Rappel code-only : les fichiers Angular de la task restent **non commités**. L'humain les
+  commite et les pousse sur TFS.
+
+## Lint mobile log
+
+- `npm run lint` (`Client/Mobile`, branche `fix/task-352-dossier-supprime-ailleurs`) :
+  **All files pass linting** dès la baseline.
+- 0 itération, aucun commit. Build et tests verts depuis la passe qualité de `/develop`
+  (994/994), arbre inchangé depuis : pas de re-validation.
+
+## E2E log
+
+| Voie | Déclencheur | Résultat | Tests | Durée |
+|---|---|---|---|---|
+| mobile | `api-mail`, `client-mobile` touchés | ✅ verte | 28 verts, 0 flaky, 0 rouge, 0 quarantaine | 4 min 39 s (rejouée : 4 min 33 s, voir ci-dessous) |
+| angular | `api-mail`, `client-angular` touchés | ✅ verte | 27 verts, 1 flaky, 0 rouge, 0 quarantaine | 4 min 06 s |
+
+- Backend joué : `api-mail` @ `fix/task-352-dossier-supprime-ailleurs`. Clients : `client-mobile` @ `fix/task-352-dossier-supprime-ailleurs`, et `client-angular` @ `feature/nova-rewriting-mss` avec les modifications non commitées de la task. Checkout de l'humain, sans opération git.
+- Catalogue : `Api/Mail/e2e/scenarios.yml` de la branche, avec **E2E-FOLDER-003 v1** ajouté (mobile et angular requis). Il est vert sur les deux clients, et a été prouvé rouge par mutation dans `/develop` (voir Develop log).
+- Porte `gate` sur les copies des deux rapports : **code 0**. Quarantaines : aucune. Divergences ouvertes : aucune.
+- Flaky : **E2E-AI-001** (angular). Premier essai : `response.json: Protocol error (Network.getResponseBody)`. Le test ne touche pas au code de la task. Au registre, 2ᵉ occurrence.
+- **Voie mobile rejouée** : la voie Angular, qui monte son backend par l'orchestrateur mobile, a vidé `Client/Mobile/e2e/headless/out` avant que le rapport mobile soit copié. La première porte est tombée en « Could not find file » (code 1, outillage). Le rejeu est vert à l'identique (28/28). Prévention : avertissement et commande unique « voie + copie » dans `agents/e2e.md`, Step 1.
+- Parcours touchés sans spec e2e modifié : aucun. L'écran de liste des dossiers est couvert par E2E-FOLDER-003 dans les deux suites.
+- Démontage : complet. Ports libres, aucun conteneur e2e résiduel.
+
+**E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
+
+**Flaky (vert au second essai, non bloquant)** (1) :
+
+- [angular] « assistant — résumé initial puis deux questions de suite, conversation relue du serveur » (E2E-AI-001)
+
+### Matrice de parité
+
+| Scénario | v | Mode | Titre | angular | mobile |
+|---|---|---|---|---|---|
+| E2E-INBOX-001 | 1 | headless | Filtrer la boîte de réception, basculer liste / conversation, ouvrir la recherche | ✅ | ✅ |
+| E2E-FOLDER-001 | 1 | headless | Naviguer vers les dossiers Archive et Corbeille | ✅ | ✅ |
+| E2E-PATIENT-001 | 1 | headless | Afficher la vue patients | ✅ | ✅ |
+| E2E-PATIENT-002 | 2 | headless | Rattacher à la main un document sans INS à un patient choisi par recherche, puis le détacher | ✅ | ✅ |
+| E2E-CONTACT-001 | 1 | humain | Rechercher dans le carnet et interroger l'annuaire national | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-SETTINGS-001 | 1 | headless | Changer le filtre par défaut et le retrouver après rechargement | ✅ | ✅ |
+| E2E-MAIL-001 | 1 | headless | Marquer un message lu puis non lu | ✅ | ✅ |
+| E2E-MAIL-002 | 1 | headless | Tout sélectionner et marquer lu en masse | ✅ | ✅ |
+| E2E-DETAIL-001 | 1 | headless | Répondre et transférer depuis la lecture d'un message | ✅ | ✅ |
+| E2E-COMPOSE-001 | 1 | headless | Envoyer un message, le recevoir, le lire, le supprimer | ✅ | ✅ |
+| E2E-COMPOSE-002 | 1 | headless | Faire corriger l'orthographe de son texte, appliquer la correction, puis envoyer | ✅ | ✅ |
+| E2E-MAIL-003 | 1 | headless | Signaler puis ne plus signaler un message | ✅ | ✅ |
+| E2E-MAIL-004 | 1 | headless | Déplacer un message vers Archive puis le ramener | ✅ | ✅ |
+| E2E-DRAFT-001 | 1 | headless | Créer un brouillon, le reprendre, le supprimer | ✅ | ✅ |
+| E2E-DRAFT-002 | 1 | headless | Envoyer un message à pièce jointe après l'enregistrement automatique du brouillon | ✅ | ✅ |
+| E2E-BIO-001 | 1 | headless | Acquitter un compte rendu de biologie | ✅ | ✅ |
+| E2E-DASH-001 | 1 | headless | Afficher les widgets du tableau de bord | ✅ | ✅ |
+| E2E-DETAIL-002 | 1 | headless | Basculer entre texte brut et HTML à la lecture | ✅ | ✅ |
+| E2E-DETAIL-003 | 1 | headless | Répondre à tous depuis la lecture d'un message | ✅ | ✅ |
+| E2E-SETTINGS-002 | 1 | headless | Changer la vue par défaut et la retrouver après rechargement | ✅ | ✅ |
+| E2E-SEARCH-001 | 1 | headless | Rechercher un message et ouvrir la recherche avancée | ✅ | ✅ |
+| E2E-ATTACH-001 | 1 | headless | Voir les pièces jointes d'un message | ✅ | ✅ |
+| E2E-CONTACT-002 | 1 | headless | Créer puis supprimer un contact | ✅ | ✅ |
+| E2E-SIGNATURE-001 | 1 | headless | Créer puis supprimer une signature | ✅ | ✅ |
+| E2E-CONTACT-003 | 1 | headless | Créer puis supprimer un groupe de contacts | ✅ | ✅ |
+| E2E-FOLDER-002 | 1 | headless | Créer puis supprimer un dossier | ✅ | ✅ |
+| E2E-FOLDER-003 | 1 | headless | Ouvrir un dossier supprimé depuis un autre logiciel | ✅ | ✅ |
+| E2E-AUTH-001 | 1 | humain | Rester connecté quand le jeton d'accès expire | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-AUTH-002 | 1 | humain | Se déconnecter | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-LIVE-001 | 1 | headless | Recevoir un nouveau message en temps réel, sans recharger | ✅ | ✅ |
+| E2E-AI-001 | 1 | headless | Interroger l'assistant sur des messages sélectionnés et poser des questions de suite | ⚠️ flaky | ✅ |
+
+**Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/274 — label `awaiting-human-merge`
+- `client-blazor` : https://github.com/codengine-technologies/HealthPlatform.Client/pull/90 — label `awaiting-human-merge`
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/87 — label `awaiting-human-merge`
+- `client-angular` : code-only. L'humain gère le commit, le push sur TFS et l'ouverture de la PR. Fichiers modifiés, non commités, sur `feature/nova-rewriting-mss` :
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`
+  - `front/e2e/mss-e2e/support/e2e-backend.ts`
+  - `front/libs/mss/src/core/utils/problem-details.utils.ts`
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.component.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.component.ts`
+  - `front/libs/mss/src/features/mail/mss-mail.component.ts`
+  - `front/libs/mss/src/features/mail/services/mail-state.service.ts`
+  - `front/libs/mss/src/features/mail/mss-mail.component.folder-gone.spec.ts` (nouveau)
+  - *(les deux `environment.ts` modifiés sont ceux de l'humain : hors task, à ne pas commiter avec elle)*
+
+## Code Review Summary
+
+**APPROVED** — 0 bloquant, 2 suggestions.
+
+- Validation `/review` :
+  - api-mail : build OK, domain 190, infrastructure 683, api 1 170, application 3 384, intégration 792 (+16 ignorés) ;
+  - Blazor : build OK, 412 (+2 ignorés) ;
+  - mobile : build OK, 994/994 ;
+  - Angular : 11 projets testés verts ; build 10/11, seul `mss:build:production` rouge (préexistant, `environment.prod.ts` absent).
+- **Règle 1b** : 404 `problem+json` `code: FOLDER_NOT_FOUND`, `detail` sans le nom, dossier retiré de la liste. Prouvé par `FolderOperationsEndToEndTests.OpeningAFolderDeletedByAnotherClient_…` (vraie pile), rouge sur le code d'avant ; cas nominal gardé par `OpeningAnExistingFolder_StillReturnsIt`.
+- **E2E** : `## E2E log` vert. E2E-FOLDER-003 est vert sur les deux clients et prouvé rouge par mutation (Develop log).
+- **Points vérifiés** :
+  - Blazor : `GetAsync` et `GetQuietlyAsync` gardent leur comportement (corps en tampon, 404 jamais notifié par toast) ;
+  - Blazor : Brouillons virtuels et étiquettes exclus de la relecture ;
+  - les sous-dossiers vivent dans `FoldersViewModel`, donc remplacer le DTO ne casse pas le menu.
+- **Suggestions** :
+  - mobile et Angular : le `getFolders` de repli n'a pas de gestion d'erreur ;
+  - Blazor : `JoinFolderAsync` pourrait partir en parallèle de la relecture.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-352 --sync` — ne pas éditer à la main)*
@@ -190,4 +339,11 @@ Sessions `--serve-only` arrêtées par `out/STOP` : ports libres, aucun conteneu
 |---|---|---|---|---|---|---|
 | /start | ok | 21 s | — | — | — | — |
 | /develop | ok | 41 min 00 s | 8 (1 min 16 s) | 8 (5 min 06 s) | — | api-mail 5B/3T, client-blazor 0B/2T, client-mobile 3B/2T, client-angular 0B/1T |
-| **Total cycle** | | **41 min 21 s** | **8 (1 min 16 s)** | **8 (5 min 06 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 7 min 25 s | 1 (19 s) | 5 (5 min 11 s) | 2 (37 s) | api-mail 1B/5T |
+| /lint-angular | ok | 3 min 37 s | 1 (21 s) | 1 (52 s) | — | 1 itération(s), client-angular 1B/1T |
+| /lint-mobile | ok | 22 s | — | — | — | — |
+| /e2e | ok | 14 min 45 s | — | — | — | e2e ×5 (13 min 18 s) |
+| /review | ok | 5 min 58 s | 4 (31 s) | 4 (3 min 44 s) | — | api-mail 1B/1T, client-blazor 1B/1T, client-mobile 1B/1T, client-angular 1B/1T |
+| **Total cycle** | | **1 h 13 min** | **14 (2 min 29 s)** | **18 (14 min 54 s)** | **2 (37 s)** | |
+
+Autres commandes mesurées : lint ×3 (1 min 03 s)
