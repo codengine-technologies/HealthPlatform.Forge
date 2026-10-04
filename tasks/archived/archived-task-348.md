@@ -493,3 +493,13 @@ Autres commandes mesurées : lint ×3 (3 min 41 s), nuget-wait ×2 (20 s), resto
 | `GET /settings/mail-server`, domaine configuré → 200, `source = configuration`, sans HTTP | `GetMailServer_ConfiguredDomain_Returns200_WithSourceConfiguration` | mutation B |
 | `GET /settings/mail-server`, domaine inconnu → 404 `problem+json` | `GetMailServer_UnknownDomain_Returns404ProblemDetails_WithoutAnyHttpOutsideMssante` | route absente avant la task |
 | Ancienne route `autoconfig?email=` → 404 | `OldAutoconfigRoute_NoLongerExists` | route présente avant la task |
+
+## Merged
+
+- 2026-10-04, squash-merge par `/merge task-348 --i-tested` (HAG : plan de test manuel validé par l'humain).
+- `dtos-mss` #41 → `c17aaff2` (CI develop verte : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/actions/runs/37192662891)
+- `api-mail` #273 → `9452245c` (CI develop verte : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/37192675041)
+- `client-blazor` #89 → `e0175434` (CI develop verte : https://github.com/codengine-technologies/HealthPlatform.Client/actions/runs/37192689213)
+- `client-mobile` #86 → `bee14d01` (CI develop verte)
+- `client-angular` : géré par l'humain (TFS).
+- Branches `fix/task-348-serveur-resolu-cote-serveur` supprimées (distantes et locales) ; aucune branche staging concernée.
