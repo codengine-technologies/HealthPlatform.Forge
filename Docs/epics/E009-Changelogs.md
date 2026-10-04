@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-10-04 (v1.88)
+> **Dernière mise à jour** : 2026-10-04 (v1.89)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -761,6 +761,30 @@
   - remonter `originalMarkedCancelled` et `warning` par `drafts/{id}/send` ;
   - bail renouvelable pour le verrou.
 
+### v1.89 — Un dossier supprimé depuis un autre logiciel : 404 qui nomme sa cause, et retour à la boîte de réception sur les trois clients — task-352
+
+- **Origine** : bug constaté par l'humain le 2026-10-04 (Seq : `GET /folders/Demo%2FDemo2` → 404). Le serveur nettoyait déjà son état local, mais rendait un 404 anonyme. Angular n'avait aucun gestionnaire d'erreur sur le chargement du dossier (spinner sans fin), Blazor affichait les UID périmés du menu, et le mobile le message technique brut.
+- **PRs** (`awaiting-human-merge`, à merger ensemble, règle 11) : `api-mail` #274, `client-blazor` #90, `client-mobile` #87 ; `client-angular` code-only (commit, push TFS et PR par l'humain).
+- **api-mail** : `NotFoundException` devient `IErrorCoded` (constructeur `(message, errorCode)`). `MailNotFoundCodes.FolderNotFound` = `FOLDER_NOT_FOUND` est posé sous `code` par le `GlobalExceptionHandler`. Le `detail` est une phrase fixe, sans chemin, car un dossier peut nommer un patient. Aucun contrat `dtos-mss` touché.
+- **Clients** :
+  - Blazor : `HttpRequestService.GetWithOutcomeAsync` / `GetOutcome<T>` (statut et `code`, modèle `PostOutcome`) ; `FolderService.GetFolderAsync` rend `Result.NotFound` ; `MailListComponent` relit le dossier à l'ouverture (IMAP seulement) et réagit au rafraîchissement ; nouvel événement `IFolderEventService.RefreshFolderList` ; libellés `FolderGone` / `FolderLoadError` (FR et EN) ;
+  - Angular : signal `MailStateService.folderLoadError`, `isFolderNotFound` dans `problem-details.utils.ts`, gestionnaire d'erreur sur `folderChanged$`, bandeau `mail-folder-error` ;
+  - mobile : `inbox.page.ts` (`onFolderGone`, `findInbox` partagé avec `loadFolders`), avis `mail-folder-error`, message générique au lieu de l'erreur brute.
+- **Outil e2e** : sous-commande `mss.mail.e2e folder --delete <chemin>` (suppression IMAP hors de l'application, relue). Catalogue : **E2E-FOLDER-003 v1** (mobile et Angular requis).
+- **Règle 1b** : `FolderOperationsEndToEndTests.OpeningAFolderDeletedByAnotherClient_Is404ProblemJsonFolderNotFound_AndItLeavesTheFolderList` (vraie pile, Dovecot), rouge sur le code d'avant (`code` absent). Le cas nominal est gardé par `OpeningAnExistingFolder_StillReturnsIt`.
+- **Tests** : domain 190, infrastructure 683, application 3 384, api 1 170, intégration 792 (+16 ignorés) ; Blazor 412 ; mobile 994 ; Angular `libs/mss` 564, 11/11 projets.
+- **E2E** : mobile 28/28, Angular 27 + 1 flaky (`E2E-AI-001`, 2ᵉ occurrence), parité verte. E2E-FOLDER-003 prouvé rouge par mutation sur les deux clients (Angular : spinner sans fin reproduit).
+- **Sonar** : Quality Gate OK → OK ; new coverage 97,5 % ; S3925 sur `NotFoundException` marqué faux positif (triplet présent, `ISerializable` obsolète).
+- **Leçons** :
+  - `conventions/e2e.md` : `suite-e2e-non-compilee` (créée, 2 occurrences : apostrophe dans une chaîne entre apostrophes simples, dans les deux specs) ; trou du filet E2E-FOLDER-003 ; flaky E2E-AI-001 → 2 ;
+  - `conventions/csharp.md` : S3925 → 4 (exception non scellée qui reçoit un membre) ;
+  - `agents/e2e.md` : la voie Angular vide aussi le dossier de sortie mobile, donc copier le rapport dans la même commande que la voie.
+- **Suivis** :
+  - gestion d'erreur du `getFolders` de repli (mobile, Angular) ;
+  - `JoinFolderAsync` en parallèle de la relecture (Blazor) ;
+  - détecter la suppression avant le clic (notification de structure) ;
+  - task-353 (message supprimé ailleurs).
+
 ### v1.88 — Le serveur de messagerie n'est plus choisi par l'utilisateur : api-mail le résout seul, et la SSRF d'AUD-42 se ferme — task-348
 
 - **Origine** : AUD-42 (audit du 2026-09-27). Un serveur IMAP/SMTP saisi dans les paramètres recevait le jeton PSC à la connexion : SSRF et fuite de jeton. Correctif d'allowlist reverté dans task-342 (arbitrage humain du 2026-09-28) ; reprise ici, sans aucune confiance dans une saisie.
@@ -1077,6 +1101,7 @@ Audit grep complémentaires pour les couches 2 / 2bis / 3 (tasks 021 / 022 / 023
 | task-330 | **Le travail fait hors ligne n'est plus perdu au premier échec.** Gestes rejoués jusqu'au succès, gardés `Failed` et comptés après 10 tentatives (`FailedActionsCount`) ; annulation sans tentative comptée ; réclamations orphelines reprises (`ClaimedAt`) ; **remise incertaine** d'un envoi confirmé peut-être parti (503 + avertissement, `deliveryUncertain`, 409, retirable — arbitrage du 2026-10-02) ; stade SMTP typé (400 / 503 / 499) ; mise en file hors ligne soumise aux règles d'envoi. Dtos.Mss 501.0.0. PR #269 (api-mail), #38 (dtos-mss). | — (continuité de service hors ligne, AUD-08 / AUD-23 ; aucune RG déclarée) |
 | task-329 | **Un seul chemin d'envoi.** `OutgoingMailService` pour `sendmail`, brouillon, confirmation avec la carte et annule-et-remplace : pièces par référence relues (400 si illisible), annule-et-remplace sur toutes les routes, archivage « Envoyés » ; brouillon complet (pièces, accusé, opposition, blocage de réponse, cible d'annule-et-remplace) restauré à la réouverture ; verrou d'envoi à jeton (5 min). Dtos.Mss 505.0.0. PR #270 (api-mail), #39 (dtos-mss), #87 (Blazor), #84 (mobile). | — (traçabilité de l'envoi MSSanté, AMBU.MSS/va1.02, opposition Mon Espace Santé ; aucune RG déclarée) |
 | task-331 | **Le dossier est celui de la fiche.** Dossier, biologie et opposition par `PatientId` (et non plus par l'INS du document) : le document rattaché à la main y apparaît, deux fiches d'un même matricule (NIR / NIA) restent séparées ; garde d'envoi : une fiche opposée du matricule suffit à exiger l'acquittement ; `resolve` déterministe ; `Id` rendu par la recherche et « patients du jour » ; index `(PatientId, MailId, Date)`. **Extension** : recherche de la fiche et confirmation quand l'appariement ne trouve personne, sur les trois clients ; scénario E2E-PATIENT-002. **Extension 2** : détacher, changer de patient, 409 au lieu de l'écrasement silencieux, rattachement et détachement tracés (actions d'audit 37 et 38) ; E2E-PATIENT-002 v2. PRs #40 (dtos-mss), #271 (api-mail), #88 (client-blazor), #85 (client-mobile), Angular code-only. | — (identito-vigilance INS, opposition Mon Espace Santé ; AUD-05, AUD-34 ; aucune RG déclarée) |
+| task-352 | **Dossier supprimé depuis un autre logiciel.** 404 `problem+json` `code: FOLDER_NOT_FOUND` sans chemin (`NotFoundException` `IErrorCoded`) ; Angular (fin du spinner sans fin), Blazor (relecture à l'ouverture) et mobile : message clair, menu relu, retour à la boîte de réception, aussi au rafraîchissement d'un dossier ouvert. E2E-FOLDER-003, outil `folder --delete`. PRs #274 (api-mail), #90 (client-blazor), #87 (client-mobile), Angular code-only. | — (robustesse d'une fonctionnalité existante ; aucune donnée de santé dans le `detail`) |
 | task-348 | **Serveur de messagerie résolu par le seul serveur (AUD-42).** Table `MailServers:Domains`, puis autoconfig MSSanté limité à `*.mssante.fr` (IP littérale et réseau non public rejetés, cache échec 15 min, log `MailDomainNotConfigured`) ; serveur saisi ignoré (200), jamais lu à la connexion ; `GET /settings/mail-server` ; encart en lecture seule sur Blazor et Angular ; squelette de chargement du corps sur mobile. Dtos.Mss 514.0.0. PRs #41 (dtos-mss), #273 (api-mail), #89 (client-blazor), #86 (client-mobile), Angular code-only. | — (sécurité : SSRF et fuite du jeton PSC fermées ; aucune RG déclarée) |
 | task-339 | **Opérations de dossiers fiables.** Expunge ciblé par UID (AUD-29), renommage qui emporte sous-dossiers, mails et actions en attente (AUD-30), purge des mails des dossiers absents du serveur et reprise des orphelins, vue et badges par étiquette sur INBOX et sa génération (AUD-35), caches et trace des déplacements (AUD-49) ; AUD-50 non reproduit. PR #272 (api-mail). | — (intégrité des opérations de messagerie ; tracé PGSSI-S des déplacements) |
 | task-338 | **La recherche dit la vérité.** Pannes signalées au lieu d'une liste vide (503, 499, mode dégradé `IsDegraded` / `DegradedSources` en hybride) ; chaque filtre du contrat appliqué (patient sur un même document, répondu, brouillon, dates de document et de biologie, `false` = « sans », type inconnu → 400, filtres seuls bornés) ; prédicat dossier/étiquette unique pour toutes les requêtes ; pertinence filtrée une seule fois. Dtos.Mss 500.0.0. 21 tests d'intégration d'endpoint rouges sur le code d'avant. PR #268 (api-mail), #37 (dtos-mss). | — (exactitude de la recherche — AUD-38, 39, 40, 52 ; aucune RG déclarée) |

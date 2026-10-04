@@ -344,6 +344,7 @@ Aucune modification de code : **0 itération**.
 | /lint-mobile | ok | 22 s | — | — | — | — |
 | /e2e | ok | 14 min 45 s | — | — | — | e2e ×5 (13 min 18 s) |
 | /review | ok | 5 min 58 s | 4 (31 s) | 4 (3 min 44 s) | — | api-mail 1B/1T, client-blazor 1B/1T, client-mobile 1B/1T, client-angular 1B/1T |
-| **Total cycle** | | **1 h 13 min** | **14 (2 min 29 s)** | **18 (14 min 54 s)** | **2 (37 s)** | |
+| /tech-writer | ok | 40 s | — | — | — | — |
+| **Total cycle** | | **1 h 14 min** | **14 (2 min 29 s)** | **18 (14 min 54 s)** | **2 (37 s)** | |
 
 Autres commandes mesurées : lint ×3 (1 min 03 s)

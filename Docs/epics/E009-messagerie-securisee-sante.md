@@ -4,7 +4,7 @@
 > **Modèle** : hand-crafted
 > **Version** : 1.85
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-04 (serveur de messagerie résolu par la plateforme, plus aucune saisie — task-348)
+> **Dernière mise à jour** : 2026-10-04 (dossier supprimé depuis un autre logiciel : message clair et retour à la boîte de réception — task-352)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1035,6 +1035,12 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 > automatiquement au retour de la connexion », c'est cette description qui fait foi.
 
 ### Fonctionnalités métier
+
+- **v1.89 — Un dossier supprimé ailleurs ne bloque plus l'écran** (task-352) :
+  - **Plus de chargement sans fin.** Quand le praticien ouvre un dossier qui a été supprimé ou renommé depuis un autre logiciel de messagerie (logiciel de cabinet, webmail de l'opérateur), l'application le dit : « Ce dossier n'existe plus : il a été supprimé ou renommé depuis un autre logiciel de messagerie. »
+  - **Retour automatique à la boîte de réception**, et le dossier disparu quitte la liste des dossiers. Même chose si le dossier ouvert disparaît pendant la consultation : le message ouvert se referme.
+  - **Toute autre panne de chargement d'un dossier** est annoncée par un message simple, jamais par un message technique ni par une attente sans fin.
+  - Sur les trois applications : web Angular, web Blazor et mobile.
 
 - **v1.88 — Le praticien n'a plus à connaître son serveur de messagerie** (task-348) :
   - **Plus aucun réglage serveur.** L'écran Paramètres n'affiche plus de champs serveur ni de bouton « Détecter » : la messagerie retrouve seule le serveur adapté à l'adresse du praticien.
