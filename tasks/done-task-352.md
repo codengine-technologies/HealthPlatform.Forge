@@ -331,6 +331,180 @@ Aucune modification de code : **0 itération**.
   - mobile et Angular : le `getFolders` de repli n'a pas de gestion d'erreur ;
   - Blazor : `JoinFolderAsync` pourrait partir en parallèle de la relecture.
 
+## Extension du 2026-10-04 — bouton « Actualiser les dossiers »
+
+> **Demande humaine** (pendant la recette de task-352) : un dossier créé dans un autre logiciel
+> n'apparaît qu'après l'expiration du cache de la liste des dossiers (`folder:metadata`, 5 min).
+> Le praticien veut un bouton qui force la mise à jour, juste après le libellé « DOSSIERS »
+> (Angular, mobile ; Blazor : à côté du bouton « Créer un dossier », il n'a pas de libellé).
+> Même branche, mêmes PRs.
+
+### Objectif
+Un clic sur « Actualiser » relit la liste des dossiers **sur le serveur de messagerie**, sans
+attendre le cache : un dossier créé, renommé ou supprimé dans un autre logiciel apparaît (ou
+disparaît) aussitôt dans le menu.
+
+### Périmètre
+1. **API** : `GET /api/v1/mail/folders?refresh=true` vide l'entrée `folder:metadata` de la boîte
+   avant la lecture. Sans le paramètre : comportement inchangé (cache). Hors ligne : sans effet
+   (la liste vient de la base).
+2. **Angular** : icône « refresh » juste après « Dossiers » (`data-testid="refresh-folders-btn"`).
+3. **Mobile** : même bouton dans l'en-tête « Dossiers » du menu.
+4. **Blazor** : bouton à côté de « Créer un dossier » (`data-testid="folder-refresh"`).
+5. Pendant la relecture, le bouton est désactivé (pas de double clic) ; une panne affiche un
+   message, sans vider le menu.
+
+### Definition of Done (extension)
+- [x] Test d'intégration (règle 1b) : dossier créé en IMAP hors de l'application après une
+      première lecture → absent de `GET /folders` (cache), présent dans `GET /folders?refresh=true`,
+      lu dans la réponse réelle ; vu rouge sur le code d'avant
+- [x] Tests de composant par client : le clic relit avec `refresh`, met le menu à jour, bouton
+      désactivé pendant la relecture, panne → message sans vider le menu
+- [x] `data-testid` sur les trois boutons ; libellé accessible (title / aria-label)
+- [x] Scénario `E2E-FOLDER-004` (v1) au catalogue, mobile et angular requis : dossier créé hors
+      de l'application (`mss.mail.e2e folder --create`), visible après « Actualiser » ; prouvé rouge
+- [x] Build et tests verts sur les quatre repos, `/e2e` vert
+
+## Develop log — extension « Actualiser les dossiers »
+
+- **api-mail** (`67497f6f`) :
+  - `GET /api/v1/mail/folders` prend `[FromQuery] bool refresh`. À `true`, le contrôleur retire `folder:metadata:{email}` avant la lecture. Sans le paramètre, rien ne change.
+  - Outil e2e : `folder --create <nom>` (création relue). Catalogue : **E2E-FOLDER-004 v1** (mobile et angular requis).
+- **client-blazor** (`b2f1223`) :
+  - `IFolderService.RefreshFoldersAsync` (`?refresh=true`, aussi dans le mock).
+  - Bouton `folder-refresh` à côté de « Créer un dossier », désactivé pendant la relecture, icône qui tourne.
+  - `RefreshImapFolders(fromMailServer)` rend le succès ; une panne déclenche la notification `FolderRefreshError`. Libellés FR et EN.
+- **client-mobile** (`4581a69`) :
+  - `getFolders(refresh)`, bouton `refresh-folders-btn` juste après « Dossiers » (le « + » reste à droite), signal `refreshing`.
+  - Toast « Les dossiers n'ont pas pu être actualisés… » ; `presentMessage` est factorisé avec `presentError`.
+- **client-angular** (code-only, non commité) :
+  - `getFolders(refresh)`, bouton `refresh-folders-btn` (icône `refresh`) juste après « Dossiers ».
+  - Signaux `refreshing` et `refreshError`, message en ligne `folder-refresh-error`.
+  - Nouveau spec `mail-folder-list.component.spec.ts`.
+
+| Comportement | Test | Preuve du rouge |
+|---|---|---|
+| `?refresh=true` relit le serveur : un dossier créé en IMAP après une première lecture est absent de la liste en cache (prémisse vérifiée), présent avec `refresh`, puis gardé par la lecture suivante (vraie pile, Dovecot ; cache simulé **avec mémoire** pour la seule clé `folder:metadata` de l'utilisateur) | `FolderOperationsEndToEndTests.RefreshingTheFolderList_ReadsTheMailServer_AndShowsAFolderCreatedElsewhere` | rouge sur le code d'avant, ligne 298 (`refresh` ignoré) |
+| Le cache est retiré **avant** la lecture ; rien n'est retiré sans `refresh` | `MailControllerTests.GetFolders_Refresh_DropsTheCachedFolderListBeforeReading`, `GetFolders_WithoutRefresh_KeepsTheCachedFolderList` | — (branches unitaires) |
+| Blazor : clic → relecture → menu, bouton désactivé, panne notifiée et menu gardé | `FolderListRefreshTests` (3) | rouges avant (bouton absent) |
+| Mobile : idem | `mail-folder-list.component.spec.ts` (+3) | mutation (`refreshFromMailServer` neutralisé) : 3 FAILED, restauré |
+| Angular : idem | `mail-folder-list.component.spec.ts` (3, nouveau) | rouges avant (bouton absent) |
+| **E2E-FOLDER-004** mobile et Angular | `functional.spec.ts`, `functional.e2e.ts` | verts, puis mutation `getFolders(Date.now() < 0)` (le bouton relit **sans** `refresh`) : **rouges** sur « le dossier créé ailleurs apparaît après « Actualiser » » sur les deux clients. Le cache Redis du backend e2e masque bien le dossier, ce qui prouve le contournement de bout en bout. Restaurés, verts à nouveau |
+
+- **Passe qualité §Q** : faite en revue directe du diff (environ 120 lignes par repo, motifs existants réutilisés). Rien à simplifier.
+- **Validation** :
+  - api-mail : domain 190, infrastructure 683, api 1 172, application 3 384, intégration 793 (+16 ignorés) ;
+  - Blazor : 415 (+2 ignorés) ;
+  - mobile : 997/997, build OK ;
+  - Angular `libs/mss` : 567/567 ;
+  - les deux suites e2e compilent (`tsc`).
+- Sessions `--serve-only` arrêtées : ports libres, aucun conteneur e2e résiduel.
+
+## Sonar log — extension
+
+- Analyse complète de `67497f6f` avec les cinq suites (domain 190, application 3 384, infrastructure 683, api 1 172, intégration 793 + 16 ignorés). **0 itération.**
+- Nouveau code : aucun constat de l'extension. Seul reste **S107** sur `SemanticSearchService:395` (antérieur, task-329).
+- KPIs :
+  - Quality Gate **OK** ;
+  - new coverage 97,5 % ;
+  - coverage 98,0 %, duplication 0,4 % (nouveau code 0,15 %) ;
+  - bugs, vulnérabilités et hotspots : 0 / 0 / 0 ;
+  - code smells 13 ;
+  - ratings A / A / A.
+  Tout est inchangé par rapport à la table « KPIs qualité » ci-dessus.
+
+## Lint log — extension
+
+- **Baseline** : 3 erreurs dans le code de l'extension :
+  - `jsdoc/require-param` sur `getFolders(refresh)` : signature modifiée, JSDoc inchangé ;
+  - `prettier/prettier` sur la même ligne ;
+  - `jsdoc/require-jsdoc` sur `refreshFolders` : son JSDoc s'était retrouvé au-dessus de la méthode insérée avant elle.
+- **Itération 1** :
+  - `--fix` corrige la mise en forme et pose deux squelettes JSDoc creux ;
+  - ces squelettes sont **remplacés à la main** par une vraie documentation (description, `@param refresh`, `@returns`, `@example`), et le doublon de bloc au-dessus de `refreshFromMailServer` est retiré ;
+  - résultat : **0 erreur**, 41 avertissements préexistants.
+- **Récidive** consignée dans `conventions/angular.md`, `jsdoc/require-jsdoc` (4ᵉ occurrence, avec le piège neuf du JSDoc déplacé par une insertion).
+- **Build** : 10/11 ; seul `mss:build:production` est rouge (préexistant, `environment.prod.ts` absent). **Tests** : 11 projets verts. Suite e2e compilée.
+
+## Lint mobile log — extension
+
+- `npm run lint` : **All files pass linting**. 0 itération, aucun commit.
+- Build et tests verts depuis `/develop` (997/997), arbre inchangé.
+
+## E2E log — extension
+
+| Voie | Déclencheur | Résultat | Tests | Durée |
+|---|---|---|---|---|
+| mobile | `api-mail`, `client-mobile` touchés | ✅ verte | 29 verts, 0 flaky, 0 rouge, 0 quarantaine | 4 min 42 s |
+| angular | `api-mail`, `client-angular` touchés | ✅ verte | 29 verts, 0 flaky, 0 rouge, 0 quarantaine | 3 min 56 s |
+
+- Backend : `api-mail` @ `67497f6f`. Clients : `client-mobile` @ `4581a69` ; `client-angular` @ `feature/nova-rewriting-mss` + modifications non commitées.
+- Catalogue de la branche : **E2E-FOLDER-004 v1** ajouté (mobile et angular requis). Vert sur les deux clients, prouvé rouge par mutation (Develop log — extension).
+- Porte `gate` sur les copies des rapports, faites dans la même commande que chaque voie (`agents/e2e.md`) : **code 0**. Flaky : aucun. Quarantaines : aucune. Divergences : aucune.
+- Démontage complet : ports libres, aucun conteneur e2e résiduel.
+
+**E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
+
+### Matrice de parité
+
+| Scénario | v | Mode | Titre | angular | mobile |
+|---|---|---|---|---|---|
+| E2E-INBOX-001 | 1 | headless | Filtrer la boîte de réception, basculer liste / conversation, ouvrir la recherche | ✅ | ✅ |
+| E2E-FOLDER-001 | 1 | headless | Naviguer vers les dossiers Archive et Corbeille | ✅ | ✅ |
+| E2E-PATIENT-001 | 1 | headless | Afficher la vue patients | ✅ | ✅ |
+| E2E-PATIENT-002 | 2 | headless | Rattacher à la main un document sans INS à un patient choisi par recherche, puis le détacher | ✅ | ✅ |
+| E2E-CONTACT-001 | 1 | humain | Rechercher dans le carnet et interroger l'annuaire national | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-SETTINGS-001 | 1 | headless | Changer le filtre par défaut et le retrouver après rechargement | ✅ | ✅ |
+| E2E-MAIL-001 | 1 | headless | Marquer un message lu puis non lu | ✅ | ✅ |
+| E2E-MAIL-002 | 1 | headless | Tout sélectionner et marquer lu en masse | ✅ | ✅ |
+| E2E-DETAIL-001 | 1 | headless | Répondre et transférer depuis la lecture d'un message | ✅ | ✅ |
+| E2E-COMPOSE-001 | 1 | headless | Envoyer un message, le recevoir, le lire, le supprimer | ✅ | ✅ |
+| E2E-COMPOSE-002 | 1 | headless | Faire corriger l'orthographe de son texte, appliquer la correction, puis envoyer | ✅ | ✅ |
+| E2E-MAIL-003 | 1 | headless | Signaler puis ne plus signaler un message | ✅ | ✅ |
+| E2E-MAIL-004 | 1 | headless | Déplacer un message vers Archive puis le ramener | ✅ | ✅ |
+| E2E-DRAFT-001 | 1 | headless | Créer un brouillon, le reprendre, le supprimer | ✅ | ✅ |
+| E2E-DRAFT-002 | 1 | headless | Envoyer un message à pièce jointe après l'enregistrement automatique du brouillon | ✅ | ✅ |
+| E2E-BIO-001 | 1 | headless | Acquitter un compte rendu de biologie | ✅ | ✅ |
+| E2E-DASH-001 | 1 | headless | Afficher les widgets du tableau de bord | ✅ | ✅ |
+| E2E-DETAIL-002 | 1 | headless | Basculer entre texte brut et HTML à la lecture | ✅ | ✅ |
+| E2E-DETAIL-003 | 1 | headless | Répondre à tous depuis la lecture d'un message | ✅ | ✅ |
+| E2E-SETTINGS-002 | 1 | headless | Changer la vue par défaut et la retrouver après rechargement | ✅ | ✅ |
+| E2E-SEARCH-001 | 1 | headless | Rechercher un message et ouvrir la recherche avancée | ✅ | ✅ |
+| E2E-ATTACH-001 | 1 | headless | Voir les pièces jointes d'un message | ✅ | ✅ |
+| E2E-CONTACT-002 | 1 | headless | Créer puis supprimer un contact | ✅ | ✅ |
+| E2E-SIGNATURE-001 | 1 | headless | Créer puis supprimer une signature | ✅ | ✅ |
+| E2E-CONTACT-003 | 1 | headless | Créer puis supprimer un groupe de contacts | ✅ | ✅ |
+| E2E-FOLDER-002 | 1 | headless | Créer puis supprimer un dossier | ✅ | ✅ |
+| E2E-FOLDER-003 | 1 | headless | Ouvrir un dossier supprimé depuis un autre logiciel | ✅ | ✅ |
+| E2E-FOLDER-004 | 1 | headless | Actualiser la liste des dossiers après un changement fait dans un autre logiciel | ✅ | ✅ |
+| E2E-AUTH-001 | 1 | humain | Rester connecté quand le jeton d'accès expire | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-AUTH-002 | 1 | humain | Se déconnecter | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-LIVE-001 | 1 | headless | Recevoir un nouveau message en temps réel, sans recharger | ✅ | ✅ |
+| E2E-AI-001 | 1 | headless | Interroger l'assistant sur des messages sélectionnés et poser des questions de suite | ✅ | ✅ |
+
+**Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## Code Review Summary — extension
+
+**APPROVED** — 0 bloquant.
+
+- Fusion d'`origin/develop` (task-348) dans les trois branches, sans conflit. Merges : api-mail `8eb51403`, Blazor `3cfadda`, mobile `390945e`.
+- Validation sur le code fusionné :
+  - api-mail : domain 190, infrastructure 683, api 1 178, application 3 433, intégration 797 (+16) ;
+  - Blazor : 419 (+2) ;
+  - mobile : 1 000, build OK ;
+  - Angular : 11 projets testés verts, build 10/11 (`mss:build:production` préexistant).
+- E2E rejoué sur le code fusionné, task-348 ayant changé les seeds : mobile 29/29, Angular 29/29, porte code 0, démontage complet.
+- **Règle 1b** : `RefreshingTheFolderList_ReadsTheMailServer_AndShowsAFolderCreatedElsewhere`, rouge sur le code d'avant (ligne 298).
+- **Suggestions** :
+  - Blazor : « Actualiser » ne relit pas les étiquettes ;
+  - un dossier ouvert qui disparaît à l'actualisation n'est traité qu'au rafraîchissement suivant (retour à la boîte de réception, première partie de la task).
+- PRs mises à jour (section « Extension ») : #274, #90, #87, label `awaiting-human-merge` conservé.
+- **client-angular** (code-only), fichiers de l'extension à commiter en plus de la liste ci-dessus :
+  - `front/libs/mss/src/core/services/mss-api.service.ts` ;
+  - `front/libs/mss/src/features/mail/components/mail-folder-list/mail-folder-list.component.{ts,html,scss}` ;
+  - `front/libs/mss/src/features/mail/components/mail-folder-list/mail-folder-list.component.spec.ts` (nouveau).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-352 --sync` — ne pas éditer à la main)*
@@ -338,13 +512,13 @@ Aucune modification de code : **0 itération**.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 21 s | — | — | — | — |
-| /develop | ok | 41 min 00 s | 8 (1 min 16 s) | 8 (5 min 06 s) | — | api-mail 5B/3T, client-blazor 0B/2T, client-mobile 3B/2T, client-angular 0B/1T |
-| /sonar | ok | 7 min 25 s | 1 (19 s) | 5 (5 min 11 s) | 2 (37 s) | api-mail 1B/5T |
-| /lint-angular | ok | 3 min 37 s | 1 (21 s) | 1 (52 s) | — | 1 itération(s), client-angular 1B/1T |
-| /lint-mobile | ok | 22 s | — | — | — | — |
-| /e2e | ok | 14 min 45 s | — | — | — | e2e ×5 (13 min 18 s) |
-| /review | ok | 5 min 58 s | 4 (31 s) | 4 (3 min 44 s) | — | api-mail 1B/1T, client-blazor 1B/1T, client-mobile 1B/1T, client-angular 1B/1T |
+| /develop | ok | 18 min 07 s | 12 (1 min 38 s) | 18 (10 min 05 s) | — | api-mail 8B/6T, client-blazor 0B/5T, client-mobile 4B/5T, client-angular 0B/2T, extension |
+| /sonar | ok | 6 min 35 s | 2 (39 s) | 10 (10 min 24 s) | 4 (1 min 13 s) | api-mail 2B/10T, extension |
+| /lint-angular | ok | 5 min 11 s | 2 (54 s) | 2 (2 min 01 s) | — | 1 itération(s), client-angular 2B/2T, extension |
+| /lint-mobile | ok | 34 s | — | — | — | extension |
+| /e2e | ok | 9 min 10 s | — | — | — | e2e ×8 (21 min 55 s), extension |
+| /review | ok | 14 min 30 s | 7 (1 min 26 s) | 7 (7 min 15 s) | — | api-mail 2B/2T, client-blazor 2B/2T, client-mobile 2B/2T, client-angular 1B/1T, e2e ×2 (8 min 25 s), extension |
 | /tech-writer | ok | 40 s | — | — | — | — |
-| **Total cycle** | | **1 h 14 min** | **14 (2 min 29 s)** | **18 (14 min 54 s)** | **2 (37 s)** | |
+| **Total cycle** | | **55 min 10 s** | **23 (4 min 38 s)** | **37 (29 min 46 s)** | **4 (1 min 13 s)** | |
 
-Autres commandes mesurées : lint ×3 (1 min 03 s)
+Autres commandes mesurées : lint ×7 (3 min 15 s)
