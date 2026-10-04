@@ -459,3 +459,16 @@ Un seul push par repo : api-mail `5a26c443`, Blazor `083671c`, mobile `7cc46c3`.
 | **Total cycle** | | **37 min 35 s** | **18 (2 min 59 s)** | **36 (35 min 43 s)** | **6 (1 min 48 s)** | |
 
 Autres commandes mesurées : lint ×5 (1 min 23 s)
+
+## Merged
+
+Squash-merge le 2026-10-04 par `/merge task-353 --i-tested` (validation humaine attestée), **version réduite** (sans relecture du statut à l'ouverture) :
+
+| Repo | PR | Commit squash | CI `develop` |
+|---|---|---|---|
+| `api-mail` | #275 | `0f8e465c` | ✅ Build and Publish |
+| `client-blazor` | #91 | `836e299c` | ✅ Build and Publish |
+| `client-mobile` | #88 | `e9577cc0` | ✅ Android Build |
+| `client-angular` | TFS (code-only) | — | à commiter et pousser par l'humain ; le clone local reste sur `feature/nova-rewriting-mss` |
+
+Branches `fix/task-353-message-supprime-ailleurs` supprimées, distantes et locales, sur les trois repos.
