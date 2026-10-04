@@ -112,6 +112,97 @@ Les trois clients se comportent de la même façon.
 - `client-angular` (code-only) : la forge écrit sur la branche checked out dans `Client/Angular/` (`feature/nova-rewriting-mss` au /start, task-352 commitée par l'humain) — humain gère branche, commit, push, PR TFS
 - `dtos-mss` : aucune branche à ce stade (branche paresseuse, créée par /develop si un contrat bouge)
 
+## Develop log
+
+**Ordre** : api-mail → client-blazor → client-mobile → client-angular (code-only). Aucun contrat `dtos-mss` touché.
+
+### Conception (api-mail)
+
+Avant la task, les trois chemins de lecture servaient la ligne locale d'un message disparu sans jamais consulter le serveur. Seule la synchronisation de fond purgeait les UID disparus, et elle ne vidait pas le cache par message.
+
+1. **Purge à la relecture du dossier.** Quand `GET folder` relit vraiment IMAP (compte ou `UidNext` changés) :
+   - les lignes locales des UID disparus sont supprimées et leurs caches par message vidés (`PurgeVanishedMailsAsync`, évictions en parallèle) ;
+   - un dossier devenu vide est désormais mis en cache, ce qui supprime les « count 1 vs 0 » répétés.
+2. **Garde à l'ouverture seulement** (`IsMessageGoneFromServerAsync`) :
+   - le statut est relu sur le serveur (`bypassStatusCache`, un STATUS) ;
+   - la liste d'UID en cache est réutilisée si rien n'a bougé, et la clé de statut partagée n'est pas touchée ;
+   - un message disparu donne un 404 `problem+json` `code: MESSAGE_NOT_FOUND`, sans sujet ni chemin ;
+   - le 404 du repli IMAP porte le même code.
+3. **Règle commune** : un message est « disparu » si `uid < UidNext` **et** s'il est absent de la liste. Un message arrivé après l'état connu n'est jamais retiré.
+4. **Page d'en-têtes : aucune garde, aucun coût ajouté.**
+   - Une première version filtrait la page en lisant l'état du dossier.
+   - La passe qualité l'a retirée : sur le chemin le plus chaud, elle coûtait un STATUS sous le verrou `imap_session` dès que le statut avait plus de 10 s.
+   - Chaque client relit le dossier juste avant la page, et cette relecture purge déjà les lignes disparues. Le test d'intégration suit ce parcours.
+5. **Outil e2e** :
+   - `message --create|--delete` (IMAP hors de l'application, relu) ;
+   - connexion praticien partagée (`E2eImap.ConnectPractitionerAsync`, `E2eImapTargets`).
+   - Catalogue : **E2E-MAIL-005 v1**.
+
+### Clients
+
+- **Blazor** :
+  - `MailService.GetEmailContentAsync` rend `NotFound(MESSAGE_NOT_FOUND)` (via `GetWithOutcomeAsync`) ;
+  - `MailListComponent.OnMailsGoneAsync` est appelé au rafraîchissement et à l'ouverture. Il retire les messages de la liste ; si l'un était ouvert, il referme le détail et affiche la notification `MailGone` (FR et EN).
+- **Mobile** :
+  - le détail affiche `mail-gone-notice` (« Ce message n'existe plus… ») au lieu d'un contenu vide, et retire le message de la liste ;
+  - le « tirer pour rafraîchir » repart des UID que le serveur rend encore (verrouillé par un test).
+- **Angular** (code-only) :
+  - `MailStateService.dropMailsGoneFromFolder` (rafraîchissement) et `dropMailsGoneFromServer` (ouverture, sur `isMessageNotFound`) ;
+  - ils retirent le message de la liste, tiennent les compteurs du dossier (`forgetUidsInSelectedFolder`, extrait de `removeMailFromList`) et referment le détail ;
+  - l'avis `mail-gone-notice` s'affiche dans la liste.
+
+### Tests rouges d'abord (règle 1 et 1b)
+
+| Comportement | Test | Preuve du rouge |
+|---|---|---|
+| Contenu d'un message supprimé ailleurs : 404 `problem+json`, `code: MESSAGE_NOT_FOUND`, `detail` sans sujet ni chemin, ligne locale purgée (vraie pile, Dovecot) | `FolderOperationsEndToEndTests.OpeningAMessageDeletedByAnotherClient_Is404ProblemJsonMessageNotFound_NeverAnEmptyContent` | rouge sur le code d'avant (200 avec le contenu périmé) |
+| Clic **immédiat**, état du dossier en cache (cache avec mémoire pour le statut et les UID) | `OpeningAMessageRightAfterItsDeletion_IsStill404_EvenWithAWarmFolderCache` | mutation (relecture du statut neutralisée) : 200 périmé ; restauré |
+| Message présent : contenu rendu | `OpeningAMessageStillOnTheServer_ReturnsItsContent` | garde du cas nominal |
+| En-têtes par UID après relecture du dossier : le message disparu n'est pas rendu, l'autre l'est | `ReadingHeadersByUid_LeavesOutAMessageDeletedElsewhere_AndKeepsTheOthers` | rouge sur le code d'avant (`[1, 2]`) |
+| Dossier relu : `uids` sans le message disparu, compte à jour, ligne locale purgée | `ReadingTheFolder_AfterADeletionElsewhere_NoLongerListsTheMessage` | rouge sur le code d'avant (ligne locale conservée) |
+| Contrôleur : code posé, ni dossier ni sujet dans le message, cache non lu ; pas de garde hors ligne | `MailControllerTests.GetEmail_*` (3) | — (branches) |
+| Blazor : rafraîchissement, message ouvert, ouverture, message arrivé entre-temps | `MailListMailGoneTests` (4) | 3 rouges avant le correctif ; le 4ᵉ est la garde « message arrivé » |
+| Mobile : détail (3), « tirer pour rafraîchir » (1) | `mail-detail.page.spec.ts`, `inbox.page.spec.ts` | rouges à la compilation, puis mutation (`onMailGone` neutralisé) : FAILED ; restauré |
+| Angular : état (3), rafraîchissement (3), détail (2), liste (1) | `mail-state.service.mail-gone.spec.ts`, `mss-mail.component.mail-gone.spec.ts`, `mail-detail.component.spec.ts`, `mail-list.component.spec.ts` | rouges avant le correctif ; détail : mutation rouge, restauré |
+| **E2E-MAIL-005 mobile** | `functional.spec.ts` | vert, puis `onMailGone` neutralisé : **rouge** (« n'existe plus » absent) ; restauré, vert |
+| **E2E-MAIL-005 Angular** (trou du filet) | `functional.e2e.ts` | vert, puis deux mutations : état neutralisé → **rouge** à l'ouverture ; réconciliation du rafraîchissement neutralisée → **rouge** sur « le rafraîchissement retire le message disparu » (attendu 0, reçu 1). Restauré, vert |
+
+### Passe qualité §Q (4 relecteurs)
+
+- **Appliqué** :
+  - garde de la page d'en-têtes retirée (efficacité) ;
+  - `bypassStatusCache` au lieu de la suppression de la clé partagée ;
+  - `ExceptWith` sans seconde allocation ;
+  - évictions de cache en parallèle, et garde « liste vide » dans la purge ;
+  - méthode renommée `IsMessageGoneFromServerAsync` (un seul usage) ;
+  - aide de cache de test unifiée (`KeepInCache<T>`) ;
+  - outil e2e factorisé ;
+  - Angular : réconciliation déplacée dans l'état, compteurs tenus, `isNotFoundWithCode`, code mort retiré du spec ;
+  - mobile : `removeMailFromList` réutilisé, route lue une fois, `isNotFoundWithCode`, exécuteur e2e commun (JSDoc orphelin de `deleteFolderElsewhere` remis en place) ;
+  - Blazor : `ApplyFilterAsync`, aide `Warned()`.
+- **Écarté** :
+  - une primitive de purge commune avec la synchro de fond et l'enrichissement (hors du diff) ;
+  - les autres chemins qui servent encore une ligne disparue jusqu'à la prochaine relecture du dossier : vues par étiquette, fil, résumé IA, recherche, pièces jointes. L'ouverture du message reste protégée. → suivi ;
+  - la lecture du cache de contenu en parallèle du STATUS ;
+  - une anti-jointure SQL à la place de `GetExistingUidsAsync` (à mesurer au banc).
+- **Re-validation** :
+  - api-mail : domain 190, infrastructure 683, api 1 180, application 3 433, intégration 802 (+16) ;
+  - Blazor : 423 (+2) ;
+  - mobile : 1 004, build OK ;
+  - Angular `libs/mss` : 582 ;
+  - les deux suites e2e compilent.
+- **Rouges isolés pendant `/develop`**, verts seuls et sans rapport avec la task :
+  - `SeededThreadsAreCountableTests` (ordre d'exécution) ;
+  - `StartSyncAsync_WhenLeaseRenewalFails` (timing sous charge).
+
+### Commits
+
+- api-mail : feature, ouverture à statut relu, passe qualité.
+- Blazor : feature, passe qualité.
+- Mobile : feature, passe qualité.
+
+Un seul push par repo : api-mail `5a26c443`, Blazor `083671c`, mobile `7cc46c3`.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-353 --sync` — ne pas éditer à la main)*
@@ -119,4 +210,5 @@ Les trois clients se comportent de la même façon.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 27 s | — | — | — | — |
-| **Total cycle** | | **27 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 43 min 41 s | 8 (55 s) | 14 (11 min 37 s) | — | api-mail 6B/5T, client-blazor 0B/3T, client-mobile 2B/4T, client-angular 0B/2T |
+| **Total cycle** | | **44 min 09 s** | **8 (55 s)** | **14 (11 min 37 s)** | **0 (0.0 s)** | |

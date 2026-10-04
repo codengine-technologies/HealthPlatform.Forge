@@ -119,12 +119,19 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   « réparé » les deux erreurs avec des squelettes creux, exactement comme décrit
   plus haut. **Insérer une méthode, c'est l'ancrer avant le JSDoc de la suivante**,
   jamais sur sa signature.
+  **Récidive task-353 — la cinquième, et hors de portée du lint.** Le même ancrage sur une
+  signature avait déjà orphelin le JSDoc de `deleteFolderElsewhere` dans le support e2e
+  **mobile** (extension de task-352), où aucune règle `jsdoc/*` ne tourne : rien ne l'a signalé,
+  c'est une relecture qui l'a vu. Et dans `problem-details.utils.ts`, le piège a été reproduit
+  puis rattrapé avant le lint. **La consigne vaut partout, lint ou pas** : avant d'insérer, lire
+  les lignes qui précèdent l'ancre ; si c'est un `*/`, l'ancre est le `/**` du bloc.
 - **Origine** : task-304 (/lint-angular, 57 erreurs — 55 auto-fixées, 2
   `require-returns` + 23 squelettes creux repris manuellement) ;
   task-308 (/review, 2 `require-param` sur signatures modifiées) ;
   task-310 (/develop, 3 erreurs + 2 warnings sur un paramètre objet ajouté) ;
-  task-352 (/lint-angular, 1 `require-param` + 1 `require-jsdoc` par JSDoc déplacé)
-- **Occurrences** : 4
+  task-352 (/lint-angular, 1 `require-param` + 1 `require-jsdoc` par JSDoc déplacé) ;
+  task-353 (/simplify : JSDoc orphelin dans le support e2e mobile, hors lint)
+- **Occurrences** : 5
 
 ### mail-content-body — `content.body` n'est pas le texte du mail
 - **Règle** : convention projet (défaut fonctionnel, invisible au lint)
