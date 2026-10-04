@@ -258,7 +258,7 @@ dans `string.Equals`, mais `StringComparer` dans `Contains`.
 
 ## S125 — une prose qui « ressemble à du code » est signalée comme code commenté
 
-**Occurrences : 10** (task-348 — deux commentaires « … public ; c'est … », « … Toxiproxy ; with », attrapés par le contrôle mécanique lancé pendant `/sonar` ; task-184, task-292, task-188, task-322, task-171, task-342, task-191, task-330,
+**Occurrences : 12** (task-344 — ×2 dans l'extension « reprise des étiquetages IA », attrapées par le contrôle mécanique avant le commit ; task-348 — deux commentaires « … public ; c'est … », « … Toxiproxy ; with », attrapés par le contrôle mécanique lancé pendant `/sonar` ; task-184, task-292, task-188, task-322, task-171, task-342, task-191, task-330,
 task-331 — neuvième, **attrapée par le contrôle mécanique avant le commit**, comme prévu : « …pas
 l'objet ; le parcours… » au milieu d'un commentaire du seed e2e. Le contrôle marche. Le réflexe
 d'écriture, lui, ne tient toujours pas : en français, l'espace avant le point-virgule est la

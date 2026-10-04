@@ -2,7 +2,7 @@
 
 > **Statut** : 🟢 En cours
 > **Modèle** : task-driven
-> **Version** : 1.19
+> **Version** : 1.20
 > **Auteur** : PO forge (audit performance du 2026-06-10)
 > **Audience** : PO, médecin, direction — la vue ingénierie vit dans [E011-Changelogs.md](E011-Changelogs.md)
 > **Dernière mise à jour** : 2026-10-04
@@ -185,6 +185,11 @@ graph LR
 - v1.10 — La vérification des certificats de l'Espace de Confiance refuse désormais systématiquement un certificat révoqué, sur tous les chemins de contrôle (correction d'une faille latente détectée pendant le chantier). En cas d'indisponibilité du service de vérification de l'ANS, le comportement est arbitré et validé humainement : une vérification récente reste acceptée pendant 4 heures au maximum, avec un évènement journalisé à chaque acceptation dégradée ; au-delà, la connexion est refusée (task-069).
 
 ### Technique / observabilité (sans impact utilisateur direct)
+- v1.20 — **Un compte rendu urgent ne reste plus sans son signalement « Urgent » quand le service d'intelligence artificielle a été indisponible.**
+  - Situation corrigée : le signalement d'urgence (« Urgent », « Très urgent », « Important ») est proposé par l'intelligence artificielle juste après la réception du message. Si le service d'IA était indisponible à cet instant, le message était bien reçu et analysé, mais restait **définitivement** sans signalement, sans que personne ne le sache.
+  - Désormais, un message dont le signalement n'a pas pu être calculé est **repris automatiquement**, sans rien retélécharger, dès que le praticien reçoit de nouveaux messages et au plus tôt 15 minutes après l'échec. La reprise concerne les messages des 7 derniers jours ; les brouillons, envois et corbeille n'en ont pas besoin.
+  - Si le service d'IA est toujours indisponible, la reprise s'arrête au premier essai et réessaie plus tard, sans le solliciter en rafale. Les messages reçus avant cette évolution ne sont pas repris en masse.
+  - Les écrans ouverts se mettent à jour d'eux-mêmes quand le signalement arrive. Aucune donnée de santé n'est ajoutée aux journaux (task-344).
 - v1.19 — **Un compte rendu n'apparaît plus deux fois dans le dossier patient quand le médecin ouvre le même message sur deux appareils.**
   - Situation corrigée : le médecin affiche sa boîte sur son téléphone et sur son poste, puis ouvre, au même moment, un message qui n'avait pas encore été analysé. Chaque appareil pouvait être servi par un serveur différent, et chacun analysait le message de son côté : le compte rendu, ses résultats de biologie et ses pièces jointes étaient enregistrés **deux fois**, et le dossier patient les montrait en double.
   - Désormais, **un message n'est analysé et enregistré qu'une seule fois**, quel que soit le nombre d'appareils et de serveurs. C'est la base de données qui le garantit : le second enregistrement est refusé, sans message d'erreur pour le praticien, qui voit le contenu déjà analysé.
