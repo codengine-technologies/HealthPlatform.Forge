@@ -106,3 +106,88 @@ Quand le praticien ouvre un dossier qui n'existe plus sur le serveur de messager
 - `client-mobile` (pushed) : fix/task-352-dossier-supprime-ailleurs — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/fix/task-352-dossier-supprime-ailleurs
 - `client-angular` (code-only) : la forge écrit sur la branche checked out dans `Client/Angular/` (`feature/nova-rewriting-mss` au /start) — humain gère branche, commit, push, PR TFS
 - `dtos-mss` : aucune branche à ce stade (branche paresseuse, créée par /develop si un contrat bouge)
+
+## Develop log
+
+**Ordre** : api-mail → client-blazor → client-mobile → client-angular (code-only). Aucun contrat
+`dtos-mss` touché : pas de branche, pas de publication NuGet.
+
+### Ce qui a été fait
+- **api-mail** : `GET /api/v1/mail/folders/{dossier}` sur un dossier absent du serveur lève
+  `NotFoundException(message, MailNotFoundCodes.FolderNotFound)`. `NotFoundException` devient
+  `IErrorCoded`, et le `GlobalExceptionHandler` existant pose `code: FOLDER_NOT_FOUND` dans le
+  ProblemDetails. Le `detail` est une phrase fixe, sans le chemin. Le nettoyage local existant
+  (suppression du dossier en base, invalidation du cache) est conservé tel quel.
+  Outil e2e : sous-commande `folder --delete <chemin>`, qui supprime un dossier par IMAP hors de
+  l'application et relit la suppression. Catalogue : **E2E-FOLDER-003 v1** (mobile et angular requis).
+- **client-blazor** : `HttpRequestService.GetWithOutcomeAsync` (valeur, statut, `code`), sur le
+  modèle de `PostOutcome`. `FolderService.GetFolderAsync` rend `Result.NotFound` sur
+  `FOLDER_NOT_FOUND`. `MailListComponent` relit le dossier à l'ouverture, et rafraîchit sur
+  `NotFound` : il referme le message ouvert, relit le menu (nouvel événement
+  `RefreshFolderList`), ouvre la boîte de réception et affiche la notification `FolderGone`.
+  Toute autre panne : `FolderLoadError`, sans redirection. Libellés FR et EN.
+- **client-mobile** : `inbox.page.ts`. Sur `FOLDER_NOT_FOUND`, la page relit les dossiers, ouvre
+  la boîte de réception (`findInbox`, partagé avec `loadFolders`) et affiche l'avis
+  `mail-folder-error`. Toute autre panne affiche un message générique au lieu du message
+  technique brut.
+- **client-angular** (code-only, non commité) : signal `folderLoadError` (`MailStateService`),
+  `isFolderNotFound` dans `problem-details.utils.ts`, gestionnaire d'erreur sur `folderChanged$`
+  (le chargement s'arrêtait jamais : spinner sans fin), `onFolderGone` aussi sur le
+  rafraîchissement du dossier ouvert, et bandeau `mail-folder-error` dans `mail-list`.
+
+### Tests rouges d'abord (règle 1 et 1b)
+
+| Comportement | Test | Preuve du rouge |
+|---|---|---|
+| 404 problem+json `code: FOLDER_NOT_FOUND`, `detail` sans le nom, dossier retiré de la liste suivante (vraie pile : HTTP, DI, handler, Postgres, Dovecot) | `FolderOperationsEndToEndTests.OpeningAFolderDeletedByAnotherClient_Is404ProblemJsonFolderNotFound_AndItLeavesTheFolderList` | rouge sur le code d'avant : `code` absent du ProblemDetails |
+| Dossier existant : 200 | `FolderOperationsEndToEndTests.OpeningAnExistingFolder_StillReturnsIt` | garde du cas nominal (vert avant et après) |
+| Contrôleur : code posé, nom absent du message | `MailControllerTests.GetFolder_NotFound_ThrowsFolderNotFound_ForTheProblemDetailsCode` | rouge avant le correctif |
+| Blazor : ouverture, rafraîchissement, panne générique | `MailListFolderGoneTests` (3) | rouges avant le correctif (NRE dans `GetMails` : la liste périmée se chargeait) |
+| Mobile : idem | `inbox.page.spec.ts` (3 nouveaux) | mutation (branche neutralisée) : 3 FAILED, restauré |
+| Angular : idem | `mss-mail.component.folder-gone.spec.ts` (4), `mail-list.component.spec.ts` (+3) | rouges avant le correctif |
+| **E2E-FOLDER-003 mobile** | `functional.spec.ts` | vert sur le code corrigé, puis mutation `if (Date.now() < 0 && isFolderNotFound(err))` dans `inbox.page.ts` : **rouge** sur « le praticien est prévenu que le dossier n'existe plus » (`mail-folder-error` absent), restauré par copie, vert à nouveau |
+| **E2E-FOLDER-003 Angular** (trou du filet) | `functional.e2e.ts` | vert sur le code corrigé ; bug d'origine réinjecté (`onFolderLoadFailed` neutralisé par `if (Date.now() > 0) { return }`, nouveau bundle attendu dans `weda2.log`) : **rouge** sur « le praticien est prévenu que le dossier n'existe plus ». La capture montre le bug signalé : dossier fantôme toujours au menu, liste en chargement sans fin. Restauré par copie, nouveau bundle, vert à nouveau |
+
+Sessions `--serve-only` arrêtées par `out/STOP` : ports libres, aucun conteneur e2e résiduel.
+
+### Passe qualité §Q (`/simplify`, 4 relecteurs)
+- **Appliqué** :
+  - api-mail : constructeur `NotFoundException(message, errorCode)`, comme `UnavailableException`,
+    et `ImapHelper.CollectAllPaths` réutilisé par le test d'intégration ;
+  - Blazor : `MailNotFoundCodes` dans son propre fichier, et un seul arrêt du chargement ;
+  - mobile : `findInbox` partagé ;
+  - Angular : `isFolderNotFound` déplacé dans `problem-details.utils.ts` (sur `isProblemDetails`),
+    et suppression de l'attribut `data-folder-error` (non lu) et de l'alias `folderLoadError`.
+- **Corrigé en chemin** : apostrophe dans une chaîne entre apostrophes simples, dans les deux
+  specs e2e (erreur de syntaxe, voie entière en panne). Prévention : `conventions/e2e.md`,
+  « suite-e2e-non-compilee ».
+- **Écarté** :
+  - lancer `JoinFolderAsync` en parallèle du GET de validation (Blazor) : gain faible, et un
+    redémarrage du flux gâché dans le cas d'un dossier disparu ;
+  - premier rafraîchissement redondant au démarrage (Blazor) : comportement préexistant, hors
+    du diff ;
+  - `GetOutcome` réécrit sur `PostOutcome` : optionnel ;
+  - Angular `onFolderGone` via `refreshFolders` : effets de bord à évaluer, hors §Q ;
+  - `E2eFolder.FindAsync` via `GetFolderAsync` : mineur.
+- **Re-validation** :
+  - api-mail : build 0 erreur, et tests ciblés verts (infra 29, api 246, application 48,
+    intégration 17) ;
+  - Blazor : 412 verts, 2 ignorés ;
+  - mobile : 994/994, build OK ;
+  - Angular `libs/mss` : 564/564 ;
+  - suites e2e : `tsc` vert sur les deux.
+
+### Validation complète
+- api-mail, toutes suites (avant §Q) : domain 190, infrastructure 683, application 3384,
+  api 1170, intégration 792 (16 ignorés) — 0 échec.
+- Push unique par repo : api-mail `7cd63aab`, Blazor `ea1dd0b`, mobile `b082712`.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-352 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 21 s | — | — | — | — |
+| /develop | ok | 41 min 00 s | 8 (1 min 16 s) | 8 (5 min 06 s) | — | api-mail 5B/3T, client-blazor 0B/2T, client-mobile 3B/2T, client-angular 0B/1T |
+| **Total cycle** | | **41 min 21 s** | **8 (1 min 16 s)** | **8 (5 min 06 s)** | **0 (0.0 s)** | |
