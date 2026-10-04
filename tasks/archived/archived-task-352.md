@@ -522,3 +522,16 @@ disparaît) aussitôt dans le menu.
 | **Total cycle** | | **54 min 30 s** | **23 (4 min 38 s)** | **37 (29 min 46 s)** | **4 (1 min 13 s)** | |
 
 Autres commandes mesurées : lint ×7 (3 min 15 s)
+
+## Merged
+
+Squash-merge le 2026-10-04 par `/merge task-352 --i-tested` (validation humaine attestée) :
+
+| Repo | PR | Commit squash | CI `develop` |
+|---|---|---|---|
+| `api-mail` | #274 | `6da7f362` | ✅ Build and Publish |
+| `client-blazor` | #90 | `0c131bb9` | ✅ Build and Publish |
+| `client-mobile` | #87 | `0f13faf3` | ✅ Android Build |
+| `client-angular` | TFS (code-only) | — | l'humain commite et pousse ; le clone local reste sur `feature/nova-rewriting-mss` |
+
+Branches `fix/task-352-dossier-supprime-ailleurs` supprimées, distantes et locales, sur les trois repos.
