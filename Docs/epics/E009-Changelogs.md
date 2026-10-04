@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-10-04 (v1.87)
+> **Dernière mise à jour** : 2026-10-04 (v1.88)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -761,6 +761,40 @@
   - remonter `originalMarkedCancelled` et `warning` par `drafts/{id}/send` ;
   - bail renouvelable pour le verrou.
 
+### v1.88 — Le serveur de messagerie n'est plus choisi par l'utilisateur : api-mail le résout seul, et la SSRF d'AUD-42 se ferme — task-348
+
+- **Origine** : AUD-42 (audit du 2026-09-27). Un serveur IMAP/SMTP saisi dans les paramètres recevait le jeton PSC à la connexion : SSRF et fuite de jeton. Correctif d'allowlist reverté dans task-342 (arbitrage humain du 2026-09-28) ; reprise ici, sans aucune confiance dans une saisie.
+- **PRs** (`awaiting-human-merge`, à merger ensemble, règle 11) : `dtos-mss` #41, `api-mail` #273, `client-blazor` #89, `client-mobile` #86 ; `client-angular` code-only (commit, push TFS et PR par l'humain).
+- **Contrat** `HealthPlatform.Dtos.Mss` **514.0.0** (après fusion de develop, qui apporte le contrat de task-331) :
+  - `UserSettingsDto.ImapServerConfig` / `SmtpServerConfig` marqués `[Obsolete]` (étape 1 sur 2 ; suppression dans `todo-task-351`) ;
+  - `MailServerInfoDto` (`Imap`, `Smtp`, `Source`) et `MailServerSources` (`configuration`, `autoconfig`).
+- **Résolution** (`IMailServerResolver` / `MailServerResolver`) :
+  1. table `MailServers:Domains` (ni Redis ni HTTP pour un domaine configuré) ;
+  2. autoconfig MSSanté (`AutoconfigService.DiscoverAsync`), limité à `*.mssante.fr` ; IP littérale et résolution non publique rejetées (`NonPublicNetworkAddress`, `IHostAddressResolver`) ; cache `mail-autoconfig:{domain}` (succès 24 h, échec 15 min) ; log `MailDomainNotConfigured` une seule fois, sans email ;
+  3. sinon aucun serveur.
+  - `ToServerConfig` rejette hôte vide et port hors 1–65535, et force la validation du certificat.
+- **Sites de connexion** : `ImapConnectionService`, `BackgroundImapService`, `SmtpConnectionFactory` passent par le résolveur ; `IUserSettingsRepository` retiré de leurs constructeurs. `MssAccountOnboardingService` reste sur la table seule (choix documenté).
+- **Paramètres** : `GET` / `POST /settings` mettent les champs serveur à `null` (200, jamais 400) ; `GET /settings/mail-server` → `MailServerInfoDto`, 404 `ProblemDetails` ; route `autoconfig?email=` supprimée.
+- **Bancs** : l'AppHost déclare les domaines du banc de charge (`MSS_LOADTEST_DOMAIN`, `MSS_LOADTEST_NO_PROXY`, `MSS_LOADTEST_MAIL_HOST`) et du filet e2e (`e2e.test`) dans `MailServers:Domains` ; les seeds n'envoient plus de serveur et vérifient `GET /settings/mail-server`.
+- **Clients** :
+  - Blazor : champs serveur et boutons « Détecter » / « Enregistrer » retirés ; encart en lecture seule `MailServerInfoCard` ;
+  - Angular : même encart dans `mss-settings`, `getMailServer()` ; 7 fichiers non committés ;
+  - mobile (ajouté pendant `/e2e`, sur décision humaine) : `mail-body` affiche un squelette pendant le chargement au lieu d'un `<pre>` vide et de « Aucun contenu disponible ». La race faisait rougir `E2E-DETAIL-002`, qui attend désormais un corps non vide.
+- **Règle 1b** : `SettingsMailServerEndpointIntegrationTests`, 4 tests HTTP (serveur saisi accepté, non stocké, et connexion IMAP suivante sur le serveur du domaine ; domaine configuré → 200 `configuration` ; domaine inconnu → 404 ; ancienne route → 404). Vus rouges par mutation (vidage retiré, table ignorée) ou par route absente.
+- **Tests** : domain 190, infrastructure 690, application 3 433, api 1 176 ; intégration verte hors 5 rouges d'ordre connus (vecteurs, partitions d'audit), qui passent seuls ; Blazor 413 ; mobile 994 ; Angular 11/11 projets.
+- **E2E** : deux voies à 27/27, parité verte. Rouges rencontrés en route : `E2E-PATIENT-002` (réglé par la fusion de task-331), `E2E-DETAIL-002` mobile (squelette), `E2E-SEARCH-001` Angular (prédicat qui capturait `GET /search/history`).
+- **Sonar** : Quality Gate ERROR → ERROR (conditions héritées) ; new coverage 98,2 % → 98,1 % ; bugs 2, vulnérabilités 0 ; hotspots du nouveau code 24 → 13 (les 11 de la task corrigés, dont S1313 et S4457) ; code smells 65 → 68, tous venus de task-329.
+- **Leçons** :
+  - `conventions/csharp.md` : `test-de-rejet-attribuable` et `marqueur-derive-apres-filtrage` (créées), S1313 (créée), S4457 → 5, S125 → 10 ;
+  - `conventions/e2e.md` : `attente-satisfaite-par-un-placeholder` (créée), `predicat-de-reponse` → 2 ;
+  - `agents/merge.md` : garde contre une PR déjà MERGED.
+- **Suivis** :
+  - `todo-task-351` : retrait des champs obsolètes du contrat (étape 2) ;
+  - DNS rebinding entre le contrôle de l'hôte autoconfig et la connexion (faible tant que limité à `*.mssante.fr`) ;
+  - téléchargement autoconfig en double sur deux connexions simultanées (sans conséquence fonctionnelle) ;
+  - onboarding par autoconfig ;
+  - état d'erreur dans `mail-body` mobile (le squelette reste sous le bandeau d'erreur).
+
 ### v1.87 — Ranger, renommer, déplacer ou supprimer ne détruit rien d'autre et ne laisse rien derrière — task-339
 
 - **Origine** : audit de bugs du 2026-09-27, AUD-29, AUD-30, AUD-35, AUD-49, AUD-50.
@@ -1043,6 +1077,7 @@ Audit grep complémentaires pour les couches 2 / 2bis / 3 (tasks 021 / 022 / 023
 | task-330 | **Le travail fait hors ligne n'est plus perdu au premier échec.** Gestes rejoués jusqu'au succès, gardés `Failed` et comptés après 10 tentatives (`FailedActionsCount`) ; annulation sans tentative comptée ; réclamations orphelines reprises (`ClaimedAt`) ; **remise incertaine** d'un envoi confirmé peut-être parti (503 + avertissement, `deliveryUncertain`, 409, retirable — arbitrage du 2026-10-02) ; stade SMTP typé (400 / 503 / 499) ; mise en file hors ligne soumise aux règles d'envoi. Dtos.Mss 501.0.0. PR #269 (api-mail), #38 (dtos-mss). | — (continuité de service hors ligne, AUD-08 / AUD-23 ; aucune RG déclarée) |
 | task-329 | **Un seul chemin d'envoi.** `OutgoingMailService` pour `sendmail`, brouillon, confirmation avec la carte et annule-et-remplace : pièces par référence relues (400 si illisible), annule-et-remplace sur toutes les routes, archivage « Envoyés » ; brouillon complet (pièces, accusé, opposition, blocage de réponse, cible d'annule-et-remplace) restauré à la réouverture ; verrou d'envoi à jeton (5 min). Dtos.Mss 505.0.0. PR #270 (api-mail), #39 (dtos-mss), #87 (Blazor), #84 (mobile). | — (traçabilité de l'envoi MSSanté, AMBU.MSS/va1.02, opposition Mon Espace Santé ; aucune RG déclarée) |
 | task-331 | **Le dossier est celui de la fiche.** Dossier, biologie et opposition par `PatientId` (et non plus par l'INS du document) : le document rattaché à la main y apparaît, deux fiches d'un même matricule (NIR / NIA) restent séparées ; garde d'envoi : une fiche opposée du matricule suffit à exiger l'acquittement ; `resolve` déterministe ; `Id` rendu par la recherche et « patients du jour » ; index `(PatientId, MailId, Date)`. **Extension** : recherche de la fiche et confirmation quand l'appariement ne trouve personne, sur les trois clients ; scénario E2E-PATIENT-002. **Extension 2** : détacher, changer de patient, 409 au lieu de l'écrasement silencieux, rattachement et détachement tracés (actions d'audit 37 et 38) ; E2E-PATIENT-002 v2. PRs #40 (dtos-mss), #271 (api-mail), #88 (client-blazor), #85 (client-mobile), Angular code-only. | — (identito-vigilance INS, opposition Mon Espace Santé ; AUD-05, AUD-34 ; aucune RG déclarée) |
+| task-348 | **Serveur de messagerie résolu par le seul serveur (AUD-42).** Table `MailServers:Domains`, puis autoconfig MSSanté limité à `*.mssante.fr` (IP littérale et réseau non public rejetés, cache échec 15 min, log `MailDomainNotConfigured`) ; serveur saisi ignoré (200), jamais lu à la connexion ; `GET /settings/mail-server` ; encart en lecture seule sur Blazor et Angular ; squelette de chargement du corps sur mobile. Dtos.Mss 514.0.0. PRs #41 (dtos-mss), #273 (api-mail), #89 (client-blazor), #86 (client-mobile), Angular code-only. | — (sécurité : SSRF et fuite du jeton PSC fermées ; aucune RG déclarée) |
 | task-339 | **Opérations de dossiers fiables.** Expunge ciblé par UID (AUD-29), renommage qui emporte sous-dossiers, mails et actions en attente (AUD-30), purge des mails des dossiers absents du serveur et reprise des orphelins, vue et badges par étiquette sur INBOX et sa génération (AUD-35), caches et trace des déplacements (AUD-49) ; AUD-50 non reproduit. PR #272 (api-mail). | — (intégrité des opérations de messagerie ; tracé PGSSI-S des déplacements) |
 | task-338 | **La recherche dit la vérité.** Pannes signalées au lieu d'une liste vide (503, 499, mode dégradé `IsDegraded` / `DegradedSources` en hybride) ; chaque filtre du contrat appliqué (patient sur un même document, répondu, brouillon, dates de document et de biologie, `false` = « sans », type inconnu → 400, filtres seuls bornés) ; prédicat dossier/étiquette unique pour toutes les requêtes ; pertinence filtrée une seule fois. Dtos.Mss 500.0.0. 21 tests d'intégration d'endpoint rouges sur le code d'avant. PR #268 (api-mail), #37 (dtos-mss). | — (exactitude de la recherche — AUD-38, 39, 40, 52 ; aucune RG déclarée) |
 | done-task-002 | Masquage du préfixe `XDM/1.0/DDM+` dans l'objet | RG-E009-029 |

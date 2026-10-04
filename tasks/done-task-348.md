@@ -448,7 +448,8 @@ Démontage vérifié : ports 5052 / 8100 / 4200 / 3993 / 3465 / 3143 libres, auc
 | /lint-mobile | skipped | 2.2 s | — | — | — | client-mobile non listé dans Repos |
 | /e2e | ok | 18 min 00 s | — | — | — | e2e ×11 (37 min 31 s) |
 | /review | ok | 11 min 39 s | 4 (1 min 17 s) | 3 (4 min 25 s) | — | dtos-mss 1B/0T, api-mail 1B/1T, client-blazor 1B/1T, client-mobile 1B/1T |
-| **Total cycle** | | **2 h 04 min** | **14 (6 min 23 s)** | **22 (28 min 11 s)** | **4 (5 min 07 s)** | |
+| /tech-writer | ok | 1 min 29 s | — | — | — | — |
+| **Total cycle** | | **2 h 06 min** | **14 (6 min 23 s)** | **22 (28 min 11 s)** | **4 (5 min 07 s)** | |
 
 Autres commandes mesurées : lint ×3 (3 min 41 s), nuget-wait ×2 (20 s), restore ×1 (3.0 s)
 
