@@ -626,7 +626,7 @@ découpage d'après-coup oblige à re-valider un code déjà vert.
 
 ## S103 — une ligne de plus de 150 caractères doit être scindée
 
-**Occurrences : 3** (task-188, task-192 — ×11, variante **requête EF** : une
+**Occurrences : 4** (task-341 — variante **motif d'expression régulière** : le `[GeneratedRegex]` du garde de journalisation, une alternation de seize noms sur une ligne. Attrapé par le contrôle mécanique §Q 2b avant le commit, et scindé en trois littéraux `@"…" + @"…"`, ce qu'un attribut accepte puisque la concaténation reste une constante ; task-188, task-192 — ×11, variante **requête EF** : une
 condition LINQ `x => filtre vide || EF.Functions.ILike(colonne, motif, SearchQueryHelper.LikeEscapeCharacter)`,
 et un `select new Projection { A = …, B = …, … }` tenu sur une ligne. Corrigé par un
 alias `private const string LikeEscape = SearchQueryHelper.LikeEscapeCharacter;` — une
