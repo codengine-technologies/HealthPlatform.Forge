@@ -447,6 +447,49 @@ Démontage vérifié : ports 5052 / 8100 / 4200 / 3993 / 3465 / 3143 libres, auc
 | /lint-angular | ok | 11 min 54 s | 1 (1 min 35 s) | 1 (4 min 51 s) | — | 1 itération(s), client-angular 1B/1T |
 | /lint-mobile | skipped | 2.2 s | — | — | — | client-mobile non listé dans Repos |
 | /e2e | ok | 18 min 00 s | — | — | — | e2e ×11 (37 min 31 s) |
-| **Total cycle** | | **1 h 53 min** | **10 (5 min 06 s)** | **19 (23 min 46 s)** | **4 (5 min 07 s)** | |
+| /review | ok | 11 min 39 s | 4 (1 min 17 s) | 3 (4 min 25 s) | — | dtos-mss 1B/0T, api-mail 1B/1T, client-blazor 1B/1T, client-mobile 1B/1T |
+| /tech-writer | ok | 1 min 29 s | — | — | — | — |
+| **Total cycle** | | **2 h 06 min** | **14 (6 min 23 s)** | **22 (28 min 11 s)** | **4 (5 min 07 s)** | |
 
 Autres commandes mesurées : lint ×3 (3 min 41 s), nuget-wait ×2 (20 s), restore ×1 (3.0 s)
+
+## PRs
+
+- `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/41 — label `awaiting-human-merge`
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/273 — label `awaiting-human-merge`
+- `client-blazor` : https://github.com/codengine-technologies/HealthPlatform.Client/pull/89 — label `awaiting-human-merge`
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/86 — label `awaiting-human-merge`
+- `client-angular` : code-only — l'humain gère le commit, le push TFS et l'ouverture de la PR. Branche `feature/nova-rewriting-mss`, build et tests verts. Fichiers modifiés par la forge :
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`
+  - `front/libs/mss/src/core/models/user-settings.model.ts`
+  - `front/libs/mss/src/core/services/mss-api.service.ts`
+  - `front/libs/mss/src/features/settings/mss-settings.component.html`
+  - `front/libs/mss/src/features/settings/mss-settings.component.scss`
+  - `front/libs/mss/src/features/settings/mss-settings.component.ts`
+  - `front/libs/mss/src/features/settings/mss-settings.component.spec.ts`
+  - ⚠️ Également modifiés dans l'arbre de travail, **pas par la forge** (à ne pas inclure sans vérification) :
+    - `front/apps/mss/src/environments/environment.ts`
+    - `front/apps/weda2/src/environments/environment.ts`
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 0 bloquant, 4 suggestions (non bloquantes).
+
+- ✅ `SettingsController` : serveur saisi ignoré (mis à `null`, 200) à l'aller comme au retour ; `GET /settings/mail-server` résolu pour l'identité connectée, 404 `ProblemDetails` (règle 12) ; ancienne route `autoconfig?email=` supprimée.
+- ✅ `MailServerResolver` / `MailServerDiscovery` : la table d'abord (ni Redis ni HTTP pour un domaine configuré), autoconfig en repli ; plus aucune lecture d'un serveur saisi sur les trois sites de connexion (`IUserSettingsRepository` retiré de leurs constructeurs).
+- ✅ `AutoconfigService` : limité à `*.mssante.fr`, IP littérale et adresses non publiques rejetées, échec en cache 15 min, log `MailDomainNotConfigured` sans email.
+- ✅ Bancs : domaines du banc de charge et du filet e2e déclarés dans `MailServers:Domains` par l'AppHost (jamais `appsettings.json`) ; seeds sans serveur.
+- ✅ `client-mobile` (`mail-body`) : squelette pendant le chargement, état vide seulement sur un contenu chargé et vide ; `E2E-DETAIL-002` attend un corps non vide.
+- ⚠️ Suggestion — DNS rebinding : l'hôte d'un autoconfig est contrôlé au téléchargement, puis re-résolu à la connexion. Risque résiduel faible (domaines `*.mssante.fr` seulement, DNS de l'espace de confiance) ; à traiter si l'autoconfig s'ouvre à d'autres domaines.
+- ⚠️ Suggestion — deux connexions simultanées sur un domaine absent du cache peuvent télécharger deux fois et écrire deux logs `MailDomainNotConfigured` (course sans conséquence fonctionnelle).
+- ⚠️ Suggestion — `MssAccountOnboardingService` reste sur la table seule (email de saisie libre) : un domaine résolu seulement par autoconfig fonctionne à la connexion, pas encore à l'onboarding.
+- ⚠️ Suggestion — mobile : si le chargement du contenu échoue, le squelette reste affiché sous le bandeau d'erreur explicite ; afficher l'état d'erreur dans `mail-body` serait plus cohérent.
+
+**Règle 1b (tests d'intégration d'endpoint, vus rouges)** :
+
+| Comportement | Test | Preuve rouge |
+|---|---|---|
+| `POST /settings` avec un serveur « redis » → 200, non stocké, non renvoyé, et la connexion IMAP suivante vise le serveur du domaine | `SettingsMailServerEndpointIntegrationTests.PostingAServer_IsAccepted_ButNeverStoredNorReturned_AndTheNextImapConnectionTargetsTheDomainServer` | mutation A (vidage retiré) et B (table ignorée) |
+| `GET /settings/mail-server`, domaine configuré → 200, `source = configuration`, sans HTTP | `GetMailServer_ConfiguredDomain_Returns200_WithSourceConfiguration` | mutation B |
+| `GET /settings/mail-server`, domaine inconnu → 404 `problem+json` | `GetMailServer_UnknownDomain_Returns404ProblemDetails_WithoutAnyHttpOutsideMssante` | route absente avant la task |
+| Ancienne route `autoconfig?email=` → 404 | `OldAutoconfigRoute_NoLongerExists` | route présente avant la task |

@@ -4,7 +4,7 @@
 > **Modèle** : hand-crafted
 > **Version** : 1.85
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-04 (opérations de dossiers fiables : corbeille, renommage, étiquettes — task-339)
+> **Dernière mise à jour** : 2026-10-04 (serveur de messagerie résolu par la plateforme, plus aucune saisie — task-348)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1036,6 +1036,11 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
+- **v1.88 — Le praticien n'a plus à connaître son serveur de messagerie** (task-348) :
+  - **Plus aucun réglage serveur.** L'écran Paramètres n'affiche plus de champs serveur ni de bouton « Détecter » : la messagerie retrouve seule le serveur adapté à l'adresse du praticien.
+  - **Un encart en lecture seule** indique le serveur utilisé et s'il vient de la configuration de l'établissement ou de la détection automatique MSSanté. Si aucun serveur n'est connu pour l'adresse, un message le dit clairement.
+  - **Sur mobile, un message ne paraît plus vide pendant son chargement** : un indicateur s'affiche jusqu'à l'arrivée du contenu.
+
 - **v1.87 — Ranger ses messages ne détruit plus rien d'autre** (task-339) :
   - **La Corbeille ne détruit plus les messages d'un autre logiciel.** Un message marqué « supprimé » dans un autre client de messagerie (sans être vidé) n'est plus effacé quand le praticien met un autre message à la Corbeille.
   - **Renommer un dossier emporte tout son contenu.** Les sous-dossiers suivent, et les comptes rendus déjà rattachés à un patient restent rattachés : plus de bandeau « doublon », ni de document qu'on ne peut plus ouvrir ou déplacer.
@@ -1606,6 +1611,13 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 - **Onboarding MSSanté** (task-037, durci par task-038) : parcours d'opt-in explicite quand le compte Keycloak n'a pas encore d'adresse MSSanté mappée — écran « Messagerie non configurée » + formulaire setup avec sonde IMAP MSSanté + persistance du profil + écran de reconnexion. La sonde TLS valide la chaîne IGC-Santé conformément au socle.
 
 ### Sécurité — défense en profondeur
+
+- **v1.88 — Les identifiants de connexion ne partent plus que vers un serveur de confiance**
+  (task-348) : un serveur de messagerie saisi à la main pouvait recevoir les identifiants
+  de connexion du praticien. Le serveur est désormais choisi par la seule plateforme : la
+  configuration de l'établissement d'abord, puis la détection automatique, limitée aux
+  serveurs de l'espace de confiance MSSanté. Toute adresse interne ou non publique est
+  refusée.
 
 - **v1.77 — Une archive de pièces jointes ne peut plus écrire hors de son
   dossier, et le praticien garde toujours la main sur ses boîtes** (task-342) :
