@@ -4,7 +4,7 @@
 > **Modèle** : hand-crafted
 > **Version** : 1.85
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-04 (dossier supprimé depuis un autre logiciel : message clair et retour à la boîte de réception — task-352)
+> **Dernière mise à jour** : 2026-10-04 (message supprimé depuis un autre logiciel : il quitte la liste et ne s'ouvre jamais vide — task-353)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1035,6 +1035,13 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 > automatiquement au retour de la connexion », c'est cette description qui fait foi.
 
 ### Fonctionnalités métier
+
+- **v1.90 — Un message supprimé ailleurs n'apparaît plus vide** (task-353) :
+  - **Plus de compte rendu « vide » trompeur.** Ouvrir un message supprimé ou déplacé depuis un autre logiciel affiche « Ce message n'existe plus : il a été supprimé ou déplacé depuis un autre logiciel de messagerie. » Avant, l'application affichait un contenu vide, qu'on pouvait prendre pour un document vide ou perdu.
+  - **Il quitte la liste.** Sur le web (Angular et Blazor), au rafraîchissement automatique ; sur mobile, au geste « tirer pour rafraîchir ». Les compteurs du dossier suivent.
+  - Ouvert juste avant ce rafraîchissement (une demi-minute au plus), il montre encore son contenu d'origine, puis disparaît. Ce choix évite de ralentir l'ouverture des messages, et le cas est rare.
+  - **Un message tout juste arrivé n'est jamais retiré par erreur.**
+  - Sur les trois applications : web Angular, web Blazor et mobile.
 
 - **v1.89 — Un dossier supprimé ailleurs ne bloque plus l'écran** (task-352) :
   - **Plus de chargement sans fin.** Quand le praticien ouvre un dossier qui a été supprimé ou renommé depuis un autre logiciel de messagerie (logiciel de cabinet, webmail de l'opérateur), l'application le dit : « Ce dossier n'existe plus : il a été supprimé ou renommé depuis un autre logiciel de messagerie. »

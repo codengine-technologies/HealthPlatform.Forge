@@ -246,6 +246,20 @@
 - **Origine** : task-349 (/e2e, 2026-10-01)
 - **Occurrences** : 1
 
+### depot-hors-application — Un message déposé hors de l'app n'apparaît qu'à une relecture du dossier
+- **Piège** : un message déposé directement en IMAP (outil `message --create`, relais `deliver`)
+  n'est vu par l'application qu'à la prochaine relecture **réelle** du dossier. L'état du dossier
+  est en cache (statut 10 s), et le rafraîchissement de la liste passe toutes les 30 s. Un unique
+  `toBeVisible({ timeout: 30000 })` tombe donc pile sur la limite. Il est vert en `--serve-only` à
+  froid, et rouge dans la suite complète, où la liste vient d'être lue.
+- **Consigne** : attendre un dépôt hors de l'application en **rouvrant la boîte jusqu'à son
+  arrivée** (`expect.poll` + `openInbox`, 90 s, pas de 3 s), comme E2E-COMPOSE-001 ; côté mobile,
+  `waitForSubject`. Jamais une seule attente passive bornée à l'intervalle de rafraîchissement.
+- **Preuve** : E2E-MAIL-005 (Angular), rouge aux deux essais dans la suite complète du
+  2026-10-04 (« le message déposé est dans la liste », 30 s), vert seul à froid.
+- **Origine** : task-353
+- **Occurrences** : 1
+
 ### suite-e2e-non-compilee — Ni le build ni les tests unitaires ne compilent les specs e2e
 - **Piège** : les specs Playwright vivent hors du build de l'app (`tsconfig` isolé). Une erreur de
   syntaxe y passe donc `npm run build`, `npm test` et le lint, et ne se voit qu'au lancement de la
@@ -278,7 +292,7 @@ task de stabilisation proposée)*
 | détail — bascule texte brut / HTML (E2E-DETAIL-002) | mobile | 2 | task-338 | à établir — 1er essai : « mail sans corps affichable » (`mail-body-empty` reste affiché, le corps seedé n'apparaît pas dans les 15 s). Sur task-192 : rouge aux 2 essais d'un premier run, flaky au run suivant (3 échecs sur 4 essais) ; vert au 1er essai sur `develop` (1 run). Piste : course entre l'état « Aucun contenu » affiché pendant le chargement et le corps enrichi. Récidive sur task-338 (rouge au 1er essai, vert au 2e), task qui ne touche pas la lecture d'un message : le soupçon porté sur task-192 est levé, l'instabilité est propre au test |
 | assistant — résumé initial puis deux questions de suite (E2E-AI-001) | angular | 2 | task-352 | à établir — task-338, 1er essai : `locator.click` en dépassement (15 s), puis `page.waitForResponse: Test ended`. task-352, 1er essai : `response.json: Protocol error (Network.getResponseBody): No data found for resource` (le corps de la réponse attendue n'est plus lisible par le navigateur quand le test le lit). Vert au 2e essai les deux fois. Voie Angular sur `feature/nova-rewriting-mss`. Piste : lire le corps par `waitForResponse` puis `await response.json()` sans délai, ou relire la conversation au serveur plutôt que dans la réponse |
 
-| rédaction — corriger l'orthographe, appliquer, envoyer (E2E-COMPOSE-002) | angular | 1 | task-349 | **établie, ce n'est pas un flaky** : « Transférer » cliqué avant le chargement du contenu → transfert sans le message d'origine (`initializeFromPrefill` ne cite que `if (prefill.content)`). Reproduit 1/5 au premier passage à froid. Bug produit, voir Trous du filet |
+| rédaction — corriger l'orthographe, appliquer, envoyer (E2E-COMPOSE-002) | angular | 3 | task-353 | **établie, ce n'est pas un flaky** : « Transférer » cliqué avant le chargement du contenu → transfert sans le message d'origine (`initializeFromPrefill` ne cite que `if (prefill.content)`). Reproduit 1/5 au premier passage à froid. Bug produit, voir Trous du filet (task-350). task-353 : de nouveau au 1er essai sur deux passages ; au 2e essai d'un passage, **incident de banc distinct** : rafale de connexions IMAP coupées à l'authentification (10053/10054, Seq 12:20:29 UTC), `enrich/sync` puis contenu en 503 → « Aucun contenu ». Piste : `mail_max_userip_connections` (10, défaut Dovecot du banc) atteint par des requêtes simultanées du même praticien |
 
 ## Quarantaines
 
@@ -299,6 +313,7 @@ scénario qui l'aurait attrapé, prouvé rouge sur le bug)*
 | Un message rédigé plus de 30 s (brouillon enregistré automatiquement) part **sans ses pièces jointes**, sans accusé de lecture ni acquittement d'opposition, « envoyé » affiché (Angular et Blazor : route des brouillons dès qu'un brouillon existe) | Audit de bugs du 2026-09-27 (AUD-06), non vu par `/e2e` : aucun scénario n'envoyait un brouillon, ni une pièce jointe | **E2E-DRAFT-002** ajouté (mobile et Angular requis) : la pièce jointe est relue dans le message **reçu**, après l'enregistrement automatique. Rouge sur les deux clients avec le bug réinjecté côté serveur | task-329 |
 | Un document sans INS dont les traits ne correspondent à aucune fiche (ou sans trait) ne peut **pas être rattaché** : le dialogue n'offre que les candidats de `/patients/match`, puis « Ignorer » (Angular, Blazor, mobile) | L'humain au HAG de task-331, non vu par `/e2e` : aucun scénario ne rattachait un document à la main | **E2E-PATIENT-002** ajouté (mobile et Angular requis) : document sans INS seedé, aucun candidat, recherche libre, confirmation, message relu dans le dossier de la fiche. Rouge sous mutation (confirmation sans appel) sur les deux clients | task-331 |
 | Un dossier supprimé ou renommé depuis un autre logiciel de messagerie, puis ouvert dans l'app : **chargement sans fin** (Angular), anciens messages affichés (Blazor), message technique brut (mobile). Le serveur répondait 404 sans nommer la cause | L'humain, en recette (Seq : `GET /folders/…` → 404), non vu par `/e2e` : aucun scénario ne modifiait la boîte hors de l'application | **E2E-FOLDER-003** ajouté (mobile et Angular requis) : dossier créé dans l'app, supprimé par IMAP (`mss.mail.e2e folder --delete`), puis ouvert. Rouge sur les deux clients avec le bug réinjecté (Angular : spinner sans fin reproduit) | task-352 |
+| Un message supprimé ou déplacé depuis un autre logiciel **reste dans la liste** (rafraîchissement aveugle aux disparus) et s'ouvre sur un **contenu vide ou périmé** servi par la ligne locale (200, aucun accès IMAP) | L'humain, en recette (Seq : `GET …/emails/content/10` → 200 en 20 ms), non vu par `/e2e` : aucun scénario ne supprimait un message hors de l'application | **E2E-MAIL-005** ajouté (mobile et Angular requis) : message déposé puis supprimé par IMAP (`mss.mail.e2e message --create|--delete`), ouvert aussitôt (« n'existe plus », jamais vide), puis retiré au rafraîchissement. Rouge sous mutation sur les deux clients, et sur chacune des deux branches côté Angular (ouverture, rafraîchissement) | task-353 |
 
 ---
 

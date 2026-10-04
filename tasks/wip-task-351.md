@@ -78,3 +78,21 @@ inertes, et nettoyer les valeurs résiduelles en base.
 - **Référentiels métier** : non applicable
 - **Hébergement HDS** : oui — environnement inchangé
 - **AIPD / impact RGPD** : non applicable
+
+## Branches
+
+> **Condition de lancement levée par l'humain** : `/start 351` lancé le 2026-10-04, après l'exposé de la condition « tous les fronts déployés au niveau de task-348 ». Périmètre inchangé, migration des réglages stockés comprise (aucune décision contraire).
+
+- `dtos-mss` (pushed, branche paresseuse) : `chore/task-351-retrait-champs-serveur`, créée par `/develop` au moment de toucher le contrat
+- `api-mail` (pushed) : chore/task-351-retrait-champs-serveur — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/chore/task-351-retrait-champs-serveur
+- `client-blazor` (pushed) : chore/task-351-retrait-champs-serveur — https://github.com/codengine-technologies/HealthPlatform.Client/tree/chore/task-351-retrait-champs-serveur
+- `client-angular` (code-only) : la forge écrit sur la branche active de `Client/Angular/` (`feature/nova-rewriting-mss` au /start). ⚠️ Les fichiers de task-353 n'y sont **pas encore commités** ; ceux de task-351 (`user-settings.model.ts`, `mss-settings.component.*`) sont distincts et seront listés à part. L'humain gère la branche, le commit, le push et la PR TFS.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-351 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 27 s | — | — | — | — |
+| **Total cycle** | | **27 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |

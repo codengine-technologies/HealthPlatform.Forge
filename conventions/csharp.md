@@ -107,7 +107,11 @@ en C# 12 : deux spreads valent mieux qu'un `Concat`.
 
 ## CA1859 — type concret plutôt qu'interface pour un helper local
 
-**Occurrences : 5** (task-203, task-289, task-299, task-188, task-345 — cinquième récidive.
+**Occurrences : 6** (task-203, task-289, task-299, task-188, task-345, task-353 — sixième récidive.
+Variante task-353 : un helper privé `PurgeVanishedMailsAsync(folder, IReadOnlyCollection<uint>)`
+dont les deux appelants passent un `uint[]` — écrit « large » par réflexe pendant la passe
+`/simplify`, comme sur task-289 : **un paramètre de helper privé prend le type de ce que ses
+appelants ont déjà en main**.
 Variante task-345 : un helper privé `ArrayOf(JsonElement, …)` déclaré
 `IEnumerable<JsonElement>` pour unifier `EnumerateArray()` et un repli vide — le type
 concret est ici `JsonElement[]` (`[.. array.EnumerateArray()] : []`).
