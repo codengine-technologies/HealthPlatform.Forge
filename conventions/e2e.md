@@ -188,8 +188,15 @@
 - **Consigne** : relire dans le fichier le prédicat d'attente après toute édition automatisée. Le
   comparer à l'URL **réelle** vue dans une trace (`i` si la casse varie). Exiger `ok()` sur la
   réponse obtenue.
-- **Origine** : task-343
-- **Occurrences** : 1
+- **Récidive (task-348)** : `E2E-SEARCH-001` (Angular) attendait « toute requête dont l'URL contient
+  `/api/v1/search/` ». Le client appelle aussi `GET /search/history`, parti 10 ms avant le `POST
+  /search/semantic` dans une trace : le test capturait l'historique (sans corps) et lisait « la
+  requête ne porte pas les termes ». Flaky, puis rouge, selon l'ordre des requêtes.
+- **Consigne (ajoutée)** : un prédicat d'attente fixe la **méthode** et le **chemin exact** de
+  l'endpoint attendu (`r.method() === 'POST' && /\/search\/semantic$/i.test(pathname)`), jamais un
+  préfixe partagé par plusieurs routes.
+- **Origine** : task-343, task-348
+- **Occurrences** : 2
 
 ### ligne-de-biologie — Une ligne de biologie affiche le titre du document CDA, pas le sujet
 - **Piège** : `rowBySubject` ne trouve pas un compte rendu de biologie : la liste affiche le titre
@@ -292,3 +299,25 @@ scénario qui l'aurait attrapé, prouvé rouge sur le bug)*
 | Un message rédigé plus de 30 s (brouillon enregistré automatiquement) part **sans ses pièces jointes**, sans accusé de lecture ni acquittement d'opposition, « envoyé » affiché (Angular et Blazor : route des brouillons dès qu'un brouillon existe) | Audit de bugs du 2026-09-27 (AUD-06), non vu par `/e2e` : aucun scénario n'envoyait un brouillon, ni une pièce jointe | **E2E-DRAFT-002** ajouté (mobile et Angular requis) : la pièce jointe est relue dans le message **reçu**, après l'enregistrement automatique. Rouge sur les deux clients avec le bug réinjecté côté serveur | task-329 |
 | Un document sans INS dont les traits ne correspondent à aucune fiche (ou sans trait) ne peut **pas être rattaché** : le dialogue n'offre que les candidats de `/patients/match`, puis « Ignorer » (Angular, Blazor, mobile) | L'humain au HAG de task-331, non vu par `/e2e` : aucun scénario ne rattachait un document à la main | **E2E-PATIENT-002** ajouté (mobile et Angular requis) : document sans INS seedé, aucun candidat, recherche libre, confirmation, message relu dans le dossier de la fiche. Rouge sous mutation (confirmation sans appel) sur les deux clients | task-331 |
 | Un dossier supprimé ou renommé depuis un autre logiciel de messagerie, puis ouvert dans l'app : **chargement sans fin** (Angular), anciens messages affichés (Blazor), message technique brut (mobile). Le serveur répondait 404 sans nommer la cause | L'humain, en recette (Seq : `GET /folders/…` → 404), non vu par `/e2e` : aucun scénario ne modifiait la boîte hors de l'application | **E2E-FOLDER-003** ajouté (mobile et Angular requis) : dossier créé dans l'app, supprimé par IMAP (`mss.mail.e2e folder --delete`), puis ouvert. Rouge sur les deux clients avec le bug réinjecté (Angular : spinner sans fin reproduit) | task-352 |
+
+---
+
+### attente-satisfaite-par-un-placeholder — « visible » n'est pas « chargé » quand un élément vide porte le même testid
+- **Piège** : pour attendre le corps du mail, `E2E-DETAIL-002` (mobile) attendait
+  `mail-body-html` ou `mail-body-plain` **visible**. Pendant le chargement (détail ouvert avec le
+  `MailDto` de la liste, contenu pas encore arrivé), le composant rendait un `<pre
+  data-testid="mail-body-plain">` **vide**, que son padding rend « visible », **et** l'état
+  « Aucun contenu disponible ». L'attente passait à 50 ms, avant toute réponse, et le contrôle
+  suivant voyait l'état vide. Le test était rouge selon la vitesse du contenu (3/3 sur la
+  combinaison task-331 + task-348, vert sur chacune seule), et l'écran montrait vraiment un
+  courrier vide pendant un instant.
+- **Consigne** : une attente de chargement porte sur le **contenu attendu**, pas sur la
+  visibilité d'un conteneur : `toContainText(/\S/)` ou le texte seedé. Un `toBeVisible()` ne
+  suffit jamais sur un élément qui peut être rendu vide. Côté composant, un état « vide » ne se
+  rend que sur une donnée **chargée** et vide, et un placeholder de chargement a son propre
+  `data-testid` (`mail-body-loading`).
+- **Preuve** : test de composant « squelette pendant le chargement, ni état vide ni corps vide »
+  rouge sur l'ancien `mail-body` (`squelette: Expected null not to be null`), vert après.
+  `E2E-DETAIL-002` rouge 3/3 en `--serve-only` avant, vert après.
+- **Origine** : task-348
+- **Occurrences** : 1
