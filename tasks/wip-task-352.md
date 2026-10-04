@@ -98,3 +98,11 @@ Quand le praticien ouvre un dossier qui n'existe plus sur le serveur de messager
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui — environnement inchangé
 - **AIPD / impact RGPD** : inchangé — aucun traitement nouveau ; le nettoyage local des mails d'un dossier disparu existe déjà
+
+## Branches
+
+- `api-mail` (pushed) : fix/task-352-dossier-supprime-ailleurs — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-352-dossier-supprime-ailleurs
+- `client-blazor` (pushed) : fix/task-352-dossier-supprime-ailleurs — https://github.com/codengine-technologies/HealthPlatform.Client/tree/fix/task-352-dossier-supprime-ailleurs
+- `client-mobile` (pushed) : fix/task-352-dossier-supprime-ailleurs — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/fix/task-352-dossier-supprime-ailleurs
+- `client-angular` (code-only) : la forge écrit sur la branche checked out dans `Client/Angular/` (`feature/nova-rewriting-mss` au /start) — humain gère branche, commit, push, PR TFS
+- `dtos-mss` : aucune branche à ce stade (branche paresseuse, créée par /develop si un contrat bouge)
