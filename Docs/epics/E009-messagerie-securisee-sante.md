@@ -4,7 +4,7 @@
 > **Modèle** : hand-crafted
 > **Version** : 1.85
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-04 (message supprimé depuis un autre logiciel : il quitte la liste et ne s'ouvre jamais vide — task-353)
+> **Dernière mise à jour** : 2026-10-04 (comptes rendus jamais perdus sur un incident technique — task-333)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1036,6 +1036,11 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
+- **v1.91 — Un compte rendu reçu n'est plus perdu sur un incident technique** (task-333) :
+  - **Plus de message « vide » pour toujours.** Si le serveur ne parvient pas à lire les documents d'un message (incident de disque, de droits, fichier momentanément indisponible), le message n'est plus enregistré comme analysé sans ses comptes rendus. Il reste à traiter, et ses documents sont intégrés dès que l'incident est levé.
+  - **Le praticien est prévenu** : l'application affiche « Le traitement des documents est temporairement indisponible… Réessayez » au lieu de montrer un message amputé de ses documents.
+  - **Exporter ou résumer un message ne fausse plus son analyse.** Ces gestes lisent le message sans l'enregistrer : l'intégration des documents et le rattachement au patient restent l'affaire de l'analyse complète.
+
 - **v1.90 — Un message supprimé ailleurs n'apparaît plus vide** (task-353) :
   - **Plus de compte rendu « vide » trompeur.** Ouvrir un message supprimé ou déplacé depuis un autre logiciel affiche « Ce message n'existe plus : il a été supprimé ou déplacé depuis un autre logiciel de messagerie. » Avant, l'application affichait un contenu vide, qu'on pouvait prendre pour un document vide ou perdu.
   - **Il quitte la liste.** Sur le web (Angular et Blazor), au rafraîchissement automatique ; sur mobile, au geste « tirer pour rafraîchir ». Les compteurs du dossier suivent.
@@ -1625,6 +1630,12 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 - **Onboarding MSSanté** (task-037, durci par task-038) : parcours d'opt-in explicite quand le compte Keycloak n'a pas encore d'adresse MSSanté mappée — écran « Messagerie non configurée » + formulaire setup avec sonde IMAP MSSanté + persistance du profil + écran de reconnexion. La sonde TLS valide la chaîne IGC-Santé conformément au socle.
 
 ### Sécurité — défense en profondeur
+
+- **v1.91 — Une archive de documents anormale ne peut plus saturer le serveur**
+  (task-333) : une pièce jointe de documents médicaux qui se décompresse en un volume
+  démesuré est désormais refusée avant d'occuper l'espace de travail partagé par tous les
+  praticiens. Le message concerné n'est pas marqué analysé, et le refus est consigné pour
+  l'exploitant.
 
 - **v1.88 — Les identifiants de connexion ne partent plus que vers un serveur de confiance**
   (task-348) : un serveur de messagerie saisi à la main pouvait recevoir les identifiants

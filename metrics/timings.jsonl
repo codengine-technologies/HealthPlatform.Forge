@@ -3841,3 +3841,5 @@
 {"ts":"2026-10-04T16:03:23+02:00","run_id":"-","type":"step","task":"task-353","step":"tech-writer","status":"ok","note":"version réduite","iterations":null,"duration_ms":538}
 {"ts":"2026-10-04T16:39:17+02:00","run_id":"-","type":"step_start","task":"task-351","step":"start"}
 {"ts":"2026-10-04T16:39:45+02:00","run_id":"-","type":"step","task":"task-351","step":"start","status":"ok","note":"","iterations":null,"duration_ms":27727}
+{"ts":"2026-10-04T16:41:19+02:00","run_id":"-","type":"step_start","task":"task-333","step":"tech-writer"}
+{"ts":"2026-10-04T16:42:09+02:00","run_id":"-","type":"step","task":"task-333","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":50458}

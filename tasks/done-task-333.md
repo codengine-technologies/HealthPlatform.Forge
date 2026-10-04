@@ -308,7 +308,8 @@ WHERE m."FolderPath" = 'INBOX' AND m."Uid" = :uid;
 | /lint-mobile | skipped | 2.1 s | — | — | — | client-mobile non listé dans Repos |
 | /e2e | ok | 6 min 27 s | 1 (31 s) | — | — | api-mail 1B/0T, e2e ×7 (22 min 53 s) |
 | /review | ok | 6 min 16 s | 2 (25 s) | 2 (4 min 04 s) | — | interop-cda 1B/1T, api-mail 1B/1T |
-| **Total cycle** | | **1 h 21 min** | **12 (3 min 26 s)** | **15 (19 min 17 s)** | **4 (5 min 32 s)** | |
+| /tech-writer | ok | 50 s | — | — | — | — |
+| **Total cycle** | | **1 h 22 min** | **12 (3 min 26 s)** | **15 (19 min 17 s)** | **4 (5 min 32 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (38 s), restore ×1 (8.1 s)
 
