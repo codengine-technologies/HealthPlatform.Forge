@@ -101,7 +101,8 @@ dossier personnel** n'atteigne les journaux techniques ou la télémétrie, et q
 | /e2e | ok | 13 min 45 s | — | — | — | e2e ×6 (23 min 52 s), 2e passage vert, parite verte apres restauration E2E-MAIL-005 angular |
 | /review | ok | 5 min 46 s | 1 (35 s) | 1 (3 min 47 s) | — | api-mail 1B/1T |
 | /tech-writer | ok | 1 min 29 s | — | — | — | — |
-| **Total cycle** | | **1 h 08 min** | **13 (3 min 04 s)** | **22 (18 min 49 s)** | **4 (4 min 57 s)** | |
+| /merge | ok | 5 min 04 s | — | — | — | — |
+| **Total cycle** | | **1 h 13 min** | **13 (3 min 04 s)** | **22 (18 min 49 s)** | **4 (4 min 57 s)** | |
 
 ## Develop log
 
@@ -305,3 +306,10 @@ dossier personnel** n'atteigne les journaux techniques ou la télémétrie, et q
 - Suggestions (non bloquantes) :
   - retirer les DTOs `MssImapTest*` de `dtos-mss`, devenus sans appelant serveur ;
   - traiter dans une task dédiée le chemin de dossier encore présent dans les **journaux** (`{Folder}`).
+
+## Merged
+
+- **Date** : 2026-10-04, `/merge task-341 --i-tested` (validation humaine attestée).
+- `api-mail` : PR #279 squash-mergée sur `develop` → `20996483c60b941a34ce1b4397957ad4859c5c18`. Label `awaiting-human-merge` retiré, branche `feat/task-341-no-health-data-in-logs` supprimée (distante et locale), clone revenu sur `develop`.
+- CI `develop` : ✅ succès — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/37232709279
+- Branche staging : aucune (task lancée par `/start`, hors run `/forge`).
