@@ -293,3 +293,13 @@ Faite en revue directe : le diff consiste presque entièrement en suppressions, 
 **Suggestions (non bloquantes)**
 - La migration convertit en `jsonb` toutes les lignes ciblées : un JSON invalide en base ferait échouer le démarrage. Ce cas ne peut pas se produire aujourd'hui, car seul le sérialiseur écrit cette colonne. Un `WHERE … IS JSON` n'existe qu'à partir de PostgreSQL 16.
 - La conversion `jsonb` réordonne et reformate le JSON des lignes migrées. Le dépôt le relit par désérialisation, donc sans effet.
+
+## Merged
+
+Mergée le 2026-10-04 par `/merge task-351 --i-tested` (squash, ordre dtos-mss → api-mail → client-blazor), CI `develop` verte sur les trois repos.
+
+- `dtos-mss` #42 : `d7917ede`
+- `api-mail` #277 : `1a36fcbc`
+- `client-blazor` #92 : `4c8cf1a1`
+- Branches `chore/task-351-retrait-champs-serveur` supprimées, distantes et locales.
+- `client-angular` : code-only. Le commit, le push TFS et la PR restent à la main de l'humain ; le clone local n'est pas touché.
