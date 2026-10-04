@@ -103,3 +103,20 @@ Les trois clients se comportent de la même façon.
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui — environnement inchangé
 - **AIPD / impact RGPD** : inchangé. Le retrait local d'un message supprimé côté serveur aligne la base sur le serveur, sans traitement nouveau.
+
+## Branches
+
+- `api-mail` (pushed) : fix/task-353-message-supprime-ailleurs — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-353-message-supprime-ailleurs
+- `client-blazor` (pushed) : fix/task-353-message-supprime-ailleurs — https://github.com/codengine-technologies/HealthPlatform.Client/tree/fix/task-353-message-supprime-ailleurs
+- `client-mobile` (pushed) : fix/task-353-message-supprime-ailleurs — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/fix/task-353-message-supprime-ailleurs
+- `client-angular` (code-only) : la forge écrit sur la branche checked out dans `Client/Angular/` (`feature/nova-rewriting-mss` au /start, task-352 commitée par l'humain) — humain gère branche, commit, push, PR TFS
+- `dtos-mss` : aucune branche à ce stade (branche paresseuse, créée par /develop si un contrat bouge)
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-353 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 27 s | — | — | — | — |
+| **Total cycle** | | **27 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
