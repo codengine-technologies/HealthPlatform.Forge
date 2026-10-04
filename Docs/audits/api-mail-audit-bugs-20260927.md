@@ -69,6 +69,7 @@ Toutes ont été rejouées contre `develop` @ `14d58398`. **Point commun** : leu
 - **Direction** : mode permissif **opt-in explicite** (Development **et** drapeau de config) ; refus de démarrer sans Authority hors Development ; bypass aligné sur `IHostEnvironment` ; corriger l'environnement du configmap. **À vérifier en premier sur le cluster réel.**
 
 ### AUD-02 ✔ — La validation TLS MSSanté ignore la chaîne et le nom d'hôte
+- **Décision** : **Écarté par décision humaine le 2026-10-04 (task-327 supprimée)** : depuis task-171 le jeton PSC ne transite plus par le poste — le seul chemin exposé est api-mail (hébergeur HDS) → opérateur MSSanté, interceptable uniquement par compromission d'infrastructure (DNS de l'hébergeur, équipement réseau, détournement BGP), jugée peu probable ; le vecteur simple (serveur choisi par l'utilisateur, AUD-42) est fermé par task-348.
 - **Origine** : zone sessions (S-1). **Catégorie** : sécurité. **Confiance** : Confirmé.
 - **Où** : `src/Application/Helpers/TlsCertificateValidationSession.cs:78-107` ; `CertificateValidator.cs:27-41, 165-190` ; appelants `ImapClientTlsConfigurer.cs:38`, `SmtpConnectionFactory.cs:292`, `BackgroundImapService.cs:434`.
 - **Mécanisme** : pour les domaines OAuth2 (`acceptWhenNoPolicyErrors: false`), le paramètre `SslPolicyErrors errors` n'est jamais refusé — `RemoteCertificateChainErrors` et `RemoteCertificateNameMismatch` passent. `ValidatePreHandshake` se limite à `IssuerName.Name?.ToUpper().Contains("IGC-SANTE")` et `NotAfter < UtcNow` (`NotBefore` non vérifié). Aucun `X509Chain`, aucun `.Verify(`, aucune vérification de nom d'hôte dans le dépôt.
@@ -76,6 +77,7 @@ Toutes ont été rejouées contre `develop` @ `14d58398`. **Point commun** : leu
 - **Direction** : refuser dès que `errors != None` avec une chaîne construite contre les ancres IGC-Santé embarquées (`CustomTrustStore`, `CustomRootTrust`) et le nom d'hôte vérifié.
 
 ### AUD-03 — Révocation OCSP/CRL non authentifiée ; cache OCSP clé sur le seul numéro de série
+- **Décision** : écarté avec AUD-02 le 2026-10-04 (task-327 supprimée).
 - **Origine** : zone sessions (S-2). **Catégorie** : sécurité. **Confiance** : Confirmé.
 - **Où** : `OcspValidationService.cs:88-96, 149-172, 352-374` ; `CrlValidationService.cs:88-114, 247-254`.
 - **Mécanisme** : la signature de la réponse OCSP (`BasicOcspResp`) n'est jamais vérifiée, ni celle de la CRL (`crl.Verify` absent) ; les URL OCSP/CRL et même l'émetteur (AIA) sont lus **dans le certificat présenté par le pair**. Le cache Redis `ocsp:validation:v2:{SerialNumber}` ne porte pas l'émetteur.
@@ -245,7 +247,7 @@ Regroupement par **cause**, pas par fichier — chaque ligne est une US candidat
 | # | US candidate | Constats | Priorité proposée | Repos probables |
 |---|---|---|---|---|
 | 1 | Validation des jetons : mode permissif opt-in, configuration de déploiement corrigée | AUD-01 | **0 — immédiat, vérifier le cluster** | api-mail, devops (manuel) |
-| 2 | TLS MSSanté : chaîne, nom d'hôte, révocation authentifiée | AUD-02, 03 | **1** | api-mail |
+| 2 | ~~TLS MSSanté : chaîne, nom d'hôte, révocation authentifiée~~ | AUD-02, 03 | **écarté** (décision humaine 2026-10-04, task-327 supprimée) | api-mail |
 | 3 | Assistant IA : isolation des requêtes sur le Kernel partagé | AUD-04 | **1** | api-mail |
 | 4 | Un seul chemin d'envoi (brouillon, hors ligne, transfert, annule-et-remplace, archivage) | AUD-06, 07, 20, 63, 48 | **1** | api-mail, dtos-mss, client-blazor, client-mobile |
 | 5 | Actions hors ligne fiables (rejeu, échecs visibles, stade d'échec SMTP) | AUD-08, 23 | **1** | api-mail (+ fronts pour l'affichage des échecs) |
