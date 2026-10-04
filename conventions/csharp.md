@@ -1362,3 +1362,27 @@ Deux défauts dans la même méthode, `MailRepository.UpdateExistingMailWithCont
 **Preuve** : `MailPromotionUniquenessTests.TwoReplicasPromotingTheSameHeaderOnlyMail_…` (rouge sur
 develop : 2 contenus, 2 documents, 4 lignes de biologie) et `APromotionFailingAfterItsDocuments_…`
 (rouge sur develop : contenu et documents committés malgré la panne).
+
+---
+
+## declencheur-reellement-atteint — un traitement accroché à un cycle existant hérite de ses conditions de déclenchement
+
+**Occurrences : 1** (task-344, extension « reprise des étiquetages IA » — attrapé par la passe qualité, angle altitude,
+avant le push)
+
+La reprise des étiquetages IA manqués a d'abord été accrochée à la fin de `BackgroundSyncService.SyncAllFoldersAsync`,
+« la synchronisation de fond, par boîte ». Les tests unitaires de l'accroche étaient verts. Mais cette synchronisation
+complète ne part que du **bouton du praticien** (`SyncController`, `forceManual: true`) : sans lui, elle est coupée par
+`EnableFullSync=false`, réglage par défaut. La reprise n'aurait presque jamais tourné, en production comme au banc.
+
+**Consigne** :
+- Avant d'accrocher un traitement à un cycle existant (synchronisation, consommateur, tâche planifiée), **remonter ses
+  appelants jusqu'au déclencheur réel** (`grep` des appels, réglages par défaut, flags) et l'écrire dans la doc du
+  traitement : qui l'appelle, à quelle fréquence, sous quelle condition.
+- Un test d'accroche (« X est appelé en fin de Y ») ne prouve rien si Y ne tourne pas : la DOD qui nomme un déclencheur
+  nomme aussi sa fréquence attendue.
+- Un traitement de rattrapage se branche sur le geste que **tout** praticien actif provoque (ici : l'enrichissement),
+  borné par une cadence partagée entre réplicas, jamais sur une fonction optionnelle.
+
+**Preuve** : `ImapServiceEnrichmentCoverageTests.EnrichEmailsAsync_SchedulesTheAiTaggingRecovery_…` (mutation : planificateur
+jamais appelé → rouge) ; `AiTaggingRecoverySchedulerTests` (cadence, identité, panne Redis).
