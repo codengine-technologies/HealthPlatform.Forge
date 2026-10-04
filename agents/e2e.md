@@ -141,6 +141,20 @@ Rapports à relever après chaque voie :
 Les copier aussitôt, par exemple dans `$TEMP/forge-e2e/{task-id}/{client}-report.json`. Le run
 suivant vide ces dossiers.
 
+> ⚠️ **La voie Angular vide AUSSI le dossier de sortie mobile** : elle monte son backend par
+> l'orchestrateur mobile (`--serve-only`), qui repart d'un `Client/Mobile/e2e/headless/out` vide.
+> Constaté sur task-352 : rapport mobile copié trop tard, porte en échec (« Could not find
+> file »), voie mobile rejouée (~5 min perdues). La copie fait donc partie de la **même
+> commande** que la voie, jamais d'une commande suivante :
+>
+> ```bash
+> D="$TEMP/forge-e2e/{task-id}"; mkdir -p "$D"
+> Tools/timing/measure.sh … --label mobile -- npm run e2e:headless; \
+>   cp Client/Mobile/e2e/headless/out/report.json "$D/mobile-report.json"
+> ```
+>
+> La porte lit ensuite les copies de `$D`, jamais les dossiers `out/`.
+
 ## Step 2 — Le client non touché : son listing
 
 **Règle 11 — le contrôle tourne dès qu'une voie tourne, y compris sur le client que la task ne
