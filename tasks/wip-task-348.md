@@ -1,6 +1,6 @@
 # todo-task-348.md — Serveur de messagerie résolu par le seul serveur : table de configuration d'abord, autoconfig XML en repli, plus aucune saisie par l'utilisateur (AUD-42)
 
-**Repos**: api-mail, dtos-mss, client-blazor, client-angular
+**Repos**: api-mail, dtos-mss, client-blazor, client-angular, client-mobile
 **Dependencies**: task-342, **après retrait d'AUD-42** : revert de `b052826a` et `a592b5f2` sur `fix/task-342-durcissement-messagerie`, et vérification de `368ba75b` (passe `/simplify`) sur le code de l'allowlist
 **Epic**: E009
 **Priorité**: **2** — faille majeure (SSRF, jeton PSC présenté à un serveur arbitraire). Elle n'est corrigée par aucune autre task une fois l'allowlist de task-342 retirée.
@@ -190,6 +190,7 @@ connexion IMAP / SMTP
 ## Branches
 - `api-mail` (pushed) : fix/task-348-serveur-resolu-cote-serveur — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-348-serveur-resolu-cote-serveur (depuis `origin/develop` @ `6d6c8dd1`)
 - `client-blazor` (pushed) : fix/task-348-serveur-resolu-cote-serveur — https://github.com/codengine-technologies/HealthPlatform.Client/tree/fix/task-348-serveur-resolu-cote-serveur (depuis `origin/develop` @ `2ced0fb`)
+- `client-mobile` (pushed, ajouté le 2026-10-04 sur décision humaine — correctif du blocage `/e2e`) : fix/task-348-serveur-resolu-cote-serveur — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/fix/task-348-serveur-resolu-cote-serveur (depuis `origin/develop` @ `dd92872`)
 - `dtos-mss` (paresseux) : branche créée par `/develop` au moment où il touche le contrat (CLAUDE.md, « Repo à branche PARESSEUSE »)
 - `client-angular` (code-only) : forge writes code on the branch currently checked out in `Client/Angular/` (instantané au `/start` : `feature/nova-rewriting-mss`) — humain gère branche, commit, push, PR TFS
 - Dépendances vérifiées au `/start` : task-342 archivée (squash `bf02f565` sur develop) ; aucune trace de l'allowlist AUD-42 sur `develop` (`AllowedUserServerHosts`, `UserMailServerHostPolicy` absents) — le revert de `b052826a` / `a592b5f2` a précédé le squash, la vérification de `368ba75b` est sans objet ; `FromUserConfig` présent (3 occurrences dans `MailServerDiscovery.cs`), c'est l'objet de la task.
@@ -321,6 +322,23 @@ Mutations unitaires sur l'autoconfig :
 - [x] Task de suivi écrite : `tasks/todo-task-351.md` (étape 2, avec un encadré d'arbitrage humain sur la condition de lancement)
 - Next step : /sonar task-348
 
+### Reprise après `/e2e` rouge (2026-10-04)
+
+- **Fusion d'`origin/develop`** (task-331 mergée) dans les branches task-348, par merge (règle 4) :
+  - dtos-mss `41b0f14`, republié en **HealthPlatform.Dtos.Mss 514.0.0** (run 514), qui porte les contrats de task-348 et de task-331. `develop` référençait 510.0.0 et la branche 511.0.0 : aucun des deux ne les portait tous ;
+  - api-mail `5f1218ba` et client-blazor `e851c5b`, alignés sur 514.0.0.
+  - Vérification : unitaires api-mail verts (domain 190, infrastructure 690, application 3 432, api 1 175), Blazor 413. Intégration : 8 rouges, dont 5 passent seuls ; les 3 tests « du jour » échouent à 00:14 heure locale, la fenêtre 00:00–02:00 déjà connue sur `develop`.
+- **Diagnostic du rouge mobile `E2E-DETAIL-002`** (vert sur task-348 seule et sur task-331 seule, rouge 3/3 ensemble) :
+  - l'API rend le corps (`content/1` : 200, 46 à 78 ms, corps texte et HTML présents) ;
+  - la chronologie de la trace montre l'attente « corps visible » satisfaite à 3,25 s, alors que la requête `content/1` n'est partie qu'à 3,28 s ;
+  - pendant le chargement, `mail-body` rendait un `<pre data-testid="mail-body-plain">` vide **et** « Aucun contenu disponible pour ce courrier ». Le test lisait donc un placeholder, et l'écran montrait un instant un courrier vide.
+  - Le code fautif est antérieur aux deux tasks. La combinaison n'a fait que décaler l'arrivée du contenu ; la cause de ce décalage n'est pas isolée.
+- **Correctif** (`client-mobile` ajouté aux Repos sur décision humaine, `aa80cad`) :
+  - `mail-body` affiche un squelette (`mail-body-loading`) tant que le contenu n'est pas arrivé ; l'état vide n'apparaît que pour un contenu chargé et vide ;
+  - `E2E-DETAIL-002` attend en headless un corps non vide (`toContainText(/\S/)`).
+  - Tests de composant : squelette pendant le chargement, **vu rouge** (`squelette: Expected null not to be null`) ; état vide seulement sur un contenu vide ; corps sans squelette une fois chargé.
+  - Mobile : build OK, **994/994**, lint propre (« All files pass linting »).
+
 ## Sonar log
 
 - Serveur : SonarQube 25.6.0.109173 (`sonar.token`), port 9001, démarré au pré-flight (base puis serveur). Projet `healthplatform-api-mail`, période de nouveau code « previous version » depuis le 2026-04-17 : elle englobe des dizaines de tasks déjà mergées, d'où un tri par provenance de chaque finding.
@@ -361,29 +379,24 @@ Mutations unitaires sur l'autoconfig :
 
 ## Lint mobile log
 
-- `/lint-mobile` : **skipped**, `client-mobile` n'est pas listé dans `**Repos**:` (le mobile n'a aucun écran de configuration serveur, voir l'en-tête de la task).
+- 1ᵉʳ passage : **skipped**, `client-mobile` n'était pas listé dans `**Repos**:`.
+- 2ᵉ passage (2026-10-04, `client-mobile` ajouté pour le correctif de `mail-body`) : `npm run lint` → **All files pass linting**, 0 itération de correction nécessaire. Build et tests verts (994/994).
 
 ## E2E log
 
-> 2ᵉ passage (2026-10-04), après fusion d'`origin/develop` (task-331) dans les branches task-348 (DTO 514.0.0). Le 1ᵉʳ passage (voie Angular rouge sur des tests de task-331 non mergée) est remplacé.
+> 3ᵉ passage (2026-10-04), **vert**. Branches task-348 fusionnées avec `origin/develop` (task-331, DTO 514.0.0) ; `client-mobile` ajouté pour le correctif de `mail-body`. Les deux passages rouges précédents sont résolus : `E2E-PATIENT-002` est arrivé au catalogue avec la fusion de task-331 ; `E2E-DETAIL-002` (mobile) est corrigé par le squelette de chargement et l'attente d'un corps non vide ; `E2E-SEARCH-001` (Angular) est corrigé par un prédicat qui fixe `POST /api/v1/search/semantic` (le test capturait `GET /search/history`, sans corps). Fichier Angular modifié en code-only, sans opération git : `front/e2e/mss-e2e/specs/functional.e2e.ts`.
 
 | Voie | Jouée | Résultat | Détail |
 |---|---|---|---|
-| mobile | oui | ❌ rouge | 26 réussis, 1 rouge (`E2E-DETAIL-002`, déterministe 3/3) ; clone aligné sur `origin/develop` (`dd92872`) |
-| angular | oui | ✅ vert | 26 réussis, 1 flaky (`E2E-SEARCH-001`), parité verte |
-| porte | — | ❌ ROUGE (code 1) | 1 motif — interaction task-331 × task-348, voir `questions/task-348.md` |
+| mobile | oui (`api-mail`, `client-mobile`, `dtos-mss`) | ✅ vert | 27 réussis, 0 flaky, 0 rouge — branche `fix/task-348-…` (`aa80cad`) |
+| angular | oui (`api-mail`, `client-angular`, `dtos-mss`) | ✅ vert | 27 réussis, 0 flaky, 0 rouge — branche humaine `feature/nova-rewriting-mss` |
+| porte | — | ✅ vert (code 0) | parité verte |
 
-Démontage vérifié : ports libres, aucun conteneur `e2e-*` résiduel (y compris après le diagnostic en `--serve-only`).
+Démontage vérifié : ports 5052 / 8100 / 4200 / 3993 / 3465 / 3143 libres, aucun conteneur `e2e-*` résiduel.
 
-**E2E : ROUGE** — 1 motif(s) de blocage.
+Écrans touchés sans scénario e2e modifié (avertissement non bloquant) : l'écran Paramètres Angular (`mss-settings.component.html`) — aucun parcours médecin créé, encart couvert par le test de composant. `mail-body` (mobile) est couvert par `E2E-DETAIL-002`, durci.
 
-**Bloquant** (1) :
-
-- [mobile] rouge : « détail — bascule texte brut / HTML » (E2E-DETAIL-002)
-
-**Flaky (vert au second essai, non bloquant)** (1) :
-
-- [angular] « recherche — requête et recherche avancée » (E2E-SEARCH-001)
+**E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
 
 ### Matrice de parité
 
@@ -406,10 +419,10 @@ Démontage vérifié : ports libres, aucun conteneur `e2e-*` résiduel (y compri
 | E2E-DRAFT-002 | 1 | headless | Envoyer un message à pièce jointe après l'enregistrement automatique du brouillon | ✅ | ✅ |
 | E2E-BIO-001 | 1 | headless | Acquitter un compte rendu de biologie | ✅ | ✅ |
 | E2E-DASH-001 | 1 | headless | Afficher les widgets du tableau de bord | ✅ | ✅ |
-| E2E-DETAIL-002 | 1 | headless | Basculer entre texte brut et HTML à la lecture | ✅ | ❌ |
+| E2E-DETAIL-002 | 1 | headless | Basculer entre texte brut et HTML à la lecture | ✅ | ✅ |
 | E2E-DETAIL-003 | 1 | headless | Répondre à tous depuis la lecture d'un message | ✅ | ✅ |
 | E2E-SETTINGS-002 | 1 | headless | Changer la vue par défaut et la retrouver après rechargement | ✅ | ✅ |
-| E2E-SEARCH-001 | 1 | headless | Rechercher un message et ouvrir la recherche avancée | ⚠️ flaky | ✅ |
+| E2E-SEARCH-001 | 1 | headless | Rechercher un message et ouvrir la recherche avancée | ✅ | ✅ |
 | E2E-ATTACH-001 | 1 | headless | Voir les pièces jointes d'un message | ✅ | ✅ |
 | E2E-CONTACT-002 | 1 | headless | Créer puis supprimer un contact | ✅ | ✅ |
 | E2E-SIGNATURE-001 | 1 | headless | Créer puis supprimer une signature | ✅ | ✅ |
@@ -429,11 +442,11 @@ Démontage vérifié : ports libres, aucun conteneur `e2e-*` résiduel (y compri
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 57 s | — | — | — | — |
-| /develop | ok | 52 min 07 s | 6 (1 min 40 s) | 7 (8 min 19 s) | — | dtos-mss 1B/0T, api-mail 2B/4T, client-blazor 3B/3T |
+| /develop | ok | 52 min 07 s | 7 (2 min 07 s) | 8 (8 min 55 s) | — | dtos-mss 1B/0T, api-mail 2B/4T, client-blazor 3B/3T, client-mobile 1B/1T |
 | /sonar | ok | 30 min 11 s | 2 (1 min 23 s) | 10 (9 min 59 s) | 4 (5 min 07 s) | 2 itération(s), api-mail 2B/10T |
 | /lint-angular | ok | 11 min 54 s | 1 (1 min 35 s) | 1 (4 min 51 s) | — | 1 itération(s), client-angular 1B/1T |
 | /lint-mobile | skipped | 2.2 s | — | — | — | client-mobile non listé dans Repos |
-| /e2e | failed | 17 min 41 s | — | — | — | e2e ×6 (21 min 36 s), mobile E2E-DETAIL-002 rouge 3/3 — interaction task-331 x task-348 |
-| **Total cycle** | | **1 h 52 min** | **9 (4 min 39 s)** | **18 (23 min 10 s)** | **4 (5 min 07 s)** | |
+| /e2e | ok | 18 min 00 s | — | — | — | e2e ×11 (37 min 31 s) |
+| **Total cycle** | | **1 h 53 min** | **10 (5 min 06 s)** | **19 (23 min 46 s)** | **4 (5 min 07 s)** | |
 
-Autres commandes mesurées : lint ×2 (3 min 10 s), nuget-wait ×2 (20 s), restore ×1 (3.0 s)
+Autres commandes mesurées : lint ×3 (3 min 41 s), nuget-wait ×2 (20 s), restore ×1 (3.0 s)
