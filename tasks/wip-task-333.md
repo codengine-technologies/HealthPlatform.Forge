@@ -194,6 +194,41 @@ WHERE m."FolderPath" = 'INBOX' AND m."Uid" = :uid;
 - interop-cda : build 0 erreur, 407 verts.
 - api-mail : build 0 erreur. Suite complète : domain 190, infrastructure 683, application 3 441, api 1 176, intégration 800 verts sur 816 (16 ignorés). Le premier passage complet a sorti 12 rouges, tous des tests qui figeaient l'ancien comportement (repli qui enregistrait et publiait, noms de pièces jointes lus en WithContent, archive absente rendant une liste vide, libellé du journal XDM exempté) : ils sont mis à jour dans `ab5e8247`, puis rejoués verts. Aucun des rouges d'ordre connus (vecteurs, partitions d'audit) n'est apparu sur ce passage. Mutation supplémentaire : garde d'extraction retirée du repli → `GetEmailAsync_WhenTheArchiveCannotBeExtractedForATechnicalCause_Returns503_WithoutBuildingAsync` rouge.
 
+## Sonar log
+
+- Serveur : SonarQube 25.6.0.109173 (`sonar.token`), port 9001. Projet `healthplatform-api-mail`. La période de nouveau code « previous version » couvre des dizaines de tasks déjà mergées : chaque finding est trié par provenance.
+- Référence : la dernière analyse du serveur (2026-10-03, état final de task-348).
+- **Phase 1 (nouveau code de task-333) : verte** en 2 itérations.
+  - Itération 1, sur les 11 fichiers `src/` de la task : **2 issues introduites**.
+    - S103, `IheXdmScratch.cs:160` : message du balayage allongé au-delà de 150 caractères.
+    - S134, `ImapService.cs:2093` : `try/catch` ajouté dans la boucle de Phase B, quatre niveaux.
+    - Aucun hotspot.
+    - Couverture du nouveau code sous 95 % : `IheXdmTechnicalFailureException` (40 %, constructeurs non appelés) et `BackgroundEnrichmentProcessor` (93,8 %, le `catch` de la panne d'analyse).
+  - Corrigé (`d6c39aa1`) :
+    - S134 : la persistance protégée sort dans `PersistUnlessArchiveUnreadableAsync`, qui rend un booléen ;
+    - S103 : le gabarit est scindé par concaténation.
+  - Tests (`51815492`) : constructeurs de l'exception (cause par défaut, cause explicite, exception interne) ; `UnavailableException(message, code, inner)` ; synchro de fond, archive illisible → mail en attente et reste du lot persisté.
+  - Itération 2 : **aucune issue ni aucun hotspot introduits** par la task. Couverture du nouveau code des fichiers touchés : 95,2 à 100 % (`ServiceImplementation` 94,7 % sur des conditions antérieures, 0 ligne non couverte).
+- Reste dans les fichiers de la task : S138 `AddApplication` (101 lignes), **dette antérieure** (issue créée le 2026-09-07). task-333 y ajoute une ligne (`Configure<IheXdmOptions>`), elle ne la crée pas.
+- Nouveau code hors task-333 : 67 violations et 13 hotspots `TO_REVIEW` hérités. Deux sont apparus depuis la référence, dans des fichiers que la task ne touche pas : S1151 `PatientService.cs:198`, S138 `BiologyRepository.GetBiologyByPatientIdAsync`. Ils viennent des tasks fusionnées dans la base de la branche après l'analyse de référence.
+- Phase 2 (dette héritée) : non lancée (optionnelle, hors périmètre).
+- Build et tests Release, couverture OpenCover, aux deux itérations : 0 erreur, domain 190, application 3 441 puis 3 446, infrastructure 683, api 1 176, intégration 800 verts (16 ignorés). Aucun rouge.
+- Conventions : S103 → 3 (récidive sur un message modifié) ; **S134 ajoutée**.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline (analyse du 2026-10-03) | Final (branche task-333) | Δ |
+|---|---|---|---|
+| Quality Gate (nouveau code) | ERROR | ERROR | → (conditions héritées : hotspots non revus, violations) |
+| New coverage | 98,1 % | 98,1 % | 0 |
+| Bugs | 2 | 2 | 0 |
+| Vulnerabilities | 0 | 0 | 0 |
+| Security hotspots | 15 | 15 | 0 (aucun sur le code de la task) |
+| Code smells | 68 | 70 | +2, hors task-333 (S1151 `PatientService`, S138 `BiologyRepository`) ; les 2 de la task sont corrigés |
+| Reliability / Security / Maintainability | D / A / A | D / A / A | → |
+| Coverage (global) | 98,0 % | 97,9 % | −0,1 pt |
+| Duplication | 0,4 % | 0,3 % | −0,1 pt |
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-333 --sync` — ne pas éditer à la main)*
@@ -202,6 +237,7 @@ WHERE m."FolderPath" = 'INBOX' AND m."Uid" = :uid;
 |---|---|---|---|---|---|---|
 | /start | ok | 27 s | — | — | — | — |
 | /develop | ok | 41 min 57 s | 6 (1 min 09 s) | 3 (4 min 33 s) | — | interop-cda 1B/1T, api-mail 5B/2T |
-| **Total cycle** | | **42 min 24 s** | **6 (1 min 09 s)** | **3 (4 min 33 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 25 min 57 s | 3 (1 min 20 s) | 10 (10 min 39 s) | 4 (5 min 32 s) | 2 itération(s), api-mail 3B/10T |
+| **Total cycle** | | **1 h 08 min** | **9 (2 min 30 s)** | **13 (15 min 12 s)** | **4 (5 min 32 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (38 s), restore ×1 (8.1 s)
