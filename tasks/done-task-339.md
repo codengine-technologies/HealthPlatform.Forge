@@ -113,7 +113,8 @@ serveur (chemins, sous-dossiers, orphelins), et que les vues et l'audit reflète
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 9 min 04 s | — | — | — | e2e ×3 (8 min 32 s) |
 | /review | ok | 55 min 01 s | 1 (14 s) | 5 (5 min 01 s) | — | api-mail 1B/5T, PR #272, APPROVED, suites vertes à 02:05 |
-| **Total cycle** | | **2 h 09 min** | **12 (1 min 38 s)** | **37 (24 min 51 s)** | **4 (1 min 10 s)** | |
+| /tech-writer | ok | 32 s | — | — | — | — |
+| **Total cycle** | | **2 h 10 min** | **12 (1 min 38 s)** | **37 (24 min 51 s)** | **4 (1 min 10 s)** | |
 
 ## Develop log
 

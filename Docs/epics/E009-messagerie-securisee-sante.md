@@ -4,7 +4,7 @@
 > **Modèle** : hand-crafted
 > **Version** : 1.85
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-03 (corriger un rattachement manuel : détacher, changer de patient, tracer — task-331)
+> **Dernière mise à jour** : 2026-10-04 (opérations de dossiers fiables : corbeille, renommage, étiquettes — task-339)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1035,6 +1035,13 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 > automatiquement au retour de la connexion », c'est cette description qui fait foi.
 
 ### Fonctionnalités métier
+
+- **v1.87 — Ranger ses messages ne détruit plus rien d'autre** (task-339) :
+  - **La Corbeille ne détruit plus les messages d'un autre logiciel.** Un message marqué « supprimé » dans un autre client de messagerie (sans être vidé) n'est plus effacé quand le praticien met un autre message à la Corbeille.
+  - **Renommer un dossier emporte tout son contenu.** Les sous-dossiers suivent, et les comptes rendus déjà rattachés à un patient restent rattachés : plus de bandeau « doublon », ni de document qu'on ne peut plus ouvrir ou déplacer.
+  - **Un dossier supprimé ailleurs disparaît avec ses messages**, et les anciens doublons laissés par les renommages passés se nettoient d'eux-mêmes.
+  - **La vue par étiquette n'affiche que les bons messages** de la boîte de réception, jamais un message d'un autre dossier, et l'assistant IA ne reçoit plus que ceux-là.
+  - **Déplacer un message met à jour aussitôt** les compteurs et la liste « reçus aujourd'hui ». Le journal d'audit garde le sujet du message déplacé.
 
 - **v1.86 — Corriger un rattachement manuel** (task-331, suite) :
   - **Détacher.** Un document rattaché à la main au mauvais patient se détache depuis le détail du message, après confirmation : il revient dans « à intégrer » et quitte le dossier du patient.

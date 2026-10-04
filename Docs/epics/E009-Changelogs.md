@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-10-03 (v1.86)
+> **Dernière mise à jour** : 2026-10-04 (v1.87)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -761,6 +761,36 @@
   - remonter `originalMarkedCancelled` et `warning` par `drafts/{id}/send` ;
   - bail renouvelable pour le verrou.
 
+### v1.87 — Ranger, renommer, déplacer ou supprimer ne détruit rien d'autre et ne laisse rien derrière — task-339
+
+- **Origine** : audit de bugs du 2026-09-27, AUD-29, AUD-30, AUD-35, AUD-49, AUD-50.
+- **PR** (`awaiting-human-merge`) : `api-mail` #272. Aucun contrat ne change, aucun client modifié.
+- **AUD-29 — expunge ciblé.** Plus de `CloseAsync(true)` après un déplacement vers la Corbeille. La suppression définitive (Corbeille, brouillons) expurge par UID les seuls messages visés : un message marqué supprimé par un autre client sans être expurgé n'est plus détruit. Une garde de convention (`ImapExpungeIsTargetedScanTests`) refuse tout `CloseAsync(true)` ou `ExpungeAsync()` sans UID dans `src/`.
+- **AUD-30 — renommage.** Une transaction réécrit le dossier, ses sous-dossiers (chemin, parent), leurs mails et les actions en attente, puis les caches des anciens chemins sont retirés.
+- **Réconciliation et reprise.** Nouvelle méthode `PurgeMailsOfFoldersNotOnServerAsync` :
+  - elle purge les mails de tout dossier absent de la liste du serveur, ce qui reprend aussi les orphelins laissés par l'ancien renommage ;
+  - leurs marquages « doublon » tombent par `ON DELETE SET NULL` ;
+  - elle n'est appelée que sur une liste tout juste lue sur le serveur, jamais sur l'instantané en cache, et une liste sans INBOX ne purge rien ;
+  - les chemins distincts sont lus par balayage d'index par saut (CTE récursive).
+- **Synchronisation de fond** : elle ne réconcilie plus contre sa liste de premier niveau, qui retirait les sous-dossiers à chaque passe et aurait vidé leurs mails avec la purge.
+- **AUD-35** : vue, liste et badges par étiquette limités à INBOX et à sa génération courante. Le contexte de l'assistant IA est corrigé avec eux.
+- **AUD-49** : un déplacement retire liste et statut des deux dossiers et les caches du message, via une éviction unique (`MailCacheEviction.RemoveFolderListingEntriesAsync`), en parallèle sous le verrou. La trace `MailMove` groupée lit sujet et MessageId avant la ré-indexation.
+- **AUD-50 — non reproduit.** MailKit 4.17 expurge par UID sans UIDPLUS, sans lever. Le test est gardé en non-régression : serveur dépouillé de UIDPLUS et MOVE côté client, prémisse affirmée.
+- **Règle 1b** : 9 tests HTTP (`FolderOperationsEndToEndTests`, Dovecot + base praticien + second client IMAP) et 7 tests de dépôt sur PostgreSQL. Sept rouges sur le code d'avant, onze mutations rouges.
+- **Tests** : 6 217 verts (domain 190, infrastructure 683, application 3 384, api 1 170, integration 790, plus 16 ignorés).
+- **E2E** : deux voies à 27/27, parité verte.
+- **Sonar** : Quality Gate OK, KPIs inchangés (new coverage 97,5 %, 13 smells).
+- **Leçons** :
+  - `conventions/csharp.md` › CA1869 (3ᵉ occurrence, récidive après lecture), CA1845 (créée : faux positif dans une expression EF) et `premisse-de-test-integration` (créée : deux verts qui mentaient, repérés par mutation) ;
+  - mémoire : les tests « du jour » sont rouges entre 00:00 et 02:00, aussi sur develop.
+- **Suivis** :
+  - liste récursive des dossiers partagée, dont la synchronisation de fond ;
+  - lectures par UID sans génération dans `MailRepository` ;
+  - hôte HTTP commun aux suites `UseCases` ;
+  - message « du jour » semé à midi ;
+  - méthodes de brouillon mortes ;
+  - version de l'arborescence contre la course entre une liste périmée et un renommage.
+
 ### v1.86 — Un rattachement manuel se corrige et se trace : détacher, changer de patient, refus d'écraser en silence — task-331 (extension 2)
 
 - **Origine** : constat humain du 2026-10-03, à la recette de l'extension 1 : aucune fonction ne permettait de détacher. L'analyse a trouvé deux défauts de plus. Le rattachement **n'était pas audité**, malgré la mention « tracé (existant) » de la US. Et rattacher un document déjà rattaché **écrasait le patient en silence**.
@@ -1013,6 +1043,7 @@ Audit grep complémentaires pour les couches 2 / 2bis / 3 (tasks 021 / 022 / 023
 | task-330 | **Le travail fait hors ligne n'est plus perdu au premier échec.** Gestes rejoués jusqu'au succès, gardés `Failed` et comptés après 10 tentatives (`FailedActionsCount`) ; annulation sans tentative comptée ; réclamations orphelines reprises (`ClaimedAt`) ; **remise incertaine** d'un envoi confirmé peut-être parti (503 + avertissement, `deliveryUncertain`, 409, retirable — arbitrage du 2026-10-02) ; stade SMTP typé (400 / 503 / 499) ; mise en file hors ligne soumise aux règles d'envoi. Dtos.Mss 501.0.0. PR #269 (api-mail), #38 (dtos-mss). | — (continuité de service hors ligne, AUD-08 / AUD-23 ; aucune RG déclarée) |
 | task-329 | **Un seul chemin d'envoi.** `OutgoingMailService` pour `sendmail`, brouillon, confirmation avec la carte et annule-et-remplace : pièces par référence relues (400 si illisible), annule-et-remplace sur toutes les routes, archivage « Envoyés » ; brouillon complet (pièces, accusé, opposition, blocage de réponse, cible d'annule-et-remplace) restauré à la réouverture ; verrou d'envoi à jeton (5 min). Dtos.Mss 505.0.0. PR #270 (api-mail), #39 (dtos-mss), #87 (Blazor), #84 (mobile). | — (traçabilité de l'envoi MSSanté, AMBU.MSS/va1.02, opposition Mon Espace Santé ; aucune RG déclarée) |
 | task-331 | **Le dossier est celui de la fiche.** Dossier, biologie et opposition par `PatientId` (et non plus par l'INS du document) : le document rattaché à la main y apparaît, deux fiches d'un même matricule (NIR / NIA) restent séparées ; garde d'envoi : une fiche opposée du matricule suffit à exiger l'acquittement ; `resolve` déterministe ; `Id` rendu par la recherche et « patients du jour » ; index `(PatientId, MailId, Date)`. **Extension** : recherche de la fiche et confirmation quand l'appariement ne trouve personne, sur les trois clients ; scénario E2E-PATIENT-002. **Extension 2** : détacher, changer de patient, 409 au lieu de l'écrasement silencieux, rattachement et détachement tracés (actions d'audit 37 et 38) ; E2E-PATIENT-002 v2. PRs #40 (dtos-mss), #271 (api-mail), #88 (client-blazor), #85 (client-mobile), Angular code-only. | — (identito-vigilance INS, opposition Mon Espace Santé ; AUD-05, AUD-34 ; aucune RG déclarée) |
+| task-339 | **Opérations de dossiers fiables.** Expunge ciblé par UID (AUD-29), renommage qui emporte sous-dossiers, mails et actions en attente (AUD-30), purge des mails des dossiers absents du serveur et reprise des orphelins, vue et badges par étiquette sur INBOX et sa génération (AUD-35), caches et trace des déplacements (AUD-49) ; AUD-50 non reproduit. PR #272 (api-mail). | — (intégrité des opérations de messagerie ; tracé PGSSI-S des déplacements) |
 | task-338 | **La recherche dit la vérité.** Pannes signalées au lieu d'une liste vide (503, 499, mode dégradé `IsDegraded` / `DegradedSources` en hybride) ; chaque filtre du contrat appliqué (patient sur un même document, répondu, brouillon, dates de document et de biologie, `false` = « sans », type inconnu → 400, filtres seuls bornés) ; prédicat dossier/étiquette unique pour toutes les requêtes ; pertinence filtrée une seule fois. Dtos.Mss 500.0.0. 21 tests d'intégration d'endpoint rouges sur le code d'avant. PR #268 (api-mail), #37 (dtos-mss). | — (exactitude de la recherche — AUD-38, 39, 40, 52 ; aucune RG déclarée) |
 | done-task-002 | Masquage du préfixe `XDM/1.0/DDM+` dans l'objet | RG-E009-029 |
 | done-task-003 | Opposition patient à l'envoi MSS pro et patient | RG-E009-019, 020 |

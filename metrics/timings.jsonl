@@ -3546,3 +3546,5 @@
 {"ts":"2026-10-04T02:07:34+02:00","run_id":"-","type":"cmd","task":"task-339","step":"review","repo":"api-mail","kind":"test","label":"api","cwd":"Api/Mail","cmd":"dotnet test tests/mss.mail.api.tests --no-build","duration_ms":26811,"exit_code":0}
 {"ts":"2026-10-04T02:10:28+02:00","run_id":"-","type":"cmd","task":"task-339","step":"review","repo":"api-mail","kind":"test","label":"integration","cwd":"Api/Mail","cmd":"dotnet test tests/mss.mail.integration.tests --no-build","duration_ms":173017,"exit_code":0}
 {"ts":"2026-10-04T02:11:05+02:00","run_id":"-","type":"step","task":"task-339","step":"review","status":"ok","note":"PR #272, APPROVED, suites vertes à 02:05","iterations":null,"duration_ms":3301904}
+{"ts":"2026-10-04T02:11:25+02:00","run_id":"-","type":"step_start","task":"task-339","step":"tech-writer"}
+{"ts":"2026-10-04T02:11:57+02:00","run_id":"-","type":"step","task":"task-339","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":32015}
