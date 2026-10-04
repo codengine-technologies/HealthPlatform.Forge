@@ -1327,3 +1327,38 @@ await db.Mails
 **Consigne** : dans une expression EF, garder `Substring` et suspendre CA1845 **localement**, la raison
 écrite au-dessus (même forme que CA1862 dans `PatientRepository`). Hors EF (code exécuté en mémoire),
 la règle s'applique normalement.
+
+---
+
+## unicite-garantie-par-la-base — un verrou de processus n'est pas une garantie entre réplicas, et un correctif d'écriture vaut pour ses chemins jumeaux
+
+**Occurrences : 1** (task-344, AUD-18 b — promotion « en-têtes seuls » → contenu analysé)
+
+Deux défauts dans la même méthode, `MailRepository.UpdateExistingMailWithContentAsync` :
+
+- **Le garde était local au processus.** La promotion était sérialisée par un `SemaphoreSlim`
+  (`enrich:{email}:{folder}`) et protégée par une lecture « déjà promu ? » faite **avant**
+  l'écriture. Deux réplicas lisaient tous deux « non », puis écrivaient chacun un contenu et un jeu
+  de documents médicaux : l'index `IX_MailContents_MailId` n'était pas unique. Le dossier patient
+  montrait le compte rendu deux fois.
+- **Le correctif d'atomicité n'avait été posé que sur un des deux chemins.** AUD-36 (task-342) avait
+  mis l'insertion d'un mail neuf (`PersistNewMailAsync`) dans une transaction couvrant le chaînage de
+  versions et les étiquettes. La promotion, son **jumeau** (même matériau, mail déjà présent), gardait
+  ces écritures hors transaction : une panne après le `SaveChanges` laissait le mail « analysé » sans
+  ses étiquettes, et il n'était jamais rejoué.
+
+**Consigne** :
+- Une règle « au plus une ligne par X » se garantit **en base** (index unique), jamais par un verrou
+  ni par une lecture préalable. Le verrou (local ou Redis) n'est qu'une **économie** de travail ; le
+  perdant de la course reçoit la violation d'unicité **nommée** (`ConstraintName`) et la traite comme
+  « déjà fait », sans journaliser d'erreur.
+- Un correctif sur un chemin d'écriture (atomicité, garde, détection) se reporte sur ses **chemins
+  jumeaux** dans la même task : chercher les autres méthodes qui écrivent la même table avec le même
+  matériau (ici, l'écrivain listé par `MailContentWriterScanTests` à côté de celui qu'on corrige).
+- La preuve rejoue la course avec **deux contextes indépendants** et un intercepteur qui les retient
+  ensemble juste avant l'écriture, sur une base construite par le coureur de production (l'index
+  n'existe pas sur la fixture `EnsureCreated` d'avant le modèle).
+
+**Preuve** : `MailPromotionUniquenessTests.TwoReplicasPromotingTheSameHeaderOnlyMail_…` (rouge sur
+develop : 2 contenus, 2 documents, 4 lignes de biologie) et `APromotionFailingAfterItsDocuments_…`
+(rouge sur develop : contenu et documents committés malgré la panne).
