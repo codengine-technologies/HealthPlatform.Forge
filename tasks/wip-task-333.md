@@ -242,22 +242,19 @@ WHERE m."FolderPath" = 'INBOX' AND m."Uid" = :uid;
 | Voie | Déclencheur | Résultat | Tests | Durée |
 |---|---|---|---|---|
 | mobile | api-mail touché | ✅ verte | 29 verts, 0 flaky, 0 rouge, 0 quarantaine | 5 min 11 s |
-| angular | api-mail touché | ❌ parité rouge (suite verte) | 27 verts, 0 flaky, 0 rouge, 0 quarantaine | 5 min 12 s |
+| angular | api-mail touché | ✅ verte | 29 verts, 0 flaky, 0 rouge, 0 quarantaine | 5 min 42 s |
 
-- Catalogue : `Api/Mail/e2e/scenarios.yml` @ branche de la task (après fusion d'`origin/develop`, qui apporte task-352).
+- Catalogue : `Api/Mail/e2e/scenarios.yml` @ branche de la task, après fusion d'`origin/develop` (`8a546c07`, qui apporte task-352).
 - Quarantaines : aucune.
 - Divergences ouvertes : aucune.
 - Parcours touchés sans spec e2e modifié : aucun (task backend, aucun écran touché).
 - Démontage : complet (ports libres, aucun conteneur e2e résiduel).
-- Premier passage (avant fusion de develop) : mobile rouge sur `E2E-FOLDER-003` / `004` (sous-commande `folder` et scénarios absents de la branche api-mail, partie de `develop` antérieure à task-352). Corrigé par la fusion `8a546c07`, puis voie mobile verte.
-- **Blocage, sans rapport avec task-333** : `E2E-FOLDER-003` et `E2E-FOLDER-004` (task-352, clients mobile et angular requis) sont absents de la suite Angular du checkout courant. Le code Angular de task-352 (code-only) n'y est plus. Voir `questions/task-333.md`.
+- Historique du passage :
+  - 1ᵉʳ passage : voie mobile rouge sur `E2E-FOLDER-003` / `004`. La branche api-mail partait d'un `develop` antérieur à task-352, sans la sous-commande `folder` ni les scénarios. Corrigé par la fusion de `develop`.
+  - 2ᵉ passage : mobile verte, Angular de parité rouge. Le code Angular de task-352 n'était plus dans le checkout. L'humain l'a remis à jour.
+  - 3ᵉ passage : Angular verte. Le rapport mobile du 2ᵉ passage est repris pour la porte : api-mail est au même commit (`8a546c07`) et le mobile au même `develop`.
 
-**E2E : ROUGE** — 2 motif(s) de blocage.
-
-**Bloquant** (2) :
-
-- [angular] parité MissingRequired : E2E-FOLDER-003 (« Ouvrir un dossier supprimé depuis un autre logiciel ») est requis pour angular mais absent de sa suite, ou non joué.
-- [angular] parité MissingRequired : E2E-FOLDER-004 (« Actualiser la liste des dossiers après un changement fait dans un autre logiciel ») est requis pour angular mais absent de sa suite, ou non joué.
+**E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
 
 ### Matrice de parité
 
@@ -289,17 +286,14 @@ WHERE m."FolderPath" = 'INBOX' AND m."Uid" = :uid;
 | E2E-SIGNATURE-001 | 1 | headless | Créer puis supprimer une signature | ✅ | ✅ |
 | E2E-CONTACT-003 | 1 | headless | Créer puis supprimer un groupe de contacts | ✅ | ✅ |
 | E2E-FOLDER-002 | 1 | headless | Créer puis supprimer un dossier | ✅ | ✅ |
-| E2E-FOLDER-003 | 1 | headless | Ouvrir un dossier supprimé depuis un autre logiciel | ⛔ non joué | ✅ |
-| E2E-FOLDER-004 | 1 | headless | Actualiser la liste des dossiers après un changement fait dans un autre logiciel | ⛔ non joué | ✅ |
+| E2E-FOLDER-003 | 1 | headless | Ouvrir un dossier supprimé depuis un autre logiciel | ✅ | ✅ |
+| E2E-FOLDER-004 | 1 | headless | Actualiser la liste des dossiers après un changement fait dans un autre logiciel | ✅ | ✅ |
 | E2E-AUTH-001 | 1 | humain | Rester connecté quand le jeton d'accès expire | 👤 non joué (humain) | 👤 non joué (humain) |
 | E2E-AUTH-002 | 1 | humain | Se déconnecter | 👤 non joué (humain) | 👤 non joué (humain) |
 | E2E-LIVE-001 | 1 | headless | Recevoir un nouveau message en temps réel, sans recharger | ✅ | ✅ |
 | E2E-AI-001 | 1 | headless | Interroger l'assistant sur des messages sélectionnés et poser des questions de suite | ✅ | ✅ |
 
-**Parité : ROUGE** — 2 écart(s) :
-
-- `MissingRequired` [angular] E2E-FOLDER-003 (« Ouvrir un dossier supprimé depuis un autre logiciel ») est requis pour angular mais absent de sa suite, ou non joué.
-- `MissingRequired` [angular] E2E-FOLDER-004 (« Actualiser la liste des dossiers après un changement fait dans un autre logiciel ») est requis pour angular mais absent de sa suite, ou non joué.
+**Parité : verte** — aucun écart entre le catalogue et les suites.
 
 ## Timings
 
@@ -312,7 +306,7 @@ WHERE m."FolderPath" = 'INBOX' AND m."Uid" = :uid;
 | /sonar | ok | 25 min 57 s | 3 (1 min 20 s) | 10 (10 min 39 s) | 4 (5 min 32 s) | 2 itération(s), api-mail 3B/10T |
 | /lint-angular | skipped | 2.0 s | — | — | — | client-angular non listé dans Repos |
 | /lint-mobile | skipped | 2.1 s | — | — | — | client-mobile non listé dans Repos |
-| /e2e | failed | 29 min 51 s | 1 (31 s) | — | — | api-mail 1B/0T, e2e ×4 (17 min 10 s), parité angular : E2E-FOLDER-003/004 (task-352) absents de la suite Angular |
-| **Total cycle** | | **1 h 38 min** | **10 (3 min 01 s)** | **13 (15 min 12 s)** | **4 (5 min 32 s)** | |
+| /e2e | ok | 6 min 27 s | 1 (31 s) | — | — | api-mail 1B/0T, e2e ×7 (22 min 53 s) |
+| **Total cycle** | | **1 h 14 min** | **10 (3 min 01 s)** | **13 (15 min 12 s)** | **4 (5 min 32 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (38 s), restore ×1 (8.1 s)
