@@ -102,6 +102,98 @@ qu'une archive anormale ne puisse pas saturer l'hôte.
 - `api-mail` (pushed) : fix/task-333-marqueur-analyse-garde-technique — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-333-marqueur-analyse-garde-technique (depuis `origin/develop` @ `9452245c`)
 - `interop-cda` (pushed) : fix/task-333-marqueur-analyse-garde-technique — https://github.com/codengine-technologies/interop.cda.parser/tree/fix/task-333-marqueur-analyse-garde-technique (depuis `origin/develop` @ `8f40526`)
 
+## Develop log
+
+### Plan et ordre
+
+`interop-cda` d'abord (contrat consommé par NuGet), puis `api-mail`. Aucun contrat DTO touché, donc pas de branche `dtos-mss`. Aucun client touché.
+
+### interop-cda — `09159dd`, publié en **Interop.Cda.Parser 101.0.0** (run 101)
+
+- `XdmLoadFailure` (`None`, `InvalidArchive`, `HostFailure`, `LimitExceeded`) exposé par `XDM.Failure`. Évolution additive : `Load(fichier, xsd)` garde sa signature et délègue à `Load(fichier, xsd, XdmExtractionLimits)`.
+- **Panne de l'hôte** : archive absente à la lecture, schéma absent, répertoire d'extraction impossible à créer, répertoire disparu en cours d'analyse, `IOException` / `UnauthorizedAccessException` (y compris à la lecture d'un CDA, que `CdaValidator` avalait comme une validation ratée).
+- **Archive invalide** : zip indécodable, entrée hors de son répertoire ou au nom invalide. `ExtractToDirectory` rapportait ce dernier cas en `IOException`, le type désormais réservé à l'hôte : il est remplacé par `XdmArchiveExtractor`.
+- **Bornes** (`XdmExtractionLimits`) : 1 000 entrées, 256 Mio décompressés, rapport de 100 au-delà de 1 Mio. Contrôlées sur les tailles déclarées, puis sur les octets réellement décompressés (un en-tête peut mentir). Le dépassement supprime l'extraction partielle.
+- Tests : `XdmLoadFailureTests` (10). Suite : 407 verts, 5 ignorés.
+- **Preuves par mutation** :
+  - A, `IsHostFailure` qui rend `false` : `Load_ExtractionDirectoryCannotBeCreated_IsAHostFailure` rouge (`Expected: HostFailure, Actual: InvalidArchive`) ;
+  - B, retour à `ExtractToDirectory` sans bornes : 4 rouges (bombe, entrées, taille : `Actual: True` ; entrée évadée : `Actual: HostFailure`).
+
+### api-mail — `a269a40c` (bump 101.0.0 et lock files), `2dbf6735` (correctif)
+
+- **AUD-16** : `CdaParsingService` lève `IheXdmTechnicalFailureException` (cause `Io` ou `ArchiveLimitExceeded`) quand `XDM.Failure` vaut `HostFailure` ou `LimitExceeded`, et compte l'échec (`mssante_ihe_xdm_extraction_failures_total`, nouvelle étiquette `limit_exceeded`). Une archive invalide rend toujours `[]` (comportement conservé).
+  - Phase B (`PersistEnrichedBatchAsync`) : l'UID rejoint les échecs techniques. Rien n'est persisté, le lot rend le 503 `DOCUMENT_PROCESSING_UNAVAILABLE` (même voie que la garde d'extraction de task-293).
+  - Synchro de fond (`BackgroundEnrichmentProcessor`) : le mail est laissé en attente, avec un avertissement au lieu d'une erreur générique.
+  - Bornes configurables : `IheXdmOptions`, section `IheXdm`, défauts de `XdmExtractionLimits`, documentés sur la classe. Aucun défaut posé dans `appsettings.json` ni dans l'AppHost : les défauts du code s'appliquent partout.
+- **AUD-09, choix : lecture pure.** `ReadEmailWithoutPersistingAsync` remplace `ProcessEmailSummaryAsync`. Le repli n'écrit plus rien, ni ligne de contenu ni message `AddNewMail`. Une panne technique d'extraction (`HasTechnicalFailure`) ou d'analyse y rend un 503 `DOCUMENT_PROCESSING_UNAVAILABLE`, au lieu de servir un message amputé de ses documents.
+  - **Pourquoi pas « garde + verrou + persistance »** : le plan de test manuel exige à l'étape 5 qu'un export PDF ne crée aucune ligne d'enrichissement. Une lecture qui n'écrit pas ne peut ni poser le marqueur à tort, ni entrer en course avec la Phase B. Le marqueur reste l'affaire du seul enrichissement, qui porte déjà la garde et le verrou.
+  - **Coût assumé** : un export ou un résumé d'un mail pas encore analysé relit le serveur à chaque appel. C'est rare, l'enrichissement suivant le liste presque aussitôt. Le résumé IA d'un mail non analysé n'est pas mis en cache (`UpdateEmailSummaryAsync` ne trouve pas de ligne de contenu) : il sera recalculé.
+  - Une lecture `Header` sans ligne en base construit désormais l'en-tête sans extraction. La liste des noms de pièces jointes (`GetAttachmentFileNamesAsync`) lit `Header` : plus aucune analyse CDA.
+  - Le dossier IMAP est refermé dans un `finally`, sur tous les chemins.
+- **Répertoire de travail** : `Sweep()` purge aussi les sous-répertoires d'extraction orphelins, et n'efface rien de plus récent que `SweepMinimumAge` (1 h). Un autre réplica du même hôte ne perd plus son archive entre l'écriture et la lecture.
+- `UnavailableException` gagne un constructeur `(message, code, inner)`, pour garder le code machine sur une panne remontée d'une couche basse.
+
+### Règle 1b — `ArchiveAnalysisMarkerEndToEndTests` (6 tests HTTP)
+
+Vraie pile : serveur HTTP de test, vrais contrôleurs, vrai `ImapService`, vraie extraction, vrai parseur CDA (archive CDA réelle du corpus), vrai dépôt sur la base PostgreSQL du praticien, IMAP Dovecot. La panne d'hôte est injectée par `IheXdmFaultInjection` (fixture `UseCases`, indexée par boîte) : l'archive écrite est retirée avant sa lecture, comme le faisait le balayage d'un autre réplica. Chaque test affirme sa prémisse (ligne « en-têtes seuls » créée, extraction effectivement demandée).
+
+| Comportement | Test | Rouge sur le code d'avant |
+|---|---|---|
+| Export d'un mail non analysé dont l'archive est illisible → 503 `DOCUMENT_PROCESSING_UNAVAILABLE`, aucune ligne de contenu | `ExportingAMailNotYetAnalysed_WhenItsArchiveCannotBeRead_Returns503_AndWritesNothing` | `Attendu 503, reçu 200 : %PDF-1.4` |
+| Export d'un mail non analysé → 200 PDF sans ligne de contenu ; l'enrichissement le constitue ensuite avec ses documents | `ExportingAMailNotYetAnalysed_ServesItWithoutMarkingItAnalysed_AndItsAnalysisStillHappens` | `Expected: 0, Actual: 1` |
+| Archive des pièces jointes d'un mail non analysé → 200, zéro extraction, aucune ligne de contenu | `DownloadingTheAttachmentsOfAMailNotYetAnalysed_TriggersNoArchiveAnalysis` | `Expected: 0, Actual: 1` (une extraction) |
+| Lecture concurrente d'une analyse sur le même UID → une seule ligne de contenu | `ReadingAMailWhileItIsBeingAnalysed_LeavesASingleContentRow` | `Expected: 1, Actual: 2` (la course s'est produite) |
+| Enrichissement, archive balayée avant lecture → 503, aucune ligne ; hôte rétabli → analysé avec ses documents | `EnrichingAMail_WhoseArchiveVanishesBeforeItIsRead_Returns503_LeavesItPending_ThenAnalysesItOnceRestored` | `Attendu 503, reçu 200 : {"analysed":1,…}` |
+| Enrichissement, archive hors bornes → 503, aucune ligne | `EnrichingAMail_WhoseArchiveInflatesBeyondTheBounds_RefusesIt_AndDoesNotMarkItAnalysed` | `Attendu 503, reçu 200 : {"analysed":1,…}` |
+
+Preuve rouge : les 6 tests rejoués après `git stash` de `src/` (code de production d'avant le correctif, tests et fixture inchangés) : **6 échecs, chacun sur son assertion**, puis 6 verts après restauration.
+
+### Tests unitaires
+
+- `CdaParsingServiceTechnicalFailureTests` (4) : archive retirée → `Io` (message sans chemin) ; bombe → `ArchiveLimitExceeded` ; borne configurée appliquée (seule elle refuse l'archive) ; zip corrompu → analysé sans document, sans exception. `ParseIheXdmZip_NonExistentPath_ReturnsEmpty` figeait le défaut : il est retiré, avec la raison en commentaire.
+- `IheXdmScratchSweepAgeTests` (4) : répertoire orphelin purgé ; archive récente et extraction en cours épargnées ; seul ce qui dépasse l'âge minimal part.
+  - Mutation, contrôle d'âge retiré : 3 rouges. Mutation, sous-répertoires ignorés : `Sweep_PurgesAnOrphanExtractionFolder_WithItsClinicalFiles` rouge.
+- Trois tests de balayage existants créaient des résidus « récents » : ils sont vieillis de 2 h (une exécution précédente). L'assertion du message de journal est alignée.
+- `ServiceImplementationCoverageTests` : les noms de pièces jointes lisent `Header`, et `DidNotReceive` d'un appel `WithContent`.
+
+### Inventaire des mails déjà marqués à tort (hors périmètre, pour une US de rejeu)
+
+À exécuter sur chaque base praticien : les mails porteurs d'une archive IHE-XDM, marqués analysés, sans aucun document médical.
+
+```sql
+SELECT m."Id", m."FolderPath", m."Uid", m."SentDate"
+FROM "Mails" m
+JOIN "MailAttachments" a ON a."MailId" = m."Id"
+WHERE lower(a."FileName") = 'ihe_xdm.zip'
+  AND EXISTS (SELECT 1 FROM "MailContents" c WHERE c."MailId" = m."Id")
+  AND NOT EXISTS (SELECT 1 FROM "MailMedicalDocuments" d WHERE d."MailId" = m."Id")
+ORDER BY m."SentDate" DESC;
+```
+
+Un résultat inclut aussi les archives réellement invalides, analysées à bon droit sans document : le rejeu les écartera de lui-même.
+
+Contrôle de l'étape 5 du plan de test manuel (export d'un mail non analysé) : avant et après l'export, pour l'UID exporté, aucune ligne ne doit apparaître :
+
+```sql
+SELECT count(*) FROM "MailContents" c JOIN "Mails" m ON m."Id" = c."MailId"
+WHERE m."FolderPath" = 'INBOX' AND m."Uid" = :uid;
+```
+
+### Points à arbitrer (non bloquants)
+
+- **Archive hors bornes** : conformément à la DOD, elle est refusée et le mail n'est pas marqué analysé. Il reste donc en attente, et chaque enrichissement du dossier rend le 503 « traitement des documents indisponible », au libellé « Réessayez ». Pour une archive volontairement anormale, réessayer ne changera rien. Un état terminal dédié (mail signalé, sans document, hors des reprises) relève d'une décision produit : à router vers le PO.
+
+### Passe qualité (§Q)
+
+- `interop-cda` : non éligible (porteur de contrat).
+- `api-mail` : revue du diff (réutilisation, simplification, efficacité, altitude), **aucune simplification appliquée**. Chaque élément nouveau a un seul usage. Les deux traitements de la panne d'analyse (Phase B et synchro de fond) restent distincts à dessein : task-334 unifie les deux constructeurs. Pas de commit, pas de re-validation.
+- Contrôles mécaniques §Q 2b (S125, xUnit1045, S4457, xUnit2032) : aucune occurrence, sur les deux dépôts.
+
+### Validation
+
+- interop-cda : build 0 erreur, 407 verts.
+- api-mail : build 0 erreur. Suite complète : domain 190, infrastructure 683, application 3 441, api 1 176, intégration 800 verts sur 816 (16 ignorés). Le premier passage complet a sorti 12 rouges, tous des tests qui figeaient l'ancien comportement (repli qui enregistrait et publiait, noms de pièces jointes lus en WithContent, archive absente rendant une liste vide, libellé du journal XDM exempté) : ils sont mis à jour dans `ab5e8247`, puis rejoués verts. Aucun des rouges d'ordre connus (vecteurs, partitions d'audit) n'est apparu sur ce passage. Mutation supplémentaire : garde d'extraction retirée du repli → `GetEmailAsync_WhenTheArchiveCannotBeExtractedForATechnicalCause_Returns503_WithoutBuildingAsync` rouge.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-333 --sync` — ne pas éditer à la main)*
@@ -109,4 +201,7 @@ qu'une archive anormale ne puisse pas saturer l'hôte.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 27 s | — | — | — | — |
-| **Total cycle** | | **27 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 41 min 57 s | 6 (1 min 09 s) | 3 (4 min 33 s) | — | interop-cda 1B/1T, api-mail 5B/2T |
+| **Total cycle** | | **42 min 24 s** | **6 (1 min 09 s)** | **3 (4 min 33 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : nuget-wait ×1 (38 s), restore ×1 (8.1 s)
