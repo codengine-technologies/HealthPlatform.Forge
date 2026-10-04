@@ -96,3 +96,17 @@ qu'une archive anormale ne puisse pas saturer l'hôte.
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui — répertoire de travail des archives dans le périmètre HDS ; purge renforcée
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+
+- `api-mail` (pushed) : fix/task-333-marqueur-analyse-garde-technique — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-333-marqueur-analyse-garde-technique (depuis `origin/develop` @ `9452245c`)
+- `interop-cda` (pushed) : fix/task-333-marqueur-analyse-garde-technique — https://github.com/codengine-technologies/interop.cda.parser/tree/fix/task-333-marqueur-analyse-garde-technique (depuis `origin/develop` @ `8f40526`)
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-333 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 27 s | — | — | — | — |
+| **Total cycle** | | **27 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
