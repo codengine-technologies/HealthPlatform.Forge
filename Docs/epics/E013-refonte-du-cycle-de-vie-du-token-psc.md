@@ -2,9 +2,9 @@
 
 > **Statut** : 🟡 En recette (livraison en attente de validation humaine)
 > **Modèle** : task-driven
-> **Version** : 1.0
+> **Version** : 1.1
 > **Audience** : PO, médecins, direction, conformité
-> **Dernière mise à jour** : 2026-09-24
+> **Dernière mise à jour** : 2026-10-06
 > **Document frère (vue ingénierie)** : [`E013-Changelogs.md`](./E013-Changelogs.md)
 
 <!-- toc:start — section générée par /tech-writer ; ne pas éditer manuellement -->
@@ -21,7 +21,7 @@
 - [8. Critères d'acceptation de l'EPIC](#8-critères-dacceptation-de-lepic)
 - [9. Hors périmètre](#9-hors-périmètre)
 - [10. Sécurité et confidentialité](#10-sécurité-et-confidentialité)
-- [État de couverture (2026-09-24)](#état-de-couverture-2026-09-24)
+- [État de couverture (2026-10-06)](#état-de-couverture-2026-10-06)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -61,7 +61,8 @@ profit d'un autre compte.
 
 | # | Fonctionnalité | Ce que le praticien peut faire | Tasks | Statut |
 |---|---|---|---|---|
-| E013-F001 | Session Pro Santé Connect tenue par le serveur | Utiliser sa messagerie en ligne sans que son application ne détienne ni ne renvoie le jeton Pro Santé Connect ; rattacher une messagerie avec l'identité professionnelle de sa propre session, jamais celle d'un autre ; retrouver automatiquement le mode hors ligne (lecture locale) quand la session Pro Santé Connect n'est pas disponible. Web, application web et mobile. | task-171 | 🟡 En recette |
+| E013-F001 | Session Pro Santé Connect tenue par le serveur | Utiliser sa messagerie en ligne sans que son application ne détienne ni ne renvoie le jeton Pro Santé Connect ; rattacher une messagerie avec l'identité professionnelle de sa propre session, jamais celle d'un autre ; retrouver automatiquement le mode hors ligne (lecture locale) quand la session Pro Santé Connect n'est pas disponible. Web, application web et mobile. | task-171 | ✅ Livré |
+| E013-F002 | Reconnexion automatique quand la messagerie refuse le jeton | Envoyer un message ou ouvrir sa boîte même quand la messagerie MSSanté refuse ponctuellement le jeton Pro Santé Connect : la connexion est reprise d'elle-même, une fois, avec un jeton neuf, sans que le praticien ne s'en aperçoive. Si le refus persiste, le praticien lit « La messagerie MSSanté a refusé l'envoi. Votre brouillon est conservé, réessayez dans quelques instants. » ; sa rédaction reste ouverte et son brouillon intact. Application web et mobile. | task-354 | 🟡 En recette |
 
 > Le bilan d'avancement par feature (statut, couverture, tasks contributives) est
 > consigné en fin de document, dans la section *État de couverture*.
@@ -70,7 +71,8 @@ profit d'un autre compte.
 
 ## 5. Workflow entre Features
 
-L'EPIC tient en une seule fonctionnalité, livrée d'un bloc. Le parcours du
+L'EPIC compte deux fonctionnalités : la session tenue par le serveur, puis la
+reconnexion automatique quand la messagerie refuse le jeton. Le parcours du
 praticien est le suivant :
 
 ```mermaid
@@ -81,6 +83,10 @@ graph LR
     C -- non --> E[Mode hors ligne<br>lecture locale]
     D --> F[Activité continue :<br>la session se prolonge]
     F --> D
+    D --> G{La messagerie refuse<br>le jeton ?}
+    G -- reprise réussie --> D
+    G -- refus persistant --> H[Message clair,<br>brouillon conservé]
+    H --> D
 ```
 
 1. Le praticien se connecte avec Pro Santé Connect, sur le web ou avec son e-CPS
@@ -96,6 +102,12 @@ graph LR
    normalement.
 5. Hors ligne, les messageries déjà rattachées restent lisibles ; les actions qui
    exigent la connexion à l'opérateur sont grisées, visibles et expliquées.
+6. Si la messagerie MSSanté refuse le jeton au moment d'un envoi ou d'une lecture,
+   la messagerie en demande aussitôt un nouveau et se reconnecte, une seule fois.
+   Le praticien ne voit rien quand la reprise réussit. Si le refus persiste, il lit
+   que la messagerie a refusé l'envoi, que son brouillon est conservé, et qu'il
+   peut réessayer dans quelques instants ; le bouton « Envoyer » reste disponible.
+   (task-354)
 
 ---
 
@@ -103,13 +115,13 @@ graph LR
 
 | ID | Règle | Description | Statut |
 |----|-------|-------------|--------|
-| RG-E013-L1 | Une session appartient à un seul professionnel | Une session Pro Santé Connect présentée avec le compte d'un autre praticien est refusée. La messagerie n'est ni ouverte ni rattachée, et le refus n'est jamais transformé en mode hors ligne. | 🟡 En recette (task-171) |
-| RG-E013-L2 | L'identité professionnelle vient de la session | Le RPPS et l'identifiant Pro Santé Connect retenus pour rattacher une messagerie sont ceux que le service d'authentification a obtenus lors de la connexion, jamais une déclaration de l'application. | 🟡 En recette (task-171) |
-| RG-E013-L3 | Rattacher une messagerie exige une session Pro Santé Connect liée | Sans session Pro Santé Connect liée au compte, le rattachement est refusé avec un message clair ; la lecture des messageries déjà rattachées reste possible hors ligne. | 🟡 En recette (task-171) |
-| RG-E013-L4 | Tout refus de rattachement est tracé | Un rattachement refusé apparaît dans le journal d'audit du praticien, avec son motif. | 🟡 En recette (task-171) |
+| RG-E013-L1 | Une session appartient à un seul professionnel | Une session Pro Santé Connect présentée avec le compte d'un autre praticien est refusée. La messagerie n'est ni ouverte ni rattachée, et le refus n'est jamais transformé en mode hors ligne. | ✅ Implémenté (task-171) |
+| RG-E013-L2 | L'identité professionnelle vient de la session | Le RPPS et l'identifiant Pro Santé Connect retenus pour rattacher une messagerie sont ceux que le service d'authentification a obtenus lors de la connexion, jamais une déclaration de l'application. | ✅ Implémenté (task-171) |
+| RG-E013-L3 | Rattacher une messagerie exige une session Pro Santé Connect liée | Sans session Pro Santé Connect liée au compte, le rattachement est refusé avec un message clair ; la lecture des messageries déjà rattachées reste possible hors ligne. | ✅ Implémenté (task-171) |
+| RG-E013-L4 | Tout refus de rattachement est tracé | Un rattachement refusé apparaît dans le journal d'audit du praticien, avec son motif. | ✅ Implémenté (task-171) |
 | RG-E013-L5 | Un identifiant Pro Santé Connect n'est lié qu'à un seul compte | Prérequis de mise en service, garanti par le service d'authentification et le contrôle des liaisons avant ouverture. | 🟡 Prérequis de mise en service |
-| RG-E013-S | Seule l'activité du praticien prolonge sa session | La synchronisation automatique de la messagerie ne maintient jamais une session ouverte en l'absence du praticien. | 🟡 En recette (task-171) |
-| RG-E013-J | Le jeton Pro Santé Connect ne quitte plus le serveur | Aucune application ne reçoit, ne conserve ni ne renvoie le jeton ; sur mobile, il n'est plus stocké sur le téléphone. | 🟡 En recette (task-171) |
+| RG-E013-S | Seule l'activité du praticien prolonge sa session | La synchronisation automatique de la messagerie ne maintient jamais une session ouverte en l'absence du praticien. | ✅ Implémenté (task-171) |
+| RG-E013-J | Le jeton Pro Santé Connect ne quitte plus le serveur | Aucune application ne reçoit, ne conserve ni ne renvoie le jeton ; sur mobile, il n'est plus stocké sur le téléphone. | ✅ Implémenté (task-171) |
 
 ---
 
@@ -171,14 +183,15 @@ de session en clair. L'analyse d'impact relative à la protection des données e
 
 ---
 
-## État de couverture (2026-09-24)
+## État de couverture (2026-10-06)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
-| E013-F001 — Session Pro Santé Connect tenue par le serveur | 🟡 En recette | Livrée sur les quatre composants, en attente de validation humaine et de mise en service | task-171, task-172 |
+| E013-F001 — Session Pro Santé Connect tenue par le serveur | ✅ Livré | Validée et intégrée sur les quatre composants ; mise en service soumise à ses prérequis | task-171, task-172 |
+| E013-F002 — Reconnexion automatique quand la messagerie refuse le jeton | 🟡 En recette | Livrée sur la messagerie, l'application web et le mobile, en attente de validation humaine | task-354 |
 
-**Couverture EPIC consolidée : 100 % livré, 0 % en production** (l'unique
-fonctionnalité attend sa recette humaine et ses prérequis de mise en service).
+**Couverture EPIC consolidée : 100 % livré, 50 % validé** (la reconnexion
+automatique attend sa recette humaine).
 
 ---
 
@@ -193,10 +206,20 @@ fonctionnalité attend sa recette humaine et ses prérequis de mise en service).
   livraison pour que la protection soit effective dès la première mise en service.
   (task-172)
 
+- v1.1 — Quand la messagerie MSSanté refuse le jeton Pro Santé Connect, la
+  connexion est reprise automatiquement avec un jeton neuf ; en cas de refus
+  persistant, un message clair est affiché, la rédaction reste ouverte et le
+  brouillon est conservé. Fini l'échec sans explication suivi de plusieurs minutes
+  d'attente. (task-354)
+
 **Conformité réglementaire**
 - v1.0 — Non-usurpation au rattachement d'une messagerie : l'identité
   professionnelle est celle de la session d'authentification, et tout refus est
   tracé dans le journal d'audit. (task-171)
+
+- v1.1 — Les refus du jeton par la messagerie et chaque reprise sont tracés dans le
+  journal d'audit du praticien ; la reprise utilise exclusivement un jeton Pro Santé
+  Connect neuf, sans aucun repli vers un mot de passe. (task-354)
 
 **Sécurité**
 - v1.0 — Une session ne peut plus servir un autre compte que celui de son
@@ -207,6 +230,9 @@ fonctionnalité attend sa recette humaine et ses prérequis de mise en service).
 - v1.0 — La synchronisation automatique ne maintient plus artificiellement une
   session ouverte ; les incidents du service d'authentification se traduisent par
   un mode hors ligne tracé plutôt qu'une erreur. (task-171)
+- v1.1 — Un jeton refusé n'est plus jamais réutilisé, et la reprise est limitée à
+  une tentative pour ne pas solliciter inutilement le service d'authentification.
+  (task-354)
 
 ---
 

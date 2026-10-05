@@ -401,6 +401,7 @@ la reprise réussit. Quand elle échoue, il voit un message clair, et son brouil
 | /lint-mobile | ok | 16 s | — | — | — | lint clean |
 | /e2e | ok | 11 min 01 s | — | — | — | e2e ×3 (10 min 15 s), 2 voies vertes (31+31), porte verte |
 | /review | ok | 7 min 34 s | 5 (41 s) | 4 (3 min 55 s) | — | dtos-mss 1B/0T, api-mail 1B/1T, client-mobile 1B/1T, client-angular 2B/2T |
-| **Total cycle** | | **1 h 43 min** | **15 (2 min 54 s)** | **25 (17 min 36 s)** | **4 (1 min 09 s)** | |
+| /tech-writer | ok | 2 min 08 s | — | — | — | — |
+| **Total cycle** | | **1 h 45 min** | **15 (2 min 54 s)** | **25 (17 min 36 s)** | **4 (1 min 09 s)** | |
 
 Autres commandes mesurées : lint ×5 (44 s), nuget-wait ×3 (41 min 43 s), restore ×3 (38 s)

@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > **Document frère (vue produit)** : [`E013-refonte-du-cycle-de-vie-du-token-psc.md`](./E013-refonte-du-cycle-de-vie-du-token-psc.md)
-> **Dernière mise à jour** : 2026-09-24 (task-171)
+> **Dernière mise à jour** : 2026-10-06 (task-354)
 
 Historique détaillé des changements de l'EPIC **E013 — Refonte du cycle de vie
 du token PSC (backend pull via proxy)**. Une entrée par task ayant atteint
@@ -174,6 +174,91 @@ Retirée le 2026-09-23 (décision humaine, règle 11 : une seule US complète).
 Contenu repris intégralement au point 6 de task-171, étendu à Blazor. Aucun code
 propre, aucune PR.
 
+### v1.1 — task-354 : reprise unique de la connexion SMTP / IMAP après un refus du jeton PSC par la messagerie (`dtos-mss`, `api-mail`, `client-mobile`, `client-angular`)
+
+> PRs : [dtos-mss #43](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/43),
+> [api-mail #281](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/281),
+> [client-mobile #89](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/89) —
+> label `awaiting-human-merge`. `client-angular` en code-only (branche
+> `feature/nova-rewriting-mss`, non commité ; le test E2E-COMPOSE-003 est à commiter sur TFS avant
+> le merge d'api-mail). `HealthPlatform.Dtos.Mss` **521.0.0** (run CI 521, vert au 3ᵉ essai après
+> deux annulations sans runner pendant l'incident GitHub Actions du 2026-10-05). La PR api-mail
+> embarque le correctif de compilation de `develop` (PR #280) tant qu'il n'est pas mergé.
+
+Origine : constat Seq du 2026-10-05 (boîte de formation). Le serveur SMTP MSSanté répondait au
+challenge XOAUTH2 par `334` + base64 de `{"status":"401","schemes":"bearer","scope":"mail"}` puis
+coupait : `SmtpProtocolException` → catch générique → **502**. Le jeton refusé restait dans le cache
+de `PscTokenProvider` jusqu'à `exp − 30 s` et était resservi, d'où plusieurs minutes d'échecs.
+
+#### dtos-mss
+- `AuditActionType` : `MailServerTokenRefused = 39`, `MailServerAuthRetry = 40` (ordinaux explicites).
+  Consommateur bumpé : api-mail ; `client-blazor` non listé, non bumpé, sans libellé.
+
+#### api-mail
+Commits : `be001d51` (bump DTO), `821ebe8c` (feature), `80d6a9ce` (lock files), `a3eedbb5` +
+`0b2f798e` (Sonar new code) ; `05abd6a7` merge de #280.
+- `Session/MailServerTokenRefusal` : refus = `MailKit.Security.AuthenticationException`, ou
+  `SmtpProtocolException` dont la charge base64 finale décode en JSON `status: 401`. Jamais : rejet
+  TLS (`System.Security.Authentication.AuthenticationException`), socket, délai, déconnexion nue.
+  Description journalisée = statut décodé seul.
+- `IPscTokenProvider.EvictAccessToken` (portée RG-L1 session + sujet ; mode inchangé).
+- `Psc/MailServerTokenRetry` : orchestrateur SMTP / IMAP — éviction **avant** une reprise unique sur
+  connexion neuve ; issue tracée d'après le `Result` réel ; second refus → éviction +
+  `UnavailableException(MAIL_SERVER_AUTH_REFUSED)` → 503 `ProblemDetails` ; 401 « session expirée »
+  inchangé.
+- `SmtpConnectionFactory` / `ImapConnectionService` : orchestrateur réservé aux domaines OAuth2.
+  `DraftService` : ce 503 n'est plus replié en 502 (brouillon rendu à la rédaction).
+  `BackgroundImapService` : éviction sans reprise (chemin jumeau). `AuditRetentionPolicy` : deux
+  actions techniques (365 j).
+- Bascule de test Development : `PscProxy:Testing:ForcedTokenRefusals=N`
+  (`ForcedTokenRefusalPscTokenProvider`, câblée sous `IsDevelopment()`), jeton inutilisable présenté
+  aux N premières authentifications.
+- Tests d'intégration `MailServerTokenRefusalEndpointIntegrationTests` (pile réelle, Redis
+  Testcontainers, proxy PSC et opérateur simulés ; serveurs TLS in-process `XOAuth2SmtpServer` et
+  `MinimalTlsImapServer` refusant **par valeur de jeton**) : `/drafts/{id}/send` (200 avec jetons
+  `[1, 2]` et proxy ×2 ; 503 typé, jamais 502, brouillon relu dans Redis inchangé) et
+  `/account/quota` (200 ; 503). Mutations M1 (éviction retirée), M2 (détection neutralisée → 502),
+  M3 (filtre `DraftService` → 502), M4 (`EvictAccessToken` sans effet) : toutes rouges.
+- Suites : 190 / 683 / 3 552 / 1 173 / 829 (+ 16 ignorés), 0 échec.
+
+| Métrique (SonarQube 9.9.8) | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | → |
+| New coverage | 97,5 % | 97,6 % | +0,1 pt |
+| Bugs / Vulnérabilités / Hotspots | 0 / 0 / 0 | 0 / 0 / 0 | = |
+| Code smells | 13 | 13 | = |
+| Coverage (projet) / Duplication | 97,9 % / 0,4 % | 97,9 % / 0,4 % | = |
+| Ratings R / S / M | A / A / A | A / A / A | = |
+
+Sonar : 1 itération (CA1859 sur un helper de test, 8 tests de couverture). Reste S107
+`SemanticSearchService:395`, antérieur (task-329).
+
+#### client-mobile
+- `http-error.util` : `MAIL_SERVER_AUTH_REFUSED`, `isMailServerAuthRefused` (relit le ProblemDetails
+  arrivé en texte, `/drafts/{id}/send` étant en `responseType: 'text'`), `sendErrorMessage`.
+- `mail-compose` : message dédié sur les deux chemins d'envoi (`data-testid="compose-error"`).
+- 1 011 tests verts ; lint « All files pass ».
+
+#### client-angular (code-only)
+- `problem-details.utils` : `isMailServerAuthRefused` ; `mail-compose` : signal `sendErrorMessage`,
+  `failSend`, `data-testid="compose-send-error"` ; miroir `audit.model.ts` (39, 40, libellés,
+  ajouté au moment de `/review`). Build weda2 ✓, `npm test` 11 projets ✓, lint MSS 0 erreur.
+
+#### E2E (EPIC E018)
+- **E2E-COMPOSE-003** v1 (mobile et Angular requis) : refus simulé une fois à la frontière réseau du
+  client au contrat exact de l'API (le backend e2e n'a pas de voie XOAUTH2), message dédié, objet
+  conservé, « Envoyer » actif, renvoi reçu. Rouge sur les deux clients avec le message générique
+  réinjecté. `/e2e` : 31 + 31 verts, parité verte. Trou du filet et convention
+  `refus-simule-a-la-frontiere` consignés dans `conventions/e2e.md`.
+
+#### Limites et suites
+- weda2 (hôte) affiche aussi son toast générique sur tout 5xx, en plus du message dédié.
+- Le proxy PSC n'est pas modifié : s'il resservait le même jeton après éviction, la reprise échoue
+  en 503 propre.
+- Suggestion de revue : sur IMAP, la fermeture de la connexion refusée précède la reprise hors du
+  bloc qui reconnaît le refus (un socket mort à cet instant rend l'erreur générique).
+- `client-blazor` : bump DTO et libellés d'audit à reprendre dans une task Blazor.
+
 ---
 
 ## Annexe A — Cartographie des briques applicatives
@@ -188,12 +273,18 @@ propre, aucune PR.
 | `client-blazor` `SessionCookieCredentials*`, `SessionRefreshService` | Cookie de session, refresh réactif |
 | `client-angular` `mss-headers.interceptor`, `MailboxSessionStore` | Cookie de session, mode backend |
 | `client-mobile` `MssHeadersInterceptor`, `AuthSessionService`, `MailboxSessionService` | Cookie de session, purge du jeton local, mode backend |
+| `api-mail` `src/Application/Session/MailServerTokenRefusal.cs` | Reconnaissance d'un refus du jeton par la messagerie (task-354) |
+| `api-mail` `src/Application/Services/Psc/MailServerTokenRetry.cs` | Éviction + reprise unique SMTP / IMAP, 503 `MAIL_SERVER_AUTH_REFUSED` (task-354) |
+| `api-mail` `src/Application/Services/Psc/ForcedTokenRefusalPscTokenProvider.cs` | Bascule de test Development (task-354) |
+| `client-mobile` `core/utils/http-error.util.ts`, `mail-compose` | Message dédié sur refus de l'envoi (task-354) |
+| `client-angular` `core/utils/problem-details.utils.ts`, `mail-compose`, `core/models/audit.model.ts` | Message dédié, miroir d'audit (task-354) |
 
-## Annexe B — Inventaire fonctionnel daté (2026-09-24)
+## Annexe B — Inventaire fonctionnel daté (2026-10-06)
 
-- 4 repos touchés, 3 PRs GitHub ouvertes, 1 livraison code-only.
-- 1 endpoint proxy consommé ; 1 endpoint api-mail élargi (`connection/status`).
-- 0 écran modifié.
+- 2 tasks livrées (task-171 archivée, task-354 en attente de merge), 1 retirée (task-172).
+- task-354 : 4 repos touchés, 3 PRs GitHub ouvertes, 1 livraison code-only ; 1 paquet DTO publié (521.0.0).
+- 1 endpoint proxy consommé ; 1 endpoint api-mail élargi (`connection/status`) ; refus du jeton géré sur toutes les routes SMTP / IMAP.
+- 1 scénario e2e ajouté (E2E-COMPOSE-003) ; 2 actions d'audit ajoutées.
 
 ## Annexe C — Tasks ayant contribué à cet EPIC
 
@@ -201,3 +292,4 @@ propre, aucune PR.
 |---|---|---|
 | task-171 | Backend pull du jeton PSC via le proxy, liaison compte ↔ professionnel lue dans la session, retrait de `X-PSC-Token` des trois clients et de l'API, mode décidé par le backend | RG-E013-L1, L2, L3, L4, S, J |
 | task-172 | Retirée — fusionnée dans task-171 | — |
+| task-354 | Reprise unique de la connexion SMTP / IMAP après un refus du jeton PSC par la messagerie : éviction du jeton, 503 typé `MAIL_SERVER_AUTH_REFUSED`, brouillon conservé, message dédié mobile et Angular, audit PGSSI-S, E2E-COMPOSE-003 | — |
