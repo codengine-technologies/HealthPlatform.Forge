@@ -177,8 +177,16 @@
   échoue, aucun test ne tourne, et un filtre sur « Passed!/Failed! » n'affiche **rien** : la
   mutation a l'air sans effet. Prédicat opaque aux analyseurs : `Environment.TickCount64 < 0`
   (C#), `Date.now() < 0` (TS).
-- **Origine** : task-343, task-349
-- **Occurrences** : 2
+- **Variante « mutation jamais appliquée » (task-354)** : deux fois dans la même task, la preuve a
+  failli conclure sur un code non muté. Un `sed` ancré sur une expression que Prettier avait
+  répartie sur deux lignes n'a rien remplacé (Angular), et une mutation .NET n'a recompilé que le
+  projet de tests unitaires : le projet d'intégration a rejoué son ancienne copie de la DLL
+  (« vert » sous mutation). **Consigne** : après avoir planté la mutation, compter son marqueur
+  (`grep -c MUTATION` doit rendre 1) avant de jouer, et recompiler **le projet qui exécute le
+  test**, pas celui qu'on vient d'éditer. Un vert sous mutation se vérifie d'abord sur ces deux
+  points, avant de conclure à un vert qui ment.
+- **Origine** : task-343, task-349, task-354
+- **Occurrences** : 3
 
 ### predicat-de-reponse — Un prédicat de `waitForResponse` se lit comme du code, pas comme un texte
 - **Piège** : une expression régulière littérale réécrite en ligne de commande est devenue
@@ -297,6 +305,25 @@
 
 ---
 
+### refus-simule-a-la-frontiere — Un refus que le backend e2e ne sait pas produire
+- **Piège** : le backend e2e s'authentifie par mot de passe (GreenMail sans authentification,
+  Dovecot en `passdb static`) et n'a ni XOAUTH2 ni proxy PSC. Le refus du jeton PSC par la
+  messagerie (task-354) n'y existe donc pas : un parcours qui l'attend du backend ne peut que
+  sauter ou mentir.
+- **Consigne** : simuler le refus **une seule fois**, à la frontière réseau du client
+  (`page.route` + `route.fulfill`), avec le **contrat exact** que rend l'API (statut,
+  `application/problem+json`, `code`), puis `route.fallback()` pour toute autre requête : la
+  suite du parcours (le renvoi) passe par le vrai backend et se juge dans la boîte relue. Le test
+  affirme que le refus simulé a bien été servi (compteur à 1), et le scénario du catalogue le
+  dit dans son `attendu`. Le chemin serveur du refus est prouvé ailleurs, par un test
+  d'intégration (règle 1b) — jamais par le parcours.
+- **Preuve** : E2E-COMPOSE-003 rouge sur les deux clients avec le message générique réinjecté
+  (mobile : « Http failure response … 503 », Angular : « Erreur lors de l'envoi du message »).
+- **Origine** : task-354
+- **Occurrences** : 1
+
+---
+
 ## Registre des flaky
 
 *(tenu par `/e2e` : une ligne par test vert au second essai ; troisième occurrence du même test →
@@ -331,6 +358,7 @@ scénario qui l'aurait attrapé, prouvé rouge sur le bug)*
 | Un document sans INS dont les traits ne correspondent à aucune fiche (ou sans trait) ne peut **pas être rattaché** : le dialogue n'offre que les candidats de `/patients/match`, puis « Ignorer » (Angular, Blazor, mobile) | L'humain au HAG de task-331, non vu par `/e2e` : aucun scénario ne rattachait un document à la main | **E2E-PATIENT-002** ajouté (mobile et Angular requis) : document sans INS seedé, aucun candidat, recherche libre, confirmation, message relu dans le dossier de la fiche. Rouge sous mutation (confirmation sans appel) sur les deux clients | task-331 |
 | Un dossier supprimé ou renommé depuis un autre logiciel de messagerie, puis ouvert dans l'app : **chargement sans fin** (Angular), anciens messages affichés (Blazor), message technique brut (mobile). Le serveur répondait 404 sans nommer la cause | L'humain, en recette (Seq : `GET /folders/…` → 404), non vu par `/e2e` : aucun scénario ne modifiait la boîte hors de l'application | **E2E-FOLDER-003** ajouté (mobile et Angular requis) : dossier créé dans l'app, supprimé par IMAP (`mss.mail.e2e folder --delete`), puis ouvert. Rouge sur les deux clients avec le bug réinjecté (Angular : spinner sans fin reproduit) | task-352 |
 | Un message supprimé ou déplacé depuis un autre logiciel **reste dans la liste** (rafraîchissement aveugle aux disparus) et s'ouvre sur un **contenu vide ou périmé** servi par la ligne locale (200, aucun accès IMAP) | L'humain, en recette (Seq : `GET …/emails/content/10` → 200 en 20 ms), non vu par `/e2e` : aucun scénario ne supprimait un message hors de l'application | **E2E-MAIL-005** ajouté (mobile et Angular requis) : message déposé puis supprimé par IMAP (`mss.mail.e2e message --create|--delete`), ouvert aussitôt (« n'existe plus », jamais vide), puis retiré au rafraîchissement. Rouge sous mutation sur les deux clients, et sur chacune des deux branches côté Angular (ouverture, rafraîchissement) | task-353 |
+| Un envoi refusé par la messagerie MSSanté (jeton PSC refusé au challenge XOAUTH2) rendait un **502** générique, et le nouvel essai échouait à coup sûr pendant deux à trois minutes : api-mail resservait de son cache le jeton refusé. Le praticien lisait un message technique (« Http failure response … » sur mobile) | L'humain, dans Seq le 2026-10-05 (boîte de formation), non vu par `/e2e` : le backend e2e n'a pas de voie XOAUTH2 et aucun scénario ne faisait échouer un envoi | **E2E-COMPOSE-003** ajouté (mobile et Angular requis) : refus simulé au premier envoi (503 `MAIL_SERVER_AUTH_REFUSED`), message dédié lu, objet conservé, « Envoyer » actif, renvoi reçu. Rouge sur les deux clients avec le message générique réinjecté. Chemin serveur prouvé par `MailServerTokenRefusalEndpointIntegrationTests` | task-354 |
 
 ---
 
