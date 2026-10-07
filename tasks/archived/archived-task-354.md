@@ -405,3 +405,14 @@ la reprise réussit. Quand elle échoue, il voit un message clair, et son brouil
 | **Total cycle** | | **1 h 45 min** | **15 (2 min 54 s)** | **25 (17 min 36 s)** | **4 (1 min 09 s)** | |
 
 Autres commandes mesurées : lint ×5 (44 s), nuget-wait ×3 (41 min 43 s), restore ×3 (38 s)
+
+## Merged
+
+- **Date** : 2026-10-07 — `/merge task-354 --i-tested` (HAG attesté par l'humain)
+- `dtos-mss` : PR #43 → squash `68eb85ff` (pas de CI déclenchée sur `develop` pour ce dépôt ; paquet 521.0.0 publié par la CI de la PR)
+- `api-mail` : PR #281 → squash `b66dee8f` — CI `develop` ✓ https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/37662027481 (`develop` était rouge depuis #278 : le correctif #280 arrive avec ce squash)
+- `client-mobile` : PR #89 → squash `ff75eb94` — CI `develop` ✓ https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/37662063480
+- `client-angular` : géré manuellement par l'humain (TFS)
+- Branches `fix/task-354-reprise-refus-jeton-psc` supprimées (distante et locale) sur les trois dépôts ; label `awaiting-human-merge` retiré.
+- Staging : aucune branche staging (task lancée hors `/forge`).
+- ⚠️ PR api-mail **#280** (`fix/task-344-develop-build`) reste ouverte : son contenu est désormais sur `develop` via #281. À fermer par l'humain.
