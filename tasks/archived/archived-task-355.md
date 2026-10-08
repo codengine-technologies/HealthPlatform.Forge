@@ -387,3 +387,13 @@ Conséquences sur la DOD, qui reste inchangée (propriété du PO) :
 | /review | ok | 4 min 36 s | 1 (9.7 s) | 1 (3 min 09 s) | — | api-mail 1B/1T, APPROVED, PR api-mail #282 |
 | /tech-writer | ok | 1 min 11 s | — | — | — | E017 v1.1 : F001 livree, F002 en validation |
 | **Total cycle** | | **25 min 57 s** | **7 (1 min 12 s)** | **13 (17 min 17 s)** | **2 (40 s)** | |
+
+## Merged
+
+- 2026-10-08 — `/merge task-355 --i-tested`, déclenché par l'humain après son test manuel (HAG).
+- `api-mail` : PR #282 squash-mergée → `6435bbeb` sur `develop`. Label `awaiting-human-merge`
+  retiré. Branche `feat/task-355-ollama-parallele-gabarit-prefixe` supprimée, distante et locale.
+  - Sa tête était `ff2aa348`, un commit unique dont l'arbre est identique à `c456a028`.
+- CI `develop` : ✓ verte, https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/37845481036
+- Staging : aucune branche `forge/staging-*`, la task a été lancée par `/start` hors run `/forge`.
+- Aucun autre repo : pas de branche vide à nettoyer.
