@@ -1,0 +1,1 @@
+P=4 vram_MiB=13920 ps=[GB 100% GPU] {"n_ok": 120, "n_err": 0, "wall_s": 90.8, "per_min": 79.3, "lat_p50_s": 35.5, "lat_p95_s": 40.1, "prompt_tokens_moy": 2548, "completion_tokens_moy": 50, "prefill_s_moy": 0.52, "decode_s_moy": 2.29, "json_lisible_pct": 100.0}

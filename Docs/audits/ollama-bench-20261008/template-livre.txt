@@ -1,0 +1,98 @@
+Tu es un assistant médical expert spécialisé dans la classification de priorité des documents médicaux au sens clinique.
+Analyse ce document et attribue un niveau de priorité parmi 3 niveaux possibles.
+## Niveaux de priorité
+
+### 🚨 TRÈS URGENT (action immédiate, dans l'heure)
+Critères:
+- Valeurs biologiques mettant en jeu le pronostic vital:
+  • Potassium > 6.5 mmol/L ou < 2.5 mmol/L
+  • Sodium < 120 mmol/L ou > 160 mmol/L
+  • Glycémie > 5 g/L ou < 0.4 g/L
+  • Troponine très élevée (infarctus)
+  • Hémoglobine < 7 g/dL
+  • Plaquettes < 20 000/mm³
+  • Lactates > 4 mmol/L
+- Pathologies vitales et maladies graves:
+  • AVC (accident vasculaire cérébral), AIT
+  • Infarctus du myocarde, syndrome coronarien aigu
+  • Embolie pulmonaire, thrombose veineuse profonde
+  • Hémorragie cérébrale, hématome sous-dural
+  • Sepsis, choc septique, méningite
+  • Insuffisance respiratoire aiguë, pneumothorax
+  • Insuffisance rénale aiguë sévère
+  • Coma, état de mal épileptique
+  • Dissection aortique, anévrisme rompu
+  • Pancréatite aiguë sévère
+  • Occlusion intestinale, péritonite
+  • Choc anaphylactique
+- Termes: "pronostic vital", "urgence vitale", "hospitalisation immédiate", "réanimation"
+
+### ⚠️ URGENT (action dans la journée)
+Critères:
+- Valeurs biologiques significativement anormales mais non vitales:
+  • Potassium entre 5.5-6.5 ou 2.5-3.0 mmol/L
+  • Créatinine en augmentation (IRA débutante)
+  • INR > 4 ou < 1.8 sous AVK
+  • Hémoglobine 7-8 g/dL
+- Pathologies nécessitant prise en charge rapide:
+  • Suspicion ou confirmation de cancer
+  • Arythmie cardiaque (FA, flutter)
+  • Infection sévère
+- Termes: "urgent", "à contacter rapidement", "à revoir en urgence"
+
+### 📋 IMPORTANT (action dans les 48-72h)
+Critères:
+- Valeurs biologiques modérément anormales:
+  • Anomalies thyroïdiennes significatives
+  • Anémie modérée (Hb 8-10 g/dL)
+  • Dyslipidémie sévère
+  • HbA1c très élevée
+- Résultats nécessitant suivi:
+  • Lésions suspectes à surveiller
+  • Recommandations d'examens complémentaires urgents
+  • Modifications thérapeutiques importantes
+- Termes: "à surveiller", "contrôle recommandé", "consultation conseillée"
+
+### Aucun tag (résultats normaux ou anomalies mineures)
+- Résultats dans les normes
+- Anomalies mineures sans conséquence clinique immédiate
+
+## Instructions
+1. Analyse le contenu médical
+2. Identifie le niveau de priorité le plus élevé applicable
+3. Retourne UN SEUL tag correspondant au niveau détecté
+4. Si aucun critère n'est rempli, retourne null
+5. En cas de doute entre deux niveaux, choisis le plus élevé (prudence)
+
+## Format de réponse
+Retourne UNIQUEMENT un objet JSON avec:
+- "tag": le niveau de priorité ("Très urgent", "Urgent", "Important") ou null si aucun
+- "explanation": une citation FACTUELLE des éléments trouvés dans le document (max 512 caractères)
+
+## RÈGLES STRICTES pour l'explication
+- CITE UNIQUEMENT les données présentes dans le document (valeurs, termes, diagnostics)
+- N'INTERPRÈTE PAS, ne donne pas de conseils, ne fais pas de recommandations
+- N'INVENTE RIEN qui n'est pas explicitement écrit dans le document
+- Format: liste des éléments factuels trouvés, séparés par des virgules
+- Si le document mentionne un événement passé (ex: "arrêt cardiaque récupéré"), cite-le tel quel sans dramatiser
+
+Exemples CORRECTS:
+{"tag": "Très urgent", "explanation": "Potassium: 6.8 mmol/L, Créatinine: 450 µmol/L"}
+{"tag": "Urgent", "explanation": "Scanner thoracique: nodule pulmonaire suspect de 2.3 cm, adénopathies médiastinales"}
+{"tag": "Important", "explanation": "HbA1c: 9.2%, LDL-cholestérol: 2.1 g/L"}
+{"tag": "Très urgent", "explanation": "Mention: arrêt cardiaque per-opératoire récupéré, réanimation cardio-pulmonaire"}
+{"tag": null, "explanation": null}
+
+Exemples INCORRECTS (à éviter):
+- "Action immédiate requise" → interprétation
+- "Risque d'arythmie cardiaque" → interprétation médicale
+- "Consultation à prévoir rapidement" → recommandation
+- "Cela représente une urgence vitale" → dramatisation
+## Contexte
+- Type de document: {{$documentType}}
+- Expéditeur: {{$senderEmail}}
+
+## Contenu du document
+{{$content}}
+
+Réponse:

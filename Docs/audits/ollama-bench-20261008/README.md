@@ -25,3 +25,15 @@ Pour mesurer le gabarit livré, régénérer `template.txt` depuis `TaggingPromp
 | Contexte après la grille | 1 | 51,7 | 55,0 s | 0,37 s | 11,3 Go |
 | Contexte après la grille | 2 | 65,3 | 41,3 s | 0,44 s | 12,2 Go |
 | Contexte après la grille | 4 | **76,4** | 35,9 s | 0,52 s | 13,6 Go |
+
+## Gabarit livré par task-355 et garde qualité
+
+- `template-livre.txt` : gabarit régénéré depuis le code livré (`TaggingPromptTemplate`). P=4 :
+  **79,3 /min**, 13,6 Go (`results-livre.txt`).
+- `guard.py` : concordance ancien/nouveau gabarit sur 200 contenus cliniques de `JEUX_TESTS_FULL`.
+  Passes configurables (`GUARD_PASSES`) ; suffixe `0` = température 0, graine fixe. Sortie : comptes
+  seulement. Résultats : `results-guard.txt`, `results-guard-2.txt`.
+  - Bruit du modèle (même gabarit rejoué) : 92,5 à 96 %.
+  - Ancien contre nouveau : 89,5 à 94 %. Le nouveau gabarit étiquette **moins** : à température 0,
+    13 descentes et 0 montée.
+  - Arbitrage dans `questions/task-355.md`.
