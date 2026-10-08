@@ -2,9 +2,9 @@
 
 > **Statut** : En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.85
+> **Version** : 1.86
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-04 (aucune donnée de santé ni saisie du praticien dans les journaux techniques — task-341)
+> **Dernière mise à jour** : 2026-10-09 (la synchronisation automatique traite un message comme son ouverture — task-334)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1036,6 +1036,21 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
+- **v1.94 — Un message reçu pendant la synchronisation automatique est traité comme s'il avait été
+  ouvert** (task-334) :
+  - **La demande d'accusé de lecture n'est plus perdue.** À l'ouverture, l'application propose
+    l'accusé de lecture, que le message ait été ouvert à l'écran ou intégré en arrière-plan.
+  - **Les messages de vos patients sont rattachés à leur dossier.** Un message reçu par Mon Espace
+    Santé est rangé comme courrier du patient et relié à sa fiche, quel que soit le chemin
+    d'arrivée.
+  - **Un message dont l'ouverture avait échoué est repris.** Si l'affichage d'un message a été
+    interrompu (messagerie momentanément indisponible), la synchronisation suivante l'intègre, sans
+    que le praticien ait à le rouvrir.
+  - **Les nouveaux messages sont signalés.** Un message arrivé pendant une synchronisation déclenche
+    la notification de nouveau message, comme au premier plan.
+  - **La progression dit vrai.** Quand la messagerie ne répond pas, la synchronisation n'affiche plus
+    100 % : elle ne compte que les messages réellement intégrés.
+
 - **v1.91 — Un compte rendu reçu n'est plus perdu sur un incident technique** (task-333) :
   - **Plus de message « vide » pour toujours.** Si le serveur ne parvient pas à lire les documents d'un message (incident de disque, de droits, fichier momentanément indisponible), le message n'est plus enregistré comme analysé sans ses comptes rendus. Il reste à traiter, et ses documents sont intégrés dès que l'incident est levé.
   - **Le praticien est prévenu** : l'application affiche « Le traitement des documents est temporairement indisponible… Réessayez » au lieu de montrer un message amputé de ses documents.
@@ -1661,6 +1676,14 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
   Un contrôle automatique empêche le retour de ces fuites. **Rien ne change pour le praticien**,
   et le journal d'audit réglementaire reste complet. **À traiter côté exploitation** : les
   journaux déjà accumulés contiennent ces données. Leur purge reste à statuer avec le DPO.
+
+- **v1.94 — L'arrière-plan suit les mêmes règles de sécurité que l'écran** (task-334) :
+  - les documents médicaux extraits pendant une synchronisation automatique sont effacés de
+    l'espace de travail dès leur intégration, au lieu d'y rester jusqu'au redémarrage du serveur ;
+  - le contenu des courriers intégrés en arrière-plan est nettoyé de tout code actif, comme à
+    l'ouverture ;
+  - la réception et le traitement des documents sont inscrits au journal d'audit du praticien, à son
+    nom. Avant, les actions rejouées par la synchronisation y étaient invisibles.
 
 - **v1.88 — Les identifiants de connexion ne partent plus que vers un serveur de confiance**
   (task-348) : un serveur de messagerie saisi à la main pouvait recevoir les identifiants

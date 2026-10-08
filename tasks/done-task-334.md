@@ -355,4 +355,5 @@ l'identité complète du praticien ; et que la synchronisation reprenne tout mai
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non liste, aucun diff |
 | /e2e | ok | 10 min 48 s | — | — | — | e2e ×3 (10 min 20 s), 2 voies vertes 31/31, parite verte, 0 flaky |
 | /review | ok | 4 min 16 s | 1 (9.1 s) | 1 (3 min 06 s) | — | api-mail 1B/1T, APPROVED, PR api-mail #283 |
-| **Total cycle** | | **1 h 06 min** | **16 (1 min 29 s)** | **25 (20 min 26 s)** | **4 (1 min 09 s)** | |
+| /tech-writer | ok | 1 min 06 s | — | — | — | E009 v1.94 (changelogs) / 1.86 (produit) |
+| **Total cycle** | | **1 h 07 min** | **16 (1 min 29 s)** | **25 (20 min 26 s)** | **4 (1 min 09 s)** | |

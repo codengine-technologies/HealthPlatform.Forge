@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-10-04 (v1.93)
+> **Dernière mise à jour** : 2026-10-09 (v1.94)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -761,6 +761,81 @@
   - remonter `originalMarkedCancelled` et `warning` par `drafts/{id}/send` ;
   - bail renouvelable pour le verrou.
 
+### v1.94 — La synchronisation de fond traite un mail exactement comme l'ouverture à l'écran : mêmes documents, même audit, même nettoyage (AUD-11, 12, 13, 14, 15, 65) — task-334
+
+- **Origine** : audit du 2026-09-27. La synchro de fond avait son propre constructeur de mail et sa
+  propre copie d'identité, qui avaient manqué tous les correctifs du premier plan. La ligne
+  `MailContents` étant le marqueur « analysé », chaque manque était définitif pour le mail ingéré.
+- **PR** : `api-mail` #283 (`awaiting-human-merge`). Aucun autre repo.
+- **Constructeur unique (AUD-13, 14)** :
+  - `EnrichedMailPersistence` (nouveau) porte la séquence qui suit la construction :
+    - `WriteAsync` : `AddNewMail` ;
+    - `AfterWriteAsync` : éviction du cache, publication `AddNewMail` avec `DocumentType`
+      (task-344) ;
+    - `AnnounceAsync` : trace `MailReceive`, `NotifyEmailEnriched`, rafraîchissements
+      « remplacé » et « suppression », notification « nouveau mail » précédée de l'invalidation
+      du statut de dossier (task-320).
+  - `ImapService` et `BackgroundEnrichmentProcessor` l'appellent tous les deux.
+  - Le processeur construit le mail par `IEmailBuildingService`. Il gagne ainsi en-têtes et
+    `ReadReceiptTo`, `IsFromPatient` et `PatientInsMatricule` (courrier et lien patient), HTML
+    assaini et trace `MedicalDocumentProcess`. Son propre constructeur, `BuildMailDto`, et sa
+    publication sont supprimés.
+  - `BackgroundImapService` ajoute `MessageSummaryItems.Headers` au FETCH.
+- **Archives (AUD-11)** : `BackgroundImapService.EnrichEmailsAsync` libère les
+  `FetchedBackgroundMail` dans un `finally`, sur tous les chemins (succès, échec de persistance,
+  annulation, erreur de fetch), comme le premier plan (task-228).
+- **Identité (AUD-12)** :
+  - `BackgroundSyncManager` (closure et lecture des réglages), le processeur et les trois
+    consommateurs passent par `UserContextInfo.CopyIdentityTo`. `TenantId` et
+    `RegisteredDatabaseName` traversent.
+  - Garde `UserContextIdentityCopyScanTests` : aucune affectation de champ d'identité dans
+    `src/Application` et `src/Infrastructure` hors `UserContextInfo.cs`. Rouge sur 5 fichiers
+    avant correctif.
+- **Écriture concurrente** : le processeur écrit sous `LockEnrichPersistAsync`, le verrou de
+  persistance du premier plan, et saute un mail analysé entre-temps. Seules la vérification et
+  l'écriture sont sérialisées.
+- **Candidats (AUD-15)** : `BackgroundSyncService` prend IMAP − `GetEnrichedUidsAsync`. Une ligne
+  « en-têtes seuls » est reprise.
+- **Mineurs (AUD-65)** :
+  - `isIncrementalSync` calculé par dossier, avant les lots : la notification « nouveau mail » part
+    réellement ;
+  - progression = `Analysed + AlreadyAnalysed` d'`EnrichmentOutcome` ;
+  - message SSE générique au lieu de `ex.Message` ;
+  - `UpdateMailContentEmbeddingAsync` et `UpdateMedicalDocumentEmbeddingAsync` sans effet sur un
+    vecteur `null` ;
+  - retry MassTransit retiré du bus, une politique par file (garde
+    `MassTransitSingleRetryPolicyScanTests`).
+- **Règle 1b** : `BackgroundSyncIngestionTests` (6 tests) jouent `POST /api/v1/sync/start` →
+  `BackgroundSyncManager` → file déterministe → `BackgroundSyncService` → Dovecot, Redis et la base
+  du praticien (`UseCaseFixture`, qui compose désormais la chaîne de synchro). Le vecteur est
+  éprouvé dans `MailRepositoryIntegrationTests`.
+  - 9 tests rouges sur le code d'avant.
+  - 3 lots de mutation : 14 tests unitaires et 6 d'intégration rougissent chacun sur sa règle.
+  - Tenant retiré du seul gestionnaire : `Expected: 01a0a415-… Actual: null`.
+- **Passe qualité `/simplify`** (`180f369e`) : verrou réduit à l'écriture, fabrique
+  `EnrichedMailPersistence.Create`, retours de `BackgroundImapService` simplifiés, usings morts,
+  contrat `IMailRepository` aligné, `WireExisting` mis en commun.
+- **Tests** (api-mail) : domain 190, infrastructure 683, application 3 569, api 1 185,
+  intégration 837 + 16 ignorés.
+  - Entre 00:00 et 02:00, les 3 tests « du jour » rougissent par écart heure locale / UTC
+    (préexistant, rouge aussi sur `develop`).
+- **E2E** : mobile 31/31, Angular 31/31, parité verte, aucun flaky.
+- **Sonar** : Quality Gate OK.
+  - 4 smells introduits et corrigés : S3358, CA1875 ×2, CA1861.
+  - Code smells 13 → 13, couverture 97,9 → 98,0 %.
+  - Reste le S107 de task-329, hors task.
+- **Leçons** : `conventions/csharp.md` S125 (14), S103 (5) et CA1861 (3) incrémentés ; S3358 et
+  CA1875 créés.
+- **Limites (suggestions de revue)** :
+  - le commentaire d'`ImapService.NotifyAlreadyEnrichedAsync` sur la synchro « sans SSE » est
+    devenu faux ;
+  - la première synchro massive paie, par mail, les 2 requêtes « prédécesseurs / suppression » et
+    un évènement SSE ;
+  - 33 fichiers, au-delà de la règle 5 ;
+  - pistes écartées : re-vérification « analysé entre-temps » côté premier plan, insertion
+    idempotente par l'index unique `MailContents.MailId`, requête unique lignes existantes et
+    analysées.
+
 ### v1.93 — Aucune donnée de santé ni saisie du praticien dans les journaux et la télémétrie (AUD-37, AUD-55, AUD-60, AUD-61) — task-341
 
 - **Origine** : audit de détection de bugs du 2026-09-27. Règle rappelée : l'INS et les données de santé vont dans le journal d'audit en base, jamais dans Seq, Graylog ou OTLP (suite de task-184 et task-265).
@@ -1235,6 +1310,7 @@ Audit grep complémentaires pour les couches 2 / 2bis / 3 (tasks 021 / 022 / 023
 | task-329 | **Un seul chemin d'envoi.** `OutgoingMailService` pour `sendmail`, brouillon, confirmation avec la carte et annule-et-remplace : pièces par référence relues (400 si illisible), annule-et-remplace sur toutes les routes, archivage « Envoyés » ; brouillon complet (pièces, accusé, opposition, blocage de réponse, cible d'annule-et-remplace) restauré à la réouverture ; verrou d'envoi à jeton (5 min). Dtos.Mss 505.0.0. PR #270 (api-mail), #39 (dtos-mss), #87 (Blazor), #84 (mobile). | — (traçabilité de l'envoi MSSanté, AMBU.MSS/va1.02, opposition Mon Espace Santé ; aucune RG déclarée) |
 | task-331 | **Le dossier est celui de la fiche.** Dossier, biologie et opposition par `PatientId` (et non plus par l'INS du document) : le document rattaché à la main y apparaît, deux fiches d'un même matricule (NIR / NIA) restent séparées ; garde d'envoi : une fiche opposée du matricule suffit à exiger l'acquittement ; `resolve` déterministe ; `Id` rendu par la recherche et « patients du jour » ; index `(PatientId, MailId, Date)`. **Extension** : recherche de la fiche et confirmation quand l'appariement ne trouve personne, sur les trois clients ; scénario E2E-PATIENT-002. **Extension 2** : détacher, changer de patient, 409 au lieu de l'écrasement silencieux, rattachement et détachement tracés (actions d'audit 37 et 38) ; E2E-PATIENT-002 v2. PRs #40 (dtos-mss), #271 (api-mail), #88 (client-blazor), #85 (client-mobile), Angular code-only. | — (identito-vigilance INS, opposition Mon Espace Santé ; AUD-05, AUD-34 ; aucune RG déclarée) |
 | task-333 | **Le marqueur « analysé » n'est posé que si les documents ont été lus.** `XDM.Failure` distingue archive invalide, panne de l'hôte et archive hors bornes (extraction bornée, Interop.Cda.Parser 101.0.0) ; panne d'analyse → mail en attente et 503 en Phase B, en attente en synchro de fond ; repli de lecture en lecture pure (AUD-09) ; liste des pièces jointes sans analyse CDA ; balayage des extractions orphelines, sans toucher aux archives récentes. PRs #9 (interop-cda), #276 (api-mail). | — (intégrité des documents MSSanté reçus, AUD-09 / AUD-16 ; aucune RG déclarée) |
+| task-334 | **La synchronisation de fond traite un mail comme l'ouverture à l'écran.** Séquence post-persistance unique (`EnrichedMailPersistence`) et constructeur `IEmailBuildingService` pour le fond : accusé de lecture, courrier et lien patient, HTML assaini, traces `MailReceive` / `MedicalDocumentProcess` (AUD-13, 14) ; archives libérées sur tous les chemins (AUD-11) ; identité complète par `CopyIdentityTo` (AUD-12) ; reprise des lignes « en-têtes seuls » (AUD-15) ; nouveau mail notifié, progression fidèle, SSE générique, vecteur non écrasé, retry unique (AUD-65). PR #283 (api-mail). | — (traçabilité de la réception sous le tenant du praticien, PGSSI-S ; aucune RG déclarée) |
 | task-351 | **Retrait des champs serveur du contrat des réglages (AUD-42, étape 2).** `UserSettingsDto.ImapServerConfig` / `SmtpServerConfig` supprimés (Dtos.Mss 517) ; `DropServerSelection` retiré ; migration `20261004120000` qui efface les deux clés des réglages stockés. Test d'intégration sur le JSON brut de `GET /settings`. PRs #42 (dtos-mss), #277 (api-mail), #92 (client-blazor), Angular code-only. | — (dette de contrat ; plus aucune trace d'un serveur saisi en base) |
 | task-353 | **Message supprimé depuis un autre logiciel (version réduite, sans coût à l'ouverture).** 404 `problem+json` `code: MESSAGE_NOT_FOUND` quand la ligne locale est purgée (sans sujet ni chemin) ; lignes locales des UID disparus purgées à la relecture du dossier (règle `uid < UidNext`) ; retrait de la liste au rafraîchissement (Angular, Blazor) et au tirer-pour-rafraîchir (mobile), jamais un contenu vide. E2E-MAIL-005, outil `message --create|--delete`. PRs #275 (api-mail), #91 (client-blazor), #88 (client-mobile), Angular code-only. | — (fiabilité de l'affichage ; évite la lecture d'un compte rendu « vide » à tort) |
 | task-352 | **Dossier supprimé depuis un autre logiciel.** 404 `problem+json` `code: FOLDER_NOT_FOUND` sans chemin (`NotFoundException` `IErrorCoded`) ; Angular (fin du spinner sans fin), Blazor (relecture à l'ouverture) et mobile : message clair, menu relu, retour à la boîte de réception, aussi au rafraîchissement d'un dossier ouvert. Extension : bouton « Actualiser les dossiers » (`GET /folders?refresh=true`). E2E-FOLDER-003 et 004, outil `folder --create|--delete`. PRs #274 (api-mail), #90 (client-blazor), #87 (client-mobile), Angular code-only. | — (robustesse d'une fonctionnalité existante ; aucune donnée de santé dans le `detail`) |
