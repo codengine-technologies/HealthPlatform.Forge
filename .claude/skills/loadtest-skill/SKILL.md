@@ -122,6 +122,24 @@ latence, piloté par le profil `loadtest` de l'AppHost. Chemins relatifs à
     l'étiquetage ;
   - la durée du tagging se relève sans être exigée : un 14B sur un seul GPU peut
     être plus lent qu'OpenAI à 1000 praticiens.
+- **Ces preuves sont désormais calculées** par la section « IA — fournisseurs, étiquetage,
+  file du bus » du rapport (`report_ai.py`, depuis le 2026-10-07) ; `observe.ps1` échantillonne
+  le GPU et la file `add-new-mail-queue`. Lire cette section à chaque tir hybride.
+- ⚠️ **Mesuré le 2026-10-07/08** (`Docs/audits/api-mail-loadtest-terrain-1000-ollama-ab-20261008.md`) :
+  Ollama tourne avec `OLLAMA_NUM_PARALLEL=1` et étiquette **~45 mails/min**, soit **exactement**
+  le débit d'arrivée du terrain 1000 (ρ ≈ 1, attente ~60 s par étiquetage). Une **chauffe à
+  froid** produit ~94 000 messages IA : ~35 h de vidage. Avant tout tir hybride sur population
+  fraîchement chauffée : vider la file (tout-OpenAI) ou décider en connaissance de cause.
+- ⚠️ **RabbitMQ du banc = `ContainerLifetime.Session` : redémarrer l'AppHost DÉTRUIT la file.**
+  Pour changer de fournisseur sans perdre une file non vide : la mettre à l'abri par shovel
+  dans un RabbitMQ temporaire (`docker run -d --name rp-net --network <réseau aspire>
+  rabbitmq:4.3` — le nom `rabbit-parking` échoue en `.erlang.cookie: eacces`), redémarrer,
+  puis la renvoyer. Après redémarrage, les consommateurs re-provisionnent chaque praticien
+  **par PgBouncer** (défaut D4 de l'audit) : élargir à chaud le pool le temps du vidage
+  (`SET default_pool_size = 20` / `SET max_db_connections = 25` sur la console d'admin),
+  jamais pendant un tir.
+- **Tir B tout-OpenAI : arrêter le conteneur Ollama** (`docker stop mss-mail-ollama-*`),
+  persistant, il garde sinon 18 Go de RAM et le GPU ; le redémarrer en fin de campagne.
 - **Poste sans GPU :** `MSS_OLLAMA_GPU=none` (le modèle tourne alors sur le CPU,
   très lentement, et ne convient pas à un tir), ou le tout-OpenAI ci-dessus.
 - **Exploitation détaillée :** `Api/Mail/docs/ia-fournisseurs.md`.
@@ -235,7 +253,18 @@ en première ligne.
 > opposable qu'avec ≥ 60 Mo/s mesurés (`folders`/`terrain`, corps légers, tolèrent moins).
 
 Un tir comparatif exige le **même tireur et le même banc** que sa référence
-(lisibles dans `manifest-<session>.txt` et le rapport). Mode d'emploi du tireur
+(lisibles dans `manifest-<session>.txt` et le rapport).
+
+> ⚠️ **Mesuré le 2026-10-08 — le tireur k6bench ajoute ~40 ms par requête sous charge.** Le
+> relais `netsh portproxy` du poste n'ajoute rien à vide (14 vs 15 ms) mais ~40 ms au p50
+> sous le terrain 1000 (serveur 18 ms, client 58 ms sur `/sync/coverage`), et produit quelques
+> `dial: i/o timeout`. Une étape à N appels prend ~N × 40 ms. **Ne jamais comparer un tir
+> k6bench à une référence tirée depuis le poste** sans confronter p50 client et p50 serveur
+> (`histogram_quantile(0.5, … http_server_request_duration_seconds_bucket …)`).
+>
+> **Pré-vol : scanner les 1000 boîtes IMAP**, pas seulement les 8 du contrôle d'UID — la boîte
+> `loadtest-600` a été vidée côté cluster le 2026-10-07 sans que le harnais puisse le voir
+> (`STATUS INBOX (MESSAGES UIDNEXT)` sur 30994, 8 connexions en parallèle, ~1 min). Mode d'emploi du tireur
 distant : `tests/loadtest-k6/README.md` § « Tirer depuis le serveur Linux dédié ».
 
 > ⚠️ **La population hydratée (1 000 praticiens) vit sur le cluster.** Le volume

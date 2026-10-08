@@ -261,7 +261,17 @@ modified enum, new DTO class).
    sur `dtos-mss` **informative** : elle signifie qu'un contrat a bougé.
 
 1. **Code the DTO change** in `Dtos/`. No tests required (DTOs are pure
-   data carriers). **No quality pass here** — `dtos-mss` is a contract carrier
+   data carriers).
+
+   **Un enum à miroirs (`AuditActionType`) se reporte partout dans la même task.**
+   Ajouter un membre, c'est aussi : le figer dans `AuditActionTypeContractTests` et le
+   classer dans `AuditRetentionPolicy` (api-mail), le reporter **avec sa valeur
+   explicite** et son libellé dans `Client/Angular/front/libs/mss/src/core/models/audit.model.ts`
+   (+ `audit.model.spec.ts`) quand `client-angular` est listé, et dans
+   `Client/Blazor/…/AuditActionLabels.cs` quand `client-blazor` l'est. Sinon, l'écrire au
+   `## Develop log` comme reste à faire. Constaté sur task-354 : miroir Angular oublié par
+   `/develop`, rattrapé par la vérification de DOD de `/review`. Aucun test ne relie les deux
+   dépôts : seule cette consigne protège. **No quality pass here** — `dtos-mss` is a contract carrier
    (§Q, tier 3) : a cosmetic edit would trigger a NuGet republish cascade for
    zero product value.
 
