@@ -78,9 +78,10 @@ identifiants en constante **avant** de dupliquer. Vaut pour tout secret de banc
 
 ## CA1861 — pas de tableau littéral en argument d'appel
 
-**Occurrences : 2** (task-203, task-273 — récidive sur code frais : tableaux
+**Occurrences : 3** (task-203, task-273 — récidive sur code frais : tableaux
 attendus d'un `Assert.Equal` dans un test de sollicitations ; la consigne vaut
-aussi pour les attendus de test)
+aussi pour les attendus de test ; task-334 — `l.SequenceEqual(new[] { 2u })` dans un
+`Arg.Is` NSubstitute, réécrit en `l.Count == 1 && l[0] == 2u`)
 
 Un tableau littéral passé en argument est **réalloué à chaque appel**. Le motif
 apparaît naturellement quand on préfixe des segments de chemin ou qu'on
@@ -258,7 +259,7 @@ dans `string.Equals`, mais `StringComparer` dans `Contains`.
 
 ## S125 — une prose qui « ressemble à du code » est signalée comme code commenté
 
-**Occurrences : 13** (task-354 — « …would demand a registry ; » dans un commentaire d'un banc d'intégration, attrapé par le contrôle mécanique §Q 2b avant le commit ; task-344 — ×2 dans l'extension « reprise des étiquetages IA », attrapées par le contrôle mécanique avant le commit ; task-348 — deux commentaires « … public ; c'est … », « … Toxiproxy ; with », attrapés par le contrôle mécanique lancé pendant `/sonar` ; task-184, task-292, task-188, task-322, task-171, task-342, task-191, task-330,
+**Occurrences : 14** (task-334 — ×3, « …throws "Host is null" ; task-334 — … » et « par défaut ; WireExisting… », attrapées par le contrôle mécanique §Q 2b avant la passe qualité ; task-354 — « …would demand a registry ; » dans un commentaire d'un banc d'intégration, attrapé par le contrôle mécanique §Q 2b avant le commit ; task-344 — ×2 dans l'extension « reprise des étiquetages IA », attrapées par le contrôle mécanique avant le commit ; task-348 — deux commentaires « … public ; c'est … », « … Toxiproxy ; with », attrapés par le contrôle mécanique lancé pendant `/sonar` ; task-184, task-292, task-188, task-322, task-171, task-342, task-191, task-330,
 task-331 — neuvième, **attrapée par le contrôle mécanique avant le commit**, comme prévu : « …pas
 l'objet ; le parcours… » au milieu d'un commentaire du seed e2e. Le contrôle marche. Le réflexe
 d'écriture, lui, ne tient toujours pas : en français, l'espace avant le point-virgule est la
@@ -626,7 +627,7 @@ découpage d'après-coup oblige à re-valider un code déjà vert.
 
 ## S103 — une ligne de plus de 150 caractères doit être scindée
 
-**Occurrences : 4** (task-341 — variante **motif d'expression régulière** : le `[GeneratedRegex]` du garde de journalisation, une alternation de seize noms sur une ligne. Attrapé par le contrôle mécanique §Q 2b avant le commit, et scindé en trois littéraux `@"…" + @"…"`, ce qu'un attribut accepte puisque la concaténation reste une constante ; task-188, task-192 — ×11, variante **requête EF** : une
+**Occurrences : 5** (task-334 — ×5, variante **assertion NSubstitute** : `Received(1).EnrichEmailsAsync("INBOX", Arg.Is<List<uint>>(…), Arg.Any<bool>(), Arg.Any<CancellationToken>())` après l'ajout d'un paramètre, scindées après la parenthèse ouvrante par le contrôle mécanique ; task-341 — variante **motif d'expression régulière** : le `[GeneratedRegex]` du garde de journalisation, une alternation de seize noms sur une ligne. Attrapé par le contrôle mécanique §Q 2b avant le commit, et scindé en trois littéraux `@"…" + @"…"`, ce qu'un attribut accepte puisque la concaténation reste une constante ; task-188, task-192 — ×11, variante **requête EF** : une
 condition LINQ `x => filtre vide || EF.Functions.ILike(colonne, motif, SearchQueryHelper.LikeEscapeCharacter)`,
 et un `select new Projection { A = …, B = …, … }` tenu sur une ligne. Corrigé par un
 alias `private const string LikeEscape = SearchQueryHelper.LikeEscapeCharacter;` — une
@@ -1386,3 +1387,45 @@ complète ne part que du **bouton du praticien** (`SyncController`, `forceManual
 
 **Preuve** : `ImapServiceEnrichmentCoverageTests.EnrichEmailsAsync_SchedulesTheAiTaggingRecovery_…` (mutation : planificateur
 jamais appelé → rouge) ; `AiTaggingRecoverySchedulerTests` (cadence, identité, panne Redis).
+
+---
+
+## S3358 — pas d'opérateur ternaire imbriqué
+
+**Occurrences : 1** (task-334 — `EnrichedMailPersistence`, la raison de ne pas notifier un nouveau
+mail, écrite `a ? "x" : b ? "y" : null`)
+
+Un ternaire dans la branche d'un autre se lit mal et Sonar le signale dès qu'il apparaît dans du code
+neuf. Le motif naît quand on condense une suite de cas en une seule expression.
+
+```csharp
+// ❌ AVANT
+var skipReason = !isIncrementalSync ? "initialSync"
+    : MailFolderNamingRule.IsSelfActionName(folder) ? "selfActionFolder"
+    : null;
+
+// ✅ APRÈS — une petite méthode, un retour par cas
+private static string? SkipReasonOf(MailDto mail, bool isIncrementalSync)
+{
+    if (!isIncrementalSync)
+    {
+        return "initialSync";
+    }
+
+    return MailFolderNamingRule.IsSelfActionName(mail.FolderPath) ? "selfActionFolder" : null;
+}
+```
+
+**Consigne** : au-delà de deux issues, une méthode à retours successifs, ou une expression `switch`.
+
+---
+
+## CA1875 — `Regex.Count`, pas `Regex.Matches(...).Count`
+
+**Occurrences : 1** (task-334, ×2 — garde de source `MassTransitSingleRetryPolicyScanTests`)
+
+`Matches(...).Count` construit une collection de correspondances pour n'en lire que la taille.
+`Count(source)` compte sans rien allouer, et vaut aussi pour les regex générées (`[GeneratedRegex]`).
+
+**Consigne** : pour compter des correspondances, `MaRegex().Count(texte)`. Les scans de source des
+tests d'architecture sont le terrain habituel de ce motif.
