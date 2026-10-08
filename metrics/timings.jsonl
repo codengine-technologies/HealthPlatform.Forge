@@ -4169,3 +4169,5 @@
 {"ts":"2026-10-08T18:48:07+02:00","run_id":"-","type":"cmd","task":"task-355","step":"review","repo":"api-mail","kind":"build","label":"","cwd":"Api/Mail","cmd":"dotnet build HealthPlatform.Api.Mail.sln","duration_ms":9768,"exit_code":0}
 {"ts":"2026-10-08T18:51:18+02:00","run_id":"-","type":"cmd","task":"task-355","step":"review","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln --no-build","duration_ms":189633,"exit_code":0}
 {"ts":"2026-10-08T18:52:27+02:00","run_id":"-","type":"step","task":"task-355","step":"review","status":"ok","note":"APPROVED, PR api-mail #282","iterations":null,"duration_ms":276666}
+{"ts":"2026-10-08T18:52:44+02:00","run_id":"-","type":"step_start","task":"task-355","step":"tech-writer"}
+{"ts":"2026-10-08T18:53:55+02:00","run_id":"-","type":"step","task":"task-355","step":"tech-writer","status":"ok","note":"E017 v1.1 : F001 livree, F002 en validation","iterations":null,"duration_ms":71569}

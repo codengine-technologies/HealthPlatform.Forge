@@ -385,4 +385,5 @@ Conséquences sur la DOD, qui reste inchangée (propriété du PO) :
 | /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non liste, aucun diff (branche develop, arbre propre) |
 | /e2e | ok | 12 min 33 s | — | — | — | e2e ×3 (11 min 11 s), 2 voies vertes, parite verte, 1 flaky connu (E2E-COMPOSE-002 angular, task-350) |
 | /review | ok | 4 min 36 s | 1 (9.7 s) | 1 (3 min 09 s) | — | api-mail 1B/1T, APPROVED, PR api-mail #282 |
-| **Total cycle** | | **24 min 45 s** | **7 (1 min 12 s)** | **13 (17 min 17 s)** | **2 (40 s)** | |
+| /tech-writer | ok | 1 min 11 s | — | — | — | E017 v1.1 : F001 livree, F002 en validation |
+| **Total cycle** | | **25 min 57 s** | **7 (1 min 12 s)** | **13 (17 min 17 s)** | **2 (40 s)** | |

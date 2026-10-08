@@ -1,11 +1,11 @@
 # E017 — Traitements IA en local — fournisseur commutable et souveraineté des données
 
-> **Statut** : 🟡 En cours — 1 feature sur 1 en validation
+> **Statut** : 🟡 En cours — 1 feature livrée, 1 en validation
 > **Modèle** : task-driven
-> **Version** : 1.0
+> **Version** : 1.1
 > **Auteur** : PO forge
 > **Audience** : PO, direction, équipe produit — la vue ingénierie vit dans [E017-Changelogs.md](E017-Changelogs.md)
-> **Dernière mise à jour** : 2026-09-30
+> **Dernière mise à jour** : 2026-10-08
 
 ---
 
@@ -22,7 +22,7 @@
 - [7. Contraintes et hypothèses](#7-contraintes-et-hypothèses)
 - [8. Critères d'acceptation de l'EPIC](#8-critères-dacceptation-de-lepic)
 - [9. Hors périmètre](#9-hors-périmètre)
-- [État de couverture (2026-09-30)](#état-de-couverture-2026-09-30)
+- [État de couverture (2026-10-08)](#état-de-couverture-2026-10-08)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -65,7 +65,8 @@ mesurable.
 
 | # | Fonctionnalité | Ce que le praticien peut faire | Tasks | Statut |
 |---|----------------|--------------------------------|-------|--------|
-| E017-F001 | Un fournisseur par traitement, l'échange en local | Classement, résumé, assistant et aide à la rédaction fonctionnent comme avant. Ils sont servis par un modèle local, et la recherche garde les mêmes résultats. | task-325 | 🟡 En validation |
+| E017-F001 | Un fournisseur par traitement, l'échange en local | Classement, résumé, assistant et aide à la rédaction fonctionnent comme avant. Ils sont servis par un modèle local, et la recherche garde les mêmes résultats. | task-325 | ✅ Livré |
+| E017-F002 | Plusieurs classements à la fois sur le modèle local | Les messages reçus sont classés par priorité un peu plus vite. Le classement lui-même ne change pas : chaque message reçoit la même étiquette qu'avant. | task-355 | 🟡 En validation |
 
 > Le bilan d'avancement par feature (statut, couverture, tasks contributives) est consigné en fin
 > de document, dans la section *État de couverture*.
@@ -77,6 +78,7 @@ mesurable.
 ```mermaid
 graph LR
     F001[E017-F001<br>Un fournisseur par traitement]
+    F002[E017-F002<br>Plusieurs classements à la fois]
 ```
 
 **Description du workflow** :
@@ -86,6 +88,11 @@ graph LR
    développement et sur le banc de charge, les premiers tournent sur un modèle local et la
    recherche reste chez le prestataire historique. Pour le praticien, rien ne change à l'écran :
    ses messages sont classés, résumés et retrouvés comme avant.
+2. **E017-F002** : quand les traitements conversationnels tournent sur le modèle local, celui-ci
+   classe désormais plusieurs messages en même temps au lieu d'un seul. L'exploitant peut régler
+   ce nombre selon la carte graphique ; une valeur impossible empêche le démarrage, avec un
+   message qui dit quoi écrire. Le praticien voit ses nouveaux messages étiquetés un peu plus tôt,
+   avec les mêmes étiquettes qu'avant (task-355).
 
 ---
 
@@ -93,9 +100,9 @@ graph LR
 
 | ID | Règle | Description | Statut |
 |----|-------|-------------|--------|
-| RG-E017-01 | Jamais de bascule silencieuse | Un fournisseur inconnu ou absent de la configuration empêche le service de démarrer, avec un message qui dit quoi corriger. Il ne retombe jamais sur un autre prestataire. | 🟡 En validation (task-325) |
-| RG-E017-02 | Une recherche ne mélange pas deux modèles | La recherche ne compare un message qu'aux messages analysés par le même modèle. Quand le modèle change, les anciens messages restent introuvables par le sens, sans résultat faux, jusqu'à leur nouvelle analyse. Une recherche impossible est signalée comme telle, jamais présentée comme « aucun résultat ». | 🟡 En validation (task-325) |
-| RG-E017-03 | La production ne change de prestataire que sur décision | Les environnements de production gardent leur prestataire historique. Les passer en local est une décision à qualifier : hébergement de données de santé, sous-traitance, analyse d'impact. | 🟡 En validation (task-325) |
+| RG-E017-01 | Jamais de bascule silencieuse | Un fournisseur inconnu ou absent de la configuration empêche le service de démarrer, avec un message qui dit quoi corriger. Il ne retombe jamais sur un autre prestataire. | ✅ Implémenté (task-325) |
+| RG-E017-02 | Une recherche ne mélange pas deux modèles | La recherche ne compare un message qu'aux messages analysés par le même modèle. Quand le modèle change, les anciens messages restent introuvables par le sens, sans résultat faux, jusqu'à leur nouvelle analyse. Une recherche impossible est signalée comme telle, jamais présentée comme « aucun résultat ». | ✅ Implémenté (task-325) |
+| RG-E017-03 | La production ne change de prestataire que sur décision | Les environnements de production gardent leur prestataire historique. Les passer en local est une décision à qualifier : hébergement de données de santé, sous-traitance, analyse d'impact. | ✅ Implémenté (task-325) |
 
 ---
 
@@ -134,11 +141,15 @@ graph LR
 
 ---
 
-## État de couverture (2026-09-30)
+## État de couverture (2026-10-08)
 
 | Fonctionnalité | Statut | Couverture | Tasks contributives |
 |----------------|--------|------------|---------------------|
-| E017-F001 — Un fournisseur par traitement, l'échange en local | 🟡 En validation | Choix par traitement, refus de démarrer sur une erreur de configuration, recherche limitée au modèle actif et suivi du volume livrés. La validation humaine de bout en bout est en cours. | task-325 |
+| E017-F001 — Un fournisseur par traitement, l'échange en local | ✅ Livré | Choix par traitement, refus de démarrer sur une erreur de configuration, recherche limitée au modèle actif et suivi du volume, validés de bout en bout. | task-325 |
+| E017-F002 — Plusieurs classements à la fois sur le modèle local | 🟡 En validation | Le modèle local classe plusieurs messages en parallèle, et le nombre se règle selon la carte graphique. Le gain est modeste (environ un classement de plus sur dix), et la marge reste faible au rythme de 1 000 praticiens. Une accélération plus forte a été écartée parce qu'elle modifiait les étiquettes. | task-355 |
+
+**Couverture EPIC consolidée : 1 feature livrée sur 2**, la seconde est en attente de validation
+humaine.
 
 ---
 
@@ -150,6 +161,11 @@ graph LR
   à la rédaction tournent sur un modèle local. La recherche garde son prestataire et ses résultats.
   Pour le praticien, rien ne change à l'écran (task-325).
 
+- v1.1 — Le modèle local classe plusieurs messages à la fois : les nouveaux messages sont
+  étiquetés un peu plus tôt, avec les mêmes étiquettes qu'avant. Une réorganisation de la consigne
+  donnée au modèle, nettement plus rapide, a été écartée : sur 200 documents d'essai, elle
+  attribuait moins souvent les niveaux « Urgent » et « Très urgent » (task-355).
+
 ### Conformité réglementaire
 
 - v1.0 — Le contenu des mails n'est plus confié à un prestataire extérieur pour les traitements
@@ -160,6 +176,9 @@ graph LR
 
 - v1.0 — Une erreur de configuration du fournisseur empêche le démarrage, au lieu de transmettre
   sans prévenir les données à un autre prestataire (task-325).
+
+- v1.1 — Une valeur impossible pour le nombre de classements simultanés empêche le démarrage, avec
+  un message qui dit quoi écrire, au lieu d'un réglage appliqué en silence (task-355).
 
 ### Technique / observabilité
 

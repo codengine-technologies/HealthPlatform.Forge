@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E017-traitements-ia-en-local-fournisseur.md](E017-traitements-ia-en-local-fournisseur.md).
-> **Dernière mise à jour** : 2026-09-30 (v1.0)
+> **Dernière mise à jour** : 2026-10-08 (v1.1)
 
 ---
 
@@ -59,6 +59,71 @@
 
 ---
 
+### v1.1 — Ollama traite plusieurs étiquetages à la fois ; gabarit réordonné écarté par la garde qualité — task-355
+
+- **Task** : task-355, statut `done`. PR `api-mail` #282, label `awaiting-human-merge`, branche
+  `feat/task-355-ollama-parallele-gabarit-prefixe`. Aucun contrat, aucun frontend.
+- **Motif** : campagne terrain 1000 hybride du 2026-10-07/08. Ollama (`qwen2.5:14b`, RTX 5070 Ti)
+  à `OLLAMA_NUM_PARALLEL=1` étiquette 40 à 45 mails/min pour ~44 arrivées/min. Attente moyenne
+  61 s, 42 timeouts à 180 s sur 3 h, file `add-new-mail-queue` à 94 000 après chauffe.
+- **Livré** :
+  - `AiProviderProfile.OllamaNumParallel` : défaut 4, surcharge `MSS_OLLAMA_NUM_PARALLEL`.
+    `NumberStyles.None`, bornes 1..8 ; sinon `InvalidOperationException` actionnable.
+  - `AppHost.cs` : `OLLAMA_NUM_PARALLEL` sur `mss-mail-ollama`.
+  - `docs/ia-fournisseurs.md`.
+- **Conteneur persistant** : Aspire le **recrée** quand la valeur change. Constaté 2 → 4 :
+  `Created` changé deux fois, `docker logs` affiche `OLLAMA_NUM_PARALLEL:2` puis `:4`.
+- **Débit** (micro-banc `Docs/audits/ollama-bench-20261008/`, 50 demandes simultanées, gabarit
+  actuel) :
+  - P=1 : 40,8/min, 11,2 Go ;
+  - P=2 : 45,6/min, 12,2 Go ;
+  - **P=4 : 45,6/min, 13,6 Go** ;
+  - P=6 : 49,2/min, 15,2 Go.
+  - Le goulet est le calcul du prompt (~2 550 tokens).
+- **Écarté — gabarit d'étiquetage réordonné** (grille constante avant type et expéditeur, pour le
+  cache de préfixe) :
+  - Ce qu'il apportait : 79,3/min à P=4, calcul du prompt 0,71 → 0,37 s, et une grille de
+    1 171 tokens `o200k` éligible au cache de prompt OpenAI.
+  - **Garde qualité échouée** (`guard.py`, 200 contenus cliniques de `JEUX_TESTS_FULL` :
+    125 CDA distincts, 8 suites de documents longs, 67 extraits) :
+    - ancien contre nouveau : 89,5 à 94 % de concordance ;
+    - bruit du modèle (même gabarit rejoué) : 92,5 à 96 % ;
+    - température 0 : 13 descentes, 0 montée, deux fois ;
+    - « Urgent » : ~21 → ~15.
+  - **Arbitrage A** du responsable produit : parallélisme seul. Le commit du gabarit (`75e214c3`)
+    est retiré par `c456a028`, et `EmailTaggingService.cs` est identique à `develop`.
+- **Tests** : 0 échec. domain 190, infrastructure 683, application 3 552, api 1 183, integration
+  830 (16 ignorés).
+  - 10 cas nouveaux dans `AiProviderProfileTests` : mutations « variable ignorée » (8 rouges) et
+    « bornes retirées » (seuls `0` et `9`).
+  - `OllamaServerEnvironmentWiringTests` : lecture de la source de l'AppHost, mutation prouvée.
+  - `TaggingPromptPrefixTests` : vu rouge sur l'ancien ordre, puis retiré avec le gabarit.
+- **Passe qualité `/simplify`** (`8e76759e`) :
+  - propriété `OllamaServerEnvironment` retirée ;
+  - `MemoryExtensions.CommonPrefixLength` au lieu d'une boucle ;
+  - écartés : un `BuildKernel` de test partagé, et l'ordre « constante d'abord » dans
+    `AiPromptHelper` (résumé), hors périmètre.
+- **Sonar** (9.9.8, new code sur 30 jours) : Quality Gate OK, new_coverage 97,6 → 97,5 %.
+  - 0 constat sur le code de la task, puisque `src/AppHost/**` est exclu de l'analyse.
+  - Reste un S107 sur `SemanticSearchService.cs:395` (task-329), hors task.
+  - Code smells du projet : 13 → 13.
+- **E2E** : voies mobile (31/31) et Angular (30 verts, 1 flaky) vertes, parité verte. Le flaky
+  est E2E-COMPOSE-002 Angular, 4e occurrence : bug produit connu, task-350 en `todo`.
+- **Leçons capturées** :
+  - mémoire de session `garde-concordance-llm-bruit-du-modele` : juger une garde de prompt contre
+    le bruit du modèle rejoué, et sur le sens des écarts ;
+  - `questions/task-355.md` : seuil de 95 % au niveau du bruit, à revoir dans `/po` ;
+  - `conventions/e2e.md` : registre des flaky, E2E-COMPOSE-002 incrémenté.
+- **Limites reportées (suggestions de revue)** :
+  - P=2 donne le même débit que P=4 avec le gabarit actuel, pour 1,4 Go de moins ;
+  - dans `docs/ia-fournisseurs.md`, le paragraphe « `127.0.0.1:11434` » se retrouve sous le
+    sous-titre « Pourquoi le gabarit… » ;
+  - la réserve de l'IA locale au terrain 1000 reste quasi nulle (45,6/min pour ~44/min).
+- **À la HAG** : `docker logs` affiche `OLLAMA_NUM_PARALLEL:4`, puis `:2` avec la surcharge ;
+  refus de démarrer avec `0` et `abc` ; micro-banc à ~45/min ; étiquettes visibles inchangées.
+
+---
+
 ## Annexe A — Cartographie des briques applicatives
 
 | Brique | Emplacement | Rôle |
@@ -70,7 +135,8 @@
 | Filtre de modèle | `src/Infrastructure/Repositories/MailDb/SemanticSearchRepository.cs` | Racines filtrées, 409 sur dimension |
 | Migration | `src/Infrastructure/Migrations/MailDb/20260930180000_AddEmbeddingModelColumns.cs` | Colonne `EmbeddingModel` |
 | AppHost | `src/AppHost/AiProviderProfile.cs`, `AiResourceExtensions.cs`, `AppHost.cs` | Conteneurs Ollama, variables |
-| Exploitation | `docs/ia-fournisseurs.md` | Choisir, basculer, mesurer |
+| Exploitation | `docs/ia-fournisseurs.md` | Choisir, basculer, mesurer, régler le parallélisme Ollama |
+| Garde qualité de gabarit | `Docs/audits/ollama-bench-20261008/guard.py` (plan de contrôle) | Concordance ancien/nouveau gabarit d'étiquetage, bruit du modèle, température 0 |
 
 ---
 
@@ -85,3 +151,4 @@
 | Task | Contribution | RGs |
 |------|--------------|-----|
 | task-325 | Fournisseur IA par capacité, chat local sur Ollama, embeddings OpenAI, colonne `EmbeddingModel`, comptage des tokens | RG-E017-01, RG-E017-02, RG-E017-03 |
+| task-355 | `OLLAMA_NUM_PARALLEL` (défaut 4, surcharge validée 1..8) ; gabarit réordonné mesuré puis écarté par la garde qualité (arbitrage A) | — |
