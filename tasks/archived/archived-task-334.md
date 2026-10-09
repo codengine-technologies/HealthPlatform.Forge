@@ -357,3 +357,11 @@ l'identité complète du praticien ; et que la synchronisation reprenne tout mai
 | /review | ok | 4 min 16 s | 1 (9.1 s) | 1 (3 min 06 s) | — | api-mail 1B/1T, APPROVED, PR api-mail #283 |
 | /tech-writer | ok | 1 min 06 s | — | — | — | E009 v1.94 (changelogs) / 1.86 (produit) |
 | **Total cycle** | | **1 h 07 min** | **16 (1 min 29 s)** | **25 (20 min 26 s)** | **4 (1 min 09 s)** | |
+
+## Merged
+
+- Date : 2026-10-09, par `/merge task-334 --i-tested` (HAG : test humain attesté).
+- `api-mail` : PR #283 squash-mergée → `29f6853d` sur `develop` ; label `awaiting-human-merge` retiré ;
+  branche `fix/task-334-synchro-fond-constructeur-unique` supprimée (distante et locale).
+- CI `develop` api-mail : verte — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/37954337053
+- Staging : aucune branche `forge/staging-*` sur api-mail, rien à nettoyer.
