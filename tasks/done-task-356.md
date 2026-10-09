@@ -322,4 +322,5 @@ lancement. Ils n'ont pas été vus rouges.
 | /review | ok | 10 min 08 s | 3 (1 min 29 s) | 3 (6 min 11 s) | — | api-mail 2B/2T, client-angular 1B/1T, APPROVED, PR api-mail #284 (awaiting-human-merge) ; client-angular code-only |
 | /develop | ok | 1 min 31 s | — | 3 (30 s) | — | api-mail 0B/3T, test d'intégration du repli fermé de weda_integration + preuve par mutation (verrou 4a) |
 | /e2e | ok | 12 min 00 s | — | — | — | e2e ×6 (21 min 05 s), vert : mobile 31/31, angular 30 verts + 1 quarantaine (E2E-COMPOSE-002, task-350), parité verte |
-| **Total cycle** | | **23 min 40 s** | **3 (1 min 29 s)** | **6 (6 min 42 s)** | **0 (0.0 s)** | |
+| /tech-writer | ok | 2 min 23 s | — | — | — | E019 créé (Mode 2) : produit + Changelogs, 6 tasks, modèle task-driven |
+| **Total cycle** | | **26 min 04 s** | **3 (1 min 29 s)** | **6 (6 min 42 s)** | **0 (0.0 s)** | |
