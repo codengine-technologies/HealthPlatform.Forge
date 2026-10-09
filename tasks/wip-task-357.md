@@ -2,7 +2,7 @@
 
 **Repos**: client-angular
 **Dependencies**: task-356 (pont v1, `WedaIntegrationService`, `MSS_PATIENT_RECORD_GATEWAY`)
-**Epic**: E009
+**Epic**: E019
 **Single frontend**: true — seul weda2 est embarqué dans Weda.
 **Priorité**: **2** — premier livrable visible de l'intégration : dans un message reçu, le praticien
 voit à quel dossier patient Weda correspond chaque document médical, et l'ouvre en un clic. C'est le

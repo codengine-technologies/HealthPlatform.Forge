@@ -2,7 +2,8 @@
 
 **Repos**: api-mail, client-angular
 **Dependencies**: — (aucune)
-**Epic**: E009
+**Epic**: E019
+**EpicTitle**: Intégration de la nouvelle messagerie dans Weda
 **Single frontend**: true — seul le client Angular (weda2) est embarqué dans Weda.
 **Priorité**: **2** — socle de l'intégration de la nouvelle messagerie dans Weda. Rien n'est visible
 pour l'utilisateur tant que le flag est désactivé, mais tout ce qui suit en dépend (phase B : trouver
