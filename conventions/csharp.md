@@ -1429,3 +1429,27 @@ private static string? SkipReasonOf(MailDto mail, bool isIncrementalSync)
 
 **Consigne** : pour compter des correspondances, `MaRegex().Count(texte)`. Les scans de source des
 tests d'architecture sont le terrain habituel de ce motif.
+
+---
+
+## Exécution des tests — jamais de `--artifacts-path` hors du dépôt
+
+**Occurrences : 1** (task-356 — `/review` : `dotnet test HealthPlatform.Api.Mail.sln
+--artifacts-path <dossier temporaire>` → **177 faux échecs** dans `mss.mail.integration.tests`, plus
+des échecs dans `api.tests` et `application.tests` : « Répertoire src/ introuvable depuis …\artifacts\bin\… » ;
+rejoué compilé dans le dépôt : 0 échec)
+
+Plusieurs tests d'api-mail retrouvent les fichiers du dépôt (`src/`, `src/Api/appsettings.json`) **en
+remontant depuis le dossier de leurs binaires**. Compilés hors du dépôt, ils ne les trouvent plus.
+Le rouge est alors faux, et il masque les vrais.
+
+Le détour paraît tentant quand un AppHost ou Visual Studio verrouille `bin/` (« The file is locked
+by: mss.mail.api.exe, devenv.exe »).
+
+**Consigne** :
+- valider (`/develop`, `/review`) **toujours dans le dépôt** : `dotnet build` / `dotnet test`
+  sans `--artifacts-path` ;
+- si `bin/` est verrouillé, demander à l'humain d'arrêter son AppHost ou de fermer la solution :
+  ne pas contourner ;
+- un `--artifacts-path` reste acceptable **seulement** pour un test ciblé qui ne lit aucun
+  fichier du dépôt (exemple : `FeatureFlagEndpointIntegrationTests`). Le noter dans le Develop log.
