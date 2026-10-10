@@ -324,6 +324,23 @@
 
 ---
 
+### angular-commite-en-local — Un client-angular commité en local reste « touché »
+
+**Occurrences : 1** (task-357)
+
+Le pré-vol (`agents/e2e.md`, step 0) déclare `client-angular` touché quand
+`git status --porcelain -- front/` n'est pas vide. Or l'humain, ou la forge à sa demande, peut
+avoir **déjà commité en local** les changements de la task sur sa branche, sans les avoir encore
+poussés sur TFS. La règle conclut alors « non touché », et **la voie angular serait sautée sur une
+task qui modifie l'application web**.
+
+**Consigne** : une task qui liste `client-angular` dans ses `**Repos**` et dont le task file cite
+des commits Angular (`## Avancement`, `## Branches`, `## PRs`) est **touchée**, même avec un arbre
+propre. Jouer la voie angular, et noter dans le `## E2E log` pourquoi la règle de pré-vol a été
+dépassée.
+
+---
+
 ## Registre des flaky
 
 *(tenu par `/e2e` : une ligne par test vert au second essai ; troisième occurrence du même test →
