@@ -103,7 +103,7 @@ scénario E2E-WEDA-002. Aucune route ne change.
 
 Elle est nécessaire pour que la tâche soit complète (règle 11).
 
-- **`POST /api/mss/filing`** (multipart) :
+- **`POST /api/nova-mss/documents`** (multipart), dans `NovaMssController` (repère `nova-mss`, ADR-007 amendement 4) :
   - `[Authorize]`, `HasWmss` exigé, refusé à un secrétaire ;
   - le patient doit appartenir au cabinet de la session ;
   - taille et type des fichiers : les limites de l'ancien écran (`We._MAX_FILE_SIZE`) ;
@@ -117,7 +117,7 @@ Elle est nécessaire pour que la tâche soit complète (règle 11).
     `MSSanteImportService.ImportAttachmentInPatient`, sans dépendre de `T_MessageMSSante` (date,
     type et nom passés explicitement).
   - **Aucun changement de schéma.**
-- **Gestionnaire `file-documents`** dans `Default.aspx` : il transforme les `ArrayBuffer` en `Blob`,
+- **Gestionnaire `file-documents`** dans `Weda/FolderMedical/WedaEchanges/NovaMss/nova-mss-host.js` : il transforme les `ArrayBuffer` en `Blob`,
   les met dans un `FormData`, puis appelle `fetch`. Un `413` donne `payload-too-large`.
 
 ## Definition of Done

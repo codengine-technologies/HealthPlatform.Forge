@@ -151,10 +151,10 @@
 | Port du dossier patient | `Client/Angular/front/libs/mss/src/core/tokens/mss-patient-record-gateway.token.ts`, `core/models/weda-patient-record.model.ts` | Contrat vu du module messagerie |
 | Délégation de l'auth | `apps/weda2/src/lib/auth/services/authentication-callback.service.ts`, `auto-logout.service.ts`, `interceptors/utils/auth-interceptor.utils.ts` | Pas de redirection dans l'iframe, `has-session` hors intercepteur |
 | Politique d'affichage en iframe | `Client/Angular/front/nginx.conf` | `frame-ancestors 'self' https://*.weda.fr` |
-| Hôte Weda (hors forge) | Weda : `Weda/FolderMedical/WedaEchanges/Default.aspx(.cs)` | Bandeau, iframe, gestionnaire du pont |
+| Hôte Weda (hors forge) | Weda : `Weda/FolderMedical/WedaEchanges/NovaMss/` (`NovaMssHost.ascx`, `nova-mss-host.js`), inclus par `Default.aspx` | Bandeau, iframe, gestionnaire du pont (repère `nova-mss`, ADR-007 amendement 4) |
 | Panneau « Dossier Weda » | `Client/Angular/front/libs/mss/src/features/mail/components/weda-patient-panel/` | Patient Weda par INS ou candidats, ouverture du dossier (task-357) |
-| API Weda du dossier patient (hors forge) | Weda : `Weda/api/MssFilingController.cs`, `Weda/api/MssFiling/` | `resolve-patient`, `context`, `patient-url` ; rapprochement partagé avec l'ancien écran (task-357) |
-| Décisions | Weda : `docs/architecture/adr/007_integration-nouvelle-experience-messagerie.md` ; `Client/Angular/docs/ADR-2026-10-09-integration-weda-mode-embarque.md` | Contrat du pont, amendements 1 à 3 (le 3 fait foi : import à la demande, WMickey garde la réception, boîte désignée par Weda) |
+| API Weda du dossier patient (hors forge) | Weda : `Weda/api/NovaMss/` (`NovaMssController`, route `api/nova-mss`) ; rapprochement partagé : `Weda/api/WMickey/Builder/PatientMatcher.cs` | `resolve-patient`, `filing-context`, `patient-url` (task-357) |
+| Décisions | Weda : `docs/architecture/adr/007_integration-nouvelle-experience-messagerie.md` ; `Client/Angular/docs/ADR-2026-10-09-integration-weda-mode-embarque.md` | Contrat du pont, amendements 1 à 4 (le 3 fait foi ; le 4 fixe le repère `nova-mss` : import à la demande, WMickey garde la réception, boîte désignée par Weda) |
 
 ---
 
@@ -180,9 +180,9 @@
 | Task | Statut | Contribution | RGs |
 |---|---|---|---|
 | task-356 | done (PR api-mail #284, en attente de merge ; Angular à pousser sur TFS) | Mode embarqué, pont v1, `WedaIntegrationService`, port `MSS_PATIENT_RECORD_GATEWAY`, flag `weda_integration`, correctif `has-session` | RG-E019-03, 04, 06 |
-| task-357 | done (aucune PR forge ; Angular à pousser sur TFS ; Weda hors forge) | Panneau « Dossier Weda » : patient Weda par INS vérifiée ou candidats par traits, ouverture du dossier ; API Weda `api/mss/filing` (`resolve-patient`, `context`, `patient-url`) | RG-E019-01, 02 (affichage) |
-| task-362 | todo | Boîte désignée par Weda : jeton `libs/mss` lu par `mailboxGuard` avant la table de décision, demande `get-mailbox`, écran de rattachement pré-rempli ; faux hôte de test et E2E-WEDA-001 ; côté Weda, `GET api/mss/filing/mailbox` | RG-E019-07 |
-| task-363 | todo | Import à la demande : fenêtre d'import (patient, documents, destination, classification, commentaire, post-it), `file-documents` avec octets transférés, ni corbeille ni mot-clé, pas d'import pour la biologie et HPRIM ; E2E-WEDA-002 ; côté Weda, `POST api/mss/filing` | RG-E019-01, 02, 05 |
+| task-357 | done (aucune PR forge ; Angular à pousser sur TFS ; Weda hors forge) | Panneau « Dossier Weda » : patient Weda par INS vérifiée ou candidats par traits, ouverture du dossier ; API Weda `api/nova-mss` (`resolve-patient`, `filing-context`, `patient-url`) | RG-E019-01, 02 (affichage) |
+| task-362 | todo | Boîte désignée par Weda : jeton `libs/mss` lu par `mailboxGuard` avant la table de décision, demande `get-mailbox`, écran de rattachement pré-rempli ; faux hôte de test et E2E-WEDA-001 ; côté Weda, `GET api/nova-mss/mailbox` | RG-E019-07 |
+| task-363 | todo | Import à la demande : fenêtre d'import (patient, documents, destination, classification, commentaire, post-it), `file-documents` avec octets transférés, ni corbeille ni mot-clé, pas d'import pour la biologie et HPRIM ; E2E-WEDA-002 ; côté Weda, `POST api/nova-mss/documents` | RG-E019-01, 02, 05 |
 | task-358 | en attente (`tasks/onhold/`, amendement 3) | API d'intégration api-mail `api/v1/integration`, canal serveur Weda → api-mail, compteur de non-lus de l'en-tête | — |
 | task-359 | en attente (`tasks/onhold/`, amendement 3) | Réception des CR de biologie en bannette HPRIM sans WMickey, mots-clés `Weda` / `WedaClasse` | — |
 | task-360 | en attente (`tasks/onhold/`, amendement 3) | Classer par identifiants via le canal serveur ; remplacée par task-363 | — |

@@ -89,13 +89,13 @@ connaît et que WMickey synchronise. L'import à la demande (task-363) s'appuie 
 
 Elle est nécessaire pour que la tâche soit complète (règle 11).
 
-- **`GET /api/mss/filing/mailbox`** dans `MssFilingController` :
+- **`GET /api/nova-mss/mailbox`** dans `NovaMssController` (`Weda/api/NovaMss/`, repère `nova-mss`, ADR-007 amendement 4) :
   - `[Authorize]`, et `HasWmss` exigé ;
   - refusé (`403`) à un secrétaire (`IsSecretary()`) ;
   - rend `{ email }` depuis `GetMailBoxAsync(UserID, CabinetID)`, ou `404` si l'utilisateur n'a pas
     de boîte ;
   - n'écrit pas l'adresse dans les journaux.
-- **Gestionnaire `get-mailbox`** dans `Default.aspx`, par `callApi`, avec les codes d'erreur
+- **Gestionnaire `get-mailbox`** dans `Weda/FolderMedical/WedaEchanges/NovaMss/nova-mss-host.js`, par `callApi`, avec les codes d'erreur
   existants.
 - **Switch** : il n'est pas proposé aux secrétaires (ADR-007, B7).
 
