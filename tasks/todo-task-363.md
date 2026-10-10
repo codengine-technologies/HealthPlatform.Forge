@@ -212,8 +212,8 @@ Elle est nécessaire pour que la tâche soit complète (règle 11).
     séparément.
 11. Dans les journaux du navigateur et du serveur Weda : ni INS, ni nom de patient.
 12. **Flag coupé** : désactiver `weda_integration` pour cette identité, puis recharger Échanges. weda2
-   s'affiche toujours, mais ni l'action « Importer dans Weda », ni l'information sur la biologie
-   n'apparaissent. Dans l'onglet Réseau, aucune demande d'import n'est envoyée à l'hôte.
+    s'affiche toujours, mais ni l'action « Importer dans Weda », ni l'information sur la biologie
+    n'apparaissent. Dans l'onglet Réseau, aucune demande d'import n'est envoyée à l'hôte.
 
 ## Conformité santé / Ségur / ANS
 
