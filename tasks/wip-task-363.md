@@ -243,3 +243,144 @@ Elle est nécessaire pour que la tâche soit complète (règle 11).
 - **Hébergement HDS** : oui. Les pièces passent d'api-mail à Weda par le navigateur du praticien, en
   HTTPS, entre deux services hébergés. Elles sont stockées dans Weda comme aujourd'hui.
 - **AIPD / impact RGPD** : inchangé, même finalité que le classement de l'ancien écran
+
+## Branches
+- `api-mail` (pushed) : feat/task-363-weda-import-documents — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-363-weda-import-documents
+- `client-angular` (code-only) : forge writes code on the branch currently checked out in `Client/Angular/` (snapshot au /start : `feature/nova-rewriting-mss-weda-integration`) — humain gère branche, commit, push, PR TFS
+- Partie Weda : hors forge, faite par l'humain (règle 11)
+
+## Develop log
+
+- Repos touched : `api-mail` (profil e2e et catalogue), `client-angular` (code-only)
+- DTOs published : no DTO change — Interop published : no interop change
+- Commits :
+  - api-mail : `2aff4aff` test(e2e): add E2E-WEDA-002 and force weda_integration in the e2e profile
+    - `E2eProfile.ForcedFeatureFlags` ajoute `weda_integration` (via `FeatureFlags:ForcedOn`,
+      refusé en Production). `ForcedOnFeatureFlagService` couvre aussi la lecture par identité
+      (`GetAllFeaturesAsync(userIdentifier)`), celle de weda2. Aucune route ne change.
+    - Tests `ForcedFeatureFlags_IncludeWedaIntegration` (vu **rouge** avant le correctif) et
+      `ForcedFeatureFlags_AreAllKnownFlags` : un nom inconnu n'est qu'un avertissement, une
+      faute de frappe éteindrait le flag en silence.
+    - Catalogue : E2E-WEDA-002 v1 (angular `requis`, mobile `non-applicable`), seed
+      `boite-praticien`, `cda-sans-ins-a-rattacher`, `mail-avec-pj`, `cr-bio-a-acquitter`.
+  - client-angular : **non commité** (code-only) sur `feature/nova-rewriting-mss-weda-integration`.
+    **À commiter sur TFS avant le merge de la PR api-mail** (E2E-WEDA-002 est `requis` côté angular).
+    - `libs/mss/src/features/mail/components/weda-import/` (nouveau) : `weda-import.component.{ts,html,scss}`
+      + spec (25 tests), `weda-import.utils.ts` + spec (16 tests). Rendu et appels seulement si
+      `available()`. Patient présélectionné par INS vérifiée, sinon choix explicite d'un candidat ou
+      recherche manuelle (nom, prénom, date de naissance facultative, `resolve-patient` inchangé).
+      Documents : PDF des CDA et pièces jointes cochés, enveloppe IHE_XDM jamais proposée, message
+      en PDF non coché. Titre, destination, classification et commentaire par document. Post-it
+      facultatif. Octets lus par `downloadAttachment` / `exportMailAsPdf`, puis `file-documents`
+      (le transfert des `ArrayBuffer` est fait par la passerelle weda2). Message de succès « {n}
+      document(s) importé(s) dans le dossier patient. ». Aucun appel ne déplace, supprime ni
+      marque le message, et rien n'est mémorisé. Une erreur du pont donne son message, sans détail.
+      Biologie (LOINC `11502-2`) ou HPRIM (`HNET.1/MSG/`) : pas d'action, information fixe.
+    - `mail-detail.component.{ts,html}` : `<mss-weda-import>` sous le panneau « Dossier Weda ».
+    - Nettoyage (ADR client, amendement 3) : `getFilingStatus`, `IWedaFilingEntry`,
+      `MAX_FILING_STATUS_MESSAGE_IDS`, `get-filing-status` et `WedaFiledBy` retirés. Une recherche
+      sur `apps`, `libs` et `e2e` ne donne plus rien. `IWedaFilingResult` est aligné sur le contrat
+      de l'amendement 3 (`{ results: [{ part, fileStreamId }] }`).
+    - **Contrat du pont, ajout optionnel** : `IWedaFilingContext.postItLevels?` (les niveaux de
+      post-it sont des libellés de Weda, table de configuration 70, et pas une liste fixe).
+      Absent, weda2 envoie le niveau 0, celui de l'exemple de l'ADR. **Côté Weda (hors forge) :
+      renseigner `postItLevels` dans `get-filing-context`.**
+    - Faux hôte e2e (`e2e/mss-e2e/support/weda-host.ts`) : il répond aussi à `resolve-patient`
+      (dossiers synthétiques « à vérifier » sur toute recherche par nom), `get-filing-context`,
+      `open-patient-record` et `file-documents`. D'un import, il ne garde que le nombre de pièces,
+      leurs types et leurs tailles, jamais leur contenu.
+    - `e2e/mss-e2e/specs/functional.e2e.ts` : E2E-WEDA-002 v1, qui couvre le panneau (reprise de
+      task-357/360), l'ouverture, l'import, le message toujours en INBOX relu à une nouvelle entrée,
+      et la biologie.
+- Local build / test :
+  - client-angular : `nx build weda2` ✓, `nx run-many -t test` ✓ (11 projets). Specs touchées
+    rejouées après Prettier : 64 + 85 ✓. `tsc` e2e ✓, `eslint` sur les fichiers touchés : 0 erreur.
+    Fichiers neufs et fichiers propres en HEAD formatés. `mail-detail.component.html`, non
+    conforme en HEAD, n'est pas reformaté.
+  - Un premier build est sorti **rouge** sur une erreur que vitest ne voit pas : le typage strict
+    du gabarit refusait un `number` pour `WedaDestination` (TS2322). Corrigé par
+    `setDestination()`.
+  - api-mail : l'AppHost de développement de l'humain tournait et verrouillait `src/Api/bin`
+    (5 × `mss.mail.api`). Je ne l'ai pas arrêté. J'ai compilé dans `Api/Mail/artifacts/forge-363`,
+    **dans le dépôt** et gitignoré : la convention ne vise que les artefacts *hors* du dépôt.
+    Résultats : domain 190, infrastructure 683, api 1 188, application 3 569 ✓ ; integration 836
+    ✓ et **2 ✗ préexistants**.
+  - Ces 2 ✗ sont `SemanticSearchRepositoryIntegrationTests` (« different vector dimensions 3 and
+    1536 », effet d'ordre de la suite). Verts en isolation (24/24), rouges dans la suite complète,
+    **et rouges aussi sur `origin/develop` pur**, compilé dans `bin` dans un worktree jetable
+    (avec en plus `AuditJournalIntegrationTests.Le_maintien_des_partitions…`). Ils ne viennent pas
+    de task-363 (seule une constante de l'AppHost change). Le worktree est supprimé.
+- Preuve par mutation (unitaires, code restauré, `grep -c MUTATION` = 0) :
+  - MU1 disponibilité ignorée → « renders neither … when available() is false » rouge ;
+  - MU2 biologie non reconnue → 4 rouges (utilitaire et composant, LOINC et HPRIM) ;
+  - MU3 enveloppe XDM proposée → 5 rouges ;
+  - MU4 candidat présélectionné → « preselects nothing … chosen explicitly » rouge ;
+  - MU5 message déplacé après l'import → « … leaves the message where it is » rouge ;
+  - MU6 erreurs génériques → les 5 codes rouges, côté utilitaire et côté composant ;
+  - MU7 post-it toujours envoyé → « sends no post-it unless one is written » rouge.
+- **E2E-WEDA-002 : non joué pendant `/develop`.** Le port 5052 (AppHost) et le port 4200
+  (`nx serve`) sont tenus par les serveurs de développement de l'humain. Type-check vert. La
+  preuve par mutation e2e est à faire au premier passage de `/e2e`.
+- Passe qualité (/simplify) : revue manuelle sur le diff (réutilisation de `patientIdentitiesOf`
+  et `formatIsoDate` du panneau, fonctions pures dans l'utilitaire, mail-detail touché de 4
+  lignes). Aucun nettoyage restant, donc aucune re-validation. api-mail : rien à simplifier.
+- Partie Weda (hors forge, règle 11), **à faire par l'humain** :
+  - `POST /api/nova-mss/documents` ;
+  - gestionnaire `file-documents` de `nova-mss-host.js` (`413` → `payload-too-large`) ;
+  - `postItLevels` dans `get-filing-context`.
+- DOD self-check :
+  - tests de composant ✓ (9 lignes) ;
+  - nettoyage ✓ (recherche vide) ;
+  - catalogue E2E-WEDA-002 v1 ✓ ;
+  - profil e2e ✓ ;
+  - `data-testid` ✓ ;
+  - libellés FR ✓ ;
+  - aucune donnée de santé dans les journaux ✓ (aucun `console.*` dans le code ajouté) ;
+  - différés : parcours e2e joué (`/e2e`), partie Weda, périphérique et Manual Test Plan (HAG).
+- Next step : `/sonar task-363`
+
+## Sonar log
+
+- **Skipped** : aucun code de production analysable dans le diff api-mail. Il contient :
+  - `src/AppHost/E2eProfile.cs`, exclu du scan (`sonar.exclusions` contient `**/AppHost/**`) ;
+  - 2 tests (`E2eProfileTests`), avec assertions ;
+  - le catalogue `e2e/scenarios.yml`.
+- Le build du scan aurait de plus visé `src/Api/bin`, verrouillé par l'AppHost de développement
+  de l'humain. KPIs inchangés, aucune analyse lancée.
+
+## Lint log
+
+- Commande : `npx nx affected -t lint --base=origin/next --head=HEAD --parallel=3 --projects=tag:scope:mss`
+  (12 projets exécutés).
+- Baseline : **0 erreur**, avertissements seuls (`jsdoc/require-example` surtout ; 47 sur
+  `mss-lib`, contre 42 avant la task, soit les exemples de JSDoc des nouveaux fichiers).
+- Itérations : 0. Aucun `--fix` (WIP humain préservé). Aucune modification, donc pas de
+  re-build.
+- Conventions : aucune règle corrigée à la main, donc `conventions/angular.md` inchangé.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-363 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 14 s | — | — | — | — |
+| /develop | ok | 30 min 56 s | 2 (30 s) | 7 (8 min 54 s) | — | api-mail 0B/6T, client-angular 2B/1T, e2e non joué : 5052/4200 tenus par les serveurs de l'humain ; 2 rouges d'intégration préexistants (aussi sur develop) |
+| /sonar | skipped | 8.0 s | — | — | — | aucun code de production analysable : AppHost exclu du scan, reste = tests et catalogue |
+| /lint-angular | ok | 20 s | — | — | — | baseline 0 erreur (warnings seuls), aucun fix |
+| /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non listé ni touché |
+| /e2e | failed | 21 s | — | — | — | outillage : 5052 et 4200 tenus par les serveurs de dev de l'humain |
+| **Total cycle** | | **32 min 01 s** | **2 (30 s)** | **7 (8 min 54 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : lint ×1 (11 s)
+
+## E2E log
+
+| Voie | Déclencheur | Résultat | Tests | Durée |
+|---|---|---|---|---|
+| mobile | api-mail touché | ⛔ non jouée — outillage | — | — |
+| angular | api-mail + client-angular touchés | ⛔ non jouée — outillage | — | — |
+
+**E2E : bloqué (outillage)** : les ports 5052 et 4200 sont tenus par l'AppHost et le `nx serve`
+de développement de l'humain, démarrés à 12 h 50. La non-régression n'est pas prouvée. Voir
+`questions/task-363.md`. Rejouer `/e2e task-363` une fois les ports libérés.
