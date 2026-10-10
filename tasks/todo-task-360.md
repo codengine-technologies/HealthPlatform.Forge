@@ -116,11 +116,20 @@ Elle est nécessaire pour que la tâche soit complète (règle 11).
   `getFilingStatus`, `IWedaFilingEntry` et `IWedaFilingPart` ne donne plus rien, et c'est consigné
   dans la revue.
 - [ ] Scénario **E2E-WEDA-001**, version 1, ajouté dans `Api/Mail/e2e/scenarios.yml` :
-  - titre : « Classer un document reçu dans le dossier patient Weda » ;
+  - titre : « Voir le dossier Weda du patient d'un document reçu, l'ouvrir, puis classer le
+    document » ;
+  - **il couvre aussi le parcours de task-357** (report décidé par le PO le 2026-10-10,
+    `questions/answered/task-357.md`). L'attendu inclut :
+    - le panneau « Dossier Weda » sous le message, avec le dossier trouvé par INS ou les
+      correspondances « à vérifier » ;
+    - « Ouvrir le dossier », qui envoie la demande d'ouverture à l'hôte ;
+    - puis le classement ;
   - clients : `angular: requis`, `mobile: non-applicable — l'application mobile n'est pas
     embarquée dans Weda` ;
-  - seed : `cda-sans-ins-a-rattacher`, `mail-avec-pj` ;
-  - implémenté dans client-angular avec le faux hôte de test.
+  - seed : `cr-bio-a-acquitter` (INS de test : dossier trouvé par INS), `cda-sans-ins-a-rattacher`
+    (pas d'INS : candidats par traits), `mail-avec-pj` ;
+  - implémenté dans client-angular avec le faux hôte de test. Le profil e2e d'api-mail active
+    `weda_integration`, ce qui ajoute une ligne au profil e2e (`E2eProfile`).
 - [ ] `data-testid` sur le bouton, la fenêtre, chaque case de pièce, les listes, et les boutons
   Classer et Annuler ; libellés FR en dur
 - [ ] Aucune donnée de santé dans les logs : ni INS, ni nom de patient, ni contenu de pièce
