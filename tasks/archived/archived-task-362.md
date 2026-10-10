@@ -450,3 +450,17 @@ Autres commandes mesurées : lint ×1 (27 s)
      Piste : un lien « Choisir une autre messagerie » vers `/select`.
   2. Le titre de l'écran reste « Rattachez votre première messagerie MSSanté », même quand le
      compte porte déjà d'autres boîtes.
+
+## Merged
+
+- **Date** : 2026-10-10, par `/merge task-362 --i-tested` (validation manuelle attestée par l'humain).
+- `api-mail` : PR #285 squash-mergée dans `develop`, commit `f1eeb6e6ee84b970c3914909f66622316e0c9ac1`
+  (catalogue e2e : E2E-WEDA-001). Label `awaiting-human-merge` retiré. Branche
+  `feat/task-362-weda-designated-mailbox` supprimée (distante et locale).
+- CI `develop` : verte (build, publish) —
+  https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/38047028036
+- `client-angular` : géré manuellement par l'humain (TFS).
+- Partie Weda (hors forge), branche `lotus/segur/17546-enveloppe-segur-v2-with-mss-api` :
+  - `1fcc554f69` — périphérique « Expérience Nova » (9892), `NovaMssHost.ascx` et `api/nova-mss` fermés sans lui ;
+  - `d1208993c4` — `GET api/nova-mss/mailbox` et gestionnaire `get-mailbox` du pont, bandeau refusé aux secrétaires ;
+  - `868d1a24f2` — fichiers `nova-mss` en UTF-8 avec BOM.
