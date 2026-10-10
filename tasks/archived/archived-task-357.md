@@ -276,3 +276,13 @@ Implémenté directement (hors `/develop`), à la demande de l'humain.
 | /review | ok | 2 min 13 s | 2 (1 min 01 s) | 2 (3.3 s) | — | client-angular 2B/2T, APPROVED (blocage e2e levé par arbitrage PO : couverture reportée à task-360) ; client-angular code-only, Weda hors forge, aucune PR forge |
 | /tech-writer | ok | 48 s | — | — | — | E019 v1.1 (Mode 1) : F2 validée, entrée changelog task-357, annexes |
 | **Total cycle** | | **8 min 43 s** | **2 (1 min 01 s)** | **2 (3.3 s)** | **0 (0.0 s)** | |
+
+## Merged
+
+- **Date** : 2026-10-10, par `/merge task-357 --i-tested` (validation manuelle attestée par l'humain).
+- **Aucune PR à merger** : la task ne touche aucun dépôt poussable de la forge. Pas de branche à
+  supprimer, pas de CI `develop` à attendre.
+- `client-angular` : géré manuellement par l'humain (commit local `eca13388`, à pousser sur TFS).
+- Hors forge, Weda : branche `lotus/segur/17546-enveloppe-segur-v2-with-mss-api`. Le code de
+  `2c171f46d9` a depuis pris le repère `nova-mss` (ADR-007, amendement 4) : `Weda/api/NovaMss/`,
+  route `api/nova-mss`.
