@@ -318,6 +318,20 @@ Elle est nécessaire pour que la tâche soit complète (règle 11).
   - MU5 message déplacé après l'import → « … leaves the message where it is » rouge ;
   - MU6 erreurs génériques → les 5 codes rouges, côté utilitaire et côté composant ;
   - MU7 post-it toujours envoyé → « sends no post-it unless one is written » rouge.
+- **Preuve par mutation e2e d'E2E-WEDA-002**, soldée pendant `/e2e`, en `--serve-only`. Avant
+  chaque jeu : nouveau bundle servi et 0 `[ERROR]`. Après : code restauré, `grep -c MUTATION` à 0.
+  Vert de contrôle après restauration.
+  - ME3 import jamais envoyé → rouge sur « l'hôte a reçu un import » (0 au lieu de 1).
+  - ME4 biologie non reconnue → rouge sur « l'information fixe sur la biologie s'affiche ». Le
+    1er essai était **invalide** : la mutation ne compilait pas (TS6133) et l'ancien bundle était
+    servi. Rejoué valide.
+  - ME5 ouverture du dossier sans effet → rouge sur « « Ouvrir » envoie la demande d'ouverture ».
+  - ME6 l'import supprime le message → rouge sur « le message importé est toujours dans la boîte
+    de réception ». Le 1er essai était **invalide** : l'ancre ne correspondait plus (ligne coupée
+    par Prettier), le code n'était pas muté et le jeu était vert. Rejoué valide sur un banc
+    remonté.
+  - Les deux essais invalides sont consignés en récidive dans `conventions/e2e.md`
+    (`mutation-non-servie`, occurrence 4).
 - **E2E-WEDA-002 : non joué pendant `/develop`.** Le port 5052 (AppHost) et le port 4200
   (`nx serve`) sont tenus par les serveurs de développement de l'humain. Type-check vert. La
   preuve par mutation e2e est à faire au premier passage de `/e2e`.
@@ -369,8 +383,9 @@ Elle est nécessaire pour que la tâche soit complète (règle 11).
 | /sonar | skipped | 8.0 s | — | — | — | aucun code de production analysable : AppHost exclu du scan, reste = tests et catalogue |
 | /lint-angular | ok | 20 s | — | — | — | baseline 0 erreur (warnings seuls), aucun fix |
 | /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non listé ni touché |
-| /e2e | failed | 21 s | — | — | — | outillage : 5052 et 4200 tenus par les serveurs de dev de l'humain |
-| **Total cycle** | | **32 min 01 s** | **2 (30 s)** | **7 (8 min 54 s)** | **0 (0.0 s)** | |
+| /e2e | ok | 25 min 47 s | — | — | — | e2e ×3 (11 min 02 s), porte verte ; WEDA-002 vert au 1er passage ; mutations e2e ME3-ME6 (2 essais invalides rejoués) |
+| /review | ok | 4 min 55 s | 2 (40 s) | 2 (4 min 07 s) | — | api-mail 1B/1T, client-angular 1B/1T, APPROVED ; api-mail 1B/1T (bin), client-angular 1B/1T ; PR #286 (awaiting-human-merge) ; client-angular code-only |
+| **Total cycle** | | **1 h 02 min** | **4 (1 min 11 s)** | **9 (13 min 01 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×1 (11 s)
 
@@ -378,9 +393,141 @@ Autres commandes mesurées : lint ×1 (11 s)
 
 | Voie | Déclencheur | Résultat | Tests | Durée |
 |---|---|---|---|---|
-| mobile | api-mail touché | ⛔ non jouée — outillage | — | — |
-| angular | api-mail + client-angular touchés | ⛔ non jouée — outillage | — | — |
+| mobile | api-mail touché | ✅ verte | 31 verts, 0 flaky, 0 rouge, 0 quarantaine | 5 min 45 s |
+| angular | api-mail + client-angular touchés | ✅ verte à la porte | 32 verts, 0 flaky, 1 rouge **en quarantaine** (E2E-COMPOSE-002, task-350) | 5 min 17 s |
 
-**E2E : bloqué (outillage)** : les ports 5052 et 4200 sont tenus par l'AppHost et le `nx serve`
-de développement de l'humain, démarrés à 12 h 50. La non-régression n'est pas prouvée. Voir
-`questions/task-363.md`. Rejouer `/e2e task-363` une fois les ports libérés.
+- Catalogue : `Api/Mail/e2e/scenarios.yml` @ branche de la task (`feat/task-363-weda-import-documents`, `2aff4aff`)
+- **E2E-WEDA-002 vert dès son premier passage** (5,1 s). E2E-WEDA-001 vert.
+- Quarantaines : E2E-COMPOSE-002 (angular), posée le 2026-10-09 (1 jour), correction task-350.
+- Divergences ouvertes : aucune.
+- Parcours touchés sans spec e2e modifié : aucun. `mail-detail` et le nouveau composant sont
+  couverts par E2E-WEDA-002.
+- Démontage : complet (ports libres, aucun conteneur e2e résiduel).
+- Historique de l'étape :
+  - 1er passage **bloqué en outillage** : ports 5052 et 4200 tenus par les serveurs de
+    développement de l'humain (`questions/task-363.md`) ;
+  - relancé par l'humain une fois les ports libérés ;
+  - magasin DCP élevé purgé avant le run, à titre préventif (`migrate.lock` de 0 octet, voir la
+    mémoire DCP).
+- Preuve par mutation d'E2E-WEDA-002 (dette de `/develop`, soldée ici en `--serve-only`) : voir le
+  Develop log.
+
+**E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
+
+**En quarantaine (posée par l'humain, non bloquant)** (1) :
+
+- [angular] « rédaction — corriger l’orthographe, appliquer, envoyer : le texte corrigé arrive, la citation intacte » (E2E-COMPOSE-002) — Failed — correction : task-350
+
+### Matrice de parité
+
+| Scénario | v | Mode | Titre | angular | mobile |
+|---|---|---|---|---|---|
+| E2E-INBOX-001 | 1 | headless | Filtrer la boîte de réception, basculer liste / conversation, ouvrir la recherche | ✅ | ✅ |
+| E2E-FOLDER-001 | 1 | headless | Naviguer vers les dossiers Archive et Corbeille | ✅ | ✅ |
+| E2E-PATIENT-001 | 1 | headless | Afficher la vue patients | ✅ | ✅ |
+| E2E-PATIENT-002 | 2 | headless | Rattacher à la main un document sans INS à un patient choisi par recherche, puis le détacher | ✅ | ✅ |
+| E2E-CONTACT-001 | 1 | humain | Rechercher dans le carnet et interroger l'annuaire national | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-SETTINGS-001 | 1 | headless | Changer le filtre par défaut et le retrouver après rechargement | ✅ | ✅ |
+| E2E-MAIL-001 | 1 | headless | Marquer un message lu puis non lu | ✅ | ✅ |
+| E2E-MAIL-002 | 1 | headless | Tout sélectionner et marquer lu en masse | ✅ | ✅ |
+| E2E-DETAIL-001 | 1 | headless | Répondre et transférer depuis la lecture d'un message | ✅ | ✅ |
+| E2E-COMPOSE-001 | 1 | headless | Envoyer un message, le recevoir, le lire, le supprimer | ✅ | ✅ |
+| E2E-COMPOSE-002 | 1 | headless | Faire corriger l'orthographe de son texte, appliquer la correction, puis envoyer | ❌ | ✅ |
+| E2E-COMPOSE-003 | 1 | headless | Un envoi refusé par la messagerie laisse le brouillon intact et peut être renvoyé | ✅ | ✅ |
+| E2E-MAIL-003 | 1 | headless | Signaler puis ne plus signaler un message | ✅ | ✅ |
+| E2E-MAIL-004 | 1 | headless | Déplacer un message vers Archive puis le ramener | ✅ | ✅ |
+| E2E-MAIL-005 | 1 | headless | Un message supprimé depuis un autre logiciel quitte la liste et ne s'ouvre jamais vide | ✅ | ✅ |
+| E2E-DRAFT-001 | 1 | headless | Créer un brouillon, le reprendre, le supprimer | ✅ | ✅ |
+| E2E-DRAFT-002 | 1 | headless | Envoyer un message à pièce jointe après l'enregistrement automatique du brouillon | ✅ | ✅ |
+| E2E-BIO-001 | 1 | headless | Acquitter un compte rendu de biologie | ✅ | ✅ |
+| E2E-DASH-001 | 1 | headless | Afficher les widgets du tableau de bord | ✅ | ✅ |
+| E2E-DETAIL-002 | 1 | headless | Basculer entre texte brut et HTML à la lecture | ✅ | ✅ |
+| E2E-DETAIL-003 | 1 | headless | Répondre à tous depuis la lecture d'un message | ✅ | ✅ |
+| E2E-SETTINGS-002 | 1 | headless | Changer la vue par défaut et la retrouver après rechargement | ✅ | ✅ |
+| E2E-SEARCH-001 | 1 | headless | Rechercher un message et ouvrir la recherche avancée | ✅ | ✅ |
+| E2E-ATTACH-001 | 1 | headless | Voir les pièces jointes d'un message | ✅ | ✅ |
+| E2E-CONTACT-002 | 1 | headless | Créer puis supprimer un contact | ✅ | ✅ |
+| E2E-SIGNATURE-001 | 1 | headless | Créer puis supprimer une signature | ✅ | ✅ |
+| E2E-CONTACT-003 | 1 | headless | Créer puis supprimer un groupe de contacts | ✅ | ✅ |
+| E2E-FOLDER-002 | 1 | headless | Créer puis supprimer un dossier | ✅ | ✅ |
+| E2E-FOLDER-003 | 1 | headless | Ouvrir un dossier supprimé depuis un autre logiciel | ✅ | ✅ |
+| E2E-FOLDER-004 | 1 | headless | Actualiser la liste des dossiers après un changement fait dans un autre logiciel | ✅ | ✅ |
+| E2E-AUTH-001 | 1 | humain | Rester connecté quand le jeton d'accès expire | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-AUTH-002 | 1 | humain | Se déconnecter | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-LIVE-001 | 1 | headless | Recevoir un nouveau message en temps réel, sans recharger | ✅ | ✅ |
+| E2E-AI-001 | 1 | headless | Interroger l'assistant sur des messages sélectionnés et poser des questions de suite | ✅ | ✅ |
+| E2E-WEDA-001 | 1 | headless | Dans Weda, la messagerie s'ouvre sur la boîte que Weda désigne | ✅ | — |
+| E2E-WEDA-002 | 1 | headless | Voir le dossier Weda du patient d'un document reçu, l'ouvrir, puis importer des documents dans un dossier | ✅ | — |
+
+**Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/286 — label `awaiting-human-merge`
+- `client-angular` (code-only) : l'humain gère le commit, le push TFS et la PR. Branche
+  `feature/nova-rewriting-mss-weda-integration`. **À commiter avant le merge de la PR #286**
+  (E2E-WEDA-002 requis côté angular). Fichiers :
+  - `front/apps/weda2/src/lib/embedded/embedded-host.model.ts`
+  - `front/apps/weda2/src/lib/embedded/weda-patient-record.gateway.ts` + `.spec.ts`
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`
+  - `front/e2e/mss-e2e/support/weda-host.ts`
+  - `front/libs/mss/src/core/models/weda-patient-record.model.ts`
+  - `front/libs/mss/src/core/tokens/mss-patient-record-gateway.token.ts`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.component.{ts,html}`
+  - `front/libs/mss/src/features/mail/components/weda-import/` (nouveau : composant, gabarit,
+    styles, utilitaire et leurs specs)
+- Partie Weda (hors forge) : à faire par l'humain (règle 11), validée par le Manual Test Plan.
+
+## Code Review Summary
+
+**Verdict : APPROVED**, 0 bloquant, 4 suggestions.
+
+| Repo | Build | Tests | Re-validation `/review` |
+|---|---|---|---|
+| api-mail | ✓ 0 erreur (dans `bin`) | ✓ domain 190, infrastructure 683, api 1 188, application 3 569, integration 838 (+16 skip), 0 échec | les 2 rouges d'intégration de `/develop` ont disparu (voir plus bas) |
+| client-angular | ✓ `nx build weda2` | ✓ 11 projets, 0 échec | — |
+
+- **Règle 1b** : côté api-mail, seule une constante de profil AppHost et le catalogue changent,
+  aucun endpoint. Le parcours frontend est prouvé par E2E-WEDA-002 sur le vrai backend : vert,
+  et rouge sous ME3 (import jamais envoyé), ME4 (biologie non reconnue), ME5 (ouverture sans
+  effet) et ME6 (le message supprimé par l'import).
+- **DOD** :
+  - ✓ les 9 lignes de tests de composant ;
+  - ✓ nettoyage (recherche de `getFilingStatus`, `IWedaFilingEntry` et
+    `MAX_FILING_STATUS_MESSAGE_IDS` vide sur `apps`, `libs` et `e2e`) ;
+  - ✓ E2E-WEDA-002 v1, au catalogue et dans la suite ;
+  - ✓ profil e2e ;
+  - ✓ `data-testid` (action, fenêtre, cases, listes, recherche, information biologie, boutons) ;
+  - ✓ libellés FR ;
+  - ✓ aucun journal ajouté ;
+  - différés au HAG : partie Weda, repère `nova-mss`, périphérique et Manual Test Plan.
+- **Rouges d'intégration de `/develop`** (`SemanticSearchRepositoryIntegrationTests`,
+  « different vector dimensions 3 and 1536 ») :
+  - rouges trois fois, avec l'AppHost de développement de l'humain démarré : deux fois sur la
+    branche, une fois sur `develop` pur ;
+  - verts ici, une fois l'AppHost arrêté.
+  - C'est une **corrélation, pas une cause prouvée** : le Postgres de développement est partagé.
+    Consigné en mémoire de session.
+- Revue par fichier (client-angular) :
+  - `weda-import.component.ts` ✅ :
+    - rien n'est rendu ni appelé sans `available()` ;
+    - présélection par INS seulement ;
+    - lecture des octets par l'API existante ;
+    - aucun appel sur le message après l'import ;
+    - erreurs traduites sans détail technique ;
+    - méthodes courtes, JSDoc complet.
+  - `weda-import.utils.ts` ✅ : fonctions pures (biologie, documents proposés, titres, erreurs).
+  - Nettoyage gateway, modèle et token ✅ : `IWedaFilingResult` aligné sur l'amendement 3.
+  - `weda-host.ts` (e2e) ✅ : il ne garde d'un import que le nombre, le type et la taille des
+    pièces.
+- ⚠️ Suggestions (non bloquantes) :
+  1. **Préparation partielle** : si `resolve-patient` échoue pour une identité, toute la
+     préparation est signalée en échec, alors que le contexte de classement a pu arriver.
+     Piste : traiter les deux appels séparément.
+  2. **Plusieurs patients dans un message** : le premier patient trouvé par INS est
+     présélectionné pour tous les documents cochés. Le praticien peut décocher, mais une
+     confirmation visible serait plus sûre.
+  3. **Post-it sans destinataire** : il part si le message est rempli. À valider avec la règle de
+     l'ancien écran côté Weda.
+  4. **`sentAt` vide** si le message n'a pas de date : Weda daterait alors l'événement par
+     défaut. À vérifier dans le contrôleur `nova-mss`.

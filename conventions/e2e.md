@@ -185,8 +185,19 @@
   (`grep -c MUTATION` doit rendre 1) avant de jouer, et recompiler **le projet qui exécute le
   test**, pas celui qu'on vient d'éditer. Un vert sous mutation se vérifie d'abord sur ces deux
   points, avant de conclure à un vert qui ment.
-- **Origine** : task-343, task-349, task-354
-- **Occurrences** : 3
+- **Récidive task-363, deux fois dans la même task.** (1) Neutraliser `documents.some(…) ||` a
+  rendu le paramètre `documents` inutilisé (TS6133), et le serveur a gardé l'ancien bundle
+  (« bundles : 2 → 2 »). Le rouge obtenu était un dépassement de délai, pas l'assertion visée.
+  (2) Une ancre `python` écrite sur une ligne que Prettier avait coupée n'a rien remplacé, et le
+  parcours a passé « vert » sur du code non muté. Les deux ont été vus grâce au compteur de
+  bundles et au `grep -c MUTATION` imprimés à chaque mutation, puis rejoués valides (ME4 :
+  comparer à une valeur impossible, `document.loinc === 'MUTATION-JAMAIS'` ; ME6 : ancre sur
+  une ligne entière, `this.successMessage.set(`). **Consigne ajoutée** : le harnais de mutation
+  **refuse de jouer** si le marqueur vaut 0, ou si le compteur de bundles n'a pas bougé. Il
+  imprime l'un et l'autre, et un « vert » sous mutation sans ces deux preuves n'est pas une
+  mesure.
+- **Origine** : task-343, task-349, task-354, task-363
+- **Occurrences** : 4
 
 ### predicat-de-reponse — Un prédicat de `waitForResponse` se lit comme du code, pas comme un texte
 - **Piège** : une expression régulière littérale réécrite en ligne de commande est devenue

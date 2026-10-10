@@ -37,3 +37,7 @@ L'AppHost verrouille aussi `Api/Mail/src/Api/bin`. Pendant `/develop`, la suite 
 Point à savoir pour la reprise : E2E-WEDA-002 n'a jamais tourné. Un premier rouge sur ce test
 neuf est possible, et il serait corrigé en reprise `/develop`, comme pour E2E-WEDA-001 sur
 task-362.
+
+## Réponse
+
+L'humain a arrêté ses serveurs de développement et relancé `/e2e task-363` (2026-10-10). Voies jouées, porte verte : voir le `## E2E log` de la task.
