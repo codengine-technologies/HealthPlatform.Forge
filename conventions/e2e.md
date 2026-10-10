@@ -341,6 +341,27 @@ dépassée.
 
 ---
 
+### hote-embarquant-en-loopback — Une page hôte servie par `route.fulfill` ne peut pas embarquer `localhost`
+- **Piège** : le faux hôte Weda de E2E-WEDA-001 était d'abord une page fournie par
+  `context.route` + `route.fulfill`. Une réponse fabriquée par Playwright n'a pas d'adresse IP.
+  Chrome la classe donc « publique », et son contrôle d'accès au réseau local (Local Network
+  Access) bloque l'iframe `https://localhost:4200` : « The connection is blocked because it was
+  initiated by a public page to connect to devices or servers on your local network ». L'iframe
+  reste vide, et le test tombe sur son attente de chargement, aux deux essais. Second piège : la
+  plage de ports 44300-44399 est réservée par `http.sys` aux liaisons SSL d'IIS Express (PID 4).
+- **Consigne** : une page qui en **embarque** une autre (hôte, iframe, parent de `postMessage`) se
+  sert depuis un **vrai serveur loopback** du test (`startFakeHost`, `support/weda-host.ts` :
+  `https.createServer` avec le certificat de dev de `run.mjs`), fermé en `finally`. Port hors de la
+  plage 44300-44399, et vérifié libre par `netstat`. Pour une ressource que la page **consomme**,
+  `route.fulfill` reste le bon outil.
+- **Preuve** : rouge 2/2 avec `route.fulfill` (snapshot de l'iframe : message de blocage). Vert en
+  2-3 s avec le serveur loopback. Rouge ensuite sous les mutations ME1 (fournisseur absent) et ME2
+  (garde qui ignore la désignation), sur l'assertion visée.
+- **Origine** : task-362
+- **Occurrences** : 1
+
+---
+
 ## Registre des flaky
 
 *(tenu par `/e2e` : une ligne par test vert au second essai ; troisième occurrence du même test →
