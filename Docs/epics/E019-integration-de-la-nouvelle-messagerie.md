@@ -1,8 +1,8 @@
 # E019 — Intégration de la nouvelle messagerie dans Weda
 
-> **Statut** : 🟡 En cours — 2 fonctionnalités sur 4 validées
+> **Statut** : 🟡 En cours — 2 fonctionnalités sur 4 validées, 1 livrée côté messagerie
 > **Modèle** : task-driven
-> **Version** : 1.1
+> **Version** : 1.2
 > **Auteur** : PO forge
 > **Audience** : PO, direction, équipe produit — la vue ingénierie vit dans [E019-Changelogs.md](E019-Changelogs.md)
 > **Dernière mise à jour** : 2026-10-10
@@ -75,7 +75,7 @@ Le praticien passe librement de l'écran actuel à la nouvelle messagerie.
 |---|---|---|---|
 | **F1 — La nouvelle messagerie dans l'écran Échanges** | Ouvrir sa messagerie dans Weda sans se reconnecter. Elle ne dialogue avec le dossier patient que si l'intégration est activée pour son cabinet. | task-356 | 🟢 Validée, en attente de mise en ligne |
 | **F2 — Le dossier Weda du patient d'un document reçu** | Voir, sous un message, le dossier Weda du patient concerné (trouvé par son INS), ou des correspondances possibles à vérifier, puis l'ouvrir en un clic. | task-357 | 🟢 Validée, en attente de mise en ligne |
-| **F3 — La messagerie que Weda connaît, ouverte d'office** | Retrouver dans Weda la messagerie que Weda connaît, même s'il en a choisi une autre par défaut. Si elle n'est pas encore rattachée à son compte, la rattacher, l'adresse déjà saisie. Passer ensuite librement à ses autres messageries. | task-362 | ⚪ À faire |
+| **F3 — La messagerie que Weda connaît, ouverte d'office** | Retrouver dans Weda la messagerie que Weda connaît, même s'il en a choisi une autre par défaut. Si elle n'est pas encore rattachée à son compte, la rattacher, l'adresse déjà saisie. Passer ensuite librement à ses autres messageries. | task-362 | 🟡 Livrée côté messagerie, partie Weda à réaliser |
 | **F4 — Importer un document reçu dans le dossier patient** | Importer, quand il le décide, une pièce jointe, le document d'un compte rendu ou le message lui-même dans le dossier d'un patient : destination, classification, commentaire, post-it. Le message reste dans sa boîte de réception. | task-363 | ⚪ À faire |
 
 ---
@@ -113,7 +113,7 @@ flowchart LR
 | RG-E019-04 | Hors de Weda (onglet séparé, autre navigateur), la nouvelle messagerie ne propose aucune action sur le dossier patient | ✅ Tenue (task-356) |
 | RG-E019-05 | Les résultats de biologie restent intégrés par Weda seul, à la réception : la nouvelle messagerie n'en importe aucun, et importer un document ne déplace ni ne supprime le message | ⚪ À faire (task-363) |
 | RG-E019-06 | Aucune donnée de santé (identité, INS, contenu de document) n'apparaît dans les journaux | ✅ Tenue (task-356) |
-| RG-E019-07 | Dans Weda, la nouvelle messagerie s'ouvre toujours sur la messagerie que Weda connaît ; le praticien passe ensuite librement à ses autres messageries | ⚪ À faire (task-362) |
+| RG-E019-07 | Dans Weda, la nouvelle messagerie s'ouvre toujours sur la messagerie que Weda connaît ; le praticien passe ensuite librement à ses autres messageries | 🟡 Tenue côté messagerie, partie Weda à réaliser (task-362) |
 
 ---
 
@@ -173,10 +173,10 @@ flowchart LR
 |---|---|---|---|
 | F1 — La nouvelle messagerie dans l'écran Échanges | 🟢 Validée, en attente de mise en ligne | affichage dans Échanges, connexion sans ressaisie, activation par cabinet, rien hors de Weda | task-356 |
 | F2 — Le dossier Weda du patient d'un document reçu | 🟢 Validée, en attente de mise en ligne | dossier trouvé par INS vérifiée, correspondances signalées « à vérifier », ouverture du dossier en un clic dans Weda | task-357 |
-| F3 — La messagerie que Weda connaît, ouverte d'office | ⚪ À faire | — | task-362 |
+| F3 — La messagerie que Weda connaît, ouverte d'office | 🟡 Livrée côté messagerie, partie Weda à réaliser | ouverture d'office sur la messagerie désignée à chaque entrée, rattachement proposé avec l'adresse déjà saisie, comportement inchangé hors de Weda | task-362 |
 | F4 — Importer un document reçu dans le dossier patient | ⚪ À faire | — | task-363 |
 
-**Couverture EPIC consolidée : 50 %** (2 fonctionnalités sur 4 validées).
+**Couverture EPIC consolidée : 62 %** (2 fonctionnalités sur 4 validées, la troisième livrée côté messagerie).
 
 ---
 
@@ -191,6 +191,12 @@ flowchart LR
   patient concerné, trouvé par son INS vérifiée. À défaut, il voit des correspondances possibles,
   signalées « à vérifier ». Il ouvre le dossier en un clic dans Weda (task-357).
 
+- v1.2 — Dans Weda, la nouvelle messagerie s'ouvre à chaque entrée sur la messagerie que Weda
+  connaît, même si le praticien en a choisi une autre par défaut. Si elle n'est pas encore
+  rattachée à son compte, l'écran de rattachement le lui annonce, l'adresse déjà saisie. Une fois
+  la messagerie ouverte, il passe librement à ses autres messageries. Ouverte hors de Weda, la
+  nouvelle messagerie ouvre toujours sa messagerie par défaut (task-362).
+
 ### Sécurité
 
 - v1.0 — La nouvelle messagerie ne dialogue avec Weda que si l'intégration a été explicitement
@@ -198,6 +204,10 @@ flowchart LR
   demandes que de la messagerie qu'il affiche lui-même (task-356).
 - v1.1 — Aucune identité patient n'est créée ni modifiée depuis la nouvelle messagerie. La recherche
   du dossier reste limitée au cabinet du praticien (task-357).
+- v1.2 — Désigner une messagerie n'accorde aucun droit : seule une messagerie déjà rattachée au
+  compte du praticien s'ouvre, et le rattachement reste soumis à son identité Pro Santé Connect.
+  L'adresse de la messagerie n'est conservée qu'à l'écran, jamais dans l'adresse de la page ni dans
+  les journaux (task-362).
 
 ---
 

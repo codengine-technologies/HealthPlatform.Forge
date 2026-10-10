@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E019-integration-de-la-nouvelle-messagerie.md](E019-integration-de-la-nouvelle-messagerie.md).
-> **Dernière mise à jour** : 2026-10-10 (v1.1)
+> **Dernière mise à jour** : 2026-10-10 (v1.2)
 
 ---
 
@@ -140,6 +140,79 @@
     servis en partie par le cache Nx) ;
   - `/tech-writer` : 48 s.
 
+
+### v1.2 — Boîte désignée par Weda : weda2 embarqué s'ouvre sur la messagerie que Weda connaît — task-362
+
+- **Task** : task-362, statut `done` (`/review` APPROVED le 2026-10-10). Premier cycle E019
+  entièrement autonome (`/start` → `/develop` → … → `/review`). Priorité 1 : un compte Keycloak peut
+  porter plusieurs boîtes, et weda2 ouvrait sa boîte « par défaut ».
+- **PRs** :
+  - `api-mail` #285, `feat/task-362-weda-designated-mailbox` → `develop`, label
+    `awaiting-human-merge`. Catalogue seul : `d7af41e2`, E2E-WEDA-001 v1 (angular `requis`, mobile
+    `non-applicable`) ;
+  - `client-angular` : code-only, **non commité** sur `feature/nova-rewriting-mss-weda-integration`.
+    **À commiter sur TFS avant le merge de #285** (convention `test-angular-non-commite`) ;
+  - Weda (hors forge, règle 11) : `GET api/nova-mss/mailbox`, gestionnaire `get-mailbox` de
+    `nova-mss-host.js`, switch masqué aux secrétaires. **Reste à faire par l'humain.**
+- **client-angular** :
+  - `libs/mss` : jeton `MSS_DESIGNATED_MAILBOX` (`() => Promise<string | null>`, optionnel).
+    `mailboxGuard` l'interroge en parallèle de `store.initialize()`, puis applique la table :
+    - boîte sélectionnable du compte → ouverte, quel que soit `isDefault` ;
+    - non sélectionnable → `select` ;
+    - absente du compte → `onboarding` ;
+    - pas d'adresse → table inchangée ;
+    - `PscRequired` reste prioritaire.
+  - Journal `[MailboxEntry] designated-mailbox outcome=designated|attach-proposed|fallback`, sans
+    adresse.
+  - `MailboxSessionStore.designatedEmail` : en mémoire seulement, remis à zéro par `clear()`,
+    jamais dans l'URL.
+  - `isSameMailboxAddress` (`core/utils/mailbox-address.util.ts`) : comparaison sans casse ni
+    espaces, partagée par la garde et l'écran.
+  - Écran de rattachement : annonce `mailbox-onboarding-designated` et pré-remplissage par
+    `AttachMailboxFormComponent.initialEmail` (`linkedSignal`), tant que le compte ne porte pas
+    l'adresse.
+  - `apps/weda2` : `designatedMailboxFactory`, fourni en mode embarqué seulement. `get-mailbox` à
+    10 s ; une erreur, une adresse vide ou mal formée donnent `null`. `'get-mailbox'` est ajouté à
+    `EmbeddedHostRequestType`.
+- **Faux hôte e2e** (`e2e/mss-e2e/support/weda-host.ts`, réutilisable par task-363) :
+  - `startFakeHost` : vrai serveur HTTPS loopback sur `https://localhost:47399`, avec le certificat
+    de dev de `run.mjs`, déclaré dans `embeddedHostOrigins` de la configuration e2e ;
+  - pont v1 côté hôte (`host-capabilities`, `get-mailbox`), avec contrôle de la fenêtre source et
+    de l'origine ;
+  - un `route.fulfill` initial était bloqué par le contrôle d'accès au réseau local de Chrome (page
+    « publique »). La plage 44300-44399 est réservée par `http.sys` (IIS Express).
+- **Validation** :
+  - client-angular : `nx build weda2` OK, 11 projets de tests verts ;
+  - api-mail : domain 190, infrastructure 683, api 1 186, application 3 569, integration 838 (16
+    ignorés), 0 échec ; `ScenarioCatalogTests` 17/17.
+- **Tests rouges d'abord et mutations** :
+  - vus rouges avant implémentation : 9 cas de garde, 1 store, 2 cas de l'écran ;
+  - mutations unitaires, toutes rouges sur l'assertion visée :
+    - MG1 désignation ignorée, MG2 PSC non prioritaire, MG3 casse stricte ;
+    - MO1 sans pré-remplissage ;
+    - M1 fourni hors iframe, M2 délai par défaut, M3 validation d'adresse retirée ;
+  - mutations e2e, rouges sur l'assertion visée : ME1 fournisseur absent, ME2 garde qui ignore la
+    désignation.
+- **E2E** :
+  - mobile : 31/31 ;
+  - angular : 31 verts, E2E-COMPOSE-002 en quarantaine (rouge, task-350) ;
+  - porte verte, parité verte, E2E-WEDA-001 ✅.
+- **Incidents de cycle** :
+  - port 5052 tenu par l'AppHost de dev de l'humain pendant `/develop` : non arrêté par la forge ;
+  - 1er essai mobile en outillage : API DCP élevée injoignable, `migrate.lock` de 0 octet. Réglé
+    en purgeant `~/.dcp/state.elevated` ;
+  - E2E-WEDA-001 rouge au 1er passage angular (faux hôte en `route.fulfill`), corrigé en reprise
+    `/develop`. Prévention : `conventions/e2e.md`, entrée `hote-embarquant-en-loopback`.
+- **Suggestions non bloquantes, décision produit** :
+  - aucune sortie depuis l'écran de rattachement d'une boîte désignée dont le rattachement échoue.
+    Le praticien embarqué n'atteint alors plus ses autres boîtes. Piste : lien vers `/select` ;
+  - le titre « Rattachez votre première messagerie » reste affiché quand le compte en porte déjà
+    d'autres.
+- **Durée du cycle** (`## Timings` de `tasks/done-task-362.md`) : **54 min 18 s** au total.
+  - `/e2e` : 26 min 40 s (5 mesures e2e cumulant 18 min 36 s) ;
+  - `/develop` : 21 min 54 s ;
+  - `/review` : 4 min 49 s (2 builds, 2 suites de tests).
+
 ---
 
 ## Annexe A — Cartographie des briques applicatives
@@ -154,23 +227,25 @@
 | Hôte Weda (hors forge) | Weda : `Weda/FolderMedical/WedaEchanges/NovaMss/` (`NovaMssHost.ascx`, `nova-mss-host.js`), inclus par `Default.aspx` | Bandeau, iframe, gestionnaire du pont (repère `nova-mss`, ADR-007 amendement 4) |
 | Panneau « Dossier Weda » | `Client/Angular/front/libs/mss/src/features/mail/components/weda-patient-panel/` | Patient Weda par INS ou candidats, ouverture du dossier (task-357) |
 | API Weda du dossier patient (hors forge) | Weda : `Weda/api/NovaMss/` (`NovaMssController`, `NovaMssPatientMatcher`, route `api/nova-mss`) ; code Mickey intact, règle de rapprochement copiée de `MessageBuilder` | `resolve-patient`, `filing-context`, `patient-url` (task-357) |
+| Boîte désignée par l'hôte | `Client/Angular/front/libs/mss/src/core/tokens/mss-designated-mailbox.token.ts`, `core/guards/mailbox.guard.ts`, `core/utils/mailbox-address.util.ts`, `apps/weda2/src/lib/embedded/designated-mailbox.provider.ts` | `get-mailbox`, ouverture d'office, rattachement pré-rempli (task-362) |
+| Faux hôte Weda (e2e) | `Client/Angular/front/e2e/mss-e2e/support/weda-host.ts` | Serveur HTTPS loopback `localhost:47399`, pont v1 côté hôte, réutilisé par task-363 |
 | Décisions | Weda : `docs/architecture/adr/007_integration-nouvelle-experience-messagerie.md` ; `Client/Angular/docs/ADR-2026-10-09-integration-weda-mode-embarque.md` | Contrat du pont, amendements 1 à 4 (le 3 fait foi ; le 4 fixe le repère `nova-mss` : import à la demande, WMickey garde la réception, boîte désignée par Weda) |
 
 ---
 
 ## Annexe B — Inventaire fonctionnel (2026-10-10)
 
-- Tasks de l'EPIC : 4 actives, 2 `done` (356, 357) et 2 `todo` (362, 363). 4 en attente dans
+- Tasks de l'EPIC : 4 actives, 3 `done` (356, 357, 362) et 1 `todo` (363). 4 en attente dans
   `tasks/onhold/` (358 à 361) : elles portaient le mode exclusif de l'amendement 2, abandonné par
   l'amendement 3 de l'ADR-007 (décision humaine du 2026-10-10).
 - Contrat du pont : version 1. Types implémentés côté hôte : `host-capabilities` (task-356) ;
-  `resolve-patient`, `get-filing-context`, `open-patient-record` (task-357). À venir :
-  `get-mailbox` (task-362), seule demande émise avant la lecture du flag, et `file-documents`
-  (task-363), avec transfert d'octets. `file-message` et `open-draft` sont abandonnés.
+  `resolve-patient`, `get-filing-context`, `open-patient-record` (task-357) ; `get-mailbox`
+  (task-362), seule demande émise avant la lecture du flag (côté Weda à réaliser). À venir :
+  `file-documents` (task-363), avec transfert d'octets. `file-message` et `open-draft` sont abandonnés.
 - Flags : `weda_integration` (fermé à froid, évalué sur l'identité de la boîte ouverte). Aucun
   mot-clé IMAP : `Weda` et `WedaClasse` sont abandonnés avec l'amendement 2.
 - Quarantaines e2e ouvertes : 1 (E2E-COMPOSE-002, angular, task-350). Faux hôte de test et
-  E2E-WEDA-001 (boîte désignée) : task-362. Couverture e2e du parcours « Dossier Weda », reportée de
+  E2E-WEDA-001 (boîte désignée) : livrés par task-362, verts. Couverture e2e du parcours « Dossier Weda », reportée de
   task-357 à task-360 puis reprise par task-363 : E2E-WEDA-002.
 
 ---
@@ -181,7 +256,7 @@
 |---|---|---|---|
 | task-356 | done (PR api-mail #284, en attente de merge ; Angular à pousser sur TFS) | Mode embarqué, pont v1, `WedaIntegrationService`, port `MSS_PATIENT_RECORD_GATEWAY`, flag `weda_integration`, correctif `has-session` | RG-E019-03, 04, 06 |
 | task-357 | done (aucune PR forge ; Angular à pousser sur TFS ; Weda hors forge) | Panneau « Dossier Weda » : patient Weda par INS vérifiée ou candidats par traits, ouverture du dossier ; API Weda `api/nova-mss` (`resolve-patient`, `filing-context`, `patient-url`) | RG-E019-01, 02 (affichage) |
-| task-362 | todo | Boîte désignée par Weda : jeton `libs/mss` lu par `mailboxGuard` avant la table de décision, demande `get-mailbox`, écran de rattachement pré-rempli ; faux hôte de test et E2E-WEDA-001 ; côté Weda, `GET api/nova-mss/mailbox` | RG-E019-07 |
+| task-362 | done (PR api-mail #285, en attente de merge ; Angular à commiter sur TFS ; partie Weda à faire) | Boîte désignée par Weda : jeton `libs/mss` lu par `mailboxGuard` avant la table de décision, demande `get-mailbox`, écran de rattachement pré-rempli ; faux hôte de test et E2E-WEDA-001 ; côté Weda, `GET api/nova-mss/mailbox` | RG-E019-07 |
 | task-363 | todo | Import à la demande : fenêtre d'import (patient, documents, destination, classification, commentaire, post-it), `file-documents` avec octets transférés, ni corbeille ni mot-clé, pas d'import pour la biologie et HPRIM ; E2E-WEDA-002 ; côté Weda, `POST api/nova-mss/documents` | RG-E019-01, 02, 05 |
 | task-358 | en attente (`tasks/onhold/`, amendement 3) | API d'intégration api-mail `api/v1/integration`, canal serveur Weda → api-mail, compteur de non-lus de l'en-tête | — |
 | task-359 | en attente (`tasks/onhold/`, amendement 3) | Réception des CR de biologie en bannette HPRIM sans WMickey, mots-clés `Weda` / `WedaClasse` | — |

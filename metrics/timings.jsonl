@@ -4308,3 +4308,5 @@
 {"ts":"2026-10-10T12:38:57+02:00","run_id":"-","type":"cmd","task":"task-362","step":"review","repo":"client-angular","kind":"test","label":"","cwd":"Client/Angular/front","cmd":"npx nx run-many -t test --watch=false","duration_ms":30831,"exit_code":0}
 {"ts":"2026-10-10T12:41:59+02:00","run_id":"-","type":"cmd","task":"task-362","step":"review","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln","duration_ms":209714,"exit_code":0}
 {"ts":"2026-10-10T12:42:59+02:00","run_id":"-","type":"step","task":"task-362","step":"review","status":"ok","note":"APPROVED ; api-mail 1B/1T, client-angular 1B/1T ; PR #285 (awaiting-human-merge) ; client-angular code-only","iterations":null,"duration_ms":289613}
+{"ts":"2026-10-10T12:43:06+02:00","run_id":"-","type":"step_start","task":"task-362","step":"tech-writer"}
+{"ts":"2026-10-10T12:43:58+02:00","run_id":"-","type":"step","task":"task-362","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":52586}

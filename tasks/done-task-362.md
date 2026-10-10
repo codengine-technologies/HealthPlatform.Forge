@@ -308,7 +308,8 @@ Elle est nécessaire pour que la tâche soit complète (règle 11).
 | /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non listé ni touché |
 | /e2e | ok | 26 min 40 s | — | — | — | e2e ×5 (18 min 36 s), porte verte ; DCP élevé purgé (outillage 1er essai mobile) ; WEDA-001 corrigé en reprise (faux hôte loopback) |
 | /review | ok | 4 min 49 s | 2 (13 s) | 2 (4 min 00 s) | — | client-angular 1B/1T, api-mail 1B/1T, APPROVED ; api-mail 1B/1T, client-angular 1B/1T ; PR #285 (awaiting-human-merge) ; client-angular code-only |
-| **Total cycle** | | **54 min 18 s** | **3 (42 s)** | **5 (8 min 45 s)** | **0 (0.0 s)** | |
+| /tech-writer | ok | 52 s | — | — | — | — |
+| **Total cycle** | | **55 min 10 s** | **3 (42 s)** | **5 (8 min 45 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×1 (27 s)
 
