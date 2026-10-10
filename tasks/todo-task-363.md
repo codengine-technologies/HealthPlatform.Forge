@@ -110,6 +110,12 @@ Elle est nécessaire pour que la tâche soit complète (règle 11).
 > modifié** : une règle à reprendre est **copiée** dans `NovaMss`, avec un commentaire qui cite sa
 > source. Hors de ces dossiers, seuls changent `Weda.csproj` et, au besoin, l'inclusion dans
 > `Default.aspx`.
+>
+> **Périphérique « Expérience Nova » (9892, `HasNovaMss`), déjà livré** (ADR-007, amendement 5) : sans lui,
+> rien ne s'exécute. `NovaMssHost.ascx` n'est pas rendu, et toute route `api/nova-mss` répond `403` par
+> `[NovaMssEnabled]`, posé sur `NovaMssController` : une nouvelle route en hérite, rien à ajouter. Seule
+> exception écrite à la règle : les ajouts du périphérique dans `GlobalConstantes`, `Peripherique`,
+> `CustomPrincipal` et les trois écrans d'administration.
 
 - **`POST /api/nova-mss/documents`** (multipart), dans `NovaMssController` (repère `nova-mss`, ADR-007 amendement 4) :
   - `[Authorize]`, `HasWmss` exigé, refusé à un secrétaire ;
@@ -171,6 +177,8 @@ Elle est nécessaire pour que la tâche soit complète (règle 11).
 - [ ] **Weda — repère `nova-mss`** : `git diff --stat` de la partie Weda ne montre que des fichiers sous
   `NovaMss/`, plus `Weda.csproj` (et l'inclusion dans `Default.aspx`). Aucun fichier sous
   `Weda/api/WMickey/`, `WMickey/` ou `WedaGlobal/WCommunication/` n'est modifié.
+- [ ] **Weda — périphérique** : sans « Expérience Nova », `POST api/nova-mss/documents` répond `403`, et
+  le bandeau n'apparaît pas dans Échanges.
 - [ ] Partie Weda faite et validée (règle 11) : voir le Manual Test Plan
 
 ## Manual Test Plan
