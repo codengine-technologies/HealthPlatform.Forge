@@ -142,6 +142,9 @@ Elle est nécessaire pour que la tâche soit complète (règle 11).
   préexistants documentés)
 - [ ] **Angular — tests de composant**, rouges d'abord :
   - [ ] l'action et la fenêtre ne sont rendues que si `available()` ;
+  - [ ] `available()` faux (flag `weda_integration` coupé, hors iframe, ou hôte incompatible) :
+    **aucun appel** n'est émis — ni `downloadAttachment`, ni `exportMailAsPdf`, ni `file-documents` ;
+  - [ ] `available()` faux : l'information fixe sur la biologie n'est pas affichée non plus ;
   - [ ] la liste des documents : PDF des CDA et pièces cochés, enveloppe IHE_XDM jamais proposée,
     message en PDF proposé et non coché ;
   - [ ] la demande `file-documents` porte exactement les documents cochés, avec leur titre,
@@ -184,8 +187,12 @@ Elle est nécessaire pour que la tâche soit complète (règle 11).
 ## Manual Test Plan
 
 1. Lancer le backend (`cd Api/Mail && dotnet run --project src/AppHost`) et weda2
-   (`cd Client/Angular/front && .\serve-weda2.ps1`). Weda tourne en `https://localhost:44300`, dans
-   un cabinet de test où `weda_integration` est active.
+   (`cd Client/Angular/front && .\serve-weda2.ps1`). Weda tourne en `https://localhost:44300`.
+   Prérequis :
+   - l'utilisateur a, dans son cabinet, le périphérique Weda « Expérience Nova » (9892) et une boîte
+     MSSanté V2 ;
+   - dans Flagsmith, `weda_integration` est activé pour l'**identité de la boîte que Weda désigne**
+     (le flag est évalué par identité, sur la boîte ouverte, pas par cabinet).
 2. Dans Échanges (nouvelle expérience), ouvrir un courrier avec un PDF joint, dont le patient est
    connu de Weda par INS. « Importer dans Weda » présélectionne ce patient.
 3. Importer le PDF en « Courrier », avec une classification et un commentaire. Le document apparaît
@@ -204,6 +211,9 @@ Elle est nécessaire pour que la tâche soit complète (règle 11).
 10. **Trop volumineux** : importer plusieurs gros fichiers ensemble. Le message invite à les importer
     séparément.
 11. Dans les journaux du navigateur et du serveur Weda : ni INS, ni nom de patient.
+12. **Flag coupé** : désactiver `weda_integration` pour cette identité, puis recharger Échanges. weda2
+   s'affiche toujours, mais ni l'action « Importer dans Weda », ni l'information sur la biologie
+   n'apparaissent. Dans l'onglet Réseau, aucune demande d'import n'est envoyée à l'hôte.
 
 ## Conformité santé / Ségur / ANS
 
