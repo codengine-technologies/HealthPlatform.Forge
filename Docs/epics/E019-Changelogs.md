@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E019-integration-de-la-nouvelle-messagerie.md](E019-integration-de-la-nouvelle-messagerie.md).
-> **Dernière mise à jour** : 2026-10-10 (v1.2)
+> **Dernière mise à jour** : 2026-10-10 (v1.3)
 
 ---
 
@@ -213,6 +213,71 @@
   - `/develop` : 21 min 54 s ;
   - `/review` : 4 min 49 s (2 builds, 2 suites de tests).
 
+
+### v1.3 — Import à la demande dans le dossier patient Weda — task-363
+
+- **Task** : task-363, statut `done` (`/review` APPROVED le 2026-10-10). Cycle autonome. Le 1er
+  `/e2e` a été bloqué en outillage : les ports 5052 et 4200 étaient tenus par les serveurs de
+  développement de l'humain (`questions/answered/task-363.md`). Relancé par l'humain.
+- **PRs** :
+  - `api-mail` #286, `feat/task-363-weda-import-documents` → `develop`, label
+    `awaiting-human-merge`. Commit `2aff4aff` : `E2eProfile.ForcedFeatureFlags` +
+    `weda_integration`, tests `ForcedFeatureFlags_IncludeWedaIntegration` (vu rouge) et
+    `ForcedFeatureFlags_AreAllKnownFlags`, catalogue E2E-WEDA-002 v1 ;
+  - `client-angular` : code-only, **non commité** sur `feature/nova-rewriting-mss-weda-integration`.
+    **À commiter sur TFS avant le merge de #286** ;
+  - Weda (hors forge, règle 11), **reste à faire** : `POST api/nova-mss/documents`, gestionnaire
+    `file-documents` (`413` → `payload-too-large`), `postItLevels` dans `get-filing-context`.
+- **client-angular** :
+  - `libs/mss/src/features/mail/components/weda-import/` : `WedaImportComponent`, posé dans
+    `mail-detail` sous le panneau « Dossier Weda » ;
+  - fonctions pures `weda-import.utils.ts` :
+    - `isBiologyMail` : LOINC `11502-2` ou objet contenant `HNET.1/MSG/` ;
+    - `importCandidatesOf` : PDF des CDA et pièces jointes cochés, en `attachment-{rang}`,
+      enveloppe IHE_XDM exclue, message `body` non coché ;
+    - `describeImportError` ;
+  - patient : présélection par `byIns` seulement, candidats jamais présélectionnés, recherche
+    manuelle par `resolve-patient` (contrat inchangé) ;
+  - octets lus par `downloadAttachment` / `exportMailAsPdf`, transférés par la passerelle ;
+  - nettoyage (amendement 3) : `getFilingStatus`, `IWedaFilingEntry`,
+    `MAX_FILING_STATUS_MESSAGE_IDS`, `get-filing-status` et `WedaFiledBy` retirés.
+    `IWedaFilingResult` devient `{ results: [{ part, fileStreamId }] }` ;
+  - **ajout optionnel au contrat** : `IWedaFilingContext.postItLevels?` (libellés de Weda, table
+    de configuration 70). Absent, weda2 envoie le niveau 0.
+- **Faux hôte e2e** : il répond aussi à `resolve-patient` (dossiers synthétiques « à vérifier »),
+  `get-filing-context`, `open-patient-record` et `file-documents`. D'un import, il ne garde que le
+  nombre de pièces, leurs types et leurs tailles.
+- **Validation** :
+  - client-angular : `nx build weda2` OK, 11 projets verts (41 tests nouveaux pour l'import) ;
+  - api-mail (dans `bin`, à `/review`) : domain 190, infrastructure 683, api 1 188, application
+    3 569, integration 838 (16 ignorés), 0 échec.
+- **Mutations** :
+  - unitaires MU1 à MU7, toutes rouges sur l'assertion visée ;
+  - e2e ME3 à ME6 (import jamais envoyé, biologie non reconnue, ouverture sans effet, message
+    supprimé par l'import), rouges sur l'assertion visée. Deux essais invalides (mutation non
+    compilée, ancre coupée par Prettier) ont été rejoués valides. La récidive est consignée dans
+    `conventions/e2e.md` (`mutation-non-servie`, occurrence 4).
+- **E2E** :
+  - mobile : 31/31 ;
+  - angular : 32 verts, E2E-COMPOSE-002 en quarantaine (task-350) ;
+  - E2E-WEDA-002 vert au 1er passage, porte et parité vertes.
+- **Incidents** :
+  - pendant `/develop`, `src/Api/bin` était verrouillé par l'AppHost de développement : tests
+    compilés dans `Api/Mail/artifacts/forge-363`, dans le dépôt ;
+  - `SemanticSearchRepositoryIntegrationTests` rouges 3 fois tant que l'AppHost tournait
+    (`develop` compris), verts une fois l'AppHost arrêté. Corrélation, cause non prouvée :
+    mémoire de session ;
+  - 1er build rouge sur un TS2322 du gabarit (`WedaDestination`), que vitest ne voit pas.
+- **Suggestions reportées** :
+  - préparation partielle si `resolve-patient` échoue ;
+  - plusieurs patients dans un même message ;
+  - post-it sans destinataire ;
+  - `sentAt` vide.
+- **Durée du cycle** (`## Timings` de `tasks/done-task-363.md`) : **1 h 02 min** au total.
+  - `/develop` : 30 min 56 s ;
+  - `/e2e` : 25 min 47 s, preuves par mutation comprises ;
+  - `/review` : 4 min 55 s.
+
 ---
 
 ## Annexe A — Cartographie des briques applicatives
@@ -228,25 +293,28 @@
 | Panneau « Dossier Weda » | `Client/Angular/front/libs/mss/src/features/mail/components/weda-patient-panel/` | Patient Weda par INS ou candidats, ouverture du dossier (task-357) |
 | API Weda du dossier patient (hors forge) | Weda : `Weda/api/NovaMss/` (`NovaMssController`, `NovaMssPatientMatcher`, route `api/nova-mss`) ; code Mickey intact, règle de rapprochement copiée de `MessageBuilder` | `resolve-patient`, `filing-context`, `patient-url` (task-357) |
 | Boîte désignée par l'hôte | `Client/Angular/front/libs/mss/src/core/tokens/mss-designated-mailbox.token.ts`, `core/guards/mailbox.guard.ts`, `core/utils/mailbox-address.util.ts`, `apps/weda2/src/lib/embedded/designated-mailbox.provider.ts` | `get-mailbox`, ouverture d'office, rattachement pré-rempli (task-362) |
-| Faux hôte Weda (e2e) | `Client/Angular/front/e2e/mss-e2e/support/weda-host.ts` | Serveur HTTPS loopback `localhost:47399`, pont v1 côté hôte, réutilisé par task-363 |
+| Faux hôte Weda (e2e) | `Client/Angular/front/e2e/mss-e2e/support/weda-host.ts` | Serveur HTTPS loopback `localhost:47399`, pont v1 côté hôte : boîte désignée (task-362), dossier patient et import (task-363) |
+| Import dans le dossier patient | `Client/Angular/front/libs/mss/src/features/mail/components/weda-import/` | Fenêtre d'import, documents proposés, erreurs du pont (task-363) |
 | Décisions | Weda : `docs/architecture/adr/007_integration-nouvelle-experience-messagerie.md` ; `Client/Angular/docs/ADR-2026-10-09-integration-weda-mode-embarque.md` | Contrat du pont, amendements 1 à 4 (le 3 fait foi ; le 4 fixe le repère `nova-mss` : import à la demande, WMickey garde la réception, boîte désignée par Weda) |
 
 ---
 
 ## Annexe B — Inventaire fonctionnel (2026-10-10)
 
-- Tasks de l'EPIC : 4 actives, 3 `done` (356, 357, 362) et 1 `todo` (363). 4 en attente dans
+- Tasks de l'EPIC : 4 actives : 356 et 357 `done`, 362 archivée (mergée), 363 `done`. 4 en attente dans
   `tasks/onhold/` (358 à 361) : elles portaient le mode exclusif de l'amendement 2, abandonné par
   l'amendement 3 de l'ADR-007 (décision humaine du 2026-10-10).
 - Contrat du pont : version 1. Types implémentés côté hôte : `host-capabilities` (task-356) ;
   `resolve-patient`, `get-filing-context`, `open-patient-record` (task-357) ; `get-mailbox`
-  (task-362), seule demande émise avant la lecture du flag (côté Weda à réaliser). À venir :
-  `file-documents` (task-363), avec transfert d'octets. `file-message` et `open-draft` sont abandonnés.
+  (task-362), seule demande émise avant la lecture du flag (côté Weda à réaliser) ;
+  `file-documents` (task-363), avec transfert d'octets, et le champ optionnel `postItLevels`
+  de `get-filing-context` (côté Weda à réaliser). `file-message` et `open-draft` sont abandonnés.
 - Flags : `weda_integration` (fermé à froid, évalué sur l'identité de la boîte ouverte). Aucun
   mot-clé IMAP : `Weda` et `WedaClasse` sont abandonnés avec l'amendement 2.
 - Quarantaines e2e ouvertes : 1 (E2E-COMPOSE-002, angular, task-350). Faux hôte de test et
   E2E-WEDA-001 (boîte désignée) : livrés par task-362, verts. Couverture e2e du parcours « Dossier Weda », reportée de
-  task-357 à task-360 puis reprise par task-363 : E2E-WEDA-002.
+  task-357 à task-360 puis reprise par task-363 : E2E-WEDA-002, vert,
+  avec l'import et la biologie.
 
 ---
 
@@ -256,8 +324,8 @@
 |---|---|---|---|
 | task-356 | done (PR api-mail #284, en attente de merge ; Angular à pousser sur TFS) | Mode embarqué, pont v1, `WedaIntegrationService`, port `MSS_PATIENT_RECORD_GATEWAY`, flag `weda_integration`, correctif `has-session` | RG-E019-03, 04, 06 |
 | task-357 | done (aucune PR forge ; Angular à pousser sur TFS ; Weda hors forge) | Panneau « Dossier Weda » : patient Weda par INS vérifiée ou candidats par traits, ouverture du dossier ; API Weda `api/nova-mss` (`resolve-patient`, `filing-context`, `patient-url`) | RG-E019-01, 02 (affichage) |
-| task-362 | done (PR api-mail #285, en attente de merge ; Angular à commiter sur TFS ; partie Weda à faire) | Boîte désignée par Weda : jeton `libs/mss` lu par `mailboxGuard` avant la table de décision, demande `get-mailbox`, écran de rattachement pré-rempli ; faux hôte de test et E2E-WEDA-001 ; côté Weda, `GET api/nova-mss/mailbox` | RG-E019-07 |
-| task-363 | todo | Import à la demande : fenêtre d'import (patient, documents, destination, classification, commentaire, post-it), `file-documents` avec octets transférés, ni corbeille ni mot-clé, pas d'import pour la biologie et HPRIM ; E2E-WEDA-002 ; côté Weda, `POST api/nova-mss/documents` | RG-E019-01, 02, 05 |
+| task-362 | archivée (PR api-mail #285 mergée) | Boîte désignée par Weda : jeton `libs/mss` lu par `mailboxGuard` avant la table de décision, demande `get-mailbox`, écran de rattachement pré-rempli ; faux hôte de test et E2E-WEDA-001 ; côté Weda, `GET api/nova-mss/mailbox` | RG-E019-07 |
+| task-363 | done (PR api-mail #286, en attente de merge ; Angular à commiter sur TFS ; partie Weda à faire) | Import à la demande : fenêtre d'import (patient, documents, destination, classification, commentaire, post-it), `file-documents` avec octets transférés, ni corbeille ni mot-clé, pas d'import pour la biologie et HPRIM ; E2E-WEDA-002 ; côté Weda, `POST api/nova-mss/documents` | RG-E019-01, 02, 05 |
 | task-358 | en attente (`tasks/onhold/`, amendement 3) | API d'intégration api-mail `api/v1/integration`, canal serveur Weda → api-mail, compteur de non-lus de l'en-tête | — |
 | task-359 | en attente (`tasks/onhold/`, amendement 3) | Réception des CR de biologie en bannette HPRIM sans WMickey, mots-clés `Weda` / `WedaClasse` | — |
 | task-360 | en attente (`tasks/onhold/`, amendement 3) | Classer par identifiants via le canal serveur ; remplacée par task-363 | — |

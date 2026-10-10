@@ -1,8 +1,8 @@
 # E019 — Intégration de la nouvelle messagerie dans Weda
 
-> **Statut** : 🟡 En cours — 2 fonctionnalités sur 4 validées, 1 livrée côté messagerie
+> **Statut** : 🟡 En cours — 2 fonctionnalités sur 4 validées, 2 livrées côté messagerie
 > **Modèle** : task-driven
-> **Version** : 1.2
+> **Version** : 1.3
 > **Auteur** : PO forge
 > **Audience** : PO, direction, équipe produit — la vue ingénierie vit dans [E019-Changelogs.md](E019-Changelogs.md)
 > **Dernière mise à jour** : 2026-10-10
@@ -76,7 +76,7 @@ Le praticien passe librement de l'écran actuel à la nouvelle messagerie.
 | **F1 — La nouvelle messagerie dans l'écran Échanges** | Ouvrir sa messagerie dans Weda sans se reconnecter. Elle ne dialogue avec le dossier patient que si l'intégration est activée pour son cabinet. | task-356 | 🟢 Validée, en attente de mise en ligne |
 | **F2 — Le dossier Weda du patient d'un document reçu** | Voir, sous un message, le dossier Weda du patient concerné (trouvé par son INS), ou des correspondances possibles à vérifier, puis l'ouvrir en un clic. | task-357 | 🟢 Validée, en attente de mise en ligne |
 | **F3 — La messagerie que Weda connaît, ouverte d'office** | Retrouver dans Weda la messagerie que Weda connaît, même s'il en a choisi une autre par défaut. Si elle n'est pas encore rattachée à son compte, la rattacher, l'adresse déjà saisie. Passer ensuite librement à ses autres messageries. | task-362 | 🟡 Livrée côté messagerie, partie Weda à réaliser |
-| **F4 — Importer un document reçu dans le dossier patient** | Importer, quand il le décide, une pièce jointe, le document d'un compte rendu ou le message lui-même dans le dossier d'un patient : destination, classification, commentaire, post-it. Le message reste dans sa boîte de réception. | task-363 | ⚪ À faire |
+| **F4 — Importer un document reçu dans le dossier patient** | Importer, quand il le décide, une pièce jointe, le document d'un compte rendu ou le message lui-même dans le dossier d'un patient : destination, classification, commentaire, post-it. Le message reste dans sa boîte de réception. | task-363 | 🟡 Livrée côté messagerie, partie Weda à réaliser |
 
 ---
 
@@ -107,11 +107,11 @@ flowchart LR
 
 | Règle | Énoncé | Statut |
 |---|---|---|
-| RG-E019-01 | Weda reste seul à écrire dans le dossier patient : la nouvelle messagerie demande, Weda vérifie les droits du praticien et importe | 🟡 Tenue pour la recherche et l'ouverture du dossier, import à venir (task-363) |
-| RG-E019-02 | Aucune identité patient n'est créée ni modifiée depuis la nouvelle messagerie. Seule l'INS vérifiée désigne un dossier d'office ; un rapprochement par nom, prénom et date de naissance reste une proposition à vérifier | 🟡 Tenue à l'affichage du dossier, import à venir (task-363) |
+| RG-E019-01 | Weda reste seul à écrire dans le dossier patient : la nouvelle messagerie demande, Weda vérifie les droits du praticien et importe | 🟡 Tenue côté messagerie, import côté Weda à réaliser (task-363) |
+| RG-E019-02 | Aucune identité patient n'est créée ni modifiée depuis la nouvelle messagerie. Seule l'INS vérifiée désigne un dossier d'office ; un rapprochement par nom, prénom et date de naissance reste une proposition à vérifier | 🟡 Tenue côté messagerie : à l'import, seul un dossier trouvé par INS vérifiée est présélectionné, sinon le praticien choisit (task-363) |
 | RG-E019-03 | L'intégration s'active cabinet par cabinet, par un interrupteur fermé tant qu'il n'a pas été explicitement ouvert | ✅ Tenue (task-356) |
 | RG-E019-04 | Hors de Weda (onglet séparé, autre navigateur), la nouvelle messagerie ne propose aucune action sur le dossier patient | ✅ Tenue (task-356) |
-| RG-E019-05 | Les résultats de biologie restent intégrés par Weda seul, à la réception : la nouvelle messagerie n'en importe aucun, et importer un document ne déplace ni ne supprime le message | ⚪ À faire (task-363) |
+| RG-E019-05 | Les résultats de biologie restent intégrés par Weda seul, à la réception : la nouvelle messagerie n'en importe aucun, et importer un document ne déplace ni ne supprime le message | 🟡 Tenue côté messagerie : pas d'import pour la biologie, le message reste en place (task-363) |
 | RG-E019-06 | Aucune donnée de santé (identité, INS, contenu de document) n'apparaît dans les journaux | ✅ Tenue (task-356) |
 | RG-E019-07 | Dans Weda, la nouvelle messagerie s'ouvre toujours sur la messagerie que Weda connaît ; le praticien passe ensuite librement à ses autres messageries | 🟡 Tenue côté messagerie, partie Weda à réaliser (task-362) |
 
@@ -174,9 +174,9 @@ flowchart LR
 | F1 — La nouvelle messagerie dans l'écran Échanges | 🟢 Validée, en attente de mise en ligne | affichage dans Échanges, connexion sans ressaisie, activation par cabinet, rien hors de Weda | task-356 |
 | F2 — Le dossier Weda du patient d'un document reçu | 🟢 Validée, en attente de mise en ligne | dossier trouvé par INS vérifiée, correspondances signalées « à vérifier », ouverture du dossier en un clic dans Weda | task-357 |
 | F3 — La messagerie que Weda connaît, ouverte d'office | 🟡 Livrée côté messagerie, partie Weda à réaliser | ouverture d'office sur la messagerie désignée à chaque entrée, rattachement proposé avec l'adresse déjà saisie, comportement inchangé hors de Weda | task-362 |
-| F4 — Importer un document reçu dans le dossier patient | ⚪ À faire | — | task-363 |
+| F4 — Importer un document reçu dans le dossier patient | 🟡 Livrée côté messagerie, partie Weda à réaliser | fenêtre d'import (patient, documents, destination, classification, commentaire, post-it), message laissé en place, aucune action pour la biologie | task-363 |
 
-**Couverture EPIC consolidée : 62 %** (2 fonctionnalités sur 4 validées, la troisième livrée côté messagerie).
+**Couverture EPIC consolidée : 75 %** (2 fonctionnalités sur 4 validées, les deux autres livrées côté messagerie).
 
 ---
 
@@ -197,6 +197,14 @@ flowchart LR
   la messagerie ouverte, il passe librement à ses autres messageries. Ouverte hors de Weda, la
   nouvelle messagerie ouvre toujours sa messagerie par défaut (task-362).
 
+- v1.3 — « Importer dans Weda » : depuis un message reçu, le praticien importe, quand il le décide,
+  le compte rendu, une pièce jointe ou le message lui-même dans le dossier d'un patient. Pour
+  chaque document, il choisit le titre, la destination (Consultation, Examen, Courrier), la
+  classification et un commentaire, et peut ajouter un post-it pour un confrère. Le message
+  reste dans sa boîte de réception, et un second import reste possible. Un compte rendu de
+  biologie ne propose pas d'import : Weda l'intègre lui-même dans la bannette des résultats
+  (task-363).
+
 ### Sécurité
 
 - v1.0 — La nouvelle messagerie ne dialogue avec Weda que si l'intégration a été explicitement
@@ -208,6 +216,10 @@ flowchart LR
   compte du praticien s'ouvre, et le rattachement reste soumis à son identité Pro Santé Connect.
   L'adresse de la messagerie n'est conservée qu'à l'écran, jamais dans l'adresse de la page ni dans
   les journaux (task-362).
+- v1.3 — L'import ne vise qu'un dossier existant. Seul un dossier trouvé par INS vérifiée est
+  proposé d'office ; une correspondance par nom, prénom ou date de naissance doit être choisie
+  par le praticien. Aucune identité n'est créée ni modifiée, et Weda revérifie que le patient
+  appartient au cabinet (task-363).
 
 ---
 

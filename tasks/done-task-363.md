@@ -385,7 +385,8 @@ Elle est nécessaire pour que la tâche soit complète (règle 11).
 | /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non listé ni touché |
 | /e2e | ok | 25 min 47 s | — | — | — | e2e ×3 (11 min 02 s), porte verte ; WEDA-002 vert au 1er passage ; mutations e2e ME3-ME6 (2 essais invalides rejoués) |
 | /review | ok | 4 min 55 s | 2 (40 s) | 2 (4 min 07 s) | — | api-mail 1B/1T, client-angular 1B/1T, APPROVED ; api-mail 1B/1T (bin), client-angular 1B/1T ; PR #286 (awaiting-human-merge) ; client-angular code-only |
-| **Total cycle** | | **1 h 02 min** | **4 (1 min 11 s)** | **9 (13 min 01 s)** | **0 (0.0 s)** | |
+| /tech-writer | ok | 1 min 15 s | — | — | — | — |
+| **Total cycle** | | **1 h 03 min** | **4 (1 min 11 s)** | **9 (13 min 01 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×1 (11 s)
 
