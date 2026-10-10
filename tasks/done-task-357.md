@@ -274,4 +274,5 @@ Implémenté directement (hors `/develop`), à la demande de l'humain.
 |---|---|---|---|---|---|---|
 | /e2e | ok | 5 min 41 s | — | — | — | e2e ×2 (5 min 07 s), vert : angular 30 verts + 1 quarantaine flaky (E2E-COMPOSE-002, task-350), mobile listé, parité verte ; avertissement : panneau Dossier Weda sans spec e2e (couverture via task-360) |
 | /review | ok | 2 min 13 s | 2 (1 min 01 s) | 2 (3.3 s) | — | client-angular 2B/2T, APPROVED (blocage e2e levé par arbitrage PO : couverture reportée à task-360) ; client-angular code-only, Weda hors forge, aucune PR forge |
-| **Total cycle** | | **7 min 55 s** | **2 (1 min 01 s)** | **2 (3.3 s)** | **0 (0.0 s)** | |
+| /tech-writer | ok | 48 s | — | — | — | E019 v1.1 (Mode 1) : F2 validée, entrée changelog task-357, annexes |
+| **Total cycle** | | **8 min 43 s** | **2 (1 min 01 s)** | **2 (3.3 s)** | **0 (0.0 s)** | |

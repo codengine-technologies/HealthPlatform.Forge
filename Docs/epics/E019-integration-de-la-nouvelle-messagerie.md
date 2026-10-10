@@ -1,11 +1,11 @@
 # E019 — Intégration de la nouvelle messagerie dans Weda
 
-> **Statut** : 🟡 En cours — 1 fonctionnalité sur 6 validée
+> **Statut** : 🟡 En cours — 2 fonctionnalités sur 6 validées
 > **Modèle** : task-driven
-> **Version** : 1.0
+> **Version** : 1.1
 > **Auteur** : PO forge
 > **Audience** : PO, direction, équipe produit — la vue ingénierie vit dans [E019-Changelogs.md](E019-Changelogs.md)
-> **Dernière mise à jour** : 2026-10-09
+> **Dernière mise à jour** : 2026-10-10
 
 ---
 
@@ -22,7 +22,7 @@
 - [7. Contraintes et hypothèses](#7-contraintes-et-hypothèses)
 - [8. Critères d'acceptation de l'EPIC](#8-critères-dacceptation-de-lepic)
 - [9. Hors périmètre](#9-hors-périmètre)
-- [État de couverture (2026-10-09)](#état-de-couverture-2026-10-09)
+- [État de couverture (2026-10-10)](#état-de-couverture-2026-10-10)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -74,7 +74,7 @@ La bascule se fait **cabinet par cabinet**, et elle est réversible.
 | Fonctionnalité | Ce que le praticien peut faire | Tasks | Statut |
 |---|---|---|---|
 | **F1 — La nouvelle messagerie dans l'écran Échanges** | Ouvrir sa messagerie dans Weda sans se reconnecter. Elle ne dialogue avec le dossier patient que si l'intégration est activée pour son cabinet. | task-356 | 🟢 Validée, en attente de mise en ligne |
-| **F2 — Le dossier Weda du patient d'un document reçu** | Voir, sous un message, le dossier Weda du patient concerné (trouvé par son INS), ou des correspondances possibles à vérifier, puis l'ouvrir en un clic. | task-357 | 🟡 Réalisée, en attente de validation |
+| **F2 — Le dossier Weda du patient d'un document reçu** | Voir, sous un message, le dossier Weda du patient concerné (trouvé par son INS), ou des correspondances possibles à vérifier, puis l'ouvrir en un clic. | task-357 | 🟢 Validée, en attente de mise en ligne |
 | **F3 — Le bon nombre de messages non lus partout dans Weda** | Voir dans l'en-tête de Weda, sur toutes les pages, le nombre réel de messages non lus de sa nouvelle messagerie. | task-358 | ⚪ À faire |
 | **F4 — Les résultats de biologie arrivent seuls dans la bannette** | Recevoir ses comptes rendus de biologie directement dans la bannette de résultats, une seule fois, même s'il a déjà rangé le message. | task-359 | ⚪ À faire |
 | **F5 — Classer un document reçu en un clic** | Classer un courrier ou une pièce jointe dans le dossier du patient : destination, classification, commentaire, post-it. Le message est ensuite marqué « Classé dans Weda ». | task-360 | ⚪ À faire |
@@ -110,8 +110,8 @@ flowchart LR
 
 | Règle | Énoncé | Statut |
 |---|---|---|
-| RG-E019-01 | Weda reste seul à écrire dans le dossier patient : la nouvelle messagerie demande, Weda vérifie les droits du praticien et classe | 🟡 Posée, appliquée au fil des fonctionnalités (task-357) |
-| RG-E019-02 | Aucune identité patient n'est créée ni modifiée depuis la nouvelle messagerie. Seule l'INS vérifiée désigne un dossier d'office ; un rapprochement par nom, prénom et date de naissance reste une proposition à vérifier | 🟡 Appliquée à l'affichage du dossier (task-357) |
+| RG-E019-01 | Weda reste seul à écrire dans le dossier patient : la nouvelle messagerie demande, Weda vérifie les droits du praticien et classe | 🟡 Tenue pour la recherche et l'ouverture du dossier, classement à venir (task-357) |
+| RG-E019-02 | Aucune identité patient n'est créée ni modifiée depuis la nouvelle messagerie. Seule l'INS vérifiée désigne un dossier d'office ; un rapprochement par nom, prénom et date de naissance reste une proposition à vérifier | 🟡 Tenue à l'affichage du dossier, classement à venir (task-357) |
 | RG-E019-03 | L'intégration s'active cabinet par cabinet, par un interrupteur fermé tant qu'il n'a pas été explicitement ouvert | ✅ Tenue (task-356) |
 | RG-E019-04 | Hors de Weda (onglet séparé, autre navigateur), la nouvelle messagerie ne propose aucune action sur le dossier patient | ✅ Tenue (task-356) |
 | RG-E019-05 | Un résultat de biologie n'entre qu'une fois dans la bannette, et n'est jamais perdu, même si le message est rangé avant son traitement | ⚪ À faire (task-359) |
@@ -160,19 +160,18 @@ flowchart LR
 
 ---
 
-## État de couverture (2026-10-09)
+## État de couverture (2026-10-10)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
 | F1 — La nouvelle messagerie dans l'écran Échanges | 🟢 Validée, en attente de mise en ligne | affichage dans Échanges, connexion sans ressaisie, activation par cabinet, rien hors de Weda | task-356 |
-| F2 — Le dossier Weda du patient d'un document reçu | 🟡 Réalisée, en attente de validation | dossier trouvé par INS, correspondances à vérifier, ouverture du dossier en un clic | task-357 |
+| F2 — Le dossier Weda du patient d'un document reçu | 🟢 Validée, en attente de mise en ligne | dossier trouvé par INS vérifiée, correspondances signalées « à vérifier », ouverture du dossier en un clic dans Weda | task-357 |
 | F3 — Le bon nombre de messages non lus partout dans Weda | ⚪ À faire | — | task-358 |
 | F4 — Les résultats de biologie arrivent seuls dans la bannette | ⚪ À faire | — | task-359 |
 | F5 — Classer un document reçu en un clic | ⚪ À faire | — | task-360 |
 | F6 — Envoyer un document Weda par la nouvelle messagerie | ⚪ À faire | — | task-361 |
 
-**Couverture EPIC consolidée : 17 %** (1 fonctionnalité sur 6 validée ; une deuxième est réalisée et
-attend sa validation).
+**Couverture EPIC consolidée : 33 %** (2 fonctionnalités sur 6 validées).
 
 ---
 
@@ -183,11 +182,17 @@ attend sa validation).
 - v1.0 — La nouvelle messagerie s'affiche dans l'écran Échanges de Weda. Le praticien déjà
   connecté à Weda y entre directement, sans nouvelle connexion (task-356).
 
+- v1.1 — Sous chaque message qui contient un document médical, le praticien voit le dossier Weda du
+  patient concerné, trouvé par son INS vérifiée. À défaut, il voit des correspondances possibles,
+  signalées « à vérifier ». Il ouvre le dossier en un clic dans Weda (task-357).
+
 ### Sécurité
 
 - v1.0 — La nouvelle messagerie ne dialogue avec Weda que si l'intégration a été explicitement
   activée pour le cabinet, et jamais lorsqu'elle est ouverte en dehors de Weda. Weda n'accepte les
   demandes que de la messagerie qu'il affiche lui-même (task-356).
+- v1.1 — Aucune identité patient n'est créée ni modifiée depuis la nouvelle messagerie. La recherche
+  du dossier reste limitée au cabinet du praticien (task-357).
 
 ---
 
