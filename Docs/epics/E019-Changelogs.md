@@ -154,20 +154,24 @@
 | Hôte Weda (hors forge) | Weda : `Weda/FolderMedical/WedaEchanges/Default.aspx(.cs)` | Bandeau, iframe, gestionnaire du pont |
 | Panneau « Dossier Weda » | `Client/Angular/front/libs/mss/src/features/mail/components/weda-patient-panel/` | Patient Weda par INS ou candidats, ouverture du dossier (task-357) |
 | API Weda du dossier patient (hors forge) | Weda : `Weda/api/MssFilingController.cs`, `Weda/api/MssFiling/` | `resolve-patient`, `context`, `patient-url` ; rapprochement partagé avec l'ancien écran (task-357) |
-| Décisions | Weda : `docs/architecture/adr/007_integration-nouvelle-experience-messagerie.md` ; `Client/Angular/docs/ADR-2026-10-09-integration-weda-mode-embarque.md` | Contrat du pont, amendements 1 et 2 |
+| Décisions | Weda : `docs/architecture/adr/007_integration-nouvelle-experience-messagerie.md` ; `Client/Angular/docs/ADR-2026-10-09-integration-weda-mode-embarque.md` | Contrat du pont, amendements 1 à 3 (le 3 fait foi : import à la demande, WMickey garde la réception, boîte désignée par Weda) |
 
 ---
 
 ## Annexe B — Inventaire fonctionnel (2026-10-10)
 
-- Tasks de l'EPIC : 6. 2 `done` (356, 357) et 4 `todo` (358 à 361).
+- Tasks de l'EPIC : 4 actives, 2 `done` (356, 357) et 2 `todo` (362, 363). 4 en attente dans
+  `tasks/onhold/` (358 à 361) : elles portaient le mode exclusif de l'amendement 2, abandonné par
+  l'amendement 3 de l'ADR-007 (décision humaine du 2026-10-10).
 - Contrat du pont : version 1. Types implémentés côté hôte : `host-capabilities` (task-356) ;
-  `resolve-patient`, `get-filing-context`, `open-patient-record` (task-357). `file-message` à
-  venir (task-360), puis `open-draft` (task-361, de l'hôte vers weda2).
-- Flags : `weda_integration` (fermé à froid). Mots-clés IMAP prévus : `Weda`, `WedaClasse`
-  (task-359).
-- Quarantaines e2e ouvertes : 1 (E2E-COMPOSE-002, angular, task-350). Couverture e2e du parcours
-  « Dossier Weda » : reportée à task-360 (E2E-WEDA-001).
+  `resolve-patient`, `get-filing-context`, `open-patient-record` (task-357). À venir :
+  `get-mailbox` (task-362), seule demande émise avant la lecture du flag, et `file-documents`
+  (task-363), avec transfert d'octets. `file-message` et `open-draft` sont abandonnés.
+- Flags : `weda_integration` (fermé à froid, évalué sur l'identité de la boîte ouverte). Aucun
+  mot-clé IMAP : `Weda` et `WedaClasse` sont abandonnés avec l'amendement 2.
+- Quarantaines e2e ouvertes : 1 (E2E-COMPOSE-002, angular, task-350). Faux hôte de test et
+  E2E-WEDA-001 (boîte désignée) : task-362. Couverture e2e du parcours « Dossier Weda », reportée de
+  task-357 à task-360 puis reprise par task-363 : E2E-WEDA-002.
 
 ---
 
@@ -177,7 +181,9 @@
 |---|---|---|---|
 | task-356 | done (PR api-mail #284, en attente de merge ; Angular à pousser sur TFS) | Mode embarqué, pont v1, `WedaIntegrationService`, port `MSS_PATIENT_RECORD_GATEWAY`, flag `weda_integration`, correctif `has-session` | RG-E019-03, 04, 06 |
 | task-357 | done (aucune PR forge ; Angular à pousser sur TFS ; Weda hors forge) | Panneau « Dossier Weda » : patient Weda par INS vérifiée ou candidats par traits, ouverture du dossier ; API Weda `api/mss/filing` (`resolve-patient`, `context`, `patient-url`) | RG-E019-01, 02 (affichage) |
-| task-358 | todo | API d'intégration api-mail `api/v1/integration`, canal serveur Weda → api-mail, compteur de non-lus de l'en-tête | — |
-| task-359 | todo | Réception des CR de biologie en bannette HPRIM sans WMickey, mots-clés `Weda` / `WedaClasse` | RG-E019-05 |
-| task-360 | todo | Classer en un clic dans le dossier patient Weda ; faux hôte de test et E2E-WEDA-001, qui couvre aussi le panneau de task-357 | RG-E019-01, 02 |
-| task-361 | todo | « Envoyer par MSSanté » depuis un document Weda vers la rédaction de weda2 | — |
+| task-362 | todo | Boîte désignée par Weda : jeton `libs/mss` lu par `mailboxGuard` avant la table de décision, demande `get-mailbox`, écran de rattachement pré-rempli ; faux hôte de test et E2E-WEDA-001 ; côté Weda, `GET api/mss/filing/mailbox` | RG-E019-07 |
+| task-363 | todo | Import à la demande : fenêtre d'import (patient, documents, destination, classification, commentaire, post-it), `file-documents` avec octets transférés, ni corbeille ni mot-clé, pas d'import pour la biologie et HPRIM ; E2E-WEDA-002 ; côté Weda, `POST api/mss/filing` | RG-E019-01, 02, 05 |
+| task-358 | en attente (`tasks/onhold/`, amendement 3) | API d'intégration api-mail `api/v1/integration`, canal serveur Weda → api-mail, compteur de non-lus de l'en-tête | — |
+| task-359 | en attente (`tasks/onhold/`, amendement 3) | Réception des CR de biologie en bannette HPRIM sans WMickey, mots-clés `Weda` / `WedaClasse` | — |
+| task-360 | en attente (`tasks/onhold/`, amendement 3) | Classer par identifiants via le canal serveur ; remplacée par task-363 | — |
+| task-361 | en attente (`tasks/onhold/`, amendement 3) | « Envoyer par MSSanté » depuis un document Weda vers la rédaction de weda2 | — |

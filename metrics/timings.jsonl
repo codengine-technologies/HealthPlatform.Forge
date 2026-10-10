@@ -4278,3 +4278,5 @@
 {"ts":"2026-10-10T09:15:05+02:00","run_id":"-","type":"step","task":"task-357","step":"review","status":"ok","note":"APPROVED (blocage e2e levé par arbitrage PO : couverture reportée à task-360) ; client-angular code-only, Weda hors forge, aucune PR forge","iterations":null,"duration_ms":133990}
 {"ts":"2026-10-10T09:15:33+02:00","run_id":"-","type":"step_start","task":"task-357","step":"tech-writer"}
 {"ts":"2026-10-10T09:16:21+02:00","run_id":"-","type":"step","task":"task-357","step":"tech-writer","status":"ok","note":"E019 v1.1 (Mode 1) : F2 validée, entrée changelog task-357, annexes","iterations":null,"duration_ms":48602}
+{"ts":"2026-10-10T09:50:31+02:00","run_id":"-","type":"step_start","task":"-","step":"tech-writer"}
+{"ts":"2026-10-10T09:52:04+02:00","run_id":"-","type":"step","task":"-","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":93226}

@@ -1,5 +1,16 @@
 # todo-task-361.md — Intégration Weda : « Envoyer par MSSanté » depuis un document Weda ouvre la rédaction de la nouvelle messagerie
 
+> ⏸️ **ON HOLD (décision humaine 2026-10-10)** — retirée du backlog actif, conservée pour la trace.
+> L'EPIC E019 change de stratégie : la nouvelle expérience se limite à l'**import des documents à
+> la demande du médecin**. La réception, la biologie et l'injection HPRIM restent à WMickey. Le
+> mode exclusif et le canal serveur Weda → api-mail de l'amendement 2 de l'ADR-007 sont abandonnés
+> (amendement 3 de l'ADR-007, dépôt Weda).
+>
+> **Ce qui reste** : « Envoyer par MSSanté » depuis un document Weda garde l'ancien circuit (WMickey).
+>
+> **Pour réactiver** : une décision humaine qui rouvre le mode exclusif (nouvel amendement de
+> l'ADR-007), puis redéplacer ce fichier dans `tasks/` et `/start 361`.
+
 **Repos**: api-mail, client-angular
 **Dependencies**: done-task-358 (API d'intégration et canal serveur Weda → api-mail)
 **Epic**: E019

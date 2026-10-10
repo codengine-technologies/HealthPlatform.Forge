@@ -1,5 +1,16 @@
 # todo-task-359.md — Intégration Weda : les comptes rendus de biologie reçus arrivent dans la bannette HPRIM, sans WMickey
 
+> ⏸️ **ON HOLD (décision humaine 2026-10-10)** — retirée du backlog actif, conservée pour la trace.
+> L'EPIC E019 change de stratégie : la nouvelle expérience se limite à l'**import des documents à
+> la demande du médecin**. La réception, la biologie et l'injection HPRIM restent à WMickey. Le
+> mode exclusif et le canal serveur Weda → api-mail de l'amendement 2 de l'ADR-007 sont abandonnés
+> (amendement 3 de l'ADR-007, dépôt Weda).
+>
+> **Ce qui reste** : les comptes rendus de biologie continuent d'arriver en bannette par WMickey.
+>
+> **Pour réactiver** : une décision humaine qui rouvre le mode exclusif (nouvel amendement de
+> l'ADR-007), puis redéplacer ce fichier dans `tasks/` et `/start 359`.
+
 **Repos**: api-mail
 **Dependencies**: done-task-358 (API d'intégration et canal serveur Weda → api-mail)
 **Epic**: E019

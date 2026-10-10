@@ -1,5 +1,17 @@
 # todo-task-360.md — Intégration Weda : classer en un clic un document reçu dans le dossier patient Weda
 
+> ⏸️ **ON HOLD (décision humaine 2026-10-10)** — retirée du backlog actif, conservée pour la trace.
+> L'EPIC E019 change de stratégie : la nouvelle expérience se limite à l'**import des documents à
+> la demande du médecin**. La réception, la biologie et l'injection HPRIM restent à WMickey. Le
+> mode exclusif et le canal serveur Weda → api-mail de l'amendement 2 de l'ADR-007 sont abandonnés
+> (amendement 3 de l'ADR-007, dépôt Weda).
+>
+> **Ce qui reste** : le classement à la demande est repris par **task-363**, par le pont, sans
+> canal serveur Weda → api-mail.
+>
+> **Pour réactiver** : une décision humaine qui rouvre le mode exclusif (nouvel amendement de
+> l'ADR-007), puis redéplacer ce fichier dans `tasks/` et `/start 360`.
+
 **Repos**: api-mail, client-angular
 **Dependencies**: done-task-357 (panneau « Dossier Weda »), done-task-359 (mots-clés IMAP)
 **Epic**: E019

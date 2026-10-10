@@ -1,6 +1,6 @@
 # E019 — Intégration de la nouvelle messagerie dans Weda
 
-> **Statut** : 🟡 En cours — 2 fonctionnalités sur 6 validées
+> **Statut** : 🟡 En cours — 2 fonctionnalités sur 4 validées
 > **Modèle** : task-driven
 > **Version** : 1.1
 > **Auteur** : PO forge
@@ -33,25 +33,25 @@
 
 Le praticien Weda traite aujourd'hui sa messagerie sécurisée de santé dans l'écran Échanges. Cet
 EPIC y installe la **nouvelle messagerie** : il y lit, trie et répond à ses messages, **sans se
-reconnecter et sans quitter Weda**.
+reconnecter et sans quitter Weda**, dans la boîte que Weda connaît.
 
-Pour chaque document reçu, la nouvelle messagerie lui montre le dossier patient Weda
-correspondant et le lui fait **classer en un clic**. Les résultats de biologie continuent d'arriver
-seuls dans la bannette de résultats.
+Quand il le décide, il **importe un document reçu dans le dossier patient Weda**, en quelques clics.
+La réception, et l'arrivée des résultats de biologie dans la bannette, restent assurées par Weda,
+comme aujourd'hui.
 
-La bascule se fait **cabinet par cabinet**, et elle est réversible.
+Le praticien passe librement de l'écran actuel à la nouvelle messagerie.
 
 ---
 
 ## 2. Objectifs métier
 
 - [ ] Objectif 1 : que le praticien lise et traite sa messagerie sécurisée dans Weda avec la
-      nouvelle expérience, sans seconde connexion.
-- [ ] Objectif 2 : qu'un document reçu soit classé dans le bon dossier patient en un clic, sans
-      jamais créer ni modifier une identité patient à son insu.
-- [ ] Objectif 3 : qu'aucun résultat de biologie ne soit perdu ni reçu en double lors de la
-      bascule d'un cabinet.
-- [ ] Objectif 4 : que chaque cabinet puisse être basculé, puis rebasculé, sans perte.
+      nouvelle expérience, sans seconde connexion, dans la boîte que Weda connaît.
+- [ ] Objectif 2 : qu'un document reçu soit importé dans le bon dossier patient quand le praticien
+      le demande, sans jamais créer ni modifier une identité patient à son insu.
+- [ ] Objectif 3 : que la nouvelle messagerie ne change rien à la réception : aucun résultat de
+      biologie n'est perdu ni reçu en double.
+- [ ] Objectif 4 : que le praticien puisse revenir à l'écran actuel à tout moment, sans perte.
 
 ---
 
@@ -59,9 +59,9 @@ La bascule se fait **cabinet par cabinet**, et elle est réversible.
 
 | Acteur | Rôle dans l'EPIC |
 |---|---|
-| Médecin / praticien | Utilisateur principal : lit, trie, répond, classe ses documents dans le dossier patient |
+| Médecin / praticien | Utilisateur principal : lit, trie, répond, importe ses documents dans le dossier patient |
 | Secrétariat médical | Conserve l'écran actuel dans cette première version |
-| Cabinet | Unité de bascule : la nouvelle messagerie s'active pour tout le cabinet |
+| Cabinet | Unité d'activation : la nouvelle messagerie est proposée cabinet par cabinet |
 | Exploitation de l'éditeur | Active l'intégration cabinet par cabinet, et peut la désactiver |
 
 ---
@@ -75,10 +75,8 @@ La bascule se fait **cabinet par cabinet**, et elle est réversible.
 |---|---|---|---|
 | **F1 — La nouvelle messagerie dans l'écran Échanges** | Ouvrir sa messagerie dans Weda sans se reconnecter. Elle ne dialogue avec le dossier patient que si l'intégration est activée pour son cabinet. | task-356 | 🟢 Validée, en attente de mise en ligne |
 | **F2 — Le dossier Weda du patient d'un document reçu** | Voir, sous un message, le dossier Weda du patient concerné (trouvé par son INS), ou des correspondances possibles à vérifier, puis l'ouvrir en un clic. | task-357 | 🟢 Validée, en attente de mise en ligne |
-| **F3 — Le bon nombre de messages non lus partout dans Weda** | Voir dans l'en-tête de Weda, sur toutes les pages, le nombre réel de messages non lus de sa nouvelle messagerie. | task-358 | ⚪ À faire |
-| **F4 — Les résultats de biologie arrivent seuls dans la bannette** | Recevoir ses comptes rendus de biologie directement dans la bannette de résultats, une seule fois, même s'il a déjà rangé le message. | task-359 | ⚪ À faire |
-| **F5 — Classer un document reçu en un clic** | Classer un courrier ou une pièce jointe dans le dossier du patient : destination, classification, commentaire, post-it. Le message est ensuite marqué « Classé dans Weda ». | task-360 | ⚪ À faire |
-| **F6 — Envoyer un document Weda par la nouvelle messagerie** | Depuis le dossier patient, cliquer sur « Envoyer par MSSanté » et retrouver le message prêt dans la nouvelle messagerie, avec le document joint. | task-361 | ⚪ À faire |
+| **F3 — La messagerie que Weda connaît, ouverte d'office** | Retrouver dans Weda la messagerie que Weda connaît, même s'il en a choisi une autre par défaut. Si elle n'est pas encore rattachée à son compte, la rattacher, l'adresse déjà saisie. Passer ensuite librement à ses autres messageries. | task-362 | ⚪ À faire |
+| **F4 — Importer un document reçu dans le dossier patient** | Importer, quand il le décide, une pièce jointe, le document d'un compte rendu ou le message lui-même dans le dossier d'un patient : destination, classification, commentaire, post-it. Le message reste dans sa boîte de réception. | task-363 | ⚪ À faire |
 
 ---
 
@@ -87,22 +85,21 @@ La bascule se fait **cabinet par cabinet**, et elle est réversible.
 ```mermaid
 flowchart LR
     A["Le praticien ouvre<br/>l'écran Échanges"] --> F1["F1 — Nouvelle messagerie<br/>dans Weda"]
-    F1 --> R{"Message reçu"}
-    R -- "compte rendu de biologie" --> F4["F4 — Arrive seul<br/>dans la bannette"]
+    F1 --> F3["F3 — Sa messagerie Weda<br/>ouverte d'office"]
+    F3 --> R{"Message reçu"}
+    R -- "résultat de biologie" --> B["Intégré par Weda<br/>dans la bannette, comme avant"]
     R -- "courrier, pièce jointe" --> F2["F2 — Dossier Weda<br/>du patient affiché"]
-    F2 --> F5["F5 — Classé en un clic<br/>dans le dossier"]
-    D["Le praticien est dans<br/>le dossier patient"] --> F6["F6 — Envoyé par la<br/>nouvelle messagerie"]
-    F1 -.-> F3["F3 — Non-lus justes<br/>dans l'en-tête"]
+    F2 --> F4["F4 — Importé dans le dossier,<br/>à sa demande"]
 ```
 
 1. Le praticien ouvre l'écran Échanges : la nouvelle messagerie s'affiche, sans nouvelle connexion
    (F1).
-2. À l'arrivée d'un compte rendu de biologie, le résultat rejoint seul la bannette, une seule fois
-   (F4).
-3. Pour un courrier ou une pièce jointe, il voit le dossier Weda du patient concerné (F2). Il l'y
-   classe en un clic (F5).
-4. Depuis le dossier d'un patient, il envoie un document par la nouvelle messagerie (F6).
-5. Sur toutes les pages de Weda, l'en-tête lui indique ses messages non lus (F3).
+2. Elle s'ouvre sur la messagerie que Weda connaît (F3). Il peut ensuite passer à une autre de ses
+   messageries.
+3. Un résultat de biologie rejoint la bannette par la réception de Weda, comme aujourd'hui. La
+   nouvelle messagerie ne l'importe pas.
+4. Pour un courrier ou une pièce jointe, il voit le dossier Weda du patient concerné (F2). Il y
+   importe le document quand il le décide (F4), et le message reste dans sa boîte de réception.
 
 ---
 
@@ -110,29 +107,31 @@ flowchart LR
 
 | Règle | Énoncé | Statut |
 |---|---|---|
-| RG-E019-01 | Weda reste seul à écrire dans le dossier patient : la nouvelle messagerie demande, Weda vérifie les droits du praticien et classe | 🟡 Tenue pour la recherche et l'ouverture du dossier, classement à venir (task-357) |
-| RG-E019-02 | Aucune identité patient n'est créée ni modifiée depuis la nouvelle messagerie. Seule l'INS vérifiée désigne un dossier d'office ; un rapprochement par nom, prénom et date de naissance reste une proposition à vérifier | 🟡 Tenue à l'affichage du dossier, classement à venir (task-357) |
+| RG-E019-01 | Weda reste seul à écrire dans le dossier patient : la nouvelle messagerie demande, Weda vérifie les droits du praticien et importe | 🟡 Tenue pour la recherche et l'ouverture du dossier, import à venir (task-363) |
+| RG-E019-02 | Aucune identité patient n'est créée ni modifiée depuis la nouvelle messagerie. Seule l'INS vérifiée désigne un dossier d'office ; un rapprochement par nom, prénom et date de naissance reste une proposition à vérifier | 🟡 Tenue à l'affichage du dossier, import à venir (task-363) |
 | RG-E019-03 | L'intégration s'active cabinet par cabinet, par un interrupteur fermé tant qu'il n'a pas été explicitement ouvert | ✅ Tenue (task-356) |
 | RG-E019-04 | Hors de Weda (onglet séparé, autre navigateur), la nouvelle messagerie ne propose aucune action sur le dossier patient | ✅ Tenue (task-356) |
-| RG-E019-05 | Un résultat de biologie n'entre qu'une fois dans la bannette, et n'est jamais perdu, même si le message est rangé avant son traitement | ⚪ À faire (task-359) |
+| RG-E019-05 | Les résultats de biologie restent intégrés par Weda seul, à la réception : la nouvelle messagerie n'en importe aucun, et importer un document ne déplace ni ne supprime le message | ⚪ À faire (task-363) |
 | RG-E019-06 | Aucune donnée de santé (identité, INS, contenu de document) n'apparaît dans les journaux | ✅ Tenue (task-356) |
+| RG-E019-07 | Dans Weda, la nouvelle messagerie s'ouvre toujours sur la messagerie que Weda connaît ; le praticien passe ensuite librement à ses autres messageries | ⚪ À faire (task-362) |
 
 ---
 
 ## 7. Contraintes et hypothèses
 
 ### Contraintes
-- La structure de la base de données de Weda ne change pas : ce que Weda doit retenir d'un message
-  (pris en charge, classé) est porté par la messagerie elle-même.
-- Pour un cabinet basculé, l'ancienne chaîne de réception de Weda n'est plus utilisée : la nouvelle
-  messagerie la remplace entièrement, réception de la biologie comprise.
+- La structure de la base de données de Weda ne change pas.
+- La réception reste celle d'aujourd'hui : Weda relève la boîte, intègre les résultats de biologie
+  dans la bannette et range les messages dans l'écran actuel. La nouvelle messagerie ne la remplace
+  pas.
 - La messagerie sécurisée de santé exige la connexion Pro Santé Connect du praticien. La réception
-  se fait donc tant qu'une page de Weda est ouverte, comme aujourd'hui ; ce qui arrive pendant une
-  absence est rattrapé au retour.
+  se fait donc tant qu'une page de Weda est ouverte, comme aujourd'hui.
+- Importer un document ne déplace ni ne supprime le message. La réception de Weda ne lit que la
+  boîte de réception : un message sorti trop tôt priverait la bannette d'un résultat de biologie.
 
 ### Hypothèses
-- Les opérateurs de messagerie sécurisée conservent les marqueurs posés sur un message ; c'est déjà
-  le cas avec l'écran actuel de Weda.
+- Le praticien a une boîte connue de Weda, et c'est elle que la nouvelle messagerie ouvre. Un compte
+  peut en porter plusieurs : il passe ensuite de l'une à l'autre librement.
 - Le praticien est seul titulaire de sa boîte ; le secrétariat reste sur l'écran actuel dans cette
   première version.
 
@@ -142,10 +141,13 @@ flowchart LR
 
 - [ ] Toutes les features de l'EPIC sont livrées
 - [x] Un praticien connecté à Weda ouvre la nouvelle messagerie sans se reconnecter
-- [ ] Un cabinet pilote bascule sans perte ni doublon de résultat de biologie
-- [ ] Un document classé depuis la nouvelle messagerie apparaît dans le dossier patient comme s'il
+- [ ] Dans Weda, la nouvelle messagerie s'ouvre sur la boîte que Weda connaît, même si le praticien
+      en a choisi une autre par défaut
+- [ ] Un document importé depuis la nouvelle messagerie apparaît dans le dossier patient comme s'il
       avait été classé depuis l'écran actuel
-- [ ] Un cabinet basculé peut revenir à l'écran actuel sans perte de message
+- [ ] Pendant le pilote, les résultats de biologie arrivent dans la bannette comme avant, sans perte
+      ni doublon
+- [ ] Le praticien revient à l'écran actuel à tout moment, sans perte de message
 
 ---
 
@@ -155,6 +157,11 @@ flowchart LR
   téléservice INSi depuis la nouvelle messagerie : elles restent dans l'écran actuel pour cette
   première version.
 - Le classement automatique, sans geste du praticien, des documents dont l'identité est vérifiée.
+- La réception par la nouvelle messagerie, et l'intégration des résultats de biologie et des
+  messages HPRIM : elles restent à Weda. Le mode où la nouvelle messagerie remplacerait l'écran
+  actuel pour tout un cabinet, étudié le 2026-10-09, est en attente.
+- Le compteur de messages non lus de l'en-tête de Weda, et l'envoi d'un document depuis le dossier
+  patient : ils restent ceux de l'écran actuel.
 - Les messageries MSSanté de première génération et Medimail, qui conservent l'écran actuel.
 - L'usage de la nouvelle messagerie en dehors de Weda pour agir sur le dossier patient.
 
@@ -166,12 +173,10 @@ flowchart LR
 |---|---|---|---|
 | F1 — La nouvelle messagerie dans l'écran Échanges | 🟢 Validée, en attente de mise en ligne | affichage dans Échanges, connexion sans ressaisie, activation par cabinet, rien hors de Weda | task-356 |
 | F2 — Le dossier Weda du patient d'un document reçu | 🟢 Validée, en attente de mise en ligne | dossier trouvé par INS vérifiée, correspondances signalées « à vérifier », ouverture du dossier en un clic dans Weda | task-357 |
-| F3 — Le bon nombre de messages non lus partout dans Weda | ⚪ À faire | — | task-358 |
-| F4 — Les résultats de biologie arrivent seuls dans la bannette | ⚪ À faire | — | task-359 |
-| F5 — Classer un document reçu en un clic | ⚪ À faire | — | task-360 |
-| F6 — Envoyer un document Weda par la nouvelle messagerie | ⚪ À faire | — | task-361 |
+| F3 — La messagerie que Weda connaît, ouverte d'office | ⚪ À faire | — | task-362 |
+| F4 — Importer un document reçu dans le dossier patient | ⚪ À faire | — | task-363 |
 
-**Couverture EPIC consolidée : 33 %** (2 fonctionnalités sur 6 validées).
+**Couverture EPIC consolidée : 50 %** (2 fonctionnalités sur 4 validées).
 
 ---
 
