@@ -324,3 +324,14 @@ lancement. Ils n'ont pas été vus rouges.
 | /e2e | ok | 12 min 00 s | — | — | — | e2e ×6 (21 min 05 s), vert : mobile 31/31, angular 30 verts + 1 quarantaine (E2E-COMPOSE-002, task-350), parité verte |
 | /tech-writer | ok | 2 min 23 s | — | — | — | E019 créé (Mode 2) : produit + Changelogs, 6 tasks, modèle task-driven |
 | **Total cycle** | | **26 min 04 s** | **3 (1 min 29 s)** | **6 (6 min 42 s)** | **0 (0.0 s)** | |
+
+## Merged
+
+- **Date** : 2026-10-10, par `/merge task-356 --i-tested` (validation manuelle attestée par l'humain).
+- `api-mail` : PR #284 squash-mergée dans `develop`, commit `c940dcfdbd753927018d7b3956ddab3615d4d29f`.
+  Label `awaiting-human-merge` retiré. Branche `feat/task-356-weda-integration-pont` supprimée
+  (distante et locale).
+- CI `develop` : verte (build, publish) —
+  https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/38042357701
+- `client-angular` : géré manuellement par l'humain (TFS).
+- Hors forge, Weda : `lotus/segur/17546-enveloppe-segur-v2-with-mss-api`.
