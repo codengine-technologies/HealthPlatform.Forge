@@ -153,7 +153,7 @@
 | Politique d'affichage en iframe | `Client/Angular/front/nginx.conf` | `frame-ancestors 'self' https://*.weda.fr` |
 | Hôte Weda (hors forge) | Weda : `Weda/FolderMedical/WedaEchanges/NovaMss/` (`NovaMssHost.ascx`, `nova-mss-host.js`), inclus par `Default.aspx` | Bandeau, iframe, gestionnaire du pont (repère `nova-mss`, ADR-007 amendement 4) |
 | Panneau « Dossier Weda » | `Client/Angular/front/libs/mss/src/features/mail/components/weda-patient-panel/` | Patient Weda par INS ou candidats, ouverture du dossier (task-357) |
-| API Weda du dossier patient (hors forge) | Weda : `Weda/api/NovaMss/` (`NovaMssController`, route `api/nova-mss`) ; rapprochement partagé : `Weda/api/WMickey/Builder/PatientMatcher.cs` | `resolve-patient`, `filing-context`, `patient-url` (task-357) |
+| API Weda du dossier patient (hors forge) | Weda : `Weda/api/NovaMss/` (`NovaMssController`, `NovaMssPatientMatcher`, route `api/nova-mss`) ; code Mickey intact, règle de rapprochement copiée de `MessageBuilder` | `resolve-patient`, `filing-context`, `patient-url` (task-357) |
 | Décisions | Weda : `docs/architecture/adr/007_integration-nouvelle-experience-messagerie.md` ; `Client/Angular/docs/ADR-2026-10-09-integration-weda-mode-embarque.md` | Contrat du pont, amendements 1 à 4 (le 3 fait foi ; le 4 fixe le repère `nova-mss` : import à la demande, WMickey garde la réception, boîte désignée par Weda) |
 
 ---
