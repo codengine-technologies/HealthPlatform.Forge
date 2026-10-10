@@ -103,6 +103,14 @@ scénario E2E-WEDA-002. Aucune route ne change.
 
 Elle est nécessaire pour que la tâche soit complète (règle 11).
 
+> **Repère `nova-mss`** (ADR-007, amendement 4) : tout le code Weda de cette partie vit sous
+> `Weda/api/NovaMss/` (namespace `Weda.api.NovaMss`, classes préfixées `NovaMss`, route
+> `api/nova-mss`) ou sous `Weda/FolderMedical/WedaEchanges/NovaMss/` (préfixe DOM et CSS `nova-mss-`).
+> Chaque fichier porte l'en-tête `nova-mss — …`. **Aucun fichier Mickey ou de l'ancien écran n'est
+> modifié** : une règle à reprendre est **copiée** dans `NovaMss`, avec un commentaire qui cite sa
+> source. Hors de ces dossiers, seuls changent `Weda.csproj` et, au besoin, l'inclusion dans
+> `Default.aspx`.
+
 - **`POST /api/nova-mss/documents`** (multipart), dans `NovaMssController` (repère `nova-mss`, ADR-007 amendement 4) :
   - `[Authorize]`, `HasWmss` exigé, refusé à un secrétaire ;
   - le patient doit appartenir au cabinet de la session ;
@@ -113,9 +121,11 @@ Elle est nécessaire pour que la tâche soit complète (règle 11).
   - le post-it, comme `ImportMessageDocuments` ;
   - **ni `CreateIns`, ni trace INS, ni création de patient** ;
   - rend `{ results: [{ part, fileStreamId }] }`.
-  - La logique « événement et document » est extraite de
-    `MSSanteImportService.ImportAttachmentInPatient`, sans dépendre de `T_MessageMSSante` (date,
-    type et nom passés explicitement).
+  - La logique « événement et document » est **copiée** de
+    `MSSanteImportService.ImportAttachmentInPatient` dans `Weda/api/NovaMss/NovaMssDocumentImporter.cs`,
+    sans dépendre de `T_MessageMSSante` (date, type et nom passés explicitement). La création du post-it
+    est copiée de `We.aspx.cs` › `ImportMessageDocuments`. **`MSSanteImportService` et `We.aspx.cs`
+    ne sont pas modifiés** : le commentaire de la classe cite les deux sources, à garder alignées.
   - **Aucun changement de schéma.**
 - **Gestionnaire `file-documents`** dans `Weda/FolderMedical/WedaEchanges/NovaMss/nova-mss-host.js` : il transforme les `ArrayBuffer` en `Blob`,
   les met dans un `FormData`, puis appelle `fetch`. Un `413` donne `payload-too-large`.
@@ -158,6 +168,9 @@ Elle est nécessaire pour que la tâche soit complète (règle 11).
 - [ ] `data-testid` sur l'action, la fenêtre, chaque case de document, les listes, la recherche
   manuelle, l'information sur la biologie, et les boutons Importer et Annuler ; libellés FR en dur
 - [ ] Aucune donnée de santé dans les journaux : ni INS, ni nom de patient, ni contenu de pièce
+- [ ] **Weda — repère `nova-mss`** : `git diff --stat` de la partie Weda ne montre que des fichiers sous
+  `NovaMss/`, plus `Weda.csproj` (et l'inclusion dans `Default.aspx`). Aucun fichier sous
+  `Weda/api/WMickey/`, `WMickey/` ou `WedaGlobal/WCommunication/` n'est modifié.
 - [ ] Partie Weda faite et validée (règle 11) : voir le Manual Test Plan
 
 ## Manual Test Plan

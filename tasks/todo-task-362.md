@@ -89,6 +89,14 @@ connaît et que WMickey synchronise. L'import à la demande (task-363) s'appuie 
 
 Elle est nécessaire pour que la tâche soit complète (règle 11).
 
+> **Repère `nova-mss`** (ADR-007, amendement 4) : tout le code Weda de cette partie vit sous
+> `Weda/api/NovaMss/` (namespace `Weda.api.NovaMss`, classes préfixées `NovaMss`, route
+> `api/nova-mss`) ou sous `Weda/FolderMedical/WedaEchanges/NovaMss/` (préfixe DOM et CSS `nova-mss-`).
+> Chaque fichier porte l'en-tête `nova-mss — …`. **Aucun fichier Mickey ou de l'ancien écran n'est
+> modifié** : une règle à reprendre est **copiée** dans `NovaMss`, avec un commentaire qui cite sa
+> source. Hors de ces dossiers, seuls changent `Weda.csproj` et, au besoin, l'inclusion dans
+> `Default.aspx`.
+
 - **`GET /api/nova-mss/mailbox`** dans `NovaMssController` (`Weda/api/NovaMss/`, repère `nova-mss`, ADR-007 amendement 4) :
   - `[Authorize]`, et `HasWmss` exigé ;
   - refusé (`403`) à un secrétaire (`IsSecretary()`) ;
@@ -97,7 +105,8 @@ Elle est nécessaire pour que la tâche soit complète (règle 11).
   - n'écrit pas l'adresse dans les journaux.
 - **Gestionnaire `get-mailbox`** dans `Weda/FolderMedical/WedaEchanges/NovaMss/nova-mss-host.js`, par `callApi`, avec les codes d'erreur
   existants.
-- **Switch** : il n'est pas proposé aux secrétaires (ADR-007, B7).
+- **Switch** : il n'est pas proposé aux secrétaires (ADR-007, B7). La règle vit dans
+  `NovaMssHost.ascx.cs` (le contrôle ne s'affiche pas), pas dans `Default.aspx.cs`.
 
 ## Definition of Done
 
@@ -131,6 +140,9 @@ Elle est nécessaire pour que la tâche soit complète (règle 11).
   - implémenté dans client-angular, avec le faux hôte.
 - [ ] `data-testid` sur l'annonce de l'écran de rattachement ; libellés FR en dur
 - [ ] Aucune adresse de messagerie dans les journaux de weda2, et aucune donnée de santé
+- [ ] **Weda — repère `nova-mss`** : `git diff --stat` de la partie Weda ne montre que des fichiers sous
+  `NovaMss/`, plus `Weda.csproj` (et l'inclusion dans `Default.aspx`). Aucun fichier sous
+  `Weda/api/WMickey/`, `WMickey/` ou `WedaGlobal/WCommunication/` n'est modifié.
 - [ ] Partie Weda faite et validée (règle 11) : voir le Manual Test Plan
 
 ## Manual Test Plan
