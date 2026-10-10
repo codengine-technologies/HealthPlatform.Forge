@@ -532,3 +532,21 @@ Autres commandes mesurées : lint ×1 (11 s)
      l'ancien écran côté Weda.
   4. **`sentAt` vide** si le message n'a pas de date : Weda daterait alors l'événement par
      défaut. À vérifier dans le contrôleur `nova-mss`.
+
+## Merged
+
+- **Date** : 2026-10-10, par `/merge task-363 --i-tested` (validation manuelle attestée par l'humain).
+- `api-mail` : PR #286 squash-mergée dans `develop`, commit `daa64cedf785a88dd31b537ebafd72760939fd14`
+  (catalogue e2e : E2E-WEDA-002). Label `awaiting-human-merge` retiré. Branche
+  `feat/task-363-weda-import-documents` supprimée (distante et locale).
+  - Avant le merge, deux commits AppHost restés locaux ont été poussés sur la PR (demande humaine :
+    « fais le directement sur la branche en cours »), puis la CI de la PR a été rejouée, verte :
+    `26c73cef` — conteneurs de l'AppHost regroupés dans Docker Desktop (groupe `api-mail`) ;
+    `b78fd044` — préfixe `mss-mail-` sur rediscommander et Flagsmith.
+- CI `develop` : verte —
+  https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/38065801249
+- `client-angular` : géré manuellement par l'humain (TFS).
+- Partie Weda (hors forge), branche `lotus/segur/17546-enveloppe-segur-v2-with-mss-api` :
+  - `67f0b4f6a7` — import à la demande : `POST api/nova-mss/documents` et gestionnaire `file-documents` du pont ;
+  - `8cc4847ec3` — session en lecture seule pour `api/nova-mss` (V014, signature d'URL des dossiers patient) ;
+  - `238bcc01fd` — document importé marqué Origine MSSanté, comme l'import de l'ancien écran V2.
