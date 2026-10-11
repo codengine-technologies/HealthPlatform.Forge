@@ -1,8 +1,8 @@
 # E019 — Intégration de la nouvelle messagerie dans Weda
 
-> **Statut** : 🟡 En cours — 2 fonctionnalités sur 5 validées, 2 livrées côté messagerie, 1 en préparation
+> **Statut** : 🟡 En cours — 2 fonctionnalités sur 5 validées, 3 livrées côté messagerie
 > **Modèle** : task-driven
-> **Version** : 1.4
+> **Version** : 1.5
 > **Auteur** : PO forge
 > **Audience** : PO, direction, équipe produit — la vue ingénierie vit dans [E019-Changelogs.md](E019-Changelogs.md)
 > **Dernière mise à jour** : 2026-10-11
@@ -77,7 +77,7 @@ Le praticien passe librement de l'écran actuel à la nouvelle messagerie.
 | **F2 — Le dossier Weda du patient d'un document reçu** | Voir, sous un message, le dossier Weda du patient concerné (trouvé par son INS), ou des correspondances possibles à vérifier, puis l'ouvrir en un clic. | task-357 | 🟢 Validée, en attente de mise en ligne |
 | **F3 — La messagerie que Weda connaît, ouverte d'office** | Retrouver dans Weda la messagerie que Weda connaît, même s'il en a choisi une autre par défaut. Si elle n'est pas encore rattachée à son compte, la rattacher, l'adresse déjà saisie. Passer ensuite librement à ses autres messageries. | task-362 | 🟡 Livrée côté messagerie, partie Weda à réaliser |
 | **F4 — Importer un document reçu dans le dossier patient** | Importer, quand il le décide, une pièce jointe, le document d'un compte rendu ou le message lui-même dans le dossier d'un patient : destination, classification, commentaire, post-it. Le message reste dans sa boîte de réception. | task-363 | 🟡 Livrée côté messagerie, partie Weda à réaliser |
-| **F5 — Envoyer un document du dossier patient** | Envoyer un document du dossier Weda par la nouvelle messagerie, dans l'enveloppe qu'attendent les messageries de santé. | task-366 | 🔵 En préparation : l'enveloppe est prête, l'envoi depuis Weda reste à réaliser |
+| **F5 — Envoyer un document du dossier patient** | Envoyer un document du dossier Weda par la nouvelle messagerie, dans l'enveloppe qu'attendent les messageries de santé. Weda garde la trace de l'envoi. | task-366, task-367 | 🟡 Livrée côté messagerie, partie Weda à réaliser |
 
 ---
 
@@ -91,6 +91,8 @@ flowchart LR
     R -- "résultat de biologie" --> B["Intégré par Weda<br/>dans la bannette, comme avant"]
     R -- "courrier, pièce jointe" --> F2["F2 — Dossier Weda<br/>du patient affiché"]
     F2 --> F4["F4 — Importé dans le dossier,<br/>à sa demande"]
+    D["Dossier patient Weda :<br/>« Envoyer »"] --> F5["F5 — Rédaction ouverte<br/>avec le document"]
+    F5 --> E["Envoyé dans son enveloppe,<br/>trace dans Weda"]
 ```
 
 1. Le praticien ouvre l'écran Échanges : la nouvelle messagerie s'affiche, sans nouvelle connexion
@@ -101,6 +103,9 @@ flowchart LR
    nouvelle messagerie ne l'importe pas.
 4. Pour un courrier ou une pièce jointe, il voit le dossier Weda du patient concerné (F2). Il y
    importe le document quand il le décide (F4), et le message reste dans sa boîte de réception.
+5. Depuis le dossier d'un patient, « Envoyer » ouvre la rédaction de la nouvelle messagerie avec le
+   document (F5). Il part dans l'enveloppe qu'attendent les messageries de santé, et Weda garde la
+   trace de l'envoi.
 
 ---
 
@@ -176,9 +181,9 @@ flowchart LR
 | F2 — Le dossier Weda du patient d'un document reçu | 🟢 Validée, en attente de mise en ligne | dossier trouvé par INS vérifiée, correspondances signalées « à vérifier », ouverture du dossier en un clic dans Weda | task-357 |
 | F3 — La messagerie que Weda connaît, ouverte d'office | 🟡 Livrée côté messagerie, partie Weda à réaliser | ouverture d'office sur la messagerie désignée à chaque entrée, rattachement proposé avec l'adresse déjà saisie, comportement inchangé hors de Weda | task-362 |
 | F4 — Importer un document reçu dans le dossier patient | 🟡 Livrée côté messagerie, partie Weda à réaliser | fenêtre d'import (patient, documents, destination, classification, commentaire, post-it), message laissé en place, aucune action pour la biologie | task-363 |
-| F5 — Envoyer un document du dossier patient | 🔵 En préparation | enveloppe du document prête (compte rendu PDF ou synthèse structurée, patient désigné par son INS, destinataires) ; envoi depuis le dossier Weda à réaliser | task-366 |
+| F5 — Envoyer un document du dossier patient | 🟡 Livrée côté messagerie, partie Weda à réaliser | rédaction ouverte depuis le dossier avec destinataire et document, signalé « Données structurées » ; enveloppe construite à l'envoi (compte rendu PDF ou synthèse structurée, patient désigné par son INS) ; auteur vérifié ; avis d'envoi à Weda pour sa trace ; abandon sans envoi ni brouillon | task-366, task-367 |
 
-**Couverture EPIC consolidée : 65 %** (2 fonctionnalités sur 5 validées, 2 livrées côté messagerie, 1 en préparation).
+**Couverture EPIC consolidée : 70 %** (2 fonctionnalités sur 5 validées, 3 livrées côté messagerie).
 
 ---
 
@@ -212,6 +217,13 @@ flowchart LR
   médical conforme, et une synthèse déjà structurée y part sans aucune retouche. Le patient y est désigné par son INS, et
   chaque destinataire est nommé. L'envoi depuis Weda arrive avec la fonctionnalité suivante (task-366).
 
+- v1.5 — Envoyer un document du dossier patient : depuis le dossier d'un patient dans Weda, « Envoyer » ouvre la
+  rédaction de la nouvelle messagerie avec le destinataire et le document, signalé « Données structurées ». À l'envoi,
+  la messagerie place le document dans son enveloppe de messagerie de santé : un compte rendu PDF part accompagné de
+  l'enveloppe, une synthèse structurée part dans l'enveloppe seule. Weda est prévenu de l'envoi et en garde la trace
+  dans le dossier. Fermer la rédaction n'envoie rien et ne laisse aucun brouillon. Un envoi qui attend la carte du
+  praticien construit l'enveloppe au moment où il part (task-367).
+
 ### Sécurité
 
 - v1.0 — La nouvelle messagerie ne dialogue avec Weda que si l'intégration a été explicitement
@@ -230,6 +242,11 @@ flowchart LR
 - v1.4 — Une enveloppe n'est jamais produite à moitié : une information manquante (INS du patient, identifiant du
   praticien ou de la structure, type du document) l'arrête, et une synthèse qui ne porte pas l'INS du patient annoncé
   est refusée. Rien n'est écrit sur le disque, et aucune donnée de santé n'apparaît dans les journaux (task-366).
+- v1.5 — L'enveloppe ne peut désigner comme auteur que le praticien qui envoie : un autre auteur est refusé et rien ne
+  part. Une donnée manquante est nommée au praticien, jamais sa valeur. Les copies cachées ne figurent pas dans
+  l'enveloppe. Les journaux ne portent ni INS, ni nom, ni nom de fichier. L'avis envoyé à Weda ne porte que le
+  patient, les documents et les adresses des destinataires, et Weda revérifie que chaque document appartient au
+  patient et au cabinet (task-367).
 
 ---
 

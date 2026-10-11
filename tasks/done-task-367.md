@@ -643,6 +643,7 @@ front/libs/mss/src/features/mail/services/mail-event.service.ts
 | /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 11 min 50 s | — | — | — | e2e ×3 (11 min 04 s) |
 | /review | ok | 6 min 20 s | 3 (36 s) | 2 (4 min 05 s) | — | dtos-mss 1B/0T, api-mail 1B/1T, client-angular 1B/1T |
-| **Total cycle** | | **2 h 06 min** | **13 (3 min 44 s)** | **31 (28 min 50 s)** | **4 (1 min 24 s)** | |
+| /tech-writer | ok | 1 min 11 s | — | — | — | — |
+| **Total cycle** | | **2 h 07 min** | **13 (3 min 44 s)** | **31 (28 min 50 s)** | **4 (1 min 24 s)** | |
 
 Autres commandes mesurées : lint ×3 (48 s), nuget-wait ×1 (18 s), restore ×1 (23 s)

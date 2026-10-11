@@ -4531,3 +4531,5 @@
 {"ts":"2026-10-11T21:26:53+02:00","run_id":"-","type":"cmd","task":"task-367","step":"review","repo":"client-angular","kind":"build","label":"","cwd":"Client/Angular/front","cmd":"npx nx build weda2 --skip-nx-cache","duration_ms":22727,"exit_code":0}
 {"ts":"2026-10-11T21:27:40+02:00","run_id":"-","type":"cmd","task":"task-367","step":"review","repo":"client-angular","kind":"test","label":"","cwd":"Client/Angular/front","cmd":"npx nx run-many -t test --skip-nx-cache","duration_ms":46626,"exit_code":0}
 {"ts":"2026-10-11T21:28:43+02:00","run_id":"-","type":"step","task":"task-367","step":"review","status":"ok","note":"","iterations":null,"duration_ms":380996}
+{"ts":"2026-10-11T21:29:02+02:00","run_id":"-","type":"step_start","task":"task-367","step":"tech-writer"}
+{"ts":"2026-10-11T21:30:14+02:00","run_id":"-","type":"step","task":"task-367","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":71895}

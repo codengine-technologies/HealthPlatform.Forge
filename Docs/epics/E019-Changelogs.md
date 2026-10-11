@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E019-integration-de-la-nouvelle-messagerie.md](E019-integration-de-la-nouvelle-messagerie.md).
-> **Dernière mise à jour** : 2026-10-11 (v1.4)
+> **Dernière mise à jour** : 2026-10-11 (v1.5)
 
 ---
 
@@ -278,6 +278,67 @@
   - `/e2e` : 25 min 47 s, preuves par mutation comprises ;
   - `/review` : 4 min 55 s.
 
+### v1.5 — Envoi d'un document du dossier patient Weda par la nouvelle messagerie, api-mail emballe en IHE_XDM — task-367
+
+- **Task** : task-367, statut `done` (`/review` APPROVED le 2026-10-11). Cycle autonome. Décision : ADR-007 amendement 6
+  (dépôt Weda) et amendement 4 de l'ADR client. Remplace task-361 (canal serveur abandonné).
+- **PR** :
+  - `dtos-mss` #44, à merger en premier ;
+  - `api-mail` #289, label `awaiting-human-merge`, branche `feat/task-367-weda-envoi-ihe-xdm` ;
+  - client-angular : code-only, 27 fichiers à commiter sur TFS **avant** le merge d'api-mail (E2E-WEDA-003 `requis`) ;
+  - partie Weda (`nova-mss`) hors forge, à faire par l'humain (règle 11).
+- **Contrat** (`HealthPlatform.Dtos.Mss` **524.0.0**) :
+  - `AttachmentDto.Packaging` (`IheXdmPackagingDto?`) ;
+  - `IheXdmPackagingKind` (`Unspecified`, `ExistingCda`, `PdfA`, sérialisé en chaîne) ;
+  - `IheXdmPatientDto`, `IheXdmAuthorDto`, `IheXdmStructureDto`.
+- **api-mail** :
+  - consomme `Interop.Cda.Parser` **107.0.0** (task-366 mergée) ;
+  - `IheXdmEnvelopeService.Apply(MailDto)`, appelé par `OutgoingMailService` juste après la résolution des pièces par
+    référence, **avant** les règles de taille et les en-têtes `X-MSS-*`. L'envoi différé confirmé avec la carte passe
+    par ce même chemin : l'enveloppe est construite à la confirmation ;
+  - `ExistingCda` : la pièce est **remplacée** par `IHE_XDM.ZIP`. `PdfA` : le PDF est gardé, sans sa demande, et
+    `IHE_XDM.ZIP` est insérée juste après ;
+  - destinataires prévus : À + Cc, dédoublonnés, **sans Cci**. README : logiciel `HealthPlatform`, éditeur
+    `Codengine Technologies` (à valider par l'humain). `DisableZip64` ;
+  - auteur : comparé au RPPS de la carte de la session, sinon à `MssRpps`, préfixe 8 toléré ;
+  - refus : `IheXdmAuthorNotSenderException` → **403** `IHE_XDM_AUTHOR_NOT_SENDER` ; deux pièces emballées → **400** ;
+    `IheXdmPackagingRefusedException` → **422** `IHE_XDM_PACKAGING_REFUSED`, extension `field` (un nom, jamais une
+    valeur) ;
+  - packager d'Interop enregistré en singleton (`TryAddSingleton`), service d'enveloppe en scoped.
+- **weda2** (client-angular) :
+  - port `MSS_COMPOSE_INTENT` / `MSS_DOCUMENT_SENT`, fourni par `compose-intent.provider` : demande `get-compose-intent`
+    (délai 120 s) et avis `document-sent` ;
+  - `WedaIntegrationService.whenSettled()` : aucune demande tant que la disponibilité n'est pas tranchée ;
+  - `ComposeIntentLauncherService` racine : `take()` mis en cache, `claim()` une fois. L'intention n'est livrée qu'à une
+    instance vivante de `mss-mail` (`destroyRef.destroyed`) ;
+  - rédaction d'intention :
+    - pièces par contenu, `packaging` recopié, badge « Données structurées » ;
+    - aucun brouillon automatique, et une fermeture venue d'ailleurs demande la confirmation d'abandon (décision de la
+      forge, à valider) ;
+    - erreurs d'emballage affichées, rédaction laissée ouverte ;
+    - `document-sent` seulement après un envoi `success` ;
+  - le premier dossier chargé ne ferme plus la rédaction ouverte (corrigé à la source).
+- **Pont v1** : nouveaux types `get-compose-intent` et `document-sent`, côté Weda à réaliser (`GET
+  api/nova-mss/compose-intent`, `POST api/nova-mss/sent-trace`, `nova-mss-host.js`).
+- **e2e** : **E2E-WEDA-003** v1 (angular `requis`, mobile non applicable).
+  - Le faux hôte rend un CDA N3 synthétique avec sa demande d'emballage et retient `document-sent`.
+  - Prouvé rouge dans les trois cas de la DOD (ME1–ME3).
+  - L'e2e a trouvé deux courses (vert 1/3), corrigées avec tests unitaires rouges sous mutation : consigne
+    `service-propre-au-composant`.
+- **Validation** :
+  - api-mail : intégration 846 (16 ignorés), application 3 591, api 1 190, 0 échec ;
+  - règle 1b : 8 tests d'intégration `IheXdmEnvelopeSendEndToEndTests`, preuves MA1–MA8 ;
+  - Angular : 11 projets verts (mss-lib 759, weda2 2 686) ;
+  - `/e2e` : mobile 31/31, angular 35/35, parité verte.
+- **Qualité** : Quality Gate OK, new coverage 97,3 % ; 2 × S3925 en FALSE-POSITIVE (triplet présent) ; 4 tests de
+  couverture ajoutés ; lint Angular : 5 `require-example` (exemples vides) corrigés, 0 erreur.
+- **Signal** : la quarantaine `E2E-COMPOSE-002` [angular] passe, et sa task de correction (task-350) est mergée :
+  levée à décider par l'humain.
+- **Durée du cycle** (`## Timings` de `tasks/done-task-367.md`) : **2 h 06 min** mesurées, dont `/develop` 1 h 24 min,
+  `/sonar` 18 min 49 s, `/e2e` 11 min 50 s, `/review` 6 min 20 s.
+
+---
+
 ### v1.4 — Interop : enveloppe IHE_XDM en mémoire d'un CDA ou d'un PDF/A, conforme à celle de Weda — task-366
 
 - **Task** : task-366, statut `done` (`/review` APPROVED le 2026-10-11). Cycle autonome. Fondation de task-367 (envoi d'un
@@ -345,27 +406,31 @@
 | Faux hôte Weda (e2e) | `Client/Angular/front/e2e/mss-e2e/support/weda-host.ts` | Serveur HTTPS loopback `localhost:47399`, pont v1 côté hôte : boîte désignée (task-362), dossier patient et import (task-363) |
 | Import dans le dossier patient | `Client/Angular/front/libs/mss/src/features/mail/components/weda-import/` | Fenêtre d'import, documents proposés, erreurs du pont (task-363) |
 | Enveloppe IHE_XDM (Interop) | `interop/interop.cda.parser/src/Interop.Cda/IheXdm/` (package `Interop.Cda.Parser` ≥ 105.0.0) | `IIheXdmPackager` : enveloppe en mémoire d'un CDA ou d'un PDF/A, consommée par api-mail à partir de task-367 |
+| Enveloppe à l'envoi (api-mail) | `Api/Mail/src/Application/Services/Implementation/IheXdmEnvelopeService.cs`, `Exceptions/IheXdm{AuthorNotSender,PackagingRefused}Exception.cs` | `AttachmentDto.Packaging` → `IHE_XDM.ZIP` sur le chemin d'envoi commun, refus 403 / 400 / 422 (task-367) |
+| Intention d'envoi (weda2) | `Client/Angular/front/apps/weda2/src/lib/embedded/compose-intent.provider.ts`, `libs/mss/src/core/services/compose-intent-launcher.service.ts`, `core/tokens/mss-compose-intent.token.ts` | `get-compose-intent`, `document-sent`, livraison à une instance vivante (task-367) |
 | Décisions | Weda : `docs/architecture/adr/007_integration-nouvelle-experience-messagerie.md` ; `Client/Angular/docs/ADR-2026-10-09-integration-weda-mode-embarque.md` | Contrat du pont, amendements 1 à 4 (le 3 fait foi ; le 4 fixe le repère `nova-mss` : import à la demande, WMickey garde la réception, boîte désignée par Weda) |
 
 ---
 
 ## Annexe B — Inventaire fonctionnel (2026-10-11)
 
-- Tasks de l'EPIC : 5 actives : 356, 357, 363 et 366 `done`, 362 archivée (mergée). 365 et 367 `todo`. 4 en attente dans
+- Tasks de l'EPIC : 356, 357, 363 et 367 `done` ; 362 et 366 archivées (mergées). 365 `todo`. 4 en attente dans
   `tasks/onhold/` (358 à 361) : elles portaient le mode exclusif de l'amendement 2, abandonné par
   l'amendement 3 de l'ADR-007 (décision humaine du 2026-10-10).
 - Contrat du pont : version 1. Types implémentés côté hôte : `host-capabilities` (task-356) ;
   `resolve-patient`, `get-filing-context`, `open-patient-record` (task-357) ; `get-mailbox`
   (task-362), seule demande émise avant la lecture du flag (côté Weda à réaliser) ;
   `file-documents` (task-363), avec transfert d'octets, et le champ optionnel `postItLevels`
-  de `get-filing-context` (côté Weda à réaliser). `file-message` et `open-draft` sont abandonnés.
-- Package Interop : `Interop.Cda.Parser` 105.0.0 publié (enveloppe IHE_XDM, task-366), non encore consommé par api-mail.
+  de `get-filing-context` (côté Weda à réaliser) ; `get-compose-intent` et `document-sent` (task-367, côté Weda à
+  réaliser). `file-message` et `open-draft` sont abandonnés.
+- Packages : `Interop.Cda.Parser` 107.0.0 (task-366 mergée) et `HealthPlatform.Dtos.Mss` 524.0.0, consommés par api-mail
+  sur la branche de task-367.
 - Flags : `weda_integration` (fermé à froid, évalué sur l'identité de la boîte ouverte). Aucun
   mot-clé IMAP : `Weda` et `WedaClasse` sont abandonnés avec l'amendement 2.
 - Quarantaines e2e ouvertes : 1 (E2E-COMPOSE-002, angular, task-350). Faux hôte de test et
   E2E-WEDA-001 (boîte désignée) : livrés par task-362, verts. Couverture e2e du parcours « Dossier Weda », reportée de
   task-357 à task-360 puis reprise par task-363 : E2E-WEDA-002, vert,
-  avec l'import et la biologie.
+  avec l'import et la biologie. E2E-WEDA-003 (envoi depuis le dossier patient) : livré par task-367, vert.
 
 ---
 
@@ -377,8 +442,9 @@
 | task-357 | done (aucune PR forge ; Angular à pousser sur TFS ; Weda hors forge) | Panneau « Dossier Weda » : patient Weda par INS vérifiée ou candidats par traits, ouverture du dossier ; API Weda `api/nova-mss` (`resolve-patient`, `filing-context`, `patient-url`) | RG-E019-01, 02 (affichage) |
 | task-362 | archivée (PR api-mail #285 mergée) | Boîte désignée par Weda : jeton `libs/mss` lu par `mailboxGuard` avant la table de décision, demande `get-mailbox`, écran de rattachement pré-rempli ; faux hôte de test et E2E-WEDA-001 ; côté Weda, `GET api/nova-mss/mailbox` | RG-E019-07 |
 | task-363 | done (PR api-mail #286, en attente de merge ; Angular à commiter sur TFS ; partie Weda à faire) | Import à la demande : fenêtre d'import (patient, documents, destination, classification, commentaire, post-it), `file-documents` avec octets transférés, ni corbeille ni mot-clé, pas d'import pour la biologie et HPRIM ; E2E-WEDA-002 ; côté Weda, `POST api/nova-mss/documents` | RG-E019-01, 02, 05 |
-| task-366 | done (PR interop.cda.parser #10, en attente de merge ; package 105.0.0 publié) | Enveloppe IHE_XDM en mémoire d'Interop (`IIheXdmPackager`) : CDA emballé tel quel ou PDF/A en N1, métadonnées conformes à Weda, refus typé ; ancienne API obsolète ; suite d'Interop verte sous Linux | — (fondation de l'envoi, task-367) |
+| task-366 | archivée (PR interop.cda.parser #10 mergée ; package 107.0.0) | Enveloppe IHE_XDM en mémoire d'Interop (`IIheXdmPackager`) : CDA emballé tel quel ou PDF/A en N1, métadonnées conformes à Weda, refus typé ; ancienne API obsolète ; suite d'Interop verte sous Linux | — (fondation de l'envoi, task-367) |
+| task-367 | done (PRs dtos-mss #44 et api-mail #289, en attente de merge ; Angular à commiter sur TFS ; partie Weda à faire) | Envoi depuis le dossier patient : `AttachmentDto.Packaging`, `IheXdmEnvelopeService` sur le chemin d'envoi, refus 403 / 400 / 422 ; rédaction d'intention (`get-compose-intent`, `document-sent`) ; E2E-WEDA-003 ; côté Weda, `compose-intent` et `sent-trace` | — |
 | task-358 | en attente (`tasks/onhold/`, amendement 3) | API d'intégration api-mail `api/v1/integration`, canal serveur Weda → api-mail, compteur de non-lus de l'en-tête | — |
 | task-359 | en attente (`tasks/onhold/`, amendement 3) | Réception des CR de biologie en bannette HPRIM sans WMickey, mots-clés `Weda` / `WedaClasse` | — |
 | task-360 | en attente (`tasks/onhold/`, amendement 3) | Classer par identifiants via le canal serveur ; remplacée par task-363 | — |
-| task-361 | en attente (`tasks/onhold/`, amendement 3) | « Envoyer par MSSanté » depuis un document Weda vers la rédaction de weda2 | — |
+| task-361 | en attente (`tasks/onhold/`, amendement 3) | « Envoyer par MSSanté » depuis un document Weda vers la rédaction de weda2 ; remplacée par task-367 | — |
