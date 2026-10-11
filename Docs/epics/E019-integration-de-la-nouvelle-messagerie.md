@@ -1,11 +1,11 @@
 # E019 — Intégration de la nouvelle messagerie dans Weda
 
-> **Statut** : 🟡 En cours — 2 fonctionnalités sur 4 validées, 2 livrées côté messagerie
+> **Statut** : 🟡 En cours — 2 fonctionnalités sur 5 validées, 2 livrées côté messagerie, 1 en préparation
 > **Modèle** : task-driven
-> **Version** : 1.3
+> **Version** : 1.4
 > **Auteur** : PO forge
 > **Audience** : PO, direction, équipe produit — la vue ingénierie vit dans [E019-Changelogs.md](E019-Changelogs.md)
-> **Dernière mise à jour** : 2026-10-10
+> **Dernière mise à jour** : 2026-10-11
 
 ---
 
@@ -22,7 +22,7 @@
 - [7. Contraintes et hypothèses](#7-contraintes-et-hypothèses)
 - [8. Critères d'acceptation de l'EPIC](#8-critères-dacceptation-de-lepic)
 - [9. Hors périmètre](#9-hors-périmètre)
-- [État de couverture (2026-10-10)](#état-de-couverture-2026-10-10)
+- [État de couverture (2026-10-11)](#état-de-couverture-2026-10-11)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -77,6 +77,7 @@ Le praticien passe librement de l'écran actuel à la nouvelle messagerie.
 | **F2 — Le dossier Weda du patient d'un document reçu** | Voir, sous un message, le dossier Weda du patient concerné (trouvé par son INS), ou des correspondances possibles à vérifier, puis l'ouvrir en un clic. | task-357 | 🟢 Validée, en attente de mise en ligne |
 | **F3 — La messagerie que Weda connaît, ouverte d'office** | Retrouver dans Weda la messagerie que Weda connaît, même s'il en a choisi une autre par défaut. Si elle n'est pas encore rattachée à son compte, la rattacher, l'adresse déjà saisie. Passer ensuite librement à ses autres messageries. | task-362 | 🟡 Livrée côté messagerie, partie Weda à réaliser |
 | **F4 — Importer un document reçu dans le dossier patient** | Importer, quand il le décide, une pièce jointe, le document d'un compte rendu ou le message lui-même dans le dossier d'un patient : destination, classification, commentaire, post-it. Le message reste dans sa boîte de réception. | task-363 | 🟡 Livrée côté messagerie, partie Weda à réaliser |
+| **F5 — Envoyer un document du dossier patient** | Envoyer un document du dossier Weda par la nouvelle messagerie, dans l'enveloppe qu'attendent les messageries de santé. | task-366 | 🔵 En préparation : l'enveloppe est prête, l'envoi depuis Weda reste à réaliser |
 
 ---
 
@@ -167,7 +168,7 @@ flowchart LR
 
 ---
 
-## État de couverture (2026-10-10)
+## État de couverture (2026-10-11)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
@@ -175,8 +176,9 @@ flowchart LR
 | F2 — Le dossier Weda du patient d'un document reçu | 🟢 Validée, en attente de mise en ligne | dossier trouvé par INS vérifiée, correspondances signalées « à vérifier », ouverture du dossier en un clic dans Weda | task-357 |
 | F3 — La messagerie que Weda connaît, ouverte d'office | 🟡 Livrée côté messagerie, partie Weda à réaliser | ouverture d'office sur la messagerie désignée à chaque entrée, rattachement proposé avec l'adresse déjà saisie, comportement inchangé hors de Weda | task-362 |
 | F4 — Importer un document reçu dans le dossier patient | 🟡 Livrée côté messagerie, partie Weda à réaliser | fenêtre d'import (patient, documents, destination, classification, commentaire, post-it), message laissé en place, aucune action pour la biologie | task-363 |
+| F5 — Envoyer un document du dossier patient | 🔵 En préparation | enveloppe du document prête (compte rendu PDF ou synthèse structurée, patient désigné par son INS, destinataires) ; envoi depuis le dossier Weda à réaliser | task-366 |
 
-**Couverture EPIC consolidée : 75 %** (2 fonctionnalités sur 4 validées, les deux autres livrées côté messagerie).
+**Couverture EPIC consolidée : 65 %** (2 fonctionnalités sur 5 validées, 2 livrées côté messagerie, 1 en préparation).
 
 ---
 
@@ -205,6 +207,11 @@ flowchart LR
   biologie ne propose pas d'import : Weda l'intègre lui-même dans la bannette des résultats
   (task-363).
 
+- v1.4 — Préparation de l'envoi depuis le dossier patient : un document de Weda pourra partir par la nouvelle
+  messagerie dans l'enveloppe qu'attendent les messageries de santé. Un compte rendu en PDF y est placé dans un document
+  médical conforme, et une synthèse déjà structurée y part sans aucune retouche. Le patient y est désigné par son INS, et
+  chaque destinataire est nommé. L'envoi depuis Weda arrive avec la fonctionnalité suivante (task-366).
+
 ### Sécurité
 
 - v1.0 — La nouvelle messagerie ne dialogue avec Weda que si l'intégration a été explicitement
@@ -220,6 +227,9 @@ flowchart LR
   proposé d'office ; une correspondance par nom, prénom ou date de naissance doit être choisie
   par le praticien. Aucune identité n'est créée ni modifiée, et Weda revérifie que le patient
   appartient au cabinet (task-363).
+- v1.4 — Une enveloppe n'est jamais produite à moitié : une information manquante (INS du patient, identifiant du
+  praticien ou de la structure, type du document) l'arrête, et une synthèse qui ne porte pas l'INS du patient annoncé
+  est refusée. Rien n'est écrit sur le disque, et aucune donnée de santé n'apparaît dans les journaux (task-366).
 
 ---
 

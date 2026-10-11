@@ -399,6 +399,7 @@ Produit `vsm-n3/IHE_XDM.ZIP` (VSM N3 synthétique) et `pdf-n1/IHE_XDM.ZIP` (PDF 
 | /develop | ok | 29 min 21 s | 2 (4.4 s) | 7 (1 min 50 s) | — | interop-cda 2B/7T, interop 105.0.0 ; 94 tests neufs ; Linux 41 rouges -> 0 |
 | /e2e | skipped | 12 s | — | — | — | aucune voie touchée (interop-cda) |
 | /review | ok | 1 min 49 s | 1 (1.2 s) | 1 (11 s) | — | interop-cda 1B/1T, PR interop #10 ; APPROVED |
-| **Total cycle** | | **32 min 17 s** | **3 (5.7 s)** | **8 (2 min 02 s)** | **0 (0.0 s)** | |
+| /tech-writer | ok | 1 min 45 s | — | — | — | E019 v1.4 |
+| **Total cycle** | | **34 min 02 s** | **3 (5.7 s)** | **8 (2 min 02 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (47 s)

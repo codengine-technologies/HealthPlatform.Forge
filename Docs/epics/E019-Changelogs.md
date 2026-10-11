@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E019-integration-de-la-nouvelle-messagerie.md](E019-integration-de-la-nouvelle-messagerie.md).
-> **Dernière mise à jour** : 2026-10-10 (v1.3)
+> **Dernière mise à jour** : 2026-10-11 (v1.4)
 
 ---
 
@@ -278,6 +278,55 @@
   - `/e2e` : 25 min 47 s, preuves par mutation comprises ;
   - `/review` : 4 min 55 s.
 
+### v1.4 — Interop : enveloppe IHE_XDM en mémoire d'un CDA ou d'un PDF/A, conforme à celle de Weda — task-366
+
+- **Task** : task-366, statut `done` (`/review` APPROVED le 2026-10-11). Cycle autonome. Fondation de task-367 (envoi d'un
+  document Weda par la nouvelle messagerie, api-mail emballe le document). Décision : ADR-007 amendement 6, C4 et C5.
+- **PR** : `interop.cda.parser` #10, `feat/task-366-ihe-xdm-packager` → `develop`, label `awaiting-human-merge`, commit
+  `4d10204` (31 fichiers).
+- **Package** : `Interop.Cda.Parser` **105.0.0**, publié par la CI depuis la branche (run 105). `api-mail` reste en 101.0.0 :
+  le bump est porté par task-367.
+- **API** (`Interop.Cda.IheXdm`, assembly `Interop.Cda`) :
+  - `IIheXdmPackager.Package(IheXdmPackageRequest)` → `IheXdmPackageResult { Zip, FileName = "IHE_XDM.ZIP",
+    DocumentTypeCode, PatientId }` ; `IheXdmPackager(TimeProvider?, ILogger?)` ;
+  - document : `IheXdmCdaDocument` (CDA N1 ou N3, emballé **tel quel**) ou `IheXdmPdfDocument` (CDA R2 N1 construit en
+    mémoire par `CdaN1Builder`, constructeur propre : `CdaBuilder` n'est pas réutilisé) ;
+  - refus : `IheXdmPackagingException { Code (MissingField, InvalidField, InvalidCda, PatientMismatch), Field }`, levée avant
+    toute génération ;
+  - aucune écriture disque ; journal limité au type, au format et à la taille.
+- **Métadonnées** (`IheXdmMetadataWriter`, XDocument) : un champ par ligne du tableau de la task. Écarts voulus avec Weda :
+  `submissionTime` en UTC, `intendedRecipient` ajouté (`||^^Internet^{adresse}`), `eventCodeList` seulement si
+  `serviceEvent/code`, pas de référence parasite. Échappement HL7 des délimiteurs dans les noms (`&` → `\T\`).
+- **À confirmer au validateur de l'ANS** (Manual Test Plan) :
+  - système du `formatCode` d'un N1 PDF : `1.3.6.1.4.1.19376.1.2.3`, comme Weda ; l'exemple de la task écrivait `.282` ;
+  - forme de l'`intendedRecipient` ;
+  - libellé de la classe 60.
+- **Ancienne API `[Obsolete]`** : `GeneratePackage`, `IHEPackageBuilder.Build`, `GetIheXdmZipFile`,
+  `IheFileHelper.GenerateIHEZipPackage`. Aucun consommateur hors d'Interop.
+- **Linux** : la suite d'Interop y était rouge (41 tests), invisible car la CI ne jouait que le build.
+  - Causes : `DateTime.Parse("30/12/1899")` dans `CdaMedicationsBuilder` et `CdaPathologiesBuilder`, séparateur `\` en dur
+    dans l'ancien générateur, `C:\` et données locales `D:\` dans les tests.
+  - Correction : la CI joue désormais `dotnet test` (setup .NET 10).
+  - Consigne `portabilite-linux` ajoutée à `conventions/csharp.md`.
+- **Validation** :
+  - Windows : 501 / 0 échec / 6 ignorés ;
+  - Linux (docker `sdk:10.0`) : 500 / 0 / 6 ;
+  - CI ubuntu verte ;
+  - 94 tests neufs.
+- **Preuve rouge** : 94/94 sur le bouchon, puis 22 mutations, chacune rouge sur le test qui la nomme. Le schéma du N1 est
+  validé contre `CDA_SDTC.xsd` (`CDA.xsd` du dépôt ne compile pas sous .NET), validation elle-même prouvée par mutation.
+- **Incident** : au `/start`, la branche a d'abord été créée et poussée sur le plan de contrôle, parce que CLAUDE.md donnait
+  `interop` comme chemin du dépôt (sans `.git`). Elle a été supprimée, puis recréée dans `interop/interop.cda.parser`.
+  CLAUDE.md et `/start` (garde `git rev-parse --show-toplevel`) sont corrigés, en attente de relecture humaine.
+- **Suggestions reportées** :
+  - `IntendedRecipients = null` → exception non typée ;
+  - identifiant de structure non numérique → `sourceId` non OID (forme de Weda) ;
+  - retrait de l'ancienne API après task-367.
+- **Durée du cycle** (`## Timings` de `tasks/done-task-366.md`) : **32 min 17 s** mesurées.
+  - `/develop` : 29 min 21 s. Les deux passes de mutation, environ 20 min de tests, ont été jouées hors `measure.sh` ;
+  - `/e2e` : skip (aucune voie) ;
+  - `/review` : 1 min 49 s.
+
 ---
 
 ## Annexe A — Cartographie des briques applicatives
@@ -295,13 +344,14 @@
 | Boîte désignée par l'hôte | `Client/Angular/front/libs/mss/src/core/tokens/mss-designated-mailbox.token.ts`, `core/guards/mailbox.guard.ts`, `core/utils/mailbox-address.util.ts`, `apps/weda2/src/lib/embedded/designated-mailbox.provider.ts` | `get-mailbox`, ouverture d'office, rattachement pré-rempli (task-362) |
 | Faux hôte Weda (e2e) | `Client/Angular/front/e2e/mss-e2e/support/weda-host.ts` | Serveur HTTPS loopback `localhost:47399`, pont v1 côté hôte : boîte désignée (task-362), dossier patient et import (task-363) |
 | Import dans le dossier patient | `Client/Angular/front/libs/mss/src/features/mail/components/weda-import/` | Fenêtre d'import, documents proposés, erreurs du pont (task-363) |
+| Enveloppe IHE_XDM (Interop) | `interop/interop.cda.parser/src/Interop.Cda/IheXdm/` (package `Interop.Cda.Parser` ≥ 105.0.0) | `IIheXdmPackager` : enveloppe en mémoire d'un CDA ou d'un PDF/A, consommée par api-mail à partir de task-367 |
 | Décisions | Weda : `docs/architecture/adr/007_integration-nouvelle-experience-messagerie.md` ; `Client/Angular/docs/ADR-2026-10-09-integration-weda-mode-embarque.md` | Contrat du pont, amendements 1 à 4 (le 3 fait foi ; le 4 fixe le repère `nova-mss` : import à la demande, WMickey garde la réception, boîte désignée par Weda) |
 
 ---
 
-## Annexe B — Inventaire fonctionnel (2026-10-10)
+## Annexe B — Inventaire fonctionnel (2026-10-11)
 
-- Tasks de l'EPIC : 4 actives : 356 et 357 `done`, 362 archivée (mergée), 363 `done`. 4 en attente dans
+- Tasks de l'EPIC : 5 actives : 356, 357, 363 et 366 `done`, 362 archivée (mergée). 365 et 367 `todo`. 4 en attente dans
   `tasks/onhold/` (358 à 361) : elles portaient le mode exclusif de l'amendement 2, abandonné par
   l'amendement 3 de l'ADR-007 (décision humaine du 2026-10-10).
 - Contrat du pont : version 1. Types implémentés côté hôte : `host-capabilities` (task-356) ;
@@ -309,6 +359,7 @@
   (task-362), seule demande émise avant la lecture du flag (côté Weda à réaliser) ;
   `file-documents` (task-363), avec transfert d'octets, et le champ optionnel `postItLevels`
   de `get-filing-context` (côté Weda à réaliser). `file-message` et `open-draft` sont abandonnés.
+- Package Interop : `Interop.Cda.Parser` 105.0.0 publié (enveloppe IHE_XDM, task-366), non encore consommé par api-mail.
 - Flags : `weda_integration` (fermé à froid, évalué sur l'identité de la boîte ouverte). Aucun
   mot-clé IMAP : `Weda` et `WedaClasse` sont abandonnés avec l'amendement 2.
 - Quarantaines e2e ouvertes : 1 (E2E-COMPOSE-002, angular, task-350). Faux hôte de test et
@@ -326,6 +377,7 @@
 | task-357 | done (aucune PR forge ; Angular à pousser sur TFS ; Weda hors forge) | Panneau « Dossier Weda » : patient Weda par INS vérifiée ou candidats par traits, ouverture du dossier ; API Weda `api/nova-mss` (`resolve-patient`, `filing-context`, `patient-url`) | RG-E019-01, 02 (affichage) |
 | task-362 | archivée (PR api-mail #285 mergée) | Boîte désignée par Weda : jeton `libs/mss` lu par `mailboxGuard` avant la table de décision, demande `get-mailbox`, écran de rattachement pré-rempli ; faux hôte de test et E2E-WEDA-001 ; côté Weda, `GET api/nova-mss/mailbox` | RG-E019-07 |
 | task-363 | done (PR api-mail #286, en attente de merge ; Angular à commiter sur TFS ; partie Weda à faire) | Import à la demande : fenêtre d'import (patient, documents, destination, classification, commentaire, post-it), `file-documents` avec octets transférés, ni corbeille ni mot-clé, pas d'import pour la biologie et HPRIM ; E2E-WEDA-002 ; côté Weda, `POST api/nova-mss/documents` | RG-E019-01, 02, 05 |
+| task-366 | done (PR interop.cda.parser #10, en attente de merge ; package 105.0.0 publié) | Enveloppe IHE_XDM en mémoire d'Interop (`IIheXdmPackager`) : CDA emballé tel quel ou PDF/A en N1, métadonnées conformes à Weda, refus typé ; ancienne API obsolète ; suite d'Interop verte sous Linux | — (fondation de l'envoi, task-367) |
 | task-358 | en attente (`tasks/onhold/`, amendement 3) | API d'intégration api-mail `api/v1/integration`, canal serveur Weda → api-mail, compteur de non-lus de l'en-tête | — |
 | task-359 | en attente (`tasks/onhold/`, amendement 3) | Réception des CR de biologie en bannette HPRIM sans WMickey, mots-clés `Weda` / `WedaClasse` | — |
 | task-360 | en attente (`tasks/onhold/`, amendement 3) | Classer par identifiants via le canal serveur ; remplacée par task-363 | — |

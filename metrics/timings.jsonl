@@ -4459,3 +4459,5 @@
 {"ts":"2026-10-11T18:05:21+02:00","run_id":"-","type":"cmd","task":"task-366","step":"review","repo":"interop-cda","kind":"build","label":"","cwd":"interop/interop.cda.parser","cmd":"dotnet build interop.cda.parser.sln","duration_ms":1290,"exit_code":0}
 {"ts":"2026-10-11T18:05:33+02:00","run_id":"-","type":"cmd","task":"task-366","step":"review","repo":"interop-cda","kind":"test","label":"","cwd":"interop/interop.cda.parser","cmd":"dotnet test interop.cda.parser.sln --no-build","duration_ms":11588,"exit_code":0}
 {"ts":"2026-10-11T18:07:06+02:00","run_id":"-","type":"step","task":"task-366","step":"review","status":"ok","note":"PR interop #10 ; APPROVED","iterations":null,"duration_ms":109325}
+{"ts":"2026-10-11T18:07:20+02:00","run_id":"-","type":"step_start","task":"task-366","step":"tech-writer"}
+{"ts":"2026-10-11T18:09:06+02:00","run_id":"-","type":"step","task":"task-366","step":"tech-writer","status":"ok","note":"E019 v1.4","iterations":null,"duration_ms":105281}
