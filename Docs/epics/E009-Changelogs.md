@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-10-09 (v1.94)
+> **Dernière mise à jour** : 2026-10-11 (v1.95)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -835,6 +835,57 @@
   - pistes écartées : re-vérification « analysé entre-temps » côté premier plan, insertion
     idempotente par l'index unique `MailContents.MailId`, requête unique lignes existantes et
     analysées.
+
+### v1.95 — Lecture d'un message : le contenu d'abord, les actions dans un panneau latéral masquable — task-364
+
+- **Origine** : demande de l'humain du 2026-10-10 (« le mail est trop bas dans la logique de
+  lecture »), à partir de maquettes Stitch.
+- **PR** : `api-mail` #287 (`awaiting-human-merge`) — catalogue e2e et banc seulement.
+  `client-angular` en code-only : commit humain `58bfffe9` (TFS). La correction de
+  `functional.e2e.ts` reste à pousser.
+- **client-angular** :
+  - `mail-side-panel` (nouveau) :
+    - sections `ack`, `duplicate`, `patient`, `attachments` et `tags`, dans cet ordre ;
+    - redéploiement par `resetKey` (l'uid du message) ;
+    - rail avec pastille et compteur ;
+    - superposition sous 1 000 px de lecture (`ResizeObserver` sur la zone), Échap.
+  - `mail-detail` :
+    - en-tête sur deux lignes, puces de synthèse et menu « Plus d'actions » ;
+    - le doublon passe du bandeau en tête de contenu à une section compacte, avec un badge
+      `mail-summary-chip-duplicate` ;
+    - aperçu des pièces jointes dans la zone de lecture.
+  - Un seul défilement : `min-height: 60vh` / `70vh` retirés, chaîne flex `min-height: 0`.
+  - Retouches de design (maquettes Stitch, hors `/develop`), toutes sur les jetons typographiques
+    du DS :
+    - acquittement à quatre lignes compactes ;
+    - section Patient en carte, avec badge d'état du dossier Weda, « Changer de patient » et âge
+      calculé, sans INS ;
+    - pièces jointes sans débordement ;
+    - barres de défilement fines.
+- **Tests** :
+  - specs de composant `mail-side-panel` et `mail-detail.side-panel` ;
+  - mutations M1, M2, MD1b, MD3b, MD4, MA1 et MT1 tuées en `/develop`.
+  - **E2E-DETAIL-004 v1** (`angular: requis`) :
+    - mutation B (redéploiement neutralisé) tuée ;
+    - mutation A (`min-height: 60vh` remis) **survit**, faute d'un document assez haut. À durcir
+      (suggestion de revue).
+  - `/e2e` vert : mobile 31/31, Angular 33 + 1 flaky (COMPOSE-001).
+- **Défauts de test corrigés pendant `/e2e`** :
+  - nom d'étiquette avec espace (400 serveur) ;
+  - `check()` sur `ds-radio-button` / `ds-checkbox` (sans zone.js) ;
+  - message suivant ouvert sous le filtre « Bio à acquitter ».
+- **Banc** :
+  - `mail_max_userip_connections` passe de 100 à 1000 (`src/AppHost/dovecot/dovecot.conf`). Une
+    voie de ~35 tests empilait ~100 connexions IMAP (un `Client-Session-Id` par test, 5 min
+    d'inactivité).
+  - L'empilement en production (iframe Weda rechargée) est confié à **task-365** (EPIC E019).
+- **Conventions** (`conventions/e2e.md`) : `check-sur-composant-ds`, `plafond-userip-du-banc`,
+  `assertion-sans-cas-declencheur`.
+- **Différé** :
+  - durcir E2E-DETAIL-004 ;
+  - annuler le `setTimeout` de `MailSidePanelComponent.show()` ;
+  - motif d'un refus d'étiquette affiché au praticien ;
+  - migration du menu vers `ds-dropdown-menu`.
 
 ### v1.93 — Aucune donnée de santé ni saisie du praticien dans les journaux et la télémétrie (AUD-37, AUD-55, AUD-60, AUD-61) — task-341
 

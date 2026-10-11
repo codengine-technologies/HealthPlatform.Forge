@@ -4,7 +4,7 @@
 > **Modèle** : hand-crafted
 > **Version** : 1.86
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-09 (la synchronisation automatique traite un message comme son ouverture — task-334)
+> **Dernière mise à jour** : 2026-10-11 (lecture d'un message : le contenu d'abord, les actions dans un panneau latéral — task-364)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1035,6 +1035,21 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 > automatiquement au retour de la connexion », c'est cette description qui fait foi.
 
 ### Fonctionnalités métier
+
+- **v1.95 — Lire un message, c'est d'abord lire son contenu** (task-364, weda2) :
+  - **Le compte rendu est visible sans faire défiler.** L'en-tête tient sur deux lignes. Les
+    actions moins fréquentes (Exporter, Déplacer vers, Supprimer…) sont rangées dans
+    « Plus d'actions ».
+  - **Les actions passent dans un panneau « Actions & dossier », à droite du contenu** :
+    acquittement biologique, doublon potentiel, patient et dossier Weda, pièces jointes, étiquettes.
+  - **Le comportement du panneau** :
+    - il est déplié à chaque message, et le praticien peut le masquer pour le message en cours ;
+    - masqué, il devient un rail d'icônes qui signale ce qui reste à traiter ;
+    - sur un écran étroit, ou embarqué dans Weda, il s'ouvre par-dessus le contenu.
+  - **Les puces de l'en-tête résument le message** : acquittement à traiter, pièces jointes,
+    étiquettes, doublon. Chacune ouvre la section correspondante.
+  - **Un seul défilement** pour le contenu, et l'aperçu d'une pièce jointe s'ouvre dans la zone de
+    lecture.
 
 - **v1.94 — Un message reçu pendant la synchronisation automatique est traité comme s'il avait été
   ouvert** (task-334) :

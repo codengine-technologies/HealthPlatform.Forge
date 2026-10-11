@@ -292,7 +292,8 @@ Règles arbitrées par l'humain le 2026-10-10.
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 16 min 19 s | — | — | — | e2e ×10 (38 min 35 s), vert : mobile 31/31, angular 33 + 1 flaky (COMPOSE-001), quarantaine COMPOSE-002 passée ; mutation B tuée, mutation A survit (à arbitrer) |
 | /review | ok | 5 min 21 s | 2 (1 min 02 s) | 2 (4 min 29 s) | — | api-mail 1B/1T, client-angular 1B/1T, APPROVED, PR #287 api-mail ; client-angular code-only |
-| **Total cycle** | | **53 min 09 s** | **6 (1 min 50 s)** | **6 (5 min 56 s)** | **0 (0.0 s)** | |
+| /tech-writer | ok | 40 s | — | — | — | — |
+| **Total cycle** | | **53 min 50 s** | **6 (1 min 50 s)** | **6 (5 min 56 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×1 (9.1 s)
 
