@@ -290,8 +290,8 @@ Règles arbitrées par l'humain le 2026-10-10.
 | /sonar | skipped | 0.4 s | — | — | — | diff api-mail = e2e/scenarios.yml seul, aucun C# |
 | /lint-angular | ok | 20 s | — | — | — | — |
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
-| /e2e | failed | 0.4 s | — | — | — | outillage : ports 5052 et 4200 tenus par la session de dev |
-| **Total cycle** | | **31 min 30 s** | **4 (47 s)** | **4 (1 min 27 s)** | **0 (0.0 s)** | |
+| /e2e | failed | 18 min 47 s | — | — | — | e2e ×7 (27 min 01 s), E2E-AI-001 rouge : serveur de messagerie e2e injoignable en fin de suite (live-ai) ; 3 défauts de tests corrigés, scénarios de la task verts |
+| **Total cycle** | | **50 min 17 s** | **4 (47 s)** | **4 (1 min 27 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×1 (9.1 s)
 
@@ -373,14 +373,127 @@ Autres commandes mesurées : lint ×1 (9.1 s)
 - no client-mobile change → skipped /lint-mobile : `client-mobile` absent des `**Repos**`, arbre propre sur `develop`.
 - **Next step** : `/e2e task-364`
 
+## Retouches de design (hors /develop)
+
+Faites le 2026-10-10 en session, à la demande de l'humain, après l'arrêt de `/e2e` (outillage).
+Elles portent surtout sur le panneau « Actions & dossier » livré par cette task, d'après les
+maquettes Stitch. L'humain les a commitées avec le reste dans `client-angular` `58bfffe9`
+(« task 364 », branche `feature/nova-rewriting-mss-weda-integration`). `/review` les rattache
+à la task : ce ne sont pas des écarts de périmètre.
+
+- **Panneau « Actions & dossier »** (`mail-side-panel`) :
+  - fond `#f1f5f9`, sections en cartes blanches bordées ;
+  - icône dans les titres « Patient » et « Étiquettes » ;
+  - emplacement d'action dans l'en-tête de « Patient » ;
+  - nouvelle section `duplicate`, avec sa pastille de rail.
+- **Acquittement** (`biology-ack-panel`) :
+  - maquette Stitch : quatre lignes d'action compactes et bouton « Marquer comme résolu » pleine largeur ;
+  - plus de carte propre, ni de croix sur l'état à traiter ;
+  - typographie sur les jetons du DS.
+- **Doublon** (`mail-detail`) :
+  - le bandeau quitte le haut du contenu pour une section compacte du panneau ;
+  - badge `mail-summary-chip-duplicate` après les étiquettes ;
+  - anciens styles du bandeau supprimés.
+- **Patient** (`weda-patient-panel`, `weda-import`) :
+  - une carte par patient : nom, « Né(e) le … (N ans) » et badge d'état du dossier Weda ;
+  - lien « Changer de patient » dans l'en-tête ;
+  - bouton « Importer dans le dossier patient » pleine largeur ;
+  - INS jamais affichée (décision humaine, maintenue).
+- **Pièces jointes et étiquettes** (`mail-attachment`, `mail-tag`) :
+  - plus de marge ni de filet hérités du corps du message ;
+  - une pièce par ligne, sans débordement ;
+  - « Tout télécharger (ZIP) » en icône seule.
+- **Fenêtre d'import** (`weda-import`) :
+  - titre proposé : celui du document médical, sinon le sujet ;
+  - pas de case à cocher quand un seul document est importable.
+- **Banc e2e (api-mail)** : `mail_max_userip_connections` relevé de 100 à 1000 dans
+  `src/AppHost/dovecot/dovecot.conf` (`ca7e9e0a`). La voie Angular franchissait le plafond en fin de
+  suite, diagnostic Seq dans `questions/task-364.md`. Le phénomène de fond, l'empilement de sessions
+  IMAP en mode iframe, est l'objet de task-365.
+- **Global** :
+  - barres de défilement fines (`apps/weda2/src/app/styles/_scrollbars.scss`, et dans l'iframe CDA par `medical-html-frame`).
+  - Hors de ce commit, faits avant : page d'accueil du module (`MSS_HOME_PAGE`) et menu latéral replié par défaut.
+- **Tests** : specs de composant mises à jour et complétées (doublon, badge, patient, âge,
+  import à document unique). Chaque passe est validée par `nx build weda2`, les specs `libs/mss`
+  concernées et ESLint (0 erreur). Les `data-testid` des parcours e2e sont conservés.
+
 ## E2E log
 
-| Voie | Déclenchée par | Résultat |
-|---|---|---|
-| mobile | api-mail touché | **non jouée — outillage** : port 5052 tenu par l'AppHost de dev (dcp PID 51296) |
-| angular | api-mail + client-angular touchés | **non jouée — outillage** : ports 5052 (AppHost de dev) et 4200 (`nx serve weda2` PID 8716) tenus |
+**Relance du 2026-10-10 (nuit)**, après correction de trois défauts des tests Angular. Voie
+mobile jouée une fois, voie Angular jouée deux fois (la seconde après le troisième correctif).
 
-- **Verdict** : 🔴 **bloqué (outillage)**. La non-régression n'est pas prouvée. Porte `gate` non lancée (aucun rapport exécuté).
-- **Dépendances** : `@playwright/test` présent dans les deux clients ; mobile aligné sur `origin/develop` (0 commit de retard). Aucun `npm ci` lancé, puisque votre serveur Angular tourne.
-- **Démontage** : rien n'a été monté, aucun conteneur e2e créé.
-- **Suite** : `questions/task-364.md`. Arrêter la session de dev, puis relancer `/e2e task-364`.
+| Voie | Déclencheur | Résultat | Tests | Durée |
+|---|---|---|---|---|
+| mobile | api-mail touché (catalogue) | ✅ verte | 31 verts, 0 flaky, 0 rouge | ~5 min 30 s |
+| angular | api-mail + client-angular (`58bfffe9` + correctifs de `functional.e2e.ts`, non commités) | ❌ rouge | 32 verts, 0 flaky, 2 rouges dont 1 en quarantaine | ~5 min |
+
+- Catalogue : `Api/Mail/e2e/scenarios.yml` @ `feat/task-364-lecture-panneau-actions` (`941f9c4a`)
+- **Défauts des tests corrigés** (`e2e/mss-e2e/specs/functional.e2e.ts`, à commiter par l'humain) :
+  1. E2E-DETAIL-004 : étiquette `Lecture e2e` refusée par le serveur (400, pas d'espace) → `Lecture-e2e` ;
+  2. E2E-WEDA-002 : `check()` sur `ds-radio-button` et `ds-checkbox` (rendu au tick suivant, sans zone.js) → `click()` + `toBeChecked()` ;
+  3. E2E-DETAIL-004 : le message suivant était ouvert sous le filtre « Bio à acquitter » posé plus haut → le filtre est retiré (même puce), sans quitter la page.
+  Ces trois scénarios sont **verts** au dernier run, ainsi que E2E-LIVE-001.
+- **Reste rouge : E2E-AI-001** (assistant), aux deux essais. Il bloque au tout début (`openInbox` :
+  « le dossier INBOX est ouvert »). L'instantané montre un quota « non disponible » et une liste vide :
+  le serveur de messagerie e2e ne répond plus. Même signature, à chaque run, sur un test différent
+  de `live-ai.e2e.ts`, toujours en fin de suite : COMPOSE-002 (503 sur `/mail/folders`), LIVE-001
+  (« connection aborted » à la livraison), AI-001. Aucun lien relevé avec le code de la task.
+- Quarantaines : E2E-COMPOSE-002 (task-350), rouge, non bloquant.
+- Divergences ouvertes : aucune
+- Parcours touchés sans spec e2e modifié : aucun
+- Démontage : complet (ports libres, aucun conteneur e2e résiduel)
+- Preuve par mutation d'E2E-DETAIL-004 : **non faite**. Elle reste due avant `/review`.
+
+**E2E : ROUGE** — 1 motif(s) de blocage.
+
+**Bloquant** (1) :
+
+- [angular] rouge : « assistant — résumé initial puis deux questions de suite, conversation relue du serveur » (E2E-AI-001)
+
+**En quarantaine (posée par l'humain, non bloquant)** (1) :
+
+- [angular] « rédaction — corriger l’orthographe, appliquer, envoyer : le texte corrigé arrive, la citation intacte » (E2E-COMPOSE-002) — Failed — correction : task-350
+
+### Matrice de parité
+
+| Scénario | v | Mode | Titre | angular | mobile |
+|---|---|---|---|---|---|
+| E2E-INBOX-001 | 1 | headless | Filtrer la boîte de réception, basculer liste / conversation, ouvrir la recherche | ✅ | ✅ |
+| E2E-FOLDER-001 | 1 | headless | Naviguer vers les dossiers Archive et Corbeille | ✅ | ✅ |
+| E2E-PATIENT-001 | 1 | headless | Afficher la vue patients | ✅ | ✅ |
+| E2E-PATIENT-002 | 2 | headless | Rattacher à la main un document sans INS à un patient choisi par recherche, puis le détacher | ✅ | ✅ |
+| E2E-CONTACT-001 | 1 | humain | Rechercher dans le carnet et interroger l'annuaire national | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-SETTINGS-001 | 1 | headless | Changer le filtre par défaut et le retrouver après rechargement | ✅ | ✅ |
+| E2E-MAIL-001 | 1 | headless | Marquer un message lu puis non lu | ✅ | ✅ |
+| E2E-MAIL-002 | 1 | headless | Tout sélectionner et marquer lu en masse | ✅ | ✅ |
+| E2E-DETAIL-001 | 1 | headless | Répondre et transférer depuis la lecture d'un message | ✅ | ✅ |
+| E2E-COMPOSE-001 | 1 | headless | Envoyer un message, le recevoir, le lire, le supprimer | ✅ | ✅ |
+| E2E-COMPOSE-002 | 1 | headless | Faire corriger l'orthographe de son texte, appliquer la correction, puis envoyer | ❌ | ✅ |
+| E2E-COMPOSE-003 | 1 | headless | Un envoi refusé par la messagerie laisse le brouillon intact et peut être renvoyé | ✅ | ✅ |
+| E2E-MAIL-003 | 1 | headless | Signaler puis ne plus signaler un message | ✅ | ✅ |
+| E2E-MAIL-004 | 1 | headless | Déplacer un message vers Archive puis le ramener | ✅ | ✅ |
+| E2E-MAIL-005 | 1 | headless | Un message supprimé depuis un autre logiciel quitte la liste et ne s'ouvre jamais vide | ✅ | ✅ |
+| E2E-DRAFT-001 | 1 | headless | Créer un brouillon, le reprendre, le supprimer | ✅ | ✅ |
+| E2E-DRAFT-002 | 1 | headless | Envoyer un message à pièce jointe après l'enregistrement automatique du brouillon | ✅ | ✅ |
+| E2E-BIO-001 | 1 | headless | Acquitter un compte rendu de biologie | ✅ | ✅ |
+| E2E-DASH-001 | 1 | headless | Afficher les widgets du tableau de bord | ✅ | ✅ |
+| E2E-DETAIL-002 | 1 | headless | Basculer entre texte brut et HTML à la lecture | ✅ | ✅ |
+| E2E-DETAIL-003 | 1 | headless | Répondre à tous depuis la lecture d'un message | ✅ | ✅ |
+| E2E-DETAIL-004 | 1 | headless | Lire un message avec le panneau d'actions, le masquer puis le retrouver au message suivant | ✅ | — |
+| E2E-SETTINGS-002 | 1 | headless | Changer la vue par défaut et la retrouver après rechargement | ✅ | ✅ |
+| E2E-SEARCH-001 | 1 | headless | Rechercher un message et ouvrir la recherche avancée | ✅ | ✅ |
+| E2E-ATTACH-001 | 1 | headless | Voir les pièces jointes d'un message | ✅ | ✅ |
+| E2E-CONTACT-002 | 1 | headless | Créer puis supprimer un contact | ✅ | ✅ |
+| E2E-SIGNATURE-001 | 1 | headless | Créer puis supprimer une signature | ✅ | ✅ |
+| E2E-CONTACT-003 | 1 | headless | Créer puis supprimer un groupe de contacts | ✅ | ✅ |
+| E2E-FOLDER-002 | 1 | headless | Créer puis supprimer un dossier | ✅ | ✅ |
+| E2E-FOLDER-003 | 1 | headless | Ouvrir un dossier supprimé depuis un autre logiciel | ✅ | ✅ |
+| E2E-FOLDER-004 | 1 | headless | Actualiser la liste des dossiers après un changement fait dans un autre logiciel | ✅ | ✅ |
+| E2E-AUTH-001 | 1 | humain | Rester connecté quand le jeton d'accès expire | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-AUTH-002 | 1 | humain | Se déconnecter | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-LIVE-001 | 1 | headless | Recevoir un nouveau message en temps réel, sans recharger | ✅ | ✅ |
+| E2E-AI-001 | 1 | headless | Interroger l'assistant sur des messages sélectionnés et poser des questions de suite | ❌ | ✅ |
+| E2E-WEDA-001 | 1 | headless | Dans Weda, la messagerie s'ouvre sur la boîte que Weda désigne | ✅ | — |
+| E2E-WEDA-002 | 1 | headless | Voir le dossier Weda du patient d'un document reçu, l'ouvrir, puis importer des documents dans un dossier | ✅ | — |
+
+**Parité : verte** — aucun écart entre le catalogue et les suites.
