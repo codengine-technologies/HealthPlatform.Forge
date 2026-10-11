@@ -144,6 +144,7 @@ Le praticien ne peut **jamais** répondre ni transférer un message sans le mess
 | /lint-mobile | ok | 22 s | — | — | — | All files pass linting |
 | /e2e | ok | 11 min 12 s | — | — | — | e2e ×6 (21 min 13 s), vert après correctif de revue : mobile 31/31, angular 34/34 |
 | /review | ok | 1 min 04 s | 4 (1 min 12 s) | 4 (3 min 41 s) | — | api-mail 1B/1T, client-mobile 1B/1T, client-angular 1B/1T, client-blazor 1B/1T, APPROVED après correctif ; PRs api-mail #288, client-blazor #93, client-mobile #90 |
+| /tech-writer | ok | 0.4 s | — | — | — | — |
 | **Total cycle** | | **1 h 11 min** | **9 (2 min 15 s)** | **10 (8 min 20 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×2 (21 s)

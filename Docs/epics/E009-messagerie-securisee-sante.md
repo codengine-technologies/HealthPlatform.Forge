@@ -4,7 +4,7 @@
 > **Modèle** : hand-crafted
 > **Version** : 1.86
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-11 (lecture d'un message : le contenu d'abord, les actions dans un panneau latéral — task-364)
+> **Dernière mise à jour** : 2026-10-11 (répondre et transférer jamais sans le message d'origine — task-350)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1035,6 +1035,16 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 > automatiquement au retour de la connexion », c'est cette description qui fait foi.
 
 ### Fonctionnalités métier
+
+- **v1.96 — Une réponse ou un transfert part toujours avec le message d'origine** (task-350, les
+  trois applications) :
+  - **Plus de transfert incomplet.** Avant, un transfert cliqué trop vite pouvait partir chez le
+    confrère sans le compte rendu d'origine, sans aucune erreur visible.
+  - **Les boutons attendent le message.** Répondre, Répondre à tous et Transférer restent grisés
+    (« Chargement du message… ») tant que le message affiché n'est pas chargé.
+  - **Un échec est signalé.** Si le message ne peut pas être chargé, un avis clair s'affiche
+    (« Le message d'origine n'a pas pu être chargé : réessayez. ») et aucune rédaction ne s'ouvre.
+  - **La réponse proposée par l'assistant IA** cite elle aussi le message d'origine.
 
 - **v1.95 — Lire un message, c'est d'abord lire son contenu** (task-364, weda2) :
   - **Le compte rendu est visible sans faire défiler.** L'en-tête tient sur deux lignes. Les

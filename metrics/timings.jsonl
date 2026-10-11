@@ -4437,3 +4437,5 @@
 {"ts":"2026-10-11T13:51:08+02:00","run_id":"-","type":"step","task":"task-350","step":"e2e","status":"ok","note":"vert après correctif de revue : mobile 31/31, angular 34/34","iterations":null,"duration_ms":672795}
 {"ts":"2026-10-11T13:51:21+02:00","run_id":"-","type":"step_start","task":"task-350","step":"review"}
 {"ts":"2026-10-11T13:52:25+02:00","run_id":"-","type":"step","task":"task-350","step":"review","status":"ok","note":"APPROVED après correctif ; PRs api-mail #288, client-blazor #93, client-mobile #90","iterations":null,"duration_ms":64527}
+{"ts":"2026-10-11T13:53:09+02:00","run_id":"-","type":"step_start","task":"task-350","step":"tech-writer"}
+{"ts":"2026-10-11T13:53:10+02:00","run_id":"-","type":"step","task":"task-350","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":471}

@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-10-11 (v1.95)
+> **Dernière mise à jour** : 2026-10-11 (v1.96)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -835,6 +835,48 @@
   - pistes écartées : re-vérification « analysé entre-temps » côté premier plan, insertion
     idempotente par l'index unique `MailContents.MailId`, requête unique lignes existantes et
     analysées.
+
+### v1.96 — Répondre et transférer jamais sans le message d'origine, même cliqués pendant son chargement — task-350
+
+- **Origine** : `/e2e` de task-349 (E2E-COMPOSE-002, premier passage à froid). Un transfert part
+  sans la citation d'origine, 1 fois sur 5.
+- **PRs** :
+  - `api-mail` #288 (catalogue) ;
+  - `client-blazor` #93 ;
+  - `client-mobile` #90 ;
+  - client-angular en code-only (TFS).
+- **client-angular** : `mail-detail` › `originalLoaded` (même `uid` et même dossier que le message
+  affiché, jamais le contenu du précédent), `replyBlockedReason`, `contentLoadFailed`, boutons
+  `[disabled]`, bandeau `mail-original-load-failed`. `mail-compose` › `openCompose` refuse une
+  réponse ou un transfert sans `content` (snackbar).
+- **client-mobile** :
+  - `core/utils/original-message.util.ts`, utilisé par la page (boutons d'en-tête) et le composant ;
+  - `openFor` refuse sans contenu (toast) ;
+  - l'assistant IA (`replyToCited`) charge le contenu cité. Trouvé en revue (CHANGES REQUESTED),
+    corrigé par `d198e10`.
+- **client-blazor** : défaut supplémentaire. `ReplyEmail` / `ForwardEmail` ne rattachaient jamais
+  le contenu chargé à la demande. Corrigé par `EnsureOriginalLoadedAsync` : la notification
+  `OriginalNotLoaded` s'affiche, et l'échec est journalisé avec `Uid` et `Status` seulement.
+  Même garde sur le repli « réponse » d'Annuler et remplacer.
+- **Tests** :
+  - Angular :
+    - Vitest, 5 rouges d'abord ;
+    - DOM, tués par mutation.
+  - Mobile : Jasmine (4 rouges, plus la page et l'assistant).
+  - Blazor : bUnit (4 rouges).
+  - **E2E-DETAIL-001 v2** (mobile et Angular requis) :
+    - le réseau est ralenti par une latence CDP de 3 s et Transférer cliqué aussitôt ;
+    - le message reçu, relu côté serveur, porte l'original ;
+    - prouvé rouge sur le bug réinjecté dans les deux clients.
+- **E2E** : vert. Mobile 31/31, Angular 34/34. La quarantaine E2E-COMPOSE-002 (task-350) passe,
+  et l'humain peut la lever après le merge.
+- **Conventions** :
+  - `conventions/e2e.md` › `retarder-une-requete-sans-casser-l-authentification`. `page.route` +
+    `continue` court-circuite l'authentification des fixtures (401) : la latence CDP le remplace.
+  - `conventions/angular.md` › `garde-sur-point-d-entree-commun`.
+- **Qualité** : `/sonar` skipped (pas de C# dans api-mail). Lint Angular `scope:mss` : 0 erreur.
+  Lint mobile : propre.
+- **Différé** : bouton « Réessayer » sur le bandeau d'échec (Angular).
 
 ### v1.95 — Lecture d'un message : le contenu d'abord, les actions dans un panneau latéral masquable — task-364
 
