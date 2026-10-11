@@ -139,7 +139,12 @@ Le praticien ne peut **jamais** répondre ni transférer un message sans le mess
 |---|---|---|---|---|---|---|
 | /start | ok | 27 s | — | — | — | — |
 | /develop | ok | 57 min 33 s | 4 (55 s) | 5 (4 min 25 s) | — | client-mobile 1B/1T, client-blazor 1B/2T, api-mail 1B/1T, client-angular 1B/1T |
-| **Total cycle** | | **58 min 00 s** | **4 (55 s)** | **5 (4 min 25 s)** | **0 (0.0 s)** | |
+| /sonar | skipped | 0.4 s | — | — | — | diff api-mail = e2e/scenarios.yml seul, aucun C# |
+| /lint-angular | ok | 38 s | — | — | — | 0 erreur scope:mss, rien à corriger |
+| /lint-mobile | ok | 22 s | — | — | — | All files pass linting |
+| **Total cycle** | | **59 min 01 s** | **4 (55 s)** | **5 (4 min 25 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : lint ×2 (21 s)
 
 ## Develop log
 
@@ -233,3 +238,17 @@ Le praticien ne peut **jamais** répondre ni transférer un message sans le mess
   - libellés FR en dur (Angular, mobile) et Localizer (Blazor) ✓ ;
   - aucune donnée de santé dans les journaux ✓.
 - **Next step** : `/sonar task-350`
+
+## Sonar log
+
+- **Skipped** : le diff d'api-mail se réduit à `e2e/scenarios.yml` (catalogue E2E-DETAIL-001 v2). Aucun fichier C# n'est modifié, donc aucun new code à analyser.
+- Qualité : `/sonar` skipped, api-mail sans code applicatif modifié.
+
+## Lint log
+
+- `npx nx run-many -t lint --projects=tag:scope:mss` : **0 erreur**. Avertissements : 50 sur `mss` et 43 sur `mss-lib`, tous antérieurs à la task. Aucune itération nécessaire.
+- Fichiers touchés : 0 erreur. Les avertissements restants sont antérieurs : `max-lines` sur `mail-compose` et `mail-detail`, et `complexity` sur `replacePlaceholders`, méthode non touchée.
+
+## Lint mobile log
+
+- `npm run lint` sur `fix/task-350-repondre-transferer-avec-message-origine` : **All files pass linting**. Aucune itération, aucun commit.
