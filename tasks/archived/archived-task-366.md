@@ -389,6 +389,17 @@ Produit `vsm-n3/IHE_XDM.ZIP` (VSM N3 synthétique) et `pdf-n1/IHE_XDM.ZIP` (PDF 
   3. Supprimer l'ancienne API dans une task dédiée après task-367.
   4. Libellé de la classe 60 à confirmer au validateur de l'ANS.
 
+## Merged
+
+- **Date** : 2026-10-11, par `/merge task-366 --i-tested` (HAG : Manual Test Plan attesté par l'humain).
+- `interop-cda` : PR #10 squash-mergée → `develop` **`7e3fdf6`** ; label `awaiting-human-merge` retiré ; branche
+  `feat/task-366-ihe-xdm-packager` supprimée (distante et locale).
+- CI `develop` : verte (build + tests ubuntu + publication), run 107 —
+  https://github.com/codengine-technologies/interop.cda.parser/actions/runs/38159104667
+- Package construit depuis `develop` : **`Interop.Cda.Parser` 107.0.0**. C'est lui que task-367 doit consommer (105.0.0 venait de
+  la branche, au même code).
+- Staging : aucune (cycle lancé par `/start`, hors `/forge`).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-366 --sync` — ne pas éditer à la main)*
