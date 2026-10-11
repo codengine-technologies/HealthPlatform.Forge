@@ -377,3 +377,17 @@ Autres commandes mesurées : lint ×2 (21 s)
   - Leçon de revue : un garde-fou ajouté sur un point d'entrée commun (la rédaction) doit faire
     recenser **tous** ses appelants. Un appel oublié (assistant IA) devient un refus.
 
+
+## Merged
+
+- **Date** : 2026-10-11, par `/merge task-350 --i-tested` (validation manuelle attestée par l'humain).
+- `api-mail` : PR #288 squash-mergée dans `develop`, commit `5cb4b1a998cbd920be8906126570255e41c42818` (catalogue E2E-DETAIL-001 v2).
+- `client-blazor` : PR #93 squash-mergée dans `develop`, commit `963b22447f542f94a404031750d90cec6a8937c9`.
+- `client-mobile` : PR #90 squash-mergée dans `develop`, commit `c63ccee7c0cd1571393fd98b04b0c5faa0b559e1`.
+- Labels `awaiting-human-merge` retirés. Branches `fix/task-350-repondre-transferer-avec-message-origine` supprimées (distantes et locales). Clones revenus sur `develop`.
+- CI `develop` verte :
+  - api-mail : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/38138736004
+  - client-blazor : https://github.com/codengine-technologies/HealthPlatform.Client/actions/runs/38138745864
+  - client-mobile : https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/38138755045
+- `client-angular` : géré manuellement par l'humain (TFS), 9 fichiers non commités.
+- À la main de l'humain : lever la quarantaine d'E2E-COMPOSE-002 (Angular, `live-ai.e2e.ts`), qui citait task-350 et passe désormais.
