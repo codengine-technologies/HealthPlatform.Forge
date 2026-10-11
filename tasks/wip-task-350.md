@@ -142,7 +142,9 @@ Le praticien ne peut **jamais** répondre ni transférer un message sans le mess
 | /sonar | skipped | 0.4 s | — | — | — | diff api-mail = e2e/scenarios.yml seul, aucun C# |
 | /lint-angular | ok | 38 s | — | — | — | 0 erreur scope:mss, rien à corriger |
 | /lint-mobile | ok | 22 s | — | — | — | All files pass linting |
-| **Total cycle** | | **59 min 01 s** | **4 (55 s)** | **5 (4 min 25 s)** | **0 (0.0 s)** | |
+| /e2e | ok | 10 min 56 s | — | — | — | e2e ×3 (10 min 23 s), vert : mobile 31/31, angular 34/34, DETAIL-001 v2 vert, quarantaine COMPOSE-002 passée |
+| /review | failed | 4 min 24 s | 4 (1 min 12 s) | 4 (3 min 41 s) | — | api-mail 1B/1T, client-mobile 1B/1T, client-angular 1B/1T, client-blazor 1B/1T, CHANGES REQUESTED : ai-chat mobile replyToCited ouvre une réponse sans contenu, refusée par la nouvelle garde |
+| **Total cycle** | | **1 h 14 min** | **8 (2 min 08 s)** | **9 (8 min 06 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×2 (21 s)
 
@@ -252,3 +254,71 @@ Autres commandes mesurées : lint ×2 (21 s)
 ## Lint mobile log
 
 - `npm run lint` sur `fix/task-350-repondre-transferer-avec-message-origine` : **All files pass linting**. Aucune itération, aucun commit.
+
+## E2E log
+
+| Voie | Déclencheur | Résultat | Tests | Durée |
+|---|---|---|---|---|
+| mobile | api-mail + client-mobile touchés | ✅ verte | 31 verts, 0 flaky, 0 rouge | 5 min 30 s |
+| angular | api-mail + client-angular touchés | ✅ verte | 34 verts, 0 flaky, 0 rouge, 1 quarantaine (passée) | 4 min 44 s |
+
+- Catalogue : `Api/Mail/e2e/scenarios.yml` @ `fix/task-350-repondre-transferer-avec-message-origine` (`4647a8c3`)
+- Code testé :
+  - api-mail `4647a8c3` ;
+  - client-mobile `2c73c1a` ;
+  - client-angular `feature/nova-rewriting-mss-weda-integration`, avec les modifications non commitées de la task.
+- **E2E-DETAIL-001 v2 vert sur les deux clients.** Le transfert, cliqué pendant un chargement ralenti, arrive avec le message d'origine.
+- Quarantaines : E2E-COMPOSE-002 (angular, task-350), **passée** à ce run. Elle peut être levée par l'humain une fois la task mergée.
+- Divergences ouvertes : aucune
+- Parcours touchés sans spec e2e modifié : aucun (`functional.e2e.ts` et `functional.spec.ts` modifiés)
+- Démontage : complet (ports libres, aucun conteneur e2e résiduel)
+
+**E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
+
+**En quarantaine (posée par l'humain, non bloquant)** (1) :
+
+- [angular] « rédaction — corriger l’orthographe, appliquer, envoyer : le texte corrigé arrive, la citation intacte » (E2E-COMPOSE-002) — Passed — correction : task-350
+
+### Matrice de parité
+
+| Scénario | v | Mode | Titre | angular | mobile |
+|---|---|---|---|---|---|
+| E2E-INBOX-001 | 1 | headless | Filtrer la boîte de réception, basculer liste / conversation, ouvrir la recherche | ✅ | ✅ |
+| E2E-FOLDER-001 | 1 | headless | Naviguer vers les dossiers Archive et Corbeille | ✅ | ✅ |
+| E2E-PATIENT-001 | 1 | headless | Afficher la vue patients | ✅ | ✅ |
+| E2E-PATIENT-002 | 2 | headless | Rattacher à la main un document sans INS à un patient choisi par recherche, puis le détacher | ✅ | ✅ |
+| E2E-CONTACT-001 | 1 | humain | Rechercher dans le carnet et interroger l'annuaire national | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-SETTINGS-001 | 1 | headless | Changer le filtre par défaut et le retrouver après rechargement | ✅ | ✅ |
+| E2E-MAIL-001 | 1 | headless | Marquer un message lu puis non lu | ✅ | ✅ |
+| E2E-MAIL-002 | 1 | headless | Tout sélectionner et marquer lu en masse | ✅ | ✅ |
+| E2E-DETAIL-001 | 2 | headless | Répondre et transférer depuis la lecture d'un message | ✅ | ✅ |
+| E2E-COMPOSE-001 | 1 | headless | Envoyer un message, le recevoir, le lire, le supprimer | ✅ | ✅ |
+| E2E-COMPOSE-002 | 1 | headless | Faire corriger l'orthographe de son texte, appliquer la correction, puis envoyer | ✅ | ✅ |
+| E2E-COMPOSE-003 | 1 | headless | Un envoi refusé par la messagerie laisse le brouillon intact et peut être renvoyé | ✅ | ✅ |
+| E2E-MAIL-003 | 1 | headless | Signaler puis ne plus signaler un message | ✅ | ✅ |
+| E2E-MAIL-004 | 1 | headless | Déplacer un message vers Archive puis le ramener | ✅ | ✅ |
+| E2E-MAIL-005 | 1 | headless | Un message supprimé depuis un autre logiciel quitte la liste et ne s'ouvre jamais vide | ✅ | ✅ |
+| E2E-DRAFT-001 | 1 | headless | Créer un brouillon, le reprendre, le supprimer | ✅ | ✅ |
+| E2E-DRAFT-002 | 1 | headless | Envoyer un message à pièce jointe après l'enregistrement automatique du brouillon | ✅ | ✅ |
+| E2E-BIO-001 | 1 | headless | Acquitter un compte rendu de biologie | ✅ | ✅ |
+| E2E-DASH-001 | 1 | headless | Afficher les widgets du tableau de bord | ✅ | ✅ |
+| E2E-DETAIL-002 | 1 | headless | Basculer entre texte brut et HTML à la lecture | ✅ | ✅ |
+| E2E-DETAIL-003 | 1 | headless | Répondre à tous depuis la lecture d'un message | ✅ | ✅ |
+| E2E-DETAIL-004 | 1 | headless | Lire un message avec le panneau d'actions, le masquer puis le retrouver au message suivant | ✅ | — |
+| E2E-SETTINGS-002 | 1 | headless | Changer la vue par défaut et la retrouver après rechargement | ✅ | ✅ |
+| E2E-SEARCH-001 | 1 | headless | Rechercher un message et ouvrir la recherche avancée | ✅ | ✅ |
+| E2E-ATTACH-001 | 1 | headless | Voir les pièces jointes d'un message | ✅ | ✅ |
+| E2E-CONTACT-002 | 1 | headless | Créer puis supprimer un contact | ✅ | ✅ |
+| E2E-SIGNATURE-001 | 1 | headless | Créer puis supprimer une signature | ✅ | ✅ |
+| E2E-CONTACT-003 | 1 | headless | Créer puis supprimer un groupe de contacts | ✅ | ✅ |
+| E2E-FOLDER-002 | 1 | headless | Créer puis supprimer un dossier | ✅ | ✅ |
+| E2E-FOLDER-003 | 1 | headless | Ouvrir un dossier supprimé depuis un autre logiciel | ✅ | ✅ |
+| E2E-FOLDER-004 | 1 | headless | Actualiser la liste des dossiers après un changement fait dans un autre logiciel | ✅ | ✅ |
+| E2E-AUTH-001 | 1 | humain | Rester connecté quand le jeton d'accès expire | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-AUTH-002 | 1 | humain | Se déconnecter | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-LIVE-001 | 1 | headless | Recevoir un nouveau message en temps réel, sans recharger | ✅ | ✅ |
+| E2E-AI-001 | 1 | headless | Interroger l'assistant sur des messages sélectionnés et poser des questions de suite | ✅ | ✅ |
+| E2E-WEDA-001 | 1 | headless | Dans Weda, la messagerie s'ouvre sur la boîte que Weda désigne | ✅ | — |
+| E2E-WEDA-002 | 1 | headless | Voir le dossier Weda du patient d'un document reçu, l'ouvrir, puis importer des documents dans un dossier | ✅ | — |
+
+**Parité : verte** — aucun écart entre le catalogue et les suites.
