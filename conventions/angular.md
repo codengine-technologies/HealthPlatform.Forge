@@ -236,3 +236,21 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   **décodé** : une adresse `Dr A <a@…>` y figure en clair, sans `&lt;`.
 - **Origine** : task-349 (revue : un en-tête avec adresse n'était pas reconnu)
 - **Occurrences** : 1
+
+### garde-sur-point-d-entree-commun — recenser tous les appelants avant de durcir une entrée partagée
+- **Piège** : task-350 ajoute une défense en profondeur à l'ouverture de la rédaction : une réponse
+  ou un transfert sans le message d'origine est refusé. Le chemin visé (Répondre / Transférer
+  depuis la lecture) est corrigé et testé, mais l'assistant IA mobile (`ai-chat` › `replyToCited`)
+  ouvrait lui aussi une réponse, **sans contenu**. La garde l'a transformée en refus systématique.
+  Son test ne vérifiait que l'événement émis (`openCompose$.next`), pas l'ouverture : il est resté vert.
+- **Consigne** : avant d'ajouter une garde à une entrée partagée (`openCompose$`, un service, un
+  guard de route), lister **tous** ses appelants
+  (`grep -rn "openCompose\$\.next" src libs`), et pour chacun dire s'il satisfait la nouvelle
+  précondition. Un appelant qui ne la satisfait pas est corrigé dans la même task, avec un test
+  qui vérifie la donnée transmise, pas seulement l'émission.
+- **Preuve** : revue de task-350, CHANGES REQUESTED, puis correctif `d198e10` (client-mobile). Le
+  test de l'assistant exige désormais `content` dans la demande d'ouverture. Rouge avant le
+  correctif, vert après.
+- **Origine** : task-350 (revue)
+- **Occurrences** : 1
+
