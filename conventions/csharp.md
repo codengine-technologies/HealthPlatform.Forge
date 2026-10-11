@@ -690,7 +690,7 @@ foreach (var mail in fetched)
 
 ## S3925 — une exception garde le triplet de constructeurs recommandé
 
-**Occurrences : 4** (task-171 — `UnauthorizedException`, `PscIdentityConflictException` ; task-320 — `MailboxIncompatibleException` ; task-330 — `SmtpDeliveryUncertainException`, triplet présent, marquée FALSE-POSITIVE comme prévu ; task-352 — `NotFoundException`, classe **non scellée** qui reçoit une propriété `ErrorCode` : la règle se lève sur une exception existante dès qu'on lui ajoute un membre, triplet présent, FALSE-POSITIVE)
+**Occurrences : 5** (task-171 — `UnauthorizedException`, `PscIdentityConflictException` ; task-320 — `MailboxIncompatibleException` ; task-330 — `SmtpDeliveryUncertainException`, triplet présent, marquée FALSE-POSITIVE comme prévu ; task-352 — `NotFoundException`, classe **non scellée** qui reçoit une propriété `ErrorCode` : la règle se lève sur une exception existante dès qu'on lui ajoute un membre, triplet présent, FALSE-POSITIVE ; task-367 — `IheXdmAuthorNotSenderException`, `IheXdmPackagingRefusedException`, triplet présent d'emblée, FALSE-POSITIVE : la consigne a été lue)
 
 La passe qualité avait **retiré** les constructeurs « inutilisés » de deux
 exceptions neuves pour ne garder que celui réellement appelé. Sonar réclame le
@@ -1465,6 +1465,25 @@ _testDirectory = Path.Combine(Path.GetTempPath(), $"Tests_{Guid.NewGuid()}");
 
 **Consigne** : pour compter des correspondances, `MaRegex().Count(texte)`. Les scans de source des
 tests d'architecture sont le terrain habituel de ce motif.
+
+---
+
+## asynclocal-hors-requete-de-test — une capture portée par `AsyncLocal` ne voit pas les requêtes du serveur de test
+
+**Occurrences : 1** (task-367 — capture des journaux de l'emballage IHE_XDM dans
+`IheXdmEnvelopeSendEndToEndTests` : portée par un `AsyncLocal` ouvert dans le test, elle est restée
+**vide**, les requêtes de `UseCaseHttpHost` ne suivant pas le flux d'exécution du test. La garde
+`Assert.NotEmpty` l'a vu ; sans elle, l'assertion « aucune donnée de santé » passait à vide)
+
+`LoggedErrorSentinel` repose sur le même mécanisme : il est probable qu'il ne voie pas non plus les
+erreurs journalisées **côté requête** dans ces suites. À instruire (task à ouvrir), sans le supposer
+ni l'écarter.
+
+**Consigne** :
+- toute capture de journaux lue par un test d'intégration HTTP est **prouvée non vide** avant
+  d'affirmer une absence (convention e2e `precondition-du-negatif`, même geste côté .NET) ;
+- dans la collection « UseCases » (jouée en série), une capture **globale** vidée en tête de test
+  est fiable ; un `AsyncLocal` ne l'est pas.
 
 ---
 

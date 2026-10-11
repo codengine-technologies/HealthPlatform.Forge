@@ -196,8 +196,13 @@
   **refuse de jouer** si le marqueur vaut 0, ou si le compteur de bundles n'a pas bougé. Il
   imprime l'un et l'autre, et un « vert » sous mutation sans ces deux preuves n'est pas une
   mesure.
-- **Origine** : task-343, task-349, task-354, task-363
-- **Occurrences** : 4
+- **Récidive task-367 — la mutation servie, le parcours joué trop tôt.** Le nouveau bundle était
+  servi (compteur + 1, aucun `[ERROR]`), mais le rechargement à chaud était encore en cours : ME1 et
+  ME2 sont tombés rouges sur une autre assertion (le clic « Envoyer », le signal de la pièce), et le
+  témoin restauré lui-même a échoué. **Consigne** : laisser passer ~15 s après le nouveau bundle
+  avant de jouer, et toujours rejouer le témoin restauré : un témoin rouge invalide la série.
+- **Origine** : task-343, task-349, task-354, task-363, task-367
+- **Occurrences** : 5
 
 ### predicat-de-reponse — Un prédicat de `waitForResponse` se lit comme du code, pas comme un texte
 - **Piège** : une expression régulière littérale réécrite en ligne de commande est devenue

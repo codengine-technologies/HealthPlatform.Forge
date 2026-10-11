@@ -125,13 +125,20 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   c'est une relecture qui l'a vu. Et dans `problem-details.utils.ts`, le piège a été reproduit
   puis rattrapé avant le lint. **La consigne vaut partout, lint ou pas** : avant d'insérer, lire
   les lignes qui précèdent l'ancre ; si c'est un `*/`, l'ancre est le `/**` du bloc.
+  **Récidive task-367 — la sixième : le `@example` vide recopié du voisinage.** Cinq fonctions neuves
+  du support e2e Angular (`weda-host.ts`, `e2e-backend.ts`) portaient un `@example` **sans contenu**,
+  comme leurs voisines antérieures : 5 warnings `jsdoc/require-example` (« Missing JSDoc @example
+  description »). Un `@example` vide n'est pas un exemple, et le style du fichier n'est pas une
+  excuse. **Consigne** : le `@example` porte au moins une ligne d'appel, avec le résultat attendu en
+  commentaire (`fakeIntentTitle('a1b2') // → '…'`).
 - **Origine** : task-304 (/lint-angular, 57 erreurs — 55 auto-fixées, 2
   `require-returns` + 23 squelettes creux repris manuellement) ;
   task-308 (/review, 2 `require-param` sur signatures modifiées) ;
   task-310 (/develop, 3 erreurs + 2 warnings sur un paramètre objet ajouté) ;
   task-352 (/lint-angular, 1 `require-param` + 1 `require-jsdoc` par JSDoc déplacé) ;
-  task-353 (/simplify : JSDoc orphelin dans le support e2e mobile, hors lint)
-- **Occurrences** : 5
+  task-353 (/simplify : JSDoc orphelin dans le support e2e mobile, hors lint) ;
+  task-367 (/lint-angular, 5 `require-example` sur des `@example` vides)
+- **Occurrences** : 6
 
 ### mail-content-body — `content.body` n'est pas le texte du mail
 - **Règle** : convention projet (défaut fonctionnel, invisible au lint)
@@ -235,6 +242,29 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   `MssRole`), ou repérer la structure (en-tête de citation généré). Et lire un texte de bloc
   **décodé** : une adresse `Dr A <a@…>` y figure en clair, sans `&lt;`.
 - **Origine** : task-349 (revue : un en-tête avec adresse n'était pas reconnu)
+- **Occurrences** : 1
+
+### service-propre-au-composant — Une promesse ne livre rien à un composant détruit, ni par un chemin partagé
+- **Règle** : convention projet (défaut fonctionnel, invisible au lint et aux tests unitaires)
+- **Repos** : client-angular (et tout composant qui fournit ses propres services)
+- **Piège** : `mss-mail` fournit lui-même `MailEventService` (portée du composant). Il demandait
+  l'intention d'envoi de Weda (task-367), puis émettait `openCompose$` à la réponse. Deux défauts,
+  vus par l'e2e E2E-WEDA-003 (vert 1 fois sur 3), jamais par les tests unitaires :
+  1. la messagerie détruite puis remontée pendant l'attente : l'intention partait dans le service
+     de l'instance morte, perdue ;
+  2. le chargement du **premier** dossier émet `folderChanged$`, que la messagerie traitait comme
+     « le praticien quitte un dossier » : elle demandait la fermeture de la rédaction ouverte.
+- **Consigne** :
+  - une donnée attendue au-delà de la vie d'un composant vit dans un service **racine** qui la
+    garde jusqu'à ce qu'une instance **vivante** la prenne (`take()` mis en cache, `claim()` une
+    fois, garde `destroyRef.destroyed`) ;
+  - une réaction à un événement partagé (`folderChanged$`, sélection) distingue l'action du
+    praticien du chargement initial, **à la source** : ne pas ajouter d'exception dans le
+    consommateur (« fermer, sauf si… ») ;
+  - un parcours asynchrone d'entrée se rejoue plusieurs fois en e2e avant d'être déclaré vert.
+- **Preuve** : tests unitaires `mss-mail.component.compose-intent.spec.ts` (instance détruite pendant
+  la préparation ; premier dossier puis dossier suivant), rouges sous mutation du correctif.
+- **Origine** : task-367 (/develop, e2e et passe qualité)
 - **Occurrences** : 1
 
 ### garde-sur-point-d-entree-commun — recenser tous les appelants avant de durcir une entrée partagée
