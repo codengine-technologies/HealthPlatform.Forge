@@ -403,7 +403,7 @@ scénario qui l'aurait attrapé, prouvé rouge sur le bug)*
 
 | Bug | Trouvé par | Scénario ajouté / durci | Task |
 |---|---|---|---|
-| Transférer (et Répondre, même chemin) cliqué avant le chargement du contenu du mail : le message part **sans le message d'origine**, sans erreur visible | /e2e task-349 (E2E-COMPOSE-002, 1er passage à froid) | E2E-DETAIL-001 à durcir : le transfert relu côté serveur porte la citation ; précondition ajoutée à E2E-COMPOSE-002 (dans task-349) | task-350 |
+| Transférer (et Répondre, même chemin) cliqué avant le chargement du contenu du mail : le message part **sans le message d'origine**, sans erreur visible | /e2e task-349 (E2E-COMPOSE-002, 1er passage à froid) | **E2E-DETAIL-001 v2** (mobile et Angular requis) : réseau ralenti (latence CDP 3 s), Transférer cliqué aussitôt, le message **reçu**, relu côté serveur, porte la citation d'origine ; Répondre la cite dans l'éditeur. Rouge sur les deux clients avec la garde retirée (corps reçu vide côté Angular, en-tête de citation sans corps côté mobile), vert sur le correctif. Blazor : le contenu chargé à la demande n'était jamais rattaché au message, défaut identique, couvert en bUnit | task-350 |
 | Un message rédigé plus de 30 s (brouillon enregistré automatiquement) part **sans ses pièces jointes**, sans accusé de lecture ni acquittement d'opposition, « envoyé » affiché (Angular et Blazor : route des brouillons dès qu'un brouillon existe) | Audit de bugs du 2026-09-27 (AUD-06), non vu par `/e2e` : aucun scénario n'envoyait un brouillon, ni une pièce jointe | **E2E-DRAFT-002** ajouté (mobile et Angular requis) : la pièce jointe est relue dans le message **reçu**, après l'enregistrement automatique. Rouge sur les deux clients avec le bug réinjecté côté serveur | task-329 |
 | Un document sans INS dont les traits ne correspondent à aucune fiche (ou sans trait) ne peut **pas être rattaché** : le dialogue n'offre que les candidats de `/patients/match`, puis « Ignorer » (Angular, Blazor, mobile) | L'humain au HAG de task-331, non vu par `/e2e` : aucun scénario ne rattachait un document à la main | **E2E-PATIENT-002** ajouté (mobile et Angular requis) : document sans INS seedé, aucun candidat, recherche libre, confirmation, message relu dans le dossier de la fiche. Rouge sous mutation (confirmation sans appel) sur les deux clients | task-331 |
 | Un dossier supprimé ou renommé depuis un autre logiciel de messagerie, puis ouvert dans l'app : **chargement sans fin** (Angular), anciens messages affichés (Blazor), message technique brut (mobile). Le serveur répondait 404 sans nommer la cause | L'humain, en recette (Seq : `GET /folders/…` → 404), non vu par `/e2e` : aucun scénario ne modifiait la boîte hors de l'application | **E2E-FOLDER-003** ajouté (mobile et Angular requis) : dossier créé dans l'app, supprimé par IMAP (`mss.mail.e2e folder --delete`), puis ouvert. Rouge sur les deux clients avec le bug réinjecté (Angular : spinner sans fin reproduit) | task-352 |
@@ -477,5 +477,24 @@ scénario qui l'aurait attrapé, prouvé rouge sur le bug)*
 - **Preuve** : task-364, mutation A (`min-height: 60vh` sur `.mail-body-html`) verte en
   `--serve-only`. Mutation B (redéploiement neutralisé), sur le même test, rouge comme attendu.
 - **Origine** : task-364 (revue)
+- **Occurrences** : 1
+
+### retarder-une-requete-sans-casser-l-authentification — `page.route` + `continue` court-circuite les routes des fixtures
+- **Piège** : pour cliquer « avant la fin du chargement », un test retarde la réponse du contenu
+  avec `page.route(…, route => … route.continue())`. Côté mobile, les fixtures injectent
+  l'authentification du banc par **`context.route`** (`support/headless.ts`). Une route de page
+  passe avant, et `continue()` envoie la requête **sans** les en-têtes des fixtures : réponse
+  **401**, puis « Votre session a expiré ». Repasser par `route.fallback()` ne suffit pas non plus.
+  L'app redemande le contenu (rafraîchissement temps réel), la requête retardée est abandonnée,
+  et le `continue` des fixtures lève « Route is already handled! ».
+- **Consigne** : pour simuler une connexion lente, ralentir **le réseau**, pas une requête :
+  `const cdp = await page.context().newCDPSession(page)`, puis
+  `cdp.send('Network.emulateNetworkConditions', { offline: false, latency: 3000, downloadThroughput: -1, uploadThroughput: -1 })`,
+  et `latency: 0` une fois le geste fait. On ne pose de `page.route` que pour **remplacer** une
+  réponse, jamais pour la faire suivre.
+- **Preuve** : task-350, E2E-DETAIL-001 v2. Le 401 sur `…/emails/content/8` est lu dans la trace.
+  Avec la latence CDP, le test est vert sur le correctif et rouge sur le bug réinjecté, sur les
+  deux clients.
+- **Origine** : task-350
 - **Occurrences** : 1
 

@@ -138,4 +138,98 @@ Le praticien ne peut **jamais** répondre ni transférer un message sans le mess
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 27 s | — | — | — | — |
-| **Total cycle** | | **27 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 57 min 33 s | 4 (55 s) | 5 (4 min 25 s) | — | client-mobile 1B/1T, client-blazor 1B/2T, api-mail 1B/1T, client-angular 1B/1T |
+| **Total cycle** | | **58 min 00 s** | **4 (55 s)** | **5 (4 min 25 s)** | **0 (0.0 s)** | |
+
+## Develop log
+
+- **Repos touchés** : `api-mail` (catalogue e2e seulement), `client-mobile`, `client-blazor`, `client-angular` (code-only).
+- **DTOs / interop / sdk** : aucun changement.
+- **Commits** :
+  - api-mail : `4647a8c3` test(e2e) — catalogue E2E-DETAIL-001 v2 (`seed: [mail-lu]`, mobile et angular requis).
+  - client-mobile :
+    - `3bd444a` fix(mobile) — boutons inactifs tant que l'original n'est pas chargé, message d'échec, garde de `openFor` ;
+    - `2c73c1a` test(e2e) — E2E-DETAIL-001 v2.
+  - client-blazor : `9d92a61` fix(mss) — `EnsureOriginalLoadedAsync` (Répondre, Transférer, repli d'Annuler et remplacer), clé `OriginalNotLoaded` (fr/en).
+  - client-angular : **non commité**, sur `feature/nova-rewriting-mss-weda-integration`. Fichiers listés ci-dessous.
+- **Ce qui est fait** :
+  - **Angular** :
+    - `mail-detail` :
+      - `originalLoaded` : le contenu chargé est celui du message affiché, même `uid` et même dossier. Pendant le chargement du message suivant, le contenu du précédent n'est jamais cité.
+      - `replyBlockedReason` (« Chargement du message… », ou « Le message d'origine n'a pas pu être chargé : réessayez. »).
+      - `contentLoadFailed` (sauf message disparu, task-353).
+      - Boutons `[disabled]` avec infobulle, bandeau `mail-original-load-failed`.
+      - Gardes dans `reply` / `replyAll` / `forward`.
+    - `mail-compose.openCompose` : refuse une réponse ou un transfert sans `content`, par un snackbar, en défense en profondeur.
+    - Constantes `ORIGINAL_LOADING_MESSAGE` et `ORIGINAL_NOT_LOADED_MESSAGE` dans `core/utils/quoted-body.util.ts`.
+  - **Mobile** :
+    - `core/utils/original-message.util.ts` (`isOriginalLoaded`, `replyBlockedReason`), partagé par la page et le composant.
+    - La page grise les boutons de l'en-tête et affiche le message d'échec à la place du texte technique.
+    - Le composant garde `reply` / `replyAll` / `forward`.
+    - `mail-compose.openFor` refuse sans contenu (toast).
+  - **Blazor** — **constat qui contredit « Ce qui existe »** : `ReplyEmail` et `ForwardEmail` appelaient `GetEmailContentAsync` **sans rattacher le résultat** au message. Le cas nominal n'était donc **pas** protégé : un clic avant le chargement ouvrait déjà la rédaction sans l'original.
+    - Le contenu est maintenant rattaché.
+    - En cas d'échec, aucune rédaction ne s'ouvre, une notification s'affiche, et l'échec est journalisé avec `Uid` et `Status` seulement.
+- **Tests (rouges d'abord)** :
+  - Angular :
+    - `mail-detail.component.spec` : 3 tests (inactifs puis actifs ; contenu du message précédent ; échec 500) ;
+    - `mail-compose.component.spec` : 3 tests (réponse et transfert sans original refusés ; nouveau message inchangé) ;
+    - 5 rouges avant le correctif, puis verts.
+    - Tests DOM `mail-detail.side-panel.spec` : 2 tests. **Mutation** : `[disabled]` retiré de Transférer, les 2 rouges, puis restauré.
+  - Mobile :
+    - `original-message.util.spec` ;
+    - `mail-compose.component.spec` : refus pour reply, reply-all et forward ; new inchangé ;
+    - `mail-detail.component.spec` : rien n'est émis avant le contenu, ni avec le contenu d'un autre message ;
+    - `mail-detail.page.spec` : échec suivi du message clair ; chargement, puis actif.
+    - 4 rouges (compose ×3, composant), la page rouge à la compilation, puis 108/108.
+    - Les tests de compose qui ouvraient un transfert sans contenu reçoivent `content: original()`.
+  - Blazor bUnit `MailDetailComponentTests` :
+    - réponse et transfert chargés à la demande, contenu transmis ;
+    - échec de chargement suivi d'aucune rédaction et de la notification (theory reply/forward).
+    - 4 rouges sur l'assertion visée (une fois les `data-testid` posés), puis verts.
+- **Build / tests complets** :
+  - api-mail : build ✓, 6 468 verts (0 échec, 16 ignorés) ;
+  - client-blazor : build 0 erreur 0 avertissement, 427 verts ;
+  - client-mobile : build ✓, 1 021 verts ;
+  - client-angular : build ✓, 11 projets ✓ (mss 715).
+- **E2E (Step 6b)** :
+  - catalogue d'abord : E2E-DETAIL-001 **v2** ;
+  - tests v2 dans les deux suites :
+    - réseau ralenti par **latence CDP de 3 s**, Transférer cliqué aussitôt, envoi à « Robert » (soi-même) ;
+    - le message **reçu**, relu côté serveur, porte le corps seedé de `mail-lu` ;
+    - Répondre cite l'original dans l'éditeur ;
+  - type-check ✓ dans les deux suites.
+  - **Trou du filet prouvé rouge sur le bug** (`--serve-only`, test seul, `--retries=0`). La garde est retirée (méthode `forward`, `[disabled]`, garde de la rédaction) :
+    - Angular : rouge sur « le message transféré, relu côté serveur, porte le message d'origine » (corps reçu vide), vert une fois restauré (16,9 s) ;
+    - mobile : rouge sur la même assertion (reçu « Le …, Dr Marie Leroy a écrit : » sans le corps), vert une fois restauré (1,7 min).
+  - Code restauré après chaque mutation (marqueur `MUTATION task-350` à 0, `git status` propre).
+  - Outillage rencontré :
+    - `page.route` + `continue` court-circuite l'authentification des fixtures mobiles (401, « session expirée ») ;
+    - une requête retardée, abandonnée par l'app, fait lever « already handled ».
+    - D'où la latence CDP, consignée dans `conventions/e2e.md` › `retarder-une-requete-sans-casser-l-authentification`.
+  - Ligne « Trous du filet » de task-350 complétée.
+- **Passe qualité (/simplify)** :
+  - relecture manuelle du diff de chaque repo (réutilisation : le snackbar existant côté Angular, le toast côté mobile, la règle factorisée côté mobile) ;
+  - **aucune simplification appliquée**, donc pas de revalidation ni de commit de passe ;
+  - contrôles mécaniques C# (S125, xUnit1045, S4457, xUnit2032) sur client-blazor : aucun résultat.
+- **client-angular, fichiers modifiés (non commités)** :
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`. Il porte **aussi** les trois corrections de tests de task-364, déjà non commitées avant cette task.
+  - `front/libs/mss/src/core/utils/quoted-body.util.ts`
+  - `front/libs/mss/src/features/mail/components/mail-compose/mail-compose.component.{ts,spec.ts}`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.component.{ts,html,scss,spec.ts}`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.side-panel.spec.ts`
+- **Pour l'humain** :
+  - E2E-COMPOSE-002 est toujours en **quarantaine (task-350)**, dans `live-ai.e2e.ts` (Angular). Elle se lève une fois cette task mergée : **seul l'humain** retire la quarantaine.
+  - Côté mobile, E2E-COMPOSE-002 n'est pas en quarantaine.
+- **Journalisation** :
+  - Blazor : l'échec est journalisé avec l'identifiant technique seulement (`Uid`, `Status`) ;
+  - Angular et mobile : pas de journal client nouveau. L'échec du contenu reste journalisé côté api-mail, comme aujourd'hui.
+- **DOD self-check** :
+  - build et tests ✓ sur les 4 repos ;
+  - tests Angular, mobile et bUnit demandés présents ✓ ;
+  - E2E-DETAIL-001 v2 catalogué et implémenté dans les 2 clients ✓ ;
+  - prouvé rouge sur le bug ✓, ligne « Trous du filet » ✓ ;
+  - `data-testid` existants inchangés ✓, nouveaux : `mail-original-load-failed`, `mail-detail-reply`, `mail-detail-forward` ;
+  - libellés FR en dur (Angular, mobile) et Localizer (Blazor) ✓ ;
+  - aucune donnée de santé dans les journaux ✓.
+- **Next step** : `/sonar task-350`
