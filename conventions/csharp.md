@@ -1420,6 +1420,42 @@ private static string? SkipReasonOf(MailDto mail, bool isIncrementalSync)
 
 ---
 
+## portabilite-linux — une bibliothèque et ses tests ne dépendent ni de la culture ni d'un chemin Windows
+
+**Occurrences : 1** (task-366 — `interop-cda` : **41 tests rouges sous Linux**, verts sous Windows, que
+personne ne voyait parce que la CI ubuntu du package ne jouait que le build. Trois causes :
+`DateTime.Parse("30/12/1899")` dans l'initialiseur statique de deux constructeurs de CDA (levée en culture
+invariante, celle d'un conteneur), `Path.Combine(@"C:\Temp", …)` dans un test, et un séparateur `\` en dur
+dans un chemin produit)
+
+Le défaut ne vit pas dans les tests seulement : un `DateTime.Parse` d'un littéral rend le code **dépendant
+de la culture de l'hôte**. Sur un serveur Linux ou un conteneur, la culture est invariante, et le type
+entier devient inutilisable (`TypeInitializationException`).
+
+```csharp
+// ❌ AVANT — dépend de la culture, lève en culture invariante
+private static readonly DateTime DefaultDate = DateTime.Parse("30/12/1899");
+var dir = Path.Combine(dest, $"IHE_XDM\\{subset}");
+_testDirectory = Path.Combine(@"C:\Temp", $"Tests_{Guid.NewGuid()}");
+
+// ✅ APRÈS — construit, segmenté, temporaire du système
+private static readonly DateTime DefaultDate = new(1899, 12, 30);
+var dir = Path.Combine(dest, "IHE_XDM", subset);
+_testDirectory = Path.Combine(Path.GetTempPath(), $"Tests_{Guid.NewGuid()}");
+```
+
+**Consigne** :
+- jamais de `DateTime.Parse` / `Convert.ToDateTime` sur un littéral : un `new DateTime(...)`, ou un
+  `ParseExact(…, CultureInfo.InvariantCulture)` pour une donnée lue ;
+- jamais de lecteur (`C:\`, `D:\`) ni de `\` dans un chemin : `Path.Combine` par segments,
+  `Path.GetTempPath()` ou `Directory.CreateTempSubdirectory()` ;
+- un test qui lit des données propres à un poste s'**ignore** (`Skip` posé par un attribut qui teste la
+  présence des données), il n'échoue pas et ne passe pas à vide ;
+- une suite dont un consommateur tourne sous Linux se **joue sous Linux** avant la PR (`docker run
+  mcr.microsoft.com/dotnet/sdk:10.0 … dotnet test`), et sa CI la joue à chaque push.
+
+---
+
 ## CA1875 — `Regex.Count`, pas `Regex.Matches(...).Count`
 
 **Occurrences : 1** (task-334, ×2 — garde de source `MassTransitSingleRetryPolicyScanTests`)
