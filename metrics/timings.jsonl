@@ -4392,3 +4392,5 @@
 {"ts":"2026-10-11T10:11:58+02:00","run_id":"-","type":"step","task":"task-364","step":"review","status":"ok","note":"APPROVED, PR #287 api-mail ; client-angular code-only","iterations":null,"duration_ms":321251}
 {"ts":"2026-10-11T10:12:09+02:00","run_id":"-","type":"step_start","task":"task-364","step":"tech-writer"}
 {"ts":"2026-10-11T10:12:50+02:00","run_id":"-","type":"step","task":"task-364","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":40427}
+{"ts":"2026-10-11T11:03:05+02:00","run_id":"-","type":"step_start","task":"task-350","step":"start"}
+{"ts":"2026-10-11T11:03:32+02:00","run_id":"-","type":"step","task":"task-350","step":"start","status":"ok","note":"","iterations":null,"duration_ms":27018}

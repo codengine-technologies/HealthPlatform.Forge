@@ -124,3 +124,18 @@ Le praticien ne peut **jamais** répondre ni transférer un message sans le mess
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : inchangé — aucune donnée nouvelle n'est stockée ni transmise
 - **AIPD / impact RGPD** : inchangé — aucune finalité nouvelle
+
+## Branches
+- `api-mail` (pushed) : fix/task-350-repondre-transferer-avec-message-origine — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-350-repondre-transferer-avec-message-origine
+- `client-blazor` (pushed) : fix/task-350-repondre-transferer-avec-message-origine — https://github.com/codengine-technologies/HealthPlatform.Client/tree/fix/task-350-repondre-transferer-avec-message-origine
+- `client-mobile` (pushed) : fix/task-350-repondre-transferer-avec-message-origine — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/fix/task-350-repondre-transferer-avec-message-origine
+- `client-angular` (code-only) : la forge écrit le code sur la branche checked out dans `Client/Angular/` — instantané au `/start` (2026-10-11) : `feature/nova-rewriting-mss-weda-integration`. L'humain gère branche, commit, push, PR TFS.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-350 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 27 s | — | — | — | — |
+| **Total cycle** | | **27 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
