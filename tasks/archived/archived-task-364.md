@@ -544,3 +544,17 @@ Dovecot du banc.
   et `assertion-sans-cas-declencheur`, ainsi que le registre des flaky (COMPOSE-001). Le fond du
   plafond Dovecot est confié à task-365.
 
+
+## Merged
+
+- **Date** : 2026-10-11, par `/merge task-364 --i-tested` (validation manuelle attestée par l'humain).
+- `api-mail` : PR #287 squash-mergée dans `develop`, commit `4bde43836a8d818a36d8f8c9e302b279557f7ef0`.
+  Elle contient le catalogue E2E-DETAIL-004 et `mail_max_userip_connections = 1000` sur le banc. Le
+  label `awaiting-human-merge` est retiré. La branche `feat/task-364-lecture-panneau-actions` est
+  supprimée (distante et locale).
+- CI `develop` : verte —
+  https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/38126692784
+- `client-angular` : géré manuellement par l'humain (TFS). Commit `58bfffe9`, plus la correction de
+  `functional.e2e.ts` à pousser.
+- Suites : **task-365**, l'empilement des sessions IMAP en mode iframe, et les trois suggestions de
+  revue (`## Code Review Summary`).
