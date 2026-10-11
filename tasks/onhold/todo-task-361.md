@@ -10,6 +10,11 @@
 >
 > **Pour réactiver** : une décision humaine qui rouvre le mode exclusif (nouvel amendement de
 > l'ADR-007), puis redéplacer ce fichier dans `tasks/` et `/start 361`.
+>
+> **Remplacée par task-367 (2026-10-11)**, qui dépend de task-366 (enveloppe IHE_XDM d'Interop).
+> L'amendement 6 de l'ADR-007 fait ouvrir la rédaction de weda2 par l'hôte, avec les octets passés
+> par le pont (`get-compose-intent`). api-mail construit l'enveloppe à l'envoi. Il n'y a ni canal
+> serveur, ni brouillon api-mail. Ne pas réactiver celle-ci.
 
 **Repos**: api-mail, client-angular
 **Dependencies**: done-task-358 (API d'intégration et canal serveur Weda → api-mail)

@@ -34,6 +34,9 @@ philosophy was inverted on 2026-04-27 — see CLAUDE.md "Forge philosophy".
    ```bash
    for each forge-automated repo :
      cd {repo-path}
+     # même garde qu'en step 5 : sans .git, la réponse est celle du plan de contrôle.
+     # host (Host/Modules) n'a pas de .git (CLAUDE.md) : noté, jamais bloquant.
+     [ -z "$(git rev-parse --show-prefix)" ] || record repo + "pas un dépôt"
      current=$(git symbolic-ref --short HEAD)
      if [ "$current" != "develop" ] : record repo + current branch
    ```
@@ -89,6 +92,11 @@ philosophy was inverted on 2026-04-27 — see CLAUDE.md "Forge philosophy".
    **Pushable repos** (default — origin is GitHub) :
    ```bash
    cd {repo-path}
+   # Garde (task-366) : le chemin doit être la RACINE d'un dépôt. Sinon git
+   # remonte jusqu'au plan de contrôle et la branche y est créée et poussée.
+   # --show-prefix est vide à la racine d'un dépôt. Ne pas comparer --show-toplevel
+   # à pwd : sous Git Bash, l'un rend « D:/… », l'autre « /d/… » (constaté task-367).
+   [ -z "$(git rev-parse --show-prefix)" ] || abort "{repo-path} n'est pas un dépôt git"
    git fetch origin develop
    git checkout -b feat/{task-id}-{slug} origin/develop
    git push -u origin feat/{task-id}-{slug}

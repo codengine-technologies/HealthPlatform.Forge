@@ -401,6 +401,15 @@ Notes :
   is zero — log "lint clean (no MSS project affected) → no work" and
   enchain `/lint-mobile` (which self-skips to `/review`).
 
+> ⚠️ **Constaté sur task-367 (2026-10-11)** : la commande ci-dessus a lancé lint sur **12 projets**
+> (`--projects=tag:scope:mss` ne restreint pas `nx affected` sur ce workspace). De plus, un
+> `--output-file` en chemin absolu Windows est préfixé par le workspace : ENOENT, et tous les projets
+> sont en échec sans avoir rien linté. Contournement appliqué :
+> `npx nx run-many -t lint --projects=<projets touchés>` en sortie standard, puis `npx eslint --format
+> json <fichiers de la task>`. Les warnings sont attribués à la task par `git diff -U0 HEAD` (ligne
+> ajoutée ou non). `eslint --stdin` sur la version HEAD fait planter `eslint-plugin-jsdoc` : ne pas
+> l'utiliser. À réécrire dans le playbook par une task du plan de contrôle.
+
 Parse `/tmp/lint-baseline.json` (ESLint JSON array, one entry per file)
 to count :
 - `baselineErrors` — sum of `errorCount` across files

@@ -345,6 +345,12 @@ inside one of those repos, never at the workspace root.
 > reste. Découvert en constatant que `git -C Host/Modules status` remontait des
 > fichiers de la racine.
 
+> ⚠️ **Le dépôt `interop-cda` est `interop/interop.cda.parser`, pas `interop/`** (corrigé le
+> 2026-10-11, task-366). Le tableau donnait `interop` : `/start` y a créé et poussé la branche
+> de la task… sur le plan de contrôle, puisque `interop/` n'a pas de `.git`. Défaite le jour même.
+> Garde : `/start` vérifie que `git rev-parse --show-prefix` est vide (racine d'un dépôt) avant toute
+> création de branche.
+
 > ⚠️ **`Host/Modules` n'est pas un dépôt** — il ne contient aucun `.git` et
 > `git ls-files Host/` renvoie 0 fichier. Toute commande git qui le cible
 > remonte donc jusqu'au dépôt de la forge et répond pour lui. **Conséquence
@@ -363,7 +369,7 @@ inside one of those repos, never at the workspace root.
 | `dtos-mss` | `Dtos` | .NET 10 class lib (NuGet) | `dotnet build HealthPlatform.Dtos.Mss.csproj` | n/a |
 | `sdk` | `Sdk` | .NET 10 host SDK | `dotnet build HealthPlatform.Host.Sdk.csproj` | n/a |
 | `host` | `Host/Modules` | .NET 10 modules | `dotnet build` | n/a — ⚠️ **pas de `.git`**, cf. l'avertissement ci-dessus |
-| `interop-cda` | `interop` | .NET 10 | `dotnet build interop.cda.parser.sln` | `dotnet test` |
+| `interop-cda` | `interop/interop.cda.parser` | .NET 10 | `dotnet build interop.cda.parser.sln` | `dotnet test` |
 | `psc-proxy-server` | `psc/proxy/psc.proxy.server` | .NET 10 DDD | `dotnet build psc.proxy.server.sln` | `dotnet test` |
 | `psc-proxy-client` | `psc/proxy/psc.proxy.client` | .NET 10 client | `dotnet build psc.proxy.client.sln` | n/a |
 | `psc-proxy-dto` | `psc/proxy/psc.proxy.dto` | .NET 10 DTOs | `dotnet build psc.proxy.dto.sln` | n/a |

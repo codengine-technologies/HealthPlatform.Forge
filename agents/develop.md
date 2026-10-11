@@ -340,8 +340,11 @@ modified enum, new DTO class).
    - `Api/Mail/Directory.Packages.props`
    - `Client/Blazor/Directory.Packages.props`
 
-   **Do not stage `packages.lock.json`** — those regenerate at the next
-   `dotnet restore --force-evaluate`.
+   **Stage the `packages.lock.json` files with the bump** (`dotnet restore
+   --force-evaluate` regenerates them). `api-mail` restores with
+   `RestorePackagesWithLockFile` : a bump without its lock files leaves the
+   consumer inconsistent. Corrigé le 2026-10-11 (task-367) : la consigne disait
+   « Do not stage », alors que chaque bump d'`api-mail` commite ses lock files.
 
 8. **Commit the bump in each consumer repo** (each is a distinct git repo) :
 
