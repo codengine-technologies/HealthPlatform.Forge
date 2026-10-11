@@ -647,3 +647,23 @@ front/libs/mss/src/features/mail/services/mail-event.service.ts
 | **Total cycle** | | **2 h 07 min** | **13 (3 min 44 s)** | **31 (28 min 50 s)** | **4 (1 min 24 s)** | |
 
 Autres commandes mesurées : lint ×3 (48 s), nuget-wait ×1 (18 s), restore ×1 (23 s)
+
+## Merged
+
+- **Date** : 2026-10-11, par `/merge task-367 --i-tested` (validation manuelle attestée par l'humain).
+- `dtos-mss` : PR #44 squash-mergée dans `develop`, commit `f7cba20` (`AttachmentDto.Packaging`). Label
+  `awaiting-human-merge` retiré. Branche `feat/task-367-weda-envoi-ihe-xdm` supprimée (distante et locale).
+  CI `develop` verte : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/actions/runs/38171703555
+- `api-mail` : PR #289 squash-mergée dans `develop`, commit `d283fc83` (enveloppe IHE_XDM construite à l'envoi par
+  Interop). Label retiré. Branche `feat/task-367-weda-envoi-ihe-xdm` supprimée (distante et locale).
+  CI `develop` verte : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/38171724662
+- `client-angular` : géré manuellement par l'humain (TFS).
+- Partie Weda (hors forge), branche `lotus/segur/17546-enveloppe-segur-v2-with-mss-api` :
+  - `5017d610e8` — `GET api/nova-mss/compose-intent`, `POST api/nova-mss/sent-trace`, gestionnaires
+    `get-compose-intent` et `document-sent` du pont ;
+  - `c6cfa10054` — ADR-007, amendement 6 ;
+  - `d3c5f9c63b` — la pièce jointe porte le titre du document (deux documents du même jour et du même type
+    portaient le même nom).
+- Constat du test manuel : sans INS qualifiée, l'envoi d'un CDA est refusé par Weda (message de `CdaIdService`),
+  alors que l'ancien écran l'envoie avec l'identifiant interne. Décision humaine en attente (garder le refus, ou
+  faire accepter un identifiant local par Interop).
