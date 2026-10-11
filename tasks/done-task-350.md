@@ -138,13 +138,13 @@ Le praticien ne peut **jamais** répondre ni transférer un message sans le mess
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 27 s | — | — | — | — |
-| /develop | ok | 57 min 33 s | 4 (55 s) | 5 (4 min 25 s) | — | client-mobile 1B/1T, client-blazor 1B/2T, api-mail 1B/1T, client-angular 1B/1T |
+| /develop | ok | 57 min 33 s | 5 (1 min 03 s) | 6 (4 min 38 s) | — | client-mobile 2B/2T, client-blazor 1B/2T, api-mail 1B/1T, client-angular 1B/1T |
 | /sonar | skipped | 0.4 s | — | — | — | diff api-mail = e2e/scenarios.yml seul, aucun C# |
 | /lint-angular | ok | 38 s | — | — | — | 0 erreur scope:mss, rien à corriger |
 | /lint-mobile | ok | 22 s | — | — | — | All files pass linting |
-| /e2e | ok | 10 min 56 s | — | — | — | e2e ×3 (10 min 23 s), vert : mobile 31/31, angular 34/34, DETAIL-001 v2 vert, quarantaine COMPOSE-002 passée |
-| /review | failed | 4 min 24 s | 4 (1 min 12 s) | 4 (3 min 41 s) | — | api-mail 1B/1T, client-mobile 1B/1T, client-angular 1B/1T, client-blazor 1B/1T, CHANGES REQUESTED : ai-chat mobile replyToCited ouvre une réponse sans contenu, refusée par la nouvelle garde |
-| **Total cycle** | | **1 h 14 min** | **8 (2 min 08 s)** | **9 (8 min 06 s)** | **0 (0.0 s)** | |
+| /e2e | ok | 11 min 12 s | — | — | — | e2e ×6 (21 min 13 s), vert après correctif de revue : mobile 31/31, angular 34/34 |
+| /review | ok | 1 min 04 s | 4 (1 min 12 s) | 4 (3 min 41 s) | — | api-mail 1B/1T, client-mobile 1B/1T, client-angular 1B/1T, client-blazor 1B/1T, APPROVED après correctif ; PRs api-mail #288, client-blazor #93, client-mobile #90 |
+| **Total cycle** | | **1 h 11 min** | **9 (2 min 15 s)** | **10 (8 min 20 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×2 (21 s)
 
@@ -262,20 +262,22 @@ Autres commandes mesurées : lint ×2 (21 s)
 
 ## E2E log
 
+**Rejoué après le correctif de revue** (assistant IA mobile, `d198e10`).
+
 | Voie | Déclencheur | Résultat | Tests | Durée |
 |---|---|---|---|---|
-| mobile | api-mail + client-mobile touchés | ✅ verte | 31 verts, 0 flaky, 0 rouge | 5 min 30 s |
-| angular | api-mail + client-angular touchés | ✅ verte | 34 verts, 0 flaky, 0 rouge, 1 quarantaine (passée) | 4 min 44 s |
+| mobile | api-mail + client-mobile touchés | ✅ verte | 31 verts, 0 flaky, 0 rouge | ~5 min 30 s |
+| angular | api-mail + client-angular touchés | ✅ verte | 34 verts, 0 flaky, 0 rouge, 1 quarantaine (passée) | ~4 min 45 s |
 
 - Catalogue : `Api/Mail/e2e/scenarios.yml` @ `fix/task-350-repondre-transferer-avec-message-origine` (`4647a8c3`)
 - Code testé :
   - api-mail `4647a8c3` ;
-  - client-mobile `2c73c1a` ;
+  - client-mobile `d198e10` ;
   - client-angular `feature/nova-rewriting-mss-weda-integration`, avec les modifications non commitées de la task.
-- **E2E-DETAIL-001 v2 vert sur les deux clients.** Le transfert, cliqué pendant un chargement ralenti, arrive avec le message d'origine.
-- Quarantaines : E2E-COMPOSE-002 (angular, task-350), **passée** à ce run. Elle peut être levée par l'humain une fois la task mergée.
+- **E2E-DETAIL-001 v2 vert sur les deux clients** (transfert cliqué pendant un chargement ralenti, message reçu avec l'original).
+- Quarantaines : E2E-COMPOSE-002 (angular, task-350), **passée**. Elle peut être levée par l'humain après le merge.
 - Divergences ouvertes : aucune
-- Parcours touchés sans spec e2e modifié : aucun (`functional.e2e.ts` et `functional.spec.ts` modifiés)
+- Parcours touchés sans spec e2e modifié : aucun
 - Démontage : complet (ports libres, aucun conteneur e2e résiduel)
 
 **E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
@@ -327,3 +329,50 @@ Autres commandes mesurées : lint ×2 (21 s)
 | E2E-WEDA-002 | 1 | headless | Voir le dossier Weda du patient d'un document reçu, l'ouvrir, puis importer des documents dans un dossier | ✅ | — |
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/288 — label `awaiting-human-merge` (catalogue E2E-DETAIL-001 v2)
+- `client-blazor` : https://github.com/codengine-technologies/HealthPlatform.Client/pull/93 — label `awaiting-human-merge`
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/90 — label `awaiting-human-merge`
+- `client-angular` (code-only) : l'humain gère le commit, le push TFS et la PR. Branche
+  `feature/nova-rewriting-mss-weda-integration`. Fichiers modifiés, non commités :
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts` (porte aussi les trois corrections de tests de task-364)
+  - `front/libs/mss/src/core/utils/quoted-body.util.ts`
+  - `front/libs/mss/src/features/mail/components/mail-compose/mail-compose.component.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-compose/mail-compose.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.component.scss`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.component.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.side-panel.spec.ts`
+
+## Code Review Summary
+
+**APPROVED** au second passage. Le premier passage était CHANGES REQUESTED.
+
+- **Revue 1** : réponse de l'assistant IA mobile (`replyToCited`) ouverte sans contenu, puis refusée
+  par la nouvelle garde. Corrigé par `d198e10` (contenu chargé avant l'ouverture, échec : rien ne
+  s'ouvre). Tests rouges puis verts. `/e2e` rejoué vert.
+- **Validation** :
+  - api-mail : 6 468 verts ;
+  - client-blazor : 427 verts, 0 avertissement ;
+  - client-mobile : 1 022 verts, lint ✓ ;
+  - client-angular : build ✓, 11 projets ✓.
+  - api-mail, Blazor et Angular n'ont pas changé depuis leur validation de la revue 1.
+- **Règle 1b** : non applicable. Aucun comportement d'endpoint ne change : le diff api-mail se limite
+  au catalogue YAML.
+- **E2E** : vert. Mobile 31/31, Angular 34/34. E2E-DETAIL-001 v2 vert, et prouvé rouge sur le bug
+  réinjecté dans les deux clients.
+- **DOD** : tous les points sont vérifiés. Les observations visuelles sont reportées au Manual
+  Test Plan (HAG).
+- **Suggestions** :
+  1. bouton « Réessayer » sur le bandeau d'échec (Angular) ;
+  2. lever la quarantaine d'E2E-COMPOSE-002 après le merge (décision humaine).
+- **Amélioration continue** :
+  - `conventions/e2e.md` › `retarder-une-requete-sans-casser-l-authentification` (latence CDP plutôt
+    que `page.route` + `continue`) ;
+  - ligne « Trous du filet » complétée.
+  - Leçon de revue : un garde-fou ajouté sur un point d'entrée commun (la rédaction) doit faire
+    recenser **tous** ses appelants. Un appel oublié (assistant IA) devient un refus.
+
