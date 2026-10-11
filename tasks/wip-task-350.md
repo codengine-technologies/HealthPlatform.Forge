@@ -241,6 +241,11 @@ Autres commandes mesurées : lint ×2 (21 s)
   - aucune donnée de santé dans les journaux ✓.
 - **Next step** : `/sonar task-350`
 
+- **Correctif après revue (CHANGES REQUESTED)** :
+  - client-mobile `ai-chat.component.ts` › `replyToCited` charge le contenu du message cité (`getEmailContent`) avant d'ouvrir la réponse. Sur échec, rien ne s'ouvre et `ORIGINAL_NOT_LOADED_MESSAGE` s'affiche.
+  - Tests : la réponse porte le `content` ; un échec n'ouvre rien et affiche le message. Les 2 étaient rouges avant le correctif, verts après.
+  - Mobile : build ✓, 1 022 verts, lint ✓. Commit poussé.
+
 ## Sonar log
 
 - **Skipped** : le diff d'api-mail se réduit à `e2e/scenarios.yml` (catalogue E2E-DETAIL-001 v2). Aucun fichier C# n'est modifié, donc aucun new code à analyser.
