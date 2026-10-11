@@ -290,8 +290,9 @@ Règles arbitrées par l'humain le 2026-10-10.
 | /sonar | skipped | 0.4 s | — | — | — | diff api-mail = e2e/scenarios.yml seul, aucun C# |
 | /lint-angular | ok | 20 s | — | — | — | — |
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
-| /e2e | failed | 18 min 47 s | — | — | — | e2e ×7 (27 min 01 s), E2E-AI-001 rouge : serveur de messagerie e2e injoignable en fin de suite (live-ai) ; 3 défauts de tests corrigés, scénarios de la task verts |
-| **Total cycle** | | **50 min 17 s** | **4 (47 s)** | **4 (1 min 27 s)** | **0 (0.0 s)** | |
+| /e2e | ok | 16 min 19 s | — | — | — | e2e ×10 (38 min 35 s), vert : mobile 31/31, angular 33 + 1 flaky (COMPOSE-001), quarantaine COMPOSE-002 passée ; mutation B tuée, mutation A survit (à arbitrer) |
+| /review | ok | 5 min 21 s | 2 (1 min 02 s) | 2 (4 min 29 s) | — | api-mail 1B/1T, client-angular 1B/1T, APPROVED, PR #287 api-mail ; client-angular code-only |
+| **Total cycle** | | **53 min 09 s** | **6 (1 min 50 s)** | **6 (5 min 56 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×1 (9.1 s)
 
@@ -419,40 +420,48 @@ maquettes Stitch. L'humain les a commitées avec le reste dans `client-angular` 
 
 ## E2E log
 
-**Relance du 2026-10-10 (nuit)**, après correction de trois défauts des tests Angular. Voie
-mobile jouée une fois, voie Angular jouée deux fois (la seconde après le troisième correctif).
+**Run vert du 2026-10-11**, après trois corrections de tests Angular et le relèvement du plafond
+Dovecot du banc.
 
 | Voie | Déclencheur | Résultat | Tests | Durée |
 |---|---|---|---|---|
-| mobile | api-mail touché (catalogue) | ✅ verte | 31 verts, 0 flaky, 0 rouge | ~5 min 30 s |
-| angular | api-mail + client-angular (`58bfffe9` + correctifs de `functional.e2e.ts`, non commités) | ❌ rouge | 32 verts, 0 flaky, 2 rouges dont 1 en quarantaine | ~5 min |
+| mobile | api-mail touché (catalogue, banc) | ✅ verte | 31 verts, 0 flaky, 0 rouge | 6 min 00 s |
+| angular | api-mail + client-angular | ✅ verte | 33 verts, 1 flaky, 0 rouge, 1 quarantaine (passée) | 5 min 22 s |
 
-- Catalogue : `Api/Mail/e2e/scenarios.yml` @ `feat/task-364-lecture-panneau-actions` (`941f9c4a`)
-- **Défauts des tests corrigés** (`e2e/mss-e2e/specs/functional.e2e.ts`, à commiter par l'humain) :
+- Catalogue : `Api/Mail/e2e/scenarios.yml` @ `feat/task-364-lecture-panneau-actions` (`ca7e9e0a`)
+- Code testé :
+  - api-mail `ca7e9e0a` ;
+  - client-mobile `develop`, aligné sur `origin/develop` ;
+  - client-angular `58bfffe9` + corrections de `e2e/mss-e2e/specs/functional.e2e.ts`, **non commitées**, à pousser par l'humain.
+- **Corrections apportées pendant `/e2e`, à la demande de l'humain** (défauts des tests, pas de l'application) :
   1. E2E-DETAIL-004 : étiquette `Lecture e2e` refusée par le serveur (400, pas d'espace) → `Lecture-e2e` ;
-  2. E2E-WEDA-002 : `check()` sur `ds-radio-button` et `ds-checkbox` (rendu au tick suivant, sans zone.js) → `click()` + `toBeChecked()` ;
-  3. E2E-DETAIL-004 : le message suivant était ouvert sous le filtre « Bio à acquitter » posé plus haut → le filtre est retiré (même puce), sans quitter la page.
-  Ces trois scénarios sont **verts** au dernier run, ainsi que E2E-LIVE-001.
-- **Reste rouge : E2E-AI-001** (assistant), aux deux essais. Il bloque au tout début (`openInbox` :
-  « le dossier INBOX est ouvert »). L'instantané montre un quota « non disponible » et une liste vide :
-  le serveur de messagerie e2e ne répond plus. Même signature, à chaque run, sur un test différent
-  de `live-ai.e2e.ts`, toujours en fin de suite : COMPOSE-002 (503 sur `/mail/folders`), LIVE-001
-  (« connection aborted » à la livraison), AI-001. Aucun lien relevé avec le code de la task.
-- Quarantaines : E2E-COMPOSE-002 (task-350), rouge, non bloquant.
+  2. E2E-WEDA-002 : `check()` sur `ds-radio-button` et `ds-checkbox`. Sans zone.js, le rendu suit au tick suivant → `click()` + `toBeChecked()` ;
+  3. E2E-DETAIL-004 : le message suivant était ouvert sous le filtre « Bio à acquitter » → filtre retiré par sa puce, sans quitter la page.
+- **Banc** : `mail_max_userip_connections` relevé de 100 à 1000 (api-mail `ca7e9e0a`). En fin de
+  suite, la voie Angular franchissait le plafond : 107 et ~100 connexions IMAP neuves (Seq), et
+  Dovecot coupait les suivantes (10053). Le dernier fichier joué tombait au hasard. Le fond,
+  l'empilement des sessions en mode iframe, est confié à **task-365**.
+- **Preuve par mutation d'E2E-DETAIL-004** (`--serve-only`, test seul, `--retries=0`) :
+  - non muté : vert deux fois de suite (l'ajout répété de l'étiquette est accepté) ;
+  - **mutation B**, redéploiement par message neutralisé (`resetKey` retiré de l'effet du panneau) → **rouge** sur « le message suivant redéplie le panneau » ✅ ;
+  - **mutation A**, `min-height: 60vh` remis sur `.mail-body-html` → **reste vert** ⚠️. Le compte rendu seedé, à 1366×768, n'est pas assez haut pour produire le double défilement : le cadre grandit, et seule la zone extérieure défile (une région). L'assertion « un seul défilement » ne prouve donc pas l'absence de régression pour ce document. **À arbitrer en revue** : durcir le scénario (document plus long, ou viewport plus bas), ou l'accepter.
+  - Code restauré après chaque mutation (marqueur `MUTATION` à 0, `git status` de `libs/` vide), puis vert.
+- Flaky : E2E-COMPOSE-001 (angular), 1re occurrence, inscrit au registre de `conventions/e2e.md`
+- Quarantaines : E2E-COMPOSE-002 (task-350), passée à ce run
 - Divergences ouvertes : aucune
 - Parcours touchés sans spec e2e modifié : aucun
-- Démontage : complet (ports libres, aucun conteneur e2e résiduel)
-- Preuve par mutation d'E2E-DETAIL-004 : **non faite**. Elle reste due avant `/review`.
+- Démontage : complet (ports libres, aucun conteneur e2e résiduel), y compris après le `--serve-only`
+- Amélioration continue : deux consignes ajoutées à `conventions/e2e.md`, `check-sur-composant-ds` et `plafond-userip-du-banc`
 
-**E2E : ROUGE** — 1 motif(s) de blocage.
+**E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
 
-**Bloquant** (1) :
+**Flaky (vert au second essai, non bloquant)** (1) :
 
-- [angular] rouge : « assistant — résumé initial puis deux questions de suite, conversation relue du serveur » (E2E-AI-001)
+- [angular] « rédaction — envoyer, recevoir, lire, supprimer » (E2E-COMPOSE-001)
 
 **En quarantaine (posée par l'humain, non bloquant)** (1) :
 
-- [angular] « rédaction — corriger l’orthographe, appliquer, envoyer : le texte corrigé arrive, la citation intacte » (E2E-COMPOSE-002) — Failed — correction : task-350
+- [angular] « rédaction — corriger l’orthographe, appliquer, envoyer : le texte corrigé arrive, la citation intacte » (E2E-COMPOSE-002) — Passed — correction : task-350
 
 ### Matrice de parité
 
@@ -467,8 +476,8 @@ mobile jouée une fois, voie Angular jouée deux fois (la seconde après le troi
 | E2E-MAIL-001 | 1 | headless | Marquer un message lu puis non lu | ✅ | ✅ |
 | E2E-MAIL-002 | 1 | headless | Tout sélectionner et marquer lu en masse | ✅ | ✅ |
 | E2E-DETAIL-001 | 1 | headless | Répondre et transférer depuis la lecture d'un message | ✅ | ✅ |
-| E2E-COMPOSE-001 | 1 | headless | Envoyer un message, le recevoir, le lire, le supprimer | ✅ | ✅ |
-| E2E-COMPOSE-002 | 1 | headless | Faire corriger l'orthographe de son texte, appliquer la correction, puis envoyer | ❌ | ✅ |
+| E2E-COMPOSE-001 | 1 | headless | Envoyer un message, le recevoir, le lire, le supprimer | ⚠️ flaky | ✅ |
+| E2E-COMPOSE-002 | 1 | headless | Faire corriger l'orthographe de son texte, appliquer la correction, puis envoyer | ✅ | ✅ |
 | E2E-COMPOSE-003 | 1 | headless | Un envoi refusé par la messagerie laisse le brouillon intact et peut être renvoyé | ✅ | ✅ |
 | E2E-MAIL-003 | 1 | headless | Signaler puis ne plus signaler un message | ✅ | ✅ |
 | E2E-MAIL-004 | 1 | headless | Déplacer un message vers Archive puis le ramener | ✅ | ✅ |
@@ -492,8 +501,45 @@ mobile jouée une fois, voie Angular jouée deux fois (la seconde après le troi
 | E2E-AUTH-001 | 1 | humain | Rester connecté quand le jeton d'accès expire | 👤 non joué (humain) | 👤 non joué (humain) |
 | E2E-AUTH-002 | 1 | humain | Se déconnecter | 👤 non joué (humain) | 👤 non joué (humain) |
 | E2E-LIVE-001 | 1 | headless | Recevoir un nouveau message en temps réel, sans recharger | ✅ | ✅ |
-| E2E-AI-001 | 1 | headless | Interroger l'assistant sur des messages sélectionnés et poser des questions de suite | ❌ | ✅ |
+| E2E-AI-001 | 1 | headless | Interroger l'assistant sur des messages sélectionnés et poser des questions de suite | ✅ | ✅ |
 | E2E-WEDA-001 | 1 | headless | Dans Weda, la messagerie s'ouvre sur la boîte que Weda désigne | ✅ | — |
 | E2E-WEDA-002 | 1 | headless | Voir le dossier Weda du patient d'un document reçu, l'ouvrir, puis importer des documents dans un dossier | ✅ | — |
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/287 — label `awaiting-human-merge`
+  (catalogue E2E-DETAIL-004, plafond Dovecot du banc).
+- `client-angular` (code-only) : l'humain gère le commit, le push TFS et la PR. Branche
+  `feature/nova-rewriting-mss-weda-integration`.
+  - Déjà commité par l'humain : `58bfffe9` (« task 364 »), 34 fichiers.
+  - **Non commité**, à pousser : `front/e2e/mss-e2e/specs/functional.e2e.ts` (trois défauts de test
+    corrigés pendant `/e2e`).
+
+## Code Review Summary
+
+**APPROVED** — 0 bloquant, 3 suggestions.
+
+- Validation :
+  - api-mail : build 0 erreur, tests 6 468 verts (0 échec, 16 ignorés) ;
+  - client-angular : `npm ci && npm run build` ✓, `npm test` 11 projets ✓, lint `mss-lib` 0 erreur (43 avertissements préexistants).
+- Règle 1b : non applicable. Aucun comportement atteignable par un endpoint ne change (diff api-mail = YAML et configuration du banc).
+- E2E : `## E2E log` vert. Mobile 31/31. Angular 33 verts, 1 flaky (COMPOSE-001), quarantaine COMPOSE-002 passée.
+- DOD :
+  - build, tests, lint ✓ ;
+  - tests de composant ✓ (preuves par mutation au `## Develop log`) ;
+  - E2E-DETAIL-004 catalogué et implémenté ✓ ;
+  - `data-testid` conservés ✓ ; libellés FR ✓ ; aucune INS affichée ✓ ;
+  - captures avant / après : **reportées au Manual Test Plan** (HAG).
+- Écarts à la DOD :
+  - 1, 2, 3 et 5 acceptés ;
+  - 4 accepté avec réserve : l'assertion « un seul défilement » d'E2E-DETAIL-004 laisse survivre la mutation A, faute d'un document assez haut.
+- Suggestions :
+  1. durcir E2E-DETAIL-004 (document long, ou viewport plus bas) ;
+  2. annuler le `setTimeout` de `MailSidePanelComponent.show()` à la destruction ;
+  3. afficher le motif d'un refus d'étiquette (400) au praticien.
+- Amélioration continue : `conventions/e2e.md` reçoit `check-sur-composant-ds`, `plafond-userip-du-banc`
+  et `assertion-sans-cas-declencheur`, ainsi que le registre des flaky (COMPOSE-001). Le fond du
+  plafond Dovecot est confié à task-365.
+

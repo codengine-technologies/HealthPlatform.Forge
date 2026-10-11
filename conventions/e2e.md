@@ -383,6 +383,7 @@ task de stabilisation proposée)*
 | dossiers — naviguer vers Archive et Corbeille (E2E-FOLDER-001) | angular | 1 | task-347 | à établir — 1er essai : « le dossier INBOX est ouvert » (titre de liste absent au retour vers INBOX) |
 | inbox — filtres Non lus / Lus / Tous et recherche (E2E-INBOX-001) | angular | 1 | task-343 | à établir — vert au 2e essai |
 | détail — bascule texte brut / HTML (E2E-DETAIL-002) | mobile | 2 | task-338 | à établir — 1er essai : « mail sans corps affichable » (`mail-body-empty` reste affiché, le corps seedé n'apparaît pas dans les 15 s). Sur task-192 : rouge aux 2 essais d'un premier run, flaky au run suivant (3 échecs sur 4 essais) ; vert au 1er essai sur `develop` (1 run). Piste : course entre l'état « Aucun contenu » affiché pendant le chargement et le corps enrichi. Récidive sur task-338 (rouge au 1er essai, vert au 2e), task qui ne touche pas la lecture d'un message : le soupçon porté sur task-192 est levé, l'instabilité est propre au test |
+| rédaction — envoyer, recevoir, lire, supprimer (E2E-COMPOSE-001) | angular | 1 | task-364 | à établir — vert au 2e essai, sur le run vert de task-364 (plafond Dovecot du banc relevé à 1000 juste avant) |
 | assistant — résumé initial puis deux questions de suite (E2E-AI-001) | angular | 2 | task-352 | à établir — task-338, 1er essai : `locator.click` en dépassement (15 s), puis `page.waitForResponse: Test ended`. task-352, 1er essai : `response.json: Protocol error (Network.getResponseBody): No data found for resource` (le corps de la réponse attendue n'est plus lisible par le navigateur quand le test le lit). Vert au 2e essai les deux fois. Voie Angular sur `feature/nova-rewriting-mss`. Piste : lire le corps par `waitForResponse` puis `await response.json()` sans délai, ou relire la conversation au serveur plutôt que dans la réponse |
 
 | rédaction — corriger l'orthographe, appliquer, envoyer (E2E-COMPOSE-002) | angular | 6 | task-357 | task-355 : même signature au 1er essai (« le transfert porte la citation d'origine », `live-ai.e2e.ts:231`), vert au 2e, sur une task qui ne touche ni la rédaction ni Angular. **établie, ce n'est pas un flaky** : « Transférer » cliqué avant le chargement du contenu → transfert sans le message d'origine (`initializeFromPrefill` ne cite que `if (prefill.content)`). Reproduit 1/5 au premier passage à froid. Bug produit, voir Trous du filet (task-350). task-353 : de nouveau au 1er essai sur deux passages ; au 2e essai d'un passage, **incident de banc distinct** : rafale de connexions IMAP coupées à l'authentification (10053/10054, Seq 12:20:29 UTC), `enrich/sync` puis contenu en 503 → « Aucun contenu ». Piste : `mail_max_userip_connections` (10, défaut Dovecot du banc) atteint par des requêtes simultanées du même praticien task-356 : **rouge aux deux essais**, la porte bloque (1er essai, même signature `live-ai.e2e.ts:231` ; 2e essai, « le dossier INBOX est ouvert » introuvable, `support/weda.ts:78` — signature de l'incident de banc de task-353). Sur une task qui ne touche ni la rédaction ni le parcours. Sortie : quarantaine humaine citant task-350, ou task-350 corrigée d'abord 2e run de task-356 : de nouveau rouge aux deux essais (2e essai : page connectée, « Le dossier n'a pas pu être chargé », donc incident de banc et non authentification). **Mis en quarantaine par l'humain le 2026-10-09 (task-350)** task-357 : en quarantaine, vert au 2e essai (même signature au 1er essai) |
@@ -430,3 +431,51 @@ scénario qui l'aurait attrapé, prouvé rouge sur le bug)*
   `E2E-DETAIL-002` rouge 3/3 en `--serve-only` avant, vert après.
 - **Origine** : task-348
 - **Occurrences** : 1
+
+### check-sur-composant-ds — `check()` échoue sur `ds-radio-button` / `ds-checkbox` (weda2 sans zone.js)
+- **Piège** : `locator.check()` clique, puis vérifie **aussitôt** que l'état a changé. Un composant
+  du design system porte `role="radio"` ou `role="checkbox"` et `aria-checked` sur son hôte, et
+  weda2 rend sans zone.js : `aria-checked` ne change qu'au tick de rendu suivant. Playwright
+  conclut « Clicking the checkbox did not change its state », alors que l'instantané de la page
+  montre l'élément `[checked]`. Un `<input type="radio">` natif, lui, change de façon synchrone :
+  le test passait avant la refonte au design system.
+- **Consigne** : sur un composant `ds-*`, `await x.click()` puis
+  `await expect(x).toBeChecked()`, qui attend. `check()` reste réservé aux contrôles natifs.
+- **Preuve** : E2E-WEDA-002 rouge aux deux essais avec `check()` (task-364), vert avec
+  `click()` + `toBeChecked()`.
+- **Origine** : task-364
+- **Occurrences** : 1
+
+### plafond-userip-du-banc — chaque test consomme des connexions IMAP qui vivent 5 min
+- **Piège** : le filet joue tous ses tests avec **un** praticien, depuis **une** IP. Chaque test
+  ouvre une nouvelle session navigateur, donc un nouveau `Client-Session-Id` : api-mail ouvre une
+  connexion IMAP neuve, parfois une par réplica, plus la voie d'écriture d'un envoi, et la garde
+  `ImapIdleTimeout` (5 min). Une voie de ~35 tests en ~5 min empile environ 100 connexions.
+  Au-delà de `mail_max_userip_connections`, Dovecot coupe les connexions neuves : `SocketException
+  10053` en plein TLS côté api-mail, puis 500/503 sur dossiers et quota. Le **dernier** fichier
+  joué tombe, sur un test différent à chaque run. Ça ressemble à du flaky, et c'est un plafond.
+- **Consigne** : un rouge « le dossier INBOX est ouvert » / « Quota non disponible » en fin de
+  suite se diagnostique dans Seq (`IO error connecting to IMAP server`). On compte les
+  `🌱 New ImapClient` depuis le début de la voie et on les compare au plafond. Quand la suite
+  grandit, relever le plafond du banc (`src/AppHost/dovecot/dovecot.conf`). Le phénomène de
+  fond, l'empilement des sessions, est un sujet produit (task-365).
+- **Preuve** : task-364, deux runs rouges à 107 et ~100 connexions neuves (Seq, 2026-10-10
+  21:17 et 21:23 UTC). Plafond relevé de 100 à 1000 (api-mail `ca7e9e0a`) : les deux voies sont
+  vertes au run suivant.
+- **Origine** : task-364 (signature déjà vue sur task-353 et task-356, alors à un plafond de 10)
+- **Occurrences** : 3
+
+### assertion-sans-cas-declencheur — une mesure de mise en page verte sur une donnée qui ne la sollicite pas
+- **Piège** : E2E-DETAIL-004 affirme « un seul défilement dans la zone de lecture ». Le contrôle
+  compte bien les régions défilantes dans un vrai navigateur. Mais le compte rendu seedé, à
+  1366×768, n'est pas assez haut pour produire un double défilement : avec `min-height: 60vh`
+  remis sur le cadre (la régression visée), le cadre grandit, seule la zone extérieure défile,
+  et le test reste vert. L'assertion est juste. C'est la donnée qui ne déclenche jamais le cas.
+- **Consigne** : une assertion de mise en page (défilement, débordement, position) se prouve par
+  mutation **avec une donnée qui sollicite le cas** : document plus haut que la zone, ou viewport
+  assez bas. Si la mutation survit, on change la donnée ou la fenêtre, pas l'assertion.
+- **Preuve** : task-364, mutation A (`min-height: 60vh` sur `.mail-body-html`) verte en
+  `--serve-only`. Mutation B (redéploiement neutralisé), sur le même test, rouge comme attendu.
+- **Origine** : task-364 (revue)
+- **Occurrences** : 1
+
