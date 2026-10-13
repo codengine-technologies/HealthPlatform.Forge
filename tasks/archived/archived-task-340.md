@@ -592,6 +592,7 @@ Autres commandes mesurées : lint ×5 (26 s), nuget-wait ×1 (44 s), restore ×4
   - front/libs/mss/src/core/utils/read-receipt.util.spec.ts (nouveau)
   - front/libs/mss/src/core/utils/read-receipt.util.ts (nouveau)
   - front/libs/mss/src/features/mail/components/mail-detail/mail-detail.read-receipt.spec.ts (nouveau)
+  - front/libs/design-system/src/tokens/variables/component/_form-control.scss (ajouté après la revue : `--ds-toggle-width-sm` référençait `--ds-spacing-7`, absent de l'échelle — tout interrupteur `size="small"` faisait 0px, dont « Accusé de lecture » de la rédaction)
 
 ## Code Review Summary
 
@@ -622,3 +623,13 @@ Autres commandes mesurées : lint ×5 (26 s), nuget-wait ×1 (44 s), restore ×4
 3. Filet e2e mobile : `gestureBox` fait défiler une ligne sous la barre d'onglets Ionic ; un parcours qui laisse des messages décale les suivants (cause du rouge E2E-AI-001 de la 1re passe, corrigé ici par le nettoyage des parcours).
 
 Validation /review : build + tests verts sur les 5 repos — api-mail (domain 190, infrastructure 683, application 3 617, api 1 199, intégration 863 + 16 ignorés, les 3 tests « du jour » verts hors fenêtre horaire), client-blazor 437, client-mobile 1 027, client-angular (weda2 build, npm test 11 projets), dtos-mss build. Branches à jour avec `origin/develop` (aucun commit en retard), aucun changement non commité sur les repos poussables.
+
+## Merged
+
+- **Date** : 2026-10-13, `/merge task-340 --i-tested` (validation humaine attestée).
+- dtos-mss : squash `49dab080` (PR #45) — CI develop : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/actions/runs/38388747608
+- api-mail : squash `87e972a5` (PR #290) — CI develop : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/38388766325
+- client-blazor : squash `97de370b` (PR #94) — CI develop : https://github.com/codengine-technologies/HealthPlatform.Client/actions/runs/38388785697
+- client-mobile : squash `f992de71` (PR #91) — CI develop : https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/38388805248
+- Branches `fix/task-340-accuse-de-lecture` supprimées (distante et locale) sur les quatre dépôts ; label `awaiting-human-merge` retiré.
+- client-angular : managed manually by the human (TFS).
