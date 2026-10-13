@@ -5,7 +5,7 @@
 > **Version** : 1.17
 > **Auteur** : PO forge
 > **Audience** : PO, médecin, direction produit, conformité — la vue ingénierie vit dans [E016-Changelogs.md](E016-Changelogs.md)
-> **Dernière mise à jour** : 2026-10-13
+> **Dernière mise à jour** : 2026-10-14
 
 ---
 
@@ -571,6 +571,15 @@ et n'entre pas dans le calcul.
   MSSanté, et entre dans sa messagerie une fois l'opérateur consulté.
 
 ### Sécurité
+
+- **La session de la nouvelle messagerie tient tant que le médecin travaille, et se ferme quand il s'absente**
+  (task-370, *en attente de commit côté weda2*). Hors de Weda, la messagerie tombait en « session expirée »
+  quelques minutes après la connexion ; elle renouvelle désormais l'accès avant qu'il n'expire, sans couper les
+  nouveaux messages qui arrivent en direct. Une coupure réseau pendant ce renouvellement ne déconnecte plus. À
+  l'inverse, un médecin qui laisse le poste inactif est maintenant réellement déconnecté à l'échéance prévue, y
+  compris au réveil d'une mise en veille : sur un poste partagé du cabinet, sa session ne reste plus ouverte. Le
+  bouton de connexion Pro Santé Connect fonctionne, et une connexion annulée affiche un message avec « Réessayer »
+  au lieu d'un chargement sans fin.
 
 - **Les échanges internes de la plateforme ne transportent plus ni mots de passe ni contenu médical**
   (task-332, *en attente de merge*). Pour indexer un message reçu et en extraire les correspondants, le service se

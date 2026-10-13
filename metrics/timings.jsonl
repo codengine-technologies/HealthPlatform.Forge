@@ -4866,3 +4866,5 @@
 {"ts":"2026-10-14T01:40:51+02:00","run_id":"forge-20261013-368-381","type":"cmd","task":"task-370","step":"review","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test tests/mss.mail.api.tests/mss.mail.api.tests.csproj --filter FullyQualifiedName~E2e","duration_ms":16661,"exit_code":0}
 {"ts":"2026-10-14T01:41:55+02:00","run_id":"forge-20261013-368-381","type":"cmd","task":"task-370","step":"review","repo":"client-angular","kind":"test","label":"","cwd":"Client/Angular/front","cmd":"npm test","duration_ms":20329,"exit_code":0}
 {"ts":"2026-10-14T01:42:33+02:00","run_id":"forge-20261013-368-381","type":"step","task":"task-370","step":"review","status":"ok","note":"","iterations":null,"duration_ms":144450}
+{"ts":"2026-10-14T01:42:51+02:00","run_id":"forge-20261013-368-381","type":"step_start","task":"task-370","step":"tech-writer"}
+{"ts":"2026-10-14T01:43:17+02:00","run_id":"forge-20261013-368-381","type":"step","task":"task-370","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":25910}

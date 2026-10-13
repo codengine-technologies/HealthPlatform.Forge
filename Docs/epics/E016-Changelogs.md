@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > **Document frère (vue produit)** : [`E016-socle-multi-tenant.md`](./E016-socle-multi-tenant.md)
-> **Dernière mise à jour** : 2026-10-13 (task-332)
+> **Dernière mise à jour** : 2026-10-14 (task-370)
 
 Historique détaillé des changements de l'EPIC **E016 — Socle multi-tenant**.
 Une entrée par task ayant atteint `done-*` ou `archived-*`. Append-only : une
@@ -11,6 +11,22 @@ entrée existante n'est jamais réécrite.
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.18 — task-370 : la session de weda2 tient tant que le médecin travaille, et se ferme quand il s'absente (`client-angular` ; catalogue `api-mail`)
+
+- **Origine** : audit de bugs du client Angular du 2026-10-13 — ANG-06, 07, 22, 23, 24, 66, 67, 69, 71.
+- **PR** : `api-mail` #294 (catalogue e2e seulement, `awaiting-human-merge`) ; client-angular code-only (25 fichiers, branche `feature/nova-rewriting-mss-weda-integration`).
+- **api-mail origine de confiance** : `AuthConfig.trustedEndpoints` (URL d'api-mail) ; `authInterceptorFn` pose le Bearer, rafraîchit un jeton échu avant l'appel et rejoue un 401 une fois ; `mssHeadersInterceptor` ne pose plus le Bearer. Avant : aucun rafraîchissement vers api-mail, « session expirée » ~4 min après la connexion (jeton de 120 s + tolérance de 2 min), flux SSE mort sur 401.
+- **Rafraîchissement avant échéance** : `TokenRefreshSchedulerService` (30 s avant `exp`, créneau partagé, nouvel essai à 15 s sur coupure) ; le flux SSE se rouvre avec le jeton neuf.
+- **Perte de session seulement sur refus** : `refreshAndReplay` — 400/401/403 du rafraîchissement → purge et `/logout` ; coupure, 5xx → erreur rendue, session intacte ; erreur métier de la requête rejouée remontée telle quelle. `$refreshToken` / `$exchangeCodeForToken` ne relancent plus `login()`. Défaut corrigé au passage : `inject()` appelé dans un callback RxJS sur le chemin du 401 (NG0203 sur une vraie réponse).
+- **Inactivité** : `AutoLogoutService` déconnecte par le store de l'application (`initialize()` n'était appelé nulle part) ; échéance atteinte ou dépassée au réveil → déconnexion sans dialogue ; bouton du dialogue effectif.
+- **PSC** : « Se connecter avec Pro Santé Connect » → `loginPsc()` avec `state` CSRF (naviguait vers `/login`, route inexistante).
+- **Callback** : `?error=` affiché avec « Réessayer », relances bornées à 2 puis écran d'erreur, plus de chargement sans fin ; page demandée rejointe après un rechargement de changement d'identité.
+- **Mineurs** : `finalize` avant `shareReplay` (créneau de rafraîchissement) ; repli `preferred_username` effectif.
+- **Tests** : weda2 2 723 verts (rouges d'abord : continuité de session 6, inactivité 4, callback 6, créneau, PSC, configuration) ; mutation du planificateur → 3 rouges.
+- **E2E** : **E2E-AUTH-003** ajouté (Angular requis, mobile non-applicable), horloge Playwright ; prouvé rouge avec la déconnexion à l'échéance neutralisée. E2E-AUTH-001 reste humain (le banc n'examine pas l'échéance du jeton à api-mail). Mobile 35/35, Angular 40/40.
+- **Leçons** : `conventions/angular.md` › `double-incomplet-erreur-non-geree` (une erreur non gérée vue au `/review`) ; trou du filet dans `conventions/e2e.md`.
+- **Suivis** : coordination avec task-365 ; `error_description` affiché tel quel ; banc e2e validant l'échéance pour rendre E2E-AUTH-001 jouable.
 
 ### v1.17 — task-332 : les messages internes ne transportent plus aucun secret, ni le corps du mail (`api-mail`)
 

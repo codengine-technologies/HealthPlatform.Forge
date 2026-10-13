@@ -250,6 +250,7 @@ Deux tests existants décrivaient l'ancienne règle (toute erreur de rafraîchis
 | /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 14 min 05 s | — | — | — | e2e ×3 (12 min 03 s) |
 | /review | ok | 2 min 24 s | — | 3 (1 min 00 s) | — | client-angular 0B/2T, api-mail 0B/1T |
-| **Total cycle** | | **35 min 27 s** | **1 (13 s)** | **4 (1 min 20 s)** | **0 (0.0 s)** | |
+| /tech-writer | ok | 25 s | — | — | — | — |
+| **Total cycle** | | **35 min 53 s** | **1 (13 s)** | **4 (1 min 20 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×1 (4.4 s)
