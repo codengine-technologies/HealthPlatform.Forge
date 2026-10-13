@@ -4,7 +4,7 @@
 > **Modèle** : hand-crafted
 > **Version** : 1.86
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-11 (répondre et transférer jamais sans le message d'origine — task-350)
+> **Dernière mise à jour** : 2026-10-13 (l'accusé de lecture de bout en bout — task-340)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1035,6 +1035,21 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 > automatiquement au retour de la connexion », c'est cette description qui fait foi.
 
 ### Fonctionnalités métier
+
+- **v1.97 — L'accusé de lecture fonctionne enfin de bout en bout** (task-340, les trois
+  applications) :
+  - **Votre demande d'accusé est comprise.** Un message envoyé avec « Accusé de lecture » coché
+    fait désormais proposer l'accusé chez votre confrère, dans les messageries courantes
+    (Thunderbird, Outlook). Avant, la demande y passait inaperçue.
+  - **L'accusé vous est proposé à l'ouverture d'un message qui le demande** — sur mobile et dans
+    Weda, où il ne l'était jamais, comme dans l'application web.
+  - **Envoyer, ou ne pas envoyer.** Vous choisissez « Envoyer l'accusé » ou « Ne pas envoyer ».
+    Rien ne part sans votre geste, et votre choix est définitif : l'accusé ne vous est plus
+    proposé, sur aucun poste.
+  - **Un seul accusé, au bon destinataire.** L'accusé part une fois, même si l'expéditeur a un nom
+    d'affichage (« Dr X »), et sa messagerie le reconnaît comme un accusé de lecture.
+  - **Chaque réponse est tracée.** Le journal d'audit montre l'accusé envoyé ou refusé, avec son vrai
+    résultat ; une messagerie indisponible est signalée et tracée comme telle.
 
 - **v1.96 — Une réponse ou un transfert part toujours avec le message d'origine** (task-350, les
   trois applications) :

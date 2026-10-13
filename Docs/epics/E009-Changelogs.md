@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-10-11 (v1.96)
+> **Dernière mise à jour** : 2026-10-13 (v1.97)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -761,6 +761,32 @@
   - remonter `originalMarkedCancelled` et `warning` par `drafts/{id}/send` ;
   - bail renouvelable pour le verrou.
 
+### v1.97 — L'accusé de lecture fonctionne de bout en bout : demandé selon la RFC 8098, proposé sur les trois clients, envoyé une fois ou refusé pour de bon, enregistré et tracé (AUD-32, AUD-43) — task-340
+
+- **Origine** : audit de bugs du 2026-09-27, **AUD-32** et **AUD-43**.
+  - AUD-32 : `ReadReceiptSentAt` n'était jamais enregistré. Faute de `HasColumnType`, EF typait le paramètre en `timestamptz` et Npgsql refusait la valeur `Kind=Unspecified` de `NormalizeUtc` — en production comme en test (la colonne FluentMigrator était déjà `timestamp without time zone`). Conséquences : garde 409 inopérante, trace `ReadReceiptSend` en échec pour un accusé parti, erreur rendue au client. La note de task-082 qui l'attribuait au seul harnais `EnsureCreated` était fausse.
+  - AUD-43 a : seule `Return-Receipt-To` (accusé de **réception**, MSS/va1.15) était émise ; `Disposition-Notification-To` jamais. AUD-43 b : la valeur brute `"Dr X" <x@y.fr>` passée comme adresse au MDN.
+  - Mobile : le bandeau dépendait de `requestReadReceipt`, jamais renseigné pour un mail reçu — il ne s'affichait jamais. weda2 : aucun écran de proposition.
+- **PR** (`awaiting-human-merge`, branche `fix/task-340-accuse-de-lecture`) : `dtos-mss` #45, `api-mail` #290, `client-blazor` #94, `client-mobile` #91 ; `client-angular` en code-only (branche `feature/nova-rewriting-mss-weda-integration`, à commiter sur TFS avant le merge d'api-mail).
+- **Contrat** : `HealthPlatform.Dtos.Mss` **527.0.0** — `AuditActionType.ReadReceiptDeclined = 41`, `MailDto.ReadReceiptDeclinedAt`. Consommateurs : api-mail (524 → 527), client-blazor (517 → 527, qui reçoit au passage les libellés des membres 39 et 40 de task-354).
+- **api-mail** :
+  - `MailDataContext` : `ReadReceiptSentAt` et `ReadReceiptDeclinedAt` mappés `timestamp without time zone` ; date normalisée à l'insertion.
+  - `SmtpService` : `Disposition-Notification-To` émis à la demande d'accusé de lecture, `Return-Receipt-To` inchangé.
+  - `EmailAddressHelper.ParseReadReceiptAddress` : première `MailboxAddress` de l'en-tête, nom d'affichage conservé — pour le seul MDN, l'adressage de l'envoi classique est inchangé.
+  - `MdnService` : MDN `multipart/report; report-type=disposition-notification` (`Final-Recipient`, `Original-Message-ID`, `Disposition: manual-action/MDN-sent-manually; displayed`) ; **une trace par tentative** — succès dès l'acceptation SMTP, échec de connexion tracé et rendu 503 (comme l'envoi, task-330), adresse invalide tracée et rendue 400 ; auteur = boîte du praticien ; plus d'adresse dans les journaux ; un enregistrement refusé après l'envoi ne change plus le succès en échec.
+  - **Refus** : `POST …/declinereadreceipt`, colonne `ReadReceiptDeclinedAt` (migration FluentMigrator `20261012120000`, `Up`/`Down`), écriture conditionnelle atomique (`ExecuteUpdate`, copies suivies relues), trace `ReadReceiptDeclined` ; un accusé refusé ne peut plus être envoyé (409).
+- **Clients** : mobile (bandeau sur `readReceiptTo`, « Ne pas envoyer », 409 en information), weda2 (proposition dans la lecture, même comportement), Blazor (« Non » explicite → refus ; fenêtre fermée → rien ; `ReadReceiptResponder`).
+- **Règle 1b** : `ReadReceiptEndToEndTests` (11 tests : HTTP réel, base praticien provisionnée par `MigrateUp`, GreenMail, journal d'audit Postgres relu par `GET /api/v1/audit/traces` après un vrai `AuditBackgroundService`), `ReadReceiptMigrationTests` (3), 3 tests de dépôt à la place de la note de task-082. **11 mutations**, chacune rouge sur les tests visés.
+- **E2E** : E2E-RECEIPT-001, 002, 003 (mobile et Angular requis) et deux données de seed. Prouvés rouges sur le bug d'origine réinjecté (les trois, deux clients), puis verts. 1ʳᵉ passe `/e2e` rouge : E2E-AI-001 mobile, décalé par deux messages laissés par les parcours RECEIPT — corrigé par leur nettoyage ; 2ᵉ passe : **mobile 34/34, Angular 38/38**, 0 flaky, parité verte.
+- **Tests** : api-mail domain 190, infrastructure 683, application 3 617, api 1 199, intégration 863 (+16 ignorés) ; client-blazor 437 ; client-mobile 1 027 ; weda2 11 projets verts.
+- **Sonar** : Quality Gate OK, new coverage 97,1 %, A/A/A, 0 bug, 0 vulnérabilité ; 1 CA1859 du code de la task corrigé ; S107 de task-329 laissé (hors code de la task, dans la baseline).
+- **Leçons** : `conventions/csharp.md` › S125 (15ᵉ), CA1859 (8ᵉ) ; `conventions/e2e.md` › trou du filet (accusé de lecture) et `preuve-par-mutation` (5ᵉ) ; consigne `executeupdate-copie-suivie-perimee` appliquée d'emblée.
+- **Suivis** :
+  - `PostgresAuditReader.ApplyFilters` ignore `ActionType` et `Search` : le filtre par type d'action de l'écran d'audit est sans effet (défaut préexistant, task à ouvrir) ;
+  - un en-tête d'accusé fait d'espaces finit en 500 au lieu de 400 (comportement antérieur) ;
+  - filet e2e mobile : `gestureBox` peut placer une ligne sous la barre d'onglets ;
+  - jetons du flux NuGet GitHub (`nuget.config`) à renouveler.
+
 ### v1.94 — La synchronisation de fond traite un mail exactement comme l'ouverture à l'écran : mêmes documents, même audit, même nettoyage (AUD-11, 12, 13, 14, 15, 65) — task-334
 
 - **Origine** : audit du 2026-09-27. La synchro de fond avait son propre constructeur de mail et sa
@@ -1411,6 +1437,7 @@ Audit grep complémentaires pour les couches 2 / 2bis / 3 (tasks 021 / 022 / 023
 | task-341 | **Aucune donnée de santé ni saisie du praticien dans les journaux et la télémétrie.** Réponse de tagging illisible journalisée par sa longueur et comptée (`invalid_response`, AUD-37) ; description et texte corrigé des outils IA réduits à leur longueur, objets de mail et corps d'accusé retirés (AUD-55) ; route morte `mss-imap-test` et son exclusion supprimées (AUD-60) ; label `folder` des métriques borné à 5 catégories (AUD-61) ; garde `FreeContentPlaceholder` dans le scan des gabarits de log. PR #279 (api-mail). | — (PGSSI-S : journaux techniques sans donnée de santé ; aucune RG déclarée) |
 | task-339 | **Opérations de dossiers fiables.** Expunge ciblé par UID (AUD-29), renommage qui emporte sous-dossiers, mails et actions en attente (AUD-30), purge des mails des dossiers absents du serveur et reprise des orphelins, vue et badges par étiquette sur INBOX et sa génération (AUD-35), caches et trace des déplacements (AUD-49) ; AUD-50 non reproduit. PR #272 (api-mail). | — (intégrité des opérations de messagerie ; tracé PGSSI-S des déplacements) |
 | task-338 | **La recherche dit la vérité.** Pannes signalées au lieu d'une liste vide (503, 499, mode dégradé `IsDegraded` / `DegradedSources` en hybride) ; chaque filtre du contrat appliqué (patient sur un même document, répondu, brouillon, dates de document et de biologie, `false` = « sans », type inconnu → 400, filtres seuls bornés) ; prédicat dossier/étiquette unique pour toutes les requêtes ; pertinence filtrée une seule fois. Dtos.Mss 500.0.0. 21 tests d'intégration d'endpoint rouges sur le code d'avant. PR #268 (api-mail), #37 (dtos-mss). | — (exactitude de la recherche — AUD-38, 39, 40, 52 ; aucune RG déclarée) |
+| task-340 | **L'accusé de lecture de bout en bout.** `ReadReceiptSentAt` enregistré (mapping EF, AUD-32) ; `Disposition-Notification-To` émis, `Return-Receipt-To` inchangé (AUD-43 a) ; adresse de l'accusé analysée, nom conservé, pour le seul MDN (AUD-43 b) ; MDN RFC 8098 `multipart/report` ; une trace `ReadReceiptSend` par tentative (503 / 400 tracés, auteur = praticien) ; refus définitif (`declinereadreceipt`, `ReadReceiptDeclinedAt`, trace `ReadReceiptDeclined`, contrat 527.0.0) ; proposition sur mobile, weda2 et Blazor ; E2E-RECEIPT-001/002/003. | — |
 | done-task-002 | Masquage du préfixe `XDM/1.0/DDM+` dans l'objet | RG-E009-029 |
 | done-task-003 | Opposition patient à l'envoi MSS pro et patient | RG-E009-019, 020 |
 | done-task-004 | Journal d'audit MSS complet (16 actions, 30+ champs, export CSV) | RG-E009-045, 046, 047 |

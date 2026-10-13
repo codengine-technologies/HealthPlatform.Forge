@@ -329,7 +329,8 @@ mutation, preuve consignée dans le `## Develop log`.
 | /lint-mobile | ok | 9.0 s | — | — | — | — |
 | /e2e | ok | 12 min 07 s | — | — | — | e2e ×6 (24 min 13 s) |
 | /review | ok | 5 min 46 s | 5 (42 s) | 4 (3 min 57 s) | — | dtos-mss 1B/0T, api-mail 1B/1T, client-blazor 1B/1T, client-mobile 1B/1T, client-angular 1B/1T |
-| **Total cycle** | | **22 min 03 s** | **28 (3 min 36 s)** | **32 (22 min 31 s)** | **4 (1 min 12 s)** | |
+| /tech-writer | ok | 1 min 30 s | — | — | — | — |
+| **Total cycle** | | **23 min 33 s** | **28 (3 min 36 s)** | **32 (22 min 31 s)** | **4 (1 min 12 s)** | |
 
 Autres commandes mesurées : lint ×5 (26 s), nuget-wait ×1 (44 s), restore ×4 (13 s)
 
