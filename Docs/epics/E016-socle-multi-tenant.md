@@ -5,7 +5,7 @@
 > **Version** : 1.14
 > **Auteur** : PO forge
 > **Audience** : PO, médecin, direction produit, conformité — la vue ingénierie vit dans [E016-Changelogs.md](E016-Changelogs.md)
-> **Dernière mise à jour** : 2026-09-27
+> **Dernière mise à jour** : 2026-10-13
 
 ---
 
@@ -572,6 +572,11 @@ et n'entre pas dans le calcul.
 
 ### Sécurité
 
+- **Une connexion forgée n'ouvre plus aucune messagerie** (task-326, *en attente de merge*). Sur les environnements
+  déployés, l'application acceptait un jeton de connexion fabriqué de toutes pièces : il suffisait de connaître
+  l'identifiant d'un praticien pour lire ses messages, ses patients et son historique. La signature de chaque jeton est
+  désormais vérifiée auprès du serveur d'authentification, et un environnement qui n'en déclare pas **refuse de
+  démarrer** plutôt que de fonctionner sans contrôle. Le mode sans vérification reste réservé au poste du développeur.
 - **Plus aucun chemin ne fait partir un message sans la carte** (task-320, **mergée**). L'envoi automatique au retour de la carte est supprimé. L'envoi d'un
   brouillon enregistré, qui pouvait encore partir sans carte, est mis de côté comme
   les autres. Une confirmation n'est acceptée que si la carte est présentée **à cet

@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > **Document frère (vue produit)** : [`E016-socle-multi-tenant.md`](./E016-socle-multi-tenant.md)
-> **Dernière mise à jour** : 2026-09-27 (task-336)
+> **Dernière mise à jour** : 2026-10-13 (task-326)
 
 Historique détaillé des changements de l'EPIC **E016 — Socle multi-tenant**.
 Une entrée par task ayant atteint `done-*` ou `archived-*`. Append-only : une
@@ -11,6 +11,34 @@ entrée existante n'est jamais réécrite.
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.15 — task-326 : un jeton non signé n'ouvre plus aucune boîte (`api-mail` ; `devops` à appliquer par l'humain)
+
+- **Origine** : audit de bugs du 2026-09-27, **AUD-01**. Les manifestes `DevOps/Prod`, `DevOps/Staging` et `DevOps/Weda`
+  déploient api-mail en `Staging` sans `Keycloak__Authority` : le mode « dev permissif » (`!hasKeycloak && !IsProduction()`)
+  s'y activait, et un JWT forgé (`alg: none`, `sub` d'un praticien) était accepté — **200** prouvé sur le code d'avant.
+  Le test-bypass ne refusait que `Production`, lu sur la variable brute.
+- **PR** : `api-mail` #291 (`awaiting-human-merge`, branche `fix/task-326-authentification-permissive-opt-in`).
+- **api-mail** :
+  - `MssAuthenticationExtensions` (extrait de `Program`) : Authority ⇒ validation complète ; hors Development sans
+    Authority ⇒ **refus de démarrer** ; permissif seulement en Development **et** avec
+    `Authentication:AllowUnsignedTokensForLocalDev=true` (AppHost, `launchSettings`) — sinon 401.
+  - `TestBypassEnvironment` : bypass en `Development` / `Testing` seulement, lu sur `IHostEnvironment` (handler et
+    `RequestHelper`).
+  - `PractitionerDatabaseProvisioning` : `MSS_DB_PROVISION_PRACTITIONER_DATABASES`, actif par défaut ; `BaseRepository`
+    ne dépend plus du nom d'environnement (préalable à un futur passage en `Production`).
+- **Déploiement** : appliquer `Keycloak__Authority` (realm `weda-realm`) dans les trois ConfigMaps **avant** l'image —
+  sans elle, les pods refusent de démarrer. Bloc prêt à appliquer dans `done-task-326.md`.
+- **Règle 1b** : `AuthenticationModeEndpointIntegrationTests` (11, hôte HTTP réel avec la configuration servie),
+  `PractitionerDatabaseProvisioningSwitchIntegrationTests` (6, PostgreSQL réel, collection non parallèle) ; run rouge
+  sur le code d'avant + mutation du provisionnement (4 rouges / 6).
+- **Tests** : domain 190, infrastructure 690, application 3 617, api 1 220, intégration 880 (+16 ignorés).
+- **Sonar** : Quality Gate OK, new coverage 97,1 %, A/A/A ; S3604 corrigé ; S107 de task-329 laissé (baseline).
+- **E2E** : mobile 34/34, Angular 37 + 1 flaky (E2E-COMPOSE-001), parité verte — backend monté en Development avec le
+  drapeau : le poste local fonctionne comme avant.
+- **Suivis** : constat sur le cluster réel à faire par l'humain ; hôte Keycloak des environnements à renseigner ; secrets
+  en clair dans `DevOps/Prod/configmap.yaml` (rotation de la clé OpenAI conseillée) ; `AuditJournalSwitch` lit encore
+  la variable brute (`Production`).
 
 ### v1.14 — task-336 : les flux SSE suivent la boîte affichée (`api-mail`, `client-blazor`, `client-mobile`)
 

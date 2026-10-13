@@ -370,6 +370,7 @@ l'Authority ne correspond pas à l'émetteur des jetons (`iss`) ou le pod ne joi
 | /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 21 min 08 s | — | — | — | e2e ×6 (18 min 51 s) |
 | /review | ok | 5 min 00 s | 1 (8.6 s) | 1 (3 min 34 s) | — | api-mail 1B/1T |
+| /tech-writer | ok | 23 s | — | — | — | — |
 | **Total cycle** | | **1 h 04 min** | **8 (1 min 25 s)** | **16 (23 min 49 s)** | **4 (1 min 15 s)** | |
 
 ## PRs
