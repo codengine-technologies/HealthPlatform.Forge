@@ -408,8 +408,8 @@ Passe finale (après la reprise : refus journalisés, vérification en développ
 | /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 12 min 22 s | — | — | — | e2e ×9 (30 min 41 s) |
 | /review | ok | 7 min 06 s | 2 (17 s) | 2 (7 min 07 s) | — | api-mail 2B/2T |
-| /tech-writer | ok | 23 s | — | — | — | — |
-| **Total cycle** | | **1 h 10 min** | **17 (2 min 50 s)** | **39 (55 min 38 s)** | **10 (3 min 05 s)** | |
+| /tech-writer | ok | 0.4 s | — | — | — | — |
+| **Total cycle** | | **1 h 09 min** | **17 (2 min 50 s)** | **39 (55 min 38 s)** | **10 (3 min 05 s)** | |
 
 ## PRs
 

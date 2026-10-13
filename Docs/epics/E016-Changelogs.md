@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > **Document frère (vue produit)** : [`E016-socle-multi-tenant.md`](./E016-socle-multi-tenant.md)
-> **Dernière mise à jour** : 2026-10-13 (task-326)
+> **Dernière mise à jour** : 2026-10-13 (task-326, reprise)
 
 Historique détaillé des changements de l'EPIC **E016 — Socle multi-tenant**.
 Une entrée par task ayant atteint `done-*` ou `archived-*`. Append-only : une
@@ -11,6 +11,28 @@ entrée existante n'est jamais réécrite.
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.16 — task-326 (reprise) : les refus se voient, le poste local vérifie, la dette Sonar est à zéro (`api-mail`)
+
+- **Origine** : demandes humaines après la première revue de la PR #291.
+- **Refus tracés** : la section conformité affirmait que les refus d'authentification étaient journalisés — faux, l'override
+  Serilog `Microsoft.AspNetCore = Warning` filtrait les journaux du handler JwtBearer, en local comme en déploiement.
+  `OnAuthenticationFailed` écrit désormais un Warning `[Auth] Jeton refusé ({FailureType})` sous
+  `mss.mail.api.Authentication` (type d'exception seulement). Test rouge avant, vert après.
+- **Développement interactif vérifié** : `LocalTokenValidation` (AppHost) et `launchSettings` posent
+  `Keycloak__Authority=https://localhost:5600/realms/weda-realm` ; e2e, loadtest et conteneur gardent le mode sans
+  vérification ; `MSS_KEYCLOAK_AUTHORITY=off` pour s'en passer. Clés lues une fois par processus (cache 12 h), aucun
+  appel à Keycloak par requête. Vérifié à la main : session réelle acceptée, jeton forgé → 401.
+- **ASPIRE010** neutralisé : DCP et dashboard restent ceux des packages 13.5.3 (la CLI du poste est en 13.1.0).
+- **Dette Sonar 13 → 0**, à la demande de l'humain : S107 ×9 (regroupements `ImapServerAccess`, `ImapFolderStores`,
+  `BackgroundImapConnectivity`, `BackgroundSyncCoordination` enregistrés en DI ; `PropagationServices`, `PatientTraits`,
+  `ImapLockCaller` ; `PerformSemanticSearchAsync` reçoit `SemanticSearchOptions`), CA1829 ×4 ; CA1068 introduit puis
+  corrigé (surcharge adjacente). Sans changement de comportement : suite complète inchangée, voies e2e vertes sur la DI
+  de production.
+- **E2E** : mobile 34/34, Angular 38/38, 0 flaky, parité verte.
+- **Suivis** : flaky préexistant `SeededThreadsAreCountableTests` (UID aléatoires sous contrainte d'unicité — UID
+  séquentiels) ; conflit de ports Seq entre l'AppHost et un docker-compose externe (5341/5342) ; repli SSE `?token=` sans
+  test d'intégration.
 
 ### v1.15 — task-326 : un jeton non signé n'ouvre plus aucune boîte (`api-mail` ; `devops` à appliquer par l'humain)
 

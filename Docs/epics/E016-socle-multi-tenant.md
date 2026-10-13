@@ -576,7 +576,8 @@ et n'entre pas dans le calcul.
   déployés, l'application acceptait un jeton de connexion fabriqué de toutes pièces : il suffisait de connaître
   l'identifiant d'un praticien pour lire ses messages, ses patients et son historique. La signature de chaque jeton est
   désormais vérifiée auprès du serveur d'authentification, et un environnement qui n'en déclare pas **refuse de
-  démarrer** plutôt que de fonctionner sans contrôle. Le mode sans vérification reste réservé au poste du développeur.
+  démarrer** plutôt que de fonctionner sans contrôle. Chaque tentative refusée laisse désormais une trace dans le journal,
+  sans rien révéler du jeton. Le poste du développeur vérifie lui aussi la signature, comme un environnement déployé.
 - **Plus aucun chemin ne fait partir un message sans la carte** (task-320, **mergée**). L'envoi automatique au retour de la carte est supprimé. L'envoi d'un
   brouillon enregistré, qui pouvait encore partir sans carte, est mis de côté comme
   les autres. Une confirmation n'est acceptée que si la carte est présentée **à cet
