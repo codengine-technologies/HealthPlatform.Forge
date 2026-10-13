@@ -445,3 +445,11 @@ hasard (300 000 valeurs) pour 60 à 120 messages d'un même dossier sous contrai
 Rouge 1 fois sur la validation finale, vert 10/10 au rejeu. Task à ouvrir : UID séquentiels.
 
 Relevé hors périmètre : `DevOps/Prod/configmap.yaml` porte des secrets en clair (clé OpenAI notamment).
+
+## Merged
+
+- **Date** : 2026-10-13, `/merge task-326 --i-tested` (validation humaine attestée).
+- api-mail : squash `f271b044` (PR #291) — CI develop : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/38458418470 ✓
+- Branche `fix/task-326-authentification-permissive-opt-in` supprimée (distante et locale) ; label `awaiting-human-merge` retiré.
+- devops : managed manually by the human — `Keycloak__Authority` à poser dans les ConfigMaps Prod, Staging et Weda **avant** tout redémarrage de pod sur l'image `develop` (refus de démarrer sinon).
+- client-angular : non touché par la task.
