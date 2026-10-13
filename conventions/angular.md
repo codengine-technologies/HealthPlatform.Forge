@@ -302,3 +302,12 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   `medical-html-frame.component.spec.ts` (weda2 et mobile).
 - **Origine** : task-368
 - **Occurrences** : 1
+
+---
+
+### double-incomplet-erreur-non-geree — Tous les tests verts, mais `npm test` rouge : un double sans la méthode appelée
+- **Piège** : un code modifié appelle une méthode d'un service (`login()` sur l'échec d'un échange) que le double d'un spec EXISTANT n'expose pas. L'appel part dans un callback RxJS : l'exception n'échoue aucun test, Vitest la compte en « Unhandled Errors » et la cible `test` sort en échec — vu seulement au `npm test` complet.
+- **Consigne** : quand une dépendance gagne un nouvel appel, chercher ses doubles (`grep -rn "provide: {Service}" --include=*.spec.ts`) et les compléter ; lire la ligne `Errors` de Vitest, pas seulement `Tests`.
+- **Preuve** : task-370, `/review` : 2 723 verts, 1 erreur non gérée (`this.authenticationService.login is not a function`), cible `weda2:test` en échec ; double complété → vert.
+- **Origine** : task-370
+- **Occurrences** : 1
