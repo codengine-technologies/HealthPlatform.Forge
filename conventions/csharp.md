@@ -259,7 +259,7 @@ dans `string.Equals`, mais `StringComparer` dans `Contains`.
 
 ## S125 — une prose qui « ressemble à du code » est signalée comme code commenté
 
-**Occurrences : 15** (task-340 — ×5 « … ; » en fin de proposition (contrôleur, MdnService, deux tests), dont un commentaire déplacé tel quel, attrapés par le contrôle mécanique §Q 2b avant la passe qualité ; task-334 — ×3, « …throws "Host is null" ; task-334 — … » et « par défaut ; WireExisting… », attrapées par le contrôle mécanique §Q 2b avant la passe qualité ; task-354 — « …would demand a registry ; » dans un commentaire d'un banc d'intégration, attrapé par le contrôle mécanique §Q 2b avant le commit ; task-344 — ×2 dans l'extension « reprise des étiquetages IA », attrapées par le contrôle mécanique avant le commit ; task-348 — deux commentaires « … public ; c'est … », « … Toxiproxy ; with », attrapés par le contrôle mécanique lancé pendant `/sonar` ; task-184, task-292, task-188, task-322, task-171, task-342, task-191, task-330,
+**Occurrences : 16** (task-326 — « …qu'en Development ; un déploiement… » dans un commentaire de l'AppHost, attrapé par le contrôle mécanique §Q 2b avant le push ; task-340 — ×5 « … ; » en fin de proposition (contrôleur, MdnService, deux tests), dont un commentaire déplacé tel quel, attrapés par le contrôle mécanique §Q 2b avant la passe qualité ; task-334 — ×3, « …throws "Host is null" ; task-334 — … » et « par défaut ; WireExisting… », attrapées par le contrôle mécanique §Q 2b avant la passe qualité ; task-354 — « …would demand a registry ; » dans un commentaire d'un banc d'intégration, attrapé par le contrôle mécanique §Q 2b avant le commit ; task-344 — ×2 dans l'extension « reprise des étiquetages IA », attrapées par le contrôle mécanique avant le commit ; task-348 — deux commentaires « … public ; c'est … », « … Toxiproxy ; with », attrapés par le contrôle mécanique lancé pendant `/sonar` ; task-184, task-292, task-188, task-322, task-171, task-342, task-191, task-330,
 task-331 — neuvième, **attrapée par le contrôle mécanique avant le commit**, comme prévu : « …pas
 l'objet ; le parcours… » au milieu d'un commentaire du seed e2e. Le contrôle marche. Le réflexe
 d'écriture, lui, ne tient toujours pas : en français, l'espace avant le point-virgule est la
@@ -313,7 +313,9 @@ d'« accepter », ce qui use la crédibilité des exemptions.
 
 ## S3604 — pas d'initialiseur de membre qui ne fait que copier un paramètre de constructeur primaire
 
-**Occurrences : 1** (task-292, ×2 dans le même run)
+**Occurrences : 2** (task-326 — `_hostEnvironment = hostEnvironment` ajouté à côté d'un `_configuration = configuration`
+préexistant dans `TestBypassAuthenticationHandler`, en imitant le voisin ; corrigé en utilisant les deux paramètres
+directement. Le motif voisin n'excuse pas : on le retire avec le sien ; task-292, ×2 dans le même run)
 
 Avec un **constructeur primaire**, un champ initialisé depuis un paramètre
 (`private readonly AuditOptions _options = options.Value;`) est signalé :
@@ -1508,3 +1510,20 @@ by: mss.mail.api.exe, devenv.exe »).
   ne pas contourner ;
 - un `--artifacts-path` reste acceptable **seulement** pour un test ciblé qui ne lit aucun
   fichier du dépôt (exemple : `FeatureFlagEndpointIntegrationTests`). Le noter dans le Develop log.
+
+---
+
+## restauration-de-mutation — une mutation s'annule depuis une copie, jamais par `git checkout`
+
+**Occurrences : 1** (task-326, `/develop` — preuve par mutation sur `BaseRepository.cs`)
+
+La preuve par mutation (règle 1b) se joue sur un fichier qui porte souvent le correctif **non encore
+commité**. `git checkout -- {fichier}` pour « annuler la mutation » le ramène à `HEAD` : le correctif
+part avec la mutation. Constaté sur task-326 : le correctif du provisionnement a disparu, et seule une
+copie prise avant la mutation l'a rendu. Sans elle, le cycle aurait continué sur le code d'avant, avec
+des tests qui l'auraient alors fait rougir plus tard, sans raison apparente.
+
+**Consigne** :
+- copier le fichier avant de le muter (`cp {fichier} {scratchpad}/…bak`), restaurer depuis la copie ;
+- ou commiter le correctif d'abord : `git checkout` redevient alors sûr ;
+- après restauration, relire le `git diff --stat` du fichier : il doit montrer le correctif.

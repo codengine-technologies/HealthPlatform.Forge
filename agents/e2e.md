@@ -144,7 +144,8 @@ suivant vide ces dossiers.
 > ⚠️ **La voie Angular vide AUSSI le dossier de sortie mobile** : elle monte son backend par
 > l'orchestrateur mobile (`--serve-only`), qui repart d'un `Client/Mobile/e2e/headless/out` vide.
 > Constaté sur task-352 : rapport mobile copié trop tard, porte en échec (« Could not find
-> file »), voie mobile rejouée (~5 min perdues). La copie fait donc partie de la **même
+> file »), voie mobile rejouée (~5 min perdues). **Récidive sur task-326** (2ᵉ occurrence) : les deux voies lancées
+> chacune dans sa commande, sans `cp` — même échec, même rejeu (~6 min). La copie fait donc partie de la **même
 > commande** que la voie, jamais d'une commande suivante :
 >
 > ```bash
