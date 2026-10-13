@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > **Document frère (vue produit)** : [`E016-socle-multi-tenant.md`](./E016-socle-multi-tenant.md)
-> **Dernière mise à jour** : 2026-10-13 (task-326, reprise)
+> **Dernière mise à jour** : 2026-10-13 (task-332)
 
 Historique détaillé des changements de l'EPIC **E016 — Socle multi-tenant**.
 Une entrée par task ayant atteint `done-*` ou `archived-*`. Append-only : une
@@ -11,6 +11,67 @@ entrée existante n'est jamais réécrite.
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.17 — task-332 : les messages internes ne transportent plus aucun secret, ni le corps du mail (`api-mail`)
+
+> PR : [api-mail #292](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/292) — `awaiting-human-merge`.
+
+- **Origine** : audit de bugs du 2026-09-27, **AUD-10**. `AddNewMailMessage`, `CreatePatientContactMessage` et
+  `CreatePractitionerContactMessage` portaient `UserContextInfo UserContext`, l'objet complet sérialisé par MassTransit.
+  Ils emportaient donc :
+  - `ConnectionStringServer` et `ConnectionStringDirect`, mot de passe Postgres compris ;
+  - `KeycloakToken` ;
+  - `Password` (IMAP) ;
+  - `ProxySessionId`, qui suffit à obtenir un jeton PSC auprès du proxy.
+
+  Tout cela dans des files durables, dans la console RabbitMQ, et pour toujours dans `_error`.
+  `AddNewMailMessage` portait en outre `Subject` et `Body`.
+- **Contrat** :
+  - `MessageUserIdentity` (Domain) = `Email`, `MssRpps`, `TenantId`, `RegisteredDatabaseName`. C'est le
+    minimum qui désigne la base : sans le RPPS, le nom calculé change, en silence (leçon de task-234).
+  - La propriété garde le nom `UserContext`, donc un message à l'ancien format se désérialise dans le
+    nouveau type et ses secrets sont ignorés. Aucune vidange n'est nécessaire au déploiement.
+  - `IUserScopedMessage.UserContext` devient une `MessageUserIdentity`.
+- **Côté consommateur** : `UserContextInfo.RestoreFromMessage(identity, server, direct)` repart de `Reset()` et prend les
+  chaînes de connexion dans `IServerConnectionStrings`. Cette interface (Application) est implémentée par
+  `ServerConnectionString` (Api) et enregistrée comme la même instance que celle du middleware. Les trois
+  consommateurs passent par `ConsumerIdentity.Restore`, et aucun n'a besoin d'un jeton (aucun accès
+  IMAP, SMTP ni PSC).
+- **Corps relu en base** : `IMailRepository.GetAiMaterialAsync(mailId)` reprend la projection `AiTaggingCandidate`
+  de la reprise d'étiquetage (task-344), factorisée en `ToAiTaggingCandidate`.
+  - La publication suit l'écriture (`EnrichedMailPersistence.AfterWriteAsync`).
+  - Un mail disparu avant la consommation est acquitté avec un avertissement, sans appel au modèle.
+  - La matière n'est chargée que si l'embedding ou l'étiquetage est actif.
+  - La conversion HTML → texte est faite une seule fois.
+- **Audit** : `MssAuditTrace.TransportConnectionStringServer/Direct` sont retirés.
+  - L'audit disait le spill Redis fautif. C'était inexact : `[JsonIgnore]` y était posé depuis task-292.
+  - Les deux propriétés étaient cependant encore copiées sur chaque trace, sans lecteur depuis task-312.
+  - `AuditSpillIntegrationTests` prouve désormais, sur un vrai Redis, qu'un contexte qui porte les deux
+    chaînes n'en laisse aucune dans le spill.
+- **Preuves** :
+  - `BusMessageSecretsTests` : vrais publieurs, sérialiseur MassTransit ; 4 rouges sur le code d'avant.
+  - `BusMessageMinimalIdentityEndToEndTests` : publieur → JSON → `AddNewMailConsumer` → messages de contact → consommateurs
+    de contact → PostgreSQL. Le contexte de requête pointe un serveur injoignable. Le test couvre aussi l'ancien
+    format.
+  - `BusMessageSecretPropertyTests` (architecture, descend dans les objets imbriqués).
+  - `UserContextMessageIdentityTests`.
+  - 5 mutations vues rouges : nom enregistré, corps, tenant, contexte imbriqué, route sur la trace.
+- **Tests** : 6 623 verts après la synchronisation avec `develop` (task-326 mergée), 0 échec, 16 ignorés pré-existants.
+- **Sonar** : une seule issue de nouveau code imputable (`CA1859`, test), corrigée. Les 9 autres issues sur les fichiers
+  touchés sont antérieures, d'après `git blame` (task-334, task-325, task-292, 2026-06). Quality Gate en ERROR, inchangé
+  depuis la baseline (`new_violations`, hotspots non revus, hérités).
+- **E2E** : mobile 34 verts, Angular 38 verts, parité verte.
+  - Un premier passage était rouge en parité : E2E-RECEIPT-001/002/003 absents côté Angular. Le travail Angular
+    de task-340 (code-only) n'était plus dans le checkout weda2.
+  - Résolu par l'humain (mise à jour de client-angular), puis voie Angular rejouée.
+- **Procédure d'exploitation (humaine)** : purger les six files `*_error` / `*_skipped` des trois files, faire
+  tourner le mot de passe du rôle PostgreSQL (`MSS-MAIL-CONNECTIONSTRING`, `-DIRECT`), traiter les mots de passe
+  IMAP et les sessions PSC de l'inventaire, informer le DPO (AIPD).
+- **Hors périmètre, à arbitrer** :
+  - `CreatePatientContactMessage` porte toujours les traits du patient (INS, noms), matière du contact.
+  - `UserContextInfo` reste un sac à secrets. La correction de fond est que les dépôts lisent
+    `IServerConnectionStrings`.
+  - `AddNewMailMessage` pourrait encore perdre l'expéditeur, le dossier, l'UID et le type de document.
 
 ### v1.16 — task-326 (reprise) : les refus se voient, le poste local vérifie, la dette Sonar est à zéro (`api-mail`)
 
@@ -2209,7 +2270,9 @@ en `foreach`). **184 tests verts avant comme après.**
 | task-307 | Passer en EF trois requêtes SQL brut du journal d'audit (`PostgresAuditBackfillStore`). **⛔ ABANDONNÉE le 2026-09-16, sans objet** (décision humaine au pré-flight de `/start`) : le fichier et toute la machinerie de reprise ont été retirés par task-312. Aucune branche, aucun code | `api-mail` | ⛔ **abandonnée** |
 | task-318 | Vérifier le jeton PSC et le lier au compte connecté (remédiation n°1 de l'audit du registre du 2026-09-16). **🚫 RETIRÉE le 2026-09-23, jamais démarrée — remplacée par task-171** (backend pull : l'agrégat de session du proxy porte ensemble jeton Keycloak et jetons PSC d'un même login ; la liaison se lit au lieu de se reconstruire). RG-5 / RG-6 reprises par 171. **Réserve** : si la bascule d'`api-mail` sous `*.weda.fr` n'a pas lieu, 318 redevient la seule remédiation livrable | `api-mail` | 🚫 **retirée** |
 | task-320 | **Sans carte, le médecin travaille ; aucun message ne part sans elle** (remédiation n°3 de l'audit du registre). État `AwaitingConfirmation`, rejeu automatique des `SendMail` supprimé, confirmation par message `POST pending-emails/{id}/send` sous session PSC valide à l'instant + `CanUseImap`, migration du stock `Pending`, `ConnectionStatusDto.PendingSendsCount` et `PendingEmailDto` partagé (**489.0.0**), liste Revoir / Envoyer / Annuler sur les trois fronts. Ferme au passage l'envoi de brouillon sans carte ; la revue a fermé une ligne orpheline en `Processing` et un XSS de la relecture | `dtos-mss`, `api-mail`, `client-blazor`, `client-mobile`, `client-angular` | ✅ **mergée** le 2026-09-27 (Dtos.Mss `20ddded7f3`, Api.Mail `faa4c65eec`, Client `d6f3af28cf`, Mobile `1a49fc115e` ; Angular en code-only) |
-| task-336 | **Les flux SSE suivent la boîte affichée** (AUD-18 c) : `[MailboxFromQuery]` sur les deux flux, `?mailbox=` validé par la même sélection que `Client-Email`, repli brut du contrôleur retiré ; `?mailbox=` + réouverture à la bascule sur mobile et Blazor | `api-mail`, `client-blazor`, `client-mobile` | ✅ **done** (PR Api.Mail#257, Client#85, Mobile#80 — `awaiting-human-merge`) |
+| task-336 | **Les flux SSE suivent la boîte affichée** (AUD-18 c) : `[MailboxFromQuery]` sur les deux flux, `?mailbox=` validé par la même sélection que `Client-Email`, repli brut du contrôleur retiré ; `?mailbox=` + réouverture à la bascule sur mobile et Blazor | `api-mail`, `client-blazor`, `client-mobile` | ✅ **mergée** (PR Api.Mail#257, Client#85, Mobile#80) |
+| task-326 | **Un jeton non signé n'ouvre plus aucune boîte** (AUD-01) : mode permissif opt-in limité à Development, refus de démarrer sans `Keycloak:Authority`, refus d'authentification journalisés, provisionnement des bases praticien découplé du nom d'environnement | `api-mail` (`devops` à appliquer par l'humain) | ✅ **mergée** (PR Api.Mail#291) |
+| task-332 | **Les messages du bus ne transportent plus aucun secret, ni le corps du mail** (AUD-10) : `MessageUserIdentity` à la place de `UserContextInfo`, contexte reconstruit côté consommateur depuis `IServerConnectionStrings`, objet et corps relus en base, ancien format accepté, garde d'architecture ; chaînes de connexion retirées des traces d'audit | `api-mail` | ✅ **done** (PR Api.Mail#292, `awaiting-human-merge`) |
 
 
 ### Question ouverte

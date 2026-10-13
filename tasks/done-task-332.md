@@ -415,4 +415,5 @@ d'intégration sur la vraie pile et la vraie base, avec RabbitMQ remplacé par s
 |---|---|---|---|---|---|---|
 | /e2e | ok | 7 min 33 s | — | — | — | e2e ×2 (7 min 02 s), rerun angular apres mise a jour humaine de client-angular |
 | /review | ok | 6 min 33 s | 1 (17 s) | 1 (4 min 15 s) | — | api-mail 1B/1T |
-| **Total cycle** | | **14 min 07 s** | **1 (17 s)** | **1 (4 min 15 s)** | **0 (0.0 s)** | |
+| /tech-writer | ok | 1 min 20 s | — | — | — | — |
+| **Total cycle** | | **15 min 27 s** | **1 (17 s)** | **1 (4 min 15 s)** | **0 (0.0 s)** | |

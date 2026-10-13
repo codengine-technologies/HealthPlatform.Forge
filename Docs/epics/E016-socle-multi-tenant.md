@@ -2,7 +2,7 @@
 
 > **Statut** : 🟡 En cours
 > **Modèle** : task-driven
-> **Version** : 1.14
+> **Version** : 1.17
 > **Auteur** : PO forge
 > **Audience** : PO, médecin, direction produit, conformité — la vue ingénierie vit dans [E016-Changelogs.md](E016-Changelogs.md)
 > **Dernière mise à jour** : 2026-10-13
@@ -22,7 +22,7 @@
 - [7. Contraintes et hypothèses](#7-contraintes-et-hypothèses)
 - [8. Critères d'acceptation de l'EPIC](#8-critères-dacceptation-de-lepic)
 - [9. Hors périmètre](#9-hors-périmètre)
-- [État de couverture (2026-09-27)](#état-de-couverture-2026-09-27)
+- [État de couverture (2026-10-13)](#état-de-couverture-2026-10-13)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -85,7 +85,7 @@ augmente.
 | Fonctionnalité | Ce que le praticien peut faire | Tasks | Statut |
 |---|---|---|---|
 | **Plusieurs messageries, une seule connexion** | Retrouver, après une authentification unique, toutes les messageries qui relèvent de son identité professionnelle | task-303, task-304, task-308 | ✅ Livrée |
-| **Changer de messagerie en direct** | Cliquer sur son avatar et ouvrir une autre de ses messageries : l'écran se vide et se recharge sur la nouvelle boîte, sans reconnexion — et les **nouveaux messages et alertes en temps réel** suivent la messagerie ouverte | task-304, task-336 | ✅ Livrée — correctif du temps réel **en attente de merge** (task-336) |
+| **Changer de messagerie en direct** | Cliquer sur son avatar et ouvrir une autre de ses messageries : l'écran se vide et se recharge sur la nouvelle boîte, sans reconnexion — et les **nouveaux messages et alertes en temps réel** suivent la messagerie ouverte | task-304, task-336 | ✅ Livrée — temps réel corrigé et **mergé** (task-336) |
 | **Rattacher sa première messagerie** | Entrer son adresse dès le premier accès et travailler immédiatement, sans se déconnecter ni se reconnecter — l'opérateur de messagerie vérifie l'accès avant que le rattachement n'aboutisse | task-304, task-308 | ✅ Livrée |
 | **Gérer ses messageries** | Ajouter une messagerie, en détacher une, la **rattacher à nouveau**, désigner celle qui s'ouvre par défaut, comprendre pourquoi l'une est indisponible — et, en détachant la **dernière**, être déconnecté proprement au lieu de rester enfermé | task-304, task-309, task-310, task-312, task-313, task-314 | ✅ Livrée — dernière pièce **mergée** : une messagerie détachée n'offre plus que « Rattacher » (task-314) |
 | **Travailler sans sa carte, envoyer avec elle** | Lire, classer et rédiger avec sa seule connexion au compte, carte absente ; retrouver ensuite ses messages **« prêts à partir »**, les relire, puis les envoyer ou les annuler **un par un, carte présentée** — aucun message ne part de lui-même | task-320 | ✅ Livrée (**mergée** le 2026-09-27) |
@@ -278,12 +278,12 @@ par la liste.
 
 ---
 
-## État de couverture (2026-09-27)
+## État de couverture (2026-10-13)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
 | Plusieurs messageries, une seule connexion | ✅ Livrée | 100 % | task-303, task-304, task-308 (**mergées**) |
-| Changer de messagerie en direct | ✅ Livrée | 100 % | task-304 (**mergée**), task-336 (correctif temps réel, en attente de merge) |
+| Changer de messagerie en direct | ✅ Livrée | 100 % | task-304, task-336 (**mergées**) |
 | Rattacher sa première messagerie | ✅ Livrée | 100 % | task-304, task-308 (**mergées**) |
 | Gérer ses messageries | ✅ Livrée | 100 % | task-304, task-309, task-310, task-312, task-313, task-314 (**mergées**) |
 | Travailler sans sa carte, envoyer avec elle | ✅ Livrée | 100 % | task-320 (**mergée**) |
@@ -296,7 +296,7 @@ par la liste.
 **Couverture EPIC consolidée : 89 %** — 8 fonctionnalités livrées sur les 9 au
 périmètre, 1 bloquée en attente d'arbitrage.
 
-Au 2026-09-27, task-320 est **mergée** : toutes les fonctionnalités livrées le sont sur `develop`. Seul le correctif task-336 (temps réel après changement de messagerie) attend son merge. « Gérer ses messageries »
+Au 2026-10-13, toutes les fonctionnalités livrées le sont en service, correctif du temps réel compris (task-336). Le durcissement de sécurité task-332 n'ajoute aucune fonctionnalité et attend son merge. « Gérer ses messageries »
 est **livrée** depuis le merge de task-314 : une ligne détachée n'offre plus que
 **« Rattacher »**, et affiche la date de son détachement.
 La ligne multi-messageries est **livrée de bout en bout et mergée** : le registre, la
@@ -572,7 +572,15 @@ et n'entre pas dans le calcul.
 
 ### Sécurité
 
-- **Une connexion forgée n'ouvre plus aucune messagerie** (task-326, *en attente de merge*). Sur les environnements
+- **Les échanges internes de la plateforme ne transportent plus ni mots de passe ni contenu médical**
+  (task-332, *en attente de merge*). Pour indexer un message reçu et en extraire les correspondants, le service se
+  confie des tâches de fond par une file d'attente interne. Ces tâches emportaient jusqu'ici les accès du praticien
+  (mot de passe de la base, connexion en cours, session de carte) et le texte du message. Elles étaient conservées
+  sans limite quand une tâche échouait. Elles ne portent plus que l'adresse de la messagerie et ce qui désigne son
+  espace de stockage. Le service retrouve lui-même ses accès, et relit le message là où il est déjà conservé.
+  Les traces d'audit cessent aussi de recopier les accès à la base. Après la mise en service, l'exploitation
+  vide les files où des tâches anciennes ont pu rester, et renouvelle les accès qui ont pu y figurer.
+- **Une connexion forgée n'ouvre plus aucune messagerie** (task-326, **mergée**). Sur les environnements
   déployés, l'application acceptait un jeton de connexion fabriqué de toutes pièces : il suffisait de connaître
   l'identifiant d'un praticien pour lire ses messages, ses patients et son historique. La signature de chaque jeton est
   désormais vérifiée auprès du serveur d'authentification, et un environnement qui n'en déclare pas **refuse de
