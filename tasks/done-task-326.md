@@ -167,7 +167,11 @@ jeton non signé → **200** ».
   # la valeur exacte du claim « iss » d'un vrai jeton d'accès (le décoder sur jwt.io, sans
   # le coller ailleurs). api-mail y lit la découverte OIDC et les clés de signature (HTTPS).
   # Realm : weda-realm (celui du proxy PSC). En local : https://localhost:5600/realms/weda-realm
-  # (lu le 2026-10-13 sur le Keycloak du poste). Hôte du Keycloak déployé : à compléter.
+  # (lu le 2026-10-13 sur le Keycloak du poste).
+  # DevOps/Weda (weda-dev) : https://keycloak.dev.k8s.office.weda.fr/realms/weda-realm — hôte lu dans
+  #   psc-auth-proxy/Doc/ARCHI_Proxy_EDC_Deploiement_Keycloak_PROD.md, réseau interne : « issuer » à
+  #   confirmer, et joignabilité depuis les pods à vérifier (curl de la découverte depuis le pod).
+  # DevOps/Prod, DevOps/Staging : hôte à compléter.
   Keycloak__Authority: "https://<hôte du Keycloak de l'environnement>/realms/weda-realm"
   # Facultatif — seulement si les jetons portent une audience dédiée à api-mail (claim « aud »).
   # Absente, l'audience n'est pas vérifiée (signature, émetteur et échéance le sont).
@@ -239,20 +243,57 @@ l'Authority ne correspond pas à l'émetteur des jetons (`iss`) ou le pod ne joi
     lancement réel (`dotnet run --project src/AppHost` + connexion mobile) reste au Manual Test Plan (étape 4).
 - Next step : /sonar task-326
 
+## Reprise de /develop (2026-10-13, décision humaine « go »)
+
+Deux ajouts à la PR #291, demandés après la revue :
+
+1. **Refus de jeton journalisés en Warning** — la section Conformité affirmait « les refus d'authentification restent
+   journalisés » : c'était faux. Les journaux du handler JwtBearer (`Microsoft.AspNetCore.*`) sont filtrés sous
+   `Warning` par l'override Serilog, en développement comme en déploiement. `OnAuthenticationFailed` écrit désormais
+   `[Auth] Jeton refusé ({FailureType})` en Warning, catégorie `mss.mail.api.Authentication` : le type d'exception
+   seulement, jamais le jeton, son `sub`, l'adresse ni le message de l'exception.
+   - Test d'intégration : `ARefusedToken_IsLoggedAsAWarning_WithItsFailureType_AndNothingOfTheToken` (hôte réel,
+     capture des journaux de l'hôte) — **rouge avant** (« Assert.Single() Failure: The collection did not contain any
+     matching items »), vert après ; `AnAcceptedToken_LeavesNoWarning` (non-régression).
+2. **Développement interactif : signature vérifiée contre le Keycloak local** — `LocalTokenValidation` (AppHost) :
+   `Keycloak__Authority=https://localhost:5600/realms/weda-realm` (émetteur fixé par `KC_HOSTNAME`, certificat approuvé
+   par Windows) ; mode sans vérification gardé pour e2e (jetons simulés, temps réel par `?token=`), loadtest (pas de
+   Keycloak) et conteneur (`localhost` = le conteneur). `MSS_KEYCLOAK_AUTHORITY` désigne un autre realm, ou `off`
+   (une valeur vide est une variable absente sous Windows). `launchSettings` : Authority locale dans les 3 profils.
+   - Vérifié en manuel par l'humain sur son AppHost : session réelle → `Bearer was successfully authenticated` ;
+     jeton forgé `alg: none` au bon émetteur → **401**.
+   - Client Blazor : `UseOpenId: true` en local → jetons Keycloak, non impacté.
+   - Tests : `LocalTokenValidationTests` (9 cas), `UnsignedTokenFlagPlacementTests` réécrit (Authority dans les profils,
+     AppHost délégué à la règle, drapeau jamais dans `appsettings*.json`). Mutation M2 : exception e2e retirée → 2 rouges
+     sur 9 (cas e2e), restaurée **depuis une copie** (consigne `restauration-de-mutation`).
+- Contrôles mécaniques §Q 2b : vides.
+- Commits : `ff64c67d` (refus journalisés), `69bb5b3e` (vérification en développement interactif), `28d75b6b` (ASPIRE010
+  neutralisé, demande humaine : DCP et dashboard restent ceux des packages 13.5.3, la CLI du poste est en 13.1.0).
+- Build / tests : ✓ domain 190, infrastructure 690, application 3 617, api 1 228, intégration 882 (+16 ignorés).
+
 ## Sonar log
 
-- Mode A (chaîné), serveur SonarQube 9.9.8 (`sonar.login`), projet `healthplatform-api-mail`.
+- Mode A (chaîné), serveur SonarQube 9.9.8 (`sonar.login`), projet `healthplatform-api-mail`. 5 analyses complètes.
 - Phase 1 (new code) : ✓ Quality Gate OK, new_coverage = 97,1 % (cible 95 %).
-- Phase 1 — Issues fixées : 1 code smell — S3604 sur `TestBypassAuthenticationHandler` (`9216aa38` : les paramètres
-  du constructeur primaire utilisés directement, le champ voisin préexistant retiré avec le sien). 0 bug, 0 vulnérabilité,
-  0 hotspot.
-- Phase 1 — Constat restant, **hors code de la task** : S107 sur `SemanticSearchService.cs:395` (task-329, 2026-10-02),
-  déjà dans la baseline, laissé comme par les tasks 351 à 355, 367 et 340.
-- Phase 1 — Lignes neuves non couvertes : le repli SSE `?token=` d'`MssAuthenticationExtensions` (1 ligne, 4 conditions),
-  déplacé tel quel depuis `Program`. Tests ajoutés : 0.
-- Phase 2 (legacy) : non jouée — baseline saine (A/A/A, 0 bug, 0 vulnérabilité) ; best-effort.
-- Build / tests : ✓ (Release, 2 analyses complètes, 0 échec).
-- `conventions/csharp.md` : S3604 → 2 occurrences.
+  - S3604 sur `TestBypassAuthenticationHandler` (`9216aa38`) ; CA1068 introduit par le refactoring S107 de
+    `ImapLockScope.AcquireAsync` (`380c97f0` : l'appelant avant le jeton, surcharge adjacente sans appelant).
+  - Lignes neuves non couvertes : le repli SSE `?token=` d'`MssAuthenticationExtensions` (déplacé tel quel).
+- Phase 2 (dette existante) — **jouée en entier à la demande de l'humain (« fixer l'ensemble des code smells »,
+  dans cette PR)** : 13 → **0**.
+  - CA1829 ×4 (`81b371f9`) : `.Count` au lieu de `Count()` dans `SemanticSearchServiceTests`.
+  - S107 ×9 (`77f09c1a`), sans changement de comportement :
+    - constructeurs injectés : `ImapServerAccess` (ImapConnectionService), `ImapFolderStores` (ImapFolderService),
+      `BackgroundImapConnectivity` (BackgroundImapService), `BackgroundSyncCoordination` (BackgroundSyncService),
+      enregistrés en DI (scoped) à côté de leur service, et dans les deux hôtes de test qui les enregistrent à la main ;
+    - `FlagPropagationService` : `PropagationServices` (dépendances explicites conservées, cf. son commentaire) ;
+    - `SemanticSearchService.PerformSemanticSearchAsync` : reçoit `SemanticSearchOptions` ;
+    - `PatientRepository.ComputeScore` : `PatientTraits` (candidat / recherché, calcul en mémoire) ;
+    - `ImapLockScope.AcquireAsync` : `ImapLockCaller`.
+  - 18 constructions de test réécrites par script (arguments identiques, regroupés ; arrêt sur argument nommé).
+- Build / tests : ✓ après chaque lot (domain 190, infrastructure 690, application 3 617, api 1 228, intégration 882 +16
+  ignorés) — totaux inchangés par les refactorings.
+- `conventions/csharp.md` : S3604 → 2 ; CA1068 → 2 ; S125 → 17 (attrapé après le commit : contrôle et commit enchaînés
+  dans la même commande, corrigé par `00ed3829`).
 
 ### KPIs qualité (baseline → final)
 
@@ -263,7 +304,7 @@ l'Authority ne correspond pas à l'émetteur des jetons (`iss`) ou le pod ne joi
 | Bugs | 0 | 0 | 0 |
 | Vulnerabilities | 0 | 0 | 0 |
 | Security hotspots | 0 | 0 | 0 |
-| Code smells | 13 | 13 | 0 |
+| Code smells | 13 | **0** | **−13** |
 | Coverage (projet) | 97,9 % | 98,0 % | +0,1 pt |
 | Duplication | 0,4 % | 0,4 % | 0 |
 | Reliability / Security / Maintainability | A/A/A | A/A/A | → |
@@ -280,25 +321,22 @@ l'Authority ne correspond pas à l'émetteur des jetons (`iss`) ou le pod ne joi
 
 ## E2E log
 
+Passe finale (après la reprise : refus journalisés, vérification en développement, 13 code smells corrigés).
+
 | Voie | Déclencheur | Résultat | Tests | Durée |
 |---|---|---|---|---|
-| mobile | api-mail touché | ✅ verte | 34 verts, 0 flaky, 0 rouge | 6 min 23 s |
-| angular | api-mail touché | ✅ verte | 37 verts + 1 flaky, 0 rouge, 1 quarantaine (E2E-COMPOSE-002, humain) | 6 min 1 s |
+| mobile | api-mail touché | ✅ verte | 34 verts, 0 flaky, 0 rouge | 6 min 18 s |
+| angular | api-mail touché | ✅ verte | 38 verts, 0 flaky, 0 rouge, 1 quarantaine (E2E-COMPOSE-002, humain) | 5 min 24 s |
 
 - Catalogue : `Api/Mail/e2e/scenarios.yml` @ `fix/task-326-authentification-permissive-opt-in` (inchangé par la task).
-- Backend e2e monté par l'AppHost en `Development` avec `Authentication__AllowUnsignedTokensForLocalDev=true` : les deux
-  suites (jetons simulés non signés + test-bypass) passent — le poste local et le banc fonctionnent comme avant (DOD AppHost).
-- Voie mobile jouée **deux fois** : le rapport de la 1ʳᵉ passe (verte, 34/34) a été effacé par la voie Angular, qui monte
-  son backend par l'orchestrateur mobile (`--serve-only`). Rejouée avec copie du rapport dans la même commande.
-  Récidive consignée dans `agents/e2e.md` (2ᵉ occurrence, après task-352).
+- Ce que la passe prouve en plus des tests : le profil e2e garde le mode sans vérification (`LocalTokenValidation`) ;
+  l'API réelle démarre avec les quatre regroupements S107 résolus par la DI de production ; les parcours IMAP,
+  synchronisation, recherche, accusés de lecture et temps réel passent après le refactoring.
+- Rapports copiés dans la même commande que leur voie (consigne `agents/e2e.md`, respectée cette fois).
 - Parcours touchés sans spec e2e modifié : aucun (aucun écran modifié).
 - Démontage : complet (ports libres, aucun conteneur e2e résiduel).
 
 **E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
-
-**Flaky (vert au second essai, non bloquant)** (1) :
-
-- [angular] « rédaction — envoyer, recevoir, lire, supprimer » (E2E-COMPOSE-001)
 
 **En quarantaine (posée par l'humain, non bloquant)** (1) :
 
@@ -317,7 +355,7 @@ l'Authority ne correspond pas à l'émetteur des jetons (`iss`) ou le pod ne joi
 | E2E-MAIL-001 | 1 | headless | Marquer un message lu puis non lu | ✅ | ✅ |
 | E2E-MAIL-002 | 1 | headless | Tout sélectionner et marquer lu en masse | ✅ | ✅ |
 | E2E-DETAIL-001 | 2 | headless | Répondre et transférer depuis la lecture d'un message | ✅ | ✅ |
-| E2E-COMPOSE-001 | 1 | headless | Envoyer un message, le recevoir, le lire, le supprimer | ⚠️ flaky | ✅ |
+| E2E-COMPOSE-001 | 1 | headless | Envoyer un message, le recevoir, le lire, le supprimer | ✅ | ✅ |
 | E2E-COMPOSE-002 | 1 | headless | Faire corriger l'orthographe de son texte, appliquer la correction, puis envoyer | ✅ | ✅ |
 | E2E-COMPOSE-003 | 1 | headless | Un envoi refusé par la messagerie laisse le brouillon intact et peut être renvoyé | ✅ | ✅ |
 | E2E-MAIL-003 | 1 | headless | Signaler puis ne plus signaler un message | ✅ | ✅ |
@@ -364,14 +402,14 @@ l'Authority ne correspond pas à l'émetteur des jetons (`iss`) ou le pod ne joi
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 18 s | — | — | — | — |
-| /develop | ok | 21 min 09 s | 4 (36 s) | 4 (7 min 50 s) | — | api-mail 4B/4T |
-| /sonar | ok | 16 min 20 s | 3 (40 s) | 11 (12 min 24 s) | 4 (1 min 15 s) | 1 itération(s), api-mail 3B/11T |
+| /develop | ok | 8 min 17 s | 8 (1 min 00 s) | 9 (11 min 41 s) | — | api-mail 8B/9T |
+| /sonar | ok | 41 min 33 s | 7 (1 min 33 s) | 28 (36 min 50 s) | 10 (3 min 05 s) | 3 itération(s), api-mail 7B/28T |
 | /lint-angular | skipped | 9.1 s | — | — | — | client-angular non touché (WIP task-340 non commité, hors périmètre) |
 | /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non touché |
-| /e2e | ok | 21 min 08 s | — | — | — | e2e ×6 (18 min 51 s) |
-| /review | ok | 5 min 00 s | 1 (8.6 s) | 1 (3 min 34 s) | — | api-mail 1B/1T |
+| /e2e | ok | 12 min 22 s | — | — | — | e2e ×9 (30 min 41 s) |
+| /review | ok | 7 min 06 s | 2 (17 s) | 2 (7 min 07 s) | — | api-mail 2B/2T |
 | /tech-writer | ok | 23 s | — | — | — | — |
-| **Total cycle** | | **1 h 04 min** | **8 (1 min 25 s)** | **16 (23 min 49 s)** | **4 (1 min 15 s)** | |
+| **Total cycle** | | **1 h 10 min** | **17 (2 min 50 s)** | **39 (55 min 38 s)** | **10 (3 min 05 s)** | |
 
 ## PRs
 
@@ -382,24 +420,28 @@ l'Authority ne correspond pas à l'émetteur des jetons (`iss`) ou le pod ne joi
 
 ## Code Review Summary
 
-**Verdict : APPROVED** — 0 bloquant, 3 suggestions. Validation /review : build + tests verts (domain 190, infrastructure 690,
-application 3 617, api 1 220, intégration 880 + 16 ignorés), branche à jour avec `origin/develop`, arbre propre.
+**Verdict : APPROVED** — 0 bloquant, 2 suggestions. Deux revues : la première sur le correctif (`9216aa38`), la seconde sur
+la reprise demandée par l'humain (`9216aa38..380c97f0` : refus journalisés, vérification en développement, ASPIRE010,
+13 code smells). Validation finale : build + tests verts (domain 190, infrastructure 690, application 3 617, api 1 228,
+intégration 882 + 16 ignorés, hors flaky ci-dessous), branche à jour avec `origin/develop`, arbre propre.
 
-- `MssAuthenticationExtensions` ✅ — décision au démarrage, Authority ⇒ validation complète, refus hors Development sans
-  Authority, permissif seulement drapeau + Development. Message de refus sans secret.
+- `MssAuthenticationExtensions` ✅ — décision au démarrage ; `OnAuthenticationFailed` → Warning sous
+  `mss.mail.api.Authentication`, type d'exception seulement.
 - `TestBypassEnvironment`, handler, `RequestHelper` ✅ — même garde des deux côtés, sur `IHostEnvironment`.
-- `PractitionerDatabaseProvisioning`, `BaseRepository` ✅ — actif par défaut (aucun déploiement ne perd le provisionnement),
-  plus de dépendance au nom d'environnement ; un log qui citait l'environnement simplifié, rien d'ajouté dans les journaux.
-- AppHost, `launchSettings` ✅ — drapeau posé pour le poste local, gardé par `UnsignedTokenFlagPlacementTests`
-  (jamais dans `appsettings*.json`).
-- Règle 1b : tableau comportement → test → preuve rouge au `## Develop log` (run rouge sur le code d'avant + mutation M1).
-- DOD : tout vérifié par commande, sauf **constat cluster** (aucun accès forge — humain, Manual Test Plan 1) et lancement
-  réel AppHost + mobile (couvert par les deux voies e2e montées en Development avec le drapeau ; Manual Test Plan 4).
+- `PractitionerDatabaseProvisioning`, `BaseRepository` ✅ — actif par défaut, indépendant du nom d'environnement.
+- `LocalTokenValidation` (AppHost), `launchSettings` ✅ — Authority locale en développement interactif ; e2e, loadtest,
+  conteneur sans vérification ; vérifié à la main par l'humain (session réelle acceptée, jeton forgé → 401).
+- Regroupements S107 ✅ — mêmes champs réaffectés, groupes `scoped` comme leurs services, enregistrés en DI de production
+  et dans les deux hôtes de test manuels ; DI réelle prouvée par les voies e2e.
+- `ImapLockScope` ✅ — surcharge sans appelant adjacente, déléguant à la version complète (CA1068, S4136).
+- Règle 1b : tableau comportement → test → preuve rouge au `## Develop log` et dans la PR.
 
 Suggestions (non bloquantes) :
-1. Une `Keycloak:Authority` faite d'espaces est traitée comme absente mais transmise telle quelle à JwtBearer.
+1. Le repli SSE `?token=` (déplacé tel quel) n'a pas de test d'intégration.
 2. L'environnement `Testing` ouvre le test-bypass : aucun manifeste ne doit l'utiliser.
-3. Le repli SSE `?token=` (déplacé tel quel) n'a pas de test d'intégration.
 
-Relevé hors périmètre : `DevOps/Prod/configmap.yaml` porte des secrets en clair (clé OpenAI notamment) — rotation et sortie
-dans un `Secret` à décider par l'humain.
+**Flaky préexistant** (non lié) : `SeededThreadsAreCountableTests.AnUnthreadedCorpusProducesNoCountableThread` — UID tirés au
+hasard (300 000 valeurs) pour 60 à 120 messages d'un même dossier sous contrainte d'unicité → collision 23505 occasionnelle.
+Rouge 1 fois sur la validation finale, vert 10/10 au rejeu. Task à ouvrir : UID séquentiels.
+
+Relevé hors périmètre : `DevOps/Prod/configmap.yaml` porte des secrets en clair (clé OpenAI notamment).
