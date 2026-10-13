@@ -216,24 +216,24 @@
 
 ---
 
-## 5. Proposition de regroupement en tasks (pour le second temps)
+## 5. Regroupement en tasks (créées le 2026-10-13 : `tasks/todo-task-368.md` à `todo-task-381.md`)
 
-| Task proposée | Constats | Priorité | Repos |
-|---|---|---|---|
-| **Cloisonner le contenu reçu** : `sandbox` sur toutes les `iframe`, aperçu limité à PDF/image/texte brut, plus aucun `bypassSecurityTrustHtml` sur un contenu reçu ou généré, assainissement du HTML CDA, XSL sans `copy-of @*`, CSP `script-src` | ANG-01, 02, 03, 04, 38, 39 | **0** | client-angular, api-mail, interop-cda |
-| **Configuration de déploiement de weda2** : `mssApiUrl` et `embeddedHostOrigins` dans la ConfigMap, amorçage qui échoue sur une clé manquante, `frame-ancestors` restreint, `withDevtools` hors prod | ANG-05, 65, 70 | **0** (vérifier d'abord ce qui tourne) | client-angular, devops |
-| **Rafraîchissement du jeton et déconnexion** : api-mail origine de confiance, rafraîchissement préventif, SSE rouvert, perte de session seulement sur refus explicite, inactivité réellement appliquée, PSC sign-in, boucles et spinner du callback | ANG-06, 07, 22, 23, 24, 66, 67, 69, 71 | 1 | client-angular |
-| **Le mail affiché est celui qui est sélectionné** : annulation et garde `(folderPath, uid)` sur le contenu, la synthèse IA, la vue en lecture seule, la fenêtre du document et le PDF ; identité `(folderPath, uid)` partout | ANG-08, 21, 40, 41, 55, 73 | 1 | client-angular |
-| **Import Weda et identito-vigilance** : génération des préparations, présélection seulement si toutes les identités concordent, compte rendu rattaché au message, `occurrence`, trace des envois exacte, messages d'erreur | ANG-09, 47, 48, 49, 63, 64 (+ 18 côté import) | 1 | client-angular, Weda |
-| **Dossier patient fiable** : documents filtrés sur le patient, fiche relue par handle, biologie par unité et non paginée, opposition qui reflète le serveur, rattachement manuel annulable | ANG-20, 50, 51, 52, 53, 54 | 1 | client-angular, api-mail |
-| **Changement de messagerie sans fuite** : opérations différées figées sur leur boîte, vue recréée sur `generation`, flux SSE par boîte et rouverts, compteurs relus | ANG-10, 11, 25, 27, 77 | 1 | client-angular |
-| **Actions groupées sur les bons messages** : identité `(folderPath, uid)` dans la liste et le fil, un seul flux de chargement des dossiers, sélection vidée aux changements de vue, `distinctUntilChanged` corrigé | ANG-12, 13, 30, 34, 36, 74 | 1 | client-angular |
-| **Rédaction : jamais de perte ni de double envoi** : remise incertaine reconnue (rédaction et envois en attente), contexte annule-et-remplace, brouillon créé avant d'être adopté, enregistrement avant remplacement et `beforeunload`, pièces jointes par référence et attente du téléchargement, refus serveur affichés | ANG-14, 15, 16, 17, 18, 19, 26, 42–46, 75 | 1 | client-angular, api-mail |
-| **Liste, recherche et puce biologie cohérentes** : recherche remise à zéro, puce bio servie par le serveur, vue patient avec sa propre source paginée (sans handle dans le chemin), version précédente et IA sans volet de lecture, pannes visibles | ANG-31, 32, 33, 35, 37 | 2 | client-angular, api-mail |
-| **Entrée et gestion des messageries** : erreur ≠ zéro boîte, « Ré-essayer l'authentification » réel, échecs affichés | ANG-28, 29, 76 | 2 | client-angular, api-mail |
-| **Contacts et annuaire** : liste complète des adresses, contrôle de version, adresses MSSanté seulement | ANG-56, 57, 58 | 2 | client-angular, api-mail |
-| **Journal d'audit et paramètres** : pas de dédoublonnage, filtres fusionnés, dates locales, export serveur ; réglages non écrasés sur échec | ANG-59, 60, 61, 62, 78 | 2 | client-angular |
-| **Messages d'erreur et petits défauts** | ANG-68, 72 | 3 | client-angular |
+| Task | Contenu | Constats | Priorité | Repos |
+|---|---|---|---|---|
+| `task-368` | **Cloisonner le contenu reçu** : `sandbox` sur toutes les `iframe`, aperçu limité à PDF/image/texte brut, plus aucun `bypassSecurityTrustHtml` sur un contenu reçu ou généré, assainissement du HTML CDA, XSL sans `copy-of @*`, CSP `script-src` | ANG-01, 02, 03, 04, 38, 39 | **0** | client-angular, api-mail, interop-cda |
+| `task-369` | **Configuration de déploiement de weda2** : `mssApiUrl` et `embeddedHostOrigins` dans la ConfigMap, amorçage qui échoue sur une clé manquante, `frame-ancestors` restreint, `withDevtools` hors prod | ANG-05, 65, 70 | **0** (vérifier d'abord ce qui tourne) | client-angular, devops |
+| `task-370` | **Rafraîchissement du jeton et déconnexion** : api-mail origine de confiance, rafraîchissement préventif, SSE rouvert, perte de session seulement sur refus explicite, inactivité réellement appliquée, PSC sign-in, boucles et spinner du callback | ANG-06, 07, 22, 23, 24, 66, 67, 69, 71 | 1 | client-angular |
+| `task-371` | **Le mail affiché est celui qui est sélectionné** : annulation et garde `(folderPath, uid)` sur le contenu, la synthèse IA, la vue en lecture seule, la fenêtre du document et le PDF ; identité `(folderPath, uid)` partout | ANG-08, 21, 40, 41, 55, 73 | 1 | client-angular |
+| `task-372` | **Import Weda et identito-vigilance** : génération des préparations, présélection seulement si toutes les identités concordent, compte rendu rattaché au message, `occurrence`, trace des envois exacte, messages d'erreur | ANG-09, 47, 48, 49, 63, 64 (+ 18 côté import) | 1 | client-angular, Weda |
+| `task-373` | **Dossier patient fiable** : documents filtrés sur le patient, fiche relue par handle, biologie par unité et non paginée, opposition qui reflète le serveur, rattachement manuel annulable | ANG-20, 50, 51, 52, 53, 54 | 1 | client-angular, api-mail |
+| `task-374` | **Changement de messagerie sans fuite** : opérations différées figées sur leur boîte, vue recréée sur `generation`, flux SSE par boîte et rouverts, compteurs relus | ANG-10, 11, 25, 27, 77 | 1 | client-angular |
+| `task-375` | **Actions groupées sur les bons messages** : identité `(folderPath, uid)` dans la liste et le fil, un seul flux de chargement des dossiers, sélection vidée aux changements de vue, `distinctUntilChanged` corrigé | ANG-12, 13, 30, 34, 36, 74 | 1 | client-angular |
+| `task-376` | **Rédaction : jamais de perte ni de double envoi** : remise incertaine reconnue (rédaction et envois en attente), contexte annule-et-remplace, brouillon créé avant d'être adopté, enregistrement avant remplacement et `beforeunload`, pièces jointes par référence et attente du téléchargement, refus serveur affichés | ANG-14, 15, 16, 17, 18, 19, 26, 42–46, 75 | 1 | client-angular, api-mail |
+| `task-377` | **Liste, recherche et puce biologie cohérentes** : recherche remise à zéro, puce bio servie par le serveur, vue patient avec sa propre source paginée (sans handle dans le chemin), version précédente et IA sans volet de lecture, pannes visibles | ANG-31, 32, 33, 35, 37 | 2 | client-angular, api-mail |
+| `task-378` | **Entrée et gestion des messageries** : erreur ≠ zéro boîte, « Ré-essayer l'authentification » réel, échecs affichés | ANG-28, 29, 76 | 2 | client-angular, api-mail |
+| `task-379` | **Contacts et annuaire** : liste complète des adresses, contrôle de version, adresses MSSanté seulement | ANG-56, 57, 58 | 2 | client-angular, api-mail |
+| `task-380` | **Journal d'audit et paramètres** : pas de dédoublonnage, filtres fusionnés, dates locales, export serveur ; réglages non écrasés sur échec | ANG-59, 60, 61, 62, 78 | 2 | client-angular |
+| `task-381` | **Messages d'erreur et petits défauts** | ANG-68, 72 | 3 | client-angular |
 
 ---
 
