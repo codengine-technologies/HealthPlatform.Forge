@@ -1,9 +1,9 @@
 # todo-task-371.md — Le mail affiché est toujours celui qui est sélectionné : contenu, documents médicaux, biologie et synthèse IA
 
-**Repos**: client-angular, api-mail (catalogue e2e `Api/Mail/e2e/scenarios.yml` seulement)
+**Repos**: client-angular, client-mobile, api-mail (catalogue e2e `Api/Mail/e2e/scenarios.yml` seulement)
 **Dependencies**: — (aucune). task-372 (import Weda) et task-373 (dossier patient) en dépendent pour leur part d'identito-vigilance.
 **Epic**: E009
-**Single frontend**: true
+**Single frontend**: false — weda2 et le mobile (décision humaine du 2026-10-13).
 **Priorité**: **1** — le contenu, les documents CDA, les résultats de biologie et le panneau d'acquittement d'un mail s'affichent sous l'en-tête d'un autre : un résultat critique peut être acquitté, un document importé ou un compte rendu lu pour le mauvais patient.
 
 > **Origine.** Audit de détection de bugs du client Angular du 2026-10-13
@@ -47,6 +47,10 @@ Qu'un mail, ses documents médicaux, ses résultats et sa synthèse ne s'affiche
 > **⚠️ Arbitrage humain requis — le client mobile.** Le mobile n'a pas été audité ; son écran de lecture
 > a pu reproduire le même chargement non annulé. Inclure `client-mobile` (scénario `requis` des deux
 > côtés), ou déclarer une divergence temporaire avec une task mobile de vérification ?
+>
+> **Décision humaine (2026-10-13, avant `/forge 368 to 381`) : inclure le mobile.** `/develop` audite le
+> même périmètre sur `client-mobile` et y corrige les défauts trouvés ; les scénarios e2e de la task sont
+> `requis` sur angular **et** mobile.
 
 ## Manual Test Plan
 

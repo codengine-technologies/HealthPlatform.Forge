@@ -36,6 +36,11 @@ Que l'import dans le dossier patient Weda **ne classe jamais un document chez le
 > carte ») ou mis en file hors ligne, la trace Weda doit-elle (a) être écrite plus tard, à l'envoi
 > effectif (api-mail ou weda2 doit alors la déclencher), ou (b) ne pas l'être, en documentant la
 > limite ? La forge ne tranche pas.
+>
+> **Décision humaine (2026-10-13) : (b) pas de trace pour un envoi différé, limite documentée.** weda2
+> n'écrit la trace que pour un envoi immédiat réussi ; la limite est documentée dans E019 (et dans la
+> `## Develop log`). Écrire la trace à l'envoi effectif reste un chantier à part (api-mail devrait prévenir
+> Weda).
 
 6. **Intégration indisponible** : quand weda2 est embarqué mais que l'intégration ne répond pas, un message clair indique de passer par l'ancien écran.
 7. **Échec ou délai dépassé** : message « vérifiez le dossier patient avant de réessayer ». Côté Weda (hors forge) : transaction couvrant tout l'import, à signaler à l'équipe Weda.

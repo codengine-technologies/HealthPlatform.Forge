@@ -1,9 +1,9 @@
 # todo-task-368.md — Un contenu reçu ne s'exécute jamais dans weda2 : pièces jointes, documents CDA et synthèses IA sont rendus cloisonnés
 
-**Repos**: client-angular, api-mail, interop-cda
+**Repos**: client-angular, client-mobile, api-mail, interop-cda
 **Dependencies**: — (aucune)
 **Epic**: E009
-**Single frontend**: true — seul weda2 est audité ; voir l'arbitrage sur le mobile ci-dessous.
+**Single frontend**: false — weda2 et le mobile (décision humaine du 2026-10-13).
 **Priorité**: **0** — n'importe quel émetteur du réseau MSSanté peut faire exécuter du script dans la session du médecin : vol de session, lecture de toute la boîte et des dossiers patients, envoi de mails en son nom.
 
 > **Origine.** Audit de détection de bugs du client Angular du 2026-10-13
@@ -37,6 +37,14 @@ Qu'**aucun contenu venu de l'extérieur** — pièce jointe, document CDA, corps
 > affiche lui aussi pièces jointes, CDA et synthèses IA. Faut-il (a) l'auditer et l'inclure dans cette
 > task (ajout de `client-mobile` aux `**Repos**`), ou (b) ouvrir une task mobile dédiée ? La forge pose
 > la question au `/start` et ne tranche pas.
+>
+> **Décision humaine (2026-10-13, avant `/forge 368 to 381`) : inclure le mobile.** `/develop` audite le
+> même périmètre sur `client-mobile` et y corrige les défauts trouvés ; les scénarios e2e de la task sont
+> `requis` sur angular **et** mobile.
+>
+> **Décision humaine (2026-10-13) : CSP hors task.** Le point 7 du périmètre (CSP `script-src` dans
+> `nginx.conf`) est retiré de cette task ; il fera l'objet d'une task à part. La ligne « CSP » n'entre pas
+> dans la DOD.
 
 ### Hors périmètre
 

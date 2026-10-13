@@ -25,6 +25,9 @@ Que chaque instance déployée de weda2 vise **l'api-mail de son propre environn
 ### Périmètre
 
 1. **Constat d'abord** (humain, lecture) : `config.json` réellement servi par chaque environnement (`curl https://<weda2>/assets/config.json`) et valeur effective de `mssApiUrl` dans le navigateur. Consigné dans le task file **avant** tout correctif. Si la production vise le dev : mesure immédiate hors cycle décidée par l'humain.
+   > **Décision humaine (2026-10-13, avant `/forge 368 to 381`) : la forge code le correctif sans attendre ;
+   > le constat est fait par l'humain** (réseau interne inaccessible à la forge) et consigné ensuite, comme
+   > pour task-326.
 2. **ConfigMap** (`devops`, appliquée par l'humain) : `mssApiUrl` et `embeddedHostOrigins` ajoutés, avec leurs variables de release par environnement. La forge rédige le bloc dans le task file.
 3. **Amorçage** : `main.ts` refuse de démarrer (écran d'erreur explicite) si `apiEndpoint`, `authEndpoint`, `mssApiUrl` ou `embeddedHostOrigins` manque à la configuration runtime, au lieu de retomber sur les valeurs de build.
 4. **`environment.prod.ts`** : plus aucune URL de dev ; `storeWithDevTools: withDevToolsStub`.

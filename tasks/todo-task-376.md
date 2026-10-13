@@ -1,9 +1,9 @@
 # todo-task-376.md — Rédiger dans weda2 : jamais de contenu perdu, jamais de double envoi, jamais d'envoi incomplet présenté comme réussi
 
-**Repos**: client-angular, api-mail
+**Repos**: client-angular, client-mobile, api-mail
 **Dependencies**: — (aucune)
 **Epic**: E009
-**Single frontend**: true — voir l'arbitrage sur le mobile ci-dessous.
+**Single frontend**: false — weda2 et le mobile (décision humaine du 2026-10-13).
 **Priorité**: **1** — un courrier médical peut partir deux fois, partir sans ses pièces jointes avec « envoyé avec succès », annuler à tort un envoi antérieur, ou être perdu sans avertissement à la fermeture de la rédaction.
 
 > **Origine.** Audit de détection de bugs du client Angular du 2026-10-13
@@ -37,6 +37,10 @@ Que ce que le médecin écrit **ne soit jamais perdu**, qu'un message **ne parte
 > **⚠️ Arbitrage humain requis — le client mobile.** Le mobile rédige et envoie aussi (réponse, transfert,
 > brouillons, envois en attente). Il n'a pas été audité. Inclure `client-mobile` (audit ciblé de la
 > rédaction mobile dans le `/develop`), ou ouvrir une task mobile dédiée ?
+>
+> **Décision humaine (2026-10-13, avant `/forge 368 to 381`) : inclure le mobile.** `/develop` audite le
+> même périmètre sur `client-mobile` et y corrige les défauts trouvés ; les scénarios e2e de la task sont
+> `requis` sur angular **et** mobile.
 
 ## Definition of Done
 
