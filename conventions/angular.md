@@ -284,3 +284,21 @@ par lint sur du code frais est un échec de lecture de ce fichier.
 - **Origine** : task-350 (revue)
 - **Occurrences** : 1
 
+
+---
+
+### pdf-en-cadre-sandboxe — Chrome n'affiche pas un PDF dans un cadre sandboxé
+- **Piège** : pour cloisonner un HTML reçu (corps de mail, document CDA), on pose `sandbox` sur
+  l'`iframe` qui le rend. Un PDF **imbriqué** dans ce cadre (le CDA embarque ses PDF) ne s'affiche
+  plus : icône de document cassé avec `allow-same-origin`, cadre blanc sans. Retirer `sandbox` pour
+  le garder visible rouvre l'exécution du HTML reçu à l'origine de l'application.
+- **Consigne** : le HTML reçu va dans un cadre `sandbox="allow-popups allow-popups-to-escape-sandbox"`
+  (jamais `allow-scripts`, jamais `allow-same-origin`) ; ses PDF embarqués en sont **sortis** et
+  rendus par le composant hôte, chacun dans son cadre, depuis un blob typé `application/pdf` (un
+  blob PDF ne lance que la visionneuse). Tout blob affiché en `iframe` est retypé côté client :
+  le type servi pour une pièce vient de l'expéditeur.
+- **Preuve** : sonde Chrome de task-368 (cadre sans sandbox : gestionnaire exécuté, PDF visible ;
+  sandbox avec et sans `allow-same-origin` : rien d'exécuté, PDF non affiché). Specs
+  `medical-html-frame.component.spec.ts` (weda2 et mobile).
+- **Origine** : task-368
+- **Occurrences** : 1

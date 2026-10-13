@@ -299,8 +299,9 @@
   lecture (règle d'or 3), pas d'un trou du playbook.
 - **Preuve** : les deux `tsc` rouges (TS1005, chaîne non terminée) sur le code fautif, verts
   après correction.
-- **Origine** : task-352
-- **Occurrences** : 2 (une par client, même task)
+- **Origine** : task-352, task-368
+- **Occurrences** : 3 (une par client sur task-352 ; task-368 : libellés mobiles réécrits par un
+  script d'édition qui a perdu les barres obliques d'échappement, attrapé par le `tsc` de la suite avant tout commit)
 
 ### test-angular-non-commite — Un scénario requis côté Angular repose sur un test que la forge ne commite pas
 - **Piège** : en mode code-only, le test Angular d'un nouveau scénario reste **non commité** sur
@@ -378,6 +379,34 @@ dépassée.
 
 ---
 
+### negatif-a-delai-fixe — Une absence d'exécution ne se lit pas après un délai fixe
+- **Piège** : « le script de la pièce ne s'est pas exécuté » se lisait 1,5 s après le
+  téléchargement. Sur le code vulnérable, à froid, l'aperçu s'est affiché **après** ce délai : le
+  test est resté vert. Un délai ne prouve que la lenteur de l'application.
+- **Consigne** : avant de lire l'absence d'un effet, attendre un **signal positif** que le contenu
+  a été traité, quelle que soit la branche : ici, le téléchargement (attendu) **ou** le corps du
+  cadre d'aperçu (le défaut, dont le script a déjà tourné quand le corps existe). Le test échoue si
+  aucun des deux n'arrive. Le délai fixe ne reste admis que pour un effet synchrone d'une action
+  déjà terminée (le survol, dont le gestionnaire s'exécute pendant l'évènement).
+- **Preuve** : E2E-SECURITY-001 (weda2), vert puis rouge sur la même mutation selon le délai ;
+  avec le signal, rouge à chaque passage sur le code d'avant, vert sur le correctif.
+- **Origine** : task-368
+- **Occurrences** : 1
+
+---
+
+### shell-dans-out — Un shell posé dans `out/` empêche la voie de démarrer
+- **Piège** : un `cd` dans `e2e/mss-e2e/out/test-results` pour lire une trace laisse le répertoire
+  courant du shell **dans** ce dossier ; sous Windows, il est verrouillé. La voie suivante, qui
+  vide `out/`, tombe en outillage (`EPERM, Permission denied: …\out\test-results`).
+- **Consigne** : lire les traces par chemin absolu, sans `cd` ; si un `cd` a eu lieu, revenir à la
+  racine du dépôt **avant** de relancer une voie.
+- **Preuve** : deux montages `--serve-only` perdus sur task-368, repartis dès le `cd` retiré.
+- **Origine** : task-368
+- **Occurrences** : 1
+
+---
+
 ## Registre des flaky
 
 *(tenu par `/e2e` : une ligne par test vert au second essai ; troisième occurrence du même test →
@@ -415,6 +444,7 @@ scénario qui l'aurait attrapé, prouvé rouge sur le bug)*
 | Un message supprimé ou déplacé depuis un autre logiciel **reste dans la liste** (rafraîchissement aveugle aux disparus) et s'ouvre sur un **contenu vide ou périmé** servi par la ligne locale (200, aucun accès IMAP) | L'humain, en recette (Seq : `GET …/emails/content/10` → 200 en 20 ms), non vu par `/e2e` : aucun scénario ne supprimait un message hors de l'application | **E2E-MAIL-005** ajouté (mobile et Angular requis) : message déposé puis supprimé par IMAP (`mss.mail.e2e message --create|--delete`), ouvert aussitôt (« n'existe plus », jamais vide), puis retiré au rafraîchissement. Rouge sous mutation sur les deux clients, et sur chacune des deux branches côté Angular (ouverture, rafraîchissement) | task-353 |
 | Un envoi refusé par la messagerie MSSanté (jeton PSC refusé au challenge XOAUTH2) rendait un **502** générique, et le nouvel essai échouait à coup sûr pendant deux à trois minutes : api-mail resservait de son cache le jeton refusé. Le praticien lisait un message technique (« Http failure response … » sur mobile) | L'humain, dans Seq le 2026-10-05 (boîte de formation), non vu par `/e2e` : le backend e2e n'a pas de voie XOAUTH2 et aucun scénario ne faisait échouer un envoi | **E2E-COMPOSE-003** ajouté (mobile et Angular requis) : refus simulé au premier envoi (503 `MAIL_SERVER_AUTH_REFUSED`), message dédié lu, objet conservé, « Envoyer » actif, renvoi reçu. Rouge sur les deux clients avec le message générique réinjecté. Chemin serveur prouvé par `MailServerTokenRefusalEndpointIntegrationTests` | task-354 |
 | L'accusé de lecture demandé par un expéditeur n'était **jamais proposé** sur mobile (bandeau conditionné à `requestReadReceipt`, que l'API ne renseigne que pour les brouillons) ni sur weda2 (aucun écran) ; quand Blazor le proposait, l'accusé partait sans être enregistré (AUD-32) et pouvait être renvoyé. Le refus n'était ni possible (mobile, weda2) ni tracé | Audit de bugs du 2026-09-27 (AUD-32, AUD-43), non vu par `/e2e` : aucun scénario ne portait sur l'accusé de lecture | **E2E-RECEIPT-001, 002, 003** ajoutés (mobile et Angular requis) : demande à l'envoi relue côté serveur, envoi et refus relus côté serveur et dans le journal d'audit, accusé « Lu: … » reçu, plus de proposition après rechargement. Rouges sur le bug d'origine réinjecté, sur l'assertion « l'accusé est proposé », les trois scénarios et les deux clients (mobile : bandeau sur `requestReadReceipt` ; weda2 : aucune proposition). Le refus rendu sans effet côté client fait tomber E2E-RECEIPT-003 sur l'appel jamais émis (mobile et weda2) | task-340 |
+| Un contenu reçu s'exécutait dans la session du médecin : une pièce `text/html` cliquée était rendue dans une `iframe` non isolée (weda2), une cellule de CDA portant un gestionnaire d'évènement l'exécutait au survol (transformation CDA qui recopiait tous les attributs, cadre de même origine) | Audit de bugs du client Angular du 2026-10-13 (ANG-01, ANG-02), non vu par `/e2e` : aucun scénario ne portait de contenu piégé | **E2E-SECURITY-001** ajouté (mobile et Angular requis) : pièce HTML et cellule de CDA piégées seedées, l'onglet ne prend jamais le titre du piège. Rouge sur le code d'avant (Interop 107, pas d'assainissement à la lecture) : weda2 sur la cellule (cadre sans `sandbox`) et sur la pièce (aperçu d'avant), mobile sur la cellule (cadre sans `sandbox` ni nettoyage client) | task-368 |
 
 ---
 

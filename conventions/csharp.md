@@ -1527,3 +1527,15 @@ des tests qui l'auraient alors fait rougir plus tard, sans raison apparente.
 - copier le fichier avant de le muter (`cp {fichier} {scratchpad}/…bak`), restaurer depuis la copie ;
 - ou commiter le correctif d'abord : `git checkout` redevient alors sûr ;
 - après restauration, relire le `git diff --stat` du fichier : il doit montrer le correctif.
+
+## ressource-resx-perimee — une XSL modifiée n'est pas recompilée par un build incrémental
+
+**Occurrences : 1** (task-368, `/develop` — interop-cda, `style.xsl`)
+
+Les feuilles XSL d'`Interop.Cda` sont embarquées par `ResXFileRef` : le fichier `.resx` ne change
+pas quand la XSL change, et le build incrémental garde la ressource compilée d'avant. Les tests
+restent rouges (ou verts) sur l'ancienne transformation, sans rapport avec le code lu.
+
+**Consigne** : après toute modification d'une ressource référencée par un `.resx` (XSL, gabarit),
+construire avec `dotnet build --no-incremental` avant de lancer les tests, et relire le résultat
+de la transformation plutôt que le seul code de test.
