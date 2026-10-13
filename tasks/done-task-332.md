@@ -407,6 +407,40 @@ d'intégration sur la vraie pile et la vraie base, avec RabbitMQ remplacé par s
    `IServerConnectionStrings`.
 4. Les traits du patient restent dans `CreatePatientContactMessage`.
 
+## Vérifications complémentaires (2026-10-13, après la revue)
+
+**1. Câblage de production prouvé par un test d'intégration** (`1b9cb74f`).
+- L'enregistrement des chaînes de connexion quitte `Program.Main` pour `AddServerConnectionStrings`.
+- `UnderTheProductionComposition_TheConsumersResolveAndWorkInThePractitionersDatabase` compose le processus comme
+  `Program` : `AddApi` (consommateurs MassTransit), `AddApplication`, `AddInfrastructure`, `AddServerConnectionStrings`.
+  Les trois consommateurs sont résolus par le conteneur, et le test vérifie en base PostgreSQL l'embedding,
+  l'étiquette et les deux contacts.
+- Mutation : sans l'enregistrement de `IServerConnectionStrings`, le test est rouge (« Unable to resolve service for
+  type IServerConnectionStrings while attempting to activate AddNewMailConsumer »).
+- Suite complète verte : domain 195, infrastructure 690, application 3 624, api 1 230, integration 885
+  (+16 ignorés). Le testhost d'`api.tests` s'est figé une fois pendant la suite complète ; relancé seul avec
+  `--blame-hang`, il passe (1 230 en 22 s), sans test bloqué identifié.
+
+**2. Essai réel sur RabbitMQ** : AppHost en profil `https-load-test`, registre `mss_registry_loadtest`,
+chat et embeddings sur OpenAI, corpus synthétique ANS, sans aucune donnée de patient réelle.
+- Seed : 1 boîte (`loadtest-1`), 3 mails porteurs d'un IHE_XDM. `enrich/sync` → 3 analysés.
+- Trois files espion, liées aux échanges `mss.mail.application.Messages:*`, ont reçu une copie des messages réels
+  sans gêner les consommateurs : **3 `AddNewMailMessage`, 4 `CreatePractitionerContactMessage`,
+  4 `CreatePatientContactMessage`**.
+- Dans les 11 enveloppes MassTransit, aucun `password`, `connectionString`, `keycloak`, `proxySession`,
+  `clientSession` ni `token`, aucun `Host=`, aucun `subject` ni `body`. Le message ne porte que
+  `userContext` = { e-mail, RPPS, tenant, nom de base enregistré }, plus l'identifiant du mail, le dossier,
+  l'UID, l'expéditeur, le type de document et le drapeau « documents médicaux ». Les en-têtes sont vides.
+  Le bloc `host` ne contient que des métadonnées de processus (machine, versions).
+- Files de travail vidées par les 5 consommateurs de chaque file, **aucune file `_error` créée**.
+- Base praticien `u_90000000001_…` : 3 mails embeddés ; 2 documents sur 4 embeddés, soit exactement ceux qui ont
+  un corps ; 6 étiquettes IA ; 2 contacts praticien et 2 contacts patient ; 4 documents liés à leur contact
+  praticien.
+- Seq : 14 événements des consommateurs sur la fenêtre (3 « Processing / Completed », 4 + 4 contacts), **0 erreur**.
+- Démontage : AppHost arrêté, conteneurs de session retirés, volume du maildir du banc conservé.
+
+Reste au plan de test manuel : le contrôle visuel dans l'application (étiquettes, recherche, contacts).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-332 --sync` — ne pas éditer à la main)*
