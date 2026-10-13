@@ -118,6 +118,276 @@ consommateur a besoin pour retrouver son contexte, les secrets étant résolus *
 ## Branches
 - `api-mail` (pushed) : fix/task-332-bus-messages-without-secrets — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-332-bus-messages-without-secrets
 
+## Corps du mail — décision (périmètre §3)
+
+**Retiré du message, avec l'objet.** Le consommateur `AddNewMailConsumer` relit l'objet et le corps
+dans la base du praticien (`IMailRepository.GetAiMaterialAsync`, même projection que la reprise des
+étiquetages de task-344, `AiTaggingCandidate`). Ce n'est possible que parce que la publication suit
+l'écriture : `EnrichedMailPersistence.AfterWriteAsync` publie après `AddNewMail`, la ligne de contenu
+existe donc toujours au moment où le message est consommé.
+
+- Un mail disparu entre la publication et la consommation (mis à la Corbeille, par exemple) n'a plus
+  de matière : le consommateur journalise un avertissement et acquitte, **sans appel au modèle** et sans
+  trois essais voués à l'échec.
+- La matière n'est chargée que si l'embedding ou l'étiquetage est actif : avec les deux sous-flags
+  éteints, aucune lecture en base.
+- Restent dans `AddNewMailMessage` : l'identifiant du mail, son dossier, son UID, l'adresse de
+  l'expéditeur (une adresse professionnelle), le type de document et le drapeau « documents médicaux ».
+
+**Ce qui reste sur le bus, hors périmètre** : `CreatePatientContactMessage` porte toujours les traits
+du patient extraits du CDA (INS, nom, prénom, naissance, téléphones, adresse). C'est la matière même du
+contact à créer. Le retirer demanderait au consommateur de relire le document médical en base. Ce serait
+une US à part entière, à arbitrer par l'humain si la présence de l'INS dans une file durable est jugée
+inacceptable.
+
+## Procédure humaine — après le merge et le déploiement
+
+> La forge ne touche ni aux files ni aux secrets d'un environnement. Ces gestes sont ceux de
+> l'exploitation, sur **chaque** environnement où api-mail a tourné avec un bus (Staging, Production,
+> weda-dev, postes de développement avec RabbitMQ partagé).
+
+**1. Laisser se vider les files actives, sans les purger.** Le nouveau consommateur accepte l'ancien
+format : la propriété `userContext` garde son nom, ses champs secrets sont ignorés à la
+désérialisation, et le contexte est reconstruit depuis la configuration du processus (prouvé par
+`AMessageAtTheFormerFormat_StillInTheQueue_IsProcessedInThePractitionersDatabase_IgnoringItsSecrets`).
+Aucune perte de traitement au déploiement.
+
+**2. Purger les files d'erreur et de rebut**, qui conservent indéfiniment les messages à l'ancien
+format, secrets compris :
+
+| File | Contenu exposé |
+|---|---|
+| `add-new-mail-queue_error`, `add-new-mail-queue_skipped` | contexte complet + objet + corps du mail |
+| `create-practitioner-contact-queue_error`, `create-practitioner-contact-queue_skipped` | contexte complet |
+| `create-patient-contact-queue_error`, `create-patient-contact-queue_skipped` | contexte complet + traits patient (INS) |
+
+Avant la purge, exporter si besoin l'**inventaire** des messages (identifiants, dates, adresse de boîte)
+pour la notification au DPO, **jamais** leur contenu. Après la purge, `rabbitmqctl list_queues name
+messages` doit rendre 0 sur ces six files.
+
+**3. Faire tourner les secrets exposés**, en partant du principe qu'une file d'erreur non vide en a
+contenu :
+
+| Secret | Où il vit | Action |
+|---|---|---|
+| Mot de passe du rôle PostgreSQL de la plateforme | `MSS-MAIL-CONNECTIONSTRING` (et `-DIRECT` si un pooler est en place) | **Rotation obligatoire** : nouveau mot de passe du rôle, mise à jour des deux variables, redémarrage des réplicas |
+| Mots de passe IMAP des praticiens (`Password`) | renseigné pour les boîtes authentifiées par mot de passe | Inviter les praticiens concernés, identifiés par l'inventaire de l'étape 2, à changer leur mot de passe de messagerie |
+| Sessions du proxy PSC (`ProxySessionId`) | cookie `proxy_session_id`, sessions tenues par psc-auth-proxy | Révoquer les sessions de l'inventaire, ou attendre leur expiration naturelle si elle est plus courte que le délai de purge |
+| Jetons Keycloak (`KeycloakToken`) | jetons d'accès, durée de vie de quelques minutes | Aucune action : expirés. Les jetons de rafraîchissement n'ont jamais transité |
+
+**4. Informer le DPO** (AIPD) : secrets et contenus cliniques dans des files durables avant correctif,
+avec l'inventaire de l'étape 2.
+
+## Develop log
+
+- Repos touched : api-mail (`fix/task-332-bus-messages-without-secrets`)
+- DTOs published : no DTO change (`dtos-mss` non touché, aucune branche créée)
+- Interop published : no interop change
+- Commits (api-mail) :
+  - `30371c48` refactor(audit): an audit trace no longer takes the practitioner's connection strings
+  - `211d236b` fix(mail): bus messages carry no secret, nor the mail's body
+  - `fe3951ec` refactor(mail): simplify pass (/simplify)
+- Local build / test : ✓ 0 erreur, **6 568 tests verts, 0 échec** (domain 195, infrastructure 683,
+  application 3 624, api 1 201, integration 865 + 16 ignorés pré-existants), joués deux fois : après la
+  feature, puis après la passe qualité.
+- **Contrat retenu** : `MessageUserIdentity` (Domain) = e-mail, RPPS, tenant, nom de base enregistré.
+  Reconstruit côté consommateur par `UserContextInfo.RestoreFromMessage`, qui repart de `Reset()` et prend
+  les chaînes de connexion de `IServerConnectionStrings`. Cette interface (Application) est implémentée par
+  `ServerConnectionString` (Api) et enregistrée comme la même instance que celle du middleware. La propriété
+  garde le nom `UserContext` : les messages à l'ancien format restent désérialisables.
+- **Aucun consommateur n'a besoin d'un jeton** (§2, vérifié) : les trois consommateurs lisent et écrivent la
+  base du praticien et appellent le fournisseur d'IA. Aucun ne touche IMAP ni SMTP, ni `IPscTokenProvider`.
+  L'audit émis depuis ces scopes perd `UserSessionId` (`ClientSessionId` ne voyage plus) : il trace sous la
+  boîte et le tenant, comme toute tâche de fond.
+- **Preuve rouge d'abord** : `BusMessageSecretsTests`, 4 tests rouges sur le code d'avant (secrets et corps
+  présents dans le JSON MassTransit des trois messages), verts après. Le 5ᵉ, qui vérifie l'identité restante,
+  était vert dès le départ, comme prévu.
+- **Test d'intégration (règle 1b)** : `BusMessageMinimalIdentityEndToEndTests`, dont la chaîne est la
+  suivante :
+  1. le vrai publieur part d'un contexte de requête complet, dont la chaîne serveur désigne un hôte
+     **injoignable** ;
+  2. le message passe par le JSON MassTransit ;
+  3. le vrai `AddNewMailConsumer` travaille dans un vrai conteneur, sur une vraie base PostgreSQL ;
+  4. les messages de contact qu'il publie repassent par le fil ;
+  5. les vrais consommateurs de contact les traitent.
+
+  Le test lit l'embedding, l'étiquette, le contact praticien, le contact patient et le lien document → contact,
+  dans la base du praticien. Le cas « ancien format encore en file » est couvert par le second test.
+- **Mutations vues rouges** (copie avant mutation, restauration depuis la copie, `git diff --stat` relu) :
+  - M1, `RestoreFromMessage` oublie `RegisteredDatabaseName` : 2 tests d'intégration et 2 tests de domaine
+    rouges (autre base, matière introuvable).
+  - M2, l'embedding n'utilise plus le corps relu : intégration et `Consume_EmbedsAndTagsTheMaterialReadBackFromTheDatabase`
+    rouges sur l'appel attendu au fournisseur.
+  - M3, `ToMessageIdentity` perd le tenant : intégration rouge (`Expected 0192f0a4-… / Actual null`) et
+    `BusMessageSecretsTests…StillCarriesTheIdentity` rouge.
+  - M4, un message réembarque un `UserContextInfo` imbriqué : `BusMessageSecretPropertyTests` rouge, qui liste
+    `Legacy.ProxySessionId`, `.KeycloakToken`, `.Password`, `.ConnectionStringServer`…
+  - M5, la trace d'audit reprend la chaîne serveur derrière `[JsonIgnore]` :
+    `The_trace_never_carries_the_connection_strings_of_its_context` rouge.
+- **Spill d'audit (§5)** : l'audit du 2026-09-27 disait que le spill « sérialise encore » les chaînes de
+  transport. C'est **inexact sur develop** : elles portaient `[JsonIgnore]` depuis task-292, et une trace
+  rejouée n'en contenait aucune. Elles restaient en revanche copiées sur chaque trace en mémoire, sans
+  lecteur depuis task-312. Elles sont retirées de la trace.
+  - `AuditSpillIntegrationTests` prouve désormais de bout en bout, sur un vrai Redis, qu'un contexte qui
+    porte les deux chaînes (mots de passe compris) n'en laisse aucune dans le spill.
+  - Le test qui exigeait la présence de la route directe sur la trace (task-292, caduc depuis task-312)
+    est remplacé par son inverse.
+- **Corps du mail (§3)** : retiré, avec l'objet. Voir la section « Corps du mail — décision ».
+- Contrôles mécaniques §Q 2b : S125 ×5 relevés puis réécrits avant le commit (compteur porté à 17 dans
+  `conventions/csharp.md`) ; xUnit1045, S4457, xUnit2032 : rien.
+- Passe qualité (/simplify) :
+  - Applied & committed : api-mail, 4 fichiers (`fe3951ec`). Conversion HTML → texte faite une seule fois
+    pour les deux étapes. Suppression des trois enveloppes `ConfigureUserContext`, qui ne faisaient que
+    déléguer. Retrait d'un commentaire-pierre tombale dans `MssAuditTrace`.
+  - Écartés, car ils changent le comportement ou sortent du diff :
+    - réduire `AddNewMailMessage` à `MailId` et à l'identité, en lisant dossier, UID, expéditeur et type
+      de document en base (changement de contrat) ;
+    - partager `AiTaggingRecoveryService.ToRequest` (même raison) ;
+    - requête dédiée plus légère que la projection partagée ;
+    - flags lus en parallèle.
+  - **Piste d'altitude à arbitrer, hors de cette task** : `UserContextInfo` reste un sac à secrets, et
+    seuls la convention et le test d'architecture empêchent qu'il revoyage. La correction de fond serait
+    que les dépôts lisent les chaînes de connexion dans `IServerConnectionStrings` au lieu du contexte
+    praticien. Cela toucherait `BaseRepository`, le middleware et `RequestHelper`, ce dernier lisant
+    encore l'environnement directement.
+  - Skipped (contract/excluded) : dtos-mss, interop-cda, sdk, devops, psc-proxy-*.
+- **Taille de PR** : 44 fichiers, au-delà du repère de ~30. 26 sont des tests existants adaptés au nouveau
+  contrat de message, que le compilateur impose tous. Découper ferait merger un contrat à moitié migré
+  (règle 11).
+- DOD self-check : 10/10 critères vérifiables par commande couverts (build, tests, rouge d'abord, trois
+  messages, test d'architecture, trois consommateurs, ancien format, spill, procédure humaine, logs sans
+  secret). Points 3–4 du plan de test manuel (console RabbitMQ, traitement aval réel) : deferred to manual
+  test (HAG).
+- Next step : /sonar task-332
+
+## Sonar log
+
+- Serveur SonarQube 25.6.0.109173 (`sonar.token`), port 9001 mesuré. Conteneurs `sonarqube_db` puis
+  `sonarqube` redémarrés (arrêtés depuis 8 jours).
+- Analyse complète de la branche au commit `fe3951ec` : begin, build Release, 5 passes OpenCover (6 568 tests
+  verts, 0 échec), end.
+- **Phase 1 (new code)** : 71 issues dans la période de nouveau code, dont 10 sur des fichiers de la task.
+  **Une seule est de task-332**, d'après `git blame` ligne par ligne :
+  - `CA1859` (INFO), `BusMessageMinimalIdentityEndToEndTests.cs:216` : fixée (`3e9d61a9`). Test rejoué vert,
+    build 0 erreur.
+  - Les 9 autres sont sur des lignes antérieures que la task n'a pas modifiées :
+    - `S103` ×2 dans `IMailRepository` (task-334, 2026-10-09) ;
+    - `S103` ×3 dans `AddNewMailConsumer` (task-325, 2026-09-30) ;
+    - `S4462` ×3 dans `AuditService` (task-292, 2026-09-11, attente synchrone volontaire de la contre-pression) ;
+    - `S138` sur `LoadBulkContentLookupsAsync` (2026-06-02).
+  - Hotspots : 13 `TO_REVIEW` dans la période de nouveau code, **aucun** sur un fichier de la task.
+  - **Quality Gate (new code) : ERROR, déjà en ERROR à la baseline**. Les conditions en échec sont
+    `new_violations` (68 → 71) et `new_security_hotspots_reviewed` (0 %). Toutes deux viennent de tasks
+    déjà mergées, la période de nouveau code du projet étant une baseline large (mémoire « new-code period
+    inclut des tasks déjà mergées »). La baseline date de l'analyse du 2026-10-04 ; entre-temps, 43 commits
+    ont été mergés sur develop. L'écart de +3 n'est donc pas attribuable à cette task : sa seule issue est
+    corrigée.
+- Phase 1 — Tests ajoutés par `/sonar` : 0. La couverture du nouveau code était déjà à 98,1 %, au-dessus
+  de la cible de 95 %.
+- Phase 2 (legacy) : **non jouée**. Elle est optionnelle, et les candidates évidentes du fichier touché
+  (`S4462` dans `AuditService`) sont comportementales : remplacer l'attente synchrone par un `await`
+  changerait la sémantique de contre-pression du journal d'audit. C'est hors du périmètre d'une task de
+  secrets.
+- Build / tests : ✓ green.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline (2026-10-04) | Final (branche, 2026-10-13) | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | ERROR | ERROR | → (pré-existant, aucune issue de la task restante) |
+| New coverage | 98.1 % | 98.1 % | 0 |
+| Bugs | 2 | 2 | 0 |
+| Vulnerabilities | 0 | 0 | 0 |
+| Security hotspots | 15 | 15 | 0 |
+| Code smells | 70 | 73 (72 après `3e9d61a9`) | +2, issues de develop, aucune de task-332 |
+| Coverage (projet) | 97.9 % | 98.0 % | +0.1 pt |
+| Duplication | 0.3 % | 0.3 % | 0 |
+| Reliability / Security / Maintainability | D/A/A | D/A/A | → |
+
+## E2E log
+
+| Voie | Déclencheur | Résultat | Tests | Durée |
+|---|---|---|---|---|
+| mobile | api-mail touché | ✅ verte | 34 verts, 0 flaky, 0 rouge, 0 quarantaine — parité de la colonne verte | 7 min 39 s |
+| angular | api-mail touché | ⛔ parité rouge | 35 verts, 0 flaky, 0 rouge, 1 quarantaine (E2E-COMPOSE-002) — **3 scénarios requis absents** | 6 min 04 s |
+
+- Catalogue : `Api/Mail/e2e/scenarios.yml` @ `fix/task-332-bus-messages-without-secrets` (inchangé par la task : celui de develop)
+- Clone mobile : sur `develop`, déjà aligné sur `origin/develop`.
+- Clone Angular : branche `feature/nova-rewriting-mss-weda-integration` (HEAD `00f0e37c`, « task 367 »), arbre propre.
+- Quarantaines : E2E-COMPOSE-002 (angular), correction : task-350
+- Divergences ouvertes : aucune
+- Parcours touchés sans spec e2e modifié : aucun (task backend-only)
+- Démontage : complet (ports 5052, 8100, 4200, 3993, 3465, 3143 libres ; aucun conteneur e2e résiduel)
+- **Origine du rouge : hors task-332.** Les scénarios `E2E-RECEIPT-001/002/003` sont entrés au catalogue
+  avec task-340 (`angular: requis`). Leurs tests Angular avaient été écrits en code-only, **non commités**,
+  sur cette même branche (`archived-task-340.md`, Develop log : « à commiter sur TFS avant le merge »).
+  Ils ne sont plus dans l'arbre Angular : `read-receipt.util.ts` est absent, aucun `E2E-RECEIPT` dans
+  `e2e/mss-e2e/specs/`. Aucun parcours n'a régressé : tous les tests joués sont verts sur les deux voies.
+
+**E2E : ROUGE** — 3 motif(s) de blocage.
+
+**Bloquant** (3) :
+
+- [angular] parité MissingRequired : E2E-RECEIPT-001 (« Demander un accusé de lecture à l'envoi ») est requis pour angular mais absent de sa suite, ou non joué.
+- [angular] parité MissingRequired : E2E-RECEIPT-002 (« Envoyer l'accusé de lecture d'un message reçu, une seule fois ») est requis pour angular mais absent de sa suite, ou non joué.
+- [angular] parité MissingRequired : E2E-RECEIPT-003 (« Refuser l'accusé de lecture d'un message reçu ») est requis pour angular mais absent de sa suite, ou non joué.
+
+**En quarantaine (posée par l'humain, non bloquant)** (1) :
+
+- [angular] « rédaction — corriger l’orthographe, appliquer, envoyer : le texte corrigé arrive, la citation intacte » (E2E-COMPOSE-002) — Passed — correction : task-350
+
+### Matrice de parité
+
+| Scénario | v | Mode | Titre | angular | mobile |
+|---|---|---|---|---|---|
+| E2E-INBOX-001 | 1 | headless | Filtrer la boîte de réception, basculer liste / conversation, ouvrir la recherche | ✅ | ✅ |
+| E2E-FOLDER-001 | 1 | headless | Naviguer vers les dossiers Archive et Corbeille | ✅ | ✅ |
+| E2E-PATIENT-001 | 1 | headless | Afficher la vue patients | ✅ | ✅ |
+| E2E-PATIENT-002 | 2 | headless | Rattacher à la main un document sans INS à un patient choisi par recherche, puis le détacher | ✅ | ✅ |
+| E2E-CONTACT-001 | 1 | humain | Rechercher dans le carnet et interroger l'annuaire national | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-SETTINGS-001 | 1 | headless | Changer le filtre par défaut et le retrouver après rechargement | ✅ | ✅ |
+| E2E-MAIL-001 | 1 | headless | Marquer un message lu puis non lu | ✅ | ✅ |
+| E2E-MAIL-002 | 1 | headless | Tout sélectionner et marquer lu en masse | ✅ | ✅ |
+| E2E-DETAIL-001 | 2 | headless | Répondre et transférer depuis la lecture d'un message | ✅ | ✅ |
+| E2E-COMPOSE-001 | 1 | headless | Envoyer un message, le recevoir, le lire, le supprimer | ✅ | ✅ |
+| E2E-COMPOSE-002 | 1 | headless | Faire corriger l'orthographe de son texte, appliquer la correction, puis envoyer | ✅ | ✅ |
+| E2E-COMPOSE-003 | 1 | headless | Un envoi refusé par la messagerie laisse le brouillon intact et peut être renvoyé | ✅ | ✅ |
+| E2E-MAIL-003 | 1 | headless | Signaler puis ne plus signaler un message | ✅ | ✅ |
+| E2E-MAIL-004 | 1 | headless | Déplacer un message vers Archive puis le ramener | ✅ | ✅ |
+| E2E-MAIL-005 | 1 | headless | Un message supprimé depuis un autre logiciel quitte la liste et ne s'ouvre jamais vide | ✅ | ✅ |
+| E2E-DRAFT-001 | 1 | headless | Créer un brouillon, le reprendre, le supprimer | ✅ | ✅ |
+| E2E-DRAFT-002 | 1 | headless | Envoyer un message à pièce jointe après l'enregistrement automatique du brouillon | ✅ | ✅ |
+| E2E-BIO-001 | 1 | headless | Acquitter un compte rendu de biologie | ✅ | ✅ |
+| E2E-DASH-001 | 1 | headless | Afficher les widgets du tableau de bord | ✅ | ✅ |
+| E2E-DETAIL-002 | 1 | headless | Basculer entre texte brut et HTML à la lecture | ✅ | ✅ |
+| E2E-DETAIL-003 | 1 | headless | Répondre à tous depuis la lecture d'un message | ✅ | ✅ |
+| E2E-DETAIL-004 | 1 | headless | Lire un message avec le panneau d'actions, le masquer puis le retrouver au message suivant | ✅ | — |
+| E2E-SETTINGS-002 | 1 | headless | Changer la vue par défaut et la retrouver après rechargement | ✅ | ✅ |
+| E2E-SEARCH-001 | 1 | headless | Rechercher un message et ouvrir la recherche avancée | ✅ | ✅ |
+| E2E-ATTACH-001 | 1 | headless | Voir les pièces jointes d'un message | ✅ | ✅ |
+| E2E-CONTACT-002 | 1 | headless | Créer puis supprimer un contact | ✅ | ✅ |
+| E2E-SIGNATURE-001 | 1 | headless | Créer puis supprimer une signature | ✅ | ✅ |
+| E2E-CONTACT-003 | 1 | headless | Créer puis supprimer un groupe de contacts | ✅ | ✅ |
+| E2E-FOLDER-002 | 1 | headless | Créer puis supprimer un dossier | ✅ | ✅ |
+| E2E-FOLDER-003 | 1 | headless | Ouvrir un dossier supprimé depuis un autre logiciel | ✅ | ✅ |
+| E2E-FOLDER-004 | 1 | headless | Actualiser la liste des dossiers après un changement fait dans un autre logiciel | ✅ | ✅ |
+| E2E-AUTH-001 | 1 | humain | Rester connecté quand le jeton d'accès expire | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-AUTH-002 | 1 | humain | Se déconnecter | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-LIVE-001 | 1 | headless | Recevoir un nouveau message en temps réel, sans recharger | ✅ | ✅ |
+| E2E-AI-001 | 1 | headless | Interroger l'assistant sur des messages sélectionnés et poser des questions de suite | ✅ | ✅ |
+| E2E-WEDA-001 | 1 | headless | Dans Weda, la messagerie s'ouvre sur la boîte que Weda désigne | ✅ | — |
+| E2E-WEDA-002 | 1 | headless | Voir le dossier Weda du patient d'un document reçu, l'ouvrir, puis importer des documents dans un dossier | ✅ | — |
+| E2E-WEDA-003 | 1 | headless | Envoyer un document du dossier patient Weda par la nouvelle messagerie | ✅ | — |
+| E2E-RECEIPT-001 | 1 | headless | Demander un accusé de lecture à l'envoi | ⛔ non joué | ✅ |
+| E2E-RECEIPT-002 | 1 | headless | Envoyer l'accusé de lecture d'un message reçu, une seule fois | ⛔ non joué | ✅ |
+| E2E-RECEIPT-003 | 1 | headless | Refuser l'accusé de lecture d'un message reçu | ⛔ non joué | ✅ |
+
+**Parité : ROUGE** — 3 écart(s) :
+
+- `MissingRequired` [angular] E2E-RECEIPT-001 (« Demander un accusé de lecture à l'envoi ») est requis pour angular mais absent de sa suite, ou non joué.
+- `MissingRequired` [angular] E2E-RECEIPT-002 (« Envoyer l'accusé de lecture d'un message reçu, une seule fois ») est requis pour angular mais absent de sa suite, ou non joué.
+- `MissingRequired` [angular] E2E-RECEIPT-003 (« Refuser l'accusé de lecture d'un message reçu ») est requis pour angular mais absent de sa suite, ou non joué.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-332 --sync` — ne pas éditer à la main)*
@@ -125,4 +395,9 @@ consommateur a besoin pour retrouver son contexte, les secrets étant résolus *
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 21 s | — | — | — | — |
-| **Total cycle** | | **21 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 40 min 52 s | 20 (2 min 26 s) | 7 (9 min 04 s) | — | api-mail 20B/7T |
+| /sonar | ok | 13 min 37 s | 2 (43 s) | 6 (6 min 42 s) | 2 (2 min 41 s) | 1 itération(s), api-mail 2B/6T |
+| /lint-angular | skipped | 1.6 s | — | — | — | client-angular not in Repos |
+| /lint-mobile | skipped | 2.1 s | — | — | — | client-mobile not in Repos |
+| /e2e | failed | 15 min 41 s | — | — | — | e2e ×3 (13 min 44 s), parite angular: E2E-RECEIPT-001/002/003 absents (heritage task-340, hors task-332) |
+| **Total cycle** | | **1 h 10 min** | **22 (3 min 09 s)** | **13 (15 min 47 s)** | **2 (2 min 41 s)** | |
