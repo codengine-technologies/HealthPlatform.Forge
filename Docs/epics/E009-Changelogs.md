@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-10-13 (v1.97)
+> **Dernière mise à jour** : 2026-10-14 (v1.98)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -760,6 +760,32 @@
   - sous-objet partagé pour les options d'envoi au prochain changement de contrat ;
   - remonter `originalMarkedCancelled` et `warning` par `drafts/{id}/send` ;
   - bail renouvelable pour le verrou.
+
+### v1.98 — Un contenu reçu ne s'exécute plus dans la session du médecin : pièces jointes, documents CDA, corps de mail et sorties d'IA rendus cloisonnés, contenu distant bloqué partout (ANG-01 à ANG-04, ANG-38, ANG-39) — task-368
+
+- **Origine** : audit de bugs du client Angular du 2026-10-13 (`Docs/audits/client-angular-audit-bugs-20261013.md`).
+  - ANG-01 : une pièce `text/*` était prévisualisée dans une `iframe` non isolée, à partir d'un blob au type déclaré par l'expéditeur — une pièce HTML s'exécutait au clic dans l'origine de weda2.
+  - ANG-02 : le HTML CDA était rendu dans une `iframe` de même origine sans `sandbox`, et la XSL recopiait tous les attributs du narratif (`copy-of @*`) : un `onmouseover` d'émetteur s'exécutait au survol.
+  - ANG-03 : la fenêtre du document patient injectait ce HTML dans la page (`bypassSecurityTrustHtml`).
+  - ANG-04 : les sorties d'IA (synthèse, chat) passaient par `marked` puis `bypassSecurityTrustHtml`.
+  - ANG-38, ANG-39 : blocage des images distantes contournable (`url(&quot;…&quot;)`, `image-set()`), absent des CDA et de la vue en lecture seule.
+- **Décisions humaines** : mobile inclus (même périmètre audité et corrigé) ; CSP `script-src` hors task (task à part).
+- **PR** (`awaiting-human-merge`, branche `fix/task-368-contenu-recu-cloisonne`) : `interop-cda` #11, `api-mail` #293 (à merger après #11), `client-mobile` #92 ; `client-angular` en code-only (branche `feature/nova-rewriting-mss-weda-integration`).
+- **Trois couches** :
+  - **interop-cda** (`Interop.Cda.Parser` **109.0.0**) : `style.xsl` html et texte, attributs du narratif en liste blanche du schéma CDA ; `cda_asip.xsl` / `cda_custom.xsl`, liens réduits à `name`, `title`, `href` http(s)/mailto. Leçon : XSL embarquée par `ResXFileRef`, `dotnet build --no-incremental` obligatoire.
+  - **api-mail** : `HtmlBodySanitizer.SanitizeMedicalDocument` (document complet ; scripts, gestionnaires, `javascript:`, cadres et ressources externes retirés ; feuille de style, tableaux, PDF `data:application/pdf` gardés), appliqué **à la lecture** dans `MailRepository` (2 mappeurs) et `PatientRepository` via `MedicalDocumentHtml` — couvre les documents stockés avant le correctif, et Blazor qui affiche le même HTML ; `null` reste `null` sur les listes.
+  - **clients** (weda2 et mobile) : `medical-html-frame` en `sandbox="allow-popups allow-popups-to-escape-sandbox"` (ni scripts ni origine partagée) ; blocage du contenu distant **dans le cadre**, sur le DOM analysé (`<template>` / `DOMParser`, inertes), avec bannière « Afficher les images » remise à zéro à chaque document ; fenêtre du document patient rendue par le cadre ; PDF retypés `application/pdf` avant toute `iframe` ; sorties d'IA sans `bypassSecurityTrustHtml` (weda2 : `renderAiMarkdown`, HTML brut échappé ; mobile : alignement des tableaux en `align`, que l'assainisseur Angular garde).
+  - weda2 seulement : aperçu des pièces réservé à PDF / images (hors SVG) / texte forcé `text/plain` ; PDF embarqués d'un CDA **sortis** du document et affichés par l'hôte (sonde : Chrome n'affiche aucun PDF imbriqué dans un cadre sandboxé) ; test d'architecture contre `bypassSecurityTrustHtml` dans `libs/mss`.
+- **Règle 1b** : `FolderOperationsEndToEndTests.ReadingAMail_ServesItsMedicalDocumentHtml_FreeOfActiveContent_AndKeepsItsLayout` (rouge avant correctif, mutation M1) ; `MailAttachmentDownloadIntegrationTests.DownloadAttachment_OfAnHtmlPart_IsServedAsAnAttachmentToSave` (non-régression) ; `nosniff` par `SecurityHeadersIntegrationTests`.
+- **E2E** : **E2E-SECURITY-001** (mobile et Angular requis), seed `mail-piege` (pièce `text/html` piégée) et cellule piégée dans le CDA sans INS. Prouvé rouge sur le code d'avant (Interop 107, assainissement neutralisé) : weda2 sur la pièce et sur la cellule, mobile sur la cellule. Un premier passage vert sur le code vulnérable (lecture après délai fixe) a fait durcir le spec. Passe finale : **mobile 35/35, Angular 39/39**, 0 flaky, parité verte.
+- **Tests** : interop-cda 503 ; api-mail domain 190, infrastructure 690, application 3 635, api 1 229, intégration 884 (+16 ignorés) ; client-mobile 1 049 ; weda2 11 projets verts.
+- **Sonar** : Quality Gate OK, new coverage 97,1 %, 0 issue, A/A/A.
+- **Leçons** : `conventions/angular.md` › `pdf-en-cadre-sandboxe` ; `conventions/csharp.md` › `ressource-resx-perimee` ; `conventions/e2e.md` › `negatif-a-delai-fixe`, `shell-dans-out`, `suite-e2e-non-compilee` (3ᵉ), trou du filet E2E-SECURITY-001.
+- **Suivis** :
+  - CSP `script-src` / `img-src` dans `nginx.conf` (décision humaine : task à part) ;
+  - trois tests « messages du jour » rouges entre minuit local et minuit UTC (`EmailReadingUseCaseTests`, `ImapFolderServiceIntegrationTests`) — défaut de fuseau existant, task à ouvrir ;
+  - iOS : rendu du cadre sandboxé à vérifier sur appareil ;
+  - weda2 : budget du bundle initial dépassé de 10 ko ; `apps/mss` sans `environment.prod.ts` versionné.
 
 ### v1.97 — L'accusé de lecture fonctionne de bout en bout : demandé selon la RFC 8098, proposé sur les trois clients, envoyé une fois ou refusé pour de bon, enregistré et tracé (AUD-32, AUD-43) — task-340
 

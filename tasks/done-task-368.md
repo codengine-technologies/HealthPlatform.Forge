@@ -369,6 +369,7 @@ front/libs/mss/src/features/patient/components/medical-document-modal/medical-do
 | /lint-mobile | ok | 12 s | — | — | — | 0 erreur au départ |
 | /e2e | ok | 52 min 28 s | — | — | — | e2e ×5 (18 min 44 s) |
 | /review | ok | 8 min 23 s | 4 (23 s) | 4 (4 min 47 s) | — | api-mail 1B/1T, client-mobile 1B/1T, client-angular 1B/1T, interop-cda 1B/1T |
-| **Total cycle** | | **2 h 02 min** | **15 (2 min 32 s)** | **26 (22 min 26 s)** | **2 (39 s)** | |
+| /tech-writer | ok | 42 s | — | — | — | — |
+| **Total cycle** | | **2 h 03 min** | **15 (2 min 32 s)** | **26 (22 min 26 s)** | **2 (39 s)** | |
 
 Autres commandes mesurées : lint ×3 (58 s), nuget-wait ×1 (3 min 06 s), restore ×2 (48 s)

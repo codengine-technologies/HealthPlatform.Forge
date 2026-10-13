@@ -4818,3 +4818,5 @@
 {"ts":"2026-10-14T00:37:45+02:00","run_id":"forge-20261013-368-381","type":"cmd","task":"task-368","step":"review","repo":"interop-cda","kind":"build","label":"","cwd":"interop/interop.cda.parser","cmd":"dotnet build --no-incremental --verbosity quiet","duration_ms":2850,"exit_code":0}
 {"ts":"2026-10-14T00:37:59+02:00","run_id":"forge-20261013-368-381","type":"cmd","task":"task-368","step":"review","repo":"interop-cda","kind":"test","label":"","cwd":"interop/interop.cda.parser","cmd":"dotnet test --no-build","duration_ms":12902,"exit_code":0}
 {"ts":"2026-10-14T00:40:36+02:00","run_id":"forge-20261013-368-381","type":"step","task":"task-368","step":"review","status":"ok","note":"","iterations":null,"duration_ms":503522}
+{"ts":"2026-10-14T00:41:13+02:00","run_id":"forge-20261013-368-381","type":"step_start","task":"task-368","step":"tech-writer"}
+{"ts":"2026-10-14T00:41:56+02:00","run_id":"forge-20261013-368-381","type":"step","task":"task-368","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":42852}
