@@ -5,7 +5,7 @@
 > **Version** : 1.5
 > **Auteur** : PO forge
 > **Audience** : PO, direction, équipe produit — la vue ingénierie vit dans [E019-Changelogs.md](E019-Changelogs.md)
-> **Dernière mise à jour** : 2026-10-11
+> **Dernière mise à jour** : 2026-10-14
 
 ---
 
@@ -247,6 +247,10 @@ flowchart LR
   l'enveloppe. Les journaux ne portent ni INS, ni nom, ni nom de fichier. L'avis envoyé à Weda ne porte que le
   patient, les documents et les adresses des destinataires, et Weda revérifie que chaque document appartient au
   patient et au cabinet (task-367).
+- v1.6 — La nouvelle messagerie déployée parle à la messagerie sécurisée de **son propre** environnement : si sa
+  configuration est incomplète, elle refuse de démarrer au lieu de se rabattre sur des valeurs de test. Seule
+  l'adresse exacte de Weda peut l'embarquer et dialoguer avec elle ; un autre site, même sous `weda.fr`, ne le peut
+  plus (task-369).
 
 ---
 
