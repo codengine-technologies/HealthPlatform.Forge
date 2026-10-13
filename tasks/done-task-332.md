@@ -308,29 +308,24 @@ avec l'inventaire de l'étape 2.
 
 | Voie | Déclencheur | Résultat | Tests | Durée |
 |---|---|---|---|---|
-| mobile | api-mail touché | ✅ verte | 34 verts, 0 flaky, 0 rouge, 0 quarantaine — parité de la colonne verte | 7 min 39 s |
-| angular | api-mail touché | ⛔ parité rouge | 35 verts, 0 flaky, 0 rouge, 1 quarantaine (E2E-COMPOSE-002) — **3 scénarios requis absents** | 6 min 04 s |
+| mobile | api-mail touché | ✅ verte | 34 verts, 0 flaky, 0 rouge, 0 quarantaine | 7 min 39 s |
+| angular | api-mail touché | ✅ verte | 38 verts, 0 flaky, 0 rouge, 1 quarantaine (E2E-COMPOSE-002) | rejouée, voir Timings |
 
-- Catalogue : `Api/Mail/e2e/scenarios.yml` @ `fix/task-332-bus-messages-without-secrets` (inchangé par la task : celui de develop)
-- Clone mobile : sur `develop`, déjà aligné sur `origin/develop`.
-- Clone Angular : branche `feature/nova-rewriting-mss-weda-integration` (HEAD `00f0e37c`, « task 367 »), arbre propre.
+- Catalogue : `Api/Mail/e2e/scenarios.yml` @ `fix/task-332-bus-messages-without-secrets` (inchangé par la task)
+- Clone mobile : `develop` @ `f992de7`, aligné sur `origin/develop`. Le rapport mobile est celui du premier
+  passage, au même commit api-mail `3e9d61a9`, avec le clone mobile inchangé : la voie n'a pas été
+  rejouée.
+- Clone Angular : `feature/nova-rewriting-mss-weda-integration` @ `84c2e6ac`, arbre propre.
+- **Premier passage rouge, en parité seulement.** Les scénarios E2E-RECEIPT-001/002/003 (task-340)
+  étaient absents de la suite Angular, parce que le travail Angular de task-340 n'était pas sur le
+  checkout. L'humain a mis client-angular à jour, et la voie Angular a été rejouée : verte, parité
+  verte.
 - Quarantaines : E2E-COMPOSE-002 (angular), correction : task-350
 - Divergences ouvertes : aucune
 - Parcours touchés sans spec e2e modifié : aucun (task backend-only)
-- Démontage : complet (ports 5052, 8100, 4200, 3993, 3465, 3143 libres ; aucun conteneur e2e résiduel)
-- **Origine du rouge : hors task-332.** Les scénarios `E2E-RECEIPT-001/002/003` sont entrés au catalogue
-  avec task-340 (`angular: requis`). Leurs tests Angular avaient été écrits en code-only, **non commités**,
-  sur cette même branche (`archived-task-340.md`, Develop log : « à commiter sur TFS avant le merge »).
-  Ils ne sont plus dans l'arbre Angular : `read-receipt.util.ts` est absent, aucun `E2E-RECEIPT` dans
-  `e2e/mss-e2e/specs/`. Aucun parcours n'a régressé : tous les tests joués sont verts sur les deux voies.
+- Démontage : complet (ports libres, aucun conteneur e2e résiduel)
 
-**E2E : ROUGE** — 3 motif(s) de blocage.
-
-**Bloquant** (3) :
-
-- [angular] parité MissingRequired : E2E-RECEIPT-001 (« Demander un accusé de lecture à l'envoi ») est requis pour angular mais absent de sa suite, ou non joué.
-- [angular] parité MissingRequired : E2E-RECEIPT-002 (« Envoyer l'accusé de lecture d'un message reçu, une seule fois ») est requis pour angular mais absent de sa suite, ou non joué.
-- [angular] parité MissingRequired : E2E-RECEIPT-003 (« Refuser l'accusé de lecture d'un message reçu ») est requis pour angular mais absent de sa suite, ou non joué.
+**E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
 
 **En quarantaine (posée par l'humain, non bloquant)** (1) :
 
@@ -378,15 +373,39 @@ avec l'inventaire de l'étape 2.
 | E2E-WEDA-001 | 1 | headless | Dans Weda, la messagerie s'ouvre sur la boîte que Weda désigne | ✅ | — |
 | E2E-WEDA-002 | 1 | headless | Voir le dossier Weda du patient d'un document reçu, l'ouvrir, puis importer des documents dans un dossier | ✅ | — |
 | E2E-WEDA-003 | 1 | headless | Envoyer un document du dossier patient Weda par la nouvelle messagerie | ✅ | — |
-| E2E-RECEIPT-001 | 1 | headless | Demander un accusé de lecture à l'envoi | ⛔ non joué | ✅ |
-| E2E-RECEIPT-002 | 1 | headless | Envoyer l'accusé de lecture d'un message reçu, une seule fois | ⛔ non joué | ✅ |
-| E2E-RECEIPT-003 | 1 | headless | Refuser l'accusé de lecture d'un message reçu | ⛔ non joué | ✅ |
+| E2E-RECEIPT-001 | 1 | headless | Demander un accusé de lecture à l'envoi | ✅ | ✅ |
+| E2E-RECEIPT-002 | 1 | headless | Envoyer l'accusé de lecture d'un message reçu, une seule fois | ✅ | ✅ |
+| E2E-RECEIPT-003 | 1 | headless | Refuser l'accusé de lecture d'un message reçu | ✅ | ✅ |
 
-**Parité : ROUGE** — 3 écart(s) :
+**Parité : verte** — aucun écart entre le catalogue et les suites.
 
-- `MissingRequired` [angular] E2E-RECEIPT-001 (« Demander un accusé de lecture à l'envoi ») est requis pour angular mais absent de sa suite, ou non joué.
-- `MissingRequired` [angular] E2E-RECEIPT-002 (« Envoyer l'accusé de lecture d'un message reçu, une seule fois ») est requis pour angular mais absent de sa suite, ou non joué.
-- `MissingRequired` [angular] E2E-RECEIPT-003 (« Refuser l'accusé de lecture d'un message reçu ») est requis pour angular mais absent de sa suite, ou non joué.
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/292, label
+  `awaiting-human-merge`. Branche synchronisée avec `develop` (`fa21fe1a`, merge de task-326) puis
+  revalidée : 6 623 tests verts, 0 échec.
+
+## Code Review Summary
+
+**APPROVED** : 0 bloquant, 4 suggestions.
+
+| Comportement | Test | Preuve rouge |
+|---|---|---|
+| Aucun secret ni contenu clinique dans le JSON des trois messages | `BusMessageSecretsTests` | 4 rouges sur le code d'avant |
+| Bonne base et bon tenant à partir du message minimal ; embedding, étiquettes, contacts, lien document → contact | `BusMessageMinimalIdentityEndToEndTests` (publieur → JSON MassTransit → consommateurs → PostgreSQL) | M1, M2, M3 |
+| Ancien format traité, secrets ignorés | `AMessageAtTheFormerFormat_…` | M1, M2 |
+| Aucun type du bus n'expose de secret | `BusMessageSecretPropertyTests` | M4 |
+| Trace d'audit sans chaîne de connexion ; spill Redis sans secret | `The_trace_never_carries_…`, `AuditSpillIntegrationTests` | M5 |
+
+**Règle 1b** : aucune réponse HTTP ne change. Le comportement asynchrone (bus) est prouvé par le test
+d'intégration sur la vraie pile et la vraie base, avec RabbitMQ remplacé par son sérialiseur.
+
+**Suggestions** :
+1. Le cas « mail disparu » est compté `Success` dans la métrique de pipeline.
+2. `AddNewMailMessage` peut encore maigrir : expéditeur, dossier, UID et type sont relisibles en base.
+3. `UserContextInfo` reste un sac à secrets. La correction de fond est que les dépôts lisent
+   `IServerConnectionStrings`.
+4. Les traits du patient restent dans `CreatePatientContactMessage`.
 
 ## Timings
 
@@ -394,10 +413,6 @@ avec l'inventaire de l'étape 2.
 
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
-| /start | ok | 21 s | — | — | — | — |
-| /develop | ok | 40 min 52 s | 20 (2 min 26 s) | 7 (9 min 04 s) | — | api-mail 20B/7T |
-| /sonar | ok | 13 min 37 s | 2 (43 s) | 6 (6 min 42 s) | 2 (2 min 41 s) | 1 itération(s), api-mail 2B/6T |
-| /lint-angular | skipped | 1.6 s | — | — | — | client-angular not in Repos |
-| /lint-mobile | skipped | 2.1 s | — | — | — | client-mobile not in Repos |
-| /e2e | failed | 15 min 41 s | — | — | — | e2e ×3 (13 min 44 s), parite angular: E2E-RECEIPT-001/002/003 absents (heritage task-340, hors task-332) |
-| **Total cycle** | | **1 h 10 min** | **22 (3 min 09 s)** | **13 (15 min 47 s)** | **2 (2 min 41 s)** | |
+| /e2e | ok | 7 min 33 s | — | — | — | e2e ×2 (7 min 02 s), rerun angular apres mise a jour humaine de client-angular |
+| /review | ok | 6 min 33 s | 1 (17 s) | 1 (4 min 15 s) | — | api-mail 1B/1T |
+| **Total cycle** | | **14 min 07 s** | **1 (17 s)** | **1 (4 min 15 s)** | **0 (0.0 s)** | |

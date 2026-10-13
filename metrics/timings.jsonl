@@ -4740,3 +4740,11 @@
 {"ts":"2026-10-13T19:25:41+02:00","run_id":"-","type":"step","task":"task-326","step":"review","status":"ok","note":"","iterations":null,"duration_ms":426384}
 {"ts":"2026-10-13T19:26:14+02:00","run_id":"-","type":"step_start","task":"task-326","step":"tech-writer"}
 {"ts":"2026-10-13T19:26:15+02:00","run_id":"-","type":"step","task":"task-326","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":482}
+{"ts":"2026-10-13T21:55:48+02:00","run_id":"-","type":"step_start","task":"task-332","step":"e2e"}
+{"ts":"2026-10-13T22:02:52+02:00","run_id":"-","type":"cmd","task":"task-332","step":"e2e","repo":"client-angular","kind":"e2e","label":"angular","cwd":"Client/Angular/front","cmd":"npm run e2e:mss","duration_ms":421447,"exit_code":0}
+{"ts":"2026-10-13T22:03:05+02:00","run_id":"-","type":"cmd","task":"task-332","step":"e2e","repo":"api-mail","kind":"e2e","label":"gate","cwd":"Api/Mail","cmd":"dotnet tests/mss.mail.e2e/bin/Debug/net10.0/mss.mail.e2e.dll gate --catalog e2e/scenarios.yml --report mobile=C:\\Users\\PASCAL~1.CAB\\AppData\\Local\\Temp/forge-e2e/task-332/mobile-report.json --report angular=C:\\Users\\PASCAL~1.CAB\\AppData\\Local\\Temp/forge-e2e/task-332/angular-report.json --out C:\\Users\\PASCAL~1.CAB\\AppData\\Local\\Temp/forge-e2e/task-332/e2e-log.md","duration_ms":736,"exit_code":0}
+{"ts":"2026-10-13T22:03:22+02:00","run_id":"-","type":"step","task":"task-332","step":"e2e","status":"ok","note":"rerun angular apres mise a jour humaine de client-angular","iterations":null,"duration_ms":453886}
+{"ts":"2026-10-13T22:03:35+02:00","run_id":"-","type":"step_start","task":"task-332","step":"review"}
+{"ts":"2026-10-13T22:04:12+02:00","run_id":"-","type":"cmd","task":"task-332","step":"review","repo":"api-mail","kind":"build","label":"","cwd":"Api/Mail","cmd":"dotnet build HealthPlatform.Api.Mail.sln","duration_ms":17072,"exit_code":0}
+{"ts":"2026-10-13T22:08:31+02:00","run_id":"-","type":"cmd","task":"task-332","step":"review","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln --no-build","duration_ms":255027,"exit_code":0}
+{"ts":"2026-10-13T22:10:09+02:00","run_id":"-","type":"step","task":"task-332","step":"review","status":"ok","note":"","iterations":null,"duration_ms":393672}
