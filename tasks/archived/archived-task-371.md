@@ -321,3 +321,11 @@ d'intégration api-mail à écrire.
 | **Total cycle** | | **48 min 13 s** | **7 (1 min 45 s)** | **9 (6 min 05 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×3 (25 s)
+
+## Merged
+
+- 2026-10-14 — `/merge task-371 --i-tested`
+- api-mail : PR #296 squashée — `db6ffad7` ; CI `develop` ❌ (Restore : avis NuGet sur `System.Security.Cryptography.Pkcs` 10.0.0, sans lien avec la task) — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/38586719099 → `questions/merge-task-371.md`
+- client-mobile : PR #94 squashée — `5c8a027b` ; CI `develop` ✅ https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/38586747589
+- client-angular : managed manually by the human
+- Branches `fix/task-371-mail-affiche-selectionne` supprimées (distantes et locales)
