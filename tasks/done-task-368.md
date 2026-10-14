@@ -308,7 +308,6 @@ Validation : interop-cda build ✓ / 503 tests ✓ ; api-mail build ✓ / 6 628 
 | Comportement (règle 1b) | Test d'intégration | Preuve rouge |
 |---|---|---|
 | Un CDA reçu (Dovecot → enrichissement) est stocké et servi sans contenu actif | `FolderOperationsEndToEndTests.ReceivingACdaWithActiveContent_StoresAndServesItsHtmlFreeOfIt_AndKeepsItsText` | rouge avant (stocké brut) ; mutation M1 → rouge |
-| Documents stockés avant le correctif assainis une fois, sur plus d'un lot | `SanitizeStoredMedicalDocumentHtmlMigrationTests.StoredDocuments_AreSanitizedOnce_AcrossBatches_AndKeepTheirLayout` | rouge sur coquille vide ; mutation M2 → rouge |
 | Pièce `text/html` servie `Content-Disposition: attachment` (`nosniff` : `SecurityHeadersIntegrationTests`) | `MailAttachmentDownloadIntegrationTests.DownloadAttachment_OfAnHtmlPart_IsServedAsAnAttachmentToSave` | mutation `/review` 2026-10-14 : `File(content, type)` sans nom → `Expected "attachment", Actual null` ; restauré, vert |
 
 Suggestions (non bloquantes) :
@@ -332,6 +331,10 @@ sur `fix/task-368-contenu-recu-cloisonne` (PR #295) :
 - Mutations (restaurées depuis copie) : M1 assainissement retiré de `CdaParsingService` → test d'ingestion rouge ;
   M2 migration arrêtée après la première page → test de migration rouge.
 - api-mail complet vert : domain 190, infrastructure 690, api 1 229, application 3 635, intégration 885 (+16 ignorés).
+- **Migration retirée** (commit `9a0f6752`, décision humaine du 2026-10-14) : la base est réinitialisée au
+  déploiement, aucun document stocké avant l'assainissement à l'écriture ne subsiste. La migration, son test (et la
+  preuve M2) et l'enregistrement de l'assainisseur dans le conteneur du coureur sont supprimés ; intégration
+  884/884 verte (+16 ignorés).
 
 ## Timings
 
