@@ -353,3 +353,18 @@ sur `fix/task-368-contenu-recu-cloisonne` (PR #295) :
 | **Total cycle** | | **50 min 22 s** | **21 (4 min 08 s)** | **40 (34 min 46 s)** | **4 (1 min 22 s)** | |
 
 Autres commandes mesurées : lint ×5 (1 min 40 s), nuget-wait ×1 (3 min 06 s), restore ×2 (48 s)
+
+## Merged
+
+Validé manuellement par l'humain (`/merge task-368 --i-tested`, 2026-10-14). Squash-merge sur `develop`, dans l'ordre :
+
+| Repo | PR | Commit squash |
+|---|---|---|
+| interop-cda | #12 | `638a6516b76181d47c95aa9d7bbd2d1532f4f70a` |
+| api-mail | #295 | `bf3d104daf41515bb48ce89b0aa8f9da7fb2147f` |
+| client-mobile | #93 | `fd2d1a90bca874bf6af50c3a5f8c75a4e008ae8a` |
+
+- La PR api-mail #295 porte aussi, à la demande de l'humain, le correctif de `SEQ_URL` dans l'AppHost (port Seq 5341 partagé avec l'endpoint ; les logs d'api-mail n'arrivaient plus dans Seq).
+- Branches `fix/task-368-contenu-recu-cloisonne` supprimées (distantes et locales) ; clones revenus sur `develop`.
+- `client-angular` : code-only, commit / push / PR TFS par l'humain. Les deux correctifs d'affichage faits après la revue (hauteur du cadre, alignement à gauche du CDA) sont dans le même arbre de travail.
+- Aucune branche de staging à nettoyer.
