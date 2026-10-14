@@ -4,7 +4,7 @@
 > **Modèle** : hand-crafted
 > **Version** : 1.86
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-14 (contenu reçu cloisonné — task-368)
+> **Dernière mise à jour** : 2026-10-14 (le mail affiché est toujours celui qui est sélectionné — task-371)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1685,6 +1685,15 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 - **Onboarding MSSanté** (task-037, durci par task-038) : parcours d'opt-in explicite quand le compte Keycloak n'a pas encore d'adresse MSSanté mappée — écran « Messagerie non configurée » + formulaire setup avec sonde IMAP MSSanté + persistance du profil + écran de reconnexion. La sonde TLS valide la chaîne IGC-Santé conformément au socle.
 
 ### Sécurité — défense en profondeur
+
+- **v1.99 — Le contenu affiché est toujours celui du mail sélectionné** (task-371) : quand le
+  médecin passe vite d'un mail à l'autre, ou qu'un chargement échoue, la messagerie n'affiche plus
+  jamais le corps, les documents médicaux, les résultats de biologie, le panneau d'acquittement ou la
+  section Patient d'un autre mail sous l'en-tête du mail ouvert. Un résultat critique ne peut donc plus
+  être acquitté, ni un document importé, pour le mauvais patient. Même garantie pour la synthèse IA,
+  la fenêtre d'un document du dossier patient, l'aperçu d'une pièce jointe et la vue de nettoyage des
+  doublons. Deux mails de même numéro dans deux dossiers ne sont plus confondus. Corrigé sur weda2 et
+  sur le mobile ; un message en texte brut s'affiche désormais aussi sur weda2.
 
 - **v1.98 — Un document ou une pièce reçus ne peuvent plus agir dans la messagerie du médecin**
   (task-368) : un compte rendu, un corps de message, une pièce jointe ou une synthèse produite par
