@@ -451,3 +451,15 @@ Reste au plan de test manuel : le contrôle visuel dans l'application (étiquett
 | /review | ok | 6 min 33 s | 1 (17 s) | 1 (4 min 15 s) | — | api-mail 1B/1T |
 | /tech-writer | ok | 1 min 20 s | — | — | — | — |
 | **Total cycle** | | **15 min 27 s** | **1 (17 s)** | **1 (4 min 15 s)** | **0 (0.0 s)** | |
+
+## Merged
+
+- 2026-10-14 — `/merge task-332 --i-tested` (validation humaine du plan de test).
+- `api-mail` : PR [#292](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/292) mergée en squash, commit
+  `aeede91eac` sur `develop`. Label `awaiting-human-merge` retiré. Branche `fix/task-332-bus-messages-without-secrets`
+  supprimée en distant et en local.
+- CI `develop` : ✅ verte — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/38558077012
+- Aucun autre repo, aucune branche vide (dtos-mss non touché), aucune branche staging (cycle hors `/forge`).
+- **Reste à l'exploitation** : la procédure « après le merge et le déploiement » ci-dessus (purge des six files
+  `_error` / `_skipped`, rotation du mot de passe PostgreSQL, mots de passe IMAP et sessions PSC de l'inventaire,
+  information du DPO).
