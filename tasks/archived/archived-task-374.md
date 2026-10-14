@@ -278,3 +278,11 @@ Autres commandes mesurées : lint ×3 (2 min 01 s)
 - Merge `origin/develop` : api-mail sans conflit ; mobile, conflit d'imports e2e résolu par union mécanique (aucun arbitrage), type-check ✓.
 - Signal hors task : **E2E-DETAIL-005 (task-371, mergée sur develop) est `requis` sur Angular, mais aucun test ne l'implémente dans le clone weda2 de ce poste** (branche de l'humain) — si le code-only de task-371 n'y est pas reporté, la prochaine voie Angular jouée sur le catalogue de develop rendra une parité rouge, imputable à task-371.
 - Suggestions (non bloquantes) : voir le corps des PRs (solde d'un commit en vol + délai, masquage `mailbox` dans les journaux d'api-mail, négatif côté seconde boîte, cas `outgoingAlreadyClosed`, taille du store, budget weda2, double chargement mobile, rédaction non sauvegardée perdue).
+
+## Merged
+
+- Mergé le 2026-10-14 par l'humain (`/merge task-374 --i-tested`, plan de test manuel attesté).
+- `api-mail` : PR #297 squash → `cf040c22` — CI develop ✓ https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/38603662369
+- `client-mobile` : PR #95 squash → `e74b8d58` — CI develop ✓ https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/38603696237
+- Branches `feat/task-374-mailbox-switch-clean-reset` supprimées (distante et locale) sur les deux dépôts ; label `awaiting-human-merge` retiré.
+- `client-angular` : managed manually by the human.
