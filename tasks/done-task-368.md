@@ -301,18 +301,37 @@ Démontage vérifié : aucun conteneur e2e résiduel, ports libres.
 
 ## Code Review Summary
 
-**APPROVED** — 0 bloquant, 2 suggestions.
+**APPROVED** — 0 bloquant, 2 suggestions, corrigées ensuite à la demande de l'humain (voir « Suite de la revue »).
 
 Validation : interop-cda build ✓ / 503 tests ✓ ; api-mail build ✓ / 6 628 tests ✓ (16 ignorés préexistants) ; client-mobile build ✓ / 1 049 tests ✓ ; weda2 build ✓ / 11 projets ✓. Toutes les branches à jour de `develop`. DOD vérifiée ligne à ligne (CSP retirée par décision humaine). `## E2E log` vert.
 
 | Comportement (règle 1b) | Test d'intégration | Preuve rouge |
 |---|---|---|
-| Lecture d'un mail : `bodyHtml` du document médical sans `on*`, mise en forme gardée | `FolderOperationsEndToEndTests.ReadingAMail_ServesItsMedicalDocumentHtml_FreeOfActiveContent_AndKeepsItsLayout` | mutation `MedicalDocumentHtml.Sanitize => html` (`/develop`) |
+| Un CDA reçu (Dovecot → enrichissement) est stocké et servi sans contenu actif | `FolderOperationsEndToEndTests.ReceivingACdaWithActiveContent_StoresAndServesItsHtmlFreeOfIt_AndKeepsItsText` | rouge avant (stocké brut) ; mutation M1 → rouge |
+| Documents stockés avant le correctif assainis une fois, sur plus d'un lot | `SanitizeStoredMedicalDocumentHtmlMigrationTests.StoredDocuments_AreSanitizedOnce_AcrossBatches_AndKeepTheirLayout` | rouge sur coquille vide ; mutation M2 → rouge |
 | Pièce `text/html` servie `Content-Disposition: attachment` (`nosniff` : `SecurityHeadersIntegrationTests`) | `MailAttachmentDownloadIntegrationTests.DownloadAttachment_OfAnHtmlPart_IsServedAsAnAttachmentToSave` | mutation `/review` 2026-10-14 : `File(content, type)` sans nom → `Expected "attachment", Actual null` ; restauré, vert |
 
 Suggestions (non bloquantes) :
 - api-mail : assainir à l'écriture plutôt qu'à chaque lecture (re-parse par lecture ; migration des documents anciens à prévoir).
 - api-mail : `MedicalDocumentHtml` instancie `HtmlBodySanitizer` en statique (Infrastructure → classe concrète d'Application) plutôt que par injection.
+
+### Suite de la revue (2026-10-14) — les deux suggestions corrigées
+
+Demande de l'humain : « corrige directement ces deux findings sur la branche en cours ». Commit api-mail `a577a900`
+sur `fix/task-368-contenu-recu-cloisonne` (PR #295) :
+
+- `CdaParsingService` reçoit `IHtmlBodySanitizer` par injection et assainit le HTML juste après la transformation
+  XSL : stocké et servi assaini, plus de re-parse à la lecture. Les lectures servent le HTML stocké ;
+  `MedicalDocumentHtml` est supprimé.
+- Migration `20261014120000_SanitizeStoredMedicalDocumentHtml` : documents stockés avant le correctif assainis une
+  fois, par pages de 100 (clé `Id`), réécrits seulement s'ils changent, assainisseur injecté (enregistré dans le
+  conteneur du coureur), journal de comptes seulement. Pas de descente.
+- Test d'écriture : le test qui seedait du HTML brut après les migrations est remplacé par une ingestion réelle
+  (XDM déposé dans Dovecot, cellule portant une CSS active que la XSL 109 garde) ; il lit la valeur stockée et la
+  réponse de l'endpoint. Rouge avant (`background:url('javascript:parent.steal()')` stocké), vert après.
+- Mutations (restaurées depuis copie) : M1 assainissement retiré de `CdaParsingService` → test d'ingestion rouge ;
+  M2 migration arrêtée après la première page → test de migration rouge.
+- api-mail complet vert : domain 190, infrastructure 690, api 1 229, application 3 635, intégration 885 (+16 ignorés).
 
 ## Timings
 
