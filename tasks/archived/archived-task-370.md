@@ -259,3 +259,11 @@ qu'un incident réseau pendant un rafraîchissement ne le déconnecte pas.
 | **Total cycle** | | **24 min 25 s** | **9 (1 min 56 s)** | **13 (10 min 59 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×2 (13 s)
+
+## Merged
+
+- 2026-10-14 — `/merge task-370 --i-tested`
+- api-mail : PR #299 squashée — `16689c40` ; CI `develop` ✅ https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/38633154660
+- client-mobile : PR #96 squashée — `01f67c88` ; CI `develop` ✅ https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/38633181092
+- client-angular : managed manually by the human
+- Branches `fix/task-370-session-weda2` supprimées (distantes et locales) ; pas de branche de staging (supprimée le 2026-10-14 au matin)
