@@ -4,7 +4,7 @@
 > **Modèle** : hand-crafted
 > **Version** : 1.86
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-13 (l'accusé de lecture de bout en bout — task-340)
+> **Dernière mise à jour** : 2026-10-14 (contenu reçu cloisonné — task-368)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1685,6 +1685,16 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 - **Onboarding MSSanté** (task-037, durci par task-038) : parcours d'opt-in explicite quand le compte Keycloak n'a pas encore d'adresse MSSanté mappée — écran « Messagerie non configurée » + formulaire setup avec sonde IMAP MSSanté + persistance du profil + écran de reconnexion. La sonde TLS valide la chaîne IGC-Santé conformément au socle.
 
 ### Sécurité — défense en profondeur
+
+- **v1.98 — Un document ou une pièce reçus ne peuvent plus agir dans la messagerie du médecin**
+  (task-368) : un compte rendu, un corps de message, une pièce jointe ou une synthèse produite par
+  l'assistant viennent d'un expéditeur externe. Ils s'affichent désormais dans un espace cloisonné,
+  d'où ils ne peuvent ni lancer de programme, ni lire la session du médecin, ni envoyer de message
+  en son nom. Une pièce jointe que l'application ne sait pas afficher sans risque se télécharge.
+  Les images distantes restent bloquées jusqu'au clic sur « Afficher les images », y compris dans
+  les comptes rendus CDA : l'expéditeur n'apprend pas que le document a été ouvert. Corrigé à trois
+  endroits (transformation du CDA, serveur, applications weda2 et mobile), y compris pour les
+  documents déjà reçus.
 
 - **v1.91 — Une archive de documents anormale ne peut plus saturer le serveur**
   (task-333) : une pièce jointe de documents médicaux qui se décompresse en un volume

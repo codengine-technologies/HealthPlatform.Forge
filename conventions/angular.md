@@ -284,3 +284,30 @@ par lint sur du code frais est un échec de lecture de ce fichier.
 - **Origine** : task-350 (revue)
 - **Occurrences** : 1
 
+
+---
+
+### pdf-en-cadre-sandboxe — Chrome n'affiche pas un PDF dans un cadre sandboxé
+- **Piège** : pour cloisonner un HTML reçu (corps de mail, document CDA), on pose `sandbox` sur
+  l'`iframe` qui le rend. Un PDF **imbriqué** dans ce cadre (le CDA embarque ses PDF) ne s'affiche
+  plus : icône de document cassé avec `allow-same-origin`, cadre blanc sans. Retirer `sandbox` pour
+  le garder visible rouvre l'exécution du HTML reçu à l'origine de l'application.
+- **Consigne** : le HTML reçu va dans un cadre `sandbox="allow-popups allow-popups-to-escape-sandbox"`
+  (jamais `allow-scripts`, jamais `allow-same-origin`) ; ses PDF embarqués en sont **sortis** et
+  rendus par le composant hôte, chacun dans son cadre, depuis un blob typé `application/pdf` (un
+  blob PDF ne lance que la visionneuse). Tout blob affiché en `iframe` est retypé côté client :
+  le type servi pour une pièce vient de l'expéditeur.
+- **Preuve** : sonde Chrome de task-368 (cadre sans sandbox : gestionnaire exécuté, PDF visible ;
+  sandbox avec et sans `allow-same-origin` : rien d'exécuté, PDF non affiché). Specs
+  `medical-html-frame.component.spec.ts` (weda2 et mobile).
+- **Origine** : task-368
+- **Occurrences** : 1
+
+---
+
+### double-incomplet-erreur-non-geree — Tous les tests verts, mais `npm test` rouge : un double sans la méthode appelée
+- **Piège** : un code modifié appelle une méthode d'un service (`login()` sur l'échec d'un échange) que le double d'un spec EXISTANT n'expose pas. L'appel part dans un callback RxJS : l'exception n'échoue aucun test, Vitest la compte en « Unhandled Errors » et la cible `test` sort en échec — vu seulement au `npm test` complet.
+- **Consigne** : quand une dépendance gagne un nouvel appel, chercher ses doubles (`grep -rn "provide: {Service}" --include=*.spec.ts`) et les compléter ; lire la ligne `Errors` de Vitest, pas seulement `Tests`.
+- **Preuve** : task-370, `/review` : 2 723 verts, 1 erreur non gérée (`this.authenticationService.login is not a function`), cible `weda2:test` en échec ; double complété → vert.
+- **Origine** : task-370
+- **Occurrences** : 1

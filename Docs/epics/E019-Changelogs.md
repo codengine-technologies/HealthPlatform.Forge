@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E019-integration-de-la-nouvelle-messagerie.md](E019-integration-de-la-nouvelle-messagerie.md).
-> **Dernière mise à jour** : 2026-10-11 (v1.5)
+> **Dernière mise à jour** : 2026-10-14 (v1.6)
 
 ---
 
@@ -338,6 +338,28 @@
   `/sonar` 18 min 49 s, `/e2e` 11 min 50 s, `/review` 6 min 20 s.
 
 ---
+
+### v1.6 — weda2 déployé vise l'api-mail de son environnement et n'accepte que l'hôte Weda exact (ANG-05, ANG-65, ANG-70) — task-369
+
+- **Task** : task-369, statut `done` (`/review` APPROVED le 2026-10-14). Origine : audit de bugs du client Angular du
+  2026-10-13. Décision humaine : la forge code sans attendre ; le **constat** de la configuration réellement servie par
+  chaque environnement est fait par l'humain (tableau à remplir dans `done-task-369.md`).
+- **PR** : aucune GitHub. client-angular en code-only (9 fichiers, branche `feature/nova-rewriting-mss-weda-integration`) ;
+  ConfigMap et manifest (`Client/Angular/devops/k8s`) rédigés dans le task file, **à appliquer avant l'image**.
+- **Amorçage** (`apps/weda2/src/runtime-config.ts`, `main.ts`) : en production, `apiEndpoint`, `authEndpoint`,
+  `mssApiUrl` et `embeddedHostOrigins` doivent venir de `/assets/config.json` ; une clé absente, vide, une origine à
+  joker ou un `config.json` illisible → écran « Weda ne peut pas démarrer » qui nomme les clés (jamais leurs valeurs).
+  Hors production (ng serve, filet e2e), repli inchangé sur les valeurs du build.
+- **Build de production** (`environment.prod.ts`) : plus aucune URL ni origine ; `withDevToolsStub` (ANG-70 : l'état des
+  stores n'est plus poussé vers Redux DevTools).
+- **Hôte d'embarquement** (ANG-65) : `isOriginMatching` en égalité stricte — `https://*.weda.fr` n'autorise plus rien ;
+  CSP `frame-ancestors 'self' $frame_ancestors`, variable posée par `/etc/nginx/frame-ancestors.conf` (défaut de l'image :
+  aucune origine ; la ConfigMap monte la liste de l'environnement). Vérifié dans un conteneur nginx-unprivileged.
+- **Tests** : `runtime-config.spec.ts` (12, dont 10 rouges d'abord), `embedded-host.utils.spec.ts` (joker refusé,
+  origine exacte acceptée) ; weda2 11 projets verts. E2E Angular vert au 2ᵉ passage (E2E-COMPOSE-001 instable au
+  premier), mobile listé, parité verte.
+- **Suivis** : constat par environnement (humain) ; ConfigMap avant image ; protéger `$frame_ancestors` de la
+  substitution de la pipeline de release.
 
 ### v1.4 — Interop : enveloppe IHE_XDM en mémoire d'un CDA ou d'un PDF/A, conforme à celle de Weda — task-366
 
