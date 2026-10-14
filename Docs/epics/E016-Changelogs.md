@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > **Document frère (vue produit)** : [`E016-socle-multi-tenant.md`](./E016-socle-multi-tenant.md)
-> **Dernière mise à jour** : 2026-10-14 (task-374)
+> **Dernière mise à jour** : 2026-10-14 (task-370, reprise)
 
 Historique détaillé des changements de l'EPIC **E016 — Socle multi-tenant**.
 Une entrée par task ayant atteint `done-*` ou `archived-*`. Append-only : une
@@ -11,6 +11,19 @@ entrée existante n'est jamais réécrite.
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.20 — task-370 (reprise) : les appels de weda2 à api-mail restent authentifiés — **remplace v1.18** (`client-angular`, `client-mobile` ; catalogue `api-mail`)
+
+- **v1.18 annulée** : le premier passage (`/forge 368 to 381`) a été défait par l'humain le 2026-10-14 (control plane `50723a1`, PR #294 fermée). v1.18 reste ci-dessous pour l'historique ; elle ne décrit plus ce qui est livré.
+- **Relance** : constat humain du 2026-10-14 — 401 `SecurityTokenExpiredException` sur `…/emails/content/…` en usage normal hors Weda. ANG-06 existait depuis toujours ; **task-326** (api-mail #291) l'a révélé en local en validant l'échéance des jetons (avant : `devPermissive`, `ValidateLifetime = false`). Realm `weda-realm` : jeton d'accès 120 s, session SSO 30 min d'inactivité / 10 h max.
+- **Périmètre réduit à ANG-06 + ANG-22** (décision humaine) ; ANG-07, 23, 24, 66, 67, 69, 71 et E2E-AUTH-003 → **task-382**.
+- **PR** : `api-mail` #299 (catalogue : raison d'E2E-AUTH-001 humain), `client-mobile` #96 (sélecteur d'E2E-ATTACH-001) ; client-angular code-only (`feature/nova-rewriting-mss-weda-integration`).
+- **weda2** : `AuthConfig.trustedEndpoints` (api-mail) — Bearer posé une fois, rafraîchi avant l'appel, 401 rejoué une fois ; `TokenRefreshSchedulerService` (30 s avant `exp`, nouvel essai à 15 s) ; `refreshAndReplay` / `isSessionLossError` (déconnexion seulement sur 400/401/403) ; `$refreshToken` sans `login()` ; `injectSessionRefreshDeps` (le 401 faisait `inject()` hors contexte d'injection). `loginPsc()` porte un `state` CSRF dormant (retrait refusé par le contrôle de sécurité de la session ; repris par task-382).
+- **Trouvé en route** : `mail-detail.loadContent` refermait le menu « Plus d'actions » et l'aperçu sur l'enrichissement temps réel du **même** mail — cause d'**E2E-COMPOSE-001** (classé flaky depuis task-340) ; corrigé, test rouge d'abord. **E2E-ATTACH-001** (mobile) : `A.first().or(B)` ambigu quand la pièce et le bouton ZIP sont visibles ensemble — `.first()` sur l'union.
+- **Tests** : 25 rouges d'abord (périmètre complet), mutation « api-mail hors origines de confiance » → 6/6 rouges ; après réduction : weda2 11 projets verts (libs/mss 884), mobile 1 101, api-mail 6 647.
+- **E2E** : mobile 37/37, Angular 41/41, parité verte, 0 flaky. Débloqué par task-383 (Restore cassé par l'avis Pkcs) et le merge de `develop` (task-374) dans les branches.
+- **Leçons** : registre des flaky (`conventions/e2e.md`) — COMPOSE-001 établi et corrigé, LIVE-001 ajouté ; `conventions/csharp.md` › `collection-postgresql-partagee` (récidive, 2) ; trou du filet task-370 ajusté (AUTH-003 → task-382).
+- **Suivis** : task-382 (inactivité, PSC, callback) ; task de nettoyage des tests d'intégration en base partagée ; `Api/Mail-task-383` (dossier vide, verrouillé) à supprimer.
 
 ### v1.19 — task-374 : changer de messagerie ne laisse rien de la précédente (`client-angular`, `client-mobile` ; seed e2e et catalogue `api-mail`)
 

@@ -2,7 +2,7 @@
 
 > **Statut** : 🟡 En cours
 > **Modèle** : task-driven
-> **Version** : 1.19
+> **Version** : 1.20
 > **Auteur** : PO forge
 > **Audience** : PO, médecin, direction produit, conformité — la vue ingénierie vit dans [E016-Changelogs.md](E016-Changelogs.md)
 > **Dernière mise à jour** : 2026-10-14
@@ -584,14 +584,15 @@ et n'entre pas dans le calcul.
 
 ### Sécurité
 
-- **La session de la nouvelle messagerie tient tant que le médecin travaille, et se ferme quand il s'absente**
-  (task-370, *en attente de commit côté weda2*). Hors de Weda, la messagerie tombait en « session expirée »
-  quelques minutes après la connexion ; elle renouvelle désormais l'accès avant qu'il n'expire, sans couper les
-  nouveaux messages qui arrivent en direct. Une coupure réseau pendant ce renouvellement ne déconnecte plus. À
-  l'inverse, un médecin qui laisse le poste inactif est maintenant réellement déconnecté à l'échéance prévue, y
-  compris au réveil d'une mise en veille : sur un poste partagé du cabinet, sa session ne reste plus ouverte. Le
-  bouton de connexion Pro Santé Connect fonctionne, et une connexion annulée affiche un message avec « Réessayer »
-  au lieu d'un chargement sans fin.
+- **La nouvelle messagerie reste connectée tant que la session est ouverte** (v1.20, task-370, *en attente de
+  merge et de commit côté weda2*). Hors de Weda, la messagerie tombait en erreur « jeton expiré » environ quatre
+  minutes après la connexion ; elle renouvelle désormais l'accès avant qu'il n'expire, sans couper les nouveaux
+  messages qui arrivent en direct. Une coupure réseau pendant ce renouvellement ne déconnecte plus. Au passage, un
+  mail qui reçoit son enrichissement en direct ne referme plus le menu « Plus d'actions » ni l'aperçu de pièce jointe
+  que le médecin utilise.
+  **Pas encore livré** : la déconnexion d'un poste resté inactif, le bouton de connexion Pro Santé Connect et
+  l'écran d'erreur d'une connexion annulée passent dans task-382. D'ici là, un onglet laissé ouvert reste connecté
+  jusqu'à la durée maximale de session (10 h sur le Keycloak de développement).
 
 - **Les échanges internes de la plateforme ne transportent plus ni mots de passe ni contenu médical**
   (task-332, *en attente de merge*). Pour indexer un message reçu et en extraire les correspondants, le service se
