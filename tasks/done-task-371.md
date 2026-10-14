@@ -317,6 +317,7 @@ d'intégration api-mail à écrire.
 | /lint-mobile | ok | 10 s | — | — | — | — |
 | /e2e | ok | 12 min 32 s | — | — | — | e2e ×8 (39 min 14 s) |
 | /review | ok | 5 min 28 s | 3 (25 s) | 4 (4 min 27 s) | — | api-mail 1B/1T, client-mobile 1B/2T, client-angular 1B/1T |
-| **Total cycle** | | **47 min 37 s** | **7 (1 min 45 s)** | **9 (6 min 05 s)** | **0 (0.0 s)** | |
+| /tech-writer | ok | 36 s | — | — | — | — |
+| **Total cycle** | | **48 min 13 s** | **7 (1 min 45 s)** | **9 (6 min 05 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×3 (25 s)
