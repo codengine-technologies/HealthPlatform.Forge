@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-10-14 (v1.98)
+> **Dernière mise à jour** : 2026-10-14 (v1.99)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -760,6 +760,33 @@
   - sous-objet partagé pour les options d'envoi au prochain changement de contrat ;
   - remonter `originalMarkedCancelled` et `warning` par `drafts/{id}/send` ;
   - bail renouvelable pour le verrou.
+
+### v1.99 — Le mail affiché est toujours celui qui est sélectionné : contenu, documents médicaux, biologie et synthèse IA (ANG-08, ANG-21, ANG-40, ANG-41, ANG-55, ANG-73) — task-371
+
+- **Origine** : audit de bugs du client Angular du 2026-10-13.
+  - ANG-08 : chaque sélection lançait un `getEmailContent` non annulé, `mailContent` jamais vidé : le contenu de A s'affichait sous l'en-tête de B pendant le chargement, et durablement si A répondait après B ou si B échouait.
+  - ANG-21 : la synthèse IA de A (lente) remplaçait celle de B ; `showSummary` jamais remis à faux.
+  - ANG-40 : identité réduite à l'UID (`lastLoadedUid`, `updateMailInList`) alors que les UID repartent à 1 par dossier.
+  - ANG-41 / ANG-55 : vue en lecture seule (doublons) et fenêtre du document patient appliquaient des réponses non annulées.
+  - ANG-73 : `mail-body` remettait l'onglet et « Afficher les images » à zéro à chaque changement d'entrée.
+- **Décision humaine** : mobile inclus (même périmètre audité et corrigé).
+- **Reprise (2026-10-14)** : premier passage annulé par l'humain ; commits mobile et catalogue réutilisés (cherry-pick, 2 conflits avec task-368 résolus), weda2 refait test d'abord.
+- **PR** (`awaiting-human-merge`, branche `fix/task-371-mail-affiche-selectionne`) : `api-mail` #296 (catalogue), `client-mobile` #94 ; `client-angular` en code-only (branche `feature/nova-rewriting-mss-weda-integration`, `functional.e2e.ts` à commiter sur TFS avant le merge d'api-mail).
+- **weda2** :
+  - `core/utils/mail-key.util` — `MailKey`, `isSameMail`, `mailKeyOf`.
+  - `mail-detail` : chargement par `switchMap`, `loadedContent` (contenu rendu seulement s'il appartient au mail affiché) lu par le corps, les onglets, l'acquittement, la section Patient, l'import Weda, Répondre / Transférer ; contenu, synthèse et chaîne de versions remis à zéro au changement ; rechargement SSE du même mail sans retirer le corps ; aperçu de pièce jointe annulable ; accusés de lecture et `resetKey` du panneau par clé.
+  - `mail-body` : réinitialisation au seul changement de (dossier, uid) ; `revealKey` sur `medical-html-frame` ; rendu du message texte brut (absent auparavant).
+  - `mail-state` : `updateMailInList`, `applyBiologyAck`, `removeMailFromList`, `moveMailFromList` acceptent le dossier ; retrait et pierre tombale dans le dossier du message ; tous les appelants de `mail-detail` et `mail-list` le passent.
+  - synthèses (`features/…/mail-summary`, widget), vue en lecture seule, fenêtre du document patient : requêtes annulables et gardées par clé.
+- **mobile** : page de lecture (chargements remplacés annulés, séquence), `mail-detail` (contenu exposé seulement pour le mail affiché, actions tardives gardées, aperçu annulé), identité (dossier, uid) dans l'état, les actions et les patches SSE, synthèse, `mail-body`, fenêtre du document et chronologie gardés par clé.
+- **Règle 1b** : sans objet (aucun comportement d'endpoint modifié).
+- **E2E** : **E2E-DETAIL-005** (mobile et Angular requis). La latence CDP du premier passage ne faisait pas répondre A après B (vert sous mutation) ; la réponse de A est désormais retenue (`route.fetch` / `fulfill`) jusqu'à l'affichage de B. weda2 : rouge sur le code d'avant réinjecté, vert sur le correctif. Mobile : parcours vert sur le code d'avant (le retour à la liste détruit la page de A) ; course prouvée par 4 tests unitaires rouges sur la page de `develop`. Passe finale : **mobile 36/36**, **Angular 40/40** (1 quarantaine humaine, jouée verte), parité verte.
+- **Tests** : weda2 2 700 (14 ignorés préexistants), libs/mss 860 ; client-mobile 1 083 ; api-mail inchangé (6 951 verts, 16 ignorés).
+- **Sonar** : skipped (catalogue seul).
+- **Leçons** : `conventions/e2e.md` › `latence-cdp-n-ordonne-pas`, trou du filet E2E-DETAIL-005.
+- **Suivis** :
+  - actions groupées de la vue « Mails du patient » : chemin du dossier virtuel envoyé à l'API, sélection par UID seul ;
+  - `mail-notification-widget` : retrait d'une carte par UID seul (risque faible).
 
 ### v1.98 — Un contenu reçu ne s'exécute plus dans la session du médecin : pièces jointes, documents CDA, corps de mail et sorties d'IA rendus cloisonnés, contenu distant bloqué partout (ANG-01 à ANG-04, ANG-38, ANG-39) — task-368
 

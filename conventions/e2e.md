@@ -450,6 +450,25 @@ dépassée.
 
 ---
 
+### latence-cdp-n-ordonne-pas — Une latence CDP ne fait pas répondre A après B
+- **Piège** : pour « A répond après B », le test posait une latence CDP de 3 s, cliquait A, levait la
+  latence et cliquait B. Deux défauts, vus en preuve par mutation (vert sous mutation) : la requête de
+  A part un tour de détection après le clic, donc **après** la levée de la latence ; et, une fois la
+  latence bien appliquée à A, Chrome sert B **derrière** A. Le code d'avant affichait donc B en
+  dernier : le test était vert sur le bug.
+- **Consigne** : pour ordonner deux réponses, **retenir** la première à la frontière réseau :
+  `page.route` sur sa seule URL, `route.fetch({ headers: { ...route.request().headers(), ...bypassHeaders() } })`,
+  attendre une promesse levée une fois le second affiché, puis `route.fulfill({ response })`
+  (`.catch` : sur le correctif la requête est annulée). C'est remplacer une réponse, pas la faire
+  suivre (cf. retarder-une-requete-sans-casser-l-authentification). Attendre l'issue de la requête
+  retenue (`requestfinished` **ou** `requestfailed`) avant de lire l'écran.
+- **Preuve** : task-371, E2E-DETAIL-005 weda2 — vert sous mutation avec la latence CDP (2 essais),
+  rouge sur l'assertion visée avec la réponse retenue, vert sur le correctif.
+- **Origine** : task-371
+- **Occurrences** : 1
+
+---
+
 ## Registre des flaky
 
 *(tenu par `/e2e` : une ligne par test vert au second essai ; troisième occurrence du même test →
@@ -490,6 +509,8 @@ scénario qui l'aurait attrapé, prouvé rouge sur le bug)*
 | Un contenu reçu s'exécutait dans la session du médecin : une pièce `text/html` cliquée était rendue dans une `iframe` non isolée (weda2), une cellule de CDA portant un gestionnaire d'évènement l'exécutait au survol (transformation CDA qui recopiait tous les attributs, cadre de même origine) | Audit de bugs du client Angular du 2026-10-13 (ANG-01, ANG-02), non vu par `/e2e` : aucun scénario ne portait de contenu piégé | **E2E-SECURITY-001** ajouté (mobile et Angular requis) : pièce HTML et cellule de CDA piégées seedées, l'onglet ne prend jamais le titre du piège. Rouge sur le code d'avant (Interop 107, pas d'assainissement à la lecture) : weda2 sur la cellule (cadre sans `sandbox`) et sur la pièce (aperçu d'avant), mobile sur la cellule (cadre sans `sandbox` ni nettoyage client) | task-368 |
 | weda2 hors de Weda : « session expirée » ~4 min après la connexion (api-mail jamais rafraîchie, flux temps réel mort sur 401), et **aucune déconnexion pour inactivité** (service jamais initialisé) | Audit de bugs du client Angular du 2026-10-13 (ANG-06, ANG-07), non vu par `/e2e` : le faux proxy du banc rend des jetons à échéance lointaine, et le banc authentifie api-mail par test-bypass (l'échéance du jeton n'y est pas examinée) | **E2E-AUTH-003** ajouté (Angular requis, mobile non-applicable) : horloge du navigateur avancée de 11 min, la déconnexion part et ramène à `/logout` ; rouge avec l'effet de déconnexion neutralisé. **E2E-AUTH-001** reste humain (raison consignée au catalogue) ; le rafraîchissement d'api-mail est prouvé par les tests unitaires (`session-continuity`, `token-refresh-scheduler`) | task-370 |
 | Changer de messagerie (embarqué : depuis l'écran mail) : l'écran gardait dossiers, liste, mail ouvert et rédaction de la boîte quittée sous l'en-tête de la nouvelle ; une suppression annulable faite juste avant partait dans la NOUVELLE boîte (mail de même UID) ; les alertes « biologie anormale » d'une boîte non par défaut n'arrivaient jamais ; le compteur « prêts à partir » comptait ceux d'une autre boîte | audit Angular du 2026-10-13 (ANG-10, ANG-11, ANG-25, ANG-27, ANG-77) — **le filet ne jouait qu'un praticien à une seule boîte**, et son bypass forçait `client-email` (voir « en-tete-force-par-le-banc ») | **E2E-MAILBOX-001 v1** (mobile et Angular requis) : seed d'une seconde boîte (`boite-secondaire`, même compte), suppression puis bascule dans la fenêtre d'annulation, la liste est celle de la seconde boîte, et relu côté serveur la suppression a eu lieu dans la boîte praticien, pas dans l'autre | task-374 |
+| weda2 hors de Weda : « session expirée » ~4 min après la connexion (api-mail jamais rafraîchie, flux temps réel mort sur 401), et **aucune déconnexion pour inactivité** (service jamais initialisé) | Audit de bugs du client Angular du 2026-10-13 (ANG-06, ANG-07), non vu par `/e2e` : le faux proxy du banc rend des jetons à échéance lointaine, et le banc authentifie api-mail par test-bypass (l'échéance du jeton n'y est pas examinée) | **E2E-AUTH-003** (déconnexion pour inactivité, ANG-07) : **déplacé dans task-382** quand task-370 a été réduite à ANG-06 (2026-10-14) ; prouvé rouge avec l'effet de déconnexion neutralisé, à rejouer avec task-382. **E2E-AUTH-001** reste humain (raison consignée au catalogue) ; le rafraîchissement d'api-mail est prouvé par les tests unitaires (`session-continuity`, `token-refresh-scheduler`) | task-370 |
+| Passer vite d'un mail à l'autre affichait le **contenu du précédent** sous l'objet du suivant (corps, onglets CDA, biologie, panneau d'acquittement, section Patient), durablement si le premier répondait en dernier ou si le second échouait (weda2) ; même course sur la page de lecture mobile quand une même instance change de mail | Audit de bugs du client Angular du 2026-10-13 (ANG-08), non vu par `/e2e` : aucun scénario ne changeait de mail pendant un chargement | **E2E-DETAIL-005** ajouté (mobile et Angular requis) : la réponse du premier est retenue jusqu'à l'affichage du second, puis rendue. weda2 : rouge sur le code d'avant réinjecté (`mergeMap`, contenu rendu sans garde de propriétaire) — corps de `mail-flagge` sous l'objet de `mail-lu` —, vert sur le correctif (2 passages). Mobile : le retour à la liste détruit la page du premier, le parcours reste vert sur le code d'avant ; la course est prouvée par les tests unitaires de `MailDetailPage` (4 rouges sur la page de `develop`) | task-371 |
 
 ---
 

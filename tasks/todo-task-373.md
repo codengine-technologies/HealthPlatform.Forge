@@ -66,3 +66,12 @@ Que la fiche d'un patient ne présente **que** les documents, résultats et déc
 - **Référentiels métier** : LOINC (biologie), UCUM (unités)
 - **Hébergement HDS** : oui
 - **AIPD / impact RGPD** : inchangé
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-373 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | failed | 4.4 s | — | — | — | dependance task-371 non terminee (todo) |
+| **Total cycle** | | **4.4 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
