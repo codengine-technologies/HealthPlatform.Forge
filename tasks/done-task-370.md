@@ -255,7 +255,7 @@ qu'un incident réseau pendant un rafraîchissement ne le déconnecte pas.
 | /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 12 min 56 s | — | — | — | e2e ×11 (37 min 52 s) |
 | /review | ok | 9 min 21 s | 3 (18 s) | 7 (8 min 49 s) | — | client-angular 1B/3T, api-mail 1B/3T, client-mobile 1B/1T |
-| /tech-writer | ok | 25 s | — | — | — | — |
-| **Total cycle** | | **24 min 18 s** | **9 (1 min 56 s)** | **13 (10 min 59 s)** | **0 (0.0 s)** | |
+| /tech-writer | ok | 32 s | — | — | — | — |
+| **Total cycle** | | **24 min 25 s** | **9 (1 min 56 s)** | **13 (10 min 59 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×2 (13 s)
