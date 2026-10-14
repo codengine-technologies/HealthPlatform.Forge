@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > **Document frère (vue produit)** : [`E016-socle-multi-tenant.md`](./E016-socle-multi-tenant.md)
-> **Dernière mise à jour** : 2026-10-14 (task-370)
+> **Dernière mise à jour** : 2026-10-14 (task-374)
 
 Historique détaillé des changements de l'EPIC **E016 — Socle multi-tenant**.
 Une entrée par task ayant atteint `done-*` ou `archived-*`. Append-only : une
@@ -11,6 +11,21 @@ entrée existante n'est jamais réécrite.
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.19 — task-374 : changer de messagerie ne laisse rien de la précédente (`client-angular`, `client-mobile` ; seed e2e et catalogue `api-mail`)
+
+- **Origine** : audit de bugs du client Angular du 2026-10-13 — ANG-10, ANG-11, ANG-25, ANG-27, ANG-77. Mobile ajouté au `/start` sur arbitrage humain (le mobile offre la bascule depuis la liste).
+- **PR** : `api-mail` #297, `client-mobile` #95 (`awaiting-human-merge`) ; client-angular code-only (27 fichiers, branche `feature/nova-rewriting-mss-weda-integration`).
+- **ANG-10 — suppression différée** : la boîte et la session sont figées à l'`enqueue` (`MSS_MAILBOX_PIN`, `HttpContextToken` lu par l'intercepteur, paramètre `context` sur `deleteEmail`/`bulkDeleteEmails`) ; `MailboxSessionStore.registerOutgoingDrain` solde les opérations en attente AVANT `closeCurrentSession()`. Mobile : un lot non soldé est abandonné à la purge (`resetForMailboxSwitch`). Avant : la suppression partait 6 s après le geste avec la boîte ouverte à l'échéance, donc sur le mail de même UID de l'autre boîte.
+- **ANG-11 — écran neuf** : web, `@for (generation of [session.generation()]; track generation)` autour du `router-outlet` de `MssLayoutComponent` (le sélecteur, monté dans l'écran mail, naviguait vers l'URL déjà affichée). Mobile : l'onglet Messages, gardé vivant par Ionic, recharge sur `generation` ; garde `isStale` sur les chargements ; `MAILBOX_SCOPED_STATES` (vide) inscrit désormais `MailStateService`, `PatientStateService`, `DocumentContentService`, `MailPendingDeleteService`. Constaté par le e2e et corrigé : l'écran neuf s'ouvrait sur `folders[0]` quand les dossiers arrivaient avant les réglages → repli INBOX.
+- **ANG-25 — flux** : `NotificationStreamService` passe `?mailbox=` (route déjà `[MailboxFromQuery]`) et `reset()` ferme sans désactiver ; `MailEventsStreamService.connect()` rend un bail relâché à la destruction de la liste.
+- **ANG-27 / ANG-77** : compteur `pendingSendsCount` relu après `open()` et chaque bascule (non bloquant), remis à zéro à la purge, réponse d'une génération périmée jetée ; bascules sérialisées (`serialize`/`performSwitch`), `open()` délègue à la bascule quand une boîte est ouverte (devient `Promise<boolean>`, appelants mis à jour).
+- **Seed e2e** : `boite-secondaire` (`cabinet@e2e.test`, même `sub`/RPPS que la boîte praticien, non par défaut) + `mail-boite-secondaire`, réglages et session propres, relus ; reset de ses deux bases. **Correctif de dépendance hors périmètre** : `System.Security.Cryptography.Pkcs` épinglé 10.0.13 (NU1902/NU1903, GHSA-2fmv-rv2c-59x7 / GHSA-846f-f764-76mx, transitif via MimeKit 4.17.0 — cassait toute restauration d'api-mail).
+- **Tests** : web, store +8, suppression différée +5, intercepteur +1, flux +5, vue clé sur la génération +1, premier dossier +1 (tous rouges d'abord) ; mobile +15 (10 rouges sur le code d'avant, 4 par mutation). api-mail 6 647 verts ; mobile 1 101 ; weda2 11 projets verts.
+- **E2E** : **E2E-MAILBOX-001** v1 (mobile et Angular requis) — geste différé (glisser vers la Corbeille / balayage « Supprimer »), bascule dans la fenêtre (précondition < 6 s), liste de la seconde boîte, relecture serveur. Mutations MA1/MM1 (vue non recréée) et MA2/MM2 (épinglage + solde retirés) rouges. Mobile 36/36, Angular 40/40, parité verte.
+- **Sonar** : 0 finding sur les fichiers de la task (1 CA1068 corrigé) ; QG ERROR hors task (70 violations, 13 hotspots de la new-code period sur d'autres fichiers) ; smells 73 → 68.
+- **Leçons** : `conventions/e2e.md` › `en-tete-force-par-le-banc` (le bypass écrasait `client-email`, puis faisait payer ~4 s de jeton simulé refusé), `geste-differe` (la suppression depuis le détail est immédiate : vert qui ment sous MA2), récidive `precondition-du-negatif`, trou du filet ; `conventions/csharp.md` S125 (18), CA1068 (3) ; `conventions/angular.md` jsdoc (7).
+- **Suivis** : solde d'un commit déjà en vol + délai borné ; masquer `mailbox` dans `SensitiveQueryKeys` ; seconde boîte seedée sur le même UID que la cible ; aligner web/mobile sur `outgoingAlreadyClosed` (retour visuel) ; découper `mailbox-session.store.ts` (594 lignes) ; budget initial weda2 (2,01 Mo / 2 Mo) à comparer à develop ; double chargement mobile hors onglet Messages ; rédaction non sauvegardée perdue à la bascule. **Signal** : E2E-DETAIL-005 (task-371, mergée) est requis sur Angular, et aucun test ne l'implémente dans le clone weda2 de ce poste (branche de l'humain) : à vérifier avant la prochaine voie Angular.
 
 ### v1.18 — task-370 : la session de weda2 tient tant que le médecin travaille, et se ferme quand il s'absente (`client-angular` ; catalogue `api-mail`)
 
@@ -2290,6 +2305,7 @@ en `foreach`). **184 tests verts avant comme après.**
 | task-326 | **Un jeton non signé n'ouvre plus aucune boîte** (AUD-01) : mode permissif opt-in limité à Development, refus de démarrer sans `Keycloak:Authority`, refus d'authentification journalisés, provisionnement des bases praticien découplé du nom d'environnement | `api-mail` (`devops` à appliquer par l'humain) | ✅ **mergée** (PR Api.Mail#291) |
 | task-332 | **Les messages du bus ne transportent plus aucun secret, ni le corps du mail** (AUD-10) : `MessageUserIdentity` à la place de `UserContextInfo`, contexte reconstruit côté consommateur depuis `IServerConnectionStrings`, objet et corps relus en base, ancien format accepté, garde d'architecture ; chaînes de connexion retirées des traces d'audit | `api-mail` | ✅ **done** (PR Api.Mail#292, `awaiting-human-merge`) |
 
+| task-374 | **Changer de messagerie ne laisse rien de la précédente** (ANG-10, 11, 25, 27, 77) : suppression différée figée sur sa boîte et soldée avant la clôture, écran recréé par génération, flux de notifications par boîte, compteurs relus, bascules sérialisées ; seconde boîte au seed e2e, E2E-MAILBOX-001 ; épinglage Pkcs 10.0.13 | `client-angular`, `client-mobile` (seed + catalogue `api-mail`) | ✅ **done** (PR Api.Mail#297, Mobile#95, `awaiting-human-merge` ; Angular en code-only) |
 
 ### Question ouverte
 

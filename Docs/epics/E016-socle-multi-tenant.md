@@ -2,7 +2,7 @@
 
 > **Statut** : 🟡 En cours
 > **Modèle** : task-driven
-> **Version** : 1.17
+> **Version** : 1.19
 > **Auteur** : PO forge
 > **Audience** : PO, médecin, direction produit, conformité — la vue ingénierie vit dans [E016-Changelogs.md](E016-Changelogs.md)
 > **Dernière mise à jour** : 2026-10-14
@@ -22,7 +22,7 @@
 - [7. Contraintes et hypothèses](#7-contraintes-et-hypothèses)
 - [8. Critères d'acceptation de l'EPIC](#8-critères-dacceptation-de-lepic)
 - [9. Hors périmètre](#9-hors-périmètre)
-- [État de couverture (2026-10-13)](#état-de-couverture-2026-10-13)
+- [État de couverture (2026-10-14)](#état-de-couverture-2026-10-14)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -85,7 +85,7 @@ augmente.
 | Fonctionnalité | Ce que le praticien peut faire | Tasks | Statut |
 |---|---|---|---|
 | **Plusieurs messageries, une seule connexion** | Retrouver, après une authentification unique, toutes les messageries qui relèvent de son identité professionnelle | task-303, task-304, task-308 | ✅ Livrée |
-| **Changer de messagerie en direct** | Cliquer sur son avatar et ouvrir une autre de ses messageries : l'écran se vide et se recharge sur la nouvelle boîte, sans reconnexion — et les **nouveaux messages et alertes en temps réel** suivent la messagerie ouverte | task-304, task-336 | ✅ Livrée — temps réel corrigé et **mergé** (task-336) |
+| **Changer de messagerie en direct** | Cliquer sur son avatar et ouvrir une autre de ses messageries : l'écran se vide et se recharge sur la nouvelle boîte, sans reconnexion — les **nouveaux messages et alertes en temps réel** suivent la messagerie ouverte, et une **suppression faite juste avant** reste dans la messagerie quittée | task-304, task-336, task-374 | ✅ Livrée — bascule nettoyée de bout en bout *en attente de merge* (task-374) |
 | **Rattacher sa première messagerie** | Entrer son adresse dès le premier accès et travailler immédiatement, sans se déconnecter ni se reconnecter — l'opérateur de messagerie vérifie l'accès avant que le rattachement n'aboutisse | task-304, task-308 | ✅ Livrée |
 | **Gérer ses messageries** | Ajouter une messagerie, en détacher une, la **rattacher à nouveau**, désigner celle qui s'ouvre par défaut, comprendre pourquoi l'une est indisponible — et, en détachant la **dernière**, être déconnecté proprement au lieu de rester enfermé | task-304, task-309, task-310, task-312, task-313, task-314 | ✅ Livrée — dernière pièce **mergée** : une messagerie détachée n'offre plus que « Rattacher » (task-314) |
 | **Travailler sans sa carte, envoyer avec elle** | Lire, classer et rédiger avec sa seule connexion au compte, carte absente ; retrouver ensuite ses messages **« prêts à partir »**, les relire, puis les envoyer ou les annuler **un par un, carte présentée** — aucun message ne part de lui-même | task-320 | ✅ Livrée (**mergée** le 2026-09-27) |
@@ -278,12 +278,12 @@ par la liste.
 
 ---
 
-## État de couverture (2026-10-13)
+## État de couverture (2026-10-14)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
 | Plusieurs messageries, une seule connexion | ✅ Livrée | 100 % | task-303, task-304, task-308 (**mergées**) |
-| Changer de messagerie en direct | ✅ Livrée | 100 % | task-304, task-336 (**mergées**) |
+| Changer de messagerie en direct | ✅ Livrée | 100 % | task-304, task-336 (**mergées**), task-374 (*en attente de merge*) |
 | Rattacher sa première messagerie | ✅ Livrée | 100 % | task-304, task-308 (**mergées**) |
 | Gérer ses messageries | ✅ Livrée | 100 % | task-304, task-309, task-310, task-312, task-313, task-314 (**mergées**) |
 | Travailler sans sa carte, envoyer avec elle | ✅ Livrée | 100 % | task-320 (**mergée**) |
@@ -296,7 +296,7 @@ par la liste.
 **Couverture EPIC consolidée : 89 %** — 8 fonctionnalités livrées sur les 9 au
 périmètre, 1 bloquée en attente d'arbitrage.
 
-Au 2026-10-13, toutes les fonctionnalités livrées le sont en service, correctif du temps réel compris (task-336). Le durcissement de sécurité task-332 n'ajoute aucune fonctionnalité et attend son merge. « Gérer ses messageries »
+Au 2026-10-14, toutes les fonctionnalités livrées le sont en service, correctif du temps réel compris (task-336). Le nettoyage complet du changement de messagerie (task-374) attend son merge : il ne change pas le périmètre, il rend la bascule sûre. Le durcissement de sécurité task-332 n'ajoute aucune fonctionnalité et attend son merge. « Gérer ses messageries »
 est **livrée** depuis le merge de task-314 : une ligne détachée n'offre plus que
 **« Rattacher »**, et affiche la date de son détachement.
 La ligne multi-messageries est **livrée de bout en bout et mergée** : le registre, la
@@ -515,6 +515,18 @@ et n'entre pas dans le calcul.
 
 ### Fonctionnalités métier
 
+- **v1.19 — Changer de messagerie ne laisse plus rien de la précédente** (task-374, *en attente de merge*).
+  Un praticien qui supprimait un message puis changeait aussitôt de messagerie pouvait voir disparaître
+  un **message de l'autre messagerie** — celui qui portait le même numéro — tandis que le sien
+  réapparaissait. Dans Weda, changer de messagerie depuis l'écran des messages gardait la liste, les
+  dossiers, le message ouvert et même une réponse en cours de la messagerie quittée, sous le nom de la
+  nouvelle. Désormais, une suppression en attente part dans **sa** messagerie avant le changement ;
+  l'écran est entièrement rechargé pour la nouvelle (liste, dossiers, message, rédaction) ; les alertes
+  de biologie arrivent pour la messagerie ouverte, y compris quand ce n'est pas celle par défaut ; et
+  le bandeau « messages prêts à partir » compte ceux de la messagerie affichée. Sur l'application
+  mobile comme dans Weda. Deux changements rapprochés s'enchaînent dans l'ordre au lieu de se
+  mélanger. Une réponse commencée et pas encore enregistrée est abandonnée au changement : elle ne peut
+  plus partir depuis la mauvaise messagerie.
 - **Après un changement de messagerie, les nouveaux messages arrivent enfin dans la
   bonne** (task-336, *en attente de merge*). Un praticien qui passait de sa messagerie
   principale à une autre voyait bien le contenu de la nouvelle ; mais l'arrivée des

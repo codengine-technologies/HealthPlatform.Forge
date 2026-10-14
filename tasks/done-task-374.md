@@ -86,7 +86,8 @@ Que changer de messagerie **ferme proprement la précédente** — ses actions e
 | /lint-mobile | ok | 1 min 02 s | — | — | — | baseline propre |
 | /e2e | ok | 17 min 32 s | — | — | — | e2e ×3 (15 min 55 s) |
 | /review | ok | 12 min 40 s | 3 (1 min 29 s) | 3 (7 min 23 s) | — | api-mail 1B/1T, client-mobile 1B/1T, client-angular 1B/1T |
-| **Total cycle** | | **5 h 07 min** | **14 (11 min 18 s)** | **25 (50 min 58 s)** | **4 (5 min 05 s)** | |
+| /tech-writer | ok | 2 min 18 s | — | — | — | — |
+| **Total cycle** | | **5 h 10 min** | **14 (11 min 18 s)** | **25 (50 min 58 s)** | **4 (5 min 05 s)** | |
 
 Autres commandes mesurées : lint ×3 (2 min 01 s)
 
@@ -275,5 +276,5 @@ Autres commandes mesurées : lint ×3 (2 min 01 s)
 - Comportements clients → preuves : épinglage + solde → tests store/pending-delete/intercepteur (rouges d'abord) + E2E-MAILBOX-001 MA2/MM2 rouges ; vue recréée → `mss-layout.component.switch.spec.ts` (rouge d'abord) + MA1/MM1 rouges ; flux → tests notification/mail-events (rouges d'abord) ; compteurs + sérialisation → tests store (rouges d'abord).
 - Double verrou E2E : `## E2E log` vert (mobile 36/36, angular 40/40, parité verte).
 - Merge `origin/develop` : api-mail sans conflit ; mobile, conflit d'imports e2e résolu par union mécanique (aucun arbitrage), type-check ✓.
-- Signal hors task : **E2E-DETAIL-005 (task-371, mergée sur develop) est `requis` sur Angular, mais aucun test Angular ne l'implémente** sur la branche de l'humain — la prochaine voie Angular jouée sur le catalogue de develop rendra une parité rouge, imputable à task-371 (encore `todo-` dans ce plan de contrôle alors que ses PRs api-mail #296 et mobile #94 sont mergées).
+- Signal hors task : **E2E-DETAIL-005 (task-371, mergée sur develop) est `requis` sur Angular, mais aucun test ne l'implémente dans le clone weda2 de ce poste** (branche de l'humain) — si le code-only de task-371 n'y est pas reporté, la prochaine voie Angular jouée sur le catalogue de develop rendra une parité rouge, imputable à task-371.
 - Suggestions (non bloquantes) : voir le corps des PRs (solde d'un commit en vol + délai, masquage `mailbox` dans les journaux d'api-mail, négatif côté seconde boîte, cas `outgoingAlreadyClosed`, taille du store, budget weda2, double chargement mobile, rédaction non sauvegardée perdue).
