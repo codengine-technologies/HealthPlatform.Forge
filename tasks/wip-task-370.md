@@ -1,6 +1,6 @@
 # todo-task-370.md — Les appels de weda2 à api-mail restent authentifiés tant que la session est ouverte
 
-**Repos**: client-angular, api-mail (catalogue e2e `Api/Mail/e2e/scenarios.yml` seulement)
+**Repos**: client-angular, api-mail (catalogue e2e `Api/Mail/e2e/scenarios.yml` seulement), client-mobile (correctif du test e2e E2E-ATTACH-001 seulement — décision humaine du 2026-10-14)
 **Dependencies**: — (aucune). À coordonner avec task-365 (surveillance de la session partagée avec Weda), qui touche aux mêmes services d'authentification.
 **Epic**: E016
 **Single frontend**: true
@@ -64,6 +64,7 @@ qu'un incident réseau pendant un rafraîchissement ne le déconnecte pas.
 ## Branches
 - `api-mail` (pushed) : fix/task-370-session-weda2 — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-370-session-weda2 (catalogue e2e `Api/Mail/e2e/scenarios.yml` uniquement)
 - `client-angular` (code-only) : forge writes code on the branch currently checked out in `Client/Angular/` (snapshot au `/start` : `feature/nova-rewriting-mss-weda-integration`, **21 fichiers non commités de task-371 encore présents** — à commiter sur TFS séparément) — humain gère branche, commit, push, PR TFS
+- `client-mobile` (pushed) : fix/task-370-session-weda2 — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/fix/task-370-session-weda2 (ajouté le 2026-10-14 : correctif du sélecteur d'E2E-ATTACH-001, qui bloquait `/e2e`)
 - Décision au `/start` : E2E-AUTH-003 `non-applicable` côté mobile — confirmé, l'application mobile n'a aucune déconnexion pour inactivité côté client (seul le délai de session IMAP serveur existe).
 
 ## Develop log
@@ -121,6 +122,18 @@ qu'un incident réseau pendant un rafraîchissement ne le déconnecte pas.
 `libs/mss/src/core/services/mail-events-stream.service.spec.ts` (nouveau).
 ⚠️ L'arbre porte aussi les fichiers de task-371, non commités.
 
+### Ajouts du 2026-10-14 (soir) — débloquer `/e2e`
+
+- **client-mobile** (`fix/task-370-session-weda2`) : `a6166a4` — E2E-ATTACH-001, `.first()` sur l'union du `or`
+  (la pièce et « Tout télécharger (ZIP) » visibles ensemble → strict mode violation, rouge au `/e2e` sur `develop`) ;
+  `1ca0417` — merge de `develop` (task-374, test mobile d'E2E-MAILBOX-001). Build ✓, tests 1 101/1 101, e2e `tsc` ✓.
+- **client-angular** — `mail-detail.loadContent` ne referme plus le menu « Plus d'actions » ni l'aperçu de pièce jointe
+  sur un enrichissement temps réel du **même** mail (E2E-COMPOSE-001 rouge, puis flaky : le mail tout juste reçu est
+  enrichi juste après son ouverture). Test `mail-detail.stale-content.spec.ts` rouge d'abord (`expected false to be
+  true`), vert après ; un autre mail les referme toujours. weda2 : build ✓, 11 projets verts (libs/mss 884).
+- `Client/Angular` : `git pull` de « Task 374 » (`c00f1a57`) intégré à la demande de l'humain, changements locaux
+  réappliqués (conflits d'imports résolus, spec SSE fusionnée : 3 tests de task-374 + celui de task-370).
+
 ### Validation (périmètre réduit)
 
 - weda2 : `npm run build` ✓ ; `npm test` ✓ — 11 projets (weda2 2 699, 14 ignorés préexistants ; libs/mss 861), aucune erreur non gérée.
@@ -157,9 +170,9 @@ qu'un incident réseau pendant un rafraîchissement ne le déconnecte pas.
 | /sonar | skipped | 0.5 s | — | — | — | catalogue e2e seulement |
 | /lint-angular | ok | 15 s | 1 (13 s) | 1 (19 s) | — | client-angular 1B/1T |
 | /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non touché |
-| /e2e | failed | 13 min 43 s | — | — | — | e2e ×6 (25 min 05 s), E2E-ATTACH-001 mobile rouge (sélecteur ambigu du test) |
+| /e2e | failed | 40 s | — | — | — | e2e ×8 (25 min 12 s), outillage : restore bloqué par l'avis NuGet Pkcs 10.0.0 (task-383) |
 | /review | ok | 2 min 24 s | — | 3 (1 min 00 s) | — | client-angular 0B/2T, api-mail 0B/1T |
 | /tech-writer | ok | 25 s | — | — | — | — |
-| **Total cycle** | | **18 min 08 s** | **3 (47 s)** | **6 (2 min 05 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **5 min 05 s** | **3 (47 s)** | **6 (2 min 05 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×2 (13 s)
