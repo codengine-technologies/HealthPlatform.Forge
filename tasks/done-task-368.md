@@ -327,7 +327,7 @@ Suggestions (non bloquantes) :
 | /lint-mobile | ok | 38 s | — | — | — | 0 erreur au départ |
 | /e2e | ok | 14 min 42 s | — | — | — | e2e ×8 (31 min 06 s), 2 voies vertes, porte 0, preuve rouge weda2 |
 | /review | ok | 7 min 34 s | 8 (48 s) | 9 (9 min 08 s) | — | api-mail 2B/3T, client-mobile 2B/2T, client-angular 2B/2T, interop-cda 2B/2T, APPROVED, 3 PRs |
-| /tech-writer | ok | 42 s | — | — | — | — |
-| **Total cycle** | | **50 min 46 s** | **21 (4 min 08 s)** | **40 (34 min 46 s)** | **4 (1 min 22 s)** | |
+| /tech-writer | ok | 19 s | — | — | — | — |
+| **Total cycle** | | **50 min 22 s** | **21 (4 min 08 s)** | **40 (34 min 46 s)** | **4 (1 min 22 s)** | |
 
 Autres commandes mesurées : lint ×5 (1 min 40 s), nuget-wait ×1 (3 min 06 s), restore ×2 (48 s)
