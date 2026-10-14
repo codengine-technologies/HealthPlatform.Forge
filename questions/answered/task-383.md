@@ -12,3 +12,7 @@
    l'arbre client-angular — task-370, qui a client-angular dans son périmètre.
 
 Mobile 36/36 verts, Angular 40 verts hors COMPOSE-001 : la mise à jour NuGet n'introduit aucune régression.
+
+## Résolu (2026-10-14)
+
+Parité : `develop` mergé dans la branche mobile de task-370. COMPOSE-001 : défaut produit corrigé dans task-370. Rejeu vert, PR #298 mergée.

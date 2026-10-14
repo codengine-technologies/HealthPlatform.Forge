@@ -163,3 +163,9 @@ sans changement de comportement.
 | **Total cycle** | | **56 min 32 s** | **6 (51 s)** | **5 (18 min 58 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : restore ×3 (26 s)
+
+## Merged
+
+- 2026-10-14 — `/merge task-383 --i-tested`
+- api-mail : PR #298 squashée — `ba913e42` ; CI `develop` ✅ https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/38628496806 (rouge depuis le merge de task-371, débloquée)
+- Branche `chore/task-383-mise-a-jour-nuget` supprimée (distante et locale)

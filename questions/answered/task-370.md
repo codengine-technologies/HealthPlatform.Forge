@@ -18,3 +18,7 @@
 1. ajouter `client-mobile` aux `**Repos**` de task-370 et appliquer le correctif sur une branche de la task ; ou
 2. correctif dans une task / PR dédiée, puis rejouer `/e2e task-370` ; ou
 3. quarantaine humaine du test (tag `@quarantaine` + task de correction).
+
+## Résolu (2026-10-14)
+
+Option 1 retenue par l'humain : client-mobile ajouté à task-370, sélecteur corrigé (`a6166a4`), vert au rejeu de task-383.

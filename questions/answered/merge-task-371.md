@@ -8,3 +8,7 @@
 - **Remède proposé** : surclasser la dépendance transitive dans `Directory.Packages.props`, comme pour SSH.NET (GHSA-q939-rpr3-3284) et MessagePack — `System.Security.Cryptography.Pkcs` à la version corrigée de l'avis — plus les `packages.lock.json`, dans une PR `chore(deps)` dédiée.
 - **Décision humaine** : faire ce correctif maintenant (avant task-370, dont la PR api-mail tomberait aussi au Restore) ?
 - client-mobile : CI `develop` verte.
+
+## Résolu (2026-10-14)
+
+task-383 (PR #298, `ba913e42`) : Pkcs 10.0.13 épinglé, CI `develop` verte.
