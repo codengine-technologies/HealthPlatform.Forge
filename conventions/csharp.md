@@ -903,7 +903,9 @@ et décider explicitement ce qu'il fait d'un échec :
 
 ## collection-postgresql-partagee — un test d'intégration qui écrit en base partagée nettoie ce qu'il écrit
 
-**Occurrences : 1** (task-325, `/sonar` — rouge en Release seulement)
+**Occurrences : 2** (task-325, `/sonar` — rouge en Release seulement ; task-383 / task-370, 2026-10-14 — rouges intermittents de la même collection)
+
+**Récidive du 2026-10-14** : `SemanticSearchRepositoryIntegrationTests` (`different vector dimensions 3 and 1536`, puis `23505 IX_Mails_FolderPath_UidValidity_Uid_Unique` sur `SearchByFiltersAsyncWithTagFolder…`) et `AuditJournalIntegrationTests.Le_maintien_des_partitions…` : rouges selon l'ordre et l'emplacement d'exécution (worktree), verts isolés et au rejeu, sur des tasks qui ne touchaient aucun code C#. Ces classes n'appliquent pas encore la consigne ci-dessous : une task de nettoyage reste à ouvrir.
 
 Les tests de `[Collection("PostgreSql")]` partagent **un seul** conteneur Postgres, sans purge
 entre classes. Une ligne laissée par un test est lue par les autres, et le résultat dépend

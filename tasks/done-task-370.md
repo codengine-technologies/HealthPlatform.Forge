@@ -159,6 +159,89 @@ qu'un incident réseau pendant un rafraîchissement ne le déconnecte pas.
 
 - Skipped : client-mobile non touché par la task.
 
+## E2E log
+
+| Voie | Déclencheur | Résultat | Tests | Durée |
+|---|---|---|---|---|
+| mobile | client-mobile et api-mail touchés | ✅ verte | 37 verts, 0 flaky, 0 rouge | ~6 min |
+| angular | client-angular et api-mail touchés | ✅ verte | 41 verts, 0 flaky, 0 rouge, 1 quarantaine (passée) | ~6 min |
+
+- Catalogue : `Api/Mail/e2e/scenarios.yml` @ fix/task-370-session-weda2 (après merge de `develop` : task-374, task-383)
+- Historique : 1er passage rouge (E2E-ATTACH-001 mobile, sélecteur ambigu) ; 2e en échec d'outillage (Restore bloqué par l'avis Pkcs, corrigé par task-383) ; E2E-COMPOSE-001 corrigé (menu refermé par l'enrichissement temps réel).
+- Démontage : complet (ports libres, aucun conteneur e2e résiduel)
+
+**E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
+
+**En quarantaine (posée par l'humain, non bloquant)** (1) :
+
+- [angular] « rédaction — corriger l’orthographe, appliquer, envoyer : le texte corrigé arrive, la citation intacte » (E2E-COMPOSE-002) — Passed — correction : task-350
+
+### Matrice de parité
+
+| Scénario | v | Mode | Titre | angular | mobile |
+|---|---|---|---|---|---|
+| E2E-INBOX-001 | 1 | headless | Filtrer la boîte de réception, basculer liste / conversation, ouvrir la recherche | ✅ | ✅ |
+| E2E-FOLDER-001 | 1 | headless | Naviguer vers les dossiers Archive et Corbeille | ✅ | ✅ |
+| E2E-PATIENT-001 | 1 | headless | Afficher la vue patients | ✅ | ✅ |
+| E2E-PATIENT-002 | 2 | headless | Rattacher à la main un document sans INS à un patient choisi par recherche, puis le détacher | ✅ | ✅ |
+| E2E-CONTACT-001 | 1 | humain | Rechercher dans le carnet et interroger l'annuaire national | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-SETTINGS-001 | 1 | headless | Changer le filtre par défaut et le retrouver après rechargement | ✅ | ✅ |
+| E2E-MAIL-001 | 1 | headless | Marquer un message lu puis non lu | ✅ | ✅ |
+| E2E-MAIL-002 | 1 | headless | Tout sélectionner et marquer lu en masse | ✅ | ✅ |
+| E2E-DETAIL-001 | 2 | headless | Répondre et transférer depuis la lecture d'un message | ✅ | ✅ |
+| E2E-COMPOSE-001 | 1 | headless | Envoyer un message, le recevoir, le lire, le supprimer | ✅ | ✅ |
+| E2E-COMPOSE-002 | 1 | headless | Faire corriger l'orthographe de son texte, appliquer la correction, puis envoyer | ✅ | ✅ |
+| E2E-COMPOSE-003 | 1 | headless | Un envoi refusé par la messagerie laisse le brouillon intact et peut être renvoyé | ✅ | ✅ |
+| E2E-MAIL-003 | 1 | headless | Signaler puis ne plus signaler un message | ✅ | ✅ |
+| E2E-MAIL-004 | 1 | headless | Déplacer un message vers Archive puis le ramener | ✅ | ✅ |
+| E2E-MAIL-005 | 1 | headless | Un message supprimé depuis un autre logiciel quitte la liste et ne s'ouvre jamais vide | ✅ | ✅ |
+| E2E-DRAFT-001 | 1 | headless | Créer un brouillon, le reprendre, le supprimer | ✅ | ✅ |
+| E2E-DRAFT-002 | 1 | headless | Envoyer un message à pièce jointe après l'enregistrement automatique du brouillon | ✅ | ✅ |
+| E2E-BIO-001 | 1 | headless | Acquitter un compte rendu de biologie | ✅ | ✅ |
+| E2E-DASH-001 | 1 | headless | Afficher les widgets du tableau de bord | ✅ | ✅ |
+| E2E-DETAIL-002 | 1 | headless | Basculer entre texte brut et HTML à la lecture | ✅ | ✅ |
+| E2E-DETAIL-003 | 1 | headless | Répondre à tous depuis la lecture d'un message | ✅ | ✅ |
+| E2E-DETAIL-004 | 1 | headless | Lire un message avec le panneau d'actions, le masquer puis le retrouver au message suivant | ✅ | — |
+| E2E-DETAIL-005 | 1 | headless | Passer rapidement d'un mail à l'autre n'affiche jamais le contenu du précédent | ✅ | ✅ |
+| E2E-SETTINGS-002 | 1 | headless | Changer la vue par défaut et la retrouver après rechargement | ✅ | ✅ |
+| E2E-SEARCH-001 | 1 | headless | Rechercher un message et ouvrir la recherche avancée | ✅ | ✅ |
+| E2E-ATTACH-001 | 1 | headless | Voir les pièces jointes d'un message | ✅ | ✅ |
+| E2E-CONTACT-002 | 1 | headless | Créer puis supprimer un contact | ✅ | ✅ |
+| E2E-SIGNATURE-001 | 1 | headless | Créer puis supprimer une signature | ✅ | ✅ |
+| E2E-CONTACT-003 | 1 | headless | Créer puis supprimer un groupe de contacts | ✅ | ✅ |
+| E2E-FOLDER-002 | 1 | headless | Créer puis supprimer un dossier | ✅ | ✅ |
+| E2E-FOLDER-003 | 1 | headless | Ouvrir un dossier supprimé depuis un autre logiciel | ✅ | ✅ |
+| E2E-FOLDER-004 | 1 | headless | Actualiser la liste des dossiers après un changement fait dans un autre logiciel | ✅ | ✅ |
+| E2E-AUTH-001 | 1 | humain | Rester connecté quand le jeton d'accès expire | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-AUTH-002 | 1 | humain | Se déconnecter | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-LIVE-001 | 1 | headless | Recevoir un nouveau message en temps réel, sans recharger | ✅ | ✅ |
+| E2E-AI-001 | 1 | headless | Interroger l'assistant sur des messages sélectionnés et poser des questions de suite | ✅ | ✅ |
+| E2E-WEDA-001 | 1 | headless | Dans Weda, la messagerie s'ouvre sur la boîte que Weda désigne | ✅ | — |
+| E2E-WEDA-002 | 1 | headless | Voir le dossier Weda du patient d'un document reçu, l'ouvrir, puis importer des documents dans un dossier | ✅ | — |
+| E2E-WEDA-003 | 1 | headless | Envoyer un document du dossier patient Weda par la nouvelle messagerie | ✅ | — |
+| E2E-RECEIPT-001 | 1 | headless | Demander un accusé de lecture à l'envoi | ✅ | ✅ |
+| E2E-RECEIPT-002 | 1 | headless | Envoyer l'accusé de lecture d'un message reçu, une seule fois | ✅ | ✅ |
+| E2E-RECEIPT-003 | 1 | headless | Refuser l'accusé de lecture d'un message reçu | ✅ | ✅ |
+| E2E-SECURITY-001 | 1 | headless | Un contenu reçu piégé ne s'exécute pas | ✅ | ✅ |
+| E2E-MAILBOX-001 | 1 | headless | Changer de messagerie depuis l'écran mail | ✅ | ✅ |
+
+**Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/299 — label `awaiting-human-merge` (catalogue)
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/96 — label `awaiting-human-merge` (test E2E-ATTACH-001)
+- `client-angular` : code-only — humain gère commit/push TFS et ouverture PR, branche `feature/nova-rewriting-mss-weda-integration`. L'arbre porte les fichiers de task-371 **et** de task-370 (dont le correctif du menu) :
+
+
+## Code Review Summary
+
+**APPROVED** — 0 bloquant, 1 suggestion (`state` CSRF de `loginPsc()` dormant jusqu'à task-382).
+
+- Règle 1b : aucun comportement d'endpoint api-mail modifié (4 lignes de catalogue).
+- Double verrou e2e : `## E2E log` vert (mobile 37/37, angular 41/41, parité verte, 0 flaky).
+- Validation `/review` : api-mail build ✓, tests ✓ (1 rouge d'intégration au 1er passage, `SemanticSearchRepositoryIntegrationTests…WithTagFolder` — base partagée polluée, vert au rejeu 887/887, consigné dans `conventions/csharp.md`) ; mobile build ✓, 1 101/1 101 ; weda2 build ✓, 11 projets verts.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-370 --sync` — ne pas éditer à la main)*
@@ -166,13 +249,13 @@ qu'un incident réseau pendant un rafraîchissement ne le déconnecte pas.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 18 s | — | — | — | — |
-| /develop | ok | 58 s | 2 (34 s) | 2 (45 s) | — | client-angular 2B/2T, réduction à ANG-06 |
+| /develop | ok | 58 s | 5 (1 min 24 s) | 5 (1 min 50 s) | — | client-angular 4B/4T, client-mobile 1B/1T, réduction à ANG-06 |
 | /sonar | skipped | 0.5 s | — | — | — | catalogue e2e seulement |
 | /lint-angular | ok | 15 s | 1 (13 s) | 1 (19 s) | — | client-angular 1B/1T |
 | /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non touché |
-| /e2e | failed | 40 s | — | — | — | e2e ×8 (25 min 12 s), outillage : restore bloqué par l'avis NuGet Pkcs 10.0.0 (task-383) |
-| /review | ok | 2 min 24 s | — | 3 (1 min 00 s) | — | client-angular 0B/2T, api-mail 0B/1T |
+| /e2e | ok | 12 min 56 s | — | — | — | e2e ×11 (37 min 52 s) |
+| /review | ok | 9 min 21 s | 3 (18 s) | 7 (8 min 49 s) | — | client-angular 1B/3T, api-mail 1B/3T, client-mobile 1B/1T |
 | /tech-writer | ok | 25 s | — | — | — | — |
-| **Total cycle** | | **5 min 05 s** | **3 (47 s)** | **6 (2 min 05 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **24 min 18 s** | **9 (1 min 56 s)** | **13 (10 min 59 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×2 (13 s)
