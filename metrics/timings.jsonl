@@ -4980,3 +4980,25 @@
 {"ts":"2026-10-14T15:19:36+02:00","run_id":"-","type":"step","task":"task-371","step":"review","status":"ok","note":"","iterations":null,"duration_ms":328439}
 {"ts":"2026-10-14T15:19:53+02:00","run_id":"-","type":"step_start","task":"task-371","step":"tech-writer"}
 {"ts":"2026-10-14T15:20:30+02:00","run_id":"-","type":"step","task":"task-371","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":36481}
+{"ts":"2026-10-14T17:14:38+02:00","run_id":"-","type":"step_start","task":"task-370","step":"start"}
+{"ts":"2026-10-14T17:14:57+02:00","run_id":"-","type":"step","task":"task-370","step":"start","status":"ok","note":"","iterations":null,"duration_ms":18951}
+{"ts":"2026-10-14T17:15:11+02:00","run_id":"-","type":"step_start","task":"task-370","step":"develop"}
+{"ts":"2026-10-14T17:20:01+02:00","run_id":"-","type":"cmd","task":"task-370","step":"develop","repo":"client-angular","kind":"build","label":"","cwd":"Client/Angular/front","cmd":"npm run build","duration_ms":14405,"exit_code":0}
+{"ts":"2026-10-14T17:20:40+02:00","run_id":"-","type":"cmd","task":"task-370","step":"develop","repo":"client-angular","kind":"test","label":"","cwd":"Client/Angular/front","cmd":"npm test","duration_ms":24267,"exit_code":0}
+{"ts":"2026-10-14T17:21:19+02:00","run_id":"-","type":"step","task":"task-370","step":"develop","status":"ok","note":"","iterations":null,"duration_ms":367746}
+{"ts":"2026-10-14T17:21:20+02:00","run_id":"-","type":"step_start","task":"task-370","step":"sonar"}
+{"ts":"2026-10-14T17:21:21+02:00","run_id":"-","type":"step","task":"task-370","step":"sonar","status":"skipped","note":"catalogue e2e seulement","iterations":null,"duration_ms":543}
+{"ts":"2026-10-14T17:21:31+02:00","run_id":"-","type":"step_start","task":"task-370","step":"lint-angular"}
+{"ts":"2026-10-14T17:21:40+02:00","run_id":"-","type":"cmd","task":"task-370","step":"lint-angular","repo":"client-angular","kind":"lint","label":"","cwd":"Client/Angular/front","cmd":"npx nx affected -t lint --base=origin/next --head=HEAD --parallel=3 --projects=tag:scope:mss","duration_ms":9296,"exit_code":0}
+{"ts":"2026-10-14T17:21:46+02:00","run_id":"-","type":"step","task":"task-370","step":"lint-angular","status":"ok","note":"","iterations":0,"duration_ms":15537}
+{"ts":"2026-10-14T17:21:54+02:00","run_id":"-","type":"step_start","task":"task-370","step":"lint-mobile"}
+{"ts":"2026-10-14T17:21:54+02:00","run_id":"-","type":"step","task":"task-370","step":"lint-mobile","status":"skipped","note":"client-mobile non touché","iterations":null,"duration_ms":534}
+{"ts":"2026-10-14T17:22:05+02:00","run_id":"-","type":"step_start","task":"task-370","step":"e2e"}
+{"ts":"2026-10-14T17:28:46+02:00","run_id":"-","type":"cmd","task":"task-370","step":"e2e","repo":"client-mobile","kind":"e2e","label":"mobile","cwd":"Client/Mobile","cmd":"npm run e2e:headless","duration_ms":400691,"exit_code":1}
+{"ts":"2026-10-14T17:35:07+02:00","run_id":"-","type":"cmd","task":"task-370","step":"e2e","repo":"client-angular","kind":"e2e","label":"angular","cwd":"Client/Angular/front","cmd":"npm run e2e:mss","duration_ms":380653,"exit_code":0}
+{"ts":"2026-10-14T17:35:15+02:00","run_id":"-","type":"cmd","task":"task-370","step":"e2e","repo":"api-mail","kind":"e2e","label":"gate","cwd":"Api/Mail","cmd":"dotnet tests/mss.mail.e2e/bin/Debug/net10.0/mss.mail.e2e.dll gate --catalog e2e/scenarios.yml --report mobile=C:\\Users\\pasca\\AppData\\Local\\Temp\\forge-e2e\\task-370\\mobile-report.json --report angular=C:\\Users\\pasca\\AppData\\Local\\Temp\\forge-e2e\\task-370\\angular-report.json --out C:\\Users\\pasca\\AppData\\Local\\Temp\\forge-e2e\\task-370\\e2e-log.md","duration_ms":202,"exit_code":1}
+{"ts":"2026-10-14T17:35:49+02:00","run_id":"-","type":"step","task":"task-370","step":"e2e","status":"failed","note":"E2E-ATTACH-001 mobile rouge (sélecteur ambigu du test)","iterations":null,"duration_ms":823988}
+{"ts":"2026-10-14T17:53:30+02:00","run_id":"-","type":"step_start","task":"task-370","step":"develop"}
+{"ts":"2026-10-14T17:53:50+02:00","run_id":"-","type":"cmd","task":"task-370","step":"develop","repo":"client-angular","kind":"build","label":"","cwd":"Client/Angular/front","cmd":"npm run build","duration_ms":19647,"exit_code":0}
+{"ts":"2026-10-14T17:54:12+02:00","run_id":"-","type":"cmd","task":"task-370","step":"develop","repo":"client-angular","kind":"test","label":"","cwd":"Client/Angular/front","cmd":"npm test","duration_ms":21492,"exit_code":0}
+{"ts":"2026-10-14T17:54:29+02:00","run_id":"-","type":"step","task":"task-370","step":"develop","status":"ok","note":"réduction à ANG-06","iterations":null,"duration_ms":58902}
