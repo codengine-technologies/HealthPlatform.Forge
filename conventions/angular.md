@@ -138,7 +138,7 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   task-352 (/lint-angular, 1 `require-param` + 1 `require-jsdoc` par JSDoc déplacé) ;
   task-353 (/simplify : JSDoc orphelin dans le support e2e mobile, hors lint) ;
   task-367 (/lint-angular, 5 `require-example` sur des `@example` vides)
-- **Occurrences** : 6
+- **Occurrences** : 7 (task-374 — un `@example` vide sur un helper e2e, et un `@param` ajouté sans description par l'auto-fixer : le fixer pose la balise, pas son texte)
 
 ### mail-content-body — `content.body` n'est pas le texte du mail
 - **Règle** : convention projet (défaut fonctionnel, invisible au lint)

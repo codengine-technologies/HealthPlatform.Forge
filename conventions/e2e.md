@@ -107,6 +107,22 @@
 - **Origine** : task-345, task-346
 - **Occurrences** : 2
 
+### geste-differe — Seul le geste différé prouve une course avec la fenêtre d'annulation
+- **Piège** : E2E-MAILBOX-001 supprimait d'abord depuis le détail (« Plus d'actions » → Supprimer).
+  Or ce chemin appelle `deleteEmail` **aussitôt** : seul le glisser vers la Corbeille (weda2) ou le
+  balayage « Supprimer » de la liste (mobile) passe par la suppression différée. Le parcours restait
+  vert sous la mutation qu'il devait attraper (épinglage et solde retirés) : il ne jouait pas la
+  course qu'il prétendait prouver.
+- **Consigne** : un parcours qui dépend de la fenêtre d'annulation emprunte le geste qui l'ouvre
+  (vérifier dans le code que le geste aboutit à `MailPendingDeleteService.enqueue`), et pose sa
+  **précondition** : l'évènement concurrent survient avant la fin de la fenêtre (mesure de durée
+  bornée à 6 s dans le test).
+- **Preuve** : MA2 (épinglage + solde retirés) vert avec la suppression depuis le détail ; rouge avec
+  le glisser vers la Corbeille, sur « le message supprimé a quitté l'INBOX de la boîte praticien ».
+  Même chose sur le mobile (MM2) avec `swipe-delete`.
+- **Origine** : task-374
+- **Occurrences** : 1
+
 ### selecteur-ambigu — Scoper un sélecteur à l'écran voulu
 - **Piège** : un sélecteur de classe (`ion-title.inbox-title`) résout aussi le menu latéral : le
   mode strict échoue, ou un faux titre est lu.
@@ -231,6 +247,27 @@
 - **Origine** : task-343
 - **Occurrences** : 1
 
+### en-tete-force-par-le-banc — Un harnais qui réécrit un en-tête de l'app rend son effet inobservable
+- **Piège** : le test-bypass des deux suites (`installBypass`) posait `client-email` sur **toute**
+  requête vers `/api/**`, par-dessus celui de l'app. La boîte lue était donc toujours la boîte
+  praticien, quoi que l'app ait ouvert : une bascule de messagerie, une suppression partie avec la
+  mauvaise boîte, un flux SSE ouvert sur la mauvaise boîte… rien de cela n'était observable. Le
+  seed ne portait de toute façon qu'une boîte.
+- **Consigne** : un harnais n'ajoute que ce que l'app **ne peut pas** fournir (clé de bypass,
+  identité PSC simulée). Une donnée que l'app désigne elle-même (boîte courante, identifiant de
+  session, `?mailbox=`) n'est posée par le harnais que si l'app n'en désigne aucune. Avant d'écrire
+  un parcours, vérifier que le harnais ne réécrit pas l'en-tête dont le parcours lit l'effet.
+- **Variante (même task)** : le bypass laissait passer le jeton simulé de weda2 (`Authorization`),
+  qu'api-mail refuse en **~4 s** (aucune clé de signature connue) avant de retomber sur le bypass.
+  Chaque requête payait ce délai : une bascule de messagerie durait plus que la fenêtre d'annulation
+  de 6 s, et la course que le parcours prétendait prouver n'avait jamais lieu. **Consigne** : le
+  harnais retire `authorization` des requêtes qu'il authentifie par bypass.
+- **Preuve** : E2E-MAILBOX-001 (task-374). Avec le bypass corrigé, MA1 (vue non recréée) rouge sur
+  « la liste est celle de la seconde boîte » ; avant, aucune lecture de la seconde boîte n'était
+  possible. Avec le jeton retiré, le parcours passe de ~60 s à ~18 s.
+- **Origine** : task-374
+- **Occurrences** : 1
+
 ### preuve-par-mutation — Un test e2e n'est terminé qu'une fois prouvé rouge
 - **Piège** : un test écrit contre l'app qui marche ne dit rien de sa capacité à échouer.
 - **Consigne** : pour chaque test ajouté ou durci, planter un no-op dans l'appel qu'il protège,
@@ -267,6 +304,12 @@
   l'éditeur avant de demander la correction.
 - **Preuve** : à faire avec le correctif du transfert. Retirer la citation du préremplissage doit
   faire tomber le test sur la précondition, pas plus loin.
+- **Récidive task-374 (relevée en revue)** : E2E-MAILBOX-001 affirme « la seconde boîte a gardé son
+  message », mais ce message porte l'UID 1 quand la suppression vise un UID plus élevé : une
+  suppression partie vers la seconde boîte ne pouvait rien y toucher, l'assertion ne peut pas
+  échouer. La preuve tient par l'autre côté (MA2 rouge sur la relecture de la boîte praticien).
+  **Consigne** : un négatif « X n'a pas touché Y » se rend capable d'échouer — ici, seeder dans la
+  seconde boîte un message de même UID que la cible. À faire par une task de suivi.
 - **Origine** : task-349 (/e2e, 2026-10-01)
 - **Occurrences** : 1
 
@@ -446,6 +489,7 @@ scénario qui l'aurait attrapé, prouvé rouge sur le bug)*
 | L'accusé de lecture demandé par un expéditeur n'était **jamais proposé** sur mobile (bandeau conditionné à `requestReadReceipt`, que l'API ne renseigne que pour les brouillons) ni sur weda2 (aucun écran) ; quand Blazor le proposait, l'accusé partait sans être enregistré (AUD-32) et pouvait être renvoyé. Le refus n'était ni possible (mobile, weda2) ni tracé | Audit de bugs du 2026-09-27 (AUD-32, AUD-43), non vu par `/e2e` : aucun scénario ne portait sur l'accusé de lecture | **E2E-RECEIPT-001, 002, 003** ajoutés (mobile et Angular requis) : demande à l'envoi relue côté serveur, envoi et refus relus côté serveur et dans le journal d'audit, accusé « Lu: … » reçu, plus de proposition après rechargement. Rouges sur le bug d'origine réinjecté, sur l'assertion « l'accusé est proposé », les trois scénarios et les deux clients (mobile : bandeau sur `requestReadReceipt` ; weda2 : aucune proposition). Le refus rendu sans effet côté client fait tomber E2E-RECEIPT-003 sur l'appel jamais émis (mobile et weda2) | task-340 |
 | Un contenu reçu s'exécutait dans la session du médecin : une pièce `text/html` cliquée était rendue dans une `iframe` non isolée (weda2), une cellule de CDA portant un gestionnaire d'évènement l'exécutait au survol (transformation CDA qui recopiait tous les attributs, cadre de même origine) | Audit de bugs du client Angular du 2026-10-13 (ANG-01, ANG-02), non vu par `/e2e` : aucun scénario ne portait de contenu piégé | **E2E-SECURITY-001** ajouté (mobile et Angular requis) : pièce HTML et cellule de CDA piégées seedées, l'onglet ne prend jamais le titre du piège. Rouge sur le code d'avant (Interop 107, pas d'assainissement à la lecture) : weda2 sur la cellule (cadre sans `sandbox`) et sur la pièce (aperçu d'avant), mobile sur la cellule (cadre sans `sandbox` ni nettoyage client) | task-368 |
 | weda2 hors de Weda : « session expirée » ~4 min après la connexion (api-mail jamais rafraîchie, flux temps réel mort sur 401), et **aucune déconnexion pour inactivité** (service jamais initialisé) | Audit de bugs du client Angular du 2026-10-13 (ANG-06, ANG-07), non vu par `/e2e` : le faux proxy du banc rend des jetons à échéance lointaine, et le banc authentifie api-mail par test-bypass (l'échéance du jeton n'y est pas examinée) | **E2E-AUTH-003** ajouté (Angular requis, mobile non-applicable) : horloge du navigateur avancée de 11 min, la déconnexion part et ramène à `/logout` ; rouge avec l'effet de déconnexion neutralisé. **E2E-AUTH-001** reste humain (raison consignée au catalogue) ; le rafraîchissement d'api-mail est prouvé par les tests unitaires (`session-continuity`, `token-refresh-scheduler`) | task-370 |
+| Changer de messagerie (embarqué : depuis l'écran mail) : l'écran gardait dossiers, liste, mail ouvert et rédaction de la boîte quittée sous l'en-tête de la nouvelle ; une suppression annulable faite juste avant partait dans la NOUVELLE boîte (mail de même UID) ; les alertes « biologie anormale » d'une boîte non par défaut n'arrivaient jamais ; le compteur « prêts à partir » comptait ceux d'une autre boîte | audit Angular du 2026-10-13 (ANG-10, ANG-11, ANG-25, ANG-27, ANG-77) — **le filet ne jouait qu'un praticien à une seule boîte**, et son bypass forçait `client-email` (voir « en-tete-force-par-le-banc ») | **E2E-MAILBOX-001 v1** (mobile et Angular requis) : seed d'une seconde boîte (`boite-secondaire`, même compte), suppression puis bascule dans la fenêtre d'annulation, la liste est celle de la seconde boîte, et relu côté serveur la suppression a eu lieu dans la boîte praticien, pas dans l'autre | task-374 |
 
 ---
 
