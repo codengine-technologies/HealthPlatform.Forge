@@ -137,7 +137,9 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   task-310 (/develop, 3 erreurs + 2 warnings sur un paramètre objet ajouté) ;
   task-352 (/lint-angular, 1 `require-param` + 1 `require-jsdoc` par JSDoc déplacé) ;
   task-353 (/simplify : JSDoc orphelin dans le support e2e mobile, hors lint) ;
-  task-367 (/lint-angular, 5 `require-example` sur des `@example` vides)
+  task-367 (/lint-angular, 5 `require-example` sur des `@example` vides) ;
+  task-365 (/lint-angular, 1 `require-param` : paramètre `session` ajouté à `fakeAuthProxy`
+  du support e2e sans toucher son JSDoc — le même geste que task-308 et task-310)
 - **Occurrences** : 7 (task-374 — un `@example` vide sur un helper e2e, et un `@param` ajouté sans description par l'auto-fixer : le fixer pose la balise, pas son texte)
 
 ### mail-content-body — `content.body` n'est pas le texte du mail

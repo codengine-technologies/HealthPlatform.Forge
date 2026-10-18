@@ -469,6 +469,54 @@ dépassée.
 
 ---
 
+### keepalive-au-dechargement — Une requête émise pendant le déchargement échappe au relais du banc
+- **Piège** : pour prouver « quitter la page ferme la session », le test naviguait vers
+  `about:blank`. Le `fetch` keepalive du `pagehide` part bien, mais une fois le document déchargé
+  Playwright ne le relaie plus par la route de contexte (bypass d'authentification) : statut `-1`
+  dans la trace, aucune réponse, rien côté serveur.
+- **Consigne** : déclencher le `pagehide` sur la page **vivante**
+  (`dispatchEvent(new PageTransitionEvent('pagehide', { persisted: false }))`). L'acheminement d'une
+  requête keepalive au déchargement est une garantie du navigateur, pas du code éprouvé.
+- **Preuve** : task-365, E2E-SESSION-002 : rouge avec la navigation, vert avec l'événement, rouge
+  sous mutation (aucun ordre émis).
+- **Origine** : task-365
+- **Occurrences** : 1
+
+### en-tetes-apres-relais — `headers()` et `allHeaders()` rendent la requête réécrite par le banc
+- **Piège** : le relais du banc (`context.route`) remplace le jeton simulé par les en-têtes du
+  bypass. Sur l'objet `Request`, `headers()` comme `allHeaders()` rendent alors la requête
+  **réécrite** : `authorization` absent, `x-test-bypass` présent.
+- **Consigne** : pour vérifier un en-tête émis par l'app, poser une `page.route` sur l'URL visée
+  (elle passe avant la route de contexte), relever `route.request().headers()`, puis
+  `route.fallback()`.
+- **Preuve** : task-365, E2E-SESSION-002 (« l'ordre porte le jeton Bearer »).
+- **Origine** : task-365
+- **Occurrences** : 1
+
+### jeton-du-banc-a-echeance-lointaine — Un minuteur sur l'échéance du jeton déborde setTimeout
+- **Piège** : le faux proxy rend des jetons échus en 2099. Tout `setTimeout` calé sur cette échéance
+  dépasse 2³¹−1 ms et se déclenche **aussitôt** : `TokenRefreshSchedulerService` rafraîchissait en
+  boucle (4 844 `POST /auth/refresh` sur un test), relançant flux SSE et requêtes. Seul un parcours
+  sensible à un état d'écran durable (E2E-PATIENT-002, la boîte de rattachement) l'a montré.
+- **Consigne** : un rouge « l'écran est revenu à son état initial » se lit d'abord dans la trace
+  réseau (compter les requêtes par URL). Côté code, un délai calculé depuis une échéance se borne à
+  2³¹−1 ms.
+- **Preuve** : task-365, E2E-PATIENT-002 rouge deux fois, vert après le bornage (test unitaire rouge
+  d'abord).
+- **Origine** : task-365
+- **Occurrences** : 1
+
+### rapport-ecrase-par-serve-only — Un montage `--serve-only` vide le rapport de la voie précédente
+- **Piège** : la voie mobile a produit son `report.json`, puis des montages `--serve-only` (voie
+  Angular, preuves par mutation) ont vidé `Client/Mobile/e2e/headless/out/`. La porte a échoué :
+  rapport introuvable, voie mobile à rejouer.
+- **Consigne** : copier le rapport de chaque voie **aussitôt** (Step 1 de `agents/e2e.md`), avant
+  tout autre montage du banc.
+- **Origine** : task-365
+- **Occurrences** : 1
+
+---
+
 ## Registre des flaky
 
 *(tenu par `/e2e` : une ligne par test vert au second essai ; troisième occurrence du même test →
