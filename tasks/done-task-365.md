@@ -737,3 +737,19 @@ Revue `/review` : CHANGES REQUESTED, 4 points bloquants (`questions/answered/tas
 - DoD :
   - **Fait** : tests d'intégration et unitaires (rouges d'abord ou prouvés par mutation) ; scénarios E2E-SESSION-001 à 003 au catalogue et joués en headless ; plafond du banc redescendu à 30 (vert) ; aucune donnée de santé ni identifiant de session dans les journaux ajoutés.
   - **Différé au HAG (Manual Test Plan)** : mesures avant/après sur Weda ; stabilité du cookie `proxy_session_id` au refresh.
+
+## Vérification — stabilité de `proxy_session_id` au rafraîchissement (2026-10-18, code de psc-auth-proxy)
+
+Lu dans `D:\Workspaces\psc-auth-proxy\src\Api` : **la valeur du cookie ne change jamais au rafraîchissement.** La piste D ne retombe pas dans le défaut de task-282.
+
+- `POST /v1/auth/refresh` (`TokenRefreshController`) : `SessionRefreshService.EnsureFreshAsync(sessionId, …)`, puis `AppendSecureSessionCookie(…, sessionId)`. C'est le **même** identifiant ; seule l'expiration du cookie est prolongée.
+- `POST /v1/session/token` (`SessionController.RefreshSessionTokens`) : `cacheService.Set($"session:{sessionId}", …)`, puis `AppendSecureSessionCookie(…, sessionId)`. Même identifiant.
+- Rafraîchissement automatique (`AutoTokenRefreshMiddleware`) : `EnsureFreshAsync(sessionId, …)`, puis `AppendSecureSessionCookie(…, sessionId)`. Même identifiant.
+- `SessionRefreshService` réécrit toujours sous `SessionKey(sessionId)` (`session:{sessionId}`, lignes 270, 400 et 420).
+- Un **nouvel** identifiant (`SecureSessionIdGenerator.GenerateSecureSessionId`) n'est tiré qu'à la **connexion** :
+  - `POST /auth/login`, `GET /auth/callback`, `POST /auth/connect` ;
+  - `POST /auth/keycloak-exchange` (une session PSC seule devient une session Keycloak). Aucun client ne l'appelle : ni weda2, ni Weda, ni api-mail.
+- L'identifiant fait 256 bits aléatoires (`RandomNumberGenerator`). Cela confirme le choix d'une empreinte SHA-256 sans clé pour la clé de pool, plutôt qu'un HMAC.
+- Le cookie est effacé (`DeleteSecureSessionCookie`) au `DELETE /auth/logout` et quand la session est introuvable ou révoquée. C'est conforme à l'arbitrage R4.
+
+→ Le point de DoD « Stabilité de `proxy_session_id` au refresh constatée et consignée » est **fait, par lecture du code**. Il reste au HAG : les mesures avant/après dans Weda.
