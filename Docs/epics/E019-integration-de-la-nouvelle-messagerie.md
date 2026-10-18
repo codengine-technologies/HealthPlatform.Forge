@@ -224,6 +224,11 @@ flowchart LR
   dans le dossier. Fermer la rédaction n'envoie rien et ne laisse aucun brouillon. Un envoi qui attend la carte du
   praticien construit l'enveloppe au moment où il part (task-367).
 
+- v1.7 — Naviguer dans Weda ne fait plus tomber la messagerie : changer de page ne multiplie plus les connexions à la
+  messagerie sécurisée, que la limite de l'opérateur MSSanté aurait fini par bloquer (« boîte momentanément
+  indisponible »). Quand le praticien se déconnecte de Weda, la nouvelle messagerie ouverte dans un autre onglet le
+  constate dès son retour sur l'onglet, ou en moins d'une minute, et revient à l'écran de connexion (task-365).
+
 ### Sécurité
 
 - v1.0 — La nouvelle messagerie ne dialogue avec Weda que si l'intégration a été explicitement
@@ -251,6 +256,9 @@ flowchart LR
   configuration est incomplète, elle refuse de démarrer au lieu de se rabattre sur des valeurs de test. Seule
   l'adresse exacte de Weda peut l'embarquer et dialoguer avec elle ; un autre site, même sous `weda.fr`, ne le peut
   plus (task-369).
+- v1.7 — Sur un poste partagé, la nouvelle messagerie ne montre jamais la messagerie d'un praticien à celui qui s'est
+  connecté après lui : elle se recharge sur la session du nouveau praticien. Une déconnexion de Weda la fait quitter,
+  même ouverte dans un autre onglet (task-365).
 
 ---
 

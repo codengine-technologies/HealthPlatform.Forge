@@ -361,6 +361,35 @@
 - **Suivis** : constat par environnement (humain) ; ConfigMap avant image ; protéger `$frame_ancestors` de la
   substitution de la pipeline de release.
 
+### v1.7 — Sessions de messagerie bornées dans Weda, et sortie de weda2 quand Weda ferme la session — task-365
+
+- **Task** : task-365, statut `done` (`/review` APPROVED le 2026-10-18, après une première revue CHANGES REQUESTED).
+  Origine : constat du filet e2e de task-364 (107 connexions IMAP neuves en 5 min pour un praticien). Arbitrages
+  humains : pistes D + C, piste B (fermeture au `pagehide`) retirée, pas d'ordre de fermeture après une déconnexion de
+  Weda (psc-auth-proxy efface son cookie `proxy_session_id`).
+- **PR** : api-mail #300 (`fix/task-365-session-imap-bornee`, label `awaiting-human-merge`) ; client-angular en code-only
+  (branche `feature/nova-rewriting-mss-weda-integration`, à pousser sur TFS).
+- **Piste D (api-mail)** : la clé du pool IMAP/SMTP dérive du cookie `proxy_session_id` (`ProxySessionPoolKey` :
+  `px-` + SHA-256 tronqué à 128 bits, séparation de domaine), avant l'en-tête `Client-Session-Id`. Commune à Weda,
+  à l'iframe et à l'onglet weda2 ; la valeur brute n'atteint ni la clé, ni les journaux, ni Redis. Garde de session :
+  liaison **par boîte** pour une clé du proxy (`SessionMailboxBinding.PerMailbox`, `ISessionBindingStore` en
+  `SET NX` / `DEL`, borné à 500 ms), retirée par `POST /sync/logout` ; la règle 409 reste pour l'en-tête.
+- **Piste C (api-mail)** : `MailServers:MaxSessionsPerMailbox` = 3 par boîte et par réplica, éviction de la moins
+  récemment utilisée, jamais d'une session tenue. Le keep-alive (NOOP) ne prolonge pas une session sans requête client.
+- **weda2** : `SharedSessionWatchService` — `has-session` toutes les 60 s et au retour sur l'onglet (au plus une fois
+  par 15 s), `/auth/userinfo` silencieux et borné ; sortie sans ordre de fermeture (autonome : écran de connexion ;
+  embarqué : `session-expired`) ; rechargement sur un autre praticien. `TokenRefreshSchedulerService` borné à
+  2³¹−1 ms (boucle de `POST /auth/refresh` trouvée par l'e2e avec le jeton du banc échu en 2099).
+- **Défauts trouvés en cours de cycle** : course de liaison (deux `MailboxSessionOpened` pour un chargement, E2E-SESSION-001)
+  → liaison atomique ; outillage e2e en panne (port Flagsmith persistant tombé dans une plage réservée par WinNAT,
+  mémorisé dans les user-secrets de l'AppHost).
+- **Tests** : `ProxySessionPoolKeyIntegrationTests` (9, pipeline réel, rouges par mutation), unitaires du plafond, du
+  keep-alive et de la garde ; weda2 : surveillance (16), `$probeSession`, intercepteur silencieux, planificateur.
+  api-mail 6 679 verts ; weda2 2 726 verts. Sonar : Quality Gate OK, new coverage 96,7 %, 0 issue.
+- **E2E** : E2E-SESSION-001 (v1), 002 (v2), 003 (v2), Angular requis, prouvés par mutation. Plafond Dovecot du banc
+  redescendu de 1000 à 30 ; voies vertes (mobile 37, angular 45), parité verte.
+- **Suivis (HAG)** : mesures avant/après dans Weda ; stabilité de `proxy_session_id` au refresh à constater.
+
 ### v1.4 — Interop : enveloppe IHE_XDM en mémoire d'un CDA ou d'un PDF/A, conforme à celle de Weda — task-366
 
 - **Task** : task-366, statut `done` (`/review` APPROVED le 2026-10-11). Cycle autonome. Fondation de task-367 (envoi d'un
@@ -466,6 +495,7 @@
 | task-363 | done (PR api-mail #286, en attente de merge ; Angular à commiter sur TFS ; partie Weda à faire) | Import à la demande : fenêtre d'import (patient, documents, destination, classification, commentaire, post-it), `file-documents` avec octets transférés, ni corbeille ni mot-clé, pas d'import pour la biologie et HPRIM ; E2E-WEDA-002 ; côté Weda, `POST api/nova-mss/documents` | RG-E019-01, 02, 05 |
 | task-366 | archivée (PR interop.cda.parser #10 mergée ; package 107.0.0) | Enveloppe IHE_XDM en mémoire d'Interop (`IIheXdmPackager`) : CDA emballé tel quel ou PDF/A en N1, métadonnées conformes à Weda, refus typé ; ancienne API obsolète ; suite d'Interop verte sous Linux | — (fondation de l'envoi, task-367) |
 | task-367 | done (PRs dtos-mss #44 et api-mail #289, en attente de merge ; Angular à commiter sur TFS ; partie Weda à faire) | Envoi depuis le dossier patient : `AttachmentDto.Packaging`, `IheXdmEnvelopeService` sur le chemin d'envoi, refus 403 / 400 / 422 ; rédaction d'intention (`get-compose-intent`, `document-sent`) ; E2E-WEDA-003 ; côté Weda, `compose-intent` et `sent-trace` | — |
+| task-365 | done (PR api-mail #300, en attente de merge ; Angular à commiter sur TFS) | Sessions de messagerie bornées : clé de pool dérivée de la session du proxy, liaison par boîte, plafond par boîte, keep-alive sans prolongation ; surveillance de la session partagée dans weda2 ; E2E-SESSION-001 à 003, plafond Dovecot du banc à 30 | — |
 | task-358 | en attente (`tasks/onhold/`, amendement 3) | API d'intégration api-mail `api/v1/integration`, canal serveur Weda → api-mail, compteur de non-lus de l'en-tête | — |
 | task-359 | en attente (`tasks/onhold/`, amendement 3) | Réception des CR de biologie en bannette HPRIM sans WMickey, mots-clés `Weda` / `WedaClasse` | — |
 | task-360 | en attente (`tasks/onhold/`, amendement 3) | Classer par identifiants via le canal serveur ; remplacée par task-363 | — |
