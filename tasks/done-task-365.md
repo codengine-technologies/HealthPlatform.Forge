@@ -368,13 +368,14 @@ A est abandonnée (arbitrage du 2026-10-18).
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 17 s | — | — | — | — |
-| /develop | ok | 1 h 01 min | 5 (1 min 00 s) | 14 (9 min 36 s) | — | api-mail 3B/12T, client-angular 2B/2T, e2e non joués : banc indisponible (api-mail profil e2e sans réponse 480 s) |
-| /sonar | ok | 8 min 17 s | 1 (36 s) | 5 (5 min 21 s) | 2 (41 s) | 1 itération(s), api-mail 1B/5T |
+| /develop | ok | 1 h 01 min | 8 (1 min 22 s) | 16 (17 min 13 s) | — | api-mail 6B/14T, client-angular 2B/2T, e2e non joués : banc indisponible (api-mail profil e2e sans réponse 480 s) |
+| /sonar | ok | 8 min 17 s | 2 (1 min 23 s) | 10 (10 min 25 s) | 4 (1 min 28 s) | 1 itération(s), api-mail 2B/10T |
 | /lint-angular | ok | 2 min 14 s | 1 (11 s) | 1 (18 s) | — | 1 itération(s), client-angular 1B/1T |
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
-| /e2e | ok | — | 2 (18 s) | 4 (4 min 27 s) | — | api-mail 1B/3T, client-angular 1B/1T, e2e ×8 (47 min 04 s), porte verte : mobile 37, angular 45; no start marker |
-| /review | failed | 7 min 32 s | 2 (12 s) | 2 (4 min 16 s) | — | api-mail 1B/1T, client-angular 1B/1T, CHANGES REQUESTED : R1-R4 (session partagée), voir questions/task-365.md |
-| **Total cycle** | | **1 h 20 min** | **11 (2 min 20 s)** | **26 (23 min 59 s)** | **2 (41 s)** | |
+| /e2e | ok | — | 2 (18 s) | 4 (4 min 27 s) | — | api-mail 1B/3T, client-angular 1B/1T, e2e ×16 (1 h 20 min), porte verte : mobile 37, angular 45; no start marker |
+| /review | ok | — | 2 (12 s) | 2 (4 min 16 s) | — | api-mail 1B/1T, client-angular 1B/1T, no start marker |
+| /tech-writer | ok | 41 s | — | — | — | — |
+| **Total cycle** | | **1 h 13 min** | **15 (3 min 28 s)** | **33 (36 min 40 s)** | **4 (1 min 28 s)** | |
 
 Autres commandes mesurées : lint ×1 (27 s)
 
