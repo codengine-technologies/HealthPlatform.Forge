@@ -753,3 +753,10 @@ Lu dans `D:\Workspaces\psc-auth-proxy\src\Api` : **la valeur du cookie ne change
 - Le cookie est effacé (`DeleteSecureSessionCookie`) au `DELETE /auth/logout` et quand la session est introuvable ou révoquée. C'est conforme à l'arbitrage R4.
 
 → Le point de DoD « Stabilité de `proxy_session_id` au refresh constatée et consignée » est **fait, par lecture du code**. Il reste au HAG : les mesures avant/après dans Weda.
+
+## Merged
+
+- 2026-10-18T15:47Z — `/merge task-365 --i-tested` (test manuel attesté par l'humain).
+- api-mail : PR #300 squash-mergée, commit `9c4138ad` sur `develop` ; branche `fix/task-365-session-imap-bornee` supprimée (distante et locale).
+- CI `develop` : ✓ https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/39141765513
+- client-angular : géré par l'humain (TFS).
