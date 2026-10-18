@@ -238,6 +238,7 @@ Que l'import dans le dossier patient Weda **ne classe jamais un document chez le
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 1 h 28 min | — | — | — | e2e ×3 (13 min 26 s) |
 | /review | ok | 5 min 13 s | 3 (11 s) | 3 (3 min 46 s) | — | api-mail 2B/2T, client-angular 1B/1T |
+| /tech-writer | ok | 36 s | — | — | — | — |
 | **Total cycle** | | **2 h 05 min** | **7 (1 min 20 s)** | **13 (10 min 23 s)** | **2 (46 s)** | |
 
 Autres commandes mesurées : lint ×1 (5.5 s)
