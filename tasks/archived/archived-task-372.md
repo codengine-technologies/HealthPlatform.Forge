@@ -242,3 +242,11 @@ Que l'import dans le dossier patient Weda **ne classe jamais un document chez le
 | **Total cycle** | | **2 h 05 min** | **7 (1 min 20 s)** | **13 (10 min 23 s)** | **2 (46 s)** | |
 
 Autres commandes mesurées : lint ×1 (5.5 s)
+
+## Merged
+
+- 2026-10-19 — `/merge task-372 --i-tested`
+- api-mail : PR #301 squashée — `86d418a3` ; CI `develop` ✅ https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/39316774238
+- client-angular : managed manually by the human
+- Branche `fix/task-372-import-weda-bon-patient` supprimée (distante et locale)
+- Staging : aucune branche `forge/staging-task-*` pour ce run
