@@ -78,10 +78,11 @@ identifiants en constante **avant** de dupliquer. Vaut pour tout secret de banc
 
 ## CA1861 — pas de tableau littéral en argument d'appel
 
-**Occurrences : 3** (task-203, task-273 — récidive sur code frais : tableaux
+**Occurrences : 4** (task-203, task-273 — récidive sur code frais : tableaux
 attendus d'un `Assert.Equal` dans un test de sollicitations ; la consigne vaut
 aussi pour les attendus de test ; task-334 — `l.SequenceEqual(new[] { 2u })` dans un
-`Arg.Is` NSubstitute, réécrit en `l.Count == 1 && l[0] == 2u`)
+`Arg.Is` NSubstitute, réécrit en `l.Count == 1 && l[0] == 2u` ; task-385 — `new float[] { 0.1f, 0.2f }` passé à `new Embedding<float>(…)` dans un faux
+générateur, hissé en `static readonly float[]`)
 
 Un tableau littéral passé en argument est **réalloué à chaque appel**. Le motif
 apparaît naturellement quand on préfixe des segments de chemin ou qu'on
@@ -1556,3 +1557,39 @@ refuse une action de contrôleur qui n'enveloppe pas son corps dans
 chaque action ouvre `BeginOperationScope` avec le nom de la méthode sans `Async` (préfixé `Domaine.`
 si ce nom existe déjà ailleurs). Écrire le scope en même temps que l'action, y compris pour une
 action d'une ligne.
+
+## exportateur-prometheus-aligne — l'exportateur Prometheus monte avec le cœur OpenTelemetry
+
+**Occurrences : 1** (task-385, `/develop` — api-mail, `/metrics` vide du 17 au 20/10/2026)
+
+`OpenTelemetry.Exporter.Prometheus.AspNetCore` est un paquet **beta** qui s'appuie sur des types
+internes du cœur `OpenTelemetry`. Le commit « Update package » du 17/10/2026 a monté le cœur en
+1.20.0 et laissé l'exportateur en 1.16.0-beta.1. Chaque collecte échouait alors avec
+`TypeLoadException: OpenTelemetry.Internal.MathHelper`, et `/metrics` répondait **200 sans aucune
+série** : pas d'erreur visible, mais tous les tableaux de bord Grafana vides. Le build, les tests
+unitaires (qui lisent les instruments par `MeterListener`, sans exportateur) et le démarrage
+restaient verts.
+
+**Consigne** : à chaque montée des paquets `OpenTelemetry*` dans `Directory.Packages.props`, monter
+`OpenTelemetry.Exporter.Prometheus.AspNetCore` à la **même version mineure** (suffixe `-beta.N`). La
+preuve est un test qui lit `/metrics` à travers `ConfigureOpenTelemetry()` et y trouve une série
+attendue (`AiConsumptionMetricsEndpointIntegrationTests`). Pour diagnostiquer un `/metrics` vide,
+lire l'EventSource `OpenTelemetry-Exporter-Prometheus` (événement `FailedExport`).
+
+## S107 — un `[LoggerMessage]` à plus de six propriétés dépasse la limite de paramètres
+
+**Occurrences : 1** (task-385, `/sonar` — api-mail, `AiCallRecorder`)
+
+Une méthode `[LoggerMessage]` compte le `ILogger` dans ses paramètres : au-delà de **six propriétés
+structurées**, elle dépasse les 7 paramètres de S107. Ne pas regrouper les propriétés dans un objet
+(elles cesseraient d'être filtrables dans Seq) : pour une trace à 7 propriétés ou plus, écrire
+`logger.LogInformation("gabarit {A} {B} …", a, b, …)` — mêmes propriétés structurées, et un coût
+négligeable quand la trace accompagne une opération réseau.
+
+## SYSLIB1045 — une expression régulière fixe s'écrit `[GeneratedRegex]`, y compris dans un test
+
+**Occurrences : 1** (task-385, `/sonar` — api-mail, `AiConsumptionMetricsEndpointIntegrationTests`)
+
+`Regex.Match(texte, @"motif")` avec un motif constant est signalé, tests compris. Rendre la classe
+`partial` et déclarer `[GeneratedRegex(@"motif", RegexOptions.None, matchTimeoutMilliseconds: 5000)]
+private static partial Regex Nom();`, puis appeler `Nom().Match(texte)`.

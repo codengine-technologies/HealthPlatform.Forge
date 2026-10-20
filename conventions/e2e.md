@@ -515,6 +515,22 @@ dépassée.
 - **Origine** : task-365
 - **Occurrences** : 1
 
+### outil-e2e-reecrit-en-cours-de-voie — Un build concurrent retire `runtimeconfig.json` de l'outil e2e
+- **Piège** : l'outil `mss.mail.e2e.dll` (`bin/Debug`) a perdu `mss.mail.e2e.runtimeconfig.json` et
+  `deps.json` **pendant** la voie mobile : le `reset` du début avait réussi, puis chaque appel suivant
+  (`folder`, `message --create`, `deliver`) a échoué en `hostpolicy.dll … not found`. Six parcours
+  sont tombés rouges, dont des rouges « en cascade » (inbox vide, compte rendu absent) qui
+  ressemblaient à une régression. Visual Studio était ouvert sur la solution (`devenv.exe` + 5
+  `MSBuild.exe`) : un build de l'IDE a réécrit `bin/Debug` en cours de run.
+- **Consigne** : un rouge dont l'erreur cite `hostpolicy.dll` ou un `runtimeconfig.json` manquant
+  est une panne d'**outillage**, pas une régression. Reconstruire l'outil
+  (`dotnet build Api/Mail/tests/mss.mail.e2e`), vérifier la présence de `runtimeconfig.json`, puis
+  rejouer la voie. Signaler à l'humain qu'un IDE ouvert sur `Api/Mail` peut réécrire les binaires du
+  banc pendant une voie.
+- **Preuve** : task-385, voie mobile rejouée après reconstruction : 38/38 verts, parité verte.
+- **Origine** : task-385
+- **Occurrences** : 1
+
 ---
 
 ## Registre des flaky
