@@ -1,4 +1,4 @@
-# todo-task-384.md — Le praticien voit, en bas des Paramètres, la version et la date de build de l'application et du serveur de messagerie
+# todo-task-384.md — Le praticien voit, en bas des Paramètres, la version et la date de build du serveur de messagerie
 
 **Repos**: api-mail, client-angular, client-mobile
 **Dependencies**: aucune
@@ -6,7 +6,8 @@
 
 > **Origine.** Demande humaine du 2026-10-20 (`/po`). Décisions prises au cadrage :
 > SemVer GitVersion + date et heure de build pour le serveur, information du serveur réservée
-> à un praticien connecté, mobile inclus, environnement affiché.
+> à un praticien connecté, mobile inclus, environnement affiché. **Révisée le 2026-10-20 : serveur uniquement**
+> (voir l'encadré de l'Objective).
 
 ## Ce qui est établi (2026-10-20)
 
@@ -21,28 +22,33 @@
 
 ## Objective
 
-Quand un praticien signale un problème, le support doit savoir exactement quelles versions il utilise. En bas
-de la page Paramètres de la messagerie (weda2 et mobile), l'application affiche **sa propre version, sa date de
-build et son environnement**, ainsi que **les mêmes informations pour le serveur de messagerie**. L'information
-du serveur n'est lisible que par un praticien connecté, pour ne pas divulguer la version à un tiers.
+Quand un praticien signale un problème, le support doit savoir exactement quelle version du serveur de messagerie
+il utilise. En bas de la page Paramètres de la messagerie (weda2 et mobile), l'écran affiche **la version, la date
+de build et l'environnement du serveur de messagerie (api-mail)**. Les clients n'affichent **pas** leur propre
+version. L'information du serveur n'est lisible que par un praticien connecté, pour ne pas divulguer la version à
+un tiers.
+
+> **Révision du 2026-10-20 (décision humaine).** La US affichait aussi la version, la date de build et
+> l'environnement de chaque client (ligne « Application »). Périmètre réduit à **api-mail uniquement**, sur weda2
+> comme sur le mobile : la ligne « Application » et tout l'outillage de version des clients (asset
+> `build-info.json`, scripts, cible Nx, étapes CI, champs d'environnement) sont retirés. La ligne « Version 0.0.1 »
+> codée en dur du mobile disparaît aussi.
 
 ### Règles métier
 
-1. **Numéro de version** : SemVer calculé par GitVersion, pour api-mail, weda2 et le mobile (ex. `1.4.0` sur la
-   branche principale, `1.4.0-0012-dev` ailleurs).
-2. **Date de build** : affichée à l'heure de Paris, au format « 20/10/2026 à 14:32 ».
+1. **Numéro de version** : SemVer calculé par GitVersion pour api-mail (ex. `1.4.0` sur la branche principale,
+   `1.4.0-alpha.12` ailleurs).
+2. **Date de build** : affichée à l'heure de Paris, au format « 19/10/2026 à 09:05 ».
 3. **Environnement** : libellé « Développement », « Recette » ou « Production » ; une valeur inconnue est affichée
    telle quelle.
 4. **Accès** : l'information du serveur n'est lisible que par un praticien authentifié ; sans session, elle est
    refusée et rien n'est révélé.
-5. **Serveur injoignable** : la version de l'application reste affichée ; la ligne du serveur indique
-   « information indisponible ».
-6. **Emplacement** : tout en bas des Paramètres — après la section « Serveur » sur weda2, en fin d'écran sur
-   mobile.
+5. **Serveur injoignable** : la ligne du serveur indique « information indisponible ».
+6. **Emplacement** : tout en bas des Paramètres — section « À propos » après « Serveur » sur weda2, en fin d'écran
+   sur mobile.
 
 Rendu attendu (exemple) :
 
-> Application — 1.4.0 · build du 20/10/2026 à 14:32 · Production
 > Serveur de messagerie — 2.1.0 · build du 19/10/2026 à 09:05 · Production
 
 ## Gherkin
@@ -55,20 +61,19 @@ See `tests/Features/Mss/VersionInformation.feature`
 - [ ] api-mail : version SemVer GitVersion et date de build intégrées au build, y compris dans l'image Docker produite par la CI
 - [ ] Test d'intégration de bout en bout pour l'endpoint de version (règle 1b), vu rouge : cas nominal — `version`, `buildDate` et `environment` présents dans la réponse réelle et cohérents avec le build ; cas d'échec — sans session, refus et aucune version dans la réponse
 - [ ] ≥ 1 test unitaire sur la fourniture des informations de build côté api-mail
-- [ ] weda2 et mobile : version, date de build et environnement injectés au build (aucune valeur codée en dur ; `package.json` n'est plus la source de la version affichée)
-- [ ] Tests de composant (weda2 et mobile) : affichage nominal, date convertie à l'heure de Paris, serveur injoignable
-- [ ] `data-testid` sur la ligne Application et sur la ligne Serveur de messagerie (weda2 et mobile)
-- [ ] Scénario E2E-SETTINGS-003 ajouté (version 1) dans `Api/Mail/e2e/scenarios.yml` — titre « Lire la version de l'application et du serveur dans les Paramètres », attendu « les deux lignes affichent une version, une date de build et un environnement non vides » — et implémenté dans chaque client où il est requis (angular `requis`, mobile `requis`)
+- [ ] weda2 et mobile : aucune information de build propre au client (ni version, ni date, ni environnement du client)
+- [ ] Tests de composant (weda2 et mobile) : affichage nominal du serveur, date convertie à l'heure de Paris, serveur injoignable, absence de ligne propre au client
+- [ ] `data-testid` sur la ligne Serveur de messagerie (weda2 et mobile)
+- [ ] Scénario E2E-SETTINGS-003 ajouté (version 1) dans `Api/Mail/e2e/scenarios.yml` — titre « Lire la version du serveur de messagerie dans les Paramètres » — et implémenté dans chaque client où il est requis (angular `requis`, mobile `requis`)
 - [ ] Aucune donnée de santé ni identifiant de session dans la réponse ou dans les logs
 
 ## Manual Test Plan
 
-1. Lancer api-mail et weda2, se connecter, ouvrir Messagerie > Paramètres, descendre tout en bas : les lignes
-   « Application » et « Serveur de messagerie » affichent chacune une version, une date de build à l'heure de
-   Paris et un environnement.
+1. Lancer api-mail et weda2, se connecter, ouvrir Messagerie > Paramètres, descendre tout en bas : la ligne
+   « Serveur de messagerie » affiche une version, une date de build à l'heure de Paris et un environnement ;
+   aucune ligne « Application ».
 2. Comparer la version du serveur affichée avec le tag GitVersion de l'image déployée.
-3. Arrêter api-mail, recharger les Paramètres : la ligne Application reste affichée, la ligne Serveur indique
-   « information indisponible ».
+3. Arrêter api-mail, recharger les Paramètres : la ligne Serveur indique « information indisponible ».
 4. Interroger l'endpoint de version sans session : refus, aucune version renvoyée.
 5. Refaire les vérifications 1 et 3 sur l'application mobile.
 
@@ -323,3 +328,34 @@ Suggestions (non bloquantes) :
 - Le report MSS sur `next` avait retiré `ssl: true` de la cible `serve` de weda2 et `serve-weda2.ps1` (chemins propres à un poste) : `nx serve weda2` démarrait en HTTP.
 - Rétabli comme sur `feature/nova-rewriting-mss-weda-integration`, sans chemin de poste : `apps/weda2/project.json` → `serve.options` = `{ host: localhost, ssl: true }` ; `front/serve-weda2.ps1` restauré, `$frontDir = $PSScriptRoot` (le certificat reste lu dans `%USERPROFILE%\.aspnet\https`). Vérifié : `https://localhost:4200` → 200, certificat ASP.NET approuvé.
 - `front/e2e/mss-e2e/run.mjs` : le `--ssl` ajouté pendant `/e2e` est retiré (redondant) — fichier revenu à l'identique, à retirer de la liste ci-dessus. Nouveau fichier non commité : `front/serve-weda2.ps1`.
+
+### Révision du 2026-10-20 — serveur uniquement
+
+- **Code révisé** : weda2 et mobile n'affichent plus que la ligne « Serveur de messagerie » ; outillage de version des clients retiré (asset `build-info.json`, scripts, cible Nx `build-info`, étapes GitVersion des CI clientes, champs d'environnement, jeton `MSS_APP_BUILD_INFO`, `AppBuildInfoService`). api-mail inchangé hors catalogue.
+- Commits : api-mail `d1cb3a4c` (catalogue E2E-SETTINGS-003 : titre et attendu, version 1 conservée — jamais mergée) ; mobile `a74de53`. weda2 : non commité (code-only).
+- Validation : mobile lint ✓, build ✓, tests 1 123/1 123 (un premier passage à 3 échecs instables hors périmètre — Ionic `onAriaChanged`, ordre aléatoire Jasmine — jamais reproduits sur 2 passages) ; weda2 lint 0 erreur, tests mss-lib 937 et weda2 2 653, build `development` ✓. **Build `production` non validé localement** : 3 échecs « Inlining of fonts failed » (Google Fonts répond en 15 s, réseau du poste) — sans lien avec le code, à revérifier.
+- Tests E2E-SETTINGS-003 révisés : ligne Serveur jugée contre la réponse d'api-mail (assertion déjà prouvée rouge par M1) + absence de ligne « Application » (`toHaveCount(0)`).
+
+| Voie | Résultat | Tests |
+|---|---|---|
+| mobile | ✅ verte | 38 verts, 0 flaky, 0 rouge |
+| angular | ✅ verte | 46 verts, 0 flaky, 0 rouge, 1 quarantaine (E2E-COMPOSE-002, task-350) |
+
+**E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
+
+**En quarantaine (posée par l'humain, non bloquant)** (1) :
+
+- [angular] « rédaction — corriger l’orthographe, appliquer, envoyer : le texte corrigé arrive, la citation intacte » (E2E-COMPOSE-002) — Passed — correction : task-350
+
+### Matrice de parité
+
+
+(matrice de parité complète : verte, E2E-SETTINGS-003 ✅ angular ✅ mobile)
+
+### Fichiers weda2 après révision (code-only, non commités, branche `feature/nova-mss-weda-integration`)
+
+Cette liste remplace celle de `## PRs` :
+
+
+
+Les variables de release `ENVIRONMENT_NAME` (weda2) ne sont plus nécessaires ; `Deployment__Environment` (api-mail) le reste.

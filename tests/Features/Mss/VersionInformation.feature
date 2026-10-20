@@ -1,13 +1,13 @@
-Feature: Version information
+Feature: Mail server version information
   As a healthcare professional using the secure messaging
-  I want to see which versions of the application and the mail server I am using
+  I want to see which version of the mail server I am using
   So that support can identify exactly what is deployed when I report a problem
 
-  Scenario: The settings page shows the application and server versions
+  Scenario: The settings page shows the mail server version
     Given a practitioner signed in to the messaging
     When they open the settings page
-    Then at the bottom they see the application version, its build date and its environment
-    And they see the mail server version, its build date and its environment
+    Then at the bottom they see the mail server version, its build date and its environment
+    And the application does not show a version of its own
 
   Scenario: The build date is shown in French local time
     Given the mail server was built on 19 October 2026 at 07:05 UTC
@@ -18,8 +18,7 @@ Feature: Version information
     Given a practitioner signed in to the messaging
     And the mail server cannot be reached
     When they open the settings page
-    Then they still see the application version
-    And the mail server line says the information is unavailable
+    Then the mail server line says the information is unavailable
 
   Scenario: Version information is not disclosed without a session
     Given someone who is not signed in
