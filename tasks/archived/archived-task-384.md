@@ -359,3 +359,12 @@ Cette liste remplace celle de `## PRs` :
 
 
 Les variables de release `ENVIRONMENT_NAME` (weda2) ne sont plus nécessaires ; `Deployment__Environment` (api-mail) le reste.
+
+## Merged
+
+- 2026-10-20 — `/merge task-384 --i-tested`
+- api-mail : PR #302 squashée — `2b698fcb` ; CI `develop` ✅ (build + publish) https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/39422265353 — première image versionnée : `APP_VERSION=0.1.0-alpha.632`, `BUILD_DATE=2026-10-20T12:29:30Z` (aucun tag de version sur le dépôt : GitVersion part de 0.1.0).
+- client-mobile : PR #97 squashée — `cbae348` ; CI `develop` ✅ https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/39422285337
+- client-angular : managed manually by the human
+- Branches `feat/task-384-version-et-date-de-build` supprimées (distantes et locales)
+- Staging : aucune branche `forge/staging-task-*` pour ce run
