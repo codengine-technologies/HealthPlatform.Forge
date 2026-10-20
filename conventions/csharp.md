@@ -1541,3 +1541,18 @@ restent rouges (ou verts) sur l'ancienne transformation, sans rapport avec le co
 **Consigne** : après toute modification d'une ressource référencée par un `.resx` (XSL, gabarit),
 construire avec `dotnet build --no-incremental` avant de lancer les tests, et relire le résultat
 de la transformation plutôt que le seul code de test.
+
+## scope-d-operation-par-action — toute action de contrôleur ouvre un scope d'opération
+
+**Occurrences : 1** (task-384, `/develop` — api-mail, `BuildInfoController`)
+
+Le test d'architecture `ControllerOperationScopeScanTests.EveryControllerActionOpensAnOperationScope`
+refuse une action de contrôleur qui n'enveloppe pas son corps dans
+`using (logger.BeginOperationScope("Nom")) { … }` : ses journaux sortiraient sans propriété
+`Operation`, introuvables par opération dans Seq. Une action « trop simple pour journaliser »
+(`=> Ok(provider.Get())`) le déclenche quand même, et seulement au passage complet des tests.
+
+**Consigne** : tout nouveau contrôleur reçoit `ILogger<TController>` dans son constructeur primaire, et
+chaque action ouvre `BeginOperationScope` avec le nom de la méthode sans `Async` (préfixé `Domaine.`
+si ce nom existe déjà ailleurs). Écrire le scope en même temps que l'action, y compris pour une
+action d'une ligne.
