@@ -317,3 +317,9 @@ Suggestions (non bloquantes) :
 4. weda2 : l'app autonome `apps/mss` ne fournit pas `MSS_APP_BUILD_INFO` — sa ligne Application dira « information indisponible » (weda2 est la cible de la US).
 
 - Validation finale (`/review`) : api-mail build ✓, tests 195 + 690 + 3 661 + 1 259 + 898 (16 ignorés préexistants) — **un échec isolé et non identifié dans `mss.mail.api.tests` au premier passage** (lancé en parallèle des validations mobile et weda2), jamais reproduit ensuite (3 passages verts dont un sous la même charge) ; mobile build ✓, 1 125/1 125 ; weda2 build production ✓, weda2 2 655, mss-lib 937, design-system 1 924.
+
+### Mise à jour du 2026-10-20 — HTTPS de weda2 rétabli
+
+- Le report MSS sur `next` avait retiré `ssl: true` de la cible `serve` de weda2 et `serve-weda2.ps1` (chemins propres à un poste) : `nx serve weda2` démarrait en HTTP.
+- Rétabli comme sur `feature/nova-rewriting-mss-weda-integration`, sans chemin de poste : `apps/weda2/project.json` → `serve.options` = `{ host: localhost, ssl: true }` ; `front/serve-weda2.ps1` restauré, `$frontDir = $PSScriptRoot` (le certificat reste lu dans `%USERPROFILE%\.aspnet\https`). Vérifié : `https://localhost:4200` → 200, certificat ASP.NET approuvé.
+- `front/e2e/mss-e2e/run.mjs` : le `--ssl` ajouté pendant `/e2e` est retiré (redondant) — fichier revenu à l'identique, à retirer de la liste ci-dessus. Nouveau fichier non commité : `front/serve-weda2.ps1`.
