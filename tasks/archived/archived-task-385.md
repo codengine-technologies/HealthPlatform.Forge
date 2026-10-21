@@ -289,3 +289,9 @@ See `tests/Features/Mss/AiConsumptionObservability.feature`
 | **Total cycle** | | **1 h 13 min** | **14 (1 min 40 s)** | **22 (18 min 13 s)** | **4 (1 min 21 s)** | |
 
 Autres commandes mesurées : restore ×1 (1.8 s)
+
+## Merged
+
+- `api-mail` : PR #303 squash-mergée le 2026-10-21 — commit `0ee7649b` sur `develop` (« feat(ai): consommation IA attribuée par fonctionnalité (task-385) »). Branche `feat/task-385-consommation-ia-par-fonctionnalite` supprimée (distante et locale).
+- Ajouté à la PR avant merge (commit `46e85057`) : l'étude du coût de l'IA (`docs/plan-mesure-cout-ia.md`, `docs/synthese-ceo-cout-ia-2026-10-21.md/.pdf`, rapports détaillés du 20 et du 21/10).
+- CI `develop` : build vert ; publish suivi après merge.
