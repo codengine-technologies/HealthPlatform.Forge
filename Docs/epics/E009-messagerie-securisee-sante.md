@@ -4,7 +4,7 @@
 > **Modèle** : hand-crafted
 > **Version** : 1.86
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-22 (chaque correspondant garde toutes ses adresses MSSanté, avec une adresse par défaut au choix — task-379)
+> **Dernière mise à jour** : 2026-10-23 (la recherche dans l'Annuaire Santé trouve le praticien et dit quand elle est incomplète — task-386)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1036,6 +1036,13 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
+- **v1.101 — La recherche dans l'Annuaire Santé trouve le confrère, et dit quand elle n'a pas pu aller au bout** (task-386, les trois applications) :
+  - **Un confrère cherché par nom et département est trouvé.** Une recherche comme « dup » dans le Cher répondait « aucun praticien » alors que plusieurs existaient : la recherche part désormais du nom, puis vérifie le lieu, et rend ses résultats en quelques secondes (22 praticiens en 5,5 s sur l'annuaire réel).
+  - **Une recherche incomplète le dit.** Quand l'annuaire national est saturé ou trop lent, les résultats déjà obtenus s'affichent avec le message « Recherche incomplète », et le médecin est invité à préciser ses critères ou à réessayer. « Aucun praticien trouvé » n'apparaît qu'après une recherche complète.
+  - **Un annuaire indisponible n'est plus un résultat vide.** S'il ne répond pas du tout, le médecin lit « L'annuaire santé est momentanément indisponible. Réessayez dans un instant. »
+  - **Les recherches trop larges sont refusées tout de suite, avec la raison** : nom de moins de 3 lettres, prénom seul, spécialité sans code postal ni commune, organisation seule de moins de 3 lettres, lieu seul. Aucune requête n'est envoyée.
+  - **« Possède une adresse MSSanté » est coché par défaut** : une messagerie MSSanté n'écrit qu'aux confrères joignables. Le médecin peut le décocher.
+  - **Respect du quota de l'annuaire national** : toutes les instances partagent un même budget d'appels, et la recherche patiente brièvement plutôt que d'échouer quand l'annuaire demande de ralentir.
 - **v1.100 — Chaque correspondant garde toutes ses adresses MSSanté, et vous choisissez celle à utiliser** (task-379, les deux applications) :
   - **Plus aucune adresse perdue.** Un confrère importé de l'annuaire ou complété automatiquement peut avoir plusieurs boîtes MSSanté (cabinet, établissement). Modifier sa fiche, même seulement son téléphone, conserve désormais toutes ses adresses ; la fiche les affiche toutes et permet d'en ajouter ou d'en retirer.
   - **Une adresse par défaut, si vous le souhaitez.** Dans la fiche, vous pouvez marquer une adresse « Par défaut ». En rédigeant un message, taper le nom du confrère ne propose alors que cette adresse ; sans adresse par défaut, une suggestion apparaît pour chacune de ses adresses, et celle que vous choisissez est celle qui part.

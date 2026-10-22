@@ -541,6 +541,7 @@ de voie e2e au catalogue.
 | /lint-mobile | ok | 18 s | 2 (14 s) | — | — | client-mobile 2B/0T |
 | /e2e | ok | 13 min 47 s | — | — | — | e2e ×6 (27 min 58 s) |
 | /review | ok | 6 min 27 s | 4 (29 s) | 5 (8 min 28 s) | — | api-mail 2B/2T, client-mobile 2B/2T, client-blazor 0B/1T, APPROVED (2e revue) — PR api-mail #305, mobile #99, blazor #95 |
-| **Total cycle** | | **51 min 35 s** | **12 (2 min 23 s)** | **34 (36 min 42 s)** | **8 (2 min 35 s)** | |
+| /tech-writer | ok | 54 s | — | — | — | — |
+| **Total cycle** | | **52 min 29 s** | **12 (2 min 23 s)** | **34 (36 min 42 s)** | **8 (2 min 35 s)** | |
 
 Autres commandes mesurées : lint ×5 (1 min 03 s)

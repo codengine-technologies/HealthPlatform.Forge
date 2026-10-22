@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-10-22 (v1.100)
+> **Dernière mise à jour** : 2026-10-23 (v1.101)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -760,6 +760,42 @@
   - sous-objet partagé pour les options d'envoi au prochain changement de contrat ;
   - remonter `originalMarkedCancelled` et `warning` par `drafts/{id}/send` ;
   - bail renouvelable pour le verrou.
+
+### v1.101 — Recherche dans l'Annuaire Santé : deux pivots, quota partagé, issue signalée, 503 sans réponse — task-386
+
+- **Origine** : Seq, 2026-10-22 — « dup » + « 18 » rendait **0 praticien en 200** après 101 appels (lieu d'abord, un appel par établissement, plafond 100) et une rafale de 429 avalés.
+- **API FHIR mesurée** (`Docs/annuaire-sante-fhir-api.md`) : quota 17/s par clé (toutes instances), 429 **sans** `Retry-After`, paramètres chaînés → 504 après 30 s, `POST _search` → 500, paramètre inconnu → 500, URL ≤ 4 096 (4 092 accepté, 4 177 → 414), `_id=` vide ignoré, virgule = OU (y compris `%2C`), `mailbox-mss` ne voit que la fiche, `PractitionerRole.code` ≠ profession.
+- **Décisions humaines** : message « résultats incomplets » ; attendre et réessayer, borné ; BAL cochée par défaut ; nom ≥ 3 ; spécialité exige un lieu ; pas de cache. Après la 1ʳᵉ revue : **503 dès qu'aucun appel n'a abouti** (429 compris), **client-blazor inclus**, organisation seule ≥ 3, spécialité + organisation sans lieu acceptée.
+- **api-mail** :
+  - `DirectorySearchEngine` : praticien d'abord (`Practitioner?family/given/identifier/qualification-code&_revinclude=PractitionerRole:practitioner&_count=1000`, pages suivies) puis `Organization?_id=…&address-postalcode|address-city|name` par lots ; établissement d'abord (`Organization?…&_revinclude=PractitionerRole:organization`, puis `Practitioner?_id=…&qualification-code`) ;
+  - `AnnuaireQuery` : refuse paramètres chaînés et `:contains` coûteux ; `Batch` coupe à 200 `_id` **et** 3 800 caractères d'URL (mesurée telle qu'envoyée) ;
+  - filtre BAL **en mémoire** sur fiche + activités (le filtre serveur perd ~1 porteur sur 5) ;
+  - `AnnuaireQuotaHandler` + `RedisAnnuaireQuotaGate` (fenêtre fixe Redis 15/s, repli local) : reprise 429 après ~1 s + gigue, 3 essais ; échéance 10 s (`TimeProvider`) ;
+  - issue `X-Directory-Search-Outcome` (`complete` | `incomplete;reason=quota|deadline|pages|limit|unavailable`), exposée au CORS ; 503 `DIRECTORY_UNAVAILABLE` ;
+  - 400 avant tout appel (nom < 3, prénom seul, spécialité sans lieu ni organisation, organisation seule < 3, lieu seul, `, | $ \`) ;
+  - un seul évènement de synthèse par recherche (critères présents, appels, refus, issue) — l'annuaire sort de l'exemption de `SensitiveLogTemplateScanTests` ;
+  - stratégies, `SearchStrategyFactory`, `SearchMode` et méthodes mortes de `FhirBundleParser` supprimées.
+- **Clients** :
+  - weda2 (code-only) et mobile : `directory-search.util` (règles, lecture de l'en-tête, messages), « aucun praticien » seulement après une recherche complète, interrupteur BAL sur mobile ;
+  - client-blazor : `DirectorySearchRules`, `DirectoryService` → `DirectorySearchOutcome`, `GetOutcome` porte motif et en-têtes, `GetWithOutcomeAsync(…, notifyOnError)`.
+- **Filet** :
+  - faux annuaire fidèle `tests/mss.mail.testing.shared/Annuaire/FakeAnnuaireSante` (pièges reproduits, appels interdits consignés, auto-testé) et `AutoAdvancingTimeProvider` (aucune attente réelle) ;
+  - `DirectorySearchEndpointIntegrationTests` (route réelle, Redis réel), `AnnuaireQuotaSharedRedisIntegrationTests` (deux instances, un Redis) ;
+  - `AnnuaireSanteContractTests` (explicite, hors CI) : contrat 14 appels vert ; mesure réelle « dup » + « 18 » : **5,5 s / 29 appels / 22 praticiens**, 5,1 s / 14 appels avec BAL ;
+  - règle 1b : mutations M1 à M13, toutes rouges.
+- **Constats en route** : 1ʳᵉ revue CHANGES REQUESTED (« aucun praticien » sur une recherche incomplète, virgule = OU contournant la règle des 3 lettres, latence réelle non prouvée) — corrigés ; faux annuaire qui a attrapé l'encodage `%2C` des virgules ; course dans l'horloge simulée corrigée (lecture de l'heure et pose du minuteur atomiques).
+- **Écarts à la DoD** : ~14 appels avec BAL au lieu de 8 ; limite d'URL 3 800 au lieu de 3 000.
+- **Tests** : api-mail domain 195, infra 695, application 3 603, api 1 276, intégration 953 (16 ignorés préexistants ; 3 rouges IMAP « du jour » préexistants, rouges aussi sur `develop` entre minuit local et minuit UTC) ; weda2 `mss-lib` 996 ; mobile 1 158 ; Blazor 466.
+- **Sonar** : Quality Gate OK, nouveau code 0 finding après correction (S1172, S3604 ×3, S4457, S1118, S3776, CA1859 ×2, xUnit1045 ; S3925 FALSE-POSITIVE), new_coverage 97,0 %, projet 98,1 % A/A/A.
+- **E2E** : E2E-CONTACT-001 **v2** (mode humain) ; voies mobile 39 et Angular 47 vertes, parité verte.
+- **PR** (`awaiting-human-merge`, branche `fix/task-386-annuaire-recherche-fiable`) : `api-mail` #305, `client-mobile` #99, `client-blazor` #95 ; `client-angular` en code-only (TFS).
+- **Leçons** : `conventions/csharp.md` (S3604, S4457, S1172, S3925, S3776, nouvelle S1118) ; fiche API et mémoire (virgule = OU, limite 4 096).
+- **Suivis** :
+  - flaky IMAP « messages du jour » entre minuit local et minuit UTC (date de référence à injecter) ;
+  - spécialité + organisation de 2 lettres sans lieu ; réponse non FHIR de la passerelle → 500 au lieu de 503 ;
+  - mobile : message technique brut sur erreur réseau ; Blazor : « indisponible » sur requête non partie, Entrée pendant une recherche ;
+  - échapper `, | $ \` dans `AnnuaireQuery` plutôt que refuser (passerelle à vérifier) ; partager les règles C# via `dtos-mss` ;
+  - client-blazor : projet `Mss.Console` non restaurable localement (source NuGet `github`).
 
 ### v1.100 — Un contact garde toutes ses adresses MSSanté, le médecin peut en désigner une par défaut, et la recherche survit à une erreur (ANG-56, ANG-57 ; ANG-58 écarté) — task-379
 
