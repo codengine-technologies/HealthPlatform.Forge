@@ -127,7 +127,8 @@ Hors périmètre :
 | /lint-mobile | ok | 19 s | — | — | — | lint clean at baseline |
 | /e2e | ok | 35 min 25 s | — | — | — | e2e ×6 (28 min 11 s), vert au 2e run (1er run : sélecteurs du nouveau test) |
 | /review | ok | 7 min 39 s | 4 (21 s) | 3 (4 min 18 s) | — | dtos-mss 1B/0T, api-mail 1B/1T, client-mobile 1B/1T, client-angular 1B/1T |
-| **Total cycle** | | **1 h 27 min** | **14 (2 min 36 s)** | **16 (19 min 17 s)** | **2 (40 s)** | |
+| /tech-writer | ok | 1 min 36 s | — | — | — | — |
+| **Total cycle** | | **1 h 28 min** | **14 (2 min 36 s)** | **16 (19 min 17 s)** | **2 (40 s)** | |
 
 Autres commandes mesurées : lint ×1 (14 s), nuget-wait ×2 (15 s), restore ×2 (12 s)
 
