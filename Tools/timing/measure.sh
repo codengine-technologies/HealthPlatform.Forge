@@ -82,7 +82,7 @@ emit_event \
   kind="$kind" \
   label="$label" \
   cwd="${cwd:--}" \
-  cmd="$*" \
+  cmd="$(redact_secrets "$*")" \
   duration_ms=$((t1 - t0)) \
   exit_code="$rc"
 

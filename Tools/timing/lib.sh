@@ -94,6 +94,18 @@ json_escape() {
     | tr '\n\r' '  '
 }
 
+# redact_secrets <text> — masks credentials before they reach the VERSIONED ledger.
+# The measured command line is recorded as-is, and the Sonar `begin`/`end` carry the
+# token as `/d:sonar.token=…` (or `sonar.login=…`) : found in clear in 204 lines of
+# metrics/timings.jsonl on 2026-10-22 (task-376), already pushed. Any `token=`,
+# `login=`, `password=` value and any `squ_`/`sqa_`/`sqp_` token is replaced by `***`.
+redact_secrets() {
+  printf '%s' "$1" \
+    | sed -E \
+        -e 's/((token|login|password|passwd|pwd|secret|apikey|api-key)=)[^ "]+/\1***/Ig' \
+        -e 's/sq[uap]_[A-Za-z0-9]+/***/g'
+}
+
 # Keys written as JSON numbers rather than strings.
 _is_numeric_key() {
   case "$1" in

@@ -140,7 +140,7 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   task-367 (/lint-angular, 5 `require-example` sur des `@example` vides) ;
   task-365 (/lint-angular, 1 `require-param` : paramètre `session` ajouté à `fakeAuthProxy`
   du support e2e sans toucher son JSDoc — le même geste que task-308 et task-310)
-- **Occurrences** : 7 (task-374 — un `@example` vide sur un helper e2e, et un `@param` ajouté sans description par l'auto-fixer : le fixer pose la balise, pas son texte)
+- **Occurrences** : 8 (task-374 — un `@example` vide sur un helper e2e, et un `@param` ajouté sans description par l'auto-fixer : le fixer pose la balise, pas son texte ; task-376 — des constantes exportées insérées en ancrant sur `@Component({` : le JSDoc de la classe, juste au-dessus du décorateur, est passé sur les constantes, et la classe s'est retrouvée sans bloc (`require-jsdoc`, deux composants). Attrapé par le lint ciblé de /develop avant tout rendu. **Un décorateur est une signature** : l'ancre est le `/**` qui le précède)
 
 ### mail-content-body — `content.body` n'est pas le texte du mail
 - **Règle** : convention projet (défaut fonctionnel, invisible au lint)
@@ -311,5 +311,75 @@ par lint sur du code frais est un échec de lecture de ce fichier.
 - **Piège** : un code modifié appelle une méthode d'un service (`login()` sur l'échec d'un échange) que le double d'un spec EXISTANT n'expose pas. L'appel part dans un callback RxJS : l'exception n'échoue aucun test, Vitest la compte en « Unhandled Errors » et la cible `test` sort en échec — vu seulement au `npm test` complet.
 - **Consigne** : quand une dépendance gagne un nouvel appel, chercher ses doubles (`grep -rn "provide: {Service}" --include=*.spec.ts`) et les compléter ; lire la ligne `Errors` de Vitest, pas seulement `Tests`.
 - **Preuve** : task-370, `/review` : 2 723 verts, 1 erreur non gérée (`this.authenticationService.login is not a function`), cible `weda2:test` en échec ; double complété → vert.
-- **Origine** : task-370
+- **Origine** : task-370 ; task-376 (/develop : le double de `MailboxSessionStore` du spec des envois en attente n'exposait pas `failedActionsCount`, lu par le template — 23 rouges d'un coup, vu et complété avant tout commit)
+- **Occurrences** : 2
+
+---
+
+### identifiant-adopte-avant-creation — Un identifiant n'est adopté qu'une fois l'objet créé par le serveur
+- **Piège** : la rédaction posait l'identifiant de son brouillon (GUID client) dès le premier enregistrement,
+  avant la réponse. Un `POST` raté laissait un identifiant que le serveur n'avait jamais vu : tous les
+  enregistrements suivants partaient en `PUT` (404), la fermeture perdait le contenu, l'envoi échouait.
+- **Consigne** : un identifiant proposé par le client vit à part (`proposedDraftId`) jusqu'au succès de la
+  création ; seul le succès l'adopte. Un nouvel essai repropose le même (création idempotente). Une
+  fermeture qui enregistre **attend** le résultat, et reste ouverte sur un échec, message affiché.
+- **Preuve** : `mail-compose-safety.component.spec.ts` (weda2), rouges sous la mutation « PUT sur un id
+  jamais créé » ; même correctif et mêmes tests sur le mobile.
+- **Revers (revue de task-376)** : adopter l'identifiant au retour seulement ouvre une course avec
+  l'envoi. Un enregistrement en vol au moment d'« Envoyer » fait partir le message par la route d'envoi,
+  puis le POST revient et adopte un brouillon **du message déjà parti** (double envoi possible). Toute
+  écriture de brouillon en vol est donc neutralisée une fois l'envoi engagé : réponse ignorée, aucune
+  recréation `404 → POST`, ou brouillon créé aussitôt retiré. Le test laisse le POST en vol, envoie,
+  puis le termine.
+- **Origine** : task-376 (audit ANG-16, weda2 et mobile ; course relevée en revue)
+- **Occurrences** : 1
+
+### contexte-pose-a-cote — Un contexte posé à côté d'un événement est hérité par l'événement suivant
+- **Piège** : « Annuler et remplacer » posait l'original à annuler dans un signal partagé
+  (`cancelAndReplaceContext`), puis émettait l'ouverture de la rédaction. Seule la fermeture le vidait :
+  un « Nouveau message » ouvert sans fermer partait par `cancel-and-replace` et marquait l'original
+  « [ANNULÉ] ».
+- **Consigne** : ce qui qualifie une ouverture voyage **dans** l'événement (`ComposePrefill.cancelAndReplace`)
+  et vit dans l'état de la rédaction, remis à zéro à chaque ouverture. Jamais un signal partagé « à côté ».
+- **Preuve** : test « Annuler et remplacer puis Nouveau message », rouge sous la mutation qui ne remet pas
+  le contexte à zéro.
+- **Origine** : task-376 (audit ANG-15)
+- **Occurrences** : 1
+
+### reponse-sur-instantane — Une réponse asynchrone appliquée sur un instantané écrase la frappe
+- **Piège** : l'assistance IA des modèles (générer, améliorer, détecter les champs) et « par défaut » des
+  signatures appliquaient leur réponse sur l'objet lu **avant** la requête (`{ ...template, body }`) :
+  ce que le praticien avait tapé pendant la demande était écrasé, sans un mot.
+- **Consigne** : à la réponse, vérifier que l'objet édité est toujours celui de la demande ; sinon écarter la
+  réponse et le dire. Une mise à jour d'un seul champ s'applique sur l'état **courant** (`update`), jamais
+  sur l'instantané.
+- **Preuve** : `mss-templates.component.spec.ts` / `mss-signatures.component.spec.ts`, rouges sous mutation.
+- **Origine** : task-376 (audit ANG-75)
+- **Occurrences** : 1
+
+### desabonnement-annule-un-envoi — `takeUntilDestroyed` annule la requête, pas seulement l'écoute
+- **Piège** : se désabonner d'un `HttpClient` **annule** la requête. La confirmation d'un envoi mis de côté
+  portait `takeUntilDestroyed` : quitter la page en pleine transmission SMTP coupait la confirmation, et
+  le message restait peut-être parti.
+- **Consigne** : une requête à effet externe irréversible (envoi, confirmation) est souscrite
+  indépendamment de la vie du composant (`ReplaySubject` abonné à la requête) ; seule l'écoute de son
+  résultat suit le composant.
+- **Preuve** : `leavingThePage_DuringAConfirmation_DoesNotCancelIt`, rouge sous la mutation qui rend la
+  requête annulable.
+- **Origine** : task-376 (audit ANG-26)
+- **Occurrences** : 1
+
+---
+
+### tester-a-travers-le-parent — Un correctif d'affichage se teste par la liste que l'écran rend vraiment
+- **Piège** : sur le mobile, la lecture d'une pièce homonyme a été corrigée dans `mail-attachment` (rang
+  transmis), et testée en donnant au composant les deux pièces directement. Or le parent
+  (`mail-detail.mergedAttachments`) dédoublonne sur `guid || fileName`, et le backend ne renseigne pas le
+  `guid` des pièces MIME : la seconde pièce n'atteint jamais l'enfant. Correctif mort, tests verts.
+- **Consigne** : un comportement d'affichage se prouve depuis la donnée du serveur jusqu'aux lignes rendues
+  (le parent qui fusionne, filtre ou dédoublonne compris), pas en alimentant l'enfant à la main. Avant de
+  corriger un enfant, lire ce que le parent lui passe.
+- **Preuve** : revue de task-376 (CHANGES REQUESTED, B2) ; test à écrire par la reprise, rouge sur le code
+  revu.
+- **Origine** : task-376 (/review)
 - **Occurrences** : 1

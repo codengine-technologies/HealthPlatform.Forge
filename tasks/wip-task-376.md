@@ -1,0 +1,302 @@
+# todo-task-376.md — Rédiger dans weda2 : jamais de contenu perdu, jamais de double envoi, jamais d'envoi incomplet présenté comme réussi
+
+**Repos**: client-angular, client-mobile, api-mail
+**Dependencies**: — (aucune)
+**Epic**: E009
+**Single frontend**: false — weda2 et le mobile (décision humaine du 2026-10-13).
+**Priorité**: **1** — un courrier médical peut partir deux fois, partir sans ses pièces jointes avec « envoyé avec succès », annuler à tort un envoi antérieur, ou être perdu sans avertissement à la fermeture de la rédaction.
+
+> **Origine.** Audit de détection de bugs du client Angular du 2026-10-13
+> (`Docs/audits/client-angular-audit-bugs-20261013.md`, **ANG-14 ✔, ANG-15 ✔, ANG-16 ✔, ANG-17, ANG-18 ✔ (lecture et transfert), ANG-19, ANG-26, ANG-42, ANG-43, ANG-44, ANG-45, ANG-46, ANG-75**).
+
+## Ce qui est établi
+
+- **ANG-14** — la remise incertaine du serveur (503 `MAIL_DELIVERY_UNCERTAIN`, 502 de la route brouillon, décision task-330) n'est reconnue nulle part : la rédaction affiche « Erreur lors de l'envoi » et réactive Envoyer ; les envois en attente affichent « le message reste prêt à partir » ; le modèle n'a pas `deliveryUncertain`.
+- **ANG-15** — `mail-compose.component.ts:707` : seul `doClose` vide le contexte « annule et remplace ». « Annuler et remplacer » sur X puis « Nouveau message » : le nouveau message part par `cancel-and-replace` et X est marqué « [ANNULÉ] ».
+- **ANG-16** — `mail-compose.component.ts:509-541, 2125-2195` : l'identifiant de brouillon est posé avant toute création côté serveur ; `saveAndClose` fait un PUT (404 sur un id inconnu) et ferme : **tout le contenu est perdu**. Un premier autosave en échec rend l'envoi impossible.
+- **ANG-17** — « Nouveau message », clic sur un brouillon de la liste, intention de l'hôte, rechargement : la rédaction est remplacée sans être enregistrée ; aucun `beforeunload`.
+- **ANG-18** — `occurrence` jamais transmis : au transfert, deux pièces homonymes deviennent deux copies de la première ; à la lecture, la seconde n'est pas consultable.
+- **ANG-19** — Envoyer est actif avant la fin du téléchargement des pièces d'un transfert : le message part sans elles.
+- **ANG-26** — `failedActionsCount` ignoré ; une confirmation d'envoi est annulée en quittant la page.
+- **ANG-42 à ANG-46, ANG-75** — un modèle écrase citation et signature ; signature en double ou sous la citation ; adresse saisie sans Entrée ignorée, Cc/Cci masqués mais destinataires ; refus explicites du serveur (taille, opposition, verrou) jamais affichés ; brouillon « annule et remplace » envoyé sans carte comme un message ordinaire ; autosave non relancé après échec, contact sans adresse principale, doublons de modèles, aperçu de correction d'un autre message, dialogue de doublons qui garde son acquittement.
+
+## Objective
+
+Que ce que le médecin écrit **ne soit jamais perdu**, qu'un message **ne parte jamais deux fois ni incomplet** sans qu'il le sache, que « annule et remplace » ne vise **que** le message choisi, et que chaque refus ou incertitude du serveur lui soit dit en clair.
+
+### Périmètre
+
+1. **Remise incertaine** reconnue (code et 502 brouillon), `detail` du serveur affiché, nouvelle tentative bloquée ; statut 0 et 504 traités comme incertains ; `deliveryUncertain` et `failedActionsCount` dans les modèles et l'écran des envois en attente.
+2. **Annule et remplace** : contexte vidé à chaque ouverture qui n'est pas un remplacement ; `sendMailDirect` route aussi sur le contexte restauré d'un brouillon ; `warning` de la réponse affiché.
+3. **Brouillon** : identifiant adopté seulement après une création réussie ; en cas d'échec, la rédaction reste ouverte et le médecin est prévenu ; sur 404 à l'envoi, envoi direct.
+4. **Remplacement de la rédaction** : un seul chemin « enregistrer puis ouvrir » pour tous les déclencheurs ; `beforeunload` tant qu'il reste du contenu non enregistré.
+5. **Pièces jointes** : transfert par référence (`sourceFolderPath/sourceUid/sourceOccurrence`, résolu par `OutgoingMailService`) plutôt que retéléchargement ; à défaut, `occurrence` transmis et Envoyer désactivé tant que des pièces sont en cours ; erreur de pièce visible jusqu'à une action explicite.
+6. **Refus explicites** : `detail` affiché pour les 400 et 409 ; taille totale calculée avec les lectures en cours.
+7. Corrections de **ANG-42 à ANG-44, ANG-46, ANG-75**.
+
+> **⚠️ Arbitrage humain requis — le client mobile.** Le mobile rédige et envoie aussi (réponse, transfert,
+> brouillons, envois en attente). Il n'a pas été audité. Inclure `client-mobile` (audit ciblé de la
+> rédaction mobile dans le `/develop`), ou ouvrir une task mobile dédiée ?
+>
+> **Décision humaine (2026-10-13, avant `/forge 368 to 381`) : inclure le mobile.** `/develop` audite le
+> même périmètre sur `client-mobile` et y corrige les défauts trouvés ; les scénarios e2e de la task sont
+> `requis` sur angular **et** mobile.
+
+## Definition of Done
+
+- [ ] Build et tests verts : weda2, api-mail
+- [ ] Tests unitaires et de composant rouges d'abord, client-angular :
+  - [ ] 503 `MAIL_DELIVERY_UNCERTAIN` : message « peut-être parti », Envoyer bloqué ; même chose pour le 502 de la route brouillon, le statut 0 et le 504
+  - [ ] « Annuler et remplacer » puis « Nouveau message » : l'envoi passe par `sendmail`, pas par `cancel-and-replace`
+  - [ ] premier autosave en échec puis fermeture : la rédaction reste ouverte avec un message ; aucune requête PUT sur un identifiant jamais créé
+  - [ ] clic sur un brouillon de la liste pendant une rédaction : la rédaction en cours est enregistrée avant d'être remplacée
+  - [ ] transfert d'un mail à deux pièces homonymes : deux pièces distinctes envoyées ; Envoyer désactivé pendant leur récupération
+  - [ ] adresse tapée sans Entrée puis Envoyer : elle est ajoutée (ou l'envoi est refusé avec un message) ; Cc/Cci non vides non masquables
+  - [ ] un 409 d'opposition patient affiche le `detail` du serveur
+  - [ ] appliquer un modèle en réponse conserve citation et signature
+- [ ] Test d'intégration de bout en bout pour l'envoi d'un transfert par référence (`POST …/sendmail` avec pièces `sourceFolderPath/sourceUid/sourceOccurrence`) : les deux pièces homonymes d'origine sont dans le message remis (lu côté serveur de messagerie du test), vu rouge si l'occurrence est ignorée (règle 1b) — s'il n'existe pas déjà
+- [ ] Scénarios E2E :
+  - [ ] E2E-COMPOSE-004 « Une remise incertaine n'est jamais présentée comme un échec à renvoyer » ajouté (angular `requis`, mobile selon l'arbitrage)
+  - [ ] E2E-DETAIL-001 versionné : le transfert d'un mail à deux pièces homonymes les envoie toutes deux
+  - [ ] E2E-DRAFT-003 « Fermer une rédaction récente ne perd rien » ajouté
+- [ ] Trou du filet : lignes dans `conventions/e2e.md`
+- [ ] Aucune donnée de santé (corps, pièces) ajoutée aux journaux
+
+## Manual Test Plan
+
+1. Couper la connexion SMTP du serveur de test après DATA (banc) : l'écran dit « Ce message est peut-être parti… », Envoyer est bloqué.
+2. « Annuler et remplacer » sur un envoi X, puis « Nouveau message » à un autre confrère, envoyer → X n'est pas marqué annulé.
+3. Rédiger 10 s, cliquer sur un autre mail → le brouillon est enregistré ; rouvrir les brouillons : le texte est là.
+4. Transférer un mail portant deux `document.pdf` différents → le confrère reçoit les deux documents.
+5. Transférer un mail portant un IHE_XDM, cliquer aussitôt sur Envoyer → impossible tant que la pièce n'est pas jointe.
+6. Patient opposé non acquitté : l'envoi affiche le motif du serveur.
+
+## Conformité santé / Ségur / ANS
+
+- **Couloir Ségur** : médecine de ville
+- **Vague Ségur** : hors Ségur — correctif de l'envoi MSSanté
+- **Exigences DSR honorées** : non applicable — rétablit la fiabilité de l'envoi (pas de doublon, pas d'envoi incomplet silencieux)
+- **INS** : non applicable en écriture ; les documents transférés gardent leur identité (XDM inchangé)
+- **Authentification PS** : PSC / e-CPS ; aucun envoi sans carte (règle inchangée : mise de côté puis confirmation)
+- **Habilitations** : inchangées
+- **Interop CI-SIS** : IHE XDM — les pièces d'origine sont transférées à l'identique, par référence
+- **Tracé PGSSI-S** : envois, annulations (annule et remplace) et remises incertaines tracés comme aujourd'hui, désormais sur le bon message
+- **Consentement patient** : opposition à l'envoi vers Mon Espace Santé — le refus du serveur est affiché
+- **Référentiels métier** : aucun
+- **Hébergement HDS** : oui
+- **AIPD / impact RGPD** : inchangé
+
+## Branches
+- `api-mail` (pushed) : fix/task-376-redaction-sans-perte-ni-double-envoi — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-376-redaction-sans-perte-ni-double-envoi
+- `client-mobile` (pushed) : fix/task-376-redaction-sans-perte-ni-double-envoi — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/fix/task-376-redaction-sans-perte-ni-double-envoi
+- `client-angular` (code-only) : la forge écrit le code sur la branche checked out dans `Client/Angular/` (snapshot au `/start` : `feature/nova-mss-weda-integration`) — humain gère branche, commit, push, PR TFS
+
+> **Vérification d'actualité (2026-10-22, avant `/start`).** Les ✔ de l'audit signifient « contre-vérifié », pas « corrigé ». Tous les constats sont toujours présents dans weda2 (ANG-14, 15, 16, 17, 18 lecture/transfert, 19, 26). Déjà livré ailleurs : la résolution par référence côté serveur (`OutgoingMailService.ResolvePartsByReferenceAsync`, `AttachmentDto.SourceOccurrence`) — couverte seulement par un test unitaire, le test d'intégration de la DOD reste à écrire ; `MssApiService.downloadAttachment(…, occurrence)` (task-372) réutilisable pour la lecture. Mobile : `sourceUid/sourceOccurrence` présents, aucune gestion de la remise incertaine.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-376 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 56 s | — | — | — | — |
+| /develop | ok | 2 h 03 min | 11 (7 min 07 s) | 13 (24 min 26 s) | — | api-mail 7B/8T, client-mobile 2B/3T, client-angular 2B/2T |
+| /sonar | ok | 32 min 49 s | 3 (3 min 44 s) | 10 (16 min 34 s) | 4 (6 min 54 s) | 1 itération(s), api-mail 3B/10T |
+| /lint-angular | ok | 2 min 54 s | — | — | — | — |
+| /lint-mobile | ok | 1 min 00 s | — | — | — | — |
+| /e2e | ok | 2 h 18 min | — | — | — | e2e ×4 (27 min 32 s) |
+| /review | failed | 8 min 37 s | 3 (1 min 50 s) | 3 (5 min 46 s) | — | api-mail 1B/1T, client-mobile 1B/1T, client-angular 1B/1T, CHANGES REQUESTED: B1 course autosave/envoi (weda2+mobile), B2-B3 mobile |
+| **Total cycle** | | **5 h 08 min** | **17 (12 min 43 s)** | **26 (46 min 47 s)** | **4 (6 min 54 s)** | |
+
+Autres commandes mesurées : lint ×2 (3 min 19 s), restore ×1 (3 min 18 s)
+
+## Develop log
+
+- Repos touched : api-mail (pushed), client-mobile (pushed), client-angular (code-only, non commité sur `feature/nova-mss-weda-integration`)
+- DTOs published : no DTO change (aucune branche dtos-mss). Interop : no change.
+- Commits :
+  - api-mail : `be748778` test(e2e) catalogue (COMPOSE-004, DRAFT-003, DETAIL-001 v3) · `322db0c0` fix(draft) remise incertaine d'un brouillon en 503 `MAIL_DELIVERY_UNCERTAIN` · `0bcf48ff` test(mail) transfert par référence de deux homonymes, trois chemins d'envoi · `02d9472a` refactor(draft) simplify pass · `76b0935b` test(e2e) libellé DRAFT-003 (mobile : « en fermant la rédaction »)
+  - client-mobile : `92c6158` fix(mobile) rédaction (remise incertaine, brouillon, homonymes, refus lisibles, envois en attente) · `9df7514` test(mobile) e2e · `2327bb0` refactor(mobile) simplify pass
+  - client-angular : non commité (code-only) — voir la liste plus bas
+- **Écart à la DOD, assumé** : « le 502 de la route brouillon » n'existe plus pour une remise incertaine. api-mail la rend désormais en 503 problem+json `code: MAIL_DELIVERY_UNCERTAIN`, comme sendmail. Le 502 ne reste que pour « rien n'est parti » (serveur injoignable), qui reste renvoyable. Les deux clients lisent le code, plus le statut 0 et le 504. Raison : traiter tout 502 comme « peut-être parti » aurait bloqué le renvoi d'un message qui n'est jamais parti.
+
+### client-angular (weda2) — défauts corrigés
+- ANG-14 : remise incertaine reconnue (`isDeliveryUncertain` : 503 code, 0, 504), `detail` serveur affiché (`compose-send-uncertain`), « Envoyer » et Ctrl+Entrée bloqués. Envois en attente : `deliveryUncertain` affiché, ligne non renvoyable, exclue de « Tout envoyer », la série s'arrête.
+- ANG-15 : le contexte annule-et-remplace voyage dans `ComposePrefill.cancelAndReplace` ; le signal partagé `MailEventService.cancelAndReplaceContext` est supprimé. `warning` de la réponse affiché.
+- ANG-16 : identifiant de brouillon adopté seulement après création (`proposedDraftId` / `persistDraft`), `PUT` 404 → `POST` du même id. Fermeture qui échoue → rédaction ouverte + `DRAFT_SAVE_FAILED_MESSAGE`. 404 à l'envoi du brouillon → sendmail.
+- ANG-17 : chemin unique `saveThen` pour fermer ou remplacer (autre message, « Nouveau message », brouillon de la liste ; intention : abandon demandé). `beforeunload` tant qu'il reste du non-enregistré. Une signature seule n'est pas du contenu.
+- ANG-18 / ANG-19 : transfert par référence (`sourceFolderPath/sourceUid/sourceOccurrence`), plus aucun téléchargement donc plus rien en attente à l'envoi. Lecture : téléchargement et aperçu avec `occurrence`, clé de ligne `attachmentKey` (homonymes distincts). `homonymRanksOf` déplacé dans `core/utils/attachment-occurrence.util.ts` (réutilisé par l'import Weda).
+- ANG-26 : `failedActionsCount` exposé par `MailboxSessionStore` et affiché ; une confirmation partie n'est plus annulée en quittant la page.
+- ANG-42 / ANG-43 : `compose-body.util.ts` (`withTemplate`, `withSignature`, `hasSignature`) — modèle et signature placés par rôle, au-dessus de la citation, avant comme après la première frappe ; un brouillon rouvert ne reçoit pas de seconde signature.
+- ANG-44 : adresse tapée sans Entrée ajoutée à l'envoi (ou envoi refusé, message `compose-address-error`), syntaxe vérifiée, Cc/Cci non vides non masquables.
+- ANG-45 : `detail` serveur affiché pour 400 / 409 ; la limite de taille compte les fichiers en cours de lecture.
+- ANG-46 : un brouillon d'annule-et-remplace rouvert reste un annule-et-remplace, en ligne comme sans carte.
+- ANG-75 : autosave relancé après échec (et dit) ; contact sans adresse principale ajouté par son adresse MSSanté ; aperçu de correction remis à zéro ; modèles et signatures : pas de double création, échecs dits, réponse IA écartée si le modèle a changé, « par défaut » appliqué sur l'état courant ; dialogue des doublons : acquittement redemandé à chaque ouverture.
+- Hors périmètre, restant : le PDF d'un CDA (`mail-body`, `medical-document-modal`, `mail-read-only-view`) se télécharge encore par nom seul (homonymes de CDA, à reprendre avec `cdaPdfRank`). Mobile : `medical-document-modal` idem.
+
+### Fichiers Angular modifiés (non commités, à commiter par l'humain sur TFS)
+`front/e2e/mss-e2e/specs/functional.e2e.ts`, `front/e2e/mss-e2e/support/e2e-backend.ts`, `libs/mss/src/core/models/{mail,pending-email,sync}.model.ts`, `core/stores/mailbox-session.store.ts`, `core/utils/problem-details.utils{,.spec}.ts`, nouveaux `core/utils/{compose-body,attachment-occurrence,mail-address-syntax}.util{,.spec}.ts`, `features/mail/components/mail-compose/*` (composant, template, scss, 5 specs dont le nouveau `mail-compose-safety.component.spec.ts`), `mail-detail.component{,.spec}.ts`, `mail-attachment.component.{ts,html,spec.ts}`, `duplicate-cleanup-dialog.component{,.spec}.ts`, `weda-import.utils.ts`, `services/mail-event.service.ts`, `features/pending-sends/*`, `features/signatures/*` (+ spec neuf), `features/templates/*` (+ spec neuf).
+
+> ⚠️ **À commiter sur TFS AVANT le merge de la PR api-mail** (conventions/e2e.md, « test-angular-non-commite ») : `functional.e2e.ts` porte E2E-COMPOSE-004 v1, E2E-DRAFT-003 v1 et E2E-DETAIL-001 v3, requis côté angular.
+
+### Preuves rouges
+- Unitaires weda2, par mutation (marqueur compté, restauré), chaque fois rouge sur le test visé :
+  - M1 remise incertaine (4 rouges ANG-14) · M2 contexte hérité (ANG-15) · M3 PUT sur id jamais créé (8 rouges ANG-16/17) · M4 remplacement sans enregistrement (4) · M5 occurrence ignorée (ANG-18) · M6 adresse tapée ignorée (2) · M7 `detail` masqué (4, ANG-45) · M8 modèle qui écrase (ANG-42) · M9 signature repérée par commentaires (2, ANG-43) · M10 Cc masquable.
+  - P1–P5 envois en attente. P5 a d'abord survécu (un 503 arrêtait déjà la série) : test durci au statut 0 et au 504, rouge ensuite.
+  - R1–R3 lecture des homonymes · T1–T4, S1–S2, D1 modèles, signatures, doublons.
+- E2E weda2 (banc `--serve-only`, nouveau bundle attendu + 15 s) :
+  - E1 remise incertaine neutralisée → COMPOSE-004 rouge sur « le praticien lit que le message est peut-être parti ».
+  - E2 fermeture sans enregistrement → DRAFT-003 rouge sur l'attente du `POST /drafts`.
+  - E3 occurrence ignorée → DETAIL-001 rouge sur « porte les deux scan.pdf, chacun avec son contenu ».
+  - Témoins restaurés rejoués : COMPOSE-001/003/004, DRAFT-001/002/003, DETAIL-001 verts (7/7).
+- api-mail (agent) : `ADraftWhoseSendThrows_GoesBackToEditing_UncertainIs503Typed_OtherwiseIs502WithTheCause`, `ADraftSendThatFails_IsClassifiedByItsStage_ByTheRealSmtpService` (vrai SmtpService, 4 stades), `AForwardOfTwoHomonymParts_ByReference_DeliversBothContents` (sendmail, brouillon, mis de côté puis confirmé ; relu dans GreenMail). Exactement 6 rouges sous mutations (502 d'avant ; occurrence forcée à 0).
+- Mobile (agent) : 19 + 1 + 2 rouges unitaires sous mutation. **E2E mobile écrits mais non joués sous mutation** (banc partagé avec l'agent api-mail) : à jouer par `/e2e`.
+
+### Build, tests, qualité
+- api-mail : build 0 erreur ; suite complète domain 195, infrastructure 690, application 3 670, integration 908/924 (16 ignorés IA), api 1 275/1 276. L'unique rouge, `E2eUnattachedXdmTests.TheSeededCda_CarriesATrappedCell…`, passe seul (6/6) : instabilité sous charge, sans rapport avec le diff.
+- client-mobile : build vert, 1 147/1 147, eslint propre.
+- client-angular : `npm run build` vert ; `npm test` vert sur les 12 projets (mss 1 924, weda2 2 653…) ; eslint 0 erreur sur les fichiers touchés.
+- Passe qualité (/simplify) :
+  - Applied & committed : api-mail `02d9472a` ; client-mobile `2327bb0`.
+  - Applied (code-only, uncommitted) : client-angular — `deliveryUncertainMessage` et `describeSendError` réutilisent `serverDetail` ; instantané du brouillon sans le base64 des pièces, calculé une fois par enregistrement ; compteur d'octets en lecture en nombre simple ; règle d'arrêt de « Tout envoyer » factorisée (`stopsSendAll`). Revalidé : build + `npm test` verts.
+  - Écartés (changement de comportement ou hors diff) : toujours `POST` en upsert au lieu de `PUT` ; rang d'homonyme posé une fois au chargement du `MailDto` ; requêtes d'envoi non annulables au niveau de `MssApiService` ; clés de dédoublonnage unifiées ; style d'erreur commun modèles/signatures.
+- Environnement : `apps/weda2/src/app/core/api/generated/` (client hey-api ignoré par git, généré en mai sur `nova-rewriting`, sans son `hey-api.config.ts` sur la branche actuelle) cassait toute compilation de weda2. **Déplacé, pas supprimé**, dans `C:\Users\pascal.cabanel\AppData\Local\Temp\claude\d--TechWatch-HealthPlatform\172da0fb-2fad-4fac-9853-14ed682a3f50\scratchpad\weda2-api-generated-backup\generated`.
+- Prévention (règle d'or) : `conventions/e2e.md` — 3 « trous du filet » ; `conventions/angular.md` — 4 consignes neuves (identifiant-adopte-avant-creation, contexte-pose-a-cote, reponse-sur-instantane, desabonnement-annule-un-envoi), récidives jsdoc (8, ancrage sur `@Component`) et double-incomplet (2).
+- DOD self-check : build/tests ✓ ; tests unitaires et de composant de la DOD présents et vus rouges ✓ ; test d'intégration du transfert par référence ✓ ; scénarios E2E-COMPOSE-004, DETAIL-001 v3, DRAFT-003 au catalogue et dans les deux clients ✓ ; trous du filet ✓ ; aucune donnée de santé ajoutée aux journaux ✓ (aucun log ajouté côté clients).
+- Next step : /sonar task-376
+
+## Sonar log
+
+- Serveur : SonarQube 25.6.0 (`sonar.token`), conteneurs redémarrés (`sonarqube_db` puis `sonarqube`). Deux analyses complètes de la branche (build Release + 5 passes OpenCover, toutes vertes).
+- Phase 1 (new code, fichiers de la task) : ✓ — 1 issue trouvée et corrigée (S103, ligne de 157 caractères dans le commentaire de `DraftService.SendThroughOutgoingAsync`, héritée de task-330 mais dans un fichier de la task), commit `6ecb8e29`. **0 issue new-code restante dans les fichiers de la task**, new_coverage = 98,2 %.
+- Quality Gate du projet : **ERROR, sans dette introduite par la task** (mémoire « new-code period inclut des tasks déjà mergées ») :
+  - `new_violations` 72 : aucune dans les fichiers de la task. Les trois issues récentes viennent de task-384/385 (`MeteredChatCompletionService.cs:82` S134, `AiCallRecorder.cs:63` S103, `BuildInfoProvider.cs:53` S4049), le reste d'avant.
+  - `new_security_hotspots_reviewed` 0 % : 13 hotspots, aucun dans les fichiers de la task (Dockerfile, scripts k6 `tests/loadtest-k6`, `BaseRepository.cs:754`).
+- Phase 2 (legacy) : non jouée (optionnelle, best-effort) — la PR porte déjà trois dépôts ; la dette héritée ci-dessus mérite une task dédiée.
+- Tests ajoutés par /sonar : 0 (couverture du new code déjà ≥ 95 %).
+- `conventions/csharp.md` : non alimenté — la seule règle corrigée (S103) l'a été sur une ligne écrite par task-330, pas par ce /develop.
+- ⚠️ **Fuite de secret constatée et stoppée** : `Tools/timing/measure.sh` enregistrait la commande mesurée telle quelle, donc `sonarscanner … /d:sonar.token=squ_…` dans `metrics/timings.jsonl` (versionné, poussé). **204 lignes** contenaient le jeton, sur au moins dix tasks précédentes. Correctif : `redact_secrets` (`Tools/timing/lib.sh`) appliqué par `measure.sh`, journal local masqué (204 → 0, JSON relu valide), vérifié sur la seconde analyse (`sonar.token=***`). **L'historique git du plan de contrôle garde le jeton : sa rotation est à faire par l'humain.**
+- Build / tests : ✓ green.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline (analyse du 14/10) | Final (branche task-376) | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | ERROR | ERROR | → (hérité, 0 dans les fichiers de la task) |
+| New coverage | 98,1 % | 98,2 % | +0,1 pt |
+| New violations | 70 | 72 | +2 (task-384/385, hors task) |
+| Bugs | 2 | 2 | 0 |
+| Vulnerabilities | 0 | 0 | 0 |
+| Security hotspots | 15 | 15 | 0 |
+| Code smells | 68 | 70 | +2 (hors task) |
+| Coverage (projet) | 97,9 % | 98,0 % | +0,1 pt |
+| Duplication | 0,3 % | 0,3 % | 0 |
+| Reliability / Security / Maintainability | D/A/A | D/A/A | → |
+
+## Lint log
+
+- client-angular : `nx affected -t lint --base=origin/next --head=HEAD --projects=tag:scope:mss` → **0 erreur** (avertissements seulement : max-lines, complexity, `@example` vides antérieurs). Aucune itération nécessaire (0/5).
+- ESLint ciblé sur les fichiers touchés par /develop, e2e compris : 0 erreur (fait en /develop, avant et après la passe qualité).
+- Build `npm run build` et `npm test` (12 projets) verts sur cet arbre, revalidés après la passe qualité ; aucune modification depuis.
+- Code-only : aucune opération git.
+
+## Lint mobile log
+
+- client-mobile : `npm run lint` → « All files pass linting. » Aucune itération (0/5), aucun commit. Build et tests (1 147/1 147) verts au /develop, arbre inchangé depuis (`2327bb0`, poussé).
+
+## E2E log
+
+| Voie | Jouée | Résultat | Durée |
+|---|---|---|---|
+| mobile | `npm run e2e:headless` (api-mail + client-mobile touchés) | 40 verts, 0 flaky, 0 rouge — parité verte | ~11 min |
+| angular | `npm run e2e:mss` (api-mail + client-angular touchés) | 47 verts, 1 flaky, 0 rouge — parité verte | ~8 min |
+
+- **Premier passage mobile rouge (3)**, corrigé dans les tests neufs de la task (commit mobile `af9e476`) puis voie rejouée entière :
+  - E2E-COMPOSE-004 : `toBeDisabled()` ne lit pas un `ion-button` (bouton pourtant désactivé) → état lu sur `aria-disabled` ; même défaut, en vert qui ment, dans E2E-COMPOSE-003 (`toBeEnabled()` toujours vrai), durci.
+  - E2E-MAIL-004, E2E-AI-001 : lignes seedées sorties de l'écran par les transferts laissés dans l'INBOX par E2E-DETAIL-001 v3 → les deux clients suppriment désormais leurs transferts en fin de parcours.
+  - Préventions : `conventions/e2e.md` « etat-desactive-d-un-ion-button » (nouvelle) et « inbox-laissee-en-l-etat » (2ᵉ occurrence, après task-340).
+- **Preuves par mutation mobile** (banc `--serve-only`) : MM1 remise incertaine neutralisée → COMPOSE-004 rouge sur « Envoyer est désactivé » ; MM2 fermeture sans enregistrement → DRAFT-003 rouge sur « le brouillon est enregistré côté serveur » ; MM3 occurrence forcée à 0 → **non concluant** (deux essais rouges sur l'arrivée du message déposé, avant le point muté ; témoin restauré vert) — la règle reste prouvée par le test unitaire mobile et le test d'intégration api-mail. Témoins COMPOSE-003/004, DRAFT-003, DETAIL-001 verts.
+- Quarantaine E2E-COMPOSE-002 (angular) : 13 jours (posée le 2026-10-09), sous le seuil de 14 jours ; passée verte.
+- Flaky inscrit au registre : E2E-SEARCH-001 (angular), 1ʳᵉ occurrence.
+- Démontage vérifié : ports 4200 / 8100 libres, aucun conteneur e2e résiduel.
+- Écrans modifiés sans spec e2e modifié : envois en attente, modèles, signatures, dialogue des doublons (weda2) et envois en attente (mobile) — couverts par des tests de composant, pas par un parcours.
+
+### Porte
+
+**E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
+
+**Flaky (vert au second essai, non bloquant)** (1) :
+
+- [angular] « recherche — requête et recherche avancée » (E2E-SEARCH-001)
+
+**En quarantaine (posée par l'humain, non bloquant)** (1) :
+
+- [angular] « rédaction — corriger l’orthographe, appliquer, envoyer : le texte corrigé arrive, la citation intacte » (E2E-COMPOSE-002) — Passed — correction : task-350
+
+### Matrice de parité
+
+| Scénario | v | Mode | Titre | angular | mobile |
+|---|---|---|---|---|---|
+| E2E-INBOX-001 | 1 | headless | Filtrer la boîte de réception, basculer liste / conversation, ouvrir la recherche | ✅ | ✅ |
+| E2E-FOLDER-001 | 1 | headless | Naviguer vers les dossiers Archive et Corbeille | ✅ | ✅ |
+| E2E-PATIENT-001 | 1 | headless | Afficher la vue patients | ✅ | ✅ |
+| E2E-PATIENT-002 | 2 | headless | Rattacher à la main un document sans INS à un patient choisi par recherche, puis le détacher | ✅ | ✅ |
+| E2E-CONTACT-001 | 1 | humain | Rechercher dans le carnet et interroger l'annuaire national | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-SETTINGS-001 | 1 | headless | Changer le filtre par défaut et le retrouver après rechargement | ✅ | ✅ |
+| E2E-MAIL-001 | 1 | headless | Marquer un message lu puis non lu | ✅ | ✅ |
+| E2E-MAIL-002 | 1 | headless | Tout sélectionner et marquer lu en masse | ✅ | ✅ |
+| E2E-DETAIL-001 | 3 | headless | Répondre et transférer depuis la lecture d'un message | ✅ | ✅ |
+| E2E-COMPOSE-001 | 1 | headless | Envoyer un message, le recevoir, le lire, le supprimer | ✅ | ✅ |
+| E2E-COMPOSE-002 | 1 | headless | Faire corriger l'orthographe de son texte, appliquer la correction, puis envoyer | ✅ | ✅ |
+| E2E-COMPOSE-003 | 1 | headless | Un envoi refusé par la messagerie laisse le brouillon intact et peut être renvoyé | ✅ | ✅ |
+| E2E-COMPOSE-004 | 1 | headless | Une remise incertaine n'est jamais présentée comme un échec à renvoyer | ✅ | ✅ |
+| E2E-MAIL-003 | 1 | headless | Signaler puis ne plus signaler un message | ✅ | ✅ |
+| E2E-MAIL-004 | 1 | headless | Déplacer un message vers Archive puis le ramener | ✅ | ✅ |
+| E2E-MAIL-005 | 1 | headless | Un message supprimé depuis un autre logiciel quitte la liste et ne s'ouvre jamais vide | ✅ | ✅ |
+| E2E-DRAFT-001 | 1 | headless | Créer un brouillon, le reprendre, le supprimer | ✅ | ✅ |
+| E2E-DRAFT-002 | 1 | headless | Envoyer un message à pièce jointe après l'enregistrement automatique du brouillon | ✅ | ✅ |
+| E2E-DRAFT-003 | 1 | headless | Quitter une rédaction récente ne perd rien | ✅ | ✅ |
+| E2E-BIO-001 | 1 | headless | Acquitter un compte rendu de biologie | ✅ | ✅ |
+| E2E-DASH-001 | 1 | headless | Afficher les widgets du tableau de bord | ✅ | ✅ |
+| E2E-DETAIL-002 | 1 | headless | Basculer entre texte brut et HTML à la lecture | ✅ | ✅ |
+| E2E-DETAIL-003 | 1 | headless | Répondre à tous depuis la lecture d'un message | ✅ | ✅ |
+| E2E-DETAIL-004 | 1 | headless | Lire un message avec le panneau d'actions, le masquer puis le retrouver au message suivant | ✅ | — |
+| E2E-DETAIL-005 | 1 | headless | Passer rapidement d'un mail à l'autre n'affiche jamais le contenu du précédent | ✅ | ✅ |
+| E2E-SETTINGS-002 | 1 | headless | Changer la vue par défaut et la retrouver après rechargement | ✅ | ✅ |
+| E2E-SETTINGS-003 | 1 | headless | Lire la version du serveur de messagerie dans les Paramètres | ✅ | ✅ |
+| E2E-SEARCH-001 | 1 | headless | Rechercher un message et ouvrir la recherche avancée | ⚠️ flaky | ✅ |
+| E2E-ATTACH-001 | 1 | headless | Voir les pièces jointes d'un message | ✅ | ✅ |
+| E2E-CONTACT-002 | 1 | headless | Créer puis supprimer un contact | ✅ | ✅ |
+| E2E-SIGNATURE-001 | 1 | headless | Créer puis supprimer une signature | ✅ | ✅ |
+| E2E-CONTACT-003 | 1 | headless | Créer puis supprimer un groupe de contacts | ✅ | ✅ |
+| E2E-FOLDER-002 | 1 | headless | Créer puis supprimer un dossier | ✅ | ✅ |
+| E2E-FOLDER-003 | 1 | headless | Ouvrir un dossier supprimé depuis un autre logiciel | ✅ | ✅ |
+| E2E-FOLDER-004 | 1 | headless | Actualiser la liste des dossiers après un changement fait dans un autre logiciel | ✅ | ✅ |
+| E2E-AUTH-001 | 1 | humain | Rester connecté quand le jeton d'accès expire | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-AUTH-002 | 1 | humain | Se déconnecter | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-LIVE-001 | 1 | headless | Recevoir un nouveau message en temps réel, sans recharger | ✅ | ✅ |
+| E2E-AI-001 | 1 | headless | Interroger l'assistant sur des messages sélectionnés et poser des questions de suite | ✅ | ✅ |
+| E2E-WEDA-001 | 1 | headless | Dans Weda, la messagerie s'ouvre sur la boîte que Weda désigne | ✅ | — |
+| E2E-WEDA-002 | 2 | headless | Voir le dossier Weda du patient d'un document reçu, l'ouvrir, puis importer des documents dans un dossier | ✅ | — |
+| E2E-WEDA-003 | 2 | headless | Envoyer un document du dossier patient Weda par la nouvelle messagerie | ✅ | — |
+| E2E-RECEIPT-001 | 1 | headless | Demander un accusé de lecture à l'envoi | ✅ | ✅ |
+| E2E-RECEIPT-002 | 1 | headless | Envoyer l'accusé de lecture d'un message reçu, une seule fois | ✅ | ✅ |
+| E2E-RECEIPT-003 | 1 | headless | Refuser l'accusé de lecture d'un message reçu | ✅ | ✅ |
+| E2E-SECURITY-001 | 1 | headless | Un contenu reçu piégé ne s'exécute pas | ✅ | ✅ |
+| E2E-MAILBOX-001 | 1 | headless | Changer de messagerie depuis l'écran mail | ✅ | ✅ |
+| E2E-SESSION-001 | 1 | headless | Naviguer dans Weda ne multiplie pas les sessions de messagerie | ✅ | — |
+| E2E-SESSION-002 | 2 | headless | Quitter weda2 autonome ne ferme pas la session partagée | ✅ | — |
+| E2E-SESSION-003 | 2 | headless | La session fermée par Weda fait quitter weda2 | ✅ | — |
+
+**Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## Code Review Summary
+
+**Verdict : CHANGES REQUESTED** — détail et correctifs attendus dans `questions/task-376.md`. Aucune PR ouverte.
+
+- Validation (/review) : api-mail build ✓, tests 195 + 690 + 3 670 + 1 276 + 908/924 (16 ignorés IA), 0 échec ; client-mobile build ✓, 1 147/1 147 ; client-angular (`feature/nova-mss-weda-integration`, 44 fichiers non commités) build ✓, `npm test` ✓.
+- E2E double verrou : `## E2E log` vert ✓.
+- api-mail : ✅ APPROVED. Règle 1b : remise incertaine du brouillon → `ADraftWhoseSendThrows_…(true)` et `ADraftSendThatFails_IsClassifiedByItsStage_ByTheRealSmtpService` (rouges sous mutation « 502 d’vant ») ; transfert par référence de deux homonymes → `AForwardOfTwoHomonymParts_ByReference_DeliversBothContents` × 3 chemins (rouges sous « occurrence forcée à 0 »).
+- client-mobile : ❌ B1 brouillon orphelin si Envoyer pendant l’utosave ; B2 seconde pièce homonyme illisible (dédoublonnage de `mergedAttachments`, tests qui contournent le parent) ; B3 fermeture par geste qui agit sur la rédaction rouverte.
+- client-angular : ❌ B1 (même course, plus le repli `404 → POST` qui recrée le brouillon consommé).
+- Préventions : `conventions/angular.md` — revers de « identifiant-adopte-avant-creation », nouvelle « tester-a-travers-le-parent ».
