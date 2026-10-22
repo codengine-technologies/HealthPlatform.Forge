@@ -4,7 +4,7 @@
 > **Modèle** : hand-crafted
 > **Version** : 1.86
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-14 (le mail affiché est toujours celui qui est sélectionné — task-371)
+> **Dernière mise à jour** : 2026-10-22 (chaque correspondant garde toutes ses adresses MSSanté, avec une adresse par défaut au choix — task-379)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1036,6 +1036,11 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
+- **v1.100 — Chaque correspondant garde toutes ses adresses MSSanté, et vous choisissez celle à utiliser** (task-379, les deux applications) :
+  - **Plus aucune adresse perdue.** Un confrère importé de l'annuaire ou complété automatiquement peut avoir plusieurs boîtes MSSanté (cabinet, établissement). Modifier sa fiche, même seulement son téléphone, conserve désormais toutes ses adresses ; la fiche les affiche toutes et permet d'en ajouter ou d'en retirer.
+  - **Une adresse par défaut, si vous le souhaitez.** Dans la fiche, vous pouvez marquer une adresse « Par défaut ». En rédigeant un message, taper le nom du confrère ne propose alors que cette adresse ; sans adresse par défaut, une suggestion apparaît pour chacune de ses adresses, et celle que vous choisissez est celle qui part.
+  - **L'annuaire complète au lieu de dupliquer.** Importer depuis l'annuaire un praticien déjà présent dans vos contacts ajoute ses nouvelles boîtes à sa fiche existante, sans changer l'adresse par défaut que vous aviez choisie. Les résultats de l'annuaire montrent toutes les boîtes du praticien avant l'import.
+  - **La recherche ne se fige plus.** Une coupure réseau pendant la recherche d'un patient ou d'un contact affiche un message, et la recherche reprend dès la frappe suivante.
 - **v1.97 — L'accusé de lecture fonctionne enfin de bout en bout** (task-340, les trois
   applications) :
   - **Votre demande d'accusé est comprise.** Un message envoyé avec « Accusé de lecture » coché

@@ -128,7 +128,8 @@ Hors périmètre :
 | /e2e | ok | 35 min 25 s | — | — | — | e2e ×6 (28 min 11 s), vert au 2e run (1er run : sélecteurs du nouveau test) |
 | /review | ok | 7 min 39 s | 4 (21 s) | 3 (4 min 18 s) | — | dtos-mss 1B/0T, api-mail 1B/1T, client-mobile 1B/1T, client-angular 1B/1T |
 | /tech-writer | ok | 1 min 36 s | — | — | — | — |
-| **Total cycle** | | **1 h 28 min** | **14 (2 min 36 s)** | **16 (19 min 17 s)** | **2 (40 s)** | |
+| /merge | ok | 6 min 02 s | — | — | — | — |
+| **Total cycle** | | **1 h 34 min** | **14 (2 min 36 s)** | **16 (19 min 17 s)** | **2 (40 s)** | |
 
 Autres commandes mesurées : lint ×1 (14 s), nuget-wait ×2 (15 s), restore ×2 (12 s)
 
@@ -335,3 +336,11 @@ Autres commandes mesurées : lint ×1 (14 s), nuget-wait ×2 (15 s), restore ×2
 - ⚠️ Une même adresse saisie deux fois dans la fiche est enregistrée deux fois (préexistant ; la fusion de l'annuaire, elle, dédoublonne).
 - ⚠️ Angular : l'import depuis l'annuaire lit le carnet entier avant d'écrire (trois lectures complètes par import, avec le rechargement et les compteurs) — acceptable pour une action rare, à mutualiser si le carnet grossit.
 - Mutation M5 (`/review`) : `defaultIndex` à 0 quand aucune adresse par défaut n'est demandée → `SavingTheContactWithoutADefault_ClearsTheDesignation_AndKeepsBothAddresses` rouge, seul ; restauré vert
+
+## Merged
+- Date : 2026-10-22, `/merge task-379 --i-tested` (Manual Test Plan attesté par l'humain)
+- `dtos-mss` : PR #46 squashée → `0ef3f49` — CI develop ✓ https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/actions/runs/39841874986
+- `api-mail` : PR #304 squashée → `f8c1bfe7` — CI develop ✓ https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/39841898208
+- `client-mobile` : PR #98 squashée → `c64490d` — CI develop ✓ https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/39841923709
+- `client-angular` : géré manuellement par l'humain (TFS)
+- Branches `fix/task-379-contact-adresses-mss` supprimées (distantes et locales) ; labels `awaiting-human-merge` retirés
