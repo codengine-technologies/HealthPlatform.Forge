@@ -100,15 +100,15 @@ Que ce que le médecin écrit **ne soit jamais perdu**, qu'un message **ne parte
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 56 s | — | — | — | — |
-| /develop | ok | 2 h 03 min | 11 (7 min 07 s) | 13 (24 min 26 s) | — | api-mail 7B/8T, client-mobile 2B/3T, client-angular 2B/2T |
-| /sonar | ok | 32 min 49 s | 3 (3 min 44 s) | 10 (16 min 34 s) | 4 (6 min 54 s) | 1 itération(s), api-mail 3B/10T |
-| /lint-angular | ok | 2 min 54 s | — | — | — | — |
-| /lint-mobile | ok | 1 min 00 s | — | — | — | — |
-| /e2e | ok | 2 h 18 min | — | — | — | e2e ×4 (27 min 32 s) |
-| /review | failed | 8 min 37 s | 3 (1 min 50 s) | 3 (5 min 46 s) | — | api-mail 1B/1T, client-mobile 1B/1T, client-angular 1B/1T, CHANGES REQUESTED: B1 course autosave/envoi (weda2+mobile), B2-B3 mobile |
-| **Total cycle** | | **5 h 08 min** | **17 (12 min 43 s)** | **26 (46 min 47 s)** | **4 (6 min 54 s)** | |
+| /develop | ok | 11 min 04 s | 13 (9 min 22 s) | 15 (27 min 24 s) | — | api-mail 7B/8T, client-mobile 3B/4T, client-angular 3B/3T, reprise B1-B3 |
+| /sonar | skipped | 1.8 s | 3 (3 min 44 s) | 10 (16 min 34 s) | 4 (6 min 54 s) | api-mail 3B/10T, api-mail inchangé depuis l'analyse de 6ecb8e29 |
+| /lint-angular | ok | 42 s | — | — | — | — |
+| /lint-mobile | ok | 38 s | — | — | — | — |
+| /e2e | ok | 18 min 36 s | — | — | — | e2e ×7 (45 min 34 s), reprise |
+| /review | failed | 8 min 31 s | 6 (3 min 13 s) | 6 (11 min 00 s) | — | api-mail 2B/2T, client-mobile 2B/2T, client-angular 2B/2T, CHANGES REQUESTED: B4 id propose non renouvele apres orphelin (weda2+mobile) |
+| **Total cycle** | | **40 min 32 s** | **22 (16 min 20 s)** | **31 (55 min 00 s)** | **4 (6 min 54 s)** | |
 
-Autres commandes mesurées : lint ×2 (3 min 19 s), restore ×1 (3 min 18 s)
+Autres commandes mesurées : lint ×4 (4 min 18 s), restore ×1 (3 min 18 s)
 
 ## Develop log
 
@@ -300,3 +300,108 @@ Autres commandes mesurées : lint ×2 (3 min 19 s), restore ×1 (3 min 18 s)
 - client-mobile : ❌ B1 brouillon orphelin si Envoyer pendant l’utosave ; B2 seconde pièce homonyme illisible (dédoublonnage de `mergedAttachments`, tests qui contournent le parent) ; B3 fermeture par geste qui agit sur la rédaction rouverte.
 - client-angular : ❌ B1 (même course, plus le repli `404 → POST` qui recrée le brouillon consommé).
 - Préventions : `conventions/angular.md` — revers de « identifiant-adopte-avant-creation », nouvelle « tester-a-travers-le-parent ».
+
+## Develop log — reprise après /review (CHANGES REQUESTED)
+
+- **B1 (weda2 et mobile)** — un enregistrement de brouillon en vol au moment d'« Envoyer » ne laisse plus de brouillon du message parti : un compteur d'envois engagés est relevé au départ de chaque enregistrement ; s'il a bougé au retour, la réponse est ignorée, un brouillon tout juste créé est retiré (`deleteDraft`), et le repli `404 → POST` n'a plus lieu. L'enregistrement automatique reprend normalement après un envoi en échec.
+  - weda2 : `mail-compose.component.ts` (`sendsDispatched`, `persistDraft`, `discardOrphanDraft`, `saveDraftNow` en `finalize`). Tests `mail-compose-safety.component.spec.ts` « enregistrement en vol pendant l'envoi (revue B1) » : **2 rouges sur le code revu** (`deleteDraft` jamais appelé ; `saveDraft` rappelé après le 404), verts après ; témoin « l'autosave reprend après un échec » vert avant et après.
+  - mobile : `aa037b6` — 2 tests B1 rouges d'abord (`deleteDraft('late-1')` absent et id adopté ; `saveDraft` appelé 2 fois), témoin autosave vert.
+- **B2 (mobile)** — `mail-detail.mergedAttachments` garde deux pièces MIME homonymes (clé `attachmentRowKey`, rang à partir de la seconde) ; la pièce médicale de même nom que la première reste fusionnée. `4c6a92f` — test par `mergedAttachments` puis `?occurrence=1`, rouge d'abord (`Expected $.length = 1 to equal 2`). Consigne appliquée : « tester-a-travers-le-parent ».
+- **B3 (mobile)** — une ouverture demandée pendant la fermeture (qui enregistre) attend l'issue de l'enregistrement ; en cas d'échec, l'ancienne rédaction revient avec son contenu et le message, l'ouverture en attente est abandonnée ; garde de session en défense. `aa037b6` — 2 tests rouges d'abord (réouverture restée fermée ; contenu « Ancien » perdu).
+- Suggestions de revue traitées au passage (weda2) : analyse HTML **inerte** dans `compose-body.util.ts` (`DOMParser` au lieu d'un `div` du document vivant ; non testable en jsdom, qui ne charge pas les images) ; message d'échec des modèles et signatures effacé à la sélection, à la création et à la fermeture (test `anErrorMessage_FollowsTheTemplateItConcerns`).
+- Validation : weda2 `npm run build` ✓, `npm test` ✓ (12 projets) ; eslint 0 erreur ; mobile build ✓, 1 154/1 154, eslint propre, passe qualité sans changement. api-mail inchangé.
+- Fichiers weda2 de la reprise (toujours non commités, code-only) : `mail-compose.component.ts`, `mail-compose-safety.component.spec.ts`, `compose-body.util.ts`, `mss-templates.component{,.spec}.ts`, `mss-signatures.component.ts`.
+- Next step : /sonar task-376 (api-mail inchangé depuis la dernière analyse → skip mesuré), puis /lint-angular, /lint-mobile, /e2e (deux voies rejouées), /review.
+
+- Sonar (reprise) : skipped — api-mail inchangé depuis la dernière analyse (`6ecb8e29`), KPIs ci-dessus toujours valables.
+- Lint Angular (reprise) : 0 erreur, aucune itération ; build et `npm test` verts au /develop de la reprise, arbre inchangé depuis.
+- Lint mobile (reprise) : « All files pass linting. » sur `4c6a92f`, aucune itération.
+
+## E2E log — reprise (après les correctifs B1–B3)
+
+| Voie | Jouée | Résultat |
+|---|---|---|
+| mobile | `npm run e2e:headless` sur `4c6a92f` | 40 verts, 0 flaky, 0 rouge — parité verte |
+| angular | `npm run e2e:mss` (arbre weda2 de la reprise) | 46 verts, 2 flaky, 0 rouge — parité verte |
+
+- Flaky inscrits au registre : E2E-SEARCH-001 (2ᵉ occurrence), E2E-MAILBOX-001 (1ʳᵉ).
+- Démontage vérifié : ports 4200 / 8100 libres, aucun conteneur e2e résiduel.
+
+### Porte
+
+**E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
+
+**Flaky (vert au second essai, non bloquant)** (2) :
+
+- [angular] « recherche — requête et recherche avancée » (E2E-SEARCH-001)
+- [angular] « messagerie — changer de boîte depuis l’écran mail, embarqué » (E2E-MAILBOX-001)
+
+**En quarantaine (posée par l'humain, non bloquant)** (1) :
+
+- [angular] « rédaction — corriger l’orthographe, appliquer, envoyer : le texte corrigé arrive, la citation intacte » (E2E-COMPOSE-002) — Passed — correction : task-350
+
+### Matrice de parité
+
+| Scénario | v | Mode | Titre | angular | mobile |
+|---|---|---|---|---|---|
+| E2E-INBOX-001 | 1 | headless | Filtrer la boîte de réception, basculer liste / conversation, ouvrir la recherche | ✅ | ✅ |
+| E2E-FOLDER-001 | 1 | headless | Naviguer vers les dossiers Archive et Corbeille | ✅ | ✅ |
+| E2E-PATIENT-001 | 1 | headless | Afficher la vue patients | ✅ | ✅ |
+| E2E-PATIENT-002 | 2 | headless | Rattacher à la main un document sans INS à un patient choisi par recherche, puis le détacher | ✅ | ✅ |
+| E2E-CONTACT-001 | 1 | humain | Rechercher dans le carnet et interroger l'annuaire national | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-SETTINGS-001 | 1 | headless | Changer le filtre par défaut et le retrouver après rechargement | ✅ | ✅ |
+| E2E-MAIL-001 | 1 | headless | Marquer un message lu puis non lu | ✅ | ✅ |
+| E2E-MAIL-002 | 1 | headless | Tout sélectionner et marquer lu en masse | ✅ | ✅ |
+| E2E-DETAIL-001 | 3 | headless | Répondre et transférer depuis la lecture d'un message | ✅ | ✅ |
+| E2E-COMPOSE-001 | 1 | headless | Envoyer un message, le recevoir, le lire, le supprimer | ✅ | ✅ |
+| E2E-COMPOSE-002 | 1 | headless | Faire corriger l'orthographe de son texte, appliquer la correction, puis envoyer | ✅ | ✅ |
+| E2E-COMPOSE-003 | 1 | headless | Un envoi refusé par la messagerie laisse le brouillon intact et peut être renvoyé | ✅ | ✅ |
+| E2E-COMPOSE-004 | 1 | headless | Une remise incertaine n'est jamais présentée comme un échec à renvoyer | ✅ | ✅ |
+| E2E-MAIL-003 | 1 | headless | Signaler puis ne plus signaler un message | ✅ | ✅ |
+| E2E-MAIL-004 | 1 | headless | Déplacer un message vers Archive puis le ramener | ✅ | ✅ |
+| E2E-MAIL-005 | 1 | headless | Un message supprimé depuis un autre logiciel quitte la liste et ne s'ouvre jamais vide | ✅ | ✅ |
+| E2E-DRAFT-001 | 1 | headless | Créer un brouillon, le reprendre, le supprimer | ✅ | ✅ |
+| E2E-DRAFT-002 | 1 | headless | Envoyer un message à pièce jointe après l'enregistrement automatique du brouillon | ✅ | ✅ |
+| E2E-DRAFT-003 | 1 | headless | Quitter une rédaction récente ne perd rien | ✅ | ✅ |
+| E2E-BIO-001 | 1 | headless | Acquitter un compte rendu de biologie | ✅ | ✅ |
+| E2E-DASH-001 | 1 | headless | Afficher les widgets du tableau de bord | ✅ | ✅ |
+| E2E-DETAIL-002 | 1 | headless | Basculer entre texte brut et HTML à la lecture | ✅ | ✅ |
+| E2E-DETAIL-003 | 1 | headless | Répondre à tous depuis la lecture d'un message | ✅ | ✅ |
+| E2E-DETAIL-004 | 1 | headless | Lire un message avec le panneau d'actions, le masquer puis le retrouver au message suivant | ✅ | — |
+| E2E-DETAIL-005 | 1 | headless | Passer rapidement d'un mail à l'autre n'affiche jamais le contenu du précédent | ✅ | ✅ |
+| E2E-SETTINGS-002 | 1 | headless | Changer la vue par défaut et la retrouver après rechargement | ✅ | ✅ |
+| E2E-SETTINGS-003 | 1 | headless | Lire la version du serveur de messagerie dans les Paramètres | ✅ | ✅ |
+| E2E-SEARCH-001 | 1 | headless | Rechercher un message et ouvrir la recherche avancée | ⚠️ flaky | ✅ |
+| E2E-ATTACH-001 | 1 | headless | Voir les pièces jointes d'un message | ✅ | ✅ |
+| E2E-CONTACT-002 | 1 | headless | Créer puis supprimer un contact | ✅ | ✅ |
+| E2E-SIGNATURE-001 | 1 | headless | Créer puis supprimer une signature | ✅ | ✅ |
+| E2E-CONTACT-003 | 1 | headless | Créer puis supprimer un groupe de contacts | ✅ | ✅ |
+| E2E-FOLDER-002 | 1 | headless | Créer puis supprimer un dossier | ✅ | ✅ |
+| E2E-FOLDER-003 | 1 | headless | Ouvrir un dossier supprimé depuis un autre logiciel | ✅ | ✅ |
+| E2E-FOLDER-004 | 1 | headless | Actualiser la liste des dossiers après un changement fait dans un autre logiciel | ✅ | ✅ |
+| E2E-AUTH-001 | 1 | humain | Rester connecté quand le jeton d'accès expire | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-AUTH-002 | 1 | humain | Se déconnecter | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-LIVE-001 | 1 | headless | Recevoir un nouveau message en temps réel, sans recharger | ✅ | ✅ |
+| E2E-AI-001 | 1 | headless | Interroger l'assistant sur des messages sélectionnés et poser des questions de suite | ✅ | ✅ |
+| E2E-WEDA-001 | 1 | headless | Dans Weda, la messagerie s'ouvre sur la boîte que Weda désigne | ✅ | — |
+| E2E-WEDA-002 | 2 | headless | Voir le dossier Weda du patient d'un document reçu, l'ouvrir, puis importer des documents dans un dossier | ✅ | — |
+| E2E-WEDA-003 | 2 | headless | Envoyer un document du dossier patient Weda par la nouvelle messagerie | ✅ | — |
+| E2E-RECEIPT-001 | 1 | headless | Demander un accusé de lecture à l'envoi | ✅ | ✅ |
+| E2E-RECEIPT-002 | 1 | headless | Envoyer l'accusé de lecture d'un message reçu, une seule fois | ✅ | ✅ |
+| E2E-RECEIPT-003 | 1 | headless | Refuser l'accusé de lecture d'un message reçu | ✅ | ✅ |
+| E2E-SECURITY-001 | 1 | headless | Un contenu reçu piégé ne s'exécute pas | ✅ | ✅ |
+| E2E-MAILBOX-001 | 1 | headless | Changer de messagerie depuis l'écran mail | ⚠️ flaky | ✅ |
+| E2E-SESSION-001 | 1 | headless | Naviguer dans Weda ne multiplie pas les sessions de messagerie | ✅ | — |
+| E2E-SESSION-002 | 2 | headless | Quitter weda2 autonome ne ferme pas la session partagée | ✅ | — |
+| E2E-SESSION-003 | 2 | headless | La session fermée par Weda fait quitter weda2 | ✅ | — |
+
+**Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## Code Review Summary — 2ᵉ passage (après reprise B1–B3)
+
+**Verdict : CHANGES REQUESTED** — un bloquant neuf, B4, sur weda2 et mobile (voir `questions/task-376.md`). Aucune PR ouverte.
+
+- B1 (weda2, mobile), B2 et B3 (mobile) : ✅ corrigés, confirmés par la relecture.
+- B4 : après un envoi en échec, la suppression du brouillon orphelin peut effacer le brouillon enregistré juste après, l’\identifiant proposé n’\étant pas renouvelé (une ligne par client).
+- Validation : api-mail build ✓, tests verts sauf 1 rouge instable sans lien (`MailClientSessionManagerCoverageTests.AcquireSmtpSlotAsync_WhenCancelledAsTheSlotIsGranted…`, 5/5 vert isolé, code non touché par la task) ; mobile build ✓, 1 154/1 154 ; weda2 build ✓, `npm test` ✓.
+- `## E2E log` (reprise) vert.
