@@ -107,7 +107,8 @@ Que ce que le médecin écrit **ne soit jamais perdu**, qu'un message **ne parte
 | /e2e | ok | 17 min 41 s | — | — | — | e2e ×19 (1 h 35 min), après sync develop |
 | /review | ok | 1 min 58 s | 15 (7 min 13 s) | 15 (34 min 54 s) | — | api-mail 5B/5T, client-mobile 5B/5T, client-angular 5B/5T, 5e passage, PRs ouvertes |
 | /tech-writer | ok | 1 min 22 s | — | — | — | — |
-| **Total cycle** | | **28 min 48 s** | **36 (24 min 45 s)** | **46 (1 h 30 min)** | **4 (6 min 54 s)** | |
+| /merge | ok | 5 min 37 s | — | — | — | — |
+| **Total cycle** | | **34 min 26 s** | **36 (24 min 45 s)** | **46 (1 h 30 min)** | **4 (6 min 54 s)** | |
 
 Autres commandes mesurées : lint ×7 (7 min 22 s), restore ×1 (3 min 18 s)
 
@@ -701,3 +702,11 @@ Démontage vérifié : aucun conteneur e2e résiduel, ports 5052/3993/3465/3143 
 - api-mail : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/306 — label `awaiting-human-merge`
 - client-mobile : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/100 — label `awaiting-human-merge`
 - client-angular : code-only — commité et poussé sur TFS par l'humain (`feature/nova-mss-weda-integration` : `80103559` task-376, `174ec2d2` merge task-379, `4e8876a7` merge task-386). L'humain ouvre la PR TFS. Arbre propre au moment de la revue.
+
+## Merged
+
+- 2026-10-23, après test humain (`--i-tested`).
+- api-mail #306 : squash `8e7477a8` sur `develop` ; CI « Build and Publish » verte.
+- client-mobile #100 : squash `8aaa0a9f` sur `develop` ; CI « Android Build » verte.
+- Branches `fix/task-376-redaction-sans-perte-ni-double-envoi` supprimées (distantes et locales) ; clones revenus sur `develop`.
+- client-angular : code-only, géré par l humain sur TFS.
