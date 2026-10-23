@@ -5741,3 +5741,6 @@
 {"ts":"2026-10-23T18:57:15+02:00","run_id":"-","type":"cmd","task":"task-388","step":"review","repo":"client-blazor","kind":"test","label":"","cwd":"Client/Blazor","cmd":"dotnet test tests/HealthPlatform.Module.Mss.Plugin.Tests/HealthPlatform.Module.Mss.Plugin.Tests.csproj -nologo","duration_ms":17152,"exit_code":0}
 {"ts":"2026-10-23T18:57:23+02:00","run_id":"-","type":"cmd","task":"task-388","step":"review","repo":"client-angular","kind":"build","label":"","cwd":"Client/Angular/front","cmd":"npm run build","duration_ms":1077,"exit_code":0}
 {"ts":"2026-10-23T18:57:45+02:00","run_id":"-","type":"cmd","task":"task-388","step":"review","repo":"client-angular","kind":"test","label":"","cwd":"Client/Angular/front","cmd":"npx nx run-many -t test --projects=tag:scope:mss","duration_ms":21135,"exit_code":0}
+{"ts":"2026-10-23T19:00:18+02:00","run_id":"-","type":"step","task":"task-388","step":"review","status":"ok","note":"APPROVED, 3 PR ouvertes (api-mail #307, mobile #101, blazor #96), mutation M15 sur (b)","iterations":null,"duration_ms":531859}
+{"ts":"2026-10-23T19:00:23+02:00","run_id":"-","type":"step_start","task":"task-388","step":"tech-writer"}
+{"ts":"2026-10-23T19:00:58+02:00","run_id":"-","type":"step","task":"task-388","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":34187}

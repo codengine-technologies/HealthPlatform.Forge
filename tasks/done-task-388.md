@@ -193,7 +193,9 @@ client-blazor `4efdebc` + `b00338d` ; weda2 en code seul (non commité). Branche
 | /lint-angular | ok | 2 min 48 s | 1 (12 s) | 1 (1 min 37 s) | — | client-angular 1B/1T |
 | /lint-mobile | ok | 15 s | 1 (8.6 s) | — | — | client-mobile 1B/0T |
 | /e2e | ok | 32 min 25 s | — | — | — | e2e ×5 (30 min 02 s), porte verte sur relance mobile ; run 1 rouge E2E-DETAIL-001 mobile (flaky 3/4, non lié) |
-| **Total cycle** | | **56 min 31 s** | **3 (39 s)** | **9 (9 min 16 s)** | **2 (41 s)** | |
+| /review | ok | 8 min 51 s | 4 (39 s) | 4 (4 min 53 s) | — | api-mail 1B/1T, client-mobile 1B/1T, client-blazor 1B/1T, client-angular 1B/1T, APPROVED, 3 PR ouvertes (api-mail #307, mobile #101, blazor #96), mutation M15 sur (b) |
+| /tech-writer | ok | 34 s | — | — | — | — |
+| **Total cycle** | | **1 h 05 min** | **7 (1 min 19 s)** | **13 (14 min 10 s)** | **2 (41 s)** | |
 
 Autres commandes mesurées : lint ×2 (18 s)
 
