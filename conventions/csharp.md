@@ -382,7 +382,7 @@ convention de nommage.
 
 ## S3604 — un constructeur primaire n'accepte pas d'initialiseur de champ
 
-**Occurrences : 3** (task-342, relevé par le `/sonar` de task-325 — `private readonly TimeProvider clock =
+**Occurrences : 4** (task-386 — `InProcessAnnuaireQuotaGate` (`Lock`, `_window = -1`) et `RedisAnnuaireQuotaGate` (`_fallback = new(options, timeProvider)`) : la 9.9 relève tout initialiseur de champ d'une classe à constructeur primaire, même `new Lock()` ; constructeurs classiques ; task-342, relevé par le `/sonar` de task-325 — `private readonly TimeProvider clock =
 timeProvider ?? TimeProvider.System;` dans `ImapService` et `OfflineMailDataProvider` : un **défaut de repli**
 sur un paramètre optionnel est aussi un initialiseur. Correctif sans constructeur explicite quand la valeur ne
 coûte rien à recalculer : une propriété `private TimeProvider Clock => timeProvider ?? TimeProvider.System;` ;
@@ -459,7 +459,7 @@ on relit, c'est un commentaire qu'il faut, pas une variable morte.
 
 ## S4457 — la validation des arguments se fait hors du corps `async`
 
-**Occurrences : 5** (task-348 — `MailServerResolver.ResolveAsync` : `throw new ArgumentException` explicite en tête de la méthode `async`, **invisible au contrôle mécanique §Q 2b**, qui ne cherche que `ThrowIf…` ; contrôle sauté de surcroît, la passe qualité ayant été faite à la main ; task-329 — `OutgoingMailService.SendAsync` : `ThrowIfNull(mail)` en tête de la
+**Occurrences : 6** (task-386 — `AnnuaireSanteService.SearchAsync` : `ThrowIfNull` + normalisation + validation dans la méthode `async` ; scindée en `SearchAsync` (synchrone, contrôles) + `SearchValidatedAsync` ; task-348 — `MailServerResolver.ResolveAsync` : `throw new ArgumentException` explicite en tête de la méthode `async`, **invisible au contrôle mécanique §Q 2b**, qui ne cherche que `ThrowIf…` ; contrôle sauté de surcroît, la passe qualité ayant été faite à la main ; task-329 — `OutgoingMailService.SendAsync` : `ThrowIfNull(mail)` en tête de la
 méthode `async` publique, écrit alors que cette entrée existait ; d'où le contrôle mécanique de
 `agents/develop.md` §Q 2b ; task-299, task-300, task-171 — `PscTokenProvider.GetModeAsync` /
 `GetAccessTokenAsync` : `ThrowIfNull(key)` en tête d'une méthode `async`, corrigé en
@@ -693,7 +693,7 @@ foreach (var mail in fetched)
 
 ## S3925 — une exception garde le triplet de constructeurs recommandé
 
-**Occurrences : 5** (task-171 — `UnauthorizedException`, `PscIdentityConflictException` ; task-320 — `MailboxIncompatibleException` ; task-330 — `SmtpDeliveryUncertainException`, triplet présent, marquée FALSE-POSITIVE comme prévu ; task-352 — `NotFoundException`, classe **non scellée** qui reçoit une propriété `ErrorCode` : la règle se lève sur une exception existante dès qu'on lui ajoute un membre, triplet présent, FALSE-POSITIVE ; task-367 — `IheXdmAuthorNotSenderException`, `IheXdmPackagingRefusedException`, triplet présent d'emblée, FALSE-POSITIVE : la consigne a été lue)
+**Occurrences : 6** (task-171 — `UnauthorizedException`, `PscIdentityConflictException` ; task-320 — `MailboxIncompatibleException` ; task-330 — `SmtpDeliveryUncertainException`, triplet présent, marquée FALSE-POSITIVE comme prévu ; task-352 — `NotFoundException`, classe **non scellée** qui reçoit une propriété `ErrorCode` : la règle se lève sur une exception existante dès qu'on lui ajoute un membre, triplet présent, FALSE-POSITIVE ; task-367 — `IheXdmAuthorNotSenderException`, `IheXdmPackagingRefusedException`, triplet présent d'emblée, FALSE-POSITIVE : la consigne a été lue ; task-386 — `AnnuaireCallException`, triplet présent d'emblée, FALSE-POSITIVE ; retirer l'initialiseur de sa propriété ne lève pas la règle)
 
 La passe qualité avait **retiré** les constructeurs « inutilisés » de deux
 exceptions neuves pour ne garder que celui réellement appelé. Sonar réclame le
@@ -723,7 +723,7 @@ l'issue FALSE-POSITIVE avec ce motif, comme toutes les exceptions voisines de
 
 ## S3776 — un `try/catch` ajouté à une méthode déjà chargée la fait déborder
 
-**Occurrences : 1** (task-330 — `DraftService.SendDraftAsync`, complexité cognitive 16)
+**Occurrences : 2** (task-386 — `AnnuaireSanteService.ValidateSearchCriteria` : une garde de plus (séparateurs FHIR refusés) en tête d'une méthode de validation déjà à 15 ; extraite en `EnsureNoReservedCharacters` ; task-330 — `DraftService.SendDraftAsync`, complexité cognitive 16)
 
 La méthode tenait sous le seuil. Le changement de contrat de `SmtpService` (il lève là où il
 rendait un `Result`) a demandé trois `catch` autour de l'appel SMTP. Chacun compte, imbriqué dans
@@ -759,7 +759,7 @@ concaténation d'un littéral `"/"`.
 
 ## S1172 — un paramètre que la méthode n'utilise plus se retire
 
-**Occurrences : 1** (task-171 — `AddPscProxyClient(services, configuration)`)
+**Occurrences : 2** (task-386 — faux positif de la 9.9 : le paramètre n'était lu que par un groupe de méthode d'extension (`.Select(known.GetValueOrDefault)`) ; écrire la lambda (`id => known.GetValueOrDefault(id)`) ; task-171 — `AddPscProxyClient(services, configuration)`)
 
 Une méthode d'enregistrement DI lisait la configuration pour lier ses options ;
 la passe qualité a basculé la lecture sur `IOptions<>` au moment de la
@@ -1593,3 +1593,12 @@ négligeable quand la trace accompagne une opération réseau.
 `Regex.Match(texte, @"motif")` avec un motif constant est signalé, tests compris. Rendre la classe
 `partial` et déclarer `[GeneratedRegex(@"motif", RegexOptions.None, matchTimeoutMilliseconds: 5000)]
 private static partial Regex Nom();`, puis appeler `Nom().Match(texte)`.
+
+## S1118 — une classe qui n'a que des membres statiques est `static`
+
+**Occurrences : 1** (task-386 — `FhirBundleParser` : ses méthodes d'instance ont disparu avec les anciennes
+stratégies de recherche, la classe ne garde que des `public static`)
+
+Quand une refonte retire les derniers membres d'instance d'une classe, la déclarer `static` dans le même
+commit. Sonar ne le dit qu'après coup, et c'est une modification d'une ligne.
+

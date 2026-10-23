@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E019-integration-de-la-nouvelle-messagerie.md](E019-integration-de-la-nouvelle-messagerie.md).
-> **Dernière mise à jour** : 2026-10-14 (v1.6)
+> **Dernière mise à jour** : 2026-10-18 (v1.8)
 
 ---
 
@@ -390,6 +390,35 @@
   redescendu de 1000 à 30 ; voies vertes (mobile 37, angular 45), parité verte.
 - **Suivis (HAG)** : mesures avant/après dans Weda ; stabilité de `proxy_session_id` au refresh à constater.
 
+### v1.8 — Import Weda chez le bon patient, comptes rendus exacts (ANG-09, 18, 47, 48, 49, 63, 64) — task-372
+
+- **Task** : task-372, statut `done` (`/review` APPROVED le 2026-10-18). Origine : audit de bugs du client Angular du
+  2026-10-13. Arbitrage humain (2026-10-13) : (b) pas de trace Weda pour un envoi différé.
+- **PR** : api-mail #301 (`fix/task-372-import-weda-bon-patient`, label `awaiting-human-merge`, outil e2e et catalogue
+  seulement) ; client-angular en code-only (branche `feature/nova-rewriting-mss-weda-integration`, à pousser sur TFS).
+- **weda2, import** (`weda-import.component.ts`) : compteur de génération vérifié après chaque attente (préparation,
+  recherche, import) ; effet sur le message affiché (dossier + uid) qui referme la fenêtre et efface succès et erreur ;
+  « Annuler » désactivé pendant l'import ; « Importer » exige un dossier encore proposé. Présélection seulement si
+  chaque identité (`documentIdentityKey`, extraite de `weda-patient-panel.utils.ts`) est trouvée par INS vers le même
+  dossier ; plusieurs patients → rien coché, le choix coche le PDF des CDA du patient (par INS).
+- **weda2, homonymes** : `IImportCandidate.occurrence` (rang dans `mail.attachments`, règle du mobile) ;
+  `MssApiService.downloadAttachment(…, occurrence = 0)` ajoute `?occurrence=n` à partir de 1 (servi par api-mail
+  depuis AUD-41).
+- **weda2, avis d'envoi** : `intentFileStreamId` porté par chaque pièce de la rédaction ; l'avis `document-sent` cite
+  les pièces encore jointes à l'envoi, et n'est pas émis si aucune ne part. Pas d'avis pour 202 / file (décision b).
+- **weda2, intégration indisponible** : `EmbeddedHostService.composeRequested` (`compose=1` dans l'adresse d'entrée) ;
+  le fournisseur d'intention lève `integration-unavailable` quand Weda a demandé la rédaction sans intégration.
+- **Messages** : délai dépassé et échec générique → « Vérifiez le dossier patient avant de réessayer » ; lecture des
+  documents en échec → « rien n'a été importé ».
+- **api-mail** : `mss.mail.e2e message --create … --kind weda-import` (deux CDA à INS de test, deux `scan.pdf`),
+  `E2eWedaImportMessageTests` ; catalogue E2E-WEDA-002 v2 et 003 v2.
+- **Tests** : weda2 2 729 verts ; api-mail 6 681 verts ; Sonar Quality Gate OK, new coverage 96,8 %, 0 issue.
+- **E2E** : voies vertes (mobile 37, angular 45), parité verte ; E2E-WEDA-002/003 v2 prouvés rouges par mutation
+  (présélection, `occurrence`, avis sur toute l'intention).
+- **Hors forge, côté Weda** : `nova-mss-host.js` doit ajouter `compose=1` à l'URL de l'iframe en `Mode=1`, au premier
+  chargement seulement ; transaction couvrant tout `file-documents` (ANG-64) à signaler à l'équipe Weda.
+- **Suite** : task-376 (ANG-18, lecture et transfert) peut réutiliser `occurrence`.
+
 ### v1.4 — Interop : enveloppe IHE_XDM en mémoire d'un CDA ou d'un PDF/A, conforme à celle de Weda — task-366
 
 - **Task** : task-366, statut `done` (`/review` APPROVED le 2026-10-11). Cycle autonome. Fondation de task-367 (envoi d'un
@@ -496,6 +525,7 @@
 | task-366 | archivée (PR interop.cda.parser #10 mergée ; package 107.0.0) | Enveloppe IHE_XDM en mémoire d'Interop (`IIheXdmPackager`) : CDA emballé tel quel ou PDF/A en N1, métadonnées conformes à Weda, refus typé ; ancienne API obsolète ; suite d'Interop verte sous Linux | — (fondation de l'envoi, task-367) |
 | task-367 | done (PRs dtos-mss #44 et api-mail #289, en attente de merge ; Angular à commiter sur TFS ; partie Weda à faire) | Envoi depuis le dossier patient : `AttachmentDto.Packaging`, `IheXdmEnvelopeService` sur le chemin d'envoi, refus 403 / 400 / 422 ; rédaction d'intention (`get-compose-intent`, `document-sent`) ; E2E-WEDA-003 ; côté Weda, `compose-intent` et `sent-trace` | — |
 | task-365 | done (PR api-mail #300, en attente de merge ; Angular à commiter sur TFS) | Sessions de messagerie bornées : clé de pool dérivée de la session du proxy, liaison par boîte, plafond par boîte, keep-alive sans prolongation ; surveillance de la session partagée dans weda2 ; E2E-SESSION-001 à 003, plafond Dovecot du banc à 30 | — |
+| task-372 | done (PR api-mail #301, en attente de merge ; Angular à commiter sur TFS ; partie Weda à faire) | Import Weda chez le bon patient : génération, fenêtre liée au message, présélection seulement si toutes les identités concordent par INS, `occurrence` des homonymes, avis d'envoi limité aux documents partis, message d'intégration indisponible ; E2E-WEDA-002/003 v2 | RG-E019-01, 02 |
 | task-358 | en attente (`tasks/onhold/`, amendement 3) | API d'intégration api-mail `api/v1/integration`, canal serveur Weda → api-mail, compteur de non-lus de l'en-tête | — |
 | task-359 | en attente (`tasks/onhold/`, amendement 3) | Réception des CR de biologie en bannette HPRIM sans WMickey, mots-clés `Weda` / `WedaClasse` | — |
 | task-360 | en attente (`tasks/onhold/`, amendement 3) | Classer par identifiants via le canal serveur ; remplacée par task-363 | — |

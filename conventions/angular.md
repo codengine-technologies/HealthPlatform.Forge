@@ -140,7 +140,7 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   task-367 (/lint-angular, 5 `require-example` sur des `@example` vides) ;
   task-365 (/lint-angular, 1 `require-param` : paramètre `session` ajouté à `fakeAuthProxy`
   du support e2e sans toucher son JSDoc — le même geste que task-308 et task-310)
-- **Occurrences** : 8 (task-374 — un `@example` vide sur un helper e2e, et un `@param` ajouté sans description par l'auto-fixer : le fixer pose la balise, pas son texte ; task-376 — des constantes exportées insérées en ancrant sur `@Component({` : le JSDoc de la classe, juste au-dessus du décorateur, est passé sur les constantes, et la classe s'est retrouvée sans bloc (`require-jsdoc`, deux composants). Attrapé par le lint ciblé de /develop avant tout rendu. **Un décorateur est une signature** : l'ancre est le `/**` qui le précède)
+- **Occurrences** : 9 (task-379 — une fonction privée à `@example` vide rendue `export` pour être réutilisée : la règle s'applique dès l'export, compléter l'exemple au même geste ; task-374 — un `@example` vide sur un helper e2e, et un `@param` ajouté sans description par l'auto-fixer : le fixer pose la balise, pas son texte ; task-376 — des constantes exportées insérées en ancrant sur `@Component({` : le JSDoc de la classe, juste au-dessus du décorateur, est passé sur les constantes, et la classe s'est retrouvée sans bloc (`require-jsdoc`, deux composants). Attrapé par le lint ciblé de /develop avant tout rendu. **Un décorateur est une signature** : l'ancre est le `/**` qui le précède)
 
 ### mail-content-body — `content.body` n'est pas le texte du mail
 - **Règle** : convention projet (défaut fonctionnel, invisible au lint)

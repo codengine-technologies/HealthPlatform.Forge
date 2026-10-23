@@ -2,10 +2,10 @@
 
 > **Statut** : 🟡 En cours — 2 fonctionnalités sur 5 validées, 3 livrées côté messagerie
 > **Modèle** : task-driven
-> **Version** : 1.5
+> **Version** : 1.8
 > **Auteur** : PO forge
 > **Audience** : PO, direction, équipe produit — la vue ingénierie vit dans [E019-Changelogs.md](E019-Changelogs.md)
-> **Dernière mise à jour** : 2026-10-14
+> **Dernière mise à jour** : 2026-10-18
 
 ---
 
@@ -76,8 +76,8 @@ Le praticien passe librement de l'écran actuel à la nouvelle messagerie.
 | **F1 — La nouvelle messagerie dans l'écran Échanges** | Ouvrir sa messagerie dans Weda sans se reconnecter. Elle ne dialogue avec le dossier patient que si l'intégration est activée pour son cabinet. | task-356 | 🟢 Validée, en attente de mise en ligne |
 | **F2 — Le dossier Weda du patient d'un document reçu** | Voir, sous un message, le dossier Weda du patient concerné (trouvé par son INS), ou des correspondances possibles à vérifier, puis l'ouvrir en un clic. | task-357 | 🟢 Validée, en attente de mise en ligne |
 | **F3 — La messagerie que Weda connaît, ouverte d'office** | Retrouver dans Weda la messagerie que Weda connaît, même s'il en a choisi une autre par défaut. Si elle n'est pas encore rattachée à son compte, la rattacher, l'adresse déjà saisie. Passer ensuite librement à ses autres messageries. | task-362 | 🟡 Livrée côté messagerie, partie Weda à réaliser |
-| **F4 — Importer un document reçu dans le dossier patient** | Importer, quand il le décide, une pièce jointe, le document d'un compte rendu ou le message lui-même dans le dossier d'un patient : destination, classification, commentaire, post-it. Le message reste dans sa boîte de réception. | task-363 | 🟡 Livrée côté messagerie, partie Weda à réaliser |
-| **F5 — Envoyer un document du dossier patient** | Envoyer un document du dossier Weda par la nouvelle messagerie, dans l'enveloppe qu'attendent les messageries de santé. Weda garde la trace de l'envoi. | task-366, task-367 | 🟡 Livrée côté messagerie, partie Weda à réaliser |
+| **F4 — Importer un document reçu dans le dossier patient** | Importer, quand il le décide, une pièce jointe, le document d'un compte rendu ou le message lui-même dans le dossier d'un patient : destination, classification, commentaire, post-it. Le message reste dans sa boîte de réception. | task-363, task-372 | 🟡 Livrée côté messagerie, partie Weda à réaliser |
+| **F5 — Envoyer un document du dossier patient** | Envoyer un document du dossier Weda par la nouvelle messagerie, dans l'enveloppe qu'attendent les messageries de santé. Weda garde la trace de l'envoi. | task-366, task-367, task-372 | 🟡 Livrée côté messagerie, partie Weda à réaliser |
 
 ---
 
@@ -180,8 +180,8 @@ flowchart LR
 | F1 — La nouvelle messagerie dans l'écran Échanges | 🟢 Validée, en attente de mise en ligne | affichage dans Échanges, connexion sans ressaisie, activation par cabinet, rien hors de Weda | task-356 |
 | F2 — Le dossier Weda du patient d'un document reçu | 🟢 Validée, en attente de mise en ligne | dossier trouvé par INS vérifiée, correspondances signalées « à vérifier », ouverture du dossier en un clic dans Weda | task-357 |
 | F3 — La messagerie que Weda connaît, ouverte d'office | 🟡 Livrée côté messagerie, partie Weda à réaliser | ouverture d'office sur la messagerie désignée à chaque entrée, rattachement proposé avec l'adresse déjà saisie, comportement inchangé hors de Weda | task-362 |
-| F4 — Importer un document reçu dans le dossier patient | 🟡 Livrée côté messagerie, partie Weda à réaliser | fenêtre d'import (patient, documents, destination, classification, commentaire, post-it), message laissé en place, aucune action pour la biologie | task-363 |
-| F5 — Envoyer un document du dossier patient | 🟡 Livrée côté messagerie, partie Weda à réaliser | rédaction ouverte depuis le dossier avec destinataire et document, signalé « Données structurées » ; enveloppe construite à l'envoi (compte rendu PDF ou synthèse structurée, patient désigné par son INS) ; auteur vérifié ; avis d'envoi à Weda pour sa trace ; abandon sans envoi ni brouillon | task-366, task-367 |
+| F4 — Importer un document reçu dans le dossier patient | 🟡 Livrée côté messagerie, partie Weda à réaliser | fenêtre d'import (patient, documents, destination, classification, commentaire, post-it), message laissé en place, aucune action pour la biologie ; présélection seulement si tous les documents désignent le même patient, pièces de même nom importées chacune, compte rendu propre au message | task-363, task-372 |
+| F5 — Envoyer un document du dossier patient | 🟡 Livrée côté messagerie, partie Weda à réaliser | rédaction ouverte depuis le dossier avec destinataire et document, signalé « Données structurées » ; enveloppe construite à l'envoi (compte rendu PDF ou synthèse structurée, patient désigné par son INS) ; auteur vérifié ; avis d'envoi à Weda pour sa trace, limité aux documents réellement partis ; message clair si l'intégration est indisponible ; abandon sans envoi ni brouillon | task-366, task-367, task-372 |
 
 **Couverture EPIC consolidée : 70 %** (2 fonctionnalités sur 5 validées, 3 livrées côté messagerie).
 
@@ -229,6 +229,12 @@ flowchart LR
   indisponible »). Quand le praticien se déconnecte de Weda, la nouvelle messagerie ouverte dans un autre onglet le
   constate dès son retour sur l'onglet, ou en moins d'une minute, et revient à l'écran de connexion (task-365).
 
+- v1.8 — L'import dans le dossier Weda dit vrai : deux pièces jointes de même nom sont importées chacune avec son propre
+  contenu ; le compte rendu d'un import ne reste plus affiché sur le message suivant ; changer de message referme la
+  fenêtre d'import. Après un échec ou un délai dépassé, le praticien est invité à vérifier le dossier avant de
+  réessayer, une partie des documents ayant pu être classée. Depuis le dossier Weda, si la nouvelle messagerie ne peut
+  pas joindre Weda, elle le dit et renvoie vers l'ancien écran d'envoi, au lieu de ne rien faire (task-372).
+
 ### Sécurité
 
 - v1.0 — La nouvelle messagerie ne dialogue avec Weda que si l'intégration a été explicitement
@@ -259,6 +265,12 @@ flowchart LR
 - v1.7 — Sur un poste partagé, la nouvelle messagerie ne montre jamais la messagerie d'un praticien à celui qui s'est
   connecté après lui : elle se recharge sur la session du nouveau praticien. Une déconnexion de Weda la fait quitter,
   même ouverte dans un autre onglet (task-365).
+- v1.8 — Identito-vigilance de l'import : un dossier n'est proposé d'office que si **tous** les documents du message
+  désignent, par INS vérifiée, le même patient ; pour un message portant les documents de plusieurs patients, rien
+  n'est choisi ni coché à la place du praticien, et choisir un patient coche ses seuls documents. Une réponse tardive
+  d'une fenêtre fermée ne modifie jamais la fenêtre suivante. La trace « document envoyé » écrite par Weda ne cite que
+  les documents réellement partis ; un envoi différé (à confirmer par la carte, ou mis en file) n'en écrit pas,
+  limite décidée et assumée (task-372).
 
 ---
 
