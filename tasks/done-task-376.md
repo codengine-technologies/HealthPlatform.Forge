@@ -106,7 +106,8 @@ Que ce que le médecin écrit **ne soit jamais perdu**, qu'un message **ne parte
 | /lint-mobile | skipped | 1.9 s | — | — | — | client-mobile inchangé depuis 5583857 (lint vert) |
 | /e2e | ok | 17 min 41 s | — | — | — | e2e ×19 (1 h 35 min), après sync develop |
 | /review | ok | 1 min 58 s | 15 (7 min 13 s) | 15 (34 min 54 s) | — | api-mail 5B/5T, client-mobile 5B/5T, client-angular 5B/5T, 5e passage, PRs ouvertes |
-| **Total cycle** | | **27 min 26 s** | **36 (24 min 45 s)** | **46 (1 h 30 min)** | **4 (6 min 54 s)** | |
+| /tech-writer | ok | 1 min 22 s | — | — | — | — |
+| **Total cycle** | | **28 min 48 s** | **36 (24 min 45 s)** | **46 (1 h 30 min)** | **4 (6 min 54 s)** | |
 
 Autres commandes mesurées : lint ×7 (7 min 22 s), restore ×1 (3 min 18 s)
 

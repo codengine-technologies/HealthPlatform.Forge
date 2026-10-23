@@ -4,7 +4,7 @@
 > **Modèle** : hand-crafted
 > **Version** : 1.86
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-23 (la recherche dans l'Annuaire Santé trouve le praticien et dit quand elle est incomplète — task-386)
+> **Dernière mise à jour** : 2026-10-23 (rédaction sans perte ni double envoi — task-376)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1036,6 +1036,13 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
+- **v1.102 — Ce que vous écrivez n'est jamais perdu, et un message ne part jamais deux fois sans que vous le sachiez** (task-376, messagerie web et application mobile) :
+  - **Un envoi peut-être parti le dit.** Quand la connexion à la messagerie se coupe juste après la transmission, vous lisez « Ce message est peut-être parti : vérifiez auprès du destinataire avant de le renvoyer. » Le bouton Envoyer est alors bloqué : un courrier médical n'est plus envoyé deux fois par erreur. Il en va de même pour un envoi resté sans réponse (réseau coupé, délai dépassé), et dans la liste des envois en attente.
+  - **Le brouillon n'est jamais perdu.** Fermer la rédaction, ouvrir un autre message ou un autre brouillon enregistre d'abord ce qui est en cours. Si l'enregistrement échoue, la rédaction reste ouverte et vous en êtes averti. Un envoi lancé pendant un enregistrement automatique ne laisse plus de brouillon fantôme derrière lui.
+  - **« Annuler et remplacer » ne vise que le message choisi.** Un nouveau message rédigé ensuite part normalement, sans annuler l'envoi précédent.
+  - **Les pièces jointes transférées arrivent toutes.** Deux documents portant le même nom (par exemple deux « document.pdf ») sont tous deux transmis au confrère. Envoyer reste indisponible tant qu'une pièce jointe est encore en cours de récupération.
+  - **Rien de ce que vous avez tapé n'est ignoré.** Une adresse saisie sans appuyer sur Entrée est prise en compte à l'envoi. Les champs Cc et Cci ne peuvent pas être masqués tant qu'ils contiennent une adresse.
+  - **Les refus du serveur sont expliqués.** Une opposition du patient, une taille dépassée ou un message verrouillé s'affichent avec le motif exact, plutôt qu'un échec générique. Appliquer un modèle en réponse conserve le message cité et votre signature.
 - **v1.101 — La recherche dans l'Annuaire Santé trouve le confrère, et dit quand elle n'a pas pu aller au bout** (task-386, les trois applications) :
   - **Un confrère cherché par nom et département est trouvé.** Une recherche comme « dup » dans le Cher répondait « aucun praticien » alors que plusieurs existaient : la recherche part désormais du nom, puis vérifie le lieu, et rend ses résultats en quelques secondes (22 praticiens en 5,5 s sur l'annuaire réel).
   - **Une recherche incomplète le dit.** Quand l'annuaire national est saturé ou trop lent, les résultats déjà obtenus s'affichent avec le message « Recherche incomplète », et le médecin est invité à préciser ses critères ou à réessayer. « Aucun praticien trouvé » n'apparaît qu'après une recherche complète.

@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-10-23 (v1.101)
+> **Dernière mise à jour** : 2026-10-23 (v1.102)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -760,6 +760,57 @@
   - sous-objet partagé pour les options d'envoi au prochain changement de contrat ;
   - remonter `originalMarkedCancelled` et `warning` par `drafts/{id}/send` ;
   - bail renouvelable pour le verrou.
+
+### v1.102 — Rédaction sans perte ni double envoi : remise incertaine typée, brouillon jamais orphelin, transfert par référence des homonymes (ANG-14 à ANG-19, ANG-26, ANG-42 à ANG-46, ANG-75) — task-376
+
+- **Origine** : audit de bugs du client Angular du 2026-10-13 (`Docs/audits/client-angular-audit-bugs-20261013.md`). Décision humaine du 2026-10-13 : le mobile est inclus, et les scénarios sont `requis` sur les deux clients.
+- **api-mail** :
+  - `drafts/{id}/send` : une remise incertaine sort en **503 `MAIL_DELIVERY_UNCERTAIN`** (`SendDraftOutcome.DeliveryUncertain`), comme `sendmail` et `cancel-and-replace`. Le 502 ne dit plus que « rien n'est parti ». **Écart à la DoD**, qui prévoyait un 502 pour le brouillon ; il est assumé pour garder un contrat unique.
+  - Transfert par référence (`sourceFolderPath/sourceUid/sourceOccurrence`) prouvé sur les trois chemins d'envoi.
+- **weda2** (code-only) et **mobile** :
+  - `isDeliveryUncertain` : 503 typé, statut 0 et 504. Le message « peut-être parti » s'affiche (ou le `detail` du serveur) et Envoyer est bloqué. `deliveryUncertain` et `failedActionsCount` remontent dans les envois en attente.
+  - Brouillon :
+    - identifiant adopté seulement après création (`proposedDraftId` / `pendingDraftId`) ;
+    - un compteur `sendsDispatched` neutralise les enregistrements en vol : l'orphelin est supprimé, sans recréation `404 → POST` ;
+    - l'identifiant proposé est abandonné à l'envoi (B5) ;
+    - l'autosave reprend après un envoi en échec non incertain ;
+    - un seul chemin « enregistrer puis ouvrir », et `beforeunload` tant qu'il reste du contenu.
+  - Annule et remplace : le contexte est porté par `ComposePrefill`, et le signal global est supprimé.
+  - Saisie : adresse tapée prise à l'envoi ; Cc/Cci non vides non masquables.
+  - `compose-body.util` (`withSignature`/`withTemplate`/`hasOwnText`, `DOMParser` inerte).
+  - Gardes sur les modèles et les signatures ; remise à zéro de l'acquittement de nettoyage des doublons.
+- **Filet** :
+  - Règle 1b, avec mutations rouges :
+    - `ADraftWhoseSendThrows_GoesBackToEditing_UncertainIs503Typed_OtherwiseIs502WithTheCause` et `ADraftSendThatFails_IsClassifiedByItsStage_ByTheRealSmtpService`, rouges sous « 502 d'avant » ;
+    - `AForwardOfTwoHomonymParts_ByReference_DeliversBothContents` × 3 chemins, rouge sous « occurrence forcée à 0 ».
+  - Tests unitaires et de composant vus rouges sur weda2 et mobile.
+  - e2e : **E2E-COMPOSE-005** (nouveau ; numéroté 004 sur la branche, puis renuméroté au sync `develop`, task-379 ayant pris le 004), **E2E-DRAFT-003** (nouveau), **E2E-DETAIL-001 v3**.
+- **Revue** : cinq passages.
+  - Bloquants corrigés :
+    - B1 : brouillon orphelin si Envoyer pendant l'autosave, plus le repli `404 → POST` ;
+    - B2 : seconde pièce homonyme illisible sur mobile ;
+    - B3 : fermeture par geste agissant sur la rédaction rouverte ;
+    - B4 : identifiant prêté après suppression de l'orphelin ;
+    - B5 : identifiant proposé conservé à l'envoi.
+  - Le 4ᵉ passage, APPROVED, a buté sur la collision d'identifiant e2e avec task-379, levée au 5ᵉ.
+- **Tests** (arbres fusionnés avec `develop`) :
+  - api-mail : domain 195, infra 695, application 3 603, api 1 277, intégration 963/979 (16 ignorés IA), 0 échec ;
+  - mobile : 1 190 ;
+  - weda2 : 1 576.
+- **Sonar** : Quality Gate ERROR hérité (0 finding dans les fichiers de la task) ; new_coverage 98,1 → 98,2 % ; projet 97,9 → 98,0 % ; ratings D/A/A inchangés ; S103 corrigé.
+- **E2E** : voies mobile 41/41 et Angular 48 + 1 flaky (E2E-SEARCH-001, 5ᵉ occurrence sur task-376), parité verte ; E2E-COMPOSE-002 toujours en quarantaine (task-350).
+- **PR** (`awaiting-human-merge`, branche `fix/task-376-redaction-sans-perte-ni-double-envoi`) : `api-mail` #306, `client-mobile` #100 ; `client-angular` en code-only (TFS, poussé par l'humain sur `feature/nova-mss-weda-integration`).
+- **Leçons** :
+  - `conventions/angular.md` : identifiant-adopte-avant-creation (et son revers), contexte-pose-a-cote, reponse-sur-instantane, desabonnement-annule-un-envoi, tester-a-travers-le-parent, JSDoc orpheline ;
+  - `conventions/e2e.md` : etat-desactive-d-un-ion-button, inbox-laissee-en-l-etat, trou du filet, registre des flaky ;
+  - mémoire : timeout du worker de plugin Nx sur la voie weda2, jeton Sonar masqué dans le journal de mesure.
+- **Suivis** :
+  - « Nouveau message » pendant un envoi en vol réinitialise la rédaction (préexistant) ;
+  - remise à `null` redondante de l'identifiant proposé ;
+  - recréation `404 → POST` rare après l'envoi (doublon possible, sans perte) ;
+  - branche `queued` de `executeSend` probablement morte ;
+  - stabiliser E2E-SEARCH-001 ;
+  - faire tourner le jeton Sonar.
 
 ### v1.101 — Recherche dans l'Annuaire Santé : deux pivots, quota partagé, issue signalée, 503 sans réponse — task-386
 
@@ -1521,6 +1572,8 @@ Audit grep complémentaires pour les couches 2 / 2bis / 3 (tasks 021 / 022 / 023
 
 | Task | Apport principal | Règles touchées |
 |------|------------------|-----------------|
+| task-376 | **Rédiger sans perte ni double envoi.** Remise incertaine typée en 503 `MAIL_DELIVERY_UNCERTAIN` sur les trois routes d'envoi et bloquée côté clients ; brouillon jamais orphelin ni perdu ; annule et remplace limité au message choisi ; transfert par référence des pièces homonymes ; saisie et refus du serveur rendus lisibles (weda2 + mobile). | — |
+| task-386 | **La recherche dans l'Annuaire Santé trouve le praticien et dit quand elle est incomplète.** Deux pivots (praticien / établissement), quota partagé Redis, issue `X-Directory-Search-Outcome`, 503 `DIRECTORY_UNAVAILABLE`, règles de recherche refusées avant tout appel (trois clients). | — |
 | task-379 | **Un contact garde toutes ses adresses MSSanté, avec une adresse par défaut ; la recherche survit à une erreur.** ANG-57 : fiche weda2 réduite à la 1re adresse, liste remplacée à l'enregistrement → adresses secondaires perdues ; rédaction limitée à `primaryMssAddress` sur les deux clients. Contrat `DefaultMssAddress` (530.0.0), colonne `ContactMssAddresses.IsDefault`, 400 hors liste ; suggestions par adresse (règle commune aux deux clients) ; import annuaire weda2 fusionné ; ANG-56 erreur dans le `switchMap`. ANG-58 écarté (annuaire = adresses MSSanté seulement). E2E-CONTACT-002 v2, E2E-COMPOSE-004. PR dtos-mss #46, api-mail #304, mobile #98. | — |
 | task-183 | **`X-MSS-INS: O` était annoncé pour une INS non qualifiée, et l'OID n'était persisté nulle part.** L'annonce de qualification était émise dès qu'un matricule **et** un OID étaient non vides, **sans jamais examiner la valeur de l'OID** : un NIA (identité **provisoire**) et même un OID de **test** produisaient la même annonce qu'un NIR de production, autorisant le LPS destinataire à classer automatiquement au titre d'une identité jamais qualifiée. Corollaire mesuré : les quatre OID du référentiel n'apparaissaient **nulle part** dans le source. En parallèle, `PatientOid` s'arrêtait au parsing — aucune entité ne l'écrivait — donc l'identité patient était clé sur le **matricule nu** : deux documents d'un même patient, l'un NIA l'autre NIR, ouvraient **deux dossiers** (histoire coupée en deux), et un matricule de **test** homonyme d'un matricule de production **fusionnait deux personnes**. Livré : `InsIdentityDomain` comme **seule** lecture du référentiel (`Classify` → enum, `IsQualifying` et le libellé de journal en dérivent, `urn:oid:` normalisé) ; annonce restreinte au domaine NIR, traits d'identité toujours exigés ; refus **tracé par classification** du domaine, jamais par le matricule (PGSSI-S), et sous garde `IsEnabled` puisque `N` est l'issue ordinaire ; `MailPatients.Oid` + `MailMedicalDocuments.PatientOid` (`varchar(64)` nullable) et appariement `(matricule, domaine)` sur les **deux** chemins d'ingestion — le chemin promote a été **unifié** sur le résolveur nominal, ce qui a au passage supprimé une requête **par document** (5 `SELECT` au lieu d'1 pour un mail de 5 documents d'une même INS) et une seconde copie de l'initialiseur `MailPatient`. **Reprise des données : `NULL` = « domaine inconnu »**, seule valeur honnête (l'OID est irrécupérable ; écrire le NIR par défaut aurait été une affirmation fausse sur des données de santé), avec **adoption** du domaine du premier document qui en porte un — sans quoi la mise en service aurait ouvert un second dossier pour **chaque** patient déjà connu. **Migration jouée réellement sur un PostgreSQL jetable** (règle 7c) : `Up` et `Down`, deux opérations, aucune opération fantôme, aucune collision de colonne — les migrations FluentMigrator n'étant exercées par **aucun** test (`EnsureCreated()` côté intégration). ROUGE prouvé avant correctif : 8 échecs sur l'annonce, 8 sur 9 sur l'identité. Sonar QG **OK**, A/A/A, 0 finding new-code, 6 `S3604` marqués **faux positifs** (constructeurs primaires, analyseur 8.51). 4247 tests verts. **Point 3 de la US non livré** (refus des OID de test en production) : suspendu à l'arbitrage humain, `questions/task-183.md`. Trois écarts hors périmètre consignés : `PatientOid` sans lecteur côté détection de doublons, `HasQualifiedIns` calculé par non-vacuité côté écran, modèle de lecture encore clé sur le matricule nu (dont `UpdateOppositionAsync`, donnée de consentement). **AIPD à mettre à jour.** PR #222. | RG-E009-068 (annonce de qualification restreinte au domaine NIR — reste 🟡 Partiel : l'INS elle-même continue d'être transmise, et le refus des OID de test attend l'arbitrage) |
 | task-193 | **Un document clinique disparaissait du dossier, déclaré doublon de celui d'un autre patient.** Chaîne complète : `<id>` absent du CDA → le parseur fabrique la chaîne littérale `"_"` par interpolation inconditionnelle → cette valeur **franchit** le garde-fou de non-vacuité qui commande la détection → la détection compare les identifiants **sans aucun prédicat de patient** → le second document non identifié est déclaré doublon du premier, celui d'un **autre patient** → les requêtes du dossier patient écartant les doublons, **le document est absent du dossier et du tableau de bord**. Le praticien ne le retrouvait qu'en boîte, avec un signal de doublon pointant sur le dossier de quelqu'un d'autre. **Le bon patron était à trois lignes depuis task-034** : `SetId`, construit juste en dessous depuis la même forme de donnée, est laissé nul quand ses deux moitiés sont vides, et sa colonne est nullable depuis le schéma initial ; seul `DocumentId` ne suivait pas la règle. Les deux partagent désormais `ComposeIdentifier`. Le seuil est « les **deux** moitiés vides » et non « l'une des deux » — une moitié reste un identifiant, la dégrader arrêterait de détecter de vrais doublons. **Détection bornée au patient sur ses DEUX chemins** (`FindExactDuplicateIdAsync` **et** `LoadActiveSetVersionsAsync`) : laisser le chemin `SetId` non borné aurait gardé la même classe de défaut, un document supplanté par la « nouvelle version » de celui d'un autre patient. **Sans INS, aucune détection du tout** — comparer sur le seul identifiant rétablirait le défaut sous une autre forme (deux patients inconnus confondus) ; règle de la task (en cas de doute, ne pas masquer) et de task-176 (ne jamais deviner un patient sans INS). **Deux documents non identifiés d'un même patient ne sont pas doublons** non plus : rien à comparer, et l'empreinte de contenu est **écartée** parce qu'elle devine, et se tromper masque un document clinique. **Migration non prévue par la task et inévitable** : la colonne était `NOT NULL`, un identifiant nul était donc *impossible à stocker* — c'est pourquoi le parseur en fabriquait un ; migration relue (règle 7c), une seule altération, pas de réécriture de table, `Down` volontairement lossy et commenté (il restaure `"_"`, donc re-crée la collision — c'est ce que revenir en arrière signifie). **Lignes existantes portant `"_"` laissées telles quelles** : les réécrire serait une modification de données de santé ; l'inventaire en lecture seule livré avec la task les identifie, la remédiation est humaine. **Deux tests existants assertaient le défaut** — l'un semait deux INS différents en annonçant « prove that DocumentId alone is enough to trigger the duplicate flag », l'autre assertait `Equal("_", DocumentId)` sans relever que la ligne suivante attend `null` sur `SetId` ; tous deux inversés, le premier doublé d'un test même-patient pour ne pas perdre la non-régression. Les dix tests INT.18 ne posaient **aucun INS** : ils décrivaient deux documents d'un même patient sans le dire. RED prouvé avant correctif (4 échecs sur 7). Journalisation PGSSI-S de la réception d'un document sans identifiant (évènement technique, aucun contenu ni trait patient) — le défaut avait été trouvé en lisant le code, pas par un signal. 4193 tests verts, zéro échec ; la suite est redevenue déterministe, le correctif task-291 (PR #220) ayant été mergé pendant `/review`. Sonar : 1 finding sur les fichiers touchés, **non imputable** (présent à la même ligne sur `develop`, zéro occurrence dans le diff). **AIPD à mettre à jour** (art. 5.1.d). PRs #31 / #221. | — (correctif de conformité — complétude du dossier patient, volet documents de santé CDA ; aucune RG nouvelle) |
