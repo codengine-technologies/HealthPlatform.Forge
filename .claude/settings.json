@@ -72,13 +72,13 @@
       "Bash(kubectl version:*)",
       "Bash(kubectl cluster-info:*)",
       "Bash(kubectl config get-contexts:*)",
-      "Bash(kubectl config current-context)"
+      "Bash(kubectl config current-context)",
+      "Bash(kubectl apply:*)",
+      "Bash(kubectl delete:*)",
+      "Bash(kubectl -n ns-medicale exec -i annuairesante-api-mongodb-0 -- *)"
     ],
     "deny": [
       "Bash(wget:*)",
-      "Bash(kubectl apply:*)",
-      "Bash(kubectl create:*)",
-      "Bash(kubectl delete:*)",
       "Bash(kubectl replace:*)",
       "Bash(kubectl patch:*)",
       "Bash(kubectl edit:*)",
