@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-10-23 (v1.102)
+> **Dernière mise à jour** : 2026-10-23 (v1.103)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -760,6 +760,33 @@
   - sous-objet partagé pour les options d'envoi au prochain changement de contrat ;
   - remonter `originalMarkedCancelled` et `warning` par `drafts/{id}/send` ;
   - bail renouvelable pour le verrou.
+
+### v1.103 — Annuaire Santé : finitions de la revue de task-386 (organisation courte, page de maintenance, messages clients, double recherche) — task-388
+
+- **Origine** : la seconde revue de task-386 a rendu un verdict APPROVED avec cinq suggestions non bloquantes.
+- **api-mail** :
+  - **(a)** `ValidateSearchCriteria` : une spécialité avec une organisation de moins de 3 caractères (après rognage) et sans lieu est refusée en 400 avec le motif de l'organisation. Spécialité et lieu suffisent, quelle que soit l'organisation ;
+  - **(e)** le commentaire XML est remis à sa place ;
+  - **(b) faux positif** : une page HTML renvoyée en 200 (annoncée `text/html` **ou** `application/fhir+json`) est déjà rejetée par le client FHIR (`FhirOperationException`) et classée « indisponible » par `AnnuaireSanteGateway`. Aucun code ne change. Trois gardes de route sont ajoutées, et `FakeAnnuaireSante.ServeMaintenancePageWhen` permet de les exercer.
+- **Clients** :
+  - weda2 (code seul) et mobile : même règle (a), même motif ;
+  - mobile **(c)** : un statut 0 ou tout 5xx donne « annuaire indisponible ». Un refus sans motif lisible donne un message simple. Le message technique d'Angular, qui contient l'URL et les critères, n'est plus jamais affiché (`problemMessage` sur `problemOf`). `isDirectoryUnavailable` est retiré ;
+  - client-blazor **(d)** :
+    - `GetOutcome.NotAuthenticated` (code `CLIENT_NOT_AUTHENTICATED`) produit « Votre session a expiré » au lieu de « indisponible » ;
+    - une recherche annulée lève une exception d'annulation au lieu d'afficher un échec ;
+    - Entrée pendant une recherche est ignorée (garde `_isLoading` dans `Search()`).
+- **Règle 1b** :
+  - (a) est vu rouge avant le correctif, puis par la mutation M14 ;
+  - (b) est vu rouge par la **mutation M15 en /review** (`FhirOperationException` retirée du classement « indisponible » → 3/3 rouges), puis restauré.
+- **Tests** : api-mail domain 195, application 3 604, infrastructure 695, api 1 277, intégration 967 (16 ignorés, préexistants) ; weda2 `mss` 1 089 ; mobile 1 192 ; Blazor 471.
+- **Sonar** : Quality Gate OK, 0 finding sur le nouveau code, couverture du nouveau code 97,1 %, projet 98,1 % A/A/A.
+- **E2E** : parité verte ; Angular 49 verts. Côté mobile, le run 1 a été **rouge** sur E2E-DETAIL-001 (transfert de pièces homonymes), un parcours que la task ne touche pas. La relance de la voie entière est verte, avec ce test flaky : 3 échecs sur 4 essais, toujours sur l'arrivée d'un message dans la liste. Il est inscrit au registre des flaky ; une task de stabilisation est à ouvrir.
+- **PR** (`awaiting-human-merge`, branche `fix/task-388-annuaire-finitions`) : `api-mail` #307, `client-mobile` #101, `client-blazor` #96. `client-angular` est en code seul (TFS).
+- **Question de la task** : le défaut est appliqué. `, | $ \` restent refusés, sans échappement ; les règles C# ne sont pas partagées via `dtos-mss`.
+- **Suivis** :
+  - stabiliser E2E-DETAIL-001 sur mobile ;
+  - `PostOutcome.NotSent` mêle encore session absente et panne réseau ;
+  - fermer le dialogue Blazor n'annule pas la recherche en cours.
 
 ### v1.102 — Rédaction sans perte ni double envoi : remise incertaine typée, brouillon jamais orphelin, transfert par référence des homonymes (ANG-14 à ANG-19, ANG-26, ANG-42 à ANG-46, ANG-75) — task-376
 
@@ -1572,6 +1599,7 @@ Audit grep complémentaires pour les couches 2 / 2bis / 3 (tasks 021 / 022 / 023
 
 | Task | Apport principal | Règles touchées |
 |------|------------------|-----------------|
+| task-388 | **Les finitions de la recherche dans l'annuaire.** Une organisation de moins de 3 caractères est refusée avec une spécialité sans lieu ; une page de maintenance est gardée en « indisponible » ; le mobile n'affiche plus jamais le message technique d'Angular ; Blazor distingue session expirée et annuaire indisponible, et ne lance plus deux fois la recherche. | — |
 | task-376 | **Rédiger sans perte ni double envoi.** Remise incertaine typée en 503 `MAIL_DELIVERY_UNCERTAIN` sur les trois routes d'envoi et bloquée côté clients ; brouillon jamais orphelin ni perdu ; annule et remplace limité au message choisi ; transfert par référence des pièces homonymes ; saisie et refus du serveur rendus lisibles (weda2 + mobile). | — |
 | task-386 | **La recherche dans l'Annuaire Santé trouve le praticien et dit quand elle est incomplète.** Deux pivots (praticien / établissement), quota partagé Redis, issue `X-Directory-Search-Outcome`, 503 `DIRECTORY_UNAVAILABLE`, règles de recherche refusées avant tout appel (trois clients). | — |
 | task-379 | **Un contact garde toutes ses adresses MSSanté, avec une adresse par défaut ; la recherche survit à une erreur.** ANG-57 : fiche weda2 réduite à la 1re adresse, liste remplacée à l'enregistrement → adresses secondaires perdues ; rédaction limitée à `primaryMssAddress` sur les deux clients. Contrat `DefaultMssAddress` (530.0.0), colonne `ContactMssAddresses.IsDefault`, 400 hors liste ; suggestions par adresse (règle commune aux deux clients) ; import annuaire weda2 fusionné ; ANG-56 erreur dans le `switchMap`. ANG-58 écarté (annuaire = adresses MSSanté seulement). E2E-CONTACT-002 v2, E2E-COMPOSE-004. PR dtos-mss #46, api-mail #304, mobile #98. | — |
