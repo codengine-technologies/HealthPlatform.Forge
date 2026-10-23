@@ -5526,3 +5526,5 @@
 {"ts":"2026-10-23T01:38:38+02:00","run_id":"-","type":"step","task":"task-386","step":"review","status":"ok","note":"APPROVED (2e revue) — PR api-mail #305, mobile #99, blazor #95","iterations":null,"duration_ms":387472}
 {"ts":"2026-10-23T01:38:49+02:00","run_id":"-","type":"step_start","task":"task-386","step":"tech-writer"}
 {"ts":"2026-10-23T01:39:44+02:00","run_id":"-","type":"step","task":"task-386","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":54254}
+{"ts":"2026-10-23T16:11:43+02:00","run_id":"-","type":"step_start","task":"task-386","step":"merge"}
+{"ts":"2026-10-23T16:18:35+02:00","run_id":"-","type":"step","task":"task-386","step":"merge","status":"ok","note":"","iterations":null,"duration_ms":411788}
