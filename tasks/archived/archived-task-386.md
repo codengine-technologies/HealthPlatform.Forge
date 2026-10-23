@@ -1,4 +1,4 @@
-# done-task-386.md — Annuaire Santé : une recherche par nom et lieu trouve le praticien, et dit quand elle est incomplète
+# archived-task-386.md — Annuaire Santé : une recherche par nom et lieu trouve le praticien, et dit quand elle est incomplète
 
 **Repos**: api-mail, client-angular, client-mobile, client-blazor
 **Dependencies**: — (aucune)
@@ -521,6 +521,14 @@ de voie e2e au catalogue.
   500 au lieu de 503 ; message technique brut sur mobile en cas d'erreur réseau ; Blazor « indisponible » sur requête
   non partie et Entrée pendant une recherche ; commentaire XML déplacé ; échapper plutôt que refuser `, | $ \`.
 
+## Merged
+- **2026-10-23** — `/merge 386 --i-tested` (plan de test manuel validé par l'humain).
+- `api-mail` : PR #305 → `develop` `efbacbc8` (squash) — CI `develop` ✓
+- `client-blazor` : PR #95 → `develop` `a92efae` (squash) — CI `develop` ✓
+- `client-mobile` : PR #99 → `develop` `8bf6f9b` (squash) — CI `develop` ✓
+- `client-angular` : PR TFS mergée par l'humain ; clone local laissé sur sa branche (`feature/nova-mss-weda-integration`) à sa demande.
+- Branches `fix/task-386-annuaire-recherche-fiable` supprimées (distantes et locales) ; aucune branche de staging.
+
 ## Branches
 - `api-mail` (pushed) : fix/task-386-annuaire-recherche-fiable — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-386-annuaire-recherche-fiable
 - `client-mobile` (pushed) : fix/task-386-annuaire-recherche-fiable — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/fix/task-386-annuaire-recherche-fiable
@@ -542,6 +550,7 @@ de voie e2e au catalogue.
 | /e2e | ok | 13 min 47 s | — | — | — | e2e ×6 (27 min 58 s) |
 | /review | ok | 6 min 27 s | 4 (29 s) | 5 (8 min 28 s) | — | api-mail 2B/2T, client-mobile 2B/2T, client-blazor 0B/1T, APPROVED (2e revue) — PR api-mail #305, mobile #99, blazor #95 |
 | /tech-writer | ok | 54 s | — | — | — | — |
-| **Total cycle** | | **52 min 29 s** | **12 (2 min 23 s)** | **34 (36 min 42 s)** | **8 (2 min 35 s)** | |
+| /merge | ok | 6 min 51 s | — | — | — | — |
+| **Total cycle** | | **59 min 21 s** | **12 (2 min 23 s)** | **34 (36 min 42 s)** | **8 (2 min 35 s)** | |
 
 Autres commandes mesurées : lint ×5 (1 min 03 s)
