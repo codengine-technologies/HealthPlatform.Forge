@@ -1,6 +1,6 @@
 # todo-task-388.md — Annuaire Santé : les finitions relevées en revue de task-386
 
-**Repos**: api-mail, client-mobile, client-blazor, client-angular
+**Repos**: dtos-mss, api-mail, client-mobile, client-blazor, client-angular
 **Dependencies**: done-task-386 (archivée)
 **Epic**: E009
 **Single frontend**: false
@@ -116,6 +116,49 @@ Feature: Directory search finishing touches
 > passerelle de l'ANS. Et faut-il partager les règles C# entre l'API et Blazor via `dtos-mss` (une seule copie, au
 > prix d'un cycle de publication) ? Par défaut, cette task garde le refus et les deux copies.
 
+## Extension du périmètre (humain, 2026-10-24)
+
+> Ajoutée après la première revue, à la demande de l'humain, et incluse dans task-388. Les PR déjà ouvertes reçoivent
+> les nouveaux commits ; `dtos-mss` reçoit sa branche (paresseuse) et sa PR.
+
+- **(f) Icônes des types de contact (weda2)** : le professionnel porte le stéthoscope, le patient une personne, dans la
+  liste des contacts et dans le filtre « Types de contact » (déjà fait, code seul).
+- **(g) Profession et spécialité d'un contact, et suggestions de destinataires lisibles** :
+  - `dtos-mss` : `ContactDto.Profession` et `ContactDto.Specialty` (libellés, facultatifs) ;
+  - api-mail : deux colonnes nullables sur `Contacts` (migration MailDb), lues et écrites par `ContactRepository`,
+    longueur bornée (400 au-delà) ; l'enrichissement depuis un CDA remplit `Specialty` au lieu d'une étiquette ;
+  - import depuis l'annuaire (weda2, mobile, Blazor) : profession et spécialité vont dans les champs dédiés, **plus**
+    dans les étiquettes ;
+  - rédaction (A, Cc, Cci) de **weda2 et du mobile** : chaque suggestion montre l'avatar avec l'icône du type de
+    contact, le nom, la spécialité dessous quand elle est connue, et l'adresse à droite.
+
+**Décisions de l'humain (2026-10-24)** :
+1. Pas de récupération des contacts existants : les champs se remplissent au fil des imports et des enrichissements.
+2. À l'import depuis l'annuaire, champs dédiés seulement : aucune étiquette n'est plus ajoutée ; les étiquettes
+   existantes ne sont pas touchées.
+3. Nouvel affichage des suggestions dans weda2 et le mobile.
+
+### Definition of Done — extension
+
+- [ ] Build et tests verts : dtos-mss, api-mail, weda2, client-mobile, client-blazor
+- [ ] `dtos-mss` publié par la CI ; `api-mail` et `client-blazor` passés à la nouvelle version du paquet
+- [ ] Migration MailDb : deux colonnes nullables, contacts existants inchangés (valeurs nulles), descente testée
+- [ ] Test d'intégration de route `POST`/`PUT`/`GET /api/v1/Contact` : profession et spécialité relues dans la réponse
+      et en base ; longueur dépassée → 400 ; vus rouges (règle 1b)
+- [ ] Enrichissement CDA : la spécialité va dans `Specialty`, plus dans les étiquettes (test vu rouge)
+- [ ] weda2, mobile, Blazor : l'import depuis l'annuaire remplit `profession` / `specialty` et n'ajoute aucune
+      étiquette (tests rouges d'abord)
+- [ ] weda2 et mobile : suggestion de destinataire = avatar + icône du type, nom, spécialité (si connue), adresse à
+      droite ; tests de composant rouges d'abord ; `data-testid` existants conservés (suites e2e inchangées)
+- [ ] weda2 : icônes de type de la liste, du filtre et des suggestions tirées d'une seule source
+
+### Manual Test Plan — extension
+
+5. weda2 — Contacts : un professionnel porte le stéthoscope, un patient une personne (liste et filtre).
+6. Importer un praticien depuis l'annuaire (weda2, puis mobile) : la fiche n'a aucune nouvelle étiquette ; dans une
+   rédaction, taper son nom → avatar, icône stéthoscope, nom, spécialité dessous, adresse à droite.
+7. Un contact sans spécialité (créé à la main) : la suggestion montre le nom sans ligne vide.
+
 ## Develop log
 
 **2026-10-23 — `/develop` (forge).** api-mail `24599977` + `09634f48` ; client-mobile `ffdf47c` + `9cf662b` ;
@@ -142,6 +185,46 @@ client-blazor `4efdebc` + `b00338d` ; weda2 en code seul (non commité). Branche
   retiré ; double garde `_isLoading` Blazor ramenée à une. Écarté : fusionner les listes de réponses du faux annuaire
   (fixture de test) ; `PostOutcome.NotSent` mêle aussi session absente et réseau (hors task).
 - **Question de la task** : défaut appliqué (refus de `, | $ \`, deux copies des règles C#).
+
+**2026-10-24 — `/develop`, extension (f) et (g).** dtos-mss `fix/task-388-annuaire-finitions` (paresseuse, créée
+ici) ; HealthPlatform.Dtos.Mss **533.0.0** publié par la CI (run 533) ; api-mail `bcbe1b0d` (bump) + `673d2082` ;
+client-blazor `11127fb` (bump) + `d99c195` + `2c8d8cf` ; client-mobile `ae166b9` + `105cb05` ; weda2 en code seul.
+
+- **(f)** weda2 : icônes de type inversées (professionnel = personne, patient = stéthoscope) dans la liste et le filtre.
+  Test rouge d'abord (`expected 'user' to be 'stethoscope'`). Les trois écrans lisent désormais `contact-type.util`.
+- **(g) contrat et API** : `ContactDto.Profession` / `Specialty` (256 car.) ; colonnes `Contacts.Profession` /
+  `Specialty` (migration `20261024120000`, nullables, aucune récupération depuis les étiquettes) ; `ContactRepository`
+  lit et écrit les deux champs ; `InputSanitizer.SanitizeLabel` (pas d'encodage HTML) ; l'enrichissement CDA remplit
+  `Specialty` quand la fiche n'en a pas, ne la remplace jamais, n'ajoute plus d'étiquette, ignore un libellé hors contrat.
+- **Règle 1b** — `ContactProfessionSpecialtyEndpointIntegrationTests` (vraie route, PostgreSQL réel) et
+  `ContactProfessionSpecialtyMigrationTests`, vus rouges par mutation :
+  M16 lecture retirée (`MapToDto`) → 4 rouges ; M17 écriture retirée (`UpdateAsync`) → 2 ; M18 enrichissement ramené
+  aux étiquettes → `TheCdaEnrichment_FillsTheSpecialty…` ; M19 enrichissement qui écrase → `…NeverReplacesAKnownSpecialty` ;
+  M20 libellé encodé (`Sanitize`) → 2 ; M21 descente incomplète → `TheColumns_GoDownAndComeBack`. Le 400 au-delà de
+  256 caractères vient de l'attribut `[MaxLength]` du contrat (validation du modèle), non mutable dans ce dépôt.
+  > **Piège rencontré** : une mutation restaurée par `shutil.move` garde la date de la copie, plus ancienne que les
+  > binaires mutés : MSBuild ne recompile pas, et la mutation suivante s'exécute sur un binaire encore muté (M18 et
+  > M19 d'abord faux). Rejouées après `touch` des fichiers restaurés : chacune rouge sur son test. Consigné dans
+  > `conventions/csharp.md`.
+- **Imports depuis l'annuaire** : weda2, mobile et Blazor remplissent `profession` / `specialty` (libellés), sans
+  étiquette. Défauts trouvés en route : weda2 rangeait des **codes** dans les étiquettes quand le libellé manquait ;
+  le mobile **remplaçait** les étiquettes du médecin par celles de l'annuaire ; Blazor recopiait la fiche champ par
+  champ — sans les deux champs, l'enregistrement les aurait effacés (recopie et duplication corrigées).
+- **Rédaction (weda2 et mobile)** : chaque suggestion (A, Cc, Cci) montre l'avatar avec l'icône du type, le nom, la
+  spécialité (à défaut la profession) dessous et l'adresse à droite ; `data-testid` existants conservés. weda2 :
+  composant partagé `ContactAvatarComponent` (liste et rédaction). Mobile : stéthoscope du design system weda2 livré
+  dans `assets/icons` (Ionicons n'en a pas). Tests de rendu rouges d'abord (weda2) ; mobile prouvé par mutation
+  (icône du professionnel et ligne de spécialité retirées → 5 rouges).
+- **Tests** : api-mail domain 195, infra 695, api 1 277, application 3 615, intégration 973 (16 ignorés) ; weda2
+  `mss-lib` 1 102 ; mobile 1 203 ; Blazor 475. Un rouge non lié pendant la suite complète :
+  `SeededThreadsAreCountableTests.SeveralDistinctThreadSizesReachTheCounter` (`Uid` tiré au hasard dans une base
+  partagée → collision de clé unique), vert rejoué seul — instabilité préexistante, à corriger par une task.
+- **Passe qualité (§Q)** : `SpecialtyOf` passe par `SanitizeLabel` ; enveloppes d'icônes retirées de la liste weda2
+  (utilitaire exposé, `@let`) et test redondant supprimé ; variantes de couleur mortes retirées ; `@let` dans la
+  rédaction mobile ; test Blazor allégé. Écarté : remonter le `ng-template` au niveau de la liste (restructure un bloc
+  existant), avatar partagé sur la carte de l'annuaire (changement visuel), copie unique de `ContactDto` dans Blazor
+  (reprendrait `DefaultMssAddress`, changement de comportement), import côté serveur (suite).
+- **Non couvert par un test unitaire** : la recopie de la fiche dans `Contacts.razor` (Blazor) — vérifiée à la lecture.
 
 ## Sonar log
 - Phase 1 (new code) : ✓ Quality Gate OK au premier passage, new_coverage = 97,1 %, 0 finding
@@ -188,16 +271,16 @@ client-blazor `4efdebc` + `b00338d` ; weda2 en code seul (non commité). Branche
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 25 s | — | — | — | — |
-| /develop | ok | 12 min 24 s | — | 3 (51 s) | — | client-mobile 0B/2T, client-blazor 0B/1T |
+| /develop | ok | 33 min 35 s | 3 (53 s) | 18 (7 min 46 s) | — | client-mobile 1B/6T, client-blazor 0B/5T, api-mail 2B/7T, extension (f)(g) : dtos 533.0.0, migration, suggestions weda2+mobile |
 | /sonar | ok | 8 min 13 s | 1 (18 s) | 5 (6 min 48 s) | 2 (41 s) | api-mail 1B/5T |
 | /lint-angular | ok | 2 min 48 s | 1 (12 s) | 1 (1 min 37 s) | — | client-angular 1B/1T |
 | /lint-mobile | ok | 15 s | 1 (8.6 s) | — | — | client-mobile 1B/0T |
 | /e2e | ok | 32 min 25 s | — | — | — | e2e ×5 (30 min 02 s), porte verte sur relance mobile ; run 1 rouge E2E-DETAIL-001 mobile (flaky 3/4, non lié) |
 | /review | ok | 8 min 51 s | 4 (39 s) | 4 (4 min 53 s) | — | api-mail 1B/1T, client-mobile 1B/1T, client-blazor 1B/1T, client-angular 1B/1T, APPROVED, 3 PR ouvertes (api-mail #307, mobile #101, blazor #96), mutation M15 sur (b) |
 | /tech-writer | ok | 34 s | — | — | — | — |
-| **Total cycle** | | **1 h 05 min** | **7 (1 min 19 s)** | **13 (14 min 10 s)** | **2 (41 s)** | |
+| **Total cycle** | | **1 h 27 min** | **10 (2 min 13 s)** | **28 (21 min 06 s)** | **2 (41 s)** | |
 
-Autres commandes mesurées : lint ×2 (18 s)
+Autres commandes mesurées : lint ×3 (38 s), nuget-wait ×1 (26 s)
 
 ## E2E log
 
