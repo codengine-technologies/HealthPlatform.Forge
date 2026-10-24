@@ -246,14 +246,33 @@ client-blazor `11127fb` (bump) + `d99c195` + `2c8d8cf` ; client-mobile `ae166b9`
 | Duplication | 0,4 % | 0,4 % | 0 |
 | Reliability / Security / Maintainability | A/A/A | A/A/A | → |
 
+### Sonar — extension (2026-10-24)
+
+- Phase 1 (new code) : ✓ Quality Gate OK au premier passage, new_coverage = 97,1 %, 0 finding (migration exclue de
+  l'analyse, comme les autres)
+- Phase 2 (legacy) : 0 itération — cibles projet atteintes (98,1 %, A/A/A, 0 bug / vulnérabilité / smell / hotspot,
+  duplication 0,4 %)
+- Build / tests : ✓ Release ; domain 195, application 3 615, infrastructure 695, api 1 277, intégration 974 (16 ignorés)
+
 ## Lint log
 - **client-angular** (code seul, base `origin/next`, lint `tag:scope:mss`) — 0 itération : 0 erreur, 46 avertissements
   (aucun sur les fichiers de la task) ; Prettier ✓ ; tests affected ✓ 12 projets ; `weda2:build:production` ✓
   (avertissement budget initial 2,06 Mo / 2 Mo, préexistant).
 
+- **client-angular, extension (2026-10-24)** — base `origin/next`, lint `tag:scope:mss` : 0 erreur (3 + 16
+  avertissements, aucun sur les fichiers de la task), 0 itération. Tests affected ✓. Build affected : `weda2` ✓
+  (budget initial 2,06 Mo / 2 Mo, avertissement : +2,6 Ko pour la task, 61,3 → 63,9 Ko au-delà) ; **`mss` (application
+  autonome) et `prescription` en erreur de budget** (1,93 Mo et 1,26 Mo pour 1 Mo) — **préexistant** :
+  `prescription` n'est pas touché par la task, et le dépassement de `mss` (930 Ko) est sans commune mesure avec la
+  part de la task (~2,6 Ko, mesurée sur weda2). Non bloquant pour cette étape (aucun correctif appliqué) ; à signaler
+  à l'humain (budgets de la branche `feature/nova-mss-weda-integration`).
+
 ## Lint mobile log
 - **client-mobile** — « All files pass linting » ; 0 itération, aucun commit ; build ✓ ; tests ✓ 1 192 (passe de
   `/develop`).
+
+- **client-mobile, extension (2026-10-24)** — « All files pass linting » ; 0 itération, aucun commit ; build ✓ ;
+  tests ✓ 1 203 (passe qualité de `/develop`).
 
 ## Branches
 - `api-mail` (pushed) : fix/task-388-annuaire-finitions — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-388-annuaire-finitions
@@ -272,50 +291,39 @@ client-blazor `11127fb` (bump) + `d99c195` + `2c8d8cf` ; client-mobile `ae166b9`
 |---|---|---|---|---|---|---|
 | /start | ok | 25 s | — | — | — | — |
 | /develop | ok | 33 min 35 s | 3 (53 s) | 18 (7 min 46 s) | — | client-mobile 1B/6T, client-blazor 0B/5T, api-mail 2B/7T, extension (f)(g) : dtos 533.0.0, migration, suggestions weda2+mobile |
-| /sonar | ok | 8 min 13 s | 1 (18 s) | 5 (6 min 48 s) | 2 (41 s) | api-mail 1B/5T |
-| /lint-angular | ok | 2 min 48 s | 1 (12 s) | 1 (1 min 37 s) | — | client-angular 1B/1T |
-| /lint-mobile | ok | 15 s | 1 (8.6 s) | — | — | client-mobile 1B/0T |
-| /e2e | ok | 32 min 25 s | — | — | — | e2e ×5 (30 min 02 s), porte verte sur relance mobile ; run 1 rouge E2E-DETAIL-001 mobile (flaky 3/4, non lié) |
-| /review | ok | 8 min 51 s | 4 (39 s) | 4 (4 min 53 s) | — | api-mail 1B/1T, client-mobile 1B/1T, client-blazor 1B/1T, client-angular 1B/1T, APPROVED, 3 PR ouvertes (api-mail #307, mobile #101, blazor #96), mutation M15 sur (b) |
+| /sonar | ok | 8 min 32 s | 2 (43 s) | 10 (13 min 31 s) | 4 (1 min 26 s) | api-mail 2B/10T, extension : QG OK, 0 finding, new_coverage 97,1 % |
+| /lint-angular | ok | 2 min 45 s | 2 (33 s) | 2 (3 min 14 s) | — | client-angular 2B/2T, 0 erreur lint ; budgets mss/prescription préexistants |
+| /lint-mobile | ok | 7.4 s | 1 (8.6 s) | — | — | client-mobile 1B/0T |
+| /e2e | ok | 16 min 40 s | — | — | — | e2e ×8 (45 min 54 s), extension : mobile 41/41, angular 49/49, parité verte |
+| /review | ok | 7 min 29 s | 9 (1 min 14 s) | 8 (9 min 53 s) | — | api-mail 2B/2T, client-mobile 2B/2T, client-blazor 2B/2T, client-angular 2B/2T, dtos-mss 1B/0T, extension APPROVED ; PR dtos-mss #47 ; corps #307 #101 #96 mis à jour |
 | /tech-writer | ok | 34 s | — | — | — | — |
-| **Total cycle** | | **1 h 27 min** | **10 (2 min 13 s)** | **28 (21 min 06 s)** | **2 (41 s)** | |
+| **Total cycle** | | **1 h 10 min** | **17 (3 min 34 s)** | **38 (34 min 26 s)** | **4 (1 min 26 s)** | |
 
-Autres commandes mesurées : lint ×3 (38 s), nuget-wait ×1 (26 s)
+Autres commandes mesurées : lint ×5 (56 s), nuget-wait ×1 (26 s)
 
 ## E2E log
 
+Run de l'extension (2026-10-24) — remplace celui du 2026-10-23. Ce dernier avait une porte verte, obtenue sur une
+relance de la voie mobile ; son run 1 était rouge sur E2E-DETAIL-001, une instabilité inscrite au registre des flaky.
+
 | Voie | Déclencheur | Résultat | Tests | Durée |
 |---|---|---|---|---|
-| mobile — run 1 | api-mail et client-mobile touchés | ❌ rouge (porte rouge) | 40 verts, 0 flaky, 1 rouge (E2E-DETAIL-001), 0 quarantaine | 12 min 46 s |
-| mobile — relance (voie entière) | idem | ✅ verte | 40 verts, 1 flaky (E2E-DETAIL-001), 0 rouge, 0 quarantaine | 9 min 50 s |
-| angular | api-mail et client-angular touchés | ✅ verte | 49 verts, 0 flaky, 0 rouge, 1 quarantaine (E2E-COMPOSE-002, task-350, passée) | 7 min 14 s |
-
-> ⚠️ **E2E-DETAIL-001 (mobile) instable : 3 échecs sur 4 essais.** Le run 1 a eu une porte **rouge**
-> (deux essais en échec), la relance de la voie entière l'a eue verte (échec au 1er essai, vert au 2e).
-> La porte retenue est celle de la relance. Elle est rapportée ici en clair, pour que l'humain puisse
-> en juger au merge.
-> - **Ce n'est pas une régression de task-388** : la task ne touche ni la lecture, ni le transfert, ni l'envoi
->   (mobile : `directory-search.util.ts` et `http-error.util.ts` seulement ; api-mail : validation des critères
->   de l'annuaire). Le même scénario est **vert côté Angular** sur le même backend task-388, et il était vert
->   côté mobile le matin même sur task-386.
-> - **Signature** : c'est toujours l'arrivée d'un message dans la liste qui échoue, jamais le transfert
->   lui-même :
->   - « le transfert arrive » (`functional.spec.ts:594`) ;
->   - « le message à pièces homonymes est dans la boîte » (`:574`, deux fois).
-> - Inscrit au registre des flaky (`conventions/e2e.md`). **Une task de stabilisation est à ouvrir.**
+| mobile | api-mail, client-mobile et dtos-mss touchés | ✅ verte | 41 verts, 0 flaky, 0 rouge, 0 quarantaine | 8 min 00 s |
+| angular | api-mail, client-angular et dtos-mss touchés | ✅ verte | 49 verts, 0 flaky, 0 rouge, 1 quarantaine (E2E-COMPOSE-002, task-350, passée) | 7 min 44 s |
 
 - Catalogue : `Api/Mail/e2e/scenarios.yml` @ branche de la task (`fix/task-388-annuaire-finitions`)
-- Quarantaines : E2E-COMPOSE-002 (angular), task-350, posée le 2026-10-09 (passée ce run).
-- Divergences ouvertes : aucune.
-- Parcours touchés sans spec e2e modifié : aucun. Aucun écran ni aucune page n'a été modifié : seules des fonctions utilitaires l'ont été.
-- Dépendances : `node_modules` à jour, aucun `npm ci`. `client-mobile` est sur la branche de la task.
-- Démontage : complet, ports libres. Deux conteneurs `e2e-*` arrêtés datent du 2026-10-14 : ce sont des résidus d'un run antérieur, pas de celui-ci.
+- Quarantaines : E2E-COMPOSE-002 (angular), task-350, posée le 2026-10-09
+- Divergences ouvertes : aucune
+- E2E-DETAIL-001 (mobile) : vert au premier essai sur ce run
+- Parcours touchés sans spec e2e modifié : **rédaction** (`mail-compose.component.html`, weda2 et mobile) et
+  **liste des contacts** (weda2). C'est un avertissement, non bloquant. Le changement est seulement visuel : les
+  `data-testid` sont conservés, et les deux voies ont rejoué la sélection d'un destinataire suggéré (E2E-COMPOSE-001,
+  E2E-DETAIL-001), vertes. Le rendu est couvert par des tests de composant. Aucun scénario n'est ajouté ni versionné ;
+  la décision revient à l'humain s'il veut un scénario « suggestion lisible ».
+- Démontage : complet (ports libres). Les deux conteneurs `e2e-*` arrêtés datent du 2026-10-14 : ce sont des
+  résidus antérieurs, pas de ce run.
 
 **E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
-
-**Flaky (vert au second essai, non bloquant)** (1) :
-
-- [mobile] « détail — Répondre et Transférer partent avec le message d’origine, même cliqués pendant son chargement » (E2E-DETAIL-001)
 
 **En quarantaine (posée par l'humain, non bloquant)** (1) :
 
@@ -333,7 +341,7 @@ Autres commandes mesurées : lint ×3 (38 s), nuget-wait ×1 (26 s)
 | E2E-SETTINGS-001 | 1 | headless | Changer le filtre par défaut et le retrouver après rechargement | ✅ | ✅ |
 | E2E-MAIL-001 | 1 | headless | Marquer un message lu puis non lu | ✅ | ✅ |
 | E2E-MAIL-002 | 1 | headless | Tout sélectionner et marquer lu en masse | ✅ | ✅ |
-| E2E-DETAIL-001 | 3 | headless | Répondre et transférer depuis la lecture d'un message | ✅ | ⚠️ flaky |
+| E2E-DETAIL-001 | 3 | headless | Répondre et transférer depuis la lecture d'un message | ✅ | ✅ |
 | E2E-COMPOSE-001 | 1 | headless | Envoyer un message, le recevoir, le lire, le supprimer | ✅ | ✅ |
 | E2E-COMPOSE-002 | 1 | headless | Faire corriger l'orthographe de son texte, appliquer la correction, puis envoyer | ✅ | ✅ |
 | E2E-COMPOSE-003 | 1 | headless | Un envoi refusé par la messagerie laisse le brouillon intact et peut être renvoyé | ✅ | ✅ |
@@ -381,13 +389,22 @@ Autres commandes mesurées : lint ×3 (38 s), nuget-wait ×1 (26 s)
 
 ## PRs
 
+- `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/47 — label `awaiting-human-merge`
+  (extension ; version 533.0.0 déjà publiée par la CI et consommée par api-mail et client-blazor)
 - `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/307 — label `awaiting-human-merge`
 - `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/101 — label `awaiting-human-merge`
 - `client-blazor` : https://github.com/codengine-technologies/HealthPlatform.Client/pull/96 — label `awaiting-human-merge`
-- `client-angular` : code seul. L'humain gère le commit, le push sur TFS et l'ouverture de la PR. Fichiers modifiés, non commités, sur la branche `feature/nova-mss-weda-integration` :
-  - `front/libs/mss/src/core/utils/directory-search.util.ts`
-  - `front/libs/mss/src/core/utils/directory-search.util.spec.ts`
-  - `front/libs/mss/src/features/contacts/mss-contacts.component.ts`, `.html` et `.spec.ts`, ajoutés à la demande de l'humain après la revue (2026-10-24) : les icônes de type étaient inversées. Le professionnel porte désormais le stéthoscope et le patient une personne, dans la liste comme dans le filtre « Types de contact », qui lit les mêmes fonctions. Test rouge d'abord (`expected 'user' to be 'stethoscope'`), puis vert ; `mss-lib` 1 090 tests verts, lint sans erreur, build `weda2` ✓.
+- **Ordre de merge** : `dtos-mss` (#47) avant les autres. Les autres PR consomment déjà la version 533.0.0, publiée
+  depuis la branche ; le merge de #47 ne fait que ramener le contrat sur `develop`.
+- `client-angular` : code seul. L'humain gère le commit, le push sur TFS et l'ouverture de la PR. Fichiers modifiés,
+  non commités, sur `feature/nova-mss-weda-integration` :
+  - `front/libs/mss/src/core/models/contact.model.ts`
+  - `front/libs/mss/src/core/utils/directory-search.util.ts` et `.spec.ts`
+  - `front/libs/mss/src/core/utils/contact-type.util.ts` et `.spec.ts` (nouveaux)
+  - `front/libs/mss/src/ui/contact-avatar/` (nouveau composant) et `front/libs/mss/src/ui/index.ts`
+  - `front/libs/mss/src/features/contacts/mss-contacts.component.ts`, `.html`, `.scss`, `.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-compose/mail-compose.component.ts`, `.html`, `.scss`
+  - `front/libs/mss/src/features/mail/components/mail-compose/mail-compose-suggestions.component.spec.ts` (nouveau)
 
 ## Code Review Summary
 
@@ -437,3 +454,44 @@ Le point (b) n'a demandé aucun changement de code : c'était un faux positif de
 2. `PostOutcome.NotSent` mêle encore session absente et panne réseau (même défaut que (d), côté POST). Hors de cette task.
 3. Les règles existent en quatre copies (API, Blazor, weda2, mobile). Leur partage via `dtos-mss` reste la question ouverte de la task.
 4. E2E-DETAIL-001 (mobile) a échoué 3 fois sur 4 essais pendant /e2e, sans lien avec cette task : voir le `## E2E log`. Ce test est inscrit au registre des flaky. **Une task de stabilisation est à ouvrir.**
+
+### Revue de l'extension (2026-10-24)
+
+**Verdict : APPROVED** — 0 bloquant.
+
+**Validation (/review)**
+
+| Repo | Build | Tests |
+|---|---|---|
+| dtos-mss | ✓ | sans objet |
+| api-mail | ✓ | ✓ 6 756 : domain 195, application 3 615, infrastructure 695, api 1 277, intégration 974 (16 ignorés) |
+| client-blazor | ✓ (projet de tests ; `Mss.Console` NU1100, préexistant) | ✓ 475, 2 ignorés |
+| client-mobile | ✓ | ✓ 1 203 |
+| client-angular (code seul) | ✓ `weda2` | ✓ `mss-lib` 1 102 |
+
+**Règle 1b, extension**
+
+| Comportement | Test de route | Preuve rouge |
+|---|---|---|
+| `POST`/`GET /api/v1/Contact` : profession et spécialité relues dans la réponse et en base (apostrophe intacte) | `AContactsProfessionAndSpecialty_AreReadBack_InTheResponseAndInTheDatabase` | M16 (lecture), M20 (encodage) |
+| `PUT` : spécialité remplacée, profession effacée | `SavingTheContact_ReplacesTheSpecialty_AndClearsTheProfession` | M16, M17 (écriture) |
+| Plus de 256 caractères → 400, rien en base | `ASpecialtyLongerThanTheContract_IsRefusedWith400_AndNothingIsStored` | Attribut `[MaxLength]` du contrat (validation du modèle), non mutable dans api-mail |
+| Enrichissement CDA → `Specialty`, sans étiquette | `TheCdaEnrichment_FillsTheSpecialty_WithoutAddingATag` | M18 |
+| Enrichissement CDA : ne remplace jamais une spécialité connue | `TheCdaEnrichment_NeverReplacesAKnownSpecialty` | M19 |
+| Migration : contacts existants à `null`, étiquettes intactes ; descente puis remontée | `ContactProfessionSpecialtyMigrationTests` (2) | M21 |
+
+**Points vérifiés à la lecture**
+
+- **Les écrivains serveur gardent les deux champs.** L'import vCard (`VCardService`) et le service patient fusionnent dans le contact lu en base.
+- **L'édition côté clients garde les deux champs.** weda2 envoie `...existing` ; le mobile passe par `toContactDto(form, base)` ; Blazor recopie désormais les deux champs.
+- **Le cache Redis des contacts s'adapte seul.** Il sérialise le DTO, donc les nouveaux champs suivent. Une entrée en cache d'avant le déploiement n'a pas de spécialité tant qu'elle n'est pas invalidée, ce qui est sans gravité.
+- **Pas d'injection possible.** `SanitizeLabel` retire balises et caractères de contrôle sans encoder ; Angular, Ionic et Razor échappent eux-mêmes à l'affichage.
+
+**Suggestions (non bloquantes)**
+
+1. **Blazor : une seule recopie de `ContactDto`.** Elle servirait à la fiche et à la duplication. Aujourd'hui `DefaultMssAddress` n'est pas recopié : c'est préexistant, et éditer une fiche dans Blazor efface l'adresse par défaut. À corriger par une task.
+2. **Import depuis l'annuaire côté serveur.** Trois clients reproduisent la même correspondance et la même règle de fusion (l'annuaire l'emporte), alors que le CDA ne fait que compléter. Un point d'entrée serveur unique supprimerait la dérive. À faire par une task.
+3. **Blazor : URL de mise à jour.** `ContactService.UpdateContactAsync` appelle `PUT api/v1/Contact/{Id.GetHashCode()}`, ce qui ressemble à un défaut préexistant. À vérifier hors task.
+4. **weda2 : budgets de build.** Les budgets de `mss` (application autonome) et de `prescription` sont dépassés sur la branche `feature/nova-mss-weda-integration`. C'est préexistant : la task n'y ajoute qu'environ 2,6 Ko.
+5. **Test d'intégration instable.** `SeededThreadsAreCountableTests` tire un `Uid` au hasard dans une base partagée : collision de clé possible. Une task de stabilisation est à ouvrir.
+
