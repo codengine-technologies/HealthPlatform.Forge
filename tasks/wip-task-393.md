@@ -310,6 +310,18 @@ contrat de `data-testid` commun ; les bancs e2e ont été joués à la suite, un
 - **Tests** : weda2 `mss-lib` 1 210 ; mobile 1 241. Build vert sur les deux clients, lint propre.
 - **Leçon** : `conventions/angular.md` › `page-ionic-non-demontee`.
 
+**2026-10-24 — `/develop`, seconde reprise (seconde revue).**
+
+- **weda2** : `ContactComposeHandoffService.offer()` rend un jeton, et `withdraw(token)` ne vide le service que si ce
+  jeton attend encore. `composeTo` retire **sa** proposition quand la navigation est refusée ou échoue : un clic plus
+  récent garde la sienne.
+- **Tests rouges avant le correctif** : 4 sur 4. Trois sur le service : retirer sa proposition ; une proposition
+  remplacée laisse la nouvelle en place ; une proposition identique mais plus ancienne ne retire pas la plus récente.
+  Un sur le composant : double clic, la première navigation refusée après le second clic ; le test tombait sur
+  « le destinataire du second clic attend toujours la messagerie », `undefined` au lieu de l'adresse.
+- **Validation** : `mss-lib` 1 214, build `weda2` vert, 0 erreur ESLint, Prettier propre sur les fichiers touchés.
+  Mobile et api-mail inchangés.
+
 ## Sonar log
 
 **Skipped (2026-10-24).** api-mail n'est touché que par `e2e/scenarios.yml` (catalogue e2e, YAML), hors du périmètre
@@ -340,13 +352,13 @@ itération de correction, rien à commiter.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 19 s | — | — | — | — |
-| /develop | ok | 18 min 27 s | 4 (29 s) | 7 (1 min 51 s) | — | api-mail 0B/1T, client-mobile 4B/6T, e2e ×2 (15 min 04 s), reprise CHANGES REQUESTED : weda2 écrire depuis la ligne + navigation refusée + section #, mobile supprimer/libellés/test/réinitialiser |
+| /develop | ok | 3 min 03 s | 5 (43 s) | 8 (2 min 13 s) | — | api-mail 0B/1T, client-mobile 4B/6T, client-angular 1B/1T, e2e ×2 (15 min 04 s), seconde reprise : withdraw(token), 4 tests rouges d'abord, mss-lib 1 214 |
 | /sonar | skipped | 0.5 s | — | — | — | reprise : api-mail toujours limité au catalogue e2e (YAML), aucun C# |
 | /lint-angular | ok | 16 s | — | — | — | reprise : 0 erreur |
 | /lint-mobile | ok | 6.5 s | — | — | — | reprise : All files pass linting |
 | /e2e | ok | 14 min 37 s | — | — | — | e2e ×6 (29 min 29 s), reprise : mobile 44/44, angular 52/52, 0 flaky, parité verte |
 | /review | failed | 2 min 05 s | 5 (52 s) | 5 (5 min 24 s) | — | client-mobile 2B/2T, client-angular 2B/2T, api-mail 1B/1T, seconde revue CHANGES REQUESTED : course composeTo (navigation remplacée vide le destinataire suivant) |
-| **Total cycle** | | **35 min 53 s** | **9 (1 min 21 s)** | **12 (7 min 15 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **20 min 28 s** | **10 (1 min 35 s)** | **13 (7 min 37 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×4 (31 s)
 
