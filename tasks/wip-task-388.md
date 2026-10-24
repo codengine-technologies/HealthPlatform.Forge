@@ -141,6 +141,16 @@ Feature: Directory search finishing touches
   remplace jamais.
 - **(j) Fiche de modification d'un contact sans défilement** (weda2) : mise en page compacte, sur deux colonnes.
 
+- **(k) Fiche d'un contact redessinée (weda2)**, d'après la maquette fournie par l'humain le 2026-10-24 :
+  - page centrée, avec un fil d'Ariane ;
+  - en-tête : initiales, nom, badge « RPPS Certifié » (seulement pour un contact importé de l'annuaire qui a un RPPS),
+    sous-ligne « spécialité • organisation • Fiche mise à jour le … » ;
+  - quatre cartes : identité et type ; activité et référencement (profession, spécialité, RPPS avec contrôle de format,
+    téléphone) ; adresses MSSanté (une ligne par adresse avec cadenas et badge « Par défaut ») ; étiquettes en pastilles
+    et notes ;
+  - actions en haut et en pied de page.
+  Les identifiants et les libellés de boutons utilisés par les suites e2e sont conservés.
+
 **Décisions de l'humain (2026-10-24)** :
 1. Pas de récupération des contacts existants : les champs se remplissent au fil des imports et des enrichissements.
 2. À l'import depuis l'annuaire, champs dédiés seulement : aucune étiquette n'est plus ajoutée ; les étiquettes
@@ -277,6 +287,19 @@ client-blazor `6bf8c09` + `465434f` ; weda2 en code seul (design system compris)
   - écarté : sous-titre calculé dans le contrat (republication du paquet) ; nettoyage des champs côté client, qui
     double celui de l'API (inoffensif, testé) ; boucle `@for` sur les trois filtres (structure existante) ;
     `ContactEmailInput` (Blazor) encore sur `medical_services`, en suite.
+
+**2026-10-24 — `/develop`, (k) fiche redessinée (weda2, code seul).**
+
+- Tests de rendu rouges d'abord (en-tête, badge certifié, quatre cartes, badge « Par défaut », pastilles, libellés des
+  boutons), puis test d'instance des étiquettes (Entrée et virgule ajoutent, sans doublon ; × retire ; la saisie en
+  cours part à l'enregistrement). Résultat : `mss-lib` 1 117 verts, lint 0 erreur, build `weda2` ✓.
+- Écarté de la maquette, car aucune donnée ne le porte ou le libellé serait faux :
+  - « Chiffré TLS » ;
+  - le type de chaque boîte (« nominative », « organisationnelle ») ;
+  - « Prévisualiser la fiche ».
+  « Valide » sur le RPPS devient « Format valide » : c'est un contrôle de format, pas une vérification à l'annuaire.
+- Contrôle visuel **non fait** : le banc e2e n'a pas pu démarrer, car le port 5052 était occupé par l'API locale de
+  l'humain. À refaire, ou à vérifier directement dans weda2.
 
 ## Sonar log
 - Phase 1 (new code) : ✓ Quality Gate OK au premier passage, new_coverage = 97,1 %, 0 finding
