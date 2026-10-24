@@ -358,7 +358,8 @@ itération de correction, rien à commiter.
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile inchangé depuis le lint propre (a7fdead) |
 | /e2e | ok | 15 min 28 s | — | — | — | e2e ×9 (44 min 40 s), seconde reprise : mobile 44/44, angular 52/52, 0 flaky, parité verte |
 | /review | ok | 1 min 11 s | 5 (52 s) | 5 (5 min 24 s) | — | client-mobile 2B/2T, client-angular 2B/2T, api-mail 1B/1T, troisième passe APPROVED ; PR api-mail #309, mobile #103 ; weda2 code seul |
-| **Total cycle** | | **20 min 14 s** | **10 (1 min 35 s)** | **13 (7 min 37 s)** | **0 (0.0 s)** | |
+| /tech-writer | ok | 27 s | — | — | — | E009 v1.106 |
+| **Total cycle** | | **20 min 42 s** | **10 (1 min 35 s)** | **13 (7 min 37 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×5 (41 s)
 

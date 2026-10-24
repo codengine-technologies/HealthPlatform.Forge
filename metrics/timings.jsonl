@@ -6000,3 +6000,5 @@
 {"ts":"2026-10-24T22:27:24+02:00","run_id":"-","type":"step","task":"task-393","step":"e2e","status":"ok","note":"seconde reprise : mobile 44/44, angular 52/52, 0 flaky, parité verte","iterations":null,"duration_ms":928081}
 {"ts":"2026-10-24T22:27:39+02:00","run_id":"-","type":"step_start","task":"task-393","step":"review"}
 {"ts":"2026-10-24T22:28:50+02:00","run_id":"-","type":"step","task":"task-393","step":"review","status":"ok","note":"troisième passe APPROVED ; PR api-mail #309, mobile #103 ; weda2 code seul","iterations":null,"duration_ms":71572}
+{"ts":"2026-10-24T22:29:02+02:00","run_id":"-","type":"step_start","task":"task-393","step":"tech-writer"}
+{"ts":"2026-10-24T22:29:29+02:00","run_id":"-","type":"step","task":"task-393","step":"tech-writer","status":"ok","note":"E009 v1.106","iterations":null,"duration_ms":27198}
