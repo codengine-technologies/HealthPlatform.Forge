@@ -324,10 +324,14 @@ des fichiers de la task : `mss-contacts.component.ts` passe à 1 803 lignes (1 3
 en a 939. Le découpage du carnet (liste, aperçu, fiche) est laissé en suggestion. Build et tests : validés par
 `/develop` après la dernière modification (`mss-lib` 1 202, build `weda2` vert).
 
+**Reprise (2026-10-24)** : toujours 0 erreur ; `mss-contacts.component.ts` passe à 1 830 lignes (`max-lines`).
+
 ## Lint mobile log
 
 **client-mobile (2026-10-24)** — `npm run lint` : « All files pass linting », 0 erreur et 0 avertissement. Aucune
 itération de correction, rien à commiter.
+
+**Reprise (2026-10-24)** : `npm run lint`, « All files pass linting ».
 
 ## Timings
 
@@ -337,14 +341,14 @@ itération de correction, rien à commiter.
 |---|---|---|---|---|---|---|
 | /start | ok | 19 s | — | — | — | — |
 | /develop | ok | 18 min 27 s | 4 (29 s) | 7 (1 min 51 s) | — | api-mail 0B/1T, client-mobile 4B/6T, e2e ×2 (15 min 04 s), reprise CHANGES REQUESTED : weda2 écrire depuis la ligne + navigation refusée + section #, mobile supprimer/libellés/test/réinitialiser |
-| /sonar | skipped | 0.5 s | — | — | — | api-mail touché par le seul catalogue e2e (YAML), aucun C# modifié |
-| /lint-angular | ok | 40 s | — | — | — | 0 erreur (tag:scope:mss) ; 2 max-lines dans les fichiers de la task |
-| /lint-mobile | ok | 12 s | — | — | — | All files pass linting |
-| /e2e | ok | 15 min 44 s | — | — | — | e2e ×3 (15 min 17 s), vert : mobile 44/44, angular 52/52, 0 flaky, parité verte |
-| /review | failed | 8 min 32 s | 3 (32 s) | 3 (4 min 47 s) | — | client-mobile 1B/1T, client-angular 1B/1T, api-mail 1B/1T, CHANGES REQUESTED : weda2 « Écrire » depuis une ligne (choix d'adresse rendu sous le contact sélectionné) ; questions/task-393.md |
-| **Total cycle** | | **43 min 57 s** | **7 (1 min 02 s)** | **10 (6 min 38 s)** | **0 (0.0 s)** | |
+| /sonar | skipped | 0.5 s | — | — | — | reprise : api-mail toujours limité au catalogue e2e (YAML), aucun C# |
+| /lint-angular | ok | 16 s | — | — | — | reprise : 0 erreur |
+| /lint-mobile | ok | 6.5 s | — | — | — | reprise : All files pass linting |
+| /e2e | ok | 14 min 37 s | — | — | — | e2e ×6 (29 min 29 s), reprise : mobile 44/44, angular 52/52, 0 flaky, parité verte |
+| /review | failed | 2 min 05 s | 5 (52 s) | 5 (5 min 24 s) | — | client-mobile 2B/2T, client-angular 2B/2T, api-mail 1B/1T, seconde revue CHANGES REQUESTED : course composeTo (navigation remplacée vide le destinataire suivant) |
+| **Total cycle** | | **35 min 53 s** | **9 (1 min 21 s)** | **12 (7 min 15 s)** | **0 (0.0 s)** | |
 
-Autres commandes mesurées : lint ×2 (16 s)
+Autres commandes mesurées : lint ×4 (31 s)
 
 ## Stitch design log
 
@@ -372,20 +376,19 @@ system `assets/7f352f2521964c6dacc9c7df62922990`.
 
 ## E2E log
 
-Run du 2026-10-24 — **VERT**.
+Run du 2026-10-24, après la reprise — **VERT**. Il remplace le run d'avant revue (vert lui aussi).
 
 | Voie | Déclencheur | Résultat | Tests | Durée |
 |---|---|---|---|---|
 | mobile | api-mail et client-mobile touchés | ✅ verte | 44 verts, 0 flaky, 0 rouge, 0 quarantaine | voir `## Timings` |
 | angular | api-mail et client-angular touchés (code seul, non commité) | ✅ verte | 52 verts, 0 flaky, 0 rouge, 1 quarantaine | voir `## Timings` |
 
-- Catalogue : `Api/Mail/e2e/scenarios.yml` @ branche de la task (à jour avec `develop`). Il porte E2E-CONTACT-004 v1 et
-  E2E-CONTACT-005 v1, tous deux prouvés rouges par mutation sur les deux clients (`## Develop log`).
+- Catalogue : `Api/Mail/e2e/scenarios.yml` @ branche de la task (à jour avec `develop`) ; E2E-CONTACT-004 v1 et
+  E2E-CONTACT-005 v1 prouvés rouges par mutation sur les deux clients (`## Develop log`).
 - Quarantaines : E2E-COMPOSE-002 (angular, task-350), passée
 - Divergences ouvertes : aucune
-- Parcours touchés sans spec e2e modifié : aucun (les specs mobile et weda2 bougent avec la task)
-- Démontage : complet (ports libres). Deux conteneurs `e2e-*` arrêtés depuis le 2026-10-14, antérieurs à ce run,
-  laissés en place.
+- Parcours touchés sans spec e2e modifié : aucun
+- Démontage : complet (ports libres)
 
 **E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
 
@@ -478,4 +481,16 @@ Le choix d'adresse n'est rendu que dans l'aperçu du contact sélectionné, et l
 rien ne s'affiche, ou le choix apparaît sous un autre contact (risque de mauvais destinataire).
 
 **Prévention** : `conventions/angular.md` › `action-a-deux-entrees`.
+
+### Seconde revue (2026-10-24, après la reprise)
+
+**Verdict : CHANGES REQUESTED** — le bloquant initial est levé et les quatre points annexes sont corrigés. Mais le
+correctif de la navigation refusée introduit une course : une navigation remplacée vide le destinataire d'un clic plus
+récent, et un double-clic sur « Écrire un message » ouvre la messagerie sans rédaction. Détail et correctif attendu :
+`questions/task-393.md`.
+
+**Validation** : weda2 build ✓, `mss-lib` 1 210 ; mobile build ✓, 1 241 ; api-mail inchangé depuis sa validation
+(`c5435b79`, 6 767) ; e2e vert (mobile 44/44, Angular 52/52).
+
+**Prévention** : `conventions/angular.md` › `annulation-qui-vide-l-etat-d-un-autre`.
 

@@ -454,3 +454,17 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   après correction, contre 2 sur 6 avant).
 - **Origine** : task-393 (/develop, reprise mobile)
 - **Occurrences** : 1
+
+### annulation-qui-vide-l-etat-d-un-autre — Une annulation asynchrone ne vide que sa propre donnée
+- **Règle** : convention projet (défaut de course, invisible aux tests à un seul appel)
+- **Repos** : les deux
+- **Piège** : sur task-393, `composeTo` confiait le destinataire à un service racine, puis, si la navigation était
+  refusée, vidait le service (`take()`). Sur un double-clic, la première navigation, remplacée par la seconde, se
+  résolvait à `false` après le second `offer`, et vidait le destinataire du second clic. La messagerie s'ouvrait sans
+  rédaction. Les tests ne faisaient qu'un appel à la fois.
+- **Consigne** : un retour asynchrone qui annule ou nettoie un état partagé vérifie que l'état est encore le sien
+  (jeton rendu par `offer`, identifiant, numéro de génération) avant de le vider. Le test lance deux appels, puis
+  résout le premier après le second.
+- **Voir aussi** : `reponse-d-un-contexte-depasse`, `service-propre-au-composant`.
+- **Origine** : task-393 (/review, seconde passe)
+- **Occurrences** : 1

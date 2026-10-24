@@ -50,3 +50,40 @@ Build, tests et e2e sont verts : aucun test n'emprunte le chemin fautif.
 Relancer `/develop task-393`, centré sur le bloquant et les points 1 à 4, puis la chaîne continue d'elle-même. Le
 reste du travail est validé : builds, tests (weda2 1 202, mobile 1 238, api-mail 6 767), lint, e2e vert sur les deux
 voies, mutations.
+
+---
+
+## Seconde revue (2026-10-24, après la reprise) — CHANGES REQUESTED (1 bloquant weda2, introduit par la reprise)
+
+Le bloquant initial est **levé** : « Écrire » depuis la ligne sélectionne le contact, et le choix n'est plus affiché que
+sous le contact sélectionné, test à l'appui. Les quatre points annexes sont corrigés : « Supprimer » sur la fiche
+mobile, test du retrait réécrit, libellés accessibles, « Réinitialiser ». Validation verte : weda2 1 210, mobile 1 241,
+e2e mobile 44/44 et Angular 52/52.
+
+### ❌ Bloquant — weda2 : une navigation refusée retire le destinataire d'un clic plus récent
+
+- **Où** : `Client/Angular/front/libs/mss/src/features/contacts/mss-contacts.component.ts`, `composeTo` (environ
+  l. 766-780). Le `.then` de `router.navigate` appelle `contactHandoff.take()` sans condition quand la navigation rend
+  `false` ou échoue.
+- **Scénario** : double-clic sur « Écrire un message » pendant que la navigation vers `mail` est en cours (garde
+  `mailboxGuard`, puis chargement différé de la messagerie la première fois).
+  1. Clic 1 : `offer`, puis navigation n°1.
+  2. Clic 2 : `offer`, puis navigation n°2, qui annule la n°1.
+  3. La n°1 se résout à `false` après le clic 2, et `take()` vide le destinataire du clic 2.
+  4. La n°2 aboutit, mais `mss-mail.ngOnInit` → `take()` rend `null`.
+  5. Résultat : la messagerie s'ouvre sans rédaction.
+
+  Même effet avec deux clics rapides sur deux contacts différents. Avant la reprise, le double-clic fonctionnait.
+- **Correctif attendu** : `offer()` rend un jeton (l'objet confié) ; un `withdraw(token)` ne vide le service que si le
+  destinataire en attente est encore ce jeton. `composeTo` appelle `withdraw(token)` au lieu de `take()`.
+- **Test rouge d'abord** : deux `composeTo` successifs ; la première navigation se résout à `false` après le second
+  `offer` ; `take()` rend encore le second destinataire.
+
+### Suggestions (non bloquantes)
+
+- Libellés accessibles (mobile) : le test appelle les méthodes, pas le gabarit, donc la liaison n'est pas prouvée.
+- Démontage du test de liste mobile : l'attente fixe de 50 ms reste fragile.
+
+### Reprise
+
+`/develop task-393`, limitée à ce correctif et à son test, puis la chaîne continue d'elle-même.
