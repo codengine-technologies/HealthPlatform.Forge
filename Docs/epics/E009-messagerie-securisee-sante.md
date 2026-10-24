@@ -4,7 +4,7 @@
 > **Modèle** : hand-crafted
 > **Version** : 1.86
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-23 (finitions de la recherche dans l'Annuaire Santé — task-388)
+> **Dernière mise à jour** : 2026-10-24 (suggestions de destinataires lisibles, spécialité des contacts — task-388)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1036,6 +1036,10 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
+- **v1.104 — Vous reconnaissez vos correspondants dès la saisie de l'adresse** (task-388, messagerie web et application mobile) :
+  - **Une suggestion se lit comme une fiche.** En tapant un nom dans A, Cc ou Cci, chaque proposition montre l'avatar du correspondant, une icône qui indique son type (stéthoscope pour un professionnel de santé, silhouette pour un patient, bâtiment pour un établissement), son nom, sa spécialité dessous quand elle est connue, et son adresse à droite.
+  - **La spécialité a sa propre place.** Importer un confrère depuis l'Annuaire Santé enregistre sa profession et sa spécialité dans sa fiche, et n'ajoute plus d'étiquettes. Vos étiquettes restent les vôtres.
+  - **Les icônes de la liste des contacts sont corrigées.** Un professionnel porte le stéthoscope et un patient une silhouette, dans la liste comme dans le filtre « Types de contact ».
 - **v1.103 — La recherche dans l'Annuaire Santé ne montre plus de message technique, ni de cause fausse** (task-388, les trois applications) :
   - **Une spécialité avec un nom d'établissement trop court demande un lieu.** « Médecine générale » avec « CH », sans code postal ni commune, est refusée tout de suite avec la raison : il faut au moins 3 lettres du nom de l'établissement. Avec 3 lettres, ou avec un lieu, la recherche part.
   - **Sur mobile, une coupure réseau donne un message clair.** En mode avion, ou quand un serveur intermédiaire est en panne, vous lisez « L'annuaire santé est momentanément indisponible. Réessayez dans un instant. » L'adresse technique de la requête, qui contenait les critères saisis, n'est plus jamais affichée.
