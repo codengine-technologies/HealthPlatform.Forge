@@ -49,7 +49,7 @@ avant la vitesse et avant l'autonomie. Une forge qui corrige les mêmes défauts
 > **Inversion** — la philosophie historique « la forge n'écrit pas de code,
 > WindSurf le fait » a été inversée le 2026-04-27. Par défaut **la forge
 > développe** ; l'humain n'intervient que pour **merger la PR finale** (HAG,
-> règle 10). L'échappatoire est `/start {task-id} no-code` qui rebascule
+> règle 10). L'échappatoire est `/start {task-id} --no-code` qui rebascule
 > l'implémentation côté WindSurf.
 
 ### Cycle autonome par défaut
@@ -171,7 +171,7 @@ entre N branches `feat/*`.
 ### Échappatoire — mode `no-code`
 
 ```
-/start {task-id} no-code
+/start {task-id} --no-code
 ```
 
 Casse la chaîne après création des branches. La task reste en `wip-*`,
@@ -211,6 +211,12 @@ acceptation des findings restants, hand-off à l'étape suivante quoi qu'il
 arrive (sauf erreur de tooling). Toutes skip cleanly quand leur repo cible n'a
 pas été touché par la task — la chaîne saute simplement à l'étape suivante.
 
+**Bypass humain de `/sonar`** : `/start {task-id} --no-sonar` (ou le champ
+`**Sonar**: bypass — décision humaine du …` écrit à la main dans le task file)
+fait sauter l'analyse pour cette task, sur décision de **l'humain seul**. Le
+`## Sonar log`, la PR api-mail et le rapport de fin de cycle le disent : la dette
+introduite n'est pas mesurée. Build, tests, règle 1b et revue de code ne changent pas.
+
 `/lint-mobile` est le pendant de `/lint-angular` pour `client-mobile` (app
 Ionic/Angular). Différence clé : `client-mobile` a un remote **GitHub** (pas
 TFS), donc `/lint-mobile` est en **automation git complète** — il commit et
@@ -235,6 +241,10 @@ exactement le code testé.
   au catalogue). Les deux sont des décisions de **l'humain seul**.
 - **Outillage en panne** = bloquant : la non-régression n'est pas prouvée. Un code 2 est rejoué
   une fois, automatiquement, avant de bloquer.
+- **Bypass humain** : `/start {task-id} --no-e2e` (ou le champ `**E2E**: bypass — décision
+  humaine du …` écrit à la main dans le task file) fait sauter `/e2e` pour cette task, sur
+  décision de **l'humain seul**. `/review` l'accepte, et chaque PR l'annonce en tête. La DoD
+  (scénario écrit) et HAG ne changent pas.
 - **Voie incrémentale** (depuis le 2026-10-24) : une voie verte dont les dépôts couverts n'ont pas
   changé (HEAD + diff + non suivis) est **réutilisée**, pas rejouée — `Tools/e2e/lane_cache.py`.
 
@@ -833,7 +843,9 @@ Never modify without human arbitration:
 |---|---|
 | `/po` | Write a new US : `todo-*.md` task file only (no .feature). With `--from <doc.md>` : batch-extract US from a markdown document (one-by-one human validation) |
 | `/start {task-id}` | Create the working branches in the target repo(s) and **chain into `/develop`** by default. The full cycle then runs autonomously : `/develop` (code + passe qualité `/simplify`) → `/sonar` → `/lint-angular` → `/lint-mobile` → `/e2e` → `/review` → `/tech-writer`. |
-| `/start {task-id} no-code` | Create the working branches and **stop**. Task stays in `wip-*` ; the human implements in WindSurf and runs `/review {task-id}` manually when ready. Escape hatch when `/develop` is unsuitable. |
+| `/start {task-id} --no-e2e` | Same as `/start {task-id}`, but **`/e2e` is bypassed** on the human's request : the task file gets the field `**E2E**: bypass — décision humaine du {date}`, `/e2e` plays no lane (measured skip), `/review` accepts it and flags it at the top of every PR. Combinable with `--no-code` and `--no-sonar`. |
+| `/start {task-id} --no-sonar` | Same as `/start {task-id}`, but **`/sonar` is bypassed** on the human's request : the task file gets the field `**Sonar**: bypass — décision humaine du {date}`, `/sonar` analyses nothing (measured skip) and hands over to `/lint-angular` ; the api-mail PR and the final report state that the debt is not measured. Combinable with `--no-code` and `--no-e2e`. |
+| `/start {task-id} --no-code` | Create the working branches and **stop**. Task stays in `wip-*` ; the human implements in WindSurf and runs `/review {task-id}` manually when ready. Escape hatch when `/develop` is unsuitable. |
 | `/develop {task-id}` | **Autonomous implementation + passe qualité** : write code + tests, build, test, run the integrated `/simplify` quality pass per eligible repo (quality-only, before the push — ex-`/forge-simplify`, fusionnée le 2026-08-31), publish DTOs / interop / SDK NuGet packages when contracts change, bump consumers, push, hand off to `/sonar` (or the first touched cleanup step). Frontends covered : `client-blazor`, `client-angular` (code-only), `client-mobile` (full git automation). For mobile screens, calls `/stitch-design` first to get the design reference. See `agents/develop.md`. |
 | `/stitch-design {task-id}` | **Design sub-step of `/develop`** (mobile only). Ensures each `client-mobile` screen has a matching design in the Stitch project `client-mobile` (id `10088502293310567548`) — reuse if present, **create** via the Stitch MCP if missing (convention : screen title = component kebab-case name, e.g. `mail-list`). Logs the screenshot + HTML/CSS reference so `/develop` codes the Ionic screen against it. Stitch = design source of truth ; output is a **reference, not code**. Best-effort & non-blocking. Stand-alone form `/stitch-design {screen-name}` for manual design create/refresh. See `agents/stitch-design.md`. |
 | `/sonar {task-id}` | Best-effort SonarQube cleanup on `api-mail` (5 iterations max, accepts remaining issues). Standard step in the autonomous chain. Consigne un tableau de **KPIs qualité (baseline → final + Quality Gate)** dans le `## Sonar log` de la task — restitué par `/review` dans le body de la PR api-mail et dans le rapport de fin de cycle (on monitore toujours la qualité, jamais de fin de cycle silencieuse sur ce plan). See `agents/sonar.md`. |

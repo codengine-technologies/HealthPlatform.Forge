@@ -10,7 +10,10 @@ décroche du catalogue. Écrit le `## E2E log` du task file, que `/review` recop
 
 Read `agents/e2e.md` and execute the full playbook :
 
-1. Pré-flight : repos réellement touchés, puis voies à jouer.
+1. Pré-flight : **bypass humain** d'abord — si le task file porte `**E2E**: bypass — décision
+   humaine du …` (`/start --no-e2e`), aucune voie : skip mesuré (`--note "bypass humain (--no-e2e)"`),
+   `## E2E log` « E2E : non joué — bypass demandé par l'humain », puis `/review`. Sinon : repos
+   réellement touchés, puis voies à jouer.
    - Voie mobile : `api-mail`, `client-mobile` ou `dtos-mss` touché.
    - Voie Angular : `api-mail`, `client-angular` ou `dtos-mss` touché, et suite présente. Sinon,
      noter « suite Angular non livrée (task-346) ».

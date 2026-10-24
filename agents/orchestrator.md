@@ -30,7 +30,7 @@ The forge cycle has **8 chained actions** :
 8. **Review** — validate, commit, sync develop, open PR, rename `done-*`,
    chain into `/tech-writer` (`/review` → `/tech-writer`)
 
-The escape hatch is `/start {task-id} no-code` which stops after step 2
+The escape hatch is `/start {task-id} --no-code` which stops after step 2
 and lets the human take over in WindSurf.
 
 ---
@@ -39,7 +39,7 @@ and lets the human take over in WindSurf.
 
 ```
 todo-*.md      PO wrote the US, awaiting branch creation
-    ↓ /start {task-id}                                        (auto-chains into /develop unless `no-code`)
+    ↓ /start {task-id}                                        (auto-chains into /develop unless `--no-code`)
 wip-*.md       Branch created. /develop is implementing
                OR (no-code) the human is implementing in WindSurf.
     ↓ /develop (code + passe qualité /simplify) pushes, hands off to /sonar, /lint-angular, /lint-mobile, /e2e, /review

@@ -182,6 +182,6 @@ Tasks blocked, action needed :
 - **No backlog hunting beyond `todo-*`.** The forge does not invent work,
   does not "find extra effort", does not auto-create chore tasks. If
   `todo-*` is empty, output "nothing to do" and exit.
-- **No-code escape** : if a task needs `/start {task-id} no-code`, the
+- **No-code escape** : if a task needs `/start {task-id} --no-code`, the
   human is expected to invoke `/start` directly with that flag. `/forge`
-  does not infer when to use `no-code`.
+  does not infer when to use `--no-code`.

@@ -6,7 +6,7 @@ Purpose : write the code, the tests, build, run the suite, run the **integrated
 quality pass** (built-in `/simplify`) on the fresh code, commit, push, and hand
 off to the cleanup chain (`/sonar` → `/lint-angular` → `/lint-mobile` →
 `/e2e` → `/review`). This is the **default implementation path** of
-the forge — the only escape hatch is `/start {task-id} no-code`, which leaves
+the forge — the only escape hatch is `/start {task-id} --no-code`, which leaves
 the task in `wip-*` for the human to implement in WindSurf.
 
 > **Fusion (2026-08-31)** — l'ancienne étape `/forge-simplify` est **absorbée

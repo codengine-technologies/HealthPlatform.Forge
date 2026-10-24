@@ -90,6 +90,13 @@ In autonomous mode (`/develop` upstream) this halts the chain ; in
     (« /e2e non joué » or « /e2e rouge »), do not open any PR. `/review` never replays the
     suites itself — it refuses and sends the task back to `/e2e`.
     - A task that touches no voie carries a `## E2E log` saying `skipped` : that is accepted.
+    - **Bypass humain** (`/start --no-e2e`) : a `## E2E log` « **E2E : non joué — bypass demandé
+      par l'humain** » is accepted **only if** the task file carries the field
+      `**E2E**: bypass — décision humaine du …`. Without that field, it is « /e2e non joué » →
+      validation FAILS. Every pushable PR body then opens with :
+      `> ⚠️ **Parcours e2e non rejoués** — bypass demandé par l'humain ({date}). La non-régression
+      fonctionnelle n'est pas prouvée : à couvrir par le test manuel.`
+      The DOD clause on the journey scenario below still applies.
     - **DOD clause** : when the task created or changed a doctor's journey on `client-mobile`
       or `client-angular`, its DOD line « Scénario E2E-… ajouté / versionné dans
       Api/Mail/e2e/scenarios.yml, et implémenté dans chaque client où il est requis » is checked
@@ -233,6 +240,9 @@ In autonomous mode (`/develop` upstream) this halts the chain ; in
    `### KPIs qualité (baseline → final)` table verbatim into the `api-mail`
    PR body under a `## Qualité (SonarQube)` section. The human must see the
    quality trend at merge time without opening SonarQube.
+   **Bypass humain** (`/start --no-sonar`, field `**Sonar**: bypass — décision humaine du …`) :
+   the section says instead `> ⚠️ **SonarQube non joué** — bypass demandé par l'humain ({date}).
+   La dette introduite par cette task n'est pas mesurée.`
 
    **Visual verification — when the cycle went through `/verify-visual`** :
    if the task file contains a `## Visual verify log`, copy its table
@@ -282,7 +292,8 @@ In autonomous mode (`/develop` upstream) this halts the chain ; in
     include the quality KPI table (baseline → final + Quality Gate) — the
     cycle never ends silently on quality. If `/sonar` was skipped (api-mail
     untouched), state it in one line ("Qualité : /sonar skipped — api-mail
-    non touché").
+    non touché"). If it was bypassed by the human, say so : "Qualité : /sonar bypassé
+    par l'humain (--no-sonar) — dette non mesurée".
     ```
     {task-id} — autonomous cycle complete.
 

@@ -9,7 +9,10 @@ is mechanical refactoring gated by unit tests, not feature implementation.
 
 Read `agents/sonar.md` and execute the full playbook :
 
-1. Pre-flight (repo on `develop`, Sonar reachable, scanner installed)
+1. Pre-flight — **bypass humain d'abord** : si le task file porte `**Sonar**: bypass — décision
+   humaine du …` (`/start --no-sonar`), aucune analyse : skip mesuré
+   (`--note "bypass humain (--no-sonar)"`), `## Sonar log` « Sonar : non joué — bypass demandé par
+   l'humain », puis `/lint-angular`. Sinon : repo on `develop`, Sonar reachable, scanner installed
 2. Baseline KPI snapshot ; early-stop if all hard targets are already met
 3. Create `tasks/todo-sonar-api-mail-{YYYYMMDD}.md` and call `/start`
 4. Iterate up to 5 times on the same branch : fetch issues → filter the

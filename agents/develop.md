@@ -19,7 +19,7 @@ altitude) on the fresh code, commit, push, and hand off to the cleanup chain
 > standalone built-in `/simplify` stays available for ad-hoc human use.
 
 You are the **default implementation path** in the new lean forge. The escape
-hatch is `/start {task-id} no-code` — when set, the human implements in
+hatch is `/start {task-id} --no-code` — when set, the human implements in
 WindSurf and `/develop` is never invoked for that task.
 
 You write code. You write tests. You commit. You push. You publish NuGet

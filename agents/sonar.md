@@ -230,6 +230,20 @@ gitignored).
 
 ### Step 0 — Pre-flight
 
+-1. **Bypass humain.** Si le task file porte le champ `**Sonar**: bypass — décision humaine du …`
+   (posé par `/start {task-id} --no-sonar`, ou écrit à la main par l'humain), **aucune analyse** :
+   - `step.sh end --status skipped --note "bypass humain (--no-sonar)"` ;
+   - `## Sonar log` réduit à :
+
+     ```markdown
+     ## Sonar log
+
+     **Sonar : non joué — bypass demandé par l'humain** ({date du champ}). Aucune analyse,
+     aucun KPI qualité pour cette task : la dette introduite n'est **pas** mesurée.
+     ```
+   - puis chaînage immédiat vers `/lint-angular`, comme un skip propre.
+   - La forge **ne pose jamais** ce champ d'elle-même, et ne le retire pas.
+
 0. **Load Sonar env vars at the head of every Bash call.** Claude Code's
    Bash tool spawns a fresh shell per invocation — env vars set in one
    call do NOT persist to the next. So every `/sonar` Bash command MUST
@@ -401,7 +415,7 @@ exist (created by `/develop`). Jump directly to Step 3 with the existing
 1. Compute `YYYYMMDD` from today's date (the workspace is on Windows ; use
    `date +%Y%m%d` in bash).
 2. Create `tasks/todo-sonar-api-mail-{YYYYMMDD}.md` using the template below.
-3. Invoke `/start sonar-api-mail-{YYYYMMDD} no-code` (the `no-code` flag is
+3. Invoke `/start sonar-api-mail-{YYYYMMDD} --no-code` (the `--no-code` flag is
    mandatory here — Sonar runs `/sonar` itself, not `/develop`, so we don't
    want `/start` to chain into `/develop`). `/start` creates the branch
    `chore/sonar-api-mail-{YYYYMMDD}` on `api-mail` and renames the task

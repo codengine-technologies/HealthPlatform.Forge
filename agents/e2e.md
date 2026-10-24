@@ -39,6 +39,21 @@ se mesure aussi (`--status skipped`) : sinon on ne distingue plus « gratuit » 
 
 ## Step 0 — Pré-flight : quelles voies ?
 
+0. **Bypass humain.** Si le task file porte le champ `**E2E**: bypass — décision humaine du …`
+   (posé par `/start {task-id} --no-e2e`, ou écrit à la main par l'humain), **aucune voie n'est
+   jouée** :
+   - `step.sh end --status skipped --note "bypass humain (--no-e2e)"` ;
+   - `## E2E log` réduit à :
+
+     ```markdown
+     ## E2E log
+
+     **E2E : non joué — bypass demandé par l'humain** ({date du champ}). Aucune voie rejouée,
+     aucune parité contrôlée : la non-régression fonctionnelle n'est **pas** prouvée pour cette task.
+     ```
+   - puis chaînage immédiat vers `/review`, comme un skip propre.
+   - La forge **ne pose jamais** ce champ d'elle-même, et ne le retire pas. Un champ absent ou
+     d'une autre forme (pas « décision humaine ») ne vaut pas bypass.
 1. Task file `tasks/wip-{task-id}.md` présent. Sinon, abandon.
 2. **Repos touchés** par la task — pas seulement listés : un repo listé sans aucun changement ne
    déclenche rien.

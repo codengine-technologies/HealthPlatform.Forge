@@ -3,13 +3,17 @@
 Usage :
 - `/start {task-id}` — create the branches and **chain into `/develop`**
   (default — autonomous implementation by the forge).
-- `/start {task-id} no-code` — create the branches and **stop**. The task
+- `/start {task-id} --no-e2e` — default chaining, but **`/e2e` is bypassed** on the human's
+  request (see step 8b). Combinable with `--no-code` and `--no-sonar`.
+- `/start {task-id} --no-sonar` — default chaining, but **`/sonar` is bypassed** on the human's
+  request (see step 8c). Combinable with `--no-code` and `--no-e2e`.
+- `/start {task-id} --no-code` — create the branches and **stop**. The task
   stays in `wip-*` and the human implements in WindSurf manually. No
   `/develop` invocation.
 
 Purpose : create the working branch(es) in the repo(s) declared by the task
 file. By default the forge then writes the code itself (`/develop`) ; the
-`no-code` flag is the escape hatch when the human wants to handle the
+`--no-code` flag is the escape hatch when the human wants to handle the
 implementation in WindSurf (e.g. exploratory work, design-heavy changes,
 or anything Sonar / `/develop` would mishandle).
 
@@ -133,10 +137,10 @@ philosophy was inverted on 2026-04-27 — see CLAUDE.md "Forge philosophy".
    before `/develop` runs — that's fine, `/develop` reads the current branch
    at execution time.
 
-8. **Parse the optional `no-code` argument** :
+8. **Parse the optional `--no-code` argument** :
 
-   - If the second argument is `no-code` (or `--no-code` / `nocode` —
-     accept any of these forms) → **skip step 9**. Annotate the
+   - If an argument is `--no-code` (legacy forms `no-code` / `nocode` still
+     accepted) → **skip step 9**. Annotate the
      `## Branches` section with a leading note :
 
      ```markdown
@@ -144,6 +148,47 @@ philosophy was inverted on 2026-04-27 — see CLAUDE.md "Forge philosophy".
      ```
 
    - Otherwise → continue to step 9.
+
+8b. **Parse the optional `--no-e2e` argument** (also `no-e2e`, in any position after the
+   task id) — **human request only** :
+
+   - Write, just under the `**Repos**:` line of the wip task file, the field :
+
+     ```markdown
+     **E2E**: bypass — décision humaine du {YYYY-MM-DD} (`/start --no-e2e`)
+     ```
+
+   - Annotate the `## Branches` section with a leading note :
+
+     ```markdown
+     > **E2E** : bypass demandé par l'humain au /start — /e2e ne jouera aucune voie ; la PR le dira.
+     ```
+
+   - Nothing else changes : the chain still runs `/e2e`, which reads the field, skips the lanes
+     (measured skip) and hands over to `/review`. The DOD stays the contract : a journey scenario
+     the DOD requires is still written in the catalog and in each client.
+   - The field may also be written by hand in a `todo-*.md` before `/start` or `/forge` (which
+     takes no argument) : same effect. **The forge never writes it on its own initiative.**
+
+8c. **Parse the optional `--no-sonar` argument** (also `no-sonar`, in any position after the
+   task id) — **human request only**. Same mechanism as 8b :
+
+   - Write, just under the `**Repos**:` line of the wip task file, the field :
+
+     ```markdown
+     **Sonar**: bypass — décision humaine du {YYYY-MM-DD} (`/start --no-sonar`)
+     ```
+
+   - Annotate the `## Branches` section with a leading note :
+
+     ```markdown
+     > **Sonar** : bypass demandé par l'humain au /start — /sonar n'analysera pas api-mail ; la PR le dira.
+     ```
+
+   - The chain still runs `/sonar`, which reads the field, skips (measured) and hands over to
+     `/lint-angular`. Build, tests, rule 1b and the code review are unchanged.
+   - The field may also be written by hand in a `todo-*.md` (for `/forge`). **The forge never
+     writes it on its own initiative.**
 
 9. **Chain into `/develop`** (default behaviour) :
 
@@ -220,7 +265,7 @@ Tools/timing/step.sh end --task {task-id} --step start --status ok
   (pushable repos only — `client-angular` not concerned)
 - `/start` itself never writes code — it only creates branches. The
   `/develop` chaining (step 9) is what writes code, and only when the
-  `no-code` flag is absent.
-- The `no-code` flag is the **only** way to opt out of autonomous
+  `--no-code` flag is absent.
+- The `--no-code` flag is the **only** way to opt out of autonomous
   implementation. Once chosen, the task is the human's responsibility
   until they manually trigger `/review`.
