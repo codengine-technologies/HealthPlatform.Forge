@@ -394,43 +394,41 @@ client-blazor `6bf8c09` + `465434f` ; weda2 en code seul (design system compris)
 | /sonar | ok | 8 min 34 s | 3 (1 min 06 s) | 15 (20 min 27 s) | 6 (2 min 12 s) | api-mail 3B/15T, (h)(i)(j) : QG OK, 0 finding |
 | /lint-angular | ok | 2 min 04 s | 3 (44 s) | 3 (4 min 41 s) | — | client-angular 3B/3T |
 | /lint-mobile | ok | 6.7 s | 1 (8.6 s) | — | — | client-mobile 1B/0T |
-| /e2e | failed | 17 min 41 s | — | — | — | e2e ×13 (1 h 22 min), run 3 : mobile vert 41/41 (DETAIL-001 stabilisé) ; angular E2E-PATIENT-003 rouge + parité UnknownIdentifier — branches api-mail/mobile en retard d'un commit sur develop (task-373) |
-| /review | ok | 7 min 29 s | 9 (1 min 14 s) | 8 (9 min 53 s) | — | api-mail 2B/2T, client-mobile 2B/2T, client-blazor 2B/2T, client-angular 2B/2T, dtos-mss 1B/0T, extension APPROVED ; PR dtos-mss #47 ; corps #307 #101 #96 mis à jour |
+| /e2e | ok | 15 min 43 s | — | — | — | e2e ×16 (1 h 37 min), run 4 vert : mobile 42/42, angular 49 + 1 flaky (SETTINGS-003), parité verte ; DETAIL-001 stabilisé ; branches synchronisées avec develop (task-373) |
+| /review | ok | 5 min 51 s | 13 (2 min 04 s) | 13 (15 min 35 s) | — | api-mail 3B/3T, client-mobile 3B/3T, client-blazor 2B/4T, client-angular 3B/3T, dtos-mss 2B/0T, revue finale APPROVED : (k) weda2, DETAIL-001 stabilisé, sync develop ; 4 corps de PR mis à jour |
 | /tech-writer | ok | 0.6 s | — | — | — | — |
-| **Total cycle** | | **1 h 02 min** | **21 (4 min 28 s)** | **45 (43 min 13 s)** | **6 (2 min 12 s)** | |
+| **Total cycle** | | **58 min 27 s** | **25 (5 min 17 s)** | **50 (48 min 55 s)** | **6 (2 min 12 s)** | |
 
 Autres commandes mesurées : lint ×10 (1 min 32 s), nuget-wait ×1 (26 s)
 
 ## E2E log
 
-Run de l'extension (h)(i)(j) (2026-10-24, après-midi) — **ROUGE**. Il remplace le run vert du matin (mobile 41/41,
-Angular 49/49).
+Run du 2026-10-24 (fin d'après-midi) — **VERT**. Il remplace le run rouge du midi (E2E-DETAIL-001 mobile).
 
 | Voie | Déclencheur | Résultat | Tests | Durée |
 |---|---|---|---|---|
-| mobile | api-mail et client-mobile touchés | ❌ rouge | 40 verts, 1 rouge (E2E-DETAIL-001, deux essais) | 13 min 04 s |
-| angular | api-mail et client-angular touchés | ✅ verte | 49 verts, 0 flaky, 1 quarantaine (E2E-COMPOSE-002, passée) | 7 min 12 s |
+| mobile | api-mail et client-mobile touchés | ✅ verte | 42 verts, 0 flaky, 0 rouge, 0 quarantaine | 7 min 24 s |
+| angular | api-mail touché (client-angular commité par l'humain : `db51d42a`) | ✅ verte | 49 verts, 1 flaky, 0 rouge, 1 quarantaine | 7 min 34 s |
 
-> **Blocage, motif « régression » au sens de la porte.** E2E-DETAIL-001 sur mobile a échoué aux deux essais, sur
-> « le transfert arrive » (`functional.spec.ts:594`, étape 3 : transfert d'un message à deux pièces homonymes). C'est
-> la **troisième occurrence** de cette instabilité : 2026-10-23, run 1 rouge puis relance flaky ; 2026-10-24 matin,
-> vert ; 2026-10-24 après-midi, rouge.
-> - **Sans lien démontré avec l'extension** : l'étape 1, qui choisit aussi un destinataire suggéré dans la rédaction
->   modifiée, passe. Le même échec existait avant ce changement (run 1 du 2026-10-23). Côté serveur, tous les
->   `sendmail` répondent 200 (Seq) ; le message envoyé n'arrive pas.
-> - **Hypothèse non prouvée** : à l'étape 3, le test clique sur la suggestion « robert » puis envoie **sans attendre
->   la puce du destinataire**, ce que fait l'étape 1. Un clic qui ne prend pas laisserait « robert » partir comme
->   adresse : envoi accepté, rien de reçu. La trace ne conserve ni le corps de la requête ni les puces : non vérifié.
-> - **Question posée à l'humain** : `questions/task-388.md`.
+- **E2E-DETAIL-001 (mobile) stabilisé.** Ce n'était pas un flaky : les messages porteurs de CDA étaient cherchés par
+  leur objet (voir le `## Develop log`, client-mobile `e099757`). Vert du premier coup sur les deux runs suivants.
+- **Run intermédiaire rouge (run 3), cause hors task** : mobile vert (41/41), mais Angular rouge sur E2E-PATIENT-003,
+  avec un écart de parité `UnknownIdentifier`. Les branches api-mail et mobile avaient un commit de retard sur
+  `develop` (task-373 mergée entre-temps), alors que la suite weda2 portait déjà le test. Corrigé par
+  `git merge origin/develop` (règle 4) : api-mail `dc246c00`, client-mobile `b5defde`, puis les deux voies ont été
+  rejouées.
+- Catalogue : `Api/Mail/e2e/scenarios.yml` @ branche de la task (synchronisée avec `develop`)
+- Quarantaines : E2E-COMPOSE-002 (angular, task-350), passée
+- Divergences ouvertes : aucune
+- Parcours touchés sans spec e2e modifié : aucun (les specs mobile et weda2 bougent avec la task)
+- Démontage : complet (ports libres). Deux conteneurs `e2e-*` arrêtés depuis le 2026-10-14, antérieurs à ce run et
+  sans effet sur les ports, laissés en place.
 
-- Catalogue : `Api/Mail/e2e/scenarios.yml` @ branche de la task ; quarantaines : E2E-COMPOSE-002 (angular, task-350)
-- Démontage : complet (ports libres)
+**E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
 
-**E2E : ROUGE** — 1 motif(s) de blocage.
+**Flaky (vert au second essai, non bloquant)** (1) :
 
-**Bloquant** (1) :
-
-- [mobile] rouge : « détail — Répondre et Transférer partent avec le message d’origine, même cliqués pendant son chargement » (E2E-DETAIL-001)
+- [angular] « paramètres — version du serveur de messagerie » (E2E-SETTINGS-003)
 
 **En quarantaine (posée par l'humain, non bloquant)** (1) :
 
@@ -444,11 +442,12 @@ Angular 49/49).
 | E2E-FOLDER-001 | 1 | headless | Naviguer vers les dossiers Archive et Corbeille | ✅ | ✅ |
 | E2E-PATIENT-001 | 1 | headless | Afficher la vue patients | ✅ | ✅ |
 | E2E-PATIENT-002 | 2 | headless | Rattacher à la main un document sans INS à un patient choisi par recherche, puis le détacher | ✅ | ✅ |
+| E2E-PATIENT-003 | 1 | headless | La fiche d'un patient ne montre pas les documents d'un autre patient du même mail | ✅ | ✅ |
 | E2E-CONTACT-001 | 2 | humain | Rechercher dans le carnet et interroger l'annuaire national | 👤 non joué (humain) | 👤 non joué (humain) |
 | E2E-SETTINGS-001 | 1 | headless | Changer le filtre par défaut et le retrouver après rechargement | ✅ | ✅ |
 | E2E-MAIL-001 | 1 | headless | Marquer un message lu puis non lu | ✅ | ✅ |
 | E2E-MAIL-002 | 1 | headless | Tout sélectionner et marquer lu en masse | ✅ | ✅ |
-| E2E-DETAIL-001 | 3 | headless | Répondre et transférer depuis la lecture d'un message | ✅ | ❌ |
+| E2E-DETAIL-001 | 3 | headless | Répondre et transférer depuis la lecture d'un message | ✅ | ✅ |
 | E2E-COMPOSE-001 | 1 | headless | Envoyer un message, le recevoir, le lire, le supprimer | ✅ | ✅ |
 | E2E-COMPOSE-002 | 1 | headless | Faire corriger l'orthographe de son texte, appliquer la correction, puis envoyer | ✅ | ✅ |
 | E2E-COMPOSE-003 | 1 | headless | Un envoi refusé par la messagerie laisse le brouillon intact et peut être renvoyé | ✅ | ✅ |
@@ -467,7 +466,7 @@ Angular 49/49).
 | E2E-DETAIL-004 | 1 | headless | Lire un message avec le panneau d'actions, le masquer puis le retrouver au message suivant | ✅ | — |
 | E2E-DETAIL-005 | 1 | headless | Passer rapidement d'un mail à l'autre n'affiche jamais le contenu du précédent | ✅ | ✅ |
 | E2E-SETTINGS-002 | 1 | headless | Changer la vue par défaut et la retrouver après rechargement | ✅ | ✅ |
-| E2E-SETTINGS-003 | 1 | headless | Lire la version du serveur de messagerie dans les Paramètres | ✅ | ✅ |
+| E2E-SETTINGS-003 | 1 | headless | Lire la version du serveur de messagerie dans les Paramètres | ⚠️ flaky | ✅ |
 | E2E-SEARCH-001 | 1 | headless | Rechercher un message et ouvrir la recherche avancée | ✅ | ✅ |
 | E2E-ATTACH-001 | 1 | headless | Voir les pièces jointes d'un message | ✅ | ✅ |
 | E2E-CONTACT-002 | 2 | headless | Créer un contact à deux adresses, le modifier sans les perdre, puis le supprimer | ✅ | ✅ |
@@ -503,15 +502,10 @@ Angular 49/49).
 - `client-blazor` : https://github.com/codengine-technologies/HealthPlatform.Client/pull/96 — label `awaiting-human-merge`
 - **Ordre de merge** : `dtos-mss` (#47) avant les autres. Les autres PR consomment déjà la version 533.0.0, publiée
   depuis la branche ; le merge de #47 ne fait que ramener le contrat sur `develop`.
-- `client-angular` : code seul. L'humain gère le commit, le push sur TFS et l'ouverture de la PR. Fichiers modifiés,
-  non commités, sur `feature/nova-mss-weda-integration` :
-  - `front/libs/mss/src/core/models/contact.model.ts`
-  - `front/libs/mss/src/core/utils/directory-search.util.ts` et `.spec.ts`
-  - `front/libs/mss/src/core/utils/contact-type.util.ts` et `.spec.ts` (nouveaux)
-  - `front/libs/mss/src/ui/contact-avatar/` (nouveau composant) et `front/libs/mss/src/ui/index.ts`
-  - `front/libs/mss/src/features/contacts/mss-contacts.component.ts`, `.html`, `.scss`, `.spec.ts`
-  - `front/libs/mss/src/features/mail/components/mail-compose/mail-compose.component.ts`, `.html`, `.scss`
-  - `front/libs/mss/src/features/mail/components/mail-compose/mail-compose-suggestions.component.spec.ts` (nouveau)
+- `client-angular` : code seul. **Commité et poussé sur TFS par l'humain** : `db51d42a` (« task 388 ») sur
+  `feature/nova-mss-weda-integration`, fiche redessinée (k) comprise. Il reste à ouvrir la PR TFS (humain).
+- **Corps des quatre PR mis à jour le 2026-10-24 (fin d'après-midi)** : nouveau `## Parcours e2e` (run vert) et note
+  de revue finale.
 
 ## Code Review Summary
 
@@ -601,4 +595,37 @@ Le point (b) n'a demandé aucun changement de code : c'était un faux positif de
 3. **Blazor : URL de mise à jour.** `ContactService.UpdateContactAsync` appelle `PUT api/v1/Contact/{Id.GetHashCode()}`, ce qui ressemble à un défaut préexistant. À vérifier hors task.
 4. **weda2 : budgets de build.** Les budgets de `mss` (application autonome) et de `prescription` sont dépassés sur la branche `feature/nova-mss-weda-integration`. C'est préexistant : la task n'y ajoute qu'environ 2,6 Ko.
 5. **Test d'intégration instable.** `SeededThreadsAreCountableTests` tire un `Uid` au hasard dans une base partagée : collision de clé possible. Une task de stabilisation est à ouvrir.
+
+### Revue finale (2026-10-24, fin d'après-midi)
+
+**Verdict : APPROVED** — 0 bloquant, 1 suggestion.
+
+**Ce qui a bougé depuis la revue de l'extension**
+
+- weda2, fiche redessinée (k), commitée par l'humain (`db51d42a`) : en-tête (initiales, nom, badge « RPPS Certifié »,
+  sous-ligne), quatre cartes, étiquettes en pastilles, un seul bouton d'enregistrement `#save-contact-btn`. Les aides e2e
+  `createContactWithTwoAddresses` et `saveEditedContact` ne changent que de bouton. ✅
+- client-mobile `e099757` : stabilisation de E2E-DETAIL-001 (cause établie, test seul). ✅
+- api-mail `dc246c00`, client-mobile `b5defde` : merge de `origin/develop` (task-373), sans conflit. ✅
+
+**Validation**
+
+| Repo | Build | Tests |
+|---|---|---|
+| api-mail | ✓ | ✓ 6 767 : domain 195, infrastructure 695, api 1 280, application 3 619, intégration 978 (16 ignorés) |
+| client-mobile | ✓ | ✓ 1 214/1 214 |
+| client-angular (code seul) | ✓ `weda2` (budget initial 2,08 Mo / 2 Mo, préexistant) | ✓ `mss-lib` 1 130 |
+| client-blazor | `Mss.Console` NU1100 (préexistant) ; projet de tests ✓ | ✓ 481, 2 ignorés |
+| dtos-mss | ✓ | sans objet |
+
+**Règle 1b** : aucun nouveau comportement atteignable par un endpoint depuis la revue de l'extension. (k) est de
+l'interface, la stabilisation ne touche qu'un test, et le merge apporte du code déjà revu (task-373).
+
+**E2E** : vert (`## E2E log`), mobile 42/42, Angular 49 verts + 1 flaky (E2E-SETTINGS-003, au registre).
+
+**Suggestion (non bloquante)**
+
+1. weda2 : le badge « RPPS Certifié » lit le RPPS **enregistré**, pas celui en cours de saisie. Si le médecin change le
+   RPPS d'un contact importé, le badge reste affiché, et il le reste après l'enregistrement d'un RPPS saisi à la main.
+   La task-393 (d) rend ce champ non modifiable pour un contact importé, ce qui règle le cas.
 
