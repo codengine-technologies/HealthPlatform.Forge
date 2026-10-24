@@ -4,7 +4,7 @@
 > **Modèle** : hand-crafted
 > **Version** : 1.86
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-24 (fiche contact redessinée, suggestions de destinataires lisibles, spécialité des contacts — task-388)
+> **Dernière mise à jour** : 2026-10-24 (carnet d'adresses refondu — task-393 ; fiche contact redessinée, spécialité des contacts — task-388)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1036,6 +1036,14 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
+- **v1.106 — Le carnet d'adresses se consulte, écrit et se modifie sans erreur** (task-393, messagerie web et application mobile) :
+  - **Voir un contact sans quitter le carnet.** Sur la messagerie web, choisir un contact affiche sa fiche à côté de la liste : identité, activité, toutes ses adresses MSSanté (l'adresse par défaut en premier), étiquettes et notes. Sur l'application mobile, la fiche s'ouvre en plein écran, avec un retour au carnet.
+  - **Écrire en un geste.** « Écrire un message » ouvre la rédaction avec l'adresse par défaut du contact. S'il a plusieurs adresses et aucune par défaut, vous choisissez d'abord l'adresse. Chaque adresse peut aussi être copiée.
+  - **Des marques qui disent ce qu'elles veulent dire.** « Sans adresse MSSanté » signale un contact à qui vous ne pouvez pas écrire, « Annuaire » un confrère importé de l'Annuaire Santé. Deux filtres rapides, avec leur nombre, gardent ces seuls contacts ; « Réinitialiser » rend tout le carnet.
+  - **L'adresse par défaut se choisit sur l'adresse elle-même.** Dans la fiche, chaque adresse a sa ligne, avec un bouton « par défaut ». Le choix « Aucune — proposer toutes les adresses » reste possible.
+  - **Une adresse mal saisie est signalée sous son champ**, et la fiche n'est pas enregistrée tant qu'elle reste. Seul le format d'une adresse électronique est contrôlé : une adresse valable d'un autre domaine de l'espace de confiance MSSanté (Apicrypt, par exemple) est acceptée.
+  - **Rien ne se perd sans votre accord.** Quitter une fiche modifiée sans l'enregistrer demande « Abandonner les modifications ? ». « Continuer la saisie » garde ce que vous avez tapé. Le numéro RPPS d'un confrère importé de l'Annuaire Santé est affiché sans pouvoir être modifié.
+  - **Sur la messagerie web, la fiche tient sur un écran de portable** (1366×768), sans défilement.
 - **v1.105 — Vous reconnaissez vos correspondants dès la saisie de l'adresse** (task-388, messagerie web et application mobile) :
   - **Une suggestion se lit comme une fiche.** En tapant un nom dans A, Cc ou Cci, chaque proposition montre l'avatar du correspondant, une icône qui indique son type (stéthoscope pour un professionnel de santé, silhouette pour un patient, bâtiment pour un établissement), son nom, sa spécialité dessous quand elle est connue, et son adresse à droite.
   - **La spécialité a sa propre place.** Importer un confrère depuis l'Annuaire Santé enregistre sa profession et sa spécialité dans sa fiche, et n'ajoute plus d'étiquettes. Vos étiquettes restent les vôtres.

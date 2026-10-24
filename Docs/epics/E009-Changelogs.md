@@ -761,6 +761,43 @@
   - remonter `originalMarkedCancelled` et `warning` par `drafts/{id}/send` ;
   - bail renouvelable pour le verrou.
 
+### v1.106 — Carnet d'adresses refondu (weda2 et mobile) : aperçu, écrire, marques explicites, fiche protégée — task-393
+
+- **Origine** : refonte demandée par l'humain le 2026-10-24, d'après deux maquettes Stitch weda2 (projet `HealthPlatform`, écrans `mss-contacts — carnet d'adresses (liste + aperçu)` et `mss-contacts — fiche contact (modification)`). Retirés par décision humaine : derniers échanges, date de naissance, date de synchronisation de l'annuaire, indice de domaine.
+- **Règles** :
+  - « Annuaire » (pastille, filtre, RPPS verrouillé, badge « RPPS Certifié ») vaut pour une source FHIR ou LDAP seulement, pas pour un import CSV ni un enrichissement CDA ;
+  - « Sans adresse MSSanté » correspond à `ContactDto.IsComplete` faux ;
+  - le contrôle d'adresse porte sur le format seul ;
+  - « Écrire » sans adresse par défaut et avec plusieurs adresses fait choisir l'adresse.
+- **weda2** (code seul) :
+  - liste en trois colonnes ; aperçu à droite ; menu « ⋯ » pour l'import et l'export vCard ;
+  - `ContactComposeHandoffService` (service racine, retrait par jeton) ;
+  - garde de route `leaveConfirmationGuard` ;
+  - `contact-card.util` ;
+  - fiche compactée pour tenir à 1366×768.
+- **mobile** :
+  - fiche de consultation plein écran, avec « Supprimer » ;
+  - éditeur ligne par ligne ;
+  - confirmation par `canDismiss` ;
+  - `contact-editor.util` ;
+  - libellés accessibles qui portent l'adresse.
+- **Catalogue e2e** : E2E-CONTACT-004 v1 (consulter et écrire) et E2E-CONTACT-005 v1 (sortie confirmée, adresse mal formée refusée sans requête), mobile et Angular requis. Six mutations, toutes rouges sur l'assertion visée.
+- **Revue** : trois passes.
+  - Passe 1 : « Écrire » depuis une ligne affichait le choix d'adresse sous un autre contact.
+  - Passe 2 : la reprise avait introduit une course, une navigation refusée retirant le destinataire d'un clic plus récent.
+  - Passe 3 : APPROVED.
+- **Tests** : weda2 `mss-lib` 1 214 ; mobile 1 241 ; api-mail 6 767.
+- **E2E** : mobile 44/44, Angular 52/52, parité verte.
+- **Sonar** : skipped, aucun code C# modifié.
+- **PR** : `api-mail` #309, `client-mobile` #103 ; weda2 en code seul (TFS).
+- **Leçons** :
+  - `conventions/angular.md` : `action-a-deux-entrees`, `annulation-qui-vide-l-etat-d-un-autre`, `ds-button-id-requis`, `page-ionic-non-demontee`, et la récidive de `chainage-optionnel-qui-ment` ;
+  - `conventions/e2e.md` : `testid-prefixe-d-un-autre`, `confirmation-attendue-avant-le-clic`.
+- **Suivis** :
+  - découper `mss-contacts.component.ts` (1 831 lignes) ;
+  - tester l'import et l'export vCard ;
+  - générer dans Stitch les écrans mobiles `contacts` et `contact-editor` (la génération a expiré).
+
 ### v1.105 — Profession et spécialité d'un contact, suggestions de destinataires lisibles, icônes de type corrigées — task-388 (extension)
 
 - **Origine** : demandes de l'humain du 2026-10-24, après la revue de task-388.
@@ -1662,6 +1699,7 @@ Audit grep complémentaires pour les couches 2 / 2bis / 3 (tasks 021 / 022 / 023
 
 | Task | Apport principal | Règles touchées |
 |------|------------------|-----------------|
+| task-393 | **Le carnet d'adresses refondu, sur la messagerie web et l'application mobile.** Aperçu d'un contact à côté de la liste (fiche plein écran sur mobile), « Écrire un message » vers l'adresse par défaut ou l'adresse choisie, marques « Sans adresse MSSanté » et « Annuaire » avec filtres rapides, adresse par défaut choisie par bouton radio, contrôle du format des adresses, confirmation avant d'abandonner une fiche modifiée, RPPS de l'annuaire non modifiable. | — |
 | task-388 | **Les finitions de la recherche dans l'annuaire, puis la spécialité des contacts.** Extension du 2026-10-24 : `ContactDto.Profession` et `Specialty` (533.0.0), suggestions de destinataires avec avatar, icône du type et spécialité (weda2 et mobile), icônes de type corrigées. Finitions : Une organisation de moins de 3 caractères est refusée avec une spécialité sans lieu ; une page de maintenance est gardée en « indisponible » ; le mobile n'affiche plus jamais le message technique d'Angular ; Blazor distingue session expirée et annuaire indisponible, et ne lance plus deux fois la recherche. | — |
 | task-373 | **La fiche d'un patient ne montre que ce qui lui appartient.** Routes `folder` / `documents` par handle servant les seuls documents actifs de la fiche ; unité dans la série de biologie, période automatique juste ; opposition relue et rétablie sur échec ; rattachement protégé des réponses périmées ; vue patient mobile enfin alimentée (weda2 + mobile). | — |
 | task-376 | **Rédiger sans perte ni double envoi.** Remise incertaine typée en 503 `MAIL_DELIVERY_UNCERTAIN` sur les trois routes d'envoi et bloquée côté clients ; brouillon jamais orphelin ni perdu ; annule et remplace limité au message choisi ; transfert par référence des pièces homonymes ; saisie et refus du serveur rendus lisibles (weda2 + mobile). | — |

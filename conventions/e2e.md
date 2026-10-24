@@ -573,6 +573,24 @@ dépassée.
 
 ---
 
+### testid-prefixe-d-un-autre — Un testid d'action ne commence pas par le préfixe d'un testid de ligne
+- **Piège** : une ligne `contact-row-{id}` et une action `contact-row-write-{id}`. Le sélecteur
+  `[data-testid^="contact-row-"]`, qui compte ou vise les lignes, ramasse aussi les actions : un compte faux, ou un
+  clic sur un bouton au lieu de la ligne.
+- **Consigne** : un testid d'action ou de sous-élément ne prolonge jamais le préfixe d'un testid de collection.
+  Le nommer à part (`contact-quick-write-{id}`), ou cibler la collection par un sélecteur exact.
+- **Origine** : task-393 (/develop, weda2), évité avant tout test
+- **Occurrences** : 1
+
+### confirmation-attendue-avant-le-clic — un test unitaire qui attend une méthode à confirmation se bloque
+- **Piège** : `await page.requestCloseEditor()` dans un test unitaire, alors que la méthode attend la réponse
+  d'une alerte : le test attend une promesse que seul le clic qui suit pourrait résoudre. Il expire sans dire
+  pourquoi.
+- **Consigne** : lancer l'appel sans l'attendre (`const done = page.requestCloseEditor()`), vider la file
+  (`await fixture.whenStable()` ou `flush`), cliquer le bouton de l'alerte, puis `await done`.
+- **Origine** : task-393 (/develop, mobile)
+- **Occurrences** : 1
+
 ### inbox-laissee-en-l-etat — un parcours qui envoie retire ce qu'il laisse dans l'INBOX
 - **Piège** : déjà consigné sur task-340 (E2E-AI-001 mobile), reproduit sur task-376 : E2E-DETAIL-001 v3
   ajoutait un second transfert dans l'INBOX ; les lignes seedées de E2E-MAIL-004 et E2E-AI-001 sont

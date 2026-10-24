@@ -414,6 +414,57 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   attendu. Voir le test rouge avant de le croire vert.
 - **Preuve** : `mss-contacts-render.component.spec.ts` (j), vert sans les colonnes avec l'ancienne assertion, rouge
   avec la nouvelle, vert une fois les colonnes posées.
-- **Origine** : task-388 (/develop)
+- **Origine** : task-388 (/develop) ; task-393 (/develop, weda2)
+- **Occurrences** : 2 (task-393 — variante Vitest : `expect(undefined).toContain(x)` passe aussi. Le test « la route
+  `contacts` porte la garde de sortie » était vert sans la garde, parce qu'il lisait `route?.canDeactivate`. Exiger
+  la route, puis `Array.isArray(route.canDeactivate)`, avant `toContain`.)
+
+### ds-button-id-requis — `ds-button` sans `id` fait tomber tous les tests de rendu du composant
+- **Règle** : convention projet (contrat du design system weda2)
+- **Repos** : client-angular
+- **Piège** : `ds-button` déclare `id` en `input.required`. Un seul bouton ajouté sans `id` lève NG0950 au rendu, et
+  **tous** les tests de rendu du composant tombent, anciens compris. Le message ne pointe pas le bouton fautif.
+- **Consigne** : tout `ds-button` ajouté porte un `id` unique dès l'écriture (le même que celui que vise un test e2e
+  quand il y en a un). Devant une cascade NG0950, chercher d'abord le dernier `ds-button` ajouté.
+- **Origine** : task-393 (/develop, weda2)
 - **Occurrences** : 1
 
+### action-a-deux-entrees — Une action offerte à deux endroits a un test par point d'entrée
+- **Règle** : convention projet
+- **Repos** : les deux
+- **Piège** : sur task-393, « Écrire » existe sur la ligne du carnet (au survol) et dans l'aperçu. Le choix d'adresse
+  n'était rendu que dans l'aperçu du contact sélectionné, et le bouton de la ligne ne sélectionnait pas. Depuis la
+  ligne, rien ne s'affichait, ou le choix apparaissait sous un autre contact. Les tests ne passaient que par l'aperçu :
+  tout était vert.
+- **Consigne** : quand une action est offerte à plusieurs endroits (ligne, aperçu, menu, raccourci), écrire un test par
+  point d'entrée, avec l'état de départ de ce point (aucune sélection, autre élément sélectionné). Un état affiché à un
+  seul endroit (dialogue, sélecteur) ne dépend jamais d'une sélection que l'autre point d'entrée ne pose pas.
+- **Origine** : task-393 (/review, CHANGES REQUESTED)
+- **Occurrences** : 1
+
+### page-ionic-non-demontee — Une page Ionic rendue en test retombe sur les tests de rendu suivants
+- **Règle** : convention projet (instabilité Karma, invisible au lint)
+- **Repos** : client-mobile
+- **Piège** : sur task-393, un test qui rendait la page du carnet, puis un test qui rendait une fenêtre Ionic
+  (`ion-modal`), faisaient tomber d'autres suites une fois sur trois : rendu de la rédaction, sélecteur de messagerie,
+  erreurs `onAriaChanged`. Leurs éléments restaient attachés au document après la fin du test.
+- **Consigne** : un test Karma qui rend une page Ionic la démonte lui-même (`fixture.destroy()`, puis une courte
+  attente). Les libellés d'une fenêtre (`aria-label`, textes) se testent par les méthodes que le gabarit lie, pas en
+  rendant la fenêtre. Pour croire une suite stable, la rejouer plusieurs fois (la passe de task-393 : 0 échec sur 6
+  après correction, contre 2 sur 6 avant).
+- **Origine** : task-393 (/develop, reprise mobile)
+- **Occurrences** : 1
+
+### annulation-qui-vide-l-etat-d-un-autre — Une annulation asynchrone ne vide que sa propre donnée
+- **Règle** : convention projet (défaut de course, invisible aux tests à un seul appel)
+- **Repos** : les deux
+- **Piège** : sur task-393, `composeTo` confiait le destinataire à un service racine, puis, si la navigation était
+  refusée, vidait le service (`take()`). Sur un double-clic, la première navigation, remplacée par la seconde, se
+  résolvait à `false` après le second `offer`, et vidait le destinataire du second clic. La messagerie s'ouvrait sans
+  rédaction. Les tests ne faisaient qu'un appel à la fois.
+- **Consigne** : un retour asynchrone qui annule ou nettoie un état partagé vérifie que l'état est encore le sien
+  (jeton rendu par `offer`, identifiant, numéro de génération) avant de le vider. Le test lance deux appels, puis
+  résout le premier après le second.
+- **Voir aussi** : `reponse-d-un-contexte-depasse`, `service-propre-au-composant`.
+- **Origine** : task-393 (/review, seconde passe)
+- **Occurrences** : 1
