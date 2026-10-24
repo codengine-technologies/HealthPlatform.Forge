@@ -35,3 +35,18 @@ La trace ne conserve ni le corps de la requête ni les puces, donc l'hypothèse 
    le temps de stabiliser le test, puis je reprends `/e2e` → `/review`.
 2. **Je stabilise le test d'abord** dans le cadre de task-388 : attendre la puce du destinataire à l'étape 3 comme à
    l'étape 1, et vérifier l'hypothèse en journalisant le destinataire envoyé. Puis je rejoue `/e2e`.
+
+## Résolution (2026-10-24, sur « termine » de l'humain)
+
+Option 2 retenue : le test est stabilisé dans task-388. Aucune quarantaine n'est posée, car c'est une décision de
+l'humain seul.
+
+- **Hypothèse réfutée** : dans les deux essais rouges, le corps du `POST /sendmail` lu dans la trace a bien
+  `"to":[{"address":"praticien@e2e.test"}]`. La réponse est `{"queued":false,"archivePending":true}`.
+- **Cause établie** : la dernière image du screencast montre le transfert **arrivé** (praticien@e2e.test, 09:54, non
+  lu), sous le titre du CDA « Lettre de liaison à la sortie de l'établissement… » et non sous son objet. Les deux
+  messages de l'étape 3 portent des `IHE_XDM.ZIP` ; leur ligne prend le titre du document dès l'analyse.
+  `waitForSubject` les cherchait par objet. Les deux signatures (`:574` et `:594`) viennent de là. C'est une récidive
+  de la convention `ligne-de-biologie`, élargie en `ligne-de-cda`.
+- **Correctif** : client-mobile `e099757`. Désignation par uid relu côté serveur (`OtherDevice.waitForUidBySubject`),
+  ligne attendue par `waitForRowByUid`.

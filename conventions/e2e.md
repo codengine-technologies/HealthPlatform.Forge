@@ -238,14 +238,23 @@
 - **Origine** : task-343, task-348
 - **Occurrences** : 2
 
-### ligne-de-biologie — Une ligne de biologie affiche le titre du document CDA, pas le sujet
-- **Piège** : `rowBySubject` ne trouve pas un compte rendu de biologie : la liste affiche le titre
-  du document CDA (« Compte rendu d'examens biologiques »), pas le sujet du mail.
-- **Consigne** : désigner une ligne de biologie par son **uid** (`mail-row-{uid}` sur le mobile,
-  `mail-row-subject-{uid}` sur weda2), obtenu du serveur. Réserver la désignation par sujet aux
-  messages ordinaires.
-- **Origine** : task-343
-- **Occurrences** : 1
+### ligne-de-cda — Une ligne porteuse d'un CDA affiche le titre du document, pas le sujet
+*(ex-`ligne-de-biologie`, élargie par task-388)*
+- **Piège** : `rowBySubject` ne trouve pas un message porteur d'un document CDA, **quel qu'il soit**
+  (compte rendu de biologie, lettre de liaison dans un `IHE_XDM.ZIP`…). Une fois le document analysé,
+  la liste affiche son titre (« Compte rendu d'examens biologiques », « Lettre de liaison à la sortie
+  de l'établissement… ») à la place de l'objet. Avant l'analyse, elle affiche l'objet : le test passe
+  ou casse selon la vitesse du pipeline, d'où un **faux flaky**. task-388 : E2E-DETAIL-001 v3
+  (mobile), 3 rouges sur 4 essais. Le transfert, bien parti vers la bonne adresse (corps de
+  `sendmail` lu dans la trace), était arrivé sous le titre de la lettre de liaison.
+- **Consigne** : désigner un message porteur d'un CDA (déposé par `--kind weda-import`, transféré
+  depuis un tel message, ou seedé avec un document) par son **uid relu côté serveur**
+  (`OtherDevice.waitForUidBySubject` sur le mobile), puis `mail-row-{uid}` (mobile) ou
+  `mail-row-subject-{uid}` (weda2). Réserver la désignation par sujet aux messages sans document.
+  **Diagnostic** : avant de qualifier un « message qui n'arrive pas », regarder la dernière image du
+  screencast de la trace. La ligne est souvent là, sous un autre libellé.
+- **Origine** : task-343, task-388
+- **Occurrences** : 2
 
 ### en-tete-force-par-le-banc — Un harnais qui réécrit un en-tête de l'app rend son effet inobservable
 - **Piège** : le test-bypass des deux suites (`installBypass`) posait `client-email` sur **toute**
@@ -592,7 +601,7 @@ task de stabilisation proposée)*
 | temps réel — un compte rendu arrive, notifié et affiché sans rechargement (E2E-LIVE-001) | angular | 1 | task-383 | à établir — vert au 2e essai (rejeu après merge de task-374 et mise à jour NuGet) |
 | assistant — résumé initial puis deux questions de suite (E2E-AI-001) | angular | 2 | task-352 | à établir — task-338, 1er essai : `locator.click` en dépassement (15 s), puis `page.waitForResponse: Test ended`. task-352, 1er essai : `response.json: Protocol error (Network.getResponseBody): No data found for resource` (le corps de la réponse attendue n'est plus lisible par le navigateur quand le test le lit). Vert au 2e essai les deux fois. Voie Angular sur `feature/nova-rewriting-mss`. Piste : lire le corps par `waitForResponse` puis `await response.json()` sans délai, ou relire la conversation au serveur plutôt que dans la réponse |
 
-| détail — Répondre et Transférer, pièces homonymes (E2E-DETAIL-001 v3) | mobile | 2 | task-388 | à établir — **3 échecs sur 4 essais** sur deux runs de task-388 (2026-10-23), task qui ne touche ni la lecture, ni le transfert, ni l'envoi ; vert le matin même sur task-386, et vert côté Angular sur le même backend. Run 1 : rouge aux deux essais (1er : « le transfert arrive », `functional.spec.ts:594` ; 2e : « le message à pièces homonymes est dans la boîte », `:574`) — porte rouge ; relance de la voie entière : même signature `:574` au 1er essai (2,8 min), vert au 2e (35 s). Toujours l'arrivée d'un message dans la liste, jamais le transfert lui-même. Piste : le message déposé par l'outil e2e (`message --create --kind weda-import`) n'apparaît pas dans la zone visible de l'INBOX (date ou position), cf. `inbox-laissee-en-l-etat`. **Run rouge sur une task non liée → task de stabilisation à ouvrir** |
+| détail — Répondre et Transférer, pièces homonymes (E2E-DETAIL-001 v3) | mobile | 2 | task-388 | à établir — **3 échecs sur 4 essais** sur deux runs de task-388 (2026-10-23), task qui ne touche ni la lecture, ni le transfert, ni l'envoi ; vert le matin même sur task-386, et vert côté Angular sur le même backend. Run 1 : rouge aux deux essais (1er : « le transfert arrive », `functional.spec.ts:594` ; 2e : « le message à pièces homonymes est dans la boîte », `:574`) — porte rouge ; relance de la voie entière : même signature `:574` au 1er essai (2,8 min), vert au 2e (35 s). Toujours l'arrivée d'un message dans la liste, jamais le transfert lui-même. **Établie le 2026-10-24 (task-388), ce n'est pas un flaky** : les deux messages de l'étape 3 portent des CDA, et leur ligne prend le titre du document dès l'analyse. `waitForSubject` les cherchait par leur objet. Le transfert était parti vers `praticien@e2e.test` (corps `sendmail` dans la trace), puis arrivé sous « Lettre de liaison… » (dernière image du screencast). Corrigé : désignation par uid relu côté serveur, voir `ligne-de-cda` |
 | rédaction — corriger l'orthographe, appliquer, envoyer (E2E-COMPOSE-002) | angular | 6 | task-357 | task-355 : même signature au 1er essai (« le transfert porte la citation d'origine », `live-ai.e2e.ts:231`), vert au 2e, sur une task qui ne touche ni la rédaction ni Angular. **établie, ce n'est pas un flaky** : « Transférer » cliqué avant le chargement du contenu → transfert sans le message d'origine (`initializeFromPrefill` ne cite que `if (prefill.content)`). Reproduit 1/5 au premier passage à froid. Bug produit, voir Trous du filet (task-350). task-353 : de nouveau au 1er essai sur deux passages ; au 2e essai d'un passage, **incident de banc distinct** : rafale de connexions IMAP coupées à l'authentification (10053/10054, Seq 12:20:29 UTC), `enrich/sync` puis contenu en 503 → « Aucun contenu ». Piste : `mail_max_userip_connections` (10, défaut Dovecot du banc) atteint par des requêtes simultanées du même praticien task-356 : **rouge aux deux essais**, la porte bloque (1er essai, même signature `live-ai.e2e.ts:231` ; 2e essai, « le dossier INBOX est ouvert » introuvable, `support/weda.ts:78` — signature de l'incident de banc de task-353). Sur une task qui ne touche ni la rédaction ni le parcours. Sortie : quarantaine humaine citant task-350, ou task-350 corrigée d'abord 2e run de task-356 : de nouveau rouge aux deux essais (2e essai : page connectée, « Le dossier n'a pas pu être chargé », donc incident de banc et non authentification). **Mis en quarantaine par l'humain le 2026-10-09 (task-350)** task-357 : en quarantaine, vert au 2e essai (même signature au 1er essai) |
 
 ## Quarantaines

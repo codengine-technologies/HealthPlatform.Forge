@@ -304,6 +304,17 @@ client-blazor `6bf8c09` + `465434f` ; weda2 en code seul (design system compris)
 - Contrôle visuel **non fait** : le banc e2e n'a pas pu démarrer, car le port 5052 était occupé par l'API locale de
   l'humain. À refaire, ou à vérifier directement dans weda2.
 
+**2026-10-24 — stabilisation de E2E-DETAIL-001 (mobile), décision de l'humain (« termine »).**
+
+- **Cause établie, ce n'était pas un flaky.** Dans la trace des deux essais rouges, le corps de `sendmail` montre le
+  bon destinataire (`praticien@e2e.test`), et la dernière image du screencast montre le transfert **arrivé**, sous le
+  titre du CDA « Lettre de liaison… ». Les messages de l'étape 3 portent des `IHE_XDM.ZIP`, et `waitForSubject` les
+  cherchait par leur objet. L'hypothèse de la puce non attendue est réfutée.
+- **Correctif** (client-mobile `e099757`, test seul) : désignation par uid relu côté serveur
+  (`OtherDevice.waitForUidBySubject`, `waitForRowByUid`). `tsc -p e2e` vert, 46 tests listés.
+- **Prévention** : `conventions/e2e.md`, `ligne-de-biologie` élargie en `ligne-de-cda` (occurrences 2, consigne de
+  diagnostic par le screencast) ; ligne du registre des flaky passée à « établie ».
+
 ## Sonar log
 - Phase 1 (new code) : ✓ Quality Gate OK au premier passage, new_coverage = 97,1 %, 0 finding
 - Phase 2 (legacy) : 0 itération — cibles projet atteintes
@@ -383,10 +394,10 @@ client-blazor `6bf8c09` + `465434f` ; weda2 en code seul (design system compris)
 | /sonar | ok | 8 min 34 s | 3 (1 min 06 s) | 15 (20 min 27 s) | 6 (2 min 12 s) | api-mail 3B/15T, (h)(i)(j) : QG OK, 0 finding |
 | /lint-angular | ok | 2 min 04 s | 3 (44 s) | 3 (4 min 41 s) | — | client-angular 3B/3T |
 | /lint-mobile | ok | 6.7 s | 1 (8.6 s) | — | — | client-mobile 1B/0T |
-| /e2e | failed | 22 min 20 s | — | — | — | e2e ×11 (1 h 06 min), E2E-DETAIL-001 mobile rouge (3e occurrence), questions/task-388.md |
+| /e2e | failed | 17 min 41 s | — | — | — | e2e ×13 (1 h 22 min), run 3 : mobile vert 41/41 (DETAIL-001 stabilisé) ; angular E2E-PATIENT-003 rouge + parité UnknownIdentifier — branches api-mail/mobile en retard d'un commit sur develop (task-373) |
 | /review | ok | 7 min 29 s | 9 (1 min 14 s) | 8 (9 min 53 s) | — | api-mail 2B/2T, client-mobile 2B/2T, client-blazor 2B/2T, client-angular 2B/2T, dtos-mss 1B/0T, extension APPROVED ; PR dtos-mss #47 ; corps #307 #101 #96 mis à jour |
 | /tech-writer | ok | 0.6 s | — | — | — | — |
-| **Total cycle** | | **1 h 06 min** | **21 (4 min 28 s)** | **45 (43 min 13 s)** | **6 (2 min 12 s)** | |
+| **Total cycle** | | **1 h 02 min** | **21 (4 min 28 s)** | **45 (43 min 13 s)** | **6 (2 min 12 s)** | |
 
 Autres commandes mesurées : lint ×10 (1 min 32 s), nuget-wait ×1 (26 s)
 
