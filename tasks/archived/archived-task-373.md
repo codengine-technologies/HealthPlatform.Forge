@@ -323,3 +323,11 @@ Autres commandes mesurées : lint ×2 (1 min 24 s)
   ?? front/libs/mss/src/features/patient/components/patient-card/patient-card.component.spec.ts
   ?? front/libs/mss/src/features/patient/components/patient-timeline/patient-timeline.component.spec.ts
 ```
+
+## Merged
+
+- 2026-10-24, après test humain (`--i-tested`) ; PR mergées par l'humain depuis GitHub.
+- api-mail #308 : squash `515207d7` sur `develop` ; CI « Build and Publish » verte.
+- client-mobile #102 : squash `5abe117e` sur `develop` ; CI « Android Build » verte.
+- Branches `fix/task-373-dossier-patient-du-seul-patient` : distantes déjà supprimées à la fusion, locales supprimées ; clones revenus sur `develop`.
+- client-angular : code-only, géré par l'humain sur TFS.
