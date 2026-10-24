@@ -353,14 +353,14 @@ itération de correction, rien à commiter.
 |---|---|---|---|---|---|---|
 | /start | ok | 19 s | — | — | — | — |
 | /develop | ok | 3 min 03 s | 5 (43 s) | 8 (2 min 13 s) | — | api-mail 0B/1T, client-mobile 4B/6T, client-angular 1B/1T, e2e ×2 (15 min 04 s), seconde reprise : withdraw(token), 4 tests rouges d'abord, mss-lib 1 214 |
-| /sonar | skipped | 0.5 s | — | — | — | reprise : api-mail toujours limité au catalogue e2e (YAML), aucun C# |
-| /lint-angular | ok | 16 s | — | — | — | reprise : 0 erreur |
-| /lint-mobile | ok | 6.5 s | — | — | — | reprise : All files pass linting |
-| /e2e | ok | 14 min 37 s | — | — | — | e2e ×6 (29 min 29 s), reprise : mobile 44/44, angular 52/52, 0 flaky, parité verte |
-| /review | failed | 2 min 05 s | 5 (52 s) | 5 (5 min 24 s) | — | client-mobile 2B/2T, client-angular 2B/2T, api-mail 1B/1T, seconde revue CHANGES REQUESTED : course composeTo (navigation remplacée vide le destinataire suivant) |
-| **Total cycle** | | **20 min 28 s** | **10 (1 min 35 s)** | **13 (7 min 37 s)** | **0 (0.0 s)** | |
+| /sonar | skipped | 0.4 s | — | — | — | seconde reprise : api-mail limité au catalogue e2e (YAML) |
+| /lint-angular | ok | 11 s | — | — | — | seconde reprise : 0 erreur |
+| /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile inchangé depuis le lint propre (a7fdead) |
+| /e2e | ok | 15 min 28 s | — | — | — | e2e ×9 (44 min 40 s), seconde reprise : mobile 44/44, angular 52/52, 0 flaky, parité verte |
+| /review | ok | 1 min 11 s | 5 (52 s) | 5 (5 min 24 s) | — | client-mobile 2B/2T, client-angular 2B/2T, api-mail 1B/1T, troisième passe APPROVED ; PR api-mail #309, mobile #103 ; weda2 code seul |
+| **Total cycle** | | **20 min 14 s** | **10 (1 min 35 s)** | **13 (7 min 37 s)** | **0 (0.0 s)** | |
 
-Autres commandes mesurées : lint ×4 (31 s)
+Autres commandes mesurées : lint ×5 (41 s)
 
 ## Stitch design log
 
@@ -388,7 +388,7 @@ system `assets/7f352f2521964c6dacc9c7df62922990`.
 
 ## E2E log
 
-Run du 2026-10-24, après la reprise — **VERT**. Il remplace le run d'avant revue (vert lui aussi).
+Run du 2026-10-24, après la seconde reprise — **VERT**. Il remplace les runs précédents (verts eux aussi).
 
 | Voie | Déclencheur | Résultat | Tests | Durée |
 |---|---|---|---|---|
@@ -506,3 +506,44 @@ récent, et un double-clic sur « Écrire un message » ouvre la messagerie sans
 
 **Prévention** : `conventions/angular.md` › `annulation-qui-vide-l-etat-d-un-autre`.
 
+### Revue finale (2026-10-24, troisième passe)
+
+**Verdict : APPROVED** — 0 bloquant. Le retrait par jeton lève la course du double clic. Le jeton n'est détenu que par
+`composeTo`, et `mss-mail` n'est pas touché. Suggestion non bloquante : typer le jeton en lecture seule
+(`Readonly<MailAddressDto>`, ou un `symbol` opaque).
+
+**Validation finale** : api-mail ✓ 6 767 (16 ignorés) ; client-mobile ✓ 1 241 ; weda2 ✓ `mss-lib` 1 214, build
+`weda2` vert ; e2e vert (mobile 44/44, Angular 52/52, parité verte).
+
+**Suggestions laissées à l'humain** :
+- `mss-contacts.component.ts` (weda2) fait 1 831 lignes : le découper en liste, aperçu et fiche ;
+- Import et export vCard depuis le menu « ⋯ » : sans test ;
+- avec une seule adresse, l'ordre « adresse par défaut en premier » n'est pas exercé par E2E-CONTACT-004 (il est
+  couvert en unitaire) ;
+- vider puis retaper l'adresse par défaut lui fait perdre sa désignation (déjà le cas avant, avec la task-379) ;
+- les libellés accessibles mobiles sont testés par leurs méthodes, pas par le rendu de la fenêtre.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/309 — label
+  `awaiting-human-merge` (catalogue e2e)
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/103 — label
+  `awaiting-human-merge`
+- `client-angular` : code seul. L'humain gère le commit, le push sur TFS et l'ouverture de la PR. Fichiers modifiés ou
+  créés, non commités, sur `feature/nova-mss-weda-integration` :
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`
+  - `front/e2e/mss-e2e/support/e2e-backend.ts`
+  - `front/libs/mss/src/features/contacts/mss-contacts.component.html`
+  - `front/libs/mss/src/features/contacts/mss-contacts.component.scss`
+  - `front/libs/mss/src/features/contacts/mss-contacts.component.spec.ts`
+  - `front/libs/mss/src/features/contacts/mss-contacts.component.ts`
+  - `front/libs/mss/src/features/mail/mss-mail.component.ts`
+  - `front/libs/mss/src/index.ts`
+  - `front/libs/mss/src/core/guards/leave-confirmation.guard.spec.ts`
+  - `front/libs/mss/src/core/guards/leave-confirmation.guard.ts`
+  - `front/libs/mss/src/core/services/contact-compose-handoff.service.spec.ts`
+  - `front/libs/mss/src/core/services/contact-compose-handoff.service.ts`
+  - `front/libs/mss/src/core/utils/contact-card.util.spec.ts`
+  - `front/libs/mss/src/core/utils/contact-card.util.ts`
+  - `front/libs/mss/src/features/contacts/mss-contacts-refonte.component.spec.ts`
+  - `front/libs/mss/src/features/mail/mss-mail.component.contact-recipient.spec.ts`
