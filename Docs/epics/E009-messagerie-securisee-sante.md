@@ -1036,10 +1036,18 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
-- **v1.104 — Vous reconnaissez vos correspondants dès la saisie de l'adresse** (task-388, messagerie web et application mobile) :
+- **v1.105 — Vous reconnaissez vos correspondants dès la saisie de l'adresse** (task-388, messagerie web et application mobile) :
   - **Une suggestion se lit comme une fiche.** En tapant un nom dans A, Cc ou Cci, chaque proposition montre l'avatar du correspondant, une icône qui indique son type (stéthoscope pour un professionnel de santé, silhouette pour un patient, bâtiment pour un établissement), son nom, sa spécialité dessous quand elle est connue, et son adresse à droite.
   - **La spécialité a sa propre place.** Importer un confrère depuis l'Annuaire Santé enregistre sa profession et sa spécialité dans sa fiche, et n'ajoute plus d'étiquettes. Vos étiquettes restent les vôtres.
   - **Les icônes de la liste des contacts sont corrigées.** Un professionnel porte le stéthoscope et un patient une silhouette, dans la liste comme dans le filtre « Types de contact ».
+- **v1.104 — La fiche d'un patient ne montre que ce qui lui appartient** (task-373, messagerie web et application mobile) :
+  - **Un courrier qui concerne deux patients est rangé chez chacun, séparément.** Quand un même message apporte le compte rendu de deux patients, la fiche de chacun ne montre que son propre document, sa biologie et sa synthèse, jamais ceux de l'autre. Un document dont la suppression a été acceptée, ou qui a été remplacé par une version plus récente, n'apparaît plus dans la fiche.
+  - **Deux fiches au même matricule ne se mélangent plus.** Chaque fiche affiche ses propres documents et sa propre opposition.
+  - **Chaque résultat de biologie garde son unité.** Une même analyse rendue en g/L par un laboratoire et en mmol/L par un autre s'affiche sur deux lignes distinctes, chacune avec son unité ; aucune tendance ne compare les deux.
+  - **La biologie et la synthèse couvrent tout le dossier**, pas seulement les derniers messages affichés. La période proposée automatiquement montre toujours le résultat le plus ancien, et elle ne remplace plus la période que vous avez choisie.
+  - **L'opposition affichée est celle qui est enregistrée.** Si elle ne peut pas être enregistrée (réseau coupé, par exemple), la case revient à son état précédent et un message vous le dit. Une fois enregistrée, l'état et la date affichés sont ceux du serveur.
+  - **Rattacher un document vise toujours le bon document.** Les patients proposés dans la fenêtre de rattachement sont ceux du document ouvert, même si vous en avez changé pendant la recherche.
+  - **Sur l'application mobile, la fiche patient affiche désormais ses documents**, sa biologie et sa synthèse : elle restait vide jusque-là.
 - **v1.103 — La recherche dans l'Annuaire Santé ne montre plus de message technique, ni de cause fausse** (task-388, les trois applications) :
   - **Une spécialité avec un nom d'établissement trop court demande un lieu.** « Médecine générale » avec « CH », sans code postal ni commune, est refusée tout de suite avec la raison : il faut au moins 3 lettres du nom de l'établissement. Avec 3 lettres, ou avec un lieu, la recherche part.
   - **Sur mobile, une coupure réseau donne un message clair.** En mode avion, ou quand un serveur intermédiaire est en panne, vous lisez « L'annuaire santé est momentanément indisponible. Réessayez dans un instant. » L'adresse technique de la requête, qui contenait les critères saisis, n'est plus jamais affichée.

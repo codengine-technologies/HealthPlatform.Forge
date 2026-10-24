@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-10-24 (v1.104)
+> **Dernière mise à jour** : 2026-10-24 (v1.105)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -761,7 +761,7 @@
   - remonter `originalMarkedCancelled` et `warning` par `drafts/{id}/send` ;
   - bail renouvelable pour le verrou.
 
-### v1.104 — Profession et spécialité d'un contact, suggestions de destinataires lisibles, icônes de type corrigées — task-388 (extension)
+### v1.105 — Profession et spécialité d'un contact, suggestions de destinataires lisibles, icônes de type corrigées — task-388 (extension)
 
 - **Origine** : demandes de l'humain du 2026-10-24, après la revue de task-388.
 - **Icônes** : weda2 inversait les icônes de type, le professionnel portait la personne et le patient le stéthoscope. La liste, le filtre et la rédaction lisent désormais un seul `contact-type.util`.
@@ -788,6 +788,34 @@
   - budgets `mss` et `prescription` de la branche weda2 ;
   - instabilité de `SeededThreadsAreCountableTests` ;
   - regroupement des codes de médecine générale (SM26, SM53, SM54) dans la liste des spécialités.
+### v1.104 — Dossier patient : la fiche ne sert que ses documents actifs, unité dans la série, opposition relue (ANG-20, ANG-50 à ANG-54) — task-373
+
+- **Origine** : audit de bugs du client Angular du 2026-10-13. Décision humaine du 2026-10-24 : la vue patient mobile entre dans la task (elle n'affichait aucun document).
+- **api-mail** :
+  - `GET patients/{id}/folder?page&pageSize&withBodies` : page de mails, dont chaque contenu ne porte que les documents actifs de CETTE fiche (`ActiveDocumentsForPatient`, même expression que la page). Corps servis par défaut (weda2) ou omis avec `withBodies=false` (mobile).
+  - `GET patients/{id}/documents` : tous les documents actifs, sans corps, avec biologie et synthèse (onglets Biologie et Synthèse, hors pagination).
+  - Construction : `MailRepository.GetMedicalDocumentsAsync(ids, withBodies)`, celle du contenu d'un mail. Biologie, synthèse et doublons en recherches groupées ; pièces en une requête par page (`LoadDocumentAttachmentsByMailAsync`, empruntée aussi par le chemin d'un seul mail).
+  - Composition : `PatientFolderService`, injecté par `[FromServices]`. Aucun changement de contrat `dtos-mss`.
+- **weda2** (code-only) et **mobile** :
+  - Chronologie par handle (`patientId`), garde de génération, filtre `patientId` en défense ; plus aucun `getEmailContent` (weda2).
+  - Biologie : clé de série `code|nom|unité`, unité par valeur, période automatique sur la coupure en mois de calendrier, choix du médecin préservé.
+  - Opposition par handle : retour sur échec avec message, état et date relus (`GET patients/{id}`).
+  - Dialogue de rattachement : abandon de la requête précédente et garde de document (ANG-54).
+  - Suppressions : `patient-consent` weda2 (mort) ; `getMailsByInsPaged`, `updatePatientOpposition(ins)`, `getMedicalDocumentsByIns` (le dossier ne se lit plus par INS).
+- **Filet** :
+  - Règle 1b : `PatientFolderEndToEndTests.AMailCarryingTheDocumentsOfTwoPatients_EachFolderServesOnlyItsOwnActiveDocuments` (X actif, X suppression acceptée, Y). Mutations rouges : M1 (tous les documents du mail), M2 (statuts ignorés), M3 (`withBodies` ignoré).
+  - Clients : weda2 M1 à M9b, mobile MM1 à MM8, toutes rouges.
+  - E2E : **E2E-PATIENT-003** (nouveau, angular et mobile `requis`), seed `cda-deux-patients` (deux IHE_XDM.ZIP, CDA du gabarit sans INS avec INS de test `1.2.250.1.213.1.4.10`, `E2eTwoPatientsXdm`), vu rouge sous M1 sur le banc mobile.
+- **Tests** : api-mail 195 + 695 + 3 607 + 1 280 + 966/982 (16 ignorés IA), 0 échec ; mobile 1 197 ; weda2 `npm test` vert (12 projets).
+- **Sonar** : KPI inchangés (new_coverage 98,2 %, 72 violations héritées, QG ERROR hérité) ; 0 problème imputable ; projet 98,0 → 98,1 %. Première analyse publiée par erreur sur le projet dormant `healthplatform` (clé du `.env`), refaite sur `healthplatform-api-mail`.
+- **E2E** : voies mobile 42 et Angular 49 + 1 flaky (E2E-SEARCH-001, 6ᵉ occurrence), parité verte. Premier montage Angular en code 2 (api-mail e2e muet 480 s), vert au second.
+- **PR** (`awaiting-human-merge`, branche `fix/task-373-dossier-patient-du-seul-patient`) : `api-mail` #308, `client-mobile` #102 ; `client-angular` en code-only (TFS).
+- **Écart** : domaine de la fiche non affiché dans la recherche (`MailPatientDto` ne le porte pas : contrat `dtos-mss`, task de suivi).
+- **Leçons** :
+  - `conventions/angular.md` : « reponse-d-un-contexte-depasse » (nouvelle) ;
+  - `conventions/e2e.md` : trou du filet, registre des flaky ;
+  - mémoire : clé de projet Sonar à surcharger.
+- **Suivis** : borner `pageSize` de `folder` ; domaine dans la recherche ; stabiliser E2E-SEARCH-001.
 
 ### v1.103 — Annuaire Santé : finitions de la revue de task-386 (organisation courte, page de maintenance, messages clients, double recherche) — task-388
 
@@ -1628,6 +1656,7 @@ Audit grep complémentaires pour les couches 2 / 2bis / 3 (tasks 021 / 022 / 023
 | Task | Apport principal | Règles touchées |
 |------|------------------|-----------------|
 | task-388 | **Les finitions de la recherche dans l'annuaire, puis la spécialité des contacts.** Extension du 2026-10-24 : `ContactDto.Profession` et `Specialty` (533.0.0), suggestions de destinataires avec avatar, icône du type et spécialité (weda2 et mobile), icônes de type corrigées. Finitions : Une organisation de moins de 3 caractères est refusée avec une spécialité sans lieu ; une page de maintenance est gardée en « indisponible » ; le mobile n'affiche plus jamais le message technique d'Angular ; Blazor distingue session expirée et annuaire indisponible, et ne lance plus deux fois la recherche. | — |
+| task-373 | **La fiche d'un patient ne montre que ce qui lui appartient.** Routes `folder` / `documents` par handle servant les seuls documents actifs de la fiche ; unité dans la série de biologie, période automatique juste ; opposition relue et rétablie sur échec ; rattachement protégé des réponses périmées ; vue patient mobile enfin alimentée (weda2 + mobile). | — |
 | task-376 | **Rédiger sans perte ni double envoi.** Remise incertaine typée en 503 `MAIL_DELIVERY_UNCERTAIN` sur les trois routes d'envoi et bloquée côté clients ; brouillon jamais orphelin ni perdu ; annule et remplace limité au message choisi ; transfert par référence des pièces homonymes ; saisie et refus du serveur rendus lisibles (weda2 + mobile). | — |
 | task-386 | **La recherche dans l'Annuaire Santé trouve le praticien et dit quand elle est incomplète.** Deux pivots (praticien / établissement), quota partagé Redis, issue `X-Directory-Search-Outcome`, 503 `DIRECTORY_UNAVAILABLE`, règles de recherche refusées avant tout appel (trois clients). | — |
 | task-379 | **Un contact garde toutes ses adresses MSSanté, avec une adresse par défaut ; la recherche survit à une erreur.** ANG-57 : fiche weda2 réduite à la 1re adresse, liste remplacée à l'enregistrement → adresses secondaires perdues ; rédaction limitée à `primaryMssAddress` sur les deux clients. Contrat `DefaultMssAddress` (530.0.0), colonne `ContactMssAddresses.IsDefault`, 400 hors liste ; suggestions par adresse (règle commune aux deux clients) ; import annuaire weda2 fusionné ; ANG-56 erreur dans le `switchMap`. ANG-58 écarté (annuaire = adresses MSSanté seulement). E2E-CONTACT-002 v2, E2E-COMPOSE-004. PR dtos-mss #46, api-mail #304, mobile #98. | — |
