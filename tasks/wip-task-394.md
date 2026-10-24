@@ -121,3 +121,69 @@ Voir `tests/Features/Mss/EmptyComposeLeavesNoDraft.feature`.
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui, stockage des brouillons inchangé
 - **AIPD / impact RGPD** : inchangé. La règle réduit les données conservées (brouillons sans contenu).
+
+## Branches
+- `api-mail` (pushed) : fix/task-394-redaction-vide-sans-brouillon — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-394-redaction-vide-sans-brouillon (catalogue e2e)
+- `client-mobile` (pushed) : fix/task-394-redaction-vide-sans-brouillon — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/fix/task-394-redaction-vide-sans-brouillon
+- `client-angular` (code-only) : la forge écrit le code sur la branche checkée dans `Client/Angular/` (au `/start` :
+  `feature/nova-mss-weda-integration`, arbre propre) ; humain gère commit, push et PR TFS
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-394 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 21 s | — | — | — | — |
+| /develop | ok | 24 min 42 s | 1 (14 s) | 2 (33 s) | — | api-mail 0B/1T, client-angular 1B/1T, e2e ×1 (8 min 20 s), weda2 + mobile ; DRAFT-004 prouvé rouge (MA1, MA3, M1) ; DETAIL-001 weda2 adapté |
+| **Total cycle** | | **25 min 04 s** | **1 (14 s)** | **2 (33 s)** | **0 (0.0 s)** | |
+
+## Develop log
+
+**2026-10-24 — `/develop` (forge).** api-mail `2400a7df` (catalogue) ; client-mobile `21de5b4` + `5775dbd` ; weda2 en code
+seul, non commité sur `feature/nova-mss-weda-integration`. Deux forks en parallèle, un par client ; les bancs e2e ont été
+joués à la suite, une voie à la fois.
+
+- **Catalogue** : E2E-DRAFT-004 v1, mobile et Angular requis, `headless`. `ScenarioCatalogTests` : 23 verts.
+- **weda2** (`mail-compose.component.ts`) :
+  - `hasContent()` ne compte plus que `hasOwnText(body)`, c'est-à-dire le corps sans signature ni citation, ce qui
+    était déjà testé ;
+  - cinq points d'entrée suivent : enregistrement automatique, quitter pour un autre message, ouverture d'une autre
+    rédaction, fermeture de l'onglet, croix ;
+  - la croix (`requestDiscard`) ferme directement sans texte, sans brouillon enregistré et hors intention de l'hôte ;
+  - une rédaction d'intention de l'hôte garde toujours la confirmation, puisqu'elle porte le document du dossier.
+- **mobile** :
+  - nouveau `core/utils/compose-body.util.ts` (`hasOwnText`), qui retire la signature et la citation `<blockquote>` ;
+  - `splitOwnText` n'est pas réutilisé : il ignore ce qui suit la signature, alors qu'un texte tapé sous la signature
+    compte ;
+  - `hasDraftContent()` ne compte plus que ce texte. Ses deux appelants : `saveDraftNow` et `closeCompose` (croix,
+    geste, ouverture différée).
+- **Preuves rouges, tests unitaires** :
+  - weda2 : 9 tests rouges avant le code (croix vide, objet + destinataire + pièce jointe, signature seule, réponse,
+    enregistrement automatique, quitter, « Nouveau message » pendant une rédaction, brouillon rouvert vidé,
+    fermeture de l'onglet). 3 tests verts d'emblée sont prouvés par mutation : M1, la croix ferme sans condition ;
+    M2, l'exception de l'intention est retirée ;
+  - mobile : 11 tests rouges contre un bouchon (7 sur le composant, 4 sur l'utilitaire). Puis 2 mutations : M1, le
+    texte après la signature ou la citation est ignoré ; M2, `hasDraftContent` est toujours faux.
+- **Tests existants adaptés**, sans changer ce qu'ils vérifient : du texte est ajouté dans le corps.
+  - weda2 : 3 tests de composant (toolbar, safety ANG-15, intent auto-save) ;
+  - mobile : 9 tests de mécanique de brouillon, et les aides e2e de E2E-DRAFT-001 et 002.
+- **E2E-DETAIL-001 (weda2) adapté** : sa réponse sans texte se fermait par la croix puis cliquait la confirmation
+  d'abandon, qui n'apparaît plus. Le test vérifie désormais que la réponse se ferme sans question. Le fork ne l'avait
+  pas vu, c'est la voie Angular qui l'a révélé. Prévention : `conventions/e2e.md` › `comportement-retire-encore-traverse`.
+- **Preuves par mutation e2e** (banc `--serve-only`, code restauré puis rejoué vert) :
+
+  | Mutation | Client | Assertion tombée |
+  |---|---|---|
+  | MA1 : ancien critère (objet, destinataire, pièce jointe comptent) | weda2 | « la croix ferme la rédaction » (la question la garde ouverte) |
+  | MA3 : la croix ferme sans question mais enregistre selon l'ancien critère | weda2 | « aucun enregistrement de brouillon n'est parti » |
+  | M1 : ancien critère dans `hasDraftContent` | mobile | « relu côté serveur : aucun brouillon ne porte cet objet » |
+
+- **Bancs** :
+  - weda2 : E2E-DRAFT-004 et DETAIL-001 verts, la voie complète ayant d'abord révélé DETAIL-001 ;
+  - mobile : DRAFT-001, 002, 003, 004 et DETAIL-001 verts.
+- **Tests** : weda2 `mss-lib` 1 226 ; mobile 1 257. Builds verts, 0 erreur de lint.
+- **Défaut indépendant relevé (mobile)** : le spec de la rédaction lancé seul (`--include`) fait tomber 4 tests
+  « suggestions de destinataires » (task-388). C'était déjà le cas sur `develop` ; la suite complète est verte.
+- **Trou du filet** : ligne ajoutée dans `conventions/e2e.md`.
+
