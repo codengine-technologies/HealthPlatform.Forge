@@ -5810,3 +5810,5 @@
 {"ts":"2026-10-23T19:00:18+02:00","run_id":"-","type":"step","task":"task-388","step":"review","status":"ok","note":"APPROVED, 3 PR ouvertes (api-mail #307, mobile #101, blazor #96), mutation M15 sur (b)","iterations":null,"duration_ms":531859}
 {"ts":"2026-10-23T19:00:23+02:00","run_id":"-","type":"step_start","task":"task-388","step":"tech-writer"}
 {"ts":"2026-10-23T19:00:58+02:00","run_id":"-","type":"step","task":"task-388","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":34187}
+{"ts":"2026-10-24T10:36:44+02:00","run_id":"-","type":"step_start","task":"task-373","step":"tech-writer"}
+{"ts":"2026-10-24T10:37:21+02:00","run_id":"-","type":"step","task":"task-373","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":37584}

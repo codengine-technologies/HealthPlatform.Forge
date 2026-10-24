@@ -80,7 +80,8 @@ Que la fiche d'un patient ne présente **que** les documents, résultats et déc
 | /lint-mobile | ok | 27 s | — | — | — | reprise mobile |
 | /e2e | ok | 29 min 12 s | — | — | — | e2e ×4 (25 min 13 s) |
 | /review | ok | 6 min 09 s | 3 (1 min 37 s) | 3 (5 min 32 s) | — | api-mail 1B/1T, client-mobile 1B/1T, client-angular 1B/1T |
-| **Total cycle** | | **1 h 50 min** | **11 (5 min 57 s)** | **29 (30 min 23 s)** | **4 (4 min 37 s)** | |
+| /tech-writer | ok | 37 s | — | — | — | — |
+| **Total cycle** | | **1 h 51 min** | **11 (5 min 57 s)** | **29 (30 min 23 s)** | **4 (4 min 37 s)** | |
 
 Autres commandes mesurées : lint ×2 (1 min 24 s)
 
