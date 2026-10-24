@@ -367,10 +367,10 @@ Only if the task changes the CDA parser library.
 Same pattern as Step 2 — including **no quality pass** (§Q, tier 3 :
 contract carrier) :
 
-1. Code in `interop/interop.cda.parser/`
+1. Code in `interop/`
 2. Build :
    ```bash
-   cd interop/interop.cda.parser
+   cd interop
    dotnet build interop.cda.parser.sln
    dotnet test  interop.cda.parser.sln
    ```
