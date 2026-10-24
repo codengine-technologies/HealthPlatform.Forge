@@ -5870,3 +5870,10 @@
 {"ts":"2026-10-24T10:57:53+02:00","run_id":"-","type":"step","task":"task-388","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":691}
 {"ts":"2026-10-24T10:36:44+02:00","run_id":"-","type":"step_start","task":"task-373","step":"tech-writer"}
 {"ts":"2026-10-24T10:37:21+02:00","run_id":"-","type":"step","task":"task-373","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":37584}
+{"ts":"2026-10-24T11:15:17+02:00","run_id":"-","type":"step_start","task":"task-388","step":"develop"}
+{"ts":"2026-10-24T11:24:01+02:00","run_id":"-","type":"cmd","task":"task-388","step":"develop","repo":"client-mobile","kind":"lint","label":"","cwd":"Client/Mobile","cmd":"npm run lint","duration_ms":5283,"exit_code":0}
+{"ts":"2026-10-24T11:24:10+02:00","run_id":"-","type":"cmd","task":"task-388","step":"develop","repo":"client-mobile","kind":"build","label":"","cwd":"Client/Mobile","cmd":"npm run build","duration_ms":7437,"exit_code":0}
+{"ts":"2026-10-24T11:27:35+02:00","run_id":"-","type":"cmd","task":"task-388","step":"develop","repo":"client-angular","kind":"lint","label":"","cwd":"Client/Angular/front","cmd":"npx nx run-many -t lint --projects=mss-lib,design-system","duration_ms":11071,"exit_code":0}
+{"ts":"2026-10-24T11:27:49+02:00","run_id":"-","type":"cmd","task":"task-388","step":"develop","repo":"client-angular","kind":"build","label":"","cwd":"Client/Angular/front","cmd":"npm run build","duration_ms":13212,"exit_code":0}
+{"ts":"2026-10-24T11:28:14+02:00","run_id":"-","type":"cmd","task":"task-388","step":"develop","repo":"client-angular","kind":"test","label":"","cwd":"Client/Angular/front","cmd":"npx nx run-many -t test --projects=mss-lib,design-system --skipNxCache","duration_ms":24265,"exit_code":0}
+{"ts":"2026-10-24T11:40:57+02:00","run_id":"-","type":"step","task":"task-388","step":"develop","status":"ok","note":"extension (h)(i)(j) : liste, fiche, deux colonnes","iterations":null,"duration_ms":1540346}

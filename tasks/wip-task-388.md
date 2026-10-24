@@ -132,6 +132,15 @@ Feature: Directory search finishing touches
   - rédaction (A, Cc, Cci) de **weda2 et du mobile** : chaque suggestion montre l'avatar avec l'icône du type de
     contact, le nom, la spécialité dessous quand elle est connue, et l'adresse à droite.
 
+- **(h) Spécialité visible dans la liste des contacts** (weda2, mobile, Blazor) : sous le nom, la spécialité, à défaut
+  la profession, comme dans les suggestions. Corrige une régression de (g) : l'import n'écrivant plus d'étiquettes, un
+  contact importé n'affichait plus sa spécialité dans la liste.
+- **(i) Profession et spécialité modifiables dans la fiche** (weda2, mobile, Blazor) : profession en texte libre ;
+  spécialité en texte libre avec suggestions tirées de la liste de l'annuaire (`GET …/Directory/specialties`).
+  Un nouvel import depuis l'annuaire remplace la valeur saisie (l'annuaire fait foi) ; l'enrichissement CDA ne
+  remplace jamais.
+- **(j) Fiche de modification d'un contact sans défilement** (weda2) : mise en page compacte, sur deux colonnes.
+
 **Décisions de l'humain (2026-10-24)** :
 1. Pas de récupération des contacts existants : les champs se remplissent au fil des imports et des enrichissements.
 2. À l'import depuis l'annuaire, champs dédiés seulement : aucune étiquette n'est plus ajoutée ; les étiquettes
@@ -158,6 +167,10 @@ Feature: Directory search finishing touches
 6. Importer un praticien depuis l'annuaire (weda2, puis mobile) : la fiche n'a aucune nouvelle étiquette ; dans une
    rédaction, taper son nom → avatar, icône stéthoscope, nom, spécialité dessous, adresse à droite.
 7. Un contact sans spécialité (créé à la main) : la suggestion montre le nom sans ligne vide.
+8. Liste des contacts (weda2, mobile, Blazor) : un contact importé montre sa spécialité sous le nom.
+9. Fiche d'un contact (weda2, mobile, Blazor) : modifier la profession et choisir une spécialité suggérée (ou en
+   taper une autre), enregistrer, rouvrir : les valeurs sont conservées et la liste les affiche.
+10. weda2 — fiche de modification sur un écran de portable (1366×768) : tous les champs visibles sans défilement.
 
 ## Develop log
 
@@ -226,6 +239,45 @@ client-blazor `11127fb` (bump) + `d99c195` + `2c8d8cf` ; client-mobile `ae166b9`
   (reprendrait `DefaultMssAddress`, changement de comportement), import côté serveur (suite).
 - **Non couvert par un test unitaire** : la recopie de la fiche dans `Contacts.razor` (Blazor) — vérifiée à la lecture.
 
+**2026-10-24 — `/develop`, extension (h), (i), (j).** api-mail `d1343c18` ; client-mobile `cfb0e80` + `0d9882b` ;
+client-blazor `6bf8c09` + `465434f` ; weda2 en code seul (design system compris). Contrat inchangé (533.0.0).
+
+- **(h) Spécialité dans la liste des contacts.** Sous le nom s'affiche la spécialité, ou à défaut la profession :
+  weda2 (`contactSubtitle`), mobile (même utilitaire) et Blazor (`Contacts.SubtitleOf`).
+- **(i) Fiche modifiable.** La profession est en saisie libre. La spécialité aussi, avec les libellés de l'annuaire proposés :
+  - weda2 : `<datalist>` native, grâce à une nouvelle entrée facultative `list` sur `ds-input` (design system) ;
+  - mobile : correspondance sans accent ni casse, cinq propositions au plus, choisies d'un toucher ;
+  - Blazor : `RadzenAutoComplete`.
+  Un patient n'a ni l'une ni l'autre. La règle est désormais portée par l'API (`SanitizeContactDto`), pour tous les
+  écrivains.
+- **(j) weda2 : la fiche tient sur deux colonnes** (identité à gauche, messagerie et notes à droite, boutons dessous).
+  Contrôle visuel sur le banc e2e (weda2 servi en `--serve-only`, Playwright) : à **1366×768** avec deux adresses,
+  `formScroll = 0`, et les boutons s'arrêtent à 698 px pour une hauteur de 768 : la fiche est visible en entier. Même
+  résultat à 1920×1080. La spec de capture était temporaire, elle a été supprimée.
+- **Blazor** : les icônes de type de la liste et du filtre sont alignées sur weda2 (stéthoscope pour un professionnel,
+  personne pour un patient).
+- **Preuves rouges** :
+  - weda2 : tests de rendu (`mss-contacts-render.component.spec.ts`) et tests d'instance rouges d'abord ; `ds-input`
+    prouvé par mutation (`[attr.list]` retiré).
+  - mobile : une mutation combinée (champ retiré de `toContactDto`, ligne de liste retirée, suggestions non
+    filtrées) fait échouer les 4 tests visés.
+  - Blazor : une mutation (`SubtitleOf` vidé, nettoyage de la spécialité retiré) fait échouer les 3 tests visés.
+  - API : `APatient_IsStoredWithoutProfessionNorSpecialty` rouge avant le correctif (M22).
+  > **Test qui mentait, corrigé avant de servir** : le test de rendu « deux colonnes » passait sans les colonnes.
+  > `identity?.querySelector(...)` vaut `undefined`, et `not.toBeNull()` l'accepte. Il exige désormais l'existence de
+  > chaque colonne (`toBeTruthy`). Consigné dans `conventions/angular.md`.
+  > **Effet de bord observé en mutation, côté mobile** : les tests de contacts mutés laissent des `ion-modal`
+  > ouvertes, et les 4 tests de rendu de la rédaction échouent en cascade. Sur le code restauré, tout est vert.
+  > Retirer les modales au début de ces tests cassait leur propre modale : cette idée a été annulée.
+- **Tests** : weda2 `mss-lib` 1 109 ; design system 1 925 ; mobile 1 207 ; Blazor 481 ; api-mail (route) 12.
+- **Passe qualité (§Q)** :
+  - appliqué : règle « patient » descendue dans l'API ; normalisation partagée côté mobile (`normalize`), libellés
+    normalisés une fois, garde de chargement dans `loadSpecialties` ; icônes du filtre Blazor ; `datalist` qui
+    parcourt directement les spécialités ; styles du sous-titre et de l'adresse regroupés ;
+  - écarté : sous-titre calculé dans le contrat (republication du paquet) ; nettoyage des champs côté client, qui
+    double celui de l'API (inoffensif, testé) ; boucle `@for` sur les trois filtres (structure existante) ;
+    `ContactEmailInput` (Blazor) encore sur `medical_services`, en suite.
+
 ## Sonar log
 - Phase 1 (new code) : ✓ Quality Gate OK au premier passage, new_coverage = 97,1 %, 0 finding
 - Phase 2 (legacy) : 0 itération — cibles projet atteintes
@@ -290,16 +342,16 @@ client-blazor `11127fb` (bump) + `d99c195` + `2c8d8cf` ; client-mobile `ae166b9`
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 25 s | — | — | — | — |
-| /develop | ok | 33 min 35 s | 3 (53 s) | 18 (7 min 46 s) | — | client-mobile 1B/6T, client-blazor 0B/5T, api-mail 2B/7T, extension (f)(g) : dtos 533.0.0, migration, suggestions weda2+mobile |
+| /develop | ok | 25 min 40 s | 5 (1 min 14 s) | 19 (8 min 11 s) | — | client-mobile 2B/6T, client-blazor 0B/5T, api-mail 2B/7T, client-angular 1B/1T, extension (h)(i)(j) : liste, fiche, deux colonnes |
 | /sonar | ok | 8 min 32 s | 2 (43 s) | 10 (13 min 31 s) | 4 (1 min 26 s) | api-mail 2B/10T, extension : QG OK, 0 finding, new_coverage 97,1 % |
 | /lint-angular | ok | 2 min 45 s | 2 (33 s) | 2 (3 min 14 s) | — | client-angular 2B/2T, 0 erreur lint ; budgets mss/prescription préexistants |
 | /lint-mobile | ok | 7.4 s | 1 (8.6 s) | — | — | client-mobile 1B/0T |
 | /e2e | ok | 16 min 40 s | — | — | — | e2e ×8 (45 min 54 s), extension : mobile 41/41, angular 49/49, parité verte |
 | /review | ok | 7 min 29 s | 9 (1 min 14 s) | 8 (9 min 53 s) | — | api-mail 2B/2T, client-mobile 2B/2T, client-blazor 2B/2T, client-angular 2B/2T, dtos-mss 1B/0T, extension APPROVED ; PR dtos-mss #47 ; corps #307 #101 #96 mis à jour |
 | /tech-writer | ok | 0.6 s | — | — | — | — |
-| **Total cycle** | | **1 h 09 min** | **17 (3 min 34 s)** | **38 (34 min 26 s)** | **4 (1 min 26 s)** | |
+| **Total cycle** | | **1 h 01 min** | **19 (3 min 55 s)** | **39 (34 min 50 s)** | **4 (1 min 26 s)** | |
 
-Autres commandes mesurées : lint ×5 (56 s), nuget-wait ×1 (26 s)
+Autres commandes mesurées : lint ×7 (1 min 12 s), nuget-wait ×1 (26 s)
 
 ## E2E log
 
