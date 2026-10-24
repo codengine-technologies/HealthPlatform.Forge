@@ -296,8 +296,8 @@ client-blazor `11127fb` (bump) + `d99c195` + `2c8d8cf` ; client-mobile `ae166b9`
 | /lint-mobile | ok | 7.4 s | 1 (8.6 s) | — | — | client-mobile 1B/0T |
 | /e2e | ok | 16 min 40 s | — | — | — | e2e ×8 (45 min 54 s), extension : mobile 41/41, angular 49/49, parité verte |
 | /review | ok | 7 min 29 s | 9 (1 min 14 s) | 8 (9 min 53 s) | — | api-mail 2B/2T, client-mobile 2B/2T, client-blazor 2B/2T, client-angular 2B/2T, dtos-mss 1B/0T, extension APPROVED ; PR dtos-mss #47 ; corps #307 #101 #96 mis à jour |
-| /tech-writer | ok | 34 s | — | — | — | — |
-| **Total cycle** | | **1 h 10 min** | **17 (3 min 34 s)** | **38 (34 min 26 s)** | **4 (1 min 26 s)** | |
+| /tech-writer | ok | 0.6 s | — | — | — | — |
+| **Total cycle** | | **1 h 09 min** | **17 (3 min 34 s)** | **38 (34 min 26 s)** | **4 (1 min 26 s)** | |
 
 Autres commandes mesurées : lint ×5 (56 s), nuget-wait ×1 (26 s)
 
