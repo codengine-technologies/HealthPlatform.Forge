@@ -775,12 +775,19 @@
   - le mobile remplaçait les étiquettes du médecin ;
   - Blazor aurait effacé les champs en enregistrant une fiche.
 - **Rédaction (weda2 et mobile)** : chaque suggestion (A, Cc, Cci) montre l'avatar avec l'icône du type, le nom, la spécialité (à défaut la profession) et l'adresse à droite. weda2 introduit `ContactAvatarComponent`, partagé avec la liste. Le mobile embarque le stéthoscope du design system weda2.
+- **Liste et fiche des contacts (h, i, j, k)** :
+  - (h) spécialité, à défaut profession, sous le nom dans la liste (weda2 `contactSubtitle`, mobile, Blazor `Contacts.SubtitleOf`) ;
+  - (i) profession en texte libre, spécialité suggérée (`<datalist>` via l'entrée `list` de `ds-input` dans weda2) ;
+  - (j) fiche weda2 sur deux colonnes, sans défilement à 1366×768 ;
+  - (k) fiche weda2 redessinée : fil d'Ariane, en-tête (initiales, nom, badge « RPPS Certifié » pour une source annuaire FHIR ou LDAP, sous-ligne), quatre cartes, étiquettes en pastilles (Entrée ou virgule, sans doublon), un seul bouton `#save-contact-btn`. Les aides e2e `createContactWithTwoAddresses` et `saveEditedContact` cliquent ce bouton. Commitée par l'humain : `db51d42a` (TFS).
 - **Règle 1b** : `ContactProfessionSpecialtyEndpointIntegrationTests` et `ContactProfessionSpecialtyMigrationTests`, avec les mutations M16 à M21 toutes rouges.
-- **Tests** : api-mail 6 756 ; weda2 1 102 ; mobile 1 203 ; Blazor 475.
+- **Tests** (revue finale) : api-mail 6 767 ; weda2 `mss-lib` 1 130 ; mobile 1 214 ; Blazor 481.
 - **Sonar** : Quality Gate OK, 0 finding, couverture du nouveau code 97,1 %.
-- **E2E** : mobile 41/41 et Angular 49/49, parité verte.
+- **E2E** : run final vert, mobile 42/42 et Angular 49 + 1 flaky (E2E-SETTINGS-003), parité verte.
+  - E2E-DETAIL-001 (mobile), rouge 3 fois sur 4 : **ce n'était pas un flaky**. Les messages porteurs d'un CDA s'affichent sous le titre du document, et le test les cherchait par leur objet. Ils sont désormais désignés par leur uid relu côté serveur (client-mobile `e099757`, convention `ligne-de-cda`).
+  - Branches api-mail et mobile synchronisées avec `develop` (task-373) : api-mail `dc246c00`, mobile `b5defde`.
 - **PR** : `dtos-mss` #47, `api-mail` #307, `client-mobile` #101, `client-blazor` #96 ; weda2 en code seul.
-- **Leçon** : `conventions/csharp.md` › `mutation-restauree-sans-date`.
+- **Leçons** : `conventions/csharp.md` › `mutation-restauree-sans-date` ; `conventions/e2e.md` › `ligne-de-cda` (ex-`ligne-de-biologie`, élargie).
 - **Suivis** :
   - recopie unique de `ContactDto` dans Blazor (`DefaultMssAddress` perdue à l'édition, préexistant) ;
   - import depuis l'annuaire côté serveur ;

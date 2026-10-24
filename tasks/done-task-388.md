@@ -396,8 +396,8 @@ client-blazor `6bf8c09` + `465434f` ; weda2 en code seul (design system compris)
 | /lint-mobile | ok | 6.7 s | 1 (8.6 s) | — | — | client-mobile 1B/0T |
 | /e2e | ok | 15 min 43 s | — | — | — | e2e ×16 (1 h 37 min), run 4 vert : mobile 42/42, angular 49 + 1 flaky (SETTINGS-003), parité verte ; DETAIL-001 stabilisé ; branches synchronisées avec develop (task-373) |
 | /review | ok | 5 min 51 s | 13 (2 min 04 s) | 13 (15 min 35 s) | — | api-mail 3B/3T, client-mobile 3B/3T, client-blazor 2B/4T, client-angular 3B/3T, dtos-mss 2B/0T, revue finale APPROVED : (k) weda2, DETAIL-001 stabilisé, sync develop ; 4 corps de PR mis à jour |
-| /tech-writer | ok | 0.6 s | — | — | — | — |
-| **Total cycle** | | **58 min 27 s** | **25 (5 min 17 s)** | **50 (48 min 55 s)** | **6 (2 min 12 s)** | |
+| /tech-writer | ok | 37 s | — | — | — | E009 v1.105 : (h)(i)(j)(k) + stabilisation DETAIL-001 |
+| **Total cycle** | | **59 min 04 s** | **25 (5 min 17 s)** | **50 (48 min 55 s)** | **6 (2 min 12 s)** | |
 
 Autres commandes mesurées : lint ×10 (1 min 32 s), nuget-wait ×1 (26 s)
 

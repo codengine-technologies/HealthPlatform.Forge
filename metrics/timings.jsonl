@@ -5921,3 +5921,5 @@
 {"ts":"2026-10-24T16:45:37+02:00","run_id":"-","type":"cmd","task":"task-388","step":"review","repo":"client-blazor","kind":"test","label":"","cwd":"Client/Blazor","cmd":"dotnet test tests/HealthPlatform.Module.Mss.Plugin.Tests/HealthPlatform.Module.Mss.Plugin.Tests.csproj","duration_ms":17766,"exit_code":0}
 {"ts":"2026-10-24T16:47:41+02:00","run_id":"-","type":"cmd","task":"task-388","step":"review","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln --no-build","duration_ms":259300,"exit_code":0}
 {"ts":"2026-10-24T16:48:39+02:00","run_id":"-","type":"step","task":"task-388","step":"review","status":"ok","note":"revue finale APPROVED : (k) weda2, DETAIL-001 stabilisé, sync develop ; 4 corps de PR mis à jour","iterations":null,"duration_ms":351764}
+{"ts":"2026-10-24T16:49:12+02:00","run_id":"-","type":"step_start","task":"task-388","step":"tech-writer"}
+{"ts":"2026-10-24T16:49:50+02:00","run_id":"-","type":"step","task":"task-388","step":"tech-writer","status":"ok","note":"E009 v1.105 : (h)(i)(j)(k) + stabilisation DETAIL-001","iterations":null,"duration_ms":37773}

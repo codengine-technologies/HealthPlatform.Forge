@@ -4,7 +4,7 @@
 > **Modèle** : hand-crafted
 > **Version** : 1.86
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-24 (suggestions de destinataires lisibles, spécialité des contacts — task-388)
+> **Dernière mise à jour** : 2026-10-24 (fiche contact redessinée, suggestions de destinataires lisibles, spécialité des contacts — task-388)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1040,6 +1040,9 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
   - **Une suggestion se lit comme une fiche.** En tapant un nom dans A, Cc ou Cci, chaque proposition montre l'avatar du correspondant, une icône qui indique son type (stéthoscope pour un professionnel de santé, silhouette pour un patient, bâtiment pour un établissement), son nom, sa spécialité dessous quand elle est connue, et son adresse à droite.
   - **La spécialité a sa propre place.** Importer un confrère depuis l'Annuaire Santé enregistre sa profession et sa spécialité dans sa fiche, et n'ajoute plus d'étiquettes. Vos étiquettes restent les vôtres.
   - **Les icônes de la liste des contacts sont corrigées.** Un professionnel porte le stéthoscope et un patient une silhouette, dans la liste comme dans le filtre « Types de contact ».
+  - **La spécialité se lit dans la liste des contacts.** Sous le nom de chaque contact s'affiche sa spécialité, à défaut sa profession (messagerie web, application mobile et Blazor).
+  - **Profession et spécialité se modifient dans la fiche.** La profession se saisit librement ; la spécialité se choisit dans une liste de suggestions, ou se tape si elle n'y figure pas.
+  - **La fiche d'un contact est redessinée** (messagerie web). Elle s'ouvre sous un fil d'Ariane. L'en-tête montre les initiales, le nom, le badge « RPPS Certifié » (seulement pour un confrère importé de l'Annuaire Santé), puis la spécialité, l'établissement et la date de mise à jour. Le contenu tient sur deux colonnes, en quatre cartes : identité et type ; activité (profession, spécialité, RPPS avec contrôle du format, téléphone) ; adresses MSSanté, avec l'adresse par défaut signalée ; étiquettes et notes. Un seul bouton, en haut, enregistre la fiche. Sur un écran de portable, tous les champs sont visibles sans défilement.
 - **v1.104 — La fiche d'un patient ne montre que ce qui lui appartient** (task-373, messagerie web et application mobile) :
   - **Un courrier qui concerne deux patients est rangé chez chacun, séparément.** Quand un même message apporte le compte rendu de deux patients, la fiche de chacun ne montre que son propre document, sa biologie et sa synthèse, jamais ceux de l'autre. Un document dont la suppression a été acceptée, ou qui a été remplacé par une version plus récente, n'apparaît plus dans la fiche.
   - **Deux fiches au même matricule ne se mélangent plus.** Chaque fiche affiche ses propres documents et sa propre opposition.
