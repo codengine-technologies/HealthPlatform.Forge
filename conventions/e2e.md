@@ -599,8 +599,8 @@ dépassée.
   chercher dans **toutes** les specs e2e les sélecteurs qu'il affiche (`grep -rn "confirm-discard-draft-btn"
   e2e/*/specs e2e/*/support`), y compris les gestes de nettoyage. Pour chaque appelant, dire s'il passe encore. C'est
   `garde-sur-point-d-entree-commun` (conventions/angular.md), appliquée aux tests.
-- **Origine** : task-394 (/develop, voie Angular)
-- **Occurrences** : 1
+- **Origine** : task-394 (/develop, voie Angular) ; task-394 (/e2e, voie mobile)
+- **Occurrences** : 2 (même task, côté mobile : E2E-COMPOSE-003 attendait `compose-draft-saved` sur une rédaction sans texte. La recherche aurait dû porter sur le comportement retiré — l'enregistrement d'une rédaction sans texte — et pas seulement sur le sélecteur de la confirmation : chercher aussi `compose-draft-saved` et tout test qui saisit un objet sans corps.)
 
 ### inbox-laissee-en-l-etat — un parcours qui envoie retire ce qu'il laisse dans l'INBOX
 - **Piège** : déjà consigné sur task-340 (E2E-AI-001 mobile), reproduit sur task-376 : E2E-DETAIL-001 v3
