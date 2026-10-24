@@ -383,3 +383,22 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   revu.
 - **Origine** : task-376 (/review)
 - **Occurrences** : 1
+
+---
+
+### reponse-d-un-contexte-depasse — Une réponse ne s'applique qu'au contexte pour lequel elle est partie
+- **Piège** : un composant réutilisé pour une autre fiche, un autre document, une autre boîte, reçoit la réponse
+  d'une requête partie pour le précédent. Rien n'annule cette requête, et le résultat est appliqué à l'écran
+  courant. Constaté sur task-373 : les candidats d'un document A affichés sous les traits du document B (« Rattacher »
+  rattache alors B au patient de A, ANG-54) ; la chronologie et l'opposition d'une fiche remplacées par celles de la
+  fiche précédente quand elle répondait en dernier.
+- **Consigne** : toute requête dont la réponse alimente un état lié à une sélection (`patientId`, document, boîte)
+  emporte l'identifiant de cette sélection, et la réponse est ignorée si la sélection a changé
+  (`if (this.patient()?.id !== patientId) return`, ou un numéro de chargement). Abandonner la requête précédente
+  (`unsubscribe`, `switchMap`) en plus. Les deux protections se testent : la réponse ancienne arrive APRÈS le
+  changement de sélection, et l'écran ne bouge pas.
+- **Preuve** : `patient-timeline.component.spec.ts` (« ignores the answer of a record that is no longer the one
+  shown »), `patient-card.component.spec.ts`, `patient-attachment-dialog.component.spec.ts` (ANG-54), rouges sous
+  mutation (M3, M9b).
+- **Origine** : task-373 (audit ANG-50, ANG-54)
+- **Occurrences** : 1
