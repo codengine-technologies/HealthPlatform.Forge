@@ -304,6 +304,7 @@ Autres commandes mesurées : lint ×2 (18 s)
 - `client-angular` : code seul. L'humain gère le commit, le push sur TFS et l'ouverture de la PR. Fichiers modifiés, non commités, sur la branche `feature/nova-mss-weda-integration` :
   - `front/libs/mss/src/core/utils/directory-search.util.ts`
   - `front/libs/mss/src/core/utils/directory-search.util.spec.ts`
+  - `front/libs/mss/src/features/contacts/mss-contacts.component.ts`, `.html` et `.spec.ts`, ajoutés à la demande de l'humain après la revue (2026-10-24) : les icônes de type étaient inversées. Le professionnel porte désormais le stéthoscope et le patient une personne, dans la liste comme dans le filtre « Types de contact », qui lit les mêmes fonctions. Test rouge d'abord (`expected 'user' to be 'stethoscope'`), puis vert ; `mss-lib` 1 090 tests verts, lint sans erreur, build `weda2` ✓.
 
 ## Code Review Summary
 
