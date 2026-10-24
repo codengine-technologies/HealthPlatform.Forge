@@ -429,3 +429,15 @@ par lint sur du code frais est un échec de lecture de ce fichier.
 - **Origine** : task-393 (/develop, weda2)
 - **Occurrences** : 1
 
+### action-a-deux-entrees — Une action offerte à deux endroits a un test par point d'entrée
+- **Règle** : convention projet
+- **Repos** : les deux
+- **Piège** : sur task-393, « Écrire » existe sur la ligne du carnet (au survol) et dans l'aperçu. Le choix d'adresse
+  n'était rendu que dans l'aperçu du contact sélectionné, et le bouton de la ligne ne sélectionnait pas. Depuis la
+  ligne, rien ne s'affichait, ou le choix apparaissait sous un autre contact. Les tests ne passaient que par l'aperçu :
+  tout était vert.
+- **Consigne** : quand une action est offerte à plusieurs endroits (ligne, aperçu, menu, raccourci), écrire un test par
+  point d'entrée, avec l'état de départ de ce point (aucune sélection, autre élément sélectionné). Un état affiché à un
+  seul endroit (dialogue, sélecteur) ne dépend jamais d'une sélection que l'autre point d'entrée ne pose pas.
+- **Origine** : task-393 (/review, CHANGES REQUESTED)
+- **Occurrences** : 1
