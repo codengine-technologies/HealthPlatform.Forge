@@ -233,7 +233,10 @@ exactement le code testé.
 - **Échappatoires** : la **quarantaine** d'un test (tag `@quarantaine` + task de correction) et
   la **divergence temporaire** d'un client sur un scénario (raison + task de résorption, déclarée
   au catalogue). Les deux sont des décisions de **l'humain seul**.
-- **Outillage en panne** = bloquant : la non-régression n'est pas prouvée.
+- **Outillage en panne** = bloquant : la non-régression n'est pas prouvée. Un code 2 est rejoué
+  une fois, automatiquement, avant de bloquer.
+- **Voie incrémentale** (depuis le 2026-10-24) : une voie verte dont les dépôts couverts n'ont pas
+  changé (HEAD + diff + non suivis) est **réutilisée**, pas rejouée — `Tools/e2e/lane_cache.py`.
 
 Playbook : `agents/e2e.md`.
 

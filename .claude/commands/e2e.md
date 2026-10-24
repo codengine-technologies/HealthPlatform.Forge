@@ -15,11 +15,13 @@ Read `agents/e2e.md` and execute the full playbook :
    - Voie Angular : `api-mail`, `client-angular` ou `dtos-mss` touché, et suite présente. Sinon,
      noter « suite Angular non livrée (task-346) ».
    - Aucune voie : **skip mesuré**, puis `/review`.
-2. Jouer les voies **une à la fois**, sur le checkout courant, sans aucune opération git :
+2. Jouer les voies **une à la fois**, sur le checkout courant, sans aucune opération git, **par
+   `Tools/e2e/lane_cache.py run --task {task-id} --lane mobile|angular --out "$TEMP/forge-e2e/{task-id}"`** :
    - mobile : `npm run e2e:headless` dans `Client/Mobile` ;
    - Angular : `npm run e2e:mss` dans `Client/Angular/front`.
-   Chaque voie est enveloppée dans `measure.sh --kind e2e`. Un code 2 signale un problème
-   d'outillage : l'étape bloque.
+   L'outil **réutilise** une voie verte dont l'empreinte (HEAD + diff + non suivis des dépôts
+   couverts) n'a pas changé, copie le rapport aussitôt, et rejoue **une fois** un code 2. Deux
+   codes 2 de suite : panne d'outillage, l'étape bloque.
 3. Client non touché : relever son **listing** (`playwright test --list`) pour la parité, sans le
    rejouer.
 4. **Porte** :

@@ -5923,3 +5923,5 @@
 {"ts":"2026-10-24T16:48:39+02:00","run_id":"-","type":"step","task":"task-388","step":"review","status":"ok","note":"revue finale APPROVED : (k) weda2, DETAIL-001 stabilisé, sync develop ; 4 corps de PR mis à jour","iterations":null,"duration_ms":351764}
 {"ts":"2026-10-24T16:49:12+02:00","run_id":"-","type":"step_start","task":"task-388","step":"tech-writer"}
 {"ts":"2026-10-24T16:49:50+02:00","run_id":"-","type":"step","task":"task-388","step":"tech-writer","status":"ok","note":"E009 v1.105 : (h)(i)(j)(k) + stabilisation DETAIL-001","iterations":null,"duration_ms":37773}
+{"ts":"2026-10-24T22:34:30+02:00","run_id":"-","type":"cmd","task":"lane-cache-essai","step":"e2e","repo":"client-mobile","kind":"e2e","label":"mobile","cwd":"Client/Mobile","cmd":"npm run e2e:headless","duration_ms":556976,"exit_code":0}
+{"ts":"2026-10-24T22:34:36+02:00","run_id":"-","type":"cmd","task":"lane-cache-essai","step":"e2e","repo":"client-mobile","kind":"e2e","label":"mobile-reused","cwd":".","cmd":"true","duration_ms":91,"exit_code":0}

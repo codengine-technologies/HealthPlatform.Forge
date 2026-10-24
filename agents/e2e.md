@@ -24,16 +24,17 @@
 
 ```bash
 Tools/timing/step.sh start --task {task-id} --step e2e
-Tools/timing/measure.sh --task {task-id} --step e2e --repo client-mobile --cwd Client/Mobile \
-    --kind e2e --label mobile -- npm run e2e:headless
-Tools/timing/measure.sh --task {task-id} --step e2e --repo client-angular --cwd Client/Angular/front \
-    --kind e2e --label angular -- npm run e2e:mss
+# chaque voie passe par Tools/e2e/lane_cache.py (Step 1), qui l'enveloppe lui-même dans measure.sh
+python Tools/e2e/lane_cache.py run --task {task-id} --lane mobile  --out "$TEMP/forge-e2e/{task-id}"
+python Tools/e2e/lane_cache.py run --task {task-id} --lane angular --out "$TEMP/forge-e2e/{task-id}"
 Tools/timing/measure.sh --task {task-id} --step e2e --repo api-mail --cwd Api/Mail \
     --kind e2e --label gate -- dotnet {outil} gate …
 Tools/timing/step.sh end --task {task-id} --step e2e --status ok|skipped|failed --note "…"
 ```
 
-Le kind `e2e` couvre une **voie** entière (montage, suite, parité, démontage) et la porte. Un skip
+Le kind `e2e` couvre une **voie** entière (montage, suite, parité, démontage) et la porte. Une voie
+**réutilisée** (Step 1) laisse une ligne `--label {voie}-reused` de durée nulle : le journal distingue
+ainsi une voie gratuite d'une voie absente. Un skip
 se mesure aussi (`--status skipped`) : sinon on ne distingue plus « gratuit » de « pas mesuré ».
 
 ## Step 0 — Pré-flight : quelles voies ?
@@ -123,6 +124,46 @@ l'humain).
 
 ## Step 1 — Jouer les voies (séquentiellement, jamais en parallèle)
 
+### Voie incrémentale : ne rejouer que ce qui a changé
+
+> **Pourquoi** (audit du 2026-10-24) : l'e2e pesait 48 % du temps de commande des 30 dernières
+> tasks, et 25 voies déjà vertes avaient été rejouées sans changement de leur code (2,7 h). C'est
+> l'effet des reprises : chaque retour de `/review` relançait les deux voies, même quand un seul
+> client avait bougé.
+
+Chaque voie passe par **`Tools/e2e/lane_cache.py run`**, jamais par `npm run e2e:*` en direct :
+
+```bash
+D="$TEMP/forge-e2e/{task-id}"
+python Tools/e2e/lane_cache.py run --task {task-id} --lane mobile  --out "$D"
+python Tools/e2e/lane_cache.py run --task {task-id} --lane angular --out "$D"
+```
+
+- **Empreinte d'une voie** : l'état exact des dépôts qu'elle couvre — HEAD, diff de l'arbre de
+  travail et fichiers non suivis (hors `.gitignore`), ce qui couvre `client-angular` non commité.
+  - mobile : `Api/Mail` + `Client/Mobile` ;
+  - angular : `Api/Mail` + `Client/Angular/front` + `Client/Mobile/e2e` (l'orchestrateur qui monte
+    son backend).
+- **Même empreinte qu'un passage vert enregistré** → la voie est **réutilisée** : son rapport vert
+  est recopié dans `$D/{voie}-report.json`, sortie 0, sans montage. La preuve existe pour ce code
+  exact : c'est compatible avec la règle « bloquante, sans exemption ». Le moindre changement
+  d'`api-mail` (catalogue compris) rejoue les deux voies.
+- **Sinon la voie est jouée.** Son rapport est copié dans `$D` **par l'outil, aussitôt** : le piège
+  « la voie Angular vide le dossier de sortie mobile » ne peut plus se produire.
+- **Code 2 (outillage) : rejouée une fois**, automatiquement. Deux codes 2 de suite bloquent
+  (Step 4, motif « outillage »).
+- **Seul un passage vert (code 0) est enregistré**, et seulement si l'empreinte n'a pas bougé pendant
+  la voie. Un rouge n'est jamais réutilisé.
+- `$D/{voie}-lane.json` dit, pour le `## E2E log`, si la voie a été **jouée** ou **réutilisée**
+  (avec la task et la date du passage vert), et les HEAD des dépôts couverts.
+- État : `python Tools/e2e/lane_cache.py status` ; pour forcer un rejeu complet :
+  `python Tools/e2e/lane_cache.py forget [--lane …]`. Cache local, hors git :
+  `metrics/.state/e2e-green/`. Tests : `python -m unittest Tools/e2e/test_lane_cache.py`.
+- Le Step 0 bis (dépendances du client) précède toujours l'appel : une voie réutilisée ne monte
+  rien, une voie jouée doit trouver ses `node_modules`.
+
+### Ce que fait chaque voie jouée
+
 Les deux voies publient les mêmes ports (5052, 3993, 3465, 3143) : **une à la fois**. Chaque
 orchestrateur monte son backend, seede, joue, contrôle la parité **de sa colonne**, puis démonte,
 y compris sur échec ou Ctrl+C. Il ne retire que les conteneurs apparus pendant son run.
@@ -138,8 +179,8 @@ Rapports à relever après chaque voie :
 - mobile : `Client/Mobile/e2e/headless/out/report.json` (et `summary.json`) ;
 - angular : `Client/Angular/front/e2e/mss-e2e/out/report.json` (et `summary.json`).
 
-Les copier aussitôt, par exemple dans `$TEMP/forge-e2e/{task-id}/{client}-report.json`. Le run
-suivant vide ces dossiers.
+`Tools/e2e/lane_cache.py` les copie aussitôt dans `$TEMP/forge-e2e/{task-id}/{client}-report.json`.
+Le run suivant vide ces dossiers.
 
 > ⚠️ **La voie Angular vide AUSSI le dossier de sortie mobile** : elle monte son backend par
 > l'orchestrateur mobile (`--serve-only`), qui repart d'un `Client/Mobile/e2e/headless/out` vide.
@@ -154,7 +195,8 @@ suivant vide ces dossiers.
 >   cp Client/Mobile/e2e/headless/out/report.json "$D/mobile-report.json"
 > ```
 >
-> La porte lit ensuite les copies de `$D`, jamais les dossiers `out/`.
+> La porte lit ensuite les copies de `$D`, jamais les dossiers `out/`. **Depuis le 2026-10-24,
+> `Tools/e2e/lane_cache.py` fait cette copie lui-même**, dans la même commande que la voie.
 
 ## Step 2 — Le client non touché : son listing
 
@@ -285,6 +327,7 @@ et par `/tech-writer` dans la doc de l'EPIC E018 :
 | Voie | Déclencheur | Résultat | Tests | Durée |
 |---|---|---|---|---|
 | mobile | client-mobile touché | ✅ verte | 22 verts, 0 flaky, 0 rouge, 0 quarantaine | 3 min 10 s |
+| angular | api-mail inchangé, weda2 inchangé | ♻️ réutilisée (verte task-NNN, {date}) | 22 verts | 0 s |
 | angular | non touchée — listing | 📋 listée | 22 tests listés | 12 s |
 
 - Catalogue : `Api/Mail/e2e/scenarios.yml` @ {branche de la task | origin/develop}
