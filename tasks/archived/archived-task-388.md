@@ -629,3 +629,20 @@ l'interface, la stabilisation ne touche qu'un test, et le merge apporte du code 
    RPPS d'un contact importé, le badge reste affiché, et il le reste après l'enregistrement d'un RPPS saisi à la main.
    La task-393 (d) rend ce champ non modifiable pour un contact importé, ce qui règle le cas.
 
+
+## Merged
+
+Le 2026-10-24 vers 17 h 00, `/merge task-388 --i-tested` (l'humain atteste avoir déroulé le Manual Test Plan).
+Squash-merge dans l'ordre topologique :
+
+| Repo | PR | Commit squash sur `develop` | CI `develop` |
+|---|---|---|---|
+| dtos-mss | #47 | `0cad041c` | ✅ .NET |
+| api-mail | #307 | `194f24b2` | ✅ [Build and Publish](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/40105115711) |
+| client-blazor | #96 | `6006dcf8` | ✅ [Build and Publish](https://github.com/codengine-technologies/HealthPlatform.Client/actions/runs/40105128850) |
+| client-mobile | #101 | `7ea0be8b` | ✅ [Android Build](https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/40105144152) |
+
+- Label `awaiting-human-merge` retiré des quatre PR. Branche `fix/task-388-annuaire-finitions` supprimée, en distant
+  comme en local, sur les quatre dépôts. Clones revenus sur `develop`.
+- `client-angular` : géré manuellement par l'humain.
+- Staging : aucune branche staging (cycle lancé à la main, pas par `/forge`).
