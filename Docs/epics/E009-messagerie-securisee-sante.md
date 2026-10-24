@@ -4,7 +4,7 @@
 > **Modèle** : hand-crafted
 > **Version** : 1.86
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-23 (rédaction sans perte ni double envoi — task-376)
+> **Dernière mise à jour** : 2026-10-23 (finitions de la recherche dans l'Annuaire Santé — task-388)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1036,6 +1036,11 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
+- **v1.103 — La recherche dans l'Annuaire Santé ne montre plus de message technique, ni de cause fausse** (task-388, les trois applications) :
+  - **Une spécialité avec un nom d'établissement trop court demande un lieu.** « Médecine générale » avec « CH », sans code postal ni commune, est refusée tout de suite avec la raison : il faut au moins 3 lettres du nom de l'établissement. Avec 3 lettres, ou avec un lieu, la recherche part.
+  - **Sur mobile, une coupure réseau donne un message clair.** En mode avion, ou quand un serveur intermédiaire est en panne, vous lisez « L'annuaire santé est momentanément indisponible. Réessayez dans un instant. » L'adresse technique de la requête, qui contenait les critères saisis, n'est plus jamais affichée.
+  - **Sur le poste (Blazor), une session expirée est dite comme telle.** « Votre session a expiré. Reconnectez-vous pour interroger l'annuaire. » remplace « annuaire indisponible ». Appuyer plusieurs fois sur Entrée ne lance qu'une seule recherche.
+  - **Une page de maintenance de l'annuaire national** est présentée comme « annuaire indisponible », et non comme une erreur.
 - **v1.102 — Ce que vous écrivez n'est jamais perdu, et un message ne part jamais deux fois sans que vous le sachiez** (task-376, messagerie web et application mobile) :
   - **Un envoi peut-être parti le dit.** Quand la connexion à la messagerie se coupe juste après la transmission, vous lisez « Ce message est peut-être parti : vérifiez auprès du destinataire avant de le renvoyer. » Le bouton Envoyer est alors bloqué : un courrier médical n'est plus envoyé deux fois par erreur. Il en va de même pour un envoi resté sans réponse (réseau coupé, délai dépassé), et dans la liste des envois en attente.
   - **Le brouillon n'est jamais perdu.** Fermer la rédaction, ouvrir un autre message ou un autre brouillon enregistre d'abord ce qui est en cours. Si l'enregistrement échoue, la rédaction reste ouverte et vous en êtes averti. Un envoi lancé pendant un enregistrement automatique ne laisse plus de brouillon fantôme derrière lui.
