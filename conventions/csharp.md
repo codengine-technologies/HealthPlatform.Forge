@@ -1602,3 +1602,28 @@ stratégies de recherche, la classe ne garde que des `public static`)
 Quand une refonte retire les derniers membres d'instance d'une classe, la déclarer `static` dans le même
 commit. Sonar ne le dit qu'après coup, et c'est une modification d'une ligne.
 
+---
+
+## mutation-restauree-sans-date — une mutation restaurée doit porter la date du jour
+
+**Occurrences : 1** (task-388, `/develop` — repéré parce que M19 rougissait le test de M17)
+
+Une série de mutations par copie et restauration (`cp` / `shutil.move` du fichier sauvegardé) peut
+mentir en silence. Le fichier restauré reprend la date de la **copie**, antérieure aux binaires
+compilés avec la mutation : MSBuild juge le projet à jour et ne le recompile pas. La mutation
+suivante s'exécute alors sur un binaire **encore muté**, et ses rouges appartiennent à la
+précédente. Constaté sur task-388 : M18 et M19 (service applicatif) rougissaient les tests de M17
+(dépôt d'infrastructure, jamais recompilé) ; la vérification « restauré → vert » rendait encore
+2 rouges.
+
+**Consigne** :
+- Après chaque restauration, `touch` le fichier (`os.utime(path, None)`), ou restaurer par
+  `cp` sans `-p`, qui donne la date du jour.
+- Toujours terminer la série par « code restauré → tous verts ». Un rouge à cette étape signale
+  des binaires périmés, pas un défaut.
+- Une mutation dont les tests rouges ne sont pas **ceux qu'elle vise** est suspecte : la rejouer
+  seule, sur un build propre.
+
+**Preuve** : task-388, M18 et M19 rejouées après `touch` — chacune rouge sur son seul test
+(`TheCdaEnrichment_FillsTheSpecialty…`, `…NeverReplacesAKnownSpecialty`), puis 7/7 verts.
+

@@ -402,3 +402,18 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   mutation (M3, M9b).
 - **Origine** : task-373 (audit ANG-50, ANG-54)
 - **Occurrences** : 1
+
+### chainage-optionnel-qui-ment — `a?.b` suivi de `not.toBeNull()` passe quand `a` est absent
+- **Règle** : convention projet
+- **Repos** : les deux
+- **Piège** : `expect(column?.querySelector('#champ')).not.toBeNull()` passe quand `column` n'existe pas, car le
+  chaînage optionnel rend `undefined`, qui n'est pas `null`. Constaté sur task-388 : le test « la fiche tient sur deux
+  colonnes » passait avant que les colonnes existent.
+- **Consigne** : un test qui cherche dans un conteneur exige d'abord ce conteneur (`expect(column).toBeTruthy()`),
+  puis utilise `toBeTruthy()` pour l'élément cherché. Ne jamais combiner `?.` et `not.toBeNull()` sur un élément
+  attendu. Voir le test rouge avant de le croire vert.
+- **Preuve** : `mss-contacts-render.component.spec.ts` (j), vert sans les colonnes avec l'ancienne assertion, rouge
+  avec la nouvelle, vert une fois les colonnes posées.
+- **Origine** : task-388 (/develop)
+- **Occurrences** : 1
+

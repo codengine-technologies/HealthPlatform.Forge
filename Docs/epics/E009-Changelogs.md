@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-10-24 (v1.104)
+> **Dernière mise à jour** : 2026-10-24 (v1.105)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -761,6 +761,33 @@
   - remonter `originalMarkedCancelled` et `warning` par `drafts/{id}/send` ;
   - bail renouvelable pour le verrou.
 
+### v1.105 — Profession et spécialité d'un contact, suggestions de destinataires lisibles, icônes de type corrigées — task-388 (extension)
+
+- **Origine** : demandes de l'humain du 2026-10-24, après la revue de task-388.
+- **Icônes** : weda2 inversait les icônes de type, le professionnel portait la personne et le patient le stéthoscope. La liste, le filtre et la rédaction lisent désormais un seul `contact-type.util`.
+- **Contrat** : `HealthPlatform.Dtos.Mss` 533.0.0, avec `ContactDto.Profession` et `Specialty` (libellés, 256 caractères).
+- **api-mail** :
+  - colonnes `Contacts.Profession` et `Specialty` (migration `20261024120000`, nullables, sans récupération depuis les étiquettes, par décision humaine) ;
+  - `InputSanitizer.SanitizeLabel`, qui n'encode pas en HTML ;
+  - l'enrichissement CDA remplit `Specialty` quand la fiche n'en a pas, ne la remplace jamais et n'ajoute plus d'étiquette.
+- **Imports depuis l'annuaire** (weda2, mobile, Blazor) : la profession et la spécialité vont dans leurs champs, sans étiquette. Trois défauts sont corrigés en route :
+  - weda2 rangeait des codes dans les étiquettes ;
+  - le mobile remplaçait les étiquettes du médecin ;
+  - Blazor aurait effacé les champs en enregistrant une fiche.
+- **Rédaction (weda2 et mobile)** : chaque suggestion (A, Cc, Cci) montre l'avatar avec l'icône du type, le nom, la spécialité (à défaut la profession) et l'adresse à droite. weda2 introduit `ContactAvatarComponent`, partagé avec la liste. Le mobile embarque le stéthoscope du design system weda2.
+- **Règle 1b** : `ContactProfessionSpecialtyEndpointIntegrationTests` et `ContactProfessionSpecialtyMigrationTests`, avec les mutations M16 à M21 toutes rouges.
+- **Tests** : api-mail 6 756 ; weda2 1 102 ; mobile 1 203 ; Blazor 475.
+- **Sonar** : Quality Gate OK, 0 finding, couverture du nouveau code 97,1 %.
+- **E2E** : mobile 41/41 et Angular 49/49, parité verte.
+- **PR** : `dtos-mss` #47, `api-mail` #307, `client-mobile` #101, `client-blazor` #96 ; weda2 en code seul.
+- **Leçon** : `conventions/csharp.md` › `mutation-restauree-sans-date`.
+- **Suivis** :
+  - recopie unique de `ContactDto` dans Blazor (`DefaultMssAddress` perdue à l'édition, préexistant) ;
+  - import depuis l'annuaire côté serveur ;
+  - URL `PUT …/{Id.GetHashCode()}` dans Blazor ;
+  - budgets `mss` et `prescription` de la branche weda2 ;
+  - instabilité de `SeededThreadsAreCountableTests` ;
+  - regroupement des codes de médecine générale (SM26, SM53, SM54) dans la liste des spécialités.
 ### v1.104 — Dossier patient : la fiche ne sert que ses documents actifs, unité dans la série, opposition relue (ANG-20, ANG-50 à ANG-54) — task-373
 
 - **Origine** : audit de bugs du client Angular du 2026-10-13. Décision humaine du 2026-10-24 : la vue patient mobile entre dans la task (elle n'affichait aucun document).
@@ -1628,8 +1655,8 @@ Audit grep complémentaires pour les couches 2 / 2bis / 3 (tasks 021 / 022 / 023
 
 | Task | Apport principal | Règles touchées |
 |------|------------------|-----------------|
+| task-388 | **Les finitions de la recherche dans l'annuaire, puis la spécialité des contacts.** Extension du 2026-10-24 : `ContactDto.Profession` et `Specialty` (533.0.0), suggestions de destinataires avec avatar, icône du type et spécialité (weda2 et mobile), icônes de type corrigées. Finitions : Une organisation de moins de 3 caractères est refusée avec une spécialité sans lieu ; une page de maintenance est gardée en « indisponible » ; le mobile n'affiche plus jamais le message technique d'Angular ; Blazor distingue session expirée et annuaire indisponible, et ne lance plus deux fois la recherche. | — |
 | task-373 | **La fiche d'un patient ne montre que ce qui lui appartient.** Routes `folder` / `documents` par handle servant les seuls documents actifs de la fiche ; unité dans la série de biologie, période automatique juste ; opposition relue et rétablie sur échec ; rattachement protégé des réponses périmées ; vue patient mobile enfin alimentée (weda2 + mobile). | — |
-| task-388 | **Les finitions de la recherche dans l'annuaire.** Une organisation de moins de 3 caractères est refusée avec une spécialité sans lieu ; une page de maintenance est gardée en « indisponible » ; le mobile n'affiche plus jamais le message technique d'Angular ; Blazor distingue session expirée et annuaire indisponible, et ne lance plus deux fois la recherche. | — |
 | task-376 | **Rédiger sans perte ni double envoi.** Remise incertaine typée en 503 `MAIL_DELIVERY_UNCERTAIN` sur les trois routes d'envoi et bloquée côté clients ; brouillon jamais orphelin ni perdu ; annule et remplace limité au message choisi ; transfert par référence des pièces homonymes ; saisie et refus du serveur rendus lisibles (weda2 + mobile). | — |
 | task-386 | **La recherche dans l'Annuaire Santé trouve le praticien et dit quand elle est incomplète.** Deux pivots (praticien / établissement), quota partagé Redis, issue `X-Directory-Search-Outcome`, 503 `DIRECTORY_UNAVAILABLE`, règles de recherche refusées avant tout appel (trois clients). | — |
 | task-379 | **Un contact garde toutes ses adresses MSSanté, avec une adresse par défaut ; la recherche survit à une erreur.** ANG-57 : fiche weda2 réduite à la 1re adresse, liste remplacée à l'enregistrement → adresses secondaires perdues ; rédaction limitée à `primaryMssAddress` sur les deux clients. Contrat `DefaultMssAddress` (530.0.0), colonne `ContactMssAddresses.IsDefault`, 400 hors liste ; suggestions par adresse (règle commune aux deux clients) ; import annuaire weda2 fusionné ; ANG-56 erreur dans le `switchMap`. ANG-58 écarté (annuaire = adresses MSSanté seulement). E2E-CONTACT-002 v2, E2E-COMPOSE-004. PR dtos-mss #46, api-mail #304, mobile #98. | — |
