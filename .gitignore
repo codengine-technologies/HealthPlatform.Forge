@@ -88,6 +88,7 @@ Tools/*
 # Voie e2e incrémentale (Tools/e2e/lane_cache.py) : réutilise une voie verte sur la même empreinte.
 !Tools/e2e/
 !Tools/e2e/**
+Tools/e2e/__pycache__/
 
 # The ledger is the forge's measurement journal (committed, append-only).
 # The .state/ markers are machine-local run state and must never be tracked.
