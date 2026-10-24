@@ -308,7 +308,9 @@ par l'orchestrateur (`injectSignature`).
 - weda2 : build ✓, `mss-lib` 1 226 ;
 - mobile : build ✓, 1 257/1 257 sur deux rejeux, après un premier passage à 4 échecs. Ces 4 tests « suggestions de
   destinataires » (task-388) dépendent de l'ordre, et le défaut existe déjà sur `develop` ;
-- api-mail : en cours au moment du verdict ;
+- api-mail : build ✓ ; 6 764 verts. 3 échecs, tous des tests « du jour » (`FilterTodayEmails…`, `GetFolderToday…`,
+  `GetFolderNotSeenToday…`), lancés à 00:05 : c'est la fenêtre 00:00-02:00 connue (corpus en heure locale, Dovecot en
+  UTC), aussi rouge sur `develop`. Pas une régression : la task ne change aucun C# ;
 - e2e : vert (mobile 45/45, Angular 53/53).
 
 **Bloquants** :
