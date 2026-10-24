@@ -602,6 +602,18 @@ dépassée.
 - **Origine** : task-394 (/develop, voie Angular) ; task-394 (/e2e, voie mobile)
 - **Occurrences** : 2 (même task, côté mobile : E2E-COMPOSE-003 attendait `compose-draft-saved` sur une rédaction sans texte. La recherche aurait dû porter sur le comportement retiré — l'enregistrement d'une rédaction sans texte — et pas seulement sur le sélecteur de la confirmation : chercher aussi `compose-draft-saved` et tout test qui saisit un objet sans corps.)
 
+### html-construit-a-la-main — Un test de « ce qui a été tapé » doit taper dans l'éditeur
+- **Piège** : task-394 juge « le médecin a écrit » sur la position du texte dans le HTML (hors signature, hors
+  citation). Les tests unitaires construisaient ce HTML à la main, avec le texte déjà hors des marqueurs. Dans le vrai
+  éditeur, le curseur d'un nouveau message avec signature est **dans** les marqueurs (mobile), et le texte d'une
+  réponse peut aller sous la citation (weda2). Tous les tests étaient verts, et le texte réel était perdu.
+- **Consigne** : un comportement qui dépend de ce que le médecin a saisi se teste en saisissant dans l'éditeur réel
+  (frappe dans le `contenteditable` ou par tiptap, curseur à sa place par défaut), au moins une fois par configuration
+  du corps : vide, avec signature par défaut, réponse avec citation. En e2e, la boîte du banc doit avoir une
+  signature par défaut pour au moins un parcours de rédaction.
+- **Origine** : task-394 (/review)
+- **Occurrences** : 1
+
 ### inbox-laissee-en-l-etat — un parcours qui envoie retire ce qu'il laisse dans l'INBOX
 - **Piège** : déjà consigné sur task-340 (E2E-AI-001 mobile), reproduit sur task-376 : E2E-DETAIL-001 v3
   ajoutait un second transfert dans l'INBOX ; les lignes seedées de E2E-MAIL-004 et E2E-AI-001 sont

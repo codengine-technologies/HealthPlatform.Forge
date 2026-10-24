@@ -21,3 +21,53 @@ version. Puis rejouer la voie mobile.
 
 Vérifié : c'est le seul test mobile restant qui attend un brouillon sans texte. Les autres occurrences de
 `compose-draft-saved` sont DRAFT-002 (adapté) et DRAFT-003 (attente d'absence, inchangée).
+
+---
+
+## Revue de code (2026-10-25) — CHANGES REQUESTED : la règle telle qu'implémentée perd du texte écrit
+
+La reprise a levé le blocage `/e2e` (voies vertes : mobile 45/45, Angular 53/53). Mais la relecture indépendante trouve
+deux **pertes de texte du médecin**, au-delà de la règle demandée. Le critère « texte hors signature et hors
+citation » repose sur la position du texte dans le HTML, et pas sur ce que le médecin a tapé.
+
+### ❌ Mobile : nouveau message avec signature par défaut, le texte tapé est perdu
+
+- `injectSignature` (`mail-compose.component.ts` ~l. 1574) produit, pour un nouveau message, un corps fait
+  **seulement** du bloc `<!-- signature --><br/>{signature}<!-- /signature -->`. Il n'y a aucune zone libre hors des
+  marqueurs.
+- Le curseur est placé sur la première ligne, dans les marqueurs : le texte tapé y entre (constaté dans Chromium,
+  moteur de la WebView Android). Résultat : `<!-- signature -->Bonjour<br>Dr Martin<!-- /signature -->`.
+- `hasOwnText` retire le bloc signature : pas de brouillon automatique, et la croix ferme **sans enregistrer**. Le texte
+  est perdu sans avertissement. Avant la task, il était sauvé.
+- Les tests unitaires ne le voient pas : ils construisent un HTML où le texte est déjà hors des marqueurs. Le banc e2e
+  n'a pas de signature par défaut.
+
+### ❌ weda2 : texte écrit sous la citation ou sous la signature, ignoré
+
+- `hasContent()` = `hasOwnText(body)`, qui ne garde que ce qui **précède** la première frontière (signature, en-tête
+  « Le … a écrit : », citation).
+- **Réponse** : le médecin écrit sous la citation, puis ferme par la croix. Pas de question, pas d'enregistrement
+  automatique, texte perdu. Avant la task, une réponse (qui a toujours un destinataire) était enregistrée : c'est une
+  **régression**.
+- **Nouveau message** : Entrée en fin de signature, puis du texte. Ce texte ne compte pas non plus.
+- Les deux clients ne jugent pas le même « texte du médecin » : le mobile compte le texte sous la signature, weda2 non.
+
+### Ce que je te propose (décision à confirmer)
+
+Remplacer « texte hors signature et hors citation » par :
+
+> **Le corps compte dès qu'il diffère de ce que la rédaction a proposé à l'ouverture** : vide, signature, citation
+> d'une réponse ou d'un transfert. Tout ajout du médecin compte, où qu'il soit : au-dessus, en dessous, dans la
+> citation (réponse point par point), et une image collée aussi.
+
+- C'est le sens littéral de ta demande (« rien saisi dans le corps ») : rien n'a changé dans le corps → ni brouillon ni
+  question. Le reste de ta décision ne change pas : objet, destinataires et pièces jointes seuls ne suffisent pas.
+- Mise en œuvre : chaque client garde le corps « proposé » à l'ouverture (et après un changement de signature), et
+  compare le corps courant normalisé (espaces, `<br>` vides, `&nbsp;`) à ce corps proposé.
+- Tests : de vrais tests d'éditeur (frappe dans le `contenteditable` / tiptap, signature par défaut, frappe sous la
+  citation), et pas un HTML construit à la main. En e2e, une variante de E2E-DRAFT-004 avec signature par défaut, qui
+  écrit puis ferme : le brouillon doit exister.
+
+### Reprise
+
+Si tu valides la règle, relance `/develop task-394`. Sinon, précise ce qui doit compter.

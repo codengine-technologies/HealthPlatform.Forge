@@ -136,13 +136,14 @@ Voir `tests/Features/Mss/EmptyComposeLeavesNoDraft.feature`.
 |---|---|---|---|---|---|---|
 | /start | ok | 21 s | — | — | — | — |
 | /develop | ok | 34 s | 1 (14 s) | 2 (33 s) | — | api-mail 0B/1T, client-angular 1B/1T, e2e ×1 (8 min 20 s), reprise : COMPOSE-003 mobile écrit un texte |
-| /sonar | skipped | 0.4 s | — | — | — | api-mail touché par le seul catalogue e2e (YAML) |
-| /lint-angular | ok | 12 s | — | — | — | 0 erreur |
-| /lint-mobile | ok | 6.9 s | — | — | — | All files pass linting |
-| /e2e | failed | 17 min 07 s | — | — | — | e2e ×5 (32 min 06 s), mobile rouge : E2E-COMPOSE-003 attend un brouillon sans texte ; angular vert 53/53 |
-| **Total cycle** | | **18 min 24 s** | **1 (14 s)** | **2 (33 s)** | **0 (0.0 s)** | |
+| /sonar | skipped | 0.5 s | — | — | — | reprise : api-mail limité au catalogue (YAML) |
+| /lint-angular | skipped | 0.4 s | — | — | — | reprise : weda2 inchangé depuis le lint propre |
+| /lint-mobile | ok | 6.6 s | — | — | — | reprise : propre |
+| /e2e | ok | 15 min 10 s | — | — | — | e2e ×10 (1 h 01 min), reprise : mobile 45/45, angular 53/53, parité verte |
+| /review | failed | 4 min 53 s | 3 (19 s) | 2 (18 s) | — | client-mobile 1B/1T, client-angular 1B/1T, api-mail 1B/0T, CHANGES REQUESTED : perte de texte (mobile signature par défaut, weda2 sous la citation) ; règle à confirmer |
+| **Total cycle** | | **21 min 08 s** | **4 (34 s)** | **4 (52 s)** | **0 (0.0 s)** | |
 
-Autres commandes mesurées : lint ×2 (16 s)
+Autres commandes mesurées : lint ×3 (22 s)
 
 ## Develop log
 
@@ -215,21 +216,21 @@ correction. Les avertissements restants sont antérieurs.
 
 ## E2E log
 
-Run du 2026-10-24 — **ROUGE** (voies jouées par `Tools/e2e/lane_cache.py`, rien de réutilisé).
+Run du 2026-10-25, après la reprise — **VERT**. Il remplace le run rouge du 2026-10-24 (E2E-COMPOSE-003 mobile).
 
 | Voie | Déclencheur | Résultat | Tests |
 |---|---|---|---|
-| mobile | api-mail et client-mobile touchés | ❌ rouge | 44 verts, 1 rouge (E2E-COMPOSE-003, deux essais) |
-| angular | api-mail et client-angular touchés (code seul) | ✅ verte | 53 verts, 0 flaky |
+| mobile | api-mail et client-mobile touchés | ✅ verte | 45 verts, 0 flaky, 0 rouge |
+| angular | api-mail et client-angular touchés (code seul) | ✅ verte | 53 verts, 0 flaky, 1 quarantaine |
 
-> **Blocage** : E2E-COMPOSE-003 (mobile) attend l'enregistrement automatique d'une rédaction sans texte dans le corps,
-> que la task supprime. Son geste n'a pas été adapté. Détail : `questions/task-394.md`.
+- Voies jouées par `Tools/e2e/lane_cache.py` (aucune réutilisée).
+- Catalogue : `Api/Mail/e2e/scenarios.yml` @ branche de la task ; E2E-DRAFT-004 v1 prouvé rouge par mutation sur les deux
+  clients (`## Develop log`).
+- Quarantaines : E2E-COMPOSE-002 (angular, task-350), passée
+- Divergences ouvertes : aucune
+- Démontage : complet (ports libres)
 
-**E2E : ROUGE** — 1 motif(s) de blocage.
-
-**Bloquant** (1) :
-
-- [mobile] rouge : « rédaction — un envoi refusé par la messagerie garde le brouillon et peut être renvoyé » (E2E-COMPOSE-003)
+**E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
 
 **En quarantaine (posée par l'humain, non bloquant)** (1) :
 
@@ -251,7 +252,7 @@ Run du 2026-10-24 — **ROUGE** (voies jouées par `Tools/e2e/lane_cache.py`, ri
 | E2E-DETAIL-001 | 3 | headless | Répondre et transférer depuis la lecture d'un message | ✅ | ✅ |
 | E2E-COMPOSE-001 | 1 | headless | Envoyer un message, le recevoir, le lire, le supprimer | ✅ | ✅ |
 | E2E-COMPOSE-002 | 1 | headless | Faire corriger l'orthographe de son texte, appliquer la correction, puis envoyer | ✅ | ✅ |
-| E2E-COMPOSE-003 | 1 | headless | Un envoi refusé par la messagerie laisse le brouillon intact et peut être renvoyé | ✅ | ❌ |
+| E2E-COMPOSE-003 | 1 | headless | Un envoi refusé par la messagerie laisse le brouillon intact et peut être renvoyé | ✅ | ✅ |
 | E2E-COMPOSE-004 | 1 | headless | Écrire à l'adresse choisie d'un contact à plusieurs adresses, ou à son adresse par défaut | ✅ | ✅ |
 | E2E-COMPOSE-005 | 1 | headless | Une remise incertaine n'est jamais présentée comme un échec à renvoyer | ✅ | ✅ |
 | E2E-MAIL-003 | 1 | headless | Signaler puis ne plus signaler un message | ✅ | ✅ |
@@ -296,3 +297,27 @@ Run du 2026-10-24 — **ROUGE** (voies jouées par `Tools/e2e/lane_cache.py`, ri
 | E2E-SESSION-003 | 2 | headless | La session fermée par Weda fait quitter weda2 | ✅ | — |
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## Code Review Summary
+
+**Verdict : CHANGES REQUESTED** — 2 bloquants (perte de texte du médecin). Détail et règle de remplacement proposée :
+`questions/task-394.md`. Relecture indépendante (agent neuf, lecture seule) ; le cas mobile est confirmé à la lecture
+par l'orchestrateur (`injectSignature`).
+
+**Validation** :
+- weda2 : build ✓, `mss-lib` 1 226 ;
+- mobile : build ✓, 1 257/1 257 sur deux rejeux, après un premier passage à 4 échecs. Ces 4 tests « suggestions de
+  destinataires » (task-388) dépendent de l'ordre, et le défaut existe déjà sur `develop` ;
+- api-mail : en cours au moment du verdict ;
+- e2e : vert (mobile 45/45, Angular 53/53).
+
+**Bloquants** :
+1. mobile : nouveau message avec signature par défaut. Le texte tapé entre dans les marqueurs de signature : aucun
+   brouillon, et le texte est perdu à la fermeture.
+2. weda2 : le texte écrit sous la citation ou sous la signature est ignoré. Une réponse écrite sous la citation est
+   perdue à la croix, alors qu'elle était enregistrée avant la task.
+
+**Suite à ouvrir** : les 4 tests mobiles « suggestions de destinataires » (task-388) dépendent de l'ordre d'exécution.
+
+**Prévention** : `conventions/e2e.md` › `html-construit-a-la-main`.
+
