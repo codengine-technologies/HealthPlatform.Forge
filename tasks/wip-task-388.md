@@ -149,7 +149,10 @@ Feature: Directory search finishing touches
     téléphone) ; adresses MSSanté (une ligne par adresse avec cadenas et badge « Par défaut ») ; étiquettes en pastilles
     et notes ;
   - actions en haut et en pied de page.
-  Les identifiants et les libellés de boutons utilisés par les suites e2e sont conservés.
+  Les identifiants utilisés par les suites e2e sont conservés. **Pas de pied de page** (demande de l'humain,
+  2026-10-24) : un seul bouton d'enregistrement, en haut (`#save-contact-btn`, « Enregistrer les modifications » ou
+  « Enregistrer le contact »). Les aides e2e `createContactWithTwoAddresses` et `saveEditedContact` cliquent
+  désormais `#save-contact-btn`, au lieu des boutons « Créer » et « Modifier ».
 
 **Décisions de l'humain (2026-10-24)** :
 1. Pas de récupération des contacts existants : les champs se remplissent au fil des imports et des enrichissements.
