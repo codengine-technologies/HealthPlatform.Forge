@@ -323,3 +323,17 @@ Autres commandes mesurées : lint ×2 (1 min 24 s)
   ?? front/libs/mss/src/features/patient/components/patient-card/patient-card.component.spec.ts
   ?? front/libs/mss/src/features/patient/components/patient-timeline/patient-timeline.component.spec.ts
 ```
+
+## Merged
+
+Mergé le 2026-10-24 par `/merge task-373 --i-tested` (le plan de test manuel a été validé par l'humain, HAG).
+
+| Repo | PR | Squash commit | CI `develop` |
+|---|---|---|---|
+| `api-mail` | [#308](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/308) | `515207d73e23e8cd3951e127fd99ebe34e58bd7d` | ✓ [run 40098262949](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/40098262949) |
+| `client-mobile` | [#102](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/102) | `5abe117ec4356d5f9eac1886c8242587dc2a6901` | ✓ [run 40098277049](https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/40098277049) |
+| `client-angular` | — | géré manuellement par l'humain (TFS) | — |
+
+- Label `awaiting-human-merge` retiré des deux PR ; branche `fix/task-373-dossier-patient-du-seul-patient` supprimée sur origin (aucune ref locale).
+- Clones laissés sur `fix/task-388-annuaire-finitions` (task-388 en cours) : `develop` local avancé par `git fetch origin develop:develop`, sans checkout.
+- Staging : aucune branche `forge/staging-*` sur ces dépôts — rien à supprimer.
