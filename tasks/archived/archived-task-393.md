@@ -548,3 +548,21 @@ récent, et un double-clic sur « Écrire un message » ouvre la messagerie sans
   - `front/libs/mss/src/core/utils/contact-card.util.ts`
   - `front/libs/mss/src/features/contacts/mss-contacts-refonte.component.spec.ts`
   - `front/libs/mss/src/features/mail/mss-mail.component.contact-recipient.spec.ts`
+
+## Merged
+
+Le 2026-10-24, `/merge task-393 --i-tested` (l'humain atteste avoir déroulé le Manual Test Plan).
+Squash-merge dans l'ordre topologique :
+
+| Repo | PR | Commit squash sur `develop` | CI `develop` |
+|---|---|---|---|
+| api-mail | #309 | `7a29c13f` | ✅ [Build and Publish](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/40130313285) |
+| client-mobile | #103 | `acbac00e` | ✅ [Android Build](https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/40130325134) |
+
+- La PR mobile avait une vérification `build-android` en cours : le merge a attendu qu'elle passe au vert.
+- Label `awaiting-human-merge` retiré des deux PR. Branche `feat/task-393-carnet-adresses-refonte` supprimée, en
+  distant comme en local, sur les deux dépôts. Clones revenus sur `develop`.
+- Incident sans effet : le `git pull` d'api-mail a d'abord échoué sur un verrou de référence (`cannot lock ref`) ; le
+  `develop` local a été resynchronisé juste après (`7a29c13f`).
+- `client-angular` : géré manuellement par l'humain.
+- Staging : aucune branche staging (cycle lancé à la main, pas par `/forge`).
