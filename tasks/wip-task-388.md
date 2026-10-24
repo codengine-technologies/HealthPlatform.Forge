@@ -306,6 +306,11 @@ client-blazor `6bf8c09` + `465434f` ; weda2 en code seul (design system compris)
   duplication 0,4 %)
 - Build / tests : ✓ Release ; domain 195, application 3 615, infrastructure 695, api 1 277, intégration 974 (16 ignorés)
 
+### Sonar — extension (h)(i)(j) (2026-10-24)
+
+- Phase 1 : ✓ Quality Gate OK, new_coverage 97,1 %, 0 finding ; Phase 2 : 0 itération (98,1 %, A/A/A, 0 smell)
+- Tests : domain 195, application 3 615, infrastructure 695, api 1 277, intégration 975 (16 ignorés)
+
 ## Lint log
 - **client-angular** (code seul, base `origin/next`, lint `tag:scope:mss`) — 0 itération : 0 erreur, 46 avertissements
   (aucun sur les fichiers de la task) ; Prettier ✓ ; tests affected ✓ 12 projets ; `weda2:build:production` ✓
@@ -319,12 +324,18 @@ client-blazor `6bf8c09` + `465434f` ; weda2 en code seul (design system compris)
   part de la task (~2,6 Ko, mesurée sur weda2). Non bloquant pour cette étape (aucun correctif appliqué) ; à signaler
   à l'humain (budgets de la branche `feature/nova-mss-weda-integration`).
 
+- **client-angular, extension (h)(i)(j)** — lint `tag:scope:mss` 0 erreur ; lint `design-system` 0 erreur (entrée
+  `list` de `ds-input`) ; tests affected ✓ 12 projets ; budgets `mss` / `prescription` toujours en erreur
+  (préexistant, inchangé).
+
 ## Lint mobile log
 - **client-mobile** — « All files pass linting » ; 0 itération, aucun commit ; build ✓ ; tests ✓ 1 192 (passe de
   `/develop`).
 
 - **client-mobile, extension (2026-10-24)** — « All files pass linting » ; 0 itération, aucun commit ; build ✓ ;
   tests ✓ 1 203 (passe qualité de `/develop`).
+
+- **client-mobile, extension (h)(i)(j)** — « All files pass linting » ; build ✓ ; tests ✓ 1 207.
 
 ## Branches
 - `api-mail` (pushed) : fix/task-388-annuaire-finitions — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-388-annuaire-finitions
@@ -343,39 +354,46 @@ client-blazor `6bf8c09` + `465434f` ; weda2 en code seul (design system compris)
 |---|---|---|---|---|---|---|
 | /start | ok | 25 s | — | — | — | — |
 | /develop | ok | 25 min 40 s | 5 (1 min 14 s) | 19 (8 min 11 s) | — | client-mobile 2B/6T, client-blazor 0B/5T, api-mail 2B/7T, client-angular 1B/1T, extension (h)(i)(j) : liste, fiche, deux colonnes |
-| /sonar | ok | 8 min 32 s | 2 (43 s) | 10 (13 min 31 s) | 4 (1 min 26 s) | api-mail 2B/10T, extension : QG OK, 0 finding, new_coverage 97,1 % |
-| /lint-angular | ok | 2 min 45 s | 2 (33 s) | 2 (3 min 14 s) | — | client-angular 2B/2T, 0 erreur lint ; budgets mss/prescription préexistants |
-| /lint-mobile | ok | 7.4 s | 1 (8.6 s) | — | — | client-mobile 1B/0T |
-| /e2e | ok | 16 min 40 s | — | — | — | e2e ×8 (45 min 54 s), extension : mobile 41/41, angular 49/49, parité verte |
+| /sonar | ok | 8 min 34 s | 3 (1 min 06 s) | 15 (20 min 27 s) | 6 (2 min 12 s) | api-mail 3B/15T, (h)(i)(j) : QG OK, 0 finding |
+| /lint-angular | ok | 2 min 04 s | 3 (44 s) | 3 (4 min 41 s) | — | client-angular 3B/3T |
+| /lint-mobile | ok | 6.7 s | 1 (8.6 s) | — | — | client-mobile 1B/0T |
+| /e2e | failed | 22 min 20 s | — | — | — | e2e ×11 (1 h 06 min), E2E-DETAIL-001 mobile rouge (3e occurrence), questions/task-388.md |
 | /review | ok | 7 min 29 s | 9 (1 min 14 s) | 8 (9 min 53 s) | — | api-mail 2B/2T, client-mobile 2B/2T, client-blazor 2B/2T, client-angular 2B/2T, dtos-mss 1B/0T, extension APPROVED ; PR dtos-mss #47 ; corps #307 #101 #96 mis à jour |
 | /tech-writer | ok | 0.6 s | — | — | — | — |
-| **Total cycle** | | **1 h 01 min** | **19 (3 min 55 s)** | **39 (34 min 50 s)** | **4 (1 min 26 s)** | |
+| **Total cycle** | | **1 h 06 min** | **21 (4 min 28 s)** | **45 (43 min 13 s)** | **6 (2 min 12 s)** | |
 
-Autres commandes mesurées : lint ×7 (1 min 12 s), nuget-wait ×1 (26 s)
+Autres commandes mesurées : lint ×10 (1 min 32 s), nuget-wait ×1 (26 s)
 
 ## E2E log
 
-Run de l'extension (2026-10-24) — remplace celui du 2026-10-23. Ce dernier avait une porte verte, obtenue sur une
-relance de la voie mobile ; son run 1 était rouge sur E2E-DETAIL-001, une instabilité inscrite au registre des flaky.
+Run de l'extension (h)(i)(j) (2026-10-24, après-midi) — **ROUGE**. Il remplace le run vert du matin (mobile 41/41,
+Angular 49/49).
 
 | Voie | Déclencheur | Résultat | Tests | Durée |
 |---|---|---|---|---|
-| mobile | api-mail, client-mobile et dtos-mss touchés | ✅ verte | 41 verts, 0 flaky, 0 rouge, 0 quarantaine | 8 min 00 s |
-| angular | api-mail, client-angular et dtos-mss touchés | ✅ verte | 49 verts, 0 flaky, 0 rouge, 1 quarantaine (E2E-COMPOSE-002, task-350, passée) | 7 min 44 s |
+| mobile | api-mail et client-mobile touchés | ❌ rouge | 40 verts, 1 rouge (E2E-DETAIL-001, deux essais) | 13 min 04 s |
+| angular | api-mail et client-angular touchés | ✅ verte | 49 verts, 0 flaky, 1 quarantaine (E2E-COMPOSE-002, passée) | 7 min 12 s |
 
-- Catalogue : `Api/Mail/e2e/scenarios.yml` @ branche de la task (`fix/task-388-annuaire-finitions`)
-- Quarantaines : E2E-COMPOSE-002 (angular), task-350, posée le 2026-10-09
-- Divergences ouvertes : aucune
-- E2E-DETAIL-001 (mobile) : vert au premier essai sur ce run
-- Parcours touchés sans spec e2e modifié : **rédaction** (`mail-compose.component.html`, weda2 et mobile) et
-  **liste des contacts** (weda2). C'est un avertissement, non bloquant. Le changement est seulement visuel : les
-  `data-testid` sont conservés, et les deux voies ont rejoué la sélection d'un destinataire suggéré (E2E-COMPOSE-001,
-  E2E-DETAIL-001), vertes. Le rendu est couvert par des tests de composant. Aucun scénario n'est ajouté ni versionné ;
-  la décision revient à l'humain s'il veut un scénario « suggestion lisible ».
-- Démontage : complet (ports libres). Les deux conteneurs `e2e-*` arrêtés datent du 2026-10-14 : ce sont des
-  résidus antérieurs, pas de ce run.
+> **Blocage, motif « régression » au sens de la porte.** E2E-DETAIL-001 sur mobile a échoué aux deux essais, sur
+> « le transfert arrive » (`functional.spec.ts:594`, étape 3 : transfert d'un message à deux pièces homonymes). C'est
+> la **troisième occurrence** de cette instabilité : 2026-10-23, run 1 rouge puis relance flaky ; 2026-10-24 matin,
+> vert ; 2026-10-24 après-midi, rouge.
+> - **Sans lien démontré avec l'extension** : l'étape 1, qui choisit aussi un destinataire suggéré dans la rédaction
+>   modifiée, passe. Le même échec existait avant ce changement (run 1 du 2026-10-23). Côté serveur, tous les
+>   `sendmail` répondent 200 (Seq) ; le message envoyé n'arrive pas.
+> - **Hypothèse non prouvée** : à l'étape 3, le test clique sur la suggestion « robert » puis envoie **sans attendre
+>   la puce du destinataire**, ce que fait l'étape 1. Un clic qui ne prend pas laisserait « robert » partir comme
+>   adresse : envoi accepté, rien de reçu. La trace ne conserve ni le corps de la requête ni les puces : non vérifié.
+> - **Question posée à l'humain** : `questions/task-388.md`.
 
-**E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
+- Catalogue : `Api/Mail/e2e/scenarios.yml` @ branche de la task ; quarantaines : E2E-COMPOSE-002 (angular, task-350)
+- Démontage : complet (ports libres)
+
+**E2E : ROUGE** — 1 motif(s) de blocage.
+
+**Bloquant** (1) :
+
+- [mobile] rouge : « détail — Répondre et Transférer partent avec le message d’origine, même cliqués pendant son chargement » (E2E-DETAIL-001)
 
 **En quarantaine (posée par l'humain, non bloquant)** (1) :
 
@@ -393,7 +411,7 @@ relance de la voie mobile ; son run 1 était rouge sur E2E-DETAIL-001, une insta
 | E2E-SETTINGS-001 | 1 | headless | Changer le filtre par défaut et le retrouver après rechargement | ✅ | ✅ |
 | E2E-MAIL-001 | 1 | headless | Marquer un message lu puis non lu | ✅ | ✅ |
 | E2E-MAIL-002 | 1 | headless | Tout sélectionner et marquer lu en masse | ✅ | ✅ |
-| E2E-DETAIL-001 | 3 | headless | Répondre et transférer depuis la lecture d'un message | ✅ | ✅ |
+| E2E-DETAIL-001 | 3 | headless | Répondre et transférer depuis la lecture d'un message | ✅ | ❌ |
 | E2E-COMPOSE-001 | 1 | headless | Envoyer un message, le recevoir, le lire, le supprimer | ✅ | ✅ |
 | E2E-COMPOSE-002 | 1 | headless | Faire corriger l'orthographe de son texte, appliquer la correction, puis envoyer | ✅ | ✅ |
 | E2E-COMPOSE-003 | 1 | headless | Un envoi refusé par la messagerie laisse le brouillon intact et peut être renvoyé | ✅ | ✅ |
