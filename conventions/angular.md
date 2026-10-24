@@ -414,6 +414,18 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   attendu. Voir le test rouge avant de le croire vert.
 - **Preuve** : `mss-contacts-render.component.spec.ts` (j), vert sans les colonnes avec l'ancienne assertion, rouge
   avec la nouvelle, vert une fois les colonnes posées.
-- **Origine** : task-388 (/develop)
+- **Origine** : task-388 (/develop) ; task-393 (/develop, weda2)
+- **Occurrences** : 2 (task-393 — variante Vitest : `expect(undefined).toContain(x)` passe aussi. Le test « la route
+  `contacts` porte la garde de sortie » était vert sans la garde, parce qu'il lisait `route?.canDeactivate`. Exiger
+  la route, puis `Array.isArray(route.canDeactivate)`, avant `toContain`.)
+
+### ds-button-id-requis — `ds-button` sans `id` fait tomber tous les tests de rendu du composant
+- **Règle** : convention projet (contrat du design system weda2)
+- **Repos** : client-angular
+- **Piège** : `ds-button` déclare `id` en `input.required`. Un seul bouton ajouté sans `id` lève NG0950 au rendu, et
+  **tous** les tests de rendu du composant tombent, anciens compris. Le message ne pointe pas le bouton fautif.
+- **Consigne** : tout `ds-button` ajouté porte un `id` unique dès l'écriture (le même que celui que vise un test e2e
+  quand il y en a un). Devant une cascade NG0950, chercher d'abord le dernier `ds-button` ajouté.
+- **Origine** : task-393 (/develop, weda2)
 - **Occurrences** : 1
 

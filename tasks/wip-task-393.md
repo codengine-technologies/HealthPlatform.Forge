@@ -196,3 +196,121 @@ Les deux nouveaux scénarios sont joués en `mode: headless` : aucun tiers exter
 - **Hébergement HDS** : oui. Le stockage du carnet est inchangé.
 - **AIPD / impact RGPD** : inchangé. Aucune nouvelle donnée n'est collectée, et les trois éléments qui en auraient
   demandé ont été retirés (décision 1).
+
+## Branches
+- `api-mail` (pushed) : feat/task-393-carnet-adresses-refonte — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-393-carnet-adresses-refonte (catalogue e2e)
+- `client-mobile` (pushed) : feat/task-393-carnet-adresses-refonte — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-393-carnet-adresses-refonte
+- `client-angular` (code-only) : la forge écrit le code sur la branche checkée dans `Client/Angular/` (au `/start` :
+  `feature/nova-mss-weda-integration`, arbre propre) ; humain gère commit, push et PR TFS
+- `dtos-mss` : non listé, aucun changement de contrat prévu (branche paresseuse si `/develop` en a besoin)
+
+## Develop log
+
+**2026-10-24 — `/develop` (forge).** api-mail `c5435b79` (catalogue) ; client-mobile `9f69335` + `35c83f5` + `2deceb3` ;
+weda2 en code seul, non commité sur `feature/nova-mss-weda-integration`. Deux forks en parallèle, un par client, sur un
+contrat de `data-testid` commun ; les bancs e2e ont été joués à la suite, une voie à la fois.
+
+- **Catalogue** (`Api/Mail/e2e/scenarios.yml`) : E2E-CONTACT-004 v1 et E2E-CONTACT-005 v1, mobile et Angular requis,
+  `headless`. `ScenarioCatalogTests` : 23 verts.
+- **Règle commune aux deux clients** : la pastille et le filtre « Annuaire », le RPPS verrouillé et le badge
+  « RPPS Certifié » valent pour une source **FHIR ou LDAP** seulement, pas pour « source ≠ locale ». Sinon un contact
+  importé d'un CSV ou enrichi par un CDA serait marqué « Annuaire », ce qui serait faux. « Sans adresse MSSanté » =
+  `isComplete` faux.
+- **weda2** :
+  - liste en trois colonnes (filtres, liste avec en-têtes de lettre et index vertical, aperçu à droite) ;
+  - menu « ⋯ » pour l'import et l'export vCard ; « Écrire » et favori au survol ;
+  - « Écrire un message » passe par un service racine (`ContactComposeHandoffService`), qui garde le destinataire
+    jusqu'à ce que `mss-mail` le prenne, une seule fois (consigne `service-propre-au-composant`) ;
+  - fiche : type par sélecteur, adresses ligne par ligne avec bouton radio et « Aucune », contrôle de format au blur et
+    à l'enregistrement, RPPS verrouillé pour l'annuaire ;
+  - confirmation de sortie : « Annuler », et garde de route `leaveConfirmationGuard` sur `contacts` ;
+  - nouveaux fichiers : `contact-card.util`, `contact-compose-handoff.service`, `leave-confirmation.guard`, et leurs
+    specs.
+- **mobile** :
+  - liste avec pastilles et filtres ;
+  - fiche de consultation plein écran, partagée avec l'éditeur dans la même fenêtre ;
+  - « Écrire un message » via `openCompose$` (rédaction montée globalement), avec une feuille d'actions pour choisir
+    l'adresse ;
+  - éditeur ligne par ligne, avec segment de type, bouton radio et « Aucune » ;
+  - confirmation par « Annuler » et par la garde `canDismiss` (retour matériel, glissement) ;
+  - nouveau `contact-editor.util`.
+- **Stitch (mobile)** : les deux générations ont expiré sans produire d'écran (voir `## Stitch design log`). Le code
+  suit les écrans weda2 et la task. **À reprendre par l'humain dans Stitch** si une référence mobile est voulue.
+- **Preuves rouges, tests unitaires** :
+  - weda2 : 36 tests rouges avant le code. Les tests verts d'emblée sont prouvés par 8 mutations (espaces tolérés,
+    domaine imposé, CSV compté comme annuaire, « Annuler » qui demande toujours, `take()` qui ne vide plus, garde
+    toujours ouverte, livraison sans condition, nom sans repli organisation), toutes rouges sur l'assertion visée ;
+  - mobile : 25 tests rouges contre des stubs. Deux témoins positifs sont prouvés par mutation (domaine
+    `.mssante.fr` imposé, `onTypeChange` inopérant).
+- **Preuves par mutation e2e** (banc `--serve-only`, une mutation à la fois, code restauré puis rejoué vert) :
+
+  | Mutation | Client | Test | Assertion tombée |
+  |---|---|---|---|
+  | M1 / MA1 : « Écrire » ne fait rien (`writeToViewed` / `writeTo`) | mobile / weda2 | E2E-CONTACT-004 | « la rédaction s'ouvre sur l'adresse de Robert » |
+  | M2 / MA2 : la sortie ne demande plus confirmation (`confirmDiscard` / `cancelEdit`) | mobile / weda2 | E2E-CONTACT-005 | « l'abandon des modifications est demandé » |
+  | M3 / MA3 : l'erreur s'affiche mais l'enregistrement part (`save` / `saveContact`) | mobile / weda2 | E2E-CONTACT-005 | « aucun enregistrement n'est parti » (compteur de PUT) |
+
+- **Voies e2e complètes** : mobile 44/44 (CONTACT-002, 003, 004, 005 et COMPOSE-004 verts, aides adaptées) ; Angular
+  52/52 ; parité verte sur chaque colonne.
+- **Contrôle visuel weda2 (DOD)** : spec temporaire de mesure, supprimée après usage.
+  - Premier passage : la fiche **défilait** à 1366×768 avec trois adresses (966 px de contenu pour 680 px visibles),
+    les deux colonnes coupées.
+  - Après compaction (champs `small`, type dans l'en-tête de la carte Identité, adresses sans boîte, « Aucune » et
+    « Ajouter » sur une ligne, aides retirées, notes sur deux lignes), plus aucun défilement à 1366×768 ni à 1440×900.
+  - Deux défauts corrigés au même passage : icône favori barrée (`star-off`) remplacée par `star` ; « Fiche mise à
+    jour » avec une majuscule.
+  - Captures : `C:/Users/pasca/AppData/Local/Temp/forge-e2e/task-393-dev-ng1/shots/`.
+- **Tests** : weda2 `mss-lib` 1 202 (110 fichiers) ; mobile 1 238.
+- **Build** :
+  - weda2 vert ; bundle initial à 2,10 Mo pour 2 Mo de budget (2,08 Mo à la revue de la 388) ;
+  - SCSS du carnet à 21,97 kB, au-dessus du seuil d'avertissement de 20 kB (l'erreur est à 40 kB) ;
+  - mobile vert.
+- **Lint** : 0 erreur sur les fichiers touchés, e2e compris, sur les deux clients.
+- **Passe qualité (§Q)** :
+  - mobile : `2deceb3` ;
+  - weda2 : faite à la main (`contactFullName` partagé, alias `editRppsCertified` retiré, `@if … as`), sans git.
+- **Écarts assumés** :
+  - weda2 : la fermeture de l'onglet et le rechargement ne demandent pas confirmation (pas de `beforeunload`) ;
+  - mobile : la fenêtre couvre la liste, donc le cas « autre contact » n'existe pas ;
+  - mobile : les styles de l'avatar typé sont recopiés depuis `mail-compose` (factorisation hors du diff).
+- **Bruit de poste** : 3 échecs `HtmlEditorComponent` (mobile, sélection de texte) pendant que l'autre fork lançait sa
+  suite Vitest, non reproduits ensuite. Deux suites de tests navigateur en parallèle sur le poste perturbent la
+  sélection de texte.
+- **Leçons** :
+  - `conventions/angular.md` : `chainage-optionnel-qui-ment` (récidive, variante `toContain`) et
+    `ds-button-id-requis` ;
+  - `conventions/e2e.md` : `testid-prefixe-d-un-autre` et `confirmation-attendue-avant-le-clic`.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-393 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 19 s | — | — | — | — |
+| /develop | ok | 1 h 02 min | 2 (15 s) | 5 (1 min 23 s) | — | api-mail 0B/1T, client-mobile 2B/4T, e2e ×2 (15 min 04 s), weda2 (code seul) + mobile 3 commits + catalogue ; e2e mobile 44/44, angular 52/52, 6 mutations rouges ; fiche weda2 compactée (1366×768 sans défilement) |
+| **Total cycle** | | **1 h 02 min** | **2 (15 s)** | **5 (1 min 23 s)** | **0 (0.0 s)** | |
+
+## Stitch design log
+
+`/stitch-design task-393` (Mode A, 2026-10-24) — projet Stitch `client-mobile` (`10088502293310567548`), design
+system `assets/7f352f2521964c6dacc9c7df62922990`.
+
+| Écran (titre = composant) | Action | Résultat |
+|---|---|---|
+| `contacts` (liste + filtres) | aucune correspondance → `generate_screen_from_text` ×1 (MOBILE) | ⚠️ **non matérialisé** : timeout MCP attendu, mais aucune nouvelle instance dans `get_project` ~40 min plus tard (66 instances avant et après ; seul `updateTime` a bougé, 15:16 UTC) |
+| `contact-editor` (édition, confirmation de sortie) | aucune correspondance → `generate_screen_from_text` ×1 (MOBILE) | ⚠️ **non matérialisé** (même constat) |
+
+- Pas de relance (règle : jamais de seconde génération après un timeout). `/develop` a codé les écrans Ionic d'après
+  les deux écrans weda2 de la task et le périmètre (a)-(e) ; best-effort, non bloquant.
+- **À relancer à la main dans l'interface Stitch** (titres exacts `contacts` et `contact-editor`) :
+  - `contacts` : liste groupée par lettre, index A–Z, recherche, segment Tous/Favoris/Récents, puces de type,
+    filtres rapides « Sans adresse MSSanté · n » et « Annuaire · n » + « Réinitialiser » (passage à la ligne, pas
+    de défilement horizontal), lignes avec avatar typé, nom, spécialité, adresse par défaut « Par défaut » « +N »,
+    pastilles explicites, étoile favori.
+  - `contact-editor` : Annuler / « Modifier le contact » / Enregistrer, « Modifications non enregistrées », segment
+    Professionnel / Structure / Patient, cartes Identité, Activité (RPPS verrouillé « Fourni par l'Annuaire santé —
+    non modifiable »), Adresses MSSanté (une ligne par adresse : radio par défaut, champ, retrait ; ligne « Aucune —
+    proposer toutes les adresses » ; erreur sous un champ mal formé ; « + Ajouter une adresse MSSanté »), Notes et
+    groupes, « Supprimer le contact » ; alerte « Abandonner les modifications ? » (« Continuer la saisie » /
+    « Abandonner »). Aucun compteur de notes, aucune date de naissance, aucun indice de domaine.
