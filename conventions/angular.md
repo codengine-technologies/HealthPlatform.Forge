@@ -441,3 +441,16 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   seul endroit (dialogue, sélecteur) ne dépend jamais d'une sélection que l'autre point d'entrée ne pose pas.
 - **Origine** : task-393 (/review, CHANGES REQUESTED)
 - **Occurrences** : 1
+
+### page-ionic-non-demontee — Une page Ionic rendue en test retombe sur les tests de rendu suivants
+- **Règle** : convention projet (instabilité Karma, invisible au lint)
+- **Repos** : client-mobile
+- **Piège** : sur task-393, un test qui rendait la page du carnet, puis un test qui rendait une fenêtre Ionic
+  (`ion-modal`), faisaient tomber d'autres suites une fois sur trois : rendu de la rédaction, sélecteur de messagerie,
+  erreurs `onAriaChanged`. Leurs éléments restaient attachés au document après la fin du test.
+- **Consigne** : un test Karma qui rend une page Ionic la démonte lui-même (`fixture.destroy()`, puis une courte
+  attente). Les libellés d'une fenêtre (`aria-label`, textes) se testent par les méthodes que le gabarit lie, pas en
+  rendant la fenêtre. Pour croire une suite stable, la rejouer plusieurs fois (la passe de task-393 : 0 échec sur 6
+  après correction, contre 2 sur 6 avant).
+- **Origine** : task-393 (/develop, reprise mobile)
+- **Occurrences** : 1

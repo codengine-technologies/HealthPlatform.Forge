@@ -281,6 +281,35 @@ contrat de `data-testid` commun ; les bancs e2e ont été joués à la suite, un
     `ds-button-id-requis` ;
   - `conventions/e2e.md` : `testid-prefixe-d-un-autre` et `confirmation-attendue-avant-le-clic`.
 
+**2026-10-24 — `/develop`, reprise après CHANGES REQUESTED** (`questions/task-393.md`).
+
+- **weda2 (bloquant)** :
+  - `writeTo` sélectionne d'abord le contact : depuis la ligne comme depuis l'aperçu, le choix d'adresse s'affiche
+    sous l'en-tête du contact cliqué ;
+  - le gabarit passe par `writeChoiceShown()`, qui n'affiche jamais le choix d'un autre contact que celui affiché ;
+  - changer de sélection ferme le choix.
+- **weda2 (point 4)** : une navigation refusée ou en échec retire le destinataire confié. L'ordre « confier, puis
+  naviguer » est gardé, parce que `mss-mail` prend le destinataire dans son `ngOnInit`, avant la réponse de
+  `navigate`.
+- **weda2 (sections)** : les noms hors A-Z sont regroupés dans une seule section « # », en fin de liste ; la clé de
+  `@for` n'est plus en double.
+- **Preuves weda2** : 8 tests rouges avant le correctif, puis 2 mutations rouges sur l'assertion visée (R1 : la
+  sélection ne vide plus le choix ; R2 : le gabarit revient à `writeChoice()`). Le neuvième test, cas d'une adresse par
+  défaut, est vert d'emblée et n'a été ni vu rouge ni muté.
+- **mobile** (`c93f9b7`, `a7fdead`) :
+  - « Supprimer » dans la fiche de consultation (`contact-detail-delete`, même alerte que l'éditeur, carnet relu,
+    retour à la liste) ;
+  - test du retrait de l'adresse par défaut réécrit : il lit la désignation après le retrait, et une mutation le fait
+    tomber ;
+  - libellés accessibles avec l'adresse (« Adresse par défaut : x@y », « Retirer x@y », « Copier x@y ») ;
+  - « Réinitialiser » vide aussi la barre de recherche, même pendant l'anti-rebond.
+  - Chaque point est vu rouge (contre un stub ou par mutation). Les libellés sont prouvés par les méthodes liées au
+    gabarit, pas par un rendu de la fenêtre, jugé instable.
+- **Instabilité corrigée au passage (mobile)** : le test des marques de la liste faisait tomber d'autres suites une
+  fois sur trois. Il démonte maintenant sa page. Après correction : 0 échec sur 6 passages, puis 1 241/1 241.
+- **Tests** : weda2 `mss-lib` 1 210 ; mobile 1 241. Build vert sur les deux clients, lint propre.
+- **Leçon** : `conventions/angular.md` › `page-ionic-non-demontee`.
+
 ## Sonar log
 
 **Skipped (2026-10-24).** api-mail n'est touché que par `e2e/scenarios.yml` (catalogue e2e, YAML), hors du périmètre
@@ -307,13 +336,13 @@ itération de correction, rien à commiter.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 19 s | — | — | — | — |
-| /develop | ok | 1 h 02 min | 2 (15 s) | 5 (1 min 23 s) | — | api-mail 0B/1T, client-mobile 2B/4T, e2e ×2 (15 min 04 s), weda2 (code seul) + mobile 3 commits + catalogue ; e2e mobile 44/44, angular 52/52, 6 mutations rouges ; fiche weda2 compactée (1366×768 sans défilement) |
+| /develop | ok | 18 min 27 s | 4 (29 s) | 7 (1 min 51 s) | — | api-mail 0B/1T, client-mobile 4B/6T, e2e ×2 (15 min 04 s), reprise CHANGES REQUESTED : weda2 écrire depuis la ligne + navigation refusée + section #, mobile supprimer/libellés/test/réinitialiser |
 | /sonar | skipped | 0.5 s | — | — | — | api-mail touché par le seul catalogue e2e (YAML), aucun C# modifié |
 | /lint-angular | ok | 40 s | — | — | — | 0 erreur (tag:scope:mss) ; 2 max-lines dans les fichiers de la task |
 | /lint-mobile | ok | 12 s | — | — | — | All files pass linting |
 | /e2e | ok | 15 min 44 s | — | — | — | e2e ×3 (15 min 17 s), vert : mobile 44/44, angular 52/52, 0 flaky, parité verte |
 | /review | failed | 8 min 32 s | 3 (32 s) | 3 (4 min 47 s) | — | client-mobile 1B/1T, client-angular 1B/1T, api-mail 1B/1T, CHANGES REQUESTED : weda2 « Écrire » depuis une ligne (choix d'adresse rendu sous le contact sélectionné) ; questions/task-393.md |
-| **Total cycle** | | **1 h 27 min** | **5 (48 s)** | **8 (6 min 10 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **43 min 57 s** | **7 (1 min 02 s)** | **10 (6 min 38 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×2 (16 s)
 
