@@ -135,12 +135,12 @@ Voir `tests/Features/Mss/EmptyComposeLeavesNoDraft.feature`.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 21 s | — | — | — | — |
-| /develop | ok | 24 min 42 s | 1 (14 s) | 2 (33 s) | — | api-mail 0B/1T, client-angular 1B/1T, e2e ×1 (8 min 20 s), weda2 + mobile ; DRAFT-004 prouvé rouge (MA1, MA3, M1) ; DETAIL-001 weda2 adapté |
+| /develop | ok | 34 s | 1 (14 s) | 2 (33 s) | — | api-mail 0B/1T, client-angular 1B/1T, e2e ×1 (8 min 20 s), reprise : COMPOSE-003 mobile écrit un texte |
 | /sonar | skipped | 0.4 s | — | — | — | api-mail touché par le seul catalogue e2e (YAML) |
 | /lint-angular | ok | 12 s | — | — | — | 0 erreur |
 | /lint-mobile | ok | 6.9 s | — | — | — | All files pass linting |
 | /e2e | failed | 17 min 07 s | — | — | — | e2e ×5 (32 min 06 s), mobile rouge : E2E-COMPOSE-003 attend un brouillon sans texte ; angular vert 53/53 |
-| **Total cycle** | | **42 min 32 s** | **1 (14 s)** | **2 (33 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **18 min 24 s** | **1 (14 s)** | **2 (33 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×2 (16 s)
 
@@ -192,6 +192,11 @@ joués à la suite, une voie à la fois.
 - **Défaut indépendant relevé (mobile)** : le spec de la rédaction lancé seul (`--include`) fait tomber 4 tests
   « suggestions de destinataires » (task-388). C'était déjà le cas sur `develop` ; la suite complète est verte.
 - **Trou du filet** : ligne ajoutée dans `conventions/e2e.md`.
+
+**2026-10-24 — `/develop`, reprise après `/e2e` rouge** (`questions/task-394.md`) : E2E-COMPOSE-003 (mobile) écrit
+désormais un texte dans le corps avant d'attendre l'enregistrement automatique, comme DRAFT-001 et 002. Ce qu'il
+vérifie ne change pas. `tsc -p e2e` OK, lint propre. Vérification : c'était le seul test mobile restant à attendre un
+brouillon sans texte.
 
 ## Sonar log
 
