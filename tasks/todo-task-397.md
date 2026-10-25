@@ -228,6 +228,12 @@ de Virginie (`virginie.medecinrpps0062267@medecin.formation.mssante.fr`).
     `EnrichedMailPersistence.cs:93-99, 181-251` (publication, notification).
   - Pour un message délégué, on garde le décodage et on coupe tout le reste. Le chemin de lecture
     du détail doit savoir décoder depuis l'IMAP quand rien n'est stocké.
+- **HPRIM (task-389, task-390)** : la règle s'applique aussi au HPRIM. Pour un message délégué,
+  le HPRIM et ses lignes `RES|` sont affichés seulement, sans injection en base, ce qu'ont acté le
+  2026-10-25 la décision 8 de task-389 et la décision 4 de task-390.
+  - Le chemin de lecture en mémoire construit ici doit donc reposer sur **la même liste de
+    lecteurs** de pièces médicales que `BuildMailDtoAsync`, et non sur le CDA en dur.
+  - Le test de convention doit couvrir tout lecteur ajouté plus tard.
 - **Marquer la provenance** : une colonne calculée sur `Mails.FolderPath`, comme
   `IsInSentDraftOrTrashFolder`, posée à l'écriture, sert à la fois au tri du pipeline, à la purge et
   au test de convention.
