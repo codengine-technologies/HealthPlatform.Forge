@@ -178,6 +178,13 @@ d'écrire le `todo-*.md`** — ne pas inventer.
 - **Tout document CDA reçu/émis** transite par `interop-cda` et est validé Schematron avant traitement métier.
 - **Toute écriture DMP / Mon Espace Santé** exige un consentement patient tracé.
 - **Authentification PS sensible** (signature, envoi MSSanté, alimentation DMP) : exiger PSC ou e-CPS, pas un simple mot de passe.
+- **BAL déléguée : rien n'est persisté chez le délégataire** (CLAUDE.md règle 14, 2026-10-25). Toute US qui touche un message, un dossier, une pièce jointe, un document (CDA, HPRIM…) ou un compteur dit ce qui arrive quand la BAL est **déléguée** (dossiers `shared/<adresse>/…`) :
+  - lecture **en direct** sur le serveur, à l'affichage ;
+  - **aucune** écriture en base tenant, dans Redis ni dans les journaux ;
+  - aucune exploitation : ni patient, ni IA, ni recherche, ni contact, ni notification ;
+  - seule exception, l'audit réduit : action, auteur, dossier, UID, `Message-ID`.
+
+  La DOD porte un test d'intégration « rien de persisté » sur le banc de délégation. Une US muette sur ce point n'est pas finalisable.
 
 ---
 
