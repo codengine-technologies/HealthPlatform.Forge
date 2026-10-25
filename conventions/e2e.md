@@ -44,6 +44,23 @@
 
 ## Conventions actives
 
+### fil-depose-a-la-seconde — Un fil déposé hors de l'application dépend de dates à la seconde
+- **Piège** : l'en-tête `Date` d'un message est à la seconde, et le dernier message d'un fil se lit en
+  base sur cette date. Une réponse déposée par l'outil e2e dans la même seconde que l'original lui est
+  **égale** : le fil peut prendre l'original pour son dernier message, et la vue Conversation masque la
+  réponse. Le test échouait environ une fois sur quatre, sans rien dire du code testé. Deuxième piège
+  du même parcours : basculer la vue (Liste / Conversation) puis recharger aussitôt. Le réglage est
+  enregistré après coup, et la page suivante, ou le parcours suivant, part de l'ancienne vue.
+- **Consigne** : `message --create … --in-reply-to` date la réponse au moins une seconde après
+  l'original (l'outil le fait depuis task-375). Un parcours qui forme un fil fait lire **chacun** de ses
+  messages par l'application (ouvrir son dossier en vue liste) avant la vue Conversation. Basculer la
+  vue attend la réponse `POST /api/v1/Settings`, à l'aller **et** au retour, jamais un délai fixe.
+- **Preuve** : 9 passages verts d'affilée après le correctif, contre environ 1 rouge sur 4 avant ;
+  l'API relue sur un passage rouge rendait les deux messages à la même seconde, avec
+  `isThreadRoot: false` pour la réponse.
+- **Origine** : task-375
+- **Occurrences** : 1
+
 ### garde-de-port-ipv4-seul — Un port « libre » en IPv4 peut être tenu en IPv6
 - **Piège** : l'orchestrateur Angular (`run.mjs`, `portBusy`) ne sonde que `127.0.0.1:4200`.
   Or `nx serve` en dev écoute sur `[::1]:4200`, et `https://localhost:4200` (`BASE_URL`,
@@ -678,6 +695,7 @@ scénario qui l'aurait attrapé, prouvé rouge sur le bug)*
 | Bug | Trouvé par | Scénario ajouté / durci | Task |
 |---|---|---|---|
 | Transférer (et Répondre, même chemin) cliqué avant le chargement du contenu du mail : le message part **sans le message d'origine**, sans erreur visible | /e2e task-349 (E2E-COMPOSE-002, 1er passage à froid) | **E2E-DETAIL-001 v2** (mobile et Angular requis) : réseau ralenti (latence CDP 3 s), Transférer cliqué aussitôt, le message **reçu**, relu côté serveur, porte la citation d'origine ; Répondre la cite dans l'éditeur. Rouge sur les deux clients avec la garde retirée (corps reçu vide côté Angular, en-tête de citation sans corps côté mobile), vert sur le correctif. Blazor : le contenu chargé à la demande n'était jamais rattaché au message, défaut identique, couvert en bUnit | task-350 |
+| Glisser un message d'un fil (vue Conversation) sur un dossier, ou agir en groupe sur une sélection de deux dossiers : weda2 envoyait les UID **du dossier affiché**, alors que les UID repartent à 1 dans chaque dossier. Le geste frappait le message de même numéro de la boîte de réception, sans erreur visible (audit Angular ANG-12) | audit Angular du 2026-10-13 | **E2E-MAIL-006 v1** (angular requis, mobile non-applicable : pas de glisser-déposer) : message envoyé de même numéro qu'un message de la boîte de réception, déplié dans le fil, glissé sur la Corbeille ; la suppression vise Envoyés, relu côté serveur. Rouge par mutation (le message glissé prend le dossier affiché : `DELETE …/folders/INBOX/emails/1`), vert sur le correctif | task-375 |
 | Un message rédigé plus de 30 s (brouillon enregistré automatiquement) part **sans ses pièces jointes**, sans accusé de lecture ni acquittement d'opposition, « envoyé » affiché (Angular et Blazor : route des brouillons dès qu'un brouillon existe) | Audit de bugs du 2026-09-27 (AUD-06), non vu par `/e2e` : aucun scénario n'envoyait un brouillon, ni une pièce jointe | **E2E-DRAFT-002** ajouté (mobile et Angular requis) : la pièce jointe est relue dans le message **reçu**, après l'enregistrement automatique. Rouge sur les deux clients avec le bug réinjecté côté serveur | task-329 |
 | Un document sans INS dont les traits ne correspondent à aucune fiche (ou sans trait) ne peut **pas être rattaché** : le dialogue n'offre que les candidats de `/patients/match`, puis « Ignorer » (Angular, Blazor, mobile) | L'humain au HAG de task-331, non vu par `/e2e` : aucun scénario ne rattachait un document à la main | **E2E-PATIENT-002** ajouté (mobile et Angular requis) : document sans INS seedé, aucun candidat, recherche libre, confirmation, message relu dans le dossier de la fiche. Rouge sous mutation (confirmation sans appel) sur les deux clients | task-331 |
 | Un dossier supprimé ou renommé depuis un autre logiciel de messagerie, puis ouvert dans l'app : **chargement sans fin** (Angular), anciens messages affichés (Blazor), message technique brut (mobile). Le serveur répondait 404 sans nommer la cause | L'humain, en recette (Seq : `GET /folders/…` → 404), non vu par `/e2e` : aucun scénario ne modifiait la boîte hors de l'application | **E2E-FOLDER-003** ajouté (mobile et Angular requis) : dossier créé dans l'app, supprimé par IMAP (`mss.mail.e2e folder --delete`), puis ouvert. Rouge sur les deux clients avec le bug réinjecté (Angular : spinner sans fin reproduit) | task-352 |
