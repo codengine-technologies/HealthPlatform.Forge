@@ -476,12 +476,17 @@ Analyse complète `healthplatform-api-mail` (SonarQube 9.9.8 local) après la tr
 
 Aucune itération de correction nécessaire : Quality Gate verte, **0 issue** sur le nouveau code.
 
+**Après les retours de `/review` (tranche 13)** — 2ᵉ analyse : QG OK, 2 issues sur la même ligne
+(`S1155` / `CA1827`, `entryKeys.Count(index.Remove) > 0` dans `DelegatedContentCache`). Corrigées par
+une boucle explicite — `Any()` aurait arrêté le retrait à la première clé — puis 3ᵉ analyse sur
+`80cb6c2f` : **QG OK, 0 issue**, new coverage 95,2 %. Consigne ajoutée à `conventions/csharp.md`.
+
 ### KPIs qualité (baseline → final)
 
 | Métrique | Baseline (develop) | Final (branche) | Δ |
 |---|---|---|---|
 | Quality Gate (new code) | OK | OK | = |
-| New coverage | — | 95,1 % | seuil tenu |
+| New coverage | — | 95,2 % | seuil tenu |
 | New bugs / vulnérabilités / smells | — | 0 / 0 / 0 | = |
 | Bugs / Vulnérabilités / Smells (projet) | 0 / 0 / 0 | 0 / 0 / 0 | = |
 | Coverage projet | 98,1 % | 97,6 % | −0,5 pt |
@@ -590,12 +595,12 @@ Démontage vérifié : ports 5052/3993/3465/3143 libres, aucun conteneur e2e ré
 |---|---|---|---|---|---|---|
 | /start | ok | 18 s | — | — | — | — |
 | /develop | ok | 16 min 34 s | 50 (4 min 12 s) | 72 (1 h 10 min) | — | api-mail 50B/72T, retours de revue : B1 B2 B3 S3 S7 |
-| /sonar | ok | 51 min 40 s | 5 (1 min 29 s) | 20 (25 min 53 s) | 8 (2 min 23 s) | api-mail 5B/20T, QG OK, 0 issue new code, aucune correction |
+| /sonar | ok | 7 min 45 s | 8 (2 min 09 s) | 32 (39 min 19 s) | 12 (3 min 43 s) | 1 itération(s), api-mail 8B/32T, retours de revue : 2 issues S1155/CA1827 corrigées, QG OK |
 | /lint-angular | skipped | 0.5 s | — | — | — | client-angular non touché (Repos: api-mail) |
 | /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non touché (Repos: api-mail) |
 | /e2e | ok | 16 min 40 s | — | — | — | e2e ×3 (15 min 51 s), mobile 46 + angular 55 verts, parité verte |
 | /review | failed | 11 min 35 s | 1 (10 s) | 1 (4 min 14 s) | — | api-mail 1B/1T, CHANGES REQUESTED : 3 bloquants (masquage propriétés sœurs, regex de masquage, borne du cache J) |
-| **Total cycle** | | **1 h 36 min** | **56 (5 min 52 s)** | **93 (1 h 40 min)** | **8 (2 min 23 s)** | |
+| **Total cycle** | | **52 min 55 s** | **59 (6 min 32 s)** | **105 (1 h 54 min)** | **12 (3 min 43 s)** | |
 
 ## Develop log
 
