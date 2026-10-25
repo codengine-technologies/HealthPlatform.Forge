@@ -506,10 +506,12 @@ Skipped — `client-mobile` non touché par la task (`**Repos**: api-mail`).
 
 ## E2E log
 
+Rejoué après les retours de `/review` (tranche 13) : api-mail `80cb6c2f`. Le passage précédent (api-mail `a9cfc8db`, mobile 46 / angular 55, vert) est remplacé par celui-ci.
+
 | Voie | Déclenchée par | Comment | Résultat | Dépôts (HEAD) |
 |---|---|---|---|---|
-| mobile | api-mail touché | jouée | 46 verts, 0 flaky, 0 rouge | api-mail `a9cfc8db`, client-mobile `6d890c2f` (develop, aligné sur origin/develop) |
-| angular | api-mail touché | jouée | 55 verts, 0 flaky, 0 rouge | api-mail `a9cfc8db`, client-angular (branche de l'humain, arbre inchangé) |
+| mobile | api-mail touché | jouée | 46 verts, 0 flaky, 0 rouge | api-mail `80cb6c2f`, client-mobile `6d890c2f` (develop, aligné sur origin/develop) |
+| angular | api-mail touché | jouée | 55 verts, 0 flaky, 0 rouge | api-mail `80cb6c2f`, client-angular (branche de l'humain, arbre inchangé) |
 
 Démontage vérifié : ports 5052/3993/3465/3143 libres, aucun conteneur e2e résiduel. Aucun écran client modifié par la task (api-mail seul) : pas d'avertissement « parcours touchés sans spec ».
 
@@ -596,11 +598,11 @@ Démontage vérifié : ports 5052/3993/3465/3143 libres, aucun conteneur e2e ré
 | /start | ok | 18 s | — | — | — | — |
 | /develop | ok | 16 min 34 s | 50 (4 min 12 s) | 72 (1 h 10 min) | — | api-mail 50B/72T, retours de revue : B1 B2 B3 S3 S7 |
 | /sonar | ok | 7 min 45 s | 8 (2 min 09 s) | 32 (39 min 19 s) | 12 (3 min 43 s) | 1 itération(s), api-mail 8B/32T, retours de revue : 2 issues S1155/CA1827 corrigées, QG OK |
-| /lint-angular | skipped | 0.5 s | — | — | — | client-angular non touché (Repos: api-mail) |
-| /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non touché (Repos: api-mail) |
-| /e2e | ok | 16 min 40 s | — | — | — | e2e ×3 (15 min 51 s), mobile 46 + angular 55 verts, parité verte |
+| /lint-angular | skipped | 0.4 s | — | — | — | repo non touché (Repos: api-mail) — passage post-revue |
+| /lint-mobile | skipped | 0.5 s | — | — | — | repo non touché (Repos: api-mail) — passage post-revue |
+| /e2e | ok | 15 min 20 s | — | — | — | e2e ×6 (30 min 44 s), post-revue : mobile 46 + angular 55 verts, parité verte |
 | /review | failed | 11 min 35 s | 1 (10 s) | 1 (4 min 14 s) | — | api-mail 1B/1T, CHANGES REQUESTED : 3 bloquants (masquage propriétés sœurs, regex de masquage, borne du cache J) |
-| **Total cycle** | | **52 min 55 s** | **59 (6 min 32 s)** | **105 (1 h 54 min)** | **12 (3 min 43 s)** | |
+| **Total cycle** | | **51 min 35 s** | **59 (6 min 32 s)** | **105 (1 h 54 min)** | **12 (3 min 43 s)** | |
 
 ## Develop log
 
