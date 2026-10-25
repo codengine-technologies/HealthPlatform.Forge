@@ -624,6 +624,22 @@ dépassée.
 - **Origine** : task-340, task-376
 - **Occurrences** : 2
 
+### accueil-selon-l-hote — « revenir à l'accueil » n'ouvre pas la même page dans chaque hôte
+- **Piège** : E2E-MAILBOX-002 (task-378) attendait la boîte de réception après le réessai, qui
+  rend la main à la page d'accueil (`MSS_HOME_PAGE`). Embarqué dans Weda, c'est la boîte de réception ;
+  en weda2 **autonome** (la voie headless), c'est le **tableau de bord**. Le test cherchait le dossier
+  INBOX sur le tableau de bord : rouge, alors que la boîte était bien ouverte. Le mobile, lui, revient
+  toujours sur `/tabs/messages`, et sa voie était verte.
+- **Consigne** : après une action qui « revient à l'accueil » côté weda2, attendre d'avoir quitté
+  l'écran de départ, puis **naviguer explicitement** vers l'écran à juger (`spaNavigate`). Ne jamais
+  supposer que l'accueil est la boîte de réception. Lire `MSS_HOME_PAGE` dans le contexte du test
+  (autonome ou faux hôte) avant d'écrire l'assertion.
+- **Preuve** : task-378. Rouge au premier passage de la voie (test frais), vert une fois la navigation
+  explicite ajoutée. Le test a ensuite été prouvé rouge par mutation (`initialize()` remis à « échec =
+  zéro boîte ») sur l'assertion « la panne est dite comme une panne », sur les deux clients.
+- **Origine** : task-378 (/e2e)
+- **Occurrences** : 1
+
 ---
 
 ## Registre des flaky
@@ -635,7 +651,7 @@ task de stabilisation proposée)*
 |---|---|---|---|---|
 | dossiers — naviguer vers Archive et Corbeille (E2E-FOLDER-001) | angular | 1 | task-347 | à établir — 1er essai : « le dossier INBOX est ouvert » (titre de liste absent au retour vers INBOX) |
 | inbox — filtres Non lus / Lus / Tous et recherche (E2E-INBOX-001) | angular | 1 | task-343 | à établir — vert au 2e essai |
-| recherche — requête et recherche avancée (E2E-SEARCH-001) | angular | 6 | task-376, task-373 | à établir — vert au 2e essai sur cinq runs de suite de task-376 et le run de task-373 (dont le run après sync develop du 2026-10-23) (task qui ne touche pas la recherche). **Troisième occurrence → task de stabilisation à ouvrir.** Piste : prédicat de réponse (cf. « predicat-de-reponse », déjà relevé sur ce test en task-348) |
+| recherche — requête et recherche avancée (E2E-SEARCH-001) | angular | 9 | task-378, task-376, task-373 | à établir — task-378 (2026-10-25) : vert au 2e essai aux trois passages de la voie, task qui ne touche pas la recherche. Vert au 2e essai sur cinq runs de suite de task-376 et le run de task-373 (dont le run après sync develop du 2026-10-23) (task qui ne touche pas la recherche). **Troisième occurrence → task de stabilisation à ouvrir.** Piste : prédicat de réponse (cf. « predicat-de-reponse », déjà relevé sur ce test en task-348) |
 | messagerie — changer de boîte depuis l’écran mail, embarqué (E2E-MAILBOX-001) | angular | 1 | task-376 | à établir — vert au 2e essai (reprise de task-376), task qui ne touche pas la bascule de boîte |
 | détail — bascule texte brut / HTML (E2E-DETAIL-002) | mobile | 2 | task-338 | à établir — 1er essai : « mail sans corps affichable » (`mail-body-empty` reste affiché, le corps seedé n'apparaît pas dans les 15 s). Sur task-192 : rouge aux 2 essais d'un premier run, flaky au run suivant (3 échecs sur 4 essais) ; vert au 1er essai sur `develop` (1 run). Piste : course entre l'état « Aucun contenu » affiché pendant le chargement et le corps enrichi. Récidive sur task-338 (rouge au 1er essai, vert au 2e), task qui ne touche pas la lecture d'un message : le soupçon porté sur task-192 est levé, l'instabilité est propre au test |
 | rédaction — envoyer, recevoir, lire, supprimer (E2E-COMPOSE-001) | angular | 6 | task-379 | task-379 (2026-10-22) : 1er essai, même signature (`delete-mail-btn` en dépassement, 15 s), vert au 2e ; la task touche les suggestions de la rédaction, pas la lecture ni le menu « Plus d’actions ». **Récidive après le correctif de task-370** (task-384, 2026-10-20) : 1er essai, même signature `locator.click` en dépassement (15 s) sur `delete-mail-btn`, vert au 2e, sur la branche `feature/nova-mss-weda-integration` (report sur `next`) et une task qui ne touche ni la rédaction ni la lecture. **Flaky récurrent → task de stabilisation à ouvrir.** **établie et corrigée (task-370, 2026-10-14)** : bug produit, pas un flaky — `mail-detail.loadContent` refermait le menu « Plus d’actions » (et l’aperçu de pièce jointe) sur l’enrichissement temps réel du **même** mail, qui arrive juste après l’ouverture d’un mail tout juste reçu. Flaky au /e2e de task-370, rouge aux deux essais au rejeu de task-383, vert après correctif (test unitaire rouge d’abord). Historique : vert au 2e essai, sur le run vert de task-364 (plafond Dovecot du banc relevé à 1000 juste avant). task-340, 1er essai : `locator.click` en dépassement (15 s) sur `delete-mail-btn` du menu « Plus d’actions » (`moreAction`, `weda.ts:278`) |

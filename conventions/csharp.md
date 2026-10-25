@@ -519,7 +519,7 @@ private Task<T> ReadCoreAsync(string key, string? correlationId, CancellationTok
 
 ## xUnit1051 — un test qui appelle une méthode à `CancellationToken` doit passer celui du contexte
 
-**Occurrences : 3** (task-297 le 2026-09-13 — 10 appels, CI `develop` cassée ;
+**Occurrences : 4** (task-378 — `DidNotReceiveWithAnyArgs().TestImapConnectionAsync(default!, default, default)` dans un test d'intégration neuf : le `default` du jeton est la forme exacte de task-329, attrapée par le build avant tout commit ; task-297 le 2026-09-13 — 10 appels, CI `develop` cassée ;
 task-303 le même jour — 12 appels, attrapés avant le push ; task-329 — 3 appels
 `DidNotReceiveWithAnyArgs().SendMailAsync(default!, default)`, attrapés par le build : le
 `default` d'un `CancellationToken` dans une vérification de substitut compte aussi)

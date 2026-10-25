@@ -2,10 +2,10 @@
 
 > **Statut** : 🟡 En cours
 > **Modèle** : task-driven
-> **Version** : 1.20
+> **Version** : 1.21
 > **Auteur** : PO forge
 > **Audience** : PO, médecin, direction produit, conformité — la vue ingénierie vit dans [E016-Changelogs.md](E016-Changelogs.md)
-> **Dernière mise à jour** : 2026-10-14
+> **Dernière mise à jour** : 2026-10-25
 
 ---
 
@@ -22,7 +22,7 @@
 - [7. Contraintes et hypothèses](#7-contraintes-et-hypothèses)
 - [8. Critères d'acceptation de l'EPIC](#8-critères-dacceptation-de-lepic)
 - [9. Hors périmètre](#9-hors-périmètre)
-- [État de couverture (2026-10-14)](#état-de-couverture-2026-10-14)
+- [État de couverture (2026-10-25)](#état-de-couverture-2026-10-25)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -85,9 +85,9 @@ augmente.
 | Fonctionnalité | Ce que le praticien peut faire | Tasks | Statut |
 |---|---|---|---|
 | **Plusieurs messageries, une seule connexion** | Retrouver, après une authentification unique, toutes les messageries qui relèvent de son identité professionnelle | task-303, task-304, task-308 | ✅ Livrée |
-| **Changer de messagerie en direct** | Cliquer sur son avatar et ouvrir une autre de ses messageries : l'écran se vide et se recharge sur la nouvelle boîte, sans reconnexion — les **nouveaux messages et alertes en temps réel** suivent la messagerie ouverte, et une **suppression faite juste avant** reste dans la messagerie quittée | task-304, task-336, task-374 | ✅ Livrée — bascule nettoyée de bout en bout *en attente de merge* (task-374) |
-| **Rattacher sa première messagerie** | Entrer son adresse dès le premier accès et travailler immédiatement, sans se déconnecter ni se reconnecter — l'opérateur de messagerie vérifie l'accès avant que le rattachement n'aboutisse | task-304, task-308 | ✅ Livrée |
-| **Gérer ses messageries** | Ajouter une messagerie, en détacher une, la **rattacher à nouveau**, désigner celle qui s'ouvre par défaut, comprendre pourquoi l'une est indisponible — et, en détachant la **dernière**, être déconnecté proprement au lieu de rester enfermé | task-304, task-309, task-310, task-312, task-313, task-314 | ✅ Livrée — dernière pièce **mergée** : une messagerie détachée n'offre plus que « Rattacher » (task-314) |
+| **Changer de messagerie en direct** | Cliquer sur son avatar et ouvrir une autre de ses messageries : l'écran se vide et se recharge sur la nouvelle boîte, sans reconnexion — les **nouveaux messages et alertes en temps réel** suivent la messagerie ouverte, et une **suppression faite juste avant** reste dans la messagerie quittée | task-304, task-336, task-374 | ✅ Livrée — bascule nettoyée de bout en bout **mergée** (task-374) |
+| **Rattacher sa première messagerie** | Entrer son adresse dès le premier accès et travailler immédiatement, sans se déconnecter ni se reconnecter — l'opérateur de messagerie vérifie l'accès avant que le rattachement n'aboutisse. Si le service ne répond pas à l'ouverture, un écran le dit et propose de **réessayer**, au lieu d'inviter à se reconnecter ou à rattacher une messagerie déjà rattachée | task-304, task-308, task-378 | ✅ Livrée — écran de panne à l'ouverture *en attente de merge* (task-378) |
+| **Gérer ses messageries** | Ajouter une messagerie, en détacher une, la **rattacher à nouveau**, désigner celle qui s'ouvre par défaut, comprendre pourquoi l'une est indisponible, **ré-essayer l'authentification** d'une messagerie que son opérateur refusait, et **savoir pour chaque action si elle a réussi** — et, en détachant la **dernière**, être déconnecté proprement au lieu de rester enfermé | task-304, task-309, task-310, task-312, task-313, task-314, task-378 | ✅ Livrée — retour de chaque action et ré-authentification *en attente de merge* (task-378) |
 | **Travailler sans sa carte, envoyer avec elle** | Lire, classer et rédiger avec sa seule connexion au compte, carte absente ; retrouver ensuite ses messages **« prêts à partir »**, les relire, puis les envoyer ou les annuler **un par un, carte présentée** — aucun message ne part de lui-même | task-320 | ✅ Livrée (**mergée** le 2026-09-27) |
 | **Conservation appliquée à tous les comptes** | Être assuré que les durées d'effacement s'appliquent aussi aux comptes qui ne servent plus, y compris à ceux d'un praticien qui a quitté le service | task-299, task-312 | ✅ Livrée — l'effacement à échéance **s'exécute** depuis task-312 (**mergée**) |
 | **Traçabilité des accès à l'échelle du parc** | Consulter l'historique de ses propres accès — et les trier — sans que la croissance du parc n'en dégrade la tenue | task-300, task-312 | ✅ Livrée — écriture et retrait de l'historique hérité **mergés** |
@@ -278,14 +278,14 @@ par la liste.
 
 ---
 
-## État de couverture (2026-10-14)
+## État de couverture (2026-10-25)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
 | Plusieurs messageries, une seule connexion | ✅ Livrée | 100 % | task-303, task-304, task-308 (**mergées**) |
-| Changer de messagerie en direct | ✅ Livrée | 100 % | task-304, task-336 (**mergées**), task-374 (*en attente de merge*) |
-| Rattacher sa première messagerie | ✅ Livrée | 100 % | task-304, task-308 (**mergées**) |
-| Gérer ses messageries | ✅ Livrée | 100 % | task-304, task-309, task-310, task-312, task-313, task-314 (**mergées**) |
+| Changer de messagerie en direct | ✅ Livrée | 100 % | task-304, task-336, task-374 (**mergées**) |
+| Rattacher sa première messagerie | ✅ Livrée | 100 % | task-304, task-308 (**mergées**), task-378 (*en attente de merge*) |
+| Gérer ses messageries | ✅ Livrée | 100 % | task-304, task-309, task-310, task-312, task-313, task-314 (**mergées**), task-378 (*en attente de merge*) |
 | Travailler sans sa carte, envoyer avec elle | ✅ Livrée | 100 % | task-320 (**mergée**) |
 | Conservation appliquée à tous les comptes | ✅ Livrée | 100 % | task-299, task-312 (**mergées**) |
 | Traçabilité des accès à l'échelle du parc | ✅ Livrée | 100 % | task-300, task-312 (**mergées**) |
@@ -296,7 +296,7 @@ par la liste.
 **Couverture EPIC consolidée : 89 %** — 8 fonctionnalités livrées sur les 9 au
 périmètre, 1 bloquée en attente d'arbitrage.
 
-Au 2026-10-14, toutes les fonctionnalités livrées le sont en service, correctif du temps réel compris (task-336). Le nettoyage complet du changement de messagerie (task-374) attend son merge : il ne change pas le périmètre, il rend la bascule sûre. Le durcissement de sécurité task-332 n'ajoute aucune fonctionnalité et attend son merge. « Gérer ses messageries »
+Au 2026-10-25, toutes les fonctionnalités livrées le sont en service, correctif du temps réel, nettoyage complet du changement de messagerie (task-374) et durcissement de sécurité (task-332) compris. task-378 attend son merge : il ne change pas le périmètre, il fait dire à l'application ce qui se passe quand le service ne répond pas ou qu'une action sur une messagerie échoue. « Gérer ses messageries »
 est **livrée** depuis le merge de task-314 : une ligne détachée n'offre plus que
 **« Rattacher »**, et affiche la date de son détachement.
 La ligne multi-messageries est **livrée de bout en bout et mergée** : le registre, la
@@ -515,7 +515,15 @@ et n'entre pas dans le calcul.
 
 ### Fonctionnalités métier
 
-- **v1.19 — Changer de messagerie ne laisse plus rien de la précédente** (task-374, *en attente de merge*).
+- **v1.21 — Une panne est dite comme une panne, et chaque action sur une messagerie dit si elle a réussi** (task-378, *en attente de merge*).
+  À l'ouverture, quand le service de messagerie ne répondait pas, le praticien qui avait sa carte se voyait demander de se
+  connecter avec Pro Santé Connect, ou de rattacher une messagerie qu'il avait déjà. Un écran dit désormais que le service est
+  momentanément indisponible et propose de **réessayer**. Dans la gestion des messageries, « Ré-essayer l'authentification » ne
+  faisait rien : il interroge maintenant l'opérateur, et la messagerie redevient utilisable s'il l'accepte. Chaque action —
+  rattacher, détacher, choisir la messagerie par défaut — dit si elle a réussi et, sinon, pourquoi. Un détachement qui échoue ne
+  déconnecte plus, et « déjà rattachée » ou « session Pro Santé Connect requise » ne s'affichent plus « identifiants refusés ».
+  Même comportement sur l'application web et sur l'application mobile.
+- **v1.19 — Changer de messagerie ne laisse plus rien de la précédente** (task-374, **mergée**).
   Un praticien qui supprimait un message puis changeait aussitôt de messagerie pouvait voir disparaître
   un **message de l'autre messagerie** — celui qui portait le même numéro — tandis que le sien
   réapparaissait. Dans Weda, changer de messagerie depuis l'écran des messages gardait la liste, les
@@ -584,8 +592,7 @@ et n'entre pas dans le calcul.
 
 ### Sécurité
 
-- **La nouvelle messagerie reste connectée tant que la session est ouverte** (v1.20, task-370, *en attente de
-  merge et de commit côté weda2*). Hors de Weda, la messagerie tombait en erreur « jeton expiré » environ quatre
+- **La nouvelle messagerie reste connectée tant que la session est ouverte** (v1.20, task-370, **mergée**). Hors de Weda, la messagerie tombait en erreur « jeton expiré » environ quatre
   minutes après la connexion ; elle renouvelle désormais l'accès avant qu'il n'expire, sans couper les nouveaux
   messages qui arrivent en direct. Une coupure réseau pendant ce renouvellement ne déconnecte plus. Au passage, un
   mail qui reçoit son enrichissement en direct ne referme plus le menu « Plus d'actions » ni l'aperçu de pièce jointe
