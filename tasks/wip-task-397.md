@@ -460,14 +460,23 @@ de Virginie (`virginie.medecinrpps0062267@medecin.formation.mssante.fr`).
 
 | # | Tranche | État |
 |---|---|---|
-| 1 | Règle de domaine `DelegatedMailboxRule` : prédicat, propriétaire, rôle, BAL identique, masquage de texte (clair et encodé) + tests unitaires | en cours |
-| 2 | Banc de délégation : fragment Dovecot (`acl`, `imap_acl`, espace `shared`, `INDEXPVT`), `DovecotFixture` le monte, aide de délégation par `SETACL` IMAP | à faire |
-| 3 | Masquage central des journaux (puits Serilog enveloppant : gabarit, propriétés, exception), `SanitizePath`, attribut OTel `email.folder`, étiquettes de verrou | à faire |
-| 4 | Garde d'écriture : intercepteur EF (`SaveChanges`), méthodes `ExecuteUpdate`/SQL à chemin, décorateur de cache (clés + valeurs structurelles), filtre de publication MassTransit, test de convention | à faire |
-| 5 | Synchronisation : prédicat à l'entrée de chaque mécanisme + journal « Skipped delegated folder » ; la synchro périodique liste l'espace partagé | à faire |
+| 1 | Règle de domaine `DelegatedMailboxRule` : prédicat, propriétaire, rôle, BAL identique, masquage de texte (clair et encodé) + tests unitaires | ✅ `c07a423f` — 45 tests |
+| 2 | Banc de délégation : fragment Dovecot (`acl`, `imap_acl`, espace `shared`, `INDEXPVT`), `DovecotFixture` le monte, aide de délégation par `SETACL` IMAP | ✅ `44ba4947` — 3 tests de banc ; suite d'intégration complète inchangée (984/1000, 16 ignorés) |
+| 3 | Masquage central des journaux (puits Serilog enveloppant : gabarit, propriétés, exception), `SanitizePath`, attribut OTel `email.folder`, étiquettes de verrou | ✅ `afd2a874` — 6 tests |
+| 4 | Garde d'écriture : intercepteur EF (`SaveChanges`), méthodes `ExecuteUpdate`/SQL à chemin, décorateur de cache (clés + valeurs structurelles), filtre de publication MassTransit, test de convention | ✅ `85c5f500` — 6 + 10 + 5 tests ; convention prouvée rouge par 2 mutations |
+| 5 | Synchronisation : prédicat à l'entrée de chaque mécanisme + journal « Skipped delegated folder » ; la synchro périodique liste l'espace partagé | en cours |
 | 6 | Filtre MVC des politiques par route : refus (IA, accusés, étiquettes, annuler-remplacer, recherche, réglages), écritures hors ligne, chemin exact du `LIST` (alias, révocation 404 typée), dossiers système 409, création sous `shared`/système, déplacements inter-BAL 409 | à faire |
 | 7 | Lecture directe : liste des dossiers (propres en cache + délégués en direct), en-têtes / today / unread / recent, détail par `ReadEmailWithoutPersistingAsync` hors verrou, statut terminal, `HasMedicalDocuments` par structure, pièces jointes / zip / export, `STORE` direct | à faire |
 | 8 | Corbeille du propriétaire (unitaire, groupée, définitive, sous-dossier) | à faire |
 | 9 | Audit : liste blanche dans `AuditService.Trace` avant le tampon, `Message-ID` lu en direct | à faire |
 | 10 | Cache Redis du contenu délégué décodé (section J) + PDF du CDA servi depuis le cache | à faire |
 | 11 | Caractérisation Mailiz, mesure, passe qualité, DoD | à faire |
+
+**Constats et preuves (au fil des tranches)**
+
+- **Banc** : sans `userdb`, Dovecot ne peut pas monter la BAL du délégant (« userdb reply doesn't contain uid ») ; le fragment ajoute une `userdb` statique alignée sur le banc. NAMESPACE range `shared/` dans le groupe **« autres utilisateurs »** : MailKit l'expose dans `OtherNamespaces`, pas `SharedNamespaces` — le code lit les deux.
+- **Suites complètes après tranches 3-4** : domaine 240, infrastructure 701, API 1 297, application 3 636, intégration 984 réussis + 16 ignorés sur 1 000 — tout vert.
+- **Mutations (test de convention)** :
+  - 2026-10-25 — retrait de `AddInterceptors(DelegatedPersistenceInterceptor.Instance)` dans `BaseRepository` → `OnlyBaseRepositoryCreatesAPractitionerContext_AndItInstallsTheInterceptor` rouge ; restauré par copie, vert.
+  - 2026-10-25 — retrait des deux gardes de `FolderRepository.RenameFolderAsync` → `EveryBulkUpdateWritingAPathIsGuarded` rouge (lignes 583, 587) ; restauré par copie, vert.
+  - **Faux vert trouvé et corrigé** : la première version du scan cherchait `SetProperty(…FolderPath` sur **une** ligne ; l'appel réel s'écrit sur deux. La mutation est restée verte → regex multiligne sur la ligne d'appel et les deux suivantes. Leçon à consigner (`conventions/csharp.md`).
