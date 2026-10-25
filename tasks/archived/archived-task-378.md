@@ -313,6 +313,13 @@ Chaque étape se joue sur weda2 **puis** sur l'app mobile (`cd Client/Mobile && 
 - [x] Scénario E2E-MAILBOX-002 au catalogue, requis angular + mobile, implémenté dans les deux clients, prouvé rouge par mutation, voies vertes
 - [x] Aucune adresse ni identifiant de session ajouté aux journaux
 
+## Merged
+
+- Le 2026-10-25, par `/merge task-378 --i-tested` (validation humaine attestée).
+- `api-mail` : squash `fb9f9867` (PR #310 fermée, label retiré, branche distante et locale supprimées). CI `develop` verte : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/40173849169
+- `client-mobile` : squash `d9dddee5` (PR #104 fermée, label retiré, branches supprimées). CI `develop` verte : https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/40173865699
+- `client-angular` : managed manually by the human (TFS).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-378 --sync` — ne pas éditer à la main)*
