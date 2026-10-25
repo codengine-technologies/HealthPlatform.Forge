@@ -1704,3 +1704,16 @@ même capture, le test est passé au rouge sur trois fuites.
 - un masquage par expression régulière court jusqu'au **vrai délimiteur** (fin de ligne, `/` de la
   route, `?`), jamais jusqu'à un caractère légal dans la donnée (espace, apostrophe). Le jeu de test
   contient des noms qui en portent.
+
+---
+
+## S1155 / CA1827 — `Count(prédicat) > 0` signalé ; mais un prédicat à effet de bord ne passe pas à `Any()`
+
+**Occurrences : 1** (task-397)
+
+`entryKeys.Count(index.Remove) > 0` retirait chaque clé de l'index et disait si une l'avait été.
+Sonar demande `Any()`, qui s'arrête au **premier** vrai : la correction mécanique aurait laissé des
+clés dans l'index.
+
+**Consigne** : ne jamais confier un effet de bord à un prédicat LINQ. Une boucle explicite
+(`removed |= index.Remove(key)`) dit ce qu'elle fait, et la règle se tait.
