@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-10-25 (v1.109)
+> **Dernière mise à jour** : 2026-10-25 (v1.110)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -760,6 +760,20 @@
   - sous-objet partagé pour les options d'envoi au prochain changement de contrat ;
   - remonter `originalMarkedCancelled` et `warning` par `drafts/{id}/send` ;
   - bail renouvelable pour le verrou.
+
+### v1.110 — Délégation de BAL : naviguer entre les pages sans redécoder, cache séparé par utilisateur, en-têtes émis par lots — task-397 (extension)
+
+- **Origine** : constat humain du 2026-10-25 après l'ouverture de la PR — « au changement de page, le cache délégué se vide » ; et demande de séparer les clés par utilisateur.
+- **Cause** : une seule borne de 50 contenus complets (jusqu'à 8 Mo) par personne et BAL déléguée ; une page de 30 (mobile) ou 50 (weda2) comptes rendus remplissait la borne, la page suivante évinçait la précédente, le retour redécodait.
+- **Cache J en deux familles** (`DelegatedContentCache`) : contenu complet (`MaxEntriesPerMailbox` 50, ouverture, PDF, export) et documents légers d'une ligne de liste (`…:header:`, `MaxHeadersPerMailbox` 1 000), chacune avec son index et son éviction ; `GetHeadersAsync` (lectures parallèles), `SetHeadersAsync` (une mise à jour d'index par lot). La liste ne lit plus que les en-têtes légers. TTL inchangé : 5 min.
+- **Décision 15 — clé** : `delegated:content:{adresse de l'utilisateur en minuscules}:{infixe}{empreinte HMAC}` ; délégant, dossier, UIDVALIDITY et UID restent dans l'empreinte. Deux BAL d'un même RPPS n'ont plus ni entrées, ni borne, ni effacement communs.
+- **SSE par lots** : `EnrichDelegatedInMemoryAsync` émet aussitôt ce qui est en cache, puis `EmailsEnriched` par lot de 10 décodages.
+- **Masquage** : un « & » dans un nom de dossier n'arrête plus le masque encodé (suivi de la revue).
+- **Tests** rouges sur le code précédent : `NavigatingBetweenPages_KeepsTheFirstPageEnriched_WithoutDecodingAgain`, `EnrichingAFullPage_SendsTheEnrichedHeadersInBatches`, `TwoMailboxesOfTheSamePerson_DoNotShareTheDecodedContent`, format de clé (2 unitaires + bout en bout à deux instances) ; 4 unitaires de cache. Suites : 6 968 réussis, 0 échec.
+- **Sonar** : 1 issue `CA1859` corrigée (10ᵉ occurrence de la convention) ; QG OK, 0 issue, new coverage 95,1 %.
+- **E2E** : mobile 46/46, Angular 54 + 1 flaky (E2E-INBOX-001, 2ᵉ occurrence au registre), parité verte.
+- **Revue** : 3ᵉ passe APPROVED. Suggestions : UIDVALIDITY relue au décodage, index non atomique (entrées tardives non indexées jusqu'au TTL, jamais servies), masquage des paramètres de requête qui suivent un chemin délégué.
+- **PR** : `api-mail` #313 (mise à jour).
 
 ### v1.109 — Délégation de BAL Mailiz : la BAL déléguée se lit en direct, et rien n'en est conservé chez le délégataire — task-397
 

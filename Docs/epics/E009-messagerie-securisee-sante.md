@@ -1036,6 +1036,10 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
+- **v1.110 — Boîte déléguée : passer d'une page à l'autre sans attendre** (task-397) :
+  - **Revenir sur une page déjà vue l'affiche aussitôt enrichie**, sans nouveau décodage, pendant quelques minutes.
+  - **Les lignes se complètent au fil de l'eau**, dix par dix, au lieu d'attendre la page entière.
+  - **Chaque utilisateur a son propre cache**, y compris un médecin qui a reçu la même délégation sur deux de ses boîtes.
 - **v1.109 — Ouvrir la boîte qu'un confrère vous délègue, sans rien en garder chez vous** (task-397, délégation de BAL Mailiz) :
   - **Lire et trier la boîte déléguée.** Les dossiers, les messages et leurs documents (comptes rendus, biologie) s'affichent comme dans votre boîte, lus en direct chez Mailiz. Les en-têtes se complètent d'eux-mêmes quelques secondes après l'ouverture : patient, type de document, biologie anormale.
   - **Gérer sans abîmer.** Vous pouvez marquer lu, signaler, déplacer dans la boîte déléguée, supprimer : le message part dans la corbeille de votre confrère. Ses dossiers système (Envoyés, Corbeille…) ne peuvent être ni renommés ni supprimés, et rien ne passe d'une boîte à l'autre.
