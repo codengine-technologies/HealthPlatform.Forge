@@ -497,12 +497,14 @@ Aucune itération de correction nécessaire : Quality Gate verte, **0 issue** su
 une boucle explicite — `Any()` aurait arrêté le retrait à la première clé — puis 3ᵉ analyse sur
 `80cb6c2f` : **QG OK, 0 issue**, new coverage 95,2 %. Consigne ajoutée à `conventions/csharp.md`.
 
+**Après les tranches 14 et 15** (en-têtes légers, clé préfixée par l'adresse) — 4ᵉ analyse : 1 issue `CA1859` (paramètre de helper privé `StoreAsync` déclaré en interface) corrigée, compteur de la convention porté à 10 ; 5ᵉ analyse sur `9d2e5a71` : **QG OK, 0 issue**, new coverage 95,1 %, coverage projet 97,6 %.
+
 ### KPIs qualité (baseline → final)
 
 | Métrique | Baseline (develop) | Final (branche) | Δ |
 |---|---|---|---|
 | Quality Gate (new code) | OK | OK | = |
-| New coverage | — | 95,2 % | seuil tenu |
+| New coverage | — | 95,1 % | seuil tenu |
 | New bugs / vulnérabilités / smells | — | 0 / 0 / 0 | = |
 | Bugs / Vulnérabilités / Smells (projet) | 0 / 0 / 0 | 0 / 0 / 0 | = |
 | Coverage projet | 98,1 % | 97,6 % | −0,5 pt |
@@ -659,13 +661,13 @@ Démontage vérifié : ports 5052/3993/3465/3143 libres, aucun conteneur e2e ré
 |---|---|---|---|---|---|---|
 | /start | ok | 18 s | — | — | — | — |
 | /develop | ok | 6 min 21 s | 53 (4 min 36 s) | 76 (1 h 19 min) | — | api-mail 53B/76T, décision 15 : clé préfixée par l'adresse de l'utilisateur |
-| /sonar | failed | 8 min 00 s | 9 (2 min 27 s) | 37 (46 min 03 s) | 14 (4 min 29 s) | api-mail 9B/37T, interrompu : changement de format de clé demandé par l'humain |
-| /lint-angular | skipped | 0.4 s | — | — | — | repo non touché (Repos: api-mail) — passage post-revue |
-| /lint-mobile | skipped | 0.5 s | — | — | — | repo non touché (Repos: api-mail) — passage post-revue |
+| /sonar | ok | 16 min 58 s | 12 (3 min 08 s) | 49 (59 min 52 s) | 18 (5 min 52 s) | 1 itération(s), api-mail 12B/49T, tranches 14-15 : CA1859 corrigée, QG OK |
+| /lint-angular | skipped | 0.5 s | — | — | — | repo non touché (Repos: api-mail) |
+| /lint-mobile | skipped | 0.5 s | — | — | — | repo non touché (Repos: api-mail) |
 | /e2e | ok | 15 min 20 s | — | — | — | e2e ×6 (30 min 44 s), post-revue : mobile 46 + angular 55 verts, parité verte |
 | /review | ok | 4 min 58 s | 2 (25 s) | 2 (8 min 25 s) | — | api-mail 2B/2T, APPROVED (2e passe), PR #313 |
 | /tech-writer | ok | 1 min 34 s | — | — | — | — |
-| **Total cycle** | | **36 min 36 s** | **64 (7 min 28 s)** | **115 (2 h 14 min)** | **14 (4 min 29 s)** | |
+| **Total cycle** | | **45 min 34 s** | **67 (8 min 09 s)** | **127 (2 h 27 min)** | **18 (5 min 52 s)** | |
 
 ## Develop log
 
