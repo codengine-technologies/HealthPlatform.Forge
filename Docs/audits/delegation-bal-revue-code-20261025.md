@@ -463,3 +463,22 @@ sécurité des chemins. Proposition :
 
 Elle ordonne aussi la livraison : **397 → 401 → 398 / 400 → 399**, et les tasks 389 et 390 après la
 401.
+
+## 7. Décisions prises (humain, 2026-10-25) et report dans les tasks
+
+| # | Décision | Report |
+|---|---|---|
+| 1 | Traces d'audit passées : **laissées en l'état**, la base de test a été purgée | task-397 (décision 11), task-400 (décision 4) |
+| 2 | Journaux déjà écrits et sauvegardes : **pas de purge**, il n'y a pas d'existant hors formation | task-397 (décision 11) |
+| 3 | Impression, export et téléchargement : **permis**, comme geste explicite, sans l'objet dans le nom de fichier | task-397 (décision 8), task-398 (décision 6) |
+| 4 | Répondre ou transférer en « (moi) » : **permis, copie assumée** | task-399 (décision 6), règle 14 |
+| 5 | Opposition MSSanté au nom du délégant : **limite acceptée et affichée** | task-399 (décision 7) |
+| 6 | Nom de la personne : route **`userinfo` du proxy PSC**, appelée avec le cookie de session déjà détenu par api-mail | task-400 (décision 2) |
+| 7 | Décodage IHE-XDM et HPRIM : **répertoire de travail transitoire accepté**, borné et documenté | task-397 (décision 4), task-389, task-390, règle 14 |
+| 8 | Révocation : **fenêtre bornée** à la durée de vie d'une session (5 min) | task-397 (décision 9, règle H) |
+| 9 | Découpage : **une seule task-397**, sans scission | task-397 (décision 10) |
+| — | Purge de l'existant : **retirée** | task-397 (décision 11) |
+| — | Aide IA à la rédaction au nom du délégant : **non**, par cohérence avec « pas d'IA » | task-399 (décision 8) |
+
+La règle 14 de CLAUDE.md doit être amendée en conséquence : exceptions limitatives et masquage des
+journaux. L'amendement est soumis à relecture avant le push.
