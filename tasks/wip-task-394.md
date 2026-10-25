@@ -31,6 +31,13 @@ brouillons sans contenu s'accumulent dans « Brouillons ».
    **sans la signature et sans la citation** du message d'origine (réponse, transfert). Un objet, un destinataire ou
    une pièce jointe, sans texte, ne suffisent pas : la rédaction se ferme sans brouillon, et ils sont abandonnés.
 2. **Périmètre : weda2 et mobile**, même règle.
+3. **Arbitrage du 2026-10-25 (après la revue de code) — « saisi » = corps modifié.** Le corps compte dès qu'il **diffère
+   de ce que la rédaction a proposé à l'ouverture** : vide, signature, citation d'une réponse ou d'un transfert (et après
+   un changement de signature, le nouveau corps proposé). Tout ajout du médecin compte, où qu'il soit : au-dessus, en
+   dessous, dans la signature ou dans la citation (réponse point par point), image collée comprise. Il remplace la
+   règle « texte hors signature et hors citation », qui perdait du texte réellement écrit (curseur dans la signature
+   sur le mobile, texte sous la citation sur weda2). L'objet, les destinataires et les pièces jointes seuls ne
+   comptent toujours pas (décision 1).
 
 ## Objective
 
@@ -135,13 +142,13 @@ Voir `tests/Features/Mss/EmptyComposeLeavesNoDraft.feature`.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 21 s | — | — | — | — |
-| /develop | ok | 34 s | 1 (14 s) | 2 (33 s) | — | api-mail 0B/1T, client-angular 1B/1T, e2e ×1 (8 min 20 s), reprise : COMPOSE-003 mobile écrit un texte |
+| /develop | ok | 15 min 17 s | 3 (45 s) | 4 (1 min 23 s) | — | api-mail 0B/1T, client-angular 3B/3T, e2e ×1 (8 min 20 s), reprise corps modifié : weda2 1 239, mobile 1 262 ; DRAFT-003 avec signature prouvé rouge |
 | /sonar | skipped | 0.5 s | — | — | — | reprise : api-mail limité au catalogue (YAML) |
 | /lint-angular | skipped | 0.4 s | — | — | — | reprise : weda2 inchangé depuis le lint propre |
 | /lint-mobile | ok | 6.6 s | — | — | — | reprise : propre |
 | /e2e | ok | 15 min 10 s | — | — | — | e2e ×10 (1 h 01 min), reprise : mobile 45/45, angular 53/53, parité verte |
-| /review | failed | 4 min 53 s | 3 (19 s) | 2 (18 s) | — | client-mobile 1B/1T, client-angular 1B/1T, api-mail 1B/0T, CHANGES REQUESTED : perte de texte (mobile signature par défaut, weda2 sous la citation) ; règle à confirmer |
-| **Total cycle** | | **21 min 08 s** | **4 (34 s)** | **4 (52 s)** | **0 (0.0 s)** | |
+| /review | failed | 4 min 53 s | 3 (19 s) | 3 (4 min 23 s) | — | client-mobile 1B/1T, client-angular 1B/1T, api-mail 1B/1T, CHANGES REQUESTED : perte de texte (mobile signature par défaut, weda2 sous la citation) ; règle à confirmer |
+| **Total cycle** | | **35 min 50 s** | **6 (1 min 05 s)** | **7 (5 min 47 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×3 (22 s)
 
@@ -198,6 +205,39 @@ joués à la suite, une voie à la fois.
 désormais un texte dans le corps avant d'attendre l'enregistrement automatique, comme DRAFT-001 et 002. Ce qu'il
 vérifie ne change pas. `tsc -p e2e` OK, lint propre. Vérification : c'était le seul test mobile restant à attendre un
 brouillon sans texte.
+
+**2026-10-25 — `/develop`, reprise après l'arbitrage « corps modifié »** (décision 3).
+
+- **Règle commune** : le corps compte s'il n'est pas vide (ni texte ni image) et s'il diffère du corps proposé par
+  l'application. Le corps proposé est mis à jour à chaque fois que l'application l'écrit elle-même : remise à zéro,
+  citation, signature par défaut, changement de signature, reprise d'un brouillon.
+- **Brouillon déjà enregistré** (ajout de cette reprise, aligné sur les deux clients) : il reste enregistré dès que son
+  corps n'est pas vide, même si seul l'objet, un destinataire ou une pièce jointe change. Sinon, la correction de
+  l'objet d'un brouillon rouvert serait perdue (régression révélée par le test mobile « cancel-and-replace »). La règle
+  « objet ou destinataires seuls ne suffisent pas » vaut pour la création d'un brouillon. Un brouillon vidé n'est
+  toujours jamais enregistré vide, et weda2 garde sa confirmation d'abandon.
+- **weda2** : `bodyFingerprint` (texte visible sans espaces, plus la `src` des images, lu dans un document inerte),
+  insensible à ce que tiptap réécrit. `hasContent()` reste le seul point de décision.
+- **mobile** : `normalizeBody` et `bodyChanged` (rendu par le navigateur, blancs, `&nbsp;`, blocs vides) et
+  `isBlankBody`. `hasOwnText` est retiré.
+- **Tests dans le vrai éditeur** (règle `html-construit-a-la-main`) :
+  - weda2 : 4 tests rouges sur le code d'avant (frappe après la signature, frappe sous la citation : question et
+    enregistrement automatique, image seule) ; 2 tests rouges pour le brouillon dont seul l'objet change ; mutations
+    M3 à M7 rouges ;
+  - mobile : 4 tests rouges sur le code d'avant (signature par défaut et frappe au curseur, frappe dans la citation,
+    frappe sous la citation, changement de signature puis frappe) ; mutations S et N rouges.
+- **E2E** :
+  - mobile : E2E-DRAFT-003 ouvre maintenant sa rédaction avec une **signature par défaut**, posée par l'API
+    (`OtherDevice.createSignature`, retirée en `finally`). Son attendu est inchangé, donc pas de montée de version ;
+  - preuve par mutation (le texte tapé dans la signature ne compte pas) : rouge sur « le brouillon est enregistré côté
+    serveur, avec le texte du praticien », puis vert après restauration ;
+  - banc mobile : DRAFT-001 à 004, COMPOSE-003 et DETAIL-001 verts ;
+  - weda2 : pas de variante e2e avec signature par défaut, mais une couverture par des tests de composant dans le vrai
+    éditeur tiptap.
+- **Tests** : weda2 `mss-lib` 1 239 ; mobile 1 262 (commits `1ec59dc`, `2c3320e`).
+- **Défaut indépendant, signalé** (mobile, antérieur à la task) : le texte tapé au curseur par défaut entre dans les
+  marqueurs de signature, et un changement de signature l'efface. La correction proposée est une ligne libre au-dessus
+  de la signature pour un nouveau message. À ouvrir en suite.
 
 ## Sonar log
 

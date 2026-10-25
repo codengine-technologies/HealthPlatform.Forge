@@ -71,3 +71,9 @@ Remplacer « texte hors signature et hors citation » par :
 ### Reprise
 
 Si tu valides la règle, relance `/develop task-394`. Sinon, précise ce qui doit compter.
+
+## Arbitrage de l'humain (2026-10-25)
+
+**« Corps modifié »** : le corps compte dès qu'il diffère de ce que la rédaction a proposé à l'ouverture. Reporté dans
+la décision 3 du task file. Reprise : `/develop task-394`.
+
