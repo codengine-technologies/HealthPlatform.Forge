@@ -203,9 +203,13 @@ de formation (§6, US 0).
   - les dossiers système du délégant sont protégés ;
   - aucun traitement clinique, IA, contact, notification ni recherche ;
   - ce qui a déjà été produit est purgé.
-- **Q2 — Gestion seule, définitivement.** Les messages délégués ne sont **jamais** traités
-  cliniquement dans la base du délégataire : ni CDA, ni patients, ni IA, ni embeddings, ni
-  contacts. L'US 5 disparaît.
+- **Q2 — Gestion seule, définitivement, précisée le même jour.** Les documents CDA d'un message
+  délégué sont **décodés et lisibles** : le délégataire ne doit pas voir un `IHE_XDM.ZIP` brut.
+  Ils ne sont en revanche **jamais exploités** dans son espace : ni patient, ni dossier patient,
+  ni doublons et versions, ni IA, ni embeddings, ni recherche, ni contacts, ni notification.
+  - Lecture seule : ni rattachement à un patient, ni acquittement de biologie. Ces actes restent
+    au délégant.
+  - L'US 5 disparaît.
 - **Q3 — Envoi « de la part de » au lot suivant.** Il est conditionné à la caractérisation SMTP
   Mailiz.
 - **Q6 — Mobile et weda2**, avec la parité e2e.
