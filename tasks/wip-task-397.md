@@ -321,7 +321,8 @@ synchronisation, et les journaux affichent « skipped » pour **chacun** d'eux.
       `ProcessIheXdmZips` pendant la liste), lu dans la réponse réelle.
 - [ ] **Lecture** : le détail d'un compte rendu de biologie délégué renvoie le corps, les documents
       décodés, la valeur anormale signalée et un identifiant de document non résolvable. Les
-      en-têtes ont un statut terminal. Lu dans la réponse réelle.
+      en-têtes sont `Pending` tant que le contenu n'est pas décodé, puis enrichis (documents légers)
+      et émis par `EmailsEnriched` (décision 14 — remplace « statut terminal »). Lu dans la réponse réelle.
 - [ ] **Cache de contenu délégué** — test d'intégration avec **deux instances** de l'API sur le même
       Redis :
       - le message est ouvert sur l'instance 1, puis rouvert, le PDF téléchargé et le message
@@ -386,6 +387,10 @@ de Virginie (`virginie.medecinrpps0062267@medecin.formation.mssante.fr`).
 2. **Lecture.** Ouvrir la boîte déléguée de Virginie, puis un compte rendu de biologie : il est
    décodé, et les valeurs anormales sont signalées. Exporter le message en PDF : le fichier ne
    porte pas l'objet dans son nom.
+   **En-têtes (décision 14).** À l'ouverture de la boîte déléguée, les messages porteurs d'un CDA
+   s'affichent d'abord en attente, puis leurs en-têtes se complètent seuls après quelques secondes
+   (patient, catégorie, biologie anormale), comme dans la boîte de Cyril. Dans Seq, aucun 404 sur
+   `/medical-documents/…/version-chain` en ouvrant un document délégué.
 3. **Rien de persisté.** Dans la base de Cyril, aucune ligne liée à `shared/…`, `PendingActions`
    compris, même après avoir marqué des messages lus.
 4. **Journaux.** Dans Seq, filtrer sur l'heure du test : on voit `shared/<adresse>/…`, jamais un
@@ -579,7 +584,8 @@ Démontage vérifié : ports 5052/3993/3465/3143 libres, aucun conteneur e2e ré
 | /lint-angular | skipped | 0.5 s | — | — | — | client-angular non touché (Repos: api-mail) |
 | /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non touché (Repos: api-mail) |
 | /e2e | ok | 16 min 40 s | — | — | — | e2e ×3 (15 min 51 s), mobile 46 + angular 55 verts, parité verte |
-| **Total cycle** | | **4 h 28 min** | **54 (5 min 35 s)** | **84 (1 h 31 min)** | **8 (2 min 23 s)** | |
+| /review | failed | 11 min 35 s | 1 (10 s) | 1 (4 min 14 s) | — | api-mail 1B/1T, CHANGES REQUESTED : 3 bloquants (masquage propriétés sœurs, regex de masquage, borne du cache J) |
+| **Total cycle** | | **4 h 39 min** | **55 (5 min 45 s)** | **85 (1 h 35 min)** | **8 (2 min 23 s)** | |
 
 ## Develop log
 
