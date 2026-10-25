@@ -453,7 +453,7 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   rendant la fenêtre. Pour croire une suite stable, la rejouer plusieurs fois (la passe de task-393 : 0 échec sur 6
   après correction, contre 2 sur 6 avant).
 - **Origine** : task-393 (/develop, reprise mobile)
-- **Occurrences** : 1
+- **Occurrences** : 2 (task-375 — après la synchronisation avec `develop`, `MailComposeComponent` a échoué deux passages sur trois, sur deux ensembles différents : suggestions de destinataires de task-388, puis « frappe dans le vrai éditeur » de task-394 ; vert au troisième (1289/1289), sur une task qui ne touche pas la rédaction. Même famille, suite de rédaction non encore démontée proprement : **task de stabilisation à ouvrir**)
 
 ### annulation-qui-vide-l-etat-d-un-autre — Une annulation asynchrone ne vide que sa propre donnée
 - **Règle** : convention projet (défaut de course, invisible aux tests à un seul appel)

@@ -126,6 +126,148 @@ Les étapes 2 et 3 se jouent aussi sur l'app mobile (`cd Client/Mobile && npm st
 ### Parallélisme
 - task-394 reste en `wip-*` dans une autre session, en pause (décision humaine du 2026-10-25). Aucun fichier commun constaté.
 
+## Sonar log
+
+- Analyse complète de `fix/task-375-gestes-liste-bon-dossier` (2026-10-25) : build Release vert, 5 suites avec couverture vertes (6 783 réussis, 16 ignorés, 0 échec).
+- Diff api-mail de la task : catalogue e2e + outil `tests/mss.mail.e2e` (code de test, analysé, hors couverture). **0 issue** sur `E2eMessage.cs` et `Program.cs` : rien à corriger, 0 itération.
+- Quality Gate `ERROR` **hérité** : la période new-code inclut des tasks déjà mergées. Les 2 bugs (S2952, `src/Application/Session/MailClientSession.cs:909/914`) datent du 2026-09-28, et `new_security_hotspots_reviewed=0` / `new_violations=72` sont indépendants de cette task.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | ERROR | ERROR | = (hérité) |
+| New coverage | 98,2 % | 98,2 % | = |
+| New bugs / vulnérabilités / smells | 2 / 0 / 70 | 2 / 0 / 70 | = |
+| Bugs / Vulnérabilités / Smells | 2 / 0 / 70 | 2 / 0 / 70 | = |
+| Coverage projet / Duplication | 98,1 % / 0,3 % | 98,1 % / 0,3 % | = |
+| Ratings (fiabilité / sécurité / maintenabilité) | D / A / A | D / A / A | = |
+
+## Lint log
+
+- `npx nx affected -t lint --base=origin/next --head=HEAD --parallel=3 --projects=tag:scope:mss` (13 projets) : **0 erreur** à la baseline, donc arrêt immédiat, 0 itération, aucun fichier modifié.
+- Avertissements restants sur les fichiers touchés, tous antérieurs à la task : `max-lines` (`mail-list`, `mail-detail`, `mss-mail`, `mail-state`), et trois `@example` vides (`needsThreadCounts` de task-266, `tombstoneAdd`/`liveTombstones`).
+- Build et tests weda2 : verts en /develop (`npm run build`, `npm test`, 12 projets), code inchangé depuis.
+
+## Lint mobile log
+
+- `npm run lint` sur `fix/task-375-gestes-liste-bon-dossier` : **All files pass linting** à la baseline. 0 itération, aucun commit. Build et tests mobiles verts en /develop, code inchangé depuis (`732cd08`).
+
+## E2E log
+
+| Voie | Rejouée | Résultat | Durée de la suite |
+|---|---|---|---|
+| mobile (`npm run e2e:headless`) | oui (`api-mail` et `client-mobile` touchés) | 45 verts, 0 flaky, 0 rouge, parité verte | 7,6 min |
+| angular (`npm run e2e:mss`) | oui (`api-mail` et `client-angular` touchés) | 53 verts, 1 flaky, 0 rouge, parité verte | 8,0 min |
+
+Démontage vérifié : ports 4200/8100 libres, aucun conteneur e2e résiduel.
+Écrans modifiés et spec e2e : `functional.e2e.ts` (Angular) porte E2E-MAIL-006 ; côté mobile, la sélection et les actions groupées sont couvertes par E2E-MAIL-002 (inchangé, vert).
+
+**E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
+
+**Flaky (vert au second essai, non bloquant)** (1) :
+
+- [angular] « recherche — requête et recherche avancée » (E2E-SEARCH-001)
+
+**En quarantaine (posée par l'humain, non bloquant)** (1) :
+
+- [angular] « rédaction — corriger l’orthographe, appliquer, envoyer : le texte corrigé arrive, la citation intacte » (E2E-COMPOSE-002) — Passed — correction : task-350
+
+### Matrice de parité
+
+| Scénario | v | Mode | Titre | angular | mobile |
+|---|---|---|---|---|---|
+| E2E-INBOX-001 | 1 | headless | Filtrer la boîte de réception, basculer liste / conversation, ouvrir la recherche | ✅ | ✅ |
+| E2E-FOLDER-001 | 1 | headless | Naviguer vers les dossiers Archive et Corbeille | ✅ | ✅ |
+| E2E-PATIENT-001 | 1 | headless | Afficher la vue patients | ✅ | ✅ |
+| E2E-PATIENT-002 | 2 | headless | Rattacher à la main un document sans INS à un patient choisi par recherche, puis le détacher | ✅ | ✅ |
+| E2E-PATIENT-003 | 1 | headless | La fiche d'un patient ne montre pas les documents d'un autre patient du même mail | ✅ | ✅ |
+| E2E-CONTACT-001 | 2 | humain | Rechercher dans le carnet et interroger l'annuaire national | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-SETTINGS-001 | 1 | headless | Changer le filtre par défaut et le retrouver après rechargement | ✅ | ✅ |
+| E2E-MAIL-001 | 1 | headless | Marquer un message lu puis non lu | ✅ | ✅ |
+| E2E-MAIL-002 | 1 | headless | Tout sélectionner et marquer lu en masse | ✅ | ✅ |
+| E2E-DETAIL-001 | 3 | headless | Répondre et transférer depuis la lecture d'un message | ✅ | ✅ |
+| E2E-COMPOSE-001 | 1 | headless | Envoyer un message, le recevoir, le lire, le supprimer | ✅ | ✅ |
+| E2E-COMPOSE-002 | 1 | headless | Faire corriger l'orthographe de son texte, appliquer la correction, puis envoyer | ✅ | ✅ |
+| E2E-COMPOSE-003 | 1 | headless | Un envoi refusé par la messagerie laisse le brouillon intact et peut être renvoyé | ✅ | ✅ |
+| E2E-COMPOSE-004 | 1 | headless | Écrire à l'adresse choisie d'un contact à plusieurs adresses, ou à son adresse par défaut | ✅ | ✅ |
+| E2E-COMPOSE-005 | 1 | headless | Une remise incertaine n'est jamais présentée comme un échec à renvoyer | ✅ | ✅ |
+| E2E-MAIL-003 | 1 | headless | Signaler puis ne plus signaler un message | ✅ | ✅ |
+| E2E-MAIL-004 | 1 | headless | Déplacer un message vers Archive puis le ramener | ✅ | ✅ |
+| E2E-MAIL-005 | 1 | headless | Un message supprimé depuis un autre logiciel quitte la liste et ne s'ouvre jamais vide | ✅ | ✅ |
+| E2E-MAIL-006 | 1 | headless | Glisser sur la Corbeille un message d'un fil supprime ce message, et lui seul | ✅ | — |
+| E2E-DRAFT-001 | 1 | headless | Créer un brouillon, le reprendre, le supprimer | ✅ | ✅ |
+| E2E-DRAFT-002 | 1 | headless | Envoyer un message à pièce jointe après l'enregistrement automatique du brouillon | ✅ | ✅ |
+| E2E-DRAFT-003 | 1 | headless | Quitter une rédaction récente ne perd rien | ✅ | ✅ |
+| E2E-BIO-001 | 1 | headless | Acquitter un compte rendu de biologie | ✅ | ✅ |
+| E2E-DASH-001 | 1 | headless | Afficher les widgets du tableau de bord | ✅ | ✅ |
+| E2E-DETAIL-002 | 1 | headless | Basculer entre texte brut et HTML à la lecture | ✅ | ✅ |
+| E2E-DETAIL-003 | 1 | headless | Répondre à tous depuis la lecture d'un message | ✅ | ✅ |
+| E2E-DETAIL-004 | 1 | headless | Lire un message avec le panneau d'actions, le masquer puis le retrouver au message suivant | ✅ | — |
+| E2E-DETAIL-005 | 1 | headless | Passer rapidement d'un mail à l'autre n'affiche jamais le contenu du précédent | ✅ | ✅ |
+| E2E-SETTINGS-002 | 1 | headless | Changer la vue par défaut et la retrouver après rechargement | ✅ | ✅ |
+| E2E-SETTINGS-003 | 1 | headless | Lire la version du serveur de messagerie dans les Paramètres | ✅ | ✅ |
+| E2E-SEARCH-001 | 1 | headless | Rechercher un message et ouvrir la recherche avancée | ⚠️ flaky | ✅ |
+| E2E-ATTACH-001 | 1 | headless | Voir les pièces jointes d'un message | ✅ | ✅ |
+| E2E-CONTACT-002 | 2 | headless | Créer un contact à deux adresses, le modifier sans les perdre, puis le supprimer | ✅ | ✅ |
+| E2E-SIGNATURE-001 | 1 | headless | Créer puis supprimer une signature | ✅ | ✅ |
+| E2E-CONTACT-003 | 1 | headless | Créer puis supprimer un groupe de contacts | ✅ | ✅ |
+| E2E-CONTACT-004 | 1 | headless | Consulter un contact depuis le carnet et lui écrire | ✅ | ✅ |
+| E2E-CONTACT-005 | 1 | headless | Une fiche modifiée ne se perd pas sans confirmation, une adresse mal formée est refusée | ✅ | ✅ |
+| E2E-FOLDER-002 | 1 | headless | Créer puis supprimer un dossier | ✅ | ✅ |
+| E2E-FOLDER-003 | 1 | headless | Ouvrir un dossier supprimé depuis un autre logiciel | ✅ | ✅ |
+| E2E-FOLDER-004 | 1 | headless | Actualiser la liste des dossiers après un changement fait dans un autre logiciel | ✅ | ✅ |
+| E2E-AUTH-001 | 1 | humain | Rester connecté quand le jeton d'accès expire | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-AUTH-002 | 1 | humain | Se déconnecter | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-LIVE-001 | 1 | headless | Recevoir un nouveau message en temps réel, sans recharger | ✅ | ✅ |
+| E2E-AI-001 | 1 | headless | Interroger l'assistant sur des messages sélectionnés et poser des questions de suite | ✅ | ✅ |
+| E2E-WEDA-001 | 1 | headless | Dans Weda, la messagerie s'ouvre sur la boîte que Weda désigne | ✅ | — |
+| E2E-WEDA-002 | 2 | headless | Voir le dossier Weda du patient d'un document reçu, l'ouvrir, puis importer des documents dans un dossier | ✅ | — |
+| E2E-WEDA-003 | 2 | headless | Envoyer un document du dossier patient Weda par la nouvelle messagerie | ✅ | — |
+| E2E-RECEIPT-001 | 1 | headless | Demander un accusé de lecture à l'envoi | ✅ | ✅ |
+| E2E-RECEIPT-002 | 1 | headless | Envoyer l'accusé de lecture d'un message reçu, une seule fois | ✅ | ✅ |
+| E2E-RECEIPT-003 | 1 | headless | Refuser l'accusé de lecture d'un message reçu | ✅ | ✅ |
+| E2E-SECURITY-001 | 1 | headless | Un contenu reçu piégé ne s'exécute pas | ✅ | ✅ |
+| E2E-MAILBOX-001 | 1 | headless | Changer de messagerie depuis l'écran mail | ✅ | ✅ |
+| E2E-MAILBOX-002 | 1 | headless | api-mail indisponible à l'entrée — écran de panne puis réessai | ✅ | ✅ |
+| E2E-SESSION-001 | 1 | headless | Naviguer dans Weda ne multiplie pas les sessions de messagerie | ✅ | — |
+| E2E-SESSION-002 | 2 | headless | Quitter weda2 autonome ne ferme pas la session partagée | ✅ | — |
+| E2E-SESSION-003 | 2 | headless | La session fermée par Weda fait quitter weda2 | ✅ | — |
+
+**Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/312 — label `awaiting-human-merge`
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/106 — label `awaiting-human-merge`
+- `client-angular` : code-only — humain gère commit/push TFS et ouverture PR (branche `feature/nova-mss-weda-integration`). **À pousser avant le merge de la PR api-mail** (E2E-MAIL-006 `requis` côté Angular). Liste des fichiers modifiés :
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`
+  - `front/e2e/mss-e2e/support/e2e-backend.ts`
+  - `front/libs/mss/src/core/utils/mail-key.util.ts`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.component.scss`
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.component.ts`
+  - `front/libs/mss/src/features/mail/mss-mail.component.ts`
+  - `front/libs/mss/src/features/mail/services/mail-drag.service.ts`
+  - `front/libs/mss/src/features/mail/services/mail-pending-delete.service.ts`
+  - `front/libs/mss/src/features/mail/services/mail-state.service.spec.ts`
+  - `front/libs/mss/src/features/mail/services/mail-state.service.ts`
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.gestures.spec.ts`
+  - `front/libs/mss/src/features/mail/mss-mail.folder-switch.spec.ts`
+  - `front/libs/mss/src/features/mail/services/mail-pending-delete.failures.spec.ts`
+
+## Code Review Summary
+
+**APPROVED** — 0 bloquant, 4 suggestions (détail dans le corps des PRs).
+
+- Validation : api-mail build + 6 783 tests verts ; mobile build + 1268/1268 avant synchronisation, 1289/1289 après (deux passages rouges sur `MailComposeComponent`, ensembles différents, hors périmètre : flaky consigné dans `page-ionic-non-demontee`) ; weda2 build + tests verts (12 projets).
+- DoD : tous les points cochables couverts par un test nommé (gestes, sélection, changement de dossier, suppression différée, non-lu), E2E-MAIL-006 au catalogue et implémenté côté Angular, trou du filet consigné, aucune donnée de santé ajoutée aux journaux.
+- Règle 1b : sans objet pour api-mail (catalogue et outil e2e, aucun comportement atteignable par un endpoint). Parcours médecin → E2E-MAIL-006, rouge par mutation (`DELETE …/folders/INBOX/emails/1`), vert sur le correctif.
+- E2E : vert (mobile 45/45, Angular 53 + 1 flaky E2E-SEARCH-001), parité verte, rejoué avant la synchronisation avec `develop`.
+- Synchronisation : `develop` apporte task-394 (E2E-DRAFT-004 `requis` côté Angular, sans test weda2 dans l'arbre actuel). Le prochain `/e2e` Angular sera rouge en parité du fait de task-394.
+- Suggestions : commentaire orphelin au-dessus de `perFolder` (mobile) ; regroupement par dossier écrit deux fois (mobile) ; brouillon réapparu sur échec partiel (weda2) ; `deleteDraft` sans épingle de boîte (weda2).
+
 ## Branches
 
 > **Parallèle** : task-394 est en `wip-*` (autre session, arrêtée sur une question). Décision humaine du 2026-10-25 : lancer 375 quand même ; 394 est considérée en pause pendant ce cycle.
@@ -142,4 +284,11 @@ Les étapes 2 et 3 se jouent aussi sur l'app mobile (`cd Client/Mobile && npm st
 |---|---|---|---|---|---|---|
 | /start | ok | 21 min 39 s | — | — | — | — |
 | /develop | ok | 2 h 01 min | 3 (1 min 22 s) | 6 (5 min 22 s) | — | client-angular 1B/2T, client-mobile 1B/2T, api-mail 1B/2T |
-| **Total cycle** | | **2 h 23 min** | **3 (1 min 22 s)** | **6 (5 min 22 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 11 min 10 s | 1 (49 s) | 5 (6 min 27 s) | 2 (2 min 08 s) | api-mail 1B/5T |
+| /lint-angular | ok | 1 min 25 s | — | — | — | — |
+| /lint-mobile | ok | 1 min 06 s | — | — | — | — |
+| /e2e | ok | 19 min 18 s | — | — | — | e2e ×5 (36 min 28 s) |
+| /review | ok | 13 min 11 s | 4 (1 min 13 s) | 7 (8 min 03 s) | — | api-mail 1B/2T, client-mobile 2B/4T, client-angular 1B/1T |
+| **Total cycle** | | **3 h 09 min** | **8 (3 min 25 s)** | **18 (19 min 53 s)** | **2 (2 min 08 s)** | |
+
+Autres commandes mesurées : lint ×2 (1 min 42 s)
