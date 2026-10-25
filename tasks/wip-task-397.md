@@ -451,3 +451,23 @@ de Virginie (`virginie.medecinrpps0062267@medecin.formation.mssante.fr`).
 |---|---|---|---|---|---|---|
 | /start | ok | 18 s | — | — | — | — |
 | **Total cycle** | | **18 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+
+## Develop log
+
+> Journal de progression (mis à jour à chaque tranche commitée — point de reprise en cas de compaction).
+
+**Plan des tranches** (api-mail, branche `feat/task-397-delegation-bal-lecture-directe`) :
+
+| # | Tranche | État |
+|---|---|---|
+| 1 | Règle de domaine `DelegatedMailboxRule` : prédicat, propriétaire, rôle, BAL identique, masquage de texte (clair et encodé) + tests unitaires | en cours |
+| 2 | Banc de délégation : fragment Dovecot (`acl`, `imap_acl`, espace `shared`, `INDEXPVT`), `DovecotFixture` le monte, aide de délégation par `SETACL` IMAP | à faire |
+| 3 | Masquage central des journaux (puits Serilog enveloppant : gabarit, propriétés, exception), `SanitizePath`, attribut OTel `email.folder`, étiquettes de verrou | à faire |
+| 4 | Garde d'écriture : intercepteur EF (`SaveChanges`), méthodes `ExecuteUpdate`/SQL à chemin, décorateur de cache (clés + valeurs structurelles), filtre de publication MassTransit, test de convention | à faire |
+| 5 | Synchronisation : prédicat à l'entrée de chaque mécanisme + journal « Skipped delegated folder » ; la synchro périodique liste l'espace partagé | à faire |
+| 6 | Filtre MVC des politiques par route : refus (IA, accusés, étiquettes, annuler-remplacer, recherche, réglages), écritures hors ligne, chemin exact du `LIST` (alias, révocation 404 typée), dossiers système 409, création sous `shared`/système, déplacements inter-BAL 409 | à faire |
+| 7 | Lecture directe : liste des dossiers (propres en cache + délégués en direct), en-têtes / today / unread / recent, détail par `ReadEmailWithoutPersistingAsync` hors verrou, statut terminal, `HasMedicalDocuments` par structure, pièces jointes / zip / export, `STORE` direct | à faire |
+| 8 | Corbeille du propriétaire (unitaire, groupée, définitive, sous-dossier) | à faire |
+| 9 | Audit : liste blanche dans `AuditService.Trace` avant le tampon, `Message-ID` lu en direct | à faire |
+| 10 | Cache Redis du contenu délégué décodé (section J) + PDF du CDA servi depuis le cache | à faire |
+| 11 | Caractérisation Mailiz, mesure, passe qualité, DoD | à faire |
