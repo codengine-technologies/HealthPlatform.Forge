@@ -26,6 +26,13 @@ patients du délégant au dossier Weda du délégataire.
 6. **Impression, export PDF / EML et téléchargement de pièces jointes : permis**, comme geste
    explicite. **Aucun nom de fichier ne contient l'objet** du message.
 7. **Révocation : fenêtre bornée** (task-397). Le client affiche le refus « délégation retirée ».
+8. **La BAL principale et les BAL déléguées se distinguent au premier coup d'œil**, dans les deux
+   clients. C'est une exigence primordiale de la task :
+   - les BAL déléguées sont **toujours placées sous tous les dossiers de la BAL principale** ;
+   - elles sont **repliées** à chaque arrivée ;
+   - elles portent une **couleur propre**, différente de celle de la BAL principale.
+9. **weda2 : panneau des dossiers plus large et redimensionnable.** Un séparateur se tire à la
+   souris pour agrandir ou réduire le panneau, et une largeur minimale l'empêche d'être écrasé.
 
 ## Objective
 
@@ -44,11 +51,34 @@ n'est conservé sur son appareil.
   - Le type actuel des dossiers personnels ne change pas, pour que les logiques « première
     réception », « premiers Envoyés » et le dossier virtuel « Brouillons » ne basculent pas sur
     un dossier délégué. Le contrôle porte sur `MailController.cs:215-247`.
-- **Section « Boîtes déléguées »**, sous les dossiers personnels, dans les deux clients :
-  - une entrée par délégant, libellée par son **adresse**, repliable et repliée par défaut ;
+- **Section « Boîtes déléguées »**, dans les deux clients :
+  - une entrée par délégant, libellée par son **adresse**, repliable ;
   - le **cumul** des non lus affiché sur l'entrée repliée ;
   - en dessous, Réception, Envoyés, Brouillons, Spam et Corbeille, avec les icônes et libellés
     système, puis les sous-dossiers du délégant.
+- **Position : toujours en dernier** (décision 8). La section se place après **tous** les dossiers
+  de la BAL principale, sous-dossiers compris, quel que soit l'ordre renvoyé par l'API.
+  - L'ordre est appliqué par le client, et tient après un rafraîchissement de la liste, la création,
+    le renommage ou la suppression d'un dossier personnel, et le retour en ligne.
+  - Les délégants sont triés par adresse, pour un ordre stable.
+- **Repliée par défaut** (décision 8). Chaque entrée déléguée est repliée au chargement de la
+  messagerie et après une reconnexion.
+  - L'utilisateur la déplie d'un clic ; cet état est tenu **en mémoire** pour la session, et
+    n'est **jamais persisté**. Une clé de stockage porterait l'adresse du délégant (règle 14).
+  - Ouvrir un dossier délégué par un autre chemin, comme un lien ou un retour arrière, déplie son
+    entrée.
+- **Couleur propre** (décision 8). Toutes les BAL déléguées partagent une **couleur d'accent**
+  distincte de la BAL principale.
+  - Elle s'applique à l'en-tête de la section, à l'entrée du délégant, aux icônes et au filet
+    latéral de ses dossiers, ainsi qu'au bandeau « (délégation) » et au titre de liste. On garde
+    ainsi le repère une fois dans la boîte.
+  - La couleur est un **jeton de thème** propre à chaque client : variable CSS dans weda2, variable
+    Ionic sur mobile. Elle n'est jamais codée en dur dans les composants, et le même rendu vaut en
+    thème clair et sombre.
+  - La couleur n'est **jamais le seul repère**. Le libellé de section, l'adresse et le bandeau
+    portent la même information, et le contraste texte / fond respecte WCAG AA.
+  - La sélection d'un dossier délégué reste lisible : elle ne doit pas se confondre avec la couleur
+    de délégation.
 - **Tout le code client qui cherche ou met à jour un dossier parcourt l'arborescence.** Il cesse de
   ne regarder que la racine. Côté mobile, cela concerne :
   - `mail-state.service.ts:137, 360` (compteurs) ;
@@ -58,6 +88,37 @@ n'est conservé sur son appareil.
   - mobile `mail-detail.component.ts:747` ;
   - weda2 `read-receipt.util.ts:18`, `mail-detail.component.ts:1136` (garde d'« Annuler et
     remplacer »), `mail-header.component.ts:450`.
+
+### Panneau des dossiers redimensionnable (weda2)
+
+Aujourd'hui, `.mail-folder-panel` est fixé à `width: 240px; min-width: 200px`
+(`libs/mss/src/features/mail/mss-mail.component.scss:63-65`). C'est trop étroit, et l'adresse
+d'un délégant ne tient pas.
+
+- **Largeur par défaut : 300 px.**
+- **Largeur minimale : 240 px.** Aucun geste ne descend en dessous, ni le glisser, ni le clavier,
+  ni une valeur enregistrée.
+- **Largeur maximale : 480 px**, réduite si besoin pour que la liste des messages garde son
+  `min-width` de 300 px.
+- **Séparateur** entre le panneau des dossiers et la liste :
+  - il se tire à la souris (événements pointeur), avec un curseur `col-resize` et une poignée
+    visible au survol ;
+  - la largeur suit la souris pendant le glisser, bornée au minimum et au maximum ;
+  - un **double-clic** rend la largeur par défaut ;
+  - accessible au clavier : `role="separator"`, `aria-orientation="vertical"`,
+    `aria-valuemin`, `aria-valuemax`, `aria-valuenow`, focusable. Les flèches gauche et droite
+    changent la largeur de 16 px, Début et Fin vont au minimum et au maximum ;
+  - `data-testid="mail-folder-splitter"`.
+- **Mémorisation** : la largeur choisie est gardée dans `localStorage`, car elle ne contient aucune
+  donnée de BAL. La règle 14 ne s'y oppose donc pas.
+  - Chaque lecture et chaque écriture sont protégées par un `try/catch`.
+  - Une valeur absente, illisible ou hors bornes rend la largeur par défaut, ou est ramenée dans les
+    bornes.
+- **Redimensionnement de la fenêtre** : la largeur est ramenée dans les bornes.
+- **Libellés longs** : une adresse ou un nom de dossier qui ne tient pas est tronqué par une
+  ellipse, avec l'intitulé complet en infobulle.
+- Le séparateur est écrit dans le module MSS, sans nouvelle dépendance. `@angular/cdk` est déjà
+  présent si besoin.
 
 ### Contexte et gestes
 
@@ -149,6 +210,12 @@ n'est conservé sur son appareil.
       modifiée.
 - [ ] Tests de composants, sur mobile et weda2 :
       - section, libellés système, cumul des non lus ;
+      - **section toujours après tous les dossiers de la BAL principale**, y compris quand l'API
+        renvoie les dossiers délégués en tête, et après la création d'un dossier personnel ;
+      - **entrées déléguées repliées au chargement**, dépliées au clic, sans aucune écriture
+        dans un stockage du navigateur ou de l'appareil ;
+      - **classe ou jeton de couleur de délégation** posé sur la section, les dossiers délégués,
+        le bandeau et le titre de liste, et absent des dossiers de la BAL principale ;
       - bandeau et titre ;
       - menus des dossiers système ; Nouveau sous-dossier sur la réception déléguée ;
       - **chaque geste masqué** de la liste ci-dessus, panneau Weda et import compris, sans appel
@@ -159,6 +226,14 @@ n'est conservé sur son appareil.
       - mode liste forcé ;
       - aucun appel d'enrichissement, de SSE ni de recherche sur `shared/` ;
       - nom de fichier d'export sans objet.
+- [ ] Tests de composant weda2 du **séparateur** :
+      - largeur par défaut de 300 px ;
+      - glisser vers la droite et vers la gauche ;
+      - butée au minimum de 240 px et au maximum ;
+      - flèches, Début, Fin et attributs ARIA ;
+      - double-clic qui rend la largeur par défaut ;
+      - largeur relue depuis `localStorage`, et valeur absente, illisible, hors bornes, ou
+        stockage qui lève une exception.
 - [ ] Tests unitaires mobile : recherches et mises à jour de dossiers sur l'arborescence ;
       déconnexion qui purge tous les états liés à la BAL, `DocumentContentService` compris ; passage
       hors ligne.
@@ -173,7 +248,8 @@ n'est conservé sur son appareil.
         `ScenarioCatalogTests` ;
       - `E2eReset` couvre la BAL de la délégante et ses ACL.
 - [ ] Scénarios ajoutés dans `Api/Mail/e2e/scenarios.yml`, et implémentés sur mobile et angular :
-      - **E2E-DELEG-001** : voir la BAL déléguée dans sa section, ouvrir un compte rendu, lire le
+      - **E2E-DELEG-001** : voir la BAL déléguée dans sa section, **repliée et placée sous le
+        dernier dossier de la BAL principale**, la déplier, ouvrir un compte rendu, lire le
         document décodé ;
       - **E2E-DELEG-002** : supprimer un message délégué → il est dans la corbeille de la BAL
         déléguée ; le restaurer ;
@@ -194,6 +270,11 @@ Comptes de formation : Cyril, délégataire de Virginie. Lancer l'AppHost, puis 
 1. **Section.** La section « Boîtes déléguées » contient la boîte de
    `virginie.medecinrpps0062267@medecin.formation.mssante.fr`, repliée, avec son cumul de non lus.
    La déplier : Réception, Envoyés, Brouillons, Spam, Corbeille, puis `Demo`.
+   - Elle est **sous le dernier dossier de Cyril**. Créer un dossier personnel : la section reste
+     en dessous.
+   - Sa **couleur** la distingue de la boîte de Cyril. Le repère se retrouve dans le bandeau et
+     dans le titre de la liste, et reste lisible en thème sombre.
+   - Recharger la page (weda2) ou relancer l'app (mobile) : la boîte est de nouveau **repliée**.
 2. **Message délégué.**
    - Ouvrir un message de la Réception déléguée : bandeau « (délégation) ».
    - Aucun de ces gestes : Répondre, Transférer, Synthèse IA, IA, étiquettes, Annuler et
@@ -218,6 +299,13 @@ Comptes de formation : Cyril, délégataire de Virginie. Lancer l'AppHost, puis 
 10. **Révocation.** Virginie retire la délégation dans le webmail Mailiz pendant que Cyril est dans
     sa boîte. Au plus 5 minutes après : « Cette boîte ne vous est plus déléguée », puis retour à la
     propre réception.
+11. **Panneau des dossiers** (weda2) :
+    - il s'ouvre à 300 px, et l'adresse de Virginie se lit, ou porte une ellipse et une infobulle ;
+    - tirer le séparateur à droite : le panneau s'élargit, sans réduire la liste sous 300 px ;
+    - tirer à gauche jusqu'au bout : il s'arrête à 240 px ;
+    - recharger : la largeur choisie est conservée ; double-cliquer sur le séparateur : retour à
+      300 px ;
+    - au clavier, en tabulant jusqu'au séparateur, les flèches changent la largeur.
 
 ## Conformité santé / Ségur / ANS
 
