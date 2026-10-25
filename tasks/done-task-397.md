@@ -470,6 +470,14 @@ de Virginie (`virginie.medecinrpps0062267@medecin.formation.mssante.fr`).
   - Rouges : tests unitaires vus rouges avant correction (5 de masquage, 2 du puits, 3 de canonicité) ; bout en bout S3 (500 au lieu de 404) et S7 (clé restante) rouges sans correction ; mutations M36 propriété `Attachment` non masquée (parcours : « CR_DUPONT_Jean.pdf ») ; M37 masquage arrêté à l'apostrophe (parcours : « …'Isabelle ») ; M38 borne qui refuse (`Pending` au lieu d'`Enriched`).
   - Passe qualité §Q non rejouée : correctif ciblé, issu d'une revue.
   - Suites : domaine 263, infrastructure 701, API 1 344, application 3 651, intégration 1 002 réussis + 16 ignorés sur 1 018 — tout vert.
+- **Tranche 14 — en-têtes légers en cache, propres à chaque BAL, émis par lots (`25cbea0d`)**, sur constat humain du 2026-10-25 après la PR : « au changement de page, le cache délégué se vide » et « la clé devrait comporter l'email de l'utilisateur ».
+  - **Cause** : une seule borne de 50 entrées par (personne, BAL déléguée), pour des contenus complets jusqu'à 8 Mo ; l'enrichissement d'une page de 30 (mobile) ou 50 (weda2) comptes rendus remplissait la borne, la page suivante évinçait la précédente (éviction de B3), le retour redécodait.
+  - **Correctif** : deux familles sous `delegated:content:`, chacune avec son index et sa borne — contenu complet (50 par BAL, ouverture, PDF, export) et documents légers d'une ligne (`delegated:content:header:`, 1 000 par BAL, liste et `enrich`). La liste ne lit plus que les en-têtes légers, par lectures parallèles (suggestion S5 de la revue). Toujours 5 minutes au plus (règle 14).
+  - **Clé** : l'adresse de la BAL de l'utilisateur entre dans l'empreinte des entrées et des index ; deux BAL d'un même RPPS n'ont plus ni entrées, ni borne, ni effacement communs. Pas de migration : les anciennes entrées expirent en 5 minutes.
+  - **SSE par lots de 10** : ce qui était déjà en cache part tout de suite, puis chaque lot de 10 décodages ; une seule mise à jour d'index par lot.
+  - **Masquage encodé** : un « & » dans un nom de dossier (« Courrier & CR ») n'arrête plus le masque — suivi de la 2ᵉ passe de revue.
+  - Tests bout en bout, rouges sur le code précédent : `NavigatingBetweenPages_KeepsTheFirstPageEnriched_WithoutDecodingAgain` (borne du contenu ramenée à 1 : en-têtes de la page 1 `Pending` au retour) ; `EnrichingAFullPage_SendsTheEnrichedHeadersInBatches` (12 comptes rendus : un seul envoi de 12 au lieu de 10 + 2) ; `TwoMailboxesOfTheSamePerson_DoNotShareTheDecodedContent` (même RPPS de session PSC, deux BAL : 1 décodage au lieu de 2). Unitaires : 4 nouveaux tests du cache ; masquage « & » rouge avant correction.
+  - Suites : domaine 264, infrastructure 701, API 1 344, application 3 655, intégration 1 004 réussis + 16 ignorés sur 1 020 — tout vert.
 ## Sonar log
 
 Analyse complète `healthplatform-api-mail` (SonarQube 9.9.8 local) après la tranche 12 (décision 14), commit `a9cfc8db`. Une première analyse, avant la décision 14, était déjà verte ; elle est remplacée par celle-ci, qui porte sur le code livré.
@@ -642,14 +650,14 @@ Démontage vérifié : ports 5052/3993/3465/3143 libres, aucun conteneur e2e ré
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 18 s | — | — | — | — |
-| /develop | ok | 16 min 34 s | 50 (4 min 12 s) | 72 (1 h 10 min) | — | api-mail 50B/72T, retours de revue : B1 B2 B3 S3 S7 |
+| /develop | ok | 10 min 40 s | 52 (4 min 28 s) | 75 (1 h 15 min) | — | api-mail 52B/75T, en-têtes légers, BAL dans la clé, SSE par lots, masquage & |
 | /sonar | ok | 7 min 45 s | 8 (2 min 09 s) | 32 (39 min 19 s) | 12 (3 min 43 s) | 1 itération(s), api-mail 8B/32T, retours de revue : 2 issues S1155/CA1827 corrigées, QG OK |
 | /lint-angular | skipped | 0.4 s | — | — | — | repo non touché (Repos: api-mail) — passage post-revue |
 | /lint-mobile | skipped | 0.5 s | — | — | — | repo non touché (Repos: api-mail) — passage post-revue |
 | /e2e | ok | 15 min 20 s | — | — | — | e2e ×6 (30 min 44 s), post-revue : mobile 46 + angular 55 verts, parité verte |
 | /review | ok | 4 min 58 s | 2 (25 s) | 2 (8 min 25 s) | — | api-mail 2B/2T, APPROVED (2e passe), PR #313 |
 | /tech-writer | ok | 1 min 34 s | — | — | — | — |
-| **Total cycle** | | **46 min 33 s** | **60 (6 min 46 s)** | **106 (1 h 58 min)** | **12 (3 min 43 s)** | |
+| **Total cycle** | | **40 min 39 s** | **62 (7 min 02 s)** | **109 (2 h 03 min)** | **12 (3 min 43 s)** | |
 
 ## Develop log
 
