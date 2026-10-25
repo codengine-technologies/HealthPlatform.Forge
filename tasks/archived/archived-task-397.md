@@ -779,3 +779,11 @@ Démontage vérifié : ports 5052/3993/3465/3143 libres, aucun conteneur e2e ré
   - Tests (bout en bout, `DelegationEndToEndTests`) : `ReadingADelegatedMessage_…` (en-tête `Pending` avant ouverture, `Enriched` avec patient et sans HTML après, `version-chain` 200 vide) ; `EnrichingADelegatedFolder_DecodesInMemory_EmitsLightEnrichedHeaders_AndPersistsNothing` (notification reçue sur la racine déléguée, en-tête léger, base vide, relecture enrichie) ; `TheWholeDelegatedJourney_…` vérifie le libellé de la tâche de fond et **exécute** la file, si bien que ses contrôles « rien de persisté, rien de journalisé » couvrent aussi l'enrichissement asynchrone.
   - Mutations, toutes rouges : M31 enrich délégué sans décodage (aucune notification) ; M32 en-têtes qui ignorent le cache J (`Pending` au lieu d'`Enriched`, 2 tests) ; M33 `version-chain` sans garde (404) ; M34 en-tête léger qui garde le HTML (2 tests) ; M35 libellé de tâche portant le chemin (`enrich:shared/…/Demo/Bi…`). M35 avait d'abord **survécu** : le libellé n'était observé par aucun test, d'où l'assertion sur `PendingLabels`.
   - Suites : domaine 255, infrastructure 701, API 1 341, application 3 650, intégration 1 000 réussis + 16 ignorés sur 1 016 — tout vert.
+
+## Merged
+
+- **Date** : 2026-10-25 — `/merge task-397 --i-tested` (test manuel attesté par l'humain).
+- `api-mail` : PR #313 squash-mergée → `47a94d4f` sur `develop` ; branche `feat/task-397-delegation-bal-lecture-directe` supprimée (distante et locale).
+- CI `develop` : verte (build + publish) — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/40233715436
+- Branche staging : aucune (task hors run `/forge`).
+- Reste humain : caractérisation Mailiz ; `Delegation__ContentCache__KeySecret` dans les manifests DevOps (`feature/setup_k8s`, non commités à cette date).
