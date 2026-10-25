@@ -218,6 +218,20 @@ de formation (§6, US 0).
     - La biologie est aussi dans le rendu du document et dans le corps du message : exclure la
       seule table de biologie ne suffisait pas.
   - L'US 5 disparaît.
+- **RÈGLE D'OR, actée en fin de journée — aucune donnée d'une BAL déléguée n'est persistée chez le
+  délégataire.** Elle remplace le stockage partiel ci-dessus, qui gardait encore les en-têtes et
+  les corps.
+  - Rien n'est écrit : ni en base, ni dans Redis, ni dans les journaux applicatifs. Sont visés les
+    messages, corps, pièces jointes, documents, noms de dossiers et compteurs.
+  - Tout est lu en direct sur le serveur IMAP, à chaque affichage.
+  - **Seule exception : l'audit PGSSI-S**, réduit à l'action, l'auteur, le dossier, l'UID et le
+    `Message-ID`, sans objet, sans correspondants, sans donnée patient.
+  - **Pourquoi** : la délégation donne un droit d'accès, pas de copie. La purge des dossiers
+    disparus ne tourne qu'au prochain listage en ligne, donc une copie peut survivre
+    indéfiniment à la révocation.
+  - **Conséquences acceptées** : pas de hors-ligne ni de recherche sur la BAL déléguée, et une
+    lecture plus lente, à mesurer.
+  - Gravée dans CLAUDE.md (règle 14) et dans le garde-fou métier de `agents/po.md`.
 - **Q3 — Envoi « de la part de » au lot suivant.** Il est conditionné à la caractérisation SMTP
   Mailiz.
 - **Q6 — Mobile et weda2**, avec la parité e2e.
