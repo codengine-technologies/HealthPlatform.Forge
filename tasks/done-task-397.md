@@ -61,6 +61,12 @@ Les journaux Seq portaient les chemins de sa BAL.
     corps ni octets). Rien en base. Coût accepté : jusqu'à une page de décodages, renouvelés à
     l'expiration du cache. Même jour : la route `version-chain` répond « aucune version » à
     l'identifiant vide d'un document délégué (plus de 404).
+15. **Cache J séparé par utilisateur, en-têtes légers à part** (humain, 2026-10-25, après la PR) :
+    les clés sont **préfixées par l'adresse de l'utilisateur** — `delegated:content:{adresse}:…` —
+    pour séparer les entrées de chacun ; l'empreinte HMAC suit (délégant, dossier, UIDVALIDITY et UID
+    jamais en clair). Les documents légers d'une ligne de liste ont leur propre famille et leur
+    propre borne (1 000 par BAL), pour que changer de page n'évince pas la page précédente ; les
+    en-têtes enrichis partent par lots de 10.
 
 ## Objective
 
@@ -253,9 +259,10 @@ synchronisation, et les journaux affichent « skipped » pour **chacun** d'eux.
 
 - **Contenu** : le résultat décodé d'un message délégué, c'est-à-dire corps, documents rendus,
   biologie et **PDF associés**.
-- **Famille de clés dédiée**, la seule admise par la garde pour un contenu délégué. La clé est une
-  **empreinte** (HMAC) de : personne qui agit (RPPS de la session PSC), BAL propriétaire, dossier,
-  `UIDVALIDITY` et UID. Elle ne contient **jamais** de chemin, d'adresse ni d'UID en clair.
+- **Famille de clés dédiée**, la seule admise par la garde pour un contenu délégué. La clé est
+  `delegated:content:{adresse de l'utilisateur}:` (décision 15) suivi d'une **empreinte** (HMAC) de :
+  personne qui agit (RPPS de la session PSC), BAL propriétaire, dossier, `UIDVALIDITY` et UID. Elle
+  ne contient **jamais** de chemin, d'adresse du délégant ni d'UID en clair.
 - **Propre à la personne** : un autre utilisateur, y compris le délégant ou un autre délégataire,
   ne peut jamais la lire. L'empreinte inclut la personne.
 - **Durée de vie de 5 minutes au plus** (expiration absolue, sans prolongation), alignée sur la
@@ -328,7 +335,7 @@ synchronisation, et les journaux affichent « skipped » pour **chacun** d'eux.
       - le message est ouvert sur l'instance 1, puis rouvert, le PDF téléchargé et le message
         exporté sur l'instance 2 : **un seul** décodage (compteur de `ProcessIheXdmZips`) ;
       - expiration ≤ 5 min, vérifiée par le TTL ;
-      - la clé est une empreinte, sans chemin ni adresse ;
+      - la clé est l'adresse de l'utilisateur puis une empreinte, sans chemin ni adresse du délégant (décision 15) ;
       - un autre utilisateur ne l'atteint pas ;
       - suppression, déplacement et révocation l'effacent ;
       - une entrée trop grosse n'est pas mise en cache.
@@ -474,6 +481,7 @@ de Virginie (`virginie.medecinrpps0062267@medecin.formation.mssante.fr`).
   - **Cause** : une seule borne de 50 entrées par (personne, BAL déléguée), pour des contenus complets jusqu'à 8 Mo ; l'enrichissement d'une page de 30 (mobile) ou 50 (weda2) comptes rendus remplissait la borne, la page suivante évinçait la précédente (éviction de B3), le retour redécodait.
   - **Correctif** : deux familles sous `delegated:content:`, chacune avec son index et sa borne — contenu complet (50 par BAL, ouverture, PDF, export) et documents légers d'une ligne (`delegated:content:header:`, 1 000 par BAL, liste et `enrich`). La liste ne lit plus que les en-têtes légers, par lectures parallèles (suggestion S5 de la revue). Toujours 5 minutes au plus (règle 14).
   - **Clé** : l'adresse de la BAL de l'utilisateur entre dans l'empreinte des entrées et des index ; deux BAL d'un même RPPS n'ont plus ni entrées, ni borne, ni effacement communs. Pas de migration : les anciennes entrées expirent en 5 minutes.
+  - **Décision 15 (`f1686a49`)** — précision de l'humain : l'adresse doit être **en tête de clé, en clair**, pour séparer les entrées de chacun : `delegated:content:{adresse en minuscules}:{empreinte}` (index : `…:index:`, en-têtes légers : `…:header:` et `…:header-index:`). Le délégant, le dossier et l'UID restent dans l'empreinte. Rouge sur le format précédent : 2 unitaires (`AStoredContent_IsReadBack_UnderTheUserKey_…`, `TwoMailboxesOfTheSamePerson_DoNotShareEntries`) et le bout en bout à deux instances (`StartsWith`). Suites : 6 968 réussis, 0 échec.
   - **SSE par lots de 10** : ce qui était déjà en cache part tout de suite, puis chaque lot de 10 décodages ; une seule mise à jour d'index par lot.
   - **Masquage encodé** : un « & » dans un nom de dossier (« Courrier & CR ») n'arrête plus le masque — suivi de la 2ᵉ passe de revue.
   - Tests bout en bout, rouges sur le code précédent : `NavigatingBetweenPages_KeepsTheFirstPageEnriched_WithoutDecodingAgain` (borne du contenu ramenée à 1 : en-têtes de la page 1 `Pending` au retour) ; `EnrichingAFullPage_SendsTheEnrichedHeadersInBatches` (12 comptes rendus : un seul envoi de 12 au lieu de 10 + 2) ; `TwoMailboxesOfTheSamePerson_DoNotShareTheDecodedContent` (même RPPS de session PSC, deux BAL : 1 décodage au lieu de 2). Unitaires : 4 nouveaux tests du cache ; masquage « & » rouge avant correction.
@@ -650,14 +658,14 @@ Démontage vérifié : ports 5052/3993/3465/3143 libres, aucun conteneur e2e ré
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 18 s | — | — | — | — |
-| /develop | ok | 10 min 40 s | 52 (4 min 28 s) | 75 (1 h 15 min) | — | api-mail 52B/75T, en-têtes légers, BAL dans la clé, SSE par lots, masquage & |
-| /sonar | ok | 7 min 45 s | 8 (2 min 09 s) | 32 (39 min 19 s) | 12 (3 min 43 s) | 1 itération(s), api-mail 8B/32T, retours de revue : 2 issues S1155/CA1827 corrigées, QG OK |
+| /develop | ok | 6 min 21 s | 53 (4 min 36 s) | 76 (1 h 19 min) | — | api-mail 53B/76T, décision 15 : clé préfixée par l'adresse de l'utilisateur |
+| /sonar | failed | 8 min 00 s | 9 (2 min 27 s) | 37 (46 min 03 s) | 14 (4 min 29 s) | api-mail 9B/37T, interrompu : changement de format de clé demandé par l'humain |
 | /lint-angular | skipped | 0.4 s | — | — | — | repo non touché (Repos: api-mail) — passage post-revue |
 | /lint-mobile | skipped | 0.5 s | — | — | — | repo non touché (Repos: api-mail) — passage post-revue |
 | /e2e | ok | 15 min 20 s | — | — | — | e2e ×6 (30 min 44 s), post-revue : mobile 46 + angular 55 verts, parité verte |
 | /review | ok | 4 min 58 s | 2 (25 s) | 2 (8 min 25 s) | — | api-mail 2B/2T, APPROVED (2e passe), PR #313 |
 | /tech-writer | ok | 1 min 34 s | — | — | — | — |
-| **Total cycle** | | **40 min 39 s** | **62 (7 min 02 s)** | **109 (2 h 03 min)** | **12 (3 min 43 s)** | |
+| **Total cycle** | | **36 min 36 s** | **64 (7 min 28 s)** | **115 (2 h 14 min)** | **14 (4 min 29 s)** | |
 
 ## Develop log
 
