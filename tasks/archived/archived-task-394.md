@@ -425,3 +425,15 @@ et E2E-DRAFT-003 (mobile) se joue avec une signature par défaut. Une contradict
   - `front/libs/mss/src/features/mail/components/mail-compose/mail-compose-safety.component.spec.ts`
   - `front/libs/mss/src/features/mail/components/mail-compose/mail-compose-toolbar.component.spec.ts`
   - `front/libs/mss/src/features/mail/components/mail-compose/mail-compose.component.ts`
+
+## Merged
+
+- **Date** : 2026-10-25 — `/merge task-394 --i-tested` (plan de test joué par l'humain)
+- `api-mail` : PR #311 squash `369b083ba6aabedb2e495744457f49e977dce9f0` — CI `develop` verte
+  (https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/40184357868)
+- `client-mobile` : PR #105 squash `b1891a810c0789f41e42d7303320a3ba10b6e20a` — CI `develop` verte
+  (https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/40184371418)
+- Branches `fix/task-394-redaction-vide-sans-brouillon` supprimées (distantes et locales) ; label
+  `awaiting-human-merge` retiré
+- `client-angular` : géré par l'humain (commit, push et PR TFS)
+- Staging : aucune branche staging (task hors run `/forge`)
