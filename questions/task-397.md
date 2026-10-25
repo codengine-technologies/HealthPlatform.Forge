@@ -1,4 +1,4 @@
-# task-397 — /review : CHANGES REQUESTED (2026-10-25)
+# task-397 — /review : CHANGES REQUESTED (2026-10-25) — corrigé (ff42b6e8, tranche 13)
 
 Validation : build ✅ (0 erreur, 0 avertissement), tests ✅ (6 947 réussis, 0 échec, 16 ignorés),
 Sonar ✅ (QG OK, 0 issue), e2e ✅ (mobile 46, angular 55, parité verte).

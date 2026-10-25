@@ -460,6 +460,16 @@ de Virginie (`virginie.medecinrpps0062267@medecin.formation.mssante.fr`).
 - `api-mail` (pushed) : feat/task-397-delegation-bal-lecture-directe — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-397-delegation-bal-lecture-directe
 - Pré-flight 2026-10-25 : api-mail, client-blazor, client-mobile, dtos-mss, sdk sur `develop`. `host` (Host/Modules) et `interop` ne sont pas des racines de dépôt (noté, non bloquant, hors périmètre de la task).
 
+- **Tranche 13 — retours de `/review` (`ff42b6e8`)**, CHANGES REQUESTED du 2026-10-25 (`questions/task-397.md`), relecture indépendante vérifiée dans le code :
+  - **B1** : le puits de masquage masque entières les propriétés qui nomment un objet (`Attachment`, `FileName`, `FileDownloadName`, `Name`, `NewName`, `Subject`, `Title`…) dès que l'événement porte un chemin délégué ; le journal d'erreur de création de dossier porte son parent. **Vert qui mentait** : le serveur de test du parcours journalisait ses contrôleurs hors de la capture Serilog ; branché sur le même puits et la même capture, le parcours a d'abord échoué sur la pièce jointe (contrôleur, puis `FileStreamResultExecutor` d'ASP.NET Core — `Warning` en production, couvert quand même).
+  - **B2** : masquage clair jusqu'à la fin de ligne, un guillemet ou un chevron ; encodé jusqu'au `/` de la route, `?`, `&` ou la fin de ligne — plus d'arrêt à l'espace ni à l'apostrophe. Le dossier secret du parcours devient « Biologie d'Isabelle ».
+  - **B3** : l'index du cache J porte l'échéance de chaque entrée, oublie ce qui a expiré et évince la plus ancienne au lieu de refuser la nouvelle (`BeyondTheContentCacheBound_TheNewestDecodedMessagesStayEnriched`, borne ramenée à 1 le temps du test).
+  - **S3** : un séparateur final ou doublé (`Sent/`, `//Sent`) n'est plus canonique → 404 ; avant : 500, la requête atteignait le serveur.
+  - **S7** : renommer ou supprimer un dossier délégué oublie le contenu décodé de la BAL (`RenamingOrDeletingADelegatedFolder_ForgetsItsDecodedContent`).
+  - **S8 écarté** : aucune route ne sert les drapeaux d'un `MailDto` délégué tiré du cache (le contenu sort en `MailContentDto` sans drapeaux, les en-têtes prennent ceux du résumé frais, l'export ne les rend pas). Suggestions S5, S6, S9, S10 : non traitées, consignées dans la question.
+  - Rouges : tests unitaires vus rouges avant correction (5 de masquage, 2 du puits, 3 de canonicité) ; bout en bout S3 (500 au lieu de 404) et S7 (clé restante) rouges sans correction ; mutations M36 propriété `Attachment` non masquée (parcours : « CR_DUPONT_Jean.pdf ») ; M37 masquage arrêté à l'apostrophe (parcours : « …'Isabelle ») ; M38 borne qui refuse (`Pending` au lieu d'`Enriched`).
+  - Passe qualité §Q non rejouée : correctif ciblé, issu d'une revue.
+  - Suites : domaine 263, infrastructure 701, API 1 344, application 3 651, intégration 1 002 réussis + 16 ignorés sur 1 018 — tout vert.
 ## Sonar log
 
 Analyse complète `healthplatform-api-mail` (SonarQube 9.9.8 local) après la tranche 12 (décision 14), commit `a9cfc8db`. Une première analyse, avant la décision 14, était déjà verte ; elle est remplacée par celle-ci, qui porte sur le code livré.
@@ -579,13 +589,13 @@ Démontage vérifié : ports 5052/3993/3465/3143 libres, aucun conteneur e2e ré
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 18 s | — | — | — | — |
-| /develop | ok | 3 h 19 min | 49 (4 min 05 s) | 64 (1 h 05 min) | — | api-mail 49B/64T |
+| /develop | ok | 16 min 34 s | 50 (4 min 12 s) | 72 (1 h 10 min) | — | api-mail 50B/72T, retours de revue : B1 B2 B3 S3 S7 |
 | /sonar | ok | 51 min 40 s | 5 (1 min 29 s) | 20 (25 min 53 s) | 8 (2 min 23 s) | api-mail 5B/20T, QG OK, 0 issue new code, aucune correction |
 | /lint-angular | skipped | 0.5 s | — | — | — | client-angular non touché (Repos: api-mail) |
 | /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non touché (Repos: api-mail) |
 | /e2e | ok | 16 min 40 s | — | — | — | e2e ×3 (15 min 51 s), mobile 46 + angular 55 verts, parité verte |
 | /review | failed | 11 min 35 s | 1 (10 s) | 1 (4 min 14 s) | — | api-mail 1B/1T, CHANGES REQUESTED : 3 bloquants (masquage propriétés sœurs, regex de masquage, borne du cache J) |
-| **Total cycle** | | **4 h 39 min** | **55 (5 min 45 s)** | **85 (1 h 35 min)** | **8 (2 min 23 s)** | |
+| **Total cycle** | | **1 h 36 min** | **56 (5 min 52 s)** | **93 (1 h 40 min)** | **8 (2 min 23 s)** | |
 
 ## Develop log
 
