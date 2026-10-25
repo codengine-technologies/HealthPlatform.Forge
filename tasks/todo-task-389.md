@@ -1,7 +1,7 @@
 # todo-task-389.md — Un résultat de laboratoire reçu au format HPRIM devient un document de biologie
 
 **Repos**: api-mail
-**Dependencies**: task-397 (lecture en mémoire des messages d'une BAL déléguée, banc de délégation)
+**Dependencies**: task-397 (lecture directe des messages d'une BAL déléguée sans stockage, banc de délégation)
 **Epic**: E009
 **Single frontend**: true
 **Priorité**: **2** — les labos qui n'envoient pas encore de CR-BIO en CDA (ou un CDA invalide) arrivent aujourd'hui dans la nouvelle messagerie comme un mail portant un fichier technique illisible : le résultat n'existe ni dans la biologie du patient ni dans les alertes.
@@ -36,7 +36,8 @@
 8. **BAL déléguée : affichage seul, aucune injection en base** (humain, 2026-10-25, délégation de
    BAL Mailiz — voir task-397 et `Docs/audits/delegation-bal-mailiz-analyse-20261025.md`). Un HPRIM
    porté par un message d'une BAL déléguée (dossier sous `shared/…`) est **lu pour être affiché**,
-   en mémoire, à l'ouverture du message.
+   à l'ouverture du message, sans rien conserver. Le répertoire de travail transitoire du décodage
+   est accepté (task-397, décision 4).
    - **Rien n'est stocké** chez le délégataire, ni en base ni dans Redis : aucun document, aucun
      trait patient, aucune entrée dans la file « à intégrer ».
    - Hors ligne, il n'est pas consultable.
@@ -63,7 +64,7 @@ Quand un mail porte un fichier HPRIM, api-mail en tire un **document médical de
 - **BAL déléguée** (décision 8) : pour un message sous `shared/…`, le HPRIM est lu à l'affichage du
   détail, et ses documents sont renvoyés dans la réponse (texte, PDF associé, traits de l'en-tête
   affichés). **Aucun** n'est persisté ni ajouté à la file « à intégrer ».
-  - Le lecteur HPRIM est branché sur le **chemin de lecture en mémoire** des messages délégués
+  - Le lecteur HPRIM est branché sur le **chemin de lecture directe** des messages délégués
     livré par task-397, pas seulement sur le circuit d'écriture.
   - Le test de convention de task-397 (« aucune écriture issue d'une pièce médicale pour un message
     délégué ») couvre le HPRIM.

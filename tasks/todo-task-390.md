@@ -1,7 +1,7 @@
 # todo-task-390.md — Les lignes structurées d'un compte rendu HPRIM deviennent des résultats de biologie, avec alerte d'anomalie
 
 **Repos**: api-mail, dtos-mss
-**Dependencies**: task-389 (le document HPRIM existe), task-397 (lecture en mémoire des messages d'une BAL déléguée)
+**Dependencies**: task-389 (le document HPRIM existe), task-397 (lecture directe des messages d'une BAL déléguée sans stockage)
 **Epic**: E009
 **Single frontend**: true
 **Priorité**: **2** — sans cette US, un résultat HPRIM n'est qu'un texte : ni suivi dans la biologie du patient, ni alerte sur une valeur anormale.
@@ -27,7 +27,7 @@
 3. (rappel task-389) Codes d'examen **locaux au labo**, jamais présentés comme du LOINC.
 4. **BAL déléguée : affichage seul, aucune injection en base** (humain, 2026-10-25 — task-397,
    décision 8 de task-389). Pour un message d'une BAL déléguée (`shared/…`), les lignes `RES|` sont
-   lues **en mémoire**, à l'affichage du détail : valeurs, unités, normes, statut, anomalie
+   lues **sans stockage**, à l'affichage du détail : valeurs, unités, normes, statut, anomalie
    signalée.
    - **Aucun** résultat n'est stocké chez le délégataire : aucune ligne
      `MailMedicalDocumentBiology`, rien dans Redis, aucune entrée « anormaux non lus ».
@@ -52,8 +52,8 @@ Chaque ligne `RES|` d'un document HPRIM (task-389) devient un **résultat de bio
 - **Statut** : **persisté** (nouvelle colonne de `MailMedicalDocumentBiology`, migration de la base mail) et exposé dans le contrat de biologie ; « partiel » visible. Vide pour les résultats CDA existants.
 - **Pas de remplacement à la réception** : un partiel et son complété reçus avant rattachement restent tous deux visibles, le partiel marqué « partiel ». Le remplacement est livré par task-391.
 - **Sans ligne `RES|`** : le document reste un document texte, sans résultat structuré.
-- **BAL déléguée** (décision 4) : le lecteur `RES|` alimente aussi le **chemin de lecture en
-  mémoire** de task-397.
+- **BAL déléguée** (décision 4) : le lecteur `RES|` alimente aussi le **chemin de lecture
+  directe** de task-397.
   - Les résultats d'un message délégué sont renvoyés dans le détail, avec `IsFlagged` et le statut
     calculés à la lecture.
   - Ils ne passent **jamais** par `AddBiologyResultsToDocument`.

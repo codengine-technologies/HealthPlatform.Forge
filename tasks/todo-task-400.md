@@ -1,118 +1,201 @@
 # todo-task-400.md — Délégation de BAL : tracer qui agit dans quelle BAL, et le montrer au délégant
 
 **Repos**: dtos-mss, api-mail, client-angular
-**Dependencies**: task-397 (actes délégués et audit réduit de la règle 14)
+**Dependencies**: task-397 (actes délégués, liste blanche d'audit de la règle 14, banc de délégation)
 **Epic**: E009
 **Single frontend**: true — la consultation du journal n'existe que dans weda2. Le mobile n'a pas
 d'écran Audit, et cette task n'en crée pas (décision 1).
-**Priorité**: **3** — un délégataire agit déjà dans la BAL de son délégant (task-397). Mailiz rend
-le délégant **responsable** des accès qu'il ouvre, mais il ne voit aucun de ces actes. Rien ne
-désigne non plus la **personne** qui a agi.
+**Priorité**: **3** — un délégataire agit déjà dans la BAL de son délégant. Mailiz rend le délégant
+**responsable** des accès qu'il ouvre, mais il ne voit aucun de ces actes, et rien ne désigne la
+**personne** qui a agi.
 
-> **Analyse** : [Docs/audits/delegation-bal-mailiz-analyse-20261025.md](../Docs/audits/delegation-bal-mailiz-analyse-20261025.md)
-> (§3.1 D4, §5 Q4).
-> **Règle 14** (CLAUDE.md) : l'audit est la seule exception à « rien de persisté », réduit à
-> l'action, l'auteur, le dossier, l'UID et le `Message-ID`.
+> **Analyse** : [Docs/audits/delegation-bal-mailiz-analyse-20261025.md](../Docs/audits/delegation-bal-mailiz-analyse-20261025.md).
+> **Revue du code** : [Docs/audits/delegation-bal-revue-code-20261025.md](../Docs/audits/delegation-bal-revue-code-20261025.md),
+> §3.4. Trois constats y rendaient la première version de cette task inopérante :
+> - la sécurité par ligne ;
+> - les adresses organisationnelles ;
+> - l'absence de nom.
+>
+> **Règle 14** : l'audit est la seule exception à « rien de persisté », réduit à l'action,
+> l'auteur, le dossier, l'UID et le `Message-ID`.
 
 ## Ce qui est établi
 
-- **Journal mutualisé** (ADR-2026-09-14) : table `audit_traces` du registre commun, partitionnée
-  par mois.
-  - Conservation : **3 653 jours** pour la famille `HealthDataAccess`, 365 jours pour la famille
-    `Technical` (`AuditRetentionPolicy`).
-  - Purge planifiée et globale.
-- **Une trace appartient à un tenant** (compte × BAL), estampillé à l'émission. `user_id` est une
-  **adresse de BAL**, pas une personne.
-  - Le RPPS et l'identité PSC transitent sans être persistés (`MssAuditTrace.TransportMssRpps`,
-    `TransportEmail`, `[NotMapped]`).
-  - Aucune décision documentée n'interdit de les persister : c'est un choix de transport.
-- **Consultation** : `GET /api/v1/audit/traces` et `GET /audit/traces/{id}`, limités au tenant de
-  la session (`AuditController`). weda2 a un écran Audit (`libs/mss/src/features/audit` : liste,
-  filtres, détail, chronologie). Le mobile n'en a pas.
-- **Constat du 2026-10-25** : les lectures et suppressions de Cyril dans la BAL de Virginie sont
-  tracées dans **le tenant de Cyril**, avec `user_id` = son adresse. Virginie n'en voit rien.
+- **Journal mutualisé** (ADR-2026-09-14) : table `audit_traces` du registre commun.
+  - Partitionnée par mois.
+  - Conservation de 3 653 jours pour la famille `HealthDataAccess`.
+  - Purge globale par suppression de partitions.
+- **Sécurité par ligne** (`20260913120000_CreateTenantRegistry.cs:388-405`, FORCE ROW LEVEL
+  SECURITY) :
+  - la politique `audit_traces_tenant_read` ne laisse lire que `tenant_id = mss.tenant_id`, réglage
+    posé par `PostgresAuditReader.EnterTenantScopeAsync` ;
+  - il n'existe aucun droit ni politique `UPDATE`.
+- **Identité** :
+  - `user_id` est l'**adresse de la BAL** de la session ;
+  - `TransportMssRpps` est le RPPS **de la BAL** (registre), pas celui de la personne ;
+  - l'identité PSC de la session est `SessionPscIdentity(Subject, Rpps)`, **sans nom** ;
+  - les consommateurs du bus (`RestoreFromMessage`) ne la transportent pas.
+- **Nom** : la route `GET /v1/auth/userinfo` du **proxy PSC** rend `FirstName` et `LastName`.
+  api-mail appelle déjà le proxy avec le cookie de session (`proxy_session_id`) et sa clé interne
+  (route `context`, `PscTokenProvider.cs:270-280`). Il peut donc appeler `userinfo` de la même
+  façon, **sans évolution du proxy**.
+- **Lecture** :
+  - `AuditController` : liste et détail, limités au tenant ;
+  - `PostgresAuditReader.Map` (`:247-280`) rend aussi `UserSessionId`, `SourceIp`, `UserAgent`,
+    `CorrelationId`, `ServerRequest/Response` ;
+  - `ApplyFilters` (`:208-244`) **ignore** les filtres `ActionType` et `Search` que weda2 envoie.
+- **weda2** (`libs/mss/src/features/audit`) :
+  - liste, filtres, détail, chronologie par `Message-ID` ;
+  - **export CSV existant**, avec objet et destinataires (`mss-audit.component.ts:129`) ;
+  - dédoublonnage côté client **par UID seul** (`:224, 242`).
 
 ## Décisions actées (humain, 2026-10-25)
 
 1. **Le délégant consulte les actes de ses délégataires dans weda2**, dans l'écran Audit existant,
    avec un filtre « actes de mes délégataires ». Pas d'écran sur le mobile.
-2. **La personne qui agit est identifiée par son RPPS et son nom**, issus de PSC, enregistrés dans
-   la trace.
-3. **Une trace, deux lecteurs** : l'acte délégué est visible du délégataire (c'est son acte) et du
-   délégant (c'est sa BAL).
+2. **La personne est identifiée par son RPPS et son nom**, enregistrés dans la trace.
+   - Le RPPS vient de la session PSC.
+   - Le nom vient de la route **`userinfo` du proxy PSC**.
+3. **Une trace, deux lecteurs** : visible du délégataire (son acte) et du délégant (sa BAL).
+4. **Traces passées** : laissées en l'état (la base de test a été purgée). Pas de reprise.
 
 ## Objective
 
-Tout acte fait dans une BAL déléguée est tracé avec trois choses : **qui** (RPPS et nom), **depuis
-quelle BAL** (celle du délégataire) et **dans quelle BAL** (celle du délégant). Le délégant le voit
-dans le journal de weda2, aux côtés de ses propres actes ; le délégataire aussi, dans le sien.
+Tout acte fait dans une BAL déléguée est tracé avec **qui** (RPPS et nom), **depuis quelle BAL** et
+**dans quelle BAL**. Le délégant le voit dans le journal de weda2, aux côtés de ses propres actes ;
+le délégataire aussi. Aucun tiers ne le voit, et le délégant ne voit rien d'autre que ce qui le
+concerne.
 
 ## Règles
 
-- **Champs ajoutés à toute trace** :
-  - la **personne qui agit**, RPPS et nom, pris dans l'identité PSC de la session ;
-  - la **BAL propriétaire** : l'adresse du délégant pour un acte sur `shared/<adresse>/…`,
-    sinon la BAL de la session.
+### Champs de la trace
 
-  Ils sont renseignés pour **toutes** les traces nouvelles, déléguées ou non, pour qu'un journal ne
-  mélange pas deux formats. Les traces antérieures restent sans ces champs : pas de reprise.
-- **Acte délégué** : une trace dont la BAL propriétaire diffère de la BAL de la session.
-- **Contenu d'une trace déléguée** (règle 14) : action, date, succès ou échec, personne qui agit,
-  BAL du délégataire, BAL propriétaire, dossier, UID, `Message-ID`. **Jamais** objet,
-  correspondants, INS, nom de patient ni contenu.
-- **Lecture du journal** :
-  - le **délégataire** voit ses traces comme aujourd'hui (son tenant), actes délégués compris,
-    marqués « dans la BAL de `<adresse>` » ;
-  - le **délégant** voit ses traces **et** celles dont la BAL propriétaire est la sienne, quel que
-    soit le tenant qui les a émises ;
-  - ces dernières sont marquées « par `<nom>` (RPPS `<n°>`), délégation ».
-- **Délégant pas encore utilisateur** : la trace est rattachée à son **adresse**, pas à un tenant.
-  Il la verra en se connectant pour la première fois. Rien n'est créé à son nom avant.
-- **Filtre « actes de mes délégataires »** dans l'écran Audit de weda2, combinable avec les filtres
-  existants (période, action).
-- **Délégation retirée** : les traces passées **restent** visibles du délégant pendant toute leur
-  durée de conservation. C'est le rôle même du journal.
-- **Conservation** : famille `HealthDataAccess` pour les actes délégués de lecture, déplacement,
-  suppression et envoi, soit 3 653 jours.
-- **Cloisonnement** : un utilisateur ne voit jamais les traces d'une BAL qui n'est ni la sienne ni
-  déléguée vers lui. Il ne voit pas non plus les actes **d'autres** délégataires dans une BAL qui
-  lui est déléguée : seul le délégant voit tous les délégataires.
+- **Personne qui agit** :
+  - le RPPS est `SessionPscIdentity.Rpps`, jamais `MssRpps` ;
+  - le nom est lu une fois par session sur `userinfo` et gardé avec la session. C'est l'identité
+    du délégataire lui-même, pas une donnée déléguée.
+- **Traces sans session PSC** : actor **nul**. Sont concernés :
+  - les consommateurs du bus, puisque `MessageUserIdentity` ne porte pas l'identité PSC ;
+  - la purge de rétention ;
+  - les erreurs de connexion avant authentification ;
+  - le hors-ligne Keycloak.
+
+  Ces traces restent valides.
+- **BAL propriétaire**, posée **explicitement par l'appelant**, jamais déduite après coup :
+  - adresse du délégant pour un acte sur `shared/<adresse>/…` ;
+  - adresse émettrice (`From`) pour un envoi ou une réponse ;
+  - dossier cible pour un archivage ou un brouillon IMAP ;
+  - BAL de la session sinon.
+- **Acte délégué** : `owner_mailbox <> user_id`, adresses comparées **en minuscules**.
+- **Contenu d'une trace déléguée** : la liste blanche de task-397 (action, date, succès, auteur,
+  dossier, UID, `Message-ID`), plus la personne qui agit et la BAL propriétaire.
+
+### Lecture
+
+- **Nouvelle politique de lecture** (sécurité par ligne) : une trace est lisible si son
+  `owner_mailbox` vaut l'adresse de la session **et** si c'est un acte délégué.
+  - L'adresse est passée par un second réglage de session, posé **côté serveur** par
+    `EnterTenantScopeAsync`, jamais par le client.
+  - La politique existante par tenant reste inchangée.
+- **Adresses organisationnelles** : plusieurs praticiens d'une même adresse ont des tenants
+  distincts. La condition « acte délégué » garantit qu'aucun ne voit les traces **ordinaires** d'un
+  autre.
+- **Le délégataire** voit ses traces comme aujourd'hui, actes délégués compris, marqués « dans la
+  BAL de `<adresse>` ».
+- **Le délégant** voit ses traces et les actes délégués faits dans sa BAL, marqués « par `<nom>`
+  (RPPS `<n°>`), délégation ».
+  - Un délégataire ne voit jamais les actes d'**autres** délégataires.
+  - Un tiers ne voit rien.
+- **Liste blanche du lecteur** pour une trace lue **hors de son tenant** : `UserSessionId`,
+  `SourceIp`, `UserAgent`, `CorrelationId`, `ServerRequest`, `ServerResponse`, `ErrorMessage` et
+  `document_*` sont vidés. Le délégant ne voit pas la session ni le poste de son délégataire.
+- **Détail** : `GET /audit/traces/{id}` suit la même politique. Le délégant obtient le détail d'un
+  acte de son délégataire ; un tiers reçoit 404.
+- **Filtres** : `ActionType` et `Search`, aujourd'hui ignorés côté serveur, sont **appliqués**. Le
+  filtre « actes de mes délégataires » s'y ajoute.
+- **Délégant pas encore utilisateur** : la trace est rattachée à son adresse. Il la verra à sa
+  première connexion.
+- **Délégation retirée** : les traces passées restent visibles du délégant pendant leur durée de
+  conservation.
+
+### Schéma
+
+- **Nouvelles colonnes** nullables sur `audit_traces` : RPPS de la personne, nom de la personne, BAL
+  propriétaire. Elles sont ajoutées par une migration de registre nouvelle (règle 7c), en
+  métadonnées seulement.
+- **Index partiel** `(owner_mailbox, timestamp DESC) WHERE owner_mailbox <> user_id`, construit sans
+  bloquer l'écriture du journal :
+  - `CREATE INDEX … ON ONLY` sur la table mère ;
+  - `CREATE INDEX CONCURRENTLY` par partition ;
+  - puis `ATTACH`.
+- **Les champs traversent toutes les couches** : `MssAuditTrace` (sans `[JsonIgnore]`, pour le rejeu
+  du tampon Redis), `AuditTraceRecord`, `ToRecord`, `PostgresAuditSink.Columns` et ses paramètres,
+  `AuditTraceRow`, et le mapping du `TenantRegistryDbContext`.
+
+### weda2
+
+- **Colonnes** « Personne » (nom, RPPS) et « BAL propriétaire », triables.
+- **Mentions** : « par … (RPPS …), délégation » et « dans la BAL de … ».
+- **Dédoublonnage** : supprimé, ou avec une clé qui inclut la BAL propriétaire, le dossier et la
+  personne. Le délégant et le délégataire agissent sur les **mêmes UID**.
+- **Chemins** : pour le délégant, `shared/<lui>/X` devient son chemin propre (`shared/<lui>` →
+  `INBOX`, `/Sent` → `Sent`, `/Demo` → `Demo`), pour l'affichage et pour ouvrir le message.
+- **Chronologie par `Message-ID`** : elle respecte les mêmes règles de lecture.
+- **Export CSV** (existant) :
+  - il ajoute la personne et la BAL propriétaire ;
+  - pour un acte délégué, il n'exporte que les champs de la liste blanche, sans objet ni
+    destinataires.
 
 ## Definition of Done
 
-- [ ] Migration du registre : colonnes « RPPS de la personne qui agit », « nom de la personne qui
-      agit » et « BAL propriétaire » sur `audit_traces`, nullables pour les traces antérieures.
-      Index adapté à la lecture par BAL propriétaire et date. Audit de migration (règle 7c), sans
-      effet sur les partitions existantes.
-- [ ] `dtos-mss` : le contrat de trace expose la personne qui agit, la BAL propriétaire et
-      l'indicateur « acte délégué ». Paquet publié, consommateurs .NET mis à jour, types
-      TypeScript de weda2 alignés.
-- [ ] Test d'intégration de bout en bout (banc de délégation de task-397) : B lit, puis supprime un
-      message de `shared/<A>`. Lu dans la réponse réelle, vu rouge (règle 1b) :
-      - `GET /audit/traces` de **A** renvoie ces deux traces avec le RPPS et le nom de B et la BAL
-        propriétaire = A ;
-      - `GET /audit/traces` de **B** les renvoie aussi, marquées « dans la BAL de A ».
-- [ ] Test d'intégration : A n'a encore jamais utilisé l'application. B agit, puis A se connecte et
-      attache sa BAL : `GET /audit/traces` de A renvoie les actes de B.
-- [ ] Test d'intégration — cloisonnement : avec C également délégataire de A, B ne voit pas les
-      traces de C. Un utilisateur tiers D ne voit aucune trace de A.
-- [ ] Test d'intégration : la délégation de B est retirée ; A voit toujours les traces passées de B.
-- [ ] Test d'intégration : une trace déléguée ne contient ni objet, ni correspondants, ni INS, ni
-      nom de patient (règle 14).
-- [ ] Test d'intégration : le filtre « actes de mes délégataires » ne renvoie que les traces dont la
-      BAL propriétaire est celle de la session et dont la personne qui agit est un autre RPPS.
-- [ ] Test unitaire : la famille de conservation des actes délégués est `HealthDataAccess`.
+- [ ] **Migration du registre** : colonnes, politique de lecture et index construit sans blocage.
+      Audit de migration (règle 7c). Test qui montre que l'écriture du journal n'est pas bloquée
+      pendant la construction de l'index.
+- [ ] `dtos-mss` : la trace expose la personne, la BAL propriétaire et l'indicateur « acte délégué ».
+      Paquet publié, consommateurs .NET mis à jour, types TypeScript de weda2 alignés.
+- [ ] **Tests d'intégration exécutés sous un rôle non superutilisateur**, puisque le superutilisateur
+      contourne la sécurité par ligne. B lit, puis supprime un message de `shared/<A>`. Vu rouge
+      (règle 1b), lu dans la réponse réelle :
+      - la liste de **A** renvoie les deux traces avec le RPPS et le **nom** de B (nom lu par
+        `userinfo` au banc) et la BAL propriétaire = A ;
+      - le détail `GET /audit/traces/{id}` de A les renvoie aussi ;
+      - la liste de **B** les renvoie, marquées « dans la BAL de A ».
+- [ ] Test d'intégration — **cloisonnement** :
+      - C, aussi délégataire de A, ne voit pas les traces de B ;
+      - D, un tiers, ne voit rien de A, ni en liste ni en détail ;
+      - **deux tenants qui partagent une adresse organisationnelle** ne voient jamais leurs traces
+        ordinaires l'un de l'autre.
+- [ ] Test d'intégration : pour une trace lue hors de son tenant, `UserSessionId`, `SourceIp`,
+      `UserAgent`, `CorrelationId`, `ServerRequest/Response`, `ErrorMessage` et `document_*` sont
+      vides.
+- [ ] Test d'intégration : A n'a jamais utilisé l'application ; B agit ; A se connecte, puis voit les
+      actes de B.
+- [ ] Test d'intégration : la délégation de B est retirée ; A voit toujours les traces passées.
+- [ ] Test d'intégration : une trace émise par un consommateur du bus a une personne nulle et reste
+      valide.
+- [ ] Test d'intégration : un envoi au nom de A (task-399, s'il est livré) a pour BAL propriétaire A.
+- [ ] Test d'intégration : les filtres `ActionType`, `Search` et « actes de mes délégataires » sont
+      appliqués par le serveur.
+- [ ] Test : une trace passée par le tampon Redis garde la personne et la BAL propriétaire.
 - [ ] Tests de composants weda2 :
-      - filtre « actes de mes délégataires » ;
-      - mention « par `<nom>` (RPPS `<n°>`), délégation » dans la liste et le détail ;
-      - mention « dans la BAL de `<adresse>` » pour le délégataire ;
-      - chronologie inchangée pour une trace non déléguée.
-- [ ] Scénario **E2E-DELEG-008** ajouté dans `Api/Mail/e2e/scenarios.yml`, et implémenté dans weda2 :
+      - colonnes et mentions ;
+      - filtre ;
+      - **pas de masquage** d'un acte du délégataire par un acte du délégant sur le même UID ;
+      - traduction `shared/<A>/X` vers `X` pour le délégant ;
+      - export CSV conforme ;
+      - chronologie cloisonnée.
+- [ ] **Banc e2e** :
+      - seconde identité PSC avec son tenant pour la délégante ;
+      - contournement d'authentification paramétré par identité ;
+      - nom de la personne fourni par le seed, car le contournement ne passe pas par `userinfo`.
+- [ ] Scénario **E2E-DELEG-008** ajouté dans `Api/Mail/e2e/scenarios.yml`, implémenté dans weda2 :
       « le délégant voit, dans son journal, les actes faits dans sa BAL par son délégataire ».
-      Clients : `mobile: non-applicable — l'application mobile n'a pas d'écran de journal d'audit`,
-      `angular: requis`.
-- [ ] Aucun RPPS ni nom dans les journaux applicatifs (Seq) : ils ne vivent que dans la trace
-      d'audit.
+      - Clients : `mobile: non-applicable — l'application mobile n'a pas d'écran de journal
+        d'audit`, `angular: requis`.
+      - Le filtre par défaut de l'écran est « aujourd'hui ».
+- [ ] Aucun **nom ni RPPS de la personne qui agit** dans les journaux applicatifs du **nouveau**
+      code. Les noms de base `u_<RPPS>_…` et les journaux existants de RPPS sont hors de cette
+      task.
 - [ ] Build et tests verts : dtos-mss, api-mail, client-angular ; `/e2e` vert, avec parité verte.
 
 ## Manual Test Plan
@@ -121,56 +204,58 @@ Comptes de formation : Cyril, délégataire de Virginie.
 
 1. Se connecter en **Cyril** sur weda2 par PSC. Dans la boîte déléguée de Virginie, ouvrir un
    message, puis en supprimer un autre.
-2. Ouvrir l'écran Audit de Cyril : ses deux actes y figurent, marqués « dans la BAL de
+2. Ouvrir l'écran Audit de Cyril : ses deux actes figurent, « dans la BAL de
    virginie.medecinrpps0062267@… », sans objet ni données patient.
-3. Se connecter en **Virginie** sur weda2. Dans l'écran Audit, activer « actes de mes
-   délégataires » :
-   - les deux actes de Cyril apparaissent, « par Cyril … (RPPS 899700723440), délégation » ;
-   - désactiver le filtre : ils apparaissent parmi ses propres actes, dans l'ordre chronologique.
-4. Virginie retire la délégation dans le webmail Mailiz. Son écran Audit montre toujours les actes
+3. Se connecter en **Virginie** sur weda2. Écran Audit, filtre « actes de mes délégataires » :
+   - les deux actes de Cyril, « par *prénom nom* (RPPS 899700723440), délégation » ;
+   - le dossier est affiché comme le sien (« Boîte de réception », sans `shared/…`) ;
+   - le détail ne montre ni l'adresse IP, ni le navigateur, ni la session de Cyril.
+4. Sans filtre, les actes de Cyril sont mêlés aux siens dans l'ordre chronologique. Un message lu
+   par les deux montre les **deux** actes.
+5. Exporter en CSV : la personne et la BAL propriétaire y figurent, sans objet ni destinataires pour
+   les actes délégués.
+6. Virginie retire la délégation dans le webmail Mailiz : son journal montre toujours les actes
    passés de Cyril.
-5. Vérifier dans Seq qu'aucun RPPS ni nom n'apparaît dans les journaux applicatifs de ces actes.
 
 ## Conformité santé / Ségur / ANS
 
 - **Couloir Ségur** : médecine de ville
 - **Vague Ségur** : hors Ségur — fonctionnalité Mailiz sans exigence DSR publiée
-- **Exigences DSR honorées** : non applicable. La PGSSI-S (imputabilité, journalisation) est suivie :
-  chaque acte sur des données de santé est rattaché à une personne identifiée.
+- **Exigences DSR honorées** : non applicable. La PGSSI-S (imputabilité, journalisation) est suivie.
 - **INS** : non applicable — jamais dans une trace déléguée (règle 14)
-- **Authentification PS** : inchangée. L'identité tracée vient de la session PSC / e-CPS du
-  délégataire.
-- **Habilitations** : lecture du journal limitée à sa propre BAL, aux BAL qui vous sont déléguées
-  (vos propres actes seulement), et, pour le délégant, à tous les actes faits dans sa BAL.
+- **Authentification PS** : inchangée. RPPS issu de la session PSC / e-CPS, nom issu de `userinfo`
+  du proxy.
+- **Habilitations** : lecture du journal limitée par la sécurité par ligne :
+  - le délégataire voit ses propres actes ;
+  - le délégant voit les actes délégués faits dans sa BAL ;
+  - personne d'autre ne voit rien.
+
+  Les données de session et de poste du délégataire ne sont pas montrées au délégant.
 - **Interop CI-SIS** : non applicable
-- **Tracé PGSSI-S** : **objet de la task**. L'imputabilité est rendue explicite (RPPS et nom de la
-  personne qui agit) et la BAL concernée est identifiée. Conservation 10 ans pour les accès aux
-  données de santé. Les journaux sont consultables par le titulaire de la BAL.
+- **Tracé PGSSI-S** : **objet de la task** — imputabilité explicite, BAL identifiée, conservation de
+  10 ans
 - **Consentement patient** : non applicable
-- **Référentiels métier** : RPPS (identifiant national des professionnels)
-- **Hébergement HDS** : oui — registre commun, déjà hébergé
+- **Référentiels métier** : RPPS
+- **Hébergement HDS** : oui — registre commun
 - **AIPD / impact RGPD** : **à mettre à jour**.
   - Donnée personnelle nouvelle dans le journal : RPPS et nom de la personne qui agit, sur une base
     légale d'obligation de traçabilité.
-  - Communiquée au délégant, responsable de la délégation.
+  - Communiquée au délégant.
   - Conservation 10 ans.
-
-  À joindre à la mise à jour ouverte par task-397.
+  - Les données de session du délégataire ne sont pas communiquées.
 
 ## Notes de cadrage
 
-- **Points de code** :
-  - estampillage des traces : `AuditService.cs:86-102` ;
-  - colonnes persistées : `PostgresAuditSink.cs:58-65` ;
-  - champs de transport : `MssAuditTrace.cs:27-33` ;
-  - lecture par tenant : `AuditController` et `auditReader`.
-
-  La lecture du délégant ajoute « ou BAL propriétaire = ma BAL » à la requête.
-- **Tenant multiple** : une même adresse peut avoir plusieurs tenants (BAL organisationnelle,
-  `RegistryTenant.cs:13-24`). La lecture par BAL propriétaire porte sur l'**adresse**, ce qui les
-  couvre tous. La délégation Mailiz ne concerne que les BAL personnelles (PER).
+- **Constats et lignes** : revue, §3.4.
+- **Lieux à modifier** :
+  - estampillage : `AuditService.cs:61-105` ;
+  - persistance : `PostgresAuditSink.cs:59-66`, `AuditBackgroundService.ToRecord` (`:315-357`) ;
+  - lecture : `PostgresAuditReader.cs:156-171` (portée), `:208-244` (filtres), `:247-280` (mapping) ;
+  - migrations du registre : `Infrastructure/Migrations/TenantDb/`, la plus récente étant
+    `20260915090000_DropAuditCutoverMarks.cs` ; noms partagés dans `AuditJournalSchema.cs` ;
+  - appel au proxy : sur le modèle de `PscTokenProvider` (cookie `proxy_session_id`, clé interne).
 - **Hors périmètre** :
   - écran de journal sur le mobile ;
   - notification au délégant à chaque acte ;
-  - export du journal ;
-  - accès d'administration et de sécurité au journal (task-302).
+  - accès d'administration et de sécurité au journal (task-302) ;
+  - reprise des traces passées.

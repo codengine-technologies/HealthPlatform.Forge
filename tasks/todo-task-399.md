@@ -9,170 +9,219 @@ task-398.
 
 > **Analyse** : [Docs/audits/delegation-bal-mailiz-analyse-20261025.md](../Docs/audits/delegation-bal-mailiz-analyse-20261025.md)
 > (§1 règles Mailiz, §4 inconnues).
-> **Règle 14** (CLAUDE.md) : rien d'une BAL déléguée n'est persisté chez le délégataire. Elle
-> s'applique ici aux brouillons, aux copies envoyées, aux envois différés et aux contacts.
+> **Revue du code** : [Docs/audits/delegation-bal-revue-code-20261025.md](../Docs/audits/delegation-bal-revue-code-20261025.md),
+> §3.9 et §3.4.
+> **Règle 14** (CLAUDE.md) : rien d'une BAL déléguée n'est persisté chez le délégataire. Elle couvre
+> les brouillons et copies **au nom du délégant**, les envois différés et les journaux.
 
 ## Ce que dit Mailiz (mode opératoire, novembre 2025)
 
-- Le délégataire peut envoyer « de la part de » le délégant. Le champ **De** porte **l'adresse du
-  délégant**, avec le libellé « *Nom du délégataire*, de la part de *adresse du délégant* ».
+- Le champ **De** porte **l'adresse du délégant**, avec le libellé « *Nom du délégataire*, de la
+  part de *adresse du délégant* ».
 - Le message va dans les **Envoyés du délégant**, visibles par lui et par les autres délégataires.
-- Avec plusieurs délégations, le délégataire **choisit la BAL émettrice**, « pour éviter les pertes
-  de données de santé ou les erreurs de traitement ».
-- **L'accès délégué depuis un logiciel métier n'est « pas encore » ouvert** selon le document,
-  alors que le serveur IMAP l'expose déjà. Le comportement SMTP n'est pas documenté.
+- Avec plusieurs délégations, le délégataire **choisit la BAL émettrice**.
+- L'accès délégué depuis un logiciel métier n'est « pas encore » ouvert. Le comportement SMTP n'est
+  pas documenté.
 
 ## Décisions actées (humain, 2026-10-25)
 
-1. **Caractériser d'abord, avec un point d'arrêt.** La task commence par mesurer le comportement
-   SMTP de Mailiz sur les comptes de formation. Si l'envoi délégué depuis un logiciel métier est
-   refusé, la task s'arrête sur `questions/task-399.md` : l'envoi délégué attend Mailiz.
-2. **Choix obligatoire de la BAL émettrice.** Dès que l'utilisateur a au moins une délégation, le
-   champ **De** de toute rédaction est vide, y compris pour une réponse ou un transfert.
-   - Il faut choisir entre sa propre adresse et celles de ses délégants avant d'envoyer.
-   - Sans délégation, rien ne change : l'envoi part de sa propre adresse, sans champ à choisir.
-3. **Brouillons dans les Brouillons IMAP du délégant** (`shared/<adresse>/Drafts`), comme dans
-   Mailiz : visibles du délégant et de ses autres délégataires. Jamais dans Redis ni dans la base
-   du délégataire (règle 14).
-4. **Signature : celle du délégataire.** C'est lui qui écrit, et le libellé « de la part de » dit
-   pour qui. Aucune signature au nom du délégant.
-5. **Jamais d'accusé de lecture en délégation.** Un accusé atteste que le médecin destinataire a lu
-   ; une lecture par son délégataire ne doit pas l'attester. Aucune proposition sur un message
-   délégué ; la demande reste visible pour le délégant.
+1. **Caractériser d'abord, avec un point d'arrêt.** Si Mailiz refuse l'envoi délégué depuis un
+   logiciel métier, la task s'arrête sur `questions/task-399.md`.
+2. **Choix obligatoire de la BAL émettrice.** Dès qu'on a une délégation, le champ **De** de toute
+   rédaction est vide, réponses et transferts compris, jusqu'à ce qu'on choisisse. Sans délégation,
+   rien ne change.
+3. **Brouillons au nom du délégant dans ses Brouillons IMAP** (`shared/<adresse>/Drafts`), jamais
+   dans Redis.
+4. **Signature : celle du délégataire.**
+5. **Jamais d'accusé de lecture en délégation.**
+6. **Répondre ou transférer un message délégué en « (moi) » est permis, et la copie est assumée.**
+   C'est un message **du délégataire** : brouillon Redis, Envoyés et traitement de **sa** BAL, y
+   compris le contenu cité et le CDA transféré. C'est un acte volontaire, hors règle 14, qui ne
+   protège que ce qui est fait **au nom du délégant**.
+7. **Opposition MSSanté : limite acceptée et affichée.** L'opposition est lue dans la base du
+   délégataire. Celle du délégant n'est pas connue, et la rédaction au nom du délégant le signale.
+8. **Pas d'aide IA** à la rédaction au nom du délégant (correction, amélioration du texte), par
+   cohérence avec « pas d'IA » sur la BAL déléguée.
 
 ## Objective
 
 Un délégataire rédige un message, une réponse ou un transfert, choisit explicitement la BAL au nom
-de laquelle il écrit, et l'envoie. Le destinataire voit un message du délégant, « de la part de »
-son délégataire. La copie est dans les Envoyés du délégant, et rien n'en reste chez le
-délégataire.
+de laquelle il écrit, et l'envoie. Au nom du délégant : le destinataire voit un message du délégant
+« de la part de » son délégataire, la copie est dans les Envoyés du délégant, et rien n'en reste
+chez le délégataire.
 
 ## Règles
 
-- **Identités d'envoi** : sa propre adresse et l'adresse de chaque BAL déléguée découverte en
-  direct (task-397).
-  - L'API publie cette liste.
-  - Elle **refuse** un envoi dont le `From` n'y figure pas : **403** ProblemDetails. Aujourd'hui le
-    `From` est pris tel quel du client.
+### Identités et champ De
+
+- **Identités d'envoi** : sa propre adresse et chaque BAL déléguée découverte par un **`LIST` en
+  direct**, jamais lue dans le cache Redis de la liste des dossiers.
+- **Contrôle du `From`** : une **exception typée** nouvelle, mappée en **403** ProblemDetails, est
+  levée si le `From` n'est pas une identité permise. Elle est vérifiée :
+  - dans le point commun des envois (`OutgoingMailService` / `SmtpService`) ;
+  - dans la mise en attente (`QueueReadyToSendAsync`) ;
+  - à la **confirmation d'un envoi différé** (`MailController.cs:1661`).
 - **Champ De** (décision 2) :
-  - vide tant qu'aucune BAL n'est choisie, et l'envoi est impossible ;
-  - les choix affichés sont « `<adresse>` (moi) » et « `<adresse>` (délégation) » ;
-  - le choix reste visible dans l'en-tête de la rédaction jusqu'à l'envoi.
-- **En-têtes** : `From`, `Sender` et libellé « *Nom du délégataire*, de la part de *adresse* »
-  suivent **le contrat constaté à la caractérisation**. À défaut de règle serveur, ils suivent le
-  mode opératoire : `From` = délégant, libellé « de la part de », `Sender` = délégataire.
-- **Copie envoyée** : dans `shared/<adresse>/Sent` seulement, jamais dans les Envoyés du
-  délégataire.
-  - Si Mailiz la classe lui-même, l'API n'ajoute rien.
-  - Sinon, l'API la dépose là, et une seule fois.
-- **Brouillons délégués** (décision 3) :
-  - enregistrés dans `shared/<adresse>/Drafts` par commandes IMAP directes ; chaque
-    enregistrement remplace le précédent ;
-  - rouverts depuis ce dossier, éditables, envoyables ; supprimés du dossier à l'envoi ;
-  - la règle de task-394 tient : un corps non modifié ne crée aucun brouillon.
-- **Changer de BAL en cours de rédaction** : un brouillon déjà enregistré dans les Brouillons d'une
-  BAL n'est ni dupliqué ni laissé orphelin. Il est retiré de l'ancienne BAL et enregistré dans la
-  nouvelle au prochain enregistrement.
-- **Hors ligne** : pas d'envoi ni de brouillon pour une identité déléguée. Un message clair le dit.
-  Aucune mise en attente (`PendingActions`) d'un envoi délégué.
-- **Répondre, Répondre à tous, Transférer** sont à nouveau proposés sur un message délégué, avec le
-  champ De vide (décision 2).
-- **Répondre à tous** retire des destinataires l'adresse choisie comme émettrice et la propre
-  adresse du délégataire.
-- **Signature** (décision 4) : les signatures du délégataire, y compris sa signature par défaut.
-- **Accusés de lecture** (décision 5) : jamais proposés sur un message délégué.
-  - Un message envoyé de la part du délégant peut en demander un.
-  - L'accusé reviendra dans la BAL du délégant, puisque l'en-tête de demande vaut le `From`.
-- **Carnet d'adresses** : les suggestions de destinataires viennent du carnet du délégataire, car le
-  carnet du délégant n'est pas partagé. **Aucun contact** n'est créé à partir d'un envoi délégué.
-- **Pièces médicales jointes** (`IHE_XDM.ZIP`) : l'auteur reste le délégataire. La règle actuelle
-  « RPPS de l'auteur = RPPS de la session » est inchangée.
-- **Opposition MSSanté patient** et règles d'envoi aux patients : inchangées, appliquées aux
-  destinataires quel que soit l'émetteur.
-- **Audit** (exception de la règle 14) : l'envoi délégué est tracé avec l'action, l'auteur, la BAL
-  émettrice et le `Message-ID`, sans objet, sans destinataires, sans contenu.
+  - choix « `<adresse>` (moi) » et « `<adresse>` (délégation) », envoi impossible sans choix ;
+  - **aucun enregistrement de brouillon** (automatique, à la fermeture, à la sortie) tant que le
+    champ est vide ;
+  - « Répondre à tous » est **recalculé à chaque changement** du champ De : il retire l'adresse
+    émettrice et la propre adresse.
+
+### Envoi au nom du délégant
+
+- **En-têtes** : `From`, `Sender` et libellé suivent le contrat **caractérisé**. Attention :
+  MailKit prend `Sender`, s'il est posé, comme `MAIL FROM`.
+  - Le libellé « *Nom du délégataire*, de la part de *adresse* » remplace
+    `ResolveSenderDisplayNameAsync` (`SmtpService.cs:272-297`) pour un envoi délégué.
+  - Le client **n'envoie pas** de `from.name`, aujourd'hui le nom du délégataire (mobile
+    `mail-compose.component.ts:1204-1209`).
+- **Archivage** : `SentArchiveDispatcher`, `SentArchiveService` et `AppendToSentAsync` reçoivent un
+  **dossier cible explicite**, `shared/<adresse>/Sent`. Si Mailiz classe lui-même la copie, on
+  n'archive rien.
+  - Jamais dans les Envoyés du délégataire.
+  - La trace `MailArchiveSent` porte le dossier cible.
+- **Signature** : celles du délégataire.
+- **Modèles** : `{{SenderEmail}}` vaut l'adresse émettrice choisie, et `{{SenderRPPS}}` le RPPS du
+  délégataire. Cela corrige au passage le bug de weda2, qui y met la partie locale de l'adresse
+  (`mail-compose.component.ts:2664`).
+- **Opposition** (décision 7) : un bandeau « Opposition du délégant non vérifiable » est affiché
+  pour un destinataire patient.
+- **Accusé demandé** sur un envoi délégué : l'accusé revient dans la BAL du délégant.
+- **Pas d'aide IA** (décision 8) : correction et amélioration masquées, et refusées par l'API pour un
+  `From` délégué.
+- **Hors ligne** : aucun envoi ni brouillon au nom du délégant, refusé aux **trois** points
+  d'entrée (`MailController.cs:1464`, `:1549`, `DraftService.cs:267`) et à la confirmation d'un
+  envoi différé. Rien n'est mis en attente.
+- **Révocation en cours de rédaction** : le 403 ou le refus d'enregistrement est affiché, et le texte
+  reste **en mémoire**, sans repli sur Redis ni sur la file hors ligne.
+- **Annuler et remplacer** reste refusé sur un message délégué (task-397).
+
+### Brouillons au nom du délégant (décision 3)
+
+- **Contrat** :
+  - un **identifiant stable**, indépendant de l'UID, qui change à chaque enregistrement ;
+  - une route de **relecture en rédaction** ;
+  - l'en-tête `From` = délégant dans le brouillon ;
+  - **aucun nom de dossier** dans les journaux (`ImapService.cs:4537`).
+- **Champs conservés** : le contrat dit lesquels des champs de `SaveDraftDto` survivent à
+  l'aller-retour IMAP : `BlockPatientReply`, `RequestReadReceipt`, `OppositionAcknowledged`,
+  `Packaging` IHE-XDM, `CancelAndReplace*`.
+- **Écriture** : `AppendToDraftsAsync` vise les Brouillons **de la session**, et `ReplaceDraftAsync`
+  n'est pas atomique (ajout puis suppression). Il faut un remplacement qui ne laisse ni doublon ni
+  orphelin.
+- **Anti-double-envoi** : sans clé Redis contenant un chemin délégué.
+- **Changer de BAL** en cours de rédaction :
+  - de « moi » vers « délégation » : suppression du brouillon **Redis** ;
+  - de « délégation » vers « moi » : suppression du brouillon **IMAP**.
+- **La règle de la task-394** (« corps non modifié, pas de brouillon ») est **côté client** : elle
+  vaut aussi pour un brouillon délégué, et se prouve en tests de composants et en e2e.
+- **Dossier virtuel « Brouillons »** : il ne masque pas `shared/<A>/Drafts` une fois les rôles de la
+  task-398 posés.
+
+### Audit et journaux
+
+Les traces d'envoi, de brouillon et d'acquittement d'opposition **au nom du délégant** suivent la
+liste blanche de task-397 (règle E). Sont vidés :
+- `Subject`, `ToAddresses` ;
+- `ServerRequest` (destinataires, empreinte d'INS), `ServerResponse` ;
+- `ErrorMessage`, `ErrorDetails`.
+
+Aucun destinataire d'un envoi délégué n'apparaît dans Seq (`SmtpService.cs:78, 119`,
+`MssanteHeaderService.cs:67, 155`).
 
 ## Definition of Done
 
-- [ ] **Caractérisation SMTP Mailiz** consignée dans le `## Develop log` et dans l'analyse (§4).
-      Elle est faite sur les comptes de formation (Cyril délégataire de Virginie), par un envoi
-      vers une boîte de test lisible :
-      - acceptation de `From` = délégant en session XOAUTH2 du délégataire ;
-      - en-têtes reçus (`From`, `Sender`, libellé) ;
-      - classement automatique ou non dans les Envoyés du délégant ;
-      - refus éventuels.
+- [ ] **Caractérisation SMTP et IMAP Mailiz** consignée dans le `## Develop log` et l'analyse (§4).
+      Elle est faite sur les comptes de formation, vers une boîte de test lisible, et mesure :
+      - `From` = délégant avec `MAIL FROM` = délégant, **et** avec `MAIL FROM` = délégataire (via
+        `Sender`) ;
+      - les en-têtes reçus ;
+      - le classement automatique dans les Envoyés du délégant ;
+      - les droits `MYRIGHTS` sur `shared/<A>/Drafts` et `/Sent` (ajout, suppression).
 
-      **Refus → arrêt** et `questions/task-399.md` (décision 1).
-- [ ] **Banc** : le banc d'intégration et le banc e2e reproduisent le comportement constaté (règle
-      d'acceptation du `From`, classement des Envoyés).
-- [ ] `dtos-mss` : identités d'envoi publiées et BAL émettrice dans la requête d'envoi et de
-      brouillon. Paquet publié, consommateurs .NET mis à jour, types TypeScript alignés.
-- [ ] Test d'intégration de bout en bout pour l'envoi depuis l'identité du délégant :
-      - message reçu avec les en-têtes attendus ;
-      - copie dans `shared/<A>/Sent`, présente **une seule fois** ;
+      **Refus → arrêt** et `questions/task-399.md`.
+- [ ] **Bancs** : le banc d'intégration et le banc e2e reproduisent le comportement caractérisé.
+      Pour l'e2e, le puits SMTP doit appliquer la règle d'acceptation du `From` et le classement des
+      Envoyés.
+- [ ] `dtos-mss` : identités d'envoi, BAL émettrice dans l'envoi et le brouillon, identifiant de
+      brouillon délégué. Paquet publié, consommateurs mis à jour, types TypeScript alignés.
+- [ ] Test d'intégration de bout en bout pour l'envoi au nom du délégant :
+      - en-têtes reçus conformes ;
+      - copie dans `shared/<A>/Sent` **une seule fois** ;
       - **absente** des Envoyés de B.
 
-      Lu dans l'état réel, vu rouge (règle 1b).
-- [ ] Test d'intégration : envoi avec un `From` hors des identités de B → **403**, rien n'est
-      envoyé. Vu rouge.
+      Vu rouge (règle 1b).
+- [ ] Test d'intégration : `From` hors identités → **403**, rien d'envoyé. Le même `From` dans un
+      envoi différé confirmé → 403.
 - [ ] Test d'intégration — brouillons délégués :
-      - enregistrer, puis réenregistrer : un seul brouillon dans `shared/<A>/Drafts` ;
-      - rouvrir, puis envoyer : le brouillon a disparu du dossier ;
-      - corps non modifié : aucun brouillon ;
-      - changer de BAL en cours de rédaction : aucun brouillon orphelin.
-- [ ] Test d'intégration « rien de persisté » (règle 14) après envoi et brouillons délégués :
-      - zéro ligne liée en base de B ;
-      - aucune clé Redis de brouillon ou de contenu ;
+      - enregistrer deux fois : un seul brouillon ;
+      - rouvrir par la route de relecture : champs conservés ;
+      - envoyer : retiré du dossier ;
+      - changer de BAL dans les deux sens : aucun brouillon orphelin, ni Redis ni IMAP ;
+      - double envoi concurrent : un seul message parti.
+- [ ] Test d'intégration « rien de persisté » (règle 14) après envoi, brouillons et **transfert avec
+      pièce jointe par référence** au nom du délégant :
+      - zéro ligne liée en base ;
+      - aucune clé ni valeur Redis portant le brouillon, le contenu ou le chemin ;
       - aucune `PendingActions` ;
-      - aucun contact créé.
-- [ ] Test d'intégration : en mode hors ligne, envoi et brouillon délégués refusés proprement, rien
-      mis en attente.
-- [ ] Test d'intégration : la trace d'audit de l'envoi délégué ne porte ni objet, ni destinataires,
-      ni contenu.
-- [ ] Non-régression : un utilisateur **sans** délégation envoie comme aujourd'hui, sans champ De,
-      avec brouillons Redis et copie dans ses Envoyés.
+      - aucun contact créé ;
+      - aucun destinataire dans les journaux capturés.
+- [ ] Test d'intégration : hors ligne, envoi et brouillon délégués refusés aux trois points
+      d'entrée, rien mis en attente.
+- [ ] Test d'intégration : la trace d'audit de l'envoi délégué ne garde que les champs de la liste
+      blanche. `MailArchiveSent` porte le dossier cible.
+- [ ] Test d'intégration : correction et amélioration IA avec un `From` délégué → refus, zéro appel
+      au fournisseur.
+- [ ] Non-régression :
+      - un utilisateur **sans** délégation envoie comme aujourd'hui ;
+      - un envoi en « (moi) » répondant à un message délégué suit le circuit normal du délégataire
+        (décision 6).
 - [ ] Tests de composants, sur mobile et weda2 :
-      - champ De vide, envoi impossible sans choix, libellés « (moi) » et « (délégation) » ;
-      - Répondre et Transférer rétablis sur un message délégué ;
-      - Répondre à tous sans l'adresse émettrice ;
-      - signature du délégataire ;
-      - aucune proposition d'accusé de lecture sur un message délégué ;
+      - champ De vide, envoi impossible sans choix ;
+      - **aucun enregistrement de brouillon tant que De est vide** ;
+      - corps non modifié, pas de brouillon (task-394) ;
+      - Répondre et Transférer rétablis, « Répondre à tous » recalculé au changement de De ;
+      - pas de `from.name` ;
+      - signature et variables de modèle ;
+      - bandeau d'opposition non vérifiable ;
+      - IA masquée au nom du délégant ;
+      - révocation en cours de rédaction, texte conservé ;
       - message hors ligne.
-- [ ] Scénarios ajoutés dans `Api/Mail/e2e/scenarios.yml` et implémentés sur mobile et angular :
-      - **E2E-DELEG-005** : envoyer de la part du délégant → le message est dans les Envoyés de la
-        BAL déléguée, pas dans les siens ;
-      - **E2E-DELEG-006** : brouillon délégué enregistré dans les Brouillons de la BAL déléguée,
-        rouvert, envoyé ;
+- [ ] Scénarios ajoutés dans `Api/Mail/e2e/scenarios.yml`, implémentés sur mobile et angular :
+      - **E2E-DELEG-005** : envoyer au nom du délégant → dans les Envoyés de la BAL déléguée, pas dans
+        les siens ;
+      - **E2E-DELEG-006** : brouillon au nom du délégant, rouvert, envoyé ;
       - **E2E-DELEG-007** : avec une délégation, l'envoi est impossible tant que la BAL émettrice
         n'est pas choisie.
 
-      **E2E-DELEG-003** passe à la version 2 : Répondre et Transférer sont désormais proposés sur
-      un message délégué.
+      **E2E-DELEG-003** passe à la version 2 : Répondre et Transférer sont proposés.
 - [ ] Build et tests verts sur les quatre dépôts ; `/e2e` vert, avec parité verte.
 
 ## Manual Test Plan
 
-Comptes de formation : Cyril, délégataire de Virginie. Lancer l'AppHost, puis le mobile
-(`cd Client/Mobile && npm start`) et weda2. Se connecter en Cyril par PSC.
+Comptes de formation : Cyril, délégataire de Virginie. Lancer l'AppHost, le mobile et weda2, puis
+se connecter en Cyril par PSC.
 
-1. **Nouveau message.** Le champ De est vide et l'envoi est impossible. Les choix proposés sont
-   « cyril.toubib0072344@… (moi) » et « virginie.medecinrpps0062267@… (délégation) ».
-2. Choisir Virginie et écrire à une boîte de test. À réception, le message vient de Virginie,
-   « de la part de » Cyril. Il est dans les Envoyés de la boîte de Virginie, pas dans ceux de
+1. **Nouveau message.** Le champ De est vide et l'envoi est impossible. Écrire une phrase, puis
+   fermer : aucun brouillon n'est créé tant que De n'est pas choisi.
+2. **Envoi.** Choisir Virginie et écrire à une boîte de test. À réception, le message vient de
+   Virginie, de la part de Cyril. Il est dans les Envoyés de la boîte de Virginie, pas dans ceux de
    Cyril.
-3. **Brouillon.** Commencer un message au nom de Virginie, écrire une phrase, fermer.
-   - Le brouillon est dans les Brouillons de la boîte de Virginie.
-   - Le webmail Mailiz de Virginie le montre.
-   - Le rouvrir, l'envoyer : il disparaît des Brouillons.
-4. **Réponse.** Répondre à un message de la boîte déléguée : le champ De est vide. Choisir Virginie.
-   Avec « Répondre à tous », l'adresse de Virginie n'est pas parmi les destinataires.
-5. **Accusé de lecture.** Ouvrir un message délégué qui en demande un : aucune proposition d'envoi.
-6. **Hors ligne.** Couper le réseau, puis tenter d'envoyer au nom de Virginie : message clair, rien
+3. **Brouillon.** Au nom de Virginie, écrire puis fermer : le brouillon est dans les Brouillons de
+   sa boîte, et son webmail le montre. Le rouvrir, puis l'envoyer : il disparaît.
+4. **Changer de BAL.** Au milieu d'une rédaction enregistrée, passer de Virginie à « moi » : plus de
+   brouillon dans la boîte de Virginie, un seul chez Cyril.
+5. **Réponse en « moi ».** Répondre à un message délégué en choisissant « moi » : le message part de
+   Cyril et va dans ses Envoyés. C'est permis.
+6. **Opposition.** Au nom de Virginie, écrire à un patient : le bandeau « opposition du délégant non
+   vérifiable » s'affiche.
+7. **IA.** Au nom de Virginie, la correction et l'amélioration du texte ne sont pas proposées.
+8. **Hors ligne.** Couper le réseau et tenter d'envoyer au nom de Virginie : refus clair, rien
    n'est mis en attente.
-7. **Sans délégation.** Se connecter avec un compte sans délégation : la rédaction est inchangée,
-   sans champ De.
-8. **Rien chez Cyril.** Après les étapes 2 à 4, sa base ne contient aucune trace des messages
-   envoyés ni des brouillons au nom de Virginie, et aucun contact nouveau.
+9. **Sans délégation** : la rédaction est inchangée, sans champ De.
+10. **Rien chez Cyril** : après les étapes 2 à 4, sa base ne contient rien des envois et brouillons
+    au nom de Virginie, et Seq ne montre aucun destinataire de ces envois.
 
 ## Conformité santé / Ségur / ANS
 
@@ -180,36 +229,26 @@ Comptes de formation : Cyril, délégataire de Virginie. Lancer l'AppHost, puis 
 - **Vague Ségur** : hors Ségur — fonctionnalité Mailiz sans exigence DSR publiée
 - **Exigences DSR honorées** : non applicable. Le mode opératoire Mailiz est suivi : `From` du
   délégant, libellé « de la part de », Envoyés du délégant, choix explicite de la BAL émettrice.
-- **INS** : inchangé — pièces médicales jointes produites comme aujourd'hui, auteur = délégataire
-- **Authentification PS** : PSC / e-CPS du délégataire. L'envoi MSSanté reste un acte sensible
-  authentifié fortement (garde-fou PO).
-- **Habilitations** : l'envoi au nom d'un délégant n'est permis que pour une BAL déléguée découverte
-  en direct. L'API refuse tout autre `From`, ce qu'elle ne fait pas aujourd'hui.
-- **Interop CI-SIS** : inchangé — enveloppe IHE-XDM existante ; en-têtes MSSanté selon la
-  caractérisation
-- **Tracé PGSSI-S** : envoi délégué tracé avec auteur et BAL émettrice, sans objet ni destinataires
-  (règle 14). L'imputabilité complète relève de la task-400.
-- **Consentement patient** : non applicable. L'opposition MSSanté patient est respectée comme pour
-  tout envoi.
+- **INS** : inchangé. Pièces médicales jointes produites comme aujourd'hui, avec le délégataire pour
+  auteur.
+- **Authentification PS** : PSC / e-CPS du délégataire ; l'envoi reste un acte sensible
+  authentifié fortement.
+- **Habilitations** : un envoi au nom d'un délégant n'est permis que pour une BAL découverte en
+  direct, et l'API refuse tout autre `From`.
+- **Interop CI-SIS** : inchangé — enveloppe IHE-XDM existante, en-têtes selon la caractérisation
+- **Tracé PGSSI-S** : envoi délégué tracé avec la BAL émettrice, liste blanche de la règle 14.
+  Imputabilité complète en task-400.
+- **Consentement patient** : opposition MSSanté vérifiée chez le délégataire seulement, **limite
+  affichée** (décision 7)
 - **Référentiels métier** : aucun
-- **Hébergement HDS** : inchangé — rien d'un envoi délégué n'est stocké chez le délégataire
-- **AIPD / impact RGPD** : à compléter avec l'envoi au nom d'un tiers. La mise à jour de l'AIPD
-  ouverte par task-397 couvre la délégation.
+- **Hébergement HDS** : inchangé — rien d'un envoi au nom du délégant n'est stocké chez le
+  délégataire
+- **AIPD / impact RGPD** : à compléter. Il faut y ajouter l'envoi au nom d'un tiers et la copie
+  assumée d'une réponse en « moi ».
 
 ## Notes de cadrage
 
-- **Constats** (analyse, §3.2) :
-  - `From` pris tel quel du client (`SmtpService.cs:299-302`, `MailSendRules.cs:33-36`) ;
-  - libellé toujours celui du délégataire (`SmtpService.cs:272-297`) ;
-  - aucun `Sender` ;
-  - copie envoyée toujours dans les Envoyés de la session (`ImapService.cs:2634-2684`, `:4347`,
-    `:4416-4469`) ;
-  - brouillons Redis forcés sur l'adresse de session (`DraftService.cs:58-76`, `:390-397`) ;
-  - `ImapService.AppendToDraftsAsync` (`:4497-4545`) et `ReplaceDraftAsync` (`:4552`) existent
-    sans appelant, et peuvent servir de base aux brouillons IMAP délégués ;
-  - accusés de lecture émis depuis l'adresse de session (`MdnService.cs:231-235`).
-- **Choix obligatoire** : il s'applique à **toute** rédaction d'un utilisateur qui a une délégation,
-  y compris un message pour lui-même. C'est le choix du webmail Mailiz, retenu pour éviter
-  d'écrire au nom de la mauvaise BAL.
-- **Hors périmètre** : traçabilité acteur / propriétaire consultable par le délégant (task-400) ;
-  gestion des délégations (webmail Mailiz seul).
+- **Constats et lignes** : revue, §3.9 (envoi et brouillons) et §3.4 (audit).
+- **Champ De obligatoire** : il s'applique à **toute** rédaction d'un utilisateur qui a une
+  délégation, comme dans le webmail Mailiz.
+- **Hors périmètre** : traçabilité consultable par le délégant (task-400), gestion des délégations.
