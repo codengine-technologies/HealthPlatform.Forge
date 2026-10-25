@@ -470,7 +470,7 @@ de Virginie (`virginie.medecinrpps0062267@medecin.formation.mssante.fr`).
 | 8 | Corbeille du propriétaire (unitaire, groupée, définitive, sous-dossier) | ✅ `92da51b7` — avec déplacement interne à la BAL déléguée |
 | 9 | Audit : liste blanche dans `AuditService.Trace` avant le tampon, `Message-ID` lu en direct | ✅ `97e18a13` — 1 test de bout en bout (8 familles) + 5 unitaires (dont le tampon), rouges par 6 mutations |
 | 10 | Cache Redis du contenu délégué décodé (section J) + PDF du CDA servi depuis le cache | ✅ `cff6f966` — 1 test de bout en bout à deux instances + 7 unitaires, rouges par 6 mutations |
-| 11 | Caractérisation Mailiz, mesure, passe qualité, DoD | à faire |
+| 11 | Caractérisation Mailiz, mesure, passe qualité, DoD | ✅ `fc7e16c7`, `d6d7125b`, §Q `967736c7` — caractérisation Mailiz **reportée à l'humain** (session réelle) |
 
 **Constats et preuves (au fil des tranches)**
 
@@ -522,3 +522,26 @@ de Virginie (`virginie.medecinrpps0062267@medecin.formation.mssante.fr`).
 - **Piège d'outillage, deux récidives dans ce cycle** : un échappement C# (`\Seen`, `
 ` d'une regex) écrit par un script Python en heredoc Git Bash arrive interprété (une barre au lieu de deux, un vrai retour à la ligne). Consigné en mémoire de session ; pour un littéral C# à échappements : l'outil Edit.
 - **Suites après tranche 10** : domaine 255, infrastructure 701, API 1 340, application 3 649, intégration 998 réussis + 16 ignorés sur 1 014 — tout vert.
+- **Tranche 11 (`fc7e16c7`, `d6d7125b`)** :
+  - `TheWholeDelegatedJourney_PersistsNothing_AndLogsOrTracesNothingBeyondTheRoot` (bout en bout) : liste, dossier, en-têtes, listes du jour, détail avec biologie, pièce jointe, zip, export EML, lu / non lu, suivi groupé, `enrich/sync` et `enrich/async`, déplacement, suppression. Ensuite : aucune valeur texte de la base du délégataire (toutes tables, toutes colonnes texte) ne porte `shared/`, le sous-dossier, l'objet, la pièce jointe ni le patient ; aucune clé Redis ; aucune écriture de cache ni publication portant un chemin délégué ; aucun événement Serilog (capturé **derrière le même puits de masquage qu'en production**) ni activité OTel ne porte ces secrets ni le titre du CDA.
+  - Défauts trouvés et corrigés par ce test : `enrich/async` mettait en file une tâche libellée par le chemin délégué (sortie anticipée en 202) ; `GetFoldersAsync` complétait **la liste déjà confiée au cache** (nouvelle liste rendue) ; le décodage délégué journalisait le titre du CDA et les libellés de biologie (`DelegatedDecodeScope`).
+  - `ABackgroundSyncPass_…` : `POST /sync/start` + file de fond → 7 entrées `by=BackgroundSync` (une par dossier délégué, rôles justes, aucun nom de sous-dossier), rien d'enregistré. `BackgroundImapServiceDelegationTests` : conteneur `shared` sélectionnable et BAL déléguée au premier niveau jamais synchronisés.
+  - Mutations, toutes rouges : M27 puits de masquage neutralisé ; M28 portée de décodage neutralisée ; M29 conteneur synchronisé ; M30 synchro sans journal « skipped ».
+- **Mesure (DoD)**, banc d'intégration local, 20 itérations, `Measure_DelegatedReads_AgainstOwnReads` (explicite, hors suite) :
+
+  | Geste | p50 | p95 | verrou `imap_session` / requête |
+  |---|---|---|---|
+  | liste des dossiers (délégataire) | 9,5 ms | 45,9 ms | 5,2 ms |
+  | détail propre | 6,2 ms | 10,6 ms | 3,2 ms |
+  | détail délégué (cache J après le 1er) | 5,3 ms | 22,6 ms | 6,0 ms |
+  | pièce jointe propre | 4,8 ms | 6,7 ms | 0,7 ms |
+  | pièce jointe déléguée | 7,7 ms | 9,5 ms | 6,3 ms |
+
+  Détention du verrou relevée une fois par un écouteur de mesures temporaire (interdit hors d'une collection sérialisante, task-291). Une requête déléguée prend le verrou deux fois (contrôle de délégation du filtre + action) : piste d'optimisation si la charge le demande. Aucune régression sur la BAL propre (suite `DashboardArrivalCostIntegrationTests` verte).
+- **Passe qualité §Q (`967736c7`)**, 4 revues (réutilisation, simplification, efficacité, altitude). Appliqué : corbeille du propriétaire et contexte d'audit en un seul endroit ; invalidation groupée du cache J avec index tenu à jour (l'index comptait les entrées oubliées jusqu'à 50, puis refusait tout) ; plus de lecture en base sur un chemin délégué ; statut IMAP propagé (`PropagateFailure`, un 401 restait un 500) ; exemption morte `delegated:content:` retirée de la garde du cache (test inversé : aucun préfixe n'exempte une valeur déléguée) ; pré-test vectorisé dans `ContainsDelegatedPath` ; attribut de politique lu dans les métadonnées de l'endpoint. Écarté (hors diff ou changement de comportement) : double prise du verrou par le filtre, plan précalculé de la garde par réflexion, balayage des exceptions dans le puits de masquage, fournisseur de données dédié aux BAL déléguées, factorisation de la phase réseau avec `ReadEmailWithoutPersistingAsync`. Re-validation complète : verte.
+- **Auto-contrôle DoD** :
+  - ✅ banc de délégation ; « rien de persisté » ; journaux et traces ; audit (8 familles + tampon) ; convention de garde ; indicateur de liste ; lecture ; cache J à deux instances ; PDF du CDA ; corbeille ; dossiers système et chemins ; déplacements ; routes refusées ; hors ligne ; révocation ; synchronisation et robustesse ; mesure ; non-régression de la BAL propre ; build et tests verts.
+  - ⏳ **Caractérisation Mailiz** (NAMESPACE, MYRIGHTS, alias, casse, `Junk`, retrait sur session ouverte, et création à la racine de la BAL déléguée, refusée par le banc Dovecot) : exige une session réelle sur les comptes de formation → **humain**, au Manual Test Plan.
+  - ⏳ **Clé d'empreinte du cache J en déploiement** (`Delegation__ContentCache__KeySecret`, un secret par environnement) : DevOps, humain. Sans elle, le cache est désactivé (chaque ouverture redécode), jamais en clair.
+  - Hors périmètre relevé : `AnnuaireQuotaSharedRedisIntegrationTests…` instable sous charge (préexistant).
+- **Suites finales** : domaine 255, infrastructure 701, API 1 340, application 3 650, intégration 1 000 réussis + 16 ignorés sur 1 016 — tout vert.
