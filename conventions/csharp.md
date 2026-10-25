@@ -1627,3 +1627,55 @@ précédente. Constaté sur task-388 : M18 et M19 (service applicatif) rougissai
 **Preuve** : task-388, M18 et M19 rejouées après `touch` — chacune rouge sur son seul test
 (`TheCdaEnrichment_FillsTheSpecialty…`, `…NeverReplacesAKnownSpecialty`), puis 7/7 verts.
 
+
+---
+
+## scan-de-source-multiligne — un test de convention par regex lit l'appel ET ses lignes suivantes
+
+**Occurrences : 1** (task-397)
+
+Un scan de sources qui cherche `SetProperty(…FolderPath` sur **une** ligne est vert sur un appel
+écrit en deux lignes (`SetProperty(` puis, à la ligne, la propriété). La mutation qui retirait la
+garde est restée verte : le test protégeait du code qui n'existait plus.
+
+**Consigne** : une regex de test de convention couvre l'appel sur plusieurs lignes
+(`RegexOptions.Singleline`, `[^;]*?` jusqu'à la fin de l'instruction), et le test est **prouvé
+rouge par mutation** avant d'être cru.
+
+---
+
+## mutation-non-constante — une mutation `if (false)` ne compile pas : ce n'est pas un rouge
+
+**Occurrences : 1** (task-397)
+
+`if (false)` déclenche CS0162 (code inaccessible), traité en erreur : le build échoue, et un script
+qui confond « build rouge » et « test rouge » annonce une preuve qui n'existe pas.
+
+**Consigne** : neutraliser une condition par une expression **non constante**
+(`&& string.Empty.Length > 0`), et n'accepter un rouge qu'avec `build=0` et le test en échec.
+
+---
+
+## substitut-garde-la-reference — ne jamais compléter une collection déjà confiée à un cache ou un bus
+
+**Occurrences : 1** (task-397)
+
+`GetFoldersAsync` confiait sa liste au cache, puis y ajoutait les BAL déléguées pour la réponse.
+Redis avait sérialisé la liste propre à l'appel, mais un substitut NSubstitute garde la
+**référence** : `ReceivedCalls()` montrait une écriture de dossiers délégués. Dans un cache en
+mémoire, la fuite aurait été réelle.
+
+**Consigne** : une collection passée à un cache, un bus ou un dépôt n'est plus modifiée ; la
+réponse se construit dans une **nouvelle** collection (`[.. propres, .. délégués]`).
+
+---
+
+## scan-lit-les-commentaires — un test de convention par texte voit aussi les commentaires
+
+**Occurrences : 1** (task-397)
+
+`MetricCaptureSerialisationScanTests` cherche le mot `MeterListener` dans le texte des tests ; un
+commentaire qui le cite suffit à faire échouer la convention.
+
+**Consigne** : dans un commentaire, nommer le mécanisme sans le jeton que scrute la convention
+(« un écouteur de mesures »).
