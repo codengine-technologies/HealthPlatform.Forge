@@ -1679,3 +1679,28 @@ commentaire qui le cite suffit à faire échouer la convention.
 
 **Consigne** : dans un commentaire, nommer le mécanisme sans le jeton que scrute la convention
 (« un écouteur de mesures »).
+
+---
+
+## journal-sans-donnee-tous-les-producteurs — un test « rien dans les journaux » observe tous les producteurs du chemin
+
+**Occurrences : 1** (task-397, trouvé en revue)
+
+Le parcours délégué affirmait qu'aucun journal ne portait ni pièce jointe ni sous-dossier, et il
+était vert. Mais la capture Serilog n'était branchée que sur les services de la fixture : les
+journaux des **contrôleurs** du serveur de test passaient par la journalisation Microsoft. Le
+`[DownloadAttachment] … Attachment={Attachment}` du contrôleur publiait pourtant un nom de patient,
+et ASP.NET Core faisait de même (`FileDownloadName`). Une fois le serveur de test branché sur la
+même capture, le test est passé au rouge sur trois fuites.
+
+**Consigne** :
+- un test qui prouve une **absence** dans les journaux branche sa capture sur **chaque** hôte
+  qui produit des journaux pendant le geste (fixture **et** serveur HTTP de test), derrière le même
+  puits qu'en production. Il vérifie ensuite la capture par mutation : réinjecter la fuite et voir
+  le rouge ;
+- un masquage par contenu (« la valeur contient un chemin ») ne voit pas une valeur **voisine** du
+  chemin. Une propriété qui nomme un objet (pièce jointe, dossier, objet) se masque **entière** dès
+  que l'événement porte le chemin ;
+- un masquage par expression régulière court jusqu'au **vrai délimiteur** (fin de ligne, `/` de la
+  route, `?`), jamais jusqu'à un caractère légal dans la donnée (espace, apostrophe). Le jeu de test
+  contient des noms qui en portent.
