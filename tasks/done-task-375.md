@@ -289,6 +289,7 @@ Démontage vérifié : ports 4200/8100 libres, aucun conteneur e2e résiduel.
 | /lint-mobile | ok | 1 min 06 s | — | — | — | — |
 | /e2e | ok | 19 min 18 s | — | — | — | e2e ×5 (36 min 28 s) |
 | /review | ok | 13 min 11 s | 4 (1 min 13 s) | 7 (8 min 03 s) | — | api-mail 1B/2T, client-mobile 2B/4T, client-angular 1B/1T |
-| **Total cycle** | | **3 h 09 min** | **8 (3 min 25 s)** | **18 (19 min 53 s)** | **2 (2 min 08 s)** | |
+| /tech-writer | ok | 1 min 03 s | — | — | — | — |
+| **Total cycle** | | **3 h 10 min** | **8 (3 min 25 s)** | **18 (19 min 53 s)** | **2 (2 min 08 s)** | |
 
 Autres commandes mesurées : lint ×2 (1 min 42 s)

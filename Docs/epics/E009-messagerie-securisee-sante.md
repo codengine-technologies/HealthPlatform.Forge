@@ -4,7 +4,7 @@
 > **Modèle** : hand-crafted
 > **Version** : 1.86
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-25 (une rédaction sans texte ne laisse ni brouillon ni question — task-394 ; carnet d'adresses refondu — task-393)
+> **Dernière mise à jour** : 2026-10-25 (un geste sur la liste touche exactement les messages affichés — task-375 ; une rédaction sans texte ne laisse ni brouillon ni question — task-394 ; carnet d'adresses refondu — task-393)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1036,6 +1036,12 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
+- **v1.108 — Un geste sur la liste touche exactement les messages que vous voyez** (task-375, messagerie web et application mobile) :
+  - **Le bon message, dans son dossier.** En vue Conversation, un fil réunit des messages de plusieurs dossiers : vos réponses viennent d'« Envoyés ». Glisser l'un d'eux sur la Corbeille supprime ce message-là, et plus jamais un message de la boîte de réception qui porterait le même numéro. Il en va de même pour les actions groupées (lu, non lu, signalé, déplacer, supprimer) sur une sélection qui couvre plusieurs dossiers.
+  - **Ce qui est coché est ce qui part.** Changer de page, de filtre ou de recherche vide la sélection, et le nombre de messages sélectionnés est affiché. « Tout », puis le filtre « Non lus », puis « Supprimer » ne supprime que les non-lus affichés, jamais les messages lus masqués par le filtre.
+  - **Un dossier ouvert est celui que vous voyez.** Passer vite d'un dossier à l'autre ne mélange plus leurs listes. Après un échec de chargement, recliquer sur le dossier le recharge.
+  - **Une suppression qui échoue est rendue.** Les messages réapparaissent et un message vous en avertit. Un brouillon glissé sur la Corbeille est supprimé pour de bon.
+  - **Le compteur de non-lus baisse d'un seul** quand vous supprimez un message non lu.
 - **v1.107 — Un message que vous n'avez pas écrit ne laisse ni brouillon ni question** (task-394, messagerie web et application mobile) :
   - **Fermer un message où rien n'a été écrit dans le corps ne demande rien.** Sur la messagerie web, la croix le ferme directement, sans « abandonner le brouillon ? ». Aucun brouillon n'est créé, même si un destinataire, un objet ou une pièce jointe avaient été saisis.
   - **Un brouillon n'existe que si vous avez écrit dans le corps.** Tout ajout compte, où qu'il soit : au-dessus ou sous votre signature, sous le message cité d'une réponse, au milieu de la citation, une image collée. La signature et la citation proposées à l'ouverture ne comptent pas. Le dossier « Brouillons » ne se remplit plus de messages vides.

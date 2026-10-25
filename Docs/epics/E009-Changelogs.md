@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-10-24 (v1.105)
+> **Dernière mise à jour** : 2026-10-25 (v1.108)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -760,6 +760,35 @@
   - sous-objet partagé pour les options d'envoi au prochain changement de contrat ;
   - remonter `originalMarkedCancelled` et `warning` par `drafts/{id}/send` ;
   - bail renouvelable pour le verrou.
+
+### v1.108 — Un geste sur la liste porte sur les messages affichés et sélectionnés, dans leur propre dossier (weda2 et mobile) — task-375
+
+- **Origine** : audit de détection de bugs du client Angular du 2026-10-13 (ANG-12, ANG-13, ANG-30, ANG-34, ANG-36, ANG-74), revu le 2026-10-25 avant `/start` ; le mobile ajouté au périmètre par l'humain (même famille de défauts).
+- **weda2** (code seul) :
+  - identité `(folderPath, uid)` : `mailKeyString`, `groupByFolder` (`core/utils/mail-key.util.ts`) ; sélection `selectedMailKeys`, résolue contre `displayedMails` ; surlignage et `track` par clé ;
+  - glisser-déposer : `MailDragPayload.mails`, chaque message glissé avec son dossier ; règles de dépôt évaluées sur le dossier du message ; `forgetThreadItem` retire l'enfant du fil déplié ;
+  - actions groupées : une requête par dossier (`perFolder`, `forkJoin`), non-lus ajustés par dossier ;
+  - `mss-mail` : `folderChanged$` → `filter(!isFolderAlreadyShown)` + `switchMap(loadFolder$)` ; rafraîchissement filtré par `isStillShown` ;
+  - `MailPendingDeleteService.commit` : brouillons par `deleteDraft`, une requête par dossier, échec → `restore` + snackbar ;
+  - ANG-74 : `removeMailFromList` ne décompte plus le non-lu (les appelants le font, une fois) ; `expandThread` ignore la réponse d'un fil qui n'est plus déplié.
+- **mobile** : `selectedMailKeys` (`mailKey`), `selectedMails` résolu contre `conversationList`, vidé par `setInboxFilter` / `setBiologyAckFilterUids` ; `MailActionsService.perFolder` remplace `folderOf` ; suppression différée par dossier, non-lu rétabli dans le dossier de chaque message.
+- **api-mail** : catalogue **E2E-MAIL-006** v1 ; outil e2e `message --create … --in-reply-to <objet> --in-reply-to-folder <dossier>`, réponse datée au moins une seconde après l'original. Aucun code `src/`.
+- **Écart au plan** : E2E-MAIL-006 glisse sur la **Corbeille**. Déplacer hors d'Envoyés est interdit (règles de dépôt de task-093).
+- **Preuves rouges** :
+  - E2E-MAIL-006 par mutation (le message glissé prend le dossier affiché) : `DELETE …/folders/INBOX/emails/1` ;
+  - mêmes mutations sur les unitaires : 3 tests de glisser, la clé de sélection réduite à l'UID, la remise en place sur échec retirée.
+- **E2E** : mobile 45/45 ; Angular 53 + 1 flaky (E2E-SEARCH-001) ; parité verte ; rejoué avant la synchronisation avec `develop`.
+- **Tests** : weda2 `mss-lib` 1 257 ; mobile 1 289 après synchronisation (`MailComposeComponent` instable, 2 passages rouges sur 3, hors périmètre) ; api-mail 6 783.
+- **Sonar** : 0 issue sur les fichiers de la task ; Quality Gate `ERROR` hérité (période new-code).
+- **PR** : `api-mail` #312, `client-mobile` #106 ; weda2 en code seul, à pousser avant le merge d'api-mail.
+- **Leçons** :
+  - `conventions/e2e.md` : `fil-depose-a-la-seconde` (dates à la seconde dans un fil, vue enregistrée après coup) et une ligne dans « Trous du filet » ;
+  - `conventions/angular.md` : `jsdoc/require-jsdoc` 11 occurrences, `page-ionic-non-demontee` 2 occurrences.
+- **Suivis** :
+  - le dernier message d'un fil se lit en base : une réponse que l'application n'a pas encore lue ne compte pas (constat produit, à arbitrer) ;
+  - E2E-DRAFT-004 (task-394) est `requis` côté Angular sans test dans l'arbre weda2 actuel : le prochain `/e2e` Angular sera rouge en parité ;
+  - stabiliser `MailComposeComponent` (Karma) ;
+  - 4 suggestions de revue (commentaire orphelin et regroupement dupliqué sur le mobile, brouillon réapparu sur échec partiel et `deleteDraft` sans épingle de boîte sur weda2).
 
 ### v1.107 — Une rédaction sans texte dans le corps ne laisse ni brouillon ni question (weda2 et mobile) — task-394
 
