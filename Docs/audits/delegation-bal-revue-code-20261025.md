@@ -482,3 +482,18 @@ Elle ordonne aussi la livraison : **397 → 401 → 398 / 400 → 399**, et les 
 
 La règle 14 de CLAUDE.md doit être amendée en conséquence : exceptions limitatives et masquage des
 journaux. L'amendement est soumis à relecture avant le push.
+
+### Complément du 2026-10-25 — cache du contenu décodé
+
+- **Constat** : la 397 ne prévoyait aucun cache. Chaque ouverture, impression ou export d'un message
+  délégué redécodait l'archive, et weda2 n'a aucun cache côté client.
+- **Défaut** : le **PDF associé à un CDA** est dans l'archive IHE-XDM, pas en pièce MIME.
+  `GetAttachmentAsync` ne le trouve qu'en base (`ImapService.cs:3508`), donc ce serait un **404**
+  pour un message délégué.
+- **Décision** : un **cache Redis**, puisqu'api-mail tourne sur plusieurs pods et qu'un cache en
+  mémoire du processus ne convient pas.
+  - Clé en empreinte, propre à la personne.
+  - Expiration de 5 minutes au plus, taille bornée.
+  - Invalidé à la suppression, au déplacement et à la révocation.
+  - **Résidu AOF accepté tel quel.**
+  - Reporté dans la task-397 (décisions 12 et 13, section J) et dans l'amendement de la règle 14.

@@ -47,6 +47,12 @@ Les journaux Seq portaient les chemins de sa BAL.
 10. **Une seule task** : protection et lecture directe ne sont pas scindées.
 11. **Pas de purge de l'existant** : la délégation n'a existé que sur des comptes de formation,
     déjà purgés. Les traces d'audit passées restent en l'état.
+12. **Cache Redis du contenu décodé**, pour ne pas décoder plusieurs fois un même message :
+    réouverture, PDF du compte rendu, impression, export. api-mail tourne sur **plusieurs pods**,
+    donc un cache en mémoire du processus ne convient pas. C'est une exception à la règle 14,
+    bornée par la section J.
+13. **Persistance AOF de Redis acceptée telle quelle** : le résidu du cache dans le fichier AOF,
+    jusqu'à sa réécriture, est accepté. Pas de chiffrement applicatif, pas d'instance dédiée.
 
 ## Objective
 
@@ -94,8 +100,15 @@ journaux ne contiennent ni noms de dossiers délégués, ni objets, ni noms de p
   - Le décodage CDA, XSLT et PDF se fait **hors du verrou** `imap_session`.
   - Les documents rendus portent un **identifiant non résolvable**, sans patient, ni doublon, ni
     version, ni demande de suppression.
-- **Pièces jointes, zip, impression, export PDF / EML** : servis en flux depuis le serveur, sans
-  réécriture `MailAttachments`.
+- **Pièces jointes MIME, zip, impression, export PDF / EML** : servis depuis le serveur, sans
+  réécriture `MailAttachments`. Impression et export réutilisent le contenu décodé du cache
+  (section J).
+- **PDF associé à un CDA** : il est **à l'intérieur de l'archive IHE-XDM**, pas en pièce MIME.
+  Aujourd'hui, `GetAttachmentAsync` (`ImapService.cs:3508`) ne le trouve qu'en base, où
+  l'enrichissement l'a déposé, puis cherche une pièce MIME du même nom (`:3534`). Pour un message
+  délégué, ce serait un **404**.
+  - Il est servi depuis le **cache** de la section J.
+  - À défaut, il est servi en **redécodant** l'archive.
 - **Lu, non lu, drapeaux** (unitaires et groupés) : commande IMAP `STORE` directe. **Aucune**
   ligne `PendingActions` : on contourne la file de `FlagPropagationService`.
 - **Enrichissement** : `enrich/async` **et `enrich/sync`** ne font rien sur un chemin délégué. Ils
@@ -110,7 +123,8 @@ Une **garde unique** refuse toute écriture ou mise à jour dont un chemin est d
 - **les dépôts** de la base tenant, dont `PendingActions`, `UserSettings`, `MailAttachments`,
   `MailFolders` à la création et au renommage, et `MailTags` ;
 - **le cache**, par un décorateur sur `IResilientCacheService`, qui contrôle aussi les **valeurs** :
-  la liste des dossiers mise en cache ne contient aucun dossier délégué ;
+  la liste des dossiers mise en cache ne contient aucun dossier délégué. **Seule** la famille de
+  clés du cache de contenu délégué (section J) est admise, et seulement par son propre service ;
 - **la publication sur le bus**.
 
 Une tentative est un bug : erreur typée. Les suppressions restent permises : il n'y a de toute façon
@@ -223,6 +237,30 @@ synchronisation, et les journaux affichent « skipped » pour **chacun** d'eux.
 - **Pas de journal « skipped » pour la lecture directe** : lire un dossier délégué à la demande de
   l'utilisateur n'est pas une synchronisation (règle B).
 
+### J. Cache Redis du contenu délégué décodé (décisions 12 et 13)
+
+- **Contenu** : le résultat décodé d'un message délégué, c'est-à-dire corps, documents rendus,
+  biologie et **PDF associés**.
+- **Famille de clés dédiée**, la seule admise par la garde pour un contenu délégué. La clé est une
+  **empreinte** (HMAC) de : personne qui agit (RPPS de la session PSC), BAL propriétaire, dossier,
+  `UIDVALIDITY` et UID. Elle ne contient **jamais** de chemin, d'adresse ni d'UID en clair.
+- **Propre à la personne** : un autre utilisateur, y compris le délégant ou un autre délégataire,
+  ne peut jamais la lire. L'empreinte inclut la personne.
+- **Durée de vie de 5 minutes au plus** (expiration absolue, sans prolongation), alignée sur la
+  fenêtre de révocation (décision 9). Le cache ne prolonge aucun accès.
+- **Taille bornée** : une entrée au-delà d'une taille maximale configurable n'est pas mise en cache,
+  et sera redécodée. Un nombre maximal d'entrées par personne est fixé par configuration.
+- **Invalidation**, valable pour tous les pods par un `DEL` Redis :
+  - suppression ou déplacement du message ;
+  - révocation détectée (règle H), qui efface toutes les entrées de la personne pour ce
+    propriétaire.
+- **Lecture** : l'ouverture, le téléchargement du PDF, l'impression et l'export lisent le cache
+  d'abord. En cas d'absence, ils décodent puis écrivent dans le cache.
+- **Journaux** : un succès ou un échec de lecture du cache peut être journalisé, sans clé ni
+  contenu.
+- **Ni l'audit, ni la synchronisation, ni le bus ne lisent ce cache.**
+- **AOF** : le résidu dans le fichier de persistance de Redis est accepté (décision 13).
+
 ## Definition of Done
 
 - [ ] **Caractérisation Mailiz** consignée dans le `## Develop log` et dans l'analyse (§4), faite
@@ -253,7 +291,9 @@ synchronisation, et les journaux affichent « skipped » pour **chacun** d'eux.
       - **zéro** ligne liée au chemin dans toutes les tables du tenant, `PendingActions` et
         `UserSettings` compris ;
       - **aucune** clé **ni valeur** Redis portant un chemin, un UID, un objet, un corps ou une
-        donnée de document délégués (inspection des clés et des valeurs) ;
+        donnée de document délégués (inspection des clés et des valeurs), **hors** la famille du
+        cache de contenu délégué (section J). Ses clés sont des empreintes et ses entrées ont une
+        expiration de 5 minutes au plus ;
       - **aucun** message publié sur le bus.
 - [ ] **Test d'intégration journaux et traces** : un collecteur des événements Serilog et des
       activités OTel, pendant le même parcours, ne trouve aucun nom de sous-dossier délégué, aucun
@@ -270,6 +310,20 @@ synchronisation, et les journaux affichent « skipped » pour **chacun** d'eux.
 - [ ] **Lecture** : le détail d'un compte rendu de biologie délégué renvoie le corps, les documents
       décodés, la valeur anormale signalée et un identifiant de document non résolvable. Les
       en-têtes ont un statut terminal. Lu dans la réponse réelle.
+- [ ] **Cache de contenu délégué** — test d'intégration avec **deux instances** de l'API sur le même
+      Redis :
+      - le message est ouvert sur l'instance 1, puis rouvert, le PDF téléchargé et le message
+        exporté sur l'instance 2 : **un seul** décodage (compteur de `ProcessIheXdmZips`) ;
+      - expiration ≤ 5 min, vérifiée par le TTL ;
+      - la clé est une empreinte, sans chemin ni adresse ;
+      - un autre utilisateur ne l'atteint pas ;
+      - suppression, déplacement et révocation l'effacent ;
+      - une entrée trop grosse n'est pas mise en cache.
+
+      Vu rouge (règle 1b).
+- [ ] **PDF associé à un CDA délégué** : « Télécharger le PDF » rend le PDF, servi depuis le cache, et
+      en redécodant si l'entrée a expiré. Jamais de 404. Lu dans la réponse réelle, vu rouge sur le
+      code actuel.
 - [ ] **Corbeille** : suppressions unitaire et groupée, suppression définitive depuis
       `shared/<A>/Trash`, suppression d'un sous-dossier. Vérifié côté IMAP, vu rouge.
 - [ ] **Dossiers système et chemins** :
