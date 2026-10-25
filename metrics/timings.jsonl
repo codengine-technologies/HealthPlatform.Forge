@@ -6104,3 +6104,5 @@
 {"ts":"2026-10-25T00:04:17+02:00","run_id":"-","type":"cmd","task":"task-394","step":"review","repo":"client-angular","kind":"test","label":"","cwd":"Client/Angular/front","cmd":"npx nx test mss-lib","duration_ms":1383,"exit_code":0}
 {"ts":"2026-10-25T00:05:18+02:00","run_id":"-","type":"cmd","task":"task-394","step":"review","repo":"api-mail","kind":"build","label":"","cwd":"Api/Mail","cmd":"dotnet build HealthPlatform.Api.Mail.sln","duration_ms":11419,"exit_code":0}
 {"ts":"2026-10-25T00:08:40+02:00","run_id":"-","type":"step","task":"task-394","step":"review","status":"failed","note":"CHANGES REQUESTED : perte de texte (mobile signature par défaut, weda2 sous la citation) ; règle à confirmer","iterations":null,"duration_ms":293808}
+{"ts":"2026-10-25T02:04:57+02:00","run_id":"-","type":"step_start","task":"task-378","step":"tech-writer"}
+{"ts":"2026-10-25T02:07:36+02:00","run_id":"-","type":"step","task":"task-378","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":158994}

@@ -326,6 +326,7 @@ Chaque étape se joue sur weda2 **puis** sur l'app mobile (`cd Client/Mobile && 
 | /lint-mobile | ok | 49 s | — | — | — | — |
 | /e2e | ok | 42 min 32 s | — | — | — | e2e ×8 (44 min 37 s) |
 | /review | ok | 1 h 02 min | 3 (1 min 37 s) | 4 (8 min 14 s) | — | client-mobile 1B/1T, client-angular 1B/1T, api-mail 1B/2T |
-| **Total cycle** | | **2 h 51 min** | **11 (5 min 21 s)** | **16 (25 min 41 s)** | **2 (2 min 14 s)** | |
+| /tech-writer | ok | 2 min 38 s | — | — | — | — |
+| **Total cycle** | | **2 h 54 min** | **11 (5 min 21 s)** | **16 (25 min 41 s)** | **2 (2 min 14 s)** | |
 
 Autres commandes mesurées : lint ×3 (2 min 30 s)

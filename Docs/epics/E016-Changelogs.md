@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > **Document frère (vue produit)** : [`E016-socle-multi-tenant.md`](./E016-socle-multi-tenant.md)
-> **Dernière mise à jour** : 2026-10-14 (task-370, reprise)
+> **Dernière mise à jour** : 2026-10-25 (task-378)
 
 Historique détaillé des changements de l'EPIC **E016 — Socle multi-tenant**.
 Une entrée par task ayant atteint `done-*` ou `archived-*`. Append-only : une
@@ -11,6 +11,18 @@ entrée existante n'est jamais réécrite.
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.21 — task-378 : une panne à l'entrée est dite comme une panne, chaque action de messagerie dit si elle a réussi (`api-mail`, `client-mobile`, `client-angular`)
+
+- **Origine** : audit Angular du 2026-10-13, ANG-28, ANG-29, ANG-76. Revue du 2026-10-24 avant `/start` : client-mobile ajouté au périmètre (mêmes défauts, décision humaine) ; le 409 `SESSION_MAILBOX_MISMATCH` à l'entrée déclaré caduc (derrière le proxy, la clé de session vient de `proxy_session_id` et la liaison se fait par boîte, task-365).
+- **api-mail** : `POST /api/v1/account/mailboxes/{id}/reauthenticate` (`AccountController.ReauthenticateMailboxAsync`, `[MailboxNotRequired]`, limiteur `Sensitive`) → `MailboxManagementService.ReauthenticateAsync` : boîte non détachée du compte, jeton PSC requis, garde d'ancrage, sonde `TestImapConnectionAsync`, `MarkAuthenticationOutcomeAsync` (**premier appelant** de cette méthode : la re-validation E016 n'était pas câblée), trace `MailServerAuthRetry`, boîte relue. Refus en `problem+json` avec `code` (`CodedProblem`, réutilisé pour le 401 `PSC_SESSION_REQUIRED` du rattachement). Aucun DTO ni membre d'audit ajouté.
+- **weda2 / mobile** : décision d'entrée `Unavailable` (liste illisible ≠ zéro boîte) et écran `unavailable` avec « Réessayer » ; garde (weda2 : y compris boîte désignée par l'hôte) et écran de choix ; gestion : `setDefault`, détachement, rattachement à nouveau, ré-authentification testent leur résultat (`actionError` / `actionNotice`), un détachement en échec ne déconnecte ni ne bascule, une liste illisible ne vide plus l'écran ; `toError` lit `instance` comme code seulement s'il en a la forme (`/^[A-Z][A-Z0-9_]*$/`), 5xx → `SERVICE_UNAVAILABLE`, 404 → `MAILBOX_NOT_ATTACHED` ; traduction unique `describeMailboxError`.
+- **PR** : Api.Mail#310, Mobile#104 (`awaiting-human-merge`) ; weda2 en code-only sur `feature/nova-mss-weda-integration` (21 fichiers, **à commiter sur TFS avant le merge d'Api.Mail#310** : test requis E2E-MAILBOX-002).
+- **Tests** : intégration `MailboxReauthenticationIntegrationTests` (3, registre PostgreSQL, mutations M1/M2 rouges) ; unitaires service 7, contrôleur +6 ; weda2 service/store/garde/gestion/écran/libellés (mss-lib 1 238) ; mobile 1 259 (dont `mailbox.model.spec.ts`, ajouté en revue, prouvé rouge). api-mail : 6 798, 3 rouges « du jour » (fenêtre 00:00-02:00) verts rejoués à 02:02.
+- **E2E** : E2E-MAILBOX-002 v1 (panne 503 simulée une fois à la frontière réseau, réessai sur le vrai backend), requis mobile + angular, prouvé rouge par mutation sur les deux clients. Voies : mobile 45/45 ; angular 52 + 1 flaky (E2E-SEARCH-001, 9e occurrence), rouge au 1er passage sur un défaut du test frais (accueil weda2 autonome = tableau de bord).
+- **Sonar** : 0 issue / 0 hotspot dans les fichiers de la task, `MailboxManagementService` 97,3 %, `AccountController` 99,5 % ; Quality Gate ERROR hérité (72 violations, 13 hotspots hors task).
+- **Leçons** : `conventions/e2e.md` « accueil-selon-l-hote » (nouvelle) ; flaky E2E-SEARCH-001 → 9 ; `csharp.md` xUnit1051 → 4 ; `angular.md` jsdoc → 10.
+- **Suivis** : n'enregistrer l'échec d'authentification que sur `AUTH_FAILED` (un `HOST_UNREACHABLE` sur une boîte `Active`, par appel direct, la ferait passer `AuthFailing`) ; `lane_cache.py` : empreinte de `client-mobile-e2e` prise sur le HEAD du dépôt entier (voie Angular rejouée à tort, 8 min 53 s) ; écran Stitch `mailbox-unavailable` à générer à la main (prompt dans le task file) ; task de stabilisation E2E-SEARCH-001.
 
 ### v1.20 — task-370 (reprise) : les appels de weda2 à api-mail restent authentifiés — **remplace v1.18** (`client-angular`, `client-mobile` ; catalogue `api-mail`)
 
@@ -2318,7 +2330,9 @@ en `foreach`). **184 tests verts avant comme après.**
 | task-326 | **Un jeton non signé n'ouvre plus aucune boîte** (AUD-01) : mode permissif opt-in limité à Development, refus de démarrer sans `Keycloak:Authority`, refus d'authentification journalisés, provisionnement des bases praticien découplé du nom d'environnement | `api-mail` (`devops` à appliquer par l'humain) | ✅ **mergée** (PR Api.Mail#291) |
 | task-332 | **Les messages du bus ne transportent plus aucun secret, ni le corps du mail** (AUD-10) : `MessageUserIdentity` à la place de `UserContextInfo`, contexte reconstruit côté consommateur depuis `IServerConnectionStrings`, objet et corps relus en base, ancien format accepté, garde d'architecture ; chaînes de connexion retirées des traces d'audit | `api-mail` | ✅ **done** (PR Api.Mail#292, `awaiting-human-merge`) |
 
-| task-374 | **Changer de messagerie ne laisse rien de la précédente** (ANG-10, 11, 25, 27, 77) : suppression différée figée sur sa boîte et soldée avant la clôture, écran recréé par génération, flux de notifications par boîte, compteurs relus, bascules sérialisées ; seconde boîte au seed e2e, E2E-MAILBOX-001 ; épinglage Pkcs 10.0.13 | `client-angular`, `client-mobile` (seed + catalogue `api-mail`) | ✅ **done** (PR Api.Mail#297, Mobile#95, `awaiting-human-merge` ; Angular en code-only) |
+| task-374 | **Changer de messagerie ne laisse rien de la précédente** (ANG-10, 11, 25, 27, 77) : suppression différée figée sur sa boîte et soldée avant la clôture, écran recréé par génération, flux de notifications par boîte, compteurs relus, bascules sérialisées ; seconde boîte au seed e2e, E2E-MAILBOX-001 ; épinglage Pkcs 10.0.13 | `client-angular`, `client-mobile` (seed + catalogue `api-mail`) | ✅ **mergée** (PR Api.Mail#297, Mobile#95 ; Angular en code-only) |
+| task-370 | **La session de weda2 tient tant que le médecin travaille** (ANG-06, ANG-22) : jeton rafraîchi avant échéance et rejoué une fois sur 401, déconnexion seulement sur perte de session ; catalogue e2e | `client-angular`, `client-mobile` (test E2E-ATTACH-001), catalogue `api-mail` | ✅ **mergée** (PR Api.Mail#299, Mobile#96 ; Angular en code-only) |
+| task-378 | **Une panne est dite comme une panne, chaque action dit si elle a réussi** (ANG-28, 29, 76) : écran de panne à l'entrée, route de ré-authentification, résultat et motif de chaque action de gestion, lecture d'erreurs corrigée ; E2E-MAILBOX-002 | `api-mail`, `client-mobile`, `client-angular` | ✅ **done** (PR Api.Mail#310, Mobile#104, `awaiting-human-merge` ; Angular en code-only) |
 
 ### Question ouverte
 
