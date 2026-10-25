@@ -151,9 +151,9 @@ Voir `tests/Features/Mss/EmptyComposeLeavesNoDraft.feature`.
 | /sonar | skipped | 0.5 s | — | — | — | reprise : api-mail limité au catalogue (YAML) |
 | /lint-angular | ok | 12 s | — | — | — | reprise : 0 erreur |
 | /lint-mobile | ok | 6.9 s | — | — | — | reprise : propre |
-| /e2e | ok | 15 min 20 s | — | — | — | e2e ×15 (1 h 31 min), reprise corps modifié : mobile 45/45, angular 53/53 |
-| /review | failed | 4 min 53 s | 5 (29 s) | 6 (4 min 55 s) | — | client-mobile 2B/3T, client-angular 2B/2T, api-mail 1B/1T, CHANGES REQUESTED : perte de texte (mobile signature par défaut, weda2 sous la citation) ; règle à confirmer |
-| **Total cycle** | | **22 min 41 s** | **8 (1 min 14 s)** | **10 (6 min 18 s)** | **0 (0.0 s)** | |
+| /e2e | ok | 15 min 20 s | — | — | — | e2e ×18 (1 h 53 min), reprise corps modifié : mobile 45/45, angular 53/53 |
+| /review | ok | 38 min 06 s | 6 (41 s) | 7 (9 min 04 s) | — | client-mobile 2B/3T, client-angular 2B/2T, api-mail 2B/2T, e2e ×2 (14 min 28 s), seconde revue APPROVED ; décisions 3 et 4 ; divergence MAILBOX-002 (task-395) ; PR #311, #105 |
+| **Total cycle** | | **55 min 55 s** | **9 (1 min 26 s)** | **11 (10 min 28 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×5 (38 s)
 
@@ -269,19 +269,24 @@ correction. Les avertissements restants sont antérieurs.
 
 ## E2E log
 
-Run du 2026-10-25, après la reprise « corps modifié » — **VERT**.
+Run du 2026-10-25, sur les branches synchronisées avec `develop` (task-378 mergée entre-temps) — **VERT**, avec une
+divergence ouverte.
 
 | Voie | Déclencheur | Résultat | Tests |
 |---|---|---|---|
-| mobile | api-mail et client-mobile touchés | ✅ verte | 45 verts, 0 flaky, 0 rouge |
+| mobile | api-mail et client-mobile touchés | ✅ verte | 46 verts, 0 flaky, 0 rouge |
 | angular | api-mail et client-angular touchés (code seul) | ✅ verte | 53 verts, 0 flaky, 1 quarantaine |
 
-- Voies jouées par `Tools/e2e/lane_cache.py` (aucune réutilisée).
-- E2E-DRAFT-004 v1 prouvé rouge sur les deux clients (ancien critère). E2E-DRAFT-003 (mobile) joue désormais avec une
-  signature par défaut, prouvé rouge sous la mutation « texte dans la signature ignoré ».
+- Premier passage Angular, juste après la synchronisation : 6 rouges `EADDRINUSE :47399`. Le port du faux hôte Weda
+  était occupé pendant le run (port libre ensuite, voie rejouée verte). C'est un incident d'outillage, sans lien avec
+  la task.
+- **Parité** : E2E-MAILBOX-002 (task-378) est requis sur weda2, mais son code weda2 n'est pas livré sur la branche. Par
+  décision de l'humain (2026-10-25), une **divergence temporaire** angular est déclarée au catalogue, résorbée par
+  `task-395`.
+- E2E-DRAFT-004 v1 est prouvé rouge sur les deux clients. E2E-DRAFT-003 (mobile) se joue avec une signature par
+  défaut.
 - Quarantaines : E2E-COMPOSE-002 (angular, task-350), passée
-- Divergences ouvertes : aucune
-- Démontage : complet (ports libres)
+- Démontage : complet
 
 **E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
 
@@ -345,9 +350,14 @@ Run du 2026-10-25, après la reprise « corps modifié » — **VERT**.
 | E2E-RECEIPT-003 | 1 | headless | Refuser l'accusé de lecture d'un message reçu | ✅ | ✅ |
 | E2E-SECURITY-001 | 1 | headless | Un contenu reçu piégé ne s'exécute pas | ✅ | ✅ |
 | E2E-MAILBOX-001 | 1 | headless | Changer de messagerie depuis l'écran mail | ✅ | ✅ |
+| E2E-MAILBOX-002 | 1 | headless | api-mail indisponible à l'entrée — écran de panne puis réessai | ⛔ non joué · divergence (task-395) | ✅ |
 | E2E-SESSION-001 | 1 | headless | Naviguer dans Weda ne multiplie pas les sessions de messagerie | ✅ | — |
 | E2E-SESSION-002 | 2 | headless | Quitter weda2 autonome ne ferme pas la session partagée | ✅ | — |
 | E2E-SESSION-003 | 2 | headless | La session fermée par Weda fait quitter weda2 | ✅ | — |
+
+**Divergences temporaires ouvertes** (1) :
+
+- E2E-MAILBOX-002 [angular] — le code weda2 de task-378 (écran de panne à l'entrée et son test) n'est pas encore livré sur la branche weda2 ; divergence décidée par l'humain le 2026-10-25 — résorbée par task-395
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
 
@@ -376,3 +386,41 @@ par l'orchestrateur (`injectSignature`).
 
 **Prévention** : `conventions/e2e.md` › `html-construit-a-la-main`.
 
+### Seconde revue (2026-10-25) — APPROVED
+
+Les deux pertes de texte de la première passe sont levées sur les deux clients. Les tests tapent dans le vrai éditeur,
+et E2E-DRAFT-003 (mobile) se joue avec une signature par défaut. Une contradiction restait entre le code et la task
+(brouillon rouvert vidé, signature restante) : l'humain a tranché qu'il est **enregistré tel qu'affiché**
+(décision 4), et la task ainsi que l'étape 6 du plan de test sont alignées.
+
+**Validation finale** :
+- api-mail ✓ 6 767 (16 ignorés), rejoué hors de la fenêtre de minuit ;
+- weda2 ✓ build, `mss-lib` 1 239 ;
+- mobile ✓ build, 1 262, avec les tests de l'éditeur isolés (0 échec sur 5 passages pour `HtmlEditorComponent`) ;
+- e2e vert sur les branches synchronisées : mobile 46/46, Angular 53/53, et une divergence ouverte, E2E-MAILBOX-002
+  angular (`task-395`).
+
+**Suggestions laissées à l'humain** :
+- weda2 : une mise en forme seule (gras, lien) ne compte pas, alors que le mobile la compte ;
+- weda2 : retirer `style`, `script` et `title` de `bodyFingerprint` éviterait une question inutile sur une citation
+  Outlook ;
+- mobile : le texte tapé dans les marqueurs de signature est effacé par un changement de signature (défaut antérieur
+  à la task, suite à ouvrir) ;
+- mobile : les 4 tests « suggestions de destinataires » (task-388) dépendent de l'ordre d'exécution (suite à ouvrir).
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/311 — label
+  `awaiting-human-merge` (catalogue : E2E-DRAFT-004, divergence E2E-MAILBOX-002)
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/105 — label
+  `awaiting-human-merge`
+- `client-angular` : code seul. L'humain gère le commit, le push sur TFS et l'ouverture de la PR. Fichiers modifiés,
+  non commités, sur `feature/nova-mss-weda-integration` :
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`
+  - `front/e2e/mss-e2e/support/e2e-backend.ts`
+  - `front/libs/mss/src/core/utils/compose-body.util.spec.ts`
+  - `front/libs/mss/src/core/utils/compose-body.util.ts`
+  - `front/libs/mss/src/features/mail/components/mail-compose/mail-compose-intent.component.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-compose/mail-compose-safety.component.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-compose/mail-compose-toolbar.component.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-compose/mail-compose.component.ts`
