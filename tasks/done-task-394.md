@@ -153,6 +153,7 @@ Voir `tests/Features/Mss/EmptyComposeLeavesNoDraft.feature`.
 | /lint-mobile | ok | 6.9 s | — | — | — | reprise : propre |
 | /e2e | ok | 15 min 20 s | — | — | — | e2e ×18 (1 h 53 min), reprise corps modifié : mobile 45/45, angular 53/53 |
 | /review | ok | 38 min 06 s | 6 (41 s) | 7 (9 min 04 s) | — | client-mobile 2B/3T, client-angular 2B/2T, api-mail 2B/2T, e2e ×2 (14 min 28 s), seconde revue APPROVED ; décisions 3 et 4 ; divergence MAILBOX-002 (task-395) ; PR #311, #105 |
+| /tech-writer | ok | 0.5 s | — | — | — | E009 v1.107 |
 | **Total cycle** | | **55 min 55 s** | **9 (1 min 26 s)** | **11 (10 min 28 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×5 (38 s)
