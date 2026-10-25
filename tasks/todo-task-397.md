@@ -85,6 +85,10 @@ journaux ne contiennent ni noms de dossiers délégués, ni objets, ni noms de p
   `FETCH` en direct.
   - Les en-têtes portent un **statut d'enrichissement terminal**, et non `Pending`.
   - Aucun nombre de messages de fil n'est calculé à partir de la base du délégataire.
+  - **Indicateur « document médical » sans décodage** : `HasMedicalDocuments` est posé à partir de
+    la **structure du message**, déjà lue avec l'enveloppe. Il suffit de la présence d'une pièce
+    `ihe_xdm.zip` (ou `.hpm` après task-389), selon la même règle de nom que
+    `EnrichmentFetchPlan`. `HasBiologyResults` reste inconnu (faux) jusqu'à l'ouverture.
 - **Détail** : passe par `ReadEmailWithoutPersistingAsync`. Les lignes déjà en base pour ce chemin
   sont **ignorées**.
   - Le décodage CDA, XSLT et PDF se fait **hors du verrou** `imap_session`.
@@ -260,6 +264,9 @@ synchronisation, et les journaux affichent « skipped » pour **chacun** d'eux.
       sur une trace passée par le tampon Redis.
 - [ ] **Test de convention** : chaque chemin d'écriture (dépôt, cache, publication) passe par la
       garde. Prouvé rouge par mutation.
+- [ ] **Indicateur de liste** : la liste de `shared/<A>` marque `HasMedicalDocuments` pour un
+      message porteur d'un `IHE_XDM.ZIP`, sans aucun décodage (zéro appel à
+      `ProcessIheXdmZips` pendant la liste), lu dans la réponse réelle.
 - [ ] **Lecture** : le détail d'un compte rendu de biologie délégué renvoie le corps, les documents
       décodés, la valeur anormale signalée et un identifiant de document non résolvable. Les
       en-têtes ont un statut terminal. Lu dans la réponse réelle.
