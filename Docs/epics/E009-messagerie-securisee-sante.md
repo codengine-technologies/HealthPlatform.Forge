@@ -4,7 +4,7 @@
 > **Modèle** : hand-crafted
 > **Version** : 1.86
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-25 (un geste sur la liste touche exactement les messages affichés — task-375 ; une rédaction sans texte ne laisse ni brouillon ni question — task-394 ; carnet d'adresses refondu — task-393)
+> **Dernière mise à jour** : 2026-10-25 (délégation de BAL : la boîte déléguée se lit en direct, rien n'en est conservé — task-397 ; un geste sur la liste touche exactement les messages affichés — task-375 ; une rédaction sans texte ne laisse ni brouillon ni question — task-394 ; carnet d'adresses refondu — task-393)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1036,6 +1036,12 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
+- **v1.109 — Ouvrir la boîte qu'un confrère vous délègue, sans rien en garder chez vous** (task-397, délégation de BAL Mailiz) :
+  - **Lire et trier la boîte déléguée.** Les dossiers, les messages et leurs documents (comptes rendus, biologie) s'affichent comme dans votre boîte, lus en direct chez Mailiz. Les en-têtes se complètent d'eux-mêmes quelques secondes après l'ouverture : patient, type de document, biologie anormale.
+  - **Gérer sans abîmer.** Vous pouvez marquer lu, signaler, déplacer dans la boîte déléguée, supprimer : le message part dans la corbeille de votre confrère. Ses dossiers système (Envoyés, Corbeille…) ne peuvent être ni renommés ni supprimés, et rien ne passe d'une boîte à l'autre.
+  - **Rien n'est conservé chez vous.** Aucun message, document, patient ni nom de dossier de la boîte déléguée n'est enregistré dans votre espace, ni dans les journaux. Seule reste la trace d'audit réglementaire de vos gestes. Un document ouvert reste disponible quelques minutes pour éviter de le décoder à nouveau.
+  - **Ce qui reste propre à votre boîte.** Synthèse IA, étiquettes, accusés de lecture, recherche, rattachement à un patient : refusés sur une boîte déléguée. Hors connexion, la boîte déléguée n'est pas accessible.
+  - **Retrait de la délégation.** Quand votre confrère retire la délégation, l'accès s'arrête au plus tard après quelques minutes, avec le message « délégation retirée ».
 - **v1.108 — Un geste sur la liste touche exactement les messages que vous voyez** (task-375, messagerie web et application mobile) :
   - **Le bon message, dans son dossier.** En vue Conversation, un fil réunit des messages de plusieurs dossiers : vos réponses viennent d'« Envoyés ». Glisser l'un d'eux sur la Corbeille supprime ce message-là, et plus jamais un message de la boîte de réception qui porterait le même numéro. Il en va de même pour les actions groupées (lu, non lu, signalé, déplacer, supprimer) sur une sélection qui couvre plusieurs dossiers.
   - **Ce qui est coché est ce qui part.** Changer de page, de filtre ou de recherche vide la sélection, et le nombre de messages sélectionnés est affiché. « Tout », puis le filtre « Non lus », puis « Supprimer » ne supprime que les non-lus affichés, jamais les messages lus masqués par le filtre.

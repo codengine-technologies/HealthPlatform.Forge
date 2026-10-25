@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-10-25 (v1.108)
+> **Dernière mise à jour** : 2026-10-25 (v1.109)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -760,6 +760,33 @@
   - sous-objet partagé pour les options d'envoi au prochain changement de contrat ;
   - remonter `originalMarkedCancelled` et `warning` par `drafts/{id}/send` ;
   - bail renouvelable pour le verrou.
+
+### v1.109 — Délégation de BAL Mailiz : la BAL déléguée se lit en direct, et rien n'en est conservé chez le délégataire — task-397
+
+- **Origine** : constat humain du 2026-10-25 en formation — la base d'un délégataire contenait déjà 101 messages, 64 documents, 323 résultats de biologie et 7 patients de sa délégante ; la purge des dossiers disparus ne tournant qu'au listage suivant, une copie survivait à la révocation. Règle 14 de CLAUDE.md posée le même jour.
+- **Périmètre** : `api-mail` seul (US mono-repo, décision 10 : une seule task). Aucun contrat `dtos-mss` modifié ; les clients consomment les routes existantes.
+- **Lecture directe** (`ImapService.Delegation.cs`, partiel) : tout chemin `shared/<adresse>/…` (`DelegatedMailboxRule`, règle de domaine) est lu sur le serveur — dossiers, en-têtes, listes du jour, contenu, CDA décodé hors du verrou `imap_session` (`DelegatedDecodeScope` : aucun contenu clinique journalisé), pièces jointes, zip, export EML (nom sans objet). Drapeaux par `STORE` direct ; déplacement interne ; suppression vers la corbeille du **propriétaire** (`DelegatedTrash`).
+- **Politiques** : filtre MVC global `DelegatedMailboxPolicyFilter` + `[DelegatedAccess]` sur les 35 actions à dossier ; une action muette refuse tout chemin délégué. Refus 403 `DELEGATED_MAILBOX_REFUSED` (IA, étiquettes, accusés, recherche, annuler-remplacer, réglages) ; 409 dossiers système et inter-BAL ; 404 `DELEGATED_FOLDER_NOT_LISTED` (alias, casse, `Sent/`, `//Sent`) et `urn:mss:problem:delegation-withdrawn` (révocation, `STATUS` de la racine — Dovecot liste encore une racine retirée).
+- **Garde d'écriture** : intercepteur EF `DelegatedPersistenceInterceptor`, décorateur de cache `DelegatedCacheGuardService`, filtre de publication MassTransit, gardes sur les méthodes `ExecuteUpdate`/SQL à chemin ; convention de scan prouvée rouge.
+- **Journaux et télémétrie** : puits Serilog `DelegatedLogMaskingSink` (gabarit, propriétés, exception) ; après revue, les propriétés qui nomment un objet (`Attachment`, `FileName`, `FileDownloadName`, `Name`, `NewName`, `Subject`, `Title`…) sont masquées entières dans un événement délégué, et les expressions de masquage vont jusqu'au vrai délimiteur (espaces et apostrophes compris).
+- **Audit PGSSI-S** : liste blanche dans `AuditService.Trace` avant le tampon Redis, `Message-ID` lu en direct.
+- **Synchronisation** : aucun mécanisme (périodique, enrich, IDLE) ne traite un dossier délégué ; une entrée « Skipped delegated folder » masquée par dossier.
+- **Cache J** (`DelegatedContentCache`, décisions 12-13) : contenu décodé partagé entre pods, clé HMAC-SHA256 (RPPS de la personne, BAL, dossier, UIDVALIDITY, UID) sous `Delegation:ContentCache:KeySecret`, TTL absolu 5 min, 8 Mo et 50 entrées par BAL ; après revue, index à échéances avec éviction de la plus ancienne. Oublié à la suppression, au déplacement, au renommage ou à la suppression de dossier, à la révocation. Désactivé sans clé.
+- **Décision 14** (constat de recette) : `enrich/sync` et `enrich/async` décodent en mémoire (≤ 50 par demande) et émettent `EmailsEnriched` (SSE, pub/sub Redis) avec des en-têtes légers ; un en-tête non décodé est `Pending`. `version-chain` sur `Guid.Empty` → 200 sans voisin (plus de 404).
+- **Banc** : fragment Dovecot `delegation.conf` (`acl`, `imap_acl`, espace `shared`, `INDEXPVT`), monté par les tests d'intégration et le banc e2e, droits par `SETACL`.
+- **Tests** : 19 tests bout en bout `DelegationEndToEndTests` (parcours complet : aucune valeur texte en base, aucune clé Redis, aucune publication, journaux des contrôleurs compris) ; unitaires règle, puits, garde, cache, audit, synchronisation. Mutations M1-M38 toutes rouges. Suites : domaine 263, infrastructure 701, API 1 344, application 3 651, intégration 1 002 + 16 ignorés.
+- **Mesure** (banc local, p50) : détail délégué 5,3 ms (cache), pièce jointe 7,7 ms ; le verrou est pris deux fois par requête déléguée (filtre + action).
+- **Revue** : 1ʳᵉ passe CHANGES REQUESTED — B1 noms en clair dans les journaux (le serveur de test journalisait ses contrôleurs hors de la capture : vert qui mentait), B2 masquage arrêté à l'espace ou l'apostrophe, B3 borne du cache figée ; corrigés et revérifiés, 2ᵉ passe APPROVED.
+- **Sonar** : Quality Gate OK, 0 issue sur le nouveau code (2 issues S1155/CA1827 corrigées par une boucle explicite), new coverage 95,2 %, coverage projet 97,6 %.
+- **E2E** : mobile 46/46, Angular 55/55, parité verte.
+- **PR** : `api-mail` #313.
+- **Leçons** : `conventions/csharp.md` — `journal-sans-donnee-tous-les-producteurs`, `S1155 / CA1827` (effet de bord dans un prédicat LINQ), et quatre entrées de développement (scan multiligne, mutation non constante, référence confiée au cache, scan des commentaires).
+- **Suivis** :
+  - caractérisation Mailiz sur session réelle (NAMESPACE, MYRIGHTS, alias, `Junk`, retrait sur session ouverte) — humain ;
+  - `Delegation__ContentCache__KeySecret` par environnement — DevOps ;
+  - masquage encodé encore arrêté à `&` (« Courrier & CR » laisse « CR ») — correctif d'une ligne ;
+  - index du cache non atomique ; racine suivie de `/` acceptée ; projection légère des en-têtes en cache ; SSE sans contrôle de révocation ;
+  - recherche dans une BAL déléguée (recherche IMAP serveur) et lecture chez le délégant (architecture inter-tenant) : pistes produit à instruire.
 
 ### v1.108 — Un geste sur la liste porte sur les messages affichés et sélectionnés, dans leur propre dossier (weda2 et mobile) — task-375
 
@@ -1763,6 +1790,7 @@ Audit grep complémentaires pour les couches 2 / 2bis / 3 (tasks 021 / 022 / 023
 
 | Task | Apport principal | Règles touchées |
 |------|------------------|-----------------|
+| task-397 | **Délégation de BAL : la BAL déléguée se lit en direct, rien n'en est conservé chez le délégataire.** Lecture, tri, déplacement interne, suppression vers la corbeille du délégant ; IA, étiquettes, accusés, recherche refusés ; garde unique des écritures, masquage des journaux, audit en liste blanche ; cache du contenu décodé (5 min, clé HMAC) ; en-têtes enrichis en direct par SSE. | — |
 | task-394 | **Une rédaction sans texte dans le corps ne laisse ni brouillon ni question.** Le corps compte dès qu'il diffère de ce que la rédaction proposait (signature, citation), où que soit l'ajout ; weda2 ferme sans question un message non écrit ; un brouillon rouvert est enregistré tel qu'affiché. | — |
 | task-393 | **Le carnet d'adresses refondu, sur la messagerie web et l'application mobile.** Aperçu d'un contact à côté de la liste (fiche plein écran sur mobile), « Écrire un message » vers l'adresse par défaut ou l'adresse choisie, marques « Sans adresse MSSanté » et « Annuaire » avec filtres rapides, adresse par défaut choisie par bouton radio, contrôle du format des adresses, confirmation avant d'abandonner une fiche modifiée, RPPS de l'annuaire non modifiable. | — |
 | task-388 | **Les finitions de la recherche dans l'annuaire, puis la spécialité des contacts.** Extension du 2026-10-24 : `ContactDto.Profession` et `Specialty` (533.0.0), suggestions de destinataires avec avatar, icône du type et spécialité (weda2 et mobile), icônes de type corrigées. Finitions : Une organisation de moins de 3 caractères est refusée avec une spécialité sans lieu ; une page de maintenance est gardée en « indisponible » ; le mobile n'affiche plus jamais le message technique d'Angular ; Blazor distingue session expirée et annuaire indisponible, et ne lance plus deux fois la recherche. | — |

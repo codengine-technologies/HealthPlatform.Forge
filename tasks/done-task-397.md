@@ -648,7 +648,8 @@ Démontage vérifié : ports 5052/3993/3465/3143 libres, aucun conteneur e2e ré
 | /lint-mobile | skipped | 0.5 s | — | — | — | repo non touché (Repos: api-mail) — passage post-revue |
 | /e2e | ok | 15 min 20 s | — | — | — | e2e ×6 (30 min 44 s), post-revue : mobile 46 + angular 55 verts, parité verte |
 | /review | ok | 4 min 58 s | 2 (25 s) | 2 (8 min 25 s) | — | api-mail 2B/2T, APPROVED (2e passe), PR #313 |
-| **Total cycle** | | **44 min 58 s** | **60 (6 min 46 s)** | **106 (1 h 58 min)** | **12 (3 min 43 s)** | |
+| /tech-writer | ok | 1 min 34 s | — | — | — | — |
+| **Total cycle** | | **46 min 33 s** | **60 (6 min 46 s)** | **106 (1 h 58 min)** | **12 (3 min 43 s)** | |
 
 ## Develop log
 
