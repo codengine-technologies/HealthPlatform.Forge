@@ -5,7 +5,7 @@ Usage :
   (Step 5c) for the task's `client-mobile` screens, **before** the Ionic code
   is written. Ensures every target screen has a matching design in the Stitch
   project `client-mobile` (reuse if present, **create** if missing), records a
-  `## Stitch design log` in `tasks/wip-{task-id}.md`, and returns control to
+  `## Stitch design log` in `tasks/wip-{task-id}[_{titre}].md`, and returns control to
   `/develop`. Best-effort & non-blocking.
 - `/stitch-design {screen-name}` — **Mode B (stand-alone)**. Manual.
   Create or refresh the design of one screen (e.g.

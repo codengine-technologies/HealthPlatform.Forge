@@ -84,7 +84,7 @@ cf. mémoire [[reference-stitch-generate-screen-timeouts]]) :
   Invoked by `/develop` (Step 5c) for the task's `client-mobile` screens,
   *before* coding each one. Reads the task's mobile scope, ensures every target
   screen has a Stitch reference (reuse if present, create if missing), appends a
-  `## Stitch design log` to `tasks/wip-{task-id}.md`, and returns control to
+  `## Stitch design log` to `tasks/wip-{task-id}[_{titre}].md`, and returns control to
   `/develop`. **Best-effort & non-blocking** : a Stitch/MCP outage never kills
   the task — log it and let `/develop` proceed without the reference.
 
@@ -114,7 +114,7 @@ on the table. The downstream chain (`/sonar` →
    is a component/page name → Mode B.
 
 2. **Mode A — skip detection** : read `**Repos**:` from
-   `tasks/wip-{task-id}.md`. If `client-mobile` is **not** listed, skip cleanly :
+   `tasks/wip-{task-id}[_{titre}].md`. If `client-mobile` is **not** listed, skip cleanly :
    append `## Stitch design log\n- skipped — no mobile scope\n` and return to
    `/develop`.
 
@@ -186,7 +186,7 @@ on the table. The downstream chain (`/sonar` →
 
 ### Step 2 — Record the design log & hand back
 
-**Mode A** — append to `tasks/wip-{task-id}.md` :
+**Mode A** — append to `tasks/wip-{task-id}[_{titre}].md` :
 
 ```markdown
 ## Stitch design log

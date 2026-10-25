@@ -26,7 +26,8 @@ See `agents/merge.md` for the agent specification.
 
 Steps (high-level — see the agent file for the full spec) :
 
-1. Read `tasks/done-{task-id}.md` and parse `## PRs`.
+1. Read the task file (`Tools/tasks/task-file.sh path {task-id} done` →
+   `tasks/done-{task-id}[_{titre}].md`) and parse `## PRs`.
 2. Verify safety gates : `--i-tested` present, no `awaiting-us-completion`
    label, CI green, no `CHANGES_REQUESTED` review, branch up-to-date with
    `develop`, no uncommitted changes.
@@ -40,7 +41,8 @@ Steps (high-level — see the agent file for the full spec) :
 4. Ask whether the human merged the `client-angular` TFS PR ; if yes,
    switch the local Angular clone back to `develop`.
 5. Wait up to 2 min for CI green on `develop` (rule 5).
-6. Move `tasks/done-{task-id}.md → tasks/archived/archived-{task-id}.md`
+6. Move the task with `Tools/tasks/task-file.sh move {task-id} archived` →
+   `tasks/archived/archived-{task-id}[_{titre}].md`, title kept
    (creates the `tasks/archived/` subdir if missing) and append a
    `## Merged` section with the squash commit SHAs.
 7. **Staging cleanup** : delete the run's staging branch

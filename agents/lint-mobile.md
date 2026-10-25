@@ -80,7 +80,7 @@ not change behaviour (CLAUDE.md rule 1).
    Mode B (stand-alone).
 
 3. **Mode A — skip detection** : read `**Repos**:` from
-   `tasks/wip-{task-id}.md`. If `client-mobile` is **not** listed **AND**
+   `tasks/wip-{task-id}[_{titre}].md`. If `client-mobile` is **not** listed **AND**
    `git -C Client/Mobile diff --name-only origin/develop...HEAD` is empty
    (no mobile work on the feature branch) **AND** `git -C Client/Mobile
    status --porcelain` is empty, skip cleanly :

@@ -22,8 +22,9 @@ In autonomous mode (`/develop` upstream) this halts the chain ; in
 
 ## Steps
 
-1. **Locate the task file** : accept `tasks/wip-{task-id}.md` or
-   `tasks/review-{task-id}.md`. If missing → abort.
+1. **Locate the task file** : `Tools/tasks/task-file.sh path {task-id} wip review` —
+   accepts `tasks/wip-{task-id}[_{titre}].md` or `tasks/review-{task-id}[_{titre}].md`.
+   Exit 1 (missing) or 2 (two files) → abort.
 
 2. **Read the task** : `## Branches`, `## Definition of Done`, `## Manual Test Plan`,
    `## Objectif` (to understand the intent of the US).
@@ -268,14 +269,16 @@ In autonomous mode (`/develop` upstream) this halts the chain ; in
    - Skip entirely. Write the note "managed manually by the human" in the
      task's `## PRs` section.
 
-10. **Rename the task** : `mv tasks/{wip|review}-{task-id}.md tasks/done-{task-id}.md`
-    and append `## PRs` and `## Code Review Summary` sections.
+10. **Rename the task** : `new=$(Tools/tasks/task-file.sh move {task-id} done)` — `git mv`
+    to `tasks/done-{task-id}[_{titre}].md`, title kept — and append `## PRs` and
+    `## Code Review Summary` sections to `$new`.
 
     > ⚠️ **Staging après le renommage** (7 récidives, task-325 à task-351) : après le
-    > `git mv`, **ne citer QUE le nouveau nom** dans `git add`. L'ancien chemin n'existe
-    > plus, et un `git add` qui le cite échoue en `fatal` sans rien indexer. Enchaîner
-    > `git add … && git commit …`, sans pipe ni filtre sur `git add`, puis lire
-    > `git show --stat HEAD` avant le push.
+    > `git mv`, **ne citer QUE le nouveau nom** dans `git add` — celui qu'imprime
+    > `task-file.sh move`, jamais un chemin recomposé à la main (le titre le rend long et
+    > facile à mal recopier). L'ancien chemin n'existe plus, et un `git add` qui le cite
+    > échoue en `fatal` sans rien indexer. Enchaîner `git add "$new" && git commit …`, sans
+    > pipe ni filtre sur `git add`, puis lire `git show --stat HEAD` avant le push.
 
 10b. **Recopier la table `## Timings`** du task file dans le rapport final de
     fin de cycle (elle est déjà à jour : `step.sh end` la régénère). Le coût du

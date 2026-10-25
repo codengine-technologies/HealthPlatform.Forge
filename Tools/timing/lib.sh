@@ -161,13 +161,18 @@ fmt_ms() {
 }
 
 # Locate a task file whatever its lifecycle state. Prints nothing when absent.
+# Both names are valid : `wip-task-400.md` and, since 2026-10-25, the titled
+# `wip-task-400_delegation_tracer.md` (the `_` keeps task-40 from matching
+# task-400). Same rule as Tools/tasks/task-file.sh, kept inline so the hot path
+# depends on nothing else.
 task_file() {
-  local id=$1 root f
+  local id=$1 root st dir f
   root=$(forge_root) || return 1
-  for f in "$root/tasks/wip-$id.md" "$root/tasks/review-$id.md" \
-           "$root/tasks/done-$id.md" "$root/tasks/todo-$id.md" \
-           "$root/tasks/archived/archived-$id.md"; do
-    [ -f "$f" ] && { printf '%s' "$f"; return 0; }
+  for st in wip review done todo archived; do
+    dir="$root/tasks"; [ "$st" = archived ] && dir="$root/tasks/archived"
+    for f in "$dir/$st-$id.md" "$dir/$st-${id}_"*.md; do
+      [ -f "$f" ] && { printf '%s' "$f"; return 0; }
+    done
   done
   return 1
 }

@@ -190,13 +190,13 @@ def task_table(events, task_id):
 
 def sync_task_file(root, task_id, table):
     """Replace (or append) the ## Timings section of the task file."""
-    candidates = (
-        glob.glob(os.path.join(root, "tasks", "wip-%s.md" % task_id))
-        + glob.glob(os.path.join(root, "tasks", "review-%s.md" % task_id))
-        + glob.glob(os.path.join(root, "tasks", "done-%s.md" % task_id))
-        + glob.glob(os.path.join(root, "tasks", "todo-%s.md" % task_id))
-        + glob.glob(os.path.join(root, "tasks", "archived", "archived-%s.md" % task_id))
-    )
+    # Both names are valid : `wip-task-400.md` and the titled `wip-task-400_{titre}.md`
+    # (2026-10-25). Same rule as Tools/tasks/task-file.sh.
+    candidates = []
+    for state in ("wip", "review", "done", "todo", "archived"):
+        folder = os.path.join(root, "tasks", "archived") if state == "archived" else os.path.join(root, "tasks")
+        stem = os.path.join(folder, "%s-%s" % (state, glob.escape(task_id)))
+        candidates += glob.glob(stem + ".md") + sorted(glob.glob(stem + "_*.md"))
     if not candidates:
         return None
     path = candidates[0]

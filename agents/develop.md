@@ -28,7 +28,7 @@ packages when DTOs or interop libraries change. You **never merge** on
 
 ## Inputs
 
-- A task file in `tasks/wip-{task-id}.md`. Mandatory sections :
+- A task file in `tasks/wip-{task-id}[_{titre}].md`. Mandatory sections :
   - `**Repos**:` — comma-separated list of repo keys
   - `## Objectif` — what the US is about
   - `## Definition of Done` — the binary criteria you must satisfy
@@ -86,9 +86,10 @@ transition.
 
 ### Step 0 — Pre-flight
 
-1. **Verify the task file** is in `tasks/wip-{task-id}.md`. If in `todo-*`,
-   abort and tell the human to run `/start` first. If already in `review-*`
-   or `done-*`, abort.
+1. **Verify the task file** is in `tasks/wip-{task-id}[_{titre}].md` :
+   `Tools/tasks/task-file.sh path {task-id} wip` (never compose the path by
+   hand — the file may carry a title). If in `todo-*`, abort and tell the
+   human to run `/start` first. If already in `review-*` or `done-*`, abort.
 
 2. **Verify the branches exist** on every listed repo (per `## Branches`
    section of the task). The branch must be the current HEAD :
@@ -102,7 +103,7 @@ transition.
    Any deviation → abort with the offending repo + reason. Do not switch
    branches. The human resolves and re-invokes.
 
-3. **Verify the workspace is clean** — `tasks/wip-{task-id}.md` is the only
+3. **Verify the workspace is clean** — `tasks/wip-{task-id}[_{titre}].md` is the only
    wip task. If multiple `wip-*` files coexist, abort : the autonomous loop
    serialises tasks, parallel `wip-*` is a sign something is off.
 

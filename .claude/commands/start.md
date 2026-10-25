@@ -58,7 +58,9 @@ philosophy was inverted on 2026-04-27 — see CLAUDE.md "Forge philosophy".
    The forge does NOT switch branches itself — it only reports. The human
    handles the cleanup in WindSurf or the terminal.
 
-1. **Locate the task file** : `tasks/todo-{task-id}.md`. If missing → abort.
+1. **Locate the task file** : `Tools/tasks/task-file.sh path {task-id} todo` — it finds
+   `tasks/todo-{task-id}.md` as well as the titled `tasks/todo-{task-id}_{titre}.md`. Exit 1
+   (missing) or 2 (two files for the id) → abort and print its message.
 
 2. **Read the task** and extract :
    - `**Repos**:` → comma-separated list of repo keys (plural, mandatory).
@@ -66,7 +68,9 @@ philosophy was inverted on 2026-04-27 — see CLAUDE.md "Forge philosophy".
    - `**Single frontend**:` (optional, default `false`) → if `true`, skip the
      paired-frontend safety net below
    - `**Dependencies**:` → if any dep is not in `done-*`, abort and name it
-   - The task body (for the branch slug)
+   - The branch slug : `Tools/tasks/task-file.sh branch-slug {task-id}` — the file's title,
+     with hyphens, cut at 40 characters. Exit 1 means an older file without a title : derive
+     the slug from the task's H1 instead (lowercase, hyphenated, max 40 chars).
 
 3. **Resolve the target repos** :
    - Start with the list from `**Repos**:`
@@ -119,7 +123,9 @@ philosophy was inverted on 2026-04-27 — see CLAUDE.md "Forge philosophy".
    Branch prefix : `feat/`, `fix/`, `wire/`, `chore/` — pick from the task type.
    Confirm with the human if ambiguous.
 
-6. **Rename the task** : `mv tasks/todo-{task-id}.md tasks/wip-{task-id}.md`.
+6. **Rename the task** : `Tools/tasks/task-file.sh move {task-id} wip` — `git mv` to
+   `tasks/wip-{task-id}[_{titre}].md`, title kept ; it prints the new path, the only one to
+   cite afterwards.
 
 7. **Append a `## Branches` section** to the wip task file, listing every repo
    with its mode (`pushed`, `code-only`, or `manual`) and the relevant info :

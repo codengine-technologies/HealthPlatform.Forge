@@ -294,6 +294,23 @@ Task lifecycle : `todo → wip → review → done → archived`
 - `tasks/done-*.md` : validée, PR ouverte, en attente du merge humain (HAG, règle 10)
 - `tasks/archived/archived-*.md` : **état terminal**, post-merge. Le fichier est déplacé dans le sous-répertoire `tasks/archived/` par `/merge` une fois la PR mergée par l'humain. Les globs `/forge` et `/status` ne recursent pas — ce sous-dir reste invisible des cycles actifs. Seul `/tech-writer` le scanne pour le changelog historique.
 
+**Nom d'un task file : `{état}-{task-id}_{titre}.md`** (depuis le 2026-10-25, demande humaine).
+Exemple : `todo-task-400_delegation_tracer_ce_qui_agit.md`.
+- Le **titre** est un repère pour le développeur : quelques mots choisis par `/po`, normalisés
+  en ASCII minuscule séparé par `_`, **100 caractères au plus**. Il est fixé à la création et ne
+  change plus : les renommages du cycle de vie ne touchent que le préfixe d'état.
+- L'**identifiant** (`task-400`) reste la seule clé : `questions/{task-id}.md`, le journal de
+  mesure, les champs `**Dependencies**:` et les arguments des commandes (`/start task-400`) ne
+  portent jamais le titre. Le `_` qui suit l'identifiant empêche `task-40` d'attraper `task-400`.
+- Les task files **sans titre** (antérieurs, `todo-task-369.md`) restent valides et ne sont pas
+  renommés.
+- **On ne compose jamais un chemin de task file à la main.** Dans les playbooks, la notation
+  `tasks/wip-{task-id}[_{titre}].md` désigne le fichier, quelle que soit sa forme ; on le trouve
+  et on le déplace par **`Tools/tasks/task-file.sh`** :
+  `path {task-id} [état]` (introuvable → 1, deux fichiers → 2), `move {task-id} {état}` (`git mv`,
+  titre conservé), `name {task-id} "{titre}"` (nom canonique pour `/po`), `branch-slug {task-id}`
+  (slug de branche tiré du titre). Tests : `bash Tools/tasks/test_task_file.sh`.
+
 ### Epic linkage (optional)
 
 Each `todo-*.md` MAY declare `**Epic**: E{NNN}` to associate the US with a
@@ -907,7 +924,7 @@ Never modify without human arbitration:
 | `/lint-angular {task-id}` | Best-effort ESLint cleanup on `client-angular` (Working dir `Client/Angular/front/`). Reproduit la forme des commandes lint/build/test du pipeline Azure `Client/Angular/azure-pipelines.yml` (Stage 2 CI), avec deux divergences intentionnelles : (1) default `$BASE_BRANCH = origin/next` (branche d'intégration vivante du repo TFS, pas l'`origin/master` du pipeline) ; (2) lint scopé via `--projects=tag:scope:mss` (le forge ne fixe que le module MSS — `mss` + `mss-lib`). Build/test restent en scope complet pour détecter les régressions downstream. Auto-fix puis fix manuels 5 itérations max, accepte les errors restantes. Code-only — ne touche jamais à git. Standard step in the autonomous chain, skip clean si client-angular non touché. See `agents/lint-angular.md`. |
 | `/sonar-s3776 api-mail` | **[Manual]** Reduce cognitive complexity of ONE method (S3776). One method = one PR. Characterisation tests written first. Out of the autonomous chain. See `.claude/commands/sonar-s3776.md`. |
 | `/review {task-id}` | Validate the implementation (build + tests + DOD + code review), commit/push/sync develop, open the PR (label `awaiting-human-merge`), rename `done-*`, chain into `/tech-writer`. Autonomous — no human prompt. |
-| `/merge {task-id} --i-tested` | **[Human only]** After the human has tested the US end-to-end on the open PRs, squash-merge each pushable PR, sync `develop`, delete the branches, move the task into `tasks/archived/archived-{task-id}.md`. Refuses without `--i-tested`, on `awaiting-us-completion` label, or red CI. Never invoked by `/forge` — HAG (rule 10) stays. See `agents/merge.md`. |
+| `/merge {task-id} --i-tested` | **[Human only]** After the human has tested the US end-to-end on the open PRs, squash-merge each pushable PR, sync `develop`, delete the branches, move the task into `tasks/archived/archived-{task-id}[_{titre}].md`. Refuses without `--i-tested`, on `awaiting-us-completion` label, or red CI. Never invoked by `/forge` — HAG (rule 10) stays. See `agents/merge.md`. |
 | `/tech-writer E{NNN}` | Refresh `docs/epics/E{NNN}-{slug}.md` from all tasks that declare `**Epic**: E{NNN}` — y compris la galerie **« État visuel de l'application »** (copies d'écran de `Docs/epics/img/screens/{app}/` appartenant à l'EPIC, embeds relatifs, libellés produit). Called automatically at the tail of `/review` ; can be run manually for retro-generation or `--refresh`. See `agents/technical-writer.md`. |
 | `/forge` | Loop autonome : pour chaque `tasks/todo-task-*.md`, déclenche `/start` → `/develop` (code + passe qualité `/simplify`) → `/sonar` → `/lint-angular` → `/lint-mobile` → `/e2e` → `/review` → `/tech-writer`. Séquentiel (pas de parallélisme). Stop sur la première task qui échoue (écrit `questions/`, passe à la suivante). Agrège chaque task validée sur une **branche staging par run** `forge/staging-task-{début}-{fin}-{date}` (fraîche depuis `develop`, par repo pushable, best-effort) pour test du lot complet — voir « Branche staging par run `/forge` ». **Ne déclenche jamais `/merge`**, n'ouvre **aucune** PR staging → develop — HAG, règle 10. |
 | `/status` | Quick status in < 10 lines |

@@ -54,7 +54,7 @@ se mesure aussi (`--status skipped`) : sinon on ne distingue plus « gratuit » 
    - puis chaînage immédiat vers `/review`, comme un skip propre.
    - La forge **ne pose jamais** ce champ d'elle-même, et ne le retire pas. Un champ absent ou
      d'une autre forme (pas « décision humaine ») ne vaut pas bypass.
-1. Task file `tasks/wip-{task-id}.md` présent. Sinon, abandon.
+1. Task file `tasks/wip-{task-id}[_{titre}].md` présent. Sinon, abandon.
 2. **Repos touchés** par la task — pas seulement listés : un repo listé sans aucun changement ne
    déclenche rien.
    - Repo poussable (`api-mail`, `client-mobile`, `dtos-mss`) : touché si sa branche

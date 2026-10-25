@@ -82,7 +82,7 @@ the scope and skip rules differ.
 
 - Triggered by `/sonar {task-id}` once Sonar phases are done (or
   directly from `/develop` if the task didn't touch `api-mail`).
-- Task file : the existing `tasks/wip-{task-id}.md` (no new file).
+- Task file : the existing `tasks/wip-{task-id}[_{titre}].md` (no new file).
 - Working branch on `Client/Angular/` : **whatever is currently checked
   out** — the human owns it.
 - Scope : `npx nx affected -t lint --base="$BASE_BRANCH" --head=HEAD
@@ -240,7 +240,7 @@ Angular Sonar analysis stays a CI-only concern for now).
 
 1. **Detect the mode** from the invocation argument :
    - `/lint-angular` (no task) → **Mode B** (stand-alone)
-   - `/lint-angular {task-id}` where `tasks/wip-{task-id}.md` exists →
+   - `/lint-angular {task-id}` where `tasks/wip-{task-id}[_{titre}].md` exists →
      **Mode A** (chained)
 
 2. **Verify the Angular working directory exists** :
@@ -272,11 +272,16 @@ Angular Sonar analysis stays a CI-only concern for now).
    (e.g. `**LintBase**: origin/master` for a hotfix targeting master).
 
    ```bash
-   cd Client/Angular/front
+   # Task file resolved from the workspace root, BEFORE any cd : the previous form
+   # tested `tasks/wip-….md` after `cd Client/Angular/front`, never found it, and
+   # silently ignored **LintBase** / **LintProjects** (fixed 2026-10-25).
+   F=/d/TechWatch/HealthPlatform
+   TF=$("$F/Tools/tasks/task-file.sh" path {task-id} wip 2>/dev/null) && TF="$F/$TF" || TF=""
+   cd "$F/Client/Angular/front"
    BASE_BRANCH="origin/next"                # forge default (active TFS branch)
    # Override : grep the task file for **LintBase**:
-   if [ -n "{task-id}" ] && [ -f "tasks/wip-{task-id}.md" ]; then
-     override=$(grep -E '^\*\*LintBase\*\*:' tasks/wip-{task-id}.md \
+   if [ -n "$TF" ]; then
+     override=$(grep -E '^\*\*LintBase\*\*:' "$TF" \
                 | sed 's/^\*\*LintBase\*\*: *//' | head -1 | tr -d ' ')
      if [ -n "$override" ]; then
        BASE_BRANCH="$override"
@@ -298,8 +303,9 @@ Angular Sonar analysis stays a CI-only concern for now).
 
     ```bash
     LINT_PROJECTS="tag:scope:mss"            # forge default (MSS module)
-    if [ -n "{task-id}" ] && [ -f "tasks/wip-{task-id}.md" ]; then
-      override=$(grep -E '^\*\*LintProjects\*\*:' tasks/wip-{task-id}.md \
+    # $TF : the task file resolved in step 3 (empty in Mode B).
+    if [ -n "$TF" ]; then
+      override=$(grep -E '^\*\*LintProjects\*\*:' "$TF" \
                  | sed 's/^\*\*LintProjects\*\*: *//' | head -1 | tr -d ' ')
       if [ -n "$override" ]; then
         LINT_PROJECTS="$override"
@@ -328,7 +334,7 @@ Angular Sonar analysis stays a CI-only concern for now).
    first command (Nx will refuse the affected computation) and halt.
 
 4. **Mode A — skip detection** :
-   - Read `**Repos**:` from `tasks/wip-{task-id}.md`. If `client-angular`
+   - Read `**Repos**:` from `tasks/wip-{task-id}[_{titre}].md`. If `client-angular`
      is not listed AND `git -C Client/Angular/front status --porcelain`
      is empty (no uncommitted changes), skip cleanly :
      - Append `## Lint log\n- skipped — no angular change\n` to the task

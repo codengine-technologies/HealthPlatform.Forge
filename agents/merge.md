@@ -19,7 +19,8 @@ the feature for the human, you **never** decide if a US is ready, you
 
 ## Inputs
 
-- A task file in `tasks/done-{task-id}.md`. Mandatory sections :
+- A task file in `tasks/done-{task-id}[_{titre}].md` (found by
+  `Tools/tasks/task-file.sh path {task-id} done`). Mandatory sections :
   - `## PRs` — one line per repo with the PR URL and current label
   - `## Branches` — already populated by `/start`
 - The polyrepo described in `CLAUDE.md` (paths, repo type).
@@ -71,7 +72,7 @@ lifecycle silently).
 
 For excluded repos (`devops`, `psc-proxy-*`) : skipped, log only.
 
-The task file is moved to `tasks/archived/archived-{task-id}.md` once every
+The task file is moved to `tasks/archived/archived-{task-id}[_{titre}].md` once every
 pushable PR is merged (the `archived/` subdirectory keeps the active task
 states — `todo-`, `wip-`, `review-`, `done-` — uncluttered at the root
 of `tasks/`).
@@ -125,9 +126,9 @@ Same three-mode taxonomy as the rest of the forge :
 
 ## Steps
 
-1. **Locate the task file** : `tasks/done-{task-id}.md`. If the task is
-   still in `wip-*` or `review-*` → abort with "task not yet done — run
-   `/review` first".
+1. **Locate the task file** : `Tools/tasks/task-file.sh path {task-id} done`
+   (`tasks/done-{task-id}[_{titre}].md`). If the task is still in `wip-*` or
+   `review-*` → abort with "task not yet done — run `/review` first".
 
 2. **Parse `--i-tested` flag** : if absent, print the Manual Test Plan and
    the HAG reminder, abort.
@@ -276,11 +277,12 @@ Same three-mode taxonomy as the rest of the forge :
 8. **Archive the task** — move into the `tasks/archived/` subdirectory and
    prefix the filename with `archived-` :
    ```bash
-   mv tasks/done-{task-id}.md tasks/archived/archived-{task-id}.md
+   new=$(Tools/tasks/task-file.sh move {task-id} archived)
+   # → tasks/archived/archived-{task-id}[_{titre}].md (git mv, title kept)
    ```
-   The `tasks/archived/` subdir is the **terminal location**. It MUST
-   exist ; if not (fresh forge), create it with `mkdir -p tasks/archived`
-   before the move. Append a `## Merged` section to the moved file with
+   The `tasks/archived/` subdir is the **terminal location** ; the tool
+   creates it if missing. Cite only `$new` afterwards (`git add "$new"`), never
+   a path recomposed by hand. Append a `## Merged` section to the moved file with
    the merge timestamp, the squash commit SHA per repo, and the CI run
    URL on `develop`.
 
@@ -337,7 +339,7 @@ Same three-mode taxonomy as the rest of the forge :
    develop CI : ✓ green on all pushable repos
    Staging : forge/staging-task-{début}-{fin}-{date} deleted (run fully merged)
              (or : kept — task(s) {ids} still pending in this run)
-   Task archived : tasks/archived/archived-{task-id}.md
+   Task archived : tasks/archived/archived-{task-id}[_{titre}].md
    ```
 
 ## Rules

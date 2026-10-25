@@ -46,7 +46,7 @@ Read `agents/lint-mobile.md` and execute the full playbook :
    behavioural — CLAUDE.md rule 1), apply fixes, build + test, re-lint
 5. Stop when : zero errors, no progression, or 5 iterations done
 6. Hand-off :
-   - Mode A : append `## Lint mobile log` to `tasks/wip-{task-id}.md`,
+   - Mode A : append `## Lint mobile log` to `tasks/wip-{task-id}[_{titre}].md`,
      commit + push the fixes (explicit staging, never `git add -A`), invoke
      `/review {task-id}` (autonomous, no human prompt).
    - Mode B : print the final report and exit (no commit unless asked).

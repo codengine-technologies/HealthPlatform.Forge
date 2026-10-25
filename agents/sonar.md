@@ -100,7 +100,7 @@ between them but the pre-flight, branch model and hand-off differ.
 
 - Triggered by `/develop {task-id}` once the feature implementation is
   committed, pushed, and the `/simplify` quality pass has run
-- Task file : the existing `tasks/wip-{task-id}.md` (no new file)
+- Task file : the existing `tasks/wip-{task-id}[_{titre}].md` (no new file)
 - Branch : the existing `feat/{task-id}-{slug}` on `api-mail` (reused)
 - Iterations : best-effort 5 max, accept remaining issues
 - Hand-off : `/review {task-id}` (the same task, NOT a separate Sonar PR)
@@ -334,7 +334,7 @@ gitignored).
 1. **Detect the mode** from the invocation argument :
    - `/sonar api-mail` (or `/sonar` with no task in flight) → **Mode B**
      (stand-alone)
-   - `/sonar {task-id}` where `tasks/wip-{task-id}.md` exists → **Mode A**
+   - `/sonar {task-id}` where `tasks/wip-{task-id}[_{titre}].md` exists → **Mode A**
      (chained)
 
 2. **Mode A — chained** : verify `api-mail` is on the existing feature

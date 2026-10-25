@@ -74,7 +74,7 @@ Read `agents/lint-angular.md` and execute the full playbook :
    evaluate progression
 5. Stop when : zero errors, no progression, or 5 iterations done
 6. Hand-off :
-   - Mode A : append `## Lint log` to `tasks/wip-{task-id}.md`, invoke
+   - Mode A : append `## Lint log` to `tasks/wip-{task-id}[_{titre}].md`, invoke
      `/lint-mobile {task-id}` (autonomous, no human prompt — it self-skips
      to `/review` when `client-mobile` wasn't touched).
    - Mode B : print the final report and exit.

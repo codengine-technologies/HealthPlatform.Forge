@@ -89,6 +89,9 @@ Tools/*
 !Tools/e2e/
 !Tools/e2e/**
 Tools/e2e/__pycache__/
+# Résolveur de task files (Tools/tasks/task-file.sh) : nom titré {état}-{task-id}_{titre}.md.
+!Tools/tasks/
+!Tools/tasks/**
 
 # The ledger is the forge's measurement journal (committed, append-only).
 # The .state/ markers are machine-local run state and must never be tracked.

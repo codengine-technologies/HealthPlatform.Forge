@@ -250,17 +250,19 @@ Then ask the human :
 Validate this US? (yes / adjust / skip)
 ```
 
-- **yes** → write the `.feature` file + `tasks/todo-task-{seq}.md`
+- **yes** → write the `.feature` file + `tasks/todo-task-{seq}_{titre}.md`
 - **adjust** → ask what to change, revise, re-present
 - **skip** → move to the next US without writing anything
 
-#### Step 4 — Numbering convention
+#### Step 4 — Numbering and naming convention
 
-Tasks are numbered sequentially within the batch :
-- `todo-task-001.md`, `todo-task-002.md`, …
-- Branch name (created later by `/start`) : `feat/task-001-{slug}`
+Tasks take the next free numbers, in order : `task-401`, `task-402`, … Read the
+highest number on `origin/develop` of the control plane, not only in the local
+checkout, which can lag by many commits.
 
-The slug is derived from the US title (lowercase, hyphenated, max 40 chars).
+Each file name carries a **title** — see « Naming convention » below. The
+branch created later by `/start` reuses it : `feat/task-401-{slug}`, the same
+words with hyphens, cut at 40 characters.
 
 #### Step 5 — Batch summary
 
@@ -272,8 +274,8 @@ After all US have been presented, show a summary :
 - {X} US validated and written
 - {Y} US skipped
 - Files created :
-  - tasks/todo-task-001.md → {title}
-  - tasks/todo-task-002.md → {title}
+  - tasks/todo-task-401_{titre}.md → {title}
+  - tasks/todo-task-402_{titre}.md → {title}
   - ...
   - Features/{Module}/{Name}.feature (× {Z})
 
@@ -426,8 +428,24 @@ See tests/Features/Auth/Authentication.feature
 - **AIPD / impact RGPD** : à mettre à jour si nouveau traitement
 ```
 
-**Naming convention:**
-- `todo-{feature}-{seq}.md` — e.g. `todo-auth-001.md`, `todo-clinical-notifications-046.md`
+**Naming convention (since 2026-10-25) :** `todo-{task-id}_{titre}.md` — e.g.
+`todo-task-400_delegation_tracer_ce_qui_agit.md`.
+- **You choose the title.** It is the developer's landmark : a few words that
+  name what the US delivers, recognisable in a file list or a branch name
+  (« delegation tracer ce qui agit », not « amélioration de la délégation »).
+  Not the full H1 of the task : the shortest phrase that still tells two
+  neighbouring tasks apart.
+- **Never compose the name by hand** — normalise it with the tool (ASCII,
+  lowercase, `_` between words, 100 characters at most, cut on a word) :
+  ```bash
+  Tools/tasks/task-file.sh name task-400 "Délégation : tracer ce qui agit"
+  # → todo-task-400_delegation_tracer_ce_qui_agit.md
+  ```
+- **The title is fixed at creation.** The lifecycle renames (`/start`,
+  `/review`, `/merge`) only change the state prefix. Rewording it later would
+  break the links already written in PRs and in `questions/`.
+- **The id stays the only key** : `**Dependencies**:`, `questions/{task-id}.md`
+  and the command arguments (`/start task-400`) never carry the title.
 - No `back-`, `front-blazor-`, `front-angular-` prefixes — the task is
   **layer-agnostic** because it spans all layers by default
 
