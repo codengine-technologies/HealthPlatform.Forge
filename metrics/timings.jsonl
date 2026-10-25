@@ -6106,3 +6106,5 @@
 {"ts":"2026-10-25T00:08:40+02:00","run_id":"-","type":"step","task":"task-394","step":"review","status":"failed","note":"CHANGES REQUESTED : perte de texte (mobile signature par défaut, weda2 sous la citation) ; règle à confirmer","iterations":null,"duration_ms":293808}
 {"ts":"2026-10-25T02:04:57+02:00","run_id":"-","type":"step_start","task":"task-378","step":"tech-writer"}
 {"ts":"2026-10-25T02:07:36+02:00","run_id":"-","type":"step","task":"task-378","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":158994}
+{"ts":"2026-10-25T08:42:56+01:00","run_id":"-","type":"step_start","task":"task-378","step":"merge"}
+{"ts":"2026-10-25T08:48:54+01:00","run_id":"-","type":"step","task":"task-378","step":"merge","status":"ok","note":"","iterations":null,"duration_ms":358625}
