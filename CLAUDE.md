@@ -302,7 +302,7 @@ Exemple : `todo-task-400_delegation_tracer_ce_qui_agit.md`.
 - L'**identifiant** (`task-400`) reste la seule clé : `questions/{task-id}.md`, le journal de
   mesure, les champs `**Dependencies**:` et les arguments des commandes (`/start task-400`) ne
   portent jamais le titre. Le `_` qui suit l'identifiant empêche `task-40` d'attraper `task-400`.
-- Les task files **sans titre** (antérieurs, `todo-task-369.md`) restent valides et ne sont pas
+- Les task files **sans titre** (antérieurs au 2026-10-25, `done-task-397.md`) restent valides et ne sont pas
   renommés.
 - **On ne compose jamais un chemin de task file à la main.** Dans les playbooks, la notation
   `tasks/wip-{task-id}[_{titre}].md` désigne le fichier, quelle que soit sa forme ; on le trouve
