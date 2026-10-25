@@ -437,3 +437,17 @@ de Virginie (`virginie.medecinrpps0062267@medecin.formation.mssante.fr`).
   - envoi « de la part de » : task-399 ;
   - traçabilité acteur / propriétaire : task-400 ;
   - HPRIM : task-389 et task-390.
+
+## Branches
+
+- `api-mail` (pushed) : feat/task-397-delegation-bal-lecture-directe — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-397-delegation-bal-lecture-directe
+- Pré-flight 2026-10-25 : api-mail, client-blazor, client-mobile, dtos-mss, sdk sur `develop`. `host` (Host/Modules) et `interop` ne sont pas des racines de dépôt (noté, non bloquant, hors périmètre de la task).
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-397 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 18 s | — | — | — | — |
+| **Total cycle** | | **18 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
