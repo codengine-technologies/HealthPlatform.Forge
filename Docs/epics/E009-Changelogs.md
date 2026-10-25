@@ -761,6 +761,41 @@
   - remonter `originalMarkedCancelled` et `warning` par `drafts/{id}/send` ;
   - bail renouvelable pour le verrou.
 
+### v1.107 — Une rédaction sans texte dans le corps ne laisse ni brouillon ni question (weda2 et mobile) — task-394
+
+- **Origine** : signalement de l'humain du 2026-10-24. Sur weda2, la croix d'un nouveau message vide demandait « abandonner le brouillon ? ».
+- **Décisions de l'humain** :
+  1. sans texte saisi dans le corps, aucun brouillon ; l'objet, les destinataires et les pièces jointes seuls ne suffisent pas ;
+  2. la règle vaut pour weda2 et le mobile ;
+  3. « saisi » veut dire que le corps diffère de ce que la rédaction a proposé (vide, signature, citation, brouillon repris), image comprise ;
+  4. un brouillon rouvert est enregistré tel qu'il est affiché, dès que son corps n'est pas vide.
+- **weda2** (code seul) :
+  - `bodyFingerprint` : texte visible et images, insensible aux réécritures de tiptap ;
+  - `proposedBody` : le corps proposé par l'application ;
+  - la croix ferme sans question en l'absence de texte, de brouillon enregistré et d'intention de l'hôte ;
+  - cinq points d'entrée : croix, enregistrement automatique, quitter, autre rédaction, `beforeunload`.
+- **mobile** :
+  - `normalizeBody`, `bodyChanged` et `isBlankBody` ;
+  - le corps proposé est suivi à chaque écriture faite par l'application ;
+  - les tests dans le vrai éditeur sont isolés (sélection et élément retirés en fin de test).
+- **Revue** : deux passes.
+  - Passe 1 : la règle « texte hors signature et hors citation » perdait du texte réellement écrit (curseur dans la signature sur le mobile, réponse sous la citation sur weda2). D'où la décision 3.
+  - Passe 2 : APPROVED.
+- **E2E** :
+  - **E2E-DRAFT-004** v1 (aucune question, aucun brouillon relu côté serveur), prouvé rouge sur les deux clients ;
+  - E2E-DRAFT-003 (mobile) se joue avec une signature par défaut et est prouvé rouge sous mutation ;
+  - les gestes de DRAFT-001, DRAFT-002, COMPOSE-003 (mobile) et DETAIL-001 (weda2) sont adaptés, ce qu'ils vérifient ne change pas ;
+  - divergence temporaire angular sur **E2E-MAILBOX-002** : le code weda2 de task-378 n'est pas livré sur la branche ; décision humaine, résorbée par **task-395**.
+- **Tests** : weda2 `mss-lib` 1 239 ; mobile 1 262 ; api-mail 6 767.
+- **Sonar** : skipped (aucun code C#).
+- **PR** : `api-mail` #311, `client-mobile` #105 ; weda2 en code seul.
+- **Leçons** : dans `conventions/e2e.md`, `comportement-retire-encore-traverse` (2 occurrences), `html-construit-a-la-main`, et une ligne dans « Trous du filet ».
+- **Suivis** :
+  - task-395 ;
+  - le texte tapé dans les marqueurs de signature est effacé par un changement de signature (mobile) ;
+  - les 4 tests mobiles « suggestions de destinataires » dépendent de l'ordre d'exécution ;
+  - la mise en forme seule n'est pas comptée sur weda2.
+
 ### v1.106 — Carnet d'adresses refondu (weda2 et mobile) : aperçu, écrire, marques explicites, fiche protégée — task-393
 
 - **Origine** : refonte demandée par l'humain le 2026-10-24, d'après deux maquettes Stitch weda2 (projet `HealthPlatform`, écrans `mss-contacts — carnet d'adresses (liste + aperçu)` et `mss-contacts — fiche contact (modification)`). Retirés par décision humaine : derniers échanges, date de naissance, date de synchronisation de l'annuaire, indice de domaine.
@@ -1699,6 +1734,7 @@ Audit grep complémentaires pour les couches 2 / 2bis / 3 (tasks 021 / 022 / 023
 
 | Task | Apport principal | Règles touchées |
 |------|------------------|-----------------|
+| task-394 | **Une rédaction sans texte dans le corps ne laisse ni brouillon ni question.** Le corps compte dès qu'il diffère de ce que la rédaction proposait (signature, citation), où que soit l'ajout ; weda2 ferme sans question un message non écrit ; un brouillon rouvert est enregistré tel qu'affiché. | — |
 | task-393 | **Le carnet d'adresses refondu, sur la messagerie web et l'application mobile.** Aperçu d'un contact à côté de la liste (fiche plein écran sur mobile), « Écrire un message » vers l'adresse par défaut ou l'adresse choisie, marques « Sans adresse MSSanté » et « Annuaire » avec filtres rapides, adresse par défaut choisie par bouton radio, contrôle du format des adresses, confirmation avant d'abandonner une fiche modifiée, RPPS de l'annuaire non modifiable. | — |
 | task-388 | **Les finitions de la recherche dans l'annuaire, puis la spécialité des contacts.** Extension du 2026-10-24 : `ContactDto.Profession` et `Specialty` (533.0.0), suggestions de destinataires avec avatar, icône du type et spécialité (weda2 et mobile), icônes de type corrigées. Finitions : Une organisation de moins de 3 caractères est refusée avec une spécialité sans lieu ; une page de maintenance est gardée en « indisponible » ; le mobile n'affiche plus jamais le message technique d'Angular ; Blazor distingue session expirée et annuaire indisponible, et ne lance plus deux fois la recherche. | — |
 | task-373 | **La fiche d'un patient ne montre que ce qui lui appartient.** Routes `folder` / `documents` par handle servant les seuls documents actifs de la fiche ; unité dans la série de biologie, période automatique juste ; opposition relue et rétablie sur échec ; rattachement protégé des réponses périmées ; vue patient mobile enfin alimentée (weda2 + mobile). | — |

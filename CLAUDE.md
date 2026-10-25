@@ -815,6 +815,37 @@ est celui produit après `/tech-writer`.
 
 ---
 
+### 14. BAL déléguée : aucune donnée n'est persistée chez le délégataire — non-négociable
+
+> Posée par l'humain le 2026-10-25, avec la task-397 (délégation de BAL Mailiz, EPIC E009).
+
+Mailiz expose la BAL d'un délégant au délégataire sous l'espace de noms IMAP partagé
+`shared/<adresse du délégant>/…`. **Rien de ce qui vient d'une BAL déléguée n'est écrit chez le
+délégataire.**
+
+- **Interdit** : écrire en base tenant, dans Redis ou dans un journal applicatif un message, un
+  en-tête, un corps, une pièce jointe, un document (CDA, HPRIM…), une biologie, une identité
+  patient, un nom de dossier ou un compteur d'une BAL déléguée.
+- **Interdit aussi** : l'exploiter, c'est-à-dire en tirer un patient, une étiquette IA, un
+  embedding, un résultat de recherche, un contact ou une notification.
+- **Seul mode autorisé** : la lecture en direct sur le serveur IMAP, à chaque affichage, en mémoire.
+  Les documents sont décodés pour être lus, jamais stockés.
+- **Seule exception** : l'audit PGSSI-S, réduit à l'action, l'auteur, le dossier, l'UID et le
+  `Message-ID`. Il ne garde ni objet, ni correspondants, ni donnée patient.
+- **Une garde unique à la frontière d'écriture** refuse tout chemin `shared/`, et un test de
+  convention la protège. Une US qui touche messages, dossiers ou documents prouve « rien de
+  persisté » par un test d'intégration sur le banc de délégation.
+- **`/review` refuse la PR** (CHANGES REQUESTED, bloquant) si une écriture peut recevoir un chemin
+  `shared/` sans passer par cette garde.
+
+**Pourquoi** : la délégation donne un droit d'**accès**, pas de copie, et le délégant reste
+responsable du secret professionnel. Le 2026-10-25 en formation, la base d'un délégataire contenait
+déjà 101 messages de sa délégante, 64 documents, 323 résultats de biologie et 7 patients. Or la
+purge des dossiers disparus ne tourne qu'au prochain listage en ligne des dossiers : une copie peut
+donc survivre indéfiniment à la révocation, et aussi aux sauvegardes et aux caches.
+
+---
+
 ## Frozen files
 
 Never modify without human arbitration:

@@ -4,7 +4,7 @@
 > **Modèle** : hand-crafted
 > **Version** : 1.86
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-24 (carnet d'adresses refondu — task-393 ; fiche contact redessinée, spécialité des contacts — task-388)
+> **Dernière mise à jour** : 2026-10-25 (une rédaction sans texte ne laisse ni brouillon ni question — task-394 ; carnet d'adresses refondu — task-393)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1036,6 +1036,11 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
+- **v1.107 — Un message que vous n'avez pas écrit ne laisse ni brouillon ni question** (task-394, messagerie web et application mobile) :
+  - **Fermer un message où rien n'a été écrit dans le corps ne demande rien.** Sur la messagerie web, la croix le ferme directement, sans « abandonner le brouillon ? ». Aucun brouillon n'est créé, même si un destinataire, un objet ou une pièce jointe avaient été saisis.
+  - **Un brouillon n'existe que si vous avez écrit dans le corps.** Tout ajout compte, où qu'il soit : au-dessus ou sous votre signature, sous le message cité d'une réponse, au milieu de la citation, une image collée. La signature et la citation proposées à l'ouverture ne comptent pas. Le dossier « Brouillons » ne se remplit plus de messages vides.
+  - **Rien de ce que vous écrivez n'est perdu.** Avec du texte, la rédaction est enregistrée comme avant : automatiquement, en la quittant, et la messagerie web demande confirmation avant d'abandonner.
+  - **Un brouillon rouvert est enregistré tel que vous le voyez**, même si vous n'en corrigez que l'objet.
 - **v1.106 — Le carnet d'adresses se consulte, écrit et se modifie sans erreur** (task-393, messagerie web et application mobile) :
   - **Voir un contact sans quitter le carnet.** Sur la messagerie web, choisir un contact affiche sa fiche à côté de la liste : identité, activité, toutes ses adresses MSSanté (l'adresse par défaut en premier), étiquettes et notes. Sur l'application mobile, la fiche s'ouvre en plein écran, avec un retour au carnet.
   - **Écrire en un geste.** « Écrire un message » ouvre la rédaction avec l'adresse par défaut du contact. S'il a plusieurs adresses et aucune par défaut, vous choisissez d'abord l'adresse. Chaque adresse peut aussi être copiée.

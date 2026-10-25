@@ -1,7 +1,7 @@
 # todo-task-389.md — Un résultat de laboratoire reçu au format HPRIM devient un document de biologie
 
 **Repos**: api-mail
-**Dependencies**: — (aucune)
+**Dependencies**: task-397 (lecture en mémoire des messages d'une BAL déléguée, banc de délégation)
 **Epic**: E009
 **Single frontend**: true
 **Priorité**: **2** — les labos qui n'envoient pas encore de CR-BIO en CDA (ou un CDA invalide) arrivent aujourd'hui dans la nouvelle messagerie comme un mail portant un fichier technique illisible : le résultat n'existe ni dans la biologie du patient ni dans les alertes.
@@ -33,6 +33,14 @@
 5. **Reconnaissance : pièce `.hpm` + marqueurs de fin.** Ni l'objet (`HNET.1/MSG/`) ni le type MIME ne sont regardés.
 6. **Doublons : rien n'est rapproché ni masqué à la réception** (règle task-193, arbitrage du 2026-10-23). Le rapprochement — signal doublon existant (task-013) pour un même fichier, remplacement d'un partiel par le complété — se fait **au rattachement**, contre les HPRIM du dossier choisi par le médecin : livré par task-391.
 7. **Historique : nouveaux messages seulement.** Pas de rattrapage des messages déjà synchronisés.
+8. **BAL déléguée : affichage seul, aucune injection en base** (humain, 2026-10-25, délégation de
+   BAL Mailiz — voir task-397 et `Docs/audits/delegation-bal-mailiz-analyse-20261025.md`). Un HPRIM
+   porté par un message d'une BAL déléguée (dossier sous `shared/…`) est **lu pour être affiché**,
+   en mémoire, à l'ouverture du message.
+   - **Rien n'est stocké** chez le délégataire, ni en base ni dans Redis : aucun document, aucun
+     trait patient, aucune entrée dans la file « à intégrer ».
+   - Hors ligne, il n'est pas consultable.
+   - Même règle que pour le CDA délégué (task-397).
 
 ## Objective
 
@@ -52,6 +60,13 @@ Quand un mail porte un fichier HPRIM, api-mail en tire un **document médical de
 - **Corps du mail** : le texte HPRIM n'est jamais retenu comme corps.
 - **Échec de lecture** : le mail reste un mail normal avec sa pièce jointe ; aucun document partiel, sauf le cas des données parasites (résultats déjà lus conservés).
 - **Seuls les messages synchronisés après la mise en service** sont traités.
+- **BAL déléguée** (décision 8) : pour un message sous `shared/…`, le HPRIM est lu à l'affichage du
+  détail, et ses documents sont renvoyés dans la réponse (texte, PDF associé, traits de l'en-tête
+  affichés). **Aucun** n'est persisté ni ajouté à la file « à intégrer ».
+  - Le lecteur HPRIM est branché sur le **chemin de lecture en mémoire** des messages délégués
+    livré par task-397, pas seulement sur le circuit d'écriture.
+  - Le test de convention de task-397 (« aucune écriture issue d'une pièce médicale pour un message
+    délégué ») couvre le HPRIM.
 
 ## Gherkin
 
@@ -72,6 +87,14 @@ Voir `tests/Features/Mss/HprimReception.feature`.
 - [ ] Métrique : HPRIM lus, rejetés (par cause), signalés doublons
 - [ ] Aucune donnée de santé en clair dans les logs : ni nom, ni prénom, ni date de naissance, ni NIS, ni n° de dossier, ni contenu HPRIM
 - [ ] Mails déjà synchronisés avant la mise en service non retraités
+- [ ] **BAL déléguée — test d'intégration de bout en bout** (banc de délégation de task-397) : un
+      mail portant un `.hpm` + PDF dans `shared/<A>`, ouvert par le délégataire B.
+      - Le détail renvoie le document HPRIM décodé, lu dans la réponse réelle.
+      - La base de B contient **zéro** ligne `MailMedicalDocuments` pour ce message.
+      - Le document est absent de la liste « à intégrer » de B.
+      - Aucune clé Redis de B ne contient le texte HPRIM.
+      - Vu rouge (règle 1b).
+- [ ] Le test de convention de task-397 inclut le chemin HPRIM, prouvé rouge par mutation
 
 ## Manual Test Plan
 
@@ -81,6 +104,12 @@ Voir `tests/Features/Mss/HprimReception.feature`.
 4. Envoyer un mail CDA de biologie valide + HPRIM → un seul document, issu du CDA.
 5. Envoyer un `.hpm` sans marqueurs de fin → mail normal, pièce jointe intacte, aucun document.
 6. Vérifier dans Seq qu'aucun trait patient ni contenu HPRIM n'apparaît.
+7. **BAL déléguée.** Envoyer un HPRIM à Virginie, puis se connecter en Cyril, son délégataire, et
+   ouvrir le message dans la boîte déléguée.
+   - Le résultat est **lisible**.
+   - Aucun document n'apparaît dans la file « à intégrer » de Cyril, et sa base ne contient aucun
+     document pour ce message.
+   - Hors ligne, le message s'affiche avec sa pièce jointe seule.
 
 ## Conformité santé / Ségur / ANS
 
@@ -89,7 +118,8 @@ Voir `tests/Features/Mss/HprimReception.feature`.
 - **Exigences DSR honorées** : identito-vigilance — aucun rattachement d'un document sans INS ; le document structuré CI-SIS prime sur le format historique
 - **INS** : non disponible dans le format ; traits de l'en-tête conservés pour une suggestion (task-391), jamais pour un rattachement automatique (task-176)
 - **Authentification PS** : inchangée — traitement serveur à la synchronisation de la boîte
-- **Habilitations** : inchangées — documents de la boîte du médecin
+- **Habilitations** : documents de la boîte du médecin. Pour une BAL déléguée, lecture seule
+  sans stockage chez le délégataire (décision 8, task-397).
 - **Interop CI-SIS** : non applicable — HPRIM Santé (format historique propriétaire, texte libre + lignes `RES|`)
 - **Tracé PGSSI-S** : aucun nouvel évènement d'imputabilité (création automatique à la réception, comme un CDA) ; journal technique sans donnée identifiante
 - **Consentement patient** : non applicable — aucun envoi vers le DMP ni Mon Espace Santé

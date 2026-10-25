@@ -38,6 +38,12 @@ brouillons sans contenu s'accumulent dans « Brouillons ».
    règle « texte hors signature et hors citation », qui perdait du texte réellement écrit (curseur dans la signature
    sur le mobile, texte sous la citation sur weda2). L'objet, les destinataires et les pièces jointes seuls ne
    comptent toujours pas (décision 1).
+4. **Arbitrage du 2026-10-25 (seconde revue) — brouillon rouvert : enregistré tel qu'affiché.** Un brouillon déjà
+   enregistré, rouvert, est mis à jour avec ce que le médecin voit, dès que son corps n'est pas vide. Exemples : son
+   objet seul corrigé est enregistré ; tout son texte effacé, signature (ou citation) restante, il est enregistré avec
+   la signature (ou la citation) seule. Un corps entièrement vide n'est jamais enregistré. weda2 garde la question à la
+   croix pour un brouillon enregistré. Cela remplace la règle « ni supprimé ni écrasé en silence » de la première
+   rédaction.
 
 ## Objective
 
@@ -56,10 +62,8 @@ rédaction où il a écrit se comporte comme aujourd'hui.
   croix ; enregistrement automatique et en quittant).
 - **Réponse et transfert** : la citation du message d'origine n'est pas du texte du médecin. Ouvrir « Répondre » puis
   fermer sans écrire ne laisse rien.
-- **Brouillon déjà enregistré, rouvert depuis « Brouillons »** (décision PO, cohérente avec la règle 1) : s'il porte du
-  texte du médecin, rien ne change. Si le médecin efface tout son texte puis ferme, le brouillon existant n'est **ni
-  supprimé ni écrasé en silence** : weda2 garde la confirmation d'abandon (qui supprime le brouillon) ; le mobile ne
-  l'enregistre pas vide et le laisse tel qu'il était.
+- **Brouillon déjà enregistré, rouvert depuis « Brouillons »** : voir la décision 4 (enregistré tel qu'affiché dès que
+  le corps n'est pas vide ; weda2 garde la question à la croix).
 - **La signature seule n'est pas du texte** (déjà le cas sur weda2, nouveau sur le mobile).
 
 ### Hors périmètre
@@ -111,8 +115,9 @@ Voir `tests/Features/Mss/EmptyComposeLeavesNoDraft.feature`.
 4. Ouvrir un message, « Répondre », ne rien écrire, fermer : aucune question, aucun brouillon.
 5. « Nouveau message », écrire une phrase dans le corps, fermer : weda2 demande « abandonner le brouillon ? » comme
    avant ; le mobile enregistre le brouillon, qui apparaît dans « Brouillons ».
-6. Rouvrir ce brouillon, effacer tout le texte, fermer : weda2 demande la confirmation d'abandon ; le mobile ferme sans
-   écraser le brouillon, qui garde son texte.
+6. Rouvrir ce brouillon, corriger seulement l'objet, fermer : la correction est enregistrée. Le rouvrir, effacer
+   tout le texte (la signature reste), fermer : weda2 demande la confirmation ; sur le mobile, le brouillon est
+   enregistré tel qu'affiché (signature seule). Décision 4.
 
 ## Conformité santé / Ségur / ANS
 
@@ -142,15 +147,16 @@ Voir `tests/Features/Mss/EmptyComposeLeavesNoDraft.feature`.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 21 s | — | — | — | — |
-| /develop | ok | 15 min 17 s | 3 (45 s) | 4 (1 min 23 s) | — | api-mail 0B/1T, client-angular 3B/3T, e2e ×1 (8 min 20 s), reprise corps modifié : weda2 1 239, mobile 1 262 ; DRAFT-003 avec signature prouvé rouge |
+| /develop | ok | 1 min 45 s | 3 (45 s) | 4 (1 min 23 s) | — | api-mail 0B/1T, client-angular 3B/3T, e2e ×1 (8 min 20 s), isolation tests éditeur mobile ; décision 4 reportée |
 | /sonar | skipped | 0.5 s | — | — | — | reprise : api-mail limité au catalogue (YAML) |
-| /lint-angular | skipped | 0.4 s | — | — | — | reprise : weda2 inchangé depuis le lint propre |
-| /lint-mobile | ok | 6.6 s | — | — | — | reprise : propre |
-| /e2e | ok | 15 min 10 s | — | — | — | e2e ×10 (1 h 01 min), reprise : mobile 45/45, angular 53/53, parité verte |
-| /review | failed | 4 min 53 s | 3 (19 s) | 3 (4 min 23 s) | — | client-mobile 1B/1T, client-angular 1B/1T, api-mail 1B/1T, CHANGES REQUESTED : perte de texte (mobile signature par défaut, weda2 sous la citation) ; règle à confirmer |
-| **Total cycle** | | **35 min 50 s** | **6 (1 min 05 s)** | **7 (5 min 47 s)** | **0 (0.0 s)** | |
+| /lint-angular | ok | 12 s | — | — | — | reprise : 0 erreur |
+| /lint-mobile | ok | 6.9 s | — | — | — | reprise : propre |
+| /e2e | ok | 15 min 20 s | — | — | — | e2e ×18 (1 h 53 min), reprise corps modifié : mobile 45/45, angular 53/53 |
+| /review | ok | 38 min 06 s | 6 (41 s) | 7 (9 min 04 s) | — | client-mobile 2B/3T, client-angular 2B/2T, api-mail 2B/2T, e2e ×2 (14 min 28 s), seconde revue APPROVED ; décisions 3 et 4 ; divergence MAILBOX-002 (task-395) ; PR #311, #105 |
+| /tech-writer | ok | 0.5 s | — | — | — | E009 v1.107 |
+| **Total cycle** | | **55 min 55 s** | **9 (1 min 26 s)** | **11 (10 min 28 s)** | **0 (0.0 s)** | |
 
-Autres commandes mesurées : lint ×3 (22 s)
+Autres commandes mesurées : lint ×5 (38 s)
 
 ## Develop log
 
@@ -239,6 +245,14 @@ brouillon sans texte.
   marqueurs de signature, et un changement de signature l'efface. La correction proposée est une ligne libre au-dessus
   de la signature pour un nouveau message. À ouvrir en suite.
 
+**2026-10-25 — `/develop`, correctif après la seconde revue** :
+- **mobile, isolation des tests dans le vrai éditeur** (`afterEach` : sélection retirée, focus rendu, élément détaché
+  de `<body>`) : les 3 tests de sélection d'`HtmlEditorComponent` ne tombent plus (0 échec sur 5 passages, contre 1
+  sur 3 avant). Commit sur la branche mobile.
+- **Décision 4** reportée dans « Règles » et à l'étape 6 du Manual Test Plan.
+- **Suite à ouvrir** : les 4 tests « suggestions de destinataires » (task-388) dépendent toujours de l'ordre (1 échec
+  sur 5 passages), comme sur `develop`.
+
 ## Sonar log
 
 **Skipped (2026-10-24).** api-mail n'est touché que par `e2e/scenarios.yml` (catalogue e2e, YAML), hors du périmètre
@@ -256,19 +270,24 @@ correction. Les avertissements restants sont antérieurs.
 
 ## E2E log
 
-Run du 2026-10-25, après la reprise — **VERT**. Il remplace le run rouge du 2026-10-24 (E2E-COMPOSE-003 mobile).
+Run du 2026-10-25, sur les branches synchronisées avec `develop` (task-378 mergée entre-temps) — **VERT**, avec une
+divergence ouverte.
 
 | Voie | Déclencheur | Résultat | Tests |
 |---|---|---|---|
-| mobile | api-mail et client-mobile touchés | ✅ verte | 45 verts, 0 flaky, 0 rouge |
+| mobile | api-mail et client-mobile touchés | ✅ verte | 46 verts, 0 flaky, 0 rouge |
 | angular | api-mail et client-angular touchés (code seul) | ✅ verte | 53 verts, 0 flaky, 1 quarantaine |
 
-- Voies jouées par `Tools/e2e/lane_cache.py` (aucune réutilisée).
-- Catalogue : `Api/Mail/e2e/scenarios.yml` @ branche de la task ; E2E-DRAFT-004 v1 prouvé rouge par mutation sur les deux
-  clients (`## Develop log`).
+- Premier passage Angular, juste après la synchronisation : 6 rouges `EADDRINUSE :47399`. Le port du faux hôte Weda
+  était occupé pendant le run (port libre ensuite, voie rejouée verte). C'est un incident d'outillage, sans lien avec
+  la task.
+- **Parité** : E2E-MAILBOX-002 (task-378) est requis sur weda2, mais son code weda2 n'est pas livré sur la branche. Par
+  décision de l'humain (2026-10-25), une **divergence temporaire** angular est déclarée au catalogue, résorbée par
+  `task-395`.
+- E2E-DRAFT-004 v1 est prouvé rouge sur les deux clients. E2E-DRAFT-003 (mobile) se joue avec une signature par
+  défaut.
 - Quarantaines : E2E-COMPOSE-002 (angular, task-350), passée
-- Divergences ouvertes : aucune
-- Démontage : complet (ports libres)
+- Démontage : complet
 
 **E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
 
@@ -332,9 +351,14 @@ Run du 2026-10-25, après la reprise — **VERT**. Il remplace le run rouge du 2
 | E2E-RECEIPT-003 | 1 | headless | Refuser l'accusé de lecture d'un message reçu | ✅ | ✅ |
 | E2E-SECURITY-001 | 1 | headless | Un contenu reçu piégé ne s'exécute pas | ✅ | ✅ |
 | E2E-MAILBOX-001 | 1 | headless | Changer de messagerie depuis l'écran mail | ✅ | ✅ |
+| E2E-MAILBOX-002 | 1 | headless | api-mail indisponible à l'entrée — écran de panne puis réessai | ⛔ non joué · divergence (task-395) | ✅ |
 | E2E-SESSION-001 | 1 | headless | Naviguer dans Weda ne multiplie pas les sessions de messagerie | ✅ | — |
 | E2E-SESSION-002 | 2 | headless | Quitter weda2 autonome ne ferme pas la session partagée | ✅ | — |
 | E2E-SESSION-003 | 2 | headless | La session fermée par Weda fait quitter weda2 | ✅ | — |
+
+**Divergences temporaires ouvertes** (1) :
+
+- E2E-MAILBOX-002 [angular] — le code weda2 de task-378 (écran de panne à l'entrée et son test) n'est pas encore livré sur la branche weda2 ; divergence décidée par l'humain le 2026-10-25 — résorbée par task-395
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
 
@@ -363,3 +387,53 @@ par l'orchestrateur (`injectSignature`).
 
 **Prévention** : `conventions/e2e.md` › `html-construit-a-la-main`.
 
+### Seconde revue (2026-10-25) — APPROVED
+
+Les deux pertes de texte de la première passe sont levées sur les deux clients. Les tests tapent dans le vrai éditeur,
+et E2E-DRAFT-003 (mobile) se joue avec une signature par défaut. Une contradiction restait entre le code et la task
+(brouillon rouvert vidé, signature restante) : l'humain a tranché qu'il est **enregistré tel qu'affiché**
+(décision 4), et la task ainsi que l'étape 6 du plan de test sont alignées.
+
+**Validation finale** :
+- api-mail ✓ 6 767 (16 ignorés), rejoué hors de la fenêtre de minuit ;
+- weda2 ✓ build, `mss-lib` 1 239 ;
+- mobile ✓ build, 1 262, avec les tests de l'éditeur isolés (0 échec sur 5 passages pour `HtmlEditorComponent`) ;
+- e2e vert sur les branches synchronisées : mobile 46/46, Angular 53/53, et une divergence ouverte, E2E-MAILBOX-002
+  angular (`task-395`).
+
+**Suggestions laissées à l'humain** :
+- weda2 : une mise en forme seule (gras, lien) ne compte pas, alors que le mobile la compte ;
+- weda2 : retirer `style`, `script` et `title` de `bodyFingerprint` éviterait une question inutile sur une citation
+  Outlook ;
+- mobile : le texte tapé dans les marqueurs de signature est effacé par un changement de signature (défaut antérieur
+  à la task, suite à ouvrir) ;
+- mobile : les 4 tests « suggestions de destinataires » (task-388) dépendent de l'ordre d'exécution (suite à ouvrir).
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/311 — label
+  `awaiting-human-merge` (catalogue : E2E-DRAFT-004, divergence E2E-MAILBOX-002)
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/105 — label
+  `awaiting-human-merge`
+- `client-angular` : code seul. L'humain gère le commit, le push sur TFS et l'ouverture de la PR. Fichiers modifiés,
+  non commités, sur `feature/nova-mss-weda-integration` :
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`
+  - `front/e2e/mss-e2e/support/e2e-backend.ts`
+  - `front/libs/mss/src/core/utils/compose-body.util.spec.ts`
+  - `front/libs/mss/src/core/utils/compose-body.util.ts`
+  - `front/libs/mss/src/features/mail/components/mail-compose/mail-compose-intent.component.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-compose/mail-compose-safety.component.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-compose/mail-compose-toolbar.component.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-compose/mail-compose.component.ts`
+
+## Merged
+
+- **Date** : 2026-10-25 — `/merge task-394 --i-tested` (plan de test joué par l'humain)
+- `api-mail` : PR #311 squash `369b083ba6aabedb2e495744457f49e977dce9f0` — CI `develop` verte
+  (https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/40184357868)
+- `client-mobile` : PR #105 squash `b1891a810c0789f41e42d7303320a3ba10b6e20a` — CI `develop` verte
+  (https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/40184371418)
+- Branches `fix/task-394-redaction-vide-sans-brouillon` supprimées (distantes et locales) ; label
+  `awaiting-human-merge` retiré
+- `client-angular` : géré par l'humain (commit, push et PR TFS)
+- Staging : aucune branche staging (task hors run `/forge`)

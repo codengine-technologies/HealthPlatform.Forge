@@ -41,3 +41,11 @@ Feature: Receiving a laboratory result in HPRIM format
   Scenario: The HPRIM text is never shown as the mail body
     When a mail carries an HPRIM file and no other text
     Then the mail body is empty rather than the raw HPRIM text
+
+  Scenario: An HPRIM result in a delegated mailbox is shown but never stored
+    Given a physician who has delegated her mailbox to a colleague
+    And a laboratory sends her a mail with an HPRIM result file
+    When the colleague opens that mail in the delegated mailbox
+    Then the colleague can read the result
+    But no biology document is stored for the colleague
+    And nothing is waiting to be attached in the colleague's list

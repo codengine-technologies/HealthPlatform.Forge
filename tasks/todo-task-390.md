@@ -1,7 +1,7 @@
 # todo-task-390.md — Les lignes structurées d'un compte rendu HPRIM deviennent des résultats de biologie, avec alerte d'anomalie
 
 **Repos**: api-mail, dtos-mss
-**Dependencies**: task-389 (le document HPRIM existe)
+**Dependencies**: task-389 (le document HPRIM existe), task-397 (lecture en mémoire des messages d'une BAL déléguée)
 **Epic**: E009
 **Single frontend**: true
 **Priorité**: **2** — sans cette US, un résultat HPRIM n'est qu'un texte : ni suivi dans la biologie du patient, ni alerte sur une valeur anormale.
@@ -25,6 +25,13 @@
 1. **Anomalie** : indicateur du labo s'il est rempli (même liste que le CDA) ; sinon, valeur numérique hors de ses normes. Une valeur qualitative sans indicateur n'est jamais signalée.
 2. **Résultat partiel** : rangé et exposé avec la mention « partiel ». Son remplacement par le compte rendu complété se fait **au rattachement** (task-391), jamais à la réception (task-193 — arbitrage du 2026-10-23).
 3. (rappel task-389) Codes d'examen **locaux au labo**, jamais présentés comme du LOINC.
+4. **BAL déléguée : affichage seul, aucune injection en base** (humain, 2026-10-25 — task-397,
+   décision 8 de task-389). Pour un message d'une BAL déléguée (`shared/…`), les lignes `RES|` sont
+   lues **en mémoire**, à l'affichage du détail : valeurs, unités, normes, statut, anomalie
+   signalée.
+   - **Aucun** résultat n'est stocké chez le délégataire : aucune ligne
+     `MailMedicalDocumentBiology`, rien dans Redis, aucune entrée « anormaux non lus ».
+   - Hors ligne, non consultable.
 
 ## Objective
 
@@ -45,6 +52,11 @@ Chaque ligne `RES|` d'un document HPRIM (task-389) devient un **résultat de bio
 - **Statut** : **persisté** (nouvelle colonne de `MailMedicalDocumentBiology`, migration de la base mail) et exposé dans le contrat de biologie ; « partiel » visible. Vide pour les résultats CDA existants.
 - **Pas de remplacement à la réception** : un partiel et son complété reçus avant rattachement restent tous deux visibles, le partiel marqué « partiel ». Le remplacement est livré par task-391.
 - **Sans ligne `RES|`** : le document reste un document texte, sans résultat structuré.
+- **BAL déléguée** (décision 4) : le lecteur `RES|` alimente aussi le **chemin de lecture en
+  mémoire** de task-397.
+  - Les résultats d'un message délégué sont renvoyés dans le détail, avec `IsFlagged` et le statut
+    calculés à la lecture.
+  - Ils ne passent **jamais** par `AddBiologyResultsToDocument`.
 
 ## Gherkin
 
@@ -61,12 +73,25 @@ Voir `tests/Features/Mss/HprimStructuredResults.feature`.
 - [ ] Test d'intégration : un partiel puis son complété reçus avant rattachement restent tous deux actifs, aucun n'est remplacé ni signalé doublon (task-193)
 - [ ] Test : un résultat HPRIM et un résultat LOINC du même examen restent deux séries distinctes
 - [ ] Aucune valeur de résultat, libellé d'examen ni trait patient dans les journaux
+- [ ] **BAL déléguée — test d'intégration de bout en bout** (banc de délégation de task-397) : un
+      HPRIM à lignes `RES|` dans `shared/<A>`, ouvert par le délégataire B.
+      - Le détail renvoie les résultats : valeur, unité, normes, statut « partiel », `IsFlagged` à
+        vrai pour la valeur hors normes. Lu dans la réponse réelle.
+      - La base de B contient **zéro** ligne `MailMedicalDocumentBiology` pour ce message.
+      - Aucun patient n'apparaît dans `abnormal-unread` de B.
+      - Aucune clé Redis de B ne porte ces valeurs.
+      - Vu rouge (règle 1b).
 
 ## Manual Test Plan
 
 1. Envoyer un HPRIM avec des lignes `RES|` — une hors normes sans indicateur, une avec indicateur `H`, une qualitative sans indicateur — et le rattacher : les deux premières sont signalées, pas la troisième ; le patient apparaît dans « anormaux non lus ».
 2. Envoyer un partiel puis le complété du même dossier labo, sans les rattacher : les deux restent à intégrer, le premier marqué « partiel ».
 3. Patient ayant une glycémie LOINC issue d'un CDA, plus une glycémie HPRIM : deux séries distinctes dans la biologie du patient.
+4. **BAL déléguée.** Envoyer à Virginie un HPRIM avec une valeur hors normes, puis se connecter en
+   Cyril, son délégataire, et ouvrir le message dans la boîte déléguée.
+   - Les résultats sont lisibles, et la valeur anormale est signalée.
+   - La base de Cyril ne contient aucun résultat de biologie pour ce message.
+   - Le patient n'apparaît pas dans ses « anormaux non lus ».
 
 ## Conformité santé / Ségur / ANS
 
@@ -75,7 +100,8 @@ Voir `tests/Features/Mss/HprimStructuredResults.feature`.
 - **Exigences DSR honorées** : non applicable — aucune exigence DSR sur le HPRIM ; règle de prudence : codes locaux jamais présentés comme LOINC
 - **INS** : non applicable — aucun changement d'identité ; l'alerte ne vaut qu'après rattachement (task-391)
 - **Authentification PS** : inchangée
-- **Habilitations** : inchangées
+- **Habilitations** : inchangées. Pour une BAL déléguée, lecture seule sans stockage chez le
+  délégataire (décision 4, task-397).
 - **Interop CI-SIS** : non applicable — HPRIM Santé, lignes `RES|` ; indicateurs d'anomalie sur la table HL7 commune avec le CDA
 - **Tracé PGSSI-S** : aucun nouvel évènement
 - **Consentement patient** : non applicable

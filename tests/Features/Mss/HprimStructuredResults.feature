@@ -45,3 +45,11 @@ Feature: Structured results of an HPRIM laboratory report
     Given a patient with a standard-coded result for an examination
     When an HPRIM result for the same examination is attached to that patient
     Then the two results are shown as separate series
+
+  Scenario: Structured results in a delegated mailbox are shown but never stored
+    Given a physician who has delegated her mailbox to a colleague
+    And she receives an HPRIM report with a value outside its normal range
+    When the colleague opens that report in the delegated mailbox
+    Then the colleague sees the results with the abnormal value highlighted
+    But no biology result is stored for the colleague
+    And the patient does not appear in the colleague's abnormal results
