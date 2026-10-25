@@ -97,8 +97,8 @@ journaux ne contiennent ni noms de dossiers délégués, ni objets, ni noms de p
 - **Enrichissement** : `enrich/async` **et `enrich/sync`** ne font rien sur un chemin délégué. Ils
   sortent avant toute lecture IMAP, réservation Redis, notification ou reprise IA, et répondent
   **200**.
-- **Synchronisation en arrière-plan** : elle exclut explicitement l'espace partagé, au lieu de
-  l'éviter par chance.
+- **Synchronisation** : voir la section I. Aucun dossier délégué n'est jamais traité, et chaque
+  écart est journalisé « skipped ».
 
 ### C. Aucune écriture
 
@@ -184,6 +184,41 @@ Les journaux de contenu clinique (`CdaParsingService`) ne s'écrivent pas pour u
   répond **404** ProblemDetails avec un **`type` dédié** « délégation retirée », que la task-398
   affichera.
 
+### I. Synchronisation : les dossiers délégués ne sont jamais traités, et chaque écart se voit
+
+**Exigence de l'humain** (2026-10-25) : les dossiers `shared/` ne sont pas traités par la
+synchronisation, et les journaux affichent « skipped » pour **chacun** d'eux.
+
+- **Un seul prédicat** « dossier délégué » (règle A) est appliqué à **l'entrée de chaque mécanisme
+  de synchronisation**, avant toute lecture IMAP, réservation, écriture ou publication :
+  - `BackgroundSyncService` et `BackgroundImapService`, la synchronisation périodique ;
+  - l'enregistrement et le rapprochement des dossiers à la liste (`ImapService.cs:490`, `:496`),
+    et la purge des dossiers disparus (`:504`), qui ne voient jamais un dossier délégué ;
+  - l'enregistrement des en-têtes (`FetchEmailsInternalAsync`, `:3182`) ;
+  - l'enrichissement `enrich/async` et `enrich/sync` (`EnrichEmailsAsync`, avant `:1646`) ;
+  - la couverture de synchronisation (`SyncCoverageService`) et l'état d'avancement
+    (`RedisSyncStateStore`) ;
+  - la reprise de l'étiquetage IA (`AiTaggingRecoveryService`).
+- **La synchronisation périodique liste aussi l'espace partagé**, avec un `LIST` du préfixe lu dans
+  `NAMESPACE`, pour **voir** les dossiers délégués et les écarter explicitement. Aujourd'hui elle ne
+  les voit pas, par accident : elle ne descend qu'au premier niveau et saute le conteneur.
+- **Journal « skipped »** : une entrée par dossier délégué écarté, à chaque passage, au niveau
+  **Information**. Gabarit unique :
+
+  ```
+  [Sync] Skipped delegated folder {Folder} (owner={Owner}, role={Role}, by={Mechanism})
+  ```
+
+  - `{Folder}` est masqué selon la règle D : `shared/<adresse>` pour la réception, `shared/<adresse>/…`
+    pour tout le reste, sans aucun nom de sous-dossier.
+  - `{Role}` vaut `Inbox`, `Sent`, `Drafts`, `Trash`, `Junk` ou `Personal`. C'est un rôle, jamais
+    un nom choisi par le délégant.
+  - `{Mechanism}` est le mécanisme qui écarte : `BackgroundSync`, `FolderList`, `Enrich`,
+    `Coverage`…
+  - Le journal ne porte ni UID, ni objet, ni compteur de messages.
+- **Pas de journal « skipped » pour la lecture directe** : lire un dossier délégué à la demande de
+  l'utilisateur n'est pas une synchronisation (règle B).
+
 ## Definition of Done
 
 - [ ] **Caractérisation Mailiz** consignée dans le `## Develop log` et dans l'analyse (§4), faite
@@ -246,8 +281,20 @@ Les journaux de contenu clinique (`CdaParsingService`) ne s'écrivent pas pour u
 - [ ] **Révocation** : après `DELETEACL` au banc, le `LIST` suivant ne contient plus `shared/<A>`. Un
       accès au-delà de la fenêtre bornée → 404 de `type` « délégation retirée ». Aucune donnée
       servie depuis un cache.
-- [ ] **Synchronisation en arrière-plan** : test sur un banc où le conteneur partagé est
-      sélectionnable, qui montre qu'elle n'y touche pas.
+- [ ] **Synchronisation — test d'intégration** sur le banc de délégation : B a la BAL de A
+      (réception, `Sent`, `Trash`, `Junk`, `Demo`, `Demo/Biologie2026`). On lance un passage de
+      synchronisation périodique, une liste des dossiers, puis `enrich/sync` et `enrich/async` sur
+      la réception de A. Après quoi :
+      - **zéro** écriture et **zéro** publication pour ces dossiers ;
+      - **une** entrée « Skipped delegated folder » **par dossier délégué** et par mécanisme, au
+        niveau Information, lue dans les journaux capturés ;
+      - le chemin est masqué (`shared/<A>/…`), aucun nom de sous-dossier (`Demo`) n'apparaît, et le
+        rôle est juste.
+
+      Vu rouge en retirant le prédicat d'un mécanisme : test de convention par mutation.
+- [ ] **Synchronisation — robustesse** : sur un banc où le conteneur `shared` est **sélectionnable**,
+      la synchronisation périodique ne traite toujours aucun dossier délégué et journalise
+      « skipped » pour chacun.
 - [ ] **Mesure** sur le banc d'intégration : temps de réponse **et temps de détention du verrou**
       `imap_session`, pour la liste, le détail et la pièce jointe délégués, comparés à la propre
       BAL. Consignés dans le `## Develop log`, sans objectif chiffré. Aucune régression sur la propre
@@ -270,17 +317,22 @@ de Virginie (`virginie.medecinrpps0062267@medecin.formation.mssante.fr`).
    compris, même après avoir marqué des messages lus.
 4. **Journaux.** Dans Seq, filtrer sur l'heure du test : on voit `shared/<adresse>/…`, jamais un
    sous-dossier (`Demo`…), un objet ni un nom de pièce jointe.
-5. **Suppression.** Supprimer un message délégué : il est dans la Corbeille de Virginie, et son
+5. **Synchronisation.** Dans Seq, filtrer sur `Skipped delegated folder` après un passage de
+   synchronisation :
+   - une entrée par dossier de la boîte de Virginie : réception, Envoyés, Corbeille, Spam,
+     Brouillons, et ses sous-dossiers en rôle `Personal`, masqués ;
+   - aucune entrée de synchronisation ni d'enrichissement « réussi » pour ces dossiers.
+6. **Suppression.** Supprimer un message délégué : il est dans la Corbeille de Virginie, et son
    webmail Mailiz le confirme.
-6. **Protection.**
+7. **Protection.**
    - Renommer les Envoyés de Virginie : refus.
    - Déplacer un message de sa boîte vers celle de Cyril : refus.
    - Créer, renommer un sous-dossier dans sa boîte : accepté.
-7. **Refus.** Demander une synthèse IA ou envoyer un accusé de lecture sur un message délégué :
+8. **Refus.** Demander une synthèse IA ou envoyer un accusé de lecture sur un message délégué :
    refus clair, rien d'envoyé.
-8. **Révocation.** Virginie retire la délégation dans le webmail Mailiz. Après au plus 5 minutes,
+9. **Révocation.** Virginie retire la délégation dans le webmail Mailiz. Après au plus 5 minutes,
    l'accès à sa boîte est refusé avec le message « délégation retirée ».
-9. **Non-régression.** Un compte rendu reçu dans la propre BAL de Cyril est traité comme avant.
+10. **Non-régression.** Un compte rendu reçu dans la propre BAL de Cyril est traité comme avant.
 
 ## Conformité santé / Ségur / ANS
 
