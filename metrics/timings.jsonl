@@ -6200,3 +6200,5 @@
 {"ts":"2026-10-25T10:00:07+01:00","run_id":"-","type":"step","task":"task-394","step":"tech-writer","status":"ok","note":"E009 v1.107","iterations":null,"duration_ms":552}
 {"ts":"2026-10-25T12:11:03+01:00","run_id":"-","type":"step_start","task":"task-375","step":"tech-writer"}
 {"ts":"2026-10-25T12:12:06+01:00","run_id":"-","type":"step","task":"task-375","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":63346}
+{"ts":"2026-10-25T12:24:09+01:00","run_id":"-","type":"step_start","task":"task-375","step":"merge"}
+{"ts":"2026-10-25T12:29:50+01:00","run_id":"-","type":"step","task":"task-375","step":"merge","status":"ok","note":"","iterations":null,"duration_ms":339906}

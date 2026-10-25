@@ -268,6 +268,14 @@ Démontage vérifié : ports 4200/8100 libres, aucun conteneur e2e résiduel.
 - Synchronisation : `develop` apporte task-394 (E2E-DRAFT-004 `requis` côté Angular, sans test weda2 dans l'arbre actuel). Le prochain `/e2e` Angular sera rouge en parité du fait de task-394.
 - Suggestions : commentaire orphelin au-dessus de `perFolder` (mobile) ; regroupement par dossier écrit deux fois (mobile) ; brouillon réapparu sur échec partiel (weda2) ; `deleteDraft` sans épingle de boîte (weda2).
 
+## Merged
+
+- 2026-10-25, `/merge task-375 --i-tested` (test manuel attesté par l'humain).
+- `api-mail` #312 → squash `989d8893` sur `develop` ; CI « Build and Publish » verte.
+- `client-mobile` #106 → squash `6d890c2f` sur `develop` ; CI « Android Build » verte.
+- Branches `fix/task-375-gestes-liste-bon-dossier` supprimées (distantes et locales).
+- `client-angular` : code seul, géré par l'humain (TFS).
+
 ## Branches
 
 > **Parallèle** : task-394 est en `wip-*` (autre session, arrêtée sur une question). Décision humaine du 2026-10-25 : lancer 375 quand même ; 394 est considérée en pause pendant ce cycle.
@@ -290,6 +298,7 @@ Démontage vérifié : ports 4200/8100 libres, aucun conteneur e2e résiduel.
 | /e2e | ok | 19 min 18 s | — | — | — | e2e ×5 (36 min 28 s) |
 | /review | ok | 13 min 11 s | 4 (1 min 13 s) | 7 (8 min 03 s) | — | api-mail 1B/2T, client-mobile 2B/4T, client-angular 1B/1T |
 | /tech-writer | ok | 1 min 03 s | — | — | — | — |
-| **Total cycle** | | **3 h 10 min** | **8 (3 min 25 s)** | **18 (19 min 53 s)** | **2 (2 min 08 s)** | |
+| /merge | ok | 5 min 39 s | — | — | — | — |
+| **Total cycle** | | **3 h 16 min** | **8 (3 min 25 s)** | **18 (19 min 53 s)** | **2 (2 min 08 s)** | |
 
 Autres commandes mesurées : lint ×2 (1 min 42 s)
