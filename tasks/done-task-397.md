@@ -617,7 +617,7 @@ Démontage vérifié : ports 5052/3993/3465/3143 libres, aucun conteneur e2e ré
 
 ## Code Review Summary
 
-**Verdict : APPROVED** (2ᵉ passe, 2026-10-25) — 0 bloquant. 1ʳᵉ passe : CHANGES REQUESTED (3 bloquants : B1 propriétés nominatives en clair dans les journaux, B2 masquage arrêté à l'espace / l'apostrophe, B3 borne du cache J qui figeait l'enrichissement), corrigés en tranche 13 (`ff42b6e8`, `80cb6c2f`) et revérifiés par une relecture indépendante, dans le code.
+**Verdict : APPROVED** (3ᵉ passe, 2026-10-25, après les tranches 14-15) — 0 bloquant. 1ʳᵉ passe : CHANGES REQUESTED (3 bloquants : B1 propriétés nominatives en clair dans les journaux, B2 masquage arrêté à l'espace / l'apostrophe, B3 borne du cache J qui figeait l'enrichissement), corrigés en tranche 13 (`ff42b6e8`, `80cb6c2f`) et revérifiés par une relecture indépendante, dans le code.
 
 ### Règle 1b — comportement → test d'intégration → preuve rouge
 
@@ -640,6 +640,9 @@ Démontage vérifié : ports 5052/3993/3465/3143 libres, aucun conteneur e2e ré
 | Cache J : deux instances, un décodage, empreinte, TTL ≤ 5 min, personnel, oublié | `TheDecodedContent_IsSharedByTwoInstances_…` | tranche 10, M21-M26 |
 | Cache J au-delà de la borne : éviction, en-têtes enrichis | `BeyondTheContentCacheBound_…` | M38 |
 | Cache J oublié au renommage / à la suppression d'un dossier | `RenamingOrDeletingADelegatedFolder_…` | rouge sans correction |
+| Changer de page ne redécode pas : en-têtes légers avec leur propre borne (1 000) | `NavigatingBetweenPages_KeepsTheFirstPageEnriched_WithoutDecodingAgain` | rouge sur le code précédent (en-têtes `Pending` au retour) |
+| `EmailsEnriched` par lots de 10 | `EnrichingAFullPage_SendsTheEnrichedHeadersInBatches` | rouge (un envoi de 12) |
+| Clé `delegated:content:{adresse}:…`, deux BAL d'un même RPPS séparées (décision 15) | `TwoMailboxesOfTheSamePerson_DoNotShareTheDecodedContent`, `TheDecodedContent_IsSharedByTwoInstances_…` | rouge (1 décodage au lieu de 2 ; `StartsWith`) |
 | Parcours complet : rien en base, Redis, bus ; journaux (contrôleurs compris) et traces sans sous-dossier, objet, pièce jointe, patient | `TheWholeDelegatedJourney_PersistsNothing_…` | M27, M28, M36, M37 |
 
 ### Revue par domaine
@@ -651,7 +654,9 @@ Démontage vérifié : ports 5052/3993/3465/3143 libres, aucun conteneur e2e ré
 
 ### Suggestions (non bloquantes)
 
-- **Masquage encodé arrêté à `&`** (`DelegatedMailboxRule.cs:212`) : un dossier « Courrier & CR » laisse « CR » dans `url.path` et le journal des requêtes. Correctif d'une ligne (retirer `&` du délimiteur de queue encodée) — proposé avant merge.
+- Masquage encodé : un « & » n'arrête plus le masque (corrigé, tranche 14) ; en contrepartie, dans une chaîne de requête, les paramètres qui suivent un chemin délégué sont masqués aussi (journaux seulement) — masquer paramètre par paramètre si besoin.
+- UIDVALIDITY qui change entre la liste et le décodage (BAL recréée) : un lot SSE pourrait porter les documents du nouveau message sur l'ancienne ligne — rare ; reprendre l'UIDVALIDITY du décodage.
+- Index du cache : écritures concurrentes (enrichissement, ouverture) et écriture tardive après une suppression ou un retrait — entrées non indexées jusqu'à leur TTL (5 min), jamais servies.
 - Index du cache J : lecture-puis-écriture non atomique (pire cas : une clé non indexée vit jusqu'à son TTL, 5 min) — hash Redis ou script Lua.
 - Racine suivie de `/` (`shared/a@b/`) acceptée comme réception ; `.` et `..` non refusés (le serveur les refuse probablement).
 - Suppression de dossier en échec après le vidage : cache non oublié (TTL).
@@ -669,9 +674,9 @@ Démontage vérifié : ports 5052/3993/3465/3143 libres, aucun conteneur e2e ré
 | /lint-angular | skipped | 0.5 s | — | — | — | repo non touché (Repos: api-mail) |
 | /lint-mobile | skipped | 0.5 s | — | — | — | repo non touché (Repos: api-mail) |
 | /e2e | ok | 16 min 52 s | — | — | — | e2e ×9 (47 min 03 s), tranches 14-15 : mobile 46, angular 54 + 1 flaky, parité verte |
-| /review | ok | 4 min 58 s | 2 (25 s) | 2 (8 min 25 s) | — | api-mail 2B/2T, APPROVED (2e passe), PR #313 |
+| /review | ok | 4 min 49 s | 3 (34 s) | 3 (12 min 38 s) | — | api-mail 3B/3T, APPROVED (3e passe, tranches 14-15), PR #313 mise à jour |
 | /tech-writer | ok | 1 min 34 s | — | — | — | — |
-| **Total cycle** | | **47 min 06 s** | **67 (8 min 09 s)** | **127 (2 h 27 min)** | **18 (5 min 52 s)** | |
+| **Total cycle** | | **46 min 57 s** | **68 (8 min 19 s)** | **128 (2 h 32 min)** | **18 (5 min 52 s)** | |
 
 ## Develop log
 
