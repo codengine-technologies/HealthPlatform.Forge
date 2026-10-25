@@ -830,8 +830,29 @@ délégataire.**
   embedding, un résultat de recherche, un contact ou une notification.
 - **Seul mode autorisé** : la lecture en direct sur le serveur IMAP, à chaque affichage, en mémoire.
   Les documents sont décodés pour être lus, jamais stockés.
-- **Seule exception** : l'audit PGSSI-S, réduit à l'action, l'auteur, le dossier, l'UID et le
-  `Message-ID`. Il ne garde ni objet, ni correspondants, ni donnée patient.
+- **Exceptions, limitatives** (arbitrages du 2026-10-25) :
+  - **l'audit PGSSI-S**, réduit à l'action, l'auteur, le dossier, l'UID et le `Message-ID`, plus la
+    personne qui agit et la BAL propriétaire (task-400). Il ne garde ni objet, ni correspondants, ni
+    donnée patient. Son tampon Redis relève de cette exception ;
+  - **le répertoire de travail transitoire** du décodage IHE-XDM et HPRIM : fichiers supprimés en fin
+    de traitement, balayés au démarrage. C'est un stockage technique, jamais un lieu de
+    conservation ;
+  - **le cache Redis du contenu délégué décodé** (task-397, section J), pour ne pas redécoder sur
+    plusieurs pods. Il est limité ainsi :
+    - famille de clés dédiée, clé en **empreinte**, propre à la personne qui agit ;
+    - expiration absolue de **5 minutes au plus**, alignée sur la fenêtre de révocation ;
+    - taille bornée ;
+    - invalidé à la suppression, au déplacement et à la révocation.
+
+    Le résidu dans le fichier AOF de Redis est accepté ;
+  - **les fichiers que l'utilisateur choisit d'enregistrer** (impression, export, pièce jointe),
+    sans l'objet du message dans le nom ;
+  - **une réponse ou un transfert envoyé en son propre nom** (« (moi) ») : c'est un message du
+    délégataire, dont la copie dans sa BAL est assumée. La règle protège ce qui est fait **au nom
+    du délégant**.
+- **Journaux et télémétrie** : un chemin délégué n'y apparaît que jusqu'à sa racine
+  `shared/<adresse>/…`, par un masquage central. Ils ne contiennent jamais de nom de sous-dossier,
+  d'objet ni de nom de pièce jointe délégués.
 - **Une garde unique à la frontière d'écriture** refuse tout chemin `shared/`, et un test de
   convention la protège. Une US qui touche messages, dossiers ou documents prouve « rien de
   persisté » par un test d'intégration sur le banc de délégation.
