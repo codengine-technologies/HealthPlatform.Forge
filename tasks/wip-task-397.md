@@ -476,6 +476,14 @@ Aucune itération de correction nécessaire : Quality Gate verte, **0 issue** su
 - La couverture projet baisse d'un demi-point : la majorité du code de la délégation est prouvée par les tests d'intégration bout en bout (`DelegationEndToEndTests`), comptés dans la couverture ; les branches non couvertes restent des replis défensifs (décodage en échec, cache désactivé).
 - Conventions : aucune règle corrigée à la main dans cette étape, rien à reporter dans `conventions/csharp.md`.
 
+## Lint log
+
+Skipped — `client-angular` non touché par la task (`**Repos**: api-mail`).
+
+## Lint mobile log
+
+Skipped — `client-mobile` non touché par la task (`**Repos**: api-mail`).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-397 --sync` — ne pas éditer à la main)*
@@ -485,6 +493,8 @@ Aucune itération de correction nécessaire : Quality Gate verte, **0 issue** su
 | /start | ok | 18 s | — | — | — | — |
 | /develop | ok | 3 h 19 min | 49 (4 min 05 s) | 64 (1 h 05 min) | — | api-mail 49B/64T |
 | /sonar | ok | 51 min 40 s | 5 (1 min 29 s) | 20 (25 min 53 s) | 8 (2 min 23 s) | api-mail 5B/20T, QG OK, 0 issue new code, aucune correction |
+| /lint-angular | skipped | 0.5 s | — | — | — | client-angular non touché (Repos: api-mail) |
+| /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non touché (Repos: api-mail) |
 | **Total cycle** | | **4 h 11 min** | **54 (5 min 35 s)** | **84 (1 h 31 min)** | **8 (2 min 23 s)** | |
 
 ## Develop log
