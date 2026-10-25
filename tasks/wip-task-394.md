@@ -31,6 +31,13 @@ brouillons sans contenu s'accumulent dans « Brouillons ».
    **sans la signature et sans la citation** du message d'origine (réponse, transfert). Un objet, un destinataire ou
    une pièce jointe, sans texte, ne suffisent pas : la rédaction se ferme sans brouillon, et ils sont abandonnés.
 2. **Périmètre : weda2 et mobile**, même règle.
+3. **Arbitrage du 2026-10-25 (après la revue de code) — « saisi » = corps modifié.** Le corps compte dès qu'il **diffère
+   de ce que la rédaction a proposé à l'ouverture** : vide, signature, citation d'une réponse ou d'un transfert (et après
+   un changement de signature, le nouveau corps proposé). Tout ajout du médecin compte, où qu'il soit : au-dessus, en
+   dessous, dans la signature ou dans la citation (réponse point par point), image collée comprise. Il remplace la
+   règle « texte hors signature et hors citation », qui perdait du texte réellement écrit (curseur dans la signature
+   sur le mobile, texte sous la citation sur weda2). L'objet, les destinataires et les pièces jointes seuls ne
+   comptent toujours pas (décision 1).
 
 ## Objective
 
