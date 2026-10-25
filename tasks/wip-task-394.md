@@ -38,6 +38,12 @@ brouillons sans contenu s'accumulent dans « Brouillons ».
    règle « texte hors signature et hors citation », qui perdait du texte réellement écrit (curseur dans la signature
    sur le mobile, texte sous la citation sur weda2). L'objet, les destinataires et les pièces jointes seuls ne
    comptent toujours pas (décision 1).
+4. **Arbitrage du 2026-10-25 (seconde revue) — brouillon rouvert : enregistré tel qu'affiché.** Un brouillon déjà
+   enregistré, rouvert, est mis à jour avec ce que le médecin voit, dès que son corps n'est pas vide. Exemples : son
+   objet seul corrigé est enregistré ; tout son texte effacé, signature (ou citation) restante, il est enregistré avec
+   la signature (ou la citation) seule. Un corps entièrement vide n'est jamais enregistré. weda2 garde la question à la
+   croix pour un brouillon enregistré. Cela remplace la règle « ni supprimé ni écrasé en silence » de la première
+   rédaction.
 
 ## Objective
 
@@ -56,10 +62,8 @@ rédaction où il a écrit se comporte comme aujourd'hui.
   croix ; enregistrement automatique et en quittant).
 - **Réponse et transfert** : la citation du message d'origine n'est pas du texte du médecin. Ouvrir « Répondre » puis
   fermer sans écrire ne laisse rien.
-- **Brouillon déjà enregistré, rouvert depuis « Brouillons »** (décision PO, cohérente avec la règle 1) : s'il porte du
-  texte du médecin, rien ne change. Si le médecin efface tout son texte puis ferme, le brouillon existant n'est **ni
-  supprimé ni écrasé en silence** : weda2 garde la confirmation d'abandon (qui supprime le brouillon) ; le mobile ne
-  l'enregistre pas vide et le laisse tel qu'il était.
+- **Brouillon déjà enregistré, rouvert depuis « Brouillons »** : voir la décision 4 (enregistré tel qu'affiché dès que
+  le corps n'est pas vide ; weda2 garde la question à la croix).
 - **La signature seule n'est pas du texte** (déjà le cas sur weda2, nouveau sur le mobile).
 
 ### Hors périmètre
@@ -111,8 +115,9 @@ Voir `tests/Features/Mss/EmptyComposeLeavesNoDraft.feature`.
 4. Ouvrir un message, « Répondre », ne rien écrire, fermer : aucune question, aucun brouillon.
 5. « Nouveau message », écrire une phrase dans le corps, fermer : weda2 demande « abandonner le brouillon ? » comme
    avant ; le mobile enregistre le brouillon, qui apparaît dans « Brouillons ».
-6. Rouvrir ce brouillon, effacer tout le texte, fermer : weda2 demande la confirmation d'abandon ; le mobile ferme sans
-   écraser le brouillon, qui garde son texte.
+6. Rouvrir ce brouillon, corriger seulement l'objet, fermer : la correction est enregistrée. Le rouvrir, effacer
+   tout le texte (la signature reste), fermer : weda2 demande la confirmation ; sur le mobile, le brouillon est
+   enregistré tel qu'affiché (signature seule). Décision 4.
 
 ## Conformité santé / Ségur / ANS
 
@@ -142,15 +147,15 @@ Voir `tests/Features/Mss/EmptyComposeLeavesNoDraft.feature`.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 21 s | — | — | — | — |
-| /develop | ok | 15 min 17 s | 3 (45 s) | 4 (1 min 23 s) | — | api-mail 0B/1T, client-angular 3B/3T, e2e ×1 (8 min 20 s), reprise corps modifié : weda2 1 239, mobile 1 262 ; DRAFT-003 avec signature prouvé rouge |
+| /develop | ok | 1 min 45 s | 3 (45 s) | 4 (1 min 23 s) | — | api-mail 0B/1T, client-angular 3B/3T, e2e ×1 (8 min 20 s), isolation tests éditeur mobile ; décision 4 reportée |
 | /sonar | skipped | 0.5 s | — | — | — | reprise : api-mail limité au catalogue (YAML) |
-| /lint-angular | skipped | 0.4 s | — | — | — | reprise : weda2 inchangé depuis le lint propre |
-| /lint-mobile | ok | 6.6 s | — | — | — | reprise : propre |
-| /e2e | ok | 15 min 10 s | — | — | — | e2e ×10 (1 h 01 min), reprise : mobile 45/45, angular 53/53, parité verte |
-| /review | failed | 4 min 53 s | 3 (19 s) | 3 (4 min 23 s) | — | client-mobile 1B/1T, client-angular 1B/1T, api-mail 1B/1T, CHANGES REQUESTED : perte de texte (mobile signature par défaut, weda2 sous la citation) ; règle à confirmer |
-| **Total cycle** | | **35 min 50 s** | **6 (1 min 05 s)** | **7 (5 min 47 s)** | **0 (0.0 s)** | |
+| /lint-angular | ok | 12 s | — | — | — | reprise : 0 erreur |
+| /lint-mobile | ok | 6.9 s | — | — | — | reprise : propre |
+| /e2e | ok | 15 min 20 s | — | — | — | e2e ×15 (1 h 31 min), reprise corps modifié : mobile 45/45, angular 53/53 |
+| /review | failed | 4 min 53 s | 5 (29 s) | 6 (4 min 55 s) | — | client-mobile 2B/3T, client-angular 2B/2T, api-mail 1B/1T, CHANGES REQUESTED : perte de texte (mobile signature par défaut, weda2 sous la citation) ; règle à confirmer |
+| **Total cycle** | | **22 min 41 s** | **8 (1 min 14 s)** | **10 (6 min 18 s)** | **0 (0.0 s)** | |
 
-Autres commandes mesurées : lint ×3 (22 s)
+Autres commandes mesurées : lint ×5 (38 s)
 
 ## Develop log
 
@@ -239,6 +244,14 @@ brouillon sans texte.
   marqueurs de signature, et un changement de signature l'efface. La correction proposée est une ligne libre au-dessus
   de la signature pour un nouveau message. À ouvrir en suite.
 
+**2026-10-25 — `/develop`, correctif après la seconde revue** :
+- **mobile, isolation des tests dans le vrai éditeur** (`afterEach` : sélection retirée, focus rendu, élément détaché
+  de `<body>`) : les 3 tests de sélection d'`HtmlEditorComponent` ne tombent plus (0 échec sur 5 passages, contre 1
+  sur 3 avant). Commit sur la branche mobile.
+- **Décision 4** reportée dans « Règles » et à l'étape 6 du Manual Test Plan.
+- **Suite à ouvrir** : les 4 tests « suggestions de destinataires » (task-388) dépendent toujours de l'ordre (1 échec
+  sur 5 passages), comme sur `develop`.
+
 ## Sonar log
 
 **Skipped (2026-10-24).** api-mail n'est touché que par `e2e/scenarios.yml` (catalogue e2e, YAML), hors du périmètre
@@ -256,7 +269,7 @@ correction. Les avertissements restants sont antérieurs.
 
 ## E2E log
 
-Run du 2026-10-25, après la reprise — **VERT**. Il remplace le run rouge du 2026-10-24 (E2E-COMPOSE-003 mobile).
+Run du 2026-10-25, après la reprise « corps modifié » — **VERT**.
 
 | Voie | Déclencheur | Résultat | Tests |
 |---|---|---|---|
@@ -264,8 +277,8 @@ Run du 2026-10-25, après la reprise — **VERT**. Il remplace le run rouge du 2
 | angular | api-mail et client-angular touchés (code seul) | ✅ verte | 53 verts, 0 flaky, 1 quarantaine |
 
 - Voies jouées par `Tools/e2e/lane_cache.py` (aucune réutilisée).
-- Catalogue : `Api/Mail/e2e/scenarios.yml` @ branche de la task ; E2E-DRAFT-004 v1 prouvé rouge par mutation sur les deux
-  clients (`## Develop log`).
+- E2E-DRAFT-004 v1 prouvé rouge sur les deux clients (ancien critère). E2E-DRAFT-003 (mobile) joue désormais avec une
+  signature par défaut, prouvé rouge sous la mutation « texte dans la signature ignoré ».
 - Quarantaines : E2E-COMPOSE-002 (angular, task-350), passée
 - Divergences ouvertes : aucune
 - Démontage : complet (ports libres)
