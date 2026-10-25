@@ -455,6 +455,27 @@ de Virginie (`virginie.medecinrpps0062267@medecin.formation.mssante.fr`).
 - `api-mail` (pushed) : feat/task-397-delegation-bal-lecture-directe — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-397-delegation-bal-lecture-directe
 - Pré-flight 2026-10-25 : api-mail, client-blazor, client-mobile, dtos-mss, sdk sur `develop`. `host` (Host/Modules) et `interop` ne sont pas des racines de dépôt (noté, non bloquant, hors périmètre de la task).
 
+## Sonar log
+
+Analyse complète `healthplatform-api-mail` (SonarQube 9.9.8 local) après la tranche 12 (décision 14), commit `a9cfc8db`. Une première analyse, avant la décision 14, était déjà verte ; elle est remplacée par celle-ci, qui porte sur le code livré.
+
+Aucune itération de correction nécessaire : Quality Gate verte, **0 issue** sur le nouveau code.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline (develop) | Final (branche) | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | = |
+| New coverage | — | 95,1 % | seuil tenu |
+| New bugs / vulnérabilités / smells | — | 0 / 0 / 0 | = |
+| Bugs / Vulnérabilités / Smells (projet) | 0 / 0 / 0 | 0 / 0 / 0 | = |
+| Coverage projet | 98,1 % | 97,6 % | −0,5 pt |
+| Duplication | 0,4 % | 0,3 % | −0,1 pt |
+| Ratings fiabilité / sécurité / maintenabilité | A / A / A | A / A / A | = |
+
+- La couverture projet baisse d'un demi-point : la majorité du code de la délégation est prouvée par les tests d'intégration bout en bout (`DelegationEndToEndTests`), comptés dans la couverture ; les branches non couvertes restent des replis défensifs (décodage en échec, cache désactivé).
+- Conventions : aucune règle corrigée à la main dans cette étape, rien à reporter dans `conventions/csharp.md`.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-397 --sync` — ne pas éditer à la main)*
@@ -462,8 +483,9 @@ de Virginie (`virginie.medecinrpps0062267@medecin.formation.mssante.fr`).
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 18 s | — | — | — | — |
-| /develop | ok | 3 h 19 min | 47 (3 min 47 s) | 60 (59 min 41 s) | — | api-mail 47B/60T |
-| **Total cycle** | | **3 h 19 min** | **47 (3 min 47 s)** | **60 (59 min 41 s)** | **0 (0.0 s)** | |
+| /develop | ok | 3 h 19 min | 49 (4 min 05 s) | 64 (1 h 05 min) | — | api-mail 49B/64T |
+| /sonar | ok | 51 min 40 s | 5 (1 min 29 s) | 20 (25 min 53 s) | 8 (2 min 23 s) | api-mail 5B/20T, QG OK, 0 issue new code, aucune correction |
+| **Total cycle** | | **4 h 11 min** | **54 (5 min 35 s)** | **84 (1 h 31 min)** | **8 (2 min 23 s)** | |
 
 ## Develop log
 
