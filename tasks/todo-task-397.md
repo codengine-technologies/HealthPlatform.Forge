@@ -99,6 +99,12 @@ Ce qui a déjà été copié à tort dans les bases et caches des délégataires
 - **Dossiers système du délégant** : `shared/<adresse>` (sa réception) et ses `Sent`, `Drafts`,
   `Trash`, `Junk`. Ils ne peuvent être ni renommés, ni supprimés, ni déplacés : réponse **409**.
   Ses sous-dossiers personnels restent gérables, comme le permet Mailiz.
+- **Jamais de déplacement entre BAL** (humain, 2026-10-25, séance de la task-398). Un déplacement
+  ou une copie, unitaire ou groupé, ne se fait qu'à l'intérieur d'une même BAL : propre à propre,
+  ou `shared/<A>/…` à `shared/<A>/…`.
+  - Vers ou depuis une autre BAL : **409** ProblemDetails, rien ne bouge.
+  - C'est le dégât du 2026-10-25 par un autre geste : un message déplacé de la BAL du délégant vers
+    celle du délégataire en sort.
 - **Actes cliniques refusés** : rattachement à un patient et acquittement de biologie sur un
   document délégué.
 - **Recherche** : la recherche ne porte pas sur la BAL déléguée. Une recherche côté serveur
@@ -150,6 +156,10 @@ Ce qui a déjà été copié à tort dans les bases et caches des délégataires
 - [ ] Test d'intégration : renommer, supprimer ou déplacer `shared/<A>`, `shared/<A>/Sent`,
       `/Drafts`, `/Trash` ou `/Junk` → **409** `application/problem+json`, dossier intact. Le même
       geste sur un sous-dossier personnel de A est accepté.
+- [ ] Test d'intégration : déplacer, unitairement et en groupe, un message de `shared/<A>` vers la
+      réception de B, et un message de B vers `shared/<A>` → **409**, les deux messages restent
+      dans leur dossier côté IMAP. Un déplacement de `shared/<A>` vers `shared/<A>/Demo` est
+      accepté. Vu rouge.
 - [ ] Test d'intégration : `attach-patient` et `biology-ack` sur un document délégué → refus en
       ProblemDetails, rien d'écrit.
 - [ ] Test d'intégration : aucune notification « Nouveau message » et aucun contact publié quand A

@@ -235,7 +235,21 @@ de formation (§6, US 0).
 - **Q3 — Envoi « de la part de » au lot suivant.** Il est conditionné à la caractérisation SMTP
   Mailiz.
 - **Q6 — Mobile et weda2**, avec la parité e2e.
-- **Q4, Q5 et Q7 restent ouvertes.** Défauts retenus d'ici leur arbitrage :
+- **Q4 — Le délégant consulte les actes de ses délégataires**, dans l'écran Audit de weda2 (pas
+  d'écran sur le mobile).
+  - La personne qui agit est identifiée par son **RPPS et son nom**, issus de PSC.
+  - Une même trace est visible du délégataire et du délégant.
+  - Conservation 10 ans.
+  - Voir task-400.
+- **Autres arbitrages du même jour**, détaillés dans les tasks :
+  - lecture seule des documents délégués, sans rattachement ni acquittement ;
+  - **jamais de déplacement entre BAL** ;
+  - Répondre et Transférer masqués jusqu'à la task-399 ;
+  - libellé = adresse du délégant ;
+  - envoi : choix **obligatoire** de la BAL émettrice, brouillons dans les Brouillons IMAP du
+    délégant, signature du délégataire, jamais d'accusé de lecture en délégation ;
+  - HPRIM (task-389 et task-390) : affiché seulement en délégation.
+- **Q5 et Q7 restent ouvertes.** Défauts retenus d'ici leur arbitrage :
   - Q5 : on suit l'état lu du serveur, propre à chacun ;
   - Q7 : la gestion des délégations reste hors périmètre.
 
@@ -259,7 +273,8 @@ tenant.
 
 | Task | US | Dépôts | Dépend de |
 |---|---|---|---|
-| **task-397** | **Confinement des BAL déléguées.** Banc Dovecot avec espace `shared`, ACL et état lu propre à chacun. Suppression et vidage vers la corbeille **du propriétaire**. Dossiers système du délégant protégés côté API. Aucun traitement clinique, IA, contact, notification ni recherche sur `shared/`. Purge de ce qui a déjà été produit dans les bases des délégataires. | api-mail | — |
+| **task-397** | **Lecture directe, rien de persisté** (règle 14). Banc Dovecot avec espace `shared`, ACL et état lu propre à chacun. Suppression vers la corbeille **du propriétaire**, jamais de déplacement entre BAL, dossiers système du délégant protégés, documents décodés en mémoire. Purge unique de l'existant. | api-mail | — |
 | **task-398** | **BAL déléguées visibles et gérables.** Le contrat porte le propriétaire et le rôle des dossiers. Section « Boîtes déléguées » dans les deux clients, libellés et icônes système, compteurs, sélecteurs de dossiers complets, message à la révocation. | dtos-mss, api-mail, client-mobile, client-angular | task-397 |
 | **task-399** | **Envoyer de la part du délégant** (lot suivant). Caractérisation SMTP Mailiz, choix de la BAL émettrice, `From` contrôlé, Envoyés et brouillons au bon endroit, accusés de lecture, signature. | dtos-mss, api-mail, client-mobile, client-angular | task-398 |
-| **task-400** | **Traçabilité acteur / propriétaire** (Q4 à arbitrer). | api-mail (+ clients) | task-397 |
+| **task-400** | **Traçabilité acteur / propriétaire.** RPPS et nom de la personne qui agit, BAL propriétaire. Journal du délégant dans weda2. | dtos-mss, api-mail, client-angular | task-397 |
+| task-389, task-390 | HPRIM : règle de délégation ajoutée (affichage seul). | api-mail (+ dtos-mss) | task-397 |
