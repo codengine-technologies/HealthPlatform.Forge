@@ -450,7 +450,8 @@ de Virginie (`virginie.medecinrpps0062267@medecin.formation.mssante.fr`).
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 18 s | — | — | — | — |
-| **Total cycle** | | **18 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 3 h 19 min | 47 (3 min 47 s) | 60 (59 min 41 s) | — | api-mail 47B/60T |
+| **Total cycle** | | **3 h 19 min** | **47 (3 min 47 s)** | **60 (59 min 41 s)** | **0 (0.0 s)** | |
 
 ## Develop log
 
