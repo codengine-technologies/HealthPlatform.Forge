@@ -53,6 +53,14 @@ Les journaux Seq portaient les chemins de sa BAL.
     bornée par la section J.
 13. **Persistance AOF de Redis acceptée telle quelle** : le résidu du cache dans le fichier AOF,
     jusqu'à sa réécriture, est accepté. Pas de chiffrement applicatif, pas d'instance dédiée.
+14. **En-têtes enrichis en direct, comme une BAL propre** (humain, 2026-10-25, après essai) : la
+    liste d'une BAL déléguée s'enrichit comme celle d'une BAL propre. `enrich/sync` et
+    `enrich/async` **décodent en mémoire** les messages porteurs d'une archive, déposent le contenu
+    dans le cache de la section J et émettent `EmailsEnriched` (SSE, pub/sub Redis : diffusion, rien
+    d'écrit dans le keyspace) avec des en-têtes légers (patient, catégorie, biologie marquée, sans
+    corps ni octets). Rien en base. Coût accepté : jusqu'à une page de décodages, renouvelés à
+    l'expiration du cache. Même jour : la route `version-chain` répond « aucune version » à
+    l'identifiant vide d'un document délégué (plus de 404).
 
 ## Objective
 
@@ -89,7 +97,10 @@ journaux ne contiennent ni noms de dossiers délégués, ni objets, ni noms de p
   ni enregistrés.
 - **Listes de messages** (en-têtes, `today`, `unread-today`, `unread`, `recent`) : `SEARCH` et
   `FETCH` en direct.
-  - Les en-têtes portent un **statut d'enrichissement terminal**, et non `Pending`.
+  - Les en-têtes portent un **statut d'enrichissement terminal**, et non `Pending` — **sauf**
+    (décision 14) un message porteur d'une archive dont le contenu décodé n'est pas encore dans le
+    cache J : `Pending`, jusqu'à l'évènement `EmailsEnriched` qu'émet `enrich/sync`. Un en-tête dont
+    le contenu est en cache porte ses documents légers (patient, catégorie, biologie marquée).
   - Aucun nombre de messages de fil n'est calculé à partir de la base du délégataire.
   - **Indicateur « document médical » sans décodage** : `HasMedicalDocuments` est posé à partir de
     la **structure du message**, déjà lue avec l'enveloppe. Il suffit de la présence d'une pièce
@@ -111,9 +122,10 @@ journaux ne contiennent ni noms de dossiers délégués, ni objets, ni noms de p
   - À défaut, il est servi en **redécodant** l'archive.
 - **Lu, non lu, drapeaux** (unitaires et groupés) : commande IMAP `STORE` directe. **Aucune**
   ligne `PendingActions` : on contourne la file de `FlagPropagationService`.
-- **Enrichissement** : `enrich/async` **et `enrich/sync`** ne font rien sur un chemin délégué. Ils
-  sortent avant toute lecture IMAP, réservation Redis, notification ou reprise IA, et répondent
-  **200**.
+- **Enrichissement** : `enrich/async` **et `enrich/sync`** n'**enregistrent** rien sur un chemin
+  délégué : ni base, ni réservation Redis, ni reprise IA. Depuis la décision 14, ils décodent en
+  mémoire les messages porteurs d'une archive (cache J), puis émettent `EmailsEnriched` avec les
+  en-têtes légers. Réponse inchangée (`analysed = 0`).
 - **Synchronisation** : voir la section I. Aucun dossier délégué n'est jamais traité, et chaque
   écart est journalisé « skipped ».
 
