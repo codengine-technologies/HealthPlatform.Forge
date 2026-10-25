@@ -589,6 +589,52 @@ Démontage vérifié : ports 5052/3993/3465/3143 libres, aucun conteneur e2e ré
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
 
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/313 — label `awaiting-human-merge`
+
+## Code Review Summary
+
+**Verdict : APPROVED** (2ᵉ passe, 2026-10-25) — 0 bloquant. 1ʳᵉ passe : CHANGES REQUESTED (3 bloquants : B1 propriétés nominatives en clair dans les journaux, B2 masquage arrêté à l'espace / l'apostrophe, B3 borne du cache J qui figeait l'enrichissement), corrigés en tranche 13 (`ff42b6e8`, `80cb6c2f`) et revérifiés par une relecture indépendante, dans le code.
+
+### Règle 1b — comportement → test d'intégration → preuve rouge
+
+| Comportement atteignable par un endpoint | Test d'intégration (bout en bout, `DelegationEndToEndTests` sauf mention) | Preuve rouge |
+|---|---|---|
+| Liste des dossiers : BAL déléguée en direct, aucune ligne `MailFolders`, « skipped » par dossier | `TheFolderList_ShowsTheDelegatedMailbox_…` | tranche 5, 3 mutations |
+| En-têtes, contenu, CDA décodé hors verrou, `HasMedicalDocuments` par structure, base vide | `ReadingADelegatedMessage_…` | tranche 7 ; décision 14 M32, M34 |
+| `enrich/sync` / `enrich/async` : décodage mémoire, `EmailsEnriched` léger, rien en base, libellé de tâche sans chemin | `EnrichingADelegatedFolder_DecodesInMemory_…`, `TheWholeDelegatedJourney_…` | M31, M35 |
+| `version-chain` sur l'identifiant vide → 200 sans voisin | `ReadingADelegatedMessage_…` | M33 |
+| Routes refusées (IA, accusés, étiquettes, annuler-remplacer, recherche, réglages) avant tout appel | `TheGesturesRule14Forbids_AreRefused_…` + convention `DelegatedAccessDeclarationTests` | tranche 6, 6 mutations |
+| Alias / casse / révocation → 404 typés ; `Sent/`, `//Sent` → 404 | `AnAliasOfTheOwnerMailbox_…`, `TheOwnerSystemFolders_…` | tranche 6 ; S3 rouge avant correction (500) |
+| Dossiers système 409, sous-dossier personnel gérable | `TheOwnerSystemFolders_…` | tranche 6 |
+| Déplacements inter-BAL 409, interne OK | `MovingBetweenTwoMailboxes_…`, `MovingWithinTheDelegatedMailbox_Passes` | tranche 6 / 8 |
+| Hors ligne refusé, `PendingActions` vide | `Offline_ADelegatedMailboxIsNeitherReadNorWritten_…` | tranche 6 |
+| Drapeaux `STORE` direct, rien d'enregistré | `FlagsOnDelegatedMessages_…` | tranche 7 |
+| Pièces jointes, zip, export EML en direct | `TheDelegatedFolderAndItsAttachments_…` | tranche 7 |
+| Corbeille du propriétaire, suppression définitive | `DeletingInADelegatedMailbox_…` | tranche 8 |
+| Audit : liste blanche, `Message-ID` vivant (8 familles + tampon) | `EveryAuditedGestureOnADelegatedMailbox_…` | tranche 9, 6 mutations |
+| Synchronisation : aucun dossier délégué traité | `ABackgroundSyncPass_…` | tranche 11, M29-M30 |
+| Cache J : deux instances, un décodage, empreinte, TTL ≤ 5 min, personnel, oublié | `TheDecodedContent_IsSharedByTwoInstances_…` | tranche 10, M21-M26 |
+| Cache J au-delà de la borne : éviction, en-têtes enrichis | `BeyondTheContentCacheBound_…` | M38 |
+| Cache J oublié au renommage / à la suppression d'un dossier | `RenamingOrDeletingADelegatedFolder_…` | rouge sans correction |
+| Parcours complet : rien en base, Redis, bus ; journaux (contrôleurs compris) et traces sans sous-dossier, objet, pièce jointe, patient | `TheWholeDelegatedJourney_PersistsNothing_…` | M27, M28, M36, M37 |
+
+### Revue par domaine
+
+- ✅ **Sécurité / règle 14** : garde unique à la frontière d'écriture (intercepteur EF, décorateur de cache, filtre de publication), convention prouvée rouge ; filtre MVC global, toute action muette refuse un chemin délégué ; masquage central des journaux.
+- ✅ **Architecture** : règle de domaine pure (`DelegatedMailboxRule`), politiques par attribut, lecture déléguée isolée dans un partiel d'`ImapService`.
+- ✅ **Erreurs** : ProblemDetails typés (`DELEGATED_*`, `urn:mss:problem:delegation-withdrawn`) via `GlobalExceptionHandler` (règle 12).
+- ⚠️ **Taille** : 68 fichiers (≈ 1 600 lignes de tests). Au-delà des ~30 recommandés ; une seule US, non scindable sans casser la règle 11 (décision 10 : une seule task).
+
+### Suggestions (non bloquantes)
+
+- **Masquage encodé arrêté à `&`** (`DelegatedMailboxRule.cs:212`) : un dossier « Courrier & CR » laisse « CR » dans `url.path` et le journal des requêtes. Correctif d'une ligne (retirer `&` du délimiteur de queue encodée) — proposé avant merge.
+- Index du cache J : lecture-puis-écriture non atomique (pire cas : une clé non indexée vit jusqu'à son TTL, 5 min) — hash Redis ou script Lua.
+- Racine suivie de `/` (`shared/a@b/`) acceptée comme réception ; `.` et `..` non refusés (le serveur les refuse probablement).
+- Suppression de dossier en échec après le vidage : cache non oublié (TTL).
+- S5 page d'en-têtes qui désérialise le contenu complet du cache ; S6 enrichissement mémoire message par message ; S9 abonnement SSE sans contrôle de révocation ; S10 `Involves` vs `IsDelegated`.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-397 --sync` — ne pas éditer à la main)*
@@ -601,8 +647,8 @@ Démontage vérifié : ports 5052/3993/3465/3143 libres, aucun conteneur e2e ré
 | /lint-angular | skipped | 0.4 s | — | — | — | repo non touché (Repos: api-mail) — passage post-revue |
 | /lint-mobile | skipped | 0.5 s | — | — | — | repo non touché (Repos: api-mail) — passage post-revue |
 | /e2e | ok | 15 min 20 s | — | — | — | e2e ×6 (30 min 44 s), post-revue : mobile 46 + angular 55 verts, parité verte |
-| /review | failed | 11 min 35 s | 1 (10 s) | 1 (4 min 14 s) | — | api-mail 1B/1T, CHANGES REQUESTED : 3 bloquants (masquage propriétés sœurs, regex de masquage, borne du cache J) |
-| **Total cycle** | | **51 min 35 s** | **59 (6 min 32 s)** | **105 (1 h 54 min)** | **12 (3 min 43 s)** | |
+| /review | ok | 4 min 58 s | 2 (25 s) | 2 (8 min 25 s) | — | api-mail 2B/2T, APPROVED (2e passe), PR #313 |
+| **Total cycle** | | **44 min 58 s** | **60 (6 min 46 s)** | **106 (1 h 58 min)** | **12 (3 min 43 s)** | |
 
 ## Develop log
 
