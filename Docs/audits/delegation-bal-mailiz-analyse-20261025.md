@@ -209,6 +209,14 @@ de formation (§6, US 0).
   ni doublons et versions, ni IA, ni embeddings, ni recherche, ni contacts, ni notification.
   - Lecture seule : ni rattachement à un patient, ni acquittement de biologie. Ces actes restent
     au délégant.
+  - **Rien de ce qui est extrait d'un CDA délégué n'est stocké chez le délégataire**, ni en base ni
+    dans Redis : documents, rendus, **biologie**, résumés, identité patient, texte ajouté au corps.
+    Le décodage se fait à l'affichage, en mémoire. Hors ligne, ces documents ne sont pas
+    consultables (accepté).
+    - **Constat qui l'a motivé** : 323 résultats de biologie de la délégante étaient déjà dans la
+      base du délégataire.
+    - La biologie est aussi dans le rendu du document et dans le corps du message : exclure la
+      seule table de biologie ne suffisait pas.
   - L'US 5 disparaît.
 - **Q3 — Envoi « de la part de » au lot suivant.** Il est conditionné à la caractérisation SMTP
   Mailiz.
