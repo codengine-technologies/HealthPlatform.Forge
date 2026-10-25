@@ -524,16 +524,20 @@ Skipped — `client-mobile` non touché par la task (`**Repos**: api-mail`).
 
 ## E2E log
 
-Rejoué après les retours de `/review` (tranche 13) : api-mail `80cb6c2f`. Le passage précédent (api-mail `a9cfc8db`, mobile 46 / angular 55, vert) est remplacé par celui-ci.
+Rejoué après les tranches 14 et 15 (en-têtes légers, clé préfixée par l'adresse) : api-mail `9d2e5a71`. Les passages précédents (`a9cfc8db`, `80cb6c2f`, verts) sont remplacés par celui-ci.
 
 | Voie | Déclenchée par | Comment | Résultat | Dépôts (HEAD) |
 |---|---|---|---|---|
-| mobile | api-mail touché | jouée | 46 verts, 0 flaky, 0 rouge | api-mail `80cb6c2f`, client-mobile `6d890c2f` (develop, aligné sur origin/develop) |
-| angular | api-mail touché | jouée | 55 verts, 0 flaky, 0 rouge | api-mail `80cb6c2f`, client-angular (branche de l'humain, arbre inchangé) |
+| mobile | api-mail touché | jouée | 46 verts, 0 flaky, 0 rouge | api-mail `9d2e5a71`, client-mobile `6d890c2f` (develop, aligné sur origin/develop) |
+| angular | api-mail touché | jouée | 54 verts, 1 flaky (E2E-INBOX-001), 0 rouge | api-mail `9d2e5a71`, client-angular (branche de l'humain, arbre inchangé) |
 
-Démontage vérifié : ports 5052/3993/3465/3143 libres, aucun conteneur e2e résiduel. Aucun écran client modifié par la task (api-mail seul) : pas d'avertissement « parcours touchés sans spec ».
+Démontage vérifié : ports 5052/3993/3465/3143 libres, aucun conteneur e2e résiduel. Aucun écran client modifié par la task (api-mail seul). Flaky E2E-INBOX-001 consigné au registre de `conventions/e2e.md` (2ᵉ occurrence, task backend sans rapport avec les filtres).
 
 **E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
+
+**Flaky (vert au second essai, non bloquant)** (1) :
+
+- [angular] « inbox — filtres Non lus / Lus / Tous et recherche » (E2E-INBOX-001)
 
 **En quarantaine (posée par l'humain, non bloquant)** (1) :
 
@@ -543,7 +547,7 @@ Démontage vérifié : ports 5052/3993/3465/3143 libres, aucun conteneur e2e ré
 
 | Scénario | v | Mode | Titre | angular | mobile |
 |---|---|---|---|---|---|
-| E2E-INBOX-001 | 1 | headless | Filtrer la boîte de réception, basculer liste / conversation, ouvrir la recherche | ✅ | ✅ |
+| E2E-INBOX-001 | 1 | headless | Filtrer la boîte de réception, basculer liste / conversation, ouvrir la recherche | ⚠️ flaky | ✅ |
 | E2E-FOLDER-001 | 1 | headless | Naviguer vers les dossiers Archive et Corbeille | ✅ | ✅ |
 | E2E-PATIENT-001 | 1 | headless | Afficher la vue patients | ✅ | ✅ |
 | E2E-PATIENT-002 | 2 | headless | Rattacher à la main un document sans INS à un patient choisi par recherche, puis le détacher | ✅ | ✅ |
@@ -664,10 +668,10 @@ Démontage vérifié : ports 5052/3993/3465/3143 libres, aucun conteneur e2e ré
 | /sonar | ok | 16 min 58 s | 12 (3 min 08 s) | 49 (59 min 52 s) | 18 (5 min 52 s) | 1 itération(s), api-mail 12B/49T, tranches 14-15 : CA1859 corrigée, QG OK |
 | /lint-angular | skipped | 0.5 s | — | — | — | repo non touché (Repos: api-mail) |
 | /lint-mobile | skipped | 0.5 s | — | — | — | repo non touché (Repos: api-mail) |
-| /e2e | ok | 15 min 20 s | — | — | — | e2e ×6 (30 min 44 s), post-revue : mobile 46 + angular 55 verts, parité verte |
+| /e2e | ok | 16 min 52 s | — | — | — | e2e ×9 (47 min 03 s), tranches 14-15 : mobile 46, angular 54 + 1 flaky, parité verte |
 | /review | ok | 4 min 58 s | 2 (25 s) | 2 (8 min 25 s) | — | api-mail 2B/2T, APPROVED (2e passe), PR #313 |
 | /tech-writer | ok | 1 min 34 s | — | — | — | — |
-| **Total cycle** | | **45 min 34 s** | **67 (8 min 09 s)** | **127 (2 h 27 min)** | **18 (5 min 52 s)** | |
+| **Total cycle** | | **47 min 06 s** | **67 (8 min 09 s)** | **127 (2 h 27 min)** | **18 (5 min 52 s)** | |
 
 ## Develop log
 
