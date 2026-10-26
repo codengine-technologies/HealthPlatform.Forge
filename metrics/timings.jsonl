@@ -6982,3 +6982,5 @@
 {"ts":"2026-10-26T22:50:47+01:00","run_id":"-","type":"step","task":"task-399","step":"review","status":"ok","note":"2e passe APPROVED apres correction regle 14 ; PR Dtos #50, Api.Mail #317, Mobile #108","iterations":null,"duration_ms":121650}
 {"ts":"2026-10-26T22:52:26+01:00","run_id":"-","type":"step_start","task":"task-399","step":"tech-writer"}
 {"ts":"2026-10-26T22:53:56+01:00","run_id":"-","type":"step","task":"task-399","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":89536}
+{"ts":"2026-10-26T23:50:11+01:00","run_id":"forge-20261026-391-392","type":"step_start","task":"task-391","step":"tech-writer"}
+{"ts":"2026-10-26T23:50:12+01:00","run_id":"forge-20261026-391-392","type":"step","task":"task-391","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":679}

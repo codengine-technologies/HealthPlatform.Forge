@@ -2,9 +2,9 @@
 
 > **Statut** : En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.90
+> **Version** : 1.91
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-26 (écrire de la part d'un confrère qui vous a délégué sa boîte — task-399 ; les valeurs d'un résultat HPRIM rejoignent la biologie du patient, avec leurs anomalies — task-390 ; un résultat de laboratoire au format HPRIM devient un document de biologie à intégrer — task-389 ; les boîtes déléguées rangées à part dans le mobile et la messagerie web, gestes de gestion seulement — task-398 ; délégation de BAL : la boîte déléguée se lit en direct, rien n'en est conservé — task-397 ; un geste sur la liste touche exactement les messages affichés — task-375 ; une rédaction sans texte ne laisse ni brouillon ni question — task-394 ; carnet d'adresses refondu — task-393)
+> **Dernière mise à jour** : 2026-10-26 (le même résultat HPRIM rattaché deux fois au même patient est signalé comme doublon — task-391 ; écrire de la part d'un confrère qui vous a délégué sa boîte — task-399 ; les valeurs d'un résultat HPRIM rejoignent la biologie du patient, avec leurs anomalies — task-390 ; un résultat de laboratoire au format HPRIM devient un document de biologie à intégrer — task-389 ; les boîtes déléguées rangées à part dans le mobile et la messagerie web, gestes de gestion seulement — task-398 ; délégation de BAL : la boîte déléguée se lit en direct, rien n'en est conservé — task-397 ; un geste sur la liste touche exactement les messages affichés — task-375 ; une rédaction sans texte ne laisse ni brouillon ni question — task-394 ; carnet d'adresses refondu — task-393)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1036,6 +1036,11 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
+- **v1.115 — Le même résultat HPRIM, rattaché deux fois au même patient, est signalé comme doublon** (task-391) :
+  - **Quand un laboratoire renvoie le même résultat**, par un renvoi ou un double adressage, le second exemplaire rattaché au même patient porte le **bandeau doublon** habituel. Vous gardez ou écartez, comme pour un compte rendu CDA.
+  - **Le même résultat est reconnu** même s'il est renvoyé dans un autre encodage ou regroupé avec le résultat d'un autre patient. Un résultat dont une seule valeur change n'est **pas** un doublon.
+  - **Seulement au rattachement, et seulement dans le dossier du patient que vous choisissez** : rien n'est rapproché à la réception, et le dossier d'un autre patient n'est jamais touché.
+  - **Changer le document de patient, ou le détacher**, retire le signal posé dans le dossier quitté. Rien ne disparaît du dossier.
 - **v1.114 — Écrire de la part d'un confrère qui vous a délégué sa boîte** (task-399, application mobile et messagerie web) :
   - **Vous choisissez toujours au nom de qui vous écrivez.** Dès qu'un confrère vous a délégué sa boîte, chaque rédaction (nouveau message, réponse, transfert) commence avec le champ « De » vide. Tant que vous n'avez pas choisi entre vous-même et votre confrère, rien ne part et aucun brouillon n'est enregistré. Sans délégation, rien ne change.
   - **Au nom de votre confrère**, le destinataire reçoit un message de votre confrère, « de la part de » vous. La copie est rangée une seule fois dans les Envoyés de **sa** boîte, jamais dans les vôtres.

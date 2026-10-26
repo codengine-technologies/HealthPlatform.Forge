@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-10-26 (v1.114)
+> **Dernière mise à jour** : 2026-10-26 (v1.115)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -760,6 +760,39 @@
   - sous-objet partagé pour les options d'envoi au prochain changement de contrat ;
   - remonter `originalMarkedCancelled` et `warning` par `drafts/{id}/send` ;
   - bail renouvelable pour le verrou.
+
+### v1.115 — HPRIM : signal doublon au rattachement, par empreinte du contenu — task-391
+
+- **Origine** : suite de task-389 et task-390. Le périmètre a été réduit par l'humain le 2026-10-26 au seul signal doublon. Le remplacement du partiel est abandonné, et la suggestion de patient existe déjà (task-012, task-137). L'idée d'une empreinte vient de l'humain (« un hash des fichiers ») et a été précisée en séance : par résultat, sur le contenu décodé, en SHA-256.
+- **Contrat** : aucun changement (`IsDuplicate` et `DuplicateOfId` existent depuis task-013).
+- **api-mail** :
+  - `HprimFingerprint` : SHA-256 en hexadécimal du contenu canonique du document HPRIM. Il couvre laboratoire, expéditeur, traits, dates, texte aux fins de ligne normalisées et résultats structurés ; il vaut `null` pour les autres formats.
+  - Colonne **générique** `MailMedicalDocuments.ContentFingerprint` (`varchar(64) NULL`), posée par `CreateMedicalDocumentEntity`. Migration `20261026130000`, avec l'index partiel `IX_MailMedicalDocuments_PatientId_ContentFingerprint`.
+  - **Rattachement** (`PatientRepository`) : recherche dans `ActiveDocumentsForPatient` du patient choisi. Le document de même empreinte le plus ancien devient l'original (`DuplicateOfId`, verdict en attente).
+  - **Changement de patient et détachement** : les liens de même contenu sont retirés, puis recherchés dans le nouveau dossier. Les liens doublons CDA ne sont jamais touchés.
+  - **Cache** : le contrôleur vide aussi le cache Redis des messages dont le lien a été retiré (`GetSameContentDuplicatesOfAsync`).
+- **Tests** :
+  - unitaires : 10 cas `HprimFingerprintTests` ; 2 tests de contrôleur (cache) ;
+  - intégration : `HprimDuplicateOnAttachEndToEndTests`, 9 tests (même patient, valeur différente, deux patients, autre encodage regroupé, refus du signal, détachement, doublon déplacé, original déplacé, déplacé vers un dossier au même contenu) ;
+  - migration : `MedicalDocumentContentFingerprintMigrationTests` ;
+  - BAL déléguée : document non rattachable (404) ;
+  - mutations MA, ME, MF, MO, MD, MP, MC, MCA, toutes rouges ;
+  - suites api-mail : 7 150 verts.
+- **Harnais** : `HprimServer` est extrait et partagé par trois classes de tests HPRIM (une copie de moins), et ses relectures se font **sans pool Npgsql**. Avec 8 usagers de test de plus, la suite tombait en 53300 « too many clients » : c'est une récidive du piège de task-331, dont la mémoire est complétée.
+- **Sonar** : QG OK, 0 issue, new coverage 95,1 %.
+- **E2E** : mobile 50 verts, Angular 59 verts, 0 flaky, parité verte, porte 0. Les voies ont été rejouées après la reprise de revue.
+- **Revue** :
+  - 1ʳᵉ passe : CHANGES REQUESTED. Un document changé de patient gardait le lien du dossier quitté, et la règle « autre patient » n'avait pas été vue rouge.
+  - 2ᵉ passe : CHANGES REQUESTED. Le signalement après déplacement n'était pas testé.
+  - 3ᵉ passe : APPROVED.
+- **PR** : `api-mail` #318.
+- **À connaître au HAG** :
+  - sémantique de task-013 (le doublon en attente quitte le dossier, reste visible dans son message) ;
+  - empreinte avant et après task-392 ;
+  - trois exemplaires ;
+  - verdict perdu au rattachement suivant ;
+  - concurrence ;
+  - original mis à la corbeille.
 
 ### v1.114 — Délégation de BAL : envoyer, répondre, transférer et rédiger de la part du délégant (mobile et weda2) — task-399
 
@@ -1971,6 +2004,7 @@ Audit grep complémentaires pour les couches 2 / 2bis / 3 (tasks 021 / 022 / 023
 
 | Task | Apport principal | Règles touchées |
 |------|------------------|-----------------|
+| task-391 | **Le même résultat HPRIM, rattaché deux fois au même patient, porte le signal doublon.** Empreinte SHA-256 du contenu décodé (stable entre encodages et regroupements), conservée avec le document ; comparée au rattachement, dans le seul dossier du patient choisi ; liens retirés au changement de patient et au détachement ; bandeau doublon existant (task-013). | — |
 | task-399 | **Délégation de BAL : envoyer, répondre, transférer et rédiger de la part du délégant (mobile et weda2).** Champ De obligatoire avec délégation, envoi « de la part de » archivé une seule fois dans les Envoyés du délégant, brouillons dans ses Brouillons IMAP, `From` contrôlé côté API (Mailiz ne le contrôle pas), refus hors ligne et IA, rien de persisté chez le délégataire (y compris un transfert « (moi) »), Répondre / Transférer rétablis ; scénarios E2E-DELEG-005..007. | 14 |
 | task-390 | **Les lignes `RES|` d'un HPRIM deviennent des résultats de biologie, avec alerte d'anomalie.** Valeur, unité, normes, seconde valeur, code local du laboratoire (jamais LOINC), statut partiel / final / corrigé persisté ; anomalie par l'indicateur du laboratoire, sinon par les normes ; « anormaux non lus » après rattachement seulement ; examens sans code distingués par leur libellé ; BAL déléguée lue sans rien conserver. | — |
 | task-389 | **Un résultat de laboratoire au format HPRIM devient un document de biologie à intégrer.** Lecture HPRIM selon les règles de Weda (en-tête, plusieurs résultats, encodages, données parasites, HTML et fichier trop court rejetés) ; un document par résultat, sans INS donc non rattaché ; PDF du message associé ; CDA prioritaire ; corps jamais HPRIM ; lu à l'affichage dans une BAL déléguée, sans rien conserver. | — |

@@ -108,6 +108,7 @@ Messages de test : le même HPRIM synthétique déposé **deux fois** dans la R�
 | /lint-mobile | skipped | 0.5 s | — | — | — | repo non touché |
 | /e2e | ok | 0.4 s | — | — | — | e2e ×6 (32 min 08 s), 2 voies vertes sur 6816d504, porte 0 |
 | /review | ok | 0.5 s | — | — | — | APPROVED 3e passe, PR #318 |
+| /tech-writer | ok | 0.6 s | — | — | — | — |
 | **Total cycle** | | **1 h 04 min** | **14 (2 min 18 s)** | **23 (42 min 29 s)** | **4 (1 min 29 s)** | |
 
 ## Develop log
