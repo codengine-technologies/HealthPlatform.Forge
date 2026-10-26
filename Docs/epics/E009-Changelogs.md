@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-10-25 (v1.110)
+> **Dernière mise à jour** : 2026-10-26 (v1.111)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -760,6 +760,51 @@
   - sous-objet partagé pour les options d'envoi au prochain changement de contrat ;
   - remonter `originalMarkedCancelled` et `warning` par `drafts/{id}/send` ;
   - bail renouvelable pour le verrou.
+
+### v1.111 — Les BAL déléguées dans les clients : section à part, gestes de gestion, révocation (mobile et weda2) — task-398
+
+- **Origine** : suite de task-397. Côté serveur, la BAL déléguée était sûre, mais dans les clients elle apparaissait comme un dossier racine nommé par une adresse. Plusieurs gestes l'exploitaient encore : sur weda2, le panneau Weda envoyait automatiquement l'identité des patients du délégant au dossier Weda du délégataire.
+- **Contrat** : `FolderDto.Owner` et `FolderDto.Role` (`FolderRole` : `Personal`, `Inbox`, `Sent`, `Drafts`, `Trash`, `Junk`), champs additifs, NuGet `HealthPlatform.Dtos.Mss` **536.0.0**.
+- **api-mail** : `FolderOwnership.Annotate` pose le propriétaire et le rôle sur toute la liste `GET /folders`, quel que soit le fournisseur (cache compris). Le rôle d'un dossier délégué se lit à sa position (`DelegatedMailboxRule`), et `Type` reste celui du serveur. Seule la liste porte ces champs.
+- **Banc e2e** :
+  - le fragment `delegation.conf` est monté par l'AppHost e2e (`!include_try` d'un répertoire de fragments, sans effet sur le banc de charge) ;
+  - `delegation --grant|--revoke` passe par `SETACL` et `DELETEACL`, relus en IMAP sur une session neuve ;
+  - `--mailbox` est disponible sur `message` et `folder` ;
+  - seed `bal-deleguee` (CR de biologie et courrier), et `E2eReset` couvre la délégante ;
+  - scénarios **E2E-DELEG-001..004** v1, requis sur mobile et weda2 ;
+  - le banc d'intégration de task-397 (`DelegationImap`) réutilise désormais le protocole d'`E2eDelegation`.
+- **Clients (mobile et weda2)** :
+  - section « Boîtes déléguées » toujours sous la BAL principale, triée par adresse, repliée à chaque arrivée (état en mémoire), avec cumul des non-lus et jeton de couleur propre (clair et sombre) ;
+  - libellés de rôle ; titre `<adresse> — <dossier>` et bandeau « (délégation) » ;
+  - gestes masqués : réponse, transfert, IA, étiquettes, accusé, rattachement, acquittement, doublons, annuler-remplacer ; sur weda2, panneau Weda et import non instanciés ;
+  - Restaurer et Supprimer définitivement (nouveaux sur weda2) ;
+  - « Déplacer vers… » et le glisser-déposer restent dans la BAL courante, tous niveaux ;
+  - mode liste forcé, recherche coupée, notifications `shared/` écartées, chemin masqué en console ;
+  - hors ligne, la BAL déléguée est quittée ; la déconnexion et la session expirée purgent la boîte (mobile) ;
+  - export nommé sans objet.
+- **weda2** : panneau des dossiers redimensionnable (300 px par défaut, minimum 240, maximum réduit pour laisser 300 px à la liste ; souris, clavier ±16 / Début / Fin, double-clic, ARIA). Largeur mémorisée dans `localStorage` (un nombre, aucune donnée de BAL).
+- **Révocation** (tranche 9, retours de revue) : `withdrawDelegation` retire la BAL de la liste en mémoire, et `setFolders` la tient absente des listes périmées que le serveur sert encore. Le refus `DELEGATION_WITHDRAWN` s'applique sans relecture, et une réception déléguée introuvable vaut retrait, sans boucle. Sur weda2, le détail remonte le refus (`delegationWithdrawn$`) et l'assistant IA se referme.
+- **Écart assumé** : enrichissement et SSE conservés sur `shared/` (décision 14 de task-397, postérieure à la DoD de task-398). À valider au HAG.
+- **Tests** :
+  - intégration : `TheFolderList_GivesEveryFolderItsOwnerAndRole_…`, rouge avant branchement, puis mutation M1 et mutation « annotation limitée au `refresh` » sur la liste servie par le cache ;
+  - unitaires : 18 `FolderOwnershipTests` ; mobile 1 333 tests ; `mss-lib` 121 fichiers verts ;
+  - mutations e2e : 4 mobile et 4 weda2 (NA1-NA4), toutes rouges sur l'assertion visée ;
+  - suites api-mail : 6 989 verts.
+- **Sonar** : 1 issue `CA1859` (11ᵉ occurrence de la convention, introduite par la passe `/simplify`) corrigée ; QG OK, 0 issue sur le nouveau code, new coverage 95,1 %, coverage projet 97,6 → 97,5 %.
+- **E2E** : mobile 49 verts et 1 flaky ; Angular 58 verts et 1 flaky ; parité verte, porte 0.
+  - E2E-DELEG-004 (mobile) : 1ʳᵉ occurrence, défaut client corrigé par la tranche 9. 2ᵉ occurrence : `FOLDER_NOT_FOUND` servi sur un sous-dossier dans la fenêtre de révocation.
+  - E2E-INBOX-001 (Angular) : 3ᵉ occurrence, task de stabilisation à ouvrir.
+- **Revue** : la 1ʳᵉ passe (trois relectures) a rendu CHANGES REQUESTED, pour une révocation dépendant d'une liste relue périmée. La 2ᵉ passe a rendu APPROVED, avec trois suggestions :
+  - `leaveIfDelegated` à l'expiration de session (mobile) ;
+  - README e2e ;
+  - réapparition possible de la BAL avec plusieurs pods dans la fenêtre bornée.
+- **PR** : `dtos-mss` #48, `api-mail` #314, `client-mobile` #107 ; weda2 non commité (code-only, PR TFS par l'humain).
+- **Leçons** : `conventions/e2e.md` `retrait-sur-liste-perimee` ; `conventions/csharp.md` `CA1859` → 11.
+- **Suivis** :
+  - requalification de la révocation côté API : sur un 404 délégué, revérifier la racine sur une session IMAP renouvelée. Le gestionnaire de sessions n'a pas d'invalidation ;
+  - stabilisation d'E2E-INBOX-001 ;
+  - retrait de la divergence E2E-MAILBOX-002 (task-395) ;
+  - quarantaine E2E-COMPOSE-002 de plus de 14 jours (task-350).
 
 ### v1.110 — Délégation de BAL : naviguer entre les pages sans redécoder, cache séparé par utilisateur, en-têtes émis par lots — task-397 (extension)
 
@@ -1804,6 +1849,7 @@ Audit grep complémentaires pour les couches 2 / 2bis / 3 (tasks 021 / 022 / 023
 
 | Task | Apport principal | Règles touchées |
 |------|------------------|-----------------|
+| task-398 | **Les BAL déléguées dans les clients : une section à part, des gestes de gestion seulement, la révocation dite clairement (mobile et weda2).** Contrat `Owner` / `Role` des dossiers, section repliée et colorée sous la BAL principale, gestes d'exploitation masqués (dont le panneau Weda), Restaurer / Supprimer définitivement, déplacement limité à la BAL, recherche et notifications coupées, purge à la déconnexion et hors ligne ; panneau des dossiers redimensionnable sur weda2 ; banc e2e de délégation et scénarios E2E-DELEG-001..004. | — |
 | task-397 | **Délégation de BAL : la BAL déléguée se lit en direct, rien n'en est conservé chez le délégataire.** Lecture, tri, déplacement interne, suppression vers la corbeille du délégant ; IA, étiquettes, accusés, recherche refusés ; garde unique des écritures, masquage des journaux, audit en liste blanche ; cache du contenu décodé (5 min, clé HMAC) ; en-têtes enrichis en direct par SSE. | — |
 | task-394 | **Une rédaction sans texte dans le corps ne laisse ni brouillon ni question.** Le corps compte dès qu'il diffère de ce que la rédaction proposait (signature, citation), où que soit l'ajout ; weda2 ferme sans question un message non écrit ; un brouillon rouvert est enregistré tel qu'affiché. | — |
 | task-393 | **Le carnet d'adresses refondu, sur la messagerie web et l'application mobile.** Aperçu d'un contact à côté de la liste (fiche plein écran sur mobile), « Écrire un message » vers l'adresse par défaut ou l'adresse choisie, marques « Sans adresse MSSanté » et « Annuaire » avec filtres rapides, adresse par défaut choisie par bouton radio, contrôle du format des adresses, confirmation avant d'abandonner une fiche modifiée, RPPS de l'annuaire non modifiable. | — |

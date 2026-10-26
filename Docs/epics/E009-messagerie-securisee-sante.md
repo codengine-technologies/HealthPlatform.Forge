@@ -2,9 +2,9 @@
 
 > **Statut** : En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.86
+> **Version** : 1.87
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-25 (délégation de BAL : la boîte déléguée se lit en direct, rien n'en est conservé — task-397 ; un geste sur la liste touche exactement les messages affichés — task-375 ; une rédaction sans texte ne laisse ni brouillon ni question — task-394 ; carnet d'adresses refondu — task-393)
+> **Dernière mise à jour** : 2026-10-26 (les boîtes déléguées rangées à part dans le mobile et la messagerie web, gestes de gestion seulement — task-398 ; délégation de BAL : la boîte déléguée se lit en direct, rien n'en est conservé — task-397 ; un geste sur la liste touche exactement les messages affichés — task-375 ; une rédaction sans texte ne laisse ni brouillon ni question — task-394 ; carnet d'adresses refondu — task-393)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1036,6 +1036,13 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
+- **v1.111 — La boîte d'un confrère, rangée à part et sans confusion possible** (task-398, application mobile et messagerie web) :
+  - **Une section « Boîtes déléguées »**, toujours sous vos propres dossiers. Chaque boîte porte l'adresse de votre confrère et une couleur à part, et arrive repliée avec le nombre de messages non lus. Une fois dépliée, elle montre Réception, Envoyés, Brouillons, Spam et Corbeille, puis ses dossiers personnels.
+  - **Vous savez toujours où vous êtes.** Le titre de la liste indique « adresse — dossier », et un bandeau « Boîte de … (délégation) » surmonte chaque message.
+  - **Des gestes de gestion seulement.** Vous pouvez lire, marquer, déplacer dans sa boîte, supprimer, restaurer ou supprimer définitivement depuis sa corbeille, imprimer et exporter. Répondre, transférer, l'assistant IA, les étiquettes, l'accusé de lecture et le dossier patient Weda ne sont pas proposés. Aucune recherche de patient n'est envoyée à votre dossier Weda. Un fichier exporté ne porte jamais l'objet du message dans son nom.
+  - **Rien ne s'échappe de sa boîte.** « Déplacer vers… » et le glisser-déposer ne proposent que ses dossiers. La recherche et les notifications de nouveau message ne portent jamais sur elle.
+  - **Délégation retirée.** Vous lisez « Cette boîte ne vous est plus déléguée », vous revenez à votre propre réception, et sa boîte quitte la section. Hors connexion, ou à la déconnexion, rien de sa boîte ne reste affiché.
+  - **Messagerie web : un panneau des dossiers redimensionnable.** Tirez le séparateur pour l'élargir ou le réduire. La largeur choisie est conservée, et un double-clic rend la largeur d'origine.
 - **v1.110 — Boîte déléguée : passer d'une page à l'autre sans attendre** (task-397) :
   - **Revenir sur une page déjà vue l'affiche aussitôt enrichie**, sans nouveau décodage, pendant quelques minutes.
   - **Les lignes se complètent au fil de l'eau**, dix par dix, au lieu d'attendre la page entière.

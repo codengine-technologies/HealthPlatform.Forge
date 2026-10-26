@@ -355,7 +355,8 @@ Comptes de formation : Cyril, délégataire de Virginie. Lancer l'AppHost, puis 
 | /lint-mobile | ok | 6.9 s | — | — | — | lint propre après tranche 9 |
 | /e2e | ok | 9 min 30 s | — | — | — | e2e ×10 (1 h 12 min), rejeu après tranche 9 : 2 voies vertes, porte 0, 2 flaky |
 | /review | ok | 6 min 29 s | 3 (10 s) | 2 (49 s) | — | client-mobile 1B/1T, client-angular 1B/1T, dtos-mss 1B/0T, 2e passe APPROVED, 3 PR ouvertes |
-| **Total cycle** | | **26 min 19 s** | **19 (3 min 34 s)** | **45 (33 min 30 s)** | **6 (2 min 01 s)** | |
+| /tech-writer | ok | 1 min 04 s | — | — | — | — |
+| **Total cycle** | | **27 min 24 s** | **19 (3 min 34 s)** | **45 (33 min 30 s)** | **6 (2 min 01 s)** | |
 
 Autres commandes mesurées : lint ×5 (43 s), nuget-wait ×1 (18 s), restore ×2 (1 min 17 s)
 
