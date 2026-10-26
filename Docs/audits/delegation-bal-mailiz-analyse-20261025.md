@@ -184,6 +184,41 @@ défaut. Mais rattacher la BAL du délégant comme tenant **ne marche pas** :
 Une partie se mesure sans attendre Mailiz, par une **caractérisation instrumentée** sur les comptes
 de formation (§6, US 0).
 
+### 4 bis. Caractérisation de l'envoi délégué (task-399, 2026-10-26)
+
+Sonde MailKit 4.18.1 (outil local, hors dépôt), session XOAUTH2 de Cyril
+(`cyril.toubib0072344@…`) sur `mail-psc.formation.mailiz.mssante.fr` (IMAP 143 et SMTP 587, STARTTLS),
+BAL déléguée de Virginie (`virginie.medecinrpps0062267@…`). Destinataire de test : la BAL de Cyril.
+Deux passages, 09:24 et 09:28 UTC ; tous les messages de test ont été supprimés et purgés.
+
+| Mesure | Résultat |
+|---|---|
+| `NAMESPACE` | personnel `""`, autres utilisateurs `"shared"`, séparateur `/` |
+| Racine déléguée | `shared/<adresse exacte du délégant>` (casse identique à l'adresse) ; sous-dossiers `Sent`, `Drafts`, `Trash`, `Junk` + dossiers personnels |
+| SPECIAL-USE sur les dossiers partagés | **aucun** attribut (`\Sent`, `\Drafts` absents) — identification par le nom |
+| `MYRIGHTS` sur `…/Drafts`, `…/Sent` et la racine | `lrwstipekxacd` (tous les droits, y compris `i`, `t`, `e`) |
+| `APPEND` dans `shared/<V>/Drafts`, puis `\Deleted` + `UID EXPUNGE` | OK (APPENDUID rendu), plus rien après purge |
+| Capacités IMAP | ACL, UIDPLUS, SPECIAL-USE |
+| Envoi A : `From`=V, `MAIL FROM`=V, sans `Sender` | **accepté** ; reçu : `From`=V, `Return-Path`=V, aucun `Sender` |
+| Envoi B : `From`=V, `Sender`=C, `MAIL FROM`=C | **accepté** ; reçu : `From`=V, `Sender`=C, `Return-Path`=C |
+| Envoi C : `From`=V, `MAIL FROM`=C, sans `Sender` | **accepté** ; reçu : `From`=V, `Return-Path`=C |
+| Libellé « de la part de » | **jamais** ajouté par le serveur ; aucune réécriture d'en-tête |
+| Copie automatique dans les Envoyés | **aucune**, ni dans `shared/<V>/Sent`, ni dans `Sent` de Cyril (8 s après l'envoi) |
+| Contrôle du `From` par Mailiz | **aucun** : le premier passage a envoyé avec `From` et `MAIL FROM` = une adresse sur laquelle Cyril n'a **aucune** délégation (`…0052941@…`, erreur de saisie) — acceptée |
+
+**Conséquences** :
+- Mailiz formation ne vérifie pas le droit d'émettre sous une adresse. Le contrôle du `From` par
+  l'API (identités découvertes en direct, 403 sinon) est **le seul garde-fou**. À signaler à Mailiz.
+- L'archivage dans `shared/<V>/Sent` est **à notre charge** (`APPEND`), sinon le délégant n'a pas de
+  copie.
+- **Contrat d'en-têtes retenu** : `From` = « *Nom du délégataire*, de la part de *adresse* »
+  `<adresse du délégant>`, `Sender` = délégataire, et **enveloppe `MAIL FROM` = délégant** (passée
+  explicitement à `SendAsync`, sinon MailKit prendrait `Sender`). Le `Sender` garde l'imputabilité
+  dans le message ; l'enveloppe au délégant fait revenir rejets et accusés dans **sa** BAL (DoD).
+  Les composantes de ce contrat ont été acceptées séparément (A pour l'enveloppe, B pour `Sender`).
+- Non mesuré : remise à un destinataire MSSanté hors du domaine de formation, et accusés DSN/MDN
+  réels — à vérifier au HAG.
+
 ## 5. Décisions métier à prendre
 
 | # | Question | Options |
