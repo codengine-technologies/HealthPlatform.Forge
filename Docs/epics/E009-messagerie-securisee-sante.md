@@ -2,9 +2,9 @@
 
 > **Statut** : En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.89
+> **Version** : 1.90
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-26 (les valeurs d'un résultat HPRIM rejoignent la biologie du patient, avec leurs anomalies — task-390 ; un résultat de laboratoire au format HPRIM devient un document de biologie à intégrer — task-389 ; les boîtes déléguées rangées à part dans le mobile et la messagerie web, gestes de gestion seulement — task-398 ; délégation de BAL : la boîte déléguée se lit en direct, rien n'en est conservé — task-397 ; un geste sur la liste touche exactement les messages affichés — task-375 ; une rédaction sans texte ne laisse ni brouillon ni question — task-394 ; carnet d'adresses refondu — task-393)
+> **Dernière mise à jour** : 2026-10-26 (écrire de la part d'un confrère qui vous a délégué sa boîte — task-399 ; les valeurs d'un résultat HPRIM rejoignent la biologie du patient, avec leurs anomalies — task-390 ; un résultat de laboratoire au format HPRIM devient un document de biologie à intégrer — task-389 ; les boîtes déléguées rangées à part dans le mobile et la messagerie web, gestes de gestion seulement — task-398 ; délégation de BAL : la boîte déléguée se lit en direct, rien n'en est conservé — task-397 ; un geste sur la liste touche exactement les messages affichés — task-375 ; une rédaction sans texte ne laisse ni brouillon ni question — task-394 ; carnet d'adresses refondu — task-393)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1036,6 +1036,13 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
+- **v1.114 — Écrire de la part d'un confrère qui vous a délégué sa boîte** (task-399, application mobile et messagerie web) :
+  - **Vous choisissez toujours au nom de qui vous écrivez.** Dès qu'un confrère vous a délégué sa boîte, chaque rédaction (nouveau message, réponse, transfert) commence avec le champ « De » vide. Tant que vous n'avez pas choisi entre vous-même et votre confrère, rien ne part et aucun brouillon n'est enregistré. Sans délégation, rien ne change.
+  - **Au nom de votre confrère**, le destinataire reçoit un message de votre confrère, « de la part de » vous. La copie est rangée une seule fois dans les Envoyés de **sa** boîte, jamais dans les vôtres.
+  - **Ses brouillons restent chez lui.** Un brouillon écrit en son nom est rangé dans les Brouillons de sa boîte, où son propre webmail le voit. Vous pouvez le rouvrir et l'envoyer. En changeant d'avis sur l'émetteur, le brouillon passe d'une boîte à l'autre sans laisser de doublon.
+  - **Répondre et Transférer sont de retour** sur les messages de sa boîte. Vous pouvez aussi répondre en votre propre nom : c'est alors votre message, qui suit votre circuit habituel.
+  - **Des garde-fous** : en son nom, l'assistant de rédaction (correction, amélioration) n'est pas proposé, et un bandeau rappelle que son opposition MSSanté n'est pas vérifiable. Hors connexion, l'envoi et le brouillon en son nom sont refusés clairement : rien n'est mis en attente. Le serveur refuse tout émetteur qui n'est ni vous ni une délégation en cours.
+  - **Rien de sa boîte ne reste chez vous**, pas même quand vous transférez en votre nom une pièce jointe de sa boîte : seul le document transféré est gardé dans votre brouillon, jamais le nom de ses dossiers.
 - **v1.113 — Les valeurs d'un résultat HPRIM rejoignent la biologie du patient** (task-390) :
   - **Chaque valeur devient un résultat de biologie** : valeur, unité, normes, et seconde valeur dans une autre unité quand le laboratoire la donne. Le document HPRIM n'est plus seulement un texte.
   - **Les anomalies sont signalées.** Si le laboratoire indique une anomalie (bas, haut, critique), elle est reprise telle quelle. Sinon, une valeur numérique hors de ses normes est signalée. Une valeur qualitative (« positif », « trouble ») ne l'est jamais sans indication du laboratoire.

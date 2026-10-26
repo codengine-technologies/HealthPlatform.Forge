@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-10-26 (v1.113)
+> **Dernière mise à jour** : 2026-10-26 (v1.114)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -760,6 +760,35 @@
   - sous-objet partagé pour les options d'envoi au prochain changement de contrat ;
   - remonter `originalMarkedCancelled` et `warning` par `drafts/{id}/send` ;
   - bail renouvelable pour le verrou.
+
+### v1.114 — Délégation de BAL : envoyer, répondre, transférer et rédiger de la part du délégant (mobile et weda2) — task-399
+
+- **Origine** : suite de task-398. Le délégataire lisait et triait la BAL déléguée, mais Répondre et Transférer y étaient masqués, et aucun envoi au nom du délégant n'existait.
+- **Caractérisation Mailiz** (comptes de formation, sonde MailKit XOAUTH2) : envoi délégué accepté dans les trois variantes, aucun en-tête réécrit, **aucune copie automatique** dans les Envoyés (`APPEND` à notre charge), `MYRIGHTS` = `lrwstipekxacd`, dossiers partagés sans SPECIAL-USE. **Mailiz ne contrôle pas le `From`** : le 403 de l'API est le seul garde-fou.
+- **Contrat** : `SendingIdentityDto`, `SendingIdentityErrorCodes`, `SaveDraftDto.FromMailbox`, `DraftDto.FromMailbox`. NuGet `HealthPlatform.Dtos.Mss` **544.0.0** : la 540 publiée par `/develop` précédait la 539 de task-390 ; republiée après le merge de `develop` pour porter les deux contrats.
+- **api-mail** :
+  - `SendingIdentityService` (`GET /mail/sending-identities`) : sa propre adresse, puis les délégations d'un `LIST` en direct dont la racine passe un `STATUS` ; hors ligne, la sienne seule ;
+  - contrôle du `From` dans `SmtpService`, point commun des envois direct, brouillon et différé confirmé → 403 typé ;
+  - en-têtes caractérisés (`DelegatedSend`) : `From` = « Nom, de la part de adresse » `<délégant>`, `Sender` = délégataire, `MAIL FROM` = délégant ; archivage explicite `shared/<A>/Sent` ;
+  - `DelegatedDraftService` : Brouillons IMAP du délégant, identifiant `X-HealthPlatform-Draft-Id`, options en en-tête, remplacement sans orphelin, verrou d'envoi sans chemin ;
+  - refus hors ligne à la mise en attente et au brouillon délégué ; IA refusée (`AI_REFUSED_ON_BEHALF`) ; trace d'audit en liste blanche, `MailArchiveSent` porte le dossier cible ;
+  - libellé du verrou IMAP réduit à sa famille (fuite `shared/<A>:<uid>:<pièce>` trouvée par le test « rien de persisté ») ;
+  - **correction issue de la revue (règle 14)** : `[DelegatedAccess(Read)]` sur les routes de brouillon laissait un brouillon « (moi) » entrer dans Redis avec une pièce par référence `shared/…`. `DraftService.DetachDelegatedReferencesAsync` relit la pièce en octets et efface la référence ; annule-et-remplace délégué refusé en 400 ; gardes `DelegatedPersistenceGuard` ajoutées à `DraftCacheRepository` et à la file hors ligne.
+- **Clients (mobile et weda2)** : champ De obligatoire avec délégation, aucun brouillon tant qu'il est vide, Répondre / Transférer rétablis, « Répondre à tous » recalculé au changement d'émetteur, pas de `from.name` au nom du délégant, IA masquée, bandeau d'opposition non vérifiable, `{{SenderEmail}}` = adresse choisie et `{{SenderRPPS}}` = vrai RPPS (corrige le bug weda2 de la partie locale), révocation en cours de rédaction sans perte de texte ; weda2 rouvre un brouillon délégué en rédaction.
+- **Banc e2e** : seed du registre au budget de 30 s (`RegistryComposition.SeedCallTimeout` ; le défaut de production de 3 s faisait tomber les deux voies au démarrage du banc) ; scénarios **E2E-DELEG-005, 006, 007** v1 et **E2E-DELEG-003 v2**, requis sur mobile et weda2 ; les 12 parcours d'envoi existants choisissent la boîte émettrice.
+- **Tests** :
+  - intégration : 15 `DelegatedSendEndToEndTests`, tous vus rouges (M1 à M8 par `/develop`, MA / MB / MC par `/review`, test « (moi) sans chemin `shared/` » rouge sur le code d'avant, annule-et-remplace par mutation) ;
+  - unitaires : `SendingIdentityServiceTests`, `DraftServiceDelegatedReferenceTests` (3), composants mobile et weda2 ;
+  - suites : api-mail 7 186 verts (+ correction : suite complète au hook de push), mobile 1 353, weda2 12 projets.
+- **Sonar** : 0 finding sur les lignes de la task (3 + 1 corrigés), couverture des lignes de la task 98,2 % ; QG ERROR hérité. Non rejoué après le merge et la correction de la revue.
+- **E2E** (4 passages) : seed en panne (corrigé), puis deux tests de la task rouges (E2E-COMPOSE-002 sans choix d'émetteur ; E2E-AI-001 gêné par les messages laissés dans l'INBOX par DELEG-005/006/007), puis vert. Final : mobile 52 verts et 1 flaky (E2E-DELEG-004, 3ᵉ occurrence) ; Angular 61 verts et 1 flaky (E2E-SEARCH-001, 13ᵉ) ; parité verte, porte 0.
+- **Revue** : 1ʳᵉ passe CHANGES REQUESTED (règle 14, ci-dessus), 2ᵉ passe APPROVED. Suggestions : double envoi possible si la suppression du brouillon échoue après SMTP ; remplacement de brouillon non sûr entre réplicas ; `Packaging` IHE-XDM perdu à l'aller-retour IMAP d'un brouillon délégué (à confirmer au HAG) ; `LIST` + `STATUS` à chaque enregistrement automatique ; entrées MIME non validées ; `hasDelegation` asynchrone côté clients.
+- **PR** : `dtos-mss` #50, `api-mail` #317, `client-mobile` #108 ; weda2 non commité (code-only, PR TFS par l'humain).
+- **Leçons** : `conventions/e2e.md` `inbox-laissee-en-l-etat` → 3, `regle-transverse-tous-les-specs` (nouvelle) ; `conventions/csharp.md` `delegated-access-ouvre-le-corps` (nouvelle).
+- **Suivis** :
+  - stabilisation d'E2E-DELEG-004 (requalification de la révocation côté API) et d'E2E-SEARCH-001 ;
+  - retrait de la divergence E2E-MAILBOX-002 (task-395) ;
+  - fenêtre de révocation de Mailiz à caractériser au HAG.
 
 ### v1.113 — HPRIM : les lignes `RES|` deviennent des résultats de biologie, avec alerte d'anomalie — task-390
 
@@ -1942,6 +1971,7 @@ Audit grep complémentaires pour les couches 2 / 2bis / 3 (tasks 021 / 022 / 023
 
 | Task | Apport principal | Règles touchées |
 |------|------------------|-----------------|
+| task-399 | **Délégation de BAL : envoyer, répondre, transférer et rédiger de la part du délégant (mobile et weda2).** Champ De obligatoire avec délégation, envoi « de la part de » archivé une seule fois dans les Envoyés du délégant, brouillons dans ses Brouillons IMAP, `From` contrôlé côté API (Mailiz ne le contrôle pas), refus hors ligne et IA, rien de persisté chez le délégataire (y compris un transfert « (moi) »), Répondre / Transférer rétablis ; scénarios E2E-DELEG-005..007. | 14 |
 | task-390 | **Les lignes `RES|` d'un HPRIM deviennent des résultats de biologie, avec alerte d'anomalie.** Valeur, unité, normes, seconde valeur, code local du laboratoire (jamais LOINC), statut partiel / final / corrigé persisté ; anomalie par l'indicateur du laboratoire, sinon par les normes ; « anormaux non lus » après rattachement seulement ; examens sans code distingués par leur libellé ; BAL déléguée lue sans rien conserver. | — |
 | task-389 | **Un résultat de laboratoire au format HPRIM devient un document de biologie à intégrer.** Lecture HPRIM selon les règles de Weda (en-tête, plusieurs résultats, encodages, données parasites, HTML et fichier trop court rejetés) ; un document par résultat, sans INS donc non rattaché ; PDF du message associé ; CDA prioritaire ; corps jamais HPRIM ; lu à l'affichage dans une BAL déléguée, sans rien conserver. | — |
 | task-398 | **Les BAL déléguées dans les clients : une section à part, des gestes de gestion seulement, la révocation dite clairement (mobile et weda2).** Contrat `Owner` / `Role` des dossiers, section repliée et colorée sous la BAL principale, gestes d'exploitation masqués (dont le panneau Weda), Restaurer / Supprimer définitivement, déplacement limité à la BAL, recherche et notifications coupées, purge à la déconnexion et hors ligne ; panneau des dossiers redimensionnable sur weda2 ; banc e2e de délégation et scénarios E2E-DELEG-001..004. | — |

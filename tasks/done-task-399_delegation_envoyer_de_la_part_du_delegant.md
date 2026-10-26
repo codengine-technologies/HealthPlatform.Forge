@@ -594,7 +594,8 @@ task (corrigés `aac3ebb` sur mobile et sur weda2), puis vert (3ᵉ passage).
 | /lint-mobile | ok | 57 s | — | — | — | lint clean |
 | /e2e | ok | 25 min 08 s | 1 (11 s) | — | — | api-mail 1B/0T, e2e ×17 (1 h 32 min), 4e passage vert apres correction regle 14 : mobile 52/1 flaky, angular 61/1 flaky |
 | /review | ok | 2 min 01 s | 4 (2 min 28 s) | 3 (9 min 35 s) | — | api-mail 1B/1T, dtos-mss 1B/0T, client-mobile 1B/1T, client-angular 1B/1T, 2e passe APPROVED apres correction regle 14 ; PR Dtos #50, Api.Mail #317, Mobile #108 |
-| **Total cycle** | | **3 h 15 min** | **36 (26 min 05 s)** | **58 (1 h 39 min)** | **6 (15 min 02 s)** | |
+| /tech-writer | ok | 1 min 29 s | — | — | — | — |
+| **Total cycle** | | **3 h 16 min** | **36 (26 min 05 s)** | **58 (1 h 39 min)** | **6 (15 min 02 s)** | |
 
 Autres commandes mesurées : lint ×5 (6 min 04 s), nuget-wait ×1 (19 s), restore ×4 (4 min 38 s)
 
