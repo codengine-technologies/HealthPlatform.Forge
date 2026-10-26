@@ -6691,3 +6691,5 @@
 {"ts":"2026-10-26T09:55:19+01:00","run_id":"forge-20261026-389-390","type":"cmd","task":"task-389","step":"sonar","repo":"api-mail","kind":"scan","label":"end","cwd":"Api/Mail","cmd":"dotnet sonarscanner end /d:sonar.login=***","duration_ms":41613,"exit_code":0}
 {"ts":"2026-10-26T09:55:50+01:00","run_id":"forge-20261026-389-390","type":"step","task":"task-389","step":"sonar","status":"ok","note":"re-scan 6998e4fa : QG OK, 0 issue","iterations":1,"duration_ms":512982}
 {"ts":"2026-10-26T09:56:27+01:00","run_id":"forge-20261026-389-390","type":"step","task":"task-389","step":"review","status":"ok","note":"APPROVED 2e passe, PR #315","iterations":null,"duration_ms":2766416}
+{"ts":"2026-10-26T09:56:55+01:00","run_id":"forge-20261026-389-390","type":"step_start","task":"task-389","step":"tech-writer"}
+{"ts":"2026-10-26T09:58:16+01:00","run_id":"forge-20261026-389-390","type":"step","task":"task-389","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":80343}

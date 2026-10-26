@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-10-26 (v1.111)
+> **Dernière mise à jour** : 2026-10-26 (v1.112)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -760,6 +760,51 @@
   - sous-objet partagé pour les options d'envoi au prochain changement de contrat ;
   - remonter `originalMarkedCancelled` et `warning` par `drafts/{id}/send` ;
   - bail renouvelable pour le verrou.
+
+### v1.112 — HPRIM : un résultat de laboratoire devient un document de biologie — task-389
+
+- **Origine** : demande humaine du 2026-10-23. Le parsing HPRIM existait dans Weda (WMickey) mais pas dans api-mail : un HPRIM arrivait comme un mail portant un fichier technique illisible. Arbitrages rendus en séance `/po` le même jour (décisions 1 à 8).
+- **Repos** : `api-mail` seul. **Aucun contrat** `dtos-mss` : le document emprunte `MailMedicalDocumentDto` (`Format = "HPRIM"`, LOINC `11502-2`).
+- **Lecture** : `HprimReader` reprend les règles de `HprimService` (Weda) :
+  - en-tête de 12 lignes, 13 lignes au minimum, 100 résultats au plus ;
+  - découpe sur `
+`, sinon sur `` ;
+  - encodage : BOM UTF-16 ou UTF-8, puis UTF-8 strict, puis comptage des `é` et `è` en 1252, Mac 10000 ou 850, ASCII par défaut ;
+  - données parasites tolérées (résultats déjà lus gardés), HTML et fichier trop court rejetés ;
+  - pages de codes par `CodePagesEncodingProvider.Instance`, sans enregistrement global ;
+  - `ParseBirthDate` : une année à deux chiffres qui tomberait dans le futur est ramenée au siècle précédent.
+- **Document** : `HprimMedicalDocuments`, un document par résultat :
+  - catégorie biologie, date du résultat, laboratoire et expéditeur, traits de l'en-tête ;
+  - sans INS, donc ni rattachement (task-176) ni rapprochement (task-193) ;
+  - `DocumentId = "HPRIM-" + Guid`, propre à chaque document, parce que `MailRepository` range les pièces par cet identifiant ;
+  - premier PDF du message associé à chaque document (`ExternalPdf`, partagé avec le PDF externe d'un CDA) ;
+  - CDA prioritaire : `IsCdaBiologyReport`.
+- **Reconnaissance et récupération** : `MedicalSourceParts`, une règle unique (`.hpm` en pièce jointe ou intégré au corps). Elle est branchée sur :
+  - les voies message entier et par partie (`EnrichmentFetchPlan`) ;
+  - la lecture sans persistance et le contenu à la demande ;
+  - `BackgroundImapService` et la lecture directe d'une BAL déléguée.
+
+  Le corps texte n'est jamais le HPRIM (`TextBodyOf`). Un `.hpm` intégré reste listé en pièce jointe (`VisibleAttachments`).
+- **Circuit** : le `.hpm` et le PDF rejoignent le lot transitoire `IheXdmScratchSet` (exception « répertoire de travail » de la règle 14). `ProcessIheXdmZips` répartit par extension. La persistance reste `MailRepository`.
+- **Métrique** : `mssante_hprim_files_total{outcome}`. Valeurs : `read`, `cda_priority`, `trailing_data_ignored`, `too_short`, `not_hprim`, `html`, `unreadable`. Elle compte des lectures, pas des fichiers distincts.
+- **Tests** :
+  - unitaires : 68 tests HPRIM, sur un jeu d'exemples synthétique et anonymisé (`HprimSamples`) ;
+  - intégration : `HprimReceptionEndToEndTests`, 8 tests (nominal, sans marqueurs, CDA valide, CDA illisible, reçu deux fois, deux résultats, deux résultats + PDF, voie par partie) ;
+  - BAL déléguée : `DelegationEndToEndTests.ADelegatedHprim_…` (rien en base ni dans Redis hors cache J) ;
+  - convention règle 14 : `DelegatedPersistenceGuardScanTests.TheHprimPathWritesNothing` ;
+  - mutations : M1 à M5, MC, MR, toutes rouges. Le mutant `TextBodyOf(summary)` est équivalent sur le message de test ;
+  - suites api-mail : 7 067 verts.
+- **Sonar** : 3 issues sur le nouveau code (`S3267`, `S4136`, `CA1861`), corrigées, conventions incrémentées. Après la reprise de revue : QG OK, 0 issue, new coverage 95,0 %, coverage projet 97,5 %.
+- **E2E** : aucun parcours médecin touché (US backend). Mobile 50 verts, Angular 59 verts, 0 flaky, parité verte, porte 0. Les voies ont été rejouées après le correctif de revue.
+- **Revue** :
+  - 1ʳᵉ passe : CHANGES REQUESTED. Le document HPRIM n'avait pas de `DocumentId` : avec deux résultats et un PDF, les pièces se mélangeaient entre documents et le PDF devenait une pièce du message. Un test unitaire figeait même `DocumentId == null`.
+  - 2ᵉ passe : APPROVED.
+- **PR** : `api-mail` #315.
+- **Leçons** : `conventions/csharp.md` `document-medical-identifiant-propre` ; `S3267` → 4, `S4136` → 2, `CA1861` → 5 (variantes remontées en tête des entrées : la récidive signalait une lecture limitée aux titres).
+- **À arbitrer au HAG** :
+  - la mesure E015 sur les mails sans HPRIM, non faite par la forge ;
+  - le compteur « signalés doublons », qui vaut 0 par construction (décision 6).
+- **Suites** : task-390 (résultats structurés `RES|`), task-391 (file « à intégrer » et suggestion de patient), task-392 (affichage, acquittement, E2E-BIO-003).
 
 ### v1.111 — Les BAL déléguées dans les clients : section à part, gestes de gestion, révocation (mobile et weda2) — task-398
 
@@ -1849,6 +1894,7 @@ Audit grep complémentaires pour les couches 2 / 2bis / 3 (tasks 021 / 022 / 023
 
 | Task | Apport principal | Règles touchées |
 |------|------------------|-----------------|
+| task-389 | **Un résultat de laboratoire au format HPRIM devient un document de biologie à intégrer.** Lecture HPRIM selon les règles de Weda (en-tête, plusieurs résultats, encodages, données parasites, HTML et fichier trop court rejetés) ; un document par résultat, sans INS donc non rattaché ; PDF du message associé ; CDA prioritaire ; corps jamais HPRIM ; lu à l'affichage dans une BAL déléguée, sans rien conserver. | — |
 | task-398 | **Les BAL déléguées dans les clients : une section à part, des gestes de gestion seulement, la révocation dite clairement (mobile et weda2).** Contrat `Owner` / `Role` des dossiers, section repliée et colorée sous la BAL principale, gestes d'exploitation masqués (dont le panneau Weda), Restaurer / Supprimer définitivement, déplacement limité à la BAL, recherche et notifications coupées, purge à la déconnexion et hors ligne ; panneau des dossiers redimensionnable sur weda2 ; banc e2e de délégation et scénarios E2E-DELEG-001..004. | — |
 | task-397 | **Délégation de BAL : la BAL déléguée se lit en direct, rien n'en est conservé chez le délégataire.** Lecture, tri, déplacement interne, suppression vers la corbeille du délégant ; IA, étiquettes, accusés, recherche refusés ; garde unique des écritures, masquage des journaux, audit en liste blanche ; cache du contenu décodé (5 min, clé HMAC) ; en-têtes enrichis en direct par SSE. | — |
 | task-394 | **Une rédaction sans texte dans le corps ne laisse ni brouillon ni question.** Le corps compte dès qu'il diffère de ce que la rédaction proposait (signature, citation), où que soit l'ajout ; weda2 ferme sans question un message non écrit ; un brouillon rouvert est enregistré tel qu'affiché. | — |

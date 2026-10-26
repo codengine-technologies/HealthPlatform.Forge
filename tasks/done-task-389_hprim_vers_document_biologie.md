@@ -146,7 +146,8 @@ Voir `tests/Features/Mss/HprimReception.feature`.
 | /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 16 min 22 s | — | — | — | e2e ×8 (48 min 56 s), rejeu après reprise de revue : 2 voies vertes, porte 0 |
 | /review | ok | 46 min 06 s | 1 (10 s) | 1 (4 min 18 s) | — | api-mail 1B/1T, APPROVED 2e passe, PR #315 |
-| **Total cycle** | | **1 h 21 min** | **12 (2 min 27 s)** | **52 (45 min 47 s)** | **6 (2 min 07 s)** | |
+| /tech-writer | ok | 1 min 20 s | — | — | — | — |
+| **Total cycle** | | **1 h 23 min** | **12 (2 min 27 s)** | **52 (45 min 47 s)** | **6 (2 min 07 s)** | |
 
 ## Develop log
 
