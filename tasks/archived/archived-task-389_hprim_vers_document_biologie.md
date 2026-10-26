@@ -459,3 +459,11 @@ Analyse complète `healthplatform-api-mail` (SonarQube 9.9.8 local, `sonar.login
 | Voie par partie → `.hpm` et PDF récupérés, corps intact | `OnThePartByPartFetchPath_…` | M2, M5 (corps : mutant équivalent) |
 | BAL déléguée → décodé, rien en base ni dans Redis hors cache J | `DelegationEndToEndTests.ADelegatedHprim_…` | M2, MR |
 | Convention règle 14 | `DelegatedPersistenceGuardScanTests.TheHprimPathWritesNothing` | MC |
+
+## Merged
+- 2026-10-26 — `/merge task-389 --i-tested` (test manuel attesté par l'humain).
+- `api-mail` : PR #315 squash-mergée → `c356d147` sur `develop`. CI `develop` verte (run 40389995701). Branches `feat/task-389-hprim-vers-document-biologie` supprimées (distante et locale).
+- `dtos-mss` : aucune PR (aucun contrat changé).
+- Branche empilée de task-390 resynchronisée : `git merge -s ours origin/develop` → `0741ab1e`. Preuve préalable : `git diff origin/develop 6998e4fa` vide, et l'arbre de la branche est inchangé. PR #316 de nouveau mergeable.
+- Staging `forge/staging-task-389-390-20261026` **conservée** : task-390 n'est pas encore mergée.
+- Points HAG de la PR (mesure E015, compteur « doublons ») : non relevés par l'humain au merge, donc considérés comme acceptés.

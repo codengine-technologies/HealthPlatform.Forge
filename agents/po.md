@@ -178,6 +178,9 @@ d'écrire le `todo-*.md`** — ne pas inventer.
 - **Tout document CDA reçu/émis** transite par `interop-cda` et est validé Schematron avant traitement métier.
 - **Toute écriture DMP / Mon Espace Santé** exige un consentement patient tracé.
 - **Authentification PS sensible** (signature, envoi MSSanté, alimentation DMP) : exiger PSC ou e-CPS, pas un simple mot de passe.
+- **L'anomalie d'un résultat de biologie est le jugement du biologiste** (humain, 2026-10-26, task-392). Seul l'indicateur posé par le laboratoire fait une anomalie, quel que soit le format : le code d'interprétation d'un CDA, le champ 8 d'une ligne `RES|` HPRIM. La plateforme ne déduit jamais une anomalie d'une comparaison aux bornes. Les bornes s'affichent à côté de la valeur, et le médecin en juge.
+  - **Pourquoi** : task-390 avait retenu « indicateur, sinon bornes », en s'inspirant de Weda. Or chez Weda, la couleur hors bornes n'est qu'un **style d'affichage**, activé par une préférence de l'utilisateur. Transformée en signal, elle alimentait la file « à acquitter » et « anormaux non lus » avec des valeurs que le biologiste n'avait pas jugées anormales.
+  - **Consigne** : quand une US reprend une règle d'un logiciel existant (Weda, WMickey…), dire si c'est une **préférence d'affichage** ou un **signal clinique** (alerte, acquittement, compteur). Le reprendre au même niveau, jamais au-dessus.
 - **BAL déléguée : rien n'est persisté chez le délégataire** (CLAUDE.md règle 14, 2026-10-25). Toute US qui touche un message, un dossier, une pièce jointe, un document (CDA, HPRIM…) ou un compteur dit ce qui arrive quand la BAL est **déléguée** (dossiers `shared/<adresse>/…`) :
   - lecture **en direct** sur le serveur, à l'affichage ;
   - **aucune** écriture en base tenant, dans Redis ni dans les journaux ;
