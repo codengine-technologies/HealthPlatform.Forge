@@ -410,3 +410,11 @@ Analyse complète `healthplatform-api-mail` (SonarQube 9.9.8 local, `sonar.login
 | HPRIM et LOINC : deux séries | `AnHprimResultAndALoincResultOfTheSameExam_…` | avant branchement ; MC |
 | BAL déléguée : affichés, rien persisté | `DelegationEndToEndTests.ADelegatedHprimWithResLines_…` | MW, MF, MC |
 | Colonne `Status` | `BiologyResultStatusMigrationTests` | test de schéma |
+
+## Merged
+- 2026-10-26 — `/merge task-390 --i-tested` (test manuel attesté par l'humain).
+- `dtos-mss` : PR #49 squash-mergée → `bfd976ca` sur `develop`. CI `develop` verte (run 40391203970).
+- `api-mail` : PR #316 squash-mergée → `d3000e64` sur `develop`, après #315 (task-389) comme prévu par l'empilement. CI `develop` verte (run 40391255055).
+- Branches `feat/task-390-hprim-lignes-structurees-resultats` supprimées sur les deux dépôts, distantes et locales.
+- Staging `forge/staging-task-389-390-20261026` **supprimée** sur api-mail et dtos-mss, distante et locale : tout le run est mergé.
+- Points HAG de la PR (ligne `RES|` sans valeur gardée, indicateur hors table HL7, valeurs signalées par les normes non listées par « anormaux non lus ») : non relevés par l'humain au merge, donc considérés comme acceptés. Le suivi task-392 reste à écrire.
