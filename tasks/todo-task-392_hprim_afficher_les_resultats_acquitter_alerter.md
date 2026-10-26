@@ -1,6 +1,6 @@
-# todo-task-392.md — Résultats HPRIM : l'anomalie est celle du biologiste, le partiel se voit, le texte est lisible, les séries sont justes
+# todo-task-392.md — Résultats HPRIM : l'anomalie est celle du biologiste, le partiel se voit, le texte est lisible
 
-**Repos**: api-mail, dtos-mss, client-mobile, client-angular
+**Repos**: api-mail, client-mobile, client-angular
 **Dependencies**: task-390 (résultats structurés, statut)
 **Epic**: E009
 **Priorité**: **2** — depuis task-390, une valeur HPRIM hors de ses bornes sans indicateur du laboratoire est signalée comme anomalie : elle entre dans la file « à acquitter » et dans « anormaux non lus », alors que le biologiste ne l'a pas jugée anormale. Le même examen reçu en CDA ne le serait pas. Le statut « partiel » n'est visible nulle part, et le texte du compte rendu montre les lignes techniques du laboratoire.
@@ -21,27 +21,29 @@
 - Le champ 8 d'une ligne `RES|` est l'**équivalent exact** du code d'interprétation CDA : même table HL7 (N, L, H, LL, HH, A, AA).
 - **Statut** (task-390) : P partiel, F final, C corrigé, persisté et exposé ; aucun client ne l'affiche.
 - **Texte du document HPRIM** : il contient encore le bloc technique du laboratoire (`****LAB****`, lignes `TEX|` et `RES|`).
-- **Frise de biologie du patient** (mobile et weda2, `biology-timeline`) : les séries se forment par section, code, libellé et unité, **sans** le système de codes ni le laboratoire. Deux laboratoires qui donnent le même code local à deux examens différents fusionneraient.
+- **Frise de biologie du patient** (mobile et weda2, `biology-timeline`) : les courbes se forment par section, puis par code + libellé + unité.
+  - Tous les résultats HPRIM sont dans la section « Résultats de laboratoire ». Un CR-BIO CDA porte en pratique ses propres sections (Biochimie, Hématologie…) : un HPRIM et un CDA ne partagent pas de courbe.
+  - **Aucun changement dans cette US** (humain, 2026-10-26) : une courbe par laboratoire couperait l'historique d'un patient qui change de laboratoire, pour un risque de fusion à tort très faible (même code, même libellé et même unité pour deux examens différents).
 - **Tableau de biologie du détail** (mobile et weda2) : il affiche déjà les résultats HPRIM (valeur, unité, bornes), avec le même composant que le CR-BIO CDA.
 
 ## Décisions actées (humain, 2026-10-26)
 
 1. **Anomalie = indicateur du laboratoire, seulement.** Une valeur hors de ses bornes sans indicateur n'est **pas** une anomalie : ni mise en évidence, ni acquittement, ni « anormaux non lus ». La valeur et ses bornes restent affichées côte à côte : le médecin voit l'écart et en juge. Le HPRIM se comporte exactement comme le CDA.
-2. **Séries de la frise** : deux résultats HPRIM appartiennent à la même série s'ils viennent du **même laboratoire**, avec le **même code** et la **même unité**. Une série HPRIM n'est jamais mêlée à une série LOINC.
-3. **Détail d'un document HPRIM** :
+2. **Détail d'un document HPRIM** :
    - le **tableau des résultats** d'abord : valeur, unité, bornes, anomalie du laboratoire mise en évidence, mention « partiel » ;
    - **puis le texte** du compte rendu, sans les lignes techniques ;
    - le PDF reste accessible comme pour un CDA.
-4. **Acquittement** : comme un CR-BIO CDA. Un document HPRIM entre dans la file « à acquitter » quand le **laboratoire** a signalé au moins une valeur.
-5. **Hors périmètre** : un repère visuel neutre « hors intervalle de référence » (le rouge de Weda) n'est pas livré. S'il est demandé, ce sera une **préférence de l'utilisateur**, dans une US à part.
+3. **Acquittement** : comme un CR-BIO CDA. Un document HPRIM entre dans la file « à acquitter » quand le **laboratoire** a signalé au moins une valeur.
+4. **Hors périmètre** :
+   - un repère visuel neutre « hors intervalle de référence » (le rouge de Weda) n'est pas livré. S'il est demandé, ce sera une **préférence de l'utilisateur**, dans une US à part ;
+   - les courbes de la frise ne changent pas (pas de courbe par laboratoire). Un cas réel de fusion à tort sera traité avec l'exemple sous les yeux.
 
 ## Objective
 
 Le médecin lit un résultat HPRIM comme un CR-BIO CDA :
 - seules les anomalies posées par le biologiste sont signalées, mises en évidence et à acquitter ;
 - le résultat partiel est reconnaissable ;
-- le texte est lisible ;
-- la frise du patient trace une courbe par examen et par laboratoire.
+- le texte est lisible.
 
 ### Règles métier
 
@@ -52,11 +54,7 @@ Le médecin lit un résultat HPRIM comme un CR-BIO CDA :
   - **« Partiel »** sur chaque résultat partiel, et en tête du document s'il en porte au moins un.
   - **Le code local du laboratoire** n'est jamais présenté comme un code LOINC (libellé « code labo »).
 - **Texte du compte rendu** : affiché sous le tableau, tel que le laboratoire l'a mis en forme, sans les lignes techniques. Un HPRIM sans résultat structuré n'affiche que son texte.
-- **Frise du patient** (décision 2) :
-  - série HPRIM = laboratoire + code + unité ;
-  - série LOINC = système de codes + code + unité ;
-  - les deux ne fusionnent jamais ;
-  - un point « partiel » est marqué.
+- **Frise du patient** : courbes inchangées ; un point « partiel » est marqué.
 - **« Anormaux non lus » et acquittement** : règles existantes du CDA, inchangées. Seul l'indicateur du laboratoire y fait entrer un résultat HPRIM.
 - **Partiel et complété** : tous deux visibles et acquittables ; aucun remplacement.
 - **BAL déléguée** (règle 14) :
@@ -66,7 +64,7 @@ Le médecin lit un résultat HPRIM comme un CR-BIO CDA :
 
 ## Definition of Done
 
-- [ ] Build et tests verts : api-mail, dtos-mss (si le contrat change, package publié), client-mobile, client-angular
+- [ ] Build et tests verts : api-mail, client-mobile, client-angular
 - [ ] **Anomalie (api-mail)** : la comparaison aux bornes est retirée de la lecture `RES|`. Les tests unitaires de task-390 qui la portaient sont remplacés :
   - indicateur `L`/`H`/`A`/`LL`/`HH`/`AA` → signalé ;
   - `N`, vide ou inconnu → non signalé, même hors bornes
@@ -76,10 +74,9 @@ Le médecin lit un résultat HPRIM comme un CR-BIO CDA :
   - **Cas d'échec** : un HPRIM dont toutes les valeurs sont hors bornes sans indicateur → le patient n'est pas dans « anormaux non lus », et le document n'est pas dans la file « à acquitter ».
   - Vu rouge sur le code de task-390.
 - [ ] **Test d'intégration (règle 1b) pour le contenu d'un message HPRIM** : le texte du document ne contient plus les lignes `****LAB****`, `TEX|`, `RES|`, et garde le texte du compte rendu ; vu rouge
-- [ ] **Contrat et test d'intégration (règle 1b) pour `GET biology/patients/{id}`** : chaque résultat HPRIM porte son laboratoire émetteur. Deux laboratoires, même code local, même unité → deux séries distinguables dans la réponse réelle ; vu rouge
 - [ ] Tests de composant (mobile et weda2) :
   - tableau des résultats HPRIM : valeur `H` mise en évidence comme un CDA ; valeur hors bornes sans indicateur **non** mise en évidence ; mention « partiel » ; seconde valeur ; « code labo » ;
-  - frise : deux laboratoires au même code → deux séries ; HPRIM et LOINC → deux séries
+  - frise : un point « partiel » est marqué
 - [ ] Scénario **E2E-BIO-003** ajouté dans Api/Mail/e2e/scenarios.yml (version 1), requis sur mobile et angular, implémenté dans les deux clients. Seed e2e d'un HPRIM synthétique avec une valeur signalée `H` par le laboratoire, une valeur hors bornes sans indicateur et un résultat partiel. Attendu : « ouvrir un résultat HPRIM ; seule la valeur signalée par le laboratoire est mise en évidence ; la mention partiel est visible ; l'acquitter »
 - [ ] **BAL déléguée — test d'intégration** (banc de délégation de task-397) :
   - le détail d'un HPRIM délégué renvoie un texte sans lignes techniques, et seules les valeurs signalées par le laboratoire portent `IsFlagged` ;
@@ -108,10 +105,7 @@ Messages de test : HPRIM synthétiques (`.eml` déposés dans la Réception de C
 3. Le document est dans la file « à acquitter » (à cause de la valeur « H ») ; l'acquitter.
 4. Un second HPRIM dont les seules valeurs anormales sont hors bornes **sans** indicateur : il n'est **pas** dans la file « à acquitter », et une fois rattaché, son patient n'est pas dans « anormaux non lus ».
 5. Rattacher le premier document à une fiche : le patient apparaît dans « anormaux non lus » avec la valeur « H ».
-6. Frise de biologie du patient :
-   - deux résultats HPRIM du même laboratoire, même code et même unité forment une seule courbe ;
-   - un autre laboratoire au même code donne une autre courbe ;
-   - une glycémie CDA (LOINC) reste une courbe à part.
+6. Frise de biologie du patient : le point du résultat partiel est marqué « partiel ».
 7. **BAL déléguée** : ouvrir le même HPRIM dans la boîte de Virginie, en Cyril. Le tableau et le texte s'affichent, sans acquittement ; « anormaux non lus » de Cyril reste vide.
 
 ## Conformité santé / Ségur / ANS
@@ -120,7 +114,7 @@ Messages de test : HPRIM synthétiques (`.eml` déposés dans la Réception de C
 - **Vague Ségur** : hors Ségur — HPRIM est un format historique ; le CR-BIO CDA reste prioritaire
 - **Exigences DSR honorées** : non applicable — aucune exigence DSR sur le HPRIM.
   - Règles de prudence : l'anomalie est celle validée par le biologiste, jamais déduite par la plateforme.
-  - Codes locaux jamais présentés comme LOINC ; séries jamais mêlées entre laboratoires ni avec le LOINC.
+  - Codes locaux jamais présentés comme LOINC ; une courbe HPRIM n'est jamais mêlée à une courbe LOINC (sections distinctes).
 - **INS** : non applicable — aucun changement d'identité ; « anormaux non lus » ne porte que sur les documents rattachés (task-390)
 - **Authentification PS** : inchangée — PSC / e-CPS de la session de messagerie
 - **Habilitations** : inchangées. BAL déléguée : lecture seule sans stockage, sans acquittement (règle 14, task-398)
