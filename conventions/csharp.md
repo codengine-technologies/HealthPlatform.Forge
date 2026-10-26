@@ -1755,3 +1755,31 @@ var document = new MailMedicalDocumentDto { DocumentId = "HPRIM-" + Guid.NewGuid
   sans pièce, ne voit pas le mélange.
 - Un test unitaire qui affirme `Assert.Null(document.DocumentId)` fige ce défaut. Il se corrige, il ne
   se garde pas.
+
+---
+
+## cle-de-regroupement-champ-facultatif — une clé de regroupement ne repose pas sur un champ qu'une nouvelle source peut laisser vide
+
+**Occurrences : 1** (task-390 — trouvé par la revue de `/review`, pas par un outil)
+
+`BiologyRepository` regroupait les résultats d'un document par `(Section, Code)` et prenait le libellé
+du premier. C'était vrai pour un CDA, qui porte toujours un code LOINC. Avec le HPRIM, le code
+d'analyse est **facultatif**, et toutes les lignes d'un document partagent une seule section. Deux
+examens sans code (« Sodium » 140, « Potassium » 4,2) fusionnaient alors en un seul résultat
+« Sodium » à deux valeurs : un affichage cliniquement trompeur, sans erreur ni avertissement.
+
+```csharp
+// ❌ AVANT — un code vide fusionne des examens différents
+.GroupBy(b => new { b.Section, b.Code })
+
+// ✅ APRÈS — sans code, le libellé distingue l'examen
+.GroupBy(b => new { b.Section, b.Code, Name = string.IsNullOrEmpty(b.Code) ? b.Name : null })
+```
+
+**Consigne** :
+- Quand une task fait entrer une **nouvelle source** dans une table existante (un nouveau format de
+  document, un nouveau fournisseur), relire chaque `GroupBy`, `Distinct`, `ToDictionary` et jointure
+  qui lit cette table. Pour chacun, se demander si la nouvelle source peut laisser la clé vide ou la
+  rendre constante.
+- Le test d'intégration de la nouvelle source contient **deux lignes qui ne diffèrent que par le champ
+  facultatif**, et il lit le regroupement dans la réponse réelle.
