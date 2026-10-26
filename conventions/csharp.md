@@ -78,7 +78,7 @@ identifiants en constante **avant** de dupliquer. Vaut pour tout secret de banc
 
 ## CA1861 — pas de tableau littéral en argument d'appel
 
-**Occurrences : 4** (task-203, task-273 — récidive sur code frais : tableaux
+**Occurrences : 5** (task-389 — `new[] { … }` et `[ … ]` passés à `Concat` dans un générateur d'exemples de test (`HprimSamples.Html`) : la consigne vaut aussi pour les données de test, deux champs `static readonly` ; task-203, task-273 — récidive sur code frais : tableaux
 attendus d'un `Assert.Equal` dans un test de sollicitations ; la consigne vaut
 aussi pour les attendus de test ; task-334 — `l.SequenceEqual(new[] { 2u })` dans un
 `Arg.Is` NSubstitute, réécrit en `l.Count == 1 && l[0] == 2u` ; task-385 — `new float[] { 0.1f, 0.2f }` passé à `new Embedding<float>(…)` dans un faux
@@ -221,7 +221,7 @@ déclare une fois.
 
 ## S3267 — une boucle qui ne fait que chercher s'écrit avec `Contains`/`Any`
 
-**Occurrences : 3** (task-184, task-342 — variante : une boucle qui **filtre**,
+**Occurrences : 4** (task-389 — variante itérateur : `foreach … if (pred) yield return x` s'écrit `foreach (var x in source.Where(pred)) yield return x` ; task-184, task-342 — variante : une boucle qui **filtre**,
 `foreach … if (pred) list.Add(x.Uid)`, s'écrit `Where(pred).Select(…).ToList()` ;
 task-325 — **récidive sur du code frais**, écrite pendant la passe `/simplify` elle-même :
 une boucle qui **cherche et rend** l'élément, `foreach (var k in Enum.GetValues<T>()) if (…) return k;`,
@@ -796,7 +796,7 @@ identifiant anglais dans une phrase française.
 
 ## S4136 — les surcharges d'une méthode sont adjacentes
 
-**Occurrences : 1** (task-342 — `Infrastructure.Mock/Repository/MailRepository`)
+**Occurrences : 2** (task-389 — des helpers privés de la première surcharge insérés **entre** les deux surcharges d'`ExtractIheXdmZipsAsync` : un helper se place après la dernière surcharge, jamais entre elles ; task-342 — `Infrastructure.Mock/Repository/MailRepository`)
 
 Ajouter une surcharge (ici le paramètre `occurrence` de `GetAttachmentAsync` /
 `UpdateAttachmentAsync`) **en bas de la classe** ou groupée avec l'autre
@@ -1717,6 +1717,72 @@ clés dans l'index.
 
 **Consigne** : ne jamais confier un effet de bord à un prédicat LINQ. Une boucle explicite
 (`removed |= index.Remove(key)`) dit ce qu'elle fait, et la règle se tait.
+
+---
+
+## document-medical-identifiant-propre — un document qui emprunte le circuit CDA porte un `DocumentId` propre
+
+**Occurrences : 1** (task-389 — trouvé par la revue de `/review`, pas par un outil)
+
+`MailRepository` range les pièces d'un document médical **par `DocumentId`**, pas par l'identifiant de
+ligne :
+- écriture : `DocumentId = medicalDocument.DocumentId` ;
+- pièces du message : `DocumentId == null` ;
+- pièces d'un document : `c.DocumentId == a.DocumentId`, et `null == null` vaut vrai en LINQ-to-objects.
+
+Un document produit hors d'un CDA (HPRIM, et demain tout autre format historique) qui n'a pas
+d'identifiant casse donc ce rangement **sans erreur ni avertissement** :
+- son PDF devient une pièce jointe du message ;
+- dans la liste, chaque document montre les pièces de tous les autres, dont un PDF nommé au patient
+  d'un autre ;
+- dans le contenu, il ne montre aucune pièce alors que `HasExternalPdf` est vrai.
+
+C'est une atteinte à la donnée de santé, pas un défaut d'affichage.
+
+```csharp
+// ❌ AVANT — le format n'a pas d'identifiant, le document n'en porte pas
+var document = new MailMedicalDocumentDto { Format = "HPRIM", /* … */ };
+
+// ✅ APRÈS — un identifiant propre au document, préfixé par son format
+var document = new MailMedicalDocumentDto { DocumentId = "HPRIM-" + Guid.NewGuid().ToString("N"), /* … */ };
+```
+
+**Consigne** :
+- Tout nouveau producteur de `MailMedicalDocumentDto` renseigne `DocumentId`, unique par document.
+  Sans INS, l'identifiant ne déclenche aucun rapprochement (task-193 sort avant la comparaison).
+- Son test d'intégration a **plusieurs documents ET une pièce** dans le même message, et lit dans les
+  réponses réelles les pièces du message et celles de chaque document. Un test à un seul document, ou
+  sans pièce, ne voit pas le mélange.
+- Un test unitaire qui affirme `Assert.Null(document.DocumentId)` fige ce défaut. Il se corrige, il ne
+  se garde pas.
+
+---
+
+## cle-de-regroupement-champ-facultatif — une clé de regroupement ne repose pas sur un champ qu'une nouvelle source peut laisser vide
+
+**Occurrences : 1** (task-390 — trouvé par la revue de `/review`, pas par un outil)
+
+`BiologyRepository` regroupait les résultats d'un document par `(Section, Code)` et prenait le libellé
+du premier. C'était vrai pour un CDA, qui porte toujours un code LOINC. Avec le HPRIM, le code
+d'analyse est **facultatif**, et toutes les lignes d'un document partagent une seule section. Deux
+examens sans code (« Sodium » 140, « Potassium » 4,2) fusionnaient alors en un seul résultat
+« Sodium » à deux valeurs : un affichage cliniquement trompeur, sans erreur ni avertissement.
+
+```csharp
+// ❌ AVANT — un code vide fusionne des examens différents
+.GroupBy(b => new { b.Section, b.Code })
+
+// ✅ APRÈS — sans code, le libellé distingue l'examen
+.GroupBy(b => new { b.Section, b.Code, Name = string.IsNullOrEmpty(b.Code) ? b.Name : null })
+```
+
+**Consigne** :
+- Quand une task fait entrer une **nouvelle source** dans une table existante (un nouveau format de
+  document, un nouveau fournisseur), relire chaque `GroupBy`, `Distinct`, `ToDictionary` et jointure
+  qui lit cette table. Pour chacun, se demander si la nouvelle source peut laisser la clé vide ou la
+  rendre constante.
+- Le test d'intégration de la nouvelle source contient **deux lignes qui ne diffèrent que par le champ
+  facultatif**, et il lit le regroupement dans la réponse réelle.
 
 ---
 
