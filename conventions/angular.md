@@ -140,7 +140,7 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   task-367 (/lint-angular, 5 `require-example` sur des `@example` vides) ;
   task-365 (/lint-angular, 1 `require-param` : paramètre `session` ajouté à `fakeAuthProxy`
   du support e2e sans toucher son JSDoc — le même geste que task-308 et task-310)
-- **Occurrences** : 11 (task-375 — `runE2eTool` du support e2e Angular passé de `void` à `string` sans `@returns` (`require-returns`), et deux fonctions neuves (`createMessageElsewhereIn`, `deleteMessageElsewhereIn`) écrites sans leur JSDoc complet au premier jet. Attrapé par le lint ciblé de /develop. **Changer le type de retour, c'est modifier la signature** : le `@returns` suit au même geste ; task-378 — une constante insérée en ancrant sur `function toError<T>(` : le JSDoc de `toError` est passé au-dessus de la constante, la fonction sans bloc. Vu à la relecture du diff avant tout lint ; la consigne de task-352 (« si la ligne précédente est `*/`, l'ancre est le `/**` ») s'applique aussi aux scripts d'édition ; task-379 — une fonction privée à `@example` vide rendue `export` pour être réutilisée : la règle s'applique dès l'export, compléter l'exemple au même geste ; task-374 — un `@example` vide sur un helper e2e, et un `@param` ajouté sans description par l'auto-fixer : le fixer pose la balise, pas son texte ; task-376 — des constantes exportées insérées en ancrant sur `@Component({` : le JSDoc de la classe, juste au-dessus du décorateur, est passé sur les constantes, et la classe s'est retrouvée sans bloc (`require-jsdoc`, deux composants). Attrapé par le lint ciblé de /develop avant tout rendu. **Un décorateur est une signature** : l'ancre est le `/**` qui le précède)
+- **Occurrences** : 12 (task-399 — `chooseSender(scope, sender = { address, delegated })` du support e2e Angular : un paramètre **objet à valeur par défaut** documenté par un seul `@param sender` ; 2 `require-param` (`sender.address`, `sender.delegated`). C'est exactement le détail de task-310, sur une fonction neuve cette fois ; task-375 — `runE2eTool` du support e2e Angular passé de `void` à `string` sans `@returns` (`require-returns`), et deux fonctions neuves (`createMessageElsewhereIn`, `deleteMessageElsewhereIn`) écrites sans leur JSDoc complet au premier jet. Attrapé par le lint ciblé de /develop. **Changer le type de retour, c'est modifier la signature** : le `@returns` suit au même geste ; task-378 — une constante insérée en ancrant sur `function toError<T>(` : le JSDoc de `toError` est passé au-dessus de la constante, la fonction sans bloc. Vu à la relecture du diff avant tout lint ; la consigne de task-352 (« si la ligne précédente est `*/`, l'ancre est le `/**` ») s'applique aussi aux scripts d'édition ; task-379 — une fonction privée à `@example` vide rendue `export` pour être réutilisée : la règle s'applique dès l'export, compléter l'exemple au même geste ; task-374 — un `@example` vide sur un helper e2e, et un `@param` ajouté sans description par l'auto-fixer : le fixer pose la balise, pas son texte ; task-376 — des constantes exportées insérées en ancrant sur `@Component({` : le JSDoc de la classe, juste au-dessus du décorateur, est passé sur les constantes, et la classe s'est retrouvée sans bloc (`require-jsdoc`, deux composants). Attrapé par le lint ciblé de /develop avant tout rendu. **Un décorateur est une signature** : l'ancre est le `/**` qui le précède)
 
 ### mail-content-body — `content.body` n'est pas le texte du mail
 - **Règle** : convention projet (défaut fonctionnel, invisible au lint)
@@ -467,4 +467,16 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   résout le premier après le second.
 - **Voir aussi** : `reponse-d-un-contexte-depasse`, `service-propre-au-composant`.
 - **Origine** : task-393 (/review, seconde passe)
+- **Occurrences** : 1
+
+### complexity — une branche ajoutée à une méthode déjà chargée la fait déborder
+- **Règle** : `complexity` (seuil 20, avertissement)
+- **Repos** : `client-angular`
+- **Consigne** : avant d'ajouter une branche (`if`, `??`, `?.`) à une méthode d'aiguillage comme
+  `initializeFromPrefill`, compter ce qu'elle porte déjà. Près du seuil, sortir d'abord un bloc
+  existant dans une méthode nommée et documentée (`applyPrefillRecipients`, `resumeDraft`), puis y
+  ajouter la branche. Un avertissement n'arrête pas le pipeline : c'est pour ça qu'il s'accumule.
+- **Origine** : task-399 (/lint-angular, 1 avertissement neuf : `initializeFromPrefill` de 20 à 24
+  par la reprise de brouillon délégué et la base de « Répondre à tous » ; corrigé par extraction.
+  `replacePlaceholders`, déjà à 44 avant la task, passe à 45 : dette antérieure, laissée)
 - **Occurrences** : 1

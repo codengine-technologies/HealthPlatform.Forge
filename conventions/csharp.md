@@ -109,7 +109,7 @@ en C# 12 : deux spreads valent mieux qu'un `Concat`.
 
 ## CA1859 — type concret plutôt qu'interface pour un helper local
 
-**Occurrences : 11** (task-398 — onzième, relevée par `/sonar`, **introduite par la passe `/simplify`** : un champ `public static readonly IReadOnlySet<string> Switches` rendu `private` sur recommandation de revue. Public, le type d'interface était un contrat ; privé, il ne l'est plus et CA1859 réclame le `HashSet<string>` construit. **Restreindre la visibilité d'un membre, c'est aussi revenir à son type concret.** task-397 — dixième, relevée par `/sonar` : `StoreAsync(…, IReadOnlyCollection<(string Key, byte[] Bytes)> entries, …)`, helper privé dont les deux appelants passent une `List` ; même variante que task-353, écrite large en réécrivant la classe. task-332 — neuvième, relevée par `/sonar` : un helper privé de test d'intégration `PlatformConnectionStrings()` déclaré `IServerConnectionStrings` alors qu'il construit un `PlatformRoutes` ; même cas que la huitième, un helper en expression rend le type de ce qu'il construit. task-340 — huitième, relevée par `/sonar` : un helper de test `DeleteFolderAsync` déclaré `Task` alors qu'il rend le `Task<int>` d'`ExecuteDeleteAsync` ; un helper en expression rend le type de ce qu'il renvoie. task-203, task-289, task-299, task-188, task-345, task-353, task-354 — septième récidive, relevée par `/sonar` : un helper privé de test `MssanteRefusal()` déclaré `Exception` alors qu'il ne construit qu'une `SmtpProtocolException` — le réflexe « type large pour une fabrique d'exception de test » ; écrire le type construit. Sixième récidive.
+**Occurrences : 12** (task-399 — douzième, relevée par `/sonar` : un relais privé `TransmitAsync` déclaré `Task` alors que ses deux branches rendent le `Task<string>` de `SmtpClient.SendAsync` — la variante task-299/task-340, « on ne masque pas un `Task<T>` derrière un `Task` » ; task-398 — onzième, relevée par `/sonar`, **introduite par la passe `/simplify`** : un champ `public static readonly IReadOnlySet<string> Switches` rendu `private` sur recommandation de revue. Public, le type d'interface était un contrat ; privé, il ne l'est plus et CA1859 réclame le `HashSet<string>` construit. **Restreindre la visibilité d'un membre, c'est aussi revenir à son type concret.** task-397 — dixième, relevée par `/sonar` : `StoreAsync(…, IReadOnlyCollection<(string Key, byte[] Bytes)> entries, …)`, helper privé dont les deux appelants passent une `List` ; même variante que task-353, écrite large en réécrivant la classe. task-332 — neuvième, relevée par `/sonar` : un helper privé de test d'intégration `PlatformConnectionStrings()` déclaré `IServerConnectionStrings` alors qu'il construit un `PlatformRoutes` ; même cas que la huitième, un helper en expression rend le type de ce qu'il construit. task-340 — huitième, relevée par `/sonar` : un helper de test `DeleteFolderAsync` déclaré `Task` alors qu'il rend le `Task<int>` d'`ExecuteDeleteAsync` ; un helper en expression rend le type de ce qu'il renvoie. task-203, task-289, task-299, task-188, task-345, task-353, task-354 — septième récidive, relevée par `/sonar` : un helper privé de test `MssanteRefusal()` déclaré `Exception` alors qu'il ne construit qu'une `SmtpProtocolException` — le réflexe « type large pour une fabrique d'exception de test » ; écrire le type construit. Sixième récidive.
 Variante task-353 : un helper privé `PurgeVanishedMailsAsync(folder, IReadOnlyCollection<uint>)`
 dont les deux appelants passent un `uint[]` — écrit « large » par réflexe pendant la passe
 `/simplify`, comme sur task-289 : **un paramètre de helper privé prend le type de ce que ses
@@ -260,7 +260,7 @@ dans `string.Equals`, mais `StringComparer` dans `Contains`.
 
 ## S125 — une prose qui « ressemble à du code » est signalée comme code commenté
 
-**Occurrences : 18** (task-374 — « …aucune autre boîte ; le voir… » dans un commentaire de test du seed e2e, attrapé par le contrôle mécanique §Q 2b avant le commit ; task-326, 2ᵉ fois — « …qui le consomme ; les services… » dans le commentaire de tête d'`ImapServiceDependencies.cs`, attrapé par le contrôle §Q 2b mais **après** le commit : le contrôle et le `git commit` étaient enchaînés dans la même commande, sans arrêt sur résultat. Le contrôle se lit AVANT de committer, pas dans la même commande ; task-326 — « …qu'en Development ; un déploiement… » dans un commentaire de l'AppHost, attrapé par le contrôle mécanique §Q 2b avant le push ; task-340 — ×5 « … ; » en fin de proposition (contrôleur, MdnService, deux tests), dont un commentaire déplacé tel quel, attrapés par le contrôle mécanique §Q 2b avant la passe qualité ; task-334 — ×3, « …throws "Host is null" ; task-334 — … » et « par défaut ; WireExisting… », attrapées par le contrôle mécanique §Q 2b avant la passe qualité ; task-354 — « …would demand a registry ; » dans un commentaire d'un banc d'intégration, attrapé par le contrôle mécanique §Q 2b avant le commit ; task-344 — ×2 dans l'extension « reprise des étiquetages IA », attrapées par le contrôle mécanique avant le commit ; task-348 — deux commentaires « … public ; c'est … », « … Toxiproxy ; with », attrapés par le contrôle mécanique lancé pendant `/sonar` ; task-184, task-292, task-188, task-322, task-171, task-342, task-191, task-330,
+**Occurrences : 19** (task-399 — ×2 « …ne l'a pas relue ; au-delà… » dans un commentaire de test d'intégration, attrapés par le contrôle mécanique §Q 2b avant le commit ; task-374 — « …aucune autre boîte ; le voir… » dans un commentaire de test du seed e2e, attrapé par le contrôle mécanique §Q 2b avant le commit ; task-326, 2ᵉ fois — « …qui le consomme ; les services… » dans le commentaire de tête d'`ImapServiceDependencies.cs`, attrapé par le contrôle §Q 2b mais **après** le commit : le contrôle et le `git commit` étaient enchaînés dans la même commande, sans arrêt sur résultat. Le contrôle se lit AVANT de committer, pas dans la même commande ; task-326 — « …qu'en Development ; un déploiement… » dans un commentaire de l'AppHost, attrapé par le contrôle mécanique §Q 2b avant le push ; task-340 — ×5 « … ; » en fin de proposition (contrôleur, MdnService, deux tests), dont un commentaire déplacé tel quel, attrapés par le contrôle mécanique §Q 2b avant la passe qualité ; task-334 — ×3, « …throws "Host is null" ; task-334 — … » et « par défaut ; WireExisting… », attrapées par le contrôle mécanique §Q 2b avant la passe qualité ; task-354 — « …would demand a registry ; » dans un commentaire d'un banc d'intégration, attrapé par le contrôle mécanique §Q 2b avant le commit ; task-344 — ×2 dans l'extension « reprise des étiquetages IA », attrapées par le contrôle mécanique avant le commit ; task-348 — deux commentaires « … public ; c'est … », « … Toxiproxy ; with », attrapés par le contrôle mécanique lancé pendant `/sonar` ; task-184, task-292, task-188, task-322, task-171, task-342, task-191, task-330,
 task-331 — neuvième, **attrapée par le contrôle mécanique avant le commit**, comme prévu : « …pas
 l'objet ; le parcours… » au milieu d'un commentaire du seed e2e. Le contrôle marche. Le réflexe
 d'écriture, lui, ne tient toujours pas : en français, l'espace avant le point-virgule est la
@@ -596,7 +596,7 @@ dotnet format style {projet}.csproj --verify-no-changes --diagnostics IDE1006
 
 ## S138 — une méthode de plus de 80 lignes doit être découpée
 
-**Occurrences : 1** (task-188)
+**Occurrences : 2** (task-399 — `SmtpService.SendMailAsync`, déjà à 81 lignes sur `develop`, porté à 95 par le contrôle de l'identité d'envoi : la task a **ajouté une étape à une méthode déjà au seuil**. Corrigé en sortant la trace d'audit de l'envoi réussi dans `TraceSent`. Consigne ajoutée : avant d'insérer une étape dans une méthode, mesurer sa longueur ; à plus de 70 lignes, sortir d'abord un bloc existant ; task-188)
 
 Le piège n'est pas la méthode « fourre-tout » : c'est la méthode **qui enfile
 trois temps distincts** sans que rien ne les sépare. Dans `StartSyncAsync`, la
@@ -630,7 +630,7 @@ découpage d'après-coup oblige à re-valider un code déjà vert.
 
 ## S103 — une ligne de plus de 150 caractères doit être scindée
 
-**Occurrences : 5** (task-334 — ×5, variante **assertion NSubstitute** : `Received(1).EnrichEmailsAsync("INBOX", Arg.Is<List<uint>>(…), Arg.Any<bool>(), Arg.Any<CancellationToken>())` après l'ajout d'un paramètre, scindées après la parenthèse ouvrante par le contrôle mécanique ; task-341 — variante **motif d'expression régulière** : le `[GeneratedRegex]` du garde de journalisation, une alternation de seize noms sur une ligne. Attrapé par le contrôle mécanique §Q 2b avant le commit, et scindé en trois littéraux `@"…" + @"…"`, ce qu'un attribut accepte puisque la concaténation reste une constante ; task-188, task-192 — ×11, variante **requête EF** : une
+**Occurrences : 6** (task-399 — ×2, variante **résumé XML d'une exception** : un `<summary>` tenu sur une seule ligne de 215 et 279 caractères, dans `AiRefusedOnBehalfException` et `SenderNotAllowedException`. Un commentaire de documentation se coupe au mot comme une prose, une ligne `///` par phrase ; task-334 — ×5, variante **assertion NSubstitute** : `Received(1).EnrichEmailsAsync("INBOX", Arg.Is<List<uint>>(…), Arg.Any<bool>(), Arg.Any<CancellationToken>())` après l'ajout d'un paramètre, scindées après la parenthèse ouvrante par le contrôle mécanique ; task-341 — variante **motif d'expression régulière** : le `[GeneratedRegex]` du garde de journalisation, une alternation de seize noms sur une ligne. Attrapé par le contrôle mécanique §Q 2b avant le commit, et scindé en trois littéraux `@"…" + @"…"`, ce qu'un attribut accepte puisque la concaténation reste une constante ; task-188, task-192 — ×11, variante **requête EF** : une
 condition LINQ `x => filtre vide || EF.Functions.ILike(colonne, motif, SearchQueryHelper.LikeEscapeCharacter)`,
 et un `select new Projection { A = …, B = …, … }` tenu sur une ligne. Corrigé par un
 alias `private const string LikeEscape = SearchQueryHelper.LikeEscapeCharacter;` — une
@@ -1717,3 +1717,21 @@ clés dans l'index.
 
 **Consigne** : ne jamais confier un effet de bord à un prédicat LINQ. Une boucle explicite
 (`removed |= index.Remove(key)`) dit ce qu'elle fait, et la règle se tait.
+
+---
+
+## delegated-access-ouvre-le-corps — `[DelegatedAccess]` sur une route d'écriture laisse entrer des chemins `shared/`
+
+**Occurrences : 1** (task-399, trouvé par `/review`)
+
+Sans attribut, `DelegatedMailboxPolicyFilter` refuse tout corps qui porte un chemin délégué. Poser
+`[DelegatedAccess(Read)]` sur `POST/PUT /mail/drafts` et sur `…/send` a ouvert le **circuit
+« (moi) »** à des pièces par référence `shared/<délégante>/<sous-dossier>`, écrites ensuite dans
+Redis par `DraftCacheRepository` (`StringSetAsync` direct, hors `DelegatedCacheGuardService`) et
+sérialisables dans `PendingActions` hors ligne (règle 14).
+
+**Consigne** : avant d'ajouter `[DelegatedAccess(...)]` à une action, suivre **chaque champ** du corps
+qui peut porter un chemin (`SourceFolderPath`, `CancelAndReplaceFolderPath`, `FolderPath`…) jusqu'à son
+stockage, **branche « moi » comprise**. Un chemin `shared/` doit être résolu (octets) ou refusé avant
+toute écriture hors IMAP. Le test « rien de persisté » lit les **valeurs** Redis et `PendingActions`,
+pas seulement les clés.
