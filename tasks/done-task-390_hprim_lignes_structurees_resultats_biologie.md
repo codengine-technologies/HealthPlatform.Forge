@@ -129,7 +129,8 @@ Voir `tests/Features/Mss/HprimStructuredResults.feature`.
 | /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 16 min 22 s | — | — | — | e2e ×6 (31 min 17 s), rejeu après reprise de revue : 2 voies vertes, porte 0 |
 | /review | ok | — | 2 (14 s) | 1 (4 min 17 s) | — | dtos-mss 1B/0T, api-mail 1B/1T, APPROVED 2e passe, PR Dtos #49, Api.Mail #316; no start marker |
-| **Total cycle** | | **33 min 40 s** | **10 (1 min 50 s)** | **24 (36 min 49 s)** | **4 (1 min 20 s)** | |
+| /tech-writer | ok | 13 s | — | — | — | — |
+| **Total cycle** | | **33 min 54 s** | **10 (1 min 50 s)** | **24 (36 min 49 s)** | **4 (1 min 20 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (19 s)
 

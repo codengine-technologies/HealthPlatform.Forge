@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-10-26 (v1.112)
+> **Dernière mise à jour** : 2026-10-26 (v1.113)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -760,6 +760,54 @@
   - sous-objet partagé pour les options d'envoi au prochain changement de contrat ;
   - remonter `originalMarkedCancelled` et `warning` par `drafts/{id}/send` ;
   - bail renouvelable pour le verrou.
+
+### v1.113 — HPRIM : les lignes `RES|` deviennent des résultats de biologie, avec alerte d'anomalie — task-390
+
+- **Origine** : séance `/po` du 2026-10-23, suite de task-389. Arbitrages : profondeur « texte + `RES|` », anomalie « indicateur du laboratoire, sinon normes », résultat partiel « affiché avec la mention, remplacé au rattachement ».
+- **Contrat** : NuGet `HealthPlatform.Dtos.Mss` **539.0.0**, champs additifs :
+  - `MailMedicalDocumentBiologyDto.Status` et `BiologyValueDto.Status` ;
+  - `BiologyCodeSystems.LaboratoryLocal = "LABORATORY-LOCAL"` ;
+  - `BiologyResultStatus` (`P`, `F`, `C`).
+- **api-mail** :
+  - `HprimStructuredResults` découpe les lignes `RES|` à la manière de Weda : [1] libellé, [2] code, [4]–[7] valeur primaire, [8] indicateur, [9] statut, [10]–[13] valeur secondaire. Une ligne de moins de 8 champs, ou sans libellé, est ignorée. Chaque valeur est tronquée à la longueur de sa colonne (constantes `MailMedicalDocumentBiology.*Length`).
+  - Section unique « Résultats de laboratoire » ; date du résultat de l'en-tête.
+  - **Anomalie (décision 1)** :
+    - un indicateur HL7 (`N, L, H, LL, HH, A, AA`) décide seul ;
+    - sinon, seule une ligne de type `N` (ou de type vide) se compare aux normes ;
+    - le point et la virgule sont acceptés ; normes `0|0` = pas de normes ; « .5 » garde son point.
+  - Liste HL7 des codes signalés partagée avec le CDA (`BiologyInterpretation`).
+  - **UTF-16 sans BOM** reconnu à ses octets nuls (variante `R\0E\0S\0|` de Weda).
+  - **Persistance** : `AddBiologyResultsToDocument` inchangé, plus la colonne `MailMedicalDocumentBiology.Status` (FluentMigrator `20261026120000`, `varchar(16) NULL`, avec descente). `Status` est projeté sur le contenu, l'en-tête, les documents et la biologie du patient.
+  - **`BiologyRepository`** : la clé de regroupement inclut le libellé quand le code est vide.
+  - **Journaux** : la valeur et l'unité sont retirées du `LogDebug` des résultats écartés.
+- **Tests** :
+  - unitaires : 51 cas `HprimStructuredResultsTests` ;
+  - intégration : `HprimStructuredResultsEndToEndTests`, 6 tests (nominal avec rattachement, sans `RES|`, anormaux non lus, partiel/complété, séries HPRIM/LOINC, examens sans code) ;
+  - migration : `BiologyResultStatusMigrationTests` ;
+  - BAL déléguée : `DelegationEndToEndTests.ADelegatedHprimWithResLines_…` ;
+  - mutations MF, MS, MC, MW, MH, toutes rouges ;
+  - suites api-mail : 7 127 verts.
+- **Passe §Q** :
+  - enregistrement de la biologie des tests partagé (`UseCaseHttpHost.AddProductionBiology`) ;
+  - longueurs de colonnes déclarées une fois ;
+  - écartée : la troncature à la frontière d'écriture pour toutes les sources, qui changerait le comportement du CDA (suivi proposé).
+- **Sonar** : QG OK, 0 issue sur le nouveau code, new coverage 95,1 %, duplication 0,3 → 0,4 %.
+- **E2E** : mobile 50 verts, Angular 59 verts, 0 flaky, parité verte, porte 0. Les voies ont été rejouées après le correctif de revue.
+- **Revue** :
+  - 1ʳᵉ passe : CHANGES REQUESTED. Des examens sans code fusionnaient dans la biologie du patient, et le statut des en-têtes n'était pas prouvé.
+  - 2ᵉ passe : APPROVED.
+- **PR** : `dtos-mss` #49, `api-mail` #316 (empilée sur #315). Ordre de merge : #315, puis #49, puis #316.
+- **Leçons** :
+  - `conventions/csharp.md#cle-de-regroupement-champ-facultatif` ;
+  - mémoire « échappements Python » : récidive (octets nuls réels dans un commentaire, révélés par `git diff --stat` qui affichait le fichier en `Bin`).
+- **À arbitrer au HAG** :
+  - ligne `RES|` sans valeur gardée ;
+  - indicateur hors table HL7 qui laisse décider les normes ;
+  - valeurs signalées par les normes comptées mais non listées par « anormaux non lus ».
+- **Suivis** :
+  - task-391 (rattachement, remplacement du partiel) et task-392 (affichage, listing des anomalies sans code, E2E-BIO-003), à écrire ;
+  - suppression de `PatientService.GetMedicalDocumentsByPatientIdAsync`, sans appelant ;
+  - test instable `E2eUnattachedXdmTests.TheSeededCda_CarriesATrappedCell_…` (1 rouge sur 7 runs).
 
 ### v1.112 — HPRIM : un résultat de laboratoire devient un document de biologie — task-389
 
@@ -1894,6 +1942,7 @@ Audit grep complémentaires pour les couches 2 / 2bis / 3 (tasks 021 / 022 / 023
 
 | Task | Apport principal | Règles touchées |
 |------|------------------|-----------------|
+| task-390 | **Les lignes `RES|` d'un HPRIM deviennent des résultats de biologie, avec alerte d'anomalie.** Valeur, unité, normes, seconde valeur, code local du laboratoire (jamais LOINC), statut partiel / final / corrigé persisté ; anomalie par l'indicateur du laboratoire, sinon par les normes ; « anormaux non lus » après rattachement seulement ; examens sans code distingués par leur libellé ; BAL déléguée lue sans rien conserver. | — |
 | task-389 | **Un résultat de laboratoire au format HPRIM devient un document de biologie à intégrer.** Lecture HPRIM selon les règles de Weda (en-tête, plusieurs résultats, encodages, données parasites, HTML et fichier trop court rejetés) ; un document par résultat, sans INS donc non rattaché ; PDF du message associé ; CDA prioritaire ; corps jamais HPRIM ; lu à l'affichage dans une BAL déléguée, sans rien conserver. | — |
 | task-398 | **Les BAL déléguées dans les clients : une section à part, des gestes de gestion seulement, la révocation dite clairement (mobile et weda2).** Contrat `Owner` / `Role` des dossiers, section repliée et colorée sous la BAL principale, gestes d'exploitation masqués (dont le panneau Weda), Restaurer / Supprimer définitivement, déplacement limité à la BAL, recherche et notifications coupées, purge à la déconnexion et hors ligne ; panneau des dossiers redimensionnable sur weda2 ; banc e2e de délégation et scénarios E2E-DELEG-001..004. | — |
 | task-397 | **Délégation de BAL : la BAL déléguée se lit en direct, rien n'en est conservé chez le délégataire.** Lecture, tri, déplacement interne, suppression vers la corbeille du délégant ; IA, étiquettes, accusés, recherche refusés ; garde unique des écritures, masquage des journaux, audit en liste blanche ; cache du contenu décodé (5 min, clé HMAC) ; en-têtes enrichis en direct par SSE. | — |

@@ -2,9 +2,9 @@
 
 > **Statut** : En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.88
+> **Version** : 1.89
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-26 (un résultat de laboratoire au format HPRIM devient un document de biologie à intégrer — task-389 ; les boîtes déléguées rangées à part dans le mobile et la messagerie web, gestes de gestion seulement — task-398 ; délégation de BAL : la boîte déléguée se lit en direct, rien n'en est conservé — task-397 ; un geste sur la liste touche exactement les messages affichés — task-375 ; une rédaction sans texte ne laisse ni brouillon ni question — task-394 ; carnet d'adresses refondu — task-393)
+> **Dernière mise à jour** : 2026-10-26 (les valeurs d'un résultat HPRIM rejoignent la biologie du patient, avec leurs anomalies — task-390 ; un résultat de laboratoire au format HPRIM devient un document de biologie à intégrer — task-389 ; les boîtes déléguées rangées à part dans le mobile et la messagerie web, gestes de gestion seulement — task-398 ; délégation de BAL : la boîte déléguée se lit en direct, rien n'en est conservé — task-397 ; un geste sur la liste touche exactement les messages affichés — task-375 ; une rédaction sans texte ne laisse ni brouillon ni question — task-394 ; carnet d'adresses refondu — task-393)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1036,6 +1036,13 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
+- **v1.113 — Les valeurs d'un résultat HPRIM rejoignent la biologie du patient** (task-390) :
+  - **Chaque valeur devient un résultat de biologie** : valeur, unité, normes, et seconde valeur dans une autre unité quand le laboratoire la donne. Le document HPRIM n'est plus seulement un texte.
+  - **Les anomalies sont signalées.** Si le laboratoire indique une anomalie (bas, haut, critique), elle est reprise telle quelle. Sinon, une valeur numérique hors de ses normes est signalée. Une valeur qualitative (« positif », « trouble ») ne l'est jamais sans indication du laboratoire.
+  - **Le résultat partiel reste reconnaissable.** Un résultat marqué « partiel » le reste, et le compte rendu complété ne le remplace pas à la réception : le remplacement se fera au rattachement.
+  - **Les codes du laboratoire ne sont jamais présentés comme des codes LOINC.** Une glycémie reçue en HPRIM et une glycémie reçue en CDA restent deux séries distinctes.
+  - **« Anormaux non lus »** ne compte un résultat HPRIM qu'une fois son document rattaché à un patient.
+  - **Boîte d'un confrère** : les résultats d'un HPRIM délégué sont lisibles, anomalies comprises, mais rien n'en est conservé chez vous.
 - **v1.112 — Les résultats de laboratoire au format HPRIM deviennent des documents de biologie** (task-389) :
   - **Fini le fichier technique illisible.** Quand un laboratoire envoie encore ses résultats au format historique HPRIM (fichier `.hpm`, joint ou intégré au message), chaque résultat devient un **document de biologie** : date du résultat, laboratoire, nom, prénom et date de naissance du patient, texte du résultat.
   - **Il attend dans la file « à intégrer ».** Le format ne porte pas d'INS : le document n'est jamais rattaché automatiquement à un patient. Le choix du patient se fait à la main, et la suggestion viendra avec task-391.
