@@ -745,3 +745,17 @@ Ouvertes le 2026-10-26, label `awaiting-human-merge` (HAG, règle 10) :
   | Règle 14 sur la route modifiée | même test (`RowsContainingAsync`) | garde task-397 |
 - **E2E double verrou** : `## E2E log` vert (porte 0), DoD des scénarios E2E-DELEG-001..004 remplie : catalogue `v1`, implémentés et prouvés rouges sur les deux clients.
 - **DoD** : tous les critères sont remplis, sauf un, remplacé. « Aucun appel d'enrichissement ni de SSE » cède devant la décision humaine 14 de task-397, plus récente. L'écart est annoncé en tête des PR, à valider au HAG.
+
+## Merged
+
+Mergé le 2026-10-26 par `/merge task-398 --i-tested`, sur attestation de test manuel de l'humain (HAG, règle 10). Squash, dans l'ordre topologique :
+
+| Dépôt | PR | Commit squash sur `develop` | CI `develop` |
+|---|---|---|---|
+| `dtos-mss` | #48 | `ed31ab9c` | ✅ https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/actions/runs/40279987244 |
+| `api-mail` | #314 | `84988dda` | ✅ https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/40280003174 |
+| `client-mobile` | #107 | `95944249` | ✅ https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/40280018739 |
+
+- Branches `feat/task-398-delegation-bal-deleguees-mobile-weda2` supprimées (distantes et locales) ; clones revenus sur `develop`. Label `awaiting-human-merge` retiré.
+- `client-angular` : géré manuellement par l'humain (TFS).
+- Staging : aucune branche `forge/staging-*` (cycle lancé par `/start`, hors `/forge`).
