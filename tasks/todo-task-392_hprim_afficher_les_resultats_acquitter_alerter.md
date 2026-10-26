@@ -1,12 +1,16 @@
 # todo-task-392.md — Afficher les résultats d'un HPRIM, les acquitter, les signaler dans « anormaux non lus »
 
 **Repos**: api-mail, dtos-mss, client-mobile, client-angular
-**Dependencies**: task-391 (rattachement, remplacement du partiel), task-390 (résultats structurés, anomalie, statut)
+**Dependencies**: task-390 (résultats structurés, anomalie, statut)
 **Epic**: E009
-**Priorité**: **2** — les résultats HPRIM sont lus et rangés (task-390, task-391), mais le médecin ne les voit pas encore comme des résultats de biologie : ni tableau, ni mention « partiel », ni anomalie mise en évidence quand le laboratoire ne donne pas d'indicateur. Le widget « anormaux non lus » compte ces valeurs sans les montrer.
+**Priorité**: **2** — les résultats HPRIM sont lus et rangés (task-390), mais le médecin ne les voit pas encore comme des résultats de biologie : ni tableau, ni mention « partiel », ni anomalie mise en évidence quand le laboratoire ne donne pas d'indicateur. Le widget « anormaux non lus » compte ces valeurs sans les montrer.
 
 > **Origine.** Séance `/po` du 2026-10-23 (parsing HPRIM dans api-mail), suite de task-389,
-> task-390 et task-391. Arbitrages rendus le 2026-10-26 (voir « Décisions actées »).
+> task-390. Arbitrages rendus le 2026-10-26 (voir « Décisions actées »).
+>
+> **Pas de remplacement du partiel** : task-391 a été réduite au signal doublon (humain, 2026-10-26).
+> Le partiel et son complété restent tous deux visibles ; le partiel est reconnaissable à sa
+> mention « partiel » (règle ci-dessous).
 
 ## Ce qui est établi
 
@@ -23,7 +27,7 @@
   - **Mise en évidence d'une anomalie** côté clients : elle part du **code** d'interprétation. Une valeur signalée par les normes, sans code, n'est pas mise en évidence.
   - **Texte du document HPRIM** : il contient encore les lignes techniques du bloc structuré (`****LAB****`, `TEX|`, `RES|`).
 - **Acquittement** (task-170, E2E-BIO-001) : tout document portant une valeur signalée, dans la Réception, entre déjà dans la file « à acquitter ». Les documents HPRIM y entrent donc depuis task-390. Le panneau d'acquittement est commun.
-- **Partiel remplacé** (task-391) : il quitte le dossier, la biologie et les alertes.
+- **Partiel et complété** : aucun remplacement (task-391 réduite au signal doublon). Les deux documents restent dans le dossier, la biologie, les alertes et la file « à acquitter ».
 
 ## Décisions actées (humain, 2026-10-26)
 
@@ -33,7 +37,7 @@
    - le **tableau des résultats** d'abord : valeur, unité, normes, anomalie mise en évidence, mention « partiel » ;
    - **puis le texte** du compte rendu, sans les lignes techniques `****LAB****`, `TEX|` et `RES|` ;
    - le PDF reste accessible comme pour un CDA.
-4. **Acquittement** : comme un CR-BIO CDA. Tout document HPRIM portant une valeur signalée entre dans la file « à acquitter », rattaché ou non, et s'acquitte avec le même panneau. Un partiel remplacé (task-391) n'y est plus.
+4. **Acquittement** : comme un CR-BIO CDA. Tout document HPRIM portant une valeur signalée entre dans la file « à acquitter », rattaché ou non, et s'acquitte avec le même panneau. Le partiel et son complété y entrent chacun, comme deux comptes rendus.
 
 ## Objective
 
@@ -53,7 +57,7 @@ Le médecin lit un résultat HPRIM comme un résultat de biologie :
 - **Texte du compte rendu** : affiché sous le tableau, tel que le laboratoire l'a mis en forme, sans les lignes techniques. Un HPRIM sans résultat structuré n'affiche que son texte.
 - **Frise de biologie du patient** (décision 1) : série = laboratoire + code + unité pour un résultat HPRIM ; système de codes + code + unité pour un résultat LOINC. Les deux ne fusionnent jamais. Chaque point garde son statut : un point « partiel » est marqué.
 - **« Anormaux non lus »** (décision 2) : les valeurs signalées sans indicateur sont listées comme alertes non critiques, marquées « hors normes ». L'ordre reste : critiques d'abord, puis alertes, puis les plus récentes. Le compte ne change pas.
-- **Acquittement** (décision 4) : inchangé, partagé avec le CR-BIO CDA. Un partiel remplacé sort de la file.
+- **Acquittement** (décision 4) : inchangé, partagé avec le CR-BIO CDA. Un partiel et son complété s'acquittent chacun.
 - **BAL déléguée** (règle 14) :
   - le tableau et le texte d'un HPRIM délégué s'affichent de la même façon, lus en direct à l'ouverture du message ;
   - pas d'acquittement ni d'entrée dans « anormaux non lus » ou la frise (task-398 inchangé) ;
@@ -70,7 +74,7 @@ Le médecin lit un résultat HPRIM comme un résultat de biologie :
   - vu rouge. Le test d'infrastructure qui figeait l'ancienne règle est mis à jour selon la décision 2
 - [ ] **Test d'intégration (règle 1b) pour le contenu d'un message HPRIM** : le texte du document ne contient plus les lignes `****LAB****`, `TEX|`, `RES|`, et garde le texte du compte rendu ; vu rouge
 - [ ] **Test d'intégration (règle 1b) pour `GET biology/patients/{id}`** : chaque résultat HPRIM porte son laboratoire émetteur. Deux laboratoires, même code local, même unité → deux séries distinguables dans la réponse réelle ; vu rouge
-- [ ] Test d'intégration : un partiel remplacé (task-391) n'est plus dans la file « à acquitter »
+- [ ] Test d'intégration : un document HPRIM portant une valeur signalée entre dans la file « à acquitter » (rattaché ou non) et en sort une fois acquitté, lu dans la réponse réelle
 - [ ] Tests de composant (mobile et weda2) :
   - tableau des résultats HPRIM : valeur hors normes sans indicateur mise en évidence et « hors normes », indicateur affiché, mention « partiel », seconde valeur, « code labo » ;
   - frise : deux laboratoires au même code → deux séries ; HPRIM et LOINC → deux séries ;
@@ -108,7 +112,7 @@ Messages de test : HPRIM synthétiques (`.eml` déposés dans la Réception de C
 - **Couloir Ségur** : biologie médicale (réception en médecine de ville)
 - **Vague Ségur** : hors Ségur — HPRIM est un format historique ; le CR-BIO CDA reste prioritaire
 - **Exigences DSR honorées** : non applicable — aucune exigence DSR sur le HPRIM. Règle de prudence : codes locaux jamais présentés comme LOINC, séries jamais mêlées entre laboratoires ou avec le LOINC
-- **INS** : non applicable — aucun changement d'identité ; l'alerte « anormaux non lus » ne porte que sur les documents rattachés (task-390, task-391)
+- **INS** : non applicable — aucun changement d'identité ; l'alerte « anormaux non lus » ne porte que sur les documents rattachés (task-390)
 - **Authentification PS** : inchangée — PSC / e-CPS de la session de messagerie
 - **Habilitations** : inchangées. BAL déléguée : lecture seule sans stockage, sans acquittement (règle 14, task-398)
 - **Interop CI-SIS** : non applicable — HPRIM Santé ; indicateurs d'anomalie sur la table HL7 commune avec le CDA
