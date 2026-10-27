@@ -259,3 +259,8 @@ Comptes de formation : Cyril, délégataire de Virginie.
   - notification au délégant à chaque acte ;
   - accès d'administration et de sécurité au journal (task-302) ;
   - reprise des traces passées.
+
+## Branches
+- `api-mail` (pushed) : feat/task-400-delegation-tracer-ce-qui-agit — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-400-delegation-tracer-ce-qui-agit
+- `dtos-mss` (lazy) : aucune branche au /start — `/develop` la crée depuis `origin/develop` au premier contrat touché (règle du 2026-09-16)
+- `client-angular` (code-only) : la forge écrit sur la branche courante de `Client/Angular/` — `feature/nova-mss-weda-integration` au /start (2026-10-27). L'arbre porte déjà, non commitées, les retouches weda2 du 2026-10-27 (bordure des dossiers délégués, alignement, quota déplacé dans les Paramètres) : humain gère branche, commit, push, PR TFS
