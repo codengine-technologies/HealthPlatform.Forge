@@ -260,7 +260,7 @@ dans `string.Equals`, mais `StringComparer` dans `Contains`.
 
 ## S125 — une prose qui « ressemble à du code » est signalée comme code commenté
 
-**Occurrences : 19** (task-399 — ×2 « …ne l'a pas relue ; au-delà… » dans un commentaire de test d'intégration, attrapés par le contrôle mécanique §Q 2b avant le commit ; task-374 — « …aucune autre boîte ; le voir… » dans un commentaire de test du seed e2e, attrapé par le contrôle mécanique §Q 2b avant le commit ; task-326, 2ᵉ fois — « …qui le consomme ; les services… » dans le commentaire de tête d'`ImapServiceDependencies.cs`, attrapé par le contrôle §Q 2b mais **après** le commit : le contrôle et le `git commit` étaient enchaînés dans la même commande, sans arrêt sur résultat. Le contrôle se lit AVANT de committer, pas dans la même commande ; task-326 — « …qu'en Development ; un déploiement… » dans un commentaire de l'AppHost, attrapé par le contrôle mécanique §Q 2b avant le push ; task-340 — ×5 « … ; » en fin de proposition (contrôleur, MdnService, deux tests), dont un commentaire déplacé tel quel, attrapés par le contrôle mécanique §Q 2b avant la passe qualité ; task-334 — ×3, « …throws "Host is null" ; task-334 — … » et « par défaut ; WireExisting… », attrapées par le contrôle mécanique §Q 2b avant la passe qualité ; task-354 — « …would demand a registry ; » dans un commentaire d'un banc d'intégration, attrapé par le contrôle mécanique §Q 2b avant le commit ; task-344 — ×2 dans l'extension « reprise des étiquetages IA », attrapées par le contrôle mécanique avant le commit ; task-348 — deux commentaires « … public ; c'est … », « … Toxiproxy ; with », attrapés par le contrôle mécanique lancé pendant `/sonar` ; task-184, task-292, task-188, task-322, task-171, task-342, task-191, task-330,
+**Occurrences : 20** (task-400 — « …tenants neufs ; les gestes portent… » dans un commentaire de test d'intégration, attrapé par le contrôle mécanique §Q 2b avant le commit ; task-399 — ×2 « …ne l'a pas relue ; au-delà… » dans un commentaire de test d'intégration, attrapés par le contrôle mécanique §Q 2b avant le commit ; task-374 — « …aucune autre boîte ; le voir… » dans un commentaire de test du seed e2e, attrapé par le contrôle mécanique §Q 2b avant le commit ; task-326, 2ᵉ fois — « …qui le consomme ; les services… » dans le commentaire de tête d'`ImapServiceDependencies.cs`, attrapé par le contrôle §Q 2b mais **après** le commit : le contrôle et le `git commit` étaient enchaînés dans la même commande, sans arrêt sur résultat. Le contrôle se lit AVANT de committer, pas dans la même commande ; task-326 — « …qu'en Development ; un déploiement… » dans un commentaire de l'AppHost, attrapé par le contrôle mécanique §Q 2b avant le push ; task-340 — ×5 « … ; » en fin de proposition (contrôleur, MdnService, deux tests), dont un commentaire déplacé tel quel, attrapés par le contrôle mécanique §Q 2b avant la passe qualité ; task-334 — ×3, « …throws "Host is null" ; task-334 — … » et « par défaut ; WireExisting… », attrapées par le contrôle mécanique §Q 2b avant la passe qualité ; task-354 — « …would demand a registry ; » dans un commentaire d'un banc d'intégration, attrapé par le contrôle mécanique §Q 2b avant le commit ; task-344 — ×2 dans l'extension « reprise des étiquetages IA », attrapées par le contrôle mécanique avant le commit ; task-348 — deux commentaires « … public ; c'est … », « … Toxiproxy ; with », attrapés par le contrôle mécanique lancé pendant `/sonar` ; task-184, task-292, task-188, task-322, task-171, task-342, task-191, task-330,
 task-331 — neuvième, **attrapée par le contrôle mécanique avant le commit**, comme prévu : « …pas
 l'objet ; le parcours… » au milieu d'un commentaire du seed e2e. Le contrôle marche. Le réflexe
 d'écriture, lui, ne tient toujours pas : en français, l'espace avant le point-virgule est la
@@ -1801,3 +1801,31 @@ qui peut porter un chemin (`SourceFolderPath`, `CancelAndReplaceFolderPath`, `Fo
 stockage, **branche « moi » comprise**. Un chemin `shared/` doit être résolu (octets) ou refusé avant
 toute écriture hors IMAP. Le test « rien de persisté » lit les **valeurs** Redis et `PendingActions`,
 pas seulement les clés.
+
+---
+
+## ef-inegalite-nullable-index-partiel — une inégalité sur colonne nullable n'emprunte pas l'index partiel
+
+**Occurrences : 1** (task-400, trouvé par la passe qualité `/simplify`)
+
+L'index partiel du journal est `WHERE owner_mailbox <> lower(user_id)`. Le filtre LINQ
+`t.OwnerMailbox == mailbox && t.OwnerMailbox != t.UserId.ToLower()` le « recopiait », mais EF applique
+la sémantique des nuls de C# : il génère `(owner_mailbox <> lower(user_id) OR owner_mailbox IS NULL)`.
+PostgreSQL ne peut plus prouver que la requête implique le prédicat de l'index, et ne le choisit pas.
+Le commentaire disait « même prédicat, pour que l'index serve » : c'était faux, en silence.
+
+```csharp
+// ❌ AVANT — EF ajoute OR owner_mailbox IS NULL
+query.Where(t => t.OwnerMailbox == mailbox && t.OwnerMailbox != t.UserId.ToLower());
+
+// ✅ APRÈS — la source part du prédicat SQL partagé avec la migration, mot pour mot
+context.AuditTraces.FromSqlRaw(
+    $"SELECT * FROM {AuditJournalSchema.TableName} WHERE owner_mailbox = {{0}} AND {AuditJournalSchema.DelegatedActPredicate}",
+    mailbox);
+```
+
+**Consigne** : un filtre écrit pour servir un **index partiel** se vérifie par son SQL généré
+(`ToQueryString()`), pas par sa lecture. Une inégalité (`!=`) dont un côté est nullable reçoit un
+`OR … IS NULL` : partir du prédicat SQL partagé (`FromSqlRaw` avec la constante de la migration), ou
+rendre la colonne non nullable dans le modèle si elle l'est en base.
+

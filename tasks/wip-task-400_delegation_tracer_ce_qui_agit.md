@@ -264,3 +264,135 @@ Comptes de formation : Cyril, délégataire de Virginie.
 - `api-mail` (pushed) : feat/task-400-delegation-tracer-ce-qui-agit — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-400-delegation-tracer-ce-qui-agit
 - `dtos-mss` (lazy) : aucune branche au /start — `/develop` la crée depuis `origin/develop` au premier contrat touché (règle du 2026-09-16)
 - `client-angular` (code-only) : la forge écrit sur la branche courante de `Client/Angular/` — `feature/nova-mss-weda-integration` au /start (2026-10-27). L'arbre porte déjà, non commitées, les retouches weda2 du 2026-10-27 (bordure des dossiers délégués, alignement, quota déplacé dans les Paramètres) : humain gère branche, commit, push, PR TFS
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-400 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 32 s | — | — | — | — |
+| /develop | ok | 2 h 01 min | 9 (1 min 23 s) | 9 (34 min 03 s) | — | dtos-mss 1B/0T, api-mail 8B/8T, client-angular 0B/1T |
+| **Total cycle** | | **2 h 01 min** | **9 (1 min 23 s)** | **9 (34 min 03 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : nuget-wait ×1 (15 s)
+
+## Develop log
+
+- **Repos touchés** : `dtos-mss` (branche paresseuse créée), `api-mail`, `client-angular` (code-only).
+- **DTOs publiés** : `HealthPlatform.Dtos.Mss` 544.0.0 → **547.0.0** (`ActorRpps`, `ActorName`, `OwnerMailbox`,
+  `IsDelegated` sur `MssAuditTraceDto` ; `DelegatedOnly` sur `AuditTraceFilterDto`, additif). Consommateur
+  bumpé : `api-mail` (lock files compris). **`client-blazor` non bumpé** : hors `**Repos**`, il reste à 533.0.0,
+  sans impact (contrat additif, l'écran d'audit Blazor n'expose pas ces champs).
+- **Interop publié** : aucun changement.
+- **Commits** : 
+  - dtos-mss : `9b1ca9e9` feat(dto) — publié en 547.0.0 (run 547) ;
+  - api-mail : `2a7d9eee` chore(deps) bump DTO 547.0.0, `91bbffad` feat(audit), `d71e8ac4` test(integration)
+    (trois rouges dépendants de l'ordre), `7204aa1f` test(e2e) catalogue + seed, `2858745f` refactor simplify
+    pass — poussés sur `feat/task-400-delegation-tracer-ce-qui-agit`.
+- **Ce qui est fait (api-mail)** :
+  - **Estampillage** (`AuditService.Trace`) : `ActorRpps` = RPPS de la session PSC en ligne
+    (`OnlinePscIdentity`, jamais `MssRpps`), `ActorName` = nom de la session ; `OwnerMailbox` = BAL posée
+    par l'appelant, sinon racine déléguée du dossier (`DelegatedMailboxRule.OwnerIn`, y compris
+    « source -> cible »), sinon BAL de la session, en minuscules. Une trace dont la BAL propriétaire n'est
+    pas celle de la session est réduite à la liste blanche, comme un chemin `shared/`.
+  - **Envoi** (`SmtpService`) : la BAL propriétaire est l'adresse émettrice (`identity.Address`), en succès
+    comme en échec ; la trace d'échec est sortie de `SendMailAsync` (`TraceSendFailed`, convention S138).
+  - **Nom de la personne** : `IPscUserInfoProvider` / `PscUserInfoProvider` lit `GET {proxy}/v1/auth/userinfo`
+    avec le cookie `proxy_session_id`, une fois par session (cache mémoire 12 h, négatif 60 s), sans lever ;
+    le middleware le pose sur `UserContextInfo.SessionPscName` (copié par `CopyIdentityTo`, vidé par `Reset`).
+    Contournement de test : en-tête `Client-Psc-Name` (encodé URL) → claim `mssPscName`.
+    Aucune évolution du proxy.
+  - **Couches** : `MssAuditTrace` (`[NotMapped]`, sans `[JsonIgnore]`), `AuditTraceRecord`, `ToRecord`,
+    `PostgresAuditSink` (31 colonnes, plafond de lot recalculé 2 114), `AuditTraceRow`, mapping
+    `TenantRegistryDbContext` (index partiel déclaré).
+  - **Migration** `20261027090000_AddAuditActorAndOwnerMailbox` (`TransactionBehavior.None`) : trois colonnes
+    nullables (catalogue seul) ; index partiel `ix_audit_traces_owner_delegated (owner_mailbox, timestamp DESC)
+    WHERE owner_mailbox <> lower(user_id)` construit par `AuditOwnerMailboxIndex` (`ON ONLY` sur la mère,
+    `CREATE INDEX CONCURRENTLY` par partition, `ATTACH`, index invalide repris) ; politique
+    `audit_traces_owner_read` (BAL de la session **et** acte délégué), la politique par tenant inchangée.
+  - **Lecture** (`PostgresAuditReader`) : `AuditReadScope(TenantId, Mailbox)` ; second réglage de session
+    `mss.mailbox` posé côté serveur depuis la session (`AuditController`) ; filtres `ActionType` et `Search`
+    rapatriés (ignorés depuis task-312), `Search` couvrant aussi le nom de la personne ; filtre
+    `DelegatedOnly` ; tris `actorname`, `ownermailbox` ; une trace lue hors de son tenant est vidée de session,
+    IP, agent, corrélation, requête/réponse serveur, erreur et `document_*`.
+  - **Journal applicatif** : `AuditController` ne journalise plus le texte cherché (`HasSearch`), qui peut
+    désormais nommer la personne (et nommait déjà un patient). Aucun nom ni RPPS de personne dans le nouveau
+    code (le fournisseur ne journalise que la fin de l'identifiant de session).
+- **Ce qui est fait (client-angular, code-only, non commité sur `feature/nova-mss-weda-integration`)** : modèle
+  et service (`delegatedOnly`), colonnes « Personne » / « BAL propriétaire » triables, mentions « par …
+  (RPPS …), délégation » / « dans la BAL de … », filtre « Actes de mes délégataires », dédoublonnage par
+  (BAL propriétaire, dossier, personne, UID), chemin `shared/<moi>/X` → `X` à l'affichage et à l'ouverture,
+  chronologie et détail, export CSV en liste blanche pour un acte délégué ; `data-testid="audit-filter-apply"`
+  sur « Rechercher ». Parcours **E2E-DELEG-008** et banc (identité de la délégante, contournement paramétré
+  par identité, nom déclaré par le seed). Fichiers task-400, non commités sur
+  `feature/nova-mss-weda-integration` : `core/models/audit.model.ts`, `core/services/mss-api.service(.spec).ts`,
+  `core/utils/delegated-mailbox.util(.spec).ts`, `features/audit/audit-delegation.util(.spec).ts` (nouveaux),
+  `features/audit/mss-audit.component.{ts,html,spec.ts}` (spec nouveau), `audit-filter`, `audit-list`,
+  `audit-timeline` (`.ts/.html/.scss`), `e2e/mss-e2e/specs/functional.e2e.ts`, `e2e/mss-e2e/support/{session,e2e-backend}.ts`.
+  L'arbre porte aussi, non commitées, les retouches du 2026-10-27 hors task (dossiers délégués, quota dans les
+  Paramètres : `mail-folder-*`, `mss-settings`, `mailbox-quota-widget`).
+- **Banc e2e** : la délégante a son tenant (`LoadTestRegistryProvisioner` sur praticien + délégante) ; le
+  manifeste porte `pscName` et `delegator { mailbox, pscSub, rpps, pscName }` ; le seed déclare
+  `Client-Psc-Name`. Vérification « seed-partagé-des-deux-clients » : aucun message ajouté, aucun compte
+  modifié ; la mobile lit le manifeste sans ces champs.
+- **Règle 1b — comportement → test d'intégration → preuve rouge** :
+
+  | Comportement | Test (vraie pile HTTP, vrai journal Postgres, lecture sous `mss_audit_reader`) | Preuve rouge (mutation) |
+  |---|---|---|
+  | Personne (RPPS de session, nom) + BAL propriétaire, liste et détail du délégant | `DelegationAuditEndToEndTests.TheDelegant_ReadsTheReadAndTheDeleteOfHerDelegate_…` | M1 `ActorRpps = MssRpps` → rouge ; M2 sans réglage `mss.mailbox` → rouge ; M9 propriétaire = session → rouge |
+  | Le délégataire voit ses actes « dans la BAL de A » | `TheDelegate_SeesHisOwnActs_MarkedInTheDelegantsMailbox` | M5 politique sans BAL de session → rouge ; M9 → rouge |
+  | Liste blanche hors tenant | `ATraceReadOutsideItsTenant_ShowsNeither…` | M3 masquage retiré → rouge |
+  | Cloisonnement : autre délégataire, tiers (liste et détail 404) | `AnotherDelegateOfTheSameDelegant_AndAThirdParty_…` | M4 politique sans « acte délégué » → rouge ; M5 → rouge |
+  | Adresse organisationnelle partagée | `TwoTenantsSharingAnOrganisationalAddress_…` | M4 → rouge |
+  | Délégante jamais connectée | `ADelegantWhoNeverUsedTheApplication_…` | M1, M2, M9 → rouge |
+  | Délégation retirée | `AWithdrawnDelegation_LeavesThePastActsVisibleToTheDelegant` | M2, M9 → rouge |
+  | Consommateur du bus : personne nulle, trace valide | `ATraceFromABusConsumer_HasNoActingPerson_…` | M1 → rouge (RPPS de la BAL) |
+  | Envoi au nom de A : BAL propriétaire A (task-399 livrée) | `ASendOnBehalfOfTheDelegant_HasHerMailboxAsOwner` | M1, M2 → rouge |
+  | Filtres `ActionType`, `Search`, `DelegatedOnly` | `TheActionTypeSearchAndDelegatedOnlyFilters_…` | M6 sans `ActionType`, M7 sans condition déléguée, M8 sans recherche sur le nom → rouge chacun |
+  | Index construit sans bloquer l'écriture | `AuditOwnerMailboxMigrationIntegrationTests.BuildingThePartitionIndexes_DoesNotBlockTheJournalWrites` | `CREATE INDEX` sans `CONCURRENTLY` → rouge (`lock timeout`) |
+  | Migration (règle 7c) : colonnes, politique, index valide, rôle non superutilisateur ; partition ultérieure indexée | `TheMigration_AddsThreeNullableColumns_…`, `APartitionCreatedAfterTheMigration_ReceivesTheOwnerIndex` | relu du catalogue |
+  | Tampon Redis : personne et BAL propriétaire au rejeu | `AuditSpillIntegrationTests.The_acting_person_and_the_owner_mailbox_survive_the_round_trip` | `[JsonIgnore]` sur `ActorRpps` → rouge |
+
+  Chaque mutation a été appliquée seule, compilée (0 erreur), jouée, puis restaurée par `cp` + `touch`.
+- **Tests unitaires** : `AuditServiceActorAndOwnerTests` (9), `PscUserInfoProviderTests` (7),
+  `PscSessionResolutionTests` (+3 : nom lu en ligne, non demandé hors ligne, nom du contournement),
+  `DelegatedMailboxRuleTests.TheOwnerOfTheFirstDelegatedPath_…` (6), `AuditControllerTests` (portée de lecture).
+- **Audit de migration (règle 7c)** : relu — trois `ADD COLUMN IF NOT EXISTS` nullables, aucun défaut, aucune
+  opération fantôme ; descente symétrique ; FluentMigrator (pas de `.Designer.cs`) ; rejouable (`IF NOT EXISTS`,
+  index invalide supprimé puis reconstruit) ; le test de migration relit le catalogue.
+- **Rouge préexistant corrigé (règle d'or)** : `AuditJournalIntegrationTests.Le_maintien_des_partitions_…`
+  était rouge sur `origin/develop` (vérifié dans un worktree) : il comptait toutes les partitions, dont celle
+  que le test du verrou légal laisse volontairement. Il compte désormais les partitions attendues, par nom.
+- **Environnement** : l'AppHost de l'humain tient `src/Api/bin` (5 processus `mss.mail.api`). Builds et tests
+  de la forge faits avec `-p:BaseOutputPath=bin-t400/`, sans toucher à l'AppHost.
+- **Build / tests locaux** :
+  - api-mail : build 0 erreur ; domaine 270, infrastructure 701, API 1 358, application 3 854, intégration
+    1 066 (16 ignorés) — tous verts après la passe qualité ;
+  - dtos-mss : build 0 erreur, CI de publication verte ;
+  - client-angular : `libs/mss` vitest 127 fichiers / 1 396 tests verts, `tsc` lib et specs e2e verts, ESLint
+    0 erreur sur les fichiers touchés. Build complet weda2 non relancé ici (`mss:build:production` rouge
+    préexistant, cf. mémoire) : `/lint-angular` rejoue build et tests affectés.
+- **Passe qualité (/simplify)** :
+  - Appliquée et committée : api-mail, 11 fichiers (`2858745f`) — règle « acte délégué » et normalisation
+    d'adresse uniques (`DelegatedMailboxRule`), filtre « actes de mes délégataires » parti du prédicat SQL de
+    l'index (EF ajoutait `OR owner_mailbox IS NULL` : index ignoré, consigne `ef-inegalite-nullable-index-partiel`
+    créée), trace hors tenant par liste d'autorisation, cookie et portée de cache PSC partagés
+    (`PscSessionKey`), une seule trace d'envoi, index construit par une entrée unique. Re-validation verte, filtre
+    re-prouvé rouge par mutation.
+  - Appliquée (code-only, non commitée) : client-angular — lignes calculées une fois (`rows`), wrappers
+    dupliqués retirés, `audit-detail` (jamais rendu) ramené à son état d'origine, `isSameMailboxAddress`
+    réutilisé, colonnes CSV définies une fois, E2E-DELEG-008 en un seul `expect.poll`.
+  - Non appliqué, avec raison : single-flight du nom PSC (appels doublés seulement à l'ouverture d'une session) ;
+    harnais de journal commun avec `ReadReceiptEndToEndTests` (hors diff) ; paramètre `PscUserInfo` rendu
+    obligatoire (16 sites de test) ; lecture « tenant OU propriétaire » en `UNION ALL` et recherche `pg_trgm`
+    (choix de conception, à juger en revue) ; ~30 sites de tests avec pool Npgsql (hors diff, plafond relevé).
+  - Ignorée (porteur de contrat) : dtos-mss.
+- **E2E-DELEG-008, preuve par mutation non faite ici** : la voie Angular ne démarre pas tant que les ports 5052 et
+  4200 sont tenus par les processus de l'humain (AppHost, serveur de dev). Le test est écrit et typé ; `/e2e` le
+  joue, et sa preuve rouge reste à faire au premier passage de la voie.
+- **DOD self-check** : voir le tableau 1b ; tests de composants weda2 (`mss-audit.component.spec.ts`,
+  `audit-delegation.util.spec.ts`, `delegated-mailbox.util.spec.ts`, `mss-api.service.spec.ts`) ; scénario
+  E2E-DELEG-008 au catalogue (v1, `mobile: non-applicable`, `angular: requis`) et implémenté dans weda2
+  (type-check vert). Restent hors forge : **mise à jour de l'AIPD** (humain) ; parcours joué par `/e2e`.
+- **Next step** : `/sonar task-400`
