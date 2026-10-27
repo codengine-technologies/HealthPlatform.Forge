@@ -693,7 +693,7 @@ foreach (var mail in fetched)
 
 ## S3925 — une exception garde le triplet de constructeurs recommandé
 
-**Occurrences : 6** (task-171 — `UnauthorizedException`, `PscIdentityConflictException` ; task-320 — `MailboxIncompatibleException` ; task-330 — `SmtpDeliveryUncertainException`, triplet présent, marquée FALSE-POSITIVE comme prévu ; task-352 — `NotFoundException`, classe **non scellée** qui reçoit une propriété `ErrorCode` : la règle se lève sur une exception existante dès qu'on lui ajoute un membre, triplet présent, FALSE-POSITIVE ; task-367 — `IheXdmAuthorNotSenderException`, `IheXdmPackagingRefusedException`, triplet présent d'emblée, FALSE-POSITIVE : la consigne a été lue ; task-386 — `AnnuaireCallException`, triplet présent d'emblée, FALSE-POSITIVE ; retirer l'initialiseur de sa propriété ne lève pas la règle)
+**Occurrences : 7** (task-400 — `SenderNotAllowedException`, `AiRefusedOnBehalfException` de task-399, triplet présent, FALSE-POSITIVE comme prévu ; task-171 — `UnauthorizedException`, `PscIdentityConflictException` ; task-320 — `MailboxIncompatibleException` ; task-330 — `SmtpDeliveryUncertainException`, triplet présent, marquée FALSE-POSITIVE comme prévu ; task-352 — `NotFoundException`, classe **non scellée** qui reçoit une propriété `ErrorCode` : la règle se lève sur une exception existante dès qu'on lui ajoute un membre, triplet présent, FALSE-POSITIVE ; task-367 — `IheXdmAuthorNotSenderException`, `IheXdmPackagingRefusedException`, triplet présent d'emblée, FALSE-POSITIVE : la consigne a été lue ; task-386 — `AnnuaireCallException`, triplet présent d'emblée, FALSE-POSITIVE ; retirer l'initialiseur de sa propriété ne lève pas la règle)
 
 La passe qualité avait **retiré** les constructeurs « inutilisés » de deux
 exceptions neuves pour ne garder que celui réellement appelé. Sonar réclame le
@@ -723,7 +723,7 @@ l'issue FALSE-POSITIVE avec ce motif, comme toutes les exceptions voisines de
 
 ## S3776 — un `try/catch` ajouté à une méthode déjà chargée la fait déborder
 
-**Occurrences : 2** (task-386 — `AnnuaireSanteService.ValidateSearchCriteria` : une garde de plus (séparateurs FHIR refusés) en tête d'une méthode de validation déjà à 15 ; extraite en `EnsureNoReservedCharacters` ; task-330 — `DraftService.SendDraftAsync`, complexité cognitive 16)
+**Occurrences : 5** (task-400 — ×3 : `PostgresAuditReader.ApplySort`, un ternaire `isAsc ? OrderBy : OrderByDescending` par colonne triable, porté à 19 par deux colonnes de plus, résolu par un assistant `By<TKey>` ; `ApplyFilters`, deux filtres de plus sur une méthode déjà pleine, extraits en `ApplyContentFilters` ; `TestBypassAuthenticationHandler.HandleAuthenticateAsync`, un en-tête facultatif de plus, les trois extraits en `AddClaimFromHeader`. Consigne étendue : une méthode faite d'un `switch` ou d'une suite de `if` facultatifs déborde à l'ajout d'un cas — factoriser le cas avant de l'ajouter ; task-386 — `AnnuaireSanteService.ValidateSearchCriteria` : une garde de plus (séparateurs FHIR refusés) en tête d'une méthode de validation déjà à 15 ; extraite en `EnsureNoReservedCharacters` ; task-330 — `DraftService.SendDraftAsync`, complexité cognitive 16)
 
 La méthode tenait sous le seuil. Le changement de contrat de `SmtpService` (il lève là où il
 rendait un `Result`) a demandé trois `catch` autour de l'appel SMTP. Chacun compte, imbriqué dans
@@ -796,7 +796,7 @@ identifiant anglais dans une phrase française.
 
 ## S4136 — les surcharges d'une méthode sont adjacentes
 
-**Occurrences : 2** (task-389 — des helpers privés de la première surcharge insérés **entre** les deux surcharges d'`ExtractIheXdmZipsAsync` : un helper se place après la dernière surcharge, jamais entre elles ; task-342 — `Infrastructure.Mock/Repository/MailRepository`)
+**Occurrences : 3** (task-400 — `PostgresAuditReader.Map` : une projection et un helper insérés entre les deux surcharges de `Map` par la passe qualité ; task-389 — des helpers privés de la première surcharge insérés **entre** les deux surcharges d'`ExtractIheXdmZipsAsync` : un helper se place après la dernière surcharge, jamais entre elles ; task-342 — `Infrastructure.Mock/Repository/MailRepository`)
 
 Ajouter une surcharge (ici le paramètre `occurrence` de `GetAttachmentAsync` /
 `UpdateAttachmentAsync`) **en bas de la classe** ou groupée avec l'autre
@@ -1397,7 +1397,7 @@ jamais appelé → rouge) ; `AiTaggingRecoverySchedulerTests` (cadence, identit�
 
 ## S3358 — pas d'opérateur ternaire imbriqué
 
-**Occurrences : 1** (task-334 — `EnrichedMailPersistence`, la raison de ne pas notifier un nouveau
+**Occurrences : 2** (task-400 — `PostgresAuditReader.Source`, `a ? x : b ? y : z` né de la passe qualité ; task-334 — `EnrichedMailPersistence`, la raison de ne pas notifier un nouveau
 mail, écrite `a ? "x" : b ? "y" : null`)
 
 Un ternaire dans la branche d'un autre se lit mal et Sonar le signale dès qu'il apparaît dans du code

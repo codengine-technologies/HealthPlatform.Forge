@@ -273,7 +273,8 @@ Comptes de formation : Cyril, délégataire de Virginie.
 |---|---|---|---|---|---|---|
 | /start | ok | 32 s | — | — | — | — |
 | /develop | ok | 2 h 01 min | 9 (1 min 23 s) | 9 (34 min 03 s) | — | dtos-mss 1B/0T, api-mail 8B/8T, client-angular 0B/1T |
-| **Total cycle** | | **2 h 01 min** | **9 (1 min 23 s)** | **9 (34 min 03 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 25 min 31 s | 3 (1 min 34 s) | 10 (16 min 04 s) | 4 (1 min 44 s) | 2 itération(s), api-mail 3B/10T |
+| **Total cycle** | | **2 h 27 min** | **12 (2 min 58 s)** | **19 (50 min 08 s)** | **4 (1 min 44 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (15 s)
 
@@ -396,3 +397,42 @@ Autres commandes mesurées : nuget-wait ×1 (15 s)
   E2E-DELEG-008 au catalogue (v1, `mobile: non-applicable`, `angular: requis`) et implémenté dans weda2
   (type-check vert). Restent hors forge : **mise à jour de l'AIPD** (humain) ; parcours joué par `/e2e`.
 - **Next step** : `/sonar task-400`
+
+## Sonar log
+
+Analyse complète `healthplatform-api-mail` (SonarQube 9.9.8 local, `sonar.login`), sur
+`feat/task-400-delegation-tracer-ce-qui-agit`, 2 itérations.
+
+- **Itération 1** (`2858745f`) : QG OK mais **7 défauts sur le nouveau code** et new coverage **94,8 %**
+  (< 95 %).
+  - S3776 ×3 : `PostgresAuditReader.ApplySort` (19), `ApplyFilters` (17),
+    `TestBypassAuthenticationHandler.HandleAuthenticateAsync` (16) ;
+  - S3358 : ternaire imbriqué de `PostgresAuditReader.Source` (né de la passe qualité) ;
+  - S4136 : surcharges `Map` non adjacentes (né de la passe qualité) ;
+  - S3925 ×2 : `SenderNotAllowedException`, `AiRefusedOnBehalfException` (task-399), triplet présent :
+    **faux positifs** marqués avec motif (consigne S3925).
+- **Phase 1 — corrections** (`edc36bc2`) : assistant de tri `By<TKey>`, `ApplyContentFilters`, source en
+  instructions, `Map` adjacentes, `AddClaimFromHeader`.
+- **Phase 1 — tests ajoutés** (`a6cc3628`, 15) : tris personne / BAL propriétaire (4), action inconnue,
+  « actes de mes délégataires » sans BAL, annulation et réponse vide du fournisseur PSC (2), règle
+  d'acte délégué et normalisation (6), constructeurs d'exceptions sans appelant (3 tests).
+- **Itération 2** (`a6cc3628`) : **QG OK, 0 défaut**, aucun hotspot, new coverage **95,1 %**. Suites :
+  domain 276, application 3 859, infrastructure 701, api 1 358, integration 1 072 (16 ignorés), toutes vertes.
+- **Phase 2 (legacy)** : rien à faire (0 bug, 0 vulnérabilité, 0 smell sur le projet).
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline (task-392, develop) | Final (`a6cc3628`) | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | = |
+| New coverage | 95,1 % | 95,1 % | = (94,8 % à l'itération 1) |
+| New bugs / vulnérabilités / smells | 0 / 0 / 0 | 0 / 0 / 0 | = (0 / 0 / 7 à l'itération 1) |
+| Bugs / Vulnérabilités / Smells (projet) | 0 / 0 / 0 | 0 / 0 / 0 | = |
+| Security hotspots | 0 | 0 | = |
+| Coverage projet | 97,5 % | 97,4 % | −0,1 pt |
+| Duplication | 0,4 % | 0,4 % | = |
+| Ratings fiabilité / sécurité / maintenabilité | A / A / A | A / A / A | = |
+
+- **Conventions** : S3776 (2 → 5), S4136 (2 → 3), S3358 (1 → 2), S3925 (6 → 7). S3358 et S4136 sont nés de
+  la **passe qualité** : la consigne §Q « les conventions s'appliquent aux éditions de la passe » n'a pas été
+  appliquée aux nettoyages écrits par script.
