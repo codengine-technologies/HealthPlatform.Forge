@@ -375,3 +375,16 @@ front/libs/mss/src/ui/biology/biology.component.ts
 - ⚠️ **Données déjà en base (à arbitrer)** : les HPRIM analysés depuis le merge de task-390 (26/10) gardent `IsFlagged = true` sur leurs valeurs hors bornes sans indicateur, et un `Body` qui contient les lignes techniques. Il n'y a pas de remise à niveau automatique. Il faut une ré-analyse ou une requête SQL, sans objet si `develop` n'est déployé nulle part.
 - ⚠️ BIO-001 mobile clique encore `.first()` après la puce. Il est vert parce que la liste est triée par date, mais c'est fragile. À aligner dans une task de durcissement.
 - ⚠️ Le repli `top.contains(el)` de `gestureBox` peut accepter un élément qui recouvre la cible depuis le shadow root d'un de ses ancêtres. Le risque est faible.
+
+## Resynchronisation avec develop (après le merge de task-391, 2026-10-27)
+
+- `origin/develop` (task-391, #318, squash `fade8eb9`) fusionné dans `feat/task-392-…` d'api-mail : commit `2cd240cd`. Il n'y a eu ni rebase, ni réécriture.
+- **Conflit unique** : `HprimStructuredResultsEndToEndTests.cs`. task-391 avait sorti son harnais dans le `HprimServer` partagé.
+  - La version `develop` est reprise telle quelle. Les quatre blocs de tests de task-392 y sont réappliqués : assertions mises à jour et trois tests neufs.
+  - `AddProductionBiologyAcks` et `PendingAckUidsAsync` rejoignent `HprimServer`.
+- **Re-preuve sur la nouvelle base** :
+  - suite api-mail entière verte : domain 264, infrastructure 701, api 1 349, application 3 795, integration 1 037/1 053 (16 skipped) ;
+  - mutation MN : 4 tests rouges (hors bornes sans indicateur, nominal, anormaux non lus, BAL déléguée) ;
+  - mutation MT : 2 tests rouges (texte, BAL déléguée) ;
+  - les tests de doublon de task-391 restent verts.
+- **E2E rejoués** : mobile 51 verts, Angular 60 verts, 0 flaky, parité verte, porte 0. Le client-mobile n'avait aucun retard sur `develop`.
