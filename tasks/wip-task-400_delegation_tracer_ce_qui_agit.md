@@ -274,9 +274,12 @@ Comptes de formation : Cyril, délégataire de Virginie.
 | /start | ok | 32 s | — | — | — | — |
 | /develop | ok | 2 h 01 min | 9 (1 min 23 s) | 9 (34 min 03 s) | — | dtos-mss 1B/0T, api-mail 8B/8T, client-angular 0B/1T |
 | /sonar | ok | 25 min 31 s | 3 (1 min 34 s) | 10 (16 min 04 s) | 4 (1 min 44 s) | 2 itération(s), api-mail 3B/10T |
-| **Total cycle** | | **2 h 27 min** | **12 (2 min 58 s)** | **19 (50 min 08 s)** | **4 (1 min 44 s)** | |
+| /lint-angular | ok | 1 min 38 s | 1 (14 s) | — | — | client-angular 1B/0T |
+| /lint-mobile | skipped | 0.6 s | — | — | — | client-mobile non touché (hors Repos) |
+| /e2e | failed | 38 s | — | — | — | outillage : ports 5052/4200 tenus par l'AppHost et le serveur de dev de l'humain |
+| **Total cycle** | | **2 h 29 min** | **13 (3 min 12 s)** | **19 (50 min 08 s)** | **4 (1 min 44 s)** | |
 
-Autres commandes mesurées : nuget-wait ×1 (15 s)
+Autres commandes mesurées : lint ×2 (17 s), nuget-wait ×1 (15 s)
 
 ## Develop log
 
@@ -436,3 +439,36 @@ Analyse complète `healthplatform-api-mail` (SonarQube 9.9.8 local, `sonar.login
 - **Conventions** : S3776 (2 → 5), S4136 (2 → 3), S3358 (1 → 2), S3925 (6 → 7). S3358 et S4136 sont nés de
   la **passe qualité** : la consigne §Q « les conventions s'appliquent aux éditions de la passe » n'a pas été
   appliquée aux nettoyages écrits par script.
+
+## Lint log
+
+- Mode : chaîné. Contournement task-367 : `npx nx run-many -t lint --projects=mss-lib`, puis
+  `npx eslint -f json` sur les 19 fichiers `.ts`/`.html` de la task (dont les trois fichiers e2e). Les
+  messages sont attribués à la task par `git diff -U0 HEAD` ; les fichiers non suivis comptent en entier.
+- Base : `origin/next` (rafraîchie) ; scope lint `tag:scope:mss`, `e2e/mss-e2e` contrôlé à part.
+- Baseline (fichiers de la task) : **0 erreur**, 46 warnings, **aucun sur une ligne de la task**
+  (`jsdoc/require-example`, `max-lines`, `consistent-type-imports` déjà présents).
+- `mss-lib` : 0 erreur, 43 warnings, le niveau d'avant la task.
+- Itérations : 0 / 5 (lint propre), aucune correction.
+- Build / tests : ✓ `weda2:build` ; `mss-lib` 1 396 tests (127 fichiers) verts depuis la passe qualité de
+  `/develop`, aucun changement depuis.
+- Git : aucune opération (code-only) ; les changements restent non commités sur
+  `feature/nova-mss-weda-integration`.
+
+## Lint mobile log
+
+- Skipped : `client-mobile` hors `**Repos**` (décision 1 : pas d'écran Audit sur le mobile), arbre propre sur `develop`.
+
+## E2E log
+
+**E2E : rouge — outillage** (2026-10-27). Aucune voie jouée : les ports du banc sont occupés.
+
+| Voie | Déclenchée par | Résultat |
+|---|---|---|
+| mobile | api-mail, dtos-mss | non jouée : port 5052 tenu par `dcp.exe` (AppHost de l'humain) |
+| angular | api-mail, dtos-mss, client-angular | non jouée : ports 5052 et 4200 tenus (AppHost, serveur de dev weda2) |
+
+- Porte `gate` : non exécutée (aucun rapport).
+- Parcours nouveau : **E2E-DELEG-008** v1 (`mobile: non-applicable`, `angular: requis`), écrit et typé, jamais
+  joué ; preuve par mutation à faire au premier passage.
+- Blocage consigné dans `questions/task-400.md`. La forge n'arrête pas les processus de l'humain.
