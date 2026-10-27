@@ -1,4 +1,31 @@
-# task-400 — /e2e bloqué : outillage (ports du banc occupés)
+# task-400 — GELÉE (décision humaine du 2026-10-27)
+
+**Ne pas relancer `/e2e task-400`.** La demande « libérer les ports » ci-dessous est caduque.
+
+## Pourquoi
+
+Mailiz ne déploie plus l'espace de noms IMAP `shared/<adresse du délégant>/…`, sur lequel reposent
+task-397, task-398, task-399 (mergées sur `develop`) et cette task. Selon l'ANS, le délégataire se
+connecte **directement à la BAL du délégant** avec **son propre jeton PSC** (XOAUTH2 : identifiant =
+adresse du délégant, jeton = celui du délégataire), une fois les droits donnés par le délégant.
+L'humain l'a vérifié sur l'environnement de formation.
+
+## État conservé
+
+- Branche api-mail `feat/task-400-delegation-tracer-ce-qui-agit` : poussée, 7 commits, **aucune PR**.
+- `dtos-mss` 547.0.0 : publié (contrat d'audit).
+- weda2 (`Client/Angular`) : code de la task **non commité** (33 fichiers), à mettre de côté par
+  l'humain (`git stash push -m "task-400 gel"`) : la forge ne touche pas au git de ce dépôt.
+
+## Reprise
+
+Après le retrait (ou l'adaptation) du code `shared/` et l'étude de la bascule de BAL par le registre.
+L'audit « qui agit dans quelle BAL » reste pertinent dans le nouveau modèle ; sa détection d'un acte
+délégué (aujourd'hui par le chemin `shared/`) sera à réécrire.
+
+---
+
+# (caduc) task-400 — /e2e bloqué : outillage (ports du banc occupés)
 
 **Nature du blocage : outillage.** Ni régression, ni écart de parité constatés : les voies n'ont pas pu
 démarrer.

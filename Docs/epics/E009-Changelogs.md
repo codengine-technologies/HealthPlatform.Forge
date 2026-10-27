@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-10-27 (v1.116)
+> **Dernière mise à jour** : 2026-10-27 (v1.117)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -809,6 +809,24 @@
   - changement visible sur le CDA dans weda2 ;
   - conflit d'un fichier de test avec task-391 (#318) : résolu le 2026-10-27 par un merge de `develop` dans la branche, suites et e2e rejoués verts. Mergé le même jour (`api-mail` `3ef4d75e`, `client-mobile` `053ff53a`) ;
   - divergence E2E-MAILBOX-002 signalée « à retirer » par la porte.
+
+### v1.117 — Délégation de BAL retirée : Mailiz ne déploie plus l'espace IMAP `shared/` — task-401
+
+- **Origine** : le 2026-10-27, l'humain apprend que Mailiz ne déploie plus l'espace de noms `shared/<adresse du délégant>/…`. Selon l'ANS (vérifié sur l'environnement de formation), le délégataire ouvre directement la BAL du délégant avec son propre jeton PSC (XOAUTH2, avec l'adresse du délégant pour identifiant). Le code de task-397, task-398 et task-399 était inerte en production. task-400 est gelée (`questions/task-400.md`).
+- **Méthode** : revert des commits squashés, du plus récent au plus ancien, avec résolution complète après chaque revert. Essai à blanc préalable dans des worktrees jetables.
+- **dtos-mss** : revert de `55fac68` et `ed31ab9` → **548.0.0** (PR #51). Blazor reste en 533.0.0 et n'utilise aucun champ retiré.
+- **api-mail** (PR #320) : revert de `f02356fc`, `84988dda` et `47a94d4f`, puis bump DTOs 548.0.0. 144 fichiers, −9 386 lignes.
+  - Conflits mécaniques : version DTOs et lock files gardés à develop.
+  - Quatre fichiers où task-389 avait ajouté la détection HPRIM au seul chemin délégué : `ImapService.Delegation.cs`, `DelegatedPersistenceGuardScanTests.cs` et `DelegationEndToEndTests.cs` supprimés ; `UseCaseHttpHost.cs` gardé à develop, sans les `using` de délégation. `MedicalSourceParts` (BAL propre) est intact.
+  - Banc Dovecot `delegation.conf` retiré ; `E2E-DELEG-001` à `007` quittent le catalogue.
+- **client-mobile** (PR #110) : revert de `f03ca5c` et `9594424`, sans conflit. 56 fichiers, −3 647 lignes.
+- **client-angular** (code seul, non commité) : diffs inverses des commits TFS `f0b2417b` (Task 399) et `f37bcba2` (Task 398). 58 fichiers, −5 522 lignes. Fin de ligne choisie fichier par fichier ; `mail-detail.component.scss` retouché à la main.
+- **Tests** (listage `--list-tests` contre `origin/develop`) : api 1 355 → 1 288, application 3 826 → 3 737, intégration 1 072 → 1 030, domain 264 → 195, infrastructure 701 → 695, mss-lib 1 358 → 1 298. Seuls des tests de délégation disparaissent.
+- **Sonar** : Quality Gate OK, new coverage 95,1 % → 96,8 %, couverture projet 97,4 % → 98,0 %, 0 issue.
+- **E2E** : mobile 47 verts, Angular 56 verts, parité verte. `E2E-BIO-001` et `E2E-BIO-003` verts sur les deux voies.
+- **Plan de contrôle** : règle 14 de CLAUDE.md (principe maintenu, mise en œuvre `shared/` retirée), garde-fou de `agents/po.md`, `conventions/csharp.md` (`delegated-access-ouvre-le-corps` caduque), registre des flaky (`E2E-DELEG-004` retiré), encadré « caduc » sur les deux analyses du 2026-10-25.
+- **Risque résiduel** : avec un préfixe personnel vide, un serveur qui exposerait encore `shared/` le ferait remonter au listage, sans garde. À confirmer auprès de l'ANS pour la production ; sinon, une task de garde minimale (exclure du listage tout dossier hors de l'espace personnel).
+- **Suite** : étude de la délégation par session (bascule de BAL par le registre, détection de la délégation), puis reprise de task-400.
 
 ### v1.115 — HPRIM : signal doublon au rattachement, par empreinte du contenu — task-391
 
@@ -2053,6 +2071,7 @@ Audit grep complémentaires pour les couches 2 / 2bis / 3 (tasks 021 / 022 / 023
 
 | Task | Apport principal | Règles touchées |
 |------|------------------|-----------------|
+| task-401 | **Délégation de BAL retirée : Mailiz ne déploie plus l'espace IMAP `shared/`.** Revert de task-397, task-398 et task-399 sur dtos-mss (548.0.0), api-mail, client-mobile et weda2 ; catalogue sans `E2E-DELEG-*` ; règle 14 réduite à son principe. Délégation par session à étudier ; task-400 gelée. | — |
 | task-392 | **Un résultat HPRIM se lit comme un CR-BIO CDA (mobile et weda2).** Anomalie = indicateur du laboratoire seul (règle CDA ; les bornes ne signalent plus, task-390 corrigée) ; « partiel », « code labo », seconde valeur ; texte sans lignes techniques ; weda2 : même règle sur le CDA ; scénario E2E-BIO-003. | — |
 | task-391 | **Le même résultat HPRIM, rattaché deux fois au même patient, porte le signal doublon.** Empreinte SHA-256 du contenu décodé (stable entre encodages et regroupements), conservée avec le document ; comparée au rattachement, dans le seul dossier du patient choisi ; liens retirés au changement de patient et au détachement ; bandeau doublon existant (task-013). | — |
 | task-399 | **Délégation de BAL : envoyer, répondre, transférer et rédiger de la part du délégant (mobile et weda2).** Champ De obligatoire avec délégation, envoi « de la part de » archivé une seule fois dans les Envoyés du délégant, brouillons dans ses Brouillons IMAP, `From` contrôlé côté API (Mailiz ne le contrôle pas), refus hors ligne et IA, rien de persisté chez le délégataire (y compris un transfert « (moi) »), Répondre / Transférer rétablis ; scénarios E2E-DELEG-005..007. | 14 |

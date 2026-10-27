@@ -8,6 +8,9 @@ d'écran Audit, et cette task n'en crée pas (décision 1).
 **Priorité**: **3** — un délégataire agit déjà dans la BAL de son délégant. Mailiz rend le délégant
 **responsable** des accès qu'il ouvre, mais il ne voit aucun de ces actes, et rien ne désigne la
 **personne** qui a agi.
+**Gel**: décision humaine du 2026-10-27. Mailiz ne déploie plus l'espace IMAP `shared/` : selon
+l'ANS, le délégataire ouvre la BAL du délégant avec son propre jeton PSC (vérifié sur
+l'environnement de formation). La task n'est ni relancée ni jetée : voir `questions/task-400.md`.
 
 > **Analyse** : [Docs/audits/delegation-bal-mailiz-analyse-20261025.md](../Docs/audits/delegation-bal-mailiz-analyse-20261025.md).
 > **Revue du code** : [Docs/audits/delegation-bal-revue-code-20261025.md](../Docs/audits/delegation-bal-revue-code-20261025.md),
