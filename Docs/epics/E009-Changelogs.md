@@ -807,7 +807,7 @@
 - **À connaître au HAG** :
   - HPRIM analysés depuis task-390 : `IsFlagged` et `Body` anciens, sans remise à niveau ;
   - changement visible sur le CDA dans weda2 ;
-  - conflit d'un fichier de test avec task-391 (#318), à synchroniser au second merge ;
+  - conflit d'un fichier de test avec task-391 (#318) : résolu le 2026-10-27 par un merge de `develop` dans la branche, suites et e2e rejoués verts. Mergé le même jour (`api-mail` `3ef4d75e`, `client-mobile` `053ff53a`) ;
   - divergence E2E-MAILBOX-002 signalée « à retirer » par la porte.
 
 ### v1.115 — HPRIM : signal doublon au rattachement, par empreinte du contenu — task-391

@@ -388,3 +388,12 @@ front/libs/mss/src/ui/biology/biology.component.ts
   - mutation MT : 2 tests rouges (texte, BAL déléguée) ;
   - les tests de doublon de task-391 restent verts.
 - **E2E rejoués** : mobile 51 verts, Angular 60 verts, 0 flaky, parité verte, porte 0. Le client-mobile n'avait aucun retard sur `develop`.
+
+## Merged
+
+- **Date** : 2026-10-27, sur `/merge task-392 --i-tested` (test manuel attesté par l'humain — HAG, règle 10).
+- `api-mail` : PR #319 squash-mergée → `3ef4d75e` sur `develop` — CI verte : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/40488842515
+- `client-mobile` : PR #109 squash-mergée → `053ff53a` sur `develop` — CI verte : https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/40488884323
+- Branches `feat/task-392-hprim-afficher-les-resultats-acquitter` supprimées (distantes et locales), label `awaiting-human-merge` retiré.
+- `client-angular` : géré par l'humain (commit/push TFS).
+- Staging `forge/staging-task-391-392-20261026` supprimée (api-mail, client-mobile) : le run est entièrement mergé.
