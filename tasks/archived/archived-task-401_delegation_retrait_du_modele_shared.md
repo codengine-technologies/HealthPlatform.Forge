@@ -466,3 +466,14 @@ Le diff est un retrait par revert des commits squashés des tasks 397, 398 et 39
 - Double verrou e2e : `## E2E log` vert (`**E2E : vert**`), deux voies jouées, parité verte.
 - DoD : 11/12 cochables par commande, vérifiées. Reste la relecture humaine du plan de contrôle (différée
   au HAG).
+
+## Merged
+
+- Date : 2026-10-27, par `/merge task-401 --i-tested` (validation humaine attestée).
+- `dtos-mss` : PR #51 → squash `04b0bee4` ; CI develop verte (run `40574742231`).
+- `api-mail` : PR #320 → squash `714b30ba` ; CI develop verte (run `40574771270`).
+- `client-mobile` : PR #110 → squash `3db7d1b9` ; CI develop verte (run `40574801768`).
+- Branches `feat/task-401-delegation-retrait-du-modele-shared` supprimées (distante et locale) sur les trois dépôts ;
+  label `awaiting-human-merge` retiré.
+- `client-angular` : managed manually by the human.
+- Staging : aucune (task hors run `/forge`).
