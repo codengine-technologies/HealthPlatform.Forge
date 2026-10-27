@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-10-26 (v1.115)
+> **Dernière mise à jour** : 2026-10-27 (v1.116)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -760,6 +760,55 @@
   - sous-objet partagé pour les options d'envoi au prochain changement de contrat ;
   - remonter `originalMarkedCancelled` et `warning` par `drafts/{id}/send` ;
   - bail renouvelable pour le verrou.
+
+### v1.116 — HPRIM : l'anomalie est celle du biologiste, le partiel se voit, le texte est lisible (mobile et weda2) — task-392
+
+- **Origine** : suite de task-390. Le 2026-10-26, l'humain a arbitré l'option 1 : « le jugement d'anomalie appartient au biologiste ». La règle de task-390 (l'indicateur, sinon les normes) reprenait celle de Weda, alors qu'un CR-BIO CDA ne retient que le code d'interprétation du laboratoire. La « courbe par laboratoire » a été retirée du périmètre.
+- **Contrat** : aucun changement (`Status`, `CodeSystem` et `IsFlagged` existent depuis task-390).
+- **api-mail** :
+  - `HprimStructuredResults.FromLine` : `IsFlagged = BiologyInterpretation.IsFlaggedCode(InterpretationCode)`, le même point que `CdaParsingService`. Sont retirés la comparaison aux bornes, le type `N`, `KnownIndicators` et l'analyse décimale.
+  - `HprimStructuredResults.WithoutTechnicalLines` est appliqué au `Body` par `HprimMedicalDocuments`. Il retire `****LAB****`, `TEX|` et `RES|`. Les résultats structurés sont toujours lus sur le texte complet.
+  - Jeu e2e : donnée `cr-bio-hprim` (`E2eAttachmentKind.Hprim`), message lu, 59 min. Il porte une glycémie hors bornes sans indicateur, un potassium « H » et une créatinine partielle. Catalogue : **E2E-BIO-003 v1**, requis mobile et angular.
+  - Harnais : `UseCaseHttpHost.AddProductionBiologyAcks`.
+- **client-mobile** :
+  - `mss-biology` affiche « partiel » sur la ligne et en tête du document, « code labo » pour `LABORATORY-LOCAL`, et la seconde valeur.
+  - L'onglet document d'un HPRIM montre le tableau, puis le texte (il affichait « Aucun contenu structuré »).
+  - Frise : un point partiel est marqué.
+  - `HPRIM_FORMAT` est déplacé dans `mail.model`.
+  - Helper e2e `gestureBox` : la cible est centrée et le point visé vérifié dans l'arbre composé, avec une attente de 5 s.
+- **client-angular** (code seul, branche `feature/nova-mss-weda-integration`) :
+  - mêmes ajouts sur `mss-biology` et la frise ; un mail entièrement HPRIM s'ouvre sur l'onglet Biologie ;
+  - `biology-value` : la mise en évidence vient de `isCritical || isLaboratoryFlagCode`, la liste blanche HL7 du serveur. Le code « N », un code inconnu (`*`, `+`) ou les bornes ne colorent plus rien. **Le CDA est concerné aussi** ;
+  - utilitaire `core/utils/biology-result.util.ts` ;
+  - E2E-BIO-001 désigne le CDA par son uid et attend « (2) ».
+- **Tests** :
+  - unitaires : section anomalie de `HprimStructuredResultsTests` réécrite ;
+  - intégration (règle 1b) :
+    - nominal (seul « H » signalé, `AbnormalCount == 1`) ;
+    - hors bornes sans indicateur : ni file « à acquitter », ni « anormaux non lus », ni `IsFlagged` ;
+    - témoin de la file ;
+    - texte sans lignes techniques ;
+    - BAL déléguée : une valeur « H » et une valeur hors bornes sans indicateur, texte nettoyé, base et Redis vides ;
+  - mutations MN (les bornes font l'anomalie) et MT (texte non nettoyé), toutes rouges ;
+  - composants mobile et weda2, vus rouges ;
+  - api-mail : 5 suites vertes.
+- **Sonar** : QG OK, 0 issue, new coverage 95,1 %.
+- **E2E** :
+  - passage final : mobile 51 verts, Angular 60 verts, 0 flaky, parité verte ;
+  - trois rouges intermédiaires, tous causés par la task, et corrigés :
+    - E2E-AI-001 mobile : un geste recouvert par la barre d'onglets ;
+    - BIO-003 weda2 : BIO-001 acquittait `.first()` du filtre ;
+    - DELEG-002/003 : le menu latéral se refermait encore.
+  - Deux conventions sont nées de ces rouges : `seed-partage-des-deux-clients` et `geste-recouvert`.
+- **Revue** :
+  - 1ʳᵉ passe : CHANGES REQUESTED. La clause DoD « BAL déléguée, seules les valeurs signalées portent `IsFlagged` » n'avait pas de test.
+  - 2ᵉ passe : APPROVED.
+- **PR** : `api-mail` #319, `client-mobile` #109. weda2 : commit et push TFS par l'humain.
+- **À connaître au HAG** :
+  - HPRIM analysés depuis task-390 : `IsFlagged` et `Body` anciens, sans remise à niveau ;
+  - changement visible sur le CDA dans weda2 ;
+  - conflit d'un fichier de test avec task-391 (#318), à synchroniser au second merge ;
+  - divergence E2E-MAILBOX-002 signalée « à retirer » par la porte.
 
 ### v1.115 — HPRIM : signal doublon au rattachement, par empreinte du contenu — task-391
 
@@ -2004,9 +2053,10 @@ Audit grep complémentaires pour les couches 2 / 2bis / 3 (tasks 021 / 022 / 023
 
 | Task | Apport principal | Règles touchées |
 |------|------------------|-----------------|
+| task-392 | **Un résultat HPRIM se lit comme un CR-BIO CDA (mobile et weda2).** Anomalie = indicateur du laboratoire seul (règle CDA ; les bornes ne signalent plus, task-390 corrigée) ; « partiel », « code labo », seconde valeur ; texte sans lignes techniques ; weda2 : même règle sur le CDA ; scénario E2E-BIO-003. | — |
 | task-391 | **Le même résultat HPRIM, rattaché deux fois au même patient, porte le signal doublon.** Empreinte SHA-256 du contenu décodé (stable entre encodages et regroupements), conservée avec le document ; comparée au rattachement, dans le seul dossier du patient choisi ; liens retirés au changement de patient et au détachement ; bandeau doublon existant (task-013). | — |
 | task-399 | **Délégation de BAL : envoyer, répondre, transférer et rédiger de la part du délégant (mobile et weda2).** Champ De obligatoire avec délégation, envoi « de la part de » archivé une seule fois dans les Envoyés du délégant, brouillons dans ses Brouillons IMAP, `From` contrôlé côté API (Mailiz ne le contrôle pas), refus hors ligne et IA, rien de persisté chez le délégataire (y compris un transfert « (moi) »), Répondre / Transférer rétablis ; scénarios E2E-DELEG-005..007. | 14 |
-| task-390 | **Les lignes `RES|` d'un HPRIM deviennent des résultats de biologie, avec alerte d'anomalie.** Valeur, unité, normes, seconde valeur, code local du laboratoire (jamais LOINC), statut partiel / final / corrigé persisté ; anomalie par l'indicateur du laboratoire, sinon par les normes ; « anormaux non lus » après rattachement seulement ; examens sans code distingués par leur libellé ; BAL déléguée lue sans rien conserver. | — |
+| task-390 | **Les lignes `RES|` d'un HPRIM deviennent des résultats de biologie, avec alerte d'anomalie.** Valeur, unité, normes, seconde valeur, code local du laboratoire (jamais LOINC), statut partiel / final / corrigé persisté ; anomalie par l'indicateur du laboratoire, sinon par les normes (règle remplacée par task-392 : indicateur seul) ; « anormaux non lus » après rattachement seulement ; examens sans code distingués par leur libellé ; BAL déléguée lue sans rien conserver. | — |
 | task-389 | **Un résultat de laboratoire au format HPRIM devient un document de biologie à intégrer.** Lecture HPRIM selon les règles de Weda (en-tête, plusieurs résultats, encodages, données parasites, HTML et fichier trop court rejetés) ; un document par résultat, sans INS donc non rattaché ; PDF du message associé ; CDA prioritaire ; corps jamais HPRIM ; lu à l'affichage dans une BAL déléguée, sans rien conserver. | — |
 | task-398 | **Les BAL déléguées dans les clients : une section à part, des gestes de gestion seulement, la révocation dite clairement (mobile et weda2).** Contrat `Owner` / `Role` des dossiers, section repliée et colorée sous la BAL principale, gestes d'exploitation masqués (dont le panneau Weda), Restaurer / Supprimer définitivement, déplacement limité à la BAL, recherche et notifications coupées, purge à la déconnexion et hors ligne ; panneau des dossiers redimensionnable sur weda2 ; banc e2e de délégation et scénarios E2E-DELEG-001..004. | — |
 | task-397 | **Délégation de BAL : la BAL déléguée se lit en direct, rien n'en est conservé chez le délégataire.** Lecture, tri, déplacement interne, suppression vers la corbeille du délégant ; IA, étiquettes, accusés, recherche refusés ; garde unique des écritures, masquage des journaux, audit en liste blanche ; cache du contenu décodé (5 min, clé HMAC) ; en-têtes enrichis en direct par SSE. | — |

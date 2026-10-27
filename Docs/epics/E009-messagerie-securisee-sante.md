@@ -4,7 +4,7 @@
 > **Modèle** : hand-crafted
 > **Version** : 1.91
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-26 (le même résultat HPRIM rattaché deux fois au même patient est signalé comme doublon — task-391 ; écrire de la part d'un confrère qui vous a délégué sa boîte — task-399 ; les valeurs d'un résultat HPRIM rejoignent la biologie du patient, avec leurs anomalies — task-390 ; un résultat de laboratoire au format HPRIM devient un document de biologie à intégrer — task-389 ; les boîtes déléguées rangées à part dans le mobile et la messagerie web, gestes de gestion seulement — task-398 ; délégation de BAL : la boîte déléguée se lit en direct, rien n'en est conservé — task-397 ; un geste sur la liste touche exactement les messages affichés — task-375 ; une rédaction sans texte ne laisse ni brouillon ni question — task-394 ; carnet d'adresses refondu — task-393)
+> **Dernière mise à jour** : 2026-10-27 (un résultat HPRIM se lit comme un compte rendu de biologie CDA : seule l'anomalie posée par le biologiste est signalée — task-392 ; le même résultat HPRIM rattaché deux fois au même patient est signalé comme doublon — task-391 ; écrire de la part d'un confrère qui vous a délégué sa boîte — task-399 ; les valeurs d'un résultat HPRIM rejoignent la biologie du patient, avec leurs anomalies — task-390 ; un résultat de laboratoire au format HPRIM devient un document de biologie à intégrer — task-389 ; les boîtes déléguées rangées à part dans le mobile et la messagerie web, gestes de gestion seulement — task-398 ; délégation de BAL : la boîte déléguée se lit en direct, rien n'en est conservé — task-397 ; un geste sur la liste touche exactement les messages affichés — task-375 ; une rédaction sans texte ne laisse ni brouillon ni question — task-394 ; carnet d'adresses refondu — task-393)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1036,6 +1036,13 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
+- **v1.116 — Un résultat HPRIM se lit comme un compte rendu de biologie CDA** (task-392, application mobile et messagerie web) :
+  - **L'anomalie est le jugement du biologiste.** Une valeur n'est signalée, mise en évidence, comptée dans « anormaux non lus » et mise dans la file « à acquitter » que si **le laboratoire l'a indiquée** (bas, haut, critique, anormal). C'est la règle des comptes rendus CDA. Une valeur hors de ses normes sans indication du laboratoire s'affiche normalement, ses normes à côté : vous voyez l'écart et vous en jugez. Cette règle remplace celle de la v1.113.
+  - **Dans la messagerie web, la même règle vaut aussi pour les comptes rendus CDA.** Une valeur hors normes sans code du laboratoire n'y est plus colorée, comme sur le mobile.
+  - **Le résultat partiel se voit** : la mention « partiel » figure sur la ligne, en tête du document et sur la frise de biologie du patient.
+  - **Le code du laboratoire est présenté comme un « code labo »**, jamais comme un code LOINC. La seconde valeur, dans une autre unité, s'affiche quand le laboratoire la donne.
+  - **Le texte du compte rendu est lisible**, sans les lignes techniques du laboratoire. Le tableau des résultats vient en tête, le texte ensuite.
+  - **Boîte d'un confrère** : même lecture, avec la même règle d'anomalie, et rien n'en est conservé chez vous.
 - **v1.115 — Le même résultat HPRIM, rattaché deux fois au même patient, est signalé comme doublon** (task-391) :
   - **Quand un laboratoire renvoie le même résultat**, par un renvoi ou un double adressage, le second exemplaire rattaché au même patient porte le **bandeau doublon** habituel. Vous gardez ou écartez, comme pour un compte rendu CDA.
   - **Le même résultat est reconnu** même s'il est renvoyé dans un autre encodage ou regroupé avec le résultat d'un autre patient. Un résultat dont une seule valeur change n'est **pas** un doublon.
@@ -1050,7 +1057,7 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
   - **Rien de sa boîte ne reste chez vous**, pas même quand vous transférez en votre nom une pièce jointe de sa boîte : seul le document transféré est gardé dans votre brouillon, jamais le nom de ses dossiers.
 - **v1.113 — Les valeurs d'un résultat HPRIM rejoignent la biologie du patient** (task-390) :
   - **Chaque valeur devient un résultat de biologie** : valeur, unité, normes, et seconde valeur dans une autre unité quand le laboratoire la donne. Le document HPRIM n'est plus seulement un texte.
-  - **Les anomalies sont signalées.** Si le laboratoire indique une anomalie (bas, haut, critique), elle est reprise telle quelle. Sinon, une valeur numérique hors de ses normes est signalée. Une valeur qualitative (« positif », « trouble ») ne l'est jamais sans indication du laboratoire.
+  - ~~**Les anomalies sont signalées.** Si le laboratoire indique une anomalie (bas, haut, critique), elle est reprise telle quelle. Sinon, une valeur numérique hors de ses normes est signalée.~~ **Remplacé par la v1.116** : seule l'indication du laboratoire fait une anomalie.
   - **Le résultat partiel reste reconnaissable.** Un résultat marqué « partiel » le reste, et le compte rendu complété ne le remplace pas à la réception : le remplacement se fera au rattachement.
   - **Les codes du laboratoire ne sont jamais présentés comme des codes LOINC.** Une glycémie reçue en HPRIM et une glycémie reçue en CDA restent deux séries distinctes.
   - **« Anormaux non lus »** ne compte un résultat HPRIM qu'une fois son document rattaché à un patient.

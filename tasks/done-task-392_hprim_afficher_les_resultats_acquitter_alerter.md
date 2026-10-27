@@ -144,7 +144,8 @@ Messages de test : HPRIM synthétiques (`.eml` déposés dans la Réception de C
 | /lint-mobile | ok | 12 s | — | — | — | — |
 | /e2e | ok | 50 min 27 s | — | — | — | e2e ×17 (2 h 03 min) |
 | /review | ok | 26 min 31 s | 4 (41 s) | 4 (5 min 24 s) | — | api-mail 2B/2T, client-mobile 1B/1T, client-angular 1B/1T |
-| **Total cycle** | | **1 h 54 min** | **13 (2 min 46 s)** | **18 (19 min 29 s)** | **2 (44 s)** | |
+| /tech-writer | ok | 1 min 09 s | — | — | — | — |
+| **Total cycle** | | **1 h 56 min** | **13 (2 min 46 s)** | **18 (19 min 29 s)** | **2 (44 s)** | |
 
 Autres commandes mesurées : lint ×2 (17 s)
 
