@@ -693,6 +693,41 @@ dépassée.
 
 ---
 
+### geste-recouvert — Un geste en coordonnées doit vérifier qu'il touche sa cible
+- **Piège** : `longPress` / `swipeRowOpen` (mobile, `e2e/support/ui.ts`) pressent aux coordonnées de la
+  boîte de la ligne, après un `scrollIntoViewIfNeeded`. Celui-ci juge « visible » une ligne passée sous la
+  barre d'onglets Ionic, qui la recouvre : le geste part sur l'onglet du dessous. task-392 a ajouté une
+  ligne épinglée en tête de l'inbox ; E2E-AI-001 a appuyé sur « Patients » au lieu de `mail-non-lu`.
+  L'échec se lit loin de sa cause (« mode sélection » absent).
+- **Consigne** : un geste joué en coordonnées centre sa cible (`scrollIntoView({ block: 'center' })`) puis
+  vérifie par `document.elementFromPoint` que le point visé appartient à la cible ; sinon, il lève une
+  erreur qui nomme le recouvrement. C'est ce que fait `gestureBox` depuis task-392 : ne pas écrire de
+  geste à la souris hors de ce helper.
+- **Preuve** : E2E-AI-001 rouge au 1ᵉʳ passage de la voie mobile de task-392 (capture : onglet Patients
+  ouvert), vert au 2ᵉ avec le helper corrigé, seed inchangé.
+- **Origine** : task-392 (/e2e)
+- **Occurrences** : 1
+
+---
+
+### seed-partage-des-deux-clients — Une donnée ajoutée au seed se vérifie dans les specs des DEUX clients
+- **Piège** : le seed e2e (`E2eSeedPlan`) est commun aux voies mobile et weda2. Un message ajouté
+  change ce que d'autres parcours comptent ou trouvent en tête (une puce « (N) », un premier élément,
+  un groupe épinglé). task-392 a ajouté un résultat HPRIM signalé « H » : la vérification « aucun
+  scénario ne compte les comptes rendus à acquitter » n'avait porté que sur le mobile, alors que
+  E2E-BIO-001 côté weda2 lisait « (1) » sur la puce. Il serait passé au rouge au premier `/e2e`.
+- **Consigne** : avant d'ajouter une donnée au seed, chercher dans **les deux** dossiers de specs
+  (`Client/Mobile/e2e/specs/` et `Client/Angular/front/e2e/mss-e2e/specs/`) les assertions de compte
+  (`(1)`, `toHaveCount(`, `.first()` après un filtre) et les tris par date qui la verraient. Placer la
+  donnée (âge, lu/non lu) pour qu'elle ne s'intercale pas, ou mettre à jour l'assertion, et le noter
+  au `## Develop log`.
+- **Preuve** : weda2 E2E-BIO-001 passé de « (1) » à « (2) » avant le premier `/e2e` de task-392
+  (relecture du diff du client, pas de mutation : le défaut était dans la vérification, pas dans un test).
+- **Origine** : task-392 (/develop)
+- **Occurrences** : 1
+
+---
+
 ## Registre des flaky
 
 *(tenu par `/e2e` : une ligne par test vert au second essai ; troisième occurrence du même test →
