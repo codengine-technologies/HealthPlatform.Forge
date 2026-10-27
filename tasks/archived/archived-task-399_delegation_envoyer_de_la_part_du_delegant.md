@@ -654,3 +654,17 @@ Autres commandes mesurées : lint ×5 (6 min 04 s), nuget-wait ×1 (19 s), resto
   brouillon délégué (à confirmer au HAG) ; `LIST` + `STATUS` à chaque enregistrement automatique ; entrées
   MIME non validées (500 possible) ; `hasDelegation` asynchrone côté clients.
 - **Qualité** : `/sonar` non rejoué après le merge et la correction (2 fichiers, couverts par 4 tests).
+
+## Merged
+
+Mergé le 2026-10-27 par `/merge task-399 --i-tested` (HAG : test humain attesté).
+
+| Repo | PR | Squash commit | CI `develop` |
+|---|---|---|---|
+| `dtos-mss` | [#50](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/50) | `55fac68b` | ✅ [run](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/actions/runs/40491543035) |
+| `api-mail` | [#317](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/317) | `f02356fc` | ✅ [run](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/40491575316) |
+| `client-mobile` | [#108](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/108) | `f03ca5c2` | ✅ [run](https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/40491605021) |
+
+- Branches `feat/task-399-delegation-envoyer-de-la-part-du` supprimées (distante et locale) ; label `awaiting-human-merge` retiré.
+- `client-angular` : géré manuellement par l'humain (TFS).
+- Staging : aucune branche `forge/staging-task-*` concernée.
