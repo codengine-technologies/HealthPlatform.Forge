@@ -376,3 +376,10 @@ Analyse complète `healthplatform-api-mail` (SonarQube 9.9.8 local, `sonar.login
 | Déplacé vers un dossier au même contenu → signalé là | `MovingTheDuplicateToAPatientWhoAlreadyHasTheSameContent_…` | MP |
 | BAL déléguée → 404, rien persisté | `DelegationEndToEndTests.ADelegatedHprim_…` | structurel |
 | Cache des messages liés | tests de contrôleur | MC, MCA |
+
+## Merged
+
+- **2026-10-27**, sur `/merge task-391 --i-tested` (attestation humaine du test manuel).
+- `api-mail` #318 → squash `fade8eb92a9a2ba849e6f08441bf379f8f9896c1` sur `develop`. Branche `feat/task-391-hprim-signaler-le-doublon-au` supprimée (distante et locale).
+- Aucun autre dépôt : task mono-repo (`**Repos**: api-mail`).
+- **À savoir pour #319 (task-392)** : elle modifie le même `HprimStructuredResultsEndToEndTests.cs`, qui conflictera au merge. La branche doit être resynchronisée avec `develop` avant son merge.
