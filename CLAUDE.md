@@ -832,55 +832,59 @@ est celui produit après `/tech-writer`.
 
 ---
 
-### 14. BAL déléguée : aucune donnée n'est persistée chez le délégataire — non-négociable
+### 14. Boîte partagée : une base par boîte, l'opérateur ouvre l'accès, tout acte est imputé à son auteur — non-négociable
 
-> Posée par l'humain le 2026-10-25, avec la task-397 (délégation de BAL Mailiz, EPIC E009).
+> Réécrite par l'humain le 2026-10-28 (EPIC E020). Elle remplace la règle « BAL déléguée : aucune
+> donnée n'est persistée chez le délégataire » du 2026-10-25 (task-397), écrite pour l'espace IMAP
+> `shared/<adresse du délégant>/…`. L'ANS retire cet espace (déjà absent en production, bientôt en
+> formation) : le délégataire ouvre la BAL du délégant **avec son propre jeton PSC**.
 
-Mailiz expose la BAL d'un délégant au délégataire sous l'espace de noms IMAP partagé
-`shared/<adresse du délégant>/…`. **Rien de ce qui vient d'une BAL déléguée n'est écrit chez le
-délégataire.**
+- **Une boîte = une base.** Toutes les personnes qui travaillent sur une adresse partagent **la même
+  base** : titulaire, délégataires, membres d'une adresse organisationnelle. Le nom de base ne
+  dépend que de l'adresse, et le registre réutilise la base existante de l'adresse. **Interdit** :
+  une base, ou une copie de données de santé, par personne.
+- **Ce qui appartient à la boîte** : messages, dossiers, documents, patients, biologie, étiquettes,
+  contacts, modèles. **Ce qui appartient à la personne** : ses réglages et ses signatures.
+- **Le rôle se décide au rattachement, par l'Annuaire Santé.** Deux voies, et deux seulement :
+  - **« Mes boîtes »** : la liste des BAL que l'Annuaire Santé publie pour le RPPS du jeton PSC. La
+    personne ne peut que **choisir**, jamais saisir. Une BAL personnelle en fait le **titulaire** ;
+    une BAL organisationnelle de son activité en fait un **membre**. Une adresse organisationnelle
+    n'a pas de titulaire ;
+  - **la saisie libre d'une adresse**, réservée à la **délégation** : elle fait un **délégataire** et
+    n'ouvre jamais le rôle de titulaire.
 
-- **Interdit** : écrire en base tenant, dans Redis ou dans un journal applicatif un message, un
-  en-tête, un corps, une pièce jointe, un document (CDA, HPRIM…), une biologie, une identité
-  patient, un nom de dossier ou un compteur d'une BAL déléguée.
-- **Interdit aussi** : l'exploiter, c'est-à-dire en tirer un patient, une étiquette IA, un
-  embedding, un résultat de recherche, un contact ou une notification.
-- **Seul mode autorisé** : la lecture en direct sur le serveur IMAP, à chaque affichage, en mémoire.
-  Les documents sont décodés pour être lus, jamais stockés.
-- **Exceptions, limitatives** (arbitrages du 2026-10-25) :
-  - **l'audit PGSSI-S**, réduit à l'action, l'auteur, le dossier, l'UID et le `Message-ID`, plus la
-    personne qui agit et la BAL propriétaire (task-400). Il ne garde ni objet, ni correspondants, ni
-    donnée patient. Son tampon Redis relève de cette exception ;
-  - **le répertoire de travail transitoire** du décodage IHE-XDM et HPRIM : fichiers supprimés en fin
-    de traitement, balayés au démarrage. C'est un stockage technique, jamais un lieu de
-    conservation ;
-  - **le cache Redis du contenu délégué décodé** (task-397, section J), pour ne pas redécoder sur
-    plusieurs pods. Il est limité ainsi :
-    - famille de clés dédiée, clé en **empreinte**, propre à la personne qui agit ;
-    - expiration absolue de **5 minutes au plus**, alignée sur la fenêtre de révocation ;
-    - taille bornée ;
-    - invalidé à la suppression, au déplacement et à la révocation.
+  Les deux voies exigent une sonde IMAP réussie avec le jeton PSC de la personne avant toute
+  écriture. Le rôle est requalifié à chaque ré-authentification.
+- **L'opérateur ouvre l'accès.** Lire ou écrire la base d'une boîte exige un **verdict favorable
+  récent de l'opérateur MSSanté** pour cette personne sur cette adresse, dans une fenêtre alignée
+  sur la révocation. Un refus, `AuthFailing` ou une révocation ferment tout accès.
+  - **Seule exception, le hors-ligne du titulaire** : sur son adresse personnelle, le titulaire
+    garde la lecture hors ligne. Un délégataire ou un membre n'a pas de hors-ligne.
+- **Tout acte est imputé à son auteur réel — règle d'or de la traçabilité.** Chaque action est
+  tracée **au nom de la personne qui l'a faite** : lecture, envoi, suppression, déplacement,
+  étiquette, rattachement patient, acquittement, réglage. La trace porte le RPPS et le nom PSC, le
+  rôle, la boîte, l'instant, l'action et l'objet. Elle n'est jamais au nom de la boîte ni du
+  titulaire. *Si Cyril supprime un message de la BAL du titulaire, la trace dit que Cyril l'a
+  supprimé.*
+  - Un acte sans personne (tâche de fond, consommateur du bus, purge) est tracé comme **acte
+    système**, explicitement, et n'est jamais attribué à quelqu'un.
+- **Lecture du journal** : toute personne rattachée à la boîte voit tous les actes faits sur cette
+  boîte. Conservation inchangée : 3 653 jours pour la famille `HealthDataAccess`.
+- **`/review` refuse la PR** (CHANGES REQUESTED, bloquant) dans quatre cas :
+  - un acte sans auteur réel ;
+  - un accès à la base qui ne passe pas par le verdict de l'opérateur ;
+  - une donnée de la boîte écrite dans une base par personne ;
+  - un rôle de titulaire ouvert autrement que par la liste de l'Annuaire Santé.
 
-    Le résidu dans le fichier AOF de Redis est accepté ;
-  - **les fichiers que l'utilisateur choisit d'enregistrer** (impression, export, pièce jointe),
-    sans l'objet du message dans le nom ;
-  - **une réponse ou un transfert envoyé en son propre nom** (« (moi) ») : c'est un message du
-    délégataire, dont la copie dans sa BAL est assumée. La règle protège ce qui est fait **au nom
-    du délégant**.
-- **Journaux et télémétrie** : un chemin délégué n'y apparaît que jusqu'à sa racine
-  `shared/<adresse>/…`, par un masquage central. Ils ne contiennent jamais de nom de sous-dossier,
-  d'objet ni de nom de pièce jointe délégués.
-- **Une garde unique à la frontière d'écriture** refuse tout chemin `shared/`, et un test de
-  convention la protège. Une US qui touche messages, dossiers ou documents prouve « rien de
-  persisté » par un test d'intégration sur le banc de délégation.
-- **`/review` refuse la PR** (CHANGES REQUESTED, bloquant) si une écriture peut recevoir un chemin
-  `shared/` sans passer par cette garde.
+**Pourquoi** : le 2026-10-28, l'analyse du nommage `u_{rpps}_{slug}_{hash(adresse)}` a montré
+qu'un délégataire qui ouvre la boîte de son délégant obtient **une seconde base**, copie complète
+des données de santé du délégant. Cette copie survit à la révocation et diverge de l'original, et
+Redis, indexé par adresse, mélangeait en plus les deux bases. La délégation donne un droit
+d'**accès**, pas de copie. Partager la base règle la copie, le verrou de l'opérateur règle la
+révocation, et l'imputation règle l'imputabilité PGSSI-S.
 
-**Pourquoi** : la délégation donne un droit d'**accès**, pas de copie, et le délégant reste
-responsable du secret professionnel. Le 2026-10-25 en formation, la base d'un délégataire contenait
-déjà 101 messages de sa délégante, 64 documents, 323 résultats de biologie et 7 patients. Or la
-purge des dossiers disparus ne tourne qu'au prochain listage en ligne des dossiers : une copie peut
-donc survivre indéfiniment à la révocation, et aussi aux sauvegardes et aux caches.
+**Conséquence assumée** : une BAL personnelle en **liste rouge** n'est pas publiée dans l'Annuaire.
+Son titulaire ne peut la rattacher que par saisie libre, donc en délégation, sans hors-ligne.
 
 ---
 

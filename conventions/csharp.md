@@ -1788,6 +1788,10 @@ examens sans code (« Sodium » 140, « Potassium » 4,2) fusionnaient alors en 
 
 ## delegated-access-ouvre-le-corps — `[DelegatedAccess]` sur une route d'écriture laisse entrer des chemins `shared/`
 
+> **Sans objet depuis le 2026-10-28** : l'espace `shared/` a été retiré (task-401) et la règle 14
+> réécrite (une base par boîte, EPIC E020). L'entrée est gardée pour son historique ; la leçon qui
+> survit est générale : suivre **chaque champ** du corps qui porte un chemin jusqu'à son écriture.
+
 **Occurrences : 1** (task-399, trouvé par `/review`)
 
 Sans attribut, `DelegatedMailboxPolicyFilter` refuse tout corps qui porte un chemin délégué. Poser

@@ -181,13 +181,12 @@ d'écrire le `todo-*.md`** — ne pas inventer.
 - **L'anomalie d'un résultat de biologie est le jugement du biologiste** (humain, 2026-10-26, task-392). Seul l'indicateur posé par le laboratoire fait une anomalie, quel que soit le format : le code d'interprétation d'un CDA, le champ 8 d'une ligne `RES|` HPRIM. La plateforme ne déduit jamais une anomalie d'une comparaison aux bornes. Les bornes s'affichent à côté de la valeur, et le médecin en juge.
   - **Pourquoi** : task-390 avait retenu « indicateur, sinon bornes », en s'inspirant de Weda. Or chez Weda, la couleur hors bornes n'est qu'un **style d'affichage**, activé par une préférence de l'utilisateur. Transformée en signal, elle alimentait la file « à acquitter » et « anormaux non lus » avec des valeurs que le biologiste n'avait pas jugées anormales.
   - **Consigne** : quand une US reprend une règle d'un logiciel existant (Weda, WMickey…), dire si c'est une **préférence d'affichage** ou un **signal clinique** (alerte, acquittement, compteur). Le reprendre au même niveau, jamais au-dessus.
-- **BAL déléguée : rien n'est persisté chez le délégataire** (CLAUDE.md règle 14, 2026-10-25). Toute US qui touche un message, un dossier, une pièce jointe, un document (CDA, HPRIM…) ou un compteur dit ce qui arrive quand la BAL est **déléguée** (dossiers `shared/<adresse>/…`) :
-  - lecture **en direct** sur le serveur, à l'affichage ;
-  - **aucune** écriture en base tenant, dans Redis ni dans les journaux ;
-  - aucune exploitation : ni patient, ni IA, ni recherche, ni contact, ni notification ;
-  - seule exception, l'audit réduit : action, auteur, dossier, UID, `Message-ID`.
+- **Boîte partagée : une base par boîte, tout acte imputé à son auteur** (CLAUDE.md règle 14, réécrite le 2026-10-28, EPIC E020). Elle remplace « BAL déléguée : rien n'est persisté chez le délégataire » : l'espace `shared/` n'existe plus. Toute US qui ajoute ou modifie une action sur une boîte dit :
+  - **qui l'impute** : la trace porte la personne réelle (RPPS et nom PSC) et son rôle (titulaire, délégataire ou membre), jamais la boîte ni le titulaire. Un acte sans personne est un **acte système** explicite ;
+  - **où vit la donnée** : à la boîte (messages, dossiers, documents, patients, biologie, étiquettes, contacts, modèles) ou à la personne (réglages, signatures) ;
+  - **ce que voit un délégataire ou un membre** sans verdict récent de l'opérateur : rien. Seul le titulaire garde le hors-ligne.
 
-  La DOD porte un test d'intégration « rien de persisté » sur le banc de délégation. Une US muette sur ce point n'est pas finalisable.
+  Le titulaire n'existe que par la liste de l'Annuaire Santé pour le RPPS du jeton PSC ; la saisie libre d'une adresse est réservée à la délégation. La DOD porte un test d'intégration où **deux personnes agissent sur la même boîte**, et qui lit l'auteur réel dans la trace. Une US muette sur ce point n'est pas finalisable.
 
 ---
 
