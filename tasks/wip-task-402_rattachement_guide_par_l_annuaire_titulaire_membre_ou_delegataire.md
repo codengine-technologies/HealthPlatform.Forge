@@ -197,7 +197,8 @@ utilisent.
 | /sonar | ok | 41 min 33 s | 3 (4 min 30 s) | 10 (20 min 32 s) | 4 (9 min 43 s) | 2 itération(s), api-mail 3B/10T |
 | /lint-angular | ok | 13 min 45 s | 1 (1 min 39 s) | 1 (2 min 53 s) | — | 2 itération(s), client-angular 1B/1T |
 | /lint-mobile | ok | 1 min 28 s | — | — | — | baseline propre |
-| **Total cycle** | | **4 h 20 min** | **19 (19 min 07 s)** | **22 (43 min 21 s)** | **4 (9 min 43 s)** | |
+| /e2e | ok | 27 min 20 s | — | — | — | e2e ×3 (24 min 29 s) |
+| **Total cycle** | | **4 h 47 min** | **19 (19 min 07 s)** | **22 (43 min 21 s)** | **4 (9 min 43 s)** | |
 
 Autres commandes mesurées : lint ×2 (2 min 03 s), nuget-wait ×1 (2.5 s), restore ×1 (10 s)
 
