@@ -181,6 +181,16 @@ utilisent.
 
 ## Branches
 
-- `dtos-mss` (lazy) : aucune branche au /start — `/develop` la crée au premier contrat touché
-- `client-angular` (code-only) : la forge écrit sur la branche courante de `Client/Angular/` ;
-  l'humain gère branche, commit, push et PR TFS
+- `api-mail` (pushed) : feat/task-402-rattachement-guide-par-l-annuaire — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-402-rattachement-guide-par-l-annuaire
+- `client-mobile` (pushed) : feat/task-402-rattachement-guide-par-l-annuaire — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-402-rattachement-guide-par-l-annuaire
+- `dtos-mss` (lazy) : aucune branche au /start — `/develop` la crée depuis `origin/develop` au premier contrat touché
+- `client-angular` (code-only) : la forge écrit sur la branche courante de `Client/Angular/` — `feature/nova-mss-weda-integration` au /start (2026-10-28) ; humain gère branche, commit, push, PR TFS
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-402 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 23 s | — | — | — | — |
+| **Total cycle** | | **23 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
