@@ -2,9 +2,9 @@
 
 > **Statut** : En cours
 > **Modèle** : hand-crafted
-> **Version** : 1.92
+> **Version** : 1.93
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-27 (la délégation de boîte est retirée : Mailiz ne la propose plus sous cette forme — task-401 ; un résultat HPRIM se lit comme un compte rendu de biologie CDA : seule l'anomalie posée par le biologiste est signalée — task-392 ; le même résultat HPRIM rattaché deux fois au même patient est signalé comme doublon — task-391 ; écrire de la part d'un confrère qui vous a délégué sa boîte — task-399 ; les valeurs d'un résultat HPRIM rejoignent la biologie du patient, avec leurs anomalies — task-390 ; un résultat de laboratoire au format HPRIM devient un document de biologie à intégrer — task-389 ; les boîtes déléguées rangées à part dans le mobile et la messagerie web, gestes de gestion seulement — task-398 ; délégation de BAL : la boîte déléguée se lit en direct, rien n'en est conservé — task-397 ; un geste sur la liste touche exactement les messages affichés — task-375 ; une rédaction sans texte ne laisse ni brouillon ni question — task-394 ; carnet d'adresses refondu — task-393)
+> **Dernière mise à jour** : 2026-10-28 (la liste montre ce qu'elle annonce : tous les résultats de biologie en attente, les mails du patient page par page, une panne signalée comme telle — task-377 ; la délégation de boîte est retirée : Mailiz ne la propose plus sous cette forme — task-401 ; un résultat HPRIM se lit comme un compte rendu de biologie CDA : seule l'anomalie posée par le biologiste est signalée — task-392 ; le même résultat HPRIM rattaché deux fois au même patient est signalé comme doublon — task-391 ; écrire de la part d'un confrère qui vous a délégué sa boîte — task-399 ; les valeurs d'un résultat HPRIM rejoignent la biologie du patient, avec leurs anomalies — task-390 ; un résultat de laboratoire au format HPRIM devient un document de biologie à intégrer — task-389 ; les boîtes déléguées rangées à part dans le mobile et la messagerie web, gestes de gestion seulement — task-398 ; délégation de BAL : la boîte déléguée se lit en direct, rien n'en est conservé — task-397 ; un geste sur la liste touche exactement les messages affichés — task-375 ; une rédaction sans texte ne laisse ni brouillon ni question — task-394 ; carnet d'adresses refondu — task-393)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1036,6 +1036,12 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
+- **v1.118 — La liste montre ce qu'elle annonce, et dit quand elle ne peut pas** (task-377, messagerie web et application mobile) :
+  - **« Bio à acquitter » montre tous vos résultats en attente**, pas seulement ceux de la page affichée. Le nombre de la puce et la liste disent la même chose.
+  - **« Mails du patient » reste ouvert** et se parcourt page par page ; il ne revient plus tout seul à la boîte de réception. L'identifiant du patient ne passe plus dans les adresses échangées avec le serveur.
+  - **La recherche s'efface quand vous changez de dossier**, et « effacer » arrête une recherche encore en cours.
+  - **Sans volet de lecture**, « Version précédente » et l'assistant fonctionnent.
+  - **Une panne se voit** : le tableau de bord, la puce, les dossiers ou la liste affichent « indisponible » avec un bouton « Réessayer », au lieu d'un zéro ou d'une liste vide.
 - **v1.117 — La délégation de boîte est retirée, en attendant la nouvelle forme proposée par Mailiz** (task-401, application mobile et messagerie web) :
   - **Ce qui change pour vous** : la section « Boîtes déléguées », le choix de la boîte au nom de laquelle vous écrivez et le bandeau « Boîte de … (délégation) » disparaissent. Ils décrivaient un accès que Mailiz ne propose plus.
   - **Pourquoi** : Mailiz donne désormais l'accès à la boîte d'un confrère d'une autre façon, avec votre propre carte (Pro Santé Connect), en ouvrant directement sa boîte. Cette nouvelle forme sera proposée dans une prochaine version.

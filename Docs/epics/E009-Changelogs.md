@@ -810,6 +810,21 @@
   - conflit d'un fichier de test avec task-391 (#318) : résolu le 2026-10-27 par un merge de `develop` dans la branche, suites et e2e rejoués verts. Mergé le même jour (`api-mail` `3ef4d75e`, `client-mobile` `053ff53a`) ;
   - divergence E2E-MAILBOX-002 signalée « à retirer » par la porte.
 
+### v1.118 — La liste, la recherche et la vue « Mails du patient » montrent ce qu'elles annoncent, et disent quand elles ne peuvent pas (weda2 et mobile) — task-377
+
+- **Origine** : audit de bugs du client Angular du 2026-10-13 (ANG-31, ANG-32, ANG-33, ANG-35, ANG-37). La puce « Bio à acquitter » filtrait la seule page chargée ; la vue « Mails du patient » (dossier virtuel `__patient__/{handle}`) retombait sur la boîte de réception au bout de 30 s, sur une seule page, le handle dans les URL ; une panne passait pour « rien à signaler ».
+- **api-mail** (PR #322) :
+  - `GET /api/v1/biology-acks/pending-mail-uids/page` : pages des mails à biologie non acquittée d'un dossier, du plus récent au plus ancien, avec le total (`PagedResultDto<uint>`), filtre par dernier geste ;
+  - `POST /api/v1/patients/mails` : pages des mails d'un patient, le handle dans le **corps** (jamais dans le chemin), trace sans identifiant, 404 sur un handle inconnu ;
+  - `PageQuery` : page ≥ 1, taille 1..200, sinon 400 problem+json. Aucun changement de contrat NuGet.
+  - Règle 1b : `UseCases/MailListSourcesEndToEndTests` (9 tests, vraie pile, base du praticien), rouges avant les routes puis sous mutation (`Skip` retiré ; page forcée à 0).
+- **client-angular** (weda2, commité sur TFS par l'humain) : sources de la liste tenues par l'état (puce, recherche, vue patient), numéro de chargement (une réponse ancienne est ignorée) ; puce et vue patient paginées par le serveur ; vue patient hors rafraîchissement, flux temps réel et puce ; recherche remise à zéro au changement de dossier, « effacer » annule la requête en vol ; « Version précédente » et assistant IA sans volet de lecture ; tuile, puce, réglages, dossiers et liste en panne → « indisponible » + « Réessayer ».
+- **client-mobile** (PR #112, ajouté sur décision humaine — la puce y existait avec le même défaut) : la puce pagine la liste sur tous les résultats en attente du dossier, avec la pagination existante du mobile ; lot d'une pagination remplacée ignoré ; puce éteinte au changement de dossier ; activation depuis le tableau de bord jouée une seule fois.
+- **Tests** : Angular M1–M6 et mobile M1–M4 rouges sous mutation ; parcours **E2E-BIO-002** (weda2 et mobile) et **E2E-PATIENT-004** (weda2 ; mobile non applicable, écran absent) vus rouges sur le banc `--serve-only`. E2E-PATIENT-004 remplace la version 2 d'E2E-PATIENT-001 prévue par la DoD (à confirmer au merge).
+- **Sonar** : Quality Gate OK, new coverage 96,8 %, 0 issue.
+- **E2E** (branches fusionnées avec `develop`, task-402 comprise) : mobile 50 verts, Angular 60 verts, parité verte. E2E-BIO-002 Angular, instable à deux voies (`response.json()` sur un corps déjà libéré), stabilisé : convention `corps-de-reponse-libere`.
+- **Hors task** : l'URL de navigation weda2 garde `?patient={handle}` (task-035 / task-184), jamais envoyée au serveur.
+
 ### v1.117 — Délégation de BAL retirée : Mailiz ne déploie plus l'espace IMAP `shared/` — task-401
 
 - **Origine** : le 2026-10-27, l'humain apprend que Mailiz ne déploie plus l'espace de noms `shared/<adresse du délégant>/…`. Selon l'ANS (vérifié sur l'environnement de formation), le délégataire ouvre directement la BAL du délégant avec son propre jeton PSC (XOAUTH2, avec l'adresse du délégant pour identifiant). Le code de task-397, task-398 et task-399 était inerte en production. task-400 est gelée (`questions/task-400.md`).
@@ -2071,6 +2086,7 @@ Audit grep complémentaires pour les couches 2 / 2bis / 3 (tasks 021 / 022 / 023
 
 | Task | Apport principal | Règles touchées |
 |------|------------------|-----------------|
+| task-377 | **La liste, la recherche et la vue « Mails du patient » montrent ce qu'elles annoncent (weda2 et mobile).** Pages des résultats en attente (`GET biology-acks/pending-mail-uids/page`) et des mails d'un patient par handle dans le corps (`POST patients/mails`) ; sources de la liste dans l'état, réponse ancienne ignorée ; vue patient hors rafraîchissement ; recherche remise à zéro ; états « indisponible » + réessai ; puce mobile paginée sur les résultats en attente ; scénarios E2E-BIO-002 et E2E-PATIENT-004. | — |
 | task-401 | **Délégation de BAL retirée : Mailiz ne déploie plus l'espace IMAP `shared/`.** Revert de task-397, task-398 et task-399 sur dtos-mss (548.0.0), api-mail, client-mobile et weda2 ; catalogue sans `E2E-DELEG-*` ; règle 14 réduite à son principe. Délégation par session à étudier ; task-400 gelée. | — |
 | task-392 | **Un résultat HPRIM se lit comme un CR-BIO CDA (mobile et weda2).** Anomalie = indicateur du laboratoire seul (règle CDA ; les bornes ne signalent plus, task-390 corrigée) ; « partiel », « code labo », seconde valeur ; texte sans lignes techniques ; weda2 : même règle sur le CDA ; scénario E2E-BIO-003. | — |
 | task-391 | **Le même résultat HPRIM, rattaché deux fois au même patient, porte le signal doublon.** Empreinte SHA-256 du contenu décodé (stable entre encodages et regroupements), conservée avec le document ; comparée au rattachement, dans le seul dossier du patient choisi ; liens retirés au changement de patient et au détachement ; bandeau doublon existant (task-013). | — |

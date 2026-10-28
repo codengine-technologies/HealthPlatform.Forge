@@ -429,6 +429,7 @@ Validation (`/review`, branches fusionnées avec `origin/develop`, qui porte tas
 | /lint-mobile | ok | 1 min 09 s | — | — | — | 0 erreur, 0 warning |
 | /e2e | ok | 56 min 25 s | — | — | — | e2e ×9 (51 min 32 s), mobile 50, angular 60, porte verte apres fusion develop ; BIO-002 angular stabilise |
 | /review | ok | 8 min 08 s | 3 (36 s) | 3 (5 min 24 s) | — | api-mail 1B/1T, client-mobile 1B/1T, client-angular 1B/1T, APPROVED, PR api-mail #322, mobile #112 |
-| **Total cycle** | | **1 h 23 min** | **4 (44 s)** | **5 (5 min 54 s)** | **0 (0.0 s)** | |
+| /tech-writer | ok | 44 s | — | — | — | E009 v1.118 |
+| **Total cycle** | | **1 h 24 min** | **4 (44 s)** | **5 (5 min 54 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×2 (45 s), restore ×1 (3.2 s)
