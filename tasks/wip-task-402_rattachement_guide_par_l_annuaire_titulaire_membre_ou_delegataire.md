@@ -196,9 +196,10 @@ utilisent.
 | /develop | ok | 3 h 23 min | 15 (12 min 57 s) | 11 (19 min 56 s) | — | dtos-mss 1B/0T, api-mail 12B/7T, client-mobile 2B/2T, client-angular 0B/2T |
 | /sonar | ok | 41 min 33 s | 3 (4 min 30 s) | 10 (20 min 32 s) | 4 (9 min 43 s) | 2 itération(s), api-mail 3B/10T |
 | /lint-angular | ok | 13 min 45 s | 1 (1 min 39 s) | 1 (2 min 53 s) | — | 2 itération(s), client-angular 1B/1T |
-| **Total cycle** | | **4 h 19 min** | **19 (19 min 07 s)** | **22 (43 min 21 s)** | **4 (9 min 43 s)** | |
+| /lint-mobile | ok | 1 min 28 s | — | — | — | baseline propre |
+| **Total cycle** | | **4 h 20 min** | **19 (19 min 07 s)** | **22 (43 min 21 s)** | **4 (9 min 43 s)** | |
 
-Autres commandes mesurées : lint ×1 (51 s), nuget-wait ×1 (2.5 s), restore ×1 (10 s)
+Autres commandes mesurées : lint ×2 (2 min 03 s), nuget-wait ×1 (2.5 s), restore ×1 (10 s)
 
 ## Develop log
 
@@ -322,3 +323,10 @@ Autres commandes mesurées : lint ×1 (51 s), nuget-wait ×1 (2.5 s), restore ×
 
 - Fichiers weda2 toujours **non commités** sur `feature/nova-mss-weda-integration` (code-only).
 - Convention alimentée : `jsdoc/require-jsdoc` (Occurrences 12 → 13).
+
+## Lint mobile log
+
+- Branche : `feat/task-402-rattachement-guide-par-l-annuaire` (Client/Mobile)
+- Baseline : `npm run lint` → **All files pass linting** (0 error / 0 warning)
+- Iterations : 0 / 5 — rien à corriger, aucun commit
+- Build / tests : ✓ green (validés par /develop après le dernier commit mobile : build OK, tests ChromeHeadless verts)
