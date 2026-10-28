@@ -195,9 +195,10 @@ utilisent.
 | /start | ok | 23 s | — | — | — | — |
 | /develop | ok | 3 h 23 min | 15 (12 min 57 s) | 11 (19 min 56 s) | — | dtos-mss 1B/0T, api-mail 12B/7T, client-mobile 2B/2T, client-angular 0B/2T |
 | /sonar | ok | 41 min 33 s | 3 (4 min 30 s) | 10 (20 min 32 s) | 4 (9 min 43 s) | 2 itération(s), api-mail 3B/10T |
-| **Total cycle** | | **4 h 05 min** | **18 (17 min 28 s)** | **21 (40 min 28 s)** | **4 (9 min 43 s)** | |
+| /lint-angular | ok | 13 min 45 s | 1 (1 min 39 s) | 1 (2 min 53 s) | — | 2 itération(s), client-angular 1B/1T |
+| **Total cycle** | | **4 h 19 min** | **19 (19 min 07 s)** | **22 (43 min 21 s)** | **4 (9 min 43 s)** | |
 
-Autres commandes mesurées : nuget-wait ×1 (2.5 s), restore ×1 (10 s)
+Autres commandes mesurées : lint ×1 (51 s), nuget-wait ×1 (2.5 s), restore ×1 (10 s)
 
 ## Develop log
 
@@ -299,3 +300,25 @@ Autres commandes mesurées : nuget-wait ×1 (2.5 s), restore ×1 (10 s)
 | Coverage (projet) | 97,5 % | 98,0 % | +0,5 pt |
 | Duplication | 0,3 % | 0,3 % | 0 |
 | Reliability / Security / Maintainability | D / A / A | D / A / A | → |
+
+## Lint log
+
+- Mode : ciblé sur les fichiers de la task (contournement consigné par task-367 : `--projects=tag:scope:mss` ne
+  restreint pas `nx affected` sur ce workspace) — `npx eslint --format json <15 fichiers>`, messages attribués aux
+  lignes ajoutées par `git diff -U0 HEAD`
+- Scope : `tag:scope:mss` (libs/mss) + support e2e weda2 touché par la task
+- Pipeline fidelity : build `nx build weda2`, test `nx test mss-lib` (plugins Nx non isolés :
+  `NX_ISOLATE_PLUGINS=false NX_DAEMON=false`, cf. mémoire du banc)
+- Baseline (lignes de la task) : 33 errors / 6 warnings (fichiers entiers : 37 / 42, dette e2e préexistante :
+  `max-lines`, JSDoc de fonctions anciennes)
+- Final (lignes de la task) : **0 errors / 0 warnings** (fichiers entiers : 0 / 28 préexistants)
+- Iterations : 2 / 5
+- Build / tests : ✓ green (`weda2` build OK, `mss-lib` 1 313 tests)
+
+| Iter | Errors before | Errors after | Build | Tests |
+|------|---------------|--------------|-------|-------|
+| 1 (auto-fix ×2) | 33 | 2 | — | — |
+| 2 (manuel : JSDoc `openAs`, `mailboxRow`, constructeur, 3 `@example`) | 2 | 0 | ✓ | ✓ |
+
+- Fichiers weda2 toujours **non commités** sur `feature/nova-mss-weda-integration` (code-only).
+- Convention alimentée : `jsdoc/require-jsdoc` (Occurrences 12 → 13).
