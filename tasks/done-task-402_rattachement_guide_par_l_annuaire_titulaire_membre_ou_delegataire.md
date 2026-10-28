@@ -198,8 +198,8 @@ utilisent.
 | /lint-angular | ok | 13 min 45 s | 1 (1 min 39 s) | 1 (2 min 53 s) | — | 2 itération(s), client-angular 1B/1T |
 | /lint-mobile | ok | 1 min 28 s | — | — | — | baseline propre |
 | /e2e | ok | 27 min 20 s | — | — | — | e2e ×3 (24 min 29 s) |
-| /review | skipped | 8 min 06 s | 3 (1 min 53 s) | 2 (7 min 00 s) | — | dtos-mss 1B/0T, api-mail 1B/1T, client-mobile 1B/1T, pause demandée par l'humain — validation faite (api-mail, dtos, mobile verts), revue APPROVED, PR non ouvertes |
-| **Total cycle** | | **4 h 56 min** | **22 (21 min 01 s)** | **24 (50 min 22 s)** | **4 (9 min 43 s)** | |
+| /review | ok | 4 min 07 s | 4 (2 min 11 s) | 3 (8 min 53 s) | — | dtos-mss 1B/0T, api-mail 1B/1T, client-mobile 1B/1T, client-angular 1B/1T, reprise après pause ; 3 PR ouvertes |
+| **Total cycle** | | **4 h 52 min** | **23 (21 min 19 s)** | **25 (52 min 15 s)** | **4 (9 min 43 s)** | |
 
 Autres commandes mesurées : lint ×2 (2 min 03 s), nuget-wait ×1 (2.5 s), restore ×1 (10 s)
 
@@ -425,7 +425,7 @@ Divergence E2E-MAILBOX-002 [angular] signalée « à retirer » par la porte (d�
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
 
-## Review log — EN PAUSE (2026-10-28, demande de l'humain)
+## Review log — pause du 2026-10-28 (levée le même soir, cf. `## PRs`)
 
 > **Point de reprise.** Le run `/forge 402, 403, 404, 405` est arrêté après task-402, à la demande de
 > l'humain : task-403, task-404 et task-405 ne sont **pas** lancées (toujours `todo-*`). Reprendre par
@@ -460,3 +460,67 @@ Divergence E2E-MAILBOX-002 [angular] signalée « à retirer » par la porte (d�
 5. Agréger sur `forge/staging-task-402-405-20261028` (Dtos, api-mail, mobile). Le nom de la branche
    staging reste à décider à la reprise, puisque le run ne couvre plus que task-402.
 6. Rapport de fin de cycle (Sonar, e2e, `## Timings`, « Amélioration continue »).
+
+## PRs
+
+Reprise de `/review` après la pause (2026-10-28, 22 h 29) : Dtos, api-mail et mobile étaient toujours sur les commits
+validés à la pause (6719eeb, 7746a0f1, 0e1c008), à jour avec `develop` et poussés. Leur build et leurs tests verts
+ont été repris. weda2 validé à la reprise : build `weda2` OK, `mss-lib` 119 fichiers de tests verts.
+
+- `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/52 — `awaiting-human-merge`
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/321 — `awaiting-human-merge`
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/111 — `awaiting-human-merge`
+- `client-angular` : code-only — humain gère commit/push TFS et ouverture PR, sur `feature/nova-mss-weda-integration`.
+  Liste des fichiers modifiés :
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`
+  - `front/e2e/mss-e2e/support/e2e-backend.ts`
+  - `front/e2e/mss-e2e/support/session.ts`
+  - `front/libs/mss/src/core/models/mailbox.model.ts`
+  - `front/libs/mss/src/core/models/mss-probe.model.ts`
+  - `front/libs/mss/src/core/services/mailbox-accounts.service.spec.ts`
+  - `front/libs/mss/src/core/services/mailbox-accounts.service.ts`
+  - `front/libs/mss/src/features/mailbox-management/mss-mailbox-management.component.html`
+  - `front/libs/mss/src/features/mailbox-management/mss-mailbox-management.component.scss`
+  - `front/libs/mss/src/features/mailbox-management/mss-mailbox-management.component.spec.ts`
+  - `front/libs/mss/src/features/mailbox-management/mss-mailbox-management.component.ts`
+  - `front/libs/mss/src/features/mailbox-onboarding/mss-mailbox-onboarding.component.html`
+  - `front/libs/mss/src/features/mailbox-onboarding/mss-mailbox-onboarding.component.spec.ts`
+  - `front/libs/mss/src/ui/attach-mailbox-form/attach-mailbox-form.component.html`
+  - `front/libs/mss/src/ui/attach-mailbox-form/attach-mailbox-form.component.scss`
+  - `front/libs/mss/src/ui/attach-mailbox-form/attach-mailbox-form.component.ts`
+  - `front/libs/mss/src/ui/attach-mailbox-form/attach-mailbox-form.component.spec.ts`
+
+DoD : tous les points vérifiables sont cochés par les tests et les logs ci-dessus. Deux restent à l'humain :
+l'**AIPD** (nouvelle source Annuaire Santé, rôle de délégataire) et l'**authentification PSC de bout en bout**
+(sonde XOAUTH2 réelle), couverte par le Manual Test Plan.
+
+## Code Review Summary
+
+**APPROVED** — 0 point bloquant, 2 suggestions.
+
+| Zone | Verdict |
+|---|---|
+| `MailboxManagementService` — rôle calculé par le serveur avant la sonde, « Mes boîtes » lue au RPPS de la session, requalification à la ré-authentification | ✅ |
+| `AccountController` — `GET mailboxes/directory` (401 sans session, 503 `problem+json` si Annuaire incomplet), refus de rôle en 400 codé | ✅ |
+| `FhirBundleParser` / `DirectorySearchEngine` — BAL MSSanté par TRE_R257 (PER titulaire, ORG/CAB membre, APP écartée), réponse incomplète = indisponibilité | ✅ |
+| Registre — migration `AddMailboxRole` (rôle NOT NULL défaut 0, type nullable, Down symétrique), relue (règle 7c) | ✅ |
+| `MssAccountOnboardingService` — sonde à mot de passe sur serveur sans OAuth2 (banc) | ⚠️ absente de la production (tout XOAUTH2), à garder hors de tout serveur réel à mot de passe |
+| Ré-authentification avec Annuaire injoignable | ⚠️ rôle gardé (voulu) ; tracé seulement dans les journaux |
+| Journalisation | ✅ RPPS et adresse uniquement dans le journal d'audit en base, jamais dans les logs applicatifs |
+| Clients mobile / weda2 — deux voies, badge de rôle, bandeau « à requalifier », lecture par `effect` au passage en ligne | ✅ |
+
+**Règle 1b — comportement → test d'intégration → preuve rouge** (`MailboxAttachRoleIntegrationTests`, vrai pipeline HTTP, vrai registre PostgreSQL, vrai `AuditService`) :
+
+| Comportement | Mutation vue rouge |
+|---|---|
+| BAL personnelle de « Mes boîtes » → titulaire, rôle dans la réponse | M6 |
+| BAL organisationnelle → membre | M1 |
+| Adresse hors Annuaire refusée, rien de persisté | M2 |
+| Sa propre adresse refusée en délégation | M3 |
+| Adresse d'un autre PS → délégation | M10 |
+| Titulaire sorti de l'Annuaire → « à requalifier » | M4 |
+| Annuaire injoignable à la ré-authentification → rôle gardé | M5 |
+| Rôle et RPPS de l'acteur dans le journal d'audit | M7 |
+| « Mes boîtes » : type et « déjà rattachée » | M8, M9 |
+| « Mes boîtes » : Annuaire incomplet → 503 | M11 |
+| « Mes boîtes » sans session PSC → 401 | M12 |
