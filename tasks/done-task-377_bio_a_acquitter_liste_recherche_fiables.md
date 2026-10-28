@@ -369,6 +369,56 @@ Rejeu après la décision A, sur les branches de la task fusionnées avec `origi
 - `MissingRequired` [mobile] E2E-BIO-002 (« La puce « Bio à acquitter » montre tous les résultats en attente, sur toutes les pages ») est requis pour mobile mais absent de sa suite, ou non joué.
 
 
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/322 — label `awaiting-human-merge`
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/112 — label `awaiting-human-merge`
+- `client-angular` : code-only — humain gère commit/push TFS et ouverture PR. Code de la task commité par l'humain sur `feature/nova-mss-weda-integration` (« Task 377 », `d87a30ce`, merge `fcab4f67`). Reste non commité (stabilisation du test E2E-BIO-002, `/e2e`) :
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`
+  - `front/e2e/mss-e2e/support/e2e-backend.ts`
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 0 bloquant, 4 suggestions.
+
+Validation (`/review`, branches fusionnées avec `origin/develop`, qui porte task-402) :
+
+| Repo | Build | Tests |
+|---|---|---|
+| api-mail `5e6f34e8` | ✓ | ✓ 7 017 (16 ignorés, comme en baseline), 0 échec, aucun crash |
+| client-mobile `cfbce70` | ✓ `npm run build` | ✓ 1 322/1 322 |
+| client-angular `fcab4f67` + 2 fichiers e2e | ✓ `nx build weda2` | ✓ `nx test mss-lib` 1 339/1 339 (121 fichiers) |
+
+### Règle 1b — comportement → test d'intégration → preuve du rouge
+
+| Comportement atteignable par un endpoint | Test d'intégration (`UseCases/MailListSourcesEndToEndTests`) | Rouge |
+|---|---|---|
+| `GET biology-acks/pending-mail-uids/page` : pages des résultats en attente, du plus récent au plus ancien, total | `SixtyPendingMails_AreServedOnTwoPages_TheSecondHoldingTheTenOldest` | 404 avant la route ; mutation « `Skip` retiré » → `Collections differ` |
+| Un résultat acquitté quitte les pages | `AResolvedResult_LeavesThePendingPages` | 404 avant la route |
+| Filtre par dernier geste | `ThePendingPages_FilteredByLastAction_KeepOnlyTheMatchingResults` | 404 avant la route |
+| Page hors bornes → 400 problem+json | `AnInvalidPage_Is400ProblemJson` (×3) | 404 avant la route |
+| `POST patients/mails` : pages des mails du patient, handle dans le corps | `ThePatientMails_HaveASecondPage_AndTheHandleIsNeverInThePath` | 405 avant la route ; mutation « page forcée à 0 » → `Expected: 10, Actual: 20` |
+| Handle inconnu → 404, handle vide → 400 | `AnUnknownPatientHandle_Is404ProblemJson`, `AMissingPatientHandle_Is400ProblemJson` | 405 avant la route |
+
+### Par fichier
+
+- api-mail `PageQuery.cs` — ✅ bornes partagées, 400 par `ValidationException` (règle 12).
+- api-mail `BiologyAcksController.cs` — ✅ extraction de `LoadPendingMailUidsAsync` sans changement de la route existante. ⚠️ `(page - 1) * pageSize` déborde pour un `page` démesuré (renvoie alors la 1ʳᵉ page au lieu d'une page vide, sans risque) ; la liste en attente est chargée en entier puis découpée en mémoire (bornée par les résultats en attente d'un dossier).
+- api-mail `PatientsController.cs` — ✅ handle dans le corps, trace sans identifiant, `EnsurePatientExistsAsync` avant lecture (404).
+- client-mobile `mail-state.service.ts`, `inbox.page.ts`, `inbox-biology-ack-chip` — ✅ pagination sur les résultats en attente, garde par numéro de pagination, puce éteinte au changement de dossier, auto-activation à un coup. ⚠️ la puce qui recompte pendant qu'elle est active relance la pagination (liste rechargée), acceptable.
+- client-angular (commit TFS « Task 377 ») — ✅ sources de la liste dans l'état, numéro de chargement, états « indisponible » avec réessai. ⚠️ l'URL de navigation weda2 garde `?patient={handle}` (antérieure, task-035/task-184, jamais envoyée au serveur) : hors du critère « URL ajoutées », à traiter à part si souhaité.
+
+### DoD
+
+- [x] Build et tests verts : weda2, api-mail (et client-mobile)
+- [x] Intégration, liste paginée des résultats en attente : 60 sur deux pages, page 2 = 10 plus anciens, vu rouge
+- [x] Intégration, mails d'un patient par handle dans le corps : page 2, handle absent du chemin, vu rouge
+- [x] Tests unitaires et de composant rouges d'abord : puce page 3, changement de dossier pendant une recherche, vue patient 60 s, « Version précédente » sans volet, tuile « indisponible » (Angular M1–M6 ; mobile M1–M4)
+- [x] Scénario E2E-BIO-002 ajouté — angular **et mobile requis** (la puce existe sur mobile, avec le même défaut ; corrigé sur décision humaine, option A)
+- [~] Scénario E2E-PATIENT-001 versionné → **remplacé par E2E-PATIENT-004** (angular requis, mobile non-applicable : le mobile n'a pas cet écran). Écart signalé, sans objection de l'humain : **à confirmer au HAG**
+- [x] Trou du filet : ligne task-377 dans `conventions/e2e.md`
+- [x] Aucun handle patient, INS ni contenu dans les URL et journaux ajoutés
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-377 --sync` — ne pas éditer à la main)*
@@ -378,6 +428,7 @@ Rejeu après la décision A, sur les branches de la task fusionnées avec `origi
 | /develop | ok | 18 min 05 s | 1 (8.0 s) | 2 (30 s) | — | client-mobile 1B/2T, relance mobile (option A) : 855053a pousse ; entrees du matin perdues lors de la synchro du plan de controle |
 | /lint-mobile | ok | 1 min 09 s | — | — | — | 0 erreur, 0 warning |
 | /e2e | ok | 56 min 25 s | — | — | — | e2e ×9 (51 min 32 s), mobile 50, angular 60, porte verte apres fusion develop ; BIO-002 angular stabilise |
-| **Total cycle** | | **1 h 15 min** | **1 (8.0 s)** | **2 (30 s)** | **0 (0.0 s)** | |
+| /review | ok | 8 min 08 s | 3 (36 s) | 3 (5 min 24 s) | — | api-mail 1B/1T, client-mobile 1B/1T, client-angular 1B/1T, APPROVED, PR api-mail #322, mobile #112 |
+| **Total cycle** | | **1 h 23 min** | **4 (44 s)** | **5 (5 min 54 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×2 (45 s), restore ×1 (3.2 s)
