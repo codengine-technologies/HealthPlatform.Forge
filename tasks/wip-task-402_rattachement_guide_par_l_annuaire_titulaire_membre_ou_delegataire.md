@@ -194,7 +194,8 @@ utilisent.
 |---|---|---|---|---|---|---|
 | /start | ok | 23 s | — | — | — | — |
 | /develop | ok | 3 h 23 min | 15 (12 min 57 s) | 11 (19 min 56 s) | — | dtos-mss 1B/0T, api-mail 12B/7T, client-mobile 2B/2T, client-angular 0B/2T |
-| **Total cycle** | | **3 h 23 min** | **15 (12 min 57 s)** | **11 (19 min 56 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 41 min 33 s | 3 (4 min 30 s) | 10 (20 min 32 s) | 4 (9 min 43 s) | 2 itération(s), api-mail 3B/10T |
+| **Total cycle** | | **4 h 05 min** | **18 (17 min 28 s)** | **21 (40 min 28 s)** | **4 (9 min 43 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (2.5 s), restore ×1 (10 s)
 
@@ -268,3 +269,33 @@ Autres commandes mesurées : nuget-wait ×1 (2.5 s), restore ×1 (10 s)
   ✓ ; aucun RPPS ni adresse dans les journaux applicatifs (journal d'audit seulement) ✓. **AIPD** : à mettre à jour
   par l'humain (déféré au HAG).
 - Next step : /sonar task-402
+
+## Sonar log
+
+- Serveur 25.6.0.109173 (`sonar.token`), clé `healthplatform-api-mail`, 2 analyses complètes (build Release +
+  5 passes OpenCover).
+- Phase 1 (new code) : **aucune dette introduite par la task**. Les 74 violations et 15 hotspots de la période de
+  nouveau code ont été croisés avec les lignes modifiées par task-402 (`git diff origin/develop...HEAD`) :
+  **0** ne porte sur une ligne de la task. Ils viennent de tasks déjà mergées (scripts Python et k6 du banc de
+  charge, `Dockerfile`, `BaseRepository`) — la Quality Gate reste donc en ERROR sur des conditions héritées.
+- Phase 1 — couverture : lignes nouvelles non couvertes trouvées sur 3 fichiers de la task (branche mot de passe de
+  la sonde, requalification d'une boîte inconnue au registre, route « Mes boîtes » sans compte) + branches
+  défensives : **15 tests ajoutés** (`test(sonar/new)`), new_coverage 97,3 % → **98,1 %**.
+- Phase 1 — issues fixées : 0 (aucune issue sur le code de la task).
+- Phase 2 (legacy) : non jouée (optionnelle) — la dette restante est hors task.
+- Build / tests : ✓ vert. Instable vu en analyse, vert isolément : `SeededThreadsAreCountableTests` (collision
+  d'UID du seed partagé, préexistant).
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline (26/10) | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | ERROR | ERROR (conditions héritées, 0 finding de la task) | → |
+| New coverage | 97,3 % | 98,1 % | +0,8 pt |
+| Bugs | 2 | 2 | 0 |
+| Vulnerabilities | 0 | 0 | 0 |
+| Security hotspots | 15 | 15 | 0 |
+| Code smells | 79 | 72 | −7 |
+| Coverage (projet) | 97,5 % | 98,0 % | +0,5 pt |
+| Duplication | 0,3 % | 0,3 % | 0 |
+| Reliability / Security / Maintainability | D / A / A | D / A / A | → |
