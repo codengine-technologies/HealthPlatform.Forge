@@ -167,6 +167,13 @@ Que la liste, la recherche, la vue patient et les indicateurs de biologie montre
 - Conventions : aucune règle corrigée à la main, `conventions/angular.md` inchangé.
 - Code-only : aucune opération git sur `client-angular` (seul `git fetch origin next`).
 
+## Lint mobile log
+
+- Mode : chaîné, branche `feat/task-377-bio-a-acquitter-liste-recherche-fiables` (`855053a`), arbre propre.
+- Baseline = final (`ng lint`, 333 fichiers) : **0 erreur, 0 warning**, rien d'auto-corrigeable.
+- Itérations : 0. Build et tests verts depuis `/develop` (`npm run build`, `npm test` 1 307/1 307) ; rien modifié par cette étape, aucun commit.
+- Conventions : aucune règle corrigée à la main, `conventions/angular.md` inchangé.
+
 ## E2E log — premier passage (avant la décision A)
 
 | Voie | Jouée / réutilisée | Code | Résultat | HEAD couverts |
@@ -271,4 +278,7 @@ Que la liste, la recherche, la vue patient et les indicateurs de biologie montre
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /develop | ok | 18 min 05 s | 1 (8.0 s) | 2 (30 s) | — | client-mobile 1B/2T, relance mobile (option A) : 855053a pousse ; entrees du matin perdues lors de la synchro du plan de controle |
-| **Total cycle** | | **18 min 05 s** | **1 (8.0 s)** | **2 (30 s)** | **0 (0.0 s)** | |
+| /lint-mobile | ok | 1 min 09 s | — | — | — | 0 erreur, 0 warning |
+| **Total cycle** | | **19 min 15 s** | **1 (8.0 s)** | **2 (30 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : lint ×2 (45 s)
