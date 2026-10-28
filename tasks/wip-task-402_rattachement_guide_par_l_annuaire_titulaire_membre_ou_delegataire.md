@@ -183,7 +183,7 @@ utilisent.
 
 - `api-mail` (pushed) : feat/task-402-rattachement-guide-par-l-annuaire — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-402-rattachement-guide-par-l-annuaire
 - `client-mobile` (pushed) : feat/task-402-rattachement-guide-par-l-annuaire — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-402-rattachement-guide-par-l-annuaire
-- `dtos-mss` (lazy) : aucune branche au /start — `/develop` la crée depuis `origin/develop` au premier contrat touché
+- `dtos-mss` (pushed, lazy) : feat/task-402-rattachement-guide-par-l-annuaire — créée par `/develop` au contrat (6719eeb)
 - `client-angular` (code-only) : la forge écrit sur la branche courante de `Client/Angular/` — `feature/nova-mss-weda-integration` au /start (2026-10-28) ; humain gère branche, commit, push, PR TFS
 
 ## Timings
@@ -193,4 +193,78 @@ utilisent.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 23 s | — | — | — | — |
-| **Total cycle** | | **23 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 3 h 23 min | 15 (12 min 57 s) | 11 (19 min 56 s) | — | dtos-mss 1B/0T, api-mail 12B/7T, client-mobile 2B/2T, client-angular 0B/2T |
+| **Total cycle** | | **3 h 23 min** | **15 (12 min 57 s)** | **11 (19 min 56 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : nuget-wait ×1 (2.5 s), restore ×1 (10 s)
+
+## Develop log
+
+- Repos touched : dtos-mss, api-mail, client-mobile, client-angular (code-only)
+- DTOs published : `HealthPlatform.Dtos.Mss` 548.0.0 → **551.0.0** (run 40681867625) — rôle et type d'adresse
+  sur `MailboxDto`, `DirectoryMailboxDto`, `AttachMailboxRequest.Mode` (défaut `Delegation`), codes
+  `MAILBOX_NOT_IN_DIRECTORY` / `MAILBOX_LISTED_USE_DIRECTORY`
+- Interop published : no interop change
+- Commits :
+  - dtos-mss : 6719eeb feat(dto): rôle et type d'adresse de la boîte, BAL de l'Annuaire, mode de rattachement
+  - api-mail : 7494367e chore(deps) bump 551.0.0 · 437f8d3f feat(mailboxes) · a5cf9187 test(e2e) faux Annuaire,
+    seed, catalogue · f4719f4d fix(mailboxes) bypass sans jeton proxy · ca4db22e test(e2e) BAL publiée non
+    rattachée + budget 30 s du seed rétabli · 593bd96b refactor simplify pass
+  - client-mobile : eea646a feat(mobile) rattachement à deux voies · 0e1c008 test(e2e) E2E-MAILBOX-003/004
+  - client-angular : **non commité** sur `feature/nova-mss-weda-integration` (code-only, l'humain commite et pousse
+    vers TFS) — `libs/mss/src/core/models/mailbox.model.ts`, `core/models/mss-probe.model.ts`,
+    `core/services/mailbox-accounts.service.ts` (+ spec), `ui/attach-mailbox-form/*` (+ nouveau spec),
+    `features/mailbox-management/*` (+ spec), `features/mailbox-onboarding/*` (html + spec),
+    `e2e/mss-e2e/specs/functional.e2e.ts`, `e2e/mss-e2e/support/e2e-backend.ts`, `e2e/mss-e2e/support/session.ts`
+- Local build / test :
+  - dtos-mss : build ✓
+  - api-mail : build ✓ ; suite complète domain 195 ✓, api 1 290 ✓, application 3 776 (1 instable isolé ✓),
+    infrastructure 695 (1 instable isolé ✓), integration 1 038 (16 ignorés) ✓. Instables, verts isolément et sans
+    lien avec la task : `BackgroundSyncServiceCoverageTests.StartSyncAsync_WhenLeaseRenewalFails…` (course sur une
+    `List` du test), `PostgresTenantRegistryClientTests.AttachingAnAddress_NormalisesItsCaseAndSpaces` (budget 3 s
+    du registre sous charge parallèle), `E2eUnattachedXdmTests…`, `SeededThreadsAreCountableTests…` (vus une fois)
+  - client-mobile : build ✓, tests 1 316 → +7 ✓ (ChromeHeadless)
+  - client-angular : `nx test mss-lib` 1 312 → +12 ✓ (le build complet et le lint restent à `/lint-angular`)
+- **Tests d'intégration (règle 1b)** — `MailboxAttachRoleIntegrationTests` (11 tests : vrai pipeline HTTP, vrai
+  `MailboxManagementService`, vrai registre PostgreSQL, vrai `AnnuaireSanteService` sur `FakeAnnuaireSante`, vrai
+  `AuditService` relu dans son canal ; seuls la sonde de l'opérateur et le proxy PSC sont simulés). Chacun vu rouge
+  par mutation, restauration depuis copie + `touch` :
+  - M1 BAL organisationnelle qualifiée titulaire → `AttachFromDirectory_OrganizationalMailbox_IsMember` rouge
+  - M2 adresse hors Annuaire acceptée → `AttachFromDirectory_OfAnAddressNotPublished_Is400…` rouge
+  - M3 sa propre adresse acceptée en délégation → `AttachByTyping_OneOfTheOwnMailboxes_Is400…` rouge
+  - M4 pas de requalification → `Reauthenticate_HolderWhoseAddressLeftTheAnnuaire_TurnsToRequalify` rouge
+  - M5 Annuaire indisponible propagé à la ré-authentification → `Reauthenticate_WhenTheAnnuaireDoesNotAnswer…` rouge
+  - M6 rôle absent de la réponse → `AttachFromDirectory_PersonalMailbox_IsHolder…` rouge
+  - M7 RPPS absent de la trace → `Journal_CarriesTheRoleAndTheRppsOfThePersonWhoActs…` rouge
+  - M8 « déjà rattachée » jamais posé → `Directory_ListsTheMailboxesPublishedForTheSessionRpps…` rouge
+  - M9 type PER ignoré par le parseur → `Directory_ListsTheMailboxesPublishedForTheSessionRpps…` rouge
+  - M10 délégation qualifiée titulaire → `AttachByTyping_AnotherProfessionalsAddress_IsADelegation` rouge
+  - M11 Annuaire incomplet rendu en liste courte → `Directory_WhenTheAnnuaireDoesNotAnswer_Is503…` rouge
+  - M12 « Mes boîtes » sans session PSC → `Directory_WithoutAPscSession_IsRefused401` rouge
+- **Parcours e2e (Step 6b)** — catalogue écrit avant les tests : E2E-MAILBOX-003 v1, E2E-MAILBOX-004 v1,
+  E2E-WEDA-001 v2. Joués sur le banc réel (`--serve-only`) : mobile 2/2 ✓, weda2 3/3 ✓. Preuves par mutation côté
+  client (serveur de dev rechargé à chaud), toutes rouges sur l'assertion prévue puis vertes après restauration :
+  - mobile : choix « Mes boîtes » envoyé en délégation → 003 rouge ; saisie envoyée en « Mes boîtes » → 004 rouge
+  - weda2 : idem 003 et 004 ; présélection supprimée (`data-preselected`) → E2E-WEDA-001 v2 rouge
+- **Défauts trouvés par le banc, corrigés dans la task** :
+  - « Mes boîtes » restait « en chargement » à l'arrivée directe sur la gestion des messageries (session pas encore
+    en ligne à l'initialisation) : lecture déclenchée au passage en ligne (`effect`), test unitaire ajouté sur les
+    deux clients — consigne `conventions/angular.md`.
+  - weda2 envoie le cookie de session du proxy : sous bypass de test, le rattachement demandait un jeton à un proxy
+    absent. Le contrôleur ne le demande plus sous bypass (test unitaire ajouté).
+  - Le budget 30 s du registre au seed (task-399) avait été retiré par le revert de task-401 : rétabli.
+- Écarts assumés, à arbitrer en revue :
+  - la trace porte voie, rôle et RPPS dans `ServerRequest` (`mailbox-attach mode=… role=… actor-rpps=…`) ; les
+    colonnes dédiées à la personne arrivent avec task-405 ;
+  - la sonde s'authentifie par mot de passe sur un serveur sans OAuth2 (banc) : chemin absent de la production.
+- Passe qualité (/simplify) :
+  - Applied & committed : api-mail : 1 fichier (593bd96b, constante du bypass réutilisée)
+  - No change : client-mobile, client-angular (la duplication mobile / weda2 est voulue : deux dépôts)
+  - Skipped (contract) : dtos-mss
+- DOD self-check : build et tests ✓ (4 repos) ; contrat publié et miroirs TS ✓ ; migration auditée (règle 7c : une
+  migration additive, `role` NOT NULL défaut délégataire, `address_type` nullable, descente symétrique, aucune
+  opération fantôme) ✓ ; tests unitaires parseur et rôle ✓ ; 6 lignes d'intégration ✓ (mutations M1-M12) ;
+  écrans et badges + `data-testid` ✓ ; tests de composant ✓ ; banc (faux Annuaire, identités, rôles) ✓ ; 3 scénarios
+  ✓ ; aucun RPPS ni adresse dans les journaux applicatifs (journal d'audit seulement) ✓. **AIPD** : à mettre à jour
+  par l'humain (déféré au HAG).
+- Next step : /sonar task-402

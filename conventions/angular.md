@@ -480,3 +480,14 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   par la reprise de brouillon délégué et la base de « Répondre à tous » ; corrigé par extraction.
   `replacePlaceholders`, déjà à 44 avant la task, passe à 45 : dette antérieure, laissée)
 - **Occurrences** : 1
+
+### lecture-decidee-a-l-init-sur-un-etat-de-session — une lecture conditionnée à la session part au passage en ligne
+- **Règle** : convention projet (défaut fonctionnel trouvé par `/develop` au banc e2e, E2E-MAILBOX-003)
+- **Repos** : les deux
+- **Consigne** : une lecture qui dépend d'un état de session (en ligne / hors ligne, boîte courante) ne se décide
+  **pas** dans `ngOnInit` ou le constructeur sur la valeur du moment : à l'arrivée directe sur un écran (rechargement,
+  lien profond), cet état n'est pas encore résolu. La déclencher dans un `effect` qui observe l'état, une seule fois
+  (drapeau), l'appel lui-même dans `untracked`. Le test de composant couvre l'état d'abord défavorable puis favorable.
+- **Origine** : task-402 (`/develop`, banc e2e : « Mes boîtes » restait « en chargement » sur la gestion des
+  messageries, mobile et weda2)
+- **Occurrences** : 1
