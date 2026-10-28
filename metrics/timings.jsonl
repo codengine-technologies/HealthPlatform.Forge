@@ -7235,3 +7235,8 @@
 {"ts":"2026-10-28T22:33:49+01:00","run_id":"-","type":"step","task":"task-402","step":"review","status":"ok","note":"reprise après pause ; 3 PR ouvertes","iterations":null,"duration_ms":247734}
 {"ts":"2026-10-28T22:34:03+01:00","run_id":"-","type":"step_start","task":"task-402","step":"tech-writer"}
 {"ts":"2026-10-28T22:36:15+01:00","run_id":"-","type":"step","task":"task-402","step":"tech-writer","status":"ok","note":"E020 créé (Mode 2)","iterations":null,"duration_ms":131440}
+{"ts":"2026-10-28T22:36:35+01:00","run_id":"-","type":"cmd","task":"task-377","step":"develop","repo":"client-mobile","kind":"build","label":"","cwd":"Client/Mobile","cmd":"npm run build","duration_ms":8082,"exit_code":0}
+{"ts":"2026-10-28T22:36:51+01:00","run_id":"-","type":"cmd","task":"task-377","step":"develop","repo":"client-mobile","kind":"test","label":"","cwd":"Client/Mobile","cmd":"npm test -- --watch=false --browsers=ChromeHeadless","duration_ms":14811,"exit_code":1}
+{"ts":"2026-10-28T22:37:34+01:00","run_id":"-","type":"cmd","task":"task-377","step":"develop","repo":"client-mobile","kind":"test","label":"rerun","cwd":"Client/Mobile","cmd":"npm test -- --watch=false --browsers=ChromeHeadless","duration_ms":15290,"exit_code":0}
+
+{"ts":"2026-10-28T22:44:10+01:00","run_id":"-","type":"step","task":"task-377","step":"develop","status":"ok","note":"relance mobile (option A) : 855053a pousse ; entrees du matin perdues lors de la synchro du plan de controle","iterations":null,"duration_ms":1085654}
