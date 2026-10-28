@@ -199,7 +199,8 @@ utilisent.
 | /lint-mobile | ok | 1 min 28 s | — | — | — | baseline propre |
 | /e2e | ok | 27 min 20 s | — | — | — | e2e ×3 (24 min 29 s) |
 | /review | ok | 4 min 07 s | 4 (2 min 11 s) | 3 (8 min 53 s) | — | dtos-mss 1B/0T, api-mail 1B/1T, client-mobile 1B/1T, client-angular 1B/1T, reprise après pause ; 3 PR ouvertes |
-| **Total cycle** | | **4 h 52 min** | **23 (21 min 19 s)** | **25 (52 min 15 s)** | **4 (9 min 43 s)** | |
+| /tech-writer | ok | 2 min 11 s | — | — | — | E020 créé (Mode 2) |
+| **Total cycle** | | **4 h 54 min** | **23 (21 min 19 s)** | **25 (52 min 15 s)** | **4 (9 min 43 s)** | |
 
 Autres commandes mesurées : lint ×2 (2 min 03 s), nuget-wait ×1 (2.5 s), restore ×1 (10 s)
 
@@ -524,3 +525,15 @@ l'**AIPD** (nouvelle source Annuaire Santé, rôle de délégataire) et l'**auth
 | « Mes boîtes » : type et « déjà rattachée » | M8, M9 |
 | « Mes boîtes » : Annuaire incomplet → 503 | M11 |
 | « Mes boîtes » sans session PSC → 401 | M12 |
+
+## Merged
+
+- Le 2026-10-28, sur `/merge task-402 --i-tested` (test manuel attesté par l'humain). Squash-merge, dans l'ordre
+  topologique :
+  - `dtos-mss` : c82484db (PR #52) — CI `develop` ✓ https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/actions/runs/40774006865
+  - `api-mail` : cf639c76 (PR #321) — CI `develop` ✓ https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/40774027564
+  - `client-mobile` : aaa5ffa3 (PR #111) — CI `develop` ✓ https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/40774049374
+- Label `awaiting-human-merge` retiré. Branches `feat/task-402-rattachement-guide-par-l-annuaire` supprimées en local
+  et sur GitHub, sur les trois dépôts.
+- `client-angular` : managed manually by the human.
+- Staging : aucune branche créée pour ce run (arrêté après task-402), rien à supprimer.
