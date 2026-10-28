@@ -198,7 +198,8 @@ utilisent.
 | /lint-angular | ok | 13 min 45 s | 1 (1 min 39 s) | 1 (2 min 53 s) | — | 2 itération(s), client-angular 1B/1T |
 | /lint-mobile | ok | 1 min 28 s | — | — | — | baseline propre |
 | /e2e | ok | 27 min 20 s | — | — | — | e2e ×3 (24 min 29 s) |
-| **Total cycle** | | **4 h 47 min** | **19 (19 min 07 s)** | **22 (43 min 21 s)** | **4 (9 min 43 s)** | |
+| /review | skipped | 8 min 06 s | 3 (1 min 53 s) | 2 (7 min 00 s) | — | dtos-mss 1B/0T, api-mail 1B/1T, client-mobile 1B/1T, pause demandée par l'humain — validation faite (api-mail, dtos, mobile verts), revue APPROVED, PR non ouvertes |
+| **Total cycle** | | **4 h 56 min** | **22 (21 min 01 s)** | **24 (50 min 22 s)** | **4 (9 min 43 s)** | |
 
 Autres commandes mesurées : lint ×2 (2 min 03 s), nuget-wait ×1 (2.5 s), restore ×1 (10 s)
 
@@ -423,3 +424,39 @@ Divergence E2E-MAILBOX-002 [angular] signalée « à retirer » par la porte (d�
 - E2E-MAILBOX-002 [angular] — le code weda2 de task-378 (écran de panne à l'entrée et son test) n'est pas encore livré sur la branche weda2 ; divergence décidée par l'humain le 2026-10-25 — résorbée par task-395 — **à retirer** : le client est revenu à la version du catalogue
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## Review log — EN PAUSE (2026-10-28, demande de l'humain)
+
+> **Point de reprise.** Le run `/forge 402, 403, 404, 405` est arrêté après task-402, à la demande de
+> l'humain : task-403, task-404 et task-405 ne sont **pas** lancées (toujours `todo-*`). Reprendre par
+> `/review task-402` : l'étape se rejoue entière, elle est idempotente jusqu'à l'ouverture des PR.
+
+**Déjà fait à /review (2026-10-28) :**
+- Branches `feat/task-402-rattachement-guide-par-l-annuaire` sur Dtos, api-mail et mobile : propres, poussées,
+  à jour avec `origin/develop` (0 commit de retard).
+- Build et tests verts :
+  - `dtos-mss` : build, 0 erreur ;
+  - `api-mail` : build 0 erreur ; tests verts (domain 195, infrastructure 697, application 3 783,
+    api 1 295, intégration 1 022 dont 16 ignorés) ;
+  - `client-mobile` : build OK, 1 317 tests verts.
+- Verrou règle 1b : les 12 comportements atteignables par un endpoint ont chacun leur test d'intégration
+  (`MailboxAttachRoleIntegrationTests`), vu rouge par mutation (M1–M12, `## Develop log`).
+- Verrou e2e : `## E2E log` vert.
+- Revue de code : **APPROVED**, aucun point bloquant. Deux suggestions :
+  - la sonde à mot de passe (`MssAccountOnboardingService`) réutilise le mot de passe du contexte sur un
+    serveur sans OAuth2. Absent de la production (tout en XOAUTH2), mais à garder hors de tout serveur
+    réel à mot de passe ;
+  - à la ré-authentification, un Annuaire injoignable garde le rôle : ce choix est voulu, il n'est pas
+    tracé autrement que dans les journaux.
+
+**Reste à faire :**
+1. `client-angular` (code-only, branche `feature/nova-mss-weda-integration`, 17 fichiers non commités) :
+   build et tests weda2 (`nx affected`, comme `/lint-angular`). La dernière validation verte remonte à
+   `/lint-angular` (1 313 tests).
+2. Ouvrir les PR Dtos, api-mail et mobile, avec le label `awaiting-human-merge`. Le corps de chaque PR
+   reprend : KPIs Sonar (api-mail), `## E2E log`, revue de code et Manual Test Plan.
+3. `## PRs` : liste des fichiers Angular à commiter par l'humain sur TFS.
+4. `task-file.sh move task-402 done`, puis `/tech-writer E020`.
+5. Agréger sur `forge/staging-task-402-405-20261028` (Dtos, api-mail, mobile). Le nom de la branche
+   staging reste à décider à la reprise, puisque le run ne couvre plus que task-402.
+6. Rapport de fin de cycle (Sonar, e2e, `## Timings`, « Amélioration continue »).
