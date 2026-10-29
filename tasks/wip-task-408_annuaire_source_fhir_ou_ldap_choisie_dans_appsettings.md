@@ -216,7 +216,10 @@ C'est la configuration de l'environnement qui le permet, pas un faux annuaire.
 | /start | ok | 10 s | — | — | — | — |
 | /develop | ok | 21 min 03 s | 6 (1 min 10 s) | 5 (5 min 46 s) | — | api-mail 4B/1T, client-mobile 1B/1T, client-angular 1B/3T |
 | /sonar | ok | 9 min 10 s | 1 (18 s) | 5 (6 min 56 s) | 2 (40 s) | 1 itération(s), api-mail 1B/5T |
-| **Total cycle** | | **30 min 23 s** | **7 (1 min 28 s)** | **10 (12 min 43 s)** | **2 (40 s)** | |
+| /lint-angular | ok | 4 min 16 s | 1 (19 s) | 1 (1 min 39 s) | — | 1 itération(s), client-angular 1B/1T |
+| **Total cycle** | | **34 min 40 s** | **8 (1 min 48 s)** | **11 (14 min 22 s)** | **2 (40 s)** | |
+
+Autres commandes mesurées : lint ×2 (42 s)
 
 ## Develop log
 
@@ -335,3 +338,9 @@ C'est la configuration de l'environnement qui le permet, pas un faux annuaire.
 - **Tests** (`nx affected -t test`) : ✓ 12 projets.
 - **Final** : 0 erreur, 144 avertissements (préexistants). Itérations : 1 / 5.
 - `conventions/angular.md` : inchangé (correction faite par l'auto-fixer, gratuite).
+
+## Lint mobile log
+
+- `client-mobile`, branche `feat/task-408-annuaire-source-fhir-ou-ldap-choisie` (`0b8b98b`).
+- **Baseline** : `All files pass linting` — 0 erreur, 0 avertissement. Aucune itération, aucun commit.
+- Build / tests : inchangés depuis la validation de `/develop` (1 348 / 1 348), arbre identique, pas de rebuild.
