@@ -2,11 +2,62 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E020-boite-partagee-une-base-par-boite-tout.md](E020-boite-partagee-une-base-par-boite-tout.md).
-> **Dernière mise à jour** : 2026-10-29 (v1.2)
+> **Dernière mise à jour** : 2026-10-29 (v1.3)
 
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.3 — Tout acte imputé à son auteur réel — task-405
+
+- **Task** : task-405, statut `done`. `/review` APPROVED le 2026-10-29, run `/forge` `forge-20261029-403-405`.
+  **Empilée sur task-404**, elle-même sur task-403 : merger dans cet ordre.
+- **PRs** (label `awaiting-human-merge`) : `dtos-mss` #55, `api-mail` #325, `client-mobile` #115 ;
+  `client-angular` code-only, non commité sur `feature/nova-mss-weda-integration`.
+- **dtos-mss** : 560.0.0 puis **561.0.0**.
+  - `ActorDto` ;
+  - `AuditActionType` 44 à 69, à valeurs explicites ;
+  - `MssAuditTraceDto.Actor` / `IsSystemAct` / `MailboxAddress`, `AuditTraceFilterDto.ActorRpps` ;
+  - `BiologyAckDto.CreatedBy`, `MailMedicalDocumentDto.ManualAttachedBy`.
+- **api-mail** :
+  - **Imputation** : `AuditService.Impute` remplit le compte, le RPPS, le nom, le prénom, le rôle et la
+    boîte. Sans compte, la trace est un acte système (`is_system_act`).
+  - **Nom** : `PersonNameResolver` lit la route `GET v1/auth/userinfo` du proxy PSC, une fois par
+    session. Le nom est enregistré sur le rattachement (`person_first_name` / `person_last_name`),
+    ce qui impute le titulaire hors ligne. Au banc, les en-têtes `Client-First-Name` /
+    `Client-Last-Name` en tiennent lieu.
+  - **Lecture par boîte** : migration `TenantDb/AddAuditActor`.
+    - La RLS `audit_traces_mailbox_read` porte sur `mss.mailbox_id`, posé côté serveur.
+    - Un déclencheur `SECURITY DEFINER` déduit la boîte d'une trace émise avant sa résolution.
+    - Les traces existantes sont reprises par rattachement.
+  - **Filtres serveur** : `ActionType`, `Search` (`ILIKE` échappé sur huit colonnes) et `ActorRpps`.
+  - **Tout acte** : chacune des 158 actions porte `[Audited]` (filtre d'action), `[TracedInCode]` ou
+    `[TraceExempt("raison")]`. `EveryControllerActionIsTracedTests` l'impose.
+  - **Auteur réel** : migration `MailDb/AddActorColumns`, avec `BiologyAcks.CreatedBy*` et
+    `MailMedicalDocuments.ManualAttachedBy*`.
+- **client-mobile** (c354540) : auteur de l'acquittement et du rattachement, E2E-BIO-001 v2.
+- **client-angular** (weda2, code-only) :
+  - miroir `AuditActionType` 44 à 69 ;
+  - colonne « Qui » et filtre par personne de l'écran Audit ;
+  - auteurs de l'acquittement et du rattachement ;
+  - `getAuditTraces` envoie `actorRpps` (défaut attrapé par E2E-AUDIT-001) ;
+  - E2E-AUDIT-001 v1, E2E-BIO-001 v2.
+- **Règle 1b** : `AuditImputationIntegrationTests` (6 tests, vrai journal) et deux cas d'usage
+  Dovecot (suppression, étiquette, acquittement, rattachement par le délégataire, lus par le
+  titulaire). Mutations M1 à M10 vues rouges.
+- **Changement de règle** : `BLOQUANT_Deux_PS_sur_la_meme_adresse_…` est inversé. Toute personne
+  rattachée lit tous les actes de la boîte (décision humaine du 2026-10-28).
+- **Validation** : api-mail 202 / 3 831 (+ 9) / 699 / 1 306 / 1 055 (16 ignorés) ; mobile 1 343 ;
+  weda2 1 369 + 2 653.
+- **Sonar** : QG OK ; new coverage 97,0 % → 96,8 % ; 10 issues ramenées à 0 (S3776, S3604 ×3,
+  S3459/S1144 ×4, SYSLIB1045, CA1859).
+- **e2e** : mobile 52 verts, weda2 63 verts, parité verte.
+- **À arbitrer** :
+  - la civilité « Dr » n'est pas portée par `ActorDto` ;
+  - relire un message déjà lu n'est pas retracé (exemption avec raison) ;
+  - le filtre par personne est une saisie du RPPS ;
+  - `Search` n'a pas d'index trigramme ;
+  - l'AIPD est à mettre à jour.
 
 ### v1.2 — Une base par boîte — task-404
 
@@ -234,14 +285,17 @@
 | Registre des boîtes | `Api/Mail/src/Infrastructure/Migrations/TenantDb/20261029120000_AddMailboxes.cs` | Une adresse, une base (task-404) |
 | Personne dans la base de boîte | `Api/Mail/src/Infrastructure/Repositories/MailDb/BaseRepository.cs` | Boîte / personne (task-404) |
 | Identité d'expéditeur de la boîte | `Api/Mail/src/Application/Services/Mailboxes/MailboxSenderIdentityService.cs` | Titulaire seul (task-404) |
+| Imputation des actes | `Api/Mail/src/Application/Services/Implementation/AuditService.cs` | Personne réelle, acte système (task-405) |
+| Nom de la personne | `Api/Mail/src/Application/Services/Psc/PersonNameResolver.cs` | `userinfo` du proxy PSC (task-405) |
+| Marques d'audit | `Api/Mail/src/Api/Audit/AuditAttributes.cs` | `[Audited]`, `[TracedInCode]`, `[TraceExempt]` (task-405) |
 
 ---
 
 ## Annexe B — Inventaire fonctionnel (2026-10-29)
 
 - Routes ajoutées : 3 (`GET /api/v1/account/mailboxes/directory` ; `POST|DELETE /api/v1/testing/operator-refusals`, banc seulement ; `GET|PUT /api/v1/account/mailboxes/current/sender-identity`).
-- Migrations du registre : 2 (`AddMailboxRole`, `AddMailboxes`) ; base de boîte : 1 (`AddUserAuthenticationSubject`).
-- Scénarios e2e : 4 ajoutés (E2E-MAILBOX-003, E2E-MAILBOX-004, E2E-MAILBOX-005, E2E-SHARED-001), 1 versionné (E2E-WEDA-001 v2).
+- Migrations du registre : 3 (`AddMailboxRole`, `AddMailboxes`, `AddAuditActor`) ; base de boîte : 2 (`AddUserAuthenticationSubject`, `AddActorColumns`).
+- Scénarios e2e : 5 ajoutés (E2E-MAILBOX-003, E2E-MAILBOX-004, E2E-MAILBOX-005, E2E-SHARED-001, E2E-AUDIT-001), 2 versionnés (E2E-WEDA-001 v2, E2E-BIO-001 v2).
 
 ---
 
@@ -252,5 +306,5 @@
 | task-402 | done (PR en attente de merge) | Rattachement guidé par l'Annuaire Santé ; rôle titulaire, membre, délégataire ou « à requalifier » | RG-E020-03 ; RG-E020-06 (partiel) |
 | task-403 | done (PR en attente de merge) | Accès à la base subordonné au verdict de l'opérateur ; hors-ligne du titulaire seul | RG-E020-04, RG-E020-05 ; RG-E020-06 (partiel) |
 | task-404 | done (PR en attente de merge) | Une base par boîte ; données de la personne séparées ; identité d'expéditeur de la boîte | RG-E020-01, RG-E020-02 |
-| task-405 | todo | Tout acte imputé à son auteur réel ; journal lisible de toute la boîte | RG-E020-06, RG-E020-07 |
+| task-405 | done (PR en attente de merge) | Tout acte imputé à son auteur réel ; journal lisible de toute la boîte | RG-E020-06, RG-E020-07 |
 | task-406 | todo | Mesure de charge d'une boîte partagée | — |

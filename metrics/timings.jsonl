@@ -7509,3 +7509,5 @@
 {"ts":"2026-10-29T18:30:37+01:00","run_id":"forge-20261029-403-405","type":"cmd","task":"task-405","step":"review","repo":"client-mobile","kind":"build","label":"","cwd":"Client/Mobile","cmd":"npm run build","duration_ms":7269,"exit_code":0}
 {"ts":"2026-10-29T18:30:53+01:00","run_id":"forge-20261029-403-405","type":"cmd","task":"task-405","step":"review","repo":"client-mobile","kind":"test","label":"","cwd":"Client/Mobile","cmd":"npm test -- --watch=false --browsers=ChromeHeadless","duration_ms":15328,"exit_code":0}
 {"ts":"2026-10-29T18:32:32+01:00","run_id":"forge-20261029-403-405","type":"step","task":"task-405","step":"review","status":"ok","note":"","iterations":null,"duration_ms":167930}
+{"ts":"2026-10-29T18:32:57+01:00","run_id":"forge-20261029-403-405","type":"step_start","task":"task-405","step":"tech-writer"}
+{"ts":"2026-10-29T18:33:36+01:00","run_id":"forge-20261029-403-405","type":"step","task":"task-405","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":38269}

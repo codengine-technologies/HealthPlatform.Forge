@@ -1,8 +1,8 @@
 # E020 — Boîte partagée : une base par boîte, tout acte imputé
 
-> **Statut** : 🟡 En cours — 3 fonctionnalités sur 5 livrées, en attente de recette
+> **Statut** : 🟡 En cours — 4 fonctionnalités sur 5 livrées, en attente de recette
 > **Modèle** : task-driven
-> **Version** : 1.2
+> **Version** : 1.3
 > **Auteur** : PO forge
 > **Audience** : PO, direction, équipe produit — la vue ingénierie vit dans [E020-Changelogs.md](E020-Changelogs.md)
 > **Dernière mise à jour** : 2026-10-29
@@ -79,7 +79,7 @@ titulaire, le journal dit que c'est le délégataire qui l'a supprimé.
 | E020-F001 | Rattachement guidé par l'Annuaire Santé | Choisir ses boîtes dans la liste « Mes boîtes » publiée pour lui, ou ajouter une boîte qui lui est déléguée ; voir son rôle sur chaque boîte | task-402 | 🟢 Livrée, en attente de recette |
 | E020-F002 | Accès ouvert par l'opérateur | Ne lire une boîte que si l'opérateur lui en a ouvert l'accès récemment ; le titulaire seul garde la lecture hors ligne | task-403 | 🟢 Livrée, en attente de recette |
 | E020-F003 | Une base par boîte | Travailler à plusieurs dans la même boîte : rattachements patient, étiquettes, acquittements et classements partagés ; réglages et signatures restent personnels | task-404 | 🟢 Livrée, en attente de recette |
-| E020-F004 | Tout acte imputé à son auteur | Lire, dans le journal de la boîte, qui a fait quoi, quand et sur quel objet | task-405 | ⏳ À faire |
+| E020-F004 | Tout acte imputé à son auteur | Lire, dans le journal de la boîte, qui a fait quoi, quand et sur quel objet | task-405 | 🟢 Livrée, en attente de recette |
 | E020-F005 | Tenue en charge d'une boîte partagée | Garder une messagerie réactive quand plusieurs personnes travaillent dans la même boîte | task-406 | ⏳ À faire |
 
 > Le bilan d'avancement par feature (statut, couverture, tasks contributives) est consigné en fin de
@@ -140,8 +140,8 @@ graph LR
 | RG-E020-03 | Le rôle vient de l'Annuaire Santé | Titulaire ou membre : uniquement par choix dans la liste publiée par l'Annuaire pour le professionnel. Délégataire : uniquement par saisie de l'adresse. La saisie n'ouvre jamais le rôle de titulaire. Le rôle est revérifié à chaque nouvelle authentification. | ✅ Implémenté (task-402) |
 | RG-E020-04 | L'opérateur ouvre l'accès | Lire ou écrire les données d'une boîte exige un avis favorable récent de l'opérateur MSSanté. Un refus ou une révocation ferment tout accès. | ✅ Implémenté (task-403) |
 | RG-E020-05 | Hors ligne réservé au titulaire | Seul le titulaire garde la lecture hors ligne de sa boîte personnelle. Un délégataire, un membre ou une boîte « à requalifier » n'ont pas de hors-ligne. | ✅ Implémenté (task-403) |
-| RG-E020-06 | Tout acte imputé à son auteur réel | Chaque action est tracée au nom de la personne qui l'a faite : identité, rôle, boîte, instant, action et objet. Jamais au nom de la boîte ni du titulaire. Un acte automatique est tracé comme acte système. | 🟡 Partiel (task-402 : rattachements ; task-403 : refus et suspensions d'accès) |
-| RG-E020-07 | Le journal est lisible de toute la boîte | Toute personne rattachée à une boîte voit tous les actes faits sur cette boîte. Conservation : 10 ans pour les accès aux données de santé. | ⏳ Prévu (task-405) |
+| RG-E020-06 | Tout acte imputé à son auteur réel | Chaque action est tracée au nom de la personne qui l'a faite : identité, rôle, boîte, instant, action et objet. Jamais au nom de la boîte ni du titulaire. Un acte automatique est tracé comme acte système. | ✅ Implémenté (task-405 ; task-402 et task-403 pour les rattachements et les refus d'accès) |
+| RG-E020-07 | Le journal est lisible de toute la boîte | Toute personne rattachée à une boîte voit tous les actes faits sur cette boîte. Conservation : 10 ans pour les accès aux données de santé. | ✅ Implémenté (task-405) |
 
 ---
 
@@ -189,10 +189,10 @@ graph LR
 | E020-F001 — Rattachement guidé par l'Annuaire Santé | 🟢 Livrée, en attente de recette | 100 % | task-402 |
 | E020-F002 — Accès ouvert par l'opérateur | 🟢 Livrée, en attente de recette | 100 % | task-403 |
 | E020-F003 — Une base par boîte | 🟢 Livrée, en attente de recette | 100 % | task-404 |
-| E020-F004 — Tout acte imputé à son auteur | ⏳ À faire | 0 % | task-405 |
+| E020-F004 — Tout acte imputé à son auteur | 🟢 Livrée, en attente de recette | 100 % | task-405 |
 | E020-F005 — Tenue en charge d'une boîte partagée | ⏳ À faire | 0 % | task-406 |
 
-**Couverture EPIC consolidée : 60 %** (3 fonctionnalités livrées sur 5, en attente de recette).
+**Couverture EPIC consolidée : 80 %** (4 fonctionnalités livrées sur 5, en attente de recette).
 
 ---
 
@@ -213,6 +213,11 @@ graph LR
   les contacts et les modèles. Les réglages, les signatures et les actions en attente restent
   propres à chacun. Le nom de l'expéditeur est celui de la boîte : seul son titulaire le modifie
   (task-404).
+- v1.3 — Tout acte imputé à son auteur. Le journal de la boîte dit qui a fait quoi : le nom,
+  le RPPS et le rôle de la personne, ou « acte système ». Toute personne rattachée lit tout le
+  journal de la boîte, et peut le filtrer par personne, par type d'acte ou par recherche libre.
+  L'acquittement d'un résultat et le rattachement d'un document affichent leur auteur réel
+  (task-405).
 
 ### Conformité réglementaire
 
@@ -224,6 +229,9 @@ graph LR
   pas (référentiel socle MSSanté #2) (task-403).
 - v1.2 — Un délégataire n'envoie jamais son propre nom sur l'adresse du délégant : le nom affiché à
   l'envoi est celui de la boîte (référentiel ANS clients MSSanté, ECO.1.2.9) (task-404).
+- v1.3 — Imputabilité PGSSI-S : tout acte est tracé au nom de la personne réelle, jamais au nom
+  de la boîte ni du titulaire. Conservation inchangée : 10 ans pour les accès aux données de santé
+  (task-405).
 
 ### Sécurité
 
@@ -234,6 +242,9 @@ graph LR
   rôle, la boîte et la cause, et conservés comme des accès aux données de santé (task-403).
 - v1.2 — Les données de santé d'une boîte n'existent plus qu'en un seul exemplaire. Révoquer un
   délégataire ne laisse plus de copie derrière lui (task-404).
+- v1.3 — Un tiers qui n'est pas rattaché à la boîte ne lit rien de son journal. Chaque action
+  de l'application est tracée, ou exemptée avec sa raison, et un contrôle automatique l'impose
+  (task-405).
 
 ---
 
