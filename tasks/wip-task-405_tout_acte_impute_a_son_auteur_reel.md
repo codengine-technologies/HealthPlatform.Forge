@@ -160,18 +160,130 @@ Toute personne rattachée lit tout le journal de la boîte.
 
 ## Branches
 
-- `dtos-mss` (lazy) : aucune branche au /start — `/develop` la crée au premier contrat touché
-- `client-angular` (code-only) : la forge écrit sur la branche courante de `Client/Angular/` ;
-  l'humain gère branche, commit, push et PR TFS
-
-## Branches
-
 > **Empilée sur task-404** (elle-même sur task-403) : les branches partent de `origin/develop` et fusionnent `feat/task-404-une-base-par-boite`. Les PRs le disent : à merger **après** celles de task-403 puis de task-404.
 
 - `api-mail` (pushed) : feat/task-405-tout-acte-impute-a-son-auteur-reel — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-405-tout-acte-impute-a-son-auteur-reel
 - `client-mobile` (pushed) : feat/task-405-tout-acte-impute-a-son-auteur-reel — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-405-tout-acte-impute-a-son-auteur-reel
 - `dtos-mss` (lazy) : aucune branche au /start ; `/develop` la crée au premier contrat touché, depuis la branche de task-404
 - `client-angular` (code-only) : branche courante `feature/nova-mss-weda-integration`, qui porte déjà les fichiers non commités de task-403 et task-404. L'humain gère la branche, le commit, le push et la PR TFS
+
+## Develop log
+
+### Conception
+
+- **Qui** — `AuditService.Impute` complète chaque trace avec la personne qui agit, et la boîte n'est jamais l'auteur :
+  - compte (`sub` Keycloak) ;
+  - RPPS : celui de la session PSC, sinon celui du rattachement ;
+  - nom et prénom ;
+  - rôle sur la boîte ;
+  - boîte (`mailbox_id`, adresse).
+
+  Sans compte (consommateur du bus, tâche de fond sans personne, purge), la trace est un **acte système** explicite (`is_system_act`).
+- **Nom et prénom** — `PersonNameResolver` :
+  - en ligne, il lit la route `GET v1/auth/userinfo` du proxy PSC une fois par session (cache par session, 12 h) ;
+  - il enregistre le nom sur le rattachement (`mss_accounts.person_first_name` / `person_last_name`) quand il change ;
+  - hors ligne, il rend le nom enregistré : c'est l'imputation du titulaire hors ligne ;
+  - au banc, les en-têtes `Client-First-Name` / `Client-Last-Name` du contournement tiennent lieu de `userinfo`.
+
+  Jamais bloquant : sans nom, le RPPS suffit.
+- **Middleware** : la boîte (`MailboxId`) et le rôle viennent du rattachement retenu ; le nom vient du résolveur. `CopyIdentityTo` les transmet aux tâches de fond. Un message du bus ne les transmet pas, d'où l'acte système.
+- **Lecture par boîte** :
+  - migration `TenantDb/20261029130000_AddAuditActor` : la politique `audit_traces_mailbox_read` remplace `audit_traces_tenant_read` (`mailbox_id = mss.mailbox_id`, posé côté serveur depuis la boîte résolue) ;
+  - un déclencheur `BEFORE INSERT` (`SECURITY DEFINER`) déduit la boîte du rattachement pour les traces émises avant sa résolution (rattachement, refus d'accès) ;
+  - les traces existantes sont reprises par rattachement ;
+  - toute personne rattachée lit tout le journal de la boîte, et un tiers ne lit rien.
+- **Filtres côté serveur** : `ActionType` et `Search` (envoyés par weda2 et jusqu'ici ignorés) ; nouveau filtre par personne (`ActorRpps`). `Search` porte sur l'objet, l'expéditeur, les destinataires, le dossier, le `Message-ID`, le nom et le RPPS de la personne, avec échappement de `%` et `_`.
+- **Tout acte** — chaque action de contrôleur (158) porte exactement une marque :
+  - `[Audited(type)]` : un filtre d'action trace l'acte à son issue, avec le dossier, l'UID et la route assainie ;
+  - `[TracedInCode(types)]` : l'action ou son service émet la trace ;
+  - `[TraceExempt("raison")]` : aucune donnée de santé lue ni rien modifié, ou lecture tracée par un autre acte.
+
+  Un test d'architecture l'impose, et vérifie que chaque type déclaré « tracé dans le code » apparaît dans les sources. Il a trouvé dès sa première exécution une action oubliée (`SyncController.StartSyncAsync`).
+- **Contrat** : `dtos-mss` 560.0.0 puis **561.0.0**.
+  - `ActorDto` ; types d'actes 44 à 62 (étiquette, contact, groupe, modèle, signature, réglage, recherche, fiche patient, question à l'IA, identité d'expéditeur) ;
+  - 63 à 69 (dossiers créés, renommés ou supprimés, export du carnet, envoi en attente annulé, opposition du patient, décision sur un doublon), ajoutés au classement des 158 actions pour tenir la règle « tout » ;
+  - `MssAuditTraceDto.Actor` / `IsSystemAct` / `MailboxAddress`, `AuditTraceFilterDto.ActorRpps`, `BiologyAckDto.CreatedBy`, `MailMedicalDocumentDto.ManualAttachedBy`.
+- **Auteur réel sur l'objet** : migration `MailDb/20261029130000_AddActorColumns`. `BiologyAcks.CreatedBy*` et `MailMedicalDocuments.ManualAttachedBy*` (RPPS, prénom, nom, rôle) sont écrits à l'acquittement et au rattachement, effacés au détachement, et projetés dans tous les DTO de document.
+- **Conservation** : les nouveaux types tombent dans `HealthDataAccess` (3 653 jours), par défaut d'`AuditRetentionPolicy`.
+
+### Commits
+
+| Repo | Commit | Contenu |
+|---|---|---|
+| dtos-mss | b864228 | ActorDto, types 44 à 62, auteur et boîte sur la trace, filtre par personne, auteurs → 560.0.0 |
+| dtos-mss | 06dbada | types 63 à 69 → 561.0.0 |
+| api-mail | 0c654a48 | fusion de la branche task-404 (empilement) |
+| api-mail | b36dec76, 1bbe417d | bump `HealthPlatform.Dtos.Mss` 560.0.0 puis 561.0.0 |
+| api-mail | 36df6617 | imputation, lecture par boîte, filtres, marques d'audit, auteurs, migrations |
+| api-mail | 32378f35 | test d'architecture, tests d'intégration (M1 à M10), tests du journal passés à la lecture par boîte |
+| api-mail | cc766680 | catalogue E2E-AUDIT-001 v1 et E2E-BIO-001 v2, nom de session au manifeste de seed |
+| client-mobile | e2a9d49 | fusion de la branche task-404 (empilement) |
+| client-mobile | c354540 | auteur réel de l'acquittement et du rattachement, E2E-BIO-001 v2 |
+
+### Règle 1b — comportement → test d'intégration → preuve rouge
+
+Chaque mutation a été réinjectée, vue rouge, puis restaurée.
+
+| Comportement | Test | Mutation vue rouge |
+|---|---|---|
+| un acte du délégataire est lu par le titulaire avec RPPS, nom, prénom, rôle et détails techniques (navigateur) | `AuditImputationIntegrationTests.AnActOfTheDelegate_IsReadByTheHolder_WithTheDelegatesIdentityAndTechnicalDetails` | **M1** : `Impute` retiré |
+| le délégataire supprime un message ; le titulaire lit au journal que c'est le délégataire (vrai IMAP, vrai `MailController`) | `FolderOperationsEndToEndTests.TheDelegateDeletesAMessage_TheHolderReadsInTheJournalThatTheDelegateDidIt` | **M1** |
+| un tiers non rattaché ne lit rien de la boîte (liste, et 404 sur le détail) | `AThirdPartyNotAttached_ReadsNoTraceOfTheMailbox` | **M2** : politique RLS `USING (true)` |
+| chaque nouveau type d'acte est lu au journal après sa route (contact, groupe, modèle, signature, réglage, identité d'expéditeur, fiche patient, recherche, question à l'IA) | `EveryNewKindOfAct_IsReadInTheJournalAfterItsRoute` | **M6** : filtre `[Audited]` muet |
+| étiquette posée par le délégataire, lue au journal par le titulaire | `FolderOperationsEndToEndTests.TheDelegatesTagAndAcknowledgement_…` | **M1** |
+| filtres `ActionType`, `Search` et par personne appliqués par le serveur | `TheFilters_ActionTypeSearchAndPerson_AreAppliedByTheServer` | **M3** : filtre `ActionType` retiré |
+| acte d'un consommateur du bus → trace système sans personne (et boîte déduite par le déclencheur) | `AnActWithoutPerson_IsTracedAsASystemAct` | **M4** : `IsSystemAct` toujours faux |
+| titulaire hors ligne → RPPS, nom et prénom enregistrés à son rattachement | `TheHolderOffline_IsImputedWithTheNameRecordedAtHisAttachment` | **M5** : nom enregistré ignoré |
+| acquittement par le délégataire → auteur réel lu dans la réponse de la boîte côté titulaire | `FolderOperationsEndToEndTests.TheDelegatesTagAndAcknowledgement_…` | **M7** : `CreatedByRpps` non écrit |
+| rattachement manuel par le délégataire → auteur réel lu côté titulaire | idem | **M9** : `ManualAttachedByRpps` non écrit |
+| toute action est tracée ou exemptée avec sa raison | `EveryControllerActionIsTracedTests` (4 tests) | **M8** : `[Audited(TagAdded)]` retiré |
+
+Défaut trouvé par ces tests et corrigé : la projection `MedicalDocumentTagListProjection` (vue par étiquette) omettait l'auteur du rattachement.
+
+Clients :
+- weda2 : N1 à N5 vues rouges (acte système, filtre par personne envoyé, auteur de l'acquittement, auteur du rattachement, rôle traduit) ;
+- mobile : M1 à M3 vues rouges (auteur de l'acquittement, auteur du rattachement, rôle traduit).
+
+### Tests existants changés par la règle 14 (lecture par boîte)
+
+- `AuditJournalIntegrationTests.BLOQUANT_Deux_PS_sur_la_meme_adresse_organisationnelle_ne_se_voient_pas` est **inversé** en `BLOQUANT_Deux_PS_sur_la_meme_adresse_lisent_tous_les_actes_de_la_boite_et_eux_seuls`. C'est la décision humaine n°3 de task-405 (toute personne rattachée lit tous les actes de la boîte) ; l'isolation entre boîtes reste exigée.
+- `MailboxAccessLockIntegrationTests` (task-403) affirmait que le titulaire ne lit pas la suspension de son délégataire : il la lit désormais.
+- Lecteur, tri et journal : les traces de test portent la boîte de même identifiant que leur rattachement ; le helper RLS pose `mss.mailbox_id`.
+- Listes blanches des colonnes du registre (+ `person_first_name`, `person_last_name`), contrat figé de l'enum (71 membres).
+
+### Migrations (règle 7c)
+
+- `TenantDb/20261029130000_AddAuditActor` :
+  - `mss_accounts` : deux colonnes nullables ;
+  - `audit_traces` : huit colonnes (`ADD COLUMN IF NOT EXISTS`, propagées aux partitions) ;
+  - index `(mailbox_id, timestamp)`, reprise par rattachement, fonction et déclencheur, remplacement de la politique de lecture.
+
+  Le Down est symétrique et rétablit la politique par rattachement. Pas d'opération fantôme. FluentMigrator n'a ni snapshot ni Designer.
+- `MailDb/20261029130000_AddActorColumns` : huit colonnes nullables, Down symétrique.
+
+### Passe qualité (§Q)
+
+- Contrôles mécaniques §Q 2b joués **tels qu'écrits** sur le diff de la task : un S125 attrapé avant le commit (commentaire du lecteur), corrigé ; aucun S4457, xUnit1045 ni xUnit2032. Compteur S125 à 22 dans `conventions/csharp.md`.
+- dtos-mss : aucune passe (porteur de contrat).
+
+### Validation
+
+- **api-mail** : build vert ; domain 202, infrastructure 699, api 1 306, application 3 831, intégration 1 055 verts (16 ignorés).
+- **client-mobile** : build vert, 1 343 specs, lint 0 erreur, typecheck e2e propre.
+- **client-angular** (code-only) : `nx build weda2` vert, 1 367 + 2 653 verts, ESLint 0 erreur sur les fichiers touchés, typecheck e2e propre.
+
+### Écarts assumés
+
+- La civilité (« Dr ») n'est pas affichée. Le contrat `ActorDto` ne la porte pas, alors que la route `userinfo` la rend à part (`civilityCode`).
+- Le filtre par personne de weda2 est une saisie du RPPS, pas une liste des personnes de la boîte.
+- Les lectures de listes d'en-têtes, du contenu d'un message et du carnet sont exemptées, raison donnée. La lecture d'un message est tracée à son passage à « lu » (`MailRead`), et chaque modification est tracée.
+
+### client-angular — fichiers task-405 (non commités, à reprendre par l'humain sur TFS)
+
+- `libs/mss/src/core/models/audit.model.ts` (+ spec), `biology-ack.model.ts`, `mail.model.ts`, `libs/mss/src/core/index.ts`, `utils/actor.util.ts` (+ spec)
+- `libs/mss/src/features/audit/components/audit-list|audit-filter|audit-detail` (ts, html, specs nouvelles)
+- `libs/mss/src/features/mail/components/biology-ack-panel` et `manual-attachment-panel` (ts, html, spec)
+- `e2e/mss-e2e/support/session.ts`, `support/e2e-backend.ts`, `specs/functional.e2e.ts`
 
 ## Timings
 
@@ -180,4 +292,7 @@ Toute personne rattachée lit tout le journal de la boîte.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 28 s | — | — | — | — |
-| **Total cycle** | | **28 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 55 min 54 s | 28 (1 min 52 s) | 14 (13 min 43 s) | — | dtos-mss 1B/0T, api-mail 23B/10T, client-mobile 3B/2T, client-angular 1B/2T |
+| **Total cycle** | | **56 min 23 s** | **28 (1 min 52 s)** | **14 (13 min 43 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : lint ×1 (5.7 s), nuget-wait ×2 (17 s), restore ×3 (26 s)
