@@ -294,7 +294,10 @@ Il n'a rien à saisir. Il garde la main pour corriger, et ce qu'il a corrigé n'
 | /develop | ok | 1 h 38 min | 3 (12 s) | 3 (5 min 42 s) | — | api-mail 1B/1T, client-mobile 1B/1T, client-angular 1B/1T |
 | /e2e | en cours | — | — | — | — | e2e ×4 (34 min 31 s) |
 | /sonar | ok | 19 min 04 s | 2 (1 min 04 s) | 10 (14 min 19 s) | 4 (1 min 22 s) | 2 itération(s), api-mail 2B/10T |
+| /lint-angular | ok | 20 s | — | — | — | — |
 | **Total cycle** | | **1 h 57 min** | **5 (1 min 16 s)** | **13 (20 min 02 s)** | **4 (1 min 22 s)** | |
+
+Autres commandes mesurées : lint ×1 (7.7 s)
 
 ## Develop log
 
@@ -409,3 +412,9 @@ Il n'a rien à saisir. Il garde la main pour corriger, et ce qu'il a corrigé n'
 - **Baseline** : 0 erreur, 143 avertissements (préexistants ; aucun dans les fichiers de la task). Aucune itération.
 - Build et tests : inchangés depuis la validation de `/develop` (`nx build weda2` ✓, 12 projets verts dont mss-lib
   1 395), arbre identique, pas de rebuild.
+
+## Lint mobile log
+
+- `client-mobile`, branche `feat/task-409-rattachement-identite-du-praticien`.
+- **Baseline** : `All files pass linting` — 0 erreur, 0 avertissement. Aucune itération, aucun commit.
+- Build / tests : inchangés depuis la validation de `/develop` (1 369 / 1 369), pas de rebuild.
