@@ -293,7 +293,8 @@ Il n'a rien à saisir. Il garde la main pour corriger, et ce qu'il a corrigé n'
 | /start | ok | 20 s | — | — | — | — |
 | /develop | ok | 1 h 38 min | 3 (12 s) | 3 (5 min 42 s) | — | api-mail 1B/1T, client-mobile 1B/1T, client-angular 1B/1T |
 | /e2e | en cours | — | — | — | — | e2e ×4 (34 min 31 s) |
-| **Total cycle** | | **1 h 38 min** | **3 (12 s)** | **3 (5 min 42 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 19 min 04 s | 2 (1 min 04 s) | 10 (14 min 19 s) | 4 (1 min 22 s) | 2 itération(s), api-mail 2B/10T |
+| **Total cycle** | | **1 h 57 min** | **5 (1 min 16 s)** | **13 (20 min 02 s)** | **4 (1 min 22 s)** | |
 
 ## Develop log
 
@@ -401,3 +402,10 @@ Il n'a rien à saisir. Il garde la main pour corriger, et ce qu'il a corrigé n'
 | Coverage (projet) | 98,0 % | 97,9 % | −0,1 pt |
 | Duplication | 0,4 % | 0,4 % | 0 |
 | Reliability / Security / Maintainability | A/A/A | A/A/A | → |
+
+## Lint log
+
+- `client-angular` (code-only, `feature/nova-mss-weda-integration`), base `origin/next`, lint `tag:scope:mss`.
+- **Baseline** : 0 erreur, 143 avertissements (préexistants ; aucun dans les fichiers de la task). Aucune itération.
+- Build et tests : inchangés depuis la validation de `/develop` (`nx build weda2` ✓, 12 projets verts dont mss-lib
+  1 395), arbre identique, pas de rebuild.
