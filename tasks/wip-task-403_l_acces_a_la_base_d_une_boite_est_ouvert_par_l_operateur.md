@@ -129,6 +129,16 @@ synchronisées. Seul le **titulaire** garde la lecture hors ligne sur sa boîte 
 
 ## Branches
 
+- `api-mail` (pushed) : feat/task-403-l-acces-a-la-base-d-une-boite-est-ouvert — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-403-l-acces-a-la-base-d-une-boite-est-ouvert
+- `client-mobile` (pushed) : feat/task-403-l-acces-a-la-base-d-une-boite-est-ouvert — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-403-l-acces-a-la-base-d-une-boite-est-ouvert
 - `dtos-mss` (lazy) : aucune branche au /start — `/develop` la crée au premier contrat touché
-- `client-angular` (code-only) : la forge écrit sur la branche courante de `Client/Angular/` ;
-  l'humain gère branche, commit, push et PR TFS
+- `client-angular` (code-only) : la forge écrit sur la branche courante de `Client/Angular/` (`feature/nova-mss-weda-integration` au /start) — humain gère branche, commit, push, PR TFS
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-403 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 15 s | — | — | — | — |
+| **Total cycle** | | **15 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
