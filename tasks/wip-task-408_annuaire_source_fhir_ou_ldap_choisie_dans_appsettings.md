@@ -214,7 +214,8 @@ C'est la configuration de l'environnement qui le permet, pas un faux annuaire.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 10 s | — | — | — | — |
-| **Total cycle** | | **10 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 21 min 03 s | 6 (1 min 10 s) | 5 (5 min 46 s) | — | api-mail 4B/1T, client-mobile 1B/1T, client-angular 1B/3T |
+| **Total cycle** | | **21 min 13 s** | **6 (1 min 10 s)** | **5 (5 min 46 s)** | **0 (0.0 s)** | |
 
 ## Develop log
 
@@ -290,3 +291,30 @@ C'est la configuration de l'environnement qui le permet, pas un faux annuaire.
 - **DOD self-check** : 11 / 12 lignes vérifiées par commande ; la ligne `appsettings.Development.json` est remplacée
   par l'activation dans l'AppHost (écart ci-dessus, à arbitrer).
 - **Next step** : `/sonar task-408`
+
+## Sonar log
+
+- Serveur 9.9.8.100196 (`sonar.login`), projet `healthplatform-api-mail`, branche `feat/task-408-…` (`7c9797ec`).
+- **Phase 1 (new code)** : ✓ Quality Gate OK dès la première analyse, **0 issue**, 0 hotspot à revoir,
+  new_coverage 96,9 % (cible 95 %). Aucune correction, aucun test ajouté.
+  - Couverture des fichiers de la task : `AnnuaireOptions` 100 %, `DirectoryMailboxes` 100 %,
+    `AnnuaireSourceStartupLogger` 92,3 %, `LdapAnnuaireSanteService` 92,6 %. Les lignes non couvertes sont
+    l'abandon par le médecin (annulation de l'appelant) et la coupure sur dépassement de taille.
+- **Phase 2 (legacy)** : 0 itération — le projet n'a ni bug, ni vulnérabilité, ni code smell ouvert.
+- Build Release + 5 suites OpenCover : ✓ (domain 202, application 3 865, infrastructure 699, api 1 306,
+  integration 1 059 / 16 ignorés).
+- `conventions/csharp.md` : inchangé (aucune règle corrigée à la main).
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | → |
+| New coverage | 96,8 % | 96,9 % | +0,1 pt |
+| Bugs | 0 | 0 | 0 |
+| Vulnerabilities | 0 | 0 | 0 |
+| Security hotspots | 0 | 0 | 0 |
+| Code smells | 0 | 0 | 0 |
+| Coverage (projet) | 98,0 % | 98,0 % | 0 |
+| Duplication | 0,4 % | 0,4 % | 0 |
+| Reliability / Security / Maintainability | A/A/A | A/A/A | → |
