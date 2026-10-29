@@ -304,6 +304,19 @@ Clients (preuve par mutation, Vitest weda2) :
 | Duplication | 0,4 % | 0,4 % | 0 pt |
 | Reliability / Security / Maintainability | A/A/A | A/A/A | → |
 
+## Lint log
+
+- Mode : chaîné, comme pour task-403. `npx eslint -f json` tourne sur les 16 fichiers `.ts`/`.html` de task-404 (suite e2e comprise), base `origin/next` rafraîchie.
+- **Baseline** : **5 erreurs**, toutes sur du code touché par la task :
+  - 3 `prettier/prettier` (spec e2e, rédaction) ;
+  - 1 `@typescript-eslint/consistent-type-imports` (`mss-api.service.ts`) ;
+  - 1 `jsdoc/require-jsdoc` (`setupAutoSave`).
+- **Itération 1** : `eslint --fix` laisse 3 erreurs `prettier`. L'auto-fixer a posé un squelette de JSDoc vide en LF dans un fichier CRLF, et prettier a tourné en rond (« Circular fixes »).
+- **Itération 2 (manuelle)** : la cause est l'insertion de `setupSenderIdentity`, ancrée sur la signature de `setupAutoSave`. Le JSDoc d'origine de `setupAutoSave` était resté orphelin au-dessus du bloc neuf. Le bloc orphelin est retiré, `setupAutoSave` reçoit une vraie doc, et les fins de ligne du fichier sont uniformisées en CRLF. Résultat : **0 erreur**, 39 avertissements, autant qu'à la baseline (`jsdoc/require-example` antérieurs, `max-lines`, `complexity` sur `replacePlaceholders`, avis « fichier ignoré »).
+- Build / tests : `nx build weda2` vert ; `mss`/`mss-lib`/`weda2` 1 355 + 2 653 verts ; typecheck e2e propre.
+- Conventions : `jsdoc/require-jsdoc` passe à **14 occurrences** dans `conventions/angular.md` (ancrage sur la signature de la méthode suivante, récidive de task-378).
+- Code-only : aucune opération git sur `client-angular` (seul `git fetch origin next`).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-404 --sync` — ne pas éditer à la main)*
@@ -313,6 +326,7 @@ Clients (preuve par mutation, Vitest weda2) :
 | /start | ok | 27 s | — | — | — | — |
 | /develop | ok | 57 min 07 s | 3 (30 s) | 10 (10 min 57 s) | — | api-mail 1B/4T, client-mobile 1B/2T, client-angular 1B/4T |
 | /sonar | ok | 24 min 27 s | 3 (49 s) | 14 (17 min 45 s) | 4 (1 min 41 s) | 2 itération(s), api-mail 3B/14T |
-| **Total cycle** | | **1 h 22 min** | **6 (1 min 19 s)** | **24 (28 min 43 s)** | **4 (1 min 41 s)** | |
+| /lint-angular | ok | 3 min 06 s | 1 (13 s) | 2 (39 s) | — | 2 itération(s), client-angular 1B/2T |
+| **Total cycle** | | **1 h 25 min** | **7 (1 min 32 s)** | **26 (29 min 22 s)** | **4 (1 min 41 s)** | |
 
-Autres commandes mesurées : nuget-wait ×1 (6.5 s), restore ×1 (22 s)
+Autres commandes mesurées : lint ×4 (25 s), nuget-wait ×1 (6.5 s), restore ×1 (22 s)
