@@ -419,6 +419,15 @@ Validation (`/review`, branches fusionnées avec `origin/develop`, qui porte tas
 - [x] Trou du filet : ligne task-377 dans `conventions/e2e.md`
 - [x] Aucun handle patient, INS ni contenu dans les URL et journaux ajoutés
 
+## Merged
+
+- Le 2026-10-29, par `/merge task-377 --i-tested` (Manual Test Plan validé par l'humain).
+- `api-mail` : PR #322, squash `da6438bc` ; CI `develop` verte — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/40838940441
+- `client-mobile` : PR #112, squash `6527d39c` ; CI `develop` verte — https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/40838960053
+- Branches `feat/task-377-bio-a-acquitter-liste-recherche-fiables` supprimées (distantes et locales), label `awaiting-human-merge` retiré.
+- `client-angular` : géré par l'humain (TFS).
+- Staging : aucune branche `forge/staging-*` (cycle lancé par `/start`, hors `/forge`).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-377 --sync` — ne pas éditer à la main)*
