@@ -200,3 +200,9 @@ C'est la configuration de l'environnement qui le permet, pas un faux annuaire.
 - **Hébergement HDS** : inchangé — l'annuaire est une donnée publique, aucune donnée de santé
 - **AIPD / impact RGPD** : inchangé — l'annuaire de test ne contient que des identités fictives ;
   en production, la source et les données lues sont celles d'aujourd'hui
+
+## Branches
+
+- `api-mail` (pushed) : feat/task-408-annuaire-source-fhir-ou-ldap-choisie — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-408-annuaire-source-fhir-ou-ldap-choisie
+- `client-mobile` (pushed) : feat/task-408-annuaire-source-fhir-ou-ldap-choisie — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-408-annuaire-source-fhir-ou-ldap-choisie
+- `client-angular` (code-only) : la forge écrit sur la branche checkout dans `Client/Angular/` (au /start : `feature/nova-mss-weda-integration`) — humain gère branche, commit, push, PR TFS
