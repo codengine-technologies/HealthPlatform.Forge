@@ -7339,3 +7339,5 @@
 {"ts":"2026-10-29T14:25:27+01:00","run_id":"forge-20261029-403-405","type":"step","task":"task-403","step":"review","status":"ok","note":"","iterations":null,"duration_ms":794163}
 {"ts":"2026-10-29T14:25:54+01:00","run_id":"forge-20261029-403-405","type":"step_start","task":"task-403","step":"tech-writer"}
 {"ts":"2026-10-29T14:26:54+01:00","run_id":"forge-20261029-403-405","type":"step","task":"task-403","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":59749}
+{"ts":"2026-10-29T14:27:12+01:00","run_id":"forge-20261029-403-405","type":"step_start","task":"task-404","step":"start"}
+{"ts":"2026-10-29T14:27:39+01:00","run_id":"forge-20261029-403-405","type":"step","task":"task-404","step":"start","status":"ok","note":"","iterations":null,"duration_ms":27442}
