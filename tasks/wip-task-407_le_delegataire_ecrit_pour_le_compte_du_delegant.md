@@ -153,3 +153,10 @@ boîte. Quand un médecin reçoit un tel message, l'écran le lui dit.
 - **Hébergement HDS** : inchangé
 - **AIPD / impact RGPD** : à compléter — le nom du délégataire, et le cas échéant l'adresse de sa
   BAL personnelle, sont communiqués aux destinataires (exigence ANS ECO.1.2.9)
+
+## Branches
+
+- `dtos-mss` (pushed, branche paresseuse) : créée par `/develop` au nom `feat/task-407-le-delegataire-ecrit-pour-le-compte-du` seulement si un contrat change
+- `api-mail` (pushed) : feat/task-407-le-delegataire-ecrit-pour-le-compte-du — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-407-le-delegataire-ecrit-pour-le-compte-du
+- `client-mobile` (pushed) : feat/task-407-le-delegataire-ecrit-pour-le-compte-du — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-407-le-delegataire-ecrit-pour-le-compte-du
+- `client-angular` (code-only) : branche checkout au /start : `feature/nova-mss-weda-integration` — humain gère branche, commit, push, PR TFS
