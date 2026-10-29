@@ -143,9 +143,10 @@ synchronisées. Seul le **titulaire** garde la lecture hors ligne sur sa boîte 
 | /start | ok | 15 s | — | — | — | — |
 | /develop | ok | 45 min 25 s | 7 (1 min 48 s) | 6 (16 min 33 s) | — | api-mail 5B/3T, client-mobile 1B/2T, client-angular 1B/1T |
 | /sonar | ok | 30 min 23 s | 4 (1 min 13 s) | 15 (20 min 04 s) | 6 (2 min 03 s) | 3 itération(s), api-mail 4B/15T |
-| **Total cycle** | | **1 h 16 min** | **11 (3 min 02 s)** | **21 (36 min 38 s)** | **6 (2 min 03 s)** | |
+| /lint-angular | ok | 2 min 13 s | 1 (13 s) | 1 (22 s) | — | 1 itération(s), client-angular 1B/1T |
+| **Total cycle** | | **1 h 18 min** | **12 (3 min 15 s)** | **22 (37 min 00 s)** | **6 (2 min 03 s)** | |
 
-Autres commandes mesurées : nuget-wait ×1 (14 s), restore ×1 (23 s)
+Autres commandes mesurées : lint ×2 (35 s), nuget-wait ×1 (14 s), restore ×1 (23 s)
 
 ## Develop log
 
@@ -301,3 +302,18 @@ Branche courante : `feature/nova-mss-weda-integration`. Fichiers de task-403 :
 | Coverage (projet) | 98,0 % | 98,0 % | 0 pt |
 | Duplication | 0,4 % | 0,4 % | 0 pt |
 | Reliability / Security / Maintainability | A/A/A | A/A/A | → |
+
+## Lint log
+
+- Mode : chaîné. Comme task-377 : `npx eslint -f json` sur les 16 fichiers `.ts`/`.html` de la task
+  (suite e2e comprise), messages attribués aux lignes de la task par `git diff -U0` (fichiers créés
+  comptés en entier). Base `origin/next` rafraîchie.
+- Baseline : **9 erreurs**, toutes `prettier/prettier` et toutes sur des lignes de la task
+  (intercepteur weda2, `audit.model.ts`, spec et support e2e).
+- Itération 1 : `eslint --fix` sur ces fichiers → **0 erreur**. Avertissements : aucun sur une ligne de
+  la task (seuls les avis « fichier ignoré » des specs et du gabarit HTML) ; les 22 autres
+  (`jsdoc/require-example` vides, `max-lines`) sont antérieurs.
+- Prettier `--write` sur les seuls fichiers créés par la task (une spec reformatée).
+- Build / tests : `nx build weda2` vert ; `nx test mss-lib` 1 351 verts.
+- Conventions : aucune règle corrigée à la main (auto-fixer seul), `conventions/angular.md` inchangé.
+- Code-only : aucune opération git sur `client-angular` (seul `git fetch origin next`).
