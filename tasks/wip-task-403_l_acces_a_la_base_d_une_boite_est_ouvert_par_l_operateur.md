@@ -144,9 +144,10 @@ synchronisées. Seul le **titulaire** garde la lecture hors ligne sur sa boîte 
 | /develop | ok | 45 min 25 s | 7 (1 min 48 s) | 6 (16 min 33 s) | — | api-mail 5B/3T, client-mobile 1B/2T, client-angular 1B/1T |
 | /sonar | ok | 30 min 23 s | 4 (1 min 13 s) | 15 (20 min 04 s) | 6 (2 min 03 s) | 3 itération(s), api-mail 4B/15T |
 | /lint-angular | ok | 2 min 13 s | 1 (13 s) | 1 (22 s) | — | 1 itération(s), client-angular 1B/1T |
+| /lint-mobile | ok | 24 s | — | — | — | — |
 | **Total cycle** | | **1 h 18 min** | **12 (3 min 15 s)** | **22 (37 min 00 s)** | **6 (2 min 03 s)** | |
 
-Autres commandes mesurées : lint ×2 (35 s), nuget-wait ×1 (14 s), restore ×1 (23 s)
+Autres commandes mesurées : lint ×3 (49 s), nuget-wait ×1 (14 s), restore ×1 (23 s)
 
 ## Develop log
 
@@ -317,3 +318,11 @@ Branche courante : `feature/nova-mss-weda-integration`. Fichiers de task-403 :
 - Build / tests : `nx build weda2` vert ; `nx test mss-lib` 1 351 verts.
 - Conventions : aucune règle corrigée à la main (auto-fixer seul), `conventions/angular.md` inchangé.
 - Code-only : aucune opération git sur `client-angular` (seul `git fetch origin next`).
+
+## Lint mobile log
+
+- Mode : chaîné, branche `feat/task-403-l-acces-a-la-base-d-une-boite-est-ouvert` (`d37c55d`), arbre propre.
+- Baseline = final (`ng lint`) : **0 erreur, 0 warning** (« All files pass linting »).
+- Itérations : 0. Build et tests verts depuis `/develop` (`npm run build`, `npm test` 1 332/1 332) ;
+  rien modifié par cette étape, aucun commit.
+- Conventions : aucune règle corrigée à la main, `conventions/angular.md` inchangé.
