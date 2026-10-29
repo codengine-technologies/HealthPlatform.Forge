@@ -373,3 +373,31 @@ Il n'a rien à saisir. Il garde la main pour corriger, et ce qu'il a corrigé n'
 - **Mesure** : le travail de l'agent des fronts et les lancements de tests ciblés n'ont pas été passés par
   `measure.sh` : ils manquent au journal de `## Timings`.
 - **Next step** : `/sonar task-409`
+
+## Sonar log
+
+- Serveur 9.9.8.100196 (`sonar.login`), projet `healthplatform-api-mail`, branche `feat/task-409-…`.
+- **Phase 1 (new code)** — 2 analyses :
+  - analyse 1 : Quality Gate OK mais **1 issue** : S3776 (CRITICAL) `UserContextEnricherMiddleware.ApplyMailboxSelectionAsync`,
+    complexité 18 pour 15 — l'appel du préremplissage ajouté au bloc « rattachement retenu ». Corrigée par extraction
+    du bloc en `ApplyAttachmentAsync` (`dfa2c503`, refactor pur) ;
+  - couverture : 7 tests unitaires de `FhirBundleParser.ProfessionalIdentity` (`6b8544ca`) ;
+  - analyse 2 : ✓ Quality Gate OK, **0 issue**, 0 hotspot, new_coverage 96,5 % (cible 95 %).
+- **Phase 2 (legacy)** : 0 itération — 0 bug, 0 vulnérabilité, 0 code smell ouvert.
+- Build Release + 5 suites OpenCover : ✓ (domain 202, application 3 890, infrastructure 699, api 1 306,
+  integration 1 067 / 16 ignorés).
+- `conventions/csharp.md` : S3776 → 6 occurrences (task-409).
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | → |
+| New coverage | 96,9 % | 96,5 % | −0,4 pt |
+| Bugs | 0 | 0 | 0 |
+| Vulnerabilities | 0 | 0 | 0 |
+| Security hotspots | 0 | 0 | 0 |
+| Code smells | 0 | 0 | 0 |
+| Coverage (projet) | 98,0 % | 97,9 % | −0,1 pt |
+| Duplication | 0,4 % | 0,4 % | 0 |
+| Reliability / Security / Maintainability | A/A/A | A/A/A | → |
