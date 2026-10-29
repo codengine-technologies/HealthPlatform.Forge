@@ -295,9 +295,10 @@ Il n'a rien à saisir. Il garde la main pour corriger, et ce qu'il a corrigé n'
 | /e2e | en cours | — | — | — | — | e2e ×4 (34 min 31 s) |
 | /sonar | ok | 19 min 04 s | 2 (1 min 04 s) | 10 (14 min 19 s) | 4 (1 min 22 s) | 2 itération(s), api-mail 2B/10T |
 | /lint-angular | ok | 20 s | — | — | — | — |
+| /lint-mobile | ok | 9.4 s | — | — | — | — |
 | **Total cycle** | | **1 h 57 min** | **5 (1 min 16 s)** | **13 (20 min 02 s)** | **4 (1 min 22 s)** | |
 
-Autres commandes mesurées : lint ×1 (7.7 s)
+Autres commandes mesurées : lint ×2 (13 s)
 
 ## Develop log
 
@@ -418,3 +419,14 @@ Autres commandes mesurées : lint ×1 (7.7 s)
 - `client-mobile`, branche `feat/task-409-rattachement-identite-du-praticien`.
 - **Baseline** : `All files pass linting` — 0 erreur, 0 avertissement. Aucune itération, aucun commit.
 - Build / tests : inchangés depuis la validation de `/develop` (1 369 / 1 369), pas de rebuild.
+
+## E2E log
+
+**E2E : non joué — bypass demandé par l'humain** (2026-10-29, pendant le cycle : « bypass les tests e2e car
+trop long »). Champ `**E2E**: bypass — décision humaine du 2026-10-29`. `/e2e` n'a joué aucune voie.
+
+Pour information, sans valeur de verdict, les voies jouées pendant `/develop`, sur les commits api-mail
+`be7833b0` et mobile `70c13e3`, donc **avant** l'extraction S3776 de `/sonar` (`dfa2c503`, refactor pur) :
+- voie mobile : 53 verts, 0 flaky, parité verte ;
+- voie Angular : 63 verts, 1 flaky (E2E-CONTACT-002, ajouté au registre de `conventions/e2e.md`), parité verte ;
+- preuves de rouge : E2E-MAILBOX-003 v2 et E2E-MAILBOX-006 rouges sous mutation, sur les deux clients.
