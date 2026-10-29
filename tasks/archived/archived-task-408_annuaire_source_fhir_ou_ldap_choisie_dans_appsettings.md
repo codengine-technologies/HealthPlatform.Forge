@@ -476,3 +476,11 @@ Autres commandes mesurées : lint ×3 (47 s)
 - Règle 14 : le titulaire reste décidé par la seule liste de l'annuaire configuré ; rattachement tracé au nom de la personne.
 - Suggestions : LDAPS si l'ANS l'ouvre ; pas de test dédié de la requalification sur source LDAP (même appel que « Mes boîtes »).
 - Validation `/review` : api-mail 202 / 699 / 1 306 / 3 865 / 1 059 (16 ignorés) ; mobile 1 348 ; weda2 12 projets verts.
+
+## Merged
+
+- **Date** : 2026-10-29 23:19 — `/merge task-408 --i-tested` (HAG, attestation humaine)
+- `api-mail` : squash `0619b5ff` (#326)
+- `client-mobile` : squash `71872324` (#116)
+- **CI develop** : verte — api-mail run 40964250203, client-mobile run 40964275928 (contrôlées sur les squash de task-409).
+- `client-angular` : managed manually by the human (TFS).

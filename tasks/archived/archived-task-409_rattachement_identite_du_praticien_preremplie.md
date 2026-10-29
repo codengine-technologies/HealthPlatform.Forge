@@ -482,3 +482,12 @@ l'annonce en tête.
 - **Validation** : mss-lib 1 395 tests verts, lint 0 erreur. Vérification visuelle laissée à l'humain (les dev
   servers locaux ne se chargent pas dans le navigateur de la forge).
 - **Prévention** : consigne `ligne-a-adresse-longue` ajoutée à `conventions/angular.md`.
+
+## Merged
+
+- **Date** : 2026-10-29 23:19 — `/merge task-409 --i-tested` (HAG, attestation humaine)
+- `api-mail` : squash `1d509723` (#327)
+- `client-mobile` : squash `6303b24f` (#117)
+- **Empilement** : branche resynchronisée par `git merge -s ours origin/develop` après le squash de task-408 — arbre du squash identique à la branche, diff de la PR vérifié inchangé (patch-id), CI de la PR verte sur la nouvelle tête.
+- **CI develop** : verte — api-mail run 40964250203, client-mobile run 40964275928 (contrôlées sur les squash de task-409).
+- `client-angular` : managed manually by the human (TFS).
