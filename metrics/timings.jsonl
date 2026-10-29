@@ -7337,3 +7337,5 @@
 {"ts":"2026-10-29T14:19:42+01:00","run_id":"forge-20261029-403-405","type":"cmd","task":"task-403","step":"review","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test Api/Mail/tests/mss.mail.integration.tests/mss.mail.integration.tests.csproj --no-build","duration_ms":221,"exit_code":1}
 {"ts":"2026-10-29T14:24:12+01:00","run_id":"forge-20261029-403-405","type":"cmd","task":"task-403","step":"review","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test tests/mss.mail.integration.tests/mss.mail.integration.tests.csproj --no-build","duration_ms":262480,"exit_code":0}
 {"ts":"2026-10-29T14:25:27+01:00","run_id":"forge-20261029-403-405","type":"step","task":"task-403","step":"review","status":"ok","note":"","iterations":null,"duration_ms":794163}
+{"ts":"2026-10-29T14:25:54+01:00","run_id":"forge-20261029-403-405","type":"step_start","task":"task-403","step":"tech-writer"}
+{"ts":"2026-10-29T14:26:54+01:00","run_id":"forge-20261029-403-405","type":"step","task":"task-403","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":59749}

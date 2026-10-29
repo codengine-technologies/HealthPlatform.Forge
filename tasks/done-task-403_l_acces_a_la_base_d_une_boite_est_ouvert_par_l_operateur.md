@@ -147,7 +147,8 @@ synchronisées. Seul le **titulaire** garde la lecture hors ligne sur sa boîte 
 | /lint-mobile | ok | 24 s | — | — | — | — |
 | /e2e | ok | 17 min 57 s | — | — | — | e2e ×6 (34 min 02 s) |
 | /review | ok | 13 min 14 s | 2 (17 s) | 4 (9 min 03 s) | — | api-mail 1B/3T, client-mobile 1B/1T |
-| **Total cycle** | | **1 h 49 min** | **14 (3 min 32 s)** | **26 (46 min 03 s)** | **6 (2 min 03 s)** | |
+| /tech-writer | ok | 59 s | — | — | — | — |
+| **Total cycle** | | **1 h 50 min** | **14 (3 min 32 s)** | **26 (46 min 03 s)** | **6 (2 min 03 s)** | |
 
 Autres commandes mesurées : lint ×3 (49 s), nuget-wait ×1 (14 s), restore ×1 (23 s)
 

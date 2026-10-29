@@ -2,11 +2,61 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E020-boite-partagee-une-base-par-boite-tout.md](E020-boite-partagee-une-base-par-boite-tout.md).
-> **Dernière mise à jour** : 2026-10-28 (v1.0)
+> **Dernière mise à jour** : 2026-10-29 (v1.1)
 
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.1 — Accès à la base d'une boîte ouvert par l'opérateur MSSanté — task-403
+
+- **Task** : task-403, statut `done` (`/review` APPROVED le 2026-10-29 au second passage : le premier
+  a exigé que les traces de refus soient relues dans le vrai journal, corrigé par `8ee621a6`). Run
+  `/forge` `forge-20261029-403-405`.
+- **PRs** (label `awaiting-human-merge`) : `dtos-mss` #53, `api-mail` #323, `client-mobile` #113 ;
+  `client-angular` code-only, non commité sur `feature/nova-mss-weda-integration`.
+- **dtos-mss** : `HealthPlatform.Dtos.Mss` 551.0.0 → **554.0.0** (40e44e2) — codes
+  `MAILBOX_ACCESS_REFUSED` (403), `MAILBOX_PSC_SESSION_REQUIRED` (403), `MAILBOX_ACCESS_UNVERIFIED`
+  (503) ; `AuditActionType.MailboxAccessRefused = 42`, `MailboxAccessSuspended = 43`.
+- **api-mail** (1962a5f7, 22ce37df, b6e16a17, e7f3bcbf, 8ee621a6) :
+  - **Domaine** : `MailboxAccessPolicy.Evaluate(role, online)` — titulaire ouvert, autres rôles :
+    verdict de l'opérateur de moins de 5 min en ligne, session PSC requise hors ligne ;
+  - **Verrou** : `MailboxAccessGate`, appelé par `MailboxSelectionService` sur la boîte demandée et
+    sur la boîte par défaut, donc avant toute lecture et tout cache. `AuthFailing` → refusé par
+    l'opérateur ;
+  - **Verdicts** : `RedisOperatorVerdictStore`, clé `mailbox-access:verdict:{empreinte}`, TTL 5 min,
+    échec fermé ;
+  - **Renouvellement** : `ImapOperatorAccessProbe` (sonde du rattachement, jeton PSC ou mot de passe
+    de banc). Refus → `AuthFailing`, verdict retiré, `StopSyncStartedByAsync` (nouvelle commande
+    ciblée `SyncControlCommand.StartedBy`), traces ; injoignable → 503 sans suspension ;
+  - **Usage** : `MailServerTokenRetry` (IMAP et SMTP) enregistre l'acceptation comme verdict et le
+    refus définitif comme `AuthFailing` (`IOperatorVerdictRecorder`) ;
+  - **Temps réel** : `SseHelper.AccessWatchAsync` revérifie toutes les
+    `MailboxAccess:StreamRecheckInterval` (30 s) ; évènement final `MailboxAccessSuspended` ;
+  - **Banc e2e** : `BenchOperatorRefusals` + `BenchOperatorAccessProbe`,
+    `POST|DELETE /api/v1/testing/operator-refusals?mailbox=` (Development/Testing et bypass seuls) ;
+  - **Composition** : enregistré dans `AddApi` ; paramètre facultatif sur `ImapServerAccess` et
+    `SmtpConnectionFactory` ;
+  - **Catalogue** : E2E-MAILBOX-005 v1.
+- **client-mobile** (d37c55d) : `MailboxAccessSuspensionService` (intercepteur + deux flux SSE),
+  `MailboxSessionService.purgeMailboxData`, écran `/access-suspended`, E2E-MAILBOX-005.
+- **client-angular** (weda2, code-only) : même service dans la lib MSS, intercepteur weda2, composant
+  `mss-mailbox-access-suspended`, miroir `AuditActionType` 42/43, E2E-MAILBOX-005.
+- **Règle 1b** : `MailboxAccessLockIntegrationTests` (5 tests, vrai registre, vrai Redis, vrai journal
+  d'audit, vraie liste en cache) et `MailServerTokenRefusalEndpointIntegrationTests` (refus en cours
+  d'usage SMTP/IMAP → `AuthFailing` au registre réel). Mutations M1 à M6 vues rouges.
+- **Validation** : api-mail domain 204, infrastructure 697, api 1 302, application 3 830,
+  integration 1 037 (16 ignorés) ; mobile 1 332 ; weda2 build OK, 12 projets de tests verts.
+- **Sonar** : Quality Gate OK ; new coverage 96,8 % → 97,1 % ; 0 bug, 0 vulnérabilité, 0 smell ;
+  2 × S927 corrigées (nouvelle consigne `conventions/csharp.md`) ; S4457 récidive (compteur 7).
+- **e2e** : mobile 51 verts, weda2 61 verts, parité verte ; divergence E2E-MAILBOX-002 [angular]
+  toujours « à retirer » (task-395).
+- **Limites et dette** (suggestions de revue) :
+  - renouvellement non mutualisé : N requêtes simultanées à l'expiration → N sondes ;
+  - une route de gestion portant `Client-Email` renouvelle aussi le verdict ;
+  - une trace `MailboxAccessRefused` par requête refusée ;
+  - Redis injoignable → sonde à chaque requête d'un non-titulaire ;
+  - AIPD à mettre à jour (coupure des données synchronisées à la révocation).
 
 ### v1.0 — Rattachement guidé par l'Annuaire Santé : rôle titulaire, membre ou délégataire — task-402
 
@@ -118,17 +168,22 @@
 | Registre des rattachements | `Api/Mail/src/Infrastructure/Repositories/TenantDb/PostgresTenantRegistryClient.cs` | Colonnes `role` et `address_type`, requalification (task-402) |
 | Service des boîtes | `Api/Mail/src/Application/Services/Mailboxes/MailboxManagementService.cs` | Rôle au rattachement, « Mes boîtes », requalification (task-402) |
 | Annuaire Santé | `Api/Mail/src/Application/Services/Implementation/AnnuaireSante/` | BAL MSSanté d'un RPPS (task-402) |
+| Verrou d'accès | `Api/Mail/src/Application/Services/Mailboxes/MailboxAccessGate.cs` | Verdict de l'opérateur, suspension (task-403) |
+| Verdicts de l'opérateur | `Api/Mail/src/Application/Services/Mailboxes/OperatorVerdicts.cs` | Redis, 5 min, échec fermé (task-403) |
+| Opérateur simulé du banc | `Api/Mail/src/Api/Testing/BenchOperatorRefusals.cs` | Révocation simulée (task-403) |
+| Écran « accès suspendu » (mobile) | `Client/Mobile/src/app/mailbox/access-suspended/` | task-403 |
+| Écran « accès suspendu » (weda2) | `Client/Angular/front/libs/mss/src/features/mailbox-access-suspended/` | task-403 |
 | Faux Annuaire du banc | `Api/Mail/tests/mss.mail.e2e/FakeAnnuaire/` | Profil e2e (task-402) |
 | Formulaire de rattachement (mobile) | `Client/Mobile/src/app/mailbox/shared/attach-mailbox-form.component.*` | Deux voies (task-402) |
 | Formulaire de rattachement (weda2) | `Client/Angular/front/libs/mss/src/ui/attach-mailbox-form/` | Deux voies, présélection Weda (task-402) |
 
 ---
 
-## Annexe B — Inventaire fonctionnel (2026-10-28)
+## Annexe B — Inventaire fonctionnel (2026-10-29)
 
-- Routes ajoutées : 1 (`GET /api/v1/account/mailboxes/directory`).
+- Routes ajoutées : 2 (`GET /api/v1/account/mailboxes/directory` ; `POST|DELETE /api/v1/testing/operator-refusals`, banc seulement).
 - Migrations du registre : 1 (`AddMailboxRole`).
-- Scénarios e2e : 2 ajoutés (E2E-MAILBOX-003, E2E-MAILBOX-004), 1 versionné (E2E-WEDA-001 v2).
+- Scénarios e2e : 3 ajoutés (E2E-MAILBOX-003, E2E-MAILBOX-004, E2E-MAILBOX-005), 1 versionné (E2E-WEDA-001 v2).
 
 ---
 
@@ -137,7 +192,7 @@
 | Task | Statut | Contribution | Règles |
 |---|---|---|---|
 | task-402 | done (PR en attente de merge) | Rattachement guidé par l'Annuaire Santé ; rôle titulaire, membre, délégataire ou « à requalifier » | RG-E020-03 ; RG-E020-06 (partiel) |
-| task-403 | todo | Accès à la base subordonné au verdict de l'opérateur ; hors-ligne du titulaire seul | RG-E020-04, RG-E020-05 |
+| task-403 | done (PR en attente de merge) | Accès à la base subordonné au verdict de l'opérateur ; hors-ligne du titulaire seul | RG-E020-04, RG-E020-05 ; RG-E020-06 (partiel) |
 | task-404 | todo | Une base par boîte ; données de la personne séparées | RG-E020-01, RG-E020-02 |
 | task-405 | todo | Tout acte imputé à son auteur réel ; journal lisible de toute la boîte | RG-E020-06, RG-E020-07 |
 | task-406 | todo | Mesure de charge d'une boîte partagée | — |

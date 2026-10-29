@@ -1,11 +1,11 @@
 # E020 — Boîte partagée : une base par boîte, tout acte imputé
 
-> **Statut** : 🟡 En cours — 1 fonctionnalité sur 5 livrée, en attente de recette
+> **Statut** : 🟡 En cours — 2 fonctionnalités sur 5 livrées, en attente de recette
 > **Modèle** : task-driven
-> **Version** : 1.0
+> **Version** : 1.1
 > **Auteur** : PO forge
 > **Audience** : PO, direction, équipe produit — la vue ingénierie vit dans [E020-Changelogs.md](E020-Changelogs.md)
-> **Dernière mise à jour** : 2026-10-28
+> **Dernière mise à jour** : 2026-10-29
 
 ---
 
@@ -77,7 +77,7 @@ titulaire, le journal dit que c'est le délégataire qui l'a supprimé.
 | # | Fonctionnalité | Ce que le praticien peut faire | Tasks | Statut |
 |---|---|---|---|---|
 | E020-F001 | Rattachement guidé par l'Annuaire Santé | Choisir ses boîtes dans la liste « Mes boîtes » publiée pour lui, ou ajouter une boîte qui lui est déléguée ; voir son rôle sur chaque boîte | task-402 | 🟢 Livrée, en attente de recette |
-| E020-F002 | Accès ouvert par l'opérateur | Ne lire une boîte que si l'opérateur lui en a ouvert l'accès récemment ; le titulaire seul garde la lecture hors ligne | task-403 | ⏳ À faire |
+| E020-F002 | Accès ouvert par l'opérateur | Ne lire une boîte que si l'opérateur lui en a ouvert l'accès récemment ; le titulaire seul garde la lecture hors ligne | task-403 | 🟢 Livrée, en attente de recette |
 | E020-F003 | Une base par boîte | Travailler à plusieurs dans la même boîte : rattachements patient, étiquettes, acquittements et classements partagés ; réglages et signatures restent personnels | task-404 | ⏳ À faire |
 | E020-F004 | Tout acte imputé à son auteur | Lire, dans le journal de la boîte, qui a fait quoi, quand et sur quel objet | task-405 | ⏳ À faire |
 | E020-F005 | Tenue en charge d'une boîte partagée | Garder une messagerie réactive quand plusieurs personnes travaillent dans la même boîte | task-406 | ⏳ À faire |
@@ -112,9 +112,16 @@ graph LR
    affiche ensuite un badge de rôle. Une boîte dont l'adresse a quitté l'Annuaire passe **« à
    requalifier »** : elle reste lisible en ligne, avec les droits d'un délégataire, et un bandeau
    invite à la rattacher de nouveau depuis « Mes boîtes » (task-402).
-2. **Accès ouvert par l'opérateur (E020-F002)** — avant de partager une boîte, l'accès à ses
-   données est subordonné à un avis favorable récent de l'opérateur. Ce verrou doit exister avant
-   le partage.
+2. **Accès ouvert par l'opérateur (E020-F002)** — le titulaire lit sa boîte comme avant, en ligne
+   et hors ligne. Un délégataire, un membre ou une boîte « à requalifier » ne lisent les données de
+   la boîte que si l'opérateur MSSanté a confirmé leur accès dans les cinq dernières minutes ; au-delà,
+   l'application le lui redemande avant d'afficher quoi que ce soit. Si l'opérateur refuse, l'écran
+   **« Accès suspendu »** remplace la boîte : « l'accès à cette messagerie est refusé par l'opérateur
+   de messagerie », sans aucun message, même déjà synchronisé, et la messagerie ouverte en temps réel
+   se ferme. L'application ne dit jamais « délégation retirée » : l'opérateur ne donne pas la cause
+   d'un refus. Sans connexion Pro Santé Connect, seul le titulaire lit ; les autres voient
+   « Connexion Pro Santé Connect requise ». Le refus, la suspension et leur cause sont tracés au
+   journal au nom de la personne (task-403).
 3. **Une base par boîte (E020-F003)** — toutes les personnes rattachées à une adresse travaillent
    sur les mêmes données.
 4. **Tout acte imputé (E020-F004)** — dès que plusieurs personnes agissent sur la même boîte,
@@ -131,9 +138,9 @@ graph LR
 | RG-E020-01 | Une boîte, une base | Toutes les personnes qui travaillent sur une adresse partagent les mêmes données. Une copie des données de santé par personne est interdite. | ⏳ Prévu (task-404) |
 | RG-E020-02 | Ce qui appartient à la boîte, ce qui appartient à la personne | Messages, dossiers, documents, patients, biologie, étiquettes, contacts et modèles appartiennent à la boîte. Les réglages et les signatures appartiennent à la personne. | ⏳ Prévu (task-404) |
 | RG-E020-03 | Le rôle vient de l'Annuaire Santé | Titulaire ou membre : uniquement par choix dans la liste publiée par l'Annuaire pour le professionnel. Délégataire : uniquement par saisie de l'adresse. La saisie n'ouvre jamais le rôle de titulaire. Le rôle est revérifié à chaque nouvelle authentification. | ✅ Implémenté (task-402) |
-| RG-E020-04 | L'opérateur ouvre l'accès | Lire ou écrire les données d'une boîte exige un avis favorable récent de l'opérateur MSSanté. Un refus ou une révocation ferment tout accès. | ⏳ Prévu (task-403) |
-| RG-E020-05 | Hors ligne réservé au titulaire | Seul le titulaire garde la lecture hors ligne de sa boîte personnelle. Un délégataire, un membre ou une boîte « à requalifier » n'ont pas de hors-ligne. | ⏳ Prévu (task-403) |
-| RG-E020-06 | Tout acte imputé à son auteur réel | Chaque action est tracée au nom de la personne qui l'a faite : identité, rôle, boîte, instant, action et objet. Jamais au nom de la boîte ni du titulaire. Un acte automatique est tracé comme acte système. | 🟡 Partiel (task-402 : rattachements) |
+| RG-E020-04 | L'opérateur ouvre l'accès | Lire ou écrire les données d'une boîte exige un avis favorable récent de l'opérateur MSSanté. Un refus ou une révocation ferment tout accès. | ✅ Implémenté (task-403) |
+| RG-E020-05 | Hors ligne réservé au titulaire | Seul le titulaire garde la lecture hors ligne de sa boîte personnelle. Un délégataire, un membre ou une boîte « à requalifier » n'ont pas de hors-ligne. | ✅ Implémenté (task-403) |
+| RG-E020-06 | Tout acte imputé à son auteur réel | Chaque action est tracée au nom de la personne qui l'a faite : identité, rôle, boîte, instant, action et objet. Jamais au nom de la boîte ni du titulaire. Un acte automatique est tracé comme acte système. | 🟡 Partiel (task-402 : rattachements ; task-403 : refus et suspensions d'accès) |
 | RG-E020-07 | Le journal est lisible de toute la boîte | Toute personne rattachée à une boîte voit tous les actes faits sur cette boîte. Conservation : 10 ans pour les accès aux données de santé. | ⏳ Prévu (task-405) |
 
 ---
@@ -175,17 +182,17 @@ graph LR
 
 ---
 
-## État de couverture (2026-10-28)
+## État de couverture (2026-10-29)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
 | E020-F001 — Rattachement guidé par l'Annuaire Santé | 🟢 Livrée, en attente de recette | 100 % | task-402 |
-| E020-F002 — Accès ouvert par l'opérateur | ⏳ À faire | 0 % | task-403 |
+| E020-F002 — Accès ouvert par l'opérateur | 🟢 Livrée, en attente de recette | 100 % | task-403 |
 | E020-F003 — Une base par boîte | ⏳ À faire | 0 % | task-404 |
 | E020-F004 — Tout acte imputé à son auteur | ⏳ À faire | 0 % | task-405 |
 | E020-F005 — Tenue en charge d'une boîte partagée | ⏳ À faire | 0 % | task-406 |
 
-**Couverture EPIC consolidée : 20 %** (1 fonctionnalité livrée sur 5, en attente de recette).
+**Couverture EPIC consolidée : 40 %** (2 fonctionnalités livrées sur 5, en attente de recette).
 
 ---
 
@@ -198,18 +205,26 @@ graph LR
   Chaque boîte affiche son rôle : titulaire, membre ou délégation. Une boîte dont l'adresse a quitté
   l'Annuaire passe « à requalifier », reste lisible en ligne, et un bandeau invite à la rattacher de
   nouveau. Dans Weda, la boîte que Weda désigne est présélectionnée dans « Mes boîtes » (task-402).
+- v1.1 — Accès ouvert par l'opérateur. Hors titulaire, la lecture d'une boîte exige l'accord récent
+  de l'opérateur MSSanté. Un refus affiche l'écran « Accès suspendu », sans aucune donnée de la
+  boîte, et ferme la messagerie en temps réel. Hors ligne, seul le titulaire lit (task-403).
 
 ### Conformité réglementaire
 
 - v1.0 — Le rôle d'un professionnel sur une boîte vient de l'Annuaire Santé et de l'opérateur
   MSSanté, jamais d'une déclaration de sa part. L'accès est vérifié par l'opérateur avant tout
   enregistrement (task-402).
+- v1.1 — Le retrait d'une délégation chez l'opérateur coupe l'accès en moins de cinq minutes, y
+  compris aux données déjà synchronisées. L'écran ne nomme jamais une cause que l'opérateur ne donne
+  pas (référentiel socle MSSanté #2) (task-403).
 
 ### Sécurité
 
 - v1.0 — Les rattachements, leurs refus et les changements de rôle sont tracés au journal avec le
   rôle et l'identité du professionnel qui agit. Cette identité n'apparaît jamais dans les journaux
   techniques (task-402).
+- v1.1 — Chaque accès refusé et chaque suspension sont tracés au journal, avec la personne, son
+  rôle, la boîte et la cause, et conservés comme des accès aux données de santé (task-403).
 
 ---
 
