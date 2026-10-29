@@ -471,3 +471,14 @@ l'annonce en tête.
   sans titulaire qui pose la raison sociale ; profil LDAP prouvé à l'adaptateur.
 - AIPD : à compléter (données professionnelles publiques conservées au registre).
 - Validation `/review` : api-mail 202 / 699 / 1 306 / 3 890 / 1 067 (16 ignorés) ; mobile 1 369 ; weda2 12 projets verts.
+
+## Correctif après recette (2026-10-29)
+
+- **Défaut vu par l'humain (weda2)** : sur l'accueil, la case « À rattacher » et son libellé débordaient du cadre
+  de la ligne, poussés par l'adresse longue de la carte de test.
+- **Correctif** (`libs/mss/src/ui/attach-mailbox-form/attach-mailbox-form.component.{html,scss}`, non commité) :
+  la case passe à gauche et porte la ligne (libellé = l'adresse, indication = le type) ; l'adresse prend la place
+  disponible et se coupe (`min-width: 0`, `overflow-wrap: anywhere`) ; l'issue reste à droite sans rétrécir.
+- **Validation** : mss-lib 1 395 tests verts, lint 0 erreur. Vérification visuelle laissée à l'humain (les dev
+  servers locaux ne se chargent pas dans le navigateur de la forge).
+- **Prévention** : consigne `ligne-a-adresse-longue` ajoutée à `conventions/angular.md`.

@@ -498,3 +498,15 @@ par lint sur du code frais est un échec de lecture de ce fichier.
 - **Consigne** : un champ de filtre ajouté à un écran se teste **jusqu'à la requête envoyée**. Il faut un spec du service API sur `HttpTestingController`, qui lit le paramètre dans `request.params`, et pas seulement un spec du composant qui vérifie que le filtre est émis. Les services qui construisent leurs `HttpParams` champ par champ (`getAuditTraces`) ignorent en silence un champ ajouté au modèle.
 - **Origine** : task-405. Le filtre par personne de l'écran Audit était émis par le composant (spec vert, mutation vue rouge), mais `MssApiService.getAuditTraces` n'envoyait jamais `actorRpps`. L'écran filtrait en apparence, et le serveur rendait les actes de tout le monde. Attrapé par E2E-AUDIT-001 au passage `/e2e`, pas par les specs.
 - **Occurrences** : 1 (task-405)
+
+### ligne-a-adresse-longue — Une ligne qui porte une adresse MSSanté se coupe au lieu de déborder
+- **Règle** : convention projet (défaut d'affichage vu par l'humain en recette, aucun outil ne le lève)
+- **Repos** : les deux
+- **Consigne** : dans une ligne en `display: flex` qui affiche une adresse MSSanté (souvent plus de
+  50 caractères sans espace) à côté d'une action, la partie texte prend `flex: 1 1 auto; min-width: 0;
+  overflow-wrap: anywhere`, et l'action `flex-shrink: 0`. Une case à cocher qui sélectionne la ligne
+  porte l'adresse elle-même (`label` = l'adresse, `hint` = le type), à gauche : pas de libellé générique
+  (« À rattacher ») qui s'ajoute à côté. Vérifier l'écran avec la plus longue adresse du jeu de test.
+- **Origine** : task-409 (recette humaine, weda2 : case « À rattacher » rejetée hors du cadre par
+  `virginie.medecinrpps0062267@medecin.formation.mssante.fr`)
+- **Occurrences** : 1
