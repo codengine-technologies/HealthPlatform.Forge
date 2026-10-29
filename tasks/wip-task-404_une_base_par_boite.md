@@ -317,6 +317,12 @@ Clients (preuve par mutation, Vitest weda2) :
 - Conventions : `jsdoc/require-jsdoc` passe à **14 occurrences** dans `conventions/angular.md` (ancrage sur la signature de la méthode suivante, récidive de task-378).
 - Code-only : aucune opération git sur `client-angular` (seul `git fetch origin next`).
 
+## Lint mobile log
+
+- Mode : chaîné, branche `feat/task-404-une-base-par-boite` (`42f4fec`), arbre propre.
+- Baseline `npm run lint` : **0 erreur, 0 warning** (« All files pass linting »). Aucune itération, aucun commit.
+- Build et tests non rejoués : rien n'a changé depuis la validation de `/develop` (build vert, 1 336 specs).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-404 --sync` — ne pas éditer à la main)*
@@ -327,6 +333,7 @@ Clients (preuve par mutation, Vitest weda2) :
 | /develop | ok | 57 min 07 s | 3 (30 s) | 10 (10 min 57 s) | — | api-mail 1B/4T, client-mobile 1B/2T, client-angular 1B/4T |
 | /sonar | ok | 24 min 27 s | 3 (49 s) | 14 (17 min 45 s) | 4 (1 min 41 s) | 2 itération(s), api-mail 3B/14T |
 | /lint-angular | ok | 3 min 06 s | 1 (13 s) | 2 (39 s) | — | 2 itération(s), client-angular 1B/2T |
+| /lint-mobile | ok | 16 s | — | — | — | — |
 | **Total cycle** | | **1 h 25 min** | **7 (1 min 32 s)** | **26 (29 min 22 s)** | **4 (1 min 41 s)** | |
 
-Autres commandes mesurées : lint ×4 (25 s), nuget-wait ×1 (6.5 s), restore ×1 (22 s)
+Autres commandes mesurées : lint ×5 (30 s), nuget-wait ×1 (6.5 s), restore ×1 (22 s)
