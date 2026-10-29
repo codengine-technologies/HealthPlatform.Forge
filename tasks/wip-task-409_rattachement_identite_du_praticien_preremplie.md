@@ -1,6 +1,7 @@
 # todo-task-409 — Rattachement : identité du praticien préremplie
 
 **Repos**: api-mail, client-mobile, client-angular
+**E2E**: bypass — décision humaine du 2026-10-29 (demandée pendant le cycle : « bypass les tests e2e car trop long »)
 **Dependencies**: task-408 (source FHIR ou LDAP ; cartes de test dans l'annuaire), task-405 (nom PSC enregistré sur le rattachement)
 **Epic**: E020
 
@@ -274,6 +275,8 @@ Il n'a rien à saisir. Il garde la main pour corriger, et ce qu'il a corrigé n'
 
 ## Branches
 
+> **E2E** : bypass demandé par l'humain pendant le cycle — /e2e ne jouera aucune voie ; la PR le dira.
+
 > **Empilée sur task-408** (dépendance non encore mergée) : les branches api-mail et mobile partent de
 > `feat/task-408-annuaire-source-fhir-ou-ldap-choisie`, comme 404 sur 403. Merger task-408 d'abord.
 
@@ -288,7 +291,9 @@ Il n'a rien à saisir. Il garde la main pour corriger, et ce qu'il a corrigé n'
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 20 s | — | — | — | — |
-| **Total cycle** | | **20 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 1 h 38 min | 3 (12 s) | 3 (5 min 42 s) | — | api-mail 1B/1T, client-mobile 1B/1T, client-angular 1B/1T |
+| /e2e | en cours | — | — | — | — | e2e ×4 (34 min 31 s) |
+| **Total cycle** | | **1 h 38 min** | **3 (12 s)** | **3 (5 min 42 s)** | **0 (0.0 s)** | |
 
 ## Develop log
 
