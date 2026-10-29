@@ -215,7 +215,8 @@ C'est la configuration de l'environnement qui le permet, pas un faux annuaire.
 |---|---|---|---|---|---|---|
 | /start | ok | 10 s | — | — | — | — |
 | /develop | ok | 21 min 03 s | 6 (1 min 10 s) | 5 (5 min 46 s) | — | api-mail 4B/1T, client-mobile 1B/1T, client-angular 1B/3T |
-| **Total cycle** | | **21 min 13 s** | **6 (1 min 10 s)** | **5 (5 min 46 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 9 min 10 s | 1 (18 s) | 5 (6 min 56 s) | 2 (40 s) | 1 itération(s), api-mail 1B/5T |
+| **Total cycle** | | **30 min 23 s** | **7 (1 min 28 s)** | **10 (12 min 43 s)** | **2 (40 s)** | |
 
 ## Develop log
 
@@ -318,3 +319,19 @@ C'est la configuration de l'environnement qui le permet, pas un faux annuaire.
 | Coverage (projet) | 98,0 % | 98,0 % | 0 |
 | Duplication | 0,4 % | 0,4 % | 0 |
 | Reliability / Security / Maintainability | A/A/A | A/A/A | → |
+
+## Lint log
+
+- `client-angular` (code-only, branche `feature/nova-mss-weda-integration`), base `origin/next`, lint `tag:scope:mss`.
+- **Baseline** : 1 erreur, 145 avertissements (tous antérieurs : `max-lines`, `jsdoc/require-example`).
+  L'erreur était la nôtre : `prettier/prettier`, appel `attach(...)` trop long dans
+  `attach-mailbox-form.component.ts`.
+- **Itération 1** (`--fix`) : 0 erreur. Le fixer a aussi passé en `import type` deux imports Playwright de
+  `e2e/mss-e2e/support/weda-host.ts` et `weda.ts` (code de l'humain, dans le périmètre MSS, sans effet à
+  l'exécution) : laissés non commités, à relire avec le reste.
+- **Build** (`nx affected -t build`) : `weda2` ✓ ; `mss:build:production` et `prescription:build:production` ✗ sur
+  le budget de bundle initial (+264 ko, +1,01 Mo) — **préexistant**, sans lien avec la task (mémoire
+  `angular-mss-build-production-rouge-preexistant`).
+- **Tests** (`nx affected -t test`) : ✓ 12 projets.
+- **Final** : 0 erreur, 144 avertissements (préexistants). Itérations : 1 / 5.
+- `conventions/angular.md` : inchangé (correction faite par l'auto-fixer, gratuite).
