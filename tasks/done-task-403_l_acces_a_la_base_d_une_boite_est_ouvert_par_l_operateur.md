@@ -146,7 +146,8 @@ synchronisées. Seul le **titulaire** garde la lecture hors ligne sur sa boîte 
 | /lint-angular | ok | 2 min 13 s | 1 (13 s) | 1 (22 s) | — | 1 itération(s), client-angular 1B/1T |
 | /lint-mobile | ok | 24 s | — | — | — | — |
 | /e2e | ok | 17 min 57 s | — | — | — | e2e ×6 (34 min 02 s) |
-| **Total cycle** | | **1 h 36 min** | **12 (3 min 15 s)** | **22 (37 min 00 s)** | **6 (2 min 03 s)** | |
+| /review | ok | 13 min 14 s | 2 (17 s) | 4 (9 min 03 s) | — | api-mail 1B/3T, client-mobile 1B/1T |
+| **Total cycle** | | **1 h 49 min** | **14 (3 min 32 s)** | **26 (46 min 03 s)** | **6 (2 min 03 s)** | |
 
 Autres commandes mesurées : lint ×3 (49 s), nuget-wait ×1 (14 s), restore ×1 (23 s)
 
@@ -419,3 +420,71 @@ Branche courante : `feature/nova-mss-weda-integration`. Fichiers de task-403 :
 - E2E-MAILBOX-002 [angular] — le code weda2 de task-378 (écran de panne à l'entrée et son test) n'est pas encore livré sur la branche weda2 ; divergence décidée par l'humain le 2026-10-25 — résorbée par task-395 — **à retirer** : le client est revenu à la version du catalogue
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## PRs
+
+- `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/53 — `awaiting-human-merge`
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/323 — `awaiting-human-merge`
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/113 — `awaiting-human-merge`
+- `client-angular` : code-only — humain gère commit/push TFS et ouverture PR. Branche
+  `feature/nova-mss-weda-integration`. Fichiers modifiés par task-403 :
+  - `apps/weda2/src/app/core/interceptors/mss-headers.interceptor.ts`
+  - `libs/mss/src/core/index.ts`, `libs/mss/src/index.ts`
+  - `libs/mss/src/core/models/audit.model.ts`, `audit.model.spec.ts`, `mailbox.model.ts`
+  - `libs/mss/src/core/services/mail-events-stream.service.ts`, `notification-stream.service.ts`
+  - `libs/mss/src/core/services/mailbox-access-suspension.service.ts` (+ `.spec.ts`) — nouveaux
+  - `libs/mss/src/core/stores/mailbox-session.store.ts`
+  - `libs/mss/src/features/mailbox-access-suspended/` — nouveau (composant, gabarit, style, spec)
+  - `e2e/mss-e2e/specs/functional.e2e.ts`, `e2e/mss-e2e/support/e2e-backend.ts` (cumulent les
+    modifications non commitées de task-377)
+- Ordre de merge : `dtos-mss` (#53) → `api-mail` (#323) → `client-mobile` (#113).
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 1 blocage au premier passage, corrigé ; 4 suggestions non bloquantes.
+
+- **Premier passage : CHANGES REQUESTED** — la DoD exige les traces de refus « lues dans le journal
+  réel » ; le test les lisait à la frontière `IAuditService`. Corrigé (`8ee621a6`) : la suite
+  d'intégration compose le vrai `AuditService`, son canal, `AuditBackgroundService` et
+  `PostgresAuditSink`, et relit `audit_traces` avec `PostgresAuditReader` ; vu rouge par mutation (M6).
+
+### api-mail
+- `MailboxAccessPolicy` (Domain) — ✅ règle pure, titulaire seul exempté, hors-ligne refusé aux autres.
+- `MailboxAccessGate` — ✅ verrou avant toute lecture ; refus → `AuthFailing`, verdict retiré,
+  synchronisation lancée par la personne arrêtée, traces (personne, rôle, boîte, cause).
+- `MailboxSelectionService` — ✅ le verrou s'applique à la boîte demandée **et** à la boîte par défaut ;
+  `AuthFailing` devient « refusé par l'opérateur ».
+- `UserContextEnricherMiddleware` — ✅ trois codes problem+json ; les routes `[MailboxNotRequired]`
+  restent servies (c'est depuis elles qu'on ré-authentifie ou détache).
+- `MailServerTokenRetry` — ✅ seul un refus **définitif** (jeton frais refusé) suspend ; un jeton périmé
+  repris avec succès renouvelle le verdict.
+- `RedisOperatorVerdictStore` — ✅ clé en empreinte, échec fermé.
+- `SseHelper`, `MailEventsController`, `NotificationsController` — ✅ revérification périodique, dernier
+  évènement `MailboxAccessSuspended`, fermeture.
+- `BenchOperatorController` / `BenchOperatorRefusals` — ✅ enregistrés seulement là où le bypass de
+  test existe (Development, Testing), 404 sinon et sans bypass.
+- ⚠️ Suggestion : un renouvellement n'est pas mutualisé ; N requêtes simultanées d'une même personne
+  à l'expiration du verdict lancent N sondes IMAP.
+- ⚠️ Suggestion : une route de gestion (`[MailboxNotRequired]`) qui porte `Client-Email` renouvelle aussi
+  le verdict, donc peut sonder l'opérateur sans servir de données.
+- ⚠️ Suggestion : chaque requête refusée écrit une trace `MailboxAccessRefused` ; un délégataire hors
+  ligne qui insiste en écrit une par requête.
+- ⚠️ Suggestion : Redis injoignable = sonde à chaque requête d'un non-titulaire (échec fermé assumé).
+
+### client-mobile
+- `MailboxAccessSuspensionService`, intercepteur, flux SSE — ✅ purge des données de la boîte, écran
+  « accès suspendu », flux non rouverts.
+- Écran « accès suspendu » — ✅ ce que le serveur sait, jamais « délégation retirée » ; `data-testid`.
+
+### client-angular (code-only)
+- Même conception (service de la lib MSS, intercepteur weda2, composant) — ✅.
+
+### Règle 1b — comportement → test d'intégration → preuve rouge
+
+| Comportement | Test | Preuve rouge |
+|---|---|---|
+| Refus au renouvellement : 403, aucune donnée (cache compris), `AuthFailing` relu, traces relues dans `audit_traces` | `MailboxAccessLockIntegrationTests.Delegate_RefusedAtRenewal_…` | M2, M3, M6 |
+| Renouvellement accepté : servi, verdict Redis 5 min | `…Delegate_AcceptedAtRenewal_…` | M2 |
+| Hors ligne : délégataire 403 PSC requise, titulaire servi | `…OfflineDelegate_…` | M2 |
+| Flux SSE (mail et notifications) fermés sur révocation | `…TheStreamOfADelegateWhoseAccessFalls_…` ×2 | M2, M4, M5 |
+| Refus en cours d'usage SMTP puis IMAP → `AuthFailing` au registre réel | `MailServerTokenRefusalEndpointIntegrationTests` | M1 |
