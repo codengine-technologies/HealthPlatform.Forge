@@ -491,3 +491,10 @@ par lint sur du code frais est un échec de lecture de ce fichier.
 - **Origine** : task-402 (`/develop`, banc e2e : « Mes boîtes » restait « en chargement » sur la gestion des
   messageries, mobile et weda2)
 - **Occurrences** : 1
+
+### filtre-prouve-jusqu-a-la-requete — Un filtre d'écran se prouve jusqu'à la requête HTTP
+
+- **Repos** : `client-angular`, `client-mobile`
+- **Consigne** : un champ de filtre ajouté à un écran se teste **jusqu'à la requête envoyée**. Il faut un spec du service API sur `HttpTestingController`, qui lit le paramètre dans `request.params`, et pas seulement un spec du composant qui vérifie que le filtre est émis. Les services qui construisent leurs `HttpParams` champ par champ (`getAuditTraces`) ignorent en silence un champ ajouté au modèle.
+- **Origine** : task-405. Le filtre par personne de l'écran Audit était émis par le composant (spec vert, mutation vue rouge), mais `MssApiService.getAuditTraces` n'envoyait jamais `actorRpps`. L'écran filtrait en apparence, et le serveur rendait les actes de tout le monde. Attrapé par E2E-AUDIT-001 au passage `/e2e`, pas par les specs.
+- **Occurrences** : 1 (task-405)

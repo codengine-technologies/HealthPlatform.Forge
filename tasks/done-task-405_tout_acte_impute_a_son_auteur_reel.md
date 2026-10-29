@@ -431,6 +431,37 @@ Clients :
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
 
+## PRs
+
+> Empilées sur task-404, elle-même sur task-403. Ordre de merge : task-403 (dtos #53, api-mail #323, mobile #113), puis task-404 (dtos #54, api-mail #324, mobile #114), puis celles-ci.
+
+- `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/55 — `awaiting-human-merge`
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/325 — `awaiting-human-merge`
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/115 — `awaiting-human-merge`
+- `client-angular` : code-only. L'humain gère le commit, le push sur TFS et la PR. La branche `feature/nova-mss-weda-integration` porte aussi, non commités, les fichiers de task-403 et task-404. Fichiers modifiés par task-405 : ceux de la fin du `## Develop log`, plus `libs/mss/src/core/services/mss-api.service.ts` (filtre par personne envoyé au serveur) et `libs/mss/src/core/services/mss-api.audit.service.spec.ts` (nouveau).
+
+## Code Review Summary
+
+**APPROVED** — 0 point bloquant, 4 points à arbitrer.
+
+- **Validation** :
+  - api-mail : suite complète verte à l'itération 2 de Sonar (`f857e9ea`) : 202 + 3 831 + 699 + 1 306 + 1 055 (16 ignorés). Depuis, seuls les tests unitaires de `PersonNameResolver` (`01f5cb35`, 9 verts) ont été ajoutés, et validés par le hook de push.
+  - client-mobile : build vert, 1 343 specs.
+  - client-angular : `nx build weda2` vert, 1 369 + 2 653.
+  - dtos-mss : 561.0.0 publié.
+- **DoD** : vérifiée point par point.
+  - Contrat, migrations auditées, test d'architecture, tests d'intégration (délégataire → titulaire, tiers, chaque nouveau type, système, hors ligne, filtres, acquittement), écran Audit (colonne « Qui », filtre par personne), auteurs sur l'acquittement et le rattachement, specs UI, E2E-AUDIT-001 v1 et E2E-BIO-001 v2.
+  - Aucune donnée de santé dans les journaux ajoutés (le résolveur ne logue que la fin du SID).
+  - Seule réserve : la civilité « Dr » des exemples, voir plus bas.
+- **Règle 1b** : M1 à M10, voir la table du `## Develop log`.
+- **Règle 14** : chaque acte est imputé à son auteur réel ; la lecture du journal passe par la boîte, à travers la RLS posée côté serveur. Deux tests figeaient l'ancien cloisonnement par personne : ils sont inversés selon la décision humaine n°3.
+- **À arbitrer par l'humain** :
+  1. Civilité « Dr » non affichée : `ActorDto` ne la porte pas, alors que `userinfo` rend `civilityCode`.
+  2. Relire un message déjà lu n'est pas retracé (exemption avec raison). C'est en tension avec la règle 2 de la task (« toute route qui lit une donnée de santé ») ; `[Audited(MailRead)]` sur la route du contenu le règlerait, au prix du volume.
+  3. Le filtre par personne est une saisie du RPPS.
+  4. `Search` fait un `ILIKE` sans index trigramme.
+- **AIPD** : à mettre à jour (actes nominatifs et détails techniques visibles des autres personnes de la boîte).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-405 --sync` — ne pas éditer à la main)*
@@ -443,6 +474,7 @@ Clients :
 | /lint-angular | ok | 58 s | — | — | — | 1 itération(s) |
 | /lint-mobile | ok | 14 s | — | — | — | — |
 | /e2e | ok | 42 min 00 s | — | — | — | e2e ×9 (1 h 17 min) |
-| **Total cycle** | | **2 h 03 min** | **34 (2 min 45 s)** | **24 (29 min 08 s)** | **4 (1 min 26 s)** | |
+| /review | ok | 2 min 47 s | 2 (21 s) | 2 (44 s) | — | client-angular 1B/1T, client-mobile 1B/1T |
+| **Total cycle** | | **2 h 05 min** | **36 (3 min 07 s)** | **26 (29 min 53 s)** | **4 (1 min 26 s)** | |
 
 Autres commandes mesurées : lint ×4 (22 s), nuget-wait ×2 (17 s), restore ×3 (26 s)
