@@ -2,11 +2,66 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E020-boite-partagee-une-base-par-boite-tout.md](E020-boite-partagee-une-base-par-boite-tout.md).
-> **Dernière mise à jour** : 2026-10-29 (v1.1)
+> **Dernière mise à jour** : 2026-10-29 (v1.2)
 
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.2 — Une base par boîte — task-404
+
+- **Task** : task-404, statut `done`. `/review` APPROVED le 2026-10-29. La revue a relevé un manque
+  de DoD (l'étiquette lue par le délégataire), comblé en rouvrant `/develop` pour ce seul test
+  (`f93609c1`). Run `/forge` `forge-20261029-403-405`. **Empilée sur task-403** : merger 403 d'abord.
+- **PRs** (label `awaiting-human-merge`) : `dtos-mss` #54, `api-mail` #324, `client-mobile` #114 ;
+  `client-angular` code-only, non commité sur `feature/nova-mss-weda-integration`.
+- **dtos-mss** : `HealthPlatform.Dtos.Mss` **557.0.0** (7db45ab).
+  - `UserSettingsDto.SenderIdentity` retiré.
+  - Ajouts : `MailboxSenderIdentityDto { Identity, CanEdit }` et le code
+    `MAILBOX_SENDER_IDENTITY_HOLDER_ONLY` (403).
+- **api-mail** (03ed3eb6, 249c480c, b85a420d, d3a07362, a5548808, 4c7bd487, 05b2055a, a8bbf9cd,
+  a4b2e833, f93609c1) :
+  - **Nommage** : `UserContextInfo.ProposeDatabaseName(email)` → `u_{slug}_{hash}`, sans RPPS ;
+  - **Registre** : table `mss_mailboxes` (adresse unique, base unique), `mss_accounts.mailbox_id`,
+    clé étrangère composite (id, adresse, base). `EnsureMailboxAsync` fait un
+    `INSERT … ON CONFLICT DO NOTHING` puis relit la ligne. Le type d'adresse connu est gravé sur la
+    boîte. `HasActiveHolderAsync` est ajouté ;
+  - **Base de la boîte** : `Users.AuthenticationSubject` (sub Keycloak), avec deux index partiels
+    (`Email` pour la ligne « boîte », le sujet pour la ligne « personne ») ;
+    - `GetMailboxUserIdAsync` (boîte) : contacts, modèles, acquittements de biologie ;
+    - `GetCurrentUserIdAsync` (personne, ou boîte pour un acte système) : réglages, signatures,
+      actions en attente ;
+    - clé Redis `user:id:{base}:{mailbox|person:{sub}}` ;
+  - **Identité d'expéditeur** : `MailboxSenderIdentityService` et
+    `GET|PUT api/v1/account/mailboxes/current/sender-identity`. L'identité est rangée dans les
+    réglages de la ligne « boîte ». Le titulaire seul la modifie, et sans titulaire rattaché toute
+    personne rattachée le peut. Sinon : 403 problem+json. `SmtpService` lit le `From` de la boîte ;
+  - **Migrations** : `MailDb/20261029120000_AddUserAuthenticationSubject`,
+    `TenantDb/20261029120000_AddMailboxes`. Aucune reprise des données existantes, sur arbitrage
+    humain : rien n'est en production ;
+  - **Bancs** : `E2eReset`, `E2eSeed` et `LoadTestRegistryProvisioner` passent aux nouveaux noms ;
+  - **Catalogue** : E2E-SHARED-001 v1.
+- **client-mobile** (42f4fec) : `MailboxSenderIdentityService`. Paramètres en lecture seule pour qui
+  ne peut pas modifier l'identité. `From` de la boîte. E2E-SHARED-001 (`ActorInMailbox`).
+- **client-angular** (weda2, code-only) : `getMailboxSenderIdentity` / `saveMailboxSenderIdentity`,
+  Paramètres en lecture seule, placeholders `Sender…` de la rédaction tirés de la boîte,
+  E2E-SHARED-001.
+- **Règle 1b** : `SharedMailboxIntegrationTests` (8 tests, vrai registre, vraie résolution de base)
+  et `FolderOperationsEndToEndTests.ATagSetByTheHolder_…`. Mutations M1 à M6, M9 et M10 vues rouges.
+- **Validation** : api-mail domain 202, infrastructure 699, api 1 302, application 3 831,
+  integration 1 046 (16 ignorés) ; mobile 1 336 ; weda2 1 355 + 2 653.
+- **Sonar** : Quality Gate OK ; new coverage 97,1 % → 97,0 % ; 0 bug, 0 vulnérabilité, 0 smell.
+  Une S4457 et une S125 corrigées, toutes deux récidives du contrôle §Q 2b non joué.
+- **e2e** : mobile 52 verts, weda2 60 verts dont 2 flaky (E2E-PATIENT-004, E2E-COMPOSE-004, corps de
+  réponse libéré), parité verte.
+- **Limites et dette** :
+  - au retour arrière, la migration de la base de boîte échoue si des lignes de personne sont encore
+    référencées ;
+  - une base qu'un délégataire avait seul sous l'ancien nommage devient orpheline (sans objet tant
+    que les bases de dev sont supprimées au déploiement) ;
+  - un spec mobile instable reste à identifier ;
+  - le délégataire voit le patient, mais l'**imputation** des actes à leur auteur reste à faire
+    (task-405).
 
 ### v1.1 — Accès à la base d'une boîte ouvert par l'opérateur MSSanté — task-403
 
@@ -176,14 +231,17 @@
 | Faux Annuaire du banc | `Api/Mail/tests/mss.mail.e2e/FakeAnnuaire/` | Profil e2e (task-402) |
 | Formulaire de rattachement (mobile) | `Client/Mobile/src/app/mailbox/shared/attach-mailbox-form.component.*` | Deux voies (task-402) |
 | Formulaire de rattachement (weda2) | `Client/Angular/front/libs/mss/src/ui/attach-mailbox-form/` | Deux voies, présélection Weda (task-402) |
+| Registre des boîtes | `Api/Mail/src/Infrastructure/Migrations/TenantDb/20261029120000_AddMailboxes.cs` | Une adresse, une base (task-404) |
+| Personne dans la base de boîte | `Api/Mail/src/Infrastructure/Repositories/MailDb/BaseRepository.cs` | Boîte / personne (task-404) |
+| Identité d'expéditeur de la boîte | `Api/Mail/src/Application/Services/Mailboxes/MailboxSenderIdentityService.cs` | Titulaire seul (task-404) |
 
 ---
 
 ## Annexe B — Inventaire fonctionnel (2026-10-29)
 
-- Routes ajoutées : 2 (`GET /api/v1/account/mailboxes/directory` ; `POST|DELETE /api/v1/testing/operator-refusals`, banc seulement).
-- Migrations du registre : 1 (`AddMailboxRole`).
-- Scénarios e2e : 3 ajoutés (E2E-MAILBOX-003, E2E-MAILBOX-004, E2E-MAILBOX-005), 1 versionné (E2E-WEDA-001 v2).
+- Routes ajoutées : 3 (`GET /api/v1/account/mailboxes/directory` ; `POST|DELETE /api/v1/testing/operator-refusals`, banc seulement ; `GET|PUT /api/v1/account/mailboxes/current/sender-identity`).
+- Migrations du registre : 2 (`AddMailboxRole`, `AddMailboxes`) ; base de boîte : 1 (`AddUserAuthenticationSubject`).
+- Scénarios e2e : 4 ajoutés (E2E-MAILBOX-003, E2E-MAILBOX-004, E2E-MAILBOX-005, E2E-SHARED-001), 1 versionné (E2E-WEDA-001 v2).
 
 ---
 
@@ -193,6 +251,6 @@
 |---|---|---|---|
 | task-402 | done (PR en attente de merge) | Rattachement guidé par l'Annuaire Santé ; rôle titulaire, membre, délégataire ou « à requalifier » | RG-E020-03 ; RG-E020-06 (partiel) |
 | task-403 | done (PR en attente de merge) | Accès à la base subordonné au verdict de l'opérateur ; hors-ligne du titulaire seul | RG-E020-04, RG-E020-05 ; RG-E020-06 (partiel) |
-| task-404 | todo | Une base par boîte ; données de la personne séparées | RG-E020-01, RG-E020-02 |
+| task-404 | done (PR en attente de merge) | Une base par boîte ; données de la personne séparées ; identité d'expéditeur de la boîte | RG-E020-01, RG-E020-02 |
 | task-405 | todo | Tout acte imputé à son auteur réel ; journal lisible de toute la boîte | RG-E020-06, RG-E020-07 |
 | task-406 | todo | Mesure de charge d'une boîte partagée | — |

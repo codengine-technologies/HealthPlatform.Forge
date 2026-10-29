@@ -1,8 +1,8 @@
 # E020 — Boîte partagée : une base par boîte, tout acte imputé
 
-> **Statut** : 🟡 En cours — 2 fonctionnalités sur 5 livrées, en attente de recette
+> **Statut** : 🟡 En cours — 3 fonctionnalités sur 5 livrées, en attente de recette
 > **Modèle** : task-driven
-> **Version** : 1.1
+> **Version** : 1.2
 > **Auteur** : PO forge
 > **Audience** : PO, direction, équipe produit — la vue ingénierie vit dans [E020-Changelogs.md](E020-Changelogs.md)
 > **Dernière mise à jour** : 2026-10-29
@@ -78,7 +78,7 @@ titulaire, le journal dit que c'est le délégataire qui l'a supprimé.
 |---|---|---|---|---|
 | E020-F001 | Rattachement guidé par l'Annuaire Santé | Choisir ses boîtes dans la liste « Mes boîtes » publiée pour lui, ou ajouter une boîte qui lui est déléguée ; voir son rôle sur chaque boîte | task-402 | 🟢 Livrée, en attente de recette |
 | E020-F002 | Accès ouvert par l'opérateur | Ne lire une boîte que si l'opérateur lui en a ouvert l'accès récemment ; le titulaire seul garde la lecture hors ligne | task-403 | 🟢 Livrée, en attente de recette |
-| E020-F003 | Une base par boîte | Travailler à plusieurs dans la même boîte : rattachements patient, étiquettes, acquittements et classements partagés ; réglages et signatures restent personnels | task-404 | ⏳ À faire |
+| E020-F003 | Une base par boîte | Travailler à plusieurs dans la même boîte : rattachements patient, étiquettes, acquittements et classements partagés ; réglages et signatures restent personnels | task-404 | 🟢 Livrée, en attente de recette |
 | E020-F004 | Tout acte imputé à son auteur | Lire, dans le journal de la boîte, qui a fait quoi, quand et sur quel objet | task-405 | ⏳ À faire |
 | E020-F005 | Tenue en charge d'une boîte partagée | Garder une messagerie réactive quand plusieurs personnes travaillent dans la même boîte | task-406 | ⏳ À faire |
 
@@ -135,8 +135,8 @@ graph LR
 
 | ID | Règle | Description | Statut |
 |----|-------|-------------|--------|
-| RG-E020-01 | Une boîte, une base | Toutes les personnes qui travaillent sur une adresse partagent les mêmes données. Une copie des données de santé par personne est interdite. | ⏳ Prévu (task-404) |
-| RG-E020-02 | Ce qui appartient à la boîte, ce qui appartient à la personne | Messages, dossiers, documents, patients, biologie, étiquettes, contacts et modèles appartiennent à la boîte. Les réglages et les signatures appartiennent à la personne. | ⏳ Prévu (task-404) |
+| RG-E020-01 | Une boîte, une base | Toutes les personnes qui travaillent sur une adresse partagent les mêmes données. Une copie des données de santé par personne est interdite. | ✅ Implémenté (task-404) |
+| RG-E020-02 | Ce qui appartient à la boîte, ce qui appartient à la personne | Messages, dossiers, documents, patients, biologie, étiquettes, contacts et modèles appartiennent à la boîte. Les réglages et les signatures appartiennent à la personne. | ✅ Implémenté (task-404) |
 | RG-E020-03 | Le rôle vient de l'Annuaire Santé | Titulaire ou membre : uniquement par choix dans la liste publiée par l'Annuaire pour le professionnel. Délégataire : uniquement par saisie de l'adresse. La saisie n'ouvre jamais le rôle de titulaire. Le rôle est revérifié à chaque nouvelle authentification. | ✅ Implémenté (task-402) |
 | RG-E020-04 | L'opérateur ouvre l'accès | Lire ou écrire les données d'une boîte exige un avis favorable récent de l'opérateur MSSanté. Un refus ou une révocation ferment tout accès. | ✅ Implémenté (task-403) |
 | RG-E020-05 | Hors ligne réservé au titulaire | Seul le titulaire garde la lecture hors ligne de sa boîte personnelle. Un délégataire, un membre ou une boîte « à requalifier » n'ont pas de hors-ligne. | ✅ Implémenté (task-403) |
@@ -188,11 +188,11 @@ graph LR
 |---|---|---|---|
 | E020-F001 — Rattachement guidé par l'Annuaire Santé | 🟢 Livrée, en attente de recette | 100 % | task-402 |
 | E020-F002 — Accès ouvert par l'opérateur | 🟢 Livrée, en attente de recette | 100 % | task-403 |
-| E020-F003 — Une base par boîte | ⏳ À faire | 0 % | task-404 |
+| E020-F003 — Une base par boîte | 🟢 Livrée, en attente de recette | 100 % | task-404 |
 | E020-F004 — Tout acte imputé à son auteur | ⏳ À faire | 0 % | task-405 |
 | E020-F005 — Tenue en charge d'une boîte partagée | ⏳ À faire | 0 % | task-406 |
 
-**Couverture EPIC consolidée : 40 %** (2 fonctionnalités livrées sur 5, en attente de recette).
+**Couverture EPIC consolidée : 60 %** (3 fonctionnalités livrées sur 5, en attente de recette).
 
 ---
 
@@ -208,6 +208,11 @@ graph LR
 - v1.1 — Accès ouvert par l'opérateur. Hors titulaire, la lecture d'une boîte exige l'accord récent
   de l'opérateur MSSanté. Un refus affiche l'écran « Accès suspendu », sans aucune donnée de la
   boîte, et ferme la messagerie en temps réel. Hors ligne, seul le titulaire lit (task-403).
+- v1.2 — Une base par boîte. Le titulaire et ses délégataires travaillent sur les mêmes données. Un
+  patient rattaché, une étiquette posée ou un résultat acquitté par l'un est vu des autres, comme
+  les contacts et les modèles. Les réglages, les signatures et les actions en attente restent
+  propres à chacun. Le nom de l'expéditeur est celui de la boîte : seul son titulaire le modifie
+  (task-404).
 
 ### Conformité réglementaire
 
@@ -217,6 +222,8 @@ graph LR
 - v1.1 — Le retrait d'une délégation chez l'opérateur coupe l'accès en moins de cinq minutes, y
   compris aux données déjà synchronisées. L'écran ne nomme jamais une cause que l'opérateur ne donne
   pas (référentiel socle MSSanté #2) (task-403).
+- v1.2 — Un délégataire n'envoie jamais son propre nom sur l'adresse du délégant : le nom affiché à
+  l'envoi est celui de la boîte (référentiel ANS clients MSSanté, ECO.1.2.9) (task-404).
 
 ### Sécurité
 
@@ -225,6 +232,8 @@ graph LR
   techniques (task-402).
 - v1.1 — Chaque accès refusé et chaque suspension sont tracés au journal, avec la personne, son
   rôle, la boîte et la cause, et conservés comme des accès aux données de santé (task-403).
+- v1.2 — Les données de santé d'une boîte n'existent plus qu'en un seul exemplaire. Révoquer un
+  délégataire ne laisse plus de copie derrière lui (task-404).
 
 ---
 
