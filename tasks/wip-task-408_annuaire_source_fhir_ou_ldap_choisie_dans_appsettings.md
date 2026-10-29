@@ -206,3 +206,87 @@ C'est la configuration de l'environnement qui le permet, pas un faux annuaire.
 - `api-mail` (pushed) : feat/task-408-annuaire-source-fhir-ou-ldap-choisie — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-408-annuaire-source-fhir-ou-ldap-choisie
 - `client-mobile` (pushed) : feat/task-408-annuaire-source-fhir-ou-ldap-choisie — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-408-annuaire-source-fhir-ou-ldap-choisie
 - `client-angular` (code-only) : la forge écrit sur la branche checkout dans `Client/Angular/` (au /start : `feature/nova-mss-weda-integration`) — humain gère branche, commit, push, PR TFS
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-408 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 10 s | — | — | — | — |
+| **Total cycle** | | **10 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+
+## Develop log
+
+- **Repos touchés** : `api-mail`, `client-mobile`, `client-angular` (code-only). Aucun DTO ni interop changé.
+- **Commits** :
+  - api-mail : `89837885` feat(annuaire) source FHIR ou LDAP ; `7c9797ec` test(annuaire) source LDAP sur un vrai OpenLDAP ;
+  - client-mobile : `0b8b98b` feat(mobile) attente visible au rattachement ;
+  - client-angular (weda2) : non commité sur `feature/nova-mss-weda-integration`, fichiers
+    `libs/mss/src/ui/attach-mailbox-form/attach-mailbox-form.component.{html,scss,spec.ts,ts}`.
+- **Ce qui est livré (api-mail)** :
+  - `AnnuaireOptions` (section `Annuaire`) : `Source` = `Fhir` | `Ldap`, et `Ldap` (hôte, port, base DN, délai, taille).
+    `AnnuaireOptionsValidator` + `ValidateOnStart` refusent le démarrage sur une source absente ou inconnue, ou sur
+    une section LDAP incomplète, avec la clé dans le message ;
+  - `LdapAnnuaireSanteService` : décorateur qui ne remplace que `GetPractitionerMailboxesAsync`. La recherche, les
+    spécialités et les professions restent sur la passerelle FHIR (décision n°2). Lecture anonyme bornée en
+    durée et en taille, filtre `(psidnat=8{RPPS})` échappé (RFC 4515, `LdapFilters`). Injoignable → la même
+    `UnavailableException` `DIRECTORY_UNAVAILABLE` que FHIR. Un évènement de journal par lecture, sans RPPS ;
+  - `DirectoryMailboxes` : la traduction PER / ORG / CAB / APP / absent et la règle « une adresse vue deux fois
+    reste personnelle », **un seul code** pour FHIR (`FhirBundleParser`) et LDAP ;
+  - `AnnuaireSourceStartupLogger` : la source active et son adresse sont journalisées au démarrage ;
+  - `appsettings.json` : `Annuaire:Source = Fhir` explicite, section LDAP remplie
+    (`partenaires.annuaire.sante.fr`, 389, `ou=bal,o=mssante,c=fr`, 10 s, 50) ;
+  - bibliothèque **Novell.Directory.Ldap.NETStandard 4.0.0**, entièrement managée : aucune `libldap` native à
+    installer dans l'image Docker (System.DirectoryServices.Protocols l'aurait exigée sous Linux).
+- ⚠️ **Écart à la décision n°4, à arbitrer** : `appsettings.Development.json` **n'est pas versionnable**. Le
+  `.gitignore` d'api-mail l'exclut (task-045 : « secrets stay local, never commit this file »). Pour garder
+  l'intention (le poste local lit l'annuaire de test, activation explicite et versionnée), c'est l'**AppHost**
+  qui pose `Annuaire__Source=Ldap` pour le poste local ; les profils `e2e` et `loadtest` reposent `Fhir`.
+  Les adresses LDAP restent dans `appsettings.json`. Si tu préfères un fichier d'appsettings dédié, il faut
+  lever l'exclusion de task-045 ou choisir un autre nom de fichier chargé explicitement.
+- **Vérifié contre le vrai annuaire « partenaires »** (lecture anonyme, même appel Novell que la production) :
+  RPPS 899700622675 → `virginie.medecinrpps0062267@medecin.formation.mssante.fr`, `typeBal: PER`. Le serveur
+  rend `typeBal` en casse mixte ; le jeu d'attributs Novell est insensible à la casse (contrôlé).
+- **Tests** :
+  - unitaires (`LdapDirectorySourceTests`, 26) : validation de la configuration (chaque clé), filtre et échappement,
+    traduction du type, déduplication, délégation à FHIR, LDAP injoignable → `DIRECTORY_UNAVAILABLE` ;
+  - intégration sur un **vrai OpenLDAP** en conteneur (`OpenLdapFixture`, schéma `psidnat`/`typebal`, lecture
+    anonyme), dans `MailboxAttachRoleIntegrationTests` (pile réelle : HTTP, middleware, RFC 7807, registre
+    PostgreSQL, journal d'audit) :
+    - `Directory_LdapSource_…` : BAL PER et ORG (type absent) du RPPS de session lues dans la réponse, ni l'APP ni
+      la BAL d'un autre RPPS ;
+    - `Directory_LdapUnreachable_…` : 503 problem+json `DIRECTORY_UNAVAILABLE` ;
+    - `AttachFromDirectory_LdapSource_…` : rôle **Holder** relu dans la liste du compte, trace
+      `mailbox-attach mode=Directory role=Holder actor-rpps=…` ;
+    - `Start_WithoutADeclaredSource_…` : démarrage refusé, message nommant `Annuaire:Source` ;
+  - source `Fhir` : tous les tests existants restent verts, harnais seulement complétés de `Source = Fhir`.
+- **Règle 1b — mutations vues rouges** :
+
+  | # | Mutation | Test rouge |
+  |---|---|---|
+  | M1 | la source LDAP est ignorée (FHIR toujours) | `Directory_LdapSource_…`, `AttachFromDirectory_LdapSource_…` |
+  | M2 | la BAL `APP` n'est plus écartée | `Directory_LdapSource_…` (collections différentes) |
+  | M3 | l'erreur LDAP n'est plus traduite en indisponibilité | `Directory_LdapUnreachable_…` (500 au lieu de 503) |
+  | M4 | une source absente est acceptée | `Start_WithoutADeclaredSource_…` (aucune exception) |
+
+- **Fronts — attente visible** (mobile et weda2, `attach-mailbox-form`) :
+  - lecture de « Mes boîtes » : spinner + « Lecture de l'Annuaire Santé… » (`attach-mailbox-directory-loading`
+    conservé) ;
+  - rattachement : spinner dans le **seul** bouton cliqué (`attach-mailbox-submitting` sur mobile, `aria-busy` du
+    `ds-button` sur weda2), toutes les actions désactivées, garde contre le second clic ;
+  - weda2 affichait jusqu'ici le spinner sur **tous** les boutons « Rattacher » à la fois : corrigé ;
+  - tests de composant : mobile 5, weda2 5 (lecture, indisponibilité, bouton cliqué, saisie déléguée, double clic).
+- **Validation locale** :
+  - api-mail : build OK ; tests domain 202, infrastructure 699, api 1 306, application 3 865, integration 1 059 (16 ignorés) — 0 échec ;
+  - client-mobile : build OK ; 1 348 / 1 348. Un premier passage avait 7 échecs sans lien (HtmlEditorComponent…)
+    sous la charge CPU de la suite .NET lancée en parallèle ; second passage vert ;
+  - client-angular : `nx build weda2` OK ; `npm test` vert (mss-lib 1 374 dont 5 nouveaux, weda2 3 301, …).
+- **Passe qualité** : relecture du diff selon les axes de `/simplify` (réutilisation, simplification, efficacité,
+  niveau d'abstraction) sur api-mail, mobile et weda2 : aucune simplification à appliquer. La traduction du type
+  de BAL est déjà factorisée entre FHIR et LDAP. Contrôles mécaniques §Q 2b (S125, xUnit1045, S4457, xUnit2032) :
+  aucun résultat.
+- **Scénarios e2e** : aucun versionné (DoD) ; aucune spec e2e ne référence le balisage modifié.
+- **DOD self-check** : 11 / 12 lignes vérifiées par commande ; la ligne `appsettings.Development.json` est remplacée
+  par l'activation dans l'AppHost (écart ci-dessus, à arbitrer).
+- **Next step** : `/sonar task-408`
