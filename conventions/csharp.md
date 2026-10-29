@@ -863,6 +863,23 @@ ajoute, quand il existe, l'effet de bord qui prouve le chemin pris (par exemple
 
 ---
 
+## S927 — une implémentation garde les noms de paramètres de son interface
+
+**Occurrences : 1** (task-403 — `MailboxAccessGate.RecordAcceptedAsync` / `RecordRefusedAsync` :
+l'interface `IOperatorVerdictRecorder` disait `userContext`, l'implémentation `context`, pour ne pas
+masquer le paramètre `userContext` du constructeur primaire. Corrigé en renommant le paramètre de
+l'interface.)
+
+Une classe à constructeur primaire qui reçoit déjà un `userContext` ne peut pas réutiliser ce nom pour
+un paramètre de méthode sans le masquer ; renommer le seul paramètre de l'implémentation fait diverger
+les deux signatures, et Sonar le signale (les appels par argument nommé ne compileraient plus selon
+le type statique).
+
+**Consigne** : quand une implémentation doit nommer un paramètre autrement (masquage d'un paramètre
+de constructeur primaire), renommer **aussi** celui de l'interface, dans le même commit.
+
+---
+
 ## memoire-vers-redis-chemins-faillibles — un état qui quitte la mémoire rend faillibles des chemins qui ne l'étaient pas
 
 **Occurrences : 1** (task-343, revue — ×2 dans la même task)

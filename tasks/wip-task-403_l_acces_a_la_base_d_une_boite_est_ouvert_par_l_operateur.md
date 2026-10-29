@@ -142,7 +142,8 @@ synchronisées. Seul le **titulaire** garde la lecture hors ligne sur sa boîte 
 |---|---|---|---|---|---|---|
 | /start | ok | 15 s | — | — | — | — |
 | /develop | ok | 45 min 25 s | 7 (1 min 48 s) | 6 (16 min 33 s) | — | api-mail 5B/3T, client-mobile 1B/2T, client-angular 1B/1T |
-| **Total cycle** | | **45 min 41 s** | **7 (1 min 48 s)** | **6 (16 min 33 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 30 min 23 s | 4 (1 min 13 s) | 15 (20 min 04 s) | 6 (2 min 03 s) | 3 itération(s), api-mail 4B/15T |
+| **Total cycle** | | **1 h 16 min** | **11 (3 min 02 s)** | **21 (36 min 38 s)** | **6 (2 min 03 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (14 s), restore ×1 (23 s)
 
@@ -269,3 +270,34 @@ Branche courante : `feature/nova-mss-weda-integration`. Fichiers de task-403 :
 - `e2e/mss-e2e/specs/functional.e2e.ts`, `e2e/mss-e2e/support/e2e-backend.ts` — **ces deux fichiers
   portaient déjà les modifications non commitées de task-377** (`pendingBiologyTotal`) : les deux
   changements s'y cumulent.
+
+## Sonar log
+
+- Serveur SonarQube 9.9.8 (`sonar.login`), déjà démarré. Branche `feat/task-403-l-acces-a-la-base-d-une-boite-est-ouvert`.
+- Itération 1 (`1962a5f7`) : QG OK, new_coverage 95,0 % ; **2 issues** sur le code neuf (`csharpsquid:S927`,
+  `MailboxAccessGate`, noms de paramètres différents de l'interface) ; fichiers de la task mal couverts
+  (sonde de l'opérateur, magasin des verdicts, banc, arrêt ciblé de la synchronisation, surveillance SSE).
+- Corrections : `22ce37df` (S927, paramètres de l'interface renommés), `b6e16a17` (tests : sonde,
+  magasin Redis en échec fermé, surveillance des flux, arrêt de la synchronisation par personne, opérateur
+  simulé du banc), `e7f3bcbf` (flux de notifications fermé sur révocation — test d'intégration, vu rouge
+  par mutation M5 : surveillance retirée de `NotificationsController`).
+- Itération 2 : QG OK, 0 issue, new_coverage 97,0 % ; une ligne restante (`NotificationsController`).
+- Itération 3 (`e7f3bcbf`) : **QG OK, 0 issue, 0 hotspot, new_coverage 97,1 %** ; tous les fichiers de la
+  task à 100 % de lignes neuves couvertes (`OperatorVerdicts` 92 %, `MailboxSelectionService` 96 % en
+  conditions). Tests : 204 + 3 830 + 697 + 1 302 + 1 037 verts (16 ignorés).
+- Phase 2 (legacy) : sans objet — 0 bug, 0 vulnérabilité, 0 code smell.
+- Conventions : **S927** ajoutée à `conventions/csharp.md` (Occurrences : 1).
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | → |
+| New coverage | 96,8 % | 97,1 % | +0,3 pt |
+| Bugs | 0 | 0 | 0 |
+| Vulnerabilities | 0 | 0 | 0 |
+| Security hotspots | 0 | 0 | 0 |
+| Code smells | 0 | 0 | 0 |
+| Coverage (projet) | 98,0 % | 98,0 % | 0 pt |
+| Duplication | 0,4 % | 0,4 % | 0 pt |
+| Reliability / Security / Maintainability | A/A/A | A/A/A | → |
