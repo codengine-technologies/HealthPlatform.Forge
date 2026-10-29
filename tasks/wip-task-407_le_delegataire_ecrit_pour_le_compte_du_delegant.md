@@ -84,39 +84,39 @@ boîte. Quand un médecin reçoit un tel message, l'écran le lui dit.
 
 ## Definition of Done
 
-- [ ] Build passes (0 errors) sur `dtos-mss`, `api-mail`, `client-mobile`, `client-angular` (code-only)
-- [ ] Tests pass (0 failures) sur chaque repo listé
-- [ ] Contrat `dtos-mss` : `Sender` (nom, adresse) sur `MailDto` — package publié, consommateurs .NET
+- [x] Build passes (0 errors) sur `dtos-mss`, `api-mail`, `client-mobile`, `client-angular` (code-only)
+- [x] Tests pass (0 failures) sur chaque repo listé
+- [x] Contrat `dtos-mss` : `Sender` (nom, adresse) sur `MailDto` — package publié, consommateurs .NET
       bumpés, types TypeScript mobile et Angular régénérés
-- [ ] Unit tests du calcul du `Sender` : chaque rôle (titulaire, membre, délégataire, à requalifier)
+- [x] Unit tests du calcul du `Sender` : chaque rôle (titulaire, membre, délégataire, à requalifier)
       croisé avec la BAL propre (même domaine, autre domaine, aucune), et le nom indisponible
-- [ ] Unit tests de la partie `prénom.nom` (accents, espaces, apostrophes, noms composés)
-- [ ] Test d'intégration de bout en bout pour l'envoi par un délégataire : le message **reçu** par le
+- [x] Unit tests de la partie `prénom.nom` (accents, espaces, apostrophes, noms composés)
+- [x] Test d'intégration de bout en bout pour l'envoi par un délégataire : le message **reçu** par le
       destinataire porte `From` = identité et adresse de la boîte, `Sender` = nom du délégataire et
       `no-reply-…@{domaine}`, et l'enveloppe `MAIL FROM` est la BAL déléguée (lue dans le message
       reçu, `Return-Path`) — vu rouge (règle 1b)
-- [ ] Test d'intégration de bout en bout : délégataire ayant sa BAL personnelle chez le même
+- [x] Test d'intégration de bout en bout : délégataire ayant sa BAL personnelle chez le même
       opérateur → `Sender` = sa BAL ; chez un autre opérateur → `no-reply-…` — vu rouge (règle 1b)
-- [ ] Test d'intégration de bout en bout : titulaire et membre → message reçu **sans** `Sender` — vu
+- [x] Test d'intégration de bout en bout : titulaire et membre → message reçu **sans** `Sender` — vu
       rouge (règle 1b)
-- [ ] Test d'intégration de bout en bout : `From` différent de la boîte de la session → 400
+- [x] Test d'intégration de bout en bout : `From` différent de la boîte de la session → 400
       problem+json, rien de reçu ; nom PSC indisponible → refus problem+json, rien de reçu — vu rouge
       (règle 1b)
-- [ ] Test d'intégration de bout en bout : accusé de lecture et réponse émis par un délégataire
+- [x] Test d'intégration de bout en bout : accusé de lecture et réponse émis par un délégataire
       portent le `Sender` — vu rouge (règle 1b)
-- [ ] Test d'intégration de bout en bout pour la lecture d'un message : `Sender` présent et différent
+- [x] Test d'intégration de bout en bout pour la lecture d'un message : `Sender` présent et différent
       du `From` → lu dans `MailDto` ; absent, ou égal au `From` → vide — vu rouge (règle 1b)
-- [ ] Mobile et weda2 : mention « Envoyé par … pour le compte de … » dans la lecture d'un message ;
+- [x] Mobile et weda2 : mention « Envoyé par … pour le compte de … » dans la lecture d'un message ;
       `data-testid` sur la mention
-- [ ] UI component tests : mention affichée seulement avec un `Sender` ; « Répondre » et « Répondre
+- [x] UI component tests : mention affichée seulement avec un `Sender` ; « Répondre » et « Répondre
       à tous » visent le `From` (ou le `Reply-To`), jamais le `Sender`
-- [ ] Scénario E2E-SHARED-002 (v1 : le délégataire écrit depuis la boîte du titulaire ; le
+- [x] Scénario E2E-SHARED-002 (v1 : le délégataire écrit depuis la boîte du titulaire ; le
       destinataire lit « Envoyé par {délégataire} pour le compte de {titulaire} », et sa réponse
       arrive dans la boîte du titulaire) ajouté dans Api/Mail/e2e/scenarios.yml, et implémenté dans
       chaque client où il est requis (mobile, angular)
-- [ ] Aucune donnée de santé en clair dans les logs (INS, NIR, contenu CDA, contenu MSSanté) ; aucun
+- [x] Aucune donnée de santé en clair dans les logs (INS, NIR, contenu CDA, contenu MSSanté) ; aucun
       RPPS dans un en-tête de message
-- [ ] Évènements PGSSI-S journalisés : envoi « pour le compte de » la boîte, imputé à la personne
+- [x] Évènements PGSSI-S journalisés : envoi « pour le compte de » la boîte, imputé à la personne
       réelle ; refus d'envoi (identité indisponible, `From` étranger à la boîte)
 
 ## Manual Test Plan
@@ -156,7 +156,92 @@ boîte. Quand un médecin reçoit un tel message, l'écran le lui dit.
 
 ## Branches
 
-- `dtos-mss` (pushed, branche paresseuse) : créée par `/develop` au nom `feat/task-407-le-delegataire-ecrit-pour-le-compte-du` seulement si un contrat change
+- `dtos-mss` (pushed, branche paresseuse) : feat/task-407-le-delegataire-ecrit-pour-le-compte-du — créée par `/develop` (contrat `MailDto.Sender`), publiée en 571.0.0
 - `api-mail` (pushed) : feat/task-407-le-delegataire-ecrit-pour-le-compte-du — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-407-le-delegataire-ecrit-pour-le-compte-du
 - `client-mobile` (pushed) : feat/task-407-le-delegataire-ecrit-pour-le-compte-du — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-407-le-delegataire-ecrit-pour-le-compte-du
 - `client-angular` (code-only) : branche checkout au /start : `feature/nova-mss-weda-integration` — humain gère branche, commit, push, PR TFS
+
+## Develop log
+
+**Ordre** : `dtos-mss` → `api-mail` → `client-mobile` + `client-angular` (code-only).
+
+| Repo | Commit | Build | Tests |
+|---|---|---|---|
+| `dtos-mss` | `e9de477` — `MailDto.Sender` ; CI run 571 → **HealthPlatform.Dtos.Mss 571.0.0** | ✅ | n/a |
+| `api-mail` | `b1f522a9` (bump 561.0.0 → 571.0.0 inclus) | ✅ 0 erreur | ✅ domain 202, infrastructure 699, application 3927, api 1306, integration 1093 + 11 (task-407) |
+| `client-mobile` | `858c7a5` | ✅ | ✅ Karma 1379/1379 |
+| `client-angular` | non commité (code-only) | ✅ weda2 | ✅ Vitest 1405/1405 |
+
+**Backend (api-mail)**
+- `OnBehalfSenderResolver` / `OnBehalfSenderPolicy` (`Services/Mailboxes/OnBehalfSender.cs`) : le seul endroit des
+  règles du `Sender`. Le référentiel est en draft : la version finale ne changera que cette classe.
+- `SmtpService`, point d'étranglement de tous les envois (direct, brouillon, réponse, transfert, confirmé
+  après mise de côté) : résolution avant toute connexion, `Sender` posé, enveloppe explicite
+  `MAIL FROM` = la boîte, `RCPT TO` = To+Cc+Bcc. Le refus est tracé, puis levé (400 problem+json).
+- `MdnService` : même règle. Le `From` de l'accusé porte l'identité d'expéditeur de la boîte (task-404).
+- Réception : `EmailAddressHelper.ExtractSenderAddress` lit le `Sender` de l'enveloppe IMAP. Il est rendu `null`
+  quand il est absent ou égal au `From`. Persisté dans `Mails.SenderAddress` / `SenderName`, migration
+  `20261029140000_AddMailSenderColumns`, relu dans les 4 projections `MailDto`.
+- Audit de migration (règle 7c) : deux colonnes `varchar(256)` nullables, aucune opération fantôme,
+  aucune reprise. Le modèle EF (`HasMaxLength(256)`) dit la même chose : EnsureCreated et la migration
+  passent tous deux les tests.
+- Fixtures d'intégration : l'Annuaire Santé est un fournisseur externe, scripté par RPPS
+  (`UseCaseFixture.Directory`, vide par défaut). Quatre harnais qui composent eux-mêmes
+  `SmtpService` ont été adaptés :
+  - `PendingSendConfirmation` : résolveur neutre, car son sujet est le classement des échecs ;
+  - `MailServerTokenRefusal` : sa propre BAL, rattachée en titulaire et non plus en délégation par
+    défaut, qui exigerait désormais un nom PSC ;
+  - `SendMailOppositionGuard` : vrai résolveur ;
+  - `ImapServicesFixture` : annuaire vide.
+
+**Règle 1b — comportement → test d'intégration → preuve rouge** (`UseCases/OnBehalfSendEndToEndTests`, vraie
+pile HTTP → `OutgoingMailService` → `SmtpService` → GreenMail ; Dovecot + base praticien pour la lecture) :
+
+| Comportement | Test | Mutation vue rouge |
+|---|---|---|
+| Délégataire sans BAL sur le domaine : From = boîte, Sender = `no-reply-…`, Return-Path = boîte, trace OnBehalfOf imputée au délégataire | `ADelegateWithoutAPersonalMailboxOnTheDomain_…` | M1 (Sender non posé), M2 (enveloppe par défaut : MAIL FROM = Sender) |
+| BAL personnelle même domaine → Sender = elle (ORG et autre domaine écartés) | `ADelegateWhosePersonalMailboxIsOnTheSameDomain_…` | M1, M2, M6 (BAL propre ignorée) |
+| BAL personnelle sur un autre domaine → `no-reply-anne-marie.d-arc@…` | `…OnlyOnAnotherDomain_…` | M1 |
+| Réponse depuis un brouillon (In-Reply-To) | `ADelegateReplyFromADraft_CarriesTheSender` | M1, M2 |
+| Envoi mis de côté sans la carte puis confirmé | `ADelegateSendSetAsideWithoutTheCard_ThenConfirmed_…` | M1 |
+| Titulaire et membre : aucun Sender | `TheHolderAndAMember_SendWithoutASender` ×2 | M5 (Sender pour tous les rôles) |
+| From ≠ boîte → 400 `MAIL_FROM_NOT_MAILBOX`, rien reçu, refus tracé | `AFromThatIsNotTheMailbox_…` | M3 (contrôle retiré), M11 (refus non tracé) |
+| Nom PSC absent → 400 `DELEGATE_IDENTITY_UNAVAILABLE`, rien reçu, refus tracé | `ADelegateWithoutAPscName_…` | M4 (contrôle retiré), M11 |
+| Accusé de lecture d'un délégataire : From = boîte, Sender, Return-Path = boîte | `AReadReceiptSentByADelegate_…` | M7 (Sender non posé sur le MDN) |
+| Lecture : Sender ≠ From lu (IMAP), égal ou absent → `null` ; persisté en base ; relu hors ligne | `AReceivedMessageWrittenOnBehalfOfItsFrom_…` | M8 (non lu), M9 (égalité au From ignorée), M10 (non persisté) |
+
+Les 11 mutations ont été restaurées par `cp`, et le diff a été vérifié.
+
+**Unitaires** : politique (rôles, `no-reply` : accents, espaces, apostrophes droite et typographique, noms
+composés ; domaine ; nom affiché) ; résolveur (rôle × BAL propre : même domaine, autre domaine, ORG, aucune ;
+annuaire indisponible ; From ≠ boîte ; nom absent) ; `ExtractSenderAddress` ; `SmtpService` (Sender +
+enveloppe, sans Sender, refus sans connexion et tracé) ; `MdnService` délégataire.
+
+**Front** (agent dédié, relu) : mobile et weda2, mention `mail-on-behalf-of`, `replyRecipient()`.
+- **Défaut corrigé sur mobile** : un « Répondre » simple ignorait le `Reply-To`.
+- Mutations front vues rouges : mobile M1 à M4, weda2 W1 à W3.
+- E2E-SHARED-002 v1 est au catalogue (seed `delegataire`, `boite-praticien`, `mail-lu`) et implémenté
+  dans les deux suites ; seule la vérification de types a été jouée, l'exécution revient à `/e2e`.
+
+**Passe qualité §Q** :
+- api-mail : aucun nettoyage appliqué. La relecture du `Sender` reprend la forme de celle du `From` dans
+  chaque projection : c'est voulu, pour la lisibilité.
+- mobile : déjà passé au lint par l'agent.
+- Aucune re-validation n'était donc nécessaire.
+
+**À l'humain** :
+- weda2 (`feature/nova-mss-weda-integration`) est **non commité**. Le test e2e E2E-SHARED-002, requis
+  côté angular, n'existe que dans l'arbre local : à commiter sur TFS avant le merge.
+- AIPD à compléter (nom et BAL du délégataire communiqués aux destinataires).
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-407 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 20 s | — | — | — | — |
+| /develop | ok | 32 min 47 s | 7 (31 s) | 4 (6 min 10 s) | — | dtos-mss 1B/0T, api-mail 5B/3T, client-mobile 1B/1T |
+| **Total cycle** | | **33 min 08 s** | **7 (31 s)** | **4 (6 min 10 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : nuget-wait ×1 (18 s)
