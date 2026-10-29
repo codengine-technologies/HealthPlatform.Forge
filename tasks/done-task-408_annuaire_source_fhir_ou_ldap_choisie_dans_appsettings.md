@@ -218,7 +218,8 @@ C'est la configuration de l'environnement qui le permet, pas un faux annuaire.
 | /sonar | ok | 9 min 10 s | 1 (18 s) | 5 (6 min 56 s) | 2 (40 s) | 1 itération(s), api-mail 1B/5T |
 | /lint-angular | ok | 4 min 16 s | 1 (19 s) | 1 (1 min 39 s) | — | 1 itération(s), client-angular 1B/1T |
 | /lint-mobile | ok | 16 s | — | — | — | — |
-| **Total cycle** | | **34 min 57 s** | **8 (1 min 48 s)** | **11 (14 min 22 s)** | **2 (40 s)** | |
+| /e2e | ok | 18 min 31 s | — | — | — | e2e ×3 (17 min 38 s) |
+| **Total cycle** | | **53 min 28 s** | **8 (1 min 48 s)** | **11 (14 min 22 s)** | **2 (40 s)** | |
 
 Autres commandes mesurées : lint ×3 (47 s)
 
@@ -443,3 +444,33 @@ Autres commandes mesurées : lint ×3 (47 s)
 - E2E-MAILBOX-002 [angular] — le code weda2 de task-378 (écran de panne à l'entrée et son test) n'est pas encore livré sur la branche weda2 ; divergence décidée par l'humain le 2026-10-25 — résorbée par task-395 — **à retirer** : le client est revenu à la version du catalogue
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/326 — `awaiting-human-merge`
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/116 — `awaiting-human-merge`
+- `client-angular` : code-only — humain gère commit/push TFS et ouverture PR. Branche
+  `feature/nova-mss-weda-integration`, fichiers modifiés :
+  - `front/libs/mss/src/ui/attach-mailbox-form/attach-mailbox-form.component.{html,scss,spec.ts,ts}` (task-408) ;
+  - `front/e2e/mss-e2e/support/weda-host.ts`, `front/e2e/mss-e2e/support/weda.ts` (`import type`, auto-fix du lint).
+- `devops` (manual) : configmap weda-dev `Annuaire__Source=Ldap` et port 389 sortant — managed manually by the human.
+
+## Code Review Summary
+
+**APPROVED** — 0 bloquant, 1 arbitrage humain, 2 suggestions.
+
+- ⚠️ **Arbitrage avant merge** : `appsettings.Development.json` n'est pas versionnable (`.gitignore`, task-045,
+  secrets locaux). L'activation locale de `Ldap` est faite par l'AppHost ; `appsettings.json` porte les
+  adresses LDAP et `Source = Fhir`. Ligne de DoD correspondante remplacée par cet équivalent, à valider.
+- Règle 1b — comportement → test → preuve rouge :
+
+  | Comportement | Test d'intégration (vrai OpenLDAP, pile réelle) | Mutation |
+  |---|---|---|
+  | « Mes boîtes » lue au LDAP, sans APP ni autre RPPS | `Directory_LdapSource_…` | M1, M2 |
+  | Rattachement PER → titulaire, trace imputée | `AttachFromDirectory_LdapSource_…` | M1 |
+  | LDAP injoignable → 503 `DIRECTORY_UNAVAILABLE` | `Directory_LdapUnreachable_…` | M3 |
+  | Source non déclarée → démarrage refusé | `Start_WithoutADeclaredSource_…` | M4 |
+
+- Règle 14 : le titulaire reste décidé par la seule liste de l'annuaire configuré ; rattachement tracé au nom de la personne.
+- Suggestions : LDAPS si l'ANS l'ouvre ; pas de test dédié de la requalification sur source LDAP (même appel que « Mes boîtes »).
+- Validation `/review` : api-mail 202 / 699 / 1 306 / 3 865 / 1 059 (16 ignorés) ; mobile 1 348 ; weda2 12 projets verts.
