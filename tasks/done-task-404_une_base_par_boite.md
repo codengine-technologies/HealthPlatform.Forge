@@ -212,10 +212,7 @@ simulés. Chaque mutation a été réinjectée, vue rouge, puis restaurée.
 | action en attente du délégataire, rejouée pour lui seul | `APendingActionOfTheDelegate_IsQueuedAndReplayedForHimAlone` | **M6** : `PendingActionRepository` sur `GetMailboxUserIdAsync` |
 | patient rattaché par le titulaire, lu dans le dossier du délégataire | `APatientAttachedByTheHolder_IsReadInTheDelegatesPatientRecord` | **M9** : la base résolue à la requête diffère pour le délégataire. Résultat : fiche introuvable (404). Une première mutation, au rattachement, a été bloquée par la clé étrangère composite avant l'assertion : c'est le garde-fou du registre, pas la preuve, d'où la seconde mutation. |
 
-> **Écart assumé — étiquettes.** Une étiquette est une colonne du message dans la base de la boîte,
-> sans clé de personne : même mécanisme que le rattachement de patient, prouvé par M9. Aucun test
-> HTTP propre aux étiquettes : le `MailController` exige la pile IMAP complète. À trancher par
-> `/review`.
+> **Étiquettes — écart levé à la revue** : `/review` a relevé le manque de DoD (aucune étiquette lue par le délégataire), et `/develop` a été rouvert pour ce seul test. Le test `FolderOperationsEndToEndTests.ATagSetByTheHolder_IsReadByAnotherPersonOfTheSameMailbox` (`f93609c1`) passe par le vrai `MailController`, le vrai `ImapService` et la base PostgreSQL du harnais. Le titulaire pose l'étiquette (`POST …/tags`), puis une autre personne de la même adresse (autre RPPS) la lit dans la réponse de son propre hôte. **M10** : la base redevient fonction du RPPS de la personne, comme avant task-404 ; vu rouge (« collection vide »), restauré.
 
 Clients (preuve par mutation, Vitest weda2) :
 - **M7** : la rédaction ignore l'identité de la boîte → rouge « remplit les placeholders Sender… ».
@@ -420,6 +417,54 @@ Clients (preuve par mutation, Vitest weda2) :
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
 
+## PRs
+
+> Empilées sur task-403 : merger d'abord dtos #53, api-mail #323, mobile #113.
+
+- `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/54 — `awaiting-human-merge`
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/324 — `awaiting-human-merge`
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/114 — `awaiting-human-merge`
+- `client-angular` : code-only. L'humain gère le commit, le push sur TFS et l'ouverture de la PR. La branche `feature/nova-mss-weda-integration` porte aussi, non commités, les fichiers de task-403. Fichiers modifiés par task-404 :
+  - `libs/mss/src/core/models/user-settings.model.ts`
+  - `libs/mss/src/core/services/mss-api.service.ts`
+  - `libs/mss/src/features/settings/mss-settings.component.{ts,html,spec.ts}`
+  - `libs/mss/src/features/mail/components/mail-compose/mail-compose.component.{ts,spec.ts}`
+  - `libs/mss/src/features/mail/components/mail-compose/mail-compose-{draft,intent,recipients,safety,spelling,suggestions,toolbar}.component.spec.ts`
+  - `e2e/mss-e2e/support/e2e-backend.ts`, `e2e/mss-e2e/specs/functional.e2e.ts`
+
+## Code Review Summary
+
+**APPROVED** — 0 point bloquant, 2 suggestions.
+
+- **Validation** :
+  - api-mail : build vert. Tests : 202 + 3 831 + 699 + 1 302 + 1 046 verts, 16 ignorés. Un rouge isolé, `AnnuaireQuotaSharedRedisIntegrationTests` (quota temporel, hors task), vert rejoué seul.
+  - client-mobile : build vert, 1 336 specs. 1 à 4 rouges sporadiques sur deux passages sur cinq, verts rejoués ; le spec instable n'est pas identifié.
+  - client-angular : `nx build weda2` vert, 1 355 + 2 653 verts.
+  - dtos-mss : inchangé depuis la publication de 557.0.0.
+- **DoD** : tous les points sont vérifiés.
+  - Le point « étiquette lue par le délégataire » manquait. `/develop` a été rouvert pour ce seul test (`f93609c1`, mutation M10 vue rouge).
+  - Banc : la seconde personne est le délégataire du manifeste, rattaché à l'exécution.
+  - Logs : aucune donnée de santé dans les traces ajoutées (scopes d'opération seulement).
+- **Règle 1b** (comportement → test → preuve rouge) :
+
+| Comportement | Test d'intégration | Preuve |
+|---|---|---|
+| une adresse = une base, même en course | `SharedMailboxIntegrationTests.TwoAccountsAttachingTheSameAddress_…` | M1 |
+| contacts et modèles partagés | `ContactsAndTemplates_CreatedByOnePerson_AreReadByTheOther` | M2 |
+| réglages et signatures à la personne | `SettingsAndSignatures_StayWithThePerson` | M3 |
+| identité d'expéditeur de la boîte, 403 au délégataire | `TheSenderIdentity_SetByTheHolder_…` | M4 |
+| acquittement de biologie partagé | `ABiologyResultAcknowledgedByTheHolder_…` | M5 |
+| action en attente à la personne | `APendingActionOfTheDelegate_…` | M6 |
+| patient rattaché vu du délégataire | `APatientAttachedByTheHolder_IsReadInTheDelegatesPatientRecord` | M9 |
+| étiquette vue par une autre personne de la boîte | `FolderOperationsEndToEndTests.ATagSetByTheHolder_…` | M10 |
+| PUT sans corps → 400 problem+json, identité inchangée | `ASenderIdentityWithoutBody_IsRefusedWith400_…` | branche de validation, couverte depuis `/sonar` |
+
+- **Règle 14** : une base par boîte (aucune base par personne). Le rôle de titulaire, qui seul modifie l'identité, vient du registre qualifié par l'Annuaire.
+- **Suggestions** :
+  - quelques conditions restent non couvertes (`UserSettingsRepository`, `MailboxSenderIdentityService`, `BaseRepository`) ;
+  - le spec mobile instable est à identifier (`--reporters=progress` sur plusieurs passages).
+- **Données existantes** : aucune reprise, sur arbitrage humain du 2026-10-28.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-404 --sync` — ne pas éditer à la main)*
@@ -432,6 +477,7 @@ Clients (preuve par mutation, Vitest weda2) :
 | /lint-angular | ok | 3 min 06 s | 1 (13 s) | 2 (39 s) | — | 2 itération(s), client-angular 1B/2T |
 | /lint-mobile | ok | 16 s | — | — | — | — |
 | /e2e | ok | 18 min 42 s | — | — | — | e2e ×5 (35 min 08 s) |
-| **Total cycle** | | **1 h 44 min** | **7 (1 min 32 s)** | **26 (29 min 22 s)** | **4 (1 min 41 s)** | |
+| /review | ok | 10 min 12 s | 3 (24 s) | 4 (5 min 34 s) | — | api-mail 2B/2T, client-mobile 1B/2T |
+| **Total cycle** | | **1 h 54 min** | **10 (1 min 57 s)** | **30 (34 min 57 s)** | **4 (1 min 41 s)** | |
 
 Autres commandes mesurées : lint ×5 (30 s), nuget-wait ×1 (6.5 s), restore ×1 (22 s)
