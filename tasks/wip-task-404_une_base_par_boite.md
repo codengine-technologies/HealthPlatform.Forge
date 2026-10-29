@@ -149,6 +149,129 @@ de synchronisation et d'IA.
 - `dtos-mss` (lazy) : aucune branche au /start — `/develop` la crée au premier contrat touché (depuis la branche de task-403)
 - `client-angular` (code-only) : branche courante `feature/nova-mss-weda-integration` (porte déjà les fichiers non commités de task-403) — humain gère branche, commit, push, PR TFS
 
+## Develop log
+
+### Conception
+
+- **Le nom de base ne dépend plus que de l'adresse** : `u_{slug}_{hash}`, sans RPPS
+  (`UserContextInfo.ProposeDatabaseName`). Deux personnes qui rattachent la même adresse proposent
+  donc le même nom.
+- **Le registre grave une boîte par adresse** : table `mss_mailboxes` (adresse unique, base unique),
+  référencée par `mss_accounts.mailbox_id`. Une clé étrangère composite (id, adresse, base) interdit
+  qu'un rattachement désigne une autre base que celle de sa boîte. `EnsureMailboxAsync` crée la ligne
+  par `INSERT … ON CONFLICT DO NOTHING`, puis la relit : deux rattachements simultanés retombent
+  sur la même base.
+- **Dans la base de la boîte, la personne est une ligne de `Users`** (`AuthenticationSubject` = sub
+  Keycloak). La ligne « boîte » garde un sujet nul.
+  - **À la boîte** (`GetMailboxUserIdAsync`) : contacts, modèles, acquittements de biologie, et
+    l'identité d'expéditeur, rangée dans les réglages de la ligne « boîte ».
+  - **À la personne** (`GetCurrentUserIdAsync`) : réglages, signatures, actions en attente.
+  - Patients, documents, rattachements et étiquettes sont des lignes de la base sans clé de
+    personne : ils sont partagés dès que la base l'est.
+- **Clé Redis de l'identifiant** : `user:id:{base}:{mailbox|person:{sub}}`.
+- **Identité d'expéditeur** : route `GET|PUT api/v1/account/mailboxes/current/sender-identity`
+  (`MailboxSenderIdentityController`). Le titulaire seul la modifie. Sans titulaire rattaché, toute
+  personne rattachée le peut. Sinon : 403 problem+json `MAILBOX_SENDER_IDENTITY_HOLDER_ONLY`. Le
+  `From` de l'envoi (`SmtpService`) la lit.
+- **Contrat** : `dtos-mss` 557.0.0. `UserSettingsDto.SenderIdentity` est retiré, et arrivent
+  `MailboxSenderIdentityDto` et le nouveau code d'erreur.
+- **Clients** : un service dédié à l'identité de la boîte, sur mobile (`MailboxSenderIdentityService`)
+  comme dans weda2 (signal `canEditSenderIdentity`, placeholders `Sender…` de la rédaction). Les
+  champs passent en lecture seule, avec le texte « Seul son titulaire la modifie », quand la
+  personne n'a pas le droit.
+
+### Commits
+
+| Repo | Commit | Contenu |
+|---|---|---|
+| dtos-mss | 7db45ab | contrat de l'identité d'expéditeur de la boîte, publié en 557.0.0 |
+| api-mail | ba0dec75 | fusion de la branche task-403 (empilement) |
+| api-mail | 03ed3eb6 | nommage sans RPPS ; reset e2e et bancs alignés |
+| api-mail | 249c480c | bump `HealthPlatform.Dtos.Mss` 557.0.0 |
+| api-mail | b85a420d | cœur : registre des boîtes, personne dans la base, dépôts boîte / personne, identité d'expéditeur |
+| api-mail | d3a07362 | tests d'intégration du partage (M1 à M6) |
+| api-mail | a5548808 | patient rattaché vu du délégataire (M9), scénario E2E-SHARED-001 au catalogue |
+| api-mail | 4c7bd487 | registre de la suite partagée sans pool (53300) |
+| client-mobile | a7f877c | fusion de la branche task-403 (empilement) |
+| client-mobile | 42f4fec | identité de la boîte, lecture seule du délégataire, E2E-SHARED-001 |
+
+### Règle 1b — comportement → test d'intégration → preuve rouge
+
+Suite : `tests/mss.mail.integration.tests/Api/SharedMailboxIntegrationTests.cs`. Elle utilise le
+vrai registre PostgreSQL, la vraie résolution de base (provisionnée et migrée à la requête), les
+vrais contrôleurs et les vrais dépôts. Seuls le proxy PSC et le verrou d'accès de task-403 sont
+simulés. Chaque mutation a été réinjectée, vue rouge, puis restaurée.
+
+| Comportement | Test | Mutation vue rouge |
+|---|---|---|
+| une adresse = une base, même en 8 rattachements simultanés | `TwoAccountsAttachingTheSameAddress_ShareOneDatabase_EvenWhenAttachingTogether` | **M1** : le rattachement garde la base proposée au lieu de celle de la boîte |
+| contacts et modèles de l'un lus par l'autre | `ContactsAndTemplates_CreatedByOnePerson_AreReadByTheOther` | **M2** : `ContactRepository` sur `GetCurrentUserIdAsync` |
+| réglages et signatures restent à la personne | `SettingsAndSignatures_StayWithThePerson` | **M3** : `UserSettingsRepository` sur `GetMailboxUserIdAsync` |
+| identité réglée par le titulaire, lue du délégataire, qui ne la modifie pas (403 problem+json, identité inchangée) | `TheSenderIdentity_SetByTheHolder_IsReadByTheDelegate_WhoCannotChangeIt` | **M4** : garde `CanEditAsync` neutralisée |
+| résultat de biologie acquitté par le titulaire, acquitté pour le délégataire | `ABiologyResultAcknowledgedByTheHolder_IsAcknowledgedForTheDelegate` | **M5** : `BiologyAckRepository` sur `GetCurrentUserIdAsync` |
+| action en attente du délégataire, rejouée pour lui seul | `APendingActionOfTheDelegate_IsQueuedAndReplayedForHimAlone` | **M6** : `PendingActionRepository` sur `GetMailboxUserIdAsync` |
+| patient rattaché par le titulaire, lu dans le dossier du délégataire | `APatientAttachedByTheHolder_IsReadInTheDelegatesPatientRecord` | **M9** : la base résolue à la requête diffère pour le délégataire. Résultat : fiche introuvable (404). Une première mutation, au rattachement, a été bloquée par la clé étrangère composite avant l'assertion : c'est le garde-fou du registre, pas la preuve, d'où la seconde mutation. |
+
+> **Écart assumé — étiquettes.** Une étiquette est une colonne du message dans la base de la boîte,
+> sans clé de personne : même mécanisme que le rattachement de patient, prouvé par M9. Aucun test
+> HTTP propre aux étiquettes : le `MailController` exige la pile IMAP complète. À trancher par
+> `/review`.
+
+Clients (preuve par mutation, Vitest weda2) :
+- **M7** : la rédaction ignore l'identité de la boîte → rouge « remplit les placeholders Sender… ».
+- **M8** : la garde `canEditSenderIdentity` est neutralisée → rouge « un délégataire lit l'identité
+  sans pouvoir la modifier ».
+- Côté mobile, les specs `MailboxSenderIdentityService` (4 tests) et `settings.page` (lecture seule,
+  enregistrement sur la route de la boîte) sont vertes.
+
+### Migrations (règle 7c)
+
+- `MailDb/20261029120000_AddUserAuthenticationSubject` : ajoute la colonne nullable et remplace
+  l'index unique `IX_Users_Email` (créé par `20240101_SetupMigration`) par deux index partiels
+  (`Email` si sujet nul, `AuthenticationSubject` si non nul). Le Down est symétrique : il supprime
+  d'abord les lignes de personne, ce qui échoue si des signatures ou des réglages les référencent
+  encore (limite assumée d'un retour arrière). FluentMigrator n'a ni snapshot ni Designer, et aucune
+  opération fantôme n'a été trouvée.
+- `TenantDb/20261029120000_AddMailboxes` :
+  - crée `mss_mailboxes` ;
+  - reprend les données par adresse : la plus ancienne base rattachée devient celle de la boîte, et
+    les autres rattachements y sont réalignés ;
+  - passe `mailbox_id` en NOT NULL, puis pose la clé étrangère composite.
+
+  Une base qu'un délégataire avait seul, sous l'ancien nommage, devient orpheline : elle n'est pas
+  supprimée, mais n'est plus désignée.
+
+### Banc
+
+- `E2eReset` / `E2eSeed` / `LoadTestRegistryProvisioner` utilisent les nouveaux noms.
+- La seconde personne du seed est le délégataire du manifeste (task-402/403). Il rattache la boîte
+  du praticien par délégation à l'exécution du scénario.
+
+### Passe qualité (§Q)
+
+- Contrôles mécaniques sur le diff (S125, S4457, xUnit1045, xUnit2032) : rien à corriger.
+- La factorisation de `OpenMailboxBaseAsync` dans la suite partagée a été faite au fil de l'eau.
+- dtos-mss : jamais (porteur de contrat).
+
+### Validation
+
+- **api-mail** : build vert. Unitaires : domain 202, application 3 830, infrastructure 698, api
+  1 302 verts. Intégration : la suite partagée a 7 verts. Suite complète après le dernier commit :
+  1 045 verts, 16 ignorés sur 1 061. Un premier passage a donné 13 rouges `53300 too many clients`, tous verts une fois isolés : la connexion au registre de la suite partagée était poolée. Elle passe en `Pooling=false` (4c7bd487), conformément à la consigne de task-331.
+- **client-mobile** : build vert, 1 336 specs vertes.
+- **client-angular** (code-only, non commité) : `nx build weda2` vert, tests `mss`/`mss-lib`/`weda2`
+  1 355 + 2 653 verts. Typecheck e2e propre.
+
+### client-angular — fichiers task-404 (non commités, à reprendre par l'humain sur TFS)
+
+- `libs/mss/src/core/models/user-settings.model.ts`
+- `libs/mss/src/core/services/mss-api.service.ts`
+- `libs/mss/src/features/settings/mss-settings.component.{ts,html,spec.ts}`
+- `libs/mss/src/features/mail/components/mail-compose/mail-compose.component.{ts,spec.ts}` et les 7
+  specs sœurs (mock de la nouvelle route)
+- `e2e/mss-e2e/support/e2e-backend.ts` (`ActorInMailbox`)
+- `e2e/mss-e2e/specs/functional.e2e.ts` (E2E-SHARED-001)
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-404 --sync` — ne pas éditer à la main)*
@@ -156,4 +279,7 @@ de synchronisation et d'IA.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 27 s | — | — | — | — |
-| **Total cycle** | | **27 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 57 min 07 s | 3 (30 s) | 10 (10 min 57 s) | — | api-mail 1B/4T, client-mobile 1B/2T, client-angular 1B/4T |
+| **Total cycle** | | **57 min 35 s** | **3 (30 s)** | **10 (10 min 57 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : nuget-wait ×1 (6.5 s), restore ×1 (22 s)
