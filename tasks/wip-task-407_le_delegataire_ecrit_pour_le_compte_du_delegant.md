@@ -234,6 +234,43 @@ enveloppe, sans Sender, refus sans connexion et tracé) ; `MdnService` délégat
   côté angular, n'existe que dans l'arbre local : à commiter sur TFS avant le merge.
 - AIPD à compléter (nom et BAL du délégataire communiqués aux destinataires).
 
+## Sonar log
+
+- Serveur 9.9.8.100196 (`sonar.login`), projet `healthplatform-api-mail`, branche `feat/task-407-…`.
+- **Phase 1 (new code)** — 2 analyses :
+  - analyse 1 : Quality Gate OK, mais **3 issues** :
+    - CA2016 (`MdnService` : le jeton n'était pas transmis à `GetMailboxSenderIdentityAsync`) ;
+    - CA1859 (`SmtpService.TransmitAsync` déclaré `Task` au lieu de `Task<string>`, récidive à
+      l'identique de task-399) ;
+    - S3925 (`OnBehalfSendRefusedException`, triplet de constructeurs présent) : marquée FALSE-POSITIVE
+      avec le motif SYSLIB0051.
+
+    CA2016 et CA1859 sont corrigées dans `eeb8f1ea` (refactor pur, application 3 927 verts,
+    task-407 et accusés de lecture 22 verts) ;
+  - analyse 2 : ✓ Quality Gate OK, **0 issue ouverte**, 0 hotspot, new_coverage 96,4 % (cible 95 %).
+- **Phase 2 (legacy)** : 0 itération (0 bug, 0 vulnérabilité, 0 code smell).
+- Build Release et 5 suites OpenCover : domain 202, application 3 927, infrastructure 699, api 1 306,
+  integration 1 075 verts, 16 ignorés, **3 rouges hors task** : les tests « du jour »
+  (`FilterTodayEmails…`, `GetFolderTodayAsync…`, `GetFolderNotSeenTodayAsync…`). L'analyse a tourné
+  entre 00 h et 02 h (SINCE en UTC, fenêtre connue). Ils étaient verts dans la suite complète de
+  `/develop`, jouée la veille.
+- `conventions/csharp.md` : CA1859 → 14, S3925 → 8, CA2016 créée (1),
+  `projection-dto-dupliquee` → 3.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | → |
+| New coverage | 96,5 % | 96,4 % | −0,1 pt |
+| Bugs | 0 | 0 | 0 |
+| Vulnerabilities | 0 | 0 | 0 |
+| Security hotspots | 0 | 0 | 0 |
+| Code smells | 0 | 0 | 0 |
+| Coverage (projet) | 97,9 % | 97,8 % | −0,1 pt |
+| Duplication | 0,4 % | 0,4 % | 0 |
+| Reliability / Security / Maintainability | A/A/A | A/A/A | → |
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-407 --sync` — ne pas éditer à la main)*
@@ -242,6 +279,7 @@ enveloppe, sans Sender, refus sans connexion et tracé) ; `MdnService` délégat
 |---|---|---|---|---|---|---|
 | /start | ok | 20 s | — | — | — | — |
 | /develop | ok | 32 min 47 s | 7 (31 s) | 4 (6 min 10 s) | — | dtos-mss 1B/0T, api-mail 5B/3T, client-mobile 1B/1T |
-| **Total cycle** | | **33 min 08 s** | **7 (31 s)** | **4 (6 min 10 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 20 min 54 s | 3 (40 s) | 11 (16 min 29 s) | 4 (1 min 18 s) | api-mail 3B/11T |
+| **Total cycle** | | **54 min 02 s** | **10 (1 min 11 s)** | **15 (22 min 40 s)** | **4 (1 min 18 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (18 s)

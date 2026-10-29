@@ -109,7 +109,7 @@ en C# 12 : deux spreads valent mieux qu'un `Concat`.
 
 ## CA1859 — type concret plutôt qu'interface pour un helper local
 
-**Occurrences : 13** (task-405 — `UnmarkedController.Delete` du test d'architecture déclaré `IActionResult` pour rendre un `NoContentResult`, relevé par `/sonar` ; task-399 — douzième, relevée par `/sonar` : un relais privé `TransmitAsync` déclaré `Task` alors que ses deux branches rendent le `Task<string>` de `SmtpClient.SendAsync` — la variante task-299/task-340, « on ne masque pas un `Task<T>` derrière un `Task` » ; task-398 — onzième, relevée par `/sonar`, **introduite par la passe `/simplify`** : un champ `public static readonly IReadOnlySet<string> Switches` rendu `private` sur recommandation de revue. Public, le type d'interface était un contrat ; privé, il ne l'est plus et CA1859 réclame le `HashSet<string>` construit. **Restreindre la visibilité d'un membre, c'est aussi revenir à son type concret.** task-397 — dixième, relevée par `/sonar` : `StoreAsync(…, IReadOnlyCollection<(string Key, byte[] Bytes)> entries, …)`, helper privé dont les deux appelants passent une `List` ; même variante que task-353, écrite large en réécrivant la classe. task-332 — neuvième, relevée par `/sonar` : un helper privé de test d'intégration `PlatformConnectionStrings()` déclaré `IServerConnectionStrings` alors qu'il construit un `PlatformRoutes` ; même cas que la huitième, un helper en expression rend le type de ce qu'il construit. task-340 — huitième, relevée par `/sonar` : un helper de test `DeleteFolderAsync` déclaré `Task` alors qu'il rend le `Task<int>` d'`ExecuteDeleteAsync` ; un helper en expression rend le type de ce qu'il renvoie. task-203, task-289, task-299, task-188, task-345, task-353, task-354 — septième récidive, relevée par `/sonar` : un helper privé de test `MssanteRefusal()` déclaré `Exception` alors qu'il ne construit qu'une `SmtpProtocolException` — le réflexe « type large pour une fabrique d'exception de test » ; écrire le type construit. Sixième récidive.
+**Occurrences : 14** (task-407 — **récidive à l'identique de task-399** : un nouveau relais privé `TransmitAsync` déclaré `Task` alors qu'il rend le `Task<string>` de `SmtpClient.SendAsync`, relevé par `/sonar`. Le même nom de méthode et la même faute à un mois d'écart : ce fichier n'avait pas été relu avant de coder ; task-405 — `UnmarkedController.Delete` du test d'architecture déclaré `IActionResult` pour rendre un `NoContentResult`, relevé par `/sonar` ; task-399 — douzième, relevée par `/sonar` : un relais privé `TransmitAsync` déclaré `Task` alors que ses deux branches rendent le `Task<string>` de `SmtpClient.SendAsync` — la variante task-299/task-340, « on ne masque pas un `Task<T>` derrière un `Task` » ; task-398 — onzième, relevée par `/sonar`, **introduite par la passe `/simplify`** : un champ `public static readonly IReadOnlySet<string> Switches` rendu `private` sur recommandation de revue. Public, le type d'interface était un contrat ; privé, il ne l'est plus et CA1859 réclame le `HashSet<string>` construit. **Restreindre la visibilité d'un membre, c'est aussi revenir à son type concret.** task-397 — dixième, relevée par `/sonar` : `StoreAsync(…, IReadOnlyCollection<(string Key, byte[] Bytes)> entries, …)`, helper privé dont les deux appelants passent une `List` ; même variante que task-353, écrite large en réécrivant la classe. task-332 — neuvième, relevée par `/sonar` : un helper privé de test d'intégration `PlatformConnectionStrings()` déclaré `IServerConnectionStrings` alors qu'il construit un `PlatformRoutes` ; même cas que la huitième, un helper en expression rend le type de ce qu'il construit. task-340 — huitième, relevée par `/sonar` : un helper de test `DeleteFolderAsync` déclaré `Task` alors qu'il rend le `Task<int>` d'`ExecuteDeleteAsync` ; un helper en expression rend le type de ce qu'il renvoie. task-203, task-289, task-299, task-188, task-345, task-353, task-354 — septième récidive, relevée par `/sonar` : un helper privé de test `MssanteRefusal()` déclaré `Exception` alors qu'il ne construit qu'une `SmtpProtocolException` — le réflexe « type large pour une fabrique d'exception de test » ; écrire le type construit. Sixième récidive.
 Variante task-353 : un helper privé `PurgeVanishedMailsAsync(folder, IReadOnlyCollection<uint>)`
 dont les deux appelants passent un `uint[]` — écrit « large » par réflexe pendant la passe
 `/simplify`, comme sur task-289 : **un paramètre de helper privé prend le type de ce que ses
@@ -693,7 +693,7 @@ foreach (var mail in fetched)
 
 ## S3925 — une exception garde le triplet de constructeurs recommandé
 
-**Occurrences : 7** (task-400 — `SenderNotAllowedException`, `AiRefusedOnBehalfException` de task-399, triplet présent, FALSE-POSITIVE comme prévu ; task-171 — `UnauthorizedException`, `PscIdentityConflictException` ; task-320 — `MailboxIncompatibleException` ; task-330 — `SmtpDeliveryUncertainException`, triplet présent, marquée FALSE-POSITIVE comme prévu ; task-352 — `NotFoundException`, classe **non scellée** qui reçoit une propriété `ErrorCode` : la règle se lève sur une exception existante dès qu'on lui ajoute un membre, triplet présent, FALSE-POSITIVE ; task-367 — `IheXdmAuthorNotSenderException`, `IheXdmPackagingRefusedException`, triplet présent d'emblée, FALSE-POSITIVE : la consigne a été lue ; task-386 — `AnnuaireCallException`, triplet présent d'emblée, FALSE-POSITIVE ; retirer l'initialiseur de sa propriété ne lève pas la règle)
+**Occurrences : 8** (task-407 — `OnBehalfSendRefusedException`, triplet présent d'emblée, FALSE-POSITIVE ; task-400 — `SenderNotAllowedException`, `AiRefusedOnBehalfException` de task-399, triplet présent, FALSE-POSITIVE comme prévu ; task-171 — `UnauthorizedException`, `PscIdentityConflictException` ; task-320 — `MailboxIncompatibleException` ; task-330 — `SmtpDeliveryUncertainException`, triplet présent, marquée FALSE-POSITIVE comme prévu ; task-352 — `NotFoundException`, classe **non scellée** qui reçoit une propriété `ErrorCode` : la règle se lève sur une exception existante dès qu'on lui ajoute un membre, triplet présent, FALSE-POSITIVE ; task-367 — `IheXdmAuthorNotSenderException`, `IheXdmPackagingRefusedException`, triplet présent d'emblée, FALSE-POSITIVE : la consigne a été lue ; task-386 — `AnnuaireCallException`, triplet présent d'emblée, FALSE-POSITIVE ; retirer l'initialiseur de sa propriété ne lève pas la règle)
 
 La passe qualité avait **retiré** les constructeurs « inutilisés » de deux
 exceptions neuves pour ne garder que celui réellement appelé. Sonar réclame le
@@ -1097,10 +1097,14 @@ En production, chaque page parcourt la table.
 
 ## projection-dto-dupliquee — une projection entité → DTO s'écrit une fois
 
-**Occurrences : 2**
+**Occurrences : 3**
 - task-184 : `PatientRepository.ToDto` ne portait pas `Id`.
 - task-331 : les deux copies inline de la même projection, dans la recherche et dans « patients
   du jour », ne le portaient toujours pas. Le dossier ouvert depuis ces listes répondait 404.
+- task-407 : le champ `MailDto.Sender` a dû être reporté à la main dans **quatre** copies de la
+  projection `Mail → MailDto` (`MailRepository` ×3, `PatientRepository` ×1). Une copie oubliée aurait
+  caché la mention « pour le compte de » dans une seule liste, sans qu'aucun test ne le voie.
+  L'unification reste hors du périmètre de la task : **une task dédiée est à ouvrir**.
 
 Trois copies à la main de la même projection `new MailPatientDto { … }` : une correction en atteint
 une, les autres divergent en silence. Chaque champ ajouté au DTO doit être reporté en N endroits.
@@ -1118,6 +1122,26 @@ private static readonly Func<MailPatient, MailPatientDto> ToDtoCompiled = DtoPro
 **Consigne** : avant d'écrire un `Select(x => new XxxDto { … })`, chercher une projection ou un
 mapper existant du même DTO dans le dépôt. S'il en existe un, le réutiliser. S'il en faut une
 version SQL, en faire une `Expression` partagée, jamais une copie.
+
+---
+
+## CA2016 — un `CancellationToken` reçu se transmet à tout appel qui en accepte un
+
+**Occurrences : 1** (task-407 — `MdnService` appelait `GetMailboxSenderIdentityAsync()` sans le jeton
+qu'il venait de passer à l'appel précédent, relevé par `/sonar`)
+
+Un paramètre optionnel `CancellationToken cancellationToken = default` compile sans le jeton, et
+l'appel n'est plus annulable avec la requête.
+
+```csharp
+// ❌ le jeton existe, il n'est pas transmis
+var identity = await userSettingsRepository.GetMailboxSenderIdentityAsync();
+// ✅
+var identity = await userSettingsRepository.GetMailboxSenderIdentityAsync(cancellationToken);
+```
+
+**Consigne** : dans une méthode qui reçoit un `CancellationToken`, tout appel `…Async(` dont la
+signature en accepte un le reçoit, y compris quand il est optionnel.
 
 ---
 
