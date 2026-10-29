@@ -478,6 +478,7 @@ Clients (preuve par mutation, Vitest weda2) :
 | /lint-mobile | ok | 16 s | — | — | — | — |
 | /e2e | ok | 18 min 42 s | — | — | — | e2e ×5 (35 min 08 s) |
 | /review | ok | 10 min 12 s | 3 (24 s) | 4 (5 min 34 s) | — | api-mail 2B/2T, client-mobile 1B/2T |
-| **Total cycle** | | **1 h 54 min** | **10 (1 min 57 s)** | **30 (34 min 57 s)** | **4 (1 min 41 s)** | |
+| /tech-writer | ok | 1 min 21 s | — | — | — | — |
+| **Total cycle** | | **1 h 55 min** | **10 (1 min 57 s)** | **30 (34 min 57 s)** | **4 (1 min 41 s)** | |
 
 Autres commandes mesurées : lint ×5 (30 s), nuget-wait ×1 (6.5 s), restore ×1 (22 s)

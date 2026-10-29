@@ -475,6 +475,7 @@ Clients :
 | /lint-mobile | ok | 14 s | — | — | — | — |
 | /e2e | ok | 42 min 00 s | — | — | — | e2e ×9 (1 h 17 min) |
 | /review | ok | 2 min 47 s | 2 (21 s) | 2 (44 s) | — | client-angular 1B/1T, client-mobile 1B/1T |
-| **Total cycle** | | **2 h 05 min** | **36 (3 min 07 s)** | **26 (29 min 53 s)** | **4 (1 min 26 s)** | |
+| /tech-writer | ok | 38 s | — | — | — | — |
+| **Total cycle** | | **2 h 06 min** | **36 (3 min 07 s)** | **26 (29 min 53 s)** | **4 (1 min 26 s)** | |
 
 Autres commandes mesurées : lint ×4 (22 s), nuget-wait ×2 (17 s), restore ×3 (26 s)
