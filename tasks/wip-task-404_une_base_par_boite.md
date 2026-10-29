@@ -249,7 +249,7 @@ Clients (preuve par mutation, Vitest weda2) :
 
 ### Passe qualité (§Q)
 
-- Contrôles mécaniques sur le diff (S125, S4457, xUnit1045, xUnit2032) : rien à corriger.
+- Contrôles mécaniques sur le diff : seul le code commenté (S125) a été cherché, et rien n'a été trouvé. **Le contrôle §Q 2b (S4457) n'a pas été joué**, contrairement à ce qu'annonçait la première version de ce log. Sonar a vu `SaveMailboxSenderIdentityAsync`, corrigé par `/sonar`.
 - La factorisation de `OpenMailboxBaseAsync` dans la suite partagée a été faite au fil de l'eau.
 - dtos-mss : jamais (porteur de contrat).
 
