@@ -219,7 +219,9 @@ C'est la configuration de l'environnement qui le permet, pas un faux annuaire.
 | /lint-angular | ok | 4 min 16 s | 1 (19 s) | 1 (1 min 39 s) | — | 1 itération(s), client-angular 1B/1T |
 | /lint-mobile | ok | 16 s | — | — | — | — |
 | /e2e | ok | 18 min 31 s | — | — | — | e2e ×3 (17 min 38 s) |
-| **Total cycle** | | **53 min 28 s** | **8 (1 min 48 s)** | **11 (14 min 22 s)** | **2 (40 s)** | |
+| /review | ok | 6 min 36 s | 3 (17 s) | 3 (5 min 21 s) | — | api-mail 1B/1T, client-mobile 1B/1T, client-angular 1B/1T |
+| /tech-writer | ok | 46 s | — | — | — | — |
+| **Total cycle** | | **1 h 00 min** | **11 (2 min 06 s)** | **14 (19 min 44 s)** | **2 (40 s)** | |
 
 Autres commandes mesurées : lint ×3 (47 s)
 
