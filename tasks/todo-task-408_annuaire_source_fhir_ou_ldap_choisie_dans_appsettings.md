@@ -35,7 +35,16 @@
    - FHIR : l'adresse de base, comme aujourd'hui.
    - LDAP : l'hôte, le port et la base DN.
 
-   La source n'est **jamais** déduite de l'environnement.
+   La source n'est **jamais** déduite de l'environnement par le code : ce sont les fichiers de
+   configuration qui la déclarent.
+4. **La configuration est injectée dans les fichiers `appsettings`** (humain, 2026-10-29) :
+   - `appsettings.json` porte les **deux** sections complètes, avec leurs valeurs réelles. FHIR garde
+     son adresse actuelle. LDAP reçoit `partenaires.annuaire.sante.fr`, port `389`, base DN
+     `ou=bal,o=mssante,c=fr` ;
+   - `appsettings.json` active `Fhir`. La production et tous les environnements déployés gardent
+     ainsi la passerelle de production, sauf surcharge explicite ;
+   - un `appsettings.Development.json` active `Ldap` sur le poste local. Le poste local se lance en
+     `Development`.
 2. **Périmètre : les BAL d'un RPPS seulement.** La recherche de destinataires, les spécialités et
    les professions restent servies par la passerelle FHIR, quelle que soit la source choisie.
 3. **Pas de garde par domaine.** L'activation explicite est la seule barrière : une source LDAP rend
@@ -51,8 +60,9 @@ C'est la configuration de l'environnement qui le permet, pas un faux annuaire.
 
 1. **Choix de la source** : une clé de configuration, valeur `Fhir` ou `Ldap`.
    - `appsettings.json` la porte **explicitement**, à `Fhir`, ce qui laisse le comportement actuel
-     inchangé partout.
-   - Le poste local et weda-dev passent à `Ldap` par leur configuration.
+     inchangé partout. Il porte aussi la section LDAP remplie (décision 4).
+   - Le poste local passe à `Ldap` par `appsettings.Development.json`, et weda-dev par sa
+     configmap (`devops`, à la main).
 2. **Configuration invalide = démarrage refusé**, avec un message qui nomme la clé :
    - une valeur inconnue ;
    - `Ldap` sans hôte ou sans base DN ;
@@ -89,8 +99,10 @@ C'est la configuration de l'environnement qui le permet, pas un faux annuaire.
 
 - [ ] Build passes (0 errors) sur `api-mail`
 - [ ] Tests pass (0 failures) sur `api-mail`
-- [ ] `appsettings.json` porte la clé de source **explicitement** à `Fhir` et une section LDAP
-      (hôte, port, base DN, délai) ; aucune configuration existante n'est modifiée par effet de bord
+- [ ] `appsettings.json` porte la clé de source **explicitement** à `Fhir`, et la section LDAP
+      remplie : hôte `partenaires.annuaire.sante.fr`, port `389`, base DN `ou=bal,o=mssante,c=fr`,
+      délai. Aucune configuration existante n'est modifiée par effet de bord
+- [ ] `appsettings.Development.json` créé : il active `Ldap` et ne surcharge que la source
 - [ ] Unit tests de la validation au démarrage : valeur inconnue, `Ldap` sans hôte, `Ldap` sans base
       DN, port hors bornes → démarrage refusé, message nommant la clé ; `Fhir` et `Ldap` complets
       → acceptés
@@ -121,15 +133,15 @@ C'est la configuration de l'environnement qui le permet, pas un faux annuaire.
 
 ## Manual Test Plan
 
-- Poste local, `Api/Mail/src/Api/appsettings.json` ou user-secrets : source = `Ldap`, hôte
-  `partenaires.annuaire.sante.fr`, port `389`, base DN `ou=bal,o=mssante,c=fr`.
+- Poste local : rien à saisir. `appsettings.Development.json` active `Ldap`, et `appsettings.json`
+  porte les adresses de l'annuaire « partenaires ».
 - Lancer le backend : `cd Api/Mail && dotnet run --project src/AppHost` ; puis
   `cd Client/Mobile && npm start`.
 - Se connecter par Pro Santé Connect avec la carte de test du RPPS 899700622675.
 - Ouvrir « Mes boîtes » : `virginie.medecinrpps0062267@medecin.formation.mssante.fr` est proposée.
   Rattacher : le rôle affiché est **titulaire**.
 - Dans le journal de la boîte : le rattachement est imputé à la personne de la carte de test.
-- Remettre la source à `Fhir` et relancer : « Mes boîtes » interroge de nouveau la passerelle de
+- Remettre la source à `Fhir` dans `appsettings.Development.json` et relancer : « Mes boîtes » interroge de nouveau la passerelle de
   production (vide pour une carte de test).
 - Mettre une valeur inconnue (`Ldp`) : le backend refuse de démarrer, et le message nomme la clé.
 
