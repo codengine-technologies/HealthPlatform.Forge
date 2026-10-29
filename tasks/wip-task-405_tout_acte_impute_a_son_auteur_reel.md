@@ -319,6 +319,15 @@ Clients :
 | Duplication | 0,4 % | 0,4 % | 0 pt |
 | Reliability / Security / Maintainability | A/A/A | A/A/A | → |
 
+## Lint log
+
+- Mode chaîné, comme pour task-403 et task-404 : `npx eslint -f json` sur les 25 fichiers `.ts`/`.html` de task-405 (suite e2e comprise), base `origin/next` rafraîchie.
+- **Baseline : 0 erreur**, 41 avertissements. Le fork weda2 avait déjà corrigé 4 `prettier/prettier` par `--fix` pendant `/develop`.
+- **Itération 1 (manuelle)** : `bypassHeaders` portait un `@example` vide (antérieur, task-343). task-405 modifie cette fonction : son JSDoc est complété dans le même geste (convention task-379). Résultat : 0 erreur, 40 avertissements, tous antérieurs (`jsdoc/require-example` du support e2e, `max-lines`, avis « fichier ignoré » des specs et gabarits).
+- Build et tests : seul un commentaire du support e2e a changé, hors build applicatif. La validation de `/develop` reste valable (`nx build weda2` vert ; 1 367 + 2 653 verts). Typecheck e2e propre.
+- Conventions : aucune règle en erreur corrigée à la main ; `conventions/angular.md` inchangé.
+- Code-only : aucune opération git sur `client-angular` (seul `git fetch origin next`).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-405 --sync` — ne pas éditer à la main)*
@@ -328,6 +337,7 @@ Clients :
 | /start | ok | 28 s | — | — | — | — |
 | /develop | ok | 55 min 54 s | 28 (1 min 52 s) | 14 (13 min 43 s) | — | dtos-mss 1B/0T, api-mail 23B/10T, client-mobile 3B/2T, client-angular 1B/2T |
 | /sonar | ok | 23 min 27 s | 6 (53 s) | 10 (15 min 25 s) | 4 (1 min 26 s) | 2 itération(s), api-mail 6B/10T |
-| **Total cycle** | | **1 h 19 min** | **34 (2 min 45 s)** | **24 (29 min 08 s)** | **4 (1 min 26 s)** | |
+| /lint-angular | ok | 58 s | — | — | — | 1 itération(s) |
+| **Total cycle** | | **1 h 20 min** | **34 (2 min 45 s)** | **24 (29 min 08 s)** | **4 (1 min 26 s)** | |
 
-Autres commandes mesurées : lint ×1 (5.7 s), nuget-wait ×2 (17 s), restore ×3 (26 s)
+Autres commandes mesurées : lint ×3 (16 s), nuget-wait ×2 (17 s), restore ×3 (26 s)
