@@ -2,11 +2,36 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E020-boite-partagee-une-base-par-boite-tout.md](E020-boite-partagee-une-base-par-boite-tout.md).
-> **Dernière mise à jour** : 2026-10-29 (v1.4)
+> **Dernière mise à jour** : 2026-10-29 (v1.5)
 
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.5 — Rattachement : identité du praticien préremplie — task-409
+
+- **Task** : task-409, statut `done`. `/review` APPROVED le 2026-10-29, run `/forge` `forge-20261029-408-409`.
+  **Empilée sur task-408** : merger task-408 d'abord.
+- **PRs** (label `awaiting-human-merge`) : `api-mail` #327, `client-mobile` #117 ; `client-angular` code-only,
+  non commité sur `feature/nova-mss-weda-integration`.
+- **api-mail** :
+  - registre : migration `TenantDb/AddPractitionerProfile` (civilité, profession, spécialité, structure,
+    adresse, `profile_fetched_at`, `prefill_done_at`) ;
+  - annuaire : `GetPractitionerProfileAsync` (BAL + identité en une lecture), FHIR et LDAP ;
+  - `MailboxPrefillService`, appelé par le middleware à la première requête sur une boîte : identité
+    d'expéditeur (titulaire, ou membre sans titulaire) et « Signature annuaire », une seule fois, sans
+    écrasement, tracées au nom de la personne ; `DirectorySignature` encode les valeurs de l'annuaire ;
+  - requalification : identité enregistrée rafraîchie pour tous les rôles ;
+  - seeds e2e et banc : rattachements posés « déjà préremplis ».
+- **Fronts** (mobile, weda2) : accueil en un geste (BAL précochées, issue par ligne, « Réessayer »),
+  confirmation lue sur la boîte rattachée (identifiant de session neuf), aperçu de signature assaini.
+- **Règle 1b** : `MailboxPrefillIntegrationTests` (6, pile réelle), mutations P1 à P7 vues rouges ;
+  `AttachInOneGesture_…` ; profil LDAP sur vrai OpenLDAP.
+- **Sonar** : S3776 corrigée (`ApplyAttachmentAsync` extrait) ; QG OK, 0 issue, new coverage 96,9 % → 96,5 %.
+- **e2e** : E2E-MAILBOX-003 v2 et E2E-MAILBOX-006 v1 ; verts pendant `/develop` (mobile 53, weda2 63 + 1 flaky)
+  et rouges sous mutation ; `/e2e` **bypassé par l'humain** (2026-10-29).
+- **À arbitrer** : attente de l'annuaire à la première requête (≤ 10 s) ; AIPD à compléter (données
+  professionnelles publiques conservées au registre).
 
 ### v1.4 — Annuaire : source FHIR ou LDAP choisie dans appsettings.json — task-408
 
@@ -316,6 +341,8 @@
 | Marques d'audit | `Api/Mail/src/Api/Audit/AuditAttributes.cs` | `[Audited]`, `[TracedInCode]`, `[TraceExempt]` (task-405) |
 | Source de l'annuaire | `Api/Mail/src/Application/Services/Implementation/AnnuaireSante/AnnuaireOptions.cs` | `Fhir` ou `Ldap`, validée au démarrage (task-408) |
 | Annuaire MSSanté LDAP | `Api/Mail/src/Application/Services/Implementation/AnnuaireSante/LdapAnnuaireSanteService.cs` | BAL d'un RPPS, annuaire de test « partenaires » (task-408) |
+| Préremplissage de la boîte | `Api/Mail/src/Application/Services/Mailboxes/MailboxPrefillService.cs` | Identité d'expéditeur et « Signature annuaire », une fois (task-409) |
+| Confirmation du rattachement | `Client/Mobile/src/app/mailbox/shared/attach-confirmation.component.*`, `Client/Angular/front/libs/mss/src/ui/attach-confirmation/` | Lue sur la boîte rattachée (task-409) |
 
 ---
 
@@ -338,4 +365,4 @@
 | task-406 | todo | Mesure de charge d'une boîte partagée | — |
 | task-407 | todo | Le délégataire écrit pour le compte du délégant (`Sender`) | — |
 | task-408 | done (PR en attente de merge) | Source de l'annuaire FHIR ou LDAP choisie dans appsettings ; attente visible au rattachement | RG-E020-03 |
-| task-409 | todo | Rattachement : identité du praticien préremplie | — |
+| task-409 | done (PR en attente de merge) | Rattachement : identité du praticien préremplie, accueil en un geste | RG-E020-03, RG-E020-06 |
