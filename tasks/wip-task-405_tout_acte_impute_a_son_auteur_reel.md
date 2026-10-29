@@ -328,6 +328,12 @@ Clients :
 - Conventions : aucune règle en erreur corrigée à la main ; `conventions/angular.md` inchangé.
 - Code-only : aucune opération git sur `client-angular` (seul `git fetch origin next`).
 
+## Lint mobile log
+
+- Mode chaîné, branche `feat/task-405-tout-acte-impute-a-son-auteur-reel` (`c354540`), arbre propre.
+- Baseline `npm run lint` : **0 erreur, 0 warning** (« All files pass linting »). Aucune itération, aucun commit.
+- Build et tests non rejoués : rien n'a changé depuis la validation de `/develop` (build vert, 1 343 specs).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-405 --sync` — ne pas éditer à la main)*
@@ -338,6 +344,7 @@ Clients :
 | /develop | ok | 55 min 54 s | 28 (1 min 52 s) | 14 (13 min 43 s) | — | dtos-mss 1B/0T, api-mail 23B/10T, client-mobile 3B/2T, client-angular 1B/2T |
 | /sonar | ok | 23 min 27 s | 6 (53 s) | 10 (15 min 25 s) | 4 (1 min 26 s) | 2 itération(s), api-mail 6B/10T |
 | /lint-angular | ok | 58 s | — | — | — | 1 itération(s) |
-| **Total cycle** | | **1 h 20 min** | **34 (2 min 45 s)** | **24 (29 min 08 s)** | **4 (1 min 26 s)** | |
+| /lint-mobile | ok | 14 s | — | — | — | — |
+| **Total cycle** | | **1 h 21 min** | **34 (2 min 45 s)** | **24 (29 min 08 s)** | **4 (1 min 26 s)** | |
 
-Autres commandes mesurées : lint ×3 (16 s), nuget-wait ×2 (17 s), restore ×3 (26 s)
+Autres commandes mesurées : lint ×4 (22 s), nuget-wait ×2 (17 s), restore ×3 (26 s)
