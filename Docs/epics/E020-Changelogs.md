@@ -2,11 +2,37 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E020-boite-partagee-une-base-par-boite-tout.md](E020-boite-partagee-une-base-par-boite-tout.md).
-> **Dernière mise à jour** : 2026-10-29 (v1.3)
+> **Dernière mise à jour** : 2026-10-29 (v1.4)
 
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.4 — Annuaire : source FHIR ou LDAP choisie dans appsettings.json — task-408
+
+- **Task** : task-408, statut `done`. `/review` APPROVED le 2026-10-29, run `/forge` `forge-20261029-408-409`.
+- **PRs** (label `awaiting-human-merge`) : `api-mail` #326, `client-mobile` #116 ; `client-angular` code-only,
+  non commité sur `feature/nova-mss-weda-integration`.
+- **api-mail** :
+  - `AnnuaireOptions` (section `Annuaire`) : `Source` = `Fhir` | `Ldap`, validée au démarrage
+    (`AnnuaireOptionsValidator`, `ValidateOnStart`) : source absente, inconnue ou section LDAP incomplète
+    refusent le démarrage, la clé dans le message ;
+  - `LdapAnnuaireSanteService` : décorateur qui ne remplace que `GetPractitionerMailboxesAsync`
+    (filtre `(psidnat=8{RPPS})` échappé RFC 4515, lecture anonyme bornée). Recherche, spécialités et
+    professions restent sur FHIR. Injoignable → `DIRECTORY_UNAVAILABLE`, comme FHIR ;
+  - `DirectoryMailboxes` : traduction PER / ORG / CAB / APP / absent, partagée par FHIR et LDAP ;
+  - `AnnuaireSourceStartupLogger` : source active journalisée au démarrage ;
+  - `appsettings.json` : `Source = Fhir`, LDAP `partenaires.annuaire.sante.fr:389`, `ou=bal,o=mssante,c=fr` ;
+    AppHost : `Ldap` sur le poste local, `Fhir` pour les profils e2e et loadtest ;
+  - bibliothèque `Novell.Directory.Ldap.NETStandard` 4.0.0 (managée, aucune `libldap` dans l'image).
+- **Fronts** (mobile, weda2) : spinner et texte pendant la lecture de « Mes boîtes » ; spinner dans le seul
+  bouton cliqué, actions désactivées, un seul rattachement à la fois.
+- **Règle 1b** : 4 tests d'intégration sur un vrai OpenLDAP (`OpenLdapFixture`), mutations M1 à M4 vues rouges.
+- **Validation** : api-mail 202 / 699 / 1 306 / 3 865 / 1 059 (16 ignorés) ; mobile 1 348 ; weda2 12 projets verts.
+- **Sonar** : QG OK, 0 issue, new coverage 96,8 % → 96,9 %.
+- **e2e** : mobile 52 verts, weda2 62 verts + 1 flaky (E2E-COMPOSE-001, 7e occurrence), parité verte.
+- **À arbitrer** : `appsettings.Development.json` exclu du dépôt (task-045, secrets locaux) : l'activation
+  locale passe par l'AppHost. weda-dev : configmap `Annuaire__Source=Ldap` et port 389 sortant (`devops`).
 
 ### v1.3 — Tout acte imputé à son auteur réel — task-405
 
@@ -288,6 +314,8 @@
 | Imputation des actes | `Api/Mail/src/Application/Services/Implementation/AuditService.cs` | Personne réelle, acte système (task-405) |
 | Nom de la personne | `Api/Mail/src/Application/Services/Psc/PersonNameResolver.cs` | `userinfo` du proxy PSC (task-405) |
 | Marques d'audit | `Api/Mail/src/Api/Audit/AuditAttributes.cs` | `[Audited]`, `[TracedInCode]`, `[TraceExempt]` (task-405) |
+| Source de l'annuaire | `Api/Mail/src/Application/Services/Implementation/AnnuaireSante/AnnuaireOptions.cs` | `Fhir` ou `Ldap`, validée au démarrage (task-408) |
+| Annuaire MSSanté LDAP | `Api/Mail/src/Application/Services/Implementation/AnnuaireSante/LdapAnnuaireSanteService.cs` | BAL d'un RPPS, annuaire de test « partenaires » (task-408) |
 
 ---
 
@@ -303,8 +331,11 @@
 
 | Task | Statut | Contribution | Règles |
 |---|---|---|---|
-| task-402 | done (PR en attente de merge) | Rattachement guidé par l'Annuaire Santé ; rôle titulaire, membre, délégataire ou « à requalifier » | RG-E020-03 ; RG-E020-06 (partiel) |
-| task-403 | done (PR en attente de merge) | Accès à la base subordonné au verdict de l'opérateur ; hors-ligne du titulaire seul | RG-E020-04, RG-E020-05 ; RG-E020-06 (partiel) |
-| task-404 | done (PR en attente de merge) | Une base par boîte ; données de la personne séparées ; identité d'expéditeur de la boîte | RG-E020-01, RG-E020-02 |
-| task-405 | done (PR en attente de merge) | Tout acte imputé à son auteur réel ; journal lisible de toute la boîte | RG-E020-06, RG-E020-07 |
+| task-402 | archivée (mergée) | Rattachement guidé par l'Annuaire Santé ; rôle titulaire, membre, délégataire ou « à requalifier » | RG-E020-03 ; RG-E020-06 (partiel) |
+| task-403 | archivée (mergée le 2026-10-29) | Accès à la base subordonné au verdict de l'opérateur ; hors-ligne du titulaire seul | RG-E020-04, RG-E020-05 ; RG-E020-06 (partiel) |
+| task-404 | archivée (mergée le 2026-10-29) | Une base par boîte ; données de la personne séparées ; identité d'expéditeur de la boîte | RG-E020-01, RG-E020-02 |
+| task-405 | archivée (mergée le 2026-10-29) | Tout acte imputé à son auteur réel ; journal lisible de toute la boîte | RG-E020-06, RG-E020-07 |
 | task-406 | todo | Mesure de charge d'une boîte partagée | — |
+| task-407 | todo | Le délégataire écrit pour le compte du délégant (`Sender`) | — |
+| task-408 | done (PR en attente de merge) | Source de l'annuaire FHIR ou LDAP choisie dans appsettings ; attente visible au rattachement | RG-E020-03 |
+| task-409 | todo | Rattachement : identité du praticien préremplie | — |

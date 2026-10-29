@@ -2,7 +2,7 @@
 
 > **Statut** : 🟡 En cours — 4 fonctionnalités sur 5 livrées, en attente de recette
 > **Modèle** : task-driven
-> **Version** : 1.3
+> **Version** : 1.4
 > **Auteur** : PO forge
 > **Audience** : PO, direction, équipe produit — la vue ingénierie vit dans [E020-Changelogs.md](E020-Changelogs.md)
 > **Dernière mise à jour** : 2026-10-29
@@ -76,7 +76,7 @@ titulaire, le journal dit que c'est le délégataire qui l'a supprimé.
 
 | # | Fonctionnalité | Ce que le praticien peut faire | Tasks | Statut |
 |---|---|---|---|---|
-| E020-F001 | Rattachement guidé par l'Annuaire Santé | Choisir ses boîtes dans la liste « Mes boîtes » publiée pour lui, ou ajouter une boîte qui lui est déléguée ; voir son rôle sur chaque boîte | task-402 | 🟢 Livrée, en attente de recette |
+| E020-F001 | Rattachement guidé par l'Annuaire Santé | Choisir ses boîtes dans la liste « Mes boîtes » publiée pour lui, ou ajouter une boîte qui lui est déléguée ; voir son rôle sur chaque boîte ; avec une carte de test, retrouver sa boîte de test | task-402, task-408 | 🟢 Livrée, en attente de recette |
 | E020-F002 | Accès ouvert par l'opérateur | Ne lire une boîte que si l'opérateur lui en a ouvert l'accès récemment ; le titulaire seul garde la lecture hors ligne | task-403 | 🟢 Livrée, en attente de recette |
 | E020-F003 | Une base par boîte | Travailler à plusieurs dans la même boîte : rattachements patient, étiquettes, acquittements et classements partagés ; réglages et signatures restent personnels | task-404 | 🟢 Livrée, en attente de recette |
 | E020-F004 | Tout acte imputé à son auteur | Lire, dans le journal de la boîte, qui a fait quoi, quand et sur quel objet | task-405 | 🟢 Livrée, en attente de recette |
@@ -186,7 +186,7 @@ graph LR
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
-| E020-F001 — Rattachement guidé par l'Annuaire Santé | 🟢 Livrée, en attente de recette | 100 % | task-402 |
+| E020-F001 — Rattachement guidé par l'Annuaire Santé | 🟢 Livrée, en attente de recette | 100 % | task-402, task-408 |
 | E020-F002 — Accès ouvert par l'opérateur | 🟢 Livrée, en attente de recette | 100 % | task-403 |
 | E020-F003 — Une base par boîte | 🟢 Livrée, en attente de recette | 100 % | task-404 |
 | E020-F004 — Tout acte imputé à son auteur | 🟢 Livrée, en attente de recette | 100 % | task-405 |
@@ -218,6 +218,11 @@ graph LR
   journal de la boîte, et peut le filtrer par personne, par type d'acte ou par recherche libre.
   L'acquittement d'un résultat et le rattachement d'un document affichent leur auteur réel
   (task-405).
+- v1.4 — Rattacher sa boîte avec une carte de test. Les environnements de test lisent « Mes boîtes »
+  dans l'annuaire MSSanté de test de l'ANS, qui publie les cartes de test : un testeur rattache sa
+  boîte de test en titulaire, comme un médecin sa boîte réelle. La production garde l'Annuaire Santé.
+  Pendant la lecture de l'annuaire et le rattachement, une attente visible s'affiche, et un double
+  clic ne rattache pas deux fois (task-408).
 
 ### Conformité réglementaire
 
