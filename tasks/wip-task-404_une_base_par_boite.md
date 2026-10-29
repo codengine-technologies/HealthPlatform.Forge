@@ -272,6 +272,38 @@ Clients (preuve par mutation, Vitest weda2) :
 - `e2e/mss-e2e/support/e2e-backend.ts` (`ActorInMailbox`)
 - `e2e/mss-e2e/specs/functional.e2e.ts` (E2E-SHARED-001)
 
+## Sonar log
+
+- Serveur SonarQube 9.9.8 (`sonar.login`). Branche `feat/task-404-une-base-par-boite`. Baseline : la dernière analyse, celle de task-403 en fin de cycle.
+- **Itération 1** (`4c7bd487`) : QG OK, couverture du code neuf à 96,9 %, **1 issue** sur le code neuf.
+  - `csharpsquid:S4457` dans `UserSettingsRepository.SaveMailboxSenderIdentityAsync` : `ThrowIfNull` en tête d'une méthode `async`. C'est une récidive, et le contrôle §Q 2b n'avait pas été joué par `/develop`.
+  - Le même contrôle, joué ici tel qu'écrit, trouve aussi un **S125** : une prose avec « ; » dans `UserContextIdentityCopyTests`.
+  - Trois branches neuves de la task ne sont pas couvertes : le corps nul du PUT d'identité, le type de boîte gravé au rattachement d'une boîte existante, et le repli du nom d'expéditeur sans `From`.
+- **Corrections** :
+  - `05b2055a` : S4457, enveloppe synchrone + `SaveMailboxSenderIdentityCoreAsync` ;
+  - `a8bbf9cd` : tests du PUT sans corps (400 problem+json, identité inchangée, test d'intégration), du type de boîte gravé au rattachement du titulaire (registre), et du repli sans `From` ;
+  - `a4b2e833` : S125.
+- **Itération 2** (`a4b2e833`) : **QG OK, 0 issue, 0 hotspot**, couverture du code neuf à 97,0 %.
+  - `MailboxSenderIdentityController` et `PostgresTenantRegistryClient` sont à 100 % de lignes neuves couvertes.
+  - Reste accepté (best-effort) : `UserSettingsRepository` (2 lignes, 3 conditions), `MailboxSenderIdentityService` (2 conditions), `BaseRepository` (1 condition).
+  - Tests : 202 + 3 831 + 699 + 1 302 + 1 046 verts (16 ignorés).
+- Phase 2 (legacy) : sans objet, 0 bug, 0 vulnérabilité, 0 code smell.
+- Conventions : **S4457** passe à 8 occurrences, **S125** à 21.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | → |
+| New coverage | 97,1 % | 97,0 % | −0,1 pt |
+| Bugs | 0 | 0 | 0 |
+| Vulnerabilities | 0 | 0 | 0 |
+| Security hotspots | 0 | 0 | 0 |
+| Code smells | 0 | 0 | 0 |
+| Coverage (projet) | 98,0 % | 98,0 % | 0 pt |
+| Duplication | 0,4 % | 0,4 % | 0 pt |
+| Reliability / Security / Maintainability | A/A/A | A/A/A | → |
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-404 --sync` — ne pas éditer à la main)*
@@ -280,6 +312,7 @@ Clients (preuve par mutation, Vitest weda2) :
 |---|---|---|---|---|---|---|
 | /start | ok | 27 s | — | — | — | — |
 | /develop | ok | 57 min 07 s | 3 (30 s) | 10 (10 min 57 s) | — | api-mail 1B/4T, client-mobile 1B/2T, client-angular 1B/4T |
-| **Total cycle** | | **57 min 35 s** | **3 (30 s)** | **10 (10 min 57 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 24 min 27 s | 3 (49 s) | 14 (17 min 45 s) | 4 (1 min 41 s) | 2 itération(s), api-mail 3B/14T |
+| **Total cycle** | | **1 h 22 min** | **6 (1 min 19 s)** | **24 (28 min 43 s)** | **4 (1 min 41 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (6.5 s), restore ×1 (22 s)
