@@ -479,3 +479,13 @@ Clients :
 | **Total cycle** | | **2 h 06 min** | **36 (3 min 07 s)** | **26 (29 min 53 s)** | **4 (1 min 26 s)** | |
 
 Autres commandes mesurées : lint ×4 (22 s), nuget-wait ×2 (17 s), restore ×3 (26 s)
+
+## Merged
+
+- **Date** : 2026-10-29 19:38 — `/merge task-405 --i-tested` (HAG, attestation humaine)
+- `dtos-mss` : squash `f06babe4` (#55)
+- `api-mail` : squash `aa1f40e8` (#325)
+- `client-mobile` : squash `cc6e4989` (#115)
+- **Empilement** : branche resynchronisée par `git merge -s ours origin/develop` après le squash de la task précédente — arbre du squash identique à la branche, diff de la PR vérifié inchangé (patch-id).
+- **CI develop** : verte — dtos-mss run 40931903154, api-mail run 40931931398, client-mobile run 40931960548 (contrôlées sur les squash de task-405).
+- `client-angular` : managed manually by the human (TFS).

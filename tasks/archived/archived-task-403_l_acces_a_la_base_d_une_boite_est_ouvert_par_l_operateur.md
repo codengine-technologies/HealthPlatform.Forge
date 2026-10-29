@@ -489,3 +489,12 @@ Branche courante : `feature/nova-mss-weda-integration`. Fichiers de task-403 :
 | Hors ligne : délégataire 403 PSC requise, titulaire servi | `…OfflineDelegate_…` | M2 |
 | Flux SSE (mail et notifications) fermés sur révocation | `…TheStreamOfADelegateWhoseAccessFalls_…` ×2 | M2, M4, M5 |
 | Refus en cours d'usage SMTP puis IMAP → `AuthFailing` au registre réel | `MailServerTokenRefusalEndpointIntegrationTests` | M1 |
+
+## Merged
+
+- **Date** : 2026-10-29 19:38 — `/merge task-403 --i-tested` (HAG, attestation humaine)
+- `dtos-mss` : squash `4c46190c` (#53)
+- `api-mail` : squash `b4312dfe` (#323)
+- `client-mobile` : squash `128eff01` (#113)
+- **CI develop** : verte — dtos-mss run 40931903154, api-mail run 40931931398, client-mobile run 40931960548 (contrôlées sur les squash de task-405).
+- `client-angular` : managed manually by the human (TFS).
