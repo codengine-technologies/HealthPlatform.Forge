@@ -109,7 +109,7 @@ en C# 12 : deux spreads valent mieux qu'un `Concat`.
 
 ## CA1859 — type concret plutôt qu'interface pour un helper local
 
-**Occurrences : 12** (task-399 — douzième, relevée par `/sonar` : un relais privé `TransmitAsync` déclaré `Task` alors que ses deux branches rendent le `Task<string>` de `SmtpClient.SendAsync` — la variante task-299/task-340, « on ne masque pas un `Task<T>` derrière un `Task` » ; task-398 — onzième, relevée par `/sonar`, **introduite par la passe `/simplify`** : un champ `public static readonly IReadOnlySet<string> Switches` rendu `private` sur recommandation de revue. Public, le type d'interface était un contrat ; privé, il ne l'est plus et CA1859 réclame le `HashSet<string>` construit. **Restreindre la visibilité d'un membre, c'est aussi revenir à son type concret.** task-397 — dixième, relevée par `/sonar` : `StoreAsync(…, IReadOnlyCollection<(string Key, byte[] Bytes)> entries, …)`, helper privé dont les deux appelants passent une `List` ; même variante que task-353, écrite large en réécrivant la classe. task-332 — neuvième, relevée par `/sonar` : un helper privé de test d'intégration `PlatformConnectionStrings()` déclaré `IServerConnectionStrings` alors qu'il construit un `PlatformRoutes` ; même cas que la huitième, un helper en expression rend le type de ce qu'il construit. task-340 — huitième, relevée par `/sonar` : un helper de test `DeleteFolderAsync` déclaré `Task` alors qu'il rend le `Task<int>` d'`ExecuteDeleteAsync` ; un helper en expression rend le type de ce qu'il renvoie. task-203, task-289, task-299, task-188, task-345, task-353, task-354 — septième récidive, relevée par `/sonar` : un helper privé de test `MssanteRefusal()` déclaré `Exception` alors qu'il ne construit qu'une `SmtpProtocolException` — le réflexe « type large pour une fabrique d'exception de test » ; écrire le type construit. Sixième récidive.
+**Occurrences : 13** (task-405 — `UnmarkedController.Delete` du test d'architecture déclaré `IActionResult` pour rendre un `NoContentResult`, relevé par `/sonar` ; task-399 — douzième, relevée par `/sonar` : un relais privé `TransmitAsync` déclaré `Task` alors que ses deux branches rendent le `Task<string>` de `SmtpClient.SendAsync` — la variante task-299/task-340, « on ne masque pas un `Task<T>` derrière un `Task` » ; task-398 — onzième, relevée par `/sonar`, **introduite par la passe `/simplify`** : un champ `public static readonly IReadOnlySet<string> Switches` rendu `private` sur recommandation de revue. Public, le type d'interface était un contrat ; privé, il ne l'est plus et CA1859 réclame le `HashSet<string>` construit. **Restreindre la visibilité d'un membre, c'est aussi revenir à son type concret.** task-397 — dixième, relevée par `/sonar` : `StoreAsync(…, IReadOnlyCollection<(string Key, byte[] Bytes)> entries, …)`, helper privé dont les deux appelants passent une `List` ; même variante que task-353, écrite large en réécrivant la classe. task-332 — neuvième, relevée par `/sonar` : un helper privé de test d'intégration `PlatformConnectionStrings()` déclaré `IServerConnectionStrings` alors qu'il construit un `PlatformRoutes` ; même cas que la huitième, un helper en expression rend le type de ce qu'il construit. task-340 — huitième, relevée par `/sonar` : un helper de test `DeleteFolderAsync` déclaré `Task` alors qu'il rend le `Task<int>` d'`ExecuteDeleteAsync` ; un helper en expression rend le type de ce qu'il renvoie. task-203, task-289, task-299, task-188, task-345, task-353, task-354 — septième récidive, relevée par `/sonar` : un helper privé de test `MssanteRefusal()` déclaré `Exception` alors qu'il ne construit qu'une `SmtpProtocolException` — le réflexe « type large pour une fabrique d'exception de test » ; écrire le type construit. Sixième récidive.
 Variante task-353 : un helper privé `PurgeVanishedMailsAsync(folder, IReadOnlyCollection<uint>)`
 dont les deux appelants passent un `uint[]` — écrit « large » par réflexe pendant la passe
 `/simplify`, comme sur task-289 : **un paramètre de helper privé prend le type de ce que ses
@@ -314,7 +314,7 @@ d'« accepter », ce qui use la crédibilité des exemptions.
 
 ## S3604 — pas d'initialiseur de membre qui ne fait que copier un paramètre de constructeur primaire
 
-**Occurrences : 2** (task-326 — `_hostEnvironment = hostEnvironment` ajouté à côté d'un `_configuration = configuration`
+**Occurrences : 3** (task-405 — `Action { get; } = action`, `Actions { get; } = actions`, `Reason { get; } = reason` sur les attributs d'audit à constructeur primaire, relevés par `/sonar` : écrire `=> action` ; task-326 — `_hostEnvironment = hostEnvironment` ajouté à côté d'un `_configuration = configuration`
 préexistant dans `TestBypassAuthenticationHandler`, en imitant le voisin ; corrigé en utilisant les deux paramètres
 directement. Le motif voisin n'excuse pas : on le retire avec le sien ; task-292, ×2 dans le même run)
 
@@ -1605,7 +1605,7 @@ négligeable quand la trace accompagne une opération réseau.
 
 ## SYSLIB1045 — une expression régulière fixe s'écrit `[GeneratedRegex]`, y compris dans un test
 
-**Occurrences : 1** (task-385, `/sonar` — api-mail, `AiConsumptionMetricsEndpointIntegrationTests`)
+**Occurrences : 2** (task-405, `/sonar` — `EveryControllerActionIsTracedTests` : `Regex.Matches(sources, @"AuditActionType\.(\w+)")` ; task-385, `/sonar` — api-mail, `AiConsumptionMetricsEndpointIntegrationTests`)
 
 `Regex.Match(texte, @"motif")` avec un motif constant est signalé, tests compris. Rendre la classe
 `partial` et déclarer `[GeneratedRegex(@"motif", RegexOptions.None, matchTimeoutMilliseconds: 5000)]
@@ -1849,4 +1849,12 @@ context.AuditTraces.FromSqlRaw(
 (`ToQueryString()`), pas par sa lecture. Une inégalité (`!=`) dont un côté est nullable reçoit un
 `OR … IS NULL` : partir du prédicat SQL partagé (`FromSqlRaw` avec la constante de la migration), ou
 rendre la colonne non nullable dans le modèle si elle l'est en base.
+
+## S3459-S1144 — un DTO de désérialisation privé s'écrit en `record` positionnel
+
+**Occurrences : 1** (task-405, `/sonar` — `PersonNameResolver.UserInfoPayload` : classe privée `{ get; set; }` lue par `ReadFromJsonAsync`. Sonar ne voit pas l'affectation par réflexion : S3459 « propriété jamais affectée » et S1144 « setter privé inutilisé », ×2.)
+
+**Consigne** : un type privé qui ne sert qu'à désérialiser une réponse s'écrit
+`private sealed record Payload(string? FirstName, string? LastName);`. System.Text.Json lie le
+constructeur positionnel, et aucun setter n'existe à signaler.
 

@@ -285,6 +285,40 @@ Clients :
 - `libs/mss/src/features/mail/components/biology-ack-panel` et `manual-attachment-panel` (ts, html, spec)
 - `e2e/mss-e2e/support/session.ts`, `support/e2e-backend.ts`, `specs/functional.e2e.ts`
 
+## Sonar log
+
+- Serveur SonarQube 9.9.8 (`sonar.login`), branche `feat/task-405-tout-acte-impute-a-son-auteur-reel`. Baseline : la dernière analyse, celle de task-404 en fin de cycle.
+- **Itération 1** (`cc766680`) : QG OK, couverture du code neuf à 96,8 %, **10 issues** sur le code neuf.
+  - `S3776` : `TestBypassAuthenticationHandler.HandleAuthenticateAsync` passe de 15 à 18 avec les deux en-têtes de nom. Ce n'est pas du code ancien : les claims facultatifs sont extraits dans `AddOptionalClaim`.
+  - `S3604` ×3 : initialiseurs sur les attributs d'audit à constructeur primaire.
+  - `S3459`/`S1144` ×4 : DTO privé de désérialisation de `userinfo`.
+  - `SYSLIB1045`, `CA1859` dans le test d'architecture.
+- **Corrections** :
+  - `a60169ae` (S3776, S3604, S3459/S1144) ;
+  - `f857e9ea` (SYSLIB1045, CA1859) ;
+  - `01f5cb35` : tests unitaires de `PersonNameResolver` (proxy en erreur, injoignable, non configuré, hors ligne, cache, registre indisponible), le fichier neuf le moins couvert (83 %).
+- **Itération 2** (`f857e9ea`) : **QG OK, 0 issue, 0 hotspot**, couverture du code neuf à 96,8 %.
+  - Reste accepté (best-effort) : `PersonNameResolver` 83 % (ses 9 tests unitaires ont été ajoutés après cette analyse, non remesurés), `ActorNames` 88,9 %, `AuditAttributes` 92 %.
+  - Tests : 202 + 3 831 + 699 + 1 306 + 1 055 verts (16 ignorés).
+- Phase 2 (legacy) : sans objet, 0 bug, 0 vulnérabilité, 0 code smell.
+- Conventions :
+  - **S3604** (3), **CA1859** (13) et **SYSLIB1045** (2) sont des récidives sur du code frais : leurs consignes existaient et n'ont pas été relues avant d'écrire ;
+  - **S3459-S1144** est une nouvelle entrée.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | → |
+| New coverage | 97,0 % | 96,8 % | −0,2 pt |
+| Bugs | 0 | 0 | 0 |
+| Vulnerabilities | 0 | 0 | 0 |
+| Security hotspots | 0 | 0 | 0 |
+| Code smells | 0 | 0 | 0 |
+| Coverage (projet) | 98,0 % | 98,0 % | 0 pt |
+| Duplication | 0,4 % | 0,4 % | 0 pt |
+| Reliability / Security / Maintainability | A/A/A | A/A/A | → |
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-405 --sync` — ne pas éditer à la main)*
@@ -293,6 +327,7 @@ Clients :
 |---|---|---|---|---|---|---|
 | /start | ok | 28 s | — | — | — | — |
 | /develop | ok | 55 min 54 s | 28 (1 min 52 s) | 14 (13 min 43 s) | — | dtos-mss 1B/0T, api-mail 23B/10T, client-mobile 3B/2T, client-angular 1B/2T |
-| **Total cycle** | | **56 min 23 s** | **28 (1 min 52 s)** | **14 (13 min 43 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 23 min 27 s | 6 (53 s) | 10 (15 min 25 s) | 4 (1 min 26 s) | 2 itération(s), api-mail 6B/10T |
+| **Total cycle** | | **1 h 19 min** | **34 (2 min 45 s)** | **24 (29 min 08 s)** | **4 (1 min 26 s)** | |
 
 Autres commandes mesurées : lint ×1 (5.7 s), nuget-wait ×2 (17 s), restore ×3 (26 s)
