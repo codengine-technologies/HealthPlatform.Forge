@@ -280,3 +280,91 @@ Il n'a rien à saisir. Il garde la main pour corriger, et ce qu'il a corrigé n'
 - `api-mail` (pushed) : feat/task-409-rattachement-identite-du-praticien — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-409-rattachement-identite-du-praticien
 - `client-mobile` (pushed) : feat/task-409-rattachement-identite-du-praticien — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-409-rattachement-identite-du-praticien
 - `client-angular` (code-only) : branche checkout au /start : `feature/nova-mss-weda-integration` — humain gère branche, commit, push, PR TFS
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-409 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 20 s | — | — | — | — |
+| **Total cycle** | | **20 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+
+## Develop log
+
+- **Repos touchés** : `api-mail`, `client-mobile`, `client-angular` (code-only). Aucun DTO changé (contrats existants
+  `MailboxSenderIdentityDto`, `MailSignatureDto`).
+- **Commits** :
+  - api-mail : `2146e857` feat préremplissage ; `29bbbe42` tests ; `3fc39de4`, `be7833b0` catalogue e2e ;
+  - client-mobile : `851239f` feat ; `40ac560` tests et e2e ; `70c13e3` attendu e2e ;
+  - weda2 (non commité, `feature/nova-mss-weda-integration`) : `ui/attach-confirmation/` (nouveau),
+    `ui/attach-mailbox-form/*`, `features/mailbox-onboarding/*`, `features/mailbox-management/*.{ts,html}`,
+    `core/services/mss-api.service.{ts,spec.ts}`, `core/models/user-settings.model.ts`, `ui/index.ts`,
+    `e2e/mss-e2e/specs/functional.e2e.ts`, `e2e/mss-e2e/support/e2e-backend.ts` (+ les fichiers de task-408).
+- **Conception — le préremplissage à la première requête sur la boîte.** Le rattachement n'ouvre pas la base de
+  la boîte (créée paresseusement à la première requête) : préremplir dans `POST /account/mailboxes` aurait exigé
+  de provisionner cette base hors requête. Le middleware appelle donc `MailboxPrefillService` **une fois l'accès
+  ouvert par l'opérateur et le nom PSC résolu**. Un seul mécanisme sert le rattachement (règle 4) et les médecins
+  déjà en service (règle 9). La confirmation relit l'identité et la signature par deux requêtes **figées sur la
+  boîte rattachée** (`MSS_MAILBOX_PIN`, identifiant de session neuf : la garde task-365 refuse l'identifiant de la
+  boîte ouverte), ce sont elles qui déclenchent le préremplissage : le contenu vient des réglages enregistrés
+  (règle 8).
+- **api-mail** :
+  - registre : migration `TenantDb/20261029140000_AddPractitionerProfile` (civilité, profession, spécialité,
+    structure, adresse, `profile_fetched_at`, `prefill_done_at`). Audit 7c : FluentMigrator (ni Designer ni
+    snapshot) ; migration relue, aucune opération fantôme ; schéma réel contrôlé par les tests de colonnes
+    autorisées (intégration et architecture) ;
+  - annuaire : `GetPractitionerProfileAsync` (BAL + identité, une lecture). FHIR : préfixe du nom (`DR` → Docteur),
+    profession / spécialité, établissement de la première activité. LDAP : `civiliteexercice`, `givenname`, `sn`,
+    `codeprofession` et `specordrpps` traduits par les référentiels locaux, `raisonsociale`, `postaladdress` ;
+  - `MailboxPrefillService` : réservation atomique de la marque (`TryClaimPrefillAsync`), identité d'expéditeur
+    préremplie seulement vide et seulement pour le titulaire (personnelle) ou le membre sans titulaire
+    (organisation = structure), jamais pour un délégataire ; « Signature annuaire » seulement si la personne n'en
+    a aucune ; marque rendue tant que l'annuaire n'a jamais répondu (nouvel essai au plus toutes les 10 min) ;
+    écritures tracées au nom de la personne (`SenderIdentityChanged`, `SignatureCreated`, `mailbox-prefill …`) ;
+  - `DirectorySignature` : valeurs encodées (`HtmlEncoder` Unicode : `< > & "` échappés, accents lisibles) ;
+  - requalification : une lecture du profil pour tous les rôles, identité enregistrée rafraîchie ;
+  - seeds e2e et banc : leurs rattachements sont posés « déjà préremplis » (médecins déjà en service), seul un
+    rattachement fait pendant un parcours se préremplit. Faux annuaire e2e : identité complète de la nouvelle venue.
+- **Changement de règle assumé** : `Reauthenticate_OfADelegation_NeverAsksTheDirectory` (task-402) devient
+  `…_RefreshesTheProfile_ButNeverRequalifies` — règle 2 de la task (identité rafraîchie pour tous les rôles) ; le
+  rôle d'un délégataire n'est toujours jamais requalifié.
+- **Règle 1b — tests d'intégration** (`MailboxPrefillIntegrationTests`, pile réelle : vraie route de rattachement,
+  middleware, base de boîte, registre, annuaire FHIR sur faux, journal) et mutations vues rouges :
+
+  | # | Mutation | Tests rouges |
+  |---|---|---|
+  | P1 | préremplissage jamais appelé | les 6 |
+  | P2 | identité écrasée | `ADoctorAlreadyConfigured_…` |
+  | P3 | signature créée malgré une existante | `ADoctorAlreadyConfigured_…` |
+  | P4 | marque jamais gardée | `AMailboxAttachedBeforeTheTask_…`, `ADoctorAlreadyConfigured_…`, `AttachFromMesBoites_…` |
+  | P5 | valeurs de l'annuaire non encodées | `AttachFromMesBoites_…`, `TheDelegate_…`, `AMailboxAttachedBeforeTheTask_…`, `Requalification_…` |
+  | P6 | marque gardée annuaire injoignable | `TheAnnuaireDown_…` |
+  | P7 | profil non rafraîchi à la requalification | `Requalification_…` |
+
+  Plus : `AttachInOneGesture_…` (deux BAL, l'une refusée par l'opérateur, l'autre rattachée, issues lues dans les
+  réponses) et `Profile_LdapSource_…` sur un vrai OpenLDAP (schéma de test étendu).
+- **Unit tests** : `MailboxPrefillServiceTests` (18 : rôles × identité vide / remplie, signature, marque, annuaire
+  injoignable, échec jamais propagé, signature construite et encodée).
+- **Fronts** (mobile et weda2) : onboarding en un geste (BAL précochées, un bouton, issue par ligne,
+  « Réessayer » des seules BAL en échec), confirmation par BAL rattachée (nom affiché, aperçu de signature via
+  `[innerHTML]` assaini, « Modifier » ; variantes délégataire et « rien de prérempli »), lectures figées sur la boîte.
+  Tests de composant : mobile 1 369, mss-lib 1 395.
+- **Parcours e2e** — catalogue d'abord : E2E-MAILBOX-003 **v2**, E2E-MAILBOX-006 **v1** ; specs mobile et weda2.
+  Voies propres : mobile 53 verts, weda2 63 verts + 1 flaky, parité verte. **Preuve par mutation** (les deux
+  clients, voie complète mutée) : « un seul POST du lot » → E2E-MAILBOX-003 rouge (`waitForResponse` du second
+  POST en dépassement) ; « confirmation sans identité relue » → E2E-MAILBOX-006 rouge (« Vos destinataires vous
+  verront ainsi » absent). Code restauré.
+- **Écarts corrigés en route** : attendu e2e du nom (le nom de session PSC « Nora ARRIVANTE » prime sur l'annuaire,
+  règle 1) ; catalogue YAML illisible (valeur avec « : » non citée) → consigne `catalogue-yaml-relu` ajoutée à
+  `conventions/e2e.md`.
+- **Contrôles mécaniques §Q 2b** : S125 ×7 et S4457 ×1 attrapés avant le commit, corrigés ; compteurs
+  incrémentés dans `conventions/csharp.md` (S125 → 23, S4457 → 9).
+- **Passe qualité** : relecture du diff (réutilisation, simplification, efficacité, niveau) : rien à appliquer de
+  plus ; le seul doublon (harnais d'intégration calqué sur task-405) est assumé, chaque classe d'intégration
+  portant le sien dans ce dépôt.
+- **Validation locale** : api-mail 202 / 699 / 1 306 / 3 883 / 1 067 (16 ignorés) ; mobile build + 1 369 ;
+  weda2 build + 12 projets verts, lint 0 erreur.
+- **Mesure** : le travail de l'agent des fronts et les lancements de tests ciblés n'ont pas été passés par
+  `measure.sh` : ils manquent au journal de `## Timings`.
+- **Next step** : `/sonar task-409`

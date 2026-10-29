@@ -390,6 +390,20 @@
 - **Occurrences** : 3 (une par client sur task-352 ; task-368 : libellés mobiles réécrits par un
   script d'édition qui a perdu les barres obliques d'échappement, attrapé par le `tsc` de la suite avant tout commit)
 
+### catalogue-yaml-relu — Le catalogue se relit avant le commit, comme une spec se compile
+- **Piège** : `scenarios.yml` n'est lu qu'à la fin d'une voie, par le contrôle de parité. Une valeur
+  YAML invalide y passe donc build, tests, lint et `tsc`, et ne se voit qu'après une voie complète
+  (une dizaine de minutes), en « parité ROUGE : catalogue illisible ». Sur task-409, une `origine`
+  non citée contenait « : » (`task-409 (v2 : …)`), que YAML lit comme une clé.
+- **Consigne** : après toute écriture du catalogue, le relire avant de commiter :
+  `python -c "import yaml; yaml.safe_load(open('Api/Mail/e2e/scenarios.yml', encoding='utf-8'))"`.
+  Une valeur sur une ligne qui contient « : », « # » ou commence par « { » se met entre guillemets
+  doubles ; un texte long s'écrit en bloc `>-`, comme `attendu`.
+- **Preuve** : la voie mobile de task-409 en « parité ROUGE » sur la valeur non citée, verte une fois
+  la valeur entre guillemets, `yaml.safe_load` relevant la même erreur.
+- **Origine** : task-409
+- **Occurrences** : 1
+
 ### test-angular-non-commite — Un scénario requis côté Angular repose sur un test que la forge ne commite pas
 - **Piège** : en mode code-only, le test Angular d'un nouveau scénario reste **non commité** sur
   l'arbre de l'humain. Le catalogue, lui, part sur `develop` avec la PR api-mail. Si l'arbre Angular
