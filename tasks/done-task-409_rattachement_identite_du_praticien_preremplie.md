@@ -292,11 +292,11 @@ Il n'a rien à saisir. Il garde la main pour corriger, et ce qu'il a corrigé n'
 |---|---|---|---|---|---|---|
 | /start | ok | 20 s | — | — | — | — |
 | /develop | ok | 1 h 38 min | 3 (12 s) | 3 (5 min 42 s) | — | api-mail 1B/1T, client-mobile 1B/1T, client-angular 1B/1T |
-| /e2e | en cours | — | — | — | — | e2e ×4 (34 min 31 s) |
+| /e2e | skipped | 21 s | — | — | — | e2e ×4 (34 min 31 s), bypass humain (--no-e2e) |
 | /sonar | ok | 19 min 04 s | 2 (1 min 04 s) | 10 (14 min 19 s) | 4 (1 min 22 s) | 2 itération(s), api-mail 2B/10T |
 | /lint-angular | ok | 20 s | — | — | — | — |
 | /lint-mobile | ok | 9.4 s | — | — | — | — |
-| **Total cycle** | | **1 h 57 min** | **5 (1 min 16 s)** | **13 (20 min 02 s)** | **4 (1 min 22 s)** | |
+| **Total cycle** | | **1 h 58 min** | **5 (1 min 16 s)** | **13 (20 min 02 s)** | **4 (1 min 22 s)** | |
 
 Autres commandes mesurées : lint ×2 (13 s)
 
@@ -430,3 +430,42 @@ Pour information, sans valeur de verdict, les voies jouées pendant `/develop`, 
 - voie mobile : 53 verts, 0 flaky, parité verte ;
 - voie Angular : 63 verts, 1 flaky (E2E-CONTACT-002, ajouté au registre de `conventions/e2e.md`), parité verte ;
 - preuves de rouge : E2E-MAILBOX-003 v2 et E2E-MAILBOX-006 rouges sous mutation, sur les deux clients.
+
+## PRs
+
+> Empilées sur task-408 : merger d'abord api-mail #326 et mobile #116.
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/327 — `awaiting-human-merge`
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/117 — `awaiting-human-merge`
+- `client-angular` : code-only — humain gère commit/push TFS et ouverture PR. Branche `feature/nova-mss-weda-integration`,
+  qui porte aussi, non commités, les fichiers de task-408. Fichiers de task-409 :
+  - `front/libs/mss/src/ui/attach-confirmation/` (nouveau), `front/libs/mss/src/ui/index.ts` ;
+  - `front/libs/mss/src/ui/attach-mailbox-form/attach-mailbox-form.component.{ts,html,scss,spec.ts}` ;
+  - `front/libs/mss/src/features/mailbox-onboarding/mss-mailbox-onboarding.component.{ts,html,scss,spec.ts}` ;
+  - `front/libs/mss/src/features/mailbox-management/mss-mailbox-management.component.{ts,html}` ;
+  - `front/libs/mss/src/core/services/mss-api.service.{ts,spec.ts}`, `front/libs/mss/src/core/models/user-settings.model.ts` ;
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`, `front/e2e/mss-e2e/support/e2e-backend.ts`.
+
+## Code Review Summary
+
+**APPROVED** — 0 bloquant, 3 suggestions. E2E : bypass humain du 2026-10-29, accepté (champ présent) ; chaque PR
+l'annonce en tête.
+
+- Règle 1b — comportement → test → preuve rouge :
+
+  | Comportement | Test d'intégration (pile réelle) | Mutation |
+  |---|---|---|
+  | Rattacher puis ouvrir : identité, signature et registre préremplis, imputés au titulaire | `AttachFromMesBoites_ThenFirstRead_…` | P1, P4, P5 |
+  | Deux personnes : identité du titulaire gardée, signature propre au délégataire | `TheDelegate_KeepsTheHoldersIdentity_…` | P1, P5 |
+  | Jamais d'écrasement, marque posée | `ADoctorAlreadyConfigured_…` | P2, P3, P4 |
+  | Médecin déjà en service : prérempli une fois, signature supprimée jamais recréée | `AMailboxAttachedBeforeTheTask_…` | P1, P4, P5 |
+  | Annuaire injoignable : connexion réussie, noms PSC seuls, marque rendue | `TheAnnuaireDown_…` | P1, P6 |
+  | Requalification : registre rafraîchi, identité et signature intactes | `Requalification_…` | P7 |
+  | Rattachement en un geste : une BAL refusée n'empêche pas l'autre | `AttachInOneGesture_…` | — (route existante, issues lues) |
+  | Profil LDAP (adaptateur, vrai OpenLDAP) | `Profile_LdapSource_…` | — |
+
+- Parcours : E2E-MAILBOX-003 v2 et 006 v1 verts pendant `/develop` et rouges sous mutation, sur les deux clients.
+- Suggestions : attente de l'annuaire à la première requête (≤ 10 s) ; premier membre d'une BAL organisationnelle
+  sans titulaire qui pose la raison sociale ; profil LDAP prouvé à l'adaptateur.
+- AIPD : à compléter (données professionnelles publiques conservées au registre).
+- Validation `/review` : api-mail 202 / 699 / 1 306 / 3 890 / 1 067 (16 ignorés) ; mobile 1 369 ; weda2 12 projets verts.
