@@ -271,6 +271,20 @@ enveloppe, sans Sender, refus sans connexion et tracé) ; `MdnService` délégat
 | Duplication | 0,4 % | 0,4 % | 0 |
 | Reliability / Security / Maintainability | A/A/A | A/A/A | → |
 
+## Lint log
+
+- `client-angular` (code-only, `feature/nova-mss-weda-integration`), base `origin/next`, lint `tag:scope:mss`.
+- **Baseline** : 0 erreur ; avertissements préexistants (max-lines, `@example` vide, constructeur
+  d'`ActorInMailbox`), aucun introduit par la task. Aucune itération.
+- Build et tests : inchangés depuis la validation de `/develop` (`npm run build` weda2 ✓, mss-lib Vitest
+  1 405 / 1 405). Arbre identique, pas de rebuild.
+
+## Lint mobile log
+
+- `client-mobile`, branche `feat/task-407-le-delegataire-ecrit-pour-le-compte-du`.
+- **Baseline** : `All files pass linting`, soit 0 erreur et 0 avertissement. Aucune itération, aucun commit.
+- Build et tests : inchangés depuis la validation de `/develop` (1 379 / 1 379, `858c7a5`), pas de rebuild.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-407 --sync` — ne pas éditer à la main)*
@@ -280,6 +294,8 @@ enveloppe, sans Sender, refus sans connexion et tracé) ; `MdnService` délégat
 | /start | ok | 20 s | — | — | — | — |
 | /develop | ok | 32 min 47 s | 7 (31 s) | 4 (6 min 10 s) | — | dtos-mss 1B/0T, api-mail 5B/3T, client-mobile 1B/1T |
 | /sonar | ok | 20 min 54 s | 3 (40 s) | 11 (16 min 29 s) | 4 (1 min 18 s) | api-mail 3B/11T |
-| **Total cycle** | | **54 min 02 s** | **10 (1 min 11 s)** | **15 (22 min 40 s)** | **4 (1 min 18 s)** | |
+| /lint-angular | ok | 13 s | — | — | — | — |
+| /lint-mobile | ok | 14 s | — | — | — | — |
+| **Total cycle** | | **54 min 30 s** | **10 (1 min 11 s)** | **15 (22 min 40 s)** | **4 (1 min 18 s)** | |
 
-Autres commandes mesurées : nuget-wait ×1 (18 s)
+Autres commandes mesurées : lint ×2 (7.8 s), nuget-wait ×1 (18 s)
