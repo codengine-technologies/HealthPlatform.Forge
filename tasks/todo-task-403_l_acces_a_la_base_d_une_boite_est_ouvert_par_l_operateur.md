@@ -40,9 +40,16 @@ synchronisées. Seul le **titulaire** garde la lecture hors ligne sur sa boîte 
    boîte **« à requalifier »**, toute requête qui touche les données de la boîte exige un verdict de
    moins de 5 minutes. Au-delà, le serveur **renouvelle** le verdict auprès de l'opérateur avant de
    servir ; un échec est un refus.
-3. **Refus** : `application/problem+json` 403, code distinct selon la cause — accès révoqué ou refusé
-   par l'opérateur, connexion PSC requise. **Aucune donnée servie**, cache Redis compris : le contrôle
-   passe **avant** toute lecture.
+3. **Refus** : `application/problem+json` 403, code distinct selon ce que le serveur **sait** —
+   accès refusé par l'opérateur, connexion PSC requise. **Aucune donnée servie**, cache Redis
+   compris : le contrôle passe **avant** toute lecture.
+   - *Amendement du 2026-10-29 (référentiel socle MSSanté #2, § « Cas du retrait d'une
+     délégation »)* : un retrait de délégation se traduit **seulement** par un échec
+     d'authentification, et l'ANS précise que le logiciel **ne peut pas en identifier la cause** ;
+     c'est l'opérateur qui prévient le délégant et le délégataire par courriel. Une délégation
+     retirée, un jeton refusé ou un compte verrouillé échouent de la même façon. Le code, le
+     message et l'écran disent donc « accès refusé par l'opérateur de messagerie », **jamais**
+     « délégation retirée » ni « accès révoqué ».
 4. **Hors-ligne** (session sans jeton PSC) :
    - **titulaire** : lecture inchangée (sans envoi ni drapeaux, comme aujourd'hui) ;
    - **délégataire, membre, « à requalifier »** : refus « connexion PSC requise ».
@@ -74,9 +81,11 @@ synchronisées. Seul le **titulaire** garde la lecture hors ligne sur sa boîte 
 - [ ] Test d'intégration : flux SSE fermé après révocation — vu rouge (règle 1b)
 - [ ] Test d'intégration : traces de refus lues dans le journal réel (personne, rôle, cause) — vu
       rouge (règle 1b)
-- [ ] Mobile et weda2 : écran « accès suspendu » qui dit la cause, sans aucune donnée de la boîte,
-      `data-testid` sur tous les éléments interactifs
-- [ ] UI component tests : écran « accès suspendu » (rendu de chaque cause + action proposée)
+- [ ] Mobile et weda2 : écran « accès suspendu » qui dit ce que le serveur sait (refus de l'opérateur
+      ou connexion PSC requise), jamais « délégation retirée » ni « accès révoqué » (règle 3), sans
+      aucune donnée de la boîte, `data-testid` sur tous les éléments interactifs
+- [ ] UI component tests : écran « accès suspendu » (rendu de chaque cause + action proposée) ;
+      aucun libellé n'affirme un retrait de délégation
 - [ ] **Banc e2e** : le banc sait **refuser une personne donnée sur une boîte donnée** (révocation
       simulée), sans affecter les autres personnes de la même boîte
 - [ ] Scénario E2E-MAILBOX-005 (v1, le délégataire révoqué perd l'accès en ligne puis hors ligne ; le

@@ -1,6 +1,6 @@
 # todo-task-404 — Une base par boîte
 
-**Repos**: api-mail, client-mobile, client-angular
+**Repos**: dtos-mss, api-mail, client-mobile, client-angular
 **Dependencies**: task-403 (le verrou d'accès doit précéder le partage)
 **Epic**: E020
 
@@ -9,8 +9,11 @@
 > donne au délégataire qui ouvre la boîte de son délégant **une seconde base**, copie complète des
 > données de santé, qui survit à la révocation et diverge de l'original.
 >
-> **Repos clients** : aucun contrat ni écran ne change. `client-mobile` et `client-angular` sont
-> listés **pour le scénario E2E-SHARED-001 seulement** (règle 1c).
+> **Repos clients** : `client-mobile` et `client-angular` sont listés pour le scénario E2E-SHARED-001
+> (règle 1c) et, depuis l'amendement du 2026-10-29, pour l'**identité d'expéditeur** : elle quitte
+> les réglages de la personne pour devenir une donnée de la boîte (contrat `dtos-mss`, écran des
+> réglages mobile et weda2 — `user-settings.model.ts`, `mss-settings.component.ts`). Aucun autre
+> contrat ni écran ne change.
 >
 > **Aucune reprise** (humain, 2026-10-28) : rien n'est en production. Le registre et les bases
 > praticien de dev sont supprimés au déploiement.
@@ -57,10 +60,18 @@ de synchronisation et d'IA.
 
    | À la boîte (vu de tous) | À la personne |
    |---|---|
-   | messages, dossiers, documents, patients, biologie **et son état d'acquittement**, étiquettes, contacts, modèles, brouillons (déjà dans le dossier IMAP Brouillons) | réglages, signatures, **actions IMAP en attente** |
+   | messages, dossiers, documents, patients, biologie **et son état d'acquittement**, étiquettes, contacts, modèles, brouillons (déjà dans le dossier IMAP Brouillons), **identité d'expéditeur** (nom affiché dans le `From`) | réglages, signatures, **actions IMAP en attente** |
 
    Les actions en attente restent à la personne : elles s'exécutent **avec son jeton**, et
    l'opérateur doit voir agir la bonne personne (règle 14).
+
+   **Identité d'expéditeur** *(amendement du 2026-10-29, conformité ANS ECO.1.2.9, voir task-407)* :
+   elle quitte les réglages de la personne (`UserSettingsDto.SenderIdentity`, lue par
+   `SmtpService.ResolveSenderDisplayNameAsync`). L'ANS exige que le `From` porte le nom **du
+   titulaire de la boîte**. Restée réglage personnel, elle aurait fait envoyer au délégataire
+   `From: <son propre nom> <adresse du délégant>`. Elle est modifiable par le **titulaire** ; sans
+   titulaire rattaché (adresse organisationnelle, ou titulaire qui n'utilise pas l'application),
+   par toute personne rattachée. Chaque modification est imputée à son auteur (task-405).
 4. **La personne dans la base** est identifiée par son compte (`sub` Keycloak, présent en ligne
    comme hors ligne), plus par l'adresse de la boîte. RPPS et nom d'affichage : task-405.
 5. **Redis** : la clé de l'identifiant de la personne porte la base **et** la personne. Les clés
@@ -71,8 +82,12 @@ de synchronisation et d'IA.
 
 ## Definition of Done
 
-- [ ] Build passes (0 errors) sur `api-mail`, `client-mobile`, `client-angular` (code-only)
+- [ ] Build passes (0 errors) sur `dtos-mss`, `api-mail`, `client-mobile`, `client-angular` (code-only)
 - [ ] Tests pass (0 failures) sur chaque repo listé
+- [ ] Contrat `dtos-mss` : l'identité d'expéditeur sort de `UserSettingsDto` et devient une donnée de
+      la boîte — package publié, consommateurs .NET bumpés, types TypeScript mobile et Angular
+      régénérés ; écran des réglages mobile et weda2 : l'identité est présentée comme celle de la
+      boîte, en lecture seule pour un délégataire quand le titulaire est rattaché
 - [ ] Migration du registre (table des boîtes, référence depuis le rattachement) auditée (règle 7c)
 - [ ] Migration de la base praticien (clé personne, filtres boîte / personne) auditée (règle 7c)
 - [ ] Unit tests du nommage (sans RPPS, stabilité, longueur ≤ 63) et de la clé Redis de la personne
@@ -84,6 +99,9 @@ de synchronisation et d'IA.
       vu rouge (règle 1b)
 - [ ] Test d'intégration de bout en bout : réglages et signature du délégataire **absents** de la
       réponse du titulaire, et inversement — vu rouge (règle 1b)
+- [ ] Test d'intégration de bout en bout : l'identité d'expéditeur réglée par le titulaire est lue
+      dans la réponse réelle du délégataire ; le délégataire qui tente de la modifier, le titulaire
+      étant rattaché, est refusé (problem+json 403) et l'identité est inchangée — vu rouge (règle 1b)
 - [ ] Test d'intégration : une action en attente du délégataire s'exécute avec **son** identité —
       vu rouge (règle 1b)
 - [ ] **Banc** : `E2eReset` et `E2eSeed` sur les nouveaux noms (seconde personne au seed),
