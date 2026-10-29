@@ -141,4 +141,131 @@ synchronisées. Seul le **titulaire** garde la lecture hors ligne sur sa boîte 
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 15 s | — | — | — | — |
-| **Total cycle** | | **15 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 45 min 25 s | 7 (1 min 48 s) | 6 (16 min 33 s) | — | api-mail 5B/3T, client-mobile 1B/2T, client-angular 1B/1T |
+| **Total cycle** | | **45 min 41 s** | **7 (1 min 48 s)** | **6 (16 min 33 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : nuget-wait ×1 (14 s), restore ×1 (23 s)
+
+## Develop log
+
+**Run** : `forge-20261029-403-405` — `/develop` du 2026-10-29.
+
+### Conception
+
+- **Le verrou est dans la sélection de la boîte** (`MailboxSelectionService` → `IMailboxAccessGate`),
+  c'est-à-dire dans le middleware, **avant** toute lecture et avant tout cache Redis : chaque requête
+  qui touche une boîte passe par là.
+- **Règle pure** : `MailboxAccessPolicy.Evaluate(role, online)` (Domain). Titulaire → ouvert, en
+  ligne comme hors ligne. Délégataire, membre, « à requalifier » → verdict de l'opérateur de moins de
+  5 minutes en ligne, refus « session PSC requise » hors ligne. `AuthFailing` est déjà non
+  sélectionnable (compatibilité), désormais refusé avec le code `MAILBOX_ACCESS_REFUSED`.
+- **Verdicts** : Redis partagé (`mailbox-access:verdict:{empreinte(sujet, adresse)}`, TTL 5 min),
+  **échec fermé** (Redis injoignable = pas de verdict = renouvellement).
+- **Renouvellement** : la sonde IMAP du rattachement (`ImapOperatorAccessProbe`), XOAUTH2 avec le
+  jeton PSC de la session (mot de passe sur les bancs). Refus → `AuthFailing` au registre, verdict
+  retiré, synchronisation de fond **lancée par cette personne** arrêtée
+  (`IBackgroundSyncManager.StopSyncStartedByAsync`), traces. Opérateur injoignable → 503
+  `MAILBOX_ACCESS_UNVERIFIED`, sans `AuthFailing`.
+- **Pendant l'usage** : `MailServerTokenRetry` (IMAP et SMTP) enregistre chaque authentification
+  acceptée comme verdict favorable, et un refus **définitif** (jeton frais refusé à son tour) comme
+  `AuthFailing`. Un premier refus suivi d'une reprise réussie n'est pas un refus de l'opérateur.
+- **Temps réel** : les flux SSE (`mail/events/stream`, `mail/notifications/stream`) revérifient
+  l'accès toutes les `MailboxAccess:StreamRecheckInterval` (30 s) ; au premier refus, ils poussent
+  `MailboxAccessSuspended` (avec le code) et se ferment.
+- **Codes et écrans** : `MAILBOX_ACCESS_REFUSED` (403, « accès refusé par l'opérateur de
+  messagerie »), `MAILBOX_PSC_SESSION_REQUIRED` (403), `MAILBOX_ACCESS_UNVERIFIED` (503). Aucun
+  libellé ne dit « délégation retirée » ni « accès révoqué » (amendement ANS du 2026-10-29).
+- **Traces (règle 14)** : `MailboxAccessRefused` (42) et `MailboxAccessSuspended` (43), avec la
+  boîte (`TenantId`, `FromAddress`), le rôle, le compte et le RPPS de la personne qui agit, et la
+  cause. Rétention : `HealthDataAccess` (preuve qu'une donnée de santé n'a **pas** été servie).
+- **Banc e2e** : l'opérateur simulé (`BenchOperatorRefusals` + `BenchOperatorAccessProbe`,
+  enregistré seulement là où le bypass de test existe — Development, Testing) refuse une personne
+  donnée sur une boîte donnée ; route `POST|DELETE /api/v1/testing/operator-refusals?mailbox=`
+  (404 hors bypass). Le Dovecot du banc, à mot de passe commun, ne sait pas refuser une seule
+  personne d'une boîte.
+- **Composition** : le verrou est enregistré dans `AddApi` (à côté du gestionnaire de
+  synchronisation et du registre), pas dans `AddApplication` : les suites qui composent la couche
+  application sans registre restent intactes ; `ImapServerAccess` et `SmtpConnectionFactory` le
+  reçoivent en paramètre facultatif (motif de task-231).
+
+### Commits
+
+| Repo | Commit | Contenu |
+|---|---|---|
+| `dtos-mss` | `40e44e2` | codes de refus, `AuditActionType` 42/43 — **NuGet 554.0.0** (run 40867562625) |
+| `api-mail` | `57a85321` | bump `HealthPlatform.Dtos.Mss` 554.0.0 + lock files |
+| `api-mail` | `1962a5f7` | verrou, verdicts, sonde, SSE, banc, tests |
+| `client-mobile` | `d37c55d` | écran « accès suspendu », intercepteur, flux SSE, E2E-MAILBOX-005 |
+| `client-angular` | — | **code-only**, non commité (voir ci-dessous) |
+
+### Règle 1b — comportements atteignables par un endpoint, tests d'intégration, preuves rouges
+
+| Comportement | Test d'intégration (pile réelle) | Preuve rouge |
+|---|---|---|
+| Délégataire refusé au renouvellement → 403 problem+json `MAILBOX_ACCESS_REFUSED`, **aucune donnée** (liste de contacts déjà en cache), `AuthFailing` relu au registre, titulaire `Active`, plus de sonde ensuite | `MailboxAccessLockIntegrationTests.Delegate_RefusedAtRenewal_Gets403_WithNoData_EvenCached_AndIsAuthFailingInTheRegistry` | M2 (sélection sans verrou) : rouge ; M3 (refus sans suspension) : rouge |
+| Renouvellement accepté → servi, verdict relu dans Redis (TTL 4-5 min), pas de seconde sonde | `…Delegate_AcceptedAtRenewal_IsServed_AndNotProbedAgainWithinTheVerdict` | M2 : rouge |
+| Hors ligne : délégataire 403 `MAILBOX_PSC_SESSION_REQUIRED` ; titulaire lit sa liste | `…OfflineDelegate_Gets403PscSessionRequired_WhileTheOfflineHolder_ReadsItsList` | M2 : rouge |
+| Flux SSE fermé après révocation, dernier évènement `MailboxAccessSuspended` + code | `…TheStreamOfADelegateWhoseAccessFalls_IsClosedWithTheRefusalCode` | M2 : rouge ; M4 (flux sans surveillance) : rouge |
+| Refus du jeton en cours d'usage, SMTP (envoi de brouillon) puis IMAP (quota) → `AuthFailing` relu au registre PostgreSQL réel, trace `MailboxAccessSuspended` ; reprise réussie → reste `Active`, verdict relu dans Redis | `MailServerTokenRefusalEndpointIntegrationTests.SendDraft_BothTokensRefused_…`, `Quota_BothTokensRefused_…`, `SendDraft_TheFirstTokenRefused_…` | M1 (refus définitif non enregistré) : les deux tests de refus rouges |
+| Traces de refus : personne (compte, RPPS), rôle, boîte, cause | assertions de `Delegate_RefusedAtRenewal_…` sur les traces émises | M3 : rouge |
+
+Mutations (réinjectées, vues rouges, restaurées par `cp` + `touch`) :
+
+- **M1** `MailServerTokenRetry` : `await verdicts.RecordRefusedAsync(...)` retiré → 2 rouges / 4.
+- **M2** `MailboxSelectionService.GuardAsync` : verrou court-circuité (`Granted`) → 4 rouges / 4.
+- **M3** `MailboxAccessGate` : `SuspendAsync` retiré sur refus → 1 rouge / 4 (le bon).
+- **M4** `SseHelper.AccessWatchAsync` : surveillance désactivée → 1 rouge / 4 (le bon).
+
+**Écart assumé, à juger par `/review`** : les traces sont lues à la frontière `IAuditService` (le
+vrai service, un double qui capture), pas relues dans la table `audit_traces`. La persistance du
+journal n'est pas modifiée par cette task et reste prouvée par `AuditJournalIntegrationTests`.
+
+### Tests unitaires
+
+- `MailboxAccessPolicyTests` (8 cas rôle × session), `MailboxAccessGateTests` (titulaire en
+  ligne/hors ligne ; délégataire, membre, à requalifier × verdict frais / périmé accepté / périmé
+  refusé / hors ligne ; opérateur injoignable ; jeton indisponible ; refus et acceptation en cours
+  d'usage), `MailboxSelectionServiceTests` (`AuthFailing` → refus de l'opérateur sans consulter le
+  verrou ; chaque refus du verrou ; boîte par défaut verrouillée aussi),
+  `AuditActionTypeContractTests` (42, 43, 45 membres), `AuditRetentionPolicyTests`.
+- Mobile : `MailboxAccessSuspendedPage` (6), `MssHeadersInterceptor — accès à la boîte refusé` (4).
+- weda2 : `MssMailboxAccessSuspendedComponent` (6), `MailboxAccessSuspensionService` (6),
+  `audit.model.spec` (42, 43).
+
+### Scénario e2e
+
+- `E2E-MAILBOX-005` v1 ajouté à `Api/Mail/e2e/scenarios.yml` **avant** les tests, implémenté dans
+  `Client/Mobile/e2e/specs/functional.spec.ts` et `Client/Angular/front/e2e/mss-e2e/specs/functional.e2e.ts`.
+
+### Validation
+
+- `dtos-mss` : build vert, CI NuGet verte (554).
+- `api-mail` : build 0 erreur ; suite complète verte — domain 204, infrastructure 697, api 1 295, application 3 807, intégration 1 036 (+16 ignorés) ; re-validation ciblée après la correction S4457 (224 + 8 verts).
+- `client-mobile` : `npm run build` vert ; `npm test` 1 332 / 1 332.
+- `client-angular` : `nx build weda2` vert ; `nx run-many -t test` 12 projets verts (lib MSS 1 925).
+
+### Passe qualité (§Q)
+
+- `api-mail` : contrôles mécaniques §Q 2b : **S4457** trouvé (`MailboxAccessGate.RecordRefusedAsync`)
+  et un second que le contrôle n'a pas vu (`CheckAsync`, garde à plus de trois lignes de la
+  signature) — scindés en enveloppe synchrone + `…CoreAsync` ; compteur S4457 porté à 7 dans
+  `conventions/csharp.md`. Revue du diff : aucune autre simplification.
+- `client-mobile` : `MailboxAccessSuspensionService` factorise la suspension entre l'intercepteur
+  et les deux flux SSE (au lieu de trois copies) ; aucune autre simplification.
+- `client-angular` : même factorisation (`MailboxAccessSuspensionService` de la lib).
+- `dtos-mss` : hors passe (porteur de contrat).
+
+### client-angular (code-only) — à commiter par l'humain sur TFS
+
+Branche courante : `feature/nova-mss-weda-integration`. Fichiers de task-403 :
+
+- `apps/weda2/src/app/core/interceptors/mss-headers.interceptor.ts`
+- `libs/mss/src/core/index.ts`, `libs/mss/src/index.ts`
+- `libs/mss/src/core/models/audit.model.ts`, `audit.model.spec.ts`, `mailbox.model.ts`
+- `libs/mss/src/core/services/mail-events-stream.service.ts`, `notification-stream.service.ts`
+- `libs/mss/src/core/services/mailbox-access-suspension.service.ts` (+ `.spec.ts`)
+- `libs/mss/src/core/stores/mailbox-session.store.ts`
+- `libs/mss/src/features/mailbox-access-suspended/` (composant, gabarit, style, spec)
+- `e2e/mss-e2e/specs/functional.e2e.ts`, `e2e/mss-e2e/support/e2e-backend.ts` — **ces deux fichiers
+  portaient déjà les modifications non commitées de task-377** (`pendingBiologyTotal`) : les deux
+  changements s'y cumulent.
