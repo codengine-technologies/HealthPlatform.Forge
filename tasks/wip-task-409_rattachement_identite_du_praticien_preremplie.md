@@ -271,3 +271,12 @@ Il n'a rien à saisir. Il garde la main pour corriger, et ce qu'il a corrigé n'
 - **AIPD / impact RGPD** : à compléter — le registre conserve en plus des données professionnelles
   publiques de l'Annuaire Santé (civilité, profession, spécialité, structure), le temps du
   rattachement ; source publique, finalité : préremplissage et affichage de l'auteur
+
+## Branches
+
+> **Empilée sur task-408** (dépendance non encore mergée) : les branches api-mail et mobile partent de
+> `feat/task-408-annuaire-source-fhir-ou-ldap-choisie`, comme 404 sur 403. Merger task-408 d'abord.
+
+- `api-mail` (pushed) : feat/task-409-rattachement-identite-du-praticien — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-409-rattachement-identite-du-praticien
+- `client-mobile` (pushed) : feat/task-409-rattachement-identite-du-praticien — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-409-rattachement-identite-du-praticien
+- `client-angular` (code-only) : branche checkout au /start : `feature/nova-mss-weda-integration` — humain gère branche, commit, push, PR TFS
