@@ -1,12 +1,13 @@
 # todo-task-408 — Annuaire : source FHIR ou LDAP choisie dans appsettings.json
 
-**Repos**: api-mail
+**Repos**: api-mail, client-mobile, client-angular
 **Dependencies**: task-402 (« Mes boîtes » et le rôle décidé par l'Annuaire Santé)
 **Epic**: E020
 
-> **Backend seul, justifié** : aucun écran ne change. « Mes boîtes », le rattachement et la
-> requalification gardent leur parcours et leur contrat. Seule change **la source** qui publie les
-> BAL d'un RPPS.
+> **Fronts : indication d'attente seulement.** « Mes boîtes », le rattachement et la requalification
+> gardent leur parcours et leur contrat. Le backend change **la source** qui publie les BAL d'un
+> RPPS. Les deux fronts montrent un indicateur d'attente partout où l'annuaire peut faire attendre le
+> médecin (décision humaine n°5).
 
 ## Ce qui est établi (2026-10-29)
 
@@ -45,6 +46,12 @@
      ainsi la passerelle de production, sauf surcharge explicite ;
    - un `appsettings.Development.json` active `Ldap` sur le poste local. Le poste local se lance en
      `Development`.
+5. **Un spinner d'attente pendant le rattachement** (humain, 2026-10-29), parce que l'appel LDAP peut
+   durer. État constaté sur le formulaire de rattachement (`attach-mailbox-form`) :
+   - **mobile** : la lecture de « Mes boîtes » a un spinner ; le clic sur « Rattacher » ne fait que
+     désactiver les boutons, **sans spinner** ;
+   - **weda2** : la lecture de « Mes boîtes » n'affiche qu'un texte, **sans spinner** ; le clic sur
+     « Rattacher » a déjà son spinner dans le bouton.
 2. **Périmètre : les BAL d'un RPPS seulement.** La recherche de destinataires, les spécialités et
    les professions restent servies par la passerelle FHIR, quelle que soit la source choisie.
 3. **Pas de garde par domaine.** L'activation explicite est la seule barrière : une source LDAP rend
@@ -84,6 +91,15 @@ C'est la configuration de l'environnement qui le permet, pas un faux annuaire.
    l'annuaire configuré. Le rattachement reste tracé au nom de la personne réelle (task-405).
 6. **Le profil e2e est inchangé** : il garde son faux annuaire FHIR (`FakeAnnuaireServer`) et la source
    `Fhir`.
+7. **Attente visible, sur mobile et sur weda2** :
+   - **lecture de « Mes boîtes »** : spinner avec le texte « Lecture de l'Annuaire Santé… », jusqu'à
+     la liste, la liste vide ou le message « Annuaire Santé momentanément indisponible, réessayez » ;
+   - **rattachement** (« Rattacher » d'une BAL de la liste, ou de la BAL déléguée saisie) : spinner
+     dans le bouton cliqué ; toutes les actions du formulaire restent désactivées jusqu'à la réponse,
+     ce qui empêche un double rattachement ;
+   - **l'attente est bornée** : le délai de la source, configuré dans `appsettings.json`, termine
+     toujours le spinner, sur la liste ou sur le message d'indisponibilité. Il ne tourne jamais sans
+     fin.
 
 ## Hors périmètre
 
@@ -97,8 +113,19 @@ C'est la configuration de l'environnement qui le permet, pas un faux annuaire.
 
 ## Definition of Done
 
-- [ ] Build passes (0 errors) sur `api-mail`
-- [ ] Tests pass (0 failures) sur `api-mail`
+- [ ] Build passes (0 errors) sur `api-mail`, `client-mobile`, `client-angular` (code-only)
+- [ ] Tests pass (0 failures) sur chaque repo listé
+- [ ] UI component tests du formulaire de rattachement, mobile et weda2 :
+      - spinner et texte pendant la lecture de « Mes boîtes », remplacés par la liste ou par le
+        message d'indisponibilité ;
+      - spinner dans le bouton cliqué pendant le rattachement, actions désactivées, rien après la
+        réponse (succès ou erreur) ;
+      - un second clic pendant l'attente n'envoie pas de second rattachement.
+- [ ] `data-testid` sur chaque spinner (`attach-mailbox-directory-loading` conservé,
+      `attach-mailbox-submitting` ajouté)
+- [ ] Aucun scénario e2e versionné : les étapes et l'issue des parcours E2E-MAILBOX-00x ne changent
+      pas. L'état d'attente, transitoire, est prouvé par les tests de composant. `/e2e` rejoue les
+      parcours existants.
 - [ ] `appsettings.json` porte la clé de source **explicitement** à `Fhir`, et la section LDAP
       remplie : hôte `partenaires.annuaire.sante.fr`, port `389`, base DN `ou=bal,o=mssante,c=fr`,
       délai. Aucune configuration existante n'est modifiée par effet de bord
@@ -138,8 +165,13 @@ C'est la configuration de l'environnement qui le permet, pas un faux annuaire.
 - Lancer le backend : `cd Api/Mail && dotnet run --project src/AppHost` ; puis
   `cd Client/Mobile && npm start`.
 - Se connecter par Pro Santé Connect avec la carte de test du RPPS 899700622675.
-- Ouvrir « Mes boîtes » : `virginie.medecinrpps0062267@medecin.formation.mssante.fr` est proposée.
-  Rattacher : le rôle affiché est **titulaire**.
+- Ouvrir « Mes boîtes » : un spinner « Lecture de l'Annuaire Santé… » s'affiche, puis
+  `virginie.medecinrpps0062267@medecin.formation.mssante.fr` est proposée. Cliquer « Rattacher » :
+  un spinner apparaît dans le bouton, les autres actions sont désactivées, puis le rôle affiché est
+  **titulaire**. Refaire le parcours dans weda2, avec les mêmes attentes.
+- Ralentir l'annuaire, par exemple avec un hôte LDAP injoignable dans `appsettings.Development.json` :
+  le spinner tourne pendant le délai configuré, puis « Annuaire Santé momentanément indisponible,
+  réessayez » s'affiche.
 - Dans le journal de la boîte : le rattachement est imputé à la personne de la carte de test.
 - Remettre la source à `Fhir` dans `appsettings.Development.json` et relancer : « Mes boîtes » interroge de nouveau la passerelle de
   production (vide pour une carte de test).
