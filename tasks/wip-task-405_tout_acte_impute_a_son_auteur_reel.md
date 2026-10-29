@@ -163,3 +163,21 @@ Toute personne rattachée lit tout le journal de la boîte.
 - `dtos-mss` (lazy) : aucune branche au /start — `/develop` la crée au premier contrat touché
 - `client-angular` (code-only) : la forge écrit sur la branche courante de `Client/Angular/` ;
   l'humain gère branche, commit, push et PR TFS
+
+## Branches
+
+> **Empilée sur task-404** (elle-même sur task-403) : les branches partent de `origin/develop` et fusionnent `feat/task-404-une-base-par-boite`. Les PRs le disent : à merger **après** celles de task-403 puis de task-404.
+
+- `api-mail` (pushed) : feat/task-405-tout-acte-impute-a-son-auteur-reel — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-405-tout-acte-impute-a-son-auteur-reel
+- `client-mobile` (pushed) : feat/task-405-tout-acte-impute-a-son-auteur-reel — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-405-tout-acte-impute-a-son-auteur-reel
+- `dtos-mss` (lazy) : aucune branche au /start ; `/develop` la crée au premier contrat touché, depuis la branche de task-404
+- `client-angular` (code-only) : branche courante `feature/nova-mss-weda-integration`, qui porte déjà les fichiers non commités de task-403 et task-404. L'humain gère la branche, le commit, le push et la PR TFS
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-405 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 28 s | — | — | — | — |
+| **Total cycle** | | **28 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
