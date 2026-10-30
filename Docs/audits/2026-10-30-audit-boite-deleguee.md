@@ -104,10 +104,13 @@
 | Task | Couvre |
 |---|---|
 | task-410 — cache patient par INS cloisonné par boîte | C1 |
-| task-411 — accès et sessions serveur | M2, M3, M4, M12 ; détachement, suspension et déconnexion qui coupent tout ; clés du pool, `psc:person-name`, quotas, pause et reprise |
+| task-411 — accès et sessions serveur | ABANDONNÉE (décision humaine du 2026-10-30, task supprimée) — M2, M3, M4, M12 ; détachement, suspension et déconnexion qui coupent tout ; clés du pool, `psc:person-name`, quotas, pause et reprise |
 | task-412 — clients : déconnexion et changement de boîte | M1, M8, m5, m6, m7 ; dossier « envoyés », `{{SenderRPPS}}`, flux de notifications weda2 |
-| task-413 — traçabilité | M5, M6, M7, m8 à m12, m14 |
-| task-414 — données propres à la personne | m1 à m4, index de `UserSettings` |
-| task-415 — rattachement, registre et identité | M9, M11, M14, m13 ; requalification par type, boîte en échec, rattachements simultanés, `Reset()`, contournement de test ; M10 et M13 documentés |
+| task-413 — traçabilité | ABANDONNÉE (décision humaine du 2026-10-30, task supprimée) — M5, M6, M7, m8 à m12, m14 |
+| task-414 — données propres à la personne | ABANDONNÉE (décision humaine du 2026-10-30, task supprimée) — m1 à m4, index de `UserSettings` |
+| task-415 — rattachement, registre et identité | ABANDONNÉE (décision humaine du 2026-10-30, task supprimée) — M9, M11, M14, m13 ; requalification par type, boîte en échec, rattachements simultanés, `Reset()`, contournement de test ; M10 et M13 documentés |
+
+> **2026-10-30 — décision humaine** : task-411, task-413, task-414 et task-415 ne seront pas développées
+> et ont été supprimées. Les constats qu'elles couvraient restent ouverts, sans task.
 
 Copies des bases par personne d'avant task-404 : sans objet, aucune base en production (M13).

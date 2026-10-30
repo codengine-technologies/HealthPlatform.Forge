@@ -239,7 +239,8 @@ graph LR
 - v1.7 — Une boîte partagée tient la charge. À 10 personnes sur une même boîte, chaque message
   n'est analysé et classé qu'une fois, et la base ne sature pas. En revanche, ouvrir un message
   et envoyer prennent environ deux fois plus de temps dès 5 personnes : les sessions de messagerie
-  sont comptées par boîte et non par personne. La correction est prévue (task-411) (task-406).
+  sont comptées par boîte et non par personne. La correction (task-411) a été abandonnée par décision
+  humaine le 2026-10-30 (task-406).
 - v1.8 — Deux cabinets ne voient jamais la fiche patient l'un de l'autre. Quand deux boîtes
   connaissent le même patient (même INS), chacune ouvre sa propre fiche. Avant ce correctif, la
   seconde à le chercher pouvait, pendant quelques minutes, voir la fiche saisie par l'autre cabinet.

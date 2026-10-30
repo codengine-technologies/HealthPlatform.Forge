@@ -122,7 +122,7 @@ Causes :
 
 ## Tasks de suite proposées (à arbitrer par le PO, non créées)
 
-1. **Sessions par personne sur une boîte partagée.** Déjà couvert par **task-411**, règle 6
+1. **Sessions par personne sur une boîte partagée.** Était couvert par **task-411** (abandonnée par décision humaine le 2026-10-30), règle 6
    (`MaxSessionsPerMailbox` par personne). La mesure le justifie : envoi ×2 à 5 personnes.
    - **Gain attendu** : envoi et archivage ramenés à la référence (~420 ms).
    - **Contrôle** : rejouer `n5-shared` et `n10-shared`.
