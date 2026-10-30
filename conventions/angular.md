@@ -510,3 +510,22 @@ par lint sur du code frais est un échec de lecture de ce fichier.
 - **Origine** : task-409 (recette humaine, weda2 : case « À rattacher » rejetée hors du cadre par
   `virginie.medecinrpps0062267@medecin.formation.mssante.fr`)
 - **Occurrences** : 1
+
+### adresse-de-la-boite-ouverte — Dans une boîte, « moi » est la boîte ouverte, pas le compte
+- **Règle** : convention projet (trou du filet trouvé par `/e2e`, E2E-SHARED-002)
+- **Repos** : les deux
+- **Consigne** : toute adresse qui représente « la boîte d'où j'agis » se lit dans l'état de la boîte
+  ouverte :
+  - client-mobile : `MailboxSessionService.currentEmail()` ;
+  - weda2 : `MailboxSessionStore.currentEmail()`, que `MSS_USER_EMAIL` fournit déjà.
+
+  Elle ne se lit jamais dans le compte authentifié (`AuthSessionService.session.userEmail`). C'est
+  vrai pour le `From` d'un envoi, pour l'adresse « à soi » retirée d'un « Répondre à tous », et pour
+  tout filtre « mes messages ». Un délégataire n'ouvre pas sa boîte mais celle du titulaire : le
+  compte et la boîte diffèrent. Le compte ne sert qu'en repli, quand aucune boîte n'est encore
+  ouverte.
+- **Origine** : task-407. Le mobile envoyait avec le `From` du compte du délégataire, et
+  « Répondre à tous » ne retirait pas l'adresse de la boîte. Le défaut était invisible tant que le
+  serveur acceptait n'importe quel `From`. Le refus `MAIL_FROM_NOT_MAILBOX` (ANS ECO.1.2.11) l'a fait
+  apparaître au premier passage d'E2E-SHARED-002.
+- **Occurrences** : 1
