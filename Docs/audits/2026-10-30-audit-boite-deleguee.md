@@ -89,3 +89,25 @@
   annule-et-remplace, IHE XDM, accusé de lecture). L'archive « Envoyés » porte le Sender.
 - **Journal** : RLS par boîte, et un délégataire refusé n'y a pas accès.
 - **Données** : signatures, réglages et actions en attente sont propres à chaque personne.
+
+## Décisions humaines (2026-10-30) et découpage en tasks
+
+| Point | Décision |
+|---|---|
+| M4 (routes de diagnostic) | Contrôleur retiré, ainsi que le code qui ne sert qu'à lui |
+| M9 (identité d'expéditeur de la boîte) | Titulaire seul, toujours |
+| M10 (requalification, titulaire exempté de verdict) | Inchangé. Risque accepté, consigné dans E020. |
+| M13 (données d'avant task-404) | Pas de reprise, aucune base en production |
+| m2 / m3 (historique de recherche, conversations IA) | Recherche à la personne, IA à la boîte |
+| Journal (IP, navigateur, identifiant visibles des co-utilisateurs) | Tout montrer : comportement accepté |
+
+| Task | Couvre |
+|---|---|
+| task-410 — cache patient par INS cloisonné par boîte | C1 |
+| task-411 — accès et sessions serveur | M2, M3, M4, M12 ; détachement, suspension et déconnexion qui coupent tout ; clés du pool, `psc:person-name`, quotas, pause et reprise |
+| task-412 — clients : déconnexion et changement de boîte | M1, M8, m5, m6, m7 ; dossier « envoyés », `{{SenderRPPS}}`, flux de notifications weda2 |
+| task-413 — traçabilité | M5, M6, M7, m8 à m12, m14 |
+| task-414 — données propres à la personne | m1 à m4, index de `UserSettings` |
+| task-415 — rattachement, registre et identité | M9, M11, M14, m13 ; requalification par type, boîte en échec, rattachements simultanés, `Reset()`, contournement de test ; M10 et M13 documentés |
+
+Copies des bases par personne d'avant task-404 : sans objet, aucune base en production (M13).
