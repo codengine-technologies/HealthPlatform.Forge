@@ -7675,3 +7675,6 @@
 {"ts":"2026-10-30T01:11:25+01:00","run_id":"-","type":"step","task":"task-407","step":"review","status":"ok","note":"","iterations":null,"duration_ms":506234}
 {"ts":"2026-10-30T01:11:39+01:00","run_id":"-","type":"step_start","task":"task-407","step":"tech-writer"}
 {"ts":"2026-10-30T01:12:58+01:00","run_id":"-","type":"step","task":"task-407","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":79432}
+{"ts":"2026-10-30T08:18:59+01:00","run_id":"-","type":"step_start","task":"task-407","step":"develop"}
+{"ts":"2026-10-30T08:21:50+01:00","run_id":"-","type":"cmd","task":"task-407","step":"develop","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test tests/mss.mail.application.tests/mss.mail.application.tests.csproj --no-build -nologo","duration_ms":23531,"exit_code":0}
+{"ts":"2026-10-30T08:22:13+01:00","run_id":"-","type":"step","task":"task-407","step":"develop","status":"ok","note":"correctif LocalPart no-reply","iterations":null,"duration_ms":193719}

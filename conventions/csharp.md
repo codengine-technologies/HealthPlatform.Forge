@@ -1145,6 +1145,22 @@ signature en accepte un le reçoit, y compris quand il est optionnel.
 
 ---
 
+## adresse-construite-depuis-un-nom — une adresse fabriquée à partir d'un état civil se valide comme une adresse
+
+**Occurrences : 1** (task-407 — `no-reply-prénom.nom@…` : « J.-P. » et « Lœvenbruck » donnaient une
+partie locale invalide, `ParseException` de MimeKit et 500 à l'envoi ; trouvé à la relecture humaine,
+aucun test ne couvrait que les accents et les espaces)
+
+Un nom propre contient ce que la partie locale d'une adresse SMTP refuse : point d'initiale (double
+point), ligature, parenthèse, écriture non latine. Retirer les accents ne suffit pas.
+
+**Consigne** : construire la partie locale par **liste blanche** (`[a-z0-9]` et un séparateur unique),
+translittérer ce que la décomposition Unicode ne ramène pas à l'ASCII, prévoir un repli quand il ne
+reste rien, et tester qu'elle **se relit** comme une adresse (`MailboxAddress.TryParse`), pas
+seulement qu'elle vaut une chaîne attendue.
+
+---
+
 ## S4581 — un `Guid` attendu « n'importe lequel » s'écrit `Arg.Any<Guid>()`, pas `default`
 
 **Occurrences : 1** (task-331, `client-blazor` — `PatientAttachmentDialogTests`, deux

@@ -242,6 +242,25 @@ enveloppe, sans Sender, refus sans connexion et tracé) ; `MdnService` délégat
   côté angular, n'existe que dans l'arbre local : à commiter sur TFS avant le merge.
 - AIPD à compléter (nom et BAL du délégataire communiqués aux destinataires).
 
+### Correctif après revue humaine (2026-10-30), adresse `no-reply` invalide
+
+- **Constat**, en réponse à la question de l'humain « délégataire sans BAL propre » :
+  - la partie locale gardait le point d'une initiale (« J.-P. » → `j.-p.`), ce qui donnait un double
+    point ;
+  - elle gardait aussi les ligatures et les écritures non latines.
+- **Conséquence** : MimeKit levait `ParseException`, l'envoi répondait **500** et rien ne partait.
+- **Correctif**, dans `api-mail` `60deec50` :
+  - la partie locale ne garde que `[a-z0-9]` et des tirets uniques ;
+  - translittération œ→oe, æ→ae, ß→ss, ø→o… ;
+  - une partie vide est omise ;
+  - repli `no-reply-delegataire@…` quand ni le prénom ni le nom ne sont utilisables.
+- **Preuve** :
+  - `ADelegateWithAnInitialAndALigature_IsSignedByAValidNoReplyAddress` était rouge avant le
+    correctif (500 `Invalid local-part`) ;
+  - 12 cas unitaires rouges, dont `NoReplyAddress_IsAlwaysAValidMailboxAddress`.
+
+  Après le correctif : application 3 939 verts, `OnBehalfSendEndToEndTests` 12 verts.
+
 ## Sonar log
 
 - Serveur 9.9.8.100196 (`sonar.login`), projet `healthplatform-api-mail`, branche `feat/task-407-…`.
@@ -461,13 +480,13 @@ enveloppe, sans Sender, refus sans connexion et tracé) ; `MdnService` délégat
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 20 s | — | — | — | — |
-| /develop | ok | 32 min 47 s | 8 (39 s) | 5 (6 min 25 s) | — | dtos-mss 1B/0T, api-mail 5B/3T, client-mobile 2B/2T |
+| /develop | ok | 3 min 13 s | 8 (39 s) | 6 (6 min 49 s) | — | dtos-mss 1B/0T, api-mail 5B/4T, client-mobile 2B/2T, correctif LocalPart no-reply |
 | /sonar | ok | 20 min 54 s | 3 (40 s) | 11 (16 min 29 s) | 4 (1 min 18 s) | api-mail 3B/11T |
 | /lint-angular | ok | 13 s | — | — | — | — |
 | /lint-mobile | ok | 14 s | — | — | — | — |
 | /e2e | ok | 44 min 44 s | — | — | — | e2e ×9 (1 h 11 min) |
 | /review | ok | 8 min 26 s | 3 (43 s) | 3 (6 min 18 s) | — | api-mail 1B/1T, client-mobile 1B/1T, client-angular 1B/1T |
 | /tech-writer | ok | 1 min 19 s | — | — | — | — |
-| **Total cycle** | | **1 h 49 min** | **14 (2 min 02 s)** | **19 (29 min 13 s)** | **4 (1 min 18 s)** | |
+| **Total cycle** | | **1 h 19 min** | **14 (2 min 02 s)** | **20 (29 min 37 s)** | **4 (1 min 18 s)** | |
 
 Autres commandes mesurées : lint ×2 (7.8 s), nuget-wait ×1 (18 s)
