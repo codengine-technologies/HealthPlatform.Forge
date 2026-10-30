@@ -2,11 +2,30 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E020-boite-partagee-une-base-par-boite-tout.md](E020-boite-partagee-une-base-par-boite-tout.md).
-> **Dernière mise à jour** : 2026-10-30 (v1.8)
+> **Dernière mise à jour** : 2026-10-30 (v1.9)
 
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.9 — Le nom PSC du délégataire est lu sur la bonne route du proxy — task-416
+
+- **Task** : task-416, statut `done`. `/review` APPROVED le 2026-10-30. PR `api-mail` #331
+  (`awaiting-human-merge`).
+- **Défaut** (constat humain du 2026-10-30) : un délégataire connecté avec Pro Santé Connect ne pouvait
+  rien envoyer depuis la boîte déléguée (« Identité du délégataire indisponible »).
+  - `PersonNameResolver` appelait `v1/auth/userinfo` sous une `BaseUrl` qui finit déjà par `/v1`, soit
+    `/v1/v1/auth/userinfo` : un 404 de routage.
+  - Le défaut venait de task-405. Il était masqué par les faux proxys des tests, qui répondaient sur
+    tout chemin.
+- **Livré** :
+  - la route `auth/userinfo` ;
+  - des faux proxys réalistes (`/v1` dans la `BaseUrl`, réponse uniquement sur le vrai chemin) ;
+  - la preuve rouge par mutation : 6 tests d'intégration et 1 test unitaire.
+- **Qualité** : SonarQube QG OK, 0 issue. E2E vert : mobile 54/54, Angular 65/65 au rejeu, après un arrêt
+  du backend e2e inscrit au registre d'outillage.
+- **Prévention** : `conventions/csharp.md` § `route-relative-sans-prefixe-de-base` et
+  § `identifiant-aleatoire-sous-index-unique` (flaky `SeededThreadsAreCountableTests` corrigé au passage).
 
 ### v1.8 — Le cache patient par INS est cloisonné par boîte (audit C1) — task-410
 
@@ -439,3 +458,4 @@
 | task-408 | archivée (mergée le 2026-10-29) | Source de l'annuaire FHIR ou LDAP choisie dans appsettings ; attente visible au rattachement | RG-E020-03 |
 | task-409 | archivée (mergée le 2026-10-29) | Rattachement : identité du praticien préremplie, accueil en un geste | RG-E020-03, RG-E020-06 |
 | task-410 | archivée (mergée le 2026-10-30) | Correctif d'audit C1 : le cache patient par INS nomme la boîte | RG-E020-01 |
+| task-416 | done (PR #331 en attente de merge) | Le nom PSC du délégataire est lu sur la bonne route du proxy : l'envoi pour le compte de la boîte fonctionne | RG-E020-06, RG-E020-08 |

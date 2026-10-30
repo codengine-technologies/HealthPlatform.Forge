@@ -2,7 +2,7 @@
 
 > **Statut** : 🟢 Livrée — 6 fonctionnalités sur 6, en attente de recette ; correctifs d'audit en cours (task-410 à 415)
 > **Modèle** : task-driven
-> **Version** : 1.8
+> **Version** : 1.9
 > **Auteur** : PO forge
 > **Audience** : PO, direction, équipe produit — la vue ingénierie vit dans [E020-Changelogs.md](E020-Changelogs.md)
 > **Dernière mise à jour** : 2026-10-30
@@ -81,7 +81,7 @@ titulaire, le journal dit que c'est le délégataire qui l'a supprimé.
 | E020-F003 | Une base par boîte | Travailler à plusieurs dans la même boîte : rattachements patient, étiquettes, acquittements et classements partagés ; réglages et signatures restent personnels | task-404, task-410 | 🟢 Livrée, en attente de recette |
 | E020-F004 | Tout acte imputé à son auteur | Lire, dans le journal de la boîte, qui a fait quoi, quand et sur quel objet | task-405 | 🟢 Livrée, en attente de recette |
 | E020-F005 | Tenue en charge d'une boîte partagée | Garder une messagerie réactive quand plusieurs personnes travaillent dans la même boîte | task-406 | 🟢 Mesurée — verdict rendu, deux suites proposées |
-| E020-F006 | Écrire pour le compte de la boîte | Le délégataire écrit depuis la boîte du titulaire : le destinataire voit qui a écrit et pour quelle boîte, et sa réponse revient à la boîte ; le médecin qui reçoit un tel message le lit dans l'écran | task-407 | 🟢 Livrée, en attente de recette |
+| E020-F006 | Écrire pour le compte de la boîte | Le délégataire écrit depuis la boîte du titulaire : le destinataire voit qui a écrit et pour quelle boîte, et sa réponse revient à la boîte ; le médecin qui reçoit un tel message le lit dans l'écran | task-407, task-416 | 🟢 Livrée, en attente de recette |
 
 > Le bilan d'avancement par feature (statut, couverture, tasks contributives) est consigné en fin de
 > document, dans la section *État de couverture*.
@@ -193,7 +193,7 @@ graph LR
 | E020-F003 — Une base par boîte | 🟢 Livrée, en attente de recette | 100 % | task-404, task-410 |
 | E020-F004 — Tout acte imputé à son auteur | 🟢 Livrée, en attente de recette | 100 % | task-405 |
 | E020-F005 — Tenue en charge d'une boîte partagée | 🟢 Mesurée, en attente de recette | 100 % | task-406 |
-| E020-F006 — Écrire pour le compte de la boîte | 🟢 Livrée, en attente de recette | 100 % | task-407 |
+| E020-F006 — Écrire pour le compte de la boîte | 🟢 Livrée, en attente de recette | 100 % | task-407, task-416 |
 
 **Couverture EPIC consolidée : 100 %** (6 fonctionnalités sur 6, en attente de recette).
 
@@ -244,6 +244,10 @@ graph LR
   connaissent le même patient (même INS), chacune ouvre sa propre fiche. Avant ce correctif, la
   seconde à le chercher pouvait, pendant quelques minutes, voir la fiche saisie par l'autre cabinet.
   Une opposition enregistrée est visible aussitôt (task-410).
+- v1.9 — Le délégataire connecté avec sa carte peut écrire pour le compte de la boîte. Son nom était
+  bien dans sa session Pro Santé Connect, mais le logiciel ne savait pas l'y lire. L'envoi était donc
+  refusé (« Identité du délégataire indisponible »), et ses actes apparaissaient sans nom au journal.
+  Les deux fonctionnent désormais (task-416).
 
 ### Conformité réglementaire
 
