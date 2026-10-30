@@ -306,3 +306,8 @@ composée par `DependencyInjection` au lieu de l'appeler.
 Toutes les configurations de `PscProxy:BaseUrl` (appsettings, AppHost, configmap Weda) finissent par
 `/v1`. Build + tests à la revue : 7 248 verts, 0 échec. Sonar : QG OK, 0 issue. E2E : vert, au rejeu
 d'une voie Angular dont le backend s'était arrêté (incident d'outillage inscrit au registre).
+
+## Merged
+
+- 2026-10-30 — `api-mail` #331 squash-mergée sur `develop` : `587fbe4cd316b80b31befc729131bfc086a09fb6`. Branche `fix/task-416-nom-psc-du-delegataire-route-userinfo` supprimée (distante et locale).
+- Merge déclenché par l'humain (`/merge 416 --i-tested`, HAG règle 10).

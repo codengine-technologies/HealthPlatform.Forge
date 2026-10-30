@@ -458,4 +458,4 @@
 | task-408 | archivée (mergée le 2026-10-29) | Source de l'annuaire FHIR ou LDAP choisie dans appsettings ; attente visible au rattachement | RG-E020-03 |
 | task-409 | archivée (mergée le 2026-10-29) | Rattachement : identité du praticien préremplie, accueil en un geste | RG-E020-03, RG-E020-06 |
 | task-410 | archivée (mergée le 2026-10-30) | Correctif d'audit C1 : le cache patient par INS nomme la boîte | RG-E020-01 |
-| task-416 | done (PR #331 en attente de merge) | Le nom PSC du délégataire est lu sur la bonne route du proxy : l'envoi pour le compte de la boîte fonctionne | RG-E020-06, RG-E020-08 |
+| task-416 | archivée (mergée le 2026-10-30) | Le nom PSC du délégataire est lu sur la bonne route du proxy : l'envoi pour le compte de la boîte fonctionne | RG-E020-06, RG-E020-08 |
