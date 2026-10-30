@@ -107,3 +107,13 @@ Autres constats :
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : non — logique cliente. Aucune donnée persistée sur l'appareil.
 - **AIPD / impact RGPD** : inchangé — corrige un affichage croisé entre boîtes
+
+## Branches
+
+> **Empilée sur task-412** : les branches partent de `fix/task-412-clients-deconnexion-et-changement-de` (et non de `develop`). task-417 réutilise
+> la purge et l'évènement `closeMailboxOverlays$` de task-412, et ajoute au même catalogue. Merge :
+> procédure des tasks empilées (squash de 412, puis `merge -s ours` de 417 sous double garde).
+
+- `api-mail` (pushed) : fix/task-417-changement-de-boite-sans-rien-de-la — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-417-changement-de-boite-sans-rien-de-la
+- `client-mobile` (pushed) : fix/task-417-changement-de-boite-sans-rien-de-la
+- `client-angular` (code-only) : la forge écrit sur la branche checkoutée dans `Client/Angular/` (`feature/nova-mss-weda-integration`, qui porte déjà les specs non commités de task-412) — l'humain gère branche, commit, push et PR TFS
