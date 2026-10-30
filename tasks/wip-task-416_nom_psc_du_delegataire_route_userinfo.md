@@ -85,3 +85,67 @@ le message, et l'acte est imputé à son nom.
 ## Branches
 
 - `api-mail` (pushed) : fix/task-416-nom-psc-du-delegataire-route-userinfo — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-416-nom-psc-du-delegataire-route-userinfo
+
+## Develop log
+
+### Correctif
+
+- `PersonNameResolver.UserInfoRoute` : `v1/auth/userinfo` → `auth/userinfo`. Avec `PscProxy:BaseUrl`
+  `https://localhost:8081/v1`, l'adresse de base prend un `/` final (`DependencyInjection`) : l'appel part
+  désormais vers `/v1/auth/userinfo`.
+- **Revue des routes relatives du client `PscProxy`** (règle 2) : deux appelants.
+  - `PscTokenProvider` utilise `internal/psc-context` : correct, sans préfixe.
+  - `PersonNameResolver` : corrigé.
+  - Aucun autre appelant de `CreateClient(PscProxyOptions.HttpClientName)`.
+
+### Tests
+
+| Niveau | Test | Ce qu'il prouve |
+|---|---|---|
+| Unitaire | `PersonNameResolverTests.ResolveAsync_CallsTheUserinfoRouteUnderTheVersionedBaseUrl` | l'URL demandée, sous une base `…/v1/`, est `…/v1/auth/userinfo` |
+| Intégration (1b) | `AuditImputationIntegrationTests` (vraie pile, vrai `UserContextEnricherMiddleware`, vrai `PersonNameResolver`, registre et journal PostgreSQL) | le délégataire, rattaché **sans** nom enregistré, est imputé à son nom PSC dans le journal lu par HTTP |
+| Intégration (1b) | `MailboxPrefillIntegrationTests` | nom PSC du titulaire et du délégataire lus dans les réponses réelles (identité d'expéditeur, signature) |
+
+Le proxy PSC (fournisseur externe) reste simulé, mais de façon réaliste :
+- la `BaseUrl` porte `/v1`, comme la configuration ;
+- l'adresse de base est celle que compose `DependencyInjection` ;
+- le faux proxy **ne répond que sur `/v1/auth/userinfo`**, avec un 404 partout ailleurs.
+
+Avant ce changement, il répondait sur tous les chemins : c'est ce qui a laissé passer le défaut.
+
+**Écart assumé avec la DoD** : la DoD demandait la preuve par un envoi avec `Sender`. Le nom que
+l'envoi utilise est celui que pose le résolveur dans le contexte de la requête.
+- Le `Sender` construit à partir de ce nom est déjà prouvé de bout en bout par
+  `OnBehalfSendEndToEndTests` (task-407), y compris le refus `DELEGATE_IDENTITY_UNAVAILABLE` sans nom.
+- Ce qui manquait, c'était la lecture du nom depuis la session. Les suites ci-dessus la prouvent à
+  travers la vraie pile, dans une réponse réelle (journal de la boîte), sur un rattachement sans nom
+  enregistré : rien ne peut masquer le défaut.
+
+**Preuve rouge (mutation, 2026-10-30)** : route remise à `v1/auth/userinfo`.
+- Le test unitaire échoue : `Actual: http://psc-proxy.test/v1/v1/auth/userinfo`.
+- 6 tests d'intégration échouent, dont :
+  - `AnActOfTheDelegate_IsReadByTheHolder_…` : attendu `("899700000416", "Cyril", "DELEGUE", "Delegate")`,
+    reçu `("899700000416", null, null, "Delegate")`. C'est exactement le symptôme constaté en vrai ;
+  - `TheDelegate_KeepsTheHoldersIdentity_…`, `AttachFromMesBoites_…`, `TheAnnuaireDown_…` (signature
+    sans le nom), `TheHolderOffline_…` et `TheFilters_…`.
+- Restauré par `cp` + `touch`, et `grep MUTATION` rend 0.
+
+**Prévention** : `conventions/csharp.md` § `route-relative-sans-prefixe-de-base`.
+
+**Suite complète** : 7 264 tests verts, 16 ignorés (préexistants), après une correction de flaky.
+- Au premier passage, `SeededThreadsAreCountableTests.SeveralDistinctThreadSizesReachTheCounter` est
+  rouge : `23505` sur l'index unique des UID. Il est vert au rejeu, et sans lien avec ce diff.
+- **Cause** : 120 UID tirés au hasard sur 300 000 valeurs dans un même dossier, soit environ 2,4 % de
+  collision par passage.
+- **Corrigé** dans un commit séparé (`Uid = 600_000 + index`), avec la consigne
+  `identifiant-aleatoire-sous-index-unique`.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-416 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 18 s | — | — | — | — |
+| /develop | ok | 10 min 05 s | 1 (5.3 s) | 1 (5 min 44 s) | — | api-mail 1B/1T |
+| **Total cycle** | | **10 min 23 s** | **1 (5.3 s)** | **1 (5 min 44 s)** | **0 (0.0 s)** | |

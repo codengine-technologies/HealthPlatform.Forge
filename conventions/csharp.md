@@ -1919,3 +1919,31 @@ private string? PatientCacheKey(string ins) =>
 `src/Application/Constants/RedisKeys.cs`, jamais par une interpolation locale. Une clé faite d'un
 identifiant métier seul (INS, Message-ID, code) est commune à toutes les boîtes. Sans adresse connue,
 **ne pas mettre en cache**. Le test qui le prouve met **deux boîtes sur un même cache**.
+
+## route-relative-sans-prefixe-de-base — une route relative d'un client HTTP nommé ne répète pas le chemin de sa `BaseUrl`
+
+**Occurrences : 1** (task-416 — `PersonNameResolver` appelait `v1/auth/userinfo` sur le client `PscProxy`, dont la `BaseUrl` vaut déjà `…/v1`. L'appel partait vers `/v1/v1/auth/userinfo`, un 404 de routage : aucun délégataire n'avait de nom, et l'envoi pour le compte de la boîte était refusé. Les faux proxys des tests répondaient sur **tous** les chemins, avec une base sans `/v1` : le défaut est passé du test à la production.)
+
+```csharp
+// ❌ AVANT — la route reprend le préfixe que porte déjà la BaseUrl (https://proxy/v1)
+private const string UserInfoRoute = "v1/auth/userinfo";   // → /v1/v1/auth/userinfo
+
+// ✅ APRÈS — relative au dernier segment de la BaseUrl, comme les autres routes du client
+private const string UserInfoRoute = "auth/userinfo";      // → /v1/auth/userinfo
+```
+
+**Consigne** :
+- Une route relative s'écrit **par rapport à la `BaseUrl` configurée**, et non au chemin complet du
+  service distant.
+- Les routes d'un même client nommé partagent une forme, à aligner sur la route qui marche déjà.
+- Un faux serveur de test **ne répond que sur le chemin réel** de la route (404 ailleurs), derrière la
+  même `BaseUrl` que la configuration. Un faux qui répond partout ne prouve pas l'URL.
+- Le test unitaire du client affirme `RequestUri` en entier.
+
+## identifiant-aleatoire-sous-index-unique — un test ne tire pas au hasard une colonne qu'un index unique contraint
+
+**Occurrences : 1** (task-416, constaté au passage — `SeededThreadsAreCountableTests` tirait l'UID de 120 messages d'un même dossier sur 300 000 valeurs : `23505` sur `IX_Mails_FolderPath_UidValidity_Uid_Unique` environ une fois sur 40, vert au rejeu.)
+
+**Consigne** : une valeur qu'un index unique contraint se **dérive** (base + index du message) dans un
+test. Le hasard ne sert qu'à isoler une suite des autres (un suffixe de dossier, de boîte), jamais à
+distinguer les lignes d'un même lot : N tirages sur M valeurs se rencontrent avec une probabilité ≈ N²/2M.
