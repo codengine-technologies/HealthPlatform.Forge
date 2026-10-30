@@ -176,6 +176,36 @@ Fichiers weda2 modifiés (non commités) :
   - Leurs tests unitaires (vus rouges) les couvrent.
 - Catalogue : `ScenarioCatalogTests` 17/17.
 
+## Sonar log
+
+**Sonar : skipped — aucun fichier analysé.** Sur api-mail, la task (empilée sur task-412) ne change que
+le catalogue des scénarios e2e (`e2e/scenarios.yml`). Ce fichier est hors de l'analyse C#, donc aucun KPI
+ne peut bouger. La référence reste l'analyse de task-416 : Quality Gate OK, 0 issue. Catalogue validé par
+`ScenarioCatalogTests` (17/17).
+
+## Lint log
+
+`/lint-angular` en mode A : base `origin/next`, lint limité à `tag:scope:mss`, build et tests sur tout le
+périmètre affecté.
+- **Base** : 1 erreur (`prettier/prettier` dans `read-receipt.util.ts`, code de la task) et des warnings
+  préexistants.
+- **Itération 1** : `eslint --fix` sur ce fichier. Le lint passe à **0 erreur** (warnings préexistants).
+- **Tests** : 12 projets, dont `mss-lib`, rouge au premier passage sur
+  `mail-detail.read-receipt.spec.ts`. Ce spec simulait `MailStateService.folders` par une liste vide, et
+  le test « dans Envoyés » attendait la reconnaissance par le nom.
+  - Correction : le dossier y est donné avec son type `FolderType.Sent`.
+  - `mss-lib` passe alors à **1408/1408**, et les 11 autres projets du périmètre étaient verts.
+  - Récidive de la consigne « chercher ses doubles » : compteur porté à 3 dans `conventions/angular.md`.
+- **Build** : `mss:build:production` et `prescription:build:production` rouges sur le **budget** de bundle
+  initial (+1,02 Mo et +264 ko). Le rouge est préexistant : `prescription` ne dépend pas du code de la
+  task, et une trentaine de lignes de logique n'expliquent pas ces tailles. La mémoire est mise à jour.
+  Les autres cibles de build du périmètre sont vertes.
+
+## Lint mobile log
+
+- **client-mobile** (`/lint-mobile`) : `npm run lint` → **All files pass linting**. Aucune itération,
+  aucun commit.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-417 --sync` — ne pas éditer à la main)*
@@ -184,4 +214,9 @@ Fichiers weda2 modifiés (non commités) :
 |---|---|---|---|---|---|---|
 | /start | ok | 10 s | — | — | — | — |
 | /develop | ok | 15 min 16 s | 1 (7.8 s) | 5 (1 min 08 s) | — | client-mobile 1B/4T, api-mail 0B/1T |
-| **Total cycle** | | **15 min 26 s** | **1 (7.8 s)** | **5 (1 min 08 s)** | **0 (0.0 s)** | |
+| /sonar | skipped | 0.5 s | — | — | — | api-mail : catalogue e2e (YAML) seul, aucun fichier analysé par Sonar |
+| /lint-angular | ok | 4 min 35 s | 1 (22 s) | 2 (1 min 56 s) | — | 1 itération(s), client-angular 1B/2T |
+| /lint-mobile | ok | 16 s | — | — | — | — |
+| **Total cycle** | | **20 min 19 s** | **2 (30 s)** | **7 (3 min 05 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : lint ×3 (32 s)

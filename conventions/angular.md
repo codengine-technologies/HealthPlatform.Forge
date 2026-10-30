@@ -312,7 +312,7 @@ par lint sur du code frais est un échec de lecture de ce fichier.
 - **Consigne** : quand une dépendance gagne un nouvel appel, chercher ses doubles (`grep -rn "provide: {Service}" --include=*.spec.ts`) et les compléter ; lire la ligne `Errors` de Vitest, pas seulement `Tests`.
 - **Preuve** : task-370, `/review` : 2 723 verts, 1 erreur non gérée (`this.authenticationService.login is not a function`), cible `weda2:test` en échec ; double complété → vert.
 - **Origine** : task-370 ; task-376 (/develop : le double de `MailboxSessionStore` du spec des envois en attente n'exposait pas `failedActionsCount`, lu par le template — 23 rouges d'un coup, vu et complété avant tout commit)
-- **Occurrences** : 2
+- **Occurrences** : 3 (… ; task-417 — `isSentFolder` lit `state.folders()`, et le double de `MailStateService` de `mail-detail.read-receipt.spec.ts` rendait une liste vide : 1 rouge au `nx affected -t test`, vu par `/lint-angular`. Même cas sur mobile, les 5 doubles de `DashboardRefreshService` à compléter de `forCurrentMailbox`, trouvés au premier passage complet)
 
 ---
 
