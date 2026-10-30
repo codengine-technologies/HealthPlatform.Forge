@@ -81,3 +81,7 @@ le message, et l'acte est imputé à son nom.
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : inchangé
 - **AIPD / impact RGPD** : aucun changement de traitement
+
+## Branches
+
+- `api-mail` (pushed) : fix/task-416-nom-psc-du-delegataire-route-userinfo — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-416-nom-psc-du-delegataire-route-userinfo
