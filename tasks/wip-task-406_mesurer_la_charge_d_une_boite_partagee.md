@@ -124,6 +124,37 @@ changer. US de **mesure** : elle produit un verdict chiffré, pas une optimisati
 
 **Passe qualité §Q** : diff de test et de harnais seulement, aucun nettoyage nécessaire.
 
+## Sonar log
+
+- Serveur 9.9.8.100196 (`sonar.login`), projet `healthplatform-api-mail`, branche `feat/task-406-…`.
+- **Phase 1 (code neuf)**, une analyse : Quality Gate OK, **0 issue ouverte**, 0 hotspot. Le diff ne
+  touche que le code de test et le harnais.
+- **Phase 2 (dette existante)** : 0 itération (0 bug, 0 vulnérabilité, 0 code smell).
+- Build Release et 5 suites OpenCover : domain 202, application 3 939, infrastructure 699, api 1 315,
+  integration 1 080 verts et 16 ignorés.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | → |
+| New coverage | 96,4 % | 96,4 % | 0 |
+| Bugs | 0 | 0 | 0 |
+| Vulnerabilities | 0 | 0 | 0 |
+| Security hotspots | 0 | 0 | 0 |
+| Code smells | 0 | 0 | 0 |
+| Coverage (projet) | 97,8 % | 97,8 % | 0 |
+| Duplication | 0,4 % | 0,4 % | 0 |
+| Reliability / Security / Maintainability | A/A/A | A/A/A | → |
+
+## Lint log
+
+- `client-angular` : non touché par la task (`**Repos**: api-mail`). Skip.
+
+## Lint mobile log
+
+- `client-mobile` : non touché par la task. Skip.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-406 --sync` — ne pas éditer à la main)*
@@ -132,4 +163,7 @@ changer. US de **mesure** : elle produit un verdict chiffré, pas une optimisati
 |---|---|---|---|---|---|---|
 | /start | ok | 21 s | — | — | — | — |
 | /develop | ok | 47 min 41 s | 1 (21 s) | — | — | api-mail 1B/0T |
-| **Total cycle** | | **48 min 02 s** | **1 (21 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 11 min 00 s | 1 (53 s) | 5 (8 min 27 s) | 2 (55 s) | api-mail 1B/5T |
+| /lint-angular | skipped | 0.5 s | — | — | — | client-angular non touché |
+| /lint-mobile | skipped | 0.6 s | — | — | — | client-mobile non touché |
+| **Total cycle** | | **59 min 04 s** | **2 (1 min 14 s)** | **5 (8 min 27 s)** | **2 (55 s)** | |
