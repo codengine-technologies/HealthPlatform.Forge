@@ -529,3 +529,26 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   serveur acceptait n'importe quel `From`. Le refus `MAIL_FROM_NOT_MAILBOX` (ANS ECO.1.2.11) l'a fait
   apparaître au premier passage d'E2E-SHARED-002.
 - **Occurrences** : 1
+
+### jeton-ds-inexistant — Un `var(--ds-…)` sans repli qui ne correspond à aucun jeton n'affiche rien
+- **Règle** : convention projet (invisible au lint, au build et aux tests)
+- **Repos** : client-angular
+- **Piège** : `--ds-color-primary` n'existe pas dans `@weda/design-system` (seuls `--ds-color-primary-a-10`,
+  `--ds-color-primary-600`… existent). Les 71 usages du module MSS passent parce qu'ils portent un repli
+  (`var(--ds-color-primary, #…)`). Sans repli, la propriété tombe : le fond devient transparent, la
+  bordure et la couleur disparaissent. Le texte blanc d'un avatar devient invisible sur fond blanc. Ni
+  ESLint, ni le build, ni les tests ne le voient.
+- **Consigne** : pour une couleur de marque, prendre un jeton **sémantique** qui existe
+  (`libs/design-system/src/tokens/variables/semantic/_colors.scss`) :
+  - fond : `--ds-color-background-brand-strong` ;
+  - texte : `--ds-color-text-brand`, `--ds-color-text-inverse` ;
+  - bordure : `--ds-color-border-brand-strong` ;
+  - icône : `--ds-color-icon-brand` ;
+  - focus : `--ds-color-border-focus`.
+
+  Avant d'écrire un `var(--ds-…)`, vérifier qu'il est défini (`grep -rn -- "--ds-color-xxx:"` dans
+  `libs/design-system/src/tokens`), ou poser un repli.
+- **Origine** : refonte du sélecteur de messagerie weda2 d'après Stitch (2026-10-30), constatée par
+  l'humain sur capture. L'avatar d'initiales était invisible, la boîte ouverte n'avait ni barre ni
+  coche colorées.
+- **Occurrences** : 1
