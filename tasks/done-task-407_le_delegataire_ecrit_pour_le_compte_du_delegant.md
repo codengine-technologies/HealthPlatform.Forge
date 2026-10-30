@@ -404,6 +404,56 @@ enveloppe, sans Sender, refus sans connexion et tracé) ; `MdnService` délégat
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
 
+## PRs
+
+> **Ordre de merge** : dtos-mss #56, puis api-mail #328, puis mobile #118.
+
+- `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/56 — `awaiting-human-merge`
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/328 — `awaiting-human-merge`
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/118 — `awaiting-human-merge`
+- `client-angular` : code-only. L'humain gère le commit, le push TFS et l'ouverture de la PR, sur
+  la branche `feature/nova-mss-weda-integration`. **E2E-SHARED-002, requis côté angular, et le
+  correctif d'E2E-SETTINGS-003 sont seulement dans cet arbre local : à commiter avant le merge de
+  la PR api-mail.** Fichiers modifiés :
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`
+  - `front/e2e/mss-e2e/support/e2e-backend.ts`
+  - `front/libs/mss/src/core/models/mail.model.ts`
+  - `front/libs/mss/src/core/utils/reply-all-recipients.util.spec.ts`
+  - `front/libs/mss/src/core/utils/reply-all-recipients.util.ts`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.component.scss`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.on-behalf-of.spec.ts`
+
+## Code Review Summary
+
+**APPROVED**. 0 point bloquant.
+
+| Comportement atteignable par un endpoint | Test d'intégration | Preuve rouge |
+|---|---|---|
+| Envoi par un délégataire : From = boîte, Sender = nom PSC + `no-reply-…`, Return-Path = boîte, trace OnBehalfOf | `OnBehalfSendEndToEndTests.ADelegateWithoutAPersonalMailboxOnTheDomain_…` | M1, M2 |
+| BAL personnelle sur le même domaine ou sur un autre | `…SameDomain_…`, `…OnlyOnAnotherDomain_…` | M1, M2, M6 |
+| Réponse depuis un brouillon ; envoi confirmé après mise de côté | `ADelegateReplyFromADraft_…`, `ADelegateSendSetAsideWithoutTheCard_…` | M1, M2 |
+| Titulaire et membre sans Sender | `TheHolderAndAMember_SendWithoutASender` | M5 |
+| From ≠ boîte → 400, rien reçu, refus tracé | `AFromThatIsNotTheMailbox_…` | M3, M11 |
+| Nom PSC absent → 400, rien reçu, refus tracé | `ADelegateWithoutAPscName_…` | M4, M11 |
+| Accusé de lecture d'un délégataire | `AReadReceiptSentByADelegate_…` | M7 |
+| Lecture : Sender ≠ From exposé ; égal ou absent → null ; persisté ; relu hors ligne | `AReceivedMessageWrittenOnBehalfOfItsFrom_…` | M8, M9, M10 |
+
+- ✅ `OnBehalfSender.cs` concentre les règles du référentiel draft en un seul endroit.
+- ✅ Le serveur calcule tout et le client ne fournit rien.
+- ✅ Jamais de RPPS dans un en-tête.
+- ✅ Le rôle et le nom traversent vers les tâches de fond (`CopyIdentityTo`, task-405).
+- ✅ Migration `20261029140000` : deux colonnes nullables, aucune opération fantôme (règle 7c).
+- ✅ Mobile : le `From` et l'adresse « à soi » viennent de la boîte ouverte. Défaut trouvé par
+  E2E-SHARED-002 et corrigé avec deux tests vus rouges.
+- ✅ weda2 : la mention passe par l'interpolation Angular, donc le nom tiré de l'en-tête reçu est
+  échappé.
+- ⚠️ Le refus d'une **réponse** est tracé `MailSend` et non `MailReply`. Ce n'est pas bloquant :
+  l'objet et la requête « REFUSED … » le disent.
+- ⚠️ Le `Sender` est relu à la main dans 4 projections `Mail → MailDto` copiées. L'unification est
+  à faire dans une task dédiée (`conventions/csharp.md`, `projection-dto-dupliquee`, compteur 3).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-407 --sync` — ne pas éditer à la main)*
@@ -416,6 +466,7 @@ enveloppe, sans Sender, refus sans connexion et tracé) ; `MdnService` délégat
 | /lint-angular | ok | 13 s | — | — | — | — |
 | /lint-mobile | ok | 14 s | — | — | — | — |
 | /e2e | ok | 44 min 44 s | — | — | — | e2e ×9 (1 h 11 min) |
-| **Total cycle** | | **1 h 39 min** | **11 (1 min 19 s)** | **16 (22 min 55 s)** | **4 (1 min 18 s)** | |
+| /review | ok | 8 min 26 s | 3 (43 s) | 3 (6 min 18 s) | — | api-mail 1B/1T, client-mobile 1B/1T, client-angular 1B/1T |
+| **Total cycle** | | **1 h 47 min** | **14 (2 min 02 s)** | **19 (29 min 13 s)** | **4 (1 min 18 s)** | |
 
 Autres commandes mesurées : lint ×2 (7.8 s), nuget-wait ×1 (18 s)
