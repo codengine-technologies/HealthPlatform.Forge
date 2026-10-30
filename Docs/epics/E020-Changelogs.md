@@ -2,11 +2,35 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E020-boite-partagee-une-base-par-boite-tout.md](E020-boite-partagee-une-base-par-boite-tout.md).
-> **Dernière mise à jour** : 2026-10-30 (v1.9)
+> **Dernière mise à jour** : 2026-10-30 (v1.10)
 
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.10 — Poste partagé : la déconnexion ferme la boîte, l'assistant agit sur la boîte ouverte — task-412
+
+- **Task** : task-412, statut `done`. Run `/forge` 412-418. PRs `client-mobile` #119 et `api-mail` #332
+  (catalogue), label `awaiting-human-merge`. `client-angular` : specs e2e non commités sur
+  `feature/nova-mss-weda-integration`.
+- **Défauts** (audit du 2026-10-30, M1, M8 et m6, vérifiés sur le code) :
+  - la déconnexion mobile laissait la boîte ouverte en mémoire : la personne suivante, connectée par
+    e-CPS sans recharger la page, arrivait dans la boîte de la précédente ;
+  - le flux de l'assistant mobile envoyait l'adresse du compte ;
+  - la rédaction et l'assistant restaient au-dessus de « accès suspendu ».
+- **Livré (mobile)** :
+  - `LogoutService` vide `MailboxSessionService` et ferme les fenêtres ;
+  - un `403 MAILBOX_NOT_ATTACHED` sur la boîte ouverte la vide et ramène au choix de boîte (second
+    filet) ;
+  - `Client-Email` = boîte ouverte sur le flux de l'assistant ;
+  - `MailEventService.closeMailboxOverlays$`.
+- **Scénarios** : **E2E-SESSION-004** et **E2E-AI-002** (mobile et angular requis), vus rouges sur le
+  mobile sans correctif. weda2 est vert : il recharge toute l'application quand l'identité change
+  (task-052).
+- **Qualité** : Sonar non rejoué (catalogue YAML seul sur api-mail). Lint mobile vert. E2E vert, mobile
+  56/56 et Angular 67/67, après correction d'un flaky propre au nouveau test weda2.
+- **Prévention** : deux lignes « Trous du filet » (M1, M8) et une ligne au registre des flaky dans
+  `conventions/e2e.md`.
 
 ### v1.9 — Le nom PSC du délégataire est lu sur la bonne route du proxy — task-416
 
@@ -458,4 +482,5 @@
 | task-408 | archivée (mergée le 2026-10-29) | Source de l'annuaire FHIR ou LDAP choisie dans appsettings ; attente visible au rattachement | RG-E020-03 |
 | task-409 | archivée (mergée le 2026-10-29) | Rattachement : identité du praticien préremplie, accueil en un geste | RG-E020-03, RG-E020-06 |
 | task-410 | archivée (mergée le 2026-10-30) | Correctif d'audit C1 : le cache patient par INS nomme la boîte | RG-E020-01 |
+| task-412 | done (PRs mobile #119, api-mail #332 en attente de merge) | Poste partagé : la déconnexion ferme la boîte ; l'assistant agit sur la boîte ouverte ; fenêtres fermées à la suspension | RG-E020-04, RG-E020-06 |
 | task-416 | archivée (mergée le 2026-10-30) | Le nom PSC du délégataire est lu sur la bonne route du proxy : l'envoi pour le compte de la boîte fonctionne | RG-E020-06, RG-E020-08 |

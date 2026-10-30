@@ -327,6 +327,7 @@ Démontage vérifié après chaque voie : aucun port e2e à l'écoute.
 | /lint-mobile | ok | 23 s | — | — | — | — |
 | /e2e | ok | 31 min 34 s | — | — | — | e2e ×5 (29 min 22 s) |
 | /review | ok | 6 min 34 s | 2 (17 s) | 2 (5 min 23 s) | — | client-mobile 1B/1T, api-mail 1B/1T |
+| /tech-writer | ok | 0.5 s | — | — | — | — |
 | **Total cycle** | | **1 h 12 min** | **3 (26 s)** | **5 (6 min 19 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×1 (15 s)

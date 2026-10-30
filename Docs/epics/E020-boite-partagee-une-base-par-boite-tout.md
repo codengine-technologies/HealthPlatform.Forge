@@ -2,7 +2,7 @@
 
 > **Statut** : 🟢 Livrée — 6 fonctionnalités sur 6, en attente de recette ; correctifs d'audit en cours (task-410 à 415)
 > **Modèle** : task-driven
-> **Version** : 1.9
+> **Version** : 1.10
 > **Auteur** : PO forge
 > **Audience** : PO, direction, équipe produit — la vue ingénierie vit dans [E020-Changelogs.md](E020-Changelogs.md)
 > **Dernière mise à jour** : 2026-10-30
@@ -248,6 +248,10 @@ graph LR
   bien dans sa session Pro Santé Connect, mais le logiciel ne savait pas l'y lire. L'envoi était donc
   refusé (« Identité du délégataire indisponible »), et ses actes apparaissaient sans nom au journal.
   Les deux fonctionnent désormais (task-416).
+- v1.10 — Sur une tablette partagée, se déconnecter ferme vraiment la boîte. Le médecin qui se connecte
+  ensuite passe par le choix de SES boîtes, et ne voit rien de la boîte précédente. Un délégataire
+  peut interroger l'assistant IA dans la boîte qu'il a ouverte. Quand l'accès est suspendu, la
+  rédaction et l'assistant se ferment (task-412).
 
 ### Conformité réglementaire
 
