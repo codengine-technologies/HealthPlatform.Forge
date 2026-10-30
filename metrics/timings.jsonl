@@ -7765,3 +7765,11 @@
 {"ts":"2026-10-30T17:38:45+01:00","run_id":"-","type":"step","task":"task-416","step":"review","status":"ok","note":"","iterations":null,"duration_ms":369551}
 {"ts":"2026-10-30T17:39:09+01:00","run_id":"-","type":"step_start","task":"task-416","step":"tech-writer"}
 {"ts":"2026-10-30T17:39:10+01:00","run_id":"-","type":"step","task":"task-416","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":570}
+{"ts":"2026-10-30T18:07:35+01:00","run_id":"forge-20261030-412-418","type":"step_start","task":"task-412","step":"start"}
+{"ts":"2026-10-30T18:07:46+01:00","run_id":"forge-20261030-412-418","type":"step","task":"task-412","step":"start","status":"ok","note":"","iterations":null,"duration_ms":10415}
+{"ts":"2026-10-30T18:07:56+01:00","run_id":"forge-20261030-412-418","type":"step_start","task":"task-412","step":"develop"}
+{"ts":"2026-10-30T18:12:29+01:00","run_id":"forge-20261030-412-418","type":"cmd","task":"task-412","step":"develop","repo":"client-mobile","kind":"test","label":"red","cwd":"Client/Mobile","cmd":"npm test -- --watch=false --browsers=ChromeHeadless","duration_ms":31096,"exit_code":1}
+{"ts":"2026-10-30T18:16:40+01:00","run_id":"forge-20261030-412-418","type":"cmd","task":"task-412","step":"develop","repo":"client-mobile","kind":"build","label":"","cwd":"Client/Mobile","cmd":"npm run build","duration_ms":9238,"exit_code":0}
+{"ts":"2026-10-30T18:16:57+01:00","run_id":"forge-20261030-412-418","type":"cmd","task":"task-412","step":"develop","repo":"client-mobile","kind":"test","label":"","cwd":"Client/Mobile","cmd":"npm test -- --watch=false --browsers=ChromeHeadless","duration_ms":16127,"exit_code":0}
+{"ts":"2026-10-30T18:40:34+01:00","run_id":"forge-20261030-412-418","type":"cmd","task":"task-412","step":"develop","repo":"api-mail","kind":"test","label":"catalog","cwd":"Api/Mail","cmd":"dotnet test tests/mss.mail.api.tests -nologo --filter FullyQualifiedName~ScenarioCatalog","duration_ms":8835,"exit_code":0}
+{"ts":"2026-10-30T18:41:29+01:00","run_id":"forge-20261030-412-418","type":"step","task":"task-412","step":"develop","status":"ok","note":"","iterations":null,"duration_ms":2012885}
