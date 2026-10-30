@@ -20,12 +20,21 @@ minutes. Il apprend du même coup que ce patient est suivi ailleurs.
 
 ## Règles
 
-1. La clé de cache d'une fiche patient porte la **base de la boîte** (`UserDatabaseName`), comme
-   `BaseRepository.UserIdCacheKey`. Une même valeur d'INS dans deux boîtes donne deux clés.
-2. L'invalidation à l'écriture d'une fiche vise la clé de **cette** base.
-3. **Revue des autres clés** : toute clé de cache Redis construite sans la boîte ni la base est soit
-   cloisonnée, soit justifiée par écrit. Une clé de déduplication de tâche, par exemple, ne porte
-   aucune donnée. L'audit n'a trouvé que `patient:ins` ; la revue le confirme ou complète la liste.
+1. La clé de cache d'une fiche patient porte l'**adresse de la boîte** (`UserContextInfo.Email`), comme
+   toutes les clés de boîte du catalogue `RedisKeys` (`mail`, `folder`, `sync`, `user:{adresse}:contacts`).
+   Décision humaine du 2026-10-30, en remplacement du nom de base.
+   - **Pourquoi c'est équivalent** : depuis task-404, une adresse donne exactement une base (unicité de
+     `mss_mailboxes` sur l'adresse et sur `database_name`). Deux boîtes n'ont donc jamais la même clé.
+   - **Construite dans le catalogue** : un constructeur `RedisKeys.Patient.ByIns(adresse, condensatIns)`,
+     jamais une chaîne assemblée à la main dans `PatientRepository`.
+   - **Adresse normalisée** : minuscules, espaces retirés. Sinon une même boîte écrite en deux casses
+     aurait deux clés : rien ne fuit, mais le cache rate.
+   - L'INS reste **haché**, comme aujourd'hui. Seule l'adresse est en clair, comme dans les autres clés.
+2. L'invalidation à l'écriture d'une fiche vise la clé de **cette** boîte.
+3. **Revue des autres clés** : toute clé de cache Redis construite sans la boîte est soit cloisonnée,
+   soit justifiée par écrit. Une clé de déduplication de tâche, par exemple, ne porte aucune donnée.
+   L'audit n'a trouvé que `patient:ins` ; la revue le confirme ou complète la liste. Toute clé de boîte
+   passe par `RedisKeys`.
 4. Les entrées déjà en cache sous l'ancienne clé ne sont plus jamais lues : le changement de format
    suffit, et leur TTL de 5 minutes les efface.
 
@@ -33,8 +42,10 @@ minutes. Il apprend du même coup que ce patient est suivi ailleurs.
 
 - [ ] Build passes (0 errors)
 - [ ] Tests pass (0 failures)
-- [ ] Unit test : `PatientCacheKey` diffère pour un même INS dans deux bases, et elle ne contient pas
-      l'INS en clair
+- [ ] Unit tests de `RedisKeys.Patient.ByIns` :
+  - la clé diffère pour un même INS dans deux boîtes ;
+  - elle est identique pour une même boîte écrite en deux casses ou avec des espaces ;
+  - elle ne contient pas l'INS en clair.
 - [ ] Test d'intégration de bout en bout pour `POST /patients/resolve` : deux boîtes A et B, sur deux
       bases, connaissent chacune une fiche différente pour le même INS. A résout l'INS, puis B le
       résout : B lit **sa** fiche (nom et identifiant de B) dans la réponse réelle. Quand B ne
@@ -43,7 +54,8 @@ minutes. Il apprend du même coup que ce patient est suivi ailleurs.
 - [ ] Revue des clés Redis consignée dans le `## Develop log` : chaque gabarit de clé, sa portée
       (boîte, personne, plateforme) et sa justification
 - [ ] Aucune donnée de santé en clair dans les logs ni dans les clés Redis (l'INS reste haché)
-- [ ] `conventions/csharp.md` : entrée « une clé de cache d'une donnée de boîte nomme la boîte »
+- [ ] `conventions/csharp.md` : entrée « une clé de cache d'une donnée de boîte nomme la boîte, par son
+      adresse, et se construit dans `RedisKeys` »
 
 ## Manual Test Plan
 
@@ -52,7 +64,9 @@ minutes. Il apprend du même coup que ce patient est suivi ailleurs.
 - Médecin A : ouvrir la fiche du patient par son INS. Médecin B, dans les 5 minutes : rechercher le
   même INS.
 - Attendu : B voit sa propre fiche, ou « aucun patient », jamais le nom saisi chez A.
-- Redis (`redis-cli --scan --pattern 'patient:ins:*'`) : les clés portent le nom de base.
+- Redis (`redis-cli --scan --pattern 'patient:*'`) : chaque clé porte l'adresse de sa boîte, par
+  exemple `patient:{adresse}:ins:{condensat}`. Aucune clé ne porte l'INS en clair, et l'ancien format
+  `patient:ins:*` a disparu.
 
 ## Conformité santé / Ségur / ANS
 
