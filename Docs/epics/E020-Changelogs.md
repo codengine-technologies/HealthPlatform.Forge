@@ -2,11 +2,31 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E020-boite-partagee-une-base-par-boite-tout.md](E020-boite-partagee-une-base-par-boite-tout.md).
-> **Dernière mise à jour** : 2026-10-30 (v1.6)
+> **Dernière mise à jour** : 2026-10-30 (v1.7)
 
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.7 — Charge d'une boîte partagée mesurée — task-406
+
+- **Task** : task-406, statut `done`. `/review` APPROVED le 2026-10-30. PR `api-mail` #329
+  (`awaiting-human-merge`), qui ne contient que du code de test et le harnais.
+- **Livré** :
+  - `LoadTestRegistryProvisioner.ProvisionSharedBoxesAsync` ;
+  - seed `--shared-box N` ;
+  - k6 `SHARED_BOX=N`, où chaque personne garde son identité et son nom PSC.
+- **Campagne** du 2026-10-30, `mixed`, N = 2, 5 et 10, référence contre boîte partagée, banc mail
+  sur le cluster. Rapport : `Docs/audits/boite-partagee-charge-2026-10-30.md`.
+  - Pool Postgres : à garder. Attente de connexion ≈ 0,1 ms, aucun pool épuisé.
+  - CDA et IA : 1 par message quel que soit N (~124 contre N × ~122).
+  - Sessions et verrous de la boîte : ouverture et envoi ×2 dès 5 personnes. L'acquisition SMTP
+    passe de 52 à 380 ms, et l'attente des verrous de récupération atteint 520 s cumulées à 10.
+- **Suites proposées** :
+  - `MaxSessionsPerMailbox` par personne, déjà dans task-411 ;
+  - lecture concurrente d'un même message, à instrumenter d'abord.
+- **Outillage corrigé** : depuis task-404, `reset-state.sh`, `verify.sh` et `pg-*.sh` ne voyaient plus
+  aucune base. Les noms sont désormais recalculés depuis les identités du banc.
 
 ### v1.6 — Le délégataire écrit pour le compte de la boîte (`Sender`) — task-407
 
@@ -396,7 +416,7 @@
 | task-403 | archivée (mergée le 2026-10-29) | Accès à la base subordonné au verdict de l'opérateur ; hors-ligne du titulaire seul | RG-E020-04, RG-E020-05 ; RG-E020-06 (partiel) |
 | task-404 | archivée (mergée le 2026-10-29) | Une base par boîte ; données de la personne séparées ; identité d'expéditeur de la boîte | RG-E020-01, RG-E020-02 |
 | task-405 | archivée (mergée le 2026-10-29) | Tout acte imputé à son auteur réel ; journal lisible de toute la boîte | RG-E020-06, RG-E020-07 |
-| task-406 | todo | Mesure de charge d'une boîte partagée | — |
+| task-406 | done (PR en attente de merge) | Mesure de charge d'une boîte partagée : bornes du pool gardées, 1 traitement par message, sessions par boîte à corriger | RG-E020-01 |
 | task-407 | archivée (mergée le 2026-10-30) | Le délégataire écrit pour le compte de la boîte (`Sender`, ECO.1.2.9 à 1.2.11) | RG-E020-08, RG-E020-06 |
 | task-408 | archivée (mergée le 2026-10-29) | Source de l'annuaire FHIR ou LDAP choisie dans appsettings ; attente visible au rattachement | RG-E020-03 |
 | task-409 | archivée (mergée le 2026-10-29) | Rattachement : identité du praticien préremplie, accueil en un geste | RG-E020-03, RG-E020-06 |

@@ -1,8 +1,8 @@
 # E020 — Boîte partagée : une base par boîte, tout acte imputé
 
-> **Statut** : 🟡 En cours — 5 fonctionnalités sur 6 livrées, en attente de recette
+> **Statut** : 🟢 Livrée — 6 fonctionnalités sur 6, en attente de recette ; correctifs d'audit en cours (task-410 à 415)
 > **Modèle** : task-driven
-> **Version** : 1.6
+> **Version** : 1.7
 > **Auteur** : PO forge
 > **Audience** : PO, direction, équipe produit — la vue ingénierie vit dans [E020-Changelogs.md](E020-Changelogs.md)
 > **Dernière mise à jour** : 2026-10-30
@@ -80,7 +80,7 @@ titulaire, le journal dit que c'est le délégataire qui l'a supprimé.
 | E020-F002 | Accès ouvert par l'opérateur | Ne lire une boîte que si l'opérateur lui en a ouvert l'accès récemment ; le titulaire seul garde la lecture hors ligne | task-403 | 🟢 Livrée, en attente de recette |
 | E020-F003 | Une base par boîte | Travailler à plusieurs dans la même boîte : rattachements patient, étiquettes, acquittements et classements partagés ; réglages et signatures restent personnels | task-404 | 🟢 Livrée, en attente de recette |
 | E020-F004 | Tout acte imputé à son auteur | Lire, dans le journal de la boîte, qui a fait quoi, quand et sur quel objet | task-405 | 🟢 Livrée, en attente de recette |
-| E020-F005 | Tenue en charge d'une boîte partagée | Garder une messagerie réactive quand plusieurs personnes travaillent dans la même boîte | task-406 | ⏳ À faire |
+| E020-F005 | Tenue en charge d'une boîte partagée | Garder une messagerie réactive quand plusieurs personnes travaillent dans la même boîte | task-406 | 🟢 Mesurée — verdict rendu, deux suites proposées |
 | E020-F006 | Écrire pour le compte de la boîte | Le délégataire écrit depuis la boîte du titulaire : le destinataire voit qui a écrit et pour quelle boîte, et sa réponse revient à la boîte ; le médecin qui reçoit un tel message le lit dans l'écran | task-407 | 🟢 Livrée, en attente de recette |
 
 > Le bilan d'avancement par feature (statut, couverture, tasks contributives) est consigné en fin de
@@ -192,10 +192,10 @@ graph LR
 | E020-F002 — Accès ouvert par l'opérateur | 🟢 Livrée, en attente de recette | 100 % | task-403 |
 | E020-F003 — Une base par boîte | 🟢 Livrée, en attente de recette | 100 % | task-404 |
 | E020-F004 — Tout acte imputé à son auteur | 🟢 Livrée, en attente de recette | 100 % | task-405 |
-| E020-F005 — Tenue en charge d'une boîte partagée | ⏳ À faire | 0 % | task-406 |
+| E020-F005 — Tenue en charge d'une boîte partagée | 🟢 Mesurée, en attente de recette | 100 % | task-406 |
 | E020-F006 — Écrire pour le compte de la boîte | 🟢 Livrée, en attente de recette | 100 % | task-407 |
 
-**Couverture EPIC consolidée : 83 %** (5 fonctionnalités livrées sur 6, en attente de recette).
+**Couverture EPIC consolidée : 100 %** (6 fonctionnalités sur 6, en attente de recette).
 
 ---
 
@@ -236,6 +236,10 @@ graph LR
   {boîte} », et sa réponse revient à la boîte, jamais au délégataire. L'accusé de lecture envoyé
   par un délégataire suit la même règle. Le titulaire et les membres écrivent comme avant, sans
   mention (task-407).
+- v1.7 — Une boîte partagée tient la charge. À 10 personnes sur une même boîte, chaque message
+  n'est analysé et classé qu'une fois, et la base ne sature pas. En revanche, ouvrir un message
+  et envoyer prennent environ deux fois plus de temps dès 5 personnes : les sessions de messagerie
+  sont comptées par boîte et non par personne. La correction est prévue (task-411) (task-406).
 
 ### Conformité réglementaire
 

@@ -288,4 +288,5 @@ Signaux pour l'humain, déjà relevés en task-407 :
 | /lint-mobile | skipped | 0.6 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 19 min 41 s | — | — | — | e2e ×5 (38 min 00 s) |
 | /review | ok | 6 min 16 s | 1 (11 s) | 1 (5 min 06 s) | — | api-mail 1B/1T |
+| /tech-writer | ok | 0.5 s | — | — | — | — |
 | **Total cycle** | | **1 h 25 min** | **3 (1 min 26 s)** | **6 (13 min 34 s)** | **2 (55 s)** | |
