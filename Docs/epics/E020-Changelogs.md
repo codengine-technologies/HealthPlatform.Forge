@@ -2,11 +2,46 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E020-boite-partagee-une-base-par-boite-tout.md](E020-boite-partagee-une-base-par-boite-tout.md).
-> **Dernière mise à jour** : 2026-10-30 (v1.10)
+> **Dernière mise à jour** : 2026-10-30 (v1.11)
 
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.11 — Changement de boîte : rien de la boîte précédente ne reste — task-417
+
+- **Task** : task-417, statut `done`. Run `/forge` 412-418, empilée sur task-412. PRs `client-mobile`
+  #120 et `api-mail` #333 (catalogue), label `awaiting-human-merge`. `client-angular` : code non commité
+  sur `feature/nova-mss-weda-integration`.
+- **Défauts** (audit du 2026-10-30, m5 et m7, vérifiés sur le code) :
+  - à la bascule, seuls quatre porteurs d'état étaient purgés côté mobile. La conversation IA, l'onglet
+    Patients, les réglages, l'identité d'expéditeur et les widgets de l'accueil survivaient ;
+  - un refus d'accès sur une requête épinglée à une autre boîte suspendait la boîte ouverte ;
+  - le dossier « envoyés » était reconnu par la sous-chaîne `sent` (« Consent » compris).
+- **Livré (mobile)** :
+  - `UserSettingsService` rejoint `MAILBOX_SCOPED_STATES` (purge et garde d'`epoch`) ;
+  - `DashboardRefreshService` recharge l'accueil au changement de génération, et
+    `forCurrentMailbox()` ignore les réponses tardives des widgets ;
+  - l'assistant se ferme et l'onglet Patients se recharge ;
+  - l'identité d'expéditeur ignore la réponse d'une boîte quittée ;
+  - l'intercepteur ne suspend plus sur une requête épinglée à une autre boîte ;
+  - `isSentMail` passe par `FolderType.Sent`.
+- **Livré (weda2)** :
+  - intercepteur (requête épinglée) ;
+  - `isSentFolder` (accusé de lecture, annule-et-remplace, en-tête) ;
+  - flux de notifications rouvert après « Réessayer ».
+- **Scénario** : **E2E-MAILBOX-007** v1 (mobile et angular requis), vu rouge sur mobile (attendu 0,
+  reçu 1). weda2 recrée l'écran Patients à la navigation, et le test y est vert.
+- **Qualité** :
+  - Sonar non rejoué (catalogue YAML seul) ;
+  - api-mail : 7264 tests, 0 échec ;
+  - mobile : 1399/1399 ;
+  - E2E vert : mobile 57 et Angular 67, parité verte.
+- **Prévention** :
+  - un test vide de sens trouvé en revue, maintenant vu rouge par mutation ;
+  - le flaky Karma du sélecteur (`onAriaChanged`, défaut préexistant de la spec) est consigné en
+    3ᵉ occurrence dans `conventions/angular.md`, et sa task de stabilisation est due ;
+  - E2E-AI-001 en est à sa 3ᵉ occurrence.
 
 ### v1.10 — Poste partagé : la déconnexion ferme la boîte, l'assistant agit sur la boîte ouverte — task-412
 
@@ -465,7 +500,7 @@
 
 - Routes ajoutées : 3 (`GET /api/v1/account/mailboxes/directory` ; `POST|DELETE /api/v1/testing/operator-refusals`, banc seulement ; `GET|PUT /api/v1/account/mailboxes/current/sender-identity`).
 - Migrations du registre : 3 (`AddMailboxRole`, `AddMailboxes`, `AddAuditActor`) ; base de boîte : 3 (`AddUserAuthenticationSubject`, `AddActorColumns`, `AddMailSenderColumns`).
-- Scénarios e2e : 6 ajoutés (E2E-MAILBOX-003, E2E-MAILBOX-004, E2E-MAILBOX-005, E2E-SHARED-001, E2E-SHARED-002, E2E-AUDIT-001), 2 versionnés (E2E-WEDA-001 v2, E2E-BIO-001 v2).
+- Scénarios e2e : 9 ajoutés (E2E-MAILBOX-003, E2E-MAILBOX-004, E2E-MAILBOX-005, E2E-MAILBOX-007, E2E-SHARED-001, E2E-SHARED-002, E2E-AUDIT-001, E2E-SESSION-004, E2E-AI-002), 2 versionnés (E2E-WEDA-001 v2, E2E-BIO-001 v2).
 
 ---
 
@@ -483,4 +518,5 @@
 | task-409 | archivée (mergée le 2026-10-29) | Rattachement : identité du praticien préremplie, accueil en un geste | RG-E020-03, RG-E020-06 |
 | task-410 | archivée (mergée le 2026-10-30) | Correctif d'audit C1 : le cache patient par INS nomme la boîte | RG-E020-01 |
 | task-412 | done (PRs mobile #119, api-mail #332 en attente de merge) | Poste partagé : la déconnexion ferme la boîte ; l'assistant agit sur la boîte ouverte ; fenêtres fermées à la suspension | RG-E020-04, RG-E020-06 |
+| task-417 | done (PRs mobile #120, api-mail #333 en attente de merge, empilées sur task-412) | Changement de boîte : rien de la précédente ne reste (assistant, patients, accueil, réglages, identité) ; requête épinglée sans suspension ; envoyés par type | RG-E020-01, RG-E020-04 |
 | task-416 | archivée (mergée le 2026-10-30) | Le nom PSC du délégataire est lu sur la bonne route du proxy : l'envoi pour le compte de la boîte fonctionne | RG-E020-06, RG-E020-08 |

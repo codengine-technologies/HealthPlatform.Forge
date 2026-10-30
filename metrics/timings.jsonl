@@ -7842,3 +7842,5 @@
 {"ts":"2026-10-30T20:45:11+01:00","run_id":"forge-20261030-412-418","type":"cmd","task":"task-417","step":"review","repo":"client-mobile","kind":"test","label":"","cwd":"Client/Mobile","cmd":"npm test -- --watch=false --browsers=ChromeHeadless","duration_ms":17180,"exit_code":0}
 {"ts":"2026-10-30T20:48:48+01:00","run_id":"forge-20261030-412-418","type":"cmd","task":"task-417","step":"review","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln --no-build","duration_ms":310642,"exit_code":0}
 {"ts":"2026-10-30T20:49:34+01:00","run_id":"forge-20261030-412-418","type":"step","task":"task-417","step":"review","status":"ok","note":"","iterations":null,"duration_ms":1268547}
+{"ts":"2026-10-30T20:49:59+01:00","run_id":"forge-20261030-412-418","type":"step_start","task":"task-417","step":"tech-writer"}
+{"ts":"2026-10-30T20:50:27+01:00","run_id":"forge-20261030-412-418","type":"step","task":"task-417","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":28593}

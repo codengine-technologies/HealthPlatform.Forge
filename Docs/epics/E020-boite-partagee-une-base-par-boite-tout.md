@@ -252,6 +252,10 @@ graph LR
   ensuite passe par le choix de SES boîtes, et ne voit rien de la boîte précédente. Un délégataire
   peut interroger l'assistant IA dans la boîte qu'il a ouverte. Quand l'accès est suspendu, la
   rédaction et l'assistant se ferment (task-412).
+- v1.11 — En passant d'une boîte à l'autre, le médecin ne voit plus rien de la précédente : ni
+  conversation avec l'assistant, ni liste de patients, ni accueil, ni réglages, ni nom d'expéditeur.
+  Rattacher une autre boîte ne suspend plus celle qui est ouverte, et un dossier nommé « Consent »
+  n'est plus pris pour les messages envoyés (task-417).
 
 ### Conformité réglementaire
 
