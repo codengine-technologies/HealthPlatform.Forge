@@ -2,11 +2,43 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E020-boite-partagee-une-base-par-boite-tout.md](E020-boite-partagee-une-base-par-boite-tout.md).
-> **Dernière mise à jour** : 2026-10-29 (v1.5)
+> **Dernière mise à jour** : 2026-10-30 (v1.6)
 
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.6 — Le délégataire écrit pour le compte de la boîte (`Sender`) — task-407
+
+- **Task** : task-407, statut `done`. `/review` APPROVED le 2026-10-30 (cycle `/start` manuel).
+- **PRs** (label `awaiting-human-merge`, à merger dans cet ordre) : `dtos-mss` #56, `api-mail` #328,
+  `client-mobile` #118. `client-angular` est en code-only, non commité sur
+  `feature/nova-mss-weda-integration`.
+- **dtos-mss** : `MailDto.Sender` (`MailAddressDto?`), publié en 571.0.0.
+- **api-mail** :
+  - `OnBehalfSenderResolver` et `OnBehalfSenderPolicy` (`Services/Mailboxes/OnBehalfSender.cs`). Les
+    règles du référentiel draft vivent à un seul endroit ;
+  - `SmtpService` : le `From` est contrôlé, le `Sender` posé, l'enveloppe `MAIL FROM` est la boîte et
+    `RCPT TO` = To+Cc+Bcc. Le refus est tracé ;
+  - `MdnService` suit la même règle ;
+  - `GlobalExceptionHandler` : `OnBehalfSendRefusedException` → 400 (`MAIL_FROM_NOT_MAILBOX`,
+    `DELEGATE_IDENTITY_UNAVAILABLE`) ;
+  - réception : `EmailAddressHelper.ExtractSenderAddress`, colonnes `Mails.SenderAddress` et
+    `SenderName` (migration MailDb `20261029140000_AddMailSenderColumns`), relues dans 4 projections.
+- **Fronts** (mobile et weda2) : mention `mail-on-behalf-of`, `replyRecipient()` (`Reply-To`, sinon
+  `From`, jamais `Sender`).
+  - Mobile : le `From` et l'adresse « à soi » prennent la boîte ouverte, plus le compte. Défaut
+    trouvé par E2E-SHARED-002 ;
+  - mobile : un « Répondre » simple ignorait le `Reply-To`, corrigé.
+- **Règle 1b** : `OnBehalfSendEndToEndTests` (11 tests, pile réelle, GreenMail et Dovecot). Les
+  mutations M1 à M11 sont vues rouges.
+- **Sonar** : CA2016 et CA1859 corrigées, S3925 en faux positif. Quality Gate OK, 0 issue, new
+  coverage 96,4 %.
+- **e2e** : E2E-SHARED-002 v1. Mobile 54 et weda2 65, verts. E2E-SETTINGS-003 a été stabilisé (la
+  version est relue au serveur).
+- **Dette** : 4 copies de la projection `Mail → MailDto`, à unifier dans une task dédiée.
+- **À arbitrer** : AIPD (le nom et la BAL du délégataire sont communiqués aux destinataires), et le
+  référentiel draft à revérifier sur la version finale.
 
 ### v1.5 — Rattachement : identité du praticien préremplie — task-409
 
@@ -343,14 +375,16 @@
 | Annuaire MSSanté LDAP | `Api/Mail/src/Application/Services/Implementation/AnnuaireSante/LdapAnnuaireSanteService.cs` | BAL d'un RPPS, annuaire de test « partenaires » (task-408) |
 | Préremplissage de la boîte | `Api/Mail/src/Application/Services/Mailboxes/MailboxPrefillService.cs` | Identité d'expéditeur et « Signature annuaire », une fois (task-409) |
 | Confirmation du rattachement | `Client/Mobile/src/app/mailbox/shared/attach-confirmation.component.*`, `Client/Angular/front/libs/mss/src/ui/attach-confirmation/` | Lue sur la boîte rattachée (task-409) |
+| Sender du délégataire | `Api/Mail/src/Application/Services/Mailboxes/OnBehalfSender.cs` | Règles ECO.1.2.9, adresse `no-reply-…` (task-407) |
+| Mention « pour le compte de » | `mail-detail.component.*` (mobile et weda2) | `mail-on-behalf-of` (task-407) |
 
 ---
 
-## Annexe B — Inventaire fonctionnel (2026-10-29)
+## Annexe B — Inventaire fonctionnel (2026-10-30)
 
 - Routes ajoutées : 3 (`GET /api/v1/account/mailboxes/directory` ; `POST|DELETE /api/v1/testing/operator-refusals`, banc seulement ; `GET|PUT /api/v1/account/mailboxes/current/sender-identity`).
-- Migrations du registre : 3 (`AddMailboxRole`, `AddMailboxes`, `AddAuditActor`) ; base de boîte : 2 (`AddUserAuthenticationSubject`, `AddActorColumns`).
-- Scénarios e2e : 5 ajoutés (E2E-MAILBOX-003, E2E-MAILBOX-004, E2E-MAILBOX-005, E2E-SHARED-001, E2E-AUDIT-001), 2 versionnés (E2E-WEDA-001 v2, E2E-BIO-001 v2).
+- Migrations du registre : 3 (`AddMailboxRole`, `AddMailboxes`, `AddAuditActor`) ; base de boîte : 3 (`AddUserAuthenticationSubject`, `AddActorColumns`, `AddMailSenderColumns`).
+- Scénarios e2e : 6 ajoutés (E2E-MAILBOX-003, E2E-MAILBOX-004, E2E-MAILBOX-005, E2E-SHARED-001, E2E-SHARED-002, E2E-AUDIT-001), 2 versionnés (E2E-WEDA-001 v2, E2E-BIO-001 v2).
 
 ---
 
@@ -363,6 +397,6 @@
 | task-404 | archivée (mergée le 2026-10-29) | Une base par boîte ; données de la personne séparées ; identité d'expéditeur de la boîte | RG-E020-01, RG-E020-02 |
 | task-405 | archivée (mergée le 2026-10-29) | Tout acte imputé à son auteur réel ; journal lisible de toute la boîte | RG-E020-06, RG-E020-07 |
 | task-406 | todo | Mesure de charge d'une boîte partagée | — |
-| task-407 | todo | Le délégataire écrit pour le compte du délégant (`Sender`) | — |
-| task-408 | done (PR en attente de merge) | Source de l'annuaire FHIR ou LDAP choisie dans appsettings ; attente visible au rattachement | RG-E020-03 |
-| task-409 | done (PR en attente de merge) | Rattachement : identité du praticien préremplie, accueil en un geste | RG-E020-03, RG-E020-06 |
+| task-407 | done (PR en attente de merge) | Le délégataire écrit pour le compte de la boîte (`Sender`, ECO.1.2.9 à 1.2.11) | RG-E020-08, RG-E020-06 |
+| task-408 | archivée (mergée le 2026-10-29) | Source de l'annuaire FHIR ou LDAP choisie dans appsettings ; attente visible au rattachement | RG-E020-03 |
+| task-409 | archivée (mergée le 2026-10-29) | Rattachement : identité du praticien préremplie, accueil en un geste | RG-E020-03, RG-E020-06 |

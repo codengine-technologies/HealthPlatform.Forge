@@ -467,6 +467,7 @@ enveloppe, sans Sender, refus sans connexion et tracé) ; `MdnService` délégat
 | /lint-mobile | ok | 14 s | — | — | — | — |
 | /e2e | ok | 44 min 44 s | — | — | — | e2e ×9 (1 h 11 min) |
 | /review | ok | 8 min 26 s | 3 (43 s) | 3 (6 min 18 s) | — | api-mail 1B/1T, client-mobile 1B/1T, client-angular 1B/1T |
-| **Total cycle** | | **1 h 47 min** | **14 (2 min 02 s)** | **19 (29 min 13 s)** | **4 (1 min 18 s)** | |
+| /tech-writer | ok | 1 min 19 s | — | — | — | — |
+| **Total cycle** | | **1 h 49 min** | **14 (2 min 02 s)** | **19 (29 min 13 s)** | **4 (1 min 18 s)** | |
 
 Autres commandes mesurées : lint ×2 (7.8 s), nuget-wait ×1 (18 s)
