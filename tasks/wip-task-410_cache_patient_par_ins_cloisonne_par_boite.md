@@ -1,6 +1,8 @@
 # todo-task-410 — Le cache patient par INS est cloisonné par boîte
 
 **Repos**: api-mail
+**Sonar**: bypass — décision humaine du 2026-10-30 (`/start --no-sonar`)
+**E2E**: bypass — décision humaine du 2026-10-30 (`/start --no-e2e`)
 **Dependencies**: aucune
 **Epic**: E020
 
@@ -87,3 +89,19 @@ minutes. Il apprend du même coup que ce patient est suivi ailleurs.
 - **Hébergement HDS** : oui — Redis et PostgreSQL de la plateforme
 - **AIPD / impact RGPD** : à noter — la fuite possible entre cabinets avant correctif est à évaluer
   comme incident potentiel (journal de Redis, durée d'exposition). Inchangé après correctif.
+
+## Branches
+
+> **Sonar** : bypass demandé par l'humain au /start — /sonar n'analysera pas api-mail ; la PR le dira.
+> **E2E** : bypass demandé par l'humain au /start — /e2e ne jouera aucune voie ; la PR le dira.
+
+- `api-mail` (pushed) : fix/task-410-cache-patient-par-ins-cloisonne-par — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-410-cache-patient-par-ins-cloisonne-par
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-410 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 17 s | — | — | — | — |
+| **Total cycle** | | **17 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
