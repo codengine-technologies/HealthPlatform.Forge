@@ -259,3 +259,9 @@ et non celui d'`origin/develop`.
 | **Total cycle** | | **18 min 46 s** | **3 (53 s)** | **3 (3 min 20 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×3 (1 min 00 s)
+
+## Merged
+
+- **Date** : 2026-10-30 21:51, `/merge 412 417 418` (attestation de test humaine)
+- aucune PR GitHub — code-only weda2, commit et PR TFS par l'humain
+- CI `develop` verte : api-mail https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/41125930372 ; mobile https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/41125957842

@@ -353,3 +353,9 @@ Autres commandes mesurées : lint ×1 (15 s)
   - E2E-AI-002 vu rouge sur weda2 sous mutation.
 - **Validation** : build et tests mobile verts, api-mail 7 248 tests 0 échec. E2E vert (mobile 56/56, Angular 67/67).
 - **Sonar** : non rejoué, seul le catalogue YAML change sur api-mail.
+
+## Merged
+
+- **Date** : 2026-10-30 21:51, `/merge 412 417 418` (attestation de test humaine)
+- api-mail : `7b83e684` (PR #332) ; client-mobile : `d654c4d` (PR #119)
+- CI `develop` verte : api-mail https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/41125930372 ; mobile https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/41125957842

@@ -379,3 +379,9 @@ Démontage vérifié : aucun port e2e à l'écoute.
 | **Total cycle** | | **1 h 25 min** | **5 (56 s)** | **18 (11 min 10 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×3 (32 s)
+
+## Merged
+
+- **Date** : 2026-10-30 21:51, `/merge 412 417 418` (attestation de test humaine)
+- api-mail : `3e3ae9ce` (PR #333) ; client-mobile : `9db2a3c` (PR #120). Resynchronisée après le squash de task-412 par `merge -s ours` sous double garde (arbre du squash = tête de 412, develop inchangé ; patch-id du diff vs develop = patch-id tête 412 → tête 417)
+- CI `develop` verte : api-mail https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/41125930372 ; mobile https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/41125957842
