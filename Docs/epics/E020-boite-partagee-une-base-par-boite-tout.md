@@ -256,6 +256,9 @@ graph LR
   conversation avec l'assistant, ni liste de patients, ni accueil, ni réglages, ni nom d'expéditeur.
   Rattacher une autre boîte ne suspend plus celle qui est ouverte, et un dossier nommé « Consent »
   n'est plus pris pour les messages envoyés (task-417).
+- v1.12 — Dans un modèle de message, le RPPS de l'expéditeur est celui de la personne qui écrit
+  (titulaire ou délégataire), lu sur sa carte. Ce n'est plus un morceau de l'adresse de la boîte
+  (task-418).
 
 ### Conformité réglementaire
 

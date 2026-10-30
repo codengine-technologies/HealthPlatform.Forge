@@ -2,11 +2,26 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E020-boite-partagee-une-base-par-boite-tout.md](E020-boite-partagee-une-base-par-boite-tout.md).
-> **Dernière mise à jour** : 2026-10-30 (v1.11)
+> **Dernière mise à jour** : 2026-10-30 (v1.12)
 
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.12 — Modèles de message : `{{SenderRPPS}}` est le RPPS de la personne qui écrit — task-418
+
+- **Task** : task-418, statut `done`. Run `/forge` 412-418. `client-angular` seul (code-only, non commité
+  sur `feature/nova-mss-weda-integration`), donc aucune PR GitHub.
+- **Défaut** (audit du 2026-10-30, mineur client) : weda2 remplissait `{{SenderRPPS}}` avec la partie
+  locale de l'adresse de la boîte ouverte, par exemple « virginie.medecinrpps0062267 ». Ce n'est jamais
+  un RPPS, et jamais celui de la personne qui écrit.
+- **Livré (weda2)** : `{{SenderRPPS}}` = `MSS_PRACTITIONER_IDENTITY().rpps` (claim `rpps` du jeton PSC),
+  vide si la claim est absente. Le mobile n'expose pas cette variable.
+- **Tests** : 3 tests unitaires vus rouges sur le code d'avant. `mss-lib` 1411/1411.
+- **Qualité** :
+  - lint MSS à 0 erreur (correction de l'auto-fixer) ;
+  - E2E vert, Angular 67. La porte a lu le catalogue de la branche staging du run, puisque la copie
+    weda2 porte aussi les parcours non mergés de task-412 et task-417.
 
 ### v1.11 — Changement de boîte : rien de la boîte précédente ne reste — task-417
 
@@ -519,4 +534,5 @@
 | task-410 | archivée (mergée le 2026-10-30) | Correctif d'audit C1 : le cache patient par INS nomme la boîte | RG-E020-01 |
 | task-412 | done (PRs mobile #119, api-mail #332 en attente de merge) | Poste partagé : la déconnexion ferme la boîte ; l'assistant agit sur la boîte ouverte ; fenêtres fermées à la suspension | RG-E020-04, RG-E020-06 |
 | task-417 | done (PRs mobile #120, api-mail #333 en attente de merge, empilées sur task-412) | Changement de boîte : rien de la précédente ne reste (assistant, patients, accueil, réglages, identité) ; requête épinglée sans suspension ; envoyés par type | RG-E020-01, RG-E020-04 |
+| task-418 | done (code-only weda2, aucune PR GitHub) | Modèles de message : `{{SenderRPPS}}` est le RPPS de la personne qui écrit | RG-E020-06, RG-E020-08 |
 | task-416 | archivée (mergée le 2026-10-30) | Le nom PSC du délégataire est lu sur la bonne route du proxy : l'envoi pour le compte de la boîte fonctionne | RG-E020-06, RG-E020-08 |

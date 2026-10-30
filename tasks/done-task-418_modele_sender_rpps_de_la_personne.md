@@ -255,6 +255,7 @@ et non celui d'`origin/develop`.
 | /lint-mobile | skipped | 0.6 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 10 min 53 s | — | — | — | e2e ×3 (19 min 52 s) |
 | /review | ok | 1 min 57 s | 1 (9.7 s) | 1 (1 min 27 s) | — | client-angular 1B/1T |
+| /tech-writer | ok | 0.5 s | — | — | — | — |
 | **Total cycle** | | **18 min 46 s** | **3 (53 s)** | **3 (3 min 20 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×3 (1 min 00 s)
