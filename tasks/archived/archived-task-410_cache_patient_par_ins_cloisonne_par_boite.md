@@ -220,3 +220,8 @@ crée ni ne modifie de parcours médecin : aucun scénario n'est attendu au cata
 | `PUT /patients/{id}/opposition` invalide l'entrée de la boîte | `AnOppositionWritten_IsReadAtOnce_ByTheNextResolutionOfThatMailbox` (ajouté à la revue) | mutation invalidation retirée : `False` au lieu de `True` |
 
 Build + tests à la revue : 7 262 tests, 0 échec. Sonar et e2e : bypass humain, annoncés en tête de PR.
+
+## Merged
+
+- 2026-10-30 — `api-mail` #330 squash-mergée sur `develop` : `057b33cd1ea9b3d6cf8344faa585008dfced6eff`. Branche `fix/task-410-cache-patient-par-ins-cloisonne-par` supprimée (distante et locale).
+- Merge déclenché par l'humain (`/merge 410 --i-tested`, HAG règle 10).
