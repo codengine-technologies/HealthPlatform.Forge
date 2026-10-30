@@ -323,6 +323,45 @@ Démontage vérifié : aucun port e2e à l'écoute.
 **Parité : verte** — aucun écart entre le catalogue et les suites.
 
 
+## PRs
+
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/120 — label `awaiting-human-merge` (empilée sur #119)
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/333 — label `awaiting-human-merge` (empilée sur #332)
+- `client-angular` (code-only) : l'humain gère le commit, le push TFS et l'ouverture de la PR. Fichiers modifiés sur `feature/nova-mss-weda-integration` (les deux specs e2e portent aussi les parcours non commités de task-412) :
+  - `front/apps/weda2/src/app/core/interceptors/mss-headers.interceptor.ts` et `.spec.ts`
+  - `front/libs/mss/src/core/utils/read-receipt.util.ts` et `.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.read-receipt.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-header/mail-header.component.ts`
+  - `front/libs/mss/src/features/mailbox-access-suspended/mss-mailbox-access-suspended.component.ts` et `.spec.ts`
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`, `front/e2e/mss-e2e/specs/live-ai.e2e.ts`
+
+## Code Review Summary
+
+**Verdict : APPROVED**. 26 fichiers mobile, 1 fichier api-mail et 11 fichiers weda2 relus.
+
+- **Validation** :
+  - build mobile vert, tests mobile **1399/1399** (passage mesuré) ;
+  - weda2 : tests affectés verts (12 projets, dont `mss-lib` 1408/1408) ; build de production rouge sur budget, préexistant ;
+  - api-mail : build vert, suite complète **7264 tests, 0 échec** (16 ignorés), aucun `FATAL` ;
+  - E2E vert : mobile 57, Angular 67, parité verte.
+- **Règle 1b** : aucun comportement d'endpoint ne change (api-mail ne touche que le catalogue YAML). Côté clients, le test d'intégration du parcours est **E2E-MAILBOX-007**, vu rouge sur mobile (attendu 0, reçu 1).
+- **Corrigé en revue** :
+  - **Test vide de sens**, « ignore la réponse d'une boîte quittée » (identité d'expéditeur) :
+    - la réponse simulée de la boîte quittée n'avait pas la forme dont dépend le nom affiché, donc l'assertion tenait quoi qu'il arrive ;
+    - la garde neutralisée (`mailbox !== mailbox`) le laissait vert, 5/5 ;
+    - corrigé : la réponse porte une identité distincte, et la mutation le rend rouge (`4302f84`).
+  - **Commentaire d'`ensureLoaded`** déplacé par l'ajout de `resetForMailboxSwitch` (`a174c73`).
+- **Suggestions, non bloquantes** :
+  - un utilitaire partagé pour le patron `opened` des trois effets « au changement de boîte » ;
+  - `isSentMail` vaut `false` tant que les dossiers ne sont pas chargés ;
+  - réglages vidés relus seulement au prochain `ensureLoaded()`.
+- **Flaky Karma préexistant** : `MailboxSwitcherComponent`, `onAriaChanged`.
+  - 3 suites complètes rouges sur 8 sur la branche, 0 sur 4 sur `develop`.
+  - La spec du sélecteur jouée seule est rouge sur `develop` (2/2) : le défaut est dans cette spec, la branche ne fait que l'exposer plus souvent.
+  - Deux corrections tentées, insuffisantes, retirées.
+  - Consigné dans `conventions/angular.md` (`page-ionic-non-demontee`, 3ᵉ occurrence) : **task de stabilisation due**.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-417 --sync` — ne pas éditer à la main)*
@@ -335,6 +374,7 @@ Démontage vérifié : aucun port e2e à l'écoute.
 | /lint-angular | ok | 4 min 35 s | 1 (22 s) | 2 (1 min 56 s) | — | 1 itération(s), client-angular 1B/2T |
 | /lint-mobile | ok | 16 s | — | — | — | — |
 | /e2e | ok | 43 min 51 s | — | — | — | e2e ×7 (41 min 00 s) |
-| **Total cycle** | | **1 h 04 min** | **2 (30 s)** | **7 (3 min 05 s)** | **0 (0.0 s)** | |
+| /review | ok | 21 min 08 s | 3 (26 s) | 11 (8 min 04 s) | — | client-mobile 2B/9T, client-angular 0B/1T, api-mail 1B/1T |
+| **Total cycle** | | **1 h 25 min** | **5 (56 s)** | **18 (11 min 10 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×3 (32 s)
