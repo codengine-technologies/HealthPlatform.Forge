@@ -7678,3 +7678,5 @@
 {"ts":"2026-10-30T08:18:59+01:00","run_id":"-","type":"step_start","task":"task-407","step":"develop"}
 {"ts":"2026-10-30T08:21:50+01:00","run_id":"-","type":"cmd","task":"task-407","step":"develop","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test tests/mss.mail.application.tests/mss.mail.application.tests.csproj --no-build -nologo","duration_ms":23531,"exit_code":0}
 {"ts":"2026-10-30T08:22:13+01:00","run_id":"-","type":"step","task":"task-407","step":"develop","status":"ok","note":"correctif LocalPart no-reply","iterations":null,"duration_ms":193719}
+{"ts":"2026-10-30T11:32:47+01:00","run_id":"-","type":"step_start","task":"task-406","step":"start"}
+{"ts":"2026-10-30T11:33:08+01:00","run_id":"-","type":"step","task":"task-406","step":"start","status":"ok","note":"","iterations":null,"duration_ms":21020}

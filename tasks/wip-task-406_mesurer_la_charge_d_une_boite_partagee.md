@@ -71,3 +71,16 @@ changer. US de **mesure** : elle produit un verdict chiffré, pas une optimisati
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : non — banc local sans donnée réelle
 - **AIPD / impact RGPD** : inchangée
+
+## Branches
+
+- `api-mail` (pushed) : feat/task-406-mesurer-la-charge-d-une-boite-partagee — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-406-mesurer-la-charge-d-une-boite-partagee
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-406 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 21 s | — | — | — | — |
+| **Total cycle** | | **21 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
