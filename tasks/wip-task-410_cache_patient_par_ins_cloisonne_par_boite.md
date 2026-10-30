@@ -97,6 +97,71 @@ minutes. Il apprend du même coup que ce patient est suivi ailleurs.
 
 - `api-mail` (pushed) : fix/task-410-cache-patient-par-ins-cloisonne-par — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-410-cache-patient-par-ins-cloisonne-par
 
+## Develop log
+
+### Correctif
+
+- `RedisKeys.Patient.ByIns(adresse, ins)` (`src/Application/Constants/RedisKeys.cs`) :
+  `patient:{adresse normalisée}:ins:{SHA-256 de l'INS, 16 octets en hexa}`. Une adresse vide est refusée
+  (`ArgumentException`). L'adresse est passée en minuscules et sans espaces autour.
+- `PatientRepository` : la clé n'est plus construite dans le dépôt. `PatientCacheKey` rend `null` quand
+  aucune boîte n'est connue (`OptionalUserContextInfo?.Email` vide, cas du dépôt construit sur un contexte
+  explicite). Alors **rien n'est mis en cache** : ni lecture, ni écriture, ni invalidation. Une clé sans
+  boîte serait commune à toutes les boîtes.
+- L'invalidation à l'écriture de l'opposition vise la clé de la boîte courante (règle 2).
+- Nouveau constructeur de test `PatientRepository(MailDataContext, UserContextInfo, ILogger, cache?)`.
+- Anciennes entrées `patient:ins:*` : plus jamais lues, effacées par leur TTL de 5 min (règle 4).
+
+### Tests
+
+| Niveau | Test | Ce qu'il prouve |
+|---|---|---|
+| Unitaire | `RedisKeysPatientTests` (7) | deux boîtes → deux clés ; même boîte en deux casses ou avec espaces → même clé ; pas d'INS en clair ; deux INS → deux clés ; adresse vide refusée |
+| Unitaire | `PatientRepositoryCacheTests` (6, dont 2 nouveaux) | deux boîtes sur **un même cache** lisent chacune leur fiche ; sans boîte, rien n'est caché ; préfixe `patient:{boîte}:ins:` |
+| Intégration (1b) | `PatientCacheAcrossMailboxesEndToEndTests` (2) | `POST /api/v1/patients/resolve`, vraie pile, deux bases PostgreSQL (boîtes 22 et 23), **vrai cache** `ResilientCacheService` sur le Redis de la fixture, partagé par les deux boîtes |
+
+Le test d'intégration remplace le substitut de cache de la fixture par le vrai, parce que c'est le cache
+qui porte le comportement : avec le substitut, le test serait vert sur le code fautif.
+
+**Preuve rouge (mutation, 2026-10-30)** : `ByIns` remis à l'ancien format `patient:ins:{condensat}`,
+sans la boîte. Les deux tests d'intégration échouent :
+- `TheSameInsInTwoMailboxes_…` : attendu `(id de B, "Bravo")`, reçu `(id de A, "Alpha")`. B lit la fiche de A ;
+- `AnInsKnownOnlyInMailboxA_…` : attendu 404, reçu 200 avec la fiche « Alpha » de A.
+
+Restauré par `cp` + `touch`, et `grep MUTATION` rend 0. Reconstruit puis vert.
+
+### Revue des clés Redis (règle 3)
+
+| Gabarit | Portée | Verdict |
+|---|---|---|
+| `patient:{adresse}:ins:{condensat}` | boîte | **corrigé** (C1) : portait l'INS seul |
+| `RedisKeys.Mail.*`, `Folder.*`, `Sync.Coverage`, `Lock.*`, `Account.Quota`, `Contact.*` (`user:{adresse}:contacts…`) | boîte | cloisonnées par l'adresse, dans le catalogue |
+| `mss:sync:state:{adresse}`, `mss:sync:progress:{adresse}` (`RedisSyncStateStore`) | boîte | cloisonnées par l'adresse ; préfixe propre au magasin |
+| `draft:{adresse}:{id}`, `draft:index:{adresse}`, `draft:lock:…` (`DraftCacheRepository`) | boîte | cloisonnées par l'adresse |
+| `mss:ai:conv:{boîte}:{id}`, `mss:ai:conv-index:…` | boîte | cloisonnées (décision humaine : IA à la boîte) |
+| `mss:search-history:{adresse}` | adresse, à passer à la personne | cloisonnée, sans fuite entre boîtes ; le passage à la personne relève de task-413 |
+| `user:id:{base}:{sujet}` (`BaseRepository`) | boîte × personne | cloisonnée par le nom de base |
+| `setupdb:{base}` | boîte | marqueur de provisionnement, sans donnée |
+| `mailbox-sender:{guid}` | boîte | GUID v7 de l'utilisateur de la base : unique par construction |
+| réglages `…{userId:N}` (`UserSettingsRepository`) | personne | GUID unique par construction |
+| `registry:tenant:{sujet}:{adresse}` | personne × boîte | cloisonnée |
+| `session:mailbox:{clientSessionId}` | session | lie une session à une boîte (task-365) ; sans donnée de boîte |
+| `psc:person-name:{proxySession}` | personne | nom PSC, par session de proxy |
+| `archive-sent:{Message-ID}` | message | déduplication d'une tâche ; ne porte aucune donnée ; Message-ID unique par message envoyé |
+| `sync-command:{kind}` | plateforme | déduplication de commande, sans donnée |
+| `mail-autoconfig:{domaine}`, `crl:validation:…`, `ocsp:validation:v2:…`, `ocsp:issuer:…`, `annuaire:quota:…`, instantanés de drapeaux | plateforme | aucune donnée de boîte |
+
+Conclusion : `patient:ins` était la seule clé portant une donnée de boîte sans nommer la boîte.
+L'audit est confirmé, et la liste n'est pas complétée.
+- Les magasins `RedisSyncStateStore`, `DraftCacheRepository` et `RedisAiConversationStorage`
+  construisent leurs clés hors du catalogue, mais toujours avec l'adresse.
+- Les y déplacer ne change aucun format : la consigne s'applique au code nouveau.
+
+**Données de santé** : l'INS n'apparaît ni dans les clés (condensat seul, test unitaire) ni dans les
+journaux (aucun journal ajouté).
+
+**Convention** : `conventions/csharp.md` § `cle-de-cache-de-boite`.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-410 --sync` — ne pas éditer à la main)*
@@ -104,4 +169,5 @@ minutes. Il apprend du même coup que ce patient est suivi ailleurs.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 17 s | — | — | — | — |
-| **Total cycle** | | **17 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 14 min 16 s | 2 (24 s) | 2 (5 min 42 s) | — | api-mail 2B/2T |
+| **Total cycle** | | **14 min 34 s** | **2 (24 s)** | **2 (5 min 42 s)** | **0 (0.0 s)** | |

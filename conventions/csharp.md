@@ -1898,3 +1898,24 @@ rendre la colonne non nullable dans le modèle si elle l'est en base.
 `private sealed record Payload(string? FirstName, string? LastName);`. System.Text.Json lie le
 constructeur positionnel, et aucun setter n'existe à signaler.
 
+
+## cle-de-cache-de-boite — une clé de cache d'une donnée de boîte nomme la boîte, par son adresse, et se construit dans `RedisKeys`
+
+**Occurrences : 1** (task-410, audit C1 — `PatientRepository.PatientCacheKey` construisait `patient:ins:{condensat}` à la main : la clé ne portait que l'INS. Deux boîtes, deux bases, un même Redis : la seconde boîte qui résolvait cet INS recevait pendant cinq minutes la fiche de la première. Les tests unitaires du cache passaient, sur une seule boîte.)
+
+```csharp
+// ❌ AVANT — clé locale au dépôt, sans la boîte
+internal static string PatientCacheKey(string ins) => $"patient:ins:{Hash(ins)}";
+
+// ✅ APRÈS — le catalogue, avec l'adresse de la boîte ; pas de boîte connue, pas de cache
+private string? PatientCacheKey(string ins) =>
+    string.IsNullOrWhiteSpace(OptionalUserContextInfo?.Email)
+        ? null
+        : RedisKeys.Patient.ByIns(OptionalUserContextInfo.Email, ins);
+```
+
+**Consigne** : toute donnée mise en cache qui vient de la base d'une boîte (règle 14) a une clé qui
+**nomme la boîte par son adresse** (`UserContextInfo.Email`), normalisée, et construite dans
+`src/Application/Constants/RedisKeys.cs`, jamais par une interpolation locale. Une clé faite d'un
+identifiant métier seul (INS, Message-ID, code) est commune à toutes les boîtes. Sans adresse connue,
+**ne pas mettre en cache**. Le test qui le prouve met **deux boîtes sur un même cache**.
