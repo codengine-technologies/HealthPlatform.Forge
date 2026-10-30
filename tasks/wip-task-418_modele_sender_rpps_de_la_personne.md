@@ -68,6 +68,22 @@ claim `rpps` du jeton (task-304), celui que l'onboarding affiche.
 
 - `client-angular` (code-only) : la forge écrit sur la branche checkoutée dans `Client/Angular/` (`feature/nova-mss-weda-integration` au /start, qui porte aussi le code non commité de task-412 et task-417) — l'humain gère branche, commit, push et PR TFS
 
+## Develop log
+
+- **client-angular** (code-only, `feature/nova-mss-weda-integration`, rien de commité) :
+  - `mail-compose.component.ts` : `SenderRPPS` = `MSS_PRACTITIONER_IDENTITY().rpps` (injection
+    optionnelle). La partie locale de l'adresse de la boîte n'est plus utilisée. Le jeton est fourni
+    par `apps/weda2/src/app/app.config.ts`.
+  - `mail-compose.component.spec.ts` : 3 tests (RPPS `899700723440` sur la boîte
+    `virginie.medecinrpps0062267@…` ; RPPS vide ; aucune identité).
+- **Vu rouge** sur le code d'avant : les 3 tests rendaient `RPPS : virginie.medecinrpps0062267`.
+- **Vert** : `mss-lib` 1411/1411 (130 fichiers).
+- **Build** : aucune erreur TypeScript. `mss:build:production` et `prescription:build:production` sont
+  rouges sur le budget de bundle initial (+1,02 Mo, +264 ko), les mêmes valeurs qu'à task-417 :
+  préexistant.
+- **Passe qualité** : 3 lignes de production, rien à simplifier.
+- **Règle 1b** : non applicable, aucun endpoint touché. Aucun parcours e2e créé ni modifié.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-418 --sync` — ne pas éditer à la main)*
@@ -75,4 +91,5 @@ claim `rpps` du jeton (task-304), celui que l'onboarding affiche.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 8.7 s | — | — | — | — |
-| **Total cycle** | | **8.7 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 2 min 26 s | 1 (21 s) | 1 (23 s) | — | client-angular 1B/1T |
+| **Total cycle** | | **2 min 34 s** | **1 (21 s)** | **1 (23 s)** | **0 (0.0 s)** | |
