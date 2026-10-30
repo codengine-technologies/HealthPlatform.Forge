@@ -117,3 +117,71 @@ Autres constats :
 - `api-mail` (pushed) : fix/task-417-changement-de-boite-sans-rien-de-la — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-417-changement-de-boite-sans-rien-de-la
 - `client-mobile` (pushed) : fix/task-417-changement-de-boite-sans-rien-de-la
 - `client-angular` (code-only) : la forge écrit sur la branche checkoutée dans `Client/Angular/` (`feature/nova-mss-weda-integration`, qui porte déjà les specs non commités de task-412) — l'humain gère branche, commit, push et PR TFS
+
+## Develop log
+
+### client-mobile (`c9aacea`, `d53f1e8`), empilé sur task-412
+
+| Constat | Correctif |
+|---|---|
+| Conversation IA (m5) | `AiChatComponent` suit `MailboxSessionService.generation()` : à chaque changement de boîte, elle se ferme et s'oublie |
+| Onglet Patients (m5) | `PatientSearchComponent` recharge « patients du jour » à chaque génération |
+| Widgets de l'accueil (m5) | `DashboardRefreshService` déclenche un rafraîchissement à chaque génération. L'opérateur `forCurrentMailbox()`, posé sur la requête des 5 widgets, ignore une réponse de la boîte quittée |
+| Réglages (m5) | `UserSettingsService` devient un porteur d'état de boîte (`MAILBOX_SCOPED_STATES`) : cache oublié, relu, lecture tardive ignorée (`epoch`). Plus rien n'est enregistré d'une boîte dans l'autre |
+| Identité d'expéditeur (m5) | `load()` ignore une réponse si la boîte a changé pendant la lecture |
+| État de connexion | déjà gardé par la génération (`refreshConnectionStatus`) : aucun changement |
+| Requête épinglée (m7) | intercepteur : un refus sur une requête épinglée à une AUTRE boîte est rendu à l'appelant, sans suspension ni sortie de la boîte ouverte |
+| Dossier « envoyés » | `MailDetailComponent.isSentMail` : `FolderType.Sent` des dossiers chargés, jamais la sous-chaîne `sent` |
+
+- Tests unitaires, vus rouges avec des bouchons (10 échecs attendus), puis **1399/1399** verts.
+- Doubles mis à jour : les 5 specs de widgets ont reçu `forCurrentMailbox` (consigne « chercher ses
+  doubles » de `conventions/angular.md`).
+- Build vert. §Q : rien à simplifier.
+
+### client-angular (code-only, non commité sur `feature/nova-mss-weda-integration`)
+
+- **m7** : `mss-headers.interceptor.ts`. Un refus sur une requête épinglée à une autre boîte ne suspend
+  plus la boîte ouverte. Test vu rouge, puis 5/5.
+- **Dossier « envoyés »** : `isSentFolder(path, folders)` dans `read-receipt.util.ts`, par `FolderType.Sent`.
+  Utilisé par `isReadReceiptPending`, `MailDetailComponent.canCancelAndReplace` et
+  `MailHeaderComponent.isSentMail`.
+  - `MailStateService` est injecté en optionnel dans l'en-tête, qui sert aussi au journal.
+  - Mutation (sous-chaîne remise) : 3 rouges, puis 17/17.
+- **Flux de notifications (constat confirmé)** :
+  - Cause : le serveur ferme le flux en suspendant l'accès, et « Réessayer » (accès non vérifié) ne
+    change ni le jeton ni la boîte. L'effet de reconnexion ne se relançait donc pas, et plus aucune
+    alerte n'arrivait.
+  - Correctif : `MssMailboxAccessSuspendedComponent.act()` rouvre le flux (`connect()`). Test vu rouge,
+    puis 7/7.
+- m5 sur weda2 : pas de constat. Les écrans se recréent à la navigation. E2E-MAILBOX-007 le garde.
+
+Fichiers weda2 modifiés (non commités) :
+- `apps/weda2/src/app/core/interceptors/mss-headers.interceptor.ts` et son spec ;
+- `libs/mss/src/core/utils/read-receipt.util.ts` et son spec ;
+- `libs/mss/src/features/mail/components/mail-detail/mail-detail.component.ts` ;
+- `libs/mss/src/features/mail/components/mail-header/mail-header.component.ts` ;
+- `libs/mss/src/features/mailbox-access-suspended/mss-mailbox-access-suspended.component.ts` et son spec ;
+- `e2e/mss-e2e/specs/functional.e2e.ts` (E2E-MAILBOX-007).
+
+### Parcours e2e (catalogue `8b8852bd`)
+
+- **E2E-MAILBOX-007 v1** (mobile et angular requis).
+  - Parcours : une fiche de la seule boîte praticien est recherchée dans l'onglet Patients, puis la
+    boîte change. La fiche ne doit plus être proposée.
+  - Mobile vert. **Vu rouge** sans le rechargement à la génération : `Expected 0, Received 1`.
+  - weda2 : joué par la voie Angular de `/e2e`.
+- **Écart assumé avec la DoD** : le scénario porte sur l'onglet Patients seul.
+  - L'assistant et l'accueil ne s'observent pas de bout en bout de façon fiable. La fenêtre de
+    l'assistant couvre le sélecteur de boîte, et l'accueil se recharge à l'entrée de l'onglet.
+  - Leurs tests unitaires (vus rouges) les couvrent.
+- Catalogue : `ScenarioCatalogTests` 17/17.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-417 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 10 s | — | — | — | — |
+| /develop | ok | 15 min 16 s | 1 (7.8 s) | 5 (1 min 08 s) | — | client-mobile 1B/4T, api-mail 0B/1T |
+| **Total cycle** | | **15 min 26 s** | **1 (7.8 s)** | **5 (1 min 08 s)** | **0 (0.0 s)** | |
