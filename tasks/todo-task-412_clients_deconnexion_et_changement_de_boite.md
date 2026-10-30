@@ -1,77 +1,79 @@
-# todo-task-412 — Clients : déconnexion et changement de boîte sans rien de la précédente
+# todo-task-412 — Poste partagé : la déconnexion ferme la boîte, l'assistant agit sur la boîte ouverte
 
 **Repos**: api-mail, client-mobile, client-angular
-**Dependencies**: task-407 (mêmes écrans de lecture et de rédaction, et le From = boîte ouverte côté mobile)
+**Dependencies**: task-407 (le From = boîte ouverte côté mobile), task-416 (nom PSC du délégataire)
 **Epic**: E020
 
 > **Origine** : audit du périmètre « boîte déléguée » du 2026-10-30
-> (`Docs/audits/2026-10-30-audit-boite-deleguee.md`). Constats M1, M8, m5, m6, m7, et les mineurs
-> clients (identité d'expéditeur, dossier « envoyés », `{{SenderRPPS}}`, flux de notifications).
-> `api-mail` porte le catalogue des scénarios e2e seulement.
+> (`Docs/audits/2026-10-30-audit-boite-deleguee.md`), constats M1, M8 et m6.
+>
+> **Re-vérifiée et découpée le 2026-10-30**, sur décision humaine : chaque constat a été relu sur le
+> code (mobile `cf3505f`, weda2 sur `feature/nova-mss-weda-integration`). Cette task garde la
+> **sécurité du poste partagé**. La propreté du changement de boîte passe dans **task-417**, et
+> `{{SenderRPPS}}` dans **task-418**. `api-mail` porte le catalogue des scénarios e2e seulement.
 
 ## Objectif
 
-Sur un appareil partagé, un médecin qui se connecte n'arrive jamais dans la boîte du précédent. En
-changeant de boîte, il ne voit plus rien de la précédente : assistant, patients, accueil, réglages,
-fenêtres ouvertes. Un délégataire utilise l'assistant IA dans la boîte qu'il a ouverte.
+Sur un appareil partagé, un médecin qui se connecte n'arrive jamais dans la boîte du précédent, et ne
+voit rien de ce que le précédent avait chargé. Un délégataire utilise l'assistant IA dans la boîte
+qu'il a ouverte.
+
+## Constats vérifiés (2026-10-30)
+
+- **M1 — la déconnexion mobile ne ferme pas la boîte ouverte.**
+  - `LogoutService.run()` (`core/auth/logout.service.ts`) ferme la session serveur, déconnecte le proxy
+    et vide le jeton, mais n'appelle jamais `MailboxSessionService.clear()`. Rien n'écoute la fin de
+    session pour le faire. Seul le détachement de la dernière boîte appelle `clear()`.
+  - Après une connexion e-CPS (CIBA, sans rechargement), l'écran de connexion envoie vers
+    `/tabs/home`, et `mailboxGuard` laisse passer dès que `current()` est posé. La personne suivante
+    arrive dans la boîte précédente, avec ses messages, dossiers et mail ouvert encore en mémoire.
+  - Le serveur refuse ses requêtes (`MAILBOX_NOT_ATTACHED`, règle 14), mais le client ne compte pas ce
+    code parmi les refus qui purgent l'écran (`MAILBOX_ACCESS_SUSPENDED_CODES`). Le contenu chargé
+    par la première personne reste donc affiché.
+- **M8 — le flux de l'assistant mobile envoie l'adresse du compte.** `buildStreamHeaders()`
+  (`core/services/mss-api.service.ts`) envoie `Client-Email` = `session.userEmail`, la claim `email`
+  du jeton. L'intercepteur, lui, envoie la boîte ouverte. Le flux part donc vers une autre boîte que
+  la conversation : un refus, ou une réponse tirée de la boîte personnelle du délégataire.
+  - weda2 n'est pas touché : son `MSS_USER_EMAIL` vaut la boîte ouverte.
+- **m6 — les modales survivent à la suspension (mobile).** `MailboxAccessSuspensionService.suspend()`
+  purge et navigue vers « accès suspendu », sans fermer la rédaction ni l'assistant. L'assistant vit à
+  la racine de l'application.
 
 ## Règles
 
-1. **Déconnexion (mobile, M1)** : elle vide la boîte ouverte, la liste des boîtes et tous les états
-   de boîte :
-   - messages, patients, conversation IA, réglages, compteurs, identité d'expéditeur ;
-   - modales.
-
-   La connexion suivante, y compris par e-CPS sans rechargement de page, repasse par le choix de
-   boîte. weda2 : vérifier que sa déconnexion obtient le même résultat, et le garantir sinon.
-2. **La boîte ouverte, pas le compte (M8, convention `adresse-de-la-boite-ouverte`)** :
-   - le flux de l'assistant IA (`fetch` direct) envoie `Client-Email` = boîte ouverte ;
-   - toute adresse qui représente « d'où j'agis » est relue sur les deux clients. Chaque usage restant
-     de l'adresse du compte est justifié dans le `## Develop log`.
-3. **Changement de boîte (m5)**. Rien de la boîte précédente ne reste affiché ni réutilisable :
-   - conversation IA ;
-   - liste de l'onglet Patients ;
-   - widgets de l'accueil (une réponse tardive de la boîte précédente est ignorée) ;
-   - réglages en cache : rechargés, jamais réécrits d'une boîte dans l'autre ;
-   - identité d'expéditeur : une réponse tardive est ignorée.
-
-   L'état de connexion (« N messages prêts à partir ») est vérifié contre la génération de la boîte.
-4. **Accès suspendu (m6)** : les modales de rédaction et d'assistant sont fermées, et les flux temps
-   réel fermés, quand l'écran « accès suspendu » s'affiche.
-5. **Requête épinglée (m7, deux clients)** : un refus d'accès sur une requête épinglée à une autre
-   boîte (confirmation de rattachement, suppressions en attente) ne suspend pas la boîte ouverte. Il
-   est rendu à l'écran qui l'a demandée.
-6. **Mineurs clients** :
-   - dossier « envoyés » reconnu par `FolderType.Sent`, jamais par la sous-chaîne `sent`, sur les deux
-     clients (accusé de lecture, annule-et-remplace) ;
-   - weda2 : `{{SenderRPPS}}` vient du RPPS de la personne, jamais de la partie locale de l'adresse ;
-   - weda2 : le flux de notifications se rouvre après un « Réessayer » réussi.
+1. **Déconnexion (mobile)** : elle vide la boîte ouverte, la liste des boîtes et tous les états de
+   boîte (`MailboxSessionService.clear()`, qui purge les porteurs d'état), et ferme toute modale ouverte.
+   - La connexion suivante, y compris par e-CPS sans rechargement, repasse par la garde, donc par le
+     choix de boîte.
+2. **`MAILBOX_NOT_ATTACHED` sur la boîte ouverte (mobile)** : l'écran est purgé, et le médecin revient
+   au choix de boîte. Il ne voit pas l'écran « accès suspendu » : la boîte n'est pas suspendue, elle
+   n'est simplement pas la sienne.
+3. **Flux de l'assistant (mobile)** : `Client-Email` = la boîte ouverte, comme l'intercepteur.
+   - Toute adresse qui représente « d'où j'agis » est relue sur le mobile.
+   - Chaque usage restant de l'adresse du compte est justifié dans le `## Develop log`, par exemple
+     l'affichage du compte dans les Paramètres.
+4. **Suspension (mobile)** : la rédaction et l'assistant se ferment quand l'écran « accès suspendu »
+   s'affiche, et les flux temps réel se ferment.
+5. **weda2** : sa déconnexion révoque le jeton et repasse par la connexion Keycloak, ce qui recharge la
+   page. On le **prouve** par E2E-SESSION-004 ; s'il en allait autrement, on le corrige ici.
 
 ## Definition of Done
 
 - [ ] Build passes (0 errors) sur `client-mobile` et `client-angular` (code-only)
 - [ ] Tests pass (0 failures) sur chaque client
-- [ ] UI component / unit tests, chacun vu rouge sur le code d'avant :
-  - déconnexion, avec l'état de boîte vidé et le garde qui repasse par le choix ;
-  - en-têtes du flux IA ;
-  - conversation IA réinitialisée au changement de boîte ;
-  - onglet Patients et widgets rechargés, avec réponse tardive ignorée ;
-  - réglages rechargés au changement ;
-  - modales fermées à la suspension ;
-  - requête épinglée refusée sans suspension de la boîte ouverte ;
-  - `FolderType.Sent` ;
-  - `{{SenderRPPS}}` ;
-  - flux de notifications rouvert.
+- [ ] Tests unitaires mobile, chacun vu rouge sur le code d'avant :
+  - la déconnexion vide la boîte ouverte et la liste des boîtes, et ferme les modales ;
+  - après déconnexion, `mailboxGuard` repasse par le choix de boîte ;
+  - `MAILBOX_NOT_ATTACHED` sur la boîte ouverte purge l'écran et renvoie au choix ;
+  - les en-têtes du flux de l'assistant portent la boîte ouverte ;
+  - la suspension ferme la rédaction et l'assistant.
 - [ ] Scénario **E2E-SESSION-004** v1 ajouté dans `Api/Mail/e2e/scenarios.yml` (mobile requis,
-      angular requis) : une personne se déconnecte, une autre se connecte sur le même appareil, et
-      n'arrive jamais dans la boîte de la première (relecture du `Client-Email` envoyé et de la
-      liste affichée). Implémenté dans chaque client.
-- [ ] Scénario **E2E-MAILBOX-007** v1 ajouté (mobile requis, angular requis) : après un changement de
-      boîte, l'assistant, l'onglet Patients et l'accueil ne montrent plus rien de la précédente.
-      Implémenté dans chaque client.
+      angular requis) : une personne se déconnecte, une autre se connecte sur le même appareil sans
+      recharger, et n'arrive jamais dans la boîte de la première. Il relit le `Client-Email` envoyé et
+      la liste affichée. Implémenté dans chaque client.
 - [ ] Scénario **E2E-AI-002** v1 ajouté (mobile requis, angular requis) : un délégataire interroge
-      l'assistant dans la boîte du titulaire, et la réponse porte sur la boîte ouverte. Implémenté
-      dans chaque client.
+      l'assistant dans la boîte du titulaire, et la réponse porte sur la boîte ouverte (relecture du
+      `Client-Email` du flux). Implémenté dans chaque client.
 - [ ] Trou du filet : M1 et M8 étaient visibles du médecin sans que `/e2e` les attrape.
       E2E-SESSION-004 et E2E-AI-002 sont prouvés rouges sur le code non corrigé, et une ligne est
       ajoutée dans `conventions/e2e.md`.
@@ -83,17 +85,16 @@ fenêtres ouvertes. Un délégataire utilise l'assistant IA dans la boîte qu'il
 - Backend : `cd Api/Mail && dotnet run --project src/AppHost` (profil e2e). Mobile :
   `cd Client/Mobile && npm start`. weda2 : via le faux hôte.
 - **Déconnexion** :
-  1. Le titulaire e2e ouvre `boite-praticien` puis se déconnecte.
+  1. Le titulaire e2e ouvre `boite-praticien`, lit un message, puis se déconnecte.
   2. Le délégataire e2e se connecte sur le même onglet, sans recharger.
   3. Attendu : l'écran de choix de boîte, ni les messages ni les dossiers du titulaire.
-- **Changement de boîte** :
-  1. Dans la boîte A, ouvrir l'onglet Patients et une conversation IA sur un message.
-  2. Passer à la boîte B, puis rouvrir l'assistant sur un message de même numéro.
-  3. Attendu : une nouvelle conversation, l'onglet Patients et l'accueil de B.
+- **Boîte non rattachée** : forcer en mémoire une boîte que la personne connectée n'a pas.
+  Attendu : l'écran se vide et revient au choix de boîte, sans « accès suspendu ».
 - **Assistant d'un délégataire** : le délégataire ouvre la boîte du titulaire et interroge
-  l'assistant. Attendu : une réponse, ni 403 ni 404.
-- **Suspension** : un brouillon est ouvert quand l'opérateur simulé refuse le délégataire. Attendu :
-  la modale se ferme sur « accès suspendu ».
+  l'assistant. Attendu : une réponse sur les messages de cette boîte, ni 403 ni 404. Le `Client-Email`
+  du flux est la boîte du titulaire.
+- **Suspension** : un brouillon et l'assistant sont ouverts quand l'opérateur simulé refuse le
+  délégataire. Attendu : les deux se ferment sur « accès suspendu ».
 
 ## Conformité santé / Ségur / ANS
 
@@ -101,12 +102,12 @@ fenêtres ouvertes. Un délégataire utilise l'assistant IA dans la boîte qu'il
 - **Vague Ségur** : hors Ségur — sécurité des postes partagés
 - **Exigences DSR honorées** : référentiel socle MSSanté #2 (clients), ECO.1.2.8 et ECO.1.2.11 (le
   client agit sur la BAL ouverte). PGSSI-S : confidentialité sur poste partagé.
-- **INS** : non applicable — affichage de fiches existantes seulement
+- **INS** : non applicable
 - **Authentification PS** : PSC / e-CPS. La connexion d'une autre personne repart de zéro.
 - **Habilitations** : seules les données de la boîte ouverte, et seulement sous accès valide (règle 14)
 - **Interop CI-SIS** : non applicable
-- **Tracé PGSSI-S** : inchangé (déconnexion et changement de boîte déjà tracés côté serveur)
+- **Tracé PGSSI-S** : inchangé (déconnexion déjà tracée côté serveur)
 - **Consentement patient** : non applicable
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : non — logique cliente. Aucune donnée persistée sur l'appareil.
-- **AIPD / impact RGPD** : inchangé — corrige une exposition sur poste partagé
+- **AIPD / impact RGPD** : inchangé — corrige une exposition de données de santé sur poste partagé
