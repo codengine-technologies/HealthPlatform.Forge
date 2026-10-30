@@ -490,3 +490,18 @@ enveloppe, sans Sender, refus sans connexion et tracé) ; `MdnService` délégat
 | **Total cycle** | | **1 h 19 min** | **14 (2 min 02 s)** | **20 (29 min 37 s)** | **4 (1 min 18 s)** | |
 
 Autres commandes mesurées : lint ×2 (7.8 s), nuget-wait ×1 (18 s)
+
+## Merged
+
+Mergé le 2026-10-30 par `/merge task-407 --i-tested` (HAG, test humain attesté) :
+
+| Repo | PR | Squash | CI `develop` |
+|---|---|---|---|
+| `dtos-mss` | #56 | `e9f3ebcf` | ✅ |
+| `api-mail` | #328 | `9e27f3a2` | ✅ |
+| `client-mobile` | #118 | `cf3505f0` | ✅ |
+| `client-angular` | TFS | commité, poussé et mergé par l'humain | — |
+
+Branches `feat/task-407-…` supprimées, en distant et en local, sur les trois dépôts GitHub. Le clone
+Angular reste sur `feature/nova-mss-weda-integration`, branche d'intégration de l'humain. Pas de
+branche staging (cycle `/start` manuel).
