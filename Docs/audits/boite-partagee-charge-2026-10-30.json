@@ -1,0 +1,480 @@
+{
+ "n2-ref": {
+  "rc": 99,
+  "window": [
+   "2026-10-30T10:52:24Z",
+   "2026-10-30T10:55:31Z"
+  ],
+  "k6": {
+   "ops": {
+    "folders_warm": [
+     17.7518,
+     24.3175,
+     null
+    ],
+    "enrich": [
+     1515.0438,
+     3572.1943449999994,
+     null
+    ],
+    "read_content": [
+     443.2541,
+     1005.6187,
+     null
+    ],
+    "read_list": [
+     27.0799,
+     663.5929,
+     null
+    ],
+    "send": [
+     415.6013,
+     841.9334,
+     null
+    ],
+    "search": [
+     284.0802,
+     1186.6859549999951,
+     null
+    ]
+   },
+   "reqs": 2000,
+   "rate": 10.942988243733247,
+   "failed": 0,
+   "dropped": 40,
+   "iterations": 1631,
+   "short_circuited": 0,
+   "p95": 858.3685949999999,
+   "p50": 25.5561
+  },
+  "cda_documents": 243.53844292522146,
+  "mails_processed": 242.5050653042758,
+  "enrich_messages": 242.44678217661442,
+  "ai_calls": {
+   "classement-auto": 248.0106290269583,
+   "embedding-document": 492.9211251910796,
+   "embedding-recherche": 140.7563352528303
+  },
+  "locks": {
+   "distributed_fetch": {
+    "p95": 0.004750000000000001,
+    "mean": 0.0006354655202554321
+   },
+   "in_process_fetch": {
+    "p95": 0.004891526059540629,
+    "mean": 0.0011826124522395613
+   },
+   "smtp_session": {
+    "p95": 0.00475,
+    "mean": 1.0093142200952592e-06
+   },
+   "imap_session": {
+    "p95": 0.33599883167128114,
+    "mean": 0.04026975497785913
+   }
+  },
+  "imap_sessions_max": 26.0,
+  "threadpool_queue_max": 0.0,
+  "pg_practitioner_max": 12,
+  "pg_total_max": 34
+ },
+ "n2-shared-r": {
+  "rc": 99,
+  "window": [
+   "2026-10-30T11:12:40Z",
+   "2026-10-30T11:15:46Z"
+  ],
+  "k6": {
+   "ops": {
+    "read_list": [
+     30.8642,
+     493.1023,
+     null
+    ],
+    "folders_warm": [
+     20.7673,
+     28.3234,
+     null
+    ],
+    "send": [
+     450.4928,
+     874.883005,
+     null
+    ],
+    "search": [
+     306.81010000000003,
+     739.0847249999999,
+     null
+    ],
+    "read_content": [
+     444.6558,
+     1066.5716,
+     null
+    ],
+    "enrich": [
+     911.4774,
+     2170.795135,
+     null
+    ]
+   },
+   "reqs": 2035,
+   "rate": 11.22746010006471,
+   "failed": 0,
+   "dropped": 4,
+   "iterations": 1666,
+   "short_circuited": 23,
+   "p95": 855.8121099999998,
+   "p50": 29.6895
+  },
+  "cda_documents": 124.46247696329843,
+  "mails_processed": 124.46247696329843,
+  "enrich_messages": 246.86772290241015,
+  "ai_calls": {
+   "classement-auto": 124.46247696329844,
+   "embedding-document": 246.86772290241012,
+   "embedding-recherche": 181.0363301284341
+  },
+  "locks": {
+   "smtp_session": {
+    "p95": 0.004776536312849162,
+    "mean": 0.00041437388888888974
+   },
+   "imap_session": {
+    "p95": 0.1932908966965745,
+    "mean": 0.02076128058659217
+   },
+   "distributed_fetch": {
+    "p95": 2.4250000000000007,
+    "mean": 0.6258956319999998,
+    "timeouts": 0.0
+   },
+   "in_process_fetch": {
+    "p95": 2.1250000000000027,
+    "mean": 0.20451646799999992
+   }
+  },
+  "imap_sessions_max": 105.0,
+  "threadpool_queue_max": 0.0,
+  "pg_practitioner_max": 2,
+  "pg_total_max": 26
+ },
+ "n5-ref": {
+  "rc": 99,
+  "window": [
+   "2026-10-30T10:57:00Z",
+   "2026-10-30T11:00:10Z"
+  ],
+  "k6": {
+   "ops": {
+    "search": [
+     288.2941,
+     504.19197499999996,
+     null
+    ],
+    "send": [
+     419.0845,
+     864.3862,
+     null
+    ],
+    "enrich": [
+     1560.03825,
+     3023.626985,
+     null
+    ],
+    "folders_warm": [
+     17.9638,
+     25.3291,
+     null
+    ],
+    "read_list": [
+     329.3904,
+     958.0107999999998,
+     null
+    ],
+    "read_content": [
+     438.0931,
+     832.3470049999994,
+     null
+    ]
+   },
+   "reqs": 5049,
+   "rate": 27.290613275029067,
+   "failed": 0,
+   "dropped": 125,
+   "iterations": 4138,
+   "short_circuited": 0,
+   "p95": 879.3760199999997,
+   "p50": 51.0821
+  },
+  "cda_documents": 594.6023202793607,
+  "mails_processed": 593.5788346751525,
+  "enrich_messages": 598.4957707986581,
+  "ai_calls": {
+   "classement-auto": 613.9820456765431,
+   "embedding-document": 1219.7776640773989,
+   "embedding-recherche": 424.07788996710633
+  },
+  "locks": {
+   "imap_session": {
+    "p95": 0.24670266894640888,
+    "mean": 0.0273705554342948
+   },
+   "distributed_fetch": {
+    "p95": 0.004854917383883202,
+    "mean": 0.0033479913187802355
+   },
+   "in_process_fetch": {
+    "p95": 0.00476873635663618,
+    "mean": 0.0002051664051480327
+   },
+   "smtp_session": {
+    "p95": 0.004785381750465549,
+    "mean": 0.0005363589336178796
+   }
+  },
+  "imap_sessions_max": 70.0,
+  "threadpool_queue_max": 0.0,
+  "pg_practitioner_max": 10,
+  "pg_total_max": 33
+ },
+ "n5-shared": {
+  "rc": 99,
+  "window": [
+   "2026-10-30T11:00:50Z",
+   "2026-10-30T11:04:00Z"
+  ],
+  "k6": {
+   "ops": {
+    "folders_warm": [
+     21.033749999999998,
+     27.12884499999997,
+     null
+    ],
+    "read_content": [
+     1014.1719,
+     1130.1494500000001,
+     null
+    ],
+    "send": [
+     864.1685,
+     949.7317,
+     null
+    ],
+    "read_list": [
+     31.6463,
+     47.230795,
+     null
+    ],
+    "search": [
+     303.76120000000003,
+     557.466589999998,
+     null
+    ],
+    "enrich": [
+     19.30675,
+     3310.534745,
+     null
+    ]
+   },
+   "reqs": 4996,
+   "rate": 27.088170102499944,
+   "failed": 0,
+   "dropped": 145,
+   "iterations": 4117,
+   "short_circuited": 96,
+   "p95": 1079.59475,
+   "p50": 30.14845
+  },
+  "cda_documents": 122.79755149124603,
+  "mails_processed": 122.79755149124603,
+  "enrich_messages": 613.9877574562302,
+  "ai_calls": {
+   "classement-auto": 122.79755149124601,
+   "embedding-document": 243.5484771243046,
+   "embedding-recherche": 437.9779336521108
+  },
+  "locks": {
+   "imap_session": {
+    "p95": 0.4391585350814655,
+    "mean": 0.05646872699836648
+   },
+   "distributed_fetch": {
+    "p95": 6.334184067726017,
+    "mean": 1.0095316184310266,
+    "timeouts": 3.072448071035171
+   },
+   "in_process_fetch": {
+    "p95": 11.000000000000043,
+    "mean": 2.8268867654929775
+   },
+   "smtp_session": {
+    "p95": 0.00475,
+    "mean": 1.0933456561931762e-06
+   }
+  },
+  "imap_sessions_max": 73.0,
+  "threadpool_queue_max": 1.0,
+  "pg_practitioner_max": 10,
+  "pg_total_max": 35
+ },
+ "n10-ref": {
+  "rc": 99,
+  "window": [
+   "2026-10-30T11:04:41Z",
+   "2026-10-30T11:07:55Z"
+  ],
+  "k6": {
+   "ops": {
+    "read_content": [
+     448.4011,
+     1025.5625,
+     null
+    ],
+    "search": [
+     296.5342,
+     7351.496709999978,
+     null
+    ],
+    "send": [
+     423.9713,
+     866.0188,
+     null
+    ],
+    "folders_warm": [
+     22.0951,
+     43.117,
+     null
+    ],
+    "read_list": [
+     36.5827,
+     862.6091,
+     null
+    ],
+    "enrich": [
+     1700.02025,
+     2861.9122449999995,
+     null
+    ]
+   },
+   "reqs": 9757,
+   "rate": 51.73337706317468,
+   "failed": 0,
+   "dropped": 221,
+   "iterations": 8122,
+   "short_circuited": 0,
+   "p95": 998.9962399999997,
+   "p50": 37.4544
+  },
+  "cda_documents": 1224.9284058366288,
+  "mails_processed": 1221.8737215327967,
+  "enrich_messages": 1221.8737215327967,
+  "ai_calls": {
+   "classement-auto": 1221.8737215327967,
+   "embedding-document": 2426.4375653438788,
+   "embedding-recherche": 874.6579389972271
+  },
+  "locks": {
+   "imap_session": {
+    "p95": 0.22258777940125318,
+    "mean": 0.024103029700025033
+   },
+   "distributed_fetch": {
+    "p95": 0.004986187845303866,
+    "mean": 0.00480060421052632,
+    "timeouts": 0.0
+   },
+   "in_process_fetch": {
+    "p95": 0.004766725352112675,
+    "mean": 0.000317292631579018
+   },
+   "smtp_session": {
+    "p95": 0.004780959031657355,
+    "mean": 0.0004985564292321924
+   }
+  },
+  "imap_sessions_max": 149.0,
+  "threadpool_queue_max": 1.0,
+  "pg_practitioner_max": 20,
+  "pg_total_max": 48
+ },
+ "n10-shared": {
+  "rc": 99,
+  "window": [
+   "2026-10-30T11:08:39Z",
+   "2026-10-30T11:11:52Z"
+  ],
+  "k6": {
+   "ops": {
+    "search": [
+     306.5537,
+     1464.6725599999859,
+     null
+    ],
+    "read_content": [
+     1046.316,
+     1154.48418,
+     null
+    ],
+    "folders_warm": [
+     21.6032,
+     28.726,
+     null
+    ],
+    "send": [
+     878.6521,
+     951.5282,
+     null
+    ],
+    "read_list": [
+     32.391,
+     51.3984199999999,
+     null
+    ],
+    "enrich": [
+     20.74115,
+     2042.9967599999993,
+     null
+    ]
+   },
+   "reqs": 9613,
+   "rate": 51.31558797275786,
+   "failed": 0,
+   "dropped": 274,
+   "iterations": 8070,
+   "short_circuited": 210,
+   "p95": 1093.9724,
+   "p50": 30.4404
+  },
+  "cda_documents": 124.47148458758356,
+  "mails_processed": 124.47148458758356,
+  "enrich_messages": 1244.7148458758356,
+  "ai_calls": {
+   "classement-auto": 124.47148458758356,
+   "embedding-document": 246.86844443204072,
+   "embedding-recherche": 932.4988720353135
+  },
+  "locks": {
+   "imap_session": {
+    "p95": 0.5433099502959978,
+    "mean": 0.0631806936008102
+   },
+   "distributed_fetch": {
+    "p95": 7.037410374579526,
+    "mean": 1.8319226171487974,
+    "timeouts": 9.332607554580207
+   },
+   "in_process_fetch": {
+    "p95": 26.789473684210524,
+    "mean": 7.112016212026809
+   },
+   "smtp_session": {
+    "p95": 0.004749999999999999,
+    "mean": 1.183996299721568e-06
+   }
+  },
+  "imap_sessions_max": 161.0,
+  "threadpool_queue_max": 1.0,
+  "pg_practitioner_max": 20,
+  "pg_total_max": 47
+ }
+}

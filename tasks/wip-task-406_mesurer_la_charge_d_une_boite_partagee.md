@@ -39,17 +39,17 @@ changer. US de **mesure** : elle produit un verdict chiffré, pas une optimisati
 
 ## Definition of Done
 
-- [ ] Build passes (0 errors) sur `api-mail`
-- [ ] Tests pass (0 failures) sur `api-mail`
-- [ ] `LoadTestRegistryProvisioner` provisionne N identités PSC rattachées à **une** boîte (une
+- [x] Build passes (0 errors) sur `api-mail`
+- [x] Tests pass (0 failures) sur `api-mail`
+- [x] `LoadTestRegistryProvisioner` provisionne N identités PSC rattachées à **une** boîte (une
       titulaire, N−1 délégataires)
-- [ ] Unit tests du provisionnement partagé (rôles, une seule base au registre)
-- [ ] Profil k6 « boîte partagée » et profil de référence, paramétrés par N
-- [ ] Tirs réalisés pour N = 2, 5, 10 ; mesures consignées dans `metrics/` et dans le rapport
-- [ ] Enrichissements CDA et appels IA comptés : 1 par message quel que soit N
-- [ ] Rapport `Docs/audits/boite-partagee-charge-{date}.md` : tableaux comparatifs, verdict sur les
+- [x] Unit tests du provisionnement partagé (rôles, une seule base au registre)
+- [x] Profil k6 « boîte partagée » et profil de référence, paramétrés par N
+- [x] Tirs réalisés pour N = 2, 5, 10 ; mesures consignées dans `metrics/` et dans le rapport
+- [x] Enrichissements CDA et appels IA comptés : 1 par message quel que soit N
+- [x] Rapport `Docs/audits/boite-partagee-charge-{date}.md` : tableaux comparatifs, verdict sur les
       bornes, tasks de suite proposées s'il y a lieu
-- [ ] Aucune donnée de santé réelle sur le banc (données synthétiques)
+- [x] Aucune donnée de santé réelle sur le banc (données synthétiques)
 
 ## Manual Test Plan
 
@@ -76,6 +76,54 @@ changer. US de **mesure** : elle produit un verdict chiffré, pas une optimisati
 
 - `api-mail` (pushed) : feat/task-406-mesurer-la-charge-d-une-boite-partagee — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-406-mesurer-la-charge-d-une-boite-partagee
 
+## Develop log
+
+**Repo** : `api-mail` (code de test et harnais seulement : aucun comportement produit ne change).
+
+| Commit | Contenu |
+|---|---|
+| `2f936031` | `LoadTestRegistryProvisioner.ProvisionSharedBoxesAsync` ; seed `--shared-box N` (délégations et réglages de chaque délégataire dans la boîte partagée) ; k6 `SHARED_BOX=N` (boîte de la première personne du groupe, nom PSC envoyé, From = boîte ouverte) |
+| `5ab830ef` | Outillage aligné sur le nommage des bases de task-404, voir ci-dessous ; identifiant de session étiqueté par la boîte ouverte (garde task-365) |
+
+**Tests** :
+- `LoadTestRegistryProvisionerTests` : 5 tests de la boîte partagée (délégations sur la base de la
+  titulaire, plusieurs groupes, idempotence, groupe < 2 refusé, domaine hors banc refusé). Rouges
+  avant l'implémentation (méthode absente).
+- `SeedOptionsTests` : `--shared-box`.
+- **Intégration** : `LoadTestBenchProvisioningIntegrationTests.ASharedBenchBox_HasOneDatabase_AndEachDelegateReachesItUnderItsOwnIdentity`,
+  sur un vrai registre PostgreSQL. Une seule base pour la boîte, rôle `Delegate`, et chaque délégataire
+  atteint la route de messagerie de la boîte avec son propre tenant.
+- Harnais JS : `node --test lib/*.test.mjs` passe 127/127, dont `shared-box.test.mjs`.
+
+**Campagne** (2026-10-30, détail dans `Docs/audits/boite-partagee-charge-2026-10-30.md`) :
+- Tirs `mixed` de 3 min, N = 2, 5, 10, référence contre boîte partagée, banc mail sur le cluster,
+  tireur local, IA tout-OpenAI. Les données brutes sont dans
+  `Docs/audits/boite-partagee-charge-2026-10-30.json`.
+- **Verdict** :
+  - les bornes du pool Postgres tiennent (attente de connexion ≈ 0,1 ms, 0 pool épuisé) ;
+  - CDA et IA comptent 1 par message quel que soit N (~124 contre N × ~122) ;
+  - le coût du partage est dans les sessions et les verrous de la boîte. À 5 et 10 personnes,
+    l'ouverture et l'envoi doublent, et l'attente des verrous de récupération atteint 520 s cumulées à
+    N = 10.
+- **Tasks de suite proposées** (non créées) :
+  - `MaxSessionsPerMailbox` par personne : déjà dans task-411, désormais mesuré ;
+  - lecture concurrente d'un même message.
+
+**Outillage corrigé (règle d'or)** :
+- `reset-state.sh`, `verify.sh`, `pg-statements.sh` et `pg-connections.sh` filtraient `u_9…`. Depuis
+  task-404, le nom de base ne porte plus le RPPS : aucune base n'était trouvée, sans erreur.
+- Les noms sont désormais recalculés depuis les identités du banc, et `reset-state.sh --users N` borne
+  la purge.
+- Le correctif est documenté dans le README du harnais (§ 2, état persistant).
+
+**État du banc après la campagne** :
+- AppHost arrêté, conteneurs du banc arrêtés, aucune archive CDA dans `%TEMP%`.
+- Le registre `mss_registry_loadtest` est recréé : comptes 1..10 et délégations des groupes 2, 5 et 10.
+- Les bases des boîtes 1..10 restent, purgées par le dernier tir.
+- Le maildir du cluster n'a pas été touché.
+
+**Passe qualité §Q** : diff de test et de harnais seulement, aucun nettoyage nécessaire.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-406 --sync` — ne pas éditer à la main)*
@@ -83,4 +131,5 @@ changer. US de **mesure** : elle produit un verdict chiffré, pas une optimisati
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 21 s | — | — | — | — |
-| **Total cycle** | | **21 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 47 min 41 s | 1 (21 s) | — | — | api-mail 1B/0T |
+| **Total cycle** | | **48 min 02 s** | **1 (21 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
