@@ -2,11 +2,29 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E020-boite-partagee-une-base-par-boite-tout.md](E020-boite-partagee-une-base-par-boite-tout.md).
-> **Dernière mise à jour** : 2026-10-30 (v1.7)
+> **Dernière mise à jour** : 2026-10-30 (v1.8)
 
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.8 — Le cache patient par INS est cloisonné par boîte (audit C1) — task-410
+
+- **Task** : task-410, statut `done`. `/review` APPROVED le 2026-10-30. PR `api-mail` #330
+  (`awaiting-human-merge`). Sonar et e2e : bypass humain (`/start --no-sonar --no-e2e`), annoncé en
+  tête de PR.
+- **Défaut corrigé** (audit du 2026-10-30, finding critique C1) : la clé `patient:ins:{condensat}` ne
+  nommait pas la boîte. Deux boîtes (deux bases) connaissant le même INS partageaient une entrée
+  Redis. La seconde recevait, pendant le TTL de 5 min, la fiche de l'autre cabinet.
+- **Livré** :
+  - `RedisKeys.Patient.ByIns(adresse, ins)` → `patient:{adresse normalisée}:ins:{SHA-256}` ;
+  - `PatientRepository` : pas de boîte connue → pas de cache ; invalidation de l'opposition sur la clé
+    de la boîte.
+- **Preuve** : `PatientCacheAcrossMailboxesEndToEndTests` (3), deux bases et le **vrai** cache sur Redis,
+  vus rouges par mutation : clé sans la boîte, invalidation retirée.
+- **Revue des clés Redis** : `patient:ins` était la seule clé de données de boîte sans la boîte (table
+  dans le task file).
+- **Prévention** : `conventions/csharp.md` § `cle-de-cache-de-boite`.
 
 ### v1.7 — Charge d'une boîte partagée mesurée — task-406
 
@@ -420,3 +438,4 @@
 | task-407 | archivée (mergée le 2026-10-30) | Le délégataire écrit pour le compte de la boîte (`Sender`, ECO.1.2.9 à 1.2.11) | RG-E020-08, RG-E020-06 |
 | task-408 | archivée (mergée le 2026-10-29) | Source de l'annuaire FHIR ou LDAP choisie dans appsettings ; attente visible au rattachement | RG-E020-03 |
 | task-409 | archivée (mergée le 2026-10-29) | Rattachement : identité du praticien préremplie, accueil en un geste | RG-E020-03, RG-E020-06 |
+| task-410 | done (PR #330 en attente de merge) | Correctif d'audit C1 : le cache patient par INS nomme la boîte | RG-E020-01 |

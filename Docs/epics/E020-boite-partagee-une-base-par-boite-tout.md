@@ -2,7 +2,7 @@
 
 > **Statut** : 🟢 Livrée — 6 fonctionnalités sur 6, en attente de recette ; correctifs d'audit en cours (task-410 à 415)
 > **Modèle** : task-driven
-> **Version** : 1.7
+> **Version** : 1.8
 > **Auteur** : PO forge
 > **Audience** : PO, direction, équipe produit — la vue ingénierie vit dans [E020-Changelogs.md](E020-Changelogs.md)
 > **Dernière mise à jour** : 2026-10-30
@@ -78,7 +78,7 @@ titulaire, le journal dit que c'est le délégataire qui l'a supprimé.
 |---|---|---|---|---|
 | E020-F001 | Rattachement guidé par l'Annuaire Santé | Choisir ses boîtes dans la liste « Mes boîtes » publiée pour lui, ou ajouter une boîte qui lui est déléguée ; voir son rôle sur chaque boîte ; avec une carte de test, retrouver sa boîte de test ; trouver, dès le rattachement, son nom d'expéditeur et sa signature préremplis | task-402, task-408, task-409 | 🟢 Livrée, en attente de recette |
 | E020-F002 | Accès ouvert par l'opérateur | Ne lire une boîte que si l'opérateur lui en a ouvert l'accès récemment ; le titulaire seul garde la lecture hors ligne | task-403 | 🟢 Livrée, en attente de recette |
-| E020-F003 | Une base par boîte | Travailler à plusieurs dans la même boîte : rattachements patient, étiquettes, acquittements et classements partagés ; réglages et signatures restent personnels | task-404 | 🟢 Livrée, en attente de recette |
+| E020-F003 | Une base par boîte | Travailler à plusieurs dans la même boîte : rattachements patient, étiquettes, acquittements et classements partagés ; réglages et signatures restent personnels | task-404, task-410 | 🟢 Livrée, en attente de recette |
 | E020-F004 | Tout acte imputé à son auteur | Lire, dans le journal de la boîte, qui a fait quoi, quand et sur quel objet | task-405 | 🟢 Livrée, en attente de recette |
 | E020-F005 | Tenue en charge d'une boîte partagée | Garder une messagerie réactive quand plusieurs personnes travaillent dans la même boîte | task-406 | 🟢 Mesurée — verdict rendu, deux suites proposées |
 | E020-F006 | Écrire pour le compte de la boîte | Le délégataire écrit depuis la boîte du titulaire : le destinataire voit qui a écrit et pour quelle boîte, et sa réponse revient à la boîte ; le médecin qui reçoit un tel message le lit dans l'écran | task-407 | 🟢 Livrée, en attente de recette |
@@ -190,7 +190,7 @@ graph LR
 |---|---|---|---|
 | E020-F001 — Rattachement guidé par l'Annuaire Santé | 🟢 Livrée, en attente de recette | 100 % | task-402, task-408, task-409 |
 | E020-F002 — Accès ouvert par l'opérateur | 🟢 Livrée, en attente de recette | 100 % | task-403 |
-| E020-F003 — Une base par boîte | 🟢 Livrée, en attente de recette | 100 % | task-404 |
+| E020-F003 — Une base par boîte | 🟢 Livrée, en attente de recette | 100 % | task-404, task-410 |
 | E020-F004 — Tout acte imputé à son auteur | 🟢 Livrée, en attente de recette | 100 % | task-405 |
 | E020-F005 — Tenue en charge d'une boîte partagée | 🟢 Mesurée, en attente de recette | 100 % | task-406 |
 | E020-F006 — Écrire pour le compte de la boîte | 🟢 Livrée, en attente de recette | 100 % | task-407 |
@@ -240,6 +240,10 @@ graph LR
   n'est analysé et classé qu'une fois, et la base ne sature pas. En revanche, ouvrir un message
   et envoyer prennent environ deux fois plus de temps dès 5 personnes : les sessions de messagerie
   sont comptées par boîte et non par personne. La correction est prévue (task-411) (task-406).
+- v1.8 — Deux cabinets ne voient jamais la fiche patient l'un de l'autre. Quand deux boîtes
+  connaissent le même patient (même INS), chacune ouvre sa propre fiche. Avant ce correctif, la
+  seconde à le chercher pouvait, pendant quelques minutes, voir la fiche saisie par l'autre cabinet.
+  Une opposition enregistrée est visible aussitôt (task-410).
 
 ### Conformité réglementaire
 

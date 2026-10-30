@@ -202,7 +202,8 @@ crée ni ne modifie de parcours médecin : aucun scénario n'est attendu au cata
 | /lint-mobile | skipped | 0.5 s | — | — | — | mobile non touché |
 | /e2e | skipped | 0.5 s | — | — | — | bypass humain (--no-e2e) |
 | /review | ok | 7 min 47 s | 2 (12 s) | 1 (5 min 23 s) | — | api-mail 2B/1T |
-| **Total cycle** | | **22 min 23 s** | **4 (36 s)** | **3 (11 min 06 s)** | **0 (0.0 s)** | |
+| /tech-writer | ok | 29 s | — | — | — | — |
+| **Total cycle** | | **22 min 53 s** | **4 (36 s)** | **3 (11 min 06 s)** | **0 (0.0 s)** | |
 
 ## PRs
 
