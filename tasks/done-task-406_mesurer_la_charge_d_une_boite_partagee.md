@@ -254,6 +254,27 @@ Signaux pour l'humain, déjà relevés en task-407 :
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
 
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/329 — `awaiting-human-merge`
+
+## Code Review Summary
+
+**APPROVED**. 0 point bloquant.
+
+- **Règle 1b** : aucun comportement produit atteignable par un endpoint ne change. Le diff ne touche
+  que le code de test partagé, le seed et le harnais k6. Le provisionnement partagé est prouvé de bout
+  en bout sur un vrai registre par `ASharedBenchBox_HasOneDatabase_AndEachDelegateReachesItUnderItsOwnIdentity` :
+  une base, rôle Delegate, chaque délégataire atteint la route de la boîte avec son tenant.
+- ✅ `ProvisionSharedBoxesAsync` passe par le contrat du registre, jamais par du SQL. Le nom de base est
+  celui de la titulaire. Il est idempotent et refuse un domaine hors banc.
+- ✅ Les scripts de banc recalculent les noms de base depuis les identités. C'est un correctif réel :
+  depuis task-404, purge et vérification ne voyaient plus rien, sans erreur.
+- ⚠️ `ProvisionSharedBoxesAsync` ne revérifie pas seule que le registre est un registre de banc. Elle
+  compte sur `ProvisionAsync`, toujours appelée avant elle par le seed.
+- ⚠️ Le message final du seed annonce N utilisateurs même quand il a aussi écrit les réglages des
+  délégataires.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-406 --sync` — ne pas éditer à la main)*
@@ -266,4 +287,5 @@ Signaux pour l'humain, déjà relevés en task-407 :
 | /lint-angular | skipped | 0.5 s | — | — | — | client-angular non touché |
 | /lint-mobile | skipped | 0.6 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 19 min 41 s | — | — | — | e2e ×5 (38 min 00 s) |
-| **Total cycle** | | **1 h 18 min** | **2 (1 min 14 s)** | **5 (8 min 27 s)** | **2 (55 s)** | |
+| /review | ok | 6 min 16 s | 1 (11 s) | 1 (5 min 06 s) | — | api-mail 1B/1T |
+| **Total cycle** | | **1 h 25 min** | **3 (1 min 26 s)** | **6 (13 min 34 s)** | **2 (55 s)** | |
