@@ -326,6 +326,29 @@ Démontage vérifié après chaque voie : aucun port e2e à l'écoute.
 | /lint-angular | ok | 0.5 s | — | — | — | e2e specs seuls : 0 erreur, 6 warnings préexistants |
 | /lint-mobile | ok | 23 s | — | — | — | — |
 | /e2e | ok | 31 min 34 s | — | — | — | e2e ×5 (29 min 22 s) |
-| **Total cycle** | | **1 h 05 min** | **1 (9.2 s)** | **3 (56 s)** | **0 (0.0 s)** | |
+| /review | ok | 6 min 34 s | 2 (17 s) | 2 (5 min 23 s) | — | client-mobile 1B/1T, api-mail 1B/1T |
+| **Total cycle** | | **1 h 12 min** | **3 (26 s)** | **5 (6 min 19 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×1 (15 s)
+
+## PRs
+
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/119 — label `awaiting-human-merge`
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/332 — label `awaiting-human-merge` (catalogue e2e seulement)
+- `client-angular` : code-only — l'humain gère le commit, le push TFS et l'ouverture de la PR. Fichiers modifiés, non commités, sur `feature/nova-mss-weda-integration` :
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts` (E2E-SESSION-004)
+  - `front/e2e/mss-e2e/specs/live-ai.e2e.ts` (E2E-AI-002)
+
+## Code Review Summary
+
+**APPROVED** — 0 bloquant, 2 suggestions :
+- la rédaction fermée à la déconnexion n'enregistre pas ce qui a été tapé depuis le dernier enregistrement automatique ;
+- les replis « adresse du compte » de la rédaction et de « Répondre à tous » sont devenus inatteignables.
+
+- **Règle 1b** : sans objet. Aucun comportement atteignable par un endpoint ne change, api-mail ne porte que le catalogue.
+- **Preuves** :
+  - tests unitaires mobile vus rouges (7 échecs attendus), puis 1389/1389 ;
+  - E2E-SESSION-004 et E2E-AI-002 vus rouges sur le mobile sans correctif ;
+  - E2E-AI-002 vu rouge sur weda2 sous mutation.
+- **Validation** : build et tests mobile verts, api-mail 7 248 tests 0 échec. E2E vert (mobile 56/56, Angular 67/67).
+- **Sonar** : non rejoué, seul le catalogue YAML change sur api-mail.
