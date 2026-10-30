@@ -63,3 +63,16 @@ claim `rpps` du jeton (task-304), celui que l'onboarding affiche.
   PSC
 - **Hébergement HDS** : non — logique cliente
 - **AIPD / impact RGPD** : aucun changement de traitement
+
+## Branches
+
+- `client-angular` (code-only) : la forge écrit sur la branche checkoutée dans `Client/Angular/` (`feature/nova-mss-weda-integration` au /start, qui porte aussi le code non commité de task-412 et task-417) — l'humain gère branche, commit, push et PR TFS
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-418 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 8.7 s | — | — | — | — |
+| **Total cycle** | | **8.7 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
