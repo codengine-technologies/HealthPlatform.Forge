@@ -416,7 +416,7 @@
 | task-403 | archivée (mergée le 2026-10-29) | Accès à la base subordonné au verdict de l'opérateur ; hors-ligne du titulaire seul | RG-E020-04, RG-E020-05 ; RG-E020-06 (partiel) |
 | task-404 | archivée (mergée le 2026-10-29) | Une base par boîte ; données de la personne séparées ; identité d'expéditeur de la boîte | RG-E020-01, RG-E020-02 |
 | task-405 | archivée (mergée le 2026-10-29) | Tout acte imputé à son auteur réel ; journal lisible de toute la boîte | RG-E020-06, RG-E020-07 |
-| task-406 | done (PR en attente de merge) | Mesure de charge d'une boîte partagée : bornes du pool gardées, 1 traitement par message, sessions par boîte à corriger | RG-E020-01 |
+| task-406 | archivée (mergée le 2026-10-30) | Mesure de charge d'une boîte partagée : bornes du pool gardées, 1 traitement par message, sessions par boîte à corriger | RG-E020-01 |
 | task-407 | archivée (mergée le 2026-10-30) | Le délégataire écrit pour le compte de la boîte (`Sender`, ECO.1.2.9 à 1.2.11) | RG-E020-08, RG-E020-06 |
 | task-408 | archivée (mergée le 2026-10-29) | Source de l'annuaire FHIR ou LDAP choisie dans appsettings ; attente visible au rattachement | RG-E020-03 |
 | task-409 | archivée (mergée le 2026-10-29) | Rattachement : identité du praticien préremplie, accueil en un geste | RG-E020-03, RG-E020-06 |

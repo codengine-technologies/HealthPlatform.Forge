@@ -290,3 +290,14 @@ Signaux pour l'humain, déjà relevés en task-407 :
 | /review | ok | 6 min 16 s | 1 (11 s) | 1 (5 min 06 s) | — | api-mail 1B/1T |
 | /tech-writer | ok | 0.5 s | — | — | — | — |
 | **Total cycle** | | **1 h 25 min** | **3 (1 min 26 s)** | **6 (13 min 34 s)** | **2 (55 s)** | |
+
+## Merged
+
+Mergé le 2026-10-30 par `/merge task-406 --i-tested` (HAG, test humain attesté) :
+
+| Repo | PR | Squash | CI `develop` |
+|---|---|---|---|
+| `api-mail` | #329 | `9fc9d49e` | ✅ |
+
+Branche `feat/task-406-…` supprimée en distant et en local. `client-angular` n'est pas concerné. Pas de
+branche staging, le cycle a été lancé par `/start`.
