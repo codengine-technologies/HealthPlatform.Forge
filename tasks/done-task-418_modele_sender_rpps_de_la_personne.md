@@ -214,6 +214,35 @@ et non celui d'`origin/develop`.
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
 
+## PRs
+
+- **Aucune PR GitHub.** La task ne touche aucun dépôt poussable : pas d'agrégation sur la branche staging.
+- `client-angular` (code-only) : l'humain gère le commit, le push TFS et l'ouverture de la PR.
+  - Fichiers de task-418, non commités sur `feature/nova-mss-weda-integration` :
+    - `front/libs/mss/src/features/mail/components/mail-compose/mail-compose.component.ts`
+    - `front/libs/mss/src/features/mail/components/mail-compose/mail-compose.component.spec.ts`
+  - La même copie de travail porte aussi le code non commité de task-412 et task-417 (cf. leurs `## PRs`).
+
+## Code Review Summary
+
+**Verdict : APPROVED** (2 fichiers relus, 0 suggestion bloquante).
+
+- **Validation** :
+  - tests affectés verts (12 projets), dont `mss-lib` 1411/1411 au `/develop` ;
+  - build sans erreur TypeScript. `mss:build:production` et `prescription:build:production` sont rouges
+    sur le budget de bundle initial (+1,02 Mo, +264 ko), préexistant et inchangé ;
+  - lint MSS à 0 erreur ;
+  - E2E vert : Angular 67, porte sur le catalogue de staging, parité verte.
+- ✅ `{{SenderRPPS}}` lit `MSS_PRACTITIONER_IDENTITY().rpps`, la claim `rpps` du jeton fournie par
+  `apps/weda2/src/app/app.config.ts` (vide si absente). L'injection optionnelle couvre les hôtes sans
+  identité : la variable reste vide.
+- ✅ Tests : RPPS de la personne sur la boîte de Virginie, RPPS vide, aucune identité. Tous trois vus
+  rouges sur le code d'avant (`RPPS : virginie.medecinrpps0062267`).
+- **Règle 1b** : non applicable, aucun endpoint touché. Aucun parcours e2e créé ni modifié.
+- ⚠️ **Suggestion** : `{{SenderEmail}}` reste l'adresse de la boîte ouverte. C'est cohérent avec
+  « écrit pour le compte de la boîte », mais à confirmer côté produit si un modèle doit citer l'adresse
+  personnelle du délégataire.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-418 --sync` — ne pas éditer à la main)*
@@ -225,6 +254,7 @@ et non celui d'`origin/develop`.
 | /lint-angular | ok | 3 min 19 s | 1 (21 s) | 1 (1 min 29 s) | — | 1 itération(s), client-angular 1B/1T |
 | /lint-mobile | skipped | 0.6 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 10 min 53 s | — | — | — | e2e ×3 (19 min 52 s) |
-| **Total cycle** | | **16 min 48 s** | **2 (43 s)** | **2 (1 min 53 s)** | **0 (0.0 s)** | |
+| /review | ok | 1 min 57 s | 1 (9.7 s) | 1 (1 min 27 s) | — | client-angular 1B/1T |
+| **Total cycle** | | **18 min 46 s** | **3 (53 s)** | **3 (3 min 20 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×3 (1 min 00 s)
