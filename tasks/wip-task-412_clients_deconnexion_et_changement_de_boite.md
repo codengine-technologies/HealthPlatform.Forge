@@ -111,3 +111,9 @@ qu'il a ouverte.
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : non — logique cliente. Aucune donnée persistée sur l'appareil.
 - **AIPD / impact RGPD** : inchangé — corrige une exposition de données de santé sur poste partagé
+
+## Branches
+
+- `api-mail` (pushed) : fix/task-412-clients-deconnexion-et-changement-de — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-412-clients-deconnexion-et-changement-de
+- `client-mobile` (pushed) : fix/task-412-clients-deconnexion-et-changement-de
+- `client-angular` (code-only) : la forge écrit sur la branche checkoutée dans `Client/Angular/` (`feature/nova-mss-weda-integration` au /start) — l'humain gère branche, commit, push et PR TFS
