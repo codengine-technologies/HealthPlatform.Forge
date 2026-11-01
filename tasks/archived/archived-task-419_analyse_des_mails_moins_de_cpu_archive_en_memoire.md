@@ -460,3 +460,7 @@ Autres commandes mesurées : nuget-wait ×1 (35 s)
 - api-mail : PR #334 squash `f2732115` — CI develop ✅ https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/41312638562
 - Branches `feat/task-419-…` supprimées (distantes et locales). Pas de branche staging (cycle hors `/forge`).
 - Reste : tir de contrôle 16 médecins × 8 min (crédit OpenAI à recharger), mesure du pic mémoire d'un lot ; branches `lab/*` locales à supprimer.
+
+## Tir de contrôle
+
+- 2026-11-01, C1 sur `develop` (vectorisation coupée, crédit OpenAI épuisé) : CPU API 50,6 ms/mail contre 51,7 pour D0 (−2,1 

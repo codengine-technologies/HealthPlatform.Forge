@@ -152,3 +152,36 @@ Sources :
 - journal détaillé, oracle et pilotes : scratchpad de la session (`labo/`) ;
 - fichiers bruts : `Api/Mail/tests/loadtest-k6/reports/2026-10-31/` (k6, observe, pg_stat_statements) ;
 - Prometheus du banc.
+
+## Tir de contrôle après merge — C1, `develop` @ `b2b0b5e7` (2026-11-01)
+
+Le code de production (task-419, PR interop-cda #13 et api-mail #334, mergées) est comparé à l'état final du
+laboratoire. **Crédit OpenAI toujours épuisé** (`credit_balance_exhausted`) : le tir est fait **vectorisation
+coupée**, et sa référence est donc **D0** (état final du laboratoire, Debug, vectorisation coupée). Même protocole
+(16 médecins, 8 min, fenêtre [t+75 s, t+435 s], AppHost redémarrée à froid, Debug), étiquetage coupé.
+
+| Indicateur | D0 (labo final) | C1 (develop) | Écart |
+|---|---|---|---|
+| CPU de l'API par mail | 51,7 ms | 50,6 ms | −2,1 % |
+| Débit | 57,6 mails/s | 56,6 mails/s | −1,7 % |
+| CPU du poste par mail | 225 ms | 217 ms | −3,4 % |
+| CPU de Postgres par mail | 15,4 ms | 16,0 ms | +4,0 % (bruit ±10 %) |
+| Lot de 10 mails, p50 / p95 | 2,74 s / 3,66 s | 2,78 s / 3,76 s | +1,5 % / +2,7 % |
+| Erreurs, seuils k6 en échec | 0, 0 | 0, 0 | — |
+| **Empreinte de non-régression** | — | **identique** sur 1 800 mails communs | — |
+
+**Verdict** : le code mergé reproduit l'état final du laboratoire, à l'intérieur du bruit. La finition de l'archive
+en mémoire (lot porteur des octets au lieu du registre statique) n'a rien coûté.
+
+**Pic mémoire par réplica** (`dotnet_process_memory_working_set_bytes`, maximum sur la fenêtre) :
+
+| Essai | Réplica le plus chargé | Moyenne des 5 réplicas |
+|---|---|---|
+| B0 (initial, archives sur disque) | 2 764 Mio | 2 132 Mio |
+| C1 (develop, archives en mémoire) | 2 560 Mio | 1 773 Mio |
+
+Tenir les archives en mémoire n'alourdit pas les réplicas : leur pic baisse, avec moins d'allocations du reste de
+la chaîne.
+
+**Reste à faire** : le même tir **vectorisation active**, à comparer à B0, quand le crédit OpenAI sera rechargé. Il
+chiffrera le gain final en conditions de production.
