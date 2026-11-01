@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > **Document frère (vue produit)** : [`E016-socle-multi-tenant.md`](./E016-socle-multi-tenant.md)
-> **Dernière mise à jour** : 2026-10-25 (task-378)
+> **Dernière mise à jour** : 2026-11-01 (task-395)
 
 Historique détaillé des changements de l'EPIC **E016 — Socle multi-tenant**.
 Une entrée par task ayant atteint `done-*` ou `archived-*`. Append-only : une
@@ -11,6 +11,15 @@ entrée existante n'est jamais réécrite.
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.22 — task-395 : divergence weda2 d'E2E-MAILBOX-002 retirée (`api-mail`, `client-angular`)
+
+- **Origine** : `/e2e` de task-394 (2026-10-25) — le code weda2 de task-378 introuvable dans le clone ; divergence temporaire `angular` accordée par l'humain, résorption confiée à task-395. Au `/e2e` de task-419 (2026-11-01), la porte la signale « à retirer » : le client joue le scénario à sa version.
+- **weda2** : code de task-378 retrouvé, commité sur `feature/nova-mss-weda-integration` (`85a13925`, `libs/mss/src/features/mailbox-unavailable/`) ; test `functional.e2e.ts` `scenario('E2E-MAILBOX-002', 1)`. Aucun fichier modifié par la forge.
+- **api-mail** : `e2e/scenarios.yml` — bloc `divergences.angular` d'E2E-MAILBOX-002 retiré (`7b42ed1c`). PR [HealthPlatform.Api.Mail#335](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/335), `awaiting-human-merge`.
+- **Preuve** : test weda2 vu rouge par mutation (`data-testid="mailbox-unavailable"` renommé → « la panne est dite comme une panne » en échec), restauré, vert ; banc `run.mjs --serve-only` démonté.
+- **E2E** : mobile 57/57, angular 68/68 (1 quarantaine passée, E2E-COMPOSE-002), parité verte, **aucune divergence ouverte**.
+- **Validation** : api-mail 7 263 tests ; weda2 build `weda2` + tests 12 projets verts. Sonar : skip mesuré (YAML seul, C# inchangé depuis l'analyse task-419).
 
 ### v1.21 — task-378 : une panne à l'entrée est dite comme une panne, chaque action de messagerie dit si elle a réussi (`api-mail`, `client-mobile`, `client-angular`)
 
