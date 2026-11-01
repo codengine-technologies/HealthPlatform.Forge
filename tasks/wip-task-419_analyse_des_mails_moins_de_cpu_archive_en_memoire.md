@@ -212,6 +212,8 @@ Restent aussi hors périmètre :
 | /start | ok | 20 s | — | — | — | — |
 | /develop | ok | 44 min 26 s | 10 (47 s) | 22 (15 min 48 s) | — | interop-cda 1B/4T, api-mail 9B/18T |
 | /sonar | ok | 18 min 14 s | 3 (42 s) | 15 (13 min 58 s) | 4 (1 min 22 s) | 2 itération(s), api-mail 3B/15T |
+| /lint-angular | skipped | 4.3 s | — | — | — | client-angular non touché (Repos: interop-cda, api-mail ; working tree propre) |
+| /lint-mobile | skipped | 0.7 s | — | — | — | client-mobile non touché (Repos: interop-cda, api-mail ; Client/Mobile sur develop, propre) |
 | **Total cycle** | | **1 h 03 min** | **13 (1 min 30 s)** | **37 (29 min 46 s)** | **4 (1 min 22 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (35 s)
@@ -307,3 +309,8 @@ Autres commandes mesurées : nuget-wait ×1 (35 s)
 | Coverage (projet) | 97,9 % | 97,8 % | −0,1 pt |
 | Duplication | 0,4 % | 0,4 % | 0 |
 | Reliability / Security / Maintainability | A/A/A | A/A/A | → |
+
+## Lint log
+
+- **/lint-angular** : skip — `client-angular` absent des `**Repos**`, arbre de travail `Client/Angular/front` propre.
+- **/lint-mobile** : skip — `client-mobile` absent des `**Repos**`, sur `develop`, arbre propre.
