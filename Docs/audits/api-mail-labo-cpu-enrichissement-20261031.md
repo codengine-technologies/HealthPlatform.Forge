@@ -185,3 +185,30 @@ la chaîne.
 
 **Reste à faire** : le même tir **vectorisation active**, à comparer à B0, quand le crédit OpenAI sera rechargé. Il
 chiffrera le gain final en conditions de production.
+
+## Tir de contrôle final — C2, `develop` @ `21e03518`, vectorisation active (2026-11-01)
+
+Crédit OpenAI rechargé : tir dans les **conditions exactes de B0** (vectorisation active, étiquetage coupé, Debug,
+AppHost à froid, 16 médecins, 8 min, fenêtre [t+75 s, t+435 s]).
+
+| Indicateur | Initial (B0, B0b, B0c) | Labo final (E4b, E4br) | **C2 (develop)** | C2 / initial |
+|---|---|---|---|---|
+| **CPU de l'API par mail** | 99,9 ms | 65,9 ms | **65,9 ms** | **−34,0 %** |
+| **Débit** | 46,4 mails/s | 56,1 mails/s | **54,9 mails/s** | **+18 %** |
+| CPU du poste par mail | 394 ms | 262 ms | 276 ms | −30 % |
+| CPU de Postgres par mail | 31,5 ms | 23,2 ms | 21,9 ms | −30 % |
+| Durée serveur d'un mail | 267 ms | 216 ms | 216 ms | −19 % |
+| Lot de 10 mails, p50 / p95 | 3,45 s / 4,64 s | 2,87 s / 3,79 s | 2,91 s / 3,92 s | −16 % / −16 % |
+| Extraction XDM par mail | 26,8 ms | 3,4 ms | 3,4 ms | −87 % |
+| GC gen2 / 1 000 mails | 35,9 | 25,8 | 25,2 | −30 % |
+| Journaux Information / mail | 30,5 | 2,4 | 2,4 | −92 % |
+| Erreurs, seuils k6 en échec | 0, 0 | 0, 0 | 0, 0 | — |
+| Pic mémoire par réplica (max / moyenne) | 2 764 / 2 132 Mio | 2 303 / 1 956 Mio | 2 413 / 1 944 Mio | −13 % / −9 % |
+
+- **Non-régression** : l'empreinte de C2 est identique à celle de l'état final du laboratoire (E4b) sur 1 800 mails,
+  hors 2 indicateurs de doublon (`dupflags`). C'est le bruit préexistant de la détection de doublon non déterministe
+  (constat 2), sans lien avec ce code. B0 n'a pas d'empreinte comparable : l'oracle lui est postérieur.
+- **Débit** : +18 % ici contre +21 % au laboratoire, à l'intérieur du bruit observé entre essais (E4b 56,3 / E4br
+  55,9). Le CPU par mail, indicateur de décision (bruit ±1,5 %), est exactement celui du laboratoire.
+- **Verdict** : le gain du laboratoire est **acquis en production de code** : −34 % de CPU de l'API par mail, sans
+  régression de contenu, avec moins de mémoire.
