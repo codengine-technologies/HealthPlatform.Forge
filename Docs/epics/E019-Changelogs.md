@@ -339,9 +339,14 @@
 
 ---
 
-### v1.6 — weda2 déployé vise l'api-mail de son environnement et n'accepte que l'hôte Weda exact (ANG-05, ANG-65, ANG-70) — task-369
+### v1.6 — ANNULÉE — weda2 déployé vise l'api-mail de son environnement et n'accepte que l'hôte Weda exact (ANG-05, ANG-65, ANG-70) — task-369
 
-- **Task** : task-369, statut `done` (`/review` APPROVED le 2026-10-14). Origine : audit de bugs du client Angular du
+> **Rien de cette version n'est livré.** Le travail client-angular a été annulé le 2026-10-14 (commit `50723a1`,
+> la task repassée en `todo`), puis la task a été supprimée sur décision humaine le 2026-11-01. La description
+> ci-dessous est celle du travail annulé. ANG-70 (`withDevToolsStub` en prod) a été corrigé depuis par la montée
+> Angular 22 de `next` (PR 8817) ; ANG-05 et ANG-65 restent ouverts.
+
+- **Task** : task-369, statut `done` (`/review` APPROVED le 2026-10-14), travail annulé le jour même. Origine : audit de bugs du client Angular du
   2026-10-13. Décision humaine : la forge code sans attendre ; le **constat** de la configuration réellement servie par
   chaque environnement est fait par l'humain (tableau à remplir dans `done-task-369.md`).
 - **PR** : aucune GitHub. client-angular en code-only (9 fichiers, branche `feature/nova-rewriting-mss-weda-integration`) ;

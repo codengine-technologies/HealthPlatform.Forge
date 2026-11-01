@@ -258,10 +258,9 @@ flowchart LR
   l'enveloppe. Les journaux ne portent ni INS, ni nom, ni nom de fichier. L'avis envoyé à Weda ne porte que le
   patient, les documents et les adresses des destinataires, et Weda revérifie que chaque document appartient au
   patient et au cabinet (task-367).
-- v1.6 — La nouvelle messagerie déployée parle à la messagerie sécurisée de **son propre** environnement : si sa
-  configuration est incomplète, elle refuse de démarrer au lieu de se rabattre sur des valeurs de test. Seule
-  l'adresse exacte de Weda peut l'embarquer et dialoguer avec elle ; un autre site, même sous `weda.fr`, ne le peut
-  plus (task-369).
+- v1.6 — **Annulée, non livrée.** La configuration par environnement de la nouvelle messagerie (messagerie sécurisée
+  de son propre environnement, seule l'adresse exacte de Weda pour l'embarquer) a été abandonnée sur décision humaine
+  le 2026-11-01 (task-369 supprimée).
 - v1.7 — Sur un poste partagé, la nouvelle messagerie ne montre jamais la messagerie d'un praticien à celui qui s'est
   connecté après lui : elle se recharge sur la session du nouveau praticien. Une déconnexion de Weda la fait quitter,
   même ouverte dans un autre onglet (task-365).
