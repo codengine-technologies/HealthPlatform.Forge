@@ -452,3 +452,11 @@ Autres commandes mesurées : nuget-wait ×1 (35 s)
 - ⚠️ Taille de PR : ~84 fichiers côté api-mail (11 `packages.lock.json`, ~45 tests adaptés au passage des chemins aux octets). Une seule task par décision humaine du 2026-11-01.
 
 - Validation `/review` : interop-cda 518 verts ; api-mail domaine 202, infrastructure 699, application 3 952, API 1 315, intégration 1 095 — tout vert. `develop` inchangé depuis la création des branches : aucun merge de synchronisation.
+
+## Merged
+
+- Date : 2026-11-01 14:48
+- interop-cda : PR #13 squash `fd5c772` — CI develop ✅ https://github.com/codengine-technologies/interop.cda.parser/actions/runs/41312620561
+- api-mail : PR #334 squash `f2732115` — CI develop ✅ https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/41312638562
+- Branches `feat/task-419-…` supprimées (distantes et locales). Pas de branche staging (cycle hors `/forge`).
+- Reste : tir de contrôle 16 médecins × 8 min (crédit OpenAI à recharger), mesure du pic mémoire d'un lot ; branches `lab/*` locales à supprimer.
