@@ -229,6 +229,33 @@ qu'une fiche dise quoi en penser et quoi faire. **Sans un cycle de plus sur une 
   `Infrastructure` (ou la liste des codes génériques). Signalé dans la PR.
 - Next step : /sonar task-420
 
+## Sonar log
+
+- Mode A (chaîné), SonarQube 9.9 local, projet `healthplatform-api-mail`, branche de la task.
+- Phase 1 (new code) : ✓ **Quality Gate OK**, `new_coverage` = **96,5 %** (cible 95 %), **0 issue** sur le nouveau code.
+- Phase 1 — itérations : 2. Itération 1 : 1 code smell `CA1862` (`ErrorCatalogTests`, `ToUpperInvariant() == value`)
+  corrigé en `!value.Any(char.IsLower)` (`793ce5ac`) ; consigne créée dans `conventions/csharp.md` (CA1862,
+  occurrence 1). Itération 2 : 0 issue.
+- Phase 1 — tests ajoutés par /sonar : 0 (couverture déjà au-dessus de la cible).
+- Phase 2 (legacy) : sans objet — dette projet à 0 (bugs, vulnérabilités, smells, hotspots).
+- Tests des passes de couverture : domaine 202, application 3 990, infrastructure 699, api 1 337 verts ; intégration
+  1 096 verts, **3 rouges hors task** : `FilterTodayEmailsShouldReturnOnlyTodayAsyncAsync`,
+  `GetFolderTodayAsync_Inbox_ShouldReturnTheMessageOfTheDayAsync`, `GetFolderNotSeenTodayAsync_…` — les tests « du jour »,
+  rouges entre 00:00 et 02:00 (filtre IMAP `SINCE` en UTC, mémoire du banc), analyses jouées à 00:0x et 00:2x. Verts sur
+  la même branche à 23 h (1 099/1 099 en /develop). À rejouer après 02:00 en /review.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | = |
+| New coverage | 96,2 % | 96,5 % | +0,3 |
+| New bugs / vulnérabilités / smells / hotspots | 0 / 0 / 0 / 0 | 0 / 0 / 0 / 0 | = |
+| Bugs / Vulnérabilités / Code smells | 0 / 0 / 0 | 0 / 0 / 0 | = |
+| Coverage projet | 97,8 % | 97,9 % | +0,1 |
+| Duplication | 0,4 % | 0,4 % | = |
+| Ratings (fiabilité / sécurité / maintenabilité) | A / A / A | A / A / A | = |
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-420 --sync` — ne pas éditer à la main)*
@@ -237,4 +264,5 @@ qu'une fiche dise quoi en penser et quoi faire. **Sans un cycle de plus sur une 
 |---|---|---|---|---|---|---|
 | /start | ok | 4.4 s | — | — | — | — |
 | /develop | ok | 1 h 08 min | 3 (34 s) | 11 (15 min 51 s) | — | api-mail 3B/11T |
-| **Total cycle** | | **1 h 08 min** | **3 (34 s)** | **11 (15 min 51 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 26 min 32 s | 2 (1 min 31 s) | 10 (16 min 03 s) | 4 (1 min 31 s) | 2 itération(s), api-mail 2B/10T |
+| **Total cycle** | | **1 h 35 min** | **5 (2 min 06 s)** | **21 (31 min 55 s)** | **4 (1 min 31 s)** | |

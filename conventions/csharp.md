@@ -1977,3 +1977,16 @@ protected override void Dispose(bool disposing) { /* publier */ base.Dispose(dis
 **Consigne** : dans une classe dérivée de `Stream`, ne surcharger que `Dispose(bool)`. Ne
 réécrire `DisposeAsync` que pour un vrai travail asynchrone, et alors sans
 `GC.SuppressFinalize` (c'est le rôle du `DisposeAsync` de base).
+
+## CA1862 — une comparaison de casse ne passe pas par `ToUpperInvariant()` / `ToLowerInvariant()`
+
+**Occurrences : 1** (task-420, `/sonar` — `ErrorCatalogTests` : `value.ToUpperInvariant() == value` pour reconnaître
+une constante de code en majuscules, dans un test)
+
+Comparer une chaîne à sa version mise en majuscules alloue une copie et passe par la culture invariante : CA1862
+propose `string.Equals(a, b, StringComparison.OrdinalIgnoreCase)`. Mais l'intention ici n'était pas une égalité
+sans casse : c'était « aucune minuscule ».
+
+**Consigne** : dire l'intention. Égalité sans casse → `string.Equals(a, b, StringComparison.OrdinalIgnoreCase)` ;
+« tout en majuscules » → `!value.Any(char.IsLower)`. Jamais `x.ToUpperInvariant() == x`, tests compris (la règle
+s'applique au code de test comme au code de production).
