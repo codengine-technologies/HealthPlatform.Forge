@@ -202,3 +202,83 @@ Restent aussi hors périmètre :
 - `interop-cda` (pushed) : feat/task-419-analyse-des-mails-moins-de-cpu-archive — https://github.com/codengine-technologies/interop.cda.parser/tree/feat/task-419-analyse-des-mails-moins-de-cpu-archive
 - `api-mail` (pushed) : feat/task-419-analyse-des-mails-moins-de-cpu-archive — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-419-analyse-des-mails-moins-de-cpu-archive
 - Référence du code à porter (locale, **non poussée**, ne jamais pousser) : `lab/cpu-enrichissement` dans `Api/Mail` et dans `interop/interop.cda.parser`
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-419 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 20 s | — | — | — | — |
+| /develop | ok | 44 min 26 s | 10 (47 s) | 22 (15 min 48 s) | — | interop-cda 1B/4T, api-mail 9B/18T |
+| **Total cycle** | | **44 min 46 s** | **10 (47 s)** | **22 (15 min 48 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : nuget-wait ×1 (35 s)
+
+## Develop log
+
+- **Repos touchés** : `interop-cda`, `api-mail`. Aucun DTO touché.
+- **Interop publié** : `Interop.Cda.Parser` 109.0.0 → **117.0.0** (CI run 117, succès). `api-mail` le consomme par le flux habituel : `nuget.config` inchangé, aucune version `-lab` (`Directory.Packages.props` et les 11 `packages.lock.json`).
+- **Commits** :
+  - interop-cda : `8e55fab` perf(cda) (E3, E2, E6, E8, portés de `lab/cpu-enrichissement` : `e723132`, `4212b49`, `b1005bc`, `2b35544`, `e87aabb`, `7cf008e`, `0a04416`) · `3a5e89d` test(cda) démarrage à froid
+  - api-mail : `6181d502` chore(deps) bump 117.0.0 · `688208b9` perf(mail) (E1 `515b6a96`, E5 `ef4d4940`, E7a `257e6e9c`, E6 `c9526856`/`f13b977b`/`a976023b`, E4b `7a4ef5e0`, finition E6) · `56cfc5c3` refactor(mail) simplify pass
+  - **Exclus** : E4 (`408a90c5`, annulé par `a1062ea8`), E7b (`4fa36f08` / `91a3eef7`), E9 (`b55d4499` / `9fb734fb`). La reprise s'est faite par l'état net de la branche de laboratoire : les commits annulés n'y laissent rien.
+  - Les branches `lab/*` ne sont **pas** poussées.
+
+### E6 — les 5 points « à finir avant la production »
+
+1. **Plus de registre global** : le registre statique `IheXdmMemoryScratch` est supprimé. Les octets vivent dans le lot (`IheXdmScratchSet.Files`, des `IheXdmScratchFile(Name, Content)`), qui voyage dans `FetchedMail` jusqu'à la persistance. Un lot jamais libéré est récupéré par le ramasse-miettes avec son propriétaire : rien ne peut fuir hors de lui.
+2. **Plus de chemins factices** : `ProcessIheXdmZips(IReadOnlyList<IheXdmScratchFile>)`, `IEmailBuildingService.BuildMailDtoAsync(…, IReadOnlyList<IheXdmScratchFile>, …)`, et `ICdaParsingService.ParseIheXdmZip(byte[] archive, string archiveName, …)`. `MssanteHeaderService` analyse aussi les octets : il n'écrit plus de fichier temporaire.
+   - La surcharge par chemin reste sur le service, pour les archives réellement sur disque. Elle sert de référence « voie disque » aux tests d'équivalence.
+3. **La voie disque disparaît** : `CreateFile` sur disque, la recréation du répertoire (task-293), le paramètre `inMemory` et `NewSet()` sont retirés.
+   - `IheXdmScratchDirectory` ne garde que **le balayage au démarrage** de l'ancien `%TEMP%/mss-ihe-xdm`. **Pourquoi il reste** : une instance déjà déployée a pu y laisser, après un arrêt brutal, des archives et des répertoires d'extraction en clair, et plus rien d'autre ne les supprimerait. Il pourra partir une version plus tard.
+   - La garde « scratch mss-ihe-xdm » (mémoire du banc) devient sans objet : un répertoire supprimé ne casse plus rien.
+4. **Empreinte mémoire** :
+   - **Bornes** : `XdmExtractionLimits`, inchangées et appliquées avant décompression. Au plus 1 000 entrées et **256 Mio décompressés** par archive, avec un taux de compression de 100 au plus.
+   - **Taille maximale d'une archive** : aucune limite propre côté réception. L'archive pèse ce que pèse la pièce jointe IMAP, comme sur disque avant. La limite d'envoi de la plateforme est de 10 Mio (`MailOptions.MaxAttachmentSizeBytes`).
+   - **Pic d'un lot de 10 mails** : borne de code = somme des archives compressées du lot, tenues jusqu'à la persistance, plus une archive décompressée par analyse en cours.
+   - **Mesure en attente** : le pic n'a pas été mesuré au banc. Le crédit OpenAI est épuisé, aucun tir complet n'est possible, et ce sera au tir de contrôle.
+   - Piste notée, non appliquée faute de mesure : libérer le lot juste après `BuildMailDtoAsync` au lieu de la fin de la phase B.
+5. **Mentions « Laboratoire CPU »** : retirées ou reformulées en `task-419 — …` dans les deux dépôts.
+
+### E1 — journaux passés de Information à Debug
+
+- `MailController` « 🔄 Enriching » ; `MailEnrichmentNotifier` ×3 ; `AddNewMailConsumer` ×4 (traitement, fin, embedding) ; `CreatePatientContactConsumer`, `CreatePractitionerContactConsumer` ; `CdaParsingService` (« Parsing completed », valeur de biologie manquante) ; `EnrichedMailPersistence` (SKIP) ; `PatientContactPublisher` ×2, `PatientContactService` ×4, `PractitionerContactPublisher` ×3, `PractitionerContactService` ×4 ; `ImapLockScope` ×2 (verrou acquis/libéré) ; `XDM` et `SubmissionSet` côté `interop-cda`. `"Polly": "Warning"` dans `appsettings.json` et `appsettings.Production.json`.
+- **`[AiCall]` reste en Information** : `tests/mss.mail.api.tests/Extensions/MeteredAiServicesTests.cs:174` l'exige toujours, et passe.
+- **Aucun niveau changé** sur les journaux d'échec ou d'avertissement. La lenteur d'un verrou reste en Warning.
+- **Données de santé** : la ligne « valeur de biologie manquante » portait le nom de l'examen et sa section, du contenu CDA. Elle n'en porte plus : « A biology result without value is skipped ».
+
+### Tests et preuves du rouge (règle 1b)
+
+| Comportement | Test | Preuve du rouge |
+|---|---|---|
+| E3 — aucune transformation ne casse au démarrage à froid sous un voisin qui réécrit `cda_xslt_html` | `interop-cda` : `CdaHtmlConcurrentStartupTests` (20 démarrages à froid × 8 transformations en parallèle) | Mutation : ancien chargement disque réinjecté → **rouge 3 fois sur 3**, « Access to the path 'cda_asip.xsl' is denied », la famille d'erreur du banc |
+| E3 — reproduit au niveau de la route `enrich/sync` | **non reproductible de façon fiable dans le fixture** : le cache de la feuille compilée est statique au processus, déjà chaud au moment des tests d'intégration | La preuve passe par le test d'`interop-cda` ci-dessus, comme la DOD le prévoit |
+| E6 — `POST /api/v1/mail/folders/{folder}/emails/enrich/sync` : mêmes documents que la voie disque, PDF associé compris (contenu exact relu en base), corps et HTML non vides, aucun fichier de travail écrit | `XdmInMemoryAnalysisEndToEndTests` (Dovecot + Postgres réels) | Mutation : le lot ne retient plus le fichier écrit → **rouge** (« Collections differ », 0 document) |
+| E6 — équivalence disque / mémoire sur les 7 archives du corpus + PDF associé fabriqué | `CdaParsingInMemoryEquivalenceTests` | Laboratoire : mutation « la voie mémoire perd les PDF associés » → rouge |
+| E6 — une panne d'hôte laisse le mail à traiter, 503, puis analysé une fois rétabli | `ArchiveAnalysisMarkerEndToEndTests` (injection : lecture d'archive en échec ; l'effacement disque n'existe plus), `EnrichmentScratchFailureTests` (lecture IMAP interrompue) | Tests existants de task-293/333 conservés, panne réinjectée sous sa forme encore possible |
+| E4b — une enveloppe d'une réplique **non mise à jour** est livrée inchangée à l'abonné, sur vrai Redis | `MultiReplicaRedisIntegrationTests.EmailsEnriched_PublishedByAReplicaOnThePreviousVersion_ReachesTheClientUnchanged` (+ contrat octet pour octet existant) | Mutation : dossier perdu à la lecture de l'en-tête → **rouge** (2 tests) |
+| E4b — format inchangé (en-tête avant charge) | `SseBackplaneEnvelopeTests.Serialize_KeepsTheEnvelopeFormat_HeaderBeforePayload` | Laboratoire : charge décodée immédiatement → rouge |
+| E7a — trois `ExecuteUpdateAsync`, relus dans un contexte neuf | `MedicalDocumentRepositoryIntegrationTests`, `MailRepositoryIntegrationTests` (Postgres) | Laboratoire : l'`UPDATE` touche une autre colonne → rouge |
+| E5 — l'analyseur n'a plus d'observateur d'attributs | `HtmlBodySanitizerParsingTests` | Rouge naturel au laboratoire (un premier essai le laissait) |
+| E8 — une extraction PDF à la fois | `PdfTextExtractionConcurrencyTests` (interop-cda) | — |
+
+- **Build / tests locaux** :
+  - interop-cda : **518** verts (6 ignorés) ;
+  - api-mail : domaine 202, infrastructure 699, API 1 315, application **3 952**, intégration **1 095** (16 ignorés), tout vert, avant et après la passe qualité.
+  - Application −4 par rapport au laboratoire : les tests du répertoire disque sont retirés (recréation, droits, fichier encore ouvert, HPRIM disparu du disque) et un test du lot libéré est ajouté.
+- **Passe qualité (/simplify)** :
+  - **Appliquée et commitée** : api-mail, 20 fichiers (`56cfc5c3`) ; re-validation build + suites complètes au vert.
+  - **Écartées, notées pour la revue** :
+    - retirer la surcharge par chemin d'`ICdaParsingService` : elle reste la référence « voie disque » des tests ;
+    - remplacer le flux `EntryStream` par un `Add(kind, bytes)` typé : la classification par extension date de task-389, et un fichier lu en partie rejoignait déjà le lot avant ;
+    - refondre `SseBackplaneMessage` en classe : la forme mesurée au laboratoire est gardée ;
+    - dimensionner le tampon d'archive à l'avance : le laboratoire a mesuré 0 % de gain sur des copies évitées du tas des gros objets (E9).
+  - **Sans objet** (porteur de contrat) : interop-cda.
+- **Contrôles mécaniques §Q 2b** : deux S125 trouvés et corrigés avant le push (`conventions/csharp.md`, Occurrences 23 → 24). Rien d'autre.
+- **Taille de PR** : la PR api-mail compte ~84 fichiers, au-delà des ~30 visés. Le détail : 11 `packages.lock.json`, ~45 fichiers de tests adaptés au passage des chemins aux octets, le reste du code de production. Le découpage en une seule task est une décision humaine du 2026-11-01.
+- **Hors task, mis de côté** : deux lignes d'index de rapports de tir (`tests/loadtest-k6/reports/INDEX.md`, `POSTGRES-INDEX.md`), écrites par les essais du laboratoire. Elles sont dans `git stash` d'`Api/Mail` (« task-419: index de rapports du labo (hors task) »).
+- **DOD auto-contrôlée** :
+  - le tir de contrôle après merge est **en attente** (banc, crédit OpenAI) ;
+  - tous les autres items sont vérifiés.
+- **Étape suivante** : `/sonar task-419`.
