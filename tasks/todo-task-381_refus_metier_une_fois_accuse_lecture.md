@@ -1,41 +1,75 @@
-# todo-task-381.md — Un refus métier d'api-mail s'affiche une seule fois, avec son vrai motif ; l'accusé de lecture repose sur le type de dossier
+# todo-task-381.md — Un refus métier d'api-mail s'affiche une seule fois, avec son vrai motif
 
-**Repos**: client-angular, api-mail (catalogue e2e `Api/Mail/e2e/scenarios.yml` seulement)
-**Dependencies**: task-370 (intercepteurs d'authentification et d'erreur, mêmes fichiers)
+**Repos**: client-angular
+**Dependencies**: — (aucune). task-370 (intercepteurs d'authentification et d'erreur) est archivée.
 **Epic**: E009
 **Single frontend**: true
-**Priorité**: **3** — messages contradictoires (« Accès refusé » générique en plus du motif réel), et accusé de lecture proposé ou omis selon le nom des dossiers.
+**Priorité**: **3** — messages contradictoires : un « Accès refusé » ou « Service temporairement indisponible » générique s'ajoute au motif réel qu'affiche l'écran MSS.
 
 > **Origine.** Audit de détection de bugs du client Angular du 2026-10-13
-> (`Docs/audits/client-angular-audit-bugs-20261013.md`, **ANG-68, ANG-72**).
+> (`Docs/audits/client-angular-audit-bugs-20261013.md`, **ANG-68** ; ANG-72 corrigé depuis, voir plus bas).
 
 ## Ce qui est établi
 
-- **ANG-68** — `apps/weda2/src/app/core/interceptors/error.interceptor.ts:88-118` ajoute un toast générique (« Accès refusé. Vous n'avez pas les permissions nécessaires. », « Service temporairement indisponible ») aux réponses problem+json d'api-mail que le module traite déjà (403 `MAILBOX_PSC_MISMATCH`, refus d'auteur de task-367, 503 du proxy PSC). `mss-mailbox-management.component.ts:326-332` contourne déjà ce défaut en évitant des appels.
-- **ANG-72** — `libs/mss/src/core/utils/read-receipt.util.ts` reconnaît le dossier des envoyés par `folderPath.includes('sent')` : un dossier « Consentements » ou « Présentation » ne propose jamais l'accusé ; la copie d'un envoi rangée dans « Envoyés » ou « Éléments envoyés » propose au médecin de s'envoyer un accusé. *Origine : zones 3 et 5.*
+> **Revérifié le 2026-11-01** sur weda2 `feature/nova-mss-weda-integration` (`10e55c09`, après le rebase sur
+> `next` Angular 22). Les numéros de ligne ci-dessous sont ceux de cette révision.
+
+- **ANG-68 — toujours présent.** `apps/weda2/src/app/core/interceptors/error.interceptor.ts:86-132`
+  (`handleTechnicalError`) notifie **tout** 5xx (« Service temporairement indisponible. Veuillez patienter. ») et
+  **tout** 403 (« Accès refusé. Vous n'avez pas les permissions nécessaires. »), sans regarder qui répond ni ce que
+  dit la réponse. Or api-mail rend ses refus métier en problem+json avec un `code` (`GlobalExceptionHandler.cs:79`),
+  que le module MSS lit et explique lui-même. Le médecin reçoit donc deux messages, dont un générique qui peut
+  contredire le premier. Cas concrets :
+  - 403 `MAILBOX_PSC_MISMATCH`, `MAILBOX_ACCESS_REFUSED`, `MAILBOX_NOT_ATTACHED`, `MAILBOX_PSC_SESSION_REQUIRED` ;
+  - 503 `MAIL_SERVER_UNAVAILABLE`, et 503 `MAIL_DELIVERY_UNCERTAIN` (task-376 : la rédaction dit « ce message est
+    peut-être parti », le toast dit « service indisponible ») ;
+  - 503 du proxy PSC, refus d'auteur de task-367.
+- **Le mécanisme d'exclusion existe déjà** : le jeton `SILENT_HTTP_ERRORS`
+  (`apps/weda2/src/lib/auth/models/silent-http-errors.token.ts`, task-365) coupe la notification d'une requête
+  marquée. Aucune requête MSS ne le porte aujourd'hui.
+- **Les requêtes vers api-mail sont reconnaissables** : `mss-headers.interceptor.ts:34-36` les identifie par
+  `request.url.startsWith(MSS_API_URL)`.
+- **Contournement existant** : `libs/mss/src/features/mailbox-management/mss-mailbox-management.component.ts:436-441`
+  évite `reload()` au détachement de la boîte par défaut, en partie pour ne pas déclencher deux toasts « Accès
+  refusé ». Il a une **seconde raison**, indépendante : le résultat de ces deux appels serait jeté par la
+  déconnexion qui suit. Il reste donc en place ; seul son commentaire est à mettre à jour.
+- **ANG-72 — corrigé par task-417 (archivée le 2026-10-30).** L'accusé de lecture repose désormais sur
+  `FolderType.Sent` (`isSentFolder` dans `libs/mss/src/core/utils/read-receipt.util.ts`), avec un test sur un dossier
+  « Consent ». Hors périmètre de cette task.
 
 ## Objective
 
-Qu'un refus métier d'api-mail soit annoncé **une seule fois**, par l'écran qui sait l'expliquer, et que la proposition d'accusé de lecture dépende du **type** du dossier (SPECIAL-USE) et non de son nom.
+Qu'un refus métier d'api-mail soit annoncé **une seule fois**, par l'écran qui sait l'expliquer, sans retirer la
+notification générique des erreurs que personne d'autre n'explique.
 
 ### Périmètre
 
-1. **`errorInterceptor`** : pas de notification générique pour une réponse d'api-mail portant un problem+json avec `code` (le module s'en charge), ou mécanisme d'exclusion par `HttpContextToken` ; le contournement de `mss-mailbox-management` est retiré.
-2. **Accusé de lecture** : `FolderType.Sent` (et les autres types spéciaux) à la place de la comparaison de nom.
+1. **`errorInterceptor`** : pas de notification générique pour une réponse d'**api-mail** (URL sous `MSS_API_URL`)
+   dont le corps est un problem+json portant un `code`. Le module MSS s'en charge.
+2. **Inchangé** : la notification générique reste pour un 403 / 5xx sans `code` (passerelle, panne réseau, autre
+   service que api-mail) et pour toute réponse d'un autre service, même porteuse d'un `code`.
+3. **Commentaire** du contournement de `mss-mailbox-management` mis à jour : il ne cite plus le toast comme raison.
 
 ## Definition of Done
 
 - [ ] Build et tests weda2 verts
-- [ ] Tests unitaires rouges d'abord :
-  - [ ] 403 `MAILBOX_PSC_MISMATCH` d'api-mail : aucune notification générique ; un 403 sans `code` d'un autre service garde la notification
-  - [ ] mail reçu rangé dans un dossier nommé « Consentements » : l'accusé est proposé ; copie d'un envoi dans le dossier de type Sent nommé « Éléments envoyés » : il ne l'est pas
-- [ ] Scénario E2E-RECEIPT-001 versionné si son comportement attendu change (dossier utilisateur au nom contenant « sent ») — angular et mobile selon l'arbitrage du `/start`
+- [ ] Tests unitaires de `errorInterceptor`, rouges d'abord :
+  - [ ] 403 `MAILBOX_PSC_MISMATCH` d'api-mail : aucune notification générique
+  - [ ] 503 `MAIL_DELIVERY_UNCERTAIN` d'api-mail : aucune notification générique
+  - [ ] 503 d'api-mail **sans** `code` (corps vide ou HTML de passerelle) : la notification générique reste
+  - [ ] 403 **avec** `code` d'un autre service que api-mail : la notification générique reste
+  - [ ] requête marquée `SILENT_HTTP_ERRORS` : toujours aucune notification (non-régression task-365)
+- [ ] Le motif MSS reste affiché : test du composant qui lit `MAILBOX_PSC_MISMATCH` inchangé et vert
 - [ ] Aucune donnée de santé ajoutée aux journaux
 
 ## Manual Test Plan
 
-1. Provoquer un 403 `MAILBOX_PSC_MISMATCH` (carte d'un autre praticien) → un seul message, celui du module.
-2. Déplacer dans un dossier « Consentements » un mail qui demande un accusé, l'ouvrir → l'accusé est proposé.
+1. Lancer api-mail (AppHost) et weda2 (`npm start` dans `Client/Angular/front`).
+2. Provoquer un 403 `MAILBOX_PSC_MISMATCH` (carte d'un autre praticien sur la boîte) → un seul message, celui de
+   l'écran MSS ; aucun toast « Accès refusé ».
+3. Arrêter le serveur de messagerie (ou couper IMAP via Toxiproxy) et ouvrir la boîte → le message MSS de panne
+   seul ; aucun toast « Service temporairement indisponible » en plus.
+4. Arrêter api-mail entièrement (aucun problem+json) → le toast générique apparaît, comme aujourd'hui.
 
 ## Conformité santé / Ségur / ANS
 
@@ -46,9 +80,8 @@ Qu'un refus métier d'api-mail soit annoncé **une seule fois**, par l'écran qu
 - **Authentification PS** : inchangée ; le motif d'un refus PSC est affiché sans contradiction
 - **Habilitations** : inchangées
 - **Interop CI-SIS** : non applicable
-- **Tracé PGSSI-S** : inchangé (l'accusé reste tracé à l'envoi ou au refus, task-340)
+- **Tracé PGSSI-S** : inchangé
 - **Consentement patient** : non applicable
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : non applicable
 - **AIPD / impact RGPD** : inchangé
-- **MSSanté** : accusé de lecture (RFC 8098) proposé selon le type SPECIAL-USE du dossier
