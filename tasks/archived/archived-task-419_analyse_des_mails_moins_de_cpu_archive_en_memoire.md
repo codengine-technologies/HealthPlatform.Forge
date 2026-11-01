@@ -463,4 +463,6 @@ Autres commandes mesurées : nuget-wait ×1 (35 s)
 
 ## Tir de contrôle
 
-- 2026-11-01, C1 sur `develop` (vectorisation coupée, crédit OpenAI épuisé) : CPU API 50,6 ms/mail contre 51,7 pour D0 (−2,1 
+- 2026-11-01, C1 sur `develop` (vectorisation coupée, crédit OpenAI épuisé) : CPU API 50,6 ms/mail contre 51,7 pour D0 (−2,1 %), débit 56,6 mails/s, empreinte identique sur 1 800 mails. Pic mémoire par réplica 2 560 Mio (B0 : 2 764 Mio). Détail : `Docs/audits/api-mail-labo-cpu-enrichissement-20261031.md`, section « Tir de contrôle après merge ».
+- Branches `lab/*` et copies de travail du laboratoire supprimées le 2026-11-01.
+- Reste : le même tir vectorisation active, comparé à B0, une fois le crédit rechargé.
