@@ -7956,3 +7956,9 @@
 {"ts":"2026-11-01T15:07:37+01:00","run_id":"-","type":"cmd","task":"task-395","step":"develop","repo":"api-mail","kind":"build","label":"","cwd":"Api/Mail","cmd":"dotnet build HealthPlatform.Api.Mail.sln -v q","duration_ms":13500,"exit_code":0}
 {"ts":"2026-11-01T15:07:43+01:00","run_id":"-","type":"cmd","task":"task-395","step":"develop","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test tests/mss.mail.api.tests --no-build -v q --filter FullyQualifiedName~ScenarioCatalog","duration_ms":4582,"exit_code":0}
 {"ts":"2026-11-01T15:11:04+01:00","run_id":"-","type":"step","task":"task-395","step":"develop","status":"ok","note":"","iterations":null,"duration_ms":246738}
+{"ts":"2026-11-01T15:11:20+01:00","run_id":"-","type":"step_start","task":"task-395","step":"sonar"}
+{"ts":"2026-11-01T15:11:21+01:00","run_id":"-","type":"step","task":"task-395","step":"sonar","status":"skipped","note":"diff = e2e/scenarios.yml seul, aucun C# changé depuis l'analyse task-419","iterations":null,"duration_ms":867}
+{"ts":"2026-11-01T15:11:33+01:00","run_id":"-","type":"step_start","task":"task-395","step":"lint-angular"}
+{"ts":"2026-11-01T15:11:34+01:00","run_id":"-","type":"step","task":"task-395","step":"lint-angular","status":"skipped","note":"aucun code Angular écrit par la forge (arbre propre)","iterations":null,"duration_ms":811}
+{"ts":"2026-11-01T15:11:35+01:00","run_id":"-","type":"step_start","task":"task-395","step":"lint-mobile"}
+{"ts":"2026-11-01T15:11:36+01:00","run_id":"-","type":"step","task":"task-395","step":"lint-mobile","status":"skipped","note":"client-mobile non touché","iterations":null,"duration_ms":632}

@@ -61,7 +61,10 @@ weda2 affiche, comme le mobile, l'écran « service indisponible » quand api-ma
 |---|---|---|---|---|---|---|
 | /start | ok | 13 s | — | — | — | — |
 | /develop | ok | 4 min 06 s | 1 (13 s) | 1 (4.5 s) | — | api-mail 1B/1T |
-| **Total cycle** | | **4 min 19 s** | **1 (13 s)** | **1 (4.5 s)** | **0 (0.0 s)** | |
+| /sonar | skipped | 0.8 s | — | — | — | diff = e2e/scenarios.yml seul, aucun C# changé depuis l'analyse task-419 |
+| /lint-angular | skipped | 0.8 s | — | — | — | aucun code Angular écrit par la forge (arbre propre) |
+| /lint-mobile | skipped | 0.6 s | — | — | — | client-mobile non touché |
+| **Total cycle** | | **4 min 22 s** | **1 (13 s)** | **1 (4.5 s)** | **0 (0.0 s)** | |
 
 ## Develop log
 
@@ -80,3 +83,13 @@ weda2 affiche, comme le mobile, l'écran « service indisponible » quand api-ma
   - divergence retirée ✓ ;
   - `/e2e` parité sans divergence → étape `/e2e`.
 - **Étape suivante** : `/sonar task-395`.
+
+## Sonar log
+
+- **Sonar : skip mesuré**. Le diff api-mail se limite à `e2e/scenarios.yml`, hors des sources analysées (C#). Aucun fichier C# n'a changé depuis la dernière analyse complète (`72b82aec`, task-419, 2026-11-01), identique à `develop` @ `f2732115`.
+- KPIs de cette analyse, valables pour ce code : Quality Gate OK ; new coverage 96,2 % ; bugs / vulnérabilités / code smells / hotspots 0 / 0 / 0 / 0 ; coverage 97,8 % ; duplication 0,4 % ; ratings A/A/A.
+
+## Lint log
+
+- **/lint-angular** : skip — aucun code Angular écrit par la forge (arbre `Client/Angular/front` propre) ; le code weda2 de task-378 est déjà commité par l'humain sur `feature/nova-mss-weda-integration`.
+- **/lint-mobile** : skip — `client-mobile` absent des `**Repos**`, sur `develop`, arbre propre.
