@@ -85,3 +85,15 @@ notification générique des erreurs que personne d'autre n'explique.
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : non applicable
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+- `client-angular` (code-only) : la forge écrit sur la branche checked out dans `Client/Angular/` — `feature/nova-mss-weda-integration` @ `32cc9b79` au /start, arbre portant déjà le travail non commité de task-380 — humain gère branche, commit, push, PR TFS
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-381 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 1.2 s | — | — | — | — |
+| **Total cycle** | | **1.2 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
