@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-11-01 (v1.119)
+> **Dernière mise à jour** : 2026-11-01 (v1.120)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -809,6 +809,16 @@
   - changement visible sur le CDA dans weda2 ;
   - conflit d'un fichier de test avec task-391 (#318) : résolu le 2026-10-27 par un merge de `develop` dans la branche, suites et e2e rejoués verts. Mergé le même jour (`api-mail` `3ef4d75e`, `client-mobile` `053ff53a`) ;
   - divergence E2E-MAILBOX-002 signalée « à retirer » par la porte.
+
+### v1.120 — Un refus métier d'api-mail s'affiche une seule fois, avec son vrai motif (weda2) — task-381
+
+- **Origine** : audit de bugs du client Angular du 2026-10-13 (**ANG-68** ; ANG-72 corrigé par task-417). `errorInterceptor` notifiait tout 403 (« Accès refusé ») et tout 5xx (« Service temporairement indisponible »), en plus du motif expliqué par l'écran MSS : deux messages, dont un générique qui contredisait le premier (`MAILBOX_PSC_MISMATCH`, `MAIL_DELIVERY_UNCERTAIN`, …).
+- **client-angular** (weda2, code-only, non commité sur `feature/nova-mss-weda-integration`) : `isMssBusinessRefusal` — une réponse d'api-mail (URL sous `MSS_API_URL`) dont le corps porte un `code` n'est plus notifiée par l'intercepteur ; inchangé pour un 403 / 5xx sans `code` (passerelle, panne réseau), pour tout autre service, et pour `SILENT_HTTP_ERRORS`. Commentaire du contournement de `mss-mailbox-management` mis à jour (sa seconde raison demeure).
+- **Tests** : 7 cas Vitest ajoutés à `error.interceptor.spec.ts`, les deux refus métier vus rouges ; mutations M1 (URL ignorée), M2 (`code` ignoré), M3 (exclusion retirée) rouges sur le test visé.
+- **Validation** : `nx affected -t test` 12 projets verts (weda2 2 662, mss-lib 1 464), build weda2 vert, lint 0 erreur.
+- **Sonar** : sans objet (api-mail non touché). **PR** : aucune sur GitHub (code-only).
+- **E2E** : voie Angular 70 verts ; parité de la voie rouge sur le catalogue de `develop` (parcours de task-380 non encore mergés), porte verte sur le catalogue de la branche staging du run.
+- **Suggestions de revue** : un `code` qu'aucun écran ne lit devient silencieux ; une requête en `blob` ne lit pas le `code`.
 
 ### v1.119 — Le journal d'audit montre toutes les traces du filtre ; les paramètres ne sont jamais écrasés après une panne (weda2) — task-380
 
@@ -2103,6 +2113,7 @@ Audit grep complémentaires pour les couches 2 / 2bis / 3 (tasks 021 / 022 / 023
 
 | Task | Apport principal | Règles touchées |
 |------|------------------|-----------------|
+| task-381 | **Un refus métier d'api-mail s'affiche une seule fois (weda2).** `errorInterceptor` ne notifie plus une réponse d'api-mail porteuse d'un `code` problem+json ; la notification générique reste pour les pannes sans `code` et les autres services. | — |
 | task-380 | **Le journal d'audit montre toutes les traces du filtre ; les paramètres ne sont jamais écrasés après une panne (weda2).** Plus de dédoublonnage, tri du serveur, filtre fusionné, page pilotée par le parent, dates en heure locale, export de tout le filtre, aperçu annulable et vérifié par Message-ID ; paramètres : chargement en échec bloquant, échecs d'enregistrement annoncés, enregistrement automatique qui reprend ; scénarios E2E-AUDIT-002 et E2E-SETTINGS-004. | — |
 | task-377 | **La liste, la recherche et la vue « Mails du patient » montrent ce qu'elles annoncent (weda2 et mobile).** Pages des résultats en attente (`GET biology-acks/pending-mail-uids/page`) et des mails d'un patient par handle dans le corps (`POST patients/mails`) ; sources de la liste dans l'état, réponse ancienne ignorée ; vue patient hors rafraîchissement ; recherche remise à zéro ; états « indisponible » + réessai ; puce mobile paginée sur les résultats en attente ; scénarios E2E-BIO-002 et E2E-PATIENT-004. | — |
 | task-401 | **Délégation de BAL retirée : Mailiz ne déploie plus l'espace IMAP `shared/`.** Revert de task-397, task-398 et task-399 sur dtos-mss (548.0.0), api-mail, client-mobile et weda2 ; catalogue sans `E2E-DELEG-*` ; règle 14 réduite à son principe. Délégation par session à étudier ; task-400 gelée. | — |

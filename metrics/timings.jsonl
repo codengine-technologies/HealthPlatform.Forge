@@ -8025,3 +8025,5 @@
 {"ts":"2026-11-01T20:45:50+01:00","run_id":"forge-20261101-380-381","type":"step_start","task":"task-381","step":"review"}
 {"ts":"2026-11-01T20:45:53+01:00","run_id":"forge-20261101-380-381","type":"cmd","task":"task-381","step":"review","repo":"client-angular","kind":"build","label":"","cwd":"Client/Angular/front","cmd":"npx nx build weda2 --output-style=static","duration_ms":2427,"exit_code":0}
 {"ts":"2026-11-01T20:46:10+01:00","run_id":"forge-20261101-380-381","type":"step","task":"task-381","step":"review","status":"ok","note":"","iterations":null,"duration_ms":19471}
+{"ts":"2026-11-01T20:46:33+01:00","run_id":"forge-20261101-380-381","type":"step_start","task":"task-381","step":"tech-writer"}
+{"ts":"2026-11-01T20:46:33+01:00","run_id":"forge-20261101-380-381","type":"step","task":"task-381","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":628}

@@ -274,6 +274,7 @@ notification générique des erreurs que personne d'autre n'explique.
 | /lint-mobile | skipped | 0.6 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 10 min 29 s | — | — | — | e2e ×2 (9 min 59 s) |
 | /review | ok | 19 s | 1 (2.4 s) | — | — | client-angular 1B/0T |
+| /tech-writer | ok | 0.6 s | — | — | — | — |
 | **Total cycle** | | **17 min 19 s** | **2 (19 s)** | **2 (1 min 59 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×1 (10 s)
