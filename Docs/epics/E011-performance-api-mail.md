@@ -2,10 +2,10 @@
 
 > **Statut** : 🟢 En cours
 > **Modèle** : task-driven
-> **Version** : 1.20
+> **Version** : 1.21
 > **Auteur** : PO forge (audit performance du 2026-06-10)
 > **Audience** : PO, médecin, direction — la vue ingénierie vit dans [E011-Changelogs.md](E011-Changelogs.md)
-> **Dernière mise à jour** : 2026-10-04
+> **Dernière mise à jour** : 2026-11-01
 
 ---
 
@@ -22,7 +22,7 @@
 - [7. Contraintes et hypothèses](#7-contraintes-et-hypothèses)
 - [8. Critères d'acceptation de l'EPIC](#8-critères-dacceptation-de-lepic)
 - [9. Hors périmètre](#9-hors-périmètre)
-- [État de couverture (2026-10-04)](#état-de-couverture-2026-10-04)
+- [État de couverture (2026-11-01)](#état-de-couverture-2026-11-01)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -80,6 +80,7 @@ changer ni l'apparence ni le comportement métier de l'application.
 | E011-F011 | Enrichissement non bloquant | Pendant qu'un lot de messages s'enrichit en arrière-plan (corps, documents médicaux), la navigation dans les dossiers et les listes reste immédiate | Aucune |
 | E011-F012 | Liste des dossiers accélérée | Le chargement de la liste des dossiers n'interroge plus le serveur dossier par dossier : un seul échange suffit, sans réapparition des dossiers fantômes | Aucune |
 | E011-F013 | Plusieurs serveurs, un seul comportement | Le service tourne sur plusieurs serveurs en parallèle : les notifications en temps réel et les conversations de l'assistant ne dépendent plus du serveur qui répond, et un message ouvert au même moment sur deux appareils n'est analysé qu'une fois | Aucune |
+| E011-F014 | Analyse des mails allégée | L'analyse d'un mail reçu (documents médicaux, biologie, pièces jointes) coûte un tiers de calcul en moins, se fait entièrement en mémoire, et ne laisse plus jamais un document vide au démarrage d'un serveur | E011-F011, E011-F013 |
 
 ---
 
@@ -96,6 +97,8 @@ graph LR
     F006[E011-F006<br>Connexions assainies]
     F007[E011-F007<br>Mémorisation]
     F001 --> F011[E011-F011<br>Enrichissement non bloquant]
+    F011 --> F014[E011-F014<br>Analyse allégée]
+    F013[E011-F013<br>Plusieurs serveurs] --> F014
 ```
 
 **Description du workflow** :
@@ -104,6 +107,7 @@ graph LR
 2. **E011-F009** (synchronisation parallélisée) s'appuie sur **E011-F008** (arrêt propre des traitements) : on ne parallélise la synchronisation qu'une fois ses mécanismes d'interruption fiabilisés, pour éviter de multiplier des travaux impossibles à arrêter.
 3. **E011-F001** et **E011-F010** partagent la même philosophie (transmission en flux continu) et se complètent : la première couvre la consultation, la seconde l'export.
 4. **E011-F011** (enrichissement non bloquant, task-079) prolonge E011-F001 sur le même terrain : après le téléchargement ciblé, le traitement d'arrière-plan qui enrichit les messages cesse de bloquer la navigation du praticien.
+5. **E011-F014** (analyse allégée, task-419) réduit le coût de cette même analyse, et allège la diffusion des notifications en temps réel mise en place par **E011-F013** : un serveur sans praticien connecté sur la boîte ne décode plus le message qu'il relaie.
 
 ---
 
@@ -149,7 +153,7 @@ graph LR
 
 ---
 
-## État de couverture (2026-10-04)
+## État de couverture (2026-11-01)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---------|--------|------------|---------------------|
@@ -166,8 +170,9 @@ graph LR
 | E011-F011 Enrichissement non bloquant | ✅ Mergée sur develop | 100% | task-079 |
 | E011-F012 Liste des dossiers accélérée | ✅ Mergée sur develop | 100% | task-080 |
 | E011-F013 Plusieurs serveurs, un seul comportement | 🟡 Livrée ; la seconde moitié attend sa validation humaine (task-344) | 100% implémenté : notifications en temps réel et assistant (mergés), analyse unique d'un message ouvert sur deux appareils (en validation) | task-343, task-344 |
+| E011-F014 Analyse des mails allégée | 🟡 En attente de validation humaine (PR ouvertes) | 100% implémenté ; gain mesuré au banc, tir de contrôle après merge en attente | task-419 |
 
-**Couverture EPIC consolidée : 12 features sur 13 livrées et validées**, la treizième entièrement implémentée, sa seconde moitié en attente de validation humaine (task-344). L'EPIC reste ouvert parce que le serveur continue de recevoir des améliorations ciblées, sans nouvelle fonctionnalité : les compléments sur l'accès aux données et la première étape de fiabilisation des connexions à la messagerie (task-324) sont validés ; la seconde étape — aucune connexion fermée pendant qu'elle sert, lecture comme envoi (task-335) — attend sa validation humaine. Feature F013 : quand le service tourne sur plusieurs serveurs, les notifications en temps réel et l'assistant se comportent comme sur un seul (task-343, mergée), et un message ouvert sur deux appareils à la fois n'est analysé qu'une fois (task-344, en validation).
+**Couverture EPIC consolidée : 12 features sur 14 livrées et validées**, les deux autres entièrement implémentées et en attente de validation humaine (task-344 pour la seconde moitié de F013, task-419 pour F014). L'EPIC reste ouvert parce que le serveur continue de recevoir des améliorations ciblées, sans nouvelle fonctionnalité : les compléments sur l'accès aux données et la première étape de fiabilisation des connexions à la messagerie (task-324) sont validés ; la seconde étape — aucune connexion fermée pendant qu'elle sert, lecture comme envoi (task-335) — attend sa validation humaine. Feature F013 : quand le service tourne sur plusieurs serveurs, les notifications en temps réel et l'assistant se comportent comme sur un seul (task-343, mergée), et un message ouvert sur deux appareils à la fois n'est analysé qu'une fois (task-344, en validation).
 
 ---
 
@@ -185,6 +190,12 @@ graph LR
 - v1.10 — La vérification des certificats de l'Espace de Confiance refuse désormais systématiquement un certificat révoqué, sur tous les chemins de contrôle (correction d'une faille latente détectée pendant le chantier). En cas d'indisponibilité du service de vérification de l'ANS, le comportement est arbitré et validé humainement : une vérification récente reste acceptée pendant 4 heures au maximum, avec un évènement journalisé à chaque acceptation dégradée ; au-delà, la connexion est refusée (task-069).
 
 ### Technique / observabilité (sans impact utilisateur direct)
+- v1.21 — **Analyser un mail coûte un tiers de calcul en moins, et plus aucun compte rendu n'est enregistré vide au démarrage d'un serveur.**
+  - Situation corrigée : juste après le démarrage d'un serveur, l'analyse de quelques comptes rendus pouvait échouer. Le document était alors enregistré **sans son contenu**, et le mail marqué comme analysé : le compte rendu restait vide pour toujours. Au banc d'essai, cela touchait 4 à 5 documents à chaque démarrage. Il n'y en a plus aucun.
+  - L'archive médicale jointe au mail (format IHE-XDM) est désormais **analysée entièrement en mémoire**. Elle n'est plus jamais copiée dans un fichier temporaire du serveur : une donnée de santé en clair de moins sur disque.
+  - Mesuré au banc sur 16 médecins : **−34 % de calcul par mail analysé**, **+21 % de mails analysés par seconde**, et des lots de 10 mails traités 17 % plus vite. Le serveur sert donc plus de médecins avec la même machine.
+  - **Rien ne change à l'écran** : mêmes documents, même rendu, mêmes résultats de biologie, mêmes pièces jointes, mêmes patients. Cela a été vérifié sur environ 1 700 mails comparés un à un, et par les parcours automatiques des applications mobile et web.
+  - Le gain d'ensemble sera confirmé par un tir de contrôle après validation (task-419).
 - v1.20 — **Un compte rendu urgent ne reste plus sans son signalement « Urgent » quand le service d'intelligence artificielle a été indisponible.**
   - Situation corrigée : le signalement d'urgence (« Urgent », « Très urgent », « Important ») est proposé par l'intelligence artificielle juste après la réception du message. Si le service d'IA était indisponible à cet instant, le message était bien reçu et analysé, mais restait **définitivement** sans signalement, sans que personne ne le sache.
   - Désormais, un message dont le signalement n'a pas pu être calculé est **repris automatiquement**, sans rien retélécharger, dès que le praticien reçoit de nouveaux messages et au plus tôt 15 minutes après l'échec. La reprise concerne les messages des 7 derniers jours ; les brouillons, envois et corbeille n'en ont pas besoin.

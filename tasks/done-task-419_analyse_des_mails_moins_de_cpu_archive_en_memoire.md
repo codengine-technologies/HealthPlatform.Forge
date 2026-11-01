@@ -216,7 +216,8 @@ Restent aussi hors périmètre :
 | /lint-mobile | skipped | 0.7 s | — | — | — | client-mobile non touché (Repos: interop-cda, api-mail ; Client/Mobile sur develop, propre) |
 | /e2e | ok | 19 min 51 s | — | — | — | e2e ×5 (38 min 20 s) |
 | /review | ok | 6 min 23 s | 2 (12 s) | 2 (5 min 20 s) | — | interop-cda 1B/1T, api-mail 1B/1T |
-| **Total cycle** | | **1 h 29 min** | **15 (1 min 43 s)** | **39 (35 min 07 s)** | **4 (1 min 22 s)** | |
+| /tech-writer | ok | 44 s | — | — | — | — |
+| **Total cycle** | | **1 h 30 min** | **15 (1 min 43 s)** | **39 (35 min 07 s)** | **4 (1 min 22 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (35 s)
 

@@ -2,11 +2,41 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > **Vue produit** : [E011-performance-api-mail.md](E011-performance-api-mail.md)
-> **Dernière mise à jour** : 2026-10-04 (v1.20)
+> **Dernière mise à jour** : 2026-11-01 (v1.21)
 
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.21 — task-419 — Analyse des mails : −34 % de CPU, archives IHE-XDM en mémoire, fin des documents vides au démarrage (2026-11-01)
+
+- **PR** : [interop.cda.parser#13](https://github.com/codengine-technologies/interop.cda.parser/pull/13) (`8e55fab`, `3a5e89d`) et [HealthPlatform.Api.Mail#334](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/334) (`6181d502`, `688208b9`, `56cfc5c3`, `72b82aec`) — `awaiting-human-merge`. `Interop.Cda.Parser` 109.0.0 → 117.0.0. Aucun contrat `dtos-mss`, aucun frontend.
+- **ORIGINE.** Laboratoire CPU des 2026-10-31 / 2026-11-01 (`Docs/audits/api-mail-labo-cpu-enrichissement-20261031.md`) : un levier à la fois, 16 médecins × 8 min par essai, empreinte de non-régression sur ~1 700 mails. CPU de l'API par mail 99,9 → 65,9 ms, débit 46,4 → 56,1 mails/s. Une seule task par décision humaine (au lieu de 7).
+- **LEVIERS.**
+  - E3, XSLT en mémoire (`InMemoryXsltResolver`) : corrige la perte de contenu au démarrage (`%TEMP%/cda_xslt_html` effacé et réécrit par chaque processus).
+  - E2, `CdaValidator` à lecture unique : −5,4 %.
+  - E6, archive en mémoire : −14,5 %, poste −31 %.
+  - E8, une extraction PdfPig à la fois : −2,2 %.
+  - E1, journaux d'étape en Debug, Polly en Warning, `[AiCall]` inchangé : −3,5 %.
+  - E5, AngleSharp sans `IAttributeObserver` : −4,3 %.
+  - E7a, `ExecuteUpdateAsync` : −2,1 %, Postgres −15 %.
+  - E4b, enveloppe SSE lue par l'en-tête, charge décodée à la demande, format Redis inchangé : −6,8 %.
+  - Rejetés au laboratoire : E4, E7b, E9.
+- **E6 FINALISÉ.** Registre statique supprimé : les octets voyagent dans `IheXdmScratchSet.Files` (`IheXdmScratchFile(Name, Content)`). `ICdaParsingService.ParseIheXdmZip(byte[], name)`, `ProcessIheXdmZips`/`BuildMailDtoAsync` sur des fichiers. `MssanteHeaderService` sans fichier temporaire. `IheXdmScratchDirectory` réduit au balayage de l'ancien répertoire. Pic mémoire d'un lot : non mesuré, attendu au tir de contrôle.
+- **TESTS.**
+  - `CdaHtmlConcurrentStartupTests` (interop-cda, 20 démarrages à froid sous un voisin qui réécrit le répertoire), rouge par mutation : « Access to the path 'cda_asip.xsl' is denied ».
+  - `XdmInMemoryAnalysisEndToEndTests` (`enrich/sync`, PDF associé relu en base), rouge par mutation.
+  - Enveloppe d'une version précédente sur vrai Redis, rouge par mutation.
+  - `CdaParsingInMemoryEquivalenceTests` (7 archives + PDF associé).
+  - Panne d'hôte réinjectée en lecture IMAP (`IheXdmFaultInjection`, `EnrichmentScratchFailureTests`).
+  - Suites : interop 518, api-mail 7 263 (dont intégration 1 095), 0 échec.
+- **SONAR.** QG OK, new coverage 96,2 %, 1 smell corrigé (S3971), 0 restant.
+- **E2E.** Mobile 57/57, Angular 68/68, parité verte.
+- **LIMITES.**
+  - La surcharge par chemin reste sur `ICdaParsingService`, comme référence de test.
+  - `SseBackplaneMessage.Equals` décode la charge, sans usage en production.
+  - Taille de PR ~84 fichiers.
+  - Détection de doublon non déterministe : à instruire, hors périmètre.
 
 ### v1.20 — task-344 (extension) — Reprise des étiquetages IA manqués (2026-10-04)
 
