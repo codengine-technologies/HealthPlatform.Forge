@@ -47,3 +47,8 @@ weda2 affiche, comme le mobile, l'écran « service indisponible » quand api-ma
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : inchangé
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+
+- `api-mail` (pushed) : feat/task-395-weda2-ecran-panne-retrait-divergence — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-395-weda2-ecran-panne-retrait-divergence
+- `client-angular` (code-only) : la forge travaille sur la branche courante de `Client/Angular/` (`feature/nova-mss-weda-integration` au /start) — humain gère branche, commit, push, PR TFS
