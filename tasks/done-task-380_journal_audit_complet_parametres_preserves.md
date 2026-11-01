@@ -269,6 +269,41 @@ Que le journal d'audit montre **toutes** les traces correspondant aux filtres af
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
 
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/337 — label `awaiting-human-merge`
+  (catalogue e2e seul).
+- `client-angular` (code-only) : humain gère commit/push TFS et ouverture PR, branche
+  `feature/nova-mss-weda-integration`. Fichiers modifiés (non commités) :
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`
+  - `front/e2e/mss-e2e/support/e2e-backend.ts`
+  - `front/libs/mss/src/features/audit/components/audit-filter/audit-filter.component.spec.ts`
+  - `front/libs/mss/src/features/audit/components/audit-filter/audit-filter.component.ts`
+  - `front/libs/mss/src/features/audit/components/audit-list/audit-list.component.html`
+  - `front/libs/mss/src/features/audit/components/audit-list/audit-list.component.ts`
+  - `front/libs/mss/src/features/audit/mss-audit.component.html`
+  - `front/libs/mss/src/features/audit/mss-audit.component.scss`
+  - `front/libs/mss/src/features/audit/mss-audit.component.ts`
+  - `front/libs/mss/src/features/audit/mss-audit.component.spec.ts` (nouveau)
+  - `front/libs/mss/src/features/patient/components/patient-search/patient-search.component.html`
+  - `front/libs/mss/src/features/patient/components/patient-search/patient-search.component.spec.ts`
+  - `front/libs/mss/src/features/settings/mss-settings.component.html`
+  - `front/libs/mss/src/features/settings/mss-settings.component.scss`
+  - `front/libs/mss/src/features/settings/mss-settings.component.spec.ts`
+  - `front/libs/mss/src/features/settings/mss-settings.component.ts`
+- ⚠️ À commiter sur TFS **avant** le merge de la PR api-mail #337 : `functional.e2e.ts` et `e2e-backend.ts`.
+
+## Code Review Summary
+
+- Verdict : **APPROVED** — 0 bloquant, 3 suggestions (aperçu des traces de déplacement, injection de formule dans le
+  CSV, export côté serveur), toutes antérieures ou hors périmètre.
+- Validation : api-mail build 0 erreur, 7 265 tests verts ; weda2 build vert, `nx affected -t test` 12 projets verts
+  sur l'arbre d'empreinte `fd8dbce4…` (inchangé depuis, vérifié par `lane_cache.py fingerprint`).
+- Règle 1b : sans objet (aucun comportement backend modifié). Règle 14 : sans objet.
+- DOD : build/tests ✓ ; 8 tests unitaires listés présents et vus rouges ✓ ; E2E-AUDIT-002 et E2E-SETTINGS-004 au
+  catalogue et implémentés côté Angular, prouvés rouges par mutation ✓ ; aucune donnée de santé ajoutée aux journaux ✓.
+- E2E double verrou : `## E2E log` vert ✓.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-380 --sync` — ne pas éditer à la main)*
@@ -281,6 +316,7 @@ Que le journal d'audit montre **toutes** les traces correspondant aux filtres af
 | /lint-angular | ok | 2 min 32 s | — | 1 (1 min 31 s) | — | client-angular 0B/1T |
 | /lint-mobile | skipped | 0.6 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 18 min 56 s | — | — | — | e2e ×3 (18 min 12 s) |
-| **Total cycle** | | **54 min 09 s** | **2 (29 s)** | **4 (2 min 36 s)** | **0 (0.0 s)** | |
+| /review | ok | 6 min 35 s | 2 (29 s) | 1 (5 min 13 s) | — | api-mail 1B/1T, client-angular 1B/0T |
+| **Total cycle** | | **1 h 00 min** | **4 (58 s)** | **5 (7 min 50 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×1 (32 s)
