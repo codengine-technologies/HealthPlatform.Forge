@@ -8004,3 +8004,5 @@
 {"ts":"2026-11-01T20:20:03+01:00","run_id":"forge-20261101-380-381","type":"cmd","task":"task-380","step":"review","repo":"client-angular","kind":"build","label":"","cwd":"Client/Angular/front","cmd":"npx nx build weda2 --output-style=static","duration_ms":19152,"exit_code":0}
 {"ts":"2026-11-01T20:25:03+01:00","run_id":"forge-20261101-380-381","type":"cmd","task":"task-380","step":"review","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln","duration_ms":313905,"exit_code":0}
 {"ts":"2026-11-01T20:26:10+01:00","run_id":"forge-20261101-380-381","type":"step","task":"task-380","step":"review","status":"ok","note":"","iterations":null,"duration_ms":395576}
+{"ts":"2026-11-01T20:26:22+01:00","run_id":"forge-20261101-380-381","type":"step_start","task":"task-380","step":"tech-writer"}
+{"ts":"2026-11-01T20:27:28+01:00","run_id":"forge-20261101-380-381","type":"step","task":"task-380","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":66602}

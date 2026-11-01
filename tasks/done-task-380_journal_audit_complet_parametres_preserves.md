@@ -317,6 +317,7 @@ Que le journal d'audit montre **toutes** les traces correspondant aux filtres af
 | /lint-mobile | skipped | 0.6 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 18 min 56 s | — | — | — | e2e ×3 (18 min 12 s) |
 | /review | ok | 6 min 35 s | 2 (29 s) | 1 (5 min 13 s) | — | api-mail 1B/1T, client-angular 1B/0T |
-| **Total cycle** | | **1 h 00 min** | **4 (58 s)** | **5 (7 min 50 s)** | **0 (0.0 s)** | |
+| /tech-writer | ok | 1 min 06 s | — | — | — | — |
+| **Total cycle** | | **1 h 01 min** | **4 (58 s)** | **5 (7 min 50 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×1 (32 s)

@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette, audit qualité.
 > **Document frère (vue produit / direction)** : [`E009-messagerie-securisee-sante.md`](./E009-messagerie-securisee-sante.md)
-> **Dernière mise à jour** : 2026-10-27 (v1.117)
+> **Dernière mise à jour** : 2026-11-01 (v1.119)
 >
 > **Continuité de l'historique** : les sauts de numérotation entre task-094,
 > task-153 et task-175 ne sont **pas** un retard de documentation. Sur la plage
@@ -809,6 +809,23 @@
   - changement visible sur le CDA dans weda2 ;
   - conflit d'un fichier de test avec task-391 (#318) : résolu le 2026-10-27 par un merge de `develop` dans la branche, suites et e2e rejoués verts. Mergé le même jour (`api-mail` `3ef4d75e`, `client-mobile` `053ff53a`) ;
   - divergence E2E-MAILBOX-002 signalée « à retirer » par la porte.
+
+### v1.119 — Le journal d'audit montre toutes les traces du filtre ; les paramètres ne sont jamais écrasés après une panne (weda2) — task-380
+
+- **Origine** : audit de bugs du client Angular du 2026-10-13 (ANG-59, ANG-60, ANG-61, ANG-62, ANG-78), revérifié le 2026-11-01 après les tasks 384, 403, 404 et 405.
+- **client-angular** (weda2, code-only, non commité sur `feature/nova-mss-weda-integration` — l'humain commite sur TFS) :
+  - journal : plus de dédoublonnage par UID (une trace par acte, dans l'ordre du serveur) ; filtre du panneau **fusionné** (tri gardé), « Erreurs uniquement » appliqué par un filtre calculé (`requestFilter`) et rendu au statut du panneau quand il est retiré ; `AuditListComponent` devenu **contrôlé** (page, tri, erreurs, export en entrées) ;
+  - dates `AAAA-MM-JJ` construites en **heure locale** (`localDay`, `localIsoDate`), `max` du sélecteur en date locale ;
+  - export CSV de **toutes** les pages du filtre (200 par page, maximum du serveur ; séquentiel, plafond 10 000, message au-delà) — aucun endpoint d'export côté api-mail ;
+  - aperçu d'une trace annulable (abonnements abandonnés + garde de sélection) et vérifié par **Message-ID** (sans chevrons) ;
+  - paramètres : échec de chargement → écran d'erreur + « Réessayer », aucun réglage modifiable, garde unique dans `triggerSave` ; échecs d'enregistrement (réglages et identité d'expéditeur) annoncés, `catchError` dans le `switchMap`, l'enregistrement automatique reprend ;
+  - recherche patient : invite « Rechercher un patient par nom » (seul `lastName` est envoyé).
+- **api-mail** (PR #337) : catalogue e2e seul — **E2E-AUDIT-002** et **E2E-SETTINGS-004** (Angular requis, mobile non applicable). Règle 1b sans objet (aucun comportement backend modifié).
+- **Tests** : 16 tests Vitest ajoutés, vus rouges ; mutations M1–M9 rouges sur le test visé ; parcours E1 (dédoublonnage) et E2 (échec silencieux) rouges sur le banc `--serve-only`, marqueur vérifié servi. Le pool Vitest `vmThreads` fige le fuseau du worker : les tests de dates jugent la journée locale du poste (convention `fuseau-fige-sous-vmthreads`).
+- **Validation** : api-mail 7 265 tests verts ; weda2 `nx affected -t test` 12 projets verts (mss-lib 1 464, weda2 3 329), build vert, lint MSS 0 erreur.
+- **Sonar** : skipped (catalogue seul, aucun C#).
+- **E2E** : mobile 57 verts, Angular 70 verts, parité verte. Quarantaine E2E-COMPOSE-002 signalée (posée le 2026-10-09, task de correction task-350 archivée).
+- **Suggestions de revue (hors task)** : aperçu des traces de déplacement (`folderPath = "INBOX -> Archive"`) ; neutralisation des formules dans le CSV ; export côté serveur en flux.
 
 ### v1.118 — La liste, la recherche et la vue « Mails du patient » montrent ce qu'elles annoncent, et disent quand elles ne peuvent pas (weda2 et mobile) — task-377
 
@@ -2086,6 +2103,7 @@ Audit grep complémentaires pour les couches 2 / 2bis / 3 (tasks 021 / 022 / 023
 
 | Task | Apport principal | Règles touchées |
 |------|------------------|-----------------|
+| task-380 | **Le journal d'audit montre toutes les traces du filtre ; les paramètres ne sont jamais écrasés après une panne (weda2).** Plus de dédoublonnage, tri du serveur, filtre fusionné, page pilotée par le parent, dates en heure locale, export de tout le filtre, aperçu annulable et vérifié par Message-ID ; paramètres : chargement en échec bloquant, échecs d'enregistrement annoncés, enregistrement automatique qui reprend ; scénarios E2E-AUDIT-002 et E2E-SETTINGS-004. | — |
 | task-377 | **La liste, la recherche et la vue « Mails du patient » montrent ce qu'elles annoncent (weda2 et mobile).** Pages des résultats en attente (`GET biology-acks/pending-mail-uids/page`) et des mails d'un patient par handle dans le corps (`POST patients/mails`) ; sources de la liste dans l'état, réponse ancienne ignorée ; vue patient hors rafraîchissement ; recherche remise à zéro ; états « indisponible » + réessai ; puce mobile paginée sur les résultats en attente ; scénarios E2E-BIO-002 et E2E-PATIENT-004. | — |
 | task-401 | **Délégation de BAL retirée : Mailiz ne déploie plus l'espace IMAP `shared/`.** Revert de task-397, task-398 et task-399 sur dtos-mss (548.0.0), api-mail, client-mobile et weda2 ; catalogue sans `E2E-DELEG-*` ; règle 14 réduite à son principe. Délégation par session à étudier ; task-400 gelée. | — |
 | task-392 | **Un résultat HPRIM se lit comme un CR-BIO CDA (mobile et weda2).** Anomalie = indicateur du laboratoire seul (règle CDA ; les bornes ne signalent plus, task-390 corrigée) ; « partiel », « code labo », seconde valeur ; texte sans lignes techniques ; weda2 : même règle sur le CDA ; scénario E2E-BIO-003. | — |

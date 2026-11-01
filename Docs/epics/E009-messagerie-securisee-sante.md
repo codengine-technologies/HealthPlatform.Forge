@@ -4,7 +4,7 @@
 > **Modèle** : hand-crafted
 > **Version** : 1.93
 > **Auteur** : Pascal Cabanel
-> **Dernière mise à jour** : 2026-10-28 (la liste montre ce qu'elle annonce : tous les résultats de biologie en attente, les mails du patient page par page, une panne signalée comme telle — task-377 ; la délégation de boîte est retirée : Mailiz ne la propose plus sous cette forme — task-401 ; un résultat HPRIM se lit comme un compte rendu de biologie CDA : seule l'anomalie posée par le biologiste est signalée — task-392 ; le même résultat HPRIM rattaché deux fois au même patient est signalé comme doublon — task-391 ; écrire de la part d'un confrère qui vous a délégué sa boîte — task-399 ; les valeurs d'un résultat HPRIM rejoignent la biologie du patient, avec leurs anomalies — task-390 ; un résultat de laboratoire au format HPRIM devient un document de biologie à intégrer — task-389 ; les boîtes déléguées rangées à part dans le mobile et la messagerie web, gestes de gestion seulement — task-398 ; délégation de BAL : la boîte déléguée se lit en direct, rien n'en est conservé — task-397 ; un geste sur la liste touche exactement les messages affichés — task-375 ; une rédaction sans texte ne laisse ni brouillon ni question — task-394 ; carnet d'adresses refondu — task-393)
+> **Dernière mise à jour** : 2026-11-01 (le journal d'audit montre toutes les actions et un export complet, les paramètres ne sont jamais écrasés après une panne — task-380 ; la liste montre ce qu'elle annonce : tous les résultats de biologie en attente, les mails du patient page par page, une panne signalée comme telle — task-377 ; la délégation de boîte est retirée : Mailiz ne la propose plus sous cette forme — task-401 ; un résultat HPRIM se lit comme un compte rendu de biologie CDA : seule l'anomalie posée par le biologiste est signalée — task-392 ; le même résultat HPRIM rattaché deux fois au même patient est signalé comme doublon — task-391 ; écrire de la part d'un confrère qui vous a délégué sa boîte — task-399 ; les valeurs d'un résultat HPRIM rejoignent la biologie du patient, avec leurs anomalies — task-390 ; un résultat de laboratoire au format HPRIM devient un document de biologie à intégrer — task-389 ; les boîtes déléguées rangées à part dans le mobile et la messagerie web, gestes de gestion seulement — task-398 ; délégation de BAL : la boîte déléguée se lit en direct, rien n'en est conservé — task-397 ; un geste sur la liste touche exactement les messages affichés — task-375 ; une rédaction sans texte ne laisse ni brouillon ni question — task-394 ; carnet d'adresses refondu — task-393)
 > **Audience** : PO, médecin, direction produit, conformité.
 > **Document frère (vue ingénierie / dette / audit)** : [`E009-Changelogs.md`](./E009-Changelogs.md)
 
@@ -1036,6 +1036,13 @@ Cette synthèse digère l'historique des versions en langage produit. Le détail
 
 ### Fonctionnalités métier
 
+- **v1.119 — Le journal d'audit montre tout, et vos paramètres résistent à une panne** (task-380, messagerie web) :
+  - **Chaque action sur un message a sa ligne** : lu, signalé, déplacé, supprimé, le journal les montre toutes, dans l'ordre que vous demandez. Un tri ou un filtre « Erreurs uniquement » reste en place quand vous changez de période.
+  - **La période choisie est celle de votre journée** : du 1er au 1er octobre couvre toute la journée du 1er, à votre heure.
+  - **L'export contient tout ce que le filtre trouve**, pas seulement la page affichée.
+  - **L'aperçu montre le bon message**, même si vous passez vite d'une ligne à l'autre ; s'il a quitté son dossier, l'écran le dit.
+  - **Vos paramètres ne sont jamais remplacés par des valeurs par défaut** : s'ils ne peuvent pas être lus, l'écran le dit et rien n'est modifiable jusqu'à ce que vous cliquiez sur « Réessayer ». Un enregistrement en échec est signalé, et le suivant part normalement.
+  - **La recherche de patient** dit ce qu'elle cherche : le nom.
 - **v1.118 — La liste montre ce qu'elle annonce, et dit quand elle ne peut pas** (task-377, messagerie web et application mobile) :
   - **« Bio à acquitter » montre tous vos résultats en attente**, pas seulement ceux de la page affichée. Le nombre de la puce et la liste disent la même chose.
   - **« Mails du patient » reste ouvert** et se parcourt page par page ; il ne revient plus tout seul à la boîte de réception. L'identifiant du patient ne passe plus dans les adresses échangées avec le serveur.
