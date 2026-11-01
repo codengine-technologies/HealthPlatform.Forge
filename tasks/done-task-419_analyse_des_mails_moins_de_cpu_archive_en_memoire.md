@@ -215,7 +215,8 @@ Restent aussi hors périmètre :
 | /lint-angular | skipped | 4.3 s | — | — | — | client-angular non touché (Repos: interop-cda, api-mail ; working tree propre) |
 | /lint-mobile | skipped | 0.7 s | — | — | — | client-mobile non touché (Repos: interop-cda, api-mail ; Client/Mobile sur develop, propre) |
 | /e2e | ok | 19 min 51 s | — | — | — | e2e ×5 (38 min 20 s) |
-| **Total cycle** | | **1 h 22 min** | **13 (1 min 30 s)** | **37 (29 min 46 s)** | **4 (1 min 22 s)** | |
+| /review | ok | 6 min 23 s | 2 (12 s) | 2 (5 min 20 s) | — | interop-cda 1B/1T, api-mail 1B/1T |
+| **Total cycle** | | **1 h 29 min** | **15 (1 min 43 s)** | **39 (35 min 07 s)** | **4 (1 min 22 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (35 s)
 
@@ -415,3 +416,38 @@ Autres commandes mesurées : nuget-wait ×1 (35 s)
 - E2E-MAILBOX-002 [angular] — le code weda2 de task-378 (écran de panne à l'entrée et son test) n'est pas encore livré sur la branche weda2 ; divergence décidée par l'humain le 2026-10-25 — résorbée par task-395 — **à retirer** : le client est revenu à la version du catalogue
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## PRs
+
+- `interop-cda` : https://github.com/codengine-technologies/interop.cda.parser/pull/13 — label `awaiting-human-merge`
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/334 — label `awaiting-human-merge`
+- Ordre de merge : interop-cda d'abord (le paquet 117.0.0 est déjà publié depuis la branche ; api-mail le consomme).
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 0 point bloquant, 4 suggestions.
+
+### Règle 1b — comportement → test d'intégration → preuve du rouge
+
+| Comportement | Test | Rouge |
+|---|---|---|
+| E6 — `POST …/emails/enrich/sync` analyse l'archive en mémoire : mêmes documents que la voie disque, PDF associé compris (relu en base), corps et HTML non vides, aucun fichier de travail | `XdmInMemoryAnalysisEndToEndTests` (Dovecot + Postgres réels) | mutation : le lot ne retient plus le fichier → 0 document |
+| E6 — panne d'hôte → 503, mail laissé à traiter, analysé une fois rétabli | `ArchiveAnalysisMarkerEndToEndTests`, `EnrichmentScratchFailureTests` | tests task-293/333 conservés, panne réinjectée en lecture IMAP |
+| E3 — aucune transformation ne casse au démarrage à froid | `interop-cda` `CdaHtmlConcurrentStartupTests` (repli prévu par la DOD : la course n'est pas reproductible dans le fixture, le cache XSLT y est déjà chaud) | mutation : ancien chargement disque → « Access to the path 'cda_asip.xsl' is denied » |
+| E4b — enveloppe d'une réplique non mise à jour livrée inchangée, sur vrai Redis | `MultiReplicaRedisIntegrationTests` | mutation : dossier perdu à l'en-tête → 2 tests rouges |
+| E7a — trois `UPDATE` ciblés, relus dans un contexte neuf | `MedicalDocumentRepositoryIntegrationTests`, `MailRepositoryIntegrationTests` | laboratoire : l'`UPDATE` touche une autre colonne |
+
+### Revue
+
+- ✅ `IheXdmScratch.cs` : le lot porte les octets, plus de registre statique. Libération idempotente, un flux fermé après la libération ne repeuple pas le lot (testé).
+- ✅ `IheXdmProcessingService.cs` : une seule écriture (`DecodeIntoAsync`), classement des échecs inchangé (invalide ≠ technique).
+- ✅ `CdaParsingService.cs` : la surcharge par octets partage le chemin de mesure et de classement d'échec de la surcharge par chemin.
+- ✅ `MailRepository` / `MedicalDocumentRepository` : `ExecuteUpdateAsync` est sans risque ici. Aucun intercepteur `SaveChanges` ni horodatage sur ces entités, et l'écriture reste sur le contexte du tenant.
+- ✅ `RedisSseBackplane.ReadEnvelope` : lecture d'en-tête robuste à l'ordre des propriétés et aux noms échappés. La charge n'est décodée que par un courtier qui a un abonné. Le tampon capturé ne vit que le temps de la distribution synchrone.
+- ✅ Journaux : aucun journal ajouté ou modifié ne porte de contenu CDA ni de trait patient. La ligne « valeur de biologie manquante » a perdu le nom de l'examen.
+- ⚠️ `ICdaParsingService` garde la surcharge par chemin, que plus aucun code de production n'appelle : elle sert de référence « voie disque » aux tests d'équivalence. À retirer quand ces tests n'en auront plus besoin.
+- ⚠️ `SseBackplaneMessage.Equals` lit la charge, donc la décode. Aucun usage en production (le hachage ne lit que l'en-tête).
+- ⚠️ Pic mémoire d'un lot non mesuré au banc (crédit OpenAI épuisé) : à relever au tir de contrôle. Piste notée : libérer le lot dès `BuildMailDtoAsync`.
+- ⚠️ Taille de PR : ~84 fichiers côté api-mail (11 `packages.lock.json`, ~45 tests adaptés au passage des chemins aux octets). Une seule task par décision humaine du 2026-11-01.
+
+- Validation `/review` : interop-cda 518 verts ; api-mail domaine 202, infrastructure 699, application 3 952, API 1 315, intégration 1 095 — tout vert. `develop` inchangé depuis la création des branches : aucun merge de synchronisation.
