@@ -52,3 +52,31 @@ weda2 affiche, comme le mobile, l'écran « service indisponible » quand api-ma
 
 - `api-mail` (pushed) : feat/task-395-weda2-ecran-panne-retrait-divergence — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-395-weda2-ecran-panne-retrait-divergence
 - `client-angular` (code-only) : la forge travaille sur la branche courante de `Client/Angular/` (`feature/nova-mss-weda-integration` au /start) — humain gère branche, commit, push, PR TFS
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-395 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 13 s | — | — | — | — |
+| /develop | ok | 4 min 06 s | 1 (13 s) | 1 (4.5 s) | — | api-mail 1B/1T |
+| **Total cycle** | | **4 min 19 s** | **1 (13 s)** | **1 (4.5 s)** | **0 (0.0 s)** | |
+
+## Develop log
+
+- **Repos touchés** : `api-mail` (catalogue e2e). `client-angular` : aucun changement. Le code et le test weda2 de task-378 sont déjà sur `feature/nova-mss-weda-integration` (commit `85a13925` « Task 378 », `libs/mss/src/features/mailbox-unavailable/`), retrouvés dans le clone.
+- **Aucun DTO, aucun interop.**
+- **Commit** : api-mail `7b42ed1c` test(e2e) : divergence `angular` d'E2E-MAILBOX-002 retirée de `Api/Mail/e2e/scenarios.yml`, l'origine mentionne la résorption.
+- **E2E-MAILBOX-002 sur weda2** : le test `functional.e2e.ts:3358` déclare `scenario('E2E-MAILBOX-002', 1)`, la version du catalogue.
+  - Il passe sur un banc e2e monté pour l'occasion (`run.mjs --serve-only`).
+  - **Vu rouge par mutation** : `data-testid="mailbox-unavailable"` renommé dans `mss-mailbox-unavailable.component.html` → « la panne est dite comme une panne : expect(locator).toBeVisible() failed ».
+  - Restauré par copie, rejoué au vert. L'arbre weda2 est propre et le banc démonté.
+- **Build / tests** : api-mail build vert ; `ScenarioCatalogTests` 17/17. weda2 n'est pas modifié : son build et ses tests sont rejoués par `/review`.
+- **Passe qualité (/simplify)** : rien à simplifier (une modification YAML).
+- **DOD** :
+  - code weda2 retrouvé ✓ ;
+  - test à la version du catalogue et vu rouge ✓ ;
+  - divergence retirée ✓ ;
+  - `/e2e` parité sans divergence → étape `/e2e`.
+- **Étape suivante** : `/sonar task-395`.
