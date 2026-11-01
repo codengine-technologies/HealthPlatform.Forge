@@ -210,6 +210,14 @@
   échoue, aucun test ne tourne, et un filtre sur « Passed!/Failed! » n'affiche **rien** : la
   mutation a l'air sans effet. Prédicat opaque aux analyseurs : `Environment.TickCount64 < 0`
   (C#), `Date.now() < 0` (TS).
+- **Variante « journal muet » (task-380)** : sur le banc `--serve-only` weda2, `out/logs/weda2.log`
+  reste **vide** : la ligne « Application bundle generation complete » n'y apparaît jamais, la
+  consigne ci-dessus est inapplicable. Et un marqueur écrit en comparaison de littéraux
+  (`'mutation-x' !== ''`) est **plié par esbuild** : il n'atteint jamais le bundle, la mutation
+  paraît non servie. **Consigne** : un marqueur qui survit à la compilation
+  (`String('mutation-x').length > 0 &&`), puis la preuve qu'il est **servi** en lisant les chunks
+  de `https://localhost:4200` (parcours des `*.js` référencés depuis `/`), avant de jouer ; et la
+  disparition du marqueur après restauration, avant le vert final.
 - **Variante « mutation jamais appliquée » (task-354)** : deux fois dans la même task, la preuve a
   failli conclure sur un code non muté. Un `sed` ancré sur une expression que Prettier avait
   répartie sur deux lignes n'a rien remplacé (Angular), et une mutation .NET n'a recompilé que le
@@ -828,6 +836,7 @@ scénario qui l'aurait attrapé, prouvé rouge sur le bug)*
 | Mobile, poste partagé : après une déconnexion, la personne suivante connectée par e-CPS sans recharger arrivait **dans la boîte de la précédente** (la boîte ouverte survivait à la déconnexion, et la garde d'entrée laissait passer) | Audit du périmètre boîte déléguée du 2026-10-30 (M1), vérifié sur le code | **E2E-SESSION-004 v1** (mobile et angular requis) : déconnexion par l'application, connexion e-CPS de la seconde personne simulée à la frontière réseau, arrivée sur le rattachement de SES boîtes et aucune requête ne désignant la boîte précédente. Rouge sur le mobile sans le correctif (l'écran de rattachement n'apparaît pas) ; weda2 vert par son rechargement complet à la connexion (task-052) | task-412 |
 | Mobile : un délégataire interrogeait l'assistant IA dans la boîte du titulaire, et le flux de réponse partait **vers sa propre boîte** (en-tête `Client-Email` = adresse du compte, `fetch` direct hors intercepteur) | Audit du périmètre boîte déléguée du 2026-10-30 (M8) | **E2E-AI-002 v1** (mobile et angular requis) : relit l'en-tête `Client-Email` de la requête de flux. Rouge sur les deux clients sous mutation (« delegataire@e2e.test » au lieu de la boîte ouverte) | task-412 |
 | Un document CDA qui porte son PDF (`nonXMLBody`) s'affichait **bloqué** dans weda2 (« This page has been blocked by Microsoft Edge ») : la feuille de style CDA d'interop suffixe l'adresse `data:application/pdf;base64,…` de `#toolbar=0`, `atob()` refusait le `#`, et le PDF restait dans le cadre isolé, que Chromium refuse d'afficher. Touche **tout** CDA à PDF embarqué. Le mobile n'extrait pas du tout ces PDF de son cadre isolé (à vérifier sur Android). | Humain, mail 4653 de la boîte de Virginie (2026-10-30) | Test unitaire `medical-html-frame` au balisage réel (`#toolbar=0`), vu rouge. **Scénario e2e à ajouter** : aucun seed ne porte de CDA à PDF embarqué | hors task (correction weda2 du 2026-10-30) |
+| Le journal d'audit (weda2) **fusionnait les traces d'un même message** : lu, signalé puis supprimé, il n'en montrait qu'une (dédoublonnage par UID sur chaque page, sans le dossier), retriait la page par date (le tri demandé ignoré), et l'export CSV ne contenait que cette page. Le journal d'imputabilité PGSSI-S cachait donc des actes | Audit de bugs du client Angular du 2026-10-13 (ANG-59), non vu par `/e2e` : E2E-AUDIT-001 ne cherchait qu'**une** trace (la suppression) | **E2E-AUDIT-002** ajouté (Angular requis, mobile non-applicable : pas d'écran de journal) : un message lu, signalé, supprimé ; le journal, cherché sur son objet, en montre autant de lignes que le serveur a enregistré de traces. Rouge en unitaire sous mutation (dédoublonnage réinjecté : 3 tests du parent tombent) ; parcours prouvé par mutation sur le banc `--serve-only` | task-380 |
 
 ---
 

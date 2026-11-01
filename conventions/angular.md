@@ -558,3 +558,20 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   l'humain sur capture. L'avatar d'initiales était invisible, la boîte ouverte n'avait ni barre ni
   coche colorées.
 - **Occurrences** : 1
+
+### fuseau-fige-sous-vmthreads — `process.env.TZ` ne change pas le fuseau d'un test weda2
+- **Règle** : convention projet (piège d'outillage, invisible au lint)
+- **Repos** : `client-angular`
+- **Piège** : le plugin Analog impose le pool Vitest `vmThreads`. Le fuseau du worker y est figé au
+  démarrage : affecter `process.env.TZ = 'America/New_York'` dans un test n'a **aucun effet**
+  (`new Date(2026, 9, 1)` reste minuit de Paris), alors que la même affectation fonctionne dans un
+  `node -e`. Sur task-380, un test « en UTC−4 » était rouge sur le bug… parce que son résultat ne
+  dépendait pas du fuseau ; une fois le correctif posé, il restait rouge sur le code juste.
+- **Consigne** : un test de dates « en heure locale » juge la journée **du poste qui le joue** :
+  bornes attendues construites par `new Date(a, m, j)` / `new Date(a, m, j, 23, 59, 59, 999)`, et
+  pour « aujourd'hui », un instant proche de minuit local choisi selon le signe de
+  `getTimezoneOffset()`. Il est rouge sur un calcul en UTC dès que le poste n'est pas en UTC (Paris :
+  oui ; agent CI en UTC : non — la preuve se fait sur le poste). Ne jamais écrire un test qui
+  dépend d'un `process.env.TZ` posé en cours de route.
+- **Origine** : task-380 (/develop, ANG-61)
+- **Occurrences** : 1

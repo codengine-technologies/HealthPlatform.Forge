@@ -7977,3 +7977,12 @@
 {"ts":"2026-11-01T15:38:24+01:00","run_id":"-","type":"step","task":"task-395","step":"review","status":"ok","note":"","iterations":null,"duration_ms":432907}
 {"ts":"2026-11-01T15:38:34+01:00","run_id":"-","type":"step_start","task":"task-395","step":"tech-writer"}
 {"ts":"2026-11-01T15:39:05+01:00","run_id":"-","type":"step","task":"task-395","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":31432}
+{"ts":"2026-11-01T19:23:37+01:00","run_id":"forge-20261101-380-381","type":"step_start","task":"task-380","step":"start"}
+{"ts":"2026-11-01T19:23:51+01:00","run_id":"forge-20261101-380-381","type":"step","task":"task-380","step":"start","status":"ok","note":"","iterations":null,"duration_ms":13603}
+{"ts":"2026-11-01T19:24:07+01:00","run_id":"forge-20261101-380-381","type":"step_start","task":"task-380","step":"develop"}
+{"ts":"2026-11-01T19:39:37+01:00","run_id":"forge-20261101-380-381","type":"cmd","task":"task-380","step":"develop","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test tests/mss.mail.api.tests/mss.mail.api.tests.csproj --filter FullyQualifiedName~ScenarioCatalog","duration_ms":16412,"exit_code":0}
+{"ts":"2026-11-01T19:41:56+01:00","run_id":"forge-20261101-380-381","type":"cmd","task":"task-380","step":"develop","repo":"client-angular","kind":"build","label":"","cwd":"Client/Angular/front","cmd":"npx nx build weda2 --skip-nx-cache","duration_ms":15398,"exit_code":0}
+{"ts":"2026-11-01T19:42:22+01:00","run_id":"forge-20261101-380-381","type":"cmd","task":"task-380","step":"develop","repo":"client-angular","kind":"test","label":"","cwd":"Client/Angular/front","cmd":"npx nx test mss-lib --skip-nx-cache","duration_ms":24472,"exit_code":0}
+{"ts":"2026-11-01T19:47:38+01:00","run_id":"forge-20261101-380-381","type":"cmd","task":"task-380","step":"develop","repo":"client-angular","kind":"test","label":"","cwd":"Client/Angular/front","cmd":"npx nx test mss-lib --skip-nx-cache --output-style=static","duration_ms":24732,"exit_code":0}
+{"ts":"2026-11-01T19:47:53+01:00","run_id":"forge-20261101-380-381","type":"cmd","task":"task-380","step":"develop","repo":"client-angular","kind":"build","label":"","cwd":"Client/Angular/front","cmd":"npx nx build weda2 --skip-nx-cache --output-style=static","duration_ms":13674,"exit_code":0}
+{"ts":"2026-11-01T19:56:32+01:00","run_id":"forge-20261101-380-381","type":"step","task":"task-380","step":"develop","status":"ok","note":"","iterations":null,"duration_ms":1945114}
