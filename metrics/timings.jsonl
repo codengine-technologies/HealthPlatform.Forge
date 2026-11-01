@@ -8006,3 +8006,9 @@
 {"ts":"2026-11-01T20:26:10+01:00","run_id":"forge-20261101-380-381","type":"step","task":"task-380","step":"review","status":"ok","note":"","iterations":null,"duration_ms":395576}
 {"ts":"2026-11-01T20:26:22+01:00","run_id":"forge-20261101-380-381","type":"step_start","task":"task-380","step":"tech-writer"}
 {"ts":"2026-11-01T20:27:28+01:00","run_id":"forge-20261101-380-381","type":"step","task":"task-380","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":66602}
+{"ts":"2026-11-01T20:27:53+01:00","run_id":"forge-20261101-380-381","type":"step_start","task":"task-381","step":"start"}
+{"ts":"2026-11-01T20:27:54+01:00","run_id":"forge-20261101-380-381","type":"step","task":"task-381","step":"start","status":"ok","note":"","iterations":null,"duration_ms":1272}
+{"ts":"2026-11-01T20:28:05+01:00","run_id":"forge-20261101-380-381","type":"step_start","task":"task-381","step":"develop"}
+{"ts":"2026-11-01T20:31:12+01:00","run_id":"forge-20261101-380-381","type":"cmd","task":"task-381","step":"develop","repo":"client-angular","kind":"build","label":"","cwd":"Client/Angular/front","cmd":"npx nx build weda2 --output-style=static","duration_ms":16892,"exit_code":0}
+{"ts":"2026-11-01T20:31:43+01:00","run_id":"forge-20261101-380-381","type":"cmd","task":"task-381","step":"develop","repo":"client-angular","kind":"test","label":"","cwd":"Client/Angular/front","cmd":"npx nx run-many -t test -p weda2 mss-lib --skip-nx-cache --output-style=static","duration_ms":30249,"exit_code":0}
+{"ts":"2026-11-01T20:32:43+01:00","run_id":"forge-20261101-380-381","type":"step","task":"task-381","step":"develop","status":"ok","note":"","iterations":null,"duration_ms":278286}

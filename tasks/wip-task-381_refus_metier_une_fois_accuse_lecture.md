@@ -89,6 +89,34 @@ notification générique des erreurs que personne d'autre n'explique.
 ## Branches
 - `client-angular` (code-only) : la forge écrit sur la branche checked out dans `Client/Angular/` — `feature/nova-mss-weda-integration` @ `32cc9b79` au /start, arbre portant déjà le travail non commité de task-380 — humain gère branche, commit, push, PR TFS
 
+## Develop log
+
+- Repos touched : `client-angular` (code-only). DTOs / interop : aucun changement.
+- Commits : aucun (code-only) — fichiers modifiés, non commités sur `feature/nova-mss-weda-integration`
+  (l'arbre porte aussi le travail non commité de task-380) :
+  - `apps/weda2/src/app/core/interceptors/error.interceptor.ts`
+  - `apps/weda2/src/app/core/interceptors/error.interceptor.spec.ts`
+  - `libs/mss/src/features/mailbox-management/mss-mailbox-management.component.ts` (commentaire seul)
+- Correctif (ANG-68) : `errorInterceptor` ne notifie plus un refus **d'api-mail** (URL sous `MSS_API_URL`) dont le corps
+  porte un `code` (`isMssBusinessRefusal`). Inchangé : 403 / 5xx sans `code`, réponses d'autres services (même avec
+  `code`), requêtes `SILENT_HTTP_ERRORS`. Le commentaire du contournement de `mss-mailbox-management` ne cite plus le
+  toast ; sa raison restante (résultat jeté par la déconnexion) est conservée.
+- Tests (Vitest, `error.interceptor.spec.ts`) : 7 ajoutés — 403 `MAILBOX_PSC_MISMATCH` et 503 `MAIL_DELIVERY_UNCERTAIN`
+  d'api-mail sans notification (**vus rouges** avant correctif), 503 d'api-mail sans `code` ×3 (corps vide, HTML de
+  passerelle, problem+json sans code), 403 avec `code` d'un autre service, `SILENT_HTTP_ERRORS`. 18/18 verts.
+- Preuves par mutation (restauration par `cp`) :
+  - M1 contrôle d'URL retiré → « 403 avec code d'un autre service » rouge ;
+  - M2 contrôle du `code` retiré → les 3 cas « 503 sans code » rouges ;
+  - M3 exclusion retirée → les 2 refus métier rouges.
+- DoD « motif MSS toujours affiché » : `mss-mailbox-management.component.spec.ts` et `mss-pending-sends.component.spec.ts`
+  (lecture de `MAILBOX_PSC_MISMATCH`) non modifiés et verts.
+- Local build / test : `nx build weda2` vert ; `nx run-many -t test -p weda2 mss-lib` : weda2 2 662, mss-lib 1 464,
+  0 échec ; ESLint des fichiers touchés : 0 problème.
+- Passe qualité (/simplify) : **aucune simplification appliquée** — diff de production d'une trentaine de lignes ;
+  `isProblemDetails` (mss-lib) aurait pu servir mais n'est pas exporté par `@weda/mss` : l'exporter sort du périmètre.
+- E2E : la DoD ne demande aucun scénario ; `api-mail` non touché → /e2e jouera la voie Angular (client-angular touché).
+- Next step : /lint-angular task-381
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-381 --sync` — ne pas éditer à la main)*
@@ -96,4 +124,5 @@ notification générique des erreurs que personne d'autre n'explique.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 1.2 s | — | — | — | — |
-| **Total cycle** | | **1.2 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 4 min 38 s | 1 (16 s) | 1 (30 s) | — | client-angular 1B/1T |
+| **Total cycle** | | **4 min 39 s** | **1 (16 s)** | **1 (30 s)** | **0 (0.0 s)** | |
