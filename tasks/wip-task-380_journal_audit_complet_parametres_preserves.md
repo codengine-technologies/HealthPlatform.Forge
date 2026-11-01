@@ -70,3 +70,16 @@ Que le journal d'audit montre **toutes** les traces correspondant aux filtres af
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui — le journal porte des métadonnées de mails
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+- `api-mail` (pushed) : fix/task-380-journal-audit-complet-parametres — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-380-journal-audit-complet-parametres (catalogue e2e uniquement)
+- `client-angular` (code-only) : la forge écrit sur la branche checked out dans `Client/Angular/` — `feature/nova-mss-weda-integration` @ `32cc9b79` au /start — humain gère branche, commit, push, PR TFS
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-380 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 13 s | — | — | — | — |
+| **Total cycle** | | **13 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
