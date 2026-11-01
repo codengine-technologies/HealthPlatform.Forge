@@ -262,6 +262,12 @@ notification générique des erreurs que personne d'autre n'explique.
 - Validation : `nx build weda2` vert (cache Nx, entrées identiques) ; `nx affected -t test` 12 projets verts sur l'arbre
   d'empreinte `00411009…`, inchangé depuis.
 
+## Merged
+
+- 2026-11-01, clôture demandée par l'humain.
+- Aucune PR GitHub : la task ne touche que `client-angular` (code-only), commité et mergé par l'humain sur TFS.
+- Branche staging `forge/staging-task-380-381-20261101` supprimée (distante et locale) : toutes les tasks du run sont archivées.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-381 --sync` — ne pas éditer à la main)*
