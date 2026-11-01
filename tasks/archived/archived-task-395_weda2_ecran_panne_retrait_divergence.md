@@ -204,3 +204,10 @@ weda2 affiche, comme le mobile, l'écran « service indisponible » quand api-ma
 - Règle 1b : sans objet (catalogue de tests seul, aucun comportement d'endpoint changé).
 - Parcours weda2 E2E-MAILBOX-002 vu rouge par mutation (`data-testid` de l'écran de panne renommé).
 - Validation : api-mail 7 263 tests verts ; weda2 build + tests (12 projets) verts ; `/e2e` vert, aucune divergence ouverte.
+
+## Merged
+
+- Date : 2026-11-01 16:27
+- api-mail : PR #335 squash `21e03518` — CI develop ✅ https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/41320921981
+- Branche `feat/task-395-…` supprimée (distante et locale). Pas de branche staging (cycle hors `/forge`).
+- client-angular : managed manually by the human.
