@@ -236,6 +236,32 @@ notification générique des erreurs que personne d'autre n'explique.
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
 
+## PRs
+
+- Aucune PR GitHub : la task ne touche que `client-angular`.
+- `client-angular` (code-only) : humain gère commit/push TFS et ouverture PR, branche
+  `feature/nova-mss-weda-integration`. Fichiers modifiés par task-381 (non commités ; l'arbre porte aussi task-380) :
+  - `front/apps/weda2/src/app/core/interceptors/error.interceptor.ts`
+  - `front/apps/weda2/src/app/core/interceptors/error.interceptor.spec.ts`
+  - `front/libs/mss/src/features/mailbox-management/mss-mailbox-management.component.ts` (commentaire)
+
+## Code Review Summary
+
+- Verdict : **APPROVED** — 0 bloquant, 2 suggestions.
+- `error.interceptor.ts` — ✅ exclusion étroite : URL sous `MSS_API_URL` **et** `code` non vide dans le corps ; un refus
+  sans `code` ou d'un autre service garde la notification ; `SILENT_HTTP_ERRORS` inchangé. JSDoc complet.
+- `mss-mailbox-management.component.ts` — ✅ commentaire mis à jour, comportement inchangé (la raison restante tient).
+- Suggestions (non bloquantes) :
+  - ⚠️ un `code` d'api-mail qu'**aucun** écran MSS ne lit devient silencieux : c'est le choix de la task ; à surveiller
+    si un nouvel endpoint renvoie un code sans écran pour l'expliquer ;
+  - ⚠️ une requête en `responseType: 'blob'` reçoit son problem+json sous forme de Blob : le `code` n'y est pas lu, la
+    notification générique reste (comportement d'avant, sans régression).
+- Règle 1b : sans objet (aucun backend). E2E : `## E2E log` vert (porte sur le catalogue staging, cas des tasks empilées).
+- DOD : build et tests weda2 verts ✓ ; 5 cas unitaires de l'intercepteur présents, les deux refus métier vus rouges ✓ ;
+  tests du composant lisant `MAILBOX_PSC_MISMATCH` inchangés et verts ✓ ; aucune donnée de santé ajoutée aux journaux ✓.
+- Validation : `nx build weda2` vert (cache Nx, entrées identiques) ; `nx affected -t test` 12 projets verts sur l'arbre
+  d'empreinte `00411009…`, inchangé depuis.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-381 --sync` — ne pas éditer à la main)*
@@ -247,6 +273,7 @@ notification générique des erreurs que personne d'autre n'explique.
 | /lint-angular | ok | 1 min 50 s | — | 1 (1 min 29 s) | — | client-angular 0B/1T |
 | /lint-mobile | skipped | 0.6 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 10 min 29 s | — | — | — | e2e ×2 (9 min 59 s) |
-| **Total cycle** | | **16 min 59 s** | **1 (16 s)** | **2 (1 min 59 s)** | **0 (0.0 s)** | |
+| /review | ok | 19 s | 1 (2.4 s) | — | — | client-angular 1B/0T |
+| **Total cycle** | | **17 min 19 s** | **2 (19 s)** | **2 (1 min 59 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×1 (10 s)
