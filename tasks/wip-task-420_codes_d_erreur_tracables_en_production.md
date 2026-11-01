@@ -155,6 +155,80 @@ qu'une fiche dise quoi en penser et quoi faire. **Sans un cycle de plus sur une 
 ## Branches
 - `api-mail` (pushed) : feat/task-420-codes-d-erreur-tracables-en-production — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-420-codes-d-erreur-tracables-en-production
 
+## Develop log
+
+- Repos touched : `api-mail`. DTOs : aucun changement (`MailboxErrorCodes` est référencé, pas déplacé). Interop : aucun.
+- Commits (branche `feat/task-420-codes-d-erreur-tracables-en-production`) :
+  - `d8e8ead0` feat(errors): codes d'erreur catalogués, retrouvables en production
+  - `e2b22e46` test(errors): catalogue, journal structuré, compteur, code amont, 500 imprévu de bout en bout
+  - `a21b9289` refactor(errors): simplify pass (/simplify)
+- Ce qui est livré :
+  - **Catalogue** `src/Application/Errors/ErrorCatalog.cs` : 57 entrées (code, statut, famille, cause probable, impact pour
+    le médecin, première action). Les 30 codes publiés sont repris **sans renommage** (liste figée par test).
+    `PSC_IDENTITY_CONFLICT` sort en 409 (middleware de boîte) et en 403 (jeton PSC) : contrat existant, documenté par
+    `AlternateStatus`, non modifié.
+  - **Un code pour toute erreur** : `GlobalExceptionHandler.CodeOf` = code porté par l'exception, sinon celui de sa
+    branche (`DATABASE_UNAVAILABLE`, `OFFLINE_MODE`, `TENANT_REGISTRY_*`), sinon celui de son statut
+    (`UNEXPECTED_ERROR` pour un 500 imprévu). Toujours écrit dans le problem+json.
+  - **Journal d'erreur** : contexte `ErrorCode`, `ErrorCategory`, `AppVersion` (normalisée comme `/build-info`),
+    `UpstreamCode` autour de la ligne de `LogException`, et autour des 14 `LogError` de fond (synchronisation ×4,
+    enrichissement, entretien IMAP, file de fond, consommateurs ×5, rétention d'audit ×2).
+  - **Cause amont** : `PscTokenProvider` lit le `code` du corps du proxy **dans ses branches d'échec seulement** (401, 403,
+    autres), filtré (`[A-Za-z0-9_-]{1,64}`), porté par `Exception.Data` jusqu'au journal ; jamais rendu au client.
+  - **Compteur** `mss_errors_total{code, category, status, route}` (Meter `Mssante.Errors`, enregistré dans
+    OpenTelemetry) et **`error.type`** sur la span courante : sur erreur seulement, aux cinq points d'écriture d'une
+    réponse d'erreur (gestionnaire d'exceptions, `Problem()` / `IProblemDetailsService` via `Customize`, résultats
+    Ardalis, middleware de boîte, limiteur de débit). Une réponse sans code est comptée sous le code de son statut,
+    **sans** qu'on ajoute ce code à la réponse.
+  - **Fiches** `docs/codes-erreur.md`, générées depuis le catalogue par `ErrorCatalogDocumentTests`
+    (`MSS_WRITE_ERROR_CATALOG_DOC=1`), le test échoue si le document diffère.
+  - **Sink Console retiré** (`Program.cs`, `appsettings.json`) ; README : Seq et/ou OTLP obligatoires.
+- Tests (+40) : `ErrorCatalogTests`, `ErrorReportingTests`, `ErrorCodeReportingTests`, `ErrorCatalogDocumentTests`, cas
+  ajoutés à `BackgroundSyncManagerCoverageTests`, `BackgroundTaskQueueTests`, `AddNewMailConsumerTests`,
+  `PscTokenProviderTests`. Test d'intégration de bout en bout (règle 1b) dans `MailServerUnavailableEndpointIntegrationTests` :
+  vrais contrôleurs et vrai pipeline d'erreurs, IMAP simulé (fournisseur externe) qui lève une exception imprévue → 500
+  problem+json `code = UNEXPECTED_ERROR` + `traceId` ; et non-régression : 503 `MAIL_SERVER_UNAVAILABLE` inchangé.
+  Capteur partagé `TaggedMeasurements` (testing.shared), classes rattachées à `MailMetricsCaptureCollection` (garde task-291).
+- **Preuves par mutation** (code restauré par `cp`, vérifié par grep) — chaque mutation rouge sur le test visé :
+  - M1 500 imprévu sans code (comportement d'avant) → `EnrichSync_AnUnexpectedFailure_Returns500WithTheUnexpectedErrorCode` (intégration) ;
+  - M2 journal sans contexte d'erreur → 3 tests `TryHandle_*` ;
+  - M3 synchronisation journalisée sous un autre code → `StartSyncAsync_WhenWorkerFails_LogsTheFailureWithItsErrorCode` ;
+  - M4 refus hors gestionnaire non compté → 2 tests `Customize_*` ;
+  - M5 code générique ajouté à la réponse → `Customize_AProblemWithoutException_…_WithoutAddingOneToTheResponse` ;
+  - M6 code du proxy jamais lu → `GetAccessTokenAsync_WhenTheProxyRefusesWithACode_KeepsItAsUpstreamCode` ;
+  - M7 texte libre accepté comme code amont → 5 tests (filtre, refus de texte libre, valeur trop longue) ;
+  - M8 code publié renommé → `All_KeepsEveryPublishedCode_UnderItsName`, `All_ContainsEveryDeclaredCodeConstant` ;
+  - M9 statut faux dans le compteur → 2 tests de compteur.
+- Local build / test : build 0 erreur 0 avertissement ; api 1 337, application 3 990, intégration 1 099 (+16 ignorés),
+  infrastructure 699, domaine 202 — 0 échec, aucun crash (FATAL filtré).
+- Contrôles mécaniques 2b : S125 (1 commentaire réécrit), xUnit1045, S4457, xUnit2032 : rien ; S103 : 2 lignes de test scindées.
+- **A/B de contrôle au banc** (DoD) — même tireur (poste), même banc mail (cluster `192.168.1.69`, `TOXIPROXY` cluster,
+  `LATENCY_MS=96`, `UID_BASE=365`), même registre `mss_registry_loadtest`, scénario `read`, 50 praticiens, 300 req/s,
+  5 min, smoke de chauffe identique avant chaque jambe ; jambe A = `origin/develop` `627a0e2e`, jambe B = branche `a21b9289` :
+
+  | | develop | task-420 | Écart |
+  |---|---|---|---|
+  | CPU moyen par requête (Prometheus, 4 min de plateau) | 11,35 ms | 11,04 ms | −2,8 % |
+  | p95 client | 57,9 ms | 54,4 ms | −6 % |
+  | Latence moyenne | 37,0 ms | 35,4 ms | −4 % |
+  | Débit plateau / erreurs | 300,0 req/s / 0 % | 300,1 req/s / 0 % | = |
+
+  Aucune dégradation du chemin nominal ; l'écart, favorable, est compatible avec le retrait du sink Console mais reste
+  proche du bruit. Rapports : `Docs/audits/api-mail-loadtest-ab-task420-{A-develop,B-branche}-2026-11-01.md`. Analyse Seq
+  du skill non jouée sur ce contrôle (0 erreur sur les deux jambes).
+- Passe qualité (/simplify, 4 relecteurs) — appliqué et re-validé (api 1 337, application 3 990, intégration 1 099) :
+  code de branche déduit du statut sauf exception (`CodeOf`), `TagList`, version normalisée, `TaggedMeasurements`
+  partagé, localisateur de racine `TrackedSourceScan.RepoRoot`, test tautologique retiré. **Écartés** : helper
+  `LogBackgroundError` (gabarit non constant, CA2254) ; middleware unique / passage de tous les écrivains par
+  `IProblemDetailsService` (refonte qui toucherait les corps de réponse — piste pour une task suivante) ; enrichisseur
+  Serilog global (`AppVersion`, `UNCATALOGUED`) qui toucherait chaque événement ; unification des deux
+  `CapturingLogger` (formes différentes) ; compteur dans le filtre MassTransit (double comptage).
+- ⚠️ **À lire avec task-421 / task-381** : un 500 imprévu porte désormais `code = UNEXPECTED_ERROR` (exigence de cette DoD).
+  L'intercepteur weda2 de task-381 traite tout `code` d'api-mail comme un refus métier expliqué par l'écran MSS : il ne
+  notifierait plus ces pannes techniques. task-421 (client-angular) doit l'exclure pour les codes de la famille
+  `Infrastructure` (ou la liste des codes génériques). Signalé dans la PR.
+- Next step : /sonar task-420
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-420 --sync` — ne pas éditer à la main)*
@@ -162,4 +236,5 @@ qu'une fiche dise quoi en penser et quoi faire. **Sans un cycle de plus sur une 
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 4.4 s | — | — | — | — |
-| **Total cycle** | | **4.4 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 1 h 08 min | 3 (34 s) | 11 (15 min 51 s) | — | api-mail 3B/11T |
+| **Total cycle** | | **1 h 08 min** | **3 (34 s)** | **11 (15 min 51 s)** | **0 (0.0 s)** | |
