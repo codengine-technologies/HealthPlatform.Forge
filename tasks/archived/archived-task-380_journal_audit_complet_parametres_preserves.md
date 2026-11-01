@@ -304,6 +304,14 @@ Que le journal d'audit montre **toutes** les traces correspondant aux filtres af
   catalogue et implémentés côté Angular, prouvés rouges par mutation ✓ ; aucune donnée de santé ajoutée aux journaux ✓.
 - E2E double verrou : `## E2E log` vert ✓.
 
+## Merged
+
+- 2026-11-01, sur `--i-tested` de l'humain (HAG, règle 10).
+- `api-mail` : PR #337 squash-mergée → `develop` `627a0e2e` ; CI `develop` verte ; label `awaiting-human-merge` retiré ;
+  branche `fix/task-380-journal-audit-complet-parametres` supprimée (distante et locale).
+- `client-angular` : code-only, géré par l'humain sur TFS (hors périmètre de `/merge`).
+- Branche staging `forge/staging-task-380-381-20261101` **conservée** : task-381, de la même plage, est encore active.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-380 --sync` — ne pas éditer à la main)*
