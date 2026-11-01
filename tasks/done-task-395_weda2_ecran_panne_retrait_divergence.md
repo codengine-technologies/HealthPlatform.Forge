@@ -65,7 +65,8 @@ weda2 affiche, comme le mobile, l'écran « service indisponible » quand api-ma
 | /lint-angular | skipped | 0.8 s | — | — | — | aucun code Angular écrit par la forge (arbre propre) |
 | /lint-mobile | skipped | 0.6 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 19 min 05 s | — | — | — | e2e ×5 (37 min 31 s) |
-| **Total cycle** | | **23 min 27 s** | **1 (13 s)** | **1 (4.5 s)** | **0 (0.0 s)** | |
+| /review | ok | 7 min 12 s | 2 (16 s) | 2 (6 min 15 s) | — | api-mail 1B/1T, client-angular 1B/1T |
+| **Total cycle** | | **30 min 40 s** | **3 (30 s)** | **3 (6 min 20 s)** | **0 (0.0 s)** | |
 
 ## Develop log
 
@@ -190,3 +191,15 @@ weda2 affiche, comme le mobile, l'écran « service indisponible » quand api-ma
 | E2E-MAILBOX-007 | 1 | headless | Après un changement de boîte, l'onglet Patients ne montre plus rien de la précédente | ✅ | ✅ |
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/335 — label `awaiting-human-merge`
+- `client-angular` (code-only) : aucun fichier modifié par la forge ; le code weda2 de task-378 est déjà commité sur `feature/nova-mss-weda-integration` (`85a13925`) — humain gère push TFS et PR.
+
+## Code Review Summary
+
+- **APPROVED** — 1 fichier (`e2e/scenarios.yml`), 0 point bloquant.
+- Règle 1b : sans objet (catalogue de tests seul, aucun comportement d'endpoint changé).
+- Parcours weda2 E2E-MAILBOX-002 vu rouge par mutation (`data-testid` de l'écran de panne renommé).
+- Validation : api-mail 7 263 tests verts ; weda2 build + tests (12 projets) verts ; `/e2e` vert, aucune divergence ouverte.
