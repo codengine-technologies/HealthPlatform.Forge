@@ -1,5 +1,25 @@
 # todo-task-382.md — La session de weda2 se ferme vraiment quand le médecin s'absente, et la connexion PSC aboutit
 
+> ⏸️ **ON HOLD (décision humaine 2026-11-01)** — retirée du backlog actif, à traiter plus tard. Aucune
+> raison de fond : un report de priorité.
+>
+> **État vérifié le 2026-11-01** sur weda2 `feature/nova-mss-weda-integration` (`10e55c09`) : **tous les
+> constats sont encore présents.**
+> - ANG-07 : `AutoLogoutService.initialize()` n'est appelé nulle part (seul l'exemple de sa JSDoc, `auto-logout.service.ts:205`).
+> - ANG-23 : `MSS_PSC_SIGN_IN` navigue vers `/login` (`app.config.ts:382-389`), route absente de `app.routes.ts`.
+> - ANG-24 / ANG-66 : relance `login()` sans borne sur `state` invalide (`authentication-callback.component.ts:140`)
+>   et sur échec d'échange (`authentication-callback.service.ts:272`) ; `?error=` sans `code` non traité.
+> - ANG-67 : `finalize` après `shareReplay` (`refresh-token-shared.service.ts:66-67`).
+> - ANG-71 : `?? preferred_username` après `join(' ')` (`app.config.ts:321-324`).
+> - ANG-69 : rechargement complet toujours présent (`authentication-store.ts:87`), déclenchement au callback non revérifié.
+>
+> **Ce qui a bougé** : task-370 archivée (la dépendance ne bloque plus) ; le `state` CSRF de `loginPsc()` est
+> désormais commité ; E2E-AUTH-003 est toujours libre au catalogue. Les numéros de ligne du corps ci-dessous datent
+> du 2026-10-14 : se fier à ceux de ce bandeau.
+>
+> **Pour réactiver** : une décision humaine, puis revérifier les constats, redéplacer ce fichier dans `tasks/`
+> (`git mv`) et `/start 382`.
+
 **Repos**: client-angular, api-mail (catalogue e2e `Api/Mail/e2e/scenarios.yml` seulement)
 **Dependencies**: task-370 (même module d'authentification ; `refreshAndReplay`, `isSessionLossError`, `injectSessionRefreshDeps`)
 **Epic**: E016
