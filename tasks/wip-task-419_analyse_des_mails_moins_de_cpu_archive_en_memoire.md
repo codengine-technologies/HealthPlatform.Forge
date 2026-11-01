@@ -197,3 +197,8 @@ Restent aussi hors périmètre :
   santé, ne sont plus écrites en clair dans le répertoire temporaire du serveur
 - **AIPD / impact RGPD** : inchangé, aucun traitement nouveau. À noter dans l'AIPD si elle décrit les fichiers
   temporaires : il n'y a plus de copie disque transitoire des archives
+
+## Branches
+- `interop-cda` (pushed) : feat/task-419-analyse-des-mails-moins-de-cpu-archive — https://github.com/codengine-technologies/interop.cda.parser/tree/feat/task-419-analyse-des-mails-moins-de-cpu-archive
+- `api-mail` (pushed) : feat/task-419-analyse-des-mails-moins-de-cpu-archive — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-419-analyse-des-mails-moins-de-cpu-archive
+- Référence du code à porter (locale, **non poussée**, ne jamais pousser) : `lab/cpu-enrichissement` dans `Api/Mail` et dans `interop/interop.cda.parser`
