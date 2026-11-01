@@ -138,14 +138,15 @@ du seuil de mesure sans décision produit.
     (le disque avait son balayage au démarrage) ;
   - le passage par des « chemins » factices doit devenir un type porteur des octets ;
   - le répertoire de travail et son balayage deviennent inutiles.
-- Découpage proposé en tasks `/po` :
-  1. E3 seul (correctif de perte de données, prioritaire) ;
-  2. E2 + E8 (interop-cda) ;
-  3. E6 (interop-cda + api-mail) ;
-  4. E1 ;
-  5. E5 ;
-  6. E7a ;
-  7. E4b.
+- Découpage retenu : **une seule task `/po`**, sur `interop-cda` et `api-mail`, qui porte E3, E2, E8, E6, E1, E5,
+  E7a et E4b. Un découpage en 7 tasks (une par levier) avait d'abord été proposé, puis écarté le 2026-11-01 :
+  - le gain de chaque levier est déjà mesuré au laboratoire, il n'y a rien à re-mesurer task par task ;
+  - un cycle de forge est long, et 7 cycles enchaînés retarderaient aussi le correctif E3 ;
+  - le diff tient dans la limite d'une PR par dépôt : 14 fichiers sur `interop-cda`, et environ 31 fichiers de code
+    et de tests sur `api-mail`, hors `packages.lock.json` ;
+  - un seul paquet `interop-cda` à publier, une seule montée de version côté `api-mail`.
+  - Le prix : une PR plus grosse à relire au HAG, et un échec à une étape bloque tous les leviers à la fois.
+  - Un tir de contrôle 16 médecins × 8 min après merge confirme le gain d'ensemble, crédit OpenAI rechargé.
 
 Sources :
 - journal détaillé, oracle et pilotes : scratchpad de la session (`labo/`) ;
