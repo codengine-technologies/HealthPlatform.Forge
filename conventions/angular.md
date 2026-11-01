@@ -200,8 +200,10 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   le changement pour la relecture humaine. Remède : restaurer depuis HEAD
   (`git show HEAD:…`, lecture seule) et réappliquer les seuls ajouts.
   **Revers** : sans `--write`, les lignes **ajoutées** à un fichier existant ne sont formatées
-  par personne. Écrire ces lignes à la main au format Prettier du repo (100 colonnes, tab,
-  sans point-virgule), puis lire la sortie du lint sur les fichiers touchés et corriger à la
+  par personne. Écrire ces lignes à la main au format Prettier du repo (**80 colonnes**, tab,
+  sans point-virgule ; `.prettierrc` ne fixe pas `printWidth`, c'est le défaut de Prettier, et
+  le vérifier par `node -e "require('prettier').resolveConfig('<f>').then(c=>console.log(c.printWidth))"`),
+  puis lire la sortie du lint sur les fichiers touchés et corriger à la
   main **seulement** les erreurs situées dans les hunks de la task. Ne jamais lancer
   `--fix` sur un fichier qui porte du WIP humain. **Avant de déclarer un repo vert**, lancer
   `npx eslint <fichiers touchés>` (e2e compris) : le vert de la suite ne dit rien du format.
@@ -212,8 +214,12 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   ajouté à `mss-api.service.ts` dépassait la largeur ; puis la reprise B1-B6 : `html-editor.component.ts` et `live-ai.e2e.ts`) ;
   task-329 (/develop : 4 lignes ajoutées à `mail-compose.component.ts` au-delà de 100 colonnes,
   attrapées par le lint ciblé **avant** tout commit. Le contrôle imposé ici a fonctionné ;
-  reste à écrire au format : couper une ligne dès qu'elle approche 90 colonnes. Puis
+  reste à écrire au format : couper une ligne dès qu'elle approche 75 colonnes. Puis
   récidive le même jour sur `functional.e2e.ts`, d'où le remède mécanique ci-dessous)
+- **Correction 2026-11-01** : la consigne donnait 100 colonnes (et « couper vers 90 »). C'est
+  faux : le `printWidth` effectif de `client-angular` est **80**. Constaté sur le retrait des
+  pages de 50 (Paramètres MSS) : deux lignes de 84 et 85 colonnes, écrites « sous 100 », rejetées
+  par `prettier/prettier`. Une consigne fausse fabrique les récidives qu'elle doit prévenir.
 - **Remède mécanique** (task-329) : avant de formater à la main, tester si le fichier était
   propre en HEAD : `git show HEAD:front/<f> | npx prettier --check --stdin-filepath <f>`.
   S'il l'était, `npx prettier --write <f>` ne touche **que** les lignes de la task. Le vérifier
