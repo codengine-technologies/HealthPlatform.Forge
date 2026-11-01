@@ -151,3 +151,15 @@ qu'une fiche dise quoi en penser et quoi faire. **Sans un cycle de plus sur une 
   (pseudonymisation et masquage existants, task-184)
 - **AIPD / impact RGPD** : inchangé — aucune donnée personnelle nouvelle ; la boîte n'apparaît jamais en label
   de métrique
+
+## Branches
+- `api-mail` (pushed) : feat/task-420-codes-d-erreur-tracables-en-production — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-420-codes-d-erreur-tracables-en-production
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-420 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 4.4 s | — | — | — | — |
+| **Total cycle** | | **4.4 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
