@@ -1947,3 +1947,33 @@ private const string UserInfoRoute = "auth/userinfo";      // → /v1/auth/useri
 **Consigne** : une valeur qu'un index unique contraint se **dérive** (base + index du message) dans un
 test. Le hasard ne sert qu'à isoler une suite des autres (un suffixe de dossier, de boîte), jamais à
 distinguer les lignes d'un même lot : N tirages sur M valeurs se rencontrent avec une probabilité ≈ N²/2M.
+
+---
+
+## S3971 — un flux dérivé ne réécrit pas `DisposeAsync` pour appeler `GC.SuppressFinalize`
+
+**Occurrences : 1** (task-419 — `IheXdmScratchSet.EntryStream`, un `MemoryStream` qui publie
+ses octets à la fermeture : la surcharge `DisposeAsync` appelait `Dispose(true)` puis
+`GC.SuppressFinalize(this)`)
+
+`Stream.DisposeAsync()` appelle déjà `Dispose()`, qui appelle `Dispose(true)` puis
+`GC.SuppressFinalize`. Réécrire `DisposeAsync` pour refaire la même chose ne sert à rien, et
+Sonar signale l'appel à `GC.SuppressFinalize` hors de la méthode `Dispose()` publique.
+
+```csharp
+// ❌ AVANT
+protected override void Dispose(bool disposing) { /* publier */ base.Dispose(disposing); }
+public override ValueTask DisposeAsync()
+{
+    Dispose(true);
+    GC.SuppressFinalize(this);
+    return ValueTask.CompletedTask;
+}
+
+// ✅ APRÈS — seule la surcharge Dispose(bool) ; DisposeAsync hérité y conduit
+protected override void Dispose(bool disposing) { /* publier */ base.Dispose(disposing); }
+```
+
+**Consigne** : dans une classe dérivée de `Stream`, ne surcharger que `Dispose(bool)`. Ne
+réécrire `DisposeAsync` que pour un vrai travail asynchrone, et alors sans
+`GC.SuppressFinalize` (c'est le rôle du `DisposeAsync` de base).

@@ -211,7 +211,8 @@ Restent aussi hors périmètre :
 |---|---|---|---|---|---|---|
 | /start | ok | 20 s | — | — | — | — |
 | /develop | ok | 44 min 26 s | 10 (47 s) | 22 (15 min 48 s) | — | interop-cda 1B/4T, api-mail 9B/18T |
-| **Total cycle** | | **44 min 46 s** | **10 (47 s)** | **22 (15 min 48 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 18 min 14 s | 3 (42 s) | 15 (13 min 58 s) | 4 (1 min 22 s) | 2 itération(s), api-mail 3B/15T |
+| **Total cycle** | | **1 h 03 min** | **13 (1 min 30 s)** | **37 (29 min 46 s)** | **4 (1 min 22 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (35 s)
 
@@ -282,3 +283,27 @@ Autres commandes mesurées : nuget-wait ×1 (35 s)
   - le tir de contrôle après merge est **en attente** (banc, crédit OpenAI) ;
   - tous les autres items sont vérifiés.
 - **Étape suivante** : `/sonar task-419`.
+
+## Sonar log
+
+- **Serveur** : SonarQube 9.9.8 (`sonar.login`), projet `healthplatform-api-mail`. New code period : 30 jours.
+- **Phase 1 (new code)** : ✓ Quality Gate OK, new_coverage = **96,2 %** (cible 95 %).
+- **Phase 1, issues fixées** : 1 code smell, S3971 « Do not call GC.SuppressFinalize » dans `IheXdmScratchSet.EntryStream` (commit `72b82aec`) : la surcharge `DisposeAsync` est retirée, celle de `Stream` conduit déjà à `Dispose(true)`. 0 bug, 0 vulnérabilité, 0 hotspot.
+- **Phase 1, tests ajoutés** : 0, la couverture du new code était déjà au-dessus de la cible.
+- **Phase 2 (legacy)** : 0 itération sur 5, sans objet (0 bug, 0 vulnérabilité, 0 code smell hérité).
+- **Build / tests** : ✓ vert à chaque analyse (Release + OpenCover) : domaine 202, application 3 952, infrastructure 699, API 1 315, intégration 1 095.
+- **Conventions** : nouvelle entrée S3971 dans `conventions/csharp.md` (Occurrences 1).
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | → |
+| New coverage | 96,4 % | 96,2 % | −0,2 pt |
+| Bugs | 0 | 0 | 0 |
+| Vulnerabilities | 0 | 0 | 0 |
+| Security hotspots | 0 | 0 | 0 |
+| Code smells | 0 | 0 | 0 |
+| Coverage (projet) | 97,9 % | 97,8 % | −0,1 pt |
+| Duplication | 0,4 % | 0,4 % | 0 |
+| Reliability / Security / Maintainability | A/A/A | A/A/A | → |
