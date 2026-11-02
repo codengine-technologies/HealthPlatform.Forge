@@ -316,6 +316,39 @@ retrouve l'erreur exacte dans Seq à partir de cette référence.
 | /lint-angular | ok | 25 s | — | — | — | — |
 | /lint-mobile | ok | 14 s | — | — | — | — |
 | /e2e | ok | 22 min 56 s | — | — | — | e2e ×5 (39 min 58 s) |
-| **Total cycle** | | **52 min 20 s** | **10 (1 min 45 s)** | **9 (2 min 37 s)** | **0 (0.0 s)** | |
+| /review | ok | 6 min 50 s | 3 (35 s) | 6 (2 min 33 s) | — | client-blazor 1B/1T, client-mobile 1B/3T, client-angular 1B/2T |
+| **Total cycle** | | **59 min 11 s** | **13 (2 min 21 s)** | **15 (5 min 11 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×2 (17 s)
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/339 (catalogue E2E-ERROR-001) — `awaiting-human-merge`
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/121 — `awaiting-human-merge`
+- `client-blazor` : https://github.com/codengine-technologies/HealthPlatform.Client/pull/97 — `awaiting-human-merge`
+- `client-angular` : code-only — humain gère commit/push TFS et ouverture PR, sur `feature/nova-mss-weda-integration`.
+  **`functional.e2e.ts` (E2E-ERROR-001, requis angular) à commiter avant le merge de #339.** Fichiers :
+  `apps/weda2/src/app/core/interceptors/error.interceptor.ts`, `error.interceptor.spec.ts`, `e2e/mss-e2e/specs/functional.e2e.ts`,
+  `libs/mss/src/core/index.ts`, `libs/mss/src/core/utils/error-reference.util.ts`, `error-reference.util.spec.ts`,
+  `libs/mss/src/ui/error-reference/` (4 fichiers), `libs/mss/src/ui/index.ts`, `mss-contacts.component.{ts,html}`,
+  `mail-compose.component.{ts,html,scss}`, `mail-compose-safety.component.spec.ts`, `mail-detail.component.{ts,html}`,
+  `mss-pending-sends.component.{ts,html,spec.ts}`.
+- Dépendance : task-420, api-mail #338. Le correctif de l'intercepteur weda2 part avant ou avec #338.
+- Staging `forge/staging-task-420-421-20261101` : api-mail `ca769ec7`, mobile `1ab123d`, Blazor `0fb08c5`.
+
+## Code Review Summary
+
+- Validation : Blazor 498 verts (projet de tests ; `Mss.Console` NU1100 préexistant), 0 avertissement ; weda2 mss-lib 136
+  fichiers et weda2 107 fichiers verts, build weda2 OK ; mobile build OK, suite verte 4 passages sur 7. Les rouges des 3
+  autres changent d'ensemble (suggestions de task-388, sélection de l'éditeur), hors du code de la task : instabilité
+  `page-ionic-non-demontee`, 4ᵉ occurrence consignée. api-mail : catalogue seul, relu par la porte e2e.
+- Verdict : **APPROVED** — 3 suggestions, 0 bloquant.
+- DoD : toutes les lignes vérifiées. Tests de ligne, d'absence sans `traceId` et de copie dans les trois clients ;
+  E2E-ERROR-001 au catalogue (v1) et dans les deux suites, vert, prouvé par mutation (mobile) ; `data-testid` présents ;
+  ni donnée de santé ni donnée personnelle (un code du catalogue et un identifiant de trace).
+- Règle 1b : sans objet côté serveur (aucun comportement d'api-mail modifié) ; parcours client prouvé par E2E-ERROR-001.
+- Double verrou e2e : `## E2E log` vert (mobile 58, angular 70 + 1 flaky).
+- Suggestions :
+  1. toasts mobiles sans bouton « Copier » ;
+  2. middleware de boîte d'api-mail : `traceId` = `TraceIdentifier`, non W3C (petite task api-mail) ;
+  3. `TECHNICAL_ERROR_CODES` tenue à la main, piste : liste blanche des codes expliqués par l'écran.
