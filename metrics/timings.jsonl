@@ -8083,3 +8083,5 @@
 {"ts":"2026-11-02T01:02:02+01:00","run_id":"forge-20261101-420-421","type":"step","task":"task-420","step":"review","status":"ok","note":"","iterations":null,"duration_ms":1414518}
 {"ts":"2026-11-02T01:02:15+01:00","run_id":"forge-20261101-420-421","type":"step_start","task":"task-420","step":"tech-writer"}
 {"ts":"2026-11-02T01:03:27+01:00","run_id":"forge-20261101-420-421","type":"step","task":"task-420","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":72062}
+{"ts":"2026-11-02T01:03:37+01:00","run_id":"forge-20261101-420-421","type":"step_start","task":"task-421","step":"start"}
+{"ts":"2026-11-02T01:04:02+01:00","run_id":"forge-20261101-420-421","type":"step","task":"task-421","step":"start","status":"ok","note":"","iterations":null,"duration_ms":24699}

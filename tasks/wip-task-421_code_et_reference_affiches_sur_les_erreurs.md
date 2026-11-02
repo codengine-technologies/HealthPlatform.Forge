@@ -83,3 +83,19 @@ retrouve l'erreur exacte dans Seq à partir de cette référence.
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : non applicable — l'écran n'expose qu'un code et un identifiant technique
 - **AIPD / impact RGPD** : inchangé — l'identifiant de trace n'est pas une donnée personnelle
+
+## Branches
+
+- `api-mail` (pushed) : feat/task-421-code-et-reference-affiches-sur-les — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-421-code-et-reference-affiches-sur-les (catalogue e2e seulement)
+- `client-mobile` (pushed) : feat/task-421-code-et-reference-affiches-sur-les — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-421-code-et-reference-affiches-sur-les
+- `client-blazor` (pushed) : feat/task-421-code-et-reference-affiches-sur-les — https://github.com/codengine-technologies/HealthPlatform.Client/tree/feat/task-421-code-et-reference-affiches-sur-les
+- `client-angular` (code-only) : la forge écrit sur la branche checkée dans `Client/Angular/` (au /start : `feature/nova-mss-weda-integration`) — humain gère branche, commit, push, PR TFS
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-421 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 24 s | — | — | — | — |
+| **Total cycle** | | **24 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
