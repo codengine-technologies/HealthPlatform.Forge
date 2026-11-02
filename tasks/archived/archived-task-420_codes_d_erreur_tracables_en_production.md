@@ -412,3 +412,8 @@ qu'une fiche dise quoi en penser et quoi faire. **Sans un cycle de plus sur une 
   (2) test d'intégration « base coupée → 503 `DATABASE_UNAVAILABLE` » à juger au HAG.
 - Avertissement de contrat : l'intercepteur weda2 de task-381 retire le toast générique pour tout `code` ; task-421
   doit le garder pour les codes techniques avant toute livraison de cette PR.
+
+## Merged
+
+- 2026-11-02 — `api-mail` #338 squash `2b38aa91` (testé par l'humain, `/merge --i-tested`).
+- Branche `feat/task-420-codes-d-erreur-tracables-en-production` supprimée (distante et locale).

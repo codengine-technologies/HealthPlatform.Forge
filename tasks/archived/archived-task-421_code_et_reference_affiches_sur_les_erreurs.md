@@ -353,3 +353,10 @@ Autres commandes mesurées : lint ×2 (17 s)
   1. toasts mobiles sans bouton « Copier » ;
   2. middleware de boîte d'api-mail : `traceId` = `TraceIdentifier`, non W3C (petite task api-mail) ;
   3. `TECHNICAL_ERROR_CODES` tenue à la main, piste : liste blanche des codes expliqués par l'écran.
+
+## Merged
+
+- 2026-11-02 — `api-mail` #339 squash `892b571a`, `client-blazor` #97 squash `702ceecb`, `client-mobile` #121 squash
+  `19b5bf38` (testé par l'humain, `/merge --i-tested`).
+- Branches `feat/task-421-code-et-reference-affiches-sur-les` supprimées (distantes et locales).
+- `client-angular` : code-only, commit/push TFS et PR à la main de l'humain.
