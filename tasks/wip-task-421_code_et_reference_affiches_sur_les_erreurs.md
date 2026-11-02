@@ -171,6 +171,28 @@ retrouve l'erreur exacte dans Seq à partir de cette référence.
   `mss-pending-sends.component.{ts,html,spec.ts}`.
 - Next step : /sonar task-421 (api-mail : catalogue seul, aucun code C#).
 
+## Sonar log
+
+- **Sonar : skipped** — la branche api-mail ne modifie que `e2e/scenarios.yml` (catalogue E2E-ERROR-001), qu'aucune
+  règle Sonar n'analyse : aucun fichier C#, nouveau code vide par construction. La dette introduite par la task est
+  donc nulle côté api-mail.
+- Écart au playbook, signalé : `agents/sonar.md` ne prévoit le skip que pour « aucun commit sur api-mail ». Proposition
+  pour l'humain (plan de contrôle, non appliquée) : fonder le skip sur les fichiers analysables (`*.cs`, `*.csproj`),
+  pas sur les commits.
+
+## Lint log
+
+- Mode A, `nx affected -t lint --base=origin/next --projects=tag:scope:mss` : **0 erreur** sur 13 projets dès la ligne de
+  base ; avertissements préexistants seulement (`max-lines`, `complexity` sur des fichiers déjà au-delà des seuils).
+- Itérations de correction : 0. Build et tests non rejoués : rien n'a changé depuis la validation de /develop (mss-lib 136
+  fichiers verts, build weda2 OK). Fichiers weda2 hors portée MSS (intercepteur) lintés à la main en /develop : 0 erreur.
+- Code-only : aucune opération git sur `client-angular`.
+
+## Lint mobile log
+
+- Ligne de base `npm run lint` : **All files pass linting** (0 erreur, 0 avertissement). Itérations : 0, aucun commit.
+- Build et tests non rejoués : rien n'a changé depuis la validation de /develop (build OK, 1 417 verts).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-421 --sync` — ne pas éditer à la main)*
@@ -179,4 +201,9 @@ retrouve l'erreur exacte dans Seq à partir de cette référence.
 |---|---|---|---|---|---|---|
 | /start | ok | 24 s | — | — | — | — |
 | /develop | ok | 28 min 18 s | 10 (1 min 45 s) | 9 (2 min 37 s) | — | client-mobile 3B/3T, client-blazor 5B/3T, client-angular 2B/3T |
-| **Total cycle** | | **28 min 43 s** | **10 (1 min 45 s)** | **9 (2 min 37 s)** | **0 (0.0 s)** | |
+| /sonar | skipped | 0.6 s | — | — | — | api-mail : catalogue YAML seul, aucun fichier analysé |
+| /lint-angular | ok | 25 s | — | — | — | — |
+| /lint-mobile | ok | 14 s | — | — | — | — |
+| **Total cycle** | | **29 min 23 s** | **10 (1 min 45 s)** | **9 (2 min 37 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : lint ×2 (17 s)
