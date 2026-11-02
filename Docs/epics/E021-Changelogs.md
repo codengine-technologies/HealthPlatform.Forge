@@ -2,11 +2,34 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E021-analyse-des-pannes-en-production.md](E021-analyse-des-pannes-en-production.md).
-> **Dernière mise à jour** : 2026-11-02 (v1.1)
+> **Dernière mise à jour** : 2026-11-02 (v1.2)
 
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.2 — Code et référence affichés au praticien sur les trois clients — task-421
+
+- **Task** : task-421, statut `done`. Run `/forge` 420-421. PRs api-mail #339 (catalogue), client-mobile #121,
+  client-blazor #97, label `awaiting-human-merge`. `client-angular` : code non commité sur
+  `feature/nova-mss-weda-integration`. Staging `forge/staging-task-420-421-20261101` sur les trois dépôts poussables.
+- **Livré** :
+  - référence = 8 premiers caractères du trace-id W3C du `traceId`, identifiant entier hors W3C, rien sans `traceId` ;
+    « Copier » copie le code et la référence complète ;
+  - weda2 : `error-reference.util.ts`, composant `mss-error-reference`, branché sur la rédaction, les envois en attente,
+    l'accusé de lecture et la recherche annuaire. **Intercepteur** : `TECHNICAL_ERROR_CODES` garde la notification
+    générique sur les codes techniques de task-420 (sinon task-381 la retirait) ;
+  - mobile : même utilitaire et composant (bandeaux), ligne ajoutée aux toasts et alertes (`problemDetailWithReference`) ;
+  - Blazor : `ErrorReference`, `ErrorReferenceLine` (Localizer), `DetailContent` de la notification Radzen,
+    `HttpRequestService` (corps lu une fois).
+- **Tests** : weda2 +11 (intercepteur 4 vus rouges), mobile +17, Blazor +17 ; mutations M1 / MM1 / MB1 rouges.
+  E2E-ERROR-001 v1 (mobile + angular requis), prouvé par mutation sur mobile (ME1).
+- **Qualité** : /sonar skipped (YAML seul) ; lints à 0 erreur ; E2E vert (mobile 58, angular 70 + 1 flaky E2E-COMPOSE-001).
+- **Dette / suivi** :
+  - toasts mobiles sans bouton « Copier » ;
+  - middleware de boîte d'api-mail : `traceId = TraceIdentifier`, non W3C (petite task api-mail) ;
+  - `TECHNICAL_ERROR_CODES` tenue à la main (piste : liste blanche des codes expliqués par l'écran) ;
+  - suite Karma mobile instable (`page-ionic-non-demontee`, 4ᵉ occurrence) → task de stabilisation.
 
 ### v1.1 — Chaque erreur d'api-mail porte un code catalogué, retrouvable en production — task-420
 
@@ -70,4 +93,4 @@
 | Task | Statut | Contribution |
 |---|---|---|
 | task-420 | done (PR api-mail #338) | Catalogue, code pour toute erreur, journal, compteur, span, cause amont, fiches, retrait de la console |
-| task-421 | todo | Code et référence affichés au médecin (weda2, mobile, Blazor) ; E2E-ERROR-001 |
+| task-421 | done (PRs api-mail #339, mobile #121, Blazor #97) | Code et référence affichés au médecin (weda2, mobile, Blazor) ; E2E-ERROR-001 |

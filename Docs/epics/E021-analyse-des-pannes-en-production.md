@@ -1,8 +1,8 @@
 # E021 — Analyse des pannes en production
 
-> **Statut** : 🟡 En cours — 1 fonctionnalité sur 2 livrée, en attente de recette
+> **Statut** : 🟢 Livrée — 2 fonctionnalités sur 2, en attente de recette
 > **Modèle** : task-driven
-> **Version** : 1.1
+> **Version** : 1.2
 > **Auteur** : PO forge
 > **Audience** : PO, direction, support, équipe produit — la vue ingénierie vit dans [E021-Changelogs.md](E021-Changelogs.md)
 > **Dernière mise à jour** : 2026-11-02
@@ -65,7 +65,7 @@ réussit : l'effort ne porte que sur les erreurs.
 | Fonctionnalité | Ce que le praticien et le support peuvent faire | Tasks | Statut |
 |---|---|---|---|
 | E021-F001 — Chaque erreur se retrouve par son code | Le support retrouve une erreur par son code, avec sa famille, la version en service et, pour une session de carte refusée, la cause donnée par le service d'authentification. Une fiche par code dit quoi en penser et quoi faire. | task-420 | 🟢 Livrée, en attente de recette |
-| E021-F002 — Un code et une référence affichés au médecin | Sous le message d'erreur, le médecin lit « Code : … — Réf. : … » et peut les copier pour le support, sur l'application web, le mobile et Blazor. | task-421 | ⚪ À faire |
+| E021-F002 — Un code et une référence affichés au médecin | Sous le message d'erreur, le médecin lit « Code : … — Réf. : … » et peut les copier pour le support, sur l'application web, le mobile et Blazor. | task-421 | 🟢 Livrée, en attente de recette |
 
 > Le bilan d'avancement par feature (statut, couverture, tasks contributives) est consigné en fin de
 > document, dans la section *État de couverture*.
@@ -88,7 +88,7 @@ y compris une panne imprévue (task-420).
 
 | Règle | Énoncé | Statut |
 |---|---|---|
-| Aucune donnée de santé | Le code, la référence et les informations jointes à une erreur ne contiennent jamais de donnée de santé ni d'identité : ni INS, ni contenu de message, ni adresse, ni RPPS. | ✅ Implémenté côté serveur (task-420) |
+| Aucune donnée de santé | Le code, la référence et les informations jointes à une erreur ne contiennent jamais de donnée de santé ni d'identité : ni INS, ni contenu de message, ni adresse, ni RPPS. | ✅ Implémenté (task-421) |
 | Codes stables | Un code déjà publié n'est jamais renommé : les trois applications s'y réfèrent pour expliquer un refus au médecin. | ✅ Implémenté (task-420) |
 | Aucun coût sur les demandes réussies | Le suivi des erreurs ne s'exécute qu'en cas d'erreur. Une mesure comparative en charge le vérifie avant livraison. | ✅ Mesuré (task-420) |
 
@@ -112,7 +112,7 @@ y compris une panne imprévue (task-420).
 
 - [ ] Toutes les Features sont implémentées et validées.
 - [ ] Une erreur provoquée en recette se retrouve dans les journaux par son code.
-- [ ] Le médecin peut copier un code et une référence, que le support retrouve.
+- [ ] Le médecin peut copier un code et une référence, que le support retrouve (livré, à recetter).
 - [ ] La mesure comparative en charge ne montre aucune dégradation des demandes réussies.
 
 ---
@@ -132,9 +132,9 @@ y compris une panne imprévue (task-420).
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
 | E021-F001 — Chaque erreur se retrouve par son code | 🟢 Livrée, en attente de recette | 100 % | task-420 |
-| E021-F002 — Un code et une référence affichés au médecin | ⚪ À faire | 0 % | task-421 |
+| E021-F002 — Un code et une référence affichés au médecin | 🟢 Livrée, en attente de recette | 100 % | task-421 |
 
-**Couverture EPIC consolidée : 50 %** (1 fonctionnalité sur 2, en attente de recette).
+**Couverture EPIC consolidée : 100 %** (2 fonctionnalités sur 2, en attente de recette).
 
 ---
 
@@ -144,6 +144,8 @@ y compris une panne imprévue (task-420).
 
 - v1.1 — Le support retrouve chaque erreur par un code stable, et une fiche par code donne la cause probable,
   l'impact pour le médecin et la première action. Une panne imprévue porte elle aussi un code (task-420).
+- v1.2 — Sous un message d'erreur, le médecin lit un code et une courte référence, qu'il copie d'un geste et transmet
+  au support. Sur l'application web, le mobile et Blazor ; une panne réseau n'affiche que le message (task-421).
 
 ### Conformité réglementaire
 
