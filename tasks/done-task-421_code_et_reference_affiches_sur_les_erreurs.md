@@ -317,7 +317,8 @@ retrouve l'erreur exacte dans Seq à partir de cette référence.
 | /lint-mobile | ok | 14 s | — | — | — | — |
 | /e2e | ok | 22 min 56 s | — | — | — | e2e ×5 (39 min 58 s) |
 | /review | ok | 6 min 50 s | 3 (35 s) | 6 (2 min 33 s) | — | client-blazor 1B/1T, client-mobile 1B/3T, client-angular 1B/2T |
-| **Total cycle** | | **59 min 11 s** | **13 (2 min 21 s)** | **15 (5 min 11 s)** | **0 (0.0 s)** | |
+| /tech-writer | ok | 0.6 s | — | — | — | — |
+| **Total cycle** | | **59 min 12 s** | **13 (2 min 21 s)** | **15 (5 min 11 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×2 (17 s)
 

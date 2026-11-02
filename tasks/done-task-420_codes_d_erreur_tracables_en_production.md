@@ -384,7 +384,8 @@ qu'une fiche dise quoi en penser et quoi faire. **Sans un cycle de plus sur une 
 | /lint-mobile | skipped | 0.7 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 19 min 26 s | — | — | — | e2e ×3 (18 min 31 s) |
 | /review | ok | 23 min 34 s | 1 (10 s) | 6 (7 min 56 s) | — | api-mail 1B/6T |
-| **Total cycle** | | **2 h 18 min** | **6 (2 min 16 s)** | **27 (39 min 51 s)** | **4 (1 min 31 s)** | |
+| /tech-writer | ok | 1 min 12 s | — | — | — | — |
+| **Total cycle** | | **2 h 19 min** | **6 (2 min 16 s)** | **27 (39 min 51 s)** | **4 (1 min 31 s)** | |
 
 ## PRs
 
