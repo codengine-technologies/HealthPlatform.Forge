@@ -796,7 +796,7 @@ identifiant anglais dans une phrase française.
 
 ## S4136 — les surcharges d'une méthode sont adjacentes
 
-**Occurrences : 3** (task-400 — `PostgresAuditReader.Map` : une projection et un helper insérés entre les deux surcharges de `Map` par la passe qualité ; task-389 — des helpers privés de la première surcharge insérés **entre** les deux surcharges d'`ExtractIheXdmZipsAsync` : un helper se place après la dernière surcharge, jamais entre elles ; task-342 — `Infrastructure.Mock/Repository/MailRepository`)
+**Occurrences : 4** (task-421 — `IErrorNotificationService` (client-blazor) : trois surcharges `ErrorReference?` ajoutées « en bloc » sous la dernière méthode de l'interface, loin de leurs sœurs `NotifyError` et `NotifyConnectionError` ; le build Sonar du client les refuse en erreur, attrapé par /develop avant tout commit ; task-400 — `PostgresAuditReader.Map` : une projection et un helper insérés entre les deux surcharges de `Map` par la passe qualité ; task-389 — des helpers privés de la première surcharge insérés **entre** les deux surcharges d'`ExtractIheXdmZipsAsync` : un helper se place après la dernière surcharge, jamais entre elles ; task-342 — `Infrastructure.Mock/Repository/MailRepository`)
 
 Ajouter une surcharge (ici le paramètre `occurrence` de `GetAttachmentAsync` /
 `UpdateAttachmentAsync`) **en bas de la classe** ou groupée avec l'autre
