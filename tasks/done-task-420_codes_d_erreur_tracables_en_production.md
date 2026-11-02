@@ -383,4 +383,31 @@ qu'une fiche dise quoi en penser et quoi faire. **Sans un cycle de plus sur une 
 | /lint-angular | skipped | 0.6 s | — | — | — | client-angular hors Repos (arbre non commité = tasks 380/381 déjà lintées) |
 | /lint-mobile | skipped | 0.7 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 19 min 26 s | — | — | — | e2e ×3 (18 min 31 s) |
-| **Total cycle** | | **1 h 54 min** | **5 (2 min 06 s)** | **21 (31 min 55 s)** | **4 (1 min 31 s)** | |
+| /review | ok | 23 min 34 s | 1 (10 s) | 6 (7 min 56 s) | — | api-mail 1B/6T |
+| **Total cycle** | | **2 h 18 min** | **6 (2 min 16 s)** | **27 (39 min 51 s)** | **4 (1 min 31 s)** | |
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/338 — label `awaiting-human-merge`
+- Staging du run : `forge/staging-task-420-421-20261101` (api-mail), feat/task-420 agrégée (`ee2d2722`)
+
+## Code Review Summary
+
+- Validation : build 0 erreur 0 avertissement ; domaine 202, application 3 990, infrastructure 699, api 1 337,
+  intégration 1 096 + 3 « du jour » rejoués verts à 01:01 (fenêtre rouge 00:00-01:00 en heure d'hiver) = 1 099, 0 échec.
+- Verdict : **APPROVED** — 37 fichiers, 2 suggestions, 0 bloquant.
+- Double verrou e2e : `## E2E log` vert (mobile 57/57, angular 69 + 1 flaky, parité verte).
+- DoD : toutes les lignes vérifiées. Non-régression 403 `MAILBOX_PSC_MISMATCH` portée par le test d'intégration
+  existant `StaleClientEmailMailboxManagementIntegrationTests.MailboxRequiringRoute_WithStaleClientEmail_KeepsItsRefusal`
+  (middleware touché par la task, code lu dans la réponse réelle).
+- Règle 1b — comportement → test → preuve rouge :
+  - 500 imprévu → `code = UNEXPECTED_ERROR` + `traceId` → `EnrichSync_AnUnexpectedFailure_Returns500WithTheUnexpectedErrorCode` → mutation M1 ;
+  - 503 `MAIL_SERVER_UNAVAILABLE` inchangé → `EnrichSync_MailServerUnreachable_KeepsItsPublishedCode` → non-régression ;
+  - 403 `MAILBOX_PSC_MISMATCH` inchangé → test existant ci-dessus → non-régression ;
+  - choix du code par branche (`DATABASE_UNAVAILABLE`, `OFFLINE_MODE`, `TENANT_REGISTRY_*`, génériques par statut) →
+    test paramétré sur le vrai gestionnaire (`ErrorCodeReportingTests`), écriture commune prouvée par M1. Signalé dans
+    la PR pour arbitrage humain au HAG.
+- Suggestions : (1) `SetStatus(Error)` sur un 4xx, contraire aux conventions OTel HTTP serveur (5xx seulement) ;
+  (2) test d'intégration « base coupée → 503 `DATABASE_UNAVAILABLE` » à juger au HAG.
+- Avertissement de contrat : l'intercepteur weda2 de task-381 retire le toast générique pour tout `code` ; task-421
+  doit le garder pour les codes techniques avant toute livraison de cette PR.
