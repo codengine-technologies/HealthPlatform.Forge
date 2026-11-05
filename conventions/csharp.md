@@ -1892,7 +1892,7 @@ rendre la colonne non nullable dans le modèle si elle l'est en base.
 
 ## S3459-S1144 — un DTO de désérialisation privé s'écrit en `record` positionnel
 
-**Occurrences : 1** (task-405, `/sonar` — `PersonNameResolver.UserInfoPayload` : classe privée `{ get; set; }` lue par `ReadFromJsonAsync`. Sonar ne voit pas l'affectation par réflexion : S3459 « propriété jamais affectée » et S1144 « setter privé inutilisé », ×2.)
+**Occurrences : 2** (task-427, `/sonar` — `SemanticSearchRepository.TermHit` : classe privée `{ get; init; }` matérialisée par `SqlQueryRaw<T>` d'EF, ×5 S3459 et ×6 S1144. Récidive sur code frais, faute de lecture : la lecture de ce fichier s'est arrêtée aux 40 premiers titres, et cette consigne est plus loin. EF Core lie le constructeur d'un record positionnel comme celui d'une classe : la consigne vaut aussi pour `SqlQuery<T>` ; task-405, `/sonar` — `PersonNameResolver.UserInfoPayload` : classe privée `{ get; set; }` lue par `ReadFromJsonAsync`. Sonar ne voit pas l'affectation par réflexion : S3459 « propriété jamais affectée » et S1144 « setter privé inutilisé », ×2.)
 
 **Consigne** : un type privé qui ne sert qu'à désérialiser une réponse s'écrit
 `private sealed record Payload(string? FirstName, string? LastName);`. System.Text.Json lie le

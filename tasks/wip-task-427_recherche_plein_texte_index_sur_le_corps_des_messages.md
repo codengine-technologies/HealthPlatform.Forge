@@ -260,6 +260,45 @@ La moitié du temps de Postgres libérée profite à toutes les étapes servies 
 **Index : rien à dimensionner pour la production.** Aucun index n'a été ajouté. L'extrapolation de l'index écarté
 figure dans « Mesure préalable » (environ 27 Go pour 10 000 boîtes à volume égal).
 
+## Sonar log
+
+- **Mode A (chaîné)**, `api-mail` sur `feat/task-427-recherche-plein-texte-index-sur-le-corps`.
+- **Itération 1** : 11 issues sur le nouveau code, toutes sur `SemanticSearchRepository.TermHit`. C'est une classe
+  privée `{ get; init; }` matérialisée par `SqlQueryRaw<T>`, que Sonar ne voit pas affectée : ×5 `S3459` et ×6
+  `S1144`, dont `RowId`, réellement inutilisé côté C#.
+- **Correction** : `TermHit` passe en `record` positionnel (EF lie le constructeur) et `RowId` est retiré du `SELECT`
+  et du type (`da6b30dd`, commit `refactor(search): S1144/S3459`). Les 189 tests de recherche restent verts.
+- **Récidive** de la consigne « S3459-S1144 — un DTO de désérialisation privé s'écrit en `record` positionnel »
+  (`conventions/csharp.md`, occurrences 1 → 2). Cause : la lecture du fichier s'était arrêtée aux 40 premiers titres.
+- **Itération 2** : 0 issue sur le nouveau code, Quality Gate OK, 0 hotspot.
+  - Les requêtes SQL brutes sont des constantes de compilation : pas de S2077.
+- **Tests sous couverture** : 3 échecs à chaque passage, toujours les mêmes, les tests « du jour » rouges connus
+  entre 00:00 et 02:00 (IMAP `SINCE` en UTC) :
+  - `EmailReadingUseCaseTests.FilterTodayEmailsShouldReturnOnlyTodayAsyncAsync` ;
+  - `ImapFolderServiceIntegrationTests.GetFolderTodayAsync_…` ;
+  - `ImapFolderServiceIntegrationTests.GetFolderNotSeenTodayAsync_…`.
+
+  Les deux analyses ont tourné vers minuit. Ces tests sont sans lien avec la recherche, et seront rejoués après
+  02:00.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | = |
+| Issues new code | 0 (puis 11 au 1er scan de la branche) | 0 | = |
+| New coverage | 96,0 % | 96,0 % | = |
+| Bugs / Vulnérabilités / Code smells | 0 / 0 / 0 | 0 / 0 / 0 | = |
+| Security hotspots | 0 | 0 | = |
+| Coverage projet | 97,8 % | 97,8 % | = |
+| Duplication | 0,4 % | 0,4 % | = |
+| Ratings fiabilité / sécurité / maintenabilité | A / A / A | A / A / A | = |
+
+## Lint log
+
+- `/lint-angular` : **skipped** — `client-angular` n'est pas dans les `**Repos**` de la task.
+- `/lint-mobile` : **skipped** — `client-mobile` n'est pas dans les `**Repos**` de la task.
+
 ## Branches
 
 - `api-mail` (pushed) : feat/task-427-recherche-plein-texte-index-sur-le-corps — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-427-recherche-plein-texte-index-sur-le-corps
@@ -273,4 +312,7 @@ figure dans « Mesure préalable » (environ 27 Go pour 10 000 boîtes à volume
 |---|---|---|---|---|---|---|
 | /start | ok | 17 s | — | — | — | — |
 | /develop | ok | 1 h 25 min | 5 (48 s) | 5 (17 min 04 s) | — | api-mail 5B/5T, variante sans index ; banc : SQL recherche -79 % |
-| **Total cycle** | | **1 h 25 min** | **5 (48 s)** | **5 (17 min 04 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 23 min 57 s | 3 (1 min 29 s) | 12 (14 min 07 s) | 4 (1 min 19 s) | 2 itération(s), api-mail 3B/12T |
+| /lint-angular | skipped | 0.4 s | — | — | — | repo non listé dans Repos |
+| /lint-mobile | skipped | 0.4 s | — | — | — | repo non listé dans Repos |
+| **Total cycle** | | **1 h 49 min** | **8 (2 min 17 s)** | **17 (31 min 12 s)** | **4 (1 min 19 s)** | |
