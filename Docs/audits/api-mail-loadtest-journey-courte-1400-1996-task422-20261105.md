@@ -211,11 +211,42 @@ Le tir s'est déroulé correctement et ses chiffres sont exploitables. Il met en
 
 > ⚠️ **Ces signaux ne sont PAS des causes.** Un traitement lourd peut l'être par volume d'appels, par requête SQL, par aller-retour réseau ou par verrou — et le remède diffère du tout au tout. Établir la cause par la télémétrie (§ « Télémétrie fine ») **avant** de proposer un correctif : cette EPIC a déjà payé une US applicative écrite sur une cause supposée (task-222, annulée).
 
-### Findings d'optimisation (À COMPLÉTER par l'analyse)
+### Findings d'optimisation (analyse du 2026-11-05)
 
-_Pour chaque candidat ci-dessus : la cause établie par la télémétrie, le remède envisagé (mise en cache, algorithme, requête SQL, regroupement d'appels), le gain attendu en temps serveur, et le risque. **Un finding sans cause mesurée n'est pas un finding.**_
+**F1 — Recherche : `ILIKE '%mot%'` sur le corps de tous les messages d'un dossier, 50,6 % du temps SQL du tir.**
+- Formes n° 1 et 2 de `pg_stat_statements` : `MailContents.Body` et `MailMedicalDocuments.Body`, environ 46 000
+  appels chacune, environ 15,5 ms et 270 à 310 blocs de 8 Ko par appel.
+- Émises par `SemanticSearchRepository.ExecuteFullTextSearchAsync` : jusqu'à 3 termes × 2 tables, soit 6 requêtes
+  séquentielles par recherche.
+- Aucun index ne sert un `ILIKE` à joker initial : chaque appel balaie les corps du dossier.
+- Côté médecin, c'est l'étape « Recherche », dont le p50 sort de la grille à 1996 actifs (532 ms pour 500).
+- Remèdes à départager **par le plan**, avec `EXPLAIN (ANALYZE, BUFFERS)` sur une base échantillon :
+  - index GIN `pg_trgm` sur `Body`, qui garde la sémantique d'`ILIKE` mais a un coût disque, mémoire et écriture,
+    alors que la mémoire Postgres est la prochaine limite ;
+  - une colonne `tsvector`, qui change la sémantique (racinisation) : décision produit ;
+  - un seul aller-retour par table pour tous les termes.
 
-_**Puis proposer à l'humain de créer une task `/po`** pour tout finding significatif — un candidat qui pèse plus de 15 % du temps serveur, ou qui sort de la grille, mérite une US. Proposer, jamais créer d'office : le découpage et la priorité sont des décisions produit._
+**F2 — Le cache du compte du registre ne sert jamais : environ 6 lectures du registre par requête HTTP.**
+- Formes n° 5, 6 et 12 : `accounts` et l'ancre PSC, chacune 2 226 391 appels (2,96 par requête HTTP), plus
+  `mss_accounts` (1,00 par requête HTTP).
+- Toutes portent sur **la** base commune du registre, point de contention unique qui croît avec le trafic total.
+- Cause établie dans le code : `UserContextEnricherMiddleware` appelle `TenantRegistrySynchronizer.SynchroniseAsync`
+  à **chaque** requête. Ce dernier appelle `PostgresTenantRegistryClient.EnsureAccountAsync`, qui relit la ligne
+  (2 SELECT) et l'ancre, puis appelle **`InvalidateAccountAsync` sans condition**. Le cache de 10 min de
+  `GetAccountAsync` est donc vidé juste avant d'être lu, et `GetAccountAsync` relit à son tour compte et ancre.
+- Remède : n'invalider que si `EnsureAccountAsync` a écrit (création ou projection Keycloak changée), et servir
+  `EnsureAccountAsync` depuis le cache quand rien ne change.
+- Gain attendu : environ 2/3 des lectures du registre, soit environ 4,5 millions de requêtes en 39 min de tir.
+- S'y ajoute `DISCARD ALL` (forme n° 7, 7,1 par requête HTTP, 3,3 % du temps SQL), réinitialisation Npgsql au
+  retour au pool, à réexaminer avec F2 (`No Reset On Close`).
+
+**Hors code — F3 : mémoire Postgres.**
+- Le cgroup du conteneur est à 100 % de 48 Go aux deux paliers, le taux de cache à 96,7 %, et 18,8 Mo/s sont lus
+  sur disque (formes n° 3, 9 et 17, lecture des contenus).
+- C'est la prochaine limite du banc. En production, elle relève du dimensionnement, déjà recommandé dans task-422.
+
+**Déjà connu — verrou `imap_session`.** L'appel `folder` du dashboard porte 51 % du temps de l'étape (p95 1 013 ms).
+L'attente du verrou pour `ReadFolder` est de 0,76 s au p95 à 1996 : même chantier que les tâches 323 et 270.
 
 ## Ventilation des étapes multi-appels
 
