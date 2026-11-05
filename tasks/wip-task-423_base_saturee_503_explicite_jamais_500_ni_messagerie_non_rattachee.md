@@ -134,3 +134,8 @@ Règles métier :
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui, environnement inchangé
 - **AIPD / impact RGPD** : inchangé, aucun traitement nouveau
+
+## Branches
+
+- `api-mail` (pushed) : feat/task-423-base-saturee-503-explicite-jamais-500-ni — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-423-base-saturee-503-explicite-jamais-500-ni
+  - Créée depuis `origin/develop` (`892b571a`). Le `develop` local d'api-mail porte un commit non poussé de l'humain (`4c497985 Fake IA provider`), **non inclus** dans cette branche.
