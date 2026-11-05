@@ -8300,3 +8300,4 @@
 {"ts":"2026-11-05T23:06:09+01:00","run_id":"-","type":"cmd","task":"task-427","step":"develop","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln --no-build","duration_ms":315414,"exit_code":1}
 {"ts":"2026-11-05T23:06:37+01:00","run_id":"-","type":"cmd","task":"task-427","step":"develop","repo":"api-mail","kind":"build","label":"","cwd":"Api/Mail","cmd":"dotnet build HealthPlatform.Api.Mail.sln --verbosity quiet","duration_ms":6663,"exit_code":0}
 {"ts":"2026-11-05T23:11:51+01:00","run_id":"-","type":"cmd","task":"task-427","step":"develop","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln --no-build","duration_ms":312651,"exit_code":0}
+{"ts":"2026-11-06T00:00:46+01:00","run_id":"-","type":"step","task":"task-427","step":"develop","status":"ok","note":"variante sans index ; banc : SQL recherche -79 %","iterations":null,"duration_ms":5138659}

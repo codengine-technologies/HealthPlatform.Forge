@@ -216,6 +216,50 @@ comparer les termes au résultat donne donc **exactement les mêmes correspondan
   la mutation), et la suite recompilée est verte. Prévention : le script recompile après restauration, et la
   mémoire de session est mise à jour (lire, puis committer, jamais dans la même commande).
 
+## Mesure au banc (2026-11-05, 23:13 → 23:51)
+
+Même tir court que la référence de task-422 : `JOURNEY_STAGES="1400:18m,1996:18m"`, K = 1, IA simulée, pool
+PgBouncer à 1, mêmes bases, même tireur, `LATENCY_MS=96`. Proxies Toxiproxy présents à chaque contrôle (toutes les
+30 s). Seule différence de code : la branche task-427.
+- Référence : `Docs/audits/api-mail-loadtest-journey-courte-1400-1996-task422-20261105.md`.
+- Ce tir : `Docs/audits/api-mail-loadtest-journey-courte-1400-1996-task427-20261106.md`.
+
+| Critère de la DoD | Référence (task-422) | task-427 | Tenu |
+|---|---|---|---|
+| Temps SQL des formes de recherche (`pg_stat_statements`) | 23,9 min, 92 157 appels (50,6 % du SQL) | **5,1 min**, 16 525 appels (20,9 %) | ✅ **−79 %** (cible −50 %) |
+| Recherche, p50 à 1996 (cible 500 ms) | 532 ms | **384 ms** | ✅ |
+| `EnrichPersistMail`, p95 | 453 ms | 425 ms | ✅ (mieux) |
+| Pire écart de p95 d'étape, 1400 et 1996 | — | aucune étape dégradée, toutes améliorées | ✅ |
+| 5xx en régime | 0 | 0 (erreurs 0,00 % et 0,01 %, réseau du relais) | ✅ |
+| Taux de cache Postgres | 96,74 % | 96,34 % | ⚠️ voir ci-dessous |
+
+**Taux de cache : critère non tenu à la lettre, tenu sur le fond.**
+- Le taux baisse de 0,4 point, mais les **lectures disque sont inchangées** : 2 006 703 blocs avant, 1 992 204 après.
+- Ce sont les lectures servies par le cache qui chutent (115,8 → 95,7 millions de blocs), parce que la recherche ne
+  relit plus six fois les corps.
+- Le ratio baisse donc par son dénominateur, pas par un débordement de la mémoire.
+- Le critère visait à interdire un index qui chasserait du cache le jeu de travail. Aucun index n'a été ajouté.
+
+**Effets mesurés au-delà de la recherche**, p95 à 1996 :
+
+| Étape | Avant | Après |
+|---|---|---|
+| Dashboard | 678 ms | 579 ms |
+| Inbox | 356 ms | 202 ms |
+| Message servi base | 318 ms | 170 ms |
+| Recherche | 992 ms | 704 ms |
+| Fiche patient | 2 034 ms | 1 119 ms |
+
+Autres effets :
+- **Temps SQL total du tir** : 47,3 → 24,6 min, soit 3,8 → 2,0 ms de SQL par requête HTTP.
+- **Postgres** : 1,79 backend actif équivalent au lieu de 2,49.
+- **Fautes majeures du cgroup Postgres** : au plus 0,6/s au lieu de 22,3/s.
+
+La moitié du temps de Postgres libérée profite à toutes les étapes servies par la base.
+
+**Index : rien à dimensionner pour la production.** Aucun index n'a été ajouté. L'extrapolation de l'index écarté
+figure dans « Mesure préalable » (environ 27 Go pour 10 000 boîtes à volume égal).
+
 ## Branches
 
 - `api-mail` (pushed) : feat/task-427-recherche-plein-texte-index-sur-le-corps — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-427-recherche-plein-texte-index-sur-le-corps
@@ -228,4 +272,5 @@ comparer les termes au résultat donne donc **exactement les mêmes correspondan
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 17 s | — | — | — | — |
-| **Total cycle** | | **17 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 1 h 25 min | 5 (48 s) | 5 (17 min 04 s) | — | api-mail 5B/5T, variante sans index ; banc : SQL recherche -79 % |
+| **Total cycle** | | **1 h 25 min** | **5 (48 s)** | **5 (17 min 04 s)** | **0 (0.0 s)** | |
