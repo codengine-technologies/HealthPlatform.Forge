@@ -135,6 +135,19 @@ Règles métier :
 - **Hébergement HDS** : oui, environnement inchangé
 - **AIPD / impact RGPD** : inchangé, aucun traitement nouveau
 
+## Arbitrage humain du 2026-11-05 (après la revue)
+
+> Décisions de l'humain, en réponse au CHANGES REQUESTED de `/review` (`questions/task-423.md`) :
+> 1. **Les trois routes sans test d'intégration** (`GET /mail/folders/{folder}`, `…/emails/today`,
+>    `…/emails/content/{uid}`) reçoivent chacune leur test d'intégration, vu rouge. Reprise par `/develop`.
+> 2. **Le 503 du registre injoignable porte `TENANT_REGISTRY_UNAVAILABLE`**, et non `DATABASE_UNAVAILABLE` comme
+>    l'écrit la DOD : c'est le code catalogué de cette cause (task-420). Écart accepté par l'humain.
+> 3. **Le `detail` de ce 503 devient un libellé fixe**, sans nom d'opération ni identifiant de corrélation : le
+>    médecin lit « service momentanément indisponible », comme pour `DATABASE_UNAVAILABLE`. Ajouté au périmètre
+>    de la task, prouvé par le test d'intégration du registre.
+> 4. **Prévention** : consigne ajoutée dans `agents/develop.md` (Step 4.2), « le diff décide des endpoints, pas
+>    la DOD ».
+
 ## Branches
 
 - `api-mail` (pushed) : feat/task-423-base-saturee-503-explicite-jamais-500-ni — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-423-base-saturee-503-explicite-jamais-500-ni
