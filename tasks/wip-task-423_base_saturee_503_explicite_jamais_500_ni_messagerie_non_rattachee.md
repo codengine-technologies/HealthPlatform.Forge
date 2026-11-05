@@ -148,7 +148,8 @@ Règles métier :
 |---|---|---|---|---|---|---|
 | /start | ok | 39 s | — | — | — | — |
 | /develop | ok | 1 h 06 min | 5 (48 s) | 4 (16 min 26 s) | — | api-mail 5B/4T |
-| **Total cycle** | | **1 h 07 min** | **5 (48 s)** | **4 (16 min 26 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 10 min 34 s | 1 (22 s) | 5 (6 min 53 s) | 2 (47 s) | 1 itération(s), api-mail 1B/5T |
+| **Total cycle** | | **1 h 18 min** | **6 (1 min 11 s)** | **9 (23 min 20 s)** | **2 (47 s)** | |
 
 ## Develop log
 
@@ -224,3 +225,29 @@ La DOD écrit « 503 `DATABASE_UNAVAILABLE` » pour le registre indisponible. Le
   - « aucune donnée de santé en clair » : à relire en revue. Les journaux ajoutés ne portent qu'un chemin de route assaini, sans adresse ;
   - « contrat inchangé » : aucun fichier `Dtos/`, aucun frontend touché ; les codes existaient.
 - Next step : `/sonar task-423`
+
+## Sonar log
+
+- Serveur : SonarQube 9.9.8 (`sonar.login`), conteneurs `sonarqube_db` puis `sonarqube` redémarrés (arrêtés depuis 41 h). Analyse de la branche `feat/task-423-…` : build Release, 5 passes de tests OpenCover (domain 202, application 4 003, infrastructure 700, api 1 337, intégration 1 104 + 16 ignorés, 0 échec).
+- Phase 1 (new code) : ✓ Quality Gate OK, new_coverage = 96,1 %, au premier passage
+- Phase 1 — Issues fixées : 0 (0 bug, 0 vulnérabilité, 0 code smell, 0 hotspot à revoir)
+- Phase 1 — Tests ajoutés : 0 (couverture du new code des fichiers de la task : `DatabaseAvailability` 100 %, `ImapService` 100 %, `ImapFolderService` 100 %, `MailboxStreamAccessWatch` 100 %, `MailboxAccessGate` 99,1 %, `GlobalExceptionHandler` 98,4 %, `PostgresTenantRegistryClient` 96,9 %, `MailboxSelectionService` 96,2 %)
+- Phase 2 (legacy) : itérations 0 / 5 — rien à traiter (0 bug, 0 vulnérabilité, 0 code smell sur le projet)
+- Build / tests : ✓ green
+- `conventions/csharp.md` : rien à consigner, aucune règle corrigée à la main
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | → |
+| New coverage | 96,5 % | 96,1 % | −0,4 pt |
+| Bugs | 0 | 0 | 0 |
+| Vulnerabilities | 0 | 0 | 0 |
+| Security hotspots | 0 | 0 | 0 |
+| Code smells | 0 | 0 | 0 |
+| Coverage (projet) | 97,9 % | 97,9 % | 0 |
+| Duplication | 0,4 % | 0,4 % | 0 |
+| Reliability / Security / Maintainability | A/A/A | A/A/A | → |
+
+Baseline : analyse du 2026-11-01 (dernière sur le projet). New code period : 30 jours, depuis le 2026-10-03.
