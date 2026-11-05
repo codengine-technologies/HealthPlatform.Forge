@@ -51,3 +51,24 @@ Opération=GetAccountAsync CorrelationId=… ». Ni donnée de santé ni message
 Il sort désormais à chaque requête pendant une panne du registre. Blazor (`ProblemDetailsParser`) et la recherche
 mobile affichent `detail`. Un `detail` fixe pour l'indisponible du registre, comme pour `DATABASE_UNAVAILABLE`,
 serait plus juste. Hors DOD de task-423 : à trancher par l'humain (complément de cette task, ou task à part).
+
+---
+
+# 2ᵉ passage de `/review` (après la reprise, `fccd6fc2`) : CHANGES REQUESTED, un comportement non prouvé
+
+Le premier blocage est levé : les trois routes ont été retirées du périmètre par décision humaine (leurs 500 sont des
+pannes IMAP, task-425), et le libellé fixe du 503 du registre est prouvé.
+
+**Reste un comportement modifié, atteignable par un endpoint, sans test d'intégration** (règle 1b) : les routes de
+gestion des boîtes. `MailboxManagementService` (et `MailboxSenderIdentityService.CanEditAsync`) appellent
+`GetAccountAsync` / `ListMailboxesAsync` / `GetMailboxAsync`, qui ne dégradent plus. Pendant une panne du registre,
+`GET /api/v1/account/mailboxes` passe donc de **200 avec une liste vide** (« aucune boîte rattachée », ce qui invitait
+le médecin à rattacher de nouveau la sienne) à **503 `TENANT_REGISTRY_UNAVAILABLE`**. C'est voulu et écrit dans le
+`## Develop log`, mais aucun test ne le lit.
+
+**Ce qu'il faut faire (`/develop task-423`)** : dans `MailboxAttachRoleIntegrationTests` (vrai `AccountController`,
+vrai `MailboxManagementService`, vrai registre PostgreSQL), un test qui coupe la base du registre
+(`ALLOW_CONNECTIONS false`, comme `RegistryUnavailableEndpointIntegrationTests`) puis lit
+`GET /api/v1/account/mailboxes` : 503, `code` = `TENANT_REGISTRY_UNAVAILABLE`, `detail` fixe, jamais `200 []`.
+Vu rouge en remettant la dégradation de `ListMailboxesAsync` (et de `GetAccountAsync`) : 200 et une liste vide.
+Aucune décision humaine nécessaire.
