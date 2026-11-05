@@ -139,3 +139,88 @@ Règles métier :
 
 - `api-mail` (pushed) : feat/task-423-base-saturee-503-explicite-jamais-500-ni — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-423-base-saturee-503-explicite-jamais-500-ni
   - Créée depuis `origin/develop` (`892b571a`). Le `develop` local d'api-mail porte un commit non poussé de l'humain (`4c497985 Fake IA provider`), **non inclus** dans cette branche.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-423 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 39 s | — | — | — | — |
+| /develop | ok | 1 h 06 min | 5 (48 s) | 4 (16 min 26 s) | — | api-mail 5B/4T |
+| **Total cycle** | | **1 h 07 min** | **5 (48 s)** | **4 (16 min 26 s)** | **0 (0.0 s)** | |
+
+## Develop log
+
+- Repos touched : `api-mail` (feat/task-423-base-saturee-503-explicite-jamais-500-ni)
+- DTOs published : no DTO change — Interop published : no interop change
+- Commits :
+  - api-mail : `54ce89e9` fix(errors): base ou registre saturés rendus en 503, jamais en 500 ni en 403 — task-423
+  - api-mail : `0e2c5172` refactor(errors): simplify pass (/simplify) — task-423
+- Local build / test : ✓ `HealthPlatform.Api.Mail.sln` — domain 202, infrastructure 700, application 4 003, api 1 337, intégration 1 104 (+16 ignorés), 0 échec, aucun `FATAL`. Après la passe qualité : suite complète rejouée (un échec de harnais dans le nouveau test, corrigé), puis les 30 tests touchés depuis (nouveaux tests et suites qui partagent `ArchiveMailboxServer`) rejoués verts.
+
+### Chaîne F3, établie avant le correctif
+
+`UserContextEnricherMiddleware.ApplyMailboxSelectionAsync` → `MailboxSelectionService.SelectAsync` → `PostgresTenantRegistryClient.GetAccountAsync` / `GetMailboxAsync` / `ListMailboxesAsync`. Chacune attrapait `TenantRegistryUnavailableException` et rendait `null` ou `[]` (« dégradation définie », task-299, antérieure au passage du registre sur le chemin de chaque requête, task-303). La sélection lisait ce `null` comme « compte inconnu » (`MailboxRequired`) ou « non rattachée » (`NotAttached`), et le middleware écrivait le 403. Le `TenantRegistrySynchronizer` journalisait juste avant « Synchronisation ignorée — registre indisponible » (Seq, 2026-11-04T23:57Z). Chaîne conforme à celle de la task.
+
+### Ce qui change
+
+- **`DatabaseAvailability`** (`src/Application/Errors/`) : la seule définition des SQLSTATE d'indisponibilité (`08P01`, `08006`, `57014`, `53300`), lue par `DbException.SqlState`, sans dépendre du pilote. Le `GlobalExceptionHandler` l'appelle directement (l'ancien `IsDatabaseUnavailable` est retiré).
+- **Registre** : `GetAccountAsync`, `GetMailboxAsync`, `ListMailboxesAsync` propagent la panne. Les opérations de cartographie (`ResolveTenantAsync`, `ListTenantsOfAccountAsync`, horodatages, `MarkAuthenticationOutcomeAsync`) gardent leur dégradation. Contrat écrit dans `ITenantRegistryClient` (« une absence n'est jamais une panne »).
+- **Appelants examinés** :
+  - `UserContextEnricherMiddleware.SelectMailboxAsync` : route `[MailboxNotRequired]` → continue sans boîte (journal `3726`) ; route qui exige une boîte → la panne remonte au `GlobalExceptionHandler`.
+  - `MailboxAccessGate.FindAttachmentOrNullAsync` : au refus de l'opérateur, une panne du registre vaut absence, donc le verdict est retiré (fermeture sûre, journal `4034`).
+  - `MailboxStreamAccessWatch.RecheckAsync` : le flux SSE se ferme sur `MAILBOX_ACCESS_UNVERIFIED`, jamais sur `MAILBOX_NOT_ATTACHED`.
+  - `MailboxManagementService` (routes de gestion des boîtes) et `MailboxSenderIdentityService.CanEditAsync` : laissés propager, donc 503 ; avant, une panne y rendait « aucune boîte » ou « réservé au titulaire ».
+
+### `catch (Exception)` examinés (inventaire mesuré)
+
+Seq était injoignable pendant l'étape (conteneur sans port publié) : l'inventaire vient du journal k6 de l'escalier (`reports/2026-11-04/k6-log-k6-journey-20261104-234134.txt`, première occurrence par médecin et par geste, corps ProblemDetails avec `instance`).
+
+| Route rendue en 500 au palier 1400 | Occurrences | `catch` | Fait |
+|---|---|---|---|
+| `GET /mail/folders/{folder}` | 3 841 | `ImapService.ReadFolderAsync` (→ `MapFolderAccessExceptionAsync`) | filtre `when (!DatabaseAvailability.IsUnavailable(ex))` |
+| `GET …/emails/today` | 108 | `ImapService.ReadTodayAsync` (→ `MapFolderAccessExceptionAsync`) | filtre |
+| `GET /mail/folders` | 108 | `ImapService.GetFoldersAsync` (×2 : lecture IMAP, persistance) et `ImapFolderService.GetFoldersAsync` | filtre |
+| `GET …/emails/content/{uid}` | 135 | `ImapService.GetEmailContentInternalAsync`, lecture du message | filtre |
+| `PUT …/emails/{uid}…` | 2 | non attribué : `instance` tronquée dans le journal, `EmailFlagService.UpdateEmailReadStatusAsync` n'a pas de `catch` | laissé, à confirmer au prochain tir |
+
+Laissés avec leur raison : `ImapService.GetEmailContentInternalAsync`, `catch` de `imapClient.GetFolderAsync` (IMAP seul, aucune base). Les ~180 autres `catch (Exception)` de `src/Application` n'ont **pas** été passés un par un. Beaucoup sont volontairement au meilleur effort (nettoyages, ré-indexation après déplacement, analyse, traces), et y laisser passer une panne transformerait un effet secondaire avalé en requête échouée. Le filtre n'est posé que là où le banc a mesuré un 500.
+
+Hors du prédicat, donc toujours 500 : une base injoignable au niveau du socket, ou le délai **client** de 30 s de Npgsql. Ces erreurs n'ont pas de SQLSTATE, comme avant task-423, côté `GlobalExceptionHandler` aussi. Le banc ne les a pas produites. À instruire si un tir les fait apparaître.
+
+### Écart à signaler à `/review` : code du 503 du registre
+
+La DOD écrit « 503 `DATABASE_UNAVAILABLE` » pour le registre indisponible. Le 503 rendu porte **`TENANT_REGISTRY_UNAVAILABLE`**, le code catalogué (task-420) que le `GlobalExceptionHandler` associe déjà à `TenantRegistryUnavailableException` (« les boîtes ne se listent pas ou ne se rattachent pas »). La règle 12 demande un mapping par type, et ce code dit la cause exacte. Le statut (503), le format et l'objectif (jamais un 403) sont ceux de la DOD.
+
+### Tests
+
+- **Intégration (règle 1b), vus rouges par mutation** :
+  - `PractitionerDatabaseUnavailableEndToEndTests.ListingTheFolders_WhenThePractitionerBaseCancelsTheQuery_Returns503DatabaseUnavailable` : vrai `MailController`, vrai `ImapService`, Dovecot, base praticien réelle. Une autre session tient `MailFolders` en accès exclusif, et le serveur annule chaque requête qui l'attend (`pg_cancel_backend`, `57014`). Lu : 503, `application/problem+json`, `code` = `DATABASE_UNAVAILABLE`, `detail` fixe sans message du pilote. Témoin : `…_WhenThePractitionerBaseAnswers_Returns200WithTheInbox`.
+    - **M1** : filtre retiré du `catch` de la persistance des dossiers → **500** au lieu de 503. Restauré par `cp`.
+    - Premier essai écarté : `ALTER DATABASE … SET statement_timeout` ne vaut que pour les sessions neuves, l'application réutilisait la sienne et attendait le délai client de 30 s (500 sans SQLSTATE). Consigné dans le test.
+  - `RegistryUnavailableEndpointIntegrationTests` : vrai schéma Bearer, vrai middleware, vraie `MailboxSelectionService`, vrai client PostgreSQL du registre. La base du registre refuse toute connexion (`ALLOW_CONNECTIONS false`, sessions coupées).
+    - `MailboxRoute_WhenTheRegistryIsUnavailable_Answers503_NeverMailboxNotAttached` (compte en cache, le cas du banc) : 503 `TENANT_REGISTRY_UNAVAILABLE` pour la boîte rattachée et pour une inconnue. Témoin avant la panne : boîte inconnue → 403 `MAILBOX_NOT_ATTACHED`. **M2** : dégradation en `null` remise dans `GetMailboxAsync` → **403** (`Forbidden`). Un premier passage à cache froid n'observait pas M2, car c'est alors `GetAccountAsync` qui lève d'abord, d'où le cache qui retient.
+    - `…_AndTheAccountIsNotCached_Answers503` : **M3** (dégradation remise dans `GetAccountAsync`) → **403**.
+    - `MailboxOptionalRoute_WhenTheRegistryIsUnavailable_IsServedWithoutAMailbox` : 200, aucune boîte posée.
+- **Unitaires** : `DatabaseAvailabilityTests` (4 SQLSTATE, chaîne enveloppée, erreurs de requête, `null`), `MailboxSelectionServiceTests` (registre indisponible sur le compte et sur le rattachement → la panne remonte), `MailboxAccessGateTests.ARefusalInUse_WhileTheRegistryIsUnavailable_StillDropsTheVerdict`, `MailboxAccessCollaboratorsTests.StreamWatch_WhenTheRegistryIsUnavailable_ClosesAsUnverified_NeverAsNotAttached`, `PostgresTenantRegistryClientTests.WhenUnavailable_GetAccountSurfacesTheFailure`. `ListMailboxes_…` et `GetMailbox_WhenUnavailable_SurfacesTheFailure` (ex-`…_DegradesTo…`) sont réécrits.
+- **Trou du filet** : ligne ajoutée dans `conventions/e2e.md`, « Trous du filet ». Pas de scénario e2e, puisque le backend e2e ne sait pas saturer Postgres. Le filet est formé des deux tests d'intégration ci-dessus.
+
+### Passe qualité (/simplify)
+
+- Appliquée et commitée : `api-mail`, 11 fichiers (`0e2c5172`).
+  - Relais `GlobalExceptionHandler.IsDatabaseUnavailable` retiré.
+  - Trois commentaires qui disaient encore « le registre dégrade toujours » corrigés (`GlobalExceptionHandler`, `PostgresTenantRegistryClient`, `TenantRegistryUnavailableException`).
+  - Le flux SSE passe par le `switch` existant.
+  - Tests : `ArchiveMailboxServer` réutilisé, avec un accesseur `PractitionerConnectionString()`. `SqlProbe` réutilisé. `TenantRegistryTestClient.For(connection, cache)` ajouté. `try/finally` redondants retirés, doublon de test unitaire retiré.
+- Écartés :
+  - le helper du middleware rendant `MailboxRequired`, car « registre en panne » doit rester distinct de « aucune boîte » ;
+  - la mise en commun du cache mémoire et du handler Bearer des tests d'intégration (6ᵉ copie de chacun), chantier hors périmètre ;
+  - une lecture « compte puis rattachement » unique sur le registre, qui touche l'interface hors du périmètre.
+- Contrôle mécanique §Q 2b : 2 S125 (« … ; … » dans deux commentaires), attrapés **après** le commit de la fonctionnalité et corrigés avant le push. Récidive comptée dans `conventions/csharp.md` (S125, 25).
+- Skipped (contract/excluded) : dtos-mss, interop-cda, sdk non touchés.
+
+- DOD self-check : 10 points sur 12 vérifiés par commande (build, tests, chaîne F3, `catch` corrigés, inventaire, deux tests d'intégration et leurs mutations, fixture décrite, tests unitaires par branche, trou du filet). Deux restent à voir :
+  - « aucune donnée de santé en clair » : à relire en revue. Les journaux ajoutés ne portent qu'un chemin de route assaini, sans adresse ;
+  - « contrat inchangé » : aucun fichier `Dtos/`, aucun frontend touché ; les codes existaient.
+- Next step : `/sonar task-423`
