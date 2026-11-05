@@ -2,10 +2,10 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.77
+> **Version** : 1.78
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
-> **Dernière mise à jour** : 2026-09-13
+> **Dernière mise à jour** : 2026-11-05
 
 ---
 
@@ -1643,10 +1643,35 @@ panne.
 > soit la cause, l'application doit la voir et s'en remettre, et c'est cela qui a
 > été traité.
 
+### Quand la messagerie sature, le médecin lit « momentanément indisponible », jamais « messagerie non rattachée » (5 novembre 2026)
+
+En poussant la plateforme jusqu'à sa limite, mille quatre cents médecins actifs en même temps, la base de données a
+fini par refuser de nouvelles connexions. La plupart des écrans ont alors répondu correctement : « service
+momentanément indisponible, réessayez ». Deux autres non.
+
+Le premier rendait une **erreur inattendue** à l'ouverture de la liste des dossiers : l'application attrapait la panne
+elle-même et la présentait comme un incident inconnu, au lieu de dire qu'il suffisait de patienter.
+
+Le second était plus trompeur. Pendant la saturation, une partie des médecins a lu **« Cette messagerie n'est pas
+rattachée à votre compte »**. Leur boîte était pourtant bien rattachée : c'est le registre qui dit quelle boîte
+appartient à qui qui ne répondait plus, et l'application prenait son silence pour une réponse négative. Un praticien
+pouvait croire sa boîte détachée et tenter de la rattacher de nouveau, alors que le service n'était indisponible que
+quelques instants.
+
+Désormais, une base saturée ou un registre injoignable donnent le même message à l'écran : **« momentanément
+indisponible »**, sans détail technique. La boîte du médecin n'est ni ouverte ni déclarée détachée tant que le registre
+n'a pas répondu, la liste de ses boîtes ne s'affiche plus vide, les écrans qui n'ont pas besoin de boîte continuent de
+fonctionner, et un refus de l'opérateur de messagerie ferme toujours l'accès, même pendant la panne.
+
+En analysant ces erreurs, on a aussi constaté que d'autres réponses inattendues du même tir, à l'ouverture d'un
+dossier ou d'un message, ne venaient pas de la base mais de la messagerie MSSanté elle-même, interrompue en pleine
+lecture. Elles font l'objet d'une demande distincte.
+
 ## État de couverture (2026-09-18)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
+| Base ou registre saturés : « momentanément indisponible », jamais « messagerie non rattachée » | 🟡 Livré, en attente d’intégration | À mille quatre cents médecins actifs, la base refusait de nouvelles connexions : l’ouverture de la liste des dossiers rendait une erreur inattendue, et une partie des praticiens lisait que leur boîte n’était « pas rattachée à leur compte », le registre des boîtes ne répondant plus. Désormais le message est le même dans les deux cas, sans détail technique ; la boîte n’est ni ouverte ni déclarée détachée tant que le registre n’a pas répondu, la liste des boîtes ne s’affiche plus vide, et un refus de l’opérateur ferme toujours l’accès. Les erreurs à l’ouverture d’un dossier ou d’un message, venues de la messagerie MSSanté interrompue en pleine lecture, font l’objet d’une demande distincte | task-423 |
 | Le banc compte des praticiens inscrits, plus des robots en boucle | 🟢 Livré — premier tir `terrain` à 1 000 inscrits lancé le 2026-09-18, audit à venir | Jusqu'ici « mille médecins » désignait mille personnes ouvrant leur messagerie **toutes les 87 secondes, toutes en même temps, pendant trois heures et demie** (41 fois par heure chacune, mesuré). Le mode `terrain` modélise ce qui manquait : le praticien **s'absente** (il consulte), revient pour une session de quelques minutes, repart ; trois profils (occasionnel, régulier, intensif) attribués de façon rejouable. Le nombre de praticiens réellement présents **se déduit** au lieu d'être fixé à cent pour cent, et chaque verdict l'annonce (« N inscrits — M actifs en moyenne »). Les gestes et leurs seuils ne changent pas ; une mesure `terrain` ne se compare jamais à une mesure `journey`. Les profils sont des **hypothèses construites par cohérence**, remplaçables par les habitudes observées dans le journal d'audit une fois en production. Deux corrections d'instrument : la préparation d'un tir sur des boîtes déjà analysées ne consomme plus 78 % du temps de mesure pour ne rien faire (elle vérifie au lieu de préparer), et le débit publié par palier était sous-estimé d'un facteur 5,5 (rapporté à la fenêtre entière au lieu du seul régime) | task-321 |
 | Le cache de la messagerie ne se met plus lui-même à genoux | 🟢 Livré — mesure de confirmation à conduire au banc | Le cache sert les demandes **une par une**. La messagerie y rangeait le contenu entier des messages ouverts — jusqu'à un million et demi de caractères — et ranger un tel message l'occupe une quinzaine de millisecondes, pendant lesquelles l'identité du praticien, ses préférences et les résumés de sa boîte attendent. **6 568 abandons** de ce type sur une mesure à mille médecins, prise **journal de traçabilité éteint** : ce journal, un temps soupçonné, en est donc **innocenté**. Le cache n'était pas plein, il était occupé. Désormais ce qui dépasse une taille fixée n'y entre plus : le message est relu depuis la base, son chemin habituel. **Le médecin ne voit aucune différence** — affichage entier, mise en forme et documents rattachés compris, vérifié par un test qui compare les deux lectures. La taille n'a pas été choisie ronde : la plus petite écriture bloquante observée pesait 160 kilo-octets pour onze millisecondes, la limite retenue en coûte environ quatre, sous le seuil qu'exigera la mesure de vérification. La messagerie publie enfin la taille de ce qu'elle range et le nombre de refus — ce qui manquait pour diagnostiquer autrement qu'en lisant le journal du serveur après coup | task-297 |
 | Une base saturée fait patienter au lieu de renvoyer une erreur | 🟢 Livré — mesure de confirmation à conduire au banc | À mille médecins, l'aiguilleur de connexions à la base **refusait** d'en ouvrir de nouvelles (646 refus à une première mesure, près de seize mille à une seconde) : le médecin voyait une opération échouer, servie en une dizaine de millisecondes. Un refus est plus trompeur qu'une lenteur — une demande refusée n'est jamais servie, donc elle **ne compte pas** dans les temps mesurés, et le banc publiait des chiffres flatteurs *parce que* le système était en panne (une campagne antérieure avait laissé passer plus de quatre-vingt mille refus sans un mot). Les connexions restent désormais ouvertes dix fois plus longtemps, au lieu d'être refermées chaque minute et rouvertes aussitôt — sur mille dossiers de praticiens, cette réouverture permanente était devenue le travail principal du système. Quand la base est réellement indisponible, la réponse est un « service momentanément indisponible » propre, **sans aucun détail interne exposé** ; et qu'une demande refusée ne soit **pas rejouée en silence** est démontré par un test, pas déduit du paramétrage. Le banc, lui, classe désormais en échec tout tir portant ne serait-ce qu'**un seul** refus | task-294 |
@@ -2318,6 +2343,7 @@ Cinq réserves à porter au bilan, sans quoi il serait trompeur :
 
 - v1.76 — **Une messagerie en panne cesse de passer pour une messagerie vide.** L'analyse des courriers — celle qui extrait les documents médicaux et les rattache au dossier du patient — pouvait s'arrêter net et ne jamais repartir, pendant que l'application répondait **« c'est fait »** à chaque demande. Mesuré à mille médecins : quatre-vingts minutes sans qu'un seul document soit traité, près d'un million d'autres demandes servies normalement pendant ce temps, et **264 praticiens sur 1 000** sans rien recevoir. Du point de vue du médecin, c'était indiscernable d'une boîte sans nouveaux documents. Trois défauts s'additionnaient : l'application **savait** que le serveur était injoignable mais jetait l'information, elle annonçait le nombre de messages **demandés** et non traités, et sa page d'état de santé affichait « accessible » alors qu'aucune connexion n'était vivante. Désormais l'analyse rend un compte rendu, une demande qui n'a rien pu lire **échoue franchement**, les connexions mortes sont rendues — une panne de quatre-vingts minutes redevient une gêne de quelques secondes — et le praticien voit un bandeau : **« Messagerie momentanément indisponible. Les documents seront rattachés dès son rétablissement. »** Il ne bloque rien, la liste reste affichée, il n'apparaît qu'une fois par épisode et disparaît au rétablissement. Les messages laissés de côté par une coupure sont repris automatiquement, un nombre de fois limité. **⚠️ La page d'état de santé, en revanche, n'a PAS été corrigée** : un tir de vérification avec coupure provoquée du serveur sous six cents connexions a montré qu'elle continue d'afficher « accessible » — le nettoyage des connexions mortes efface la preuve qu'elle cherchait, les deux ne pouvant pas fonctionner ensemble. Demande distincte. (task-315)
 - v1.77 — **Le banc compte désormais des praticiens inscrits, plus des robots en boucle.** Jusqu'ici, « mille médecins » désignait mille personnes qui ouvraient leur messagerie **toutes les 87 secondes, toutes en même temps, pendant trois heures et demie** — quarante et une fois par heure chacune. Aucun praticien ne travaille ainsi : il consulte, revient quelques minutes sur sa messagerie, repart pour une demi-heure ou deux heures. Le nouveau mode `terrain` modélise **cette absence** et la variété des praticiens (occasionnel, régulier, intensif) ; le nombre de praticiens réellement présents à un instant donné **se déduit** au lieu d'être fixé à cent pour cent, et chaque verdict l'annonce : « mille inscrits — tant d'actifs en moyenne ». Les gestes et leurs seuils ne changent pas. Les profils sont pour l'instant des **hypothèses construites par cohérence** ; le journal d'audit de la plateforme permettra, une fois en production, de les remplacer par les habitudes réellement observées. Deux corrections d'instrument au passage : la préparation d'un tir sur des boîtes déjà analysées ne consomme plus les trois quarts du temps de mesure pour ne rien faire, et le débit publié pour un palier était **sous-estimé d'un facteur cinq et demi**. (task-321)
+- v1.78 — **Quand la messagerie sature, le médecin lit « momentanément indisponible », jamais « messagerie non rattachée ».** Mesuré à mille quatre cents médecins actifs : la base refusant de nouvelles connexions, l'ouverture de la liste des dossiers rendait une erreur inattendue, et une partie des praticiens lisait que leur boîte n'était « pas rattachée à leur compte » : le registre des boîtes ne répondait plus et son silence était pris pour un refus. Désormais, base saturée ou registre injoignable donnent le même message, sans détail technique ; la boîte n'est ni ouverte ni déclarée détachée tant que le registre n'a pas répondu, la liste des boîtes ne s'affiche plus vide, et un refus de l'opérateur ferme toujours l'accès. Les erreurs du même tir à l'ouverture d'un dossier ou d'un message viennent de la messagerie MSSanté interrompue en pleine lecture : demande distincte. (task-423)
 
 ---
 
