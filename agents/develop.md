@@ -477,6 +477,17 @@ For each backend repo listed, in order :
    unless it asserts the new behaviour. Unit tests with mocks remain required
    per branch, but never prove the behaviour on their own.
 
+   **The diff decides the endpoints, not the DOD** (task-423, approved by the
+   human on 2026-11-05). Before writing the tests, list from
+   `git diff origin/develop...HEAD` every endpoint whose response can change :
+   a controller action, but also every **service `catch`**, exception filter or
+   error mapping that the diff touches, followed up to the routes that reach it.
+   Each one gets its integration test, seen red, even when the DOD names only
+   one route. Constaté sur task-423 : la DOD citait `GET /mail/folders`, le diff
+   filtrait aussi les `catch` de la lecture d'un dossier, de « aujourd'hui » et
+   du contenu d'un mail (3 841 + 108 + 135 réponses 500 au banc) ; `/review` a
+   rendu CHANGES REQUESTED sur ces trois routes sans test.
+
    For each handler / public method, write at least 1 unit test per branch
    the DOD references.
 
