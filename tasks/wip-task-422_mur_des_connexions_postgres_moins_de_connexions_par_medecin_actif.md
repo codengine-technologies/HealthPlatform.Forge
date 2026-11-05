@@ -237,6 +237,35 @@ poste (`dial i/o timeout`, 0,004 %) ; **après** ≈ 6 934 × 503 et ≈ 11 328 
   domain 202, infrastructure 700, application 4 003, api 1 357, intégration 1 105 (+16 ignorés), **0 échec**,
   aucun `FATAL`, totaux identiques à task-423.
 
+## Sonar log
+
+- **Mode A (chaîné)**, `api-mail` sur `feat/task-422-mur-des-connexions-postgres-moins-de`. Le diff de la task ne
+  porte aucun C# (`pgbouncer.ini`, exclu de l'analyse avec `**/AppHost/**`) ; analyse jouée quand même, le
+  playbook ne prévoyant le skip que sans commit.
+- **Itération 1** : 1 issue new code, `external_roslyn:CA1861` (INFO) dans
+  `tests/mss.mail.api.tests/E2e/FakeOpenAiTests.cs:105`, venue du commit « Fake IA provider » (`4c497985`, déjà
+  sur `develop`, dans la période new code). Corrigée par refactor pur : tableau hissé en
+  `static readonly string[] UrgencyTagNames` (`a51b1926`). Build vert, `mss.mail.api.tests` 1 357/1 357.
+  Récidive consignée dans `conventions/csharp.md` (CA1861, occurrences 5 → 6).
+- **Itération 2** : 0 issue new code, Quality Gate OK. Tests sous couverture : 202 + 4 003 + 700 + 1 357 + 1 105
+  (+16 ignorés), 0 échec.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | = |
+| Issues new code | 1 (CA1861) | 0 | −1 |
+| New coverage | 96,0 % | 96,0 % | = |
+| Bugs / Vulnérabilités / Code smells | 0 / 0 / 1 | 0 / 0 / 0 | −1 smell |
+| Security hotspots | 0 | 0 | = |
+| Coverage projet | 97,8 % | 97,8 % | = |
+| Duplication | 0,4 % | 0,4 % | = |
+| Ratings fiabilité / sécurité / maintenabilité | A / A / A | A / A / A | = |
+
+> La baseline lue avant le premier scan (Quality Gate OK, 0 issue) datait de l'analyse de task-423 ; l'issue
+> CA1861 n'est apparue qu'au premier scan de cette branche, qui inclut `4c497985`.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-422 --sync` — ne pas éditer à la main)*
@@ -245,4 +274,5 @@ poste (`dial i/o timeout`, 0,004 %) ; **après** ≈ 6 934 × 503 et ≈ 11 328 
 |---|---|---|---|---|---|---|
 | /start | ok | 23 s | — | — | — | — |
 | /develop | ok | 6 min 31 s | 1 (13 s) | 1 (5 min 29 s) | — | api-mail 1B/1T, jambe B acceptée ; §Q sans objet (diff = réglage + commentaire) |
-| **Total cycle** | | **6 min 54 s** | **1 (13 s)** | **1 (5 min 29 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 17 min 57 s | 3 (1 min 04 s) | 12 (13 min 35 s) | 4 (1 min 28 s) | 2 itération(s), api-mail 3B/12T |
+| **Total cycle** | | **24 min 52 s** | **4 (1 min 18 s)** | **13 (19 min 05 s)** | **4 (1 min 28 s)** | |

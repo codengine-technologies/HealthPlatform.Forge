@@ -78,7 +78,7 @@ identifiants en constante **avant** de dupliquer. Vaut pour tout secret de banc
 
 ## CA1861 — pas de tableau littéral en argument d'appel
 
-**Occurrences : 5** (task-389 — `new[] { … }` et `[ … ]` passés à `Concat` dans un générateur d'exemples de test (`HprimSamples.Html`) : la consigne vaut aussi pour les données de test, deux champs `static readonly` ; task-203, task-273 — récidive sur code frais : tableaux
+**Occurrences : 6** (task-422 — `new[] { "Urgent", "Important", "Très urgent" }` attendu d'un `Assert.Contains` dans `FakeOpenAiTests`, test du faux fournisseur d'IA du banc écrit hors chaîne, donc sans lecture de ce fichier : hissé en `static readonly string[]` ; task-389 — `new[] { … }` et `[ … ]` passés à `Concat` dans un générateur d'exemples de test (`HprimSamples.Html`) : la consigne vaut aussi pour les données de test, deux champs `static readonly` ; task-203, task-273 — récidive sur code frais : tableaux
 attendus d'un `Assert.Equal` dans un test de sollicitations ; la consigne vaut
 aussi pour les attendus de test ; task-334 — `l.SequenceEqual(new[] { 2u })` dans un
 `Arg.Is` NSubstitute, réécrit en `l.Count == 1 && l[0] == 2u` ; task-385 — `new float[] { 0.1f, 0.2f }` passé à `new Embedding<float>(…)` dans un faux
