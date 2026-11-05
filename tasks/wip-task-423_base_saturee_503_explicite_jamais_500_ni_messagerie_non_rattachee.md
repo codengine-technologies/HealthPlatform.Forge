@@ -296,8 +296,11 @@ La DOD écrit « 503 `DATABASE_UNAVAILABLE` » pour le registre indisponible. Le
   - **M4** : dégradation en `null` remise dans `GetAccountAsync` → **`OK : []`**, le défaut d'origine. Restauré par
     `cp`. `ListMailboxesAsync` n'est pas atteinte avant le compte sur ce chemin (cache du test qui rate toujours) : sa
     propagation est prouvée par `PostgresTenantRegistryClientCoverageTests.ListMailboxes_WhenUnavailable_SurfacesTheFailure`.
-- `MailboxSenderIdentityService.CanEditAsync` (enregistrement de l'identité d'expéditeur) suit le même mécanisme
-  (`GetAccountAsync` qui lève → 503 par le gestionnaire), sans test d'intégration propre. Signalé à `/review`.
+- `MailboxSenderIdentityService.CanEditAsync` (`/account/mailboxes/current/sender-identity`) : **non joignable
+  pendant une panne du registre**. La route exige une boîte (pas de `[MailboxNotRequired]`), donc la sélection du
+  middleware lit le rattachement en base (`GetMailboxAsync`, sans cache) **avant** le contrôleur, et rend le 503 prouvé
+  par M2 et M3. Seule une panne survenue entre la sélection et l'enregistrement atteindrait `CanEditAsync`, ce qui
+  n'est pas reproductible de façon fiable. Aucun test d'intégration propre, par construction.
 - Commit : `457423df` test(mailboxes). Suite d'intégration : 1 105 verts (+1), 16 ignorés, 0 échec. Code de production
   inchangé depuis `fccd6fc2`.
 - Next step : `/sonar task-423`
