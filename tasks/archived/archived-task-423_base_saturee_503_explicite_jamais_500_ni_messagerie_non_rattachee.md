@@ -168,7 +168,8 @@ Règles métier :
 | /lint-mobile | skipped | 0.4 s | — | — | — | client non touché (2e reprise) |
 | /e2e | ok | 19 min 20 s | — | — | — | e2e ×15 (1 h 54 min) |
 | /review | ok | 13 min 58 s | 5 (1 min 04 s) | 5 (27 min 44 s) | — | api-mail 5B/5T |
-| **Total cycle** | | **50 min 11 s** | **16 (3 min 21 s)** | **26 (1 h 14 min)** | **6 (2 min 28 s)** | |
+| /tech-writer | ok | 3 min 25 s | — | — | — | — |
+| **Total cycle** | | **53 min 37 s** | **16 (3 min 21 s)** | **26 (1 h 14 min)** | **6 (2 min 28 s)** | |
 
 ## Develop log
 
@@ -482,4 +483,11 @@ Rejoué après la 2ᵉ reprise (`457423df`). Les passages sur `0e2c5172` et `fcc
 - ⚠️ 6ᵉ copie du handler Bearer de test et du cache mémoire dans les tests d'intégration : à mutualiser sous `Harness/`.
 - ⚠️ `GetEmailContentInternalAsync` rend `Result.Error(ex.Message)` sur une panne IMAP : task-425.
 - **DOD** : tous les points vérifiés. Écart accepté par l'humain : code `TENANT_REGISTRY_UNAVAILABLE` au lieu de `DATABASE_UNAVAILABLE` pour le registre. Points d'observation (affichage client) reportés au Manual Test Plan.
+
+## Merged
+
+- 2026-11-05 — `/merge task-423 --i-tested` (test manuel attesté par l'humain).
+- `api-mail` : PR [#340](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/340) squash-mergée, commit `e31fac4d` sur `develop`. Label `awaiting-human-merge` retiré, branche `feat/task-423-base-saturee-503-explicite-jamais-500-ni` supprimée (distante et locale).
+- CI `develop` : run [42048362530](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/42048362530).
+- Staging : aucune branche `forge/staging-*` (task lancée hors `/forge`).
 
