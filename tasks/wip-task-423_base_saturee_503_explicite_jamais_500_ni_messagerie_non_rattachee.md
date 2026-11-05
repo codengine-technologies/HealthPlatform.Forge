@@ -166,9 +166,9 @@ Règles métier :
 | /sonar | ok | 8 min 07 s | 3 (1 min 07 s) | 15 (19 min 49 s) | 6 (2 min 28 s) | 1 itération(s), api-mail 3B/15T |
 | /lint-angular | skipped | 0.4 s | — | — | — | client non touché (2e reprise) |
 | /lint-mobile | skipped | 0.4 s | — | — | — | client non touché (2e reprise) |
-| /e2e | ok | 19 min 30 s | — | — | — | e2e ×10 (1 h 16 min) |
+| /e2e | ok | 19 min 20 s | — | — | — | e2e ×15 (1 h 54 min) |
 | /review | failed | 5 min 47 s | 2 (27 s) | 2 (10 min 45 s) | — | api-mail 2B/2T, CHANGES REQUESTED (2e passage) — GET /account/mailboxes sans test d'intégration |
-| **Total cycle** | | **42 min 09 s** | **13 (2 min 43 s)** | **23 (57 min 51 s)** | **6 (2 min 28 s)** | |
+| **Total cycle** | | **41 min 59 s** | **13 (2 min 43 s)** | **23 (57 min 51 s)** | **6 (2 min 28 s)** | |
 
 ## Develop log
 
@@ -356,14 +356,14 @@ Baseline : analyse du 2026-11-01 (dernière sur le projet). New code period : 30
 
 > ⚠️ **Quarantaine de plus de 14 jours** : E2E-COMPOSE-002 (angular), posée le 2026-10-09, correction task-350, 27 jours. Un test en quarantaine ne protège rien, sa correction est due. Vert sur ce run.
 
-Rejoué après la reprise (`fccd6fc2`). Le premier passage (`0e2c5172`) était vert lui aussi : 58 + 71.
+Rejoué après la 2ᵉ reprise (`457423df`). Les passages sur `0e2c5172` et `fccd6fc2` étaient verts eux aussi : 58 + 71.
 
 | Voie | Déclencheur | Résultat | Tests | Durée |
 |---|---|---|---|---|
 | mobile | api-mail touché | ✅ verte (jouée) | 58 verts, 0 flaky, 0 rouge, 0 quarantaine | ~10 min |
 | angular | api-mail touché | ✅ verte (jouée) | 71 verts, 0 flaky, 0 rouge, 1 quarantaine (verte) | ~10 min |
 
-- Code testé : api-mail `fccd6fc2` (branche de la task) ; client-mobile `19b5bf38` (`develop`, aligné sur `origin/develop`) ; client-angular `da02e583` (branche de l'humain `feature/nova-mss-weda-integration`, arbre propre).
+- Code testé : api-mail `457423df` (branche de la task) ; client-mobile `19b5bf38` (`develop`, aligné sur `origin/develop`) ; client-angular `da02e583` (branche de l'humain `feature/nova-mss-weda-integration`, arbre propre).
 - Catalogue : `Api/Mail/e2e/scenarios.yml` @ branche de la task (inchangé par la task)
 - Quarantaines : E2E-COMPOSE-002 (angular, task-350) — vert
 - Divergences ouvertes : aucune
