@@ -450,3 +450,12 @@ conservé : `$TEMP/forge-e2e/task-422/angular-report-1-eaddrinuse.json`.
 | /review | ok | 6 min 13 s | 1 (13 s) | 1 (5 min 23 s) | — | api-mail 1B/1T |
 | /tech-writer | ok | 31 s | — | — | — | — |
 | **Total cycle** | | **1 h 00 min** | **5 (1 min 31 s)** | **14 (24 min 28 s)** | **4 (1 min 28 s)** | |
+
+## Merged
+
+- `api-mail` : PR [#341](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/341) fusionnée en squash
+  le 2026-11-05 → `d6712a10` sur `develop`. Branche `feat/task-422-mur-des-connexions-postgres-moins-de` supprimée
+  (distante et locale).
+- Validation humaine : `/merge 422 --i-tested` (jambe B et tir court 1400 → 1996).
+- Restant hors forge : manifeste `DevOps/Staging/LoadtestMail/toxiproxy.yaml` (modifié, non commité) et
+  recommandation de production à reporter dans `DevOps`.
