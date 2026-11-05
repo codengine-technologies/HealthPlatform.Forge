@@ -166,9 +166,9 @@ Règles métier :
 | /sonar | ok | 8 min 40 s | 2 (44 s) | 10 (13 min 29 s) | 4 (1 min 45 s) | 1 itération(s), api-mail 2B/10T |
 | /lint-angular | skipped | 0.4 s | — | — | — | client non touché (reprise) |
 | /lint-mobile | skipped | 0.4 s | — | — | — | client non touché (reprise) |
-| /e2e | ok | 20 min 55 s | — | — | — | e2e ×5 (39 min 06 s) |
+| /e2e | ok | 19 min 30 s | — | — | — | e2e ×10 (1 h 16 min) |
 | /review | failed | 7 min 01 s | 1 (14 s) | 1 (5 min 25 s) | — | api-mail 1B/1T, CHANGES REQUESTED — règle 1b : 3 endpoints sans test d'intégration |
-| **Total cycle** | | **1 h 20 min** | **11 (2 min 08 s)** | **16 (40 min 48 s)** | **4 (1 min 45 s)** | |
+| **Total cycle** | | **1 h 19 min** | **11 (2 min 08 s)** | **16 (40 min 48 s)** | **4 (1 min 45 s)** | |
 
 ## Develop log
 
@@ -335,18 +335,20 @@ Baseline : analyse du 2026-11-01 (dernière sur le projet). New code period : 30
 
 > ⚠️ **Quarantaine de plus de 14 jours** : E2E-COMPOSE-002 (angular), posée le 2026-10-09, correction task-350, 27 jours. Un test en quarantaine ne protège rien, sa correction est due. Vert sur ce run.
 
+Rejoué après la reprise (`fccd6fc2`). Le premier passage (`0e2c5172`) était vert lui aussi : 58 + 71.
+
 | Voie | Déclencheur | Résultat | Tests | Durée |
 |---|---|---|---|---|
-| mobile | api-mail touché | ✅ verte (jouée) | 58 verts, 0 flaky, 0 rouge, 0 quarantaine | 9 min 46 s |
-| angular | api-mail touché | ✅ verte (jouée) | 71 verts, 0 flaky, 0 rouge, 1 quarantaine (verte) | 9 min 47 s |
+| mobile | api-mail touché | ✅ verte (jouée) | 58 verts, 0 flaky, 0 rouge, 0 quarantaine | ~10 min |
+| angular | api-mail touché | ✅ verte (jouée) | 71 verts, 0 flaky, 0 rouge, 1 quarantaine (verte) | ~10 min |
 
-- Code testé : api-mail `0e2c5172` (branche de la task) ; client-mobile `19b5bf38` (`develop`, aligné sur `origin/develop`) ; client-angular `da02e583` (branche de l'humain `feature/nova-mss-weda-integration`, arbre propre).
+- Code testé : api-mail `fccd6fc2` (branche de la task) ; client-mobile `19b5bf38` (`develop`, aligné sur `origin/develop`) ; client-angular `da02e583` (branche de l'humain `feature/nova-mss-weda-integration`, arbre propre).
 - Catalogue : `Api/Mail/e2e/scenarios.yml` @ branche de la task (inchangé par la task)
 - Quarantaines : E2E-COMPOSE-002 (angular, task-350) — vert
 - Divergences ouvertes : aucune
 - Parcours touchés sans spec e2e modifié : aucun (aucun client touché)
-- Démontage : complet pour ce run (ports 5052, 8100, 4200, 3993, 3465, 3143 libres). Deux conteneurs arrêtés `e2e-greenmail-gcgjbrzp` et `e2e-dovecot-kgrndjwd` subsistent depuis le **2026-10-14**, étrangers à ce run : laissés en place, à retirer par l'humain (`docker rm`).
-- Filet de la task : la panne de base n'est pas rejouable par le banc e2e. Elle est couverte par les tests d'intégration du `## Develop log`, et consignée dans « Trous du filet » de `conventions/e2e.md`.
+- Démontage : complet pour ce run (ports libres, aucun conteneur e2e actif). Deux conteneurs arrêtés `e2e-greenmail-gcgjbrzp` et `e2e-dovecot-kgrndjwd` subsistent depuis le **2026-10-14**, étrangers à ce run : laissés en place, à retirer par l'humain (`docker rm`).
+- Filet de la task : la panne de base ou de registre n'est pas rejouable par le banc e2e. Elle est couverte par les tests d'intégration du `## Develop log`, et consignée dans « Trous du filet » de `conventions/e2e.md`.
 
 **E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
 
