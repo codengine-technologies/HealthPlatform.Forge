@@ -125,3 +125,8 @@ pourquoi.
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui, environnement inchangé. Le banc n'emploie que des données synthétiques
 - **AIPD / impact RGPD** : inchangé, aucun traitement nouveau
+
+## Branches
+
+- `api-mail` (pushed) : feat/task-422-mur-des-connexions-postgres-moins-de — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-422-mur-des-connexions-postgres-moins-de
+  - Créée depuis `origin/develop` (`e31fac4d`).
