@@ -1990,3 +1990,29 @@ sans casse : c'était « aucune minuscule ».
 **Consigne** : dire l'intention. Égalité sans casse → `string.Equals(a, b, StringComparison.OrdinalIgnoreCase)` ;
 « tout en majuscules » → `!value.Any(char.IsLower)`. Jamais `x.ToUpperInvariant() == x`, tests compris (la règle
 s'applique au code de test comme au code de production).
+
+## Filtre d'exception — il ne protège que ce que son `try` enveloppe (revue, pas Sonar)
+
+**Occurrences : 1** (task-423, `/review` puis reprise : `when (!DatabaseAvailability.IsUnavailable(ex))` posé sur six
+`catch`, dont quatre dont le `try` ne fait que de l'IMAP — connexion, verrou de session en mémoire, lecture. Le
+filtre ne pouvait rien laisser passer, et les 500 du banc qu'il était censé corriger venaient d'IMAP, pas de la base)
+
+Un 500 mesuré sur une route ne dit pas quel `catch` l'a produit, ni quelle exception. Poser un filtre « panne de
+base » sur tous les `catch` des routes fautives, c'est supposer la cause : le filtre compile, les tests passent, et
+il ne protège rien. Le test d'intégration ne peut d'ailleurs pas être vu rouge, puisque la mutation du filtre ne
+change aucune réponse.
+
+```csharp
+// ❌ AVANT — le try ne touche que l'IMAP : une panne de base n'y arrive jamais
+try { return await ReadFolderOnceAsync(folderPath, …); }                       // IMAP seul
+catch (Exception ex) when (!DatabaseAvailability.IsUnavailable(ex)) { … }
+
+// ✅ APRÈS — le filtre sur le try qui appelle la base, et lui seul
+try { await PersistAndReconcileFoldersAsync(folderDict, rootFolders); }       // EF Core
+catch (Exception ex) when (!DatabaseAvailability.IsUnavailable(ex)) { … }
+```
+
+**Consigne** : avant de filtrer un `catch` sur une famille d'exceptions, lire son `try` jusqu'à l'appel qui lève
+cette famille (repository, `DbContext`, client HTTP…). Pas d'appel → pas de filtre. Et attribuer la cause d'un 500
+par sa trace (exception et pile dans Seq) avant de corriger, jamais par la seule route.
+

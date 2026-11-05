@@ -138,8 +138,10 @@ Règles métier :
 ## Arbitrage humain du 2026-11-05 (après la revue)
 
 > Décisions de l'humain, en réponse au CHANGES REQUESTED de `/review` (`questions/task-423.md`) :
-> 1. **Les trois routes sans test d'intégration** (`GET /mail/folders/{folder}`, `…/emails/today`,
->    `…/emails/content/{uid}`) reçoivent chacune leur test d'intégration, vu rouge. Reprise par `/develop`.
+> 1. ~~Les trois routes sans test d'intégration reçoivent chacune leur test d'intégration.~~ **Amendée le même jour**
+>    par l'humain (« Recentrer + nouvelle task ») : ces routes n'appellent pas la base sous les `catch` filtrés, leurs
+>    500 sont des pannes IMAP. Filtres sans effet retirés, task-423 recentrée sur la base et le registre, **task-425**
+>    créée pour les pannes IMAP en cours de lecture. Détail dans le `## Develop log`, « Reprise du 2026-11-05 ».
 > 2. **Le 503 du registre injoignable porte `TENANT_REGISTRY_UNAVAILABLE`**, et non `DATABASE_UNAVAILABLE` comme
 >    l'écrit la DOD : c'est le code catalogué de cette cause (task-420). Écart accepté par l'humain.
 > 3. **Le `detail` de ce 503 devient un libellé fixe**, sans nom d'opération ni identifiant de corrélation : le
@@ -160,13 +162,13 @@ Règles métier :
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 39 s | — | — | — | — |
-| /develop | ok | 1 h 06 min | 5 (48 s) | 4 (16 min 26 s) | — | api-mail 5B/4T |
+| /develop | ok | 43 min 34 s | 8 (1 min 08 s) | 5 (21 min 53 s) | — | api-mail 8B/5T |
 | /sonar | ok | 10 min 34 s | 1 (22 s) | 5 (6 min 53 s) | 2 (47 s) | 1 itération(s), api-mail 1B/5T |
 | /lint-angular | skipped | 0.4 s | — | — | — | client-angular non touché |
 | /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 20 min 55 s | — | — | — | e2e ×5 (39 min 06 s) |
 | /review | failed | 7 min 01 s | 1 (14 s) | 1 (5 min 25 s) | — | api-mail 1B/1T, CHANGES REQUESTED — règle 1b : 3 endpoints sans test d'intégration |
-| **Total cycle** | | **1 h 46 min** | **7 (1 min 25 s)** | **10 (28 min 45 s)** | **2 (47 s)** | |
+| **Total cycle** | | **1 h 22 min** | **10 (1 min 46 s)** | **11 (34 min 13 s)** | **2 (47 s)** | |
 
 ## Develop log
 
@@ -241,6 +243,47 @@ La DOD écrit « 503 `DATABASE_UNAVAILABLE` » pour le registre indisponible. Le
 - DOD self-check : 10 points sur 12 vérifiés par commande (build, tests, chaîne F3, `catch` corrigés, inventaire, deux tests d'intégration et leurs mutations, fixture décrite, tests unitaires par branche, trou du filet). Deux restent à voir :
   - « aucune donnée de santé en clair » : à relire en revue. Les journaux ajoutés ne portent qu'un chemin de route assaini, sans adresse ;
   - « contrat inchangé » : aucun fichier `Dtos/`, aucun frontend touché ; les codes existaient.
+- Next step : `/sonar task-423`
+
+### Reprise du 2026-11-05 après CHANGES REQUESTED (`questions/task-423.md`)
+
+- **Décision 1 amendée par l'humain** (choix « Recentrer + nouvelle task », même jour) : en écrivant les trois tests
+  demandés, l'analyse du code a montré que les `catch` filtrés de `GET /mail/folders/{folder}`, `…/today` et
+  `…/content/{uid}` n'enveloppent **aucun** appel à la base. Leur `try` ne fait que de l'IMAP : connexion, résolution
+  du serveur (configuration ou autoconfig), verrou de session (sémaphore en mémoire), `STATUS`, `SEARCH`, `FETCH`. Les
+  lectures en base de ces routes (`CurrentGenerationAsync`, `GetMailAsync`) sont **hors** de ces `catch` et rendaient
+  déjà 503. Des tests « base saturée » sur ces routes n'auraient rien prouvé, et la mutation de leur filtre n'aurait
+  changé aucune réponse.
+  - **Les 4 084 réponses 500 du banc sur ces routes sont des pannes IMAP en cours de lecture**, attrapées et rendues en
+    500 générique. Elles relèvent d'un autre défaut de règle 12 : **task-425** créée (`todo-task-425_panne_imap_en_cours_de_lecture_503_jamais_500.md`).
+  - L'inventaire du premier `## Develop log` les attribuait à la base : **c'était faux**.
+- **Code** (`fccd6fc2`) :
+  - filtres `DatabaseAvailability` **retirés** des `catch` sans appel à la base : `ImapService.GetFoldersAsync` (phase
+    IMAP), `ReadFolderAsync`, `ReadTodayAsync`, `GetEmailContentInternalAsync`, et `ImapFolderService.GetFoldersAsync`
+    (aucun appelant joignable par une route). **Seul reste** le filtre de la persistance des dossiers
+    (`ImapService.GetFoldersAsync`, `PersistAndReconcileFoldersAsync`), prouvé par M1 ;
+  - **décision 3** : le 503 `TENANT_REGISTRY_UNAVAILABLE` porte le `detail` fixe « The database is temporarily
+    unavailable. Please try again in a moment. ». Le message de l'exception (opération, corrélation) reste au journal.
+    Test d'abord : `ErrorHandlingCoverageTests.Map_TenantRegistryUnavailable_Returns503WithAFixedDetail` et l'assertion
+    sur `detail` de `RegistryUnavailableEndpointIntegrationTests` **vus rouges** sur l'ancien message (« Le registre est
+    injoignable. Opération=GetAccountA… »), verts après ;
+  - commentaires corrigés (`DatabaseAvailability`, `PractitionerDatabaseUnavailableEndToEndTests`) ;
+  - **décision 2** (code `TENANT_REGISTRY_UNAVAILABLE`) et **décision 4** (consigne `agents/develop.md`) : faites.
+- **Comportements atteignables par un endpoint, et leur preuve** (règle 1b) :
+
+| Comportement | Test d'intégration | Preuve rouge |
+|---|---|---|
+| `GET /mail/folders`, base qui annule la persistance → 503 `DATABASE_UNAVAILABLE`, `detail` fixe | `PractitionerDatabaseUnavailableEndToEndTests.ListingTheFolders_WhenThePractitionerBaseCancelsTheQuery_Returns503DatabaseUnavailable` | M1 : filtre retiré → 500 |
+| Route qui exige une boîte, registre injoignable, compte en cache → 503 `TENANT_REGISTRY_UNAVAILABLE`, `detail` fixe | `RegistryUnavailableEndpointIntegrationTests.MailboxRoute_WhenTheRegistryIsUnavailable_Answers503_NeverMailboxNotAttached` | M2 : dégradation remise sur `GetMailboxAsync` → 403 ; ancien `detail` → rouge |
+| Idem, cache froid | `…_AndTheAccountIsNotCached_Answers503` | M3 : dégradation remise sur `GetAccountAsync` → 403 ; ancien `detail` → rouge |
+| Route `[MailboxNotRequired]`, registre injoignable → servie sans boîte | `MailboxOptionalRoute_WhenTheRegistryIsUnavailable_IsServedWithoutAMailbox` | filtre du middleware inversé → 503 au lieu de 200 (fait en revue) |
+
+- **Build / test** : ✓ suite complète après la reprise — domain 202, infrastructure 700, application 4 003, api 1 337,
+  intégration 1 104 (+16 ignorés), 0 échec.
+- **Passe qualité** : le delta de la reprise est un retrait de filtres et une ligne de mapping, aucune simplification
+  à appliquer. Contrôles mécaniques §Q 2b : rien.
+- **Prévention** : `conventions/csharp.md`, nouvelle entrée « Filtre d'exception — il ne protège que ce que son `try`
+  enveloppe » (Occurrences 1). La cause d'un 500 s'établit par sa trace, pas par sa route.
 - Next step : `/sonar task-423`
 
 ## Sonar log
