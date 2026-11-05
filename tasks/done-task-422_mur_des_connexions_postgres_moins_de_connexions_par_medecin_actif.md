@@ -382,6 +382,35 @@ conservé : `$TEMP/forge-e2e/task-422/angular-report-1-eaddrinuse.json`.
 - Quarantaine E2E-COMPOSE-002 (task-350) : **passée** à ce run. Posée depuis environ 4 semaines, elle est à
   retirer par l'humain si task-350 est soldée.
 
+## PRs
+
+- `api-mail` : [#341](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/341) — `awaiting-human-merge`.
+  Branche `feat/task-422-mur-des-connexions-postgres-moins-de`, à jour avec `develop` (aucune fusion nécessaire).
+- `devops` : la recommandation pour la production (section ci-dessus) est à reporter par l'humain.
+
+## Code Review Summary
+
+**APPROVED** — 4 fichiers relus, 0 bloquant, 1 suggestion.
+
+- **Validation** : build 0 erreur, 0 avertissement ; tests domain 202, infrastructure 700, application 4 003, api 1 357,
+  intégration 1 105 (+16 ignorés), 0 échec.
+- **DoD** :
+  - build et tests ✅ ;
+  - jambe B tirée et rapport rangé : `reports/` est gitignoré, le rapport est archivé dans `Docs/audits/` ✅ ;
+  - table palier par palier et écarts par étape ✅ ;
+  - verdict ✅ ;
+  - jambe C sans objet ✅ ;
+  - `pgbouncer.ini` ✅ ;
+  - recommandation pour la production ✅ ;
+  - iso-conditions ✅ ;
+  - aucun code applicatif ✅, la seule ligne C# est un refactor de test (CA1861) ;
+  - données synthétiques ✅.
+- **Règle 1b** : sans objet. Aucun comportement atteignable par un endpoint ne change : réglage du pooler de banc,
+  aucune ligne de `src/` hors `AppHost/pgbouncer`.
+- **E2E** : vert. Mobile 58/58. Angular 71/71 au rejeu, après un premier passage rouge d'outillage (port 47399 pris).
+  Parité verte.
+- ⚠️ **Suggestion** : le mur de ~2 400 actifs est une estimation. Un tir dont le palier haut tient le confirmera.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-422 --sync` — ne pas éditer à la main)*
@@ -394,4 +423,5 @@ conservé : `$TEMP/forge-e2e/task-422/angular-report-1-eaddrinuse.json`.
 | /lint-angular | skipped | 0.6 s | — | — | — | client-angular non listé dans Repos |
 | /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non listé dans Repos |
 | /e2e | ok | 29 min 07 s | — | — | — | e2e ×9 (54 min 34 s), mobile vert ; angular rejoué une fois (EADDRINUSE 47399, outillage) puis vert ; porte verte |
-| **Total cycle** | | **54 min 01 s** | **4 (1 min 18 s)** | **13 (19 min 05 s)** | **4 (1 min 28 s)** | |
+| /review | ok | 6 min 13 s | 1 (13 s) | 1 (5 min 23 s) | — | api-mail 1B/1T |
+| **Total cycle** | | **1 h 00 min** | **5 (1 min 31 s)** | **14 (24 min 28 s)** | **4 (1 min 28 s)** | |
