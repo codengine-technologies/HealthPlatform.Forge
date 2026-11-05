@@ -152,7 +152,8 @@ Règles métier :
 | /lint-angular | skipped | 0.4 s | — | — | — | client-angular non touché |
 | /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 20 min 55 s | — | — | — | e2e ×5 (39 min 06 s) |
-| **Total cycle** | | **1 h 39 min** | **6 (1 min 11 s)** | **9 (23 min 20 s)** | **2 (47 s)** | |
+| /review | failed | 7 min 01 s | 1 (14 s) | 1 (5 min 25 s) | — | api-mail 1B/1T, CHANGES REQUESTED — règle 1b : 3 endpoints sans test d'intégration |
+| **Total cycle** | | **1 h 46 min** | **7 (1 min 25 s)** | **10 (28 min 45 s)** | **2 (47 s)** | |
 
 ## Develop log
 
