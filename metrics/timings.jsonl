@@ -8157,3 +8157,7 @@
 {"ts":"2026-11-05T12:36:10+01:00","run_id":"-","type":"cmd","task":"task-423","step":"sonar","repo":"api-mail","kind":"test","label":"coverage","cwd":"Api/Mail","cmd":"dotnet test tests/mss.mail.integration.tests/mss.mail.integration.tests.csproj --configuration Release --no-build --collect:XPlat Code Coverage;Format=opencover --results-directory TestResults --logger console;verbosity=minimal","duration_ms":319103,"exit_code":0}
 {"ts":"2026-11-05T12:36:57+01:00","run_id":"-","type":"cmd","task":"task-423","step":"sonar","repo":"api-mail","kind":"scan","label":"end","cwd":"Api/Mail","cmd":"dotnet sonarscanner end /d:sonar.login=***","duration_ms":46009,"exit_code":0}
 {"ts":"2026-11-05T12:38:02+01:00","run_id":"-","type":"step","task":"task-423","step":"sonar","status":"ok","note":"","iterations":1,"duration_ms":634394}
+{"ts":"2026-11-05T12:38:21+01:00","run_id":"-","type":"step_start","task":"task-423","step":"lint-angular"}
+{"ts":"2026-11-05T12:38:21+01:00","run_id":"-","type":"step","task":"task-423","step":"lint-angular","status":"skipped","note":"client-angular non touché","iterations":null,"duration_ms":429}
+{"ts":"2026-11-05T12:38:33+01:00","run_id":"-","type":"step_start","task":"task-423","step":"lint-mobile"}
+{"ts":"2026-11-05T12:38:34+01:00","run_id":"-","type":"step","task":"task-423","step":"lint-mobile","status":"skipped","note":"client-mobile non touché","iterations":null,"duration_ms":521}

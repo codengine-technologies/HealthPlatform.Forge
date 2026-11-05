@@ -149,6 +149,8 @@ Règles métier :
 | /start | ok | 39 s | — | — | — | — |
 | /develop | ok | 1 h 06 min | 5 (48 s) | 4 (16 min 26 s) | — | api-mail 5B/4T |
 | /sonar | ok | 10 min 34 s | 1 (22 s) | 5 (6 min 53 s) | 2 (47 s) | 1 itération(s), api-mail 1B/5T |
+| /lint-angular | skipped | 0.4 s | — | — | — | client-angular non touché |
+| /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non touché |
 | **Total cycle** | | **1 h 18 min** | **6 (1 min 11 s)** | **9 (23 min 20 s)** | **2 (47 s)** | |
 
 ## Develop log
@@ -251,3 +253,9 @@ La DOD écrit « 503 `DATABASE_UNAVAILABLE` » pour le registre indisponible. Le
 | Reliability / Security / Maintainability | A/A/A | A/A/A | → |
 
 Baseline : analyse du 2026-11-01 (dernière sur le projet). New code period : 30 jours, depuis le 2026-10-03.
+
+## Lint log
+- skipped — no angular change
+
+## Lint mobile log
+- skipped — no mobile change
