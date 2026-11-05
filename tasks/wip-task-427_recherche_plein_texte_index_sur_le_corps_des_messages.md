@@ -125,6 +125,46 @@ Contenu attendu :
 - **AIPD / impact RGPD** : à noter : l'index trigramme est une donnée dérivée du contenu des messages. Il est
   supprimé avec la base de la boîte et ne crée aucun traitement nouveau
 
+## Mesure préalable (2026-11-05, avant le code)
+
+Base praticien la plus volumineuse du banc (`u_l9l_b27c…`, 156 messages, dossier INBOX), données synthétiques. Saisie
+du tir : « compte rendu de synthese », soit 3 termes. `EXPLAIN (ANALYZE, BUFFERS)`.
+
+| Variante | `MailContents` | `MailMedicalDocuments` | Recherche entière (2 tables) |
+|---|---|---|---|
+| **Actuelle** : 1 `ILIKE '%terme%'` par terme et par table | 8,2 + 8,9 + 8,3 ms | 7,3 + 7,3 + 7,4 ms | **≈ 47 ms**, 6 requêtes |
+| Index GIN `pg_trgm` sur `Body` (2 index) | **ignoré par le planificateur** : 9,2 ms, balayage séquentiel | idem | ≈ 47 ms |
+| … même index, balayage séquentiel interdit (`enable_seqscan=off`) | 2,4 ms pour un terme fréquent, 9,1 ms pour un terme absent | — | non atteignable sans forcer |
+| Termes regroupés : `ILIKE ANY` ou 3 `ILIKE` en un passage | 19,9 / 26,4 ms | — | pas de gain : chaque `ILIKE` refait le travail |
+| Expression régulière `~* '(t1\|t2\|t3)'` | 8,3 ms | 8,8 ms | n'identifie pas le terme ; sémantique différente |
+| **Retenue** : corps mis en minuscules **une fois** (CTE `MATERIALIZED`), puis `LIKE lower(motif)` par terme, tri et limite par terme en SQL, corps des candidats rendus | **10,9 ms** | **10,1 ms** | **≈ 21 ms, −55 %**, 2 requêtes |
+
+**Ce qui coûte.** Ce n'est pas l'absence d'index, c'est la **mise en minuscules du corps entier**, refaite à chaque
+`ILIKE`. `lower(Body)` seul coûte 9,3 ms sur la table, `ILIKE` 8,0 ms. Dans une base UTF-8, PostgreSQL exécute
+`a ILIKE p` comme `lower(a) LIKE lower(p)` (`like.c`, `Generic_Text_IC_like`). Calculer `lower(Body)` une fois et
+comparer les termes au résultat donne donc **exactement les mêmes correspondances**.
+
+**Index trigramme écarté.**
+- 1,3 Mo pour `MailContents` et 1,4 Mo pour `MailMedicalDocuments` sur cette base, soit environ 3 fois la taille
+  compressée des corps (433 et 380 Ko). Construction : 115 et 102 ms.
+- Extrapolation : environ 5,4 Go sur les 2 000 bases du banc, et environ 27 Go pour 10 000 boîtes **à volume égal**,
+  davantage avec des boîtes réelles plus grosses.
+- Le planificateur ne s'en sert pas, faute de compter le coût de décompression des corps.
+- Il coûte de la mémoire, qui est précisément la prochaine limite mesurée (task-422).
+- **Aucune migration, aucune extension.**
+
+**Conception retenue.**
+- **Phase 1 (EF, inchangée)** : la requête de base garde ses règles (dossier, dossier-étiquette `InFolder`, patient).
+  Elle ne rend que les identifiants des lignes candidates, sans leur corps.
+- **Phase 2 (SQL)** : une requête par table.
+  - CTE `MATERIALIZED` : `lower(Body)` une seule fois, sur les lignes de la phase 1.
+  - Jointure avec les motifs (`unnest … WITH ORDINALITY`, `LIKE lower(motif) ESCAPE ''`).
+  - `row_number()` par terme dans l'ordre actuel (`SentDate IS NULL`, `SentDate DESC`, `Uid DESC`), limite de 200 par
+    terme.
+  - Corps des seules lignes retenues.
+- **En mémoire, inchangé** : candidats dans l'ordre terme puis date, dédoublonnage par message, filtre `Contains`,
+  score, tri, limite.
+
 ## Branches
 
 - `api-mail` (pushed) : feat/task-427-recherche-plein-texte-index-sur-le-corps — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-427-recherche-plein-texte-index-sur-le-corps
