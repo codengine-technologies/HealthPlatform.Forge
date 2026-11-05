@@ -29,6 +29,14 @@ d'un 503 qui dit au médecin que sa messagerie est momentanément injoignable. R
   `conventions/csharp.md`) : Seq était injoignable lors de task-423. Le type d'exception attrapé (MailKit
   `ImapProtocolException`, `IOException`, `ServiceNotConnectedException`, délai…) décide du correctif.
 
+- **Reproduit le 2026-11-05 (tir task-422, jambe B)** : le pod Toxiproxy du banc a
+  redémarré vers 17:27 UTC et IMAP/SMTP ont répondu `ConnectionRefused`. Sur 4 min 30 du palier 1400 :
+  ≈ 6 934 réponses 503 (IMAP « Impossible de joindre le serveur de messagerie », SMTP « SMTP connection
+  failed ») mais ≈ 11 328 réponses
+  **500** « An unexpected error occurred » sur `dashboard` et `read_list`. Une messagerie **injoignable dès la
+  connexion** produit donc aussi des 500 sur ces routes, pas seulement une panne en cours de lecture. Rapport :
+  `Api/Mail/tests/loadtest-k6/reports/2026-11-05/report-journey-escalier-1996-20261105-task422-pool1-185011.md`.
+
 ## Objective
 
 Une panne de la messagerie MSSanté survenue pendant la lecture d'un dossier, de « aujourd'hui » ou du contenu d'un mail

@@ -31,3 +31,10 @@ la forge. Task laissée en `wip-*`.
 3. Relancer `/develop task-422` : la forge reprend la jambe B (réglage déjà en place dans l'arbre de travail).
 
 Aucune décision métier n'est en attente : seul le banc manque.
+
+## Résolu (2026-11-05)
+
+Banc relancé par l'humain (cluster, k6bench, service `iphlpsvc`), proxies Toxiproxy recréés par la forge. Jambe B
+tirée le 2026-11-05 (15:58 → 17:50 UTC) et **acceptée** : voir le task file, section « Jambe B ». Nouvel incident
+de banc pendant le tir (redémarrage du pod Toxiproxy vers 17:27 UTC, proxies perdus), sans effet sur le verdict :
+le palier 1400 était propre jusque-là, et les critères sont tenus sur les paliers 200 à 1000.

@@ -8241,3 +8241,7 @@
 {"ts":"2026-11-05T15:56:41+01:00","run_id":"-","type":"step","task":"task-422","step":"start","status":"ok","note":"","iterations":null,"duration_ms":23274}
 {"ts":"2026-11-05T15:57:12+01:00","run_id":"-","type":"step_start","task":"task-422","step":"develop"}
 {"ts":"2026-11-05T16:09:52+01:00","run_id":"-","type":"step","task":"task-422","step":"develop","status":"failed","note":"banc injoignable : cluster 192.168.1.69 et k6bench 192.168.1.101 hors ligne","iterations":null,"duration_ms":759634}
+{"ts":"2026-11-05T19:06:00+01:00","run_id":"-","type":"step_start","task":"task-422","step":"develop"}
+{"ts":"2026-11-05T19:06:17+01:00","run_id":"-","type":"cmd","task":"task-422","step":"develop","repo":"api-mail","kind":"build","label":"","cwd":"Api/Mail","cmd":"dotnet build HealthPlatform.Api.Mail.sln","duration_ms":13475,"exit_code":0}
+{"ts":"2026-11-05T19:11:52+01:00","run_id":"-","type":"cmd","task":"task-422","step":"develop","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln --no-build","duration_ms":329781,"exit_code":0}
+{"ts":"2026-11-05T19:12:31+01:00","run_id":"-","type":"step","task":"task-422","step":"develop","status":"ok","note":"jambe B acceptée ; §Q sans objet (diff = réglage + commentaire)","iterations":null,"duration_ms":391642}
