@@ -196,6 +196,30 @@ poste (`dial i/o timeout`, 0,004 %) ; **après** ≈ 6 934 × 503 et ≈ 11 328 
 | IA | 🧪 simulée | 🧪 simulée | — |
 | Escalier | 6 × 18 min, K = 1, `JOURNEY_WARMUP_HYDRATED=1` | idem | — |
 
+### Confirmation du mur — tir court 1400 → 1996 (2026-11-05, 21:29 → 22:07)
+
+Demandé par l'humain pour mesurer le palier 1996, rendu VOID dans la jambe B par la panne Toxiproxy. Conditions :
+même réglage (pool 1), mêmes bases, même tireur, IA simulée, `LATENCY_MS=96`, 18 min par palier. Manifeste Toxiproxy
+corrigé avant le tir : 4 CPU, 2 Gi, sonde de vie tolérante. Pendant le tir, les proxies et leur latence étaient
+présents à chaque contrôle (toutes les 30 s). Rapport : `Docs/audits/api-mail-loadtest-journey-courte-1400-1996-task422-20261105.md`.
+
+| Palier | Requêtes (régime) | Erreurs | Backends Postgres max | Backends par actif | Fiche patient p95 |
+|---|---|---|---|---|---|
+| 1400 | 212 579 | 0,01 % (réseau du relais, 0 5xx) | 1 426 | 1,02 | 641 ms |
+| 1996 | 382 038 | 0,01 % (réseau du relais, 0 5xx) | 2 027 | 1,02 | 2 034 ms |
+
+- **1996 médecins actifs tenus** : 0 réponse 5xx en régime, et les 11 étapes dans leur cible de p95. Dans la jambe A,
+  ce palier était à 40,5 % d'erreurs. **Le mur est au-delà de 2 000 actifs** sur ce banc.
+- **Premiers signes de genou à 1996** : deux p50 à peine au-dessus de leur cible (message servi base 125 ms pour
+  100 ; recherche 532 ms pour 500). La fiche patient passe de 641 à 2 034 ms au p95, sous sa cible de 4 000.
+- **Prochaine limite probable : la mémoire Postgres.** Le conteneur est à 100 % de son cgroup (48 Go) aux deux
+  paliers, avec des fautes majeures, au plus 14/s. Ce n'est pas encore une erreur, mais c'est le poste qui
+  plafonnera la suite. Cela confirme la recommandation de mémoire pour la production.
+- `cl_waiting` : 0 % sur les bases praticien ; les attentes relevées sont celles du pool de maintenance (sonde de
+  disponibilité).
+- 2 réponses 500 pendant les chauffes, hors verdict.
+- Verdict SLO **indicatif** : la grille exige 30 min de plateau, et le tir en fait 18.
+
 ## Recommandation pour la production (à reporter par l'humain dans `DevOps`)
 
 > Cible : `DevOps/DIMENSIONNEMENT-POSTGRESQL-API-MAIL.md`. La forge n'écrit pas dans `DevOps`.
