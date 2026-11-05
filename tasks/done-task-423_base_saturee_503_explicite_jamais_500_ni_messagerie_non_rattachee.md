@@ -167,8 +167,8 @@ Règles métier :
 | /lint-angular | skipped | 0.4 s | — | — | — | client non touché (2e reprise) |
 | /lint-mobile | skipped | 0.4 s | — | — | — | client non touché (2e reprise) |
 | /e2e | ok | 19 min 20 s | — | — | — | e2e ×15 (1 h 54 min) |
-| /review | failed | 5 min 47 s | 2 (27 s) | 2 (10 min 45 s) | — | api-mail 2B/2T, CHANGES REQUESTED (2e passage) — GET /account/mailboxes sans test d'intégration |
-| **Total cycle** | | **41 min 59 s** | **13 (2 min 43 s)** | **23 (57 min 51 s)** | **6 (2 min 28 s)** | |
+| /review | ok | 13 min 58 s | 5 (1 min 04 s) | 5 (27 min 44 s) | — | api-mail 5B/5T |
+| **Total cycle** | | **50 min 11 s** | **16 (3 min 21 s)** | **26 (1 h 14 min)** | **6 (2 min 28 s)** | |
 
 ## Develop log
 
@@ -456,3 +456,30 @@ Rejoué après la 2ᵉ reprise (`457423df`). Les passages sur `0e2c5172` et `fcc
 | E2E-ERROR-001 | 1 | headless | Une erreur affiche un code et une référence à transmettre au support | ✅ | ✅ |
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/340 — label `awaiting-human-merge`. Branche synchronisée avec `develop` par merge (`324b2c6d`, apporte « Fake IA provider »), validée après fusion : domain 202, infrastructure 700, application 4 003, api 1 357, intégration 1 105 (+16 ignorés), 0 échec.
+
+## Code Review Summary
+
+**APPROVED** (3ᵉ passage, 2026-11-05) — 0 bloquant, 3 suggestions. Passages précédents : CHANGES REQUESTED ×2 (`questions/task-423.md`).
+
+| Comportement atteignable par un endpoint | Test d'intégration | Preuve rouge |
+|---|---|---|
+| `GET /mail/folders`, base qui annule la persistance des dossiers → 503 `DATABASE_UNAVAILABLE`, `detail` fixe | `PractitionerDatabaseUnavailableEndToEndTests.ListingTheFolders_WhenThePractitionerBaseCancelsTheQuery_Returns503DatabaseUnavailable` | M1 : filtre retiré → 500 |
+| Route qui exige une boîte, registre injoignable, compte en cache → 503 `TENANT_REGISTRY_UNAVAILABLE`, `detail` fixe | `RegistryUnavailableEndpointIntegrationTests.MailboxRoute_WhenTheRegistryIsUnavailable_Answers503_NeverMailboxNotAttached` | M2 → 403 ; ancien `detail` → rouge |
+| Idem, cache froid | `…_AndTheAccountIsNotCached_Answers503` | M3 → 403 |
+| Route `[MailboxNotRequired]`, registre injoignable → servie sans boîte | `MailboxOptionalRoute_WhenTheRegistryIsUnavailable_IsServedWithoutAMailbox` | filtre du middleware inversé → 503 |
+| `GET /account/mailboxes`, registre injoignable → 503, jamais `[]` | `MailboxAttachRoleIntegrationTests.Mailboxes_WhenTheRegistryIsUnavailable_Is503ProblemJson_NeverAnEmptyList` | M4 → `200 []` |
+
+- ✅ `DatabaseAvailability` : prédicat unique, sans dépendance au pilote, testé unitairement (4 SQLSTATE, chaîne enveloppée, erreurs de requête).
+- ✅ `PostgresTenantRegistryClient` : les trois lectures de décision propagent ; la cartographie garde sa dégradation ; contrat écrit dans `ITenantRegistryClient`.
+- ✅ Middleware, `MailboxAccessGate` (fermeture sûre au refus de l'opérateur), `MailboxStreamAccessWatch` (« à confirmer ») : bonne profondeur, chaque politique là où se prend la décision.
+- ✅ Sécurité / règle 14 : aucun accès ouvert sans réponse du registre ; aucun acte ajouté ni retiré ; `detail` sans opération, corrélation, base ni adresse.
+- ✅ `MailboxSenderIdentityService.CanEditAsync` : non joignable pendant une panne (la sélection du middleware rend 503 avant), argumenté dans le `## Develop log`.
+- ⚠️ Les autres routes de gestion des boîtes (détacher, boîte par défaut, réauthentifier) passent par le même mécanisme, prouvé sur la liste ; pas de test propre à chacune.
+- ⚠️ 6ᵉ copie du handler Bearer de test et du cache mémoire dans les tests d'intégration : à mutualiser sous `Harness/`.
+- ⚠️ `GetEmailContentInternalAsync` rend `Result.Error(ex.Message)` sur une panne IMAP : task-425.
+- **DOD** : tous les points vérifiés. Écart accepté par l'humain : code `TENANT_REGISTRY_UNAVAILABLE` au lieu de `DATABASE_UNAVAILABLE` pour le registre. Points d'observation (affichage client) reportés au Manual Test Plan.
+
