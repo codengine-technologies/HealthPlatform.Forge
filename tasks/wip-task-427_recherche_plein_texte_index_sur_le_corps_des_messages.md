@@ -124,3 +124,17 @@ Contenu attendu :
   la même base HDS et sous le même chiffrement au repos
 - **AIPD / impact RGPD** : à noter : l'index trigramme est une donnée dérivée du contenu des messages. Il est
   supprimé avec la base de la boîte et ne crée aucun traitement nouveau
+
+## Branches
+
+- `api-mail` (pushed) : feat/task-427-recherche-plein-texte-index-sur-le-corps — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-427-recherche-plein-texte-index-sur-le-corps
+  - Créée depuis `origin/develop` (`d6712a10`).
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-427 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 17 s | — | — | — | — |
+| **Total cycle** | | **17 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
