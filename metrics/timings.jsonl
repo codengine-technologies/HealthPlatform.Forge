@@ -8203,3 +8203,6 @@
 {"ts":"2026-11-05T14:32:09+01:00","run_id":"-","type":"cmd","task":"task-423","step":"review","repo":"api-mail","kind":"build","label":"","cwd":"Api/Mail","cmd":"dotnet build HealthPlatform.Api.Mail.sln -v q -nologo","duration_ms":13074,"exit_code":0}
 {"ts":"2026-11-05T14:37:30+01:00","run_id":"-","type":"cmd","task":"task-423","step":"review","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln --no-build","duration_ms":320236,"exit_code":0}
 {"ts":"2026-11-05T14:37:41+01:00","run_id":"-","type":"step","task":"task-423","step":"review","status":"failed","note":"CHANGES REQUESTED (2e passage) — GET /account/mailboxes sans test d'intégration","iterations":null,"duration_ms":347047}
+{"ts":"2026-11-05T14:38:44+01:00","run_id":"-","type":"step_start","task":"task-423","step":"develop"}
+{"ts":"2026-11-05T14:46:06+01:00","run_id":"-","type":"cmd","task":"task-423","step":"develop","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test tests/mss.mail.integration.tests/mss.mail.integration.tests.csproj --no-build","duration_ms":322938,"exit_code":0}
+{"ts":"2026-11-05T14:46:48+01:00","run_id":"-","type":"step","task":"task-423","step":"develop","status":"ok","note":"","iterations":null,"duration_ms":483444}

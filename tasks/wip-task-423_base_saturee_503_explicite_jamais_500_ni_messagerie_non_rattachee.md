@@ -162,13 +162,13 @@ Règles métier :
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 39 s | — | — | — | — |
-| /develop | ok | 43 min 34 s | 8 (1 min 08 s) | 5 (21 min 53 s) | — | api-mail 8B/5T |
+| /develop | ok | 8 min 03 s | 8 (1 min 08 s) | 6 (27 min 16 s) | — | api-mail 8B/6T |
 | /sonar | ok | 8 min 40 s | 2 (44 s) | 10 (13 min 29 s) | 4 (1 min 45 s) | 1 itération(s), api-mail 2B/10T |
 | /lint-angular | skipped | 0.4 s | — | — | — | client non touché (reprise) |
 | /lint-mobile | skipped | 0.4 s | — | — | — | client non touché (reprise) |
 | /e2e | ok | 19 min 30 s | — | — | — | e2e ×10 (1 h 16 min) |
-| /review | failed | 7 min 01 s | 1 (14 s) | 1 (5 min 25 s) | — | api-mail 1B/1T, CHANGES REQUESTED — règle 1b : 3 endpoints sans test d'intégration |
-| **Total cycle** | | **1 h 19 min** | **11 (2 min 08 s)** | **16 (40 min 48 s)** | **4 (1 min 45 s)** | |
+| /review | failed | 5 min 47 s | 2 (27 s) | 2 (10 min 45 s) | — | api-mail 2B/2T, CHANGES REQUESTED (2e passage) — GET /account/mailboxes sans test d'intégration |
+| **Total cycle** | | **42 min 42 s** | **12 (2 min 21 s)** | **18 (51 min 31 s)** | **4 (1 min 45 s)** | |
 
 ## Develop log
 
@@ -284,6 +284,22 @@ La DOD écrit « 503 `DATABASE_UNAVAILABLE` » pour le registre indisponible. Le
   à appliquer. Contrôles mécaniques §Q 2b : rien.
 - **Prévention** : `conventions/csharp.md`, nouvelle entrée « Filtre d'exception — il ne protège que ce que son `try`
   enveloppe » (Occurrences 1). La cause d'un 500 s'établit par sa trace, pas par sa route.
+- Next step : `/sonar task-423`
+
+### 2ᵉ reprise du 2026-11-05 (2ᵉ passage de `/review`)
+
+- **Comportement ajouté à la preuve** : `GET /api/v1/account/mailboxes`, registre injoignable → **503
+  `TENANT_REGISTRY_UNAVAILABLE`**, `detail` fixe, jamais `200 []`. Test d'intégration
+  `MailboxAttachRoleIntegrationTests.Mailboxes_WhenTheRegistryIsUnavailable_Is503ProblemJson_NeverAnEmptyList` : vrai
+  `AccountController`, vrai `MailboxManagementService`, vrai registre PostgreSQL, base du registre `ALLOW_CONNECTIONS
+  false` (sessions coupées), rétablie en `finally`.
+  - **M4** : dégradation en `null` remise dans `GetAccountAsync` → **`OK : []`**, le défaut d'origine. Restauré par
+    `cp`. `ListMailboxesAsync` n'est pas atteinte avant le compte sur ce chemin (cache du test qui rate toujours) : sa
+    propagation est prouvée par `PostgresTenantRegistryClientCoverageTests.ListMailboxes_WhenUnavailable_SurfacesTheFailure`.
+- `MailboxSenderIdentityService.CanEditAsync` (enregistrement de l'identité d'expéditeur) suit le même mécanisme
+  (`GetAccountAsync` qui lève → 503 par le gestionnaire), sans test d'intégration propre. Signalé à `/review`.
+- Commit : `457423df` test(mailboxes). Suite d'intégration : 1 105 verts (+1), 16 ignorés, 0 échec. Code de production
+  inchangé depuis `fccd6fc2`.
 - Next step : `/sonar task-423`
 
 ## Sonar log
