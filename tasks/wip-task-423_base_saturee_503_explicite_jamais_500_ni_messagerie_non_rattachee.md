@@ -163,12 +163,12 @@ Règles métier :
 |---|---|---|---|---|---|---|
 | /start | ok | 39 s | — | — | — | — |
 | /develop | ok | 43 min 34 s | 8 (1 min 08 s) | 5 (21 min 53 s) | — | api-mail 8B/5T |
-| /sonar | ok | 10 min 34 s | 1 (22 s) | 5 (6 min 53 s) | 2 (47 s) | 1 itération(s), api-mail 1B/5T |
-| /lint-angular | skipped | 0.4 s | — | — | — | client-angular non touché |
-| /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non touché |
+| /sonar | ok | 8 min 40 s | 2 (44 s) | 10 (13 min 29 s) | 4 (1 min 45 s) | 1 itération(s), api-mail 2B/10T |
+| /lint-angular | skipped | 0.4 s | — | — | — | client non touché (reprise) |
+| /lint-mobile | skipped | 0.4 s | — | — | — | client non touché (reprise) |
 | /e2e | ok | 20 min 55 s | — | — | — | e2e ×5 (39 min 06 s) |
 | /review | failed | 7 min 01 s | 1 (14 s) | 1 (5 min 25 s) | — | api-mail 1B/1T, CHANGES REQUESTED — règle 1b : 3 endpoints sans test d'intégration |
-| **Total cycle** | | **1 h 22 min** | **10 (1 min 46 s)** | **11 (34 min 13 s)** | **2 (47 s)** | |
+| **Total cycle** | | **1 h 20 min** | **11 (2 min 08 s)** | **16 (40 min 48 s)** | **4 (1 min 45 s)** | |
 
 ## Develop log
 
@@ -311,6 +311,19 @@ La DOD écrit « 503 `DATABASE_UNAVAILABLE` » pour le registre indisponible. Le
 | Reliability / Security / Maintainability | A/A/A | A/A/A | → |
 
 Baseline : analyse du 2026-11-01 (dernière sur le projet). New code period : 30 jours, depuis le 2026-10-03.
+
+### Reprise du 2026-11-05 (commit `fccd6fc2`)
+
+- Phase 1 : ✓ Quality Gate OK au premier passage, 0 issue new code, 0 hotspot, new_coverage = 96,0 %. Phase 2 : rien à traiter.
+
+| Métrique | Baseline (1ᵉʳ passage) | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | → |
+| New coverage | 96,1 % | 96,0 % | −0,1 pt |
+| Bugs / Vulnerabilities / Hotspots / Code smells | 0 / 0 / 0 / 0 | 0 / 0 / 0 / 0 | 0 |
+| Coverage (projet) | 97,9 % | 97,8 % | −0,1 pt |
+| Duplication | 0,4 % | 0,4 % | 0 |
+| Reliability / Security / Maintainability | A/A/A | A/A/A | → |
 
 ## Lint log
 - skipped — no angular change
