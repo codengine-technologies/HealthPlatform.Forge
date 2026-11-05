@@ -165,6 +165,57 @@ comparer les termes au résultat donne donc **exactement les mêmes correspondan
 - **En mémoire, inchangé** : candidats dans l'ordre terme puis date, dédoublonnage par message, filtre `Contains`,
   score, tri, limite.
 
+## Develop log
+
+- **Variante retenue** : mise en minuscules unique, sans index ni migration (voir « Mesure préalable »). L'audit de
+  migration (règle 7c) est sans objet.
+- **Code** (`api-mail`, `src/Infrastructure/Repositories/MailDb/SemanticSearchRepository.cs`) :
+  - les trois recherches plein texte (contenus, documents médicaux, documents d'un patient) gardent leur requête EF
+    de base, qui porte les règles de dossier, de dossier-étiquette (`InFolder`) et de patient, mais n'en lisent plus
+    que les identifiants de lignes ;
+  - une requête SQL par table (`SqlQueryRaw<TermHit>`, constantes de compilation) :
+    - chaque corps est mis en minuscules **une fois**, dans une sous-requête latérale non inlinée (`OFFSET 0`) ;
+    - les termes sont comparés au résultat (`LIKE lower(motif) ESCAPE`, caractère tiré de
+      `SearchQueryHelper.LikeEscapeCharacter`) ;
+    - classement `row_number()` par terme dans l'ordre de task-192, limite de 200 par terme ;
+    - `DISTINCT ON` ligne, sur son premier terme, avec son corps ;
+  - en mémoire, inchangé : ordre terme puis rang, dédoublonnage par message, filtre `Contains`, score, tri, limite.
+- **Passe qualité §Q** (`/simplify`, 4 relectures) :
+  - **appliqué** :
+    - CTE `MATERIALIZED` remplacée par la sous-requête latérale en flux : même coût mesuré (10,8 ms contre
+      10,9 ms), et plus de copie en minuscules du dossier stockée, donc plus de risque de débordement sur disque
+      au-delà de `work_mem` pour un gros dossier ;
+    - `DISTINCT ON` au lieu d'une seconde fenêtre et d'un `CASE` ;
+    - phase 1 réduite aux identifiants : suppression de `CandidateRow` et de sa table de correspondance ;
+    - échappement tiré de `LikeEscape` au lieu d'être écrit en dur ;
+    - `Body IS NOT NULL` redondant retiré ;
+    - `SearchMode.FullTextOnly` dans le test.
+  - **écarté** : recopier en SQL la règle des dossiers-étiquettes pour supprimer l'aller-retour des identifiants.
+    Une règle métier en double coûte plus qu'une liste d'identifiants (16 octets par ligne).
+- **Tests d'intégration, règle 1b** (`tests/mss.mail.integration.tests/Api/FullTextSearchSinglePassIntegrationTests.cs`,
+  9 tests, route `POST /api/v1/search/semantic` et `/search/patient`, vraie pile jusqu'à PostgreSQL) :
+  - **verts sur l'ancien code et sur le nouveau** : le comportement est identique ;
+  - cas couverts : terme dans le corps d'un message, terme dans un document médical, casse et accents, `%` et `_`
+    littéraux, fenêtre saturée de faux candidats, ordre des plus récents dans une fenêtre pleine, plusieurs termes et
+    ordre du score, terme absent, document d'un autre patient.
+- **Preuve par mutation**, jouée sur la version finale, chaque mutation réinjectée puis restaurée par réécriture :
+
+  | Mutation | Test qui échoue |
+  |---|---|
+  | M1, un seul terme envoyé | `Semantic_SeveralTerms_…` |
+  | M2, corps non mis en minuscules | 7 tests, dont `Semantic_TermInUpperCaseWithAccents_…` |
+  | M3, motif non échappé | `Semantic_WildcardLookalikesFillingTheWindow_…` (ajouté après que M3 a d'abord survécu : le filtre `Contains` masque le défaut tant que la fenêtre n'est pas pleine) |
+  | M4, filtre de base ignoré | `Patient_TermInAnotherPatientsDocument_IsNotFound` |
+  | M5, ordre de date inversé | `Semantic_MoreMatchesThanTheWindow_KeepsTheMostRecentMails` |
+- **Validation** (après la passe qualité, recompilée) : build 0 erreur et 0 avertissement. Tests : domain 202,
+  infrastructure 700, application 4 003, api 1 357, intégration 1 114 (+16 ignorés), **0 échec**.
+- **Incident de méthode, corrigé.** Un premier passage de la suite complète, après les mutations, a rendu 3 échecs
+  (ordre des dates). Il tournait en `--no-build` sur les binaires de la dernière mutation (M5) : le script restaurait
+  le source sans recompiler. Le commit de la passe qualité, enchaîné dans la même commande que la lecture du
+  résultat, est parti avant que ces échecs soient lus. Le source poussé était bien le bon (vérifié, aucune trace de
+  la mutation), et la suite recompilée est verte. Prévention : le script recompile après restauration, et la
+  mémoire de session est mise à jour (lire, puis committer, jamais dans la même commande).
+
 ## Branches
 
 - `api-mail` (pushed) : feat/task-427-recherche-plein-texte-index-sur-le-corps — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-427-recherche-plein-texte-index-sur-le-corps
