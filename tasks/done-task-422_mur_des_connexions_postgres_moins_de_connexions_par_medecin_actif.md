@@ -424,4 +424,5 @@ conservé : `$TEMP/forge-e2e/task-422/angular-report-1-eaddrinuse.json`.
 | /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non listé dans Repos |
 | /e2e | ok | 29 min 07 s | — | — | — | e2e ×9 (54 min 34 s), mobile vert ; angular rejoué une fois (EADDRINUSE 47399, outillage) puis vert ; porte verte |
 | /review | ok | 6 min 13 s | 1 (13 s) | 1 (5 min 23 s) | — | api-mail 1B/1T |
+| /tech-writer | ok | 31 s | — | — | — | — |
 | **Total cycle** | | **1 h 00 min** | **5 (1 min 31 s)** | **14 (24 min 28 s)** | **4 (1 min 28 s)** | |

@@ -2,7 +2,7 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.78
+> **Version** : 1.79
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
 > **Dernière mise à jour** : 2026-11-05
@@ -1667,6 +1667,20 @@ En analysant ces erreurs, on a aussi constaté que d'autres réponses inattendue
 dossier ou d'un message, ne venaient pas de la base mais de la messagerie MSSanté elle-même, interrompue en pleine
 lecture. Elles font l'objet d'une demande distincte.
 
+### La plateforme tient deux fois plus de médecins connectés en même temps avant de saturer sa base de données (5 novembre 2026)
+
+Le même tir de limites avait montré qu'au-delà d'environ mille trois cents médecins actifs en même temps, la base de
+données refusait de nouvelles connexions et qu'un quart des demandes échouait d'un coup. Chaque médecin actif
+retenait en effet deux connexions, alors qu'il n'en utilise qu'une à la fois.
+
+Désormais, chaque médecin actif ne retient plus qu'une connexion. Le même tir, rejoué à l'identique, l'a vérifié :
+deux fois moins de connexions à mille médecins actifs, aucune erreur à mille quatre cents, et aucun écran
+sensiblement plus lent, l'écart le plus fort étant inférieur à 8 %. La limite estimée passe d'environ mille trois
+cents à environ deux mille quatre cents médecins actifs, bien au-delà des neuf cents à mille attendus pour dix mille
+inscrits.
+
+Le réglage de production est recommandé à l'équipe d'exploitation, chiffres à l'appui.
+
 ## État de couverture (2026-09-18)
 
 | Feature | Statut | Couverture | Tasks contributives |
@@ -2344,6 +2358,7 @@ Cinq réserves à porter au bilan, sans quoi il serait trompeur :
 - v1.76 — **Une messagerie en panne cesse de passer pour une messagerie vide.** L'analyse des courriers — celle qui extrait les documents médicaux et les rattache au dossier du patient — pouvait s'arrêter net et ne jamais repartir, pendant que l'application répondait **« c'est fait »** à chaque demande. Mesuré à mille médecins : quatre-vingts minutes sans qu'un seul document soit traité, près d'un million d'autres demandes servies normalement pendant ce temps, et **264 praticiens sur 1 000** sans rien recevoir. Du point de vue du médecin, c'était indiscernable d'une boîte sans nouveaux documents. Trois défauts s'additionnaient : l'application **savait** que le serveur était injoignable mais jetait l'information, elle annonçait le nombre de messages **demandés** et non traités, et sa page d'état de santé affichait « accessible » alors qu'aucune connexion n'était vivante. Désormais l'analyse rend un compte rendu, une demande qui n'a rien pu lire **échoue franchement**, les connexions mortes sont rendues — une panne de quatre-vingts minutes redevient une gêne de quelques secondes — et le praticien voit un bandeau : **« Messagerie momentanément indisponible. Les documents seront rattachés dès son rétablissement. »** Il ne bloque rien, la liste reste affichée, il n'apparaît qu'une fois par épisode et disparaît au rétablissement. Les messages laissés de côté par une coupure sont repris automatiquement, un nombre de fois limité. **⚠️ La page d'état de santé, en revanche, n'a PAS été corrigée** : un tir de vérification avec coupure provoquée du serveur sous six cents connexions a montré qu'elle continue d'afficher « accessible » — le nettoyage des connexions mortes efface la preuve qu'elle cherchait, les deux ne pouvant pas fonctionner ensemble. Demande distincte. (task-315)
 - v1.77 — **Le banc compte désormais des praticiens inscrits, plus des robots en boucle.** Jusqu'ici, « mille médecins » désignait mille personnes qui ouvraient leur messagerie **toutes les 87 secondes, toutes en même temps, pendant trois heures et demie** — quarante et une fois par heure chacune. Aucun praticien ne travaille ainsi : il consulte, revient quelques minutes sur sa messagerie, repart pour une demi-heure ou deux heures. Le nouveau mode `terrain` modélise **cette absence** et la variété des praticiens (occasionnel, régulier, intensif) ; le nombre de praticiens réellement présents à un instant donné **se déduit** au lieu d'être fixé à cent pour cent, et chaque verdict l'annonce : « mille inscrits — tant d'actifs en moyenne ». Les gestes et leurs seuils ne changent pas. Les profils sont pour l'instant des **hypothèses construites par cohérence** ; le journal d'audit de la plateforme permettra, une fois en production, de les remplacer par les habitudes réellement observées. Deux corrections d'instrument au passage : la préparation d'un tir sur des boîtes déjà analysées ne consomme plus les trois quarts du temps de mesure pour ne rien faire, et le débit publié pour un palier était **sous-estimé d'un facteur cinq et demi**. (task-321)
 - v1.78 — **Quand la messagerie sature, le médecin lit « momentanément indisponible », jamais « messagerie non rattachée ».** Mesuré à mille quatre cents médecins actifs : la base refusant de nouvelles connexions, l'ouverture de la liste des dossiers rendait une erreur inattendue, et une partie des praticiens lisait que leur boîte n'était « pas rattachée à leur compte » : le registre des boîtes ne répondait plus et son silence était pris pour un refus. Désormais, base saturée ou registre injoignable donnent le même message, sans détail technique ; la boîte n'est ni ouverte ni déclarée détachée tant que le registre n'a pas répondu, la liste des boîtes ne s'affiche plus vide, et un refus de l'opérateur ferme toujours l'accès. Les erreurs du même tir à l'ouverture d'un dossier ou d'un message viennent de la messagerie MSSanté interrompue en pleine lecture : demande distincte. (task-423)
+- v1.79 — **La plateforme tient deux fois plus de médecins connectés en même temps avant de saturer sa base.** Chaque médecin actif retenait deux connexions à la base de données, et la limite tombait vers mille trois cents médecins actifs. Il n'en retient plus qu'une : deux fois moins de connexions, aucune erreur à mille quatre cents, aucun écran sensiblement plus lent. La limite estimée passe à environ deux mille quatre cents médecins actifs, au-delà de la population visée. (task-422)
 
 ---
 

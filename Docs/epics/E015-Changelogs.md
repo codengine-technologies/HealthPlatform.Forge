@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E015-tests-charge-api-mail.md](E015-tests-charge-api-mail.md).
-> **Dernière mise à jour** : 2026-11-05 (v1.78)
+> **Dernière mise à jour** : 2026-11-05 (v1.79)
 
 ---
 
@@ -3283,6 +3283,25 @@ nouvelle table par opération est ce qui permettra de les séparer.
 - **E2E** : vert (58 mobile + 71 Angular), parité verte ; quarantaine E2E-COMPOSE-002 signalée à 27 jours.
 - **Limite résiduelle** : une base injoignable au niveau socket, ou le délai **client** de 30 s de Npgsql, n'ont pas de SQLSTATE et restent 500 (comme avant task-423).
 
+### v1.79 — Le mur des connexions Postgres recule : une connexion par médecin actif au lieu de deux — task-422
+
+- **Task** : task-422 — `done`. **PR** : `api-mail` [#341](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/341) (`awaiting-human-merge`). Branche `feat/task-422-mur-des-connexions-postgres-moins-de`.
+- **Origine** : finding F1 de la campagne « limites » du 2026-11-04/05. Au palier 1400, Postgres atteint `max_connections` (2 500). La cause : `default_pool_size = 2` retient 1,9 backend par médecin actif, une base par boîte active.
+- **Changement** : `src/AppHost/pgbouncer/pgbouncer.ini`, `default_pool_size` 2 → 1, avec son commentaire de mesure. `reserve_pool_size = 1` et `max_db_connections = 3` sont inchangés. Aucun code applicatif.
+- **Mesure (jambe B, même escalier que la jambe A)** :
+  - 1,04 backend par actif à 1000 (1 038 backends), contre 1,96 ;
+  - 0 erreur applicative à 1400, contre 24,8 % ;
+  - pire écart de p95 par étape entre 200 et 1000 : +7,7 % (fiche patient à 400) ;
+  - `cl_waiting` nul sur les bases praticien ;
+  - mémoire du conteneur Postgres à 72 % à 1000 au lieu de 100 %.
+
+  Mur estimé à environ 2 400 actifs. Rapports archivés : `Docs/audits/api-mail-loadtest-journey-escalier-ia-simulee-20261105.md` (A) et `…-task422-pool1-20261105.md` (B).
+- **Décision du 2026-07-27 renversée** : l'A/B `mixed` (60 VU compressés, plusieurs requêtes simultanées par praticien) avait écarté ce réglage. La famille `journey`, au rythme réel du médecin, ne montre aucune attente.
+- **Incident de banc pendant le tir** : le pod Toxiproxy du cluster mail a redémarré vers 17:27 UTC, et ses proxies ont été perdus. La fin du palier 1400 et tout le palier 1996 sont VOID. Avant l'incident, le palier 1400 était propre : ≈ 201 650 réponses 200, 0 réponse 5xx. Les 500 rendus pendant la panne IMAP reproduisent task-425.
+- **Recommandation pour la production** (DevOps, à reporter par l'humain) : `default_pool_size = 1`, `max_connections = 1 500` pour ≈ 950 actifs (10 000 inscrits), ≥ 40 Go pour l'instance Postgres.
+- **Sonar** : Quality Gate OK. Une issue CA1861 dans `FakeOpenAiTests` (commit « Fake IA provider ») a été corrigée.
+- **E2E** : vert. Mobile 58/58. Angular 71/71 au rejeu, après un premier passage rouge d'outillage (port 47399 de l'hôte Weda factice pris par un processus extérieur).
+
 ---
 
 ## Annexe A — Cartographie des briques applicatives
@@ -3411,3 +3430,4 @@ nouvelle table par opération est ce qui permettra de les séparer.
 | task-297 | **Le cache partagé cessait d'être disponible parce qu'il portait des corps de message entiers.** Redis exécute une commande à la fois : le slowlog du tir 1000 du 2026-09-09 porte des écritures de 160 Ko à 1,47 Mo coûtant 11 à 16 ms, derrière lesquelles les petites lectures dépassaient le budget de 500 ms — **6 568 délais d'attente sur un tir sans aucune autre charge Redis**, et jusqu'aux refus de contre-pression du journal d'audit, qui n'y était pourtant pour rien (le A/B « journal désactivé » l'a exonéré). Un décorateur posé **à la frontière du cache** (et non dans l'appelant connu : le slowlog nomme déjà une seconde entrée volumineuse) refuse toute charge utile au-dessus de 64 Kio — seuil **dérivé de la mesure**, pas choisi rond : 160 Ko coûtent 11 ms, donc 64 Kio en coûtent ~4, sous le plafond de 5 ms que le protocole de re-mesure fixe. Rien n'est perdu : une entrée refusée se lit comme absente et l'appelant retombe sur la base. Deux instruments publient enfin la distribution des tailles. Trois défauts trouvés avant la PR, dont une mesure qui allouait 1,5 Mo sur le tas des grands objets **à chaque refus**, sur le chemin même qu'elle protège. | — |
 | task-315 | **Une indisponibilité de la messagerie était invisible de bout en bout.** `EnrichEmailsAsync` rendait `Task` : `FolderUnavailable` remontait jusqu'à la boucle, servait à en sortir, puis mourait là — le contrôleur journalisait le nombre **demandé** et répondait 200. Mesuré au tir du 2026-09-16 : compteur d'enrichissement **gelé à 72 101 pendant 80 minutes** tandis que l'API servait **950 000 requêtes de plus**, `imap_sessions_connected` à 0 avec ~2 200 sessions actives, **264 praticiens sur 1 000** sans un document et un succès rapporté pour chacun. Livré : `EnrichmentOutcome` à quatre comptes, **503** `UnavailableException` sur `enrich/sync` (symétrique du 503 de task-293, dans la même méthode), reprise bornée sur `enrich/async` (le 202 étant parti, il n'y a plus d'appelant à qui rendre l'erreur), éviction des sessions au lien mort, et `CanAccessImap` branché sur l'état réel. Les trois fronts affichent un bandeau non bloquant disant que **rien n'est perdu** — aucun ne savait quoi faire d'un 503. **⛔ Le point 3 (sonde de santé) a été RETIRÉ le 2026-09-17**, infirmé par un tir avec coupure provoquée : `canAccessImap` restait `true` pendant la panne, car aucune session n'est retenue quand la connexion échoue — et l'éviction efface la preuve que la sonde cherchait. Les six tests qui le gardaient passaient, en substituant une valeur que la réalité ne produit jamais. Le même tir a **prouvé** les points 1 et 2 : 503 problem+json pendant la coupure, puis 200 et compteur 21 584 → 21 589 après rétablissement, **sans redémarrage**. Sonar zéro issue introduite, vérifié fichier par fichier. | — |
 | task-423 | **Base ou registre saturés : un 503 explicite.** La persistance des dossiers rendait un 500 générique (`catch` → `Result.Error`) et le registre injoignable faisait lire « messagerie non rattachée » (lectures dégradées en `null`/`[]`). Prédicat unique `DatabaseAvailability` ; les trois lectures de décision du registre propagent (503 `TENANT_REGISTRY_UNAVAILABLE`, libellé fixe) ; route sans boîte servie sans boîte ; refus de l'opérateur toujours fermant ; flux SSE « à confirmer ». 5 comportements prouvés par test d'intégration vu rouge (M1-M4 + middleware). Diagnostic corrigé : les 500 de lecture de dossier, « aujourd'hui » et contenu sont des pannes IMAP (task-425). PR #340. | — |
+| task-422 | **Le mur des connexions Postgres recule.** `default_pool_size` 2 → 1 dans le profil de banc : 1,04 backend par médecin actif à 1000 (contre 1,96), 0 erreur applicative à 1400 (contre 24,8 %), p95 d'étape dégradé de 7,7 % au plus. Mur estimé ≈ 2 400 actifs au lieu de ≈ 1 300. Recommandation de production (`max_connections` 1 500, ≥ 40 Go) à reporter dans DevOps. PR #341. | — |
