@@ -163,12 +163,12 @@ Règles métier :
 |---|---|---|---|---|---|---|
 | /start | ok | 39 s | — | — | — | — |
 | /develop | ok | 8 min 03 s | 8 (1 min 08 s) | 6 (27 min 16 s) | — | api-mail 8B/6T |
-| /sonar | ok | 8 min 40 s | 2 (44 s) | 10 (13 min 29 s) | 4 (1 min 45 s) | 1 itération(s), api-mail 2B/10T |
-| /lint-angular | skipped | 0.4 s | — | — | — | client non touché (reprise) |
-| /lint-mobile | skipped | 0.4 s | — | — | — | client non touché (reprise) |
+| /sonar | ok | 8 min 07 s | 3 (1 min 07 s) | 15 (19 min 49 s) | 6 (2 min 28 s) | 1 itération(s), api-mail 3B/15T |
+| /lint-angular | skipped | 0.4 s | — | — | — | client non touché (2e reprise) |
+| /lint-mobile | skipped | 0.4 s | — | — | — | client non touché (2e reprise) |
 | /e2e | ok | 19 min 30 s | — | — | — | e2e ×10 (1 h 16 min) |
 | /review | failed | 5 min 47 s | 2 (27 s) | 2 (10 min 45 s) | — | api-mail 2B/2T, CHANGES REQUESTED (2e passage) — GET /account/mailboxes sans test d'intégration |
-| **Total cycle** | | **42 min 42 s** | **12 (2 min 21 s)** | **18 (51 min 31 s)** | **4 (1 min 45 s)** | |
+| **Total cycle** | | **42 min 09 s** | **13 (2 min 43 s)** | **23 (57 min 51 s)** | **6 (2 min 28 s)** | |
 
 ## Develop log
 
@@ -343,6 +343,8 @@ Baseline : analyse du 2026-11-01 (dernière sur le projet). New code period : 30
 | Coverage (projet) | 97,9 % | 97,8 % | −0,1 pt |
 | Duplication | 0,4 % | 0,4 % | 0 |
 | Reliability / Security / Maintainability | A/A/A | A/A/A | → |
+
+- **2ᵉ reprise** (`457423df`, un test d'intégration ajouté) : Quality Gate OK, 0 issue new code, 0 hotspot, new_coverage 96,0 %, coverage 97,8 %, duplication 0,4 %, A/A/A — inchangé.
 
 ## Lint log
 - skipped — no angular change
