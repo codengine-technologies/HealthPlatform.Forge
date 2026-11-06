@@ -2016,3 +2016,42 @@ catch (Exception ex) when (!DatabaseAvailability.IsUnavailable(ex)) { … }
 cette famille (repository, `DbContext`, client HTTP…). Pas d'appel → pas de filtre. Et attribuer la cause d'un 500
 par sa trace (exception et pile dans Seq) avant de corriger, jamais par la seule route.
 
+## Panne de messagerie — elle garde son statut jusqu'à la route, et l'annulation n'est jamais rattrapée (revue, pas Sonar)
+
+**Occurrences : 1** (task-425 — banc du 2026-11-05 : des milliers de 500 sur les lectures pendant une panne de la
+messagerie. `ImapService.FailureOf` réécrivait en `Error` le `Unavailable` de la connexion, alors que task-283 avait
+créé `PropagateFailure` précisément pour cela ; trois `catch` rendaient `Result.Error("Request cancelled.")` ; deux
+rendaient `Result.Error(ex.Message)`)
+
+Un `Result` en échec qui traverse une frontière de type perd son statut dès qu'on le reconstruit à la main :
+`Result<T>.Error(source.Errors.First())` garde le message, pas le statut, et `ResultModelExtensions` mappe `Error` en
+**500**. Le médecin lit « erreur inattendue » au lieu de « messagerie momentanément injoignable ».
+
+```csharp
+// ❌ AVANT — seul le NotFound survit ; Unavailable, Unauthorized… retombent en 500
+return read.Status == ResultStatus.NotFound
+    ? Result<FolderDto>.NotFound(…)
+    : Result<FolderDto>.Error(read.Errors.FirstOrDefault() ?? fallbackError);
+
+catch (OperationCanceledException) when (ct.IsCancellationRequested) { return Result<T>.Error("Request cancelled."); }
+catch (Exception ex) { return Result<T>.Error(ex.Message); }
+
+// ✅ APRÈS — le statut traverse, l'annulation remonte (499), la panne se classe par type
+return read.PropagateFailure<FolderDto>(fallbackError);
+
+catch (Exception ex) when (!MailServerOutage.IsRequestCancellation(ex, ct))
+{
+    return ReadFailure<T>(ex, "Error reading …", GenericMessage);   // Unavailable si MailServerOutage.IsUnreachable
+}
+```
+
+**Consigne** :
+- Propager un résultat en échec avec `PropagateFailure` (`Helpers/ConnectionResultPropagation.cs`), jamais en le
+  reconstruisant.
+- Ne jamais rattraper une `OperationCanceledException` de la requête pour la convertir : le filtre
+  `when (!MailServerOutage.IsRequestCancellation(ex, ct))` la laisse au gestionnaire global (règle 12).
+- Une exception de transport IMAP (`MailServerOutage.IsUnreachable`) donne `Result.Unavailable` avec un `detail` fixe ;
+  jamais `ex.Message` dans un résultat.
+- `Result.Unavailable` est réservé à la messagerie : il sort en 503 `MAIL_SERVER_UNAVAILABLE`. Une autre
+  indisponibilité (base, registre, annuaire) lève son exception typée, avec son code. Garde :
+  `ResultUnavailableIsAMailServerOutageScanTests`.

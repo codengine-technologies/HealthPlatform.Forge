@@ -102,6 +102,115 @@ Règles :
 - **Hébergement HDS** : oui, environnement inchangé
 - **AIPD / impact RGPD** : inchangé, aucun traitement nouveau
 
+## Develop log
+
+### Cause établie (Seq, avant le correctif)
+
+Relevé dans Seq sur les deux pannes du 2026-11-05 (escalier IA simulée, nuit du 04 au 05, et jambe B de task-422,
+pod Toxiproxy redémarré à 17:27 UTC). Requêtes filtrées sur `Result-mapped 500` et les routes `/api/v1/mail/folders…`,
+puis chaque famille exclue tour à tour jusqu'à n'en plus trouver : **aucun 500 ne venait d'une panne survenue après
+une lecture réussie**. Trois familles, avec leur pile :
+
+| Famille | Exception et pile | Où le statut se perdait |
+|---|---|---|
+| Connexion refusée | `SocketException (10061)` dans `ImapConnectionService.PerformConnectAndAuthenticateAsync` → `Result.Unavailable("Impossible de joindre le serveur de messagerie. Erreur réseau: ConnectionRefused")` | `ImapService.FailureOf` réécrivait tout statut autre que NotFound en `Result.Error` : `Result-mapped 500 … (ResultStatus=Error): Impossible de joindre…` |
+| Poignée de main TLS coupée | `MailKit.Security.SslHandshakeException` → `IOException` → `SocketException (10054)` « forcibly closed by the remote host », dans `ImapClient.SslHandshakeAsync` | le `catch` générique de la connexion : `Erreur inattendue lors de la connexion: SslHandshakeException` (`Error`, 500) |
+| Requête annulée par le client | `OperationCanceledException` (k6 abandonne après 60 s d'attente du verrou de session) | `MapFolderAccessExceptionAsync` et `GetFoldersAsync` rendaient `Result.Error("Request cancelled.")` (500 au lieu de 499, règle 12) |
+
+Les mêmes familles touchent `GET /api/v1/mail/folders` (tableau de bord). Deux défauts latents du même chemin, non
+observés au banc mais visés par la DoD (« IMAP coupé en cours de lecture ») :
+- `TryResolveFolderAsync` avalait toute exception en `null` → « Failed to access folder » (500), sans passer par la
+  reprise de session morte de task-277 ;
+- le contenu d'un message rendait `Result.Error(ex.Message)` (fuite du texte de l'exception), et l'échec de la
+  fermeture du dossier sur une session morte remplaçait le résultat de la lecture.
+
+Hors périmètre, relevé au passage : `GET …/download/attachment/…` rend aussi un 500 « Error retrieving attachment: A
+task was canceled. » (même famille, autre route).
+
+### Correctif (`api-mail`)
+
+- `Session/MailServerOutage.cs` : classement par type, jamais par le texte. `IsUnreachable` = session morte de
+  task-277 (`DeadSessionPolicy`) + `TimeoutException` ; `IsInterruptedHandshake` = poignée de main dont la cause est
+  une session morte (un certificat refusé reste une erreur) ; `IsRequestCancellation` ; `UnreachableDetail`, texte fixe.
+- `ImapConnectionService` : `SslHandshakeException` interrompue par le transport → `Unavailable` ; `IsPropagated`
+  réutilise `IsRequestCancellation`.
+- `ImapService` :
+  - `FailureOf` propage le statut (`PropagateFailure`, le point unique de task-283) ;
+  - `ReadFailure<T>` : panne de messagerie → `Unavailable` + `detail` fixe (journal en Warning, sans dossier ni
+    adresse), autre erreur → `Error` + message générique ;
+  - l'annulation de la requête n'est plus rattrapée (filtre `when`) : le gestionnaire global la rend en 499 ;
+  - `TryResolveFolderAsync(…, propagateOutage: true)` pour les deux lectures de dossier : la coupure atteint la reprise
+    et le classement. Les trois autres appelants (analyse, traitement par lot, lecture d'un message seul) gardent leur
+    contrat `null`, hors périmètre ;
+  - contenu : plus de `ex.Message`, ouverture dans le `try`, fermeture best-effort par `TryCloseFolderAsync`.
+- `ResultModelExtensions` : un 503 issu d'un `Result.Unavailable` porte `code` = `MAIL_SERVER_UNAVAILABLE` (le client
+  mobile n'affiche son bandeau de panne que sur ce code) ; `detail` inchangé, celui du service.
+
+### Comment la messagerie est rendue défaillante (règle 1b)
+
+`Fixtures/ScriptedImapClientWrapperFactory` (ex-`CapabilityStrippingImapClientWrapperFactory`, renommée : elle ne fait
+plus seulement retirer des capacités). C'est le vrai `ImapClientWrapper` de production, contre le vrai Dovecot de la
+collection `UseCases`. Pour la seule boîte inscrite par un test (`CutSession(email)`), la résolution et la liste des
+dossiers lèvent l'exception relevée au banc (`IOException` sur `SocketException` 10054). La connexion et
+l'authentification restent réelles, et la reprise unique de task-277 se heurte à la même coupure. Tout le reste est
+réel : `MailController`, `ImapService`, gestion d'erreurs RFC 7807, base PostgreSQL du praticien.
+
+### Tests
+
+- **Intégration de bout en bout** (`FolderOperationsEndToEndTests.MailServerOutage.cs`, 4 tests) : `GET
+  /api/v1/mail/folders/INBOX`, `…/emails/today`, `…/emails/content/{uid}` (message déposé par un autre client, jamais
+  analysé, donc lu sur le serveur) et `GET /api/v1/mail/folders`. Chacun : 200 avant la coupure, puis **503**,
+  `application/problem+json`, `code` = `MAIL_SERVER_UNAVAILABLE`, `detail` égal au texte fixe. La lecture du dossier
+  vérifie aussi la liste, et sa relecture à 200 une fois la session rétablie (étape 4 du Manual Test Plan).
+- **Vus rouges sur le code d'avant** : les 4 tests, avant tout correctif, rendaient **500** « An unexpected error
+  occurred », le symptôme exact du banc.
+- **Preuve par mutation** (`t425_mutate.sh` : réinjection, rejeu, restauration par réécriture **puis recompilation**,
+  contrôle `cmp`) :
+
+  | Mutation | Tests d'intégration rouges |
+  |---|---|
+  | M1, `FailureOf` aplatit le statut en `Error` (rejouée après la passe qualité) | dossier, « aujourd'hui » |
+  | M2, plus de `code` sur le 503 | les 4 |
+  | M3, coupure non classée (`ReadFailure` ignore `IsUnreachable`) | les 4 |
+  | M4, la résolution du dossier avale la coupure (rejouée après la passe qualité) | dossier, « aujourd'hui » |
+  | Garde `Result.Unavailable` : un producteur hors messagerie ajouté | `OnlyTheMailServerPathsProduceAResultUnavailable` |
+
+- **Unitaires** : 10 cas dans `ImapServiceCoverageTests` (connexion refusée → Unavailable, session morte deux fois,
+  coupure à la résolution avec reprise, délai, autre erreur restée `Error`, « aujourd'hui », liste des dossiers,
+  contenu : coupure à la résolution, au FETCH avec fermeture qui échoue, à l'ouverture) ; 2 dans
+  `ImapConnectionServiceCoverageTests` (TLS coupé → Unavailable, certificat refusé → Error) ; 9 dans
+  `MailServerOutageTests` ; 3 dans `ResultExtensionsTests` ; la garde d'architecture
+  `ResultUnavailableIsAMailServerOutageScanTests`.
+- **Réécrits** (ils figeaient l'ancien comportement) : trois tests d'annulation attendent désormais la propagation de
+  l'annulation ; deux tests du contenu attendaient le texte brut de l'exception (« LIST broke », « fetch broke »).
+- Le 404 du dossier disparu (task-352) est inchangé : tests existants verts.
+
+### Passe qualité §Q (`/simplify`, 4 relectures)
+
+- **Appliqué** : `FailureOf` entièrement par `PropagateFailure` ; clause de relance au lieu d'une double négation dans
+  `TryResolveFolderAsync` ; fermeture par l'aide existante `TryCloseFolderAsync` au lieu d'une seconde ; `IsPropagated`
+  réutilise `IsRequestCancellation` ; `IsInterruptedHandshake` s'appuie sur `DeadSessionPolicy` ; le message
+  « Connexion interrompue » écrit une fois ; aide de test pour l'arrangement répété, assertion exacte pour le délai ;
+  trois `DoesNotContain` qui ne pouvaient pas échouer retirés ; garde d'architecture sur les producteurs de
+  `Result.Unavailable`, puisque le mappeur leur attribue `MAIL_SERVER_UNAVAILABLE`.
+- **Écarté (changerait le comportement d'autres routes)** : supprimer le paramètre `propagateOutage` pour tous les
+  appelants (la lecture d'un message seul passerait de 404 à 503, l'analyse et le traitement par lot changeraient de
+  contrat) ; convertir les pièces jointes et les écritures (brouillons, envoyés) qui rendent encore `ex.Message` ;
+  supprimer la surface de lecture de `ImapFolderService`, sans appelant ; unifier l'échelle de `catch` de la connexion.
+  À instruire dans une task de suite.
+
+### Validation
+
+Build 0 erreur, 0 avertissement. Tests : domain 202, infrastructure 700, api 1 361, application 4 024, intégration
+1 118 (+16 ignorés), **0 échec**.
+
+### Prévention (règle d'or)
+
+- `conventions/csharp.md` : « Panne de messagerie — elle garde son statut jusqu'à la route, et l'annulation n'est jamais
+  rattrapée », avec la règle `Result.Unavailable` réservé à la messagerie.
+- `conventions/e2e.md` : ligne « trou du filet » (panne non rejouable par `/e2e`, filet = les 4 tests d'intégration).
+- Garde d'architecture `ResultUnavailableIsAMailServerOutageScanTests`.
+
 ## Branches
 
 - `api-mail` (pushed) : feat/task-425-panne-imap-en-cours-de-lecture-503 — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-425-panne-imap-en-cours-de-lecture-503
@@ -114,4 +223,5 @@ Règles :
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 13 s | — | — | — | — |
-| **Total cycle** | | **13 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 46 min 03 s | 4 (56 s) | 4 (11 min 33 s) | — | api-mail 4B/4T, 3 familles établies dans Seq ; 4 tests d'intégration vus rouges ; 5 mutations |
+| **Total cycle** | | **46 min 16 s** | **4 (56 s)** | **4 (11 min 33 s)** | **0 (0.0 s)** | |
