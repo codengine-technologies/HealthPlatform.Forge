@@ -205,6 +205,63 @@ par la requête de test (middleware de test retiré) ; commentaire `NoResetOnClo
 > invalide le cache dans le Redis partagé. Une purge future de rattachements, qui changerait le plus ancien, devrait
 > invalider aussi. Le verdict de compatibilité de `GetMailboxAsync` lit, lui, l'ancre en base.
 
+## Mesure au banc (2026-11-06, 15:04 → 16:35)
+
+Même tir court que la référence : `JOURNEY_STAGES="1400:18m,1996:18m"`, K = 1, IA simulée, pool PgBouncer à 1, mêmes
+bases, tireur k6bench, `LATENCY_MS=96`. Proxies Toxiproxy et santé de l'API contrôlés toutes les 30 s, sans incident.
+
+**Le tir de référence de la veille ne suffisait pas.** Comparé au tir task-427 du 2026-11-05, ce tir montrait à 1996
+des p95 d'étape dégradés de 50 à 67 % (inbox, message servi base, dossier patient). Mais :
+- ces requêtes sont celles des bases praticien, que task-426 ne touche pas, et elles sont appelées autant de fois ;
+- leur temps de lecture disque double (98 → 182 s) ;
+- les fautes majeures du cgroup Postgres montent de 0,6 à 33/s, et uniquement au palier 1996, avec RSS et cache de
+  pages identiques.
+
+Le jeu de travail a grossi : les bases ont pris 913 Mo au tir task-427, plus le tir task-424 du matin. D'où un **tir de
+contrôle sur `develop`** (`b0cf4143`, sans task-426), joué juste après, dans des conditions au plus égales.
+- Ce tir : `Docs/audits/api-mail-loadtest-journey-courte-1400-1996-task426-20261106.md`.
+- Contrôle : `Docs/audits/api-mail-loadtest-journey-courte-1400-1996-task426-controle-develop-20261106.md`.
+- Tir de la veille, pour mémoire : `Docs/audits/api-mail-loadtest-journey-courte-1400-1996-task427-20261106.md`.
+
+**Lectures du registre par requête HTTP** (`pg_stat_statements`, base `mss_registry_loadtest`) :
+
+| Forme | Contrôle `develop` | task-426 | Écart |
+|---|---|---|---|
+| `SELECT … FROM accounts` (lecture directe) | 2,97 | **0,02** | −99 % |
+| Ancre PSC (requête séparée) | 2,97 | **0,01** | −99,6 % |
+| **`accounts` + ancre** (critère DoD, cible −50 %) | **5,94** | **0,03** | ✅ **−99,5 %** |
+| `DISCARD ALL` (registre) | 7,13 | **0** | −100 % |
+| Rattachement + compte (jointure, ancre incluse depuis task-426) | 1,00 (46,6 s) | 1,00 (76,4 s) | +30 s : l'ancre jointe |
+| Temps SQL du registre, toutes formes | 379 s | **125 s** | −67 % |
+| Temps SQL total du tir | 27,5 min (6,1 ms/req) | **25,6 min** (5,6 ms/req) | −7 % |
+
+**p95 d'étape contre le contrôle** (même conditions), critère « aucun p95 dégradé de plus de 20 % » :
+
+| Étape | 1400 contrôle → task-426 | 1996 contrôle → task-426 |
+|---|---|---|
+| Dashboard | 548 → 540 | 672 → 661 |
+| Inbox | 128 → 114 | 310 → 303 |
+| Message servi base | 99 → 83 | 269 → 264 |
+| Message froid (IMAP) | 527 → 514 | 616 → 584 |
+| Recherche | 610 → 631 (+3 %) | 855 → 827 |
+| Envoi | 944 → 931 | 1 038 → 1 024 |
+| Télécharger une PJ | 130 → **378** | 743 → 792 (+7 %) |
+| Marquer lu | 108 → 95 | 246 → 237 |
+| Rechercher un patient | 87 → 72 | 166 → 126 |
+| Page d'un dossier patient | 146 → 134 | 350 → 397 (+13 %) |
+| Fiche patient complète | 680 → 618 | 1 693 → 1 774 (+5 %) |
+
+- Les p50 sont meilleurs ou égaux sur toutes les étapes, aux deux paliers.
+- **Seul écart au-delà de 20 % : le p95 du téléchargement de PJ à 1400** (130 → 378 ms), avec un p50 meilleur
+  (51 → 43 ms). Ce p95 n'est pas stable d'un tir à l'autre : il valait 641 ms au tir task-427 de la veille, sur un code
+  sans task-426. Le téléchargement ne lit pas le registre plus qu'une autre route. Lu comme du bruit, à confirmer par
+  l'humain.
+- **5xx en régime : 0** dans les deux tirs (Seq). Erreurs k6 : 0,014 % (task-426) et 0,009 % (contrôle), relais réseau.
+
+**Conséquence pour la campagne** : à 1996, un tir de la veille n'est plus une référence opposable, parce que chaque tir
+fait grossir les bases et que le cgroup Postgres (48 Go) est plein. Toute mesure comparative à ce palier exige un
+contrôle joué dans la même session.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-426 --sync` — ne pas éditer à la main)*
@@ -212,4 +269,5 @@ par la requête de test (middleware de test retiré) ; commentaire `NoResetOnClo
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 12 s | — | — | — | — |
-| **Total cycle** | | **12 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 2 h 28 min | 4 (25 s) | 3 (11 min 14 s) | — | api-mail 4B/3T, registre accounts+ancre -99,5 %/req (A/B même session), DISCARD ALL registre supprimé |
+| **Total cycle** | | **2 h 28 min** | **4 (25 s)** | **3 (11 min 14 s)** | **0 (0.0 s)** | |
