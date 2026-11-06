@@ -317,7 +317,11 @@ des p95 d'étape dégradés de 50 à 67 % (inbox, message servi base, dossier pa
   pages identiques.
 
 Le jeu de travail a grossi : les bases ont pris 913 Mo au tir task-427, plus le tir task-424 du matin. D'où un **tir de
-contrôle sur `develop`** (`b0cf4143`, sans task-426), joué juste après, dans des conditions au plus égales.
+contrôle sur `develop`** (`b0cf4143`, sans task-426), joué juste après.
+- **Ordre des deux tirs, à lire avec ses deux effets** : le contrôle part sur des bases un peu plus grosses (+544 Mo),
+  mais sur un cache de pages réchauffé par le premier tir. Le tir task-426 a payé plus de latence disque : fautes
+  majeures max 33/s contre 11,6/s, attente disque 14,0 % contre 9,9 % du temps SQL, lecture disque 182 s contre 136 s
+  pour un volume de blocs comparable. L'ordre ne favorise donc pas nettement l'un ou l'autre.
 - Ce tir : `Docs/audits/api-mail-loadtest-journey-courte-1400-1996-task426-20261106.md`.
 - Contrôle : `Docs/audits/api-mail-loadtest-journey-courte-1400-1996-task426-controle-develop-20261106.md`.
 - Tir de la veille, pour mémoire : `Docs/audits/api-mail-loadtest-journey-courte-1400-1996-task427-20261106.md`.
@@ -399,4 +403,5 @@ contrôle joué dans la même session.
 | /lint-angular | skipped | 0.6 s | — | — | — | client-angular non touché |
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 20 min 29 s | — | — | — | e2e ×3 (20 min 02 s), mobile 58/58, angular 71/71, parité verte |
-| **Total cycle** | | **3 h 15 min** | **7 (2 min 07 s)** | **14 (27 min 41 s)** | **4 (1 min 25 s)** | |
+| /review | failed | 6 min 55 s | 1 (10 s) | 1 (5 min 51 s) | — | api-mail 1B/1T, arbitrage humain : p95 PJ à 1400 (questions/task-426.md) |
+| **Total cycle** | | **3 h 22 min** | **8 (2 min 17 s)** | **15 (33 min 32 s)** | **4 (1 min 25 s)** | |
