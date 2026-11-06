@@ -431,3 +431,9 @@ dégradé de plus de 20 % » accepté sur arbitrage humain (option 1, `questions
 | /review | ok | 0.6 s | 1 (10 s) | 1 (5 min 51 s) | — | api-mail 1B/1T, PR #345 après arbitrage humain (option 1) |
 | /tech-writer | ok | 24 s | — | — | — | — |
 | **Total cycle** | | **3 h 16 min** | **8 (2 min 17 s)** | **15 (33 min 32 s)** | **4 (1 min 25 s)** | |
+
+## Merged
+
+- **2026-11-06** — `/merge task-426 --i-tested` (plan de test manuel joué par l'humain).
+- `api-mail` : PR [#345](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/345) squash-mergée sur `develop` → `f50f2ae5`.
+- Branche `feat/task-426-cache-du-compte-registre-invalide-a` supprimée (distante et locale).
