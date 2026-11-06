@@ -122,3 +122,9 @@ Règles :
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui — données inchangées, dans la base de la boîte, sur l'environnement HDS de la plateforme
 - **AIPD / impact RGPD** : inchangée — aucun traitement nouveau. Moins de données de santé transitent vers l'API.
+
+## Branches
+
+- `api-mail` (pushed) : fix/task-429-fiche-patient-ne-plus-lire-le-contenu — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-429-fiche-patient-ne-plus-lire-le-contenu
+
+> Pré-flight du /start (2026-11-06) : `api-mail`, `client-blazor`, `client-mobile`, `dtos-mss`, `sdk` sur `develop`. `host` (`Host/Modules`) n'est pas un dépôt (connu). `interop` n'est plus la racine d'un dépôt (`--show-prefix` = `interop/`) : non bloquant pour cette task, à signaler à l'humain.
