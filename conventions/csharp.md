@@ -2055,3 +2055,44 @@ catch (Exception ex) when (!MailServerOutage.IsRequestCancellation(ex, ct))
 - `Result.Unavailable` est réservé à la messagerie : il sort en 503 `MAIL_SERVER_UNAVAILABLE`. Une autre
   indisponibilité (base, registre, annuaire) lève son exception typée, avec son code. Garde :
   `ResultUnavailableIsAMailServerOutageScanTests`.
+
+---
+
+## groupby-final-materialise-l-entite — projeter avant de regrouper, jamais l'inverse
+
+**Occurrences : 2**
+- task-322 : la page d'en-têtes matérialisait les entités entières (`Content` des pièces jointes, `HtmlBody`,
+  `Embedding`, `MetadataJson` des documents) pour n'afficher que des métadonnées.
+- task-429 : le dossier patient (`PatientRepository.LoadMailsWithAttachmentsAsync`) regroupait les pièces jointes par
+  `GroupBy(a => a.MailId).ToDictionaryAsync(g => g.Key, g => g.Select(a => new AttachmentDto { … }))`. Au tir court
+  du 2026-11-06 : 13,7 Go de contenus lus par tir, dont 5 Go sur disque, soit 31 % des lectures disque.
+
+EF Core ne traduit pas une projection faite **dans** un groupe quand le `GroupBy` est l'opérateur final. Il émet un
+`SELECT` de toutes les colonnes, `ORDER BY` la clé, matérialise les entités, puis projette en mémoire. Le code se lit
+comme une projection de métadonnées, et la réponse est juste : aucun test fonctionnel ne le voit.
+
+```csharp
+// ❌ AVANT — « Content » est lu, transféré, puis jeté
+var byMail = await db.MailAttachments.Where(a => ids.Contains(a.MailId))
+    .GroupBy(a => a.MailId)
+    .ToDictionaryAsync(g => g.Key, g => g.Select(a => new AttachmentDto { FileName = a.FileName, Size = a.Size }).ToList());
+
+// ✅ APRÈS — le SQL ne sélectionne que les colonnes projetées, le regroupement se fait en mémoire
+var rows = await db.MailAttachments.Where(a => ids.Contains(a.MailId))
+    .Select(a => new { a.MailId, Attachment = new AttachmentDto { FileName = a.FileName, Size = a.Size } })
+    .ToListAsync();
+var byMail = rows.GroupBy(r => r.MailId).ToDictionary(g => g.Key, g => g.Select(r => r.Attachment).ToList());
+```
+
+**Consigne** :
+- Projeter avant de regrouper : `Select` vers les seules colonnes utiles, puis `GroupBy` en mémoire ou un `GroupBy` SQL
+  qui agrège (`Count`, `Sum`), jamais un `GroupBy` final qui rend des groupes d'entités.
+- Ne jamais matérialiser une entité qui porte une colonne binaire ou volumineuse (`Content`, `Body`, `HtmlBody`,
+  `BodyHtml`, `Embedding`, `MetadataJson`) hors du chemin qui la sert.
+- Toute nouvelle route de lecture qui touche les pièces jointes entre dans la garde
+  `AttachmentBytesReadEndToEndTests.NoReadRouteOfTheJourney_ReadsAttachmentContent_OnlyTheDownloadDoes`.
+
+**Preuve** : `AttachmentBytesReadEndToEndTests` (task-429). Le SQL est relevé par les traces Npgsql
+(`NpgsqlQueryCapture`), sur la base du praticien. Mutation « `GroupBy` d'origine réinjecté » : 4 tests rouges, dont la
+garde, qui désigne les deux routes du dossier patient.
+

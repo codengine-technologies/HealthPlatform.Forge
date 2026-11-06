@@ -128,3 +128,90 @@ Règles :
 - `api-mail` (pushed) : fix/task-429-fiche-patient-ne-plus-lire-le-contenu — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-429-fiche-patient-ne-plus-lire-le-contenu
 
 > Pré-flight du /start (2026-11-06) : `api-mail`, `client-blazor`, `client-mobile`, `dtos-mss`, `sdk` sur `develop`. `host` (`Host/Modules`) n'est pas un dépôt (connu). `interop` n'est plus la racine d'un dépôt (`--show-prefix` = `interop/`) : non bloquant pour cette task, à signaler à l'humain.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-429 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 20 s | — | — | — | — |
+| **Total cycle** | | **20 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+
+## Develop log
+
+**Correctif** (`api-mail`, `src/Infrastructure/Repositories/MailDb/PatientRepository.cs`) :
+- `LoadMailsWithAttachmentsAsync` : la requête des pièces jointes projette `MailId`, `Guid`, `FileName`, `ContentType`,
+  `Size`, et est lue en flux (`AsAsyncEnumerable`) directement dans la liste de chaque message. Plus de `GroupBy` final,
+  plus de liste intermédiaire ni de second dictionnaire. SQL émis : `SELECT m."MailId", m."Guid", m."FileName",
+  m."ContentType", m."Size" FROM "MailAttachments" AS m WHERE m."MailId" = ANY ($1)`.
+- `EnrichBiologyAndAttachmentsAsync` (même fichier, relevé par la passe qualité, axe « altitude ») : le regroupement des
+  résultats de biologie avait la même forme de `GroupBy` final. Aucune colonne volumineuse n'y est lue, mais la forme
+  contredit la consigne. Elle est remise en « projection, puis regroupement en mémoire ». Le comportement est inchangé,
+  et les tests de biologie et du dossier patient restent verts.
+
+**Tests (règle 1b)** — `tests/mss.mail.integration.tests/UseCases/AttachmentBytesReadEndToEndTests.cs` (collection
+`UseCases`, boîte n° 22) :
+- **Vraie pile** : hôte HTTP, contrôleurs `Mail` et `Patients`, vrais services et dépôts, Dovecot, base PostgreSQL du
+  praticien.
+- **Scène semée une fois pour la classe** :
+  - compte rendu de microbiologie du kit ANS déposé dans Dovecot, enrichi par `POST …/emails/enrich/sync` ;
+  - fiche patient créée par l'ingestion ;
+  - contenu de `IHE_XDM.ZIP` mis en base par un premier téléchargement, comme au banc ;
+  - étiquette `SUIVI` posée par la vraie route.
+- **SQL relevé par `Harness/NpgsqlQueryCapture.cs`** (nouveau) : écouteur des traces Npgsql (`db.query.text`), filtré
+  sur la base du praticien dès l'enregistrement. Les dépôts construisent leur contexte eux-mêmes, et un intercepteur EF
+  n'y est pas injectable depuis un test HTTP.
+
+| Comportement | Test | Preuve rouge |
+|---|---|---|
+| `GET /patients/{id}/medical-documents?page=&pageSize=` liste les pièces jointes (noms, tailles, types identiques à la base) sans sélectionner `Content` | `ThePatientFolderPage_ListsTheAttachments_WithoutReadingTheirContent` | mutation M1 |
+| Même chose sans pagination | `TheWholePatientFolder_ListsTheAttachments_WithoutReadingTheirContent` | M1 |
+| Même chose pour `POST /patients/mails` | `ThePatientMailsPage_ListsTheAttachments_WithoutReadingTheirContent` | M1 |
+| **Garde** : 15 routes GET de lecture du parcours (dossiers, page d'en-têtes, contenu du message, vues du jour, étiquettes, fiche, dossier, documents, opposition, patients du jour) ne sélectionnent jamais `MailAttachments."Content"`. Le téléchargement est la seule exemption, et la garde vérifie qu'il le lit | `NoReadRouteOfTheJourney_ReadsAttachmentContent_OnlyTheDownloadDoes` | M1 : la garde désigne exactement les deux routes `medical-documents`, avec la forme SQL du banc (`SELECT m."MailId", m."Id", m."Content", …`) |
+| Cas d'échec : patient inconnu, 404 `application/problem+json`, pour la page du dossier | `PatientFolderEndToEndTests.AnUnknownPatientHandle_Is404ProblemJson` (ligne `?page=1&pageSize=20` ajoutée à la théorie existante) | inchangé, vert |
+
+- **M1** = le `GroupBy(a => a.MailId).ToDictionaryAsync(g => g.Key, g => g.Select(a => new AttachmentDto {…}))`
+  d'origine réinjecté. Joué deux fois : sur le premier correctif, puis sur le code final après la passe qualité. Les 4
+  tests sont rouges les deux fois.
+- **Restauration** : depuis une copie (`cp` puis `touch`), vérifiée par `cmp`, puis recompilation complète avant toute
+  suite `--no-build`. Mémoire « mutation restaurée ». Une première suite complète, lancée par erreur sur un binaire
+  encore muté, a été arrêtée avant son verdict.
+- **Prémisses affirmées** :
+  - patient rattaché par l'enrichissement ;
+  - au moins une pièce jointe avec son contenu en base ;
+  - commandes SQL captées (par test, et au total pour la garde) ;
+  - requête sur `MailAttachments` vue ;
+  - téléchargement qui lit `Content`.
+
+**Passe qualité (§Q, /simplify, 4 axes)** :
+- **Appliqué** :
+  - lecture en flux dans `dtosByMailId` (efficacité) ;
+  - capture filtrée par base dès l'enregistrement, `AllData` au lieu de `AllDataAndRecorded`, et créée après le
+    démarrage du serveur avec libération du serveur en cas d'échec (efficacité, simplification) ;
+  - `Scene` construite d'un bloc (constructeur principal, `Seed` exposé) ;
+  - une seule assertion pour les trois routes du dossier patient ;
+  - le test 404 ajouté rejoint la théorie existante de `PatientFolderEndToEndTests` ;
+  - `AddScoped<IPatientService, PatientService>()` ;
+  - regroupement de la biologie (altitude) ;
+  - garde élargie de 11 à 15 routes.
+- **Écarté, noté** :
+  - mettre en commun la détection « lit `Content` » avec `HeaderListingProjectionTests` (task-322) : les deux helpers
+    sont privés et hors du diff ;
+  - une fixture de classe pour ne démarrer l'hôte qu'une fois : gain de durée de test seulement ;
+  - une projection `AttachmentDto` partagée : sept copies à la main dans les deux dépôts, déjà divergentes (`Guid`
+    absent en deux endroits), hors du sujet `Content`.
+- **Suggestions de suite**, hors périmètre, pour l'humain :
+  - **sortir `Content` dans une entité dépendante sur la même table** (table splitting EF, sans migration de schéma).
+    C'est la cause de fond : toute matérialisation de `MailAttachment` ramène le binaire, et task-322 puis task-429 en
+    sont deux cas. Seuls le téléchargement et les écritures y accèdent ;
+  - **une garde qui refuse tout par défaut** au niveau de la collection `UseCases` (toute lecture de `Content` hors
+    d'une liste d'exemptions), au lieu d'une liste de routes. À rapprocher de task-431 et task-432.
+
+**Observation hors périmètre** :
+- `GET /api/v1/mail/tags/{code}/emails` sur une étiquette **inconnue** rend **500** (`Result-mapped 500 … Tag not
+  found`) au lieu de 404. C'est un écart à la règle 12, vu en écrivant la garde.
+- Non corrigé ici, à ouvrir en task.
+
+**Prévention (règle d'or)** : entrée `groupby-final-materialise-l-entite` dans `conventions/csharp.md`
+(2 occurrences : task-322, task-429).
