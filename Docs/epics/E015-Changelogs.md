@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E015-tests-charge-api-mail.md](E015-tests-charge-api-mail.md).
-> **Dernière mise à jour** : 2026-11-06 (v1.81)
+> **Dernière mise à jour** : 2026-11-06 (v1.82)
 
 ---
 
@@ -3322,6 +3322,15 @@ nouvelle table par opération est ce qui permettra de les séparer.
 - **Preuve** : 9 tests Python, 2 tests `node --test`, 4 mutations vues rouges. Rapport de l'escalier du 2026-11-05 régénéré depuis son JSON. Tir de contrôle 20 → 40 médecins à K = 10 : `Docs/audits/api-mail-loadtest-journey-controle-20-40-task424-20261106.md`.
 - **Sonar** : Quality Gate OK, 0 issue (le harnais Python/JS n'est pas indexé par l'analyse .NET). **E2E** : vert, mobile 58/58, Angular 71/71.
 
+### v1.82 — Panne de la messagerie en cours de lecture : 503 MAIL_SERVER_UNAVAILABLE, jamais 500 — task-425
+
+- **Task** : task-425 — `done`. **PR** : `api-mail` [#344](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/344) (`awaiting-human-merge`). Branche `feat/task-425-panne-imap-en-cours-de-lecture-503`.
+- **Origine** : escalier `journey` du 2026-11-05 (palier 1400 : 3 841 × 500 sur la lecture d'un dossier) et jambe B de task-422 (pod Toxiproxy redémarré : ≈ 11 328 × 500). Écartée de task-423 : ces 500 ne venaient pas de la base.
+- **Cause établie dans Seq** : la connexion refusée était bien classée `Unavailable`, mais réécrite en `Error` par la lecture du dossier ; une poignée de main TLS coupée par le serveur passait pour une erreur imprévue ; une requête abandonnée par le client (attente de 60 s du verrou) était rendue en `Result.Error`. Aucun 500 ne venait d'une panne survenue après une lecture réussie.
+- **Changement** (`api-mail`) : classement par type (`MailServerOutage`, sur la session morte de task-277), statut propagé (`PropagateFailure`), annulation laissée au pipeline (499), `detail` fixe sans dossier ni adresse, `code` `MAIL_SERVER_UNAVAILABLE` sur tout 503 issu d'un `Result` (garde d'architecture sur ses producteurs). Contrat inchangé.
+- **Preuve** : 6 tests d'intégration de bout en bout (vrai Dovecot, session de la boîte coupée par l'enveloppe IMAP du banc d'intégration), rouges sur le code d'avant et par 6 mutations ; 24 tests unitaires.
+- **Sonar** : Quality Gate OK, 0 issue. **E2E** : vert, mobile 58/58, Angular 71/71.
+
 ---
 
 ## Annexe A — Cartographie des briques applicatives
@@ -3453,3 +3462,4 @@ nouvelle table par opération est ce qui permettra de les séparer.
 | task-422 | **Le mur des connexions Postgres recule.** `default_pool_size` 2 → 1 dans le profil de banc : 1,04 backend par médecin actif à 1000 (contre 1,96), 0 erreur applicative à 1400 (contre 24,8 %), p95 d'étape dégradé de 7,7 % au plus. Mur estimé ≈ 2 400 actifs au lieu de ≈ 1 300. Recommandation de production (`max_connections` 1 500, ≥ 40 Go) à reporter dans DevOps. PR #341. | — |
 | task-427 | **Recherche plein texte : une seule mise en minuscules par corps.** `ILIKE` refaisait `lower()` du corps à chaque terme ; une requête par table le fait une fois et compare tous les termes. Sémantique inchangée, ni index ni migration (trigramme ignoré par le planificateur). Temps SQL de la recherche −79 %, SQL total ÷ 2, recherche p50 384 ms à 1996. PR #342. | — |
 | task-424 | **Chauffe et étape « servie base » jugées par palier.** Témoins ventilés par cohorte et par palier de régime ; une cohorte sous 90 % refuse son palier et les suivants, les paliers d'avant gardent leurs verdicts. Bandeaux écrits à tout K ; tir antérieur : verdict global annoncé comme tel. Harnais seul. PR #343. | — |
+| task-425 | **Panne de messagerie en cours de lecture : 503, jamais 500.** Statut `Unavailable` propagé jusqu'à la route, poignée de main TLS coupée classée panne, annulation du client en 499, `code` `MAIL_SERVER_UNAVAILABLE` sur tout 503 issu d'un `Result`, `detail` fixe. Cause établie dans Seq sur les deux pannes du 2026-11-05. PR #344. | — |

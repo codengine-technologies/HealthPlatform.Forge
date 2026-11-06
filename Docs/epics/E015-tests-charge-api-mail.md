@@ -2,7 +2,7 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.81
+> **Version** : 1.82
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
 > **Dernière mise à jour** : 2026-11-06
@@ -1703,6 +1703,16 @@ aussi refuser les paliers sains d'avant, précisément ceux qui disent jusqu'où
 Le rapport juge désormais chaque palier sur ses propres chiffres, avec les mêmes exigences. Il nomme le palier
 touché, et ceux d'avant gardent leurs verdicts. Les anciens rapports, qui n'ont pas ce détail, le disent.
 
+### Quand la messagerie MSSanté tombe, le médecin lit « momentanément injoignable », jamais « erreur inattendue » (6 novembre 2026)
+
+Lors des tirs de charge du 5 novembre, une panne de la messagerie MSSanté a fait apparaître des milliers d'« erreurs
+inattendues » à l'ouverture d'un dossier, des messages du jour ou d'un message. La panne était pourtant reconnue par
+la plateforme, mais l'information se perdait avant d'arriver à l'écran.
+
+Désormais, ces lectures répondent que la messagerie est momentanément injoignable, et l'application mobile affiche
+son bandeau de panne. Dès que la messagerie revient, la boîte se recharge sans que le médecin ait à se reconnecter.
+Le message affiché ne contient jamais de détail technique, de nom de dossier ni d'adresse.
+
 ## État de couverture (2026-09-18)
 
 | Feature | Statut | Couverture | Tasks contributives |
@@ -2383,6 +2393,7 @@ Cinq réserves à porter au bilan, sans quoi il serait trompeur :
 - v1.79 — **La plateforme tient deux fois plus de médecins connectés en même temps avant de saturer sa base.** Chaque médecin actif retenait deux connexions à la base de données, et la limite tombait vers mille trois cents médecins actifs. Il n'en retient plus qu'une : deux fois moins de connexions, aucune erreur à mille quatre cents, aucun écran sensiblement plus lent. La limite estimée passe à environ deux mille quatre cents médecins actifs, au-delà de la population visée. (task-422)
 - v1.80 — **La recherche du médecin est plus rapide, et toute l'application en profite.** La base relisait le texte de chaque message pour chaque mot cherché ; elle ne le prépare plus qu'une fois. Mêmes résultats, temps de la base consacré à la recherche réduit de près de quatre cinquièmes, recherche sous la demi-seconde à deux mille médecins actifs, fiche patient presque deux fois plus rapide. (task-427)
 - v1.81 — **Un tir qui trouve sa limite ne rend plus illisibles les paliers qui la précèdent.** La préparation des boîtes est jugée palier par palier : un palier qui sature perd ses verdicts, ceux d'avant les gardent. (task-424)
+- v1.82 — **Quand la messagerie tombe, le médecin lit « momentanément injoignable », jamais « erreur inattendue ».** La panne, déjà reconnue, n'arrivait pas jusqu'à l'écran ; elle y arrive, et la boîte se recharge seule au retour de la messagerie. (task-425)
 
 ---
 

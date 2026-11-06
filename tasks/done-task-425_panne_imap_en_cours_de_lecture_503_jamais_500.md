@@ -371,6 +371,7 @@ Suite d'intégration complète rejouée : 1 120 tests (+16 ignorés), 0 échec.
 | /lint-mobile | skipped | 0.5 s | — | — | — | repo non listé dans Repos |
 | /e2e | ok | 19 min 26 s | — | — | — | e2e ×3 (18 min 57 s), mobile 58, angular 71, parité verte |
 | /review | ok | 1 min 07 s | — | 1 (5 min 24 s) | — | api-mail 0B/1T, PR #344 ; 2 preuves 1b ajoutées au retour de revue |
+| /tech-writer | ok | 1.2 s | — | — | — | E015 v1.82 |
 | **Total cycle** | | **1 h 16 min** | **5 (1 min 16 s)** | **10 (24 min 24 s)** | **2 (42 s)** | |
 
 ## PRs
