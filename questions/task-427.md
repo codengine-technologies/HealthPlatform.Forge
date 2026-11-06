@@ -42,4 +42,7 @@ Réponse attendue : « 1 » ou « 2 + précision ». Ensuite, relancer `/review 
 
 ## Rejeu des tests « du jour » après 02:00
 
-_(complété automatiquement par la forge)_
+Rejoués le 2026-11-06 à 02:02, sur le binaire de la branche (da6b30dd) : **3/3 verts**
+(`FilterTodayEmailsShouldReturnOnlyTodayAsyncAsync`, `GetFolderTodayAsync_Inbox_ShouldReturnTheMessageOfTheDayAsync`,
+`GetFolderNotSeenTodayAsync_Inbox_ShouldReturnTheUnreadMessageOfTheDayAsync`). Le rouge de 00:51 était bien la fenêtre
+de minuit, pas une régression. Build et tests sont donc entièrement verts : seul le critère de cache reste à trancher.
