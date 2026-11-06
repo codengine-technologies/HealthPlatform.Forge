@@ -8337,3 +8337,5 @@
 {"ts":"2026-11-06T00:45:39+01:00","run_id":"-","type":"cmd","task":"task-427","step":"review","repo":"api-mail","kind":"build","label":"","cwd":"Api/Mail","cmd":"dotnet build HealthPlatform.Api.Mail.sln","duration_ms":8972,"exit_code":0}
 {"ts":"2026-11-06T00:51:00+01:00","run_id":"-","type":"cmd","task":"task-427","step":"review","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln --no-build","duration_ms":320354,"exit_code":1}
 {"ts":"2026-11-06T00:51:22+01:00","run_id":"-","type":"step","task":"task-427","step":"review","status":"failed","note":"arbitrage humain : critère taux de cache (questions/task-427.md)","iterations":null,"duration_ms":359140}
+{"ts":"2026-11-06T08:44:09+01:00","run_id":"-","type":"step_start","task":"task-427","step":"review"}
+{"ts":"2026-11-06T08:45:27+01:00","run_id":"-","type":"step","task":"task-427","step":"review","status":"ok","note":"PR #342, arbitrage cache accepté (option 1), validation réutilisée à da6b30dd","iterations":null,"duration_ms":77815}

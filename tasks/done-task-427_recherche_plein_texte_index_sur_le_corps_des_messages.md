@@ -417,8 +417,8 @@ figure dans « Mesure préalable » (environ 27 Go pour 10 000 boîtes à volume
 | /lint-angular | skipped | 0.4 s | — | — | — | repo non listé dans Repos |
 | /lint-mobile | skipped | 0.4 s | — | — | — | repo non listé dans Repos |
 | /e2e | ok | 19 min 13 s | — | — | — | e2e ×5 (37 min 29 s) |
-| /review | failed | 5 min 59 s | 1 (8.9 s) | 1 (5 min 20 s) | — | api-mail 1B/1T, arbitrage humain : critère taux de cache (questions/task-427.md) |
-| **Total cycle** | | **2 h 15 min** | **9 (2 min 26 s)** | **18 (36 min 32 s)** | **4 (1 min 19 s)** | |
+| /review | ok | 1 min 17 s | 1 (8.9 s) | 1 (5 min 20 s) | — | api-mail 1B/1T, PR #342, arbitrage cache accepté (option 1), validation réutilisée à da6b30dd |
+| **Total cycle** | | **2 h 10 min** | **9 (2 min 26 s)** | **18 (36 min 32 s)** | **4 (1 min 19 s)** | |
 
 ## PRs
 
