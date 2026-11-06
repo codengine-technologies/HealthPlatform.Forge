@@ -8456,3 +8456,5 @@
 {"ts":"2026-11-06T17:36:24+01:00","run_id":"-","type":"cmd","task":"task-426","step":"review","repo":"api-mail","kind":"build","label":"","cwd":"Api/Mail","cmd":"dotnet build HealthPlatform.Api.Mail.sln -v q -nologo","duration_ms":10367,"exit_code":0}
 {"ts":"2026-11-06T17:42:16+01:00","run_id":"-","type":"cmd","task":"task-426","step":"review","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln --no-build","duration_ms":351156,"exit_code":0}
 {"ts":"2026-11-06T17:43:07+01:00","run_id":"-","type":"step","task":"task-426","step":"review","status":"failed","note":"arbitrage humain : p95 PJ à 1400 (questions/task-426.md)","iterations":null,"duration_ms":415562}
+{"ts":"2026-11-06T17:46:20+01:00","run_id":"-","type":"step_start","task":"task-426","step":"review"}
+{"ts":"2026-11-06T17:46:21+01:00","run_id":"-","type":"step","task":"task-426","step":"review","status":"ok","note":"PR #345 après arbitrage humain (option 1)","iterations":null,"duration_ms":633}

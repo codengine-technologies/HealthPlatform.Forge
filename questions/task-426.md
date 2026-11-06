@@ -65,3 +65,8 @@ Réponse attendue : « 1 », « 2 » ou « 3 + précision ». Ensuite, `/review 
   lieu de 409). Point déjà signalé dans le `## Develop log`.
 - Règle 14 : aucun acte sans auteur, aucun accès qui contourne le verdict de l'opérateur, aucune donnée par personne,
   aucun rôle de titulaire modifié.
+
+## Décision
+
+**Réponse humaine (2026-11-06) : « 1 »** — critère accepté sur son intention. La PR s'ouvre avec ce point en tête de
+son corps.

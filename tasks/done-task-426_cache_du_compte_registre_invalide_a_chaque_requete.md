@@ -361,6 +361,10 @@ contrôle sur `develop`** (`b0cf4143`, sans task-426), joué juste après.
   l'humain.
 - **5xx en régime : 0** dans les deux tirs (Seq). Erreurs k6 : 0,014 % (task-426) et 0,009 % (contrôle), relais réseau.
 
+> **Arbitrage humain (2026-11-06)** : critère « aucun p95 d'étape dégradé de plus de 20 % » **accepté sur son intention**
+> (réponse « 1 » à `questions/task-426.md`) : le p95 du téléchargement de PJ à 1400 (130 → 378 ms) suit la latence disque
+> du tir, pas le code. Le point figure en tête du corps de la PR.
+
 **Conséquence pour la campagne** : à 1996, un tir de la veille n'est plus une référence opposable, parce que chaque tir
 fait grossir les bases et que le cgroup Postgres (48 Go) est plein. Toute mesure comparative à ce palier exige un
 contrôle joué dans la même session.
@@ -391,6 +395,27 @@ contrôle joué dans la même session.
 | Duplication | 0,4 % | 0,4 % | = |
 | Ratings fiabilité / sécurité / maintenabilité | A / A / A | A / A / A | = |
 
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/345 — label `awaiting-human-merge`
+
+## Code Review Summary
+
+**APPROVED** — 4 fichiers source et 7 fichiers de test revus, 0 point bloquant, 1 suggestion. Critère de banc « aucun p95
+dégradé de plus de 20 % » accepté sur arbitrage humain (option 1, `questions/task-426.md`).
+
+| Comportement atteignable par un endpoint | Test d'intégration | Preuve rouge |
+|---|---|---|
+| 2ᵉ requête du même médecin sans lecture de `accounts` ni de l'ancre | `TheSecondRequestOfTheSameDoctor_ReadsNeitherTheAccountNorItsAnchor` | code d'avant, M2, M5 |
+| Email changé dans le jeton → registre mis à jour, servi à la requête suivante | `AnEmailChangedInTheToken_UpdatesTheRegistry_AndTheNextResponseServesIt` | M3 |
+| Rattachement entre deux requêtes → compte ancré dès la suivante | `AnAttachmentBetweenTwoRequests_AnchorsTheAccountAtTheNextRequest` | M4 |
+| Ancre lue avec la boîte → 403 `PSC_MISMATCH` pour une boîte validée par un autre professionnel | `AMailboxValidatedByAnotherProfessionalThanTheAnchor_IsRefused_FromTheAnchorReadWithTheMailbox` | M6 |
+
+- Règle 14 : aucun acte sans auteur, aucun accès hors verdict de l'opérateur, aucune donnée par personne, aucun rôle de
+  titulaire modifié.
+- ⚠️ Suggestion : le contrôle de conflit PSC (409) de `SelectAsync` lit l'ancre en cache, jusqu'à 10 min. Dans une
+  course étroite avec un rattachement, le refus sortirait en 403 (décision d'accès fraîche) au lieu de 409.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-426 --sync` — ne pas éditer à la main)*
@@ -403,5 +428,5 @@ contrôle joué dans la même session.
 | /lint-angular | skipped | 0.6 s | — | — | — | client-angular non touché |
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 20 min 29 s | — | — | — | e2e ×3 (20 min 02 s), mobile 58/58, angular 71/71, parité verte |
-| /review | failed | 6 min 55 s | 1 (10 s) | 1 (5 min 51 s) | — | api-mail 1B/1T, arbitrage humain : p95 PJ à 1400 (questions/task-426.md) |
-| **Total cycle** | | **3 h 22 min** | **8 (2 min 17 s)** | **15 (33 min 32 s)** | **4 (1 min 25 s)** | |
+| /review | ok | 0.6 s | 1 (10 s) | 1 (5 min 51 s) | — | api-mail 1B/1T, PR #345 après arbitrage humain (option 1) |
+| **Total cycle** | | **3 h 15 min** | **8 (2 min 17 s)** | **15 (33 min 32 s)** | **4 (1 min 25 s)** | |
