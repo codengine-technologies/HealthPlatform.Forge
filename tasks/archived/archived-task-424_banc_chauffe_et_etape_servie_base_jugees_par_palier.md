@@ -317,7 +317,8 @@ voies sont rejouées parce que `api-mail` est dans les `**Repos**` (règle de `a
 | /e2e | ok | 19 min 36 s | — | — | — | e2e ×3 (19 min 03 s), mobile 58, angular 71, parité verte |
 | /review | ok | 1 min 35 s | — | 1 (15 s) | — | api-mail 0B/1T, PR #343 |
 | /tech-writer | ok | 14 s | — | — | — | E015 v1.81 |
-| **Total cycle** | | **1 h 02 min** | **1 (51 s)** | **7 (8 min 22 s)** | **2 (47 s)** | |
+| /merge | ok | 4 min 19 s | — | — | — | PR #343 squash 0e977535, CI develop verte |
+| **Total cycle** | | **1 h 06 min** | **1 (51 s)** | **7 (8 min 22 s)** | **2 (47 s)** | |
 
 ## PRs
 
@@ -340,3 +341,9 @@ voies sont rejouées parce que `api-mail` est dans les `**Repos**` (règle de `a
   - `report.sh` duplique la ligne INDEX à chaque génération ;
   - `test_dashboards` rouge préexistant sur `develop` (`mssante-ai-consumption.json`, task-385) ;
   - `node --test lib/` du Manual Test Plan ne lance rien, utiliser `lib/*.test.mjs`.
+
+## Merged
+
+- 2026-11-06 — `api-mail` PR [#343](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/343), squash `0e977535` sur `develop`, après validation humaine (`/merge 424 --i-tested`).
+- Branche `feat/task-424-banc-chauffe-et-etape-servie-base-jugees` supprimée (distante et locale). CI `develop` verte sur `0e977535`.
+- Aucune branche staging (task lancée par `/start`, pas par `/forge`).

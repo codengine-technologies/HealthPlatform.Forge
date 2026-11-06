@@ -8372,3 +8372,5 @@
 {"ts":"2026-11-06T10:50:45+01:00","run_id":"-","type":"step","task":"task-424","step":"review","status":"ok","note":"PR #343","iterations":null,"duration_ms":95873}
 {"ts":"2026-11-06T10:51:16+01:00","run_id":"-","type":"step_start","task":"task-424","step":"tech-writer"}
 {"ts":"2026-11-06T10:51:30+01:00","run_id":"-","type":"step","task":"task-424","step":"tech-writer","status":"ok","note":"E015 v1.81","iterations":null,"duration_ms":14410}
+{"ts":"2026-11-06T12:28:17+01:00","run_id":"-","type":"step_start","task":"task-424","step":"merge"}
+{"ts":"2026-11-06T12:32:37+01:00","run_id":"-","type":"step","task":"task-424","step":"merge","status":"ok","note":"PR #343 squash 0e977535, CI develop verte","iterations":null,"duration_ms":259667}
