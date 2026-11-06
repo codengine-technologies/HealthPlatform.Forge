@@ -169,6 +169,30 @@ Règles :
     base). 0 erreur, vérification par base PASS.
   - Le cas d'échec (Manual Test Plan, étape 4) n'a pas été joué au banc : il est couvert par les tests M1 et M3.
 
+## Sonar log
+
+- **Mode A (chaîné)**, `api-mail` sur `feat/task-424-banc-chauffe-et-etape-servie-base-jugees`, 1 itération.
+- **Portée réelle de l'analyse** : la task ne change que le harnais de charge (Python et JS de `tests/loadtest-k6/`)
+  et de la documentation. L'analyse .NET n'indexe aucun de ces fichiers : 0 fichier `loadtest-k6` dans le projet
+  Sonar. Elle confirme donc seulement que le code C# n'a pas bougé. La qualité du harnais repose sur ses tests
+  (`selftest.sh`) et sur la revue.
+- **Résultat** : 0 issue sur le nouveau code, Quality Gate OK, 0 hotspot. Rien à corriger.
+- **Tests sous couverture** : domain 202, application 4 003, infrastructure 700, api 1 357, intégration 1 114
+  (+16 ignorés), **0 échec**.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | = |
+| Issues new code | 0 | 0 | = |
+| New coverage | 96,0 % | 96,0 % | = |
+| Bugs / Vulnérabilités / Code smells | 0 / 0 / 0 | 0 / 0 / 0 | = |
+| Security hotspots | 0 | 0 | = |
+| Coverage projet | 97,8 % | 97,8 % | = |
+| Duplication | 0,4 % | 0,4 % | = |
+| Ratings fiabilité / sécurité / maintenabilité | A / A / A | A / A / A | = |
+
 ## Branches
 
 - `api-mail` (pushed) : feat/task-424-banc-chauffe-et-etape-servie-base-jugees — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-424-banc-chauffe-et-etape-servie-base-jugees
@@ -182,4 +206,5 @@ Règles :
 |---|---|---|---|---|---|---|
 | /start | ok | 13 s | — | — | — | — |
 | /develop | ok | 29 min 44 s | — | 1 (9.9 s) | — | api-mail 0B/1T, report.py par palier, harnais ventilé, tir de contrôle K=10 |
-| **Total cycle** | | **29 min 58 s** | **0 (0.0 s)** | **1 (9.9 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 10 min 38 s | 1 (51 s) | 5 (7 min 56 s) | 2 (47 s) | 1 itération(s), api-mail 1B/5T, QG OK, 0 issue ; harnais Python/JS non indexé |
+| **Total cycle** | | **40 min 37 s** | **1 (51 s)** | **6 (8 min 06 s)** | **2 (47 s)** | |
