@@ -2,7 +2,7 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.80
+> **Version** : 1.81
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
 > **Dernière mise à jour** : 2026-11-06
@@ -1693,6 +1693,16 @@ quatre cinquièmes, et son temps de travail total de moitié. La recherche répo
 de seconde à deux mille médecins actifs, et les autres écrans en profitent aussi : la fiche patient s'affiche
 presque deux fois plus vite au pire des cas courants.
 
+### Un tir de charge qui trouve sa limite ne rend plus illisibles les paliers qui la précèdent (6 novembre 2026)
+
+Avant de mesurer, le banc prépare la boîte de chaque médecin. Si cette préparation échoue trop souvent, les écrans
+servis par la base ne disent plus rien de la charge, et le rapport refuse leurs chiffres. Jusqu'ici, ce contrôle
+portait sur le tir entier : quand la plateforme saturait à un palier, l'échec de préparation de ce palier faisait
+aussi refuser les paliers sains d'avant, précisément ceux qui disent jusqu'où la plateforme tient.
+
+Le rapport juge désormais chaque palier sur ses propres chiffres, avec les mêmes exigences. Il nomme le palier
+touché, et ceux d'avant gardent leurs verdicts. Les anciens rapports, qui n'ont pas ce détail, le disent.
+
 ## État de couverture (2026-09-18)
 
 | Feature | Statut | Couverture | Tasks contributives |
@@ -2372,6 +2382,7 @@ Cinq réserves à porter au bilan, sans quoi il serait trompeur :
 - v1.78 — **Quand la messagerie sature, le médecin lit « momentanément indisponible », jamais « messagerie non rattachée ».** Mesuré à mille quatre cents médecins actifs : la base refusant de nouvelles connexions, l'ouverture de la liste des dossiers rendait une erreur inattendue, et une partie des praticiens lisait que leur boîte n'était « pas rattachée à leur compte » : le registre des boîtes ne répondait plus et son silence était pris pour un refus. Désormais, base saturée ou registre injoignable donnent le même message, sans détail technique ; la boîte n'est ni ouverte ni déclarée détachée tant que le registre n'a pas répondu, la liste des boîtes ne s'affiche plus vide, et un refus de l'opérateur ferme toujours l'accès. Les erreurs du même tir à l'ouverture d'un dossier ou d'un message viennent de la messagerie MSSanté interrompue en pleine lecture : demande distincte. (task-423)
 - v1.79 — **La plateforme tient deux fois plus de médecins connectés en même temps avant de saturer sa base.** Chaque médecin actif retenait deux connexions à la base de données, et la limite tombait vers mille trois cents médecins actifs. Il n'en retient plus qu'une : deux fois moins de connexions, aucune erreur à mille quatre cents, aucun écran sensiblement plus lent. La limite estimée passe à environ deux mille quatre cents médecins actifs, au-delà de la population visée. (task-422)
 - v1.80 — **La recherche du médecin est plus rapide, et toute l'application en profite.** La base relisait le texte de chaque message pour chaque mot cherché ; elle ne le prépare plus qu'une fois. Mêmes résultats, temps de la base consacré à la recherche réduit de près de quatre cinquièmes, recherche sous la demi-seconde à deux mille médecins actifs, fiche patient presque deux fois plus rapide. (task-427)
+- v1.81 — **Un tir qui trouve sa limite ne rend plus illisibles les paliers qui la précèdent.** La préparation des boîtes est jugée palier par palier : un palier qui sature perd ses verdicts, ceux d'avant les gardent. (task-424)
 
 ---
 

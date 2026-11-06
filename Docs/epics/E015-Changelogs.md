@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E015-tests-charge-api-mail.md](E015-tests-charge-api-mail.md).
-> **Dernière mise à jour** : 2026-11-06 (v1.80)
+> **Dernière mise à jour** : 2026-11-06 (v1.81)
 
 ---
 
@@ -3314,6 +3314,14 @@ nouvelle table par opération est ce qui permettra de les séparer.
 - **Sonar** : Quality Gate OK, 0 issue. Récidive S3459/S1144 (DTO privé matérialisé par `SqlQueryRaw` → record positionnel) corrigée au second passage, compteur de `conventions/csharp.md` à 2.
 - **E2E** : vert, mobile 58/58, Angular 71/71.
 
+### v1.81 — La chauffe et l'étape « servie base » jugées palier par palier — task-424
+
+- **Task** : task-424 — `done`. **PR** : `api-mail` [#343](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/343) (`awaiting-human-merge`). Branche `feat/task-424-banc-chauffe-et-etape-servie-base-jugees`.
+- **Origine** : finding F4 de l'escalier `journey` du 2026-11-05 (IA simulée). La chauffe y a abouti à 88,3 % au global, sous le plancher de 90 %, et le rapport a refusé les étapes 2, 3, 10 et 11 de **tous** les paliers. Les 666 échecs dataient pourtant tous de l'effondrement du palier 1400 et du début du palier 1996.
+- **Changement** (harnais seul, aucun code de l'API) : `journey_warmup_completed` étiqueté par **cohorte** et `journey_warm_served_from_store` par **palier de régime**. `report.py` juge chaque palier : une cohorte sous 90 % refuse son palier et les suivants, l'étape 3 se juge sur sa part servie pendant le régime du palier. Planchers inchangés. Les bandeaux nomment les paliers touchés et sont écrits à tout K. Un tir antérieur garde le verdict global et le dit (« Ventilation par palier non disponible »).
+- **Preuve** : 9 tests Python, 2 tests `node --test`, 4 mutations vues rouges. Rapport de l'escalier du 2026-11-05 régénéré depuis son JSON. Tir de contrôle 20 → 40 médecins à K = 10 : `Docs/audits/api-mail-loadtest-journey-controle-20-40-task424-20261106.md`.
+- **Sonar** : Quality Gate OK, 0 issue (le harnais Python/JS n'est pas indexé par l'analyse .NET). **E2E** : vert, mobile 58/58, Angular 71/71.
+
 ---
 
 ## Annexe A — Cartographie des briques applicatives
@@ -3444,3 +3452,4 @@ nouvelle table par opération est ce qui permettra de les séparer.
 | task-423 | **Base ou registre saturés : un 503 explicite.** La persistance des dossiers rendait un 500 générique (`catch` → `Result.Error`) et le registre injoignable faisait lire « messagerie non rattachée » (lectures dégradées en `null`/`[]`). Prédicat unique `DatabaseAvailability` ; les trois lectures de décision du registre propagent (503 `TENANT_REGISTRY_UNAVAILABLE`, libellé fixe) ; route sans boîte servie sans boîte ; refus de l'opérateur toujours fermant ; flux SSE « à confirmer ». 5 comportements prouvés par test d'intégration vu rouge (M1-M4 + middleware). Diagnostic corrigé : les 500 de lecture de dossier, « aujourd'hui » et contenu sont des pannes IMAP (task-425). PR #340. | — |
 | task-422 | **Le mur des connexions Postgres recule.** `default_pool_size` 2 → 1 dans le profil de banc : 1,04 backend par médecin actif à 1000 (contre 1,96), 0 erreur applicative à 1400 (contre 24,8 %), p95 d'étape dégradé de 7,7 % au plus. Mur estimé ≈ 2 400 actifs au lieu de ≈ 1 300. Recommandation de production (`max_connections` 1 500, ≥ 40 Go) à reporter dans DevOps. PR #341. | — |
 | task-427 | **Recherche plein texte : une seule mise en minuscules par corps.** `ILIKE` refaisait `lower()` du corps à chaque terme ; une requête par table le fait une fois et compare tous les termes. Sémantique inchangée, ni index ni migration (trigramme ignoré par le planificateur). Temps SQL de la recherche −79 %, SQL total ÷ 2, recherche p50 384 ms à 1996. PR #342. | — |
+| task-424 | **Chauffe et étape « servie base » jugées par palier.** Témoins ventilés par cohorte et par palier de régime ; une cohorte sous 90 % refuse son palier et les suivants, les paliers d'avant gardent leurs verdicts. Bandeaux écrits à tout K ; tir antérieur : verdict global annoncé comme tel. Harnais seul. PR #343. | — |

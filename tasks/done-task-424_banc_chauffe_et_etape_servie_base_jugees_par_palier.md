@@ -316,7 +316,8 @@ voies sont rejouées parce que `api-mail` est dans les `**Repos**` (règle de `a
 | /lint-mobile | skipped | 0.5 s | — | — | — | repo non listé dans Repos |
 | /e2e | ok | 19 min 36 s | — | — | — | e2e ×3 (19 min 03 s), mobile 58, angular 71, parité verte |
 | /review | ok | 1 min 35 s | — | 1 (15 s) | — | api-mail 0B/1T, PR #343 |
-| **Total cycle** | | **1 h 01 min** | **1 (51 s)** | **7 (8 min 22 s)** | **2 (47 s)** | |
+| /tech-writer | ok | 14 s | — | — | — | E015 v1.81 |
+| **Total cycle** | | **1 h 02 min** | **1 (51 s)** | **7 (8 min 22 s)** | **2 (47 s)** | |
 
 ## PRs
 
