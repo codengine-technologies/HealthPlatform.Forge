@@ -97,3 +97,17 @@ Règles :
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : non. Banc local, données synthétiques
 - **AIPD / impact RGPD** : inchangé, aucun traitement nouveau
+
+## Branches
+
+- `api-mail` (pushed) : feat/task-424-banc-chauffe-et-etape-servie-base-jugees — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-424-banc-chauffe-et-etape-servie-base-jugees
+  - Créée depuis `origin/develop` (`6e43b6f8`).
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-424 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 13 s | — | — | — | — |
+| **Total cycle** | | **13 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
