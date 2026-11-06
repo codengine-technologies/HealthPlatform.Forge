@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E015-tests-charge-api-mail.md](E015-tests-charge-api-mail.md).
-> **Dernière mise à jour** : 2026-11-05 (v1.79)
+> **Dernière mise à jour** : 2026-11-06 (v1.80)
 
 ---
 
@@ -3302,6 +3302,18 @@ nouvelle table par opération est ce qui permettra de les séparer.
 - **Sonar** : Quality Gate OK. Une issue CA1861 dans `FakeOpenAiTests` (commit « Fake IA provider ») a été corrigée.
 - **E2E** : vert. Mobile 58/58. Angular 71/71 au rejeu, après un premier passage rouge d'outillage (port 47399 de l'hôte Weda factice pris par un processus extérieur).
 
+### v1.80 — La recherche plein texte ne met plus le corps en minuscules qu'une fois : temps SQL de la recherche −79 % — task-427
+
+- **Task** : task-427 — `done`. **PR** : `api-mail` [#342](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/342) (`awaiting-human-merge`). Branche `feat/task-427-recherche-plein-texte-index-sur-le-corps`.
+- **Origine** : finding F1 du tir court 1400 → 1996 de task-422. La recherche plein texte pèse 50,6 % du temps SQL : jusqu'à six `ILIKE '%mot%'` par recherche sur `MailContents.Body` et `MailMedicalDocuments.Body`.
+- **Mesure préalable** (`EXPLAIN (ANALYZE, BUFFERS)` sur une base du banc) : le coût n'est pas l'absence d'index mais la **mise en minuscules du corps entier**, refaite par `ILIKE` à chaque terme. L'index GIN `pg_trgm` est ignoré par le planificateur sur ces tables, et coûterait environ 27 Go extrapolés à 10 000 boîtes : **écarté**.
+- **Changement** (`SemanticSearchRepository`) : la requête EF de base, qui porte les règles de dossier, de dossier-étiquette et de patient, ne lit plus que les identifiants. Une requête SQL par table, constante et paramétrée, met chaque corps en minuscules une fois (sous-requête latérale non inlinée) et y compare tous les termes, dans la fenêtre de 200 par terme de task-192. Sémantique inchangée. Ni index ni migration.
+- **Preuve** : 9 tests d'intégration de bout en bout, verts sur l'ancien code comme sur le nouveau ; 5 mutations vues rouges (terme ignoré, casse, échappement, filtre patient, ordre de date).
+- **Mesure au banc** (même tir court que task-422) : temps SQL de la recherche 23,9 → 5,1 min (**−79 %**), temps SQL total 47,3 → 24,6 min, recherche p50 532 → 384 ms à 1996, toutes les étapes améliorées (fiche patient p95 2 034 → 1 119 ms), 0 5xx. Rapport : `Docs/audits/api-mail-loadtest-journey-courte-1400-1996-task427-20261106.md`.
+- **Critère accepté sur arbitrage humain** : le taux de cache Postgres passe de 96,74 % à 96,34 % par son dénominateur (lectures en cache −17 %), les lectures disque étant inchangées (−0,7 %).
+- **Sonar** : Quality Gate OK, 0 issue. Récidive S3459/S1144 (DTO privé matérialisé par `SqlQueryRaw` → record positionnel) corrigée au second passage, compteur de `conventions/csharp.md` à 2.
+- **E2E** : vert, mobile 58/58, Angular 71/71.
+
 ---
 
 ## Annexe A — Cartographie des briques applicatives
@@ -3431,3 +3443,4 @@ nouvelle table par opération est ce qui permettra de les séparer.
 | task-315 | **Une indisponibilité de la messagerie était invisible de bout en bout.** `EnrichEmailsAsync` rendait `Task` : `FolderUnavailable` remontait jusqu'à la boucle, servait à en sortir, puis mourait là — le contrôleur journalisait le nombre **demandé** et répondait 200. Mesuré au tir du 2026-09-16 : compteur d'enrichissement **gelé à 72 101 pendant 80 minutes** tandis que l'API servait **950 000 requêtes de plus**, `imap_sessions_connected` à 0 avec ~2 200 sessions actives, **264 praticiens sur 1 000** sans un document et un succès rapporté pour chacun. Livré : `EnrichmentOutcome` à quatre comptes, **503** `UnavailableException` sur `enrich/sync` (symétrique du 503 de task-293, dans la même méthode), reprise bornée sur `enrich/async` (le 202 étant parti, il n'y a plus d'appelant à qui rendre l'erreur), éviction des sessions au lien mort, et `CanAccessImap` branché sur l'état réel. Les trois fronts affichent un bandeau non bloquant disant que **rien n'est perdu** — aucun ne savait quoi faire d'un 503. **⛔ Le point 3 (sonde de santé) a été RETIRÉ le 2026-09-17**, infirmé par un tir avec coupure provoquée : `canAccessImap` restait `true` pendant la panne, car aucune session n'est retenue quand la connexion échoue — et l'éviction efface la preuve que la sonde cherchait. Les six tests qui le gardaient passaient, en substituant une valeur que la réalité ne produit jamais. Le même tir a **prouvé** les points 1 et 2 : 503 problem+json pendant la coupure, puis 200 et compteur 21 584 → 21 589 après rétablissement, **sans redémarrage**. Sonar zéro issue introduite, vérifié fichier par fichier. | — |
 | task-423 | **Base ou registre saturés : un 503 explicite.** La persistance des dossiers rendait un 500 générique (`catch` → `Result.Error`) et le registre injoignable faisait lire « messagerie non rattachée » (lectures dégradées en `null`/`[]`). Prédicat unique `DatabaseAvailability` ; les trois lectures de décision du registre propagent (503 `TENANT_REGISTRY_UNAVAILABLE`, libellé fixe) ; route sans boîte servie sans boîte ; refus de l'opérateur toujours fermant ; flux SSE « à confirmer ». 5 comportements prouvés par test d'intégration vu rouge (M1-M4 + middleware). Diagnostic corrigé : les 500 de lecture de dossier, « aujourd'hui » et contenu sont des pannes IMAP (task-425). PR #340. | — |
 | task-422 | **Le mur des connexions Postgres recule.** `default_pool_size` 2 → 1 dans le profil de banc : 1,04 backend par médecin actif à 1000 (contre 1,96), 0 erreur applicative à 1400 (contre 24,8 %), p95 d'étape dégradé de 7,7 % au plus. Mur estimé ≈ 2 400 actifs au lieu de ≈ 1 300. Recommandation de production (`max_connections` 1 500, ≥ 40 Go) à reporter dans DevOps. PR #341. | — |
+| task-427 | **Recherche plein texte : une seule mise en minuscules par corps.** `ILIKE` refaisait `lower()` du corps à chaque terme ; une requête par table le fait une fois et compare tous les termes. Sémantique inchangée, ni index ni migration (trigramme ignoré par le planificateur). Temps SQL de la recherche −79 %, SQL total ÷ 2, recherche p50 384 ms à 1996. PR #342. | — |

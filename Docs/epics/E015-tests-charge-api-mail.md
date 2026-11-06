@@ -2,10 +2,10 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.79
+> **Version** : 1.80
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
-> **Dernière mise à jour** : 2026-11-05
+> **Dernière mise à jour** : 2026-11-06
 
 ---
 
@@ -1681,6 +1681,18 @@ inscrits.
 
 Le réglage de production est recommandé à l'équipe d'exploitation, chiffres à l'appui.
 
+### La recherche du médecin est plus rapide, et toute l'application en profite (6 novembre 2026)
+
+Le tir de limites montrait que la recherche dans le texte des messages occupait à elle seule la moitié du temps de
+la base de données. Pour chaque mot cherché, la base relisait le texte entier de chaque message et le remettait en
+minuscules, plusieurs fois par recherche.
+
+Désormais, chaque texte n'est préparé qu'une fois par recherche, quel que soit le nombre de mots. Le médecin trouve
+exactement les mêmes messages qu'avant. Au même tir, le temps passé par la base sur la recherche baisse de près de
+quatre cinquièmes, et son temps de travail total de moitié. La recherche répond en un peu moins de quatre dixièmes
+de seconde à deux mille médecins actifs, et les autres écrans en profitent aussi : la fiche patient s'affiche
+presque deux fois plus vite au pire des cas courants.
+
 ## État de couverture (2026-09-18)
 
 | Feature | Statut | Couverture | Tasks contributives |
@@ -2359,6 +2371,7 @@ Cinq réserves à porter au bilan, sans quoi il serait trompeur :
 - v1.77 — **Le banc compte désormais des praticiens inscrits, plus des robots en boucle.** Jusqu'ici, « mille médecins » désignait mille personnes qui ouvraient leur messagerie **toutes les 87 secondes, toutes en même temps, pendant trois heures et demie** — quarante et une fois par heure chacune. Aucun praticien ne travaille ainsi : il consulte, revient quelques minutes sur sa messagerie, repart pour une demi-heure ou deux heures. Le nouveau mode `terrain` modélise **cette absence** et la variété des praticiens (occasionnel, régulier, intensif) ; le nombre de praticiens réellement présents à un instant donné **se déduit** au lieu d'être fixé à cent pour cent, et chaque verdict l'annonce : « mille inscrits — tant d'actifs en moyenne ». Les gestes et leurs seuils ne changent pas. Les profils sont pour l'instant des **hypothèses construites par cohérence** ; le journal d'audit de la plateforme permettra, une fois en production, de les remplacer par les habitudes réellement observées. Deux corrections d'instrument au passage : la préparation d'un tir sur des boîtes déjà analysées ne consomme plus les trois quarts du temps de mesure pour ne rien faire, et le débit publié pour un palier était **sous-estimé d'un facteur cinq et demi**. (task-321)
 - v1.78 — **Quand la messagerie sature, le médecin lit « momentanément indisponible », jamais « messagerie non rattachée ».** Mesuré à mille quatre cents médecins actifs : la base refusant de nouvelles connexions, l'ouverture de la liste des dossiers rendait une erreur inattendue, et une partie des praticiens lisait que leur boîte n'était « pas rattachée à leur compte » : le registre des boîtes ne répondait plus et son silence était pris pour un refus. Désormais, base saturée ou registre injoignable donnent le même message, sans détail technique ; la boîte n'est ni ouverte ni déclarée détachée tant que le registre n'a pas répondu, la liste des boîtes ne s'affiche plus vide, et un refus de l'opérateur ferme toujours l'accès. Les erreurs du même tir à l'ouverture d'un dossier ou d'un message viennent de la messagerie MSSanté interrompue en pleine lecture : demande distincte. (task-423)
 - v1.79 — **La plateforme tient deux fois plus de médecins connectés en même temps avant de saturer sa base.** Chaque médecin actif retenait deux connexions à la base de données, et la limite tombait vers mille trois cents médecins actifs. Il n'en retient plus qu'une : deux fois moins de connexions, aucune erreur à mille quatre cents, aucun écran sensiblement plus lent. La limite estimée passe à environ deux mille quatre cents médecins actifs, au-delà de la population visée. (task-422)
+- v1.80 — **La recherche du médecin est plus rapide, et toute l'application en profite.** La base relisait le texte de chaque message pour chaque mot cherché ; elle ne le prépare plus qu'une fois. Mêmes résultats, temps de la base consacré à la recherche réduit de près de quatre cinquièmes, recherche sous la demi-seconde à deux mille médecins actifs, fiche patient presque deux fois plus rapide. (task-427)
 
 ---
 

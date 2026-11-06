@@ -8339,3 +8339,5 @@
 {"ts":"2026-11-06T00:51:22+01:00","run_id":"-","type":"step","task":"task-427","step":"review","status":"failed","note":"arbitrage humain : critère taux de cache (questions/task-427.md)","iterations":null,"duration_ms":359140}
 {"ts":"2026-11-06T08:44:09+01:00","run_id":"-","type":"step_start","task":"task-427","step":"review"}
 {"ts":"2026-11-06T08:45:27+01:00","run_id":"-","type":"step","task":"task-427","step":"review","status":"ok","note":"PR #342, arbitrage cache accepté (option 1), validation réutilisée à da6b30dd","iterations":null,"duration_ms":77815}
+{"ts":"2026-11-06T08:45:40+01:00","run_id":"-","type":"step_start","task":"task-427","step":"tech-writer"}
+{"ts":"2026-11-06T08:46:13+01:00","run_id":"-","type":"step","task":"task-427","step":"tech-writer","status":"ok","note":"E015 v1.80","iterations":null,"duration_ms":32749}
