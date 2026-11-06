@@ -211,6 +211,32 @@ Build 0 erreur, 0 avertissement. Tests : domain 202, infrastructure 700, api 1 3
 - `conventions/e2e.md` : ligne « trou du filet » (panne non rejouable par `/e2e`, filet = les 4 tests d'intégration).
 - Garde d'architecture `ResultUnavailableIsAMailServerOutageScanTests`.
 
+## Sonar log
+
+- **Mode A (chaîné)**, `api-mail` sur `feat/task-425-panne-imap-en-cours-de-lecture-503`, 1 itération.
+- **Résultat** : 0 issue sur le nouveau code, Quality Gate OK, 0 hotspot. Rien à corriger. La consigne
+  « Filtre d'exception » et celle des `record` positionnels étaient appliquées d'emblée.
+- **Tests sous couverture** : domain 202, application 4 024, infrastructure 700, api 1 361, intégration 1 118
+  (+16 ignorés), **0 échec**.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | = |
+| Issues new code | 0 | 0 | = |
+| New coverage | 96,0 % | 95,9 % | −0,1 |
+| Bugs / Vulnérabilités / Code smells | 0 / 0 / 0 | 0 / 0 / 0 | = |
+| Security hotspots | 0 | 0 | = |
+| Coverage projet | 97,8 % | 97,9 % | +0,1 |
+| Duplication | 0,4 % | 0,4 % | = |
+| Ratings fiabilité / sécurité / maintenabilité | A / A / A | A / A / A | = |
+
+## Lint log
+
+- `/lint-angular` : **skipped** — `client-angular` n'est pas dans les `**Repos**` de la task.
+- `/lint-mobile` : **skipped** — `client-mobile` n'est pas dans les `**Repos**` de la task.
+
 ## Branches
 
 - `api-mail` (pushed) : feat/task-425-panne-imap-en-cours-de-lecture-503 — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-425-panne-imap-en-cours-de-lecture-503
@@ -224,4 +250,7 @@ Build 0 erreur, 0 avertissement. Tests : domain 202, infrastructure 700, api 1 3
 |---|---|---|---|---|---|---|
 | /start | ok | 13 s | — | — | — | — |
 | /develop | ok | 46 min 03 s | 4 (56 s) | 4 (11 min 33 s) | — | api-mail 4B/4T, 3 familles établies dans Seq ; 4 tests d'intégration vus rouges ; 5 mutations |
-| **Total cycle** | | **46 min 16 s** | **4 (56 s)** | **4 (11 min 33 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 9 min 22 s | 1 (20 s) | 5 (7 min 26 s) | 2 (42 s) | 1 itération(s), api-mail 1B/5T, QG OK, 0 issue |
+| /lint-angular | skipped | 0.5 s | — | — | — | repo non listé dans Repos |
+| /lint-mobile | skipped | 0.5 s | — | — | — | repo non listé dans Repos |
+| **Total cycle** | | **55 min 40 s** | **5 (1 min 16 s)** | **9 (19 min 00 s)** | **2 (42 s)** | |
