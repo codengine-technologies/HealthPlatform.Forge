@@ -315,4 +315,27 @@ voies sont rejouées parce que `api-mail` est dans les `**Repos**` (règle de `a
 | /lint-angular | skipped | 0.5 s | — | — | — | repo non listé dans Repos |
 | /lint-mobile | skipped | 0.5 s | — | — | — | repo non listé dans Repos |
 | /e2e | ok | 19 min 36 s | — | — | — | e2e ×3 (19 min 03 s), mobile 58, angular 71, parité verte |
-| **Total cycle** | | **1 h 00 min** | **1 (51 s)** | **6 (8 min 06 s)** | **2 (47 s)** | |
+| /review | ok | 1 min 35 s | — | 1 (15 s) | — | api-mail 0B/1T, PR #343 |
+| **Total cycle** | | **1 h 01 min** | **1 (51 s)** | **7 (8 min 22 s)** | **2 (47 s)** | |
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/343 — label `awaiting-human-merge`.
+
+## Code Review Summary
+
+**APPROVED** — 7 fichiers de code et de test, 2 de documentation ; 0 point bloquant, 3 suggestions.
+
+- Build : 0 erreur. Tests : 0 échec (passe de `/sonar` sur `cf8cd0c6`, branche inchangée depuis et à jour avec
+  `develop`). Harnais : `node --test lib/*.test.mjs` 133/133, `python -B -m unittest discover -p "test_report*.py"` vert.
+- DoD : tous les critères tenus.
+  - Le rapport de l'escalier du 2026-11-05 est régénéré par section « Verdict SLO ». Les autres sections sont identiques
+    à la régénération, sauf l'analyse écrite à la main, conservée.
+  - Le tir de contrôle à K = 10 a révélé que les bandeaux de chauffe n'étaient jamais écrits hors K = 1. C'est corrigé et
+    testé (M4).
+- Règle 1b : sans objet (aucun fichier sous `src/`, aucun comportement atteignable par un endpoint).
+- E2E : vert, mobile 58/58, Angular 71/71.
+- Suggestions non bloquantes :
+  - `report.sh` duplique la ligne INDEX à chaque génération ;
+  - `test_dashboards` rouge préexistant sur `develop` (`mssante-ai-consumption.json`, task-385) ;
+  - `node --test lib/` du Manual Test Plan ne lance rien, utiliser `lib/*.test.mjs`.
