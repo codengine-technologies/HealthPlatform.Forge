@@ -211,6 +211,23 @@ Build 0 erreur, 0 avertissement. Tests : domain 202, infrastructure 700, api 1 3
 - `conventions/e2e.md` : ligne « trou du filet » (panne non rejouable par `/e2e`, filet = les 4 tests d'intégration).
 - Garde d'architecture `ResultUnavailableIsAMailServerOutageScanTests`.
 
+### Retour de revue (règle 1b) : deux preuves de bout en bout ajoutées
+
+La revue a relevé deux comportements atteignables par une route qui n'avaient que des tests unitaires. Ils ont été
+prouvés de bout en bout avant d'ouvrir la PR (commit `test(mail): preuves de bout en bout…`, tests seuls, code de
+production inchangé) :
+- **poignée de main TLS coupée à la connexion** → 503 `MAIL_SERVER_UNAVAILABLE`, puis relecture à 200
+  (`ConnectingWhileTheServerCutsTheTlsHandshake_Returns503MailServerUnavailable`). L'enveloppe IMAP lève, à la
+  connexion, l'exception relevée au banc (`SslHandshakeException` sur `IOException` 10054). **M5** (clause TLS
+  neutralisée) : rouge ;
+- **lecture abandonnée par le client** → statut final 499, aucun `Result-mapped` journalisé
+  (`AReadCancelledByTheClient_IsAClientClosedRequest_NeverAServerError`). La lecture du dossier reste bloquée jusqu'à
+  l'annulation, et le statut final est relevé en tête de pipeline par un `IStartupFilter`. Depuis .NET 8, c'est le
+  middleware d'exceptions d'ASP.NET Core qui pose ce 499 quand la requête est déjà abandonnée, sans appeler
+  `GlobalExceptionHandler`. **M6** (annulation à nouveau avalée par la résolution du dossier) : rouge.
+
+Suite d'intégration complète rejouée : 1 120 tests (+16 ignorés), 0 échec.
+
 ## Sonar log
 
 - **Mode A (chaîné)**, `api-mail` sur `feat/task-425-panne-imap-en-cours-de-lecture-503`, 1 itération.
@@ -353,4 +370,40 @@ Build 0 erreur, 0 avertissement. Tests : domain 202, infrastructure 700, api 1 3
 | /lint-angular | skipped | 0.5 s | — | — | — | repo non listé dans Repos |
 | /lint-mobile | skipped | 0.5 s | — | — | — | repo non listé dans Repos |
 | /e2e | ok | 19 min 26 s | — | — | — | e2e ×3 (18 min 57 s), mobile 58, angular 71, parité verte |
-| **Total cycle** | | **1 h 15 min** | **5 (1 min 16 s)** | **9 (19 min 00 s)** | **2 (42 s)** | |
+| /review | ok | 1 min 07 s | — | 1 (5 min 24 s) | — | api-mail 0B/1T, PR #344 ; 2 preuves 1b ajoutées au retour de revue |
+| **Total cycle** | | **1 h 16 min** | **5 (1 min 16 s)** | **10 (24 min 24 s)** | **2 (42 s)** | |
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/344 — label `awaiting-human-merge`.
+
+## Code Review Summary
+
+**APPROVED** — 4 fichiers de production, 8 de tests ; 0 point bloquant après retour de revue, 3 suggestions.
+
+- Build : 0 erreur, 0 avertissement. Tests : 0 échec. Validation complète au passage de `/sonar`, sur le même code de
+  production. Suite d'intégration rejouée après l'ajout des deux preuves : 1 120 (+16 ignorés), 0 échec.
+- DoD : tous les critères tenus.
+  - Cause établie dans Seq avec ses piles.
+  - Tests d'intégration des trois routes (et de la liste des dossiers), nominal et panne, vus rouges sur le code
+    d'avant.
+  - Défaillance décrite (enveloppe IMAP du banc d'intégration).
+  - Tests unitaires du classement : transport → 503, dossier disparu → 404 inchangé, autre erreur → inchangée.
+  - Trou du filet consigné dans `conventions/e2e.md`.
+  - Contrat inchangé.
+  - Journaux ajoutés sans dossier ni adresse. Seule exception : la fermeture best-effort réutilise un gabarit existant,
+    qui cite le dossier (suggestion ci-dessous).
+- **Règle 1b — comportement → test → preuve rouge** :
+  - dossier, « aujourd'hui », contenu, liste des dossiers → `…_WhenTheMailServerCutsTheSession_Returns503…` → rouges
+    sur le code d'avant (500), et M1 à M4 ;
+  - `code` sur le 503 → les quatre → M2 ;
+  - poignée de main TLS → `ConnectingWhileTheServerCutsTheTlsHandshake_…` → M5 ;
+  - annulation → 499 → `AReadCancelledByTheClient_…` → M6.
+- **Retour de revue traité avant la PR** : deux comportements n'étaient prouvés que par des tests unitaires (poignée de
+  main TLS, annulation). Les deux preuves de bout en bout ont été ajoutées (tests seuls) et vues rouges par mutation.
+- E2E : vert, mobile 58/58, Angular 71/71, sur le code de production de la PR.
+- Suggestions non bloquantes :
+  - la fermeture best-effort cite le dossier (gabarit existant de `TryCloseFolderAsync`) ;
+  - même famille de défaut hors périmètre, pour une task de suite : pièces jointes, écritures de brouillons et
+    d'envoyés, lecture d'un message seul, surface de lecture morte d'`ImapFolderService` ;
+  - l'hypothèse « `Result.Unavailable` = messagerie » est gardée par un test d'architecture.
