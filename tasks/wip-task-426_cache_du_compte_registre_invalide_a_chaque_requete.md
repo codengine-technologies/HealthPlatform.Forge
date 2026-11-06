@@ -123,6 +123,88 @@ Règles :
 - `api-mail` (pushed) : feat/task-426-cache-du-compte-registre-invalide-a — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-426-cache-du-compte-registre-invalide-a
   - Créée depuis `origin/develop` (`b0cf4143`).
 
+## Develop log
+
+**Commits** (`api-mail`, poussés) : `d059deb2` (correctif + tests), `a03ccab0` (passe qualité `/simplify`).
+
+### Cause et correctif
+
+- `TenantRegistrySynchronizer.SynchroniseAsync` (chaque requête authentifiée) appelait `EnsureAccountAsync`, qui lisait
+  le compte, le relisait, lisait l'ancre, puis **vidait le cache du compte sans condition**. La sélection de boîte, juste
+  après, relisait donc le compte et l'ancre (`GetAccountAsync`), et `GetMailboxAsync` relisait encore l'ancre.
+- **Synchronisation** : elle lit d'abord le compte par `GetAccountAsync` (servi par le cache). Elle n'appelle
+  `EnsureAccountAsync` que si le compte est inconnu ou si le jeton apporte une projection Keycloak nouvelle
+  (`RegistryAccount.ProjectionOverwrites`, la règle de task-308 : une valeur absente n'efface jamais).
+- **`EnsureAccountAsync`** n'invalide plus que s'il a écrit : création (`INSERT … ON CONFLICT` qui insère une ligne) ou
+  projection modifiée. `EnsureAccountRowAsync` rend désormais le drapeau « inséré ».
+- **`GetMailboxAsync`** lit l'ancre PSC **dans la même requête** que le rattachement et le compte (sous-requête
+  `AnchorCandidates`, même règle que `LoadAnchorAsync` : plus ancien rattachement validé, détachés compris). Elle reste
+  lue en base, jamais dans le cache, pour le verdict de compatibilité (règle 14), sans aller-retour de plus.
+- **Le chemin de rattachement** (`MailboxManagementService`) continue d'appeler `EnsureAccountAsync`, donc de lire le
+  compte en base : il n'est pas servi par le cache.
+- Invalidations inchangées : rattachement, détachement, issue d'authentification, `Touch*`. Une panne du registre
+  remonte toujours en `TenantRegistryUnavailableException` (task-423) : `GetAccountAsync` lève comme `EnsureAccountAsync`.
+
+### `DISCARD ALL` — décision : `No Reset On Close=true` posé
+
+Inventaire de l'état de session du registre (code de `PostgresTenantRegistryClient`, `AuditTraceRepository`, migrations) :
+- aucun `SET` de session (le pool d'audit ne pose que `SET LOCAL ROLE`, levé au commit) ;
+- aucune table temporaire, aucun `LISTEN` ;
+- aucune requête préparée persistante (`Max Auto Prepare` à 0) ;
+- verrous consultatifs uniquement transactionnels (`pg_advisory_xact_lock`).
+
+Le réglage est posé dans `TenantRegistryConnectionString.Build`, donc pour le registre **et** l'audit (test
+`TenantRegistryConnectionStringTests`). Gain attendu : Postgres CPU (instruction préfixée à la suivante), pas un
+aller-retour réseau. Un état de session ajouté un jour devra retirer ce réglage (remarque dans le code).
+
+### Tests (règle 1b)
+
+Test d'intégration de bout en bout `RegistryAccountCacheEndpointIntegrationTests` : vrai `UserContextEnricherMiddleware`,
+vrai synchroniseur, vraie sélection, vrai `PostgresTenantRegistryClient` et son cache, vraie base du registre. Chaque
+commande SQL est relevée par un intercepteur EF. Seul le verdict de l'opérateur est simulé.
+
+| Comportement | Test | Preuve du rouge |
+|---|---|---|
+| La 2ᵉ requête du même médecin ne lit ni `accounts` ni l'ancre (deux 200, même boîte) | `TheSecondRequestOfTheSameDoctor_ReadsNeitherTheAccountNorItsAnchor` (témoin positif sur la 1ʳᵉ requête) | rouge sur le code d'avant ; M2 (synchronisation toujours en `Ensure`) ; M5 (ancre relue à part dans `GetMailboxAsync`) |
+| Un email changé dans le jeton met à jour le registre, et la réponse suivante le sert | `AnEmailChangedInTheToken_UpdatesTheRegistry_AndTheNextResponseServesIt` | M3 (`ProjectionChanged` toujours faux) |
+| Un rattachement entre deux requêtes ancre le compte dès la suivante | `AnAttachmentBetweenTwoRequests_AnchorsTheAccountAtTheNextRequest` | M4 (le rattachement n'invalide plus) |
+| L'ancre lue avec la boîte refuse une boîte validée par un autre professionnel (403 `PSC_MISMATCH`, sans jeton PSC) | `AMailboxValidatedByAnotherProfessionalThanTheAnchor_IsRefused_FromTheAnchorReadWithTheMailbox` | M6 (ancre de la requête jointe ignorée) |
+
+- **M6 a d'abord survécu** à 143 tests d'intégration du registre et de la sélection : aucun ne lisait l'effet de l'ancre
+  lue par `GetMailboxAsync` (trou antérieur à la task, rendu visible parce que la task réécrit cette lecture). Le 4ᵉ test
+  a été ajouté pendant la passe qualité, puis vu rouge par M6.
+- Chaque mutation : réinjectée, test rouge constaté, source restauré **puis recompilé** (script de mutation).
+- Tests unitaires : synchroniseur (compte connu inchangé → aucune écriture ; inconnu ; email changé ; jeton sans email),
+  client (sans écriture → cache intact ; création et projection modifiée → invalidation), chaîne de connexion
+  (`NoResetOnClose` sur les deux pools), règle de projection (`RegistryAccountProjectionTests`).
+- Validation finale (après la passe qualité) : build 0 avertissement, 0 erreur. Tests : domain 210, infrastructure 705,
+  api 1 361, application 4 028, intégration 1 124 (+16 ignorés), **0 échec**.
+- **Flaky constaté, hors task** : `ImapServiceTests.GetFolderNotSeenAsync_HappyPath_TagsTheImapActivityWithPerCommandDurationsAsync`,
+  1 échec en suite complète, vert isolé (×3) puis vert en suite rejouée. `ActivityListener` global. Consigné en mémoire.
+
+### Passe qualité `/simplify` (4 relectures)
+
+Appliqué : règle de projection en un seul endroit (Domain) ; règle d'ancrage en une seule source (`AnchorCandidates` +
+`ToIdentity`) ; `ApplyKeycloakProjection(...) || inserted` ; lecture finale sortie du tuple ; en-tête `Client-Email` posé
+par la requête de test (middleware de test retiré) ; commentaire `NoResetOnClose` précisé.
+
+Écarté, avec raison :
+- **Méthode de cache unique sur le client** (`SyncAccountAsync`) : nouveau membre d'interface et refonte des faux ; la
+  version minimale (règle en Domain) supprime la duplication.
+- **Cache et handler de test partagés** (5ᵉ et 6ᵉ copies) : hors du diff, à factoriser dans une task de harnais.
+- **Suites proposées, hors périmètre** (mesurées faibles en régime) :
+  - le compte lu deux fois par requête dans Redis (synchronisation puis sélection) : le passer de l'un à l'autre ;
+  - `TouchAsync` vide le cache du compte alors qu'aucun lecteur n'utilise `LastActivityAt` : un seul `ExecuteUpdate`,
+    sans invalidation ;
+  - le SDK pose une expiration glissante de 30 min par défaut : chaque lecture Redis coûte un `EXPIRE` de plus ;
+  - `ListMailboxesAsync` (requête sans `Client-Email`) lit encore l'ancre à part.
+
+> **Point pour l'humain (HAG), fraîcheur de l'ancre.** `MailboxSelectionService.SelectAsync` compare le jeton PSC à
+> l'ancre du compte **servi par le cache** (jusqu'à 10 min), alors qu'avant cette task le cache était vidé à chaque
+> requête. C'est exact tant que l'ancre ne change qu'au rattachement (de « aucune » au premier rattachement validé), qui
+> invalide le cache dans le Redis partagé. Une purge future de rattachements, qui changerait le plus ancien, devrait
+> invalider aussi. Le verdict de compatibilité de `GetMailboxAsync` lit, lui, l'ancre en base.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-426 --sync` — ne pas éditer à la main)*
