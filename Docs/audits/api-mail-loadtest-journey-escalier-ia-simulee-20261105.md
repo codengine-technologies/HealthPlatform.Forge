@@ -177,6 +177,8 @@ Quelque chose s'est mal passé pendant la mesure. Les chiffres de ce rapport ne 
 
 ⛔ **Chauffe insuffisante — les étapes 2, 3, 10, 11 ne sont pas opposables.** **88.3 %** des médecins ont terminé leur chauffe (plancher **90 %**, sur 1996 médecins) ; 1228 lot(s) d'analyse perdu(s) ; 91.0 % des ouvertures de l'étape 3 servies par la base (plancher 95 %). Ces étapes sont **servies par la base des messages analysés** : une base peu peuplée les rend rapides sans rien dire de la charge visée — au tir `journey-remote-n500` du 2026-08-09, `GetMailsByUids` coûtait **55,4 ms / 7,8 requêtes** par appel contre **1 199,7 ms / 14,8** sur un tir dont la base était peuplée. **Ce tir ne mesure donc pas la capacité** : ses latences sont flattées, quelle que soit leur valeur. Relancer après une chauffe aboutie (lots `JOURNEY_WARMUP_BATCH`, task-244).
 
+ⓘ **Ventilation par palier non disponible pour ce tir** (harnais antérieur à task-424) : la chauffe et la part servie par la base sont jugées sur tout le tir, et ce verdict global s'applique à chaque palier. Palier par palier, **on ne sait pas** lequel a échoué.
+
 > ⓘ Chauffe : **112 s** au p95 (attente de vague incluse) sur une fenêtre de palier de 1080 s, soit **10 %** — sous le plafond de 50 % : le régime occupe le reste de la fenêtre.
 
 > ⓘ **Fenêtres de verdict (task-264)** — la chauffe de chaque palier est allouée d'avance (cohorte nouvelle × réserve analysée ÷ débit plafond), taguée `chauffe`, et **exclue du verdict** : chaque verdict de palier est porté par sa seule fenêtre de régime. Un tir antérieur, qui incluait la chauffe dans la fenêtre, n'est pas directement comparable.

@@ -96,6 +96,25 @@ latence, piloté par le profil `loadtest` de l'AppHost. Chemins relatifs à
   `docker run --rm --gpus=all nvidia/cuda:12.8.0-base-ubuntu24.04 nvidia-smi`
   doit afficher la RTX 5070 Ti. Voir « Fournisseur IA au banc » ci-dessous.
 
+### IA simulée — le défaut des tirs d'exploration (2026-11-04)
+
+- **Tout tir qui n'est pas une certification se lance avec `MSS_LOADTEST_AI=fake`.**
+  Un tir terrain OpenAI coûte ~90 $, et le crédit s'est épuisé deux fois en campagne
+  (31/10, puis à +28 min du tir 1996 du 04/11, rendu VOID). L'AppHost démarre alors
+  le faux fournisseur OpenAI (`loadtest-fake-openai`, port 11536). api-mail reste en
+  tout-OpenAI et ne change que d'endpoint. Aucune clé OpenAI, aucun conteneur Ollama.
+- **Calibré sur le tir 1881 du 2026-11-02** : durées par quantile, étiquetage et
+  embedding, et parts d'étiquetage (53 % des mails étiquetés). Détail :
+  `Api/Mail/docs/ia-fournisseurs.md` § « IA simulée ».
+- **Famille distincte.** Le rapport l'écrit en tête (« 🧪 IA simulée ») et dans
+  l'INDEX. Ne jamais comparer un tir simulé à un tir OpenAI. Le verdict de la
+  Recherche n'y mesure que le coût pgvector, pas la pertinence.
+- **Preuve à relever** : la section IA du rapport doit dire « 🧪 simulée ». Si elle dit
+  « ⚠️ mixte », des appels sont partis vers `api.openai.com` : le tir est non comparable.
+  Le CPU du faux (`mss.mail.e2e#<pid>`) est dans l'échantillonneur.
+- **Tir de certification** : sans la variable, et seulement après avoir constaté dans la
+  console OpenAI un **solde ≥ 100 $**. Un `curl` qui rend 200 prouve seulement un solde non nul.
+
 ### Fournisseur IA au banc — défaut hybride (task-325)
 
 - **Chat sur Ollama local, embeddings sur OpenAI.** L'étiquetage, le résumé,
@@ -586,6 +605,13 @@ Repères de volumétrie et de résultat :
 > une vérification au débit du court-circuit au lieu d'allouer 78 % de la
 > fenêtre sur le plafond d'analyse (mesuré le 2026-09-17). Jamais sur une
 > population froide.
+>
+> **Lecture du verdict de chauffe — par palier (task-424)** : le bandeau « Chauffe
+> insuffisante » et la ligne « Étape 3 refusée » nomment les paliers touchés. Une
+> cohorte sous 90 % refuse son palier et les suivants, jamais ceux d'avant : dans un
+> escalier qui trouve sa limite, les paliers sains restent opposables. Un rapport qui
+> dit « Ventilation par palier non disponible » vient d'un harnais antérieur : son
+> refus est global, il ne désigne pas le palier qui a échoué.
 
 Harnais dans `tests/loadtest-k6/`. Six scénarios : `folders`, `read`, `search`,
 `send`, `enrich` (pipeline CDA), `mixed`. Mode d'emploi complet dans

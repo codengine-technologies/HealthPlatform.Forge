@@ -8345,3 +8345,6 @@
 {"ts":"2026-11-06T09:38:21+01:00","run_id":"-","type":"step","task":"task-427","step":"merge","status":"ok","note":"PR #342 squash 6e43b6f8, CI develop verte","iterations":null,"duration_ms":312360}
 {"ts":"2026-11-06T09:47:11+01:00","run_id":"-","type":"step_start","task":"task-424","step":"start"}
 {"ts":"2026-11-06T09:47:25+01:00","run_id":"-","type":"step","task":"task-424","step":"start","status":"ok","note":"","iterations":null,"duration_ms":13801}
+{"ts":"2026-11-06T09:47:44+01:00","run_id":"-","type":"step_start","task":"task-424","step":"develop"}
+{"ts":"2026-11-06T09:56:29+01:00","run_id":"-","type":"cmd","task":"task-424","step":"develop","repo":"api-mail","kind":"test","label":"","cwd":"/d/TechWatch/HealthPlatform/Api/Mail/tests/loadtest-k6","cmd":"bash selftest.sh","duration_ms":9933,"exit_code":1}
+{"ts":"2026-11-06T10:17:29+01:00","run_id":"-","type":"step","task":"task-424","step":"develop","status":"ok","note":"report.py par palier, harnais ventilé, tir de contrôle K=10","iterations":null,"duration_ms":1784585}

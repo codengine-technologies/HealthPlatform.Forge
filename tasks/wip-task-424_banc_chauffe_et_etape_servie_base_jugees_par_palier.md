@@ -98,6 +98,77 @@ Règles :
 - **Hébergement HDS** : non. Banc local, données synthétiques
 - **AIPD / impact RGPD** : inchangé, aucun traitement nouveau
 
+## Develop log
+
+- **Harnais k6** (`tests/loadtest-k6/scenarios/journey.js`, `lib/journey-model.js`) :
+  - `warmupCohortPalier(vuIndex, paliers)`, fonction pure : le palier où un médecin arrive, `null` hors plan
+    (2 tests `node --test`) ;
+  - `journey_warmup_completed` étiqueté `{cohort:N}`, `journey_warm_served_from_store` étiqueté `{palier:N}` (le palier
+    de la requête : `chauffe` et `transition` n'entrent dans aucun verdict) ;
+  - seuils `rate>=0` par palier pour que k6 exporte ces sous-métriques. Vérifié par `k6 inspect` et dans le JSON du
+    tir de contrôle.
+- **Rapport** (`tests/loadtest-k6/report.py`) :
+  - `journey_palier_gates` juge chaque palier. Sa population est sa cohorte et les cohortes d'avant : une cohorte
+    sous 90 % refuse son palier et les suivants. L'étape 3 se juge sur la part servie par la base pendant le régime
+    du palier. Un palier sans mesure est « non vérifié », jamais un zéro ;
+  - sans sous-métriques, chaque palier reçoit le verdict global, et le rapport l'écrit : « Ventilation par palier
+    non disponible… palier par palier, **on ne sait pas** lequel a échoué » ;
+  - les bandeaux « Chauffe insuffisante » et « Étape 3 « servi base » refusée » nomment les paliers touchés, avec
+    leur part et leur effectif, et ceux qui gardent leurs verdicts. Quand tout tient, une ligne par palier ;
+  - planchers inchangés (90 %, 95 %).
+- **Écart de conception, constaté au tir de contrôle et corrigé** : à K ≠ 1, la section « Verdict SLO » s'arrêtait
+  sur « non opposable » avant tout bandeau de chauffe. Le tir de contrôle à K = 10 exigé par la DoD n'aurait donc
+  montré aucun verdict par palier. Les bandeaux de la base sont désormais écrits **à tout K** : l'état de la base ne
+  dépend pas de la compression, et un tir de découverte qui désigne des goulets sur une base mal peuplée doit le dire.
+  Le verdict SLO, lui, reste réservé à K = 1. Effet de bord assumé : la synthèse d'un tir K > 1 cite désormais une
+  étape 3 refusée.
+- **Tests Python** (`test_report_warmup_by_palier.py`, 9 tests) : paliers sains suivis d'un palier en échec, bandeau
+  qui nomme le palier, échec au premier palier qui refuse les suivants, tir sain (une ligne par palier), étape 3 sous
+  95 % sur un seul palier, palier sans ouverture mesurée, tir sans ventilation, bandeaux à K = 10.
+- **Preuve par mutation** (`python -B`, `__pycache__` effacé avant chaque passage, fichier restauré et comparé par
+  `cmp`), rejouée sur la version finale :
+
+  | Mutation | Tests qui échouent |
+  |---|---|
+  | M1, chauffe jugée globalement (`starved = out["warmup_starved"]`) | `test_les_paliers_sains_gardent_leurs_verdicts_quand_un_palier_suivant_echoue` (le premier), + 2 |
+  | M2, étape 3 jugée globalement | `test_etape_3_sous_95_sur_un_seul_palier_seul_ce_palier_est_refuse`, `test_un_palier_sans_ouverture_mesuree_n_est_pas_un_zero` |
+  | M3, cohortes d'avant oubliées (`cohorts[-1:]`) | `test_echec_au_premier_palier_rend_non_opposables_les_paliers_qui_suivent` |
+  | M4, bandeaux absents à K > 1 | `test_a_k10_le_bandeau_de_chauffe_par_palier_est_ecrit` |
+- **Passe qualité §Q** (`/simplify`, 4 relectures) :
+  - **appliqué** : `journey_warmup_starved` / `journey_step_mislabelled` réécrits sur les mêmes helpers que le
+    jugement par palier (une seule source de la règle des trois états) ; une seule liste de cohortes par palier
+    (`failed_cohorts` dérivé à la lecture) ; refus de chauffe par `_either_refuses` ; repli global porté par une
+    pseudo-cohorte « tout le tir » (plus de raison vide si seule l'étape 3 était ventilée) ; causes connues de l'étape
+    3 écrites une fois et citées aussi par le bandeau par palier (elles y manquaient) ; `kept_note` en bloc simple ;
+    `PALIER_TARGETS` dans `journey.js` ; fixture `metrics_with_warmup` réutilisée.
+  - **écarté** : un seul moteur de rendu pour les tirs ventilés et anciens (changerait le texte des rapports déjà
+    publiés et les tests de task-244) ; fusion de `warmupCohortPalier` et `warmupCohortRank` (comportements hors plan
+    différents, `null` contre rang brut) ; double appel préexistant de `journey_slo_verdicts` (coût négligeable).
+- **Validation** : `node --test lib/*.test.mjs` 133/133. Python 417 tests, **1 échec préexistant hors périmètre** :
+  `test_dashboards.test_every_queried_panel_says_when_it_has_no_data`, rouge à l'identique sur `develop` (panneaux
+  sans `noValue` du tableau de bord `mssante-ai-consumption.json`, task-385). Non corrigé ici.
+  - Le Manual Test Plan écrit `node --test lib/` : sur le Node du poste, cette forme ne lance aucun test.
+    `node --test lib/*.test.mjs` (la forme de `selftest.sh`) est la bonne.
+- **Rapport de l'escalier du 2026-11-05 régénéré** depuis son JSON, sans nouveau tir, avec les mêmes entrées
+  (Prometheus encore servi, `observe-233500.csv`, `pgstats-journey-013350.tsv`, photos `fin`). Seule la section
+  « Verdict SLO » diffère du rapport d'origine. Elle a été reportée dans le rapport du tir et dans sa copie
+  versionnée `Docs/audits/api-mail-loadtest-journey-escalier-ia-simulee-20261105.md`. Le reste est inchangé :
+  l'analyse écrite à la main après le tir ne se régénère pas. Passage cité :
+
+  > ⓘ **Ventilation par palier non disponible pour ce tir** (harnais antérieur à task-424) : la chauffe et la part
+  > servie par la base sont jugées sur tout le tir, et ce verdict global s'applique à chaque palier. Palier par
+  > palier, **on ne sait pas** lequel a échoué.
+
+  Le bandeau global « Chauffe insuffisante… 88.3 % » est conservé au-dessus.
+- **Tir de contrôle** (2026-11-06, 10:05 → 10:13, poste local, IA simulée, `JOURNEY_STAGES="20:3m,40:3m"`,
+  `JOURNEY_TIME_COMPRESSION=10`, `JOURNEY_WARMUP_HYDRATED=1`) : rapport
+  `Docs/audits/api-mail-loadtest-journey-controle-20-40-task424-20261106.md`.
+  - JSON : `journey_warmup_completed{cohort:20}` 20/20, `{cohort:40}` 20/20 ;
+    `journey_warm_served_from_store{palier:20}` 99,2 % (361), `{palier:40}` 99,2 % (749).
+  - Rapport : « ✅ Chauffe aboutie à chaque palier mesuré », puis une ligne par palier (cohorte, part servie par la
+    base). 0 erreur, vérification par base PASS.
+  - Le cas d'échec (Manual Test Plan, étape 4) n'a pas été joué au banc : il est couvert par les tests M1 et M3.
+
 ## Branches
 
 - `api-mail` (pushed) : feat/task-424-banc-chauffe-et-etape-servie-base-jugees — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-424-banc-chauffe-et-etape-servie-base-jugees
@@ -110,4 +181,5 @@ Règles :
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 13 s | — | — | — | — |
-| **Total cycle** | | **13 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 29 min 44 s | — | 1 (9.9 s) | — | api-mail 0B/1T, report.py par palier, harnais ventilé, tir de contrôle K=10 |
+| **Total cycle** | | **29 min 58 s** | **0 (0.0 s)** | **1 (9.9 s)** | **0 (0.0 s)** | |
