@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E015-tests-charge-api-mail.md](E015-tests-charge-api-mail.md).
-> **Dernière mise à jour** : 2026-11-06 (v1.82)
+> **Dernière mise à jour** : 2026-11-06 (v1.83)
 
 ---
 
@@ -3333,6 +3333,20 @@ nouvelle table par opération est ce qui permettra de les séparer.
 
 ---
 
+### v1.83 — Le registre n'est plus relu à chaque requête : le cache du compte sert — task-426
+
+- **Task** : task-426 — `done`. **PR** : `api-mail` [#345](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/345) (`awaiting-human-merge`). Branche `feat/task-426-cache-du-compte-registre-invalide-a`.
+- **Origine** : tir court 1400 → 1996 du 2026-11-05 (task-422), finding F2. La base commune du registre recevait ≈ 6 lectures par requête HTTP (`accounts` 2,96, ancre PSC 2,96) et 7,1 `DISCARD ALL`.
+- **Cause établie dans le code** : la synchronisation de chaque requête authentifiée appelait `EnsureAccountAsync`, qui relisait le compte et son ancre puis **vidait le cache du compte sans condition** ; la sélection de boîte relisait donc compte et ancre. Le registre se connecte en direct (sans PgBouncer) : Npgsql réinitialisait la session à chaque retour au pool.
+- **Changement** (`api-mail`) : la synchronisation lit le compte par le cache et n'assure en base qu'un compte inconnu ou une projection Keycloak nouvelle (`RegistryAccount.ProjectionOverwrites`) ; `EnsureAccountAsync` n'invalide que s'il a écrit ; `GetMailboxAsync` lit l'ancre dans la même requête que la boîte (source unique `AnchorCandidates`, jamais en cache, règle 14) ; `No Reset On Close` sur les pools registre et audit (état de session inventorié). Contrat et comportement HTTP inchangés.
+- **Preuve** : 4 tests d'intégration de bout en bout (vrai middleware, vrai client du registre et son cache, vraie base, SQL relevé par intercepteur EF), rouges sur le code d'avant et par 5 mutations (M2-M6) ; tests unitaires du synchroniseur, du client, de la chaîne de connexion et de la règle de projection.
+- **Banc** (contrôle `develop` joué dans la même session) : `accounts` + ancre **5,94 → 0,03 par requête (−99,5 %)**, `DISCARD ALL` du registre 7,13 → 0, temps SQL du registre −67 %, SQL total −7 %, 0 5xx. Seul écart de p95 au-delà de 20 % : téléchargement de PJ à 1400 (130 → 378 ms, p50 meilleur), suivi de la latence disque du tir — critère accepté sur arbitrage humain (`questions/task-426.md`).
+- **Leçon de banc** : à 1996, cgroup Postgres plein, un tir de la veille n'est plus une référence opposable (bases plus grosses, fautes majeures) ; contrôle dans la même session, et ordre des tirs à lire avec ses deux effets (bases contre cache réchauffé).
+- **Sonar** : Quality Gate OK, 0 issue (3 issues de test corrigées : SYSLIB1045 ×2, CA1859, récidives comptées). **E2E** : vert, mobile 58/58, Angular 71/71.
+- **Suites proposées, non ouvertes** : compte lu deux fois par requête dans Redis ; `TouchAsync` qui vide le cache sans lecteur concerné ; expiration glissante par défaut du SDK (un `EXPIRE` par lecture Redis) ; ancre encore lue à part dans `ListMailboxesAsync` ; contrôle de conflit PSC (409) sur l'ancre en cache.
+
+---
+
 ## Annexe A — Cartographie des briques applicatives
 
 | Brique | Chemin | Rôle |
@@ -3463,3 +3477,4 @@ nouvelle table par opération est ce qui permettra de les séparer.
 | task-427 | **Recherche plein texte : une seule mise en minuscules par corps.** `ILIKE` refaisait `lower()` du corps à chaque terme ; une requête par table le fait une fois et compare tous les termes. Sémantique inchangée, ni index ni migration (trigramme ignoré par le planificateur). Temps SQL de la recherche −79 %, SQL total ÷ 2, recherche p50 384 ms à 1996. PR #342. | — |
 | task-424 | **Chauffe et étape « servie base » jugées par palier.** Témoins ventilés par cohorte et par palier de régime ; une cohorte sous 90 % refuse son palier et les suivants, les paliers d'avant gardent leurs verdicts. Bandeaux écrits à tout K ; tir antérieur : verdict global annoncé comme tel. Harnais seul. PR #343. | — |
 | task-425 | **Panne de messagerie en cours de lecture : 503, jamais 500.** Statut `Unavailable` propagé jusqu'à la route, poignée de main TLS coupée classée panne, annulation du client en 499, `code` `MAIL_SERVER_UNAVAILABLE` sur tout 503 issu d'un `Result`, `detail` fixe. Cause établie dans Seq sur les deux pannes du 2026-11-05. PR #344. | — |
+| task-426 | **Le registre n'est plus relu à chaque requête.** Le compte d'une personne connue vient du cache ; invalidation seulement sur écriture ; ancre PSC lue avec la boîte ; `No Reset On Close`. Lectures `accounts` + ancre 5,94 → 0,03 par requête, `DISCARD ALL` du registre supprimé, SQL du registre −67 % (A/B même session). PR #345. | — |

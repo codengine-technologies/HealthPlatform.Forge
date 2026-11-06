@@ -429,4 +429,5 @@ dégradé de plus de 20 % » accepté sur arbitrage humain (option 1, `questions
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 20 min 29 s | — | — | — | e2e ×3 (20 min 02 s), mobile 58/58, angular 71/71, parité verte |
 | /review | ok | 0.6 s | 1 (10 s) | 1 (5 min 51 s) | — | api-mail 1B/1T, PR #345 après arbitrage humain (option 1) |
-| **Total cycle** | | **3 h 15 min** | **8 (2 min 17 s)** | **15 (33 min 32 s)** | **4 (1 min 25 s)** | |
+| /tech-writer | ok | 24 s | — | — | — | — |
+| **Total cycle** | | **3 h 16 min** | **8 (2 min 17 s)** | **15 (33 min 32 s)** | **4 (1 min 25 s)** | |

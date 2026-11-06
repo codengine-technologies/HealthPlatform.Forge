@@ -2,7 +2,7 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.82
+> **Version** : 1.83
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
 > **Dernière mise à jour** : 2026-11-06
@@ -2394,6 +2394,7 @@ Cinq réserves à porter au bilan, sans quoi il serait trompeur :
 - v1.80 — **La recherche du médecin est plus rapide, et toute l'application en profite.** La base relisait le texte de chaque message pour chaque mot cherché ; elle ne le prépare plus qu'une fois. Mêmes résultats, temps de la base consacré à la recherche réduit de près de quatre cinquièmes, recherche sous la demi-seconde à deux mille médecins actifs, fiche patient presque deux fois plus rapide. (task-427)
 - v1.81 — **Un tir qui trouve sa limite ne rend plus illisibles les paliers qui la précèdent.** La préparation des boîtes est jugée palier par palier : un palier qui sature perd ses verdicts, ceux d'avant les gardent. (task-424)
 - v1.82 — **Quand la messagerie tombe, le médecin lit « momentanément injoignable », jamais « erreur inattendue ».** La panne, déjà reconnue, n'arrivait pas jusqu'à l'écran ; elle y arrive, et la boîte se recharge seule au retour de la messagerie. (task-425)
+- v1.83 — **La base commune à tous les médecins respire.** À chaque geste, l'application relisait six fois le registre des boîtes, partagé par tous les praticiens, pour y retrouver un compte qu'elle connaissait déjà. Elle ne le relit plus que lorsqu'il a changé : environ deux cents fois moins de lectures, et deux tiers du temps de cette base libérés, sans rien changer à ce que voit le médecin. C'était le point de contention qui aurait pesé le plus à dix mille inscrits. (task-426)
 
 ---
 

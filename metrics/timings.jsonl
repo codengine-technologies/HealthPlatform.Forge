@@ -8458,3 +8458,5 @@
 {"ts":"2026-11-06T17:43:07+01:00","run_id":"-","type":"step","task":"task-426","step":"review","status":"failed","note":"arbitrage humain : p95 PJ à 1400 (questions/task-426.md)","iterations":null,"duration_ms":415562}
 {"ts":"2026-11-06T17:46:20+01:00","run_id":"-","type":"step_start","task":"task-426","step":"review"}
 {"ts":"2026-11-06T17:46:21+01:00","run_id":"-","type":"step","task":"task-426","step":"review","status":"ok","note":"PR #345 après arbitrage humain (option 1)","iterations":null,"duration_ms":633}
+{"ts":"2026-11-06T17:46:38+01:00","run_id":"-","type":"step_start","task":"task-426","step":"tech-writer"}
+{"ts":"2026-11-06T17:47:03+01:00","run_id":"-","type":"step","task":"task-426","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":24935}
