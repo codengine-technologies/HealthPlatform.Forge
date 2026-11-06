@@ -117,3 +117,17 @@ Règles :
 - **Hébergement HDS** : oui, environnement inchangé. Le cache ne contient que des données de compte (sujet, email,
   identifiant PSC), déjà présentes dans le cache d'aujourd'hui
 - **AIPD / impact RGPD** : inchangé, aucun traitement nouveau
+
+## Branches
+
+- `api-mail` (pushed) : feat/task-426-cache-du-compte-registre-invalide-a — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-426-cache-du-compte-registre-invalide-a
+  - Créée depuis `origin/develop` (`b0cf4143`).
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-426 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 12 s | — | — | — | — |
+| **Total cycle** | | **12 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
