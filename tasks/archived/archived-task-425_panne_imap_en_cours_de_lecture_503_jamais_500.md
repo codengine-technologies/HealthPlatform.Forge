@@ -372,7 +372,8 @@ Suite d'intégration complète rejouée : 1 120 tests (+16 ignorés), 0 échec.
 | /e2e | ok | 19 min 26 s | — | — | — | e2e ×3 (18 min 57 s), mobile 58, angular 71, parité verte |
 | /review | ok | 1 min 07 s | — | 1 (5 min 24 s) | — | api-mail 0B/1T, PR #344 ; 2 preuves 1b ajoutées au retour de revue |
 | /tech-writer | ok | 1.2 s | — | — | — | E015 v1.82 |
-| **Total cycle** | | **1 h 16 min** | **5 (1 min 16 s)** | **10 (24 min 24 s)** | **2 (42 s)** | |
+| /merge | ok | 3 min 58 s | — | — | — | PR #344 squash b0cf4143, CI develop verte |
+| **Total cycle** | | **1 h 20 min** | **5 (1 min 16 s)** | **10 (24 min 24 s)** | **2 (42 s)** | |
 
 ## PRs
 
@@ -408,3 +409,9 @@ Suite d'intégration complète rejouée : 1 120 tests (+16 ignorés), 0 échec.
   - même famille de défaut hors périmètre, pour une task de suite : pièces jointes, écritures de brouillons et
     d'envoyés, lecture d'un message seul, surface de lecture morte d'`ImapFolderService` ;
   - l'hypothèse « `Result.Unavailable` = messagerie » est gardée par un test d'architecture.
+
+## Merged
+
+- 2026-11-06 — `api-mail` PR [#344](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/344), squash `b0cf4143` sur `develop`, après validation humaine (`/merge 425 --i-tested`).
+- Branche `feat/task-425-panne-imap-en-cours-de-lecture-503` supprimée (distante et locale). CI `develop` verte sur `b0cf4143`.
+- Aucune branche staging (task lancée par `/start`, pas par `/forge`).
