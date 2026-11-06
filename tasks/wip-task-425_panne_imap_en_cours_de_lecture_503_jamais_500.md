@@ -101,3 +101,17 @@ Règles :
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui, environnement inchangé
 - **AIPD / impact RGPD** : inchangé, aucun traitement nouveau
+
+## Branches
+
+- `api-mail` (pushed) : feat/task-425-panne-imap-en-cours-de-lecture-503 — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-425-panne-imap-en-cours-de-lecture-503
+  - Créée depuis `origin/develop` (`0e977535`).
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-425 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 13 s | — | — | — | — |
+| **Total cycle** | | **13 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
