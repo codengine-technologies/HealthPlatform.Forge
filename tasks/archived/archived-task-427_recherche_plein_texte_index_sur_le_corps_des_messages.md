@@ -419,7 +419,8 @@ figure dans « Mesure préalable » (environ 27 Go pour 10 000 boîtes à volume
 | /e2e | ok | 19 min 13 s | — | — | — | e2e ×5 (37 min 29 s) |
 | /review | ok | 1 min 17 s | 1 (8.9 s) | 1 (5 min 20 s) | — | api-mail 1B/1T, PR #342, arbitrage cache accepté (option 1), validation réutilisée à da6b30dd |
 | /tech-writer | ok | 32 s | — | — | — | E015 v1.80 |
-| **Total cycle** | | **2 h 10 min** | **9 (2 min 26 s)** | **18 (36 min 32 s)** | **4 (1 min 19 s)** | |
+| /merge | ok | 5 min 12 s | — | — | — | PR #342 squash 6e43b6f8, CI develop verte |
+| **Total cycle** | | **2 h 16 min** | **9 (2 min 26 s)** | **18 (36 min 32 s)** | **4 (1 min 19 s)** | |
 
 ## PRs
 
@@ -441,3 +442,9 @@ figure dans « Mesure préalable » (environ 27 Go pour 10 000 boîtes à volume
 - Suggestions non bloquantes : identifiants candidats transitant par l'application (choix assumé, règle des
   dossiers-étiquettes non dupliquée en SQL) ; filtre `Contains` en mémoire qui double le `LIKE` SQL, gardé pour la
   sémantique identique.
+
+## Merged
+
+- 2026-11-06 — `api-mail` PR [#342](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/342), squash `6e43b6f8` sur `develop`, après le test manuel de l'humain (`/merge 427 --i-tested`).
+- Branche `feat/task-427-recherche-plein-texte-index-sur-le-corps` supprimée (distante et locale). CI `develop` verte sur `6e43b6f8`.
+- Aucune branche staging (task lancée par `/start`, pas par `/forge`).
