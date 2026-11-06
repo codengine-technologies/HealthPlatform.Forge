@@ -262,6 +262,32 @@ contrôle sur `develop`** (`b0cf4143`, sans task-426), joué juste après, dans 
 fait grossir les bases et que le cgroup Postgres (48 Go) est plein. Toute mesure comparative à ce palier exige un
 contrôle joué dans la même session.
 
+## Sonar log
+
+- **Mode A (chaîné)**, `api-mail` sur `feat/task-426-cache-du-compte-registre-invalide-a`, **2 itérations**.
+- **Itération 1** : 3 issues sur le nouveau code, toutes dans le test d'intégration `RegistryAccountCacheEndpointIntegrationTests` :
+  - `SYSLIB1045` ×2 : les deux formes SQL de l'intercepteur étaient des `static readonly Regex … = new(…)`, passées en
+    `[GeneratedRegex]` ;
+  - `CA1859` : `RegistryCommands.Matching` déclarait `IReadOnlyList<string>` pour rendre un `List<string>`.
+  - Corrigées dans `6728452c`. Les deux règles sont des **récidives** : compteurs portés à 3 et 15 dans
+    `conventions/csharp.md`. Les deux consignes existaient et n'ont pas été appliquées en écrivant le test (règle d'or, point 3).
+- **Itération 2** : 0 issue sur le nouveau code, Quality Gate OK, 0 hotspot.
+- **Tests sous couverture** (deux passes) : domain 210, application 4 028, infrastructure 705, api 1 361, intégration
+  1 124 (+16 ignorés), **0 échec**.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | = |
+| Issues new code | 0 | 0 (3 à l'itération 1, corrigées) | = |
+| New coverage | 95,9 % | 96,0 % | +0,1 |
+| Bugs / Vulnérabilités / Code smells | 0 / 0 / 0 | 0 / 0 / 0 | = |
+| Security hotspots | 0 | 0 | = |
+| Coverage projet | 97,9 % | 97,9 % | = |
+| Duplication | 0,4 % | 0,4 % | = |
+| Ratings fiabilité / sécurité / maintenabilité | A / A / A | A / A / A | = |
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-426 --sync` — ne pas éditer à la main)*
@@ -270,4 +296,5 @@ contrôle joué dans la même session.
 |---|---|---|---|---|---|---|
 | /start | ok | 12 s | — | — | — | — |
 | /develop | ok | 2 h 28 min | 4 (25 s) | 3 (11 min 14 s) | — | api-mail 4B/3T, registre accounts+ancre -99,5 %/req (A/B même session), DISCARD ALL registre supprimé |
-| **Total cycle** | | **2 h 28 min** | **4 (25 s)** | **3 (11 min 14 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 26 min 43 s | 3 (1 min 41 s) | 11 (16 min 27 s) | 4 (1 min 25 s) | 2 itération(s), api-mail 3B/11T, 3 issues tests (SYSLIB1045 x2, CA1859) corrigées ; QG OK |
+| **Total cycle** | | **2 h 55 min** | **7 (2 min 07 s)** | **14 (27 min 41 s)** | **4 (1 min 25 s)** | |
