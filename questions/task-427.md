@@ -1,3 +1,5 @@
+> ✅ **Résolu le 2026-11-06** : option **1** (accepter, critère jugé sur son intention). `/review` relancé.
+
 # task-427 — /review : un critère de la DoD n'est pas tenu à la lettre (taux de cache)
 
 **Étape** : `/review`, 2026-11-06 vers 00:50. **Nature** : arbitrage humain sur un critère de la DoD. Le code n'est pas

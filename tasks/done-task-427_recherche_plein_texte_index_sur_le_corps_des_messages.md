@@ -240,6 +240,8 @@ PgBouncer à 1, mêmes bases, même tireur, `LATENCY_MS=96`. Proxies Toxiproxy p
 - Le ratio baisse donc par son dénominateur, pas par un débordement de la mémoire.
 - Le critère visait à interdire un index qui chasserait du cache le jeu de travail. Aucun index n'a été ajouté.
 
+> **Arbitrage humain (2026-11-06)** : critère **accepté sur son intention** (réponse « 1 » à `questions/task-427.md`) : les lectures disque ne sont pas accrues, aucun index n'a été ajouté. Le point figure en tête du corps de la PR.
+
 **Effets mesurés au-delà de la recherche**, p95 à 1996 :
 
 | Étape | Avant | Après |
@@ -415,4 +417,26 @@ figure dans « Mesure préalable » (environ 27 Go pour 10 000 boîtes à volume
 | /lint-angular | skipped | 0.4 s | — | — | — | repo non listé dans Repos |
 | /lint-mobile | skipped | 0.4 s | — | — | — | repo non listé dans Repos |
 | /e2e | ok | 19 min 13 s | — | — | — | e2e ×5 (37 min 29 s) |
-| **Total cycle** | | **2 h 09 min** | **8 (2 min 17 s)** | **17 (31 min 12 s)** | **4 (1 min 19 s)** | |
+| /review | failed | 5 min 59 s | 1 (8.9 s) | 1 (5 min 20 s) | — | api-mail 1B/1T, arbitrage humain : critère taux de cache (questions/task-427.md) |
+| **Total cycle** | | **2 h 15 min** | **9 (2 min 26 s)** | **18 (36 min 32 s)** | **4 (1 min 19 s)** | |
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/342 — label `awaiting-human-merge`
+  (critère « taux de cache » accepté sur arbitrage humain du 2026-11-06, en tête du corps de la PR).
+
+## Code Review Summary
+
+**APPROVED** — 2 fichiers revus, 0 point bloquant, 2 suggestions.
+
+- Build : 0 erreur. Tests : 0 échec (validation de `/review` à da6b30dd, branche inchangée depuis, à jour avec
+  `develop` ; les 3 tests « du jour » rejoués verts à 02:02).
+- DoD : tous les critères tenus ; « taux de cache » accepté sur son intention par l'humain (lectures disque non
+  accrues) ; migration et audit 7c sans objet (aucun index) ; dimensionnement : rien à ajouter en production.
+- **Règle 1b — comportement → test → preuve rouge** (`FullTextSearchSinglePassIntegrationTests`, routes
+  `/search/semantic` et `/search/patient`, vraie pile jusqu'à PostgreSQL) : tous les termes (M1), casse (M2), `%`/`_`
+  littéraux (M3), filtre patient (M4), fenêtre des plus récents (M5). Détail dans le `## Develop log`.
+- Sécurité : SQL constant de compilation, entièrement paramétré ; aucune donnée de santé dans les journaux.
+- Suggestions non bloquantes : identifiants candidats transitant par l'application (choix assumé, règle des
+  dossiers-étiquettes non dupliquée en SQL) ; filtre `Contains` en mémoire qui double le `LIKE` SQL, gardé pour la
+  sémantique identique.
