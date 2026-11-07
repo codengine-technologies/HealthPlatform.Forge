@@ -116,3 +116,9 @@ Règles :
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : non — données de banc synthétiques, aucune donnée de santé réelle
 - **AIPD / impact RGPD** : inchangée
+
+## Branches
+
+- `api-mail` (pushed) : feat/task-431-banc-detecteurs-de-defauts-sql-prouves — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-431-banc-detecteurs-de-defauts-sql-prouves
+
+> Pré-flight du /start (2026-11-07) : `api-mail`, `client-blazor`, `client-mobile`, `dtos-mss`, `sdk` sur `develop`.
