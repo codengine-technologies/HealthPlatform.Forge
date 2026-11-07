@@ -1,0 +1,4 @@
+-- base : u_l9l_b27c2b6f659b50f6240b3481927d0381
+-- table : MailAttachments
+| lignes | Content (octets/ligne) | FileName (octets/ligne) | ContentType (octets/ligne) |
+| 261 | 184586 | 12 | 16 |

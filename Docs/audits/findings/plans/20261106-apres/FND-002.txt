@@ -1,0 +1,68 @@
+-- forme : 840774b6aad35df6f93d47d8d971aca0
+-- base : u_l9l_b27c2b6f659b50f6240b3481927d0381
+-- requête : texte du tir
+Unique (actual time=4.157..4.162 rows=3 loops=1)
+  Buffers: shared hit=208 read=2
+  I/O Timings: shared read=0.111
+  ->  Sort (actual time=4.157..4.160 rows=3 loops=1)
+        Sort Key: r.row_id, r."position"
+        Sort Method: quicksort  Memory: 27kB
+        Buffers: shared hit=208 read=2
+        I/O Timings: shared read=0.111
+        ->  Hash Join (actual time=3.951..4.125 rows=3 loops=1)
+              Hash Cond: (d."Id" = r.row_id)
+              Buffers: shared hit=202 read=2
+              I/O Timings: shared read=0.111
+              ->  Seq Scan on "MailContents" d (actual time=0.002..0.172 rows=156 loops=1)
+                    Buffers: shared hit=32
+              ->  Hash (actual time=3.926..3.928 rows=3 loops=1)
+                    Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                    Buffers: shared hit=170 read=2
+                    I/O Timings: shared read=0.111
+                    ->  Subquery Scan on r (actual time=3.914..3.921 rows=3 loops=1)
+                          Buffers: shared hit=170 read=2
+                          I/O Timings: shared read=0.111
+                          ->  WindowAgg (actual time=3.913..3.920 rows=3 loops=1)
+                                Run Condition: (row_number() OVER (?) <= $3)
+                                Buffers: shared hit=170 read=2
+                                I/O Timings: shared read=0.111
+                                ->  Sort (actual time=3.909..3.913 rows=50 loops=1)
+                                      Sort Key: p."position", ((m."SentDate" IS NULL)), m."SentDate" DESC, m."Uid" DESC
+                                      Sort Method: quicksort  Memory: 29kB
+                                      Buffers: shared hit=170 read=2
+                                      I/O Timings: shared read=0.111
+                                      ->  Nested Loop (actual time=0.172..3.806 rows=50 loops=1)
+                                            Buffers: shared hit=159 read=2
+                                            I/O Timings: shared read=0.111
+                                            ->  Nested Loop (actual time=0.150..3.513 rows=50 loops=1)
+                                                  Buffers: shared hit=159 read=2
+                                                  I/O Timings: shared read=0.111
+                                                  ->  Hash Join (actual time=0.119..0.170 rows=50 loops=1)
+                                                        Hash Cond: (m."Id" = d_1."MailId")
+                                                        Buffers: shared hit=83
+                                                        ->  Seq Scan on "Mails" m (actual time=0.003..0.026 rows=156 loops=1)
+                                                              Buffers: shared hit=5
+                                                        ->  Hash (actual time=0.103..0.103 rows=50 loops=1)
+                                                              Buckets: 1024  Batches: 1  Memory Usage: 61kB
+                                                              Buffers: shared hit=78
+                                                              ->  Index Scan using "PK_MailContents" on "MailContents" d_1 (actual time=0.027..0.061 rows=50 loops=1)
+                                                                    Index Cond: ("Id" = ANY ($2))
+                                                                    Buffers: shared hit=78
+                                                  ->  Limit (actual time=0.065..0.067 rows=1 loops=50)
+                                                        Buffers: shared hit=76 read=2
+                                                        I/O Timings: shared read=0.111
+                                                        ->  Result (actual time=0.065..0.066 rows=1 loops=50)
+                                                              Buffers: shared hit=76 read=2
+                                                              I/O Timings: shared read=0.111
+                                            ->  Memoize (actual time=0.005..0.005 rows=1 loops=50)
+                                                  Cache Key: (lower(d_1."Body"))
+                                                  Cache Mode: binary
+                                                  Hits: 0  Misses: 50  Evictions: 0  Overflows: 0  Memory Usage: 238kB
+                                                  ->  Function Scan on unnest p (actual time=0.002..0.002 rows=1 loops=50)
+                                                        SubPlan 1
+                                                          ->  Function Scan on unnest t (actual time=0.001..0.001 rows=1 loops=50)
+                                                                Filter: ((lower(d_1."Body")) ~~ like_escape(lower(pattern), $4))
+Planning:
+  Buffers: shared hit=297
+Planning Time: 1.839 ms
+Execution Time: 4.471 ms

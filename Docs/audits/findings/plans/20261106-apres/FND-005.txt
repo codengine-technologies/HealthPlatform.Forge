@@ -1,0 +1,61 @@
+-- forme : 2a14c9daf0b3eeb161b438a62f3eac73
+-- base : u_l9l_b27c2b6f659b50f6240b3481927d0381
+-- requête : texte du tir
+Hash Semi Join (actual time=0.341..0.615 rows=11 loops=1)
+  Hash Cond: (t."Id" = m."TagId")
+  Buffers: shared hit=131
+  ->  Seq Scan on "Tags" t (actual time=0.040..0.040 rows=18 loops=1)
+        Buffers: shared hit=1
+  ->  Hash (actual time=0.165..0.166 rows=51 loops=1)
+        Buckets: 1024  Batches: 1  Memory Usage: 11kB
+        Buffers: shared hit=10
+        ->  Hash Join (actual time=0.116..0.155 rows=51 loops=1)
+              Hash Cond: (m."MailId" = m0."Id")
+              Buffers: shared hit=10
+              ->  Seq Scan on "MailTags" m (actual time=0.002..0.098 rows=248 loops=1)
+                    Buffers: shared hit=5
+              ->  Hash (actual time=0.026..0.026 rows=32 loops=1)
+                    Buckets: 1024  Batches: 1  Memory Usage: 10kB
+                    Buffers: shared hit=5
+                    ->  Seq Scan on "Mails" m0 (actual time=0.006..0.018 rows=32 loops=1)
+                          Filter: ((NOT "IsRead") AND (("FolderPath")::text = $8) AND ("UidValidity" = $1))
+                          Rows Removed by Filter: 124
+                          Buffers: shared hit=5
+  SubPlan 1
+    ->  Aggregate (actual time=0.017..0.017 rows=1 loops=11)
+          Buffers: shared hit=60
+          ->  Hash Join (actual time=0.013..0.017 rows=5 loops=11)
+                Hash Cond: (m1."MailId" = m2."Id")
+                Buffers: shared hit=60
+                ->  Seq Scan on "MailTags" m1 (actual time=0.001..0.012 rows=21 loops=11)
+                      Filter: ("TagId" = t."Id")
+                      Rows Removed by Filter: 227
+                      Buffers: shared hit=55
+                ->  Hash (actual time=0.023..0.023 rows=32 loops=1)
+                      Buckets: 1024  Batches: 1  Memory Usage: 10kB
+                      Buffers: shared hit=5
+                      ->  Seq Scan on "Mails" m2 (actual time=0.005..0.016 rows=32 loops=1)
+                            Filter: ((NOT "IsRead") AND (("FolderPath")::text = $3) AND ("UidValidity" = $1))
+                            Rows Removed by Filter: 124
+                            Buffers: shared hit=5
+  SubPlan 2
+    ->  Aggregate (actual time=0.016..0.016 rows=1 loops=11)
+          Buffers: shared hit=60
+          ->  Hash Join (actual time=0.013..0.016 rows=5 loops=11)
+                Hash Cond: (m3."MailId" = m4."Id")
+                Buffers: shared hit=60
+                ->  Seq Scan on "MailTags" m3 (actual time=0.001..0.011 rows=21 loops=11)
+                      Filter: ("TagId" = t."Id")
+                      Rows Removed by Filter: 227
+                      Buffers: shared hit=55
+                ->  Hash (actual time=0.021..0.021 rows=32 loops=1)
+                      Buckets: 1024  Batches: 1  Memory Usage: 10kB
+                      Buffers: shared hit=5
+                      ->  Seq Scan on "Mails" m4 (actual time=0.005..0.015 rows=32 loops=1)
+                            Filter: ((NOT "IsRead") AND (("FolderPath")::text = $5) AND ("UidValidity" = $1))
+                            Rows Removed by Filter: 124
+                            Buffers: shared hit=5
+Planning:
+  Buffers: shared hit=224
+Planning Time: 1.570 ms
+Execution Time: 0.760 ms

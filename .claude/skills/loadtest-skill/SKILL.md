@@ -1110,6 +1110,19 @@ Trois consignes :
 
 Les textes sont normalisés (`$1`, `$2`) : aucune donnée de santé dans le TSV.
 
+**Lire la section « Signaux de défaut » à chaque tir (task-431).** Elle passe **toutes** les
+formes, pas seulement le top 20, à cinq détecteurs prouvés sur un corpus de défauts passés
+(`report_signals.py`, `fixtures/pgss-corpus/`). Ce sont les pages par ligne rendue, la colonne
+volumineuse lue, la sous-requête corrélée, les appels par requête HTTP et le poids dans le tir.
+- **Ne pas s'arrêter aux formes dominantes.** Le défaut des pièces jointes du dossier patient
+  (task-429) était au rang 6, à 5,3 % du temps et 31 % des lectures disque, et a traversé tous
+  les rapports.
+- **Pour chaque forme signalée** : lire son texte SQL complet, retrouver son code, et lire son plan
+  (`explain (analyze, buffers)` sur une base du banc) avant de conclure. Un signal est une
+  hypothèse. Le registre des findings et leur rédaction relèvent de `/loadtest-findings` (§ 5b-quater).
+- **Ne jamais conclure au manque de mémoire** pour une forme signalée par `pages-par-ligne`,
+  `colonne-volumineuse` ou `sous-requete-correlee`.
+
 ### 5b — Analyse Seq systématique + dump (OBLIGATOIRE, jamais silencieuse)
 
 **Toujours**, en fin de tir, interroger le MCP `seq-local` sur la fenêtre du tir
@@ -1243,6 +1256,22 @@ avec son gain attendu pour que l'arbitrage soit possible.
 
 Quand aucun candidat n'est signalé, la section le **dit** (« Aucun candidat
 mécanique ») : c'est un résultat, pas un vide à combler.
+
+### 5b-quater — Findings SQL par analyse de code (OBLIGATOIRE pour tout rapport copié dans `Docs/audits/`, task-433)
+
+Après `report.sh` et **avant l'étape 6**, lancer `/loadtest-findings {copie du rapport dans Docs/audits/}`. Les plans
+se jouent sur les bases du banc, qui doivent encore être dans l'état du tir. Playbook : `agents/loadtest-findings.md`.
+
+- Il explore au plus 8 formes : les signalées de 5a-ter d'abord, puis les plus coûteuses. Pour chacune, il produit le
+  site au commit du tir, le plan sur une base du banc, la cause, le gain borné, le correctif et son test. Le verdict
+  est confirmé, plausible ou écarté.
+- Il tient `Docs/audits/findings-registry.md` : un finding connu est remesuré, pas ré-exploré, et une récidive nomme
+  la prévention qui a manqué.
+- **Son contrôle de non-confabulation est bloquant** (`findings.py check`, 0 écart) : chaque chiffre vient du
+  `pgstats` du tir, chaque `fichier:ligne` du commit tiré, chaque ligne de plan d'un plan sauvegardé.
+- **Le commit tiré** est celui que `tir-ab.sh` journalise (`code : {sha}`). Pour un tir lancé autrement, le noter
+  avant de lancer le tir : sans lui, les `fichier:ligne` ne se contrôlent que contre un commit supposé.
+- Ses propositions rejoignent les « Findings d'optimisation » de 5b-ter : **proposer, jamais créer** de task.
 
 ### 5c — Enchaîner le nettoyage
 

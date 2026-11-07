@@ -719,3 +719,327 @@ Sources : `pgstats-journey-193047.tsv`, `pgserver-journey-debut-185214.tsv`, `pg
 > Dump brut des événements du tir : `seq-journey-courte-1400-1996-20261106-apres-193002.jsonl`.
 
 _À COMPLÉTER par l'analyse systématique seq-local (voir le skill). Lister ici : erreurs/warnings hors bruit de boot, nombre de parsings CDA (`[CdaParsingService] Parsing completed`), échecs d'embedding (task-196), 429, erreurs de connexion IMAP, reprises d'étiquetage IA (`[TaggingRecovery]`), et tout marqueur de régression (`Failed to parse entity headers`)._
+
+## Findings — analyse de code
+
+> **Rejeu de preuve de task-433**, joué le 2026-11-07 par `/loadtest-findings` en **mode complet** (`--full` : le
+> registre est ignoré, chaque candidat est ré-exploré). Sans `--full`, les findings réglés au registre ne sont plus
+> que remesurés.
+>
+> - **Tir** : `journey-courte-1400-1996-20261106-apres`. **Code** : api-mail `f50f2ae5`. **Mesures** :
+>   `pgstats-journey-193047.tsv`, 760 903 requêtes HTTP.
+> - **Mode dégradé pour le site** : le tir précède task-432, ses formes ne portent pas de commentaire `site=`. Chaque
+>   site est retrouvé par `git grep` au commit du tir, avec la recherche citée.
+> - **Plans** : `Docs/audits/findings/plans/20261106-apres/`, joués sur la base de banc la plus volumineuse
+>   (`u_l9l_b27c2b6f659b50f6240b3481927d0381`), paramètres tirés de la base et jamais recopiés (plan générique,
+>   `$1`). Un index ajouté après le tir est retiré dans une transaction annulée pour retrouver le schéma du tir.
+> - **Contrôle de non-confabulation** : `python Tools/loadtest-findings/findings.py check` — **101 éléments, 0 écart**.
+>   Chaque mesure, chaque `fichier:ligne` et chaque ligne de plan citée sont retrouvés dans leur source.
+
+**Candidats** : 8 sur 8.
+- Six formes signalées par les détecteurs de task-431, par temps SQL.
+- Deux formes non signalées, les plus coûteuses : la recherche plein texte et le registre.
+- Une forme signalée est restée hors budget : le téléchargement d'une pièce jointe (`4c9c73a7…`, 22.9 s). Elle sert
+  `Content` sur la route qui le rend, c'est le faux positif connu de D2.
+
+| Finding | Verdict | Classe | Temps SQL | Lu sur disque | Gain borné |
+|---|---|---|---|---|---|
+| FND-007 Document médical chargé entier à l'ouverture d'un message | **confirmé — récidive** | `colonne-volumineuse` | 165.7 s | 5.4 Go | ≈ 13 % de la forme, à mesurer par A/B |
+| FND-004 Comptage de biologie par sous-requête sans index | **confirmé** | `sous-requete-correlee` | 113.7 s | 0.1 Go | pages de la sous-requête |
+| FND-003 Pièces jointes du dossier patient lues avec leur contenu | **confirmé** | `colonne-volumineuse` | 67.6 s | 5.1 Go | ≈ toute la forme |
+| FND-005 Comptages d'étiquettes calculés trois fois | **confirmé** | `sous-requete-correlee` | 62.9 s | 0.0 Go | ≈ deux tiers de la forme |
+| FND-010 Recherche vectorielle exacte, sans index | **plausible** | `pages-par-ligne` | 43.1 s | 1.5 Go | dépend de la taille des boîtes |
+| FND-009 Contenu du message chargé avec son vecteur | **confirmé — récidive** | `colonne-volumineuse` | 42.4 s | 0.3 Go | ≈ 68 % de la forme, à mesurer par A/B |
+| FND-002 Recherche plein texte, forme d'après task-427 | **écarté** | `hors-détecteur` | 167.8 s | 0.2 Go | — |
+| FND-006 Registre : la boîte de la personne, une fois par requête | **écarté** | `hors-détecteur` | 67.9 s | 0.0 Go | — |
+
+Les trois findings confirmés à la main le 2026-11-06 sont retrouvés (FND-003, FND-004, FND-005), et le registre est
+écarté (FND-006). Le rejeu en ajoute deux qui avaient échappé à la lecture manuelle (FND-007, FND-009), tous deux
+**récidives** d'une classe déjà corrigée.
+
+#### FND-007 — Le document médical est chargé entier, vecteur compris, à l'ouverture d'un message
+
+- **Verdict** : **confirmé — récidive**. La classe `colonne-volumineuse` a déjà été corrigée sur ce même chemin
+  (task-322, task-323) et sur le dossier patient (FND-003, task-429).
+- **Forme** : `9a63b74fac8c0708f158bb2588df9b57`
+- **Détecteurs** : `colonne-volumineuse` (Body, Embedding, HtmlBody, MetadataJson) et `poids-dans-le-tir`.
+- **Site** : `src/Infrastructure/Repositories/MailDb/MailRepository.cs:1263`, `PopulateMailContentAsync`, branche
+  `WithContent`. Retrouvé par `git grep -n "MailMedicalDocuments.Where(a => a.MailId"` au commit du tir.
+- **Mesures du tir** :
+
+| Mesure | Valeur |
+|---|---|
+| Appels | 168 700 |
+| Temps SQL | 165.7 s |
+| Part du temps SQL | 13.0 % |
+| ms par appel | 0.98 |
+| Pages par appel | 18 |
+| Pages lues | 22.8 Go |
+| Lu sur disque | 5.4 Go |
+| Part des lectures disque | 33.1 % |
+
+- **Cause** : en mode `WithContent`, l'entité `MailMedicalDocument` est matérialisée entière. `BuildMedicalDocumentDto`
+  (`src/Infrastructure/Repositories/MailDb/MailRepository.cs:1355`) ne lit que `Body` et `HtmlBody`. `Embedding` et
+  `MetadataJson` sont lus, détoastés, transférés, puis jetés. Le chemin groupé les écarte déjà (task-322,
+  `src/Infrastructure/Repositories/MailDb/MailRepository.cs:1928`), le chemin d'un message seul non.
+- **Preuve** : sous PostgreSQL 16, `EXPLAIN ANALYZE` ne détoaste pas. Le plan (`FND-007.txt`) montre 2 pages, là où
+  le tir en a lu 18 par appel. La preuve est donc le poids de chaque colonne.
+  **Plan** : `FND-007-colonnes.txt`
+
+```text
+| lignes | Body (octets/ligne) | HtmlBody (octets/ligne) | Embedding (octets/ligne) | MetadataJson (octets/ligne) |
+| 157 | 2482 | 37860 | 6148 |  |
+```
+
+- **Gain borné** : `Embedding` pèse 6 148 octets sur 46 490 par ligne, soit 13 % des octets détoastés de la forme.
+  `MetadataJson` est vide au banc et n'y pèse rien. Le gain est au plus ≈ 13 % de 165.7 s et de 22.8 Go, à mesurer
+  par A/B. Il ne se reporte pas sur le temps de réponse sans mesure.
+- **Correctif proposé** : projeter `MailMedicalDocument` sans `Embedding` ni `MetadataJson` en `WithContent`, comme
+  `MedicalDocumentHeaderProjection` le fait en mode en-tête.
+- **Test qui le prouverait** : un test d'intégration sur `GET /api/v1/Mail/folders/{folderName}/emails/{emailId}`
+  ouvrant un message à document. Le SQL relevé par `NpgsqlQueryCapture` ne doit sélectionner ni `"Embedding"` ni
+  `"MetadataJson"`. Il doit être vu rouge sur le code d'avant.
+- **Prévention manquante** : la consigne `groupby-final-materialise-l-entite` de `conventions/csharp.md` interdit déjà
+  de matérialiser une colonne volumineuse hors du chemin qui la sert. Mais sa garde
+  (`AttachmentBytesReadEndToEndTests`) ne couvre que `Content` des pièces jointes. La garde qui manque : « aucune route
+  de lecture du parcours ne sélectionne `Embedding` ni `MetadataJson`, hors recherche vectorielle ».
+
+#### FND-004 — Le comptage de biologie parcourt la table par document
+
+- **Verdict** : **confirmé**.
+- **Forme** : `ac42e9c32aa51dc548795bf6a9692db0`
+- **Détecteurs** : `pages-par-ligne` et `sous-requete-correlee`.
+- **Site** : `src/Infrastructure/Repositories/MailDb/MailRepository.cs:1967`
+  (`BiologyCount = d.MailMedicalDocumentBiologies.Count`), dans `LoadBulkMailLookupsAsync`. Retrouvé par
+  `git grep -n BiologyCount`.
+- **Mesures du tir** :
+
+| Mesure | Valeur |
+|---|---|
+| Appels | 88 248 |
+| Temps SQL | 113.7 s |
+| Part du temps SQL | 8.9 % |
+| Lignes par appel | 18.1 |
+| Pages par appel | 213 |
+| Pages par ligne | 11.8 |
+| Pages lues | 143.2 Go |
+
+- **Cause** : le compteur est une sous-requête corrélée par document, sur une table sans index sur
+  `MedicalDocumentId` au commit du tir. Chaque document balaie la table de biologie.
+- **Preuve** : plan au schéma du tir, avec l'index de task-430 retiré dans une transaction annulée.
+  **Plan** : `FND-004.txt`
+
+```text
+SubPlan 1
+->  Aggregate (actual time=0.010..0.010 rows=1 loops=20)
+->  Seq Scan on "MailMedicalDocumentBiology" m0 (actual time=0.009..0.010 rows=1 loops=20)
+Filter: (m."Id" = "MedicalDocumentId")
+Rows Removed by Filter: 118
+```
+
+  À la taille de la base de banc (118 lignes rejetées par document), le planificateur garde le balayage même avec
+  l'index (`FND-004-schema-courant.txt`). Le coût croît avec la table, et le tir l'a payé à 213 pages par appel.
+- **Gain borné** : les pages de la sous-requête, au plus 143.2 Go et 113.7 s.
+- **Correctif** : index sur `MailMedicalDocumentBiology.MedicalDocumentId` — task-430.
+- **Registre** : déjà corrigé et mesuré (task-430 : −43 % de pages).
+
+#### FND-003 — Les pièces jointes du dossier patient sont lues avec leur contenu
+
+- **Verdict** : **confirmé**.
+- **Forme** : `e25db356be94a82ee5c4619e7473f2ff`
+- **Détecteurs** : `pages-par-ligne`, `colonne-volumineuse` (Content) et `poids-dans-le-tir`.
+- **Site** : `src/Infrastructure/Repositories/MailDb/PatientRepository.cs:700` (`.GroupBy(a => a.MailId)`), dans
+  `LoadMailsWithAttachmentsAsync` (`src/Infrastructure/Repositories/MailDb/PatientRepository.cs:651`). Retrouvé par
+  `git grep -n "GroupBy(a => a.MailId"`.
+- **Mesures du tir** :
+
+| Mesure | Valeur |
+|---|---|
+| Appels | 3 862 |
+| Temps SQL | 67.6 s |
+| Lignes par appel | 30.5 |
+| Pages par appel | 468 |
+| Pages lues | 13.8 Go |
+| Lu sur disque | 5.1 Go |
+| Part des lectures disque | 30.9 % |
+
+- **Cause** : un `GroupBy` final matérialise l'entité `MailAttachment` entière, `Content` compris, pour n'en projeter
+  que les métadonnées.
+- **Preuve** : `Content` pèse quatre ordres de grandeur de plus que les métadonnées projetées.
+  **Plan** : `FND-003-colonnes.txt`
+
+```text
+| lignes | Content (octets/ligne) | FileName (octets/ligne) | ContentType (octets/ligne) |
+| 261 | 184586 | 12 | 16 |
+```
+
+- **Gain borné** : la quasi-totalité de la forme, au plus 13.8 Go lus et 5.1 Go sur disque.
+- **Correctif** : projeter avant de regrouper — task-429.
+- **Registre** : déjà corrigé et mesuré (task-429 : lectures disque du tir −60 %).
+
+#### FND-005 — Les comptages d'étiquettes sont calculés trois fois
+
+- **Verdict** : **confirmé**.
+- **Forme** : `2a14c9daf0b3eeb161b438a62f3eac73`
+- **Détecteurs** : `pages-par-ligne` et `sous-requete-correlee`.
+- **Site** : `src/Infrastructure/Repositories/MailDb/MailRepository.cs:3461` et
+  `src/Infrastructure/Repositories/MailDb/MailRepository.cs:3462` (`Count` et `UnreadCount`, deux expressions
+  identiques), sous le filtre `Any` de `src/Infrastructure/Repositories/MailDb/MailRepository.cs:3451`, dans
+  `GetTagFoldersAsync`. Retrouvé par `git grep -n "db.Tags"`.
+- **Mesures du tir** :
+
+| Mesure | Valeur |
+|---|---|
+| Appels | 47 024 |
+| Temps SQL | 62.9 s |
+| Pages par appel | 248 |
+| Pages par ligne | 24.4 |
+| Pages lues | 89.0 Go |
+
+- **Cause** : la même sous-requête corrélée est écrite trois fois. Le filtre `Any` et deux compteurs identiques
+  (`Count` = `UnreadCount`) balaient chacun `MailTags`, par étiquette.
+- **Preuve** : **Plan** : `FND-005.txt`
+
+```text
+SubPlan 1
+->  Seq Scan on "MailTags" m1 (actual time=0.001..0.012 rows=21 loops=11)
+Filter: ("TagId" = t."Id")
+SubPlan 2
+->  Seq Scan on "MailTags" m3 (actual time=0.001..0.011 rows=21 loops=11)
+```
+
+- **Gain borné** : environ deux tiers des pages de la forme (deux balayages sur trois), au plus 89.0 Go et 62.9 s.
+- **Correctif** : un seul comptage groupé par étiquette — task-430.
+- **Registre** : déjà corrigé et mesuré (task-430 : −96 % de pages).
+
+#### FND-010 — La recherche vectorielle calcule la distance de chaque document de la boîte
+
+- **Verdict** : **plausible**.
+- **Forme** : `9b0276b995554c73320b5caa00935e87`. Variante : `90fed31c06a6aff57d1fb5c7c8d25a5d`, la même recherche
+  sur `MailContents`.
+- **Détecteurs** : `pages-par-ligne`.
+- **Site** : `src/Infrastructure/Repositories/MailDb/SemanticSearchRepository.cs:295` (`CosineDistance`, jointure par
+  dossier, seuil, tri, limite). Retrouvé par `git grep -n CosineDistance`. Site probable : la forme n'a pas de filtre
+  patient, que la méthode n'émet que s'il est fourni.
+- **Mesures du tir** :
+
+| Mesure | Valeur |
+|---|---|
+| Appels | 8 666 |
+| Temps SQL | 43.1 s |
+| ms par appel | 4.97 |
+| Pages par appel | 617 |
+| Lu sur disque | 1.5 Go |
+
+- **Cause probable** : aucun index vectoriel. Chaque recherche détoaste le vecteur de tous les documents du dossier
+  pour calculer la distance, puis trie.
+- **Preuve** : **Plan** : `FND-010.txt`
+
+```text
+->  Seq Scan on "MailMedicalDocuments" m (actual time=0.032..9.297 rows=2 loops=1)
+Rows Removed by Filter: 155
+Buffers: shared hit=575 read=1
+```
+
+- **Pourquoi plausible et pas confirmé** : une recherche exacte est le bon plan à 157 documents par boîte. Un index
+  HNSW est approché et post-filtre par dossier et par seuil. Le défaut n'existe que si les boîtes grossissent.
+- **Gain borné** : au plus 43.1 s pour cette forme, plus 37.1 s pour sa variante. Pour trancher, il faut un tir sur
+  des boîtes à 10 fois plus de documents.
+- **Test qui le prouverait** : un plan sur une base de 2 000 documents, avec et sans index HNSW, rappel mesuré.
+
+#### FND-009 — Le contenu du message est chargé avec son vecteur
+
+- **Verdict** : **confirmé — récidive**. Même classe et même chemin que FND-007.
+- **Forme** : `4b9380ddd1837d2bc365a5afbc833f85`
+- **Détecteurs** : `colonne-volumineuse` (Body, BodyHtml, Embedding).
+- **Site** : `src/Infrastructure/Repositories/MailDb/MailRepository.cs:1326` (`PopulateMailContentAsync`, branche
+  `WithContent`). Le DTO ne recopie que `Body`, `BodyHtml`, `ContentType` et `Summary`
+  (`src/Infrastructure/Repositories/MailDb/MailRepository.cs:1337`). Retrouvé par
+  `git grep -n "MailContents.Where(c => c.MailId"`.
+- **Mesures du tir** :
+
+| Mesure | Valeur |
+|---|---|
+| Appels | 168 138 |
+| Temps SQL | 42.4 s |
+| Pages par appel | 8 |
+| Pages lues | 10.7 Go |
+| Lu sur disque | 0.3 Go |
+
+- **Cause** : en `WithContent`, l'entité `MailContent` est matérialisée entière, `Embedding` compris, que rien
+  n'affiche.
+- **Preuve** : **Plan** : `FND-009-colonnes.txt`
+
+```text
+| lignes | Body (octets/ligne) | BodyHtml (octets/ligne) | Summary (octets/ligne) | Embedding (octets/ligne) |
+| 156 | 2842 |  |  | 6148 |
+```
+
+- **Gain borné** : `Embedding` pèse 6 148 octets sur 8 990 par ligne, soit 68 %. Le gain est au plus ≈ 68 % de
+  10.7 Go et de 42.4 s, à mesurer par A/B.
+- **Correctif proposé** : le même que FND-007, sur `MailContent` (`ContentHeaderProjection` sans le vecteur).
+- **Test qui le prouverait** : le même que FND-007.
+
+#### FND-002 — Recherche plein texte : la forme d'après task-427
+
+- **Verdict** : **écarté**. C'est la forme déjà corrigée de FND-002.
+- **Forme** : `840774b6aad35df6f93d47d8d971aca0`. Variante : `28e9d819261554f956f0ee69032938d7`.
+- **Détecteurs** : aucun. Elle est candidate par son coût (13.1 % du temps SQL).
+- **Site** : `src/Infrastructure/Repositories/MailDb/SemanticSearchRepository.cs:666` (`WITH terms AS`).
+- **Mesures du tir** :
+
+| Mesure | Valeur |
+|---|---|
+| Appels | 8 717 |
+| Temps SQL | 167.8 s |
+| Part du temps SQL | 13.1 % |
+| ms par appel | 19.25 |
+
+- **Raison** : le corps n'est mis en minuscules qu'une fois par contenu candidat, ce qui était le correctif de
+  task-427. Le coût restant est la lecture des corps à comparer, proportionnelle aux candidats du filtre.
+  **Plan** : `FND-002.txt`
+
+```text
+->  Memoize (actual time=0.005..0.005 rows=1 loops=50)
+Cache Key: (lower(d_1."Body"))
+Execution Time: 4.471 ms
+```
+
+#### FND-006 — Registre : la boîte de la personne, lue une fois par requête
+
+- **Verdict** : **écarté**. C'est le coût normal d'une recherche indexée d'une ligne.
+- **Forme** : `8b53e22fb9e5951d2a2cd7da49917075`
+- **Détecteurs** : aucun. Elle est candidate par son coût ; c'est le faux positif connu de D1.
+- **Site** : `src/Infrastructure/Repositories/TenantDb/PostgresTenantRegistryClient.cs:390` (`GetMailboxAsync`).
+- **Mesures du tir** :
+
+| Mesure | Valeur |
+|---|---|
+| Appels | 760 820 |
+| Temps SQL | 67.9 s |
+| Pages par appel | 9 |
+| Lignes par appel | 1.0 |
+| Bases | 1 |
+
+- **Raison** : deux recherches par index unique, 12 pages et 0,3 ms. Le poids vient de la fréquence (une lecture par
+  requête HTTP), pas du plan. S'il gêne un jour, la réponse est un cache, pas une requête.
+  **Plan** : `FND-006.txt`
+
+```text
+->  Index Scan using ux_mss_accounts_account_address on mss_accounts m (actual time=0.068..0.068 rows=1 loops=1)
+Buffers: shared hit=12
+Execution Time: 0.342 ms
+```
+
+### Connus du registre — remesurés
+
+Le mode complet ré-explore tout, il n'y a donc rien à remesurer à part. En mode normal, FND-002 à FND-006 seraient
+seulement remesurés.
+
+### Ce que l'humain décide
+
+La forge ne rédige aucune task d'elle-même. Propositions, par gain borné décroissant :
+
+1. FND-007 + FND-009 : projeter les documents et le contenu sans vecteur à l'ouverture d'un message, et ajouter la
+   garde « aucune route de lecture ne sélectionne `Embedding` ». Une seule task.
+2. FND-010 : un tir sur des boîtes à 10 fois plus de documents, pour trancher le besoin d'un index vectoriel.

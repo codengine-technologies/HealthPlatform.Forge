@@ -1,0 +1,29 @@
+-- forme : ac42e9c32aa51dc548795bf6a9692db0
+-- base : u_l9l_b27c2b6f659b50f6240b3481927d0381
+-- requête : texte du tir
+-- schéma reconstitué : DROP INDEX "IX_MailMedicalDocumentBiology_MedicalDocumentId"
+Bitmap Heap Scan on "MailMedicalDocuments" m (actual time=0.166..0.305 rows=20 loops=1)
+  Recheck Cond: ("MailId" = ANY ($1))
+  Heap Blocks: exact=7
+  Buffers: shared hit=130
+  ->  Bitmap Index Scan on "IX_MailMedicalDocuments_MailId" (actual time=0.043..0.044 rows=20 loops=1)
+        Index Cond: ("MailId" = ANY ($1))
+        Buffers: shared hit=23
+  SubPlan 1
+    ->  Aggregate (actual time=0.010..0.010 rows=1 loops=20)
+          Buffers: shared hit=60
+          ->  Seq Scan on "MailMedicalDocumentBiology" m0 (actual time=0.009..0.010 rows=1 loops=20)
+                Filter: (m."Id" = "MedicalDocumentId")
+                Rows Removed by Filter: 118
+                Buffers: shared hit=60
+  SubPlan 2
+    ->  Aggregate (actual time=0.001..0.001 rows=1 loops=20)
+          Buffers: shared hit=40
+          ->  Index Only Scan using "IX_MedDocSummary_MedicalDocumentId" on "MailMedicalDocumentSummary" m1 (actual time=0.001..0.001 rows=0 loops=20)
+                Index Cond: ("MedicalDocumentId" = m."Id")
+                Heap Fetches: 0
+                Buffers: shared hit=40
+Planning:
+  Buffers: shared hit=228
+Planning Time: 1.143 ms
+Execution Time: 0.405 ms

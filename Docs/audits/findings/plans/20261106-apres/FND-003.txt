@@ -1,0 +1,15 @@
+-- forme : e25db356be94a82ee5c4619e7473f2ff
+-- base : u_l9l_b27c2b6f659b50f6240b3481927d0381
+-- requête : texte du tir
+Sort (actual time=0.093..0.094 rows=49 loops=1)
+  Sort Key: "MailId"
+  Sort Method: quicksort  Memory: 32kB
+  Buffers: shared hit=9
+  ->  Seq Scan on "MailAttachments" m (actual time=0.007..0.050 rows=49 loops=1)
+        Filter: ("MailId" = ANY ($1))
+        Rows Removed by Filter: 212
+        Buffers: shared hit=6
+Planning:
+  Buffers: shared hit=23
+Planning Time: 0.252 ms
+Execution Time: 0.151 ms

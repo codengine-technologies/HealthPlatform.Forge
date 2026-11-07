@@ -1,0 +1,30 @@
+-- forme : 8b53e22fb9e5951d2a2cd7da49917075
+-- base : mss_registry_loadtest
+-- requête : texte du tir
+Nested Loop Left Join (actual time=0.238..0.239 rows=1 loops=1)
+  Join Filter: $7
+  Buffers: shared hit=12
+  ->  Limit (actual time=0.191..0.191 rows=1 loops=1)
+        Buffers: shared hit=6
+        ->  Nested Loop (actual time=0.190..0.190 rows=1 loops=1)
+              Buffers: shared hit=6
+              ->  Index Scan using ux_mss_accounts_account_address on mss_accounts m (actual time=0.068..0.068 rows=1 loops=1)
+                    Index Cond: ((account_id = $1) AND (mailbox_address = $2))
+                    Buffers: shared hit=3
+              ->  Index Scan using "PK_accounts" on accounts a (actual time=0.120..0.120 rows=1 loops=1)
+                    Index Cond: (id = $1)
+                    Buffers: shared hit=3
+  ->  Limit (actual time=0.045..0.045 rows=1 loops=1)
+        Buffers: shared hit=6
+        ->  Sort (actual time=0.045..0.045 rows=1 loops=1)
+              Sort Key: m0.attached_at
+              Sort Method: quicksort  Memory: 25kB
+              Buffers: shared hit=6
+              ->  Index Scan using ux_mss_accounts_account_address on mss_accounts m0 (actual time=0.006..0.007 rows=1 loops=1)
+                    Index Cond: (account_id = $3)
+                    Filter: ((validated_by_psc_subject IS NOT NULL) AND (validated_by_rpps IS NOT NULL))
+                    Buffers: shared hit=3
+Planning:
+  Buffers: shared hit=221 dirtied=5
+Planning Time: 2.226 ms
+Execution Time: 0.342 ms

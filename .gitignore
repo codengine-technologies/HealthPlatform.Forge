@@ -92,6 +92,10 @@ Tools/e2e/__pycache__/
 # Résolveur de task files (Tools/tasks/task-file.sh) : nom titré {état}-{task-id}_{titre}.md.
 !Tools/tasks/
 !Tools/tasks/**
+# Findings de banc (Tools/loadtest-findings/findings.py, task-433) : candidats, plans, contrôle.
+!Tools/loadtest-findings/
+!Tools/loadtest-findings/**
+Tools/loadtest-findings/__pycache__/
 
 # The ledger is the forge's measurement journal (committed, append-only).
 # The .state/ markers are machine-local run state and must never be tracked.
