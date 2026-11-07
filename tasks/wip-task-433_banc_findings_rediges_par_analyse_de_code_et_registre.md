@@ -255,6 +255,15 @@ corrigé deux défauts : la récidive fondée sur D5 et le tableau de synthèse 
 - **`EXECUTE` sur un plan générique affiche `$1`**, jamais la valeur du paramètre : c'est ce qui permet de tirer les
   paramètres de la base sans les exposer.
 
+## E2E log
+
+| Voie | Déclenchée par | Résultat |
+|---|---|---|
+| mobile | — | skipped : ni `api-mail`, ni `client-mobile`, ni `dtos-mss` touché |
+| angular | — | skipped : ni `api-mail`, ni `client-angular`, ni `dtos-mss` touché |
+
+**E2E : skipped** — aucune voie touchée. La task ne modifie que le plan de contrôle (commande, playbook, outillage du banc, registre, documentation d'audit). Aucun parcours médecin n'est concerné.
+
 ## Branches
 - `forge` (plan de contrôle, racine du workspace) : **aucune branche**. La modification se fait sur `develop`, dans la session, et le diff des fichiers de la chaîne (`.claude/commands/`, `agents/`, `CLAUDE.md`, `SKILL.md`) est **relu par l'humain avant le push** (règle d'or, point 7 ; règle 5).
 - Aucun repo de code n'est touché par cette task.
@@ -267,4 +276,5 @@ corrigé deux défauts : la récidive fondée sur D5 et le tableau de synthèse 
 |---|---|---|---|---|---|---|
 | /start | ok | 17 s | — | — | — | — |
 | /develop | ok | 18 min 00 s | — | — | — | — |
+| /e2e | skipped | 0.5 s | — | — | — | aucune voie touchée (plan de contrôle seul) |
 | **Total cycle** | | **18 min 18 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
