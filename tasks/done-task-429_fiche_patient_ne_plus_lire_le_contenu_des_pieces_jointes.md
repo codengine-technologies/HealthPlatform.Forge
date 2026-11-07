@@ -140,7 +140,8 @@ Règles :
 | /sonar | ok | 10 min 29 s | 1 (43 s) | 5 (8 min 22 s) | 2 (43 s) | api-mail 1B/5T |
 | /lint-angular | skipped | 0.5 s | — | — | — | client-angular non touché |
 | /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non touché |
-| **Total cycle** | | **2 h 16 min** | **4 (1 min 23 s)** | **8 (14 min 30 s)** | **2 (43 s)** | |
+| /e2e | ok | 20 min 02 s | — | — | — | e2e ×6 (38 min 04 s) |
+| **Total cycle** | | **2 h 36 min** | **4 (1 min 23 s)** | **8 (14 min 30 s)** | **2 (43 s)** | |
 
 Autres commandes mesurées : capture ×2 (1 h 38 min)
 
@@ -393,3 +394,32 @@ Aucun écran modifié : aucun scénario ajouté ni versionné (task backend sans
 | E2E-ERROR-001 | 1 | headless | Une erreur affiche un code et une référence à transmettre au support | ✅ | ✅ |
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/347 — label `awaiting-human-merge`
+  (commits `1d0d5185` correctif + tests, `ce971762` lignes d'index du banc). Conflit trivial attendu sur
+  `tests/loadtest-k6/reports/INDEX.md` et `POSTGRES-INDEX.md` avec la PR #346 : garder les lignes des deux côtés.
+
+## Code Review Summary
+
+**APPROVED** — `/review` du 2026-11-07. Build 0 erreur, 0 avertissement. Tests : domain 210, infrastructure 705, api
+1 361, application 4 028, intégration 1 129 (+16 ignorés), **0 échec**. Sonar : Quality Gate OK, 0 issue. E2E : vert.
+
+| Comportement | Test | Preuve rouge |
+|---|---|---|
+| `GET …/medical-documents?page=&pageSize=` sans `Content` | `ThePatientFolderPage_ListsTheAttachments_WithoutReadingTheirContent` | M1 |
+| `GET …/medical-documents` sans `Content` | `TheWholePatientFolder_ListsTheAttachments_WithoutReadingTheirContent` | M1 |
+| `POST /patients/mails` sans `Content` | `ThePatientMailsPage_ListsTheAttachments_WithoutReadingTheirContent` | M1 |
+| Garde, 15 routes de lecture, seul le téléchargement lit `Content` | `NoReadRouteOfTheJourney_ReadsAttachmentContent_OnlyTheDownloadDoes` | M1 |
+| 404 problem+json, patient inconnu | `PatientFolderEndToEndTests.AnUnknownPatientHandle_Is404ProblemJson` | inchangé |
+
+- Le regroupement de la biologie, remis en forme, ne change aucun comportement. Il reste couvert sur la vraie base par
+  `PatientRepositoryIntegrationTests`.
+- Règle 14 : aucun acte sans auteur, aucun accès qui contourne le verdict de l'opérateur, aucune donnée par personne,
+  aucun rôle de titulaire modifié.
+
+**Suggestions (non bloquantes)**
+- `GET /api/v1/mail/tags/{code}/emails` sur une étiquette inconnue rend 500 au lieu de 404 (règle 12). Task à ouvrir.
+- Sortir `Content` dans une entité dépendante sur la même table (table splitting EF) : ferme la classe de défaut de
+  task-322 et task-429.
