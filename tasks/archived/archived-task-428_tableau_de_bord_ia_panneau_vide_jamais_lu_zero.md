@@ -130,7 +130,9 @@ Règles :
 | /lint-angular | skipped | 0.6 s | — | — | — | angular non touché |
 | /lint-mobile | skipped | 0.6 s | — | — | — | mobile non touché |
 | /e2e | ok | 19 min 31 s | — | — | — | e2e ×5 (37 min 57 s) |
-| **Total cycle** | | **40 min 54 s** | **2 (32 s)** | **6 (14 min 00 s)** | **2 (46 s)** | |
+| /review | ok | 11 min 20 s | 1 (10 s) | 1 (5 min 30 s) | — | api-mail 1B/1T |
+| /tech-writer | ok | 23 s | — | — | — | — |
+| **Total cycle** | | **52 min 38 s** | **3 (43 s)** | **7 (19 min 30 s)** | **2 (46 s)** | |
 
 ## Develop log
 
@@ -348,3 +350,11 @@ Sonar : Quality Gate OK, 0 issue. E2E : vert.
   - documentation et consigne écrites.
 - **Suggestion (non bloquante)** : `selftest.sh` ne fait pas échouer la CI quand Node ou Python manque (`MISSING=1`).
   Les deux sont fournis aujourd'hui, mais une runner sans Python sauterait les tests en silence.
+
+## Merged
+
+- 2026-11-07, sur attestation humaine (`/merge task-428 --i-tested`).
+- `api-mail` : PR #349 squash-mergée → `6308ae09` sur `develop`. CI `Build and Publish` verte (run 42376149365) : job
+  `build`, avec l'étape « Harness tests », et job `publish` en succès.
+- Branche `fix/task-428-tableau-de-bord-ia-panneau-vide-jamais` supprimée (distante et locale).
+- Reste à l'humain (DevOps) : importer `mssante-ai-consumption.json` corrigé dans le Grafana de production.
