@@ -105,4 +105,13 @@ Règles :
 - **AIPD / impact RGPD** : inchangée — aucune donnée personnelle ajoutée au texte SQL
 
 ## Branches
-- `api-mail` (pushed) : feat/task-432-sql-trace-jusqu-a-sa-route-et-son-code — https://github.com/pcabanel/HealthPlatform.Api.Mail/tree/feat/task-432-sql-trace-jusqu-a-sa-route-et-son-code
+- `api-mail` (pushed) : feat/task-432-sql-trace-jusqu-a-sa-route-et-son-code — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-432-sql-trace-jusqu-a-sa-route-et-son-code
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-432 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 15 s | — | — | — | — |
+| **Total cycle** | | **15 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
