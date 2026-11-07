@@ -419,7 +419,8 @@ Aucun écran modifié : aucun scénario ajouté ni versionné (observabilité SQ
 | /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 19 min 22 s | — | — | — | e2e ×3 (18 min 49 s) |
 | /review | ok | 7 min 42 s | 1 (16 s) | 1 (5 min 31 s) | — | api-mail 1B/1T |
-| **Total cycle** | | **4 h 54 min** | **8 (2 min 51 s)** | **15 (32 min 46 s)** | **4 (1 min 29 s)** | |
+| /tech-writer | ok | 38 s | — | — | — | — |
+| **Total cycle** | | **4 h 55 min** | **8 (2 min 51 s)** | **15 (32 min 46 s)** | **4 (1 min 29 s)** | |
 
 ## PRs
 - `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/351 — label `awaiting-human-merge`

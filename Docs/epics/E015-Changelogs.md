@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E015-tests-charge-api-mail.md](E015-tests-charge-api-mail.md).
-> **Dernière mise à jour** : 2026-11-07 (v1.87)
+> **Dernière mise à jour** : 2026-11-07 (v1.88)
 
 ---
 
@@ -3415,6 +3415,26 @@ nouvelle table par opération est ce qui permettra de les séparer.
 - **Plan de contrôle** : `SKILL.md` du banc (lire la section à chaque tir), en attente de relecture humaine.
 - **Sonar** : Quality Gate OK, 0 issue. **E2E** : vert, mobile 58/58, Angular 71/71. CI de la PR verte, harnais compris.
 
+### v1.88 — Chaque requête SQL porte sa route et la méthode qui l'émet — task-432
+
+- **Task** : task-432 — `done`. **PR** : `api-mail` [#351](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/351) (`awaiting-human-merge`). Branche `feat/task-432-sql-trace-jusqu-a-sa-route-et-son-code`.
+- **Origine** : une ligne de `pg_stat_statements` ne disait pas quel code l'avait émise. Les défauts de task-429 et task-430 ont été remontés en cherchant les noms de tables dans le code. Étage 3 du banc comme outil d'exploration.
+- **Changement** :
+  - commentaire `/* route=<gabarit> site=<Dépôt.Méthode> */` en tête de chaque commande EF Core ;
+  - la route vient d'un `AsyncLocal` ouvert par un middleware (gabarit de route, avant `UseAuthentication`), par un filtre de consommation MassTransit (`bus:AddNewMail`), ou vaut `background` par défaut ;
+  - le site est lu dans la pile une fois par texte SQL : cache borné à 4096, `?` après 32 échecs ;
+  - posé à `CommandInitialized` : à l'exécution, le dépôt disparaît de la pile après un `await` qui cède ;
+  - interrupteur `Database:SqlCallSiteComments`, activé par défaut ;
+  - aucune donnée dans le commentaire : ni identifiant, ni valeur, ni RPPS.
+- **Harnais** :
+  - `pg-statements.sh` agrège sans commentaire (même md5) et exporte `call_sites` ;
+  - colonne « Émise par » au top 20 et aux signaux de défaut (task-431).
+- **Preuves** : 4 tests d'intégration, dont la lecture de `pg_stat_statements` sur la base du fixture. 7 mutations, dont 6 vues rouges ; la pose à l'exécution seule n'est pas déterministe.
+- **Banc A/B/A** (tir court 1400 → 1996, IA simulée) : pire écart p50 **+4,1 %** (inbox à 1996, 49 → 51 ms), bruit entre deux tirs de la branche ±2,5 %. Second contrôle `develop` invalide : saturation SMTP du banc, sans lien avec la task.
+- **Couverture** : 93,2 % du temps SQL porte route et site. Le premier tir a trouvé le middleware placé après l'authentification : le registre partait en `background` (6,5 %). Corrigé, et gardé par un test de source.
+- **Limite** : l'INSERT d'audit (3,2 %) et le chargement des types Npgsql (2,0 %) passent hors EF et restent sans commentaire.
+- **Sonar** : Quality Gate OK. 13 issues de code neuf, toutes des récidives de `conventions/csharp.md`, ramenées à 0. **E2E** : vert, mobile 58/58, Angular 71/71.
+
 ---
 
 ## Annexe A — Cartographie des briques applicatives
@@ -3552,3 +3572,4 @@ nouvelle table par opération est ce qui permettra de les séparer.
 | task-430 | **Comptages de biologie et d'étiquettes sans parcours de table par ligne.** Index manquants sur `MailMedicalDocumentBiology.MedicalDocumentId` et `MailRecipients.MailId`, un seul comptage groupé par étiquette. Étiquettes −96 % de pages, biologie −43 % (316 bases sur 2 000 non migrées au premier accès : question ouverte). PR #348. | — |
 | task-428 | **Tableaux de bord : un panneau sans donnée le dit, un zéro se mesure.** 8 `noValue` ajoutés, 21 zéros fabriqués (`or vector(0)`) retirés sur deux tableaux de bord, règle gardée par test et par une nouvelle étape CI des tests du harnais. PR #349. | — |
 | task-431 | **Le rapport de banc signale les défauts SQL par classe.** Cinq détecteurs sur toutes les formes de `pg_stat_statements`, prouvés sur un corpus de défauts passés (signalé avant, ignoré après, faux positif du registre jamais signalé). Rétro-appliqués au tir du 2026-11-06 : les trois défauts confirmés ressortent. PR #350. | — |
+| task-432 | **Chaque requête SQL dit d'où elle vient.** Commentaire `route` + `site` en tête de chaque commande EF Core, sans aucune donnée, lu dans `pg_stat_statements` et affiché par le rapport de banc (« Émise par »). 93 % du temps SQL attribué. Surcoût p50 ≤ +4,1 % au banc. PR #351. | — |
