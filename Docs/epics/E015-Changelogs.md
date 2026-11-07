@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E015-tests-charge-api-mail.md](E015-tests-charge-api-mail.md).
-> **Dernière mise à jour** : 2026-11-07 (v1.86)
+> **Dernière mise à jour** : 2026-11-07 (v1.87)
 
 ---
 
@@ -3378,6 +3378,7 @@ nouvelle table par opération est ce qui permettra de les séparer.
   - destinataires inchangés au banc (index non choisi sur de petites tables) ;
   - SQL total −13 %, aucune étape ralentie.
   - Le gain de F-A est partiel parce que **316 bases sur 2 000 n'ont pas reçu la migration au premier accès** pendant le tir, sans aucune erreur dans Seq. C'est une question ouverte, avec une task à ouvrir : toute migration de schéma est concernée.
+- **Sonar** : Quality Gate OK, 0 issue. **E2E** : vert, mobile 58/58, Angular 71/71.
 
 ---
 
@@ -3394,7 +3395,25 @@ nouvelle table par opération est ce qui permettra de les séparer.
   - consigne `tableau-de-bord-sans-donnee`.
 - **Piège levé en CI** : la runner Ubuntu fournit `pwsh`, et `test_observe_push` (échantillonneur Windows, CIM) y échouait. Il est désormais gardé par Windows et PowerShell. Run de la PR vert : 42370394378.
 - **Sonar** : Quality Gate OK, 0 issue. **E2E** : vert, mobile 58/58, Angular 71/71.
-- **Sonar** : Quality Gate OK, 0 issue. **E2E** : vert, mobile 58/58, Angular 71/71.
+
+---
+
+### v1.87 — Le rapport de banc signale les défauts SQL par classe, détecteurs prouvés sur un corpus — task-431
+
+- **Task** : task-431 — `done`. **PR** : `api-mail` [#350](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/350) (`awaiting-human-merge`). Branche `feat/task-431-banc-detecteurs-de-defauts-sql-prouves`.
+- **Origine** : le défaut des pièces jointes (task-429) figurait au rang 6 de tous les rapports, à 5,3 % du temps et 31 % du disque. Le rapport ne jugeait une forme que sur sa part du temps, dans le top 20, et l'avait diagnostiquée « jeu de travail hors `shared_buffers` ». Étage 2 du banc comme outil d'exploration.
+- **Changement** (harnais seul) :
+  - `report_signals.py` : cinq détecteurs sur toutes les formes, à savoir pages par ligne, colonne volumineuse, sous-requête corrélée, appels par requête HTTP et poids dans le tir ;
+  - section « Signaux de défaut » ;
+  - plus de diagnostic mémoire sur une forme signalée.
+- **Corpus** (`fixtures/pgss-corpus/`) : 8 cas avant/après (task-426, 427, 429, 430), extraits des photos des tirs. Seuils fixés par le corpus, dont deux corrigés au vu des chiffres :
+  - pages par appel : 50, parce que le téléchargement en lit 23 ;
+  - temps : 20 % par forme.
+  - Faux positif du registre jamais signalé.
+  - 6 mutations rouges.
+- **Rétro-application au tir du 2026-11-06** : la section aurait signalé les trois défauts confirmés (task-429, task-430 ×2), et pas le registre.
+- **Plan de contrôle** : `SKILL.md` du banc (lire la section à chaque tir), en attente de relecture humaine.
+- **Sonar** : Quality Gate OK, 0 issue. **E2E** : vert, mobile 58/58, Angular 71/71. CI de la PR verte, harnais compris.
 
 ---
 
@@ -3532,3 +3551,4 @@ nouvelle table par opération est ce qui permettra de les séparer.
 | task-429 | **Le dossier patient ne lit plus le contenu des pièces jointes.** Un `GroupBy` final matérialisait l'entité entière, binaire compris (13,7 Go par tir court). Projection des métadonnées ; garde d'intégration sur 15 routes. Lectures disque du tir −60 %, fiche patient p95 −31 % à 1996 (A/B même session). PR #347. | — |
 | task-430 | **Comptages de biologie et d'étiquettes sans parcours de table par ligne.** Index manquants sur `MailMedicalDocumentBiology.MedicalDocumentId` et `MailRecipients.MailId`, un seul comptage groupé par étiquette. Étiquettes −96 % de pages, biologie −43 % (316 bases sur 2 000 non migrées au premier accès : question ouverte). PR #348. | — |
 | task-428 | **Tableaux de bord : un panneau sans donnée le dit, un zéro se mesure.** 8 `noValue` ajoutés, 21 zéros fabriqués (`or vector(0)`) retirés sur deux tableaux de bord, règle gardée par test et par une nouvelle étape CI des tests du harnais. PR #349. | — |
+| task-431 | **Le rapport de banc signale les défauts SQL par classe.** Cinq détecteurs sur toutes les formes de `pg_stat_statements`, prouvés sur un corpus de défauts passés (signalé avant, ignoré après, faux positif du registre jamais signalé). Rétro-appliqués au tir du 2026-11-06 : les trois défauts confirmés ressortent. PR #350. | — |

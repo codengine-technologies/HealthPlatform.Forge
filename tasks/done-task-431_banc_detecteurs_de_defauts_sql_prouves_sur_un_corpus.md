@@ -135,7 +135,9 @@ Règles :
 | /lint-angular | skipped | 0.5 s | — | — | — | angular non touché |
 | /lint-mobile | skipped | 0.4 s | — | — | — | mobile non touché |
 | /e2e | ok | 19 min 12 s | — | — | — | e2e ×5 (37 min 35 s) |
-| **Total cycle** | | **42 min 45 s** | **2 (47 s)** | **6 (13 min 08 s)** | **2 (43 s)** | |
+| /review | ok | 15 min 52 s | 1 (13 s) | 2 (11 min 07 s) | — | api-mail 1B/2T |
+| /tech-writer | ok | 22 s | — | — | — | — |
+| **Total cycle** | | **58 min 59 s** | **3 (1 min 01 s)** | **8 (24 min 15 s)** | **2 (43 s)** | |
 
 ## Develop log
 

@@ -2,7 +2,7 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.86
+> **Version** : 1.87
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
 > **Dernière mise à jour** : 2026-11-07
@@ -2398,6 +2398,7 @@ Cinq réserves à porter au bilan, sans quoi il serait trompeur :
 - v1.84 — **Le dossier d'un patient s'ouvre trois fois plus vite, et la base relit beaucoup moins le disque.** Pour afficher le nom et la taille des pièces jointes, l'application chargeait le fichier entier de chacune. Elle ne lit plus que ce qu'elle affiche : moitié moins de lectures disque pour toute la plateforme, la page d'un dossier patient trois fois plus rapide et la fiche complète un tiers plus rapide à deux mille médecins actifs. Le stockage des pièces jointes hors de la base n'est plus nécessaire pour la performance. (task-429)
 - v1.85 — **La base cesse de relire des tables entières pour compter.** Pour afficher le nombre de messages non lus de chaque étiquette, et pour signaler qu'un document porte des résultats de biologie, la base parcourait des tables entières à chaque fois. Les dossiers d'étiquettes lisent désormais vingt-cinq fois moins de données, et l'indicateur de biologie deux fois moins. Au passage, une question sérieuse est apparue : une partie des bases n'a pas reçu la mise à jour de leur structure au premier accès. Elle est à instruire avant la prochaine évolution de structure. (task-430)
 - v1.86 — **Un tableau de bord ne dit plus « zéro » quand il ne sait rien.** Plusieurs panneaux de suivi, dont celui de la consommation d'IA destiné à la production, affichaient zéro même quand la mesure n'arrivait pas. Une panne de suivi ressemblait alors à une activité nulle. Ils écrivent désormais « pas de donnee », et la règle est vérifiée à chaque modification du code. (task-428)
+- v1.87 — **Le banc de charge désigne lui-même les requêtes suspectes.** Le rapport ne regardait que les requêtes les plus longues. Il passe désormais chaque requête à cinq contrôles, chacun vérifié sur un défaut réellement corrigé. Appliqué au tir de la veille, il aurait désigné d'emblée les trois défauts trouvés à la main, sans fausse alerte sur le registre. (task-431)
 
 ---
 
