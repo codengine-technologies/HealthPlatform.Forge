@@ -103,3 +103,6 @@ Règles :
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui — pas de donnée nouvelle. Le texte SQL reste dans Postgres, sur l'environnement HDS
 - **AIPD / impact RGPD** : inchangée — aucune donnée personnelle ajoutée au texte SQL
+
+## Branches
+- `api-mail` (pushed) : feat/task-432-sql-trace-jusqu-a-sa-route-et-son-code — https://github.com/pcabanel/HealthPlatform.Api.Mail/tree/feat/task-432-sql-trace-jusqu-a-sa-route-et-son-code
