@@ -2,7 +2,7 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.88
+> **Version** : 1.89
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
 > **Dernière mise à jour** : 2026-11-07
@@ -2400,6 +2400,7 @@ Cinq réserves à porter au bilan, sans quoi il serait trompeur :
 - v1.86 — **Un tableau de bord ne dit plus « zéro » quand il ne sait rien.** Plusieurs panneaux de suivi, dont celui de la consommation d'IA destiné à la production, affichaient zéro même quand la mesure n'arrivait pas. Une panne de suivi ressemblait alors à une activité nulle. Ils écrivent désormais « pas de donnee », et la règle est vérifiée à chaque modification du code. (task-428)
 - v1.87 — **Le banc de charge désigne lui-même les requêtes suspectes.** Le rapport ne regardait que les requêtes les plus longues. Il passe désormais chaque requête à cinq contrôles, chacun vérifié sur un défaut réellement corrigé. Appliqué au tir de la veille, il aurait désigné d'emblée les trois défauts trouvés à la main, sans fausse alerte sur le registre. (task-431)
 - v1.88 — **Chaque requête lente du banc dit d'où elle vient.** Une requête coûteuse vue dans la base ne disait pas quel écran ni quel code l'avait demandée : il fallait la retrouver à la main. Chaque requête porte désormais, en commentaire, l'écran appelé et la fonction qui l'émet, sans aucune donnée patient. Le rapport de banc l'affiche à côté de chaque requête suspecte. Mesuré au banc : aucun geste du médecin ralenti de plus de 5 %. (task-432)
+- v1.89 — **Le banc rédige lui-même ses constats, preuves à l'appui.** Après un tir, une étape explore les requêtes les plus coûteuses jusqu'au code qui les émet et à leur plan d'exécution, chiffre le gain possible et propose le correctif. Chaque chiffre est vérifié automatiquement contre les mesures du tir. Rejouée sur le tir du 6 novembre, elle retrouve les trois défauts trouvés à la main et en ajoute deux, dont la requête qui lisait le plus le disque. Un registre suit chaque constat d'un tir à l'autre ; l'humain choisit ce qui devient une tâche. (task-433)
 
 ---
 

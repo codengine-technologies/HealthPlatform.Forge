@@ -278,7 +278,8 @@ corrigé deux défauts : la récidive fondée sur D5 et le tableau de synthèse 
 | /develop | ok | 18 min 00 s | — | — | — | — |
 | /e2e | skipped | 0.5 s | — | — | — | aucune voie touchée (plan de contrôle seul) |
 | /review | ok | 35 s | — | 1 (0.2 s) | — | forge 0B/1T |
-| **Total cycle** | | **18 min 54 s** | **0 (0.0 s)** | **1 (0.2 s)** | **0 (0.0 s)** | |
+| /tech-writer | ok | 0.6 s | — | — | — | — |
+| **Total cycle** | | **18 min 55 s** | **0 (0.0 s)** | **1 (0.2 s)** | **0 (0.0 s)** | |
 
 ## PRs
 - `forge` (plan de contrôle) : **pas de PR** (règle 5). Les livrables sont **dans l'arbre de travail de `develop`,

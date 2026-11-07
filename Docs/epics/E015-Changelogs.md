@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E015-tests-charge-api-mail.md](E015-tests-charge-api-mail.md).
-> **Dernière mise à jour** : 2026-11-07 (v1.88)
+> **Dernière mise à jour** : 2026-11-07 (v1.89)
 
 ---
 
@@ -3435,6 +3435,30 @@ nouvelle table par opération est ce qui permettra de les séparer.
 - **Limite** : l'INSERT d'audit (3,2 %) et le chargement des types Npgsql (2,0 %) passent hors EF et restent sans commentaire.
 - **Sonar** : Quality Gate OK. 13 issues de code neuf, toutes des récidives de `conventions/csharp.md`, ramenées à 0. **E2E** : vert, mobile 58/58, Angular 71/71.
 
+### v1.89 — Chaque tir de banc produit des findings rédigés par analyse de code, suivis dans un registre — task-433
+
+- **Task** : task-433 — `done`. **Plan de contrôle seul** : pas de PR (règle 5). Les livrables attendent la relecture
+  humaine avant le push (règle d'or, point 7).
+- **Origine** : étage 3 du banc comme outil d'exploration. L'exploration de code se faisait au fil de l'attention, et
+  un défaut non corrigé était rejugé à chaque tir.
+- **Livré** :
+  - `/loadtest-findings {rapport}` (`agents/loadtest-findings.md`), appelé par le skill de banc en § 5b-quater ;
+  - l'outillage `Tools/loadtest-findings/findings.py` (25 tests), quatre sous-commandes :
+    - `candidates` : au plus 8 formes, les signalées par task-431 d'abord ;
+    - `explain` : transaction annulée, plan générique, bases du banc seulement ;
+    - `column-sizes` : PostgreSQL 16 ne détoaste pas sous `EXPLAIN` ;
+    - `check` : non-confabulation, bloquant ;
+  - le registre `Docs/audits/findings-registry.md`, FND-001 à FND-010.
+- **Rejeu sur le tir du 2026-11-06** (`f50f2ae5`, site en mode dégradé) :
+  - les trois findings confirmés à la main sont retrouvés avec site et plan (FND-003, FND-004, FND-005), et le
+    registre est écarté (FND-006) ;
+  - **nouveau, et récidive** : FND-007, le document médical chargé entier à l'ouverture d'un message (13,0 % du temps
+    SQL, 33,1 % des lectures disque, `Embedding` jamais affiché), et FND-009, son pendant sur `MailContents`. La
+    garde manquante est « aucune route de lecture ne sélectionne `Embedding` » ;
+  - FND-010, la recherche vectorielle sans index : plausible, à trancher sur des boîtes plus grosses.
+- **Contrôle** : 101 éléments, 0 écart. Falsifications de mesure, de ligne et de plan vues rouges ; 4 mutations de
+  l'outil vues rouges.
+
 ---
 
 ## Annexe A — Cartographie des briques applicatives
@@ -3573,3 +3597,4 @@ nouvelle table par opération est ce qui permettra de les séparer.
 | task-428 | **Tableaux de bord : un panneau sans donnée le dit, un zéro se mesure.** 8 `noValue` ajoutés, 21 zéros fabriqués (`or vector(0)`) retirés sur deux tableaux de bord, règle gardée par test et par une nouvelle étape CI des tests du harnais. PR #349. | — |
 | task-431 | **Le rapport de banc signale les défauts SQL par classe.** Cinq détecteurs sur toutes les formes de `pg_stat_statements`, prouvés sur un corpus de défauts passés (signalé avant, ignoré après, faux positif du registre jamais signalé). Rétro-appliqués au tir du 2026-11-06 : les trois défauts confirmés ressortent. PR #350. | — |
 | task-432 | **Chaque requête SQL dit d'où elle vient.** Commentaire `route` + `site` en tête de chaque commande EF Core, sans aucune donnée, lu dans `pg_stat_statements` et affiché par le rapport de banc (« Émise par »). 93 % du temps SQL attribué. Surcoût p50 ≤ +4,1 % au banc. PR #351. | — |
+| task-433 | **Le banc rédige ses findings par analyse de code.** `/loadtest-findings` : candidats, site au commit du tir, plan sur une base du banc, gain borné, correctif et test, verdict ; contrôle de non-confabulation bloquant ; registre FND avec récidives. Rejeu du 2026-11-06 : 3 findings manuels retrouvés, registre écarté, 2 nouveaux (FND-007, FND-009). Plan de contrôle, pas de PR. | — |
