@@ -158,7 +158,9 @@ Règles :
 | /lint-angular | skipped | 0.5 s | — | — | — | angular non touché |
 | /lint-mobile | skipped | 0.5 s | — | — | — | mobile non touché |
 | /e2e | ok | 19 min 58 s | — | — | — | e2e ×5 (38 min 43 s) |
-| **Total cycle** | | **2 h 37 min** | **4 (1 min 19 s)** | **7 (19 min 15 s)** | **2 (46 s)** | |
+| /review | ok | 7 min 24 s | 1 (11 s) | 1 (5 min 58 s) | — | api-mail 1B/1T |
+| /tech-writer | ok | 32 s | — | — | — | — |
+| **Total cycle** | | **2 h 45 min** | **5 (1 min 31 s)** | **8 (25 min 13 s)** | **2 (46 s)** | |
 
 Autres commandes mesurées : capture ×2 (1 h 39 min)
 
@@ -452,3 +454,11 @@ Aucun écran modifié : aucun scénario ajouté ni versionné (task backend sans
 
 **Question ouverte, task à ouvrir** : 316 bases sur 2 000 n'ont pas reçu la migration au premier accès pendant le tir,
 sans aucune erreur dans Seq. Voir « Mesure au banc ».
+
+## Merged
+
+- 2026-11-07, sur attestation humaine (`/merge task-430 --i-tested`).
+- `api-mail` : PR #348 squash-mergée → `db981cda` sur `develop`. CI `Build and Publish` verte (run 42366117109).
+- Branche `fix/task-430-comptages-biologie-et-etiquettes-un` supprimée (distante et locale).
+- Reste ouvert : la question des 316 bases non migrées au premier accès (section « Mesure au banc »), task à rédiger.
+  La PR #346 (lignes d'index du banc) reste ouverte, avec un conflit trivial attendu en fin de fichier.
