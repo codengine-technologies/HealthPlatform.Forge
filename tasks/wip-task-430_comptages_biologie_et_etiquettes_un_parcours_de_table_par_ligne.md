@@ -153,7 +153,10 @@ Règles :
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 14 s | — | — | — | — |
-| **Total cycle** | | **14 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 2 h 06 min | 3 (26 s) | 2 (10 min 44 s) | — | api-mail 3B/2T |
+| **Total cycle** | | **2 h 07 min** | **3 (26 s)** | **2 (10 min 44 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : capture ×2 (1 h 39 min)
 
 ## Develop log
 
@@ -292,3 +295,30 @@ Rapports :
 - `Docs/audits/api-mail-loadtest-journey-courte-1400-1996-task430-20261107.md`
 
 Lignes d'index : commit `ca94d3e3` sur la branche de la task.
+
+## Sonar log
+
+Analyse de la branche `fix/task-430-comptages-biologie-et-etiquettes-un` (HEAD `ca94d3e3`), 2026-11-07 10:20 UTC :
+- build Release, tests avec couverture OpenCover sur les 5 projets, **0 échec** ;
+- traitement serveur `SUCCESS`, 0 itération de correction nécessaire.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline (task-429) | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | = |
+| Issues new code | 0 | 0 | = |
+| New coverage | 96,1 % | 96,0 % | −0,1 |
+| Bugs / Vulnérabilités / Code smells | 0 / 0 / 0 | 0 / 0 / 0 | = |
+| Security hotspots | 0 | 0 | = |
+| Coverage projet | 97,9 % | 97,9 % | = |
+| Duplication | 0,4 % | 0,4 % | = |
+| Ratings fiabilité / sécurité / maintenabilité | A / A / A | A / A / A | = |
+
+## Lint log
+
+Skipped — `client-angular` non touché par la task (`**Repos**: api-mail`).
+
+## Lint mobile log
+
+Skipped — `client-mobile` non touché par la task.
