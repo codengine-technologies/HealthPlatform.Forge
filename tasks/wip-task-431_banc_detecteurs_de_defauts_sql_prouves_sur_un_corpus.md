@@ -130,7 +130,8 @@ Règles :
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 7.6 s | — | — | — | — |
-| **Total cycle** | | **7.6 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 14 min 02 s | 1 (17 s) | 1 (5 min 32 s) | — | api-mail 1B/1T |
+| **Total cycle** | | **14 min 10 s** | **1 (17 s)** | **1 (5 min 32 s)** | **0 (0.0 s)** | |
 
 ## Develop log
 
@@ -212,3 +213,30 @@ l'œil, et la regex ne trouvait plus rien. Corrigé par écriture d'octets. Mém
 **Plan de contrôle, relu par l'humain avant le push (règle d'or, point 7)** :
 `.claude/skills/loadtest-skill/SKILL.md`, étape 5a : « Lire la section Signaux de défaut à chaque tir ». La
 modification est écrite mais **non commitée** : elle attend la relecture humaine.
+
+## Sonar log
+
+Analyse de la branche `feat/task-431-banc-detecteurs-de-defauts-sql-prouves` (HEAD `ff4bc122`), 2026-11-07 13:53 UTC :
+- build Release, tests avec couverture OpenCover sur les 5 projets, **0 échec** ;
+- traitement serveur `SUCCESS`, 0 itération (aucun code C# modifié).
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline (task-428) | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | = |
+| Issues new code | 0 | 0 | = |
+| New coverage | 96,0 % | 96,1 % | +0,1 |
+| Bugs / Vulnérabilités / Code smells | 0 / 0 / 0 | 0 / 0 / 0 | = |
+| Security hotspots | 0 | 0 | = |
+| Coverage projet | 97,9 % | 97,9 % | = |
+| Duplication | 0,4 % | 0,4 % | = |
+| Ratings fiabilité / sécurité / maintenabilité | A / A / A | A / A / A | = |
+
+## Lint log
+
+Skipped — `client-angular` non touché par la task (`**Repos**: api-mail`).
+
+## Lint mobile log
+
+Skipped — `client-mobile` non touché par la task.
