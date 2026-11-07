@@ -157,7 +157,8 @@ Règles :
 | /sonar | ok | 10 min 53 s | 1 (53 s) | 5 (8 min 30 s) | 2 (46 s) | api-mail 1B/5T |
 | /lint-angular | skipped | 0.5 s | — | — | — | angular non touché |
 | /lint-mobile | skipped | 0.5 s | — | — | — | mobile non touché |
-| **Total cycle** | | **2 h 17 min** | **4 (1 min 19 s)** | **7 (19 min 15 s)** | **2 (46 s)** | |
+| /e2e | ok | 19 min 58 s | — | — | — | e2e ×5 (38 min 43 s) |
+| **Total cycle** | | **2 h 37 min** | **4 (1 min 19 s)** | **7 (19 min 15 s)** | **2 (46 s)** | |
 
 Autres commandes mesurées : capture ×2 (1 h 39 min)
 
@@ -426,3 +427,28 @@ Aucun écran modifié : aucun scénario ajouté ni versionné (task backend sans
 | E2E-ERROR-001 | 1 | headless | Une erreur affiche un code et une référence à transmettre au support | ✅ | ✅ |
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/348 — label `awaiting-human-merge`
+  (commits `a16e5a84` correctif et tests, `ca94d3e3` lignes d'index du banc). Conflit trivial attendu sur
+  `tests/loadtest-k6/reports/INDEX.md` et `POSTGRES-INDEX.md` avec la PR #346 : garder les lignes des deux côtés.
+
+## Code Review Summary
+
+**APPROVED** — `/review` du 2026-11-07. Build : 0 erreur, 0 avertissement. Tests : domain 210, infrastructure 705, api
+1 361, application 4 028, intégration 1 133 (+16 ignorés), **0 échec**. Sonar : Quality Gate OK, 0 issue. E2E : vert.
+
+| Comportement | Test | Preuve rouge |
+|---|---|---|
+| Page d'en-têtes : biologie et destinataires servis par leurs index | `TheHeaderPage_ServesBiologyFlagsAndRecipients_ThroughTheirForeignKeyIndexes` | M-A, M-C |
+| Dossiers d'étiquettes : compteurs exacts, une seule lecture de `MailTags` | `TheTagFolders_CountTheUnreadInboxMailsOfEachTag_InOneGroupedCount` | M-B |
+| Boîte sans étiquette : 200, aucun dossier d'étiquette | `AMailboxWithoutTags_ListsItsFolders_WithoutAnyTagFolder` | inchangé |
+| Base neuve : les deux index créés par le coureur de production | `MissingForeignKeyIndexesMigrationTests` | M-A, M-C |
+
+**Suggestions (non bloquantes)** :
+- l'ordre des dossiers d'étiquettes n'était pas garanti et ne l'est toujours pas : un tri explicite reste à décider ;
+- les index de `ContactMssAddresses.ContactId` et `ContactTags.ContactId` manquent (coût faible).
+
+**Question ouverte, task à ouvrir** : 316 bases sur 2 000 n'ont pas reçu la migration au premier accès pendant le tir,
+sans aucune erreur dans Seq. Voir « Mesure au banc ».
