@@ -447,3 +447,6 @@ Aucun écran modifié : aucun scénario ajouté ni versionné (observabilité SQ
   - l'INSERT d'`audit_traces` (3,2 % du temps SQL) reste sans commentaire, hors EF ;
   - le cache des sites est indexé par texte : des listes `IN` de longueurs variables consomment la borne ;
   - `UseCaseHttpHost` n'a pas l'ordre de production, qui est gardé par le test de source.
+
+## Merged
+- `api-mail` : PR #351 squash-mergée le 2026-11-07 — commit `5b4e394f` sur `develop`. Branche `feat/task-432-sql-trace-jusqu-a-sa-route-et-son-code` supprimée (distante et locale).
