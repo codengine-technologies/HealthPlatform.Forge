@@ -277,4 +277,44 @@ corrigé deux défauts : la récidive fondée sur D5 et le tableau de synthèse 
 | /start | ok | 17 s | — | — | — | — |
 | /develop | ok | 18 min 00 s | — | — | — | — |
 | /e2e | skipped | 0.5 s | — | — | — | aucune voie touchée (plan de contrôle seul) |
-| **Total cycle** | | **18 min 18 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /review | ok | 35 s | — | 1 (0.2 s) | — | forge 0B/1T |
+| **Total cycle** | | **18 min 54 s** | **0 (0.0 s)** | **1 (0.2 s)** | **0 (0.0 s)** | |
+
+## PRs
+- `forge` (plan de contrôle) : **pas de PR** (règle 5). Les livrables sont **dans l'arbre de travail de `develop`,
+  non commités**, en attente de la relecture humaine (règle d'or, point 7 ; DoD, dernier point). Après relecture :
+  commit puis push sur `develop`.
+  - suivis, modifiés : `.claude/skills/loadtest-skill/SKILL.md` (§ 5b-quater), `CLAUDE.md` (tableau des commandes),
+    `.gitignore` (`Tools/loadtest-findings/`),
+    `Docs/audits/api-mail-loadtest-journey-courte-1400-1996-ab-findings-apres-20261106.md` (section du rejeu) ;
+  - nouveaux : `.claude/commands/loadtest-findings.md`, `agents/loadtest-findings.md`,
+    `Tools/loadtest-findings/findings.py`, `Tools/loadtest-findings/test_findings.py`,
+    `Docs/audits/findings-registry.md`, `Docs/audits/findings/plans/20261106-apres/` (11 fichiers).
+- Aucun repo de code n'est touché.
+
+## Code Review Summary
+
+**APPROVED** — 9 fichiers revus, 0 point bloquant, 2 suggestions.
+
+- **Validation** :
+  - `python -m unittest Tools/loadtest-findings/test_findings.py` : 25 tests verts ;
+  - `findings.py check` sur la section du rejeu : 101 éléments, 0 écart ;
+  - 4 mutations de l'outil, chacune vue rouge par un test.
+- **Règle 1b** : sans objet, aucun comportement atteignable par un endpoint ne change. **E2E** : skipped, aucune voie
+  touchée.
+- **DoD** :
+  - 6 points sur 7 sont cochés et vérifiés ;
+  - le 7ᵉ, « relu par l'humain avant le push », revient à l'humain.
+- `findings.py` — ✅
+  - les plans se jouent en transaction annulée, en plan générique, et sur les seules bases du banc (garde testée) ;
+  - le contrôle compare les mesures au caractère près, après le même formatage ;
+  - mode dégradé sans task-431.
+- `agents/loadtest-findings.md` — ✅ preuves exigées par verdict, et limite PostgreSQL 16 (pas de détoast sous
+  `EXPLAIN`) écrite.
+- Registre — ✅ une forme par ligne, contrôlé ; récidives nommées avec leur prévention manquante.
+- **Suggestions (non bloquantes)** :
+  - ⚠️ `select` considère deux fois les formes non signalées (classements par temps puis par pages). Une variante
+    peut donc être listée deux fois dans le dossier des candidats. C'est cosmétique : aucune place n'est consommée.
+  - ⚠️ Le squelette de variante (60 premiers caractères) peut réunir deux tables différentes qui commencent par les
+    mêmes colonnes : c'est le cas des deux recherches vectorielles, jugées ensemble à juste titre. Y inclure la table
+    du `FROM` le rendrait sûr.
