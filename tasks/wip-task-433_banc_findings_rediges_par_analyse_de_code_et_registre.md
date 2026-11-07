@@ -80,14 +80,14 @@ Règles :
 
 ## Definition of Done
 
-- [ ] Commande `.claude/commands/loadtest-findings.md` et playbook `agents/loadtest-findings.md`, qui décrivent :
+- [x] Commande `.claude/commands/loadtest-findings.md` et playbook `agents/loadtest-findings.md`, qui décrivent :
       - les candidats ;
       - les preuves exigées par verdict ;
       - le modèle de finding ;
       - le registre et la récidive ;
       - la mesure du coût de l'étape (`Tools/timing/step.sh`, `--step loadtest-findings`) ;
       - le mode dégradé sans task-431 ni task-432.
-- [ ] Modèle de section « Findings — analyse de code » et `Docs/audits/findings-registry.md` créé, amorcé avec les
+- [x] Modèle de section « Findings — analyse de code » et `Docs/audits/findings-registry.md` créé, amorcé avec les
       findings du 2026-11-06 :
       - FND pièces jointes du dossier patient → task-429 ;
       - F-A biologie → task-430 ;
@@ -96,13 +96,13 @@ Règles :
       - document médical avec `Embedding` → plausible, gain mineur ;
       - chargement des types Npgsql → ouvert, non exploré ;
       - les findings F1 (task-427) et F2 (task-426) du 2026-11-05 → corrigé et mesuré.
-- [ ] **Rejeu sur le tir du 2026-11-06 (`…-apres`)** : la commande produit une section qui retrouve **au moins** les
+- [x] **Rejeu sur le tir du 2026-11-06 (`…-apres`)** : la commande produit une section qui retrouve **au moins** les
       trois findings confirmés à la main (pièces jointes, F-A, F-B) et écarte le registre, avec site et plan. Résultat
       recopié dans le task file
-- [ ] **Contrôle de non-confabulation** : chaque chiffre d'un finding du rejeu est retrouvé dans le `pgstats-*.tsv` du
+- [x] **Contrôle de non-confabulation** : chaque chiffre d'un finding du rejeu est retrouvé dans le `pgstats-*.tsv` du
       tir, et chaque `fichier:ligne` existe au commit du tir. Vérification consignée
-- [ ] `.claude/skills/loadtest-skill/SKILL.md` appelle l'étape après `report.sh`
-- [ ] `CLAUDE.md` : la commande est ajoutée au tableau des commandes, hors chaîne autonome
+- [x] `.claude/skills/loadtest-skill/SKILL.md` appelle l'étape après `report.sh`
+- [x] `CLAUDE.md` : la commande est ajoutée au tableau des commandes, hors chaîne autonome
 - [ ] Changements du plan de contrôle relus par l'humain avant le push (règle d'or, point 7)
 
 ## Manual Test Plan
@@ -131,6 +131,130 @@ Règles :
   production
 - **AIPD / impact RGPD** : inchangée
 
+## Develop log
+
+**Livré** (plan de contrôle). Rien n'est commité : tout attend la relecture humaine (règle d'or, point 7).
+
+| Fichier | Rôle |
+|---|---|
+| `.claude/commands/loadtest-findings.md` | la commande, hors chaîne autonome |
+| `agents/loadtest-findings.md` | le playbook : entrées, candidats, preuves exigées par verdict, modèle de section, récidive, registre, mode dégradé, mesure de l'étape, limites |
+| `Tools/loadtest-findings/findings.py` + `test_findings.py` | l'outillage mécanique : `candidates`, `explain`, `column-sizes`, `check` (25 tests) |
+| `Docs/audits/findings-registry.md` | le registre, amorcé : FND-001 à FND-010 |
+| `Docs/audits/findings/plans/20261106-apres/` | les 11 plans et mesures par colonne du rejeu |
+| `Docs/audits/api-mail-loadtest-journey-courte-1400-1996-ab-findings-apres-20261106.md` | la section « Findings — analyse de code » du rejeu |
+| `.claude/skills/loadtest-skill/SKILL.md` | § 5b-quater : l'étape après `report.sh`, avant l'arrêt du banc |
+| `CLAUDE.md` | la commande au tableau, hors chaîne |
+| `.gitignore` | `Tools/loadtest-findings/` suivi |
+
+### Conception
+
+- **L'outil fait le mécanique, le playbook le jugement.**
+  - `findings.py` choisit les candidats, formate les mesures, joue les plans et contrôle les preuves.
+  - Le site, la cause, le verdict et le correctif relèvent de l'agent. Le contrôle vérifie après coup ce qu'il cite.
+- **Candidats** :
+  - d'abord les formes signalées par task-431, au plus 6 ;
+  - puis les plus coûteuses en temps, puis en pages, jusqu'à 8 ;
+  - une variante (même début de texte) n'occupe pas de place ;
+  - une forme réglée au registre est remesurée, pas ré-explorée ; `--full` ré-explore tout.
+- **Plans** :
+  - `EXPLAIN (ANALYZE, BUFFERS)` dans une transaction **annulée**, en plan générique : les paramètres sont tirés de la
+    base et jamais affichés ;
+  - `--setup` reconstitue le schéma du commit du tir, en retirant un index ajouté depuis ;
+  - l'outil refuse toute base qui n'est pas du banc.
+- **PostgreSQL 16 ne détoaste pas sous `EXPLAIN ANALYZE`.**
+  - Découvert en cours de route : le plan de FND-007 montrait 2 pages, là où le tir en lisait 18 par appel.
+  - Pour la classe `colonne-volumineuse`, la preuve est donc le poids de chaque colonne (`column-sizes`,
+    `pg_column_size`). C'est écrit au playbook.
+- **Récidive** : un finding de même classe de défaut (D1 à D4) qu'un finding corrigé.
+  - Le poids dans le tir (D5) n'en fonde pas une.
+  - La première version marquait FND-007 comme récidive de la recherche (FND-002), au seul titre de leur poids.
+- **Contrôle de non-confabulation** :
+  - chaque mesure d'un finding et du tableau de synthèse est comparée, au caractère près, au `pgstats` reformaté ;
+  - chaque `fichier:ligne` est lu par `git show {commit}:{fichier}` ;
+  - chaque ligne de plan citée est cherchée dans le plan sauvegardé ;
+  - le registre ne doit avoir ni identifiant ni forme en double.
+
+### Rejeu sur le tir du 2026-11-06 (`…-apres`) — résultat
+
+- **Mode** : complet (`--full`).
+- **Code tiré** : api-mail `f50f2ae5`, d'après le journal du tir.
+- **Candidats** : 8.
+- **Base des plans** : `u_l9l_b27c2b6f659b50f6240b3481927d0381`, la base de banc la plus volumineuse.
+- **Site** : en mode dégradé. Le tir précède task-432, chaque site est donc retrouvé par `git grep` au commit du tir.
+
+| Finding | Verdict | Temps SQL | Lu sur disque | Preuve |
+|---|---|---|---|---|
+| FND-007 Document médical chargé entier à l'ouverture d'un message | **confirmé — récidive** | 165.7 s | 5.4 Go | `MailRepository.cs:1263` ; `Embedding` 6 148 o/ligne jamais affiché |
+| FND-004 Comptage de biologie (F-A) | **confirmé** | 113.7 s | 0.1 Go | `MailRepository.cs:1967` ; `Seq Scan` par document, index retiré |
+| FND-003 Pièces jointes du dossier patient | **confirmé** | 67.6 s | 5.1 Go | `PatientRepository.cs:700` ; `Content` 184 586 o/ligne |
+| FND-005 Comptages d'étiquettes (F-B) | **confirmé** | 62.9 s | 0.0 Go | `MailRepository.cs:3461-3462` ; deux `SubPlan` identiques |
+| FND-010 Recherche vectorielle sans index | **plausible** | 43.1 s | 1.5 Go | `Seq Scan` + distance sur chaque document ; défaut seulement à plus grande échelle |
+| FND-009 Contenu du message avec son vecteur | **confirmé — récidive** | 42.4 s | 0.3 Go | `MailRepository.cs:1326` ; `Embedding` 68 % des octets |
+| FND-002 Recherche plein texte, forme d'après task-427 | **écarté** | 167.8 s | 0.2 Go | correctif en place (`Memoize` sur `lower(Body)`) |
+| FND-006 Registre, la boîte de la personne | **écarté** | 67.9 s | 0.0 Go | deux index uniques, 12 pages, 0,3 ms |
+
+- **Les trois findings confirmés à la main sont retrouvés**, avec site et plan : pièces jointes, F-A, F-B. **Le
+  registre est écarté.**
+- **Le rejeu va plus loin que la lecture manuelle.**
+  - FND-007 était jugé « plausible, gain mineur ». Il pèse en réalité 13,0 % du temps SQL et 33,1 % des lectures
+    disque du tir : c'est la première forme du tir en lectures disque.
+  - `Embedding` et `MetadataJson` y sont lus et jamais affichés, alors que le chemin groupé les écarte depuis task-322.
+  - FND-009, son pendant sur `MailContents`, n'avait pas été vu.
+- **Récidive, et la prévention qui a manqué** :
+  - la consigne `groupby-final-materialise-l-entite` de `conventions/csharp.md` interdit déjà ce chargement ;
+  - mais sa garde `AttachmentBytesReadEndToEndTests` ne couvre que `Content` ;
+  - proposition à l'humain : une task FND-007 + FND-009, avec la garde « aucune route de lecture ne sélectionne
+    `Embedding` ».
+
+### Contrôle de non-confabulation — consigné
+
+```
+python Tools/loadtest-findings/findings.py check --section Docs/audits/api-mail-loadtest-journey-courte-1400-1996-ab-findings-apres-20261106.md \
+    --pgstats Api/Mail/tests/loadtest-k6/reports/2026-11-06/pgstats-journey-193047.tsv --commit f50f2ae5 \
+    --plans Docs/audits/findings/plans/20261106-apres --registry Docs/audits/findings-registry.md
+101 élément(s) contrôlé(s), 0 écart(s)
+```
+
+- **Le contrôle voit rouge.** Vérifié sur la section réelle par trois falsifications :
+  - `Temps SQL` passé de 165.7 à 160.7 s → « le pgstats dit 165.7 s » ;
+  - `MailRepository.cs:99999` → « au-delà de la fin (5487 lignes) au commit f50f2ae5 » ;
+  - « Rows Removed by Filter: 42 » → « ligne de plan absente du plan sauvegardé ».
+- **Le tableau de synthèse est désormais contrôlé.** Il échappait au contrôle lors de cette vérification ; il y est
+  entré ensuite, et sa falsification (165.7 → 150.0 s) est vue.
+- **Chaque mutation de l'outil est vue rouge par un test** :
+
+  | Mutation | Test qui échoue |
+  |---|---|
+  | M1 `--full` ignoré | `test_select_Full_IgnoresTheRegistry` |
+  | M2 garde des bases du banc ouverte | `test_runExplain_RefusesAnyBaseThatIsNotABenchBase` |
+  | M3 mesures non comparées | `test_check_AMeasureThatIsNotThePgstats_IsReported` |
+  | M4 D5 fonde une récidive | `test_select_TheWeightInTheTir_NeverFoundsARecidive` |
+
+- **Aucune valeur de ligne dans les plans sauvegardés.** Recherche d'UUID, de littéraux et de longs nombres : rien.
+
+### Relance sur le même rapport (Manual Test Plan, point 4)
+
+Mode normal, registre amorcé :
+- FND-001 à FND-006 sont **remesurés, non ré-explorés** ;
+- FND-007, FND-009 et FND-010 (`ouvert`) reviennent en candidats avec leur identifiant ;
+- `check --registry` ne trouve aucun doublon.
+
+### Passe qualité (§Q)
+
+Sans objet : le plan de contrôle n'est pas un repo de la table. J'ai relu le code à la main pendant l'écriture, et
+corrigé deux défauts : la récidive fondée sur D5 et le tableau de synthèse hors contrôle (voir plus haut).
+
+### Pièges rencontrés
+
+- **Un `\b` dans un script Python est devenu un retour arrière** une fois écrit dans le fichier : le regex des md5 ne
+  trouvait rien.
+  - La mémoire « Write/Edit : échappements et CRLF » le disait déjà, mais le piège est passé par un script, pas par
+    Write/Edit.
+  - Un test l'aurait vu : `test_readRegistry_ReadsEveryFormOfARow_AndItsStatus`, écrit après coup.
+- **`EXECUTE` sur un plan générique affiche `$1`**, jamais la valeur du paramètre : c'est ce qui permet de tirer les
+  paramètres de la base sans les exposer.
+
 ## Branches
 - `forge` (plan de contrôle, racine du workspace) : **aucune branche**. La modification se fait sur `develop`, dans la session, et le diff des fichiers de la chaîne (`.claude/commands/`, `agents/`, `CLAUDE.md`, `SKILL.md`) est **relu par l'humain avant le push** (règle d'or, point 7 ; règle 5).
 - Aucun repo de code n'est touché par cette task.
@@ -142,4 +266,5 @@ Règles :
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 17 s | — | — | — | — |
-| **Total cycle** | | **17 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 18 min 00 s | — | — | — | — |
+| **Total cycle** | | **18 min 18 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
