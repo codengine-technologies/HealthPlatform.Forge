@@ -139,3 +139,9 @@ Règles :
 - **Référentiels métier** : aucun changement (les codes LOINC des résultats ne sont pas touchés)
 - **Hébergement HDS** : oui — données inchangées, dans la base de la boîte
 - **AIPD / impact RGPD** : inchangée — aucun traitement nouveau
+
+## Branches
+
+- `api-mail` (pushed) : fix/task-430-comptages-biologie-et-etiquettes-un — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-430-comptages-biologie-et-etiquettes-un
+
+> Pré-flight du /start (2026-11-07) : `api-mail`, `client-blazor`, `client-mobile`, `dtos-mss`, `sdk` sur `develop`. `host` (`Host/Modules`) n'est pas un dépôt (connu). `interop` n'est plus la racine d'un dépôt (`--show-prefix` = `interop/`) : non bloquant pour cette task.
