@@ -2,10 +2,10 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.83
+> **Version** : 1.84
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
-> **Dernière mise à jour** : 2026-11-06
+> **Dernière mise à jour** : 2026-11-07
 
 ---
 
@@ -2395,6 +2395,7 @@ Cinq réserves à porter au bilan, sans quoi il serait trompeur :
 - v1.81 — **Un tir qui trouve sa limite ne rend plus illisibles les paliers qui la précèdent.** La préparation des boîtes est jugée palier par palier : un palier qui sature perd ses verdicts, ceux d'avant les gardent. (task-424)
 - v1.82 — **Quand la messagerie tombe, le médecin lit « momentanément injoignable », jamais « erreur inattendue ».** La panne, déjà reconnue, n'arrivait pas jusqu'à l'écran ; elle y arrive, et la boîte se recharge seule au retour de la messagerie. (task-425)
 - v1.83 — **La base commune à tous les médecins respire.** À chaque geste, l'application relisait six fois le registre des boîtes, partagé par tous les praticiens, pour y retrouver un compte qu'elle connaissait déjà. Elle ne le relit plus que lorsqu'il a changé : environ deux cents fois moins de lectures, et deux tiers du temps de cette base libérés, sans rien changer à ce que voit le médecin. C'était le point de contention qui aurait pesé le plus à dix mille inscrits. (task-426)
+- v1.84 — **Le dossier d'un patient s'ouvre trois fois plus vite, et la base relit beaucoup moins le disque.** Pour afficher le nom et la taille des pièces jointes, l'application chargeait le fichier entier de chacune. Elle ne lit plus que ce qu'elle affiche : moitié moins de lectures disque pour toute la plateforme, la page d'un dossier patient trois fois plus rapide et la fiche complète un tiers plus rapide à deux mille médecins actifs. Le stockage des pièces jointes hors de la base n'est plus nécessaire pour la performance. (task-429)
 
 ---
 

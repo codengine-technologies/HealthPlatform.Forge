@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E015-tests-charge-api-mail.md](E015-tests-charge-api-mail.md).
-> **Dernière mise à jour** : 2026-11-06 (v1.83)
+> **Dernière mise à jour** : 2026-11-07 (v1.84)
 
 ---
 
@@ -3347,6 +3347,19 @@ nouvelle table par opération est ce qui permettra de les séparer.
 
 ---
 
+### v1.84 — Le dossier patient ne lit plus le contenu des pièces jointes — task-429
+
+- **Task** : task-429 — `done`. **PR** : `api-mail` [#347](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/347) (`awaiting-human-merge`). Branche `fix/task-429-fiche-patient-ne-plus-lire-le-contenu`.
+- **Origine** : évaluation « sortir les pièces jointes de Postgres (SeaweedFS) » du 2026-11-06, sur le tir « après » de l'A/B/A. La forme `SELECT m."MailId", m."Id", m."Content", … FROM "MailAttachments" … ORDER BY m."MailId"` lisait 13,7 Go par tir court, dont 5 Go sur disque (31 % des lectures disque), pour 5,3 % du temps SQL : sous le seuil des findings du rapport, et attribuée à tort au jeu de travail. Conclusion : corriger, remesurer, différer SeaweedFS.
+- **Cause établie dans le code** : `PatientRepository.LoadMailsWithAttachmentsAsync` regroupait par un `GroupBy` final avec projection dans le groupe ; EF matérialisait l'entité entière, `Content` compris. Récidive de task-322.
+- **Changement** (`api-mail`) : projection des seules métadonnées, lue en flux dans la liste de chaque message ; même forme corrigée sur le regroupement voisin de la biologie. Contrat et comportement HTTP inchangés. Consigne `groupby-final-materialise-l-entite` dans `conventions/csharp.md`.
+- **Preuve** : `AttachmentBytesReadEndToEndTests`, vraie pile, compte rendu CDA du kit ANS enrichi par la vraie route, SQL relevé par les traces Npgsql (`NpgsqlQueryCapture`). Trois routes du dossier patient et une garde sur 15 routes de lecture du parcours (seul le téléchargement lit `Content`). Mutation « `GroupBy` réinjecté » : 4 tests rouges.
+- **Banc** (task puis contrôle `develop`, même session, task sur le cache le plus froid) : forme fautive **3 941 → 0 appel**, lectures disque du tir **16,2 → 6,4 Go (−60 %)**, SQL total −13 %, taux de cache 96,0 → 98,6 %. À 1996 : page d'un dossier patient p95 251 → 80 ms, fiche patient complète p95 1 092 → 754 ms. Aucune étape ralentie.
+- **Sonar** : Quality Gate OK, 0 issue. **E2E** : vert, mobile 58/58, Angular 71/71.
+- **Suites proposées** : étiquette inconnue sur `GET /mail/tags/{code}/emails` → 500 au lieu de 404 (règle 12) ; sortir `Content` dans une entité dépendante (table splitting EF) pour fermer la classe de défaut. Exploration du même tir : task-430 (index biologie absent, comptages d'étiquettes triplés), task-431 à task-433 (le banc comme outil d'exploration).
+
+---
+
 ## Annexe A — Cartographie des briques applicatives
 
 | Brique | Chemin | Rôle |
@@ -3478,3 +3491,4 @@ nouvelle table par opération est ce qui permettra de les séparer.
 | task-424 | **Chauffe et étape « servie base » jugées par palier.** Témoins ventilés par cohorte et par palier de régime ; une cohorte sous 90 % refuse son palier et les suivants, les paliers d'avant gardent leurs verdicts. Bandeaux écrits à tout K ; tir antérieur : verdict global annoncé comme tel. Harnais seul. PR #343. | — |
 | task-425 | **Panne de messagerie en cours de lecture : 503, jamais 500.** Statut `Unavailable` propagé jusqu'à la route, poignée de main TLS coupée classée panne, annulation du client en 499, `code` `MAIL_SERVER_UNAVAILABLE` sur tout 503 issu d'un `Result`, `detail` fixe. Cause établie dans Seq sur les deux pannes du 2026-11-05. PR #344. | — |
 | task-426 | **Le registre n'est plus relu à chaque requête.** Le compte d'une personne connue vient du cache ; invalidation seulement sur écriture ; ancre PSC lue avec la boîte ; `No Reset On Close`. Lectures `accounts` + ancre 5,94 → 0,03 par requête, `DISCARD ALL` du registre supprimé, SQL du registre −67 % (A/B même session). PR #345. | — |
+| task-429 | **Le dossier patient ne lit plus le contenu des pièces jointes.** Un `GroupBy` final matérialisait l'entité entière, binaire compris (13,7 Go par tir court). Projection des métadonnées ; garde d'intégration sur 15 routes. Lectures disque du tir −60 %, fiche patient p95 −31 % à 1996 (A/B même session). PR #347. | — |
