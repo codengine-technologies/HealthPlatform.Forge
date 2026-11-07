@@ -256,6 +256,53 @@ Le banc B a trouvé le défaut de placement : l'authentification et l'enrichisse
 - **Site `?`** : 23 formes, 0,1 % du temps. Ce sont des commandes dont aucune trame de dépôt ne reste dans la pile.
   La borne de 32 échecs plafonne leur coût.
 
+## Sonar log
+
+Deux analyses complètes de la branche, avec couverture OpenCover sur les 5 projets de tests, toutes vertes. Une
+seule itération de correction.
+
+- **Analyse 1** (`f8a9684e` + index du banc) : Quality Gate OK, mais **13 issues de code neuf**, toutes des règles
+  déjà consignées dans `conventions/csharp.md`. Ce sont donc des **récidives sur du code frais**.
+  - S3604 ×2 : `SqlCallSiteResolver`, initialiseurs de champ sous constructeur primaire chaîné.
+  - CA1822 ×9 : doublures de test nommées par réflexion.
+  - CA1859 ×2 : helpers de test qui rendent un type plus large que ce qu'ils calculent.
+  - SYSLIB1045 ×1 : `Regex.IsMatch` dans une assertion du test du bus.
+- **Correctifs** (`29a5e1a9`) :
+  - constructeurs classiques pour le résolveur ;
+  - doublures en classes `static`, avec `Method(typeof(X), …)` ;
+  - types concrets pour les helpers ;
+  - `[GeneratedRegex]` pour le test du bus.
+- **Re-validation** : build propre, puis suite complète verte dans l'analyse 2 (domain 210, application 4031,
+  infrastructure 728, api 1370, integration 1138 + 16 ignorés).
+- **Analyse 2** (`29a5e1a9`) : **0 issue de code neuf**.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline (`develop`, 13:53 UTC) | Final (branche, 19:12 UTC) | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | = |
+| New violations | 0 | 0 (13 à l'analyse 1) | = |
+| New coverage | 96,1 % | 95,9 % | −0,2 |
+| Bugs / Vulnérabilités / Smells | 0 / 0 / 0 | 0 / 0 / 0 | = |
+| Security hotspots | 0 | 0 | = |
+| Coverage projet | 97,9 % | 97,8 % | −0,1 |
+| Duplication | 0,4 % | 0,4 % | = |
+| Ratings fiabilité / sécurité / maintenabilité | A / A / A | A / A / A | = |
+
+**Couverture des fichiers neufs** :
+
+| Fichier | Couverture | Ligne(s) non couverte(s) |
+|---|---|---|
+| `SqlCallSite` | 100 % | — |
+| `SqlCallSiteComments` | 96,1 % | — |
+| `SqlCallSiteResolver` | 96,1 % | 1 |
+| `SqlCallSiteMiddleware` | 89,2 % | 2 |
+| `SqlCallSiteFilter` | 83,3 % | 1 (`Probe`) |
+
+**Prévention** : les compteurs de CA1822, CA1859, S3604 et SYSLIB1045 sont incrémentés dans
+`conventions/csharp.md`, avec la variante de task-432. Ces récidives signalent un défaut de lecture des consignes
+pendant `/develop`, pas un défaut du code (règle d'or, point 3).
+
 ## Branches
 - `api-mail` (pushed) : feat/task-432-sql-trace-jusqu-a-sa-route-et-son-code — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-432-sql-trace-jusqu-a-sa-route-et-son-code
 
@@ -266,4 +313,6 @@ Le banc B a trouvé le défaut de placement : l'authentification et l'enrichisse
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 15 s | — | — | — | — |
-| **Total cycle** | | **15 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 4 h 02 min | 4 (54 s) | 2 (10 min 51 s) | — | api-mail 4B/2T |
+| /sonar | ok | 25 min 13 s | 3 (1 min 40 s) | 12 (16 min 23 s) | 4 (1 min 29 s) | 1 itération(s), api-mail 3B/12T |
+| **Total cycle** | | **4 h 27 min** | **7 (2 min 35 s)** | **14 (27 min 14 s)** | **4 (1 min 29 s)** | |
