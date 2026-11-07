@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E015-tests-charge-api-mail.md](E015-tests-charge-api-mail.md).
-> **Dernière mise à jour** : 2026-11-07 (v1.84)
+> **Dernière mise à jour** : 2026-11-07 (v1.85)
 
 ---
 
@@ -3360,6 +3360,28 @@ nouvelle table par opération est ce qui permettra de les séparer.
 
 ---
 
+### v1.85 — Les comptages de biologie et d'étiquettes ne parcourent plus une table entière par ligne — task-430
+
+- **Task** : task-430 — `done`. **PR** : `api-mail` [#348](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/348) (`awaiting-human-merge`). Branche `fix/task-430-comptages-biologie-et-etiquettes-un`.
+- **Origine** : exploration du tir du 2026-11-06 (préfiguration de task-433), sur le critère « pages lues par ligne rendue ». Le comptage `BiologyCount` lisait 143 Go par tir court, et les dossiers d'étiquettes 89 Go.
+- **Causes établies dans le code et par les plans d'exécution** :
+  - `MailMedicalDocumentBiology.MedicalDocumentId` n'avait aucun index en base praticien : un parcours complet de la table par document ;
+  - `GetTagFoldersAsync` écrivait trois fois la même sous-requête corrélée, et chacune parcourait `MailTags` pour chaque étiquette.
+- **Changement** (`api-mail`) :
+  - migration FluentMigrator `20261107120000_AddMissingForeignKeyIndexes`, qui crée `IX_MailMedicalDocumentBiology_MedicalDocumentId`, et en extension `IX_MailRecipients_MailId` (destinataires lus à chaque page d'en-têtes et supprimés en cascade) ;
+  - `GetTagFoldersAsync` fait un seul comptage groupé par étiquette, joint aux étiquettes ;
+  - contrat inchangé. Consignes `index-de-cle-etrangere-absent-en-base` (3ᵉ occurrence) et `agregat-recopie-dans-une-projection`.
+- **Preuve** : `CountingQueriesEndToEndTests`, vraie pile, base praticien construite par FluentMigrator, plans relus avec `enable_seqscan=off`. `MissingForeignKeyIndexesMigrationTests` rejoue le coureur de production sur une base neuve. Mutations M-A, M-B et M-C rouges.
+- **Banc** (contrôle `develop` puis task, même session) :
+  - dossiers d'étiquettes **91 → 3,7 Go (−96 %)** ;
+  - `BiologyCount` **144 → 82 Go (−43 %)** ;
+  - destinataires inchangés au banc (index non choisi sur de petites tables) ;
+  - SQL total −13 %, aucune étape ralentie.
+  - Le gain de F-A est partiel parce que **316 bases sur 2 000 n'ont pas reçu la migration au premier accès** pendant le tir, sans aucune erreur dans Seq. C'est une question ouverte, avec une task à ouvrir : toute migration de schéma est concernée.
+- **Sonar** : Quality Gate OK, 0 issue. **E2E** : vert, mobile 58/58, Angular 71/71.
+
+---
+
 ## Annexe A — Cartographie des briques applicatives
 
 | Brique | Chemin | Rôle |
@@ -3492,3 +3514,4 @@ nouvelle table par opération est ce qui permettra de les séparer.
 | task-425 | **Panne de messagerie en cours de lecture : 503, jamais 500.** Statut `Unavailable` propagé jusqu'à la route, poignée de main TLS coupée classée panne, annulation du client en 499, `code` `MAIL_SERVER_UNAVAILABLE` sur tout 503 issu d'un `Result`, `detail` fixe. Cause établie dans Seq sur les deux pannes du 2026-11-05. PR #344. | — |
 | task-426 | **Le registre n'est plus relu à chaque requête.** Le compte d'une personne connue vient du cache ; invalidation seulement sur écriture ; ancre PSC lue avec la boîte ; `No Reset On Close`. Lectures `accounts` + ancre 5,94 → 0,03 par requête, `DISCARD ALL` du registre supprimé, SQL du registre −67 % (A/B même session). PR #345. | — |
 | task-429 | **Le dossier patient ne lit plus le contenu des pièces jointes.** Un `GroupBy` final matérialisait l'entité entière, binaire compris (13,7 Go par tir court). Projection des métadonnées ; garde d'intégration sur 15 routes. Lectures disque du tir −60 %, fiche patient p95 −31 % à 1996 (A/B même session). PR #347. | — |
+| task-430 | **Comptages de biologie et d'étiquettes sans parcours de table par ligne.** Index manquants sur `MailMedicalDocumentBiology.MedicalDocumentId` et `MailRecipients.MailId`, un seul comptage groupé par étiquette. Étiquettes −96 % de pages, biologie −43 % (316 bases sur 2 000 non migrées au premier accès : question ouverte). PR #348. | — |
