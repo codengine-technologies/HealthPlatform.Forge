@@ -129,7 +129,8 @@ Règles :
 | /sonar | ok | 10 min 13 s | 1 (24 s) | 5 (8 min 25 s) | 2 (46 s) | api-mail 1B/5T |
 | /lint-angular | skipped | 0.6 s | — | — | — | angular non touché |
 | /lint-mobile | skipped | 0.6 s | — | — | — | mobile non touché |
-| **Total cycle** | | **21 min 23 s** | **2 (32 s)** | **6 (14 min 00 s)** | **2 (46 s)** | |
+| /e2e | ok | 19 min 31 s | — | — | — | e2e ×5 (37 min 57 s) |
+| **Total cycle** | | **40 min 54 s** | **2 (32 s)** | **6 (14 min 00 s)** | **2 (46 s)** | |
 
 ## Develop log
 
@@ -310,3 +311,18 @@ Aucun écran modifié : aucun scénario ajouté ni versionné (tableaux de bord 
 | E2E-ERROR-001 | 1 | headless | Une erreur affiche un code et une référence à transmettre au support | ✅ | ✅ |
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
+
+### CI de la PR (ajout au Develop log, `/review`)
+
+- **Premier run de la PR** (42370267789) : **rouge** sur l'étape « Harness tests ». Les seuls échecs sont les 8 tests
+  de `test_observe_push` (3 échecs, 5 erreurs).
+  - La runner `ubuntu-latest` fournit `pwsh`, alors que ces tests n'étaient gardés que par la présence de PowerShell.
+  - `observe.ps1` lit les classes CIM de Windows (`Win32_PerfFormattedData_*`) et ne peut rien échantillonner sous
+    Linux.
+  - L'essai local dans `node:22`, sans PowerShell, avait ignoré ces tests : il ne reproduisait pas la runner.
+- **Correctif** (`5fdd64ce`) : ces tests exigent Windows **et** PowerShell (`CAN_SAMPLE`). Hors Windows, ils sont
+  ignorés avec une raison explicite. Sous Windows, ils tournent toujours (8 OK).
+- **Second run de la PR** (**42370394378**) : **vert**. Étapes « Setup Node » et « Harness tests (tests/loadtest-k6) »
+  en succès, build .NET en succès.
+- **Prévention** : mémoire de session `ci-runner-ubuntu-pwsh-tests-windows` : un test d'outil Windows se garde par
+  `sys.platform`, et un essai Linux local n'est fidèle qu'avec les outils de la runner.
