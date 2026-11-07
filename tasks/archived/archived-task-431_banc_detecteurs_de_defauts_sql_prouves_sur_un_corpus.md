@@ -374,3 +374,9 @@ Aucun écran modifié : aucun scénario ajouté ni versionné (harnais de banc s
   - SKILL.md écrit, **en attente de relecture**.
 - **Suggestion** : D2 liste aussi les chemins qui servent légitimement un contenu. task-432, qui portera la route de
   chaque forme, permettra de les distinguer.
+
+## Merged
+
+- `api-mail` : PR #350 squash-mergée le 2026-11-07 — `18f9c9fb` sur `develop`, CI develop verte (run 42382608374 : build + publish).
+- Branche `feat/task-431-banc-detecteurs-de-defauts-sql-prouves` supprimée (distante et locale).
+- Reste en attente de relecture humaine (règle d'or, point 7) : l'étape 5a du skill `loadtest-skill` (« Lire la section Signaux de défaut »), modifiée localement, non commitée.
