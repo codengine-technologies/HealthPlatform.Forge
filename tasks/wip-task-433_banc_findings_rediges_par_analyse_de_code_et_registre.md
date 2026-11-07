@@ -130,3 +130,16 @@ Règles :
 - **Hébergement HDS** : non — bases de banc synthétiques. Interdit : jouer `EXPLAIN ANALYZE` sur une base réelle de
   production
 - **AIPD / impact RGPD** : inchangée
+
+## Branches
+- `forge` (plan de contrôle, racine du workspace) : **aucune branche**. La modification se fait sur `develop`, dans la session, et le diff des fichiers de la chaîne (`.claude/commands/`, `agents/`, `CLAUDE.md`, `SKILL.md`) est **relu par l'humain avant le push** (règle d'or, point 7 ; règle 5).
+- Aucun repo de code n'est touché par cette task.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-433 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 17 s | — | — | — | — |
+| **Total cycle** | | **17 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
