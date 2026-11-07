@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E015-tests-charge-api-mail.md](E015-tests-charge-api-mail.md).
-> **Dernière mise à jour** : 2026-11-07 (v1.85)
+> **Dernière mise à jour** : 2026-11-07 (v1.86)
 
 ---
 
@@ -3378,6 +3378,22 @@ nouvelle table par opération est ce qui permettra de les séparer.
   - destinataires inchangés au banc (index non choisi sur de petites tables) ;
   - SQL total −13 %, aucune étape ralentie.
   - Le gain de F-A est partiel parce que **316 bases sur 2 000 n'ont pas reçu la migration au premier accès** pendant le tir, sans aucune erreur dans Seq. C'est une question ouverte, avec une task à ouvrir : toute migration de schéma est concernée.
+
+---
+
+### v1.86 — Tableaux de bord : un panneau sans donnée le dit, un zéro se mesure, et la règle tourne en CI — task-428
+
+- **Task** : task-428 — `done`. **PR** : `api-mail` [#349](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/349) (`awaiting-human-merge`). Branche `fix/task-428-tableau-de-bord-ia-panneau-vide-jamais`.
+- **Origine** : `test_dashboards` rouge sur `develop` depuis task-385 (16 jours), invisible parce que les tests du harnais ne tournaient dans aucune CI.
+- **Changement** :
+  - `mssante-ai-consumption.json` : 8 `noValue` ajoutés, 4 zéros fabriqués retirés ;
+  - `mssante-mail-processing.json` : 17 requêtes en `or vector(0)`, et non 1, réécrites en `A or (P * 0)`, soit 0 seulement si la métrique parente existe ;
+  - `test_dashboards.py` refuse un `noValue` numérique et `or vector(0)` ;
+  - étape CI « Harness tests » (Node 22, `selftest.sh`) ;
+  - `docs/ia-fournisseurs.md` explique comment lire `pas de donnee` face à `0` ;
+  - consigne `tableau-de-bord-sans-donnee`.
+- **Piège levé en CI** : la runner Ubuntu fournit `pwsh`, et `test_observe_push` (échantillonneur Windows, CIM) y échouait. Il est désormais gardé par Windows et PowerShell. Run de la PR vert : 42370394378.
+- **Sonar** : Quality Gate OK, 0 issue. **E2E** : vert, mobile 58/58, Angular 71/71.
 - **Sonar** : Quality Gate OK, 0 issue. **E2E** : vert, mobile 58/58, Angular 71/71.
 
 ---
@@ -3515,3 +3531,4 @@ nouvelle table par opération est ce qui permettra de les séparer.
 | task-426 | **Le registre n'est plus relu à chaque requête.** Le compte d'une personne connue vient du cache ; invalidation seulement sur écriture ; ancre PSC lue avec la boîte ; `No Reset On Close`. Lectures `accounts` + ancre 5,94 → 0,03 par requête, `DISCARD ALL` du registre supprimé, SQL du registre −67 % (A/B même session). PR #345. | — |
 | task-429 | **Le dossier patient ne lit plus le contenu des pièces jointes.** Un `GroupBy` final matérialisait l'entité entière, binaire compris (13,7 Go par tir court). Projection des métadonnées ; garde d'intégration sur 15 routes. Lectures disque du tir −60 %, fiche patient p95 −31 % à 1996 (A/B même session). PR #347. | — |
 | task-430 | **Comptages de biologie et d'étiquettes sans parcours de table par ligne.** Index manquants sur `MailMedicalDocumentBiology.MedicalDocumentId` et `MailRecipients.MailId`, un seul comptage groupé par étiquette. Étiquettes −96 % de pages, biologie −43 % (316 bases sur 2 000 non migrées au premier accès : question ouverte). PR #348. | — |
+| task-428 | **Tableaux de bord : un panneau sans donnée le dit, un zéro se mesure.** 8 `noValue` ajoutés, 21 zéros fabriqués (`or vector(0)`) retirés sur deux tableaux de bord, règle gardée par test et par une nouvelle étape CI des tests du harnais. PR #349. | — |
