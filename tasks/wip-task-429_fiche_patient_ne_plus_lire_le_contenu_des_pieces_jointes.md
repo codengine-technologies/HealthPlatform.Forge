@@ -136,7 +136,10 @@ Règles :
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 20 s | — | — | — | — |
-| **Total cycle** | | **20 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 2 h 05 min | 3 (39 s) | 3 (6 min 08 s) | — | api-mail 3B/3T |
+| **Total cycle** | | **2 h 05 min** | **3 (39 s)** | **3 (6 min 08 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : capture ×2 (1 h 38 min)
 
 ## Develop log
 
@@ -259,3 +262,22 @@ Rapports :
 - `Docs/audits/api-mail-loadtest-journey-courte-1400-1996-task429-controle-develop-20261107.md`
 
 Lignes d'index : commit `ce971762` sur la branche de la task.
+
+## Sonar log
+
+Analyse de la branche `fix/task-429-fiche-patient-ne-plus-lire-le-contenu` (HEAD `ce971762`), 2026-11-07 00:10 UTC :
+- build Release, tests avec couverture OpenCover sur les 5 projets, **0 échec** ;
+- traitement serveur `SUCCESS`, 0 itération de correction nécessaire.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline (task-426) | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | = |
+| Issues new code | 0 | 0 | = |
+| New coverage | 96,0 % | 96,1 % | +0,1 |
+| Bugs / Vulnérabilités / Code smells | 0 / 0 / 0 | 0 / 0 / 0 | = |
+| Security hotspots | 0 | 0 | = |
+| Coverage projet | 97,9 % | 97,9 % | = |
+| Duplication | 0,4 % | 0,4 % | = |
+| Ratings fiabilité / sécurité / maintenabilité | A / A / A | A / A / A | = |
