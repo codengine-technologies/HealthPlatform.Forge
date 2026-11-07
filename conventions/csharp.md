@@ -2134,3 +2134,37 @@ db.Tags.Join(unreadByTag, t => t.Id, u => u.TagId, (t, u) => new FolderDto { Cou
 **Preuve** : `CountingQueriesEndToEndTests.TheTagFolders_CountTheUnreadInboxMailsOfEachTag_InOneGroupedCount` (task-430) :
 le SQL relevé ne lit `MailTags` qu'une fois. L'ancienne forme réinjectée : « 3 lectures de MailTags », rouge.
 
+---
+
+## tableau-de-bord-sans-donnee — un panneau sans donnée le dit, un zéro se mesure
+
+**Occurrences : 2**
+- task-385 : le tableau de bord « Consommation IA » est livré avec 8 panneaux sans `noValue` et 4 panneaux en
+  `or vector(0)` / `noValue: "0"`. Le test qui garde la règle est resté rouge 16 jours sur `develop`, parce que les
+  tests du harnais (`tests/loadtest-k6/`) ne tournaient pas en CI.
+- task-428 : 16 autres panneaux de `mssante-mail-processing.json` fabriquaient un zéro par `or vector(0)`, malgré un
+  `noValue` correct, que le `vector(0)` rendait inatteignable.
+
+Dans un tableau de bord Grafana de l'AppHost (`src/AppHost/grafana/dashboards/`), un panneau vide se lit « rien à
+signaler », et un zéro fabriqué se lit « état sain ». Les deux masquent une métrique absente : instrumentation cassée,
+mauvaise source de données, fonctionnalité jamais appelée.
+
+```promql
+# ❌ AVANT — 0 même si la métrique n'est pas exportée
+sum(increase(mssante_ai_calls_total{usage="inconnu"}[$__range])) or vector(0)
+
+# ✅ APRÈS — 0 si la métrique parente existe, rien sinon (le panneau affiche alors « pas de donnee »)
+sum(increase(mssante_ai_calls_total{usage="inconnu"}[$__range])) or (sum(increase(mssante_ai_calls_total[$__range])) * 0)
+```
+
+**Consigne** :
+- Tout panneau qui interroge une métrique porte `"noValue": "pas de donnee"`, jamais un chiffre.
+- `or vector(0)` est interdit. Pour afficher un zéro, écrire `A or (P * 0)`, où `P` est la métrique parente sans les
+  filtres de détail. Les filtres de variable du tableau de bord (`$feature`) sont gardés. Sans filtre de détail, `A`
+  seul suffit.
+- Une task qui modifie un tableau de bord lance `bash tests/loadtest-k6/selftest.sh` avant le commit. La CI le joue
+  aussi depuis task-428 (étape « Harness tests » de `.github/workflows/dotnet.yml`).
+
+**Preuve** : `test_dashboards.DashboardNoDataTests` (`noValue` présent et non numérique, aucune requête en
+`or vector(0)`), vue rouge sur le JSON d'avant task-428.
+

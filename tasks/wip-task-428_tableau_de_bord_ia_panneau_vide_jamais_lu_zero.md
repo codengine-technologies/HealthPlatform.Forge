@@ -117,3 +117,65 @@ Règles :
 - `api-mail` (pushed) : fix/task-428-tableau-de-bord-ia-panneau-vide-jamais — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-428-tableau-de-bord-ia-panneau-vide-jamais
 
 > Pré-flight du /start (2026-11-07) : `api-mail`, `client-blazor`, `client-mobile`, `dtos-mss`, `sdk` sur `develop`.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-428 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 15 s | — | — | — | — |
+| **Total cycle** | | **15 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+
+## Develop log
+
+**Correctif** (`api-mail`) :
+- **`src/AppHost/grafana/dashboards/mssante-ai-consumption.json`** : 12 panneaux.
+  - 8 panneaux reçoivent `"noValue": "pas de donnee"` : tokens, part et appels par fonctionnalité, appels interrompus,
+    tokens d'entrée et de sortie par appel, débits de tokens et d'appels.
+  - 4 panneaux perdent leur `or vector(0)` et leur `noValue: "0"` :
+    - « Tokens consommes » et « Appels IA » n'ont que le filtre de variable `$feature` : `A` seul ;
+    - « Appels sans usage declare » : `A or (sum(increase(mssante_ai_calls_total{feature=~"$feature"}[$__range])) * 0)` ;
+    - « Tokens non attribues » : `A or (sum(increase(mssante_ai_tokens_total[$__range])) * 0)`.
+- **`src/AppHost/grafana/dashboards/mssante-mail-processing.json`** : **17 panneaux en `or vector(0)`, et non 1 comme
+  le relevait le task file**.
+  - « Tokens de chat envoyes a OpenAI » (`noValue: "0"`, task-325) devient `A or (sum(increase(mssante_ai_tokens_total[$__range])) * 0)`,
+    avec `noValue` `pas de donnee`.
+  - 16 autres (e-mails, pipeline IA, synchronisation, recherche, actions en attente, CDA) avaient bien `noValue`
+    `pas de donnee`, mais le `or vector(0)` le rendait inatteignable : ils affichaient 0 même sans métrique. Ils sont
+    réécrits selon la même règle : `A or (P * 0)` quand `A` filtre un détail (`status`, `step`), `A` seul sinon.
+  - La règle de la task (« `or vector(0)` est interdit ») les couvre, et le test étendu les aurait refusés.
+- **Méthode** :
+  - `mssante-ai-consumption.json` est réécrit structurellement (`json.dumps(indent=2)` reproduit le fichier à
+    l'identique, vérifié avant) ;
+  - `mssante-mail-processing.json`, dont le format n'est pas reproductible, est modifié par remplacement textuel des
+    seules expressions et du `noValue` chiffré ;
+  - les deux JSON sont relus valides.
+- **Règle de réécriture** : `P` est `A` sans ses filtres de détail, avec les filtres de variable du tableau de bord
+  (`$feature`). `A or (P * 0)` rend la mesure si elle existe, 0 si la métrique parente existe sans cette valeur, et rien
+  (donc `pas de donnee`) si la métrique est absente.
+
+**Tests** (`tests/loadtest-k6/test_dashboards.py`, classe `DashboardNoDataTests`) :
+- `test_no_panel_says_zero_when_it_has_no_data` (nouveau) : aucun `noValue` numérique.
+- `test_no_query_fabricates_a_zero` (nouveau) : aucune expression en `or vector(0)`.
+- `test_every_queried_panel_says_when_it_has_no_data` (existant, rouge sur `develop` depuis task-385).
+- **Preuve rouge sur le JSON d'avant le correctif** (`rm -rf __pycache__`, `python -B -m unittest test_dashboards`) :
+  `FAILED (failures=3)`, les trois tests ci-dessus. Après le correctif : `Ran 7 tests … OK`.
+- `bash selftest.sh` : **entièrement vert** sous Windows (Node et 419 tests Python), et **sous Linux** dans `node:22`,
+  sur une copie en LF du dépôt (133 tests Node, 419 Python dont 8 ignorés), ce que la CI exécutera.
+- Test .NET `AiConsumptionMetricsEndpointIntegrationTests.TheConsumptionDashboard_OnlyQueriesSeriesThatTheApiExposes` :
+  vert avec les nouvelles expressions (les métriques parentes sont les mêmes séries).
+
+**CI** (`.github/workflows/dotnet.yml`, job `build`) : étapes « Setup Node » (`actions/setup-node@v4`, Node 22) et
+« Harness tests (tests/loadtest-k6) » (`bash selftest.sh`), avant .NET. Elles tournent sur toute PR vers `develop` ou
+`master`, et sur tout push sur ces branches. Le run de la PR est cité dans `## PRs` par `/review`.
+
+**Documentation** : `docs/ia-fournisseurs.md`, § « Le tableau de bord » : lecture de `pas de donnee` (métrique absente)
+face à `0` (mesuré).
+
+**Passe qualité (§Q)** : diff de configuration (JSON, YAML, test Python, documentation), relu directement : aucun
+nettoyage à appliquer, aucune re-validation nécessaire.
+
+**Prévention (règle d'or)** : entrée `tableau-de-bord-sans-donnee` dans `conventions/csharp.md`. C'est le fichier lu
+par `/develop` avant toute task api-mail. L'entrée demande aussi de lancer `selftest.sh` avant de commiter un tableau
+de bord. Garde en CI désormais.
