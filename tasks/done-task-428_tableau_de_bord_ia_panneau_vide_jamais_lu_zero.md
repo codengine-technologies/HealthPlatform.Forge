@@ -326,3 +326,25 @@ Aucun écran modifié : aucun scénario ajouté ni versionné (tableaux de bord 
   en succès, build .NET en succès.
 - **Prévention** : mémoire de session `ci-runner-ubuntu-pwsh-tests-windows` : un test d'outil Windows se garde par
   `sys.platform`, et un essai Linux local n'est fidèle qu'avec les outils de la runner.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/349 — label `awaiting-human-merge`
+  (commits `f9e66826` correctif, `5fdd64ce` garde Windows de l'échantillonneur). CI de la PR verte : run 42370394378.
+
+## Code Review Summary
+
+**APPROVED** — `/review` du 2026-11-07. Build : 0 erreur, 0 avertissement. Tests : domain 210, infrastructure 705, api
+1 361, application 4 028, intégration 1 133 (+16 ignorés), **0 échec**. `selftest.sh` vert sous Windows et en CI.
+Sonar : Quality Gate OK, 0 issue. E2E : vert.
+
+- **Règle 1b** : sans objet. Aucun comportement atteignable par un endpoint ne change. Le test .NET des séries du
+  tableau de bord de consommation reste vert.
+- **DoD** :
+  - 8 `noValue` ajoutés ;
+  - 17 `or vector(0)` réécrits, et non 5 : le task file n'en relevait qu'un dans `mssante-mail-processing.json` ;
+  - assertions vues rouges, puis vertes ;
+  - étape CI présente et verte (run 42370394378) ;
+  - documentation et consigne écrites.
+- **Suggestion (non bloquante)** : `selftest.sh` ne fait pas échouer la CI quand Node ou Python manque (`MISSING=1`).
+  Les deux sont fournis aujourd'hui, mais une runner sans Python sauterait les tests en silence.
