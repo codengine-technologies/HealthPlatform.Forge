@@ -52,9 +52,9 @@ Règles :
 
 ## Definition of Done
 
-- [ ] Build passes (0 errors) : `HealthPlatform.Api.Mail.sln`
-- [ ] Tests pass (0 failures) : `HealthPlatform.Api.Mail.sln`
-- [ ] **Test d'intégration de bout en bout (règle 1b)** : un appel à
+- [x] Build passes (0 errors) : `HealthPlatform.Api.Mail.sln`
+- [x] Tests pass (0 failures) : `HealthPlatform.Api.Mail.sln`
+- [x] **Test d'intégration de bout en bout (règle 1b)** : un appel à
       `GET /api/v1/Patients/{patientId}/medical-documents?page=1&pageSize=20` sur la vraie pile et la vraie base du
       fixture :
       - la réponse est inchangée ;
@@ -62,21 +62,21 @@ Règles :
         `/* route=GET /api/v1/Patients/{patientId}/medical-documents site=PatientRepository.` ;
       - le commentaire ne contient pas l'identifiant du patient ;
       - **vu rouge** sans l'intercepteur.
-- [ ] **Test d'intégration, la base garde le commentaire** : après l'appel, `pg_stat_statements` de la base du fixture
+- [x] **Test d'intégration, la base garde le commentaire** : après l'appel, `pg_stat_statements` de la base du fixture
       (si l'extension est chargée par le fixture ; sinon, `pg_stat_activity` pendant l'appel, ou les journaux du
       conteneur) contient le commentaire. Le moyen retenu est justifié dans le `Develop log`
-- [ ] **Test d'intégration, acte système** : une écriture faite par le consommateur du bus porte `route=bus:…` et son
+- [x] **Test d'intégration, acte système** : une écriture faite par le consommateur du bus porte `route=bus:…` et son
       site
-- [ ] **Désactivation** : `Database:SqlCallSiteComments=false` ne produit aucun commentaire (test d'intégration)
-- [ ] Tests unitaires : la résolution du site (premier dépôt de la pile), le cache par texte (une seule résolution pour
+- [x] **Désactivation** : `Database:SqlCallSiteComments=false` ne produit aucun commentaire (test d'intégration)
+- [x] Tests unitaires : la résolution du site (premier dépôt de la pile), le cache par texte (une seule résolution pour
       deux exécutions), la borne du cache
-- [ ] **Surcoût mesuré au banc**, tir court contre contrôle `develop` dans la même session :
+- [x] **Surcoût mesuré au banc**, tir court contre contrôle `develop` dans la même session :
       - aucune étape ralentie de plus de 5 % au p50 ;
       - CPU d'api-mail relevé ;
       - rapport régénéré : le top des requêtes affiche `route` et `site`.
-- [ ] `report.py` affiche `route` et `site` par forme : test sur une fixture de `pg_stat_statements` qui porte le
+- [x] `report.py` affiche `route` et `site` par forme : test sur une fixture de `pg_stat_statements` qui porte le
       commentaire
-- [ ] Aucune donnée de santé en clair dans les logs, ni dans le texte SQL : contrôle mécanique dans le test
+- [x] Aucune donnée de santé en clair dans les logs, ni dans le texte SQL : contrôle mécanique dans le test
       d'intégration, aucune valeur d'identifiant dans le commentaire
 - [ ] Parcours e2e verts (`/e2e`), aucun scénario ajouté : aucun parcours n'est modifié
 
@@ -103,6 +103,158 @@ Règles :
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui — pas de donnée nouvelle. Le texte SQL reste dans Postgres, sur l'environnement HDS
 - **AIPD / impact RGPD** : inchangée — aucune donnée personnelle ajoutée au texte SQL
+
+## Develop log
+
+**Commits api-mail** : `44b2f220` (feature + passe qualité), `f8a9684e` (middleware avant l'authentification, trouvé
+au banc).
+
+### Conception
+
+- **Le commentaire** : `/* route=<gabarit> site=<Dépôt.Méthode> */ ` en tête de chaque commande EF Core. Postgres
+  l'ignore pour le `queryid` mais garde le texte vu en premier, par base.
+- **`route`** : un `AsyncLocal` (`SqlCallSite`, Application) ouvert par trois portes.
+  - Le middleware `SqlCallSiteMiddleware` écrit le gabarit de route, sans les contraintes, et ne recopie que la
+    version d'API numérique. La méthode HTTP est prise dans une liste fermée, sinon `OTHER`.
+  - Le filtre MassTransit `SqlCallSiteFilter<T>` écrit `bus:AddNewMail`.
+  - Par défaut, la valeur est `background`.
+- **`site`** : `SqlCallSiteResolver` lit la pile et prend la première trame d'un `*Repository` (hors
+  `BaseRepository`) ou de `PostgresTenantRegistryClient`. Les noms générés par le compilateur sont démêlés.
+  - La résolution est mise en cache par texte SQL (borne de 4096).
+  - Un texte non résolu 32 fois devient `?`, ce qui borne le coût de la pile.
+- **Point de pose : `CommandInitialized`, pas `ReaderExecuting`.** EF initialise la commande *avant* d'ouvrir la
+  connexion. Quand l'ouverture rend la main (`await` qui cède), la trame du dépôt a disparu de la pile au moment
+  de l'exécution. Le test du bus en INSERT/UPDATE sortait `site=?` tant que le commentaire était posé à
+  l'exécution.
+- **Interrupteur** : `Database:SqlCallSiteComments` (vrai par défaut), lu au démarrage par
+  `SqlCallSiteComments.Configure`.
+- **Branchement** : `BaseRepository.CreateDbContextAsync`, le client du registre, le filtre de consommation du bus,
+  `app.UseSqlCallSite()` après `UseExceptionHandler` et **avant `UseAuthentication`** (voir le banc).
+- **Harnais** :
+  - `pg-statements.sh` agrège les formes sur le texte **sans** commentaire (le md5 est inchangé, vérifié sur un
+    `postgres:16` jetable à deux bases) et ajoute la colonne `call_sites`.
+  - `report_postgres.py` retire le commentaire avant les détecteurs et ajoute une colonne « Émise par » au top 20
+    et aux signaux de défaut.
+
+### Preuve que la base garde le commentaire : `pg_stat_statements`
+
+`UseCaseFixture` charge désormais `shared_preload_libraries=pg_stat_statements`. Le test
+`ThePractitionerDatabase_KeepsTheComment_InPgStatStatements` remet les compteurs à zéro, appelle la route sur la
+vraie pile, puis lit `pg_stat_statements` de la base du praticien via `SqlProbe` (`Pooling=false`). C'est le moyen
+le plus direct : le même texte que lit `pg-statements.sh` au banc. `pg_stat_activity` n'aurait vu que l'instant de
+l'appel, et les journaux du conteneur dépendent de `log_statement`.
+
+### Preuves rouges (règle 1b), par mutation
+
+| Mutation | Tests rouges |
+|---|---|
+| M1 — intercepteur non branché dans `BaseRepository` | 4 : interrupteur actif, HTTP, `pg_stat_statements`, bus |
+| M2 — le middleware ouvre `background` | HTTP, `pg_stat_statements` |
+| M3 — chemin réel (`…/{patientId}` valué) dans la route | HTTP, `pg_stat_statements` (identifiant détecté) |
+| M4 — filtre du bus sans opération | `AMailConsumedFromTheBus_WritesUnderItsMessageName_AndTheRepositoryMethod` |
+| M5 — interrupteur ignoré | test « désactivé » |
+| M6 — pose à l'exécution seulement | resté vert : non déterministe (dépend d'un `await` qui cède), le défaut a été vu au banc d'intégration avant le correctif |
+| M7 — middleware placé après `UseAuthentication` | `TheProductionPipeline_WiresTheMiddleware_TheSwitch_AndTheBusFilter` |
+| R1 — commentaire laissé dans le texte (rapport) | 3 tests de `report_postgres` |
+| R2 — colonne « Émise par » non rendue | 1 test de `report_postgres` |
+
+### Suite complète
+
+| Projet | Résultat |
+|---|---|
+| domain | 210 verts |
+| infrastructure | 728 verts |
+| api | 1370 verts |
+| application | 4031 verts |
+| integration | 1138 verts, 16 ignorés |
+| loadtest-k6 (Python) | `CallSiteTests` (5) verts |
+
+Le premier passage complet a sorti **28 échecs `53300 too many clients`** dans la collection UseCases. Les
+nouvelles sondes ouvrent un pool par base, ce qui fait une 4ᵉ récidive. Corrigé par `max_connections=400` sur
+`UseCaseFixture` et `Pooling=false` sur la sonde. La mémoire de session est corrigée : elle prêtait cette valeur à
+`PostgreSqlFixture`.
+
+### Passe qualité (`/simplify`, §Q)
+
+- **Appliqué** :
+  - dédoublonnage de la CTE d'export ;
+  - retrait des surcharges `*Executing` ;
+  - chemin rapide sans allocation pour le nettoyage du commentaire ;
+  - compteur `Interlocked` au lieu de `.Count` ;
+  - allocations du middleware réduites ;
+  - `Enabled` en propriété ;
+  - réutilisation de `SqlProbe` ;
+  - note sur `HttpErrorReporting.RouteOf`.
+- **Écarté** :
+  - correspondance du site par espace de noms (s'écarte du contrat de la task) ;
+  - cache de premier niveau par référence ;
+  - `struct` jetable.
+
+### Banc : surcoût, tir court 1400 → 1996 avec IA simulée, A/B/A, même session (2026-11-07)
+
+| Tir | Code | Requêtes | Rapport |
+|---|---|---|---|
+| A | `develop` 18f9c9fb | 764 008 | `report-journey-courte-1400-1996-20261107-controle432-170442.md` |
+| B | branche 44b2f220 | 758 288 | `…-task432-175431.md` |
+| B' | branche finale f8a9684e | 763 043 | `…-task432b-184604.md` |
+| A2 | `develop` 18f9c9fb | 695 244 | `…-controle432b-193520.md` : **VOID** |
+
+- **A2 est inutilisable.** Côté SMTP du banc, l'obtention de session a pris 8,6 s et la transmission 8,1 s par
+  envoi. L'envoi est passé à un p50 de 20,4 s au palier 1996, ce qui a bridé les VU (−9 % de requêtes) et allégé
+  toutes les autres étapes. C'est un incident d'environnement sur le code `develop`, sans lien avec la task. Il
+  n'y a donc qu'un seul contrôle valable.
+- **Bruit mesuré** entre B et B', deux tirs d'un code quasi identique : jusqu'à ±2,5 % au p50. Une milliseconde
+  vaut 2 à 3 % sur les étapes de 35 à 50 ms.
+
+**Verdict, code final (B') contre contrôle (A) : aucune étape ralentie de plus de 5 % au p50. ✅**
+Pire écart : **+4,1 %**, sur l'inbox au palier 1996 (49 → 51 ms). Les autres étapes vont de −0,6 % à +3,1 %.
+Le +5,3 % de B (inbox au palier 1400, 38 → 40 ms) ne se reproduit pas sur B' (38 → 39). C'est de la granularité.
+
+| Étape | p50 1400 A → B' | p50 1996 A → B' |
+|---|---|---|
+| Arrivée dashboard | 58 → 59 | 63 → 64 |
+| Inbox | 38 → 39 | 49 → 51 |
+| Message enrichi | 32 → 33 | 45 → 46 |
+| Message froid | 444 → 444 | 453 → 454 |
+| Recherche | 324 → 322 | 347 → 348 |
+| Envoi | 493 → 496 | 484 → 498 |
+| PJ | 35 → 36 | 50 → 51 |
+| Marquer lu | 33 → 33 | 51 → 52 |
+| Recherche patient | 55 → 55 | 56 → 56 |
+| Page dossier patient | 56 → 56 | 59 → 59 |
+| Fiche patient complète | 257 → 262 | 336 → 340 |
+
+- **CPU** :
+  - hôte, en moyenne : 61,7 % (A), 60,5 % (B), 60,5 % (B') ;
+  - api-mail, pointe par processus : 2,2 à 3,1 cœurs (A), 2,6 à 3,2 (B), 2,0 à 3,9 (B').
+
+  Ce sont des pointes transitoires, pas une consommation soutenue, et leur somme ne se compare pas d'un tir à
+  l'autre (4 ou 5 processus selon les redémarrages).
+- **Rapport régénéré** : la colonne « Émise par » apparaît au top 20 et aux signaux.
+
+**Couverture du commentaire au banc**, en part du temps SQL du tir :
+
+| | B (middleware après l'authentification) | B' (final) |
+|---|---|---|
+| Route + site | 64 formes, 86,8 % | **71 formes, 93,2 %** |
+| `background` seul | 9 formes, 7,3 %, dont `GetMailboxAsync` du registre à 6,5 % | 4 formes, 0,6 % : `PendingActionRepository`, vrai acte de fond |
+| Site `?` seul | 23 formes, 0,1 % | 23 formes, 0,1 % |
+| Sans commentaire | 36 formes, 5,8 % | 35 formes, 6,1 % |
+
+Le banc B a trouvé le défaut de placement : l'authentification et l'enrichisseur de contexte lisent le registre
+*avant* le middleware. D'où `f8a9684e` et la mutation M7.
+
+### Limites connues, assumées
+
+- **SQL brut hors EF, sans commentaire (6,1 %)** :
+  - l'INSERT d'`audit_traces` (3,2 %, 138 250 appels), avec son `BEGIN` et son `SET LOCAL ROLE mss_audit_writer` ;
+  - le chargement des types de Npgsql (2,0 %) ;
+  - le `FOR KEY SHARE` des clés étrangères, émis par Postgres lui-même.
+
+  L'audit passe par Npgsql sans `DbContext`. Le commenter demanderait une pose à la main dans l'écrivain d'audit :
+  c'est une piste, hors du périmètre de la task.
+- **Site `?`** : 23 formes, 0,1 % du temps. Ce sont des commandes dont aucune trame de dépôt ne reste dans la pile.
+  La borne de 32 échecs plafonne leur coût.
 
 ## Branches
 - `api-mail` (pushed) : feat/task-432-sql-trace-jusqu-a-sa-route-et-son-code — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-432-sql-trace-jusqu-a-sa-route-et-son-code
