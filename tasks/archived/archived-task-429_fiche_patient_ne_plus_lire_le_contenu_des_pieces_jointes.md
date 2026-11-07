@@ -141,7 +141,9 @@ Règles :
 | /lint-angular | skipped | 0.5 s | — | — | — | client-angular non touché |
 | /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 20 min 02 s | — | — | — | e2e ×6 (38 min 04 s) |
-| **Total cycle** | | **2 h 36 min** | **4 (1 min 23 s)** | **8 (14 min 30 s)** | **2 (43 s)** | |
+| /review | ok | 7 min 21 s | 1 (10 s) | 1 (5 min 43 s) | — | api-mail 1B/1T |
+| /tech-writer | ok | 41 s | — | — | — | — |
+| **Total cycle** | | **2 h 44 min** | **5 (1 min 34 s)** | **9 (20 min 14 s)** | **2 (43 s)** | |
 
 Autres commandes mesurées : capture ×2 (1 h 38 min)
 
@@ -423,3 +425,11 @@ Aucun écran modifié : aucun scénario ajouté ni versionné (task backend sans
 - `GET /api/v1/mail/tags/{code}/emails` sur une étiquette inconnue rend 500 au lieu de 404 (règle 12). Task à ouvrir.
 - Sortir `Content` dans une entité dépendante sur la même table (table splitting EF) : ferme la classe de défaut de
   task-322 et task-429.
+
+## Merged
+
+- 2026-11-07, sur attestation humaine (`/merge task-429 --i-tested`).
+- `api-mail` : PR #347 squash-mergée → `01f8de6f` sur `develop`. CI `Build and Publish` verte (run 42353230292).
+- Branche `fix/task-429-fiche-patient-ne-plus-lire-le-contenu` supprimée (distante et locale).
+- PR #346 (lignes d'index du banc) toujours ouverte : conflit trivial attendu en fin de `INDEX.md` et
+  `POSTGRES-INDEX.md`, à résoudre en gardant les lignes des deux côtés.
