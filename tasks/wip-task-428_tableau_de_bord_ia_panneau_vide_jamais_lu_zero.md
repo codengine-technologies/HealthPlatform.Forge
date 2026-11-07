@@ -111,3 +111,9 @@ Règles :
 - **Hébergement HDS** : non concerné. Les tableaux de bord ne lisent que des compteurs techniques (tokens, appels,
   fonctionnalité), sans donnée de santé
 - **AIPD / impact RGPD** : inchangé, aucun traitement nouveau
+
+## Branches
+
+- `api-mail` (pushed) : fix/task-428-tableau-de-bord-ia-panneau-vide-jamais — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-428-tableau-de-bord-ia-panneau-vide-jamais
+
+> Pré-flight du /start (2026-11-07) : `api-mail`, `client-blazor`, `client-mobile`, `dtos-mss`, `sdk` sur `develop`.
