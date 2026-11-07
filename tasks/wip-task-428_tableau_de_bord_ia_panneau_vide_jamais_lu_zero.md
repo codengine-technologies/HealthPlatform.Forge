@@ -125,7 +125,8 @@ Règles :
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 15 s | — | — | — | — |
-| **Total cycle** | | **15 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 10 min 52 s | 1 (8.2 s) | 1 (5 min 34 s) | — | api-mail 1B/1T |
+| **Total cycle** | | **11 min 08 s** | **1 (8.2 s)** | **1 (5 min 34 s)** | **0 (0.0 s)** | |
 
 ## Develop log
 
@@ -179,3 +180,30 @@ nettoyage à appliquer, aucune re-validation nécessaire.
 **Prévention (règle d'or)** : entrée `tableau-de-bord-sans-donnee` dans `conventions/csharp.md`. C'est le fichier lu
 par `/develop` avant toute task api-mail. L'entrée demande aussi de lancer `selftest.sh` avant de commiter un tableau
 de bord. Garde en CI désormais.
+
+## Sonar log
+
+Analyse de la branche `fix/task-428-tableau-de-bord-ia-panneau-vide-jamais` (HEAD `f9e66826`), 2026-11-07 11:29 UTC :
+- build Release, tests avec couverture OpenCover sur les 5 projets, **0 échec** ;
+- traitement serveur `SUCCESS`, 0 itération (la task ne change aucun code C#).
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline (task-430) | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | = |
+| Issues new code | 0 | 0 | = |
+| New coverage | 96,0 % | 96,0 % | = |
+| Bugs / Vulnérabilités / Code smells | 0 / 0 / 0 | 0 / 0 / 0 | = |
+| Security hotspots | 0 | 0 | = |
+| Coverage projet | 97,9 % | 97,9 % | = |
+| Duplication | 0,4 % | 0,4 % | = |
+| Ratings fiabilité / sécurité / maintenabilité | A / A / A | A / A / A | = |
+
+## Lint log
+
+Skipped — `client-angular` non touché par la task (`**Repos**: api-mail`).
+
+## Lint mobile log
+
+Skipped — `client-mobile` non touché par la task.
