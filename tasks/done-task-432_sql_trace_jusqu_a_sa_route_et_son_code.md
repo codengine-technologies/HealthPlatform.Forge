@@ -418,4 +418,31 @@ Aucun écran modifié : aucun scénario ajouté ni versionné (observabilité SQ
 | /lint-angular | skipped | 0.5 s | — | — | — | client-angular non touché |
 | /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 19 min 22 s | — | — | — | e2e ×3 (18 min 49 s) |
-| **Total cycle** | | **4 h 47 min** | **7 (2 min 35 s)** | **14 (27 min 14 s)** | **4 (1 min 29 s)** | |
+| /review | ok | 7 min 42 s | 1 (16 s) | 1 (5 min 31 s) | — | api-mail 1B/1T |
+| **Total cycle** | | **4 h 54 min** | **8 (2 min 51 s)** | **15 (32 min 46 s)** | **4 (1 min 29 s)** | |
+
+## PRs
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/351 — label `awaiting-human-merge`
+
+## Code Review Summary
+
+**APPROVED** — 9 fichiers de production, 9 fichiers de tests, 5 fichiers de harnais. 0 point bloquant,
+3 suggestions.
+
+- Build : 0 erreur, 0 avertissement.
+- Tests : domain 210, infrastructure 728, api 1 370, application 4 031, intégration 1 138 (+16 ignorés), 0 échec.
+- `selftest.sh` du harnais : 431 tests verts.
+- **Règle 1b** — comportement → test → preuve rouge :
+  - commentaire de route et de site sur `GET …/medical-documents` →
+    `ThePatientFolderPage_EveryCommandNamesItsRouteAndRepositoryMethod_WithoutAnyIdentifier` → M1, M2, M3 ;
+  - commentaire gardé dans `pg_stat_statements` → `ThePractitionerDatabase_KeepsTheComment_InPgStatStatements`
+    → M1, M2, M3 ;
+  - écriture du bus sous `bus:AddNewMail` → `AMailConsumedFromTheBus_WritesUnderItsMessageName_AndTheRepositoryMethod`
+    → M1, M4 ;
+  - interrupteur à `false` → `SqlCallSiteCommentsSwitchIntegrationTests` → M5 ;
+  - ordre du pipeline de production → `TheProductionPipeline_WiresTheMiddleware_TheSwitch_AndTheBusFilter` → M7.
+- **E2E** : vert. Mobile 58, angular 71, parité verte.
+- **Suggestions** :
+  - l'INSERT d'`audit_traces` (3,2 % du temps SQL) reste sans commentaire, hors EF ;
+  - le cache des sites est indexé par texte : des listes `IN` de longueurs variables consomment la borne ;
+  - `UseCaseHttpHost` n'a pas l'ordre de production, qui est gardé par le test de source.
