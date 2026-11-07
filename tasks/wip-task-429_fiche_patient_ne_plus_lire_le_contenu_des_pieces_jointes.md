@@ -215,3 +215,47 @@ Règles :
 
 **Prévention (règle d'or)** : entrée `groupby-final-materialise-l-entite` dans `conventions/csharp.md`
 (2 occurrences : task-322, task-429).
+
+## Mesure au banc
+
+**Tir court 1400 → 1996** :
+- conditions : IA simulée, pool 1, tireur k6bench, banc mail cluster, `LATENCY_MS=96` ;
+- harnais : celui de `develop` (`f50f2ae5`) pour les deux tirs.
+
+**Ordre** : task-429 (`1d0d5185`, 2026-11-06 23:20) **puis** contrôle `develop` (`f50f2ae5`, 2026-11-07 00:10), même
+session. Le tir de la task, passé en premier sur le cache le plus froid (33,9 contre 28,2 fautes majeures/s), est le
+défavorisé : l'écart mesuré ne peut pas être surestimé par l'ordre.
+
+| Mesure | Contrôle `develop` | **task-429** |
+|---|---|---|
+| Forme `SELECT m."MailId", m."Id", m."Content", … ORDER BY m."MailId"` | 3 941 appels, 84 s, 14,1 Go lus | **0 appel** |
+| Forme qui la remplace (`SELECT m."MailId", m."Guid", m."FileName", m."ContentType", m."Size"`) | — | 3 455 appels, 0,2 s, 0,1 Go |
+| Lectures disque du tir (`shared_read`) | 16,2 Go | **6,4 Go (−60 %)** |
+| Temps cumulé de lecture disque | 123 s | 92 s |
+| Temps SQL total | 22,9 min | **19,9 min (−13 %)** |
+| Coût SQL par requête HTTP | 4,7 ms | **4,1 ms** |
+| Taux de cache (blocs) | 96,02 % | **98,58 %** |
+| Backends actifs (équivalent) | 1,52 | 1,34 |
+| Débit à 1996, erreurs | 410,6 req/s, 0,01 % | 414,2 req/s, 0,01 % |
+
+**Étapes du parcours, p50 / p95 (ms)** — palier 1400 | palier 1996 :
+
+| Étape | Contrôle `develop` | **task-429** |
+|---|---|---|
+| Page d'un dossier patient | 57/114 \| 88/251 | **56/65 \| 59/80** |
+| Fiche patient complète | 307/520 \| 452/1 092 | **262/430 \| 355/754** |
+| Ouvrir / rafraîchir l'inbox | 40/99 \| 57/182 | 40/92 \| 53/144 |
+| Ouvrir un message enrichi | 34/68 \| 57/154 | 34/61 \| 49/116 |
+| Télécharger une PJ | 37/78 \| 64/236 | 37/69 \| 55/231 |
+| Recherche | 328/606 \| 373/734 | 327/649 \| 351/657 |
+
+- **Critère de la DoD** : **aucune étape ralentie**. Le pire écart au p95 est la recherche à 1400 (+7 %), qui
+  s'améliore à 1996 (−10 %). Aucun écart ne dépasse 20 % : l'A/B/A n'est pas requis.
+- **Effet attendu, constaté** : la page du dossier patient perd 68 % de son p95 à 1996, et la fiche patient complète
+  31 %. Les autres étapes gagnent un peu, parce que Postgres relit moins le disque et sert plus vite le reste.
+
+Rapports :
+- `Docs/audits/api-mail-loadtest-journey-courte-1400-1996-task429-20261106.md`
+- `Docs/audits/api-mail-loadtest-journey-courte-1400-1996-task429-controle-develop-20261107.md`
+
+Lignes d'index : commit `ce971762` sur la branche de la task.
