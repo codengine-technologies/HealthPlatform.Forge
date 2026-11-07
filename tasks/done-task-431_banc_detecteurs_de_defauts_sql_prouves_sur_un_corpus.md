@@ -134,7 +134,8 @@ Règles :
 | /sonar | ok | 9 min 21 s | 1 (29 s) | 5 (7 min 35 s) | 2 (43 s) | api-mail 1B/5T |
 | /lint-angular | skipped | 0.5 s | — | — | — | angular non touché |
 | /lint-mobile | skipped | 0.4 s | — | — | — | mobile non touché |
-| **Total cycle** | | **23 min 32 s** | **2 (47 s)** | **6 (13 min 08 s)** | **2 (43 s)** | |
+| /e2e | ok | 19 min 12 s | — | — | — | e2e ×5 (37 min 35 s) |
+| **Total cycle** | | **42 min 45 s** | **2 (47 s)** | **6 (13 min 08 s)** | **2 (43 s)** | |
 
 ## Develop log
 
@@ -343,3 +344,31 @@ Aucun écran modifié : aucun scénario ajouté ni versionné (harnais de banc s
 | E2E-ERROR-001 | 1 | headless | Une erreur affiche un code et une référence à transmettre au support | ✅ | ✅ |
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/350 — label `awaiting-human-merge`
+  (commit `ff4bc122`). CI de la PR verte (run 42381593472), étape « Harness tests » comprise.
+- **Plan de contrôle, en attente de relecture humaine** : `.claude/skills/loadtest-skill/SKILL.md` (étape 5a) est
+  modifié en local, ni commité ni poussé (règle d'or, point 7).
+
+## Code Review Summary
+
+**APPROVED** — `/review` du 2026-11-07. Build : 0 erreur, 0 avertissement. Tests : domain 210, infrastructure 705, api
+1 361, application 4 028, intégration 1 133 (+16 ignorés), **0 échec**.
+- Au premier passage, `SemanticSearchRepositoryIntegrationTests` (famille connue) a été rouge une fois, sans AppHost
+  en écoute. Il est vert seul (24/24), et la suite rejouée est verte. Aucun code C# n'est modifié par la task.
+- `selftest.sh` : vert (426 tests Python). Sonar : Quality Gate OK, 0 issue. E2E : vert.
+
+- **Règle 1b** : sans objet, aucun comportement atteignable par un endpoint ne change.
+- **DoD** :
+  - 5 détecteurs documentés (module et README) ;
+  - corpus minimal présent (task-426, task-427, task-429 et task-430, avant et après, plus le faux positif du
+    registre) ;
+  - un test par cas, vu rouge par mutation (6 mutations) ;
+  - section régénérée sur le tir du 2026-11-06 ;
+  - diagnostic mémoire retiré sur les formes signalées ;
+  - aucun littéral SQL ;
+  - SKILL.md écrit, **en attente de relecture**.
+- **Suggestion** : D2 liste aussi les chemins qui servent légitimement un contenu. task-432, qui portera la route de
+  chaque forme, permettra de les distinguer.
