@@ -223,3 +223,72 @@ Règles :
 - `index-de-cle-etrangere-absent-en-base`, de 2 à **3 occurrences** : sous-requête corrélée, et contrôle « toute clé
   étrangère d'une table par praticien a son `Create.Index` » ;
 - nouvelle entrée `agregat-recopie-dans-une-projection`.
+
+## Mesure au banc
+
+Tir court 1400 → 1996, IA simulée, pool 1, tireur k6bench, banc mail cluster, `LATENCY_MS=96`. Harnais de `develop`
+pour les deux tirs.
+
+**Ordre imposé** : contrôle `develop` (`01f8de6f`, 2026-11-07 09:26) **puis** task-430 (`a16e5a84`, 10:16), dans la
+même session. Une fois créés par le tir de la task, les index restent en base : un contrôle joué après en aurait
+profité. Le tir de la task, passé second, bénéficie d'un cache plus chaud. Les **pages lues** par forme, qui ne
+dépendent pas de l'état du cache, sont la mesure qui fait foi. Les latences sont données à titre indicatif.
+
+| Forme `pg_stat_statements` | Contrôle `develop` | **task-430** |
+|---|---|---|
+| F-B dossiers d'étiquettes (`FROM "Tags"`) | 47 997 appels, 62,4 s, **91,0 Go** (197 Ko/ligne) | 47 648 appels, **7,3 s, 3,7 Go** (8 Ko/ligne) — **−96 %** |
+| F-A comptage `BiologyCount` | 88 717 appels, 111,8 s, **144,3 Go** (213 pages/appel) | 88 487 appels, **72,2 s, 82,3 Go** (122 pages/appel) — **−43 %** |
+| Toutes les formes qui lisent la biologie | 157,3 s, 180,3 Go | 103,8 s, 104,0 Go |
+| Destinataires (`FROM "MailRecipients"`) | 313 316 appels, 11,3 s, 7,3 Go | 312 299 appels, 10,6 s, 7,3 Go — inchangé |
+| Temps SQL total | 19,6 min | **17,0 min (−13 %)** |
+| Lectures disque (temps cumulé) | 82 s | 68 s |
+| Débit à 1996, erreurs | 414,6 req/s, 0,01 % | 409,4 req/s, 0,01 % |
+
+**Lecture des résultats** :
+- **F-B** : gain complet, il ne dépend que du code.
+- **F-A, partiel, et pour deux raisons établies.**
+  1. **La migration n'a atteint que 1 684 bases sur 2 000** pendant le tir, alors que le comptage a tourné sur les
+     1 996 bases actives (colonne `bases` de `pg_stat_statements`). Environ 312 bases actives ont donc tout le tir
+     sans index.
+     - Aucun échec de mise à niveau dans Seq.
+     - Aucune clé `setupdb:*` dans le Redis du banc.
+     - Cause non établie : voir « Question ouverte » ci-dessous.
+  2. **Sur une base migrée**, `EXPLAIN (ANALYZE, BUFFERS)` de la forme `BiologyCount` montre le comptage par
+     `Index Only Scan using "IX_MailMedicalDocumentBiology_MedicalDocumentId"` : 19 pages pour 18 documents, contre
+     environ 8 pages **par document** avant. Le reste de la forme, c'est le parcours de `MailMedicalDocuments` lui-même
+     (77 pages), que le planificateur préfère sur une table de 121 lignes : hors du défaut F-A.
+  - **Estimation, non mesurée** : sur les seules bases migrées, environ 105 pages par appel, soit −51 %.
+- **Destinataires** : l'index n'est pas choisi par le planificateur sur les tables du banc (quelques centaines de lignes,
+  `MailId = ANY(…)` sur une page entière). Son intérêt porte sur les tables de production plus grandes, et sur la
+  suppression en cascade, que le parcours médecin du banc n'exerce pas. Gain non démontré au banc, à le dire tel quel.
+- **Latences**, p50 / p95 en ms, palier 1400 | palier 1996 :
+
+  | Étape | Contrôle | task-430 |
+  |---|---|---|
+  | Arrivée tableau de bord (liste des dossiers) | 58/620 \| 64/641 | 58/556 \| 64/584 |
+  | Ouvrir / rafraîchir l'inbox | 39/87 \| 52/142 | 39/87 \| 51/145 |
+  | Fiche patient complète | 255/412 \| 347/709 | 257/411 \| 342/731 |
+
+  - Aucune étape ne se dégrade de plus de 20 % : le pire écart est de +4 % au p95 (recherche à 1996, +4 % ;
+    marquer lu, +5 %), dans le bruit.
+  - À ces volumes, le gain de pages ne se voit pas sur les latences : les deux formes étaient servies depuis le cache
+    (CPU), pas depuis le disque.
+- **Index présent sur des bases existantes après mise à niveau** (DoD) : 1 684 bases sur 2 000, vérifié par
+  `pg_indexes` sur l'ensemble des bases du banc.
+
+### Question ouverte — des bases actives ne reçoivent pas la migration au premier accès
+
+- **Constat** : sur 2 000 bases, 316 n'ont pas l'index après le tir, alors que 1 996 bases ont exécuté la forme
+  `BiologyCount`. Aucun `Failed to setup database` dans Seq.
+- **Le mécanisme** : `BaseRepository.HandleEnvironmentDbSetupAsync` migre au premier accès, puis mémorise la base par
+  processus (`_migratedDatabases`, clé `UserContextInfo.UserDatabaseName`) et dans Redis (`setupdb:{base}`, 24 h).
+- **Hypothèse à instruire** : la clé de mémorisation (`UserDatabaseName`) ne désigne pas toujours la base réellement
+  ouverte (boîtes partagées, nommage par boîte depuis task-404). Une base marquée « migrée » à tort ne recevrait jamais
+  la migration suivante.
+- **Portée** : toute migration de schéma déployée en production. **Task à ouvrir**, hors du périmètre de task-430.
+
+Rapports :
+- `Docs/audits/api-mail-loadtest-journey-courte-1400-1996-task430-controle-develop-20261107.md`
+- `Docs/audits/api-mail-loadtest-journey-courte-1400-1996-task430-20261107.md`
+
+Lignes d'index : commit `ca94d3e3` sur la branche de la task.
