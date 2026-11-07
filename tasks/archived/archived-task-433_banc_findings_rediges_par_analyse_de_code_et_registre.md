@@ -103,7 +103,7 @@ Règles :
       tir, et chaque `fichier:ligne` existe au commit du tir. Vérification consignée
 - [x] `.claude/skills/loadtest-skill/SKILL.md` appelle l'étape après `report.sh`
 - [x] `CLAUDE.md` : la commande est ajoutée au tableau des commandes, hors chaîne autonome
-- [ ] Changements du plan de contrôle relus par l'humain avant le push (règle d'or, point 7)
+- [x] Changements du plan de contrôle relus par l'humain avant le push (règle d'or, point 7)
 
 ## Manual Test Plan
 
@@ -319,3 +319,7 @@ corrigé deux défauts : la récidive fondée sur D5 et le tableau de synthèse 
   - ⚠️ Le squelette de variante (60 premiers caractères) peut réunir deux tables différentes qui commencent par les
     mêmes colonnes : c'est le cas des deux recherches vectorielles, jugées ensemble à juste titre. Y inclure la table
     du `FROM` le rendrait sûr.
+
+## Merged
+- `forge` (plan de contrôle) : livrables relus par l'humain (`/merge task-433 --i-tested`, 2026-11-07), commités et poussés sur `develop` : `8c11589`. Pas de PR (règle 5).
+- Aucun repo de code touché.
