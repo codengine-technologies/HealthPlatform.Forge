@@ -145,3 +145,81 @@ Règles :
 - `api-mail` (pushed) : fix/task-430-comptages-biologie-et-etiquettes-un — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-430-comptages-biologie-et-etiquettes-un
 
 > Pré-flight du /start (2026-11-07) : `api-mail`, `client-blazor`, `client-mobile`, `dtos-mss`, `sdk` sur `develop`. `host` (`Host/Modules`) n'est pas un dépôt (connu). `interop` n'est plus la racine d'un dépôt (`--show-prefix` = `interop/`) : non bloquant pour cette task.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-430 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 14 s | — | — | — | — |
+| **Total cycle** | | **14 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+
+## Develop log
+
+**Correctifs** (`api-mail`) :
+- **F-A, index de la biologie.** Migration FluentMigrator `20261107120000_AddMissingForeignKeyIndexes`, qui crée
+  `IX_MailMedicalDocumentBiology_MedicalDocumentId`. `MailDataContext` déclare le même nom.
+- **Extension de périmètre** (relue par la passe qualité, axe « altitude ») : la même migration crée
+  `IX_MailRecipients_MailId`.
+  - `MailRecipients.MailId`, clé étrangère lue par la page d'en-têtes (`MailId = ANY(…)`), n'avait pas d'index depuis
+    l'origine.
+  - Mesuré au tir task-429 du 2026-11-06 : 314 393 appels, 7,4 Go de pages, 12 s de SQL.
+  - La suppression en cascade d'un message (`FK_MailRecipients_Mails`) parcourait aussi toute la table, une fois par
+    message supprimé.
+  - Même défaut et même preuve : ajouté ici plutôt que dans une task séparée.
+- **F-B, `MailRepository.GetTagFoldersAsync`.** Un seul comptage des messages non lus de l'INBOX courante, groupé par
+  `TagId` (`GroupBy(...).Select(g => new { g.Key, g.Count() })`), joint à `Tags`. Il remplace trois sous-requêtes
+  corrélées identiques (filtre, `Count`, `UnreadCount`). `Count` et `UnreadCount` gardent la même valeur. Une étiquette
+  sans message non lu n'a pas de groupe, donc pas de dossier, comme avant.
+- **Index sur `MailTags(TagId)` non ajouté.** Le plan réécrit part de `MailId` (semi-jointure sur
+  `IX_MailTags_MailId_TagId`) et groupe en mémoire : un index sur `TagId` ne servirait pas cette requête (passe
+  qualité, axe « efficacité »).
+- **Règle 7c** :
+  - migration relue : deux `Create.Index`, leurs `Delete.Index` dans `Down`, aucune autre opération ;
+  - pas de snapshot EF : les bases praticien ne passent que par FluentMigrator, et la DoD, qui parlait de « migration
+    EF Core », est tenue sur son intention ;
+  - même nom d'index dans le modèle et dans la base.
+- **Mise à niveau des bases existantes**, par le mécanisme habituel (`BaseRepository.HandleEnvironmentDbSetupAsync`) :
+  `MigrateUp` au premier accès d'une base, mémorisé par processus et par la clé Redis `setupdb:{base}` (24 h).
+  - Une base existante reçoit donc l'index au premier accès qui suit l'expiration de sa clé, ou la purge de celle-ci,
+    sur un processus neuf.
+  - Au banc, les clés `setupdb:*` sont purgées avant chaque tir. Preuve sur une base existante : voir « Mesure au
+    banc ».
+
+**Tests (règle 1b)** :
+- `UseCases/CountingQueriesEndToEndTests` (collection `UseCases`, boîtes n° 23 et 24) : vraie pile HTTP, Dovecot, base
+  praticien construite par le **coureur de production** (FluentMigrator).
+- `Repository/MissingForeignKeyIndexesMigrationTests` : coureur de production sur une base neuve, et non sur la
+  fixture `EnsureCreated`, qui porte déjà ces index par convention EF (consigne `index-de-cle-etrangere-absent-en-base`).
+
+| Comportement | Test | Preuve rouge |
+|---|---|---|
+| Page d'en-têtes (`GET /mail/folders/INBOX/emails/{uid}`) : le compte rendu enrichi est servi par la base, ses documents portent `HasBiologyResults` (issu de `BiologyCount`) et ses destinataires. Sur la base praticien, le comptage de biologie et la lecture des destinataires passent par leur index (plan relu avec `enable_seqscan=off`) | `TheHeaderPage_ServesBiologyFlagsAndRecipients_ThroughTheirForeignKeyIndexes` | M-A (migration sans attribut) : rouge, « Seq Scan » ; M-C (index des destinataires retiré) : rouge, `Seq Scan on "MailRecipients"` |
+| Dossiers d'étiquettes (`GET /mail/folders`) : deux non lus → `count` et `unreadCount` 2/2, un non lu → 1/1, étiquette dont le seul message est lu → absente. Le SQL relevé ne lit `MailTags` qu'une fois | `TheTagFolders_CountTheUnreadInboxMailsOfEachTag_InOneGroupedCount` | M-B (ancienne forme réinjectée) : rouge, « 3 lectures de MailTags » |
+| Cas d'échec : boîte sans étiquette → 200, dossiers servis, aucun dossier d'étiquette | `AMailboxWithoutTags_ListsItsFolders_WithoutAnyTagFolder` | non applicable (inchangé) |
+| Base neuve migrée par le coureur de production : les deux index existent, sur la bonne colonne | `MissingForeignKeyIndexesMigrationTests.MigratingAFreshMailDatabase_CreatesTheBiologyDocumentAndRecipientsMailIndexes` | M-A, M-C |
+
+- **Mutations** :
+  - M-A et M-B jouées ensemble (3 tests rouges), M-C seule (2 tests rouges) ;
+  - fichiers copiés avant mutation, restaurés depuis la copie, vérifiés par `cmp`, `touch`, puis recompilation
+    complète avant toute suite `--no-build`.
+- **Piège de mise en place, levé** : enrichi **avant** le listage des dossiers, le message était rangé hors de la
+  génération courante de l'INBOX, donc ni servi par la base ni compté sous son étiquette. Le test suit maintenant
+  l'ordre de l'application : dossiers et en-têtes d'abord, enrichissement ensuite. Les prémisses sont affirmées :
+  message servi enrichi, biologie en base, destinataires présents.
+
+**Passe qualité (§Q, /simplify, deux relectures sur quatre axes)** :
+- **Appliqué** :
+  - lecture du plan par `SqlProbe.ReadStringsAsync`, avec `enable_seqscan` passé dans la chaîne de connexion ;
+  - `AsSpan().Count` ;
+  - options JSON redondantes retirées ;
+  - étiquetage factorisé dans `ArchiveMailboxServer.TagAsync`, repris par `AttachmentBytesReadEndToEndTests` (task-429) ;
+  - extension `MailRecipients.MailId` (altitude).
+- **Écarté** : l'index `MailTags(TagId)` (voir plus haut). Les index de `ContactMssAddresses.ContactId` et
+  `ContactTags.ContactId` (aucune lecture au tir) sont notés dans la consigne.
+
+**Prévention (règle d'or)**, `conventions/csharp.md` :
+- `index-de-cle-etrangere-absent-en-base`, de 2 à **3 occurrences** : sous-requête corrélée, et contrôle « toute clé
+  étrangère d'une table par praticien a son `Create.Index` » ;
+- nouvelle entrée `agregat-recopie-dans-une-projection`.

@@ -1074,9 +1074,18 @@ Preuve par mutation.
 
 ## index-de-cle-etrangere-absent-en-base — une colonne de filtre sans index, que la fixture fait croire indexée
 
-**Occurrences : 2**
+**Occurrences : 3**
 - task-322 : les index `MailId` de `MailAttachments` et `MailMedicalDocuments` n'existaient pas en base.
 - task-331 : `MailMedicalDocuments.PatientId` est devenu le filtre du dossier patient, sans index en base.
+- task-430 : `MailMedicalDocumentBiology.MedicalDocumentId`, filtre de la sous-requête corrélée `BiologyCount`
+  de la page d'en-têtes (task-261), n'avait aucun index depuis l'origine. Un parcours complet par document :
+  143 Go de pages lues sur un tir court du 2026-11-06. Une **sous-requête corrélée** (`.Count`, `.Any` sur une
+  navigation) filtre elle aussi sur la clé étrangère : la consigne s'y applique, même si la colonne n'est pas
+  « mise au premier plan » par la task.
+  La même task a trouvé `MailRecipients.MailId` sans index depuis l'origine (7,4 Go par tir, et un parcours complet
+  par message supprimé en cascade). **Contrôle à faire** : toute clé étrangère d'une table par praticien
+  (`SetupMigration` et suivantes) a un `Create.Index` qui la mène. Restent sans index, à faible coût mesuré :
+  `ContactMssAddresses.ContactId`, `ContactTags.ContactId`.
 
 PostgreSQL ne crée **aucun** index pour une clé étrangère, et FluentMigrator, qui construit les
 bases praticien, non plus. La base de la fixture `PostgreSql`, elle, est construite par
@@ -2095,4 +2104,33 @@ var byMail = rows.GroupBy(r => r.MailId).ToDictionary(g => g.Key, g => g.Select(
 **Preuve** : `AttachmentBytesReadEndToEndTests` (task-429). Le SQL est relevé par les traces Npgsql
 (`NpgsqlQueryCapture`), sur la base du praticien. Mutation « `GroupBy` d'origine réinjecté » : 4 tests rouges, dont la
 garde, qui désigne les deux routes du dossier patient.
+
+---
+
+## agregat-recopie-dans-une-projection — une même expression d'agrégat se calcule une fois
+
+**Occurrences : 1**
+- task-430 : `MailRepository.GetTagFoldersAsync` écrivait `db.MailTags.Count(mt => mt.TagId == t.Id && unreadInbox.Any(…))`
+  pour `Count`, la même pour `UnreadCount`, et sa forme `Any` pour le filtre. EF émet **trois sous-requêtes corrélées**
+  par étiquette, et chacune parcourait `MailTags` : 89 Go de pages lues sur un tir court du 2026-11-06.
+
+EF ne factorise pas deux expressions identiques d'une projection : chacune devient sa propre sous-requête SQL.
+
+```csharp
+// ❌ AVANT — trois sous-requêtes corrélées par étiquette
+db.Tags.Where(t => db.MailTags.Any(mt => mt.TagId == t.Id && …))
+    .Select(t => new FolderDto { Count = db.MailTags.Count(mt => mt.TagId == t.Id && …), UnreadCount = /* la même */ });
+
+// ✅ APRÈS — un seul comptage groupé, joint aux étiquettes
+var unreadByTag = db.MailTags.Where(mt => …).GroupBy(mt => mt.TagId).Select(g => new { TagId = g.Key, Unread = g.Count() });
+db.Tags.Join(unreadByTag, t => t.Id, u => u.TagId, (t, u) => new FolderDto { Count = u.Unread, UnreadCount = u.Unread });
+```
+
+**Consigne** :
+- Une même expression d'agrégat ne se recopie pas dans une projection EF : la calculer une fois, groupée par la clé,
+  puis la joindre.
+- Un filtre `Any` qui répète l'agrégat se remplace par la jointure sur le groupe : une clé sans groupe n'a pas de ligne.
+
+**Preuve** : `CountingQueriesEndToEndTests.TheTagFolders_CountTheUnreadInboxMailsOfEachTag_InOneGroupedCount` (task-430) :
+le SQL relevé ne lit `MailTags` qu'une fois. L'ancienne forme réinjectée : « 3 lectures de MailTags », rouge.
 
