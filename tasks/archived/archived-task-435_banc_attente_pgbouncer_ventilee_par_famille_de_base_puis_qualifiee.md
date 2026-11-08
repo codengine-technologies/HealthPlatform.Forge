@@ -522,3 +522,13 @@ Son « test d'intégration » est le tir de qualification, qui a exercé l'écha
    retirées). Les tests unitaires couvrent ces changements ; le prochain tir les exercera en réel.
 2. Écarté, noté : lire `SHOW POOLS` et `SHOW STATS` en un seul appel `psql`, et dériver les noms des bases du
    registre plutôt que de les recalculer en bash.
+
+## Merged
+
+- 2026-11-08 — `/merge task-435 --i-tested` (validation humaine attestée).
+- `api-mail` : PR #353 squash-mergée, commit `405da376e506fda82211bc95266e603cdc790728`, label `awaiting-human-merge`
+  retiré, branche `fix/task-435-banc-attente-pgbouncer-ventilee-par` supprimée (distante et locale). Les deux commits
+  intermédiaires qui portaient l'empreinte d'une base de développement ne sont pas sur `develop`.
+- CI `develop` : ✓ verte — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/42518978633
+- Staging : aucune (task lancée par `/start`, hors run `/forge`).
+- Décision PgBouncer (remède A, B ou rien) : en attente de l'humain.
