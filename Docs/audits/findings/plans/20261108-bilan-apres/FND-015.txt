@@ -1,0 +1,12 @@
+-- forme : 9ecf42a479e49a52787a30295de1f894
+-- base : u_l9l_b27c2b6f659b50f6240b3481927d0381
+-- requête : texte du tir
+Seq Scan on "MailMedicalDocumentBiology" m (actual time=0.028..0.028 rows=0 loops=1)
+  Filter: ("IsFlagged" AND ("MedicalDocumentId" = ANY ($1)))
+  Rows Removed by Filter: 119
+  Buffers: shared hit=3
+Planning:
+  Buffers: shared hit=104 read=2
+  I/O Timings: shared read=0.502
+Planning Time: 1.143 ms
+Execution Time: 0.059 ms

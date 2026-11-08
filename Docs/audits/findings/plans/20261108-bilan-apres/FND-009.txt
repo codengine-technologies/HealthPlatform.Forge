@@ -1,0 +1,11 @@
+-- forme : 4b9380ddd1837d2bc365a5afbc833f85
+-- base : u_l9l_b27c2b6f659b50f6240b3481927d0381
+-- requête : texte du tir
+Index Scan using "UX_MailContents_MailId" on "MailContents" m (actual time=0.024..0.024 rows=1 loops=1)
+  Index Cond: ("MailId" = $1)
+  Buffers: shared hit=2
+Planning:
+  Buffers: shared hit=26 read=1
+  I/O Timings: shared read=0.041
+Planning Time: 0.270 ms
+Execution Time: 0.062 ms

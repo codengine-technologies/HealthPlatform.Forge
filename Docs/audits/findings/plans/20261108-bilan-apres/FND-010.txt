@@ -1,0 +1,31 @@
+-- forme : 9b0276b995554c73320b5caa00935e87
+-- base : u_l9l_b27c2b6f659b50f6240b3481927d0381
+-- requête : texte du tir
+Limit (actual time=6.317..6.322 rows=20 loops=1)
+  Buffers: shared hit=512 read=151
+  I/O Timings: shared read=2.987
+  ->  Sort (actual time=6.316..6.319 rows=20 loops=1)
+        Sort Key: ((m."Embedding" <=> $1))
+        Sort Method: quicksort  Memory: 26kB
+        Buffers: shared hit=512 read=151
+        I/O Timings: shared read=2.987
+        ->  Hash Join (actual time=0.128..6.287 rows=23 loops=1)
+              Hash Cond: (m."MailId" = m0."Id")
+              Buffers: shared hit=509 read=151
+              I/O Timings: shared read=2.987
+              ->  Seq Scan on "MailMedicalDocuments" m (actual time=0.029..5.980 rows=23 loops=1)
+                    Filter: (("Embedding" IS NOT NULL) AND (("EmbeddingModel")::text = $3) AND (("Embedding" <=> $1) <= $4))
+                    Rows Removed by Filter: 134
+                    Buffers: shared hit=425 read=151
+                    I/O Timings: shared read=2.987
+              ->  Hash (actual time=0.067..0.068 rows=156 loops=1)
+                    Buckets: 1024  Batches: 1  Memory Usage: 17kB
+                    Buffers: shared hit=5
+                    ->  Seq Scan on "Mails" m0 (actual time=0.003..0.031 rows=156 loops=1)
+                          Filter: (("FolderPath")::text = $2)
+                          Buffers: shared hit=5
+Planning:
+  Buffers: shared hit=168 read=5
+  I/O Timings: shared read=0.432
+Planning Time: 1.773 ms
+Execution Time: 6.423 ms

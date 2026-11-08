@@ -1,0 +1,12 @@
+-- forme : 5148cb399674048f3066e09be6ab72ed
+-- base : mss_registry_loadtest
+-- requête : texte du tir
+Insert on audit_traces (actual time=0.877..0.878 rows=0 loops=1)
+  Conflict Resolution: NOTHING
+  Tuples Inserted: 1
+  Conflicting Tuples: 0
+  Buffers: shared hit=80 dirtied=3
+  ->  Result (actual time=0.003..0.004 rows=1 loops=1)
+Planning Time: 0.178 ms
+Trigger audit_traces_fill_mailbox on audit_traces_2026m11: time=0.453 calls=1
+Execution Time: 0.941 ms

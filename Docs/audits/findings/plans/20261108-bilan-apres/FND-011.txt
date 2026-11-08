@@ -1,0 +1,23 @@
+-- forme : 4c9c73a7b84af06ddf5fcf9b73b3c7ab
+-- base : u_l9l_b27c2b6f659b50f6240b3481927d0381
+-- requête : texte du tir
+Limit (actual time=0.048..0.048 rows=1 loops=1)
+  Buffers: shared hit=5
+  ->  Sort (actual time=0.047..0.047 rows=1 loops=1)
+        Sort Key: "Id"
+        Sort Method: quicksort  Memory: 25kB
+        Buffers: shared hit=5
+        ->  Bitmap Heap Scan on "MailAttachments" m (actual time=0.019..0.020 rows=1 loops=1)
+              Recheck Cond: ("MailId" = $1)
+              Filter: (("FileName")::text = $2)
+              Rows Removed by Filter: 1
+              Heap Blocks: exact=1
+              Buffers: shared hit=2
+              ->  Bitmap Index Scan on "IX_MailAttachments_MailId" (actual time=0.016..0.016 rows=2 loops=1)
+                    Index Cond: ("MailId" = $1)
+                    Buffers: shared hit=1
+Planning:
+  Buffers: shared hit=34 read=1
+  I/O Timings: shared read=0.013
+Planning Time: 0.275 ms
+Execution Time: 0.105 ms

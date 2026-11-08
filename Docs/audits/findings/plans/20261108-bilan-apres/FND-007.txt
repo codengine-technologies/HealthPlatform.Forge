@@ -1,0 +1,11 @@
+-- forme : 9a63b74fac8c0708f158bb2588df9b57
+-- base : u_l9l_b27c2b6f659b50f6240b3481927d0381
+-- requête : texte du tir
+Index Scan using "IX_MailMedicalDocuments_MailId" on "MailMedicalDocuments" m (actual time=0.018..0.019 rows=1 loops=1)
+  Index Cond: ("MailId" = $1)
+  Buffers: shared hit=2
+Planning:
+  Buffers: shared hit=171 read=10
+  I/O Timings: shared read=0.694
+Planning Time: 1.899 ms
+Execution Time: 0.085 ms

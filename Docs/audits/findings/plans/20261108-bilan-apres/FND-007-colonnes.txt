@@ -1,0 +1,4 @@
+-- base : u_l9l_b27c2b6f659b50f6240b3481927d0381
+-- table : MailMedicalDocuments
+| lignes | Body (octets/ligne) | HtmlBody (octets/ligne) | Embedding (octets/ligne) | MetadataJson (octets/ligne) |
+| 157 | 2482 | 37860 | 6148 |  |

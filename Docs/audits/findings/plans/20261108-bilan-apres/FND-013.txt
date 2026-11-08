@@ -1,0 +1,39 @@
+-- forme : 8f9a23fbdfe763775fed3766b575821b
+-- base : u_l9l_b27c2b6f659b50f6240b3481927d0381
+-- requête : texte du tir
+Nested Loop Anti Join (actual time=0.067..0.072 rows=2 loops=1)
+  Buffers: shared hit=20
+  ->  Nested Loop (actual time=0.056..0.060 rows=2 loops=1)
+        Buffers: shared hit=16
+        ->  Nested Loop (actual time=0.050..0.052 rows=2 loops=1)
+              Buffers: shared hit=12
+              ->  Bitmap Heap Scan on "MailMedicalDocuments" m (actual time=0.044..0.046 rows=2 loops=1)
+                    Recheck Cond: (("DuplicateOfId" IS NOT NULL) AND ("Id" = ANY ($1)))
+                    Filter: (NOT "DuplicateRejected")
+                    Heap Blocks: exact=2
+                    Buffers: shared hit=8
+                    ->  BitmapAnd (actual time=0.041..0.042 rows=0 loops=1)
+                          Buffers: shared hit=6
+                          ->  Bitmap Index Scan on "IX_MailMedicalDocuments_DuplicateOfId" (actual time=0.010..0.011 rows=76 loops=1)
+                                Index Cond: ("DuplicateOfId" IS NOT NULL)
+                                Buffers: shared hit=1
+                          ->  Bitmap Index Scan on "PK_MailMedicalDocuments" (actual time=0.027..0.027 rows=2 loops=1)
+                                Index Cond: ("Id" = ANY ($1))
+                                Buffers: shared hit=5
+              ->  Index Scan using "PK_MailMedicalDocuments" on "MailMedicalDocuments" m0 (actual time=0.002..0.003 rows=1 loops=2)
+                    Index Cond: (("Id" = m."DuplicateOfId") AND ("Id" IS NOT NULL))
+                    Buffers: shared hit=4
+        ->  Index Scan using "PK_Mails" on "Mails" m1 (actual time=0.003..0.003 rows=1 loops=2)
+              Index Cond: (("Id" = m0."MailId") AND ("Id" IS NOT NULL))
+              Filter: (("FolderPath" IS NULL) OR (NOT "IsInSentDraftOrTrashFolder"))
+              Buffers: shared hit=4
+  ->  Index Scan using "IX_MailFolders_Path" on "MailFolders" m2 (actual time=0.005..0.005 rows=0 loops=2)
+        Index Cond: (("Path")::text = (m1."FolderPath")::text)
+        Filter: ("FolderType" = ANY (ARRAY[$3, $4, $5]))
+        Rows Removed by Filter: 1
+        Buffers: shared hit=4
+Planning:
+  Buffers: shared hit=478 read=2
+  I/O Timings: shared read=0.011
+Planning Time: 2.701 ms
+Execution Time: 0.199 ms

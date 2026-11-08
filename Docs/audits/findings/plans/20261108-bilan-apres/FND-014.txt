@@ -1,0 +1,11 @@
+-- forme : a5978bf1120a527de14ca8d1c8283f21
+-- base : u_l9l_b27c2b6f659b50f6240b3481927d0381
+-- requête : texte du tir
+Seq Scan on "Mails" m (actual time=0.006..0.134 rows=16 loops=1)
+  Filter: (("References" IS NOT NULL) AND (("References" ~~ $1) OR ("References" ~~ $2) OR ("References" ~~ $3) OR ("References" ~~ $4) OR ("References" ~~ $5) OR ("References" ~~ $6) OR ("References" ~~ $7) OR ("References" ~~ $8) OR ("References" ~~ $9) OR ("References" ~~ $10) OR ("References" ~~ $11) OR ("References" ~~ $12) OR ("References" ~~ $13) OR ("References" ~~ $14) OR ("References" ~~ $15) OR ("References" ~~ $16) OR ("References" ~~ $17) OR ("References" ~~ $18) OR ("References" ~~ $19) OR ("References" ~~ $20) OR ("References" ~~ $21) OR ("References" ~~ $22) OR ("References" ~~ $23) OR ("References" ~~ $24) OR ("References" ~~ $25)))
+  Rows Removed by Filter: 140
+  Buffers: shared hit=5
+Planning:
+  Buffers: shared hit=18
+Planning Time: 0.183 ms
+Execution Time: 0.180 ms
