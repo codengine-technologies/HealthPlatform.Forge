@@ -169,3 +169,21 @@ Règles :
 - **Hébergement HDS** : non — banc de charge local, données synthétiques (`loadtest.local`), aucune donnée de santé
   réelle
 - **AIPD / impact RGPD** : inchangée — aucun traitement nouveau de données personnelles
+
+## Branches
+
+- `api-mail` (pushed) : fix/task-435-banc-attente-pgbouncer-ventilee-par — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-435-banc-attente-pgbouncer-ventilee-par
+
+> Pré-flight du /start (2026-11-08) : `api-mail`, `client-blazor`, `client-mobile`, `dtos-mss`, `sdk` sur `develop`, arbres
+> propres. `host` (`Host/Modules`) et `interop` ne sont pas des racines de dépôt (`--show-prefix` non vide) : connu, non
+> bloquant. La task touche l'outillage du banc (`tests/loadtest-k6/`) et le plan de contrôle (`Docs/audits/`, skill de
+> banc) : aucun autre dépôt.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-435 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 22 s | — | — | — | — |
+| **Total cycle** | | **22 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
