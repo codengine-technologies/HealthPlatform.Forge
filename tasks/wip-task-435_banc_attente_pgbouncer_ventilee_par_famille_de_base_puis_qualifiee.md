@@ -187,7 +187,10 @@ Règles :
 |---|---|---|---|---|---|---|
 | /start | ok | 22 s | — | — | — | — |
 | /develop | ok | 1 h 16 min | 4 (45 s) | 6 (1 min 18 s) | — | api-mail 4B/6T |
-| **Total cycle** | | **1 h 16 min** | **4 (45 s)** | **6 (1 min 18 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 9 min 42 s | 1 (30 s) | 5 (7 min 44 s) | 2 (44 s) | 1 itération(s), api-mail 1B/5T |
+| /lint-angular | skipped | 0.5 s | — | — | — | client-angular non touché |
+| /lint-mobile | skipped | 0.6 s | — | — | — | client-mobile non touché |
+| **Total cycle** | | **1 h 26 min** | **5 (1 min 15 s)** | **11 (9 min 03 s)** | **2 (44 s)** | |
 
 Autres commandes mesurées : capture ×1 (50 min 32 s)
 
@@ -359,3 +362,26 @@ Rapport complet : `Docs/audits/api-mail-loadtest-journey-courte-1400-1996-t435-q
 | Rectification des comptes rendus | ✓ note dans les 5 rapports du 2026-11-08, liste des 14 autres dans la synthèse |
 | Prévention : README du banc, skill de banc | ✓ piège n° 7 ; encadré du skill (§ 5a-bis) |
 | Aucune donnée de santé | ✓ noms de base = empreintes d'adresses synthétiques. Un test citait d'abord l'empreinte d'une base de développement réelle du poste : remplacée par un nom fabriqué (`44ea1038`). Elle reste dans deux commits intermédiaires de la branche, que le squash n'emporte pas sur `develop` |
+
+## Sonar log
+
+- SonarQube 9.9.8 (`sonar.login`), projet `healthplatform-api-mail`, une analyse complète de la branche.
+- **Phase 1 (new code)** : ✓ Quality Gate OK, new_coverage = 96,0 %, 0 issue de code neuf, 0 hotspot.
+- **Phase 2 (legacy)** : 0 itération, la dette préexistante est à zéro.
+- **Build / tests** : ✓ verts (domaine 210, application 4 031, infrastructure 728, api 1 376, intégration 1 142 + 16
+  ignorés).
+- Aucune règle corrigée à la main : rien à verser dans `conventions/csharp.md`.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | → |
+| New coverage | 95,9 % | 96,0 % | +0,1 pt |
+| Bugs | 0 | 0 | 0 |
+| Vulnerabilities | 0 | 0 | 0 |
+| Security hotspots | 0 | 0 | 0 |
+| Code smells | 0 | 0 | 0 |
+| Coverage (projet) | 97,9 % | 97,9 % | 0 pt |
+| Duplication | 0,4 % | 0,4 % | 0 |
+| Reliability / Security / Maintainability | A/A/A | A/A/A | → |
