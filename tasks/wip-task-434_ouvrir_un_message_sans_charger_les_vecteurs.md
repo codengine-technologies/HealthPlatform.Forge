@@ -204,7 +204,11 @@ Règles :
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 18 s | — | — | — | — |
-| **Total cycle** | | **18 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 2 h 45 min | 14 (1 min 33 s) | 15 (24 min 43 s) | — | api-mail 14B/15T |
+| /loadtest-findings | ok | 4 min 05 s | — | — | — | — |
+| **Total cycle** | | **2 h 50 min** | **14 (1 min 33 s)** | **15 (24 min 43 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : capture ×2 (1 h 41 min)
 
 ## Develop log
 
@@ -314,3 +318,67 @@ Règles :
 - La lecture a échoué deux fois : la prévention nommée par `/loadtest-findings` le 2026-11-07, puis le 2026-11-08,
   n'avait pas été posée. La garde couvre désormais toute la classe, et une colonne volumineuse nouvelle y entre en une
   ligne.
+
+## Mesure au banc
+
+**Tir court 1400 → 1996.**
+- Conditions : IA simulée, pool 1, tireur k6bench (lien 76 Mo/s), banc mail cluster, `LATENCY_MS=96`.
+- Bases hydratées du 2026-11-08, sans `reset-state`.
+- Harnais de la branche pour les deux tirs.
+
+**Ordre** : task-434 (`dfda613b`, 12:44-13:35) **puis** contrôle `develop` (`5b4e394f`, 13:35-14:25), dans la même
+session. Le tir de la task, passé en premier, est **défavorisé** : il a joué sur le cache le plus froid.
+- Attente de lecture disque : 124,6 s contre 44,3 s.
+- Fautes majeures du cgroup Postgres : max 23/s contre 1/s.
+
+Les deux tirs sont valides : SMTP sain (obtention de session 220 ms dans les deux), 0,008 % et 0,013 % d'erreurs. Aucun
+écart d'étape n'atteint 20 % : l'A/B suffit, sans A/B/A.
+
+| Mesure | Contrôle `develop` | **task-434** |
+|---|---|---|
+| Forme FND-007 d'avant (`9a63b74f…`, document entier) | 168 539 appels, 140,7 s, 24,4 Go de pages, 3,48 Go sur disque | **20 appels** (voie du bus `bus:AddNewMail`, hors périmètre) |
+| Forme du document à l'ouverture (`bc5acb2c…`, projetée) | — | 166 290 appels, 161,7 s, **19,3 Go** de pages (−21 %), 3,53 Go sur disque |
+| Forme FND-009 d'avant (`4b9380dd…`, contenu entier) | 168 372 appels, 37,6 s, 11,5 Go de pages | **0 appel** |
+| Forme du contenu à l'ouverture (`2a6ce021…`, projetée) | — | 166 260 appels, **23,4 s**, **6,3 Go** de pages (−45 %), 0,07 Go sur disque |
+| Pages lues du tir (cache + disque) | 546,1 Go | 535,8 Go (−1,9 %) |
+| Lectures disque du tir | 6,47 Go | 7,73 Go (cache plus froid) |
+| Temps SQL du tir | 1 020,7 s | 1 110,1 s |
+| Coût SQL par requête HTTP | 3,6 ms | 3,9 ms |
+
+**Lecture.**
+- Les octets lus par les deux formes baissent comme prévu : −21 % pour le document, −45 % pour le contenu. C'est la
+  part du vecteur, mesurée au poids des colonnes.
+- Les lectures disque du document ne baissent pas. Elles viennent de `HtmlBody` (37 860 octets par ligne, contre
+  6 148 pour le vecteur), que la vue affiche : c'était annoncé par la borne du task file.
+- Le temps SQL du tir ne départage pas les deux codes. Les 90 s d'écart viennent de l'attente de lecture disque du tir
+  passé en premier, sur un cache plus froid : 80 s de plus. Un effet sur le temps de réponse n'est pas démontré, ni
+  dans un sens, ni dans l'autre.
+
+**Étapes du parcours, p50 / p95 (ms) à 1996 médecins** — contrôle → task :
+
+| Étape | Contrôle `develop` | **task-434** |
+|---|---|---|
+| 1 Arrivée dashboard | 65 / 639 | 63 / 551 |
+| 2 Inbox | 52 / 136 | 50 / 134 |
+| 3 **Message enrichi (servi base)** | 48 / 106 | **45 / 104** |
+| 4 Message froid (IMAP) | 452 / 519 | 451 / 516 |
+| 5 Recherche | 349 / 616 | 348 / 664 |
+| 6 Envoi | 485 / 948 | 485 / 946 |
+| 7 Pièce jointe | 54 / 124 | 51 / 123 |
+| 8 Marquer lu | 54 / 107 | 51 / 105 |
+| 9 Rechercher un patient | 56 / 76 | 56 / 76 |
+| 10 Page d'un dossier patient | 59 / 77 | 59 / 77 |
+| 11 Fiche patient complète | 348 / 681 | 331 / 685 |
+
+- **Aucune étape n'est ralentie par le code.** Le seul écart supérieur à 5 % est le p95 de la recherche à 1996
+  (+8 %), dans le bruit du tir : la même étape est à −24 % au palier 1400 (742 → 563).
+- L'étape visée, « ouvrir un message enrichi », passe de 48 / 106 à 45 / 104 ms.
+
+**Rapports** :
+- `Docs/audits/api-mail-loadtest-journey-courte-1400-1996-t434-task-20261108.md`, qui porte la section « Findings —
+  analyse de code » : 8 candidats, contrôle 79 éléments, 0 écart ;
+- `Docs/audits/api-mail-loadtest-journey-courte-1400-1996-t434-controle-20261108.md`.
+
+**Registre** : FND-007 et FND-009 portent leur forme d'après correctif et la mesure de cet A/B. Ils restent en `task`,
+et passent en `corrigé et mesuré` au `/merge` (règle du registre, `agents/loadtest-findings.md` § 7). FND-008 est
+écarté ; FND-016, FND-017 et FND-018, nouveaux, sont écartés.

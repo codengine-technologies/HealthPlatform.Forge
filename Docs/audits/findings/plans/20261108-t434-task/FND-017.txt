@@ -1,0 +1,20 @@
+-- forme : be95a8c47cbdd9a4824f427030e5ec35
+-- base : u_l9l_b27c2b6f659b50f6240b3481927d0381
+-- requête : texte du tir
+Hash Join (actual time=0.081..0.083 rows=2 loops=1)
+  Hash Cond: (t."Id" = m."TagId")
+  Buffers: shared hit=6
+  ->  Seq Scan on "Tags" t (actual time=0.015..0.016 rows=18 loops=1)
+        Buffers: shared hit=1
+  ->  Hash (actual time=0.051..0.051 rows=2 loops=1)
+        Buckets: 1024  Batches: 1  Memory Usage: 9kB
+        Buffers: shared hit=5
+        ->  Seq Scan on "MailTags" m (actual time=0.003..0.044 rows=2 loops=1)
+              Filter: ("MailId" = $1)
+              Rows Removed by Filter: 246
+              Buffers: shared hit=5
+Planning:
+  Buffers: shared hit=191 read=2
+  I/O Timings: shared read=0.059
+Planning Time: 1.537 ms
+Execution Time: 0.149 ms

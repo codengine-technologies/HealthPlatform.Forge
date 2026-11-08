@@ -1,0 +1,4 @@
+-- base : u_l9l_b27c2b6f659b50f6240b3481927d0381
+-- table : MailContents
+| lignes | Body (octets/ligne) | BodyHtml (octets/ligne) | Summary (octets/ligne) | Embedding (octets/ligne) |
+| 156 | 2842 |  |  | 6148 |
