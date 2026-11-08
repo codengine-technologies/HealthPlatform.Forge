@@ -567,3 +567,12 @@ et passent en `corrigé et mesuré` au `/merge` (règle du registre, `agents/loa
    brouillons. Une garde statique les couvrirait.
 3. FND-007, piste suivante : `HtmlBody` (37 Ko par ligne) est servi à l'ouverture. Il faut vérifier dans les clients
    s'il n'est affiché qu'au dépliage du document.
+
+## Merged
+
+- 2026-11-08 — `/merge task-434 --i-tested` (validation humaine attestée).
+- `api-mail` : PR #352 squash-mergée, commit `a7d8429ff9a07ded9908a3fe8a7a98f6a1c44645`, label `awaiting-human-merge`
+  retiré, branche `fix/task-434-ouvrir-un-message-sans-charger-les` supprimée (distante et locale).
+- CI `develop` : ✓ verte — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/42496774214
+- Staging : aucune (task lancée par `/start`, hors run `/forge`).
+- Registre des findings : FND-007 et FND-009 passent en `corrigé et mesuré`.
