@@ -115,6 +115,14 @@ Latence par étape, en ms, avant-2 → après :
    > `observe.ps1` ne reconnaît plus les bases `u_l…`, et compte donc chaque pool praticien en maintenance. L'attente est
    > très probablement sur le chemin du médecin. Constaté en rédigeant task-435, qui répare l'instrument et qualifie
    > l'attente.
+   >
+   > **Rectification (task-435).** Les cinq rapports du 2026-11-08 portent la note en tête de « Coûts résidents ».
+   > Mêmes lignes fausses, sans note, dans les rapports copiés ici depuis le 2026-10-29 :
+   > `…journey-1000-tous-actifs-20261031`, `…courte-1400-1996-task422-20261105`, `…escalier-ia-simulee-20261105`,
+   > `…escalier-task422-pool1-20261105`, `…ab-findings-{apres,avant-1,avant-2}-20261106`,
+   > `…task426-20261106`, `…task426-controle-develop-20261106`, `…task427-20261106`, `…task429-20261106`,
+   > `…task429-controle-develop-20261107`, `…task430-20261107`, `…task430-controle-develop-20261107`.
+   > Le total `cl_waiting` et `maxwait` y restent justes ; la ventilation et la sonde de login, non.
 2. **Le premier lecteur de disque est FND-007** : 52,4 % des lectures disque du tir. À l'ouverture d'un message, le
    document médical et le contenu sont chargés avec leur vecteur, que rien n'affiche (FND-007, FND-009, confirmés).
 3. **L'arrivée sur le dashboard est dominée par un appel IMAP.** `GET /mail/folders/{folder}` porte 61 % du temps

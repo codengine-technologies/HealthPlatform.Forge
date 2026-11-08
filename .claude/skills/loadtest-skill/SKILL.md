@@ -1070,6 +1070,15 @@ Repères mesurés le 2026-07-27, tir `mixed` 20 utilisateurs / 20 VU
 par l'ADR (`max_db_connections=3` par base est volontairement serré) : il ne se
 manifeste pas à 20 praticiens, il reste à éprouver à 200.
 
+> **Lire l'attente PgBouncer par son COÛT, sur le chemin du médecin (task-435, 2026-11-08).** `cl_waiting` ne dit
+> que la **présence** d'une file, et `maxwait` sa **profondeur** au relevé. Le rapport rend désormais, par palier et
+> par famille de base (praticien, registre, maintenance, définies dans `tests/loadtest-k6/lib/db-families.json`), le
+> **temps d'attente cumulé** (`SHOW STATS`, `total_wait_time`), l'attente par transaction, et sa part du temps des
+> transactions et des requêtes HTTP du palier. C'est cette grandeur qui décide d'un réglage de pool, pas la présence.
+> L'alerte de tête se juge sur le chemin du médecin seul. ⚠️ Avant task-435, la ventilation des rapports était
+> **fausse depuis le 2026-10-29** (filtre de nom de base recopié, non mis à jour par task-404) : ne citer que le
+> total `cl_waiting` de ces rapports.
+
 ### 5a-ter — Classer les requêtes Postgres (`pg_stat_statements`, depuis le 2026-09-19)
 
 Le rapport et 5a-bis disent **combien** Postgres travaille (backends, `cl_waiting`,

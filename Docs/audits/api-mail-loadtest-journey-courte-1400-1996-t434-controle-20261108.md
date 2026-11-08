@@ -95,6 +95,8 @@ Le tir s'est déroulé correctement et ses chiffres sont exploitables. Il met en
 
 ## Coûts résidents contre N
 
+> ⚠️ **Rectification (task-435, 2026-11-08) — ventilation fausse.** Depuis task-404 (2026-10-29), l'échantillonneur ne reconnaissait plus les bases praticien (nommage `u_l…`). Les lignes « dont bases **praticien** » valent donc 0 à tort, et « dont pool de **maintenance** — sonde de readiness » porte en réalité l'attente du chemin du médecin : la sonde de readiness ne traverse plus le pooler depuis task-249. La ligne « Login PostgreSQL depuis le conteneur » est « non relevé » pour la même cause. Le total `cl_waiting` et `maxwait` restent justes. Mesure corrigée : tir de qualification de task-435 (`api-mail-loadtest-journey-courte-1400-1996-t435-qualif-20261108.md`).
+
 > Sessions IMAP, backends Postgres et RSS suivent la **population**, pas le débit : c'est eux qui plafonnent une montée en N. Attendu : sessions IMAP ≈ N × réplicas, `cl_waiting` = 0 soutenu, RSS plate sur la fenêtre.
 
 | Coût résident | 1400 médecins | 1996 médecins |
