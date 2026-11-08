@@ -110,6 +110,11 @@ Latence par étape, en ms, avant-2 → après :
 1. **PgBouncer fait encore attendre des requêtes.** `cl_waiting` est non nul sur 16 % des relevés à 1400 et 34 % à
    1996 (A : 28 % et 60 %). Le lot a réduit l'attente de moitié, sans l'annuler. Le contrat exige zéro. Avec le pool à 1
    connexion par base (task-422), c'est la première ressource épinglée du tir.
+   > ⚠️ **Ne pas lire la ventilation des rapports.** Les lignes « dont bases praticien : 0 % » et « dont pool de
+   > maintenance — sonde de readiness » sont fausses depuis task-404 (2026-10-29). Le filtre `^u_9\d` de
+   > `observe.ps1` ne reconnaît plus les bases `u_l…`, et compte donc chaque pool praticien en maintenance. L'attente est
+   > très probablement sur le chemin du médecin. Constaté en rédigeant task-435, qui répare l'instrument et qualifie
+   > l'attente.
 2. **Le premier lecteur de disque est FND-007** : 52,4 % des lectures disque du tir. À l'ouverture d'un message, le
    document médical et le contenu sont chargés avec leur vecteur, que rien n'affiche (FND-007, FND-009, confirmés).
 3. **L'arrivée sur le dashboard est dominée par un appel IMAP.** `GET /mail/folders/{folder}` porte 61 % du temps
