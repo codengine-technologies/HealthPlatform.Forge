@@ -210,7 +210,8 @@ Règles :
 | /lint-angular | skipped | 0.5 s | — | — | — | client-angular non touché |
 | /lint-mobile | skipped | 0.6 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 20 min 35 s | — | — | — | e2e ×5 (39 min 08 s) |
-| **Total cycle** | | **3 h 31 min** | **16 (2 min 46 s)** | **25 (40 min 56 s)** | **4 (1 min 28 s)** | |
+| /review | ok | 7 min 11 s | 1 (13 s) | 1 (5 min 37 s) | — | api-mail 1B/1T |
+| **Total cycle** | | **3 h 39 min** | **17 (2 min 59 s)** | **26 (46 min 33 s)** | **4 (1 min 28 s)** | |
 
 Autres commandes mesurées : capture ×2 (1 h 41 min)
 
@@ -513,3 +514,55 @@ et passent en `corrigé et mesuré` au `/merge` (règle du registre, `agents/loa
 | E2E-ERROR-001 | 1 | headless | Une erreur affiche un code et une référence à transmettre au support | ✅ | ✅ |
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/352 — label `awaiting-human-merge`
+- Plan de contrôle (sans PR, règle 5) : rapports A/B et section « Findings » dans `Docs/audits/`, plans dans
+  `Docs/audits/findings/plans/20261108-t434-task/`, registre, convention `conventions/csharp.md`.
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 0 point bloquant, 3 suggestions.
+
+**Validation `/review`** :
+- build `HealthPlatform.Api.Mail.sln` : 0 erreur, 0 avertissement ;
+- tests : domaine 210, infrastructure 728, api 1 370, application 4 031, intégration 1 142 (+16 ignorés), 0 échec ;
+- `develop` déjà intégré (aucun commit d'avance).
+
+**DOD** :
+
+| Item | Statut |
+|---|---|
+| Build, tests | ✓ |
+| Test d'intégration de la route du contenu (corps, document, biologie, synthèse ; SQL sans vecteur ni `MetadataJson`), vu rouge | ✓ `OpeningAMessage_ServesItsDocumentAndBody_WithoutReadingTheirVectors`, rouge sur le code d'avant + M1, M2, M5, M6 |
+| Vecteur intact en base | ✓ même test |
+| Cas d'échec inchangé, 404 problem+json | ✓ `OpeningAnUnknownMessage_Is404ProblemJson` |
+| Garde contre la récidive, exemptions vérifiées, vue rouge, garde de task-429 étendue et non dupliquée | ✓ `NoReadRouteOfTheJourney_ReadsAVoluminousColumn_OnlyThePathsThatServeIt` |
+| Tests existants du message, de l'enrichissement, du hors-ligne et de la recherche sémantique sans changement d'assertion | ✓. Exception hors de cette liste : `HeaderListingProjectionTests` épinglait le défaut, son assertion est retournée (Develop log) |
+| Prévention dans `conventions/csharp.md` | ✓ `groupby-final-materialise-l-entite`, 3 occurrences ; `S3928` créée par `/sonar` |
+| Registre FND-007 / FND-009 | ✓ forme d'après correctif et mesure de l'A/B portées. Le statut reste `task` et passe en `corrigé et mesuré` au `/merge`, comme le prévoit `agents/loadtest-findings.md` § 7. La DOD disait « passent en corrigé et mesuré » : c'est le moment du passage qui suit la règle du registre |
+| Mesure au banc (A/B, formes à 0 appel, disque, SQL, étape « message enrichi », aucune étape ralentie, section Findings, rapports copiés) | ✓ section « Mesure au banc ». FND-007 garde 20 appels de la voie du bus, hors périmètre, nommés |
+| Aucune donnée de santé dans les logs ni les rapports | ✓ textes SQL normalisés, plans génériques, contrôle de non-confabulation 79/0 |
+| Parcours e2e verts | ✓ mobile 58, angular 71, parité verte |
+
+**Règle 1b — comportement → test → preuve rouge** :
+
+| Comportement (atteint par) | Test | Preuve |
+|---|---|---|
+| ouverture d'un message (`GET …/emails/content/{id}`) | `OpeningAMessage_…` + garde | code d'avant, M1, M2, M5, M6 |
+| vue d'étiquette (`GET /mail/tags/{code}/emails/{uids}`) | `TheTagView_…` + garde | code d'avant, M4, M5 |
+| dossier patient avec corps (`GET /patients/{id}/folder?withBodies=true`) | `ThePatientFolderWithBodies_…` + garde | code d'avant, M3, M6 |
+| chemin groupé `WithContent` (assistant IA) | `HeaderListingProjectionTests.WithContentReadsDocumentBodiesButNeverEmbeddingsNorAttachmentBytes` (dépôt, vraie base) + parcours e2e IA verts | M7, M8 |
+
+**Revue par fichier** :
+- ✅ `src/Infrastructure/Repositories/MailDb/MailRepository.cs`.
+- ✅ `tests/…/AttachmentBytesReadEndToEndTests.cs`, `ArchiveMailboxServer.cs`, `HeaderListingProjectionTests.cs`.
+
+**Suggestions, non bloquantes** :
+1. Le chemin groupé `WithContent` n'a pas de test HTTP dédié. Sa réponse ne change pas, et le SQL est prouvé sur la
+   vraie base.
+2. Lectures d'entité entière restantes, hors périmètre : `duplicate-cluster`, `version-chain`, indexation,
+   brouillons. Une garde statique les couvrirait.
+3. FND-007, piste suivante : `HtmlBody` (37 Ko par ligne) est servi à l'ouverture. Il faut vérifier dans les clients
+   s'il n'est affiché qu'au dépliage du document.
