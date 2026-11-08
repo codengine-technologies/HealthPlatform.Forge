@@ -191,7 +191,8 @@ Règles :
 | /lint-angular | skipped | 0.5 s | — | — | — | client-angular non touché |
 | /lint-mobile | skipped | 0.6 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 19 min 19 s | — | — | — | e2e ×5 (36 min 57 s) |
-| **Total cycle** | | **1 h 46 min** | **5 (1 min 15 s)** | **11 (9 min 03 s)** | **2 (44 s)** | |
+| /review | ok | 6 min 55 s | 1 (10 s) | 2 (5 min 47 s) | — | api-mail 1B/2T |
+| **Total cycle** | | **1 h 52 min** | **6 (1 min 26 s)** | **13 (14 min 50 s)** | **2 (44 s)** | |
 
 Autres commandes mesurées : capture ×1 (50 min 32 s)
 
@@ -483,3 +484,40 @@ Rapport complet : `Docs/audits/api-mail-loadtest-journey-courte-1400-1996-t435-q
 | E2E-ERROR-001 | 1 | headless | Une erreur affiche un code et une référence à transmettre au support | ✅ | ✅ |
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/353 — label `awaiting-human-merge`
+- Plan de contrôle (sans PR, règle 5) :
+  - rapport et décision : `Docs/audits/api-mail-loadtest-journey-courte-1400-1996-t435-qualif-20261108.md` ;
+  - rectifications dans les cinq rapports du 2026-11-08 et dans la synthèse du bilan ;
+  - skill de banc.
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 0 point bloquant, 2 suggestions.
+
+**Validation `/review`** :
+- build `HealthPlatform.Api.Mail.sln` : 0 erreur, 0 avertissement ;
+- tests : domaine 210, infrastructure 728, api 1 376, application 4 031, intégration 1 142 (+16 ignorés), 0 échec ;
+- harnais : `selftest.sh`, 453 tests ;
+- `develop` déjà intégré.
+
+**Règle 1b** : sans objet. La task ne change aucun comportement atteignable par un endpoint (`src/` = `develop`).
+Son « test d'intégration » est le tir de qualification, qui a exercé l'échantillonneur et le rapport sur le banc réel.
+
+**DOD** : tous les items vérifiés, voir l'auto-contrôle du Develop log. Les preuves rouges sont des mutations :
+
+| Comportement | Test | Preuve rouge |
+|---|---|---|
+| Classement des pools en trois familles | `test_db_families` | ancien filtre réinjecté (5 rouges, « 4 != 1 ») |
+| Nom des bases de l'application reconnu | `BenchDatabaseFamiliesTests` | ancien filtre, motif banc faux |
+| Nommage bash = nommage de l'application | littéral partagé Python/C# | hachage tronqué |
+| Sonde de login sur une base du banc | `test_the_bench_pattern…` | motif trop large |
+| Jugement sur le chemin du médecin, coût chiffré | `test_report_pgbouncer_families` | rouges sur le code d'origine (8/8) |
+
+**Suggestions, non bloquantes** :
+1. La passe qualité a touché l'échantillonneur après le tir de qualification (agrégat déplacé, séries mortes
+   retirées). Les tests unitaires couvrent ces changements ; le prochain tir les exercera en réel.
+2. Écarté, noté : lire `SHOW POOLS` et `SHOW STATS` en un seul appel `psql`, et dériver les noms des bases du
+   registre plutôt que de les recalculer en bash.
