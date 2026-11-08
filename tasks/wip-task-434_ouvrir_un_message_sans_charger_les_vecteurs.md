@@ -187,3 +187,21 @@ Règles :
 - **Hébergement HDS** : oui — données inchangées, dans la base de la boîte, sur l'environnement HDS de la plateforme
 - **AIPD / impact RGPD** : inchangée — aucun traitement nouveau. Moins de données dérivées de données de santé (les
   vecteurs) transitent vers l'API.
+
+## Branches
+
+- `api-mail` (pushed) : fix/task-434-ouvrir-un-message-sans-charger-les — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/fix/task-434-ouvrir-un-message-sans-charger-les
+
+> Pré-flight du /start (2026-11-08) : `api-mail`, `client-blazor`, `client-mobile`, `dtos-mss`, `sdk` sur `develop`.
+> `host` (`Host/Modules`) et `interop` ne sont pas des racines de dépôt (`--show-prefix` non vide) : connu, non
+> bloquant pour cette task. Les index du banc (`tests/loadtest-k6/reports/INDEX.md`, `POSTGRES-INDEX.md`), modifiés
+> par la campagne du 2026-11-08, suivent la branche et partiront avec la PR.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-434 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 18 s | — | — | — | — |
+| **Total cycle** | | **18 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
