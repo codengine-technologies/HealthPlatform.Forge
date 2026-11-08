@@ -2067,14 +2067,23 @@ catch (Exception ex) when (!MailServerOutage.IsRequestCancellation(ex, ct))
 
 ---
 
-## groupby-final-materialise-l-entite — projeter avant de regrouper, jamais l'inverse
+## groupby-final-materialise-l-entite — projeter avant de regrouper, jamais l'inverse ; une colonne volumineuse n'est lue que par le chemin qui la sert
 
-**Occurrences : 2**
+**Occurrences : 3**
 - task-322 : la page d'en-têtes matérialisait les entités entières (`Content` des pièces jointes, `HtmlBody`,
   `Embedding`, `MetadataJson` des documents) pour n'afficher que des métadonnées.
 - task-429 : le dossier patient (`PatientRepository.LoadMailsWithAttachmentsAsync`) regroupait les pièces jointes par
   `GroupBy(a => a.MailId).ToDictionaryAsync(g => g.Key, g => g.Select(a => new AttachmentDto { … }))`. Au tir court
   du 2026-11-06 : 13,7 Go de contenus lus par tir, dont 5 Go sur disque, soit 31 % des lectures disque.
+- task-434 (FND-007, FND-009) : ouvrir un message (`PopulateMailContentAsync`, mode `WithContent`) matérialisait le
+  document et le contenu **entiers**, sans `GroupBy` cette fois : `db.MailMedicalDocuments.Where(…).ToListAsync()`.
+  Le vecteur `Embedding` et `MetadataJson` étaient lus et jetés ; la forme du document pesait 52,4 % des lectures
+  disque du tir court du 2026-11-08. La garde élargie en a trouvé **deux autres** le même jour : le dossier patient
+  avec ses corps (`GetMedicalDocumentsAsync`, `withBodies`) et la vue d'étiquette (`Include(m => m.MailContents)`).
+  La passe qualité en a trouvé un quatrième, hors de toute route du parcours : le chemin groupé en `WithContent`
+  (`LoadBulkContentLookupsAsync`, l'assistant IA), qu'un test (`HeaderListingProjectionTests`) affirmait même
+  « embedding compris ». La prévention avait été nommée deux fois par `/loadtest-findings` (2026-11-07, 2026-11-08)
+  sans être posée : la garde ne couvrait que `MailAttachments."Content"`.
 
 EF Core ne traduit pas une projection faite **dans** un groupe quand le `GroupBy` est l'opérateur final. Il émet un
 `SELECT` de toutes les colonnes, `ORDER BY` la clé, matérialise les entités, puis projette en mémoire. Le code se lit
@@ -2098,12 +2107,24 @@ var byMail = rows.GroupBy(r => r.MailId).ToDictionary(g => g.Key, g => g.Select(
   qui agrège (`Count`, `Sum`), jamais un `GroupBy` final qui rend des groupes d'entités.
 - Ne jamais matérialiser une entité qui porte une colonne binaire ou volumineuse (`Content`, `Body`, `HtmlBody`,
   `BodyHtml`, `Embedding`, `MetadataJson`) hors du chemin qui la sert.
-- Toute nouvelle route de lecture qui touche les pièces jointes entre dans la garde
-  `AttachmentBytesReadEndToEndTests.NoReadRouteOfTheJourney_ReadsAttachmentContent_OnlyTheDownloadDoes`.
+- Une lecture d'entité qui porte une colonne volumineuse passe par une **projection**, même quand elle sert le
+  contenu : `MedicalDocumentContentProjection` et `ContentProjection` (`MailRepository`) sont les projections
+  d'en-tête élargies aux seuls corps, par `WithColumns`, sans recopie. Un `Include` d'une collection à colonne
+  volumineuse est un chargement d'entité entière.
+- Toute nouvelle route de lecture du parcours entre dans la garde
+  `AttachmentBytesReadEndToEndTests.NoReadRouteOfTheJourney_ReadsAVoluminousColumn_OnlyThePathsThatServeIt`, et
+  toute nouvelle colonne volumineuse dans sa liste `VoluminousColumns` (une ligne).
+- Une scène de test d'intégration qui sème un message **liste les dossiers avant l'enrichissement**, comme
+  l'application. Sinon le message est écrit en génération 0, et le premier listage des dossiers le rend invisible à
+  la base : ses routes sont servies par IMAP, et la garde ne prouve rien. Constaté sur task-434, où la garde de
+  task-429 ne voyait plus la route du contenu, servie par IMAP dès qu'un test avait listé les dossiers.
+  `ArchiveMailboxServer.ListFoldersAsync` porte ce geste.
 
 **Preuve** : `AttachmentBytesReadEndToEndTests` (task-429). Le SQL est relevé par les traces Npgsql
 (`NpgsqlQueryCapture`), sur la base du praticien. Mutation « `GroupBy` d'origine réinjecté » : 4 tests rouges, dont la
-garde, qui désigne les deux routes du dossier patient.
+garde, qui désigne les deux routes du dossier patient. task-434 : huit mutations (document entier, contenu entier,
+dossier `withBodies` entier, étiquette sans projection, contenu sans corps, document sans HTML, chemin groupé document
+puis contenu entiers), chacune rouge sur le test visé.
 
 ---
 

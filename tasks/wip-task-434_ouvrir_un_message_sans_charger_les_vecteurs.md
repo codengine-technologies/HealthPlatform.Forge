@@ -205,3 +205,112 @@ Règles :
 |---|---|---|---|---|---|---|
 | /start | ok | 18 s | — | — | — | — |
 | **Total cycle** | | **18 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+
+## Develop log
+
+- **Repos touchés** : `api-mail` seul. Aucun DTO, aucun interop, aucune migration.
+- **Commits** (`fix/task-434-ouvrir-un-message-sans-charger-les`, poussés) :
+  - `a33f14b0` chore(loadtest) : index des tirs du bilan du lot du 2026-11-08 (portés par la PR, comme annoncé au /start) ;
+  - `36f7c703` fix(mail) : ouvrir un message ne lit plus les vecteurs du document et du contenu ;
+  - `dfda613b` refactor(mail) : passe qualité (/simplify).
+
+### Correctif (`src/Infrastructure/Repositories/MailDb/MailRepository.cs`)
+
+- **Deux projections « contenu »**, dérivées des projections d'en-tête par `WithColumns`, sans recopie de la liste des
+  champs :
+  - `MedicalDocumentContentProjection` = `MedicalDocumentHeaderProjection` + `Body` + `HtmlBody` ;
+  - `ContentProjection` = `ContentHeaderProjection` avec `Body`, `BodyHtml`, `Summary` lus.
+  - Ni `Embedding` ni `MetadataJson`, qu'aucun DTO ne recopie.
+- **Quatre sites corrigés** :
+
+| Site | Route / appelant | Trouvé par |
+|---|---|---|
+| `PopulateMailContentAsync`, `WithContent` (FND-007 + FND-009) | `GET …/emails/content/{emailId}`, enrichissement, hors-ligne | le task file |
+| `GetMedicalDocumentsAsync`, `withBodies` | `GET /patients/{id}/folder?withBodies=true` | la garde élargie |
+| `GetMailsByTagAsync`, `Include(m => m.MailContents)` | `GET /mail/tags/{code}/emails/{uids}` | la garde élargie |
+| `LoadBulkContentLookupsAsync`, `WithContent` | `GetMailsByUidsAsync(…, WithContent)` : l'assistant IA | la passe qualité (axe altitude) |
+
+- **Vue d'étiquette** : le contenu n'est plus raccroché à l'entité. `MailContents.Add` y était lu comme une écriture
+  par le scan d'architecture de task-227 ; le contenu est désormais passé au DTO (`BuildTagMailDto`,
+  `BuildMailContentDto`).
+
+### Tests (règle 1b) — `tests/mss.mail.integration.tests/UseCases/AttachmentBytesReadEndToEndTests.cs`
+
+- **Vraie pile** : hôte HTTP, contrôleurs `Mail` et `Patients`, vrais services et dépôts, Dovecot, base PostgreSQL du
+  praticien. SQL relevé par `NpgsqlQueryCapture` (task-429).
+- **Scène** : compte rendu de microbiologie du kit ANS enrichi par la vraie route, pièce jointe en base, étiquette
+  `SUIVI`, et un vecteur écrit sur le contenu et le document **par les écrivains du dépôt**
+  (`UpdateMailContentEmbeddingAsync`, `UpdateMedicalDocumentEmbeddingAsync`), au modèle et à la dimension actifs.
+  `MetadataJson` est posé à part, faute d'écrivain dédié.
+
+| Comportement | Test | Preuve rouge |
+|---|---|---|
+| `GET …/emails/content/{id}` rend corps, HTML, résumé et document (texte, HTML, biologie, synthèse, patient) égaux à la base, sans lire `Embedding` ni `MetadataJson` ; le vecteur reste intact en base | `OpeningAMessage_ServesItsDocumentAndBody_WithoutReadingTheirVectors` | rouge sur le code d'avant ; M1, M2, M5, M6 |
+| `GET /mail/tags/{code}/emails/{uid}` rend corps, HTML et résumé, sans lire le vecteur | `TheTagView_ServesTheBody_WithoutReadingItsVector` | M4, M5 |
+| `GET /patients/{id}/folder?withBodies=true` rend texte et HTML du document, sans vecteur ni `MetadataJson` | `ThePatientFolderWithBodies_ServesTheDocumentHtml_WithoutReadingItsVector` | M3, M6 |
+| Cas d'échec : `emailId` inconnu, 404 `application/problem+json` | `OpeningAnUnknownMessage_Is404ProblemJson` | inchangé, vert |
+| **Garde** : 15 routes de lecture du parcours ne lisent ni `MailAttachments."Content"`, ni `MailMedicalDocuments."Embedding"` / `"MetadataJson"`, ni `MailContents."Embedding"`. Exemptions vérifiées : le téléchargement lit `Content` ; la recherche sémantique (dépôt) lit les deux vecteurs et retrouve le message | `NoReadRouteOfTheJourney_ReadsAVoluminousColumn_OnlyThePathsThatServeIt` | rouge sur le code d'avant (contenu, étiquette, dossier) ; M1 à M4 |
+| Chemin groupé `WithContent` : corps lus, ni vecteur ni `MetadataJson` | `HeaderListingProjectionTests.WithContentReadsDocumentBodiesButNeverEmbeddingsNorAttachmentBytes` | M7, M8 |
+
+- **Mutations** :
+  - M1 document entier, M2 contenu entier, M3 dossier `withBodies` entier, M4 étiquette sans projection ;
+  - M5 contenu sans corps, M6 document sans HTML ;
+  - M7 chemin groupé, document entier ; M8 chemin groupé, contenu entier.
+
+  Chacune est rouge sur le test visé. Restauration depuis une copie, avec la date du jour, puis recompilation. Code
+  restauré : 14/14 verts sur les deux classes.
+- **⚠️ Exception à « tests existants verts sans modification de leurs assertions »** :
+  - `HeaderListingProjectionTests.WithContentStillReadsDocumentEmbeddingsButNeverAttachmentBytes` affirmait que le
+    chemin groupé en `WithContent` lit `Embedding`. C'est le défaut lui-même, épinglé ;
+  - l'assertion est retournée (ni vecteur ni `MetadataJson`, et les corps toujours lus), et le test est renommé
+    `WithContentReadsDocumentBodiesButNeverEmbeddingsNorAttachmentBytes` ;
+  - les tests du message, de l'enrichissement, du hors-ligne et de la recherche sémantique sont inchangés et verts.
+- **Défaut de la garde de task-429, corrigé** :
+  - elle semait le message **avant** tout listage des dossiers, donc en génération 0 ;
+  - dès que la garde listait les dossiers, le message devenait invisible à la base, et les routes de message étaient
+    servies par IMAP : la garde ne les éprouvait pas ;
+  - la scène liste désormais les dossiers d'abord (`ArchiveMailboxServer.ListFoldersAsync`, partagé).
+
+### Validation
+
+- Build `HealthPlatform.Api.Mail.sln` : 0 erreur, 0 avertissement.
+- Tests, après la passe qualité :
+  - domaine 210/210, infrastructure 728/728, api 1 370/1 370, application 4 031/4 031 ;
+  - intégration 1 142/1 158, 16 ignorés comme avant, 0 échec, +2 tests par rapport au passage précédent.
+- Un rouge rencontré en cours de route, corrigé : `MailContentWriterScanTests` (task-227) lisait le raccrochage du
+  contenu à l'entité de la vue d'étiquette comme une écriture. Le contenu est désormais passé au DTO.
+
+### Passe qualité (§Q, /simplify, 4 axes)
+
+- **Appliqué** :
+  - chemin groupé `WithContent` projeté (altitude, relevé par deux axes) ;
+  - variables intermédiaires héritées de l'ancien ternaire retirées, commentaires remis d'aplomb ;
+  - éviction Redis retirée de la scène : sans effet, le cache de la fixture est un substitut ;
+  - vecteurs écrits par les écrivains du dépôt, à la dimension du modèle actif ;
+  - prémisses posées une fois au semis, `ObserveWithoutVoluminousReadsAsync` partagé, `Reads` unique ;
+  - `ArchiveMailboxServer.ListFoldersAsync` partagé.
+- **Écarté, noté** :
+  - remplacer `WithColumns` par une projection littérale pour `ContentProjection` : `WithColumns` garde les deux
+    projections alignées quand l'en-tête gagne un champ ;
+  - le table splitting EF (vecteur dans une entité dépendante) traiterait la cause de fond. Mais c'est un changement
+    de modèle qui touche la recherche sémantique et les écrivains : à proposer en task si la classe récidive encore.
+- **Suggestions de suite, hors périmètre, pour l'humain** :
+  - `PatientRepository.GetDuplicateClusterAsync` et le pivot de chaîne de versions lisent un document entier pour un
+    ou deux champs (`DuplicateOfId`, `SupersededByDocumentId`). Leurs routes, `…/duplicate-cluster` et
+    `…/version-chain`, sont hors de la garde et peu fréquentes ;
+  - `GetMailMedicalDocumentsAsync` (indexation, `AddNewMailConsumer`) et `EnrichDraftMailAsync` chargent l'entité
+    entière. Ce sont des chemins de fond ;
+  - une garde **statique**, qui refuserait toute lecture `db.MailMedicalDocuments` / `db.MailContents` sans `Select`
+    hors des écrivains déclarés, aurait attrapé les quatre sites d'un coup, qu'ils aient une route ou non.
+
+### Prévention (règle d'or)
+
+- `conventions/csharp.md`, entrée `groupby-final-materialise-l-entite`, passée à 3 occurrences (task-322, task-429,
+  task-434) :
+  - la consigne s'étend à toute lecture d'entité à colonne volumineuse : projection, même pour servir le contenu, et
+    un `Include` vaut entité entière ;
+  - la garde est renommée et étendue ;
+  - le piège de la génération 0 dans les scènes de test y est noté.
+- La lecture a échoué deux fois : la prévention nommée par `/loadtest-findings` le 2026-11-07, puis le 2026-11-08,
+  n'avait pas été posée. La garde couvre désormais toute la classe, et une colonne volumineuse nouvelle y entre en une
+  ligne.
