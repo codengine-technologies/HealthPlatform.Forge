@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E015-tests-charge-api-mail.md](E015-tests-charge-api-mail.md).
-> **Dernière mise à jour** : 2026-11-07 (v1.89)
+> **Dernière mise à jour** : 2026-11-08 (v1.90)
 
 ---
 
@@ -3459,6 +3459,31 @@ nouvelle table par opération est ce qui permettra de les séparer.
 - **Contrôle** : 101 éléments, 0 écart. Falsifications de mesure, de ligne et de plan vues rouges ; 4 mutations de
   l'outil vues rouges.
 
+### v1.90 — Ouvrir un message ne lit plus les vecteurs du document et du contenu — task-434
+
+- **Task** : task-434 — `done`, PR api-mail #352 (`awaiting-human-merge`).
+- **Origine** : FND-007 et FND-009, confirmés deux fois par `/loadtest-findings` (2026-11-07 et 2026-11-08). La forme
+  du document pesait 52,4 % des lectures disque du tir `bilan-apres`.
+- **Livré** :
+  - `MedicalDocumentContentProjection` et `ContentProjection`, dérivées des projections d'en-tête par `WithColumns` :
+    corps lus, ni `Embedding` ni `MetadataJson` ;
+  - quatre sites projetés : l'ouverture d'un message, le dossier patient avec corps, la vue d'étiquette
+    (`Include(MailContents)` retiré) et le chemin groupé `WithContent` (assistant IA) ;
+  - la garde `NoReadRouteOfTheJourney_ReadsAVoluminousColumn_OnlyThePathsThatServeIt`, sur toute la classe
+    `colonne-volumineuse`, exemptions vérifiées (téléchargement, recherche sémantique). Elle répare la garde de
+    task-429, dont le message était semé en génération 0 : ses routes de message étaient servies par IMAP.
+- **Mesure au banc** (A/B, tir court 1400 → 1996, IA simulée) :
+  - forme FND-007 d'avant : 168 539 → 20 appels (reste : voie du bus) ; forme FND-009 d'avant : 0 appel ;
+  - pages lues des deux formes : document 24,4 → 19,3 Go (−21 %), contenu 11,5 → 6,3 Go (−45 %) ;
+  - lectures disque du document inchangées : `HtmlBody` (37 Ko par ligne) est affiché ;
+  - « ouvrir un message enrichi » à 1996 : 48 / 106 → 45 / 104 ms ; aucune étape ralentie. Le temps SQL du tir ne
+    départage pas les codes (tir de la task joué sur un cache plus froid).
+- **Findings du tir de la task** : FND-008 écarté (coût de démarrage par réplica et par base) ; FND-016 à FND-018,
+  nouveaux, écartés. Contrôle 79 éléments, 0 écart.
+- **Sonar** : Quality Gate OK, 1 issue de code neuf (S3928) corrigée, convention créée. **E2E** : vert, mobile 58,
+  Angular 71.
+- **Piste suivante** : servir `HtmlBody` au dépliage du document, si les clients ne l'affichent pas à l'ouverture.
+
 ---
 
 ## Annexe A — Cartographie des briques applicatives
@@ -3598,3 +3623,4 @@ nouvelle table par opération est ce qui permettra de les séparer.
 | task-431 | **Le rapport de banc signale les défauts SQL par classe.** Cinq détecteurs sur toutes les formes de `pg_stat_statements`, prouvés sur un corpus de défauts passés (signalé avant, ignoré après, faux positif du registre jamais signalé). Rétro-appliqués au tir du 2026-11-06 : les trois défauts confirmés ressortent. PR #350. | — |
 | task-432 | **Chaque requête SQL dit d'où elle vient.** Commentaire `route` + `site` en tête de chaque commande EF Core, sans aucune donnée, lu dans `pg_stat_statements` et affiché par le rapport de banc (« Émise par »). 93 % du temps SQL attribué. Surcoût p50 ≤ +4,1 % au banc. PR #351. | — |
 | task-433 | **Le banc rédige ses findings par analyse de code.** `/loadtest-findings` : candidats, site au commit du tir, plan sur une base du banc, gain borné, correctif et test, verdict ; contrôle de non-confabulation bloquant ; registre FND avec récidives. Rejeu du 2026-11-06 : 3 findings manuels retrouvés, registre écarté, 2 nouveaux (FND-007, FND-009). Plan de contrôle, pas de PR. | — |
+| task-434 | **Ouvrir un message ne lit plus les vecteurs.** Document et contenu projetés sans `Embedding` ni `MetadataJson` sur quatre chemins de lecture ; garde sur toute la classe `colonne-volumineuse`. Banc : formes FND-007/FND-009 d'avant à 0 (reste 20 appels du bus), pages lues −21 % et −45 %, aucune étape ralentie. PR #352. | — |
