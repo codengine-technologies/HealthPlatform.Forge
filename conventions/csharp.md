@@ -794,6 +794,29 @@ identifiant anglais dans une phrase française.
 
 ---
 
+## S3928 — le `paramName` d'une `ArgumentException` désigne un paramètre de la méthode qui la lève
+
+**Occurrences : 1** (task-434 — `MailRepository.WithColumns`)
+
+Une `ArgumentException` levée **dans une lambda** qui cite `nameof(paramètreDeLaMéthode)` est signalée : pour
+l'analyseur, le paramètre n'appartient pas à la liste d'arguments de la lambda. Le cas typique est une validation
+faite dans un `Select` sur un paramètre de collection.
+
+```csharp
+// ❌ AVANT — `columns` est le paramètre de la méthode, pas celui de la lambda
+.Concat(columns.Select(column => typeof(T).GetProperty(column)
+    ?? throw new ArgumentException($"pas de colonne {column}", nameof(columns))))
+
+// ✅ APRÈS — une erreur de programmation, sans nom de paramètre
+    ?? throw new InvalidOperationException($"{typeof(T).Name} n'a pas de colonne {column}.")
+```
+
+**Consigne** : dans une lambda, ne lever une `ArgumentException` qu'avec un paramètre de la lambda. Sinon, valider
+avant la lambda, ou lever une `InvalidOperationException` quand c'est une erreur de programmation (ici, une colonne
+inconnue dans une projection construite à l'initialisation statique).
+
+---
+
 ## S4136 — les surcharges d'une méthode sont adjacentes
 
 **Occurrences : 4** (task-421 — `IErrorNotificationService` (client-blazor) : trois surcharges `ErrorReference?` ajoutées « en bloc » sous la dernière méthode de l'interface, loin de leurs sœurs `NotifyError` et `NotifyConnectionError` ; le build Sonar du client les refuse en erreur, attrapé par /develop avant tout commit ; task-400 — `PostgresAuditReader.Map` : une projection et un helper insérés entre les deux surcharges de `Map` par la passe qualité ; task-389 — des helpers privés de la première surcharge insérés **entre** les deux surcharges d'`ExtractIheXdmZipsAsync` : un helper se place après la dernière surcharge, jamais entre elles ; task-342 — `Infrastructure.Mock/Repository/MailRepository`)

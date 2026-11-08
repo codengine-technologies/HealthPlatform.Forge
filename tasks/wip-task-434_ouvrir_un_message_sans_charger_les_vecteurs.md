@@ -206,7 +206,8 @@ Règles :
 | /start | ok | 18 s | — | — | — | — |
 | /develop | ok | 2 h 45 min | 14 (1 min 33 s) | 15 (24 min 43 s) | — | api-mail 14B/15T |
 | /loadtest-findings | ok | 4 min 05 s | — | — | — | — |
-| **Total cycle** | | **2 h 50 min** | **14 (1 min 33 s)** | **15 (24 min 43 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 20 min 59 s | 2 (1 min 13 s) | 10 (16 min 12 s) | 4 (1 min 28 s) | 2 itération(s), api-mail 2B/10T |
+| **Total cycle** | | **3 h 11 min** | **16 (2 min 46 s)** | **25 (40 min 56 s)** | **4 (1 min 28 s)** | |
 
 Autres commandes mesurées : capture ×2 (1 h 41 min)
 
@@ -382,3 +383,32 @@ Les deux tirs sont valides : SMTP sain (obtention de session 220 ms dans les deu
 **Registre** : FND-007 et FND-009 portent leur forme d'après correctif et la mesure de cet A/B. Ils restent en `task`,
 et passent en `corrigé et mesuré` au `/merge` (règle du registre, `agents/loadtest-findings.md` § 7). FND-008 est
 écarté ; FND-016, FND-017 et FND-018, nouveaux, sont écartés.
+
+## Sonar log
+
+- SonarQube 9.9.8 (`sonar.login`), projet `healthplatform-api-mail`, deux analyses complètes de la branche
+  (13:42 et 13:52 UTC).
+- **Phase 1 (new code)** : ✓ Quality Gate OK, new_coverage = 95,9 %.
+- **Phase 1, issues fixées** : 1 code smell. `csharpsquid:S3928`
+  (`src/Infrastructure/Repositories/MailDb/MailRepository.cs:1835`, `WithColumns`) : une `ArgumentException` levée
+  dans une lambda citait `nameof(columns)`, le paramètre de la méthode. Elle devient une `InvalidOperationException`
+  (erreur de programmation à l'initialisation statique). Commit `8840abda`.
+- **Phase 1, tests ajoutés** : 0 (couverture du new code déjà au-dessus de la cible).
+- **Phase 2 (legacy)** : 0 itération — la dette préexistante est à zéro (0 bug, 0 vulnérabilité, 0 code smell).
+- **Build / tests** : ✓ verts aux deux analyses (domaine 210, application 4 031, infrastructure 728, api 1 370,
+  intégration 1 142 + 16 ignorés).
+- **Convention** : entrée `S3928` créée dans `conventions/csharp.md` (Occurrences : 1).
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | → |
+| New coverage | 95,9 % | 95,9 % | 0 pt |
+| Bugs | 0 | 0 | 0 |
+| Vulnerabilities | 0 | 0 | 0 |
+| Security hotspots | 0 | 0 | 0 |
+| Code smells | 0 | 0 | 0 (1 introduit, corrigé) |
+| Coverage (projet) | 97,8 % | 97,9 % | +0,1 pt |
+| Duplication | 0,4 % | 0,4 % | 0 |
+| Reliability / Security / Maintainability | A/A/A | A/A/A | → |
