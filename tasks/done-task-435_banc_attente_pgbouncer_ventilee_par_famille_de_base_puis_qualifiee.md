@@ -192,6 +192,7 @@ Règles :
 | /lint-mobile | skipped | 0.6 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 19 min 19 s | — | — | — | e2e ×5 (36 min 57 s) |
 | /review | ok | 6 min 55 s | 1 (10 s) | 2 (5 min 47 s) | — | api-mail 1B/2T |
+| /tech-writer | ok | 0.6 s | — | — | — | — |
 | **Total cycle** | | **1 h 52 min** | **6 (1 min 26 s)** | **13 (14 min 50 s)** | **2 (44 s)** | |
 
 Autres commandes mesurées : capture ×1 (50 min 32 s)

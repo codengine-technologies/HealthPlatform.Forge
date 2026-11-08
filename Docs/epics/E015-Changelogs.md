@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E015-tests-charge-api-mail.md](E015-tests-charge-api-mail.md).
-> **Dernière mise à jour** : 2026-11-08 (v1.90)
+> **Dernière mise à jour** : 2026-11-08 (v1.91)
 
 ---
 
@@ -3484,6 +3484,27 @@ nouvelle table par opération est ce qui permettra de les séparer.
   Angular 71.
 - **Piste suivante** : servir `HtmlBody` au dépliage du document, si les clients ne l'affichent pas à l'ouverture.
 
+### v1.91 — L'attente PgBouncer ventilée par famille de base, jugée sur le chemin du médecin, et chiffrée — task-435
+
+- **Task** : task-435 — `done`, PR api-mail #353 (`awaiting-human-merge`). Outillage du banc seul.
+- **Défaut réparé** : depuis task-404 (2026-10-29), l'échantillonneur classait toutes les bases praticien en
+  « maintenance — sonde de readiness », et sa sonde de login rendait « non relevé ». Son filtre de nom recopié
+  n'avait pas suivi le renommage des bases. Dix-neuf rapports archivés portent la ventilation fausse ; les cinq du
+  2026-11-08 sont annotés.
+- **Livré** :
+  - `lib/db-families.json`, une définition unique des familles (praticien, registre, maintenance), lue par
+    l'échantillonneur et le rapport, confrontée au nommage de l'application, à `reset-state.sh`, `verify.sh` (nommage
+    partagé `lib/bench-db-names.sh`) et aux photos Postgres ;
+  - alerte de tête et ressource épinglée jugées sur le chemin du médecin ; coût de l'attente via `SHOW STATS`.
+- **Qualification** (tir court 1400 → 1996) :
+  - 100 % de l'attente est sur les bases praticien ; présence 21 % / 35 % ;
+  - coût : 0,4-0,5 ms par transaction, 18-19 % du temps des transactions, 3,2-3,4 % du temps HTTP ;
+  - l'attente PgBouncer tombe dans « exécution SQL », pas dans « attente d'une connexion ».
+- **Décision préparée** : seuil de task-242 franchi par le coût (> 1 %), pas par la profondeur (p95 11 ms).
+  Recommandation : réduire le nombre de transactions par requête (A), puis éventuellement `reserve_pool` (B).
+  Rien n'est appliqué.
+- **Sonar** : Quality Gate OK, aucune issue. **E2E** : vert, mobile 58, Angular 71.
+
 ---
 
 ## Annexe A — Cartographie des briques applicatives
@@ -3624,3 +3645,4 @@ nouvelle table par opération est ce qui permettra de les séparer.
 | task-432 | **Chaque requête SQL dit d'où elle vient.** Commentaire `route` + `site` en tête de chaque commande EF Core, sans aucune donnée, lu dans `pg_stat_statements` et affiché par le rapport de banc (« Émise par »). 93 % du temps SQL attribué. Surcoût p50 ≤ +4,1 % au banc. PR #351. | — |
 | task-433 | **Le banc rédige ses findings par analyse de code.** `/loadtest-findings` : candidats, site au commit du tir, plan sur une base du banc, gain borné, correctif et test, verdict ; contrôle de non-confabulation bloquant ; registre FND avec récidives. Rejeu du 2026-11-06 : 3 findings manuels retrouvés, registre écarté, 2 nouveaux (FND-007, FND-009). Plan de contrôle, pas de PR. | — |
 | task-434 | **Ouvrir un message ne lit plus les vecteurs.** Document et contenu projetés sans `Embedding` ni `MetadataJson` sur quatre chemins de lecture ; garde sur toute la classe `colonne-volumineuse`. Banc : formes FND-007/FND-009 d'avant à 0 (reste 20 appels du bus), pages lues −21 % et −45 %, aucune étape ralentie. PR #352. | — |
+| task-435 | **L'attente PgBouncer ventilée et chiffrée.** Une définition des familles de bases partagée et confrontée ; jugement sur le chemin du médecin ; coût via `SHOW STATS`. Qualification : 100 % sur les bases praticien, 0,5 ms par transaction, 3,2 % du temps HTTP. PR #353. | — |

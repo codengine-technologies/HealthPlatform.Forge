@@ -2,7 +2,7 @@
 
 > **Statut** : 🟢 Fonctionnellement complet — intégration en attente
 > **Modèle** : task-driven
-> **Version** : 1.90
+> **Version** : 1.91
 > **Auteur** : PO forge (ADR-2026-07-25-B)
 > **Audience** : PO, direction, exploitant HDS — la vue ingénierie vit dans [E015-Changelogs.md](E015-Changelogs.md)
 > **Dernière mise à jour** : 2026-11-08
@@ -2402,6 +2402,7 @@ Cinq réserves à porter au bilan, sans quoi il serait trompeur :
 - v1.88 — **Chaque requête lente du banc dit d'où elle vient.** Une requête coûteuse vue dans la base ne disait pas quel écran ni quel code l'avait demandée : il fallait la retrouver à la main. Chaque requête porte désormais, en commentaire, l'écran appelé et la fonction qui l'émet, sans aucune donnée patient. Le rapport de banc l'affiche à côté de chaque requête suspecte. Mesuré au banc : aucun geste du médecin ralenti de plus de 5 %. (task-432)
 - v1.89 — **Le banc rédige lui-même ses constats, preuves à l'appui.** Après un tir, une étape explore les requêtes les plus coûteuses jusqu'au code qui les émet et à leur plan d'exécution, chiffre le gain possible et propose le correctif. Chaque chiffre est vérifié automatiquement contre les mesures du tir. Rejouée sur le tir du 6 novembre, elle retrouve les trois défauts trouvés à la main et en ajoute deux, dont la requête qui lisait le plus le disque. Un registre suit chaque constat d'un tir à l'autre ; l'humain choisit ce qui devient une tâche. (task-433)
 - v1.90 — **Ouvrir un message ne charge plus ce que l'écran n'affiche pas.** À l'ouverture d'un message, le serveur lisait aussi l'empreinte numérique qui sert à la recherche par le sens, sans jamais l'afficher. Il ne lit plus que le texte et le compte rendu. Mesuré au banc : la lecture de ces deux données baisse de 21 % et de 45 %, et aucun geste du médecin n'est ralenti. Un contrôle automatique vérifie désormais qu'aucun écran de lecture ne charge ces données inutiles. (task-434)
+- v1.91 — **Le banc dit enfin qui attend la base, et ce que cela coûte.** Depuis fin octobre, un renommage des bases faisait passer l'attente des médecins pour celle d'un outil de maintenance. Le banc lit désormais une définition unique, vérifiée contre l'application. Mesuré : toute l'attente est sur les bases des médecins, environ 0,5 ms par opération, soit 3 % du temps de réponse. Une décision est préparée pour la réduire ; rien n'est encore appliqué. (task-435)
 
 ---
 
