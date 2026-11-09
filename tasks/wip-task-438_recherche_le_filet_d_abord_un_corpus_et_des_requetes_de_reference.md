@@ -144,7 +144,9 @@ Règles :
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 1 min 22 s | — | — | — | — |
-| **Total cycle** | | **1 min 22 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 54 min 24 s | 19 (1 min 31 s) | 4 (7 min 09 s) | — | api-mail 18B/3T, client-mobile 1B/1T |
+| /sonar | ok | 20 min 48 s | 3 (1 min 06 s) | 11 (13 min 17 s) | 4 (1 min 24 s) | 2 itération(s), api-mail 3B/11T |
+| **Total cycle** | | **1 h 16 min** | **22 (2 min 37 s)** | **15 (20 min 26 s)** | **4 (1 min 24 s)** | |
 
 ## Develop log
 
@@ -178,3 +180,30 @@ Règles :
   - Écartés, hors du diff relu : valeurs du seed par le manifeste (trois dépôts), extraction de `MailEmbeddingText` en production.
 - DOD self-check : corpus, test d'intégration hybride, couverture R1 à R6, rouges prouvés, mutation des verts, scénarios e2e, outil de campagne, préventions (`conventions/e2e.md`, `conventions/csharp.md`) — vérifiés ; mutation e2e reportée à `/e2e`.
 - Next step : /sonar task-438
+
+## Sonar log
+
+**Mode A** (chaîné depuis `/develop`), `api-mail`, branche `feat/task-438-…`. 2 analyses, compilées en `Release` : les
+binaires `Debug` de l'API étaient verrouillés par l'AppHost de développement de l'humain.
+
+| KPI | Baseline (analyse du 2026-11-08) | Itération 1 | Final |
+|---|---|---|---|
+| Quality Gate | OK | OK | **OK** |
+| Bugs / Vulnérabilités | 0 / 0 | 0 / 0 | 0 / 0 |
+| Code smells | 0 | 4 | **0** |
+| Hotspots à revoir | 0 | 0 | 0 |
+| Couverture globale | 97,9 % | 97,9 % | 97,9 % |
+| Duplication | 0,4 % | 0,4 % | 0,4 % |
+| Ratings (fiabilité / sécurité / maintenabilité) | A / A / A | A / A / A | A / A / A |
+
+Tests de l'analyse finale : 7 541, 0 échec (intégration : 1 167 réussis, 27 ignorés, dont les cas « défaut connu » du
+corpus de référence, ignorés hors `SEARCH_REFERENCE_KNOWN_DEFECTS=1`).
+
+**Phase 1 — nouveau code** : 4 issues, toutes dans le code de test de la task, corrigées (`8293f042`).
+- `CA1859` ×3 : `SearchReferenceOracle.Words`, `SearchReferenceQueries.Both` / `Only` rendent leur type concret.
+- `xUnit1004` ×1 : le `Skip` posé sur `Semantic_MoreMatchesThanTheWindow_KeepsTheMostRecentMails` est retiré. Le test,
+  vert sur `develop`, fige le défaut R3. Il reste joué pour que le défaut reste visible, et task-439 l'inversera.
+
+**Phase 2 — dette ancienne** : rien à traiter (0 issue ouverte).
+
+**Conventions** : `conventions/csharp.md`, CA1859 passé à 17 occurrences et nouvelle entrée `xUnit1004`.
