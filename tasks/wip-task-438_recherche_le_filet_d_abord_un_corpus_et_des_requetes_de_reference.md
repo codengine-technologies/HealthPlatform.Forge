@@ -148,6 +148,7 @@ Règles :
 | /sonar | ok | 20 min 48 s | 3 (1 min 06 s) | 11 (13 min 17 s) | 4 (1 min 24 s) | 2 itération(s), api-mail 3B/11T |
 | /lint-angular | ok | 1 min 05 s | — | — | — | — |
 | /lint-mobile | ok | 23 s | — | — | — | — |
+| /e2e | failed | — | — | — | — | outillage : port 5052 tenu par l'AppHost de dev de l'humain; no start marker |
 | **Total cycle** | | **1 h 18 min** | **22 (2 min 37 s)** | **15 (20 min 26 s)** | **4 (1 min 24 s)** | |
 
 Autres commandes mesurées : lint ×2 (37 s)
