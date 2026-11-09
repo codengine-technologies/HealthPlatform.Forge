@@ -136,3 +136,45 @@ Règles :
 - `api-mail` (pushed) : feat/task-438-recherche-le-filet-d-abord-un-corpus-et — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-438-recherche-le-filet-d-abord-un-corpus-et
 - `client-mobile` (pushed) : feat/task-438-recherche-le-filet-d-abord-un-corpus-et — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-438-recherche-le-filet-d-abord-un-corpus-et
 - `client-angular` (code-only) : la forge écrit sur la branche actuellement checked out dans `Client/Angular/` (au /start : `feature/nova-mss-weda-integration`, commit `e2f3e131`) — l'humain gère branche, commit, push, PR TFS
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-438 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 1 min 22 s | — | — | — | — |
+| **Total cycle** | | **1 min 22 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+
+## Develop log
+
+- Repos touched : api-mail, client-mobile, client-angular (code-only)
+- DTOs published : no DTO change
+- Interop published : no interop change
+- Commits :
+  - api-mail : `6d0dafd5` test(search): corpus et requêtes de référence, jugés comme un médecin ; `079da993` test(e2e): E2E-SEARCH-002 et 003 — seed et catalogue ; `50c94f06` refactor(search): simplify pass (/simplify)
+  - client-mobile : `ba3e1ae` test(mobile): E2E-SEARCH-002 et 003
+  - client-angular : `front/e2e/mss-e2e/specs/functional.e2e.ts` modifié, **non commité** sur `feature/nova-mss-weda-integration` (code-only, à commiter par l'humain vers TFS)
+- **Le filet** (`Api/Mail/tests/mss.mail.integration.tests/Search/Reference/`) :
+  - corpus fictif de 560 messages (30 porteurs d'embeddings réels, 520 d'historique sans vecteur) : mots accentués, Hélène BOUCHER (60 messages 2022-2023) noyée sous Hélène ROUSSEL et Marc BOUCHER (230 récents chacun), mots seulement dans l'objet / chez l'expéditeur / dans une pièce jointe, documents CDA et HPRIM, deux messages de même UID (INBOX, Archives), 10 voisins sémantiques ;
+  - 18 requêtes × 2 profils (weda2 0,7 ; mobile 0,1), mode hybride, 50 résultats, jugées par l'oracle (rappel, tous les mots d'abord, mot absent, dossier courant). Tableau : `bin/.../search-reference-report.md`, écrit à la fin de la classe ;
+  - embeddings réels pré-calculés (`text-embedding-3-small`, 48 vecteurs, `search-reference-embeddings.json`), aucun appel externe en test ; `tests/search-quality/embed_corpus.py` calcule les manquants ;
+  - prémisse affirmée à chaque cas : moteur sémantique joué, aucun embedding manquant, recherche non dégradée.
+- **Défauts connus prouvés rouges** (`SEARCH_REFERENCE_KNOWN_DEFECTS=1`, code `405da376`) — 11 rouges sur 36 :
+  - weda2 : accent oublié `hemoglobine` et `HEMOGLOBINE` (0 sur 2), objet `urgent` (0 sur 2), expéditeur `Biovalis` (0 sur 1), pièce jointe `echocardiographie` (0 sur 1), ponctuation `créatinine,` (0 sur 1), patient `Hélène BOUCHER` (rappel 0 %) → task-439 ;
+  - mobile : expéditeur et pièce jointe (le message attendu au rang 9, derrière du bruit), patient (rappel 0 %) → task-439 ; mot absent `zorglubine` (29 résultats) → task-440 ;
+  - constaté : au seuil 0,1, la similarité rattrape l'accent, l'objet et la ponctuation (verts côté mobile) ; « quatre mots » vert sur les deux profils (le classement en mémoire compte les quatre mots ; le défaut de la vraie boîte vient du plafond par terme, couvert par le cas du patient) — gardé comme garde-fou.
+  - `Semantic_MoreMatchesThanTheWindow_KeepsTheMostRecentMails` (figeait R3) marqué `Skip` → task-439.
+- **Preuve par mutation des cas verts** : `SemanticSearchRepository.InFolder` sans filtre de dossier → 14 cas verts tombent (« dossier courant : 1 résultat hors du dossier INBOX »), restauré depuis une copie, recompilé, vert de nouveau.
+- **e2e** : `E2E-SEARCH-002` v1 et `003` v1 au catalogue (mobile et Angular requis, seed `mail-non-lu-2`), implémentés dans les deux clients ; le corps de `mail-non-lu-2` porte « Échocardiographie » et « 260915000438 » (`E2eSeedMessage.ExtraBodyText`), test du seed : seul ce message les porte. Type-check des deux suites vert. **Preuve par mutation e2e non faite à ce stade** : le banc e2e exige le port 5052, occupé par l'AppHost de développement de l'humain (lancé pour la campagne) ; elle se fera au passage de `/e2e`.
+- Local build / test :
+  - api-mail : suite complète verte (domain 210, infrastructure 728, application 4 031, api 1 378, intégration 1 166 + 28 écartés dont les 12 marques) ; re-validation après la passe qualité : recherche 213 + 12 marques, api 1 378. La solution n'a pas pu être recompilée en entier : les binaires de l'API sont verrouillés par l'AppHost de l'humain ; les projets modifiés (tous des projets de test) ont été compilés seuls, `BuildProjectReferences=false`.
+  - client-mobile : build vert, 1 417 tests verts.
+  - client-angular : seul le spec e2e change (type-check et ESLint verts, aucun écart Prettier) ; code de l'application inchangé.
+- Passe qualité (/simplify) :
+  - Applied & committed : api-mail : 9 fichiers (`50c94f06`) — champ mort retiré, rapport écrit une fois, oracle normalisé une fois, énumérations au lieu de valeurs recopiées, membres privés, `ExtraBodyText` au lieu d'un nom de message en dur, une requête SQL par recherche dans `campagne.py` ;
+  - Applied (code-only, uncommitted) : client-angular : prédicat `isSemanticSearch` partagé ;
+  - No change : client-mobile (fusion des deux tests écartée : messages d'assertion propres à chaque scénario) ;
+  - Écartés, hors du diff relu : valeurs du seed par le manifeste (trois dépôts), extraction de `MailEmbeddingText` en production.
+- DOD self-check : corpus, test d'intégration hybride, couverture R1 à R6, rouges prouvés, mutation des verts, scénarios e2e, outil de campagne, préventions (`conventions/e2e.md`, `conventions/csharp.md`) — vérifiés ; mutation e2e reportée à `/e2e`.
+- Next step : /sonar task-438

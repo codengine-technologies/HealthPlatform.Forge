@@ -2212,3 +2212,33 @@ sum(increase(mssante_ai_calls_total{usage="inconnu"}[$__range])) or (sum(increas
 **Preuve** : `test_dashboards.DashboardNoDataTests` (`noValue` présent et non numérique, aucune requête en
 `or vector(0)`), vue rouge sur le JSON d'avant task-428.
 
+---
+
+## recherche-jugee-comme-un-medecin — un test de recherche tape comme un médecin, dans le mode des clients
+
+**Règle** : convention projet (qualité de la recherche, invisible au lint et à Sonar).
+
+**Piège** (task-438, campagne du 2026-11-09) : la recherche ratait jusqu'à 95 % des messages d'une vraie boîte (accent
+oublié, mot de l'objet, historique ancien d'un patient), et aucun test n'avait rien vu. Les tests :
+- jouaient `SearchMode.FullTextOnly`, sans générateur d'embeddings, alors que les deux clients envoient toujours le mode
+  **hybride** : fusion, seuil de similarité et bruit sémantique n'étaient jamais exercés ;
+- cherchaient le mot exact qu'ils venaient d'écrire (« échographie » dans « ÉCHOGRAPHIE »), sur 1 à 4 messages ;
+- et l'un d'eux, `Semantic_MoreMatchesThanTheWindow_KeepsTheMostRecentMails`, **figeait** le défaut : vert *parce que*
+  l'historique ancien était écarté.
+
+**Consigne** :
+- Un comportement de recherche se prouve sur le **corpus de référence** (`tests/mss.mail.integration.tests/Search/Reference/`) :
+  une requête de plus dans `SearchReferenceQueries.cs`, jouée en mode hybride avec les profils des clients, jugée par
+  l'oracle. Un test isolé de plus en `FullTextOnly` ne suffit pas.
+- La requête est **tapée comme un médecin** : sans accent, en majuscules, avec une virgule, un nom de patient, un mot de
+  l'objet. Jamais le mot recopié du message.
+- Un test qui affirme un comportement qu'une task doit corriger n'est **jamais laissé vert** : il est marqué
+  (`Skip`, ou la marque de `SearchReferenceQueries`) avec la task qui le corrige, et cette task retire la marque.
+- Corpus ou nettoyage de requête modifiés : relancer, puis `python tests/search-quality/embed_corpus.py` pour les
+  embeddings manquants (jamais d'appel au fournisseur pendant les tests).
+
+**Preuve** : task-438, `SearchReferenceQualityTests` : 11 cas rouges sur le code d'avant (R1 à R6, constatés avec
+`SEARCH_REFERENCE_KNOWN_DEFECTS=1`), 25 verts ; mutation « dossier ignoré » dans `SemanticSearchRepository.InFolder` :
+14 verts tombent.
+
+**Origine** : task-438. **Occurrences** : 1
