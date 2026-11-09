@@ -147,9 +147,10 @@ Règles :
 | /develop | ok | 54 min 24 s | 19 (1 min 31 s) | 4 (7 min 09 s) | — | api-mail 18B/3T, client-mobile 1B/1T |
 | /sonar | ok | 20 min 48 s | 3 (1 min 06 s) | 11 (13 min 17 s) | 4 (1 min 24 s) | 2 itération(s), api-mail 3B/11T |
 | /lint-angular | ok | 1 min 05 s | — | — | — | — |
-| **Total cycle** | | **1 h 17 min** | **22 (2 min 37 s)** | **15 (20 min 26 s)** | **4 (1 min 24 s)** | |
+| /lint-mobile | ok | 23 s | — | — | — | — |
+| **Total cycle** | | **1 h 18 min** | **22 (2 min 37 s)** | **15 (20 min 26 s)** | **4 (1 min 24 s)** | |
 
-Autres commandes mesurées : lint ×1 (32 s)
+Autres commandes mesurées : lint ×2 (37 s)
 
 ## Develop log
 
@@ -222,3 +223,12 @@ corpus de référence, ignorés hors `SEARCH_REFERENCE_KNOWN_DEFECTS=1`).
 - Fichier touché : 0 erreur, 5 avertissements, tous préexistants, identiques sur la version committée (`max-lines`,
   `jsdoc/require-example`, hors des lignes de la task).
 - Itérations : 0 sur 5. Aucun correctif, donc pas de re-validation build/test.
+
+## Lint mobile log
+
+**`/lint-mobile`** (Mode A), `Client/Mobile` sur `feat/task-438-…`.
+
+- `ng lint` : **All files pass linting** (0 erreur, 0 avertissement).
+- Fichier touché par la task : `e2e/specs/functional.spec.ts`. Il est hors de `lintFilePatterns` (`src/**`) par
+  configuration, et `tsc --noEmit -p e2e/tsconfig.json` passe sans erreur.
+- Itérations : 0 sur 5. Aucun correctif, aucun commit.
