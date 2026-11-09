@@ -146,7 +146,10 @@ Règles :
 | /start | ok | 1 min 22 s | — | — | — | — |
 | /develop | ok | 54 min 24 s | 19 (1 min 31 s) | 4 (7 min 09 s) | — | api-mail 18B/3T, client-mobile 1B/1T |
 | /sonar | ok | 20 min 48 s | 3 (1 min 06 s) | 11 (13 min 17 s) | 4 (1 min 24 s) | 2 itération(s), api-mail 3B/11T |
-| **Total cycle** | | **1 h 16 min** | **22 (2 min 37 s)** | **15 (20 min 26 s)** | **4 (1 min 24 s)** | |
+| /lint-angular | ok | 1 min 05 s | — | — | — | — |
+| **Total cycle** | | **1 h 17 min** | **22 (2 min 37 s)** | **15 (20 min 26 s)** | **4 (1 min 24 s)** | |
+
+Autres commandes mesurées : lint ×1 (32 s)
 
 ## Develop log
 
@@ -207,3 +210,15 @@ corpus de référence, ignorés hors `SEARCH_REFERENCE_KNOWN_DEFECTS=1`).
 **Phase 2 — dette ancienne** : rien à traiter (0 issue ouverte).
 
 **Conventions** : `conventions/csharp.md`, CA1859 passé à 17 occurrences et nouvelle entrée `xUnit1004`.
+
+## Lint log
+
+**`/lint-angular`** (Mode A, code-only), `Client/Angular/front` sur `feature/nova-mss-weda-integration`, base
+`origin/next`, portée `tag:scope:mss`.
+
+- Fichier touché par la task : `e2e/mss-e2e/specs/functional.e2e.ts` (projet `mss-e2e`, tag `scope:mss`), non commité,
+  pour l'humain (TFS).
+- `nx affected -t lint` : **13 tâches, 13 réussies, 0 erreur.**
+- Fichier touché : 0 erreur, 5 avertissements, tous préexistants, identiques sur la version committée (`max-lines`,
+  `jsdoc/require-example`, hors des lignes de la task).
+- Itérations : 0 sur 5. Aucun correctif, donc pas de re-validation build/test.
