@@ -131,3 +131,8 @@ Règles :
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : non — corpus fictif, tests sur le poste et en CI
 - **AIPD / impact RGPD** : inchangé — aucune donnée réelle
+
+## Branches
+- `api-mail` (pushed) : feat/task-438-recherche-le-filet-d-abord-un-corpus-et — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-438-recherche-le-filet-d-abord-un-corpus-et
+- `client-mobile` (pushed) : feat/task-438-recherche-le-filet-d-abord-un-corpus-et — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-438-recherche-le-filet-d-abord-un-corpus-et
+- `client-angular` (code-only) : la forge écrit sur la branche actuellement checked out dans `Client/Angular/` (au /start : `feature/nova-mss-weda-integration`, commit `e2f3e131`) — l'humain gère branche, commit, push, PR TFS
