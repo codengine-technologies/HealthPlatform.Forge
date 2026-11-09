@@ -1,0 +1,25 @@
+-- forme : 90fed31c06a6aff57d1fb5c7c8d25a5d
+-- base : u_l9l_b27c2b6f659b50f6240b3481927d0381
+Limit (actual time=2.179..2.181 rows=20 loops=1)
+  Buffers: shared hit=715
+  ->  Sort (actual time=2.178..2.180 rows=20 loops=1)
+        Sort Key: ((m."Embedding" <=> $1))
+        Sort Method: quicksort  Memory: 27kB
+        Buffers: shared hit=715
+        ->  Hash Join (actual time=1.811..2.147 rows=40 loops=1)
+              Hash Cond: (m0."Id" = m."MailId")
+              Buffers: shared hit=712
+              ->  Seq Scan on "Mails" m0 (actual time=0.004..0.028 rows=156 loops=1)
+                    Filter: (("FolderPath")::text = $2)
+                    Buffers: shared hit=5
+              ->  Hash (actual time=1.783..1.784 rows=40 loops=1)
+                    Buckets: 1024  Batches: 1  Memory Usage: 11kB
+                    Buffers: shared hit=568
+                    ->  Seq Scan on "MailContents" m (actual time=0.021..1.774 rows=40 loops=1)
+                          Filter: (("Embedding" IS NOT NULL) AND (("EmbeddingModel")::text = $3) AND (("Embedding" <=> $1) <= $4))
+                          Rows Removed by Filter: 116
+                          Buffers: shared hit=568
+Planning:
+  Buffers: shared hit=173
+Planning Time: 1.008 ms
+Execution Time: 2.229 ms

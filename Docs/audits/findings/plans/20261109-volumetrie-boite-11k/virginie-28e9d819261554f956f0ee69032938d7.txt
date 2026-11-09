@@ -1,0 +1,50 @@
+-- forme : 28e9d819261554f956f0ee69032938d7
+-- base : u_vmm_c9e6ca8101453ceff74a38098a6223c9
+Unique (actual time=31.499..31.525 rows=113 loops=1)
+  Buffers: shared hit=3860
+  ->  Sort (actual time=31.498..31.505 rows=223 loops=1)
+        Sort Key: r.row_id, r."position"
+        Sort Method: quicksort  Memory: 135kB
+        Buffers: shared hit=3860
+        ->  Hash Join (actual time=31.261..31.380 rows=223 loops=1)
+              Hash Cond: (d."Id" = r.row_id)
+              Buffers: shared hit=3854
+              ->  Seq Scan on "MailMedicalDocuments" d (actual time=0.002..0.039 rows=567 loops=1)
+                    Buffers: shared hit=98
+              ->  Hash (actual time=31.248..31.250 rows=223 loops=1)
+                    Buckets: 1024  Batches: 1  Memory Usage: 29kB
+                    Buffers: shared hit=3756
+                    ->  Subquery Scan on r (actual time=31.145..31.216 rows=223 loops=1)
+                          Buffers: shared hit=3756
+                          ->  WindowAgg (actual time=31.144..31.200 rows=223 loops=1)
+                                Run Condition: (row_number() OVER (?) <= $3)
+                                Buffers: shared hit=3756
+                                ->  Sort (actual time=31.141..31.148 rows=223 loops=1)
+                                      Sort Key: p."position", ((m."SentDate" IS NULL)), m."SentDate" DESC, m."Uid" DESC
+                                      Sort Method: quicksort  Memory: 45kB
+                                      Buffers: shared hit=3756
+                                      ->  Nested Loop (actual time=0.447..31.028 rows=223 loops=1)
+                                            Buffers: shared hit=3745
+                                            ->  Nested Loop (actual time=0.330..24.800 rows=525 loops=1)
+                                                  Buffers: shared hit=3745
+                                                  ->  Nested Loop (actual time=0.077..1.394 rows=525 loops=1)
+                                                        Buffers: shared hit=3099
+                                                        ->  Index Scan using "PK_MailMedicalDocuments" on "MailMedicalDocuments" d_1 (actual time=0.071..0.629 rows=525 loops=1)
+                                                              Index Cond: ("Id" = ANY ($2))
+                                                              Buffers: shared hit=1524
+                                                        ->  Index Scan using "PK_Mails" on "Mails" m (actual time=0.001..0.001 rows=1 loops=525)
+                                                              Index Cond: ("Id" = d_1."MailId")
+                                                              Buffers: shared hit=1575
+                                                  ->  Limit (actual time=0.043..0.044 rows=1 loops=525)
+                                                        Buffers: shared hit=646
+                                                        ->  Result (actual time=0.043..0.044 rows=1 loops=525)
+                                                              Buffers: shared hit=646
+                                            ->  Function Scan on unnest p (actual time=0.012..0.012 rows=0 loops=525)
+                                                  SubPlan 1
+                                                    ->  Function Scan on unnest t (actual time=0.009..0.011 rows=0 loops=525)
+                                                          Filter: ((lower(d_1."Body")) ~~ like_escape(lower(pattern), $4))
+                                                          Rows Removed by Filter: 3
+Planning:
+  Buffers: shared hit=145
+Planning Time: 1.251 ms
+Execution Time: 31.699 ms

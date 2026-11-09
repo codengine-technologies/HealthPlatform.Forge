@@ -1,0 +1,9 @@
+-- forme : bc5acb2c69c5d6799de85c3fd161a904
+-- base : u_vmm_c9e6ca8101453ceff74a38098a6223c9
+Index Scan using "IX_MailMedicalDocuments_MailId" on "MailMedicalDocuments" m (actual time=0.019..0.020 rows=1 loops=1)
+  Index Cond: ("MailId" = $1)
+  Buffers: shared hit=3
+Planning:
+  Buffers: shared hit=182
+Planning Time: 0.860 ms
+Execution Time: 0.036 ms

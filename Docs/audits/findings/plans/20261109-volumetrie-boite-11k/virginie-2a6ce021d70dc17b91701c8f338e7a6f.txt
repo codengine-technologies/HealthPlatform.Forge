@@ -1,0 +1,9 @@
+-- forme : 2a6ce021d70dc17b91701c8f338e7a6f
+-- base : u_vmm_c9e6ca8101453ceff74a38098a6223c9
+Index Scan using "UX_MailContents_MailId" on "MailContents" m (actual time=0.026..0.026 rows=1 loops=1)
+  Index Cond: ("MailId" = $1)
+  Buffers: shared hit=3
+Planning:
+  Buffers: shared hit=60
+Planning Time: 0.375 ms
+Execution Time: 0.047 ms

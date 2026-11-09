@@ -1,0 +1,26 @@
+-- forme : 90fed31c06a6aff57d1fb5c7c8d25a5d
+-- base : u_vmm_c9e6ca8101453ceff74a38098a6223c9
+Limit (actual time=295.683..295.688 rows=20 loops=1)
+  Buffers: shared hit=70439
+  ->  Sort (actual time=295.681..295.684 rows=20 loops=1)
+        Sort Key: ((m."Embedding" <=> $1))
+        Sort Method: top-N heapsort  Memory: 27kB
+        Buffers: shared hit=70439
+        ->  Hash Join (actual time=4.369..294.359 rows=11176 loops=1)
+              Hash Cond: (m."MailId" = m0."Id")
+              Buffers: shared hit=70436
+              ->  Seq Scan on "MailContents" m (actual time=0.065..121.204 rows=11284 loops=1)
+                    Filter: (("Embedding" IS NOT NULL) AND (("EmbeddingModel")::text = $3) AND (("Embedding" <=> $1) <= $4))
+                    Rows Removed by Filter: 7
+                    Buffers: shared hit=35899
+              ->  Hash (actual time=4.256..4.256 rows=11178 loops=1)
+                    Buckets: 16384 (originally 4096)  Batches: 1 (originally 1)  Memory Usage: 762kB
+                    Buffers: shared hit=433
+                    ->  Seq Scan on "Mails" m0 (actual time=0.006..3.036 rows=11178 loops=1)
+                          Filter: (("FolderPath")::text = $2)
+                          Rows Removed by Filter: 113
+                          Buffers: shared hit=433
+Planning:
+  Buffers: shared hit=181
+Planning Time: 1.469 ms
+Execution Time: 295.880 ms

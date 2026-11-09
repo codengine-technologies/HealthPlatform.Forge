@@ -1,0 +1,23 @@
+-- forme : ac42e9c32aa51dc548795bf6a9692db0
+-- base : u_vmm_c9e6ca8101453ceff74a38098a6223c9
+Index Scan using "IX_MailMedicalDocuments_MailId" on "MailMedicalDocuments" m (actual time=0.108..0.415 rows=18 loops=1)
+  Index Cond: ("MailId" = ANY ($1))
+  Buffers: shared hit=274
+  SubPlan 1
+    ->  Aggregate (actual time=0.002..0.002 rows=1 loops=18)
+          Buffers: shared hit=37
+          ->  Index Only Scan using "IX_MailMedicalDocumentBiology_MedicalDocumentId" on "MailMedicalDocumentBiology" m0 (actual time=0.002..0.002 rows=1 loops=18)
+                Index Cond: ("MedicalDocumentId" = m."Id")
+                Heap Fetches: 0
+                Buffers: shared hit=37
+  SubPlan 2
+    ->  Aggregate (actual time=0.016..0.016 rows=1 loops=18)
+          Buffers: shared hit=180
+          ->  Seq Scan on "MailMedicalDocumentSummary" m1 (actual time=0.013..0.015 rows=0 loops=18)
+                Filter: (m."Id" = "MedicalDocumentId")
+                Rows Removed by Filter: 310
+                Buffers: shared hit=180
+Planning:
+  Buffers: shared hit=448
+Planning Time: 2.099 ms
+Execution Time: 0.476 ms

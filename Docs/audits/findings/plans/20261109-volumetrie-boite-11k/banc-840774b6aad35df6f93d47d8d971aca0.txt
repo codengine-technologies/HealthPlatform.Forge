@@ -1,0 +1,57 @@
+-- forme : 840774b6aad35df6f93d47d8d971aca0
+-- base : u_l9l_b27c2b6f659b50f6240b3481927d0381
+Unique (actual time=11.347..11.360 rows=41 loops=1)
+  Buffers: shared hit=505
+  ->  Sort (actual time=11.346..11.351 rows=79 loops=1)
+        Sort Key: r.row_id, r."position"
+        Sort Method: quicksort  Memory: 136kB
+        Buffers: shared hit=505
+        ->  Hash Join (actual time=11.212..11.253 rows=79 loops=1)
+              Hash Cond: (d."Id" = r.row_id)
+              Buffers: shared hit=499
+              ->  Seq Scan on "MailContents" d (actual time=0.002..0.022 rows=156 loops=1)
+                    Buffers: shared hit=32
+              ->  Hash (actual time=11.199..11.201 rows=79 loops=1)
+                    Buckets: 1024  Batches: 1  Memory Usage: 16kB
+                    Buffers: shared hit=467
+                    ->  Subquery Scan on r (actual time=11.159..11.187 rows=79 loops=1)
+                          Buffers: shared hit=467
+                          ->  WindowAgg (actual time=11.159..11.180 rows=79 loops=1)
+                                Run Condition: (row_number() OVER (?) <= $3)
+                                Buffers: shared hit=467
+                                ->  Sort (actual time=11.154..11.157 rows=79 loops=1)
+                                      Sort Key: p."position", ((m."SentDate" IS NULL)), m."SentDate" DESC, m."Uid" DESC
+                                      Sort Method: quicksort  Memory: 32kB
+                                      Buffers: shared hit=467
+                                      ->  Nested Loop (actual time=0.780..11.081 rows=79 loops=1)
+                                            Buffers: shared hit=456
+                                            ->  Nested Loop (actual time=0.422..7.801 rows=156 loops=1)
+                                                  Buffers: shared hit=456
+                                                  ->  Hash Join (actual time=0.268..0.342 rows=156 loops=1)
+                                                        Hash Cond: (m."Id" = d_1."MailId")
+                                                        Buffers: shared hit=244
+                                                        ->  Seq Scan on "Mails" m (actual time=0.001..0.019 rows=156 loops=1)
+                                                              Buffers: shared hit=5
+                                                        ->  Hash (actual time=0.253..0.253 rows=156 loops=1)
+                                                              Buckets: 1024  Batches: 1  Memory Usage: 160kB
+                                                              Buffers: shared hit=239
+                                                              ->  Index Scan using "PK_MailContents" on "MailContents" d_1 (actual time=0.036..0.136 rows=156 loops=1)
+                                                                    Index Cond: ("Id" = ANY ($2))
+                                                                    Buffers: shared hit=239
+                                                  ->  Limit (actual time=0.046..0.048 rows=1 loops=156)
+                                                        Buffers: shared hit=212
+                                                        ->  Result (actual time=0.046..0.047 rows=1 loops=156)
+                                                              Buffers: shared hit=212
+                                            ->  Memoize (actual time=0.021..0.021 rows=1 loops=156)
+                                                  Cache Key: (lower(d_1."Body"))
+                                                  Cache Mode: binary
+                                                  Hits: 0  Misses: 156  Evictions: 0  Overflows: 0  Memory Usage: 724kB
+                                                  ->  Function Scan on unnest p (actual time=0.017..0.017 rows=1 loops=156)
+                                                        SubPlan 1
+                                                          ->  Function Scan on unnest t (actual time=0.015..0.016 rows=1 loops=156)
+                                                                Filter: ((lower(d_1."Body")) ~~ like_escape(lower(pattern), $4))
+                                                                Rows Removed by Filter: 2
+Planning:
+  Buffers: shared hit=137
+Planning Time: 1.378 ms
+Execution Time: 11.651 ms

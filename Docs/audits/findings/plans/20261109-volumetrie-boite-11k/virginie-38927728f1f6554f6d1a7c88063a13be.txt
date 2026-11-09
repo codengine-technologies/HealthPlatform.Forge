@@ -1,0 +1,9 @@
+-- forme : 38927728f1f6554f6d1a7c88063a13be
+-- base : u_vmm_c9e6ca8101453ceff74a38098a6223c9
+Index Scan using "IX_Mails_FolderPath_UidValidity_Uid_Unique" on "Mails" m (actual time=0.028..0.052 rows=18 loops=1)
+  Index Cond: ((("FolderPath")::text = $1) AND ("UidValidity" = $3) AND ("Uid" = ANY ($2)))
+  Buffers: shared hit=55
+Planning:
+  Buffers: shared hit=137
+Planning Time: 0.524 ms
+Execution Time: 0.068 ms

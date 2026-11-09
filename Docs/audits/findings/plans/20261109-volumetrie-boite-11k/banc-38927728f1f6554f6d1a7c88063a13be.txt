@@ -1,0 +1,10 @@
+-- forme : 38927728f1f6554f6d1a7c88063a13be
+-- base : u_l9l_b27c2b6f659b50f6240b3481927d0381
+Seq Scan on "Mails" m (actual time=0.024..0.029 rows=18 loops=1)
+  Filter: ((("FolderPath")::text = $1) AND ("UidValidity" = $3) AND ("Uid" = ANY ($2)))
+  Rows Removed by Filter: 138
+  Buffers: shared hit=5
+Planning:
+  Buffers: shared hit=105
+Planning Time: 0.362 ms
+Execution Time: 0.040 ms

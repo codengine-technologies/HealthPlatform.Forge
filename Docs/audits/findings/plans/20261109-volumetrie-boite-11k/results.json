@@ -1,0 +1,170 @@
+[
+ {
+  "form": "840774b6aad35df6f93d47d8d971aca0",
+  "label": "recherche plein texte — contenus",
+  "banc": [
+   11.651,
+   505,
+   41
+  ],
+  "virginie": [
+   134.728,
+   69204,
+   202
+  ]
+ },
+ {
+  "form": "28e9d819261554f956f0ee69032938d7",
+  "label": "recherche plein texte — documents",
+  "banc": [
+   8.693,
+   522,
+   41
+  ],
+  "virginie": [
+   31.699,
+   3860,
+   113
+  ]
+ },
+ {
+  "form": "bc5acb2c69c5d6799de85c3fd161a904",
+  "label": "ouvrir un message — document",
+  "banc": [
+   0.039,
+   2,
+   1
+  ],
+  "virginie": [
+   0.036,
+   3,
+   1
+  ]
+ },
+ {
+  "form": "ac42e9c32aa51dc548795bf6a9692db0",
+  "label": "page de liste — documents et comptages",
+  "banc": [
+   0.304,
+   126,
+   18
+  ],
+  "virginie": [
+   0.476,
+   274,
+   18
+  ]
+ },
+ {
+  "form": "4c9c73a7b84af06ddf5fcf9b73b3c7ab",
+  "label": "télécharger une pièce jointe",
+  "banc": [
+   0.118,
+   5,
+   1
+  ],
+  "virginie": [
+   0.079,
+   6,
+   1
+  ]
+ },
+ {
+  "form": "9b0276b995554c73320b5caa00935e87",
+  "label": "recherche vectorielle — documents (FND-010)",
+  "banc": [
+   2.399,
+   743,
+   20
+  ],
+  "virginie": [
+   16.347,
+   4092,
+   20
+  ]
+ },
+ {
+  "form": "90fed31c06a6aff57d1fb5c7c8d25a5d",
+  "label": "recherche vectorielle — contenus",
+  "banc": [
+   2.229,
+   715,
+   20
+  ],
+  "virginie": [
+   295.88,
+   70439,
+   20
+  ]
+ },
+ {
+  "form": "2a6ce021d70dc17b91701c8f338e7a6f",
+  "label": "ouvrir un message — contenu",
+  "banc": [
+   0.031,
+   2,
+   1
+  ],
+  "virginie": [
+   0.047,
+   3,
+   1
+  ]
+ },
+ {
+  "form": "8f9a23fbdfe763775fed3766b575821b",
+  "label": "doublons actifs d'une page",
+  "banc": [
+   0.221,
+   140,
+   18
+  ],
+  "virginie": [
+   0.183,
+   148,
+   12
+  ]
+ },
+ {
+  "form": "9ecf42a479e49a52787a30295de1f894",
+  "label": "acquittements de biologie d'une page",
+  "banc": [
+   0.037,
+   3,
+   0
+  ],
+  "virginie": [
+   0.081,
+   49,
+   11
+  ]
+ },
+ {
+  "form": "38927728f1f6554f6d1a7c88063a13be",
+  "label": "messages d'une page, par UID",
+  "banc": [
+   0.04,
+   5,
+   18
+  ],
+  "virginie": [
+   0.068,
+   55,
+   18
+  ]
+ },
+ {
+  "form": "a5978bf1120a527de14ca8d1c8283f21",
+  "label": "messages qui citent un fil (FND-014)",
+  "banc": [
+   0.132,
+   5,
+   0
+  ],
+  "virginie": [
+   2.133,
+   433,
+   0
+  ]
+ }
+]

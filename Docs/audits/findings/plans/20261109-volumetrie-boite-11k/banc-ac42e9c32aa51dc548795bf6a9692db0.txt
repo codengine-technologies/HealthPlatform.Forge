@@ -1,0 +1,27 @@
+-- forme : ac42e9c32aa51dc548795bf6a9692db0
+-- base : u_l9l_b27c2b6f659b50f6240b3481927d0381
+Bitmap Heap Scan on "MailMedicalDocuments" m (actual time=0.085..0.236 rows=18 loops=1)
+  Recheck Cond: ("MailId" = ANY ($1))
+  Heap Blocks: exact=15
+  Buffers: shared hit=126
+  ->  Bitmap Index Scan on "IX_MailMedicalDocuments_MailId" (actual time=0.043..0.043 rows=43 loops=1)
+        Index Cond: ("MailId" = ANY ($1))
+        Buffers: shared hit=21
+  SubPlan 1
+    ->  Aggregate (actual time=0.007..0.007 rows=1 loops=18)
+          Buffers: shared hit=54
+          ->  Seq Scan on "MailMedicalDocumentBiology" m0 (actual time=0.006..0.006 rows=0 loops=18)
+                Filter: (m."Id" = "MedicalDocumentId")
+                Rows Removed by Filter: 119
+                Buffers: shared hit=54
+  SubPlan 2
+    ->  Aggregate (actual time=0.001..0.001 rows=1 loops=18)
+          Buffers: shared hit=36
+          ->  Index Only Scan using "IX_MedDocSummary_MedicalDocumentId" on "MailMedicalDocumentSummary" m1 (actual time=0.001..0.001 rows=0 loops=18)
+                Index Cond: ("MedicalDocumentId" = m."Id")
+                Heap Fetches: 0
+                Buffers: shared hit=36
+Planning:
+  Buffers: shared hit=453
+Planning Time: 1.800 ms
+Execution Time: 0.304 ms

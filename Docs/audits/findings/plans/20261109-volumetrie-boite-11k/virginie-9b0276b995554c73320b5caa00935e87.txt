@@ -1,0 +1,26 @@
+-- forme : 9b0276b995554c73320b5caa00935e87
+-- base : u_vmm_c9e6ca8101453ceff74a38098a6223c9
+Limit (actual time=16.280..16.283 rows=20 loops=1)
+  Buffers: shared hit=4092
+  ->  Sort (actual time=16.279..16.281 rows=20 loops=1)
+        Sort Key: ((m."Embedding" <=> $1))
+        Sort Method: top-N heapsort  Memory: 27kB
+        Buffers: shared hit=4092
+        ->  Hash Join (actual time=8.110..16.198 rows=521 loops=1)
+              Hash Cond: (m0."Id" = m."MailId")
+              Buffers: shared hit=4089
+              ->  Seq Scan on "Mails" m0 (actual time=0.007..2.654 rows=11178 loops=1)
+                    Filter: (("FolderPath")::text = $2)
+                    Rows Removed by Filter: 113
+                    Buffers: shared hit=433
+              ->  Hash (actual time=8.072..8.073 rows=563 loops=1)
+                    Buckets: 1024  Batches: 1  Memory Usage: 45kB
+                    Buffers: shared hit=1955
+                    ->  Seq Scan on "MailMedicalDocuments" m (actual time=0.147..7.970 rows=563 loops=1)
+                          Filter: (("Embedding" IS NOT NULL) AND (("EmbeddingModel")::text = $3) AND (("Embedding" <=> $1) <= $4))
+                          Rows Removed by Filter: 4
+                          Buffers: shared hit=1955
+Planning:
+  Buffers: shared hit=329
+Planning Time: 1.733 ms
+Execution Time: 16.347 ms

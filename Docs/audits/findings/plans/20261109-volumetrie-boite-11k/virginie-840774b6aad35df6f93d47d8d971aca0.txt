@@ -1,0 +1,45 @@
+-- forme : 840774b6aad35df6f93d47d8d971aca0
+-- base : u_vmm_c9e6ca8101453ceff74a38098a6223c9
+Unique (actual time=134.404..134.449 rows=202 loops=1)
+  Buffers: shared hit=69204
+  ->  Sort (actual time=134.403..134.414 rows=401 loops=1)
+        Sort Key: d_1."Id", p."position"
+        Sort Method: quicksort  Memory: 258kB
+        Buffers: shared hit=69204
+        ->  Nested Loop (actual time=133.181..134.165 rows=401 loops=1)
+              Buffers: shared hit=69198
+              ->  WindowAgg (actual time=133.166..133.774 rows=401 loops=1)
+                    Run Condition: (row_number() OVER (?) <= $3)
+                    Buffers: shared hit=67995
+                    ->  Sort (actual time=133.153..133.354 rows=7576 loops=1)
+                          Sort Key: p."position", ((m."SentDate" IS NULL)), m."SentDate" DESC, m."Uid" DESC
+                          Sort Method: quicksort  Memory: 903kB
+                          Buffers: shared hit=67995
+                          ->  Nested Loop (actual time=1.610..130.609 rows=7576 loops=1)
+                                Buffers: shared hit=67984
+                                ->  Nested Loop (actual time=1.592..92.988 rows=11175 loops=1)
+                                      Buffers: shared hit=67984
+                                      ->  Nested Loop (actual time=1.583..22.141 rows=11175 loops=1)
+                                            Buffers: shared hit=67387
+                                            ->  Index Scan using "PK_MailContents" on "MailContents" d_1 (actual time=1.574..11.275 rows=11175 loops=1)
+                                                  Index Cond: ("Id" = ANY ($2))
+                                                  Buffers: shared hit=33653
+                                            ->  Index Scan using "PK_Mails" on "Mails" m (actual time=0.001..0.001 rows=1 loops=11175)
+                                                  Index Cond: ("Id" = d_1."MailId")
+                                                  Buffers: shared hit=33620
+                                      ->  Limit (actual time=0.006..0.006 rows=1 loops=11175)
+                                            Buffers: shared hit=597
+                                            ->  Result (actual time=0.006..0.006 rows=1 loops=11175)
+                                                  Buffers: shared hit=597
+                                ->  Function Scan on unnest p (actual time=0.003..0.003 rows=1 loops=11175)
+                                      SubPlan 1
+                                        ->  Function Scan on unnest t (actual time=0.002..0.003 rows=1 loops=11175)
+                                              Filter: ((lower(d_1."Body")) ~~ like_escape(lower(pattern), $4))
+                                              Rows Removed by Filter: 2
+              ->  Index Scan using "PK_MailContents" on "MailContents" d (actual time=0.001..0.001 rows=1 loops=401)
+                    Index Cond: ("Id" = d_1."Id")
+                    Buffers: shared hit=1203
+Planning:
+  Buffers: shared hit=149
+Planning Time: 6.053 ms
+Execution Time: 134.728 ms

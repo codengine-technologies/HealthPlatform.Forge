@@ -1,0 +1,11 @@
+-- forme : 9ecf42a479e49a52787a30295de1f894
+-- base : u_vmm_c9e6ca8101453ceff74a38098a6223c9
+Index Scan using "IX_MailMedicalDocumentBiology_MedicalDocumentId" on "MailMedicalDocumentBiology" m (actual time=0.034..0.065 rows=11 loops=1)
+  Index Cond: ("MedicalDocumentId" = ANY ($1))
+  Filter: "IsFlagged"
+  Rows Removed by Filter: 8
+  Buffers: shared hit=49
+Planning:
+  Buffers: shared hit=66
+Planning Time: 0.375 ms
+Execution Time: 0.081 ms
