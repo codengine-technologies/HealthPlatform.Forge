@@ -575,3 +575,48 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   dépend d'un `process.env.TZ` posé en cours de route.
 - **Origine** : task-380 (/develop, ANG-61)
 - **Occurrences** : 1
+
+### url-d-api-jugee-par-son-extension — Une route d'API qui finit par un nom de fichier n'est pas un fichier statique
+- **Règle** : convention projet (sécurité / authentification, invisible au lint)
+- **Repos** : `client-angular` (le mobile n'a pas de filtre par extension)
+- **Piège** : l'intercepteur d'authentification de weda2 ne posait pas le Bearer sur une URL dont le
+  chemin finit par `.png`, `.jpg`, `.json`, `.mp3`… (`isAssetRequest`), même vers une origine de
+  confiance. La route de téléchargement d'api-mail finit par le nom de la pièce, choisi par
+  l'expéditeur : toute pièce jointe image partait sans jeton, 401, aperçu vide.
+- **Consigne** : une requête vers une API de confiance se juge par son **origine et son chemin**,
+  jamais par l'extension de son dernier segment. Toute route qui embarque une donnée de l'utilisateur
+  (nom de fichier, objet, adresse) en fin de chemin doit être testée avec une valeur qui « ressemble »
+  à un fichier statique (`scan.png`, `export.json`). Seuls `blob:`, `data:` et `file:` échappent
+  toujours au jeton (`isBrowserLocalUrl`).
+- **Second piège, dans le correctif lui-même** : `isApiRequest` compare une URL **relative** au seul
+  chemin de l'origine de confiance. Avec api-mail à la racine (`https://localhost:7012`), **toute**
+  URL relative en `/` « vise » api-mail. Le premier correctif, qui dispensait api-mail du test
+  d'extension, l'a donc retiré aussi aux fichiers de l'application (`/assets/i18n/fr.json`) : weda2
+  cassé dès l'authentification. **Une dérogation pour une origine se réserve aux URL absolues** de
+  cette origine, et se teste avec la configuration réelle (origine à la racine), pas avec une
+  origine fictive à chemin.
+- **Preuve** : `auth-interceptor.utils.spec.ts` (« api-mail (trustedEndpoints) ») et
+  `auth.interceptor.spec.ts` (« should add Bearer token to an api-mail image attachment ») : 6 rouges
+  sur le code d'avant, verts après ; 2 681 tests weda2 verts.
+- **Origine** : correction directe du 2026-11-09 (Seq, UID 15515, jeu `EmlFactory`)
+- **Occurrences** : 1
+
+### texte-recu-force-en-utf8 — Un texte reçu se décode dans son encodage réel avant d'être affiché
+- **Règle** : convention projet (affichage, invisible au lint)
+- **Repos** : `client-angular` (le mobile ne prévisualise pas les pièces texte)
+- **Piège** : l'aperçu d'une pièce `text/plain` relabellisait le blob en `text/plain;charset=utf-8`
+  sans toucher aux octets. Un HPRIM de laboratoire, presque toujours en windows-1252, s'affichait
+  avec un « � » à chaque accent. Forcer le **type** est une mesure de sécurité (task-368) ; forcer
+  le **charset** sans décoder est un contresens.
+- **Consigne** : un texte venu de l'extérieur se décode dans son encodage réel avant d'être affiché
+  ou réencodé : `decodeText` (`attachment-preview.util.ts`), mêmes règles que `HprimReader`
+  d'api-mail (préambule UTF-16 ou UTF-8, UTF-8 strict, sinon windows-1252). Tout test d'affichage
+  d'un texte reçu porte au moins une donnée **accentuée en windows-1252**.
+  **Côté test** : un aperçu devenu asynchrone est refermé par l'effet de chargement du message si
+  le test sélectionne le message et clique dans le même tick ; ouvrir le message d'abord
+  (`TestBed.tick()`, requête de contenu soldée), comme l'interface.
+- **Preuve** : `mail-detail.component.spec.ts` (« previews a windows-1252 HPRIM with its accents »),
+  rouge sous mutation (`Pr�l�vement`), vert après ; `attachment-preview.util.spec.ts`
+  (`decodeText`, `previewTextBlob`).
+- **Origine** : correction directe du 2026-11-09 (capture humaine, `261109954185.hpm`, jeu `EmlFactory`)
+- **Occurrences** : 1
