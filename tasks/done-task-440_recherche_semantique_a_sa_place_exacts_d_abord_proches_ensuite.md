@@ -133,7 +133,8 @@ Contrat (`dtos-mss`, rétrocompatible) : chaque `hit` dit s'il est **exact** (av
 | /lint-angular | skipped | 0.4 s | — | — | — | client-angular non touché |
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 19 min 41 s | — | — | — | e2e ×3 (18 min 50 s) |
-| **Total cycle** | | **1 h 05 min** | **8 (1 min 12 s)** | **7 (19 min 53 s)** | **2 (45 s)** | |
+| /review | ok | 6 min 40 s | 2 (16 s) | 1 (5 min 29 s) | — | dtos-mss 1B/0T, api-mail 1B/1T |
+| **Total cycle** | | **1 h 11 min** | **10 (1 min 28 s)** | **8 (25 min 23 s)** | **2 (45 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (25 s), restore ×1 (22 s)
 
@@ -348,3 +349,33 @@ mémoire de session.
 | E2E-ERROR-001 | 1 | headless | Une erreur affiche un code et une référence à transmettre au support | ✅ | ✅ |
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## PRs
+
+- `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/59 — label `awaiting-human-merge`
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/356 — label `awaiting-human-merge`
+
+Ordre de merge : dtos-mss, puis api-mail (le paquet 581.0.0 est déjà publié ; api-mail le consomme).
+
+## Code Review Summary
+
+**APPROVED — 0 bloquant, 5 suggestions.** Build et tests verts (7 596 tests, 0 échec), DoD vérifiée, `## E2E log`
+vert, Quality Gate OK.
+
+- **Règle 1b** :
+  - seuil unique du serveur, `minSimilarity` ignoré, seuil appliqué rendu → `ReferenceQuery_SameAnswerWhateverTheClientThreshold`, 24 rouges sur le code d'avant ;
+  - mot sans rapport → réponse vide → `mot-absent`, rouge sur le code d'avant (mobile) et sous la mutation « seuil 0,10 » ;
+  - exacts d'abord, sans doublon, section lue sur chaque `hit` → `Hybrid_VerySimilarNeighbours_…`, rouge sous la mutation « fusion mêlée » ;
+  - rattrapage par le sens → `sens-*` et `SearchSimilarThresholdCalibrationTests`, rouges sur le code d'avant (weda2) et sous la mutation « seuil 0,10 » ;
+  - moteur sémantique en panne → `Hybrid_EmbeddingProviderDown_…` (test existant, section `AllTerms` désormais lue).
+- **Sécurité** : aucune entrée nouvelle, aucun journal nouveau ; le diagnostic journalise le seuil et la longueur de la
+  requête, jamais son texte.
+- **Suggestions** :
+  1. le mode `SemanticOnly` applique aussi 0,45 : voulu, à confirmer au test manuel ;
+  2. publier une métrique « proches rendus par recherche » (calibration faite sur des textes courts) ;
+  3. rattraper les fautes de frappe par les trigrammes de task-439 ;
+  4. aligner `/search/patient` ;
+  5. retirer le `minSimilarity` encore enregistré par `SearchHistoryService` en même temps que le champ.
+- **Test instable rencontré** : `EmailReadingUseCaseTests.ExpandThread…`, une fois rouge pendant la passe Sonar, vert
+  isolé et dans les trois suites complètes ; consigné en mémoire de session.
+- **Reste à l'humain** : rejouer l'outil de campagne sur la boîte de Virginie (Manual Test Plan).
