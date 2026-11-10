@@ -1,0 +1,22 @@
+{
+ "contents": {
+  "rappel@10": 0.975,
+  "rappel@10 min": 0.8,
+  "ms médiane": 11.54,
+  "ms max": 15.22,
+  "pages médiane": 1865.0,
+  "plans": [
+   "Index Scan:MailContents,Index Scan:Mails"
+  ]
+ },
+ "documents": {
+  "rappel@10": 0.9875,
+  "rappel@10 min": 0.9,
+  "ms médiane": 5.05,
+  "ms max": 5.51,
+  "pages médiane": 1468.0,
+  "plans": [
+   "Index Scan:MailMedicalDocuments,Index Scan:Mails"
+  ]
+ }
+}

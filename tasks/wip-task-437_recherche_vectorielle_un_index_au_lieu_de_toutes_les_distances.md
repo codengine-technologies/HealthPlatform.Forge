@@ -156,4 +156,124 @@ Règles :
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 14 s | — | — | — | — |
-| **Total cycle** | | **14 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 1 h 12 min | 3 (21 s) | 2 (11 min 01 s) | — | api-mail 3B/2T |
+| **Total cycle** | | **1 h 12 min** | **3 (21 s)** | **2 (11 min 01 s)** | **0 (0.0 s)** | |
+
+## Develop log
+
+- **Repos touchés** : api-mail seul. Aucun contrat, aucun client, aucune migration.
+- **Commits** : `9b44cbe3` (feature), `de0afa67` (passe qualité).
+- **Ce qui change** : la recherche par le sens passe par un **index HNSW** au lieu de calculer la distance de chaque
+  message de la boîte.
+  - **Index** (`VectorIndexSchema`) : un index par modèle d'embedding actif et par table (`MailContents`,
+    `MailMedicalDocuments`).
+    - Il est **partiel** sur `"EmbeddingModel" = <modèle>`, en littéral, pour que le planificateur le reconnaisse.
+    - Il porte sur l'**expression typée** `("Embedding"::halfvec(D))` : la colonne est un `vector` sans dimension, et
+      une boîte peut mêler deux modèles de dimensions différentes.
+    - Paramètres : `m = 24`, `ef_construction = 200`.
+  - **Construction** : en tâche de fond par le constructeur de task-439 (`SearchTextIndex`), après le texte
+    cherchable, au premier usage de la recherche. Mêmes gardes que task-439 :
+    - hors du sémaphore de migration ;
+    - verrou consultatif ;
+    - `lock_timeout` ;
+    - deux constructions par processus ;
+    - index invalide reconstruit.
+
+    Pas de migration : la boîte s'ouvre sans attendre.
+  - **Requête** (`SemanticSearchRepository.SearchByVectorIndexAsync`) :
+    - les candidats viennent de l'index (`ORDER BY` sur l'expression indexée, `LIMIT`) ;
+    - réglages en `SET LOCAL` dans leur transaction : `hnsw.ef_search = 150`, `hnsw.iterative_scan = relaxed_order`,
+      `enable_seqscan = off` ;
+    - le dossier est vérifié autour du parcours, dans la même requête (`InFolder` en jointure externe) ;
+    - le seuil de distance s'applique ensuite.
+  - **Repli exact** :
+    - tant que l'index n'est pas prêt : la construction est lancée, jamais attendue ;
+    - quand l'index a pu couper un petit dossier (son dernier candidat est encore sous le seuil, et le dossier en a
+      gardé moins que demandé) ;
+    - sans modèle actif, ou avec un filtre sur le nom du patient : voie d'avant.
+  - Une requête d'une autre dimension reste un 409 métier : l'erreur de cast `expected N dimensions` est reconnue.
+- **Laboratoire** (`Docs/audits/findings/plans/20261110-vectoriel-task-437/lab_task437.py`) :
+  - copie `srch_lab` de la boîte de formation : 11 289 contenus et 563 documents vectorisés, tous en
+    `openai:text-embedding-3-small` ;
+  - **24 vraies phrases de recherche**, nettoyées par `SearchQueryHelper.BuildCleanedQuery` puis vectorisées comme en
+    production ;
+  - **rappel@10 contre la recherche exacte**, dossier INBOX, 100 candidats ;
+  - médiane de 5 passages.
+
+  | Variante | Contenus : rappel@10 (pire) | Contenus : ms | Documents : rappel@10 (pire) | Documents : ms |
+  |---|---|---|---|---|
+  | Exacte (avant), balayage | 100 % | 157 ms, 38 312 pages | 100 % | 11,6 ms, 2 524 pages |
+  | `vector`, m 16, ef_search 40 (défaut) | 62,5 % (0 %) | 8,5 | — (planificateur : balayage) | 14,3 |
+  | `vector`, m 24, efc 200, ef_search 200 | 98,3 % (80 %) | 12,1 | 99,6 % (90 %) | 6,0 |
+  | `halfvec`, m 24, efc 200, ef_search 100 | 96,2 % (70 %) | 9,7 | 98,8 % (90 %) | 4,9 |
+  | **`halfvec`, m 24, efc 200, ef_search 150 (retenu), forme de production** | **97,9 % (80 %)** | **12,3 ms, 1 986 pages** | **98,8 % (90 %)** | **4,9 ms, 1 365 pages** |
+
+  - **Taille et construction** (contenus / documents) :
+    - `vector` : 88 Mo / 4 Mo, en 3,8 s / 0,33 s ;
+    - `halfvec` : **44 Mo / 2 Mo**, en 3,3 s / 0,34 s.
+
+    `halfvec` divise par deux le stockage, soit environ 0,45 To au lieu de 0,9 To pour 10 000 médecins, pour moins
+    d'un point de rappel.
+  - **Ce que la mesure a appris** :
+    - le réglage par défaut rate les vrais voisins des phrases courtes (rappel nul sur 6 phrases) ;
+    - le planificateur bascule entre index et balayage d'une valeur d'`ef_search` à l'autre ;
+    - un filtre de dossier dans le parcours (`EXISTS` réordonné, sous-requête, `= ANY`) lui fait quitter l'index.
+
+    D'où les choix retenus : `enable_seqscan` désactivé localement et le dossier vérifié autour du parcours.
+  - **Distance en demi-précision** dans la réponse (écart de l'ordre du millième) : relire le vecteur entier coûtait
+    une milliseconde de plus sur les documents (5,8 ms au lieu de 4,9).
+- **DoD — plancher et gain** :
+  - rappel moyen 97,9 % (contenus) et 98,8 % (documents), plancher de 95 % ✓ ;
+  - contenus 157 → 12,3 ms (objectif ≤ 20) ✓ ;
+  - documents 11,6 → 4,9 ms (objectif ≤ 5) ✓ ;
+  - baseline de la task (code `405da376`) : 296 / 16,4 ms. Sur `develop` d'aujourd'hui, la voie exacte mesure
+    157 / 11,6 ms.
+- **Règle 1b — tests d'intégration de bout en bout** (`POST /api/v1/Search/semantic`, mode sémantique, vraie pile,
+  PostgreSQL et pgvector, index construit par le chemin réel) — `SearchVectorIndexIntegrationTests` :
+  - les plus proches du dossier courant, contenus et documents mêlés, dans l'ordre, sous le seuil, dans la limite. Le
+    plan de la requête émise (`EXPLAIN`, mêmes réglages) cite l'index des deux tables ;
+  - **cas d'échec** : une boîte sans index (un autre processus tient la construction) répond quand même, par la voie
+    exacte ;
+  - un petit dossier d'une grande boîte n'est pas perdu derrière la boîte de réception (repli exact) ;
+  - **construction sans blocage** : une lecture tient la boîte B, A cherche et répond en moins de 15 s, puis l'index de
+    B se construit.
+- **Vu rouge par mutation**, restaurée puis recompilée (`--no-incremental`), rejouée après la passe qualité :
+
+  | Mutation | Test au rouge |
+  |---|---|
+  | M1 — requête ordonnée sur la distance exacte (`"Embedding" <=> q`), pas sur l'expression indexée | le plan ne passe plus par l'index |
+  | M2 — construction de l'index retirée | idem |
+  | M3 — repli exact retiré | le message du petit dossier est perdu |
+
+- **Tests unitaires** : `VectorIndexSchemaTests` (8) :
+  - modèles indexables ou non (dimension 0, > 4 000) ;
+  - nom d'index stable par modèle ;
+  - littéral échappé ;
+  - index et requête sur la même expression ;
+  - réglages locaux à la transaction.
+- **Tests existants de la recherche** : verts sans modification de leurs assertions (279). Dont les modèles à 3 et 5
+  dimensions de task-325, qui passent désormais par le chemin indexé.
+- **Passe qualité (/simplify)**, 2 relectures :
+  - Appliqué :
+    - réponse exacte immédiate tant que l'index n'est pas prêt (avant, la recherche pouvait balayer deux fois) ;
+    - dossier vérifié dans la même requête que les candidats (un aller-retour de moins par table) ;
+    - un seul état « prêt » et une seule vérification au catalogue ;
+    - SQL de suppression d'un index invalide partagé ;
+    - transaction simplifiée ;
+    - une condition et une aide de construction uniques ;
+    - côté tests, un seul générateur d'embeddings et une seule aide de verrou.
+  - Écarté :
+    - `SET LOCAL` dans la même commande : EF enveloppe la requête composée dans une sous-requête ;
+    - une requête commune aux deux tables : il faudrait changer l'interface du dépôt ;
+    - renommer `SearchTextIndex` : trop de changements autour du code de task-439.
+- **Build et tests locaux** : `HealthPlatform.Api.Mail.sln` sans erreur ni avertissement. Tests : domain 210,
+  infrastructure 737, api 1 375, application 4 054, intégration 1 232 (+ 16 écartés), 0 échec.
+- **Aucune donnée de santé dans les journaux** : deux messages nouveaux (« Vector index of {Database} built »), sans
+  terme ni vecteur.
+- **Registre** : FND-010 porte la mesure d'après (laboratoire). Le statut passe en « corrigé et mesuré » au merge,
+  selon la définition du registre (task mergée).
+- **Prévention (règle d'or)** : `conventions/csharp.md`, entrée `recherche-par-similarite-indexee`.
+- **DoD — restent à faire, avec le banc de charge (à décider avec l'humain)** :
+  - escalier `enrich` à 16 médecins, avant / après, pour le coût d'écriture de l'index ;
+  - A/B du tir court 1400 → 1996.
+- Next step : /sonar task-437

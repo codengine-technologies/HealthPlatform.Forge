@@ -1,0 +1,22 @@
+{
+ "contents": {
+  "rappel@10": 0.9958,
+  "rappel@10 min": 0.9,
+  "ms médiane": 172.59,
+  "ms max": 177.08,
+  "pages médiane": 47371.0,
+  "plans": [
+   "Bitmap Heap Scan:Mails,Bitmap Index Scan:IX_Mails_FolderPath_UidValidity_Uid_Unique,Index Scan:MailContents"
+  ]
+ },
+ "documents": {
+  "rappel@10": 0.9958,
+  "rappel@10 min": 0.9,
+  "ms médiane": 14.81,
+  "ms max": 15.57,
+  "pages médiane": 3081.0,
+  "plans": [
+   "Bitmap Heap Scan:Mails,Bitmap Index Scan:IX_Mails_FolderPath_UidValidity_Uid_Unique,Index Scan:MailMedicalDocuments"
+  ]
+ }
+}

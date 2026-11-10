@@ -2324,3 +2324,34 @@ anciens sous 460 homonymes partiels récents, tous trouvés page par page) et
 rouges sur le code d'avant) et `SearchSimilarThresholdCalibrationTests`.
 
 **Origine** : task-440. **Occurrences** : 1
+
+## recherche-par-similarite-indexee — une recherche par similarité passe par un index et ordonne sur la même expression ; une colonne `vector` sans dimension impose un index sur expression
+
+**Règle** : convention projet (coût de la recherche, invisible au lint et à Sonar).
+
+**Piège** (task-437, FND-010) :
+- aucune migration n'avait posé d'index sur `Embedding` : chaque recherche par le sens calculait la distance de
+  **toutes** les lignes de la boîte, en relisant chaque vecteur depuis TOAST. 2,2 ms sur la boîte du banc, 296 ms et
+  70 439 pages sur une boîte de 11 178 mails : un coût qui suit la taille de la boîte reste invisible au banc ;
+- la colonne est un `vector` **sans dimension** (plusieurs modèles, plusieurs dimensions dans une même base) : un index
+  HNSW direct est refusé ;
+- un index ne sert que si la requête **ordonne** sur la même expression et **limite**. Un filtre `distance <= seuil`
+  posé avant le tri, ou une jointure que le planificateur peut réordonner (dossier en `EXISTS`), le fait repartir sur
+  un balayage complet ; et son estimation de coût bascule d'un `ef_search` à l'autre.
+
+**Consigne** :
+- Toute recherche par similarité a son index HNSW, construit hors du chemin qui bloque l'ouverture des boîtes
+  (`SearchTextIndex`), **partiel par modèle** (`WHERE "EmbeddingModel" = '<modèle>'`, en littéral) et **sur l'expression
+  typée** (`("Embedding"::halfvec(D))`). La requête ordonne sur cette même expression et limite ; le seuil s'applique
+  ensuite, le dossier aussi.
+- La requête porte ses réglages en `SET LOCAL`, dans sa transaction : `hnsw.ef_search`, `hnsw.iterative_scan`, et
+  `enable_seqscan = off` quand le plan bascule. Sans index, elle reste exacte.
+- Le rappel se mesure contre la recherche exacte, sur de **vraies phrases de recherche** vectorisées comme en
+  production (les vecteurs de la boîte elle-même donnent 100 % et ne prouvent rien) : 62 % au réglage par défaut
+  (`m = 16`, `ef_search = 40`), 97,9 % au réglage retenu.
+- Un test d'intégration relève le plan (`EXPLAIN`) de la requête émise et y cherche le nom de l'index.
+
+**Preuve** : task-437, `SearchVectorIndexIntegrationTests` ; laboratoire
+`Docs/audits/findings/plans/20261110-vectoriel-task-437/`.
+
+**Origine** : task-437. **Occurrences** : 1
