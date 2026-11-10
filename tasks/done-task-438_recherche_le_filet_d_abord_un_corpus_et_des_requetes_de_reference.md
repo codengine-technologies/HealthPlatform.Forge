@@ -150,7 +150,8 @@ Règles :
 | /lint-mobile | ok | 23 s | — | — | — | — |
 | /e2e | ok | 27 min 14 s | 1 (12 s) | — | — | api-mail 1B/0T, e2e ×3 (18 min 32 s) |
 | /review | ok | 11 min 08 s | 4 (46 s) | 3 (5 min 56 s) | — | api-mail 1B/1T, client-mobile 1B/1T, client-angular 2B/1T |
-| **Total cycle** | | **1 h 56 min** | **27 (3 min 36 s)** | **18 (26 min 23 s)** | **4 (1 min 24 s)** | |
+| /tech-writer | ok | 1 min 18 s | — | — | — | — |
+| **Total cycle** | | **1 h 57 min** | **27 (3 min 36 s)** | **18 (26 min 23 s)** | **4 (1 min 24 s)** | |
 
 Autres commandes mesurées : lint ×2 (37 s)
 
