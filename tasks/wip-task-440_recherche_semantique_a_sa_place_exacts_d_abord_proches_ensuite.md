@@ -128,4 +128,84 @@ Contrat (`dtos-mss`, rétrocompatible) : chaque `hit` dit s'il est **exact** (av
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 21 s | — | — | — | — |
-| **Total cycle** | | **21 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 33 min 19 s | 7 (52 s) | 2 (11 min 08 s) | — | api-mail 6B/2T, dtos-mss 1B/0T |
+| **Total cycle** | | **33 min 40 s** | **7 (52 s)** | **2 (11 min 08 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : nuget-wait ×1 (25 s), restore ×1 (22 s)
+
+## Develop log
+
+- **Repos touchés** : dtos-mss (branche créée par `/develop`), api-mail.
+- **DTOs publiés** : `HealthPlatform.Dtos.Mss 581.0.0`, documentation seulement, rétrocompatible :
+  - `SearchRequestDto.MinSimilarity` est déprécié et ignoré par la recherche de la boîte ;
+  - `SearchResponseDto.MinSimilarity` dit le seuil appliqué par le serveur ;
+  - `SearchMatchGroup.Similar` est la section « proches », après tous les exacts.
+
+  La section de chaque `hit` existe depuis task-439 (`matchGroup` : `AllTerms` / `SomeTerms` = exact, `Similar` = proche) : aucun champ nouveau n'était nécessaire.
+- **Commits** :
+  - dtos-mss : `feat(dto)` ;
+  - api-mail : `68808224` (bump 581), `2c6088f1` (feature), `8a7ebb6f` (passe qualité).
+- **Ce qui change pour le médecin** :
+  - **un seuil unique, fixé par le serveur** (`SearchLimits.SimilarMinSimilarity = 0,45`) pour tous les clients et toutes les personnes. Le `minSimilarity` envoyé (0,7 dans weda2, 0,1 sur le mobile) n'entre plus dans la recherche : l'option n'existe plus dans `SemanticSearchOptions`. La recherche par patient (`/search/patient`) garde son seuil, hors périmètre ;
+  - les exacts d'abord, puis les proches (ordre posé par task-439, désormais protégé par un test avec des voisins très proches) ;
+  - un mot sans rapport avec la boîte (`zorglubine`) ne rend plus rien.
+- **Calibration du seuil** (`SearchSimilarThresholdCalibrationTests`, embeddings réels `text-embedding-3-small` pré-calculés, corpus de task-438 + 6 requêtes « par le sens », jugement clinique écrit à la main dans `SearchReferenceQueries`) :
+
+  | Seuil | Proches rendus | Pertinents | Pertinence | Pertinents « par le sens » perdus (sur 11) | Bruit sur un mot sans rapport |
+  |---|---|---|---|---|---|
+  | 0,10 (mobile) | 568 | 20 | 4 % | — | — |
+  | 0,250 | 144 | 15 | 10 % | 2 | 1 |
+  | 0,300 | 72 | 13 | 18 % | 3 | 0 |
+  | 0,350 | 40 | 11 | 28 % | 3 | 0 |
+  | 0,400 | 12 | 7 | 58 % | 4 | 0 |
+  | 0,425 | 8 | 6 | 75 % | 5 | 0 |
+  | **0,450 (retenu)** | **5** | **5** | **100 %** | **6** | **0** |
+  | 0,500 | 4 | 4 | 100 % | 7 | 0 |
+  | 0,550 | 0 | 0 | — | 11 | 0 |
+
+  - **Pourquoi 0,45** : c'est le plus bas seuil qui tient l'engagement de pertinence (≥ 90 %). À 0,425, un voisin sans rapport entre : « echocardiographie » ramène l'échographie abdominale (0,448), et la pertinence tombe à 75 %.
+  - **Ce que le seuil rattrape par le sens** : « hypercholestérolémie » retrouve les 4 bilans lipidiques (0,51 à 0,54) ; « anémie » retrouve l'hémoglobine basse (0,479).
+  - **Ce qu'il perd**, faute de similarité suffisante avec ce modèle : « potassium » et la kaliémie (0,276), « BPCO » et la spirométrie (< 0,20), la faute de frappe « psoriasys » (0,383), « arythmie cardiaque » et le Holter (0,429), « anémie » et la ferritine (0,407). Chaque requête « par le sens » déclare ce qui est rattrapé (`Caught`). Le test casse si le seuil rattrape moins (régression) ou plus (le modèle a changé, recalibrer).
+  - **Limite** : le corpus compte 30 messages vectorisés, aux textes courts. Les mails réels sont plus longs ; le rejeu sur la boîte de Virginie (Manual Test Plan) reste la validation terrain.
+- **Règle 1b — tests d'intégration de bout en bout** (`POST /api/v1/Search/semantic`, vraie pile, PostgreSQL et pgvector) :
+  - `SearchReferenceQualityTests.ReferenceQuery_FindsWhatTheMailboxHolds` (24 requêtes × 2 profils, embeddings réels). Le verdict lit la section de chaque `hit` et vérifie :
+    - exacts d'abord, aucun message rendu deux fois ;
+    - mot absent : réponse vide ;
+    - rattrapage par le sens relevé ;
+  - `SearchReferenceQualityTests.ReferenceQuery_SameAnswerWhateverTheClientThreshold` : la même réponse (ordre et groupes) avec `minSimilarity` 0,1 et 0,9, et `minSimilarity` de la réponse égal au seuil du serveur ;
+  - `SearchExactFirstHybridIntegrationTests.Hybrid_VerySimilarNeighbours_NeverPassAheadOfTheExactMatches_AndNoMailIsRepeated` : des exacts non vectorisés face à deux voisins à similarité 1 ;
+  - **cas d'échec** : `SearchEndpointTruthIntegrationTests.Hybrid_EmbeddingProviderDown_ReturnsKeywordHitsAndFlagsDegradedMode` (moteur sémantique en panne → l'exact est rendu, section `AllTerms`, `isDegraded`, `degradedSources = ["semantic"]`).
+- **Vu rouge** :
+  - sur le code d'avant (tests nouveaux, service inchangé) :
+    - `mot-absent` sur le profil mobile ;
+    - `sens-anemie` et `sens-pathologie` sur le profil weda2 (le seuil 0,7 écartait tout) ;
+    - les 24 requêtes de `SameAnswerWhateverTheClientThreshold` ;
+  - par mutation, restaurée puis recompilée (`--no-incremental`) :
+
+    | Mutation | Tests au rouge |
+    |---|---|
+    | M1 — fusion mêlée réinjectée (proches et exacts triés ensemble, 0,8 × similarité + 0,6 × score des mots) | `Hybrid_VerySimilarNeighbours_…` : les deux voisins passent devant le message qui porte les deux mots |
+    | M2 — seuil abaissé à 0,10 | `mot-absent` (weda2 et mobile) ; calibration : 20 proches pertinents sur 568 (4 %) |
+
+  - Constat : M1 survit aux 72 requêtes de référence. Au seuil de 0,45, un proche plafonne à environ 0,44 en score pondéré, sous un exact (0,6). C'est le seuil qui protège ces requêtes. Le test dédié couvre le cas où il ne suffit pas (exact pas encore vectorisé).
+- **Passe qualité (/simplify)** : 4 relectures (réutilisation, simplification, efficacité, altitude).
+  - Appliqué :
+    - distance maximale en constante, plus de paramètre de seuil sur les deux recherches vectorielles ;
+    - plus de copie locale du seuil dans le contrôleur de diagnostic ;
+    - `VectorSearchResult.SimilarityScore` réutilisé ;
+    - vérification « embeddings manquants » partagée (`PrecomputedEmbeddings.AssertComplete`) ;
+    - règle « mot sans rapport » partagée (`ReferenceQuery.IsUnrelated`) ;
+    - bruit calculé une fois par candidat ;
+    - verdict sans copie répétée.
+  - Écarté :
+    - retirer le mécanisme des défauts connus (`KnownDefects`) : documenté, il servira aux tasks d'E023 ;
+    - ne jouer qu'un profil client : la matrice weda2 / mobile prouve la requête réelle de chaque client.
+- **Build et tests locaux** : `HealthPlatform.Api.Mail.sln` sans erreur ni avertissement. Tests : domain 210, infrastructure 729, api 1 375, application 4 054, intégration 1 228 (+ 16 écartés), 0 échec.
+- **Aucune donnée de santé dans les journaux** : aucun journal nouveau. Le diagnostic journalise le seuil du serveur et la longueur de la requête, jamais son texte.
+- **Prévention (règle d'or)** : `conventions/csharp.md`, entrée `seuil-fixe-par-le-serveur`.
+- **Suites proposées (hors task)** :
+  - rattraper les fautes de frappe par les trigrammes déjà posés par task-439 (`similarity()` de `pg_trgm`), là où les embeddings échouent (« psoriasys » 0,383) ;
+  - aligner le seuil de `/search/patient` ;
+  - retirer le réglage de similarité des clients (part weda2 en task-445, mobile en task-450).
+- **DoD — reste à faire par l'humain** : rejouer l'outil de campagne sur la boîte de Virginie (`zorglubine` vide, `psoriasis` sans voisins avant les 6 exacts, même réponse pour les deux seuils).
+- Next step : /sonar task-440

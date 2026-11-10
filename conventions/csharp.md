@@ -2297,3 +2297,30 @@ anciens sous 460 homonymes partiels récents, tous trouvés page par page) et
   existe. La migration supprime `"SearchText"` de la table, puis `SearchTextIndex` la reconstruit au premier usage.
 
 **Origine** : task-439. **Occurrences** : 1
+
+## seuil-fixe-par-le-serveur — un seuil qui décide de ce que voit le médecin est fixé par le serveur et calibré sur un corpus, jamais laissé à chaque client
+
+**Règle** : convention projet (justesse de la recherche, invisible au lint et à Sonar).
+
+**Piège** (task-440, défauts R6 et R7) :
+- le seuil de similarité de la recherche par le sens venait de la requête (`minSimilarity`), donc de chaque client : 0,7
+  dans weda2 (réglage de la personne, deux valeurs sur la même boîte), 0,1 sur le mobile. La même recherche rendait
+  6 résultats dans weda2 et 50 sur le mobile, et un mot absent de la boîte (`zorglubine`) en ramenait 50 sans rapport ;
+- aucun des deux chiffres n'avait été mesuré. Avec `text-embedding-3-small`, la similarité d'un voisin sans rapport monte
+  jusqu'à 0,448 sur le corpus de référence, et celle d'un vrai rapprochement descend à 0,28 : 0,1 laisse tout passer,
+  0,7 ne laisse plus rien.
+
+**Consigne** :
+- Un seuil qui décide **ce que le médecin voit** (pertinence, similarité, score) est une constante du serveur
+  (`SearchLimits.SimilarMinSimilarity`), la même pour tous les clients et toutes les personnes. Un paramètre de requête qui
+  le porte encore est **déprécié et ignoré**, et la réponse dit le seuil réellement appliqué.
+- La valeur se **calibre sur un corpus jugé** : courbe pertinence / seuil, engagement écrit (≥ 90 % de résultats
+  pertinents, réponse vide pour un mot sans rapport), et un test qui la vérifie et qui casse si le modèle d'embeddings ou
+  le corpus change (`SearchSimilarThresholdCalibrationTests`).
+- Ce que le seuil perd est consigné, pas caché : chaque requête « par le sens » du corpus déclare ce qu'il rattrape
+  réellement (`ReferenceQuery.Caught`).
+
+**Preuve** : task-440, `SearchReferenceQualityTests.ReferenceQuery_SameAnswerWhateverTheClientThreshold` (24 requêtes
+rouges sur le code d'avant) et `SearchSimilarThresholdCalibrationTests`.
+
+**Origine** : task-440. **Occurrences** : 1
