@@ -145,3 +145,15 @@ Règles :
   dans la même base de la boîte ; il suit ses sauvegardes et sa suppression
 - **AIPD / impact RGPD** : inchangé — aucune donnée nouvelle ; l'index est une structure dérivée, supprimée avec la base
   de la boîte
+
+## Branches
+- `api-mail` (pushed) : feat/task-437-recherche-vectorielle-un-index-au-lieu — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-437-recherche-vectorielle-un-index-au-lieu
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-437 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 14 s | — | — | — | — |
+| **Total cycle** | | **14 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
