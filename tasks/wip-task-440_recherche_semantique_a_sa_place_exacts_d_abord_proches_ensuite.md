@@ -120,3 +120,12 @@ Contrat (`dtos-mss`, rétrocompatible) : chaque `hit` dit s'il est **exact** (av
 ## Branches
 - `api-mail` (pushed) : feat/task-440-recherche-semantique-a-sa-place-exacts-d — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-440-recherche-semantique-a-sa-place-exacts-d
 - `dtos-mss` (paresseuse) : branche `feat/task-440-recherche-semantique-a-sa-place-exacts-d` créée par `/develop` depuis `origin/develop` au moment où il touche le contrat (section exact / proche, `minSimilarity` déprécié)
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-440 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 21 s | — | — | — | — |
+| **Total cycle** | | **21 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
