@@ -149,7 +149,8 @@ Règles :
 | /lint-angular | ok | 1 min 05 s | — | — | — | — |
 | /lint-mobile | ok | 23 s | — | — | — | — |
 | /e2e | ok | 27 min 14 s | 1 (12 s) | — | — | api-mail 1B/0T, e2e ×3 (18 min 32 s) |
-| **Total cycle** | | **1 h 45 min** | **23 (2 min 50 s)** | **15 (20 min 26 s)** | **4 (1 min 24 s)** | |
+| /review | ok | 11 min 08 s | 4 (46 s) | 3 (5 min 56 s) | — | api-mail 1B/1T, client-mobile 1B/1T, client-angular 2B/1T |
+| **Total cycle** | | **1 h 56 min** | **27 (3 min 36 s)** | **18 (26 min 23 s)** | **4 (1 min 24 s)** | |
 
 Autres commandes mesurées : lint ×2 (37 s)
 
@@ -208,6 +209,12 @@ corpus de référence, ignorés hors `SEARCH_REFERENCE_KNOWN_DEFECTS=1`).
 - `CA1859` ×3 : `SearchReferenceOracle.Words`, `SearchReferenceQueries.Both` / `Only` rendent leur type concret.
 - `xUnit1004` ×1 : le `Skip` posé sur `Semantic_MoreMatchesThanTheWindow_KeepsTheMostRecentMails` est retiré. Le test,
   vert sur `develop`, fige le défaut R3. Il reste joué pour que le défaut reste visible, et task-439 l'inversera.
+
+**Correction par `/review`** (`42322626`) : le retrait du `Skip` remettait au vert un test qui affirme le défaut R3,
+contre la DoD (« le test de R3 existant est marqué task-439 ») et contre la consigne `recherche-jugee-comme-un-medecin`.
+Le `Skip` citant task-439 est remis. **Issue assumée : 1 `xUnit1004`** sur ce test, jusqu'à task-439 qui le réécrit
+et retire la marque. La Quality Gate reste OK (elle l'était avec 4 issues). Prévention : `agents/sonar.md` (« un
+`Skip` qui cite une task n'est jamais retiré ») et l'entrée `xUnit1004` réécrite dans `conventions/csharp.md`.
 
 **Phase 2 — dette ancienne** : rien à traiter (0 issue ouverte).
 
@@ -347,3 +354,32 @@ Les voies vertes ci-dessus ont été jouées sur le code non muté.
 | E2E-ERROR-001 | 1 | headless | Une erreur affiche un code et une référence à transmettre au support | ✅ | ✅ |
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/354 — label `awaiting-human-merge`
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/122 — label `awaiting-human-merge`
+- `client-angular` (code-only) : l'humain gère le commit, le push TFS et l'ouverture de la PR, sur la branche
+  `feature/nova-mss-weda-integration`. Fichier modifié, non commité :
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`
+
+## Code Review Summary
+
+**APPROVED** — 0 bloquant, 2 suggestions (SQL interpolé de l'outil local `campagne.py` ; `Recall` = 1 quand rien n'est
+attendu). Validation :
+- api-mail : build 0 erreur ; tests 0 échec. Un test instable connu (`ImapServiceTests`, listener d'activité global)
+  est tombé en suite complète, puis est passé isolé (73 sur 73) ; il n'est pas touché par la task.
+- client-mobile : build OK, 1 417 tests verts.
+- weda2 : `nx build weda2` OK, `nx test weda2 mss-lib` : 107 + 136 fichiers de test verts.
+- E2E : vert (mobile 60, Angular 73), parité verte, mutation des deux nouveaux scénarios faite sur les deux clients.
+
+**Règle 1b** : aucun code de production modifié, donc aucun comportement d'endpoint nouveau. Le filet lui-même est un
+test d'intégration de bout en bout (`POST /api/v1/Search/semantic`, hybride, vraie pile, PostgreSQL du fixture) :
+11 défauts prouvés rouges, cas verts prouvés par mutation (dossier ignoré : 14 tombent).
+
+**Correction apportée par la revue** : le `Skip` du test qui fige R3, retiré par `/sonar`, est remis (`42322626`).
+Il est exigé par la DoD et par la consigne de recherche. L'issue Sonar xUnit1004 est assumée jusqu'à task-439.
+Prévention : `agents/sonar.md` et `conventions/csharp.md` (entrée xUnit1004 réécrite).
+
+**DoD** : tout est coché, sauf le point 3 du Manual Test Plan (campagne sur la boîte de Virginie), qui revient à
+l'humain avec une session réelle.

@@ -995,6 +995,10 @@ Rating mapping : `1=A, 2=B, 3=C, 4=D, 5=E`.
   - S3776 (cognitive complexity) garde sa commande dédiée `/sonar-s3776`,
     y compris pour le new code (auquel cas Phase 1 halt avec une question
     pointant vers `/sonar-s3776`).
+- **Un `Skip` qui cite une task n'est jamais retiré** (xUnit1004, task-438) : il marque un test qui affirme un
+  défaut à corriger. Le retirer remet au vert un test qui valide le défaut. L'issue est consignée dans le
+  `## Sonar log` comme **issue assumée**, avec la task qui la résorbe, et Phase 1 continue : ce n'est ni un fix ni
+  un halt. Voir `conventions/csharp.md`, entrée xUnit1004.
 - **Feed `conventions/csharp.md`** at the end of every run (Mode A and
   Mode B alike) for each manually-fixed rule likely to recur in fresh code
   — see Step 5. The self-improving loop only works if the feeding is

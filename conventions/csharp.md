@@ -107,17 +107,22 @@ en C# 12 : deux spreads valent mieux qu'un `Concat`.
 
 ---
 
-## xUnit1004 — un test existant ne se désactive pas par `Skip`
+## xUnit1004 — `Skip` littéral : seulement pour marquer un défaut figé, jamais pour faire taire un test
 
-**Occurrences : 1** (task-438 — `/sonar` : `[Fact(Skip = "Fige le défaut R3 … — réécrit par task-439")]` posé sur un test vert de `develop` parce qu'il affirmait un défaut que la task suivante doit corriger)
+**Occurrences : 1** (task-438 — `/sonar` a relevé le `Skip` posé sur `Semantic_MoreMatchesThanTheWindow_KeepsTheMostRecentMails`,
+un test qui figeait le défaut R3. `/sonar` l'a d'abord retiré, ce qui remettait au vert un test qui affirme le défaut ; `/review`
+l'a remis : la DoD de task-438 exige la marque, et celle de task-439 exige que le test soit réécrit, pas supprimé)
 
-Un test vert qui fige un comportement défectueux reste **joué** tant que le défaut n'est pas corrigé : c'est lui
-qui rendra le défaut visible le jour où la correction l'inversera. Le désactiver le cache, et Sonar le relève
-comme dette nouvelle.
+Deux cas, deux réponses :
+- un test **vert et juste** qu'on veut faire taire (lent, fragile, gênant) : jamais de `Skip`. On le corrige, ou on le
+  supprime en le disant dans le commit ;
+- un test qui **affirme un défaut** qu'une task doit corriger : il porte la marque de cette task (`Skip` citant la task, ou
+  la marque de `SearchReferenceQueries` pour la recherche), et la task la retire en le réécrivant. L'issue xUnit1004
+  est alors **connue et assumée** : elle est écrite dans le `## Sonar log` et la PR, avec la task qui la résorbe.
 
-**Consigne** : ne pas poser `Skip` sur un test existant. Un commentaire au-dessus du test nomme le défaut figé
-et la task qui l'inversera. Les cas « défaut connu » d'un corpus de qualité, eux, passent par un `TheoryDataRow.Skip`
-conditionnel (variable d'environnement), pas par un `Skip` littéral sur un `[Fact]`.
+**Consigne** : avant de poser un `Skip`, nommer le cas. Pour un défaut figé, le préférer à un marquage conditionnel
+(`TheoryDataRow.Skip` sous variable d'environnement, comme le corpus de référence), que Sonar ne relève pas. `/sonar` ne
+retire jamais un `Skip` qui cite une task : il le consigne comme issue assumée.
 
 ---
 
