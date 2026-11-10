@@ -380,3 +380,13 @@ vert, Quality Gate OK.
 - **Test instable rencontré** : `EmailReadingUseCaseTests.ExpandThread…`, une fois rouge pendant la passe Sonar, vert
   isolé et dans les trois suites complètes ; consigné en mémoire de session.
 - **Reste à l'humain** : rejouer l'outil de campagne sur la boîte de Virginie (Manual Test Plan).
+
+## Merged
+
+Mergé le 2026-11-10 par l'humain (`/merge task-440 --i-tested`), squash, CI `develop` verte sur les deux dépôts.
+
+- `dtos-mss` #59 → `b40e096ca36526b90e6dc26330b7329836877a05`
+- `api-mail` #356 → `83a7bb37a4153ff46954a379c38f8954460bac0b`
+
+Branches `feat/task-440-recherche-semantique-a-sa-place-exacts-d` supprimées (distante et locale) sur les deux dépôts ;
+label `awaiting-human-merge` retiré. Aucune branche staging (task lancée hors `/forge`).
