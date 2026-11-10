@@ -470,3 +470,13 @@ Ordre de merge : dtos-mss, puis api-mail (le paquet 578.0.0 est déjà publié ;
   3. 7 fichiers de tests de migration gardent leurs bases jetables avec un pool Npgsql (motif 53300) ;
   4. 47 fichiers modifiés, dont 13 `packages.lock.json` du bump.
 - **Reste à l'humain** : rejouer l'outil de campagne sur la boîte de Virginie (Manual Test Plan, point 4).
+
+## Merged
+
+Mergé le 2026-11-10 par l'humain (`/merge task-439 --i-tested`), squash, CI `develop` verte sur les deux dépôts.
+
+- `dtos-mss` #58 → `ee2dcdff4a8c662a5109b0f1d0c7650f993fb025`
+- `api-mail` #355 → `62d3d6ecf21aa11ab91b1e89ef88ff47351744bf`
+
+Branches `feat/task-439-recherche-plein-texte-fiable-accents` supprimées (distante et locale) sur les deux dépôts ;
+label `awaiting-human-merge` retiré. Aucune branche staging (task lancée hors `/forge`).
