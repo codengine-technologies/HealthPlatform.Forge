@@ -157,7 +157,10 @@ Règles :
 |---|---|---|---|---|---|---|
 | /start | ok | 14 s | — | — | — | — |
 | /develop | ok | 1 h 12 min | 3 (21 s) | 2 (11 min 01 s) | — | api-mail 3B/2T |
-| **Total cycle** | | **1 h 12 min** | **3 (21 s)** | **2 (11 min 01 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 21 min 22 s | 2 (34 s) | 10 (15 min 32 s) | 4 (1 min 24 s) | 2 itération(s), api-mail 2B/10T |
+| /lint-angular | skipped | 0.4 s | — | — | — | client-angular non touché |
+| /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
+| **Total cycle** | | **1 h 33 min** | **5 (56 s)** | **12 (26 min 33 s)** | **4 (1 min 24 s)** | |
 
 ## Develop log
 
@@ -277,3 +280,41 @@ Règles :
   - escalier `enrich` à 16 médecins, avant / après, pour le coût d'écriture de l'index ;
   - A/B du tir court 1400 → 1996.
 - Next step : /sonar task-437
+
+## Sonar log
+
+**Mode A** (chaîné depuis `/develop`), `api-mail`, branche `feat/task-437-…`, 2 analyses (build `Release`).
+
+### KPIs qualité (baseline → final)
+
+| KPI | Baseline (analyse de task-440) | Itération 1 | Final |
+|---|---|---|---|
+| Quality Gate | OK | OK | **OK** |
+| Bugs / Vulnérabilités | 0 / 0 | 0 / 0 | 0 / 0 |
+| Code smells | 0 | 3 | **0** |
+| Hotspots à revoir | 0 | 0 | 0 |
+| Couverture globale | 97,8 % | 97,8 % | **97,8 %** |
+| Couverture du nouveau code | 96,0 % | 96,0 % | **96,0 %** |
+| Duplication | 0,4 % | 0,4 % | 0,4 % |
+
+**Phase 1 — nouveau code** : 3 issues, toutes corrigées (`911aea4d`) :
+- deux `S107` (8 et 9 paramètres) : les paramètres de la recherche vectorielle sont regroupés dans un enregistrement
+  `VectorQuery` ;
+- un `CA1822` : `NearestByIndexAsync` devient statique.
+
+Les 283 tests de la recherche sont verts après la correction.
+
+**Phase 2 — dette ancienne** : 0 issue ouverte.
+
+**Tests de l'analyse** : domain 210, application 4 054, infrastructure 729 + 8, api 1 375, intégration 1 229 + 3 rouges.
+Les 3 rouges sont les tests « du jour » (`FilterTodayEmails…`, `GetFolderTodayAsync…`, `GetFolderNotSeenTodayAsync…`),
+joués à 0 h 05 et 0 h 15, dans la fenêtre connue de minuit à 1 h (la recherche IMAP `SINCE` compare en UTC). Ils sont
+étrangers à la task et rejoués isolés après 1 h (voir ci-dessous).
+
+**Conventions** : `S107` corrigé à la main sur du code neuf. C'est une règle Sonar générique ; la consigne de la règle
+d'or est déjà posée (paramètres regroupés quand une méthode en dépasse 7). Pas d'entrée nouvelle.
+
+## Lint log
+
+- `/lint-angular` : skip — client-angular non touché par la task.
+- `/lint-mobile` : skip — client-mobile non touché par la task.
