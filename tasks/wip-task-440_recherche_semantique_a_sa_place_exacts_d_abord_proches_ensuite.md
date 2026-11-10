@@ -129,7 +129,8 @@ Contrat (`dtos-mss`, rétrocompatible) : chaque `hit` dit s'il est **exact** (av
 |---|---|---|---|---|---|---|
 | /start | ok | 21 s | — | — | — | — |
 | /develop | ok | 33 min 19 s | 7 (52 s) | 2 (11 min 08 s) | — | api-mail 6B/2T, dtos-mss 1B/0T |
-| **Total cycle** | | **33 min 40 s** | **7 (52 s)** | **2 (11 min 08 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 11 min 56 s | 1 (20 s) | 5 (8 min 44 s) | 2 (45 s) | 1 itération(s), api-mail 1B/5T |
+| **Total cycle** | | **45 min 36 s** | **8 (1 min 12 s)** | **7 (19 min 53 s)** | **2 (45 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (25 s), restore ×1 (22 s)
 
@@ -209,3 +210,32 @@ Autres commandes mesurées : nuget-wait ×1 (25 s), restore ×1 (22 s)
   - retirer le réglage de similarité des clients (part weda2 en task-445, mobile en task-450).
 - **DoD — reste à faire par l'humain** : rejouer l'outil de campagne sur la boîte de Virginie (`zorglubine` vide, `psoriasis` sans voisins avant les 6 exacts, même réponse pour les deux seuils).
 - Next step : /sonar task-440
+
+## Sonar log
+
+**Mode A** (chaîné depuis `/develop`), `api-mail`, branche `feat/task-440-…`, 1 analyse (build `Release`).
+
+### KPIs qualité (baseline → final)
+
+| KPI | Baseline (analyse de task-439) | Final |
+|---|---|---|
+| Quality Gate | OK | **OK** |
+| Bugs / Vulnérabilités | 0 / 0 | 0 / 0 |
+| Code smells | 0 | **0** |
+| Hotspots à revoir | 0 | 0 |
+| Couverture globale | 97,8 % | **97,8 %** |
+| Couverture du nouveau code | — | **96,0 %** |
+| Duplication | 0,4 % | 0,4 % |
+| Ratings (fiabilité / sécurité / maintenabilité) | A / A / A | A / A / A |
+
+**Phase 1 — nouveau code** : 0 issue. Rien à corriger, aucune itération supplémentaire.
+
+**Phase 2 — dette ancienne** : 0 issue ouverte sur le projet.
+
+**Tests de l'analyse** : domain 210, application 4 054, infrastructure 729, api 1 375, intégration 1 227 + 1 rouge.
+Le rouge, `EmailReadingUseCaseTests.ExpandThreadShouldReturnAllRelatedEmailsAsyncAsync`, est une `SocketException` au
+bout de 21 s, sur la lecture de fil, sans lien avec la recherche. Il est vert dans les deux suites complètes de
+`/develop`, et vert deux fois isolé en Release. C'est un test instable, observé pour la première fois, consigné en
+mémoire de session.
+
+**Conventions** : aucune règle Sonar corrigée à la main, aucune entrée.
