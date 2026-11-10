@@ -1,7 +1,7 @@
 # E022 — Recherche fiable
 
-> **Statut** : 🟡 En cours (2 features sur 3 livrées, la 4ᵉ reprise par l'EPIC E023)
-> **Version** : 0.2
+> **Statut** : 🟡 En cours (3 features sur 3 livrées, la dernière en attente de validation humaine ; la 4ᵉ reprise par l'EPIC E023)
+> **Version** : 0.3
 > **Auteur** : PO forge (tasks 438 à 440)
 > **Modèle** : task-driven
 > **Dernière mise à jour** : 2026-11-10
@@ -74,8 +74,8 @@ de corriger.
 | # | Fonctionnalité | Ce que le praticien peut faire | Tasks | Statut |
 |---|---|---|---|---|
 | E022-F001 | Le filet d'abord | Rien de visible : la qualité de la recherche est désormais mesurée en continu sur des requêtes tapées comme un médecin (sans accent, en majuscules, avec un nom de patient), et chaque défaut connu attend sa correction | task-438 | ✅ Livré |
-| E022-F002 | Recherche plein texte fiable | Trouver un message qu'il ait mis les accents ou non, par un mot de l'objet, de l'expéditeur ou du nom d'une pièce jointe, et retrouver tout l'historique d'un patient ; voir en premier les messages qui contiennent tous ses mots | task-439 | ✅ Livré, en attente de validation humaine |
-| E022-F003 | Recherche par le sens à sa place | Voir les résultats exacts d'abord, puis, à part, les messages proches par le sens ; ne plus voir de résultats sans rapport quand le mot cherché n'existe pas | task-440 | ⬜ À faire |
+| E022-F002 | Recherche plein texte fiable | Trouver un message qu'il ait mis les accents ou non, par un mot de l'objet, de l'expéditeur ou du nom d'une pièce jointe, et retrouver tout l'historique d'un patient ; voir en premier les messages qui contiennent tous ses mots | task-439 | ✅ Livré |
+| E022-F003 | Recherche par le sens à sa place | Voir les résultats exacts d'abord, puis, à part, les messages proches par le sens ; ne plus voir de résultats sans rapport quand le mot cherché n'existe pas | task-440 | ✅ Livré, en attente de validation humaine |
 | E022-F004 | Applications fidèles au serveur | Voir dans weda2 et sur le mobile les mêmes résultats, dans le même ordre, en trois parties titrées, avec « Voir plus » jusqu'au dernier résultat et un avertissement si une partie de la recherche est indisponible | task-441 (retirée) | ↪ Reprise par l'EPIC E023 : task-445 pour weda2, task-450 pour le mobile |
 
 ---
@@ -110,7 +110,7 @@ graph LR
 | RG-E022-01 | Tapée comme un médecin | La recherche trouve le même message que le praticien mette les accents ou non, en majuscules ou en minuscules, avec ou sans ponctuation | ✅ Corrigée (task-439), vérifiée par les requêtes de référence |
 | RG-E022-02 | Tous les mots d'abord | Les messages qui contiennent tous les mots cherchés passent devant ceux qui n'en contiennent qu'une partie | ✅ Corrigée (task-439), vérifiée par les requêtes de référence |
 | RG-E022-03 | Tout l'historique | Aucun message n'est écarté parce qu'il est ancien | ✅ Corrigée (task-439), vérifiée par les requêtes de référence |
-| RG-E022-04 | Exacts d'abord, proches ensuite | Les résultats trouvés par le sens forment une partie à part, après les correspondances exactes, selon un seuil unique fixé par le serveur | 🧪 Mesurée (task-438) — correction en task-440 |
+| RG-E022-04 | Exacts d'abord, proches ensuite | Les résultats trouvés par le sens forment une partie à part, après les correspondances exactes, selon un seuil unique fixé par le serveur | ✅ Corrigée (task-440) : seuil 0,45 calibré sur le corpus de référence |
 | RG-E022-05 | Le dossier courant | Une recherche dans un dossier ne rend que des messages de ce dossier | ✅ Vérifiée en continu (task-438) |
 | RG-E022-06 | Même boîte, même trace | La recherche respecte la boîte partagée : même base pour toutes les personnes de la boîte, accès ouvert par l'opérateur, chaque recherche tracée au nom de la personne qui l'a faite (règle 14 de la plateforme) | ✅ Inchangée |
 
@@ -151,6 +151,12 @@ graph LR
 
 ### Ce qui change pour le praticien
 
+- **v0.3 — La recherche par le sens à sa place.** Les messages qui contiennent les mots cherchés viennent toujours
+  en premier ; les messages proches par le sens forment une partie à part, après eux, et n'y entrent que s'ils sont
+  réellement proches. Le seuil est le même dans weda2 et sur le mobile, pour tout le monde : la même recherche rend
+  désormais la même réponse dans les deux applications. Un mot absent de la boîte ne ramène plus des dizaines de
+  messages sans rapport. Une formulation différente peut encore trouver des messages par le sens : « hypercholestérolémie »
+  retrouve les bilans lipidiques, « anémie » une hémoglobine basse (task-440).
 - **v0.2 — Recherche plein texte fiable.** Le praticien retrouve un message qu'il ait mis les accents ou non, en
   majuscules ou en minuscules, avec ou sans ponctuation. Un mot de l'objet, du nom ou de l'adresse de l'expéditeur, ou
   du nom d'une pièce jointe suffit. Tout l'historique d'un patient est retrouvé, page par page, les messages les plus

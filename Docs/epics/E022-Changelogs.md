@@ -8,6 +8,46 @@
 
 ## Historique détaillé des changelogs
 
+### v0.3 — task-440 : la recherche par le sens à sa place — exacts d'abord, proches ensuite (2026-11-10)
+
+- **PRs** : dtos-mss [#59](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/59), api-mail
+  [#356](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/356), label `awaiting-human-merge`.
+  Ordre de merge : dtos-mss, puis api-mail.
+- **NuGet** : `HealthPlatform.Dtos.Mss` **581.0.0**, documentation seulement, rétrocompatible :
+  - `SearchRequestDto.MinSimilarity` est déprécié et ignoré ;
+  - `SearchResponseDto.MinSimilarity` dit le seuil appliqué ;
+  - `SearchMatchGroup.Similar` désigne la section des proches.
+- **Seuil unique** : `SearchLimits.SimilarMinSimilarity = 0,45`, appliqué par `SemanticSearchService` aux deux recherches
+  vectorielles de la boîte.
+  - `SemanticSearchOptions.MinSimilarity` est supprimé : aucun client ne pilote plus le seuil (avant : 0,7 dans weda2,
+    0,1 sur le mobile) ;
+  - `/search/patient` garde son seuil (hors périmètre).
+- **Calibration** (`SearchSimilarThresholdCalibrationTests`, embeddings réels `text-embedding-3-small`, 6 requêtes
+  « par le sens » ajoutées au corpus, jugement clinique dans `SearchReferenceQueries`) :
+  - à 0,45 : 5 proches sur 5 pertinents, aucun bruit sur un mot sans rapport ;
+  - à 0,425 : 75 % de pertinence ; à 0,10 : 4 % ;
+  - rattrapé : « hypercholestérolémie » (4 bilans lipidiques), « anémie » (hémoglobine basse) ;
+  - perdu, faute de similarité : potassium, BPCO, « psoriasys », arythmie, ferritine ;
+  - chaque requête « par le sens » déclare ce qui est rattrapé (`Caught`) ; le test casse si le modèle d'embeddings
+    change.
+- **Règle 1b** :
+  - tests : `ReferenceQuery_SameAnswerWhateverTheClientThreshold` (24 requêtes),
+    `Hybrid_VerySimilarNeighbours_NeverPassAheadOfTheExactMatches_AndNoMailIsRepeated`, verdict de référence enrichi
+    (exacts d'abord, doublons, rattrapage) ;
+  - vus rouges : les 24 requêtes de « même réponse », `mot-absent` (mobile) et le rattrapage (weda2) sur le code
+    d'avant ; puis les mutations « fusion mêlée » et « seuil 0,10 ».
+- **Tests** : domain 210, infrastructure 729, api 1 375, application 4 054, intégration 1 228 (+ 16 écartés), 0 échec ;
+  e2e mobile 60, Angular 73, parité verte.
+- **Sonar** : Quality Gate OK, 0 issue, couverture 97,8 %, nouveau code 96,0 %.
+- **Test instable rencontré** : `EmailReadingUseCaseTests.ExpandThread…` (socket, une fois en Release), consigné.
+- **Prévention** : `conventions/csharp.md`, `seuil-fixe-par-le-serveur`.
+- **Suites proposées** :
+  - rattraper les fautes de frappe par les trigrammes de task-439 ;
+  - aligner `/search/patient` ;
+  - publier une métrique « proches rendus par recherche » ;
+  - retirer le réglage de similarité des clients (task-445, task-450).
+- **Reste à l'humain** : rejouer l'outil de campagne sur la boîte de Virginie.
+
 ### v0.2 — task-439 : recherche plein texte fiable — accents, champs, tous les mots, tout l'historique (2026-11-10)
 
 - **PRs** : dtos-mss [#58](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/58), api-mail
@@ -106,6 +146,7 @@
 |---|---|
 | Filet de référence | `Api/Mail/tests/mss.mail.integration.tests/Search/Reference/` (`SearchReferenceCorpus`, `SearchReferenceOracle`, `SearchReferenceQueries`, `SearchReferenceVerdict`, `SearchReferenceFixture`, `SearchReferenceQualityTests`, `PrecomputedEmbeddings`) |
 | Moteur de recherche | `Api/Mail/src/Infrastructure/Repositories/MailDb/SemanticSearchRepository.cs`, `Api/Mail/src/Application/Services/Implementation/SemanticSearchService.cs`, `SearchQueryHelper`, `Api/Mail/src/Application/Helpers/SearchTerms.cs` |
+| Seuil des proches | `Api/Mail/src/Application/Models/SearchLimits.cs` (`SimilarMinSimilarity`), `Api/Mail/tests/mss.mail.integration.tests/Search/Reference/SearchSimilarThresholdCalibrationTests.cs` |
 | Texte cherchable | `Api/Mail/src/Infrastructure/Repositories/MailDb/SearchTextSchema.cs`, `SearchTextIndex.cs`, migration `20261110120000_AddSearchTextNormalization` |
 | Contrat | `Dtos/SearchMatchGroup.cs`, `Dtos/SearchRequestDto.cs`, `Dtos/SearchResultDto.cs` |
 | Seed et catalogue e2e | `Api/Mail/tests/mss.mail.testing.shared/E2eSeedPlan.cs`, `Api/Mail/e2e/scenarios.yml` |
@@ -116,7 +157,8 @@
 
 ## Annexe B — Inventaire fonctionnel daté (2026-11-10)
 
-- Requêtes de référence : 18, sur 2 profils, soit 36 cas. 35 verts, 1 défaut connu marqué (task-440 : mot absent, mobile).
+- Requêtes de référence : 24 (dont 6 « par le sens »), sur 2 profils, soit 48 cas, tous verts, aucun défaut connu ;
+  24 contrôles « même réponse quel que soit le seuil du client » ; seuil des proches calibré (`SearchSimilarThresholdCalibrationTests`).
 - Parcours e2e de recherche : 3 (`E2E-SEARCH-001` à `003`), sur 2 clients.
 
 ---
@@ -126,6 +168,6 @@
 | Task | Statut | Contribution | Règles |
 |---|---|---|---|
 | task-438 | archived (mergée) | Filet : corpus et requêtes de référence, E2E-SEARCH-002/003, outil de campagne | RG-E022-01 à 05 mesurées |
-| task-439 | done (PRs ouvertes) | Plein texte : accents, champs, tous les mots, tout l'historique (absorbe task-436) | RG-E022-01, 02, 03 |
-| task-440 | todo | Sémantique : exacts d'abord, proches ensuite, seuil unique serveur | RG-E022-04 |
+| task-439 | archived (mergée) | Plein texte : accents, champs, tous les mots, tout l'historique (absorbe task-436) | RG-E022-01, 02, 03 |
+| task-440 | done (PRs ouvertes) | Sémantique : exacts d'abord, proches ensuite, seuil unique serveur | RG-E022-04 |
 | task-441 | retirée | Reprise par l'EPIC E023 : task-445 (weda2), task-450 (mobile) | RG-E022-04 (affichage) |
