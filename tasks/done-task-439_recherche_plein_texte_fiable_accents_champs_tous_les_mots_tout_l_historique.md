@@ -376,3 +376,95 @@ réécriture du test qui figeait R3.
 | E2E-ERROR-001 | 1 | headless | Une erreur affiche un code et une référence à transmettre au support | ✅ | ✅ |
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## A/B au banc
+
+Tir court `journey` 1400 → 1996 médecins (18 min par palier), IA simulée (`MSS_LOADTEST_AI=fake`), 2026-11-10, même
+session, même harnais (`727128fc`), tireur k6bench. Rapports complets :
+`Docs/audits/findings/plans/20261110-recherche-task-439/ab-banc/`.
+
+| Tir | Code | Bases | Fenêtre |
+|---|---|---|---|
+| **A** | `develop` (`ecc2c191`) | état du jour | 13:26 → 14:03 |
+| — | préconstruction du texte cherchable sur les 2 000 bases (colonnes + 4 index, 0 erreur, 35 min) | | 14:22 → 15:03 |
+| **B** | task-439 (`727128fc`) | préconstruites | 15:05 → 15:43 |
+| **A'** | `develop` (`ecc2c191`) | préconstruites, même état que B | 15:56 → 16:33 |
+
+Les trois tirs sont valides : 0 itération abandonnée, 1 996 / 1 996 médecins, erreurs ≤ 0,02 %. A' a été ajouté
+après B parce que des étapes que la task ne touche pas ralentissaient entre A et B : il fallait un contrôle dans le
+même état que B. **La comparaison qui juge le code est A' → B.**
+
+**Palier 1996, étape « recherche » et formes SQL de la recherche**
+
+| | A | A' | B | B contre A' |
+|---|---|---|---|---|
+| Recherche p50 / p95 (ms) | 344 / 620 | 367 / 737 | **331 / 656** | **−10 % / −11 %** |
+| Plein texte : requêtes par recherche | 2 (contenus, documents) | 2 | **1** (objet, expéditeur, corps, PJ, documents) | |
+| Plein texte : SQL par recherche (ms) | 17,6 + 16,3 = 33,9 | 20,7 + 18,5 = 39,2 | **26,0** | **−34 %** |
+| Plein texte : part du temps SQL | 28,8 % | 31,1 % | **18,7 %** | |
+| Plein texte : blocs lus par recherche | 341 + 395 | 575 + 563 | 1 305 | +15 % (plus de champs) |
+
+**Étapes non touchées et serveur**
+
+| | A | A' | B |
+|---|---|---|---|
+| Inbox p50 (ms) | 51 | 57 | 59 |
+| Message enrichi p50 (ms) | 44 | 55 | 57 |
+| Marquer lu p50 (ms) | 52 | 66 | 64 |
+| Fiche patient p50 / p95 (ms) | 336 / 680 | 378 / 853 | 394 / 842 |
+| Latence moyenne du tir (ms) | 134 | 148 | 161 |
+| SQL par requête HTTP (ms) | 3,7 | 3,7 | 4,0 |
+| Mémoire du conteneur Postgres moy / max | 76 / 97 % | 97 / 100 % | 100 / 100 % (302 fautes majeures/s) |
+
+**Lecture**
+
+- **Côté médecin, la recherche s'améliore** (−10 % au p50 comme au p95 contre A'), alors qu'elle cherche désormais dans
+  cinq champs, tous les mots et tout l'historique. Les étapes non touchées restent à ±4 % entre A' et B.
+- **Le ralentissement A → A' (+10 à 25 % sur les étapes servies par la base) ne vient pas du code de la task** : A' tourne
+  le code de `develop`. Il vient de l'état des bases : vieillissement d'un tir à l'autre (30 à 55 Mo écrits par tir) et
+  texte cherchable stocké. Ce tir ne sépare pas les deux.
+- **Coût de stockage, mesuré** : `"SearchText"` pèse autant que le texte qu'il normalise (base échantillon :
+  `MailContents` 408 Ko pour 417 Ko de `Body`, documents 355 Ko pour 368 Ko), plus environ 2,5 Mo d'index trigrammes,
+  soit 3 à 4 Mo par base (≈ 7 % de son volume), 7 à 8 Go sur les 2 000 bases du banc.
+- **Coût serveur résiduel, non tranché** : B paie 4,0 ms de SQL par requête HTTP contre 3,7 pour A'. L'écart vient des
+  lectures de contenu (`PopulateMailContentAsync` 1,16 ms contre 0,77) **à volume lu identique** (18,5 Go contre 18,7) :
+  c'est de l'attente d'entrées-sorties, pas du travail en plus. B a tourné juste après les 35 min de préconstruction, avec
+  la mémoire de Postgres saturée. Une recherche plein texte lit 15 % de blocs en plus, et peut y contribuer.
+- **Les index trigrammes ne servent pas au banc** : avec environ 120 messages par boîte, le planificateur balaie les tables
+  (`IX_MailContents_SearchText` et `IX_MailMedicalDocuments_SearchText` « non sollicités »). Leur gain est mesuré sur la
+  boîte de 11 178 messages (`## Develop log` : 11 ms pour un mot, 29 ms pour quatre), qui est la volumétrie cible. Le banc
+  est quarante fois plus petit.
+
+**Suites proposées (hors task)** : rejouer A'/B dans l'ordre inverse, ou après un redémarrage de Postgres, pour trancher les
+0,3 ms ; mesurer le coût de stockage sur une boîte de 10 000 messages, en reprenant `fallback.log` et `results-*.json`.
+
+## PRs
+
+- `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/58 — label `awaiting-human-merge`
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/355 — label `awaiting-human-merge`
+
+Ordre de merge : dtos-mss, puis api-mail (le paquet 578.0.0 est déjà publié ; api-mail le consomme).
+
+## Code Review Summary
+
+**APPROVED — 0 bloquant, 4 suggestions.** Build et tests verts sur les deux dépôts, DoD vérifiée, `## E2E log` vert.
+
+- **Règle 1b** : chaque comportement atteignable par `POST /api/v1/Search/semantic` a son test d'intégration sur la vraie
+  pile et sa preuve rouge. Correspondance complète dans le corps de la PR api-mail, section « Code Review » :
+  - tout l'historique page par page : 2 rouges sous mutation du plafond, 2 sous mutation de la page suivante ;
+  - mots lus comme tapés : 10 cas du corpus de task-438, rouges sur le code d'avant ;
+  - objet, expéditeur et nom de PJ : 6 rouges sous mutation ;
+  - groupe de correspondance : 3 rouges sous mutation ;
+  - plus de 10 mots et requête sans mot significatif : cas d'échec lus dans la réponse réelle ;
+  - construction en tâche de fond : 5 tests ;
+  - migration : coureur FluentMigrator, normalisation SQL identique à celle du code.
+- **Sécurité** : motifs passés en paramètre (`unnest({0}::text[])`), aucune concaténation d'entrée utilisateur ; aucun
+  terme de recherche écrit dans les journaux (4 nouveaux messages, aucun ne porte de terme).
+- **Règle 7c** : migration `20261110120000` instantanée (extensions + fonction), sans opération fantôme ; les colonnes et
+  index sont posés par `SearchTextIndex`, testés sur base neuve et base existante.
+- **Suggestions** :
+  1. coût de stockage de `"SearchText"`, à mesurer sur une boîte de 10 000 messages ;
+  2. aligner `/search/patient` ;
+  3. 7 fichiers de tests de migration gardent leurs bases jetables avec un pool Npgsql (motif 53300) ;
+  4. 47 fichiers modifiés, dont 13 `packages.lock.json` du bump.
+- **Reste à l'humain** : rejouer l'outil de campagne sur la boîte de Virginie (Manual Test Plan, point 4).

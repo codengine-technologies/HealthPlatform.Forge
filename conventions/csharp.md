@@ -2291,4 +2291,9 @@ oublié, mot de l'objet, historique ancien d'un patient), et aucun test n'avait 
 anciens sous 460 homonymes partiels récents, tous trouvés page par page) et
 `FullTextSearchSinglePassIntegrationTests.Semantic_MoreMatchesThanAPage_…`.
 
+- Une colonne lue par la recherche (`Mails.Subject`, `FromName`, `FromAddress`, `MailContents.Body`,
+  `MailAttachments.FileName`, `MailMedicalDocuments.Body`) porte une colonne générée `"SearchText"` qui en dépend
+  (task-439, `SearchTextSchema`) : une migration qui change son type ou la renomme échoue tant que la colonne générée
+  existe. La migration supprime `"SearchText"` de la table, puis `SearchTextIndex` la reconstruit au premier usage.
+
 **Origine** : task-439. **Occurrences** : 1

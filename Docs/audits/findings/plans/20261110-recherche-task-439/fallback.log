@@ -1,0 +1,18 @@
+contents  hemoglobine                                 87.60 ms    693 lignes
+contents  urgent                                      89.64 ms     72 lignes
+contents  cholesterol                                 90.73 ms     11 lignes
+contents  catherine bernard                          171.05 ms   1073 lignes
+contents  bilan lipidique cholesterol total          318.34 ms   1824 lignes
+contents  compte rendu synthese                      253.12 ms   4597 lignes
+documents hemoglobine                                 64.36 ms    126 lignes
+documents urgent                                      62.25 ms      5 lignes
+documents cholesterol                                 62.43 ms     44 lignes
+documents catherine bernard                          123.67 ms     19 lignes
+documents bilan lipidique cholesterol total          232.13 ms    219 lignes
+documents compte rendu synthese                      173.63 ms    277 lignes
+both      hemoglobine                                105.91 ms    805 lignes
+both      urgent                                     113.40 ms     72 lignes
+both      cholesterol                                108.47 ms     44 lignes
+both      catherine bernard                          207.42 ms   1073 lignes
+both      bilan lipidique cholesterol total          396.06 ms   1846 lignes
+both      compte rendu synthese                      305.62 ms   4597 lignes
