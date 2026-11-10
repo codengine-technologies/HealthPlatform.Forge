@@ -130,7 +130,9 @@ Contrat (`dtos-mss`, rétrocompatible) : chaque `hit` dit s'il est **exact** (av
 | /start | ok | 21 s | — | — | — | — |
 | /develop | ok | 33 min 19 s | 7 (52 s) | 2 (11 min 08 s) | — | api-mail 6B/2T, dtos-mss 1B/0T |
 | /sonar | ok | 11 min 56 s | 1 (20 s) | 5 (8 min 44 s) | 2 (45 s) | 1 itération(s), api-mail 1B/5T |
-| **Total cycle** | | **45 min 36 s** | **8 (1 min 12 s)** | **7 (19 min 53 s)** | **2 (45 s)** | |
+| /lint-angular | skipped | 0.4 s | — | — | — | client-angular non touché |
+| /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
+| **Total cycle** | | **45 min 37 s** | **8 (1 min 12 s)** | **7 (19 min 53 s)** | **2 (45 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (25 s), restore ×1 (22 s)
 
@@ -239,3 +241,8 @@ bout de 21 s, sur la lecture de fil, sans lien avec la recherche. Il est vert da
 mémoire de session.
 
 **Conventions** : aucune règle Sonar corrigée à la main, aucune entrée.
+
+## Lint log
+
+- `/lint-angular` : skip — client-angular non touché par la task.
+- `/lint-mobile` : skip — client-mobile non touché par la task.
