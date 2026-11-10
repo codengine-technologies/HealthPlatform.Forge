@@ -153,3 +153,16 @@ Exigences de coût (reprises de task-436), mesurées sur la boîte de 11 178 mai
 - **Hébergement HDS** : oui — un éventuel index ou texte normalisé porte des données de santé et vit dans la base de la
   boîte, avec ses sauvegardes et sa suppression
 - **AIPD / impact RGPD** : inchangé — aucune donnée nouvelle ; les structures de recherche sont dérivées de la boîte
+
+## Branches
+- `api-mail` (pushed) : feat/task-439-recherche-plein-texte-fiable-accents — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-439-recherche-plein-texte-fiable-accents
+- `dtos-mss` (paresseuse) : branche `feat/task-439-recherche-plein-texte-fiable-accents` créée par `/develop` depuis `origin/develop` au moment où il touche le contrat (groupe de correspondance, position de départ)
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-439 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 18 s | — | — | — | — |
+| **Total cycle** | | **18 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
