@@ -384,3 +384,16 @@ Prévention : `agents/sonar.md` et `conventions/csharp.md` (entrée xUnit1004 r�
 
 **DoD** : tout est coché, sauf le point 3 du Manual Test Plan (campagne sur la boîte de Virginie), qui revient à
 l'humain avec une session réelle.
+
+## Merged
+
+Merge humain du 2026-11-10 (`/merge task-438 --i-tested`, HAG).
+
+| Repo | PR | Commit squash sur `develop` | CI `develop` |
+|---|---|---|---|
+| `api-mail` | #354 | `ecc2c191` | ✅ verte |
+| `client-mobile` | #122 | `ebc434ce` | ✅ verte |
+| `client-angular` (TFS, code-only) | PR TFS de l'humain | `2ad32be6` sur `feature/nova-mss-weda-integration` | — |
+
+Branches `feat/task-438-…` supprimées (distant et local) sur api-mail et client-mobile. Clone Angular laissé sur
+`feature/nova-mss-weda-integration` : le dépôt TFS n'a pas de `develop` (intégration : `next`).
