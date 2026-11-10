@@ -116,3 +116,7 @@ Contrat (`dtos-mss`, rétrocompatible) : chaque `hit` dit s'il est **exact** (av
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui — embeddings et résultats dans la base de la boîte, inchangés
 - **AIPD / impact RGPD** : inchangé — l'usage de la similarité existe déjà ; seule sa présentation change
+
+## Branches
+- `api-mail` (pushed) : feat/task-440-recherche-semantique-a-sa-place-exacts-d — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-440-recherche-semantique-a-sa-place-exacts-d
+- `dtos-mss` (paresseuse) : branche `feat/task-440-recherche-semantique-a-sa-place-exacts-d` créée par `/develop` depuis `origin/develop` au moment où il touche le contrat (section exact / proche, `minSimilarity` déprécié)
