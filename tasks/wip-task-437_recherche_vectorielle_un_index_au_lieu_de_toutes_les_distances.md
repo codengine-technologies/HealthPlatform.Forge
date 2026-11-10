@@ -311,8 +311,8 @@ Les 3 rouges sont les tests « du jour » (`FilterTodayEmails…`, `GetFolderTod
 joués à 0 h 05 et 0 h 15, dans la fenêtre connue de minuit à 1 h (la recherche IMAP `SINCE` compare en UTC). Ils sont
 étrangers à la task et rejoués isolés après 1 h (voir ci-dessous).
 
-**Conventions** : `S107` corrigé à la main sur du code neuf. C'est une règle Sonar générique ; la consigne de la règle
-d'or est déjà posée (paramètres regroupés quand une méthode en dépasse 7). Pas d'entrée nouvelle.
+**Conventions** : `S107` corrigé à la main sur du code neuf. L'entrée `S107` de `conventions/csharp.md` (qui ne
+visait que les `[LoggerMessage]`) est complétée, cas « méthode de dépôt », et passe à 2 occurrences.
 
 ## Lint log
 

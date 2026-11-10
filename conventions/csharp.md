@@ -1684,9 +1684,16 @@ preuve est un test qui lit `/metrics` à travers `ConfigureOpenTelemetry()` et y
 attendue (`AiConsumptionMetricsEndpointIntegrationTests`). Pour diagnostiquer un `/metrics` vide,
 lire l'EventSource `OpenTelemetry-Exporter-Prometheus` (événement `FailedExport`).
 
-## S107 — un `[LoggerMessage]` à plus de six propriétés dépasse la limite de paramètres
+## S107 — un `[LoggerMessage]` à plus de six propriétés dépasse la limite de paramètres ; une recherche se passe en enregistrement
 
-**Occurrences : 1** (task-385, `/sonar` — api-mail, `AiCallRecorder`)
+**Occurrences : 2** (task-437, `/sonar` — `SemanticSearchRepository` : `SearchByVectorIndexAsync` à 9 paramètres et
+`ExactMedicalDocumentsAsync` à 8, faute d'objet de requête ; task-385, `/sonar` — api-mail, `AiCallRecorder`)
+
+**Méthode de dépôt ou de service** : une recherche qui fait circuler entre méthodes privées le même quadruplet (vecteur
+ou termes, nombre, seuil, dossier) le porte dans un `private sealed record` (`VectorQuery`) dès la première méthode,
+pas après Sonar. Le contexte de données et le jeton d'annulation restent des paramètres à part.
+
+**`[LoggerMessage]`** :
 
 Une méthode `[LoggerMessage]` compte le `ILogger` dans ses paramètres : au-delà de **six propriétés
 structurées**, elle dépasse les 7 paramètres de S107. Ne pas regrouper les propriétés dans un objet
