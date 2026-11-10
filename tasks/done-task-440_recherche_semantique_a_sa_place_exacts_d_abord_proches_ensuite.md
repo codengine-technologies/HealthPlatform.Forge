@@ -134,7 +134,8 @@ Contrat (`dtos-mss`, rétrocompatible) : chaque `hit` dit s'il est **exact** (av
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 19 min 41 s | — | — | — | e2e ×3 (18 min 50 s) |
 | /review | ok | 6 min 40 s | 2 (16 s) | 1 (5 min 29 s) | — | dtos-mss 1B/0T, api-mail 1B/1T |
-| **Total cycle** | | **1 h 11 min** | **10 (1 min 28 s)** | **8 (25 min 23 s)** | **2 (45 s)** | |
+| /tech-writer | ok | 45 s | — | — | — | — |
+| **Total cycle** | | **1 h 12 min** | **10 (1 min 28 s)** | **8 (25 min 23 s)** | **2 (45 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (25 s), restore ×1 (22 s)
 
