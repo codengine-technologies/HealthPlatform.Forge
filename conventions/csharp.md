@@ -2261,3 +2261,34 @@ oublié, mot de l'objet, historique ancien d'un patient), et aucun test n'avait 
 14 verts tombent.
 
 **Origine** : task-438. **Occurrences** : 1
+
+---
+
+## recherche-plafond-par-anciennete — un plafond de candidats ne se choisit jamais par ancienneté avant le classement ; une liste d'identifiants qui croît avec la boîte ne part jamais en paramètre
+
+**Règle** : convention projet (justesse et coût de la recherche, invisibles au lint et à Sonar).
+
+**Piège** (task-439, défauts R3 et coût de task-436) :
+- `SearchLimits.FullTextCandidatesPerTerm = 200` gardait, **pour chaque mot**, ses 200 correspondances **les plus
+  récentes**, puis classait. Un nom fréquent épuisait ce quota avec d'autres patients : 22 messages de « Catherine
+  BERNARD » trouvés sur 51, et **tous les manquants étaient les plus anciens**. Une borne de sécurité choisie par date,
+  posée avant le classement, devient une règle métier silencieuse : « l'historique ancien n'existe pas » ;
+- la requête renvoyait à Postgres, en `= ANY($1)`, **les identifiants de tous les contenus du dossier** (11 178 sur la
+  boîte de formation), lus d'abord par une autre requête. Le coût croît avec la boîte, deux fois : 11,65 ms à 156 mails,
+  134,73 ms à 11 178.
+
+**Consigne** :
+- Une borne de sécurité porte sur le **résultat classé**, jamais sur des candidats triés par date : elle se place après le
+  classement, se règle très au-dessus du volume d'une boîte (`SearchLimits.FullTextMatchesMax` = 25 000) et, atteinte,
+  rend la réponse **tronquée** (`isTruncated`), jamais silencieusement incomplète.
+- Le filtre (dossier, étiquette, patient) se **compose** dans la même requête que la recherche : sous-requête SQL brute
+  jointe en EF (`SqlQueryRaw<T>(…)` composé par `join`), pas une liste d'identifiants matérialisée puis renvoyée.
+- Un champ cherché « comme un médecin » (accents, casse) se lit à travers **une seule** fonction normalisée, immuable,
+  partagée par la colonne générée, l'index et la requête (`search_normalize`), et son jumeau C# (`SearchTerms.Normalize`).
+  Ne jamais refaire la normalisation à la main, terme par terme, dans le `WHERE`.
+
+**Preuve** : task-439, `SearchExactFirstHybridIntegrationTests.Hybrid_PatientWithMoreThan200Mails_…` (230 messages
+anciens sous 460 homonymes partiels récents, tous trouvés page par page) et
+`FullTextSearchSinglePassIntegrationTests.Semantic_MoreMatchesThanAPage_…`.
+
+**Origine** : task-439. **Occurrences** : 1

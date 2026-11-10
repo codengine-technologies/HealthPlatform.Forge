@@ -1,0 +1,168 @@
+{
+ "db": "srch_lab",
+ "indexed": false,
+ "results": [
+  {
+   "kind": "contents",
+   "terms": [
+    "hemoglobine"
+   ],
+   "median_ms": 246.98,
+   "rows": "693"
+  },
+  {
+   "kind": "contents",
+   "terms": [
+    "urgent"
+   ],
+   "median_ms": 247.58,
+   "rows": "72"
+  },
+  {
+   "kind": "contents",
+   "terms": [
+    "cholesterol"
+   ],
+   "median_ms": 238.34,
+   "rows": "11"
+  },
+  {
+   "kind": "contents",
+   "terms": [
+    "catherine",
+    "bernard"
+   ],
+   "median_ms": 278.14,
+   "rows": "1073"
+  },
+  {
+   "kind": "contents",
+   "terms": [
+    "bilan",
+    "lipidique",
+    "cholesterol",
+    "total"
+   ],
+   "median_ms": 303.6,
+   "rows": "1824"
+  },
+  {
+   "kind": "contents",
+   "terms": [
+    "compte",
+    "rendu",
+    "synthese"
+   ],
+   "median_ms": 308.63,
+   "rows": "4597"
+  },
+  {
+   "kind": "documents",
+   "terms": [
+    "hemoglobine"
+   ],
+   "median_ms": 62.51,
+   "rows": "126"
+  },
+  {
+   "kind": "documents",
+   "terms": [
+    "urgent"
+   ],
+   "median_ms": 61.24,
+   "rows": "5"
+  },
+  {
+   "kind": "documents",
+   "terms": [
+    "cholesterol"
+   ],
+   "median_ms": 59.69,
+   "rows": "44"
+  },
+  {
+   "kind": "documents",
+   "terms": [
+    "catherine",
+    "bernard"
+   ],
+   "median_ms": 64.41,
+   "rows": "19"
+  },
+  {
+   "kind": "documents",
+   "terms": [
+    "bilan",
+    "lipidique",
+    "cholesterol",
+    "total"
+   ],
+   "median_ms": 70.16,
+   "rows": "219"
+  },
+  {
+   "kind": "documents",
+   "terms": [
+    "compte",
+    "rendu",
+    "synthese"
+   ],
+   "median_ms": 70.2,
+   "rows": "277"
+  },
+  {
+   "kind": "both",
+   "terms": [
+    "hemoglobine"
+   ],
+   "median_ms": 302.3,
+   "rows": "805"
+  },
+  {
+   "kind": "both",
+   "terms": [
+    "urgent"
+   ],
+   "median_ms": 298.94,
+   "rows": "72"
+  },
+  {
+   "kind": "both",
+   "terms": [
+    "cholesterol"
+   ],
+   "median_ms": 300.18,
+   "rows": "44"
+  },
+  {
+   "kind": "both",
+   "terms": [
+    "catherine",
+    "bernard"
+   ],
+   "median_ms": 343.9,
+   "rows": "1073"
+  },
+  {
+   "kind": "both",
+   "terms": [
+    "bilan",
+    "lipidique",
+    "cholesterol",
+    "total"
+   ],
+   "median_ms": 374.65,
+   "rows": "1846"
+  },
+  {
+   "kind": "both",
+   "terms": [
+    "compte",
+    "rendu",
+    "synthese"
+   ],
+   "median_ms": 374.78,
+   "rows": "4597"
+  }
+ ]
+}

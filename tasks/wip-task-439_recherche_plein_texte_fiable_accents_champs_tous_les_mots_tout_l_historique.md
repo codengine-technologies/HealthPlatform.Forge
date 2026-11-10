@@ -165,4 +165,73 @@ Exigences de coût (reprises de task-436), mesurées sur la boîte de 11 178 mai
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 18 s | — | — | — | — |
-| **Total cycle** | | **18 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 1 h 40 min | 4 (39 s) | 6 (16 min 54 s) | — | api-mail 4B/6T |
+| **Total cycle** | | **1 h 40 min** | **4 (39 s)** | **6 (16 min 54 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : nuget-wait ×1 (15 s)
+
+## Develop log
+
+- **Repos touchés** : dtos-mss, api-mail. client-blazor non bumpé : hors `**Repos**`, resté à `HealthPlatform.Dtos.Mss 533.0.0` (il ne lit pas la recherche ; à aligner par la task qui le touchera).
+- **DTOs publiés** : `HealthPlatform.Dtos.Mss 578.0.0` (`SearchMatchGroup`, `SearchHitDto.MatchGroup`, `SearchRequestDto.Offset` et `MaxSearchTerms`, `SearchResponseDto.IsQueryTruncated`), rétrocompatible : `uids`, `hits`, `isTruncated`, `isDegraded` gardent leur sens.
+- **Commits** : dtos-mss `feat(dto)` ; api-mail `5c5ba62e` (bump), `93695949` (feature), `07e67bde` (passe qualité).
+- **Ce qui change pour le médecin** :
+  - les mots sont lus comme il les tape : accents, casse et ponctuation sans effet, jusqu'à 10 mots (`SearchTerms`, jumeau C# de `search_normalize` = `lower(unaccent(…))`) ;
+  - les champs cherchés sont l'objet, le corps, les documents médicaux, le nom et l'adresse de l'expéditeur, et le nom des pièces jointes ;
+  - l'ordre : tous les mots d'abord, puis une partie des mots, puis les proches par le sens. Chaque `hit` porte son groupe ;
+  - tout l'historique, page par page (`offset`). Le plafond des 200 plus récents par terme a disparu.
+- **Texte cherchable** :
+  - colonnes `"SearchText"` générées, stockées, sur `Mails`, `MailContents`, `MailAttachments` et `MailMedicalDocuments`, avec un index trigrammes ;
+  - construites en tâche de fond au premier usage de la recherche, hors du sémaphore de migration, deux à la fois par processus, sous verrou consultatif. La recherche normalise à la volée en attendant ;
+  - la migration `20261110120000` est instantanée (extensions `unaccent` et `pg_trgm`, fonction `search_normalize`).
+- **Pistes mesurées** (copie `srch_lab` de la boîte de formation, 11 178 mails, médiane de 5 passages, `Docs/audits/findings/plans/20261110-recherche-task-439/`) :
+
+  | Piste | Taille des index | Construction | 1 mot (tous champs) | 4 mots (tous champs) |
+  |---|---|---|---|---|
+  | A — normalisation `translate` à la volée, sans index | — | — | 1 346 ms | 5 379 ms |
+  | B — index trigrammes sur expression `translate` | 18 Mo | 3,9 s | 190 ms | 720 ms |
+  | B' — index trigrammes sur expression `unaccent` | 18 Mo | 2,8 s | 41 ms | 150 ms |
+  | **C — colonne générée normalisée + index trigrammes (retenue)** | 18 Mo | 3,0 s (colonnes) + 2,4 s (index) | **11 ms** | **29 ms** |
+
+  Le coût de la piste B vient de la revérification de chaque ligne candidate, qui refait la normalisation. Avec la piste C, cette revérification est un simple `LIKE` sur un texte déjà normalisé.
+- **Coût des nouvelles formes** (`replay_task439.py`, forme composée par EF, `results-indexed.json`) :
+  - plein texte des contenus : **≤ 32 ms** (objectif 45) ;
+  - plein texte des documents : **≤ 10 ms** (objectif 15) ;
+  - les deux : ≤ 40 ms.
+
+  Sans index, pendant la construction, la même requête rend les mêmes lignes en 60 à 400 ms (`results-fallback.json`).
+- **Vérité terrain** : sur la copie, `hemoglobine` trouve 805 messages (vérité de la campagne : 804 ; rendus avant : 2) et `urgent` en trouve 72 (rendus avant : 5).
+- **Règle 1b — tests d'intégration de bout en bout** (`POST /api/v1/Search/semantic`, vraie pile, PostgreSQL) :
+  - `SearchExactFirstHybridIntegrationTests` : mode hybride avec moteur sémantique joué. 230 messages anciens d'un patient sous 460 homonymes partiels récents sont tous trouvés page par page, chacun dans le bon groupe. Le mot est trouvé dans chaque champ, sans accent, en majuscules, avec une virgule. Plus de 10 mots sont signalés. Une requête sans mot significatif rend une liste vide sans erreur ;
+  - `FullTextSearchSinglePassIntegrationTests` : tout l'historique page par page. Ce test réécrit `Semantic_MoreMatchesThanTheWindow_KeepsTheMostRecentMails`, qui figeait R3. Les jokers sont des séparateurs ;
+  - `SearchTextIndexIntegrationTests` : une base neuve se construit. Une base existante répond la même chose avant et après la construction, puis lit la colonne indexée. La construction bloquée de la boîte B ne retarde pas la boîte A ;
+  - `SearchTextNormalizationMigrationTests` : le coureur FluentMigrator de production pose la fonction, la base et le code normalisent à l'identique, et le texte cherchable se construit (règle 7c).
+- **Vu rouge** :
+  - sur le code d'avant : les 10 cas « task-439 » du corpus de task-438 (constat du `## Develop log` de task-438). Ils sont verts ici, marques retirées ;
+  - par mutation, chaque mutation restaurée et recompilée (`--no-incremental`) :
+
+    | Mutation | Tests au rouge |
+    |---|---|
+    | Plafond de 200 réinjecté | 2 (tout l'historique, page par page) |
+    | Objet, expéditeur et pièces jointes non cherchés | 6 (champs, corpus `objet`, `expediteur`, `piece-jointe`…) |
+    | Groupe de correspondance faussé | 3 |
+    | Page suivante ignorée | 2 |
+- **Tests migrés** (agent, 8 fichiers) vers `FindFullTextMatchesAsync`. Ceux qui affirmaient l'ancienne fusion pondérée ou l'ancienne fenêtre sont réécrits selon la nouvelle règle ; deux sont supprimés (une fusion qui n'existe plus, un test qui appelait son propre stub).
+- **Piège retrouvé, 5ᵉ récidive de 53300 (« too many clients »)** :
+  - les bases jetables de `SemanticSearchRepositoryCoverageIntegrationTests` gardaient un pool Npgsql par test ;
+  - mesuré au pic : 98 connexions, dont 95 inactives ;
+  - elles passent maintenant par `fixture.CreateIsolatedContextAsync` (sans pool) ;
+  - 7 autres fichiers de tests de migration gardent le même motif : à corriger dans une task dédiée.
+- **Passe qualité (/simplify)** :
+  - Appliqué : six formes SQL précalculées ; route de provisionnement unique (`BaseRepository`) ; clé de verrou namespacée (`MigrationHelper`) ; `RankExactFirst` allégé ; lecture bornée à la page quand aucun filtre n'est actif ; `Forget` retiré ; un seul seuil de longueur ;
+  - Écarté après mesure : la normalisation une fois par ligne (247 ms contre 88 ms pour un mot) ;
+  - Écarté, hors périmètre ou suite à donner :
+    - un verrou de migration par base au lieu du sémaphore global, qui permettrait de poser les colonnes dans une migration ordinaire, au prix d'environ 5 s au premier accès de la boîte ;
+    - normaliser aussi les motifs en SQL ;
+    - construire les bases de fixture par FluentMigrator ;
+    - aligner la recherche par patient (`/search/patient`, `FilterSearchTerms`), qui garde l'ancien moteur.
+- **Build et tests locaux** : `HealthPlatform.Api.Mail.sln` sans erreur ni avertissement sur les fichiers touchés. Tests : domain 210, infrastructure 727, api 1 378, application 4 053, intégration 1 187 (+ 17 écartés, dont « mot absent » mobile marqué task-440), 0 échec.
+- **DoD — restent à faire, ce que la forge ne peut pas faire seule** :
+  - **A/B au banc** (tir court 1400 → 1996, IA simulée, contre `bilan-apres`) : non joué. Il mobilise le banc de charge plus d'une heure, à décider avec l'humain ;
+  - **rejouer l'outil de campagne sur la boîte de Virginie** : il faut une session réelle (`proxy_session_id`) et l'AppHost lancé sur cette branche (Manual Test Plan, point 4).
+- Next step : /sonar task-439
