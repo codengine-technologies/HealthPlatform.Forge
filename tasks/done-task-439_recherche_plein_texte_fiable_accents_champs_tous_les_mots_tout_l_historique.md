@@ -171,7 +171,8 @@ Exigences de coût (reprises de task-436), mesurées sur la boîte de 11 178 mai
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 19 min 28 s | — | — | — | e2e ×3 (18 min 54 s) |
 | /review | ok | 6 h 03 min | — | — | — | A/B au banc A/B/A' joué avant les PR |
-| **Total cycle** | | **8 h 25 min** | **6 (1 min 37 s)** | **16 (32 min 54 s)** | **4 (1 min 35 s)** | |
+| /tech-writer | ok | 1 min 31 s | — | — | — | — |
+| **Total cycle** | | **8 h 26 min** | **6 (1 min 37 s)** | **16 (32 min 54 s)** | **4 (1 min 35 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (15 s)
 
