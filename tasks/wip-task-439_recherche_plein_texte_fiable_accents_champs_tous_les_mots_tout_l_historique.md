@@ -166,7 +166,10 @@ Exigences de coût (reprises de task-436), mesurées sur la boîte de 11 178 mai
 |---|---|---|---|---|---|---|
 | /start | ok | 18 s | — | — | — | — |
 | /develop | ok | 1 h 40 min | 4 (39 s) | 6 (16 min 54 s) | — | api-mail 4B/6T |
-| **Total cycle** | | **1 h 40 min** | **4 (39 s)** | **6 (16 min 54 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 21 min 50 s | 2 (57 s) | 10 (16 min 00 s) | 4 (1 min 35 s) | 2 itération(s), api-mail 2B/10T |
+| /lint-angular | skipped | 0.4 s | — | — | — | client-angular non touché |
+| /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
+| **Total cycle** | | **2 h 02 min** | **6 (1 min 37 s)** | **16 (32 min 54 s)** | **4 (1 min 35 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (15 s)
 
@@ -235,3 +238,39 @@ Autres commandes mesurées : nuget-wait ×1 (15 s)
   - **A/B au banc** (tir court 1400 → 1996, IA simulée, contre `bilan-apres`) : non joué. Il mobilise le banc de charge plus d'une heure, à décider avec l'humain ;
   - **rejouer l'outil de campagne sur la boîte de Virginie** : il faut une session réelle (`proxy_session_id`) et l'AppHost lancé sur cette branche (Manual Test Plan, point 4).
 - Next step : /sonar task-439
+
+## Sonar log
+
+**Mode A** (chaîné depuis `/develop`), `api-mail`, branche `feat/task-439-…`, 2 analyses (build `Release`).
+
+| KPI | Baseline (analyse de task-438) | Itération 1 | Final |
+|---|---|---|---|
+| Quality Gate | OK | OK | **OK** |
+| Bugs / Vulnérabilités | 0 / 0 | 0 / 0 | 0 / 0 |
+| Code smells | 0 | 0 | **0** |
+| Hotspots à revoir | 0 | 0 | 0 |
+| Couverture globale | 97,9 % | 97,7 % | **97,8 %** |
+| Duplication | 0,4 % | 0,4 % | 0,4 % |
+| Ratings (fiabilité / sécurité / maintenabilité) | A / A / A | A / A / A | A / A / A |
+
+Tests de l'analyse finale : 7 559, 0 échec.
+
+**Phase 1 — nouveau code** : 0 issue. Quatre trous de couverture sur le nouveau code, fermés (`727128fc`) :
+- `SearchTextIndex` : la préparation découverte au catalogue (index construit par un autre processus) et la construction qui
+  s'efface quand un autre pod tient le verrou → deux tests d'intégration. Fichier couvert à 100 %.
+- `BaseRepository.ProvisioningConnectionString` : route bornée et nommée avec un contexte utilisateur, `null` sans → deux tests
+  unitaires.
+- `SemanticSearchRepository` : `?? string.Empty` mort sur `FolderPath` (non nullable), retiré.
+
+Les lignes non couvertes restantes de `SemanticSearchRepository` (24) et de `BaseRepository` (4 conditions) sont antérieures à la
+task.
+
+**Phase 2 — dette ancienne** : rien à traiter (0 issue ouverte). L'issue `xUnit1004` assumée par task-438 a disparu avec la
+réécriture du test qui figeait R3.
+
+**Conventions** : aucune règle Sonar corrigée à la main, aucune entrée.
+
+## Lint log
+
+- `/lint-angular` : skip — client-angular non touché par la task.
+- `/lint-mobile` : skip — client-mobile non touché par la task.
