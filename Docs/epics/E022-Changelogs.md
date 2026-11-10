@@ -8,6 +8,55 @@
 
 ## Historique détaillé des changelogs
 
+### v0.2 — task-439 : recherche plein texte fiable — accents, champs, tous les mots, tout l'historique (2026-11-10)
+
+- **PRs** : dtos-mss [#58](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/58), api-mail
+  [#355](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/355), label `awaiting-human-merge`.
+  Ordre de merge : dtos-mss, puis api-mail.
+- **NuGet** : `HealthPlatform.Dtos.Mss` **578.0.0** (`SearchMatchGroup`, `SearchHitDto.MatchGroup`,
+  `SearchRequestDto.Offset` et `MaxSearchTerms = 10`, `SearchResponseDto.IsQueryTruncated`), rétrocompatible.
+  client-blazor reste à 533.0.0.
+- **Absorbe task-436** (coût du plein texte).
+- **Moteur** :
+  - `SearchTerms` normalise en C# comme `public.search_normalize(text)` en SQL (`lower(unaccent(…))`, IMMUTABLE). Les mots
+    de 3 lettres et plus sont gardés, sans mots vides, 10 mots au plus ;
+  - une requête unique `FindFullTextMatchesAsync` cherche dans l'objet, le nom et l'adresse de l'expéditeur, le corps, le
+    nom des pièces jointes et les documents médicaux. Classement : tous les mots, puis une partie, du plus récent au plus
+    ancien, puis les résultats sémantiques ;
+  - plafond de 200 candidats par terme retiré, pagination par `offset`, borne de sécurité `FullTextMatchesMax = 25 000` ;
+  - colonnes générées et stockées `"SearchText"`, avec index GIN `gin_trgm_ops`. `SearchTextIndex` les construit en tâche
+    de fond au premier usage de la recherche, hors du sémaphore de migration : 2 constructions par processus, verrou
+    consultatif, `lock_timeout` 2 s, index invalide reconstruit. En attendant, la recherche normalise à la volée ;
+  - migration `20261110120000` instantanée (extensions `unaccent` et `pg_trgm`, fonction) ;
+  - `/search/patient` garde l'ancien moteur.
+- **Coût** (copie de la boîte de 11 178 messages) :
+  - plein texte des contenus ≤ 32 ms (objectif 45), des documents ≤ 10 ms (objectif 15) ;
+  - pendant la construction, 60 à 400 ms à la volée ;
+  - piste C (colonne générée + trigrammes) retenue : 11 ms pour un mot, contre 1 346 ms pour A, 190 ms pour B et 41 ms
+    pour B'.
+- **A/B au banc** (1400 → 1996 médecins, IA simulée, tirs A, B et A' dans la même session) :
+  - B contre A' : recherche −10 % au p50 et au p95, SQL du plein texte −34 % par recherche, une requête au lieu de deux ;
+  - le ralentissement A → A' vient de l'état des bases, pas du code ;
+  - `"SearchText"` pèse ≈ 7 % du volume d'une base ;
+  - +0,3 ms de SQL par requête HTTP restent non tranchés (attente d'entrées-sorties juste après la préconstruction) ;
+  - rapports : `Docs/audits/findings/plans/20261110-recherche-task-439/ab-banc/`.
+- **Règle 1b** :
+  - tests : `SearchExactFirstHybridIntegrationTests`, `FullTextSearchSinglePassIntegrationTests` (réécrit
+    `Semantic_MoreMatchesThanTheWindow_KeepsTheMostRecentMails`), `SearchTextIndexIntegrationTests`,
+    `SearchTextNormalizationMigrationTests` ;
+  - vus rouges : les 10 cas « task-439 » du corpus de task-438, plus 4 mutations (plafond 2, champs 6, groupe 3,
+    page 2).
+- **Tests** : domain 210, infrastructure 727, api 1 378, application 4 053, intégration 1 187 (+ 17 écartés), 0 échec ;
+  e2e mobile 60, Angular 73, parité verte.
+- **Sonar** : Quality Gate OK, 0 bug, 0 vulnérabilité, 0 code smell, couverture 97,9 → 97,8 %, quatre trous du nouveau
+  code fermés.
+- **53300 (5ᵉ récidive)** : les bases jetables de `SemanticSearchRepositoryCoverageIntegrationTests` passent sans pool.
+  7 fichiers de tests de migration gardent le motif.
+- **Préventions** (`conventions/csharp.md`) :
+  - `recherche-plafond-par-anciennete` ;
+  - une migration qui change une colonne lue par la recherche supprime d'abord `"SearchText"`.
+- **Reste à l'humain** : rejouer l'outil de campagne sur la boîte de Virginie (R1 à R5).
+
 ### v0.1 — task-438 : le filet d'abord, un corpus et des requêtes de référence (2026-11-10)
 
 - **PRs** : api-mail [#354](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/354), client-mobile
@@ -56,7 +105,9 @@
 | Brique | Fichiers |
 |---|---|
 | Filet de référence | `Api/Mail/tests/mss.mail.integration.tests/Search/Reference/` (`SearchReferenceCorpus`, `SearchReferenceOracle`, `SearchReferenceQueries`, `SearchReferenceVerdict`, `SearchReferenceFixture`, `SearchReferenceQualityTests`, `PrecomputedEmbeddings`) |
-| Moteur de recherche (inchangé) | `Api/Mail/src/Infrastructure/Repositories/MailDb/SemanticSearchRepository.cs`, `Api/Mail/src/Application/Services/Implementation/SemanticSearchService.cs`, `SearchQueryHelper` |
+| Moteur de recherche | `Api/Mail/src/Infrastructure/Repositories/MailDb/SemanticSearchRepository.cs`, `Api/Mail/src/Application/Services/Implementation/SemanticSearchService.cs`, `SearchQueryHelper`, `Api/Mail/src/Application/Helpers/SearchTerms.cs` |
+| Texte cherchable | `Api/Mail/src/Infrastructure/Repositories/MailDb/SearchTextSchema.cs`, `SearchTextIndex.cs`, migration `20261110120000_AddSearchTextNormalization` |
+| Contrat | `Dtos/SearchMatchGroup.cs`, `Dtos/SearchRequestDto.cs`, `Dtos/SearchResultDto.cs` |
 | Seed et catalogue e2e | `Api/Mail/tests/mss.mail.testing.shared/E2eSeedPlan.cs`, `Api/Mail/e2e/scenarios.yml` |
 | Parcours e2e | `Client/Mobile/e2e/specs/functional.spec.ts`, `Client/Angular/front/e2e/mss-e2e/specs/functional.e2e.ts` |
 | Outillage | `Api/Mail/tests/search-quality/` |
@@ -65,7 +116,7 @@
 
 ## Annexe B — Inventaire fonctionnel daté (2026-11-10)
 
-- Requêtes de référence : 18, sur 2 profils, soit 36 cas. 25 verts, 11 défauts connus marqués (task-439 : 10, task-440 : 1).
+- Requêtes de référence : 18, sur 2 profils, soit 36 cas. 35 verts, 1 défaut connu marqué (task-440 : mot absent, mobile).
 - Parcours e2e de recherche : 3 (`E2E-SEARCH-001` à `003`), sur 2 clients.
 
 ---
@@ -74,7 +125,7 @@
 
 | Task | Statut | Contribution | Règles |
 |---|---|---|---|
-| task-438 | done (PRs ouvertes) | Filet : corpus et requêtes de référence, E2E-SEARCH-002/003, outil de campagne | RG-E022-01 à 05 mesurées |
-| task-439 | todo | Plein texte : accents, champs, tous les mots, tout l'historique (absorbe task-436) | RG-E022-01, 02, 03 |
+| task-438 | archived (mergée) | Filet : corpus et requêtes de référence, E2E-SEARCH-002/003, outil de campagne | RG-E022-01 à 05 mesurées |
+| task-439 | done (PRs ouvertes) | Plein texte : accents, champs, tous les mots, tout l'historique (absorbe task-436) | RG-E022-01, 02, 03 |
 | task-440 | todo | Sémantique : exacts d'abord, proches ensuite, seuil unique serveur | RG-E022-04 |
-| task-441 | todo | Clients weda2 et mobile fidèles au serveur | RG-E022-04 (affichage) |
+| task-441 | retirée | Reprise par l'EPIC E023 : task-445 (weda2), task-450 (mobile) | RG-E022-04 (affichage) |
