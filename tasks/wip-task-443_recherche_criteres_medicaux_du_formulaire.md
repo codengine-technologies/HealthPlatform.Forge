@@ -261,6 +261,45 @@ Appliqué :
 ### Prévention (règle d'or)
 `conventions/csharp.md` § `critere-de-recherche-sur-toutes-les-sources`.
 
+## Sonar log
+
+**Mode A** (chaîné depuis `/develop`), `api-mail`, branche `feat/task-443-…`, build `Release`, 2 itérations.
+
+### KPIs qualité (baseline → final)
+
+| KPI | Baseline (analyse de task-442) | Itération 1 | Final |
+|---|---|---|---|
+| Quality Gate | OK | OK | **OK** |
+| Bugs / Vulnérabilités | 0 / 0 | 0 / 0 | 0 / 0 |
+| Code smells | 0 | 4 | **0** |
+| Hotspots à revoir | 0 | 0 | 0 |
+| Couverture globale | 97,8 % | 97,8 % | **97,8 %** |
+| Couverture du nouveau code | — | 96,0 % | **96,0 %** |
+| Duplication | 0,4 % | 0,4 % | 0,4 % |
+| Ratings (fiabilité / sécurité / maintenabilité) | A / A / A | A / A / A | A / A / A |
+
+**Phase 1 — nouveau code** : 4 issues, toutes corrigées à la main.
+- **CA1862** (`SemanticSearchRepository.Criteria.cs`, ×1) : `m.FromAddress.ToLower() != own` dans une requête EF.
+  `string.Equals(…, OrdinalIgnoreCase)` ne se traduit pas en SQL : l'adresse de la boîte se compare désormais sur la
+  clé du regroupement, déjà en minuscules. Comportement prouvé par la mutation B11 (rouge).
+- **xUnit1045** (×3, `SemanticSearchServiceMedicalCriteriaTests`, `SearchFilterCriterionTests`) : théories en
+  `TheoryData<string, SearchFilterDto>`. Elles prennent maintenant le nom du cas, et un dictionnaire `static readonly`
+  donne le DTO.
+
+**Phase 2 — dette ancienne** : 0 issue ouverte sur le projet.
+
+**Incident d'outillage** (sans effet sur le code) : une première relance de l'itération 2, faite avec `&`, a tourné en
+même temps que la relance suivante. Les deux ont produit 26 échecs parasites et une couverture mêlée, publiée à 90,1 %.
+L'analyse a été refaite d'un seul tenant, `TestResults` et `.sonarqube` vidés : ce sont les chiffres ci-dessus. Le piège
+est consigné en mémoire de session.
+
+**Tests de l'analyse finale** : domain 210, application 4 098, infrastructure 743, api 1 375, intégration 1 242
+(+16 ignorés), 0 échec, aucun plantage masqué.
+
+**Conventions** :
+- `xUnit1045` : compteur porté à 3 ; récidive sur du code frais, donc entrée non relue avant d'écrire la théorie.
+- `CA1862` : compteur porté à 2, avec la variante EF (comparer une valeur déjà en minuscules ou `EF.Functions.ILike`).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-443 --sync` — ne pas éditer à la main)*
@@ -269,6 +308,7 @@ Appliqué :
 |---|---|---|---|---|---|---|
 | /start | ok | 24 s | — | — | — | — |
 | /develop | ok | 59 min 12 s | 7 (1 min 04 s) | 6 (13 min 22 s) | — | dtos-mss 1B/0T, api-mail 4B/4T, client-angular 2B/2T |
-| **Total cycle** | | **59 min 37 s** | **7 (1 min 04 s)** | **6 (13 min 22 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 32 min 42 s | 4 (1 min 59 s) | 20 (32 min 07 s) | 7 (2 min 15 s) | 2 itération(s), api-mail 4B/20T, 4 issues de nouveau code corrigées (CA1862, xUnit1045 x3) |
+| **Total cycle** | | **1 h 32 min** | **11 (3 min 03 s)** | **26 (45 min 30 s)** | **7 (2 min 15 s)** | |
 
 Autres commandes mesurées : nuget-wait ×2 (55 s), restore ×2 (49 s)

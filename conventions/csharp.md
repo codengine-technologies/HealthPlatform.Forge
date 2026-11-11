@@ -851,7 +851,9 @@ existante du même nom, jamais en bloc « les nouveautés ensemble ».
 
 ## xUnit1045 — une donnée de théorie `object` n'est pas sérialisable
 
-**Occurrences : 2** (task-342 — `RuleTwelveRemainingResponsesIntegrationTests` ; task-330 —
+**Occurrences : 3** (task-443, `/sonar` ×3 — `TheoryData<string, SearchFilterDto>` dans deux tests des critères de
+recherche : récidive sur du code frais, donc entrée non relue avant d'écrire la théorie ; la théorie prend le nom du
+cas, et un dictionnaire `static readonly` donne le DTO ; task-342 — `RuleTwelveRemainingResponsesIntegrationTests` ; task-330 —
 `TheoryData<Exception>` des coupures de transport de `SmtpServiceCoverageTests`. Une exception
 n'est pas plus sérialisable qu'un objet anonyme : la théorie prend une chaîne, et le test construit
 l'exception)
@@ -2038,8 +2040,13 @@ réécrire `DisposeAsync` que pour un vrai travail asynchrone, et alors sans
 
 ## CA1862 — une comparaison de casse ne passe pas par `ToUpperInvariant()` / `ToLowerInvariant()`
 
-**Occurrences : 1** (task-420, `/sonar` — `ErrorCatalogTests` : `value.ToUpperInvariant() == value` pour reconnaître
-une constante de code en majuscules, dans un test)
+**Occurrences : 2** (task-443, `/sonar` — `m.FromAddress.ToLower() != own` dans une requête EF ; task-420, `/sonar` —
+`ErrorCatalogTests` : `value.ToUpperInvariant() == value` pour reconnaître une constante de code en majuscules, dans un
+test)
+
+**Variante EF** (task-443) : `string.Equals(a, b, StringComparison.OrdinalIgnoreCase)` ne se traduit pas en SQL. Dans
+une requête, comparer une valeur **déjà** mise en minuscules (la clé d'un `GroupBy(m => m.X.ToLower())`, une colonne
+normalisée), ou `EF.Functions.ILike` sur un motif échappé. Jamais `x.ToLower() == y` dans un `Where`.
 
 Comparer une chaîne à sa version mise en majuscules alloue une copie et passe par la culture invariante : CA1862
 propose `string.Equals(a, b, StringComparison.OrdinalIgnoreCase)`. Mais l'intention ici n'était pas une égalité
