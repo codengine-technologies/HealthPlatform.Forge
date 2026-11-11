@@ -263,8 +263,8 @@
 - **Origine** : task-343, task-348
 - **Occurrences** : 2
 
-### ligne-de-cda — Une ligne porteuse d'un CDA affiche le titre du document, pas le sujet
-*(ex-`ligne-de-biologie`, élargie par task-388)*
+### ligne-de-cda — Une ligne porteuse d'un CDA ou d'un HPRIM affiche le titre du document, pas le sujet
+*(ex-`ligne-de-biologie`, élargie par task-388, puis au HPRIM par task-443)*
 - **Piège** : `rowBySubject` ne trouve pas un message porteur d'un document CDA, **quel qu'il soit**
   (compte rendu de biologie, lettre de liaison dans un `IHE_XDM.ZIP`…). Une fois le document analysé,
   la liste affiche son titre (« Compte rendu d'examens biologiques », « Lettre de liaison à la sortie
@@ -278,8 +278,10 @@
   `mail-row-subject-{uid}` (weda2). Réserver la désignation par sujet aux messages sans document.
   **Diagnostic** : avant de qualifier un « message qui n'arrive pas », regarder la dernière image du
   screencast de la trace. La ligne est souvent là, sous un autre libellé.
-- **Origine** : task-343, task-388
-- **Occurrences** : 2
+- **Origine** : task-343, task-388, task-443 (E2E-SEARCH-008 : `mailRow(page, seededSubject('cr-bio-hprim'))`
+  ne trouvait pas la ligne, affichée « Résultats de biologie » ; récidive sur du code frais, donc entrée non relue
+  avant d'écrire le test)
+- **Occurrences** : 3
 
 ### en-tete-force-par-le-banc — Un harnais qui réécrit un en-tête de l'app rend son effet inobservable
 - **Piège** : le test-bypass des deux suites (`installBypass`) posait `client-email` sur **toute**
