@@ -117,3 +117,17 @@ Règles :
 - **Référentiels métier** : LOINC (inchangé)
 - **Hébergement HDS** : oui — base de la boîte, environnement HDS de production
 - **AIPD / impact RGPD** : inchangé — aucune donnée nouvelle, durée de conservation des acquittements inchangée
+
+## Branches
+- `api-mail` (pushed) : feat/task-453-un-acquittement-ne-disparait-jamais — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-453-un-acquittement-ne-disparait-jamais
+- `client-mobile` (pushed) : feat/task-453-un-acquittement-ne-disparait-jamais — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-453-un-acquittement-ne-disparait-jamais
+- `client-angular` (code-only) : forge writes code on the branch currently checked out in `Client/Angular/` (snapshot au /start : `feature/nova-mss-weda-integration`) — humain gère branche, commit, push, PR TFS
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-453 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 41 s | — | — | — | — |
+| **Total cycle** | | **41 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
