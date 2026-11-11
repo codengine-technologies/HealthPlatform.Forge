@@ -159,6 +159,18 @@ Règles :
 
 - Conventions : aucune règle corrigée → `conventions/csharp.md` inchangé.
 
+## Lint log
+
+- client-angular (code-only, `feature/nova-mss-weda-integration`, aucun git) : `npx nx run-many -t lint
+  --projects=mss-lib,mss-e2e` (contournement task-367).
+- **0 erreur** ; avertissements 52 (`mss-lib`) + 48 (`mss-e2e`), identiques à la base de task-445 : aucun introduit
+  (les seuls signalés sur les fichiers touchés sont des `max-lines` préexistants).
+- Itérations : 0. Build et tests déjà verts sur l'arbre final (fin de `/develop`).
+
+## Lint mobile log
+
+- skipped — `client-mobile` absent des `**Repos**` et arbre propre.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-446 --sync` — ne pas éditer à la main)*
@@ -168,4 +180,8 @@ Règles :
 | /start | ok | 14 s | — | — | — | — |
 | /develop | ok | 27 min 29 s | 2 (30 s) | 2 (6 min 19 s) | — | api-mail 1B/1T, client-angular 1B/1T |
 | /sonar | ok | 9 min 53 s | 1 (24 s) | 5 (8 min 04 s) | 2 (54 s) | api-mail 1B/5T |
-| **Total cycle** | | **37 min 37 s** | **3 (54 s)** | **7 (14 min 24 s)** | **2 (54 s)** | |
+| /lint-angular | ok | 1 min 03 s | — | — | — | — |
+| /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
+| **Total cycle** | | **38 min 41 s** | **3 (54 s)** | **7 (14 min 24 s)** | **2 (54 s)** | |
+
+Autres commandes mesurées : lint ×1 (53 s)
