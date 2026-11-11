@@ -709,7 +709,9 @@ par lint sur du code frais est un échec de lecture de ce fichier.
     (`head.innerHTML` remis devant, `body.outerHTML` si le fragment portait un `<body>` à attributs), car c'est son
     hôte qui l'enveloppe (doctype, `charset`, `<base target="_blank">`). `body.innerHTML` seul perd un `<style>` placé en
     tête du fragment ; `documentElement.outerHTML` sur un fragment perd l'enveloppe de l'hôte. Le test met le `<style>`
-    **en tête** du fragment (revue de task-446, CHANGES REQUESTED, puis reprise).
+    **en tête** du fragment (revue de task-446, CHANGES REQUESTED, puis reprise). **Le test de forme est celui de
+    l'hôte, au caractère près** (une seule définition partagée) : sinon un `<html><body>` sans `<head>` sort de
+    l'enveloppe de l'hôte dès qu'on le retravaille (2ᵉ revue de task-446).
 - **Preuve** : `text-highlight.util.spec.ts`, `mail-list.search-mode.spec.ts` (« un extrait qui contient du balisage
   s'affiche comme du texte »), `mail-detail.search-highlight.spec.ts`, `mail-body.component.spec.ts` ; rouges sous la
   mutation `[innerHTML]` (N7).

@@ -1,45 +1,39 @@
-> **Résolu** le 2026-11-11 par la reprise de `/develop task-446` : A, B et C corrigés, tests vus rouges (R1-R4).
+# task-446 — /review (2ᵉ passage) : CHANGES REQUESTED
 
-# task-446 — /review : CHANGES REQUESTED
-
-**Étape** : `/review` (revue de code), 2026-11-11. La chaîne est arrêtée avant l'ouverture de la PR api-mail.
-
-**Nature** : défaut de rendu introduit par la task (client-angular, code-only, non commité). Build, tests unitaires,
-Sonar et parcours e2e sont verts : aucun test ne couvre ce cas.
+**Étape** : `/review` après la reprise de `/develop`, 2026-11-11. La chaîne est arrêtée avant l'ouverture de la PR
+api-mail. Le premier blocage (A : style perdu en tête d'un fragment) est corrigé, ainsi que B et C. La revue
+indépendante du correctif trouve **un défaut introduit par le correctif lui-même**.
 
 ## Bloquant
 
-**A. `libs/mss/src/core/utils/text-highlight.util.ts`, `highlightHtml` (retour de fonction) — la mise en forme d'un
-message est perdue quand un mot cherché y est trouvé.**
+**A1. `libs/mss/src/core/utils/text-highlight.util.ts`, `highlightHtml` — test de forme désaligné sur celui du cadre.**
 
-- Pour un corps HTML **sans** balise `<html>`, la fonction rend `doc.body.innerHTML`. `DOMParser` range un `<style>`,
-  `<meta>`, `<title>` ou `<head>` placé en tête du fragment dans l'en-tête du document : ils disparaissent du rendu, tout
-  comme les attributs de `<body>` (`bgcolor`, `style`).
-- Constaté (jsdom) : `<style>p{color:red}</style><p>Hemoglobine</p>` surligné sur `hemoglobine` devient
-  `<p><mark …>Hemoglobine</mark></p>`.
-- Effet médecin : ouvrir un résultat pendant une recherche affiche le message sans sa mise en forme, dès qu'un mot
-  cherché est dans le corps. Hors recherche, le message est intact.
-- Le test de `text-highlight.util.spec.ts` ne le voit pas : son `<style>` est placé après le `<p>`.
-- Correctif proposé : rendre `documentElement.outerHTML` dès que l'entrée porte `<head`, `<style`, `<meta`, `<title`
-  ou `<body` (ou toujours), sans forcer `<!DOCTYPE html>` (il fait passer un message en mode standard). Test à ajouter :
-  `<style>` en tête d'un fragment, et attribut de `<body>`, conservés ; vu rouge sur le code actuel.
+- `highlightHtml` rend un document complet dès que l'entrée contient `<html` (`/<(html|head)[\s>]/i`), et
+  `documentElement.outerHTML` porte toujours `<head></head>`.
+- Or `medical-html-frame` (`wrapWithDesignTokens`) n'enveloppe une entrée **que si** elle ne contient pas
+  `/<head[^>]*>/i`. Une entrée `<html><body>…</body></html>` **sans `<head>`** était enveloppée avant task-446 ; une
+  fois surlignée, elle ne l'est plus.
+- Effet médecin, pendant une recherche, sur un message de cette forme : plus de `<base target="_blank">` (un lien
+  cliqué remplace le message dans le cadre), plus de doctype (rendu en mode quirks), plus de `viewport`. Même effet
+  quand `<html>` ou `<head>` n'apparaît que dans un commentaire (et le commentaire est perdu).
+- Correctif proposé : rendre le document complet **seulement** quand l'entrée satisfait le test exact du cadre,
+  `/<head[^>]*>/i` (partagé, une seule définition pour les deux), sinon la forme fragment (`head.innerHTML` +
+  `body.outerHTML`/`innerHTML`). Seuls les attributs de `<html>` (`lang`) sont alors perdus.
+- Test à ajouter, vu rouge sur le code actuel : `highlightHtml('<html><body><p>Hémoglobine</p></body></html>', …)`
+  passé à l'enveloppe du cadre garde `<base target="_blank">` et le doctype de l'enveloppe.
 
-## Non bloquant (à traiter avec le correctif)
+## Confirmé correct (revue indépendante)
 
-- **B.** `mail-body.component.ts`, `plainSegments` : recalculé à chaque détection de changement pendant une recherche
-  (repli caractère par caractère de tout le corps). Mémoïser comme `mailBodyHtml` (`{ text, terms }`).
-- **C.** `text-highlight.util.ts`, `foldText` / `findTermRanges` : sur un texte décomposé (NFD), l'accent combinant qui
-  suit la dernière lettre d'une correspondance reste hors du `<mark>`. Étendre la fin de plage aux caractères dont le
-  repli est vide.
+- A pour les fragments (style et `meta` de tête gardés, attributs de `<body>` fusionnés par le parseur dans l'enveloppe).
+- B : mémo de `plainSegments` sur la référence des mots (`computed()` stable).
+- C : accent décomposé gardé dans la plage, fusion des plages intacte.
 
 ## État des dépôts
 
-- `api-mail` : `feat/task-446-recherche-lire-un-resultat-extrait`, commit `783ff7e1` (scénario E2E-SEARCH-010) poussé,
-  **aucune PR ouverte**.
-- `client-angular` : code de la task non commité sur `feature/nova-mss-weda-integration` (voir `## Develop log`).
+- `api-mail` : `feat/task-446-recherche-lire-un-resultat-extrait`, `783ff7e1` poussé, aucune PR.
+- `client-angular` : non commité sur `feature/nova-mss-weda-integration`.
 - Task : reste en `wip-*`.
 
 ## Décision attendue
 
-Relancer `/develop task-446` (reprise : corriger A, puis B et C, tests vus rouges), puis la chaîne reprend jusqu'à
-`/review`. Ou corriger à la main dans WindSurf puis lancer `/review task-446`.
+Relancer `/develop task-446` (reprise : A1, test vu rouge), puis la chaîne reprend jusqu'à `/review`.
