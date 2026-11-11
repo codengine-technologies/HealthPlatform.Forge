@@ -139,6 +139,26 @@ Règles :
   task-445 s'ils ne le sont pas déjà).
 - Next step : /sonar task-446
 
+## Sonar log
+
+- Mode A (chaîné), branche `feat/task-446-recherche-lire-un-resultat-extrait`, commit analysé `783ff7e1` (diff api-mail :
+  `e2e/scenarios.yml` seul, aucun code analysé).
+- Analyse complète : Release, 5 passes OpenCover (0 échec), `ANALYSIS SUCCESSFUL`, traitement serveur `SUCCESS`.
+- Itérations : 0.
+
+| KPI | Baseline | Final |
+|---|---|---|
+| Quality Gate | OK | **OK** |
+| Bugs / Vulnerabilities / Hotspots | 0 / 0 / 0 | 0 / 0 / 0 |
+| Code Smells | 0 | 0 |
+| Coverage | 97,8 % | 97,8 % |
+| Duplication | 0,4 % | 0,4 % |
+| Reliability / Security / Maintainability | A / A / A | A / A / A |
+| New code — issues | — | 0 |
+| New code — coverage | — | 96,2 % |
+
+- Conventions : aucune règle corrigée → `conventions/csharp.md` inchangé.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-446 --sync` — ne pas éditer à la main)*
@@ -147,4 +167,5 @@ Règles :
 |---|---|---|---|---|---|---|
 | /start | ok | 14 s | — | — | — | — |
 | /develop | ok | 27 min 29 s | 2 (30 s) | 2 (6 min 19 s) | — | api-mail 1B/1T, client-angular 1B/1T |
-| **Total cycle** | | **27 min 44 s** | **2 (30 s)** | **2 (6 min 19 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 9 min 53 s | 1 (24 s) | 5 (8 min 04 s) | 2 (54 s) | api-mail 1B/5T |
+| **Total cycle** | | **37 min 37 s** | **3 (54 s)** | **7 (14 min 24 s)** | **2 (54 s)** | |
