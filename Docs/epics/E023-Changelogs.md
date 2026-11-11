@@ -116,9 +116,8 @@
 
 ### v0.3 — task-444 : réponse enrichie — extraits, endroit trouvé, patients trouvés (api-mail, dtos-mss)
 
-- **État** : `done`, PRs en attente de merge humain (HAG) :
-  - dtos-mss [#61](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/61), à merger d'abord ;
-  - api-mail [#360](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/360).
+- **État** : `archived`, PRs mergées : dtos-mss [#61](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/61),
+  api-mail [#360](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/360).
 - **Contrat** : `HealthPlatform.Dtos.Mss` 588, rétrocompatible :
   - `SearchHitDto.Locations` (`SearchMatchLocation`), `Excerpt` (≤ 200), `ExcerptLocation`, `Highlights`
     (`SearchHighlightDto`, unités UTF-16) ;
@@ -157,6 +156,41 @@
 
 ---
 
+### v0.4 — task-445 : mode « Résultats de recherche » (weda2, api-mail)
+
+- **État** : `done`, PR api-mail [#361](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/361) en
+  attente de merge humain (HAG) ; weda2 code-only, non commité (à commiter sur TFS **avant** le merge de #361 :
+  `functional.e2e.ts`, `support/e2e-backend.ts`).
+- **weda2** (`libs/mss/src/features/mail/`) :
+  - `services/mail-search-session.ts` : `MailSearchSession` tenue par `MailStateService` — requête, lignes dans l'ordre
+    du serveur, rattachement par dossier et UID (`hits`, messages lus dans leur dossier), parties par `matchGroup`,
+    « N+ » (`isTruncated`), « Voir plus » (`offset` = résultats rendus par le serveur, dédoublonné), `isDegraded`,
+    erreur qui vide la liste, réponse dépassée abandonnée, squelette > 300 ms ;
+  - `services/mail-search-tags.ts` : étiquettes lues dans la requête, retrait, affinage ;
+  - `components/mail-search-results/` : étiquettes, filtres d'affinage, bandeaux, parties, « Voir plus » ;
+  - `mail-list` : en-tête du mode, « Fermer la recherche » (filtre, page, position rendus, sans rechargement) ;
+  - `mail-search` : plus de croix, lance la session, suit la recherche affichée ; `minSimilarity` n'est plus envoyé ;
+  - Paramètres : section « Avancé » (sensibilité) retirée.
+- **api-mail** : catalogue `E2E-SEARCH-004` à `007` et `009` v1 (angular requis, mobile en divergence task-450) ; seed
+  du patient fictif cherché et son test.
+- **Tests** : `mail-search-session.spec.ts`, `mail-search-tags.spec.ts`, `mail-list.search-mode.spec.ts` ; mutations
+  M1–M16 (composants) et E1–E6 (parcours) rouges sur l'assertion prévue.
+
+  | Suite | Tests verts |
+  |---|---|
+  | weda2 `mss-lib` | 1 573 |
+  | weda2 `weda2` | 2 683 |
+  | api-mail (toutes suites) | 7 788 (+16 ignorés) |
+
+- **E2E** : voie mobile 60, voie angular 79, parité verte.
+- **Sonar** : 0 itération, Quality Gate OK, couverture 97,8 %, nouveau code 96,3 %.
+- **Restes** (revue, non bloquants) : l'annulation d'un glisser vers la Corbeille n'est pas reportée dans les
+  résultats ; position rendue au dossier suivant dans un cas limite ; enrichissement en direct ignoré hors du dossier
+  affiché ; deux assertions de test à durcir ; étiquette de période approximative au rejeu.
+- **Préventions** : `conventions/angular.md` § `liste-ordonnee-par-le-serveur`, § `retrait-optimiste-dans-chaque-liste`.
+
+---
+
 ## Annexe A — Cartographie des briques applicatives
 
 | Brique | Rôle dans E023 |
@@ -168,7 +202,9 @@
 | `Api/Mail/src/Application/Helpers/{SearchExcerpts,SearchHitEnrichment,PatientQuery}.cs` | Extraits, endroits trouvés, patients désignés (task-444) |
 | `Api/Mail/src/Infrastructure/Repositories/MailDb/SemanticSearchRepository.Explain.cs` | Textes de la page, candidats patients (task-444) |
 | `Dtos/SearchMatchLocation.cs`, `Dtos/SearchHighlightDto.cs`, `Dtos/SearchFoundPatientDto.cs` | Contrat de la réponse enrichie (task-444) |
-| `Api/Mail/e2e/scenarios.yml` | Catalogue des parcours : `E2E-SEARCH-001` v2 |
+| `Client/Angular/front/libs/mss/src/features/mail/services/mail-search-{session,tags}.ts` | Mode « Résultats de recherche » : session, étiquettes (task-445) |
+| `Client/Angular/front/libs/mss/src/features/mail/components/mail-search-results/` | Espace des résultats : étiquettes, affinage, parties, « Voir plus » (task-445) |
+| `Api/Mail/e2e/scenarios.yml` | Catalogue des parcours : `E2E-SEARCH-001` v2, `004` à `009` v1 |
 
 ---
 
@@ -184,8 +220,8 @@
 |---|---|---|
 | task-442 | archived (PR #358 mergée) | Formulaire de critères à un seul niveau dans weda2 ; `E2E-SEARCH-001` v2 ; « De » choisi parmi les contacts |
 | task-443 | archived (PRs dtos-mss #60, api-mail #359 mergées) | Critères médicaux : patient, date du document, biologie anormale, expéditeurs, nom de pièce jointe ; `E2E-SEARCH-008` v1 |
-| task-444 | done (PRs dtos-mss #61, api-mail #360) | Réponse enrichie : endroit trouvé, extrait surligné, patients trouvés par correspondance exacte |
-| task-445 | todo | Mode « Résultats de recherche » dans weda2 |
+| task-444 | archived (PRs dtos-mss #61, api-mail #360 mergées) | Réponse enrichie : endroit trouvé, extrait surligné, patients trouvés par correspondance exacte |
+| task-445 | done (PR api-mail #361 ; weda2 non commité) | Mode « Résultats de recherche » dans weda2 ; `E2E-SEARCH-004` à `007`, `009` v1 |
 | task-446 | todo | Lire un résultat : extrait surligné et patients trouvés |
 | task-447 | todo | Portée « tous les dossiers » et tri |
 | task-448 | todo | Sélectionner tous les résultats et actions groupées |

@@ -1,7 +1,7 @@
 # E023 — Expérience de recherche
 
-> **Statut** : 🟡 En cours (3 features sur 9 : deux livrées, une en attente de validation humaine)
-> **Version** : 0.3
+> **Statut** : 🟡 En cours (4 features sur 9 : trois livrées, une en attente de validation humaine)
+> **Version** : 0.4
 > **Auteur** : PO forge (tasks 442 à 449, 452)
 > **Modèle** : task-driven
 > **Dernière mise à jour** : 2026-11-11
@@ -67,8 +67,8 @@ le même modèle. Le modèle retenu le 2026-11-10 avec l'humain s'inspire de la 
 |---|---|---|---|
 | Formulaire à un seul niveau | Composer tous ses critères au même endroit, puis lancer la recherche ; rien ne part avant ; « De » se choisit parmi ses contacts | task-442 | ✅ Livrée |
 | Critères médicaux | Restreindre la recherche à un patient choisi dans la liste, à la date du document médical, à la biologie marquée anormale par le laboratoire, à un ou plusieurs expéditeurs, au nom d'une pièce jointe | task-443 | ✅ Livrée |
-| Réponse enrichie | Savoir où le terme a été trouvé, en voir un extrait, connaître les patients désignés | task-444 | 🟢 Livrée côté serveur, en attente de validation |
-| Mode « Résultats de recherche » | Voir les résultats dans un espace dédié, les affiner sur place, en sortir explicitement | task-445 | 🔴 À faire |
+| Réponse enrichie | Savoir où le terme a été trouvé, en voir un extrait, connaître les patients désignés | task-444 | ✅ Livrée côté serveur |
+| Mode « Résultats de recherche » | Voir les résultats dans un espace dédié, les affiner sur place, en sortir explicitement | task-445 | 🟢 Livrée dans weda2, en attente de validation |
 | Lire un résultat | Voir l'extrait surligné de chaque résultat et ouvrir le patient trouvé en tête | task-446 | 🔴 À faire |
 | Portée et tri | Chercher dans toute la boîte ou dans le dossier courant, et choisir l'ordre des résultats | task-447 | 🔴 À faire |
 | Actions groupées | Sélectionner tous les résultats, même ceux pas encore affichés, et leur appliquer une action | task-448 | 🔴 À faire |
@@ -97,6 +97,8 @@ flowchart LR
 ```
 
 Le formulaire (task-442) est la porte d'entrée : on y compose, on lance, il se ferme pour laisser voir les résultats.
+L'espace « Résultats de recherche » (task-445) remplace la liste du dossier sans la perdre : « Fermer la recherche »
+la rend telle quelle, à la même position.
 
 ---
 
@@ -119,6 +121,14 @@ Le formulaire (task-442) est la porte d'entrée : on y compose, on lance, il se 
   complète. Jamais de rapprochement approché, phonétique ou par le sens : un nom voisin ne désigne personne (task-444).
 - **L'INS ne sort jamais d'une recherche.** Elle peut être cherchée, mais elle n'est ni affichée, ni journalisée, ni
   gardée dans l'historique, ni envoyée au moteur d'IA ; seul son statut (qualifiée ou non) est montré (task-444).
+- **Les résultats sont ceux du serveur, dans son ordre.** Aucun tri ni filtre local ; un filtre d'affinage devient un
+  critère de la recherche, relancée aussitôt. Les résultats se rangent en trois parties : « Tous les mots », « Une
+  partie des mots », « Résultats proches » (task-445).
+- **Une recherche ne cache jamais une panne.** Si une partie du moteur ne répond pas, un bandeau le dit ; si la
+  recherche échoue, un message le dit et aucune ancienne liste ne reste affichée (task-445).
+- **Sortir d'une recherche rend le dossier tel qu'il était** : son filtre, sa page et sa position ; changer de dossier
+  ferme la recherche (task-445).
+- **Le seuil de similarité n'est plus un réglage personnel** : le serveur applique le même pour tous (task-445).
 - **Chaque recherche lancée est tracée au nom de la personne qui l'a faite**, comme tout acte sur la boîte. Cocher un
   critère sans lancer n'est pas un acte.
 - **La mesure de l'expérience est anonyme** : elle ne conserve ni le texte cherché ni l'identité de qui cherche.
@@ -154,15 +164,15 @@ Le formulaire (task-442) est la porte d'entrée : on y compose, on lance, il se 
 |---|---|---|---|
 | Formulaire à un seul niveau | ✅ Livrée | 100 % | task-442 |
 | Critères médicaux | ✅ Livrée | 100 % | task-443 |
-| Réponse enrichie | 🟢 Livrée côté serveur, en attente de validation | 100 % | task-444 |
-| Mode « Résultats de recherche » | 🔴 À faire | 0 % | task-445 |
+| Réponse enrichie | ✅ Livrée côté serveur | 100 % | task-444 |
+| Mode « Résultats de recherche » | 🟢 Livrée dans weda2, en attente de validation | 100 % | task-445 |
 | Lire un résultat | 🔴 À faire | 0 % | task-446 |
 | Portée et tri | 🔴 À faire | 0 % | task-447 |
 | Actions groupées | 🔴 À faire | 0 % | task-448 |
 | Suggestions pendant la frappe | 🔴 À faire | 0 % | task-449 |
 | Mesure anonyme de l'expérience | 🔴 À faire | 0 % | task-452 |
 
-**Couverture EPIC consolidée : 33 %** (3 features sur 9 : deux livrées, une en attente de validation humaine).
+**Couverture EPIC consolidée : 44 %** (4 features sur 9 : trois livrées, une en attente de validation humaine).
 
 ---
 
@@ -180,6 +190,11 @@ Le formulaire (task-442) est la porte d'entrée : on y compose, on lance, il se 
 - v0.3 — Le serveur dit pourquoi chaque message est trouvé (où, avec un extrait et les mots à surligner, même tapés
   sans accent) et quels patients de la boîte la recherche désigne. weda2 et le mobile l'afficheront (task-446,
   task-451) (task-444).
+- v0.4 — Dans weda2, lancer une recherche ouvre l'espace « Résultats de recherche » : « Résultats : N messages », une
+  étiquette par critère (une croix la retire et relance), des filtres pour affiner sur place, trois parties (« Tous
+  les mots », « Une partie des mots », « Résultats proches »), « Voir plus » jusqu'au dernier résultat, un bandeau
+  quand le moteur est en panne partielle, un message clair en cas d'échec. « Fermer la recherche » rend le dossier à
+  la même position. Le réglage « Sensibilité de la recherche » disparaît des Paramètres (task-445).
 
 **Conformité réglementaire**
 - Chaque recherche lancée reste tracée au nom de son auteur ; la trace ne porte ni le texte cherché, ni l'identité du
@@ -197,6 +212,8 @@ Le formulaire (task-442) est la porte d'entrée : on y compose, on lance, il se 
 **Technique / observabilité** (sans impact utilisateur direct)
 - Le parcours « composer puis lancer » est vérifié automatiquement à chaque cycle dans weda2.
 - Le parcours « restreindre à un patient et à ses biologies anormales » l'est aussi (task-443).
+- Cinq parcours de l'espace « Résultats de recherche » sont vérifiés à chaque cycle dans weda2 : nom de patient tapé
+  sans accent, « Aucun résultat », « Voir plus », recherche en échec, fermeture à la même position (task-445).
 
 ---
 

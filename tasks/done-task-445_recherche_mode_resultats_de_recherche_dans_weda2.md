@@ -436,6 +436,7 @@ retirée) — prouvé par le test de composant `task-445 — ne propose plus de 
 | /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 19 min 37 s | — | — | — | e2e ×3 (19 min 02 s), mobile 60 + angular 79 verts, parité verte |
 | /review | ok | 10 min 17 s | 2 (22 s) | 2 (6 min 22 s) | — | api-mail 1B/1T, client-angular 1B/1T |
-| **Total cycle** | | **1 h 24 min** | **6 (1 min 51 s)** | **13 (22 min 13 s)** | **2 (45 s)** | |
+| /tech-writer | ok | 45 s | — | — | — | — |
+| **Total cycle** | | **1 h 25 min** | **6 (1 min 51 s)** | **13 (22 min 13 s)** | **2 (45 s)** | |
 
 Autres commandes mesurées : lint ×1 (9.9 s)
