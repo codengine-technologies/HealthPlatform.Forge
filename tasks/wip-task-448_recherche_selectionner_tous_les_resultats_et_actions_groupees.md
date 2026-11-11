@@ -119,3 +119,89 @@ Règles :
 - `api-mail` (pushed) : feat/task-448-recherche-selectionner-tous-les — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-448-recherche-selectionner-tous-les
 - `dtos-mss` (paresseuse) : créée par `/develop` au premier changement de contrat (même nom).
 - `client-angular` (code-only) : la forge écrit sur la branche checked out dans `Client/Angular/` (au /start : `feature/nova-mss-weda-integration`) — humain gère branche, commit, push, PR TFS
+
+## Develop log
+
+**Ordre** : dtos-mss → api-mail → client-angular (code-only, `feature/nova-mss-weda-integration`, aucun commit).
+
+### dtos-mss (branche paresseuse `feat/task-448-recherche-selectionner-tous-les`, publié **592.0.0**)
+
+- `MailKeyDto`, `BulkMailActionType` (MarkRead, MarkUnread, Flag, Unflag, Move, Trash), `BulkMailActionRequestDto`
+  (`MaxItems = 2000`, validation : liste vide, plafond, déplacement sans destination), `BulkMailActionResultDto` /
+  `BulkMailActionFailureDto` (`not_found`, `already_in_trash`, `failed`), `SearchKeysResponseDto`. Rétrocompatible
+  (types nouveaux seulement). Consommateur .NET : api-mail bumpé (`753124f9`).
+
+### api-mail
+
+- `POST /api/v1/search/keys` (`SearchController.ListKeysAsync`) : la recherche affichée, rejouée sans explication
+  (`SemanticSearchOptions.Explain = false` : ni patients trouvés ni extraits), 2 000 clés au plus, dans l'ordre de la
+  recherche ; `IsOverLimit` quand la recherche est tronquée (`SearchResultHelper.ToKeys`).
+- `POST /api/v1/mail/bulk-actions` (`BulkMailActionsController` → `BulkMailActionService`) : périmètre = la liste reçue,
+  regroupée par dossier ; message absent de la base du dossier → `not_found` ; Corbeille depuis la Corbeille ou dossier
+  de type inconnu → refus nommé ; chaque message passe par le **service du geste unitaire** (lu, non lu, étoile, sans
+  étoile : `IEmailFlagService` ; déplacer : `BulkMoveEmailsAsync` ; Corbeille : `DeleteEmailsAsync`), qui trace un acte
+  par message au nom de la personne de la requête (règle 14). Plafond vérifié dans le contrat **et** dans le service.
+- Verrou de l'opérateur : la route passe par la sélection de boîte comme toutes les routes de données.
+
+**Tests** (règle 1b, vrais contrôleurs, vraie base PostgreSQL, Dovecot) :
+
+| Comportement | Test | Preuve rouge |
+|---|---|---|
+| 120 résultats déplacés vers Archives, aucun autre ; arrivé après la confirmation non déplacé | `FolderOperationsEndToEndTests.MovingThe120ConfirmedResults_…` | B1 (déplacement non fait), B2 (périmètre relu à l'exécution : 122 au lieu de 120) |
+| Marquer lu : les 120 lus en base, aucun autre | `MarkingThe120ConfirmedResultsRead_…` | B3 (lu ↔ non lu) |
+| Message supprimé entre-temps : 119 + 1 `not_found` nommé | `AResultDeletedBetweenTheConfirmationAndTheAction_…` | B4 (absent non nommé : 120 au lieu de 119) |
+| 2 001 messages → 400 `problem+json`, rien modifié | `MoreThan2000Messages_Is400ProblemJson_…` | rouge sur le code d'avant (route absente → 404) ; plafond du service prouvé en unitaire |
+| Règle 14 : délégataire déplace 3 → 3 `MailMove` au nom du délégataire (RPPS, nom, rôle), aucun autre | `TheDelegateMovesThreeResults_…` | B5 (déplacement sans trace par message) |
+| Délégataire refusé par l'opérateur → 403, rien touché ; le titulaire agit | `MailboxAccessLockIntegrationTests.Delegate_RefusedAtRenewal_Gets403_OnABulkAction_…` | rouge sur le code d'avant (route absente) |
+| Clés de 120 résultats au-delà de la première page, dans l'ordre de la recherche, dossier filtré | `SearchKeysEndpointIntegrationTests.Keys_Of120Results_…` | K1 (clés plafonnées à la page) |
+| 2 001 résultats → 2 000 clés, `IsOverLimit` | `Keys_OfMoreResultsThanAnActionCovers_…` | K2 (troncature ignorée) |
+| Requête vide → 400 `problem+json` | `Keys_OfAnEmptyQuery_Is400ProblemJson` | rouge sur le code d'avant (route absente) |
+
+- Unitaires : `BulkMailActionServiceTests` (17 : chaque action par son geste unitaire, déplacement par dossier, même
+  dossier, Corbeille, refus depuis la Corbeille, dossier inconnu, `not_found`, refus partiel, refus serveur
+  déplacement / Corbeille, doublons, plafond, plafond exact) ; `SearchResultHelperTests.ToKeys_*` (4).
+- **Simplification issue d'une mutation survivante** : K2 initial (« un résultat de plus que le plafond ») a survécu :
+  la recherche dit déjà qu'elle est tronquée. `MaxResults = MaxItems` (le `+ 1` était redondant), et la mutation qui
+  ignore la troncature est rouge.
+- Build : 0 erreur, 0 avertissement.
+
+### client-angular (weda2, code-only)
+
+- `core/models/bulk-mail-action.model.ts` (types du contrat), `MssApiService.searchKeys` / `executeBulkMailAction`.
+- `MailSearchBulkService` (+ `mail-search-bulk-labels.ts`) : « Tout sélectionner » coche les résultats chargés puis
+  compte ceux de la recherche (`/search/keys`) s'il en reste à charger ; « Sélectionner les N résultats de la
+  recherche » ; plafond 2 000 (« affinez la recherche ») ; confirmation au-delà de ce qui est chargé ou de 50 ;
+  périmètre figé à la demande ; envoi par morceaux de 100 ; progression au-delà de 100 ; compte rendu
+  (« 340 messages déplacés vers Archives, 2 en échec »), un morceau refusé en bloc nomme ses messages ; « Réessayer
+  les échecs » (refus du serveur seulement) ; recherche relancée, compteurs des dossiers relus.
+- `MailSearchBulkComponent` dans l'en-tête des résultats ; la barre de sélection de la liste passe par le service en mode
+  recherche (lu, non lu, favori, **sans étoile** — nouveau, aussi en mode dossier —, déplacer, supprimer = Corbeille).
+  Ni acquittement ni rattachement en sélection.
+- Tests de composant `mail-list.search-bulk.spec.ts` (15, à travers la liste) : mutations F1–F12 toutes rouges
+  (décompte, choix, confirmation, périmètre figé, morceaux, progression, refus en bloc, nouvel essai, relance,
+  compte rendu partiel, liste qui ignore la recherche, Corbeille).
+- E2E `E2E-SEARCH-012` v1 (catalogue : angular requis, mobile en divergence task-451) : pages de 4, N résultats
+  sélectionnés, confirmation « Marquer N messages comme lus ? », chacun lu côté serveur ; état des seeds rétabli.
+  Mutations servies E1 (le client envoie « non lu » en annonçant « lu » → rouge sur la lecture serveur), E2 (choix
+  sans effet → rouge), marqueurs vérifiés dans le bundle puis retirés.
+- `nx test mss-lib` 1 625 ✅, `nx test weda2` 2 683 ✅, `nx build weda2` ✅.
+
+### Passe qualité (§Q)
+
+- weda2 : `allLoadedSelected` calculé une fois dans le service, relu par le composant (doublon retiré) ; libellés sortis
+  du service (fichier < 500 lignes). api-mail : `MaxResults + 1` redondant retiré (ci-dessus). Pas de commit séparé.
+
+### Prévention (règle d'or)
+
+- `conventions/csharp.md` § `action-groupee-tracee-par-objet`.
+- Défaut **antérieur** relevé, hors périmètre : les routes `…/emails/bulk/status/read|unread|flagged|unflagged` ne
+  tracent pas message par message (règle 14). Task de suivi recommandée.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-448 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 7.8 s | — | — | — | — |
+| **Total cycle** | | **7.8 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |

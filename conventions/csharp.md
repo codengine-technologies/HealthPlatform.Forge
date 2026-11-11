@@ -2427,3 +2427,33 @@ Le second piège est l'INS : elle est tentante comme champ de réponse (« pour 
 
 **Origine** : task-444. **Occurrences** : 1
 
+---
+
+## action-groupee-tracee-par-objet — une action groupée trace chaque objet touché au nom de son auteur, et nomme chacun de ses échecs
+
+**Règle** : convention projet (règle 14, imputabilité PGSSI-S), invisible au lint et à Sonar.
+
+**Piège** (task-448) : une route « en masse » se code naturellement comme un seul ordre (un `STORE` sur N UID, une
+mise à jour SQL sur N lignes) suivi d'**une** trace, ou d'aucune. Le journal dit alors « 120 messages marqués lus »
+au nom de la boîte, ou ne dit rien : le délégataire qui a agi disparaît, et un message touché n'a pas sa ligne. Les
+routes `…/emails/bulk/status/read|unread|flagged|unflagged` existantes ont ce défaut (aucune trace par message). Le
+second piège est le compte rendu : un « 200 » global sur une action partielle présente comme fait ce qui ne l'est pas.
+
+**Consigne** :
+- Une action groupée **réutilise le chemin du geste unitaire** (`IEmailFlagService.UpdateEmail…StatusAsync`,
+  `IImapFolderService.BulkMoveEmailsAsync`, `IImapService.DeleteEmailsAsync`), qui trace déjà **un acte par message**,
+  au nom de la personne de la requête (`UserContextInfo`). Jamais une trace agrégée, jamais un acte sans auteur.
+- Le périmètre est **la liste reçue**, jamais une requête rejouée à l'exécution : un message arrivé après la
+  confirmation n'est pas touché.
+- Le résultat compte les succès et **nomme chaque échec** (dossier, UID, raison : `not_found`, `already_in_trash`,
+  `failed`) ; un refus du serveur pour un dossier nomme chacun de ses messages.
+- Un plafond (`BulkMailActionRequestDto.MaxItems`) est vérifié **avant** tout effet, dans le contrat et dans le service.
+- La mise à la Corbeille depuis la Corbeille est refusée (elle supprimerait définitivement).
+- Le test d'intégration lit le journal de la boîte : N actes au nom du délégataire (RPPS, nom, rôle), aucun au nom du
+  titulaire ni de la boîte.
+
+**Preuve** : task-448, `FolderOperationsEndToEndTests.BulkActions`. Mutations B1 (déplacement non fait), B2 (périmètre
+relu à l'exécution), B3 (lu inversé), B4 (message disparu non nommé), B5 (déplacement sans trace par message), toutes
+rouges.
+
+**Origine** : task-448. **Occurrences** : 1
