@@ -173,7 +173,7 @@ Règles :
 
 ## E2E log
 
-Rejoué après la reprise (CHANGES REQUESTED du /review).
+Rejoué après la 2ᵉ reprise (A1).
 
 | Voie | Jouée / réutilisée | Résultat | Dépôts couverts |
 |---|---|---|---|
@@ -336,8 +336,8 @@ Démontage vérifié : ports libres, aucun conteneur e2e résiduel.
 | /sonar | skipped | 0.4 s | 1 (24 s) | 5 (8 min 04 s) | 2 (54 s) | api-mail 1B/5T, api-mail inchangé depuis l'analyse de 783ff7e1 (QG OK) |
 | /lint-angular | ok | 12 s | — | — | — | — |
 | /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non touché |
-| /e2e | ok | 10 min 05 s | — | — | — | e2e ×6 (29 min 50 s), reprise : mobile réutilisée, angular 80 verts |
+| /e2e | ok | 10 min 19 s | — | — | — | e2e ×9 (39 min 54 s), reprise 2 : mobile réutilisée, angular 80 verts |
 | /review | failed | 0.4 s | 1 (17 s) | 1 (5 min 51 s) | — | api-mail 1B/1T, CHANGES REQUESTED — A1 : test de forme désaligné sur le cadre |
-| **Total cycle** | | **14 min 18 s** | **6 (1 min 42 s)** | **10 (21 min 20 s)** | **2 (54 s)** | |
+| **Total cycle** | | **14 min 33 s** | **6 (1 min 42 s)** | **10 (21 min 20 s)** | **2 (54 s)** | |
 
 Autres commandes mesurées : lint ×3 (1 min 16 s)
