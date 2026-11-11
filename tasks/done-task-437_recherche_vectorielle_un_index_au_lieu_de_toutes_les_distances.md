@@ -161,7 +161,8 @@ Règles :
 | /lint-angular | skipped | 0.4 s | — | — | — | client-angular non touché |
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 19 min 07 s | — | — | — | e2e ×3 (18 min 41 s) |
-| **Total cycle** | | **1 h 52 min** | **5 (56 s)** | **12 (26 min 33 s)** | **4 (1 min 24 s)** | |
+| /review | ok | 8 h 20 min | 1 (12 s) | 1 (5 min 33 s) | — | api-mail 1B/1T |
+| **Total cycle** | | **10 h 12 min** | **6 (1 min 08 s)** | **13 (32 min 07 s)** | **4 (1 min 24 s)** | |
 
 ## Develop log
 
@@ -420,3 +421,32 @@ visait que les `[LoggerMessage]`) est complétée, cas « méthode de dépôt »
 | E2E-ERROR-001 | 1 | headless | Une erreur affiche un code et une référence à transmettre au support | ✅ | ✅ |
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/357 — label `awaiting-human-merge`
+
+**Avant le merge** (décision humaine du 2026-11-11) : escalier `enrich` à 16 médecins avant / après, et A/B du tir
+court 1400 → 1996. Une dégradation de l'analyse de plus de 10 % se pose en question.
+
+## Code Review Summary
+
+**APPROVED — 0 bloquant, 4 suggestions.** Build et tests verts (7 608 tests, 0 échec ; les 3 tests « du jour »,
+rouges entre minuit et 1 h, sont rejoués verts à 8 h 55), Quality Gate OK (3 issues du nouveau code corrigées),
+`## E2E log` vert.
+
+- **Règle 1b** (`SearchVectorIndexIntegrationTests`, endpoint réel, index construit par le chemin réel) :
+  - plus proches du dossier courant, contenus et documents, dans l'ordre, sous le seuil, dans la limite, et requête qui
+    passe par l'index (`EXPLAIN`) → rouges sous M1 (tri sur la distance exacte) et M2 (construction retirée) ;
+  - boîte sans index → réponse exacte (cas d'échec, lu dans la réponse) ;
+  - petit dossier d'une grande boîte → rouge sous M3 (repli retiré) ;
+  - construction sans blocage d'une autre boîte (A répond en moins de 15 s).
+- **Sécurité** : littéral du modèle échappé, noms de table internes, dimension entière ; aucun terme ni vecteur dans les
+  journaux.
+- **DoD** : plancher de précision (97,9 % / 98,8 %) et gain (12,3 ms / 4,9 ms) mesurés au laboratoire ; migration sans
+  objet ; registre à passer en « corrigé et mesuré » au merge ; deux mesures de banc à faire avant le merge.
+- **Suggestions** :
+  1. resserrer la reconnaissance du conflit de dimension (exiger « dimensions ») ;
+  2. distance en demi-précision côté index, pleine côté exact (≈ 10⁻³, effet possible pile au seuil) ;
+  3. coût d'écriture de l'index sur `enrich`, à mesurer au banc ;
+  4. stockage : environ 0,45 To d'index pour 10 000 médecins.
