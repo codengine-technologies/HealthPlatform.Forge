@@ -440,3 +440,11 @@ retirée) — prouvé par le test de composant `task-445 — ne propose plus de 
 | **Total cycle** | | **1 h 25 min** | **6 (1 min 51 s)** | **13 (22 min 13 s)** | **2 (45 s)** | |
 
 Autres commandes mesurées : lint ×1 (9.9 s)
+
+## Merged
+
+- **Date** : 2026-11-11 — `/merge task-445 --i-tested` (HAG : test humain attesté)
+- `api-mail` : squash `f9b07235` — PR #361 mergée, label retiré, branche distante + locale supprimées
+  — CI develop ✓ https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/43083327634
+- `client-angular` : code-only, géré par l'humain (commit/push TFS).
+- Staging : aucune branche `forge/staging-*` (task lancée hors `/forge`).
