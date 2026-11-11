@@ -173,10 +173,12 @@ Règles :
 
 ## E2E log
 
+Rejoué après la reprise (CHANGES REQUESTED du /review).
+
 | Voie | Jouée / réutilisée | Résultat | Dépôts couverts |
 |---|---|---|---|
-| mobile | jouée | 60 verts, 0 flaky, 0 rouge, parité de la colonne verte | api-mail `783ff7e1`, client-mobile `develop` |
-| angular | jouée | 80 verts, 0 flaky, 0 rouge, parité de la colonne verte | api-mail `783ff7e1`, client-angular (arbre non commité), Client/Mobile/e2e |
+| mobile | réutilisée (même empreinte que le passage vert de ce cycle) | 60 verts, parité verte | api-mail `783ff7e1`, client-mobile `develop` |
+| angular | jouée | 80 verts, 0 flaky, 0 rouge, parité de la colonne verte | api-mail `783ff7e1`, client-angular (arbre corrigé, non commité), Client/Mobile/e2e |
 
 Démontage vérifié : ports libres, aucun conteneur e2e résiduel.
 
@@ -319,8 +321,8 @@ Démontage vérifié : ports libres, aucun conteneur e2e résiduel.
 | /sonar | skipped | 0.4 s | 1 (24 s) | 5 (8 min 04 s) | 2 (54 s) | api-mail 1B/5T, api-mail inchangé depuis l'analyse de 783ff7e1 (QG OK) |
 | /lint-angular | ok | 19 s | — | — | — | — |
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
-| /e2e | ok | 20 min 27 s | — | — | — | e2e ×3 (20 min 03 s), mobile 60 + angular 80 verts, parité verte |
+| /e2e | ok | 10 min 05 s | — | — | — | e2e ×6 (29 min 50 s), reprise : mobile réutilisée, angular 80 verts |
 | /review | failed | 2 min 27 s | 1 (17 s) | 1 (5 min 51 s) | — | api-mail 1B/1T, CHANGES REQUESTED — highlightHtml perd le style en tête d'un fragment |
-| **Total cycle** | | **27 min 52 s** | **5 (1 min 26 s)** | **9 (20 min 47 s)** | **2 (54 s)** | |
+| **Total cycle** | | **17 min 30 s** | **5 (1 min 26 s)** | **9 (20 min 47 s)** | **2 (54 s)** | |
 
 Autres commandes mesurées : lint ×2 (1 min 05 s)
