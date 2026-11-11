@@ -257,7 +257,7 @@
 | task-444 | archived (PRs dtos-mss #61, api-mail #360 mergées) | Réponse enrichie : endroit trouvé, extrait surligné, patients trouvés par correspondance exacte |
 | task-445 | archived (PR api-mail #361 mergée) | Mode « Résultats de recherche » dans weda2 ; `E2E-SEARCH-004` à `007`, `009` v1 |
 | task-446 | archived (PR api-mail #362 mergée ; weda2 à pousser sur TFS) | Lire un résultat : extrait surligné, endroit, dossier, patients trouvés ; `E2E-SEARCH-010` v1 |
-| task-447 | todo | Portée « tous les dossiers » et tri |
+| task-447 | todo | Tri des résultats ; portée « tous les dossiers » retirée par l'humain le 2026-11-11 (recherche dans le dossier sélectionné seulement) |
 | task-448 | todo | Sélectionner tous les résultats et actions groupées |
 | task-449 | todo | Suggestions pendant la frappe : patients et messages |
 | task-452 | todo | Mesure anonyme de l'expérience |

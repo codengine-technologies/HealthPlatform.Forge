@@ -47,7 +47,7 @@ le même modèle. Le modèle retenu le 2026-11-10 avec l'humain s'inspire de la 
 - [x] Chercher avec les critères du métier : patient, date du document, biologie anormale, expéditeurs, pièce jointe (task-443)
 - [ ] Voir les résultats dans un espace dédié, fidèle à ce que le serveur a trouvé, et en sortir explicitement
 - [ ] Comprendre pourquoi chaque résultat est là, et retrouver d'un geste le patient concerné (serveur prêt : task-444 ; affichage : task-446)
-- [ ] Chercher dans toute la boîte par défaut, choisir l'ordre, et agir sur tous les résultats d'un coup
+- [ ] Choisir l'ordre des résultats, et agir sur tous les résultats d'un coup
 - [ ] Être guidé pendant la frappe par ce que la boîte contient
 - [ ] Mesurer la qualité vécue de la recherche, sans jamais savoir ce qui a été cherché ni par qui
 
@@ -70,7 +70,7 @@ le même modèle. Le modèle retenu le 2026-11-10 avec l'humain s'inspire de la 
 | Réponse enrichie | Savoir où le terme a été trouvé, en voir un extrait, connaître les patients désignés | task-444 | ✅ Livrée côté serveur |
 | Mode « Résultats de recherche » | Voir les résultats dans un espace dédié, les affiner sur place, en sortir explicitement | task-445 | ✅ Livrée dans weda2 |
 | Lire un résultat | Voir l'extrait surligné de chaque résultat et ouvrir le patient trouvé en tête | task-446 | ✅ Livrée dans weda2 |
-| Portée et tri | Chercher dans toute la boîte ou dans le dossier courant, et choisir l'ordre des résultats | task-447 | 🔴 À faire |
+| Tri des résultats | Choisir l'ordre des résultats du dossier sélectionné : pertinence ou plus récents d'abord | task-447 | 🔴 À faire |
 | Actions groupées | Sélectionner tous les résultats, même ceux pas encore affichés, et leur appliquer une action | task-448 | 🔴 À faire |
 | Suggestions pendant la frappe | Recevoir des propositions par catégories (patients, messages) dès les premières lettres | task-449 | 🔴 À faire |
 | Mesure anonyme de l'expérience | (équipe produit) Suivre le taux de recherches sans résultat et la qualité vécue | task-452 | 🔴 À faire |
@@ -91,7 +91,7 @@ flowchart LR
     C --> D[Espace « Résultats de recherche »]
     D --> E[Lire un résultat<br/>extrait surligné]
     D --> F[Ouvrir le patient trouvé]
-    D --> G[Affiner : portée, tri]
+    D --> G[Affiner : tri]
     D --> H[Agir sur tous les résultats]
     D --> I[Fermer la recherche<br/>retour au dossier]
 ```
@@ -104,6 +104,8 @@ la rend telle quelle, à la même position.
 
 ## 6. Règles métier transverses
 
+- **La recherche porte sur le dossier sélectionné, et sur lui seul** (décision de l'humain du 2026-11-11). Aucune
+  recherche dans plusieurs dossiers ni dans toute la boîte.
 - **Rien ne part avant le geste du praticien.** Cocher un critère ne lance pas de recherche ; seul « Lancer la
   recherche » (ou Entrée) la lance (task-442).
 - **Fermer sans lancer ne change rien.** Les critères modifiés et non lancés sont abandonnés ; la recherche affichée
@@ -159,6 +161,8 @@ la rend telle quelle, à la même position.
 
 ## 9. Hors périmètre
 
+- La recherche dans plusieurs dossiers ou dans toute la boîte : écartée par l'humain le 2026-11-11 (task-447 recentrée
+  sur le tri).
 - La justesse de la recherche elle-même (accents, champs, seuil, ordre) : EPIC E022.
 - La refonte mobile de la recherche est suivie à part (task-450) ; d'ici là, le mobile garde son formulaire actuel.
 
@@ -173,7 +177,7 @@ la rend telle quelle, à la même position.
 | Réponse enrichie | ✅ Livrée côté serveur | 100 % | task-444 |
 | Mode « Résultats de recherche » | ✅ Livrée dans weda2 | 100 % | task-445 |
 | Lire un résultat | ✅ Livrée dans weda2 | 100 % | task-446 |
-| Portée et tri | 🔴 À faire | 0 % | task-447 |
+| Tri des résultats | 🔴 À faire | 0 % | task-447 |
 | Actions groupées | 🔴 À faire | 0 % | task-448 |
 | Suggestions pendant la frappe | 🔴 À faire | 0 % | task-449 |
 | Mesure anonyme de l'expérience | 🔴 À faire | 0 % | task-452 |

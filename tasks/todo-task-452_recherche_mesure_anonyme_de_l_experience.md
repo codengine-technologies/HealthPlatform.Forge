@@ -22,12 +22,12 @@ cherché, ni par qui.
 Indicateurs, agrégés par jour et par client (weda2, mobile) :
 - **Taux de recherches sans résultat** (aucun résultat exact).
 - **Nombre d'affinages** avant l'ouverture d'un message ou la fermeture de la recherche (étiquette retirée, filtre
-  ajouté, portée ou tri changés).
+  ajouté, tri changé).
 - **Temps avant ouverture** : du lancement de la recherche à l'ouverture d'un premier message (p50, p95).
 - **Recherches abandonnées** : fermées sans qu'aucun message ne soit ouvert.
 - **Durée vécue** : de « Lancer » à l'affichage des résultats, côté client (p50, p95), et durée côté serveur (p95).
-- **Usage** : part des recherches utilisant un critère médical, une suggestion, la portée « Dossier courant », le tri
-  « Les plus récents », « Sélectionner les N résultats ».
+- **Usage** : part des recherches utilisant un critère médical, une suggestion, le tri « Les plus récents »,
+  « Sélectionner les N résultats ».
 
 Règles :
 - **Anonyme** : aucun terme, aucun critère en clair, aucun identifiant de personne, de patient ou de boîte dans les
