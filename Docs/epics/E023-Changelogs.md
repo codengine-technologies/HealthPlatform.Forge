@@ -54,9 +54,9 @@
 
 ### v0.2 — task-443 : critères médicaux du formulaire (api-mail, dtos-mss, weda2)
 
-- **État** : `done`, PRs en attente de merge humain (HAG) :
-  - dtos-mss [#60](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/60), à merger d'abord ;
-  - api-mail [#359](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/359) ;
+- **État** : `archived`, mergée le 2026-11-11 :
+  - dtos-mss [#60](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/60) → `96db8c7` ;
+  - api-mail [#359](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/359) → `291f7d3b` ;
   - client-angular en code-only, non commité sur `feature/nova-mss-weda-integration`.
 - **Contrat** : `HealthPlatform.Dtos.Mss` 584 puis 585 :
   - `SearchFilterFieldDto.FromAddresses` (20 au plus, OU) et `AttachmentName` ;
@@ -137,7 +137,7 @@
 | Task | État | Contribution |
 |---|---|---|
 | task-442 | archived (PR #358 mergée) | Formulaire de critères à un seul niveau dans weda2 ; `E2E-SEARCH-001` v2 ; « De » choisi parmi les contacts |
-| task-443 | done (PRs dtos-mss #60, api-mail #359) | Critères médicaux : patient, date du document, biologie anormale, expéditeurs, nom de pièce jointe ; `E2E-SEARCH-008` v1 |
+| task-443 | archived (PRs dtos-mss #60, api-mail #359 mergées) | Critères médicaux : patient, date du document, biologie anormale, expéditeurs, nom de pièce jointe ; `E2E-SEARCH-008` v1 |
 | task-444 | todo | Réponse enrichie : extraits, endroit trouvé, patients trouvés |
 | task-445 | todo | Mode « Résultats de recherche » dans weda2 |
 | task-446 | todo | Lire un résultat : extrait surligné et patients trouvés |

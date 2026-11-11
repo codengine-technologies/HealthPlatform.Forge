@@ -1,6 +1,6 @@
 # E023 — Expérience de recherche
 
-> **Statut** : 🟡 En cours (2 features sur 9 : une livrée, une en attente de validation humaine)
+> **Statut** : 🟡 En cours (2 features sur 9 livrées)
 > **Version** : 0.2
 > **Auteur** : PO forge (tasks 442 à 449, 452)
 > **Modèle** : task-driven
@@ -66,7 +66,7 @@ le même modèle. Le modèle retenu le 2026-11-10 avec l'humain s'inspire de la 
 | Fonctionnalité | Ce que le praticien peut faire | Tasks | Statut |
 |---|---|---|---|
 | Formulaire à un seul niveau | Composer tous ses critères au même endroit, puis lancer la recherche ; rien ne part avant ; « De » se choisit parmi ses contacts | task-442 | ✅ Livrée |
-| Critères médicaux | Restreindre la recherche à un patient choisi dans la liste, à la date du document médical, à la biologie marquée anormale par le laboratoire, à un ou plusieurs expéditeurs, au nom d'une pièce jointe | task-443 | 🟢 Livrée, en attente de validation |
+| Critères médicaux | Restreindre la recherche à un patient choisi dans la liste, à la date du document médical, à la biologie marquée anormale par le laboratoire, à un ou plusieurs expéditeurs, au nom d'une pièce jointe | task-443 | ✅ Livrée |
 | Réponse enrichie | Savoir où le terme a été trouvé, en voir un extrait, connaître les patients désignés | task-444 | 🔴 À faire |
 | Mode « Résultats de recherche » | Voir les résultats dans un espace dédié, les affiner sur place, en sortir explicitement | task-445 | 🔴 À faire |
 | Lire un résultat | Voir l'extrait surligné de chaque résultat et ouvrir le patient trouvé en tête | task-446 | 🔴 À faire |
@@ -149,7 +149,7 @@ Le formulaire (task-442) est la porte d'entrée : on y compose, on lance, il se 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
 | Formulaire à un seul niveau | ✅ Livrée | 100 % | task-442 |
-| Critères médicaux | 🟢 Livrée, en attente de validation | 100 % | task-443 |
+| Critères médicaux | ✅ Livrée | 100 % | task-443 |
 | Réponse enrichie | 🔴 À faire | 0 % | task-444 |
 | Mode « Résultats de recherche » | 🔴 À faire | 0 % | task-445 |
 | Lire un résultat | 🔴 À faire | 0 % | task-446 |
@@ -158,7 +158,7 @@ Le formulaire (task-442) est la porte d'entrée : on y compose, on lance, il se 
 | Suggestions pendant la frappe | 🔴 À faire | 0 % | task-449 |
 | Mesure anonyme de l'expérience | 🔴 À faire | 0 % | task-452 |
 
-**Couverture EPIC consolidée : 22 %** (2 features sur 9 : une livrée, une en attente de validation humaine).
+**Couverture EPIC consolidée : 22 %** (2 features livrées sur 9).
 
 ---
 

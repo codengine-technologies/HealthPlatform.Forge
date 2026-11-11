@@ -516,3 +516,11 @@ détail comportement → test → mutation est dans le `## Develop log` et dans 
 | **Total cycle** | | **2 h 33 min** | **14 (3 min 34 s)** | **28 (51 min 58 s)** | **7 (2 min 15 s)** | |
 
 Autres commandes mesurées : lint ×1 (10 s), nuget-wait ×2 (55 s), restore ×2 (49 s)
+
+## Merged
+
+Mergé le 2026-11-11 par l'humain (`/merge task-443 --i-tested`), squash, CI `develop` verte :
+- `dtos-mss` #60 → `96db8c7` (CI develop run 43040617792 : success)
+- `api-mail` #359 → `291f7d3b` (CI develop run 43040661166 : success)
+- `client-angular` : code-only, commit/push TFS et PR à la main de l'humain.
+- Branches `feat/task-443-recherche-criteres-medicaux-du` supprimées (distante et locale) sur Dtos et Api/Mail.
