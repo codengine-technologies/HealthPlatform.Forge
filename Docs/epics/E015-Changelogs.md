@@ -3507,6 +3507,33 @@ nouvelle table par opération est ce qui permettra de les séparer.
 
 ---
 
+### v1.92 — La recherche par le sens passe par un index au lieu de toutes les distances — task-437
+
+- **Task** : task-437 — `done`, PR api-mail [#357](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/357)
+  (`awaiting-human-merge`). Finding FND-010. **Avant le merge** : escalier `enrich` à 16 médecins avant / après, et A/B
+  du tir court (décision humaine du 2026-11-11).
+- **Défaut** : aucune migration n'avait posé d'index sur `Embedding`. Chaque recherche par le sens calculait la distance
+  de toutes les lignes de la boîte : 2,2 ms sur la boîte du banc, 296 ms et 70 439 pages sur une boîte de 11 178 mails
+  (×133). Le banc, quarante fois plus petit, ne pouvait pas le voir.
+- **Livré** :
+  - index HNSW `halfvec`, partiel par modèle d'embedding, sur l'expression typée `("Embedding"::halfvec(D))` (colonne
+    sans dimension, modèles de dimensions différentes dans une même base) ; `m = 24`, `ef_construction = 200` ;
+  - construit en tâche de fond avec le texte cherchable de task-439, hors du sémaphore de migration ; pas de migration ;
+  - requête ordonnée sur l'expression indexée, réglages en `SET LOCAL` (`ef_search = 150`, `iterative_scan`,
+    `enable_seqscan` désactivé), dossier vérifié autour du parcours ; repli exact tant que l'index manque ou quand il a
+    pu couper un petit dossier.
+- **Laboratoire** (copie de la boîte de 11 178 mails, 24 vraies phrases de recherche) :
+  - rappel@10 contre la recherche exacte : 97,9 % sur les contenus, 98,8 % sur les documents (plancher 95 %) ;
+  - contenus 157 → 12,3 ms, documents 11,6 → 4,9 ms ;
+  - index : 44 Mo pour les contenus (88 Mo en `vector`) ;
+  - le réglage par défaut de pgvector ne rendait que 62,5 % des bons voisins (0 % sur six phrases).
+- **Règle 1b** : `SearchVectorIndexIntegrationTests` (plan relevé par `EXPLAIN`, boîte sans index, petit dossier,
+  construction sans blocage), rouges sous trois mutations.
+- **Sonar** : Quality Gate OK, 3 issues du nouveau code corrigées. **E2E** : vert, mobile 60, Angular 73.
+- **Prévention** : `conventions/csharp.md`, `recherche-par-similarite-indexee` ; `S107` complétée.
+
+---
+
 ## Annexe A — Cartographie des briques applicatives
 
 | Brique | Chemin | Rôle |
@@ -3646,3 +3673,4 @@ nouvelle table par opération est ce qui permettra de les séparer.
 | task-433 | **Le banc rédige ses findings par analyse de code.** `/loadtest-findings` : candidats, site au commit du tir, plan sur une base du banc, gain borné, correctif et test, verdict ; contrôle de non-confabulation bloquant ; registre FND avec récidives. Rejeu du 2026-11-06 : 3 findings manuels retrouvés, registre écarté, 2 nouveaux (FND-007, FND-009). Plan de contrôle, pas de PR. | — |
 | task-434 | **Ouvrir un message ne lit plus les vecteurs.** Document et contenu projetés sans `Embedding` ni `MetadataJson` sur quatre chemins de lecture ; garde sur toute la classe `colonne-volumineuse`. Banc : formes FND-007/FND-009 d'avant à 0 (reste 20 appels du bus), pages lues −21 % et −45 %, aucune étape ralentie. PR #352. | — |
 | task-435 | **L'attente PgBouncer ventilée et chiffrée.** Une définition des familles de bases partagée et confrontée ; jugement sur le chemin du médecin ; coût via `SHOW STATS`. Qualification : 100 % sur les bases praticien, 0,5 ms par transaction, 3,2 % du temps HTTP. PR #353. | — |
+| task-437 | **La recherche par le sens passe par un index.** HNSW `halfvec` partiel par modèle, construit en tâche de fond ; rappel@10 97,9 % / 98,8 %, contenus 157 → 12 ms, documents 11,6 → 4,9 ms. FND-010. Banc avant merge. |
