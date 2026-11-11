@@ -401,6 +401,7 @@ et dans la PR api-mail.
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché (Repos: api-mail, dtos-mss) |
 | /e2e | ok | 20 min 19 s | — | — | — | e2e ×3 (19 min 27 s) |
 | /review | ok | 8 min 01 s | 2 (15 s) | 1 (6 min 02 s) | — | dtos-mss 1B/0T, api-mail 1B/1T |
+| /tech-writer | ok | 0.5 s | — | — | — | — |
 | **Total cycle** | | **1 h 31 min** | **12 (1 min 58 s)** | **18 (31 min 28 s)** | **4 (1 min 29 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (20 s), restore ×1 (23 s)

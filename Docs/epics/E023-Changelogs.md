@@ -114,6 +114,49 @@
 
 ---
 
+### v0.3 — task-444 : réponse enrichie — extraits, endroit trouvé, patients trouvés (api-mail, dtos-mss)
+
+- **État** : `done`, PRs en attente de merge humain (HAG) :
+  - dtos-mss [#61](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/61), à merger d'abord ;
+  - api-mail [#360](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/360).
+- **Contrat** : `HealthPlatform.Dtos.Mss` 588, rétrocompatible :
+  - `SearchHitDto.Locations` (`SearchMatchLocation`), `Excerpt` (≤ 200), `ExcerptLocation`, `Highlights`
+    (`SearchHighlightDto`, unités UTF-16) ;
+  - `SearchResponseDto.Patients` (`SearchFoundPatientDto`, ≤ 5, sans INS, `IsInsQualified`) et `IsPatientsTruncated`.
+- **api-mail** :
+  - `SearchExcerpts`, `SearchHitEnrichment` : endroit et extrait en un passage par texte, positions tolérantes
+    (repli caractère par caractère avec position source) ;
+  - `PatientQuery` : correspondance exacte (nom/prénom, nom + date, INS) ;
+  - `SemanticSearchRepository.Explain.cs` : textes de la page (filtre exact dossier + UID), candidats patients (nom
+    plié par `regexp_replace(search_normalize(…))`, `MailDataContext.RegexpReplace`), INS comparée sans être lue ;
+  - `SemanticSearchService` : étape 6, politique unique de mode dégradé (`excerpts`, `patients`) ; une INS n'est jamais
+    envoyée au fournisseur d'embeddings ; `SearchHistoryService` ne garde jamais une requête INS ;
+  - `SearchResultHelper.ToResponse` ; `MailKey` sorti du service vers les modèles.
+- **Tests** : `SearchEnrichedResponseIntegrationTests` (8, mutations B1–B11 rouges, rejouées après la passe qualité) ;
+  unitaires `SearchExcerptsTests`, `PatientQueryTests`, `SearchHitEnrichmentTests`,
+  `SemanticSearchServiceEnrichmentTests`, `SearchHistoryServiceTests`.
+
+  | Suite | Tests verts |
+  |---|---|
+  | api-mail domain | 210 |
+  | api-mail application | 4 193 |
+  | api-mail infrastructure | 743 |
+  | api-mail api | 1 375 |
+  | api-mail intégration | 1 250 (+16 ignorés) |
+
+- **Coût** (`Docs/audits/findings/plans/20261111-task-444/`) : page de 50 sur la copie `srch_lab` (11 291 messages) :
+  +21,4 ms au p50, +45,9 ms au p95.
+- **E2E** : aucun parcours modifié. Voie mobile 60, voie angular 74, parité verte.
+- **Sonar** : 2 itérations ; SYSLIB1045 et hotspot S6444 (regex dans une requête EF) corrigés par la fonction
+  PostgreSQL déclarée à EF. Quality Gate OK, couverture 97,8 %, nouveau code 96,2 %.
+- **Restes** :
+  - nom de naissance et nom d'utilisation non distingués (un seul champ `LastName`) ;
+  - clients : extrait à rendre en texte, `isDegraded` pas encore lu ;
+  - `MailCount` compte la Corbeille.
+- **Préventions** : `conventions/csharp.md` § `identite-patient-exacte` ; SYSLIB1045 variante EF (5).
+
+---
+
 ## Annexe A — Cartographie des briques applicatives
 
 | Brique | Rôle dans E023 |
@@ -122,6 +165,9 @@
 | `Api/Mail/src/Infrastructure/Repositories/MailDb/SemanticSearchRepository.Criteria.cs` | Critères médicaux et liste des expéditeurs (task-443) |
 | `Api/Mail/src/Api/Controllers/V1/SearchController.cs` | `GET /api/v1/search/senders` (task-443) |
 | `Dtos/SearchFilter*.cs`, `Dtos/SearchSenderDto.cs` | Contrat des critères, `HasAnyCriterion` (task-443) |
+| `Api/Mail/src/Application/Helpers/{SearchExcerpts,SearchHitEnrichment,PatientQuery}.cs` | Extraits, endroits trouvés, patients désignés (task-444) |
+| `Api/Mail/src/Infrastructure/Repositories/MailDb/SemanticSearchRepository.Explain.cs` | Textes de la page, candidats patients (task-444) |
+| `Dtos/SearchMatchLocation.cs`, `Dtos/SearchHighlightDto.cs`, `Dtos/SearchFoundPatientDto.cs` | Contrat de la réponse enrichie (task-444) |
 | `Api/Mail/e2e/scenarios.yml` | Catalogue des parcours : `E2E-SEARCH-001` v2 |
 
 ---
@@ -138,7 +184,7 @@
 |---|---|---|
 | task-442 | archived (PR #358 mergée) | Formulaire de critères à un seul niveau dans weda2 ; `E2E-SEARCH-001` v2 ; « De » choisi parmi les contacts |
 | task-443 | archived (PRs dtos-mss #60, api-mail #359 mergées) | Critères médicaux : patient, date du document, biologie anormale, expéditeurs, nom de pièce jointe ; `E2E-SEARCH-008` v1 |
-| task-444 | todo | Réponse enrichie : extraits, endroit trouvé, patients trouvés |
+| task-444 | done (PRs dtos-mss #61, api-mail #360) | Réponse enrichie : endroit trouvé, extrait surligné, patients trouvés par correspondance exacte |
 | task-445 | todo | Mode « Résultats de recherche » dans weda2 |
 | task-446 | todo | Lire un résultat : extrait surligné et patients trouvés |
 | task-447 | todo | Portée « tous les dossiers » et tri |

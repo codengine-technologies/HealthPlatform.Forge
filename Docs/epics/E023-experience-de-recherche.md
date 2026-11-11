@@ -1,7 +1,7 @@
 # E023 — Expérience de recherche
 
-> **Statut** : 🟡 En cours (2 features sur 9 livrées)
-> **Version** : 0.2
+> **Statut** : 🟡 En cours (3 features sur 9 : deux livrées, une en attente de validation humaine)
+> **Version** : 0.3
 > **Auteur** : PO forge (tasks 442 à 449, 452)
 > **Modèle** : task-driven
 > **Dernière mise à jour** : 2026-11-11
@@ -46,7 +46,7 @@ le même modèle. Le modèle retenu le 2026-11-10 avec l'humain s'inspire de la 
 - [x] Composer ses critères dans un seul formulaire, puis lancer la recherche quand on le décide (task-442)
 - [x] Chercher avec les critères du métier : patient, date du document, biologie anormale, expéditeurs, pièce jointe (task-443)
 - [ ] Voir les résultats dans un espace dédié, fidèle à ce que le serveur a trouvé, et en sortir explicitement
-- [ ] Comprendre pourquoi chaque résultat est là, et retrouver d'un geste le patient concerné
+- [ ] Comprendre pourquoi chaque résultat est là, et retrouver d'un geste le patient concerné (serveur prêt : task-444 ; affichage : task-446)
 - [ ] Chercher dans toute la boîte par défaut, choisir l'ordre, et agir sur tous les résultats d'un coup
 - [ ] Être guidé pendant la frappe par ce que la boîte contient
 - [ ] Mesurer la qualité vécue de la recherche, sans jamais savoir ce qui a été cherché ni par qui
@@ -67,7 +67,7 @@ le même modèle. Le modèle retenu le 2026-11-10 avec l'humain s'inspire de la 
 |---|---|---|---|
 | Formulaire à un seul niveau | Composer tous ses critères au même endroit, puis lancer la recherche ; rien ne part avant ; « De » se choisit parmi ses contacts | task-442 | ✅ Livrée |
 | Critères médicaux | Restreindre la recherche à un patient choisi dans la liste, à la date du document médical, à la biologie marquée anormale par le laboratoire, à un ou plusieurs expéditeurs, au nom d'une pièce jointe | task-443 | ✅ Livrée |
-| Réponse enrichie | Savoir où le terme a été trouvé, en voir un extrait, connaître les patients désignés | task-444 | 🔴 À faire |
+| Réponse enrichie | Savoir où le terme a été trouvé, en voir un extrait, connaître les patients désignés | task-444 | 🟢 Livrée côté serveur, en attente de validation |
 | Mode « Résultats de recherche » | Voir les résultats dans un espace dédié, les affiner sur place, en sortir explicitement | task-445 | 🔴 À faire |
 | Lire un résultat | Voir l'extrait surligné de chaque résultat et ouvrir le patient trouvé en tête | task-446 | 🔴 À faire |
 | Portée et tri | Chercher dans toute la boîte ou dans le dossier courant, et choisir l'ordre des résultats | task-447 | 🔴 À faire |
@@ -115,6 +115,10 @@ Le formulaire (task-442) est la porte d'entrée : on y compose, on lance, il se 
   rendu (task-443).
 - **Les critères se combinent.** Ils s'ajoutent les uns aux autres ; plusieurs expéditeurs choisis s'additionnent. Un
   critère seul, sans texte, est une recherche valide (task-443).
+- **Un patient trouvé l'est par correspondance exacte.** Nom et prénom, nom et date de naissance complète, ou INS
+  complète. Jamais de rapprochement approché, phonétique ou par le sens : un nom voisin ne désigne personne (task-444).
+- **L'INS ne sort jamais d'une recherche.** Elle peut être cherchée, mais elle n'est ni affichée, ni journalisée, ni
+  gardée dans l'historique, ni envoyée au moteur d'IA ; seul son statut (qualifiée ou non) est montré (task-444).
 - **Chaque recherche lancée est tracée au nom de la personne qui l'a faite**, comme tout acte sur la boîte. Cocher un
   critère sans lancer n'est pas un acte.
 - **La mesure de l'expérience est anonyme** : elle ne conserve ni le texte cherché ni l'identité de qui cherche.
@@ -150,7 +154,7 @@ Le formulaire (task-442) est la porte d'entrée : on y compose, on lance, il se 
 |---|---|---|---|
 | Formulaire à un seul niveau | ✅ Livrée | 100 % | task-442 |
 | Critères médicaux | ✅ Livrée | 100 % | task-443 |
-| Réponse enrichie | 🔴 À faire | 0 % | task-444 |
+| Réponse enrichie | 🟢 Livrée côté serveur, en attente de validation | 100 % | task-444 |
 | Mode « Résultats de recherche » | 🔴 À faire | 0 % | task-445 |
 | Lire un résultat | 🔴 À faire | 0 % | task-446 |
 | Portée et tri | 🔴 À faire | 0 % | task-447 |
@@ -158,7 +162,7 @@ Le formulaire (task-442) est la porte d'entrée : on y compose, on lance, il se 
 | Suggestions pendant la frappe | 🔴 À faire | 0 % | task-449 |
 | Mesure anonyme de l'expérience | 🔴 À faire | 0 % | task-452 |
 
-**Couverture EPIC consolidée : 22 %** (2 features livrées sur 9).
+**Couverture EPIC consolidée : 33 %** (3 features sur 9 : deux livrées, une en attente de validation humaine).
 
 ---
 
@@ -173,12 +177,17 @@ Le formulaire (task-442) est la porte d'entrée : on y compose, on lance, il se 
 - v0.2 — Le praticien restreint sa recherche avec les critères de son métier : un patient choisi dans la liste, la date
   du document médical, la biologie marquée anormale par le laboratoire, un ou plusieurs expéditeurs de sa boîte, le nom
   d'une pièce jointe. Les critères sont rejoués par l'historique des recherches (task-443).
+- v0.3 — Le serveur dit pourquoi chaque message est trouvé (où, avec un extrait et les mots à surligner, même tapés
+  sans accent) et quels patients de la boîte la recherche désigne. weda2 et le mobile l'afficheront (task-446,
+  task-451) (task-444).
 
 **Conformité réglementaire**
 - Chaque recherche lancée reste tracée au nom de son auteur ; la trace ne porte ni le texte cherché, ni l'identité du
   patient filtré, ni les expéditeurs choisis (task-443).
 - Identito-vigilance : le patient se choisit par ses traits d'identification, jamais par une saisie libre, et son INS
   n'est jamais affiché (task-443).
+- Identito-vigilance : un patient n'est proposé que sur une correspondance exacte ; une INS tapée en recherche n'est
+  ni rendue, ni gardée dans l'historique, ni envoyée au fournisseur d'IA (task-444).
 
 **Sécurité**
 - La liste des expéditeurs de la boîte, comme toute lecture de la boîte, est fermée sans le verdict de l'opérateur
