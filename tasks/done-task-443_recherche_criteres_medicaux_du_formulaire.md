@@ -447,6 +447,58 @@ fichiers `.ts` de la task (le `.html` et le `.spec.ts` sont hors d'ESLint), puis
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
 
+## PRs
+
+- `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/60 — label `awaiting-human-merge`
+  (contrat 584/585, à merger en premier)
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/359 — label `awaiting-human-merge`
+- `client-angular` : code-only — l'humain gère le commit, le push TFS et l'ouverture de la PR. Branche
+  `feature/nova-mss-weda-integration`. Fichiers modifiés :
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`
+  - `front/libs/mss/src/core/models/search.model.ts`
+  - `front/libs/mss/src/core/services/mss-api.service.ts`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search.component.scss`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search.component.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search.component.ts`
+
+  Fichiers nouveaux :
+  - `front/libs/mss/src/features/mail/components/mail-search/_mail-search-combobox.scss`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search-picker.scss`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search-patient-picker/` (`.ts`, `.html`, `.spec.ts`)
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search-sender-picker/` (`.ts`, `.html`)
+
+## Code Review Summary
+
+**APPROVED** — 0 bloquant, 4 suggestions.
+
+| Validation | Résultat |
+|---|---|
+| Build api-mail / dtos-mss / weda2 | ✅ / ✅ / ✅ |
+| Tests api-mail | ✅ domain 210, application 4 098, infrastructure 743, api 1 375, intégration 1 242 (+16 ignorés), 0 échec |
+| Tests weda2 / mss-lib | ✅ 2 683 / 1 526, 0 échec |
+| SonarQube | ✅ Quality Gate OK, 0 issue, couverture 97,8 %, nouveau code 96,0 % |
+| E2E | ✅ vert (mobile 60, angular 74), parité verte |
+| DoD | ✅ toutes les lignes vérifiées ; le visuel est repris dans le Manual Test Plan |
+
+**Règle 1b** : chaque comportement atteignable par un endpoint a son test d'intégration de bout en bout, vu rouge. Le
+détail comportement → test → mutation est dans le `## Develop log` et dans la PR api-mail.
+
+**DoD, points notables** :
+- contrat publié et consommateur .NET porté : api-mail en 585 ;
+- `client-blazor` n'est pas dans les `**Repos**` : non porté, sans incidence, le contrat est rétrocompatible ;
+- types TypeScript de weda2 alignés (`search.model.ts`) ;
+- `E2E-SEARCH-008` v1 au catalogue et dans weda2, mobile en divergence task-451 ;
+- prévention : `conventions/csharp.md` § `critere-de-recherche-sur-toutes-les-sources`.
+
+**Suggestions (non bloquantes)** :
+- Le nom de pièce jointe est normalisé à la volée : l'index trigramme de task-439 n'est pas utilisé. À mesurer sur une
+  grosse boîte.
+- La recherche de patients ne porte que sur le nom : le prénom, le nom de naissance et le nom d'utilisation cités par
+  l'objectif ne sont pas distingués. La fiche n'a qu'un champ nom.
+- « De » et « Expéditeurs » filtrent tous deux l'expéditeur, combinés en ET : question produit.
+- Le champ « De » (task-442) n'a pas le délai de frappe de la recherche de patients.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-443 --sync` — ne pas éditer à la main)*
@@ -459,6 +511,7 @@ fichiers `.ts` de la task (le `.html` et le `.spec.ts` sont hors d'ESLint), puis
 | /lint-angular | ok | 33 s | — | — | — | 0 erreur ; avertissements antérieurs |
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 52 min 03 s | — | — | — | e2e ×6 (48 min 46 s), 2 voies vertes ; test E2E-SEARCH-008 corrigé deux fois |
-| **Total cycle** | | **2 h 24 min** | **11 (3 min 03 s)** | **26 (45 min 30 s)** | **7 (2 min 15 s)** | |
+| /review | ok | 7 min 51 s | 3 (31 s) | 2 (6 min 28 s) | — | dtos-mss 1B/0T, client-angular 1B/1T, api-mail 1B/1T |
+| **Total cycle** | | **2 h 32 min** | **14 (3 min 34 s)** | **28 (51 min 58 s)** | **7 (2 min 15 s)** | |
 
 Autres commandes mesurées : lint ×1 (10 s), nuget-wait ×2 (55 s), restore ×2 (49 s)
