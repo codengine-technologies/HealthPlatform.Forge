@@ -246,6 +246,10 @@ Règles reprises de task-441 (fidélité au serveur) :
 - Conventions : aucune règle corrigée à la main → `conventions/angular.md` inchangé (hors consigne de prévention posée par
   `/develop`).
 
+## Lint mobile log
+
+- skipped — `client-mobile` absent des `**Repos**` et arbre propre (sur `develop`).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-445 --sync` — ne pas éditer à la main)*
@@ -256,6 +260,7 @@ Règles reprises de task-441 (fidélité au serveur) :
 | /develop | ok | 43 min 46 s | 3 (43 s) | 6 (7 min 57 s) | — | client-angular 2B/5T, api-mail 1B/1T |
 | /sonar | ok | 10 min 14 s | 1 (44 s) | 5 (7 min 53 s) | 2 (45 s) | api-mail 1B/5T |
 | /lint-angular | ok | 28 s | — | — | — | — |
+| /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non touché |
 | **Total cycle** | | **54 min 50 s** | **4 (1 min 28 s)** | **11 (15 min 51 s)** | **2 (45 s)** | |
 
 Autres commandes mesurées : lint ×1 (9.9 s)
