@@ -647,3 +647,28 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   résultats, fermer garde le brouillon, rouvrir vide le formulaire) ; `E2E-SEARCH-001` v2.
 - **Origine** : task-442 (/develop, demande produit E023)
 - **Occurrences** : 1
+
+### liste-ordonnee-par-le-serveur — Un client affiche la réponse du serveur telle quelle, et en lit tous les signaux
+- **Règle** : convention projet (fidélité au serveur, invisible au lint)
+- **Repos** : les deux
+- **Piège** : la recherche de weda2 ne gardait de la réponse que les `uids`. Elle rattachait chaque
+  résultat par son UID **dans le dossier affiché** (un message d'Envoyés de même numéro devenait celui
+  de la boîte), les affichait sous le titre du dossier, avec ses filtres Tous / Lus / Non lus qui
+  **refiltraient** localement la réponse, paginait côté client les 50 premiers, et ignorait
+  `isTruncated` (« il y en a d'autres »), `isDegraded` (« un moteur n'a pas répondu ») et le groupe de
+  chaque résultat. Sur une erreur, l'ancienne liste restait à l'écran comme résultat de la nouvelle.
+- **Consigne** :
+  - une liste **ordonnée par le serveur** (résultats de recherche, pages servies) s'affiche dans son
+    ordre : aucun tri, aucun filtre local ; un filtre d'écran devient un critère de la requête ;
+  - chaque élément se rattache par **tout** son identifiant rendu (dossier **et** UID, `hits`), jamais
+    par la partie qui suffit dans le cas courant ;
+  - **tous** les signaux de la réponse sont lus et dits à l'écran : `isTruncated` (« N+ », « Voir
+    plus », qui demande la page suivante au serveur), `isDegraded` (bandeau), le groupe de chaque
+    résultat (parties titrées) ;
+  - une erreur se dit, et vide la liste : jamais l'ancienne liste sous une nouvelle requête ;
+  - côté test : un double de réponse porte ces signaux, et un test par signal le lit à l'écran.
+- **Preuve** : `mail-search-session.spec.ts`, `mail-list.search-mode.spec.ts` (task-445), rouges sous
+  mutation (tri local, rattachement par le dossier affiché, panne non lue, « Voir plus » sur la
+  première page, erreur qui garde la liste) ; `E2E-SEARCH-004` à `007`.
+- **Origine** : task-445 (campagne recherche du 2026-11-09, reprise de task-441)
+- **Occurrences** : 1
