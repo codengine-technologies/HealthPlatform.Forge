@@ -113,6 +113,40 @@ Règles :
 - `api-mail` (pushed) : feat/task-442-recherche-formulaire-de-criteres-a-un — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-442-recherche-formulaire-de-criteres-a-un (catalogue e2e)
 - `client-angular` (code-only) : la forge écrit le code sur la branche extraite dans `Client/Angular/` (au `/start` : `feature/nova-mss-weda-integration`, propre) — l'humain gère branche, commit, push, PR TFS
 
+## Sonar log
+
+**Mode A** (chaîné depuis `/develop`), `api-mail`, branche `feat/task-442-…`, 1 analyse (build `Release`).
+La branche ne porte qu'un changement de `e2e/scenarios.yml`. Ce fichier n'appartient à aucun projet MSBuild, et le
+scanner .NET ne l'indexe pas. L'analyse est jouée quand même : le playbook ne prévoit le skip que pour une branche
+sans commit. Son coût est mesuré pour décider plus tard d'un skip propre dans ce cas (voir le rapport de fin de cycle).
+
+SonarQube local était arrêté (conteneurs `sonarqube` et `sonarqube_db` sortis en 255, sans doute au redémarrage de
+Docker). Ils ont été relancés avant l'analyse.
+
+### KPIs qualité (baseline → final)
+
+| KPI | Baseline (analyse du 2026-11-10, task-437) | Final |
+|---|---|---|
+| Quality Gate | OK | **OK** |
+| Bugs / Vulnérabilités | 0 / 0 | 0 / 0 |
+| Code smells | 0 | **0** |
+| Hotspots à revoir | 0 | 0 |
+| Couverture globale | 97,8 % | **97,8 %** |
+| Couverture du nouveau code | — | **96,0 %** (période de référence du projet, pas la task) |
+| Duplication | 0,4 % | 0,4 % |
+| Ratings (fiabilité / sécurité / maintenabilité) | A / A / A | A / A / A |
+
+**Phase 1 — nouveau code** : 0 issue. Rien à corriger, aucune itération supplémentaire.
+
+**Phase 2 — dette ancienne** : 0 issue ouverte sur le projet.
+
+**Tests de l'analyse** : domain 210, application 4 054, infrastructure 737, api 1 375, intégration 1 232
+(+ 16 ignorés), 0 échec, aucun plantage masqué (`FATAL` / `Test Run Aborted` absents).
+
+**Coût** : 11 min 25 s (build 47 s, tests 8 min 25 s, scans 47 s), pour une branche dont aucun fichier n'est analysé.
+
+**Conventions** : aucune règle Sonar corrigée à la main, aucune entrée.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-442 --sync` — ne pas éditer à la main)*
@@ -121,7 +155,8 @@ Règles :
 |---|---|---|---|---|---|---|
 | /start | ok | 14 s | — | — | — | — |
 | /develop | ok | 21 min 02 s | 3 (1 min 30 s) | 2 (1 min 02 s) | — | client-angular 2B/2T, api-mail 1B/0T |
-| **Total cycle** | | **21 min 16 s** | **3 (1 min 30 s)** | **2 (1 min 02 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 11 min 25 s | 1 (47 s) | 5 (8 min 25 s) | 2 (47 s) | 1 itération(s), api-mail 1B/5T, api-mail touché par e2e/scenarios.yml seul : analyse complète jouée, rien à indexer |
+| **Total cycle** | | **32 min 42 s** | **4 (2 min 17 s)** | **7 (9 min 27 s)** | **2 (47 s)** | |
 
 ## Develop log
 
