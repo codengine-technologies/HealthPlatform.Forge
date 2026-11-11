@@ -147,6 +147,30 @@ Docker). Ils ont été relancés avant l'analyse.
 
 **Conventions** : aucune règle Sonar corrigée à la main, aucune entrée.
 
+## Lint log
+
+**Mode A** (chaîné depuis `/sonar`), `client-angular` code-only, branche extraite
+`feature/nova-mss-weda-integration`, base `origin/next`. Aucune opération git d'écriture.
+
+Lint lancé par le contournement consigné au playbook (task-367) : `nx run-many -t lint -p mss-lib`, puis
+`eslint --format json` sur les fichiers `.ts` de la task. Les `.html` et `.spec.ts` sont hors du périmètre
+d'ESLint. Le SCSS passe par `stylelint`.
+
+| Mesure | Résultat |
+|---|---|
+| Erreurs ESLint (mss-lib + fichiers de la task) | **0** |
+| Avertissements mss-lib | 48, dont 1 sur un fichier de la task |
+| `mail-search.component.ts` | 1 avertissement `max-lines` (789 lignes ; **723 avant la task**, déjà au-dessus de 500) |
+| `e2e/mss-e2e/specs/functional.e2e.ts` | 5 avertissements, tous antérieurs (`max-lines`, `jsdoc/require-example` lignes 800, 828, 3663, 3674 ; le test de la task est vers la ligne 1150) |
+| `stylelint` sur `mail-search.component.scss` | 0 |
+
+**Itérations** : 0. Aucune erreur, et aucun avertissement sur une ligne ajoutée. Les 8 avertissements que
+l'auto-fixer saurait corriger sont dans des fichiers hors de la task : les corriger ajouterait au diff TFS
+de l'humain des changements sans rapport avec la recherche.
+
+**Conventions** : aucune règle corrigée à la main, aucune entrée. Le dépassement `max-lines` du composant
+(+66 lignes) est signalé au rapport de fin de cycle ; le découpage du composant est hors de l'objet de la task.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-442 --sync` — ne pas éditer à la main)*
@@ -156,7 +180,10 @@ Docker). Ils ont été relancés avant l'analyse.
 | /start | ok | 14 s | — | — | — | — |
 | /develop | ok | 21 min 02 s | 3 (1 min 30 s) | 2 (1 min 02 s) | — | client-angular 2B/2T, api-mail 1B/0T |
 | /sonar | ok | 11 min 25 s | 1 (47 s) | 5 (8 min 25 s) | 2 (47 s) | 1 itération(s), api-mail 1B/5T, api-mail touché par e2e/scenarios.yml seul : analyse complète jouée, rien à indexer |
-| **Total cycle** | | **32 min 42 s** | **4 (2 min 17 s)** | **7 (9 min 27 s)** | **2 (47 s)** | |
+| /lint-angular | ok | 58 s | — | — | — | 0 erreur ; avertissements antérieurs |
+| **Total cycle** | | **33 min 40 s** | **4 (2 min 17 s)** | **7 (9 min 27 s)** | **2 (47 s)** | |
+
+Autres commandes mesurées : lint ×1 (9.7 s)
 
 ## Develop log
 
