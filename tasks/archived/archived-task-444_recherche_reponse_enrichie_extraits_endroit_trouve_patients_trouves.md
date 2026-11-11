@@ -405,3 +405,12 @@ et dans la PR api-mail.
 | **Total cycle** | | **1 h 31 min** | **12 (1 min 58 s)** | **18 (31 min 28 s)** | **4 (1 min 29 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (20 s), restore ×1 (23 s)
+
+## Merged
+
+- **Date** : 2026-11-11 — `/merge task-444 --i-tested` (HAG : test humain attesté)
+- `dtos-mss` : squash `941faec` — PR #61 mergée, label retiré, branche distante + locale supprimées
+  — CI develop ✓ https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/actions/runs/43063874752
+- `api-mail` : squash `80afeff4` — PR #360 mergée, label retiré, branche distante + locale supprimées
+  — CI develop ✓ https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/43063921370
+- Staging : aucune branche `forge/staging-*` sur ces dépôts (task lancée hors `/forge`).
