@@ -26,7 +26,8 @@ Lecture du code au 2026-11-10 (`Client/Angular/front/libs/mss/src/features/mail/
 ## Objective
 
 Le médecin ouvre la fenêtre de recherche, compose ses critères dans **un seul formulaire**, puis lance la recherche.
-La fenêtre se ferme et laisse voir les résultats.
+La fenêtre se ferme et laisse voir les résultats.  
+Si le médecin clique en dehors de cette fenètre, elle se ferme automatiquelent.
 
 Règles :
 - **Un seul niveau** : les filtres rapides et les critères avancés (De, À ou Cc, Objet, Type de document, Période,
