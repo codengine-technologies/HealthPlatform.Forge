@@ -108,3 +108,16 @@ Règles :
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : non applicable au client — aucune donnée stockée
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+- `api-mail` (pushed) : feat/task-442-recherche-formulaire-de-criteres-a-un — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-442-recherche-formulaire-de-criteres-a-un (catalogue e2e)
+- `client-angular` (code-only) : la forge écrit le code sur la branche extraite dans `Client/Angular/` (au `/start` : `feature/nova-mss-weda-integration`, propre) — l'humain gère branche, commit, push, PR TFS
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-442 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 14 s | — | — | — | — |
+| **Total cycle** | | **14 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
