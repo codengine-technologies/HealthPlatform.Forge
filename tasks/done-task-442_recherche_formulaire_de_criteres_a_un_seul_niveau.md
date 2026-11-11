@@ -328,6 +328,55 @@ prouvé par son scénario e2e :
   (historique / formulaire) mériterait une task.
 - `mail-search.component.html` : écrire les puces statut et médical en catalogue `@for`, comme les puces période et type.
 
+## Develop log — reprise du design (2026-11-11, après la PR)
+
+Demande humaine : « le design ne va pas ». Maquettes : canevas Claude Design « Formulaire de recherche
+weda2 », puis écran Stitch `mail-search` du projet HealthPlatform, retenu. Puis : « applique le design de
+Stitch, avec un champ De qui permet de sélectionner un contact pour garantir une adresse valide ».
+
+- **Design Stitch appliqué** :
+  - fenêtre de 560 px, plus large que la barre ;
+  - puces neutres, bleues avec une coche une fois cochées : plus de violet ni de vert par section ;
+  - puces Statut et Contenu médical en catalogues `@for` ;
+  - les 13 puces de type de document sont retirées : le type se choisit dans la liste, « Tous les
+    types », avec les libellés du médecin, Ordonnances et Chirurgie ;
+  - champs de 40 px sur deux colonnes ;
+  - pied fixe : « N critères », puis « Réinitialiser » et « Lancer la recherche », chacun sur une ligne.
+- **« De » choisi parmi les contacts**, comme à la rédaction :
+  - à l'entrée dans le champ, les favoris ; à partir de deux lettres, la recherche de contacts
+    (`searchContacts`, dans un `switchMap`) ;
+  - le choix d'un contact donne une puce avec l'adresse, et une croix pour la retirer ;
+  - Entrée sur une adresse complète la retient ; Entrée sur un nom retient le premier contact proposé ;
+    Entrée dans le champ vide lance la recherche ;
+  - Échap ferme la liste, pas le formulaire ;
+  - le texte tapé sans choix n'est jamais un critère, et un message invite à choisir.
+- **Spec** : 30 tests. Les mutations N1 à N7 du champ « De » sont rouges :
+
+  | Mutation | Tests rouges |
+  |---|---|
+  | N1 texte tapé envoyé | 6 |
+  | N2 premier contact ignoré | 1 |
+  | N3 tout texte accepté | 2 |
+  | N4 réponse dépassée | 1 |
+  | N5 Échap ferme le formulaire | 1 |
+  | N6 Réinitialiser garde la saisie | 1 (test corrigé après une première survie) |
+  | N7 tous les contacts d'emblée | 1 |
+
+  M1 à M7 rejouées : toujours rouges.
+- **E2E** : `E2E-SEARCH-001` vérifie qu'un nom tapé dans « De » n'est pas envoyé, et que le message
+  s'affiche. L'attendu du catalogue est complété, à la même version 2.
+- **Validation** : build weda2 vert ; weda2 2 683 tests, mss-lib 1 509 tests ; ESLint 0 erreur (seul
+  l'avertissement `max-lines` existait déjà) ; stylelint 0.
+- **Prévention** : consigne ajoutée à `conventions/angular.md` § `formulaire-qui-lance-avant-son-bouton`.
+- **Correctif d'affichage** (capture humaine : fenêtre coupée à droite par la colonne de la liste) :
+  - la fenêtre est désormais en `position: fixed`, placée sous la barre par le composant (`placePanel`,
+    recalculée au redimensionnement) ;
+  - largeur de 560 px au plus, sans sortir de l'écran ; le pied passe à la ligne si la place manque.
+  - Seul le spec du composant a été rejoué (30 verts), à la demande de l'humain, qui vérifie à l'écran.
+- **E2E non rejoué** : la voie Angular s'est arrêtée en code 2, car le port 5052 était occupé par
+  l'AppHost api-mail de l'humain. Ce n'est pas une régression. Sur consigne humaine, elle n'est pas
+  relancée : l'humain vérifie.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-442 --sync` — ne pas éditer à la main)*

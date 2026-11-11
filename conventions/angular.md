@@ -637,6 +637,11 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   **Côté test** : un test par entrée (puce, champ, Entrée, bouton) qui prouve qu'aucune requête
   ne part avant le bouton ; en e2e, compter les requêtes émises sur tout le parcours
   (`page.on('request')`) et exiger exactement une après « Lancer ».
+  **Un champ qui désigne une personne** (« De », un destinataire) se **choisit parmi les
+  contacts**, comme à la rédaction (`contactRecipientSuggestions`, favoris à l'entrée, recherche
+  à partir de deux lettres dans un `switchMap`) : seule une adresse choisie, ou tapée en entier
+  (`isWellFormedMailAddress`) puis Entrée, devient un critère. Le texte tapé sans choix n'est
+  jamais envoyé, et un message invite à choisir. Demande humaine du 2026-11-11 (task-442).
 - **Preuve** : `mail-search.component.spec.ts` (18 tests), 7 mutations rouges (un filtre lance,
   Lancer ne ferme pas, Entrée ne lance pas, Lancer toujours actif, Réinitialiser efface les
   résultats, fermer garde le brouillon, rouvrir vide le formulaire) ; `E2E-SEARCH-001` v2.
