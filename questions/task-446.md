@@ -1,3 +1,5 @@
+> **Résolu** le 2026-11-11 par la 2ᵉ reprise de `/develop task-446` : A1 corrigé (`hasDocumentHead` partagé par le surlignage et le cadre), tests vus rouges (R5, R6).
+
 # task-446 — /review (2ᵉ passage) : CHANGES REQUESTED
 
 **Étape** : `/review` après la reprise de `/develop`, 2026-11-11. La chaîne est arrêtée avant l'ouverture de la PR

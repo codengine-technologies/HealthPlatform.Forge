@@ -9243,3 +9243,9 @@
 {"ts":"2026-11-11T22:11:15+01:00","run_id":"-","type":"step","task":"task-446","step":"e2e","status":"ok","note":"reprise : mobile réutilisée, angular 80 verts","iterations":null,"duration_ms":605158}
 {"ts":"2026-11-11T22:12:33+01:00","run_id":"-","type":"step_start","task":"task-446","step":"review"}
 {"ts":"2026-11-11T22:12:34+01:00","run_id":"-","type":"step","task":"task-446","step":"review","status":"failed","note":"CHANGES REQUESTED — A1 : test de forme désaligné sur le cadre","iterations":null,"duration_ms":475}
+{"ts":"2026-11-11T22:29:22+01:00","run_id":"-","type":"step_start","task":"task-446","step":"develop"}
+{"ts":"2026-11-11T22:32:23+01:00","run_id":"-","type":"cmd","task":"task-446","step":"develop","repo":"client-angular","kind":"test","label":"","cwd":"Client/Angular/front","cmd":"npx nx run-many -t test --projects=mss-lib,weda2 --skip-nx-cache --output-style=static","duration_ms":32565,"exit_code":0}
+{"ts":"2026-11-11T22:32:40+01:00","run_id":"-","type":"cmd","task":"task-446","step":"develop","repo":"client-angular","kind":"build","label":"","cwd":"Client/Angular/front","cmd":"npx nx build weda2 --skip-nx-cache --output-style=static","duration_ms":15722,"exit_code":0}
+{"ts":"2026-11-11T22:33:07+01:00","run_id":"-","type":"step","task":"task-446","step":"develop","status":"ok","note":"reprise 2 : A1","iterations":null,"duration_ms":225195}
+{"ts":"2026-11-11T22:33:08+01:00","run_id":"-","type":"step_start","task":"task-446","step":"sonar"}
+{"ts":"2026-11-11T22:33:09+01:00","run_id":"-","type":"step","task":"task-446","step":"sonar","status":"skipped","note":"api-mail inchangé depuis l'analyse de 783ff7e1 (QG OK)","iterations":null,"duration_ms":495}

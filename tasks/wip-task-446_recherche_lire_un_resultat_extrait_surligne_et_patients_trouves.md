@@ -310,6 +310,21 @@ Démontage vérifié : ports libres, aucun conteneur e2e résiduel.
 
 - Reprise : lint `mss-lib` + `mss-e2e` rejoué sur l'arbre corrigé — 0 erreur, avertissements inchangés (52 / 48) ; mobile toujours non touché.
 
+## Develop log — 2ᵉ reprise (A1)
+
+- `hasDocumentHead(html)` (`text-highlight.util.ts`) : une seule définition de « HTML qui porte son en-tête »,
+  partagée par `highlightHtml` et `medical-html-frame` (`wrapWithDesignTokens`). Le surlignage ne peut plus faire
+  changer le cadre d'avis : un `<html><body>` sans `<head>`, avec ou sans doctype, reste enveloppé (liens ouverts à
+  part, doctype, viewport) ; un `<head>` dans un commentaire est jugé de la même façon avant et après.
+- Tests : `medical-html-frame.component.spec.ts` « corps surligné (task-446) » — pour cinq formes (fragment, document
+  sans en-tête, doctype sans en-tête, en-tête en commentaire, document complet), le cadre enveloppe le HTML surligné
+  **comme sans surlignage** ; document à en-tête : jetons injectés, en-tête gardé. Vus rouges sur le code d'avant
+  (2 formes).
+- Mutations : R5 surlignage revenu à l'ancien test (`<html`) → 2 rouges ; R6 cadre jugeant autrement → 2 rouges.
+- Validation : `mss-lib` 1 610 verts, `weda2` 2 683, `nx build weda2` vert, ESLint 0 erreur (avertissements
+  préexistants du cadre). api-mail inchangé (`783ff7e1`).
+- Next step : /sonar task-446
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-446 --sync` — ne pas éditer à la main)*
@@ -317,12 +332,12 @@ Démontage vérifié : ports libres, aucun conteneur e2e résiduel.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 14 s | — | — | — | — |
-| /develop | ok | 4 min 22 s | 3 (45 s) | 3 (6 min 51 s) | — | api-mail 1B/1T, client-angular 2B/2T, reprise : A, B, C corrigés |
+| /develop | ok | 3 min 45 s | 4 (1 min 01 s) | 4 (7 min 24 s) | — | api-mail 1B/1T, client-angular 3B/3T, reprise 2 : A1 |
 | /sonar | skipped | 0.4 s | 1 (24 s) | 5 (8 min 04 s) | 2 (54 s) | api-mail 1B/5T, api-mail inchangé depuis l'analyse de 783ff7e1 (QG OK) |
 | /lint-angular | ok | 19 s | — | — | — | — |
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 10 min 05 s | — | — | — | e2e ×6 (29 min 50 s), reprise : mobile réutilisée, angular 80 verts |
-| /review | failed | 2 min 27 s | 1 (17 s) | 1 (5 min 51 s) | — | api-mail 1B/1T, CHANGES REQUESTED — highlightHtml perd le style en tête d'un fragment |
-| **Total cycle** | | **17 min 30 s** | **5 (1 min 26 s)** | **9 (20 min 47 s)** | **2 (54 s)** | |
+| /review | failed | 0.4 s | 1 (17 s) | 1 (5 min 51 s) | — | api-mail 1B/1T, CHANGES REQUESTED — A1 : test de forme désaligné sur le cadre |
+| **Total cycle** | | **14 min 25 s** | **6 (1 min 42 s)** | **10 (21 min 20 s)** | **2 (54 s)** | |
 
 Autres commandes mesurées : lint ×2 (1 min 05 s)
