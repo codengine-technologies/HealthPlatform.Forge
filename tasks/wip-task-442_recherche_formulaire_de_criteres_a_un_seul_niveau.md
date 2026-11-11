@@ -171,6 +171,10 @@ de l'humain des changements sans rapport avec la recherche.
 **Conventions** : aucune règle corrigée à la main, aucune entrée. Le dépassement `max-lines` du composant
 (+66 lignes) est signalé au rapport de fin de cycle ; le découpage du composant est hors de l'objet de la task.
 
+## Lint mobile log
+
+- skipped — client-mobile non touché (absent des `**Repos**`). Le parcours mobile de `E2E-SEARCH-001` reste en v1 sous divergence temporaire (task-450).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-442 --sync` — ne pas éditer à la main)*
@@ -181,6 +185,7 @@ de l'humain des changements sans rapport avec la recherche.
 | /develop | ok | 21 min 02 s | 3 (1 min 30 s) | 2 (1 min 02 s) | — | client-angular 2B/2T, api-mail 1B/0T |
 | /sonar | ok | 11 min 25 s | 1 (47 s) | 5 (8 min 25 s) | 2 (47 s) | 1 itération(s), api-mail 1B/5T, api-mail touché par e2e/scenarios.yml seul : analyse complète jouée, rien à indexer |
 | /lint-angular | ok | 58 s | — | — | — | 0 erreur ; avertissements antérieurs |
+| /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | **Total cycle** | | **33 min 40 s** | **4 (2 min 17 s)** | **7 (9 min 27 s)** | **2 (47 s)** | |
 
 Autres commandes mesurées : lint ×1 (9.7 s)
