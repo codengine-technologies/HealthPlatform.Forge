@@ -712,6 +712,8 @@ par lint sur du code frais est un échec de lecture de ce fichier.
     **en tête** du fragment (revue de task-446, CHANGES REQUESTED, puis reprise). **Le test de forme est celui de
     l'hôte, au caractère près** (une seule définition partagée) : sinon un `<html><body>` sans `<head>` sort de
     l'enveloppe de l'hôte dès qu'on le retravaille (2ᵉ revue de task-446).
+    Piège connu, antérieur : le test de l'hôte `/<head[^>]*>/i` reconnaît aussi `<header>` (un fragment qui en contient
+    n'est jamais enveloppé) — à resserrer en `/<head[\s>]/i` par une task de suivi, aux deux endroits à la fois.
 - **Preuve** : `text-highlight.util.spec.ts`, `mail-list.search-mode.spec.ts` (« un extrait qui contient du balisage
   s'affiche comme du texte »), `mail-detail.search-highlight.spec.ts`, `mail-body.component.spec.ts` ; rouges sous la
   mutation `[innerHTML]` (N7).

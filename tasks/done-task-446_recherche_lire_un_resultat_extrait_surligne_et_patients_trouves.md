@@ -325,6 +325,81 @@ Démontage vérifié : ports libres, aucun conteneur e2e résiduel.
   préexistants du cadre). api-mail inchangé (`783ff7e1`).
 - Next step : /sonar task-446
 
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/362 — label `awaiting-human-merge`
+- `client-angular` : code-only — humain gère commit/push TFS et ouverture PR, sur `feature/nova-mss-weda-integration`.
+  ⚠️ **À commiter avant le merge de #362** : `functional.e2e.ts` (E2E-SEARCH-010 ; 004 à 009 de task-445 s'ils ne le
+  sont pas). L'arbre porte aussi le travail non commité de task-442/443/445. Fichiers modifiés ou nouveaux sous `front/` :
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`
+  - `front/e2e/mss-e2e/support/e2e-backend.ts`
+  - `front/libs/mss/src/core/models/search.model.ts`
+  - `front/libs/mss/src/core/services/mss-api.service.ts`
+  - `front/libs/mss/src/features/mail/components/mail-body/mail-body.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-body/mail-body.component.scss`
+  - `front/libs/mss/src/features/mail/components/mail-body/mail-body.component.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-body/mail-body.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.component.scss`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.component.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.on-behalf-of.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.read-receipt.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.side-panel.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.stale-content.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.component.scss`
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.list-sources.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search.component.scss`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search.component.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search.component.ts`
+  - `front/libs/mss/src/features/mail/components/medical-html-frame/medical-html-frame.component.spec.ts`
+  - `front/libs/mss/src/features/mail/components/medical-html-frame/medical-html-frame.component.ts`
+  - `front/libs/mss/src/features/mail/mss-mail.component.list-sources.spec.ts`
+  - `front/libs/mss/src/features/mail/services/mail-state.service.ts`
+  - `front/libs/mss/src/features/settings/mss-settings.component.html`
+  - `front/libs/mss/src/features/settings/mss-settings.component.scss`
+  - `front/libs/mss/src/features/settings/mss-settings.component.spec.ts`
+  - `front/libs/mss/src/features/settings/mss-settings.component.ts`
+  - `front/libs/mss/src/core/utils/text-highlight.util.spec.ts`
+  - `front/libs/mss/src/core/utils/text-highlight.util.ts`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.search-highlight.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.search-mode.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-search-results/mail-search-results.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-search-results/mail-search-results.component.scss`
+  - `front/libs/mss/src/features/mail/components/mail-search-results/mail-search-results.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-search/_mail-search-combobox.scss`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search-patient-picker/mail-search-patient-picker.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search-patient-picker/mail-search-patient-picker.component.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search-patient-picker/mail-search-patient-picker.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search-picker.scss`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search-sender-picker/mail-search-sender-picker.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search-sender-picker/mail-search-sender-picker.component.ts`
+  - `front/libs/mss/src/features/mail/services/mail-search-session.spec.ts`
+  - `front/libs/mss/src/features/mail/services/mail-search-session.ts`
+  - `front/libs/mss/src/features/mail/services/mail-search-tags.spec.ts`
+  - `front/libs/mss/src/features/mail/services/mail-search-tags.ts`
+
+## Code Review Summary
+
+**APPROVED** (3ᵉ passage) — 0 bloquant.
+
+- Passage 1 : CHANGES REQUESTED — `highlightHtml` perdait le `<style>` de tête d'un fragment et les attributs de
+  `<body>` (A) ; suggestions B (texte brut recalculé à chaque rendu) et C (accent décomposé hors plage). Corrigés,
+  tests R1-R4 rouges sous mutation.
+- Passage 2 : CHANGES REQUESTED — le correctif de A faisait sortir un `<html><body>` sans `<head>` de l'enveloppe du
+  cadre (A1). Corrigé par `hasDocumentHead`, partagé par le surlignage et le cadre ; tests R5-R6 rouges.
+- Passage 3 : APPROVED (revue indépendante) — fix A1 correct, tests capables d'échouer.
+- Validation : api-mail `783ff7e1` 7 788 tests verts, Sonar QG OK ; weda2 `mss-lib` 1 610, `weda2` 2 683, build vert ;
+  e2e mobile 60 (réutilisée), angular 80, parité verte.
+- Règle 1b : aucun comportement d'endpoint modifié ; parcours weda2 prouvé par E2E-SEARCH-010 (F1-F4 rouges).
+- Suggestion non bloquante, défaut **antérieur** : `hasDocumentHead` (ex-test du cadre) reconnaît `<header>` ; un
+  fragment qui en contient n'est jamais enveloppé. Task de suivi recommandée (`/<head[\s>]/i` + test).
+- Prévention : `conventions/angular.md` « surlignage-par-positions » (positions et texte échappé ; forme du HTML ; même
+  test de forme que l'hôte).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-446 --sync` — ne pas éditer à la main)*
@@ -337,7 +412,7 @@ Démontage vérifié : ports libres, aucun conteneur e2e résiduel.
 | /lint-angular | ok | 12 s | — | — | — | — |
 | /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 10 min 19 s | — | — | — | e2e ×9 (39 min 54 s), reprise 2 : mobile réutilisée, angular 80 verts |
-| /review | failed | 0.4 s | 1 (17 s) | 1 (5 min 51 s) | — | api-mail 1B/1T, CHANGES REQUESTED — A1 : test de forme désaligné sur le cadre |
-| **Total cycle** | | **14 min 33 s** | **6 (1 min 42 s)** | **10 (21 min 20 s)** | **2 (54 s)** | |
+| /review | ok | 51 s | 1 (17 s) | 1 (5 min 51 s) | — | api-mail 1B/1T |
+| **Total cycle** | | **15 min 24 s** | **6 (1 min 42 s)** | **10 (21 min 20 s)** | **2 (54 s)** | |
 
 Autres commandes mesurées : lint ×3 (1 min 16 s)
