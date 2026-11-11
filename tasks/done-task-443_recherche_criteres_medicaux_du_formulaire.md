@@ -512,6 +512,7 @@ détail comportement → test → mutation est dans le `## Develop log` et dans 
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 52 min 03 s | — | — | — | e2e ×6 (48 min 46 s), 2 voies vertes ; test E2E-SEARCH-008 corrigé deux fois |
 | /review | ok | 7 min 51 s | 3 (31 s) | 2 (6 min 28 s) | — | dtos-mss 1B/0T, client-angular 1B/1T, api-mail 1B/1T |
-| **Total cycle** | | **2 h 32 min** | **14 (3 min 34 s)** | **28 (51 min 58 s)** | **7 (2 min 15 s)** | |
+| /tech-writer | ok | 49 s | — | — | — | — |
+| **Total cycle** | | **2 h 33 min** | **14 (3 min 34 s)** | **28 (51 min 58 s)** | **7 (2 min 15 s)** | |
 
 Autres commandes mesurées : lint ×1 (10 s), nuget-wait ×2 (55 s), restore ×2 (49 s)
