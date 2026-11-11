@@ -366,6 +366,63 @@ retirée) — prouvé par le test de composant `task-445 — ne propose plus de 
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
 
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/361 — label `awaiting-human-merge`
+- `client-angular` : code-only — humain gère commit/push TFS et ouverture PR, sur `feature/nova-mss-weda-integration`.
+  ⚠️ **À commiter avant le merge de la PR api-mail #361** : `functional.e2e.ts` et `support/e2e-backend.ts`
+  (scénarios E2E-SEARCH-004 à 009). L'arbre porte aussi le travail non commité de task-442/443. Fichiers modifiés ou
+  nouveaux sous `front/` :
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`
+  - `front/e2e/mss-e2e/support/e2e-backend.ts`
+  - `front/libs/mss/src/core/models/search.model.ts`
+  - `front/libs/mss/src/core/services/mss-api.service.ts`
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.component.scss`
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.list-sources.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search.component.scss`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search.component.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search.component.ts`
+  - `front/libs/mss/src/features/mail/mss-mail.component.list-sources.spec.ts`
+  - `front/libs/mss/src/features/mail/services/mail-state.service.ts`
+  - `front/libs/mss/src/features/settings/mss-settings.component.html`
+  - `front/libs/mss/src/features/settings/mss-settings.component.scss`
+  - `front/libs/mss/src/features/settings/mss-settings.component.spec.ts`
+  - `front/libs/mss/src/features/settings/mss-settings.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.search-mode.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-search-results/mail-search-results.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-search-results/mail-search-results.component.scss`
+  - `front/libs/mss/src/features/mail/components/mail-search-results/mail-search-results.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-search/_mail-search-combobox.scss`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search-patient-picker/mail-search-patient-picker.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search-patient-picker/mail-search-patient-picker.component.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search-patient-picker/mail-search-patient-picker.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search-picker.scss`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search-sender-picker/mail-search-sender-picker.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search-sender-picker/mail-search-sender-picker.component.ts`
+  - `front/libs/mss/src/features/mail/services/mail-search-session.spec.ts`
+  - `front/libs/mss/src/features/mail/services/mail-search-session.ts`
+  - `front/libs/mss/src/features/mail/services/mail-search-tags.spec.ts`
+  - `front/libs/mss/src/features/mail/services/mail-search-tags.ts`
+
+## Code Review Summary
+
+**APPROVED** — 0 bloquant (revue indépendante + revue de la forge).
+
+- Build / tests (3ᵉ validation) : api-mail build 0 erreur, 7 788 tests verts (intégration 1 250 + 16 ignorés) ;
+  weda2 `nx build` vert ; `mss-lib` 1 573 et `weda2` 2 683 tests verts.
+- DOD : 10/10 commandables vérifiés ; observables renvoyés au Manual Test Plan (HAG).
+- Règle 1b : aucun comportement d'endpoint modifié (api-mail : catalogue + seed de test) → sans objet. Les parcours
+  weda2 sont prouvés par E2E-SEARCH-004 à 009, rouges sous mutation (E1-E6).
+- E2E : vert (mobile 60, angular 79), parité verte.
+- Suggestions non bloquantes (task de suivi recommandée) : annulation d'un glisser vers la Corbeille non reportée dans
+  les résultats ; position de défilement appliquée au dossier suivant dans un cas limite ; enrichissement en direct
+  ignoré hors du dossier affiché ; deux assertions de test à durcir ; étiquette de période approximative au rejeu.
+- Prévention : `conventions/angular.md` « liste-ordonnee-par-le-serveur » (/develop) et
+  « retrait-optimiste-dans-chaque-liste » (/review).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-445 --sync` — ne pas éditer à la main)*
@@ -378,6 +435,7 @@ retirée) — prouvé par le test de composant `task-445 — ne propose plus de 
 | /lint-angular | ok | 28 s | — | — | — | — |
 | /lint-mobile | skipped | 0.5 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 19 min 37 s | — | — | — | e2e ×3 (19 min 02 s), mobile 60 + angular 79 verts, parité verte |
-| **Total cycle** | | **1 h 14 min** | **4 (1 min 28 s)** | **11 (15 min 51 s)** | **2 (45 s)** | |
+| /review | ok | 10 min 17 s | 2 (22 s) | 2 (6 min 22 s) | — | api-mail 1B/1T, client-angular 1B/1T |
+| **Total cycle** | | **1 h 24 min** | **6 (1 min 51 s)** | **13 (22 min 13 s)** | **2 (45 s)** | |
 
 Autres commandes mesurées : lint ×1 (9.9 s)

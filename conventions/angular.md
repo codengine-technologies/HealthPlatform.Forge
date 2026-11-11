@@ -672,3 +672,17 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   première page, erreur qui garde la liste) ; `E2E-SEARCH-004` à `007`.
 - **Origine** : task-445 (campagne recherche du 2026-11-09, reprise de task-441)
 - **Occurrences** : 1
+
+### retrait-optimiste-dans-chaque-liste — Un « Annuler » remet l'élément dans chaque liste dont il l'a retiré
+- **Règle** : convention projet (régression silencieuse, invisible au lint)
+- **Repos** : les deux
+- **Piège** : task-445 a ajouté une seconde liste (les résultats de recherche, `MailSearchSession`) à côté de la
+  liste du dossier. `removeMailFromList` retire désormais le message des deux, mais `restoreMailsToList` (l'« Annuler »
+  d'un glisser vers la Corbeille) ne le remet que dans la liste du dossier : en mode recherche, le message revient sur
+  le serveur et reste absent des résultats jusqu'à la relance. Vu par la revue, pas par les tests (aucun ne passait
+  par l'annulation en mode recherche).
+- **Consigne** : quand une opération optimiste gagne une liste de plus (retrait, déplacement, marquage), son inverse
+  (annulation, échec serveur, retour arrière) la gagne au même geste. Lister les paires `remove…`/`restore…`,
+  `apply…`/`rollback…` du service avant d'ajouter une liste, et écrire un test par paire et par liste.
+- **Origine** : task-445 (/review, suggestion non bloquante — correctif à porter par une task de suivi)
+- **Occurrences** : 1
