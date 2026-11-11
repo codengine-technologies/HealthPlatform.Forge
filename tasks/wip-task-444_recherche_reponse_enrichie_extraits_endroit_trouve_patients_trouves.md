@@ -109,3 +109,8 @@ Règles :
 - **AIPD / impact RGPD** : à vérifier — la réponse de recherche expose désormais des extraits de contenu et des
   identités de patients ; même périmètre de personnes habilitées, note RGPD à compléter si l'AIPD de la recherche ne
   couvre pas l'affichage d'extraits
+
+## Branches
+
+- `api-mail` (pushed) : feat/task-444-recherche-reponse-enrichie-extraits — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-444-recherche-reponse-enrichie-extraits
+- `dtos-mss` (pushed, paresseuse) : branche créée par `/develop` au premier changement de contrat (même nom).
