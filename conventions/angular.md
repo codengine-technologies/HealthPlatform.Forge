@@ -704,6 +704,9 @@ par lint sur du code frais est un échec de lecture de ce fichier.
     reçu n'est jamais réécrit par expression régulière ;
   - le test d'un surlignage porte toujours un texte qui contient du balisage (`<img onerror>`, `<b>`) et exige qu'il
     s'affiche comme du texte.
+  - un HTML repassé par `DOMParser` se rend **en document complet** (`documentElement.outerHTML`) : `body.innerHTML`
+    perd un `<style>` / `<meta>` placé en tête d'un fragment (rangé dans l'en-tête) et les attributs de `<body>`. Le test
+    met le `<style>` **en tête** du fragment, là où il se perd (revue de task-446, CHANGES REQUESTED).
 - **Preuve** : `text-highlight.util.spec.ts`, `mail-list.search-mode.spec.ts` (« un extrait qui contient du balisage
   s'affiche comme du texte »), `mail-detail.search-highlight.spec.ts`, `mail-body.component.spec.ts` ; rouges sous la
   mutation `[innerHTML]` (N7).
