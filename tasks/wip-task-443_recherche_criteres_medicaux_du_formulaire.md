@@ -300,6 +300,33 @@ est consigné en mémoire de session.
 - `xUnit1045` : compteur porté à 3 ; récidive sur du code frais, donc entrée non relue avant d'écrire la théorie.
 - `CA1862` : compteur porté à 2, avec la variante EF (comparer une valeur déjà en minuscules ou `EF.Functions.ILike`).
 
+## Lint log
+
+**Mode A** (chaîné depuis `/sonar`), `client-angular` code-only, branche extraite `feature/nova-mss-weda-integration`,
+base `origin/next`. Aucune opération git d'écriture.
+
+Lint par le contournement du playbook (task-367) : `nx run-many -t lint -p mss-lib`, puis `eslint --format json` sur les
+fichiers `.ts` de la task (le `.html` et le `.spec.ts` sont hors d'ESLint), puis `stylelint` sur le SCSS.
+
+| Mesure | Résultat |
+|---|---|
+| Erreurs ESLint (mss-lib + fichiers de la task) | **0** |
+| Avertissements mss-lib | 48, inchangés |
+| `mail-search.component.ts` | 1 avertissement `max-lines`, déjà présent avant la task |
+| `mss-api.service.ts` | 5 avertissements antérieurs (`max-lines`, `jsdoc/require-example` sur d'autres méthodes) ; `getSearchSenders` a sa JSDoc complète |
+| `functional.e2e.ts` | 5 avertissements antérieurs ; le test `E2E-SEARCH-008` n'en porte aucun |
+| Sélecteurs patient et expéditeurs | 0 |
+| `stylelint` (`mail-search/**/*.scss`) | 0 |
+
+**Itérations** : 0. Aucune erreur, et aucun avertissement sur une ligne ajoutée.
+
+**Conventions** : aucune règle corrigée à la main, aucune entrée.
+
+## Lint mobile log
+
+- skipped — client-mobile non touché (absent des `**Repos**`). `E2E-SEARCH-008` déclare la divergence temporaire du
+  mobile (task-451).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-443 --sync` — ne pas éditer à la main)*
@@ -309,6 +336,8 @@ est consigné en mémoire de session.
 | /start | ok | 24 s | — | — | — | — |
 | /develop | ok | 59 min 12 s | 7 (1 min 04 s) | 6 (13 min 22 s) | — | dtos-mss 1B/0T, api-mail 4B/4T, client-angular 2B/2T |
 | /sonar | ok | 32 min 42 s | 4 (1 min 59 s) | 20 (32 min 07 s) | 7 (2 min 15 s) | 2 itération(s), api-mail 4B/20T, 4 issues de nouveau code corrigées (CA1862, xUnit1045 x3) |
+| /lint-angular | ok | 33 s | — | — | — | 0 erreur ; avertissements antérieurs |
+| /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | **Total cycle** | | **1 h 32 min** | **11 (3 min 03 s)** | **26 (45 min 30 s)** | **7 (2 min 15 s)** | |
 
-Autres commandes mesurées : nuget-wait ×2 (55 s), restore ×2 (49 s)
+Autres commandes mesurées : lint ×1 (10 s), nuget-wait ×2 (55 s), restore ×2 (49 s)
