@@ -123,3 +123,8 @@ Règles reprises de task-441 (fidélité au serveur) :
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : non applicable au client — aucune donnée stockée
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+
+- `api-mail` (pushed) : feat/task-445-recherche-mode-resultats-de-recherche — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-445-recherche-mode-resultats-de-recherche
+- `client-angular` (code-only) : la forge écrit sur la branche checked out dans `Client/Angular/` (au /start : `feature/nova-mss-weda-integration`, avec des modifications non commitées de task-442) — humain gère branche, commit, push, PR TFS
