@@ -1,6 +1,6 @@
 # E023 — Expérience de recherche
 
-> **Statut** : 🟡 En cours (5 features sur 9 : quatre livrées, une en attente de validation humaine)
+> **Statut** : 🟡 En cours (5 features sur 9 livrées)
 > **Version** : 0.5
 > **Auteur** : PO forge (tasks 442 à 449, 452)
 > **Modèle** : task-driven
@@ -69,7 +69,7 @@ le même modèle. Le modèle retenu le 2026-11-10 avec l'humain s'inspire de la 
 | Critères médicaux | Restreindre la recherche à un patient choisi dans la liste, à la date du document médical, à la biologie marquée anormale par le laboratoire, à un ou plusieurs expéditeurs, au nom d'une pièce jointe | task-443 | ✅ Livrée |
 | Réponse enrichie | Savoir où le terme a été trouvé, en voir un extrait, connaître les patients désignés | task-444 | ✅ Livrée côté serveur |
 | Mode « Résultats de recherche » | Voir les résultats dans un espace dédié, les affiner sur place, en sortir explicitement | task-445 | ✅ Livrée dans weda2 |
-| Lire un résultat | Voir l'extrait surligné de chaque résultat et ouvrir le patient trouvé en tête | task-446 | 🟢 Livrée dans weda2, en attente de validation |
+| Lire un résultat | Voir l'extrait surligné de chaque résultat et ouvrir le patient trouvé en tête | task-446 | ✅ Livrée dans weda2 |
 | Portée et tri | Chercher dans toute la boîte ou dans le dossier courant, et choisir l'ordre des résultats | task-447 | 🔴 À faire |
 | Actions groupées | Sélectionner tous les résultats, même ceux pas encore affichés, et leur appliquer une action | task-448 | 🔴 À faire |
 | Suggestions pendant la frappe | Recevoir des propositions par catégories (patients, messages) dès les premières lettres | task-449 | 🔴 À faire |
@@ -172,13 +172,13 @@ la rend telle quelle, à la même position.
 | Critères médicaux | ✅ Livrée | 100 % | task-443 |
 | Réponse enrichie | ✅ Livrée côté serveur | 100 % | task-444 |
 | Mode « Résultats de recherche » | ✅ Livrée dans weda2 | 100 % | task-445 |
-| Lire un résultat | 🟢 Livrée dans weda2, en attente de validation | 100 % | task-446 |
+| Lire un résultat | ✅ Livrée dans weda2 | 100 % | task-446 |
 | Portée et tri | 🔴 À faire | 0 % | task-447 |
 | Actions groupées | 🔴 À faire | 0 % | task-448 |
 | Suggestions pendant la frappe | 🔴 À faire | 0 % | task-449 |
 | Mesure anonyme de l'expérience | 🔴 À faire | 0 % | task-452 |
 
-**Couverture EPIC consolidée : 56 %** (5 features sur 9 : quatre livrées, une en attente de validation humaine).
+**Couverture EPIC consolidée : 56 %** (5 features livrées sur 9).
 
 ---
 
