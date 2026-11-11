@@ -162,7 +162,8 @@ Règles :
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 19 min 07 s | — | — | — | e2e ×3 (18 min 41 s) |
 | /review | ok | 8 h 20 min | 1 (12 s) | 1 (5 min 33 s) | — | api-mail 1B/1T |
-| **Total cycle** | | **10 h 12 min** | **6 (1 min 08 s)** | **13 (32 min 07 s)** | **4 (1 min 24 s)** | |
+| /tech-writer | ok | 40 s | — | — | — | — |
+| **Total cycle** | | **10 h 13 min** | **6 (1 min 08 s)** | **13 (32 min 07 s)** | **4 (1 min 24 s)** | |
 
 ## Develop log
 
