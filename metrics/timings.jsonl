@@ -9193,3 +9193,11 @@
 {"ts":"2026-11-11T19:32:01+01:00","run_id":"-","type":"step","task":"task-445","step":"review","status":"ok","note":"","iterations":null,"duration_ms":617504}
 {"ts":"2026-11-11T19:32:11+01:00","run_id":"-","type":"step_start","task":"task-445","step":"tech-writer"}
 {"ts":"2026-11-11T19:32:57+01:00","run_id":"-","type":"step","task":"task-445","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":45385}
+{"ts":"2026-11-11T20:33:32+01:00","run_id":"-","type":"step_start","task":"task-446","step":"start"}
+{"ts":"2026-11-11T20:33:47+01:00","run_id":"-","type":"step","task":"task-446","step":"start","status":"ok","note":"","iterations":null,"duration_ms":14262}
+{"ts":"2026-11-11T20:34:20+01:00","run_id":"-","type":"step_start","task":"task-446","step":"develop"}
+{"ts":"2026-11-11T20:45:27+01:00","run_id":"-","type":"cmd","task":"task-446","step":"develop","repo":"api-mail","kind":"build","label":"","cwd":"Api/Mail","cmd":"dotnet build HealthPlatform.Api.Mail.sln","duration_ms":18190,"exit_code":0}
+{"ts":"2026-11-11T20:51:16+01:00","run_id":"-","type":"cmd","task":"task-446","step":"develop","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln --no-build","duration_ms":348108,"exit_code":0}
+{"ts":"2026-11-11T20:52:00+01:00","run_id":"-","type":"cmd","task":"task-446","step":"develop","repo":"client-angular","kind":"test","label":"","cwd":"Client/Angular/front","cmd":"npx nx run-many -t test --projects=mss-lib,weda2 --skip-nx-cache --output-style=static","duration_ms":31303,"exit_code":0}
+{"ts":"2026-11-11T20:52:13+01:00","run_id":"-","type":"cmd","task":"task-446","step":"develop","repo":"client-angular","kind":"build","label":"","cwd":"Client/Angular/front","cmd":"npx nx build weda2 --skip-nx-cache --output-style=static","duration_ms":12448,"exit_code":0}
+{"ts":"2026-11-11T21:01:50+01:00","run_id":"-","type":"step","task":"task-446","step":"develop","status":"ok","note":"","iterations":null,"duration_ms":1649777}

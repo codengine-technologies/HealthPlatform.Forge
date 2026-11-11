@@ -686,3 +686,26 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   `apply…`/`rollback…` du service avant d'ajouter une liste, et écrire un test par paire et par liste.
 - **Origine** : task-445 (/review, suggestion non bloquante — correctif à porter par une task de suivi)
 - **Occurrences** : 1
+
+### surlignage-par-positions — Un surlignage se construit à partir de positions et de texte échappé
+- **Règle** : convention projet (sécurité — injection, invisible au lint)
+- **Repos** : les deux
+- **Piège** : un extrait de recherche, un objet ou un corps de message vient d'un expéditeur externe. Le surligner en
+  fabriquant une chaîne `…<mark>mot</mark>…` puis en la rendant par `[innerHTML]` réinterprète tout balisage qu'il
+  contient : l'assainisseur d'Angular retire les gestionnaires (`onerror`) mais garde `<img>`, `<b>`, `<a>`. Le médecin
+  voit alors un message déformé, et un contenu piégé franchit une étape de plus.
+- **Consigne** :
+  - un texte surligné se découpe en **segments** (`highlightSegments`, `core/utils/text-highlight.util.ts`) à partir
+    de **positions** (celles du serveur, ou `findTermRanges` qui replie accents et casse), et le gabarit rend chaque
+    segment comme du texte (`{{ }}`) dans un `<mark>` ou un `<span>` — jamais `[innerHTML]`, jamais
+    `bypassSecurityTrustHtml` ;
+  - dans un corps **HTML** reçu, seuls les **nœuds de texte** sont découpés, par les API du DOM d'un document inerte
+    (`highlightHtml` : `DOMParser`, `createTreeWalker`, `createElement('mark')`), hors `script` / `style` ; le balisage
+    reçu n'est jamais réécrit par expression régulière ;
+  - le test d'un surlignage porte toujours un texte qui contient du balisage (`<img onerror>`, `<b>`) et exige qu'il
+    s'affiche comme du texte.
+- **Preuve** : `text-highlight.util.spec.ts`, `mail-list.search-mode.spec.ts` (« un extrait qui contient du balisage
+  s'affiche comme du texte »), `mail-detail.search-highlight.spec.ts`, `mail-body.component.spec.ts` ; rouges sous la
+  mutation `[innerHTML]` (N7).
+- **Origine** : task-446 (/develop, prévention demandée par la DOD)
+- **Occurrences** : 1 (préventif)
