@@ -128,3 +128,17 @@ Règles communes :
   `RES|` HPRIM), déjà portés par la plateforme ; aucun nouveau référentiel
 - **Hébergement HDS** : oui — données lues dans la base de la boîte, inchangée
 - **AIPD / impact RGPD** : inchangé — mêmes données, nouvelle façon de les filtrer
+
+## Branches
+- `api-mail` (pushed) : feat/task-443-recherche-criteres-medicaux-du — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-443-recherche-criteres-medicaux-du
+- `dtos-mss` (paresseuse) : branche créée par `/develop` au premier contrat touché
+- `client-angular` (code-only) : la forge écrit le code sur la branche extraite dans `Client/Angular/` (au `/start` : `feature/nova-mss-weda-integration`, propre) — l'humain gère branche, commit, push, PR TFS
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-443 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 24 s | — | — | — | — |
+| **Total cycle** | | **24 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
