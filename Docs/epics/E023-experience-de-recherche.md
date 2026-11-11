@@ -1,7 +1,7 @@
 # E023 — Expérience de recherche
 
-> **Statut** : 🟡 En cours (4 features sur 9 : trois livrées, une en attente de validation humaine)
-> **Version** : 0.4
+> **Statut** : 🟡 En cours (5 features sur 9 : quatre livrées, une en attente de validation humaine)
+> **Version** : 0.5
 > **Auteur** : PO forge (tasks 442 à 449, 452)
 > **Modèle** : task-driven
 > **Dernière mise à jour** : 2026-11-11
@@ -68,8 +68,8 @@ le même modèle. Le modèle retenu le 2026-11-10 avec l'humain s'inspire de la 
 | Formulaire à un seul niveau | Composer tous ses critères au même endroit, puis lancer la recherche ; rien ne part avant ; « De » se choisit parmi ses contacts | task-442 | ✅ Livrée |
 | Critères médicaux | Restreindre la recherche à un patient choisi dans la liste, à la date du document médical, à la biologie marquée anormale par le laboratoire, à un ou plusieurs expéditeurs, au nom d'une pièce jointe | task-443 | ✅ Livrée |
 | Réponse enrichie | Savoir où le terme a été trouvé, en voir un extrait, connaître les patients désignés | task-444 | ✅ Livrée côté serveur |
-| Mode « Résultats de recherche » | Voir les résultats dans un espace dédié, les affiner sur place, en sortir explicitement | task-445 | 🟢 Livrée dans weda2, en attente de validation |
-| Lire un résultat | Voir l'extrait surligné de chaque résultat et ouvrir le patient trouvé en tête | task-446 | 🔴 À faire |
+| Mode « Résultats de recherche » | Voir les résultats dans un espace dédié, les affiner sur place, en sortir explicitement | task-445 | ✅ Livrée dans weda2 |
+| Lire un résultat | Voir l'extrait surligné de chaque résultat et ouvrir le patient trouvé en tête | task-446 | 🟢 Livrée dans weda2, en attente de validation |
 | Portée et tri | Chercher dans toute la boîte ou dans le dossier courant, et choisir l'ordre des résultats | task-447 | 🔴 À faire |
 | Actions groupées | Sélectionner tous les résultats, même ceux pas encore affichés, et leur appliquer une action | task-448 | 🔴 À faire |
 | Suggestions pendant la frappe | Recevoir des propositions par catégories (patients, messages) dès les premières lettres | task-449 | 🔴 À faire |
@@ -128,6 +128,12 @@ la rend telle quelle, à la même position.
   recherche échoue, un message le dit et aucune ancienne liste ne reste affichée (task-445).
 - **Sortir d'une recherche rend le dossier tel qu'il était** : son filtre, sa page et sa position ; changer de dossier
   ferme la recherche (task-445).
+- **Un résultat dit pourquoi il est là** : son dossier, l'endroit où le mot a été trouvé, et un extrait où le mot est
+  surligné, même tapé sans accent (task-446).
+- **Un patient désigné est proposé, jamais deviné** : seuls les patients que le serveur reconnaît exactement sont
+  montrés, par leurs traits d'identification, jamais par leur INS (task-446).
+- **Le surlignage ne réinterprète jamais un contenu reçu** : un extrait, un objet ou un corps de message s'affichent
+  comme du texte, et un message ouvert pendant une recherche garde sa mise en forme (task-446).
 - **Le seuil de similarité n'est plus un réglage personnel** : le serveur applique le même pour tous (task-445).
 - **Chaque recherche lancée est tracée au nom de la personne qui l'a faite**, comme tout acte sur la boîte. Cocher un
   critère sans lancer n'est pas un acte.
@@ -165,14 +171,14 @@ la rend telle quelle, à la même position.
 | Formulaire à un seul niveau | ✅ Livrée | 100 % | task-442 |
 | Critères médicaux | ✅ Livrée | 100 % | task-443 |
 | Réponse enrichie | ✅ Livrée côté serveur | 100 % | task-444 |
-| Mode « Résultats de recherche » | 🟢 Livrée dans weda2, en attente de validation | 100 % | task-445 |
-| Lire un résultat | 🔴 À faire | 0 % | task-446 |
+| Mode « Résultats de recherche » | ✅ Livrée dans weda2 | 100 % | task-445 |
+| Lire un résultat | 🟢 Livrée dans weda2, en attente de validation | 100 % | task-446 |
 | Portée et tri | 🔴 À faire | 0 % | task-447 |
 | Actions groupées | 🔴 À faire | 0 % | task-448 |
 | Suggestions pendant la frappe | 🔴 À faire | 0 % | task-449 |
 | Mesure anonyme de l'expérience | 🔴 À faire | 0 % | task-452 |
 
-**Couverture EPIC consolidée : 44 %** (4 features sur 9 : trois livrées, une en attente de validation humaine).
+**Couverture EPIC consolidée : 56 %** (5 features sur 9 : quatre livrées, une en attente de validation humaine).
 
 ---
 
@@ -195,6 +201,9 @@ la rend telle quelle, à la même position.
   les mots », « Une partie des mots », « Résultats proches »), « Voir plus » jusqu'au dernier résultat, un bandeau
   quand le moteur est en panne partielle, un message clair en cas d'échec. « Fermer la recherche » rend le dossier à
   la même position. Le réglage « Sensibilité de la recherche » disparaît des Paramètres (task-445).
+- v0.5 — Chaque résultat montre son dossier, l'endroit où le mot a été trouvé et un extrait où il est surligné. Une
+  rangée « Patients » propose en tête les patients que la recherche désigne ; un clic ouvre leurs messages. Le message
+  ouvert depuis les résultats montre les mots cherchés surlignés dans son objet et son corps (task-446).
 
 **Conformité réglementaire**
 - Chaque recherche lancée reste tracée au nom de son auteur ; la trace ne porte ni le texte cherché, ni l'identité du
@@ -214,6 +223,7 @@ la rend telle quelle, à la même position.
 - Le parcours « restreindre à un patient et à ses biologies anormales » l'est aussi (task-443).
 - Cinq parcours de l'espace « Résultats de recherche » sont vérifiés à chaque cycle dans weda2 : nom de patient tapé
   sans accent, « Aucun résultat », « Voir plus », recherche en échec, fermeture à la même position (task-445).
+- Le parcours « reconnaître un résultat et ouvrir le dossier du patient » l'est aussi (task-446).
 
 ---
 

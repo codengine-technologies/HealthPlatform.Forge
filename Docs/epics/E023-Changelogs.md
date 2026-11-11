@@ -158,9 +158,8 @@
 
 ### v0.4 — task-445 : mode « Résultats de recherche » (weda2, api-mail)
 
-- **État** : `done`, PR api-mail [#361](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/361) en
-  attente de merge humain (HAG) ; weda2 code-only, non commité (à commiter sur TFS **avant** le merge de #361 :
-  `functional.e2e.ts`, `support/e2e-backend.ts`).
+- **État** : `archived`, PR api-mail [#361](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/361)
+  mergée ; weda2 code-only (commit TFS par l'humain).
 - **weda2** (`libs/mss/src/features/mail/`) :
   - `services/mail-search-session.ts` : `MailSearchSession` tenue par `MailStateService` — requête, lignes dans l'ordre
     du serveur, rattachement par dossier et UID (`hits`, messages lus dans leur dossier), parties par `matchGroup`,
@@ -191,6 +190,40 @@
 
 ---
 
+### v0.5 — task-446 : lire un résultat — extrait surligné, endroit, dossier, patients trouvés (weda2, api-mail)
+
+- **État** : `done`, PR api-mail [#362](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/362) en
+  attente de merge humain (HAG) ; weda2 code-only, non commité (à commiter sur TFS **avant** le merge de #362 :
+  `functional.e2e.ts`).
+- **weda2** (`libs/mss/src/`) :
+  - `core/utils/text-highlight.util.ts` : `highlightSegments` (positions → segments rendus comme du texte),
+    `findTermRanges` (repli accents et casse, accents décomposés inclus), `searchTermsOf`, `highlightHtml` (nœuds de
+    texte d'un document inerte, forme d'origine gardée), `hasDocumentHead` (test de forme partagé avec
+    `medical-html-frame`) ;
+  - `mail-search-results` : dossier d'origine, endroit trouvé, extrait surligné aux positions du serveur ; rangée
+    « Patients » (≤ 5, sans INS) vers `/messagerie/mail?patient=…` ;
+  - `mail-detail` / `mail-body` : objet et corps (texte, HTML) surlignés pendant une recherche ;
+  - `MailSearchSession` : `hit` porté par chaque ligne, `patients` de la première page.
+- **api-mail** : catalogue `E2E-SEARCH-010` v1 (angular requis, mobile en divergence task-451).
+- **Revue** : deux CHANGES REQUESTED corrigés dans la task — style de tête d'un fragment HTML perdu (A), puis enveloppe du
+  cadre perdue pour un `<html><body>` sans `<head>` (A1) ; mutations R1–R6 rouges.
+- **Tests** : mutations N1–N11 (composants), F1–F4 (parcours), R1–R6 (correctifs de revue), rouges sur l'assertion
+  prévue.
+
+  | Suite | Tests verts |
+  |---|---|
+  | weda2 `mss-lib` | 1 610 |
+  | weda2 `weda2` | 2 683 |
+  | api-mail (toutes suites) | 7 788 (+16 ignorés) |
+
+- **E2E** : voie mobile 60, voie angular 80, parité verte.
+- **Sonar** : Quality Gate OK, nouveau code 96,2 %, 0 issue.
+- **Restes** : nom d'utilisation non affiché (un seul nom par patient côté serveur) ; défaut antérieur, `hasDocumentHead`
+  reconnaît `<header>` (fragment jamais enveloppé), task de suivi recommandée.
+- **Préventions** : `conventions/angular.md` § `surlignage-par-positions`.
+
+---
+
 ## Annexe A — Cartographie des briques applicatives
 
 | Brique | Rôle dans E023 |
@@ -204,7 +237,8 @@
 | `Dtos/SearchMatchLocation.cs`, `Dtos/SearchHighlightDto.cs`, `Dtos/SearchFoundPatientDto.cs` | Contrat de la réponse enrichie (task-444) |
 | `Client/Angular/front/libs/mss/src/features/mail/services/mail-search-{session,tags}.ts` | Mode « Résultats de recherche » : session, étiquettes (task-445) |
 | `Client/Angular/front/libs/mss/src/features/mail/components/mail-search-results/` | Espace des résultats : étiquettes, affinage, parties, « Voir plus » (task-445) |
-| `Api/Mail/e2e/scenarios.yml` | Catalogue des parcours : `E2E-SEARCH-001` v2, `004` à `009` v1 |
+| `Client/Angular/front/libs/mss/src/core/utils/text-highlight.util.ts` | Surlignage par positions, test de forme partagé avec le cadre (task-446) |
+| `Api/Mail/e2e/scenarios.yml` | Catalogue des parcours : `E2E-SEARCH-001` v2, `004` à `010` v1 |
 
 ---
 
@@ -221,8 +255,8 @@
 | task-442 | archived (PR #358 mergée) | Formulaire de critères à un seul niveau dans weda2 ; `E2E-SEARCH-001` v2 ; « De » choisi parmi les contacts |
 | task-443 | archived (PRs dtos-mss #60, api-mail #359 mergées) | Critères médicaux : patient, date du document, biologie anormale, expéditeurs, nom de pièce jointe ; `E2E-SEARCH-008` v1 |
 | task-444 | archived (PRs dtos-mss #61, api-mail #360 mergées) | Réponse enrichie : endroit trouvé, extrait surligné, patients trouvés par correspondance exacte |
-| task-445 | done (PR api-mail #361 ; weda2 non commité) | Mode « Résultats de recherche » dans weda2 ; `E2E-SEARCH-004` à `007`, `009` v1 |
-| task-446 | todo | Lire un résultat : extrait surligné et patients trouvés |
+| task-445 | archived (PR api-mail #361 mergée) | Mode « Résultats de recherche » dans weda2 ; `E2E-SEARCH-004` à `007`, `009` v1 |
+| task-446 | done (PR api-mail #362 ; weda2 non commité) | Lire un résultat : extrait surligné, endroit, dossier, patients trouvés ; `E2E-SEARCH-010` v1 |
 | task-447 | todo | Portée « tous les dossiers » et tri |
 | task-448 | todo | Sélectionner tous les résultats et actions groupées |
 | task-449 | todo | Suggestions pendant la frappe : patients et messages |
