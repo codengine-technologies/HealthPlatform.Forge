@@ -284,6 +284,50 @@ de l'humain des changements sans rapport avec la recherche.
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
 
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/358 — label `awaiting-human-merge`
+  (catalogue e2e : `E2E-SEARCH-001` v2, divergence mobile → task-450)
+- `client-angular` : code-only — humain gère commit/push TFS et ouverture PR. Branche `feature/nova-mss-weda-integration`.
+  Liste des fichiers modifiés ci-dessous :
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search.component.scss`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search.component.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search.component.ts`
+
+## Code Review Summary
+
+**APPROVED** — 6 fichiers relus, 2 suggestions, 0 bloquant.
+
+| Validation | Résultat |
+|---|---|
+| Build api-mail | ✅ 0 erreur |
+| Tests api-mail | ✅ domain 210, application 4 054, infrastructure 737, api 1 375, intégration 1 232 (+16 ignorés), 0 échec |
+| Build weda2 | ✅ |
+| Tests weda2 / mss-lib | ✅ 2 683 / 1 497, 0 échec |
+| DoD | ✅ toutes les lignes ; le visuel est repris par le Manual Test Plan |
+| E2E | ✅ vert (mobile 60, angular 73), parité verte, divergence mobile déclarée |
+
+**Règle 1b** : aucun comportement atteignable par un endpoint n'est ajouté ou modifié. Le contrat et le service de
+`POST /search/semantic` sont intacts, et api-mail ne change que dans `e2e/scenarios.yml`. Le parcours frontend est
+prouvé par son scénario e2e :
+
+| Comportement | Preuve | Vu rouge |
+|---|---|---|
+| Un filtre coché ne lance rien | spec composant + `E2E-SEARCH-001` v2 (`sent.length` = 1 après « Lancer ») | M1 (5 rouges) |
+| « Lancer » envoie tous les critères et ferme | spec + e2e (corps : texte, `hasAttachments`, `isRead:false` ; formulaire masqué) | M2 (2 rouges) |
+| Entrée = « Lancer » | spec | M3 |
+| « Lancer » inactif sans critère | spec + e2e (`disabled`) | M4 |
+| « Réinitialiser » vide sans fermer ni lancer, résultats gardés | spec + e2e | M5 |
+| Fermer sans lancer abandonne le brouillon | spec | M6 (2 rouges) |
+| Rouvrir montre la recherche affichée | spec + e2e (`aria-pressed`) | M7 |
+
+**Suggestions (non bloquantes)** :
+- `mail-search.component.ts` : 789 lignes (723 avant la task, limite `max-lines` 500). Un découpage
+  (historique / formulaire) mériterait une task.
+- `mail-search.component.html` : écrire les puces statut et médical en catalogue `@for`, comme les puces période et type.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-442 --sync` — ne pas éditer à la main)*
@@ -296,7 +340,8 @@ de l'humain des changements sans rapport avec la recherche.
 | /lint-angular | ok | 58 s | — | — | — | 0 erreur ; avertissements antérieurs |
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 31 min 11 s | — | — | — | e2e ×4 (29 min 56 s), 2 voies vertes ; angular rejouée une fois (code 2) |
-| **Total cycle** | | **1 h 04 min** | **4 (2 min 17 s)** | **7 (9 min 27 s)** | **2 (47 s)** | |
+| /review | ok | 7 min 26 s | 2 (23 s) | 2 (6 min 23 s) | — | api-mail 1B/1T, client-angular 1B/1T |
+| **Total cycle** | | **1 h 12 min** | **6 (2 min 40 s)** | **9 (15 min 51 s)** | **2 (47 s)** | |
 
 Autres commandes mesurées : lint ×1 (9.7 s)
 
