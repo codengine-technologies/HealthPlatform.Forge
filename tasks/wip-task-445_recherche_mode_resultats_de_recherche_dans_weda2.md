@@ -210,6 +210,30 @@ Règles reprises de task-441 (fidélité au serveur) :
   `support/e2e-backend.ts` (conventions/e2e.md « test-angular-non-commite »).
 - Next step : /sonar task-445
 
+## Sonar log
+
+- Mode A (chaîné), branche `feat/task-445-recherche-mode-resultats-de-recherche`, commit analysé `1faf4813`
+  (diff api-mail : catalogue e2e + seed et test de seed, aucun code de production).
+- Analyse complète : Release, 5 passes OpenCover (domain 210, application 4 193, infrastructure 743, api 1 376,
+  intégration 1 250 + 16 ignorés — 0 échec), `ANALYSIS SUCCESSFUL`, traitement serveur `SUCCESS`.
+- Itérations : 0 — aucune issue sur le new code, cibles projet déjà atteintes.
+
+| KPI | Baseline | Final |
+|---|---|---|
+| Quality Gate | OK | **OK** |
+| Bugs | 0 | 0 |
+| Vulnerabilities | 0 | 0 |
+| Security Hotspots | 0 | 0 |
+| Code Smells | 0 | 0 |
+| Coverage | 97,8 % | 97,8 % |
+| Duplication | 0,4 % | 0,4 % |
+| Reliability / Security / Maintainability | A / A / A | A / A / A |
+| New code — issues | — | 0 |
+| New code — coverage | — | 96,3 % |
+| New code — duplication | — | 0,04 % |
+
+- Conventions : aucune règle corrigée à la main → `conventions/csharp.md` inchangé.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-445 --sync` — ne pas éditer à la main)*
@@ -218,4 +242,5 @@ Règles reprises de task-441 (fidélité au serveur) :
 |---|---|---|---|---|---|---|
 | /start | ok | 21 s | — | — | — | — |
 | /develop | ok | 43 min 46 s | 3 (43 s) | 6 (7 min 57 s) | — | client-angular 2B/5T, api-mail 1B/1T |
-| **Total cycle** | | **44 min 07 s** | **3 (43 s)** | **6 (7 min 57 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 10 min 14 s | 1 (44 s) | 5 (7 min 53 s) | 2 (45 s) | api-mail 1B/5T |
+| **Total cycle** | | **54 min 21 s** | **4 (1 min 28 s)** | **11 (15 min 51 s)** | **2 (45 s)** | |
