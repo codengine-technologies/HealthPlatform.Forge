@@ -234,6 +234,18 @@ Règles reprises de task-441 (fidélité au serveur) :
 
 - Conventions : aucune règle corrigée à la main → `conventions/csharp.md` inchangé.
 
+## Lint log
+
+- client-angular (code-only, branche `feature/nova-mss-weda-integration`, aucun git) — contournement du playbook
+  (task-367) : `npx nx run-many -t lint --projects=mss-lib,mss-e2e`, puis ESLint ciblé sur les fichiers de la task.
+- Baseline : **0 erreur** ; 52 avertissements (`mss-lib`) + 48 (`mss-e2e`), tous préexistants (`max-lines` sur des
+  fichiers déjà au-delà de 500 lignes, `jsdoc/require-example` sur des méthodes antérieures). Aucun avertissement sur une
+  ligne ajoutée par la task (fichiers neufs `mail-search-session`, `mail-search-tags`, `mail-search-results` : 0).
+- Itérations : 0 — rien à corriger ; build (`nx build weda2`) et tests (`mss-lib` 1 573, `weda2` 2 683) déjà verts sur
+  l'arbre final (fin de `/develop`).
+- Conventions : aucune règle corrigée à la main → `conventions/angular.md` inchangé (hors consigne de prévention posée par
+  `/develop`).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-445 --sync` — ne pas éditer à la main)*
@@ -243,4 +255,7 @@ Règles reprises de task-441 (fidélité au serveur) :
 | /start | ok | 21 s | — | — | — | — |
 | /develop | ok | 43 min 46 s | 3 (43 s) | 6 (7 min 57 s) | — | client-angular 2B/5T, api-mail 1B/1T |
 | /sonar | ok | 10 min 14 s | 1 (44 s) | 5 (7 min 53 s) | 2 (45 s) | api-mail 1B/5T |
-| **Total cycle** | | **54 min 21 s** | **4 (1 min 28 s)** | **11 (15 min 51 s)** | **2 (45 s)** | |
+| /lint-angular | ok | 28 s | — | — | — | — |
+| **Total cycle** | | **54 min 50 s** | **4 (1 min 28 s)** | **11 (15 min 51 s)** | **2 (45 s)** | |
+
+Autres commandes mesurées : lint ×1 (9.9 s)
