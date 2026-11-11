@@ -341,7 +341,8 @@ prouvé par son scénario e2e :
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 31 min 11 s | — | — | — | e2e ×4 (29 min 56 s), 2 voies vertes ; angular rejouée une fois (code 2) |
 | /review | ok | 7 min 26 s | 2 (23 s) | 2 (6 min 23 s) | — | api-mail 1B/1T, client-angular 1B/1T |
-| **Total cycle** | | **1 h 12 min** | **6 (2 min 40 s)** | **9 (15 min 51 s)** | **2 (47 s)** | |
+| /tech-writer | ok | 1 min 18 s | — | — | — | — |
+| **Total cycle** | | **1 h 13 min** | **6 (2 min 40 s)** | **9 (15 min 51 s)** | **2 (47 s)** | |
 
 Autres commandes mesurées : lint ×1 (9.7 s)
 
