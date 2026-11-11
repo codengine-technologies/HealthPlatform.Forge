@@ -344,6 +344,45 @@ une requête).
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
 
+## PRs
+
+- `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/61 — label `awaiting-human-merge`
+  (contrat 588, à merger en premier)
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/360 — label `awaiting-human-merge`
+
+## Code Review Summary
+
+**APPROVED** — 0 bloquant, 5 suggestions.
+
+| Validation | Résultat |
+|---|---|
+| Build api-mail / dtos-mss | ✅ / ✅ (0 erreur, 0 avertissement) |
+| Tests api-mail | ✅ domain 210, application 4 193, infrastructure 743, api 1 375, intégration 1 250 (+16 ignorés), 0 échec |
+| SonarQube | ✅ Quality Gate OK, 0 issue, 0 hotspot, couverture 97,8 %, nouveau code 96,2 % |
+| E2E | ✅ vert (mobile 60, angular 74), parité verte |
+| DoD | ✅ toutes les lignes vérifiées (écarts assumés listés au `## Develop log`) |
+
+**Règle 1b** : chaque comportement atteignable par `POST /api/v1/search/semantic` a son test d'intégration de bout en
+bout, vu rouge par mutation (B1 à B11). La correspondance comportement → test → mutation est dans le `## Develop log`
+et dans la PR api-mail.
+
+**DoD, points notables** :
+- contrat publié (588) et consommateur .NET porté (api-mail) ; `client-blazor` hors `**Repos**`, contrat rétrocompatible ;
+- coût : +46 ms au p95 pour une page de 50, borne 100 ms ; mesuré sur la copie `srch_lab` (11 291 messages, la boîte de
+  formation a grandi depuis la mesure de 11 178) ;
+- tests d'intégration sur des données fictives propres plutôt que sur le corpus de task-438 (sans patient ni document
+  « hémoglobine ») ;
+- aucune donnée de santé dans les journaux ;
+- prévention : `conventions/csharp.md` § `identite-patient-exacte`, et SYSLIB1045 variante EF.
+
+**Suggestions (non bloquantes)** :
+- Nom de naissance et nom d'utilisation non distingués : la fiche patient n'a qu'un champ `LastName` (stocker les deux
+  noms à l'analyse du CDA).
+- task-446 / task-451 : rendre l'extrait comme du texte, jamais en HTML.
+- Les clients ne lisent pas encore `isDegraded` ; les codes `excerpts` et `patients` y seront à traduire.
+- `MailCount` compte aussi les messages de la Corbeille.
+- La reconnaissance d'une INS ne contrôle pas la clé, exprès.
+
 ## Branches
 
 - `api-mail` (pushed) : feat/task-444-recherche-reponse-enrichie-extraits — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-444-recherche-reponse-enrichie-extraits
@@ -361,6 +400,7 @@ une requête).
 | /lint-angular | skipped | 0.4 s | — | — | — | client-angular non touché (Repos: api-mail, dtos-mss) |
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché (Repos: api-mail, dtos-mss) |
 | /e2e | ok | 20 min 19 s | — | — | — | e2e ×3 (19 min 27 s) |
-| **Total cycle** | | **1 h 23 min** | **10 (1 min 42 s)** | **17 (25 min 26 s)** | **4 (1 min 29 s)** | |
+| /review | ok | 8 min 01 s | 2 (15 s) | 1 (6 min 02 s) | — | dtos-mss 1B/0T, api-mail 1B/1T |
+| **Total cycle** | | **1 h 31 min** | **12 (1 min 58 s)** | **18 (31 min 28 s)** | **4 (1 min 29 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (20 s), restore ×1 (23 s)
