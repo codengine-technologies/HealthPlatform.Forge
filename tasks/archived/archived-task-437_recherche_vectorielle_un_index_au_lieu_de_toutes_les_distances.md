@@ -451,3 +451,16 @@ rouges entre minuit et 1 h, sont rejoués verts à 8 h 55), Quality Gate OK (3 i
   2. distance en demi-précision côté index, pleine côté exact (≈ 10⁻³, effet possible pile au seuil) ;
   3. coût d'écriture de l'index sur `enrich`, à mesurer au banc ;
   4. stockage : environ 0,45 To d'index pour 10 000 médecins.
+
+## Merged
+
+Mergé le 2026-11-11 par l'humain (`/merge task-437 --i-tested`), squash, CI `develop` verte.
+
+- `api-mail` #357 → `b94c4f44f79297729b1eda363cd6bf1ad3ef1dba`
+
+Branche `feat/task-437-recherche-vectorielle-un-index-au-lieu` supprimée (distante et locale) ; label
+`awaiting-human-merge` retiré. Aucune branche staging (task lancée hors `/forge`).
+
+**Non joué avant le merge** : les deux mesures de banc prévues (escalier `enrich` à 16 médecins avant / après, A/B du
+tir court 1400 → 1996). Le coût d'écriture de l'index sur l'analyse des messages n'est donc pas mesuré. FND-010 passe
+en « corrigé et mesuré » sur la mesure du laboratoire.
