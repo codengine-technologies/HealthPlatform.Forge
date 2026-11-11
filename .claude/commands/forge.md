@@ -52,6 +52,17 @@ Tools/timing/report.sh --last {N}    # une ligne par task du run
 Tools/timing/report.sh --by-kind     # combien de builds / tests / scans par task
 ```
 
+Puis, **dernière commande du run**, la notification Telegram de fin de run
+(best-effort, sort toujours en 0 — voir « Notifications Telegram » dans `CLAUDE.md`).
+Une ligne par task, **sans aucun contenu de task file ni de question** :
+
+```bash
+Tools/notify/notify.sh send "📦 Run /forge {run-id} terminé — {n_pr} PR prête(s), {n_q} question(s)
+task-443 ✅ PR prête
+task-444 🛑 question : questions/task-444.md
+Staging : forge/staging-task-{début}-{fin}-{date}"
+```
+
 **Le rapport de run n'est jamais silencieux sur le coût** — comme il ne l'est
 jamais sur la qualité Sonar. C'est cette restitution qui permet de comparer un
 run au précédent et de valider (ou d'invalider) chaque optimisation de la

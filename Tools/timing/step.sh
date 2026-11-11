@@ -16,6 +16,9 @@
 # without running anything. That refresh is best-effort : if python is
 # unavailable the ledger is still written and the chain continues.
 #
+# `end` also notifies the human on Telegram (Tools/notify/notify.sh) when the
+# step is `review` with status `ok` (PR ready for HAG) or any step `failed`.
+#
 # The instrumentation NEVER fails a step : every path exits 0.
 
 set -u
@@ -76,6 +79,10 @@ case "$action" in
     if [ "$task" != "-" ]; then
       "$SELF_DIR/report.sh" --task "$task" --sync >/dev/null 2>&1 || true
     fi
+
+    # Telegram (best-effort) : PR prête après /review, ou étape en échec.
+    # Tools/notify/notify.sh décide ; il ne notifie rien d'autre.
+    bash "$SELF_DIR/../notify/notify.sh" step "$task" "$step" "${status:-ok}" >/dev/null 2>&1 || true
     ;;
 
   *)

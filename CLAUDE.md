@@ -138,6 +138,31 @@ Tools/timing/step.sh end --task {task-id} --step develop --status ok
 Protocole détaillé, vocabulaire des kinds et limites assumées :
 `Tools/timing/README.md`.
 
+### Notifications Telegram — la forge prévient quand elle attend l'humain (depuis 2026-11-11)
+
+La forge envoie un message Telegram (bot `@healthplatform_forge_mail_bot`) aux moments où elle
+attend l'humain. Le mécanisme est **branché sur des points fixes, pas sur les playbooks** : aucun
+agent n'a à y penser, donc aucun ne peut l'oublier.
+
+| Moment | Déclencheur | Message |
+|---|---|---|
+| Question d'arbitrage | hook `PostToolUse` (Write) sur `questions/task-*.md` (`.claude/hooks/notify-question.sh`) | 🛑 id, étape, titre de la question |
+| PR prête pour le merge (HAG) | `Tools/timing/step.sh end --step review --status ok` | ✅ id, titre, liens des PRs |
+| Étape en échec | `Tools/timing/step.sh end --status failed` | ⚠️ id, étape |
+| Fin d'un run `/forge` | dernière commande du run (`.claude/commands/forge.md`) | 📦 bilan, une ligne par task |
+
+- **Envoi** : `Tools/notify/notify.sh`, **best-effort comme le timing** : il sort toujours en 0,
+  borné à 5 s. Sans identifiants, il se tait. Tests : `bash Tools/notify/test_notify.sh`.
+- **Identifiants hors dépôt** : `TELEGRAM_BOT_TOKEN` et `TELEGRAM_CHAT_ID`, dans l'environnement
+  ou dans `~/.forge-telegram.env`. **Jamais commités.**
+- **Rien de sensible ne part** : Telegram est un service externe. Seuls partent l'identifiant et le
+  titre de la task, l'étape, le titre de la question et les liens des PRs. **Jamais** le corps d'une
+  question ni d'un task file. Une question réécrite avec « Résolu » en tête ne notifie pas.
+- **Interrupteurs** : `FORGE_NOTIFY=off` coupe tout ; `FORGE_NOTIFY_DRY_RUN=1` écrit le message
+  sur stdout au lieu de l'envoyer.
+- **Limite assumée** : une question écrite autrement que par l'outil Write (heredoc Bash) ne
+  déclenche pas le hook. Les playbooks écrivent `questions/` avec Write.
+
 ### Branche staging par run `/forge`
 
 Chaque run `/forge` **agrège le travail validé de toutes ses tasks sur une

@@ -36,6 +36,7 @@ Règles :
   aléatoire, sans lien avec la personne, oublié à la fermeture.
 - **Seuil** : un tableau de bord signale quand le p95 de la durée vécue dépasse 1 seconde sur une journée.
 - **Panne de mesure** : un envoi de mesure en échec ne gêne jamais le médecin (ni erreur, ni attente).
+- Chaque réusultat de recherche doit affiché dans les logs serilog, le temps consomé afin de suivre la durée des traitement par logs
 
 ### Hors périmètre
 

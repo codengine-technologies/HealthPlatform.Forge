@@ -96,6 +96,10 @@ Tools/e2e/__pycache__/
 !Tools/loadtest-findings/
 !Tools/loadtest-findings/**
 Tools/loadtest-findings/__pycache__/
+# Notifications Telegram (Tools/notify/notify.sh) : arbitrage, PR prête, échec, fin de run.
+# Les identifiants vivent hors dépôt (~/.forge-telegram.env), jamais ici.
+!Tools/notify/
+!Tools/notify/**
 
 # The ledger is the forge's measurement journal (committed, append-only).
 # The .state/ markers are machine-local run state and must never be tracked.
