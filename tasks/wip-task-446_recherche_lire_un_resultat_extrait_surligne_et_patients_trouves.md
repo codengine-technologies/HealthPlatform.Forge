@@ -78,3 +78,8 @@ Règles :
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : non applicable au client — aucune donnée stockée
 - **AIPD / impact RGPD** : couvert par task-444 (affichage d'extraits)
+
+## Branches
+
+- `api-mail` (pushed) : feat/task-446-recherche-lire-un-resultat-extrait — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-446-recherche-lire-un-resultat-extrait
+- `client-angular` (code-only) : la forge écrit sur la branche checked out dans `Client/Angular/` (au /start : `feature/nova-mss-weda-integration`) — humain gère branche, commit, push, PR TFS
