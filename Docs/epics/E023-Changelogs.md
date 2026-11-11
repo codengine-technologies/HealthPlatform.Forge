@@ -260,4 +260,4 @@
 | task-447 | supprimée (2026-11-11) | Portée « tous les dossiers » et tri, écartés par l'humain : recherche dans le dossier sélectionné seulement ; tri par date sans gain sur l'ordre du serveur |
 | task-448 | todo | Sélectionner tous les résultats et actions groupées |
 | task-449 | todo | Suggestions pendant la frappe : patients et messages |
-| task-452 | todo | Mesure anonyme de l'expérience |
+| task-452 | supprimée (2026-11-11) | Mesure anonyme de l'expérience : reportée par l'humain |
