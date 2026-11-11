@@ -1,8 +1,8 @@
 # E023 — Expérience de recherche
 
-> **Statut** : 🟡 En cours (5 features sur 9 livrées)
+> **Statut** : 🟡 En cours (5 features sur 8 livrées)
 > **Version** : 0.5
-> **Auteur** : PO forge (tasks 442 à 449, 452)
+> **Auteur** : PO forge (tasks 442 à 446, 448, 449, 452)
 > **Modèle** : task-driven
 > **Dernière mise à jour** : 2026-11-11
 > **Vue ingénierie** : [E023-Changelogs.md](E023-Changelogs.md)
@@ -47,7 +47,7 @@ le même modèle. Le modèle retenu le 2026-11-10 avec l'humain s'inspire de la 
 - [x] Chercher avec les critères du métier : patient, date du document, biologie anormale, expéditeurs, pièce jointe (task-443)
 - [ ] Voir les résultats dans un espace dédié, fidèle à ce que le serveur a trouvé, et en sortir explicitement
 - [ ] Comprendre pourquoi chaque résultat est là, et retrouver d'un geste le patient concerné (serveur prêt : task-444 ; affichage : task-446)
-- [ ] Choisir l'ordre des résultats, et agir sur tous les résultats d'un coup
+- [ ] Agir sur tous les résultats d'un coup
 - [ ] Être guidé pendant la frappe par ce que la boîte contient
 - [ ] Mesurer la qualité vécue de la recherche, sans jamais savoir ce qui a été cherché ni par qui
 
@@ -70,7 +70,6 @@ le même modèle. Le modèle retenu le 2026-11-10 avec l'humain s'inspire de la 
 | Réponse enrichie | Savoir où le terme a été trouvé, en voir un extrait, connaître les patients désignés | task-444 | ✅ Livrée côté serveur |
 | Mode « Résultats de recherche » | Voir les résultats dans un espace dédié, les affiner sur place, en sortir explicitement | task-445 | ✅ Livrée dans weda2 |
 | Lire un résultat | Voir l'extrait surligné de chaque résultat et ouvrir le patient trouvé en tête | task-446 | ✅ Livrée dans weda2 |
-| Tri des résultats | Choisir l'ordre des résultats du dossier sélectionné : pertinence ou plus récents d'abord | task-447 | 🔴 À faire |
 | Actions groupées | Sélectionner tous les résultats, même ceux pas encore affichés, et leur appliquer une action | task-448 | 🔴 À faire |
 | Suggestions pendant la frappe | Recevoir des propositions par catégories (patients, messages) dès les premières lettres | task-449 | 🔴 À faire |
 | Mesure anonyme de l'expérience | (équipe produit) Suivre le taux de recherches sans résultat et la qualité vécue | task-452 | 🔴 À faire |
@@ -91,7 +90,6 @@ flowchart LR
     C --> D[Espace « Résultats de recherche »]
     D --> E[Lire un résultat<br/>extrait surligné]
     D --> F[Ouvrir le patient trouvé]
-    D --> G[Affiner : tri]
     D --> H[Agir sur tous les résultats]
     D --> I[Fermer la recherche<br/>retour au dossier]
 ```
@@ -161,8 +159,10 @@ la rend telle quelle, à la même position.
 
 ## 9. Hors périmètre
 
-- La recherche dans plusieurs dossiers ou dans toute la boîte : écartée par l'humain le 2026-11-11 (task-447 recentrée
-  sur le tri).
+- La recherche dans plusieurs dossiers ou dans toute la boîte : écartée par l'humain le 2026-11-11.
+- Un tri des résultats « Les plus récents » : écarté par l'humain le 2026-11-11 (task-447 supprimée). Le serveur classe
+  déjà chaque groupe de résultats exacts du plus récent au plus ancien ; un tri par date n'aurait changé l'ordre que pour
+  une recherche à plusieurs mots, en faisant passer un message partiel devant celui qui contient tous les mots.
 - La justesse de la recherche elle-même (accents, champs, seuil, ordre) : EPIC E022.
 - La refonte mobile de la recherche est suivie à part (task-450) ; d'ici là, le mobile garde son formulaire actuel.
 
@@ -177,12 +177,11 @@ la rend telle quelle, à la même position.
 | Réponse enrichie | ✅ Livrée côté serveur | 100 % | task-444 |
 | Mode « Résultats de recherche » | ✅ Livrée dans weda2 | 100 % | task-445 |
 | Lire un résultat | ✅ Livrée dans weda2 | 100 % | task-446 |
-| Tri des résultats | 🔴 À faire | 0 % | task-447 |
 | Actions groupées | 🔴 À faire | 0 % | task-448 |
 | Suggestions pendant la frappe | 🔴 À faire | 0 % | task-449 |
 | Mesure anonyme de l'expérience | 🔴 À faire | 0 % | task-452 |
 
-**Couverture EPIC consolidée : 56 %** (5 features livrées sur 9).
+**Couverture EPIC consolidée : 63 %** (5 features livrées sur 8).
 
 ---
 
