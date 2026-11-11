@@ -192,9 +192,9 @@
 
 ### v0.5 — task-446 : lire un résultat — extrait surligné, endroit, dossier, patients trouvés (weda2, api-mail)
 
-- **État** : `done`, PR api-mail [#362](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/362) en
-  attente de merge humain (HAG) ; weda2 code-only, non commité (à commiter sur TFS **avant** le merge de #362 :
-  `functional.e2e.ts`).
+- **État** : `archived`, mergée le 2026-11-11 : api-mail [#362](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/362)
+  → `5134e1e1`. weda2 code-only, encore non commité sur TFS au moment du merge (`functional.e2e.ts` compris) : un
+  `/e2e` joué sur un clone weda2 sans ces specs sort en parité rouge jusqu'au push.
 - **weda2** (`libs/mss/src/`) :
   - `core/utils/text-highlight.util.ts` : `highlightSegments` (positions → segments rendus comme du texte),
     `findTermRanges` (repli accents et casse, accents décomposés inclus), `searchTermsOf`, `highlightHtml` (nœuds de
@@ -256,8 +256,8 @@
 | task-443 | archived (PRs dtos-mss #60, api-mail #359 mergées) | Critères médicaux : patient, date du document, biologie anormale, expéditeurs, nom de pièce jointe ; `E2E-SEARCH-008` v1 |
 | task-444 | archived (PRs dtos-mss #61, api-mail #360 mergées) | Réponse enrichie : endroit trouvé, extrait surligné, patients trouvés par correspondance exacte |
 | task-445 | archived (PR api-mail #361 mergée) | Mode « Résultats de recherche » dans weda2 ; `E2E-SEARCH-004` à `007`, `009` v1 |
-| task-446 | done (PR api-mail #362 ; weda2 non commité) | Lire un résultat : extrait surligné, endroit, dossier, patients trouvés ; `E2E-SEARCH-010` v1 |
-| task-447 | todo | Portée « tous les dossiers » et tri |
+| task-446 | archived (PR api-mail #362 mergée ; weda2 à pousser sur TFS) | Lire un résultat : extrait surligné, endroit, dossier, patients trouvés ; `E2E-SEARCH-010` v1 |
+| task-447 | supprimée (2026-11-11) | Portée « tous les dossiers » et tri, écartés par l'humain : recherche dans le dossier sélectionné seulement ; tri par date sans gain sur l'ordre du serveur |
 | task-448 | todo | Sélectionner tous les résultats et actions groupées |
 | task-449 | todo | Suggestions pendant la frappe : patients et messages |
-| task-452 | todo | Mesure anonyme de l'expérience |
+| task-452 | supprimée (2026-11-11) | Mesure anonyme de l'expérience : reportée par l'humain |

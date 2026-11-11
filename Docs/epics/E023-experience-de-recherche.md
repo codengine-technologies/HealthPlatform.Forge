@@ -1,8 +1,8 @@
 # E023 — Expérience de recherche
 
-> **Statut** : 🟡 En cours (5 features sur 9 : quatre livrées, une en attente de validation humaine)
+> **Statut** : 🟡 En cours (5 features sur 7 livrées)
 > **Version** : 0.5
-> **Auteur** : PO forge (tasks 442 à 449, 452)
+> **Auteur** : PO forge (tasks 442 à 446, 448, 449)
 > **Modèle** : task-driven
 > **Dernière mise à jour** : 2026-11-11
 > **Vue ingénierie** : [E023-Changelogs.md](E023-Changelogs.md)
@@ -47,9 +47,8 @@ le même modèle. Le modèle retenu le 2026-11-10 avec l'humain s'inspire de la 
 - [x] Chercher avec les critères du métier : patient, date du document, biologie anormale, expéditeurs, pièce jointe (task-443)
 - [ ] Voir les résultats dans un espace dédié, fidèle à ce que le serveur a trouvé, et en sortir explicitement
 - [ ] Comprendre pourquoi chaque résultat est là, et retrouver d'un geste le patient concerné (serveur prêt : task-444 ; affichage : task-446)
-- [ ] Chercher dans toute la boîte par défaut, choisir l'ordre, et agir sur tous les résultats d'un coup
+- [ ] Agir sur tous les résultats d'un coup
 - [ ] Être guidé pendant la frappe par ce que la boîte contient
-- [ ] Mesurer la qualité vécue de la recherche, sans jamais savoir ce qui a été cherché ni par qui
 
 ---
 
@@ -57,7 +56,6 @@ le même modèle. Le modèle retenu le 2026-11-10 avec l'humain s'inspire de la 
 
 - **Le médecin** et, plus largement, toute personne rattachée à une boîte MSSanté (titulaire, délégataire, membre) qui
   cherche un message, un document ou un patient.
-- **L'équipe produit**, qui suit la qualité de la recherche sur un tableau de bord anonyme.
 
 ---
 
@@ -69,11 +67,9 @@ le même modèle. Le modèle retenu le 2026-11-10 avec l'humain s'inspire de la 
 | Critères médicaux | Restreindre la recherche à un patient choisi dans la liste, à la date du document médical, à la biologie marquée anormale par le laboratoire, à un ou plusieurs expéditeurs, au nom d'une pièce jointe | task-443 | ✅ Livrée |
 | Réponse enrichie | Savoir où le terme a été trouvé, en voir un extrait, connaître les patients désignés | task-444 | ✅ Livrée côté serveur |
 | Mode « Résultats de recherche » | Voir les résultats dans un espace dédié, les affiner sur place, en sortir explicitement | task-445 | ✅ Livrée dans weda2 |
-| Lire un résultat | Voir l'extrait surligné de chaque résultat et ouvrir le patient trouvé en tête | task-446 | 🟢 Livrée dans weda2, en attente de validation |
-| Portée et tri | Chercher dans toute la boîte ou dans le dossier courant, et choisir l'ordre des résultats | task-447 | 🔴 À faire |
+| Lire un résultat | Voir l'extrait surligné de chaque résultat et ouvrir le patient trouvé en tête | task-446 | ✅ Livrée dans weda2 |
 | Actions groupées | Sélectionner tous les résultats, même ceux pas encore affichés, et leur appliquer une action | task-448 | 🔴 À faire |
 | Suggestions pendant la frappe | Recevoir des propositions par catégories (patients, messages) dès les premières lettres | task-449 | 🔴 À faire |
-| Mesure anonyme de l'expérience | (équipe produit) Suivre le taux de recherches sans résultat et la qualité vécue | task-452 | 🔴 À faire |
 
 > Le bilan d'avancement par feature (statut, couverture, tasks contributives) est consigné en fin de document, dans la
 > section *État de couverture*.
@@ -91,7 +87,6 @@ flowchart LR
     C --> D[Espace « Résultats de recherche »]
     D --> E[Lire un résultat<br/>extrait surligné]
     D --> F[Ouvrir le patient trouvé]
-    D --> G[Affiner : portée, tri]
     D --> H[Agir sur tous les résultats]
     D --> I[Fermer la recherche<br/>retour au dossier]
 ```
@@ -104,6 +99,8 @@ la rend telle quelle, à la même position.
 
 ## 6. Règles métier transverses
 
+- **La recherche porte sur le dossier sélectionné, et sur lui seul** (décision de l'humain du 2026-11-11). Aucune
+  recherche dans plusieurs dossiers ni dans toute la boîte.
 - **Rien ne part avant le geste du praticien.** Cocher un critère ne lance pas de recherche ; seul « Lancer la
   recherche » (ou Entrée) la lance (task-442).
 - **Fermer sans lancer ne change rien.** Les critères modifiés et non lancés sont abandonnés ; la recherche affichée
@@ -137,7 +134,6 @@ la rend telle quelle, à la même position.
 - **Le seuil de similarité n'est plus un réglage personnel** : le serveur applique le même pour tous (task-445).
 - **Chaque recherche lancée est tracée au nom de la personne qui l'a faite**, comme tout acte sur la boîte. Cocher un
   critère sans lancer n'est pas un acte.
-- **La mesure de l'expérience est anonyme** : elle ne conserve ni le texte cherché ni l'identité de qui cherche.
 
 ---
 
@@ -159,6 +155,12 @@ la rend telle quelle, à la même position.
 
 ## 9. Hors périmètre
 
+- La recherche dans plusieurs dossiers ou dans toute la boîte : écartée par l'humain le 2026-11-11.
+- La mesure anonyme de l'expérience de recherche (tableau de bord de l'équipe produit) : reportée par l'humain le
+  2026-11-11 (task-452 supprimée pour le moment).
+- Un tri des résultats « Les plus récents » : écarté par l'humain le 2026-11-11 (task-447 supprimée). Le serveur classe
+  déjà chaque groupe de résultats exacts du plus récent au plus ancien ; un tri par date n'aurait changé l'ordre que pour
+  une recherche à plusieurs mots, en faisant passer un message partiel devant celui qui contient tous les mots.
 - La justesse de la recherche elle-même (accents, champs, seuil, ordre) : EPIC E022.
 - La refonte mobile de la recherche est suivie à part (task-450) ; d'ici là, le mobile garde son formulaire actuel.
 
@@ -172,13 +174,11 @@ la rend telle quelle, à la même position.
 | Critères médicaux | ✅ Livrée | 100 % | task-443 |
 | Réponse enrichie | ✅ Livrée côté serveur | 100 % | task-444 |
 | Mode « Résultats de recherche » | ✅ Livrée dans weda2 | 100 % | task-445 |
-| Lire un résultat | 🟢 Livrée dans weda2, en attente de validation | 100 % | task-446 |
-| Portée et tri | 🔴 À faire | 0 % | task-447 |
+| Lire un résultat | ✅ Livrée dans weda2 | 100 % | task-446 |
 | Actions groupées | 🔴 À faire | 0 % | task-448 |
 | Suggestions pendant la frappe | 🔴 À faire | 0 % | task-449 |
-| Mesure anonyme de l'expérience | 🔴 À faire | 0 % | task-452 |
 
-**Couverture EPIC consolidée : 56 %** (5 features sur 9 : quatre livrées, une en attente de validation humaine).
+**Couverture EPIC consolidée : 71 %** (5 features livrées sur 7).
 
 ---
 

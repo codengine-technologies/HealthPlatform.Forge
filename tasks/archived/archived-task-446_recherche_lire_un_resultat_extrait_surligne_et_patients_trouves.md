@@ -417,3 +417,12 @@ Démontage vérifié : ports libres, aucun conteneur e2e résiduel.
 | **Total cycle** | | **15 min 24 s** | **6 (1 min 42 s)** | **10 (21 min 20 s)** | **2 (54 s)** | |
 
 Autres commandes mesurées : lint ×3 (1 min 16 s)
+
+## Merged
+
+Mergé le 2026-11-11 par l'humain (`/merge task-446 --i-tested`), squash, CI `develop` verte :
+- `api-mail` #362 → `5134e1e1` (catalogue e2e : E2E-SEARCH-010).
+- `client-angular` : code-only. Au moment du merge, `functional.e2e.ts` et 44 autres fichiers n'étaient **pas encore
+  commités** sur TFS (`feature/nova-mss-weda-integration`). Merge décidé par l'humain malgré l'avertissement : un `/e2e`
+  joué sur un clone weda2 sans ces specs sortira en parité rouge jusqu'au push TFS.
+- Branche `feat/task-446-recherche-lire-un-resultat-extrait` supprimée (distante et locale).

@@ -9,7 +9,7 @@ mesurer avant d'améliorer. Les tasks 454 à 463 se jugent sur l'avant/après, p
 > **Origine.** Analyse du 2026-11-11, manque I1 (Sinsky et Shanafelt : « mesurer, réduire, déléguer » ; le temps passé
 > hors des heures de travail prédit l'épuisement, selon Arndt 2017 et Akbar 2021). **Aucune source publique ne dit
 > combien de documents un généraliste reçoit par jour** : nous le mesurerons nous-mêmes. Usage décidé par le PO le
-> 2026-11-11, sur le modèle de task-452 : **mesure anonyme réservée à l'équipe produit**, rien n'est montré au médecin.
+> 2026-11-11 : **mesure anonyme réservée à l'équipe produit**, rien n'est montré au médecin.
 > Seule `api-mail` est touchée : aucun écran client.
 
 ## Ce qui est établi
@@ -19,8 +19,9 @@ mesurer avant d'améliorer. Les tasks 454 à 463 se jugent sur l'avant/après, p
   la réponse, l'acquittement, le rattachement, le déplacement et la suppression.
 - La catégorie des documents est en base de boîte (`MailMedicalDocument.Category`).
 - `AuditTraceFilterDto` filtre déjà par personne, type et dates. Aucune agrégation n'existe.
-- Le modèle d'exposition anonyme et le tableau de bord sont posés par task-452 : compteurs et durées, Grafana du
-  projet.
+- Aucun modèle d'exposition anonyme n'existe encore : task-452, qui devait le poser pour la recherche, a été supprimée
+  par l'humain le 2026-11-11. Cette task pose donc le premier tableau de bord anonyme de l'équipe produit, dans le
+  Grafana du projet : compteurs et durées seulement.
 
 ## Objective
 
@@ -63,7 +64,7 @@ Règles :
       - aucun identifiant de boîte, de personne ou de patient dans la réponse ;
       - cas d'échec : une plage de dates invalide → 400 en `ProblemDetails`.
       Vu rouge par mutation.
-- [ ] Tableau de bord ajouté au Grafana du projet (à côté de celui de task-452) ; capture dans le `## Develop log`.
+- [ ] Tableau de bord ajouté au Grafana du projet ; capture dans le `## Develop log`.
 - [ ] Mesure de référence relevée sur l'environnement de recette (corpus fictif) et consignée dans le task file.
 - [ ] Aucune donnée de santé ni donnée personnelle dans les mesures et les logs (revue du schéma exposé consignée).
 - [ ] Build et tests verts : `HealthPlatform.Api.Mail.sln`.

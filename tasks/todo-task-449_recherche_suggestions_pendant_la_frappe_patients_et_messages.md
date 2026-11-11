@@ -5,7 +5,8 @@
 résultats)
 **Epic**: E023
 **Priorité**: EPIC E023, demandée par l'humain le 2026-11-10. Une seule barre pour trouver un patient ou un message :
-le médecin tape quelques lettres, choisit, et la recherche est faite.
+le médecin tape quelques lettres, choisit, et la recherche est faite. **Complétée par l'humain le 2026-11-11** :
+préfixes de critère (`de :`, `à :`, `patient :`, `type :`, `objet :`) et recherche exacte entre guillemets.
 
 > **Origine.** Analyse du 2026-11-10 (suggestions par catégorie d'Apple Mail et d'Outlook, étiquettes dans la barre).
 > Décision de l'humain : point d'entrée unique patients et messages ; l'historique sort du formulaire et devient une
@@ -40,7 +41,45 @@ Règles :
   - un **correspondant** ou un **type de document** ajoute une **étiquette de critère** dans la barre
     (« De : Laboratoire Cerballiance », « Type : Biologie ») et lance la recherche ;
   - une **recherche récente** la rejoue.
-- **Entrée** sans choisir de suggestion lance la recherche plein texte sur le texte tapé.
+- **Entrée** sans choisir de suggestion lance la recherche plein texte sur le texte tapé (sauf préfixe ou guillemets,
+  voir ci-dessous).
+- **Préfixes de critère** (ajout de l'humain du 2026-11-11). Reconnus en tête de saisie, insensibles à la casse et aux
+  accents, avec ou sans espaces autour des deux-points (`de :paul`, `De: paul`, `de : paul`) :
+
+  | Préfixe | Suggestions proposées (seule catégorie affichée) | Critère posé à Entrée sans choisir |
+  |---|---|---|
+  | `de :` | Correspondants **expéditeurs** dont le nom ou l'adresse commence par le texte | « De » contient le texte (`FromName` / `FromAddress`) |
+  | `à :` (ou `a :`) | Correspondants **destinataires** dont le nom ou l'adresse commence par le texte | « À / Cc » contient le texte (`RecipientAddress`) |
+  | `patient :` | Patients (mêmes règles que la catégorie « Patients ») | aucun : un patient **se choisit**, jamais une saisie libre (task-443) ; Entrée sans choix ne lance rien et laisse la liste ouverte |
+  | `type :` | Types de document dont le libellé contient le texte | aucun : un type se choisit dans la nomenclature ; Entrée sans choix ne lance rien |
+  | `objet :` | aucune | « Objet » contient le texte (`Subject`) |
+
+  - Choisir une suggestion pose l'étiquette (« De : Paul MARTIN ») et lance la recherche, comme sans préfixe.
+  - Le texte après un préfixe n'est **jamais** lu comme une identité de patient (patients trouvés de task-444), sauf
+    avec `patient :`, ni cherché en plein texte dans les autres champs.
+  - Un mot suivi de deux-points qui n'est pas un préfixe reconnu (`tension : 14/8`) est du texte ordinaire : recherche
+    plein texte habituelle.
+  - Un préfixe peut précéder une expression entre guillemets : `de : "Paul Martin"` → « De » contient exactement
+    « Paul Martin » (casse ignorée).
+  - Plusieurs critères se combinent : chaque étiquette posée reste dans la barre, et le texte restant est cherché en
+    plein texte.
+- **Recherche exacte entre guillemets** (ajout de l'humain du 2026-11-11). Une saisie qui contient au moins une
+  expression entre guillemets droits (`"…"`) ou typographiques (`« … »`, `“…”`) déclenche une recherche **plein texte
+  exacte, sans recherche sémantique** :
+  - chaque expression entre guillemets doit figurer **telle quelle** dans le message : mêmes mots, consécutifs, dans le
+    même ordre, commençant et finissant sur une frontière de mot (`"dernier résultat"` ne trouve pas « derniers
+    résultats ») ;
+  - **seule la casse est ignorée** : les accents et la ponctuation comptent (`"dernier résultat du 22/05/2026"` trouve
+    « Dernier RÉSULTAT du 22/05/2026 », pas « dernier resultat du 22-05-2026 ») ; une suite d'espaces ou un retour à la
+    ligne valent une espace ;
+  - champs cherchés : ceux du plein texte (objet, corps, documents médicaux, expéditeur, noms de pièces jointes) ;
+  - les mots hors guillemets de la même saisie sont **aussi obligatoires** (`"dernier résultat" potassium` : les deux) ;
+    il n'y a ni groupe « une partie des mots » ni section « Résultats proches » ;
+  - le serveur n'appelle **jamais** le fournisseur d'embeddings pour une telle saisie ;
+  - la réponse enrichie de task-444 s'applique : l'endroit trouvé et un extrait dont la position couvre l'expression
+    entière ;
+  - un guillemet sans fermant est un caractère ordinaire : recherche habituelle ;
+  - les guillemets et leur contenu sont rejoués tels quels par l'historique.
 - Clavier : flèches pour parcourir, Entrée pour choisir, Échap pour fermer.
 - Les suggestions sont celles de la **base de la boîte** : titulaire, délégataire et membre voient les mêmes patients et
   correspondants (règle 14), et leurs **propres** recherches récentes (l'historique appartient à la personne).
@@ -67,6 +106,26 @@ Règles :
       - **règle 14** : deux personnes rattachées à la même boîte reçoivent les mêmes patients et correspondants, et
         chacune ses propres recherches récentes ;
       - **cas d'échec** : moins de 2 caractères → 400 en `ProblemDetails` ; boîte sans verdict de l'opérateur → refus
+- [ ] **Préfixes** — tests d'intégration de bout en bout sur la route de suggestions et sur
+      `POST /api/v1/Search/semantic`, lus dans la réponse réelle, chacun vu rouge par mutation :
+      - `de : paul` : seuls des correspondants expéditeurs commençant par « paul » ; aucun patient ;
+      - `de : paul` puis Entrée sans choix : seuls les messages dont l'expéditeur contient « paul » (un message citant
+        « Paul » dans son corps n'est **pas** rendu) ; aucun patient trouvé ;
+      - `objet : bilan` : seuls les messages dont l'objet contient « bilan » ;
+      - `tension : 14/8` : recherche plein texte habituelle
+- [ ] **Guillemets** — tests d'intégration de bout en bout sur `POST /api/v1/Search/semantic`, lus dans la réponse réelle,
+      chacun vu rouge par mutation :
+      - `"dernier résultat du 22/05/2026"` trouve le message qui contient « Dernier RÉSULTAT du 22/05/2026 » (casse
+        différente), pas celui qui contient « dernier resultat du 22-05-2026 » ni « derniers résultats du 22/05/2026 » ;
+      - le générateur d'embeddings **n'est pas appelé** (double qui échoue s'il l'est) et aucun hit n'est `Similar` ;
+      - `"dernier résultat" potassium` : seul le message qui contient les deux ;
+      - l'extrait (task-444) porte une position qui couvre l'expression entière ;
+      - un guillemet non fermé : recherche habituelle
+- [ ] Tests unitaires de l'analyse de la saisie : chaque préfixe (variantes d'espaces, de casse, d'accent), préfixe
+      inconnu, expressions entre guillemets droits et typographiques, guillemet non fermé, mélange guillemets + mots
+- [ ] Mesure consignée dans le `## Develop log` : p95 d'une recherche entre guillemets sur la boîte de 11 178 messages,
+      comparé à la recherche plein texte habituelle (l'index trigramme sur texte normalisé peut présélectionner, la
+      vérification exacte se fait sur le texte d'origine)
 - [ ] La route de suggestions n'est plus `TraceExempt` : elle révèle des identités de patients, et chaque appel qui rend
       au moins un patient est tracé comme une consultation (famille `HealthDataAccess`), au nom de la personne réelle
 - [ ] Mesure consignée dans le `## Develop log` : p95 des suggestions sur la boîte de 11 178 messages, < 300 ms
@@ -79,6 +138,11 @@ Règles :
       `bern` propose Catherine BERNARD, et la choisir ouvre ses messages. Clients : angular requis, mobile requis avec
       **divergence temporaire** (raison : « les suggestions arrivent sur le mobile avec la refonte mobile », tache :
       task-451). Implémenté dans weda2, vu rouge par mutation
+- [ ] **Scénario e2e** `E2E-SEARCH-014` v1 : « Restreindre la recherche à un expéditeur en tapant « de : » » — attendu :
+      `de : ` suivi des premières lettres d'un correspondant ne propose que des correspondants ; le choisir pose
+      l'étiquette « De : … » et ne rend que ses messages. Clients : angular requis, mobile requis avec **divergence
+      temporaire** (raison : « les préfixes arrivent sur le mobile avec la refonte mobile », task : task-451). Implémenté
+      dans weda2, vu rouge par mutation
 - [ ] `data-testid` sur chaque élément interactif ajouté
 - [ ] Aucune donnée de santé en clair dans les logs (lettres tapées, noms, INS)
 - [ ] client-angular : code-only, aucun commit
@@ -97,7 +161,14 @@ Règles :
    est lancée.
 5. Taper `bio` : « Types de document » propose « Biologie ».
 6. Parcourir les suggestions au clavier (flèches, Entrée, Échap).
-7. Ouvrir le journal de la boîte : la saisie `bern` y figure comme consultation, au nom de la personne, sans les lettres
+7. Taper `de : ` puis les premières lettres d'un correspondant : seuls des correspondants sont proposés ; en choisir un
+   pose l'étiquette « De : … » et ne rend que ses messages. Recommencer avec `de : paul` puis Entrée sans choisir : les
+   messages dont l'expéditeur contient « paul », et pas ceux qui citent Paul dans leur corps.
+8. Taper `objet : bilan` puis Entrée : seuls les messages dont l'objet contient « bilan ».
+9. Taper `"dernier résultat du 22/05/2026"` (avec les guillemets) puis Entrée : seuls les messages qui contiennent
+   exactement cette expression, casse ignorée ; aucune section « Résultats proches ». Sans les guillemets, la même saisie
+   rend aussi des messages qui n'en contiennent qu'une partie.
+10. Ouvrir le journal de la boîte : la saisie `bern` y figure comme consultation, au nom de la personne, sans les lettres
    tapées.
 
 ## Conformité santé / Ségur / ANS
