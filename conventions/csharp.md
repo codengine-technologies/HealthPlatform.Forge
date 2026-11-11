@@ -2427,3 +2427,32 @@ Le second piège est l'INS : elle est tentante comme champ de réponse (« pour 
 
 **Origine** : task-444. **Occurrences** : 1
 
+
+---
+
+## etat-metier-hors-du-miroir-imap — un état de travail ne se rattache jamais en cascade à la ligne `Mails`
+
+**Règle** : convention projet (intégrité médico-légale, PGSSI-S), invisible au lint et à Sonar.
+
+**Piège** (task-453) : la ligne `Mails` est un **miroir IMAP jetable**. Un déplacement fait par un autre client, une
+purge sur changement d'UIDVALIDITY, une suppression puis une restauration la détruisent, et le message revient sous un
+nouvel `Id`. Tout ce qui y tenait en cascade disparaissait en silence : l'acquittement d'un résultat de biologie (trace
+de la prise de connaissance) et le rattachement manuel d'un document à un patient. Aucun test ne le voyait, parce
+qu'aucun ne déplaçait un message hors de la plateforme.
+
+**Consigne** :
+- Une trace ou un état métier (acquittement, rattachement manuel, état de travail : traité, report, attribution,
+  note, suivi) porte la **clé d'ancrage** du document (`AnchorKey`, `DocumentAnchor.Compute`) et sa clé étrangère vers
+  une ligne miroir (`MailMedicalDocuments`, `Mails`) est **nullable, `SET NULL`**, jamais `CASCADE`.
+- Il est re-relié par `DocumentWorkStateRelinker`, à l'ingestion **et** après une purge, avec la règle d'ambiguïté
+  (plusieurs documents de même clé : rien n'est re-relié). Modèle et raisons : `Docs/adr/ADR-2026-11-11-ancrage-etats-de-travail.md`.
+- Un test d'intégration prouve qu'il survit à un déplacement **hors plateforme** (harnais
+  `FolderOperationsEndToEndTests.WorkStateAnchoring` : `OtherImapClient.MoveAsync`, puis relecture du dossier), vu rouge.
+- Le modèle EF déclare la même règle que la migration (`OnDelete(DeleteBehavior.SetNull)`), et la clé calculée en SQL
+  pour une reprise est comparée à la clé C# par un test.
+
+**Preuve** : task-453, huit tests d'intégration rouges sur le code d'avant (acquittement absent après déplacement,
+UIDVALIDITY, corbeille, délégataire ; patient manuel perdu) ; mutations M1 (re-liaison neutralisée), M2b (garde
+d'ambiguïté), M3 (ancrage du rattachement manuel), M4 (clé SQL), M5 (re-liaison à la purge), toutes rouges.
+
+**Origine** : task-453. **Occurrences** : 1
