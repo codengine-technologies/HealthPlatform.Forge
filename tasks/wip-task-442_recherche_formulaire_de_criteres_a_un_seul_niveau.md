@@ -120,4 +120,78 @@ Règles :
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 14 s | — | — | — | — |
-| **Total cycle** | | **14 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 21 min 02 s | 3 (1 min 30 s) | 2 (1 min 02 s) | — | client-angular 2B/2T, api-mail 1B/0T |
+| **Total cycle** | | **21 min 16 s** | **3 (1 min 30 s)** | **2 (1 min 02 s)** | **0 (0.0 s)** | |
+
+## Develop log
+
+**Repos touchés** : `client-angular` (code-only, non commité), `api-mail` (catalogue e2e seulement).
+
+### client-angular — `libs/mss/src/features/mail/components/mail-search/`
+- `mail-search.component.ts` : le panneau « Recherche avancée » disparaît (`showAdvanced`,
+  `openAdvanced`, `closeAdvanced`, `applyAdvancedAndSearch` retirés). Les bascules de filtres ne
+  lancent plus rien. `launch()` lance avec tous les critères puis ferme ; `canLaunch` le désactive
+  sans critère ; Entrée appelle `launch()`. `resetParameters()` vide sans fermer ni lancer.
+  Un instantané `appliedCriteria` (type `SearchCriteria`) retient les critères de la recherche
+  affichée : `closeDropdown()` y revient, ce qui abandonne le brouillon. Les requêtes persistées
+  (rejeu de l'historique, recherche retrouvée par une liste recréée) passent par la fonction pure
+  `criteriaFromRequest`.
+- `mail-search.component.html` / `.scss` : un seul formulaire (historique, statut, médical,
+  période, critères De / À ou Cc / Objet / Type de document sur 15 types), pied collant avec deux
+  `ds-button` : `mail-search-reset` (stroke) et `mail-search-launch` (default, icône search,
+  inactif sans critère). Les puces portent `aria-pressed`.
+- `mail-search.component.spec.ts` : réécrit, **18 tests** (10 neufs task-442, plus date exclusive,
+  `clearAll`, course `switchMap`, tests task-377).
+- `e2e/mss-e2e/specs/functional.e2e.ts` : `recherche — composer ses critères puis lancer la
+  recherche`, `scenario('E2E-SEARCH-001', 2)`. Il compte toutes les requêtes sémantiques émises :
+  rien après deux puces ; exactement une après « Lancer », qui porte le texte, `hasAttachments`
+  et `isRead:false` ; le formulaire se ferme ; à la réouverture, « Non lus » est pressé ;
+  « Réinitialiser » vide sans fermer ni relancer.
+
+### Preuve par mutation (spec du composant, 18 tests)
+| Mutation | Résultat |
+|---|---|
+| M1 un filtre lance la recherche | 5 rouges |
+| M2 Lancer ne ferme pas | 2 rouges |
+| M3 Entrée ne lance pas | 1 rouge |
+| M4 Lancer toujours actif | 1 rouge |
+| M5 Réinitialiser efface les résultats | 1 rouge |
+| M6 fermer garde le brouillon | 2 rouges |
+| M7 rouvrir vide le formulaire | 1 rouge |
+
+Code restauré : 18/18 verts. Mutations rejouées **après** la passe qualité.
+
+### Passe qualité §Q (/simplify, 2 relectures)
+Appliqué :
+- `criteriaFromRequest` (fonction pure) remplace `applyCriteria` : une seule liste de setters
+  (`restoreCriteria`), plus d'aller-retour par `snapshotCriteria` au rejeu ;
+- `canLaunch` porte seul le prédicat (`isCriteriaEmpty` retiré) ;
+- `restoreCriteria` ne recopie plus les objets (les signaux ne sont jamais mutés) ;
+- `onHistoryReplay` ferme sans restaurer un instantané qui vient d'être fixé ;
+- e2e : plus d'attente fixe de 500 ms ni de `waitForRequest` qui doublait l'écouteur ;
+  `expect.poll(() => sent.length).toBe(1)` ;
+- commentaire périmé du catalogue des types.
+
+Écarté :
+- puces statut et médical en catalogue `@for` : refonte du gabarit hors de l'objet de la task ;
+- style sur `[aria-pressed]` au lieu de la classe `--active` : la classe reste la convention du
+  composant ;
+- `id` des `ds-button` : requis par la convention `ds-button-id-requis`.
+
+### Validation (après la passe qualité)
+- `nx build weda2` : vert.
+- `nx run-many -t test -p weda2 mss-lib` : **weda2 2683 tests**, **mss-lib 1497 tests**, 0 échec.
+- ESLint : 0 erreur (avertissement `max-lines` préexistant sur le composant).
+- Prettier : conforme ; fichiers en CRLF.
+
+### api-mail
+- `e2e/scenarios.yml` : `E2E-SEARCH-001` en **version 2**, « Composer ses critères puis lancer la
+  recherche » ; divergence temporaire `mobile` (raison : le mobile adopte le formulaire à un seul
+  niveau avec la refonte mobile de la recherche ; tache : task-450).
+
+### Règle 1b
+Aucun comportement atteignable par un endpoint ne change : le contrat de `POST /search/semantic`
+et le service sont intacts. Le parcours frontend est prouvé par son scénario e2e (`E2E-SEARCH-001` v2).
+
+### Prévention (règle d'or)
+`conventions/angular.md` § `formulaire-qui-lance-avant-son-bouton`.

@@ -620,3 +620,25 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   (`decodeText`, `previewTextBlob`).
 - **Origine** : correction directe du 2026-11-09 (capture humaine, `261109954185.hpm`, jeu `EmlFactory`)
 - **Occurrences** : 1
+
+### formulaire-qui-lance-avant-son-bouton — Un formulaire de critères ne déclenche rien avant son bouton d'action
+- **Règle** : convention projet (comportement, invisible au lint)
+- **Repos** : les deux
+- **Piège** : la barre de recherche de weda2 lançait une recherche à chaque puce cochée, puis
+  offrait un second niveau « Recherche avancée » avec son propre bouton. Le médecin qui cochait
+  « Non lus » puis « Pièces jointes » obtenait deux recherches et deux listes successives, dont une
+  partielle, et ne savait plus quel bouton lançait quoi.
+- **Consigne** : un formulaire qui compose des critères ne lance **rien** avant son bouton d'action
+  (et Entrée, qui lui équivaut). Les puces, cases et champs ne font que remplir le brouillon.
+  Fermer sans lancer (Échap, clic en dehors) **abandonne** le brouillon : le formulaire revient à
+  l'instantané des critères de la recherche affichée, et rouvrir les montre. « Réinitialiser » vide
+  le formulaire sans le fermer ni lancer. Les boutons d'action sont des `ds-button` du design
+  system (avec `id`, cf. `ds-button-id-requis`), jamais des boutons stylés localement.
+  **Côté test** : un test par entrée (puce, champ, Entrée, bouton) qui prouve qu'aucune requête
+  ne part avant le bouton ; en e2e, compter les requêtes émises sur tout le parcours
+  (`page.on('request')`) et exiger exactement une après « Lancer ».
+- **Preuve** : `mail-search.component.spec.ts` (18 tests), 7 mutations rouges (un filtre lance,
+  Lancer ne ferme pas, Entrée ne lance pas, Lancer toujours actif, Réinitialiser efface les
+  résultats, fermer garde le brouillon, rouvrir vide le formulaire) ; `E2E-SEARCH-001` v2.
+- **Origine** : task-442 (/develop, demande produit E023)
+- **Occurrences** : 1
