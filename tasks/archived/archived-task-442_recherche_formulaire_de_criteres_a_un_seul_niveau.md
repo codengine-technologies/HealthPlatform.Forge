@@ -467,3 +467,11 @@ et le service sont intacts. Le parcours frontend est prouvé par son scénario e
 
 ### Prévention (règle d'or)
 `conventions/angular.md` § `formulaire-qui-lance-avant-son-bouton`.
+
+## Merged
+
+- `api-mail` : PR #358 squash-mergée sur `develop` → `362373d5` (2026-11-11), CI `develop` verte ;
+  branche distante et locale supprimées.
+- `client-angular` : code-only. Le clone n'a pas été touché : les fichiers de la task restent sur la branche
+  de l'humain (`feature/nova-mss-weda-integration`), à commiter et pousser sur TFS par l'humain.
+- Validation humaine : `/merge task-442 --i-tested`.
