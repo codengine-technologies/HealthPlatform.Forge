@@ -1,3 +1,5 @@
+> **Résolu** le 2026-11-11 par la reprise de `/develop task-446` : A, B et C corrigés, tests vus rouges (R1-R4).
+
 # task-446 — /review : CHANGES REQUESTED
 
 **Étape** : `/review` (revue de code), 2026-11-11. La chaîne est arrêtée avant l'ouverture de la PR api-mail.

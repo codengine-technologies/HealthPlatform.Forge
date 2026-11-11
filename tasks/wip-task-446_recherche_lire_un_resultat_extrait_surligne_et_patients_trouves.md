@@ -286,6 +286,24 @@ Démontage vérifié : ports libres, aucun conteneur e2e résiduel.
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
 
+## Develop log — reprise (CHANGES REQUESTED du /review)
+
+- **A (bloquant)** `highlightHtml` : un fragment reste un fragment (`head.innerHTML` remis devant, `body.outerHTML` si le
+  fragment portait un `<body>` à attributs) et le cadre isolé l'enveloppe comme avant (doctype, `charset`,
+  `<base target="_blank">`) ; un document complet reste complet, avec son doctype d'origine (plus de doctype forcé).
+  Pendant la reprise : renvoyer le document entier pour un fragment aurait perdu l'enveloppe du cadre et basculé le
+  rendu en mode quirks — écarté, test « un fragment reste un fragment ».
+- **B** `mail-body.plainSegments` mémoïsé par `{ texte, mots }`.
+- **C** `findTermRanges` : un accent écrit à part (forme décomposée) après la dernière lettre reste dans la plage.
+- Tests ajoutés, vus rouges avant le correctif : style en tête de fragment et attributs du corps gardés ; fragment
+  rendu en fragment ; pas de doctype ajouté ; accent décomposé ; segments mémoïsés.
+- Mutations : R1 en-tête du fragment perdu → 2 rouges ; R2 accent hors plage → 1 ; R3 recalcul à chaque rendu → 1 ;
+  R4 fragment rendu en document → 1.
+- Validation : `mss-lib` 1 604 verts, `weda2` 2 683, `nx build weda2` vert, ESLint 0 erreur. api-mail inchangé
+  (`783ff7e1`, déjà vert : 7 788 tests).
+- Prévention : `conventions/angular.md` « surlignage-par-positions », point sur la forme du HTML rendu, corrigé.
+- Next step : /sonar task-446
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-446 --sync` — ne pas éditer à la main)*
@@ -293,11 +311,12 @@ Démontage vérifié : ports libres, aucun conteneur e2e résiduel.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 14 s | — | — | — | — |
-| /develop | ok | 27 min 29 s | 2 (30 s) | 2 (6 min 19 s) | — | api-mail 1B/1T, client-angular 1B/1T |
+| /develop | ok | 4 min 22 s | 3 (45 s) | 3 (6 min 51 s) | — | api-mail 1B/1T, client-angular 2B/2T, reprise : A, B, C corrigés |
 | /sonar | ok | 9 min 53 s | 1 (24 s) | 5 (8 min 04 s) | 2 (54 s) | api-mail 1B/5T |
 | /lint-angular | ok | 1 min 03 s | — | — | — | — |
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 20 min 27 s | — | — | — | e2e ×3 (20 min 03 s), mobile 60 + angular 80 verts, parité verte |
-| **Total cycle** | | **59 min 09 s** | **3 (54 s)** | **7 (14 min 24 s)** | **2 (54 s)** | |
+| /review | failed | 2 min 27 s | 1 (17 s) | 1 (5 min 51 s) | — | api-mail 1B/1T, CHANGES REQUESTED — highlightHtml perd le style en tête d'un fragment |
+| **Total cycle** | | **38 min 29 s** | **5 (1 min 26 s)** | **9 (20 min 47 s)** | **2 (54 s)** | |
 
 Autres commandes mesurées : lint ×1 (53 s)
