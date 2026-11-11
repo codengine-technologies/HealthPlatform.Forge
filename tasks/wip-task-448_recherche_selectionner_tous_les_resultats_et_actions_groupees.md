@@ -113,3 +113,9 @@ Règles :
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui — base de la boîte et serveur IMAP de l'opérateur, inchangés
 - **AIPD / impact RGPD** : inchangé — mêmes actions qu'à l'unité
+
+## Branches
+
+- `api-mail` (pushed) : feat/task-448-recherche-selectionner-tous-les — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-448-recherche-selectionner-tous-les
+- `dtos-mss` (paresseuse) : créée par `/develop` au premier changement de contrat (même nom).
+- `client-angular` (code-only) : la forge écrit sur la branche checked out dans `Client/Angular/` (au /start : `feature/nova-mss-weda-integration`) — humain gère branche, commit, push, PR TFS
