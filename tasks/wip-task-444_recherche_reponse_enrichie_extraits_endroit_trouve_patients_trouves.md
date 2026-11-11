@@ -195,6 +195,39 @@ nom de la source dégradée (Warning) sont journalisés.
 
 **Prévention (règle d'or)** : `conventions/csharp.md` § `identite-patient-exacte`.
 
+## Sonar log
+
+**Mode A** (chaîné depuis `/develop`), `api-mail`, branche `feat/task-444-…`, build `Release`, 2 itérations.
+
+### KPIs qualité (baseline → final)
+
+| KPI | Baseline (analyse finale de task-443) | Itération 1 | Final |
+|---|---|---|---|
+| Quality Gate | OK | **ERROR** (hotspot non revu) | **OK** |
+| Bugs / Vulnérabilités | 0 / 0 | 0 / 0 | 0 / 0 |
+| Code smells | 0 | 1 | **0** |
+| Hotspots à revoir | 0 | 1 | **0** |
+| Couverture globale | 97,8 % | 97,8 % | **97,8 %** |
+| Couverture du nouveau code | — | 96,2 % | **96,2 %** |
+| Duplication (nouveau code) | 0,4 % | 0,4 % (0,04 %) | 0,4 % (0,04 %) |
+| Ratings (fiabilité / sécurité / maintenabilité) | A / A / A | A / A / A | A / A / A |
+
+**Phase 1 — nouveau code** : 1 issue et 1 hotspot, sur la même ligne, corrigés à la main.
+- **SYSLIB1045** et **S6444** (hotspot « regex sans délai d'expiration »), `SemanticSearchRepository.Explain.cs` :
+  `Regex.Replace(search_normalize(LastName), "[^[:alnum:]]", "")` écrit dans la requête EF pour qu'EF le traduise
+  en `regexp_replace`. La regex est destinée à PostgreSQL, pas au processus : la fonction intégrée est déclarée à EF
+  (`MailDataContext.RegexpReplace`, `IsBuiltIn`), comme `search_normalize`. Plus aucune regex ne s'exécute en C#.
+  Comportement prouvé : `SearchEnrichedResponseIntegrationTests` 8/8, mutation B6 rejouée, rouge.
+- Introduite par la passe qualité §Q (pliage SQL du nom jumeau de `PatientQuery.Key`), pas par le premier jet.
+
+**Phase 2 — dette ancienne** : 0 issue ouverte sur le projet.
+
+**Tests de l'analyse finale** : domain 210, application 4 193, infrastructure 743, api 1 375, intégration 1 250
+(+16 ignorés), 0 échec, totaux conformes (aucun plantage masqué).
+
+**Conventions** : `SYSLIB1045` porté à 5, avec la variante EF (déclarer la fonction PostgreSQL, jamais `Regex` dans
+une requête).
+
 ## Branches
 
 - `api-mail` (pushed) : feat/task-444-recherche-reponse-enrichie-extraits — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-444-recherche-reponse-enrichie-extraits
@@ -208,6 +241,7 @@ nom de la source dégradée (Warning) sont journalisés.
 |---|---|---|---|---|---|---|
 | /start | ok | 20 s | — | — | — | — |
 | /develop | ok | 41 min 05 s | 7 (41 s) | 5 (9 min 10 s) | — | dtos-mss 1B/0T, api-mail 6B/5T |
-| **Total cycle** | | **41 min 26 s** | **7 (41 s)** | **5 (9 min 10 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 21 min 40 s | 3 (1 min 01 s) | 12 (16 min 15 s) | 4 (1 min 29 s) | 2 itération(s), api-mail 3B/12T |
+| **Total cycle** | | **1 h 03 min** | **10 (1 min 42 s)** | **17 (25 min 26 s)** | **4 (1 min 29 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (20 s), restore ×1 (23 s)
