@@ -1,0 +1,11 @@
+task-444 — coût de l'enrichissement (cost444.cs), copie srch_lab de la boîte de formation (11 291 mails, 56 patients),
+page de 50 résultats de l'INBOX, 30 passages après 3 de chauffe, build Release, 2026-11-11.
+Mesure : FindPatientCandidatesAsync + GetMailTextsAsync + SearchHitEnrichment.Apply sur la page.
+
+hemoglobine                            page=50 extraits=50 p50=   19.9 ms  p95=   23.9 ms  max=   27.8 ms
+urgent                                 page=50 extraits=50 p50=   12.2 ms  p95=   14.6 ms  max=   15.6 ms
+cholesterol                            page=44 extraits=44 p50=   26.7 ms  p95=   39.0 ms  max=   40.3 ms
+catherine bernard                      page=50 extraits=50 p50=   13.3 ms  p95=   16.4 ms  max=   18.6 ms
+bilan lipidique cholesterol total      page=50 extraits=50 p50=   44.0 ms  p95=   55.7 ms  max=   56.4 ms
+compte rendu synthese                  page=50 extraits=50 p50=   29.2 ms  p95=   41.1 ms  max=   42.3 ms
+TOUTES                                 n=180 p50=21.4 ms  p95=45.9 ms

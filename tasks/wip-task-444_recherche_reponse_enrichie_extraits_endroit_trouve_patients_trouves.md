@@ -110,7 +110,104 @@ Règles :
   identités de patients ; même périmètre de personnes habilitées, note RGPD à compléter si l'AIPD de la recherche ne
   couvre pas l'affichage d'extraits
 
+## Develop log
+
+**Contrat** (`dtos-mss`, rétrocompatible, paquet **588**, PR à ouvrir par `/review`) :
+- `SearchHitDto` : `Locations` (`SearchMatchLocation` : objet, corps, document médical, expéditeur, nom de pièce
+  jointe, proche par le sens), `Excerpt` (≤ `ExcerptMaxLength` = 200, « … » aux coupes), `ExcerptLocation`,
+  `Highlights` (`SearchHighlightDto` : `Start`, `Length`, en unités UTF-16 de l'extrait) ;
+- `SearchResponseDto` : `Patients` (`SearchFoundPatientDto`, au plus `MaxPatients` = 5) et `IsPatientsTruncated`.
+  Aucun champ INS : seul `IsInsQualified` sort.
+
+**api-mail** :
+- `SearchExcerpts` : extrait centré sur le premier mot, coupé aux mots, positions tolérantes (le texte est replié
+  caractère par caractère comme `SearchTerms.Normalize`, avec la position source de chaque caractère replié) ;
+- `SearchHitEnrichment` : endroits trouvés (un passage par texte), extrait du champ le plus parlant (corps, document,
+  objet, pièce jointe, expéditeur) ; un proche reçoit `Similar` et le début de son corps, sans surlignage ;
+- `PatientQuery` : nom (et prénom, dans les deux ordres), nom et date de naissance complète, ou INS complète ;
+  correspondance de clés normalisées égales (`Key`), jamais approchée ;
+- `SemanticSearchRepository.Explain.cs` : `GetMailTextsAsync` (textes de la page, filtre exact dossier + UID) et
+  `FindPatientCandidatesAsync` (nom plié en SQL par `regexp_replace(search_normalize(…), '[^[:alnum:]]', '')`, jumeau de
+  `Key` ; INS comparée en base, jamais lue) ;
+- `SemanticSearchService` : étape 6 (patients, puis extraits de la page) ; une seule politique de mode dégradé
+  (`RunDegradableAsync`), partagée par les moteurs et les deux enrichissements (`excerpts`, `patients`) ;
+- une requête INS n'est **jamais envoyée au fournisseur d'embeddings** (`EmbeddableQuery`, sur les deux routes) ni
+  **gardée dans l'historique** (`SearchHistoryService.RecordAsync`) ;
+- `SearchResultHelper.ToResponse` : la partie commune de la réponse des deux routes.
+
+**Écarts assumés** (signalés à la revue) :
+- **Nom de naissance et nom d'utilisation non distingués** : la fiche patient (`MailPatient`) n'a qu'un champ
+  `LastName`. La correspondance et la réponse portent ce nom ; le DTO le documente. Le distinguer demande d'abord de
+  stocker les deux noms à l'analyse du CDA.
+- **Statut de l'INS** : `IsInsQualified` = INS présente et OID du domaine NIR qualifié (`InsIdentityDomain.IsQualifying`).
+  Une INS provisoire, de test ou d'OID inconnu (lignes antérieures à task-183) rend `false`.
+- **Corpus** : le corpus de task-438 n'a ni patient ni « hémoglobine » dans un document médical. Les tests d'intégration
+  posent leurs propres données fictives dans une base isolée (`SearchEnrichedResponseIntegrationTests`), plutôt que de
+  modifier un corpus dont dépend le verdict de qualité de task-438.
+- **Reconnaissance d'une INS volontairement large** : la forme (15 caractères, 2A/2B admis), sans contrôle de clé, pour
+  que tout ce qui ressemble à une INS reste hors de l'historique et du fournisseur d'embeddings.
+
+**Règle 1b — tests d'intégration de bout en bout** (`SearchEnrichedResponseIntegrationTests`, `POST
+/api/v1/search/semantic`, vraie pile, PostgreSQL ; seul le générateur d'embeddings est un double ; l'historique passe
+par le vrai `SearchHistoryService` sur la vraie pile de cache adossée à un cache en mémoire). Vus rouges par mutation,
+rejouées après la passe qualité :
+
+| Comportement | Test | Mutation | Verdict |
+|---|---|---|---|
+| `hemoglobine` → endroit « document médical », extrait, position qui couvre « Hémoglobine » | `WordInAMedicalDocument…` | B1 (champ document retiré), B2 (repli sans accent) | rouge, rouge |
+| Mot seulement dans le nom d'une pièce jointe → endroit « nom de pièce jointe » | `WordOnlyInTheNameOfAnAttachment…` | B3 | rouge |
+| Proche → section `Similar`, endroit « proche par le sens », début du corps, aucune position | `SimilarResult_IsInTheSimilarSection…` | B4 | rouge |
+| `bernard catherine` → Catherine BERNARD avec son nombre de messages, jamais l'INS (JSON brut) | `NameAndFirstName_ListsThePatient…` | B5 (prénom ignoré), B11 (nombre de messages) | rouge, rouge |
+| `bernart` → aucun patient | `NeighbouringName_ListsNoPatient` | B6 (nom approché à 6 lettres, en SQL et en C#) | rouge |
+| Nom + date de naissance → la seule patiente née ce jour | `NameAndBirthDate…` | B9 | rouge |
+| INS complète → la patiente trouvée, requête absente de `GET /search/history` | `CompleteIns_ListsThePatient…` | B7 (INS gardée), B8 (INS non comparée) | rouge, rouge |
+| **Échec** : moteur plein texte en panne (`search_normalize` renommée en base) → proche rendu avec extrait, sans surlignage, `isDegraded` | `FullTextEngineDown…` | B10 (enrichissement patients non dégradable → 503) | rouge |
+
+Unitaires : `SearchExcerptsTests`, `PatientQueryTests`, `SearchHitEnrichmentTests`,
+`SemanticSearchServiceEnrichmentTests` (dégradé `excerpts` / `patients`, annulation jamais avalée, INS jamais envoyée au
+moteur sémantique, plafond de 5), `SearchHistoryServiceTests` (INS jamais gardée).
+
+**Coût** (`Docs/audits/findings/plans/20261111-task-444/`, `cost444.cs`) : copie `srch_lab` de la boîte de formation
+(11 291 messages, 56 patients), page de 50 résultats, 30 passages après chauffe, Release. Surcoût de l'enrichissement
+(candidats patients + textes de la page + extraits) : **p50 21,4 ms, p95 45,9 ms**, pire requête (4 mots) p95 55,7 ms.
+Borne de la DoD : ≤ 100 ms ajoutés au p95. Le coût dépend de la taille de la page, pas de celle de la boîte (une page
+de textes, un balayage des patients).
+
+**Journaux** : aucun terme, extrait, nom, INS ni date de naissance. Seuls le nombre de patients trouvés (Debug) et le
+nom de la source dégradée (Warning) sont journalisés.
+
+**Passe qualité §Q** (`/simplify`, 4 revues) — appliqué :
+- un seul passage par texte (repli + recherche) au lieu de `Contains` puis `Around` ; table de repli en cache pour le
+  latin ; `Beginning` ne réduit les espaces que sur la longueur utile ;
+- filtre exact (dossier, UID) dans `GetMailTextsAsync` (`MailKey` sorti du service vers les modèles) ;
+- garde INS déplacée dans la préparation de la requête sémantique, commune aux deux routes (la route patient
+  l'oubliait) ;
+- pliage SQL du nom identique à `PatientQuery.Key` (`regexp_replace`), au lieu de quatre `Replace` ;
+- une seule politique de mode dégradé, générique (`RunDegradableAsync<T>`), au lieu de deux copies ;
+- `PatientQuery` : réutilise `SearchTerms.Words`, `DateOnly.TryParseExact`, un seul générateur de découpes ;
+  `SearchHitEnrichment` : champs dans l'ordre de l'extrait, une boucle pour les proches ;
+- `SearchResultHelper.ToResponse` : la réponse commune des deux routes construite une fois.
+
+Écarté :
+- contrôle de la clé INS (mod 97) : la reconnaissance reste large exprès ;
+- index sur le nom des patients : 56 patients sur la boîte de 11 000 messages, de l'ordre de la milliseconde ;
+- extraction d'un `SearchResultEnricher` : changement de structure hors de la passe.
+
+**Prévention (règle d'or)** : `conventions/csharp.md` § `identite-patient-exacte`.
+
 ## Branches
 
 - `api-mail` (pushed) : feat/task-444-recherche-reponse-enrichie-extraits — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-444-recherche-reponse-enrichie-extraits
 - `dtos-mss` (pushed, paresseuse) : branche créée par `/develop` au premier changement de contrat (même nom).
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-444 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 20 s | — | — | — | — |
+| /develop | ok | 41 min 05 s | 7 (41 s) | 5 (9 min 10 s) | — | dtos-mss 1B/0T, api-mail 6B/5T |
+| **Total cycle** | | **41 min 26 s** | **7 (41 s)** | **5 (9 min 10 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : nuget-wait ×1 (20 s), restore ×1 (23 s)

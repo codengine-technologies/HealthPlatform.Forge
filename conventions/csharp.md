@@ -2397,3 +2397,33 @@ répondaient 400 avant `HasAnyCriterion`.
 
 **Origine** : task-443. **Occurrences** : 1
 
+---
+
+## identite-patient-exacte — une correspondance d'identité patient est exacte après normalisation ; l'INS ne sort jamais d'une réponse de recherche
+
+**Règle** : convention projet (identito-vigilance, PGSSI-S), invisible au lint et à Sonar.
+
+**Piège** (task-444) : désigner un patient depuis une saisie libre invite au rapprochement « pratique » : préfixe,
+phonétique, distance d'édition, sens. Chacun propose au médecin un autre patient que celui qu'il a tapé : `bernart`
+ouvrirait BERNARD, `Vidal` pourrait ouvrir `Collette`. C'est une erreur d'identité, pas une imprécision de recherche.
+Le second piège est l'INS : elle est tentante comme champ de réponse (« pour vérifier ») et comme requête mémorisée
+(l'historique la ré-affiche en clair), et un moteur sémantique l'enverrait au fournisseur d'embeddings.
+
+**Consigne** :
+- Une correspondance d'identité compare des **clés normalisées égales** : casse, accents, ligatures, tirets, espaces et
+  apostrophes retirés (`PatientQuery.Key`, et son jumeau SQL dans `SemanticSearchRepository.PatientsDesignated`).
+  Jamais `LIKE 'x%'`, `similarity()`, `soundex`, `levenshtein` ni recherche par le sens sur une identité.
+- Les combinaisons admises sont fermées : nom (et prénom, dans les deux ordres), nom et date de naissance complète,
+  INS complète. Un mot qui contient un chiffre, ou une phrase de plus de 4 mots, ne désigne personne.
+- L'INS se **compare** en base et ne se **lit** pas : la projection ne la sélectionne pas, le DTO n'a pas de champ INS,
+  seul son statut sort (`IsInsQualified`, via `InsIdentityDomain.IsQualifying`).
+- Une requête reconnue comme INS (`PatientQuery.IsIns`) n'est **ni enregistrée dans l'historique**
+  (`SearchHistoryService.RecordAsync`) **ni envoyée au moteur sémantique** (`SemanticSearchService.ExecuteRawSearchesAsync`).
+- Le test d'intégration lit l'absence : le JSON brut de la réponse ne contient pas l'INS, un nom voisin ne rend aucun
+  patient, et `GET /search/history` ne contient pas la requête INS.
+
+**Preuve** : task-444, `SearchEnrichedResponseIntegrationTests`. Mutations B5 (prénom ignoré), B6 (nom approché à
+6 lettres), B7 (INS gardée dans l'historique), B9 (date de naissance ignorée), toutes rouges.
+
+**Origine** : task-444. **Occurrences** : 1
+
