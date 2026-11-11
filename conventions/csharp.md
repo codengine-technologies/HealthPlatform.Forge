@@ -2362,3 +2362,31 @@ rouges sur le code d'avant) et `SearchSimilarThresholdCalibrationTests`.
 `Docs/audits/findings/plans/20261110-vectoriel-task-437/`.
 
 **Origine** : task-437. **Occurrences** : 1
+
+---
+
+## critere-de-recherche-sur-toutes-les-sources — un critère s'applique au plein texte ET au sens, et se prouve par un proche écarté
+
+**Règle** : convention projet (justesse de la recherche, invisible au lint et à Sonar).
+
+**Piège** (task-443) : la recherche a trois parties (tous les mots, une partie des mots, proches par le sens) servies
+par deux moteurs. Un critère branché sur un seul moteur laisse passer, dans la section des proches, un message qui ne
+le respecte pas. Le médecin voit pourtant le critère actif. Un test sans vecteur, ou sans résultat proche, reste vert
+dans les deux cas : il ne joue que le plein texte.
+
+**Consigne** :
+- Un critère se pose dans `SemanticSearchRepository.SearchByFiltersAsync`, jamais dans un seul moteur : le service
+  croise les messages filtrés avec les deux moteurs. Une source de résultats nouvelle passe par ce croisement.
+- Chaque critère a un test d'intégration de bout en bout qui **lit un résultat proche écarté**. Le générateur
+  d'embeddings est constant, deux voisins portent le même vecteur, et seul celui qui respecte le critère est rendu, dans
+  le groupe `Similar` (`SearchMedicalCriteriaIntegrationTests.Criterion_AppliesToTheSimilarResults_…`).
+- **Une seule définition de « au moins un critère »** : `SearchFilterDto.HasAnyCriterion()`, portée par le contrat et
+  lue par la validation de la requête, le service et l'historique. Un critère nouveau s'ajoute là, une fois. Sur
+  task-443, trois copies avaient divergé : la validation refusait en 400 une recherche sans texte portant un critère
+  nouveau, et l'historique n'enregistrait jamais une recherche sur un patient seul.
+
+**Preuve** : task-443, mutation B8 (le croisement des proches retiré) rouge ; les trois recherches sans texte
+répondaient 400 avant `HasAnyCriterion`.
+
+**Origine** : task-443. **Occurrences** : 1
+

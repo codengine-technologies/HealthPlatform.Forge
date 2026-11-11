@@ -134,6 +134,133 @@ Règles communes :
 - `dtos-mss` (paresseuse) : branche créée par `/develop` au premier contrat touché
 - `client-angular` (code-only) : la forge écrit le code sur la branche extraite dans `Client/Angular/` (au `/start` : `feature/nova-mss-weda-integration`, propre) — l'humain gère branche, commit, push, PR TFS
 
+## Develop log
+
+**Repos touchés** : `dtos-mss` (branche créée par `/develop`), `api-mail`, `client-angular` (code-only, non commité).
+
+### dtos-mss — `HealthPlatform.Dtos.Mss` 584 puis 585
+- `SearchFilterFieldDto` : `FromAddresses` (expéditeurs choisis, 20 au plus, en OU), `AttachmentName`.
+- `SearchFilterContentTypeDto` : `HasAbnormalBiology`.
+- Nouveau `SearchSenderDto` : `Address`, `DisplayName`, `MailCount`.
+- 585 : **une seule définition de « au moins un critère »**, `SearchFilterDto.HasAnyCriterion()` (une par groupe), lue
+  par la validation de `SearchRequestDto`. Trois copies existaient (DTO, service, historique) et avaient divergé :
+  - la validation refusait en **400** une recherche sans texte portant un critère nouveau (constaté : trois tests
+    d'intégration rouges en 400 avant le correctif, verts après) ;
+  - l'historique ignorait le critère patient : une recherche sur un patient seul n'était jamais enregistrée.
+- Contrat rétrocompatible. Consommateurs .NET : `api-mail` porté en 585. `client-blazor` n'est pas dans les `**Repos**` :
+  il garde sa version, sans incidence (champs ajoutés seulement).
+
+### api-mail
+- **Dépendances** (commit séparé) :
+  - `Dtos.Mss` 585 ;
+  - `Aspire.Hosting.*` 13.6.1 → 13.6.5 (CVE-2026-120006, GHSA-f7vh-h5g3-7jrh) ;
+  - `Microsoft.AspNetCore.WebUtilities` transitive forcée en 2.3.14 dans les projets de test (CVE-2026-118750,
+    GHSA-6527-9fp8-r4x6).
+
+  Les deux alertes, publiées le 2026-11-10, faisaient échouer la restauration (NU1902/NU1903 en erreur) : `develop`
+  cassera au prochain restore sans ce correctif.
+- `SemanticSearchRepository.Criteria.cs` (partiel nouveau) :
+  - `ApplyChosenSendersFilter` : adresse exacte, casse ignorée, en OU ;
+  - `ApplyAttachmentNameFilter` : chaque mot significatif dans le nom d'une même pièce jointe, lu par
+    `search_normalize` (fonction SQL de task-439, déclarée à EF dans `MailDataContext.Search.cs`) ;
+  - `ApplyAbnormalBiologyFilter` : `IsFlagged`, posé depuis le code d'interprétation du laboratoire seulement ;
+  - `PatientExistsAsync` ;
+  - `ListSendersAsync` : correspondants de la boîte, les plus fréquents d'abord, avec le nom de l'Annuaire Santé quand
+    un contact issu de l'annuaire (`Fhir`, `Ldap`) porte l'adresse. Brouillons et adresse de la boîte écartés.
+- Le patient et la date du document médical étaient déjà filtrés par `SearchByFiltersAsync` : inchangés.
+- `SemanticSearchService` :
+  - un patient inconnu de la boîte → `NotFoundException` (`search_patient_unknown`, **404** `ProblemDetails`), ajoutée
+    aux exceptions métier qui gardent leur code ;
+  - `HasAnyCriterion()` remplace la copie locale ;
+  - le journal nomme les critères (`ChosenSenders=n`, `AttachmentName`, `MedicalDocumentDate`, `HasAbnormalBiology`),
+    jamais leurs valeurs.
+- `SearchHistoryService` : `HasAnyCriterion()` remplace la copie locale.
+- `SearchController` : `GET /api/v1/search/senders`, `[Audited(MailSearch)]`, scope d'opération `GetSenders`. Le verrou
+  de la règle 14 (middleware d'enrichissement) s'y applique comme à toute route.
+
+### Règle 1b — comportement → test d'intégration → preuve rouge
+Tests de bout en bout `SearchMedicalCriteriaIntegrationTests` (vraie route, vrai service, vrai repository, PostgreSQL ;
+seul le générateur d'embeddings est simulé), et `MailboxAccessLockIntegrationTests` pour le refus :
+
+| Comportement | Test | Preuve rouge |
+|---|---|---|
+| Patient : ses messages seuls, pas l'homonyme | `Patient_Chosen_…`, `PatientAndAbnormalBiology_…` | B1 (2 rouges) |
+| Patient inconnu → 404 `ProblemDetails` | `Patient_UnknownToTheMailbox_…` | B2 |
+| Date du document, pas de l'envoi | `MedicalDocumentDate_…` | B3 |
+| Biologie anormale : indicateur du laboratoire, jamais les bornes | `AbnormalBiology_…`, `PatientAndAbnormalBiology_…` | B4 (2 rouges) |
+| Deux expéditeurs, en OU, casse ignorée | `ChosenSenders_…` | B5, B6 |
+| Nom de pièce jointe, accents et casse ignorés, corps exclu | `AttachmentName_…` | B7 |
+| Un critère écarte aussi un résultat proche | `Criterion_AppliesToTheSimilarResults_…` | B8, B5 |
+| Liste des expéditeurs : fréquence, nom de l'annuaire, brouillons et boîte écartés | `Senders_…` | B9, B10, B11 |
+| Liste des expéditeurs refusée sans verdict de l'opérateur | `Delegate_RefusedAtRenewal_Gets403_OnTheSearchSenders_…` | verrou existant, éprouvé |
+| Recherche sans texte sur un critère nouveau acceptée | les trois tests sans texte ci-dessus | 400 avant `HasAnyCriterion` |
+
+Tests unitaires :
+- `SearchFilterCriterionTests` : chaque critère, chaque groupe, blancs et listes vides ;
+- `SemanticSearchServiceMedicalCriteriaTests` ;
+- `SearchHistoryServiceTests` : patient seul enregistré, critères rejoués ;
+- `SemanticSearchRepositoryCriteriaTests` : motifs du nom de pièce jointe, adresses choisies.
+
+### client-angular — `libs/mss/src/features/mail/components/mail-search/`
+- Section « Critères » :
+  - **Patient** : `mss-mail-search-patient-picker`, choix dans la liste uniquement (`GET /Patients/search`, après
+    300 ms de frappe, `switchMap`). Libellé : nom, prénom, « né(e) le », jamais l'INS. Entrée ne retient un patient que
+    s'il est le seul proposé ;
+  - **Expéditeurs** : `mss-mail-search-sender-picker`, plusieurs correspondants de la boîte (`GET /search/senders`,
+    chargés une fois) ;
+  - **Date du document médical** : du … au … ;
+  - **Nom de pièce jointe**.
+- Puce **Biologie anormale** (Contenu médical).
+- Instantané, rejeu et historique : patient, expéditeurs, dates, nom de pièce jointe, biologie anormale. Le nom du patient
+  est relu par `getPatientById`, car l'historique ne garde que l'identifiant.
+- « Réinitialiser » recrée les sélecteurs.
+- Styles des champs à liste mis en commun (`_mail-search-combobox.scss`), « De » compris.
+- Spec du formulaire : 42 tests. Spec du libellé du patient : 5 tests.
+- Mutations A1 à A11 rouges ; A11 ne l'est devenue qu'après correction du test, qui ne la voyait pas.
+- Mutations N1 à N7 du champ « De » (task-442) rejouées : rouges.
+
+### Scénario e2e
+- `E2E-SEARCH-008` v1 au catalogue (angular requis ; mobile requis, divergence temporaire task-451).
+- weda2 : `recherche — restreindre à un patient et à ses biologies anormales`. Sans texte, donc sans fournisseur d'IA,
+  sur le seed :
+  - « Biologie anormale » rend le HPRIM (potassium « H », glycémie hors bornes sans indicateur) ;
+  - elle ne rend pas le compte rendu CDA de `PAT-TROIS`, qui n'a aucun indicateur ;
+  - choisir en plus `PAT-TROIS` retire le HPRIM, qui ne lui est pas rattaché.
+
+### Passe qualité §Q (/simplify, 2 relectures)
+Appliqué :
+- sources de l'annuaire par `nameof(ContactSource…)` ;
+- exclusion de la boîte avant le regroupement ;
+- `ContactDto` projeté directement ;
+- aides de test (`Embedded`, `Attachment`, route des expéditeurs) dans `SearchEndpointHarness` ;
+- libellé du patient en attente à `null` (au lieu d'un texte sentinelle) ;
+- `formatIsoDate` réutilisée ;
+- accents pliés par `\p{Diacritic}`, une fois par liste ;
+- recherche de patients après 300 ms de frappe ;
+- styles communs ;
+- aides du spec dédoublonnées.
+
+Écarté :
+- l'index trigramme pour le nom de pièce jointe : peu de pièces jointes par message, coût à mesurer avant de bâtir un
+  second chemin SQL ;
+- les noms de critères portés par le contrat (refonte des journaux et nouvelle publication NuGet, hors objet) ;
+- le helper de perte de focus : trois corps de trois lignes.
+
+### Validation (après la passe qualité)
+- api-mail : build vert. Tests : domain 210, infrastructure 743, api 1 375, application 4 098, intégration 1 242
+  (+16 ignorés), 0 échec, aucun plantage masqué.
+- weda2 : build vert. Tests : weda2 2 683, mss-lib 1 526, 0 échec. ESLint 0 erreur ; stylelint 0.
+
+### Écarts et suites
+- La recherche de patients existante (`GET /Patients/search`) ne porte que sur le nom (`LastName`). L'objectif cite le
+  nom de naissance, le nom d'utilisation et le prénom, mais la fiche n'a qu'un champ nom. Le prénom n'est pas cherché :
+  à arbitrer, avec un test d'intégration sur la route des patients.
+- Le champ « De » (un contact, correspondance partielle) et « Expéditeurs » (adresses exactes, en OU) filtrent tous
+  deux l'expéditeur, combinés en ET : question produit à poser.
+
+### Prévention (règle d'or)
+`conventions/csharp.md` § `critere-de-recherche-sur-toutes-les-sources`.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-443 --sync` — ne pas éditer à la main)*
@@ -141,4 +268,7 @@ Règles communes :
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 24 s | — | — | — | — |
-| **Total cycle** | | **24 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 59 min 12 s | 7 (1 min 04 s) | 6 (13 min 22 s) | — | dtos-mss 1B/0T, api-mail 4B/4T, client-angular 2B/2T |
+| **Total cycle** | | **59 min 37 s** | **7 (1 min 04 s)** | **6 (13 min 22 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : nuget-wait ×2 (55 s), restore ×2 (49 s)
