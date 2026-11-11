@@ -304,6 +304,10 @@ Démontage vérifié : ports libres, aucun conteneur e2e résiduel.
 - Prévention : `conventions/angular.md` « surlignage-par-positions », point sur la forme du HTML rendu, corrigé.
 - Next step : /sonar task-446
 
+- Reprise : api-mail inchangé (`783ff7e1`, déjà analysé ci-dessus, Quality Gate OK) — aucune nouvelle analyse.
+
+- Reprise : lint `mss-lib` + `mss-e2e` rejoué sur l'arbre corrigé — 0 erreur, avertissements inchangés (52 / 48) ; mobile toujours non touché.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-446 --sync` — ne pas éditer à la main)*
@@ -312,11 +316,11 @@ Démontage vérifié : ports libres, aucun conteneur e2e résiduel.
 |---|---|---|---|---|---|---|
 | /start | ok | 14 s | — | — | — | — |
 | /develop | ok | 4 min 22 s | 3 (45 s) | 3 (6 min 51 s) | — | api-mail 1B/1T, client-angular 2B/2T, reprise : A, B, C corrigés |
-| /sonar | ok | 9 min 53 s | 1 (24 s) | 5 (8 min 04 s) | 2 (54 s) | api-mail 1B/5T |
-| /lint-angular | ok | 1 min 03 s | — | — | — | — |
+| /sonar | skipped | 0.4 s | 1 (24 s) | 5 (8 min 04 s) | 2 (54 s) | api-mail 1B/5T, api-mail inchangé depuis l'analyse de 783ff7e1 (QG OK) |
+| /lint-angular | ok | 19 s | — | — | — | — |
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 20 min 27 s | — | — | — | e2e ×3 (20 min 03 s), mobile 60 + angular 80 verts, parité verte |
 | /review | failed | 2 min 27 s | 1 (17 s) | 1 (5 min 51 s) | — | api-mail 1B/1T, CHANGES REQUESTED — highlightHtml perd le style en tête d'un fragment |
-| **Total cycle** | | **38 min 29 s** | **5 (1 min 26 s)** | **9 (20 min 47 s)** | **2 (54 s)** | |
+| **Total cycle** | | **27 min 52 s** | **5 (1 min 26 s)** | **9 (20 min 47 s)** | **2 (54 s)** | |
 
-Autres commandes mesurées : lint ×1 (53 s)
+Autres commandes mesurées : lint ×2 (1 min 05 s)
