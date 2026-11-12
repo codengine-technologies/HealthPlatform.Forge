@@ -201,6 +201,8 @@ whole cycle, and it doubles as the repo's final verification (Step 6).
    git diff origin/develop...HEAD -- '*.cs' | grep -nE -A3 '^\+\s*public async Task' | grep -E 'ThrowIf(Null|NullOrWhiteSpace|NullOrEmpty)'
    # C# — xUnit2032 : Assert.IsAssignableFrom is written Assert.IsType(…, exactMatch: false).
    git diff origin/develop...HEAD -- '*.cs' | grep -nE '^\+.*Assert\.IsAssignableFrom'
+   # C# — CA1068 : a CancellationToken followed by another parameter (task-465, 4th occurrence).
+   git diff origin/develop...HEAD -- '*.cs' | grep -nE '^\+\s*CancellationToken \w+,\s*$'
    ```
    Each must return nothing. A hit is rewritten (comma or full stop ; a string
    key for the theory, the object built in the test) before the push, and

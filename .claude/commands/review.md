@@ -273,7 +273,10 @@ In autonomous mode (`/develop` upstream) this halts the chain ; in
     to `tasks/done-{task-id}[_{titre}].md`, title kept — and append `## PRs` and
     `## Code Review Summary` sections to `$new`.
 
-    > ⚠️ **Staging après le renommage** (7 récidives, task-325 à task-351) : après le
+    > ⚠️ **Staging après le renommage** (8 récidives, task-325 à task-465 — task-465 : l'ancien nom
+    > ajouté « pour indexer la suppression », le `fatal` masqué par un `| grep -v warning`, et un
+    > commit ne portant que le renommage, vu au `git show --stat`) : la suppression de l'ancien nom
+    > est **déjà** indexée par le `git mv`. Après le
     > `git mv`, **ne citer QUE le nouveau nom** dans `git add` — celui qu'imprime
     > `task-file.sh move`, jamais un chemin recomposé à la main (le titre le rend long et
     > facile à mal recopier). L'ancien chemin n'existe plus, et un `git add` qui le cite
