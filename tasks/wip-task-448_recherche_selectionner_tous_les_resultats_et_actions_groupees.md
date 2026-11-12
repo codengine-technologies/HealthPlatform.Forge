@@ -412,12 +412,12 @@ libres, aucun conteneur e2e résiduel.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 7.8 s | — | — | — | — |
-| /develop | ok | — | 8 (1 min 07 s) | 9 (8 min 47 s) | — | dtos-mss 1B/0T, api-mail 5B/6T, client-angular 2B/3T, no start marker |
+| /develop | ok | 15 min 37 s | 12 (1 min 58 s) | 13 (16 min 26 s) | — | dtos-mss 1B/0T, api-mail 8B/9T, client-angular 3B/4T, reprise après revue : B1 B2 S5 S6 S8 |
 | /sonar | ok | 1 h 28 min | 2 (54 s) | 11 (1 h 16 min) | 4 (1 min 24 s) | 2 itération(s), api-mail 2B/11T |
 | /lint-angular | ok | 0.4 s | — | — | — | 0 erreur, avertissements inchangés |
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 19 min 24 s | — | — | — | e2e ×5 (37 min 19 s) |
-| /review | failed | 5 min 29 s | 2 (22 s) | 2 (47 s) | — | api-mail 1B/0T, client-angular 1B/2T, CHANGES REQUESTED : B1 non lu sans trace, B2 règle 1b Corbeille |
-| **Total cycle** | | **1 h 53 min** | **12 (2 min 23 s)** | **22 (1 h 26 min)** | **4 (1 min 24 s)** | |
+| /review | failed | 5 min 29 s | 2 (22 s) | 3 (7 min 02 s) | — | api-mail 1B/1T, client-angular 1B/2T, CHANGES REQUESTED : B1 non lu sans trace, B2 règle 1b Corbeille |
+| **Total cycle** | | **2 h 09 min** | **16 (3 min 15 s)** | **27 (1 h 39 min)** | **4 (1 min 24 s)** | |
 
-Autres commandes mesurées : lint ×1 (9.7 s), nuget-wait ×1 (24 s), restore ×1 (23 s)
+Autres commandes mesurées : lint ×1 (9.7 s), nuget-wait ×2 (47 s), restore ×2 (26 s)
