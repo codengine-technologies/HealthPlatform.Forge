@@ -248,6 +248,9 @@ S1 et S4 restent en arbitrage humain (`questions/task-448.md`), hors de cette re
   jour » rejoués après 01:00 : verts). 4 tests PgBouncer ignorés (fixture PgBouncer indisponible, ignorés par
   conception), sans lien avec la task.
 - Itérations : 2 (Phase 1). Phase 2 (legacy) : rien à traiter (0 smell).
+- **Reprise après revue** — analyse 3 (`4350bc8a` + lock files) : `ANALYSIS SUCCESSFUL`, 5 passes OpenCover vertes
+  (integration 1 266, 16 ignorés), Quality Gate **OK**, **0 issue nouveau code**, couverture nouveau code 96,3 %. Rien à
+  corriger (1 itération). KPIs inchangés ci-dessous.
 
 ### KPIs qualité (baseline → final)
 
@@ -413,11 +416,11 @@ libres, aucun conteneur e2e résiduel.
 |---|---|---|---|---|---|---|
 | /start | ok | 7.8 s | — | — | — | — |
 | /develop | ok | 15 min 37 s | 12 (1 min 58 s) | 13 (16 min 26 s) | — | dtos-mss 1B/0T, api-mail 8B/9T, client-angular 3B/4T, reprise après revue : B1 B2 S5 S6 S8 |
-| /sonar | ok | 1 h 28 min | 2 (54 s) | 11 (1 h 16 min) | 4 (1 min 24 s) | 2 itération(s), api-mail 2B/11T |
+| /sonar | ok | 8 min 26 s | 3 (1 min 14 s) | 16 (1 h 23 min) | 6 (2 min 07 s) | 1 itération(s), api-mail 3B/16T, reprise : QG OK, 0 issue |
 | /lint-angular | ok | 0.4 s | — | — | — | 0 erreur, avertissements inchangés |
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 19 min 24 s | — | — | — | e2e ×5 (37 min 19 s) |
 | /review | failed | 5 min 29 s | 2 (22 s) | 3 (7 min 02 s) | — | api-mail 1B/1T, client-angular 1B/2T, CHANGES REQUESTED : B1 non lu sans trace, B2 règle 1b Corbeille |
-| **Total cycle** | | **2 h 09 min** | **16 (3 min 15 s)** | **27 (1 h 39 min)** | **4 (1 min 24 s)** | |
+| **Total cycle** | | **49 min 07 s** | **17 (3 min 35 s)** | **32 (1 h 46 min)** | **6 (2 min 07 s)** | |
 
 Autres commandes mesurées : lint ×1 (9.7 s), nuget-wait ×2 (47 s), restore ×2 (26 s)
