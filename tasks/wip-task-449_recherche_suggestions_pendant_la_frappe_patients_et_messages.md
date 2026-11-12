@@ -442,6 +442,11 @@ mots se suivent dans l'ordre strict (arbitrage S1). Mot et champ passent par la 
 
 - **Reprise 4** — analyse 5 (`452556d2`) : Quality Gate **OK**, **0 issue nouveau code**, couverture nouveau code
   96,3 %, couverture 97,7 %, 0 smell, duplication 0,4 %.
+- **Reprise 5** — analyse 6 (`da6f0500`) : Quality Gate **OK**, **2 issues nouveau code** : CA1862 ×2
+  (`ToLower() ==` dans une requête EF, adresse choisie). Corrigé par `EF.Functions.ILike` sur un motif échappé
+  (`93bf2adf`) ; test ajouté (un `_` d'adresse n'est pas un joker), vu rouge par mutation. CA1862 est une règle Roslyn :
+  rebuild complet sans aucun avertissement CA1862, analyse de confirmation non relancée (best-effort, ~15 min évitées).
+  Récidive comptée : `conventions/csharp.md` § CA1862, occurrences 3. Couverture nouveau code 96,3 %.
 ### KPIs qualité (baseline → final)
 
 | KPI | Baseline | Final |
@@ -449,10 +454,10 @@ mots se suivent dans l'ordre strict (arbitrage S1). Mot et champ passent par la 
 | Quality Gate | OK | **OK** |
 | Bugs / Vulnerabilities / Hotspots | 0 / 0 / 0 | 0 / 0 / 0 |
 | Code Smells | 0 | 0 |
-| Coverage | 97,8 % | 97,7 % |
+| Coverage | 97,8 % | 97,6 % |
 | Duplication | 0,4 % | 0,4 % |
 | Reliability / Security / Maintainability | A / A / A | A / A / A |
-| New code — issues | — | 0 (CA1861 puis S3776 corrigées ; analyse 5 de la reprise 4 : 0) |
+| New code — issues | — | 0 (CA1861, S3776, CA1862 ×2 corrigées en cours de cycle) |
 | New code — coverage | — | 96,3 % |
 
 ## Lint log
@@ -466,6 +471,7 @@ mots se suivent dans l'ordre strict (arbitrage S1). Mot et champ passent par la 
 - **Reprise 2** : relancé — **0 erreur**, 51 + 48 avertissements (inchangés). Itérations : 0.
 - **Reprise 3** : relancé — **0 erreur**, 51 + 48 avertissements (inchangés). Itérations : 0.
 - **Reprise 4** : relancé — **0 erreur**, 51 + 48 avertissements (inchangés). Itérations : 0.
+- **Reprise 5** : weda2 inchangé depuis la reprise 4 — résultat identique (0 erreur). Itérations : 0.
 
 ## Lint mobile log
 
@@ -750,11 +756,11 @@ Quatre reprises faites (plafond 2) : **arrêt**, `questions/task-449.md` écrit.
 |---|---|---|---|---|---|---|
 | /start | ok | 20 s | — | — | — | — |
 | /develop | ok | 12 min 09 s | 16 (2 min 19 s) | 14 (45 min 13 s) | — | dtos-mss 1B/0T, api-mail 11B/10T, client-angular 4B/4T, reprise 5 |
-| /sonar | ok | 9 min 06 s | 7 (2 min 19 s) | 26 (39 min 09 s) | 10 (3 min 59 s) | 1 itération(s), api-mail 7B/26T |
-| /lint-angular | ok | 13 s | — | — | — | — |
+| /sonar | ok | 1 h 13 min | 9 (3 min 01 s) | 32 (1 h 47 min) | 12 (4 min 46 s) | 1 itération(s), api-mail 9B/32T |
+| /lint-angular | skipped | 0.8 s | — | — | — | weda2 inchangé depuis la reprise 4 |
 | /lint-mobile | skipped | 0.9 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 21 min 08 s | — | — | — | e2e ×24 (2 h 42 min) |
 | /review | failed | 8 min 54 s | 9 (1 min 08 s) | 6 (1 h 27 min) | — | api-mail 4B/4T, dtos-mss 4B/0T, client-angular 1B/2T, passage 5 : CHANGES REQUESTED (B1, B2), plafond de reprises dépassé |
-| **Total cycle** | | **51 min 54 s** | **32 (5 min 47 s)** | **46 (2 h 51 min)** | **10 (3 min 59 s)** | |
+| **Total cycle** | | **1 h 55 min** | **34 (6 min 29 s)** | **52 (4 h 00 min)** | **12 (4 min 46 s)** | |
 
 Autres commandes mesurées : lint ×5 (59 s), nuget-wait ×1 (24 s), restore ×1 (3.7 s)

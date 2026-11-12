@@ -2077,7 +2077,7 @@ réécrire `DisposeAsync` que pour un vrai travail asynchrone, et alors sans
 
 ## CA1862 — une comparaison de casse ne passe pas par `ToUpperInvariant()` / `ToLowerInvariant()`
 
-**Occurrences : 2** (task-443, `/sonar` — `m.FromAddress.ToLower() != own` dans une requête EF ; task-420, `/sonar` —
+**Occurrences : 3** (task-449, `/sonar` — `m.FromAddress.ToLower() == adresse` et `r.Address.ToLower() == adresse` pour comparer une adresse choisie, dans une requête EF : `EF.Functions.ILike` sur `SearchQueryHelper.ToExactPattern` (échappé : un `_` d'adresse n'est pas un joker). Récidive : la variante EF était écrite, le fichier n'a pas été relu avant d'écrire la requête ; task-443, `/sonar` — `m.FromAddress.ToLower() != own` dans une requête EF ; task-420, `/sonar` —
 `ErrorCatalogTests` : `value.ToUpperInvariant() == value` pour reconnaître une constante de code en majuscules, dans un
 test)
 
