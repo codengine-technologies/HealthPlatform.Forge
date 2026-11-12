@@ -1,7 +1,7 @@
 # todo-task-449.md — Recherche : suggestions pendant la frappe, patients et messages
 
 **Repos**: api-mail, dtos-mss, client-angular
-**Reprises**: 3
+**Reprises**: 4
 **Dependencies**: done-task-442 (formulaire), done-task-446 (patients trouvés, vue « Mails du patient » depuis les
 résultats)
 **Epic**: E023
@@ -358,6 +358,38 @@ d'un patient, rejeu) passent par `closed()`, et l'ouverture demande les suggesti
 - **Prévention** : `conventions/angular.md` § `suggestions-de-saisie-choisies-visibles` réécrite autour de la règle
   unique (liste fermée = rien).
 
+### Reprise 4 (demandée par l'humain, 2026-11-12) — B1, B2, S1 (arbitrage), S2, S3, S4
+
+**Un critère tapé se lit comme les suggestions** (`TypedCriterion`, api-mail) : ses mots sont les suites de lettres et
+de chiffres ; sans guillemets, chacun doit commencer un mot du champ, dans n'importe quel ordre ; entre guillemets, les
+mots se suivent dans l'ordre strict (arbitrage S1). Mot et champ passent par la **même** fonction SQL
+(`search_normalize`), jamais par son jumeau C#. Le critère d'un préfixe garde ses guillemets (`SearchInput`).
+
+| Constat | Correctif | Test | Preuve rouge |
+|---|---|---|---|
+| **B1** « Objet » avec `’` ne trouvait plus rien | mots découpés sur la ponctuation, normalisés par `search_normalize` des deux côtés | intégration `ATypedCriterion_EveryWordInAnyOrder_…` (`objet : d’echographie`, `objet : "compte rendu d’échographie"`) | rouges sur le code d'avant |
+| **B2** Ctrl+clic / Cmd+clic, appui glissé hors de l'entrée | choix au `click`, clic principal sans modificateur ; `mousedown` ne fait que garder le focus | « un Ctrl+clic ou Cmd+clic… », « appuyer… puis relâcher ailleurs… » | mutations : modificateurs ignorés → rouge ; choix à l'appui → rouge |
+| **S1** (arbitrage) mots dans n'importe quel ordre ; ordre strict entre guillemets | `TypedCriterion` + `WhereHoldsEveryPart` ; « À » : tous les mots chez le **même** destinataire | intégration (`de : martin helene`, `de : "helene martin"`, `de : "martin helene"` → rien, `de : jean pierre`, `à : jean dupont`) ; unitaires `TypedCriterionTests` | rouges sur le code d'avant ; mutation « ordre strict ignoré » → rouge ; mutation « mots chez des destinataires différents » → rouge |
+| **S3** requête en vol annulée 250 ms après la fermeture | la pause de frappe vit dans le `switchMap` (`timer`) : `''` annule aussitôt | « Échap annule aussitôt la demande… » | mutation `debounceTime` avant le `switchMap` → rouge |
+| **S4** `de : "" martin` | une paire de guillemets vide est ignorée | unitaires `Parse_AnEmptyPairOfQuotes_IsDropped` ; intégration `de : "" helene` | rouges sur le code d'avant |
+| **S2** coût des critères normalisés | préfiltre par mot « texte normalisé contient le mot » (sans perte) avant le test en début de mot | mesure `Docs/audits/findings/plans/20261112-task-449/results.txt` (reprise 4) | — |
+
+- **S2, mesure** (11 291 mails, page de 51) : `ILIKE` de develop p95 ≈ 9 ms ; mots en début de mot sans préfiltre p95
+  ≈ 64-75 ms ; **retenu** avec préfiltre p95 25 ms pour un mot rare. Un mot présent sur presque toutes les lignes
+  (l'adresse de la boîte) reste ≈ 60 ms. Préfiltre par `SearchText` (index trigramme, 0,2 ms) écarté : colonne bâtie
+  en arrière-plan, absente d'une boîte neuve.
+- **Conséquence assumée de S1/S4/S5** : `%`, `_`, `\` tapés dans un critère séparent les mots, comme dans le plein texte
+  (task-439) ; ils ne sont jamais des jokers. Trois tests existants affirmaient l'égalité littérale (`50%` ne trouve
+  pas « Taux 500 ») : réécrits sur la garantie qu'ils protègent (jamais un joker : `5%0` ne trouve pas « 5770 ») ;
+  mutation « critère passé tel quel au LIKE » → les 4 cas rouges. Un `50` tapé trouve désormais « 500 » (début de mot,
+  comme les suggestions).
+- Validation : api-mail build ✅, tests 7 970 ✅ (dont 1 321 d'intégration, 16 ignorés) ; weda2 `nx test mss-lib`
+  1 650 ✅, `nx test weda2` 2 683 ✅, `nx build weda2` ✅, ESLint 0 erreur (51 + 48 avertissements, inchangés).
+  Commit api-mail `452556d2`. Un premier passage de la suite complète en `--no-build` a tourné sur le binaire de la
+  dernière mutation (18 échecs) : recompilé, relancé, vert — récidive consignée en mémoire (script de mutation qui
+  restaure sans recompiler).
+- Passe qualité (§Q) : diff relu (aucun reste de l'ancien motif, une seule voie de normalisation) ; rien à simplifier.
+
 ### Écarts et décisions consignés
 
 - **Identité patient** : la consigne `identite-patient-exacte` interdit `LIKE 'x%'` pour **désigner** un patient ; la
@@ -666,12 +698,12 @@ Trois reprises faites (plafond 2, la 3ᵉ demandée par l'humain) : **arrêt**, 
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 20 s | — | — | — | — |
-| /develop | ok | 12 min 40 s | 7 (1 min 11 s) | 7 (21 min 46 s) | — | dtos-mss 1B/0T, api-mail 2B/3T, client-angular 4B/4T, reprise 3 : B4 B5 S16 S17, S4/S5, S7 |
+| /develop | ok | 37 min 23 s | 12 (1 min 49 s) | 12 (38 min 20 s) | — | dtos-mss 1B/0T, api-mail 7B/8T, client-angular 4B/4T, reprise 4 |
 | /sonar | ok | 13 min 25 s | 6 (1 min 56 s) | 21 (31 min 46 s) | 8 (3 min 11 s) | 1 itération(s), api-mail 6B/21T, reprise 3 : S3776 nouveau code corrigé |
 | /lint-angular | ok | 1 min 00 s | — | — | — | — |
 | /lint-mobile | skipped | 0.9 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 20 min 24 s | — | — | — | e2e ×20 (2 h 22 min) |
 | /review | failed | 10 min 39 s | 7 (54 s) | 5 (1 h 20 min) | — | api-mail 3B/3T, dtos-mss 3B/0T, client-angular 1B/2T, passage 4 : CHANGES REQUESTED (B1, B2), plafond de reprises dépassé |
-| **Total cycle** | | **58 min 32 s** | **20 (4 min 02 s)** | **33 (2 h 14 min)** | **8 (3 min 11 s)** | |
+| **Total cycle** | | **1 h 23 min** | **25 (4 min 40 s)** | **38 (2 h 30 min)** | **8 (3 min 11 s)** | |
 
 Autres commandes mesurées : lint ×4 (48 s), nuget-wait ×1 (24 s), restore ×1 (3.7 s)

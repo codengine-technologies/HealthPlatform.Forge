@@ -21,3 +21,15 @@ cher confrère              exacte: 50 rés. p50= 218.2 p95= 249.5 ms | habituel
 bien confraternellement    exacte: 50 rés. p50= 127.1 p95= 149.9 ms | habituelle: 50 rés. p50=  98.0 p95= 103.3 ms
 résultats d'analyses       exacte: 50 rés. p50= 216.0 p95= 235.1 ms | habituelle: 50 rés. p50= 188.8 p95= 212.0 ms
 TOUTES                     exacte p50=191.8 p95=239.6 ms | habituelle p50=159.7 p95=194.7 ms
+
+== Reprise 4 (S2) — critères tapés « De » / « Objet » / « À », coût SQL (cost449r4.sh), srch_lab (11 291 mails),
+   page de 51 de l'INBOX par date, EXPLAIN ANALYZE, 3 chauffes + 20 mesures, 2026-11-12
+avant (develop, ILIKE brut)         De cerballiance  p50=  8,7 ms p95=  9,3 ms | Objet xyzabs p50= 8,3 ms p95= 9,7 ms | À dupont p50= 6,5 ms p95= 7,6 ms
+mots en début de mot (sans préfiltre) De cerballiance p50= 58,4 ms p95= 63,5 ms | Objet xyzabs p50=69,4 ms p95=74,9 ms | À dupont p50=58,3 ms p95=63,1 ms
+  coût : search_normalize (unaccent) + regexp_replace évalués sur chaque ligne ; le seul search_normalize coûte 22,7 ms
+mots + préfiltre normalisé par mot (retenu) De cerballiance p50= 22,6 ms p95= 25,2 ms
+  le préfiltre « texte normalisé contient le mot » ne perd rien (un mot en début de mot est contenu) et épargne
+  regexp_replace aux lignes écartées. Un mot présent sur presque toutes les lignes (adresse de la boîte) reste ≈ 60 ms.
+préfiltre par SearchText (index trigramme) : rare 0,2 ms, « Objet compte » 10 ms — écarté : colonne bâtie en arrière-plan,
+  absente d'une boîte neuve, non mappée par EF.
+Ordre de grandeur : +15 ms sur une recherche par critères de ~150-200 ms (p95 suggestions 175 ms, recherche 195-240 ms).
