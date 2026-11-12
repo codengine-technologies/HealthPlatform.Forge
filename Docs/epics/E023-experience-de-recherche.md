@@ -68,7 +68,7 @@ le même modèle. Le modèle retenu le 2026-11-10 avec l'humain s'inspire de la 
 | Réponse enrichie | Savoir où le terme a été trouvé, en voir un extrait, connaître les patients désignés | task-444 | ✅ Livrée côté serveur |
 | Mode « Résultats de recherche » | Voir les résultats dans un espace dédié, les affiner sur place, en sortir explicitement | task-445 | ✅ Livrée dans weda2 |
 | Lire un résultat | Voir l'extrait surligné de chaque résultat et ouvrir le patient trouvé en tête | task-446 | ✅ Livrée dans weda2 |
-| Actions groupées | Sélectionner tous les résultats, même ceux pas encore affichés, et leur appliquer une action | task-448 | 🔴 À faire |
+| Actions groupées | Sélectionner tous les résultats, même ceux pas encore affichés, et leur appliquer une action | task-448 | 🟡 En revue (PRs ouvertes) |
 | Suggestions pendant la frappe | Recevoir des propositions par catégories (patients, messages) dès les premières lettres | task-449 | 🔴 À faire |
 
 > Le bilan d'avancement par feature (statut, couverture, tasks contributives) est consigné en fin de document, dans la
@@ -166,7 +166,7 @@ la rend telle quelle, à la même position.
 
 ---
 
-## État de couverture (2026-11-11)
+## État de couverture (2026-11-12)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
@@ -175,10 +175,10 @@ la rend telle quelle, à la même position.
 | Réponse enrichie | ✅ Livrée côté serveur | 100 % | task-444 |
 | Mode « Résultats de recherche » | ✅ Livrée dans weda2 | 100 % | task-445 |
 | Lire un résultat | ✅ Livrée dans weda2 | 100 % | task-446 |
-| Actions groupées | 🔴 À faire | 0 % | task-448 |
+| Actions groupées | 🟡 En revue (PRs ouvertes) | 90 % | task-448 |
 | Suggestions pendant la frappe | 🔴 À faire | 0 % | task-449 |
 
-**Couverture EPIC consolidée : 71 %** (5 features livrées sur 7).
+**Couverture EPIC consolidée : 84 %** (5 features livrées sur 7, la 6e en revue : arbitrages S1 et S4 ouverts au merge).
 
 ---
 
@@ -204,6 +204,12 @@ la rend telle quelle, à la même position.
 - v0.5 — Chaque résultat montre son dossier, l'endroit où le mot a été trouvé et un extrait où il est surligné. Une
   rangée « Patients » propose en tête les patients que la recherche désigne ; un clic ouvre leurs messages. Le message
   ouvert depuis les résultats montre les mots cherchés surlignés dans son objet et son corps (task-446).
+- v0.6 — « Tout sélectionner » dans les résultats, puis « Sélectionner les N résultats de la recherche », y compris
+  ceux qui ne sont pas encore affichés (2 000 au plus, sinon « affinez la recherche »). Marquer lu ou non lu, étoile,
+  retirer l'étoile, déplacer, mettre à la Corbeille : une confirmation annonce le nombre de messages, une progression
+  suit l'action, et le compte rendu dit ce qui n'a pas été fait (« 340 messages déplacés vers Archives, 2 en échec »),
+  avec « Réessayer les échecs ». Un message arrivé après la confirmation n'est pas touché. Ni acquittement ni
+  rattachement à un patient en masse (task-448).
 
 **Conformité réglementaire**
 - Chaque recherche lancée reste tracée au nom de son auteur ; la trace ne porte ni le texte cherché, ni l'identité du
@@ -212,6 +218,10 @@ la rend telle quelle, à la même position.
   n'est jamais affiché (task-443).
 - Identito-vigilance : un patient n'est proposé que sur une correspondance exacte ; une INS tapée en recherche n'est
   ni rendue, ni gardée dans l'historique, ni envoyée au fournisseur d'IA (task-444).
+- Une action groupée laisse une trace par message, au nom de la personne qui agit, délégataire compris ; remettre un
+  message en non lu est désormais tracé lui aussi (task-448).
+- Une mise à la Corbeille groupée ne supprime jamais définitivement : depuis la Corbeille, ou depuis un dossier dont le
+  type n'est pas connu, elle est refusée et le dit (task-448).
 
 **Sécurité**
 - La liste des expéditeurs de la boîte, comme toute lecture de la boîte, est fermée sans le verdict de l'opérateur
@@ -224,6 +234,7 @@ la rend telle quelle, à la même position.
 - Cinq parcours de l'espace « Résultats de recherche » sont vérifiés à chaque cycle dans weda2 : nom de patient tapé
   sans accent, « Aucun résultat », « Voir plus », recherche en échec, fermeture à la même position (task-445).
 - Le parcours « reconnaître un résultat et ouvrir le dossier du patient » l'est aussi (task-446).
+- Le parcours « traiter tous les résultats d'une recherche » l'est aussi (task-448).
 
 ---
 

@@ -395,7 +395,52 @@ libres, aucun conteneur e2e résiduel.
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
 
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/363 (label `awaiting-human-merge`)
+- `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/62 (label `awaiting-human-merge`)
+- `client-angular` : code-only — humain gère commit/push TFS et ouverture PR, branche `feature/nova-mss-weda-integration`. Fichiers modifiés :
+  - modifiés : `front/e2e/mss-e2e/specs/functional.e2e.ts`, `front/e2e/mss-e2e/support/e2e-backend.ts`, `front/libs/mss/src/core/services/mss-api.service.ts`, `front/libs/mss/src/features/mail/components/mail-list/mail-list.component.{html,ts,spec.ts}`, `mail-list.gestures.spec.ts`, `mail-list.list-sources.spec.ts`, `mail-list.search-mode.spec.ts`, `mail-search-results/mail-search-results.component.{html,ts}`, `front/libs/mss/src/features/mail/mss-mail.component.ts`
+  - nouveaux : `core/models/bulk-mail-action.model.ts`, `mail-list.search-bulk.spec.ts`, `components/mail-search-bulk/*` (html, scss, ts), `services/mail-search-bulk.service.ts`, `services/mail-search-bulk-labels.ts`
+
 ## Code Review Summary
+
+**APPROVED** (passage 2, après reprise de `/develop`, 2026-11-12) — 0 bloquant.
+
+Les deux bloquants du passage 1 sont corrigés et prouvés sur la vraie pile :
+
+| Comportement | Test d'intégration | Preuve rouge |
+|---|---|---|
+| 120 résultats déplacés vers Archives, périmètre figé | `MovingThe120ConfirmedResults_…` | B1, B2 (mutations) |
+| Marquer lu : les 120 lus en base | `MarkingThe120ConfirmedResultsRead_…` | B3 |
+| Message supprimé entre-temps : 119 + `not_found` | `AResultDeletedBetweenTheConfirmationAndTheAction_…` | B4 |
+| 2 001 messages → 400 `problem+json` | `MoreThan2000Messages_Is400ProblemJson_…` | route absente avant |
+| Délégataire : 3 déplacements à son nom | `TheDelegateMovesThreeResults_…` | B5 |
+| Délégataire refusé par l'opérateur → 403 | `MailboxAccessLockIntegrationTests.Delegate_RefusedAtRenewal_Gets403_OnABulkAction_…` | route absente avant |
+| Clés de 120 résultats / plafond / requête vide | `SearchKeysEndpointIntegrationTests.*` | K1, K2, route absente avant |
+| **Corbeille** par le délégataire : dans `Trash`, 3 `MailDelete` à son nom | `TheDelegateTrashesThreeResults_…` | C2, C3 |
+| **Corbeille → Corbeille** : `already_in_trash`, messages toujours sur le serveur | `TrashingResultsAlreadyInTheTrash_…` | C1 (garde retirée : messages détruits) |
+| Dossier au type jamais enregistré : `folder_type_unknown` | `TrashingFromAFolderTheListingNeverRecorded_…` | rouge sur le code d'avant |
+| **Étoile / sans étoile / non lu** : état en base + 1 trace par message au nom du délégataire | `TheDelegateChangesTheStateOfThreeResults_…` (`[Theory]`) | non lu : 0 trace avant (B1), C4, C5, C6 |
+| Résultats de **deux dossiers** | `TrashingResultsFromTwoFolders_…` | C2, C7 |
+
+- `EmailFlagService` : « marquer non lu » trace un `MailFlagChange` par message (défaut antérieur, corrigé aussi pour la route unitaire). ✅
+- `BulkMailActionService` : raison `folder_type_unknown`, non proposée au nouvel essai. ✅
+- weda2 `MailSearchBulkService` : la question en attente est liée à la recherche, une nouvelle recherche l'efface. ✅ (F13, F14 rouges)
+
+**Suggestions non bloquantes**
+- S2/S3 : comptes rendus optimistes dans des cas limites (déplacement vers le dossier même compté comme succès, message déjà effacé compté comme mis à la Corbeille, morceaux restants abandonnés si le médecin quitte la vue).
+- S7 : ~4 allers-retours SQL par message pour les drapeaux (bornés par morceaux de 100) — acceptable en v1.
+- S9 : `TraceFlagChange` écrit « OK flags updated » alors que la propagation est différée (antérieur, aussi pour l'étoile) ; « marquer lu » écrit déjà « queued for background propagation ».
+- Défaut antérieur hors périmètre : les routes `…/emails/bulk/status/read|unread|flagged|unflagged` ne tracent pas message par message → task de suivi.
+
+> 🧑‍⚖️ **Arbitrage humain ouvert (à trancher au HAG, `questions/task-448.md`)**
+> - **S1** — une remise en « lu » groupée trace `MailRead`, qui atteste un **accès** au message : 2 000 résultats marqués lus = 2 000 attestations d'accès. Recommandation forge : `MailFlagChange`.
+> - **S4** — « tous les résultats » inclut les résultats **proches par le sens** : une Corbeille groupée peut toucher des messages sans les mots cherchés. Recommandation forge : limiter l'action aux résultats exacts en v1.
+
+Validation (passage 2) : api-mail build 0 erreur / 0 avertissement, domain 210, infrastructure 743, api 1 380, application 4 218, integration 1 266 (16 ignorés), 0 échec ; dtos-mss build vert ; weda2 `mss-lib` 1 627, `weda2` 2 683, `nx build weda2` vert ; `/e2e` vert (mobile 60, angular 81, parité verte) ; Sonar QG OK, 0 issue nouveau code.
+
+### Passage 1 (historique)
 
 **CHANGES REQUESTED** (revue indépendante, passage 1, 2026-11-12) — 2 bloquants, détail dans `questions/task-448.md`.
 
@@ -421,7 +466,8 @@ libres, aucun conteneur e2e résiduel.
 | /lint-angular | ok | 19 s | — | — | — | reprise : 0 erreur |
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 19 min 32 s | — | — | — | e2e ×10 (1 h 15 min), reprise : mobile 60, angular 81, parité verte |
-| /review | failed | 5 min 29 s | 2 (22 s) | 3 (7 min 02 s) | — | api-mail 1B/1T, client-angular 1B/2T, CHANGES REQUESTED : B1 non lu sans trace, B2 règle 1b Corbeille |
-| **Total cycle** | | **49 min 34 s** | **17 (3 min 35 s)** | **32 (1 h 46 min)** | **6 (2 min 07 s)** | |
+| /review | ok | 7 min 57 s | 5 (35 s) | 5 (13 min 43 s) | — | api-mail 2B/2T, client-angular 2B/3T, dtos-mss 1B/0T, APPROVED (passage 2), PRs api-mail #363, dtos-mss #62 |
+| /tech-writer | ok | 37 s | — | — | — | — |
+| **Total cycle** | | **52 min 41 s** | **20 (3 min 48 s)** | **34 (1 h 53 min)** | **6 (2 min 07 s)** | |
 
 Autres commandes mesurées : lint ×2 (19 s), nuget-wait ×2 (47 s), restore ×2 (26 s)
