@@ -542,6 +542,18 @@ Aucune dans les journaux de re-liaison (extrait de clé, identifiants techniques
   migration du projet et les 10 tests de bout en bout de l'ancrage sont verts.
 - ADR, consigne `etat-metier-hors-du-miroir-imap`, doc d'EPIC E024 et corps de la PR api-mail mis à jour.
 
+## Merged
+
+- **Date** : 2026-11-12, `/merge task-453 --i-tested` (validation humaine attestée).
+- Squash-merge (ordre dtos → backend → frontend) :
+  - `dtos-mss` : `f7a2e742` (PR #63) — CI `develop` ✓ https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/actions/runs/43179805129
+  - `api-mail` : `ee2f7533` (PR #364) — CI `develop` ✓ https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/43179832149
+  - `client-mobile` : `f775f173` (PR #123) — CI `develop` ✓ https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/43179868282
+- Labels `awaiting-human-merge` retirés ; branches `feat/task-453-un-acquittement-ne-disparait-jamais` supprimées
+  (distantes et locales) ; clones revenus sur `develop`.
+- `client-angular` : managed manually by the human.
+- Staging : aucune branche `forge/staging-task-*` (task lancée par `/start`, hors run `/forge`).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-453 --sync` — ne pas éditer à la main)*
