@@ -245,6 +245,53 @@ Règles :
   commité ✓.
 - **Next step** : `/sonar task-453`
 
+## Sonar log
+
+- Serveur : SonarQube 25.6.0 sur `localhost:9001` (conteneurs `sonarqube_db` puis `sonarqube` redémarrés, arrêtés
+  depuis deux semaines) ; propriété `sonar.token` ; clé `healthplatform-api-mail`.
+- **Phase 1 (new code de la task)** : ✓ — après correction, **aucune issue** sur les lignes écrites par task-453.
+  - Itération 1 : 1 issue imputable à la task, **S3776** (`DocumentWorkStateRelinker.RelinkAsync`, complexité 16 > 15),
+    corrigée en extrayant `RelinkKeyAsync` (`ffc49e23`). Tests du relinker, build et suite complète verts.
+  - Itération 2 (re-analyse) : S3776 résolue ; plus aucune issue imputable.
+  - Couverture new code des fichiers source de la task : `DocumentAnchor` 100 %, `MailRepository.WorkStates` 100 %,
+    `BiologyAckRepository` 100 %, `BiologyAckService` 100 %, `PatientRepository` 98,8 %, `AuditService` 98,5 %,
+    `MailRepository` 98,2 %, `DocumentWorkStateRelinker` 97,4 % (une ligne défensive : document disparu entre la
+    lecture des candidats et la ré-application) ; `new_coverage` projet 97,8 % (cible 95 %).
+  - **Issues restantes sur des fichiers touchés, toutes antérieures** (vérifié par `git blame`) : S103 ×5
+    (`MailRepository` l.1374, 2729, 3710 et `PatientRepository` l.326 — task-405 ; `PatientRepository` l.56 —
+    task-410), S4462 ×3 (`AuditService` l.214/235/257 — journal PGSSI-S), S138 (`LoadBulkContentLookupsAsync` — « Fix
+    Sonar #77 »). Elles comptent dans la période « new code » du serveur (`PREVIOUS_VERSION`, depuis le 2026-04-17), qui
+    englobe des tasks déjà mergées.
+  - Hotspots « à revoir » de la période : 14, aucun sur un fichier de la task (`Dockerfile`, `BaseRepository`,
+    scripts du banc de charge).
+- **Phase 2 (legacy)** : non jouée (facultative, best-effort) — la dette restante est antérieure à la task.
+- **Quality Gate (projet, new code)** : ERROR, inchangé dans sa cause : `new_violations` 98 et
+  `new_security_hotspots_reviewed` 0 % portent sur du code antérieur à la task ; `new_coverage` 97,8 % OK,
+  `new_duplicated_lines_density` 0,08 % OK.
+- **Build / tests** : ✓ build Release 0 erreur ; domain 221, application 4 197, infrastructure 749, api 1 376,
+  integration 1 263 (16 ignorés) — **tous verts** (passe de couverture de la re-analyse, hors de la fenêtre UTC des
+  tests « du jour »).
+- **Itérations** : 2 (Phase 1).
+- **Prévention** : `conventions/csharp.md` — S3776, Occurrences 6 → 7 (task-453 : corps de boucle à deux issues, à
+  extraire dès l'écriture).
+
+### KPIs qualité (baseline → final)
+
+La baseline est la dernière analyse présente sur le serveur (2026-10-28, `develop` de l'époque) : l'écart sur les
+métriques projet inclut les tasks mergées depuis, pas seulement task-453.
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | ERROR | ERROR | → (causes antérieures) |
+| New coverage | 98,1 % | 97,8 % | −0,3 pt |
+| Bugs | 2 | 2 | 0 |
+| Vulnerabilities | 0 | 2 | +2 (`tests/search-quality/campagne.py`, créé le 2026-11-10, hors task) |
+| Security hotspots | 15 | 16 | +1 (hors fichiers de la task) |
+| Code smells | 72 | 94 | +22 (aucune sur le code de la task) |
+| Coverage (projet) | 98,0 % | 97,8 % | −0,2 pt |
+| Duplication | 0,3 % | 0,3 % | 0 |
+| Reliability / Security / Maintainability | D/A/A | D/D/A | sécurité D par les deux vulnérabilités du script Python |
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-453 --sync` — ne pas éditer à la main)*
@@ -253,6 +300,7 @@ Règles :
 |---|---|---|---|---|---|---|
 | /start | ok | 41 s | — | — | — | — |
 | /develop | ok | 2 h 01 min | 21 (3 min 54 s) | 19 (19 min 34 s) | — | dtos-mss 1B/0T, api-mail 19B/18T, client-mobile 1B/1T, contrat 591, ancrage + re-liaison, E2E-BIO-004 rouge puis vert |
-| **Total cycle** | | **2 h 02 min** | **21 (3 min 54 s)** | **19 (19 min 34 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 29 min 53 s | 3 (1 min 38 s) | 11 (17 min 27 s) | 4 (5 min 30 s) | 2 itération(s), api-mail 3B/11T, S3776 corrigée, aucune issue imputable |
+| **Total cycle** | | **2 h 32 min** | **24 (5 min 33 s)** | **30 (37 min 01 s)** | **4 (5 min 30 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (24 s), restore ×3 (2 min 15 s)
