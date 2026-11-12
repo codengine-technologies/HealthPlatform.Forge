@@ -1,7 +1,12 @@
-# task-448 — /review : CHANGES REQUESTED
+# task-448 — /review : arbitrage S1 / S4 ouvert (bloquants résolus)
+
+> **Mise à jour 2026-11-12 (passage 2)** : B1, B2, S5, S6, S8 **résolus** par la reprise de `/develop`, prouvés rouges
+> (`## Develop log` § Reprise). `/review` : **APPROVED**, PRs ouvertes (api-mail #363, dtos-mss #62, label
+> `awaiting-human-merge`), task en `done-*`. **Restent ouverts, à trancher au HAG : S1 et S4** (section « Arbitrage
+> humain »). Une décision qui change le comportement repasse par `/develop task-448` avant le merge.
 
 **Étape** : `/review` (revue indépendante, 2026-11-12). Build et tests verts (api-mail, weda2), Sonar QG OK, `/e2e` vert.
-La PR n'est **pas** ouverte. La task reste en `wip-*`.
+Passage 1 : la PR n'était pas ouverte, la task restait en `wip-*`.
 
 ## Bloquants
 
