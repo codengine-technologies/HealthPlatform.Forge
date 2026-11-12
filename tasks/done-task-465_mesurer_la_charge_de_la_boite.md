@@ -51,6 +51,21 @@ Règles :
   (« disponible après task-454 / task-456 »).
 - **Mesure de référence** relevée **avant** la mise en service de task-454, et consignée.
 
+### Complément — décision humaine du 2026-11-12 (PR #366 encore ouverte)
+
+L'humain demande d'ajouter au tableau de bord, dans cette même task, des indicateurs d'**usage** :
+- **Personnes connectées** : nombre de personnes distinctes qui ont **ouvert une boîte** dans la journée (ouverture de
+  session de boîte), même sans geste ensuite.
+- **Plages horaires** (heure de Paris), deux graphiques : **personnes actives par heure** (au moins un geste dans la
+  tranche) et **part des gestes par heure**.
+- **Délégataires** : nombre de délégataires **inscrits** au registre (rattachements actifs en fin de journée) et
+  nombre de délégataires **actifs** (au moins un geste) ; même découpage actif pour titulaires et membres.
+- **Boîtes** : nombre total de boîtes **inscrites** (au moins un rattachement actif en fin de journée) et nombre de
+  boîtes **actives** (ouverture ou geste dans la journée).
+
+Mêmes règles d'anonymat : une valeur n'est publiée que si elle porte sur au moins 5 boîtes, une tranche horaire
+comprise.
+
 ## Definition of Done
 
 - [ ] Agrégation quotidienne depuis `audit_traces` et les bases de boîte, sous verrou distribué ; aucune donnée
@@ -68,6 +83,10 @@ Règles :
 - [ ] Mesure de référence relevée sur l'environnement de recette (corpus fictif) et consignée dans le task file.
 - [ ] Aucune donnée de santé ni donnée personnelle dans les mesures et les logs (revue du schéma exposé consignée).
 - [ ] Build et tests verts : `HealthPlatform.Api.Mail.sln`.
+- [ ] (complément du 2026-11-12) Indicateurs personnes connectées, personnes actives et part des gestes par heure,
+      délégataires inscrits et actifs, boîtes inscrites et actives : ≥ 1 test unitaire chacun, seuil de 5 boîtes par
+      tranche horaire testé, et lus dans la réponse réelle par le test d'intégration de la route, vus rouges.
+- [ ] (complément du 2026-11-12) Panneaux correspondants ajoutés au tableau de bord.
 
 ## Manual Test Plan
 
@@ -219,6 +238,35 @@ colonnes sensibles du journal (filtrage SQL), mais ne remonte que boîte, person
   Grafana, mesure de référence sur la recette.
 - **Étape suivante** : `/sonar task-465`.
 
+### Reprise du 2026-11-12 — indicateurs d'usage (décision humaine, voir le complément de l'objectif)
+
+| Indicateur (`indicator` / `breakdown` / `statistic`) | Source | Seuil |
+|---|---|---|
+| `connected_persons` / `all` / `count` | traces `MailboxSessionOpened` (première requête d'une session client sur une boîte), personnes distinctes | boîtes ouvertes ≥ 5 |
+| `active_mailboxes` / `all` / `count` | boîtes ouvertes ou avec au moins un geste | ≥ 5 |
+| `registered_mailboxes` / `all` / `count` | `mss_accounts` : boîtes avec un rattachement actif **en fin de journée** (`attached_at < fin` et non détaché avant la fin) | ≥ 5 |
+| `registered_delegates` / `all` / `count` | idem, comptes distincts au rôle `Delegate` | boîtes déléguées ≥ 5 |
+| `active_persons` / `all`, `holder`, `delegate`, `member` / `count` | personnes distinctes avec au moins un geste, par rôle | boîtes du découpage ≥ 5 |
+| `active_persons_by_hour` / `00`…`23` / `count` | personnes distinctes avec un geste dans l'heure (Paris) | boîtes de la tranche ≥ 5 |
+| `gesture_share_by_hour` / `00`…`23` / `share` | part des gestes du jour dans l'heure (Paris) | idem |
+
+- **Registre lu à la fin du jour mesuré**, pas au moment du calcul : une journée rattrapée compte le registre de ce
+  soir-là. Une journée de changement d'heure garde 24 tranches (la tranche répétée de l'heure d'hiver est fusionnée).
+- **Migration** `20261112110000_GrantMailboxLoadRegistryRead` (séparée, pour ne pas changer une migration déjà
+  jouable) : `GRANT SELECT (mailbox_id, account_id, role, attached_at, detached_at) ON mss_accounts` au rôle
+  statistique — ni adresse, ni base, ni identité PSC, ni nom.
+- **Tableau de bord** : rangée « Usage » (personnes connectées, boîtes actives et inscrites, délégataires inscrits et
+  actifs, personnes actives) et deux histogrammes horaires (personnes actives, part des gestes), triés par heure ;
+  29 panneaux ; `selftest.sh` vert.
+- **Tests** : 8 unitaires de plus (69 au total dans `Services/ProductMetrics/`), dont le seuil par tranche horaire
+  et le passage à l'heure d'hiver ; intégration `MailboxLoad_SixMailboxes_ExposesUsage` (registre réel avec un
+  délégataire détaché la veille et un rattaché après la fin du jour, sessions réelles) — 10 tests verts.
+- **Preuves par mutation** (restaurées depuis copie, 2026-11-12) :
+  6. droit de lecture du registre retiré → `42501: permission denied for table mss_accounts` ;
+  7. registre lu sans la borne de fin de journée → `Expected 5 / Actual 7` (détaché et tardif comptés) ;
+  8. heure calculée en UTC → tranche « 10 » introuvable.
+- **Contrôle mécanique §Q 2b** : 3 × S125 de plus, corrigés avant le commit (compteur porté à 27).
+
 ### Reste hors de portée de `/develop`
 
 - **Capture Grafana** : le Grafana local répond mais son mot de passe administrateur n'est pas `admin`, et l'API
@@ -257,6 +305,12 @@ colonnes sensibles du journal (filtrage SQL), mais ne remonte que boîte, person
 - **Conventions** : CA1068 → 4 (contrôle mécanique ajouté à `agents/develop.md` §Q 2b), S138 → 3, ASP0025 (nouvelle),
   capture-de-metriques-serialisee (nouvelle).
 
+- **Reprise du 2026-11-12 (indicateurs d'usage)** : 3ᵉ analyse — **0 finding et 0 hotspot dans le diff**, tous les
+  fichiers de la task ≥ 95 % de couverture new code ; KPIs projet inchangés (new coverage 97,9 %, new violations 96).
+  Pendant l'analyse, `ThreadCountsScopedLoadTests.AddingForeignMailsDoesNotReadMoreRows` rouge une fois en suite
+  complète Release, puis vert 3/3 en isolation : instabilité connue des tests qui partagent la base du fixture,
+  hors diff.
+
 ### KPIs qualité (baseline → final)
 
 | Métrique | Baseline | Final | Δ |
@@ -285,16 +339,17 @@ colonnes sensibles du journal (filtrage SQL), mais ne remonte que boîte, person
 
 > ⚠️ **Quarantaine de plus de 14 jours** : E2E-COMPOSE-002 (Angular), posée le 2026-10-09 pour task-350 — 34 jours.
 > Un test en quarantaine ne protège rien : sa correction est due.
-> ⚠️ **Flaky récurrents** (≥ 3 occurrences, task de stabilisation à ouvrir) : E2E-SEARCH-001 (Angular, 17ᵉ) et
-> E2E-LIVE-001 (Angular, 5ᵉ).
+> ⚠️ **Flaky récurrents** (≥ 3 occurrences, task de stabilisation à ouvrir) : E2E-SEARCH-001 (Angular, 18ᵉ) et
+> E2E-LIVE-001 (Angular, 6ᵉ).
 
 | Voie | Déclencheur | Résultat | Tests | Durée |
 |---|---|---|---|---|
-| mobile | api-mail et dtos-mss touchés | ✅ verte (jouée) | 61 verts, 0 flaky, 0 rouge, 0 quarantaine | 11 min 7 s |
-| angular | api-mail et dtos-mss touchés | ✅ verte (jouée) | 80 verts, 2 flaky, 0 rouge, 1 quarantaine (passée) | 13 min 47 s |
+| mobile | api-mail et dtos-mss touchés | ✅ verte (jouée) | 61 verts, 0 flaky, 0 rouge, 0 quarantaine | 11 min 17 s |
+| angular | api-mail et dtos-mss touchés | ✅ verte (jouée) | 80 verts, 2 flaky, 0 rouge, 1 quarantaine (passée) | 13 min 51 s |
 
 - Catalogue : `Api/Mail/e2e/scenarios.yml` @ branche de la task (`88e5398c`), inchangé par la task
-- Checkouts : api-mail `88e5398c` (task), client-mobile `f775f173` (`develop`, déjà aligné sur `origin/develop`),
+- Rejoué le 2026-11-12 après la reprise (indicateurs d'usage) : mêmes résultats que le premier passage.
+- Checkouts : api-mail `5a97a3aa` (task), client-mobile `f775f173` (`develop`, déjà aligné sur `origin/develop`),
   client-angular `ce7741dd` (branche de l'humain `feature/nova-mss-weda-integration`)
 - Quarantaines : E2E-COMPOSE-002 (Angular, task-350) — passée
 - Divergences ouvertes : 8, toutes côté mobile (E2E-SEARCH-004 à 010, 012 ; résorption task-450 / task-451)
@@ -425,7 +480,7 @@ colonnes sensibles du journal (filtrage SQL), mais ne remonte que boîte, person
 
 ## Code Review Summary
 
-**Verdict** : APPROVED — 0 bloquant, 4 suggestions, 1 écart de DoD à arbitrer
+**Verdict** : APPROVED — 0 bloquant, 5 suggestions, 1 écart de DoD à arbitrer (revue initiale + reprise du 2026-11-12)
 
 | Zone | Verdict |
 |---|---|
@@ -435,6 +490,7 @@ colonnes sensibles du journal (filtrage SQL), mais ne remonte que boîte, person
 | `MailboxLoadHostedService` | ✅ verrou Redis par jour ; sans Redis, aucun calcul ; passe en échec journalisée par code d'erreur, service maintenu |
 | `ProductMetricsController` | ✅ `[AllowAnonymous]` + clé `X-Product-Metrics-Key` comparée en temps constant ; sans clé configurée 404, clé absente ou fausse 401 (un médecin authentifié reçoit 401) |
 | `MailboxLoadMetrics` + tableau de bord | ✅ seules les valeurs publiées sortent ; `noValue` partout, pas de `or vector(0)` (harnais vert) |
+| Reprise : indicateurs d'usage (`AddUsage`, `AddHourlyActivity`, sessions et registre dans le dépôt, migration `20261112110000`) | ✅ registre lu **à la fin du jour mesuré** (journée rattrapée exacte) ; droits du rôle statistique limités à 5 colonnes de `mss_accounts` (ni adresse, ni base, ni identité PSC) ; seuil de 5 boîtes par tranche horaire |
 | Extractions S138 (`AddMssMeters`, `AddImap`, `AddMailSending`, `AddSemanticSearch`) | ✅ déplacements purs, à la même place dans l'ordre des enregistrements |
 
 **Règle 1b — comportement → test d'intégration → preuve rouge** (`MailboxLoadEndpointIntegrationTests` : vraie route, vrai PostgreSQL, vraie migration ; seul Redis est simulé) :
@@ -446,6 +502,7 @@ colonnes sensibles du journal (filtrage SQL), mais ne remonte que boîte, person
 | aucun identifiant de boîte, de personne, d'adresse, d'INS ni de nom | `…TheResponse_NamesNoMailboxNoPersonNoPatient` | clé de personne mise en découpage → `Found "holder-"` |
 | plage invalide → 400 `problem+json` | `…AnInvalidRange_Is400ProblemDetails` (4 cas) | validation `fin < début` neutralisée → `200` |
 | sans la clé → 401 | `…WithoutTheProductTeamKey_Is401` | contrôle de clé neutralisé → `200` |
+| personnes connectées, boîtes actives et inscrites, délégataires inscrits, personnes actives par rôle, personnes et part des gestes par heure | `…SixMailboxes_ExposesUsage` | droit de lecture du registre retiré → `42501` ; borne de fin de journée retirée → `5` attendu, `7` obtenu ; heure en UTC → tranche « 10 » introuvable |
 | sans clé configurée → 404 | `…WithoutAConfiguredKey_DoesNotExist` | garde de configuration neutralisée → `500` |
 
 **⚠️ Écart de DoD à arbitrer au merge.** La DoD dit « agrégation depuis `audit_traces` **et les bases de boîte** ». Le calcul ne lit **que** la base commune (journal et date de création de la boîte) :
@@ -457,6 +514,7 @@ colonnes sensibles du journal (filtrage SQL), mais ne remonte que boîte, person
 - Les délais de lecture et d'acquittement retrouvent la réception dans tout dossier, alors que le volume ne compte que `INBOX` : à aligner si l'équipe produit le juge utile.
 - Une journée calculée n'est jamais recalculée, même après une panne partielle du journal : un effacement manuel par jour pourrait servir.
 - `TryClaimAsync` horodate le verrou avec `DateTimeOffset.UtcNow` plutôt qu'avec le `TimeProvider` injecté (valeur informative seulement).
+- Les boîtes et délégataires inscrits comptent aussi les rattachements en `AuthFailing` (encore rattachés) : à exclure si l'équipe produit veut « inscrits et en état de marche ».
 - La route rend directement les records applicatifs : sans consommateur client, pas de contrat `dtos-mss` ; à déplacer si un client la lit un jour.
 
 ## Timings
@@ -466,13 +524,13 @@ colonnes sensibles du journal (filtrage SQL), mais ne remonte que boîte, person
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 26 s | — | — | — | — |
-| /develop | ok | 57 min 19 s | 6 (1 min 56 s) | 14 (18 min 22 s) | — | dtos-mss 1B/0T, api-mail 5B/14T |
-| /sonar | ok | 36 min 56 s | 5 (2 min 36 s) | 14 (19 min 47 s) | 4 (5 min 39 s) | 2 itération(s), api-mail 5B/14T |
-| /lint-angular | skipped | 1.7 s | — | — | — | client-angular non touché (absent des Repos, arbre propre) |
-| /lint-mobile | skipped | 1.7 s | — | — | — | client-mobile non touché (absent des Repos, sur develop) |
-| /e2e | ok | 26 min 53 s | — | — | — | e2e ×5 (50 min 00 s) |
-| /review | ok | 13 min 24 s | 3 (57 s) | 1 (7 min 31 s) | — | dtos-mss 1B/0T, api-mail 2B/1T |
-| /tech-writer | ok | 1 min 30 s | — | — | — | — |
-| **Total cycle** | | **2 h 16 min** | **14 (5 min 30 s)** | **29 (45 min 41 s)** | **4 (5 min 39 s)** | |
+| /develop | ok | 15 min 15 s | 8 (2 min 39 s) | 19 (26 min 25 s) | — | dtos-mss 1B/0T, api-mail 7B/19T, reprise : indicateurs d'usage |
+| /sonar | ok | 13 min 52 s | 6 (3 min 04 s) | 19 (28 min 57 s) | 6 (8 min 09 s) | 1 itération(s), api-mail 6B/19T |
+| /lint-angular | skipped | 1.5 s | — | — | — | reprise : client non touché (absent des Repos) |
+| /lint-mobile | skipped | 2.0 s | — | — | — | reprise : client non touché (absent des Repos) |
+| /e2e | ok | 26 min 01 s | — | — | — | e2e ×10 (1 h 40 min) |
+| /review | ok | 8 min 33 s | 4 (1 min 34 s) | 2 (14 min 48 s) | — | dtos-mss 1B/0T, api-mail 3B/2T |
+| /tech-writer | ok | 1.8 s | — | — | — | — |
+| **Total cycle** | | **1 h 04 min** | **18 (7 min 18 s)** | **40 (1 h 10 min)** | **6 (8 min 09 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (12 s), restore ×1 (8.7 s)
