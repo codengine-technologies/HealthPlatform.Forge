@@ -461,6 +461,73 @@ métriques projet inclut les tasks mergées depuis, pas seulement task-453.
 
 </details>
 
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/364 — label `awaiting-human-merge`
+- `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/63 — label `awaiting-human-merge`
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/123 — label `awaiting-human-merge`
+- `client-angular` : code-only — humain gère commit/push TFS et ouverture PR. **À commiter avant le merge de la PR
+  api-mail** (`test-angular-non-commite`). Fichiers modifiés, non commités sur `feature/nova-mss-weda-integration` :
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`
+  - `front/e2e/mss-e2e/support/e2e-backend.ts`
+  - `front/libs/mss/src/core/models/audit.model.spec.ts`
+  - `front/libs/mss/src/core/models/audit.model.ts`
+- Validation de `/review` : api-mail synchronisé avec `develop` par merge (`7f8ddc82`, seul le catalogue e2e de
+  task-446 arrive) ; build + suite complète **tous verts** (domain 221, infrastructure 749, application 4 197, api
+  1 376, integration 1 263) ; dtos-mss build ✓ ; client-mobile build ✓, tests 1 417/1 417 ; client-angular
+  `nx build weda2` ✓, tests `mss-lib` + `weda2` ✓ (branche de l'humain, après son commit « Task 446 »).
+
+## Code Review Summary
+
+**Verdict : APPROVED** — 0 bloquant, 6 suggestions.
+
+### Preuve par test d'intégration (règle 1b)
+
+| Comportement atteignable par un endpoint | Test d'intégration (vraie pile, PostgreSQL, Dovecot) | Preuve rouge |
+|---|---|---|
+| `GET …/folders/{f}/emails/{uid}` : acquittement re-relié après déplacement hors plateforme (actes, notes, auteurs, instants) | `ACdaAcknowledgedThenMovedByAnotherClient_KeepsItsAcknowledgements` | rouge sur le code d'avant |
+| idem après purge UIDVALIDITY | `AFolderPurgedOnAUidValidityChange_GetsItsAcknowledgementBack` | mutation M1 |
+| idem après corbeille puis restauration | `AMessageDeletedThenRestoredByAnotherClient_GetsItsAcknowledgementBack` | rouge sur le code d'avant |
+| corbeille vidée : acte conservé invisible, re-relié au retour | `AMessageDestroyedForGood_…` | rouge sur le code d'avant |
+| `GET /mail/folders/{f}` (purge) : re-liaison quand le nouveau dossier a été lu avant | `AMessageReadInItsNewFolderBeforeItsOldRowIsPurged_…` | mutation M5 |
+| `POST …/attach-patient` : rattachement manuel ré-appliqué (CDA sans INS, HPRIM) | `ACdaWithoutInsAttachedByHand…`, `AnHprimAcknowledgedAndAttachedByHand…` | rouge sur le code d'avant + mutation M3 |
+| `POST …/detach-patient` : le détachement n'est plus ré-appliqué | `ADocumentDetachedByHandThenMovedByAnotherClient_ComesBackUnattached` | mutation M7 (faite à la revue) |
+| identité ambiguë : rien n'est re-relié, acte système « écarté » tracé | `WhenTheDocumentIdentityPointsToTwoDocuments_…` | mutation M2b |
+| délégataire : l'auteur re-relié reste le délégataire (règle 14) | `TheDelegatesAcknowledgement_RelinkedAfterTheHoldersMoveElsewhere_…` | rouge sur le code d'avant |
+| `POST …/biology-ack` : l'acquittement porte la clé de son document | couvert par tous les cas ci-dessus (acquittement posé par la route, relu après re-liaison) | idem |
+| migration : clé SQL = clé C#, `SET NULL`, aller-retour | `AnchorDocumentWorkStatesMigrationTests` | mutation M4 |
+
+### api-mail
+
+- `Domain/Rules/DocumentAnchor.cs` — ✅ clé versionnée, hachée (ni `Message-ID` ni identifiant de document dans un journal) ; nouvelle version CDA = nouvelle clé.
+- `Infrastructure/Repositories/MailDb/DocumentWorkStateRelinker.cs` — ✅ une seule requête dans le cas courant, re-liaison à l'identique, refus sur ambiguïté (doctrine task-193).
+- `MailRepository.cs` / `MailRepository.WorkStates.cs` — ✅ re-liaison dans la transaction d'ingestion, trace après validation ; DTO resynchronisés (patient re-lié compris).
+- `Migrations/MailDb/20261111120000_AnchorDocumentWorkStates.cs` — ✅ règle 7c : aucune opération fantôme, index partiels et FK identiques au modèle EF, reprise testée.
+- `PatientRepository.cs` — ✅ ancrage et oubli du rattachement manuel.
+- `AuditService.cs` — ✅ un acte déclaré système n'est jamais imputé à la personne de la requête.
+- ⚠️ **Suggestion** — seule la purge `DeleteMailsByUidsAsync` relance la re-liaison ; les autres chemins de suppression (dossier supprimé ailleurs, renommage, `DeleteMailAsync`, rekey) laissent des orphelins re-reliés seulement au prochain retour du même document. Piste : re-lier tous les orphelins en fin de passe de synchronisation.
+- ⚠️ **Suggestion** — la re-liaison après purge s'exécute après le `SaveChanges` de la suppression, hors transaction : une exception y remonterait à la synchronisation alors que la suppression est validée (les orphelins attendraient le prochain retour).
+- ⚠️ **Suggestion** — `ManualPatientAttachments.AnchorKey` est unique : deux rattachements simultanés de deux copies du même message produiraient une violation d'unicité (500). Cas très rare ; un upsert SQL le fermerait.
+- ⚠️ **Suggestion** — `IsSystemAct` devient à la fois une entrée et une sortie d'`Impute` ; une surcharge `IAuditService.TraceSystem` serait plus explicite (écartée pour ne pas casser les faux existants).
+- ⚠️ **Suggestion** — la copie des quatre champs d'auteur (`ManualAttachedBy*` ↔ `AttachedBy*`) existe en trois endroits.
+- ⚠️ **Suggestion** — l'écriture d'un acquittement lit la clé du document dans une requête de plus ; elle pourrait venir de `DocumentExistsAsync`.
+
+### dtos-mss
+
+- `AuditActionType.cs` — ✅ deux membres appendus avec valeurs explicites (70, 71) ; contrat figé par `AuditActionTypeContractTests` ; miroir TypeScript weda2 à jour ; rétention `HealthDataAccess`.
+
+### client-mobile
+
+- `e2e/specs/functional.spec.ts`, `e2e/support/e2e-backend.ts` — ✅ E2E-BIO-004 juge l'état relu du serveur (preuve positive avant le « pas À TRAITER »), attend l'analyse côté serveur, rend la boîte comme trouvée.
+
+### client-angular (code-only, non commité)
+
+- `audit.model.ts` / `.spec.ts` — ✅ miroir à l'identique ; `functional.e2e.ts` / `e2e-backend.ts` — ✅ E2E-BIO-004, état résolu lu au titre du bandeau replié.
+
+### Données de santé
+
+Aucune dans les journaux de re-liaison (extrait de clé, identifiants techniques) ni dans les traces d'audit système (INS et nom du patient vides, assertés).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-453 --sync` — ne pas éditer à la main)*
@@ -473,6 +540,7 @@ métriques projet inclut les tasks mergées depuis, pas seulement task-453.
 | /lint-angular | ok | 7 min 08 s | 1 (47 s) | 1 (2 min 05 s) | — | 1 itération(s), client-angular 1B/1T, 0 erreur sur les fichiers de la task |
 | /lint-mobile | skipped | 14 s | — | — | — | diff e2e uniquement, hors portée de ng lint |
 | /e2e | ok | 17 min 18 s | — | — | — | e2e ×7 (38 min 57 s), 2e passage : mobile réutilisée, angular 78 verts, porte verte sur le catalogue du merge |
-| **Total cycle** | | **2 h 56 min** | **25 (6 min 20 s)** | **31 (39 min 07 s)** | **4 (5 min 30 s)** | |
+| /review | ok | 15 min 21 s | 5 (2 min 21 s) | 3 (9 min 24 s) | — | api-mail 2B/1T, dtos-mss 1B/0T, client-mobile 1B/1T, client-angular 1B/1T, APPROVED, PR api-mail #364, dtos #63, mobile #123 |
+| **Total cycle** | | **3 h 12 min** | **30 (8 min 41 s)** | **34 (48 min 32 s)** | **4 (5 min 30 s)** | |
 
 Autres commandes mesurées : lint ×3 (1 min 41 s), nuget-wait ×1 (24 s), restore ×3 (2 min 15 s)
