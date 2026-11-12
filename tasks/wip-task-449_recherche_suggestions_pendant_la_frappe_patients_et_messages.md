@@ -1,7 +1,7 @@
 # todo-task-449.md — Recherche : suggestions pendant la frappe, patients et messages
 
 **Repos**: api-mail, dtos-mss, client-angular
-**Reprises**: 4
+**Reprises**: 5
 **Dependencies**: done-task-442 (formulaire), done-task-446 (patients trouvés, vue « Mails du patient » depuis les
 résultats)
 **Epic**: E023
@@ -390,6 +390,19 @@ mots se suivent dans l'ordre strict (arbitrage S1). Mot et champ passent par la 
   restaure sans recompiler).
 - Passe qualité (§Q) : diff relu (aucun reste de l'ancien motif, une seule voie de normalisation) ; rien à simplifier.
 
+### Reprise 5 (demandée par l'humain, 2026-11-12) — B1, B2, S5, S6
+
+| Constat | Correctif | Test | Preuve rouge |
+|---|---|---|---|
+| **B1** deux expressions voisines fusionnaient (regex de paire vide de la reprise 4) | regex retirée ; une paire vide est écartée **après** l'appariement des guillemets (`SearchPhrases` : seuls des mots comptent avant une expression ; `TypedCriterion` ignore les guillemets) | unitaires `Parse_TwoNeighbouringExpressions_StayTwoExpressions` (3 cas) ; intégration `APrefixBeforeTwoNeighbouringExpressions_…` (`de : "paul martin" "compte rendu"`) | `SearchInput` de la reprise 4 → 2 unitaires + l'intégration rouges ; mutation « une paire vide compte avant une expression » → rouge |
+| **B2** un correspondant choisi ramenait ses homonymes | un critère qui est **entièrement une adresse bien formée** se compare exactement, casse ignorée (« De » : `FromAddress` ; « À » : `MailRecipients.Address`), dans le formulaire comme après un préfixe | intégration `AChosenAddress_IsThatCorrespondentOnly_…` (formulaire De / À, `de :`, `à :`) ; unitaires `Read_AWholeWellFormedAddress_IsComparedExactly` | mutation « adresse lue en mots » → 4 intégrations + 2 unitaires rouges |
+| **S5** critère de plus de 10 mots tronqué en silence | refusé en 400 `ProblemDetails` (`SemanticSearchService.EnsureNoCriterionTooLong`) | intégration `ATypedCriterionOfMoreThanTenWords_Is400ProblemJson_…` ; unitaire `Read_ManyWords_IsTooLong` | mutation « critère trop long accepté » → rouge |
+| **S6** changement de comportement à annoncer | dans la PR : `%`, `_`, `\` séparent les mots ; `50` trouve « 500 » (début de mot) | — | — |
+
+- Validation : api-mail build ✅, tests 7 988 ✅ (dont 1 327 d'intégration, 16 ignorés), après recompilation du code
+  restauré (le script de mutation finit désormais par un `dotnet build`). weda2 inchangé depuis la reprise 4 (1 650 +
+  2 683 ✅). Commit api-mail `da6f0500`.
+
 ### Écarts et décisions consignés
 
 - **Identité patient** : la consigne `identite-patient-exacte` interdit `LIKE 'x%'` pour **désigner** un patient ; la
@@ -427,6 +440,8 @@ mots se suivent dans l'ordre strict (arbitrage S1). Mot et champ passent par la 
 - **Reprise 3** — analyse 4 (`5d3716ad`, confirmation) : Quality Gate **OK**, **0 issue nouveau code**, couverture
   nouveau code 96,3 %, couverture 97,8 %, 0 smell, duplication 0,4 %.
 
+- **Reprise 4** — analyse 5 (`452556d2`) : Quality Gate **OK**, **0 issue nouveau code**, couverture nouveau code
+  96,3 %, couverture 97,7 %, 0 smell, duplication 0,4 %.
 ### KPIs qualité (baseline → final)
 
 | KPI | Baseline | Final |
@@ -434,10 +449,10 @@ mots se suivent dans l'ordre strict (arbitrage S1). Mot et champ passent par la 
 | Quality Gate | OK | **OK** |
 | Bugs / Vulnerabilities / Hotspots | 0 / 0 / 0 | 0 / 0 / 0 |
 | Code Smells | 0 | 0 |
-| Coverage | 97,8 % | 97,8 % |
+| Coverage | 97,8 % | 97,7 % |
 | Duplication | 0,4 % | 0,4 % |
 | Reliability / Security / Maintainability | A / A / A | A / A / A |
-| New code — issues | — | 0 (CA1861 puis S3776 corrigées, confirmé par l'analyse 4) |
+| New code — issues | — | 0 (CA1861 puis S3776 corrigées ; analyse 5 de la reprise 4 : 0) |
 | New code — coverage | — | 96,3 % |
 
 ## Lint log
@@ -450,6 +465,7 @@ mots se suivent dans l'ordre strict (arbitrage S1). Mot et champ passent par la 
 - **Reprise 1** : relancé sur l'arbre repris — **0 erreur**, 51 + 48 avertissements (inchangés). Itérations : 0.
 - **Reprise 2** : relancé — **0 erreur**, 51 + 48 avertissements (inchangés). Itérations : 0.
 - **Reprise 3** : relancé — **0 erreur**, 51 + 48 avertissements (inchangés). Itérations : 0.
+- **Reprise 4** : relancé — **0 erreur**, 51 + 48 avertissements (inchangés). Itérations : 0.
 
 ## Lint mobile log
 
@@ -459,12 +475,12 @@ mots se suivent dans l'ordre strict (arbitrage S1). Mot et champ passent par la 
 
 | Voie | Jouée / réutilisée | Résultat | Dépôts couverts |
 |---|---|---|---|
-| mobile | jouée (reprise 3) | 61 verts, 0 flaky, 0 rouge, parité verte | api-mail `5d3716ad`, client-mobile `develop` `f775f17` |
-| angular | jouée (reprise 3) | 84 verts dont E2E-SEARCH-013 et 014, 0 flaky, 0 rouge, parité verte | api-mail `5d3716ad`, client-angular (arbre non commité), Client/Mobile/e2e |
+| mobile | jouée (reprise 4) | 61 verts, 0 flaky, 0 rouge, parité verte | api-mail `452556d2`, client-mobile `develop` `f775f17` |
+| angular | jouée (reprise 4) | 84 verts dont E2E-SEARCH-013 et 014, 0 flaky, 0 rouge, parité verte | api-mail `452556d2`, client-angular (arbre non commité), Client/Mobile/e2e |
 
 Passage 1 : un premier jeu mobile en parité rouge sur `E2E-BIO-004` (`develop` local de `client-mobile` en retard d'un
 commit, `git pull --ff-only` puis voie rejouée, verte) ; flaky E2E-COMPOSE-001 consigné au registre (9ᵉ occurrence).
-Reprises 1 et 3 : les deux voies rejouées, vertes, sans flaky. Reprise 2 (weda2 seulement) : voie Angular rejouée,
+Reprises 1, 3 et 4 : les deux voies rejouées, vertes, sans flaky. Reprise 2 (weda2 seulement) : voie Angular rejouée,
 verte ; voie mobile réutilisée (empreinte inchangée).
 Démontage vérifié : ports libres, aucun conteneur e2e résiduel.
 
@@ -691,6 +707,41 @@ Prévention : `conventions/csharp.md` § recherche (motif normalisé par la mêm
 `conventions/angular.md` § `suggestions-de-saisie-choisies-visibles` (clic principal sans modificateur, au `click`).
 Trois reprises faites (plafond 2, la 3ᵉ demandée par l'humain) : **arrêt**, `questions/task-449.md` écrit.
 
+### Passage 5 (2026-11-12, après la reprise 4) — CHANGES REQUESTED
+
+Validation : build vert (api-mail, dtos-mss, weda2) ; tests api-mail 7 970 ✅ (dont 1 321 d'intégration, 16 ignorés),
+`nx test mss-lib` 1 650 ✅, `nx test weda2` 2 683 ✅ ; Sonar QG OK, 0 issue nouveau code ; `/e2e` vert (mobile 61,
+angular 84, parité verte). B1, B2 (passe 4), S1, S2, S3, S4 tiennent pour leur cas (preuves rouges consignées).
+Vérifiés sans défaut : concordance du découpage C# / PostgreSQL sur les cas réalistes (`’`, œ, ß, ½, adresses) ;
+préfiltre sans perte ; partie tapée envoyée en paramètre SQL ; « À » chez le même destinataire ; clic et annulation côté
+weda2. Revue indépendante : deux bloquants nouveaux, **vérifiés par la forge**.
+
+#### À corriger par la reprise
+
+- **B1** — `SearchInput.EmptyQuotesPattern` (`"\s*"`) prend le guillemet fermant d'une expression, l'espace et l'ouvrant
+  de la suivante : `de : "Paul Martin" "compte rendu"` devient `de : "Paul Martin compte rendu"` (4 mots dans l'ordre
+  strict : 0 résultat, la recherche exacte de « compte rendu » disparaît) ; `de : martin "compte rendu" "IRM"` fusionne
+  les deux expressions. Vérifié. Introduit par le correctif S4. Correctif : écarter les expressions **vides** après
+  l'appariement des guillemets (`SearchPhrases`), pas par une regex préalable ; tests à deux expressions voisines, vus
+  rouges.
+- **B2** — un correspondant **choisi** est lu comme un critère **tapé** : `chooseCorrespondent` (destinataire),
+  `selectFromContact` et Entrée sur une adresse bien formée (« De ») écrivent l'adresse dans `recipientAddress` /
+  `fromAddress`, désormais lus mot à mot. Choisir « paul.martin@cardio.example » ramène aussi
+  « jean-paul.martin@cardio.example ». Vérifié dans le code. Régression introduite par S1 (qui vise le texte tapé).
+  Correctif recommandé, sans changer le contrat : un critère qui est **entièrement une adresse bien formée** se compare
+  exactement (casse ignorée) ; tests vus rouges.
+- S5 — au-delà de 10 mots, le critère est tronqué sans le dire (élargissement silencieux). Recommandation : refuser en 400
+  `ProblemDetails` (« Critère trop long »), comme la saisie de plus de 100 caractères des suggestions.
+- S6 — dire dans la PR le changement assumé : `%`, `_`, `\` séparent les mots, et `50` trouve « 500 » (début de mot).
+
+#### Arbitrage humain
+
+Aucun nouveau. (B2 a une variante qui toucherait le contrat — une liste exacte de destinataires choisis
+`RecipientAddresses`, comme `FromAddresses` — non recommandée.)
+
+Prévention : `conventions/csharp.md` § recherche (critère choisi comparé exactement ; regex de paire vide).
+Quatre reprises faites (plafond 2) : **arrêt**, `questions/task-449.md` écrit.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-449 --sync` — ne pas éditer à la main)*
@@ -698,12 +749,12 @@ Trois reprises faites (plafond 2, la 3ᵉ demandée par l'humain) : **arrêt**, 
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 20 s | — | — | — | — |
-| /develop | ok | 37 min 23 s | 12 (1 min 49 s) | 12 (38 min 20 s) | — | dtos-mss 1B/0T, api-mail 7B/8T, client-angular 4B/4T, reprise 4 |
-| /sonar | ok | 13 min 25 s | 6 (1 min 56 s) | 21 (31 min 46 s) | 8 (3 min 11 s) | 1 itération(s), api-mail 6B/21T, reprise 3 : S3776 nouveau code corrigé |
-| /lint-angular | ok | 1 min 00 s | — | — | — | — |
+| /develop | ok | 12 min 09 s | 16 (2 min 19 s) | 14 (45 min 13 s) | — | dtos-mss 1B/0T, api-mail 11B/10T, client-angular 4B/4T, reprise 5 |
+| /sonar | ok | 9 min 06 s | 7 (2 min 19 s) | 26 (39 min 09 s) | 10 (3 min 59 s) | 1 itération(s), api-mail 7B/26T |
+| /lint-angular | ok | 13 s | — | — | — | — |
 | /lint-mobile | skipped | 0.9 s | — | — | — | client-mobile non touché |
-| /e2e | ok | 20 min 24 s | — | — | — | e2e ×20 (2 h 22 min) |
-| /review | failed | 10 min 39 s | 7 (54 s) | 5 (1 h 20 min) | — | api-mail 3B/3T, dtos-mss 3B/0T, client-angular 1B/2T, passage 4 : CHANGES REQUESTED (B1, B2), plafond de reprises dépassé |
-| **Total cycle** | | **1 h 23 min** | **25 (4 min 40 s)** | **38 (2 h 30 min)** | **8 (3 min 11 s)** | |
+| /e2e | ok | 21 min 08 s | — | — | — | e2e ×24 (2 h 42 min) |
+| /review | failed | 8 min 54 s | 9 (1 min 08 s) | 6 (1 h 27 min) | — | api-mail 4B/4T, dtos-mss 4B/0T, client-angular 1B/2T, passage 5 : CHANGES REQUESTED (B1, B2), plafond de reprises dépassé |
+| **Total cycle** | | **51 min 54 s** | **32 (5 min 47 s)** | **46 (2 h 51 min)** | **10 (3 min 59 s)** | |
 
-Autres commandes mesurées : lint ×4 (48 s), nuget-wait ×1 (24 s), restore ×1 (3.7 s)
+Autres commandes mesurées : lint ×5 (59 s), nuget-wait ×1 (24 s), restore ×1 (3.7 s)

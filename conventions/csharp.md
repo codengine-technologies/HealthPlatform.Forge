@@ -2344,6 +2344,13 @@ oublié, mot de l'objet, historique ancien d'un patient), et aucun test n'avait 
   ne le voient pas ; un critère tapé (« Objet » : « Compte rendu d’échographie », apostrophe courbe d'Outlook) ne trouve
   plus rien (4ᵉ revue de task-449, B1). Si le jumeau C# reste nécessaire, un test d'intégration compare les deux sur
   `’ « » – ½ œ`.
+- Un critère **choisi** (adresse d'un correspondant pris dans une liste) se compare **exactement** ; seul un texte
+  **tapé** se lit en mots (task-449, arbitrage S1). Quand un même champ de filtre reçoit les deux, la lecture en mots
+  élargit le choix : « paul.martin@cardio.example » choisi ramenait aussi « jean-paul.martin@… » (5ᵉ revue de
+  task-449, B2). Distinguer les deux à l'entrée (adresse bien formée = exacte, ou champ dédié), jamais en aval.
+- Une expression régulière qui **retire une paire de délimiteurs vide** (`"\s*"`) prend aussi le guillemet fermant
+  d'une expression et l'ouvrant de la suivante : `"Paul Martin" "compte rendu"` devient une seule expression (5ᵉ revue
+  de task-449, B1). Écarter les expressions vides **après** l'appariement des guillemets, et tester deux paires voisines.
 
 **Preuve** : task-439, `SearchExactFirstHybridIntegrationTests.Hybrid_PatientWithMoreThan200Mails_…` (230 messages
 anciens sous 460 homonymes partiels récents, tous trouvés page par page) et
