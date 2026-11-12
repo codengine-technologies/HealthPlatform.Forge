@@ -581,8 +581,8 @@ sur d'autres chemins que B1 (même famille : une suggestion choisie que le méde
   (`à : dupont` trouve le message dont seul le nom du destinataire porte « Dupont » ; `de : helene` trouve « Hélène »).
 - S7 **tranché par l'humain le 2026-11-12 : couper au guillemet.** `de : martin "compte rendu"` → « De » contient
   « martin », et `"compte rendu"` est cherché en recherche exacte. → prochaine reprise, test unitaire et d'intégration.
-- S6 (un préfixe remplace un critère déjà posé dans le formulaire) : non tranché ; comportement actuel conservé (le
-  préfixe remplace) sauf décision contraire.
+- S6 **tranché par l'humain le 2026-11-12 : le préfixe remplace le critère déjà posé** (comportement actuel, aucun
+  changement).
 
 ### Passage 3 (2026-11-12, après la reprise 2) — CHANGES REQUESTED, plafond atteint
 

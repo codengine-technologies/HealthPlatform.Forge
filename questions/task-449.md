@@ -40,7 +40,7 @@ S14, S15 : corrigés et prouvés rouges. La PR n'est **pas** ouverte. La task re
 - **S4 / S5** — **Tranché par l'humain le 2026-11-12 : aligner** (nom et adresse, accents et casse ignorés) — à
   faire dans la reprise.
 - **S7** — **Tranché par l'humain le 2026-11-12 : couper au guillemet** — à faire dans la reprise.
-- **S6** — un préfixe qui remplace un critère déjà posé : non tranché ; comportement actuel conservé.
+- **S6** — **Tranché par l'humain le 2026-11-12 : le préfixe remplace le critère déjà posé** (comportement actuel).
 
 ## Pourquoi la chaîne s'arrête
 
