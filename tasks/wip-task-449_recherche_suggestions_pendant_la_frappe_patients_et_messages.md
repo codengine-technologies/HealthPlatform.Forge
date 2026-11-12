@@ -1,7 +1,7 @@
 # todo-task-449.md — Recherche : suggestions pendant la frappe, patients et messages
 
 **Repos**: api-mail, dtos-mss, client-angular
-**Reprises**: 2
+**Reprises**: 3
 **Dependencies**: done-task-442 (formulaire), done-task-446 (patients trouvés, vue « Mails du patient » depuis les
 résultats)
 **Epic**: E023
@@ -337,6 +337,27 @@ S4 à S7 et S11 restent en arbitrage humain (`## Code Review Summary`), hors de 
 - **Prévention** : `conventions/angular.md` § `suggestions-de-saisie-choisies-visibles` complétée (champs du
   formulaire, texte restauré).
 
+### Reprise 3 (demandée par l'humain, 2026-11-12) — B4, B5, S16, S17 ; arbitrages S4/S5, S7
+
+**Une seule règle pour la liste de suggestions** (recommandation de la 3ᵉ revue) : `MailSearchSuggestions` sait si la
+liste est ouverte (`opened` / `closed`). Fermée, elle ne demande rien, ne montre rien, ne laisse rien désigner ni
+choisir ; une demande en attente est annulée. Tous les chemins qui ferment la liste (Échap, clic ailleurs, lancer, choix
+d'un patient, rejeu) passent par `closed()`, et l'ouverture demande les suggestions du texte visible.
+
+| Constat | Correctif | Test | Preuve rouge |
+|---|---|---|---|
+| **B4** Demande de suggestions liste fermée (retour d'un mail, Échap, rejeu) : patients tracés jamais montrés | état ouvert / fermé dans `MailSearchSuggestions` ; `update` liste fermée n'envoie rien | `mail-search.suggestions.spec.ts` « liste fermée, remettre le texte… ne demande aucune suggestion » | rouge sur le code d'avant (2 demandes au lieu d'1) |
+| **B5** Clic droit ou molette sur un patient suggéré l'ouvrait | `onChoose` : bouton principal seulement | « un clic droit ou molette… » | rouge sur le code d'avant |
+| **S16** « Lancer la recherche » lançait `patient : …` | `launch()` refuse `patient :` / `type :` | « « patient : » puis « Lancer la recherche »… » | rouge sur le code d'avant |
+| **S17** Recherches récentes remplacées sous la désignation | désignation remise à zéro au rechargement | « les recherches récentes rechargées… » | rouge sur le code d'avant |
+| **S4/S5** (arbitrage : aligner) | « De », « À », « Objet » : nom et adresse, accents et casse ignorés (`search_normalize`), préfixe et formulaire | intégration `ATypedCriterion_SearchesLikeTheSuggestions_…` (`à : dupont`, `de : helene`, `objet : resultats`) | rouges sur le code d'avant |
+| **S7** (arbitrage : couper au guillemet) | `SearchInput` : le préfixe s'arrête au premier guillemet fermé | intégration `APrefixStopsAtTheFirstQuote_…` ; unitaire `Parse_APrefixStopsAtTheFirstClosedQuote` | rouges sur le code d'avant |
+
+- S6 (arbitrage) : le préfixe remplace le critère déjà posé — comportement actuel, inchangé. S11 : pas de bouton.
+- weda2 : `nx test mss-lib` 1 647 ✅, `nx test weda2` 2 683 ✅, `nx build weda2` ✅, ESLint 0 erreur.
+- **Prévention** : `conventions/angular.md` § `suggestions-de-saisie-choisies-visibles` réécrite autour de la règle
+  unique (liste fermée = rien).
+
 ### Écarts et décisions consignés
 
 - **Identité patient** : la consigne `identite-patient-exacte` interdit `LIKE 'x%'` pour **désigner** un patient ; la
@@ -599,12 +620,12 @@ la désignation). Deux reprises déjà faites : **arrêt**, `questions/task-449.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 20 s | — | — | — | — |
-| /develop | ok | 3 min 30 s | 5 (52 s) | 5 (14 min 47 s) | — | dtos-mss 1B/0T, api-mail 1B/2T, client-angular 3B/3T, reprise 2 : B2 B3 S13 S14 S15 (weda2) |
+| /develop | ok | 12 min 40 s | 7 (1 min 11 s) | 7 (21 min 46 s) | — | dtos-mss 1B/0T, api-mail 2B/3T, client-angular 4B/4T, reprise 3 : B4 B5 S16 S17, S4/S5, S7 |
 | /sonar | ok | 9 min 15 s | 2 (47 s) | 10 (15 min 32 s) | 4 (1 min 36 s) | 1 itération(s), api-mail 2B/10T, reprise : QG OK, 0 issue |
 | /lint-angular | ok | 12 s | — | — | — | reprise 2 : 0 erreur |
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 11 min 09 s | — | — | — | e2e ×17 (2 h 02 min), reprise 2 : angular 84, mobile réutilisée, parité verte |
 | /review | failed | 44 min 18 s | 4 (29 s) | 2 (1 h 13 min) | — | api-mail 2B/2T, dtos-mss 2B/0T, passage 3 : B4 B5, plafond de reprises atteint |
-| **Total cycle** | | **1 h 08 min** | **11 (2 min 09 s)** | **17 (1 h 43 min)** | **4 (1 min 36 s)** | |
+| **Total cycle** | | **1 h 17 min** | **13 (2 min 28 s)** | **19 (1 h 50 min)** | **4 (1 min 36 s)** | |
 
 Autres commandes mesurées : lint ×3 (34 s), nuget-wait ×1 (24 s), restore ×1 (3.7 s)

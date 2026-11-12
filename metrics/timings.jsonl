@@ -9558,3 +9558,9 @@
 {"ts":"2026-11-12T15:26:29+01:00","run_id":"-","type":"step","task":"task-449","step":"e2e","status":"ok","note":"reprise 2 : angular 84, mobile réutilisée, parité verte","iterations":null,"duration_ms":669543}
 {"ts":"2026-11-12T15:26:41+01:00","run_id":"-","type":"step_start","task":"task-449","step":"review"}
 {"ts":"2026-11-12T16:10:59+01:00","run_id":"-","type":"step","task":"task-449","step":"review","status":"failed","note":"passage 3 : B4 B5, plafond de reprises atteint","iterations":null,"duration_ms":2658165}
+{"ts":"2026-11-12T16:21:10+01:00","run_id":"-","type":"step_start","task":"task-449","step":"develop"}
+{"ts":"2026-11-12T16:26:39+01:00","run_id":"-","type":"cmd","task":"task-449","step":"develop","repo":"client-angular","kind":"test","label":"","cwd":"Client/Angular/front","cmd":"npx nx run-many -t test --projects=mss-lib,weda2 --skip-nx-cache --output-style=static","duration_ms":32285,"exit_code":0}
+{"ts":"2026-11-12T16:26:55+01:00","run_id":"-","type":"cmd","task":"task-449","step":"develop","repo":"client-angular","kind":"build","label":"","cwd":"Client/Angular/front","cmd":"npx nx build weda2 --output-style=static","duration_ms":14254,"exit_code":0}
+{"ts":"2026-11-12T16:27:07+01:00","run_id":"-","type":"cmd","task":"task-449","step":"develop","repo":"api-mail","kind":"build","label":"","cwd":"Api/Mail","cmd":"dotnet build HealthPlatform.Api.Mail.sln -v q -nologo","duration_ms":4356,"exit_code":0}
+{"ts":"2026-11-12T16:33:36+01:00","run_id":"-","type":"cmd","task":"task-449","step":"develop","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln --no-build","duration_ms":387202,"exit_code":0}
+{"ts":"2026-11-12T16:33:50+01:00","run_id":"-","type":"step","task":"task-449","step":"develop","status":"ok","note":"reprise 3 : B4 B5 S16 S17, S4/S5, S7","iterations":null,"duration_ms":760439}

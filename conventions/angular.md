@@ -728,6 +728,11 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   patient désigné**, consultation tracée au journal. Même famille : pendant la pause de frappe, la réponse du texte
   précédent restait affichée et désignable (`bern` pendant qu'on tape `bernx`).
 - **Consigne** :
+  - **une seule règle, portée par l'état des suggestions** (3ᵉ revue de task-449) : liste **fermée** = aucune
+    demande au serveur (une réponse qui nomme un patient est tracée), rien d'affiché, rien de désigné, rien de
+    choisissable ; tous les chemins de fermeture passent par la même méthode. Les correctifs chemin par chemin (Échap,
+    champs du formulaire, retour d'un mail) ont produit un défaut nouveau à chaque revue ;
+  - seul le **bouton principal** de la souris choisit (un clic droit ou molette n'ouvre rien) ;
   - flèches et Entrée-sur-désignation n'agissent que **liste ouverte** ; fermer la liste (Échap, clic ailleurs, choix)
     remet la désignation à « aucune » ;
   - une réponse asynchrone porte le **texte qui l'a demandée**, et ne s'affiche (ni ne se désigne) que si c'est encore
@@ -742,5 +747,5 @@ par lint sur du code frais est un échec de lecture de ce fichier.
     (ni navigation ni recherche lancée).
 - **Preuve** : `mail-search.suggestions.spec.ts` (« après Échap… », « pendant la frappe… », « retaper le même
   texte… »), rouges sur le code d'avant.
-- **Origine** : task-449 (/review, B1, S2, S3 ; 2ᵉ revue B2, B3)
-- **Occurrences** : 2
+- **Origine** : task-449 (/review, B1, S2, S3 ; 2ᵉ revue B2, B3 ; 3ᵉ revue B4, B5)
+- **Occurrences** : 3
