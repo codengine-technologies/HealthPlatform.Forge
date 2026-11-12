@@ -694,6 +694,41 @@ Prévention : `conventions/csharp.md` § recherche (motif normalisé par la mêm
 `conventions/angular.md` § `suggestions-de-saisie-choisies-visibles` (clic principal sans modificateur, au `click`).
 Trois reprises faites (plafond 2, la 3ᵉ demandée par l'humain) : **arrêt**, `questions/task-449.md` écrit.
 
+### Passage 5 (2026-11-12, après la reprise 4) — CHANGES REQUESTED
+
+Validation : build vert (api-mail, dtos-mss, weda2) ; tests api-mail 7 970 ✅ (dont 1 321 d'intégration, 16 ignorés),
+`nx test mss-lib` 1 650 ✅, `nx test weda2` 2 683 ✅ ; Sonar QG OK, 0 issue nouveau code ; `/e2e` vert (mobile 61,
+angular 84, parité verte). B1, B2 (passe 4), S1, S2, S3, S4 tiennent pour leur cas (preuves rouges consignées).
+Vérifiés sans défaut : concordance du découpage C# / PostgreSQL sur les cas réalistes (`’`, œ, ß, ½, adresses) ;
+préfiltre sans perte ; partie tapée envoyée en paramètre SQL ; « À » chez le même destinataire ; clic et annulation côté
+weda2. Revue indépendante : deux bloquants nouveaux, **vérifiés par la forge**.
+
+#### À corriger par la reprise
+
+- **B1** — `SearchInput.EmptyQuotesPattern` (`"\s*"`) prend le guillemet fermant d'une expression, l'espace et l'ouvrant
+  de la suivante : `de : "Paul Martin" "compte rendu"` devient `de : "Paul Martin compte rendu"` (4 mots dans l'ordre
+  strict : 0 résultat, la recherche exacte de « compte rendu » disparaît) ; `de : martin "compte rendu" "IRM"` fusionne
+  les deux expressions. Vérifié. Introduit par le correctif S4. Correctif : écarter les expressions **vides** après
+  l'appariement des guillemets (`SearchPhrases`), pas par une regex préalable ; tests à deux expressions voisines, vus
+  rouges.
+- **B2** — un correspondant **choisi** est lu comme un critère **tapé** : `chooseCorrespondent` (destinataire),
+  `selectFromContact` et Entrée sur une adresse bien formée (« De ») écrivent l'adresse dans `recipientAddress` /
+  `fromAddress`, désormais lus mot à mot. Choisir « paul.martin@cardio.example » ramène aussi
+  « jean-paul.martin@cardio.example ». Vérifié dans le code. Régression introduite par S1 (qui vise le texte tapé).
+  Correctif recommandé, sans changer le contrat : un critère qui est **entièrement une adresse bien formée** se compare
+  exactement (casse ignorée) ; tests vus rouges.
+- S5 — au-delà de 10 mots, le critère est tronqué sans le dire (élargissement silencieux). Recommandation : refuser en 400
+  `ProblemDetails` (« Critère trop long »), comme la saisie de plus de 100 caractères des suggestions.
+- S6 — dire dans la PR le changement assumé : `%`, `_`, `\` séparent les mots, et `50` trouve « 500 » (début de mot).
+
+#### Arbitrage humain
+
+Aucun nouveau. (B2 a une variante qui toucherait le contrat — une liste exacte de destinataires choisis
+`RecipientAddresses`, comme `FromAddresses` — non recommandée.)
+
+Prévention : `conventions/csharp.md` § recherche (critère choisi comparé exactement ; regex de paire vide).
+Quatre reprises faites (plafond 2) : **arrêt**, `questions/task-449.md` écrit.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-449 --sync` — ne pas éditer à la main)*
@@ -706,7 +741,7 @@ Trois reprises faites (plafond 2, la 3ᵉ demandée par l'humain) : **arrêt**, 
 | /lint-angular | ok | 13 s | — | — | — | — |
 | /lint-mobile | skipped | 0.9 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 21 min 08 s | — | — | — | e2e ×24 (2 h 42 min) |
-| /review | failed | 10 min 39 s | 7 (54 s) | 5 (1 h 20 min) | — | api-mail 3B/3T, dtos-mss 3B/0T, client-angular 1B/2T, passage 4 : CHANGES REQUESTED (B1, B2), plafond de reprises dépassé |
-| **Total cycle** | | **1 h 18 min** | **26 (5 min 03 s)** | **43 (2 h 38 min)** | **10 (3 min 59 s)** | |
+| /review | failed | 8 min 54 s | 9 (1 min 08 s) | 6 (1 h 27 min) | — | api-mail 4B/4T, dtos-mss 4B/0T, client-angular 1B/2T, passage 5 : CHANGES REQUESTED (B1, B2), plafond de reprises dépassé |
+| **Total cycle** | | **1 h 17 min** | **28 (5 min 17 s)** | **44 (2 h 45 min)** | **10 (3 min 59 s)** | |
 
 Autres commandes mesurées : lint ×5 (59 s), nuget-wait ×1 (24 s), restore ×1 (3.7 s)
