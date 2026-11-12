@@ -37,10 +37,10 @@ S14, S15 : corrigés et prouvés rouges. La PR n'est **pas** ouverte. La task re
 
 - **S11** — ~~un « Effacer » dans la catégorie « Recherches récentes » ?~~ **Tranché par l'humain le 2026-11-12 : non,
   pas de bouton « Effacer ».** Rien à faire dans la reprise.
-- **S4 / S5** — aligner les critères tapés (`de :`, `à :`, `objet :` puis Entrée) sur les suggestions (nom et adresse,
-  accents ignorés) ?
-- **S6 / S7** — un préfixe qui remplace un critère déjà posé, ou qui prend toute la fin de la saisie : combiner,
-  refuser, ou couper au guillemet ?
+- **S4 / S5** — **Tranché par l'humain le 2026-11-12 : aligner** (nom et adresse, accents et casse ignorés) — à
+  faire dans la reprise.
+- **S7** — **Tranché par l'humain le 2026-11-12 : couper au guillemet** — à faire dans la reprise.
+- **S6** — un préfixe qui remplace un critère déjà posé : non tranché ; comportement actuel conservé.
 
 ## Pourquoi la chaîne s'arrête
 

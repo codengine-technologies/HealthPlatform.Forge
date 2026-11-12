@@ -574,7 +574,15 @@ sur d'autres chemins que B1 (même famille : une suggestion choisie que le méde
 #### Arbitrage humain
 
 - S11 **tranché par l'humain le 2026-11-12 : pas de bouton « Effacer »** (la catégorie « Recherches récentes »
-  remplace l'historique du formulaire sans effacement). Restent ouverts : S4 / S5, S6 / S7 (passage 1).
+  remplace l'historique du formulaire sans effacement).
+- S4 / S5 **tranchés par l'humain le 2026-11-12 : aligner.** Les critères « De », « À » et « Objet » (tapés avec un
+  préfixe ou saisis dans le formulaire) cherchent comme les suggestions : nom **et** adresse pour « De » et « À »,
+  accents et casse ignorés (`search_normalize`). → à faire dans la prochaine reprise, test d'intégration vu rouge
+  (`à : dupont` trouve le message dont seul le nom du destinataire porte « Dupont » ; `de : helene` trouve « Hélène »).
+- S7 **tranché par l'humain le 2026-11-12 : couper au guillemet.** `de : martin "compte rendu"` → « De » contient
+  « martin », et `"compte rendu"` est cherché en recherche exacte. → prochaine reprise, test unitaire et d'intégration.
+- S6 (un préfixe remplace un critère déjà posé dans le formulaire) : non tranché ; comportement actuel conservé (le
+  préfixe remplace) sauf décision contraire.
 
 ### Passage 3 (2026-11-12, après la reprise 2) — CHANGES REQUESTED, plafond atteint
 
