@@ -1,57 +1,51 @@
-# task-449 — /review passage 3 : CHANGES REQUESTED, plafond de reprises atteint
+# task-449 — /review passage 4 : CHANGES REQUESTED, après la reprise 3
 
-**Étape** : `/review`, 3ᵉ passe (revue indépendante, 2026-11-12), après deux reprises automatiques. Build, tests,
-Sonar (QG OK, 0 issue), `/e2e` (mobile 61, angular 84, parité verte) : verts. B1, B2, B3, S2, S3, S8, S9, S10, S12, S13,
-S14, S15 : corrigés et prouvés rouges. La PR n'est **pas** ouverte. La task reste en `wip-*` (`**Reprises**: 2`).
+**Étape** : `/review`, 4ᵉ passe (revue indépendante, 2026-11-12), après la reprise 3 demandée par l'humain. Build, tests
+(api-mail 7 948, mss-lib 1 647, weda2 2 683), Sonar (QG OK, 0 issue nouveau code) et `/e2e` (mobile 61, angular 84,
+parité verte) sont verts. B4, B5, S16, S17, et les arbitrages S4/S5 et S7, sont livrés et prouvés rouges. La PR n'est
+**pas** ouverte. La task reste en `wip-*` (`**Reprises**: 3`).
 
-## Bloquants (passe 3)
+## Bloquants (passe 4) — corrigeables par la forge
 
-### B4 — Une demande de suggestions part liste fermée, et trace des patients jamais montrés
+### B1 — Un critère « Objet » / « De » / « À » avec une apostrophe courbe ne trouve plus rien
 
-- Le correctif de B3 fait appeler `suggestions.update(criteria.query)` par `restoreCriteria`
-  (`mail-search.component.ts:562`). Quand le texte remis a au moins deux caractères, une demande part 250 ms plus tard,
-  liste fermée. Le serveur trace toute réponse qui nomme un patient (« N patient(s) proposé(s) »).
-- Scénario : rechercher « bernard », ouvrir un mail, revenir : la barre suit la recherche affichée
-  (`followShownSearch` → `restoreCriteria`) et une demande cachée part. Le journal dit que des patients ont été montrés
-  au médecin ; ils ne l'ont pas été. Même chose sur Échap après une saisie, et au rejeu d'une recherche récente.
-  Contraire à la règle 14 (traçabilité exacte).
-- Correctif attendu : `restoreCriteria` remet l'état des suggestions **sans rien demander** (`clear()`), et
-  `openDropdown` demande les suggestions du texte courant à l'ouverture. Test : aucune demande liste fermée après la
-  restauration d'un texte de deux caractères ou plus.
+- Le motif tapé est normalisé par le jumeau C# (`SearchTerms.Normalize`), la colonne par `search_normalize` (SQL).
+  `unaccent` réécrit la ponctuation typographique (`’` → `'`), le jumeau non. Vérifié en base :
+  `unaccent('Compte rendu d’échographie')` = `Compte rendu d'echographie`.
+- Scénario : objet copié depuis un mail Outlook (« Compte rendu d’échographie ») collé dans « Objet » : 0 résultat.
+  L'ancien `ILIKE` le trouvait. Régression introduite par l'alignement S4/S5.
+- Correctif : normaliser le motif par la même fonction SQL que la colonne. Test d'intégration avec `’`, vu rouge.
 
-### B5 — Un clic droit ou un clic molette sur un patient suggéré ouvre son dossier
+### B2 — Un Ctrl+clic (macOS) sur un patient suggéré ouvre son dossier
 
-- `MailSearchSuggestionsComponent.onChoose` (`mail-search-suggestions.component.ts:133`) réagit à `mousedown` sans
-  regarder le bouton : un clic droit (menu contextuel) ou molette (habitude d'ouvrir dans un onglet) ouvre la vue
-  « Mails du patient », consultation tracée.
-- Correctif attendu : ne choisir qu'au bouton principal (`button === 0`). Test : clic droit sans effet.
+- Le choix se fait au `mousedown` et ne filtre que `button !== 0`. Sur macOS, Ctrl+clic (menu contextuel) arrive avec
+  `button === 0` : la vue « Mails du patient » s'ouvre, consultation tracée. Appuyer puis glisser hors de l'entrée
+  choisit aussi.
+- Correctif : choisir au `click`, sans touche de modification ; garder `preventDefault()` au `mousedown`. Tests vus
+  rouges.
 
 ## Suggestions (même reprise)
 
-- **S16** — `launch()` ignore la règle « un patient ou un type se choisit » : avec `patient : bern` dans la barre, le
-  bouton « Lancer la recherche » ou Entrée dans le champ « De » lancent quand même une recherche plein texte.
-- **S17** — à la réouverture, l'ancienne liste de recherches récentes reste affichée pendant le rechargement ; ↓ + Entrée
-  peut rejouer une autre recherche que celle désignée. Remettre la désignation à zéro quand la liste est remplacée.
+- **S3** — à la fermeture, la requête en vol n'est annulée qu'après 250 ms (le `''` traverse le `debounceTime`).
+- **S4** — `de : "" martin` : une paire de guillemets vide ne coupe pas le préfixe (critère `"" martin`, 0 résultat).
+- **S2** — mesurer « De » / « Objet » normalisés sur la boîte de 11 178 messages (calcul de `search_normalize` ligne à
+  ligne) ; préfiltre par l'index trigramme de `SearchText` si besoin.
 
-## Arbitrage humain (inchangé)
+## Arbitrage humain
 
-- **S11** — ~~un « Effacer » dans la catégorie « Recherches récentes » ?~~ **Tranché par l'humain le 2026-11-12 : non,
-  pas de bouton « Effacer ».** Rien à faire dans la reprise.
-- **S4 / S5** — **Tranché par l'humain le 2026-11-12 : aligner** (nom et adresse, accents et casse ignorés) — à
-  faire dans la reprise.
-- **S7** — **Tranché par l'humain le 2026-11-12 : couper au guillemet** — à faire dans la reprise.
-- **S6** — **Tranché par l'humain le 2026-11-12 : le préfixe remplace le critère déjà posé** (comportement actuel).
+- **S1** — les critères tapés cherchent une sous-chaîne contiguë, les suggestions chaque mot en début de mot dans
+  n'importe quel ordre : `de : martin helene` propose « Hélène Martin », mais Entrée sans choisir rend 0 résultat (idem
+  `jean pierre` / « Jean-Pierre »). **Recommandation forge : aligner aussi l'ordre des mots et la ponctuation** (chaque
+  mot tapé doit figurer en début de mot), puisque la barre promet de chercher « comme les suggestions ». Sinon : laisser
+  tel quel (sous-chaîne), le médecin choisit dans la liste.
 
 ## Pourquoi la chaîne s'arrête
 
-Deux reprises automatiques ont été faites (plafond de la règle 13, reprise automatique après revue). Chaque passe a
-trouvé un défaut **nouveau** de la même famille (une suggestion choisie ou tracée sans que le médecin l'ait voulu),
-souvent introduit par le correctif précédent. Ce n'est pas un échec de correction, c'est le signe que la conception de
-l'état des suggestions mérite d'être reprise d'un bloc.
+Trois reprises faites (plafond de la règle 13 : 2 ; la 3ᵉ demandée par l'humain). B2 est de la même famille que B5
+(un choix de patient sans geste délibéré). Les deux bloquants sont petits et localisés : la forge recommande une 4ᵉ
+reprise (`relance`), avec S1 tranché d'abord.
 
 ## Reprise
 
-`/develop task-449 --reprise` corrige B4, B5, S16, S17 (chaque correctif vu rouge), puis la chaîne reprend jusqu'à
-`/review`. Recommandation forge : traiter les suggestions comme **dérivées de la liste ouverte** (aucune demande, aucune
-désignation, aucun choix tant qu'elle est fermée), en une seule règle dans `MailSearchSuggestions`, plutôt que chemin par
-chemin.
+`/develop task-449 --reprise` corrige B1, B2, S2, S3, S4 (chaque correctif vu rouge), et S1 selon l'arbitrage, puis la
+chaîne reprend jusqu'à `/review`.

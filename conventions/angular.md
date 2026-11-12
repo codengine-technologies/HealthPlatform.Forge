@@ -732,7 +732,10 @@ par lint sur du code frais est un échec de lecture de ce fichier.
     demande au serveur (une réponse qui nomme un patient est tracée), rien d'affiché, rien de désigné, rien de
     choisissable ; tous les chemins de fermeture passent par la même méthode. Les correctifs chemin par chemin (Échap,
     champs du formulaire, retour d'un mail) ont produit un défaut nouveau à chaque revue ;
-  - seul le **bouton principal** de la souris choisit (un clic droit ou molette n'ouvre rien) ;
+  - seul un **clic principal sans touche de modification** choisit, **au `click`** (le `mousedown` ne fait que
+    `preventDefault()` pour garder le focus de la barre) : un clic droit ou molette n'ouvre rien, un Ctrl+clic ou Cmd+clic
+    sur macOS (menu contextuel, `button === 0` avec `ctrlKey`) non plus, et appuyer puis glisser hors de l'entrée renonce
+    (4ᵉ revue de task-449, B2 — le seul filtre `button !== 0` au `mousedown` laissait passer les deux) ;
   - flèches et Entrée-sur-désignation n'agissent que **liste ouverte** ; fermer la liste (Échap, clic ailleurs, choix)
     remet la désignation à « aucune » ;
   - une réponse asynchrone porte le **texte qui l'a demandée**, et ne s'affiche (ni ne se désigne) que si c'est encore

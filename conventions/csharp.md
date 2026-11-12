@@ -2300,6 +2300,13 @@ oublié, mot de l'objet, historique ancien d'un patient), et aucun test n'avait 
 - Un champ cherché « comme un médecin » (accents, casse) se lit à travers **une seule** fonction normalisée, immuable,
   partagée par la colonne générée, l'index et la requête (`search_normalize`), et son jumeau C# (`SearchTerms.Normalize`).
   Ne jamais refaire la normalisation à la main, terme par terme, dans le `WHERE`.
+- Un **motif tapé** comparé à une colonne passée par `search_normalize` se normalise **par la même fonction SQL**
+  (`Like(SearchNormalize(colonne), SearchNormalize(motif))`), pas par le jumeau C#. Le jumeau n'est fidèle que sur les
+  lettres : `unaccent` réécrit aussi la ponctuation typographique (`’` → `'`, `«` → `<<`, `–` → `-`, `½` → `1/2`), que
+  `SearchTerms.Normalize` laisse telle quelle. La recherche plein texte et les suggestions découpent sur la ponctuation et
+  ne le voient pas ; un critère tapé (« Objet » : « Compte rendu d’échographie », apostrophe courbe d'Outlook) ne trouve
+  plus rien (4ᵉ revue de task-449, B1). Si le jumeau C# reste nécessaire, un test d'intégration compare les deux sur
+  `’ « » – ½ œ`.
 
 **Preuve** : task-439, `SearchExactFirstHybridIntegrationTests.Hybrid_PatientWithMoreThan200Mails_…` (230 messages
 anciens sous 460 homonymes partiels récents, tous trouvés page par page) et

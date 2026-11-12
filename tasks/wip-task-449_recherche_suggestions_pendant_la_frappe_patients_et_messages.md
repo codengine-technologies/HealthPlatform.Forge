@@ -621,6 +621,43 @@ fermée, et le serveur trace des patients jamais montrés), **B5** (clic droit o
 dossier) ; suggestions **S16** (`launch()` ignore `patient :` / `type :`), **S17** (recherches récentes remplacées sous
 la désignation). Deux reprises déjà faites : **arrêt**, `questions/task-449.md` écrit.
 
+### Passage 4 (2026-11-12, après la reprise 3) — CHANGES REQUESTED, plafond dépassé
+
+Validation : build vert (api-mail, dtos-mss, weda2) ; tests api-mail 7 948 ✅ (dont 1 312 d'intégration, 16 ignorés),
+`nx test mss-lib` 1 647 ✅, `nx test weda2` 2 683 ✅ ; Sonar QG OK, 0 issue nouveau code ; `/e2e` vert (mobile 61,
+angular 84, parité verte). B3, B4, S16, S17 tiennent (tous les chemins de fermeture passent par `closed()`) ; S4/S5 et
+S7 livrés et prouvés rouges. Revue indépendante : deux bloquants nouveaux, vérifiés par la forge.
+
+#### À corriger par la reprise
+
+- **B1** — `SemanticSearchRepository.NormalizedContainsPattern` normalise le motif par le jumeau C#
+  (`SearchTerms.Normalize`) et la colonne par `search_normalize` (SQL). `unaccent` réécrit la ponctuation typographique,
+  le jumeau non : vérifié en base, `unaccent('Compte rendu d’échographie')` = `Compte rendu d'echographie`, et le motif
+  `d’echographie` ne le trouve plus. Régression de l'arbitrage S4/S5 sur le champ « Objet » / « De » / « À » (l'ancien
+  `ILIKE` trouvait). Correctif : normaliser le motif par la même fonction SQL ; test d'intégration avec `’` vu rouge.
+- **B2** — `MailSearchSuggestionsComponent.onChoose` choisit au `mousedown` et ne filtre que `button !== 0` : un
+  Ctrl+clic ou Cmd+clic sur macOS (menu contextuel, `button === 0`) ouvre le dossier du patient, consultation tracée ;
+  appuyer puis glisser hors de l'entrée choisit quand même. Correctif : choisir au `click`, refuser les touches de
+  modification, garder `preventDefault()` au `mousedown` ; tests Ctrl+clic et glisser-hors vus rouges.
+- S3 — `closed()` n'annule la requête en vol qu'après le délai de 250 ms (le `''` traverse le `debounceTime`) :
+  annulation immédiate à la fermeture.
+- S4 — `de : "" martin` : la paire de guillemets vide ne coupe pas le préfixe, le critère devient `"" martin` (0
+  résultat).
+- S2 — mesurer « De » / « Objet » normalisés sur la boîte de 11 178 messages ; préfiltre par `SearchText` (index
+  trigramme) si le p95 dépasse celui de l'ancien `ILIKE`.
+
+#### Arbitrage humain
+
+- **S1** — les critères tapés cherchent une **sous-chaîne contiguë** ; les suggestions cherchent **chaque mot en début
+  de mot, dans n'importe quel ordre**. `de : martin helene` propose « Hélène Martin », mais Entrée sans choisir rend 0
+  résultat (idem `jean pierre` face à « Jean-Pierre »). L'arbitrage S4/S5 portait sur accents et casse. Recommandation
+  forge : aligner aussi l'ordre des mots et la ponctuation (chaque mot tapé doit figurer, en début de mot), puisque la
+  barre promet « comme les suggestions ».
+
+Prévention : `conventions/csharp.md` § recherche (motif normalisé par la même fonction SQL que la colonne) ;
+`conventions/angular.md` § `suggestions-de-saisie-choisies-visibles` (clic principal sans modificateur, au `click`).
+Trois reprises faites (plafond 2, la 3ᵉ demandée par l'humain) : **arrêt**, `questions/task-449.md` écrit.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-449 --sync` — ne pas éditer à la main)*
@@ -633,7 +670,7 @@ la désignation). Deux reprises déjà faites : **arrêt**, `questions/task-449.
 | /lint-angular | ok | 1 min 00 s | — | — | — | — |
 | /lint-mobile | skipped | 0.9 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 20 min 24 s | — | — | — | e2e ×20 (2 h 22 min) |
-| /review | failed | 44 min 18 s | 4 (29 s) | 2 (1 h 13 min) | — | api-mail 2B/2T, dtos-mss 2B/0T, passage 3 : B4 B5, plafond de reprises atteint |
-| **Total cycle** | | **1 h 32 min** | **17 (3 min 36 s)** | **30 (2 h 07 min)** | **8 (3 min 11 s)** | |
+| /review | failed | 10 min 39 s | 7 (54 s) | 5 (1 h 20 min) | — | api-mail 3B/3T, dtos-mss 3B/0T, client-angular 1B/2T, passage 4 : CHANGES REQUESTED (B1, B2), plafond de reprises dépassé |
+| **Total cycle** | | **58 min 32 s** | **20 (4 min 02 s)** | **33 (2 h 14 min)** | **8 (3 min 11 s)** | |
 
 Autres commandes mesurées : lint ×4 (48 s), nuget-wait ×1 (24 s), restore ×1 (3.7 s)
