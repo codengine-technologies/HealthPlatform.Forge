@@ -58,9 +58,9 @@
   `IAuditService.TraceSystem` plutôt qu'un `IsSystemAct` posé par l'appelant.
 
 
-### v0.2 — task-465 : mesurer la charge de la boîte (api-mail, dtos-mss)
+### v0.2 — task-465 : mesurer la charge de la boîte (api-mail, dtos-mss) — ANNULÉE
 
-- **État** : `done`, PRs en attente de merge humain (HAG).
+- **État** : **annulée** le 2026-11-12 (voir l'entrée « Annulation de task-465 » ci-dessous) ; rien sur `develop`.
 - **PRs** : api-mail [#366](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/366),
   dtos-mss [#64](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/64).
 - **NuGet** : `HealthPlatform.Dtos.Mss` 597.0.0 → **601.0.0** (`AuditActionType.MailboxLoadComputed = 72`, famille
@@ -97,7 +97,7 @@
   (DevOps) ; AIPD.
 
 
-### v0.2.1 — task-465 (reprise du 2026-11-12) : indicateurs d'usage (api-mail)
+### v0.2.1 — task-465 (reprise du 2026-11-12) : indicateurs d'usage (api-mail) — ANNULÉE
 
 - **Décision humaine** : ajoutés dans la même PR (#366, encore ouverte).
 - **Indicateurs** : `connected_persons` (traces `MailboxSessionOpened`), `active_mailboxes`, `registered_mailboxes`
@@ -109,6 +109,22 @@
 - **Tests** : 69 unitaires, 10 d'intégration (`…ExposesUsage`) ; mutations : droit retiré (`42501`), borne de fin de
   journée retirée (`5` → `7`), heure en UTC — toutes rouges. Suite complète : 7 934 verts.
 - **Sonar** : 0 finding dans le diff. **E2E** : mobile 61, Angular 80 (mêmes 2 flaky), porte verte.
+
+
+### Annulation de task-465 (2026-11-12, décision humaine)
+
+- **Motif** : calcul jugé trop lourd pour l'API et ajoutant de la complexité (tâche de fond dans chaque réplica,
+  lecture du journal de toutes les boîtes, verrou Redis, rôle statistique).
+- **Défait** : PR api-mail [#366](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/366) et
+  dtos-mss [#64](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/64) fermées sans merge ;
+  branches `feat/task-465-mesurer-la-charge-de-la-boite` supprimées (locales et distantes). Paquet
+  `HealthPlatform.Dtos.Mss` 601.0.0 publié mais non référencé ; ordinal 72 libre.
+- **Conséquences** : task-454 et task-456 ne dépendent plus de task-465 ; leurs indicateurs de tableau de bord sont
+  retirés de leur DoD.
+- **Suite** : extraction des usages par un **cron job hors de l'API**, sur la base d'un rapport journalier (task à
+  rédiger). La conception et les preuves de task-465 restent dans `tasks/archived/archived-task-465_…` comme matière.
+- **Acquis conservés** : consignes `conventions/csharp.md` (S125, S4457, CA1068, S138, ASP0025,
+  capture-de-metriques-serialisee), registre e2e des flaky.
 
 ---
 
@@ -123,21 +139,12 @@
 | `api-mail/src/Infrastructure/Migrations/MailDb/20261111120000_AnchorDocumentWorkStates.cs` | schéma (sans reprise de données) | task-453 |
 | `dtos-mss/AuditActionType.cs` (70, 71) | actes système de re-liaison | task-453 |
 | `api-mail/tests/mss.mail.e2e/E2eMessage.cs` | `message --move`, `--kind bio-hprim` | task-453 |
-| `api-mail/src/Application/Services/ProductMetrics/` | calcul, calendrier, gestes, options, service de la mesure de charge | task-465 |
-| `api-mail/src/Application/Services/Background/MailboxLoadHostedService.cs` | calcul quotidien sous verrou | task-465 |
-| `api-mail/src/Infrastructure/Repositories/TenantDb/PostgresMailboxLoadStore.cs` | lecture statistique du journal, agrégats | task-465 |
-| `api-mail/src/Infrastructure/Migrations/TenantDb/20261112090000_AddMailboxLoadStatistics.cs` | rôle, politique RLS, tables | task-465 |
-| `api-mail/src/Infrastructure/Migrations/TenantDb/20261112110000_GrantMailboxLoadRegistryRead.cs` | lecture statistique des rattachements | task-465 |
-| `api-mail/src/Api/Controllers/V1/ProductMetricsController.cs` | route de l'équipe produit | task-465 |
-| `api-mail/src/AppHost/grafana/dashboards/mssante-mailbox-load.json` | tableau de bord « Charge de la messagerie » | task-465 |
-| `dtos-mss/AuditActionType.cs` (72) | acte système du calcul | task-465 |
 
 ---
 
 ## Annexe B — Inventaire fonctionnel daté (2026-11-12)
 
-- Tasks de l'EPIC : 14 (1 `archived`, 1 `done`, 12 `todo`).
-- Indicateurs publiés : 14 (7 de charge, 7 d'usage) + 3 réservés pour task-454 et task-456.
+- Tasks de l'EPIC : 14 (1 `archived`, 1 annulée, 12 `todo`).
 - Scénarios e2e de l'EPIC au catalogue : 1 (E2E-BIO-004).
 
 ---
@@ -158,5 +165,5 @@
 | task-462 | Relance sans réponse | `todo` |
 | task-463 | Suivi de biologie | `todo` |
 | task-464 | Mon espace santé complet | `todo` |
-| task-465 | Mesure quotidienne et anonyme de la charge (journal d'audit, rôle statistique, seuil 5 boîtes), route et tableau de bord de l'équipe produit | `done` (PRs #366, #64) |
+| task-465 | Mesure de la charge et de l'usage — **annulée** le 2026-11-12 (décision humaine, reprise hors API par un cron job) | annulée (PRs #366, #64 fermées) |
 | task-466 | Date de début du suivi par boîte | `todo` |
