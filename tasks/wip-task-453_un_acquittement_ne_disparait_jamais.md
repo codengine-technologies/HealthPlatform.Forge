@@ -292,6 +292,33 @@ métriques projet inclut les tasks mergées depuis, pas seulement task-453.
 | Duplication | 0,3 % | 0,3 % | 0 |
 | Reliability / Security / Maintainability | D/A/A | D/D/A | sécurité D par les deux vulnérabilités du script Python |
 
+## Lint log
+
+- **client-angular** (code-only, branche `feature/nova-mss-weda-integration`, rien de commité) — 1 itération.
+- Portée : les 4 fichiers de la task, par le contournement de task-367 (`npx eslint --format json` sur les fichiers,
+  findings attribués à la task par `git diff -U0 HEAD`) : `nx affected` contre `origin/next` couvrirait toute la
+  branche de l'humain.
+- Baseline (findings imputables) : 2 erreurs — `prettier/prettier` (`audit.model.ts`, libellés d'audit trop longs),
+  `jsdoc/require-param` (`createMessageElsewhere` sans `@param kind`) — et 2 avertissements `jsdoc/require-example`
+  (helpers `waitForUidOtherThan`, `acknowledgeThenMoveBack`).
+- Itération 1 : `eslint --fix` sur `audit.model.ts` (prettier) ; `@param kind` et trois `@example` renseignés à la
+  main. **Final : 0 erreur** sur les fichiers de la task.
+- Restant accepté : `max-lines` sur `e2e/mss-e2e/support/e2e-backend.ts` (fichier déjà à ~1 300 lignes avant la
+  task) et les avertissements `jsdoc/require-example` antérieurs des deux fichiers e2e.
+- Build / test : `nx build weda2` ✓ (30 s) ; `nx run-many -t test --projects=mss-lib,weda2 --skipNxCache` ✓
+  (2 tâches réussies) ; `tsc` de la suite e2e Angular ✓.
+- Règles corrigées à la main : `jsdoc/require-param` sur un paramètre ajouté à une fonction déjà documentée — déjà
+  couvert par la doctrine JSDoc du dépôt (`front/CLAUDE.md`), pas de nouvelle entrée dans `conventions/angular.md`.
+- Fichiers modifiés (non commités) : `front/libs/mss/src/core/models/audit.model.ts`,
+  `front/e2e/mss-e2e/specs/functional.e2e.ts`, `front/e2e/mss-e2e/support/e2e-backend.ts`.
+
+## Lint mobile log
+
+- **Skip propre** : le diff `client-mobile` ne touche que `e2e/specs/functional.spec.ts` et
+  `e2e/support/e2e-backend.ts`, hors de la portée de `ng lint` (`lintFilePatterns` : `src/**/*.ts`, `src/**/*.html`).
+  Aucun fichier lintable modifié, aucun commit. La suite e2e est vérifiée par `tsc -p e2e/tsconfig.json` (vert), et
+  le build (`npm run build`) et les tests (1 417/1 417) sont verts depuis `/develop`.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-453 --sync` — ne pas éditer à la main)*
@@ -301,6 +328,8 @@ métriques projet inclut les tasks mergées depuis, pas seulement task-453.
 | /start | ok | 41 s | — | — | — | — |
 | /develop | ok | 2 h 01 min | 21 (3 min 54 s) | 19 (19 min 34 s) | — | dtos-mss 1B/0T, api-mail 19B/18T, client-mobile 1B/1T, contrat 591, ancrage + re-liaison, E2E-BIO-004 rouge puis vert |
 | /sonar | ok | 29 min 53 s | 3 (1 min 38 s) | 11 (17 min 27 s) | 4 (5 min 30 s) | 2 itération(s), api-mail 3B/11T, S3776 corrigée, aucune issue imputable |
-| **Total cycle** | | **2 h 32 min** | **24 (5 min 33 s)** | **30 (37 min 01 s)** | **4 (5 min 30 s)** | |
+| /lint-angular | ok | 7 min 08 s | 1 (47 s) | 1 (2 min 05 s) | — | 1 itération(s), client-angular 1B/1T, 0 erreur sur les fichiers de la task |
+| /lint-mobile | skipped | 14 s | — | — | — | diff e2e uniquement, hors portée de ng lint |
+| **Total cycle** | | **2 h 39 min** | **25 (6 min 20 s)** | **31 (39 min 07 s)** | **4 (5 min 30 s)** | |
 
-Autres commandes mesurées : nuget-wait ×1 (24 s), restore ×3 (2 min 15 s)
+Autres commandes mesurées : lint ×3 (1 min 41 s), nuget-wait ×1 (24 s), restore ×3 (2 min 15 s)
