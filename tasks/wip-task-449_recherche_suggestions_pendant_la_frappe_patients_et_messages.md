@@ -1,7 +1,7 @@
 # todo-task-449.md — Recherche : suggestions pendant la frappe, patients et messages
 
 **Repos**: api-mail, dtos-mss, client-angular
-**Reprises**: 5
+**Reprises**: 7
 **Dependencies**: done-task-442 (formulaire), done-task-446 (patients trouvés, vue « Mails du patient » depuis les
 résultats)
 **Epic**: E023
@@ -403,6 +403,37 @@ mots se suivent dans l'ordre strict (arbitrage S1). Mot et champ passent par la 
   restauré (le script de mutation finit désormais par un `dotnet build`). weda2 inchangé depuis la reprise 4 (1 650 +
   2 683 ✅). Commit api-mail `da6f0500`.
 
+### Reprise 6 (demandée par l'humain, 2026-11-12) — B1, S1, S2, S3
+
+| Constat | Correctif | Test | Preuve rouge |
+|---|---|---|---|
+| **B1** une adresse choisie de plus de 10 « mots » était refusée en 400 | le plafond ne vaut que pour un critère lu en mots (`Address is null`) | unitaire `Read_ALongAddress_IsNeverTooLong` ; intégration `AChosenAddress_…("long")` (adresse de 11 mots) | rouges sur le code de la reprise 5 (un premier exemple à 10 mots passait : allongé à 11) |
+| **S1** `de : ""` n'était plus un critère vide ; `de : "Paul Martin" ""` cherchait `""` par le sens | blancs et paires vides = rien de tapé (`SearchInput.OrEmpty`, `TypedCriterion.IsEmpty`) | unitaires `Parse_OnlyEmptyPairsOfQuotes_IsNothingTyped`, `Read_NothingTyped_IsEmpty` ; intégration `de : ""` → 400 | rouges sur le code de la reprise 5 |
+| **S2** `p.martin@x.fr,` reconnu comme adresse exacte | mêmes caractères exclus que `isWellFormedMailAddress` de weda2 | unitaire `Read_AnAddressWithPunctuationAround_IsReadAsWords` (4 cas) | rouges sur le code de la reprise 5 |
+| **S3** le plafond comptait doublons et élisions | mots distincts (sans ordre strict) ; une lettre seule (élision) ne compte pas | unitaire `Read_RepeatedWordsAndElisions_…` ; intégration `objet : compte rendu de l'IRM de la …` → 200 | rouges sur le code de la reprise 5 |
+
+- Relu comme un correctif (« qu'est-ce que ça casse ailleurs ? ») : le plafond, l'adresse et le vide sont décidés pour
+  les deux lectures (adresse exacte, mots), consigne de la passe 6 ; `OrEmpty` ne change rien à un critère qui porte un
+  mot ; les mots distincts ne s'appliquent pas à l'ordre strict (une expression garde ses répétitions).
+- Validation : api-mail build ✅, tests 8 003 ✅ (dont 1 331 d'intégration, 16 ignorés), vert marqué (`421e4589`).
+  weda2 inchangé (vert marqué à la passe 6).
+- **Première reprise sur la boucle courte** (forge locale, en relecture humaine) : suite → `/review --code`.
+
+### Reprise 7 (demandée par l'humain, 2026-11-12) — B1, S1, S2, S3
+
+**Une seule borne, posée où les conditions SQL sont construites** (`SemanticSearchRepository.WhereHoldsEveryPart`, la
+lecture en mots) : l'adresse comparée en entier (« De », « À ») n'y passe jamais, l'objet et le nom y passent. Le
+contrôle dispersé du service (`EnsureNoCriterionTooLong`) est retiré.
+
+| Constat | Correctif | Test | Preuve rouge |
+|---|---|---|---|
+| **B1** conditions SQL non bornées (`"a a … a"` ~245 `LIKE` ; exemption « adresse » appliquée à l'objet) | conditions = mots **distincts** ; borne dure `MaxConditions` = 20 (lettres seules comprises) en plus des 10 mots de 2 lettres et plus ; refus dans `WhereHoldsEveryPart` | unitaires `Read_ARepeatedLetterBetweenQuotes_IsOneCondition`, `Read_ManyDistinctOneLetterWords_IsTooLong` ; intégration `ATypedCriterion_CountsDistinctConditions_…` (`"a…a"` → 200 ; `a … z` → 400 ; « adresse » de 11 mots dans l'objet → 400) | mutations « borne dure retirée », « mots non dédoublonnés », « exemption adresse dans le dépôt » → rouges |
+| **S1** `""` seul dans un champ listait toute la boîte | `IsEmpty` = blancs seulement : une paire vide ne garde aucune ligne (la barre : 400) | unitaire `Read_NothingTyped_IsEmpty` ; intégration `FORM-EMPTY-PAIR` → aucun résultat | mutation « paire vide = rien de tapé » → rouges |
+| **S2** dédoublonnage par le jumeau C# | `OrdinalIgnoreCase` sur le texte tapé | unitaire `Read_TheSameWordInAnotherCase_…` | mutation `Ordinal` → rouge |
+| **S3** le test « l'IRM » ne lisait qu'un 200 | il lit le message trouvé, et un cas où un mot manque ne trouve rien | intégration (`… l'IRM … du jour` → [1] ; `… l'IRM du genou` → []) | mutation « préfiltre et début de mot limités à 5 mots » → rouge |
+
+- Validation : api-mail build ✅, tests 8 011 ✅ (dont 1 336 d'intégration, 16 ignorés), vert marqué (`3f81df39`).
+
 ### Écarts et décisions consignés
 
 - **Identité patient** : la consigne `identite-patient-exacte` interdit `LIKE 'x%'` pour **désigner** un patient ; la
@@ -442,6 +473,11 @@ mots se suivent dans l'ordre strict (arbitrage S1). Mot et champ passent par la 
 
 - **Reprise 4** — analyse 5 (`452556d2`) : Quality Gate **OK**, **0 issue nouveau code**, couverture nouveau code
   96,3 %, couverture 97,7 %, 0 smell, duplication 0,4 %.
+- **Reprise 5** — analyse 6 (`da6f0500`) : Quality Gate **OK**, **2 issues nouveau code** : CA1862 ×2
+  (`ToLower() ==` dans une requête EF, adresse choisie). Corrigé par `EF.Functions.ILike` sur un motif échappé
+  (`93bf2adf`) ; test ajouté (un `_` d'adresse n'est pas un joker), vu rouge par mutation. CA1862 est une règle Roslyn :
+  rebuild complet sans aucun avertissement CA1862, analyse de confirmation non relancée (best-effort, ~15 min évitées).
+  Récidive comptée : `conventions/csharp.md` § CA1862, occurrences 3. Couverture nouveau code 96,3 %.
 ### KPIs qualité (baseline → final)
 
 | KPI | Baseline | Final |
@@ -449,10 +485,10 @@ mots se suivent dans l'ordre strict (arbitrage S1). Mot et champ passent par la 
 | Quality Gate | OK | **OK** |
 | Bugs / Vulnerabilities / Hotspots | 0 / 0 / 0 | 0 / 0 / 0 |
 | Code Smells | 0 | 0 |
-| Coverage | 97,8 % | 97,7 % |
+| Coverage | 97,8 % | 97,6 % |
 | Duplication | 0,4 % | 0,4 % |
 | Reliability / Security / Maintainability | A / A / A | A / A / A |
-| New code — issues | — | 0 (CA1861 puis S3776 corrigées ; analyse 5 de la reprise 4 : 0) |
+| New code — issues | — | 0 (CA1861, S3776, CA1862 ×2 corrigées en cours de cycle) |
 | New code — coverage | — | 96,3 % |
 
 ## Lint log
@@ -466,6 +502,7 @@ mots se suivent dans l'ordre strict (arbitrage S1). Mot et champ passent par la 
 - **Reprise 2** : relancé — **0 erreur**, 51 + 48 avertissements (inchangés). Itérations : 0.
 - **Reprise 3** : relancé — **0 erreur**, 51 + 48 avertissements (inchangés). Itérations : 0.
 - **Reprise 4** : relancé — **0 erreur**, 51 + 48 avertissements (inchangés). Itérations : 0.
+- **Reprise 5** : weda2 inchangé depuis la reprise 4 — résultat identique (0 erreur). Itérations : 0.
 
 ## Lint mobile log
 
@@ -475,12 +512,12 @@ mots se suivent dans l'ordre strict (arbitrage S1). Mot et champ passent par la 
 
 | Voie | Jouée / réutilisée | Résultat | Dépôts couverts |
 |---|---|---|---|
-| mobile | jouée (reprise 4) | 61 verts, 0 flaky, 0 rouge, parité verte | api-mail `452556d2`, client-mobile `develop` `f775f17` |
-| angular | jouée (reprise 4) | 84 verts dont E2E-SEARCH-013 et 014, 0 flaky, 0 rouge, parité verte | api-mail `452556d2`, client-angular (arbre non commité), Client/Mobile/e2e |
+| mobile | jouée (reprise 5) | 61 verts, 0 flaky, 0 rouge, parité verte | api-mail `93bf2adf`, client-mobile `develop` `f775f17` |
+| angular | jouée (reprise 5) | 84 verts dont E2E-SEARCH-013 et 014, 0 flaky, 0 rouge, parité verte | api-mail `93bf2adf`, client-angular (arbre non commité), Client/Mobile/e2e |
 
 Passage 1 : un premier jeu mobile en parité rouge sur `E2E-BIO-004` (`develop` local de `client-mobile` en retard d'un
 commit, `git pull --ff-only` puis voie rejouée, verte) ; flaky E2E-COMPOSE-001 consigné au registre (9ᵉ occurrence).
-Reprises 1, 3 et 4 : les deux voies rejouées, vertes, sans flaky. Reprise 2 (weda2 seulement) : voie Angular rejouée,
+Reprises 1, 3, 4 et 5 : les deux voies rejouées, vertes, sans flaky. Reprise 2 (weda2 seulement) : voie Angular rejouée,
 verte ; voie mobile réutilisée (empreinte inchangée).
 Démontage vérifié : ports libres, aucun conteneur e2e résiduel.
 
@@ -742,6 +779,74 @@ Aucun nouveau. (B2 a une variante qui toucherait le contrat — une liste exacte
 Prévention : `conventions/csharp.md` § recherche (critère choisi comparé exactement ; regex de paire vide).
 Quatre reprises faites (plafond 2) : **arrêt**, `questions/task-449.md` écrit.
 
+### Passage 6 (2026-11-12, après la reprise 5) — CHANGES REQUESTED
+
+Validation : build vert (api-mail, dtos-mss, weda2) ; tests api-mail 7 989 ✅ (dont 1 328 d'intégration, 16 ignorés),
+`nx test mss-lib` 1 650 ✅, `nx test weda2` 2 683 ✅ ; vert marqué (`Tools/green/green.py`) pour api-mail `93bf2adf` et
+weda2.
+Revue indépendante du seul diff de la reprise 5 (`452556d2..93bf2adf`), lu d'abord pour ce qu'il a cassé. B1, B2, S5
+de la passe 5 et CA1862 tiennent : `SearchPhrases` ne change que pour les paires vides ; `FromAddress` est stocké sans nom
+affiché et `ILIKE` absorbe la casse ; seul `SemanticSearchService.SearchAsync` lit `FieldFilters` ; `ToContainsPattern`
+rend la même chaîne qu'avant pour ses 4 appelants. Un bloquant nouveau, **né du correctif S5** (vérifié dans le code).
+
+#### À corriger par la reprise
+
+- **B1** — `TypedCriterion.IsTooLong` compte les mots d'une adresse même quand elle est comparée en entier (`Address`
+  renseignée) : choisir `secretariat.cardiologie.pediatrique@ch-saint-jean-de-luz.mssante.fr` (plus de 10 « mots »)
+  répond 400 « au plus 10 mots ». Le seul domaine `medecin.formation.mssante.fr` en compte déjà 4. Correctif :
+  `IsTooLong = Address is null && …` ; test d'intégration avec une adresse de plus de 10 mots, vu rouge.
+- S1 — une paire vide seule (`de : ""`) n'est plus un critère vide (200 vide au lieu du 400 « Tapez le texte du
+  critère ») ; `de : "Paul Martin" ""` lance une recherche par le sens sur `""`. Correctif : un critère ou un reste fait
+  de blancs et de paires vides est vide.
+- S2 — la reconnaissance d'adresse du serveur accepte `<`, `>`, `,`, `;`, `(` que celle de weda2 exclut :
+  `de : p.martin@x.fr,` devient une adresse exacte introuvable. Reprendre la classe de caractères du front.
+- S3 — le plafond compte doublons et élisions (`l'IRM` = 2) : compter les mots **distincts**, ou dire ce qui est compté.
+
+Prévention : `conventions/csharp.md` § recherche — un correctif qui ajoute une règle à un critère (plafond, exactitude)
+vérifie ses **deux** lectures (adresse exacte / mots), c'est la 4ᵉ fois qu'un correctif de cette task casse le cas voisin.
+Cinq reprises faites (plafond 2) : **arrêt**, `questions/task-449.md` écrit.
+
+### Passage 7 (2026-11-12, revue anticipée après la reprise 6) — CHANGES REQUESTED
+
+Première passe sur la boucle courte (`/review --code`, sans build ni Sonar ni e2e : ~3 min au lieu de ~45). B1, S1, S2,
+S3 de la passe 6 corrigés là où ils visaient ; `OrEmpty` ne change aucun texte non vide ; la regex d'adresse reprend
+celle de weda2. Un bloquant nouveau, **vérifié par la forge dans le code**, encore né du correctif précédent.
+
+#### À corriger par la reprise
+
+- **B1** — plus rien ne borne le nombre de conditions SQL d'un critère : en ordre strict les mots ne sont pas
+  dédoublonnés et les mots d'une lettre ne comptent pas au plafond (`objet : "a a a … a"` → ~245 `LIKE` identiques par
+  ligne, `unaccent` compris) ; et l'exemption « adresse » du plafond vaut aussi pour « Objet » et « De (nom) », qui ne
+  comparent pas l'adresse en entier. Correctif : une **borne dure unique** sur les conditions effectivement émises
+  (mots distincts, casse ignorée, préfiltre compris), appliquée là où elles sont construites ; l'exemption « adresse »
+  seulement pour les champs qui comparent l'adresse en entier (`FromAddress`, `RecipientAddress`). Test rouge sur
+  `"a a a … a"` et sur une « adresse » longue dans Objet.
+- S1 — `""` seul dans un champ du formulaire passe la validation « au moins un critère » et liste toute la boîte, alors
+  que `objet : ""` dans la barre répond 400 : un champ fait de paires vides doit compter comme vide aussi pour la
+  validation (ou le dépôt garder « aucune ligne » comme avant).
+- S2 — dédoublonner en ordinal insensible à la casse sur le texte tapé, pas par le jumeau C# `SearchTerms.Normalize`.
+- S3 — l'intégration « l'IRM … » ne vérifie qu'un 200 sur une boîte vide : lire le message trouvé (règle 1b).
+
+Prévention : `conventions/csharp.md` § recherche — une borne de coût SQL se pose **une fois**, sur ce qui est émis.
+Six reprises faites (plafond 2) : **arrêt**, `questions/task-449.md` écrit.
+
+### Passage 8 (2026-11-12, revue anticipée après la reprise 7) — APPROVED
+
+Revue indépendante du diff de la reprise 7, lu d'abord pour ce qu'il casse : le 400 « trop long » est levé à la
+construction de la requête (étape 1 de `SearchInternalAsync`), avant toute voie parallèle ou dégradée ; `IsUnexpectedFailure`
+le laisse passer ; l'historique n'enregistre pas une recherche refusée ; `ApplyFieldFilters` n'a pas d'autre appelant.
+Les preuves rouges de B1, S1, S2, S3 sont lues dans le Develop log.
+
+**approved at** : api-mail `3f81df39` · dtos-mss `bb45953a` · client-angular `ce7741dd` + arbre de travail (inchangé depuis la reprise 4,
+vert marqué).
+
+#### Suggestions (dans la PR, non bloquantes)
+
+- S1 — le refus dit « au plus 10 mots » aussi pour 21 lettres isolées, ou pour une adresse collée dans « Objet » :
+  préciser le message (« une adresse se cherche dans De ou À »).
+- S2 — aucun test ne verrait revenir `foreach (… criterion.Words)` dans le préfiltre (le coût reste borné par les 500
+  caractères de la requête) ; les tests de refus ne lisent pas le `detail`.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-449 --sync` — ne pas éditer à la main)*
@@ -749,12 +854,13 @@ Quatre reprises faites (plafond 2) : **arrêt**, `questions/task-449.md` écrit.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 20 s | — | — | — | — |
-| /develop | ok | 12 min 09 s | 16 (2 min 19 s) | 14 (45 min 13 s) | — | dtos-mss 1B/0T, api-mail 11B/10T, client-angular 4B/4T, reprise 5 |
-| /sonar | ok | 9 min 06 s | 7 (2 min 19 s) | 26 (39 min 09 s) | 10 (3 min 59 s) | 1 itération(s), api-mail 7B/26T |
-| /lint-angular | ok | 13 s | — | — | — | — |
+| /develop | ok | 12 min 57 s | 20 (2 min 54 s) | 18 (58 min 47 s) | — | dtos-mss 1B/0T, api-mail 15B/14T, client-angular 4B/4T, reprise 7 |
+| /sonar | ok | 1 h 13 min | 9 (3 min 01 s) | 32 (1 h 47 min) | 12 (4 min 46 s) | 1 itération(s), api-mail 9B/32T |
+| /lint-angular | skipped | 0.8 s | — | — | — | weda2 inchangé depuis la reprise 4 |
 | /lint-mobile | skipped | 0.9 s | — | — | — | client-mobile non touché |
-| /e2e | ok | 21 min 08 s | — | — | — | e2e ×24 (2 h 42 min) |
-| /review | failed | 8 min 54 s | 9 (1 min 08 s) | 6 (1 h 27 min) | — | api-mail 4B/4T, dtos-mss 4B/0T, client-angular 1B/2T, passage 5 : CHANGES REQUESTED (B1, B2), plafond de reprises dépassé |
-| **Total cycle** | | **51 min 54 s** | **32 (5 min 47 s)** | **46 (2 h 51 min)** | **10 (3 min 59 s)** | |
+| /e2e | ok | 20 min 12 s | — | — | — | e2e ×27 (3 h 02 min) |
+| /review | failed | 8 min 06 s | 11 (1 min 20 s) | 7 (1 h 34 min) | — | api-mail 5B/5T, dtos-mss 5B/0T, client-angular 1B/2T, passage 6 : CHANGES REQUESTED (B1, né de S5), plafond de reprises dépassé |
+| /review-code | ok | 4 min 04 s | — | — | — | — |
+| **Total cycle** | | **1 h 58 min** | **40 (7 min 16 s)** | **57 (4 h 20 min)** | **12 (4 min 46 s)** | |
 
 Autres commandes mesurées : lint ×5 (59 s), nuget-wait ×1 (24 s), restore ×1 (3.7 s)

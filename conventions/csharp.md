@@ -2077,7 +2077,7 @@ réécrire `DisposeAsync` que pour un vrai travail asynchrone, et alors sans
 
 ## CA1862 — une comparaison de casse ne passe pas par `ToUpperInvariant()` / `ToLowerInvariant()`
 
-**Occurrences : 2** (task-443, `/sonar` — `m.FromAddress.ToLower() != own` dans une requête EF ; task-420, `/sonar` —
+**Occurrences : 3** (task-449, `/sonar` — `m.FromAddress.ToLower() == adresse` et `r.Address.ToLower() == adresse` pour comparer une adresse choisie, dans une requête EF : `EF.Functions.ILike` sur `SearchQueryHelper.ToExactPattern` (échappé : un `_` d'adresse n'est pas un joker). Récidive : la variante EF était écrite, le fichier n'a pas été relu avant d'écrire la requête ; task-443, `/sonar` — `m.FromAddress.ToLower() != own` dans une requête EF ; task-420, `/sonar` —
 `ErrorCatalogTests` : `value.ToUpperInvariant() == value` pour reconnaître une constante de code en majuscules, dans un
 test)
 
@@ -2351,6 +2351,13 @@ oublié, mot de l'objet, historique ancien d'un patient), et aucun test n'avait 
 - Une expression régulière qui **retire une paire de délimiteurs vide** (`"\s*"`) prend aussi le guillemet fermant
   d'une expression et l'ouvrant de la suivante : `"Paul Martin" "compte rendu"` devient une seule expression (5ᵉ revue
   de task-449, B1). Écarter les expressions vides **après** l'appariement des guillemets, et tester deux paires voisines.
+- Un critère a **deux lectures** (adresse entière comparée exactement, ou mots) : toute règle ajoutée au critère —
+  plafond de mots, exactitude, normalisation — se décide et se teste **pour chacune**. Le plafond de 10 mots comptait les
+  mots d'une adresse pourtant comparée en entier : une adresse choisie longue répondait 400 (6ᵉ revue de task-449, B1).
+- Une **borne de coût SQL** (nombre de conditions qu'un texte tapé produit) se pose **une seule fois**, là où les
+  conditions sont construites, sur ce qui est **réellement émis** (mots distincts, préfiltre compris) — jamais par des
+  exemptions dispersées dans le lecteur du critère. Trois correctifs successifs du plafond de task-449 ont chacun ouvert
+  un trou (adresse longue refusée, puis `"a a … a"` en ~245 `LIKE`, exemption « adresse » appliquée à l'objet) — 7ᵉ revue, B1.
 
 **Preuve** : task-439, `SearchExactFirstHybridIntegrationTests.Hybrid_PatientWithMoreThan200Mails_…` (230 messages
 anciens sous 460 homonymes partiels récents, tous trouvés page par page) et
