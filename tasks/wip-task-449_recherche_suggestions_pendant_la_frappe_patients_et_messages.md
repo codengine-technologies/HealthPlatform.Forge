@@ -388,6 +388,7 @@ S4 à S7 et S11 restent en arbitrage humain (`## Code Review Summary`), hors de 
   inchangé) : aucun introduit.
 - Itérations : 0. Build et tests déjà verts sur l'arbre final (fin de `/develop`).
 - **Reprise 1** : relancé sur l'arbre repris — **0 erreur**, 51 + 48 avertissements (inchangés). Itérations : 0.
+- **Reprise 2** : relancé — **0 erreur**, 51 + 48 avertissements (inchangés). Itérations : 0.
 
 ## Lint mobile log
 
@@ -397,12 +398,13 @@ S4 à S7 et S11 restent en arbitrage humain (`## Code Review Summary`), hors de 
 
 | Voie | Jouée / réutilisée | Résultat | Dépôts couverts |
 |---|---|---|---|
-| mobile | jouée (reprise 1) | 61 verts, 0 flaky, 0 rouge, parité verte | api-mail `68a0f76c`, client-mobile `develop` `f775f17` |
-| angular | jouée (reprise 1) | 84 verts dont E2E-SEARCH-013 et 014, 0 flaky, 0 rouge, parité verte | api-mail `68a0f76c`, client-angular (arbre non commité), Client/Mobile/e2e |
+| mobile | réutilisée (reprise 2, dépôts couverts inchangés) | 61 verts, 0 flaky, 0 rouge, parité verte | api-mail `68a0f76c`, client-mobile `develop` `f775f17` |
+| angular | jouée (reprise 2) | 84 verts dont E2E-SEARCH-013 et 014, 0 flaky, 0 rouge, parité verte | api-mail `68a0f76c`, client-angular (arbre non commité), Client/Mobile/e2e |
 
 Passage 1 : un premier jeu mobile en parité rouge sur `E2E-BIO-004` (`develop` local de `client-mobile` en retard d'un
 commit, PR #123 de task-453 mergée depuis l'autre poste ; `git pull --ff-only` puis voie rejouée, verte) ; flaky
-E2E-COMPOSE-001 consigné au registre (9ᵉ occurrence). Reprise 1 : les deux voies rejouées, vertes, sans flaky.
+E2E-COMPOSE-001 consigné au registre (9ᵉ occurrence). Reprise 1 : les deux voies rejouées, vertes, sans flaky. Reprise 2 (weda2 seulement) : voie Angular rejouée, verte ;
+voie mobile réutilisée (empreinte inchangée).
 Démontage vérifié : ports libres, aucun conteneur e2e résiduel.
 
 **E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
@@ -582,10 +584,10 @@ sur d'autres chemins que B1 (même famille : une suggestion choisie que le méde
 | /start | ok | 20 s | — | — | — | — |
 | /develop | ok | 3 min 30 s | 5 (52 s) | 5 (14 min 47 s) | — | dtos-mss 1B/0T, api-mail 1B/2T, client-angular 3B/3T, reprise 2 : B2 B3 S13 S14 S15 (weda2) |
 | /sonar | ok | 9 min 15 s | 2 (47 s) | 10 (15 min 32 s) | 4 (1 min 36 s) | 1 itération(s), api-mail 2B/10T, reprise : QG OK, 0 issue |
-| /lint-angular | ok | 20 s | — | — | — | reprise : 0 erreur |
+| /lint-angular | ok | 12 s | — | — | — | reprise 2 : 0 erreur |
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
-| /e2e | ok | 20 min 32 s | — | — | — | e2e ×12 (1 h 40 min), reprise : mobile 61, angular 84, parité verte |
+| /e2e | ok | 11 min 09 s | — | — | — | e2e ×17 (2 h 02 min), reprise 2 : angular 84, mobile réutilisée, parité verte |
 | /review | changes | 4 min 03 s | 4 (29 s) | 2 (1 h 13 min) | — | api-mail 2B/2T, dtos-mss 2B/0T, CHANGES REQUESTED (B2, B3), reprise 2 |
-| **Total cycle** | | **38 min 05 s** | **11 (2 min 09 s)** | **17 (1 h 43 min)** | **4 (1 min 36 s)** | |
+| **Total cycle** | | **28 min 33 s** | **11 (2 min 09 s)** | **17 (1 h 43 min)** | **4 (1 min 36 s)** | |
 
-Autres commandes mesurées : lint ×2 (22 s), nuget-wait ×1 (24 s), restore ×1 (3.7 s)
+Autres commandes mesurées : lint ×3 (34 s), nuget-wait ×1 (24 s), restore ×1 (3.7 s)
