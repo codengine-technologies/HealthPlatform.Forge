@@ -471,3 +471,19 @@ Validation (passage 2) : api-mail build 0 erreur / 0 avertissement, domain 210, 
 | **Total cycle** | | **52 min 41 s** | **20 (3 min 48 s)** | **34 (1 h 53 min)** | **6 (2 min 07 s)** | |
 
 Autres commandes mesurées : lint ×2 (19 s), nuget-wait ×2 (47 s), restore ×2 (26 s)
+
+## Merged
+
+Mergée le 2026-11-12 par `/merge task-448 --i-tested` (validation humaine, HAG).
+
+Avant le merge, la PR `api-mail` #363 était en conflit avec `develop` (task-453, #364, mergée entre-temps) :
+chaque task avait publié son paquet DTO (593 pour task-448, 591 pour task-453), aucun ne portant les contrats de
+l'autre. Resynchronisation : branche DTO de task-448 fusionnée avec `develop` et republiée en **597.0.0**,
+`api-mail` fusionnée avec `develop` sur 597, lock files régénérés, constante `Archives` déclarée deux fois dans
+la classe partielle `FolderOperationsEndToEndTests` dédoublonnée. Build vert, 7 867 tests verts (0 échec).
+
+| Repo | PR | Commit squash | CI `develop` |
+|---|---|---|---|
+| `dtos-mss` | #62 | `ca6f3ff` | ✅ [run 599](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/actions/runs/43193359761) |
+| `api-mail` | #363 | `7c054c3e` | ✅ [run 948](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/43193383654) |
+| `client-angular` | — | — | géré manuellement par l'humain |
