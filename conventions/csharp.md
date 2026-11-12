@@ -2457,3 +2457,24 @@ relu à l'exécution), B3 (lu inversé), B4 (message disparu non nommé), B5 (d�
 rouges.
 
 **Origine** : task-448. **Occurrences** : 1
+
+---
+
+## canal-d-audit-borne-de-la-fixture — un test qui agit en masse vide le canal d'audit de la fixture ; un test qui lit le journal le vide avant d'agir
+
+**Règle** : convention de test (intégration), invisible au lint et à Sonar.
+
+**Piège** (task-448) : le canal d'audit de `UseCaseFixture` est **borné** (`AuditOptions.ChannelCapacity`, 1 000) et la
+fixture n'en héberge **pas** le consommateur. Une action sur 120 messages y laisse 120 traces ; quelques tests de ce
+genre le remplissent, et les traces suivantes partent vers le débord, hors du canal. Le test qui relit le journal
+(`PersistAndReadJournalAsync`) trouve alors un journal vide : vert seul, rouge en suite complète (constaté sous
+couverture Sonar, puis reproduit sur la seule collection `UseCases`).
+
+**Consigne** :
+- Un test qui produit des centaines de traces **vide le canal après avoir agi** (`ForgetTraces()` dans
+  `FolderOperationsEndToEndTests.BulkActions`) : la collection s'exécute en série, ce qui reste appartient à des tests
+  terminés.
+- Un test qui lit le journal **vide le canal avant d'agir**, comme `MovingMessages_InvalidatesTheListingAndStatus…`.
+- Un test vert seul et rouge en suite complète se rejoue d'abord **sur sa collection** : c'est elle qui partage l'état.
+
+**Origine** : task-448. **Occurrences** : 1
