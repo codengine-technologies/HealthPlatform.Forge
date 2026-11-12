@@ -1,8 +1,11 @@
 # todo-task-456.md — Vues par nature : biologie, courriers, patients, pour info
 
 **Repos**: api-mail, dtos-mss, client-angular, client-mobile
-**Dependencies**: done-task-465 (mesure de charge)
+**Dependencies**: aucune
 **Epic**: E024
+
+> **Mise à jour du 2026-11-12 (décision humaine)** : task-465 (mesure de charge) est **abandonnée** — traitement jugé trop lourd pour l'API. La dépendance et les indicateurs de tableau de bord qu'elle portait sont retirés. L'extraction des usages sera reprise plus tard par un **cron job hors de l'API**, sur la base d'un rapport journalier.
+
 **Priorité**: EPIC E024, demandée par l'humain le 2026-11-11. Douleur n° 7 (2/5). Ce sont les messages générés
 par des machines qui pèsent le plus sur la charge du médecin (Tai-Seale, Health Affairs 2019).
 
@@ -69,8 +72,6 @@ Règles :
       publié.
 - [ ] Acte d'audit `MailNatureChanged` (personne) ; miroirs TypeScript.
 - [ ] Code mort `AddCategoryTagsToMailAsync` retiré ou réutilisé (justifié dans le `## Develop log`).
-- [ ] Mesure de charge (task-465) : indicateur « volume reçu par nature » ajouté au tableau de bord, avec son test
-      unitaire.
 - [ ] Tests unitaires de la règle de nature : un test par nature, dont copie seule, `Auto-Submitted`, message de
       patient porteur d'une biologie (→ Biologie), message d'un confrère sans document (→ Courriers).
 - [ ] **Test d'intégration de bout en bout (règle 1b)** sur la vue par nature (`GET api/v1/Mail/natures/{nature}/emails`

@@ -1,8 +1,11 @@
 # todo-task-454.md — Marquer un message traité
 
 **Repos**: api-mail, dtos-mss, client-angular, client-mobile
-**Dependencies**: done-task-453 (ancrage des états de travail), done-task-466 (date de début du suivi), done-task-456 (nature des messages), done-task-465 (mesure de référence relevée avant)
+**Dependencies**: done-task-453 (ancrage des états de travail), done-task-466 (date de début du suivi), done-task-456 (nature des messages)
 **Epic**: E024
+
+> **Mise à jour du 2026-11-12 (décision humaine)** : task-465 (mesure de charge) est **abandonnée** — traitement jugé trop lourd pour l'API. La dépendance et les indicateurs de tableau de bord qu'elle portait sont retirés. L'extraction des usages sera reprise plus tard par un **cron job hors de l'API**, sur la base d'un rapport journalier.
+
 **Priorité**: EPIC E024, demandée par l'humain le 2026-11-11. Douleur n° 7 de l'analyse (volume, peur de rater :
 2/5). Pour un médecin, un message n'est pas « lu » ou « non lu » : il est **pris en charge** ou non.
 
@@ -150,9 +153,6 @@ Règles :
       - `E2E-SHARED-003` v1 : le délégataire traite un message, le titulaire le voit traité « par » le délégataire.
 - [ ] Les balayages existants (`swipe-read|flag|move|delete-*`, corbeille de task-142) restent verts ; tests adaptés à
       l'ordre nouveau.
-- [ ] Mesure de charge (task-465) : indicateurs « délai jusqu'au traitement » (p50, p95), « part traitée par un
-      délégataire ou un membre » et **« part traitée par geste »** (bouton, geste naturel, **groupe**) ajoutés au
-      tableau de bord, avec leur test unitaire. Une part « groupe » dominante signale un modèle encore trop lourd.
 - [ ] `data-testid` sur chaque élément interactif ajouté ; libellés selon les conventions du module ; aucune donnée de
       santé dans les libellés ni les logs.
 - [ ] Build et tests verts : `HealthPlatform.Api.Mail.sln`, `Dtos`, weda2 (`nx build weda2`, `nx test weda2`,

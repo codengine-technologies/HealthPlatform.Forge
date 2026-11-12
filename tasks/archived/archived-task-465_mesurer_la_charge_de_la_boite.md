@@ -1,4 +1,29 @@
-# todo-task-465.md — Mesurer la charge de la boîte
+# task-465 — ANNULÉE
+
+> ## 🚫 US ANNULÉE le 2026-11-12 — décision humaine
+>
+> **Motif** : le calcul de la charge et de l'usage tournait dans l'API (tâche de fond dans chaque réplica, lecture du
+> journal de toutes les boîtes, verrou Redis). Jugé trop lourd et ajoutant de la complexité à l'API.
+>
+> **Suite décidée** : l'extraction des usages sera reprise plus tard par un **cron job hors de l'API**, sur la base
+> d'un **rapport journalier**. **Rien de cela ne doit vivre dans l'API.**
+>
+> **Ce qui a été défait** : PR `api-mail` #366 et `dtos-mss` #64 **fermées sans merge** ; branches
+> `feat/task-465-mesurer-la-charge-de-la-boite` **supprimées** sur `api-mail` et `dtos-mss` (locales et distantes).
+> **Aucune ligne de cette US n'est sur `develop`.** Le paquet `HealthPlatform.Dtos.Mss` 601.0.0
+> (`AuditActionType.MailboxLoadComputed = 72`) reste publié sur le flux mais n'est référencé par rien ; la valeur 72
+> est libre.
+>
+> **Conséquences** : task-454 et task-456 ne dépendent plus de task-465 ; leurs indicateurs de tableau de bord sont
+> retirés. Les leçons du cycle restent acquises (`conventions/csharp.md` : S125, S4457, CA1068, S138, ASP0025,
+> capture-de-metriques-serialisee ; registre e2e des flaky).
+>
+> Le contenu ci-dessous est conservé pour mémoire (conception, mesures de performance, preuves) : il servira de
+> matière au futur cron job.
+
+---
+
+# (archivé) task-465.md — Mesurer la charge de la boîte
 
 **Repos**: api-mail
 **Dependencies**: aucune
