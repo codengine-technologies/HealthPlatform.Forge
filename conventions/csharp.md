@@ -2505,8 +2505,9 @@ qu'aucun ne déplaçait un message hors de la plateforme.
   (plusieurs documents de même clé : rien n'est re-relié). Modèle et raisons : `Docs/adr/ADR-2026-11-11-ancrage-etats-de-travail.md`.
 - Un test d'intégration prouve qu'il survit à un déplacement **hors plateforme** (harnais
   `FolderOperationsEndToEndTests.WorkStateAnchoring` : `OtherImapClient.MoveAsync`, puis relecture du dossier), vu rouge.
-- Le modèle EF déclare la même règle que la migration (`OnDelete(DeleteBehavior.SetNull)`), et la clé calculée en SQL
-  pour une reprise est comparée à la clé C# par un test.
+- Le modèle EF déclare la même règle que la migration (`OnDelete(DeleteBehavior.SetNull)`). Une reprise de données
+  n'est écrite que si l'humain la demande (task-453 : refusée, bases de test) ; elle calcule alors la clé en SQL et un
+  test la compare à la clé C#.
 
 **Preuve** : task-453, huit tests d'intégration rouges sur le code d'avant (acquittement absent après déplacement,
 UIDVALIDITY, corbeille, délégataire ; patient manuel perdu) ; mutations M1 (re-liaison neutralisée), M2b (garde

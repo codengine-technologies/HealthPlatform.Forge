@@ -1,3 +1,5 @@
+**Résolu** (2026-11-12) — tests E2E-SEARCH-004…009 restaurés et commités sur TFS par l'humain ; `/e2e` rejoué, vert.
+
 # task-453 — `/e2e` bloqué : parité Angular (tests de task-445 perdus), sans lien avec la task
 
 **Étape** : `/e2e` (porte `gate`, code 1). **Nature du blocage : parité**, pas une régression ni l'outillage.

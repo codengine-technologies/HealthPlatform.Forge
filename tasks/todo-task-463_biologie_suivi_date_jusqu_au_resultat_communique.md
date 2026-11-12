@@ -1,7 +1,7 @@
 # todo-task-463.md — Biologie : suivi daté jusqu'au résultat communiqué
 
 **Repos**: api-mail, dtos-mss, client-angular, client-mobile
-**Dependencies**: done-task-453 (acquittements durables), done-task-454 (« traité » et acquittement)
+**Dependencies**: done-task-453 (acquittements durables), done-task-466 (date de début du suivi), done-task-454 (« traité » et acquittement)
 **Epic**: E024
 **Priorité**: EPIC E024, demandée par l'humain le 2026-11-11. Douleur n° 2 (biologie : 4/5). L'acquittement
 enregistre la décision, mais rien ne garantit qu'elle est **suivie** : l'appel au patient, la convocation, le contrôle.
@@ -20,7 +20,10 @@ enregistre la décision, mais rien ne garantit qu'elle est **suivie** : l'appel 
   (`POST api/v1/medical-documents/{documentId}/biology-ack`, `pending-mail-uids`, `pending-summary`).
 - Les enums sont dans le paquet DTO (`BiologyAckActionType`, `BiologyAckResolutionState`). Toute valeur ajoutée va
   **en fin** d'enum.
-- task-454 : « Traité » ajoute `MarkResolved` ; un message dont tous les documents sont résolus est traité.
+- task-454 (reprise du 2026-11-12) : « Traité » **n'écrit aucun acquittement** et est refusé sur un message dont un
+  compte rendu signalé n'est pas résolu ; un message dont tous les documents sont résolus est traité. task-466 : seuls
+  les résultats arrivés après la date de début du suivi réclament une décision ; un suivi ne s'ouvre pas sur
+  l'historique, sauf geste explicite du praticien.
 - Garde-fou de task-392 : seule l'anomalie posée par le laboratoire est une anomalie.
 
 ## Objective
