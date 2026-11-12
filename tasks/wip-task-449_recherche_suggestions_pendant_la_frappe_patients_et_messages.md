@@ -653,6 +653,7 @@ S7 livrés et prouvés rouges. Revue indépendante : deux bloquants nouveaux, v�
   résultat (idem `jean pierre` face à « Jean-Pierre »). L'arbitrage S4/S5 portait sur accents et casse. Recommandation
   forge : aligner aussi l'ordre des mots et la ponctuation (chaque mot tapé doit figurer, en début de mot), puisque la
   barre promet « comme les suggestions ».
+  **Tranché par l'humain le 2026-11-12** : un critère tapé sans guillemets cherche **chaque mot, dans n'importe quel ordre**, comme les suggestions (`de : martin helene` trouve « Hélène Martin ») ; entre guillemets (`de : "Hélène Martin"`), les mots se cherchent **dans l'ordre strict**, d'un seul tenant. Lecture forge, inchangée par cet arbitrage : accents et casse restent ignorés dans les deux cas (S4/S5).
 
 Prévention : `conventions/csharp.md` § recherche (motif normalisé par la même fonction SQL que la colonne) ;
 `conventions/angular.md` § `suggestions-de-saisie-choisies-visibles` (clic principal sans modificateur, au `click`).

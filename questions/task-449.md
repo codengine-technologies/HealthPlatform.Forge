@@ -38,6 +38,7 @@ parité verte) sont verts. B4, B5, S16, S17, et les arbitrages S4/S5 et S7, sont
   `jean pierre` / « Jean-Pierre »). **Recommandation forge : aligner aussi l'ordre des mots et la ponctuation** (chaque
   mot tapé doit figurer en début de mot), puisque la barre promet de chercher « comme les suggestions ». Sinon : laisser
   tel quel (sous-chaîne), le médecin choisit dans la liste.
+  **Tranché par l'humain le 2026-11-12** : un critère tapé sans guillemets cherche **chaque mot, dans n'importe quel ordre**, comme les suggestions (`de : martin helene` trouve « Hélène Martin ») ; entre guillemets (`de : "Hélène Martin"`), les mots se cherchent **dans l'ordre strict**, d'un seul tenant. Lecture forge, inchangée par cet arbitrage : accents et casse restent ignorés dans les deux cas (S4/S5).
 
 ## Pourquoi la chaîne s'arrête
 
