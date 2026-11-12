@@ -321,6 +321,22 @@ S4 à S7 et S11 restent en arbitrage humain (`## Code Review Summary`), hors de 
 - weda2 : `nx test mss-lib` 1 638 ✅, `nx test weda2` 2 683 ✅, `nx build weda2` ✅, ESLint 0 erreur.
 - **Prévention** : `conventions/angular.md` § `suggestions-de-saisie-choisies-visibles`.
 
+### Reprise 2 après `/review` (2026-11-12) — B2, B3, S13, S14, S15 (weda2 seulement)
+
+| Constat | Correctif | Test | Preuve rouge |
+|---|---|---|---|
+| **B2** Entrée dans « À / Cc », « Objet », « Nom de pièce jointe » choisissait la suggestion désignée de la barre | gestionnaire propre aux champs (`onFieldKeyDown` : Entrée = lancer ; flèches laissées au champ) | `mail-search.suggestions.spec.ts` « Entrée dans le champ « Objet »… » | rouge sur le code d'avant (patient ouvert) |
+| **B3** Après Échap, « Fermer la recherche » ou un rejeu, les suggestions de l'ancien texte restaient désignables | `restoreCriteria` met les suggestions au texte restauré | « après Échap, la réouverture… » | rouge sur le code d'avant |
+| **S13** « Voir plus » sans fin après le plafond de vérification exacte | une page suivante vide ne propose plus de suite (`MailSearchSession.loadMore`) | `mail-search-session.spec.ts` « une page suivante vide… » | rouge sur le code d'avant |
+| **S14** Demandes que le serveur refuserait (plus de 100 caractères, ponctuation seule) | non envoyées (`SEARCH_SUGGESTIONS_MAX_LENGTH`, une lettre ou un chiffre) | « ni une saisie de plus de 100 caractères… » | rouge sur le code d'avant |
+| **S15** Après Échap, la frappe ne rouvrait pas la liste | `onQueryChange` rouvre la liste | « après Échap, taper rouvre la liste » | rouge sur le code d'avant |
+
+- api-mail inchangé par cette reprise (validation de la passe 2 : domain 221, infrastructure 749, application 4 283,
+  api 1 380, integration 1 307 + 1 rouge `GreenMailBenchSmokeTests` vert isolé, banc GreenMail, sans lien).
+- weda2 : `nx test mss-lib` 1 643 ✅, `nx test weda2` 2 683 ✅, `nx build weda2` ✅, ESLint 0 erreur.
+- **Prévention** : `conventions/angular.md` § `suggestions-de-saisie-choisies-visibles` complétée (champs du
+  formulaire, texte restauré).
+
 ### Écarts et décisions consignés
 
 - **Identité patient** : la consigne `identite-patient-exacte` interdit `LIKE 'x%'` pour **désigner** un patient ; la

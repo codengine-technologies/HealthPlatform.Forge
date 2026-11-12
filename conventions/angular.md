@@ -732,11 +732,15 @@ par lint sur du code frais est un échec de lecture de ce fichier.
     remet la désignation à « aucune » ;
   - une réponse asynchrone porte le **texte qui l'a demandée**, et ne s'affiche (ni ne se désigne) que si c'est encore
     le texte de la barre ;
+  - les **autres champs** d'un formulaire qui héberge la liste ont leur propre gestionnaire de touches (Entrée =
+    lancer) : ils ne choisissent jamais la suggestion de la barre (2ᵉ revue de task-449, B2) ;
+  - tout chemin qui **remet** le texte de la barre (Échap, « Fermer la recherche », rejeu) remet les suggestions au
+    même texte (B3) ;
   - pas de `distinctUntilChanged` après un `debounceTime` quand la réponse est effacée de façon synchrone : le même
     texte retapé ne redemanderait rien ;
   - le test joue la séquence du médecin (↓, Échap, Entrée ; taper, retaper) et affirme qu'**aucun** choix n'a eu lieu
     (ni navigation ni recherche lancée).
 - **Preuve** : `mail-search.suggestions.spec.ts` (« après Échap… », « pendant la frappe… », « retaper le même
   texte… »), rouges sur le code d'avant.
-- **Origine** : task-449 (/review, B1, S2, S3)
-- **Occurrences** : 1
+- **Origine** : task-449 (/review, B1, S2, S3 ; 2ᵉ revue B2, B3)
+- **Occurrences** : 2
