@@ -1,7 +1,7 @@
 # todo-task-449.md — Recherche : suggestions pendant la frappe, patients et messages
 
 **Repos**: api-mail, dtos-mss, client-angular
-**Reprises**: 5
+**Reprises**: 6
 **Dependencies**: done-task-442 (formulaire), done-task-446 (patients trouvés, vue « Mails du patient » depuis les
 résultats)
 **Epic**: E023
@@ -403,6 +403,22 @@ mots se suivent dans l'ordre strict (arbitrage S1). Mot et champ passent par la 
   restauré (le script de mutation finit désormais par un `dotnet build`). weda2 inchangé depuis la reprise 4 (1 650 +
   2 683 ✅). Commit api-mail `da6f0500`.
 
+### Reprise 6 (demandée par l'humain, 2026-11-12) — B1, S1, S2, S3
+
+| Constat | Correctif | Test | Preuve rouge |
+|---|---|---|---|
+| **B1** une adresse choisie de plus de 10 « mots » était refusée en 400 | le plafond ne vaut que pour un critère lu en mots (`Address is null`) | unitaire `Read_ALongAddress_IsNeverTooLong` ; intégration `AChosenAddress_…("long")` (adresse de 11 mots) | rouges sur le code de la reprise 5 (un premier exemple à 10 mots passait : allongé à 11) |
+| **S1** `de : ""` n'était plus un critère vide ; `de : "Paul Martin" ""` cherchait `""` par le sens | blancs et paires vides = rien de tapé (`SearchInput.OrEmpty`, `TypedCriterion.IsEmpty`) | unitaires `Parse_OnlyEmptyPairsOfQuotes_IsNothingTyped`, `Read_NothingTyped_IsEmpty` ; intégration `de : ""` → 400 | rouges sur le code de la reprise 5 |
+| **S2** `p.martin@x.fr,` reconnu comme adresse exacte | mêmes caractères exclus que `isWellFormedMailAddress` de weda2 | unitaire `Read_AnAddressWithPunctuationAround_IsReadAsWords` (4 cas) | rouges sur le code de la reprise 5 |
+| **S3** le plafond comptait doublons et élisions | mots distincts (sans ordre strict) ; une lettre seule (élision) ne compte pas | unitaire `Read_RepeatedWordsAndElisions_…` ; intégration `objet : compte rendu de l'IRM de la …` → 200 | rouges sur le code de la reprise 5 |
+
+- Relu comme un correctif (« qu'est-ce que ça casse ailleurs ? ») : le plafond, l'adresse et le vide sont décidés pour
+  les deux lectures (adresse exacte, mots), consigne de la passe 6 ; `OrEmpty` ne change rien à un critère qui porte un
+  mot ; les mots distincts ne s'appliquent pas à l'ordre strict (une expression garde ses répétitions).
+- Validation : api-mail build ✅, tests 8 003 ✅ (dont 1 331 d'intégration, 16 ignorés), vert marqué (`421e4589`).
+  weda2 inchangé (vert marqué à la passe 6).
+- **Première reprise sur la boucle courte** (forge locale, en relecture humaine) : suite → `/review --code`.
+
 ### Écarts et décisions consignés
 
 - **Identité patient** : la consigne `identite-patient-exacte` interdit `LIKE 'x%'` pour **désigner** un patient ; la
@@ -782,12 +798,12 @@ Cinq reprises faites (plafond 2) : **arrêt**, `questions/task-449.md` écrit.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 20 s | — | — | — | — |
-| /develop | ok | 12 min 09 s | 16 (2 min 19 s) | 14 (45 min 13 s) | — | dtos-mss 1B/0T, api-mail 11B/10T, client-angular 4B/4T, reprise 5 |
+| /develop | ok | 10 min 30 s | 18 (2 min 38 s) | 16 (52 min 02 s) | — | dtos-mss 1B/0T, api-mail 13B/12T, client-angular 4B/4T, reprise 6 |
 | /sonar | ok | 1 h 13 min | 9 (3 min 01 s) | 32 (1 h 47 min) | 12 (4 min 46 s) | 1 itération(s), api-mail 9B/32T |
 | /lint-angular | skipped | 0.8 s | — | — | — | weda2 inchangé depuis la reprise 4 |
 | /lint-mobile | skipped | 0.9 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 20 min 12 s | — | — | — | e2e ×27 (3 h 02 min) |
 | /review | failed | 8 min 06 s | 11 (1 min 20 s) | 7 (1 h 34 min) | — | api-mail 5B/5T, dtos-mss 5B/0T, client-angular 1B/2T, passage 6 : CHANGES REQUESTED (B1, né de S5), plafond de reprises dépassé |
-| **Total cycle** | | **1 h 53 min** | **36 (6 min 41 s)** | **53 (4 h 07 min)** | **12 (4 min 46 s)** | |
+| **Total cycle** | | **1 h 52 min** | **38 (7 min 00 s)** | **55 (4 h 14 min)** | **12 (4 min 46 s)** | |
 
 Autres commandes mesurées : lint ×5 (59 s), nuget-wait ×1 (24 s), restore ×1 (3.7 s)
