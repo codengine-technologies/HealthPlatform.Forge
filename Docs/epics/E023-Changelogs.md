@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques (ingénierie, backlog, dette)
 > **Vue produit** : [E023-experience-de-recherche.md](E023-experience-de-recherche.md)
-> **Dernière mise à jour** : 2026-11-11
+> **Dernière mise à jour** : 2026-11-12
 
 ---
 
@@ -256,6 +256,43 @@
 - **Préventions** : `conventions/csharp.md` § `action-groupee-tracee-par-objet` (complété à la reprise),
   § `canal-d-audit-borne-de-la-fixture`.
 
+### v0.7 — task-449 : suggestions pendant la frappe, préfixes et recherche exacte (api-mail, dtos-mss, weda2)
+
+- **État** : `done`, PRs ouvertes (label `awaiting-human-merge`) : dtos-mss [#65](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/65),
+  api-mail [#367](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/367). weda2 code-only, à
+  pousser sur TFS. Arbitrages humains tranchés pendant le cycle : S11 (pas d'« Effacer »), S4/S5 (aligner sur les
+  suggestions), S1 (mots dans n'importe quel ordre, ordre strict entre guillemets), S6, S7.
+- **dtos-mss** (600) : `SearchInputPrefix`, `SearchCorrespondentDto`, `SearchSuggestionsResponseDto`.
+- **api-mail** :
+  - `GET /api/v1/search/suggestions` (`SearchSuggestionService`) : patients (début de mot, jamais une INS),
+    correspondants, types de document, recherches récentes de la personne ; tracé `MailSearch` quand des patients sont
+    proposés ;
+  - `SearchInput` / `SearchPhrases` : préfixes de critère, expressions entre guillemets (recherche exacte bornée,
+    `ExactCandidatesCheckedMax` 1 000, sans embeddings) ;
+  - `TypedCriterion` : critère tapé lu en mots (préfiltre normalisé + début de mot, `search_normalize` des deux côtés),
+    ordre strict entre guillemets, adresse entière comparée exactement, **une seule borne** des conditions SQL posée
+    dans `WhereHoldsEveryPart` (400 au-delà) ;
+  - historique des recherches propre à la personne (`SearchHistoryOwner`) : défaut règle 14 antérieur corrigé.
+- **weda2** : `MailSearchSuggestions` (une règle : liste fermée = aucune demande, aucun affichage, aucun choix),
+  `MailSearchSuggestionsComponent` (choix au clic principal sans modificateur), composant d'historique retiré.
+- **Revue** : 8 passes, 7 reprises ; plusieurs bloquants nés du correctif précédent (B3→B4, S4→B1, S1→B2, S5→B1).
+  Origine de la **revue anticipée** et du **marqueur vert** de la forge (CLAUDE.md, 2026-11-12). Passe 8 APPROVED.
+- **Tests** : preuves rouges sur le code d'avant ou par mutation à chaque reprise (Develop log).
+
+  | Suite | Tests verts |
+  |---|---|
+  | weda2 `mss-lib` | 1 650 |
+  | weda2 `weda2` | 2 683 |
+  | api-mail (toutes suites) | 8 011 (+16 ignorés) |
+
+- **E2E** : voie mobile 61, voie angular 84 (`E2E-SEARCH-013`, `014` v1, mobile en divergence task-451), parité verte.
+- **Sonar** : Quality Gate OK, nouveau code 96,3 %, 0 issue.
+- **Changement assumé** : `%`, `_`, `\` séparent les mots d'un critère tapé ; un mot est un début de mot (`50` → « 500 »).
+- **Restes** : message du refus « trop long » à préciser pour une adresse dans « Objet » ; test du préfiltre dédoublonné.
+- **Préventions** : `conventions/csharp.md` (route d'identité jamais exemptée ; motif normalisé par la même fonction
+  SQL ; critère choisi exact ; regex de paire vide ; deux lectures d'un critère ; borne de coût SQL unique ; S3776,
+  CA1862), `conventions/angular.md` § `suggestions-de-saisie-choisies-visibles`.
+
 ---
 
 ## Annexe A — Cartographie des briques applicatives
@@ -274,7 +311,9 @@
 | `Client/Angular/front/libs/mss/src/core/utils/text-highlight.util.ts` | Surlignage par positions, test de forme partagé avec le cadre (task-446) |
 | `Api/Mail/src/Application/Services/Implementation/BulkMailActionService.cs`, `Api/Mail/src/Api/Controllers/V1/BulkMailActionsController.cs` | Actions groupées (task-448) |
 | `Client/Angular/front/libs/mss/src/features/mail/services/mail-search-bulk.service.ts`, `components/mail-search-bulk/` | Tous les résultats et actions groupées dans weda2 (task-448) |
-| `Api/Mail/e2e/scenarios.yml` | Catalogue des parcours : `E2E-SEARCH-001` v2, `004` à `010`, `012` v1 |
+| `Api/Mail/src/Application/Services/Implementation/SearchSuggestionService.cs`, `Api/Mail/src/Application/Helpers/{SearchInput,TypedCriterion}.cs` | Suggestions, préfixes, guillemets, critère tapé (task-449) |
+| `Client/Angular/front/libs/mss/src/features/mail/services/mail-search-suggestions.ts`, `components/mail-search-suggestions/` | Suggestions dans weda2 (task-449) |
+| `Api/Mail/e2e/scenarios.yml` | Catalogue des parcours : `E2E-SEARCH-001` v2, `004` à `010`, `012` à `014` v1 |
 
 ---
 
@@ -294,6 +333,6 @@
 | task-445 | archived (PR api-mail #361 mergée) | Mode « Résultats de recherche » dans weda2 ; `E2E-SEARCH-004` à `007`, `009` v1 |
 | task-446 | archived (PR api-mail #362 mergée ; weda2 à pousser sur TFS) | Lire un résultat : extrait surligné, endroit, dossier, patients trouvés ; `E2E-SEARCH-010` v1 |
 | task-447 | supprimée (2026-11-11) | Portée « tous les dossiers » et tri, écartés par l'humain : recherche dans le dossier sélectionné seulement ; tri par date sans gain sur l'ordre du serveur |
-| task-448 | done (PRs dtos-mss #62, api-mail #363 ouvertes ; weda2 à pousser sur TFS) | Sélectionner tous les résultats et actions groupées ; `E2E-SEARCH-012` v1 ; « non lu » tracé |
-| task-449 | todo | Suggestions pendant la frappe : patients et messages |
+| task-448 | archived (PRs dtos-mss #62, api-mail #363 mergées ; weda2 à pousser sur TFS) | Sélectionner tous les résultats et actions groupées ; `E2E-SEARCH-012` v1 ; « non lu » tracé |
+| task-449 | done (PRs dtos-mss #65, api-mail #367 ouvertes ; weda2 à pousser sur TFS) | Suggestions pendant la frappe, préfixes `de :` / `à :` / `objet :`, recherche exacte entre guillemets ; `E2E-SEARCH-013`, `014` v1 |
 | task-452 | supprimée (2026-11-11) | Mesure anonyme de l'expérience : reportée par l'humain |

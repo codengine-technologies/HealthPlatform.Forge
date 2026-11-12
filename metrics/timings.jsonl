@@ -9821,3 +9821,5 @@
 {"ts":"2026-11-12T22:17:49+01:00","run_id":"-","type":"step_start","task":"task-449","step":"review"}
 {"ts":"2026-11-12T22:18:01+01:00","run_id":"-","type":"cmd","task":"task-449","step":"review","repo":"dtos-mss","kind":"build","label":"","cwd":"Dtos","cmd":"dotnet build HealthPlatform.Dtos.Mss.csproj -v q","duration_ms":975,"exit_code":0}
 {"ts":"2026-11-12T22:18:59+01:00","run_id":"-","type":"step","task":"task-449","step":"review","status":"ok","note":"validation finale : vert réutilisé (marqueur), PR #367 / #65","iterations":null,"duration_ms":70385}
+{"ts":"2026-11-12T22:19:12+01:00","run_id":"-","type":"step_start","task":"task-449","step":"tech-writer"}
+{"ts":"2026-11-12T22:20:26+01:00","run_id":"-","type":"step","task":"task-449","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":73783}

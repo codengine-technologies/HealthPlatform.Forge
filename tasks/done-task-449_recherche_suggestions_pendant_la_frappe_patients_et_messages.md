@@ -888,6 +888,7 @@ vert marqué).
 | /e2e | ok | 19 min 52 s | — | — | — | e2e ×30 (3 h 22 min) |
 | /review | ok | 1 min 10 s | 12 (1 min 21 s) | 7 (1 h 34 min) | — | api-mail 5B/5T, dtos-mss 6B/0T, client-angular 1B/2T, validation finale : vert réutilisé (marqueur), PR #367 / #65 |
 | /review-code | ok | 4 min 04 s | — | — | — | — |
-| **Total cycle** | | **48 min 49 s** | **42 (8 min 05 s)** | **62 (4 h 28 min)** | **14 (5 min 33 s)** | |
+| /tech-writer | ok | 1 min 13 s | — | — | — | — |
+| **Total cycle** | | **50 min 03 s** | **42 (8 min 05 s)** | **62 (4 h 28 min)** | **14 (5 min 33 s)** | |
 
 Autres commandes mesurées : lint ×5 (59 s), nuget-wait ×1 (24 s), restore ×1 (3.7 s)

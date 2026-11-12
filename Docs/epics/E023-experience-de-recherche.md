@@ -68,8 +68,8 @@ le même modèle. Le modèle retenu le 2026-11-10 avec l'humain s'inspire de la 
 | Réponse enrichie | Savoir où le terme a été trouvé, en voir un extrait, connaître les patients désignés | task-444 | ✅ Livrée côté serveur |
 | Mode « Résultats de recherche » | Voir les résultats dans un espace dédié, les affiner sur place, en sortir explicitement | task-445 | ✅ Livrée dans weda2 |
 | Lire un résultat | Voir l'extrait surligné de chaque résultat et ouvrir le patient trouvé en tête | task-446 | ✅ Livrée dans weda2 |
-| Actions groupées | Sélectionner tous les résultats, même ceux pas encore affichés, et leur appliquer une action | task-448 | 🟡 En revue (PRs ouvertes) |
-| Suggestions pendant la frappe | Recevoir des propositions par catégories (patients, messages) dès les premières lettres | task-449 | 🔴 À faire |
+| Actions groupées | Sélectionner tous les résultats, même ceux pas encore affichés, et leur appliquer une action | task-448 | ✅ Livrée |
+| Suggestions pendant la frappe | Recevoir des propositions par catégories (patients, messages) dès les premières lettres | task-449 | 🟡 En revue (PRs ouvertes) |
 
 > Le bilan d'avancement par feature (statut, couverture, tasks contributives) est consigné en fin de document, dans la
 > section *État de couverture*.
@@ -175,10 +175,11 @@ la rend telle quelle, à la même position.
 | Réponse enrichie | ✅ Livrée côté serveur | 100 % | task-444 |
 | Mode « Résultats de recherche » | ✅ Livrée dans weda2 | 100 % | task-445 |
 | Lire un résultat | ✅ Livrée dans weda2 | 100 % | task-446 |
-| Actions groupées | 🟡 En revue (PRs ouvertes) | 90 % | task-448 |
-| Suggestions pendant la frappe | 🔴 À faire | 0 % | task-449 |
+| Actions groupées | ✅ Livrée | 100 % | task-448 |
+| Suggestions pendant la frappe | 🟡 En revue (PRs ouvertes) | 90 % | task-449 |
 
-**Couverture EPIC consolidée : 84 %** (5 features livrées sur 7, la 6e en revue : arbitrages S1 et S4 ouverts au merge).
+**Couverture EPIC consolidée : 99 %** (6 features livrées sur 7, la 7e en revue : PRs api-mail #367 et dtos-mss #65 ;
+weda2 à pousser sur TFS).
 
 ---
 
@@ -210,6 +211,12 @@ la rend telle quelle, à la même position.
   suit l'action, et le compte rendu dit ce qui n'a pas été fait (« 340 messages déplacés vers Archives, 2 en échec »),
   avec « Réessayer les échecs ». Un message arrivé après la confirmation n'est pas touché. Ni acquittement ni
   rattachement à un patient en masse (task-448).
+- v0.7 — Dès deux lettres tapées, la barre propose par catégories les patients de la boîte, ses correspondants
+  (expéditeurs, destinataires), les types de document et les recherches récentes ; au focus, les recherches
+  récentes. Choisir un patient ouvre ses messages, un correspondant pose l'étiquette « De » ou « À ». Les préfixes
+  `de :`, `à :`, `objet :` restreignent un critère ; `patient :` et `type :` se choisissent dans la liste. Un critère
+  tapé cherche chaque mot dans n'importe quel ordre, nom et adresse, sans accents ni casse ; entre guillemets, dans
+  l'ordre. Une expression entre guillemets dans la barre est cherchée telle quelle (task-449).
 
 **Conformité réglementaire**
 - Chaque recherche lancée reste tracée au nom de son auteur ; la trace ne porte ni le texte cherché, ni l'identité du
@@ -222,6 +229,9 @@ la rend telle quelle, à la même position.
   message en non lu est désormais tracé lui aussi (task-448).
 - Une mise à la Corbeille groupée ne supprime jamais définitivement : depuis la Corbeille, ou depuis un dossier dont le
   type n'est pas connu, elle est refusée et le dit (task-448).
+- Une suggestion qui nomme des patients est tracée comme une consultation, au nom de la personne réelle ; une
+  liste fermée ne demande rien au serveur, et seul un clic délibéré ouvre un patient. Les recherches récentes sont
+  propres à chaque personne, même sur une boîte partagée (task-449).
 
 **Sécurité**
 - La liste des expéditeurs de la boîte, comme toute lecture de la boîte, est fermée sans le verdict de l'opérateur
@@ -235,6 +245,8 @@ la rend telle quelle, à la même position.
   sans accent, « Aucun résultat », « Voir plus », recherche en échec, fermeture à la même position (task-445).
 - Le parcours « reconnaître un résultat et ouvrir le dossier du patient » l'est aussi (task-446).
 - Le parcours « traiter tous les résultats d'une recherche » l'est aussi (task-448).
+- Les parcours « trouver un patient par les premières lettres » et « restreindre à un expéditeur par `de :` »
+  le sont aussi (task-449).
 
 ---
 
