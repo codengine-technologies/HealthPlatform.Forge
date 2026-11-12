@@ -319,6 +319,157 @@ métriques projet inclut les tasks mergées depuis, pas seulement task-453.
   Aucun fichier lintable modifié, aucun commit. La suite e2e est vérifiée par `tsc -p e2e/tsconfig.json` (vert), et
   le build (`npm run build`) et les tests (1 417/1 417) sont verts depuis `/develop`.
 
+## E2E log
+
+| Voie | Déclencheur | Résultat | Tests | Durée |
+|---|---|---|---|---|
+| mobile | api-mail, client-mobile touchés | ✅ verte (jouée) | 61 verts, 0 flaky, 0 rouge, 0 quarantaine | 9 min 24 s (suite) |
+| angular | api-mail, client-angular touchés | ⛔ rouge — **parité seule** (jouée) | 72 verts, 2 flaky, 0 rouge, 1 quarantaine (verte) | 11 min 45 s (suite) |
+
+- Catalogue : `Api/Mail/e2e/scenarios.yml` @ `feat/task-453-un-acquittement-ne-disparait-jamais`
+- **E2E-BIO-004 v1** (scénario de la task) : ✅ mobile, ✅ angular.
+- **Blocage : parité angular** — `E2E-SEARCH-004` à `009` sont requis pour weda2 au catalogue (ajoutés par
+  task-445), mais leurs tests sont absents de la suite Angular de la branche courante
+  (`feature/nova-mss-weda-integration`) et de tout commit (`git log --all -S E2E-SEARCH-004` vide) : ils avaient été
+  écrits non commités par task-445 (code-only). **Sans lien avec task-453** ; piège `test-angular-non-commite`
+  (Occurrences 2). Voir `questions/task-453.md`.
+- Flaky (non bloquants) : E2E-SEARCH-001 [angular] (15ᵉ occurrence), **E2E-LIVE-001 [angular] 3ᵉ occurrence →
+  flaky récurrent, task de stabilisation à ouvrir**.
+- Quarantaines : E2E-COMPOSE-002 [angular] (task-350), verte à ce passage.
+- Divergences ouvertes : 7 (mobile, recherche — task-450, task-451).
+- Parcours touchés sans spec e2e modifié : aucun (aucun écran modifié).
+- Démontage : complet (ports libres, aucun conteneur e2e résiduel).
+
+<details><summary>Verdict de la porte (gate --out)</summary>
+
+**E2E : ROUGE** — 6 motif(s) de blocage.
+
+**Bloquant** (6) :
+
+- [angular] parité MissingRequired : E2E-SEARCH-004 (« Un nom de patient tapé sans accent ni majuscule trouve ses messages, puis les messages partiels ») est requis pour angular mais absent de sa suite, ou non joué.
+- [angular] parité MissingRequired : E2E-SEARCH-005 (« Un mot absent de la boîte affiche « Aucun résultat » ») est requis pour angular mais absent de sa suite, ou non joué.
+- [angular] parité MissingRequired : E2E-SEARCH-006 (« Plus de résultats qu'une page — « Voir plus » affiche la suite, jusqu'au dernier ») est requis pour angular mais absent de sa suite, ou non joué.
+- [angular] parité MissingRequired : E2E-SEARCH-007 (« Une recherche en échec affiche un message, et l'ancienne liste n'est plus affichée ») est requis pour angular mais absent de sa suite, ou non joué.
+- [angular] parité MissingRequired : E2E-SEARCH-009 (« Fermer la recherche rend le dossier à la même position ; retirer une étiquette relance sans elle ») est requis pour angular mais absent de sa suite, ou non joué.
+- [angular] parité MissingRequired : E2E-SEARCH-008 (« Restreindre la recherche à un patient et à ses biologies anormales ») est requis pour angular mais absent de sa suite, ou non joué.
+
+**Flaky (vert au second essai, non bloquant)** (2) :
+
+- [angular] « recherche — composer ses critères puis lancer la recherche » (E2E-SEARCH-001)
+- [angular] « temps réel — un compte rendu arrive, notifié et affiché sans rechargement » (E2E-LIVE-001)
+
+**En quarantaine (posée par l'humain, non bloquant)** (1) :
+
+- [angular] « rédaction — corriger l’orthographe, appliquer, envoyer : le texte corrigé arrive, la citation intacte » (E2E-COMPOSE-002) — Passed — correction : task-350
+
+### Matrice de parité
+
+| Scénario | v | Mode | Titre | angular | mobile |
+|---|---|---|---|---|---|
+| E2E-INBOX-001 | 1 | headless | Filtrer la boîte de réception, basculer liste / conversation, ouvrir la recherche | ✅ | ✅ |
+| E2E-FOLDER-001 | 1 | headless | Naviguer vers les dossiers Archive et Corbeille | ✅ | ✅ |
+| E2E-PATIENT-001 | 1 | headless | Afficher la vue patients | ✅ | ✅ |
+| E2E-PATIENT-002 | 2 | headless | Rattacher à la main un document sans INS à un patient choisi par recherche, puis le détacher | ✅ | ✅ |
+| E2E-PATIENT-003 | 1 | headless | La fiche d'un patient ne montre pas les documents d'un autre patient du même mail | ✅ | ✅ |
+| E2E-PATIENT-004 | 1 | headless | La vue « Mails du patient » reste ouverte et ses pages viennent du serveur | ✅ | — |
+| E2E-CONTACT-001 | 2 | humain | Rechercher dans le carnet et interroger l'annuaire national | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-SETTINGS-001 | 1 | headless | Changer le filtre par défaut et le retrouver après rechargement | ✅ | ✅ |
+| E2E-MAIL-001 | 1 | headless | Marquer un message lu puis non lu | ✅ | ✅ |
+| E2E-MAIL-002 | 1 | headless | Tout sélectionner et marquer lu en masse | ✅ | ✅ |
+| E2E-DETAIL-001 | 3 | headless | Répondre et transférer depuis la lecture d'un message | ✅ | ✅ |
+| E2E-COMPOSE-001 | 1 | headless | Envoyer un message, le recevoir, le lire, le supprimer | ✅ | ✅ |
+| E2E-COMPOSE-002 | 1 | headless | Faire corriger l'orthographe de son texte, appliquer la correction, puis envoyer | ✅ | ✅ |
+| E2E-COMPOSE-003 | 1 | headless | Un envoi refusé par la messagerie laisse le brouillon intact et peut être renvoyé | ✅ | ✅ |
+| E2E-COMPOSE-004 | 1 | headless | Écrire à l'adresse choisie d'un contact à plusieurs adresses, ou à son adresse par défaut | ✅ | ✅ |
+| E2E-COMPOSE-005 | 1 | headless | Une remise incertaine n'est jamais présentée comme un échec à renvoyer | ✅ | ✅ |
+| E2E-MAIL-003 | 1 | headless | Signaler puis ne plus signaler un message | ✅ | ✅ |
+| E2E-MAIL-004 | 1 | headless | Déplacer un message vers Archive puis le ramener | ✅ | ✅ |
+| E2E-MAIL-005 | 1 | headless | Un message supprimé depuis un autre logiciel quitte la liste et ne s'ouvre jamais vide | ✅ | ✅ |
+| E2E-MAIL-006 | 1 | headless | Glisser sur la Corbeille un message d'un fil supprime ce message, et lui seul | ✅ | — |
+| E2E-DRAFT-001 | 1 | headless | Créer un brouillon, le reprendre, le supprimer | ✅ | ✅ |
+| E2E-DRAFT-002 | 1 | headless | Envoyer un message à pièce jointe après l'enregistrement automatique du brouillon | ✅ | ✅ |
+| E2E-DRAFT-003 | 1 | headless | Quitter une rédaction récente ne perd rien | ✅ | ✅ |
+| E2E-DRAFT-004 | 1 | headless | Une rédaction sans texte dans le corps ne laisse ni brouillon ni question | ✅ | ✅ |
+| E2E-BIO-001 | 2 | headless | Acquitter un compte rendu de biologie, à son nom | ✅ | ✅ |
+| E2E-BIO-002 | 1 | headless | La puce « Bio à acquitter » montre tous les résultats en attente, sur toutes les pages | ✅ | ✅ |
+| E2E-BIO-003 | 1 | headless | Lire un résultat HPRIM puis l'acquitter | ✅ | ✅ |
+| E2E-BIO-004 | 1 | headless | Un compte rendu acquitté puis déplacé depuis un autre client garde son acquittement | ✅ | ✅ |
+| E2E-DASH-001 | 1 | headless | Afficher les widgets du tableau de bord | ✅ | ✅ |
+| E2E-DETAIL-002 | 1 | headless | Basculer entre texte brut et HTML à la lecture | ✅ | ✅ |
+| E2E-DETAIL-003 | 1 | headless | Répondre à tous depuis la lecture d'un message | ✅ | ✅ |
+| E2E-DETAIL-004 | 1 | headless | Lire un message avec le panneau d'actions, le masquer puis le retrouver au message suivant | ✅ | — |
+| E2E-DETAIL-005 | 1 | headless | Passer rapidement d'un mail à l'autre n'affiche jamais le contenu du précédent | ✅ | ✅ |
+| E2E-SETTINGS-002 | 1 | headless | Changer la vue par défaut et la retrouver après rechargement | ✅ | ✅ |
+| E2E-SETTINGS-003 | 1 | headless | Lire la version du serveur de messagerie dans les Paramètres | ✅ | ✅ |
+| E2E-SETTINGS-004 | 1 | headless | Paramètres indisponibles : rien n'est écrasé | ✅ | — |
+| E2E-SEARCH-001 | 2 | headless | Composer ses critères puis lancer la recherche | ⚠️ flaky | ✅ (v1) · divergence (task-450) |
+| E2E-SEARCH-002 | 1 | headless | Un mot rare et accentué trouve le message qui le contient | ✅ | ✅ |
+| E2E-SEARCH-003 | 1 | headless | Un numéro de dossier trouve son message, et un seul | ✅ | ✅ |
+| E2E-SEARCH-004 | 1 | headless | Un nom de patient tapé sans accent ni majuscule trouve ses messages, puis les messages partiels | ⛔ non joué | ⛔ non joué · divergence (task-450) |
+| E2E-SEARCH-005 | 1 | headless | Un mot absent de la boîte affiche « Aucun résultat » | ⛔ non joué | ⛔ non joué · divergence (task-450) |
+| E2E-SEARCH-006 | 1 | headless | Plus de résultats qu'une page — « Voir plus » affiche la suite, jusqu'au dernier | ⛔ non joué | ⛔ non joué · divergence (task-450) |
+| E2E-SEARCH-007 | 1 | headless | Une recherche en échec affiche un message, et l'ancienne liste n'est plus affichée | ⛔ non joué | ⛔ non joué · divergence (task-450) |
+| E2E-SEARCH-009 | 1 | headless | Fermer la recherche rend le dossier à la même position ; retirer une étiquette relance sans elle | ⛔ non joué | ⛔ non joué · divergence (task-450) |
+| E2E-SEARCH-008 | 1 | headless | Restreindre la recherche à un patient et à ses biologies anormales | ⛔ non joué | ⛔ non joué · divergence (task-451) |
+| E2E-ATTACH-001 | 1 | headless | Voir les pièces jointes d'un message | ✅ | ✅ |
+| E2E-CONTACT-002 | 2 | headless | Créer un contact à deux adresses, le modifier sans les perdre, puis le supprimer | ✅ | ✅ |
+| E2E-SIGNATURE-001 | 1 | headless | Créer puis supprimer une signature | ✅ | ✅ |
+| E2E-CONTACT-003 | 1 | headless | Créer puis supprimer un groupe de contacts | ✅ | ✅ |
+| E2E-CONTACT-004 | 1 | headless | Consulter un contact depuis le carnet et lui écrire | ✅ | ✅ |
+| E2E-CONTACT-005 | 1 | headless | Une fiche modifiée ne se perd pas sans confirmation, une adresse mal formée est refusée | ✅ | ✅ |
+| E2E-FOLDER-002 | 1 | headless | Créer puis supprimer un dossier | ✅ | ✅ |
+| E2E-FOLDER-003 | 1 | headless | Ouvrir un dossier supprimé depuis un autre logiciel | ✅ | ✅ |
+| E2E-FOLDER-004 | 1 | headless | Actualiser la liste des dossiers après un changement fait dans un autre logiciel | ✅ | ✅ |
+| E2E-AUTH-001 | 1 | humain | Rester connecté quand le jeton d'accès expire | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-AUTH-002 | 1 | humain | Se déconnecter | 👤 non joué (humain) | 👤 non joué (humain) |
+| E2E-LIVE-001 | 1 | headless | Recevoir un nouveau message en temps réel, sans recharger | ⚠️ flaky | ✅ |
+| E2E-AI-001 | 1 | headless | Interroger l'assistant sur des messages sélectionnés et poser des questions de suite | ✅ | ✅ |
+| E2E-WEDA-001 | 2 | headless | Dans Weda, la messagerie s'ouvre sur la boîte que Weda désigne | ✅ | — |
+| E2E-WEDA-002 | 2 | headless | Voir le dossier Weda du patient d'un document reçu, l'ouvrir, puis importer des documents dans un dossier | ✅ | — |
+| E2E-WEDA-003 | 2 | headless | Envoyer un document du dossier patient Weda par la nouvelle messagerie | ✅ | — |
+| E2E-RECEIPT-001 | 1 | headless | Demander un accusé de lecture à l'envoi | ✅ | ✅ |
+| E2E-RECEIPT-002 | 1 | headless | Envoyer l'accusé de lecture d'un message reçu, une seule fois | ✅ | ✅ |
+| E2E-RECEIPT-003 | 1 | headless | Refuser l'accusé de lecture d'un message reçu | ✅ | ✅ |
+| E2E-SECURITY-001 | 1 | headless | Un contenu reçu piégé ne s'exécute pas | ✅ | ✅ |
+| E2E-MAILBOX-001 | 1 | headless | Changer de messagerie depuis l'écran mail | ✅ | ✅ |
+| E2E-MAILBOX-002 | 1 | headless | api-mail indisponible à l'entrée — écran de panne puis réessai | ✅ | ✅ |
+| E2E-MAILBOX-003 | 2 | headless | Rattacher ses boîtes depuis « Mes boîtes » en un geste — titulaire et membre | ✅ | ✅ |
+| E2E-MAILBOX-006 | 1 | headless | Après le rattachement, l'identité d'expéditeur et la signature sont déjà là | ✅ | ✅ |
+| E2E-MAILBOX-004 | 1 | headless | Ajouter une BAL déléguée par saisie — et refus de sa propre adresse | ✅ | ✅ |
+| E2E-MAILBOX-005 | 1 | headless | Le délégataire refusé par l'opérateur perd l'accès, en ligne puis hors ligne ; le titulaire garde le sien | ✅ | ✅ |
+| E2E-AUDIT-001 | 1 | headless | Le titulaire lit au journal le message supprimé par son délégataire, au nom du délégataire | ✅ | — |
+| E2E-AUDIT-002 | 1 | headless | Le journal d'audit montre chaque action sur un mail | ✅ | — |
+| E2E-SHARED-001 | 1 | headless | Une boîte partagée, une base — le patient rattaché par le titulaire est vu du délégataire, la signature reste à chacun | ✅ | ✅ |
+| E2E-SHARED-002 | 1 | headless | Le délégataire écrit pour le compte du titulaire — le destinataire voit qui a écrit, sa réponse revient à la boîte | ✅ | ✅ |
+| E2E-SESSION-001 | 1 | headless | Naviguer dans Weda ne multiplie pas les sessions de messagerie | ✅ | — |
+| E2E-SESSION-002 | 2 | headless | Quitter weda2 autonome ne ferme pas la session partagée | ✅ | — |
+| E2E-SESSION-003 | 2 | headless | La session fermée par Weda fait quitter weda2 | ✅ | — |
+| E2E-SESSION-004 | 1 | headless | Sur un appareil partagé, la personne suivante n'arrive jamais dans la boîte de la précédente | ✅ | ✅ |
+| E2E-AI-002 | 1 | headless | Un délégataire interroge l'assistant dans la boîte qu'il a ouverte | ✅ | ✅ |
+| E2E-MAILBOX-007 | 1 | headless | Après un changement de boîte, l'onglet Patients ne montre plus rien de la précédente | ✅ | ✅ |
+| E2E-ERROR-001 | 1 | headless | Une erreur affiche un code et une référence à transmettre au support | ✅ | ✅ |
+
+**Divergences temporaires ouvertes** (7) :
+
+- E2E-SEARCH-001 [mobile] — le mobile adopte le formulaire à un seul niveau avec la refonte mobile de la recherche — résorbée par task-450
+- E2E-SEARCH-004 [mobile] — le mobile adopte le mode résultats avec la refonte mobile de la recherche — résorbée par task-450
+- E2E-SEARCH-005 [mobile] — le mobile adopte le mode résultats avec la refonte mobile de la recherche — résorbée par task-450
+- E2E-SEARCH-006 [mobile] — le mobile adopte le mode résultats avec la refonte mobile de la recherche — résorbée par task-450
+- E2E-SEARCH-007 [mobile] — le mobile adopte le mode résultats avec la refonte mobile de la recherche — résorbée par task-450
+- E2E-SEARCH-009 [mobile] — le mobile adopte le mode résultats avec la refonte mobile de la recherche — résorbée par task-450
+- E2E-SEARCH-008 [mobile] — les critères médicaux arrivent sur le mobile avec la refonte mobile — résorbée par task-451
+
+**Parité : ROUGE** — 6 écart(s) :
+
+- `MissingRequired` [angular] E2E-SEARCH-004 (« Un nom de patient tapé sans accent ni majuscule trouve ses messages, puis les messages partiels ») est requis pour angular mais absent de sa suite, ou non joué.
+- `MissingRequired` [angular] E2E-SEARCH-005 (« Un mot absent de la boîte affiche « Aucun résultat » ») est requis pour angular mais absent de sa suite, ou non joué.
+- `MissingRequired` [angular] E2E-SEARCH-006 (« Plus de résultats qu'une page — « Voir plus » affiche la suite, jusqu'au dernier ») est requis pour angular mais absent de sa suite, ou non joué.
+- `MissingRequired` [angular] E2E-SEARCH-007 (« Une recherche en échec affiche un message, et l'ancienne liste n'est plus affichée ») est requis pour angular mais absent de sa suite, ou non joué.
+- `MissingRequired` [angular] E2E-SEARCH-009 (« Fermer la recherche rend le dossier à la même position ; retirer une étiquette relance sans elle ») est requis pour angular mais absent de sa suite, ou non joué.
+- `MissingRequired` [angular] E2E-SEARCH-008 (« Restreindre la recherche à un patient et à ses biologies anormales ») est requis pour angular mais absent de sa suite, ou non joué.
+
+</details>
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-453 --sync` — ne pas éditer à la main)*
@@ -330,6 +481,7 @@ métriques projet inclut les tasks mergées depuis, pas seulement task-453.
 | /sonar | ok | 29 min 53 s | 3 (1 min 38 s) | 11 (17 min 27 s) | 4 (5 min 30 s) | 2 itération(s), api-mail 3B/11T, S3776 corrigée, aucune issue imputable |
 | /lint-angular | ok | 7 min 08 s | 1 (47 s) | 1 (2 min 05 s) | — | 1 itération(s), client-angular 1B/1T, 0 erreur sur les fichiers de la task |
 | /lint-mobile | skipped | 14 s | — | — | — | diff e2e uniquement, hors portée de ng lint |
-| **Total cycle** | | **2 h 39 min** | **25 (6 min 20 s)** | **31 (39 min 07 s)** | **4 (5 min 30 s)** | |
+| /e2e | failed | 26 min 40 s | — | — | — | e2e ×3 (24 min 11 s), parité angular : E2E-SEARCH-004..009 (tests de task-445 non commités, perdus) |
+| **Total cycle** | | **3 h 06 min** | **25 (6 min 20 s)** | **31 (39 min 07 s)** | **4 (5 min 30 s)** | |
 
 Autres commandes mesurées : lint ×3 (1 min 41 s), nuget-wait ×1 (24 s), restore ×3 (2 min 15 s)
