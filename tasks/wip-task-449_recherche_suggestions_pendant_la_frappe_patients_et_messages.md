@@ -1,6 +1,7 @@
 # todo-task-449.md — Recherche : suggestions pendant la frappe, patients et messages
 
 **Repos**: api-mail, dtos-mss, client-angular
+**Reprises**: 1
 **Dependencies**: done-task-442 (formulaire), done-task-446 (patients trouvés, vue « Mails du patient » depuis les
 résultats)
 **Epic**: E023
@@ -486,6 +487,36 @@ vérifié : ports libres, aucun conteneur e2e résiduel. Flaky E2E-COMPOSE-001 c
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
 
+## Code Review Summary
+
+### Passage 1 (2026-11-12) — CHANGES REQUESTED
+
+Revue indépendante. Validation : api-mail build 0 erreur, domain 221, infrastructure 749, application 4 274, api 1 380,
+integration 1 301 (17 ignorés), 0 échec ; dtos-mss build vert. Build et tests verts, Sonar QG OK, `/e2e` vert, règle 1b tenue (17 mutations). Un bloquant, dans
+la barre de weda2. Détail : `questions/task-449.md`.
+
+#### À corriger par la reprise
+
+- **B1** — après Échap (ou un clic ailleurs), Entrée choisit encore la suggestion désignée : la vue « Mails du patient »
+  d'un patient que le médecin n'a pas choisi s'ouvre, et la consultation est tracée. Flèches et Entrée-sur-désignation
+  seulement liste ouverte ; `closeDropdown()` remet la désignation à -1.
+- **S2** — la réponse précédente reste affichée (et désignable) pendant la pause de frappe et la requête.
+- **S3** — `distinctUntilChanged` après le debounce peut laisser la liste vide (`ab`, retour, `b` en < 250 ms).
+- **S8** — saisie des suggestions non bornée (un `LIKE` par mot sur chaque ligne).
+- **S9** — recherche exacte : une expression rare de mots fréquents peut faire vérifier 25 000 messages ; plafonner les
+  candidats vérifiés, réponse tronquée au plafond.
+- **S10** — `SearchHistoryOwner` retombe sur la clé partagée de la boîte quand la personne est inconnue.
+- **S12** — saisie de ponctuation seule → les 5 dernières recherches ; Redis indisponible fait échouer toute la réponse.
+
+#### Arbitrage humain
+
+- **S11** — « Effacer » l'historique a disparu avec le composant d'historique du formulaire (`DELETE /search/history`
+  sans appelant). Recommandation forge : un « Effacer » dans la catégorie « Recherches récentes ».
+- **S4 / S5** — critères tapés (`à :` sur l'adresse seule, accents comptés) ≠ suggestions (nom et adresse, accents
+  ignorés). Recommandation forge : aligner les critères sur `search_normalize` (nom et adresse).
+- **S6 / S7** — un préfixe remplace un critère déjà posé ; `de : martin "compte rendu"` prend toute la fin.
+  Recommandation forge : couper le critère au premier guillemet fermé, et combiner avec un critère déjà posé.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-449 --sync` — ne pas éditer à la main)*
@@ -498,6 +529,7 @@ vérifié : ports libres, aucun conteneur e2e résiduel. Flaky E2E-COMPOSE-001 c
 | /lint-angular | ok | 18 s | — | — | — | 0 erreur |
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 31 min 26 s | — | — | — | e2e ×7 (1 h 00 min), mobile 61, angular 82 (2 flaky), parité verte |
-| **Total cycle** | | **1 h 59 min** | **4 (48 s)** | **7 (15 min 09 s)** | **2 (48 s)** | |
+| /review | changes | 1 h 07 min | 2 (13 s) | 1 (1 h 06 min) | — | api-mail 1B/1T, dtos-mss 1B/0T, CHANGES REQUESTED (B1), reprise 1 |
+| **Total cycle** | | **3 h 06 min** | **6 (1 min 02 s)** | **8 (1 h 21 min)** | **2 (48 s)** | |
 
 Autres commandes mesurées : lint ×1 (11 s), nuget-wait ×1 (24 s), restore ×1 (3.7 s)
