@@ -719,3 +719,36 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   mutation `[innerHTML]` (N7).
 - **Origine** : task-446 (/develop, prévention demandée par la DOD)
 - **Occurrences** : 1 (préventif)
+
+### suggestions-de-saisie-choisies-visibles — Une suggestion ne se choisit que visible, et pour le texte qui l'a demandée
+- **Règle** : convention projet (identito-vigilance, traçabilité) ; invisible au lint.
+- **Repos** : client-angular, client-mobile
+- **Piège** (revue de task-449, CHANGES REQUESTED) : la barre de recherche désignait une suggestion au clavier ;
+  Échap fermait la liste sans effacer la désignation, et Entrée — pour lancer une recherche ordinaire — **ouvrait le
+  patient désigné**, consultation tracée au journal. Même famille : pendant la pause de frappe, la réponse du texte
+  précédent restait affichée et désignable (`bern` pendant qu'on tape `bernx`).
+- **Consigne** :
+  - **une seule règle, portée par l'état des suggestions** (3ᵉ revue de task-449) : liste **fermée** = aucune
+    demande au serveur (une réponse qui nomme un patient est tracée), rien d'affiché, rien de désigné, rien de
+    choisissable ; tous les chemins de fermeture passent par la même méthode. Les correctifs chemin par chemin (Échap,
+    champs du formulaire, retour d'un mail) ont produit un défaut nouveau à chaque revue ;
+  - seul un **clic principal sans touche de modification** choisit, **au `click`** (le `mousedown` ne fait que
+    `preventDefault()` pour garder le focus de la barre) : un clic droit ou molette n'ouvre rien, un Ctrl+clic ou Cmd+clic
+    sur macOS (menu contextuel, `button === 0` avec `ctrlKey`) non plus, et appuyer puis glisser hors de l'entrée renonce
+    (4ᵉ revue de task-449, B2 — le seul filtre `button !== 0` au `mousedown` laissait passer les deux) ;
+  - flèches et Entrée-sur-désignation n'agissent que **liste ouverte** ; fermer la liste (Échap, clic ailleurs, choix)
+    remet la désignation à « aucune » ;
+  - une réponse asynchrone porte le **texte qui l'a demandée**, et ne s'affiche (ni ne se désigne) que si c'est encore
+    le texte de la barre ;
+  - les **autres champs** d'un formulaire qui héberge la liste ont leur propre gestionnaire de touches (Entrée =
+    lancer) : ils ne choisissent jamais la suggestion de la barre (2ᵉ revue de task-449, B2) ;
+  - tout chemin qui **remet** le texte de la barre (Échap, « Fermer la recherche », rejeu) remet les suggestions au
+    même texte (B3) ;
+  - pas de `distinctUntilChanged` après un `debounceTime` quand la réponse est effacée de façon synchrone : le même
+    texte retapé ne redemanderait rien ;
+  - le test joue la séquence du médecin (↓, Échap, Entrée ; taper, retaper) et affirme qu'**aucun** choix n'a eu lieu
+    (ni navigation ni recherche lancée).
+- **Preuve** : `mail-search.suggestions.spec.ts` (« après Échap… », « pendant la frappe… », « retaper le même
+  texte… »), rouges sur le code d'avant.
+- **Origine** : task-449 (/review, B1, S2, S3 ; 2ᵉ revue B2, B3 ; 3ᵉ revue B4, B5)
+- **Occurrences** : 3

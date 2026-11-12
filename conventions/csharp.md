@@ -78,7 +78,7 @@ identifiants en constante **avant** de dupliquer. Vaut pour tout secret de banc
 
 ## CA1861 — pas de tableau littéral en argument d'appel
 
-**Occurrences : 6** (task-422 — `new[] { "Urgent", "Important", "Très urgent" }` attendu d'un `Assert.Contains` dans `FakeOpenAiTests`, test du faux fournisseur d'IA du banc écrit hors chaîne, donc sans lecture de ce fichier : hissé en `static readonly string[]` ; task-389 — `new[] { … }` et `[ … ]` passés à `Concat` dans un générateur d'exemples de test (`HprimSamples.Html`) : la consigne vaut aussi pour les données de test, deux champs `static readonly` ; task-203, task-273 — récidive sur code frais : tableaux
+**Occurrences : 7** (task-449 — `new[] { "bern", "cath" }` dans un `Arg.Is(… SequenceEqual(…))` d'un test NSubstitute : un prédicat d'argument est appelé à chaque appel, la consigne vaut aussi là ; task-422 — `new[] { "Urgent", "Important", "Très urgent" }` attendu d'un `Assert.Contains` dans `FakeOpenAiTests`, test du faux fournisseur d'IA du banc écrit hors chaîne, donc sans lecture de ce fichier : hissé en `static readonly string[]` ; task-389 — `new[] { … }` et `[ … ]` passés à `Concat` dans un générateur d'exemples de test (`HprimSamples.Html`) : la consigne vaut aussi pour les données de test, deux champs `static readonly` ; task-203, task-273 — récidive sur code frais : tableaux
 attendus d'un `Assert.Equal` dans un test de sollicitations ; la consigne vaut
 aussi pour les attendus de test ; task-334 — `l.SequenceEqual(new[] { 2u })` dans un
 `Arg.Is` NSubstitute, réécrit en `l.Count == 1 && l[0] == 2u` ; task-385 — `new float[] { 0.1f, 0.2f }` passé à `new Embedding<float>(…)` dans un faux
@@ -779,7 +779,7 @@ l'issue FALSE-POSITIVE avec ce motif, comme toutes les exceptions voisines de
 
 ## S3776 — un `try/catch` ajouté à une méthode déjà chargée la fait déborder
 
-**Occurrences : 7** (task-453 — `DocumentWorkStateRelinker.RelinkAsync` : chargement des orphelins puis, dans la boucle par identité, un `if/else` et un `if` imbriqué (re-liaison ou refus, rattachement à ré-appliquer), complexité 16. Le traitement d'une identité est extrait en `RelinkKeyAsync`, à retour anticipé. Même consigne : une boucle dont le corps décide entre deux issues sort ce corps dans une méthode dès l'écriture ; task-409 — `UserContextEnricherMiddleware.ApplyMailboxSelectionAsync` : un appel de plus (le préremplissage) dans le bloc « rattachement retenu », déjà enrichi par task-405, a porté la complexité à 18 ; le bloc est extrait en `ApplyAttachmentAsync`. Même consigne : une méthode d'aiguillage qui reçoit une étape de plus se factorise avant ; task-400 — ×3 : `PostgresAuditReader.ApplySort`, un ternaire `isAsc ? OrderBy : OrderByDescending` par colonne triable, porté à 19 par deux colonnes de plus, résolu par un assistant `By<TKey>` ; `ApplyFilters`, deux filtres de plus sur une méthode déjà pleine, extraits en `ApplyContentFilters` ; `TestBypassAuthenticationHandler.HandleAuthenticateAsync`, un en-tête facultatif de plus, les trois extraits en `AddClaimFromHeader`. Consigne étendue : une méthode faite d'un `switch` ou d'une suite de `if` facultatifs déborde à l'ajout d'un cas — factoriser le cas avant de l'ajouter ; task-386 — `AnnuaireSanteService.ValidateSearchCriteria` : une garde de plus (séparateurs FHIR refusés) en tête d'une méthode de validation déjà à 15 ; extraite en `EnsureNoReservedCharacters` ; task-330 — `DraftService.SendDraftAsync`, complexité cognitive 16)
+**Occurrences : 8** (task-449 — `SemanticSearchRepository.ApplyFieldFilters` : la reprise 3 a ajouté un `||` (nom **ou** adresse) aux filtres « De » et « À » d'une suite de `if` facultatifs déjà à 15, complexité 17. Les critères tapés (De / À / Objet) sont extraits en `ApplyTypedTextFilters`. Même consigne que task-400 : une suite de `if` facultatifs se factorise **avant** d'en enrichir un cas ; task-453 — `DocumentWorkStateRelinker.RelinkAsync` : chargement des orphelins puis, dans la boucle par identité, un `if/else` et un `if` imbriqué (re-liaison ou refus, rattachement à ré-appliquer), complexité 16. Le traitement d'une identité est extrait en `RelinkKeyAsync`, à retour anticipé. Même consigne : une boucle dont le corps décide entre deux issues sort ce corps dans une méthode dès l'écriture ; task-409 — `UserContextEnricherMiddleware.ApplyMailboxSelectionAsync` : un appel de plus (le préremplissage) dans le bloc « rattachement retenu », déjà enrichi par task-405, a porté la complexité à 18 ; le bloc est extrait en `ApplyAttachmentAsync`. Même consigne : une méthode d'aiguillage qui reçoit une étape de plus se factorise avant ; task-400 — ×3 : `PostgresAuditReader.ApplySort`, un ternaire `isAsc ? OrderBy : OrderByDescending` par colonne triable, porté à 19 par deux colonnes de plus, résolu par un assistant `By<TKey>` ; `ApplyFilters`, deux filtres de plus sur une méthode déjà pleine, extraits en `ApplyContentFilters` ; `TestBypassAuthenticationHandler.HandleAuthenticateAsync`, un en-tête facultatif de plus, les trois extraits en `AddClaimFromHeader`. Consigne étendue : une méthode faite d'un `switch` ou d'une suite de `if` facultatifs déborde à l'ajout d'un cas — factoriser le cas avant de l'ajouter ; task-386 — `AnnuaireSanteService.ValidateSearchCriteria` : une garde de plus (séparateurs FHIR refusés) en tête d'une méthode de validation déjà à 15 ; extraite en `EnsureNoReservedCharacters` ; task-330 — `DraftService.SendDraftAsync`, complexité cognitive 16)
 
 La méthode tenait sous le seuil. Le changement de contrat de `SmtpService` (il lève là où il
 rendait un `Result`) a demandé trois `catch` autour de l'appel SMTP. Chacun compte, imbriqué dans
@@ -2337,6 +2337,13 @@ oublié, mot de l'objet, historique ancien d'un patient), et aucun test n'avait 
 - Un champ cherché « comme un médecin » (accents, casse) se lit à travers **une seule** fonction normalisée, immuable,
   partagée par la colonne générée, l'index et la requête (`search_normalize`), et son jumeau C# (`SearchTerms.Normalize`).
   Ne jamais refaire la normalisation à la main, terme par terme, dans le `WHERE`.
+- Un **motif tapé** comparé à une colonne passée par `search_normalize` se normalise **par la même fonction SQL**
+  (`Like(SearchNormalize(colonne), SearchNormalize(motif))`), pas par le jumeau C#. Le jumeau n'est fidèle que sur les
+  lettres : `unaccent` réécrit aussi la ponctuation typographique (`’` → `'`, `«` → `<<`, `–` → `-`, `½` → `1/2`), que
+  `SearchTerms.Normalize` laisse telle quelle. La recherche plein texte et les suggestions découpent sur la ponctuation et
+  ne le voient pas ; un critère tapé (« Objet » : « Compte rendu d’échographie », apostrophe courbe d'Outlook) ne trouve
+  plus rien (4ᵉ revue de task-449, B1). Si le jumeau C# reste nécessaire, un test d'intégration compare les deux sur
+  `’ « » – ½ œ`.
 
 **Preuve** : task-439, `SearchExactFirstHybridIntegrationTests.Hybrid_PatientWithMoreThan200Mails_…` (230 messages
 anciens sous 460 homonymes partiels récents, tous trouvés page par page) et
@@ -2464,6 +2471,11 @@ Le second piège est l'INS : elle est tentante comme champ de réponse (« pour 
 
 **Origine** : task-444. **Occurrences** : 1
 
+- **Exception décidée par l'humain (task-449)** : une **suggestion de saisie** complète un **début de mot** du nom
+  ou du prénom (`bern` propose BERNARD), jamais une approximation (`bernart` ne propose personne). Elle ne désigne
+  personne : le médecin **choisit** dans une liste qui montre date de naissance, sexe et « INS qualifiée »
+  (`SemanticSearchRepository.SuggestPatientsAsync`). Une saisie de forme INS ne propose aucun patient.
+
 ---
 
 ## action-groupee-tracee-par-objet — une action groupée trace chaque objet touché au nom de son auteur, et nomme chacun de ses échecs
@@ -2551,3 +2563,28 @@ UIDVALIDITY, corbeille, délégataire ; patient manuel perdu) ; mutations M1 (re
 d'ambiguïté), M3 (ancrage du rattachement manuel), M4 (clé SQL), M5 (re-liaison à la purge), toutes rouges.
 
 **Origine** : task-453. **Occurrences** : 1
+
+---
+
+## route-identite-patient-jamais-exemptee — une route qui rend une identité de patient n'est jamais `TraceExempt`
+
+**Règle** : convention projet (traçabilité PGSSI-S, règle 14), invisible au lint et à Sonar ; le test d'architecture
+`EveryControllerActionIsTracedTests` exige une marque, pas la bonne.
+
+**Piège** (task-449) : `GET /search/suggestions` était `TraceExempt` (« suggestions de saisie, sans résultat de
+recherche ») parce qu'elle rendait une liste figée de termes médicaux. En proposant les patients de la boîte pendant la
+frappe, la même route révèle des identités : l'exemption, posée pour l'ancienne réponse, en aurait caché la lecture.
+Une raison d'exemption décrit la réponse **du jour** ; elle ne suit pas l'évolution de la route.
+
+**Consigne** :
+- Une action qui peut rendre un patient (nom, prénom, date de naissance) porte `[Audited]` ou `[TracedInCode]`,
+  jamais `[TraceExempt]`. Quand seule une partie des réponses en rend (suggestions), le service trace ces réponses-là
+  (`[TracedInCode]`), au nom de la personne, avec **combien** de patients — jamais les lettres tapées ni les noms.
+- Une task qui change la réponse d'une route `TraceExempt` relit la raison de l'exemption.
+- Le test d'intégration lit la trace dans le canal du vrai `AuditService` : présente quand un patient est rendu,
+  absente sinon, sans le texte tapé.
+
+**Preuve** : task-449, `SearchSuggestionsIntegrationTests.AnAnswerNamingAPatient_IsTraced…` ; mutations S5 (trace
+retirée) et S6 (trace sans patient), rouges.
+
+**Origine** : task-449. **Occurrences** : 1
