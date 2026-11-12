@@ -69,6 +69,10 @@ if [ -n "$cwd" ]; then
   fi
 fi
 
+# Anti-veille (Tools/keepawake, best-effort, silencieux) : une commande lourde
+# prolonge le bail — une suite e2e de 2 h ne doit pas finir sur un poste endormi.
+bash "$SELF_DIR/../keepawake/keep-awake.sh" ensure >/dev/null 2>&1 || true
+
 t0=$(now_ms)
 "$@"
 rc=$?

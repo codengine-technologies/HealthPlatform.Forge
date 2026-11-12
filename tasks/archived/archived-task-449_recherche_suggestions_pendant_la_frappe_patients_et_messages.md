@@ -1,5 +1,10 @@
 # todo-task-449.md — Recherche : suggestions pendant la frappe, patients et messages
 
+> ⛔ **Abandonnée par l'humain le 2026-11-12** — le résultat n'a pas convaincu. PRs api-mail #367 et dtos-mss #65 fermées
+> sans merge ; branches `feat/task-449-…` supprimées (derniers commits : api-mail `3f81df39`, dtos-mss `bb45953`) ; code
+> weda2 jamais commité, retiré de l'arbre par l'humain. **Rien n'est livré.** Archivée sans passer par `/merge`.
+> Constats de la relecture finale (bugs, ergonomie, performances) : conversation du 2026-11-12.
+
 **Repos**: api-mail, dtos-mss, client-angular
 **Reprises**: 7
 **Dependencies**: done-task-442 (formulaire), done-task-446 (patients trouvés, vue « Mails du patient » depuis les

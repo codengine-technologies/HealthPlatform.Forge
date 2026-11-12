@@ -9,7 +9,7 @@ For each `tasks/todo-task-*.md` (lowest task-id first), run the full
 autonomous chain :
 
 ```
-/start {task-id}    → /develop {task-id}    → /sonar {task-id}    → /lint-angular {task-id}    → /lint-mobile {task-id}    → /e2e {task-id}    → /review {task-id}    → /tech-writer E{NNN}
+/start {task-id}    → /develop {task-id}    → /review {task-id} --code    → /sonar {task-id}    → /lint-angular {task-id}    → /lint-mobile {task-id}    → /e2e {task-id}    → /review {task-id}    → /tech-writer E{NNN}
 ```
 
 `/develop` now carries the `/simplify` quality pass itself (reuse /
@@ -52,7 +52,7 @@ Tools/timing/report.sh --last {N}    # une ligne par task du run
 Tools/timing/report.sh --by-kind     # combien de builds / tests / scans par task
 ```
 
-Puis, **dernière commande du run**, la notification Telegram de fin de run
+Puis la notification Telegram de fin de run
 (best-effort, sort toujours en 0 — voir « Notifications Telegram » dans `CLAUDE.md`).
 Une ligne par task, **sans aucun contenu de task file ni de question** :
 
@@ -61,6 +61,16 @@ Tools/notify/notify.sh send "📦 Run /forge {run-id} terminé — {n_pr} PR pr�
 task-443 ✅ PR prête
 task-444 🛑 question : questions/task-444.md
 Staging : forge/staging-task-{début}-{fin}-{date}"
+```
+
+Le poste est tenu éveillé pendant tout le run **sans rien à faire de plus** : chaque
+`step.sh` / `measure.sh` arme ou prolonge l'anti-veille (`Tools/keepawake/`, voir
+« Anti-veille » dans `CLAUDE.md`). À la toute fin du run, **après** la notification,
+on la relâche pour que le poste retrouve sa veille normale sans attendre l'expiration
+du bail (3 h) :
+
+```bash
+Tools/keepawake/keep-awake.sh release
 ```
 
 **Le rapport de run n'est jamais silencieux sur le coût** — comme il ne l'est
@@ -111,9 +121,13 @@ feature branches.
 
 ## Per-task halt conditions
 
+A `/review` CHANGES_REQUESTED whose blocking findings are all corrigeable by the
+forge is **not** a failure : `/review` chains `/develop {task-id} --reprise` itself
+(2 reprises at most, CLAUDE.md rule 13) and the task stays in the run.
+
 If any step fails (`/develop` blocker, Sonar tooling failure, `/review`
-CHANGES_REQUESTED, build/test red on `develop` after merge), the chain
-halts for that task :
+CHANGES_REQUESTED that needs a human decision or exceeds the reprise cap,
+build/test red on `develop` after merge), the chain halts for that task :
 
 - A `questions/{task-id}.md` is written by the failing step
 - The task stays in whatever state the failing step left it

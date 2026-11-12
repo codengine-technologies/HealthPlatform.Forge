@@ -123,14 +123,20 @@ For each `tasks/todo-task-*.md` (sorted by task-id, lowest first) :
                                integrated /simplify quality pass per eligible
                                repo (re-validate only if cleanups applied,
                                rollback on RED ; never dtos-mss/interop),
-                               then one push per repo
+                               then one push per repo, green marked
+2b. /review {task-id} --code — revue anticipée (since 2026-11-12) : code review +
+                               rule 1b, no build / test / PR. CHANGES REQUESTED
+                               → /develop --reprise → /review --code (short loop) ;
+                               APPROVED → step 3
 3. /sonar {task-id}          — best-effort 5 iterations on api-mail, accept remaining
                                (skipped cleanly if api-mail not touched)
 4. /lint-angular {task-id}   — best-effort 5 iterations on client-angular, accept remaining
                                (skipped cleanly if client-angular not touched)
 5. /lint-mobile {task-id}    — best-effort 5 iterations on client-mobile, accept remaining
                                (skipped cleanly if client-mobile not touched)
-6. /review {task-id}         — validates, commits, syncs develop, opens PR,
+6. /review {task-id}         — final validation (build + tests skipped where the green
+                               marker holds, review of the diff since the approval),
+                               commits, syncs develop, opens PR,
                                label awaiting-human-merge, rename done-*
 8. /tech-writer E{NNN}       — refresh docs/epics/E{NNN}-{slug}.md
                                (skipped if no **Epic**: declared)
@@ -139,7 +145,10 @@ For each `tasks/todo-task-*.md` (sorted by task-id, lowest first) :
 
 Per-task failure handling : on first failed step, write
 `questions/{task-id}.md`, leave the task in its current state, log the
-failure, and move to the next task in the backlog. A task that failed before
+failure, and move to the next task in the backlog. A `/review` CHANGES REQUESTED
+whose blocking findings are all corrigeable is not a failure : `/review` chains
+`/develop {task-id} --reprise` (2 reprises at most), which comes back to
+`/review --code` (short loop, no Sonar, no e2e) before the cleanup chain runs once. The run report lists each task's reprises. A task that failed before
 `/review` is **not** aggregated into staging.
 
 #### Sub-step 9 — aggregate the validated task into the staging branch

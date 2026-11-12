@@ -38,6 +38,39 @@ packages when DTOs or interop libraries change. You **never merge** on
 
 - The polyrepo described in `CLAUDE.md` (paths, build/test commands, repo type).
 
+- **Mode reprise** (`--reprise`, since 2026-11-12) : the task file also carries
+  `**Reprises**: N` and a `## Code Review Summary` written by `/review`. See the
+  section « Mode reprise » below.
+
+### Mode reprise — corriger ce que la revue a demandé (`/develop {task-id} --reprise`)
+
+Invoked by `/review` itself, never by the human in the autonomous chain (the human
+may still run it by hand). Same pre-flight, same repos, same branches.
+
+1. **Scope** : the list `#### À corriger par la reprise` of the latest pass of the
+   `## Code Review Summary`. Nothing else : no new feature, no clean-up of the DoD.
+   The `#### Arbitrage humain` items are **not** touched — they wait for the human
+   at merge time.
+2. **Each finding is fixed test-first and seen red** exactly like a feature (rule 1b
+   for anything reachable by an endpoint, a component test or an e2e scenario for a
+   doctor's journey) : the test fails on the code before the fix, or by mutation.
+3. **A finding the forge cannot fix after all** (it turns out to need a decision,
+   or the fix contradicts a rule) → stop : write `questions/{task-id}.md` and halt.
+   Never « fix » by changing the requirement.
+4. **Develop log** : append `### Reprise N après /review` to the `## Develop log` —
+   one line per finding (what was wrong, the fix, the test, its red proof).
+5. **Prevention (règle d'or)** : a finding that reveals a recurring trap leaves its
+   consigne in `conventions/*.md`, as for any defect.
+6. **Self-check the fix as a fix** (since 2026-11-12, task-449 : B3 → B4, S4 → B1, S1 → B2 —
+   three reprises created the next blocker) : before handing off, reread the reprise diff
+   asking « what does this break elsewhere ? » — the other call sites of a changed
+   method or field, a regex applied to neighbouring tokens, a shared filter now read
+   differently by another caller. A defect found here is fixed in the same reprise.
+7. **Red e2e journey** : when the finding is a red scenario of `/e2e`, replay that
+   scenario alone first (Step 6b of `.claude/commands/develop.md`) and see it green.
+8. Mark the green (Step 7) and hand off to the **short loop** : `/review {task-id} --code`
+   (no Sonar, no e2e). The cleanup chain runs once, after the code review approves.
+
 ## Outputs
 
 For every repo touched :
@@ -739,7 +772,18 @@ Quand la task crée ou modifie un **parcours médecin** sur `client-mobile` ou `
    vérifie au moins en type-check (`npx tsc --noEmit -p e2e/…/tsconfig.json`), en plus de sa
    preuve par mutation.
 
-### Step 7 — Hand off to the cleanup chain (`/sonar` → `/lint-angular` → `/lint-mobile` → `/e2e` → `/review`)
+### Step 7 — Mark the green, hand off to the early code review (`/review --code`)
+
+> **Since 2026-11-12** (CLAUDE.md, « Revue anticipée et marqueur vert ») : `/develop` no longer
+> hands off to `/sonar`. It hands off to `/review {task-id} --code`, which reviews the fresh
+> diff without build or test, loops with `/develop --reprise` while it requests changes, and
+> runs the cleanup chain below **once**, on approved code. The routing table below is now
+> applied by `/review --code` on APPROVED.
+
+Before handing off, **mark the green** of every repo whose build **and full suite**
+passed on its final state : `python Tools/green/green.py mark --task {task-id} --repo {repo} --by develop`
+(`client-angular` : on its final uncommitted tree). `/review` checks the marker and does
+not replay build + tests on the same code.
 
 Append a `## Develop log` section to the task file with :
 
@@ -761,13 +805,15 @@ Append a `## Develop log` section to the task file with :
   - Rolled back (validation RED) : {repos, if any} — kept as developed
   - Skipped (contract/excluded) : dtos-mss, interop-cda, devops, psc-proxy-*
 - DOD self-check : {N/M items verifiable via command} verified
-- Next step : {/sonar | /lint-angular | /lint-mobile | /e2e} {task-id}
+- Green marked : {repos} (`Tools/green/green.py`)
+- Next step : /review {task-id} --code
 ```
 
 The quality pass has **no separate log section** any more — it is a block of
 the `## Develop log` above (there is no `## Simplify log` since the fusion).
 
-**Hand off unconditionally to the cleanup chain.** It is a **fixed order**,
+**Hand off unconditionally to `/review {task-id} --code`.** On APPROVED it runs the
+cleanup chain. It is a **fixed order**,
 each step self-skipping when its target repo wasn't touched and
 unconditionally handing off to the next :
 
@@ -780,7 +826,7 @@ the rest). If none of `api-mail` / `client-angular` / `client-mobile` was
 touched, route to `/e2e` : it plays the journeys when `dtos-mss` is touched,
 skips cleanly otherwise, then chains into `/review` (task-347).
 
-| api-mail | client-angular | client-mobile | First step after `/develop` |
+| api-mail | client-angular | client-mobile | First step after `/review --code` APPROVED |
 |---|---|---|---|
 | yes | *   | *   | `/sonar {task-id}`        |
 | no  | yes | *   | `/lint-angular {task-id}` |
@@ -795,7 +841,7 @@ cases. "client-mobile touched" means the task lists `client-mobile` in
 `**Repos**:` **or** `git -C Client/Mobile status --porcelain` is non-empty
 (committed mobile work shows up as a diff vs `develop` instead).
 
-You own the routing table above (the quality pass is yours now, not a
+`/review --code` owns the routing table above (the quality pass is yours, not a
 separate step). Each downstream step still runs its own pre-flight and skips
 its empty scope (`/sonar` when api-mail untouched, `/lint-angular` when
 angular untouched) — and `/sonar` / `/lint-*` deliberately run **after** your

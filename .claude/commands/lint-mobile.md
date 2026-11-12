@@ -80,6 +80,14 @@ Tools/timing/step.sh end --task {task-id} --step lint-mobile --status ok
 - Protocole complet et vocabulaire des kinds : `Tools/timing/README.md`.
 
 ---
+## Marqueur vert (depuis le 2026-11-12)
+
+Quand cette étape termine **au vert** sur le build **et la suite complète** d'un repo (dernière
+itération, code final commité ou arbre final pour `client-angular`), elle marque ce vert :
+`python Tools/green/green.py mark --task {task-id} --repo {repo} --by lint-mobile`. `/review` ne
+rejoue alors pas build + tests sur ce code exact. Une étape qui n'a joué que des tests ciblés,
+ou qui a laissé l'arbre modifié après sa dernière suite, ne marque pas.
+
 ## Rules
 
 - Scope : `client-mobile` only (working directory `Client/Mobile/`). Never

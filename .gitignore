@@ -100,6 +100,13 @@ Tools/loadtest-findings/__pycache__/
 # Les identifiants vivent hors dépôt (~/.forge-telegram.env), jamais ici.
 !Tools/notify/
 !Tools/notify/**
+# Anti-veille du poste pendant la chaîne (Tools/keepawake/keep-awake.sh) : bail renouvelé par step.sh/measure.sh.
+!Tools/keepawake/
+!Tools/keepawake/**
+# Marqueur vert partagé (Tools/green/green.py) : /review ne rejoue pas build + tests sur un code déjà validé.
+!Tools/green/
+!Tools/green/**
+Tools/green/__pycache__/
 
 # The ledger is the forge's measurement journal (committed, append-only).
 # The .state/ markers are machine-local run state and must never be tracked.
