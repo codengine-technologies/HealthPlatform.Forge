@@ -575,6 +575,14 @@ sur d'autres chemins que B1 (même famille : une suggestion choisie que le méde
 
 - Inchangé : S11, S4 / S5, S6 / S7 (passage 1).
 
+### Passage 3 (2026-11-12, après la reprise 2) — CHANGES REQUESTED, plafond atteint
+
+Revue indépendante. B1, B2, B3, S2, S3, S13, S14, S15 corrigés (tests rouges sur le code d'avant). Deux bloquants
+nouveaux, sur des consultations patient tracées : **B4** (le correctif de B3 envoie une demande de suggestions liste
+fermée, et le serveur trace des patients jamais montrés), **B5** (clic droit ou molette sur un patient suggéré ouvre son
+dossier) ; suggestions **S16** (`launch()` ignore `patient :` / `type :`), **S17** (recherches récentes remplacées sous
+la désignation). Deux reprises déjà faites : **arrêt**, `questions/task-449.md` écrit.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-449 --sync` — ne pas éditer à la main)*
@@ -587,7 +595,7 @@ sur d'autres chemins que B1 (même famille : une suggestion choisie que le méde
 | /lint-angular | ok | 12 s | — | — | — | reprise 2 : 0 erreur |
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 11 min 09 s | — | — | — | e2e ×17 (2 h 02 min), reprise 2 : angular 84, mobile réutilisée, parité verte |
-| /review | changes | 4 min 03 s | 4 (29 s) | 2 (1 h 13 min) | — | api-mail 2B/2T, dtos-mss 2B/0T, CHANGES REQUESTED (B2, B3), reprise 2 |
-| **Total cycle** | | **28 min 33 s** | **11 (2 min 09 s)** | **17 (1 h 43 min)** | **4 (1 min 36 s)** | |
+| /review | failed | 44 min 18 s | 4 (29 s) | 2 (1 h 13 min) | — | api-mail 2B/2T, dtos-mss 2B/0T, passage 3 : B4 B5, plafond de reprises atteint |
+| **Total cycle** | | **1 h 08 min** | **11 (2 min 09 s)** | **17 (1 h 43 min)** | **4 (1 min 36 s)** | |
 
 Autres commandes mesurées : lint ×3 (34 s), nuget-wait ×1 (24 s), restore ×1 (3.7 s)

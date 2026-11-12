@@ -1,51 +1,56 @@
-# task-449 — /review : CHANGES REQUESTED (une suggestion masquée choisie par Entrée)
+# task-449 — /review passage 3 : CHANGES REQUESTED, plafond de reprises atteint
 
-**Étape** : `/review` (revue indépendante, 2026-11-12). Build et tests verts (api-mail, weda2), Sonar QG OK, `/e2e` vert
-(mobile 61, angular 82, parité verte). Règle 1b : chaque comportement d'endpoint a son test d'intégration vu rouge
-(17 mutations). La PR n'est **pas** ouverte. La task reste en `wip-*`.
+**Étape** : `/review`, 3ᵉ passe (revue indépendante, 2026-11-12), après deux reprises automatiques. Build, tests,
+Sonar (QG OK, 0 issue), `/e2e` (mobile 61, angular 84, parité verte) : verts. B1, B2, B3, S2, S3, S8, S9, S10, S12, S13,
+S14, S15 : corrigés et prouvés rouges. La PR n'est **pas** ouverte. La task reste en `wip-*` (`**Reprises**: 2`).
 
-## Bloquant
+## Bloquants (passe 3)
 
-### B1 — Après Échap, Entrée choisit encore la suggestion désignée (weda2)
+### B4 — Une demande de suggestions part liste fermée, et trace des patients jamais montrés
 
-- `MailSearchComponent.onKeyDown` lit `suggestions.activeEntry()` sans vérifier que la liste est ouverte, et
-  `closeDropdown()` (Échap, clic ailleurs) ne remet pas la désignation à zéro. Les flèches déplacent aussi la
-  désignation liste fermée.
-- Scénario : taper `bern`, ↓ (Catherine BERNARD désignée), Échap, puis Entrée pour lancer une recherche ordinaire :
-  l'application ouvre la vue « Mails du patient » de Catherine BERNARD. La consultation est tracée au journal alors
-  que le médecin ne l'a pas choisie.
-- Correctif attendu : flèches et Entrée-sur-désignation seulement liste ouverte ; `closeDropdown()` remet la
-  désignation à -1. Test de composant vu rouge.
+- Le correctif de B3 fait appeler `suggestions.update(criteria.query)` par `restoreCriteria`
+  (`mail-search.component.ts:562`). Quand le texte remis a au moins deux caractères, une demande part 250 ms plus tard,
+  liste fermée. Le serveur trace toute réponse qui nomme un patient (« N patient(s) proposé(s) »).
+- Scénario : rechercher « bernard », ouvrir un mail, revenir : la barre suit la recherche affichée
+  (`followShownSearch` → `restoreCriteria`) et une demande cachée part. Le journal dit que des patients ont été montrés
+  au médecin ; ils ne l'ont pas été. Même chose sur Échap après une saisie, et au rejeu d'une recherche récente.
+  Contraire à la règle 14 (traçabilité exacte).
+- Correctif attendu : `restoreCriteria` remet l'état des suggestions **sans rien demander** (`clear()`), et
+  `openDropdown` demande les suggestions du texte courant à l'ouverture. Test : aucune demande liste fermée après la
+  restauration d'un texte de deux caractères ou plus.
 
-## À corriger dans la même reprise (non bloquant seul, défaut réel)
+### B5 — Un clic droit ou un clic molette sur un patient suggéré ouvre son dossier
 
-- **S2** — Pendant la pause de frappe et la requête, la liste montre encore la réponse précédente (`bern` pendant
-  qu'on tape `bernx`). ↓ puis Entrée dans cet intervalle choisit une entrée périmée. Ne montrer une réponse que si elle
-  correspond au texte affiché.
-- **S3** — `distinctUntilChanged` après le debounce : `ab`, retour arrière, `b` retapé en moins de 250 ms → la liste
-  reste vide (la réponse a été effacée, la nouvelle demande est supprimée comme doublon).
-- **S9** — Recherche exacte : une expression rare faite de mots fréquents (`"résultat normal"`) fait vérifier jusqu'à
-  25 000 messages, 100 par 100. Plafonner les candidats vérifiés et rendre la réponse tronquée au plafond.
-- **S8** — Suggestions : pas de borne sur la saisie (un mot de plus = un `LIKE` de plus sur chaque ligne). Borner
-  (≈ 100 caractères / 5 mots).
-- **S10** — `SearchHistoryOwner` retombe sur la clé de la boîte seule quand la personne n'est pas connue : c'est
-  l'ancienne clé partagée. Rendre un historique vide plutôt que celui de la boîte.
-- **S12** — Une saisie de ponctuation seule (`--`) passe la règle des 2 caractères et rend les 5 dernières
-  recherches ; Redis indisponible fait échouer toute la réponse de suggestions au lieu de vider la catégorie.
+- `MailSearchSuggestionsComponent.onChoose` (`mail-search-suggestions.component.ts:133`) réagit à `mousedown` sans
+  regarder le bouton : un clic droit (menu contextuel) ou molette (habitude d'ouvrir dans un onglet) ouvre la vue
+  « Mails du patient », consultation tracée.
+- Correctif attendu : ne choisir qu'au bouton principal (`button === 0`). Test : clic droit sans effet.
 
-## Arbitrage humain (hors reprise sauf décision)
+## Suggestions (même reprise)
 
-- **S11** — Effacer l'historique : le bouton « Effacer » partait avec le composant d'historique du formulaire, remplacé
-  par la catégorie « Recherches récentes ». `DELETE /search/history` existe toujours mais rien ne l'appelle. Faut-il
-  un « Effacer » dans la catégorie (poste partagé) ?
-- **S4 / S5** — Les suggestions lisent nom **et** adresse, accents ignorés ; les critères tapés (`de :`, `à :`,
-  `objet :` puis Entrée) restent ceux de task-443 : `à :` sur l'adresse seule, accents comptés (ILIKE). `à : dupont`
-  propose « Dupont » mais Entrée sans choisir ne trouve rien si « dupont » n'est que dans le nom. La DoD dit
-  « À / Cc contient le texte (RecipientAddress) » : faut-il aligner les critères sur les suggestions ?
-- **S6 / S7** — Un préfixe remplace un critère déjà posé dans le formulaire ; `de : martin "compte rendu"` prend
-  toute la fin comme expéditeur. À trancher : combiner, refuser, ou couper au guillemet.
+- **S16** — `launch()` ignore la règle « un patient ou un type se choisit » : avec `patient : bern` dans la barre, le
+  bouton « Lancer la recherche » ou Entrée dans le champ « De » lancent quand même une recherche plein texte.
+- **S17** — à la réouverture, l'ancienne liste de recherches récentes reste affichée pendant le rechargement ; ↓ + Entrée
+  peut rejouer une autre recherche que celle désignée. Remettre la désignation à zéro quand la liste est remplacée.
+
+## Arbitrage humain (inchangé)
+
+- **S11** — un « Effacer » dans la catégorie « Recherches récentes » (poste partagé) ?
+- **S4 / S5** — aligner les critères tapés (`de :`, `à :`, `objet :` puis Entrée) sur les suggestions (nom et adresse,
+  accents ignorés) ?
+- **S6 / S7** — un préfixe qui remplace un critère déjà posé, ou qui prend toute la fin de la saisie : combiner,
+  refuser, ou couper au guillemet ?
+
+## Pourquoi la chaîne s'arrête
+
+Deux reprises automatiques ont été faites (plafond de la règle 13, reprise automatique après revue). Chaque passe a
+trouvé un défaut **nouveau** de la même famille (une suggestion choisie ou tracée sans que le médecin l'ait voulu),
+souvent introduit par le correctif précédent. Ce n'est pas un échec de correction, c'est le signe que la conception de
+l'état des suggestions mérite d'être reprise d'un bloc.
 
 ## Reprise
 
-`/develop task-449` corrige B1, S2, S3, S8, S9, S10, S12, chaque correctif vu rouge, puis la chaîne reprend jusqu'à
-`/review`.
+`/develop task-449 --reprise` corrige B4, B5, S16, S17 (chaque correctif vu rouge), puis la chaîne reprend jusqu'à
+`/review`. Recommandation forge : traiter les suggestions comme **dérivées de la liste ouverte** (aucune demande, aucune
+désignation, aucun choix tant qu'elle est fermée), en une seule règle dans `MailSearchSuggestions`, plutôt que chemin par
+chemin.
