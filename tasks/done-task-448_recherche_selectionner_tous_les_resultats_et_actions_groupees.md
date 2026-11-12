@@ -467,6 +467,7 @@ Validation (passage 2) : api-mail build 0 erreur / 0 avertissement, domain 210, 
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 19 min 32 s | — | — | — | e2e ×10 (1 h 15 min), reprise : mobile 60, angular 81, parité verte |
 | /review | ok | 7 min 57 s | 5 (35 s) | 5 (13 min 43 s) | — | api-mail 2B/2T, client-angular 2B/3T, dtos-mss 1B/0T, APPROVED (passage 2), PRs api-mail #363, dtos-mss #62 |
-| **Total cycle** | | **52 min 03 s** | **20 (3 min 48 s)** | **34 (1 h 53 min)** | **6 (2 min 07 s)** | |
+| /tech-writer | ok | 37 s | — | — | — | — |
+| **Total cycle** | | **52 min 41 s** | **20 (3 min 48 s)** | **34 (1 h 53 min)** | **6 (2 min 07 s)** | |
 
 Autres commandes mesurées : lint ×2 (19 s), nuget-wait ×2 (47 s), restore ×2 (26 s)

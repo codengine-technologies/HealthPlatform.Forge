@@ -222,6 +222,40 @@
   reconnaît `<header>` (fragment jamais enveloppé), task de suivi recommandée.
 - **Préventions** : `conventions/angular.md` § `surlignage-par-positions`.
 
+### v0.6 — task-448 : sélectionner tous les résultats et actions groupées (api-mail, dtos-mss, weda2)
+
+- **État** : `done`, PRs ouvertes (label `awaiting-human-merge`) : dtos-mss [#62](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/62),
+  api-mail [#363](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/363). weda2 code-only, à
+  pousser sur TFS. **Arbitrages ouverts au merge** : S1 (« lu » groupé tracé comme accès `MailRead`), S4 (résultats
+  proches par le sens inclus dans « tous ») — `questions/task-448.md`.
+- **dtos-mss** (593) : `MailKeyDto`, `BulkMailActionType`, `BulkMailActionRequestDto` (`MaxItems` 2 000),
+  `BulkMailActionResultDto` / `BulkMailActionFailureDto` (`not_found`, `already_in_trash`, `folder_type_unknown`,
+  `failed`), `SearchKeysResponseDto`.
+- **api-mail** :
+  - `POST /api/v1/search/keys` : clés de la recherche affichée, rejouée sans explication, dans son ordre ; `IsOverLimit` ;
+  - `POST /api/v1/mail/bulk-actions` (`BulkMailActionService`) : liste confirmée regroupée par dossier, chaque message
+    par le geste unitaire (trace par message, règle 14) ; Corbeille refusée depuis la Corbeille ou un dossier au type
+    inconnu ; plafond vérifié dans le contrat et le service ;
+  - `EmailFlagService.UpdateEmailUnReadStatusAsync` trace un `MailFlagChange` (défaut antérieur, revue B1).
+- **weda2** : `MailSearchBulkService` (décompte, choix, confirmation liée à la recherche, morceaux de 100, progression,
+  compte rendu, nouvel essai), `MailSearchBulkComponent`, « sans étoile » dans la barre de sélection.
+- **Revue** : passage 1 CHANGES REQUESTED (B1 « non lu » sans trace, B2 Corbeille et drapeaux non prouvés sur la vraie
+  pile ; S5, S6, S8), corrigés par la reprise ; passage 2 APPROVED.
+- **Tests** : mutations B1–B5, K1–K2, C1–C7 (intégration), F1–F14 (composants), E1–E2 (parcours servi), rouges.
+
+  | Suite | Tests verts |
+  |---|---|
+  | weda2 `mss-lib` | 1 627 |
+  | weda2 `weda2` | 2 683 |
+  | api-mail (toutes suites) | 7 817 (+16 ignorés) |
+
+- **E2E** : voie mobile 60, voie angular 81 (`E2E-SEARCH-012` v1, mobile en divergence task-451), parité verte.
+- **Sonar** : Quality Gate OK, nouveau code 96,3 %, 0 issue.
+- **Restes** : routes `…/emails/bulk/status/*` sans trace par message (antérieur, task de suivi recommandée) ;
+  suggestions S2, S3, S7, S9.
+- **Préventions** : `conventions/csharp.md` § `action-groupee-tracee-par-objet` (complété à la reprise),
+  § `canal-d-audit-borne-de-la-fixture`.
+
 ---
 
 ## Annexe A — Cartographie des briques applicatives
@@ -238,7 +272,9 @@
 | `Client/Angular/front/libs/mss/src/features/mail/services/mail-search-{session,tags}.ts` | Mode « Résultats de recherche » : session, étiquettes (task-445) |
 | `Client/Angular/front/libs/mss/src/features/mail/components/mail-search-results/` | Espace des résultats : étiquettes, affinage, parties, « Voir plus » (task-445) |
 | `Client/Angular/front/libs/mss/src/core/utils/text-highlight.util.ts` | Surlignage par positions, test de forme partagé avec le cadre (task-446) |
-| `Api/Mail/e2e/scenarios.yml` | Catalogue des parcours : `E2E-SEARCH-001` v2, `004` à `010` v1 |
+| `Api/Mail/src/Application/Services/Implementation/BulkMailActionService.cs`, `Api/Mail/src/Api/Controllers/V1/BulkMailActionsController.cs` | Actions groupées (task-448) |
+| `Client/Angular/front/libs/mss/src/features/mail/services/mail-search-bulk.service.ts`, `components/mail-search-bulk/` | Tous les résultats et actions groupées dans weda2 (task-448) |
+| `Api/Mail/e2e/scenarios.yml` | Catalogue des parcours : `E2E-SEARCH-001` v2, `004` à `010`, `012` v1 |
 
 ---
 
@@ -258,6 +294,6 @@
 | task-445 | archived (PR api-mail #361 mergée) | Mode « Résultats de recherche » dans weda2 ; `E2E-SEARCH-004` à `007`, `009` v1 |
 | task-446 | archived (PR api-mail #362 mergée ; weda2 à pousser sur TFS) | Lire un résultat : extrait surligné, endroit, dossier, patients trouvés ; `E2E-SEARCH-010` v1 |
 | task-447 | supprimée (2026-11-11) | Portée « tous les dossiers » et tri, écartés par l'humain : recherche dans le dossier sélectionné seulement ; tri par date sans gain sur l'ordre du serveur |
-| task-448 | todo | Sélectionner tous les résultats et actions groupées |
+| task-448 | done (PRs dtos-mss #62, api-mail #363 ouvertes ; weda2 à pousser sur TFS) | Sélectionner tous les résultats et actions groupées ; `E2E-SEARCH-012` v1 ; « non lu » tracé |
 | task-449 | todo | Suggestions pendant la frappe : patients et messages |
 | task-452 | supprimée (2026-11-11) | Mesure anonyme de l'expérience : reportée par l'humain |
