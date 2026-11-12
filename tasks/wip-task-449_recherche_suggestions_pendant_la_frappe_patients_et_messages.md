@@ -1,7 +1,7 @@
 # todo-task-449.md — Recherche : suggestions pendant la frappe, patients et messages
 
 **Repos**: api-mail, dtos-mss, client-angular
-**Reprises**: 1
+**Reprises**: 2
 **Dependencies**: done-task-442 (formulaire), done-task-446 (patients trouvés, vue « Mails du patient » depuis les
 résultats)
 **Epic**: E023
@@ -737,6 +737,31 @@ la barre de weda2. Détail : `questions/task-449.md`.
 - **S6 / S7** — un préfixe remplace un critère déjà posé ; `de : martin "compte rendu"` prend toute la fin.
   Recommandation forge : couper le critère au premier guillemet fermé, et combiner avec un critère déjà posé.
 
+### Passage 2 (2026-11-12, après la reprise 1) — CHANGES REQUESTED
+
+Revue indépendante. B1 (barre), S2 (frappe), S3, S8, S9, S10, S12 : corrigés et prouvés. Deux bloquants **nouveaux**,
+sur d'autres chemins que B1 (même famille : une suggestion choisie que le médecin ne voit pas) : reprise 2 automatique
+(1 < 2, aucun bloquant revenu).
+
+#### À corriger par la reprise
+
+- **B2** — les champs « À ou Cc », « Objet » et « Nom de pièce jointe » appellent aussi `onKeyDown` liste ouverte :
+  ↓ dans la barre (patient désigné), clic sur « Objet », Entrée → le patient s'ouvre au lieu de la recherche ; les
+  flèches de ces champs déplacent la désignation de la barre. Gestionnaire propre aux champs (Entrée = lancer), ou
+  désignation effacée quand la barre perd le focus.
+- **B3** — `restoreCriteria` (Échap, « Fermer la recherche », `followShownSearch`) et le rejeu d'une recherche récente
+  changent le texte sans prévenir les suggestions : à la réouverture, les suggestions de l'ancien texte s'affichent
+  sous une barre vide, et ↓ + Entrée en ouvre une. `restoreCriteria` met les suggestions au texte restauré.
+- **S13** — recherche exacte : quand le plafond de vérification est atteint, « Voir plus » rend des pages vides
+  toujours marquées tronquées, et chaque clic relit 1 000 textes. Ne plus proposer la suite au-delà du plafond.
+- **S14** — le client envoie des demandes refusées (plus de 100 caractères, aucune lettre ni chiffre) : ne pas les
+  envoyer.
+- **S15** — après Échap, la frappe ne rouvre pas la liste (le focus est resté dans la barre) : `onQueryChange` rouvre.
+
+#### Arbitrage humain
+
+- Inchangé : S11, S4 / S5, S6 / S7 (passage 1).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-449 --sync` — ne pas éditer à la main)*
@@ -749,7 +774,7 @@ la barre de weda2. Détail : `questions/task-449.md`.
 | /lint-angular | ok | 20 s | — | — | — | reprise : 0 erreur |
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 20 min 32 s | — | — | — | e2e ×12 (1 h 40 min), reprise : mobile 61, angular 84, parité verte |
-| /review | changes | 1 h 07 min | 2 (13 s) | 1 (1 h 06 min) | — | api-mail 1B/1T, dtos-mss 1B/0T, CHANGES REQUESTED (B1), reprise 1 |
-| **Total cycle** | | **1 h 51 min** | **8 (1 min 40 s)** | **15 (1 h 36 min)** | **4 (1 min 36 s)** | |
+| /review | changes | 4 min 03 s | 3 (28 s) | 1 (1 h 06 min) | — | api-mail 2B/1T, dtos-mss 1B/0T, CHANGES REQUESTED (B2, B3), reprise 2 |
+| **Total cycle** | | **48 min 48 s** | **9 (1 min 54 s)** | **15 (1 h 36 min)** | **4 (1 min 36 s)** | |
 
 Autres commandes mesurées : lint ×2 (22 s), nuget-wait ×1 (24 s), restore ×1 (3.7 s)
