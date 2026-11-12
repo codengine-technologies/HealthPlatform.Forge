@@ -748,6 +748,33 @@ Aucun nouveau. (B2 a une variante qui toucherait le contrat — une liste exacte
 Prévention : `conventions/csharp.md` § recherche (critère choisi comparé exactement ; regex de paire vide).
 Quatre reprises faites (plafond 2) : **arrêt**, `questions/task-449.md` écrit.
 
+### Passage 6 (2026-11-12, après la reprise 5) — CHANGES REQUESTED
+
+Validation : build vert (api-mail, dtos-mss, weda2) ; tests api-mail 7 989 ✅ (dont 1 328 d'intégration, 16 ignorés),
+`nx test mss-lib` 1 650 ✅, `nx test weda2` 2 683 ✅ ; vert marqué (`Tools/green/green.py`) pour api-mail `93bf2adf` et
+weda2.
+Revue indépendante du seul diff de la reprise 5 (`452556d2..93bf2adf`), lu d'abord pour ce qu'il a cassé. B1, B2, S5
+de la passe 5 et CA1862 tiennent : `SearchPhrases` ne change que pour les paires vides ; `FromAddress` est stocké sans nom
+affiché et `ILIKE` absorbe la casse ; seul `SemanticSearchService.SearchAsync` lit `FieldFilters` ; `ToContainsPattern`
+rend la même chaîne qu'avant pour ses 4 appelants. Un bloquant nouveau, **né du correctif S5** (vérifié dans le code).
+
+#### À corriger par la reprise
+
+- **B1** — `TypedCriterion.IsTooLong` compte les mots d'une adresse même quand elle est comparée en entier (`Address`
+  renseignée) : choisir `secretariat.cardiologie.pediatrique@ch-saint-jean-de-luz.mssante.fr` (plus de 10 « mots »)
+  répond 400 « au plus 10 mots ». Le seul domaine `medecin.formation.mssante.fr` en compte déjà 4. Correctif :
+  `IsTooLong = Address is null && …` ; test d'intégration avec une adresse de plus de 10 mots, vu rouge.
+- S1 — une paire vide seule (`de : ""`) n'est plus un critère vide (200 vide au lieu du 400 « Tapez le texte du
+  critère ») ; `de : "Paul Martin" ""` lance une recherche par le sens sur `""`. Correctif : un critère ou un reste fait
+  de blancs et de paires vides est vide.
+- S2 — la reconnaissance d'adresse du serveur accepte `<`, `>`, `,`, `;`, `(` que celle de weda2 exclut :
+  `de : p.martin@x.fr,` devient une adresse exacte introuvable. Reprendre la classe de caractères du front.
+- S3 — le plafond compte doublons et élisions (`l'IRM` = 2) : compter les mots **distincts**, ou dire ce qui est compté.
+
+Prévention : `conventions/csharp.md` § recherche — un correctif qui ajoute une règle à un critère (plafond, exactitude)
+vérifie ses **deux** lectures (adresse exacte / mots), c'est la 4ᵉ fois qu'un correctif de cette task casse le cas voisin.
+Cinq reprises faites (plafond 2) : **arrêt**, `questions/task-449.md` écrit.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-449 --sync` — ne pas éditer à la main)*
@@ -760,7 +787,7 @@ Quatre reprises faites (plafond 2) : **arrêt**, `questions/task-449.md` écrit.
 | /lint-angular | skipped | 0.8 s | — | — | — | weda2 inchangé depuis la reprise 4 |
 | /lint-mobile | skipped | 0.9 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 20 min 12 s | — | — | — | e2e ×27 (3 h 02 min) |
-| /review | failed | 8 min 54 s | 9 (1 min 08 s) | 6 (1 h 27 min) | — | api-mail 4B/4T, dtos-mss 4B/0T, client-angular 1B/2T, passage 5 : CHANGES REQUESTED (B1, B2), plafond de reprises dépassé |
-| **Total cycle** | | **1 h 54 min** | **34 (6 min 29 s)** | **52 (4 h 00 min)** | **12 (4 min 46 s)** | |
+| /review | failed | 8 min 06 s | 11 (1 min 20 s) | 7 (1 h 34 min) | — | api-mail 5B/5T, dtos-mss 5B/0T, client-angular 1B/2T, passage 6 : CHANGES REQUESTED (B1, né de S5), plafond de reprises dépassé |
+| **Total cycle** | | **1 h 53 min** | **36 (6 min 41 s)** | **53 (4 h 07 min)** | **12 (4 min 46 s)** | |
 
 Autres commandes mesurées : lint ×5 (59 s), nuget-wait ×1 (24 s), restore ×1 (3.7 s)

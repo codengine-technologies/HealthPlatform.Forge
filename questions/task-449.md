@@ -1,44 +1,33 @@
-# task-449 — /review passage 5 : CHANGES REQUESTED, après la reprise 4
+# task-449 — /review passage 6 : CHANGES REQUESTED, après la reprise 5
 
-**Étape** : `/review`, 5ᵉ passe (revue indépendante, 2026-11-12), après la reprise 4 demandée par l'humain. Build, tests
-(api-mail 7 970, mss-lib 1 650, weda2 2 683), Sonar (QG OK, 0 issue nouveau code) et `/e2e` (mobile 61, angular 84,
-parité verte) sont verts. B1, B2 de la passe 4, l'arbitrage S1 et S2, S3, S4 sont livrés et prouvés rouges. La PR n'est
-**pas** ouverte. La task reste en `wip-*` (`**Reprises**: 4`).
+**Étape** : `/review` (validation finale), 6ᵉ passe, 2026-11-12. Sonar (CA1862 corrigé, aucun avertissement au
+build) et `/e2e` (mobile 61, angular 84, parité verte) sont verts. B1, B2, S5 de la passe 5 tiennent. La PR n'est
+**pas** ouverte. La task reste en `wip-*` (`**Reprises**: 5`).
 
-## Bloquants (passe 5) — corrigeables par la forge, tous deux introduits par la reprise 4
+## Bloquant (passe 6) — corrigeable par la forge, une ligne
 
-### B1 — Deux expressions entre guillemets voisines fusionnent
+### B1 — Un correspondant choisi dont l'adresse est longue est refusé en 400
 
-- La suppression des guillemets vides (correctif S4) est faite par une expression régulière qui prend aussi le guillemet
-  fermant d'une expression, l'espace, et l'ouvrant de la suivante. Vérifié :
-  `de : "Paul Martin" "compte rendu"` devient `de : "Paul Martin compte rendu"`. Le critère « De » exige alors
-  4 mots dans l'ordre : 0 résultat, et la recherche exacte de « compte rendu » disparaît.
-- Correctif : écarter les expressions vides après l'appariement des guillemets, pas avant. Tests à deux expressions
-  voisines, vus rouges.
-
-### B2 — Un correspondant choisi dans la liste ramène aussi ses homonymes
-
-- Choisir un destinataire dans les suggestions, un contact dans « De », ou valider une adresse complète par Entrée écrit
-  l'adresse dans le critère « À » / « De », qui se lit désormais mot à mot (S1). Choisir
-  « paul.martin@cardio.example » ramène aussi « jean-paul.martin@cardio.example ». Vérifié dans le code.
-- Correctif recommandé, sans changer le contrat : un critère qui est **entièrement une adresse bien formée** se compare
-  exactement (casse ignorée). Tests vus rouges.
+- Le plafond de 10 mots (S5) compte les mots d'une adresse alors qu'elle est comparée en entier (B2). Choisir
+  `secretariat.cardiologie.pediatrique@ch-saint-jean-de-luz.mssante.fr` répond 400 « au plus 10 mots ». Vérifié
+  dans le code.
+- Correctif : le plafond ne s'applique qu'à un critère lu en mots. Test d'intégration avec une adresse longue, vu rouge.
 
 ## Suggestions (même reprise)
 
-- **S5** — un critère de plus de 10 mots est tronqué sans le dire : le refuser en 400 (« critère trop long »).
-- **S6** — dire dans la PR le changement assumé : `%`, `_`, `\` séparent les mots, et `50` trouve « 500 ».
+- **S1** — `de : ""` (paire vide seule) n'est plus refusé comme critère vide ; `de : "Paul Martin" ""` lance une
+  recherche par le sens sur `""`. Un critère ou un reste fait de blancs et de paires vides est vide.
+- **S2** — le serveur reconnaît comme adresse `p.martin@x.fr,` (virgule collée) que weda2 refuse : reprendre la même
+  classe de caractères que le front.
+- **S3** — le plafond compte les doublons et les élisions (`l'IRM` = 2 mots) : compter les mots distincts.
 
 ## Arbitrage humain
 
-Aucun nouveau. Les arbitrages S1, S4/S5, S6, S7, S11 sont tranchés et livrés.
+Aucun.
 
 ## Pourquoi la chaîne s'arrête
 
-Quatre reprises faites (plafond de la règle 13 : 2 ; les 3ᵉ et 4ᵉ demandées par l'humain). Les deux bloquants sont
-petits, localisés, et viennent des correctifs de la reprise 4 elle-même. La forge recommande une 5ᵉ reprise (`relance`).
-
-## Reprise
-
-`/develop task-449 --reprise` corrige B1, B2, S5, S6 (chaque correctif vu rouge), puis la chaîne reprend jusqu'à
-`/review`.
+Cinq reprises faites (plafond 2 ; les reprises 3 à 5 demandées par l'humain). Le bloquant est né du correctif S5 de la
+reprise 5, comme les précédents sont nés du correctif d'avant ; la prévention est consignée (`conventions/csharp.md` :
+une règle de critère se teste pour ses deux lectures, adresse et mots). Correctif d'une ligne : la forge recommande une
+6ᵉ reprise (`relance`).
