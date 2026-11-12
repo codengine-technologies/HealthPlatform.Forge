@@ -481,12 +481,12 @@ mots se suivent dans l'ordre strict (arbitrage S1). Mot et champ passent par la 
 
 | Voie | Jouée / réutilisée | Résultat | Dépôts couverts |
 |---|---|---|---|
-| mobile | jouée (reprise 4) | 61 verts, 0 flaky, 0 rouge, parité verte | api-mail `452556d2`, client-mobile `develop` `f775f17` |
-| angular | jouée (reprise 4) | 84 verts dont E2E-SEARCH-013 et 014, 0 flaky, 0 rouge, parité verte | api-mail `452556d2`, client-angular (arbre non commité), Client/Mobile/e2e |
+| mobile | jouée (reprise 5) | 61 verts, 0 flaky, 0 rouge, parité verte | api-mail `93bf2adf`, client-mobile `develop` `f775f17` |
+| angular | jouée (reprise 5) | 84 verts dont E2E-SEARCH-013 et 014, 0 flaky, 0 rouge, parité verte | api-mail `93bf2adf`, client-angular (arbre non commité), Client/Mobile/e2e |
 
 Passage 1 : un premier jeu mobile en parité rouge sur `E2E-BIO-004` (`develop` local de `client-mobile` en retard d'un
 commit, `git pull --ff-only` puis voie rejouée, verte) ; flaky E2E-COMPOSE-001 consigné au registre (9ᵉ occurrence).
-Reprises 1, 3 et 4 : les deux voies rejouées, vertes, sans flaky. Reprise 2 (weda2 seulement) : voie Angular rejouée,
+Reprises 1, 3, 4 et 5 : les deux voies rejouées, vertes, sans flaky. Reprise 2 (weda2 seulement) : voie Angular rejouée,
 verte ; voie mobile réutilisée (empreinte inchangée).
 Démontage vérifié : ports libres, aucun conteneur e2e résiduel.
 
@@ -759,8 +759,8 @@ Quatre reprises faites (plafond 2) : **arrêt**, `questions/task-449.md` écrit.
 | /sonar | ok | 1 h 13 min | 9 (3 min 01 s) | 32 (1 h 47 min) | 12 (4 min 46 s) | 1 itération(s), api-mail 9B/32T |
 | /lint-angular | skipped | 0.8 s | — | — | — | weda2 inchangé depuis la reprise 4 |
 | /lint-mobile | skipped | 0.9 s | — | — | — | client-mobile non touché |
-| /e2e | ok | 21 min 08 s | — | — | — | e2e ×24 (2 h 42 min) |
+| /e2e | ok | 20 min 12 s | — | — | — | e2e ×27 (3 h 02 min) |
 | /review | failed | 8 min 54 s | 9 (1 min 08 s) | 6 (1 h 27 min) | — | api-mail 4B/4T, dtos-mss 4B/0T, client-angular 1B/2T, passage 5 : CHANGES REQUESTED (B1, B2), plafond de reprises dépassé |
-| **Total cycle** | | **1 h 55 min** | **34 (6 min 29 s)** | **52 (4 h 00 min)** | **12 (4 min 46 s)** | |
+| **Total cycle** | | **1 h 54 min** | **34 (6 min 29 s)** | **52 (4 h 00 min)** | **12 (4 min 46 s)** | |
 
 Autres commandes mesurées : lint ×5 (59 s), nuget-wait ×1 (24 s), restore ×1 (3.7 s)
