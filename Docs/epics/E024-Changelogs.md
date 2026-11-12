@@ -96,6 +96,20 @@
 - **Restes** : capture Grafana et mesure de référence sur la recette (HAG) ; secret `ProductMetrics__MailboxLoad__ApiKey`
   (DevOps) ; AIPD.
 
+
+### v0.2.1 — task-465 (reprise du 2026-11-12) : indicateurs d'usage (api-mail)
+
+- **Décision humaine** : ajoutés dans la même PR (#366, encore ouverte).
+- **Indicateurs** : `connected_persons` (traces `MailboxSessionOpened`), `active_mailboxes`, `registered_mailboxes`
+  et `registered_delegates` (`mss_accounts` actifs en fin de journée), `active_persons` (all/holder/delegate/member),
+  `active_persons_by_hour` et `gesture_share_by_hour` (`00`…`23`, Paris) ; seuil 5 boîtes par valeur et par tranche.
+- **Migration** `20261112110000_GrantMailboxLoadRegistryRead` : `GRANT SELECT (mailbox_id, account_id, role,
+  attached_at, detached_at) ON mss_accounts` au rôle statistique.
+- **Tableau de bord** : rangée « Usage » (6 stats) et 2 histogrammes horaires ; 29 panneaux.
+- **Tests** : 69 unitaires, 10 d'intégration (`…ExposesUsage`) ; mutations : droit retiré (`42501`), borne de fin de
+  journée retirée (`5` → `7`), heure en UTC — toutes rouges. Suite complète : 7 934 verts.
+- **Sonar** : 0 finding dans le diff. **E2E** : mobile 61, Angular 80 (mêmes 2 flaky), porte verte.
+
 ---
 
 ## Annexe A — Cartographie des briques applicatives
@@ -113,6 +127,7 @@
 | `api-mail/src/Application/Services/Background/MailboxLoadHostedService.cs` | calcul quotidien sous verrou | task-465 |
 | `api-mail/src/Infrastructure/Repositories/TenantDb/PostgresMailboxLoadStore.cs` | lecture statistique du journal, agrégats | task-465 |
 | `api-mail/src/Infrastructure/Migrations/TenantDb/20261112090000_AddMailboxLoadStatistics.cs` | rôle, politique RLS, tables | task-465 |
+| `api-mail/src/Infrastructure/Migrations/TenantDb/20261112110000_GrantMailboxLoadRegistryRead.cs` | lecture statistique des rattachements | task-465 |
 | `api-mail/src/Api/Controllers/V1/ProductMetricsController.cs` | route de l'équipe produit | task-465 |
 | `api-mail/src/AppHost/grafana/dashboards/mssante-mailbox-load.json` | tableau de bord « Charge de la messagerie » | task-465 |
 | `dtos-mss/AuditActionType.cs` (72) | acte système du calcul | task-465 |
@@ -122,7 +137,7 @@
 ## Annexe B — Inventaire fonctionnel daté (2026-11-12)
 
 - Tasks de l'EPIC : 14 (1 `archived`, 1 `done`, 12 `todo`).
-- Indicateurs de charge publiés : 7 (+ 3 réservés pour task-454 et task-456).
+- Indicateurs publiés : 14 (7 de charge, 7 d'usage) + 3 réservés pour task-454 et task-456.
 - Scénarios e2e de l'EPIC au catalogue : 1 (E2E-BIO-004).
 
 ---

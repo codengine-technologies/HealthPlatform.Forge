@@ -83,7 +83,7 @@ disparaissent jamais parce que le message a été rangé ailleurs, depuis la pla
 | Relance sans réponse | Faire revenir un message envoyé resté sans réponse après le délai choisi | task-462 | 🔴 À faire |
 | Suivi de biologie | Décider après lecture d'un résultat, et suivre jusqu'au « résultat communiqué » | task-463 | 🔴 À faire |
 | Mon espace santé complet | Écrire au patient sans erreur d'adressage, savoir si le message est lu, recevoir sa réponse dans la bonne boîte | task-464 | 🔴 À faire |
-| Mesurer la charge de la boîte | (équipe produit) Suivre chaque jour la charge réelle de la messagerie — messages reçus, délais de prise de connaissance, part déléguée, travail hors heures, temps passé — sans voir boîtes, personnes ni patients | task-465 | 🟡 Livrée, en attente de validation |
+| Mesurer la charge de la boîte | (équipe produit) Suivre chaque jour la charge réelle de la messagerie — messages reçus, délais de prise de connaissance, part déléguée, travail hors heures, temps passé, personnes connectées, boîtes et délégataires inscrits ou actifs, activité heure par heure — sans voir boîtes, personnes ni patients | task-465 | 🟡 Livrée, en attente de validation |
 | Date de début du suivi | Choisir à partir de quand la boîte réclame quelque chose : l'historique ramené par une première synchronisation se consulte mais ne réclame rien | task-466 | 🔴 À faire |
 
 ---
@@ -195,6 +195,9 @@ restauré.
   est faite par un délégataire ou un membre, quelle part tombe avant 8 h, après 20 h ou le week-end, et combien de
   temps chacun passe dans la messagerie. C'est la mesure de référence qui jugera les améliorations suivantes de
   l'EPIC (task-465).
+- **v0.2.1 — Mesurer l'usage.** La même mesure dit aussi combien de personnes ont ouvert leur messagerie dans la
+  journée, combien de boîtes sont inscrites et lesquelles servent vraiment, combien de délégataires sont déclarés et
+  combien travaillent, et à quelles heures on travaille dans la messagerie (task-465).
 
 ### Conformité réglementaire
 
