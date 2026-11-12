@@ -9538,3 +9538,9 @@
 {"ts":"2026-11-12T15:05:26+01:00","run_id":"-","type":"step_start","task":"task-449","step":"review"}
 {"ts":"2026-11-12T15:05:48+01:00","run_id":"-","type":"cmd","task":"task-449","step":"review","repo":"api-mail","kind":"build","label":"","cwd":"Api/Mail","cmd":"dotnet build HealthPlatform.Api.Mail.sln -v q -nologo","duration_ms":14183,"exit_code":0}
 {"ts":"2026-11-12T15:09:29+01:00","run_id":"-","type":"step","task":"task-449","step":"review","status":"changes","note":"CHANGES REQUESTED (B2, B3), reprise 2","iterations":null,"duration_ms":243563}
+{"ts":"2026-11-12T15:09:48+01:00","run_id":"-","type":"step_start","task":"task-449","step":"develop"}
+{"ts":"2026-11-12T15:12:27+01:00","run_id":"-","type":"cmd","task":"task-449","step":"develop","repo":"client-angular","kind":"test","label":"","cwd":"Client/Angular/front","cmd":"npx nx run-many -t test --projects=mss-lib,weda2 --skip-nx-cache --output-style=static","duration_ms":34877,"exit_code":0}
+{"ts":"2026-11-12T15:12:42+01:00","run_id":"-","type":"cmd","task":"task-449","step":"develop","repo":"client-angular","kind":"build","label":"","cwd":"Client/Angular/front","cmd":"npx nx build weda2 --output-style=static","duration_ms":14332,"exit_code":0}
+{"ts":"2026-11-12T15:12:44+01:00","run_id":"-","type":"cmd","task":"task-449","step":"review","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln --no-build","duration_ms":414604,"exit_code":1}
+{"ts":"2026-11-12T15:12:46+01:00","run_id":"-","type":"cmd","task":"task-449","step":"review","repo":"dtos-mss","kind":"build","label":"","cwd":"Dtos","cmd":"dotnet build HealthPlatform.Dtos.Mss.csproj -v q -nologo","duration_ms":1101,"exit_code":0}
+{"ts":"2026-11-12T15:13:19+01:00","run_id":"-","type":"step","task":"task-449","step":"develop","status":"ok","note":"reprise 2 : B2 B3 S13 S14 S15 (weda2)","iterations":null,"duration_ms":210731}

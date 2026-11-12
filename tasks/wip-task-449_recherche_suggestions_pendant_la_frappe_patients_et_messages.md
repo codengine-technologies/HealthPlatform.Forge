@@ -769,12 +769,12 @@ sur d'autres chemins que B1 (même famille : une suggestion choisie que le méde
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 20 s | — | — | — | — |
-| /develop | ok | 14 min 13 s | 4 (38 s) | 4 (14 min 12 s) | — | dtos-mss 1B/0T, api-mail 1B/2T, client-angular 2B/2T, reprise 1 : B1 S2 S3 S8 S9 S10 S12 |
+| /develop | ok | 3 min 30 s | 5 (52 s) | 5 (14 min 47 s) | — | dtos-mss 1B/0T, api-mail 1B/2T, client-angular 3B/3T, reprise 2 : B2 B3 S13 S14 S15 (weda2) |
 | /sonar | ok | 9 min 15 s | 2 (47 s) | 10 (15 min 32 s) | 4 (1 min 36 s) | 1 itération(s), api-mail 2B/10T, reprise : QG OK, 0 issue |
 | /lint-angular | ok | 20 s | — | — | — | reprise : 0 erreur |
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 20 min 32 s | — | — | — | e2e ×12 (1 h 40 min), reprise : mobile 61, angular 84, parité verte |
-| /review | changes | 4 min 03 s | 3 (28 s) | 1 (1 h 06 min) | — | api-mail 2B/1T, dtos-mss 1B/0T, CHANGES REQUESTED (B2, B3), reprise 2 |
-| **Total cycle** | | **48 min 48 s** | **9 (1 min 54 s)** | **15 (1 h 36 min)** | **4 (1 min 36 s)** | |
+| /review | changes | 4 min 03 s | 4 (29 s) | 2 (1 h 13 min) | — | api-mail 2B/2T, dtos-mss 2B/0T, CHANGES REQUESTED (B2, B3), reprise 2 |
+| **Total cycle** | | **38 min 05 s** | **11 (2 min 09 s)** | **17 (1 h 43 min)** | **4 (1 min 36 s)** | |
 
 Autres commandes mesurées : lint ×2 (22 s), nuget-wait ×1 (24 s), restore ×1 (3.7 s)
