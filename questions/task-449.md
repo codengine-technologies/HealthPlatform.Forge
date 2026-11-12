@@ -35,7 +35,8 @@ S14, S15 : corrigés et prouvés rouges. La PR n'est **pas** ouverte. La task re
 
 ## Arbitrage humain (inchangé)
 
-- **S11** — un « Effacer » dans la catégorie « Recherches récentes » (poste partagé) ?
+- **S11** — ~~un « Effacer » dans la catégorie « Recherches récentes » ?~~ **Tranché par l'humain le 2026-11-12 : non,
+  pas de bouton « Effacer ».** Rien à faire dans la reprise.
 - **S4 / S5** — aligner les critères tapés (`de :`, `à :`, `objet :` puis Entrée) sur les suggestions (nom et adresse,
   accents ignorés) ?
 - **S6 / S7** — un préfixe qui remplace un critère déjà posé, ou qui prend toute la fin de la saisie : combiner,

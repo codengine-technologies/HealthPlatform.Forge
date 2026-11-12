@@ -573,7 +573,8 @@ sur d'autres chemins que B1 (même famille : une suggestion choisie que le méde
 
 #### Arbitrage humain
 
-- Inchangé : S11, S4 / S5, S6 / S7 (passage 1).
+- S11 **tranché par l'humain le 2026-11-12 : pas de bouton « Effacer »** (la catégorie « Recherches récentes »
+  remplace l'historique du formulaire sans effacement). Restent ouverts : S4 / S5, S6 / S7 (passage 1).
 
 ### Passage 3 (2026-11-12, après la reprise 2) — CHANGES REQUESTED, plafond atteint
 
