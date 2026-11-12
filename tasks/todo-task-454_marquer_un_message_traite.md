@@ -196,3 +196,12 @@ Règles :
 - **Hébergement HDS** : oui — base de la boîte, environnement HDS de production
 - **AIPD / impact RGPD** : à mettre à jour — l'auteur du traitement est visible des autres personnes de la boîte
   (même finalité que le journal de la boîte, E020)
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-454 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | skipped | 23 s | — | — | — | refus : dépendances task-466, task-456, task-465 encore en todo |
+| **Total cycle** | | **23 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
