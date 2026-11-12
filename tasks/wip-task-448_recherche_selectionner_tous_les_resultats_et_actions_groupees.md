@@ -271,6 +271,7 @@ S1 et S4 restent en arbitrage humain (`questions/task-448.md`), hors de cette re
   --projects=mss-lib,mss-e2e` (contournement task-367).
 - **0 erreur** ; avertissements 52 (`mss-lib`) + 48 (`mss-e2e`), identiques à la base de task-446 : aucun introduit.
 - Itérations : 0. Build et tests déjà verts sur l'arbre final (fin de `/develop`, après la passe qualité).
+- **Reprise après revue** : relancé sur l'arbre repris — **0 erreur**, 52 + 48 avertissements (inchangés). Itérations : 0.
 
 ## Lint mobile log
 
@@ -280,8 +281,8 @@ S1 et S4 restent en arbitrage humain (`questions/task-448.md`), hors de cette re
 
 | Voie | Jouée / réutilisée | Résultat | Dépôts couverts |
 |---|---|---|---|
-| mobile | jouée | 60 verts, 0 flaky, 0 rouge, parité verte | api-mail `93c8435b`, client-mobile `develop` |
-| angular | jouée | 81 verts (dont E2E-SEARCH-012), 0 flaky, 0 rouge, parité verte | api-mail `93c8435b`, client-angular (arbre non commité), Client/Mobile/e2e |
+| mobile | jouée (reprise après revue) | 60 verts, 0 flaky, 0 rouge, parité verte | api-mail `4350bc8a` + lock files, client-mobile `develop` |
+| angular | jouée (reprise après revue) | 81 verts (dont E2E-SEARCH-012), 0 flaky, 0 rouge, parité verte | api-mail `4350bc8a` + lock files, dtos 593, client-angular (arbre non commité), Client/Mobile/e2e |
 
 Porte : catalogue de la branche de la task (`Api/Mail/e2e/scenarios.yml`, E2E-SEARCH-012 v1). Démontage vérifié : ports
 libres, aucun conteneur e2e résiduel.
@@ -417,10 +418,10 @@ libres, aucun conteneur e2e résiduel.
 | /start | ok | 7.8 s | — | — | — | — |
 | /develop | ok | 15 min 37 s | 12 (1 min 58 s) | 13 (16 min 26 s) | — | dtos-mss 1B/0T, api-mail 8B/9T, client-angular 3B/4T, reprise après revue : B1 B2 S5 S6 S8 |
 | /sonar | ok | 8 min 26 s | 3 (1 min 14 s) | 16 (1 h 23 min) | 6 (2 min 07 s) | 1 itération(s), api-mail 3B/16T, reprise : QG OK, 0 issue |
-| /lint-angular | ok | 0.4 s | — | — | — | 0 erreur, avertissements inchangés |
+| /lint-angular | ok | 19 s | — | — | — | reprise : 0 erreur |
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
-| /e2e | ok | 19 min 24 s | — | — | — | e2e ×5 (37 min 19 s) |
+| /e2e | ok | 19 min 32 s | — | — | — | e2e ×10 (1 h 15 min), reprise : mobile 60, angular 81, parité verte |
 | /review | failed | 5 min 29 s | 2 (22 s) | 3 (7 min 02 s) | — | api-mail 1B/1T, client-angular 1B/2T, CHANGES REQUESTED : B1 non lu sans trace, B2 règle 1b Corbeille |
-| **Total cycle** | | **49 min 07 s** | **17 (3 min 35 s)** | **32 (1 h 46 min)** | **6 (2 min 07 s)** | |
+| **Total cycle** | | **49 min 34 s** | **17 (3 min 35 s)** | **32 (1 h 46 min)** | **6 (2 min 07 s)** | |
 
-Autres commandes mesurées : lint ×1 (9.7 s), nuget-wait ×2 (47 s), restore ×2 (26 s)
+Autres commandes mesurées : lint ×2 (19 s), nuget-wait ×2 (47 s), restore ×2 (26 s)
