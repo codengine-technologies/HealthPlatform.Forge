@@ -9813,3 +9813,4 @@
 {"ts":"2026-11-12T21:57:32+01:00","run_id":"-","type":"step","task":"task-449","step":"lint-angular","status":"skipped","note":"weda2 inchangé depuis la reprise 4","iterations":null,"duration_ms":889}
 {"ts":"2026-11-12T21:57:34+01:00","run_id":"-","type":"step_start","task":"task-449","step":"lint-mobile"}
 {"ts":"2026-11-12T21:57:35+01:00","run_id":"-","type":"step","task":"task-449","step":"lint-mobile","status":"skipped","note":"client-mobile non touché","iterations":null,"duration_ms":857}
+{"ts":"2026-11-12T21:57:40+01:00","run_id":"-","type":"step_start","task":"task-449","step":"e2e"}
