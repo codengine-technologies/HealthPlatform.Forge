@@ -1,8 +1,8 @@
 # E024 — Messagerie premium : traiter, déléguer, boucler
 
-> **Statut** : 🟡 En cours (1 feature sur 13 livrée, en attente de validation humaine)
-> **Version** : 0.1
-> **Auteur** : PO forge (tasks 453 à 465)
+> **Statut** : 🟡 En cours (2 features sur 14 livrées : 1 validée, 1 en attente de validation humaine)
+> **Version** : 0.2
+> **Auteur** : PO forge (tasks 453 à 466)
 > **Modèle** : task-driven
 > **Dernière mise à jour** : 2026-11-12
 > **Vue ingénierie** : [E024-Changelogs.md](E024-Changelogs.md)
@@ -71,7 +71,7 @@ disparaissent jamais parce que le message a été rangé ailleurs, depuis la pla
 
 | Fonctionnalité | Ce que le praticien peut faire | Tasks | Statut |
 |---|---|---|---|
-| Un acquittement ne disparaît jamais | Retrouver l'acquittement d'un compte rendu, sa note, son auteur et le patient rattaché à la main, même après que le message a été rangé depuis un autre logiciel, supprimé puis restauré, ou relu après un incident de la messagerie | task-453 | 🟡 Livrée, en attente de validation |
+| Un acquittement ne disparaît jamais | Retrouver l'acquittement d'un compte rendu, sa note, son auteur et le patient rattaché à la main, même après que le message a été rangé depuis un autre logiciel, supprimé puis restauré, ou relu après un incident de la messagerie | task-453 | ✅ Livrée et validée |
 | Marquer un message traité | Marquer « Traité » d'un geste, le remettre « À traiter », voir qui l'a traité | task-454 | 🔴 À faire |
 | « À revoir le… » | Reporter un message à une date : il quitte « À traiter » et revient en tête à cette date | task-455 | 🔴 À faire |
 | Vues par nature | Lire la boîte par nature — biologie, courriers, patients, pour info — chacune avec son compteur | task-456 | 🔴 À faire |
@@ -83,7 +83,8 @@ disparaissent jamais parce que le message a été rangé ailleurs, depuis la pla
 | Relance sans réponse | Faire revenir un message envoyé resté sans réponse après le délai choisi | task-462 | 🔴 À faire |
 | Suivi de biologie | Décider après lecture d'un résultat, et suivre jusqu'au « résultat communiqué » | task-463 | 🔴 À faire |
 | Mon espace santé complet | Écrire au patient sans erreur d'adressage, savoir si le message est lu, recevoir sa réponse dans la bonne boîte | task-464 | 🔴 À faire |
-| Mesurer la charge de la boîte | (équipe produit) Suivre la charge réelle de la messagerie sans voir boîtes, personnes ni patients | task-465 | 🔴 À faire |
+| Mesurer la charge de la boîte | (équipe produit) Suivre chaque jour la charge réelle de la messagerie — messages reçus, délais de prise de connaissance, part déléguée, travail hors heures, temps passé — sans voir boîtes, personnes ni patients | task-465 | 🟡 Livrée, en attente de validation |
+| Date de début du suivi | Choisir à partir de quand la boîte réclame quelque chose : l'historique ramené par une première synchronisation se consulte mais ne réclame rien | task-466 | 🔴 À faire |
 
 ---
 
@@ -123,6 +124,7 @@ restauré.
 | Rien d'inventé | Une trace n'est rendue à un message que si l'identité du document est certaine ; dans le doute (deux copies du même document), rien n'est rendu et la décision est tracée | ✅ Implémenté (task-453) |
 | Une nouvelle version est un nouveau document | Une nouvelle version d'un compte rendu n'hérite pas des acquittements de l'ancienne | ✅ Implémenté (task-453) |
 | Tout acte est imputé à son auteur réel | Chaque trace porte la personne qui l'a posée (titulaire, membre, délégataire), y compris quand elle revient sur un message rangé ailleurs ; ce que la plateforme fait seule est tracé comme acte système | ✅ Implémenté pour l'acquittement et le rattachement manuel (task-453) |
+| Mesurer avant d'améliorer, sans regarder personne | La charge de la messagerie se mesure avant chaque amélioration de l'EPIC. La mesure ne montre que des totaux portant sur au moins cinq boîtes, jamais une boîte, une personne ou un patient, et n'est visible que de l'équipe produit | 🟡 Livré, en attente de validation (task-465) |
 
 ---
 
@@ -142,6 +144,8 @@ restauré.
 - [x] Un acquittement de biologie et un rattachement manuel survivent au rangement d'un message depuis un autre
       logiciel (vérifié automatiquement sur l'application mobile et sur l'application web, task-453).
 - [ ] Le praticien voit, en ouvrant sa boîte, ce qui reste à traiter et par qui.
+- [ ] La charge de référence de la messagerie est relevée avant la mise en service de « Marquer un message traité »
+      (mesure disponible, task-465 ; relevé à faire sur la recette).
 
 ---
 
@@ -158,7 +162,7 @@ restauré.
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
-| Un acquittement ne disparaît jamais | 🟡 Livrée, en attente de validation humaine | 100 % | task-453 |
+| Un acquittement ne disparaît jamais | ✅ Livrée et validée | 100 % | task-453 |
 | Marquer un message traité | 🔴 À faire | 0 % | task-454 |
 | « À revoir le… » | 🔴 À faire | 0 % | task-455 |
 | Vues par nature | 🔴 À faire | 0 % | task-456 |
@@ -170,9 +174,10 @@ restauré.
 | Relance sans réponse | 🔴 À faire | 0 % | task-462 |
 | Suivi de biologie | 🔴 À faire | 0 % | task-463 |
 | Mon espace santé complet | 🔴 À faire | 0 % | task-464 |
-| Mesurer la charge de la boîte | 🔴 À faire | 0 % | task-465 |
+| Mesurer la charge de la boîte | 🟡 Livrée, en attente de validation humaine | 100 % | task-465 |
+| Date de début du suivi | 🔴 À faire | 0 % | task-466 |
 
-**Couverture EPIC consolidée : 8 %** (1 feature livrée sur 13, en attente de validation humaine).
+**Couverture EPIC consolidée : 14 %** (2 features livrées sur 14 : 1 validée, 1 en attente de validation humaine).
 
 ---
 
@@ -184,24 +189,38 @@ restauré.
   webmail de l'opérateur, purgé puis relu après un incident de la messagerie, ou supprimé puis restauré, il revient
   avec son acquittement intact : action, note, auteur et heure d'origine. Il ne revient plus « à acquitter ». Le
   patient rattaché à la main à un document sans INS est retrouvé de la même façon (task-453).
+- **v0.2 — Mesurer la charge de la boîte.** Chaque nuit, la plateforme calcule pour l'équipe produit la charge réelle
+  de la messagerie : combien de messages une boîte reçoit par jour (biologie, comptes rendus, messages de patients,
+  sans document), en combien de temps un message est lu et une biologie anormale acquittée, quelle part du travail
+  est faite par un délégataire ou un membre, quelle part tombe avant 8 h, après 20 h ou le week-end, et combien de
+  temps chacun passe dans la messagerie. C'est la mesure de référence qui jugera les améliorations suivantes de
+  l'EPIC (task-465).
 
 ### Conformité réglementaire
 
 - **v0.1 — Imputabilité.** Un acquittement qui revient garde l'auteur réel qui l'avait posé, délégataire compris. Le
   fait de le rendre au message est tracé au journal comme acte de la plateforme, sans personne, sans INS ni nom de
   patient, et conservé aussi longtemps que les autres accès aux données de santé (task-453).
+- **v0.2 — Mesure anonyme.** La mesure de charge ne montre que des totaux portant sur au moins cinq boîtes ; elle ne
+  désigne jamais une boîte, une personne ni un patient. Son calcul est tracé au journal comme acte de la plateforme
+  (task-465).
 
 ### Sécurité
 
 - **v0.1 — Aucune perte silencieuse.** Un message supprimé pour de bon ne détruit plus la trace de prise de
   connaissance d'un résultat. Dans le doute sur l'identité d'un document, la plateforme ne rattache rien et le trace
   (task-453).
+- **v0.2 — Réservé à l'équipe produit.** La mesure n'est accessible ni depuis l'application du médecin ni sans la
+  clé de l'équipe produit (task-465).
 
 ### Technique / observabilité (sans impact utilisateur direct)
 
 - **v0.1 — Socle commun des traces de travail.** Le modèle qui protège l'acquittement est celui que suivront tous les
   états de travail de l'EPIC (traité, report, attribution, notes, suivis). Un parcours automatique supplémentaire
   vérifie désormais ce cas sur les deux applications (task-453).
+- **v0.2 — Tableau de bord « Charge de la messagerie ».** Les indicateurs de la dernière journée et leur évolution
+  sont lisibles dans le tableau de bord du projet ; les indicateurs de « Marquer un message traité » et des vues par
+  nature y ont déjà leur place réservée (task-465).
 
 ---
 

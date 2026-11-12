@@ -279,7 +279,7 @@ dans `string.Equals`, mais `StringComparer` dans `Contains`.
 
 ## S125 — une prose qui « ressemble à du code » est signalée comme code commenté
 
-**Occurrences : 25** (task-423 — ×2 « …is down ; a route… » (middleware) et « …au-dessus ; une panne… » (client du registre), attrapés par le contrôle mécanique §Q 2b mais **après** le commit de la fonctionnalité, comme task-326 : le contrôle avait été remis à la passe qualité au lieu d'être joué avant `git commit`. Corrigés dans le commit de la passe qualité, avant le push ; task-419 — ×2 « … ; … » dans un commentaire de l'enregistrement DI et du relais SSE, attrapés par le contrôle mécanique §Q 2b avant le push ; task-409 — ×7 « … ; … » dans des commentaires du parseur FHIR, du préremplissage et de quatre tests, attrapés par le contrôle mécanique §Q 2b joué avant le commit et réécrits en phrases ; task-405 — « …la personne réelle ; aucune pour un acte système » dans un commentaire du lecteur du journal, attrapé par le contrôle mécanique §Q 2b joué cette fois avant le commit ; task-404 — « …de task-230 ; c'est désormais… » dans un commentaire de test du domaine, attrapé par le contrôle mécanique §Q 2b joué pendant `/sonar` : il n'avait pas été joué par `/develop`, voir S4457 ; task-400 — « …tenants neufs ; les gestes portent… » dans un commentaire de test d'intégration, attrapé par le contrôle mécanique §Q 2b avant le commit ; task-399 — ×2 « …ne l'a pas relue ; au-delà… » dans un commentaire de test d'intégration, attrapés par le contrôle mécanique §Q 2b avant le commit ; task-374 — « …aucune autre boîte ; le voir… » dans un commentaire de test du seed e2e, attrapé par le contrôle mécanique §Q 2b avant le commit ; task-326, 2ᵉ fois — « …qui le consomme ; les services… » dans le commentaire de tête d'`ImapServiceDependencies.cs`, attrapé par le contrôle §Q 2b mais **après** le commit : le contrôle et le `git commit` étaient enchaînés dans la même commande, sans arrêt sur résultat. Le contrôle se lit AVANT de committer, pas dans la même commande ; task-326 — « …qu'en Development ; un déploiement… » dans un commentaire de l'AppHost, attrapé par le contrôle mécanique §Q 2b avant le push ; task-340 — ×5 « … ; » en fin de proposition (contrôleur, MdnService, deux tests), dont un commentaire déplacé tel quel, attrapés par le contrôle mécanique §Q 2b avant la passe qualité ; task-334 — ×3, « …throws "Host is null" ; task-334 — … » et « par défaut ; WireExisting… », attrapées par le contrôle mécanique §Q 2b avant la passe qualité ; task-354 — « …would demand a registry ; » dans un commentaire d'un banc d'intégration, attrapé par le contrôle mécanique §Q 2b avant le commit ; task-344 — ×2 dans l'extension « reprise des étiquetages IA », attrapées par le contrôle mécanique avant le commit ; task-348 — deux commentaires « … public ; c'est … », « … Toxiproxy ; with », attrapés par le contrôle mécanique lancé pendant `/sonar` ; task-184, task-292, task-188, task-322, task-171, task-342, task-191, task-330,
+**Occurrences : 26** (task-465 — ×4 « … ; … » dans un commentaire du service de mesure de charge et trois commentaires de tests, attrapés par le contrôle mécanique §Q 2b joué avant le commit, réécrits avec une virgule ; task-423 — ×2 « …is down ; a route… » (middleware) et « …au-dessus ; une panne… » (client du registre), attrapés par le contrôle mécanique §Q 2b mais **après** le commit de la fonctionnalité, comme task-326 : le contrôle avait été remis à la passe qualité au lieu d'être joué avant `git commit`. Corrigés dans le commit de la passe qualité, avant le push ; task-419 — ×2 « … ; … » dans un commentaire de l'enregistrement DI et du relais SSE, attrapés par le contrôle mécanique §Q 2b avant le push ; task-409 — ×7 « … ; … » dans des commentaires du parseur FHIR, du préremplissage et de quatre tests, attrapés par le contrôle mécanique §Q 2b joué avant le commit et réécrits en phrases ; task-405 — « …la personne réelle ; aucune pour un acte système » dans un commentaire du lecteur du journal, attrapé par le contrôle mécanique §Q 2b joué cette fois avant le commit ; task-404 — « …de task-230 ; c'est désormais… » dans un commentaire de test du domaine, attrapé par le contrôle mécanique §Q 2b joué pendant `/sonar` : il n'avait pas été joué par `/develop`, voir S4457 ; task-400 — « …tenants neufs ; les gestes portent… » dans un commentaire de test d'intégration, attrapé par le contrôle mécanique §Q 2b avant le commit ; task-399 — ×2 « …ne l'a pas relue ; au-delà… » dans un commentaire de test d'intégration, attrapés par le contrôle mécanique §Q 2b avant le commit ; task-374 — « …aucune autre boîte ; le voir… » dans un commentaire de test du seed e2e, attrapé par le contrôle mécanique §Q 2b avant le commit ; task-326, 2ᵉ fois — « …qui le consomme ; les services… » dans le commentaire de tête d'`ImapServiceDependencies.cs`, attrapé par le contrôle §Q 2b mais **après** le commit : le contrôle et le `git commit` étaient enchaînés dans la même commande, sans arrêt sur résultat. Le contrôle se lit AVANT de committer, pas dans la même commande ; task-326 — « …qu'en Development ; un déploiement… » dans un commentaire de l'AppHost, attrapé par le contrôle mécanique §Q 2b avant le push ; task-340 — ×5 « … ; » en fin de proposition (contrôleur, MdnService, deux tests), dont un commentaire déplacé tel quel, attrapés par le contrôle mécanique §Q 2b avant la passe qualité ; task-334 — ×3, « …throws "Host is null" ; task-334 — … » et « par défaut ; WireExisting… », attrapées par le contrôle mécanique §Q 2b avant la passe qualité ; task-354 — « …would demand a registry ; » dans un commentaire d'un banc d'intégration, attrapé par le contrôle mécanique §Q 2b avant le commit ; task-344 — ×2 dans l'extension « reprise des étiquetages IA », attrapées par le contrôle mécanique avant le commit ; task-348 — deux commentaires « … public ; c'est … », « … Toxiproxy ; with », attrapés par le contrôle mécanique lancé pendant `/sonar` ; task-184, task-292, task-188, task-322, task-171, task-342, task-191, task-330,
 task-331 — neuvième, **attrapée par le contrôle mécanique avant le commit**, comme prévu : « …pas
 l'objet ; le parcours… » au milieu d'un commentaire du seed e2e. Le contrôle marche. Le réflexe
 d'écriture, lui, ne tient toujours pas : en français, l'espace avant le point-virgule est la
@@ -478,7 +478,7 @@ on relit, c'est un commentaire qu'il faut, pas une variable morte.
 
 ## S4457 — la validation des arguments se fait hors du corps `async`
 
-**Occurrences : 9** (task-409 — `MailboxPrefillService.PrefillIfNeededAsync` : `ThrowIfNull(attachment)` en tête d'une méthode `async` publique écrite ce jour, attrapé par le contrôle mécanique §Q 2b avant le commit — scindée en enveloppe synchrone + `…CoreAsync` ; task-404 — `UserSettingsRepository.SaveMailboxSenderIdentityAsync` : `ThrowIfNull` en tête d'une méthode `async` publique écrite ce jour ; **le contrôle mécanique §Q 2b n'a pas été joué** : la passe qualité n'a cherché que du code commenté, alors que le Develop log l'annonçait — vu par Sonar, scindée en enveloppe synchrone + `…CoreAsync` ; task-403 — `MailboxAccessGate.CheckAsync` et `RecordRefusedAsync` : `ThrowIfNull` en tête de méthodes `async` publiques écrites ce jour ; le contrôle §Q 2b n'a vu que la seconde, le `ThrowIfNull` de la première étant plus de trois lignes sous la signature — scindées en enveloppe synchrone + `…CoreAsync` ; task-386 — `AnnuaireSanteService.SearchAsync` : `ThrowIfNull` + normalisation + validation dans la méthode `async` ; scindée en `SearchAsync` (synchrone, contrôles) + `SearchValidatedAsync` ; task-348 — `MailServerResolver.ResolveAsync` : `throw new ArgumentException` explicite en tête de la méthode `async`, **invisible au contrôle mécanique §Q 2b**, qui ne cherche que `ThrowIf…` ; contrôle sauté de surcroît, la passe qualité ayant été faite à la main ; task-329 — `OutgoingMailService.SendAsync` : `ThrowIfNull(mail)` en tête de la
+**Occurrences : 10** (task-465 — `PostgresMailboxLoadStore.ReadFactsAsync` et `SaveAsync` : `ThrowIfNull` en tête de deux méthodes `async` publiques écrites ce jour, attrapés par le contrôle mécanique §Q 2b avant le commit — scindées en enveloppe synchrone + `…CoreAsync` ; task-409 — `MailboxPrefillService.PrefillIfNeededAsync` : `ThrowIfNull(attachment)` en tête d'une méthode `async` publique écrite ce jour, attrapé par le contrôle mécanique §Q 2b avant le commit — scindée en enveloppe synchrone + `…CoreAsync` ; task-404 — `UserSettingsRepository.SaveMailboxSenderIdentityAsync` : `ThrowIfNull` en tête d'une méthode `async` publique écrite ce jour ; **le contrôle mécanique §Q 2b n'a pas été joué** : la passe qualité n'a cherché que du code commenté, alors que le Develop log l'annonçait — vu par Sonar, scindée en enveloppe synchrone + `…CoreAsync` ; task-403 — `MailboxAccessGate.CheckAsync` et `RecordRefusedAsync` : `ThrowIfNull` en tête de méthodes `async` publiques écrites ce jour ; le contrôle §Q 2b n'a vu que la seconde, le `ThrowIfNull` de la première étant plus de trois lignes sous la signature — scindées en enveloppe synchrone + `…CoreAsync` ; task-386 — `AnnuaireSanteService.SearchAsync` : `ThrowIfNull` + normalisation + validation dans la méthode `async` ; scindée en `SearchAsync` (synchrone, contrôles) + `SearchValidatedAsync` ; task-348 — `MailServerResolver.ResolveAsync` : `throw new ArgumentException` explicite en tête de la méthode `async`, **invisible au contrôle mécanique §Q 2b**, qui ne cherche que `ThrowIf…` ; contrôle sauté de surcroît, la passe qualité ayant été faite à la main ; task-329 — `OutgoingMailService.SendAsync` : `ThrowIfNull(mail)` en tête de la
 méthode `async` publique, écrit alors que cette entrée existait ; d'où le contrôle mécanique de
 `agents/develop.md` §Q 2b ; task-299, task-300, task-171 — `PscTokenProvider.GetModeAsync` /
 `GetAccessTokenAsync` : `ThrowIfNull(key)` en tête d'une méthode `async`, corrigé en
@@ -515,7 +515,7 @@ presque toute méthode de contrat.
 
 ## CA1068 — le `CancellationToken` est le **dernier** paramètre
 
-**Occurrences : 3** (task-374 — introduit par la passe qualité : rendre REQUIS un paramètre optionnel placé après le jeton (`string? mailbox = null` → `string? mailbox`) le fait remonter en CA1068, l'analyseur tolérant un optionnel en queue ; retirer une valeur par défaut, c'est aussi replacer le paramètre AVANT le jeton ; task-326 — un paramètre ajouté APRÈS le jeton pour ne pas casser 44 appels de test positionnels ; la bonne forme : l'ajout avant le jeton, et une surcharge adjacente sans lui pour les appels existants ; task-299, 4 occurrences dans la même task)
+**Occurrences : 4** (task-465 — `PostgresMailboxLoadStore.ReadAsync<T>(…, CancellationToken, Func<…> map)` : le délégué de projection ajouté **après** le jeton, pour garder les appels lisibles ; vu par Sonar. Le jeton passe en dernier, le délégué avant ; contrôle mécanique ajouté à `agents/develop.md` §Q 2b ; task-374 — introduit par la passe qualité : rendre REQUIS un paramètre optionnel placé après le jeton (`string? mailbox = null` → `string? mailbox`) le fait remonter en CA1068, l'analyseur tolérant un optionnel en queue ; retirer une valeur par défaut, c'est aussi replacer le paramètre AVANT le jeton ; task-326 — un paramètre ajouté APRÈS le jeton pour ne pas casser 44 appels de test positionnels ; la bonne forme : l'ajout avant le jeton, et une surcharge adjacente sans lui pour les appels existants ; task-299, 4 occurrences dans la même task)
 
 Toutes sur des **helpers privés** dont la signature avait été calquée sur celle
 du contrat public, lequel porte `(…, CancellationToken ct = default, string?
@@ -615,7 +615,7 @@ dotnet format style {projet}.csproj --verify-no-changes --diagnostics IDE1006
 
 ## S138 — une méthode de plus de 80 lignes doit être découpée
 
-**Occurrences : 2** (task-399 — `SmtpService.SendMailAsync`, déjà à 81 lignes sur `develop`, porté à 95 par le contrôle de l'identité d'envoi : la task a **ajouté une étape à une méthode déjà au seuil**. Corrigé en sortant la trace d'audit de l'envoi réussi dans `TraceSent`. Consigne ajoutée : avant d'insérer une étape dans une méthode, mesurer sa longueur ; à plus de 70 lignes, sortir d'abord un bloc existant ; task-188)
+**Occurrences : 3** (task-465 — ×2, deux méthodes **déjà au-dessus du seuil** sur `develop` allongées d'une ligne chacune : `ConfigureOpenTelemetry` (un `.AddMeter` de plus, 81 → 83) et `AddApplication` (un appel d'enregistrement de plus, 110 → 111). La consigne « mesurer avant d'insérer » n'a pas été appliquée parce que l'ajout « ne faisait qu'une ligne ». Corrigé en sortant `AddMssMeters`, `AddImap`, `AddMailSending` et `AddSemanticSearch`. Une ligne ajoutée à une méthode au-delà de 70 lignes est une étape ajoutée ; task-399 — `SmtpService.SendMailAsync`, déjà à 81 lignes sur `develop`, porté à 95 par le contrôle de l'identité d'envoi : la task a **ajouté une étape à une méthode déjà au seuil**. Corrigé en sortant la trace d'audit de l'envoi réussi dans `TraceSent`. Consigne ajoutée : avant d'insérer une étape dans une méthode, mesurer sa longueur ; à plus de 70 lignes, sortir d'abord un bloc existant ; task-188)
 
 Le piège n'est pas la méthode « fourre-tout » : c'est la méthode **qui enfile
 trois temps distincts** sans que rien ne les sépare. Dans `StartSyncAsync`, la
@@ -644,6 +644,43 @@ d'emblée **ce qui précède** la mise en file (acquisition, garde, réservation
 **ce qui suit** l'exécution (clôture, libération). Le corps restant est alors le
 seul vrai sujet de la méthode. Ne pas attendre que Sonar compte les lignes : le
 découpage d'après-coup oblige à re-valider un code déjà vert.
+
+---
+
+## capture-de-metriques-serialisee — un test qui ouvre un `MeterListener` rejoint la collection sérialisée
+
+**Occurrences : 1** (task-465, `/sonar` — `MailboxLoadMetricsTests` créait sa propre collection `DisableParallelization`.
+`MetricCaptureSerialisationScanTests` l'a refusée : une collection sérialisée **à part** reste parallèle aux autres)
+
+Un `MeterListener` reçoit les mesures de **tout le processus**, pas seulement celles du test qui l'ouvre. Deux classes
+de capture qui tournent en même temps lisent donc les mesures l'une de l'autre. Désactiver le parallélisme dans une
+collection propre ne suffit pas : elle reste parallèle aux autres collections.
+
+**Consigne** : toute classe de test qui ouvre un `MeterListener`, ou qui publie un instantané statique lu par une
+jauge, porte `[Collection(Telemetry.MailMetricsCaptureCollection.Name)]` (ou une autre collection de la liste
+`SerialisingCollections` du test d'architecture). Ne jamais créer de collection sérialisée nouvelle pour cela.
+
+---
+
+## ASP0025 — une politique d'autorisation se pose par `AddAuthorizationBuilder`
+
+**Occurrences : 1** (task-465 — hôte de test d'intégration `MailboxLoadEndpointIntegrationTests` : la politique de repli posée par `services.AddAuthorization(o => o.FallbackPolicy = …)`, vu par Sonar)
+
+L'analyseur ASP.NET Core signale `AddAuthorization(options => …)` quand le délégué ne fait que poser des
+politiques : `AddAuthorizationBuilder()` les déclare sans fermeture et se lit comme la configuration de
+production.
+
+```csharp
+// ❌ AVANT
+services.AddAuthorization(o => o.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
+
+// ✅ APRÈS
+services.AddAuthorizationBuilder()
+    .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
+```
+
+**Consigne** : dans un hôte de test qui reproduit la politique « toute route authentifiée sauf
+`[AllowAnonymous]` », écrire directement `AddAuthorizationBuilder().SetFallbackPolicy(…)`.
 
 ---
 

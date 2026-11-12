@@ -10,7 +10,7 @@
 
 ### v0.1 — task-453 : un acquittement ne disparaît jamais (api-mail, dtos-mss, client-mobile, weda2)
 
-- **État** : `done`, PRs en attente de merge humain (HAG).
+- **État** : `archived` — PRs mergées par l'humain.
 - **PRs** : api-mail [#364](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/364),
   dtos-mss [#63](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/63),
   client-mobile [#123](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/123). client-angular en
@@ -57,6 +57,45 @@
   re-liaison après purge hors transaction ; unicité `ManualPatientAttachments.AnchorKey` sans upsert SQL ; surcharge
   `IAuditService.TraceSystem` plutôt qu'un `IsSystemAct` posé par l'appelant.
 
+
+### v0.2 — task-465 : mesurer la charge de la boîte (api-mail, dtos-mss)
+
+- **État** : `done`, PRs en attente de merge humain (HAG).
+- **PRs** : api-mail [#366](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/366),
+  dtos-mss [#64](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/64).
+- **NuGet** : `HealthPlatform.Dtos.Mss` 597.0.0 → **601.0.0** (`AuditActionType.MailboxLoadComputed = 72`, famille
+  technique) ; bump `api-mail` seul. Miroirs à reporter : `client-angular` `audit.model.ts`, `client-blazor`
+  `AuditActionLabels.cs`.
+- **Conception** :
+  - migration registre `20261112090000_AddMailboxLoadStatistics` : rôle `mss_audit_statistics` (NOLOGIN, `SELECT` sur
+    `audit_traces` et `mss_mailboxes(id, created_at)`), politique RLS `audit_traces_statistics_read`, tables
+    `mailbox_load_days` / `mailbox_load_values` (`CHECK mailbox_count >= 5`) ;
+  - `PostgresMailboxLoadStore` : faits du jour sous `SET LOCAL ROLE` (gestes, réceptions INBOX dédupliquées avec
+    rodage de 24 h après création de la boîte, premières lectures, premiers acquittements, réception cherchée 30 j) ;
+  - `MailboxLoadCalculator` (seuil par découpage, sessions à 15 min d'inactivité + 1 min, quantiles interpolés),
+    `MailboxLoadCalendar` (Europe/Paris), `MailboxLoadGestures` (52 actions comptées, liste d'exclusion, test
+    d'exhaustivité) ;
+  - `MailboxLoadHostedService` : passe horaire, 7 jours rattrapés, verrou Redis `lock:mailbox-load:{jour}` (6 h),
+    sans Redis aucun calcul ; jauges `mss_mailbox_load{indicator,breakdown,statistic}` et `mss_mailbox_load_day` ;
+  - `GET /api/v1/product-metrics/mailbox-load?from=&to=` (366 j max) : `X-Product-Metrics-Key`, 404 sans clé
+    configurée, 401 sinon, 400 RFC 7807 ; clé de dev dans l'AppHost ;
+  - tableau de bord `src/AppHost/grafana/dashboards/mssante-mailbox-load.json` (13 panneaux + 3 réservés).
+- **Écart de DoD à arbitrer** : le calcul ne lit pas les bases de boîte (catégorie tirée du LOINC du journal ; pool par
+  praticien et règle 14) ; réception = instant vu par la plateforme.
+- **Tests** : 61 unitaires (`Services/ProductMetrics/`), 9 d'intégration `MailboxLoadEndpointIntegrationTests` (base
+  de registre propre à la classe) ; mutations : politique RLS fermée, seuil 4 (code + `CHECK` → `23514`), rodage
+  retiré, validation de plage, clé de personne en découpage, contrôle de clé, garde de configuration — toutes rouges.
+- **Suite complète api-mail** : domain 221, infrastructure 749, application 4 284, api 1 380, integration 1 291
+  (+16 ignorés) — 0 rouge. Rouge préexistant instable, aussi sur `develop` :
+  `TenantRegistryIntegrationTests.AttachMailboxAsync_UnderConcurrency_PersistsExactlyOneTenant`.
+- **Sonar** : 4 findings dans le diff (CA1068, ASP0025, S138 ×2 aggravés sur `ConfigureOpenTelemetry` et
+  `AddApplication`) → corrigés (`AddMssMeters`, `AddImap`, `AddMailSending`, `AddSemanticSearch`) ; 0 restant ;
+  new coverage 97,8 → 97,9 %, new violations 98 → 96, code smells 94 → 92 ; QG projet ERROR inchangé dans ses causes.
+- **E2E** : mobile 61 verts ; Angular 80 verts, 2 flaky (E2E-SEARCH-001, E2E-LIVE-001), quarantaine E2E-COMPOSE-002
+  (34 j) ; porte verte. Aucun scénario ajouté (aucun parcours médecin).
+- **Restes** : capture Grafana et mesure de référence sur la recette (HAG) ; secret `ProductMetrics__MailboxLoad__ApiKey`
+  (DevOps) ; AIPD.
+
 ---
 
 ## Annexe A — Cartographie des briques applicatives
@@ -70,12 +109,20 @@
 | `api-mail/src/Infrastructure/Migrations/MailDb/20261111120000_AnchorDocumentWorkStates.cs` | schéma (sans reprise de données) | task-453 |
 | `dtos-mss/AuditActionType.cs` (70, 71) | actes système de re-liaison | task-453 |
 | `api-mail/tests/mss.mail.e2e/E2eMessage.cs` | `message --move`, `--kind bio-hprim` | task-453 |
+| `api-mail/src/Application/Services/ProductMetrics/` | calcul, calendrier, gestes, options, service de la mesure de charge | task-465 |
+| `api-mail/src/Application/Services/Background/MailboxLoadHostedService.cs` | calcul quotidien sous verrou | task-465 |
+| `api-mail/src/Infrastructure/Repositories/TenantDb/PostgresMailboxLoadStore.cs` | lecture statistique du journal, agrégats | task-465 |
+| `api-mail/src/Infrastructure/Migrations/TenantDb/20261112090000_AddMailboxLoadStatistics.cs` | rôle, politique RLS, tables | task-465 |
+| `api-mail/src/Api/Controllers/V1/ProductMetricsController.cs` | route de l'équipe produit | task-465 |
+| `api-mail/src/AppHost/grafana/dashboards/mssante-mailbox-load.json` | tableau de bord « Charge de la messagerie » | task-465 |
+| `dtos-mss/AuditActionType.cs` (72) | acte système du calcul | task-465 |
 
 ---
 
 ## Annexe B — Inventaire fonctionnel daté (2026-11-12)
 
-- Tasks de l'EPIC : 13 (1 `done`, 12 `todo`).
+- Tasks de l'EPIC : 14 (1 `archived`, 1 `done`, 12 `todo`).
+- Indicateurs de charge publiés : 7 (+ 3 réservés pour task-454 et task-456).
 - Scénarios e2e de l'EPIC au catalogue : 1 (E2E-BIO-004).
 
 ---
@@ -84,7 +131,7 @@
 
 | Task | Contribution | État |
 |---|---|---|
-| task-453 | Ancrage des acquittements et du rattachement manuel à l'identité stable du document ; re-liaison ; modèle imposé aux tasks 454 à 463 | `done` (PRs #364, #63, #123) |
+| task-453 | Ancrage des acquittements et du rattachement manuel à l'identité stable du document ; re-liaison ; modèle imposé aux tasks 454 à 463 | `archived` (PRs #364, #63, #123) |
 | task-454 | Marquer un message traité | `todo` |
 | task-455 | « À revoir le… » | `todo` |
 | task-456 | Vues par nature | `todo` |
@@ -96,4 +143,5 @@
 | task-462 | Relance sans réponse | `todo` |
 | task-463 | Suivi de biologie | `todo` |
 | task-464 | Mon espace santé complet | `todo` |
-| task-465 | Mesurer la charge de la boîte | `todo` |
+| task-465 | Mesure quotidienne et anonyme de la charge (journal d'audit, rôle statistique, seuil 5 boîtes), route et tableau de bord de l'équipe produit | `done` (PRs #366, #64) |
+| task-466 | Date de début du suivi par boîte | `todo` |
