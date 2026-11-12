@@ -2354,6 +2354,10 @@ oublié, mot de l'objet, historique ancien d'un patient), et aucun test n'avait 
 - Un critère a **deux lectures** (adresse entière comparée exactement, ou mots) : toute règle ajoutée au critère —
   plafond de mots, exactitude, normalisation — se décide et se teste **pour chacune**. Le plafond de 10 mots comptait les
   mots d'une adresse pourtant comparée en entier : une adresse choisie longue répondait 400 (6ᵉ revue de task-449, B1).
+- Une **borne de coût SQL** (nombre de conditions qu'un texte tapé produit) se pose **une seule fois**, là où les
+  conditions sont construites, sur ce qui est **réellement émis** (mots distincts, préfiltre compris) — jamais par des
+  exemptions dispersées dans le lecteur du critère. Trois correctifs successifs du plafond de task-449 ont chacun ouvert
+  un trou (adresse longue refusée, puis `"a a … a"` en ~245 `LIKE`, exemption « adresse » appliquée à l'objet) — 7ᵉ revue, B1.
 
 **Preuve** : task-439, `SearchExactFirstHybridIntegrationTests.Hybrid_PatientWithMoreThan200Mails_…` (230 messages
 anciens sous 460 homonymes partiels récents, tous trouvés page par page) et

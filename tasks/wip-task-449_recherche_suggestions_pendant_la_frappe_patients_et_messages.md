@@ -791,6 +791,30 @@ Prévention : `conventions/csharp.md` § recherche — un correctif qui ajoute u
 vérifie ses **deux** lectures (adresse exacte / mots), c'est la 4ᵉ fois qu'un correctif de cette task casse le cas voisin.
 Cinq reprises faites (plafond 2) : **arrêt**, `questions/task-449.md` écrit.
 
+### Passage 7 (2026-11-12, revue anticipée après la reprise 6) — CHANGES REQUESTED
+
+Première passe sur la boucle courte (`/review --code`, sans build ni Sonar ni e2e : ~3 min au lieu de ~45). B1, S1, S2,
+S3 de la passe 6 corrigés là où ils visaient ; `OrEmpty` ne change aucun texte non vide ; la regex d'adresse reprend
+celle de weda2. Un bloquant nouveau, **vérifié par la forge dans le code**, encore né du correctif précédent.
+
+#### À corriger par la reprise
+
+- **B1** — plus rien ne borne le nombre de conditions SQL d'un critère : en ordre strict les mots ne sont pas
+  dédoublonnés et les mots d'une lettre ne comptent pas au plafond (`objet : "a a a … a"` → ~245 `LIKE` identiques par
+  ligne, `unaccent` compris) ; et l'exemption « adresse » du plafond vaut aussi pour « Objet » et « De (nom) », qui ne
+  comparent pas l'adresse en entier. Correctif : une **borne dure unique** sur les conditions effectivement émises
+  (mots distincts, casse ignorée, préfiltre compris), appliquée là où elles sont construites ; l'exemption « adresse »
+  seulement pour les champs qui comparent l'adresse en entier (`FromAddress`, `RecipientAddress`). Test rouge sur
+  `"a a a … a"` et sur une « adresse » longue dans Objet.
+- S1 — `""` seul dans un champ du formulaire passe la validation « au moins un critère » et liste toute la boîte, alors
+  que `objet : ""` dans la barre répond 400 : un champ fait de paires vides doit compter comme vide aussi pour la
+  validation (ou le dépôt garder « aucune ligne » comme avant).
+- S2 — dédoublonner en ordinal insensible à la casse sur le texte tapé, pas par le jumeau C# `SearchTerms.Normalize`.
+- S3 — l'intégration « l'IRM … » ne vérifie qu'un 200 sur une boîte vide : lire le message trouvé (règle 1b).
+
+Prévention : `conventions/csharp.md` § recherche — une borne de coût SQL se pose **une fois**, sur ce qui est émis.
+Six reprises faites (plafond 2) : **arrêt**, `questions/task-449.md` écrit.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-449 --sync` — ne pas éditer à la main)*
@@ -804,6 +828,7 @@ Cinq reprises faites (plafond 2) : **arrêt**, `questions/task-449.md` écrit.
 | /lint-mobile | skipped | 0.9 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 20 min 12 s | — | — | — | e2e ×27 (3 h 02 min) |
 | /review | failed | 8 min 06 s | 11 (1 min 20 s) | 7 (1 h 34 min) | — | api-mail 5B/5T, dtos-mss 5B/0T, client-angular 1B/2T, passage 6 : CHANGES REQUESTED (B1, né de S5), plafond de reprises dépassé |
-| **Total cycle** | | **1 h 52 min** | **38 (7 min 00 s)** | **55 (4 h 14 min)** | **12 (4 min 46 s)** | |
+| /review-code | failed | 3 min 34 s | — | — | — | passage 7 : CHANGES REQUESTED (B1), plafond de reprises dépassé |
+| **Total cycle** | | **1 h 55 min** | **38 (7 min 00 s)** | **55 (4 h 14 min)** | **12 (4 min 46 s)** | |
 
 Autres commandes mesurées : lint ×5 (59 s), nuget-wait ×1 (24 s), restore ×1 (3.7 s)

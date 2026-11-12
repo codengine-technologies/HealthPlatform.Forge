@@ -1,25 +1,24 @@
-# task-449 — /review passage 6 : CHANGES REQUESTED, après la reprise 5
+# task-449 — revue anticipée passe 7 : CHANGES REQUESTED, après la reprise 6
 
-**Étape** : `/review` (validation finale), 6ᵉ passe, 2026-11-12. Sonar (CA1862 corrigé, aucun avertissement au
-build) et `/e2e` (mobile 61, angular 84, parité verte) sont verts. B1, B2, S5 de la passe 5 tiennent. La PR n'est
-**pas** ouverte. La task reste en `wip-*` (`**Reprises**: 5`).
+**Étape** : `/review --code` (revue anticipée, boucle courte), 7ᵉ passe, 2026-11-12. Les correctifs de la reprise 6
+(B1, S1, S2, S3) tiennent là où ils visaient ; api-mail 8 003 tests verts. La PR n'est **pas** ouverte. La task reste
+en `wip-*` (`**Reprises**: 6`).
 
-## Bloquant (passe 6) — corrigeable par la forge, une ligne
+## Bloquant (passe 7) — corrigeable par la forge
 
-### B1 — Un correspondant choisi dont l'adresse est longue est refusé en 400
+### B1 — Le nombre de conditions SQL d'un critère n'est plus borné
 
-- Le plafond de 10 mots (S5) compte les mots d'une adresse alors qu'elle est comparée en entier (B2). Choisir
-  `secretariat.cardiologie.pediatrique@ch-saint-jean-de-luz.mssante.fr` répond 400 « au plus 10 mots ». Vérifié
-  dans le code.
-- Correctif : le plafond ne s'applique qu'à un critère lu en mots. Test d'intégration avec une adresse longue, vu rouge.
+- Vérifié dans le code : entre guillemets, les mots ne sont pas dédoublonnés et les mots d'une lettre ne comptent pas au
+  plafond. `objet : "a a a … a"` produit ~245 conditions identiques par ligne de la boîte. Et l'exemption « adresse »
+  du plafond vaut aussi pour « Objet », qui ne compare pas l'adresse en entier.
+- Correctif : **une borne dure unique** sur les conditions réellement émises (mots distincts), posée là où le SQL est
+  construit ; l'exemption « adresse » seulement pour « De » et « À ». Tests rouges sur les deux cas.
 
 ## Suggestions (même reprise)
 
-- **S1** — `de : ""` (paire vide seule) n'est plus refusé comme critère vide ; `de : "Paul Martin" ""` lance une
-  recherche par le sens sur `""`. Un critère ou un reste fait de blancs et de paires vides est vide.
-- **S2** — le serveur reconnaît comme adresse `p.martin@x.fr,` (virgule collée) que weda2 refuse : reprendre la même
-  classe de caractères que le front.
-- **S3** — le plafond compte les doublons et les élisions (`l'IRM` = 2 mots) : compter les mots distincts.
+- **S1** — `""` seul dans un champ du formulaire liste toute la boîte (la barre répond 400) : aligner.
+- **S2** — dédoublonner sans passer par le jumeau C# de la normalisation.
+- **S3** — le test « l'IRM … » doit lire le message trouvé, pas seulement le code 200.
 
 ## Arbitrage humain
 
@@ -27,7 +26,6 @@ Aucun.
 
 ## Pourquoi la chaîne s'arrête
 
-Cinq reprises faites (plafond 2 ; les reprises 3 à 5 demandées par l'humain). Le bloquant est né du correctif S5 de la
-reprise 5, comme les précédents sont nés du correctif d'avant ; la prévention est consignée (`conventions/csharp.md` :
-une règle de critère se teste pour ses deux lectures, adresse et mots). Correctif d'une ligne : la forge recommande une
-6ᵉ reprise (`relance`).
+Six reprises faites (plafond 2). C'est le 3ᵉ correctif successif du plafond de mots qui ouvre un trou ; la prévention
+retenue (`conventions/csharp.md`) est de poser **une seule** borne, sur ce qui est émis, au lieu d'exemptions. Cette
+passe a coûté ~3 min (boucle courte, sans Sonar ni e2e) au lieu de ~45. La forge recommande une 7ᵉ reprise (`relance`).
