@@ -427,13 +427,13 @@ d'un patient, rejeu) passent par `closed()`, et l'ouverture demande les suggesti
 
 | Voie | Jouée / réutilisée | Résultat | Dépôts couverts |
 |---|---|---|---|
-| mobile | réutilisée (reprise 2, dépôts couverts inchangés) | 61 verts, 0 flaky, 0 rouge, parité verte | api-mail `68a0f76c`, client-mobile `develop` `f775f17` |
-| angular | jouée (reprise 2) | 84 verts dont E2E-SEARCH-013 et 014, 0 flaky, 0 rouge, parité verte | api-mail `68a0f76c`, client-angular (arbre non commité), Client/Mobile/e2e |
+| mobile | jouée (reprise 3) | 61 verts, 0 flaky, 0 rouge, parité verte | api-mail `5d3716ad`, client-mobile `develop` `f775f17` |
+| angular | jouée (reprise 3) | 84 verts dont E2E-SEARCH-013 et 014, 0 flaky, 0 rouge, parité verte | api-mail `5d3716ad`, client-angular (arbre non commité), Client/Mobile/e2e |
 
 Passage 1 : un premier jeu mobile en parité rouge sur `E2E-BIO-004` (`develop` local de `client-mobile` en retard d'un
-commit, PR #123 de task-453 mergée depuis l'autre poste ; `git pull --ff-only` puis voie rejouée, verte) ; flaky
-E2E-COMPOSE-001 consigné au registre (9ᵉ occurrence). Reprise 1 : les deux voies rejouées, vertes, sans flaky. Reprise 2 (weda2 seulement) : voie Angular rejouée, verte ;
-voie mobile réutilisée (empreinte inchangée).
+commit, `git pull --ff-only` puis voie rejouée, verte) ; flaky E2E-COMPOSE-001 consigné au registre (9ᵉ occurrence).
+Reprises 1 et 3 : les deux voies rejouées, vertes, sans flaky. Reprise 2 (weda2 seulement) : voie Angular rejouée,
+verte ; voie mobile réutilisée (empreinte inchangée).
 Démontage vérifié : ports libres, aucun conteneur e2e résiduel.
 
 **E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
@@ -629,11 +629,11 @@ la désignation). Deux reprises déjà faites : **arrêt**, `questions/task-449.
 |---|---|---|---|---|---|---|
 | /start | ok | 20 s | — | — | — | — |
 | /develop | ok | 12 min 40 s | 7 (1 min 11 s) | 7 (21 min 46 s) | — | dtos-mss 1B/0T, api-mail 2B/3T, client-angular 4B/4T, reprise 3 : B4 B5 S16 S17, S4/S5, S7 |
-| /sonar | ok | 13 min 25 s | 6 (1 min 56 s) | 19 (24 min 59 s) | 7 (2 min 25 s) | 1 itération(s), api-mail 6B/19T, reprise 3 : S3776 nouveau code corrigé |
+| /sonar | ok | 13 min 25 s | 6 (1 min 56 s) | 21 (31 min 46 s) | 8 (3 min 11 s) | 1 itération(s), api-mail 6B/21T, reprise 3 : S3776 nouveau code corrigé |
 | /lint-angular | ok | 1 min 00 s | — | — | — | — |
 | /lint-mobile | skipped | 0.9 s | — | — | — | client-mobile non touché |
-| /e2e | ok | 11 min 09 s | — | — | — | e2e ×17 (2 h 02 min), reprise 2 : angular 84, mobile réutilisée, parité verte |
+| /e2e | ok | 20 min 24 s | — | — | — | e2e ×20 (2 h 22 min) |
 | /review | failed | 44 min 18 s | 4 (29 s) | 2 (1 h 13 min) | — | api-mail 2B/2T, dtos-mss 2B/0T, passage 3 : B4 B5, plafond de reprises atteint |
-| **Total cycle** | | **1 h 22 min** | **17 (3 min 36 s)** | **28 (2 h 00 min)** | **7 (2 min 25 s)** | |
+| **Total cycle** | | **1 h 32 min** | **17 (3 min 36 s)** | **30 (2 h 07 min)** | **8 (3 min 11 s)** | |
 
 Autres commandes mesurées : lint ×4 (48 s), nuget-wait ×1 (24 s), restore ×1 (3.7 s)
