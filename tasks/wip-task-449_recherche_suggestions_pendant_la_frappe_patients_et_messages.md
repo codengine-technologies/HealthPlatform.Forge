@@ -516,14 +516,13 @@ contrôle dispersé du service (`EnsureNoCriterionTooLong`) est retiré.
 
 | Voie | Jouée / réutilisée | Résultat | Dépôts couverts |
 |---|---|---|---|
-| mobile | jouée (reprise 5) | 61 verts, 0 flaky, 0 rouge, parité verte | api-mail `93bf2adf`, client-mobile `develop` `f775f17` |
-| angular | jouée (reprise 5) | 84 verts dont E2E-SEARCH-013 et 014, 0 flaky, 0 rouge, parité verte | api-mail `93bf2adf`, client-angular (arbre non commité), Client/Mobile/e2e |
+| mobile | jouée (code approuvé, reprise 7) | 61 verts, 0 flaky, 0 rouge, parité verte | api-mail `3f81df39`, client-mobile `develop` `f775f17` |
+| angular | jouée (code approuvé, reprise 7) | 84 verts dont E2E-SEARCH-013 et 014, 0 flaky, 0 rouge, parité verte | api-mail `3f81df39`, client-angular (arbre non commité), Client/Mobile/e2e |
 
 Passage 1 : un premier jeu mobile en parité rouge sur `E2E-BIO-004` (`develop` local de `client-mobile` en retard d'un
 commit, `git pull --ff-only` puis voie rejouée, verte) ; flaky E2E-COMPOSE-001 consigné au registre (9ᵉ occurrence).
-Reprises 1, 3, 4 et 5 : les deux voies rejouées, vertes, sans flaky. Reprise 2 (weda2 seulement) : voie Angular rejouée,
-verte ; voie mobile réutilisée (empreinte inchangée).
-Démontage vérifié : ports libres, aucun conteneur e2e résiduel.
+Reprises 1, 3, 4, 5 : les deux voies rejouées, vertes. Reprises 6-7 (boucle courte) : voies jouées **une fois**, sur le
+code approuvé par la revue anticipée. Démontage vérifié : ports libres, aucun conteneur e2e résiduel.
 
 **E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
 
@@ -862,9 +861,9 @@ vert marqué).
 | /sonar | ok | 10 min 22 s | 10 (3 min 49 s) | 37 (1 h 55 min) | 14 (5 min 33 s) | 1 itération(s), api-mail 10B/37T |
 | /lint-angular | skipped | 0.8 s | — | — | — | weda2 inchangé depuis la reprise 4 |
 | /lint-mobile | skipped | 0.8 s | — | — | — | client-mobile non touché |
-| /e2e | ok | 20 min 12 s | — | — | — | e2e ×27 (3 h 02 min) |
+| /e2e | ok | 19 min 52 s | — | — | — | e2e ×30 (3 h 22 min) |
 | /review | failed | 8 min 06 s | 11 (1 min 20 s) | 7 (1 h 34 min) | — | api-mail 5B/5T, dtos-mss 5B/0T, client-angular 1B/2T, passage 6 : CHANGES REQUESTED (B1, né de S5), plafond de reprises dépassé |
 | /review-code | ok | 4 min 04 s | — | — | — | — |
-| **Total cycle** | | **56 min 06 s** | **41 (8 min 04 s)** | **62 (4 h 28 min)** | **14 (5 min 33 s)** | |
+| **Total cycle** | | **55 min 46 s** | **41 (8 min 04 s)** | **62 (4 h 28 min)** | **14 (5 min 33 s)** | |
 
 Autres commandes mesurées : lint ×5 (59 s), nuget-wait ×1 (24 s), restore ×1 (3.7 s)
