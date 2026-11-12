@@ -323,39 +323,35 @@ métriques projet inclut les tasks mergées depuis, pas seulement task-453.
 
 | Voie | Déclencheur | Résultat | Tests | Durée |
 |---|---|---|---|---|
-| mobile | api-mail, client-mobile touchés | ✅ verte (jouée) | 61 verts, 0 flaky, 0 rouge, 0 quarantaine | 9 min 24 s (suite) |
-| angular | api-mail, client-angular touchés | ⛔ rouge — **parité seule** (jouée) | 72 verts, 2 flaky, 0 rouge, 1 quarantaine (verte) | 11 min 45 s (suite) |
+| mobile | api-mail, client-mobile touchés | ♻️ réutilisée (verte task-453, 2026-11-12 01:39) | 61 verts, 0 flaky, 0 rouge | 0 s |
+| angular | api-mail, client-angular touchés | ✅ verte (rejouée) | 78 verts, 3 flaky, 0 rouge, 1 quarantaine (verte) | 13 min (suite) |
 
-- Catalogue : `Api/Mail/e2e/scenarios.yml` @ `feat/task-453-un-acquittement-ne-disparait-jamais`
+- **Catalogue** : celui du **merge à venir** de la branche dans `origin/develop`, calculé sans toucher l'arbre
+  (`git merge-tree --write-tree origin/develop HEAD`, sans conflit) : la branche de la task porte E2E-BIO-004, et
+  `develop` porte depuis E2E-SEARCH-010 (task-446, PR #362 mergée après la création de la branche). La porte sur le
+  seul catalogue de la branche relevait un `UnknownIdentifier [angular] E2E-SEARCH-010` — le test weda2 de task-446 —,
+  levé par la synchronisation que `/review` fait par merge. **À `/review`** : la synchronisation de `develop` apporte
+  le backend de task-446, que ces voies n'ont pas joué (le test weda2 E2E-SEARCH-010 est vert contre le backend de la
+  task).
+- **1er passage (rouge)** : parité angular E2E-SEARCH-004…009 (tests de task-445 non commités, perdus). Levée par
+  l'humain : tests restaurés et commités sur TFS (commit « Task 446 » de `feature/nova-mss-weda-integration`).
+  `questions/task-453.md` marquée résolue.
 - **E2E-BIO-004 v1** (scénario de la task) : ✅ mobile, ✅ angular.
-- **Blocage : parité angular** — `E2E-SEARCH-004` à `009` sont requis pour weda2 au catalogue (ajoutés par
-  task-445), mais leurs tests sont absents de la suite Angular de la branche courante
-  (`feature/nova-mss-weda-integration`) et de tout commit (`git log --all -S E2E-SEARCH-004` vide) : ils avaient été
-  écrits non commités par task-445 (code-only). **Sans lien avec task-453** ; piège `test-angular-non-commite`
-  (Occurrences 2). Voir `questions/task-453.md`.
-- Flaky (non bloquants) : E2E-SEARCH-001 [angular] (15ᵉ occurrence), **E2E-LIVE-001 [angular] 3ᵉ occurrence →
-  flaky récurrent, task de stabilisation à ouvrir**.
-- Quarantaines : E2E-COMPOSE-002 [angular] (task-350), verte à ce passage.
-- Divergences ouvertes : 7 (mobile, recherche — task-450, task-451).
-- Parcours touchés sans spec e2e modifié : aucun (aucun écran modifié).
+- Flaky (non bloquants) : E2E-SEARCH-001 [angular] (16), **E2E-LIVE-001 [angular] (4) — flaky récurrent, task de
+  stabilisation à ouvrir**, **E2E-SESSION-004 [angular] (2) — récidive après le correctif du test de task-412**.
+- Quarantaines : E2E-COMPOSE-002 [angular] (task-350), verte.
+- Divergences ouvertes : 8 (mobile, recherche — task-450, task-451).
+- Parcours touchés sans spec e2e modifié : aucun.
 - Démontage : complet (ports libres, aucun conteneur e2e résiduel).
 
 <details><summary>Verdict de la porte (gate --out)</summary>
 
-**E2E : ROUGE** — 6 motif(s) de blocage.
+**E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
 
-**Bloquant** (6) :
-
-- [angular] parité MissingRequired : E2E-SEARCH-004 (« Un nom de patient tapé sans accent ni majuscule trouve ses messages, puis les messages partiels ») est requis pour angular mais absent de sa suite, ou non joué.
-- [angular] parité MissingRequired : E2E-SEARCH-005 (« Un mot absent de la boîte affiche « Aucun résultat » ») est requis pour angular mais absent de sa suite, ou non joué.
-- [angular] parité MissingRequired : E2E-SEARCH-006 (« Plus de résultats qu'une page — « Voir plus » affiche la suite, jusqu'au dernier ») est requis pour angular mais absent de sa suite, ou non joué.
-- [angular] parité MissingRequired : E2E-SEARCH-007 (« Une recherche en échec affiche un message, et l'ancienne liste n'est plus affichée ») est requis pour angular mais absent de sa suite, ou non joué.
-- [angular] parité MissingRequired : E2E-SEARCH-009 (« Fermer la recherche rend le dossier à la même position ; retirer une étiquette relance sans elle ») est requis pour angular mais absent de sa suite, ou non joué.
-- [angular] parité MissingRequired : E2E-SEARCH-008 (« Restreindre la recherche à un patient et à ses biologies anormales ») est requis pour angular mais absent de sa suite, ou non joué.
-
-**Flaky (vert au second essai, non bloquant)** (2) :
+**Flaky (vert au second essai, non bloquant)** (3) :
 
 - [angular] « recherche — composer ses critères puis lancer la recherche » (E2E-SEARCH-001)
+- [angular] « session — après la déconnexion, la personne suivante n’arrive jamais dans la boîte de la précédente » (E2E-SESSION-004)
 - [angular] « temps réel — un compte rendu arrive, notifié et affiché sans rechargement » (E2E-LIVE-001)
 
 **En quarantaine (posée par l'humain, non bloquant)** (1) :
@@ -405,12 +401,13 @@ métriques projet inclut les tasks mergées depuis, pas seulement task-453.
 | E2E-SEARCH-001 | 2 | headless | Composer ses critères puis lancer la recherche | ⚠️ flaky | ✅ (v1) · divergence (task-450) |
 | E2E-SEARCH-002 | 1 | headless | Un mot rare et accentué trouve le message qui le contient | ✅ | ✅ |
 | E2E-SEARCH-003 | 1 | headless | Un numéro de dossier trouve son message, et un seul | ✅ | ✅ |
-| E2E-SEARCH-004 | 1 | headless | Un nom de patient tapé sans accent ni majuscule trouve ses messages, puis les messages partiels | ⛔ non joué | ⛔ non joué · divergence (task-450) |
-| E2E-SEARCH-005 | 1 | headless | Un mot absent de la boîte affiche « Aucun résultat » | ⛔ non joué | ⛔ non joué · divergence (task-450) |
-| E2E-SEARCH-006 | 1 | headless | Plus de résultats qu'une page — « Voir plus » affiche la suite, jusqu'au dernier | ⛔ non joué | ⛔ non joué · divergence (task-450) |
-| E2E-SEARCH-007 | 1 | headless | Une recherche en échec affiche un message, et l'ancienne liste n'est plus affichée | ⛔ non joué | ⛔ non joué · divergence (task-450) |
-| E2E-SEARCH-009 | 1 | headless | Fermer la recherche rend le dossier à la même position ; retirer une étiquette relance sans elle | ⛔ non joué | ⛔ non joué · divergence (task-450) |
-| E2E-SEARCH-008 | 1 | headless | Restreindre la recherche à un patient et à ses biologies anormales | ⛔ non joué | ⛔ non joué · divergence (task-451) |
+| E2E-SEARCH-004 | 1 | headless | Un nom de patient tapé sans accent ni majuscule trouve ses messages, puis les messages partiels | ✅ | ⛔ non joué · divergence (task-450) |
+| E2E-SEARCH-005 | 1 | headless | Un mot absent de la boîte affiche « Aucun résultat » | ✅ | ⛔ non joué · divergence (task-450) |
+| E2E-SEARCH-006 | 1 | headless | Plus de résultats qu'une page — « Voir plus » affiche la suite, jusqu'au dernier | ✅ | ⛔ non joué · divergence (task-450) |
+| E2E-SEARCH-007 | 1 | headless | Une recherche en échec affiche un message, et l'ancienne liste n'est plus affichée | ✅ | ⛔ non joué · divergence (task-450) |
+| E2E-SEARCH-009 | 1 | headless | Fermer la recherche rend le dossier à la même position ; retirer une étiquette relance sans elle | ✅ | ⛔ non joué · divergence (task-450) |
+| E2E-SEARCH-010 | 1 | headless | Reconnaître un résultat et ouvrir le dossier du patient | ✅ | ⛔ non joué · divergence (task-451) |
+| E2E-SEARCH-008 | 1 | headless | Restreindre la recherche à un patient et à ses biologies anormales | ✅ | ⛔ non joué · divergence (task-451) |
 | E2E-ATTACH-001 | 1 | headless | Voir les pièces jointes d'un message | ✅ | ✅ |
 | E2E-CONTACT-002 | 2 | headless | Créer un contact à deux adresses, le modifier sans les perdre, puis le supprimer | ✅ | ✅ |
 | E2E-SIGNATURE-001 | 1 | headless | Créer puis supprimer une signature | ✅ | ✅ |
@@ -444,12 +441,12 @@ métriques projet inclut les tasks mergées depuis, pas seulement task-453.
 | E2E-SESSION-001 | 1 | headless | Naviguer dans Weda ne multiplie pas les sessions de messagerie | ✅ | — |
 | E2E-SESSION-002 | 2 | headless | Quitter weda2 autonome ne ferme pas la session partagée | ✅ | — |
 | E2E-SESSION-003 | 2 | headless | La session fermée par Weda fait quitter weda2 | ✅ | — |
-| E2E-SESSION-004 | 1 | headless | Sur un appareil partagé, la personne suivante n'arrive jamais dans la boîte de la précédente | ✅ | ✅ |
+| E2E-SESSION-004 | 1 | headless | Sur un appareil partagé, la personne suivante n'arrive jamais dans la boîte de la précédente | ⚠️ flaky | ✅ |
 | E2E-AI-002 | 1 | headless | Un délégataire interroge l'assistant dans la boîte qu'il a ouverte | ✅ | ✅ |
 | E2E-MAILBOX-007 | 1 | headless | Après un changement de boîte, l'onglet Patients ne montre plus rien de la précédente | ✅ | ✅ |
 | E2E-ERROR-001 | 1 | headless | Une erreur affiche un code et une référence à transmettre au support | ✅ | ✅ |
 
-**Divergences temporaires ouvertes** (7) :
+**Divergences temporaires ouvertes** (8) :
 
 - E2E-SEARCH-001 [mobile] — le mobile adopte le formulaire à un seul niveau avec la refonte mobile de la recherche — résorbée par task-450
 - E2E-SEARCH-004 [mobile] — le mobile adopte le mode résultats avec la refonte mobile de la recherche — résorbée par task-450
@@ -457,16 +454,10 @@ métriques projet inclut les tasks mergées depuis, pas seulement task-453.
 - E2E-SEARCH-006 [mobile] — le mobile adopte le mode résultats avec la refonte mobile de la recherche — résorbée par task-450
 - E2E-SEARCH-007 [mobile] — le mobile adopte le mode résultats avec la refonte mobile de la recherche — résorbée par task-450
 - E2E-SEARCH-009 [mobile] — le mobile adopte le mode résultats avec la refonte mobile de la recherche — résorbée par task-450
+- E2E-SEARCH-010 [mobile] — la lecture enrichie arrive sur le mobile avec la refonte mobile — résorbée par task-451
 - E2E-SEARCH-008 [mobile] — les critères médicaux arrivent sur le mobile avec la refonte mobile — résorbée par task-451
 
-**Parité : ROUGE** — 6 écart(s) :
-
-- `MissingRequired` [angular] E2E-SEARCH-004 (« Un nom de patient tapé sans accent ni majuscule trouve ses messages, puis les messages partiels ») est requis pour angular mais absent de sa suite, ou non joué.
-- `MissingRequired` [angular] E2E-SEARCH-005 (« Un mot absent de la boîte affiche « Aucun résultat » ») est requis pour angular mais absent de sa suite, ou non joué.
-- `MissingRequired` [angular] E2E-SEARCH-006 (« Plus de résultats qu'une page — « Voir plus » affiche la suite, jusqu'au dernier ») est requis pour angular mais absent de sa suite, ou non joué.
-- `MissingRequired` [angular] E2E-SEARCH-007 (« Une recherche en échec affiche un message, et l'ancienne liste n'est plus affichée ») est requis pour angular mais absent de sa suite, ou non joué.
-- `MissingRequired` [angular] E2E-SEARCH-009 (« Fermer la recherche rend le dossier à la même position ; retirer une étiquette relance sans elle ») est requis pour angular mais absent de sa suite, ou non joué.
-- `MissingRequired` [angular] E2E-SEARCH-008 (« Restreindre la recherche à un patient et à ses biologies anormales ») est requis pour angular mais absent de sa suite, ou non joué.
+**Parité : verte** — aucun écart entre le catalogue et les suites.
 
 </details>
 
@@ -481,7 +472,7 @@ métriques projet inclut les tasks mergées depuis, pas seulement task-453.
 | /sonar | ok | 29 min 53 s | 3 (1 min 38 s) | 11 (17 min 27 s) | 4 (5 min 30 s) | 2 itération(s), api-mail 3B/11T, S3776 corrigée, aucune issue imputable |
 | /lint-angular | ok | 7 min 08 s | 1 (47 s) | 1 (2 min 05 s) | — | 1 itération(s), client-angular 1B/1T, 0 erreur sur les fichiers de la task |
 | /lint-mobile | skipped | 14 s | — | — | — | diff e2e uniquement, hors portée de ng lint |
-| /e2e | failed | 26 min 40 s | — | — | — | e2e ×3 (24 min 11 s), parité angular : E2E-SEARCH-004..009 (tests de task-445 non commités, perdus) |
-| **Total cycle** | | **3 h 06 min** | **25 (6 min 20 s)** | **31 (39 min 07 s)** | **4 (5 min 30 s)** | |
+| /e2e | ok | 17 min 18 s | — | — | — | e2e ×7 (38 min 57 s), 2e passage : mobile réutilisée, angular 78 verts, porte verte sur le catalogue du merge |
+| **Total cycle** | | **2 h 56 min** | **25 (6 min 20 s)** | **31 (39 min 07 s)** | **4 (5 min 30 s)** | |
 
 Autres commandes mesurées : lint ×3 (1 min 41 s), nuget-wait ×1 (24 s), restore ×3 (2 min 15 s)
