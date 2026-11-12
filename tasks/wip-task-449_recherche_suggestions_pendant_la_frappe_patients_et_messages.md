@@ -1,7 +1,7 @@
 # todo-task-449.md — Recherche : suggestions pendant la frappe, patients et messages
 
 **Repos**: api-mail, dtos-mss, client-angular
-**Reprises**: 6
+**Reprises**: 7
 **Dependencies**: done-task-442 (formulaire), done-task-446 (patients trouvés, vue « Mails du patient » depuis les
 résultats)
 **Epic**: E023
@@ -419,6 +419,21 @@ mots se suivent dans l'ordre strict (arbitrage S1). Mot et champ passent par la 
   weda2 inchangé (vert marqué à la passe 6).
 - **Première reprise sur la boucle courte** (forge locale, en relecture humaine) : suite → `/review --code`.
 
+### Reprise 7 (demandée par l'humain, 2026-11-12) — B1, S1, S2, S3
+
+**Une seule borne, posée où les conditions SQL sont construites** (`SemanticSearchRepository.WhereHoldsEveryPart`, la
+lecture en mots) : l'adresse comparée en entier (« De », « À ») n'y passe jamais, l'objet et le nom y passent. Le
+contrôle dispersé du service (`EnsureNoCriterionTooLong`) est retiré.
+
+| Constat | Correctif | Test | Preuve rouge |
+|---|---|---|---|
+| **B1** conditions SQL non bornées (`"a a … a"` ~245 `LIKE` ; exemption « adresse » appliquée à l'objet) | conditions = mots **distincts** ; borne dure `MaxConditions` = 20 (lettres seules comprises) en plus des 10 mots de 2 lettres et plus ; refus dans `WhereHoldsEveryPart` | unitaires `Read_ARepeatedLetterBetweenQuotes_IsOneCondition`, `Read_ManyDistinctOneLetterWords_IsTooLong` ; intégration `ATypedCriterion_CountsDistinctConditions_…` (`"a…a"` → 200 ; `a … z` → 400 ; « adresse » de 11 mots dans l'objet → 400) | mutations « borne dure retirée », « mots non dédoublonnés », « exemption adresse dans le dépôt » → rouges |
+| **S1** `""` seul dans un champ listait toute la boîte | `IsEmpty` = blancs seulement : une paire vide ne garde aucune ligne (la barre : 400) | unitaire `Read_NothingTyped_IsEmpty` ; intégration `FORM-EMPTY-PAIR` → aucun résultat | mutation « paire vide = rien de tapé » → rouges |
+| **S2** dédoublonnage par le jumeau C# | `OrdinalIgnoreCase` sur le texte tapé | unitaire `Read_TheSameWordInAnotherCase_…` | mutation `Ordinal` → rouge |
+| **S3** le test « l'IRM » ne lisait qu'un 200 | il lit le message trouvé, et un cas où un mot manque ne trouve rien | intégration (`… l'IRM … du jour` → [1] ; `… l'IRM du genou` → []) | mutation « préfiltre et début de mot limités à 5 mots » → rouge |
+
+- Validation : api-mail build ✅, tests 8 011 ✅ (dont 1 336 d'intégration, 16 ignorés), vert marqué (`3f81df39`).
+
 ### Écarts et décisions consignés
 
 - **Identité patient** : la consigne `identite-patient-exacte` interdit `LIKE 'x%'` pour **désigner** un patient ; la
@@ -822,13 +837,13 @@ Six reprises faites (plafond 2) : **arrêt**, `questions/task-449.md` écrit.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 20 s | — | — | — | — |
-| /develop | ok | 10 min 30 s | 18 (2 min 38 s) | 16 (52 min 02 s) | — | dtos-mss 1B/0T, api-mail 13B/12T, client-angular 4B/4T, reprise 6 |
+| /develop | ok | 12 min 57 s | 20 (2 min 54 s) | 18 (58 min 47 s) | — | dtos-mss 1B/0T, api-mail 15B/14T, client-angular 4B/4T, reprise 7 |
 | /sonar | ok | 1 h 13 min | 9 (3 min 01 s) | 32 (1 h 47 min) | 12 (4 min 46 s) | 1 itération(s), api-mail 9B/32T |
 | /lint-angular | skipped | 0.8 s | — | — | — | weda2 inchangé depuis la reprise 4 |
 | /lint-mobile | skipped | 0.9 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 20 min 12 s | — | — | — | e2e ×27 (3 h 02 min) |
 | /review | failed | 8 min 06 s | 11 (1 min 20 s) | 7 (1 h 34 min) | — | api-mail 5B/5T, dtos-mss 5B/0T, client-angular 1B/2T, passage 6 : CHANGES REQUESTED (B1, né de S5), plafond de reprises dépassé |
 | /review-code | failed | 3 min 34 s | — | — | — | passage 7 : CHANGES REQUESTED (B1), plafond de reprises dépassé |
-| **Total cycle** | | **1 h 55 min** | **38 (7 min 00 s)** | **55 (4 h 14 min)** | **12 (4 min 46 s)** | |
+| **Total cycle** | | **1 h 58 min** | **40 (7 min 16 s)** | **57 (4 h 20 min)** | **12 (4 min 46 s)** | |
 
 Autres commandes mesurées : lint ×5 (59 s), nuget-wait ×1 (24 s), restore ×1 (3.7 s)
