@@ -157,13 +157,17 @@ Règles :
 | 2 001 résultats → 2 000 clés, `IsOverLimit` | `Keys_OfMoreResultsThanAnActionCovers_…` | K2 (troncature ignorée) |
 | Requête vide → 400 `problem+json` | `Keys_OfAnEmptyQuery_Is400ProblemJson` | rouge sur le code d'avant (route absente) |
 
-- Unitaires : `BulkMailActionServiceTests` (17 : chaque action par son geste unitaire, déplacement par dossier, même
+- Unitaires : `BulkMailActionServiceTests` (16, puis 20 après `/sonar` : chaque action par son geste unitaire, déplacement par dossier, même
   dossier, Corbeille, refus depuis la Corbeille, dossier inconnu, `not_found`, refus partiel, refus serveur
   déplacement / Corbeille, doublons, plafond, plafond exact) ; `SearchResultHelperTests.ToKeys_*` (4).
 - **Simplification issue d'une mutation survivante** : K2 initial (« un résultat de plus que le plafond ») a survécu :
   la recherche dit déjà qu'elle est tronquée. `MaxResults = MaxItems` (le `+ 1` était redondant), et la mutation qui
   ignore la troncature est rouge.
 - Build : 0 erreur, 0 avertissement.
+- Suite complète `HealthPlatform.Api.Mail.sln` (`97eeb727`) : domain 210, application 4 213, infrastructure 743, api 1 376,
+  integration 1 256 (+16 ignorés) ✅, **sauf 3 rouges « du jour »** (`GetFolderTodayAsync…`, `GetFolderNotSeenTodayAsync…`,
+  `FilterTodayEmails…`) : suite jouée à 00:1x, fenêtre minuit connue (Dovecot compare `SINCE` en UTC, mémoire
+  `integration-tests-du-jour-fenetre-minuit`), sans lien avec la task. Rejoués après 01:00 (voir `## Sonar log`).
 
 ### client-angular (weda2, code-only)
 
@@ -197,6 +201,47 @@ Règles :
 - Défaut **antérieur** relevé, hors périmètre : les routes `…/emails/bulk/status/read|unread|flagged|unflagged` ne
   tracent pas message par message (règle 14). Task de suivi recommandée.
 
+## Sonar log
+
+- Mode A (chaîné), branche `feat/task-448-recherche-selectionner-tous-les`, serveur 9.9.8 (`sonar.login`).
+- Analyse 1 (`97eeb727`) : `ANALYSIS SUCCESSFUL`. **1 issue nouveau code** : S3218 (`FolderOutcome.Failed` masquait la
+  constante `Failed`) → propriétés renommées `Touched` / `Failures`. Trous de couverture de la task comblés : quatre
+  branches du service (dossier vidé entre-temps, action inconnue, déplacement refusé par résultat, Corbeille refusée)
+  et les branches `ModelState` invalide des deux contrôleurs (`BulkMailActionsControllerTests`,
+  `SearchControllerTests.ListKeys_*`).
+- **Défaut de test trouvé par la suite instrumentée** : `TheDelegateMovesThreeResults…` rouge en suite complète, vert seul.
+  Cause : canal d'audit de la fixture borné (1 000) et sans consommateur, rempli par les tests à 120 messages. Reproduit
+  sur la seule collection `UseCases`, corrigé (`ForgetTraces()`), collection verte. Prévention :
+  `conventions/csharp.md` § `canal-d-audit-borne-de-la-fixture` + mémoire.
+- Analyse 2 (`93c8435b`) : `ANALYSIS SUCCESSFUL`, 5 passes OpenCover vertes (integration 1 255, dont les 3 tests « du
+  jour » rejoués après 01:00 : verts). 4 tests PgBouncer ignorés (fixture PgBouncer indisponible, ignorés par
+  conception), sans lien avec la task.
+- Itérations : 2 (Phase 1). Phase 2 (legacy) : rien à traiter (0 smell).
+
+### KPIs qualité (baseline → final)
+
+| KPI | Baseline | Final |
+|---|---|---|
+| Quality Gate | OK | **OK** |
+| Bugs / Vulnerabilities / Hotspots | 0 / 0 / 0 | 0 / 0 / 0 |
+| Code Smells | 0 | 0 |
+| Coverage | 97,8 % | 97,8 % |
+| Duplication | 0,4 % | 0,4 % |
+| Reliability / Security / Maintainability | A / A / A | A / A / A |
+| New code — issues | — | 0 (1 corrigée) |
+| New code — coverage | — | 96,3 % |
+
+## Lint log
+
+- client-angular (code-only, `feature/nova-mss-weda-integration`, aucun git) : `npx nx run-many -t lint
+  --projects=mss-lib,mss-e2e` (contournement task-367).
+- **0 erreur** ; avertissements 52 (`mss-lib`) + 48 (`mss-e2e`), identiques à la base de task-446 : aucun introduit.
+- Itérations : 0. Build et tests déjà verts sur l'arbre final (fin de `/develop`, après la passe qualité).
+
+## Lint mobile log
+
+- skipped — `client-mobile` absent des `**Repos**`.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-448 --sync` — ne pas éditer à la main)*
@@ -204,4 +249,9 @@ Règles :
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 7.8 s | — | — | — | — |
-| **Total cycle** | | **7.8 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | — | 8 (1 min 07 s) | 9 (8 min 47 s) | — | dtos-mss 1B/0T, api-mail 5B/6T, client-angular 2B/3T, no start marker |
+| /sonar | ok | 1 h 28 min | 2 (54 s) | 11 (1 h 16 min) | 4 (1 min 24 s) | 2 itération(s), api-mail 2B/11T |
+| /lint-angular | en cours | — | — | — | — | — |
+| **Total cycle** | | **1 h 28 min** | **10 (2 min 01 s)** | **20 (1 h 25 min)** | **4 (1 min 24 s)** | |
+
+Autres commandes mesurées : lint ×1 (9.7 s), nuget-wait ×1 (24 s), restore ×1 (23 s)
