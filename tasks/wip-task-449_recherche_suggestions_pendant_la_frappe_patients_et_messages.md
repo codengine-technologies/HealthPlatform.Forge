@@ -830,6 +830,23 @@ celle de weda2. Un bloquant nouveau, **vérifié par la forge dans le code**, en
 Prévention : `conventions/csharp.md` § recherche — une borne de coût SQL se pose **une fois**, sur ce qui est émis.
 Six reprises faites (plafond 2) : **arrêt**, `questions/task-449.md` écrit.
 
+### Passage 8 (2026-11-12, revue anticipée après la reprise 7) — APPROVED
+
+Revue indépendante du diff de la reprise 7, lu d'abord pour ce qu'il casse : le 400 « trop long » est levé à la
+construction de la requête (étape 1 de `SearchInternalAsync`), avant toute voie parallèle ou dégradée ; `IsUnexpectedFailure`
+le laisse passer ; l'historique n'enregistre pas une recherche refusée ; `ApplyFieldFilters` n'a pas d'autre appelant.
+Les preuves rouges de B1, S1, S2, S3 sont lues dans le Develop log.
+
+**approved at** : api-mail `3f81df39` · dtos-mss `bb45953a` · client-angular `ce7741dd` + arbre de travail (inchangé depuis la reprise 4,
+vert marqué).
+
+#### Suggestions (dans la PR, non bloquantes)
+
+- S1 — le refus dit « au plus 10 mots » aussi pour 21 lettres isolées, ou pour une adresse collée dans « Objet » :
+  préciser le message (« une adresse se cherche dans De ou À »).
+- S2 — aucun test ne verrait revenir `foreach (… criterion.Words)` dans le préfiltre (le coût reste borné par les 500
+  caractères de la requête) ; les tests de refus ne lisent pas le `detail`.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-449 --sync` — ne pas éditer à la main)*
@@ -843,7 +860,7 @@ Six reprises faites (plafond 2) : **arrêt**, `questions/task-449.md` écrit.
 | /lint-mobile | skipped | 0.9 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 20 min 12 s | — | — | — | e2e ×27 (3 h 02 min) |
 | /review | failed | 8 min 06 s | 11 (1 min 20 s) | 7 (1 h 34 min) | — | api-mail 5B/5T, dtos-mss 5B/0T, client-angular 1B/2T, passage 6 : CHANGES REQUESTED (B1, né de S5), plafond de reprises dépassé |
-| /review-code | failed | 3 min 34 s | — | — | — | passage 7 : CHANGES REQUESTED (B1), plafond de reprises dépassé |
+| /review-code | ok | 4 min 04 s | — | — | — | — |
 | **Total cycle** | | **1 h 58 min** | **40 (7 min 16 s)** | **57 (4 h 20 min)** | **12 (4 min 46 s)** | |
 
 Autres commandes mesurées : lint ×5 (59 s), nuget-wait ×1 (24 s), restore ×1 (3.7 s)
