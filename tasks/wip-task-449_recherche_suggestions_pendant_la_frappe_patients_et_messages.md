@@ -320,6 +320,28 @@ Règles :
 - `conventions/csharp.md` § `route-identite-patient-jamais-exemptee` (nouvelle) ; § `identite-patient-exacte` complétée
   (exception de la suggestion par début de mot).
 
+## Sonar log
+
+- Mode A (chaîné), branche `feat/task-449-recherche-suggestions-pendant-la-frappe`, serveur 9.9.8 (`sonar.login`).
+- Analyse 1 (`f10e6d80`) : `ANALYSIS SUCCESSFUL`, 5 passes OpenCover vertes (integration 1 302, 16 ignorés). Quality
+  Gate **OK**. **1 issue nouveau code** : CA1861 (tableau constant dans un `Arg.Is` de
+  `SearchSuggestionServiceTests`) → champ `static readonly` (`946d6e65`), test vert. Correction de test seulement :
+  non ré-analysée (best-effort, 1 itération). Récidive comptée : `conventions/csharp.md` § CA1861, occurrences 7.
+- Phase 2 (legacy) : rien à traiter (0 smell hors nouveau code).
+
+### KPIs qualité (baseline → final)
+
+| KPI | Baseline | Final |
+|---|---|---|
+| Quality Gate | OK | **OK** |
+| Bugs / Vulnerabilities / Hotspots | 0 / 0 / 0 | 0 / 0 / 0 |
+| Code Smells | 0 | 1 → 0 après correction (CA1861, test) |
+| Coverage | 97,8 % | 97,7 % |
+| Duplication | 0,4 % | 0,4 % |
+| Reliability / Security / Maintainability | A / A / A | A / A / A |
+| New code — issues | — | 1 (corrigée) |
+| New code — coverage | — | 96,2 % |
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-449 --sync` — ne pas éditer à la main)*
@@ -328,6 +350,7 @@ Règles :
 |---|---|---|---|---|---|---|
 | /start | ok | 20 s | — | — | — | — |
 | /develop | ok | 1 h 17 min | 3 (24 s) | 2 (7 min 18 s) | — | dtos-mss 1B/0T, api-mail 1B/1T, client-angular 1B/1T, suggestions, préfixes, guillemets ; dtos 600 |
-| **Total cycle** | | **1 h 17 min** | **3 (24 s)** | **2 (7 min 18 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 10 min 01 s | 1 (24 s) | 5 (7 min 50 s) | 2 (48 s) | 1 itération(s), api-mail 1B/5T, QG OK, 1 issue (CA1861 test) corrigée |
+| **Total cycle** | | **1 h 27 min** | **4 (48 s)** | **7 (15 min 09 s)** | **2 (48 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (24 s), restore ×1 (3.7 s)
