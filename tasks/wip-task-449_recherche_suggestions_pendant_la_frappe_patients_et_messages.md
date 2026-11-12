@@ -462,12 +462,12 @@ mots se suivent dans l'ordre strict (arbitrage S1). Mot et champ passent par la 
 
 | Voie | Jouée / réutilisée | Résultat | Dépôts couverts |
 |---|---|---|---|
-| mobile | jouée (reprise 3) | 61 verts, 0 flaky, 0 rouge, parité verte | api-mail `5d3716ad`, client-mobile `develop` `f775f17` |
-| angular | jouée (reprise 3) | 84 verts dont E2E-SEARCH-013 et 014, 0 flaky, 0 rouge, parité verte | api-mail `5d3716ad`, client-angular (arbre non commité), Client/Mobile/e2e |
+| mobile | jouée (reprise 4) | 61 verts, 0 flaky, 0 rouge, parité verte | api-mail `452556d2`, client-mobile `develop` `f775f17` |
+| angular | jouée (reprise 4) | 84 verts dont E2E-SEARCH-013 et 014, 0 flaky, 0 rouge, parité verte | api-mail `452556d2`, client-angular (arbre non commité), Client/Mobile/e2e |
 
 Passage 1 : un premier jeu mobile en parité rouge sur `E2E-BIO-004` (`develop` local de `client-mobile` en retard d'un
 commit, `git pull --ff-only` puis voie rejouée, verte) ; flaky E2E-COMPOSE-001 consigné au registre (9ᵉ occurrence).
-Reprises 1 et 3 : les deux voies rejouées, vertes, sans flaky. Reprise 2 (weda2 seulement) : voie Angular rejouée,
+Reprises 1, 3 et 4 : les deux voies rejouées, vertes, sans flaky. Reprise 2 (weda2 seulement) : voie Angular rejouée,
 verte ; voie mobile réutilisée (empreinte inchangée).
 Démontage vérifié : ports libres, aucun conteneur e2e résiduel.
 
@@ -705,7 +705,7 @@ Trois reprises faites (plafond 2, la 3ᵉ demandée par l'humain) : **arrêt**, 
 | /sonar | ok | 9 min 06 s | 7 (2 min 19 s) | 26 (39 min 09 s) | 10 (3 min 59 s) | 1 itération(s), api-mail 7B/26T |
 | /lint-angular | ok | 13 s | — | — | — | — |
 | /lint-mobile | skipped | 0.9 s | — | — | — | client-mobile non touché |
-| /e2e | ok | 20 min 24 s | — | — | — | e2e ×20 (2 h 22 min) |
+| /e2e | ok | 21 min 08 s | — | — | — | e2e ×24 (2 h 42 min) |
 | /review | failed | 10 min 39 s | 7 (54 s) | 5 (1 h 20 min) | — | api-mail 3B/3T, dtos-mss 3B/0T, client-angular 1B/2T, passage 4 : CHANGES REQUESTED (B1, B2), plafond de reprises dépassé |
 | **Total cycle** | | **1 h 18 min** | **26 (5 min 03 s)** | **43 (2 h 38 min)** | **10 (3 min 59 s)** | |
 
