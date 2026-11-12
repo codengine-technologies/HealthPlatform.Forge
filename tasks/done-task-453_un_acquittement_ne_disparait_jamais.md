@@ -541,6 +541,7 @@ Aucune dans les journaux de re-liaison (extrait de clé, identifiants techniques
 | /lint-mobile | skipped | 14 s | — | — | — | diff e2e uniquement, hors portée de ng lint |
 | /e2e | ok | 17 min 18 s | — | — | — | e2e ×7 (38 min 57 s), 2e passage : mobile réutilisée, angular 78 verts, porte verte sur le catalogue du merge |
 | /review | ok | 15 min 21 s | 5 (2 min 21 s) | 3 (9 min 24 s) | — | api-mail 2B/1T, dtos-mss 1B/0T, client-mobile 1B/1T, client-angular 1B/1T, APPROVED, PR api-mail #364, dtos #63, mobile #123 |
-| **Total cycle** | | **3 h 12 min** | **30 (8 min 41 s)** | **34 (48 min 32 s)** | **4 (5 min 30 s)** | |
+| /tech-writer | ok | 1 min 53 s | — | — | — | — |
+| **Total cycle** | | **3 h 14 min** | **30 (8 min 41 s)** | **34 (48 min 32 s)** | **4 (5 min 30 s)** | |
 
 Autres commandes mesurées : lint ×3 (1 min 41 s), nuget-wait ×1 (24 s), restore ×3 (2 min 15 s)
