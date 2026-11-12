@@ -149,8 +149,8 @@ restauré.
 
 - Les étiquettes d'un message : elles se recalculent lorsqu'il revient.
 - Les marques « lu » ou « signalé » posées depuis un autre logiciel : sujet distinct.
-- Un rattachement manuel fait avant la traçabilité nominative (EPIC E020) n'est pas protégé : rien ne le distinguait
-  d'un rattachement automatique par INS.
+- Les acquittements et rattachements manuels posés **avant** la mise en service de cette protection ne sont pas
+  protégés : seuls les comptes rendus reçus ensuite le sont.
 
 ---
 

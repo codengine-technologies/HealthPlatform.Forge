@@ -528,6 +528,20 @@ métriques projet inclut les tasks mergées depuis, pas seulement task-453.
 
 Aucune dans les journaux de re-liaison (extrait de clé, identifiants techniques) ni dans les traces d'audit système (INS et nom du patient vides, assertés).
 
+## Après revue — migration sans reprise de données
+
+- **Décision humaine du 2026-11-12** : « nous sommes sur des bases de test, rien en production : ne conserver que la
+  partie qui modifie le schéma, on accepte de perdre la donnée ».
+- `api-mail` `fa144450` : les trois traitements de reprise de la migration `20261111120000_AnchorDocumentWorkStates`
+  sont retirés (clé des documents existants, clé des acquittements existants, rattachements manuels repris). La
+  descente garde la suppression des acquittements orphelins, nécessaire pour rendre `MedicalDocumentId` obligatoire.
+- Conséquence : les données déjà en base n'ont pas de clé et gardent le comportement d'avant ; seuls les documents
+  reçus après la migration sont protégés.
+- Test : `AnchorDocumentWorkStatesMigrationTests.TheMigration_TouchesNoExistingRow` remplace le test de reprise —
+  **rouge** sur la version avec reprise (`Collections differ at index 0`), vert sur la nouvelle ; les 20 tests de
+  migration du projet et les 10 tests de bout en bout de l'ancrage sont verts.
+- ADR, consigne `etat-metier-hors-du-miroir-imap`, doc d'EPIC E024 et corps de la PR api-mail mis à jour.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-453 --sync` — ne pas éditer à la main)*

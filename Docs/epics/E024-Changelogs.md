@@ -33,12 +33,15 @@
     attente) ; > 1 candidat → rien, avertissement + trace `DocumentWorkStateRelinkSkipped` ;
   - traces système après validation (`MailRepository.TraceRelinks`) ; `AuditService.Impute` laisse système un acte
     déclaré système ; `IAuditService` optionnel dans le constructeur DI de `MailRepository` ;
-  - migration `20261111120000_AnchorDocumentWorkStates` avec reprise SQL (clé identique à la clé C#, testée).
+  - migration `20261111120000_AnchorDocumentWorkStates` : **schéma seul**. La reprise SQL d'abord écrite (clé des
+    documents et des acquittements existants, rattachements manuels) a été **retirée** après la revue, sur décision
+    humaine du 2026-11-12 (bases de test uniquement, perte des données existantes acceptée) — `fa144450`.
 - **Tests** :
   - intégration `FolderOperationsEndToEndTests.WorkStateAnchoring` : 11 cas (déplacement, UIDVALIDITY,
     corbeille/restauration, destruction puis retour, ordre inverse purge/ingestion, CDA sans INS rattaché à la main,
     détachement, HPRIM, ambiguïté, délégataire) ;
-  - migration `AnchorDocumentWorkStatesMigrationTests` (reprise, `confdeltype = 'n'`, aller-retour) ;
+  - migration `AnchorDocumentWorkStatesMigrationTests` (aucune ligne existante touchée — rouge sur la version avec
+    reprise —, `confdeltype = 'n'`, aller-retour) ;
   - unitaires `DocumentAnchorTests` (11), `DocumentWorkStateRelinkerTests` (6), `AuditServiceSystemActTests`, contrat
     et rétention d'audit ;
   - mutations M1 à M7, toutes rouges sur l'assertion prévue (M7, détachement, faite à `/review`).
@@ -64,7 +67,7 @@
 | `api-mail/src/Domain/Entities/MailDb/ManualPatientAttachment.cs` | rattachement manuel ancré | task-453 |
 | `api-mail/src/Infrastructure/Repositories/MailDb/DocumentWorkStateRelinker.cs` | re-liaison des états orphelins | task-453 |
 | `api-mail/src/Infrastructure/Repositories/MailDb/MailRepository.WorkStates.cs` | clé à l'ingestion, re-liaison, traces | task-453 |
-| `api-mail/src/Infrastructure/Migrations/MailDb/20261111120000_AnchorDocumentWorkStates.cs` | schéma et reprise | task-453 |
+| `api-mail/src/Infrastructure/Migrations/MailDb/20261111120000_AnchorDocumentWorkStates.cs` | schéma (sans reprise de données) | task-453 |
 | `dtos-mss/AuditActionType.cs` (70, 71) | actes système de re-liaison | task-453 |
 | `api-mail/tests/mss.mail.e2e/E2eMessage.cs` | `message --move`, `--kind bio-hprim` | task-453 |
 

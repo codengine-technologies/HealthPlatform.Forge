@@ -46,9 +46,10 @@ identité = "fp:" + ContentFingerprint                           (HPRIM : emprei
   (format `EMAIL`, identifiant dérivé de l'UID), document sans `DocumentId` ni `SetId`.
 - **Haché** : longueur fixe (67 caractères), et ni le `Message-ID` ni l'identifiant du document ne sortent dans un
   journal. Un journal n'en cite qu'un extrait (`DocumentAnchor.Short`, 11 caractères).
-- La migration `AnchorDocumentWorkStatesMigration` recalcule **la même clé en SQL** (`sha256`, `convert_to`,
-  `encode … 'hex'`) pour la reprise ; un test d'intégration compare les deux. Les deux définitions changent ensemble,
-  ou le préfixe de version change.
+- La clé n'est calculée que par le code, à l'ingestion. **Aucune reprise de données** (décision humaine du
+  2026-11-12 : bases de test uniquement) : la migration ne modifie que le schéma. Si une reprise devient nécessaire un
+  jour, elle recalculera la même clé en SQL (`sha256`, `convert_to`, `encode … 'hex'`), et un test comparera les deux
+  définitions ; sinon le préfixe de version change.
 
 ### 2. Le schéma
 
@@ -115,8 +116,10 @@ esprit (clé versionnée, calcul SQL identique pour la reprise).
 
 ## Conséquences
 
-- Le rattachement manuel antérieur à task-405 n'est pas repris : rien ne le distinguait en base d'un rattachement par
-  INS. Un document sans INS rattaché à la main avant task-405 garde son patient tant que sa ligne vit.
+- **Aucune reprise** : les documents, acquittements et rattachements manuels déjà en base au moment de la migration
+  n'ont pas de clé. Ils gardent leur comportement d'avant (perdus si la ligne du message disparaît). Seuls les
+  documents reçus après la migration sont protégés. Accepté par l'humain le 2026-11-12 : aucune production, bases de
+  test uniquement.
 - Une identité ambiguë laisse le compte rendu « à acquitter » sur les deux copies : c'est voulu, l'acte reste
   conservé et la décision est tracée.
 - Hors périmètre : les étiquettes (`MailTags`, recalculées à la ré-ingestion) et la réconciliation des drapeaux IMAP
