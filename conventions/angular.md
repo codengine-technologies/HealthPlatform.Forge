@@ -719,3 +719,24 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   mutation `[innerHTML]` (N7).
 - **Origine** : task-446 (/develop, prévention demandée par la DOD)
 - **Occurrences** : 1 (préventif)
+
+### suggestions-de-saisie-choisies-visibles — Une suggestion ne se choisit que visible, et pour le texte qui l'a demandée
+- **Règle** : convention projet (identito-vigilance, traçabilité) ; invisible au lint.
+- **Repos** : client-angular, client-mobile
+- **Piège** (revue de task-449, CHANGES REQUESTED) : la barre de recherche désignait une suggestion au clavier ;
+  Échap fermait la liste sans effacer la désignation, et Entrée — pour lancer une recherche ordinaire — **ouvrait le
+  patient désigné**, consultation tracée au journal. Même famille : pendant la pause de frappe, la réponse du texte
+  précédent restait affichée et désignable (`bern` pendant qu'on tape `bernx`).
+- **Consigne** :
+  - flèches et Entrée-sur-désignation n'agissent que **liste ouverte** ; fermer la liste (Échap, clic ailleurs, choix)
+    remet la désignation à « aucune » ;
+  - une réponse asynchrone porte le **texte qui l'a demandée**, et ne s'affiche (ni ne se désigne) que si c'est encore
+    le texte de la barre ;
+  - pas de `distinctUntilChanged` après un `debounceTime` quand la réponse est effacée de façon synchrone : le même
+    texte retapé ne redemanderait rien ;
+  - le test joue la séquence du médecin (↓, Échap, Entrée ; taper, retaper) et affirme qu'**aucun** choix n'a eu lieu
+    (ni navigation ni recherche lancée).
+- **Preuve** : `mail-search.suggestions.spec.ts` (« après Échap… », « pendant la frappe… », « retaper le même
+  texte… »), rouges sur le code d'avant.
+- **Origine** : task-449 (/review, B1, S2, S3)
+- **Occurrences** : 1

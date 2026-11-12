@@ -302,6 +302,25 @@ Règles :
 - `nx test mss-lib` 1 635 ✅, `nx test weda2` 2 683 ✅, `nx build weda2` ✅ ; ESLint 0 erreur sur les fichiers touchés
   (`mail-search.component.ts` dépasse déjà `max-lines`, avertissement existant).
 
+### Reprise 1 après `/review` (2026-11-12) — B1, S2, S3, S8, S9, S10, S12
+
+S4 à S7 et S11 restent en arbitrage humain (`## Code Review Summary`), hors de cette reprise.
+
+| Constat | Correctif | Test | Preuve rouge |
+|---|---|---|---|
+| **B1** Après Échap, Entrée choisissait la suggestion désignée (patient ouvert, consultation tracée) | flèches et Entrée-sur-désignation liste ouverte seulement ; `closeDropdown()` → `forgetDesignation()` | `mail-search.suggestions.spec.ts` « après Échap… » | rouge sur le code d'avant (recherche lancée par le correspondant désigné) |
+| **S2** Réponse du texte précédent affichée et désignable pendant la frappe | réponse taguée par son texte, affichée seulement pour le texte courant | « pendant la frappe… » | rouge sur le code d'avant |
+| **S3** `distinctUntilChanged` laissait la liste vide (`bern`, `b`, `bern` en < 250 ms) | retiré | « retaper le même texte… » | rouge sur le code d'avant |
+| **S8** Saisie des suggestions non bornée | 100 caractères au plus (400), 5 premiers mots cherchés | intégration `AQueryLongerThan100Characters_Is400ProblemJson` ; unitaire `OnlyTheFirstFiveWords_…` | rouge avant ; mutation R8 |
+| **S9** Recherche exacte : jusqu'à 25 000 textes relus | `SearchLimits.ExactCandidatesCheckedMax` = 1 000 candidats vérifiés au plus ; au-delà, réponse tronquée | intégration `AnExpressionOfFrequentWords_StopsCheckingAtItsCap_…` (1 001 messages) | rouge avant ; mutation R9 |
+| **S10** Personne inconnue → clé partagée de la boîte | `SearchHistoryOwner` rend une clé vide : ni enregistrement ni lecture | intégration `ARequestWithoutAKnownPerson_KeepsNoHistory_…` ; unitaires `SearchHistoryOwnerTests` | rouge avant ; mutation R10 |
+| **S12** `--` rendait les 5 dernières recherches ; Redis en panne faisait échouer la réponse | 400 sans lettre ni chiffre ; historique indisponible → catégorie vide | intégration `FewerThanTwoCharacters_OrNoLetterNorDigit_…`, `TheHistoryUnavailable_EmptiesRecentSearchesOnly` | rouges avant ; mutations R12a, R12b |
+
+- Test adapté : `SearchEnrichedResponseIntegrationTests.Semantic_CompleteIns_…` porte désormais une personne (une
+  requête réelle en a toujours une) ; `SearchControllerTests` idem.
+- weda2 : `nx test mss-lib` 1 638 ✅, `nx test weda2` 2 683 ✅, `nx build weda2` ✅, ESLint 0 erreur.
+- **Prévention** : `conventions/angular.md` § `suggestions-de-saisie-choisies-visibles`.
+
 ### Écarts et décisions consignés
 
 - **Identité patient** : la consigne `identite-patient-exacte` interdit `LIKE 'x%'` pour **désigner** un patient ; la
@@ -524,12 +543,12 @@ la barre de weda2. Détail : `questions/task-449.md`.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 20 s | — | — | — | — |
-| /develop | ok | 1 h 17 min | 3 (24 s) | 2 (7 min 18 s) | — | dtos-mss 1B/0T, api-mail 1B/1T, client-angular 1B/1T, suggestions, préfixes, guillemets ; dtos 600 |
+| /develop | ok | 14 min 13 s | 4 (38 s) | 4 (14 min 12 s) | — | dtos-mss 1B/0T, api-mail 1B/2T, client-angular 2B/2T, reprise 1 : B1 S2 S3 S8 S9 S10 S12 |
 | /sonar | ok | 10 min 01 s | 1 (24 s) | 5 (7 min 50 s) | 2 (48 s) | 1 itération(s), api-mail 1B/5T, QG OK, 1 issue (CA1861 test) corrigée |
 | /lint-angular | ok | 18 s | — | — | — | 0 erreur |
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 31 min 26 s | — | — | — | e2e ×7 (1 h 00 min), mobile 61, angular 82 (2 flaky), parité verte |
 | /review | changes | 1 h 07 min | 2 (13 s) | 1 (1 h 06 min) | — | api-mail 1B/1T, dtos-mss 1B/0T, CHANGES REQUESTED (B1), reprise 1 |
-| **Total cycle** | | **3 h 06 min** | **6 (1 min 02 s)** | **8 (1 h 21 min)** | **2 (48 s)** | |
+| **Total cycle** | | **2 h 03 min** | **7 (1 min 16 s)** | **10 (1 h 28 min)** | **2 (48 s)** | |
 
 Autres commandes mesurées : lint ×1 (11 s), nuget-wait ×1 (24 s), restore ×1 (3.7 s)
