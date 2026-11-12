@@ -2451,10 +2451,16 @@ second piège est le compte rendu : un « 200 » global sur une action partielle
 - La mise à la Corbeille depuis la Corbeille est refusée (elle supprimerait définitivement).
 - Le test d'intégration lit le journal de la boîte : N actes au nom du délégataire (RPPS, nom, rôle), aucun au nom du
   titulaire ni de la boîte.
+- **Réutiliser un geste unitaire ne prouve pas qu'il trace** (revue de task-448 : « marquer non lu » ne traçait rien,
+  et l'action groupée multipliait le trou). Le test d'intégration lit le journal pour **chaque action exposée**, pas
+  pour une action représentative : une `[Theory]` par action, au nom du délégataire.
+- Un refus qu'un nouvel essai ne changerait pas a **sa propre raison** (`folder_type_unknown`), jamais `failed`, que le
+  client propose de réessayer.
 
 **Preuve** : task-448, `FolderOperationsEndToEndTests.BulkActions`. Mutations B1 (déplacement non fait), B2 (périmètre
 relu à l'exécution), B3 (lu inversé), B4 (message disparu non nommé), B5 (déplacement sans trace par message), toutes
-rouges.
+rouges. Reprise après revue : C1 (garde de la Corbeille retirée), C2 (Corbeille non faite), C3 (Corbeille sans
+trace), C4/C5 (étoile inversée), C6 (non lu sans trace), C7 (un seul dossier), toutes rouges.
 
 **Origine** : task-448. **Occurrences** : 1
 

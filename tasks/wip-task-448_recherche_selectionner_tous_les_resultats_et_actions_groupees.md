@@ -201,6 +201,37 @@ Règles :
 - Défaut **antérieur** relevé, hors périmètre : les routes `…/emails/bulk/status/read|unread|flagged|unflagged` ne
   tracent pas message par message (règle 14). Task de suivi recommandée.
 
+### Reprise après `/review` (2026-11-12) — B1, B2, S5, S6, S8
+
+S1 et S4 restent en arbitrage humain (`questions/task-448.md`), hors de cette reprise.
+
+- **B1** — « marquer non lu » trace désormais un `MailFlagChange` par message (`EmailFlagService.UpdateEmailUnReadStatusAsync`,
+  comme l'étoile), au nom de la personne. Défaut antérieur du geste unitaire : la route unitaire en profite aussi.
+- **S5** — une Corbeille refusée parce que la liste des dossiers n'a jamais enregistré le type du dossier rend
+  `folder_type_unknown` (dtos-mss : documentation du code, publié **593**, api-mail bumpé). Le client ne le propose pas
+  au nouvel essai (déjà le cas : seul `failed` est retenté ; type TS complété).
+- **S6** — la confirmation en attente porte la recherche pour laquelle elle a été demandée ; une nouvelle recherche
+  l'efface (`MailSearchBulkService.pending` calculé), et « Confirmer » n'agit plus sur l'ancien périmètre.
+- **S8** — commentaire de `SearchResultHelper.ToKeys` corrigé (plus de « un résultat de plus »).
+
+**Tests d'intégration** (règle 1b, vraie pile, `FolderOperationsEndToEndTests.BulkActions`) :
+
+| Comportement | Test | Preuve rouge |
+|---|---|---|
+| Délégataire : 3 résultats mis à la Corbeille, présents dans `Trash`, 3 `MailDelete` à son nom (le type des dossiers est bien enregistré par la liste) | `TheDelegateTrashesThreeResults_…` | C2 (Corbeille non faite), C3 (Corbeille sans trace) |
+| Corbeille → Corbeille : `already_in_trash`, messages **toujours sur le serveur** | `TrashingResultsAlreadyInTheTrash_…` | C1 (garde retirée : les 2 messages détruits) |
+| Dossier jamais listé : `folder_type_unknown`, message resté | `TrashingFromAFolderTheListingNeverRecorded_…` | rouge sur le code d'avant (`failed`) |
+| Étoile / sans étoile / non lu : état en base + 1 `MailFlagChange` par message au nom du délégataire (`[Theory]`) | `TheDelegateChangesTheStateOfThreeResults_…` | non lu : rouge sur le code d'avant (0 trace) et C6 ; C4 (étoile inversée), C5 (sans étoile inversée) |
+| Résultats de deux dossiers mis à la Corbeille d'une action | `TrashingResultsFromTwoFolders_…` | C2, C7 (un seul dossier : 2 + 2 `not_found`) |
+
+- Unitaires : `EmailFlagServiceTests.UpdateEmailUnReadStatusAsync_EmitsMailFlagChangeAudit_…` ;
+  `BulkMailActionServiceTests` (raison `folder_type_unknown`).
+- weda2 : `mail-list.search-bulk.spec.ts` + 2 tests (nouvelle recherche efface la question ; type inconnu non retenté),
+  mutations F13 et F14 rouges. `nx test mss-lib` 1 627 ✅, `nx test weda2` 2 683 ✅, `nx build weda2` ✅.
+- Passe qualité (§Q) : diff minimal, aucun cleanup.
+- **Prévention** : `conventions/csharp.md` § `action-groupee-tracee-par-objet` complété — réutiliser un geste unitaire
+  ne prouve pas qu'il trace (journal lu pour **chaque** action exposée) ; un refus non rejouable a sa propre raison.
+
 ## Sonar log
 
 - Mode A (chaîné), branche `feat/task-448-recherche-selectionner-tous-les`, serveur 9.9.8 (`sonar.login`).
