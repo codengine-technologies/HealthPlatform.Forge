@@ -387,6 +387,11 @@ d'un patient, rejeu) passent par `closed()`, et l'ouverture demande les suggesti
 - Phase 2 (legacy) : rien à traiter (0 smell hors nouveau code).
 - **Reprise 1** — analyse 2 (`68a0f76c`) : `ANALYSIS SUCCESSFUL`, 5 passes OpenCover vertes (integration 1 308,
   16 ignorés), Quality Gate **OK**, **0 issue nouveau code**, couverture nouveau code 96,3 %, 0 smell.
+- **Reprise 3** — analyse 3 (`129294c1`) : Quality Gate **OK**, **1 issue nouveau code** : S3776 sur
+  `SemanticSearchRepository.ApplyFieldFilters` (complexité 17, un `||` nom ou adresse ajouté par l'arbitrage S4/S5).
+  Nouveau code : la blacklist S3776 ne s'applique pas (`conventions/csharp.md` § S3776). Critères tapés extraits en
+  `ApplyTypedTextFilters` (`5d3716ad`), SQL identique ; build vert, 759 tests de recherche verts (dont 333 d'intégration).
+  Récidive comptée : § S3776, occurrences 8. Analyse de confirmation : voir la ligne suivante.
 
 ### KPIs qualité (baseline → final)
 
@@ -410,6 +415,7 @@ d'un patient, rejeu) passent par `closed()`, et l'ouverture demande les suggesti
 - Itérations : 0. Build et tests déjà verts sur l'arbre final (fin de `/develop`).
 - **Reprise 1** : relancé sur l'arbre repris — **0 erreur**, 51 + 48 avertissements (inchangés). Itérations : 0.
 - **Reprise 2** : relancé — **0 erreur**, 51 + 48 avertissements (inchangés). Itérations : 0.
+- **Reprise 3** : relancé — **0 erreur**, 51 + 48 avertissements (inchangés). Itérations : 0.
 
 ## Lint mobile log
 
@@ -621,11 +627,11 @@ la désignation). Deux reprises déjà faites : **arrêt**, `questions/task-449.
 |---|---|---|---|---|---|---|
 | /start | ok | 20 s | — | — | — | — |
 | /develop | ok | 12 min 40 s | 7 (1 min 11 s) | 7 (21 min 46 s) | — | dtos-mss 1B/0T, api-mail 2B/3T, client-angular 4B/4T, reprise 3 : B4 B5 S16 S17, S4/S5, S7 |
-| /sonar | ok | 9 min 15 s | 2 (47 s) | 10 (15 min 32 s) | 4 (1 min 36 s) | 1 itération(s), api-mail 2B/10T, reprise : QG OK, 0 issue |
-| /lint-angular | ok | 12 s | — | — | — | reprise 2 : 0 erreur |
-| /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
+| /sonar | ok | 13 min 25 s | 6 (1 min 56 s) | 19 (24 min 59 s) | 7 (2 min 25 s) | 1 itération(s), api-mail 6B/19T, reprise 3 : S3776 nouveau code corrigé |
+| /lint-angular | ok | 1 min 00 s | — | — | — | — |
+| /lint-mobile | skipped | 0.9 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 11 min 09 s | — | — | — | e2e ×17 (2 h 02 min), reprise 2 : angular 84, mobile réutilisée, parité verte |
 | /review | failed | 44 min 18 s | 4 (29 s) | 2 (1 h 13 min) | — | api-mail 2B/2T, dtos-mss 2B/0T, passage 3 : B4 B5, plafond de reprises atteint |
-| **Total cycle** | | **1 h 17 min** | **13 (2 min 28 s)** | **19 (1 h 50 min)** | **4 (1 min 36 s)** | |
+| **Total cycle** | | **1 h 22 min** | **17 (3 min 36 s)** | **28 (2 h 00 min)** | **7 (2 min 25 s)** | |
 
-Autres commandes mesurées : lint ×3 (34 s), nuget-wait ×1 (24 s), restore ×1 (3.7 s)
+Autres commandes mesurées : lint ×4 (48 s), nuget-wait ×1 (24 s), restore ×1 (3.7 s)
