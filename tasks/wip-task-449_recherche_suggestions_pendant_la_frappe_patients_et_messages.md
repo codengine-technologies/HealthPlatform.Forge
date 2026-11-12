@@ -391,7 +391,9 @@ d'un patient, rejeu) passent par `closed()`, et l'ouverture demande les suggesti
   `SemanticSearchRepository.ApplyFieldFilters` (complexité 17, un `||` nom ou adresse ajouté par l'arbitrage S4/S5).
   Nouveau code : la blacklist S3776 ne s'applique pas (`conventions/csharp.md` § S3776). Critères tapés extraits en
   `ApplyTypedTextFilters` (`5d3716ad`), SQL identique ; build vert, 759 tests de recherche verts (dont 333 d'intégration).
-  Récidive comptée : § S3776, occurrences 8. Analyse de confirmation : voir la ligne suivante.
+  Récidive comptée : § S3776, occurrences 8.
+- **Reprise 3** — analyse 4 (`5d3716ad`, confirmation) : Quality Gate **OK**, **0 issue nouveau code**, couverture
+  nouveau code 96,3 %, couverture 97,8 %, 0 smell, duplication 0,4 %.
 
 ### KPIs qualité (baseline → final)
 
@@ -399,11 +401,11 @@ d'un patient, rejeu) passent par `closed()`, et l'ouverture demande les suggesti
 |---|---|---|
 | Quality Gate | OK | **OK** |
 | Bugs / Vulnerabilities / Hotspots | 0 / 0 / 0 | 0 / 0 / 0 |
-| Code Smells | 0 | 0 (CA1861 corrigée, confirmée par l'analyse de la reprise) |
-| Coverage | 97,8 % | 97,7 % |
+| Code Smells | 0 | 0 |
+| Coverage | 97,8 % | 97,8 % |
 | Duplication | 0,4 % | 0,4 % |
 | Reliability / Security / Maintainability | A / A / A | A / A / A |
-| New code — issues | — | 1 (corrigée) |
+| New code — issues | — | 0 (CA1861 puis S3776 corrigées, confirmé par l'analyse 4) |
 | New code — coverage | — | 96,3 % |
 
 ## Lint log
