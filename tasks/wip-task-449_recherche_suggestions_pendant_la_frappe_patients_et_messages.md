@@ -478,6 +478,9 @@ contrôle dispersé du service (`EnsureNoCriterionTooLong`) est retiré.
   (`93bf2adf`) ; test ajouté (un `_` d'adresse n'est pas un joker), vu rouge par mutation. CA1862 est une règle Roslyn :
   rebuild complet sans aucun avertissement CA1862, analyse de confirmation non relancée (best-effort, ~15 min évitées).
   Récidive comptée : `conventions/csharp.md` § CA1862, occurrences 3. Couverture nouveau code 96,3 %.
+- **Reprises 6-7, après l'approbation de la revue anticipée** — analyse 7 (`3f81df39`), **une seule** sur le code approuvé :
+  Quality Gate **OK**, **0 issue nouveau code**, couverture nouveau code 96,3 %, couverture 97,7 %, 0 smell. Vert marqué
+  (`Tools/green/green.py`, par /sonar : 5 passes de tests complètes vertes).
 ### KPIs qualité (baseline → final)
 
 | KPI | Baseline | Final |
@@ -485,7 +488,7 @@ contrôle dispersé du service (`EnsureNoCriterionTooLong`) est retiré.
 | Quality Gate | OK | **OK** |
 | Bugs / Vulnerabilities / Hotspots | 0 / 0 / 0 | 0 / 0 / 0 |
 | Code Smells | 0 | 0 |
-| Coverage | 97,8 % | 97,6 % |
+| Coverage | 97,8 % | 97,7 % |
 | Duplication | 0,4 % | 0,4 % |
 | Reliability / Security / Maintainability | A / A / A | A / A / A |
 | New code — issues | — | 0 (CA1861, S3776, CA1862 ×2 corrigées en cours de cycle) |
@@ -503,6 +506,7 @@ contrôle dispersé du service (`EnsureNoCriterionTooLong`) est retiré.
 - **Reprise 3** : relancé — **0 erreur**, 51 + 48 avertissements (inchangés). Itérations : 0.
 - **Reprise 4** : relancé — **0 erreur**, 51 + 48 avertissements (inchangés). Itérations : 0.
 - **Reprise 5** : weda2 inchangé depuis la reprise 4 — résultat identique (0 erreur). Itérations : 0.
+- **Reprises 6-7** : weda2 inchangé depuis la reprise 4 — résultat identique (0 erreur). Itérations : 0.
 
 ## Lint mobile log
 
@@ -855,12 +859,12 @@ vert marqué).
 |---|---|---|---|---|---|---|
 | /start | ok | 20 s | — | — | — | — |
 | /develop | ok | 12 min 57 s | 20 (2 min 54 s) | 18 (58 min 47 s) | — | dtos-mss 1B/0T, api-mail 15B/14T, client-angular 4B/4T, reprise 7 |
-| /sonar | ok | 1 h 13 min | 9 (3 min 01 s) | 32 (1 h 47 min) | 12 (4 min 46 s) | 1 itération(s), api-mail 9B/32T |
+| /sonar | ok | 10 min 22 s | 10 (3 min 49 s) | 37 (1 h 55 min) | 14 (5 min 33 s) | 1 itération(s), api-mail 10B/37T |
 | /lint-angular | skipped | 0.8 s | — | — | — | weda2 inchangé depuis la reprise 4 |
-| /lint-mobile | skipped | 0.9 s | — | — | — | client-mobile non touché |
+| /lint-mobile | skipped | 0.8 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 20 min 12 s | — | — | — | e2e ×27 (3 h 02 min) |
 | /review | failed | 8 min 06 s | 11 (1 min 20 s) | 7 (1 h 34 min) | — | api-mail 5B/5T, dtos-mss 5B/0T, client-angular 1B/2T, passage 6 : CHANGES REQUESTED (B1, né de S5), plafond de reprises dépassé |
 | /review-code | ok | 4 min 04 s | — | — | — | — |
-| **Total cycle** | | **1 h 58 min** | **40 (7 min 16 s)** | **57 (4 h 20 min)** | **12 (4 min 46 s)** | |
+| **Total cycle** | | **56 min 06 s** | **41 (8 min 04 s)** | **62 (4 h 28 min)** | **14 (5 min 33 s)** | |
 
 Autres commandes mesurées : lint ×5 (59 s), nuget-wait ×1 (24 s), restore ×1 (3.7 s)
