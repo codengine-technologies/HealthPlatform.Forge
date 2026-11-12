@@ -342,6 +342,18 @@ Règles :
 | New code — issues | — | 1 (corrigée) |
 | New code — coverage | — | 96,2 % |
 
+## Lint log
+
+- client-angular (code-only, `feature/nova-mss-weda-integration`, aucun git) : `npx nx run-many -t lint
+  --projects=mss-lib,mss-e2e` (contournement task-367).
+- **0 erreur** ; avertissements 51 (`mss-lib`, 52 avant : celui du composant d'historique retiré) + 48 (`mss-e2e`,
+  inchangé) : aucun introduit.
+- Itérations : 0. Build et tests déjà verts sur l'arbre final (fin de `/develop`).
+
+## Lint mobile log
+
+- skipped — `client-mobile` absent des `**Repos**`.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-449 --sync` — ne pas éditer à la main)*
@@ -351,6 +363,8 @@ Règles :
 | /start | ok | 20 s | — | — | — | — |
 | /develop | ok | 1 h 17 min | 3 (24 s) | 2 (7 min 18 s) | — | dtos-mss 1B/0T, api-mail 1B/1T, client-angular 1B/1T, suggestions, préfixes, guillemets ; dtos 600 |
 | /sonar | ok | 10 min 01 s | 1 (24 s) | 5 (7 min 50 s) | 2 (48 s) | 1 itération(s), api-mail 1B/5T, QG OK, 1 issue (CA1861 test) corrigée |
-| **Total cycle** | | **1 h 27 min** | **4 (48 s)** | **7 (15 min 09 s)** | **2 (48 s)** | |
+| /lint-angular | ok | 18 s | — | — | — | 0 erreur |
+| /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
+| **Total cycle** | | **1 h 28 min** | **4 (48 s)** | **7 (15 min 09 s)** | **2 (48 s)** | |
 
-Autres commandes mesurées : nuget-wait ×1 (24 s), restore ×1 (3.7 s)
+Autres commandes mesurées : lint ×1 (11 s), nuget-wait ×1 (24 s), restore ×1 (3.7 s)
