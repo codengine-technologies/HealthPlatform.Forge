@@ -190,3 +190,18 @@ Règles :
 - **Hébergement HDS** : oui — base de la boîte ; les recherches récentes restent dans le cache distribué existant
 - **AIPD / impact RGPD** : à vérifier — les suggestions exposent des identités de patients pendant la frappe ; même
   périmètre de personnes habilitées
+
+## Branches
+
+- `api-mail` (pushed) : feat/task-449-recherche-suggestions-pendant-la-frappe — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-449-recherche-suggestions-pendant-la-frappe
+- `dtos-mss` (paresseuse) : créée par `/develop` au premier changement de contrat (même nom).
+- `client-angular` (code-only) : la forge écrit sur la branche checked out dans `Client/Angular/` (au /start : `feature/nova-mss-weda-integration`) — humain gère branche, commit, push, PR TFS
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-449 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 20 s | — | — | — | — |
+| **Total cycle** | | **20 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
