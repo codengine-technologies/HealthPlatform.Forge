@@ -348,6 +348,8 @@ S4 à S7 et S11 restent en arbitrage humain (`## Code Review Summary`), hors de 
   `SearchSuggestionServiceTests`) → champ `static readonly` (`946d6e65`), test vert. Correction de test seulement :
   non ré-analysée (best-effort, 1 itération). Récidive comptée : `conventions/csharp.md` § CA1861, occurrences 7.
 - Phase 2 (legacy) : rien à traiter (0 smell hors nouveau code).
+- **Reprise 1** — analyse 2 (`68a0f76c`) : `ANALYSIS SUCCESSFUL`, 5 passes OpenCover vertes (integration 1 308,
+  16 ignorés), Quality Gate **OK**, **0 issue nouveau code**, couverture nouveau code 96,3 %, 0 smell.
 
 ### KPIs qualité (baseline → final)
 
@@ -355,12 +357,12 @@ S4 à S7 et S11 restent en arbitrage humain (`## Code Review Summary`), hors de 
 |---|---|---|
 | Quality Gate | OK | **OK** |
 | Bugs / Vulnerabilities / Hotspots | 0 / 0 / 0 | 0 / 0 / 0 |
-| Code Smells | 0 | 1 → 0 après correction (CA1861, test) |
+| Code Smells | 0 | 0 (CA1861 corrigée, confirmée par l'analyse de la reprise) |
 | Coverage | 97,8 % | 97,7 % |
 | Duplication | 0,4 % | 0,4 % |
 | Reliability / Security / Maintainability | A / A / A | A / A / A |
 | New code — issues | — | 1 (corrigée) |
-| New code — coverage | — | 96,2 % |
+| New code — coverage | — | 96,3 % |
 
 ## Lint log
 
@@ -369,6 +371,7 @@ S4 à S7 et S11 restent en arbitrage humain (`## Code Review Summary`), hors de 
 - **0 erreur** ; avertissements 51 (`mss-lib`, 52 avant : celui du composant d'historique retiré) + 48 (`mss-e2e`,
   inchangé) : aucun introduit.
 - Itérations : 0. Build et tests déjà verts sur l'arbre final (fin de `/develop`).
+- **Reprise 1** : relancé sur l'arbre repris — **0 erreur**, 51 + 48 avertissements (inchangés). Itérations : 0.
 
 ## Lint mobile log
 
@@ -544,11 +547,11 @@ la barre de weda2. Détail : `questions/task-449.md`.
 |---|---|---|---|---|---|---|
 | /start | ok | 20 s | — | — | — | — |
 | /develop | ok | 14 min 13 s | 4 (38 s) | 4 (14 min 12 s) | — | dtos-mss 1B/0T, api-mail 1B/2T, client-angular 2B/2T, reprise 1 : B1 S2 S3 S8 S9 S10 S12 |
-| /sonar | ok | 10 min 01 s | 1 (24 s) | 5 (7 min 50 s) | 2 (48 s) | 1 itération(s), api-mail 1B/5T, QG OK, 1 issue (CA1861 test) corrigée |
-| /lint-angular | ok | 18 s | — | — | — | 0 erreur |
+| /sonar | ok | 9 min 15 s | 2 (47 s) | 10 (15 min 32 s) | 4 (1 min 36 s) | 1 itération(s), api-mail 2B/10T, reprise : QG OK, 0 issue |
+| /lint-angular | ok | 20 s | — | — | — | reprise : 0 erreur |
 | /lint-mobile | skipped | 0.4 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 31 min 26 s | — | — | — | e2e ×7 (1 h 00 min), mobile 61, angular 82 (2 flaky), parité verte |
 | /review | changes | 1 h 07 min | 2 (13 s) | 1 (1 h 06 min) | — | api-mail 1B/1T, dtos-mss 1B/0T, CHANGES REQUESTED (B1), reprise 1 |
-| **Total cycle** | | **2 h 03 min** | **7 (1 min 16 s)** | **10 (1 h 28 min)** | **2 (48 s)** | |
+| **Total cycle** | | **2 h 02 min** | **8 (1 min 40 s)** | **15 (1 h 36 min)** | **4 (1 min 36 s)** | |
 
-Autres commandes mesurées : lint ×1 (11 s), nuget-wait ×1 (24 s), restore ×1 (3.7 s)
+Autres commandes mesurées : lint ×2 (22 s), nuget-wait ×1 (24 s), restore ×1 (3.7 s)
