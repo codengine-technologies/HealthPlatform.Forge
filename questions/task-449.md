@@ -1,3 +1,5 @@
+**Résolu le 2026-11-12** — reprise 7 approuvée par la revue anticipée (passe 8), `/sonar` et `/e2e` verts sur le code approuvé, PR api-mail #367 et dtos-mss #65 ouvertes (`awaiting-human-merge`).
+
 # task-449 — revue anticipée passe 7 : CHANGES REQUESTED, après la reprise 6
 
 **Étape** : `/review --code` (revue anticipée, boucle courte), 7ᵉ passe, 2026-11-12. Les correctifs de la reprise 6

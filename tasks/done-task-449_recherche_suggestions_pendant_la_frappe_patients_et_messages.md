@@ -637,6 +637,30 @@ code approuvé par la revue anticipée. Démontage vérifié : ports libres, auc
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
 
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/367 (label `awaiting-human-merge`)
+- `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/65 (label `awaiting-human-merge`)
+- `client-angular` (code-only, branche `feature/nova-mss-weda-integration`) : humain gère commit/push TFS et ouverture PR. Fichiers modifiés :
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`
+  - `front/libs/mss/src/core/models/search-suggestions.model.ts`
+  - `front/libs/mss/src/core/services/mss-api.service.ts`
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.component.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-search-history/mail-search-history.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-search-history/mail-search-history.component.scss`
+  - `front/libs/mss/src/features/mail/components/mail-search-history/mail-search-history.component.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-search-history/mail-search-history.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-search-suggestions/mail-search-suggestions.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-search-suggestions/mail-search-suggestions.component.scss`
+  - `front/libs/mss/src/features/mail/components/mail-search-suggestions/mail-search-suggestions.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search.component.scss`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-search/mail-search.suggestions.spec.ts`
+  - `front/libs/mss/src/features/mail/services/mail-search-session.spec.ts`
+  - `front/libs/mss/src/features/mail/services/mail-search-session.ts`
+  - `front/libs/mss/src/features/mail/services/mail-search-suggestions.ts`
+
 ## Code Review Summary
 
 ### Passage 1 (2026-11-12) — CHANGES REQUESTED
@@ -862,8 +886,8 @@ vert marqué).
 | /lint-angular | skipped | 0.8 s | — | — | — | weda2 inchangé depuis la reprise 4 |
 | /lint-mobile | skipped | 0.8 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 19 min 52 s | — | — | — | e2e ×30 (3 h 22 min) |
-| /review | failed | 8 min 06 s | 11 (1 min 20 s) | 7 (1 h 34 min) | — | api-mail 5B/5T, dtos-mss 5B/0T, client-angular 1B/2T, passage 6 : CHANGES REQUESTED (B1, né de S5), plafond de reprises dépassé |
+| /review | ok | 1 min 10 s | 12 (1 min 21 s) | 7 (1 h 34 min) | — | api-mail 5B/5T, dtos-mss 6B/0T, client-angular 1B/2T, validation finale : vert réutilisé (marqueur), PR #367 / #65 |
 | /review-code | ok | 4 min 04 s | — | — | — | — |
-| **Total cycle** | | **55 min 46 s** | **41 (8 min 04 s)** | **62 (4 h 28 min)** | **14 (5 min 33 s)** | |
+| **Total cycle** | | **48 min 49 s** | **42 (8 min 05 s)** | **62 (4 h 28 min)** | **14 (5 min 33 s)** | |
 
 Autres commandes mesurées : lint ×5 (59 s), nuget-wait ×1 (24 s), restore ×1 (3.7 s)
