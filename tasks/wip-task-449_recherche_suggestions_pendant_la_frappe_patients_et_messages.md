@@ -427,6 +427,8 @@ mots se suivent dans l'ordre strict (arbitrage S1). Mot et champ passent par la 
 - **Reprise 3** — analyse 4 (`5d3716ad`, confirmation) : Quality Gate **OK**, **0 issue nouveau code**, couverture
   nouveau code 96,3 %, couverture 97,8 %, 0 smell, duplication 0,4 %.
 
+- **Reprise 4** — analyse 5 (`452556d2`) : Quality Gate **OK**, **0 issue nouveau code**, couverture nouveau code
+  96,3 %, couverture 97,7 %, 0 smell, duplication 0,4 %.
 ### KPIs qualité (baseline → final)
 
 | KPI | Baseline | Final |
@@ -434,10 +436,10 @@ mots se suivent dans l'ordre strict (arbitrage S1). Mot et champ passent par la 
 | Quality Gate | OK | **OK** |
 | Bugs / Vulnerabilities / Hotspots | 0 / 0 / 0 | 0 / 0 / 0 |
 | Code Smells | 0 | 0 |
-| Coverage | 97,8 % | 97,8 % |
+| Coverage | 97,8 % | 97,7 % |
 | Duplication | 0,4 % | 0,4 % |
 | Reliability / Security / Maintainability | A / A / A | A / A / A |
-| New code — issues | — | 0 (CA1861 puis S3776 corrigées, confirmé par l'analyse 4) |
+| New code — issues | — | 0 (CA1861 puis S3776 corrigées ; analyse 5 de la reprise 4 : 0) |
 | New code — coverage | — | 96,3 % |
 
 ## Lint log
@@ -450,6 +452,7 @@ mots se suivent dans l'ordre strict (arbitrage S1). Mot et champ passent par la 
 - **Reprise 1** : relancé sur l'arbre repris — **0 erreur**, 51 + 48 avertissements (inchangés). Itérations : 0.
 - **Reprise 2** : relancé — **0 erreur**, 51 + 48 avertissements (inchangés). Itérations : 0.
 - **Reprise 3** : relancé — **0 erreur**, 51 + 48 avertissements (inchangés). Itérations : 0.
+- **Reprise 4** : relancé — **0 erreur**, 51 + 48 avertissements (inchangés). Itérations : 0.
 
 ## Lint mobile log
 
@@ -699,11 +702,11 @@ Trois reprises faites (plafond 2, la 3ᵉ demandée par l'humain) : **arrêt**, 
 |---|---|---|---|---|---|---|
 | /start | ok | 20 s | — | — | — | — |
 | /develop | ok | 37 min 23 s | 12 (1 min 49 s) | 12 (38 min 20 s) | — | dtos-mss 1B/0T, api-mail 7B/8T, client-angular 4B/4T, reprise 4 |
-| /sonar | ok | 13 min 25 s | 6 (1 min 56 s) | 21 (31 min 46 s) | 8 (3 min 11 s) | 1 itération(s), api-mail 6B/21T, reprise 3 : S3776 nouveau code corrigé |
-| /lint-angular | ok | 1 min 00 s | — | — | — | — |
+| /sonar | ok | 9 min 06 s | 7 (2 min 19 s) | 26 (39 min 09 s) | 10 (3 min 59 s) | 1 itération(s), api-mail 7B/26T |
+| /lint-angular | ok | 13 s | — | — | — | — |
 | /lint-mobile | skipped | 0.9 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 20 min 24 s | — | — | — | e2e ×20 (2 h 22 min) |
 | /review | failed | 10 min 39 s | 7 (54 s) | 5 (1 h 20 min) | — | api-mail 3B/3T, dtos-mss 3B/0T, client-angular 1B/2T, passage 4 : CHANGES REQUESTED (B1, B2), plafond de reprises dépassé |
-| **Total cycle** | | **1 h 23 min** | **25 (4 min 40 s)** | **38 (2 h 30 min)** | **8 (3 min 11 s)** | |
+| **Total cycle** | | **1 h 18 min** | **26 (5 min 03 s)** | **43 (2 h 38 min)** | **10 (3 min 59 s)** | |
 
-Autres commandes mesurées : lint ×4 (48 s), nuget-wait ×1 (24 s), restore ×1 (3.7 s)
+Autres commandes mesurées : lint ×5 (59 s), nuget-wait ×1 (24 s), restore ×1 (3.7 s)
