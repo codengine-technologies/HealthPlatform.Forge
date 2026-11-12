@@ -2427,6 +2427,11 @@ Le second piège est l'INS : elle est tentante comme champ de réponse (« pour 
 
 **Origine** : task-444. **Occurrences** : 1
 
+- **Exception décidée par l'humain (task-449)** : une **suggestion de saisie** complète un **début de mot** du nom
+  ou du prénom (`bern` propose BERNARD), jamais une approximation (`bernart` ne propose personne). Elle ne désigne
+  personne : le médecin **choisit** dans une liste qui montre date de naissance, sexe et « INS qualifiée »
+  (`SemanticSearchRepository.SuggestPatientsAsync`). Une saisie de forme INS ne propose aucun patient.
+
 ---
 
 ## action-groupee-tracee-par-objet — une action groupée trace chaque objet touché au nom de son auteur, et nomme chacun de ses échecs
@@ -2514,3 +2519,28 @@ UIDVALIDITY, corbeille, délégataire ; patient manuel perdu) ; mutations M1 (re
 d'ambiguïté), M3 (ancrage du rattachement manuel), M4 (clé SQL), M5 (re-liaison à la purge), toutes rouges.
 
 **Origine** : task-453. **Occurrences** : 1
+
+---
+
+## route-identite-patient-jamais-exemptee — une route qui rend une identité de patient n'est jamais `TraceExempt`
+
+**Règle** : convention projet (traçabilité PGSSI-S, règle 14), invisible au lint et à Sonar ; le test d'architecture
+`EveryControllerActionIsTracedTests` exige une marque, pas la bonne.
+
+**Piège** (task-449) : `GET /search/suggestions` était `TraceExempt` (« suggestions de saisie, sans résultat de
+recherche ») parce qu'elle rendait une liste figée de termes médicaux. En proposant les patients de la boîte pendant la
+frappe, la même route révèle des identités : l'exemption, posée pour l'ancienne réponse, en aurait caché la lecture.
+Une raison d'exemption décrit la réponse **du jour** ; elle ne suit pas l'évolution de la route.
+
+**Consigne** :
+- Une action qui peut rendre un patient (nom, prénom, date de naissance) porte `[Audited]` ou `[TracedInCode]`,
+  jamais `[TraceExempt]`. Quand seule une partie des réponses en rend (suggestions), le service trace ces réponses-là
+  (`[TracedInCode]`), au nom de la personne, avec **combien** de patients — jamais les lettres tapées ni les noms.
+- Une task qui change la réponse d'une route `TraceExempt` relit la raison de l'exemption.
+- Le test d'intégration lit la trace dans le canal du vrai `AuditService` : présente quand un patient est rendu,
+  absente sinon, sans le texte tapé.
+
+**Preuve** : task-449, `SearchSuggestionsIntegrationTests.AnAnswerNamingAPatient_IsTraced…` ; mutations S5 (trace
+retirée) et S6 (trace sans patient), rouges.
+
+**Origine** : task-449. **Occurrences** : 1

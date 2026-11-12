@@ -1,0 +1,23 @@
+task-449 — coût des suggestions et de la recherche exacte (cost449.cs), copie srch_lab de la boîte de formation
+(11 291 mails, 56 patients), index trigrammes construits, 30 passages après 3 de chauffe, build Release, 2026-11-12.
+Recherche exacte : vérification arrêtée à la page + 1 (lots de 100). Avant cet arrêt : p95 2 099 ms (tout vérifier).
+
+== Suggestions (patients + expéditeurs + destinataires + types), ce que fait SearchSuggestionService
+be       patients=5 exp=0 dest=0  p50= 153.8 ms  p95= 174.2 ms  max= 199.0 ms
+ber      patients=5 exp=0 dest=0  p50= 151.7 ms  p95= 167.3 ms  max= 173.8 ms
+bern     patients=4 exp=0 dest=0  p50= 151.6 ms  p95= 188.3 ms  max= 203.5 ms
+cath     patients=3 exp=0 dest=0  p50= 152.4 ms  p95= 176.3 ms  max= 214.1 ms
+ma       patients=5 exp=1 dest=0  p50= 151.8 ms  p95= 178.1 ms  max= 182.9 ms
+mar      patients=5 exp=0 dest=0  p50= 152.2 ms  p95= 169.7 ms  max= 176.7 ms
+lab      patients=0 exp=0 dest=0  p50= 152.4 ms  p95= 160.7 ms  max= 169.8 ms
+cerb     patients=0 exp=0 dest=0  p50= 151.6 ms  p95= 177.4 ms  max= 183.9 ms
+dupo     patients=0 exp=0 dest=0  p50= 153.3 ms  p95= 174.5 ms  max= 178.2 ms
+hosp     patients=0 exp=0 dest=0  p50= 152.2 ms  p95= 176.0 ms  max= 182.2 ms
+TOUTES   n=300 p50=152.4 ms  p95=175.1 ms
+== Recherche exacte entre guillemets / plein texte habituel (même texte), page de 50, INBOX
+compte rendu               exacte: 50 rés. p50= 191.6 p95= 218.7 ms | habituelle: 50 rés. p50= 156.8 p95= 176.2 ms
+bilan biologique           exacte: 50 rés. p50= 172.4 p95= 190.5 ms | habituelle: 50 rés. p50= 141.2 p95= 171.6 ms
+cher confrère              exacte: 50 rés. p50= 218.2 p95= 249.5 ms | habituelle: 50 rés. p50= 181.0 p95= 188.3 ms
+bien confraternellement    exacte: 50 rés. p50= 127.1 p95= 149.9 ms | habituelle: 50 rés. p50=  98.0 p95= 103.3 ms
+résultats d'analyses       exacte: 50 rés. p50= 216.0 p95= 235.1 ms | habituelle: 50 rés. p50= 188.8 p95= 212.0 ms
+TOUTES                     exacte p50=191.8 p95=239.6 ms | habituelle p50=159.7 p95=194.7 ms

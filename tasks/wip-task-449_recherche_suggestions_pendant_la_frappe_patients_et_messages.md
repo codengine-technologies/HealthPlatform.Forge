@@ -197,6 +197,129 @@ Règles :
 - `dtos-mss` (paresseuse) : créée par `/develop` au premier changement de contrat (même nom).
 - `client-angular` (code-only) : la forge écrit sur la branche checked out dans `Client/Angular/` (au /start : `feature/nova-mss-weda-integration`) — humain gère branche, commit, push, PR TFS
 
+## Develop log
+
+**Ordre** : dtos-mss → api-mail → client-angular (code-only, `feature/nova-mss-weda-integration`, aucun commit).
+
+### dtos-mss (branche paresseuse `feat/task-449-recherche-suggestions-pendant-la-frappe`, publié **600**)
+
+- `SearchSuggestionsResponseDto` (`Prefix`, `Text`, `Patients`, `Correspondents`, `DocumentTypes`, `RecentSearches` ;
+  `MaxPerCategory` 5, `MinQueryLength` 2), `SearchInputPrefix`, `SearchCorrespondentDto` / `SearchCorrespondentRole`,
+  `SearchDocumentTypeDto`. Types nouveaux seulement ; le patient suggéré réutilise `SearchFoundPatientDto` (sans INS).
+  Consommateur .NET : api-mail bumpé (`cf8d018c`).
+
+### api-mail
+
+- **Saisie** (`SearchInput`, `SearchPhrases`) : préfixe en tête (`de`, `à`/`a`, `patient`, `type`, `objet`), casse,
+  accents et espaces autour des deux-points ignorés ; un mot suivi de deux-points qui n'est pas un préfixe est du
+  texte. Un préfixe prend tout le reste, ou l'expression entre guillemets qui l'ouvre. Guillemets droits ou
+  typographiques ; un guillemet non fermé est ordinaire.
+- **Préfixes dans `POST /search/semantic`** : `de :` → « De contient » (`FromAddress`, qui lit nom et adresse), `à :` →
+  `RecipientAddress`, `objet :` → `Subject`, le reste en plein texte ; `patient :` / `type :` → 400 (« se choisit dans
+  la liste ») ; le texte d'un préfixe n'est jamais lu comme une identité (pas de patients trouvés).
+- **Guillemets** : recherche exacte sans recherche par le sens (aucun appel au fournisseur d'embeddings, aucun
+  `Similar`, pas de groupe « une partie des mots »). Les mots des expressions et les mots hors guillemets, tous requis,
+  présélectionnent par l'index trigramme du texte normalisé ; chaque candidat est vérifié sur le texte d'origine
+  (`SearchPhrases.Pattern` : mots consécutifs, frontières de mot, casse seule ignorée, espaces et retours à la ligne =
+  une espace), **dans l'ordre de la recherche jusqu'à la page et un de plus**. Extrait : l'expression surlignée
+  entière (`SearchExcerpts.AroundPhrases`, `SearchHitEnrichment.ApplyPhrases`).
+- **`GET /search/suggestions?query=`** (`SearchSuggestionService`) : remplace la liste figée de termes. Patients
+  (début de mot du nom ou du prénom, normalisé ; une saisie de forme INS n'en propose aucun), correspondants
+  (expéditeurs puis destinataires, début de mot du nom ou de l'adresse), types de document (`MedicalDocumentTypeCatalog`,
+  libellé qui contient les lettres), recherches récentes de la personne qui les contiennent ; 5 par catégorie ; un
+  préfixe garde sa seule catégorie ; < 2 caractères après le préfixe → 400. **N'est plus `TraceExempt`** :
+  `[TracedInCode(MailSearch)]`, le service trace chaque réponse qui nomme au moins un patient (famille
+  `HealthDataAccess`), au nom de la personne, avec le nombre de patients, jamais les lettres.
+- **Historique propre à la personne** (`SearchHistoryOwner`) : la clé nommait la boîte seule — titulaire, délégataire
+  et membre lisaient les recherches les uns des autres. Elle nomme désormais la boîte et la personne (sujet
+  d'authentification, sinon RPPS). Défaut antérieur, corrigé parce que la DoD le demande (règle 14).
+- Projection patient unique (`SearchPatientCandidate.ToFoundPatient`) pour les patients trouvés et suggérés.
+
+**Tests d'intégration** (règle 1b, vrai contrôleur, vrais services, PostgreSQL réel, vrai historique en mémoire, vrai
+`AuditService`) — `SearchSuggestionsIntegrationTests`, `SearchPrefixesAndPhrasesIntegrationTests`,
+`MailboxAccessLockIntegrationTests` :
+
+| Comportement | Test | Preuve rouge |
+|---|---|---|
+| `bern` : Catherine BERNARD (date, sexe, « INS qualifiée »), sans INS dans le JSON ; `bernart` : personne | `Bern_SuggestsCatherineBernard_…` | S1 (nom approché à 4 lettres) |
+| `cerb` : le laboratoire (expéditeur), puis le secrétariat (destinataire) | `Cerb_SuggestsTheLaboratory_…` | S2 (correspondants sans filtre) |
+| `bio` : « Biologie » | `Bio_SuggestsTheBiologyDocumentType` | S3 (tous les types) |
+| Règle 14 : mêmes patients et correspondants pour deux personnes, chacune ses recherches récentes | `TwoPeopleOfTheMailbox_…` | S4 (historique de la boîte) |
+| < 2 caractères (`b`, `de : p`) → 400 `problem+json` | `FewerThanTwoCharacters_Is400ProblemJson` | S8 |
+| Réponse qui nomme un patient tracée au nom de la personne, sans les lettres ; sans patient, pas de trace | `AnAnswerNamingAPatient_IsTraced…` | S5 (trace retirée), S6 (trace sans patient) |
+| `de : paul` (suggestions) : seuls des expéditeurs, aucun patient même si un patient s'appelle PAUL | `FromPrefix_SuggestsOnlySenders…` | S2, S7 (préfixe sans catégorie) |
+| Délégataire refusé par l'opérateur → 403 sur les suggestions ; le titulaire les obtient | `Delegate_RefusedAtRenewal_Gets403_OnSearchSuggestions_…` | rouge sur le code d'avant (service absent) |
+| `de : paul` (recherche) : seul le message de Paul MARTIN, pas celui qui cite Paul ; aucun patient | `FromPrefix_ReturnsOnlyTheMailsWhoseSender…` | P1 (préfixe ignoré), P2 |
+| `objet : bilan` : seul l'objet « Bilan lipidique » | `SubjectPrefix_…` | P1 |
+| `tension : 14/8` : recherche plein texte habituelle | `AWordFollowedByAColonThatIsNoPrefix_…` | P2 (mot + deux-points pris pour un objet) |
+| `patient : bern`, `type : bio` → 400 | `APatientOrATypeTypedAfterItsPrefix_Is400…` | P1, P2 |
+| `"dernier résultat du 22/05/2026"` : casse différente trouvée ; sans accent, tirets, autres mots écartés ; aucun appel d'embeddings, aucun `Similar` | `AnExpressionBetweenQuotes_FindsItWhateverItsCase_…` | Q1 (vérification sautée), Q2 (en hybride) |
+| L'extrait surligne l'expression entière, telle qu'écrite | `…_ItsExcerptHighlightsTheWholeExpression_…` | Q2, Q4 (surlignage mot à mot) |
+| `"dernier résultat" potassium` : les deux requis | `AnExpressionAndAWord_BothAreRequired` | Q2, Q3 (mots hors guillemets facultatifs) |
+| Pagination exacte : la page dit qu'il en reste, la suivante les rend ; page qui finit sur un lot de vérification | `…_IsReadPageByPage_…`, `…_APageEndingOnACheckBatch_StillSaysMoreExist` | Q1, Q6 (page sans « un de plus ») |
+| Guillemet non fermé : recherche habituelle (résultats proches compris) | `AnUnclosedQuote_IsAnOrdinarySearch` | Q5 |
+
+- Unitaires : `SearchInputTests` (33 : chaque préfixe, variantes d'espaces, de casse, d'accent, préfixe inconnu,
+  guillemets droits et typographiques, non fermés, mélange, motif exact) ; `SearchSuggestionServiceTests` (19 : chaque
+  catégorie, chaque préfixe, limite, INS, trace, recherches récentes de la personne) ; `SearchControllerTests` (3).
+- Mutations P1–P2, Q1–Q6, S1–S8 : 17 rouges.
+
+**Mesures** (`Docs/audits/findings/plans/20261112-task-449/`, `cost449.cs`, copie `srch_lab` de la boîte de formation,
+11 291 messages, 56 patients, index trigrammes construits, 30 passages après chauffe, Release) :
+
+| Mesure | p50 | p95 | Borne |
+|---|---|---|---|
+| Suggestions (patients + expéditeurs + destinataires + types), 10 saisies | 152 ms | **175 ms** | < 300 ms ✅ |
+| Recherche exacte entre guillemets, page de 50, 5 expressions | 192 ms | **240 ms** | — |
+| Même texte sans guillemets (plein texte habituel) | 160 ms | 195 ms | — |
+
+- Première version : chaque candidat vérifié avant de paginer → p95 **2 099 ms** (« "compte rendu" » : des milliers de
+  textes relus). Corrigé : vérification par lots de 100, dans l'ordre, jusqu'à la page et un de plus ; écart final
+  +45 ms au p95.
+
+### client-angular (weda2, code-only)
+
+- `core/models/search-suggestions.model.ts`, `MssApiService.getSearchSuggestions` (réponse par catégories).
+- `MailSearchSuggestions` (`features/mail/services/mail-search-suggestions.ts`) : champ vide → les 5 dernières
+  recherches ; à partir de 2 caractères après le préfixe, après 250 ms, les catégories ; flèches qui bouclent ;
+  `readSearchBar` / `mustChooseInTheList` (jumeaux du préfixe serveur).
+- `MailSearchSuggestionsComponent` : catégories dans l'ordre, une catégorie vide masquée, patient affiché avec date,
+  sexe, « INS qualifiée » (jamais l'INS) ; choix au `mousedown`.
+- Barre (`MailSearchComponent`) : les suggestions **remplacent l'historique du formulaire** (composant
+  `mail-search-history` retiré, plus utilisé) ; un patient ouvre « Mails du patient » sans lancer de recherche ; un
+  expéditeur pose « De » (`fromAddresses`), un destinataire « À », un type le critère de type, puis la recherche est
+  lancée sans les lettres tapées ; une recherche récente est rejouée ; Entrée sans choix lance le texte tel quel (le
+  serveur lit le préfixe), sauf après `patient :` / `type :` ; Échap ferme.
+- Tests de composant `mail-search.suggestions.spec.ts` (11) : mutations G1–G11 toutes rouges (ordre, récentes au
+  focus, limite à 5, vue du patient, rôle du correspondant, type, boucle du clavier, patient tapé, deux caractères,
+  lettres gardées, Entrée sur la désignation).
+- **E2E** `E2E-SEARCH-013` v1 (« pat-t » → PAT-TROIS → « Mails du patient ») et `E2E-SEARCH-014` v1 (« de : luc » →
+  seul Dr Luc Bernard → étiquette « De : … », son seul message) ; catalogue : angular requis, mobile en divergence
+  task-451. Joués verts sur le banc ; mutations servies E3 (patient vers une autre route) et E4 (expéditeur posé en
+  « À ») rouges, marqueurs vérifiés dans le bundle puis retirés. Le corpus e2e n'a pas de Catherine BERNARD : la fiche
+  du seed (`PAT-TROIS`) tient ce rôle.
+- `nx test mss-lib` 1 635 ✅, `nx test weda2` 2 683 ✅, `nx build weda2` ✅ ; ESLint 0 erreur sur les fichiers touchés
+  (`mail-search.component.ts` dépasse déjà `max-lines`, avertissement existant).
+
+### Écarts et décisions consignés
+
+- **Identité patient** : la consigne `identite-patient-exacte` interdit `LIKE 'x%'` pour **désigner** un patient ; la
+  task demande une **suggestion** par début de mot (décision humaine). Exception écrite dans la consigne : une
+  suggestion complète un début de mot, ne désigne personne, et le médecin choisit dans la liste.
+- Les recherches récentes au focus viennent de `GET /search/history` (5 premières) ; la route de suggestions exige
+  2 caractères.
+- La suppression de l'historique (« Effacer ») disparaît avec le composant d'historique du formulaire.
+
+### Passe qualité (§Q)
+
+- Diff relu : projection patient factorisée (`ToFoundPatient`), aucun autre cleanup appliqué ; pas de re-validation
+  supplémentaire.
+
+### Prévention (règle d'or)
+
+- `conventions/csharp.md` § `route-identite-patient-jamais-exemptee` (nouvelle) ; § `identite-patient-exacte` complétée
+  (exception de la suggestion par début de mot).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-449 --sync` — ne pas éditer à la main)*
@@ -204,4 +327,7 @@ Règles :
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 20 s | — | — | — | — |
-| **Total cycle** | | **20 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 1 h 17 min | 3 (24 s) | 2 (7 min 18 s) | — | dtos-mss 1B/0T, api-mail 1B/1T, client-angular 1B/1T, suggestions, préfixes, guillemets ; dtos 600 |
+| **Total cycle** | | **1 h 17 min** | **3 (24 s)** | **2 (7 min 18 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : nuget-wait ×1 (24 s), restore ×1 (3.7 s)
