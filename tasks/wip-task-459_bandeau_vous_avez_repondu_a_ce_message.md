@@ -1,7 +1,7 @@
 # todo-task-459.md — Bandeau « Vous avez répondu à ce message le… »
 
 **Repos**: api-mail, dtos-mss, client-angular, client-mobile
-**Reprises**: 1
+**Reprises**: 2
 **Dependencies**: aucune
 **Epic**: E024
 **Priorité**: EPIC E024, demandée par l'humain le 2026-11-11. Savoir, en ouvrant un message, qu'on y a déjà répondu
@@ -335,6 +335,36 @@ clients.
   avait ramenées à zéro), et la branche `References` parcourt les envois. Recommandation : mesurer au banc ; colonne
   `ParentMessageId` indexée en task de suite.
 
+### Passage 2 (revue anticipée, après reprise 1) — CHANGES REQUESTED
+
+Relu sur : api-mail `6b88dfb4`, client-mobile `b2a9a01`, client-angular (arbre inchangé). Le diff de la reprise lu
+**d'abord**, pour ce qu'il a cassé (revue indépendante).
+
+**Constats du passage 1** : B1 ✓, B2 (a) ✓, (b) ✓, (c) ✓, (d) ✓, (e) ✓, (f) ✓, (g) ✓, S4 ✓, S7 ✓, S8 ✓ — chaque test
+emprunte la route ou la branche nommée, sa prémisse est affirmée, et sa mutation le rougit.
+
+#### À corriger par la reprise
+
+- **N1 ❌ (né du correctif B1)** — `OutgoingMailService.SendAndArchiveAsync` met désormais l'archivage en file **avant**
+  l'enregistrement de la réponse. Or l'archivage dépend de l'enregistrement : après l'`APPEND`,
+  `ImapService.TryAppendToSentAsync` → `MailReplyRepository.RecordSentCopyAsync` est un `UPDATE … WHERE SentMessageId`
+  (pas un upsert), seule voie par laquelle le serveur apprend `SentFolderPath` / `SentUid` avant la synchronisation
+  d'Envoyés. En production la file de fond dépile aussitôt : si l'`APPEND` + `UPDATE` passent avant l'`INSERT` de la
+  requête (pool Npgsql froid de la boîte, pool occupé, Dovecot local), l'emplacement est perdu — « Voir la réponse »
+  répond « Réessayez dans un instant » jusqu'à la synchronisation, et `E2E-DETAIL-006` peut rougir par intermittence.
+  Invisible aux tests : `DeterministicBackgroundTaskQueue` n'exécute l'archivage qu'au `DrainBackgroundQueueAsync`.
+  L'ordre n'apportait rien à B1, déjà corrigé par le jeton non annulable et la capture totale de l'enregistreur.
+  Correctif : rétablir enregistrement → archivage (en gardant `CancellationToken.None` et la capture totale), et un
+  test qui fige l'ordre (`Received.InOrder`), vu rouge sur l'ordre actuel.
+
+#### Arbitrage humain (en plus de A1–A4 du passage 1)
+
+- **A5** — `DraftService` (pré-existant, hors task-459) : après un envoi réussi, la suppression du brouillon prend le
+  jeton de la requête ; un client qui abandonne à cet instant garde le brouillon (même classe de risque que B1).
+  Recommandation : task de suite, hors de cette US.
+- Note pour la PR : B2 (c) pose la classification `MailFolders.FolderType` en base (le comportement changé est la
+  requête qui la lit ; le listage SPECIAL-USE des dossiers est pré-existant).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-459 --sync` — ne pas éditer à la main)*
@@ -343,7 +373,7 @@ clients.
 |---|---|---|---|---|---|---|
 | /start | ok | 50 s | — | — | — | — |
 | /develop | ok | 25 min 01 s | 17 (8 min 17 s) | 12 (43 min 10 s) | — | dtos-mss 2B/0T, api-mail 10B/5T, client-mobile 3B/4T, client-angular 2B/3T, reprise 1 |
-| /review-code | changes | 16 min 19 s | — | — | — | reprise 1 |
-| **Total cycle** | | **42 min 11 s** | **17 (8 min 17 s)** | **12 (43 min 10 s)** | **0 (0.0 s)** | |
+| /review-code | changes | 7 min 54 s | — | — | — | reprise 2 |
+| **Total cycle** | | **33 min 46 s** | **17 (8 min 17 s)** | **12 (43 min 10 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×2 (31 s), restore ×2 (15 s)
