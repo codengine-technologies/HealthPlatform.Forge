@@ -329,30 +329,22 @@ Baseline : dernière analyse du projet avant la task (2026-11-12) ; new code = 3
 
 ## E2E log
 
-| Voie | Jouée / réutilisée | Résultat | Durée |
-|---|---|---|---|
-| mobile (passage 1) | jouée | ⚠️ 55 verts, 7 rouges — tous `ERR_CONNECTION_REFUSED` sur `localhost:8100` : `ng serve` et l'API tombés ensemble à 13:07:50, sans trace dans leurs journaux ; aucune autre session active | 8,4 min |
-| mobile (rejeu) | jouée | ✅ 62/62, parité verte | ≈ 9 min |
-| angular | jouée | ❌ 79 verts, 4 rouges, parité verte | — |
+| Voie | Jouée / réutilisée | Résultat |
+|---|---|---|
+| mobile | jouée (api-mail 0f0605cd, client-mobile 95e6dc1) | ✅ 62/62, parité verte |
+| angular | jouée (api-mail 0f0605cd, client-angular arbre de travail) | ✅ 83/83, parité verte |
 
-Démontage vérifié : ports libres, aucun conteneur e2e résiduel.
+Démontage vérifié : ports libres. Deux conteneurs `e2e-greenmail-*` / `e2e-dovecot-*` arrêtés depuis le 2026-10-14,
+étrangers à ce run, restent présents (non supprimés).
 
-**Cause identifiée des 4 rouges Angular : la donnée de seed de la task elle-même.** `cr-bio-historique` réutilise le
-CDA du corpus ANS de `cr-bio-a-acquitter` : il rattache un **second compte rendu au même patient fictif**. Les
-parcours web qui portent sur ce patient le voient : E2E-SEARCH-008 compte 3 biologies anormales au lieu de 2,
-E2E-PATIENT-004 trouve en première page l'uid du compte rendu historique au lieu de celui attendu, E2E-SEARCH-010
-ne retrouve plus le compte rendu dans les messages du patient. E2E-DASH-001 (« le widget patients est rendu »,
-rouge deux fois) est rouge dans le même run ; son lien avec la donnée est probable mais **non démontré**. Le mobile
-n'a pas ces parcours : sa voie est verte.
+Historique du cycle :
+- 1er passage `/e2e` : voie mobile tombée en cours (serveur de l'app et API coupés ensemble, 7 `ERR_CONNECTION_REFUSED`,
+  outillage), rejouée verte ; voie Angular **rouge** (PATIENT-004, SEARCH-008, SEARCH-010, DASH-001) — la donnée de seed
+  `cr-bio-historique` rattachait un second compte rendu au patient des parcours web. Question posée, chaîne arrêtée.
+- Reprise 2 (humain) : HPRIM historique au nom d'un patient fictif propre, SEARCH-008 ajusté à 3 lignes.
+- 2e passage `/e2e` : les deux voies vertes.
 
-**E2E : ROUGE** — 4 motif(s) de blocage.
-
-**Bloquant** (4) :
-
-- [angular] rouge : « patients — la vue « Mails du patient » reste ouverte et ses pages viennent du serveur » (E2E-PATIENT-004)
-- [angular] rouge : « tableau de bord — les widgets s'affichent » (E2E-DASH-001)
-- [angular] rouge : « recherche — reconnaître un résultat et ouvrir le dossier du patient » (E2E-SEARCH-010)
-- [angular] rouge : « recherche — restreindre à un patient et à ses biologies anormales » (E2E-SEARCH-008)
+**E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
 
 **En quarantaine (posée par l'humain, non bloquant)** (1) :
 
@@ -367,7 +359,7 @@ n'a pas ces parcours : sa voie est verte.
 | E2E-PATIENT-001 | 1 | headless | Afficher la vue patients | ✅ | ✅ |
 | E2E-PATIENT-002 | 2 | headless | Rattacher à la main un document sans INS à un patient choisi par recherche, puis le détacher | ✅ | ✅ |
 | E2E-PATIENT-003 | 1 | headless | La fiche d'un patient ne montre pas les documents d'un autre patient du même mail | ✅ | ✅ |
-| E2E-PATIENT-004 | 1 | headless | La vue « Mails du patient » reste ouverte et ses pages viennent du serveur | ❌ | — |
+| E2E-PATIENT-004 | 1 | headless | La vue « Mails du patient » reste ouverte et ses pages viennent du serveur | ✅ | — |
 | E2E-CONTACT-001 | 2 | humain | Rechercher dans le carnet et interroger l'annuaire national | 👤 non joué (humain) | 👤 non joué (humain) |
 | E2E-SETTINGS-001 | 1 | headless | Changer le filtre par défaut et le retrouver après rechargement | ✅ | ✅ |
 | E2E-MAIL-001 | 1 | headless | Marquer un message lu puis non lu | ✅ | ✅ |
@@ -391,7 +383,7 @@ n'a pas ces parcours : sa voie est verte.
 | E2E-BIO-003 | 1 | headless | Lire un résultat HPRIM puis l'acquitter | ✅ | ✅ |
 | E2E-BIO-004 | 1 | headless | Un compte rendu acquitté puis déplacé depuis un autre client garde son acquittement | ✅ | ✅ |
 | E2E-BIO-007 | 1 | headless | Un compte rendu arrivé avant la date de début du suivi ne réclame rien, et s'acquitte quand même | ✅ | ✅ |
-| E2E-DASH-001 | 1 | headless | Afficher les widgets du tableau de bord | ❌ | ✅ |
+| E2E-DASH-001 | 1 | headless | Afficher les widgets du tableau de bord | ✅ | ✅ |
 | E2E-DETAIL-002 | 1 | headless | Basculer entre texte brut et HTML à la lecture | ✅ | ✅ |
 | E2E-DETAIL-003 | 1 | headless | Répondre à tous depuis la lecture d'un message | ✅ | ✅ |
 | E2E-DETAIL-004 | 1 | headless | Lire un message avec le panneau d'actions, le masquer puis le retrouver au message suivant | ✅ | — |
@@ -407,9 +399,9 @@ n'a pas ces parcours : sa voie est verte.
 | E2E-SEARCH-006 | 1 | headless | Plus de résultats qu'une page — « Voir plus » affiche la suite, jusqu'au dernier | ✅ | ⛔ non joué · divergence (task-450) |
 | E2E-SEARCH-007 | 1 | headless | Une recherche en échec affiche un message, et l'ancienne liste n'est plus affichée | ✅ | ⛔ non joué · divergence (task-450) |
 | E2E-SEARCH-009 | 1 | headless | Fermer la recherche rend le dossier à la même position ; retirer une étiquette relance sans elle | ✅ | ⛔ non joué · divergence (task-450) |
-| E2E-SEARCH-010 | 1 | headless | Reconnaître un résultat et ouvrir le dossier du patient | ❌ | ⛔ non joué · divergence (task-451) |
+| E2E-SEARCH-010 | 1 | headless | Reconnaître un résultat et ouvrir le dossier du patient | ✅ | ⛔ non joué · divergence (task-451) |
 | E2E-SEARCH-012 | 1 | headless | Traiter tous les résultats d'une recherche | ✅ | ⛔ non joué · divergence (task-451) |
-| E2E-SEARCH-008 | 1 | headless | Restreindre la recherche à un patient et à ses biologies anormales | ❌ | ⛔ non joué · divergence (task-451) |
+| E2E-SEARCH-008 | 1 | headless | Restreindre la recherche à un patient et à ses biologies anormales | ✅ | ⛔ non joué · divergence (task-451) |
 | E2E-ATTACH-001 | 1 | headless | Voir les pièces jointes d'un message | ✅ | ✅ |
 | E2E-CONTACT-002 | 2 | headless | Créer un contact à deux adresses, le modifier sans les perdre, puis le supprimer | ✅ | ✅ |
 | E2E-SIGNATURE-001 | 1 | headless | Créer puis supprimer une signature | ✅ | ✅ |
@@ -572,7 +564,7 @@ au 2026-11-13 (base ce7741dd).
 | /sonar | ok | 9 min 36 s | 3 (2 min 05 s) | 17 (24 min 21 s) | 6 (2 min 21 s) | 1 itération(s), api-mail 3B/17T |
 | /lint-angular | ok | 22 s | — | — | — | 0 erreur (après reprise 2) |
 | /lint-mobile | skipped | 1.0 s | — | — | — | client-mobile inchangé depuis le dernier lint propre (95e6dc1) |
-| /e2e | failed | 33 min 13 s | — | 1 (7.9 s) | — | api-mail 0B/1T, e2e ×4 (29 min 28 s), régression Angular (4) — donnée de seed cr-bio-historique |
-| **Total cycle** | | **1 h 00 min** | **17 (5 min 07 s)** | **45 (1 h 13 min)** | **6 (2 min 21 s)** | |
+| /e2e | ok | 20 min 25 s | — | 1 (7.9 s) | — | api-mail 0B/1T, e2e ×7 (49 min 07 s) |
+| **Total cycle** | | **47 min 49 s** | **17 (5 min 07 s)** | **45 (1 h 13 min)** | **6 (2 min 21 s)** | |
 
 Autres commandes mesurées : lint ×3 (50 s), nuget-wait ×2 (38 s), restore ×2 (7.1 s)
