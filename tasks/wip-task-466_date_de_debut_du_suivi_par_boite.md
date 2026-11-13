@@ -70,45 +70,45 @@ Règles :
 
 ## Definition of Done
 
-- [ ] Date d'arrivée stockée : colonne sur `Mails` alimentée par l'`INTERNALDATE` à l'ingestion (insertion et
+- [x] Date d'arrivée stockée : colonne sur `Mails` alimentée par l'`INTERNALDATE` à l'ingestion (insertion et
       promotion d'un en-tête), sans reprise des lignes existantes ; migration FluentMigrator, audit de migration
       (règle 7c), modèle EF identique.
-- [ ] Date de début du suivi stockée dans la base de la boîte : posée à la création de la base, posée par la migration
+- [x] Date de début du suivi stockée dans la base de la boîte : posée à la création de la base, posée par la migration
       pour les bases existantes (une ligne) ; test de migration (base neuve et base existante).
-- [ ] Contrat : nouvel état `BiologyAckResolutionState` « Antérieur au suivi » (valeur appendue, explicite) ; date de
+- [x] Contrat : nouvel état `BiologyAckResolutionState` « Antérieur au suivi » (valeur appendue, explicite) ; date de
       début du suivi lue et modifiée par les réglages de la boîte ; paquet `HealthPlatform.Dtos.Mss` publié et
       consommateurs à jour ; miroirs TypeScript (weda2, mobile).
-- [ ] Acte d'audit `MailboxTrackingStartChanged` (personne réelle, ancienne et nouvelle date) en fin de
-      `AuditActionType`, miroirs TypeScript, famille `HealthDataAccess`, contrôleur marqué `[Audited]`.
-- [ ] Tests unitaires de la règle « suivi » : arrivée après / avant / égale à la date ; repli sur la date d'envoi ; sans
+- [x] Acte d'audit `MailboxTrackingStartChanged` (personne réelle, ancienne et nouvelle date) en fin de
+      `AuditActionType`, miroirs TypeScript, famille `HealthDataAccess`, contrôleur marqué `[Audited]` (écart : `[TracedInCode]` sur le PUT, voir Develop log).
+- [x] Tests unitaires de la règle « suivi » : arrivée après / avant / égale à la date ; repli sur la date d'envoi ; sans
       aucune date → historique ; nouvelle remise d'un ancien résultat → suivi.
-- [ ] **Test d'intégration de bout en bout (règle 1b)** sur la puce et les compteurs de biologie
+- [x] **Test d'intégration de bout en bout (règle 1b)** sur la puce et les compteurs de biologie
       (`GET biology-acks/pending-mail-uids/page`, `GET biology-acks/pending-summary`) et sur
       `GET api/v1/Mail/folders/{f}/emails/{ids}` : une boîte avec un compte rendu anormal **arrivé avant** la date de
       début et un **arrivé après** ; seul le second est compté, porte `PendingBiologyAcksCount = 1` et
       `BiologyAckState = Pending` ; le premier lit `BiologyAckState = Antérieur au suivi`, `PendingBiologyAcksCount = 0`,
       `HasCriticalPendingBiologyAck = false`. Cas d'échec : date de début invalide (future) → 400 en `ProblemDetails`.
       Vu rouge.
-- [ ] **Test d'intégration de la stabilité** : purge sur changement d'UIDVALIDITY puis ré-ingestion d'un compte rendu
+- [x] **Test d'intégration de la stabilité** : purge sur changement d'UIDVALIDITY puis ré-ingestion d'un compte rendu
       historique ; il reste « Antérieur au suivi ». Vu rouge (avec une date d'ingestion à la place de la date d'arrivée).
-- [ ] **Test d'intégration du réglage** : reculer la date fait compter le compte rendu historique ; la relecture le
+- [x] **Test d'intégration du réglage** : reculer la date fait compter le compte rendu historique ; la relecture le
       prouve. Acquitter un compte rendu historique reste possible, et son acquittement est relu.
-- [ ] **Deux personnes sur la même boîte** (règle 14) : le délégataire change la date de début du suivi ; le
+- [x] **Deux personnes sur la même boîte** (règle 14) : le délégataire change la date de début du suivi ; le
       titulaire relit la nouvelle date et ses compteurs ; la trace d'audit porte le délégataire (RPPS, nom, rôle).
-- [ ] Tests de composant (weda2 et mobile), vus rouges par mutation : panneau d'acquittement « Antérieur au suivi »
+- [x] Tests de composant (weda2 et mobile), vus rouges par mutation : panneau d'acquittement « Antérieur au suivi »
       (pas de « À traiter », geste d'acquittement toujours disponible), réglage « Suivre les messages arrivés
       depuis le … ».
-- [ ] **Scénario e2e** `E2E-BIO-007` v1 ajouté à `Api/Mail/e2e/scenarios.yml`, mobile et angular requis, vu rouge par
+- [x] **Scénario e2e** `E2E-BIO-007` v1 ajouté à `Api/Mail/e2e/scenarios.yml`, mobile et angular requis, vu rouge par
       mutation : « une première synchronisation avec de la biologie ancienne n'affiche rien à acquitter ; un compte
       rendu arrivé ensuite est à acquitter ». Le seed du banc pose des messages arrivés avant la date de début ;
       `E2E-BIO-001` à `004` restent verts (leur biologie est arrivée après).
-- [ ] Prévention (règle d'or) : consigne dans `conventions/csharp.md` — « un compteur ou un état qui réclame une
+- [x] Prévention (règle d'or) : consigne dans `conventions/csharp.md` — « un compteur ou un état qui réclame une
       action (à acquitter, à traiter) se borne à la date de début du suivi, comparée à la date d'arrivée, jamais à
       la date d'ingestion ».
-- [ ] Aucune donnée de santé dans les logs ; `data-testid` sur chaque élément interactif ajouté.
-- [ ] Build et tests verts : `HealthPlatform.Api.Mail.sln`, `Dtos`, weda2 (`nx build weda2`, `nx test weda2`,
+- [x] Aucune donnée de santé dans les logs ; `data-testid` sur chaque élément interactif ajouté.
+- [x] Build et tests verts : `HealthPlatform.Api.Mail.sln`, `Dtos`, weda2 (`nx build weda2`, `nx test weda2`,
       `nx test mss-lib`), client-mobile (`npm run build`, `npm test -- --watch=false --browsers=ChromeHeadless`).
-- [ ] client-angular : code-only, aucun commit.
+- [x] client-angular : code-only, aucun commit.
 
 ## Manual Test Plan
 
@@ -142,3 +142,82 @@ Règles :
 - **Hébergement HDS** : oui — base de la boîte, environnement HDS de production
 - **AIPD / impact RGPD** : inchangé — aucune donnée nouvelle sur le patient ; la date d'arrivée d'un message est une
   métadonnée de messagerie
+
+## Branches
+
+- `api-mail` (pushed) : feat/task-466-date-de-debut-du-suivi-par-boite — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-466-date-de-debut-du-suivi-par-boite
+- `client-mobile` (pushed) : feat/task-466-date-de-debut-du-suivi-par-boite — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-466-date-de-debut-du-suivi-par-boite
+- `dtos-mss` (lazy) : aucune branche au /start — `/develop` la crée depuis `origin/develop` (feat/task-466-date-de-debut-du-suivi-par-boite) au premier contrat touché
+- `client-angular` (code-only) : forge writes code on the branch currently checked out in `Client/Angular/` (au /start du 2026-11-13 : `feature/nova-mss-weda-integration`) — humain gère branche, commit, push, PR TFS
+
+## Develop log
+
+**Étape** : `/develop` du 2026-11-13. Commits : `dtos-mss` 9fcef29 (publié 604.0.0, CI #604), `api-mail` 569f7131
+(bump DTOs 597→604) + 6485bcae, `client-mobile` f46a059 ; `client-angular` code-only, non commité.
+
+### Ce qui est livré
+- **Contrat** (`dtos-mss`) : `MailDto.ArrivalDate`, `BiologyAckResolutionState.BeforeTrackingStart = 3`,
+  `AuditActionType.MailboxTrackingStartChanged = 72` (avant `Unknown`), `MailboxTrackingStartDto`,
+  `MailboxErrorCodes.TrackingStartInFuture`. `client-blazor` n'est pas dans les Repos : non bumpé.
+- **api-mail** : `Mails.ArrivalDate` (INTERNALDATE, insertion et promotion d'en-tête) ; table `MailboxTrackingStart`
+  (une ligne), posée par la migration `20261113120000` à `maintenant − 5 min` (tolérance d'horloge
+  `MessageTracking.InitialClockTolerance`), tronquée à la seconde ; règle unique `MessageTracking` (`IsTracked` en
+  mémoire, `TrackedSince` en SQL) appliquée à `pending-summary`, `pending-mail-uids` (+ `/page`) et à l'état des
+  documents servis par `emails/{ids}` ; route `api/v1/account/mailboxes/current/tracking-start` (GET, PUT) ; code
+  d'erreur au catalogue et `docs/codes-erreur.md` régénéré.
+- **client-mobile** : panneau « ANTÉRIEUR AU SUIVI » (geste conservé), section « Suivi » des réglages,
+  `MailboxTrackingService` relu à chaque bascule de boîte.
+- **client-angular** (non commité, à la charge de l'humain) : `core/models/biology-ack.model.ts` (+ spec neuve),
+  `core/models/audit.model.ts` (+ spec), `core/models/user-settings.model.ts`, `core/services/mss-api.service.ts`
+  (+ spec), `core/utils/local-date.util.ts` (neuf, extrait d'`audit-filter.component.ts`),
+  `features/audit/components/audit-filter/audit-filter.component.ts`, `features/mail/components/biology-ack-panel/*`
+  (ts, html, scss, spec), `features/mail/components/mail-detail/mail-detail.component.ts`,
+  `features/mail/services/mail-state.service.ts`, `features/settings/mss-settings.component.*` (ts, html, spec),
+  `e2e/mss-e2e/specs/functional.e2e.ts`, `e2e/mss-e2e/support/e2e-backend.ts`.
+
+### Preuves rouges (règle 1b)
+- Intégration `FolderOperationsEndToEndTests.TrackingStart` (5 tests, vraie pile HTTP + PostgreSQL) :
+  M1 filtre SQL retiré → 4 rouges ; M2 état « Antérieur au suivi » retiré → 2 rouges ; M3 date d'ingestion au lieu de
+  la date d'arrivée → 4 rouges ; M4 date future acceptée → rouge ; M5 type d'acte tracé faussé → rouge.
+- Composants mobile (Karma) : libellé du panneau et rafraîchissement du tableau de bord, mutés → rouges.
+- Composants weda2 (Vitest, lanceur ciblé `--pool=forks`) : panneau, règle `isBiologyAckClaimed` (« Antérieur au
+  suivi » réclamé) et enregistrement de la date (journée au lieu de minuit local), mutés → rouges.
+- **e2e E2E-BIO-007** : vert sur les deux voies (`--serve-only`, avec BIO-001 et BIO-002 verts) ; rouge sur la voie
+  mobile avec `TrackedSince` muté en `m => true` (`pending` contenait l'uid du compte rendu historique). La voie
+  Angular porte la même assertion serveur en tête ; elle n'a pas été rejouée sous mutation (un seed neuf par essai).
+
+### Écarts assumés
+- **`[TracedInCode]` au lieu de `[Audited]`** sur le PUT : la trace porte l'ancienne et la nouvelle date, connues du
+  service seul. Le GET est `[TraceExempt]` (une date de réglage, aucune donnée de santé).
+- **Pose initiale non tracée en acte système** : la migration FluentMigrator n'a pas de contexte d'audit. La date
+  initiale se lit dans la table ; à trancher au merge si une trace est exigée.
+- **Seed e2e** : la migration pose la date APRÈS le dépôt IMAP des messages ; le seed la recule d'un jour et la relit
+  (`E2eSeed.SetTrackingStartAsync`), sinon BIO-001…003 n'auraient rien à acquitter. Le compte rendu historique
+  (3 jours) devient le plus ancien message : l'invariant de `E2eSeedPlanTests` porte désormais sur les messages suivis.
+- `/stitch-design` non joué : aucun écran nouveau, une section ajoutée à l'écran de réglages existant.
+
+### Vérification
+- api-mail : build 0 avertissement ; suite complète 7 888 tests verts (un rouge, le document du catalogue d'erreurs,
+  corrigé par régénération et rejoué vert).
+- client-mobile : build vert (avertissements préexistants) ; Karma 1 428/1 428 trois fois de suite (une première
+  passe à 4 rouges non reproduite) ; `ng lint` propre.
+- weda2 : `nx build weda2` vert, `nx test weda2` 2 683 verts, `nx test mss-lib` 1 643 verts ; ESLint 0 erreur, aucun
+  avertissement sur les lignes ajoutées.
+- Passe qualité §Q : aucun nettoyage appliqué (code neuf déjà minimal ; `local-date.util` dupliqué entre mobile et
+  weda2, dépôts distincts).
+
+### Amélioration continue
+- `conventions/csharp.md` : entrée `action-reclamee-bornee-au-suivi`.
+- Mémoire de session : lanceur Vitest de `mss-lib` — preuves par mutation sur spec ciblée `--pool=forks`.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-466 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 33 s | — | — | — | — |
+| /develop | ok | 1 h 59 min | 7 (1 min 55 s) | 16 (18 min 06 s) | — | dtos-mss 1B/0T, api-mail 3B/11T, client-angular 1B/3T, client-mobile 2B/2T |
+| **Total cycle** | | **1 h 59 min** | **7 (1 min 55 s)** | **16 (18 min 06 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : nuget-wait ×1 (19 s), restore ×1 (3.6 s)
