@@ -236,6 +236,43 @@ Il faut aussi un RPPS de test e-CPS du bac à sable, avec l'application e-CPS de
   - Python sous Windows : `subprocess.run(["bash", …])` lance le bash WSL de System32 (18 « BUILD KO » sans erreur de compilation) : consigné en mémoire de session.
 - Next step : /review task-478 --code
 
+### Reprise 1 après /review
+
+Commits api-mcp : `ebe06c3` (correctifs et tests), `5a07884` (README), poussés. Build 0 erreur ; tests 91/91,
+total vérifié, sans FATAL, deux passages verts. Vert marqué sur `5a07884`. Les nouveaux tests ont été écrits avant les
+correctifs : **16 rouges vus sur l'ancien code**, puis verts.
+
+| Constat | Correctif | Test | Preuve rouge |
+|---|---|---|---|
+| B1 trousseau en clair | `ProtectKeysWithCertificate` + `UnprotectKeysWithAnyCertificate`, obligatoire hors dév. ; le fixture joue désormais le chemin de production (certificat de test) | `ReviewFindingsTests.DataProtectionKeys_AreStoredEncryptedByTheCertificate` | rouge sur l'ancien code |
+| B2 codes inventés | correspondance exacte sur `MAILBOX_NOT_ATTACHED`, `MAILBOX_ACCESS_REFUSED`, `MAILBOX_PSC_SESSION_REQUIRED`, `MAILBOX_ACCESS_UNVERIFIED` (`ApiMailErrorCodes`) | `MailToolsTests.OperatorRefusal_TellsTheDoctorTheOperatorSuspendedTheAccess` ; `ToolErrorsTests` sur les codes réels | rouge sur l'ancien code (intégration et 3 cas unitaires) |
+| B3 extrait relayé | `Excerpt` retiré du contrat lu, de la vue, de la description de l'outil | `MailToolsTests.SearchMessages_ReturnsTheHeadersOfTheHits_NeverAnExcerptOfTheContent` | rouge sur l'ancien code |
+| B4 borne de la recherche | (comportement déjà en place) | `MailToolsTests.SearchMessages_IsBoundedByMaxSearchResults_InTheRequestAndInTheAnswer` | M22 (plafond de la requête retiré) et M23 (coupe de la réponse retirée) : rouges |
+| S1 test de lecture seule | liste attendue écrite en dur, chaque outil doit réussir | `MailToolsTests.EveryTool_Succeeds_AndCallsExactlyTheExpectedReadRoutesOfApiMail` | M25 (écriture ajoutée, garde en place) et M26 (garde retirée) : rouges |
+| S4 journal des jetons | `TokenLog` : délivrance et refus, avec autorisation et client, sans RPPS | `ReviewFindingsTests.TokenEvents_AreLogged_WithGrantAndClient_WithoutRpps` | rouge sur l'ancien code |
+| S5 dossier dans les journaux | gabarit de route journalisé ; `ReadOnlyRouteException` sans chemin | `MailToolsTests.FolderNames_NeverReachTheLogs` | rouge sur l'ancien code |
+| S6 client non nommé | la page affiche le nom enregistré et l'hôte de retour, et « ne continuez que si vous l'avez lancée » | `ReviewFindingsTests.LoginPage_NamesTheRequestingClient` | rouge sur l'ancien code |
+| S7 rotation et usage unique | `SetRefreshTokenReuseLeeway(TimeSpan.Zero)` | `ReviewFindingsTests.RefreshToken_Rotates_TheOldOneIsRefused` ; `ReviewFindingsTests.AuthorizationCode_IsSingleUse` | rotation : rouge sur l'ancien code (délai de grâce de 30 s par défaut) ; usage unique : M24 (`ValidateTokenEntry` retiré), rouge, motif vérifié (le second échange réussissait) |
+| S8 délai, corps illisible, garde | `ToolErrors.TryMessageFor` (annulation par le client exclue) | `MailToolsTests.ApiMailTimeout_BecomesTheUnavailableMessage` | rouge sur l'ancien code |
+| S10 durée du jeton | `McpOptions.AccessTokenLifetime` plafonné à 15 min | `ReviewFindingsTests.AccessToken_LivesAtMostFifteenMinutes` ; `McpOptionsTests` | rouge sur l'ancien code |
+| S10 brouillons virtuels | dossiers de source Drafts écartés de `list_folders` | `MailToolsTests.ListFolders_HidesTheVirtualDraftsFolder` | rouge sur l'ancien code |
+
+- **Relecture du correctif comme correctif** (« qu'est-ce qu'il casse ailleurs ? ») :
+  - Le README annonçait encore « en-têtes et extrait » : corrigé (`5a07884`).
+  - Le test de délai laissait une requête retardée s'inscrire dans le journal WireMock du test suivant. Le rouge est
+    apparu sur `Refresh_WhenTheProxySessionIsAlive`, puis sur un autre test au passage suivant. Le test attend
+    désormais sa requête retardée.
+  - `ToolErrors.MessageFor(Exception)` n'avait que l'appelant `MailTools`, mis à jour.
+  - La garde lève un sous-type d'`InvalidOperationException` : le test unitaire a été aligné.
+- **Passe qualité** : non rejouée, le diff de la reprise est ciblé.
+- **Amélioration continue** : trois consignes ajoutées à `conventions/csharp.md` :
+  - `code-externe-recopie` (B2) ;
+  - `cle-a-cote-du-secret` (B1) ;
+  - `chemin-dans-les-journaux` (S5, 2e occurrence après api-mail task-352/353).
+- **Outillage** : les scripts d'édition Python en mode texte écrivent CRLF sous Windows, ce qui empêchait le script de
+  mutation de trouver ses motifs. Le script s'adapte désormais aux fins de ligne du fichier.
+- Next step : /review task-478 --code (passage 3, après reprise)
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — INTERROMPU (panne d'outillage, 2026-11-13)
@@ -313,8 +350,8 @@ boîte active), rotation de la session du proxy suivie.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 16 s | — | — | — | — |
-| /develop | ok | 52 min 31 s | 38 (1 min 25 s) | 30 (6 min 49 s) | — | api-mcp 38B/30T |
+| /develop | ok | 13 min 09 s | 50 (1 min 59 s) | 40 (9 min 28 s) | — | api-mcp 50B/40T |
 | /review-code | changes | 8 min 57 s | — | — | — | reprise 1 |
-| **Total cycle** | | **1 h 01 min** | **38 (1 min 25 s)** | **30 (6 min 49 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **22 min 23 s** | **50 (1 min 59 s)** | **40 (9 min 28 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : restore ×3 (8.5 s)

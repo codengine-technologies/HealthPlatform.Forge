@@ -2653,3 +2653,61 @@ dépassement de pile, et xUnit affiche quand même `Passed!` sur un total tronqu
 - Comparer le total de tests au dernier passage connu (`Total`), en plus de `Passed!`.
 
 **Origine** : task-349, task-478. **Occurrences** : 2
+
+---
+
+## code-externe-recopie — un code d'erreur d'un autre service se reprend de ses constantes, jamais d'une supposition
+
+**Règle** : convention projet, invisible au compilateur. Un `contains("OPERATOR")` compile, et son test reste vert si
+le test invente le même code.
+
+**Piège** (task-478, revue du 2026-11-13, B2) : le serveur MCP traduisait le refus de l'opérateur en cherchant
+« OPERATOR » dans le code d'erreur. api-mail renvoie en réalité `MAILBOX_ACCESS_REFUSED` (`Dtos/MailboxDto.cs`,
+`MailboxErrorCodes`). Le test unitaire stubait `OPERATOR_VERDICT_REFUSED`, un code qui n'existe pas : le message prévu
+n'arrivait jamais au médecin. C'est la variante « contrat » du test qui stube sa propre prémisse.
+
+**Consigne** :
+- Un code d'erreur, un nom de champ ou un statut d'un autre service se recopie depuis **sa** source (constante de
+  `dtos-mss`, `ErrorCatalog` du proxy), avec le fichier cité en commentaire. La comparaison est exacte, jamais un
+  `Contains`.
+- Le test d'intégration simule la réponse avec ce code réel : la valeur stubée se copie depuis la source, elle ne
+  s'invente pas.
+
+**Origine** : task-478. **Occurrences** : 1
+
+---
+
+## cle-a-cote-du-secret — « chiffré au repos » ne vaut que si la clé n'est pas rangée en clair à côté
+
+**Règle** : convention projet (sécurité, PGSSI-S cryptographie), invisible au lint et à Sonar.
+
+**Piège** (task-478, revue du 2026-11-13, B1) : les jetons des médecins étaient chiffrés par Data Protection, mais le
+trousseau était persisté dans la même base PostgreSQL (`PersistKeysToDbContext`), sans protection. Une sauvegarde de
+la base suffisait à tout déchiffrer : le critère de DoD « chiffrés au repos » était rempli sur le papier seulement.
+
+**Consigne** :
+- Un trousseau Data Protection persisté (base, fichier, Redis) est toujours protégé : `ProtectKeysWithCertificate`
+  (avec `UnprotectKeysWithAnyCertificate`) ou un coffre. C'est obligatoire hors développement, et le démarrage échoue
+  sans.
+- Le test d'intégration lit le trousseau en base et affirme qu'il est chiffré (`EncryptedData`, aucun `<value>`).
+
+**Origine** : task-478. **Occurrences** : 1
+
+---
+
+## chemin-dans-les-journaux — un chemin de dossier ne va ni dans un journal, ni dans un message d'exception
+
+**Règle** : convention projet (règle 12 : zéro fuite de donnée de santé), invisible au lint et à Sonar.
+
+**Piège** :
+- task-352, task-353 (api-mail) : « pas de chemin dans le message : un dossier peut nommer un patient ».
+- task-478 (revue du 2026-11-13, S5) : le serveur MCP journalisait `RequestUri.AbsolutePath` vers api-mail, qui porte
+  le dossier encodé (`Patients%2FDUPONT…`), et la garde de lecture seule le mettait dans son exception.
+
+**Consigne** :
+- Journaliser le **gabarit** de la route (`folders/{folder}/emails/{uids}`), jamais le chemin ni l'URL réels. Même
+  règle pour le message d'une exception, que le framework journalise.
+- Le test d'intégration fait un appel sur un dossier au nom de patient et affirme que ce nom est absent du journal
+  capturé, dont il a d'abord vérifié qu'il n'est pas vide.
+
+**Origine** : task-352, task-353, task-478. **Occurrences** : 2
