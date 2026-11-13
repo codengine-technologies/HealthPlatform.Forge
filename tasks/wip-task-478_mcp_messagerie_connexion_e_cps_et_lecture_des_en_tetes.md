@@ -183,3 +183,7 @@ Il faut aussi un RPPS de test e-CPS du bac à sable, avec l'application e-CPS de
 - Tests d'intégration : `WebApplicationFactory` du serveur MCP (vraie pile HTTP, DI, OpenIddict, stockage réel
   du serveur). Proxies et api-mail simulés (WireMock.Net) : ce sont les fournisseurs externes d'api-mcp.
   Client MCP de test : le client du SDK officiel.
+
+## Branches
+- `api-mcp` (pushed) : feat/task-478-mcp-messagerie-connexion-e-cps-et — https://github.com/codengine-technologies/HealthPlatform.Api.Mcp/tree/feat/task-478-mcp-messagerie-connexion-e-cps-et
+- Pré-flight limité à `api-mcp` (champ **Pré-flight**, décision humaine du 2026-11-13) : `api-mail`, `client-mobile`, `dtos-mss` sur feat/task-466, ni contrôlés ni touchés.
