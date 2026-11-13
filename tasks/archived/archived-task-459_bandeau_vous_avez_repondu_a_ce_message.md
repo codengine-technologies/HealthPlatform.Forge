@@ -708,7 +708,18 @@ Aucun bloquant.
 | /e2e | ok | 27 min 52 s | — | — | — | e2e ×3 (26 min 17 s) |
 | /review | ok | 19 min 02 s | 4 (1 min 52 s) | 2 (9 min 02 s) | — | dtos-mss 2B/0T, api-mail 1B/1T, client-mobile 1B/1T, resynchronisation develop (task-466), e2e bypass humain |
 | /tech-writer | ok | 1 min 22 s | — | — | — | — |
-| /merge | failed | 1 min 25 s | — | — | — | PRs api-mail et mobile en conflit avec develop (task-466) |
-| **Total cycle** | | **1 h 50 min** | **25 (12 min 38 s)** | **26 (1 h 20 min)** | **4 (6 min 55 s)** | |
+| /merge | ok | 6 min 21 s | — | — | — | — |
+| **Total cycle** | | **1 h 55 min** | **25 (12 min 38 s)** | **26 (1 h 20 min)** | **4 (6 min 55 s)** | |
 
 Autres commandes mesurées : lint ×3 (2 min 06 s), nuget-wait ×2 (31 s), restore ×2 (15 s)
+
+## Merged
+
+- 2026-11-13, par l'humain (`/merge task-459 --i-tested`), squash-merge sur `develop` :
+  - `dtos-mss` #67 → `a61490b7` (CI `.NET` verte)
+  - `api-mail` #369 → `9c827201` (CI `Build and Publish` verte)
+  - `client-mobile` #125 → `5bc6584c` (CI `Android Build` verte)
+- Branches `feat/task-459-bandeau-vous-avez-repondu-a-ce-message` supprimées (distantes et locales) ; clones revenus
+  sur `develop`.
+- `client-angular` : code-only, géré par l'humain (TFS).
+- Aucune branche staging (task hors run `/forge`).
