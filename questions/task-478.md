@@ -1,3 +1,5 @@
+> **Résolu le 2026-11-13** : la revue indépendante a pu être jouée à la relance (passage 2, puis passage 3 APPROVED), et la PR #1 est ouverte.
+
 # task-478 — Revue anticipée interrompue : relecteur indépendant indisponible (panne d'outillage)
 
 **Étape** : `/review task-478 --code`, étape 5 (revue de code par un relecteur indépendant).

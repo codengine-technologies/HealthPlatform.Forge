@@ -9975,3 +9975,5 @@
 {"ts":"2026-11-13T12:14:26+01:00","run_id":"-","type":"step","task":"task-478","step":"review-code","status":"ok","note":"","iterations":null,"duration_ms":314962}
 {"ts":"2026-11-13T12:14:40+01:00","run_id":"-","type":"step_start","task":"task-478","step":"e2e"}
 {"ts":"2026-11-13T12:14:41+01:00","run_id":"-","type":"step","task":"task-478","step":"e2e","status":"skipped","note":"aucune voie touchée (api-mcp seul)","iterations":null,"duration_ms":1359}
+{"ts":"2026-11-13T12:14:53+01:00","run_id":"-","type":"step_start","task":"task-478","step":"review"}
+{"ts":"2026-11-13T12:16:12+01:00","run_id":"-","type":"step","task":"task-478","step":"review","status":"ok","note":"","iterations":null,"duration_ms":78065}

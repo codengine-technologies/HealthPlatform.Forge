@@ -280,6 +280,15 @@ correctifs : **16 rouges vus sur l'ancien code**, puis verts.
 modifié dans un client. Le catalogue `Api/Mail/e2e/scenarios.yml` est inchangé, la parité aussi. Le filet fonctionnel
 d'`api-mcp` est sa suite d'intégration (91 tests, vraie pile).
 
+## PRs
+
+- `api-mcp` : https://github.com/codengine-technologies/HealthPlatform.Api.Mcp/pull/1 — label `awaiting-human-merge`
+  (head `5a07884`, base `develop`)
+- Validation finale : vert de `/develop` réutilisé à `5a07884` (build 0 erreur, 91/91), aucun diff depuis l'approbation
+  du passage 3, `## E2E log` « skipped » accepté (aucune voie).
+- **Plan de contrôle non poussé** : l'enregistrement d'`api-mcp` dans `CLAUDE.md` et les playbooks, ainsi que
+  l'exception « pré-flight limité aux Repos », modifient la chaîne. À relire par l'humain avant le push (règle d'or 7).
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — INTERROMPU (panne d'outillage, 2026-11-13)
@@ -414,6 +423,7 @@ Rendu par le comportement :
 | /develop | ok | 13 min 09 s | 50 (1 min 59 s) | 40 (9 min 28 s) | — | api-mcp 50B/40T |
 | /review-code | ok | 5 min 14 s | — | — | — | — |
 | /e2e | skipped | 1.3 s | — | — | — | aucune voie touchée (api-mcp seul) |
-| **Total cycle** | | **18 min 42 s** | **50 (1 min 59 s)** | **40 (9 min 28 s)** | **0 (0.0 s)** | |
+| /review | ok | 1 min 18 s | — | — | — | — |
+| **Total cycle** | | **20 min 00 s** | **50 (1 min 59 s)** | **40 (9 min 28 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : restore ×3 (8.5 s)
