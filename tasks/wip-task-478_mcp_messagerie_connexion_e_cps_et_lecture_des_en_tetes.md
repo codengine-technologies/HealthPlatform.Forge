@@ -1,7 +1,7 @@
 # todo-task-478 — Serveur MCP messagerie : connexion e-CPS et lecture des en-têtes
 
 **Repos**: api-mcp
-**Reprises**: 1
+**Reprises**: 2
 **Dependencies**: aucune
 **Epic**: E026
 **EpicTitle**: Messagerie depuis un assistant IA (MCP)
@@ -449,6 +449,39 @@ Rendu par le comportement :
 - Restent ouverts depuis le passage 2 : S2 (mandataire inverse et `ForwardedHeaders`), S3 (purge des sessions et des
   jetons), S9 (performance sur une grosse boîte), et l'extrait de recherche à rouvrir avec task-479.
 
+### Passage 4 (revue anticipée, évolution CARD / MOBILE) — CHANGES REQUESTED (2026-11-13)
+
+Relecteur indépendant, sur `5a07884..0904c37`.
+
+Vérifié sain :
+- les appelants des signatures changées ;
+- la cohérence avec le proxy (`^(CARD|MOBILE)$`) ;
+- la validation du champ (vide → défaut ; minuscules, valeur inconnue ou champ doublé → refus, sans appel au proxy ni
+  consommation du quota) ;
+- l'encodage HTML ;
+- la liaison de configuration ;
+- la fuite entre tests, fermée.
+
+#### À corriger par la reprise
+
+- **B1 — restriction par configuration non prouvée (règle 1b).** La fixture ne fixe jamais `Proxy:AllowedChannels`.
+  Deux mutations survivent : refus fondé sur les canaux connus au lieu des canaux admis, et formulaire construit sans
+  la configuration. Correctif : un test d'intégration sur un hôte configuré `AllowedChannels = [MOBILE]`. Il affirme
+  que la page ne propose que MOBILE, que `channel=CARD` est refusé et que le proxy n'est pas appelé. Il est vu rouge
+  sur les deux mutations.
+- **S1** : les messages d'échec parlent de « l'application e-CPS » même quand la carte est choisie. Il faut des
+  messages qui suivent le canal choisi.
+- **S2** : une valeur de configuration non reconnue (`card`, `CARTE`) rouvre en silence les deux canaux. La
+  comparaison doit ignorer la casse, et une valeur inconnue doit être refusée au démarrage.
+- **S3** :
+  - le test du canal inconnu relève le compteur du proxy sans attendre : affirmer aussi qu'aucune connexion en attente
+    n'a été posée ;
+  - le texte d'attente du canal MOBILE n'est affirmé par aucun test.
+
+#### Arbitrage humain
+
+- Aucun nouveau. Restent ouverts : N1, S2 (mandataire inverse), S3 (purge) et S9 du passage 3.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-478 --sync` — ne pas éditer à la main)*
@@ -457,10 +490,10 @@ Rendu par le comportement :
 |---|---|---|---|---|---|---|
 | /start | ok | 16 s | — | — | — | — |
 | /develop | ok | 8 min 04 s | 61 (2 min 26 s) | 50 (11 min 59 s) | — | api-mcp 61B/50T |
-| /review-code | ok | 5 min 14 s | — | — | — | — |
+| /review-code | changes | 2 min 44 s | — | — | — | reprise 2 |
 | /e2e | skipped | 1.3 s | — | — | — | aucune voie touchée (api-mcp seul) |
 | /review | ok | 1 min 18 s | — | — | — | — |
 | /tech-writer | ok | 1 min 13 s | — | — | — | — |
-| **Total cycle** | | **16 min 08 s** | **61 (2 min 26 s)** | **50 (11 min 59 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **13 min 37 s** | **61 (2 min 26 s)** | **50 (11 min 59 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : restore ×3 (8.5 s)
