@@ -1,3 +1,5 @@
+Résolu (2026-11-13) — branches synchronisées avec `develop` à la demande de l'humain : dtos-mss (paquet 611.0.0), api-mail `ef4a125d` (migration renumérotée 20261113130000), client-mobile `febcbaf`. E2E bypassé par l'humain. Relancer `/merge task-459 --i-tested`.
+
 # merge-task-459 — /merge refusé : deux PRs en conflit avec `develop`
 
 **Étape** : /merge (porte 5 — branche en retard sur `develop`). **Aucune PR n'a été mergée** (atomique).

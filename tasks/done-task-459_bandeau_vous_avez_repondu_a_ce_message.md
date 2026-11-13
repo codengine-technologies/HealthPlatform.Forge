@@ -2,6 +2,7 @@
 
 **Repos**: api-mail, dtos-mss, client-angular, client-mobile
 **Reprises**: 2
+**E2E**: bypass — décision humaine du 2026-11-13 (resynchronisation avec `develop` après task-466 ; les voies vertes du 2026-11-13 précèdent la synchronisation)
 **Dependencies**: aucune
 **Epic**: E024
 **Priorité**: EPIC E024, demandée par l'humain le 2026-11-11. Savoir, en ouvrant un message, qu'on y a déjà répondu
@@ -525,6 +526,30 @@ Scénario de la task : **E2E-DETAIL-006 v1** — ✅ mobile, ✅ angular.
   - `front/libs/mss/src/features/mail/services/mail-state.service.spec.ts`
   - `front/libs/mss/src/features/mail/services/mail-state.service.ts`
 
+## Resynchronisation avec develop (2026-11-13, après task-466)
+
+`/merge` a refusé : api-mail #369 et client-mobile #125 en conflit avec `develop` (task-466 mergée entre-temps).
+
+- **dtos-mss** : `origin/develop` mergé (sans conflit), paquet **611.0.0** publié par la CI (task-459 + task-466).
+- **api-mail** (`ef4a125d`) : conflits `MailDataContext.cs` (les deux entités gardées), `Directory.Packages.props` et
+  lock files (607 → **611.0.0**, `restore` régénéré). **Collision de migration** : `AddMailReplies` et
+  `AddMailboxTrackingStart` (task-466) au même `[Migration(20261113120000)]` ; `AddMailReplies` renumérotée
+  **20261113130000** (contenu inchangé, audit 7c : seule la version change). Garde ajoutée :
+  `TenantRegistryMigrationScopeTests.EveryMigration_HasAVersionOfItsOwnWithinItsSet`, **rouge** sur les deux numéros
+  égaux, vert après. Suite complète : domain 273, application 4262, infrastructure 750, api 1381, intégration
+  1306 + 16 ignorés, **1 rouge préexistant hors task** (`AttachMailboxAsync_UnderConcurrency_PersistsExactlyOneTenant`,
+  rouge aussi sur `develop`, consigné le 2026-11-12).
+  ⚠️ Une base de développement qui a joué la migration de la branche sous l'ancien numéro tient celle de task-466 pour
+  appliquée : la recréer.
+- **client-mobile** (`febcbaf`) : conflit du support e2e (`E2eMail` : champs des deux tasks gardés) ; build vert,
+  1454/1454.
+- **client-angular** (code-only) : stash de l'humain repris sur `task 466` (`6d7dca93`), conflit du support e2e
+  résolu (champs des deux tasks) ; `nx build weda2` vert, `nx test mss-lib` **rouge** dans des specs que task-459 ne
+  touche pas (audit, carnet de contacts, rattachement manuel, rafraîchissement de destination) — non établi.
+- **E2E** : non rejoué après la synchronisation — **bypass demandé par l'humain** le 2026-11-13 (voies interrompues,
+  démontage vérifié). Le `## E2E log` ci-dessus date d'avant la synchronisation.
+- Prévention : `conventions/csharp.md` § `version-de-migration-unique` (nouveau) et la garde ci-dessus.
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -681,8 +706,9 @@ Aucun bloquant.
 | /lint-angular | ok | 8 min 48 s | 1 (46 s) | 1 (1 min 28 s) | — | 1 itération(s), client-angular 1B/1T |
 | /lint-mobile | ok | 1 min 34 s | — | — | — | — |
 | /e2e | ok | 27 min 52 s | — | — | — | e2e ×3 (26 min 17 s) |
-| /review | ok | 3 min 02 s | 1 (5.2 s) | — | — | dtos-mss 1B/0T |
+| /review | ok | 19 min 02 s | 4 (1 min 52 s) | 2 (9 min 02 s) | — | dtos-mss 2B/0T, api-mail 1B/1T, client-mobile 1B/1T, resynchronisation develop (task-466), e2e bypass humain |
 | /tech-writer | ok | 1 min 22 s | — | — | — | — |
-| **Total cycle** | | **1 h 32 min** | **22 (10 min 51 s)** | **24 (1 h 11 min)** | **4 (6 min 55 s)** | |
+| /merge | failed | 1 min 25 s | — | — | — | PRs api-mail et mobile en conflit avec develop (task-466) |
+| **Total cycle** | | **1 h 50 min** | **25 (12 min 38 s)** | **26 (1 h 20 min)** | **4 (6 min 55 s)** | |
 
 Autres commandes mesurées : lint ×3 (2 min 06 s), nuget-wait ×2 (31 s), restore ×2 (15 s)

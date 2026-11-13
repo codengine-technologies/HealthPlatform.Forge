@@ -2661,3 +2661,25 @@ sur le code d'avant (OCE remontée, archivage absent) ; `SendAsync_TheReplyIsRec
 sur l'ordre inversé de la reprise 1.
 
 **Origine** : task-459 (revue anticipée, B1 ; passage 2, N1 — né du premier correctif). **Occurrences** : 2
+
+### version-de-migration-unique — Une migration se date à la minute, et après la dernière du jeu
+
+**Règle** : convention projet (FluentMigrator, `api-mail`).
+
+**Piège** (task-459 / task-466) : deux tasks menées le même jour ont daté leur migration `MailDb` de
+`20261113120000` (« le jour, à midi », l'habitude de 12 des 20 migrations du jeu). Chacune compilait et passait ses
+tests seule, et les deux PRs étaient vertes. Réunies sur `develop`, le coureur refuse le jeu au démarrage, et une
+base qui a déjà joué l'une tient l'autre pour appliquée (même ligne `VersionInfo`). Vu seulement au `/merge`, par le
+conflit de `MailDataContext.cs`.
+
+**Consigne** :
+- Le numéro d'une nouvelle migration est l'**heure réelle de sa création, à la minute** (`yyyyMMddHHmm00`), jamais
+  `…120000` ; il est **postérieur à la dernière migration du jeu sur `origin/develop`** (la relire avant d'écrire).
+- À chaque synchronisation avec `develop` (`/review`, `/merge`), relire la liste des migrations : une migration
+  arrivée entre-temps avec un numéro supérieur ou égal impose de renuméroter la sienne (et de recréer les bases de
+  développement qui ont joué l'ancien numéro).
+
+**Preuve** : `TenantRegistryMigrationScopeTests.EveryMigration_HasAVersionOfItsOwnWithinItsSet`, rouge sur les deux
+migrations au même numéro, vert après la renumérotation de `AddMailReplies` en `20261113130000`.
+
+**Origine** : task-459 (`/merge`, synchronisation avec task-466). **Occurrences** : 1
