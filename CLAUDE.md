@@ -65,8 +65,16 @@ avant la vitesse et avant l'autonomie. Une forge qui corrige les mêmes défauts
                                      quality only, re-valide seulement si des
                                      cleanups sont appliqués, jamais
                                      dtos-mss/interop/sdk — publie DTOs/interop/
-                                     SDK NuGet, un seul push par repo)
+                                     SDK NuGet, un seul push par repo, marque
+                                     le vert de chaque repo validé)
     ↓ (auto)
+/review {NNN} --code                (REVUE ANTICIPÉE : revue de code + règle 1b,
+                                     sans build ni test ni PR — sur le code frais,
+                                     avant tout Sonar / e2e)
+    ↓ (auto)                        CHANGES REQUESTED corrigeable → (auto)
+                                     /develop {NNN} --reprise → /review --code,
+                                     boucle courte, 2 reprises au plus
+    ↓ (auto, APPROVED)
 /sonar {NNN}                        (cleanup SonarQube best-effort 5 itérations,
                                      api-mail uniquement — skip si non touché)
     ↓ (auto)
@@ -83,10 +91,13 @@ avant la vitesse et avant l'autonomie. Une forge qui corrige les mêmes défauts
                                      parité ou panne d'outillage ; skip si aucune
                                      voie touchée)
     ↓ (auto)
-/review {NNN}                       (build + test + DOD + code review,
-                                     commit/push/sync develop, ouvre la PR,
-                                     label awaiting-human-merge,
-                                     rename done-*)
+/review {NNN}                       (VALIDATION FINALE : build + test sautés si
+                                     le marqueur vert tient, DOD, e2e, revue du
+                                     seul diff depuis l'approbation (fixes Sonar/
+                                     lint), commit/push/sync develop, ouvre la PR,
+                                     label awaiting-human-merge, rename done-*)
+    ↓ (auto)                        CHANGES REQUESTED corrigeable → (auto)
+                                     /develop --reprise → /review --code → …
     ↓ (auto)
 /tech-writer E{NNN}                 (refresh docs/epics/E{NNN}-{slug}.md)
     ↓
@@ -99,6 +110,36 @@ laisse la task dans son état actuel, et `/forge` passe à la task suivante.
 
 **Objectif** : minimiser les interactions humaines. La forge est autonome
 de bout en bout, sauf merge final.
+
+### Revue anticipée et marqueur vert — une reprise ne rejoue pas toute la chaîne (depuis 2026-11-12)
+
+> Demande humaine du 2026-11-12, sur task-449 : **8 h 34 de cycle mesuré** contre ~1 h 30 pour une
+> task ordinaire. Cinq revues CHANGES REQUESTED, et chacune relançait la chaîne entière (Sonar
+> ≈ 15 min, deux voies e2e ≈ 20 min, la suite api-mail rejouée par `/develop` puis par `/review`
+> ≈ 2 × 7 min) pour un correctif de quelques lignes. Plusieurs bloquants étaient nés du correctif
+> précédent (B3 → B4, S4 → B1, S1 → B2) : la revue arrivait trop tard pour coûter peu.
+
+1. **La revue de code passe juste après `/develop`** : `/review {id} --code` relit le diff (règle 1b,
+   sécurité, conventions, preuves rouges) **sans build, sans test, sans PR**. CHANGES REQUESTED
+   corrigeable → `/develop --reprise` → `/review --code` : la boucle courte ne contient ni Sonar ni
+   e2e. APPROVED → `/sonar` → lint → `/e2e` → `/review` (validation finale), une seule fois.
+2. **Une reprise se relit d'abord comme un correctif** : la revue qui suit une reprise lit en
+   premier le diff de la reprise et cherche ce qu'il **a cassé** (un correctif qui introduit le
+   bloquant suivant), avant de vérifier les constats corrigés.
+3. **Marqueur vert partagé** (`Tools/green/green.py`) : toute étape qui vient de jouer build +
+   suite complète d'un repo au vert **marque** son empreinte (HEAD + diff + non suivis — celle des
+   voies e2e). `/review` **vérifie** avant de rejouer : même empreinte → build + tests non rejoués
+   (la preuve existe pour ce code exact) ; sinon, ou au moindre doute, il rejoue. Tests :
+   `python -m unittest Tools/green/test_green.py`.
+4. **e2e une fois, sur du code approuvé** : `/e2e` ne tourne plus pendant les reprises de revue.
+   Quand une reprise corrige un **parcours rouge**, `/develop` rejoue d'abord les seuls scénarios
+   rouges (`--serve-only` + `playwright --grep E2E-…`) pour voir le correctif vert, puis la chaîne
+   rejoue les voies complètes à `/e2e` : la non-régression reste prouvée sur les deux suites
+   avant toute PR.
+
+Les garde-fous ne changent pas : 2 reprises au plus, un bloquant qui revient arrête la chaîne,
+HAG au merge. Mesure attendue (règle d'or 5) : un tour de reprise ≈ 15 min au lieu de ≈ 45 min,
+coût fixe de fin de cycle inchangé — à vérifier par `report.sh --last N` sur les tasks suivantes.
 
 ### Instrumentation — le cycle se mesure (depuis 2026-08-31)
 
@@ -162,6 +203,32 @@ agent n'a à y penser, donc aucun ne peut l'oublier.
   sur stdout au lieu de l'envoyer.
 - **Limite assumée** : une question écrite autrement que par l'outil Write (heredoc Bash) ne
   déclenche pas le hook. Les playbooks écrivent `questions/` avec Write.
+
+### Anti-veille — le poste ne s'endort pas pendant la chaîne (depuis 2026-11-12)
+
+Une veille Windows sur inactivité tue un cycle en plein build ou en pleine voie e2e, comme elle
+a déjà rendu VOID des tirs de banc (2026-08-07, 2026-08-24). La forge tient donc le poste éveillé
+tant qu'elle travaille, par le même principe que les notifications : **branché sur des points
+fixes, pas sur les playbooks**.
+
+| Moment | Effet |
+|---|---|
+| `step.sh start`, `step.sh end` (statut ≠ `failed`), chaque `measure.sh` | arme ou prolonge un **bail de 3 h** |
+| `step.sh end --status failed`, fin de `tech-writer`, fin de `merge` | relâche : la forge attend l'humain ou a fini |
+| fin d'un run `/forge` (`.claude/commands/forge.md`) | relâche |
+
+- **Outil** : `Tools/keepawake/keep-awake.sh {ensure|release|status}`, qui lance en arrière-plan
+  `keep-awake.ps1` (`SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED)`, dérivé du script
+  du banc de charge). Best-effort : sort toujours en 0, silencieux, no-op hors Windows. Tests :
+  `bash Tools/keepawake/test_keep_awake.sh`.
+- **Le bail protège de l'oubli** : si la forge plante ou si la session est coupée, plus rien ne le
+  touche et la veille normale revient seule au bout de 3 h. Durée fixée sur le journal : plage
+  silencieuse p99 de 71 min dans une étape.
+- **Rien n'est modifié dans le système** (pas de `powercfg`) : l'état retombe avec le processus.
+  L'écran peut s'éteindre, et fermer le capot ou demander la veille reste possible.
+- **Preuve d'armement** : `metrics/.state/keep-awake.log` porte une ligne `ARME` avec l'état rendu
+  par l'API. Sans elle, le poste n'est pas protégé (piège UInt32 du banc, 2026-08-24).
+- **Interrupteur** : `FORGE_KEEPAWAKE=off`. État à la main : `Tools/keepawake/keep-awake.sh status`.
 
 ### Branche staging par run `/forge`
 
@@ -826,8 +893,8 @@ de santé.
 même tour, sans rapport intermédiaire et sans rien demander à l'humain.**
 
 ```
-/start → /develop (code + tests + passe qualité /simplify) → /sonar
-       → /lint-angular → /lint-mobile → /e2e → /review → /tech-writer
+/start → /develop (code + tests + passe qualité /simplify) → /review --code
+       → /sonar → /lint-angular → /lint-mobile → /e2e → /review → /tech-writer
 ```
 
 **Pourquoi cette règle existe** (posée le 2026-08-04, sur constat humain) : les
@@ -847,8 +914,24 @@ vide de son sens la boucle autonome et transforme un cycle en huit interactions.
 
 **Ce qui n'est PAS un motif d'arrêt** : une étape qui skippe proprement, une
 étape best-effort avec des findings restants, un flaky pré-existant identifié,
-la longueur du travail déjà fait dans le tour, ou l'envie de faire valider une
-étape intermédiaire. **HAG (règle 10) est la seule barrière humaine du cycle, et
+la longueur du travail déjà fait dans le tour, l'envie de faire valider une
+étape intermédiaire, **ni une revue CHANGES REQUESTED dont tous les bloquants sont
+corrigeables par la forge**.
+
+**Reprise automatique après revue** (demande humaine du 2026-11-12, task-449) : quand
+`/review` rend CHANGES REQUESTED, elle trie ses constats en **corrigeables** (défaut de
+code, test absent ou menteur, preuve rouge manquante, piège de performance, trou de
+traçabilité que les règles tranchent déjà) et **arbitrages humains** (ambiguïté métier,
+conflit avec une règle, choix produit). Si tous les bloquants sont corrigeables, elle
+enchaîne `/develop {task-id} --reprise`, qui corrige la liste « À corriger par la
+reprise » (chaque correctif vu rouge), puis la **boucle courte** reprend : `/review --code`
+(revue anticipée, sans build ni Sonar ni e2e — voir « Revue anticipée et marqueur vert »). Les
+arbitrages ne bloquent pas : ils vont dans la PR, à trancher au merge (HAG).
+Garde-fous : **2 reprises au plus** par task (champ `**Reprises**: N` du task file) ; un
+bloquant **qui revient** après une reprise arrête la chaîne ; un bloquant qui demande une
+décision l'arrête aussitôt. Une reprise n'écrit pas `questions/` : personne n'est
+attendu, personne n'est notifié. Avant cette règle, chaque CHANGES REQUESTED corrigeable
+(task-448 B1/B2, task-449 B1) attendait que l'humain relance `/develop` à la main. **HAG (règle 10) est la seule barrière humaine du cycle, et
 elle se situe au merge de la PR — jamais avant.**
 
 Un rapport intermédiaire entre deux étapes n'est pas une faute de style : il
@@ -931,7 +1014,7 @@ Never modify without human arbitration:
 
 ## Commands
 
-> **⛓️ Chaînage** — les étapes `/develop` → `/sonar` →
+> **⛓️ Chaînage** — les étapes `/develop` → `/review --code` → `/sonar` →
 > `/lint-angular` → `/lint-mobile` → `/e2e` → `/review` →
 > `/tech-writer` s'appellent **les unes les autres via l'outil `Skill`, sans
 > rapport intermédiaire ni retour à l'humain** (règle 13). Une étape qui rend la
@@ -944,7 +1027,7 @@ Never modify without human arbitration:
 | `/start {task-id} --no-e2e` | Same as `/start {task-id}`, but **`/e2e` is bypassed** on the human's request : the task file gets the field `**E2E**: bypass — décision humaine du {date}`, `/e2e` plays no lane (measured skip), `/review` accepts it and flags it at the top of every PR. Combinable with `--no-code` and `--no-sonar`. |
 | `/start {task-id} --no-sonar` | Same as `/start {task-id}`, but **`/sonar` is bypassed** on the human's request : the task file gets the field `**Sonar**: bypass — décision humaine du {date}`, `/sonar` analyses nothing (measured skip) and hands over to `/lint-angular` ; the api-mail PR and the final report state that the debt is not measured. Combinable with `--no-code` and `--no-e2e`. |
 | `/start {task-id} --no-code` | Create the working branches and **stop**. Task stays in `wip-*` ; the human implements in WindSurf and runs `/review {task-id}` manually when ready. Escape hatch when `/develop` is unsuitable. |
-| `/develop {task-id}` | **Autonomous implementation + passe qualité** : write code + tests, build, test, run the integrated `/simplify` quality pass per eligible repo (quality-only, before the push — ex-`/forge-simplify`, fusionnée le 2026-08-31), publish DTOs / interop / SDK NuGet packages when contracts change, bump consumers, push, hand off to `/sonar` (or the first touched cleanup step). Frontends covered : `client-blazor`, `client-angular` (code-only), `client-mobile` (full git automation). For mobile screens, calls `/stitch-design` first to get the design reference. See `agents/develop.md`. |
+| `/develop {task-id}` | **Autonomous implementation + passe qualité** : write code + tests, build, test, run the integrated `/simplify` quality pass per eligible repo (quality-only, before the push — ex-`/forge-simplify`, fusionnée le 2026-08-31), publish DTOs / interop / SDK NuGet packages when contracts change, bump consumers, push, mark the green of each validated repo (`Tools/green/green.py mark`), hand off to `/review {task-id} --code` (revue anticipée, depuis le 2026-11-12). Frontends covered : `client-blazor`, `client-angular` (code-only), `client-mobile` (full git automation). For mobile screens, calls `/stitch-design` first to get the design reference. See `agents/develop.md`. |
 | `/stitch-design {task-id}` | **Design sub-step of `/develop`** (mobile only). Ensures each `client-mobile` screen has a matching design in the Stitch project `client-mobile` (id `10088502293310567548`) — reuse if present, **create** via the Stitch MCP if missing (convention : screen title = component kebab-case name, e.g. `mail-list`). Logs the screenshot + HTML/CSS reference so `/develop` codes the Ionic screen against it. Stitch = design source of truth ; output is a **reference, not code**. Best-effort & non-blocking. Stand-alone form `/stitch-design {screen-name}` for manual design create/refresh. See `agents/stitch-design.md`. |
 | `/sonar {task-id}` | Best-effort SonarQube cleanup on `api-mail` (5 iterations max, accepts remaining issues). Standard step in the autonomous chain. Consigne un tableau de **KPIs qualité (baseline → final + Quality Gate)** dans le `## Sonar log` de la task — restitué par `/review` dans le body de la PR api-mail et dans le rapport de fin de cycle (on monitore toujours la qualité, jamais de fin de cycle silencieuse sur ce plan). See `agents/sonar.md`. |
 | `/lint-mobile {task-id}` | Best-effort ESLint cleanup on `client-mobile` (Working dir `Client/Mobile/`). Plain Angular CLI : `ng lint --fix` then manual fixes, build (`npm run build`) + test (`npm test -- --watch=false --browsers=ChromeHeadless`) as the anti-regression net, 5 iterations max, accepts remaining errors. **Full git automation** (GitHub remote) : commits/pushes its fixes, unlike `/lint-angular`. Standard step in the autonomous chain, after `/lint-angular`, skip clean if client-mobile non touché. Hands off to `/e2e`. See `agents/lint-mobile.md`. |
@@ -953,7 +1036,8 @@ Never modify without human arbitration:
 | `/lint-angular {task-id}` | Best-effort ESLint cleanup on `client-angular` (Working dir `Client/Angular/front/`). Reproduit la forme des commandes lint/build/test du pipeline Azure `Client/Angular/azure-pipelines.yml` (Stage 2 CI), avec deux divergences intentionnelles : (1) default `$BASE_BRANCH = origin/next` (branche d'intégration vivante du repo TFS, pas l'`origin/master` du pipeline) ; (2) lint scopé via `--projects=tag:scope:mss` (le forge ne fixe que le module MSS — `mss` + `mss-lib`). Build/test restent en scope complet pour détecter les régressions downstream. Auto-fix puis fix manuels 5 itérations max, accepte les errors restantes. Code-only — ne touche jamais à git. Standard step in the autonomous chain, skip clean si client-angular non touché. See `agents/lint-angular.md`. |
 | `/sonar-s3776 api-mail` | **[Manual]** Reduce cognitive complexity of ONE method (S3776). One method = one PR. Characterisation tests written first. Out of the autonomous chain. See `.claude/commands/sonar-s3776.md`. |
 | `/loadtest-findings {rapport.md}` | **[Hors chaîne autonome — banc]** (task-433) Après un tir de banc, explore au plus 8 formes SQL coûteuses (signalées par `report_signals.py` d'abord) jusqu'à leur code et leur plan, et ajoute au rapport la section « Findings — analyse de code ». Chaque finding porte : site au commit du tir, plan sur une base du banc, cause, gain borné par le tir, correctif et test (règle 1b), verdict confirmé / plausible / écarté. Tient `Docs/audits/findings-registry.md` (récidives nommées). Contrôle de non-confabulation bloquant (`Tools/loadtest-findings/findings.py check`). Appelé par le skill de banc (§ 5b-quater) pour tout rapport copié dans `Docs/audits/`. **Ne rédige aucune task** : l'humain choisit, puis `/po`. See `agents/loadtest-findings.md`. |
-| `/review {task-id}` | Validate the implementation (build + tests + DOD + code review), commit/push/sync develop, open the PR (label `awaiting-human-merge`), rename `done-*`, chain into `/tech-writer`. Autonomous — no human prompt. |
+| `/review {task-id} --code` | **Revue anticipée** (depuis le 2026-11-12) : juste après `/develop`, revue de code + règle 1b sur le diff, **sans build, sans test, sans PR**. APPROVED → `/sonar` (puis lint, `/e2e`, `/review`). CHANGES REQUESTED corrigeable → `/develop {task-id} --reprise` → `/review --code` (boucle courte, 2 reprises au plus). Après une reprise, lit d'abord le diff de la reprise pour ce qu'il a cassé. |
+| `/review {task-id}` | **Validation finale** : build + tests (sautés par repo si `Tools/green/green.py check` confirme le vert de ce code exact), DOD, verrous 1b / e2e, revue du seul diff postérieur à l'approbation de `--code` (fixes Sonar / lint), commit/push/sync develop, open the PR (label `awaiting-human-merge`), rename `done-*`, chain into `/tech-writer`. Autonomous — no human prompt. |
 | `/merge {task-id} --i-tested` | **[Human only]** After the human has tested the US end-to-end on the open PRs, squash-merge each pushable PR, sync `develop`, delete the branches, move the task into `tasks/archived/archived-{task-id}[_{titre}].md`. Refuses without `--i-tested`, on `awaiting-us-completion` label, or red CI. Never invoked by `/forge` — HAG (rule 10) stays. See `agents/merge.md`. |
 | `/tech-writer E{NNN}` | Refresh `docs/epics/E{NNN}-{slug}.md` from all tasks that declare `**Epic**: E{NNN}` — y compris la galerie **« État visuel de l'application »** (copies d'écran de `Docs/epics/img/screens/{app}/` appartenant à l'EPIC, embeds relatifs, libellés produit). Called automatically at the tail of `/review` ; can be run manually for retro-generation or `--refresh`. See `agents/technical-writer.md`. |
 | `/forge` | Loop autonome : pour chaque `tasks/todo-task-*.md`, déclenche `/start` → `/develop` (code + passe qualité `/simplify`) → `/sonar` → `/lint-angular` → `/lint-mobile` → `/e2e` → `/review` → `/tech-writer`. Séquentiel (pas de parallélisme). Stop sur la première task qui échoue (écrit `questions/`, passe à la suivante). Agrège chaque task validée sur une **branche staging par run** `forge/staging-task-{début}-{fin}-{date}` (fraîche depuis `develop`, par repo pushable, best-effort) pour test du lot complet — voir « Branche staging par run `/forge` ». **Ne déclenche jamais `/merge`**, n'ouvre **aucune** PR staging → develop — HAG, règle 10. |

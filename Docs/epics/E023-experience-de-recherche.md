@@ -68,8 +68,8 @@ le même modèle. Le modèle retenu le 2026-11-10 avec l'humain s'inspire de la 
 | Réponse enrichie | Savoir où le terme a été trouvé, en voir un extrait, connaître les patients désignés | task-444 | ✅ Livrée côté serveur |
 | Mode « Résultats de recherche » | Voir les résultats dans un espace dédié, les affiner sur place, en sortir explicitement | task-445 | ✅ Livrée dans weda2 |
 | Lire un résultat | Voir l'extrait surligné de chaque résultat et ouvrir le patient trouvé en tête | task-446 | ✅ Livrée dans weda2 |
-| Actions groupées | Sélectionner tous les résultats, même ceux pas encore affichés, et leur appliquer une action | task-448 | 🟡 En revue (PRs ouvertes) |
-| Suggestions pendant la frappe | Recevoir des propositions par catégories (patients, messages) dès les premières lettres | task-449 | 🔴 À faire |
+| Actions groupées | Sélectionner tous les résultats, même ceux pas encore affichés, et leur appliquer une action | task-448 | ✅ Livrée |
+| Suggestions pendant la frappe | Recevoir des propositions par catégories (patients, messages) dès les premières lettres | task-449 | ⛔ Abandonnée le 2026-11-12 (non livrée) |
 
 > Le bilan d'avancement par feature (statut, couverture, tasks contributives) est consigné en fin de document, dans la
 > section *État de couverture*.
@@ -82,7 +82,7 @@ Ce que fait le praticien, du début à la fin d'une recherche :
 
 ```mermaid
 flowchart LR
-    A[Taper dans la barre<br/>suggestions par catégories] --> B[Composer ses critères<br/>dans un seul formulaire]
+    A[Taper dans la barre] --> B[Composer ses critères<br/>dans un seul formulaire]
     B --> C[Lancer la recherche]
     C --> D[Espace « Résultats de recherche »]
     D --> E[Lire un résultat<br/>extrait surligné]
@@ -175,10 +175,11 @@ la rend telle quelle, à la même position.
 | Réponse enrichie | ✅ Livrée côté serveur | 100 % | task-444 |
 | Mode « Résultats de recherche » | ✅ Livrée dans weda2 | 100 % | task-445 |
 | Lire un résultat | ✅ Livrée dans weda2 | 100 % | task-446 |
-| Actions groupées | 🟡 En revue (PRs ouvertes) | 90 % | task-448 |
-| Suggestions pendant la frappe | 🔴 À faire | 0 % | task-449 |
+| Actions groupées | ✅ Livrée | 100 % | task-448 |
+| Suggestions pendant la frappe | ⛔ Abandonnée le 2026-11-12 | — | task-449 |
 
-**Couverture EPIC consolidée : 84 %** (5 features livrées sur 7, la 6e en revue : arbitrages S1 et S4 ouverts au merge).
+**Couverture EPIC consolidée : 100 %** des features retenues (6 livrées). La 7e, « Suggestions pendant la frappe », est
+abandonnée sur décision humaine du 2026-11-12 : PRs api-mail #367 et dtos-mss #65 fermées sans merge.
 
 ---
 
@@ -210,6 +211,8 @@ la rend telle quelle, à la même position.
   suit l'action, et le compte rendu dit ce qui n'a pas été fait (« 340 messages déplacés vers Archives, 2 en échec »),
   avec « Réessayer les échecs ». Un message arrivé après la confirmation n'est pas touché. Ni acquittement ni
   rattachement à un patient en masse (task-448).
+- v0.7 — **non livrée.** Les suggestions pendant la frappe, les préfixes de critère et la recherche exacte entre
+  guillemets (task-449) ont été abandonnés par l'humain le 2026-11-12 : le résultat n'a pas convaincu.
 
 **Conformité réglementaire**
 - Chaque recherche lancée reste tracée au nom de son auteur ; la trace ne porte ni le texte cherché, ni l'identité du

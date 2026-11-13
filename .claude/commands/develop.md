@@ -2,10 +2,20 @@
 
 Usage : `/develop {task-id}` (e.g. `/develop task-018`)
 
+Reprise : `/develop {task-id} --reprise` — invoked **by `/review`** when its
+verdict is CHANGES REQUESTED and every blocking finding is corrigeable by the
+forge (at most 2 reprises per task). The scope is the list
+`#### À corriger par la reprise` of the task file's `## Code Review Summary`,
+not the whole DoD ; each fix is seen red, then the **short loop** resumes :
+`/review {task-id} --code` (revue anticipée — no Sonar, no e2e, since 2026-11-12).
+When the reprise fixes a **red e2e journey**, replay the red scenarios alone first
+(see step 6b). See « Mode reprise » in `agents/develop.md`.
+
 Purpose : write the code, the tests, build, run the suite, run the **integrated
 quality pass** (built-in `/simplify`) on the fresh code, commit, push, and hand
-off to the cleanup chain (`/sonar` → `/lint-angular` → `/lint-mobile` →
-`/e2e` → `/review`). This is the **default implementation path** of
+off to the **early code review** (`/review {task-id} --code`), which then runs the
+cleanup chain (`/sonar` → `/lint-angular` → `/lint-mobile` → `/e2e` → `/review`)
+once, on approved code (CLAUDE.md, « Revue anticipée et marqueur vert »). This is the **default implementation path** of
 the forge — the only escape hatch is `/start {task-id} --no-code`, which leaves
 the task in `wip-*` for the human to implement in WindSurf.
 
@@ -40,14 +50,23 @@ Read `agents/develop.md` and execute the full playbook :
    d'opération git sur `client-angular` (code-only). Puis **un seul push** par
    repo, portant feature + passe qualité
 6. Final verification : DOD self-check, et **pas de re-build** d'un repo déjà
-   vert depuis sa dernière validation
-7. Hand off unconditionally to the fixed cleanup pipeline
-   `/sonar → /lint-angular → /lint-mobile → /e2e → /review` (each step self-skips
-   when its repo wasn't touched) :
-   - api-mail touched → `/sonar {task-id}`
-   - else client-angular touched → `/lint-angular {task-id}`
-   - else client-mobile touched → `/lint-mobile {task-id}`
-   - none touched → `/e2e {task-id}` (it plays the journeys when `dtos-mss` is touched, skips cleanly otherwise, then chains into `/review`)
+   vert depuis sa dernière validation. **Marquer le vert** de chaque repo dont le
+   build **et la suite complète** viennent de passer, sur l'état final poussé (ou,
+   pour `client-angular`, sur l'arbre final) :
+   `python Tools/green/green.py mark --task {task-id} --repo {repo} --by develop`.
+   Un repo validé seulement par des tests ciblés n'est **pas** marqué. Après un
+   script de mutation, **recompiler** avant de marquer (un binaire muté ne prouve rien).
+6b. **Reprise d'un parcours e2e rouge** : rejouer d'abord les seuls scénarios rouges,
+   backend monté par `node e2e/headless/run.mjs --serve-only` (mobile) ou
+   `node e2e/mss-e2e/run.mjs --serve-only` (Angular), puis
+   `npx playwright test --grep "E2E-…"` ; démontage par le fichier STOP. Le correctif
+   est vu vert sur ses scénarios en quelques minutes ; les voies **complètes**
+   restent jouées par `/e2e`, une fois, sur le code approuvé.
+7. Hand off unconditionally to the **early code review** :
+   `/review {task-id} --code`. It reviews the fresh diff (rule 1b, security,
+   conventions, red proofs) without build or test ; on APPROVED it runs the
+   cleanup pipeline `/sonar → /lint-angular → /lint-mobile → /e2e → /review`
+   (each step self-skips when its repo wasn't touched).
 
 `/develop` writes code by design — this is the post-lean philosophy. The
 human's only mandatory interaction is **merging the PR on `develop`** at
@@ -103,14 +122,9 @@ Tools/timing/step.sh end --task {task-id} --step develop --status ok
 **À la fin de cette étape, tu invoques immédiatement l'étape suivante via l'outil
 `Skill`, dans le MÊME tour, sans rien demander et sans rapport intermédiaire.**
 
-L'étape suivante dépend des repos touchés :
-
-| api-mail | client-angular | client-mobile | Invoquer |
-|---|---|---|---|
-| oui | * | * | `Skill(sonar, "{task-id}")` |
-| non | oui | * | `Skill(lint-angular, "{task-id}")` |
-| non | non | oui | `Skill(lint-mobile, "{task-id}")` |
-| non | non | non | `Skill(e2e, "{task-id}")` — il joue les voies si `dtos-mss` est touché, skippe proprement sinon, puis enchaîne `/review` (task-347) |
+L'étape suivante est **toujours** la revue anticipée (depuis le 2026-11-12), en
+mode normal comme en reprise : `Skill(review, "{task-id} --code")`. C'est elle qui
+choisit ensuite la première étape de nettoyage touchée.
 
 La passe qualité **n'est plus un maillon de la chaîne** : elle est déjà faite,
 dans cette étape, repo par repo. Il n'y a rien à invoquer pour elle.

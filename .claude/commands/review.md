@@ -1,6 +1,52 @@
 # /review — Validate the implementation and open the PR(s)
 
-Usage : `/review {task-id}` (e.g. `/review back-clinical-notifications-046`)
+Usage :
+- `/review {task-id} --code` — **revue anticipée** (since 2026-11-12), invoked by
+  `/develop` right after its green : code review only, see « Mode `--code` » below.
+- `/review {task-id}` — **validation finale** (e.g. `/review back-clinical-notifications-046`),
+  invoked by `/e2e` once the cleanup chain has run on approved code.
+
+## Mode `--code` — revue anticipée (since 2026-11-12)
+
+> Why (CLAUDE.md, « Revue anticipée et marqueur vert ») : on task-449 each CHANGES
+> REQUESTED relaunched Sonar, both e2e lanes and two full suites — ≈ 45 min per reprise,
+> 8 h 34 of measured cycle. The review now comes **before** them, when it costs least.
+
+Run **only** these steps of the playbook below, on the diff of every touched repo
+(`git diff origin/develop...HEAD`, and `git diff` + untracked files for `client-angular`) :
+
+- **4a** — integration-test lock (rule 1b) : behaviour → test → red proof, read in the
+  `## Develop log` ;
+- **4b, DOD clause only** — the journey scenario is in the catalog diff, at the version the
+  tests declare (the `## E2E log` does not exist yet : it is checked by the final mode) ;
+- **5** — the code review (5.1 to 5.6), by an **independent reviewer** (a sub-agent handed
+  the code, not the forge's conclusions) ;
+- **6** — verdict, triage and automatic reprise, as written below.
+
+**Never** in this mode : build, tests, Sonar, e2e, commit of code, PR (steps 3, 7-12).
+
+**After a reprise** (`**Reprises**: N` ≥ 1), read the **reprise diff first** — the commits and
+working-tree changes since the previous pass — and look for what the fix **broke** : the other
+callers of a changed method or field, a parser change applied to neighbouring tokens, a shared
+filter now read differently. Three of task-449's five passes found a blocker born from the
+previous fix (B3 → B4, S4 → B1, S1 → B2). Then check that each listed finding is fixed.
+
+**Outcome** :
+- **APPROVED** → write `### Passage N (revue anticipée) — APPROVED` in the `## Code Review
+  Summary` with the commit SHA of each repo approved (`approved at`), end the step
+  (`step.sh end --step review-code --status ok`), commit the control plane, and invoke the
+  first touched cleanup step (routing table below) in the same turn.
+- **CHANGES REQUESTED** → step 6 (« Automatic reprise » / « Halt »), with
+  `--step review-code`. The reprise comes back here, not through Sonar or e2e.
+
+| api-mail | client-angular | client-mobile | First step after `--code` APPROVED |
+|---|---|---|---|
+| yes | *   | *   | `Skill(sonar, "{task-id}")`        |
+| no  | yes | *   | `Skill(lint-angular, "{task-id}")` |
+| no  | no  | yes | `Skill(lint-mobile, "{task-id}")`  |
+| no  | no  | no  | `Skill(e2e, "{task-id}")` (plays the lanes when `dtos-mss` is touched, skips otherwise) |
+
+## Validation finale (default mode)
 
 Purpose : the implementation phase is complete (either by `/develop` in the
 autonomous chain, or by the human in WindSurf in `no-code` mode). The forge
@@ -30,7 +76,15 @@ In autonomous mode (`/develop` upstream) this halts the chain ; in
    `## Objectif` (to understand the intent of the US).
 
 3. **For each repo listed in `## Branches`**, branch validation depends on
-   the mode :
+   the mode.
+
+   **Green marker first** (since 2026-11-12) : for each repo, run
+   `python Tools/green/green.py check --task {task-id} --repo {repo}`. Exit 0 means a previous
+   step (`/develop`, `/sonar`, `/lint-*`) already ran build **and** the full suite, green, on
+   **this exact code** (HEAD + working tree) : do **not** replay them, write
+   « build + tests : vert de /{step} réutilisé ({sha}) » in the report and go on. Exit 1 — any
+   change since, no marker, or a broken marker — replays build + test below, then marks the
+   green (`green.py mark --by review`). The doubt always costs a build, never a regression.
 
    **Pushed repos** (`api-mail`, `client-blazor`, `client-mobile`, `dtos-mss`,
    `sdk`, `host`, `interop-cda`) :
@@ -104,7 +158,13 @@ In autonomous mode (`/develop` upstream) this halts the chain ; in
       like any other : the scenario is in the catalog diff, at the version the tests declare.
       The `/e2e` warning « parcours touchés sans spec e2e modifié » is the evidence to read.
 
-5. **Code Review** — review the diff on each repo like a second developer :
+5. **Code Review** — review the diff on each repo like a second developer.
+
+   **Scope in final mode** (since 2026-11-12) : the code was approved by `/review --code`
+   (`approved at` SHAs in the `## Code Review Summary`). Review **the diff since those SHAs**
+   — the fixes of `/sonar`, `/lint-*`, and anything else committed after the approval — with
+   the same criteria ; plus steps 4 / 4a / 4b in full. If no approval is recorded (no-code mode,
+   chain entered by hand), review the whole diff as below :
 
    ```bash
    cd {repo-path}
@@ -188,11 +248,37 @@ In autonomous mode (`/develop` upstream) this halts the chain ; in
    - ...
    ```
 
-   **If CHANGES REQUESTED** : write `questions/{task-id}.md` with the
-   blocking issues, leave the task in `review-*` (or `wip-*` in autonomous
-   mode, since `/develop` left it there), and **halt the chain**. Do not
-   commit, do not open PRs. The human (or a future re-run after fixes)
-   restarts the cycle from the failure point.
+   **If CHANGES REQUESTED** : do not commit, do not open PRs. Then **triage**
+   every finding (since 2026-11-12, demande humaine sur task-449) :
+
+   - **corrigeable par la forge** — a code defect, a missing or lying test, a
+     missing red proof, a performance trap, a privacy or tracing gap the rules
+     already settle ;
+   - **arbitrage humain** — a business ambiguity, a conflict between the US and
+     a rule, a product choice the task file does not settle (task-448 S1/S4,
+     task-449 S11).
+
+   Write the `## Code Review Summary` of the task file with two lists :
+   `#### À corriger par la reprise` (every blocking finding, plus the real
+   defects to fix in the same pass) and `#### Arbitrage humain` (the rest).
+
+   **Automatic reprise** — when **every blocking finding is corrigeable** :
+   1. Read the field `**Reprises**: N` (just under `**Repos**:`, absent = 0).
+   2. If `N < 2` **and** no blocking finding of this pass already appeared in the
+      previous pass's list (a finding that comes back is one the forge cannot
+      fix) : write `**Reprises**: N+1`, end the step
+      (`step.sh end --step review --status changes --note "reprise N+1"`),
+      commit the control plane, and **invoke `Skill(develop, "{task-id} --reprise")`
+      in the same turn**. Do **not** write `questions/` : nobody is waited for,
+      so nobody is notified. The `#### Arbitrage humain` items do not block :
+      they travel to the PR body (section « Arbitrage humain ouvert ») and are
+      settled at merge time (HAG).
+   3. Otherwise (cap of 2 reprises reached, a finding came back) : halt as below.
+
+   **Halt** — when a blocking finding needs a human decision, the reprise cap is
+   reached, or a finding came back : write `questions/{task-id}.md` with the
+   blocking issues and the arbitrations, leave the task in `wip-*`, end the step
+   `--status failed`, and **halt the chain**.
 
    **If APPROVED** : continue to step 7 immediately — no human prompt, no
    waiting. The autonomous chain has no manual approval gate ; HAG (rule 10)
@@ -235,6 +321,12 @@ In autonomous mode (`/develop` upstream) this halts the chain ; in
 
    Include the code review summary in the PR body under a `## Code Review`
    section so the human can see the review when merging.
+
+   **Arbitrages ouverts** : when the `## Code Review Summary` (this pass or an
+   earlier one) holds an `#### Arbitrage humain` list, copy it at the top of the
+   `## Code Review` section as « 🧑‍⚖️ Arbitrage humain ouvert (à trancher au merge) »,
+   with the forge's recommendation for each point. A decision that changes the
+   behaviour goes back through `/develop {task-id}` before the merge.
 
    **Quality monitoring — mandatory when the cycle went through `/sonar`** :
    if the task file contains a `## Sonar log`, copy its
@@ -374,8 +466,10 @@ Tools/timing/step.sh end --task {task-id} --step review --status ok
 - **`/review` is autonomous** : no "yes/no" prompt before commit / PR
   creation. The human's only manual intervention is merging the PR
   (HAG, rule 10).
-- If code review is **CHANGES REQUESTED** → write `questions/{task-id}.md`
-  and halt the chain. Do not commit, do not open PRs.
+- If code review is **CHANGES REQUESTED** → never commit, never open PRs. If
+  every blocking finding is corrigeable and fewer than 2 reprises were done, chain
+  into `/develop {task-id} --reprise` (step 6) ; otherwise write
+  `questions/{task-id}.md` and halt the chain.
 - Every DOD item must be checked or explicitly marked as deferred to manual
   test (Manual Test Plan items become PR-body checkboxes for the human).
 - **Règle d'or — la forge s'améliore toujours** : chaque finding de la revue qui révèle un
@@ -412,12 +506,23 @@ Tools/timing/step.sh end --task {task-id} --step review --status ok
 **À la fin de cette étape, tu invoques immédiatement l'étape suivante via l'outil
 `Skill`, dans le MÊME tour, sans rien demander et sans rapport intermédiaire.**
 
-`Skill(tech-writer, "E{NNN}")` — l'identifiant d'EPIC vient du champ `**Epic**:`
+**Mode `--code`, APPROVED** : la première étape de nettoyage touchée (table du mode
+`--code`), en général `Skill(sonar, "{task-id}")`.
+
+**Validation finale** : `Skill(tech-writer, "E{NNN}")` — l'identifiant d'EPIC vient du champ `**Epic**:`
 du task file. **Si le task file ne déclare pas d'EPIC**, la chaîne s'arrête ici :
 c'est le seul arrêt normal, et tu le dis en une ligne dans le rapport final.
 
 `/tech-writer` est le **dernier maillon**. C'est après lui, et seulement après
 lui, que tu produis le rapport de fin de cycle à l'humain.
+
+**Si la revue rend CHANGES REQUESTED et que tous les bloquants sont corrigeables
+par la forge** (étape 6, moins de 2 reprises, aucun bloquant revenu) : tu invoques
+`Skill(develop, "{task-id} --reprise")` dans le même tour, sans rapport
+intermédiaire. La reprise revient à `/review --code` (boucle courte, sans Sonar ni
+e2e), puis la chaîne de nettoyage repart une fois, sur le code approuvé. Une
+revue CHANGES REQUESTED n'est **pas** un arrêt tant qu'une reprise automatique est
+permise.
 
 ### Les DEUX seuls arrêts légitimes
 

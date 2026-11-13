@@ -59,6 +59,15 @@ Tools/timing/step.sh end --task {task-id} --step e2e --status ok
 - Protocole complet et vocabulaire des kinds : `Tools/timing/README.md`.
 
 ---
+## Une fois, sur du code approuvé (depuis le 2026-11-12)
+
+`/e2e` tourne **après** l'approbation de la revue anticipée (`/review --code`) et les nettoyages :
+il n'est plus rejoué à chaque reprise de revue (boucle courte `/develop --reprise` →
+`/review --code`). Quand une reprise corrige un **parcours rouge** de cette étape, `/develop`
+rejoue d'abord le seul scénario rouge (`--serve-only` + `playwright --grep`), puis la chaîne
+revient ici et rejoue les **voies complètes** : la non-régression est toujours prouvée sur les
+deux suites avant la PR. Les règles ci-dessous ne changent pas.
+
 ## Rules
 
 - **Bloquante, sans exemption** : un rouge après `retries: 1` bloque, y compris un rouge déjà présent

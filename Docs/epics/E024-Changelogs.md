@@ -111,6 +111,13 @@
 - **Sonar** : 0 finding dans le diff. **E2E** : mobile 61, Angular 80 (mêmes 2 flaky), porte verte.
 
 
+### Retrait des tasks 454 à 466 (2026-11-12, décision humaine)
+
+- **Décision** : l'humain ne souhaite pas engager ces développements. Les task files `todo` 454 à 464 et 466, et
+  le task file archivé de task-465 (déjà annulée), sont **supprimés sans archivage**.
+- **Rien à défaire dans le code** : aucune branche, aucune PR, aucun commit applicatif n'existait pour ces tasks.
+- **Reste de l'EPIC** : task-453, livrée.
+
 ### Annulation de task-465 (2026-11-12, décision humaine)
 
 - **Motif** : calcul jugé trop lourd pour l'API et ajoutant de la complexité (tâche de fond dans chaque réplica,
@@ -122,7 +129,8 @@
 - **Conséquences** : task-454 et task-456 ne dépendent plus de task-465 ; leurs indicateurs de tableau de bord sont
   retirés de leur DoD.
 - **Suite** : extraction des usages par un **cron job hors de l'API**, sur la base d'un rapport journalier (task à
-  rédiger). La conception et les preuves de task-465 restent dans `tasks/archived/archived-task-465_…` comme matière.
+  rédiger). Le task file de task-465 a été supprimé le 2026-11-12 ; sa conception et ses preuves restent dans l'historique git
+  du plan de contrôle (commit `14464bf`).
 - **Acquis conservés** : consignes `conventions/csharp.md` (S125, S4457, CA1068, S138, ASP0025,
   capture-de-metriques-serialisee), registre e2e des flaky.
 
@@ -154,16 +162,4 @@
 | Task | Contribution | État |
 |---|---|---|
 | task-453 | Ancrage des acquittements et du rattachement manuel à l'identité stable du document ; re-liaison ; modèle imposé aux tasks 454 à 463 | `archived` (PRs #364, #63, #123) |
-| task-454 | Marquer un message traité | `todo` |
-| task-455 | « À revoir le… » | `todo` |
-| task-456 | Vues par nature | `todo` |
-| task-457 | « À traiter par » | `todo` |
-| task-458 | Notes internes | `todo` |
-| task-459 | Bandeau « Vous avez répondu… » | `todo` |
-| task-460 | Suivi d'acheminement | `todo` |
-| task-461 | Adresse déjà en échec | `todo` |
-| task-462 | Relance sans réponse | `todo` |
-| task-463 | Suivi de biologie | `todo` |
-| task-464 | Mon espace santé complet | `todo` |
 | task-465 | Mesure de la charge et de l'usage — **annulée** le 2026-11-12 (décision humaine, reprise hors API par un cron job) | annulée (PRs #366, #64 fermées) |
-| task-466 | Date de début du suivi par boîte | `todo` |

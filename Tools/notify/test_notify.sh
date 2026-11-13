@@ -93,6 +93,10 @@ hasnt "failed : task sans titre, pas de ligne vide" $'échec\n\n' "$(dry step ta
 check "étape ok intermédiaire : silence"  "" "$(dry step task-443 develop ok)"
 check "review skipped : silence"          "" "$(dry step task-443 review skipped)"
 check "rolled-back : silence"             "" "$(dry step task-443 develop rolled-back)"
+# 2026-11-12 — une revue qui enchaîne une reprise automatique n'attend personne : silence.
+check "review changes (reprise) : silence" "" "$(dry step task-443 review changes)"
+# Revue anticipée (2026-11-12) : son APPROVED n'ouvre aucune PR — rien ne part.
+check "review-code ok : silence"         "" "$(dry step task-443 review-code ok)"
 check "task '-' : silence"                "" "$(dry step - tech-writer failed)"
 
 # --- interrupteurs
