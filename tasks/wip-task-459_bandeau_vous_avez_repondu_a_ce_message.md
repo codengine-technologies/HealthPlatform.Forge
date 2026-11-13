@@ -234,6 +234,43 @@ notification SSE `EmailsEnriched` (partagée par toute la boîte) sérialisait `
 - Green marked : client-mobile `e40e8410`, client-angular (arbre), api-mail `7009d9da` (suite finale)
 - Next step : /review task-459 --code
 
+### Reprise 1 après /review (revue anticipée, passage 1)
+
+- **B1 — annulation après un envoi réussi** : `OutgoingMailService` engage l'archivage « Envoyés » **avant**
+  l'enregistrement de la réponse, et l'enregistrement reçoit `CancellationToken.None` ; `MailReplyRecorder` est
+  best-effort annulation comprise. Test : `OutgoingMailServiceTests.SendAsync_AClientThatAbortsRightAfterTheSend_StillGetsItsReplyArchived`
+  (jeton annulé dans l'envoi SMTP, enregistreur réel sur un dépôt qui honore le jeton) — **rouge sur le code d'avant**
+  (`OperationCanceledException` remontée, archivage absent). Défense double : la mutation d'une seule couche (jeton
+  annulable seul, ou filtre de capture seul) reste verte ; les deux ensemble (= code d'avant) rougissent.
+  Note : test d'application et non HTTP, l'harnais ne sait pas couper la requête entre l'envoi et l'enregistrement de
+  façon déterministe.
+- **B2 — règle 1b, chaque route que le diff change** (`ReplyBannerEndToEndTests`, pile réelle, 11/11 verts) :
+
+  | Comportement | Test | Mutation → rouge |
+  |---|---|---|
+  | (a) réponse par `References` seul (branche SQL `byReferences`) | `AReplyCarryingOnlyReferences_IsCounted` (prémisse : copie sans `In-Reply-To` en base) | Ra branche morte → ce test |
+  | (b) lecture hors ligne | `ReadOffline_TheOriginalStillTellsWhoReplied` | Rb résumé non appliqué hors ligne → ce test |
+  | (c) Envoyés désigné par SPECIAL-USE seul | `AReplyFiledInASentFolderKnownOnlyBySpecialUse_IsCounted` (prémisse du négatif : non classé → pas de réponse) | Rc classification ignorée → ce test (+2) |
+  | (d) annule et remplace jamais une réponse | `ACancelAndReplace_IsNeverAReplyToTheMessageItCancels` (route `…/cancel-and-replace`, sujet prérempli, prémisse : copie rattachée par `In-Reply-To`) | Rd1 enregistré → rouge ; Rd2 marqueur de copie ignoré → rouge |
+  | (e) `GET thread/{messageId}` : `HasReplies` hors rapports | `TheThreadOfAMessageOnlyAcknowledgedByAReadReceipt_HasNoReplies` (prémisse : fil de 2 avec l'accusé) | Re filtre retiré → ce test |
+  | (f) `pending-emails/{id}/send` enregistre la réponse | `AReplySetAsideWithoutTheCard_ThenConfirmed_IsRecorded` (+ `\Answered` sur Dovecot) | Rfg enregistreur non appelé → ce test |
+  | (g) preuve du brouillon | `AReplySentFromItsDraft_IsRecordedTheSameWay` | Rfg → rouge (7 tests rouges en tout) |
+
+- **S4 — mobile, bouton bloqué** : `opening` passe en `signal` (composant OnPush). Test
+  `mail-detail.reply-banner.spec.ts` « rend « Voir la réponse » de nouveau actif… » : rendu juste après le clic
+  (désactivé), puis après la fin (actif) — rouge sur le champ simple (fichiers du correctif mis de côté), vert avec
+  le signal. Commit `b2a9a01`.
+- **S7 — rejeu `MarkAnswered`** : `FlagPropagationServiceTests` (persisté sous son nom, `STORE +FLAGS (\Answered)`),
+  `PendingActionServiceTests.ProcessPendingActions_AMarkAnsweredLeftInTheQueue_IsReplayedByDirectPropagation`,
+  `PendingActionTypesTests`. Mutations S7a (`\Flagged` au lieu de `\Answered`) et S7b (cas de rejeu absent) → rouges.
+- **S8** : remarque de la migration corrigée (aucune mise à jour ne recopie `IsReport` ; effet borné).
+- **Relecture du correctif comme correctif** : l'ordre archivage → enregistrement ne change pas ce que lit le client
+  (l'archivage est en file, l'enregistrement reste dans la requête : le bandeau est là au retour). Le sujet d'un
+  remplacement saisi sans marqueur compterait comme réponse côté copie, mais jamais côté enregistrement (le chemin
+  annule-et-remplace n'enregistre rien) : couvert par Rd1/Rd2 ; noté pour l'humain.
+- **Prévention** : `conventions/csharp.md` § `apres-envoi-reussi-rien-d-annulable` (nouveau), S125 → 29 ;
+  `conventions/angular.md` § `etat-asynchrone-onpush-en-signal` (nouveau).
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -305,8 +342,8 @@ clients.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 50 s | — | — | — | — |
-| /develop | ok | 3 h 24 min | 14 (7 min 04 s) | 10 (34 min 06 s) | — | dtos-mss 2B/0T, api-mail 8B/4T, client-mobile 2B/3T, client-angular 2B/3T |
+| /develop | ok | 25 min 01 s | 17 (8 min 17 s) | 12 (43 min 10 s) | — | dtos-mss 2B/0T, api-mail 10B/5T, client-mobile 3B/4T, client-angular 2B/3T, reprise 1 |
 | /review-code | changes | 16 min 19 s | — | — | — | reprise 1 |
-| **Total cycle** | | **3 h 41 min** | **14 (7 min 04 s)** | **10 (34 min 06 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **42 min 11 s** | **17 (8 min 17 s)** | **12 (43 min 10 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×2 (31 s), restore ×2 (15 s)

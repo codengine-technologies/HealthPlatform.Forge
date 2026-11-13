@@ -752,3 +752,18 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   texte… »), rouges sur le code d'avant.
 - **Origine** : task-449 (/review, B1, S2, S3 ; 2ᵉ revue B2, B3 ; 3ᵉ revue B4, B5)
 - **Occurrences** : 3
+
+### etat-asynchrone-onpush-en-signal — Un état posé après un `await` dans un composant OnPush est un signal
+- **Règle** : convention projet (invisible au lint et au build)
+- **Repos** : les deux
+- **Piège** : sur task-459, « Voir la réponse » (mobile, `OnPush`) passait `opening = true` au clic, puis
+  `opening = false` dans le `finally`, après des `await`. Aucun événement ne suit cette fin : la vue n'est jamais
+  revérifiée, et le bouton reste désactivé alors que l'avis dit « Réessayez dans un instant ». Le test passait : il ne
+  rendait pas la page entre le clic et la fin, donc ne voyait jamais l'état intermédiaire.
+- **Consigne** : dans un composant `OnPush`, tout état modifié après un `await` (chargement, ouverture, avis) est un
+  `signal()` (ou `markForCheck()`), jamais un champ simple. Le test rend la vue **juste après le geste** (état
+  intermédiaire constaté), puis après la fin.
+- **Preuve** : `mail-detail.reply-banner.spec.ts` (« rend « Voir la réponse » de nouveau actif… »), rouge sur le champ
+  simple, vert avec le signal.
+- **Origine** : task-459 (revue anticipée, S4)
+- **Occurrences** : 1
