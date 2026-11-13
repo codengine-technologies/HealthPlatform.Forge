@@ -309,6 +309,24 @@ Tous poussés. Tests 100/100, deux passages verts consécutifs. Vert marqué sur
   - mémoire de session « grep en chaîne masque un échec de tests ».
 - Next step : /review task-478 --code (passage 4, sur l'évolution)
 
+### Reprise 2 après /review (évolution CARD / MOBILE)
+
+Commits api-mcp : `c7d3093` (correctifs et tests), `b89db38` (README), poussés. Tests 108/108, validation stricte
+(« Failed: 0 », sans FATAL) avant le push. Vert marqué sur `b89db38`.
+
+| Constat | Correctif | Test | Preuve rouge |
+|---|---|---|---|
+| B1 restriction par configuration non prouvée | (comportement déjà en place) | `CibaChannelTests.RestrictedConfiguration_OffersOnlyMobile_AndRefusesTheCard_WithoutCallingTheProxy`, sur un hôte `AllowedChannels = [MOBILE]` | M30 (refus fondé sur les canaux connus) et M31 (formulaire sans la configuration) : rouges |
+| S1 messages d'échec « application e-CPS » pour la carte | `PendingLogin.Channel`, `MessageFor(failure, channel)` | `CibaChannelTests.RefusalWithTheCpsCard_TellsTheDoctorItWasRefusedWithTheCard` | rouge sur l'ancien code |
+| S2 configuration mal saisie rouvrant les deux canaux | `ProxyOptions.Canonical` (casse ignorée), `ChannelConfigurationErrors` et refus au démarrage | `ChannelChoiceTests` (casse, erreurs) ; `CibaChannelTests.UnknownConfiguredChannel_PreventsTheServerFromStarting` | 3 cas unitaires rouges sur l'ancien code ; M33 (refus au démarrage retiré) rouge |
+| S3 tests trop faibles | page d'attente affirmée dans les deux sens ; refus affirmé sans cookie `mcp_pending`, `/login/status` « failed », compteur du proxy relevé après un aller-retour | `CibaChannelTests.WaitingPage_FollowsTheChosenChannel`, `…UnknownChannel…` | M32 (page toujours « carte ») rouge |
+
+- **Relecture du correctif** :
+  - `MessageFor` garde un canal par défaut, et ses deux appelants sont à jour ;
+  - `PendingLogin` n'est construit que par `CibaLoginService` ;
+  - la validation au démarrage accepte la configuration par défaut (`MOBILE`, liste vide).
+- Next step : /review task-478 --code (passage 5)
+
 ## E2E log
 
 **E2E : skipped — aucune voie touchée.** task-478 ne touche que `api-mcp` : ni `api-mail`, ni `client-mobile`, ni
@@ -489,11 +507,11 @@ Vérifié sain :
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 16 s | — | — | — | — |
-| /develop | ok | 8 min 04 s | 61 (2 min 26 s) | 50 (11 min 59 s) | — | api-mcp 61B/50T |
+| /develop | ok | 5 min 00 s | 70 (2 min 43 s) | 58 (13 min 57 s) | — | api-mcp 70B/58T |
 | /review-code | changes | 2 min 44 s | — | — | — | reprise 2 |
 | /e2e | skipped | 1.3 s | — | — | — | aucune voie touchée (api-mcp seul) |
 | /review | ok | 1 min 18 s | — | — | — | — |
 | /tech-writer | ok | 1 min 13 s | — | — | — | — |
-| **Total cycle** | | **13 min 37 s** | **61 (2 min 26 s)** | **50 (11 min 59 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **10 min 34 s** | **70 (2 min 43 s)** | **58 (13 min 57 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : restore ×3 (8.5 s)
