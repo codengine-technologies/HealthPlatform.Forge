@@ -607,6 +607,7 @@ au 2026-11-13 (base ce7741dd).
 | /lint-angular | ok | 22 s | — | — | — | 0 erreur (après reprise 2) |
 | /lint-mobile | skipped | 1.0 s | — | — | — | client-mobile inchangé depuis le dernier lint propre (95e6dc1) |
 | /e2e | ok | 20 min 25 s | — | 1 (7.9 s) | — | api-mail 0B/1T, e2e ×7 (49 min 07 s) |
-| **Total cycle** | | **47 min 49 s** | **17 (5 min 07 s)** | **45 (1 h 13 min)** | **6 (2 min 21 s)** | |
+| /review | ok | 3 min 56 s | 1 (14 s) | 2 (1 min 01 s) | — | client-angular 1B/2T |
+| **Total cycle** | | **51 min 45 s** | **18 (5 min 21 s)** | **47 (1 h 14 min)** | **6 (2 min 21 s)** | |
 
 Autres commandes mesurées : lint ×3 (50 s), nuget-wait ×2 (38 s), restore ×2 (7.1 s)
