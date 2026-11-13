@@ -1,6 +1,7 @@
 # todo-task-466.md — Date de début du suivi par boîte
 
 **Repos**: api-mail, dtos-mss, client-angular, client-mobile
+**Reprises**: 1
 **Dependencies**: done-task-453 (ancrage des états de travail)
 **Epic**: E024
 **Priorité**: EPIC E024, demandée par l'humain le 2026-11-12. **À passer avant task-454 et task-463** : c'est le socle
@@ -210,6 +211,59 @@ Règles :
 - `conventions/csharp.md` : entrée `action-reclamee-bornee-au-suivi`.
 - Mémoire de session : lanceur Vitest de `mss-lib` — preuves par mutation sur spec ciblée `--pool=forks`.
 
+## Code Review Summary
+
+### Passage 1 (revue anticipée) — CHANGES REQUESTED
+
+Relecteur indépendant, sur `dtos-mss` 9fcef29, `api-mail` 6485bcae, `client-mobile` f46a059 et l'arbre non commité de
+`client-angular`. Règles 12 et 14 (verdict de l'opérateur par le middleware, acte imputé à la personne réelle, aucune
+donnée de santé tracée) et règle 7c (migration ↔ modèle EF) : sans défaut.
+
+#### À corriger par la reprise
+- **B1 (bloquant)** — un compte rendu « Antérieur au suivi » acquitté par un geste intermédiaire (« Pris connaissance »)
+  redevient « à acquitter » côté clients. Le serveur ne pose `BeforeTrackingStart` que sans acquittement, puis renvoie
+  `InProgress`, et `isBiologyAckClaimed(InProgress)` (weda2 `biology-ack.model.ts`, `mail-state.service.ts:107`,
+  `mail-detail.component.ts:393` ; même lecture côté mobile) le recompte : puce « Acquittement à traiter », compteur de la
+  ligne, divergence avec le serveur, qui ne le compte jamais. Attendu : le contrat dit si un document est suivi,
+  indépendamment de son acquittement (ex. `MailMedicalDocumentDto.IsTracked`), et les clients ne réclament rien pour
+  un document hors suivi. Ajouter un test d'intégration (historique acquitté par un geste intermédiaire →
+  `PendingBiologyAcksCount = 0`, absent de `pending-summary` et de `pending-mail-uids/page?lastAction=…`), vu rouge,
+  et une assertion e2e après l'acquittement (pas de `mail-summary-chip-ack`, compteur de la puce inchangé).
+- **B3 (bloquant)** — éviction du cache après un PUT de la date : non bornée (tous les messages de biologie signalée
+  de la boîte), deux appels Redis en série par message dans la requête, et elle retire aussi le résumé IA
+  (`RedisKeys.Mail.Summary`), qui ne dépend pas du suivi. Ne viser que les messages dont `ArrivalDate ?? SentDate` est
+  entre l'ancienne et la nouvelle date, ne retirer que `RedisKeys.Mail.Email`, regrouper les retraits. Règle 1b : la
+  route mise en cache (`GET …/emails/content/{uid}`) n'est lue par aucun test d'intégration ; prouver qu'après un PUT
+  elle rend le nouvel état, avec un cache qui garde réellement l'entrée (`KeepInCache`), vu rouge sans l'éviction.
+- **B4 (bloquant)** — E2E-BIO-007 (mobile et Angular) : la prémisse « le serveur compte des résultats en attente » ne
+  prouve pas que `cr-bio-historique` est analysé ; tant qu'il ne l'est pas, les assertions d'absence passent d'office.
+  Attendre d'abord que le compte rendu historique soit analysé, puis asserter l'absence. Rejouer la voie Angular
+  sous mutation.
+- Dans la même passe (défauts réels, non bloquants) :
+  - S3 — `GetTrackingStartAsync` ne se lit que si la page porte de la biologie signalée (page d'en-têtes, chemin le
+    plus chaud) ; idem `TrackedMailsAsync`.
+  - S4 — PUT `{}` (date absente, `DateTime.MinValue`) accepté en 200 : refuser en 400 ProblemDetails.
+  - S5 — `BiologyAckRepository.GetStateAsync` ignore la règle : la retirer si elle n'a aucun appelant, sinon l'aligner.
+  - S6 — prouver `ArrivalDate ??=` à la promotion d'un en-tête (DoD).
+  - S7 — `Assert.False(old.HasCriticalPendingBiologyAck)` : vérifier la prémisse (une valeur critique présente) ou
+    prendre un document critique.
+  - S9 — après un enregistrement refusé, le champ garde la journée refusée (mobile et weda2) ; weda2 ne relit ni la
+    puce ni la liste après un changement de date ; `todayIso` figé après minuit.
+  - S10 — vérifier que E2E-SEARCH-006 et 012 (Angular, « le plus ancien message est affiché, donc enrichi ») restent
+    justes avec `cr-bio-historique` plus ancien que `mail-lu`.
+
+#### Arbitrage humain
+- **B2** — la migration pose la date au moment où chaque base monte (montée paresseuse, au premier accès). Toute ligne
+  existante (`ArrivalDate` vide, repli sur `SentDate`) devient historique : un résultat critique en attente la veille
+  du déploiement sort de « Bio à acquitter » sans avertissement, et un praticien absent au déploiement voit classés
+  « Antérieur au suivi » les résultats arrivés pendant son absence. Pistes : un instant fixe de mise en production dans
+  la migration, ou garder dans le suivi les documents en attente au moment de la migration. Recommandation de la forge :
+  garder dans le suivi ce qui était en attente au moment de la migration (aucun résultat déjà réclamé ne disparaît).
+- **S1** — la pose initiale de la date n'est pas tracée en acte système (la migration n'a pas de contexte d'audit).
+- **S2** — le widget « Résultats anormaux » et les patients à messages non lus ignorent la date de suivi : un historique
+  non lu y remonte. Hors de la liste de la story.
+- **S8** — `MailDto.ArrivalDate` sort sans `Z` (colonne sans fuseau), comme `SentDate` ; aucun client ne le lit.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-466 --sync` — ne pas éditer à la main)*
@@ -218,6 +272,7 @@ Règles :
 |---|---|---|---|---|---|---|
 | /start | ok | 33 s | — | — | — | — |
 | /develop | ok | 1 h 59 min | 7 (1 min 55 s) | 16 (18 min 06 s) | — | dtos-mss 1B/0T, api-mail 3B/11T, client-angular 1B/3T, client-mobile 2B/2T |
-| **Total cycle** | | **1 h 59 min** | **7 (1 min 55 s)** | **16 (18 min 06 s)** | **0 (0.0 s)** | |
+| /review-code | changes | 38 min 24 s | — | — | — | reprise 1 |
+| **Total cycle** | | **2 h 38 min** | **7 (1 min 55 s)** | **16 (18 min 06 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (19 s), restore ×1 (3.6 s)
