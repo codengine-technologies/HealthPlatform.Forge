@@ -288,6 +288,47 @@ notification SSE `EmailsEnriched` (partagée par toute la boîte) sérialisait `
 - **Prévention** : `conventions/csharp.md` § `apres-envoi-reussi-rien-d-annulable` réécrite (l'ordre suit les
   dépendances), Occurrences 2.
 
+## Sonar log
+
+- Serveur : SonarQube 25.6.0.109173 (`sonar.token`), clé `healthplatform-api-mail`. 2 analyses complètes (begin, build
+  Release, 5 passes OpenCover, end), toutes les suites vertes à chaque passe.
+- **Phase 1 (new code de task-459)** : ✓ — **0 constat** sur les lignes ajoutées par la task après l'itération 2.
+  - Itération 1 : 1 constat de la task — CA1861 (tableau littéral dans un `Arg.Is(… SequenceEqual(new[] { … }))` de
+    `MailReplySummaryServiceTests`), corrigé (champ `static readonly`).
+  - Couverture du new code des fichiers de la task : `MailReplyRepository` 90,5 % → **100 %**, `MailReplySummaries`
+    91,5 % → **95,3 %**, `MailReplyRecorder` 95,0 %, les autres ≥ 98,2 %. Tests ajoutés : 8 unitaires de la règle
+    (identifiant vide, sujet absent, `Sender` par son adresse, enregistrement sans identité, sans emplacement, copie non
+    datée, lecteur sans compte ni RPPS, `ParentOf`) et 1 d'intégration du dépôt sur PostgreSQL (réponse enregistrée deux
+    fois → une ligne, identifiant vide ignoré, page vide). Commit `444416e8`.
+  - Security hotspots : aucun sur le code de la task.
+- **Quality Gate du new code : ERROR, hérité** — la période new code du projet couvre des tasks déjà mergées
+  (`new_violations` 98, `new_security_hotspots_reviewed` 0 % sur 14 hotspots) : aucun de ces constats n'est sur une ligne
+  de task-459 (vérifié par croisement avec `git diff -U0 origin/develop`). Les deux S138 « créés aujourd'hui »
+  (`DependencyInjectionExtensions.cs`, `Application/Extensions/ServiceCollectionExtensions.cs`) viennent de `develop`,
+  fichiers non touchés par la task.
+- **Phase 2 (legacy)** : non jouée (best-effort, optionnelle) — la dette restante est celle des tasks précédentes ;
+  aucune ne bloque ce cycle.
+- Build / tests : ✓ vert (domain 257, application 4248, infrastructure 749, api 1380, integration 1294 + 16 ignorés
+  pré-existants). Marqueur vert `api-mail 444416e8 (sonar)`.
+- Conventions : CA1861 → 8 (même forme que task-449) ; contrôle mécanique ajouté à `agents/develop.md` §Q 2b.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | ERROR | ERROR | → (hérité, 0 constat de la task) |
+| New coverage | 97,9 % | 97,8 % | −0,1 pt |
+| Bugs | 2 | 2 | 0 |
+| Vulnerabilities | 2 | 2 | 0 |
+| Security hotspots | 16 | 16 | 0 |
+| Code smells | 92 | 94 | +2 (S138 de `develop`, hors task) |
+| Coverage (projet) | 97,8 % | 97,8 % | 0 |
+| Duplication | 0,3 % | 0,3 % | 0 |
+| Reliability / Security / Maintainability | D / D / A | D / D / A | → |
+
+La baseline est la dernière analyse du serveur (2026-11-12, branche d'une task précédente) : l'écart de 2 smells est
+celui de `develop` entre les deux analyses, pas de task-459.
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -411,6 +452,7 @@ Aucun bloquant.
 | /start | ok | 50 s | — | — | — | — |
 | /develop | ok | 10 min 27 s | 18 (8 min 34 s) | 13 (50 min 53 s) | — | dtos-mss 2B/0T, api-mail 11B/6T, client-mobile 3B/4T, client-angular 2B/3T, reprise 2 |
 | /review-code | ok | 3 min 31 s | — | — | — | — |
-| **Total cycle** | | **14 min 49 s** | **18 (8 min 34 s)** | **13 (50 min 53 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 35 min 13 s | 2 (1 min 24 s) | 10 (19 min 03 s) | 4 (6 min 55 s) | 2 itération(s), api-mail 2B/10T |
+| **Total cycle** | | **50 min 02 s** | **20 (9 min 58 s)** | **23 (1 h 09 min)** | **4 (6 min 55 s)** | |
 
 Autres commandes mesurées : nuget-wait ×2 (31 s), restore ×2 (15 s)
