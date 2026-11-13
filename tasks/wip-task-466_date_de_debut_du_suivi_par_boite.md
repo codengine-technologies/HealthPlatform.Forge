@@ -310,6 +310,28 @@ donnée de santé tracée) et règle 7c (migration ↔ modèle EF) : sans défau
   non lu y remonte. Hors de la liste de la story.
 - **S8** — `MailDto.ArrivalDate` sort sans `Z` (colonne sans fuseau), comme `SentDate` ; aucun client ne le lit.
 
+### Passage 2 (revue anticipée) — APPROVED
+
+Relecteur indépendant, diff de reprise lu d'abord : rien de cassé ailleurs (fenêtre d'éviction `[min, max)`
+cohérente avec `IsTracked`, méthode renommée sans autre implémentation, `Summary` sans état d'acquittement,
+`isBiologyAckClaimed` passé `isTracked` par ses deux appelants, `FlaggedCdaArchive` rétrocompatible, comptage des
+appels du cache fiable). B1, B3, B4, S3, S4, S6, S7, S9, S10 corrigés et prouvés ; S5 écarté, refus jugé défendable.
+
+**approved at** : `dtos-mss` 957b28a, `api-mail` 011d661a, `client-mobile` 95e6dc1, `client-angular` arbre de travail
+au 2026-11-13 (branche `feature/nova-mss-weda-integration`, base ce7741dd).
+
+#### Suggestions (non bloquantes, pour la PR)
+- **S-A** — `IsTracked` vaut `true` pour un document NON signalé d'un message historique (`untrackedDocIds` ne
+  contient que les signalés), alors que le contrat dit « le message porteur est arrivé depuis la date de début ».
+  Sans effet aujourd'hui (seuls les documents signalés sont lus) ; **à reprendre avant task-454** (« À traiter »),
+  qui réutilisera ce champ : restreindre le commentaire du contrat, ou calculer `IsTracked` par message.
+- **S-B** — le test B1 n'a pas de témoin positif pour `AcknowledgedPending` et `pending-mail-uids/page?lastAction=`
+  (reculer la date dans le même test et voir l'uid apparaître). Serveur inchangé par la reprise : risque faible.
+- **S-C** — `GetStateAsync` (gardé) devrait dire dans son commentaire qu'il ignore le suivi et ne rend jamais
+  `BeforeTrackingStart`, avant qu'un appelant de task-454 ou task-463 ne s'en serve.
+- **S-D** — l'éviction (au meilleur effort) reçoit le jeton d'annulation de la requête : une annulation pendant
+  l'éviction rend 499 alors que la date est enregistrée et tracée. `CancellationToken.None` pour l'éviction.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-466 --sync` — ne pas éditer à la main)*
@@ -318,7 +340,7 @@ donnée de santé tracée) et règle 7c (migration ↔ modèle EF) : sans défau
 |---|---|---|---|---|---|---|
 | /start | ok | 33 s | — | — | — | — |
 | /develop | ok | 41 min 32 s | 13 (2 min 56 s) | 25 (42 min 21 s) | — | dtos-mss 2B/0T, api-mail 6B/17T, client-angular 2B/5T, client-mobile 3B/3T |
-| /review-code | changes | 38 min 24 s | — | — | — | reprise 1 |
-| **Total cycle** | | **1 h 20 min** | **13 (2 min 56 s)** | **25 (42 min 21 s)** | **0 (0.0 s)** | |
+| /review-code | ok | 7 min 15 s | — | — | — | — |
+| **Total cycle** | | **49 min 22 s** | **13 (2 min 56 s)** | **25 (42 min 21 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×2 (38 s), restore ×2 (7.1 s)
