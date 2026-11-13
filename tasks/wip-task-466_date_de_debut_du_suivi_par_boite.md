@@ -307,6 +307,9 @@ Commit `api-mail` 0f0605cd ; `client-angular` non commité (code-only, un spec e
 
 Baseline : dernière analyse du projet avant la task (2026-11-12) ; new code = 30 derniers jours.
 
+- **Après la reprise 2** (0f0605cd, seed e2e seulement) : troisième analyse — Quality Gate OK, 0 constat et
+  0 hotspot sur le new code, new_coverage 96,5 %, KPIs inchangés ; suites Release vertes.
+
 ## Lint log
 
 ### client-angular (`/lint-angular`)
@@ -564,10 +567,10 @@ au 2026-11-13 (base ce7741dd).
 | /start | ok | 33 s | — | — | — | — |
 | /develop | ok | 12 min 28 s | 14 (3 min 02 s) | 27 (49 min 06 s) | — | dtos-mss 2B/0T, api-mail 7B/19T, client-angular 2B/5T, client-mobile 3B/3T, reprise 2 (e2e) |
 | /review-code | ok | 4 min 21 s | — | — | — | — |
-| /sonar | ok | 23 min 28 s | 2 (1 min 19 s) | 12 (16 min 52 s) | 4 (1 min 35 s) | 2 itération(s), api-mail 2B/12T |
+| /sonar | ok | 9 min 36 s | 3 (2 min 05 s) | 17 (24 min 21 s) | 6 (2 min 21 s) | 1 itération(s), api-mail 3B/17T |
 | /lint-angular | ok | 56 s | — | — | — | 0 erreur, rien à corriger |
 | /lint-mobile | ok | 13 s | — | — | — | 0 erreur |
 | /e2e | failed | 33 min 13 s | — | 1 (7.9 s) | — | api-mail 0B/1T, e2e ×4 (29 min 28 s), régression Angular (4) — donnée de seed cr-bio-historique |
-| **Total cycle** | | **1 h 15 min** | **16 (4 min 21 s)** | **40 (1 h 06 min)** | **4 (1 min 35 s)** | |
+| **Total cycle** | | **1 h 01 min** | **17 (5 min 07 s)** | **45 (1 h 13 min)** | **6 (2 min 21 s)** | |
 
 Autres commandes mesurées : lint ×2 (42 s), nuget-wait ×2 (38 s), restore ×2 (7.1 s)
