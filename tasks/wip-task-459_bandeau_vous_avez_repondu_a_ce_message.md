@@ -382,6 +382,26 @@ emprunte la route ou la branche nommée, sa prémisse est affirmée, et sa mutat
 - Note pour la PR : B2 (c) pose la classification `MailFolders.FolderType` en base (le comportement changé est la
   requête qui la lit ; le listage SPECIAL-USE des dossiers est pré-existant).
 
+### Passage 3 (revue anticipée, après reprise 2) — APPROVED
+
+**Approved at** : api-mail `b87aa7cf`, dtos-mss `8ed9c81`, client-mobile `b2a9a01`, client-angular arbre non commité
+sur `feature/nova-mss-weda-integration` (inchangé depuis le marqueur vert de `/develop`).
+
+Revue indépendante du diff de la reprise 2 (lu d'abord) : N1 corrigé ✓ (l'`INSERT` est validé avant la mise en
+file ; `Received.InOrder` rouge sur l'ordre de la reprise 1) ; B1 toujours corrigé ✓ (jeton non annulable +
+capture totale de l'enregistreur : rien ne lève après le succès SMTP, la confirmation hors ligne ne se relâche plus).
+Appelants vérifiés : `sendmail`, brouillon, `pending-emails/{id}/send`, annule-et-remplace (sans enregistrement).
+Aucun bloquant.
+
+**Suggestions (non bloquantes, pour la PR)** :
+- aucun test ne fige `CancellationToken.None` sur l'enregistrement (B1 resterait sûr grâce à la capture, mais un
+  abandon client perdrait l'auteur et `\Answered` de cette réponse) ;
+- la mise en file de l'archivage attend désormais les écritures de l'enregistrement (au plus quelques secondes,
+  bornées par les délais Npgsql) : prix de l'ordre qu'exige N1 ; si le processus meurt dans cette fenêtre, la copie
+  « Envoyés » n'est pas faite (avant task-459, la mise en file suivait directement le SMTP).
+
+**Arbitrages humains ouverts** : A1–A5 (passages 1 et 2), à trancher au merge.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-459 --sync` — ne pas éditer à la main)*
@@ -390,7 +410,7 @@ emprunte la route ou la branche nommée, sa prémisse est affirmée, et sa mutat
 |---|---|---|---|---|---|---|
 | /start | ok | 50 s | — | — | — | — |
 | /develop | ok | 10 min 27 s | 18 (8 min 34 s) | 13 (50 min 53 s) | — | dtos-mss 2B/0T, api-mail 11B/6T, client-mobile 3B/4T, client-angular 2B/3T, reprise 2 |
-| /review-code | changes | 7 min 54 s | — | — | — | reprise 2 |
-| **Total cycle** | | **19 min 13 s** | **18 (8 min 34 s)** | **13 (50 min 53 s)** | **0 (0.0 s)** | |
+| /review-code | ok | 3 min 31 s | — | — | — | — |
+| **Total cycle** | | **14 min 49 s** | **18 (8 min 34 s)** | **13 (50 min 53 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×2 (31 s), restore ×2 (15 s)
