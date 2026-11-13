@@ -60,7 +60,7 @@ sa boîte. Chaque consultation reste tracée à son nom, comme dans l'applicatio
 
 | # | Fonctionnalité | Ce que le praticien peut faire | Tasks | Statut |
 |---|---|---|---|---|
-| E026-F001 | Connexion e-CPS et lecture des en-têtes | Connecter son assistant IA avec sa e-CPS, puis lui demander ses boîtes, ses dossiers, les messages reçus (expéditeur, objet, date, non lu) et lancer des recherches | task-478 | 🔵 Prêt, en attente de validation |
+| E026-F001 | Connexion e-CPS et lecture des en-têtes | Connecter son assistant IA avec son application e-CPS ou sa carte CPS, puis lui demander ses boîtes, ses dossiers, les messages reçus (expéditeur, objet, date, non lu) et lancer des recherches | task-478 | 🔵 Prêt, en attente de validation |
 | E026-F002 | Lecture d'un message, tracée | Demander à l'assistant de lire ou de résumer un message : la lecture est tracée au nom du médecin, et le message reste non lu | task-479 | ⚪ À faire |
 
 ---
@@ -75,8 +75,9 @@ graph LR
 **Description du workflow** :
 
 1. **E026-F001** : le médecin ajoute la messagerie dans son assistant IA. Une page de connexion s'ouvre, nomme
-   l'assistant qui demande l'accès et affiche un code à deux chiffres. Le médecin saisit son numéro RPPS, puis valide
-   sur son téléphone la notification e-CPS qui porte le même code. L'assistant peut alors lister les boîtes, les
+   l'assistant qui demande l'accès. Le médecin saisit son numéro RPPS et choisit son moyen de validation :
+   l'application e-CPS de son téléphone, proposée par défaut, ou sa carte CPS dans le lecteur du poste. La page
+   affiche un code à deux chiffres, et le médecin valide la demande qui porte le même code. L'assistant peut alors lister les boîtes, les
    dossiers et les messages, et rechercher, sans jamais rien modifier.
 2. **E026-F002** : sur cette connexion, l'assistant pourra lire le contenu d'un message. Cette lecture attend une trace
    dédiée dans la messagerie, car aujourd'hui une consultation n'est tracée que lorsque le message passe à « lu ».
@@ -87,7 +88,7 @@ graph LR
 
 | ID | Règle | Description | Statut |
 |----|-------|-------------|--------|
-| RG-E026-01 | Connexion par e-CPS seulement | Le médecin s'identifie par Pro Santé Connect avec sa e-CPS, en validant une notification qui porte le même code que la page. Aucun mot de passe. | 🔵 Prêt (task-478) |
+| RG-E026-01 | Connexion par Pro Santé Connect seulement | Le médecin s'identifie par Pro Santé Connect, au choix avec l'application e-CPS de son téléphone ou avec sa carte CPS, en validant une demande qui porte le même code que la page. Aucun mot de passe. La plateforme peut ne proposer qu'un des deux moyens. | 🔵 Prêt (task-478) |
 | RG-E026-02 | L'assistant ne voit jamais les identifiants du médecin | L'assistant reçoit une autorisation propre à la messagerie, courte (15 minutes au plus), renouvelée tant que la session e-CPS est valide. Les identifiants du médecin restent sur le serveur, chiffrés. | 🔵 Prêt (task-478) |
 | RG-E026-03 | Lecture seule | L'assistant ne peut rien envoyer, supprimer, déplacer ni marquer comme lu. | 🔵 Prêt (task-478) |
 | RG-E026-04 | Mêmes droits que dans l'application | L'accès à une boîte dépend du rattachement du médecin et du verdict de l'opérateur MSSanté, exactement comme dans l'application. | 🔵 Prêt (task-478) |
@@ -105,7 +106,7 @@ graph LR
   secret médical, AIPD.
 
 ### Hypothèses
-- Le médecin dispose d'une e-CPS active et d'un compte sur la plateforme (première connexion faite depuis
+- Le médecin dispose d'une e-CPS active, ou d'une carte CPS et d'un lecteur sur son poste, et d'un compte sur la plateforme (première connexion faite depuis
   l'application).
 
 ---
@@ -139,6 +140,8 @@ graph LR
 ### Fonctionnalités métier
 - v0.1 — Le médecin connecte son assistant IA à sa messagerie avec sa e-CPS et l'interroge en lecture seule : boîtes,
   dossiers, messages reçus, recherche (task-478).
+- v0.2 — Le médecin choisit son moyen de validation : application e-CPS sur son téléphone, ou carte CPS dans le
+  lecteur du poste. Les messages de la page suivent ce choix (task-478).
 
 ### Conformité réglementaire
 - v0.1 — Connexion par Pro Santé Connect (e-CPS), droits identiques à l'application, verdict de l'opérateur MSSanté

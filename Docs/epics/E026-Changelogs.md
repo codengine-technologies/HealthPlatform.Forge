@@ -47,6 +47,30 @@
 - **Plan de contrôle** : `api-mcp` est enregistré dans `CLAUDE.md` et les playbooks, avec l'exception « pré-flight
   limité aux Repos ». Non poussé, en attente de relecture humaine.
 
+### v0.2 — task-478 : choix du canal CIBA, application e-CPS ou carte CPS (api-mcp)
+
+- **État** : `done` — évolution demandée par l'humain avant le merge, sur la même PR
+  [#1](https://github.com/codengine-technologies/HealthPlatform.Api.Mcp/pull/1) (head `b89db38`, corps mis à jour).
+- **Contenu** :
+  - page de connexion à boutons radio `MOBILE` (par défaut) et `CARD`, transmis à `POST {Ciba}/auth/connect` ;
+  - `Proxy:AllowedChannels`, liste vide = les deux (vide par défaut, à cause du binder qui ajoute aux listes
+    remplies) ;
+  - `ProxyOptions.Canonical` ignore la casse ; `ChannelConfigurationErrors` arrête le démarrage sur une valeur
+    inconnue ;
+  - page d'attente et messages d'échec selon le canal (`PendingLogin.Channel`).
+- **Tests** : 108/108. `CibaChannelTests`, dont un hôte dérivé restreint à MOBILE et un hôte « CARTE » qui ne démarre
+  pas ; `ChannelChoiceTests`. Mutations M27 à M33, toutes rouges.
+- **Revue** :
+  - passage 4 CHANGES REQUESTED (B1 : restriction par configuration non prouvée ; S1 à S3) ;
+  - reprise 2 ;
+  - passage 5 APPROVED à `b89db38`.
+- **Incident** : un vert marqué sur une suite rouge (un `grep` dans une chaîne `&&`), corrigé.
+  - Cause du rouge : un test qui laissait sa connexion CIBA tourner en arrière-plan.
+  - Consigne ajoutée : `travail-de-fond-attendu` (`conventions/csharp.md`).
+  - Mémoire de session ajoutée.
+- **Ouvert** : suggestions du passage 5, à savoir un test de `/login/complete` en CARD, et le commentaire XML
+  d'`AllowedChannels`, périmé.
+
 ---
 
 ## Annexe A — Cartographie des briques applicatives
@@ -67,7 +91,8 @@
 
 - 4 outils MCP, tous en lecture seule.
 - 2 projets : serveur et tests.
-- 91 tests, dont 28 méthodes de test d'intégration (cas de théorie comptés une fois).
+- 108 tests, dont 35 méthodes de test d'intégration (cas de théorie comptés une fois).
+- 2 moyens de validation : application e-CPS, carte CPS.
 
 ---
 
