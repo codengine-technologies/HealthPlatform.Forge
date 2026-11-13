@@ -234,7 +234,7 @@
 
 ## Annexe B — Inventaire fonctionnel daté (2026-11-13)
 
-- Tasks de l'EPIC : 9 — 2 `archived` (453, 466), 1 `done` (459), 5 `todo` (454, 456, 457, 458, 462), 1 annulée (465).
+- Tasks de l'EPIC : 9 — 3 `archived` (453, 459, 466), 5 `todo` (454, 456, 457, 458, 462), 1 annulée (465).
 - Scénarios e2e de l'EPIC au catalogue : 3 (E2E-BIO-004, E2E-BIO-007, E2E-DETAIL-006).
 
 ---

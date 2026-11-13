@@ -1,7 +1,7 @@
 # E024 — Messagerie premium : traiter, déléguer, boucler
 
-> **Statut** : 🟡 en cours — 2 features livrées et validées, 1 livrée en attente de validation humaine
-> (task-459), 5 au backlog (tasks 454, 456, 457, 458, 462). Le 2026-11-12, toutes les features prévues avaient
+> **Statut** : 🟡 en cours — 3 features livrées et validées, 5 au backlog (tasks 454, 456, 457, 458, 462).
+> Le 2026-11-12, toutes les features prévues avaient
 > été retirées du backlog ; une partie y est revenue le 2026-11-13.
 > **Version** : 0.3
 > **Auteur** : PO forge (task-453)
@@ -75,7 +75,7 @@ disparaissent jamais parce que le message a été rangé ailleurs, depuis la pla
 |---|---|---|---|
 | Un acquittement ne disparaît jamais | Retrouver l'acquittement d'un compte rendu, sa note, son auteur et le patient rattaché à la main, même après que le message a été rangé depuis un autre logiciel, supprimé puis restauré, ou relu après un incident de la messagerie | task-453 | ✅ Livrée et validée |
 | Le suivi commence à une date | Choisir, pour toute la boîte, la date à partir de laquelle les messages arrivés réclament un acquittement. Les comptes rendus anciens ramenés par une première synchronisation se consultent et s'acquittent sans rien réclamer, marqués « Antérieur au suivi » | task-466 | ✅ Livrée et validée |
-| « Vous avez répondu à ce message le… » | Savoir, en ouvrant un message, qu'on y a déjà répondu, ou qu'un collègue de la boîte l'a fait, quand et combien de fois ; ouvrir la réponse ; repérer d'une icône les messages répondus dans la liste | task-459 | 🟡 Livrée, en attente de validation humaine |
+| « Vous avez répondu à ce message le… » | Savoir, en ouvrant un message, qu'on y a déjà répondu, ou qu'un collègue de la boîte l'a fait, quand et combien de fois ; ouvrir la réponse ; repérer d'une icône les messages répondus dans la liste | task-459 | ✅ Livrée et validée |
 | Vues par nature | Retrouver d'un coup d'œil la biologie, les courriers, les messages de patients et ceux reçus pour information | task-456 | ⏳ À faire |
 | Marquer un message traité | Voir ce qui reste à traiter, pas seulement ce qui n'est pas lu, et marquer un message traité | task-454 | ⏳ À faire |
 | « À traiter par » | Confier un message à une personne de la boîte | task-457 | ⏳ À faire |
@@ -169,15 +169,14 @@ praticien le souhaite, mais il n'encombre ni « Bio à acquitter » ni le tablea
 |---|---|---|---|
 | Un acquittement ne disparaît jamais | ✅ Livrée et validée | 100 % | task-453 |
 | Le suivi commence à une date | ✅ Livrée et validée | 100 % livré | task-466 |
-| « Vous avez répondu à ce message le… » | 🟡 Livrée, en attente de validation humaine | 100 % (code) | task-459 |
+| « Vous avez répondu à ce message le… » | ✅ Livrée et validée | 100 % | task-459 |
 | Vues par nature | ⏳ À faire | 0 % | task-456 |
 | Marquer un message traité | ⏳ À faire | 0 % | task-454 |
 | « À traiter par » | ⏳ À faire | 0 % | task-457 |
 | Notes internes | ⏳ À faire | 0 % | task-458 |
 | Relance sans réponse | ⏳ À faire | 0 % | task-462 |
 
-**Couverture EPIC consolidée : 3 features livrées sur 8 retenues** (2 validées, 1 en attente de validation
-humaine), 5 au backlog.
+**Couverture EPIC consolidée : 3 features livrées et validées sur 8 retenues**, 5 au backlog.
 
 ---
 
