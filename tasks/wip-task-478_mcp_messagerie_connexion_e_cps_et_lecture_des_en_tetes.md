@@ -343,6 +343,60 @@ boîte active), rotation de la session du proxy suivie.
   à mesurer sur une boîte de 10 000 messages.
 - **Extrait de recherche (B3)** : s'il doit revenir, c'est avec task-479 (contenu tracé), après arbitrage DPO/RSSI.
 
+### Passage 3 (revue anticipée) — APPROVED (2026-11-13)
+
+**Approved at** : api-mcp `5a07884`.
+
+Relecteur indépendant, sur le diff de la reprise `a2f459a..5a07884` lu en premier. Il n'a trouvé aucune régression :
+- les appelants des signatures modifiées sont à jour ;
+- la page de connexion encode le nom du client et valide le `returnUrl` avant de le lire ;
+- le trousseau Data Protection se déchiffre avec le même certificat ;
+- `HttpClient` reste journalisé au niveau Warning, donc sans URI ;
+- la garde de lecture seule n'est pas affaiblie ;
+- les codes d'erreur ont été vérifiés dans l'`ErrorCatalog` d'api-mail.
+
+Constats du passage 2 :
+- **B1, B2, B3, B4, S1, S5, S6, S7, S10** : corrigés et prouvés.
+- **S4** : corrigé, preuve partielle. Les refus décidés par OpenIddict lui-même échappent au journal `[Token]` (voir N2).
+- **S8** : corrigé, preuve partielle. Le délai dépassé est prouvé, la garde l'est par S1, mais aucun test ne joue un
+  corps illisible.
+
+Rendu par le comportement :
+
+| Comportement | Test d'intégration | Preuve rouge |
+|---|---|---|
+| découverte OAuth, 401 qui désigne les métadonnées | `DiscoveryTests` (×3) | M01, M02, M03 |
+| parcours CIBA → code → jeton → outil, droits du médecin relayés | `AuthorizationFlowTests.FullFlow_…` | M04 |
+| PKCE, clients et URL de retour, ressource | `AuthorizationFlowTests.Authorize_…` (×5 cas) | M05, M08, M09, M10, M19, M20 |
+| identité non liée, refus e-CPS, limitation par RPPS | `AuthorizationFlowTests.Login_…` (×3) | M06, M07, M11 |
+| rafraîchissement (session vivante ou morte, rotation stricte) | `AuthorizationFlowTests.Refresh_…`, `ReviewFindingsTests.RefreshToken_Rotates_…` | M12, M13, rouge sur l'ancien code |
+| code à usage unique, durée du jeton plafonnée | `ReviewFindingsTests` | M24, rouge sur l'ancien code |
+| trousseau chiffré, page qui nomme le client, journal des jetons | `ReviewFindingsTests` | rouge sur l'ancien code |
+| en-têtes bornés, sans contenu ni INS ; recherche sans extrait et bornée | `MailToolsTests.ListMessages_…`, `SearchMessages_…` (×2) | M14, M21, M22, M23, rouge sur l'ancien code |
+| erreurs d'api-mail traduites (codes réels, délai dépassé) | `MailToolsTests.ApiMailRefusal_…`, `OperatorRefusal_…`, `ApiMailTimeout_…` | M16, rouge sur l'ancien code |
+| lecture seule exacte | `MailToolsTests.EveryTool_Succeeds_…` | M17, M25, M26 |
+| aucun secret ni nom de dossier dans le jeton, les réponses ou les journaux | `MailToolsTests.DoctorCredentials_…`, `FolderNames_…` | M18, rouge sur l'ancien code |
+
+#### Suggestions (non bloquantes, pour la PR)
+
+- **N2** : journaliser au format `[Token]` les refus décidés par OpenIddict (code rejoué, `code_verifier` faux, jeton de
+  rafraîchissement réutilisé), par un gestionnaire sur `ApplyTokenResponseContext`.
+- **N3** : `/login` ouvert directement avec un client inconnu, ou une URL de retour non enregistrée, affiche le
+  `client_id` brut. Il faudrait rendre « Demande invalide » plutôt que le formulaire.
+- **N4** : le renouvellement du certificat de chiffrement rendrait illisibles le trousseau et les sessions en cours. Il
+  manque une option pour déclarer les anciens certificats, à traiter avec la task d'exploitation (S2, S3).
+- **S8** : un test du corps illisible (`JsonException`).
+
+#### Arbitrage humain
+
+- **N1 — rotation stricte du jeton de rafraîchissement** (`SetRefreshTokenReuseLeeway(TimeSpan.Zero)`). Une réponse de
+  rafraîchissement perdue, puis rejouée par le client, révoque toute l'autorisation : le médecin refait une connexion
+  e-CPS en pleine conversation. C'est conforme à la règle 7 de l'US et à OAuth 2.1. Recommandation de la forge : garder
+  le zéro, et revenir à un délai court (5 à 10 s, ancien jeton refusé au-delà) seulement si des reconnexions sont
+  constatées en usage réel.
+- Restent ouverts depuis le passage 2 : S2 (mandataire inverse et `ForwardedHeaders`), S3 (purge des sessions et des
+  jetons), S9 (performance sur une grosse boîte), et l'extrait de recherche à rouvrir avec task-479.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-478 --sync` — ne pas éditer à la main)*
@@ -351,7 +405,7 @@ boîte active), rotation de la session du proxy suivie.
 |---|---|---|---|---|---|---|
 | /start | ok | 16 s | — | — | — | — |
 | /develop | ok | 13 min 09 s | 50 (1 min 59 s) | 40 (9 min 28 s) | — | api-mcp 50B/40T |
-| /review-code | changes | 8 min 57 s | — | — | — | reprise 1 |
-| **Total cycle** | | **22 min 23 s** | **50 (1 min 59 s)** | **40 (9 min 28 s)** | **0 (0.0 s)** | |
+| /review-code | ok | 5 min 14 s | — | — | — | — |
+| **Total cycle** | | **18 min 40 s** | **50 (1 min 59 s)** | **40 (9 min 28 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : restore ×3 (8.5 s)
