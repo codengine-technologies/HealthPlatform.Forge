@@ -67,7 +67,7 @@
 
 - 4 outils MCP, tous en lecture seule.
 - 2 projets : serveur et tests.
-- 91 tests, dont 18 tests d'intégration.
+- 91 tests, dont 28 méthodes de test d'intégration (cas de théorie comptés une fois).
 
 ---
 
