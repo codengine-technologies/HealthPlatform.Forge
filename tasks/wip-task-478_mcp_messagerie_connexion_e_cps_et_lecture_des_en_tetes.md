@@ -1,6 +1,7 @@
 # todo-task-478 — Serveur MCP messagerie : connexion e-CPS et lecture des en-têtes
 
 **Repos**: api-mcp
+**Reprises**: 1
 **Dependencies**: aucune
 **Epic**: E026
 **EpicTitle**: Messagerie depuis un assistant IA (MCP)
@@ -251,6 +252,60 @@ Fait avant la panne :
   `ListMessages_ReturnsTheMostRecentHeaders_BoundedByThePageSize_WithoutContentOrIns` passe **rouge**, et l'arbre est
   restauré à l'identique.
 
+### Passage 2 (revue anticipée) — CHANGES REQUESTED (2026-11-13)
+
+Relecteur indépendant (sous-agent, revue sur `a2f459a`) : 4 bloquants, 10 suggestions. Les codes d'api-mail et la nature
+de l'extrait de recherche ont été vérifiés dans `Dtos/MailboxDto.cs` et `Dtos/SearchResultDto.cs`.
+
+Vérifié sain : liste blanche des redirections, PKCE S256 seul, `returnUrl` borné, antiforgery, cookies (`mcp_pending`
+Strict, identité de connexion à usage unique), aucun jeton du médecin dans le jeton MCP, garde de lecture seule
+effective, HTML encodé et CSP à nonce, règle 14 (api-mail appelé avec les droits du médecin, liaison de session par
+boîte active), rotation de la session du proxy suivie.
+
+#### À corriger par la reprise
+
+- **B1 — clé de chiffrement en clair à côté des jetons.** Le trousseau Data Protection est écrit dans la même base que
+  les `doctor_grants`, sans protection. Correctif : `ProtectKeysWithCertificate`, obligatoire hors
+  développement et tests (même garde que les certificats des jetons).
+- **B2 — messages d'erreur sur des codes inventés.** `ToolErrors` cherche « OPERATOR », alors qu'api-mail renvoie
+  `MAILBOX_ACCESS_REFUSED`. Le test unitaire stube un code qui n'existe pas. Correctif : correspondance exacte sur
+  `MAILBOX_NOT_ATTACHED`, `MAILBOX_ACCESS_REFUSED`, `MAILBOX_PSC_SESSION_REQUIRED` (session expirée) et
+  `MAILBOX_ACCESS_UNVERIFIED` (indisponible). Tests avec les codes réels, dont un en intégration, vus rouges.
+- **B3 — extraits du contenu envoyés à l'assistant.** `search_messages` relaie `Excerpt` (jusqu'à 200 caractères du
+  corps ou d'une pièce jointe), alors que l'US limite la v1 aux en-têtes et renvoie le contenu à task-479. Correctif :
+  retirer l'extrait de la vue, de la description de l'outil et du test ; un test affirme son absence.
+- **B4 — bornage de la recherche non prouvé.** Correctif : un test d'intégration qui demande plus que le plafond, lit
+  `maxResults` plafonné dans la requête reçue par api-mail et au plus `MaxSearchResults` résultats dans la réponse, vu
+  rouge par mutation.
+- Corrigés dans la même passe (défauts réels, règles déjà tranchées) :
+  - **S1** : le test de lecture seule se compare à `ApiMailRoutes.IsAllowed`, la fonction qu'il contrôle. Il faut une
+    liste attendue écrite en dur dans le test, et affirmer que chaque appel d'outil réussit.
+  - **S5** : le nom du dossier apparaît en clair dans les journaux (`AbsolutePath`) et dans le message de la garde. Il
+    faut journaliser le gabarit de route, car un dossier peut nommer un patient.
+  - **S6** : la page de connexion doit nommer le client IA et dire de ne continuer que si le médecin a lancé la
+    connexion lui-même.
+  - **S8** : un délai dépassé, un corps illisible ou une route refusée par la garde doivent donner le message
+    « momentanément indisponible », pas l'erreur générique du SDK.
+  - **S10** : la durée du jeton d'accès est à plafonner à 15 minutes (règle 7 de l'US) et le dossier virtuel des
+    brouillons à retirer de `list_folders`.
+  - **S4** : journaliser les jetons délivrés, rafraîchis et refusés, avec RPPS masqué, autorisation et `client_id`,
+    comme le promet la section Conformité.
+  - **S7** : affirmer en intégration que le code d'autorisation est à usage unique et que l'ancien jeton de
+    rafraîchissement est refusé après rotation.
+
+#### Arbitrage humain
+
+- **S2 — mandataire inverse devant le serveur.** Sans `ForwardedHeaders`, le plafond par IP devient global derrière
+  une entrée, et un TLS terminé en amont est refusé. La topologie de déploiement (entrée, proxies de confiance) n'est
+  pas fixée. Recommandation : `UseForwardedHeaders` avec la liste des proxies de confiance en configuration, à décider
+  avec le déploiement.
+- **S3 — purge des sessions et des jetons.** Les `doctor_grants` non consommés ou expirés, et les jetons OpenIddict, ne
+  sont jamais purgés. Recommandation : une task dédiée (échéance de la session alignée sur le jeton de
+  rafraîchissement, et purge périodique).
+- **S9 — performance sur une grosse boîte.** `list_messages` et `list_folders` lisent toutes les UID. Acceptable en v1,
+  à mesurer sur une boîte de 10 000 messages.
+- **Extrait de recherche (B3)** : s'il doit revenir, c'est avec task-479 (contenu tracé), après arbitrage DPO/RSSI.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-478 --sync` — ne pas éditer à la main)*
@@ -259,7 +314,7 @@ Fait avant la panne :
 |---|---|---|---|---|---|---|
 | /start | ok | 16 s | — | — | — | — |
 | /develop | ok | 52 min 31 s | 38 (1 min 25 s) | 30 (6 min 49 s) | — | api-mcp 38B/30T |
-| /review-code | failed | 1 h 00 min | — | — | — | relecteur indépendant indisponible : sous-agents en 403 Cloudflare (4 essais) |
-| **Total cycle** | | **1 h 53 min** | **38 (1 min 25 s)** | **30 (6 min 49 s)** | **0 (0.0 s)** | |
+| /review-code | changes | 8 min 57 s | — | — | — | reprise 1 |
+| **Total cycle** | | **1 h 01 min** | **38 (1 min 25 s)** | **30 (6 min 49 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : restore ×3 (8.5 s)
