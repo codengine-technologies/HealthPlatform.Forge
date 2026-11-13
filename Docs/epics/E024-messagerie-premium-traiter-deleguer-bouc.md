@@ -1,11 +1,11 @@
 # E024 — Messagerie premium : traiter, déléguer, boucler
 
-> **Statut** : ✅ 1 feature livrée et validée — les 12 autres features prévues ont été **retirées du backlog** le
-> 2026-11-12 (décision humaine : développements non engagés ; tasks 454 à 464 et 466 supprimées)
-> **Version** : 0.1
+> **Statut** : 🟡 en cours — 1 feature livrée et validée, 1 feature livrée en attente de validation humaine
+> (task-459), 6 features au backlog (tasks 454, 456, 457, 458, 462, 466)
+> **Version** : 0.3
 > **Auteur** : PO forge (task-453)
 > **Modèle** : task-driven
-> **Dernière mise à jour** : 2026-11-12
+> **Dernière mise à jour** : 2026-11-13
 > **Vue ingénierie** : [E024-Changelogs.md](E024-Changelogs.md)
 
 ---
@@ -73,6 +73,13 @@ disparaissent jamais parce que le message a été rangé ailleurs, depuis la pla
 | Fonctionnalité | Ce que le praticien peut faire | Tasks | Statut |
 |---|---|---|---|
 | Un acquittement ne disparaît jamais | Retrouver l'acquittement d'un compte rendu, sa note, son auteur et le patient rattaché à la main, même après que le message a été rangé depuis un autre logiciel, supprimé puis restauré, ou relu après un incident de la messagerie | task-453 | ✅ Livrée et validée |
+| « Vous avez répondu à ce message le… » | Savoir, en ouvrant un message, qu'on y a déjà répondu, ou qu'un collègue de la boîte l'a fait, quand et combien de fois ; ouvrir la réponse ; repérer d'une icône les messages répondus dans la liste | task-459 | 🟡 Livrée, en attente de validation humaine |
+| Marquer un message traité | — | task-454 | ⏳ Backlog |
+| Vues par nature : biologie, courriers, patients, pour info | — | task-456 | ⏳ Backlog |
+| « À traiter par » : attribuer un message dans la boîte | — | task-457 | ⏳ Backlog |
+| Notes internes sur un message | — | task-458 | ⏳ Backlog |
+| Sans réponse depuis N jours : relance | — | task-462 | ⏳ Backlog |
+| Date de début du suivi par boîte | — | task-466 | ⏳ Backlog |
 
 ---
 
@@ -150,14 +157,15 @@ restauré.
 
 ---
 
-## État de couverture (2026-11-12)
+## État de couverture (2026-11-13)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
 | Un acquittement ne disparaît jamais | ✅ Livrée et validée | 100 % | task-453 |
+| « Vous avez répondu à ce message le… » | 🟡 Livrée, en attente de validation humaine | 100 % (code) | task-459 |
+| Six features au backlog (454, 456, 457, 458, 462, 466) | ⏳ Backlog | 0 % | — |
 
-**Couverture EPIC consolidée : 100 %** de ce qui est retenu (1 feature livrée et validée). Les 12 autres features
-prévues ont été retirées du backlog le 2026-11-12, sans développement engagé.
+**Couverture EPIC consolidée : 2 features sur 8 livrées** (1 validée, 1 en attente du test humain).
 
 ---
 
@@ -169,12 +177,20 @@ prévues ont été retirées du backlog le 2026-11-12, sans développement engag
   webmail de l'opérateur, purgé puis relu après un incident de la messagerie, ou supprimé puis restauré, il revient
   avec son acquittement intact : action, note, auteur et heure d'origine. Il ne revient plus « à acquitter ». Le
   patient rattaché à la main à un document sans INS est retrouvé de la même façon (task-453).
+- **v0.3 — « Vous avez répondu à ce message le… ».** En ouvrant un message, le praticien voit s'il y a déjà été
+  répondu : « Vous avez répondu… », « {Prénom NOM} ({rôle}) a répondu… » quand c'est un collègue de la boîte, ou
+  « Une réponse a été envoyée… » quand la réponse est partie d'un autre logiciel. Le bandeau donne la date, l'heure et
+  le nombre de réponses, et « Voir la réponse » ouvre l'envoi. Une icône signale les messages répondus dans la liste,
+  avec la même information au survol ou à l'appui long. Les accusés de lecture et les rapports de distribution ne
+  comptent pas comme des réponses. Sur l'application web et sur l'application mobile (task-459).
 
 ### Conformité réglementaire
 
 - **v0.1 — Imputabilité.** Un acquittement qui revient garde l'auteur réel qui l'avait posé, délégataire compris. Le
   fait de le rendre au message est tracé au journal comme acte de la plateforme, sans personne, sans INS ni nom de
   patient, et conservé aussi longtemps que les autres accès aux données de santé (task-453).
+- **v0.3 — La réponse est imputée à la personne qui l'a écrite.** En boîte partagée, le bandeau nomme le délégataire
+  ou le membre qui a répondu, jamais la boîte ni le titulaire à sa place (task-459).
 
 ### Sécurité
 
@@ -187,6 +203,9 @@ prévues ont été retirées du backlog le 2026-11-12, sans développement engag
 - **v0.1 — Socle commun des traces de travail.** Le modèle qui protège l'acquittement est celui que suivront tous les
   états de travail de l'EPIC (traité, report, attribution, notes, suivis). Un parcours automatique supplémentaire
   vérifie désormais ce cas sur les deux applications (task-453).
+- **v0.3 — Drapeau « répondu » sur le serveur de messagerie.** Une réponse envoyée par la plateforme pose le drapeau
+  standard « répondu » sur le message d'origine, visible des autres logiciels. Un parcours automatique vérifie le
+  bandeau sur les deux applications (task-459).
 
 ---
 

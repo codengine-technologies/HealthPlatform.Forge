@@ -111,12 +111,42 @@
 - **Sonar** : 0 finding dans le diff. **E2E** : mobile 61, Angular 80 (mêmes 2 flaky), porte verte.
 
 
+### v0.3 — task-459 : bandeau « Vous avez répondu à ce message le… » (api-mail, dtos-mss, client-mobile, weda2)
+
+- **PRs** : api-mail [#369](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/369), dtos-mss
+  [#67](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/67), client-mobile
+  [#125](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/125) — label `awaiting-human-merge` ;
+  client-angular code-only (branche `feature/nova-mss-weda-integration`, 18 fichiers, git à la main de l'humain).
+- **Contrat** : `MailReplySummaryDto` (nombre, dernière date, auteur, « vous », emplacement de l'envoi) ;
+  `MailDto.Reply` absent du JSON quand nul (`WhenWritingNull` : une notification `EmailsEnriched` ne l'efface plus,
+  vu rouge sur 605), `MailDto.IsReport`. Paquet `HealthPlatform.Dtos.Mss` **606.0.0**.
+- **api-mail** : table `MailReplies` ancrée aux Message-ID (migration `20261113120000_AddMailReplies`, colonne
+  `Mails.IsReport`) ; auteur réel enregistré à l'envoi (`sendmail`, brouillon, confirmation hors ligne ; jamais
+  annule-et-remplace), jeton non annulable et enregistreur best-effort, enregistrement **avant** la mise en file de
+  l'archivage (l'archivage note l'emplacement de la copie) ; `\Answered` posé par `FlagPropagationService`
+  (`MarkAnswered`, rejeu hors ligne) ; résumé calculé par lecteur sur `GET …/emails/{ids}` en ligne et hors ligne
+  (réponses par `In-Reply-To` ou dernier `References`, dossier Envoyés par nom ou SPECIAL-USE, rapports exclus) ;
+  `HasReplies` du fil hors rapports.
+- **Clients** : bandeau `mss-reply-banner` (trois libellés, « Voir la réponse », nombre) et icône
+  `mail-replied-{uid}` sur la ligne, dans weda2 et le mobile ; rafraîchissement du message d'origine après l'envoi.
+- **Tests** : 12 tests d'intégration bout en bout `ReplyBannerEndToEndTests` (titulaire, délégataire, accusé de
+  lecture, autre logiciel, brouillon, `References` seul, hors ligne, SPECIAL-USE, annule-et-remplace, fil, envoi
+  confirmé, dépôt), mutations M1–M7, Ra–Rfg, S7a/b toutes rouges ; scénario **E2E-DETAIL-006** v1, mobile et Angular.
+- **Revue** : 3 passages de revue anticipée (B1 annulation après envoi, B2 six routes sans test 1b, N1 ordre
+  archivage/enregistrement né du correctif B1), 2 reprises, puis APPROVED. Arbitrages ouverts A1–A5 (liste par
+  étiquette et recherche sans bandeau, `\Answered` limité aux messages en base, réponse par copie jamais « Vous »,
+  coût du chemin chaud, suppression de brouillon annulable).
+- **Sonar** : 0 finding de la task, couverture des fichiers ≥ 95 %, QG ERROR hérité. **E2E** : mobile 62 verts,
+  Angular 80 (3 flaky récurrents hors task), porte verte.
+
 ### Retrait des tasks 454 à 466 (2026-11-12, décision humaine)
 
 - **Décision** : l'humain ne souhaite pas engager ces développements. Les task files `todo` 454 à 464 et 466, et
   le task file archivé de task-465 (déjà annulée), sont **supprimés sans archivage**.
 - **Rien à défaire dans le code** : aucune branche, aucune PR, aucun commit applicatif n'existait pour ces tasks.
 - **Reste de l'EPIC** : task-453, livrée.
+- **Correction (2026-11-13)** : les task files `todo` 454, 456, 457, 458, 462 et 466 sont toujours présents dans
+  `tasks/`, et task-459 a été relancée puis livrée le 2026-11-13. Le backlog de l'EPIC compte donc six tasks.
 
 ### Annulation de task-465 (2026-11-12, décision humaine)
 
@@ -147,13 +177,19 @@
 | `api-mail/src/Infrastructure/Migrations/MailDb/20261111120000_AnchorDocumentWorkStates.cs` | schéma (sans reprise de données) | task-453 |
 | `dtos-mss/AuditActionType.cs` (70, 71) | actes système de re-liaison | task-453 |
 | `api-mail/tests/mss.mail.e2e/E2eMessage.cs` | `message --move`, `--kind bio-hprim` | task-453 |
+| `api-mail/src/Domain/Rules/MailReplySummaries.cs` | règle : qu'est-ce qu'une réponse, qui l'a écrite | task-459 |
+| `api-mail/src/Infrastructure/Repositories/MailDb/MailReplyRepository.cs` | trace et lecture des réponses | task-459 |
+| `api-mail/src/Application/Services/Implementation/MailReplyRecorder.cs` | auteur réel à l'envoi, `\Answered` | task-459 |
+| `api-mail/src/Infrastructure/Migrations/MailDb/20261113120000_AddMailReplies.cs` | schéma `MailReplies`, `Mails.IsReport` | task-459 |
+| `dtos-mss/MailReplySummaryDto.cs` | contrat du résumé de réponse | task-459 |
+| `client-mobile` + weda2 `reply-banner` | bandeau et icône « répondu » | task-459 |
 
 ---
 
-## Annexe B — Inventaire fonctionnel daté (2026-11-12)
+## Annexe B — Inventaire fonctionnel daté (2026-11-13)
 
-- Tasks de l'EPIC : 14 (1 `archived`, 1 annulée, 12 `todo`).
-- Scénarios e2e de l'EPIC au catalogue : 1 (E2E-BIO-004).
+- Tasks de l'EPIC : 1 `archived` (453), 1 `done` (459), 6 `todo` (454, 456, 457, 458, 462, 466), 1 annulée (465).
+- Scénarios e2e de l'EPIC au catalogue : 2 (E2E-BIO-004, E2E-DETAIL-006).
 
 ---
 
@@ -162,4 +198,5 @@
 | Task | Contribution | État |
 |---|---|---|
 | task-453 | Ancrage des acquittements et du rattachement manuel à l'identité stable du document ; re-liaison ; modèle imposé aux tasks 454 à 463 | `archived` (PRs #364, #63, #123) |
+| task-459 | Bandeau « Vous avez répondu à ce message le… » : trace `MailReplies`, résumé par lecteur, `\Answered`, bandeau et icône sur les deux clients | `done` (PRs #369, #67, #125) |
 | task-465 | Mesure de la charge et de l'usage — **annulée** le 2026-11-12 (décision humaine, reprise hors API par un cron job) | annulée (PRs #366, #64 fermées) |

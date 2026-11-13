@@ -682,6 +682,7 @@ Aucun bloquant.
 | /lint-mobile | ok | 1 min 34 s | — | — | — | — |
 | /e2e | ok | 27 min 52 s | — | — | — | e2e ×3 (26 min 17 s) |
 | /review | ok | 3 min 02 s | 1 (5.2 s) | — | — | dtos-mss 1B/0T |
-| **Total cycle** | | **1 h 31 min** | **22 (10 min 51 s)** | **24 (1 h 11 min)** | **4 (6 min 55 s)** | |
+| /tech-writer | ok | 1 min 22 s | — | — | — | — |
+| **Total cycle** | | **1 h 32 min** | **22 (10 min 51 s)** | **24 (1 h 11 min)** | **4 (6 min 55 s)** | |
 
 Autres commandes mesurées : lint ×3 (2 min 06 s), nuget-wait ×2 (31 s), restore ×2 (15 s)
