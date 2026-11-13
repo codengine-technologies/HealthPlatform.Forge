@@ -235,6 +235,22 @@ Il faut aussi un RPPS de test e-CPS du bac à sable, avec l'application e-CPS de
   - Python sous Windows : `subprocess.run(["bash", …])` lance le bash WSL de System32 (18 « BUILD KO » sans erreur de compilation) : consigné en mémoire de session.
 - Next step : /review task-478 --code
 
+## Code Review Summary
+
+### Passage 1 (revue anticipée) — INTERROMPU (panne d'outillage, 2026-11-13)
+
+Revue de code indépendante (étape 5) **non faite** : le relecteur (sous-agent) a échoué trois fois avant tout constat,
+sur `API Error: 403 Attention Required! | Cloudflare (authentication_failed)`. Deux essais avec claude-opus-5-5, un avec
+claude-sonnet-5-5. Aucun verdict n'est rendu. Voir `questions/task-478.md`.
+
+Fait avant la panne :
+- **4b** : non applicable, aucun parcours médecin sur `client-mobile` ni `client-angular`, aucun dépôt de voie touché.
+- **4a (règle 1b)** : chaque comportement atteignable par un endpoint a un test d'intégration sur la vraie pile, avec sa
+  preuve rouge par mutation (table M01 à M20 du `## Develop log`). Le contrôle a trouvé un trou : la borne de page de
+  `list_messages` n'avait pas de preuve propre. **M21** (plafond retiré, `Math.Max(1, limit)`) a été ajoutée :
+  `ListMessages_ReturnsTheMostRecentHeaders_BoundedByThePageSize_WithoutContentOrIns` passe **rouge**, et l'arbre est
+  restauré à l'identique.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-478 --sync` — ne pas éditer à la main)*
@@ -242,7 +258,8 @@ Il faut aussi un RPPS de test e-CPS du bac à sable, avec l'application e-CPS de
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 16 s | — | — | — | — |
-| /develop | ok | 52 min 31 s | 36 (1 min 21 s) | 29 (6 min 37 s) | — | api-mcp 36B/29T |
-| **Total cycle** | | **52 min 47 s** | **36 (1 min 21 s)** | **29 (6 min 37 s)** | **0 (0.0 s)** | |
+| /develop | ok | 52 min 31 s | 38 (1 min 25 s) | 30 (6 min 49 s) | — | api-mcp 38B/30T |
+| /review-code | failed | 1 h 00 min | — | — | — | relecteur indépendant indisponible : sous-agents en 403 Cloudflare (4 essais) |
+| **Total cycle** | | **1 h 53 min** | **38 (1 min 25 s)** | **30 (6 min 49 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : restore ×3 (8.5 s)
