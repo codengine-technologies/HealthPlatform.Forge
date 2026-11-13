@@ -288,6 +288,21 @@ Commits : `dtos-mss` 957b28a (publié 607.0.0, CI #607), `api-mail` 267e9ca2 (bu
 
 Baseline : dernière analyse du projet avant la task (2026-11-12) ; new code = 30 derniers jours.
 
+## Lint log
+
+### client-angular (`/lint-angular`)
+- Commande : `npx nx affected -t lint --base=origin/next --head=HEAD --parallel=3 --projects=tag:scope:mss` (13 projets).
+- Baseline : **0 erreur**, avertissements seulement (préexistants : `max-lines`, `jsdoc/require-example` hors des
+  lignes ajoutées, vérifié ligne à ligne pendant `/develop`).
+- Itérations : 0 — rien à corriger ; pas d'auto-fix (il reformaterait du code hors de la task). Arbre inchangé.
+- Build / tests : vert de `/develop` réutilisé (`nx build weda2`, `nx test weda2` 2 683, `nx test mss-lib` 1 648).
+- Code-only : aucune opération git d'écriture.
+
+## Lint mobile log
+
+- `npm run lint` sur `feat/task-466-date-de-debut-du-suivi-par-boite` (95e6dc1) : **All files pass linting**.
+- Itérations : 0 — rien à corriger, aucun commit. Build / tests : vert de `/develop` réutilisé (Karma 1 430/1 430).
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -373,6 +388,8 @@ au 2026-11-13 (branche `feature/nova-mss-weda-integration`, base ce7741dd).
 | /develop | ok | 41 min 32 s | 13 (2 min 56 s) | 25 (42 min 21 s) | — | dtos-mss 2B/0T, api-mail 6B/17T, client-angular 2B/5T, client-mobile 3B/3T |
 | /review-code | ok | 7 min 15 s | — | — | — | — |
 | /sonar | ok | 23 min 28 s | 2 (1 min 19 s) | 12 (16 min 52 s) | 4 (1 min 35 s) | 2 itération(s), api-mail 2B/12T |
-| **Total cycle** | | **1 h 12 min** | **15 (4 min 15 s)** | **37 (59 min 13 s)** | **4 (1 min 35 s)** | |
+| /lint-angular | ok | 56 s | — | — | — | 0 erreur, rien à corriger |
+| /lint-mobile | ok | 13 s | — | — | — | 0 erreur |
+| **Total cycle** | | **1 h 14 min** | **15 (4 min 15 s)** | **37 (59 min 13 s)** | **4 (1 min 35 s)** | |
 
-Autres commandes mesurées : nuget-wait ×2 (38 s), restore ×2 (7.1 s)
+Autres commandes mesurées : lint ×2 (42 s), nuget-wait ×2 (38 s), restore ×2 (7.1 s)
