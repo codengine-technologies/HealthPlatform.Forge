@@ -520,6 +520,28 @@ entièrement automatisé, comme `api-mail` : branche, commit, push, PR, passe qu
   CIBA e-CPS à travers psc-auth-proxy (`/auth/connect` puis `/auth/keycloak-exchange`, comme
   `client-mobile`). Le jeton remis au client IA n'est valable que pour `api-mcp`. Le jeton
   Keycloak ne sort jamais du serveur.
+- **La forge suit le contrat qu'api-mcp consomme** (depuis le 2026-11-13, demande humaine). api-mcp lit
+  api-mail sans dépendance NuGet : un changement d'api-mail ou de dtos-mss ne le casse pas à la
+  compilation, mais peut lui retirer un champ, une route ou un code d'erreur sans que rien ne rougisse.
+  - **Outil** : `python Tools/contracts/mcp_impact.py check`. Il déduit la surface consommée **du code
+    d'api-mcp** (`ApiMailContracts.cs`, `ApiMailRoutes.cs`) et la compare à ce que la branche change dans
+    api-mail et dtos-mss, par rapport à `origin/develop`. Il remonte les champs lus qui disparaissent ou
+    changent de type, les routes appelées qui disparaissent, une énumération décodée par rang qui change,
+    un code d'erreur, un en-tête ou un cookie retiré, et la forme du JSON modifiée. Sorties : 0 aucun
+    impact, 1 impact (raisons listées), 2 erreur d'outil (surface introuvable sur `origin/develop` : un
+    analyseur est périmé, jamais un feu vert silencieux). `surface` affiche ce qu'api-mcp consomme.
+    Tests : `python -m unittest Tools/contracts/test_mcp_impact.py`.
+  - **`/po`** liste `api-mcp` dans les `**Repos**` d'une US qui touche cette surface.
+  - **`/develop`** joue `check` après le code d'api-mail et de dtos-mss (Step 4c). Impact → `api-mcp` entre
+    dans la task : sa branche est créée **paresseusement**, comme celle de dtos-mss (seuls ces deux dépôts
+    reçoivent une branche sans être listés au `/start`), le champ `**Repos**` est complété, api-mcp est
+    adapté (contrats locaux, simulations WireMock, tests vus rouges) et sa suite rejouée.
+  - **`/review`** joue `check` (étape 4c, en `--code` comme en validation finale). Un impact sans branche
+    api-mcp adaptée est un **CHANGES REQUESTED corrigeable**. La PR api-mcp se merge **avec** la PR
+    api-mail (US complète, règle 11), et après elle (ordre de `/merge`).
+  - **Limite assumée** : psc-auth-proxy et Keycloak sont hors forge. Un changement de leurs contrats
+    (`/auth/connect`, `/auth/keycloak-exchange`, `/auth/refresh`, codes `PROXY-*`) reste à reporter à la
+    main dans api-mcp.
 - **Chaîne** : `/sonar` ne couvre qu'`api-mail` et `/e2e` n'a pas de voie `api-mcp`. Ces deux
   étapes skippent donc proprement. Le filet de la règle 1b passe par les tests d'intégration
   d'`api-mcp` : vraie pile HTTP MCP, avec api-mail et les proxies simulés comme fournisseurs

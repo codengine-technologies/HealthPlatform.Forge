@@ -174,8 +174,10 @@ Reasoning :
 - Backend before frontend so the frontend test phase can hit the new contract.
 
 If a repo isn't listed in `**Repos**:`, skip it — **sans exception** depuis le
-2026-09-16. Seul `dtos-mss` peut recevoir une branche sans être listé, et c'est
-l'étape 2 qui la crée, uniquement si un contrat change.
+2026-09-16. Seuls `dtos-mss` et `api-mcp` peuvent recevoir une branche sans être
+listés : l'étape 2 crée celle de `dtos-mss`, uniquement si un contrat change ;
+l'étape 4c crée celle d'`api-mcp`, uniquement si `mcp_impact.py check` détecte
+un impact.
 
 ### §Q — Passe qualité intégrée (`/simplify`) — spec commune
 
@@ -577,6 +579,41 @@ For each backend repo listed, in order :
    ```bash
    git -C {repo-path} push origin feat/{task-id}-{slug}
    ```
+
+### Step 4c — api-mcp, consommateur d'api-mail (depuis le 2026-11-13)
+
+api-mcp lit api-mail sans dépendance NuGet : rien ne rougit à la compilation quand api-mail ou
+dtos-mss lui retire ce qu'il lit. Après le code d'api-mail et de dtos-mss (commité ou non) :
+
+```bash
+python Tools/contracts/mcp_impact.py check
+```
+
+- **0 (aucun impact)** : une ligne dans le `## Develop log` (« api-mcp : aucun impact »), et on continue.
+- **2 (erreur d'outil)** : surface introuvable sur `origin/develop`. Un analyseur ou une déclaration de
+  l'outil est périmé. Fail-fast : `questions/{task-id}.md`, avec la sortie de l'outil. On ne conclut
+  jamais à « aucun impact ».
+- **1 (impact)** : api-mcp entre dans la task.
+  1. **Branche paresseuse**, comme dtos-mss, si api-mcp n'est pas déjà listé :
+     ```bash
+     cd Api/Mcp
+     git fetch origin develop
+     git checkout -b feat/{task-id}-{slug} origin/develop    # ou checkout de la branche existante
+     git push -u origin feat/{task-id}-{slug}
+     ```
+     Ajouter `api-mcp` au champ `**Repos**:` et une ligne à `## Branches` (« créée par /develop :
+     impact détecté par mcp_impact »), en citant les raisons de l'outil.
+  2. **Adapter api-mcp**, test d'abord, comme tout backend (Step 4) :
+     - les contrats locaux (`ApiMail/ApiMailContracts.cs`) et les routes (`ApiMailRoutes.cs`) ;
+     - les simulations WireMock des tests (`tests/…/Infrastructure/Stubs.cs`), qui doivent reproduire le
+       **nouveau** contrat d'api-mail : un test qui simule l'ancien contrat reste vert et ment ;
+     - les traductions d'erreur (`Tools/ToolErrors.cs`) quand un code change.
+
+     Chaque comportement modifié est prouvé par un test d'intégration vu rouge (règle 1b).
+  3. Build + suite complète d'api-mcp, passe qualité §Q, push, puis vert marqué
+     (`green.py mark --repo api-mcp`).
+  4. Rejouer `mcp_impact.py check` : il doit toujours lister l'impact, puisque api-mail change bel et
+     bien. Le `## Develop log` dit, pour chaque raison, comment api-mcp y répond.
 
 ### Step 5 — Implement on frontends (`client-blazor`, `client-angular`, `client-mobile`)
 

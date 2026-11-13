@@ -107,6 +107,10 @@ Tools/loadtest-findings/__pycache__/
 !Tools/green/
 !Tools/green/**
 Tools/green/__pycache__/
+# Impact d'une task sur api-mcp (Tools/contracts/mcp_impact.py) : la forge suit le contrat qu'api-mcp consomme.
+!Tools/contracts/
+!Tools/contracts/**
+Tools/contracts/__pycache__/
 
 # The ledger is the forge's measurement journal (committed, append-only).
 # The .state/ markers are machine-local run state and must never be tracked.

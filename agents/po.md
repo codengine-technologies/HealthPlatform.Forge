@@ -451,6 +451,12 @@ See tests/Features/Auth/Authentication.feature
 - No `back-`, `front-blazor-`, `front-angular-` prefixes — the task is
   **layer-agnostic** because it spans all layers by default
 
+**Serveur MCP** : `api-mcp` lit api-mail (boîtes, dossiers, en-têtes, recherche) par des contrats
+locaux. Toute US qui retire ou change un champ, une route, un code d'erreur ou un en-tête de ce qu'il
+lit liste `api-mcp` dans ses `**Repos**:`, avec une ligne de DoD « api-mcp adapté, sa suite verte ».
+La surface exacte s'affiche par `python Tools/contracts/mcp_impact.py surface`. En cas d'oubli,
+`/develop` l'ajoute de lui-même (CLAUDE.md, « La forge suit le contrat qu'api-mcp consomme »).
+
 **Mobile frontend** : `client-mobile` (Ionic/Angular mobile messaging client)
 is an **opt-in** frontend — list it in `**Repos**:` whenever the US impacts
 the mobile app. It is **not** auto-added by the paired-frontend safety net

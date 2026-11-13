@@ -17,6 +17,7 @@ Run **only** these steps of the playbook below, on the diff of every touched rep
 
 - **4a** — integration-test lock (rule 1b) : behaviour → test → red proof, read in the
   `## Develop log` ;
+- **4c** — impact on api-mcp (`mcp_impact.py check`), as written in step 4c below ;
 - **4b, DOD clause only** — the journey scenario is in the catalog diff, at the version the
   tests declare (the `## E2E log` does not exist yet : it is checked by the final mode) ;
 - **5** — the code review (5.1 to 5.6), by an **independent reviewer** (a sub-agent handed
@@ -157,6 +158,18 @@ In autonomous mode (`/develop` upstream) this halts the chain ; in
       Api/Mail/e2e/scenarios.yml, et implémenté dans chaque client où il est requis » is checked
       like any other : the scenario is in the catalog diff, at the version the tests declare.
       The `/e2e` warning « parcours touchés sans spec e2e modifié » is the evidence to read.
+
+4c. **Impact on api-mcp** (since 2026-11-13, CLAUDE.md « La forge suit le contrat qu'api-mcp
+    consomme »). Run `python Tools/contracts/mcp_impact.py check` from the workspace root, with
+    api-mail and dtos-mss on the task branches.
+    - **0** : write « api-mcp : aucun impact » in the `## Code Review Summary`.
+    - **2** : tooling failure (a parser or declaration is stale) → validation FAILS :
+      `questions/{task-id}.md` with the tool output. Never read it as « no impact ».
+    - **1** : the task MUST carry an `api-mcp` branch (`## Branches`) whose diff answers **each**
+      listed reason (local contracts, WireMock stubs reproducing the new contract, tests seen red),
+      with its suite green. Otherwise → **CHANGES REQUESTED, corrigeable** : « api-mcp non adapté :
+      {reasons} », handled by `/develop --reprise` (Step 4c). The api-mcp PR is opened with the others,
+      cross-linked, and merged **after** the api-mail one, in the same US (rule 11).
 
 5. **Code Review** — review the diff on each repo like a second developer.
 
