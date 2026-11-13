@@ -44,26 +44,26 @@ Règles :
 
 ## Definition of Done
 
-- [ ] Contrat : dernière réponse (date, auteur connu ou non, identifiant du message envoyé) et nombre de réponses dans
+- [x] Contrat : dernière réponse (date, auteur connu ou non, identifiant du message envoyé) et nombre de réponses dans
       `MailDto` ; paquet DTO publié.
-- [ ] Auteur de la réponse établi par la trace `MailReply` (personne réelle) ou l'en-tête `Sender` ; jamais la boîte
+- [x] Auteur de la réponse établi par la trace `MailReply` (personne réelle) ou l'en-tête `Sender` ; jamais la boîte
       quand l'auteur réel est connu (règle 14).
-- [ ] Tests unitaires : réponse par `In-Reply-To`, réponse par `References` seul, accusé de lecture exclu, rapport de
+- [x] Tests unitaires : réponse par `In-Reply-To`, réponse par `References` seul, accusé de lecture exclu, rapport de
       distribution exclu, deux réponses, auteur inconnu.
-- [ ] **Test d'intégration de bout en bout (règle 1b)** sur `GET api/v1/Mail/folders/{f}/emails/{ids}` :
+- [x] **Test d'intégration de bout en bout (règle 1b)** sur `GET api/v1/Mail/folders/{f}/emails/{ids}` :
       - après une réponse envoyée par la plateforme (GreenMail et Dovecot), le message d'origine expose la date, la
         personne et le nombre de réponses, et porte `\Answered` côté IMAP ;
       - cas d'échec : un accusé de lecture entrant portant `In-Reply-To` ne crée **pas** de réponse.
       Vu rouge.
-- [ ] **Deux personnes sur la même boîte** : le délégataire répond ; le titulaire lit « {délégataire} (délégataire) a
+- [x] **Deux personnes sur la même boîte** : le délégataire répond ; le titulaire lit « {délégataire} (délégataire) a
       répondu ».
-- [ ] Tests de composant (weda2 et mobile), vus rouges par mutation : les trois libellés, « Voir la réponse »,
+- [x] Tests de composant (weda2 et mobile), vus rouges par mutation : les trois libellés, « Voir la réponse »,
       plusieurs réponses, icône dans la liste.
-- [ ] **Scénario e2e** `E2E-DETAIL-006` v1, mobile et angular requis, vu rouge : répondre à un message, revenir sur le
+- [x] **Scénario e2e** `E2E-DETAIL-006` v1, mobile et angular requis, vu rouge : répondre à un message, revenir sur le
       message d'origine, le bandeau « Vous avez répondu à ce message le … » est là, et « Voir la réponse » ouvre
       l'envoi.
-- [ ] `data-testid`, conventions de libellés, aucune donnée de santé dans les libellés ni les logs.
-- [ ] Build et tests verts (api-mail, Dtos, weda2, mobile) ; client-angular : code-only.
+- [x] `data-testid`, conventions de libellés, aucune donnée de santé dans les libellés ni les logs.
+- [x] Build et tests verts (api-mail, Dtos, weda2, mobile) ; client-angular : code-only.
 
 ## Manual Test Plan
 
@@ -497,6 +497,34 @@ Scénario de la task : **E2E-DETAIL-006 v1** — ✅ mobile, ✅ angular.
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
 
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/369 — label `awaiting-human-merge`
+- `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/67 — label `awaiting-human-merge` (paquet 606.0.0)
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/125 — label `awaiting-human-merge`
+- `client-angular` : code-only — humain gère commit/push TFS et ouverture PR (branche `feature/nova-mss-weda-integration`).
+  Liste des fichiers modifiés :
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`
+  - `front/e2e/mss-e2e/support/e2e-backend.ts`
+  - `front/front/libs/mss/src/core/utils/reply-summary.util.spec.ts`
+  - `front/front/libs/mss/src/core/utils/reply-summary.util.ts`
+  - `front/front/libs/mss/src/features/mail/components/mail-detail/mail-detail.reply-banner.spec.ts`
+  - `front/front/libs/mss/src/features/mail/components/mail-header/mail-header.reply.spec.ts`
+  - `front/front/libs/mss/src/features/mail/components/reply-banner/reply-banner.component.html`
+  - `front/front/libs/mss/src/features/mail/components/reply-banner/reply-banner.component.scss`
+  - `front/front/libs/mss/src/features/mail/components/reply-banner/reply-banner.component.ts`
+  - `front/libs/mss/src/core/models/mail.model.ts`
+  - `front/libs/mss/src/features/mail/components/mail-compose/mail-compose.component.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-compose/mail-compose.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-header/mail-header.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-header/mail-header.component.scss`
+  - `front/libs/mss/src/features/mail/components/mail-header/mail-header.component.ts`
+  - `front/libs/mss/src/features/mail/services/mail-event.service.ts`
+  - `front/libs/mss/src/features/mail/services/mail-state.service.spec.ts`
+  - `front/libs/mss/src/features/mail/services/mail-state.service.ts`
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -611,6 +639,35 @@ Aucun bloquant.
 
 **Arbitrages humains ouverts** : A1–A5 (passages 1 et 2), à trancher au merge.
 
+### Passage 4 (validation finale) — APPROVED
+
+- **Build + tests** : vert de /sonar réutilisé (api-mail `444416e8`) ; vert de /develop réutilisé (client-mobile
+  `b2a9a011`) ; vert de /lint-angular réutilisé (client-angular, arbre de la task sur `ce7741dd`) ; dtos-mss rejoué
+  (`dotnet build`, 0 erreur, 0 avertissement ; pas de tests) et marqué.
+- **Diff depuis l'approbation** : api-mail `b87aa7cf..444416e8` — tests seulement (couverture Sonar : 8 unitaires de
+  la règle, 1 d'intégration du dépôt sur PostgreSQL, CA1861 réglé par un champ `static readonly`) ✅ ;
+  client-angular — fins de ligne ramenées à CRLF dans 3 fichiers et une signature du support e2e coupée à 80 colonnes,
+  formatage seul ✅ ; dtos-mss et client-mobile inchangés ✅.
+- **Verrou 4a (règle 1b)** — chaque comportement atteignable a son test d'intégration bout en bout, vu rouge :
+
+  | Comportement | Test (`ReplyBannerEndToEndTests`) | Preuve rouge |
+  |---|---|---|
+  | `GET …/emails/{ids}` : nombre, date, auteur, « vous », emplacement | `TheHolderReplies…`, `TheDelegateReplies…`, `AReplyFromAnotherSoftware…` | M1, M3, M5, M6 |
+  | `POST sendmail` pose `\Answered` (Dovecot) | `TheHolderReplies…` | M4 |
+  | Accusés et rapports exclus | `AReadReceiptCarryingInReplyTo…` | M7 |
+  | Réponse par `References` seul | `AReplyCarryingOnlyReferences_IsCounted` | Ra |
+  | Lecture hors ligne | `ReadOffline_TheOriginalStillTellsWhoReplied` | Rb |
+  | Envoyés reconnu par SPECIAL-USE seul | `AReplyFiledInASentFolderKnownOnlyBySpecialUse_IsCounted` | Rc |
+  | Annule et remplace : jamais une réponse | `ACancelAndReplace_IsNeverAReplyToTheMessageItCancels` | Rd1, Rd2 |
+  | `GET thread/{messageId}` : `HasReplies` hors rapports | `TheThreadOfAMessageOnlyAcknowledgedByAReadReceipt_HasNoReplies` | Re |
+  | `POST pending-emails/{id}/send` enregistre la réponse | `AReplySetAsideWithoutTheCard_ThenConfirmed_IsRecorded` | Rfg |
+  | `POST drafts/{id}/send` enregistre la réponse | `AReplySentFromItsDraft_IsRecordedTheSameWay` | Rfg |
+  | Notification d'enrichissement sans `reply: null` | `AnEnrichmentNotification_CarriesNoNullReply_AndKeepsARealOne` | contrat 605 |
+
+- **Verrou 4b** : `## E2E log` vert ; `E2E-DETAIL-006` v1 au catalogue, ✅ mobile et ✅ angular.
+- **DOD** : 9/9 cochés (preuves au `## Develop log`).
+- **Verdict** : APPROVED — 0 bloquant. Suggestions du passage 3 et arbitrages A1–A5 recopiés dans les PRs.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-459 --sync` — ne pas éditer à la main)*
@@ -624,6 +681,7 @@ Aucun bloquant.
 | /lint-angular | ok | 8 min 48 s | 1 (46 s) | 1 (1 min 28 s) | — | 1 itération(s), client-angular 1B/1T |
 | /lint-mobile | ok | 1 min 34 s | — | — | — | — |
 | /e2e | ok | 27 min 52 s | — | — | — | e2e ×3 (26 min 17 s) |
-| **Total cycle** | | **1 h 28 min** | **21 (10 min 45 s)** | **24 (1 h 11 min)** | **4 (6 min 55 s)** | |
+| /review | ok | 3 min 02 s | 1 (5.2 s) | — | — | dtos-mss 1B/0T |
+| **Total cycle** | | **1 h 31 min** | **22 (10 min 51 s)** | **24 (1 h 11 min)** | **4 (6 min 55 s)** | |
 
 Autres commandes mesurées : lint ×3 (2 min 06 s), nuget-wait ×2 (31 s), restore ×2 (15 s)
