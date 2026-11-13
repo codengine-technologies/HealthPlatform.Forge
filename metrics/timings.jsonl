@@ -9909,3 +9909,5 @@
 {"ts":"2026-11-13T15:01:31+01:00","run_id":"-","type":"step","task":"task-459","step":"review","status":"ok","note":"","iterations":null,"duration_ms":182202}
 {"ts":"2026-11-13T15:02:01+01:00","run_id":"-","type":"step_start","task":"task-459","step":"tech-writer"}
 {"ts":"2026-11-13T15:03:24+01:00","run_id":"-","type":"step","task":"task-459","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":82243}
+{"ts":"2026-11-13T16:25:49+01:00","run_id":"-","type":"step_start","task":"task-459","step":"merge"}
+{"ts":"2026-11-13T16:27:15+01:00","run_id":"-","type":"step","task":"task-459","step":"merge","status":"failed","note":"PRs api-mail et mobile en conflit avec develop (task-466)","iterations":null,"duration_ms":85750}
