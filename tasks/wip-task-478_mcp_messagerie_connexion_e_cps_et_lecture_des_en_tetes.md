@@ -187,3 +187,62 @@ Il faut aussi un RPPS de test e-CPS du bac à sable, avec l'application e-CPS de
 ## Branches
 - `api-mcp` (pushed) : feat/task-478-mcp-messagerie-connexion-e-cps-et — https://github.com/codengine-technologies/HealthPlatform.Api.Mcp/tree/feat/task-478-mcp-messagerie-connexion-e-cps-et
 - Pré-flight limité à `api-mcp` (champ **Pré-flight**, décision humaine du 2026-11-13) : `api-mail`, `client-mobile`, `dtos-mss` sur feat/task-466, ni contrôlés ni touchés.
+
+## Develop log
+
+- Repos touched : api-mcp (seul — pré-flight limité, décision humaine du 2026-11-13)
+- DTOs published : no DTO change (api-mcp lit api-mail par des contrats locaux minimaux : un champ non déclaré n'est jamais relayé, en particulier l'INS de `MailDto`)
+- Interop published : no interop change
+- Commits (api-mcp, branche `feat/task-478-mcp-messagerie-connexion-e-cps-et`, poussée) :
+  - `0397b4a` feat(mcp): serveur MCP messagerie — connexion CIBA e-CPS et lecture des en-têtes
+  - `f8ec587` fix(mcp): versionne le dossier Tools, ignoré par la règle « tools/ » du .gitignore
+  - `a2f459a` refactor(mcp): simplify pass (/simplify)
+- Local build / test : ✓ `dotnet build` 0 erreur (TreatWarningsAsErrors), `dotnet test` 74/74 (12 tests d'intégration, 62 unitaires), total vérifié, aucun FATAL
+- Migration (règle 7c) : `InitialCreate` relue — 6 tables créées (OpenIddict ×4, `doctor_grants`, `DataProtectionKeys`), 6 suppressions dans `Down`, `.Designer.cs` et snapshot présents, `has-pending-model-changes` : aucune dérive
+- Passe qualité (/simplify) : 4 relectures (réutilisation, simplification, efficacité, altitude)
+  - Applied & committed : api-mcp, 18 fichiers (`a2f459a`) — helpers HTTP partagés, scopes et GrantId en une définition, verrous de rafraîchissement en tableau fixe (fuite du dictionnaire statique), session gardée le temps de la requête, test d'existence sans déchiffrement, `PendingLogin` immuable, constantes du parcours de connexion
+  - Re-validation : **rouge d'abord** — un remplacement global a rendu `AddSessionCookie` récursif (dépassement de pile, « Passed! 54/74 » + FATAL) ; corrigé, puis 74/74
+  - Écartés (changeraient le comportement, laissés à /review) : purge des jetons OpenIddict et des `doctor_grants` révoqués ; `TaskCanceledException` du délai d'api-mail non traduite en erreur d'outil ; rafraîchissements concurrents sans double vérification ; en-têtes de la recherche lus en série ; double lecture de configuration (`Get<T>()` + `Configure<T>`), qui impose `UseSetting` dans la fixture
+- Preuves rouges (règle 1b) — 20 mutations injectées dans le code de production, toutes **rouges**, restaurées, build final OK :
+
+  | Mutation | Test d'intégration vu rouge |
+  |---|---|
+  | M01 challenge sans `resource_metadata` | `DiscoveryTests.PostMcp_WithoutToken_Returns401PointingToResourceMetadata` |
+  | M02 `/mcp` sans autorisation | `DiscoveryTests.PostMcp_WithKeycloakTokenPresentedDirectly_Returns401` |
+  | M03 PKCE `plain` annoncé | `DiscoveryTests.AuthorizationServerMetadata_AdvertisesS256Only_AndNoDynamicRegistration` |
+  | M04 session du proxy non renouvelée après l'échange | `AuthorizationFlowTests.FullFlow_ListMailboxes_RelaysTheDoctorsOwnCredentialsToApiMail` |
+  | M05 `code_verifier` non vérifié (handler OpenIddict retiré) | `AuthorizationFlowTests.RedeemCode_WithWrongCodeVerifier_ReturnsInvalidGrant` |
+  | M06 identité non liée traitée en panne | `AuthorizationFlowTests.Login_WhenPscIdentityIsLinkedToNoAccount_ShowsFirstLoginMessage_AndIssuesNoCode` |
+  | M07 refus e-CPS traité en panne | `AuthorizationFlowTests.Login_WhenTheDoctorRefusesOnThePhone_ShowsRefusal_AndIssuesNoCode` |
+  | M08 URL de retour d'attaquant admise / M19 client inconnu admis | `AuthorizationFlowTests.Authorize_UnknownClientOrRedirect_IsRefusedWithoutRedirect` (les deux cas) |
+  | M09 PKCE facultatif / M20 `plain` admis / M10 ressource étrangère admise | `AuthorizationFlowTests.Authorize_WithoutS256PkceOrForAnotherResource_IsRefusedWithoutRedirect` (les trois cas) |
+  | M11 aucune limitation par RPPS | `AuthorizationFlowTests.Login_BeyondTheLimitForOneRpps_Returns429_AndSendsNoFurtherNotification` |
+  | M12 rafraîchissement sans contrôle de la session du proxy | `AuthorizationFlowTests.Refresh_WhenTheProxySessionIsDead_ReturnsInvalidGrant_AndTheSessionCannotBeUsed` |
+  | M13 jetons rafraîchis non enregistrés | `AuthorizationFlowTests.Refresh_WhenTheProxySessionIsAlive_IssuesNewTokens_AndRefreshesTheProxySession` |
+  | M14 page des plus anciens | `MailToolsTests.ListMessages_ReturnsTheMostRecentHeaders_BoundedByThePageSize_WithoutContentOrIns` |
+  | M15 extrait de recherche perdu | `MailToolsTests.SearchMessages_ReturnsHeadersAndExcerpts_ForTheHitsOfApiMail` |
+  | M16 erreur technique relayée | `MailToolsTests.ApiMailRefusal_BecomesAToolError_WithoutTechnicalDetail` |
+  | M17 écriture `status/read` ajoutée, garde de lecture seule retirée | `MailToolsTests.EveryTool_CallsOnlyReadRoutesOfApiMail` |
+  | M18 jeton Keycloak journalisé | `MailToolsTests.DoctorCredentials_NeverAppearInTheMcpToken_TheToolResults_OrTheLogs` |
+
+  La garde seule (sans retrait) est prouvée par le test unitaire `ReadOnlyGuardTests.EnsureAllowed_ThrowsBeforeAWriteLeaves`.
+- DOD self-check : 15/15 items vérifiables par commande — tests nommés ci-dessus présents ; README (lancement, configuration, `claude mcp add --client-id … --callback-port …`, options vérifiées sur la CLI) ; configuration sans secret (`appsettings.Development.json` non versionné, exemple fourni). Manual Test Plan (e-CPS réelle, bac à sable PSC) : différé au test humain (HAG).
+- Écart de taille : 46 fichiers dans la PR (repère de la règle 5 : ~30) — dépôt neuf, dont 3 fichiers de migration générés et 6 de configuration de solution.
+- Green marked : api-mcp `a2f459a` (`Tools/green/green.py`)
+- Amélioration continue :
+  - Le `.gitignore` repris d'api-mail ignore `tools/`, et git ignore la casse sous Windows : `src/…/Tools/` n'était pas versionné (vu par les 4 relectures de la passe qualité). Corrigé par une réinclusion explicite.
+  - Récidive « remplacement global → récursion » (task-349, task-478) : entrée `remplacement-global-recursion` ajoutée à `conventions/csharp.md`.
+  - Python sous Windows : `subprocess.run(["bash", …])` lance le bash WSL de System32 (18 « BUILD KO » sans erreur de compilation) : consigné en mémoire de session.
+- Next step : /review task-478 --code
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-478 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 16 s | — | — | — | — |
+| /develop | ok | 52 min 31 s | 36 (1 min 21 s) | 29 (6 min 37 s) | — | api-mcp 36B/29T |
+| **Total cycle** | | **52 min 47 s** | **36 (1 min 21 s)** | **29 (6 min 37 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : restore ×3 (8.5 s)

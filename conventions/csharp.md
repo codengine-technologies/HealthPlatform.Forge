@@ -2602,3 +2602,54 @@ Une raison d'exemption décrit la réponse **du jour** ; elle ne suit pas l'évo
 retirée) et S6 (trace sans patient), rouges.
 
 **Origine** : task-449. **Occurrences** : 1
+
+---
+
+## action-reclamee-bornee-au-suivi — un état qui réclame une action se borne à la date de début du suivi, comparée à la date d'arrivée
+
+**Règle** : convention projet (charge du médecin, règle 14 : la date est une donnée de la boîte), invisible au lint et à
+Sonar.
+
+**Piège** (task-466) : la première synchronisation d'une boîte ingère des années d'historique. Chaque compte rendu de
+biologie ancien devenait « à acquitter », et le compteur partait à plusieurs centaines le premier jour : un compteur que
+personne ne peut vider n'alerte plus. Le comparer à la date d'**ingestion** (création de la ligne `Mails`) ne règle rien :
+une purge sur changement d'UIDVALIDITY ou un déplacement hors plateforme ré-ingère le message aujourd'hui, et un compte
+rendu de 2019 redevient « nouveau ».
+
+**Consigne** :
+- Un compteur, une liste ou un état qui **réclame une action** (à acquitter, à traiter, à relire) ne retient que les
+  messages arrivés depuis la date de début du suivi de la boîte : `MessageTracking.TrackedSince(start)` en SQL,
+  `MessageTracking.IsTracked` en mémoire. Une seule règle, partagée par le compteur, la liste et l'état.
+- La date comparée est la **date d'arrivée** IMAP (`INTERNALDATE`, `Mail.ArrivalDate`), à défaut la date d'envoi —
+  jamais la date de création de la ligne.
+- Un message plus ancien reste consultable et actionnable : il ne **réclame** rien, il n'est pas masqué.
+- Le test d'intégration prouve un message ancien purgé puis ré-ingéré (UIDVALIDITY) qui reste hors suivi, vu rouge.
+- Le seed e2e qui dépose des messages AVANT la création de la base pose la date de début du suivi (`E2eSeed.SetTrackingStartAsync`).
+
+**Preuve** : task-466, `FolderOperationsEndToEndTests.TrackingStart` ; mutations M1 (filtre SQL retiré), M2 (état
+« Antérieur au suivi » retiré), M3 (date d'ingestion au lieu de la date d'arrivée), toutes rouges.
+
+**Origine** : task-466. **Occurrences** : 1
+
+---
+
+## remplacement-global-recursion — remplacer des appels par un helper peut faire que ce helper s'appelle lui-même
+
+**Règle** : invisible à la compilation, au lint et à Sonar. Le code compile, puis le processus de test meurt d'un
+dépassement de pile, et xUnit affiche quand même `Passed!` sur un total tronqué.
+
+**Piège** :
+- task-478 : pendant la passe qualité, un script a extrait le formatage de l'en-tête `Cookie` dans
+  `PscProxyClient.AddSessionCookie`, puis a remplacé partout `request.Headers.TryAddWithoutValidation("Cookie", …)`
+  par l'appel au helper. Le corps du helper a été remplacé lui aussi : `AddSessionCookie(r, s) => AddSessionCookie(r, s);`.
+  Résultat : 54 tests « Passed! » sur 74, avec `[FATAL ERROR] TestPipelineException`.
+- task-349 : `Ct => Ct;`, né lui aussi d'un remplacement global (`agents/develop.md`, Step 4).
+
+**Consigne** :
+- Faire le remplacement des sites d'appel **avant** d'insérer le helper, ou exclure explicitement son corps du
+  remplacement.
+- Après le remplacement, relire le corps du helper : un membre à corps d'expression qui n'appelle que lui-même est le
+  signe du piège.
+- Comparer le total de tests au dernier passage connu (`Total`), en plus de `Passed!`.
+
+**Origine** : task-349, task-478. **Occurrences** : 2

@@ -155,7 +155,7 @@ Compute the build/publish order from the listed repos :
 2. interop-cda     (if listed)
 3. sdk             (if listed — contract carrier, published BEFORE its consumers)
 4. api-mail        (backend)
-4b. api-mcp        (backend MCP — consomme api-mail en HTTP, dtos-mss en NuGet ; jamais l'inverse)
+4b. api-mcp        (backend MCP — consomme api-mail en HTTP, par des contrats locaux minimaux : aucune dépendance NuGet)
 5. host            (if listed)
 6. client-blazor   (frontend)
 7. client-angular  (frontend — code-only, no git)
