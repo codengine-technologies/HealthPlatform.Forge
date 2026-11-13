@@ -2633,7 +2633,7 @@ d'enrichissement qui garde le bandeau).
 
 ---
 
-## apres-envoi-reussi-rien-d-annulable — Après le succès SMTP, l'archivage d'abord, et aucun effet local annulable par le client
+## apres-envoi-reussi-rien-d-annulable — Après le succès SMTP, aucun effet local annulable ni en échec, et l'archivage après ce dont il dépend
 
 **Règle** : convention projet (invariant task-272 / task-330 : « le message est parti, jamais un échec d'envoi
 rétroactif »), invisible au lint et à Sonar.
@@ -2645,13 +2645,19 @@ le succès SMTP et la mise en file de l'archivage « Envoyés », avec le jeton 
 Tous les tests étaient verts : aucun n'abandonnait la requête après l'envoi.
 
 **Consigne** :
-- Dans `OutgoingMailService`, après le succès SMTP, l'archivage est engagé **en premier**.
-- Tout effet local qui suit (enregistrement, drapeau, trace) reçoit `CancellationToken.None` et ne lève jamais : il est
-  best-effort, annulation comprise.
+- Dans `OutgoingMailService`, tout effet local entre le succès SMTP et la mise en file de l'archivage (enregistrement,
+  drapeau, trace) reçoit `CancellationToken.None` et ne lève jamais : il est best-effort, annulation comprise. Ainsi
+  rien ne peut empêcher l'archivage qui suit.
+- **L'ordre suit les dépendances, pas la prudence** : un effet dont l'archivage dépend passe avant lui. L'archivage
+  note l'emplacement de la copie sur la ligne `MailReplies` (`UPDATE`, pas d'upsert) et la file de fond dépile aussitôt
+  en production : mettre l'archivage en file d'abord perd l'emplacement dès que l'`APPEND` gagne la course contre
+  l'`INSERT` (constaté en revue sur la reprise 1 de task-459, invisible aux tests : `DeterministicBackgroundTaskQueue`
+  n'archive qu'au drainage, après la requête). Un test fige l'ordre (`Received.InOrder`).
 - Un effet ajouté sur ce chemin vient avec un test qui annule le jeton **dans** l'envoi SMTP et constate l'envoi en
   succès et l'archivage engagé.
 
 **Preuve** : `OutgoingMailServiceTests.SendAsync_AClientThatAbortsRightAfterTheSend_StillGetsItsReplyArchived`, rouge
-sur le code d'avant (OCE remontée, archivage absent).
+sur le code d'avant (OCE remontée, archivage absent) ; `SendAsync_TheReplyIsRecordedBeforeItsArchiveIsQueued`, rouge
+sur l'ordre inversé de la reprise 1.
 
-**Origine** : task-459 (revue anticipée, B1). **Occurrences** : 1
+**Origine** : task-459 (revue anticipée, B1 ; passage 2, N1 — né du premier correctif). **Occurrences** : 2

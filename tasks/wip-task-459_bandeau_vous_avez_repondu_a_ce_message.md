@@ -271,6 +271,23 @@ notification SSE `EmailsEnriched` (partagée par toute la boîte) sérialisait `
 - **Prévention** : `conventions/csharp.md` § `apres-envoi-reussi-rien-d-annulable` (nouveau), S125 → 29 ;
   `conventions/angular.md` § `etat-asynchrone-onpush-en-signal` (nouveau).
 
+### Reprise 2 après /review (revue anticipée, passage 2)
+
+- **N1 — ordre enregistrement → archivage rétabli** (né du correctif B1 de la reprise 1) : l'archivage note
+  l'emplacement de la copie sur la ligne `MailReplies` (`UPDATE`), la ligne doit donc exister avant la mise en file.
+  `OutgoingMailService` enregistre la réponse d'abord (jeton `CancellationToken.None`, enregistreur qui ne lève jamais :
+  B1 reste corrigé), puis met l'archivage en file. Test `OutgoingMailServiceTests.SendAsync_TheReplyIsRecordedBeforeItsArchiveIsQueued`
+  (`Received.InOrder`) — **rouge sur l'ordre de la reprise 1**, vert après. `SendAsync_AClientThatAbortsRightAfterTheSend_StillGetsItsReplyArchived`
+  reste vert. La course elle-même n'est pas reproductible en intégration (`DeterministicBackgroundTaskQueue` archive au
+  drainage, après la requête) : l'ordre est figé par le test unitaire.
+- **Relecture du correctif comme correctif** : un seul site changé (`SendAndArchiveAsync`), appelants inchangés
+  (`sendmail`, brouillon, confirmation hors ligne, annule-et-remplace sans enregistrement) ; un enregistrement lent
+  retarde l'archivage d'autant, jamais ne l'empêche. La consigne écrite à la reprise 1 (« l'archivage d'abord ») était
+  fausse et aurait appris la course : corrigée.
+- Suite complète api-mail verte (application 4248, intégration 1293 + 16 ignorés pré-existants). Commit `b87aa7cf`.
+- **Prévention** : `conventions/csharp.md` § `apres-envoi-reussi-rien-d-annulable` réécrite (l'ordre suit les
+  dépendances), Occurrences 2.
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -372,8 +389,8 @@ emprunte la route ou la branche nommée, sa prémisse est affirmée, et sa mutat
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 50 s | — | — | — | — |
-| /develop | ok | 25 min 01 s | 17 (8 min 17 s) | 12 (43 min 10 s) | — | dtos-mss 2B/0T, api-mail 10B/5T, client-mobile 3B/4T, client-angular 2B/3T, reprise 1 |
+| /develop | ok | 10 min 27 s | 18 (8 min 34 s) | 13 (50 min 53 s) | — | dtos-mss 2B/0T, api-mail 11B/6T, client-mobile 3B/4T, client-angular 2B/3T, reprise 2 |
 | /review-code | changes | 7 min 54 s | — | — | — | reprise 2 |
-| **Total cycle** | | **33 min 46 s** | **17 (8 min 17 s)** | **12 (43 min 10 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **19 min 13 s** | **18 (8 min 34 s)** | **13 (50 min 53 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×2 (31 s), restore ×2 (15 s)
