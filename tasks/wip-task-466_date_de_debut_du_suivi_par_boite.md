@@ -1,7 +1,7 @@
 # todo-task-466.md — Date de début du suivi par boîte
 
 **Repos**: api-mail, dtos-mss, client-angular, client-mobile
-**Reprises**: 1
+**Reprises**: 2
 **Dependencies**: done-task-453 (ancrage des états de travail)
 **Epic**: E024
 **Priorité**: EPIC E024, demandée par l'humain le 2026-11-12. **À passer avant task-454 et task-463** : c'est le socle
@@ -256,6 +256,25 @@ Commits : `dtos-mss` 957b28a (publié 607.0.0, CI #607), `api-mail` 267e9ca2 (bu
   Karma 1 430/1 430, `ng lint` propre ; weda2 build, `nx test weda2` 2 683, `nx test mss-lib` 1 648, ESLint 0 erreur.
 - Amélioration continue : `conventions/e2e.md` `precondition-du-negatif`, récidive task-466 (Occurrences 3). Récidive =
   signal sur la lecture : la fiche n'avait pas été relue avant d'écrire BIO-007.
+
+### Reprise 2 après /e2e (lancée par l'humain, `/develop task-466 --reprise`)
+
+Commit `api-mail` 0f0605cd ; `client-angular` non commité (code-only, un spec e2e).
+
+- **E2E rouge Angular (4 parcours)** — `cr-bio-historique` réutilisait le CDA de `cr-bio-a-acquitter` : second compte
+  rendu au même patient. Il devient un **HPRIM synthétique au nom d'un patient fictif propre** (« HISTOE2E
+  Dominique », potassium « H », `E2eAttachmentKind.HistoricalHprim`), expéditeur « Laboratoire HPRIM E2E » ; seed,
+  plan, test du plan et description au catalogue. Preuve rouge : les 4 parcours rouges au `/e2e` sur le code d'avant.
+- Rejeu ciblé, voie Angular (`--serve-only`) : PATIENT-004, SEARCH-010, DASH-001 **verts** ; BIO-001/002/003/007,
+  SEARCH-006/012 verts. **SEARCH-008** restait rouge (3 biologies anormales au lieu de 2) : le filtre « Biologie
+  anormale » rend aussi le HPRIM historique, anormal par construction. Le comportement est juste ; le parcours web est
+  ajusté à 3 lignes, la troisième nommée, et vérifie qu'elle sort au filtre `PAT-TROIS` (autre patient). Vert.
+  Comportement du scénario inchangé : pas de nouvelle version.
+- Rejeu ciblé, voie mobile : BIO-001/002/003/007, DASH-001, PATIENT-*, SETTINGS — 11 verts.
+- api-mail : build 0 avertissement, suite complète verte (237 / 749 / 1 381 / 4 236 / 1 295 + 16 ignorés).
+- Amélioration continue : `conventions/e2e.md` `seed-partage-des-deux-clients` — récidive task-466 (Occurrences 2) :
+  une donnée de seed porteuse d'un document prend un patient fictif propre, et la recherche d'assertions couvre les
+  parcours patient et tableau de bord.
 
 ## Sonar log
 
@@ -520,12 +539,12 @@ au 2026-11-13 (branche `feature/nova-mss-weda-integration`, base ce7741dd).
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 33 s | — | — | — | — |
-| /develop | ok | 41 min 32 s | 13 (2 min 56 s) | 25 (42 min 21 s) | — | dtos-mss 2B/0T, api-mail 6B/17T, client-angular 2B/5T, client-mobile 3B/3T |
+| /develop | ok | 12 min 28 s | 14 (3 min 02 s) | 27 (49 min 06 s) | — | dtos-mss 2B/0T, api-mail 7B/19T, client-angular 2B/5T, client-mobile 3B/3T, reprise 2 (e2e) |
 | /review-code | ok | 7 min 15 s | — | — | — | — |
 | /sonar | ok | 23 min 28 s | 2 (1 min 19 s) | 12 (16 min 52 s) | 4 (1 min 35 s) | 2 itération(s), api-mail 2B/12T |
 | /lint-angular | ok | 56 s | — | — | — | 0 erreur, rien à corriger |
 | /lint-mobile | ok | 13 s | — | — | — | 0 erreur |
 | /e2e | failed | 33 min 13 s | — | 1 (7.9 s) | — | api-mail 0B/1T, e2e ×4 (29 min 28 s), régression Angular (4) — donnée de seed cr-bio-historique |
-| **Total cycle** | | **1 h 47 min** | **15 (4 min 15 s)** | **38 (59 min 21 s)** | **4 (1 min 35 s)** | |
+| **Total cycle** | | **1 h 18 min** | **16 (4 min 21 s)** | **40 (1 h 06 min)** | **4 (1 min 35 s)** | |
 
 Autres commandes mesurées : lint ×2 (42 s), nuget-wait ×2 (38 s), restore ×2 (7.1 s)

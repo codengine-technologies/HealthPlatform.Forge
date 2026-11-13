@@ -752,8 +752,14 @@ dépassée.
   au `## Develop log`.
 - **Preuve** : weda2 E2E-BIO-001 passé de « (1) » à « (2) » avant le premier `/e2e` de task-392
   (relecture du diff du client, pas de mutation : le défaut était dans la vérification, pas dans un test).
+- **Récidive task-466 (relevée par /e2e, 2026-11-13)** : `cr-bio-historique` réutilisait le CDA de
+  `cr-bio-a-acquitter`, donc le **même patient** : 4 parcours web de ce patient (PATIENT-004, SEARCH-008,
+  SEARCH-010, DASH-001) sont tombés, la vérification n'ayant porté que sur les assertions de BIO et de recherche.
+  **Consigne** : une donnée de seed porteuse d'un document médical prend un **patient fictif propre**
+  (HPRIM synthétique de `HprimSamples`, ou CDA réécrit), sauf si le parcours exige ce patient ; et la recherche
+  des assertions couvre aussi les parcours **patient** et **tableau de bord**, pas seulement ceux du scénario.
 - **Origine** : task-392 (/develop)
-- **Occurrences** : 1
+- **Occurrences** : 2 (task-392, task-466)
 
 ---
 

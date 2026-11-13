@@ -1,3 +1,6 @@
+**Résolu** le 2026-11-13 : reprise 2 lancée par l'humain (`/develop task-466 --reprise`), correctif appliqué
+(HPRIM historique au nom d'un patient fictif propre, SEARCH-008 ajusté). Voir le Develop log du task file.
+
 # task-466 — /e2e rouge : régression causée par la donnée de seed de la task
 
 **Étape** : `/e2e` (2026-11-13). **Nature du blocage : régression** (voie Angular). Parité verte.
