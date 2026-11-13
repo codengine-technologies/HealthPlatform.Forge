@@ -96,7 +96,7 @@ feature branches.
   time a successful task pushes a `feat/*` on that repo — never reused across
   runs, never stale. Repos a run never touches get no staging branch (no
   empty branches).
-- **Scope** : pushable repos only — `api-mail`, `client-blazor`,
+- **Scope** : pushable repos only — `api-mail`, `api-mcp`, `client-blazor`,
   `client-mobile`, `dtos-mss`, `sdk`, `host`, `interop-cda`. **Never**
   `client-angular` (code-only, no git), `devops`, `psc-proxy-*` (excluded).
 - **Aggregation is the last per-task link, after `/review`** : it merges

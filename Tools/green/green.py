@@ -34,6 +34,7 @@ STATE = ROOT / 'metrics' / '.state' / 'green'
 # est construit et testé par la forge).
 REPOS = {
     'api-mail': ('Api/Mail', None),
+    'api-mcp': ('Api/Mcp', None),
     'client-blazor': ('Client/Blazor', None),
     'client-angular': ('Client/Angular', 'front'),
     'client-mobile': ('Client/Mobile', None),

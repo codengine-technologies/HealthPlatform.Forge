@@ -32,7 +32,7 @@ Steps (high-level — see the agent file for the full spec) :
    label, CI green, no `CHANGES_REQUESTED` review, branch up-to-date with
    `develop`, no uncommitted changes.
 3. Squash-merge each pushable PR in topological order
-   (`dtos-mss → interop-cda → api-mail → client-blazor → client-mobile`) with
+   (`dtos-mss → interop-cda → api-mail → api-mcp → client-blazor → client-mobile`) with
    `gh pr merge --squash` (never `--delete-branch`), revenir sur `develop`,
    puis supprimer la branche **distante ET locale** (`git push origin --delete`
    puis `git branch -D`). Inversé le 2026-09-16 : conserver la branche locale

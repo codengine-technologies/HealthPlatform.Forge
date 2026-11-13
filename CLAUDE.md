@@ -243,7 +243,7 @@ entre N branches `feat/*`.
 - **Fraîche depuis `develop`** : créée paresseusement depuis `origin/develop`
   à la première task validée qui pousse un `feat/*` sur ce repo. Jamais
   réutilisée d'un run à l'autre, jamais périmée, jamais de branche vide.
-- **Scope** : repos pushables uniquement (`api-mail`, `client-blazor`,
+- **Scope** : repos pushables uniquement (`api-mail`, `api-mcp`, `client-blazor`,
   `client-mobile`, `dtos-mss`, `sdk`, `host`, `interop-cda`). **Jamais**
   `client-angular` (code-only), `devops`, `psc-proxy-*`.
 - **Dernier maillon par task, après `/review`** : `git merge --no-ff
@@ -441,7 +441,7 @@ backend".
 
 **Pre-flight for `/start`** : the forge refuses to create a new working branch
 unless **every forge-automated repo is on `develop`**. The check covers
-`api-mail`, `client-blazor`, `client-mobile`, `dtos-mss`, `sdk`, `host`,
+`api-mail`, `api-mcp`, `client-blazor`, `client-mobile`, `dtos-mss`, `sdk`, `host`,
 `interop-cda` ; it **explicitly skips** `client-angular` (code-only mode —
 humain libre de sa branche), `devops`, `psc-proxy-server`,
 `psc-proxy-client`, `psc-proxy-dto` (entièrement hors automation). If any in-scope repo is on a feature branch
@@ -449,6 +449,12 @@ humain libre de sa branche), `devops`, `psc-proxy-server`,
 aborts and lists the offenders. The human finishes, stashes, or checks out
 `develop` in the listed repos, then retries `/start`. The forge never
 switches branches on the human's behalf.
+
+**Exception humaine — pré-flight limité aux repos de la task** (depuis le 2026-11-13, task-478) :
+le champ `**Pré-flight**: limité aux Repos — décision humaine du {date}`, écrit dans le task file
+sur décision de **l'humain seul**, restreint le contrôle aux repos de son `**Repos**:`. Il sert à
+démarrer une task isolée dans un repo qu'aucune task en cours ne touche (premier cas : `api-mcp`
+pendant que task-466 occupait `api-mail`). Les autres repos ne sont ni contrôlés ni touchés.
 
 ---
 
@@ -489,6 +495,7 @@ inside one of those repos, never at the workspace root.
 | Repo key | Path | Stack | Build cmd | Test cmd |
 |---|---|---|---|---|
 | `api-mail` | `Api/Mail` | .NET 10, xUnit | `dotnet build HealthPlatform.Api.Mail.sln` | `dotnet test HealthPlatform.Api.Mail.sln` |
+| `api-mcp` | `Api/Mcp` | .NET 10, serveur MCP + serveur d'autorisation OAuth, xUnit | `dotnet build HealthPlatform.Api.Mcp.sln` | `dotnet test HealthPlatform.Api.Mcp.sln` |
 | `client-blazor` | `Client/Blazor` | Blazor WASM, .NET 10, xUnit | `dotnet build HealthPlatform.Client.sln` | `dotnet test HealthPlatform.Client.sln` |
 | `client-angular` | `Client/Angular` | Angular, Node | `npm ci && npm run build` | `npm test` |
 | `client-mobile` | `Client/Mobile` | Ionic 8 + Angular 20 + Capacitor, Node | `npm ci && npm run build` | `npm test -- --watch=false --browsers=ChromeHeadless` |
@@ -500,6 +507,23 @@ inside one of those repos, never at the workspace root.
 | `psc-proxy-client` | `psc/proxy/psc.proxy.client` | .NET 10 client | `dotnet build psc.proxy.client.sln` | n/a |
 | `psc-proxy-dto` | `psc/proxy/psc.proxy.dto` | .NET 10 DTOs | `dotnet build psc.proxy.dto.sln` | n/a |
 | `devops` | `DevOps` | CI/CD configs | n/a | n/a |
+
+### Backend pushable : `api-mcp` (depuis le 2026-11-13, task-478)
+
+`api-mcp` (`Api/Mcp`, remote GitHub `HealthPlatform.Api.Mcp`, branche d'intégration `develop`) est
+le **serveur MCP de la messagerie** : un médecin y accède depuis un client IA. Il est
+entièrement automatisé, comme `api-mail` : branche, commit, push, PR, passe qualité `/simplify`.
+
+- **Il ne lit les données que par api-mail**, en HTTP, avec le jeton Keycloak et la session du
+  proxy du médecin, gardés côté serveur. Il n'a jamais d'accès direct aux bases d'api-mail.
+- **Il est le serveur d'autorisation OAuth de ses clients MCP.** Le médecin s'authentifie par
+  CIBA e-CPS à travers psc-auth-proxy (`/auth/connect` puis `/auth/keycloak-exchange`, comme
+  `client-mobile`). Le jeton remis au client IA n'est valable que pour `api-mcp`. Le jeton
+  Keycloak ne sort jamais du serveur.
+- **Chaîne** : `/sonar` ne couvre qu'`api-mail` et `/e2e` n'a pas de voie `api-mcp`. Ces deux
+  étapes skippent donc proprement. Le filet de la règle 1b passe par les tests d'intégration
+  d'`api-mcp` : vraie pile HTTP MCP, avec api-mail et les proxies simulés comme fournisseurs
+  externes.
 
 ### Code-only repo : `client-angular`
 

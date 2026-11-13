@@ -113,7 +113,7 @@ and abort. Do NOT merge any PR (atomic — either every PR merges or none).
 
 Same three-mode taxonomy as the rest of the forge :
 
-- **Pushable** (`api-mail`, `client-blazor`, `client-mobile`, `dtos-mss`,
+- **Pushable** (`api-mail`, `api-mcp`, `client-blazor`, `client-mobile`, `dtos-mss`,
   `sdk`, `host`, `interop-cda`) : full automation — merge PR, sync `develop`,
   delete branches.
 - **Code-only** (`client-angular`) : **fully out of scope for `/merge`**.
@@ -300,7 +300,7 @@ Same three-mode taxonomy as the rest of the forge :
    #   The just-merged task is already in tasks/archived/, so it does not count.
    #   drained  ⇔  no remaining active id falls within [début, fin].
 
-   for each pushable repo (api-mail, client-blazor, client-mobile, dtos-mss,
+   for each pushable repo (api-mail, api-mcp, client-blazor, client-mobile, dtos-mss,
                            sdk, host, interop-cda) :
      cd {repo-path}
      git fetch origin --prune

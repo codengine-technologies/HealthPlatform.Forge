@@ -98,7 +98,7 @@ At each invocation :
 
 ### 1. Pre-flight
 
-- Verify every **forge-automated repo** (`api-mail`, `client-blazor`,
+- Verify every **forge-automated repo** (`api-mail`, `api-mcp`, `client-blazor`,
   `client-mobile`, `dtos-mss`, `sdk`, `host`, `interop-cda`) is on `develop`.
   Any of these on a feature branch → halt with the offender list, do NOT
   switch branches. The pre-flight **does not** check `client-angular`
@@ -159,7 +159,7 @@ committed their fixes onto `feat/*` before `/review`). Aggregation therefore
 inherits every simplification / Sonar / ESLint fix mechanically ; nothing is
 re-qualified on staging.
 
-For each **pushable** repo the task touched (`api-mail`, `client-blazor`,
+For each **pushable** repo the task touched (`api-mail`, `api-mcp`, `client-blazor`,
 `client-mobile`, `dtos-mss`, `sdk`, `host`, `interop-cda` — **never**
 `client-angular`, `devops`, `psc-proxy-*`) :
 

@@ -27,7 +27,11 @@ philosophy was inverted on 2026-04-27 — see CLAUDE.md "Forge philosophy".
    Iterate **only over the forge-automated repos** in CLAUDE.md and verify
    each is on its `develop` branch. The set is :
 
-   - `api-mail`, `client-blazor`, `client-mobile`, `dtos-mss`, `sdk`, `host`, `interop-cda`
+   - `api-mail`, `api-mcp`, `client-blazor`, `client-mobile`, `dtos-mss`, `sdk`, `host`, `interop-cda`
+
+   **Exception humaine** : si le task file porte `**Pré-flight**: limité aux Repos — décision
+   humaine du {date}`, ne contrôler que les repos de son `**Repos**:` (CLAUDE.md, « Pre-flight
+   for `/start` »). Seul l'humain écrit ce champ ; la forge ne le pose jamais d'elle-même.
 
    **Explicitly skipped** (do NOT check their branch) :
 

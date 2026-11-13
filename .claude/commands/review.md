@@ -86,7 +86,7 @@ In autonomous mode (`/develop` upstream) this halts the chain ; in
    change since, no marker, or a broken marker — replays build + test below, then marks the
    green (`green.py mark --by review`). The doubt always costs a build, never a regression.
 
-   **Pushed repos** (`api-mail`, `client-blazor`, `client-mobile`, `dtos-mss`,
+   **Pushed repos** (`api-mail`, `api-mcp`, `client-blazor`, `client-mobile`, `dtos-mss`,
    `sdk`, `host`, `interop-cda`) :
    ```bash
    cd {repo-path}
