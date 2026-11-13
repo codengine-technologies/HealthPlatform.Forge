@@ -612,3 +612,12 @@ au 2026-11-13 (base ce7741dd).
 | **Total cycle** | | **53 min 35 s** | **18 (5 min 21 s)** | **47 (1 h 14 min)** | **6 (2 min 21 s)** | |
 
 Autres commandes mesurées : lint ×3 (50 s), nuget-wait ×2 (38 s), restore ×2 (7.1 s)
+
+## Merged
+
+- Le 2026-11-13, par `/merge task-466 --i-tested` (HAG, test humain attesté).
+- `dtos-mss` : `2cd2ac5` (PR #66) — CI develop verte : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/actions/runs/43449183220
+- `api-mail` : `81cba9d0` (PR #368) — CI develop verte : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/43449211937
+- `client-mobile` : `d654627` (PR #124) — CI develop verte : https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/43449240556
+- `client-angular` : géré manuellement par l'humain.
+- Branches `feat/task-466-date-de-debut-du-suivi-par-boite` supprimées (distantes et locales) ; aucune branche staging (task hors `/forge`).
