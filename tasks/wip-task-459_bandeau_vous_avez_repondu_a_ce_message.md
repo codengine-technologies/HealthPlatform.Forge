@@ -1,6 +1,7 @@
 # todo-task-459.md — Bandeau « Vous avez répondu à ce message le… »
 
 **Repos**: api-mail, dtos-mss, client-angular, client-mobile
+**Reprises**: 1
 **Dependencies**: aucune
 **Epic**: E024
 **Priorité**: EPIC E024, demandée par l'humain le 2026-11-11. Savoir, en ouvrant un message, qu'on y a déjà répondu
@@ -233,6 +234,70 @@ notification SSE `EmailsEnriched` (partagée par toute la boîte) sérialisait `
 - Green marked : client-mobile `e40e8410`, client-angular (arbre), api-mail `7009d9da` (suite finale)
 - Next step : /review task-459 --code
 
+## Code Review Summary
+
+### Passage 1 (revue anticipée) — CHANGES REQUESTED
+
+Relu sur : api-mail `7009d9da`, dtos-mss `8ed9c81`, client-mobile `e40e841`, client-angular (arbre non commité sur
+`feature/nova-mss-weda-integration`). Revue indépendante (sous-agent sans les conclusions de la forge) + verrou 4a.
+
+**Ce qui tient** : modèle `MailReplies` ancré aux Message-ID, migration et modèle EF cohérents (7c) ; auteur réel pris de
+l'identité de requête (règle 14), « vous » calculé par lecteur ; `JsonIgnore(WhenWritingNull)` + fusion côté clients ;
+DI dans la racine de composition ; `ReplyBannerEndToEndTests` solide sur le chemin principal ; e2e jugés côté serveur ;
+aucune donnée de santé dans libellés ni journaux. 4b : `E2E-DETAIL-006` v1 au catalogue, déclaré v1 dans les deux
+clients.
+
+**Verrou 4a (règle 1b) — comportement → test → preuve rouge**
+
+| Comportement atteignable | Test d'intégration | Preuve rouge |
+|---|---|---|
+| `GET …/emails/{ids}` (en ligne) : nombre, date, auteur, « vous », emplacement | `TheHolderReplies…`, `TheDelegateReplies…`, `AReplyFromAnotherSoftware…` | M1, M3, M5, M6 |
+| Rapports (MDN) exclus | `AReadReceiptCarryingInReplyTo…` | M7 |
+| `POST sendmail` → `\Answered` sur Dovecot | `TheHolderReplies…` | M4 |
+| `POST drafts/{id}/send` enregistre la réponse | `AReplySentFromItsDraft…` | **manquante** (test écrit après les mutations) |
+| Réponse par `References` seul (branche SQL distincte) | — | — |
+| `GET …/emails/{ids}` hors ligne | — (unitaire seul) | — |
+| Dossier Envoyés reconnu par SPECIAL-USE seul | — | — |
+| `POST …/cancel-and-replace` : jamais une réponse | — (unitaire seul) | — |
+| `GET thread/{messageId}` : `HasReplies` exclut les rapports | — | — |
+| `POST pending-emails/{id}/send` enregistre la réponse | — | — |
+
+#### À corriger par la reprise
+
+- **B1 ❌ Annulation après un envoi réussi** (`OutgoingMailService.SendAndArchiveAsync`, `MailReplyRecorder`) :
+  l'enregistrement de la réponse s'intercale entre le succès SMTP et la mise en file de l'archivage, avec le jeton de
+  la requête ; le recorder laisse passer `OperationCanceledException`. Un client qui se déconnecte à cet instant :
+  pas de copie dans Envoyés, et sur `pending-emails/{id}/send` (`ReleasePendingEmailAsync`) ou l'envoi d'un brouillon,
+  un message parti redevient envoyable (double envoi). Casse l'invariant task-272 / task-330. Correctif : archivage mis
+  en file **avant** l'enregistrement, enregistrement non annulable par le client ; test qui annule le jeton après
+  l'envoi et constate l'archivage engagé, vu rouge.
+- **B2 ❌ Règle 1b** — un test d'intégration bout en bout, vu rouge, pour chacun :
+  (a) réponse par `References` seul (branche `byReferences` sur PostgreSQL) ; (b) lecture hors ligne ;
+  (c) dossier des envois reconnu par sa seule classification SPECIAL-USE (nom qui ne dit pas « Sent ») ;
+  (d) annule et remplace : aucune réponse comptée ni enregistrée ; (e) `GET thread/{messageId}` : `HasReplies`
+  n'est pas allumé par un accusé de lecture ; (f) `pending-emails/{id}/send` : la réponse confirmée est enregistrée ;
+  (g) preuve rouge du test du brouillon (mutation M1 rejouée).
+- **Mêmes passe, défauts réels (non bloquants)** :
+  - S4 — mobile : « Voir la réponse » reste désactivé après l'avis « pas encore rangée » (`opening` champ simple sous
+    `OnPush`, jamais re-vérifié) : signal, et test qui relit le bouton actif ;
+  - S7 — rejeu `MarkAnswered` (`PendingActionService`) et correspondance `FlagPropagationService.Describe` non testés ;
+  - S8 — remarque de la migration inexacte (« se corrigent à leur prochaine synchronisation » : aucune mise à jour ne
+    recopie `IsReport`).
+
+#### Arbitrage humain
+
+- **A1 (S5)** — l'icône et le bandeau ne sont calculés que pour la liste d'un dossier (`GET …/emails/{ids}`) : ni la
+  liste par étiquette, ni les résultats de recherche. Recommandation : accepter pour cette US (la DOD vise la liste du
+  dossier), task de suite si souhaité.
+- **A2 (S6)** — `\Answered` n'est posé que si le message d'origine est déjà en base (affiché ou enrichi) ; une réponse
+  à un message jamais vu par la base ne pose pas le drapeau (le bandeau, lui, fonctionne). Recommandation : accepter
+  (les clients enrichissent toute ligne affichée) ; repli IMAP `SEARCH HEADER Message-ID` en task de suite sinon.
+- **A3 (S9)** — une réponse connue seulement par sa copie (autre logiciel, délégataire depuis un autre client) n'est
+  jamais « Vous » : le lecteur peut lire son propre nom (« X a répondu »). Recommandation : accepter, le dire dans la PR.
+- **A4 (S3)** — coût sur le chemin chaud : deux requêtes par page, y compris `includeThreadCounts=false` (task-266 les
+  avait ramenées à zéro), et la branche `References` parcourt les envois. Recommandation : mesurer au banc ; colonne
+  `ParentMessageId` indexée en task de suite.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-459 --sync` — ne pas éditer à la main)*
@@ -241,6 +306,7 @@ notification SSE `EmailsEnriched` (partagée par toute la boîte) sérialisait `
 |---|---|---|---|---|---|---|
 | /start | ok | 50 s | — | — | — | — |
 | /develop | ok | 3 h 24 min | 14 (7 min 04 s) | 10 (34 min 06 s) | — | dtos-mss 2B/0T, api-mail 8B/4T, client-mobile 2B/3T, client-angular 2B/3T |
-| **Total cycle** | | **3 h 25 min** | **14 (7 min 04 s)** | **10 (34 min 06 s)** | **0 (0.0 s)** | |
+| /review-code | changes | 16 min 19 s | — | — | — | reprise 1 |
+| **Total cycle** | | **3 h 41 min** | **14 (7 min 04 s)** | **10 (34 min 06 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×2 (31 s), restore ×2 (15 s)
