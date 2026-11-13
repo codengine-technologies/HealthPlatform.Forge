@@ -530,3 +530,11 @@ prouvés** (M30 à M33 rouges).
 | **Total cycle** | | **9 min 45 s** | **70 (2 min 43 s)** | **58 (13 min 57 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : restore ×3 (8.5 s)
+
+## Merged
+
+- Le 2026-11-13, par `/merge task-478 --i-tested` (HAG, test humain attesté).
+- `api-mcp` : `79356bf` (PR #1).
+- CI `develop` : aucune — le dépôt `api-mcp` n'a pas de workflow GitHub Actions. Preuve de vert : marqueur
+  `Tools/green/green.py` à `b89db38` (build 0 erreur, 108/108, par `/develop`), commit de tête exact de la PR.
+- Branche `feat/task-478-mcp-messagerie-connexion-e-cps-et` supprimée (distante et locale) ; aucune branche staging.
