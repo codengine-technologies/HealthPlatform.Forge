@@ -273,6 +273,13 @@ correctifs : **16 rouges vus sur l'ancien code**, puis verts.
   mutation de trouver ses motifs. Le script s'adapte désormais aux fins de ligne du fichier.
 - Next step : /review task-478 --code (passage 3, après reprise)
 
+## E2E log
+
+**E2E : skipped — aucune voie touchée.** task-478 ne touche que `api-mcp` : ni `api-mail`, ni `client-mobile`, ni
+`client-angular`, ni `dtos-mss`. Aucune suite mobile ni Angular n'est rejouée, et aucun parcours médecin n'est créé ou
+modifié dans un client. Le catalogue `Api/Mail/e2e/scenarios.yml` est inchangé, la parité aussi. Le filet fonctionnel
+d'`api-mcp` est sa suite d'intégration (91 tests, vraie pile).
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — INTERROMPU (panne d'outillage, 2026-11-13)
@@ -406,6 +413,7 @@ Rendu par le comportement :
 | /start | ok | 16 s | — | — | — | — |
 | /develop | ok | 13 min 09 s | 50 (1 min 59 s) | 40 (9 min 28 s) | — | api-mcp 50B/40T |
 | /review-code | ok | 5 min 14 s | — | — | — | — |
-| **Total cycle** | | **18 min 40 s** | **50 (1 min 59 s)** | **40 (9 min 28 s)** | **0 (0.0 s)** | |
+| /e2e | skipped | 1.3 s | — | — | — | aucune voie touchée (api-mcp seul) |
+| **Total cycle** | | **18 min 42 s** | **50 (1 min 59 s)** | **40 (9 min 28 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : restore ×3 (8.5 s)
