@@ -236,6 +236,8 @@ whole cycle, and it doubles as the repo's final verification (Step 6).
    git diff origin/develop...HEAD -- '*.cs' | grep -nE '^\+.*Assert\.IsAssignableFrom'
    # C# — CA1068 : a CancellationToken followed by another parameter (task-465, 4th occurrence).
    git diff origin/develop...HEAD -- '*.cs' | grep -nE '^\+\s*CancellationToken \w+,\s*$'
+   # C# — xUnit1051 : a substitute check passing `default` as the token (task-459, 5th occurrence).
+   git diff origin/develop...HEAD -- '*.cs' | grep -nE '^\+.*Receiv(e|ed)(WithAnyArgs)?\([0-9]*\)\..*, default\);'
    ```
    Each must return nothing. A hit is rewritten (comma or full stop ; a string
    key for the theory, the object built in the test) before the push, and

@@ -242,8 +242,8 @@
   ME2 sont tombés rouges sur une autre assertion (le clic « Envoyer », le signal de la pièce), et le
   témoin restauré lui-même a échoué. **Consigne** : laisser passer ~15 s après le nouveau bundle
   avant de jouer, et toujours rejouer le témoin restauré : un témoin rouge invalide la série.
-- **Origine** : task-343, task-349, task-354, task-363, task-367, task-372 (méthode privée laissée sans appel par la mutation : TS6133, aucun bundle)
-- **Occurrences** : 6
+- **Origine** : task-343, task-349, task-354, task-363, task-367, task-372 (méthode privée laissée sans appel par la mutation : TS6133, aucun bundle), task-459 (import `replySummaryText` laissé inutilisé par la mutation d'un getter weda2 : la page ne se charge plus et le test tombe sur un clic de `openFolder`, pas sur l'assertion protégée ; une mutation garde ses imports utilisés — `replySummaryText(this.mail.reply && null)`)
+- **Occurrences** : 7
 
 ### predicat-de-reponse — Un prédicat de `waitForResponse` se lit comme du code, pas comme un texte
 - **Piège** : une expression régulière littérale réécrite en ligne de commande est devenue

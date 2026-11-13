@@ -1,0 +1,246 @@
+# todo-task-459.md — Bandeau « Vous avez répondu à ce message le… »
+
+**Repos**: api-mail, dtos-mss, client-angular, client-mobile
+**Dependencies**: aucune
+**Epic**: E024
+**Priorité**: EPIC E024, demandée par l'humain le 2026-11-11. Savoir, en ouvrant un message, qu'on y a déjà répondu
+évite de répondre deux fois et de rouvrir Envoyés. En boîte partagée, c'est savoir qu'un collègue l'a fait.
+
+> **Origine.** Demande explicite de l'humain du 2026-11-11 : « un bandeau qui s'affiche sur un mail dont la réponse a
+> été faite : *Vous avez répondu à ce message le…* ».
+
+## Ce qui est établi
+
+- Les messages envoyés sont en base. Le dossier Envoyés est synchronisé, et l'archivage d'un envoi fait par la
+  plateforme passe par `SentArchiveDispatcher` puis `ImapService.AppendToSentAsync`.
+- `Mail.InReplyTo` et `Mail.References` sont stockés, avec l'index `IX_Mails_InReplyTo`.
+- `MailRepository.GetThreadAsync` calcule déjà `HasReplies = Mails.Any(m => m.InReplyTo == messageId)`.
+- `Mail.IsAnswered` (drapeau IMAP `\Answered`) existe. Il ne donne ni la date ni l'auteur, et les drapeaux ne sont
+  relus que pour les nouveaux UID.
+- L'envoi « pour le compte de la boîte » (E020 F006) pose l'en-tête `Sender` au nom du délégataire. La trace d'audit
+  `MailReply` porte la personne réelle.
+- Piège : un accusé de lecture ou un rapport de distribution entrant peut porter `In-Reply-To`. Il ne doit jamais
+  compter comme une réponse.
+
+## Objective
+
+En ouvrant un message auquel la boîte a répondu, le lecteur voit un bandeau :
+- **« Vous avez répondu à ce message le {date} à {heure} »**, si c'est lui ;
+- **« {Prénom NOM} ({rôle}) a répondu à ce message le {date} à {heure} »**, si c'est une autre personne de la boîte ;
+- **« Une réponse a été envoyée le {date} à {heure} »**, si la réponse est partie d'un autre logiciel et que l'auteur
+  n'est pas connu.
+
+Règles :
+- **Lien « Voir la réponse »** : il ouvre le message envoyé.
+- **Plusieurs réponses** : le bandeau montre la dernière et le nombre total (« … le 12/11 à 10 h 14 — 2 réponses »).
+- **Ce qui compte comme réponse** : un message de la boîte, envoyé (dossier Envoyés), dont `In-Reply-To` ou
+  `References` désigne ce message. Les accusés de lecture et les rapports de distribution sont exclus.
+- **Dans la liste** : une icône « répondu » sur la ligne (weda2 et mobile), avec la même info au survol ou à l'appui
+  long.
+- **Drapeau IMAP** : une réponse envoyée par la plateforme pose `\Answered` sur le message d'origine, si ce n'est déjà
+  fait. À vérifier, et à poser si c'est absent.
+- **Transfert** : hors périmètre de cette task.
+
+## Definition of Done
+
+- [ ] Contrat : dernière réponse (date, auteur connu ou non, identifiant du message envoyé) et nombre de réponses dans
+      `MailDto` ; paquet DTO publié.
+- [ ] Auteur de la réponse établi par la trace `MailReply` (personne réelle) ou l'en-tête `Sender` ; jamais la boîte
+      quand l'auteur réel est connu (règle 14).
+- [ ] Tests unitaires : réponse par `In-Reply-To`, réponse par `References` seul, accusé de lecture exclu, rapport de
+      distribution exclu, deux réponses, auteur inconnu.
+- [ ] **Test d'intégration de bout en bout (règle 1b)** sur `GET api/v1/Mail/folders/{f}/emails/{ids}` :
+      - après une réponse envoyée par la plateforme (GreenMail et Dovecot), le message d'origine expose la date, la
+        personne et le nombre de réponses, et porte `\Answered` côté IMAP ;
+      - cas d'échec : un accusé de lecture entrant portant `In-Reply-To` ne crée **pas** de réponse.
+      Vu rouge.
+- [ ] **Deux personnes sur la même boîte** : le délégataire répond ; le titulaire lit « {délégataire} (délégataire) a
+      répondu ».
+- [ ] Tests de composant (weda2 et mobile), vus rouges par mutation : les trois libellés, « Voir la réponse »,
+      plusieurs réponses, icône dans la liste.
+- [ ] **Scénario e2e** `E2E-DETAIL-006` v1, mobile et angular requis, vu rouge : répondre à un message, revenir sur le
+      message d'origine, le bandeau « Vous avez répondu à ce message le … » est là, et « Voir la réponse » ouvre
+      l'envoi.
+- [ ] `data-testid`, conventions de libellés, aucune donnée de santé dans les libellés ni les logs.
+- [ ] Build et tests verts (api-mail, Dtos, weda2, mobile) ; client-angular : code-only.
+
+## Manual Test Plan
+
+1. Backend, weda2 et mobile sur la boîte de formation.
+2. weda2 : répondre à un courrier. Revenir sur le courrier : « Vous avez répondu à ce message le … à … », avec « Voir
+   la réponse » qui ouvre l'envoi. La ligne de la liste porte l'icône « répondu ».
+3. Mobile, délégataire de la même boîte : ouvrir ce courrier : « {nom du titulaire} (titulaire) a répondu … ».
+4. Répondre au même message depuis le webmail de l'opérateur, puis synchroniser : « Une réponse a été envoyée le … —
+   2 réponses ».
+5. Ouvrir un message dont seul un accusé de lecture est revenu : aucun bandeau.
+
+## Conformité santé / Ségur / ANS
+
+- **Couloir Ségur** : médecine de ville
+- **Vague Ségur** : hors Ségur
+- **Exigences DSR honorées** : non applicable
+- **INS** : non applicable
+- **Authentification PS** : inchangée — PSC (e-CPS), eIDAS substantiel
+- **Habilitations** : personnes rattachées à la boîte sous verdict de l'opérateur (règle 14)
+- **Interop CI-SIS** : non applicable — en-têtes RFC 5322 (`In-Reply-To`, `References`) et RFC 3501 (`\Answered`)
+- **Tracé PGSSI-S** : inchangé — l'envoi est déjà tracé (`MailReply`) au nom de la personne réelle
+- **Consentement patient** : non applicable
+- **Référentiels métier** : aucun
+- **Hébergement HDS** : oui — base de la boîte
+- **AIPD / impact RGPD** : inchangé — l'auteur d'une réponse est déjà visible dans le journal de la boîte (E020)
+
+## Branches
+- `api-mail` (pushed) : feat/task-459-bandeau-vous-avez-repondu-a-ce-message — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-459-bandeau-vous-avez-repondu-a-ce-message
+- `client-mobile` (pushed) : feat/task-459-bandeau-vous-avez-repondu-a-ce-message — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-459-bandeau-vous-avez-repondu-a-ce-message
+- `dtos-mss` (pushed, créée par /develop) : feat/task-459-bandeau-vous-avez-repondu-a-ce-message — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-459-bandeau-vous-avez-repondu-a-ce-message
+- `client-angular` (code-only) : forge writes code on the branch currently checked out in `Client/Angular/` (au /start : `feature/nova-mss-weda-integration`) — humain gère branche, commit, push, PR TFS
+
+## Develop log
+
+- Repos touched : dtos-mss, api-mail, client-mobile, client-angular (code-only)
+- DTOs published : 597.0.0 → **605.0.0** (`MailReplySummaryDto`, `MailDto.Reply`, `MailDto.IsReport`) → **606.0.0**
+  (`MailDto.Reply` en `JsonIgnore(WhenWritingNull)`, voir « Trou attrapé par l'e2e »). Consommateur .NET : api-mail
+  (client-blazor non listé, non bumpé).
+- Interop / SDK : no change
+- Commits :
+  - dtos-mss : `e8a5043` feat(dto) dernière réponse + rapport ; `8ed9c81` fix(dto) Reply absent du JSON quand nul
+  - api-mail : `dbe0426a` bump 605 ; `ff60ead8` bump 606 ; `7009d9da` feat(mail) « Vous avez répondu… »
+  - client-mobile : `0a5ceee` feat(mobile) bandeau + icône + E2E-DETAIL-006 ; `e40e841` refactor simplify pass
+  - client-angular (code-only, **non commité** sur `feature/nova-mss-weda-integration`, à committer par l'humain) :
+    `front/libs/mss/src/core/models/mail.model.ts`, `core/utils/reply-summary.util(.spec).ts`,
+    `features/mail/components/reply-banner/*` (nouveau), `mail-detail/mail-detail.component.{ts,html}`,
+    `mail-detail/mail-detail.reply-banner.spec.ts`, `mail-header/mail-header.component.{ts,html,scss}`,
+    `mail-header/mail-header.reply.spec.ts`, `mail-compose/mail-compose.component(.spec).ts`,
+    `services/mail-event.service.ts`, `services/mail-state.service(.spec).ts`,
+    `front/e2e/mss-e2e/specs/functional.e2e.ts`, `front/e2e/mss-e2e/support/e2e-backend.ts`
+    (`conventions/e2e.md`, test-angular-non-commite : le test E2E-DETAIL-006 Angular vit dans cet arbre).
+
+### Conception
+
+- **Auteur réel (règle 14)** : table `MailReplies` dans la base de la boîte, écrite par `MailReplyRecorder` au moment
+  où la réponse part (point unique `OutgoingMailService` : envoi direct, brouillon et confirmation hors ligne), avec
+  l'identité imputée comme la trace `MailReply` (compte, RPPS PSC sinon rattachement, prénom, nom, rôle). Ancrée aux
+  `Message-ID`, jamais à la ligne `Mails` (consigne `etat-metier-hors-du-miroir-imap`). Migration
+  `20261113120000_AddMailReplies` relue (règle 7c) : création de table + 2 index + colonne `Mails.IsReport` défaut
+  false, aucune opération fantôme ; le modèle EF déclare le même schéma (suite d'intégration bâtie depuis le modèle,
+  verte).
+- **Ce qui compte comme réponse** (`MailReplySummaries`, domaine) : réponses enregistrées + copies du dossier Envoyés
+  (classification SPECIAL-USE ou nom). Parent = `In-Reply-To`, sinon le **dernier** `References` (RFC 5322 § 3.6.4) :
+  répondre au 3ᵉ message d'un fil n'est pas répondre au 1ᵉʳ. Exclus : message reçu, `multipart/report` (MDN, DSN —
+  colonne `Mails.IsReport`, posée à la lecture IMAP depuis BODYSTRUCTURE), « annule et remplace ». Auteur :
+  l'enregistrement, sinon l'en-tête `Sender` de la copie (nom seul), sinon inconnu.
+- **« Vous » est calculé par le serveur** (`IsByCurrentPerson`, compte ou RPPS de la personne qui lit).
+- **`\Answered`** : `FlagChangeKind.MarkAnswered` + `PendingActionTypes.MarkAnswered` (file des drapeaux, rejouable),
+  sur les copies locales du message d'origine pas encore marquées. Limite : un original jamais vu par la base (ni
+  affiché ni enrichi) ne reçoit pas le drapeau.
+- **« Voir la réponse »** : l'UID rendu par l'`APPEND` (UIDPLUS) est noté sur l'enregistrement, sinon la copie
+  synchronisée fait foi. Les clients relisent l'en-tête si l'emplacement manque encore.
+- Lu par `GET folders/{f}/emails/{ids}` (en ligne et hors ligne), une lecture par page. `GetThreadAsync.HasReplies`
+  exclut aussi les rapports.
+
+### Trou attrapé par l'e2e (écrit avec la fonctionnalité, avant tout commit)
+
+`E2E-DETAIL-006` mobile rouge au premier essai : la liste servie portait `reply`, mais l'icône manquait. La
+notification SSE `EmailsEnriched` (partagée par toute la boîte) sérialisait `"reply": null`, et les clients
+**fusionnent** le message reçu sur leur ligne (le détail mobile le **remplaçait**). Correctif :
+`[JsonIgnore(WhenWritingNull)]` sur `MailDto.Reply` (DTO 606) + fusion `{ ...current, ...enriched }` dans
+`mail-detail.page.ts`. Prévention : `conventions/csharp.md` § `champ-par-lecteur-hors-des-notifications`.
+
+### Preuves (règle 1b, tests vus rouges)
+
+- **Intégration bout en bout** (`ReplyBannerEndToEndTests`, pile HTTP réelle, Dovecot + GreenMail, base de la boîte) :
+  - `TheHolderReplies_TheOriginalTellsWhenWhoAndHowMany_AndIsAnsweredOnTheServer` : date UTC, personne, nombre,
+    `\Answered` relu sur Dovecot, emplacement « Voir la réponse » = la copie archivée ;
+  - `TheDelegateReplies_TheHolderReadsTheDelegateAsTheAuthor` : deux personnes sur la même boîte ;
+  - `AReadReceiptCarryingInReplyTo_IsNotAReply_WhetherReceivedOrArchived` : cas d'échec, MDN reçu ET rangé dans
+    Envoyés (prémisse : les deux lignes en base avec `IsReport`) ;
+  - `AReplyFromAnotherSoftware_IsCountedWithoutAuthor_AfterThePlatformReply` : 2 réponses, auteur inconnu ;
+  - `AReplySentFromItsDraft_IsRecordedTheSameWay` : chemin jumeau du brouillon.
+- **Mutations api-mail** (script, restauration depuis copie, recompilation) : M1 enregistreur non appelé → 3 rouges ;
+  M2 rapport compté → rouge MDN ; M3 auteur ignoré → 2 rouges ; M4 `\Flagged` au lieu de `\Answered` → rouge
+  titulaire ; M5 emplacement non noté → rouge titulaire ; M6 résumé non appliqué (en ligne) → 3 rouges ; M7 rapport
+  non détecté → rouge MDN. Après la passe qualité, le filtre `IsReport` existe en SQL **et** dans la règle (défense en
+  profondeur) : M2 seul ne rougit plus, M7 (détection) rougit toujours.
+- `AnEnrichmentNotification_CarriesNoNullReply_AndKeepsARealOne` : rouge sur le contrat 605 (sans l'attribut), vert
+  sur 606.
+- **Unitaires** : `MailReplySummariesTests` (In-Reply-To, References seul, ancêtre écarté, MDN, DSN, reçu, annule et
+  remplace, deux réponses, auteur inconnu, Sender, lecteur), `MailReplyRecorderTests`, `MailReplySummaryServiceTests`,
+  `OutgoingMailServiceTests` (réponse, nouveau message, échec, annule et remplace), `OfflineMailDataProviderTests`,
+  `MailFolderNamingRuleTests.IsSentName`.
+- **Composants mobile** (Karma) : `reply-summary.util.spec`, `mail-detail.reply-banner.spec` (à travers le détail),
+  `mail-header.reply.spec`, compose (relecture après envoi direct et brouillon), `mail-detail.page.spec` (fusion
+  d'enrichissement, adoption de la relecture). Mutations Mm1–Mm9 toutes rouges sur les tests prévus.
+- **Composants Angular** (Vitest) : mêmes axes, plus `MailStateService.refreshReply` ; mutations Ma1–Ma7 rouges.
+- **E2E-DETAIL-006 v1** (catalogue + mobile + Angular), joué seul sur `--serve-only` : vert. Mutations E1/EA1 bandeau
+  absent, E2/EA2 icône absente, E3/EA3 « Voir la réponse » sans effet : rouges sur l'assertion prévue ; témoins verts.
+  Les voies complètes restent jouées par `/e2e`.
+
+### Builds / tests
+
+- dtos-mss : build vert.
+- api-mail : build 0 avertissement ; suite complète verte (domain 249, infrastructure 749, application 4241, api
+  1380, integration 1287 + 16 ignorés pré-existants). Flaky pré-existant vu une fois puis vert 3/3 seul :
+  `ImapServiceTests.GetFolderNotSeenAsync_HappyPath_TagsTheImapActivityWithPerCommandDurationsAsync` (étiquette
+  d'Activity, chemin non touché).
+- client-mobile : `npm run build` vert ; 1440/1440.
+- client-angular : `nx build weda2` vert ; `nx test mss-lib` 146 fichiers verts ; ESLint 0 erreur et stylelint
+  0 erreur sur les fichiers touchés.
+
+### Passe qualité (/simplify, 4 angles : reuse, simplification, efficacité, altitude)
+
+- Appliqué :
+  - marqueur « annule et remplace » unique (`MailCancellationService` lit celui du domaine) ;
+  - noms du dossier des envois séparés (`SentNames`, plus de `Take(10)`), segment partagé, `FolderType.Sent` au lieu
+    d'un `1` en dur ;
+  - `MailReplySummaries` : un seul suivi pour les deux sources, `SentAt` en une expression ;
+  - dépôt : normalisation une seule fois, plus de pré-lecture avant l'insertion, mise à jour projetée
+    (`ExecuteUpdate`), `In-Reply-To` cherché seul (index), `References` seulement sans `In-Reply-To`, rapports filtrés
+    en SQL, dossier des envois résolu dans la requête ;
+  - clients : une seule relecture (`MailActionsService.refreshReply` mobile, `MailStateService.refreshReply`
+    Angular) pour la rédaction et « Voir la réponse » — corrige une dérive : le bandeau mobile ne prévenait pas le
+    détail ouvert ; appui long de l'icône sur le minuteur de la ligne (mobile) ; un seul repli « pas encore rangée ».
+  - api-mail : cleanups appliqués **avant** le premier commit de la fonctionnalité (pas de commit séparé), re-validés
+    par la suite complète. mobile : `e40e841`. Angular : non commité.
+- Écarté, noté pour l'humain :
+  - colonne `ParentMessageId` indexée à la synchronisation (la recherche par `References` reste un parcours des
+    envois sans `In-Reply-To`) ;
+  - réutiliser les lots de liens de fil quand `includeThreadCounts=true` ;
+  - drapeau pour ne pas calculer le résumé sur le chemin de l'accusé de lecture ;
+  - sortir la note d'emplacement d'`ImapService` (changer la signature d'`AppendToSentAsync` toucherait 20 fichiers
+    de tests) ;
+  - poser le résumé côté client sans relecture (le serveur reste la vérité : nombre, lecteur, emplacement) ;
+  - retirer les gardes `InReplyTo` / `MessageId` redondantes avec l'appelé (gardées : elles évitent un appel et un
+    test les éprouve).
+- Contrôles mécaniques §Q 2b : 7 S125 réécrits avant le premier commit (`conventions/csharp.md`, Occurrences 28) ;
+  xUnit1051 corrigé au build (Occurrences 5, contrôle mécanique ajouté à `agents/develop.md` §Q 2b).
+
+### Prévention (règle d'or)
+
+- `conventions/csharp.md` : nouvelle entrée `champ-par-lecteur-hors-des-notifications` ; xUnit1051 → 5 ; S125 → 28.
+- `conventions/e2e.md` : `mutation-non-servie` → 7 (import laissé inutilisé par une mutation weda2).
+- `agents/develop.md` §Q 2b : contrôle mécanique xUnit1051 (`Received…(…, default)`).
+
+### Hors périmètre / restes
+
+- Stitch : aucun écran créé ni réécrit (bandeau et icône ajoutés à des écrans existants) — non invoqué.
+- Transfert : hors périmètre (task).
+- Les lignes `Mails` existantes gardent `IsReport = false` jusqu'à leur prochaine synchronisation (pas de reprise,
+  bases de test).
+
+- DOD self-check : contrat ✓ ; auteur réel ✓ ; unitaires (6 cas) ✓ ; intégration bout en bout vue rouge ✓ ; deux
+  personnes ✓ ; composants weda2 + mobile vus rouges ✓ ; E2E-DETAIL-006 v1 mobile + angular vu rouge ✓ ; data-testid,
+  libellés FR, aucune donnée de santé dans les libellés ni les journaux ✓ ; builds et tests ✓.
+- Green marked : client-mobile `e40e8410`, client-angular (arbre), api-mail `7009d9da` (suite finale)
+- Next step : /review task-459 --code
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-459 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 50 s | — | — | — | — |
+| /develop | ok | 3 h 24 min | 14 (7 min 04 s) | 10 (34 min 06 s) | — | dtos-mss 2B/0T, api-mail 8B/4T, client-mobile 2B/3T, client-angular 2B/3T |
+| **Total cycle** | | **3 h 25 min** | **14 (7 min 04 s)** | **10 (34 min 06 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : nuget-wait ×2 (31 s), restore ×2 (15 s)
