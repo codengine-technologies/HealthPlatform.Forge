@@ -319,11 +319,13 @@ Baseline : dernière analyse du projet avant la task (2026-11-12) ; new code = 3
 - Itérations : 0 — rien à corriger ; pas d'auto-fix (il reformaterait du code hors de la task). Arbre inchangé.
 - Build / tests : vert de `/develop` réutilisé (`nx build weda2`, `nx test weda2` 2 683, `nx test mss-lib` 1 648).
 - Code-only : aucune opération git d'écriture.
+- Après la reprise 2 (spec e2e SEARCH-008) : lint rejoué, 0 erreur ; `functional.e2e.ts` 5 avertissements, comme sur HEAD.
 
 ## Lint mobile log
 
 - `npm run lint` sur `feat/task-466-date-de-debut-du-suivi-par-boite` (95e6dc1) : **All files pass linting**.
 - Itérations : 0 — rien à corriger, aucun commit. Build / tests : vert de `/develop` réutilisé (Karma 1 430/1 430).
+- Après la reprise 2 : `client-mobile` inchangé (95e6dc1, arbre propre) — lint non rejoué, skip mesuré.
 
 ## E2E log
 
@@ -568,9 +570,9 @@ au 2026-11-13 (base ce7741dd).
 | /develop | ok | 12 min 28 s | 14 (3 min 02 s) | 27 (49 min 06 s) | — | dtos-mss 2B/0T, api-mail 7B/19T, client-angular 2B/5T, client-mobile 3B/3T, reprise 2 (e2e) |
 | /review-code | ok | 4 min 21 s | — | — | — | — |
 | /sonar | ok | 9 min 36 s | 3 (2 min 05 s) | 17 (24 min 21 s) | 6 (2 min 21 s) | 1 itération(s), api-mail 3B/17T |
-| /lint-angular | ok | 56 s | — | — | — | 0 erreur, rien à corriger |
-| /lint-mobile | ok | 13 s | — | — | — | 0 erreur |
+| /lint-angular | ok | 22 s | — | — | — | 0 erreur (après reprise 2) |
+| /lint-mobile | skipped | 1.0 s | — | — | — | client-mobile inchangé depuis le dernier lint propre (95e6dc1) |
 | /e2e | failed | 33 min 13 s | — | 1 (7.9 s) | — | api-mail 0B/1T, e2e ×4 (29 min 28 s), régression Angular (4) — donnée de seed cr-bio-historique |
-| **Total cycle** | | **1 h 01 min** | **17 (5 min 07 s)** | **45 (1 h 13 min)** | **6 (2 min 21 s)** | |
+| **Total cycle** | | **1 h 00 min** | **17 (5 min 07 s)** | **45 (1 h 13 min)** | **6 (2 min 21 s)** | |
 
-Autres commandes mesurées : lint ×2 (42 s), nuget-wait ×2 (38 s), restore ×2 (7.1 s)
+Autres commandes mesurées : lint ×3 (50 s), nuget-wait ×2 (38 s), restore ×2 (7.1 s)
