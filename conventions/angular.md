@@ -225,8 +225,15 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   S'il l'était, `npx prettier --write <f>` ne touche **que** les lignes de la task. Le vérifier
   par `git diff --stat` : les insertions grossissent, aucune suppression n'apparaît hors des
   hunks. Sinon, seulement, formater à la main.
+- **Récidive task-459** (/lint-angular, 92 erreurs) : 91 lignes du scénario `E2E-DETAIL-006`
+  ajoutées en **LF** à `functional.e2e.ts`, fichier **CRLF** (`Insert ␍` sur chaque ligne ajoutée),
+  et une signature de 92 colonnes dans `e2e-backend.ts`. Deux specs ignorées par ESLint portaient
+  le même mélange (160 lignes). /develop avait consigné « ESLint 0 erreur » **avant** ces ajouts.
+  **Consigne** : une ligne ajoutée prend la fin de ligne du fichier ; le lint des fichiers touchés se
+  rejoue après la **dernière** modification de l'étape. Contrôle mécanique : `agents/develop.md`
+  §Q 2b (fins de ligne mêlées).
 - **Récidive task-331** (/develop, extension 2) : `prettier --write` lancé d'un bloc sur une liste de fichiers dont `audit.model.spec.ts`, qui n'était pas propre en HEAD (47 lignes de diff pour 2 ajoutées). Attrapé par le `git diff --stat` d'après coup, restauré depuis HEAD avant tout commit. Le réflexe à prendre : tester chaque fichier **existant** avec le remède mécanique **avant** de le mettre dans la commande `--write`, jamais après.
-- **Occurrences** : 6
+- **Occurrences** : 7
 
 ### tiptap-conteneur-capte-le-curseur — Un nœud conteneur en tête de document capte la frappe
 - **Règle** : comportement tiptap / ProseMirror (pas une règle lint)

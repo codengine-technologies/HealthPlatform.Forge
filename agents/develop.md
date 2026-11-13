@@ -240,7 +240,17 @@ whole cycle, and it doubles as the repo's final verification (Step 6).
    git diff origin/develop...HEAD -- '*.cs' | grep -nE '^\+.*Receiv(e|ed)(WithAnyArgs)?\([0-9]*\)\..*, default\);'
    # C# — CA1861 : a literal array compared in a test predicate (task-459, 8th occurrence, same form as task-449).
    git diff origin/develop...HEAD -- '*.cs' | grep -nE '^\+.*SequenceEqual\(new( ?\w*)?\[\]'
+   # TS / HTML / SCSS — mixed line endings : LF lines inserted into a CRLF file (task-459 : 91 lines
+   # appended to functional.e2e.ts, 160 to two specs ; prettier « Insert ␍ », seen only by /lint-angular).
+   # client-angular is code-only : list its files with `git diff --name-only` + untracked instead.
+   for f in $(git diff --name-only origin/develop...HEAD -- '*.ts' '*.html' '*.scss'); do
+     [ -f "$f" ] && python -c "import sys;b=open(sys.argv[1],'rb').read();c=b.count(b'\r\n');c in (0,b.count(b'\n')) or print(sys.argv[1])" "$f"
+   done
    ```
+   **Front-end repos : `npx eslint <every touched file, e2e support and specs included>` is replayed
+   after the LAST edit of the step** — a reprise or an e2e scenario added after the first lint is a
+   new edit (task-459 : « ESLint 0 erreur » logged by /develop, then the E2E-DETAIL-006 spec and a
+   92-column signature added to the e2e support, never re-linted : 92 `prettier/prettier` errors).
    Each must return nothing. A hit is rewritten (comma or full stop ; a string
    key for the theory, the object built in the test) before the push, and
    counts as a manual fix of the rule — increment its entry in

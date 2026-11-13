@@ -329,6 +329,30 @@ notification SSE `EmailsEnriched` (partagée par toute la boîte) sérialisait `
 La baseline est la dernière analyse du serveur (2026-11-12, branche d'une task précédente) : l'écart de 2 smells est
 celui de `develop` entre les deux analyses, pas de task-459.
 
+## Lint log
+
+### client-angular (/lint-angular, code-only — aucune opération git)
+
+- Branche : `feature/nova-mss-weda-integration` (humain). Périmètre : les 18 fichiers `.ts`/`.html` de la task
+  (`git diff` + non suivis), par `npx eslint` direct — contournement du playbook (task-367 : `nx affected
+  --projects=tag:scope:mss` ne restreint rien sur ce workspace). Attribution à la task par `git diff -U0`.
+- **Baseline** : 92 erreurs **de la task**, toutes `prettier/prettier`, toutes dans le support e2e :
+  - 91 × `Insert ␍` : les 91 lignes du scénario `E2E-DETAIL-006` ajoutées en LF à
+    `e2e/mss-e2e/specs/functional.e2e.ts`, fichier CRLF ;
+  - 1 × largeur : la signature de `waitForArchivedReply` (92 colonnes) dans `e2e/mss-e2e/support/e2e-backend.ts`.
+  - Deux specs ignorées par ESLint portaient le même mélange de fins de ligne (`mail-compose.component.spec.ts`
+    129 lignes, `mail-state.service.spec.ts` 31 lignes).
+  - Le code source `libs/mss` est à **0 erreur**. 30 avertissements préexistants hors lignes de la task
+    (`jsdoc/require-example` 19, `max-lines` 6, `complexity` 1, fichiers ignorés 4) : non touchés.
+- **Itération 1** : fins de ligne des 3 fichiers ramenées à CRLF (la fin de ligne du fichier) ;
+  `eslint --fix` sur le seul `e2e-backend.ts` (sans WIP humain, propre en HEAD) — diff limité au hunk de la task.
+- **Final** : **0 erreur** sur les fichiers de la task. `nx build weda2` vert, `nx test mss-lib --skipNxCache` vert.
+  Marqueur vert `client-angular` (lint-angular).
+- Itérations consommées : 1 / 5.
+- Prévention : `conventions/angular.md` `prettier-fichier-existant` → 7 (fin de ligne d'une ligne ajoutée, lint
+  rejoué après la dernière modification) ; `agents/develop.md` §Q 2b : contrôle mécanique des fins de ligne
+  mêlées (vu rouge sur un fichier mêlé, muet sur CRLF et LF purs) et lint e2e rejoué après la dernière édition.
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -453,6 +477,7 @@ Aucun bloquant.
 | /develop | ok | 10 min 27 s | 18 (8 min 34 s) | 13 (50 min 53 s) | — | dtos-mss 2B/0T, api-mail 11B/6T, client-mobile 3B/4T, client-angular 2B/3T, reprise 2 |
 | /review-code | ok | 3 min 31 s | — | — | — | — |
 | /sonar | ok | 35 min 13 s | 2 (1 min 24 s) | 10 (19 min 03 s) | 4 (6 min 55 s) | 2 itération(s), api-mail 2B/10T |
-| **Total cycle** | | **50 min 02 s** | **20 (9 min 58 s)** | **23 (1 h 09 min)** | **4 (6 min 55 s)** | |
+| /lint-angular | ok | 8 min 48 s | 1 (46 s) | 1 (1 min 28 s) | — | 1 itération(s), client-angular 1B/1T |
+| **Total cycle** | | **58 min 51 s** | **21 (10 min 45 s)** | **24 (1 h 11 min)** | **4 (6 min 55 s)** | |
 
-Autres commandes mesurées : nuget-wait ×2 (31 s), restore ×2 (15 s)
+Autres commandes mesurées : lint ×1 (1 min 08 s), nuget-wait ×2 (31 s), restore ×2 (15 s)
