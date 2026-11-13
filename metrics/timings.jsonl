@@ -9918,3 +9918,5 @@
 {"ts":"2026-11-13T16:38:21+01:00","run_id":"-","type":"cmd","task":"task-459","step":"review","repo":"client-mobile","kind":"test","label":"","cwd":"Client/Mobile","cmd":"npm test -- --watch=false --browsers=ChromeHeadless","duration_ms":52916,"exit_code":0}
 {"ts":"2026-11-13T16:43:49+01:00","run_id":"-","type":"cmd","task":"task-459","step":"review","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln --no-build","duration_ms":489942,"exit_code":1}
 {"ts":"2026-11-13T16:48:18+01:00","run_id":"-","type":"step","task":"task-459","step":"review","status":"ok","note":"resynchronisation develop (task-466), e2e bypass humain","iterations":null,"duration_ms":1142992}
+{"ts":"2026-11-13T16:52:25+01:00","run_id":"-","type":"step_start","task":"task-459","step":"merge"}
+{"ts":"2026-11-13T16:58:47+01:00","run_id":"-","type":"step","task":"task-459","step":"merge","status":"ok","note":"","iterations":null,"duration_ms":381264}
