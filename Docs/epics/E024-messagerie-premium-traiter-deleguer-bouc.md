@@ -1,8 +1,9 @@
 # E024 — Messagerie premium : traiter, déléguer, boucler
 
-> **Statut** : 🟡 En cours (1 feature sur 13 livrée et validée)
+> **Statut** : ✅ 1 feature livrée et validée — les 12 autres features prévues ont été **retirées du backlog** le
+> 2026-11-12 (décision humaine : développements non engagés ; tasks 454 à 464 et 466 supprimées)
 > **Version** : 0.1
-> **Auteur** : PO forge (tasks 453 à 466)
+> **Auteur** : PO forge (task-453)
 > **Modèle** : task-driven
 > **Dernière mise à jour** : 2026-11-12
 > **Vue ingénierie** : [E024-Changelogs.md](E024-Changelogs.md)
@@ -72,24 +73,16 @@ disparaissent jamais parce que le message a été rangé ailleurs, depuis la pla
 | Fonctionnalité | Ce que le praticien peut faire | Tasks | Statut |
 |---|---|---|---|
 | Un acquittement ne disparaît jamais | Retrouver l'acquittement d'un compte rendu, sa note, son auteur et le patient rattaché à la main, même après que le message a été rangé depuis un autre logiciel, supprimé puis restauré, ou relu après un incident de la messagerie | task-453 | ✅ Livrée et validée |
-| Marquer un message traité | Marquer « Traité » d'un geste, le remettre « À traiter », voir qui l'a traité | task-454 | 🔴 À faire |
-| « À revoir le… » | Reporter un message à une date : il quitte « À traiter » et revient en tête à cette date | task-455 | 🔴 À faire |
-| Vues par nature | Lire la boîte par nature — biologie, courriers, patients, pour info — chacune avec son compteur | task-456 | 🔴 À faire |
-| « À traiter par » | Attribuer un message à une personne de la boîte | task-457 | 🔴 À faire |
-| Notes internes | Écrire sur un message une note que seule la boîte lit | task-458 | 🔴 À faire |
-| « Vous avez répondu… » | Savoir en ouvrant un message que la boîte y a déjà répondu, quand et par qui | task-459 | 🔴 À faire |
-| Suivi d'acheminement | Voir, destinataire par destinataire, si le message est délivré, lu, ou pourquoi il a échoué | task-460 | 🔴 À faire |
-| Adresse déjà en échec | Être averti avant d'envoyer qu'une adresse a déjà échoué, et se voir proposer les autres adresses du confrère | task-461 | 🔴 À faire |
-| Relance sans réponse | Faire revenir un message envoyé resté sans réponse après le délai choisi | task-462 | 🔴 À faire |
-| Suivi de biologie | Décider après lecture d'un résultat, et suivre jusqu'au « résultat communiqué » | task-463 | 🔴 À faire |
-| Mon espace santé complet | Écrire au patient sans erreur d'adressage, savoir si le message est lu, recevoir sa réponse dans la bonne boîte | task-464 | 🔴 À faire |
-| Date de début du suivi | Choisir à partir de quand la boîte réclame quelque chose : l'historique ramené par une première synchronisation se consulte mais ne réclame rien | task-466 | 🔴 À faire |
 
 ---
 
 ## 5. Workflow entre Features
 
-Le parcours d'un message dans le cabinet, une fois l'EPIC livré :
+> ⚠️ Vision d'origine, **non engagée** : hors « Un acquittement ne disparaît jamais », les étapes de ce parcours
+> (marquer traité, « À traiter par », « À revoir le », suivi d'acheminement, relance, suivi de biologie) ont été
+> retirées du backlog le 2026-11-12.
+
+Le parcours d'un message dans le cabinet, tel que l'EPIC l'envisageait :
 
 ```mermaid
 flowchart LR
@@ -162,20 +155,9 @@ restauré.
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
 | Un acquittement ne disparaît jamais | ✅ Livrée et validée | 100 % | task-453 |
-| Marquer un message traité | 🔴 À faire | 0 % | task-454 |
-| « À revoir le… » | 🔴 À faire | 0 % | task-455 |
-| Vues par nature | 🔴 À faire | 0 % | task-456 |
-| « À traiter par » | 🔴 À faire | 0 % | task-457 |
-| Notes internes | 🔴 À faire | 0 % | task-458 |
-| « Vous avez répondu… » | 🔴 À faire | 0 % | task-459 |
-| Suivi d'acheminement | 🔴 À faire | 0 % | task-460 |
-| Adresse déjà en échec | 🔴 À faire | 0 % | task-461 |
-| Relance sans réponse | 🔴 À faire | 0 % | task-462 |
-| Suivi de biologie | 🔴 À faire | 0 % | task-463 |
-| Mon espace santé complet | 🔴 À faire | 0 % | task-464 |
-| Date de début du suivi | 🔴 À faire | 0 % | task-466 |
 
-**Couverture EPIC consolidée : 8 %** (1 feature livrée et validée sur 13).
+**Couverture EPIC consolidée : 100 %** de ce qui est retenu (1 feature livrée et validée). Les 12 autres features
+prévues ont été retirées du backlog le 2026-11-12, sans développement engagé.
 
 ---
 
