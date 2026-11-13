@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques (ingénierie, backlog, dette)
 > **Vue produit** : [E024-messagerie-premium-traiter-deleguer-bouc.md](E024-messagerie-premium-traiter-deleguer-bouc.md)
-> **Dernière mise à jour** : 2026-11-12
+> **Dernière mise à jour** : 2026-11-13
 
 ---
 
@@ -134,6 +134,45 @@
 - **Acquis conservés** : consignes `conventions/csharp.md` (S125, S4457, CA1068, S138, ASP0025,
   capture-de-metriques-serialisee), registre e2e des flaky.
 
+### v0.3 — task-466 : date de début du suivi par boîte (api-mail, dtos-mss, client-mobile, weda2)
+
+- **Contexte** : task réécrite le 2026-11-13 après le retrait du 2026-11-12 ; tasks 454, 456 à 459 et 462 de nouveau
+  au backlog (454 dépend de 466).
+- **État** : `done` — PRs ouvertes, `awaiting-human-merge` : api-mail
+  [#368](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/368), dtos-mss
+  [#66](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/66), client-mobile
+  [#124](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/124). client-angular en code-only :
+  22 fichiers non commités sur `feature/nova-mss-weda-integration`.
+- **NuGet** : `HealthPlatform.Dtos.Mss` 597.0.0 → 604.0.0 (`MailDto.ArrivalDate`,
+  `BiologyAckResolutionState.BeforeTrackingStart = 3`, `AuditActionType.MailboxTrackingStartChanged = 72`,
+  `MailboxTrackingStartDto`, `MailboxErrorCodes.TrackingStartInFuture`) → **607.0.0** (`MailMedicalDocumentDto.IsTracked`,
+  reprise 1) ; bump `api-mail` seul.
+- **Conception** :
+  - `Mails.ArrivalDate` (INTERNALDATE, insertion et promotion d'en-tête `??=`) ; table `MailboxTrackingStart` (une
+    ligne), migration `20261113120000_AddMailboxTrackingStart` (date = montée de la base − 5 min, tronquée à la seconde) ;
+  - `Domain/Rules/MessageTracking` : `IsTracked` (mémoire), `TrackedSince` (SQL), repli `SentDate`, sans date →
+    historique ; appliquée à `pending-summary`, `pending-mail-uids[/page]` et à l'état des documents de `emails/{ids}` ;
+  - `IsTracked` posé par document, indépendant de l'acquittement (un historique « en cours » ne réclame rien) ;
+  - `GET/PUT api/v1/account/mailboxes/current/tracking-start` : date future → 400 `MAILBOX_TRACKING_START_IN_FUTURE`,
+    corps sans date → 400 ; `[TracedInCode]` (ancienne et nouvelle date dans la trace) ;
+  - éviction du seul contenu en cache (`RedisKeys.Mail.Email`) des messages reclassés (fenêtre [min, max) entre les
+    deux dates), par lots de 50.
+- **Tests** : intégration `FolderOperationsEndToEndTests.TrackingStart` (10 cas : avant/après la date, 400, UIDVALIDITY,
+  recul de la date, délégataire, geste intermédiaire, cache de contenu, promotion d'en-tête, base sans ligne) ;
+  migration `MailboxTrackingStartMigrationTests` ; unitaires règle, service, exception. Mutations M1 à M9 rouges ;
+  B1 et S9 rouges avant correctif (weda2, mobile).
+- **Suite complète api-mail** : domain 237, infrastructure 749, application 4 236, api 1 381, integration 1 295
+  (+16 ignorés) — 0 rouge. Mobile Karma 1 430 ; weda2 2 683, mss-lib 1 648.
+- **Sonar** : 1 S3925 (faux positif, triplet présent) ; QG OK, new coverage 96,3 → 96,5 %, 0 bug / smell.
+- **E2E** : E2E-BIO-007 v1 (mobile, angular). 1er `/e2e` rouge (Angular : PATIENT-004, SEARCH-008, SEARCH-010,
+  DASH-001) — donnée de seed sur le patient partagé ; corrigé en reprise 2 (HPRIM « HISTOE2E Dominique »). 2e `/e2e` :
+  mobile 62/62, angular 83/83, porte verte.
+- **Revue** : 3 passages (CHANGES REQUESTED B1/B3/B4, puis APPROVED ×2), 2 reprises.
+- **Arbitrage ouvert (merge)** : B2 — la migration classe « antérieur au suivi » les résultats en attente des boîtes
+  existantes ; S1 pose initiale non tracée ; S2 widget « Résultats anormaux » hors suivi ; S8 `ArrivalDate` sans `Z`.
+- **Avant task-454** : S-A (`IsTracked` vrai pour un document non signalé d'un message historique), S-C
+  (`GetStateAsync` ignore le suivi).
+
 ---
 
 ## Annexe A — Cartographie des briques applicatives
@@ -147,13 +186,20 @@
 | `api-mail/src/Infrastructure/Migrations/MailDb/20261111120000_AnchorDocumentWorkStates.cs` | schéma (sans reprise de données) | task-453 |
 | `dtos-mss/AuditActionType.cs` (70, 71) | actes système de re-liaison | task-453 |
 | `api-mail/tests/mss.mail.e2e/E2eMessage.cs` | `message --move`, `--kind bio-hprim` | task-453 |
+| `api-mail/src/Domain/Rules/MessageTracking.cs` | règle unique du suivi | task-466 |
+| `api-mail/src/Infrastructure/Migrations/MailDb/20261113120000_AddMailboxTrackingStart.cs` | `Mails.ArrivalDate`, table `MailboxTrackingStart` | task-466 |
+| `api-mail/src/Application/Services/Mailboxes/MailboxTrackingService.cs` | lecture, changement tracé, éviction | task-466 |
+| `api-mail/src/Api/Controllers/V1/MailboxTrackingStartController.cs` | `account/mailboxes/current/tracking-start` | task-466 |
+| `dtos-mss/MailMedicalDocumentDto.cs` (`IsTracked`), `BiologyAckResolutionState` (3) | contrat du suivi | task-466 |
+| weda2 `libs/mss/src/core/models/biology-ack.model.ts` (`isBiologyAckClaimed`) | règle « réclamé » côté web | task-466 |
+| client-mobile `core/services/mailbox-tracking.service.ts` | date de la boîte ouverte | task-466 |
 
 ---
 
-## Annexe B — Inventaire fonctionnel daté (2026-11-12)
+## Annexe B — Inventaire fonctionnel daté (2026-11-13)
 
-- Tasks de l'EPIC : 14 (1 `archived`, 1 annulée, 12 `todo`).
-- Scénarios e2e de l'EPIC au catalogue : 1 (E2E-BIO-004).
+- Tasks de l'EPIC : 9 (1 `archived`, 1 `done`, 1 annulée, 6 `todo`).
+- Scénarios e2e de l'EPIC au catalogue : 2 (E2E-BIO-004, E2E-BIO-007).
 
 ---
 
@@ -163,3 +209,4 @@
 |---|---|---|
 | task-453 | Ancrage des acquittements et du rattachement manuel à l'identité stable du document ; re-liaison ; modèle imposé aux tasks 454 à 463 | `archived` (PRs #364, #63, #123) |
 | task-465 | Mesure de la charge et de l'usage — **annulée** le 2026-11-12 (décision humaine, reprise hors API par un cron job) | annulée (PRs #366, #64 fermées) |
+| task-466 | Date de début du suivi par boîte : seul ce qui arrive après réclame un acquittement ; socle de « À traiter » (task-454) | `done` (PRs #368, #66, #124) |
