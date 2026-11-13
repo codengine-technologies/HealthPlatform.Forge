@@ -1,9 +1,9 @@
 # E024 — Messagerie premium : traiter, déléguer, boucler
 
-> **Statut** : 🚧 1 feature livrée et validée, 1 livrée en attente de validation humaine (date de début du suivi),
-> 6 au backlog. Le 2026-11-12, toutes les features prévues avaient été retirées du backlog ; une partie y est revenue
-> le 2026-11-13.
-> **Version** : 0.2
+> **Statut** : 🟡 en cours — 2 features livrées et validées, 1 livrée en attente de validation humaine
+> (task-459), 5 au backlog (tasks 454, 456, 457, 458, 462). Le 2026-11-12, toutes les features prévues avaient
+> été retirées du backlog ; une partie y est revenue le 2026-11-13.
+> **Version** : 0.3
 > **Auteur** : PO forge (task-453)
 > **Modèle** : task-driven
 > **Dernière mise à jour** : 2026-11-13
@@ -74,12 +74,12 @@ disparaissent jamais parce que le message a été rangé ailleurs, depuis la pla
 | Fonctionnalité | Ce que le praticien peut faire | Tasks | Statut |
 |---|---|---|---|
 | Un acquittement ne disparaît jamais | Retrouver l'acquittement d'un compte rendu, sa note, son auteur et le patient rattaché à la main, même après que le message a été rangé depuis un autre logiciel, supprimé puis restauré, ou relu après un incident de la messagerie | task-453 | ✅ Livrée et validée |
-| Le suivi commence à une date | Choisir, pour toute la boîte, la date à partir de laquelle les messages arrivés réclament un acquittement. Les comptes rendus anciens ramenés par une première synchronisation se consultent et s'acquittent sans rien réclamer, marqués « Antérieur au suivi » | task-466 | 🟡 Livrée, en attente de validation humaine |
+| Le suivi commence à une date | Choisir, pour toute la boîte, la date à partir de laquelle les messages arrivés réclament un acquittement. Les comptes rendus anciens ramenés par une première synchronisation se consultent et s'acquittent sans rien réclamer, marqués « Antérieur au suivi » | task-466 | ✅ Livrée et validée |
+| « Vous avez répondu à ce message le… » | Savoir, en ouvrant un message, qu'on y a déjà répondu, ou qu'un collègue de la boîte l'a fait, quand et combien de fois ; ouvrir la réponse ; repérer d'une icône les messages répondus dans la liste | task-459 | 🟡 Livrée, en attente de validation humaine |
 | Vues par nature | Retrouver d'un coup d'œil la biologie, les courriers, les messages de patients et ceux reçus pour information | task-456 | ⏳ À faire |
 | Marquer un message traité | Voir ce qui reste à traiter, pas seulement ce qui n'est pas lu, et marquer un message traité | task-454 | ⏳ À faire |
 | « À traiter par » | Confier un message à une personne de la boîte | task-457 | ⏳ À faire |
 | Notes internes | Laisser sur un message une note visible des seules personnes de la boîte | task-458 | ⏳ À faire |
-| « Vous avez répondu à ce message » | Savoir en ouvrant un message qu'on y a déjà répondu, et quand | task-459 | ⏳ À faire |
 | Relance sans réponse | Voir revenir un message resté sans réponse depuis plusieurs jours | task-462 | ⏳ À faire |
 
 ---
@@ -168,16 +168,16 @@ praticien le souhaite, mais il n'encombre ni « Bio à acquitter » ni le tablea
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
 | Un acquittement ne disparaît jamais | ✅ Livrée et validée | 100 % | task-453 |
-| Le suivi commence à une date | 🟡 Livrée, en attente de validation humaine | 100 % livré | task-466 |
+| Le suivi commence à une date | ✅ Livrée et validée | 100 % livré | task-466 |
+| « Vous avez répondu à ce message le… » | 🟡 Livrée, en attente de validation humaine | 100 % (code) | task-459 |
 | Vues par nature | ⏳ À faire | 0 % | task-456 |
 | Marquer un message traité | ⏳ À faire | 0 % | task-454 |
 | « À traiter par » | ⏳ À faire | 0 % | task-457 |
 | Notes internes | ⏳ À faire | 0 % | task-458 |
-| « Vous avez répondu à ce message » | ⏳ À faire | 0 % | task-459 |
 | Relance sans réponse | ⏳ À faire | 0 % | task-462 |
 
-**Couverture EPIC consolidée : 2 features livrées sur 8 retenues** (1 validée, 1 en attente de validation humaine),
-6 au backlog.
+**Couverture EPIC consolidée : 3 features livrées sur 8 retenues** (2 validées, 1 en attente de validation
+humaine), 5 au backlog.
 
 ---
 
@@ -194,6 +194,12 @@ praticien le souhaite, mais il n'encombre ni « Bio à acquitter » ni le tablea
   plus monter « Bio à acquitter » à plusieurs centaines. Un compte rendu ancien s'ouvre sur « Antérieur au suivi » et
   peut toujours être acquitté, sans jamais redevenir « à acquitter ». Le réglage « Suivre les messages arrivés depuis
   le … » est sur le web et sur le mobile (task-466).
+- **v0.3 — « Vous avez répondu à ce message le… ».** En ouvrant un message, le praticien voit s'il y a déjà été
+  répondu : « Vous avez répondu… », « {Prénom NOM} ({rôle}) a répondu… » quand c'est un collègue de la boîte, ou
+  « Une réponse a été envoyée… » quand la réponse est partie d'un autre logiciel. Le bandeau donne la date, l'heure et
+  le nombre de réponses, et « Voir la réponse » ouvre l'envoi. Une icône signale les messages répondus dans la liste,
+  avec la même information au survol ou à l'appui long. Les accusés de lecture et les rapports de distribution ne
+  comptent pas comme des réponses. Sur l'application web et sur l'application mobile (task-459).
 
 ### Conformité réglementaire
 
@@ -202,6 +208,8 @@ praticien le souhaite, mais il n'encombre ni « Bio à acquitter » ni le tablea
   patient, et conservé aussi longtemps que les autres accès aux données de santé (task-453).
 - **v0.2 — Changer la date de suivi est un acte tracé.** Le journal de la boîte dit qui a changé la date de début du
   suivi, quand, et de quelle date à quelle date, délégataire compris (task-466).
+- **v0.3 — La réponse est imputée à la personne qui l'a écrite.** En boîte partagée, le bandeau nomme le délégataire
+  ou le membre qui a répondu, jamais la boîte ni le titulaire à sa place (task-459).
 
 ### Sécurité
 
@@ -217,6 +225,9 @@ praticien le souhaite, mais il n'encombre ni « Bio à acquitter » ni le tablea
 - **v0.2 — Date d'arrivée réelle.** La plateforme retient la date d'arrivée de chaque message sur le serveur de
   messagerie : un message ancien relu après un incident reste ancien. Un parcours automatique vérifie, sur les deux
   applications, qu'un compte rendu antérieur au suivi ne réclame rien et s'acquitte quand même (task-466).
+- **v0.3 — Drapeau « répondu » sur le serveur de messagerie.** Une réponse envoyée par la plateforme pose le drapeau
+  standard « répondu » sur le message d'origine, visible des autres logiciels. Un parcours automatique vérifie le
+  bandeau sur les deux applications (task-459).
 
 ---
 

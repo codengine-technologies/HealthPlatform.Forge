@@ -78,7 +78,7 @@ identifiants en constante **avant** de dupliquer. Vaut pour tout secret de banc
 
 ## CA1861 — pas de tableau littéral en argument d'appel
 
-**Occurrences : 7** (task-449 — `new[] { "bern", "cath" }` dans un `Arg.Is(… SequenceEqual(…))` d'un test NSubstitute : un prédicat d'argument est appelé à chaque appel, la consigne vaut aussi là ; task-422 — `new[] { "Urgent", "Important", "Très urgent" }` attendu d'un `Assert.Contains` dans `FakeOpenAiTests`, test du faux fournisseur d'IA du banc écrit hors chaîne, donc sans lecture de ce fichier : hissé en `static readonly string[]` ; task-389 — `new[] { … }` et `[ … ]` passés à `Concat` dans un générateur d'exemples de test (`HprimSamples.Html`) : la consigne vaut aussi pour les données de test, deux champs `static readonly` ; task-203, task-273 — récidive sur code frais : tableaux
+**Occurrences : 8** (task-459 — `ids.SequenceEqual(new[] { "repondu@…", "autre@…" })` dans un `Arg.Is` NSubstitute, la forme exacte de task-449, attrapée par `/sonar` : contrôle mécanique ajouté à `agents/develop.md` §Q 2b ; task-449 — `new[] { "bern", "cath" }` dans un `Arg.Is(… SequenceEqual(…))` d'un test NSubstitute : un prédicat d'argument est appelé à chaque appel, la consigne vaut aussi là ; task-422 — `new[] { "Urgent", "Important", "Très urgent" }` attendu d'un `Assert.Contains` dans `FakeOpenAiTests`, test du faux fournisseur d'IA du banc écrit hors chaîne, donc sans lecture de ce fichier : hissé en `static readonly string[]` ; task-389 — `new[] { … }` et `[ … ]` passés à `Concat` dans un générateur d'exemples de test (`HprimSamples.Html`) : la consigne vaut aussi pour les données de test, deux champs `static readonly` ; task-203, task-273 — récidive sur code frais : tableaux
 attendus d'un `Assert.Equal` dans un test de sollicitations ; la consigne vaut
 aussi pour les attendus de test ; task-334 — `l.SequenceEqual(new[] { 2u })` dans un
 `Arg.Is` NSubstitute, réécrit en `l.Count == 1 && l[0] == 2u` ; task-385 — `new float[] { 0.1f, 0.2f }` passé à `new Embedding<float>(…)` dans un faux
@@ -279,7 +279,7 @@ dans `string.Equals`, mais `StringComparer` dans `Contains`.
 
 ## S125 — une prose qui « ressemble à du code » est signalée comme code commenté
 
-**Occurrences : 27** (task-465, reprise du 2026-11-12 — ×3 de plus dans des commentaires de tests écrits **le jour même où ce compteur avait été incrémenté**, attrapés par le contrôle mécanique avant le commit. Le contrôle fait son travail ; l'habitude « espace + point-virgule » du français ne se corrige pas à la lecture, seulement à la commande ; task-465 — ×4 « … ; … » dans un commentaire du service de mesure de charge et trois commentaires de tests, attrapés par le contrôle mécanique §Q 2b joué avant le commit, réécrits avec une virgule ; task-423 — ×2 « …is down ; a route… » (middleware) et « …au-dessus ; une panne… » (client du registre), attrapés par le contrôle mécanique §Q 2b mais **après** le commit de la fonctionnalité, comme task-326 : le contrôle avait été remis à la passe qualité au lieu d'être joué avant `git commit`. Corrigés dans le commit de la passe qualité, avant le push ; task-419 — ×2 « … ; … » dans un commentaire de l'enregistrement DI et du relais SSE, attrapés par le contrôle mécanique §Q 2b avant le push ; task-409 — ×7 « … ; … » dans des commentaires du parseur FHIR, du préremplissage et de quatre tests, attrapés par le contrôle mécanique §Q 2b joué avant le commit et réécrits en phrases ; task-405 — « …la personne réelle ; aucune pour un acte système » dans un commentaire du lecteur du journal, attrapé par le contrôle mécanique §Q 2b joué cette fois avant le commit ; task-404 — « …de task-230 ; c'est désormais… » dans un commentaire de test du domaine, attrapé par le contrôle mécanique §Q 2b joué pendant `/sonar` : il n'avait pas été joué par `/develop`, voir S4457 ; task-400 — « …tenants neufs ; les gestes portent… » dans un commentaire de test d'intégration, attrapé par le contrôle mécanique §Q 2b avant le commit ; task-399 — ×2 « …ne l'a pas relue ; au-delà… » dans un commentaire de test d'intégration, attrapés par le contrôle mécanique §Q 2b avant le commit ; task-374 — « …aucune autre boîte ; le voir… » dans un commentaire de test du seed e2e, attrapé par le contrôle mécanique §Q 2b avant le commit ; task-326, 2ᵉ fois — « …qui le consomme ; les services… » dans le commentaire de tête d'`ImapServiceDependencies.cs`, attrapé par le contrôle §Q 2b mais **après** le commit : le contrôle et le `git commit` étaient enchaînés dans la même commande, sans arrêt sur résultat. Le contrôle se lit AVANT de committer, pas dans la même commande ; task-326 — « …qu'en Development ; un déploiement… » dans un commentaire de l'AppHost, attrapé par le contrôle mécanique §Q 2b avant le push ; task-340 — ×5 « … ; » en fin de proposition (contrôleur, MdnService, deux tests), dont un commentaire déplacé tel quel, attrapés par le contrôle mécanique §Q 2b avant la passe qualité ; task-334 — ×3, « …throws "Host is null" ; task-334 — … » et « par défaut ; WireExisting… », attrapées par le contrôle mécanique §Q 2b avant la passe qualité ; task-354 — « …would demand a registry ; » dans un commentaire d'un banc d'intégration, attrapé par le contrôle mécanique §Q 2b avant le commit ; task-344 — ×2 dans l'extension « reprise des étiquetages IA », attrapées par le contrôle mécanique avant le commit ; task-348 — deux commentaires « … public ; c'est … », « … Toxiproxy ; with », attrapés par le contrôle mécanique lancé pendant `/sonar` ; task-184, task-292, task-188, task-322, task-171, task-342, task-191, task-330,
+**Occurrences : 29** (task-459, reprise 1 — ×1 dans un commentaire de test neuf, attrapé par le contrôle mécanique avant le commit ; task-459 — ×7 « … ; … » dans des commentaires de la règle « répondu », du dépôt et d'un test, attrapés par le contrôle mécanique §Q 2b joué **avant** le premier commit d'api-mail, réécrits avec une virgule ou un point ; task-465, reprise du 2026-11-12 — ×3 de plus dans des commentaires de tests écrits **le jour même où ce compteur avait été incrémenté**, attrapés par le contrôle mécanique avant le commit. Le contrôle fait son travail ; l'habitude « espace + point-virgule » du français ne se corrige pas à la lecture, seulement à la commande ; task-465 — ×4 « … ; … » dans un commentaire du service de mesure de charge et trois commentaires de tests, attrapés par le contrôle mécanique §Q 2b joué avant le commit, réécrits avec une virgule ; task-423 — ×2 « …is down ; a route… » (middleware) et « …au-dessus ; une panne… » (client du registre), attrapés par le contrôle mécanique §Q 2b mais **après** le commit de la fonctionnalité, comme task-326 : le contrôle avait été remis à la passe qualité au lieu d'être joué avant `git commit`. Corrigés dans le commit de la passe qualité, avant le push ; task-419 — ×2 « … ; … » dans un commentaire de l'enregistrement DI et du relais SSE, attrapés par le contrôle mécanique §Q 2b avant le push ; task-409 — ×7 « … ; … » dans des commentaires du parseur FHIR, du préremplissage et de quatre tests, attrapés par le contrôle mécanique §Q 2b joué avant le commit et réécrits en phrases ; task-405 — « …la personne réelle ; aucune pour un acte système » dans un commentaire du lecteur du journal, attrapé par le contrôle mécanique §Q 2b joué cette fois avant le commit ; task-404 — « …de task-230 ; c'est désormais… » dans un commentaire de test du domaine, attrapé par le contrôle mécanique §Q 2b joué pendant `/sonar` : il n'avait pas été joué par `/develop`, voir S4457 ; task-400 — « …tenants neufs ; les gestes portent… » dans un commentaire de test d'intégration, attrapé par le contrôle mécanique §Q 2b avant le commit ; task-399 — ×2 « …ne l'a pas relue ; au-delà… » dans un commentaire de test d'intégration, attrapés par le contrôle mécanique §Q 2b avant le commit ; task-374 — « …aucune autre boîte ; le voir… » dans un commentaire de test du seed e2e, attrapé par le contrôle mécanique §Q 2b avant le commit ; task-326, 2ᵉ fois — « …qui le consomme ; les services… » dans le commentaire de tête d'`ImapServiceDependencies.cs`, attrapé par le contrôle §Q 2b mais **après** le commit : le contrôle et le `git commit` étaient enchaînés dans la même commande, sans arrêt sur résultat. Le contrôle se lit AVANT de committer, pas dans la même commande ; task-326 — « …qu'en Development ; un déploiement… » dans un commentaire de l'AppHost, attrapé par le contrôle mécanique §Q 2b avant le push ; task-340 — ×5 « … ; » en fin de proposition (contrôleur, MdnService, deux tests), dont un commentaire déplacé tel quel, attrapés par le contrôle mécanique §Q 2b avant la passe qualité ; task-334 — ×3, « …throws "Host is null" ; task-334 — … » et « par défaut ; WireExisting… », attrapées par le contrôle mécanique §Q 2b avant la passe qualité ; task-354 — « …would demand a registry ; » dans un commentaire d'un banc d'intégration, attrapé par le contrôle mécanique §Q 2b avant le commit ; task-344 — ×2 dans l'extension « reprise des étiquetages IA », attrapées par le contrôle mécanique avant le commit ; task-348 — deux commentaires « … public ; c'est … », « … Toxiproxy ; with », attrapés par le contrôle mécanique lancé pendant `/sonar` ; task-184, task-292, task-188, task-322, task-171, task-342, task-191, task-330,
 task-331 — neuvième, **attrapée par le contrôle mécanique avant le commit**, comme prévu : « …pas
 l'objet ; le parcours… » au milieu d'un commentaire du seed e2e. Le contrôle marche. Le réflexe
 d'écriture, lui, ne tient toujours pas : en français, l'espace avant le point-virgule est la
@@ -538,7 +538,7 @@ private Task<T> ReadCoreAsync(string key, string? correlationId, CancellationTok
 
 ## xUnit1051 — un test qui appelle une méthode à `CancellationToken` doit passer celui du contexte
 
-**Occurrences : 4** (task-378 — `DidNotReceiveWithAnyArgs().TestImapConnectionAsync(default!, default, default)` dans un test d'intégration neuf : le `default` du jeton est la forme exacte de task-329, attrapée par le build avant tout commit ; task-297 le 2026-09-13 — 10 appels, CI `develop` cassée ;
+**Occurrences : 5** (task-459 — 7 vérifications `DidNotReceiveWithAnyArgs().X(default!, …, default)` dans trois fichiers de tests neufs, attrapées par le build ; même forme pour la quatrième fois, d'où la vérification mécanique ajoutée à `agents/develop.md` §Q 2b ; task-378 — `DidNotReceiveWithAnyArgs().TestImapConnectionAsync(default!, default, default)` dans un test d'intégration neuf : le `default` du jeton est la forme exacte de task-329, attrapée par le build avant tout commit ; task-297 le 2026-09-13 — 10 appels, CI `develop` cassée ;
 task-303 le même jour — 12 appels, attrapés avant le push ; task-329 — 3 appels
 `DidNotReceiveWithAnyArgs().SendMailAsync(default!, default)`, attrapés par le build : le
 `default` d'un `CancellationToken` dans une vérification de substitut compte aussi)
@@ -2732,3 +2732,84 @@ rouge, sur un test différent d'un passage à l'autre.
   d'être cherché dans le code.
 
 **Origine** : task-478. **Occurrences** : 2
+
+---
+
+## champ-par-lecteur-hors-des-notifications — un champ calculé pour la personne qui lit ne voyage pas nul dans une notification partagée
+
+**Règle** : convention projet (contrat `MailDto`, SSE), invisible au lint, à Sonar et aux tests unitaires.
+
+**Piège** (task-459) : `MailDto.Reply` (« Vous avez répondu… ») est calculé à la lecture, pour la personne
+qui lit (`IsByCurrentPerson`). Les notifications d'enrichissement (SSE `EmailsEnriched`) portent aussi des
+`MailDto`, construits par l'enrichissement et diffusés à **toute** la boîte : elles ne le calculent pas, et
+le sérialisaient `"reply": null`. Les deux clients **fusionnent** le message reçu sur leur ligne
+(`updateMailInList(uid, email)`, et le détail mobile le **remplaçait**) : le null effaçait le bandeau posé
+par la lecture, quelques secondes après l'affichage. Tests unitaires et d'intégration verts ; seul le
+parcours e2e `E2E-DETAIL-006` l'a vu (icône absente de la ligne, alors que la liste servie la portait).
+
+**Consigne** :
+- Un champ de `MailDto` calculé **pour la personne** (ou absent du chemin d'enrichissement) porte
+  `[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]` : une notification qui ne le connaît pas
+  ne l'écrit pas.
+- Côté client, un message reçu par notification se **fusionne** sur celui affiché (`{ ...current, ...enriched }`),
+  jamais ne le remplace.
+- Un tel champ ne se calcule jamais dans un chemin de diffusion partagé : « vous » n'y a pas de sens.
+
+**Preuve** : `MailReplySummaryServiceTests.AnEnrichmentNotification_CarriesNoNullReply_AndKeepsARealOne`,
+rouge sur le contrat 605.0.0 (sans l'attribut) ; spec mobile `mail-detail.page.spec.ts` (notification
+d'enrichissement qui garde le bandeau).
+
+**Origine** : task-459 (`/develop`, attrapé par le parcours e2e écrit avec la fonctionnalité). **Occurrences** : 1
+
+---
+
+## apres-envoi-reussi-rien-d-annulable — Après le succès SMTP, aucun effet local annulable ni en échec, et l'archivage après ce dont il dépend
+
+**Règle** : convention projet (invariant task-272 / task-330 : « le message est parti, jamais un échec d'envoi
+rétroactif »), invisible au lint et à Sonar.
+
+**Piège** (task-459) : l'enregistrement de la réponse (base de la boîte, file des drapeaux) avait été intercalé entre
+le succès SMTP et la mise en file de l'archivage « Envoyés », avec le jeton de la requête. Un client qui se déconnecte
+à cet instant fait lever `OperationCanceledException` : pas de copie dans Envoyés, 499 sur un message parti, et sur
+`pending-emails/{id}/send` ou l'envoi d'un brouillon, un message parti redevient envoyable (double envoi médical).
+Tous les tests étaient verts : aucun n'abandonnait la requête après l'envoi.
+
+**Consigne** :
+- Dans `OutgoingMailService`, tout effet local entre le succès SMTP et la mise en file de l'archivage (enregistrement,
+  drapeau, trace) reçoit `CancellationToken.None` et ne lève jamais : il est best-effort, annulation comprise. Ainsi
+  rien ne peut empêcher l'archivage qui suit.
+- **L'ordre suit les dépendances, pas la prudence** : un effet dont l'archivage dépend passe avant lui. L'archivage
+  note l'emplacement de la copie sur la ligne `MailReplies` (`UPDATE`, pas d'upsert) et la file de fond dépile aussitôt
+  en production : mettre l'archivage en file d'abord perd l'emplacement dès que l'`APPEND` gagne la course contre
+  l'`INSERT` (constaté en revue sur la reprise 1 de task-459, invisible aux tests : `DeterministicBackgroundTaskQueue`
+  n'archive qu'au drainage, après la requête). Un test fige l'ordre (`Received.InOrder`).
+- Un effet ajouté sur ce chemin vient avec un test qui annule le jeton **dans** l'envoi SMTP et constate l'envoi en
+  succès et l'archivage engagé.
+
+**Preuve** : `OutgoingMailServiceTests.SendAsync_AClientThatAbortsRightAfterTheSend_StillGetsItsReplyArchived`, rouge
+sur le code d'avant (OCE remontée, archivage absent) ; `SendAsync_TheReplyIsRecordedBeforeItsArchiveIsQueued`, rouge
+sur l'ordre inversé de la reprise 1.
+
+**Origine** : task-459 (revue anticipée, B1 ; passage 2, N1 — né du premier correctif). **Occurrences** : 2
+
+### version-de-migration-unique — Une migration se date à la minute, et après la dernière du jeu
+
+**Règle** : convention projet (FluentMigrator, `api-mail`).
+
+**Piège** (task-459 / task-466) : deux tasks menées le même jour ont daté leur migration `MailDb` de
+`20261113120000` (« le jour, à midi », l'habitude de 12 des 20 migrations du jeu). Chacune compilait et passait ses
+tests seule, et les deux PRs étaient vertes. Réunies sur `develop`, le coureur refuse le jeu au démarrage, et une
+base qui a déjà joué l'une tient l'autre pour appliquée (même ligne `VersionInfo`). Vu seulement au `/merge`, par le
+conflit de `MailDataContext.cs`.
+
+**Consigne** :
+- Le numéro d'une nouvelle migration est l'**heure réelle de sa création, à la minute** (`yyyyMMddHHmm00`), jamais
+  `…120000` ; il est **postérieur à la dernière migration du jeu sur `origin/develop`** (la relire avant d'écrire).
+- À chaque synchronisation avec `develop` (`/review`, `/merge`), relire la liste des migrations : une migration
+  arrivée entre-temps avec un numéro supérieur ou égal impose de renuméroter la sienne (et de recréer les bases de
+  développement qui ont joué l'ancien numéro).
+
+**Preuve** : `TenantRegistryMigrationScopeTests.EveryMigration_HasAVersionOfItsOwnWithinItsSet`, rouge sur les deux
+migrations au même numéro, vert après la renumérotation de `AddMailReplies` en `20261113130000`.
+
+**Origine** : task-459 (`/merge`, synchronisation avec task-466). **Occurrences** : 1
