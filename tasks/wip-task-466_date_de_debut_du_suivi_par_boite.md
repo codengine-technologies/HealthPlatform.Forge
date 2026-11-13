@@ -532,6 +532,29 @@ au 2026-11-13 (branche `feature/nova-mss-weda-integration`, base ce7741dd).
 - **S-D** — l'éviction (au meilleur effort) reçoit le jeton d'annulation de la requête : une annulation pendant
   l'éviction rend 499 alors que la date est enregistrée et tracée. `CancellationToken.None` pour l'éviction.
 
+### Passage 3 (revue anticipée, après la reprise 2) — APPROVED
+
+Relecteur indépendant : la reprise **remplace** un message du seed (même âge, même état lu, même place) ; expéditeur,
+objet, pièce et patient changés, sans effet sur les autres parcours des deux suites (BIO-003 désigne son HPRIM par
+uid, empreinte HPRIM distincte par patient, « HISTOE2E » cité nulle part, DASH ne vérifie que l'affichage).
+L'ajustement de SEARCH-008 est honnête (troisième ligne nommée par uid, présence avant absence). Les tests de
+couverture de `/sonar` portent de vraies assertions.
+
+**approved at** : `dtos-mss` 957b28a, `api-mail` 0f0605cd, `client-mobile` 95e6dc1, `client-angular` arbre de travail
+au 2026-11-13 (base ce7741dd).
+
+#### Suggestions (non bloquantes, pour la PR)
+- **S-E** — `MailboxTrackingServiceTests.ALocalDate_IsConvertedToUtc` dépend du fuseau du poste : en UTC (runner CI),
+  il ne distingue pas une conversion d'un simple `SpecifyKind`.
+- **S-F** — `WithoutAPreviousDate_…` : la dernière assertion (`GetAsync` → `MinValue`) éprouve la doublure, pas le
+  scénario ; la remplacer par `Received(1).SetTrackingStartAsync(requested, …)`.
+- **S-G** — `E2eSeedPlan.cs` : le bloc `HistoricalHprimPatient` s'est inséré entre le `<summary>` de `HprimContent`
+  et sa déclaration (doc déplacée) ; le remettre après `HprimContent`.
+- **S-H** — catalogue, E2E-SEARCH-008 : ajouter `cr-bio-historique` à `seed:` (le parcours web en dépend désormais).
+- **S-I** — commentaire de SEARCH-008 (web) : « Les deux lignes » → « Les trois lignes ».
+- Traçabilité : la preuve rouge du test d'intégration « base sans ligne de suivi » (ajouté par `/sonar`) n'est pas
+  consignée ; une mutation sur l'`Add` de `MailboxTrackingRepository` suffirait.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-466 --sync` — ne pas éditer à la main)*
@@ -540,11 +563,11 @@ au 2026-11-13 (branche `feature/nova-mss-weda-integration`, base ce7741dd).
 |---|---|---|---|---|---|---|
 | /start | ok | 33 s | — | — | — | — |
 | /develop | ok | 12 min 28 s | 14 (3 min 02 s) | 27 (49 min 06 s) | — | dtos-mss 2B/0T, api-mail 7B/19T, client-angular 2B/5T, client-mobile 3B/3T, reprise 2 (e2e) |
-| /review-code | ok | 7 min 15 s | — | — | — | — |
+| /review-code | ok | 4 min 21 s | — | — | — | — |
 | /sonar | ok | 23 min 28 s | 2 (1 min 19 s) | 12 (16 min 52 s) | 4 (1 min 35 s) | 2 itération(s), api-mail 2B/12T |
 | /lint-angular | ok | 56 s | — | — | — | 0 erreur, rien à corriger |
 | /lint-mobile | ok | 13 s | — | — | — | 0 erreur |
 | /e2e | failed | 33 min 13 s | — | 1 (7.9 s) | — | api-mail 0B/1T, e2e ×4 (29 min 28 s), régression Angular (4) — donnée de seed cr-bio-historique |
-| **Total cycle** | | **1 h 18 min** | **16 (4 min 21 s)** | **40 (1 h 06 min)** | **4 (1 min 35 s)** | |
+| **Total cycle** | | **1 h 15 min** | **16 (4 min 21 s)** | **40 (1 h 06 min)** | **4 (1 min 35 s)** | |
 
 Autres commandes mesurées : lint ×2 (42 s), nuget-wait ×2 (38 s), restore ×2 (7.1 s)
