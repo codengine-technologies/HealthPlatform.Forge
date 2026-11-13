@@ -364,8 +364,13 @@
   échouer. La preuve tient par l'autre côté (MA2 rouge sur la relecture de la boîte praticien).
   **Consigne** : un négatif « X n'a pas touché Y » se rend capable d'échouer — ici, seeder dans la
   seconde boîte un message de même UID que la cible. À faire par une task de suivi.
+- **Récidive task-466 (relevée en revue anticipée, 2026-11-13)** : E2E-BIO-007 affirmait « le compte rendu
+  historique n'est pas parmi les résultats à acquitter » avec pour seule prémisse « le serveur compte des
+  résultats en attente », qui portait sur les AUTRES comptes rendus. Tant que l'historique n'était pas analysé,
+  l'absence passait d'office. **Consigne** : la présence d'avant porte sur **l'objet même** de l'absence
+  (ici `mailBySubject('cr-bio-historique').hasAbnormalBiology === true`), jamais sur un voisin.
 - **Origine** : task-349 (/e2e, 2026-10-01)
-- **Occurrences** : 1
+- **Occurrences** : 3 (task-349, task-374, task-466)
 
 ### depot-hors-application — Un message déposé hors de l'app n'apparaît qu'à une relecture du dossier
 - **Piège** : un message déposé directement en IMAP (outil `message --create`, relais `deliver`)

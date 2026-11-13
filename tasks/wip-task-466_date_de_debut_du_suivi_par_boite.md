@@ -211,6 +211,52 @@ Règles :
 - `conventions/csharp.md` : entrée `action-reclamee-bornee-au-suivi`.
 - Mémoire de session : lanceur Vitest de `mss-lib` — preuves par mutation sur spec ciblée `--pool=forks`.
 
+### Reprise 1 après /review
+
+Commits : `dtos-mss` 957b28a (publié 607.0.0, CI #607), `api-mail` 267e9ca2 (bump 604→607) + 011d661a,
+`client-mobile` 95e6dc1 ; `client-angular` non commité (code-only).
+
+- **B1** — le suivi est dit à part de l'acquittement : `MailMedicalDocumentDto.IsTracked` (vrai par défaut, serveur
+  antérieur), posé par `ApplyEnrichmentToMail` sur chaque document servi ; weda2 : `isBiologyAckClaimed(state,
+  isTracked)` lu par `computeBiologyAggregates` et `hasPendingBiologyAck`, `MailMedicalDocumentDto.isTracked` au modèle.
+  Le mobile n'avait pas le défaut (compteur du serveur, décrément à la seule résolution) : inchangé.
+  Preuves : `AHistoricalReportAcknowledgedWithAnIntermediateAction_IsStillUntracked_AndClaimsNothing` (« Pris
+  connaissance » → `InProgress`, `IsTracked = false`, 0 en attente, absent de `pending-summary` et de
+  `pending-mail-uids/page?lastAction=Acknowledged`) et `IsTracked` lu dans le premier test, **rouges avant le
+  correctif** ; specs weda2 (`biology-ack.model.spec`, `mail-state.service.spec` : « Pris connaissance » sur un
+  historique ne le rend pas « à acquitter ») rouges avant le correctif ; e2e BIO-007 Angular **rouge** avec la règle
+  web mutée (`isTracked` ignoré : `mail-summary-chip-ack` réapparaît).
+- **B3** — `GetReclassifiedBiologyMailLocationsAsync(previous, current)` : seuls les messages dont `ArrivalDate ??
+  SentDate` est entre l'ancienne et la nouvelle date ; le service ne retire que `RedisKeys.Mail.Email`
+  (`RemoveMailContentEntryAsync`), par lots de 50, rien si la date ne change pas. Preuve :
+  `MovingTheStart_RefreshesTheCachedContentOfTheReportsItReclassifies_AndOnlyThose` (cache qui garde réellement le
+  contenu, route `emails/content/{uid}`) : **rouge** avant le correctif (le message hors fenêtre évincé), M6 (éviction
+  neutralisée → contenu périmé) et M7 (fenêtre retirée) **rouges**.
+- **B4** — BIO-007 (mobile et Angular) attend `mailBySubject('cr-bio-historique').hasAbnormalBiology === true` avant
+  d'affirmer l'absence, puis vérifie après l'acquittement que rien n'est réclamé (pas de `mail-summary-chip-ack`,
+  puce inchangée, uid absent du serveur). Voies vertes : mobile 7 parcours (BIO-001/002/003/007, SETTINGS), Angular
+  10 parcours (BIO-001/002/003/007, SEARCH-006/012, SETTINGS).
+- **S3** — la date de suivi n'est lue que si la page porte de la biologie signalée (`MailRepository`). Les requêtes
+  de `BiologyAckRepository` (résumé, puce) ne sont pas sur la page d'en-têtes : inchangées.
+- **S4** — PUT sans date (`{}`) → 400 ProblemDetails, date inchangée ; M8 (garde retirée) **rouge**.
+- **S5** — écarté : retirer `GetStateAsync` supprimait 4 tests de dépôt (`BiologyAckRepositoryIntegrationTests`) pour
+  une méthode sans appelant ; elle dit l'état de l'acquittement seul, le suivi est désormais porté par `IsTracked`.
+- **S6** — `AHeaderWrittenBeforeTheMigration_GetsItsArrivalDateWhenPromoted` ; M9 (`??=` retiré) **rouge**.
+- **S7** — l'historique du premier test porte un résultat critique (« HH ») ; prémisse vérifiée en reculant la date
+  (`HasCriticalPendingBiologyAck` vrai une fois suivi).
+- **S9** — champ rendu à la date enregistrée sur refus, journée vide ou future (weda2, mobile) ; `todayIso` devient une
+  méthode. Specs rouges avant le correctif (weda2) et par mutation (mobile : 2 rouges). Le rafraîchissement weda2 est
+  sans objet : `MailStateService` est fourni par la page messagerie (`MssMailComponent`), détruite en allant aux
+  réglages ; liste et puce se relisent au retour.
+- **S10** — SEARCH-006 et 012 prennent `cr-bio-historique` comme plus ancien message ; verts.
+- Self-check du diff : la méthode d'interface renommée n'avait que des doublures NSubstitute ; `todayIso` du filtre
+  d'audit (même défaut, antérieur) hors périmètre.
+- Vérification : api-mail build 0 avertissement, suite complète verte sauf
+  `ImapServiceTests.GetFolderNotSeenAsync_HappyPath_Tags…` (instable connu, 73/73 isolé deux fois) ; mobile build,
+  Karma 1 430/1 430, `ng lint` propre ; weda2 build, `nx test weda2` 2 683, `nx test mss-lib` 1 648, ESLint 0 erreur.
+- Amélioration continue : `conventions/e2e.md` `precondition-du-negatif`, récidive task-466 (Occurrences 3). Récidive =
+  signal sur la lecture : la fiche n'avait pas été relue avant d'écrire BIO-007.
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -271,8 +317,8 @@ donnée de santé tracée) et règle 7c (migration ↔ modèle EF) : sans défau
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 33 s | — | — | — | — |
-| /develop | ok | 1 h 59 min | 7 (1 min 55 s) | 16 (18 min 06 s) | — | dtos-mss 1B/0T, api-mail 3B/11T, client-angular 1B/3T, client-mobile 2B/2T |
+| /develop | ok | 41 min 32 s | 13 (2 min 56 s) | 25 (42 min 21 s) | — | dtos-mss 2B/0T, api-mail 6B/17T, client-angular 2B/5T, client-mobile 3B/3T |
 | /review-code | changes | 38 min 24 s | — | — | — | reprise 1 |
-| **Total cycle** | | **2 h 38 min** | **7 (1 min 55 s)** | **16 (18 min 06 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **1 h 20 min** | **13 (2 min 56 s)** | **25 (42 min 21 s)** | **0 (0.0 s)** | |
 
-Autres commandes mesurées : nuget-wait ×1 (19 s), restore ×1 (3.6 s)
+Autres commandes mesurées : nuget-wait ×2 (38 s), restore ×2 (7.1 s)
