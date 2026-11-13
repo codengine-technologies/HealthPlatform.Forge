@@ -554,45 +554,45 @@ au 2026-11-13 (base ce7741dd).
 
 ### Validation finale — APPROVED (2026-11-13)
 
-- Build + tests : vert réutilisé pour  (/sonar, 0f0605cd),  (/develop, 95e6dc1), 
-  (/develop, 957b28a) ;  rejoué (arbre modifié depuis) : ,  1 648,
-   2 683.
-- DoD : toutes les lignes cochées (écart  consigné). E2E double verrou :  vert,
+- Build + tests : vert réutilisé pour `api-mail` (/sonar, 0f0605cd), `client-mobile` (/develop, 95e6dc1), `dtos-mss`
+  (/develop, 957b28a) ; `client-angular` rejoué (arbre modifié depuis) : `nx build weda2`, `nx test mss-lib` 1 648,
+  `nx test weda2` 2 683.
+- DoD : toutes les lignes cochées (écart `[TracedInCode]` consigné). E2E double verrou : `## E2E log` vert,
   E2E-BIO-007 v1 au catalogue et dans les deux clients.
 - Règle 1b : correspondance comportement → test → preuve rouge au Develop log (M1 à M9, rouges avant correctif).
-- api-mcp : aucun impact ( → 0).
+- api-mcp : aucun impact (`Tools/contracts/mcp_impact.py check` → 0).
 - Revue du diff depuis l'approbation (passage 3) : aucun commit de code depuis.
-- Synchronisation  : les trois dépôts poussables étaient à jour, aucun merge.
+- Synchronisation `develop` : les trois dépôts poussables étaient à jour, aucun merge.
 
 ## PRs
 
--  : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/66 — 
--  : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/368 — 
--  : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/124 — 
--  : code-only — humain gère commit/push TFS et ouverture PR. Branche .
+- `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/66 — `awaiting-human-merge`
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/368 — `awaiting-human-merge`
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/124 — `awaiting-human-merge`
+- `client-angular` : code-only — humain gère commit/push TFS et ouverture PR. Branche `feature/nova-mss-weda-integration`.
   Liste des fichiers modifiés ci-dessous :
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`
+  - `front/e2e/mss-e2e/support/e2e-backend.ts`
+  - `front/libs/mss/src/core/models/audit.model.spec.ts`
+  - `front/libs/mss/src/core/models/audit.model.ts`
+  - `front/libs/mss/src/core/models/biology-ack.model.ts`
+  - `front/libs/mss/src/core/models/mail.model.ts`
+  - `front/libs/mss/src/core/models/user-settings.model.ts`
+  - `front/libs/mss/src/core/services/mss-api.service.spec.ts`
+  - `front/libs/mss/src/core/services/mss-api.service.ts`
+  - `front/libs/mss/src/features/audit/components/audit-filter/audit-filter.component.ts`
+  - `front/libs/mss/src/features/mail/components/biology-ack-panel/biology-ack-panel.component.html`
+  - `front/libs/mss/src/features/mail/components/biology-ack-panel/biology-ack-panel.component.scss`
+  - `front/libs/mss/src/features/mail/components/biology-ack-panel/biology-ack-panel.component.spec.ts`
+  - `front/libs/mss/src/features/mail/components/biology-ack-panel/biology-ack-panel.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.component.ts`
+  - `front/libs/mss/src/features/mail/services/mail-state.service.spec.ts`
+  - `front/libs/mss/src/features/mail/services/mail-state.service.ts`
+  - `front/libs/mss/src/features/settings/mss-settings.component.html`
+  - `front/libs/mss/src/features/settings/mss-settings.component.spec.ts`
+  - `front/libs/mss/src/features/settings/mss-settings.component.ts`
+  - `front/libs/mss/src/core/models/biology-ack.model.spec.ts`
+  - `front/libs/mss/src/core/utils/local-date.util.ts`
 
 ## Timings
 
