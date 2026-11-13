@@ -500,6 +500,21 @@ Vérifié sain :
 
 - Aucun nouveau. Restent ouverts : N1, S2 (mandataire inverse), S3 (purge) et S9 du passage 3.
 
+### Passage 5 (revue anticipée, après reprise 2) — APPROVED (2026-11-13)
+
+**Approved at** : api-mcp `b89db38`.
+
+Relecteur indépendant, sur le diff de la reprise lu en premier : aucune régression. Les appelants de `MessageFor`, de
+`PendingLogin` et de `ChannelChoice.From` sont à jour. La validation au démarrage accepte toutes les configurations
+légitimes, et les hôtes dérivés des tests sont bien disposés. Constats du passage 4 : **B1, S1, S2 et S3 corrigés et
+prouvés** (M30 à M33 rouges).
+
+#### Suggestions (non bloquantes, pour la PR)
+
+- `/login/complete` en canal CARD : le message n'y est affirmé par aucun test ; seul `/login/status` l'est.
+- Le commentaire XML de `ProxyOptions.AllowedChannels` dit encore qu'un canal inconnu est ignoré, alors qu'il arrête
+  désormais le démarrage.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-478 --sync` — ne pas éditer à la main)*
@@ -508,10 +523,10 @@ Vérifié sain :
 |---|---|---|---|---|---|---|
 | /start | ok | 16 s | — | — | — | — |
 | /develop | ok | 5 min 00 s | 70 (2 min 43 s) | 58 (13 min 57 s) | — | api-mcp 70B/58T |
-| /review-code | changes | 2 min 44 s | — | — | — | reprise 2 |
-| /e2e | skipped | 1.3 s | — | — | — | aucune voie touchée (api-mcp seul) |
+| /review-code | ok | 2 min 43 s | — | — | — | — |
+| /e2e | skipped | 1.2 s | — | — | — | aucune voie touchée (api-mcp seul) |
 | /review | ok | 1 min 18 s | — | — | — | — |
 | /tech-writer | ok | 1 min 13 s | — | — | — | — |
-| **Total cycle** | | **10 min 34 s** | **70 (2 min 43 s)** | **58 (13 min 57 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **10 min 33 s** | **70 (2 min 43 s)** | **58 (13 min 57 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : restore ×3 (8.5 s)
