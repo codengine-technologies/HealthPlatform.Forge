@@ -282,6 +282,33 @@ correctifs : **16 rouges vus sur l'ancien code**, puis verts.
   mutation de trouver ses motifs. Le script s'adapte désormais aux fins de ligne du fichier.
 - Next step : /review task-478 --code (passage 3, après reprise)
 
+### Évolution humaine du 2026-11-13 — choix du canal : application e-CPS ou carte CPS
+
+Demandée par l'humain avant le merge de la PR #1 (US mise à jour : règle 1, comportement attendu, DoD, plan de test,
+conformité). Commits api-mcp :
+- `9398600` : feature ;
+- `3405c7a` : README et configuration ;
+- `0904c37` : correctif d'un test qui fuyait.
+
+Tous poussés. Tests 100/100, deux passages verts consécutifs. Vert marqué sur `0904c37`.
+
+| Comportement | Test | Preuve rouge |
+|---|---|---|
+| la page propose application e-CPS (cochée par défaut) et carte CPS | `CibaChannelTests.LoginPage_OffersTheEcpsAppByDefault_AndTheCpsCard` | rouge sur l'ancien code |
+| le canal choisi (MOBILE, CARD) est celui reçu par le proxy | `CibaChannelTests.Login_SendsTheChosenChannelToTheProxy_AndSucceeds` | cas CARD rouge sur l'ancien code ; M29 (canal forcé à MOBILE) rouge |
+| la page d'attente « carte CPS » demande de valider avec la carte | `CibaChannelTests.Login_WithTheCpsCard_TellsTheDoctorToValidateWithTheCard` | rouge sur l'ancien code |
+| un canal inconnu est refusé sans appel au proxy | `CibaChannelTests.Login_WithAnUnknownChannel_IsRefused_WithoutCallingTheProxy` | rouge sur l'ancien code |
+| liste des canaux configurable (vide = les deux), canal inconnu du proxy ignoré, défaut corrigé | `ChannelChoiceTests` (×4) | M27 (filtre retiré) et M28 (liste remplie par défaut, piège du binder) rouges |
+
+- **Incident** : une commande a poussé `3405c7a` et marqué le vert alors que le cas CARD était rouge. Un `grep` du
+  résultat de tests, dans une chaîne `&&`, masquait l'échec. Cause du rouge : le test « carte CPS » laissait sa
+  connexion CIBA tourner en arrière-plan, et son appel au proxy polluait le test suivant. Corrigé (`0904c37`) et vert
+  marqué de nouveau. Le marqueur faux de `3405c7a` est remplacé (empreinte différente).
+- **Amélioration continue** :
+  - consigne `travail-de-fond-attendu` dans `conventions/csharp.md` (2 occurrences dans la journée) ;
+  - mémoire de session « grep en chaîne masque un échec de tests ».
+- Next step : /review task-478 --code (passage 4, sur l'évolution)
+
 ## E2E log
 
 **E2E : skipped — aucune voie touchée.** task-478 ne touche que `api-mcp` : ni `api-mail`, ni `client-mobile`, ni
@@ -429,11 +456,11 @@ Rendu par le comportement :
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 16 s | — | — | — | — |
-| /develop | ok | 13 min 09 s | 50 (1 min 59 s) | 40 (9 min 28 s) | — | api-mcp 50B/40T |
+| /develop | ok | 8 min 04 s | 61 (2 min 26 s) | 50 (11 min 59 s) | — | api-mcp 61B/50T |
 | /review-code | ok | 5 min 14 s | — | — | — | — |
 | /e2e | skipped | 1.3 s | — | — | — | aucune voie touchée (api-mcp seul) |
 | /review | ok | 1 min 18 s | — | — | — | — |
 | /tech-writer | ok | 1 min 13 s | — | — | — | — |
-| **Total cycle** | | **21 min 13 s** | **50 (1 min 59 s)** | **40 (9 min 28 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **16 min 08 s** | **61 (2 min 26 s)** | **50 (11 min 59 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : restore ×3 (8.5 s)

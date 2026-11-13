@@ -2711,3 +2711,24 @@ la base suffisait à tout déchiffrer : le critère de DoD « chiffrés au repos
   capturé, dont il a d'abord vérifié qu'il n'est pas vide.
 
 **Origine** : task-352, task-353, task-478. **Occurrences** : 2
+
+---
+
+## travail-de-fond-attendu — un test qui déclenche un travail d'arrière-plan l'attend avant de rendre la main
+
+**Règle** : convention projet (isolation des tests d'intégration), invisible au compilateur et au lint.
+
+**Piège** (task-478, deux fois le même jour) : deux tests ont laissé partir une requête qui finissait après leur
+remise à zéro des simulateurs WireMock. Le journal du test suivant en a hérité, et son `Assert.Single` est passé au
+rouge, sur un test différent d'un passage à l'autre.
+- Le test du délai dépassé d'api-mail laissait une réponse retardée de 4 s.
+- Le test de la page « carte CPS » laissait une connexion CIBA lancée en arrière-plan par le serveur.
+
+**Consigne** :
+- Un test qui déclenche un travail qui lui survit attend sa fin avant de rendre la main : connexion CIBA en
+  arrière-plan, réponse retardée, message publié sur un bus. On attend l'état final (`/login/status` hors de
+  « pending ») ou l'entrée attendue dans le journal du simulateur.
+- Un rouge qui change de test d'un passage à l'autre est d'abord suspecté d'être une fuite entre tests, avant
+  d'être cherché dans le code.
+
+**Origine** : task-478. **Occurrences** : 2
