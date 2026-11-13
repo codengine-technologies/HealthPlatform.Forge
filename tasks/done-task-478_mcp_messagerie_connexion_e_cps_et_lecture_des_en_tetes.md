@@ -337,8 +337,8 @@ d'`api-mcp` est sa suite d'intégration (91 tests, vraie pile).
 ## PRs
 
 - `api-mcp` : https://github.com/codengine-technologies/HealthPlatform.Api.Mcp/pull/1 — label `awaiting-human-merge`
-  (head `5a07884`, base `develop`)
-- Validation finale : vert de `/develop` réutilisé à `5a07884` (build 0 erreur, 91/91), aucun diff depuis l'approbation
+  (head `b89db38` après l'évolution CARD / MOBILE et la reprise 2, base `develop` ; corps de PR mis à jour)
+- Validation finale : vert de `/develop` réutilisé à `b89db38` (build 0 erreur, 108/108), aucun diff depuis l'approbation
   du passage 3, `## E2E log` « skipped » accepté (aucune voie).
 - **Plan de contrôle non poussé** : l'enregistrement d'`api-mcp` dans `CLAUDE.md` et les playbooks, ainsi que
   l'exception « pré-flight limité aux Repos », modifient la chaîne. À relire par l'humain avant le push (règle d'or 7).
@@ -525,8 +525,8 @@ prouvés** (M30 à M33 rouges).
 | /develop | ok | 5 min 00 s | 70 (2 min 43 s) | 58 (13 min 57 s) | — | api-mcp 70B/58T |
 | /review-code | ok | 2 min 43 s | — | — | — | — |
 | /e2e | skipped | 1.2 s | — | — | — | aucune voie touchée (api-mcp seul) |
-| /review | ok | 1 min 18 s | — | — | — | — |
+| /review | ok | 30 s | — | — | — | — |
 | /tech-writer | ok | 1 min 13 s | — | — | — | — |
-| **Total cycle** | | **10 min 33 s** | **70 (2 min 43 s)** | **58 (13 min 57 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **9 min 45 s** | **70 (2 min 43 s)** | **58 (13 min 57 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : restore ×3 (8.5 s)
