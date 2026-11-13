@@ -353,6 +353,15 @@ celui de `develop` entre les deux analyses, pas de task-459.
   rejoué après la dernière modification) ; `agents/develop.md` §Q 2b : contrôle mécanique des fins de ligne
   mêlées (vu rouge sur un fichier mêlé, muet sur CRLF et LF purs) et lint e2e rejoué après la dernière édition.
 
+## Lint mobile log
+
+- Branche `feat/task-459-bandeau-vous-avez-repondu-a-ce-message` (HEAD `b2a9a011`), arbre propre.
+- Baseline : `npm run lint` (`ng lint`) — **All files pass linting** ; `npx eslint` (`ESLINT_USE_FLAT_CONFIG=false`)
+  sur les 19 fichiers `.ts`/`.html` de la task, e2e compris : **0 erreur, 0 avertissement**. Fins de ligne : aucun
+  fichier mêlé (contrôle §Q 2b).
+- Aucune correction, aucun commit. Build + tests non rejoués : marqueur vert de /develop valide sur ce code exact.
+- Itérations consommées : 0 / 5.
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -478,6 +487,7 @@ Aucun bloquant.
 | /review-code | ok | 3 min 31 s | — | — | — | — |
 | /sonar | ok | 35 min 13 s | 2 (1 min 24 s) | 10 (19 min 03 s) | 4 (6 min 55 s) | 2 itération(s), api-mail 2B/10T |
 | /lint-angular | ok | 8 min 48 s | 1 (46 s) | 1 (1 min 28 s) | — | 1 itération(s), client-angular 1B/1T |
-| **Total cycle** | | **58 min 51 s** | **21 (10 min 45 s)** | **24 (1 h 11 min)** | **4 (6 min 55 s)** | |
+| /lint-mobile | ok | 1 min 34 s | — | — | — | — |
+| **Total cycle** | | **1 h 00 min** | **21 (10 min 45 s)** | **24 (1 h 11 min)** | **4 (6 min 55 s)** | |
 
-Autres commandes mesurées : lint ×1 (1 min 08 s), nuget-wait ×2 (31 s), restore ×2 (15 s)
+Autres commandes mesurées : lint ×3 (2 min 06 s), nuget-wait ×2 (31 s), restore ×2 (15 s)
