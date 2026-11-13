@@ -37,8 +37,10 @@ les modifier.
 ## Règles métier
 
 1. **Identification par PSC seulement.** Le médecin saisit son RPPS sur la page de connexion du serveur MCP.
-   Il valide sur l'application e-CPS une notification qui porte le **code de liaison** (2 chiffres) affiché sur
-   la page. Aucun mot de passe et aucun autre moyen d'identification.
+   Il choisit son moyen de validation : **application e-CPS** sur son téléphone (canal `MOBILE`, choix par défaut)
+   ou **carte CPS** dans le lecteur de son poste (canal `CARD`). Il valide alors la demande, qui porte le **code de
+   liaison** (2 chiffres) affiché sur la page. Aucun mot de passe et aucun autre moyen d'identification.
+   *(Évolution demandée par l'humain le 2026-11-13, avant le merge de la PR #1 : la v1 ne proposait que MOBILE.)*
 2. **Le client IA ne voit jamais les jetons du médecin.** Le jeton Keycloak et la session du proxy restent
    dans le serveur MCP. Le client IA reçoit un jeton propre au serveur MCP, qui n'est valable nulle part
    ailleurs.
@@ -74,7 +76,9 @@ les modifier.
   - sinon → page de connexion : saisie du RPPS, code de liaison affiché.
 - Validation du RPPS sur la page :
   1. le serveur appelle `POST {cibaEndpoint}/auth/connect`
-     `{ nationalId: "8"+RPPS, bindingMessage, clientId: {clientId CIBA configuré}, channel: "MOBILE" }`.
+     `{ nationalId: "8"+RPPS, bindingMessage, clientId: {clientId CIBA configuré}, channel: "MOBILE" | "CARD" }`, le
+     canal choisi sur la page. Un canal hors de la liste admise (`Proxy:AllowedChannels`) est refusé sans appel au
+     proxy ;
      L'appel bloque jusqu'à la validation sur le téléphone : la page attend sans bloquer la requête du
      navigateur ;
   2. puis `POST {authEndpoint}/auth/keycloak-exchange` avec le cookie `proxy_session_id` reçu. La réponse
@@ -122,6 +126,7 @@ les modifier.
 - [ ] Test d'intégration : `keycloak-exchange` → 403 `PROXY-KC-4031` ⇒ la page affiche le message « première connexion » et aucun code n'est délivré ; vu rouge
 - [ ] Test d'intégration : un jeton émis pour une autre audience, ou un jeton Keycloak présenté directement, est refusé sur `/mcp` (401) ; vu rouge
 - [ ] Test d'intégration : client non enregistré ou URL de retour inconnue → refus sans redirection ; PKCE absent → refus ; vu rouge
+- [ ] Test d'intégration : la page propose les deux moyens de validation (application e-CPS, carte CPS) ; le canal choisi (`MOBILE` puis `CARD`) est celui reçu par le proxy simulé ; un canal inconnu est refusé et le proxy ne reçoit aucun appel ; vu rouge
 - [ ] Test d'intégration : au-delà du seuil de demandes de connexion pour un même RPPS → 429, et le proxy simulé ne reçoit pas d'appel `connect` supplémentaire ; vu rouge
 - [ ] Test d'intégration : `list_messages` et `search_messages` lus dans la réponse réelle (en-têtes rendus, page bornée) ; une erreur ProblemDetails d'api-mail (403 boîte non rattachée) donne une erreur d'outil `isError: true` sans détail technique ; vu rouge
 - [ ] **Lecture seule prouvée** : test qui fait tourner tous les outils et vérifie qu'api-mail simulé n'a reçu **que** des appels de la liste blanche (GET de lecture, POST de recherche). Aucune route `status/read`, `sendreadreceipt`, `sendmail`, `drafts`, `bulk`, `tags` ni `DELETE`. Vu rouge par mutation (ajout d'un appel hors liste)
@@ -143,8 +148,12 @@ Il faut aussi un RPPS de test e-CPS du bac à sable, avec l'application e-CPS de
 1. `cd Api/Mcp && dotnet run --project src/{projet hôte}`. Noter l'URL (par exemple `https://localhost:7300`).
 2. `claude mcp add --transport http messagerie https://localhost:7300/mcp`, puis dans Claude Code : `/mcp` →
    « messagerie » → s'authentifier.
-3. Le navigateur s'ouvre sur la page de connexion. Saisir le RPPS. Un code à 2 chiffres s'affiche.
+3. Le navigateur s'ouvre sur la page de connexion. Elle propose « Application e-CPS (téléphone) », choisie par
+   défaut, et « Carte CPS (lecteur du poste) ». Saisir le RPPS, garder l'application e-CPS. Un code à 2 chiffres
+   s'affiche.
 4. Sur le téléphone, vérifier que la notification e-CPS porte **le même code**, puis valider.
+4bis. Refaire la connexion en choisissant « Carte CPS », avec la carte dans le lecteur du poste : la page demande de
+   valider avec la carte, et la connexion aboutit.
 5. Retour automatique dans Claude Code : « messagerie » apparaît connecté, avec 4 outils.
 6. Demander « Quelles sont mes boîtes ? » → les boîtes du compte, avec leur rôle.
 7. Demander « Quels messages non lus dans la boîte de réception ? » → la liste des en-têtes.
@@ -161,7 +170,7 @@ Il faut aussi un RPPS de test e-CPS du bac à sable, avec l'application e-CPS de
 - **Vague Ségur** : hors Ségur — même raison
 - **Exigences DSR honorées** : non applicable — aucune fonction référencée n'est modifiée ; la messagerie MSSanté reste servie par api-mail
 - **INS** : non applicable — aucun patient manipulé ni identifié par le serveur MCP ; il relaie des en-têtes de messages
-- **Authentification PS** : Pro Santé Connect par e-CPS en CIBA (canal MOBILE), à travers psc-auth-proxy, niveau eIDAS substantiel ; aucun autre moyen d'identification
+- **Authentification PS** : Pro Santé Connect en CIBA, par application e-CPS (canal MOBILE) ou carte CPS (canal CARD), à travers psc-auth-proxy, niveau eIDAS substantiel ; aucun autre moyen d'identification
 - **Habilitations** : RPPS issu de PSC ; rattachement, rôle (titulaire / délégataire / membre) et verdict de l'opérateur décidés par api-mail (règle 14), inchangés
 - **Interop CI-SIS** : non applicable — JSON-RPC MCP propriétaire, pas d'échange CI-SIS
 - **Tracé PGSSI-S** : les recherches sont tracées par api-mail au nom du médecin (existant, `HealthDataAccess`, 3 653 jours) ; les listes d'en-têtes restent exemptées comme pour tous les clients (`TraceExempt`) ; les connexions MCP (CIBA demandé, validé, refusé ; jeton délivré, rafraîchi, refusé) sont journalisées par api-mcp, sans donnée de santé et avec RPPS masqué. La trace du **canal** (« via l'assistant IA ») vient avec task-479
@@ -424,6 +433,7 @@ Rendu par le comportement :
 | /review-code | ok | 5 min 14 s | — | — | — | — |
 | /e2e | skipped | 1.3 s | — | — | — | aucune voie touchée (api-mcp seul) |
 | /review | ok | 1 min 18 s | — | — | — | — |
-| **Total cycle** | | **20 min 00 s** | **50 (1 min 59 s)** | **40 (9 min 28 s)** | **0 (0.0 s)** | |
+| /tech-writer | ok | 1 min 13 s | — | — | — | — |
+| **Total cycle** | | **21 min 13 s** | **50 (1 min 59 s)** | **40 (9 min 28 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : restore ×3 (8.5 s)
