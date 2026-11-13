@@ -257,6 +257,37 @@ Commits : `dtos-mss` 957b28a (publié 607.0.0, CI #607), `api-mail` 267e9ca2 (bu
 - Amélioration continue : `conventions/e2e.md` `precondition-du-negatif`, récidive task-466 (Occurrences 3). Récidive =
   signal sur la lecture : la fiche n'avait pas été relue avant d'écrire BIO-007.
 
+## Sonar log
+
+- Analyse de la branche `feat/task-466-date-de-debut-du-suivi-par-boite` (SonarQube 9.9.8, `sonar.login`), deux passes.
+- Phase 1 (new code) : ✓ Quality Gate OK, new_coverage = 96,5 % ; fichiers de la task : `MailboxTrackingService`,
+  `MailboxTrackingRepository`, `MailboxTrackingStartInFutureException` à 100 %.
+- Phase 1 — Issues : 1, S3925 sur `MailboxTrackingStartInFutureException` (triplet de constructeurs présent d'emblée ;
+  la règle réclame encore le constructeur `ISerializable`, obsolète SYSLIB0051) → FALSE-POSITIVE avec motif, comme
+  les exceptions voisines. Hotspots : 0.
+- Phase 1 — Tests ajoutés : 4 (`f009fc96`) — constructeurs de l'exception, date locale, base sans date précédente
+  (trace « none », tous les messages signalés reclassés), boîte sans adresse ; et un test d'intégration : une base
+  sans ligne de suivi en reçoit une au premier réglage.
+- Phase 2 (legacy) : non jouée — 0 bug, 0 vulnérabilité, 0 code smell, couverture 97,8 % (cibles atteintes).
+- Build / tests (Release, avec couverture) : ✓ vert — 237 / 4 236 / 749 / 1 381 / 1 295 (+16 ignorés).
+- `conventions/csharp.md` : S3925 → Occurrences 9 (consigne lue, faux positif attendu).
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | → |
+| New coverage | 96,3 % | 96,5 % | +0,2 pt |
+| Bugs | 0 | 0 | 0 |
+| Vulnerabilities | 0 | 0 | 0 |
+| Security hotspots | 0 | 0 | 0 |
+| Code smells | 0 | 0 | 0 |
+| Coverage (projet) | 97,7 % | 97,8 % | +0,1 pt |
+| Duplication | 0,4 % | 0,4 % | 0 |
+| Reliability / Security / Maintainability | A/A/A | A/A/A | → |
+
+Baseline : dernière analyse du projet avant la task (2026-11-12) ; new code = 30 derniers jours.
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -341,6 +372,7 @@ au 2026-11-13 (branche `feature/nova-mss-weda-integration`, base ce7741dd).
 | /start | ok | 33 s | — | — | — | — |
 | /develop | ok | 41 min 32 s | 13 (2 min 56 s) | 25 (42 min 21 s) | — | dtos-mss 2B/0T, api-mail 6B/17T, client-angular 2B/5T, client-mobile 3B/3T |
 | /review-code | ok | 7 min 15 s | — | — | — | — |
-| **Total cycle** | | **49 min 22 s** | **13 (2 min 56 s)** | **25 (42 min 21 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 23 min 28 s | 2 (1 min 19 s) | 12 (16 min 52 s) | 4 (1 min 35 s) | 2 itération(s), api-mail 2B/12T |
+| **Total cycle** | | **1 h 12 min** | **15 (4 min 15 s)** | **37 (59 min 13 s)** | **4 (1 min 35 s)** | |
 
 Autres commandes mesurées : nuget-wait ×2 (38 s), restore ×2 (7.1 s)
