@@ -301,6 +301,34 @@ passage 2.
 - Green marked : api-mail `444aeb06`, client-mobile `e58fc40`, client-angular (arbre courant).
 - Next step : /review task-486 --code
 
+## Sonar log
+
+- SonarQube 9.9.8 (port 9000, conteneurs `sonarqube_db` puis `sonarqube` redémarrés : arrêtés depuis 35 h), clé
+  `healthplatform-api-mail`, branche `feat/task-486-…`. Période « new code » du serveur : 30 jours.
+- Phase 1 (new code) : ✓ Quality Gate OK, `new_coverage` = 96,6 %, 0 hotspot à revoir.
+- Phase 1 — Issues fixées : 2 code smells **S3604** (`MailReplySummaries.cs:176/178`, classe privée `Reply` : propriétés
+  initialisées depuis le constructeur primaire → `=> sentId`, `=> parent`). Code de task-459, déjà sur `develop`,
+  dans la fenêtre « new code » ; aucune issue sur les fichiers de task-486. Commit `d7d9f8c7`.
+- Phase 1 — Tests ajoutés : 0 (refactor pur ; `MailReplySummariesTests` 29/29 verts, suite complète verte).
+- Phase 2 (legacy) : sans objet — 0 issue ouverte sur le projet après Phase 1.
+- Build / tests : ✓ green (2 analyses complètes : build Release + 5 passes avec couverture OpenCover ; intégration
+  1 322 / 1 338, 16 sautés préexistants).
+- Conventions : `S3604` Occurrences 4.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | → |
+| New coverage | 96,5 % | 96,6 % | +0,1 pt |
+| Bugs | 0 | 0 | 0 |
+| Vulnerabilities | 0 | 0 | 0 |
+| Security hotspots | 0 | 0 | 0 |
+| Code smells | 0 (2 apparus à l'analyse de la branche) | 0 | 0 |
+| Coverage (projet) | 97,8 % | 97,8 % | 0 |
+| Duplication | 0,4 % | 0,4 % | 0 |
+| Reliability / Security / Maintainability | A / A / A | A / A / A | → |
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -420,4 +448,5 @@ Relecture indépendante du diff de la reprise d'abord (api-mail `0956bcad..4c283
 | /start | ok | 32 s | — | — | — | — |
 | /develop | ok | 10 min 36 s | 16 (2 min 41 s) | 14 (33 min 56 s) | — | api-mail 9B/5T, client-mobile 4B/6T, client-angular 3B/3T, reprise 2 |
 | /review-code | ok | 1 min 54 s | — | — | — | — |
-| **Total cycle** | | **13 min 03 s** | **16 (2 min 41 s)** | **14 (33 min 56 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 20 min 25 s | 3 (1 min 08 s) | 10 (15 min 08 s) | 4 (1 min 25 s) | 2 itération(s), api-mail 3B/10T |
+| **Total cycle** | | **33 min 28 s** | **19 (3 min 50 s)** | **24 (49 min 05 s)** | **4 (1 min 25 s)** | |

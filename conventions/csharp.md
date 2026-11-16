@@ -333,7 +333,7 @@ d'« accepter », ce qui use la crédibilité des exemptions.
 
 ## S3604 — pas d'initialiseur de membre qui ne fait que copier un paramètre de constructeur primaire
 
-**Occurrences : 3** (task-405 — `Action { get; } = action`, `Actions { get; } = actions`, `Reason { get; } = reason` sur les attributs d'audit à constructeur primaire, relevés par `/sonar` : écrire `=> action` ; task-326 — `_hostEnvironment = hostEnvironment` ajouté à côté d'un `_configuration = configuration`
+**Occurrences : 4** (task-486 /sonar — `SentId { get; } = sentId`, `Parent { get; } = parent` dans la classe privée `Reply` de `MailReplySummaries` (code de task-459, new code) : écrire `=> sentId` ; task-405 — `Action { get; } = action`, `Actions { get; } = actions`, `Reason { get; } = reason` sur les attributs d'audit à constructeur primaire, relevés par `/sonar` : écrire `=> action` ; task-326 — `_hostEnvironment = hostEnvironment` ajouté à côté d'un `_configuration = configuration`
 préexistant dans `TestBypassAuthenticationHandler`, en imitant le voisin ; corrigé en utilisant les deux paramètres
 directement. Le motif voisin n'excuse pas : on le retire avec le sien ; task-292, ×2 dans le même run)
 
