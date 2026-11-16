@@ -334,6 +334,41 @@ travail de client-angular (`feature/nova-mss-weda-integration`), par un relecteu
   choisir ce tag créerait un homonyme utilisateur. *Recommandation* : task-456 dérive ses codes du nom par la règle
   (un test le fige), plutôt qu'une pose par code ajoutée ici.
 
+### Passage 2 (revue anticipée, après reprise 1) — CHANGES REQUESTED, chaîne arrêtée
+
+Relecture indépendante du diff de la reprise d'abord (api-mail `0956bcad..4c28314b`, client-mobile
+`2690b9c..a1fe177`, fichiers weda2 de la saisie), puis des constats du passage 1. api-mcp : aucun impact.
+
+- **Rien de cassé par la reprise** : `AddTagToMailAsync` n'a qu'un appelant ; `CreateTagOrReadWinnerAsync` inchangé
+  (voies IA et catégorie intactes) ; l'intercepteur déplacé reste utilisé par le test AUD-36 ; les tests de course
+  nettoient la base partagée ; `sending` est remis à zéro au succès comme à l'échec ; Échap et ✕ passent par
+  `cancelAdding`.
+- **B1 corrigé** (refus et accents prouvés par la route, rouges par mutation). **B4 corrigé** (reprise sur
+  `IX_Tags_Code` et `IX_MailTags_MailId_TagId`, course forcée). **S1 corrigé** (deux clients). **B3 corrigé dans son
+  périmètre** (refus affiché, double envoi bloqué ; la garde « déjà posé » ne joue que si la liste est vide, voir B2).
+- **B2 partiellement corrigé — revient** : le nom exact passe bien en tête, sauf quand il désigne un tag **déjà
+  posé** sur le message. Ce tag est exclu de la liste, `exists` (qui compte les tags posés) retire la ligne
+  « Créer », et la ligne 0 — un autre tag — est désignée d'office. Message portant « Urgent », saisie « urgent » +
+  Entrée (ou ✓ sur mobile) → **« Très urgent » posé**. Le test « nom exact d'un tag déjà posé » utilise « Avis
+  cardio », que nul autre tag ne contient : il ne voit pas le cas. Fichiers : `tag-suggestions.util.ts` (weda2 :80,
+  mobile :64), `mail-tag.component.ts:104`, `mail-detail.component.ts:867`.
+
+#### À corriger par la reprise
+- **B2 (reste)** — quand le texte saisi désigne exactement un tag déjà posé, ne désigner aucune ligne (index −1) :
+  Entrée et ✓ referment la saisie sans rien envoyer. Test vu rouge dans les deux clients : message portant
+  « Urgent », boîte avec « Très urgent » et « Courrier urgent », « urgent » + Entrée → aucun POST.
+- **S2 (suggestion)** — weda2 : `startAdding` ne remet pas `error` à zéro ; un refus arrivé après une fermeture
+  réapparaît à la réouverture. `error.set(null)` à l'ouverture.
+- **S3 (suggestion)** — `ConcurrentPosesOfTheSameNewTag_AllSucceed_OnASingleTag` ne force pas la course (il peut
+  rester vert sans la reprise ; il a été rouge ici, mais par chance d'ordonnancement) : dire dans son commentaire que
+  la preuve rouge est `MailRepositoryUserTagRaceTests`.
+
+#### Arbitrage humain
+- **A1, A2** : inchangés (passage 1).
+- **A3 (nouveau, issu de la règle 13)** — B2 est un bloquant **revenu** après la reprise 1. La règle 13 arrête la
+  chaîne dans ce cas. Le correctif est connu, local et testable (ci-dessus) ; une reprise 2 reste dans le plafond.
+  *Recommandation de la forge* : autoriser la reprise 2 (`/develop task-486 --reprise`).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-486 --sync` — ne pas éditer à la main)*
@@ -342,5 +377,5 @@ travail de client-angular (`feature/nova-mss-weda-integration`), par un relecteu
 |---|---|---|---|---|---|---|
 | /start | ok | 32 s | — | — | — | — |
 | /develop | ok | 17 min 38 s | 13 (2 min 04 s) | 11 (27 min 00 s) | — | api-mail 8B/4T, client-mobile 3B/5T, client-angular 2B/2T, reprise 1 |
-| /review-code | changes | 5 min 23 s | — | — | — | reprise 1 |
-| **Total cycle** | | **23 min 34 s** | **13 (2 min 04 s)** | **11 (27 min 00 s)** | **0 (0.0 s)** | |
+| /review-code | failed | 5 min 21 s | — | — | — | B2 revenu apres reprise 1 (regle 13) |
+| **Total cycle** | | **23 min 32 s** | **13 (2 min 04 s)** | **11 (27 min 00 s)** | **0 (0.0 s)** | |
