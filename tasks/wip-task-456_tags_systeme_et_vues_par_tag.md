@@ -377,6 +377,116 @@ Règles :
   restaurée sans recompiler, et la suite est d'abord partie sur la DLL mutée (1 rouge). Recompilé avant de marquer le
   vert.
 
+### Reprise 1 (revue anticipée, passage 1)
+
+Correctifs de la liste « À corriger par la reprise ». Chacun a été vu rouge : avant le correctif, ou par mutation.
+
+- **Commits** :
+  - api-mail : `dd90c9dc` fix(mail) ;
+  - client-mobile : `7e3860f` fix(mobile) ;
+  - client-angular : non commité (code-only), voir la liste plus bas.
+
+**Backend (api-mail)**
+
+- **B4** : `Decide` et `SystemTagDecision` passent dans la règle du domaine (`SystemTagRule.Decide`). L'insertion, la
+  promotion et le rattrapage l'appellent.
+  - 6 tests unitaires ajoutés : laboratoire + biologie → Biologie + Professionnel de santé ; patient + biologie →
+    Biologie + Patient ; confrère sans document → Professionnel de santé seul ; en-têtes seuls → Biologie reste à
+    décider ; en-têtes déjà décidés → jamais redécidés, ni même relus ; tout décidé → rien.
+  - Le Develop log du premier passage annonçait ces deux combinaisons comme testées dans `SystemTagRuleTests` : à tort.
+    Corrigé ici.
+- **B1 / B3** : nouveau test d'intégration
+  `AMailListedInHeadersOnly_GetsBiologyWhenItsContentArrives_AndATagRemovedByHandStaysRemoved`. Il passe par la vraie
+  pile de bout en bout :
+  1. compte rendu HPRIM, la boîte seulement en copie, d'abord persisté en en-têtes seuls par le chemin de la liste ;
+  2. marque = `HeaderBits` ; « Pour info » posé, Biologie pas encore ;
+  3. le praticien retire « Pour info » (route) ;
+  4. enrichissement par `POST …/emails/enrich/sync` (promotion) ;
+  5. marque = `AllBits` ; vues Biologie et Biologie + Professionnel de santé = le message ; « Pour info » non reposé.
+- **B2** : le rattrapage est désormais prouvé déclenché par l'ouverture de la boîte.
+  - La fixture d'intégration compose le **vrai** `SystemTagsRecoveryScheduler` (et `SystemTagsRecoveryService`), comme
+    `Api/DependencyInjection`. Son créneau Redis est fermé par défaut : les autres tests ne voient rien changer. Un test
+    l'ouvre pour sa boîte (`OpenSystemTagsRecoverySlot`).
+  - Test `TheFirstOpeningAfterTheUpdate_SchedulesTheCatchUp_InTheBackground_UnderTheMailbox` :
+    1. le message reçu en copie est ramené à l'état d'avant la mise à jour ;
+    2. enrichissement par la route : rien n'est posé pendant la requête ;
+    3. drainage de la file de fond : « Pour info » (l'adresse de la boîte a suivi la recopie d'identité) et
+       « Professionnel de santé » sont reposés, et le journal **de la boîte** porte une pose de plus, en acte système.
+  - Tests unitaires `SystemTagsRecoverySchedulerTests` (3) : créneau pris → rien ; Redis en panne → rien, sans
+    exception ; créneau libre → passe en file `system-tags-recovery`, sous l'identité recopiée (adresse, RPPS,
+    `MailboxId`), créneau jamais relâché.
+- **S1** : le rattrapage pose chaque tag par une seule instruction par tag.
+  - L'instruction est gardée par le bit **encore libre au moment de l'écriture** et passe `ON CONFLICT DO NOTHING` ;
+    la marque est écrite dans la même transaction.
+  - La trace dit ce qui a été réellement posé (`RETURNING`).
+  - Tests `SystemTagsRecoveryRaceTests` (base isolée, intercepteur avant `INSERT INTO "MailTags"`) :
+    - pose concurrente du même tag → lot réussi, une seule ligne ;
+    - décision concurrente puis retrait à la main → le tag n'est pas reposé.
+- **S2** : index partiel `IX_Mails_SystemTagsPending` limité à `"FolderPath" = 'INBOX'` (migration non mergée, filtre
+  partagé avec `MailDataContext`).
+- **S4** : `MailDto.IsAutomatic` recopié dans les trois projections de lecture (vue par tag, liste, message).
+  L'assertion ajoutée au test d'arrivée était **rouge avant le correctif** (`(False, False)` au lieu de
+  `(True, False)`).
+- **S6** : la migration écrit noms, codes, couleurs, type et bits en littéraux (règle 7c). Elle ne lit plus
+  `SystemTagRule`.
+- Le harnais enrichit désormais par la route `enrich/sync`, et non plus par un appel direct au service.
+
+**Mutations de la reprise** (source muté, build, test visé, source restauré, rebuild) — toutes rouges :
+
+| # | Mutation | Test rouge |
+|---|---|---|
+| R1 | la promotion ne décide rien | AMailListedInHeadersOnly (« Values differ ») |
+| R2 | `Decide` redécide les en-têtes quand le contenu arrive | AMailListedInHeadersOnly (« Pour info » reposé) |
+| R3 | rattrapage jamais programmé par l'enrichissement | TheFirstOpeningAfterTheUpdate |
+| R4 | pose du rattrapage sans `ON CONFLICT` | TheSameTagPosedConcurrently (23505) |
+| R5 | pose du rattrapage non gardée par le bit | ATagDecidedConcurrently_ThenRemovedByHand |
+
+**Clients**
+
+- **C1, mobile** : `inbox.page.ts:383`, un abandon (`EmptyError`) n'est plus une panne.
+  - Deux specs : relâcher la dernière puce, ou changer de dossier, pendant qu'une page est en vol.
+  - Rouges avant le correctif ; mutation de la garde → rouges.
+- **Libellé, mobile** : l'en-tête affiche « N message(s) » (le `totalCount` du serveur) quel que soit le filtre, comme
+  weda2. Rouge en réinjectant l'ancien suffixe.
+- **C2, weda2** : `mss-mail.component.ts`, `onUserSettingsLoaded`. Si le filtre change à l'arrivée des réglages pendant
+  une vue par tag, la page repart du filtre retenu, et `isLoading` finit toujours.
+  - Spec `mss-mail.component.tag-view-settings.spec.ts` (3 cas) : ordre « dossiers, page en vol, réglages »,
+    réglages après la réponse, réglages « Tous » sans double chargement.
+  - Rouges avant le correctif ; mutation → rouges.
+- **C3, e2e** :
+  - E2E-TAG-002, mobile et weda2 : les quatre premiers tags affichés sont BIOLOGIE, PATIENT, PROFESSIONNEL DE SANTE,
+    POUR INFO, comparés au serveur relu au même moment, avec leur compteur de non lus.
+  - E2E-TAG-003, mobile : `tag-view-count` = `totalCount` du serveur, en « Tous » et en « Non lus ».
+  - weda2 : présence avant absence (convention `precondition-du-negatif`), nettoyage protégé (`try` par suppression),
+    compteur relu jusqu'à égalité.
+  - `scenario(…, 1)` inchangé, `tsc` des deux suites propre. Jamais joués ici, faute de backend e2e : leur rouge et
+    leur vert reviennent à `/e2e`.
+- **Hors liste, weda2** : 9 specs de `mail-list` (dont `search-mode` de task-445) étaient rouges depuis le 2026-11-17.
+  Cause : une date d'envoi figée dans les données de test. Ils lisent désormais `.mail-subject-text`. Prévention :
+  `conventions/angular.md` § `spec-qui-lit-une-ligne-de-liste-cible-l-objet`.
+- **client-angular, fichiers touchés par la reprise** (s'ajoutent à la liste du premier passage) :
+  - `mss-mail.component.ts` ;
+  - `mss-mail.component.tag-view-settings.spec.ts` (nouveau) ;
+  - `mail-list.tag-view.spec.ts`, `mail-list.search-mode.spec.ts` ;
+  - `e2e/mss-e2e/specs/functional.e2e.ts`, `e2e/mss-e2e/support/e2e-backend.ts`.
+
+**Suites**
+
+- **api-mail** : build vert.
+
+  | Projet | Résultat |
+  |---|---|
+  | domaine | 331/331 |
+  | infrastructure | 749/749 |
+  | application | 4 263/4 263 |
+  | api | 1 382/1 382 |
+  | intégration | 1 324/1 327 (+16 ignorés) |
+
+  - Les 3 rouges sont, de nouveau, les tests « du jour » de la fenêtre de minuit (00:37 heure locale). Vert non marqué.
+- **client-mobile** : build vert, Karma 1 504/1 504, lint sans erreur ; vert marqué (`7e3860f2`).
+- **weda2** : `nx build weda2` vert ; `nx test mss-lib` 157 fichiers, 1 743 tests ; ESLint et Prettier propres.
+- **api-mcp** : inchangé depuis le premier passage (109/109, vert marqué).
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -516,8 +626,8 @@ ont reçu le code et la US, pas les conclusions de `/develop`.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 28 s | — | — | — | — |
-| /develop | ok | 58 min 11 s | 6 (31 s) | 6 (14 min 33 s) | — | api-mail 3B/3T, api-mcp 2B/2T, client-mobile 1B/1T |
+| /develop | ok | 20 min 40 s | 7 (33 s) | 7 (20 min 49 s) | — | api-mail 4B/4T, api-mcp 2B/2T, client-mobile 1B/1T, reprise 1 |
 | /review-code | changes | 8 min 18 s | — | — | — | reprise 1 |
-| **Total cycle** | | **1 h 06 min** | **6 (31 s)** | **6 (14 min 33 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **29 min 27 s** | **7 (33 s)** | **7 (20 min 49 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (40 s)

@@ -789,3 +789,17 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   simple, vert avec le signal.
 - **Origine** : task-459 (revue anticipée, S4)
 - **Occurrences** : 1
+
+### spec-qui-lit-une-ligne-de-liste-cible-l-objet — Un spec lit l'élément visé, jamais une ligne entière dont le rendu dépend de la date
+- **Règle** : convention projet (rouge différé, invisible le jour de l'écriture)
+- **Repos** : les deux
+- **Piège** : sur task-456 (reprise 1), 9 specs de `mail-list` (`tag-view`, et `search-mode` de task-445) sont passés au
+  rouge sans changement de code. Les données de test portaient une date d'envoi figée (2026-11-10). Une semaine plus
+  tard, la ligne affichait « 10/11/26 » dans le même élément que l'objet, et l'expression régulière qui lisait la ligne
+  entière trouvait « INBOX 910 » au lieu de « INBOX 9 ».
+- **Consigne** : un helper de spec qui lit une ligne de liste cible l'élément voulu (`.mail-subject-text`,
+  `data-testid`), jamais le texte complet de la ligne. Une date d'envoi de jeu de test est relative à l'horloge (ou
+  l'horloge est figée), jamais un littéral qui vieillit.
+- **Preuve** : les 9 specs, rouges le 2026-11-17 sur la ligne entière, verts en ciblant `.mail-subject-text`.
+- **Origine** : task-456 (reprise 1, weda2)
+- **Occurrences** : 1
