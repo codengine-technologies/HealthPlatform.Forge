@@ -2868,3 +2868,23 @@ de `MailboxPrefillIntegrationTests`, deux suites complètes sur deux.
 `Pooling = false` sur les bases de `WidenTagNamesMigrationTests`.
 
 **Origine** : task-331 (fixture), task-486 (/develop, test de migration). **Occurrences** : 2
+
+### assert-all-jamais-sur-du-vide — `Assert.All` sur une collection filtrée se garde d'un `Assert.NotEmpty`
+
+**Règle** : convention projet (tests `api-mail`, « vert qui ment » invisible à la relecture).
+
+**Piège** (task-456) : `Assert.All(journal.Where(t => t.ActionType == TagAdded), t => Assert.True(t.IsSystemAct))` est
+vrai sur une collection **vide**. Le harnais enrichissait les messages dans un scope sans `MailboxId` : aucune trace de
+pose n'arrivait au journal de la boîte, et le test restait vert. La mutation « pose imputée à la personne »
+(`IsSystemAct = false`) a **survécu** ; c'est elle qui a révélé le trou.
+
+**Consigne** :
+- Avant un `Assert.All` (ou un `Assert.DoesNotContain` qui conclut « aucun ») sur une collection **filtrée**, affirmer
+  qu'elle n'est pas vide (`Assert.NotEmpty`) ou en compter les éléments attendus.
+- Un test de traces d'acte système ou de fond agit sous l'identité que la production recopie (boîte comprise :
+  `CopyIdentityTo`), jamais dans un scope nu.
+
+**Preuve** : avec `Assert.NotEmpty`, le test est rouge tant que l'enrichissement ignore la boîte, puis vert ; la
+mutation `IsSystemAct = false` est alors rouge (4 traces sur 4).
+
+**Origine** : task-456 (/develop, mutation survivante). **Occurrences** : 1

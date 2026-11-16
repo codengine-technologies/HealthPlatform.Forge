@@ -1,6 +1,6 @@
 # todo-task-456.md — Tags système et vues par tag : biologie, patient, professionnel de santé, pour info
 
-**Repos**: api-mail, dtos-mss, client-angular, client-mobile
+**Repos**: api-mail, dtos-mss, client-angular, client-mobile, api-mcp
 **Dependencies**: aucune
 **Epic**: E024
 
@@ -183,8 +183,198 @@ Règles :
 ## Branches
 - `api-mail` (pushed) : feat/task-456-tags-systeme-et-vues-par-tag — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-456-tags-systeme-et-vues-par-tag
 - `client-mobile` (pushed) : feat/task-456-tags-systeme-et-vues-par-tag — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-456-tags-systeme-et-vues-par-tag
-- `dtos-mss` (paresseuse) : aucune branche au /start — créée par /develop au premier changement de contrat (`TagDto`, `FolderDto`)
+- `dtos-mss` (paresseuse, créée par /develop) : feat/task-456-tags-systeme-et-vues-par-tag — https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/tree/feat/task-456-tags-systeme-et-vues-par-tag (NuGet 614.0.0)
+- `api-mcp` (paresseuse, créée par /develop, `mcp_impact.py check` Step 4c) : feat/task-456-tags-systeme-et-vues-par-tag — https://github.com/codengine-technologies/HealthPlatform.Api.Mcp/tree/feat/task-456-tags-systeme-et-vues-par-tag
 - `client-angular` (code-only) : la forge écrit sur la branche checked out dans `Client/Angular/` (au /start : `feature/nova-mss-weda-integration`) — humain gère branche, commit, push, PR TFS. ⚠️ L'arbre porte encore les 9 fichiers non commités de task-486 (saisie des tags) : task-456 les modifie à son tour ; les commiter vers TFS avant celles de task-456 garde deux lots lisibles.
+
+## Develop log
+
+- Repos touched : `dtos-mss` (branche paresseuse, NuGet 614.0.0), `api-mail`, `api-mcp` (branche paresseuse, Step 4c),
+  `client-mobile` (pushés), `client-angular` (code-only, non commité sur `feature/nova-mss-weda-integration`).
+- Commits :
+  - dtos-mss : `ea1af9f` feat(dto): `MailDto.IsAutomatic`, `FolderDto.TagType`, `UserSettingsDto.TagViewFilter`
+    (`TagViewFilterType { All, Unread }`, défaut `All`), publié par la CI en **614.0.0** ;
+  - api-mail : `d5e8959d` bump Dtos 614.0.0 ; `d5454ba7` feat(mail): tags système et vues par tag (passe qualité
+    incluse) ;
+  - api-mcp : `ac95965` feat(mcp): list_folders écarte les dossiers de tag ;
+  - client-mobile : `7457f06` feat, `1b6a90b` test(e2e) E2E-TAG-002/003, `66018c5` refactor (passe qualité) ;
+  - client-angular (non commité, à commiter par l'humain vers TFS, **après** les 9 fichiers de task-486) : modèles
+    `folder` / `mail` / `user-settings`, `mss-api.service.ts` (`getTagViewPage` ; `getEmailsByTag` et `getMailsByTag`
+    retirés), services `mail-state` / `mail-event`, composants `mail-list`, `mail-folder-list`, `mail-folder-item`,
+    `mss-mail`, `mail-widget` ; specs créées `mss-api.tag-view.service.spec.ts`, `mail-state.service.tag-view.spec.ts`,
+    `mail-list.tag-view.spec.ts`, `mail-folder-list.tags.spec.ts`, `mss-mail.component.tag-view.spec.ts`,
+    `mail-widget.component.spec.ts` ; e2e `functional.e2e.ts` (E2E-TAG-002/003) et `e2e-backend.ts`.
+
+### api-mail
+- **`SystemTagRule`** (Domain) : les quatre tags (`BIOLOGIE` #0E7490, `PATIENT` #7C3AED, `PROFESSIONNEL DE SANTE`
+  #15803D, `POUR INFO` #6B7280), un bit chacun.
+  - Patient : adresse en `@patient.mssante.fr`.
+  - Professionnel de santé : suffixe `.mssante.fr`, hors adresse patient.
+  - Pour info : la boîte n'est qu'en copie, ou le message est automatique (`Auto-Submitted` ≠ `no`, `List-Id`,
+    `Precedence: bulk|list`), ou c'est un avis technique.
+  - Biologie : un document de type « Bio », casse indifférente (ingestion et rattrapage comparent de la même façon).
+- **Migration `AddSystemTags` (20261116232800)** : heure réelle, après `20261116203100` (WidenTagNames, dernière
+  d'`origin/develop`).
+  - Colonnes `Mails.SystemTagsDecided int` (marque de décision, un bit par tag) et `Mails.IsAutomatic bool` ; index
+    partiel `IX_Mails_SystemTagsPending` (`SystemTagsDecided <> 15`).
+  - Les quatre tags `SYSTEM` posés par upsert sur `Code` (un tag utilisateur de même code devient système) ; tags
+    `CATEGORY` supprimés.
+  - Descente : colonnes et index retirés, `SYSTEM` → `USER`.
+  - Audit 7c : migration lue, aucune opération fantôme ; `MailDataContext` déclare colonnes et index (FluentMigrator :
+    ni snapshot ni `.Designer`). « Professionnel de santé » (22 caractères) tient grâce au `varchar(40)` de task-486.
+- **Décision une fois par message**, sur la Boîte de réception seulement :
+  - à l'insertion : Patient, Professionnel de santé et Pour info depuis les en-têtes ; Biologie si le contenu est là ;
+  - à la promotion d'un message lu d'abord en en-têtes seuls : Biologie.
+  - Un bit décidé ne se redécide jamais : **un tag retiré à la main ne revient pas**. La marque s'écrit par un `OU` bit
+    à bit en SQL (atomique face au rattrapage), avec un repli par suivi d'entités pour le fournisseur en mémoire des
+    tests unitaires.
+  - Chaque pose est tracée `TagAdded` en **acte système** (`IsSystemAct`), sans donnée de santé : UID, dossier,
+    Message-Id, codes des tags.
+- **Rattrapage** : `SystemTagsRecoveryService` (lots de 200, 50 lots au plus), planifié par
+  `SystemTagsRecoveryScheduler` (verrou Redis par boîte, toutes les 10 min, file `system-tags-recovery`) après
+  l'ouverture de la boîte, comme le rattrapage du marquage IA (task-344). Candidats : messages de la génération
+  courante de la Boîte de réception dont un bit reste à décider **et** peut l'être.
+- **Code mort retiré** (DOD) : `AddCategoryTagsToMailAsync`, `AddDocumentCategoryTagsAsync`, `AddTagsToMailAsync`,
+  `TryAddCategoryMailTagAsync`. Les tags de catégorie de document sont remplacés par les tags système.
+  - `MailRepositoryCategoryTagRaceTests` est retiré avec eux : la course qu'il gardait (création concurrente d'un tag
+    de catégorie à l'ingestion) n'existe plus, les tags système étant posés par la migration.
+  - Son invariant d'atomicité reste prouvé par `MailIngestionWriteOrderTests`, dont l'injection de panne passe de
+    `INSERT INTO "MailTags"` à `INSERT INTO "MailMedicalDocuments"`.
+- **Vue par tag(s)** : `GET api/v1/mail/tags/emails?tag=…&tag=…&filter=all|unread&page=…&pageSize=…`
+  (`[TraceExempt]` : liste d'en-têtes de la boîte, comme les dossiers).
+  - Intersection des tags, du plus récent au plus ancien, pages servies par le serveur.
+  - Tag inconnu → 404 ; aucun tag, filtre inconnu ou page invalide → 400 `ProblemDetails` (`ValidationException`,
+    règle 12).
+  - Les routes `tags/{tagcode}/emails` et `tags/{tagcode}/emails/{uids}` sont retirées : les deux clients sont migrés
+    dans la même task.
+- **Dossiers de tag** (`GET folders`) : les quatre tags système toujours, dans l'ordre de la règle, même à zéro ; puis
+  les tags IA et utilisateur qui portent au moins un message de la Boîte de réception, lu ou non. `Count` = total,
+  `UnreadCount` = non lus, `TagType` renseigné.
+- **Réglage du filtre** : `UserSettingsDto.TagViewFilter`, rangé dans les réglages de la **personne** (clé `UserId` du
+  dépôt existant).
+- **Outil e2e** (`mss.mail.e2e message --create`) : options `--from`, `--cc-only`, `--unread`.
+
+### api-mcp — impact (Step 4c)
+- `python Tools/contracts/mcp_impact.py check` → **1**, avec une seule raison : « forme du JSON modifiée dans
+  `MailController.cs` (`PropertyNamingPolicy`) ».
+- **Faux positif analysé** : les lignes retirées sont les options de sérialisation locales de l'action en flux
+  `GET tags/{tag}/emails/{uids}`, supprimée. api-mcp n'appelle aucune route de tag : ses 5 routes sont intactes et les
+  champs qu'il lit sont inchangés (`surface`). L'outil compare les jetons de forme JSON par fichier, pas par route.
+- **Impact réel trouvé en l'analysant** : `list_folders` aurait listé en permanence les quatre dossiers virtuels
+  `tag:` (source `Tag`), que `list_messages` ne sait pas lire.
+  - Adaptation : `ToolViews.Flatten` écarte la source `Tag` (1 ou « Tag »), comme il écartait déjà `Drafts`.
+  - Test d'intégration MCP `ListFolders_HidesTheVirtualTagFolders_SystemTagsIncluded` : stub WireMock qui reproduit la
+    nouvelle liste, source en nombre et en chaîne. **Vu rouge par mutation** (filtre `Tag` retiré → « Collections
+    differ »).
+  - Suite api-mcp : 109/109.
+
+### Tests et preuves rouges (règle 1b)
+- **Unitaires** :
+  - `SystemTagRuleTests` (23) : un test par tag, copie seule, `Auto-Submitted`, laboratoire, patient porteur d'une
+    biologie, confrère sans document, expéditeur hors `.mssante.fr`, rang ;
+  - `MailControllerTests` : combinaison, filtre et page transmis au service ; 404 ; 4 requêtes invalides refusées
+    avant le service ;
+  - tests des services et du dépôt migrés vers la nouvelle vue.
+- **Intégration de bout en bout** (`FolderOperationsEndToEndTests.SystemTags.cs`) : vraie pile HTTP ; vrais
+  `ImapService` → `EmailBuildingService` → `MailRepository` ; base PostgreSQL de la boîte construite par FluentMigrator ;
+  Dovecot. Les messages sont déposés en IMAP avec leurs vrais en-têtes, dont une pièce HPRIM.
+  - `TheSystemTags_ArePosedAtArrival_AndTheTagViewsServeReadAndUnreadMails_ByIntersection` : ordre et type des
+    dossiers, `Count` / `UnreadCount`, chaque vue, « Non lus », intersection, pagination ;
+  - `AnUnknownTagIs404_AndAnUnknownFilterAMissingTagOrABadPageAre400_InProblemJson` ;
+  - `TheCatchUp_TagsTheMailsStoredBefore_AndNeverPutsBackATagRemovedByHand` ;
+  - `TheTagViewFilter_IsKeptForThePerson_AnotherPersonOfTheBoxKeepsAll` : le titulaire passe à « Non lus », le
+    délégataire garde « Tous » ;
+  - `TheDelegateRemovesForInformation_TheHolderNoLongerSeesItThere_AndTheJournalNamesTheDelegate` : `TagRemoved` au
+    nom du délégataire, poses de l'arrivée en actes système.
+- **Mutations** (source muté, build, test visé, source restauré, rebuild) — toutes rouges :
+
+  | # | Mutation | Test rouge |
+  |---|---|---|
+  | M1 | Pour info ignore la copie | ArePosedAtArrival (« Values differ ») |
+  | M2 | Biologie jamais posée à l'arrivée | ArePosedAtArrival |
+  | M3 | filtre « Non lus » ignoré | ArePosedAtArrival |
+  | M4 | union au lieu de l'intersection | ArePosedAtArrival |
+  | M5 | `Count` = non lus | ArePosedAtArrival |
+  | M6 | tag inconnu servi en 200 | 404/400 (« Attendu 404, reçu 200 ») |
+  | M7 | le rattrapage redécide tout (tag retiré reposé) | TheCatchUp |
+  | M8 | le rattrapage ne pose rien | TheCatchUp |
+  | M9 | filtre des vues non enregistré | TheTagViewFilter |
+  | M10 | pose système imputée à la personne | TheDelegateRemoves (4 traces sur 4) |
+
+- **Défaut du harnais trouvé par M10** : à la première passe, M10 **survivait**.
+  - Cause : l'enrichissement des tests tournait dans un scope sans `MailboxId`. Aucune trace de pose n'atteignait le
+    journal de la boîte, et `Assert.All(... TagAdded ..., IsSystemAct)` restait vrai sur une collection vide.
+  - Correction : enrichissement sous l'identité de la requête (comme `CopyIdentityTo` en production), et
+    `Assert.NotEmpty` avant l'`Assert.All`.
+  - Prévention : `conventions/csharp.md` § `assert-all-jamais-sur-du-vide`.
+- **Tests existants adaptés au nouveau comportement** :
+  - `CountingQueriesEndToEndTests` : un tag dont le seul message est lu garde son dossier, en (1, 0) ; une boîte sans
+    tag montre les quatre tags système à zéro ; un seul comptage groupé de `MailTags` ;
+  - `AttachmentBytesReadEndToEndTests` : nouvelle route ;
+  - `WidenTagNamesMigrationTests` : ne lit plus que ses propres tags ;
+  - `MailRepositoryTagDraftCoverageTests` et `MailRepositoryBranchCoverageTests` : plus de tag de catégorie ; Biologie
+    posée à la promotion ;
+  - `FolderOperationsEndToEndTests.TagEntry` : « Biologie » est désormais posé par la migration.
+
+### Build et suites
+- **api-mail** : build vert. Suite complète :
+
+  | Projet | Résultat |
+  |---|---|
+  | domaine | 325/325 |
+  | infrastructure | 749/749 |
+  | application | 4 260/4 260 |
+  | api | 1 382/1 382 |
+  | intégration | 1 320/1 323 (+16 ignorés) |
+
+  - Les **3 rouges** de l'intégration sont les tests « du jour » : `FilterTodayEmails…`, `GetFolderTodayAsync…`,
+    `GetFolderNotSeenTodayAsync…`. Ils ont été joués à 00:10 heure locale (23:10 UTC), dans la fenêtre de minuit connue
+    où « aujourd'hui » est calculé en UTC. Ils sont sans lien avec la task.
+  - **Vert non marqué** : `/review` rejouera la suite hors de cette fenêtre.
+- **api-mcp** : 109/109, vert marqué (`ac959658`).
+- **client-mobile** : build vert, Karma 1 502/1 502, `tsc` e2e propre, lint sans erreur sur les fichiers touchés ;
+  vert marqué (`66018c5d`).
+- **client-angular** : `nx build weda2` vert ; `nx test mss-lib` 156 fichiers, 1 740 tests ; 22 mutations rouges ;
+  ESLint sans erreur, Prettier propre, CRLF. Ces chiffres viennent du rapport de l'implémentation : vert non marqué.
+- **Scénarios e2e** E2E-TAG-002 et E2E-TAG-003 (v1, mobile et angular requis) : au catalogue et dans les deux suites.
+  Ils n'ont jamais été joués, aucun backend e2e n'étant monté en `/develop` : leur preuve rouge et leur vert reviennent
+  à `/e2e`.
+
+### Passe qualité (§Q)
+- **api-mail**, re-validé par la suite complète ci-dessus :
+  - décision « une fois » factorisée dans `Decide`, partagée par l'ingestion et le rattrapage ;
+  - garde « aucun tag » placée avant la lecture des tags ;
+  - page vide servie sans hydratation ;
+  - `using` et commentaires périmés retirés ; S125, S103.
+- **api-mcp** : rien à nettoyer.
+- **client-mobile** : lecture des réglages factorisée dans le support e2e ; deux commentaires périmés (regroupement
+  biologie retiré).
+- **client-angular** : rien à nettoyer.
+- **Non appliqué**, à proposer : `SystemTagsRecoveryScheduler` recopie `AiTaggingRecoveryScheduler` (task-344). Une
+  base commune toucherait du code hors task.
+
+### Décisions prises (à arbitrer au merge)
+- **weda2** :
+  - la recherche et la puce « Bio à acquitter » sont masquées dans une vue par tag : une combinaison n'a pas de dossier
+    à fournir à la recherche ;
+  - décocher le dernier tag ramène à la Boîte de réception ;
+  - le compteur du tableau de bord passe du total aux non lus, selon la règle de la DOD.
+- **mobile** :
+  - les tags du widget Messagerie de l'Accueil servent de puces, l'Accueil n'ayant pas de liste ; un toucher ouvre
+    Messages avec cette seule puce active ;
+  - dans une vue par tag, « Flaggés », « Bio à acquitter » et le choix liste / conversation sont masqués ;
+  - un mail reçu en direct n'est pas inséré dans une vue par tag : il arrive au rechargement suivant.
+- **api-mcp** : les dossiers de tag sont écartés de `list_folders`. Pas de vue par tag côté client IA en v1.
+
+### Amélioration continue
+- **Test qui affirmait sur du vide** (mutation survivante) : consigne `assert-all-jamais-sur-du-vide` dans
+  `conventions/csharp.md`.
+- **Étape qui bloque à tort** : `mcp_impact.py` signale la forme JSON au fichier, pas à la route. Prévention proposée,
+  par une task du plan de contrôle à relire par l'humain avant le push (règle d'or 7) : ne retenir un jeton de forme
+  JSON retiré d'un contrôleur que s'il appartient à une action dont la route est dans la surface d'api-mcp.
+- **Récidive** du piège de la mémoire « Mutation restaurée : code muté qui survit » : la mutation api-mcp a été
+  restaurée sans recompiler, et la suite est d'abord partie sur la DLL mutée (1 rouge). Recompilé avant de marquer le
+  vert.
 
 ## Timings
 
@@ -193,4 +383,7 @@ Règles :
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 28 s | — | — | — | — |
-| **Total cycle** | | **28 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 58 min 11 s | 6 (31 s) | 6 (14 min 33 s) | — | api-mail 3B/3T, api-mcp 2B/2T, client-mobile 1B/1T |
+| **Total cycle** | | **58 min 40 s** | **6 (31 s)** | **6 (14 min 33 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : nuget-wait ×1 (40 s)

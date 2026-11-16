@@ -625,8 +625,8 @@ Relecture indépendante du diff de la reprise d'abord (api-mail `0956bcad..4c283
 | /lint-mobile | ok | 14 s | — | — | — | lint propre |
 | /e2e | ok | 21 min 14 s | — | — | — | e2e ×3 (20 min 11 s) |
 | /review | ok | 1 min 23 s | — | — | — | — |
-| /tech-writer | ok | 1 min 06 s | — | — | — | — |
-| **Total cycle** | | **58 min 04 s** | **19 (3 min 50 s)** | **24 (49 min 05 s)** | **4 (1 min 25 s)** | |
+| /tech-writer | ok | 26 s | — | — | — | — |
+| **Total cycle** | | **57 min 24 s** | **19 (3 min 50 s)** | **24 (49 min 05 s)** | **4 (1 min 25 s)** | |
 
 Autres commandes mesurées : lint ×3 (15 s)
 
