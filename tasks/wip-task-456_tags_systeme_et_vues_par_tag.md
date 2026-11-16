@@ -1,6 +1,7 @@
 # todo-task-456.md — Tags système et vues par tag : biologie, patient, professionnel de santé, pour info
 
 **Repos**: api-mail, dtos-mss, client-angular, client-mobile, api-mcp
+**Reprises**: 1
 **Dependencies**: aucune
 **Epic**: E024
 
@@ -376,6 +377,138 @@ Règles :
   restaurée sans recompiler, et la suite est d'abord partie sur la DLL mutée (1 rouge). Recompilé avant de marquer le
   vert.
 
+## Code Review Summary
+
+### Passage 1 (revue anticipée) — CHANGES REQUESTED
+
+Revue indépendante en deux relecteurs : backend (api-mail, dtos-mss, api-mcp) et clients (mobile, weda2, e2e). Ils
+ont reçu le code et la US, pas les conclusions de `/develop`.
+
+- **4b (clause DOD)** : E2E-TAG-002 et E2E-TAG-003 v1 sont au diff du catalogue, avec mobile et angular requis. Les deux
+  suites déclarent `scenario('E2E-TAG-00x', 1)`.
+- **4c** : `mcp_impact.py check` → 1, une seule raison (forme JSON dans `MailController.cs`).
+  - C'est un faux positif : la ligne vient des options locales de la route en flux supprimée, qu'api-mcp n'appelle
+    pas.
+  - La branche `api-mcp` répond à l'impact réel : dossiers `tag:` écartés de `list_folders`, test vu rouge, suite
+    109/109.
+
+**4a — règle 1b**
+
+| Comportement | Test d'intégration | Preuve rouge |
+|---|---|---|
+| Tags posés à l'arrivée | `TheSystemTags_ArePosedAtArrival…` | M1, M2 |
+| Vue all / unread, ordre, pagination | idem | M3 |
+| Intersection | idem | M4 |
+| Dossiers : système toujours ; Count / UnreadCount | idem + `CountingQueriesEndToEndTests` | M5 |
+| 404 / 400 en ProblemDetails | `AnUnknownTagIs404…` | M6 |
+| Rattrapage (service appelé à la main) | `TheCatchUp…` | M8 |
+| Rattrapage déclenché à l'ouverture de la boîte | **aucun** | ❌ B2 |
+| Tag retiré non reposé | `TheCatchUp…`, cas `AllBits` seulement | M7 faible, ❌ B3 |
+| Biologie et en-têtes à la promotion | **aucun** (unitaire en mémoire seulement) | ❌ B1 |
+| Réglage par personne | `TheTagViewFilter…` | M9 |
+| Retrait par le délégataire, journal, actes système | `TheDelegateRemoves…` | M10 |
+| api-mcp : `list_folders` sans dossiers de tag | `ListFolders_HidesTheVirtualTagFolders…` | oui |
+
+#### À corriger par la reprise
+
+**Backend (api-mail)**
+
+- **B1 — Promotion sans test d'intégration (règle 1b).** `ApplySystemTagsOnPromotionAsync` décide Biologie (et les
+  tags d'en-têtes d'un message d'avant la migration), mais seul un test unitaire en mémoire la couvre.
+  - Test de bout en bout attendu :
+    1. message HPRIM d'abord enregistré en en-têtes seuls dans la Boîte de réception ;
+    2. retrait à la main d'un tag d'en-têtes ;
+    3. enrichissement par la route réelle ;
+    4. assertions : « Biologie » est servi par `GET tags/emails`, et le tag retiré n'est pas reposé.
+  - Mutation ciblée sur `Decide` (`alreadyDecided` ignoré), à consigner.
+- **B2 — Le déclenchement du rattrapage n'est pas prouvé.** Le test construit `SystemTagsRecoveryService` à la main.
+  L'appel dans `EnrichEmailsAsync`, le créneau Redis, la file de fond, la recopie d'identité (adresse de la boîte,
+  `MailboxId`) et l'enregistrement DI ne sont pas couverts.
+  - Test d'intégration attendu :
+    1. message ramené à l'état d'avant la mise à jour ;
+    2. enrichissement de la Boîte de réception par la route réelle ;
+    3. attente de la file de fond ;
+    4. lecture de `GET tags/emails` et du journal : pose tracée en acte système, dans la boîte.
+  - Plus un test unitaire du planificateur : créneau pris → mis en file ; créneau refusé ou Redis en panne → rien.
+  - Preuve rouge consignée.
+- **B3 — La garde par tag de `Decide` n'est jamais exercée.** Le message dont on retire « Pour info » est à `AllBits` :
+  le filtre des candidats l'écarte avant toute décision.
+  - Retirer le tag d'un message dont les en-têtes sont décidés mais pas Biologie, lui donner son contenu, puis lancer
+    le rattrapage.
+  - Mutation ciblée sur `Decide`. Peut se fusionner avec B1.
+- **B4 — Deux tests unitaires de la DOD manquent.** « Laboratoire → Biologie + Professionnel de santé » et « patient
+  porteur d'une biologie → Biologie + Patient » ne sont pas testés : la combinaison se fait dans `Decide`, sans test
+  unitaire. Tester la composition, et corriger le Develop log, qui les annonçait.
+
+**Clients**
+
+- **C1 — Mobile : faux bandeau d'erreur.** Relâcher la dernière puce (ou changer de dossier) pendant le chargement
+  d'une page de vue par tag fait échouer la promesse coupée (`EmptyError`). Le `catch` de `loadNextTagPage`
+  (`inbox.page.ts:377-388`) la traite comme une panne : « Les messages de ces tags n'ont pas pu être chargés »
+  s'affiche sur la Boîte de réception.
+  - Correctif : ignorer l'abandon dans le `catch`.
+  - Test : relâcher la puce pendant qu'une page est en vol n'affiche aucune erreur.
+- **C2 — weda2 : lien profond vers un tag, filtre ignoré ou liste bloquée.** Réglages et dossiers sont chargés en
+  parallèle (`mss-mail.component.ts:316/356`, `mail-state.service.ts:288/665`). Avec « Non lus » retenu, la première
+  page peut partir en `filter=all`. Ensuite :
+  - si les réglages arrivent avant la réponse, la clé change, la réponse est jetée et rien ne relance le chargement :
+    la liste tourne sans fin ;
+  - s'ils arrivent après, « Non lus » est affiché alors que la liste montre aussi les lus.
+  - Correctif : attendre les réglages avant la première page d'une vue par tag, ou relancer le chargement quand le
+    filtre change.
+  - Test sur l'ordre « dossiers, puis page en vol, puis réglages ».
+- **C3 — e2e en deçà du catalogue.**
+  - E2E-TAG-002, mobile et weda2 : ne vérifie ni la présence ni l'ordre des quatre tags système, « Professionnel de
+    santé » compris. À comparer aux quatre premiers dossiers relus du serveur.
+  - E2E-TAG-003, mobile : ne lit jamais `tag-view-count`, alors que le catalogue dit « avec leur nombre ».
+
+**Défauts réels à corriger dans la même passe**
+
+- **S1 — Course entre rattrapage et promotion.** Le `SaveChanges` du lot ne tolère pas la violation d'unicité sur
+  `MailTags` : si une promotion concurrente pose le même tag, les 200 messages du lot échouent. De plus, les lectures
+  de `present` et de `Decided` peuvent être périmées.
+  - Correctif : insertion tolérante au conflit, gardée par le bit non décidé (`INSERT … SELECT … WHERE` bit libre
+    `ON CONFLICT DO NOTHING`), puis la marque, dans une transaction.
+- **S2 — Index partiel sans fin.** Hors Boîte de réception, la marque reste 0 : tous les messages des autres dossiers
+  entrent dans `IX_Mails_SystemTagsPending`. Ajouter `AND "FolderPath" = 'INBOX'` au filtre (migration non mergée,
+  avec `MailDataContext`).
+- **S4 — `MailDto.IsAutomatic` publié mais jamais rempli à la lecture.** Le champ vaut toujours `false` dans les
+  réponses : le recopier depuis l'entité dans les projections.
+- **S6 — La migration lit du code de domaine** (`SystemTagRule`, `TagNameRule`). Un renommage futur changerait ce
+  qu'insère une migration déjà jouée (règle 7c) : figer noms, codes et couleurs en littéraux.
+- **Mobile — libellé de l'en-tête de vue** : « N messages non lus » sur le mobile, « N messages » sur weda2, avec le
+  même filtre. À aligner sur le nombre servi par le serveur.
+
+#### Arbitrage humain (non bloquant, à trancher au merge)
+
+- **« Pour info » et copie cachée** (`SystemTagRule.cs:141`) : une boîte en copie cachée (absente de « À » et de
+  « Cc ») ne passe pas en « Pour info », alors que la US dit « absente de « À » ».
+  - Recommandation de la forge : garder « Cc seulement » en v1. Un Cci n'est pas visible dans les en-têtes reçus ; il
+    tomberait sous « absente de À », mais sans certitude sur l'adresse.
+- **Adresse de la boîte absente du contexte** : la règle « en copie » est alors muette, mais les tags d'en-têtes sont
+  marqués décidés, définitivement.
+  - Recommandation : ne marquer les bits d'en-têtes décidés que si l'adresse est connue. Cela change le comportement :
+    à faire par `/develop` si l'humain l'accepte.
+- **Choix d'interface pris par `/develop`** (voir le Develop log, « Décisions prises ») :
+  - weda2 : recherche et puce « Bio à acquitter » masquées en vue par tag ; décocher le dernier tag ramène à la Boîte
+    de réception ; tableau de bord en non lus ;
+  - mobile : puces de l'Accueil reprises du widget ; « Flaggés », « Bio à acquitter » et la vue conversation masqués
+    en vue par tag ; un mail reçu en direct n'est pas inséré dans une vue par tag ;
+  - api-mcp : dossiers de tag écartés de `list_folders`.
+
+#### Suggestions (non bloquantes, pour la PR)
+
+- **S3** : `GetTagFoldersAsync` regroupe maintenant toutes les lignes `MailTags` de la Boîte de réception, et plus les
+  seuls non lus. À vérifier par un plan d'exécution sur une boîte de 10 000 messages.
+- **Mobile** : en filtre « Non lus », les pages sont ajoutées avec un décalage. Marquer un message lu avant de charger
+  la page 2 peut en faire sauter un : recharger depuis la page 1 après une mutation.
+- **Un tag supprimé ailleurs alors que sa vue est ouverte** (les deux clients) : le 404 se rejoue sans fin. Relire les
+  dossiers et relâcher le code.
+- **weda2 E2E-TAG-003** : l'absence de la ligne du confrère n'est précédée d'aucune présence à l'écran (convention
+  `precondition-du-negatif`).
+- **weda2 E2E-TAG-002** : nettoyage sans `try` ; compteur comparé sans relance.
+- **`SystemTagsRecoveryScheduler`** recopie `AiTaggingRecoveryScheduler` : une base commune, en task dédiée.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-456 --sync` — ne pas éditer à la main)*
@@ -384,6 +517,7 @@ Règles :
 |---|---|---|---|---|---|---|
 | /start | ok | 28 s | — | — | — | — |
 | /develop | ok | 58 min 11 s | 6 (31 s) | 6 (14 min 33 s) | — | api-mail 3B/3T, api-mcp 2B/2T, client-mobile 1B/1T |
-| **Total cycle** | | **58 min 40 s** | **6 (31 s)** | **6 (14 min 33 s)** | **0 (0.0 s)** | |
+| /review-code | changes | 8 min 18 s | — | — | — | reprise 1 |
+| **Total cycle** | | **1 h 06 min** | **6 (31 s)** | **6 (14 min 33 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (40 s)
