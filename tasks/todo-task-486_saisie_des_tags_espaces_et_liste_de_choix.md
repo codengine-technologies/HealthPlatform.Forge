@@ -66,7 +66,7 @@ Règles :
 - [ ] Tests de composant (weda2 et mobile), vus rouges par mutation : liste ouverte à la saisie, filtre sans
       casse ni accents, tags déjà posés exclus, Entrée choisit, « Créer le tag » quand aucun nom exact.
 - [ ] **Scénario e2e**, mobile et angular requis, vu rouge :
-      - `E2E-TAG-003` v1 : sur un message, taper « cour », choisir « Courrier urgent » dans la liste ; créer un tag
+      - `E2E-TAG-001` v1 : sur un message, taper « cour », choisir « Courrier urgent » dans la liste ; créer un tag
         « Avis cardio » avec un espace ; les deux tags apparaissent sur le message.
 - [ ] `data-testid` sur la liste et ses lignes, conventions de libellés, aucune donnée de santé dans les libellés
       ni les logs.

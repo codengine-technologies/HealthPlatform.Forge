@@ -142,9 +142,9 @@ Règles :
 - [ ] Tests de composant (weda2 et mobile), vus rouges par mutation : vues par tag, filtre retenu, combinaison,
       puces mobiles.
 - [ ] **Scénarios e2e**, mobile et angular requis, vus rouges :
-      - `E2E-TAG-001` v1 : le compte rendu de biologie est dans « Biologie », le message du patient dans « Patient »,
+      - `E2E-TAG-002` v1 : le compte rendu de biologie est dans « Biologie », le message du patient dans « Patient »,
         une copie dans « Pour info », chacun avec son compteur de non lus ; un message lu reste dans sa vue ;
-      - `E2E-TAG-002` v1 : « Biologie » + « Professionnel de santé » combinés ne montrent que les messages portant
+      - `E2E-TAG-003` v1 : « Biologie » + « Professionnel de santé » combinés ne montrent que les messages portant
         les deux ; le filtre « Non lus » choisi revient à la réouverture.
 - [ ] `data-testid`, conventions de libellés, aucune donnée de santé dans les libellés ni les logs.
 - [ ] Build et tests verts (api-mail, weda2, mobile) ; client-angular : code-only.
