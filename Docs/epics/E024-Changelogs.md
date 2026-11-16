@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques (ingénierie, backlog, dette)
 > **Vue produit** : [E024-messagerie-premium-traiter-deleguer-bouc.md](E024-messagerie-premium-traiter-deleguer-bouc.md)
-> **Dernière mise à jour** : 2026-11-13
+> **Dernière mise à jour** : 2026-11-16
 
 ---
 
@@ -203,6 +203,36 @@
 - **Avant task-454** : S-A (`IsTracked` vrai pour un document non signalé d'un message historique), S-C
   (`GetStateAsync` ignore le suivi).
 
+### v0.4 — task-486 : saisie des tags, espaces acceptés et liste de choix (api-mail, client-mobile, weda2)
+
+- **PRs** : api-mail [#371](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/371), client-mobile
+  [#126](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/126) — label `awaiting-human-merge` ;
+  client-angular code-only (branche `feature/nova-mss-weda-integration`, 8 fichiers, git à la main de l'humain).
+  dtos-mss : aucune branche, `TagDto` inchangé.
+- **api-mail** : règle de domaine `TagNameRule` (nettoyage, 40 caractères après nettoyage, caractère de contrôle
+  refusé, refus en français, code = nom nettoyé en majuscules sans accents, rang des types) ; le refus des espaces et le
+  plafond de 20 du contrôleur remplacés ; `GET api/v1/Mail/tags` (`[TraceExempt]`) trié système → IA → utilisateur →
+  code ; migration `20261116203100_WidenTagNames` (`Tags.Name`/`Code` de `varchar(20)` à `varchar(40)` — sans elle,
+  500 de 21 à 40 caractères) ; reprise sur conflit de `IX_Tags_Code` (`CreateTagOrReadWinnerAsync`, déjà utilisé par
+  les voies IA et catégorie) et de `IX_MailTags_MailId_TagId` (`PoseMailTagOrKeepWinnerAsync`).
+- **Clients** : `tag-suggestions.util.ts` (weda2 et mobile : nom exact en tête, « commence par », « contient »,
+  tags posés exclus, ligne « Créer le tag ») ; weda2 `MailTagComponent` (signaux, liste `mail-tag-suggestions`,
+  refus du serveur sous le champ, double envoi ignoré) ; mobile `mail-detail` (liste sous le champ, au toucher).
+- **Tests** : `TagNameRuleTests` ; intégration de bout en bout `FolderOperationsEndToEndTests.TagEntry` (8 cas,
+  vus rouges par mutation) ; `MailRepositoryUserTagRaceTests` (course forcée, intercepteur partagé
+  `Fixtures/BeforeCommandInterceptor.cs` extrait du test AUD-36) ; `WidenTagNamesMigrationTests` (coureur de
+  production, `Pooling = false`) ; tests de composant weda2 et mobile vus rouges par mutation ; scénario
+  **E2E-TAG-001** v1, mobile et Angular, rejouable (jeton propre à l'essai).
+- **Revue** : 3 passages de revue anticipée — passage 1 CHANGES REQUESTED (B1 refus et accents sans test 1b, B2 nom
+  exact pas en tête, B3 refus weda2 non affiché, B4 créations concurrentes) ; passage 2, B2 revenu (nom exact d'un
+  tag déjà posé), chaîne arrêtée puis reprise 2 autorisée par l'humain ; passage 3 APPROVED. Arbitrages ouverts A1
+  (Entrée pose le préfixe existant), A2 (pose par le nom, contrat avec task-456). Suggestions S4, S5.
+- **Sonar** : QG OK, `new_coverage` 96,6 % ; 2 S3604 corrigés dans `MailReplySummaries` (code de task-459). **E2E** :
+  mobile 64 verts, Angular 85 verts, 0 flaky, parité verte, porte verte.
+- **Pièges** : un test de migration aux bases poolées a fait tomber `MailboxPrefillIntegrationTests` en `53300` (deux
+  suites sur deux) ; conventions `borne-de-saisie-egale-a-la-colonne`, `base-neuve-de-test-sans-pool`,
+  `unicite-garantie-par-la-base` (2), `suggestions-de-saisie-choisies-visibles` (5).
+
 ---
 
 ## Annexe A — Cartographie des briques applicatives
@@ -229,13 +259,18 @@
 | `api-mail/src/Infrastructure/Migrations/MailDb/20261113130000_AddMailReplies.cs` | schéma `MailReplies`, `Mails.IsReport` | task-459 |
 | `dtos-mss/MailReplySummaryDto.cs` | contrat du résumé de réponse | task-459 |
 | `client-mobile` + weda2 `reply-banner` | bandeau et icône « répondu » | task-459 |
+| `api-mail/src/Domain/Rules/TagNameRule.cs` | règle du nom et du code d'un tag | task-486 |
+| `api-mail/src/Api/Controllers/V1/MailController.cs` (`GET tags`) | liste des tags de la boîte | task-486 |
+| `api-mail/src/Infrastructure/Migrations/MailDb/20261116203100_WidenTagNames.cs` | `Tags.Name`/`Code` à 40 | task-486 |
+| `client-mobile` + weda2 `core/utils/tag-suggestions.util.ts` | liste de choix de la saisie d'un tag | task-486 |
 
 ---
 
-## Annexe B — Inventaire fonctionnel daté (2026-11-13)
+## Annexe B — Inventaire fonctionnel daté (2026-11-16)
 
-- Tasks de l'EPIC : 9 — 3 `archived` (453, 459, 466), 5 `todo` (454, 456, 457, 458, 462), 1 annulée (465).
-- Scénarios e2e de l'EPIC au catalogue : 3 (E2E-BIO-004, E2E-BIO-007, E2E-DETAIL-006).
+- Tasks de l'EPIC : 10 — 3 `archived` (453, 459, 466), 1 `done` (486), 5 `todo` (454, 456, 457, 458, 462), 1 annulée
+  (465).
+- Scénarios e2e de l'EPIC au catalogue : 4 (E2E-BIO-004, E2E-BIO-007, E2E-DETAIL-006, E2E-TAG-001).
 
 ---
 
@@ -247,3 +282,4 @@
 | task-459 | Bandeau « Vous avez répondu à ce message le… » : trace `MailReplies`, résumé par lecteur, `\Answered`, bandeau et icône sur les deux clients | `done` (PRs #369, #67, #125) |
 | task-465 | Mesure de la charge et de l'usage — **annulée** le 2026-11-12 (décision humaine, reprise hors API par un cron job) | annulée (PRs #366, #64 fermées) |
 | task-466 | Date de début du suivi par boîte : seul ce qui arrive après réclame un acquittement ; socle de « À traiter » (task-454) | `done` (PRs #368, #66, #124) |
+| task-486 | Saisie des tags : noms de plusieurs mots (40 caractères), liste des tags de la boîte à la frappe, créations concurrentes sans doublon ; première brique des vues par tag (task-456) | `done` (PRs #371, #126) |

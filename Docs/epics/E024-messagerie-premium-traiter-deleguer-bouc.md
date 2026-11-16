@@ -1,12 +1,13 @@
 # E024 — Messagerie premium : traiter, déléguer, boucler
 
-> **Statut** : 🟡 en cours — 3 features livrées et validées, 5 au backlog (tasks 454, 456, 457, 458, 462).
+> **Statut** : 🟡 en cours — 3 features livrées et validées, 1 livrée en attente de test et de merge humains
+> (task-486), 5 au backlog (tasks 454, 456, 457, 458, 462).
 > Le 2026-11-12, toutes les features prévues avaient
 > été retirées du backlog ; une partie y est revenue le 2026-11-13.
-> **Version** : 0.3
+> **Version** : 0.4
 > **Auteur** : PO forge (task-453)
 > **Modèle** : task-driven
-> **Dernière mise à jour** : 2026-11-13
+> **Dernière mise à jour** : 2026-11-16
 > **Vue ingénierie** : [E024-Changelogs.md](E024-Changelogs.md)
 
 ---
@@ -24,7 +25,7 @@
 - [7. Contraintes et hypothèses](#7-contraintes-et-hypothèses)
 - [8. Critères d'acceptation de l'EPIC](#8-critères-dacceptation-de-lepic)
 - [9. Hors périmètre](#9-hors-périmètre)
-- [État de couverture (2026-11-13)](#état-de-couverture-2026-11-13)
+- [État de couverture (2026-11-16)](#état-de-couverture-2026-11-16)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -76,7 +77,8 @@ disparaissent jamais parce que le message a été rangé ailleurs, depuis la pla
 | Un acquittement ne disparaît jamais | Retrouver l'acquittement d'un compte rendu, sa note, son auteur et le patient rattaché à la main, même après que le message a été rangé depuis un autre logiciel, supprimé puis restauré, ou relu après un incident de la messagerie | task-453 | ✅ Livrée et validée |
 | Le suivi commence à une date | Choisir, pour toute la boîte, la date à partir de laquelle les messages arrivés réclament un acquittement. Les comptes rendus anciens ramenés par une première synchronisation se consultent et s'acquittent sans rien réclamer, marqués « Antérieur au suivi » | task-466 | ✅ Livrée et validée |
 | « Vous avez répondu à ce message le… » | Savoir, en ouvrant un message, qu'on y a déjà répondu, ou qu'un collègue de la boîte l'a fait, quand et combien de fois ; ouvrir la réponse ; repérer d'une icône les messages répondus dans la liste | task-459 | ✅ Livrée et validée |
-| Vues par nature | Retrouver d'un coup d'œil la biologie, les courriers, les messages de patients et ceux reçus pour information | task-456 | ⏳ À faire |
+| Saisie des tags | Poser un tag en quelques touches : la liste propose les tags de la boîte dès qu'on commence à taper, sans tenir compte des majuscules ni des accents ; un nom de plusieurs mots est accepté, jusqu'à 40 caractères ; « Créer le tag » quand aucun tag ne porte ce nom | task-486 | 🟡 Livrée, en attente du test et du merge humains |
+| Tags système et vues par tag | Retrouver d'un coup d'œil la biologie, les patients, les professionnels de santé et les messages reçus pour information, par des tags posés à l'arrivée | task-456 | ⏳ À faire |
 | Marquer un message traité | Voir ce qui reste à traiter, pas seulement ce qui n'est pas lu, et marquer un message traité | task-454 | ⏳ À faire |
 | « À traiter par » | Confier un message à une personne de la boîte | task-457 | ⏳ À faire |
 | Notes internes | Laisser sur un message une note visible des seules personnes de la boîte | task-458 | ⏳ À faire |
@@ -86,7 +88,7 @@ disparaissent jamais parce que le message a été rangé ailleurs, depuis la pla
 
 ## 5. Workflow entre Features
 
-> ⚠️ Vision d'origine. Sont au backlog : vues par nature, marquer traité, « À traiter par », notes, bandeau de
+> ⚠️ Vision d'origine. Sont au backlog : vues par tag, marquer traité, « À traiter par », notes, bandeau de
 > réponse, relance. Restent retirés depuis le 2026-11-12 : « À revoir le », suivi d'acheminement, suivi de biologie.
 
 Le parcours d'un message dans le cabinet, tel que l'EPIC l'envisageait :
@@ -112,6 +114,9 @@ flowchart LR
 Toutes les traces de travail de ce parcours reposent sur le socle posé par la première feature (task-453) : elles
 restent attachées au document ou au message, même quand celui-ci est déplacé, purgé puis relu, ou supprimé puis
 restauré.
+
+La **nature** d'un message se lira par ses tags : la saisie d'un tag propose désormais les tags de la boîte
+à la frappe et accepte les noms de plusieurs mots (task-486), première brique des vues par tag (task-456).
 
 Seuls les messages arrivés depuis la **date de début du suivi** de la boîte entrent dans ce parcours comme travail à
 faire (task-466). L'historique ramené par une première synchronisation reste consultable et s'acquitte si le
@@ -163,20 +168,22 @@ praticien le souhaite, mais il n'encombre ni « Bio à acquitter » ni le tablea
 
 ---
 
-## État de couverture (2026-11-13)
+## État de couverture (2026-11-16)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
 | Un acquittement ne disparaît jamais | ✅ Livrée et validée | 100 % | task-453 |
 | Le suivi commence à une date | ✅ Livrée et validée | 100 % livré | task-466 |
 | « Vous avez répondu à ce message le… » | ✅ Livrée et validée | 100 % | task-459 |
-| Vues par nature | ⏳ À faire | 0 % | task-456 |
+| Saisie des tags | 🟡 Livrée, en attente du test et du merge humains | 100 % livré | task-486 |
+| Tags système et vues par tag | ⏳ À faire | 0 % | task-456 |
 | Marquer un message traité | ⏳ À faire | 0 % | task-454 |
 | « À traiter par » | ⏳ À faire | 0 % | task-457 |
 | Notes internes | ⏳ À faire | 0 % | task-458 |
 | Relance sans réponse | ⏳ À faire | 0 % | task-462 |
 
-**Couverture EPIC consolidée : 3 features livrées et validées sur 8 retenues**, 5 au backlog.
+**Couverture EPIC consolidée : 3 features livrées et validées sur 9 retenues**, 1 livrée en attente du merge
+humain, 5 au backlog.
 
 ---
 
@@ -199,6 +206,12 @@ praticien le souhaite, mais il n'encombre ni « Bio à acquitter » ni le tablea
   le nombre de réponses, et « Voir la réponse » ouvre l'envoi. Une icône signale les messages répondus dans la liste,
   avec la même information au survol ou à l'appui long. Les accusés de lecture et les rapports de distribution ne
   comptent pas comme des réponses. Sur l'application web et sur l'application mobile (task-459).
+- **v0.4 — Saisie des tags.** En ouvrant la saisie d'un tag, le praticien voit la liste des tags de la boîte
+  (système, posés par l'IA, puis les siens). Il tape le début d'un nom, sans se soucier des majuscules ni des
+  accents : la liste se filtre, le nom exact en tête, et Entrée le pose. Un nom de plusieurs mots est accepté
+  (« Avis cardio »), jusqu'à 40 caractères ; s'il n'existe pas, la dernière ligne propose « Créer le tag ».
+  « courrier URGENT » et « Courrier urgent » désignent le même tag, jamais un doublon. Sur l'application web et sur
+  l'application mobile, sous le champ, au toucher (task-486).
 
 ### Conformité réglementaire
 
@@ -209,12 +222,16 @@ praticien le souhaite, mais il n'encombre ni « Bio à acquitter » ni le tablea
   suivi, quand, et de quelle date à quelle date, délégataire compris (task-466).
 - **v0.3 — La réponse est imputée à la personne qui l'a écrite.** En boîte partagée, le bandeau nomme le délégataire
   ou le membre qui a répondu, jamais la boîte ni le titulaire à sa place (task-459).
+- **v0.4 — Une seule liste de tags par boîte.** Toutes les personnes de la boîte partagent les mêmes tags ; poser
+  un tag reste tracé au nom de la personne qui l'a posé (task-486).
 
 ### Sécurité
 
 - **v0.1 — Aucune perte silencieuse.** Un message supprimé pour de bon ne détruit plus la trace de prise de
   connaissance d'un résultat. Dans le doute sur l'identité d'un document, la plateforme ne rattache rien et le trace
   (task-453).
+- **v0.4 — Refus lisibles.** Un nom de tag refusé (vide, trop long, caractère interdit) l'est avec un
+  message en français, affiché sous le champ (task-486).
 
 ### Technique / observabilité (sans impact utilisateur direct)
 
@@ -227,6 +244,9 @@ praticien le souhaite, mais il n'encombre ni « Bio à acquitter » ni le tablea
 - **v0.3 — Drapeau « répondu » sur le serveur de messagerie.** Une réponse envoyée par la plateforme pose le drapeau
   standard « répondu » sur le message d'origine, visible des autres logiciels. Un parcours automatique vérifie le
   bandeau sur les deux applications (task-459).
+- **v0.4 — Tags plus longs, sans doublon en cas de clic répété.** Les noms de tag passent de 20 à 40 caractères en
+  base, et deux poses simultanées du même tag (double clic, deux personnes de la boîte) donnent un seul tag. Un
+  parcours automatique vérifie la saisie sur les deux applications (task-486).
 
 ---
 
