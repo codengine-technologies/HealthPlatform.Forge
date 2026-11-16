@@ -1,7 +1,6 @@
 # E024 — Messagerie premium : traiter, déléguer, boucler
 
-> **Statut** : 🟡 en cours — 3 features livrées et validées, 1 livrée en attente de test et de merge humains
-> (task-486), 5 au backlog (tasks 454, 456, 457, 458, 462).
+> **Statut** : 🟡 en cours — 4 features livrées et validées, 5 au backlog (tasks 454, 456, 457, 458, 462).
 > Le 2026-11-12, toutes les features prévues avaient
 > été retirées du backlog ; une partie y est revenue le 2026-11-13.
 > **Version** : 0.4
@@ -77,7 +76,7 @@ disparaissent jamais parce que le message a été rangé ailleurs, depuis la pla
 | Un acquittement ne disparaît jamais | Retrouver l'acquittement d'un compte rendu, sa note, son auteur et le patient rattaché à la main, même après que le message a été rangé depuis un autre logiciel, supprimé puis restauré, ou relu après un incident de la messagerie | task-453 | ✅ Livrée et validée |
 | Le suivi commence à une date | Choisir, pour toute la boîte, la date à partir de laquelle les messages arrivés réclament un acquittement. Les comptes rendus anciens ramenés par une première synchronisation se consultent et s'acquittent sans rien réclamer, marqués « Antérieur au suivi » | task-466 | ✅ Livrée et validée |
 | « Vous avez répondu à ce message le… » | Savoir, en ouvrant un message, qu'on y a déjà répondu, ou qu'un collègue de la boîte l'a fait, quand et combien de fois ; ouvrir la réponse ; repérer d'une icône les messages répondus dans la liste | task-459 | ✅ Livrée et validée |
-| Saisie des tags | Poser un tag en quelques touches : la liste propose les tags de la boîte dès qu'on commence à taper, sans tenir compte des majuscules ni des accents ; un nom de plusieurs mots est accepté, jusqu'à 40 caractères ; « Créer le tag » quand aucun tag ne porte ce nom | task-486 | 🟡 Livrée, en attente du test et du merge humains |
+| Saisie des tags | Poser un tag en quelques touches : la liste propose les tags de la boîte dès qu'on commence à taper, sans tenir compte des majuscules ni des accents ; un nom de plusieurs mots est accepté, jusqu'à 40 caractères ; « Créer le tag » quand aucun tag ne porte ce nom | task-486 | ✅ Livrée et validée |
 | Tags système et vues par tag | Retrouver d'un coup d'œil la biologie, les patients, les professionnels de santé et les messages reçus pour information, par des tags posés à l'arrivée | task-456 | ⏳ À faire |
 | Marquer un message traité | Voir ce qui reste à traiter, pas seulement ce qui n'est pas lu, et marquer un message traité | task-454 | ⏳ À faire |
 | « À traiter par » | Confier un message à une personne de la boîte | task-457 | ⏳ À faire |
@@ -175,15 +174,14 @@ praticien le souhaite, mais il n'encombre ni « Bio à acquitter » ni le tablea
 | Un acquittement ne disparaît jamais | ✅ Livrée et validée | 100 % | task-453 |
 | Le suivi commence à une date | ✅ Livrée et validée | 100 % livré | task-466 |
 | « Vous avez répondu à ce message le… » | ✅ Livrée et validée | 100 % | task-459 |
-| Saisie des tags | 🟡 Livrée, en attente du test et du merge humains | 100 % livré | task-486 |
+| Saisie des tags | ✅ Livrée et validée | 100 % | task-486 |
 | Tags système et vues par tag | ⏳ À faire | 0 % | task-456 |
 | Marquer un message traité | ⏳ À faire | 0 % | task-454 |
 | « À traiter par » | ⏳ À faire | 0 % | task-457 |
 | Notes internes | ⏳ À faire | 0 % | task-458 |
 | Relance sans réponse | ⏳ À faire | 0 % | task-462 |
 
-**Couverture EPIC consolidée : 3 features livrées et validées sur 9 retenues**, 1 livrée en attente du merge
-humain, 5 au backlog.
+**Couverture EPIC consolidée : 4 features livrées et validées sur 9 retenues**, 5 au backlog.
 
 ---
 
