@@ -248,6 +248,37 @@ Règles :
 - Green marked : api-mail `0956bcad`, client-mobile `2690b9c`, client-angular (arbre courant) — `Tools/green/green.py`.
 - Next step : /review task-486 --code
 
+### Reprise 1 après /review
+
+Périmètre : « À corriger par la reprise » du passage 1 (B1, B2, B3, B4, S1). Arbitrages A1 et A2 non touchés.
+
+| Constat | Correctif | Test | Preuve rouge |
+|---|---|---|---|
+| **B1** refus contrôle / vide et accents prouvés en unitaire seulement | aucun code : preuves ajoutées | `ARefusedName_Is400ProblemJson_WithItsFrenchDetail_AndNothingIsCreated` (tab, saut de ligne, espaces, vide) ; `ANameThatDiffersOnlyByItsAccents_DesignatesTheSameTag` | mutations : contrôle neutralisé → 200 au lieu de 400 (2 cas) ; message vide remis en anglais → `detail` « Tag name is required. » (2 cas) ; accents conservés → code `TRÈS URGENT T486` |
+| **B4** création / pose concurrente → erreur | `AddTagToMailAsync` : `CreateTagOrReadWinnerAsync` (déjà là pour IA et catégorie) et `PoseMailTagOrKeepWinnerAsync` (nouveau, sur `IX_MailTags_MailId_TagId`) | `MailRepositoryUserTagRaceTests` (gagnant inséré hors bande juste avant l'`INSERT`, intercepteur extrait du test AUD-36 vers `Fixtures/BeforeCommandInterceptor.cs`) ; `ConcurrentPosesOfTheSameNewTag_AllSucceed_OnASingleTag` (8 POST concurrents par la route) | **rouges avant correctif** : 23505 `IX_Tags_Code`, 23505 `IX_MailTags_MailId_TagId`, 500 par la route |
+| **B2** Entrée / ✓ posait un autre tag que le nom exact | `tagChoices` : tri stable, la correspondance exacte en tête (weda2 et mobile) | util et composant, « imp » avec « Important » (IA) et « Imp » → `Imp` | mutation tri neutralisé : 2 rouges weda2, 2 rouges mobile |
+| **B3** weda2 : refus jamais affiché, puce en double, double envoi | `MailTagComponent.post` : `detail` du ProblemDetails sous le champ (`mail-tag-error`, effacé à la frappe), rien envoyé pour un tag déjà posé (saisie fermée), second envoi ignoré pendant la pose (✓ désactivé) | 3 tests de composant | 3 mutations, chacune rouge sur son test |
+| **S1** flèche haut depuis « aucune ligne » | départ à 0 quand l'index vaut −1 (weda2 et mobile) | un test par client | mutation : rouge dans chaque client |
+
+- Relecture du correctif comme correctif : `AddTagToMailAsync` n'a qu'un appelant (`ImapService`) ; `CreateTagOrReadWinnerAsync`
+  inchangé (ses tests AUD-36 rejoués verts avec l'intercepteur déplacé) ; le tri de `tagChoices` ne change l'ordre
+  que pour la correspondance exacte ; `post` (weda2) reste le seul chemin d'envoi (Entrée, ✓, clic). Rien d'autre
+  touché.
+- Suites complètes sur l'état poussé : api-mail domaine 302, infra 750, application 4 262, API 1 383, intégration
+  1 322 (16 sautés préexistants) ; weda2 `nx build weda2` vert, `nx test mss-lib` 150 fichiers / 1 695 tests ;
+  mobile build vert, Karma 1 470 / 1 470 au second passage. Le premier passage mobile avait 4 rouges
+  `MailComposeComponent` (suggestions de destinataires, task-388), aussi rouges en lancement isolé du dossier
+  `mail-compose` ; aucun fichier de la task dans ce périmètre ; non tranché sur `origin/develop` (un worktree ne
+  résout pas les ressources des `node_modules` partagés). Instables, hors task.
+- Lint / format : ESLint 0 erreur (weda2, mobile), Prettier propre, fins de ligne CRLF homogènes.
+- Commits : api-mail `4c28314b` ; client-mobile `a1fe177` ; client-angular non commité (mêmes fichiers que la passe 0).
+- Prévention (règle d'or) : `conventions/csharp.md` — `unicite-garantie-par-la-base` Occurrences 2 (écrivain de
+  `Tags` oublié), `borne-de-saisie-egale-a-la-colonne` (chaque refus a son cas d'intégration) ;
+  `conventions/angular.md` — `suggestions-de-saisie-choisies-visibles` Occurrences 4 (nom exact en tête, flèche
+  haut, refus affiché et double envoi).
+- Green marked : api-mail `4c28314b`, client-mobile `a1fe177`, client-angular (arbre courant).
+- Next step : /review task-486 --code
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -310,6 +341,6 @@ travail de client-angular (`feature/nova-mss-weda-integration`), par un relecteu
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 32 s | — | — | — | — |
-| /develop | ok | 52 min 55 s | 8 (1 min 21 s) | 7 (19 min 47 s) | — | api-mail 5B/3T, client-mobile 2B/3T, client-angular 1B/1T |
+| /develop | ok | 17 min 38 s | 13 (2 min 04 s) | 11 (27 min 00 s) | — | api-mail 8B/4T, client-mobile 3B/5T, client-angular 2B/2T, reprise 1 |
 | /review-code | changes | 5 min 23 s | — | — | — | reprise 1 |
-| **Total cycle** | | **58 min 51 s** | **8 (1 min 21 s)** | **7 (19 min 47 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **23 min 34 s** | **13 (2 min 04 s)** | **11 (27 min 00 s)** | **0 (0.0 s)** | |

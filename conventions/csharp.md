@@ -1485,7 +1485,10 @@ la règle s'applique normalement.
 
 ## unicite-garantie-par-la-base — un verrou de processus n'est pas une garantie entre réplicas, et un correctif d'écriture vaut pour ses chemins jumeaux
 
-**Occurrences : 1** (task-344, AUD-18 b — promotion « en-têtes seuls » → contenu analysé)
+**Occurrences : 2** (task-486, revue anticipée B4 — la pose d'un tag **utilisateur** créait son tag et sa pose
+sans la reprise sur conflit que les voies IA et catégorie avaient depuis AUD-36 : double clic ou deux personnes de la
+boîte → 23505 sur `IX_Tags_Code` ou `IX_MailTags_MailId_TagId`, rendu en erreur générique. Trois écrivains de `Tags`
+dans le même fichier, un seul oublié ; task-344, AUD-18 b — promotion « en-têtes seuls » → contenu analysé)
 
 Deux défauts dans la même méthode, `MailRepository.UpdateExistingMailWithContentAsync` :
 
@@ -1514,7 +1517,10 @@ Deux défauts dans la même méthode, `MailRepository.UpdateExistingMailWithCont
 
 **Preuve** : `MailPromotionUniquenessTests.TwoReplicasPromotingTheSameHeaderOnlyMail_…` (rouge sur
 develop : 2 contenus, 2 documents, 4 lignes de biologie) et `APromotionFailingAfterItsDocuments_…`
-(rouge sur develop : contenu et documents committés malgré la panne).
+(rouge sur develop : contenu et documents committés malgré la panne) ; `MailRepositoryUserTagRaceTests` (task-486,
+gagnant inséré hors bande par `Fixtures/BeforeCommandInterceptor`, désormais partagé : 23505 sans la reprise).
+Avant d'écrire dans `Tags` ou `MailTags`, lister **tous** leurs écrivains (`grep -n "Tags.Add\|MailTags.Add"`) : chacun
+passe par `CreateTagOrReadWinnerAsync` / `PoseMailTagOrKeepWinnerAsync`.
 
 ---
 
@@ -2830,6 +2836,10 @@ plafond exact (40 caractères) l'a vu.
   lisent la **même constante** (ici `TagNameRule.MaxLength`).
 - Le test d'intégration écrit une valeur **au plafond exact** à travers la route, et une au-delà (400) : la borne
   se prouve des deux côtés, jamais par un seul cas « trop long ».
+- **Chaque refus** de la règle (vide, trop long, caractère interdit) et **chaque équivalence** (accents, casse,
+  espaces) a son cas d'intégration, `detail` lu dans la réponse : un message de refus qui change de langue est un
+  comportement modifié (règle 1b). Sur task-486, trois refus et l'équivalence des accents n'étaient prouvés qu'en
+  unitaire (revue anticipée, B1).
 
 **Preuve** : `FolderOperationsEndToEndTests.ANameOfFortyOneCharacters_IsRefusedWith400ProblemJson_InFrench_AndNothingIsCreated`
 (500 sur 40 caractères sans `WidenTagNamesMigration`), `WidenTagNamesMigrationTests`.

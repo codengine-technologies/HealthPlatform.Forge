@@ -754,11 +754,22 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   - pas de `distinctUntilChanged` après un `debounceTime` quand la réponse est effacée de façon synchrone : le même
     texte retapé ne redemanderait rien ;
   - le test joue la séquence du médecin (↓, Échap, Entrée ; taper, retaper) et affirme qu'**aucun** choix n'a eu lieu
-    (ni navigation ni recherche lancée).
+    (ni navigation ni recherche lancée) ;
+  - quand Entrée choisit la **première** ligne (liste de choix d'une saisie : tags), l'élément qui porte **exactement**
+    le texte tapé (même clé : casse, accents, espaces) est cette première ligne. Sinon Entrée pose un autre élément que
+    celui tapé (« imp » → « Important » posé alors que « Imp » existe ; revue de task-486, B2) ;
+  - depuis « aucune ligne désignée » (index −1), la flèche haut désigne la **dernière** ligne : `(−1 − 1 + n) % n`
+    désigne l'avant-dernière (task-486, S1) ;
+  - une saisie qui envoie au serveur **montre son refus** (le `detail` du ProblemDetails, `mapProblemDetailsToMessage`)
+    sous le champ, ignore un second envoi pendant le premier, et n'envoie rien pour un élément déjà présent (puce en
+    double sinon) — task-486, B3 (weda2 : refus jamais affiché).
 - **Preuve** : `mail-search.suggestions.spec.ts` (« après Échap… », « pendant la frappe… », « retaper le même
-  texte… »), rouges sur le code d'avant.
-- **Origine** : task-449 (/review, B1, S2, S3 ; 2ᵉ revue B2, B3 ; 3ᵉ revue B4, B5)
-- **Occurrences** : 3
+  texte… »), rouges sur le code d'avant ; `mail-tag.component.spec.ts` et `mail-detail.component.spec.ts` (task-486,
+  « Entrée pose le tag qui porte exactement le nom saisi », « la flèche haut… », « affiche le refus du serveur… »),
+  rouges sous mutation.
+- **Origine** : task-449 (/review, B1, S2, S3 ; 2ᵉ revue B2, B3 ; 3ᵉ revue B4, B5) ; task-486 (revue anticipée, B2, B3,
+  S1)
+- **Occurrences** : 4
 
 ### etat-asynchrone-onpush-en-signal — Un état posé après un `await` dans un composant OnPush est un signal
 - **Règle** : convention projet (invisible au lint et au build)
