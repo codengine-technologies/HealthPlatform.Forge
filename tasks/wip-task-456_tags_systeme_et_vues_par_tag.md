@@ -1,7 +1,7 @@
 # todo-task-456.md — Tags système et vues par tag : biologie, patient, professionnel de santé, pour info
 
 **Repos**: api-mail, dtos-mss, client-angular, client-mobile, api-mcp
-**Reprises**: 1
+**Reprises**: 2
 **Dependencies**: aucune
 **Epic**: E024
 
@@ -619,6 +619,54 @@ ont reçu le code et la US, pas les conclusions de `/develop`.
 - **weda2 E2E-TAG-002** : nettoyage sans `try` ; compteur comparé sans relance.
 - **`SystemTagsRecoveryScheduler`** recopie `AiTaggingRecoveryScheduler` : une base commune, en task dédiée.
 
+### Passage 2 (revue anticipée, après la reprise 1) — CHANGES REQUESTED
+
+Deux relecteurs indépendants ont lu **d'abord le diff de la reprise** (api-mail `d5454ba7..dd90c9dc`, mobile
+`66018c5..7e3860f`, weda2 dans l'arbre de travail), puis vérifié chaque constat du passage 1.
+
+- **Constats du passage 1**, tous corrigés et prouvés par un test qui échouerait sans le correctif :
+  - backend : B1, B2, B3, B4, S2, S4 (vue par tag), S6 ;
+  - clients : C1, C2, C3 et le libellé de l'en-tête ;
+  - S1 aussi, mais son correctif crée la régression ci-dessous.
+- **Clients : APPROVED.**
+- **4b, 4c** : inchangés depuis le passage 1 (catalogue en v1 ; api-mcp adapté, faux positif de forme JSON analysé).
+
+#### À corriger par la reprise
+
+- **B5 — Interblocage entre le rattrapage et la promotion**, introduit par le correctif S1 de la reprise 1
+  (`MailRepository.SystemTags.cs:214-250`).
+  - Les deux transactions prennent leurs verrous en ordre inverse :
+    - le rattrapage insère d'abord ses `MailTags`, puis met à jour `Mails` ;
+    - la promotion met à jour `Mails` dans son `SaveChanges` (champs toujours modifiés), puis insère ses `MailTags`.
+  - Scénario : à la première ouverture de la boîte après la mise à jour, l'enrichissement programme le rattrapage puis
+    promeut la page. Les deux transactions se bloquent mutuellement et PostgreSQL en annule une (40P01) :
+    - soit le lot de 200 messages échoue (rejoué 10 min plus tard), ce que S1 devait justement éviter ;
+    - soit la promotion échoue et le message n'est pas enrichi.
+  - Correctif : verrouiller d'abord les lignes `Mails` du lot, dans l'ordre (`SELECT … ORDER BY "Id" FOR UPDATE`),
+    puis faire les insertions. L'ordre devient le même que celui de la promotion, et la garde « bit encore libre » se
+    lit après l'attente du verrou.
+  - Test d'interblocage vu rouge (40P01) sur le code actuel.
+- **Défauts réels à corriger dans la même passe** :
+  - **Trace du rattrapage non testée** : affirmer qu'aucun `TagAdded` n'est tracé pour un tag écarté par le conflit ou
+    par la garde (service d'audit dans le test de course).
+  - **Identifiants en UUID v4** (`gen_random_uuid()`) : la convention task-019 veut des UUID v7 générés côté .NET pour
+    la localité de l'index. Générer les `Id` en .NET et les passer en tableau.
+  - **`IsAutomatic` dans la liste et dans le message** (`MailRepository.cs:1186`, `:2618`) : ces deux projections ne
+    sont pas testées. Ajouter une assertion par route.
+  - **Mobile, fenêtre après un abandon** (`inbox.page.ts:346-352`) : après l'abandon d'une page de vue par tag, la fin
+    de `loadTagView` s'exécute quand même : chargement éteint, liste vide affichée un instant, flux rebranché sur INBOX
+    même si l'on part vers un autre dossier.
+    - Correctif : traiter l'abandon comme un remplacement.
+    - Spec : `getFolder` laissé en attente (`Subject`), et `isLoading()` reste vrai.
+
+#### Arbitrage humain (non bloquant, à trancher au merge)
+
+- **weda2, choix « Non lus » non enregistré** (réglages en panne) : il est perdu quand « Réessayer » relit des réglages
+  « Tous », et la vue repasse en « Tous » sans prévenir.
+  - Recommandation de la forge : accepter en v1. La liste et le filtre affiché restent cohérents ; le cas suppose une
+    panne des réglages.
+- Les arbitrages du passage 1 restent ouverts.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-456 --sync` — ne pas éditer à la main)*
@@ -627,7 +675,7 @@ ont reçu le code et la US, pas les conclusions de `/develop`.
 |---|---|---|---|---|---|---|
 | /start | ok | 28 s | — | — | — | — |
 | /develop | ok | 20 min 40 s | 7 (33 s) | 7 (20 min 49 s) | — | api-mail 4B/4T, api-mcp 2B/2T, client-mobile 1B/1T, reprise 1 |
-| /review-code | changes | 8 min 18 s | — | — | — | reprise 1 |
-| **Total cycle** | | **29 min 27 s** | **7 (33 s)** | **7 (20 min 49 s)** | **0 (0.0 s)** | |
+| /review-code | changes | 4 min 42 s | — | — | — | reprise 2 |
+| **Total cycle** | | **25 min 51 s** | **7 (33 s)** | **7 (20 min 49 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (40 s)
