@@ -391,6 +391,26 @@ Relecture indépendante du diff de la reprise d'abord (api-mail `0956bcad..4c283
   chaîne dans ce cas. Le correctif est connu, local et testable (ci-dessus) ; une reprise 2 reste dans le plafond.
   *Recommandation de la forge* : autoriser la reprise 2 (`/develop task-486 --reprise`).
 
+### Passage 3 (revue anticipée, après reprise 2) — APPROVED
+
+**approved at** : api-mail `444aeb06`, client-mobile `e58fc40`, client-angular arbre de travail de
+`feature/nova-mss-weda-integration` (fichiers de la saisie des tags, non commités). api-mcp : aucun impact.
+
+- Relecture indépendante du diff de la reprise 2 d'abord : rien de cassé (frappe, liste arrivée après la frappe,
+  flèches, clic sur une ligne, ligne « Créer », bouton ✓ par la garde « déjà posé », tag provisoire du mobile reconnu
+  par son nom).
+- **B2 (reste) corrigé** (posé « Urgent », « urgent » + Entrée → aucun POST, deux clients, vu rouge) ; **S2 corrigé**
+  dans son périmètre ; **S3 corrigé** (commentaire, preuve déterministe désignée). Aucun bloquant.
+
+#### Suggestions (non bloquantes, vers la PR)
+- **S4** — weda2 `mail-tag.component.ts` (`post`) : une réponse de pose arrivée **après** une fermeture puis une
+  réouverture s'applique à la nouvelle saisie (refus affiché sous elle, ou succès qui la referme pendant la frappe).
+  Rien de faux n'est posé. Correctif possible : ignorer une réponse qui ne vient pas de la saisie ouverte.
+- **S5** — deux clients : la ligne désignée n'est pas recalculée si les tags posés changent pendant la frappe (✕ sur
+  une puce, échec optimiste mobile). Effet : aucune ligne surlignée, Entrée envoie le nom tapé (même code). Pas de
+  mauvais tag posé.
+- Préfixe d'un tag existant (« Avis » + Entrée pose « Avis cardio ») : conforme au plan de test, déjà porté par **A1**.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-486 --sync` — ne pas éditer à la main)*
@@ -399,5 +419,5 @@ Relecture indépendante du diff de la reprise d'abord (api-mail `0956bcad..4c283
 |---|---|---|---|---|---|---|
 | /start | ok | 32 s | — | — | — | — |
 | /develop | ok | 10 min 36 s | 16 (2 min 41 s) | 14 (33 min 56 s) | — | api-mail 9B/5T, client-mobile 4B/6T, client-angular 3B/3T, reprise 2 |
-| /review-code | failed | 5 min 21 s | — | — | — | B2 revenu apres reprise 1 (regle 13) |
-| **Total cycle** | | **16 min 30 s** | **16 (2 min 41 s)** | **14 (33 min 56 s)** | **0 (0.0 s)** | |
+| /review-code | ok | 1 min 54 s | — | — | — | — |
+| **Total cycle** | | **13 min 03 s** | **16 (2 min 41 s)** | **14 (33 min 56 s)** | **0 (0.0 s)** | |
