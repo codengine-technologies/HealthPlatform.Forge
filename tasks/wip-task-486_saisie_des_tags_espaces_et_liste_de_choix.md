@@ -1,6 +1,7 @@
 # todo-task-486.md — Saisie des tags : espaces acceptés et liste de choix
 
 **Repos**: api-mail, dtos-mss, client-angular, client-mobile
+**Reprises**: 1
 **Dependencies**: aucune
 **Epic**: E024
 
@@ -247,6 +248,61 @@ Règles :
 - Green marked : api-mail `0956bcad`, client-mobile `2690b9c`, client-angular (arbre courant) — `Tools/green/green.py`.
 - Next step : /review task-486 --code
 
+## Code Review Summary
+
+### Passage 1 (revue anticipée) — CHANGES REQUESTED
+
+Revue du diff `origin/develop...HEAD` d'api-mail (`0956bcad`) et de client-mobile (`2690b9c`), et de l'arbre de
+travail de client-angular (`feature/nova-mss-weda-integration`), par un relecteur indépendant (le code, sans le
+`## Develop log`), croisée avec la table 4a.
+
+- **4b (clause DOD)** : `E2E-TAG-001` v1 au catalogue, déclaré v1 par les deux suites (mobile `functional.spec.ts`,
+  weda2 `functional.e2e.ts`). Le `## E2E log` sera vérifié en validation finale.
+- **4c** : api-mcp : aucun impact (`mcp_impact.py check` → 0).
+- **4a — comportement → test d'intégration → preuve rouge** :
+  | Comportement (endpoint) | Test d'intégration | Preuve rouge |
+  |---|---|---|
+  | POST tags : plusieurs mots acceptés, nom nettoyé | `ATagOfSeveralWords_IsSet_ReadOnTheMessage_AndListedOnceForTheMailbox` | refus des espaces réinjecté |
+  | même tag pour espaces / casse | idem (même `Id`, une ligne) | nom brut + code non nettoyé |
+  | 40 caractères après nettoyage ; 41 → 400 ProblemDetails FR | `ANameOfFortyOneCharacters_IsRefusedWith400ProblemJson_InFrench_AndNothingIsCreated` | plafond neutralisé ; migration vide |
+  | GET tags : contenu, ordre système → IA → utilisateur → alpha | `TheMailboxTags_AreListedSystemFirst_ThenAi_ThenUser_ThenAlphabetically` | tri remplacé |
+  | colonnes élargies à 40 | `WidenTagNamesMigrationTests` | migration vide |
+  | caractère de contrôle refusé, nom vide refusé (detail désormais en français), accents | **aucun** (unitaires seulement) | — |
+
+- Conformes (relecteur) : règle et contrôleur (`ValidationException` → 400 ProblemDetails), autres appelants de
+  `NormalizeTagCode` (IA, CATEGORY) sans régression, migration limitée aux deux colonnes, tests d'intégration sur la
+  vraie pile, e2e relus du serveur et rejouables, aucune injection ni XSS, aucun nom de tag dans les journaux.
+
+#### À corriger par la reprise
+- **B1 (règle 1b, bloquant)** — le refus d'un **caractère de contrôle**, le refus d'un **nom vide** (dont le `detail`
+  est passé de l'anglais au français) et l'**équivalence des accents** (« Très urgent » / « tres URGENT » → même tag)
+  ne sont prouvés qu'en unitaire. Ajouter les cas d'intégration (400 `problem+json`, `detail` FR lu, rien créé ; même
+  `Id` pour la variante accentuée), vus rouges.
+- **B2 (bloquant)** — Entrée / ✓ peut poser un autre tag que le nom **exact** tapé : les lignes « commence par »
+  gardent l'ordre du serveur, la correspondance exacte n'est pas en tête. Boîte avec « Important » (IA) et « Imp »
+  (utilisateur), saisie « imp » + Entrée → « Important » posé. Mettre la correspondance exacte en première ligne
+  (weda2 et mobile, `tag-suggestions.util.ts`), test vu rouge dans les deux clients.
+- **B3 (bloquant)** — weda2 : `MailTagComponent.post()` n'a pas de gestion d'erreur ; un refus du serveur (400,
+  `detail` français) n'est jamais montré, la saisie reste ouverte sans message. Afficher le `detail` sous le champ.
+  Même composant : taper le nom exact d'un tag **déjà posé** donne une liste vide, Entrée envoie quand même le POST et
+  la puce apparaît en double (`onTagAdded`). Ne rien envoyer (ou fermer) quand le tag est déjà posé, comme le mobile.
+- **B4 (bloquant)** — `MailRepository.AddTagToMailAsync` crée le tag utilisateur sans la reprise sur conflit de
+  `IX_Tags_Code` que les voies IA et CATEGORY ont déjà (`CreateTagOrReadWinnerAsync`) : deux créations simultanées du
+  même nom (double clic, deux personnes de la boîte, règle 14) → la seconde échoue en erreur générique anglaise.
+  Réutiliser la reprise, preuve par deux poses concurrentes du même nouveau nom (deux contextes) : 200 et un seul tag.
+  Côté weda2, bloquer un second envoi pendant la requête.
+- **S1 (même passe)** — flèche haut depuis « aucune ligne désignée » (index −1) désigne l'avant-dernière ligne au
+  lieu de la dernière (`(−1 − 1 + n) % n`), weda2 et mobile ; test de la flèche haut.
+
+#### Arbitrage humain
+- **A1** — « Avis cardio » tapé quand « Avis cardiologie » existe : Entrée (et ✓ sur mobile) pose « Avis cardiologie »,
+  la ligne « Créer le tag » est la dernière. C'est le comportement du plan de test (« Entrée pose le premier »).
+  *Recommandation de la forge* : garder ; créer le nom exact se fait en touchant (ou désignant) la ligne « Créer ».
+- **A2** — les clients posent un tag existant **par son nom**, ce qui suppose `Code == TagNameRule.Code(Name)`. Vrai
+  pour tous les producteurs actuels. Si task-456 sème des tags système au code non dérivé du nom (`PRO_SANTE`),
+  choisir ce tag créerait un homonyme utilisateur. *Recommandation* : task-456 dérive ses codes du nom par la règle
+  (un test le fige), plutôt qu'une pose par code ajoutée ici.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-486 --sync` — ne pas éditer à la main)*
@@ -255,4 +311,5 @@ Règles :
 |---|---|---|---|---|---|---|
 | /start | ok | 32 s | — | — | — | — |
 | /develop | ok | 52 min 55 s | 8 (1 min 21 s) | 7 (19 min 47 s) | — | api-mail 5B/3T, client-mobile 2B/3T, client-angular 1B/1T |
-| **Total cycle** | | **53 min 28 s** | **8 (1 min 21 s)** | **7 (19 min 47 s)** | **0 (0.0 s)** | |
+| /review-code | changes | 5 min 23 s | — | — | — | reprise 1 |
+| **Total cycle** | | **58 min 51 s** | **8 (1 min 21 s)** | **7 (19 min 47 s)** | **0 (0.0 s)** | |
