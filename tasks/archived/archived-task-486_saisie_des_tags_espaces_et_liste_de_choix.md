@@ -629,3 +629,14 @@ Relecture indépendante du diff de la reprise d'abord (api-mail `0956bcad..4c283
 | **Total cycle** | | **58 min 04 s** | **19 (3 min 50 s)** | **24 (49 min 05 s)** | **4 (1 min 25 s)** | |
 
 Autres commandes mesurées : lint ×3 (15 s)
+
+## Merged
+
+- 2026-11-16, `/merge task-486 --i-tested` (test manuel attesté par l'humain).
+- `api-mail` : PR #371 squash-mergée — `c9fa45f0` ; CI `develop` verte :
+  https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/43967035013
+- `client-mobile` : PR #126 squash-mergée — `592db41c` ; CI `develop` verte :
+  https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/43967066653
+- Branches `feat/task-486-…` supprimées (distante et locale) ; `dtos-mss` : aucune branche.
+- `client-angular` : managed manually by the human.
+- Staging : aucune branche `forge/staging-*` (task lancée hors `/forge`).
