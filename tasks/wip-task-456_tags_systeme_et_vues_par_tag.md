@@ -179,3 +179,18 @@ Règles :
 - **Référentiels métier** : LOINC (types de documents)
 - **Hébergement HDS** : oui — base de la boîte (tags et vues) ; réglage du filtre dans les réglages de la personne
 - **AIPD / impact RGPD** : inchangé — aucune donnée nouvelle sur le patient
+
+## Branches
+- `api-mail` (pushed) : feat/task-456-tags-systeme-et-vues-par-tag — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-456-tags-systeme-et-vues-par-tag
+- `client-mobile` (pushed) : feat/task-456-tags-systeme-et-vues-par-tag — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-456-tags-systeme-et-vues-par-tag
+- `dtos-mss` (paresseuse) : aucune branche au /start — créée par /develop au premier changement de contrat (`TagDto`, `FolderDto`)
+- `client-angular` (code-only) : la forge écrit sur la branche checked out dans `Client/Angular/` (au /start : `feature/nova-mss-weda-integration`) — humain gère branche, commit, push, PR TFS. ⚠️ L'arbre porte encore les 9 fichiers non commités de task-486 (saisie des tags) : task-456 les modifie à son tour ; les commiter vers TFS avant celles de task-456 garde deux lots lisibles.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-456 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 28 s | — | — | — | — |
+| **Total cycle** | | **28 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
