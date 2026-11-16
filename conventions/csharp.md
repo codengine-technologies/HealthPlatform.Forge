@@ -2813,3 +2813,48 @@ conflit de `MailDataContext.cs`.
 migrations au même numéro, vert après la renumérotation de `AddMailReplies` en `20261113130000`.
 
 **Origine** : task-459 (`/merge`, synchronisation avec task-466). **Occurrences** : 1
+
+### borne-de-saisie-egale-a-la-colonne — Une borne de saisie et la longueur de sa colonne viennent de la même constante
+
+**Règle** : convention projet (contrat ↔ schéma, invisible au build et aux tests unitaires).
+
+**Piège** (task-486) : le contrôleur plafonnait le nom d'un tag à 20 caractères, et `Tags.Name` / `Tags.Code` étaient
+des `varchar(20)` depuis `SetupMigration`. Les deux nombres s'accordaient par hasard, sans lien dans le code. La task
+relevait le plafond de saisie à 40 : chaque nom de 21 à 40 caractères, accepté par la validation, finissait en
+**500** à l'écriture. Les tests unitaires du contrôleur et de la règle étaient verts ; seul le test d'intégration au
+plafond exact (40 caractères) l'a vu.
+
+**Consigne** :
+- Avant de changer une borne de saisie (longueur, nombre d'éléments), lire la **colonne** qui la stocke
+  (`SetupMigration` et les migrations suivantes, `HasMaxLength` du modèle). La borne, la migration et le modèle
+  lisent la **même constante** (ici `TagNameRule.MaxLength`).
+- Le test d'intégration écrit une valeur **au plafond exact** à travers la route, et une au-delà (400) : la borne
+  se prouve des deux côtés, jamais par un seul cas « trop long ».
+
+**Preuve** : `FolderOperationsEndToEndTests.ANameOfFortyOneCharacters_IsRefusedWith400ProblemJson_InFrench_AndNothingIsCreated`
+(500 sur 40 caractères sans `WidenTagNamesMigration`), `WidenTagNamesMigrationTests`.
+
+**Origine** : task-486 (/develop). **Occurrences** : 1
+
+### base-neuve-de-test-sans-pool — Une base créée pour un test s'ouvre sans pool Npgsql
+
+**Règle** : convention projet (tests d'intégration `api-mail`, invisible tant que la collection ne déborde pas).
+
+**Piège** (task-331, puis task-486) : Npgsql tient un pool **par chaîne de connexion** et garde ses connexions inactives
+cinq minutes. Un test qui crée sa propre base (test de migration sur base neuve, base jetable) laisse donc un pool
+orphelin par base. Le conteneur de la collection atteint `max_connections`, et des classes **sans rapport** tombent en
+`53300: sorry, too many clients already`, vertes seules. Sur task-486, trois bases de `WidenTagNamesMigrationTests`,
+écrites sur le modèle de `ContactMssAddressIsDefaultMigrationTests` (qui garde son pool), ont fait tomber les 6 tests
+de `MailboxPrefillIntegrationTests`, deux suites complètes sur deux.
+
+**Consigne** :
+- Toute chaîne de connexion vers une base créée par le test porte `Pooling = false` (ou passe par
+  `PostgreSqlFixture.CreateIsolatedContextAsync`, qui le fait déjà). Vaut aussi pour la chaîne donnée au coureur
+  FluentMigrator (`BaseRepository.CreateServices`).
+- Un rouge `53300` qui revient à l'identique sur deux suites complètes n'est pas un flaky : chercher d'abord les bases
+  que **la task** a ajoutées à la collection.
+
+**Preuve** : suite d'intégration complète 6 rouges `MailboxPrefill` avec le pool, 1 314 / 1 314 vertes avec
+`Pooling = false` sur les bases de `WidenTagNamesMigrationTests`.
+
+**Origine** : task-331 (fixture), task-486 (/develop, test de migration). **Occurrences** : 2
