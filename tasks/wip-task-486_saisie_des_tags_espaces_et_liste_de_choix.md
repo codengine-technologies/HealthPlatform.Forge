@@ -97,3 +97,9 @@ Règles :
 - **Référentiels métier** : non applicable
 - **Hébergement HDS** : oui — base de la boîte
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+- `api-mail` (pushed) : feat/task-486-saisie-des-tags-espaces-et-liste-de — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-486-saisie-des-tags-espaces-et-liste-de
+- `client-mobile` (pushed) : feat/task-486-saisie-des-tags-espaces-et-liste-de — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-486-saisie-des-tags-espaces-et-liste-de
+- `dtos-mss` (paresseuse) : aucune branche au /start — créée par /develop s'il touche un contrat (`TagDto`)
+- `client-angular` (code-only) : la forge écrit sur la branche checked out dans `Client/Angular/` (au /start : `feature/nova-mss-weda-integration`) — humain gère branche, commit, push, PR TFS
