@@ -329,6 +329,16 @@ passage 2.
 | Duplication | 0,4 % | 0,4 % | 0 |
 | Reliability / Security / Maintainability | A / A / A | A / A / A | → |
 
+## Lint log
+
+- `client-angular` (code-only, branche `feature/nova-mss-weda-integration`) : ESLint sur les 7 fichiers TypeScript de la
+  task (contournement documenté depuis task-367 : `nx affected --projects=tag:scope:mss` ne restreint pas le
+  périmètre sur ce workspace). Résultat : **0 erreur**, 10 avertissements, tous sur des lignes antérieures à la task
+  (`max-lines`, `jsdoc/require-example` dans `functional.e2e.ts` et `mss-api.service.ts`) ; les 3 specs de la task
+  sont exclues par la configuration ESLint (`**/*.spec.ts`).
+- Lint propre pour la task → aucune itération, aucun auto-fix, aucun fichier modifié. Build `nx build weda2` et
+  `nx test mss-lib` (1 697) verts sur cet arbre exact (marqueur vert de `/develop` vérifié).
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -449,4 +459,7 @@ Relecture indépendante du diff de la reprise d'abord (api-mail `0956bcad..4c283
 | /develop | ok | 10 min 36 s | 16 (2 min 41 s) | 14 (33 min 56 s) | — | api-mail 9B/5T, client-mobile 4B/6T, client-angular 3B/3T, reprise 2 |
 | /review-code | ok | 1 min 54 s | — | — | — | — |
 | /sonar | ok | 20 min 25 s | 3 (1 min 08 s) | 10 (15 min 08 s) | 4 (1 min 25 s) | 2 itération(s), api-mail 3B/10T |
-| **Total cycle** | | **33 min 28 s** | **19 (3 min 50 s)** | **24 (49 min 05 s)** | **4 (1 min 25 s)** | |
+| /lint-angular | ok | 37 s | — | — | — | 0 erreur sur les fichiers de la task |
+| **Total cycle** | | **34 min 06 s** | **19 (3 min 50 s)** | **24 (49 min 05 s)** | **4 (1 min 25 s)** | |
+
+Autres commandes mesurées : lint ×2 (10 s)
