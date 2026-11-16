@@ -1,3 +1,5 @@
+Résolu — décision humaine du 2026-11-16 : reprise 2 autorisée (`/develop task-486 --reprise`).
+
 # task-486 — revue anticipée, passage 2 : un bloquant revient après la reprise 1
 
 **Étape** : `/review task-486 --code` (passage 2, après `/develop --reprise` n° 1).

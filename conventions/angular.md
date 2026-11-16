@@ -758,6 +758,10 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   - quand Entrée choisit la **première** ligne (liste de choix d'une saisie : tags), l'élément qui porte **exactement**
     le texte tapé (même clé : casse, accents, espaces) est cette première ligne. Sinon Entrée pose un autre élément que
     celui tapé (« imp » → « Important » posé alors que « Imp » existe ; revue de task-486, B2) ;
+  - et quand le texte tapé désigne un élément **exclu** de la liste (déjà posé, déjà choisi), **aucune** ligne n'est
+    désignée d'office : Entrée referme sans rien poser. Sinon la première ligne restante — un autre élément — est posée
+    (message portant « Urgent », « urgent » + Entrée → « Très urgent » posé ; 2ᵉ revue de task-486, B2 revenu). Le
+    test met dans la liste un élément qui **contient** le texte, pas seulement l'élément exclu ;
   - depuis « aucune ligne désignée » (index −1), la flèche haut désigne la **dernière** ligne : `(−1 − 1 + n) % n`
     désigne l'avant-dernière (task-486, S1) ;
   - une saisie qui envoie au serveur **montre son refus** (le `detail` du ProblemDetails, `mapProblemDetailsToMessage`)
@@ -768,8 +772,8 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   « Entrée pose le tag qui porte exactement le nom saisi », « la flèche haut… », « affiche le refus du serveur… »),
   rouges sous mutation.
 - **Origine** : task-449 (/review, B1, S2, S3 ; 2ᵉ revue B2, B3 ; 3ᵉ revue B4, B5) ; task-486 (revue anticipée, B2, B3,
-  S1)
-- **Occurrences** : 4
+  S1 ; 2ᵉ revue, B2 revenu : l'élément exclu)
+- **Occurrences** : 5
 
 ### etat-asynchrone-onpush-en-signal — Un état posé après un `await` dans un composant OnPush est un signal
 - **Règle** : convention projet (invisible au lint et au build)

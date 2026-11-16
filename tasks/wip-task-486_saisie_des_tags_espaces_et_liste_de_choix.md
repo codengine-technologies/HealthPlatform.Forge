@@ -1,7 +1,7 @@
 # todo-task-486.md — Saisie des tags : espaces acceptés et liste de choix
 
 **Repos**: api-mail, dtos-mss, client-angular, client-mobile
-**Reprises**: 1
+**Reprises**: 2
 **Dependencies**: aucune
 **Epic**: E024
 
@@ -279,6 +279,28 @@ Périmètre : « À corriger par la reprise » du passage 1 (B1, B2, B3, B4, S1)
 - Green marked : api-mail `4c28314b`, client-mobile `a1fe177`, client-angular (arbre courant).
 - Next step : /review task-486 --code
 
+### Reprise 2 après /review
+
+Autorisée par l'humain le 2026-11-16 (B2 revenu au passage 2, règle 13). Périmètre : « À corriger par la reprise » du
+passage 2.
+
+| Constat | Correctif | Test | Preuve rouge |
+|---|---|---|---|
+| **B2 (reste)** nom exact d'un tag **déjà posé** : la première ligne restante (un autre tag) était désignée | `namesAppliedTag` (util weda2 et mobile) : aucune ligne désignée d'office quand le texte désigne un tag déjà posé ; Entrée / ✓ referment sans rien poser (garde « déjà posé » existante) | « le nom exact d'un tag déjà posé ne désigne aucun autre tag » (weda2, mobile) : posé « Urgent », boîte avec « Très urgent » et « Courrier urgent », « urgent » + Entrée → aucun POST | **rouge avant correctif** dans les deux clients ; mutation (condition retirée) rouge dans chacun |
+| **S2** weda2 : refus réapparu à la réouverture | `startAdding` remet l'erreur à zéro | « un refus reçu après la fermeture ne réapparaît pas » | rouge avant correctif ; mutation rouge |
+| **S3** test HTTP de concurrence | commentaire : il ne force pas la course, la preuve rouge est `MailRepositoryUserTagRaceTests` | — | — |
+
+- Relecture du correctif comme correctif : `onQueryChange` / `onTagNameInput` n'ont pas d'autre appelant ; la flèche bas
+  depuis « aucune ligne » désigne toujours la première (choix délibéré possible) ; ✓ suit le même chemin qu'Entrée.
+- Suites complètes sur l'état poussé, vertes au premier passage : api-mail (302 / 750 / 4 262 / 1 383 / intégration 1 322),
+  mobile build + Karma 1 471 / 1 471, weda2 build + `mss-lib` 150 fichiers / 1 697 tests. ESLint 0 erreur, Prettier
+  propre, CRLF homogènes.
+- Commits : api-mail `444aeb06` ; client-mobile `e58fc40` ; client-angular non commité.
+- Prévention : `conventions/angular.md`, `suggestions-de-saisie-choisies-visibles` Occurrences 5 (élément exclu de la
+  liste : aucune désignation d'office ; le test met un élément qui contient le texte).
+- Green marked : api-mail `444aeb06`, client-mobile `e58fc40`, client-angular (arbre courant).
+- Next step : /review task-486 --code
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -376,6 +398,6 @@ Relecture indépendante du diff de la reprise d'abord (api-mail `0956bcad..4c283
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 32 s | — | — | — | — |
-| /develop | ok | 17 min 38 s | 13 (2 min 04 s) | 11 (27 min 00 s) | — | api-mail 8B/4T, client-mobile 3B/5T, client-angular 2B/2T, reprise 1 |
+| /develop | ok | 10 min 36 s | 16 (2 min 41 s) | 14 (33 min 56 s) | — | api-mail 9B/5T, client-mobile 4B/6T, client-angular 3B/3T, reprise 2 |
 | /review-code | failed | 5 min 21 s | — | — | — | B2 revenu apres reprise 1 (regle 13) |
-| **Total cycle** | | **23 min 32 s** | **13 (2 min 04 s)** | **11 (27 min 00 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **16 min 30 s** | **16 (2 min 41 s)** | **14 (33 min 56 s)** | **0 (0.0 s)** | |
