@@ -585,6 +585,32 @@ Relecture indépendante du diff de la reprise d'abord (api-mail `0956bcad..4c283
   mauvais tag posé.
 - Préfixe d'un tag existant (« Avis » + Entrée pose « Avis cardio ») : conforme au plan de test, déjà porté par **A1**.
 
+### Validation finale — APPROVED
+
+- Build + tests : vert réutilisé — api-mail `d7d9f8c7` (/sonar : build Release + 5 suites avec couverture), client-mobile
+  `e58fc40` et client-angular (arbre de la task) (/develop). Marqueurs vérifiés par `Tools/green/green.py check`.
+- Diff depuis l'approbation (`approved at`) : seul le correctif Sonar S3604 de `MailReplySummaries` (2 lignes) ✅.
+- DOD : ✓ (voir `### DOD self-check` et reprises). 4a ✓ (table du passage 1, complétée en reprise 1). 4b ✓ `**E2E : vert**`.
+  4c : api-mcp : aucun impact. `develop` inchangé depuis la branche : aucun merge.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/371 — label `awaiting-human-merge`
+  (à merger en premier : route `GET tags` et migration `WidenTagNames`).
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/126 — label `awaiting-human-merge`.
+- `client-angular` : code-only — humain gère commit/push TFS et ouverture PR, sur `feature/nova-mss-weda-integration`.
+  Fichiers modifiés :
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`
+  - `front/libs/mss/src/core/services/mss-api.service.ts`
+  - `front/libs/mss/src/features/mail/components/mail-tag/mail-tag.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-tag/mail-tag.component.scss`
+  - `front/libs/mss/src/features/mail/components/mail-tag/mail-tag.component.ts`
+  - `front/libs/mss/src/core/services/mss-api.tags.service.spec.ts`
+  - `front/libs/mss/src/core/utils/tag-suggestions.util.spec.ts`
+  - `front/libs/mss/src/core/utils/tag-suggestions.util.ts`
+  - `front/libs/mss/src/features/mail/components/mail-tag/mail-tag.component.spec.ts`
+- `dtos-mss` : aucune branche (contrat inchangé).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-486 --sync` — ne pas éditer à la main)*
@@ -598,6 +624,7 @@ Relecture indépendante du diff de la reprise d'abord (api-mail `0956bcad..4c283
 | /lint-angular | ok | 37 s | — | — | — | 0 erreur sur les fichiers de la task |
 | /lint-mobile | ok | 14 s | — | — | — | lint propre |
 | /e2e | ok | 21 min 14 s | — | — | — | e2e ×3 (20 min 11 s) |
-| **Total cycle** | | **55 min 35 s** | **19 (3 min 50 s)** | **24 (49 min 05 s)** | **4 (1 min 25 s)** | |
+| /review | ok | 1 min 23 s | — | — | — | — |
+| **Total cycle** | | **56 min 58 s** | **19 (3 min 50 s)** | **24 (49 min 05 s)** | **4 (1 min 25 s)** | |
 
 Autres commandes mesurées : lint ×3 (15 s)
