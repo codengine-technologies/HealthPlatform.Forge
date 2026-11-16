@@ -39,7 +39,7 @@ Règles :
 - **Affichage** : « À traiter par {Prénom NOM} — attribué par {Prénom NOM} le … », sur la ligne (une pastille avec les
   initiales) et dans le détail.
 - **Vue « Pour moi »** : les messages attribués à la personne connectée et non traités, avec un compteur. Sur weda2,
-  dans l'arborescence au-dessus des vues par nature ; sur mobile, en puce et en tuile d'Accueil (flag
+  dans l'arborescence au-dessus des tags système ; sur mobile, en puce et en tuile d'Accueil (flag
   `dashboard_widget_for_me`).
 - **Avertir** : la personne attribuée reçoit une notification dans l'application, en direct si elle est connectée,
   sinon à sa prochaine ouverture (« Cyril DELEGUE vous a attribué un message »). Le contenu clinique n'est jamais dans
