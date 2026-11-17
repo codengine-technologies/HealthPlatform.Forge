@@ -220,8 +220,9 @@ validation (task-456), 4 au backlog.
   - **Professionnel de santé** : un message d'un confrère de la messagerie de santé ;
   - **Pour info** : un message reçu en copie seulement, ou un message automatique.
 
-  Les messages déjà présents dans la boîte sont classés à la première ouverture qui suit la mise à jour. Les quatre
-  tags sont toujours affichés en tête de la section « Tags », avec leur nombre de non lus. Le praticien ouvre la vue
+  Les messages déjà présents dans la boîte sont classés à la première ouverture qui suit la mise à jour. Les tags
+  système sont affichés en tête de la section « Tags », avec leur nombre de non lus. Un tag, système ou non, qui ne
+  porte aucun message n'est pas affiché. Le praticien ouvre la vue
   d'un tag, en combine plusieurs pour ne voir que les messages qui les portent tous, et choisit « Tous » ou
   « Non lus ». Ce choix lui est propre et revient à la réouverture. Un tag système retiré à la main ne revient
   jamais. Sur l'application mobile, des puces de l'Accueil mènent aux vues. Disponible sur l'application web et sur

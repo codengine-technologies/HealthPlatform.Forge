@@ -305,6 +305,16 @@
   - Arbitrages ajoutés :
     - la pose des tags de catégorie et IA n'est pas tracée en acte système (règle 14) ;
     - un tag « BIO » de type IA survivrait à la migration.
+- **Reprise 5 (retour humain du 2026-11-17) — un tag sans message n'est pas affiché** :
+  - `GetTagFoldersAsync` ne liste plus les tags système à zéro. Un tag, système compris, n'est listé que s'il porte
+    un message de la Boîte de réception, lu ou non. La route de vue rend une page vide (200) pour un tag sans message.
+  - Mobile : `setFolders` relâche une puce active dont le tag n'est plus listé, et le menu latéral rouvre la Boîte de
+    réception. Sans cela, une vue orpheline restait ouverte, sans nom, sur « 0 message ».
+  - E2E-TAG-002 passe en v2. Tests : `ASystemTagWithoutMail_IsNotListed_…` (intégration) et 3 specs mobiles, vus
+    rouges. Sonar : 1 S3267 corrigé (5e occurrence).
+  - Commits : api-mail `3ee8c973` et `9697e4f6`, client-mobile `7aefb357` et `f3069875`.
+  - E2E : mobile 66/66, Angular 87/87.
+  - Arbitrage ajouté : refermer aussi sur weda2 une vue par tag dont le tag disparaît.
 
 ---
 
