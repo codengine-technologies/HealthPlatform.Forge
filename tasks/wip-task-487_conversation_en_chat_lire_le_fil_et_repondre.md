@@ -1,6 +1,7 @@
 # todo-task-487.md — Conversation en chat : lire le fil et répondre
 
 **Repos**: api-mail, dtos-mss, client-mobile, client-angular
+**Reprises**: 1
 **Dependencies**: none
 **Epic**: E024
 **Priorité**: EPIC E024, demandée par l'humain le 2026-11-17. Un échange entre confrères se lit aujourd'hui message
@@ -379,6 +380,84 @@ seulement, accusés lus en ligne seulement à l'ouverture, accusé disparu, dest
 
 - Next step : /review task-487 --code
 
+## Code Review Summary
+
+### Passage 1 (revue anticipée) — CHANGES REQUESTED
+
+Revue par deux relecteurs indépendants (serveur : api-mail + dtos-mss ; clients : client-mobile + weda2), sur le code,
+sans le Develop log.
+
+- **4a (règle 1b)** : chaque comportement atteignable par une route a son test d'intégration de bout en bout
+  (`ConversationEndToEndTests`, vraie pile HTTP, PostgreSQL, Dovecot, GreenMail), lu dans la réponse réelle, vu rouge
+  par mutation (29/29, table du Develop log). Les trois bloquants serveur ci-dessous n'ont pas de test : la reprise les
+  ajoute, vus rouges.
+- **4c** : api-mcp : aucun impact (`mcp_impact.py check` = 0).
+- **4b (clause DoD)** : E2E-CONV-001 et E2E-CONV-002 au catalogue en version 1, mobile et angular requis ; les deux
+  clients les déclarent en version 1 (`scenario('E2E-CONV-00x', 1)`).
+
+#### À corriger par la reprise
+
+- **B1 (serveur)** — `ConversationQuoteSplitter` : un historique fait seulement de lignes d'en-tête (« De : … / Date : … /
+  Objet : … ») laisse un contenu vide après `SkipMarks`, et le repli est déclaré sûr sans rien comparer au parent. Un
+  message « Je vous adresse Mme X. / De : cardiologie / Date : 20/11 14h / Objet : douleur thoracique, ECG anormal » ne
+  montre que la première ligne, `IsSplitSafe = true`. Un contenu vide n'est pas une preuve : non sûr. Test unitaire et
+  corpus.
+- **B2 (serveur)** — la signature repliée n'a pas de fin : tout ce qui suit le dernier « -- » jusqu'à la citation (ou la
+  fin) est replié sans contrôle. Un PS écrit après la signature HTML de la plateforme (`<!-- /signature -->`, posé par
+  la rédaction mobile) ou sous une signature « -- » de Thunderbird est masqué, `IsSplitSafe = true`. Le repli s'arrête à
+  la marque de fin ; du texte après une signature « -- » sans marque de fin rend le découpage non sûr. Tests unitaires.
+- **B3 (serveur)** — `ConversationRepository.GetThreadAsync` ne filtre pas les brouillons : un brouillon de réponse
+  enregistré par un autre logiciel dans Drafts (`\Draft`, `In-Reply-To` dans le fil) devient une bulle « envoyé », le
+  dernier message du fil (la réponse s'y rattache et le cite) et la base de « destinataires changés ». Exclure `IsDraft`
+  et le dossier des brouillons. Test d'intégration vu rouge.
+- **B4 (mobile)** — une réponse « prête à partir » (202) reste une bulle locale `queued` sans `messageId` : rien ne la
+  retire. Après confirmation par la carte et retour sur la page, elle dit toujours « prêt à partir » et la bulle du
+  serveur « envoyé » apparaît à côté, même texte. Retirer les bulles locales en attente au rechargement de la page 1 et au
+  retour sur la page. Test de composant.
+- Défauts réels corrigés dans la même passe :
+  - serveur : la lecture des accusés à l'ouverture s'arrête au premier échec qui n'est pas « message introuvable »
+    (messagerie en panne : une tentative, pas vingt) ; un accusé introuvable sur le serveur est marqué lu « inconnu »
+    (sinon vingt accusés disparus bloquent les suivants à chaque ouverture) ; la pagination borne `end` au nombre de
+    messages (une page énorme rendait un 500 au lieu d'une page vide) ; `ReadAt` ne retombe plus sur la date d'en-tête
+    en heure locale étiquetée UTC.
+  - weda2 : le téléchargement d'une pièce depuis une carte a un gestionnaire d'erreur (message à l'écran, rien dans la
+    console : l'URL porte le nom du fichier) ; « Voir en conversation » est masqué sans `Message-ID`, sur un brouillon et
+    sur un accusé (comme mobile) ; `canSend` exige au moins un destinataire ; titre « 1 participant » au singulier, sans
+    « 1 participants » sur une liste vide ; la demande d'ouverture de pièce est effacée si le détail ne la trouve pas.
+  - mobile : les rechargements de confirmation après un envoi ne font plus défiler la vue (« la vue ne saute jamais ») ;
+    garde côté client sur `isSplitSafe` (texte complet, pas de bouton de repli), comme weda2 ; message d'erreur réseau
+    par `problemMessage` (jamais l'URL technique).
+  - les deux clients : quand la pastille annonce des messages nouveaux, l'envoi relit d'abord la page 1 (sans défiler)
+    et part avec les destinataires à jour.
+
+#### Arbitrage humain (non bloquant, va dans la PR)
+
+- **Joindre un document du dossier patient depuis le chat weda2** (décision 6) : l'US le limite au « parcours de pièce
+  jointe existant de chaque client ». La rédaction weda2 n'en a pas (un document du dossier arrive par l'intention
+  d'envoi de l'hôte Weda, task-367) ; le chat weda2 offre donc « joindre un fichier ». Le mobile offre les deux.
+  Recommandation : accepter pour cette US, ouvrir une task pour un sélecteur de documents du dossier dans weda2.
+- **Entrée weda2 en mode Conversation** : un bouton « ouvrir en conversation » sur chaque fil ; un clic sur la ligne
+  ouvre toujours le message (les parcours existants, dont E2E-MAIL-006, en dépendent). Le mobile ouvre le chat au toucher
+  du fil. Recommandation : garder le bouton dans weda2.
+- **« Les destinataires ont changé »** compare tous les participants du fil aux destinataires du dernier message de la
+  boîte : une personne retirée volontairement par le médecin réapparaît (répondre à tous) et l'avertissement s'affiche.
+  À trancher : « nouveaux participants depuis votre dernier message » seulement ?
+- **Coupe à 12 lignes** : comptée en lignes du texte, pas en lignes affichées (un long paragraphe sans retour n'est pas
+  coupé). À trancher.
+- **Corpus « réel anonymisé »** : les huit cas sont construits sur les formes réelles des logiciels (attributions,
+  blocs d'en-têtes, blockquote, signature de la plateforme), pas copiés de vrais messages. À confirmer, ou fournir des
+  messages réels anonymisés à ajouter.
+- **Accusés reçus avant task-459** : leurs lignes gardent `IsReport = false` (pas de reprise de données à task-459) ; un
+  ancien « Lu : … » apparaît donc comme une bulle reçue sur une boîte existante. Une reprise de données est une
+  écriture en masse sur les bases des boîtes : à décider.
+
+#### Suggestions retenues pour plus tard (non bloquantes)
+
+- Lire les accusés reçus à la synchronisation plutôt qu'à l'ouverture ; ne charger les corps que pour la page.
+- Pagination par curseur (`before=`) plutôt que par numéro de page depuis le plus récent.
+- Idempotence serveur de `POST …/reply` (un « Réessayer » après un délai dépassé où le SMTP avait accepté).
+- Signature des signatures weda2 (Tiptap) non repliée : affichée, sans risque.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-487 --sync` — ne pas éditer à la main)*
@@ -387,6 +466,7 @@ seulement, accusés lus en ligne seulement à l'ouverture, accusé disparu, dest
 |---|---|---|---|---|---|---|
 | /start | ok | 29 s | — | — | — | — |
 | /develop | ok | 1 h 41 min | 7 (1 min 00 s) | 22 (18 min 05 s) | — | dtos-mss 1B/0T, api-mail 6B/22T |
-| **Total cycle** | | **1 h 42 min** | **7 (1 min 00 s)** | **22 (18 min 05 s)** | **0 (0.0 s)** | |
+| /review-code | changes | 9 min 44 s | — | — | — | reprise 1 |
+| **Total cycle** | | **1 h 51 min** | **7 (1 min 00 s)** | **22 (18 min 05 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (19 s)
