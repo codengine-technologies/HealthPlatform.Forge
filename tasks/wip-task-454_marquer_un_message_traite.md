@@ -217,11 +217,11 @@ Règles :
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 30 s | — | — | — | — |
-| /develop | ok | 3 h 28 min | 8 (1 min 14 s) | 20 (1 h 18 min) | — | dtos-mss 1B/0T, api-mail 2B/12T, client-mobile 4B/5T, client-angular 1B/3T |
+| /develop | ok | 30 min 40 s | 10 (1 min 25 s) | 23 (1 h 25 min) | — | dtos-mss 1B/0T, api-mail 3B/13T, client-mobile 5B/6T, client-angular 1B/4T, reprise 1 |
 | /review-code | changes | 7 min 14 s | — | — | — | reprise 1 |
-| **Total cycle** | | **3 h 36 min** | **8 (1 min 14 s)** | **20 (1 h 18 min)** | **0 (0.0 s)** | |
+| **Total cycle** | | **38 min 25 s** | **10 (1 min 25 s)** | **23 (1 h 25 min)** | **0 (0.0 s)** | |
 
-Autres commandes mesurées : lint ×3 (18 s), nuget-wait ×2 (15 s), restore ×1 (3.9 s)
+Autres commandes mesurées : lint ×4 (24 s), nuget-wait ×3 (59 s), restore ×1 (3.9 s)
 
 ## Branches
 - `api-mail` (pushed) : feat/task-454-marquer-un-message-traite — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-454-marquer-un-message-traite (depuis `develop` `fe801f26`, task-456 incluse)
@@ -510,3 +510,96 @@ rangement par `bulk/move` et `bulk-actions`.
 - Coût des requêtes sur les chemins chauds (`GET emails/{ids}`, `GET folders`) : à mesurer sur une boîte de 6 à 11 000
   messages avant toute optimisation (règle d'or 5).
 
+
+### Reprise 1 (2026-11-17) — revue anticipée, passage 1
+
+**B1 — un traitement ne touche que l'à traiter, « Annuler » rend l'état d'avant.**
+- Contrat : `MailHandlingBulkResultDto.PutBack` (dtos-mss `47e57b7`, paquet `618.0.0`, api-mail `91b8bb3f`).
+- Serveur (`e7b1a1ba`) : `HandleBulkAsync` lit les états avant le geste et ne traite que les messages **à traiter** ;
+  `PutBack` liste ceux qui avaient été remis à traiter ; la vue par tag est bornée à l'à traiter en SQL quel que soit son
+  filtre ; nouvelle route `PUT emails/status/handled/undo` (corps = le résultat du traitement, ≤ 2 000 messages) qui efface
+  l'état « traité » (la règle reprend la main) ou remet « à traiter » les messages de `PutBack`, tracée
+  `MailMarkedToHandle` (« undo ») au nom de la personne.
+- Clients : « Annuler » renvoie le résultat au serveur (un « Traité » unitaire construit le sien : `putBack` si le message
+  portait un état « à traiter » explicite) ; « Traiter les N messages affichés » n'est proposé que dans une liste
+  « À traiter » (boîte ou vue par tag) — le nombre annoncé est alors celui des messages traités ; « sans anomalie »
+  reste dans la vue Biologie quel que soit le filtre.
+
+**B2** — `BulkMovesOutOfTheInbox_HandleTheMessages_AsTidied` (`bulk/move` et `bulk-actions`) et la réponse du délégataire
+(`TheDelegateReplies_…`, état « traité — répondu » au nom du délégataire).
+
+**Même passe** : `GetTargetOfDocumentAsync` restreint à la génération courante (correctif défensif, sans test dédié : le
+cas demande une génération périmée qui porte un document ; les tests de rattachement restent verts) ; « Marquer traité /
+Remettre à traiter » dans le panneau « Actions & dossier » de weda2 ; texte du catalogue E2E-TRIAGE-002 aligné (vue de
+l'essai, filtre « À traiter »).
+
+Preuves rouges (api-mail) :
+
+| Comportement | Preuve | Test rouge |
+|---|---|---|
+| groupé : seulement l'à traiter, auteur préservé | rouge sur le code d'avant ; R1 « tout est traité » | `TheBulkHandling_OnlyHandlesWhatIsToHandle_AndUndoRestoresTheStateBefore` |
+| vue par tag bornée à l'à traiter | rouge sur le code d'avant (« Pour info » traités) | `HandlingATagView_LeavesWhatIsNotToHandle` ; R2 (borne SQL retirée) **survit** : le service filtre aussi, la borne SQL limite le lot sans changer la réponse |
+| « Annuler » remet à traiter ce qui l'était | R3 | `TheBulkHandling_OnlyHandles…` |
+| « Annuler » efface l'état « traité » | R4 | `TheBulkHandling_OnlyHandles…` |
+| rangement par `bulk/move` | R5 | `BulkMovesOutOfTheInbox_…` |
+| rangement par `bulk-actions` | R6 | `BulkMovesOutOfTheInbox_…` |
+| réponse du délégataire | R7 | `TheDelegateReplies_TheHolderReadsTheDelegateAsTheAuthor` |
+
+Suite complète api-mail : 8097 réussis, 0 échec. `mss-lib` : 1780/1780.
+
+Preuves rouges weda2 (reprise) : W17 `putBack` perdu au « Traité » unitaire, W18 « Annuler » message par message, W19
+« Traiter les N » hors « À traiter », W20 bouton du panneau qui remet à traiter, W21 `putBack` perdu au groupé — toutes
+rouges sur la spec visée (`mail-handling.service.spec`, `mss-mail.component.handling.spec`, `mail-list.tag-view.spec`,
+`mail-detail.handled.spec`), sources restaurées.
+
+### Preuves rouges — client-mobile (B3 : faites par /develop, consignées ici)
+
+Mobile `be84d34` : 1585/1585, lint propre. Reprise : R1 `wasPutBack` forcé à faux, R2 `putBack` perdu à la fusion, R3
+liste non relue après « Annuler », R4 compteurs non relus, R5 « Traiter les N » hors « À traiter », R6 « sans
+anomalie » seulement dans « À traiter », R7 mauvaise route d'annulation, R8 échec d'annulation muet — toutes rouges
+(`mail-handling.service.spec`, `mail-list.handling.spec`, `mss-api.service.spec`).
+
+Tours précédents (toutes rouges, puis restaurées) :
+
+| Mutation | Spec |
+|---|---|
+| M1 « Traité » après « Lu » | `mail-list.handling.spec` (ordre des balayages) |
+| M2 409 ignoré | `mail-handling.service.spec` (avis biologie) |
+| M3 compteur par défaut « Non lus » | `user-settings.service.spec` |
+| M4 libellé sans « répondu » | `mail-handling.util.spec` |
+| M5 tuile sur `unreadCount` | `to-handle-tile.component.spec` |
+| M6 transfert sans Message-ID | `mail-compose.component.spec` |
+| M7 traité ⇏ lu | `mail-state.service.spec` |
+| M8 « Annuler » sans réinsertion (code retiré par la reprise, couvert par R1-R4) | `mail-handling.service.spec` |
+| M9 badge de dossier « Non lus » | `mail-folder-item.component.spec` |
+| M10 page « À traiter » réordonnée | `mail-state.service.spec` |
+| M11 évènement SSE mal nommé | `mail-events-stream.service.spec` |
+| M12 service non rattaché à la boîte | `mailbox-scoped-states.spec` |
+| M13 liste « À traiter » qui garde le traité | `mail-state.service.spec` |
+| M14 fenêtre d'annulation 600 s (test d'abord lisant la constante : corrigé) | `mail-handling.service.spec` |
+| M15 puce de tag « Non lus » | `inbox-tag-chips.component.spec` |
+| M16 « À traiter » non servi par le serveur | `inbox.page.spec` |
+| M17 avis : panneau d'acquittement non montré | `mail-handling-toast.component.spec` |
+| M18 geste absent du corps | `mss-api.service.spec` |
+| M19 exclus non comptés | `mail-handling.service.spec` |
+| M20 balayage qui remet à traiter | `mail-list.handling.spec` |
+| M21 sélecteur inversé | `mail-folder-list.component.spec` |
+| M22 filtre de vue « À traiter » refusé | `inbox.page.spec` |
+| M23 état serveur non appliqué au détail | `mail-detail.handling.spec` |
+| M24 « Traité » offert dans la Corbeille | `mail-list.handling.spec` |
+| M25 évènement temps réel d'un autre dossier appliqué | `inbox.page.spec` |
+| M26 sélection non transmise | `inbox.page.spec` |
+| M27 bouton sur un message envoyé | `mail-detail.handling.spec` |
+| M28 « Traité » sans état posé | `mail-handling.service.spec` |
+| V1 à V7 (traitement de la vue : total serveur, confirmation, « sans anomalie », relecture) | `mail-list.handling.spec`, `mail-handling.service.spec`, `mss-api.service.spec`, `inbox.page.spec` |
+
+### Reprise 1 — parcours e2e
+
+Tests ajustés : TRIAGE-001 attend `PUT emails/status/handled/undo` ; TRIAGE-002 joue « Traiter les 2 messages affichés »
+dans la vue de l'essai filtrée « À traiter » (réglage remis à « Tous » en fin d'essai). Voie mobile (`--serve-only`) :
+TRIAGE-001 et 002 verts ; E2 et E6 (« Annuler » sans appel à la route d'annulation) rouges sur l'attente visée ; témoin
+restauré vert. Voie Angular : les 5 scénarios verts ; A2 et A5 (nouvelle route) rouges sur l'attente visée, marqueurs
+servis puis retirés ; témoin restauré vert.
+
+Fin de la reprise : api-mail `e7b1a1ba`, client-mobile `948047a`, dtos-mss `47e57b7` (`618.0.0`), poussés ; weda2 sur
+l'arbre (code-only) ; verts marqués.
