@@ -220,9 +220,11 @@ Règles :
 | /develop | ok | 30 min 40 s | 10 (1 min 25 s) | 23 (1 h 25 min) | — | dtos-mss 1B/0T, api-mail 3B/13T, client-mobile 5B/6T, client-angular 1B/4T, reprise 1 |
 | /review-code | ok | 4 min 24 s | — | — | — | — |
 | /sonar | ok | 37 min 25 s | 4 (1 min 35 s) | 11 (23 min 05 s) | 4 (1 min 32 s) | 2 itération(s), api-mail 4B/11T |
-| **Total cycle** | | **1 h 13 min** | **14 (3 min 01 s)** | **34 (1 h 49 min)** | **4 (1 min 32 s)** | |
+| /lint-angular | ok | 9 min 19 s | 1 (22 s) | 1 (1 min 49 s) | — | 3 itération(s), client-angular 1B/1T |
+| /lint-mobile | ok | 34 s | — | — | — | — |
+| **Total cycle** | | **1 h 22 min** | **15 (3 min 23 s)** | **35 (1 h 50 min)** | **4 (1 min 32 s)** | |
 
-Autres commandes mesurées : lint ×4 (24 s), nuget-wait ×3 (59 s), restore ×1 (3.9 s)
+Autres commandes mesurées : lint ×8 (1 min 11 s), nuget-wait ×3 (59 s), restore ×1 (3.9 s)
 
 ## Branches
 - `api-mail` (pushed) : feat/task-454-marquer-un-message-traite — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-454-marquer-un-message-traite (depuis `develop` `fe801f26`, task-456 incluse)
@@ -676,3 +678,77 @@ points « même passe » corrigés, avec leurs tests et leurs preuves rouges. ap
   par le test d'intégration.
 - Après « Annuler », les clients ne réappliquent pas l'état localement : sans SSE, un détail déjà ouvert garde
   « Traité par … » jusqu'à son rechargement.
+
+## Lint log
+
+- Mode : affected (npx nx affected -t lint --base=origin/next --head=HEAD --projects=tag:scope:mss)
+- Scope : tag:scope:mss (default — `mss`, `mss-lib`, `mss-e2e`) ; aucun override `**LintBase**` / `**LintProjects**`
+- Pipeline fidelity : same commands as Client/Angular/azure-pipelines.yml (Stage 2 CI),
+  with two intentional divergences :
+  1. BASE_BRANCH default = origin/next (active TFS branch, not pipeline's origin/master fallback)
+  2. Lint scoped to tag:scope:mss (the pipeline lints every affected project)
+  Build/test stay un-scoped to catch downstream regressions.
+- Arbre : branche `feature/nova-mss-weda-integration` @ `f0e9ee95` (code-only, rien de commité), `origin/next` rafraîchi
+  (`738a5b63`). L'arbre porte aussi le WIP non commité de task-456 et task-486 : aucun fichier ajouté ni retiré de
+  l'arbre par cette étape (même liste `git status` avant / après).
+- Comptage : `npx eslint libs/mss apps/mss e2e/mss-e2e --format json` (le `--projects` ne restreint pas `nx affected`,
+  13 cibles lint lancées, et `--output-file` en chemin Windows absolu échoue : contournement de task-367).
+- Baseline : 107 errors / 100 warnings (98 `prettier/prettier`, 8 `jsdoc/require-jsdoc`, 1 `jsdoc/require-returns`)
+- Final    : 0 errors / 99 warnings (75 `jsdoc/require-example`, 21 `max-lines`, 3 `complexity` — tous antérieurs, aucun
+  sur une ligne ajoutée)
+- Iterations : 3 / 5
+- Build / tests : ✓ (build : seuls `mss:build:production` et `prescription:build:production` rouges, budget de bundle
+  initial dépassé, rouge préexistant connu — `weda2`, `ins`, `dmp` verts ; tests : 12 projets, 11 956 tests, 0 échec,
+  0 erreur)
+
+| Iter | Errors before | Errors after | Warnings before | Warnings after | Build | Tests |
+|------|---------------|--------------|-----------------|----------------|-------|-------|
+| 1 — `eslint --fix --fix-type layout` (prettier seul) | 107 | 9 | 100 | 100 | ✓ ¹ | ✓ ¹ |
+| 2 — JSDoc à la main (8 `require-jsdoc`, 1 `require-returns`) | 9 | 0 | 100 | 100 | ✓ ¹ | ✓ ¹ |
+| 3 — `complexity` neuf de la task (avertissement) | 0 | 0 | 100 | 99 | ✓ | ✓ |
+
+¹ Build + tests joués une fois, sur l'arbre final (après l'itération 3) : les itérations 1 et 2 ne changent que la
+mise en forme et des commentaires.
+
+**Itération 1** — auto-fix restreint au type `layout` : la règle `prettier/prettier` seule. Le fixer de
+`jsdoc/require-jsdoc` aurait posé des squelettes vides (consigne de `conventions/angular.md`), et celui de
+`require-example` aurait réécrit des JSDoc de fichiers hors task (`panel-splitter.component.ts`). 98 erreurs réglées, dans
+8 fichiers suivis (`functional.e2e.ts`, `e2e-backend.ts`, `mail-events-stream.service.ts`, `mss-api.service.ts`,
+`mail-detail.component.ts`, `mail-folder-item.component.ts`, `mail-list.component.ts`, `mail-state.service.ts`) et
+3 nouveaux (`mail-handling.util.ts`, `mail-handling.service.ts`, `to-handle-kpi-tile.component.ts`). Fins de ligne
+contrôlées après coup : chaque fichier est entièrement CRLF. Une partie des lignes reformatées de `mail-list` et de
+`mail-state` (vue par étiquettes) appartient à task-456, seulement reformatée par le fixer.
+
+**Itération 2** — JSDoc écrits à la main (description, `@param`, `@returns`, `@example` avec un appel) :
+- `mail-detail.component.ts` : `markHandled` avait été inséré en ancrant sur la signature d'`openSidePanel`. Le JSDoc
+  d'`openSidePanel` se trouvait au-dessus du bloc de `markHandled`, et `openSidePanel` n'avait plus de bloc. Le bloc est
+  remis à sa place, et le diff redevient une pure insertion des trois méthodes de la task ;
+- `mail-handling.service.ts` : `handleBulk`, `apply`, `showsToHandleList`, `refused`, `offerUndo`, `clearUndo` ;
+- `to-handle-kpi-tile.component.ts` : `load` ;
+- `mail-header.component.ts` : getter `canHandle`, `@returns` manquant.
+
+**Itération 3** — `initializeFromPrefill` (`mail-compose.component.ts`) passait de 20 à 21 en complexité avec le
+`if (prefill.forwardedMessageId)` de la task. C'est un avertissement neuf, signalé sur la signature et pas sur la ligne
+ajoutée. Corrigé par l'extraction d'`applyPrefillThreading` (In-Reply-To, message transféré, message répondu,
+References), sans changer l'ordre des affectations : pure refactorisation, la suite de la rédaction la couvre.
+
+Résiduel : aucune erreur. Les 99 avertissements sont antérieurs à la task (`require-example` vides, `max-lines`, et
+`complexity` sur `classify`, `replacePlaceholders` et `classifyDocument`).
+
+Conventions (`conventions/angular.md`) : `jsdoc/require-jsdoc` → 15 occurrences, et `complexity` → 2 (la même
+méthode qu'en task-399). Récidive sur la lecture : la passe qualité de /develop annonçait 4 erreurs prettier sur un
+seul fichier, le lint en a trouvé 107 sur 11 fichiers. Le lint des fichiers touchés n'avait pas été rejoué après la
+dernière modification (`agents/develop.md` §Q 2b).
+
+Vert marqué : `green.py mark --task task-454 --repo client-angular --by lint-angular` (client-angular `f0e9ee95` + arbre modifié).
+
+## Lint mobile log
+
+- Repo : client-mobile (Client/Mobile/, Ionic/Angular CLI), branche `feat/task-454-marquer-un-message-traite` @ `948047a`
+- Commands : npm run lint
+- Baseline : 0 errors / 0 warnings (« All files pass linting »)
+- Final    : 0 errors / 0 warnings
+- Iterations : 0 / 5 — lint clean → no work, aucun commit
+- Build / tests : non rejoués (baseline propre, aucun fichier modifié) ; le marqueur vert de `/develop` couvre ce code exact
+  (`green.py check` : client-mobile `948047af` validé par /develop à 2026-11-17T16:41:48Z)
+- Conventions : aucune règle corrigée à la main, `conventions/angular.md` inchangé
