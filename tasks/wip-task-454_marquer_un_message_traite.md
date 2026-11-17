@@ -218,8 +218,8 @@ Règles :
 |---|---|---|---|---|---|---|
 | /start | ok | 30 s | — | — | — | — |
 | /develop | ok | 30 min 40 s | 10 (1 min 25 s) | 23 (1 h 25 min) | — | dtos-mss 1B/0T, api-mail 3B/13T, client-mobile 5B/6T, client-angular 1B/4T, reprise 1 |
-| /review-code | changes | 7 min 14 s | — | — | — | reprise 1 |
-| **Total cycle** | | **38 min 25 s** | **10 (1 min 25 s)** | **23 (1 h 25 min)** | **0 (0.0 s)** | |
+| /review-code | ok | 4 min 24 s | — | — | — | — |
+| **Total cycle** | | **35 min 34 s** | **10 (1 min 25 s)** | **23 (1 h 25 min)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×4 (24 s), nuget-wait ×3 (59 s), restore ×1 (3.9 s)
 
@@ -603,3 +603,24 @@ servis puis retirés ; témoin restauré vert.
 
 Fin de la reprise : api-mail `e7b1a1ba`, client-mobile `948047a`, dtos-mss `47e57b7` (`618.0.0`), poussés ; weda2 sur
 l'arbre (code-only) ; verts marqués.
+
+### Passage 2 (revue anticipée) — APPROVED
+
+Relecteur indépendant, diff de la reprise lu d'abord (ce que le correctif aurait cassé) : rien de cassé. B1, B2, B3 et les
+points « même passe » corrigés, avec leurs tests et leurs preuves rouges. api-mcp : aucun impact.
+
+**Approved at** : dtos-mss `47e57b7`, api-mail `e7b1a1ba`, client-mobile `948047a`, client-angular (arbre weda2, code-only).
+
+#### Suggestions (non bloquantes, à la PR)
+- Née de la reprise — la doc de `IMailHandlingService.UndoHandledAsync` dit « un message traité depuis par une autre
+  personne n'est pas touché » : faux, `ClearHandledAsync` efface tout état « traité » des Message-ID reçus. En boîte
+  partagée, un délégataire qui répond pendant les 6 s du toast perdrait son état « répondu » si le titulaire annule.
+  Correctif simple : restreindre l'effacement aux états posés par ce geste (auteur et heure), ou corriger la doc.
+- Née de la reprise — bornes inégales : l'annulation refuse plus de 2 000 messages, les routes groupées n'ont pas de
+  borne ; `"handled": null` dans le corps de l'annulation finirait en 500 (`ProblemDetails`).
+- `GetTargetOfDocumentAsync` restreint à la génération courante sans test vu rouge (correctif défensif).
+- L'annulation ne rend ni l'auteur ni l'heure d'un « remis à traiter » d'origine, ni l'état non lu.
+- `UndoHandledAsync` sans test unitaire ; la trace « undo » (`MailMarkedToHandle`, RPPS de la personne) n'est pas relue
+  par le test d'intégration.
+- Après « Annuler », les clients ne réappliquent pas l'état localement : sans SSE, un détail déjà ouvert garde
+  « Traité par … » jusqu'à son rechargement.
