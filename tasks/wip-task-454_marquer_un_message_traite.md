@@ -223,3 +223,73 @@ Règles :
 - `client-mobile` (pushed) : feat/task-454-marquer-un-message-traite — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-454-marquer-un-message-traite (depuis `develop` `124578ab`)
 - `dtos-mss` (branche paresseuse) : créée par `/develop` s'il touche un contrat
 - `client-angular` (code-only) : la forge écrit sur la branche courante de `Client/Angular/` (au /start : `feature/nova-mss-weda-integration`, qui porte encore les fichiers non commités de task-486 et task-456) — l'humain gère branche, commit, push, PR TFS
+
+## Develop log
+
+### Plan (2026-11-17, avant le code)
+
+Écrit avant le code, pour qu'il survive à un résumé de contexte. Il est appliqué dans cet ordre : dtos-mss, api-mail,
+weda2, mobile, e2e.
+
+**Règle « à traiter »** (domaine, `MailHandlingRule`). Un message est à traiter si :
+1. son dossier n'est ni Envoyés, ni Brouillons, ni Corbeille ;
+2. et l'une de ces conditions est vraie :
+   - il porte un compte rendu de biologie **signalé, suivi et non résolu** : il est alors à traiter quel que soit
+     son état ;
+   - sinon, un état explicite **« remis à traiter »** existe ;
+   - sinon, il n'a pas d'état « traité » et il est **suivi** (task-466) sans le tag système **« Pour info »**
+     (task-456).
+
+Un état explicite « traité » le sort, sauf en présence de la biologie en attente du premier cas.
+
+**Données** (base de la boîte) : table `MailHandlingStates`, une ligne par message (état courant). L'historique est
+le journal d'audit.
+- Clé : le **Message-ID**, comme `MailReply` (task-459) et comme le prévoit l'ADR de task-453, ligne 113 : un état de
+  message ancré sur le seul Message-ID. Pas de clé étrangère vers `Mails` : l'état survit au déplacement et à la purge
+  par construction, sans relieur. Toutes les copies d'un même message partagent l'état.
+- Un message **sans Message-ID** ne peut pas porter d'état : refus 409 `ProblemDetails`. C'est une limite assumée,
+  rarissime en MSSanté.
+- Colonnes : `MessageId` (unique), `State` (Handled 0 / ToHandle 1), `Gesture`, `ByRpps`, `ByFirstName`,
+  `ByLastName`, `ByRole`, `At`.
+
+**Gestes et routes** :
+- Bouton : `PUT folders/{f}/emails/{uid}/status/handled`, corps facultatif `{ gesture }` (Button, ou WedaImport
+  pour l'import dans le dossier Weda, fait côté client).
+- `PUT …/status/to-handle` : remettre à traiter. Le toast « Annuler » s'en sert aussi.
+- Groupé : `PUT folders/{f}/emails/bulk/status/handled` (UID) ; `PUT tags/emails/status/handled?tag=…&filter=…`
+  (la vue par tag) ; `&withoutAnomaly=true` pour « Traiter les résultats sans anomalie ». Le résultat compte les
+  messages traités et les messages **exclus** pour biologie en attente.
+- Gestes naturels, posés côté serveur au nom de la personne :
+  - réponse et réponse à tous (`MailReplyRecorder`) ;
+  - transfert (nouveau champ `MailDto.ForwardedMessageId`, rempli par les clients) ;
+  - rangement hors de la Boîte de réception (déplacements unitaires, groupés et `bulk-actions`) ;
+  - rattachement d'un document à un patient ;
+  - « Résolu » quand il ne reste aucun compte rendu signalé non résolu.
+- **« Traité » n'écrit jamais d'acquittement.** Le refus est un 409 `ProblemDetails` quand un compte rendu suivi
+  reste à acquitter.
+
+**Contrat** (dtos-mss) :
+- `MailDto.Handling` : `MailHandlingDto`, avec `IsToHandle`, `IsHandled`, `By` (`ActorDto`), `At`, `Gesture`.
+- `MailDto.ForwardedMessageId`.
+- `FolderDto.ToHandleCount`.
+- Nouveaux types : `MailHandlingGesture`, `MailHandlingRequestDto`, `MailHandlingBulkResultDto`.
+- `TagViewFilterType.ToHandle`, `InboxFilterType.ToHandle`.
+- `UserSettingsDto.FolderCounter` (`FolderCounterMode` : ToHandle par défaut, ou Unread) : le sélecteur décidé par
+  l'humain.
+- `AuditActionType.MailMarkedHandled = 73` et `MailMarkedToHandle = 74`.
+
+**Compteurs et pages** :
+- `ToHandleCount`, calculé en SQL dans la base de la boîte pour chaque dossier IMAP et chaque dossier de tag (génération
+  courante).
+- Page des UID à traiter : `GET folders/{f}/emails/to-handle/page`, sur le modèle de
+  `biology-acks/pending-mail-uids/page`.
+- Filtre `to-handle` sur la vue par tag.
+
+**Audit** : `[TracedInCode(MailMarkedHandled|MailMarkedToHandle)]`, le geste dans `ServerRequest`, au nom de la
+personne réelle, famille `HealthDataAccess` par défaut.
+
+**Temps réel** : nouvel évènement SSE `MailHandlingChanged` (dossier, UID, `MailHandlingDto`), publié par boîte et par
+dossier.
+
+**Hors ligne** : l'état n'existe qu'en base, il s'écrit donc aussi hors ligne. Pas de `PendingAction`, ce qui évite un
+rejeu sans personne (règle 14).
