@@ -240,7 +240,7 @@ déclare une fois.
 
 ## S3267 — une boucle qui ne fait que chercher s'écrit avec `Contains`/`Any`
 
-**Occurrences : 4** (task-389 — variante itérateur : `foreach … if (pred) yield return x` s'écrit `foreach (var x in source.Where(pred)) yield return x` ; task-184, task-342 — variante : une boucle qui **filtre**,
+**Occurrences : 5** (task-456 reprise 5, 2026-11-17 — **récidive sur du code frais** : `GetTagFoldersAsync`, une boucle sur `SystemTagRule.All` qui ne garde que les tags portant un message, `foreach … if (tag is not null && counts.TryGetValue(…)) folders.Add(…)`, s'écrit `Select(…).Where(…).Select(…).ToList()` ; écrite en reprise sans relire ce fichier ; task-389 — variante itérateur : `foreach … if (pred) yield return x` s'écrit `foreach (var x in source.Where(pred)) yield return x` ; task-184, task-342 — variante : une boucle qui **filtre**,
 `foreach … if (pred) list.Add(x.Uid)`, s'écrit `Where(pred).Select(…).ToList()` ;
 task-325 — **récidive sur du code frais**, écrite pendant la passe `/simplify` elle-même :
 une boucle qui **cherche et rend** l'élément, `foreach (var k in Enum.GetValues<T>()) if (…) return k;`,

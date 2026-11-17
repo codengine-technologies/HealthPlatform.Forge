@@ -736,6 +736,20 @@ Portée : la liste « À corriger par la reprise » du passage 8.
   duplication 0,4 %, A/A/A).
 - **Amélioration continue** : aucune leçon Sonar (aucune issue).
 
+### Reprise 5 (2026-11-17) — analyses sur `3ee8c973` puis `9697e4f6`
+
+- **Phase 1 (new code)** : 1 code smell, **S3267** à `MailRepository.cs:3535`. C'était la boucle `foreach … if …
+  folders.Add(…)` de `GetTagFoldersAsync`, écrite pendant la reprise. Réécrite en `Select(…).Where(…).Select(…).ToList()`,
+  commit `9697e4f6`. C'est un pur refactor, couvert par `ASystemTagWithoutMail_IsNotListed_…` et
+  `TheSystemTags_ArePosedAtArrival_…`. Seconde analyse : **0 issue**, Quality Gate OK, new_coverage 96,7 %.
+- **Phase 2 (legacy)** : 0 issue ouverte. Rien à traiter.
+- **Analyses** : 2, sur SonarQube 9.9.8.
+- **Build et tests** (Release, OpenCover) : verts aux deux analyses. Domaine 331, application 4 263, infrastructure
+  749, api 1 382, intégration 1 334 (+16 ignorés). Vert marqué sur `9697e4f6`.
+- **KPIs** : QG OK, new coverage 96,7 %, 0 bug, 0 vulnérabilité, 0 smell, coverage 97,8 %, duplication 0,4 %, A/A/A.
+- **Amélioration continue** : `conventions/csharp.md` § S3267, occurrences 4 → 5. C'est une récidive sur du code
+  frais, écrit en reprise sans relire le fichier.
+
 ## Lint log
 
 - **Périmètre** : `client-angular` (code-only, branche `feature/nova-mss-weda-integration`), fichiers de task-456
@@ -1390,12 +1404,12 @@ Corps mis à jour le 2026-11-17 après la reprise 4 (tags de catégorie rétabli
 | /start | ok | 28 s | — | — | — | — |
 | /develop | ok | 13 min 10 s | 16 (1 min 38 s) | 29 (53 min 59 s) | — | api-mail 8B/20T, api-mcp 2B/2T, client-mobile 4B/5T, client-angular 2B/2T, e2e ×1 (1 min 16 s) |
 | /review-code | ok | 13 min 42 s | — | — | — | — |
-| /sonar | ok | 10 min 31 s | 3 (1 min 29 s) | 15 (23 min 00 s) | 6 (2 min 22 s) | api-mail 3B/15T |
+| /sonar | ok | 20 min 18 s | 5 (2 min 44 s) | 25 (38 min 56 s) | 10 (3 min 55 s) | 1 itération(s), api-mail 5B/25T |
 | /lint-angular | ok | 2 min 51 s | 2 (20 s) | 4 (2 min 13 s) | — | client-angular 2B/4T |
 | /lint-mobile | ok | 29 s | — | — | — | — |
 | /e2e | ok | 22 min 40 s | — | — | — | e2e ×13 (2 h 02 min) |
 | /review | ok | 1 min 23 s | 2 (14 s) | 1 (30 s) | — | dtos-mss 1B/0T, client-angular 1B/1T |
 | /tech-writer | ok | 19 s | — | — | — | — |
-| **Total cycle** | | **1 h 05 min** | **23 (3 min 42 s)** | **49 (1 h 19 min)** | **6 (2 min 22 s)** | |
+| **Total cycle** | | **1 h 15 min** | **25 (4 min 57 s)** | **59 (1 h 35 min)** | **10 (3 min 55 s)** | |
 
 Autres commandes mesurées : lint ×6 (1 min 34 s), nuget-wait ×1 (40 s)
