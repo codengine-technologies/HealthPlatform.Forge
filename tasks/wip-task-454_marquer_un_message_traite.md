@@ -203,5 +203,11 @@ Règles :
 
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
-| /start | skipped | 23 s | — | — | — | refus : dépendances task-466, task-456, task-465 encore en todo |
-| **Total cycle** | | **23 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /start | ok | 30 s | — | — | — | — |
+| **Total cycle** | | **30 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+
+## Branches
+- `api-mail` (pushed) : feat/task-454-marquer-un-message-traite — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-454-marquer-un-message-traite (depuis `develop` `fe801f26`, task-456 incluse)
+- `client-mobile` (pushed) : feat/task-454-marquer-un-message-traite — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-454-marquer-un-message-traite (depuis `develop` `124578ab`)
+- `dtos-mss` (branche paresseuse) : créée par `/develop` s'il touche un contrat
+- `client-angular` (code-only) : la forge écrit sur la branche courante de `Client/Angular/` (au /start : `feature/nova-mss-weda-integration`, qui porte encore les fichiers non commités de task-486 et task-456) — l'humain gère branche, commit, push, PR TFS

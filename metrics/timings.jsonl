@@ -10475,3 +10475,5 @@
 {"ts":"2026-11-17T12:48:22+01:00","run_id":"-","type":"step","task":"task-456","step":"review","status":"ok","note":"","iterations":null,"duration_ms":50794}
 {"ts":"2026-11-17T12:48:34+01:00","run_id":"-","type":"step_start","task":"task-456","step":"tech-writer"}
 {"ts":"2026-11-17T12:48:48+01:00","run_id":"-","type":"step","task":"task-456","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":13713}
+{"ts":"2026-11-17T13:37:17+01:00","run_id":"-","type":"step_start","task":"task-454","step":"start"}
+{"ts":"2026-11-17T13:37:47+01:00","run_id":"-","type":"step","task":"task-454","step":"start","status":"ok","note":"","iterations":null,"duration_ms":30292}
