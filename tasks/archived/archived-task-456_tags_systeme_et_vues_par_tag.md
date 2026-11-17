@@ -1446,3 +1446,18 @@ Corps mis à jour le 2026-11-17 après la reprise 4 (tags de catégorie rétabli
 | **Total cycle** | | **1 h 12 min** | **25 (4 min 57 s)** | **59 (1 h 35 min)** | **10 (3 min 55 s)** | |
 
 Autres commandes mesurées : lint ×8 (2 min 13 s), nuget-wait ×1 (40 s)
+
+## Merged
+
+Mergé le 2026-11-17 par `/merge task-456 --i-tested` (test humain attesté), en squash, dans l'ordre dtos-mss →
+api-mail → api-mcp → client-mobile. Branches `feat/task-456-tags-systeme-et-vues-par-tag` supprimées (distantes et
+locales), label `awaiting-human-merge` retiré.
+
+| Repo | PR | Commit squash sur `develop` | CI `develop` |
+|---|---|---|---|
+| dtos-mss | #68 | `af229d42` | ✅ [.NET](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/actions/runs/44083982858) |
+| api-mail | #372 | `fe801f26` | ✅ [Build and Publish](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/44084010089) |
+| api-mcp | #2 | `34469f10` | — (aucune CI sur ce dépôt) |
+| client-mobile | #127 | `124578ab` | ✅ [Android Build](https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/44084075773) |
+
+client-angular (weda2) : managed manually by the human (code-only, TFS).
