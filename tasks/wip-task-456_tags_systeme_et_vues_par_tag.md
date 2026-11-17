@@ -487,6 +487,71 @@ Correctifs de la liste « À corriger par la reprise ». Chacun a été vu rouge
 - **weda2** : `nx build weda2` vert ; `nx test mss-lib` 157 fichiers, 1 743 tests ; ESLint et Prettier propres.
 - **api-mcp** : inchangé depuis le premier passage (109/109, vert marqué).
 
+### Reprise 2 (revue anticipée, passage 2)
+
+- **Commits** : api-mail `b58d71c0` ; client-mobile `62cf9ba`. weda2 n'a pas changé depuis la reprise 1.
+
+**Backend (api-mail)**
+
+- **B5 — Interblocage entre le rattrapage et la promotion** (introduit par la reprise 1). La transaction du rattrapage
+  verrouille d'abord les lignes `Mails` du lot (`SELECT 1 … ORDER BY "Id" FOR UPDATE`), puis écrit les `MailTags`.
+  - C'est le même ordre que la promotion (`Mails`, puis `MailTags`).
+  - La garde « bit encore libre » est relue dans un instantané pris après l'attente du verrou.
+  - Test `APromotionOfTheSameMailInFlight_NeitherDeadlocks_NorFailsTheBatch` (base isolée) :
+    1. une transaction de promotion a écrit la ligne `Mails` ;
+    2. le rattrapage démarre et attend un verrou (constaté dans `pg_stat_activity`, sinon le test échoue : il
+       n'éprouverait rien) ;
+    3. la promotion pose le même tag, marque sa décision et valide ;
+    4. ni la promotion ni le rattrapage n'échouent, et la ligne du tag est unique.
+  - Les deux tests de course de la reprise 1 injectent maintenant leur écriture concurrente juste **avant** le
+    verrou : après, elle l'attendrait.
+- **Trace** : un tag écarté par le conflit n'est pas tracé.
+  - Le premier test de course reçoit un service d'audit, par une nouvelle surcharge du constructeur
+    `MailRepository(context, logger, auditService)`, sur le modèle des surcharges de test existantes.
+  - Il affirme qu'aucun `Trace` n'est émis.
+- **UUID v7** : les identifiants des poses du rattrapage sont générés côté .NET (`Guid.CreateVersion7()`) et passés par
+  `unnest`, comme le reste du modèle (task-019).
+- **`IsAutomatic`** :
+  - la page de messages (`BuildBulkMailDto`, route `GET …/emails/{uid}`) est maintenant affirmée dans le test
+    d'arrivée ;
+  - la copie de `GetMailAsync` ne sert que des chemins internes (contenu `MailContentDto`, mode hors ligne) : aucune
+    route ne l'expose en `MailDto`, et la mutation A1 y survit.
+
+**Mutations de la reprise 2** :
+
+| # | Mutation | Test |
+|---|---|---|
+| B5 | verrou des lignes du lot retiré | APromotionOfTheSameMailInFlight : **rouge** (`Assert.Null`, interblocage) |
+| T | trace de la décision au lieu des poses réelles | TheSameTagPosedConcurrently : **rouge** |
+| A2 | `IsAutomatic` retiré de `BuildBulkMailDto` | ArePosedAtArrival : **rouge** |
+| A1 | `IsAutomatic` retiré de `GetMailAsync` | survit (chemin interne, voir plus haut) |
+
+**Client mobile**
+
+- **Fenêtre après un abandon** (`inbox.page.ts`) : un compteur d'abandons (`tagViewAbortSeq`, `abandonTagView()`).
+  - Un `loadTagView` abandonné ne termine plus rien : pas de fin de chargement, et le flux n'est ni rebranché ni
+    reconnecté.
+  - `replaced()` en tient compte.
+  - Deux specs, avec le `getFolder` suivant laissé en attente (`Subject`) : rouges avant le correctif (2 sur 42),
+    vertes après (42/42).
+
+**Suites**
+
+- **api-mail** : build vert.
+
+  | Projet | Résultat |
+  |---|---|
+  | domaine | 331/331 |
+  | infrastructure | 749/749 |
+  | application | 4 263/4 263 |
+  | api | 1 382/1 382 |
+  | intégration | 1 325/1 328 (+16 ignorés) |
+
+  - Les 3 rouges sont toujours les tests « du jour », joués entre 00:54 et 01:00 heure locale (fenêtre de minuit).
+    Vert non marqué.
+- **client-mobile** : build vert ; Karma 1 506/1 506 au second passage (le premier avait 3 rouges dans
+  `HtmlEditorComponent`, le flaky connu) ; lint sans erreur ; vert marqué (`62cf9ba4`).
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -674,8 +739,8 @@ Deux relecteurs indépendants ont lu **d'abord le diff de la reprise** (api-mail
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 28 s | — | — | — | — |
-| /develop | ok | 20 min 40 s | 7 (33 s) | 7 (20 min 49 s) | — | api-mail 4B/4T, api-mcp 2B/2T, client-mobile 1B/1T, reprise 1 |
+| /develop | ok | 11 min 56 s | 8 (37 s) | 8 (27 min 06 s) | — | api-mail 5B/5T, api-mcp 2B/2T, client-mobile 1B/1T, reprise 2 |
 | /review-code | changes | 4 min 42 s | — | — | — | reprise 2 |
-| **Total cycle** | | **25 min 51 s** | **7 (33 s)** | **7 (20 min 49 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **17 min 07 s** | **8 (37 s)** | **8 (27 min 06 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (40 s)
