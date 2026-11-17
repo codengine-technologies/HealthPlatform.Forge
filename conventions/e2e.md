@@ -945,3 +945,20 @@ scénario qui l'aurait attrapé, prouvé rouge sur le bug)*
 - **Origine** : task-350
 - **Occurrences** : 1
 
+### etat-decide-a-l-analyse-attendu-cote-serveur — une attente côté serveur d'un état posé à l'analyse fait d'abord analyser le message
+- **Piège** : les tags système Biologie (task-456) sont décidés quand le message est **analysé** (`enrich`), c'est-à-dire
+  quand une app l'affiche. Le test weda2 de E2E-TAG-002 et E2E-TAG-003 attendait la vue « Biologie » côté serveur
+  **avant** que l'écran n'ait affiché la boîte, en relisant seulement les en-têtes (`mailBySubject`). Personne ne
+  demandait l'analyse : la vue est restée vide pendant les 180 s, aux deux essais des deux tests. Le test mobile du
+  même scénario était vert, parce que son aide (`OtherDevice.waitForTags`) appelle `enrich/sync` comme l'app qui
+  affiche le message.
+- **Consigne** :
+  - une aide e2e qui attend côté serveur un état décidé à l'analyse (tags système, documents, biologie, patient)
+    commence par faire analyser le message (`POST …/emails/enrich/sync` avec son uid), comme le ferait l'app qui
+    l'affiche ;
+  - les aides des deux clients pour un même scénario font **les mêmes appels** au serveur. Recopier l'aide de l'autre
+    client plutôt que la réécrire.
+- **Preuve** : voie Angular de task-456, E2E-TAG-002 et E2E-TAG-003 rouges (« est dans la vue BIOLOGIE, côté serveur »,
+  attente de 180 s épuisée), voie mobile verte sur le même backend.
+- **Origine** : task-456 (`/e2e`)
+- **Occurrences** : 1
