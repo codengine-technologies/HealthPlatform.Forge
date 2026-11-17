@@ -243,6 +243,9 @@ whole cycle, and it doubles as the repo's final verification (Step 6).
    git diff origin/develop...HEAD -- '*.cs' | grep -nE '^\+.*Receiv(e|ed)(WithAnyArgs)?\([0-9]*\)\..*, default\);'
    # C# — CA1861 : a literal array compared in a test predicate (task-459, 8th occurrence, same form as task-449).
    git diff origin/develop...HEAD -- '*.cs' | grep -nE '^\+.*SequenceEqual\(new( ?\w*)?\[\]'
+   #   (task-454 : 4 hits more, seen only by /sonar — this grep was not run : a reading recurrence.)
+   # C# — CA1826 : FirstOrDefault() on an awaited list (IReadOnlyList) — use Count/[0] (task-454, 3 hits).
+   git diff origin/develop...HEAD -- '*.cs' | grep -nE '^\+.*\)\)\.FirstOrDefault\(\)'
    # TS / HTML / SCSS — mixed line endings : LF lines inserted into a CRLF file (task-459 : 91 lines
    # appended to functional.e2e.ts, 160 to two specs ; prettier « Insert ␍ », seen only by /lint-angular).
    # client-angular is code-only : list its files with `git diff --name-only` + untracked instead.
@@ -912,6 +915,12 @@ before it reaches the PR.
   up front is what keeps the cleanup steps empty.
 - **Test-first for any behaviour change** (CLAUDE.md rule 1). Pure refactors
   rely on existing tests as the safety net.
+- **« Dead code » in the task file is a claim to verify, not a licence to delete**
+  (task-456, 2026-11-17). Before removing a method the task calls dead, trace
+  its callers through every private wrapper (`git grep` on each name in the
+  chain). Remove only what has no caller. Never widen the removal to code that
+  has one, nor to the data it produced (CLAUDE.md rule 7c, point 5) : that is a
+  product decision, so write `questions/{task-id}.md`.
 - **Passe qualité (§Q) per eligible repo, once, before the push.** Quality
   only (reuse / simplification / efficiency / altitude) — **never** bug
   hunting (`/code-review`), never a behaviour change : a RED re-validation

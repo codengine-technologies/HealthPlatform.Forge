@@ -830,8 +830,16 @@ After generating any database migration (EF Core, Prisma, Alembic, Knex, etc.), 
 2. **Check for phantom operations** (altering columns that were never created, dropping tables that shouldn't be dropped)
 3. **Verify companion/metadata files exist** (e.g., `.Designer.cs` for EF Core, snapshot files)
 4. **Run the framework's "has pending changes" command** to confirm no drift
+5. **Une suppression de données que voit le médecin exige une décision humaine écrite dans le task file** (depuis le
+   2026-11-17, task-456). Sont visés un `DELETE`, un `DROP` ou un `TRUNCATE` sur des données affichées : tags,
+   dossiers, messages, documents, réglages. Il faut une décision humaine citée dans l'Objectif ou la DOD. Sinon,
+   `/review` rend **CHANGES REQUESTED, arbitrage humain** : la forge ne décide pas seule d'effacer ce qu'un médecin
+   voyait.
 
 **Why:** auto-generated migrations can produce phantom operations when the snapshot diverges from the actual schema.
+Le point 5 vient de task-456 : sa migration supprimait tous les tags de catégorie (Consultation, Imagerie…),
+sur la seule foi d'un « code mort » qui ne l'était pas. Quatre passages de revue l'ont laissé passer, et l'humain
+l'a constaté en recette.
 
 ### 8. Commit convention
 

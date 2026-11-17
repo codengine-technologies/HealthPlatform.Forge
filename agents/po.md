@@ -172,6 +172,11 @@ Si l'humain n'a pas la réponse, **ouvrir un `questions/{task-id}.md` avant
 d'écrire le `todo-*.md`** — ne pas inventer.
 
 ### Garde-fous métier — non négociables
+- **« Code mort » se prouve, il ne s'affirme pas** (task-456, 2026-11-17). Avant d'écrire qu'une méthode est sans
+  appelant, chercher **toute la chaîne d'appels** : les appelants directs, puis les appelants de chaque méthode
+  privée qui l'enveloppe. Citer la commande et son résultat dans « Ce qui est établi ». task-456 disait
+  `AddCategoryTagsToMailAsync` « sans appelant » : `AddDocumentCategoryTagsAsync` l'appelait à chaque arrivée de
+  message, et les tags de classification ont disparu.
 - **Jamais d'INS, de NIR, de NIA, ni de contenu CDA/MSSanté en clair** dans les logs, les libellés UI, les URL, les sujets d'email.
 - **Jamais de RPPS dans les sujets ou headers MSSanté** — l'adresse seule identifie l'émetteur (cf. mémoire `feedback_attachment_workflow_no_create_new_patient` et l'archive de `task-054`).
 - **Pas de "Créer un nouveau patient" depuis un workflow de rattachement** — rattachement à un patient existant uniquement.
