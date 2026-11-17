@@ -1206,7 +1206,25 @@ commentaires sont exacts. Restent les ⚠️ et les arbitrages du passage 6, non
 - **approved at** : api-mail `9c6f6a43`, client-mobile `71dc3b2b`. weda2 : arbre de travail, seul le commentaire de
   `folder.model.ts` change. api-mcp et dtos-mss : inchangés depuis la validation finale.
 
+### Validation finale après la reprise 4 — APPROVED
+
+- **Build et tests** : vert réutilisé sur le code exact, sans rejeu :
+  - api-mail `9c6f6a43` (`/sonar`, 8 058 tests) ;
+  - client-mobile `71dc3b2b` (`/develop`, 1 506 tests) ;
+  - weda2 `f0e9ee95` + arbre de travail (`/lint-angular`, 1 743 tests) ;
+  - api-mcp `ac959658` et dtos-mss `ea1af9f0`, inchangés.
+- **Diff depuis l'approbation** (`9c6f6a43`, `71dc3b2b`) : aucun commit. Branches à jour avec `develop`, aucune fusion.
+- **DoD** : inchangée et tenue. La ligne « code mort retiré » est corrigée par la reprise 4 : seule la surcharge
+  publique sans appelant reste retirée.
+- **Règle 1b** : la table comportement → test → preuve rouge est au passage 6.
+- **E2E** : vert. Mobile 66/66, Angular 87/87, parité verte, porte en code 0.
+- **api-mcp** : impact inchangé, déjà adapté (PR #2).
+- **PRs** : les quatre corps sont mis à jour (section « Reprise 4 », arbitrages ouverts, nouveau « Parcours e2e »).
+  Le label `awaiting-human-merge` est conservé.
+
 ## PRs
+
+Corps mis à jour le 2026-11-17 après la reprise 4 (tags de catégorie rétablis sauf la biologie).
 
 À merger ensemble (même US, règle 11), dans cet ordre : dtos-mss → api-mail → api-mcp → client-mobile. Label
 `awaiting-human-merge`.
@@ -1266,8 +1284,8 @@ commentaires sont exacts. Restent les ⚠️ et les arbitrages du passage 6, non
 | /lint-angular | ok | 2 min 51 s | 2 (20 s) | 4 (2 min 13 s) | — | client-angular 2B/4T |
 | /lint-mobile | ok | 29 s | — | — | — | — |
 | /e2e | ok | 22 min 40 s | — | — | — | e2e ×13 (2 h 02 min) |
-| /review | ok | 4 min 01 s | 2 (14 s) | 1 (30 s) | — | dtos-mss 1B/0T, client-angular 1B/1T |
+| /review | ok | 1 min 23 s | 2 (14 s) | 1 (30 s) | — | dtos-mss 1B/0T, client-angular 1B/1T |
 | /tech-writer | ok | 1 min 19 s | — | — | — | — |
-| **Total cycle** | | **1 h 14 min** | **18 (3 min 02 s)** | **40 (1 h 10 min)** | **6 (2 min 22 s)** | |
+| **Total cycle** | | **1 h 11 min** | **18 (3 min 02 s)** | **40 (1 h 10 min)** | **6 (2 min 22 s)** | |
 
 Autres commandes mesurées : lint ×5 (1 min 15 s), nuget-wait ×1 (40 s)
