@@ -1,6 +1,7 @@
 # todo-task-454.md — Marquer un message traité
 
 **Repos**: api-mail, dtos-mss, client-angular, client-mobile
+**Reprises**: 1
 **Dependencies**: done-task-453 (ancrage des états de travail), done-task-466 (date de début du suivi), done-task-456 (tags système, dont « Pour info »)
 **Epic**: E024
 
@@ -217,7 +218,8 @@ Règles :
 |---|---|---|---|---|---|---|
 | /start | ok | 30 s | — | — | — | — |
 | /develop | ok | 3 h 28 min | 8 (1 min 14 s) | 20 (1 h 18 min) | — | dtos-mss 1B/0T, api-mail 2B/12T, client-mobile 4B/5T, client-angular 1B/3T |
-| **Total cycle** | | **3 h 28 min** | **8 (1 min 14 s)** | **20 (1 h 18 min)** | **0 (0.0 s)** | |
+| /review-code | changes | 7 min 14 s | — | — | — | reprise 1 |
+| **Total cycle** | | **3 h 36 min** | **8 (1 min 14 s)** | **20 (1 h 18 min)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×3 (18 s), nuget-wait ×2 (15 s), restore ×1 (3.9 s)
 
@@ -462,3 +464,49 @@ Témoin restauré : 5/5 verts après la série.
   vert ; vert marqué sur l'arbre.
 - dtos-mss : `8584a008`, paquet `617.0.0` publié.
 - Flaky : `MailboxSwitcherComponent onAriaChanged`, 6e occurrence (conventions/angular.md).
+
+## Code Review Summary
+
+### Passage 1 (revue anticipée) — CHANGES REQUESTED
+
+Relecteur indépendant (code seul, pas les conclusions de la forge), sur dtos-mss `8584a00`, api-mail `9eaf2062`,
+client-mobile `bb5836f`, weda2 (arbre, parties task-454). api-mcp : aucun impact (`mcp_impact.py check` → 0). Catalogue :
+les cinq scénarios sont en v1 dans `scenarios.yml`, et les deux clients déclarent `scenario('E2E-…', 1)`.
+
+Règle 1b, correspondance vérifiée : `PUT …/handled` (M1, M11), 409 et 404 (M2), `to-handle` (M14, M15), groupé (M3),
+vue par tag et « sans anomalie » (M4), rangement unitaire (M5), rattachement et « Résolu » (M6, M7), réponse et
+transfert (M8, M9), compteurs, page et filtre de vue (M10), délégataire et temps réel (M12, M13). **Manque** : le
+rangement par `bulk/move` et `bulk-actions`.
+
+#### À corriger par la reprise
+- **B1 — le traitement groupé et « Annuler » touchent des états qu'ils ne devraient pas.** `HandleBulkAsync`
+  (`MailHandlingService`) traite toute cible sans biologie en attente : messages déjà traités par une autre personne
+  (l'auteur visible « répondu par Dr X » devient « groupé par moi »), historiques, « Pour info » ; la vue par tag sur
+  « Tous » rend tous ses UID, sans borne. « Annuler » (weda2 et mobile) appelle `to-handle` sur chaque clé, ce qui pose
+  un état explicite « à traiter » au lieu de rendre l'état d'avant (un « Pour info » ou un historique entre alors pour
+  toujours dans « À traiter », y compris après un « Traité » unitaire). À faire : ne traiter que les messages
+  **actuellement à traiter** (ce qui borne le lot), un « Annuler » qui **restaure l'état précédent**, un libellé N qui
+  compte ce qui sera traité, et un test d'intégration sur un lot mêlé (traité par un autre, « Pour info », historique)
+  puis l'annulation, vu rouge. La doc de `MailHandlingBulkResultDto.Handled` (« déjà traités exclus ») devient vraie.
+- **B2 — règle 1b : le geste « rangé » des déplacements groupés n'est pas prouvé.** `bulk/move` (`MailController`)
+  et `bulk-actions` (`BulkMailActionService`) : test d'intégration qui relit `Handling.Gesture == Move` et l'auteur par
+  `GET …/emails/{ids}`, vu rouge.
+- **B3 — preuves rouges des tests de composant mobiles absentes du Develop log** (DoD). Elles ont été faites
+  (M1 à M28, V1 à V7, rapport de la fourche) mais pas consignées : les consigner.
+- Même passe :
+  - weda2 : « Traité » dans le panneau « Actions & dossier » (l'US le demande, absent) ;
+  - `GetTargetOfDocumentAsync` sans filtre de génération courante (une ligne d'une génération périmée marquerait lu
+    un autre UID) ;
+  - DoD « le délégataire traite (bouton puis réponse) » : la réponse du délégataire n'est pas testée ;
+  - catalogue E2E-TRIAGE-002 : le texte dit « il les sélectionne et choisit Traité », les deux clients jouent
+    « Traiter les N messages affichés » sur une vue par tag : aligner le texte.
+
+#### Arbitrage humain
+- **Hors ligne** : l'US demande que le geste rejoigne la file `PendingAction` ; la forge l'écrit directement en base
+  (l'état n'existe qu'en base, et un rejeu sans personne violerait la règle 14). À confirmer.
+- **Geste naturel sur un message à biologie en attente** : l'état « traité — rangé » est écrit, le message reste à
+  traiter (biologie), et le libellé « Traité par … » s'affiche alors qu'il est dans « À traiter ». Recommandation :
+  compléter le libellé par « compte rendu de biologie à acquitter ».
+- Coût des requêtes sur les chemins chauds (`GET emails/{ids}`, `GET folders`) : à mesurer sur une boîte de 6 à 11 000
+  messages avant toute optimisation (règle d'or 5).
+
