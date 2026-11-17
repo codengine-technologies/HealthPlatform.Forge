@@ -225,3 +225,9 @@ vrai email, sans passer par la rédaction.
 - **Hébergement HDS** : oui — base de la boîte ; l'éventuel état des accusés y est stocké
 - **AIPD / impact RGPD** : inchangé — aucune donnée nouvelle sur le patient ; l'état distribué / lu porte sur des
   messages déjà conservés
+
+## Branches
+- `api-mail` (pushed) : feat/task-487-conversation-en-chat-lire-le-fil-et — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-487-conversation-en-chat-lire-le-fil-et (depuis `develop` `a148b7e3`, task-454 incluse)
+- `client-mobile` (pushed) : feat/task-487-conversation-en-chat-lire-le-fil-et — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-487-conversation-en-chat-lire-le-fil-et (depuis `develop` `14ec5c0`)
+- `dtos-mss` (branche paresseuse) : créée par `/develop` au moment où il touche le contrat
+- `client-angular` (code-only) : la forge écrit sur la branche courante de `Client/Angular/` (au /start : `feature/nova-mss-weda-integration`, arbre propre) — l'humain gère branche, commit, push, PR TFS
