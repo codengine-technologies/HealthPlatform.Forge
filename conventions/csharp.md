@@ -2938,3 +2938,36 @@ pose n'arrivait au journal de la boîte, et le test restait vert. La mutation «
 mutation `IsSystemAct = false` est alors rouge (4 traces sur 4).
 
 **Origine** : task-456 (/develop, mutation survivante). **Occurrences** : 1
+
+### lecture-imap-ponctuelle-par-le-chemin-existant — Lire un message entier passe par `BuildEmlAsync`, jamais par une copie
+
+**Règle** : convention projet (`api-mail`, connexion IMAP partagée de la session), invisible au lint et à Sonar.
+
+**Piège** (task-487) : une nouvelle méthode `ImapService.GetMimeMessageAsync` ouvrait le dossier en lecture et le
+laissait ouvert. L'analyse suivante réutilise un dossier déjà ouvert sans le resélectionner (`if (!imapFolder.IsOpen)`) :
+elle ne voyait plus les messages arrivés depuis. L'accusé de lecture déposé ensuite n'a jamais été enregistré, et la
+conversation restait « distribué ». La méthode copiait en plus `IMailExportService.BuildEmlAsync`, qui referme le
+dossier et rend `NotFound` pour un message disparu, là où la copie levait une exception.
+
+**Consigne** :
+- Pour lire un message entier (accusé, rapport, export), appeler `IMailExportService.BuildEmlAsync`. Ne pas ajouter de
+  méthode à `IImapService` pour cela.
+- Toute lecture ponctuelle qui ouvre un dossier sur la connexion partagée le referme dans un `finally`.
+
+**Preuve** : `ConversationEndToEndTests.ReceivedReports_…` rouge tant que le dossier restait ouvert (mutation M20 de la
+première série), vert avec `BuildEmlAsync`.
+
+**Origine** : task-487 (/develop, test d'intégration rouge). **Occurrences** : 1
+
+### fichier-de-test-texte-et-autocrlf — Un fichier texte attendu par un test se compare fins de ligne normalisées
+
+**Règle** : convention projet (tests `api-mail`), invisible au lint et à Sonar.
+
+**Piège** (task-487) : le corpus de la vue chat (`Conversation/Corpus/*.expected.txt`) est écrit en LF. Git l'extrait en
+CRLF sur un poste Windows (`core.autocrlf`). Le texte de la bulle est en LF : le test aurait été vert sur le poste qui
+l'a écrit et rouge sur le suivant.
+
+**Consigne** : un test qui lit un fichier texte versionné pour le comparer à une sortie normalise les fins de ligne
+(`Replace("\r\n", "\n")`) avant de comparer, ou le fichier est déclaré `-text` dans `.gitattributes`.
+
+**Origine** : task-487 (/develop, relu avant le commit). **Occurrences** : 1

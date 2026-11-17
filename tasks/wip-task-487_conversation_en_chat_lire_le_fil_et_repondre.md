@@ -232,6 +232,153 @@ vrai email, sans passer par la rédaction.
 - `dtos-mss` (branche paresseuse) : créée par `/develop` au moment où il touche le contrat
 - `client-angular` (code-only) : la forge écrit sur la branche courante de `Client/Angular/` (au /start : `feature/nova-mss-weda-integration`, arbre propre) — l'humain gère branche, commit, push, PR TFS
 
+## Stitch design log
+
+- Écran `conversation-chat` (projet Stitch `client-mobile`, 10088502293310567548) : `generate_screen_from_text` appelé une
+  fois, délai dépassé ; l'écran n'apparaît ni dans `get_project` ni dans `list_screens`, et il n'a pas été régénéré
+  (consigne : un délai dépassé est un succès probable, jamais de doublon). À vérifier dans l'interface Stitch.
+- L'écran Ionic suit les règles du projet (bulles envoyées pleines en couleur primaire à droite, reçues sur fond neutre à
+  gauche) et la maquette Claude Design citée en tête de la task.
+## Develop log
+
+- Repos touched : `dtos-mss` (branche paresseuse créée par /develop), `api-mail`, `client-mobile`, `client-angular` (code-only).
+- DTOs published : `HealthPlatform.Dtos.Mss` 618.0.0 → **621.0.0** (`MailConversationDto`, `ConversationMessageDto`,
+  `ConversationAttachmentDto`, `ConversationReplyRequestDto`, `ConversationReplyResultDto`, enums `ConversationDirection`,
+  `ConversationDeliveryState`, `ConversationAttachmentKind`). Consommateur bumpé : api-mail. `client-blazor` n'est pas dans
+  les `**Repos**` (il reste en 533.0.0, comme avant cette task) : non touché.
+- Interop published : no interop change.
+- api-mcp : aucun impact (`mcp_impact.py check` = 0).
+- Commits :
+  - dtos-mss : `1e4c449` feat(dto): contrat de conversation en chat.
+  - api-mail : `223e9ea4` bump DTO 621 ; `066be005` feat(conversation) ; `4973c9e6` refactor simplify pass.
+  - client-mobile : `3af2264` feat(mobile) ; `0ed943f` refactor simplify pass ; `ab03b32` test(mobile) E2E-CONV-001 (sélecteur).
+  - client-angular : non commité sur `feature/nova-mss-weda-integration` (liste en fin de log).
+
+### Serveur (api-mail)
+
+- **Routes** (`ConversationController`) :
+  - `GET api/v1/Mail/conversation/{messageId}?page&pageSize` — `[TracedInCode(MailRead)]`. La page 1 est l'ouverture : les
+    messages reçus non lus du fil passent lus par `IEmailFlagService.UpdateEmailReadStatusAsync`, un `MailRead` par message
+    au nom de la personne réelle. La route rend le patient du fil : jamais `TraceExempt` (convention
+    `route-identite-patient-jamais-exemptee`).
+  - `POST api/v1/Mail/conversation/{messageId}/reply` — `[TracedInCode(MailReply)]` (SmtpService trace `MailReply` pour une
+    réponse). Hors ligne : 202, réponse « prête à partir » dans la file `SendMail` (task-320).
+- **Règles** (Domain, sans base) : `ConversationQuoteSplitter` (ne replie que le texte retrouvé dans le parent, sinon
+  `IsSplitSafe = false` et texte complet ; signature repliée seulement sur le séparateur normalisé « -- »),
+  `ConversationDeliveryStates` (échec > lu > distribué > envoyé), `ConversationParticipants` (tous moins la boîte,
+  changement depuis le dernier envoi de la boîte).
+- **Application** : `ConversationText` (HTML → texte : `blockquote` en « > », commentaires de signature en « -- »,
+  lignes de tableau relevées), `DeliveryReportParser` (RFC 8098 `displayed`, RFC 3464 `failed`/`delivered`/`relayed`/
+  `expanded`, `Original-Message-ID`, en-têtes renvoyés, repli `In-Reply-To`), `ConversationReplyComposer` (RE:,
+  `In-Reply-To`/`References` du dernier message, texte échappé, signature par défaut avant l'historique cité, aucun
+  `RequestReadReceipt`), `ConversationService`, `SignatureMarkers` (constantes partagées avec `SmtpService`).
+- **Accusés reçus** : lus à l'ouverture (page 1, en ligne), au plus 20 par ouverture, par `IMailExportService.BuildEmlAsync`
+  (verrou de session, dossier refermé, message disparu = `NotFound` relu plus tard). Résultat stocké sur la ligne du
+  rapport : migration `20261117221900_AddMailReportLinks` (`Mails.ReportKind` smallint null, `Mails.ReportOriginalMessageId`
+  varchar(512) null, index `IX_Mails_ReportOriginalMessageId`). Règle 7c relue : deux colonnes ajoutées nullables, un index,
+  aucune suppression ni modification de données, `Down` symétrique ; FluentMigrator (pas de Designer) ; le modèle EF
+  déclare colonnes et index sous les mêmes noms (`MailDataContext`).
+- **Fil** : le parcours du fil (`ThreadMessageIds`) est extrait de `MailRepository` et partagé ; un `Message-ID` ou un
+  `In-Reply-To` stocké avec ses chevrons se lit dans les deux sens.
+- **Copie d'Envoyés pas encore synchronisée** : une réponse partie de la plateforme et archivée (emplacement noté par
+  task-459) est analysée à la lecture de la conversation : la bulle envoyée revient sans attendre la synchronisation.
+- **Corpus** (`tests/mss.mail.application.tests/Conversation/Corpus`, ressources incorporées) : Thunderbird, Outlook (« De :
+  … Envoyé : »), Apple Mail, Mailiz, Gmail, réponse en « > », envoi de la plateforme, et une citation absente du parent
+  (reste visible). Messages et noms anonymisés (domaine `corpus.test`, patiente fictive).
+
+#### Règle 1b — comportement → test d'intégration → preuve rouge
+
+Tests : `tests/mss.mail.integration.tests/UseCases/ConversationEndToEndTests.cs` (vraie pile HTTP, PostgreSQL de la boîte,
+Dovecot, GreenMail ; seuls la porte de la carte et le résumé IA sont simulés). 29 mutations (script
+`mutate.py`, build + test ciblé, restauration par copie), **29/29 rouges sur l'assertion prévue**, rejouées après la passe
+qualité (29/29) :
+
+| Comportement | Test | Mutation vue rouge |
+|---|---|---|
+| Fil dans l'ordre, sens de chaque bulle | `TheConversation_ReadsTheThreadInOrder_…` | M2 sens inversé |
+| Texte nouveau sans l'historique cité, replié | idem | M4 texte nouveau = complet ; M21 rien de replié ; M28 parent ignoré |
+| Pièce jointe du premier message | idem | M3 pièces jointes perdues |
+| Destinataires = tous moins la boîte, changement signalé | idem | M5 boîte parmi les participants ; M22 changement muet |
+| Citation absente du parent → découpage non sûr, texte complet | `AQuoteNotFoundInTheParent_…` | M1 citation non vérifiée |
+| Message inconnu → 404 ProblemDetails | `AnUnknownMessage_Is404_…` | M6 500 au lieu de 404 |
+| Réponse : RE:, In-Reply-To, References, citation, signature, tous les participants, aucun DNT, pièce jointe | `TheReply_IsARealEmail_…` (lu dans GreenMail) | M7, M8, M9, M10, M11, M23, M24, M25, M26 |
+| Réponse relue comme bulle envoyée sans synchronisation d'Envoyés | idem | M29 copie archivée non analysée |
+| Texte vide → 400 ProblemDetails | `AnEmptyText_Is400_…` | M12 texte blanc accepté |
+| Accusés : envoyé → distribué → lu (heure) ; échec → non distribué ; jamais une bulle | `ReceivedReports_ChangeTheState…` | M13, M14, M15, M16, M20, M27 |
+| Délégataire : bulle à son nom et rôle, trace `MailReply` à son nom ; ouverture par le titulaire tracée `MailRead` au nom du titulaire | `TheDelegateReplies_…` | M17 auteur ignoré ; M18 lecture sur les envoyés ; M19 « écrit par moi » toujours vrai |
+
+Tests unitaires : `ConversationRulesTests` (15, domaine), `ConversationCorpusTests` (9), `ConversationHelpersTests`
+(texte, accusés, composition), `ConversationServiceTests` (sens, auteur réel, pagination, lecture à l'ouverture page 1
+seulement, accusés lus en ligne seulement à l'ouverture, accusé disparu, destinataires, réponse vide, hors ligne, échec).
+
+### client-mobile
+
+- Écran `/conversation/:messageId` (`src/app/conversation/`), sélecteur de documents du dossier patient
+  (`patient-document-picker`, pièce par référence comme un transfert : le serveur la relit par `OutgoingMailService`),
+  utilitaires `core/utils/conversation.util.ts`, modèles `core/models/conversation.model.ts`, appels `getConversation` /
+  `replyToConversation`, entrées « mode Conversation » et « Voir en conversation ».
+- Tests unitaires : 1585 → **1638**, verts deux fois de suite ; lint propre ; build OK.
+- Preuves rouges unitaires (agent) : garde IME, double appui, repli de la citation, pas de « Réessayer » sur une
+  distribution incertaine, libellé « non distribué ».
+- E2E (voie servie `--serve-only`, `playwright --grep E2E-CONV`) : **2/2 verts**. Mutations (`mutate_e2e_mobile.py`,
+  recompilation attendue dans `ngserve.log`) : E1 réponse au seul premier destinataire → rouge « le message parti est
+  adressé aux deux confrères » ; E2 bouton « Texte cité » sans effet → rouge « déplie le reste » ; E3 avertissement
+  absent → rouge ; E4 pièce jointe perdue → rouge « la bulle envoyée relue du serveur porte la pièce jointe ». Code
+  restauré, 2/2 verts.
+- Le test E2E-CONV-001 écrit par l'agent était faux deux fois, vu à sa première exécution : un `has:` absolu évalué dans
+  une rangée (jamais trouvé), et un ordre de bulles supposé alors que l'outil e2e date la réponse du confrère une minute
+  plus tard (task-375). Corrigé (`ab03b32`).
+
+### client-angular (weda2, code-only)
+
+- Vue chat dans l'écran mail (`features/mail/components/mail-conversation/` : conteneur, `chat-bubble`, `chat-composer`),
+  modèles et utilitaires `core/models/conversation.model.ts`, `core/utils/conversation.util.ts`, entrées « mode
+  Conversation » (bouton `open-conversation` par fil) et « Voir en conversation ».
+- Tests : mss-lib 1780 → **1832**, weda2 **2683** ; build weda2 OK (dépassements de budget déjà présents : 2,38 Mo,
+  `mss-contacts.component.scss`) ; ESLint 0 erreur (avertissement `max-lines` sur `mail-conversation.component.ts`) ;
+  stylelint et prettier propres.
+- Preuves rouges unitaires (agent) : garde IME, Maj+Entrée, garde d'envoi en vol, texte nouveau affiché malgré un
+  découpage douteux, rang des pièces homonymes.
+- E2E (voie servie `--serve-only`) : **2/2 verts**. Mutations (`mutate_e2e_angular.py`, fenêtre de recompilation de 60 s) : A1 réponse au seul premier destinataire → rouge « la réponse part au second confrère » ; A2 bouton « Texte cité » sans effet → rouge ; A3 avertissement absent → rouge « les destinataires ont changé » ; A4 pièce jointe perdue → rouge « la bulle envoyée relue du serveur porte la pièce jointe ». Code restauré, 2/2 verts.
+- **Non fait** : joindre un « document du dossier patient » depuis la saisie weda2. weda2 n'a pas de parcours existant
+  pour cela (il arrive par l'intention d'envoi de l'hôte Weda, task-367) ; seul « joindre un fichier » existe. À
+  trancher : arbitrage humain.
+
+### Passe qualité (/simplify)
+
+- Applied & committed : api-mail (`4973c9e6` — `BuildEmlAsync` réutilisé au lieu d'une copie dans `IImapService`, accusés
+  lus seulement à l'ouverture, texte des seules bulles de la page, `GetThreadAsync` découpé (S138), filtre IHE_XDM sans
+  casse, `SignatureMarkers` partagés, `HasFolded` dérivé, normalisation des fins de ligne partagée, garde « Sender = boîte »
+  retirée (l'ingestion l'écarte déjà)), client-mobile (`0ed943f` — utilitaires réutilisés, limite de pièce jointe lue dans
+  les réglages, plus de tri client des pages, polling borné et coupé à la destruction, pas de GET thread pour un message
+  sans rapport, défilement infini au lieu de `ionScroll`).
+- Applied (code-only, uncommitted) : client-angular (rang des homonymes, `sendErrorMessage` et `readFileAsBase64`
+  partagés avec la rédaction, limite de pièce jointe unique, clé de jour corrigée (mois décalé), téléchargement d'une
+  pièce non prévisualisable, plus de tri client des pages, rechargements sérialisés, notification débouncée).
+- Skipped (contract) : dtos-mss.
+
+### DOD self-check
+
+- Build / tests : verts sur api-mail (358 + 749 + 4316 + 1382 + 1355), mobile (1638), weda2 (1832 + 2683).
+- Contrat de conversation, réponse composée, découpage + corpus, accusés rattachés + migration, lecture à l'ouverture,
+  tests unitaires, 4 tests d'intégration de bout en bout vus rouges : présents (table ci-dessus).
+- weda2 et mobile : vues, saisie, touches, IME, double envoi, testids, avertissement de destinataires (tests de composant
+  et E2E-CONV-001) : présents. **Écart** : joindre un document du dossier patient depuis le chat weda2 (ci-dessus).
+- E2E-CONV-001 et E2E-CONV-002 au catalogue (v1, mobile et angular requis) et implémentés dans les deux clients.
+- Aucune donnée de santé dans les journaux : le service ne journalise ni texte, ni corps, ni nom ; le contrôleur journalise
+  la page et le nombre de messages.
+- Green marked : api-mail (`4973c9e6`), client-mobile (`0ed943f`) ; client-angular marqué sur l'arbre final.
+
+### Amélioration continue (préventions)
+
+- `conventions/csharp.md` : `lecture-imap-ponctuelle-par-le-chemin-existant` (un dossier IMAP laissé ouvert cachait les
+  messages arrivés ensuite) et `fichier-de-test-texte-et-autocrlf` (corpus extrait en CRLF sous Windows).
+- Mémoire de session : récidive ×3 du piège « barre oblique inverse en heredoc » (deux fichiers cassés, réparés avant
+  commit) ; réflexe noté : script écrit avec Write dès qu'il y a une barre oblique inverse.
+- `conventions/e2e.md` : à alimenter par /review si la revue le juge (un `has:` absolu dans un `filter` ne trouve rien).
+
+- Next step : /review task-487 --code
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-487 --sync` — ne pas éditer à la main)*
@@ -239,4 +386,7 @@ vrai email, sans passer par la rédaction.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 29 s | — | — | — | — |
-| **Total cycle** | | **29 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 1 h 41 min | 7 (1 min 00 s) | 22 (18 min 05 s) | — | dtos-mss 1B/0T, api-mail 6B/22T |
+| **Total cycle** | | **1 h 42 min** | **7 (1 min 00 s)** | **22 (18 min 05 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : nuget-wait ×1 (19 s)
