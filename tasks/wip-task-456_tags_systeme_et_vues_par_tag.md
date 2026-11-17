@@ -254,8 +254,9 @@ Règles :
     règle 12).
   - Les routes `tags/{tagcode}/emails` et `tags/{tagcode}/emails/{uids}` sont retirées : les deux clients sont migrés
     dans la même task.
-- **Dossiers de tag** (`GET folders`) : les quatre tags système toujours, dans l'ordre de la règle, même à zéro ; puis
-  les tags IA et utilisateur qui portent au moins un message de la Boîte de réception, lu ou non. `Count` = total,
+- **Dossiers de tag** (`GET folders`) : les tags système en tête, dans l'ordre de la règle, puis les tags de catégorie,
+  IA et utilisateur ; chacun n'est listé que s'il porte au moins un message de la Boîte de réception, lu ou non
+  (reprise 5, décision humaine du 2026-11-17 : avant, les quatre tags système étaient listés même à zéro). `Count` = total,
   `UnreadCount` = non lus, `TagType` renseigné.
 - **Réglage du filtre** : `UserSettingsDto.TagViewFilter`, rangé dans les réglages de la **personne** (clé `UserId` du
   dépôt existant).
@@ -1281,6 +1282,41 @@ commentaires sont exacts. Restent les ⚠️ et les arbitrages du passage 6, non
   - les clients relisent la liste au serveur (weda2 par `tagCountChanged$`, mobile par `tagFolders`). Vérifier
     qu'aucun spec client ni scénario e2e n'attend un tag système à zéro.
 - **Doc** : commentaire de `GetTagFoldersAsync` et develop log (« Dossiers de tag ») alignés.
+
+### Passage 9 (revue anticipée, après la reprise 5) — CHANGES REQUESTED, comblé dans la reprise 5
+
+Relecteur indépendant, sur `3ee8c973` (api-mail), `7aefb357` (mobile) et l'arbre weda2.
+- ✅ **Serveur** : conforme à la décision.
+  - La route `GET tags/emails?tag=X` rend une page vide en 200 pour un tag sans message : la ligne `Tags` reste.
+  - Les autres consommateurs de la liste (dossiers, tableau de bord, hors ligne) ne supposent pas quatre tags
+    système.
+- ✅ **Tests serveur** : rouges si l'on annule le changement. E2E-TAG-002 est en v2 dans les deux clients.
+- ❌ **Mobile, vue par tag orpheline** (corrigeable) : `setFolders` ne relâchait pas une puce active dont le tag
+  avait disparu de la liste.
+  - Scénario : le praticien archive le dernier message de la vue « Pour info », puis rafraîchit. La vue restait
+    ouverte, sans nom, sur « 0 message ». Choisir « Boîte de réception » dans le menu ne la relâchait pas.
+  - La reprise étend ce défaut, préexistant pour les tags IA et utilisateur, aux quatre tags système.
+  **Comblé dans la reprise 5**, puisqu'il naît de la décision qu'elle applique. Commit `f3069875` :
+  - `MailStateService.setFolders` relâche les puces dont le tag n'est plus listé, et rend `true` quand il en a
+    relâché ;
+  - le menu latéral rouvre alors la Boîte de réception par `folderChanged$`. La page, elle, la recharge déjà après
+    `setFolders` ;
+  - **vu rouge** : 3 specs sur le code d'avant. `releases an active chip…` (« Expected undefined to be true »),
+    `keeps the active chips…` et `reopens the whole inbox…` (« Expected true to be false »). Après le correctif :
+    1 510/1 510, build vert, lint propre.
+- ⚠️ **weda2, même situation, sans blocage** : « Boîte de réception » ferme la vue par tag (`closeTagView`), mais
+  l'en-tête montre le code brut (« POUR INFO ») avec « 0 message ». Non corrigé dans cette reprise : suggestion
+  reportée dans la PR.
+- ⚠️ Corrigés : commentaires et donnée de test weda2 (`mail-widget.component.spec.ts`, un tag système listé a
+  désormais au moins un message), commentaire de `functional.e2e.ts`, ligne « Dossiers de tag » du develop log.
+  Weda2 : `nx test mss-lib` 1 743 et build verts, vert marqué.
+- ⚠️ Suggestions non retenues :
+  - un test d'ordre `[PATIENT, IMAGERIE]` ;
+  - une assertion « page vide en 200 » après le retrait du tag, dans le test d'intégration.
+
+#### Arbitrage humain
+- **weda2 — vue par tag dont le tag disparaît** : faut-il aussi la refermer automatiquement, comme sur mobile ?
+  *Recommandation de la forge* : oui, dans une task courte, pour que les deux clients se comportent pareil.
 
 ## PRs
 
