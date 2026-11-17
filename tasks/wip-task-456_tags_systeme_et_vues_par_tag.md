@@ -1318,6 +1318,20 @@ Relecteur indépendant, sur `3ee8c973` (api-mail), `7aefb357` (mobile) et l'arbr
 - **weda2 — vue par tag dont le tag disparaît** : faut-il aussi la refermer automatiquement, comme sur mobile ?
   *Recommandation de la forge* : oui, dans une task courte, pour que les deux clients se comportent pareil.
 
+### Passage 10 (revue anticipée, complément de la reprise 5) — APPROVED
+
+Le même relecteur indépendant a vérifié `f3069875`. Le bloquant est levé, et les autres appelants de `setFolders`
+ne sont pas cassés :
+- `inbox.page` `loadFolders` et `onFolderGone` : les puces sont relâchées avant le rechargement ;
+- les Paramètres n'appellent `setFolders` que sur une liste vide ;
+- le menu latéral rouvre la Boîte de réception.
+
+Les nouveaux tests ne mentent pas. Suggestion : un test de `inbox.page` sur le tirer-pour-rafraîchir en vue par tag
+quand le tag a disparu.
+
+- **approved at** : api-mail `3ee8c973`, client-mobile `f3069875`, weda2 `f0e9ee95` + arbre de travail. api-mcp
+  et dtos-mss : inchangés.
+
 ## PRs
 
 Corps mis à jour le 2026-11-17 après la reprise 4 (tags de catégorie rétablis sauf la biologie).
@@ -1374,14 +1388,14 @@ Corps mis à jour le 2026-11-17 après la reprise 4 (tags de catégorie rétabli
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 28 s | — | — | — | — |
-| /develop | ok | 13 min 10 s | 14 (1 min 22 s) | 27 (52 min 36 s) | — | api-mail 8B/20T, api-mcp 2B/2T, client-mobile 3B/4T, client-angular 1B/1T, e2e ×1 (1 min 16 s) |
-| /review-code | ok | 9 min 45 s | — | — | — | — |
+| /develop | ok | 13 min 10 s | 16 (1 min 38 s) | 29 (53 min 59 s) | — | api-mail 8B/20T, api-mcp 2B/2T, client-mobile 4B/5T, client-angular 2B/2T, e2e ×1 (1 min 16 s) |
+| /review-code | ok | 13 min 42 s | — | — | — | — |
 | /sonar | ok | 10 min 31 s | 3 (1 min 29 s) | 15 (23 min 00 s) | 6 (2 min 22 s) | api-mail 3B/15T |
 | /lint-angular | ok | 2 min 51 s | 2 (20 s) | 4 (2 min 13 s) | — | client-angular 2B/4T |
 | /lint-mobile | ok | 29 s | — | — | — | — |
 | /e2e | ok | 22 min 40 s | — | — | — | e2e ×13 (2 h 02 min) |
 | /review | ok | 1 min 23 s | 2 (14 s) | 1 (30 s) | — | dtos-mss 1B/0T, client-angular 1B/1T |
 | /tech-writer | ok | 19 s | — | — | — | — |
-| **Total cycle** | | **1 h 01 min** | **21 (3 min 26 s)** | **47 (1 h 18 min)** | **6 (2 min 22 s)** | |
+| **Total cycle** | | **1 h 05 min** | **23 (3 min 42 s)** | **49 (1 h 19 min)** | **6 (2 min 22 s)** | |
 
-Autres commandes mesurées : lint ×5 (1 min 15 s), nuget-wait ×1 (40 s)
+Autres commandes mesurées : lint ×6 (1 min 34 s), nuget-wait ×1 (40 s)
