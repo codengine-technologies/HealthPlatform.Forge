@@ -78,7 +78,7 @@ identifiants en constante **avant** de dupliquer. Vaut pour tout secret de banc
 
 ## CA1861 — pas de tableau littéral en argument d'appel
 
-**Occurrences : 8** (task-459 — `ids.SequenceEqual(new[] { "repondu@…", "autre@…" })` dans un `Arg.Is` NSubstitute, la forme exacte de task-449, attrapée par `/sonar` : contrôle mécanique ajouté à `agents/develop.md` §Q 2b ; task-449 — `new[] { "bern", "cath" }` dans un `Arg.Is(… SequenceEqual(…))` d'un test NSubstitute : un prédicat d'argument est appelé à chaque appel, la consigne vaut aussi là ; task-422 — `new[] { "Urgent", "Important", "Très urgent" }` attendu d'un `Assert.Contains` dans `FakeOpenAiTests`, test du faux fournisseur d'IA du banc écrit hors chaîne, donc sans lecture de ce fichier : hissé en `static readonly string[]` ; task-389 — `new[] { … }` et `[ … ]` passés à `Concat` dans un générateur d'exemples de test (`HprimSamples.Html`) : la consigne vaut aussi pour les données de test, deux champs `static readonly` ; task-203, task-273 — récidive sur code frais : tableaux
+**Occurrences : 9** (task-454 — `/sonar`, ×4, la forme exacte de task-449 et task-459 : `ids.SequenceEqual(new[] { "<m7@e2e>" })` et `uids.SequenceEqual(new[] { 7u })` dans des `Arg.Is` NSubstitute de `MailHandlingServiceTests`. Le contrôle mécanique de `agents/develop.md` §Q 2b (`SequenceEqual\(new( ?\w*)?\[\]`) les aurait tous trouvés : il n'a pas été joué. **Récidive sur la lecture, pas sur la règle** — hissés en `static readonly string[]` / `uint[]` ; task-459 — `ids.SequenceEqual(new[] { "repondu@…", "autre@…" })` dans un `Arg.Is` NSubstitute, la forme exacte de task-449, attrapée par `/sonar` : contrôle mécanique ajouté à `agents/develop.md` §Q 2b ; task-449 — `new[] { "bern", "cath" }` dans un `Arg.Is(… SequenceEqual(…))` d'un test NSubstitute : un prédicat d'argument est appelé à chaque appel, la consigne vaut aussi là ; task-422 — `new[] { "Urgent", "Important", "Très urgent" }` attendu d'un `Assert.Contains` dans `FakeOpenAiTests`, test du faux fournisseur d'IA du banc écrit hors chaîne, donc sans lecture de ce fichier : hissé en `static readonly string[]` ; task-389 — `new[] { … }` et `[ … ]` passés à `Concat` dans un générateur d'exemples de test (`HprimSamples.Html`) : la consigne vaut aussi pour les données de test, deux champs `static readonly` ; task-203, task-273 — récidive sur code frais : tableaux
 attendus d'un `Assert.Equal` dans un test de sollicitations ; la consigne vaut
 aussi pour les attendus de test ; task-334 — `l.SequenceEqual(new[] { 2u })` dans un
 `Arg.Is` NSubstitute, réécrit en `l.Count == 1 && l[0] == 2u` ; task-385 — `new float[] { 0.1f, 0.2f }` passé à `new Embedding<float>(…)` dans un faux
@@ -128,7 +128,7 @@ retire jamais un `Skip` qui cite une task : il le consigne comme issue assumée.
 
 ## CA1859 — type concret plutôt qu'interface pour un helper local
 
-**Occurrences : 17** (task-438 — `/sonar`, ×3, helpers de test du corpus de référence de la recherche : `Words(text) => Normalize(text).Split(…)` déclaré `IEnumerable<string>` pour rendre le `string[]` de `Split`, et deux fabriques `Both`/`Only` déclarées `IReadOnlyDictionary` pour rendre le `Dictionary` qu'elles construisent. Toujours la même variante : le helper privé en expression rend le type de ce qu'il calcule ; task-432 — `/sonar`, ×2, helpers de test : `Method<T>(name) => typeof(T).GetMethod(name)!` déclaré `MethodBase` pour rendre le `MethodInfo` de `GetMethod`, et `Read()` déclaré `IEnumerable<MethodBase?>` pour rendre un tableau. Même variante encore : le helper en expression rend le type de ce qu'il calcule ; task-426 — `/sonar`, helper de test : `RegistryCommands.Matching` déclaré `IReadOnlyList<string>` pour rendre le `List<string>` de `ToList()`. Même variante que task-340 et task-332 : un helper privé en expression rend le type de ce qu'il construit ; task-407 — **récidive à l'identique de task-399** : un nouveau relais privé `TransmitAsync` déclaré `Task` alors qu'il rend le `Task<string>` de `SmtpClient.SendAsync`, relevé par `/sonar`. Le même nom de méthode et la même faute à un mois d'écart : ce fichier n'avait pas été relu avant de coder ; task-405 — `UnmarkedController.Delete` du test d'architecture déclaré `IActionResult` pour rendre un `NoContentResult`, relevé par `/sonar` ; task-399 — douzième, relevée par `/sonar` : un relais privé `TransmitAsync` déclaré `Task` alors que ses deux branches rendent le `Task<string>` de `SmtpClient.SendAsync` — la variante task-299/task-340, « on ne masque pas un `Task<T>` derrière un `Task` » ; task-398 — onzième, relevée par `/sonar`, **introduite par la passe `/simplify`** : un champ `public static readonly IReadOnlySet<string> Switches` rendu `private` sur recommandation de revue. Public, le type d'interface était un contrat ; privé, il ne l'est plus et CA1859 réclame le `HashSet<string>` construit. **Restreindre la visibilité d'un membre, c'est aussi revenir à son type concret.** task-397 — dixième, relevée par `/sonar` : `StoreAsync(…, IReadOnlyCollection<(string Key, byte[] Bytes)> entries, …)`, helper privé dont les deux appelants passent une `List` ; même variante que task-353, écrite large en réécrivant la classe. task-332 — neuvième, relevée par `/sonar` : un helper privé de test d'intégration `PlatformConnectionStrings()` déclaré `IServerConnectionStrings` alors qu'il construit un `PlatformRoutes` ; même cas que la huitième, un helper en expression rend le type de ce qu'il construit. task-340 — huitième, relevée par `/sonar` : un helper de test `DeleteFolderAsync` déclaré `Task` alors qu'il rend le `Task<int>` d'`ExecuteDeleteAsync` ; un helper en expression rend le type de ce qu'il renvoie. task-203, task-289, task-299, task-188, task-345, task-353, task-354 — septième récidive, relevée par `/sonar` : un helper privé de test `MssanteRefusal()` déclaré `Exception` alors qu'il ne construit qu'une `SmtpProtocolException` — le réflexe « type large pour une fabrique d'exception de test » ; écrire le type construit. Sixième récidive.
+**Occurrences : 18** (task-454 — `/sonar`, un relais privé `PublishAsync(IReadOnlyList<HandlingTarget> targets, …)` de `MailHandlingService` dont tous les appelants passent une `List` (ou `[target]`) : la variante task-353/task-397, « un paramètre de helper privé prend le type de ce que ses appelants ont déjà en main » ; task-438 — `/sonar`, ×3, helpers de test du corpus de référence de la recherche : `Words(text) => Normalize(text).Split(…)` déclaré `IEnumerable<string>` pour rendre le `string[]` de `Split`, et deux fabriques `Both`/`Only` déclarées `IReadOnlyDictionary` pour rendre le `Dictionary` qu'elles construisent. Toujours la même variante : le helper privé en expression rend le type de ce qu'il calcule ; task-432 — `/sonar`, ×2, helpers de test : `Method<T>(name) => typeof(T).GetMethod(name)!` déclaré `MethodBase` pour rendre le `MethodInfo` de `GetMethod`, et `Read()` déclaré `IEnumerable<MethodBase?>` pour rendre un tableau. Même variante encore : le helper en expression rend le type de ce qu'il calcule ; task-426 — `/sonar`, helper de test : `RegistryCommands.Matching` déclaré `IReadOnlyList<string>` pour rendre le `List<string>` de `ToList()`. Même variante que task-340 et task-332 : un helper privé en expression rend le type de ce qu'il construit ; task-407 — **récidive à l'identique de task-399** : un nouveau relais privé `TransmitAsync` déclaré `Task` alors qu'il rend le `Task<string>` de `SmtpClient.SendAsync`, relevé par `/sonar`. Le même nom de méthode et la même faute à un mois d'écart : ce fichier n'avait pas été relu avant de coder ; task-405 — `UnmarkedController.Delete` du test d'architecture déclaré `IActionResult` pour rendre un `NoContentResult`, relevé par `/sonar` ; task-399 — douzième, relevée par `/sonar` : un relais privé `TransmitAsync` déclaré `Task` alors que ses deux branches rendent le `Task<string>` de `SmtpClient.SendAsync` — la variante task-299/task-340, « on ne masque pas un `Task<T>` derrière un `Task` » ; task-398 — onzième, relevée par `/sonar`, **introduite par la passe `/simplify`** : un champ `public static readonly IReadOnlySet<string> Switches` rendu `private` sur recommandation de revue. Public, le type d'interface était un contrat ; privé, il ne l'est plus et CA1859 réclame le `HashSet<string>` construit. **Restreindre la visibilité d'un membre, c'est aussi revenir à son type concret.** task-397 — dixième, relevée par `/sonar` : `StoreAsync(…, IReadOnlyCollection<(string Key, byte[] Bytes)> entries, …)`, helper privé dont les deux appelants passent une `List` ; même variante que task-353, écrite large en réécrivant la classe. task-332 — neuvième, relevée par `/sonar` : un helper privé de test d'intégration `PlatformConnectionStrings()` déclaré `IServerConnectionStrings` alors qu'il construit un `PlatformRoutes` ; même cas que la huitième, un helper en expression rend le type de ce qu'il construit. task-340 — huitième, relevée par `/sonar` : un helper de test `DeleteFolderAsync` déclaré `Task` alors qu'il rend le `Task<int>` d'`ExecuteDeleteAsync` ; un helper en expression rend le type de ce qu'il renvoie. task-203, task-289, task-299, task-188, task-345, task-353, task-354 — septième récidive, relevée par `/sonar` : un helper privé de test `MssanteRefusal()` déclaré `Exception` alors qu'il ne construit qu'une `SmtpProtocolException` — le réflexe « type large pour une fabrique d'exception de test » ; écrire le type construit. Sixième récidive.
 Variante task-353 : un helper privé `PurgeVanishedMailsAsync(folder, IReadOnlyCollection<uint>)`
 dont les deux appelants passent un `uint[]` — écrit « large » par réflexe pendant la passe
 `/simplify`, comme sur task-289 : **un paramètre de helper privé prend le type de ce que ses
@@ -1480,6 +1480,56 @@ await db.Mails
 **Consigne** : dans une expression EF, garder `Substring` et suspendre CA1845 **localement**, la raison
 écrite au-dessus (même forme que CA1862 dans `PatientRepository`). Hors EF (code exécuté en mémoire),
 la règle s'applique normalement.
+
+---
+
+## CA1866 — `StartsWith(char)` : sans objet dans une expression traduite en SQL
+
+**Occurrences : 1** (task-454 — `MailHandlingQueries.WithState`, `m.MessageId.StartsWith("<") && m.MessageId.EndsWith(">")`
+dans un `Where` EF Core, ×2)
+
+Même cas que CA1845 ci-dessus : l'analyseur propose la surcharge `char`, mais l'expression est **traduite en SQL**, et
+la surcharge `string` est celle que le fournisseur Npgsql traduit. Changer la surcharge dans un arbre d'expression,
+c'est parier sur la traduction d'une requête de données médicales sans l'avoir vérifiée (règles de codage d'api-mail,
+« contexte données médicales »).
+
+```csharp
+// CA1866 ne s'applique pas ici : expression traduite en SQL par EF Core, la surcharge string est celle que Npgsql
+// traduit (même cas que CA1845, conventions/csharp.md).
+#pragma warning disable CA1866
+private static IQueryable<Guid> WithState(IQueryable<Mail> mails, IQueryable<MailHandlingState> states) =>
+    mails.Where(m => states.Any(h => … m.MessageId.StartsWith("<") && m.MessageId.EndsWith(">") …));
+#pragma warning restore CA1866
+```
+
+**Consigne** : dans une expression EF, garder la surcharge `string` et suspendre CA1866 **localement**, la raison
+écrite au-dessus, **dès l'écriture** de la requête. Hors EF (code exécuté en mémoire), la règle s'applique : écrire
+`StartsWith('<')`.
+
+---
+
+## CA1826 — `FirstOrDefault()` sur une liste indexable : l'indexeur
+
+**Occurrences : 1** (task-454 — `/sonar`, ×3 : `(await repo.GetTargetsAsync(…)).FirstOrDefault()` deux fois dans
+`MailHandlingService`, et `(await TargetsAsync(…)).FirstOrDefault()` dans `MailHandlingRepository`, sur des
+`IReadOnlyList<T>` rendus par un dépôt)
+
+`Enumerable.FirstOrDefault()` sur un `IReadOnlyList<T>` passe par l'énumérateur alors que la liste sait répondre par son
+indexeur. Le motif apparaît quand une méthode qui cherche **un** élément réutilise la méthode qui en cherche
+**plusieurs**.
+
+```csharp
+// ❌ AVANT
+var target = (await handling.GetTargetsAsync(folderPath, [uid], cancellationToken)).FirstOrDefault();
+
+// ✅ APRÈS — un helper privé, une fois par classe
+private static HandlingTarget? FirstOf(IReadOnlyList<HandlingTarget> targets) => targets.Count > 0 ? targets[0] : null;
+var target = FirstOf(await handling.GetTargetsAsync(folderPath, [uid], cancellationToken));
+```
+
+**Consigne** : sur un `IReadOnlyList<T>` / `List<T>` / tableau **en mémoire**, pas de `First`, `FirstOrDefault`,
+`Last`, `LastOrDefault` ni `Count()` : l'indexeur et `Count` / `Length`. Ne s'applique pas à un `IQueryable` (EF
+traduit `FirstOrDefault` en `LIMIT 1`).
 
 ---
 

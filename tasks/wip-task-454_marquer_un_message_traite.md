@@ -219,7 +219,8 @@ Règles :
 | /start | ok | 30 s | — | — | — | — |
 | /develop | ok | 30 min 40 s | 10 (1 min 25 s) | 23 (1 h 25 min) | — | dtos-mss 1B/0T, api-mail 3B/13T, client-mobile 5B/6T, client-angular 1B/4T, reprise 1 |
 | /review-code | ok | 4 min 24 s | — | — | — | — |
-| **Total cycle** | | **35 min 34 s** | **10 (1 min 25 s)** | **23 (1 h 25 min)** | **0 (0.0 s)** | |
+| /sonar | ok | 37 min 25 s | 4 (1 min 35 s) | 11 (23 min 05 s) | 4 (1 min 32 s) | 2 itération(s), api-mail 4B/11T |
+| **Total cycle** | | **1 h 13 min** | **14 (3 min 01 s)** | **34 (1 h 49 min)** | **4 (1 min 32 s)** | |
 
 Autres commandes mesurées : lint ×4 (24 s), nuget-wait ×3 (59 s), restore ×1 (3.9 s)
 
@@ -464,6 +465,57 @@ Témoin restauré : 5/5 verts après la série.
   vert ; vert marqué sur l'arbre.
 - dtos-mss : `8584a008`, paquet `617.0.0` publié.
 - Flaky : `MailboxSwitcherComponent onAriaChanged`, 6e occurrence (conventions/angular.md).
+
+## Sonar log
+
+- Analyse de la branche `feat/task-454-marquer-un-message-traite` (SonarQube 9.9.8, `sonar.login`), deux passes :
+  `e7b1a1ba` (code approuvé par la revue anticipée), puis `b7f20f06` (correctifs).
+- Phase 1 (new code) : ✓ Quality Gate OK, new_coverage = 96,7 %, 0 constat, 0 hotspot.
+- Phase 1 — Issues fixées : 10 code smells (0 bug, 0 vulnérabilité, 0 hotspot), toutes dans les fichiers de la task :
+  - CA1826 ×3 — `FirstOrDefault()` sur un `IReadOnlyList` (`MailHandlingService` ×2, `MailHandlingRepository`) →
+    indexeur (`26459f40`) ;
+  - CA1859 ×1 — `PublishAsync(IReadOnlyList<HandlingTarget>)`, relais privé → `List<HandlingTarget>` (`d90720f6`) ;
+  - CA1866 ×2 — `StartsWith("<")` / `EndsWith(">")` dans `MailHandlingQueries.WithState`, expression traduite en SQL
+    par EF Core : surcharge `string` gardée, CA1866 suspendue localement avec sa raison, comme CA1845 (`8b6aa219`) ;
+  - CA1861 ×4 — `SequenceEqual(new[] { … })` dans des `Arg.Is` de `MailHandlingServiceTests` → champs
+    `static readonly` (`9e48ef50`). Forme exacte de task-449 et task-459 : le contrôle mécanique de
+    `agents/develop.md` §Q 2b l'aurait trouvée, il n'a pas été joué (récidive sur la lecture).
+- Phase 1 — Tests ajoutés : 4 (`b7f20f06`), chacun vu rouge par mutation puis restauré :
+  - intégration `InvalidHandlingRequests_AreRefusedIn400_AndHandleNothing` (vraie pile, problem+json) : geste
+    `Bulk` sur la route du bouton, sélection vide, vue sans tag, annulation au-delà de 2 000 messages → 400 avec leur
+    `detail`, compteurs et état inchangés. Quatre mutations, une par garde : chacune rouge (« Attendu 400, reçu 200 »,
+    ou 404 pour la vue sans tag) ;
+  - unitaires `MailHandlingServiceTests` : « remettre à traiter » un message inconnu → `NotFound` sans écriture ; le
+    rangement dont les messages ne peuvent être relevés ne casse pas le déplacement ; un geste sur document dont l'état
+    ne peut s'écrire ne casse pas le geste. Trois mutations (garde retirée, `catch` qui ne rattrape plus) : 3 rouges.
+  - Couverture new code des fichiers de la task : `MailHandlingController` 77,3 → 92,0 %, `MailHandlingService`
+    96,4 → 99,3 %, `MailHandlingRepository` 90,4 % (reste : retours anticipés sur entrée vide et reprise sur conflit
+    23505, non couverts — sous la cible de 95 % pour ce fichier, la cible globale du new code est tenue).
+- Phase 2 (legacy) : non jouée — 0 bug, 0 vulnérabilité, 0 code smell sur tout le projet, couverture 97,8 %.
+- Build / tests (Release) : ✓ vert sur `b7f20f06` — suite complète 343 / 4 279 / 749 / 1 382 / 1 348 (+16 ignorés),
+  0 FATAL, totaux conformes (+3 unitaires, +1 intégration). Passe de couverture de la ré-analyse : 1 rouge
+  d'outillage, `ImapSessionSweepIntegrationTests.SmtpSend_WhileTheSweepRunsOnADeadImapLink_IsDeliveredExactlyOnceAsync`
+  (`DockerContainerNotFoundException` : conteneur Testcontainers disparu, hors périmètre de la task), vert rejoué
+  isolé (3/3). Vert marqué (`green.py mark --by sonar`, api-mail `b7f20f06`).
+- `conventions/csharp.md` : CA1861 → 9, CA1859 → 18 ; entrées créées CA1826 et CA1866 (1).
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | → |
+| New coverage | 96,7 % | 96,7 % | 0 |
+| Bugs | 0 | 0 | 0 |
+| Vulnerabilities | 0 | 0 | 0 |
+| Security hotspots | 0 | 0 | 0 |
+| Code smells | 0 | 0 | 0 |
+| Coverage (projet) | 97,8 % | 97,8 % | 0 |
+| Duplication | 0,4 % | 0,3 % | −0,1 pt |
+| Reliability / Security / Maintainability | A/A/A | A/A/A | → |
+
+Baseline : dernière analyse du projet avant la task (2026-11-17, `3ee8c973`) ; new code = 30 derniers jours. Première
+analyse de la branche (`e7b1a1ba`) : Quality Gate OK, mais 10 code smells new code, new_coverage 96,4 %, couverture
+97,7 % — tous ramenés à la baseline par cette étape.
 
 ## Code Review Summary
 
