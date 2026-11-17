@@ -1124,6 +1124,56 @@ produit qu'aucune décision humaine ne portait. Les quatre passages de revue ne 
   `IMailRepository.AddCategoryTagsToMailAsync`, et son double dans `Infrastructure.Mock`, étaient sans appelant).
 - **Hors reprise** : aucun script de repose des tags de catégorie sur les bases déjà migrées (décision humaine).
 
+### Passage 6 (revue anticipée, après la reprise 4) — CHANGES REQUESTED, comblé dans la reprise 4
+
+Relecteur indépendant, sur `a9859b87` (api-mail) et `71dc3b2` (client-mobile). Il a d'abord cherché ce que le
+correctif pouvait casser :
+- les décisions des tags système, le rattrapage et ses verrous : rien de cassé ;
+- les dossiers, vues et compteurs : rien de cassé ;
+- le mobile : rien de cassé.
+
+La conformité à la décision du 2026-11-17 est vérifiée : insertion et promotion dans la transaction, exclusion de
+Bio par le prédicat du tag système, idempotence, création concurrente, migration.
+
+- ❌ **Atomicité de la pose de catégorie sans preuve** (corrigeable) : la reprise n'avait rétabli que deux des
+  trois cas de `MailRepositoryCategoryTagRaceTests`, en invoquant `MailIngestionWriteOrderTests`. Or celui-ci
+  provoque sa panne sur `MailMedicalDocuments`, dans l'écriture principale. Si la pose de catégorie passait après le
+  commit (le défaut AUD-36), plus aucun test ne rougissait.
+  **Comblé dans le périmètre de la reprise 4**, puisque R1 demandait de rétablir ce test. Ce n'est donc pas une
+  5e reprise. Commit `9c6f6a43` :
+  - le cas `AddNewMail_WhenAStepAfterTheMailInsertFails_LeavesNoMailBehind` est rétabli à l'identique de `develop` ;
+  - **vu rouge par mutation** : pose déplacée après `transaction.CommitAsync()` → `Assert.False` échoue (un message
+    reste en base). Restauré ; les 78 tests des classes touchées sont verts.
+- ⚠️ Commentaire faux (`MailIngestionWriteOrderTests`, son document est de type « Biologie », pas « Bio ») et
+  documentation de `GetTagFoldersAsync` périmée : corrigés dans `9c6f6a43`.
+- ⚠️ La mutation de l'appel de **promotion** n'est pas consignée. L'assertion existe pourtant : le test vérifie que
+  la vue IMAGERIE ne rend que le premier message avant la promotion, puis les deux après.
+- **Règle 1b** : chaque comportement a son test et sa preuve rouge. Pose de catégorie à l'insertion et à la
+  promotion, et exclusion de Bio → `TheDocumentCategoryTags_…` (404, puis mutation de l'exclusion). Migration →
+  `AddSystemTagsMigrationTests` (mutation). Atomicité → test AUD-36 (mutation).
+- **api-mcp (4c)** : `mcp_impact.py check` rend 1 sur `MailController.cs`, surface que la reprise ne touche pas.
+  L'impact est celui de la task, déjà adapté (PR api-mcp #2).
+- **Scénario e2e (4b, clause DoD)** : la reprise ne crée ni ne change aucun parcours.
+
+#### Arbitrage humain
+- **Pose des tags de catégorie non tracée au journal.** Comme sur `develop`, et comme les tags IA, la pose n'est pas
+  tracée en acte système, alors que les tags système le sont (`TraceSystemTags`). Ce n'est pas une régression : la
+  décision était « comme avant ». La règle 14 veut cependant que tout acte sans personne soit tracé comme acte
+  système. *Recommandation de la forge* : une task séparée qui trace la pose des tags de catégorie et IA, pour ne
+  pas rouvrir task-456.
+- **Un tag « BIO » de type IA survit à la migration.** Si l'IA a créé un tag de code `BIO` avant toute catégorie,
+  la migration le garde, avec ses poses, puisque le `DELETE` vise le type `CATEGORY`. Le code ne le pose plus en
+  catégorie. *Recommandation* : accepter, le cas est rare et ne touche que d'anciens messages de bases de test.
+
+### Passage 7 (revue anticipée, complément de la reprise 4) — APPROVED
+
+Le même relecteur indépendant a vérifié `9c6f6a43`. Le test AUD-36 est rétabli à l'identique de `develop`, et il
+provoque bien sa panne sur la pose de catégorie. Le seul changement de `src` est un commentaire, et les
+commentaires sont exacts. Restent les ⚠️ et les arbitrages du passage 6, non bloquants.
+
+- **approved at** : api-mail `9c6f6a43`, client-mobile `71dc3b2b`. weda2 : arbre de travail, seul le commentaire de
+  `folder.model.ts` change. api-mcp et dtos-mss : inchangés depuis la validation finale.
+
 ## PRs
 
 À merger ensemble (même US, règle 11), dans cet ordre : dtos-mss → api-mail → api-mcp → client-mobile. Label
@@ -1178,14 +1228,14 @@ produit qu'aucune décision humaine ne portait. Les quatre passages de revue ne 
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 28 s | — | — | — | — |
-| /develop | ok | 22 min 06 s | 11 (58 s) | 18 (42 min 46 s) | — | api-mail 7B/14T, api-mcp 2B/2T, client-mobile 2B/2T, e2e ×1 (1 min 16 s) |
-| /review-code | ok | 1 min 46 s | — | — | — | passage 4 APPROVED (reprise 3) |
+| /develop | ok | 22 min 06 s | 11 (58 s) | 20 (44 min 22 s) | — | api-mail 7B/16T, api-mcp 2B/2T, client-mobile 2B/2T, e2e ×1 (1 min 16 s) |
+| /review-code | ok | 9 min 45 s | — | — | — | — |
 | /sonar | ok | 20 min 38 s | 2 (1 min 00 s) | 10 (14 min 54 s) | 4 (1 min 23 s) | 2 itération(s), api-mail 2B/10T |
 | /lint-angular | ok | 2 min 45 s | 1 (1.4 s) | 2 (56 s) | — | client-angular 1B/2T |
 | /lint-mobile | ok | 16 s | — | — | — | lint propre |
 | /e2e | ok | 11 min 36 s | — | — | — | e2e ×8 (1 h 18 min), angular rejouée verte après reprise 3, mobile réutilisée |
 | /review | ok | 4 min 01 s | 2 (14 s) | 1 (30 s) | — | dtos-mss 1B/0T, client-angular 1B/1T |
 | /tech-writer | ok | 1 min 19 s | — | — | — | — |
-| **Total cycle** | | **1 h 05 min** | **16 (2 min 14 s)** | **31 (59 min 08 s)** | **4 (1 min 23 s)** | |
+| **Total cycle** | | **1 h 13 min** | **16 (2 min 14 s)** | **33 (1 h 00 min)** | **4 (1 min 23 s)** | |
 
 Autres commandes mesurées : lint ×3 (16 s), nuget-wait ×1 (40 s)
