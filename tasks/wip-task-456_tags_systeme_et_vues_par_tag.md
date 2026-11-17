@@ -724,6 +724,11 @@ Portée : la liste « À corriger par la reprise » du passage 5.
 - **Build et Karma** : 1 506 / 1 506 verts sur ce code exact (marqueur vert de la reprise 2 de `/develop`, vérifié par
   `green.py check`).
 
+### Reprise 4 (2026-11-17)
+
+- `npm run lint` sur `71dc3b2b` : **All files pass linting**. Aucune itération, aucun fichier modifié, rien à commiter.
+- Vert de `/develop` toujours valide sur ce code exact (`green.py check`).
+
 ## E2E log
 
 Rejoué après la reprise 3 (hors plafond, autorisée par l'humain). Le premier passage était rouge en voie Angular
@@ -1260,10 +1265,10 @@ commentaires sont exacts. Restent les ⚠️ et les arbitrages du passage 6, non
 | /review-code | ok | 9 min 45 s | — | — | — | — |
 | /sonar | ok | 10 min 31 s | 3 (1 min 29 s) | 15 (23 min 00 s) | 6 (2 min 22 s) | api-mail 3B/15T |
 | /lint-angular | ok | 2 min 51 s | 2 (20 s) | 4 (2 min 13 s) | — | client-angular 2B/4T |
-| /lint-mobile | ok | 16 s | — | — | — | lint propre |
+| /lint-mobile | ok | 29 s | — | — | — | — |
 | /e2e | ok | 11 min 36 s | — | — | — | e2e ×8 (1 h 18 min), angular rejouée verte après reprise 3, mobile réutilisée |
 | /review | ok | 4 min 01 s | 2 (14 s) | 1 (30 s) | — | dtos-mss 1B/0T, client-angular 1B/1T |
 | /tech-writer | ok | 1 min 19 s | — | — | — | — |
-| **Total cycle** | | **1 h 02 min** | **18 (3 min 02 s)** | **40 (1 h 10 min)** | **6 (2 min 22 s)** | |
+| **Total cycle** | | **1 h 03 min** | **18 (3 min 02 s)** | **40 (1 h 10 min)** | **6 (2 min 22 s)** | |
 
-Autres commandes mesurées : lint ×4 (54 s), nuget-wait ×1 (40 s)
+Autres commandes mesurées : lint ×5 (1 min 15 s), nuget-wait ×1 (40 s)
