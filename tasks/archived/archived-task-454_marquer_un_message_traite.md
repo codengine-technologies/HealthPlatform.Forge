@@ -921,3 +921,16 @@ Vert marqué : `green.py mark --task task-454 --repo client-angular --by lint-an
   `MailHandlingService`, flux `handlingChanged$`, `requestedSidePanel`) ; e2e `front/e2e/mss-e2e/specs/functional.e2e.ts`
   et `support/e2e-backend.ts`. **À commiter sur TFS avant le merge de la PR api-mail** (le catalogue les déclare
   requis pour angular).
+
+## Merged
+
+Merge humain (`/merge task-454 --i-tested`) le 2026-11-17, squash, CI `develop` verte sur les trois repos.
+
+| Repo | PR | Commit squash | CI develop |
+|---|---|---|---|
+| `dtos-mss` | #69 | `747cac0c` | https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/actions/runs/44174192913 |
+| `api-mail` | #373 | `a148b7e3` | https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/44174225309 |
+| `client-mobile` | #128 | `14ec5c02` | https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/44174255667 |
+
+- `client-angular` : managed manually by the human (TFS).
+- Branches `feat/task-454-marquer-un-message-traite` supprimées, distantes et locales.
