@@ -1013,6 +1013,71 @@ appel dans `waitForTagView`.
   - Recommandation de la forge : vérifier au test manuel (Manual Test Plan, vue Biologie depuis weda2 seul). Si le
     trou est confirmé, ouvrir une task avec son scénario e2e.
 
+### Validation finale — APPROVED
+
+- **Build et tests** : vert réutilisé, sans rejeu, pour api-mail, api-mcp et client-mobile (marqueurs de
+  `/sonar`, `/develop` et `/lint-mobile` sur ces SHA exacts).
+  - **dtos-mss** : rejoué, build vert.
+  - **weda2** : rejoué, son arbre ayant changé à la reprise 3. `nx build weda2` vert ; `nx test mss-lib` vert,
+    157 fichiers et **1 743 tests**.
+- **DoD** : vérifiée point par point :
+  - migration auditée (7c) ;
+  - code mort retiré ;
+  - anciennes routes retirées ;
+  - contrat publié (614.0.0) ;
+  - tests de règle, d'intégration (règle 1b) et de composant vus rouges ;
+  - E2E-TAG-002 et E2E-TAG-003 au catalogue et dans les deux clients.
+- **E2E** : vert. Voie Angular 87/87, voie mobile réutilisée (66), parité verte.
+- **api-mcp** : impact adapté (PR #2).
+- **Diff depuis l'approbation** : aucun commit. Les branches étaient déjà à jour avec `develop`, aucune fusion.
+
+## PRs
+
+À merger ensemble (même US, règle 11), dans cet ordre : dtos-mss → api-mail → api-mcp → client-mobile. Label
+`awaiting-human-merge`.
+
+- `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/68
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/372
+- `api-mcp` : https://github.com/codengine-technologies/HealthPlatform.Api.Mcp/pull/2
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/127
+- `client-angular` (code-only) : l'humain gère le commit, le push vers TFS et l'ouverture de la PR, sur la branche
+  `feature/nova-mss-weda-integration`. L'arbre porte aussi les fichiers non commités de task-486 (saisie des tags) :
+  les commiter d'abord garde deux lots lisibles. Fichiers modifiés (task-486 et task-456 mêlés) :
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`
+  - `front/e2e/mss-e2e/support/e2e-backend.ts`
+  - `front/libs/mss/src/core/models/folder.model.ts`
+  - `front/libs/mss/src/core/models/mail.model.ts`
+  - `front/libs/mss/src/core/models/user-settings.model.ts`
+  - `front/libs/mss/src/core/services/mss-api.service.ts`
+  - `front/libs/mss/src/features/mail/components/mail-folder-item/mail-folder-item.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-folder-list/mail-folder-list.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-folder-list/mail-folder-list.component.scss`
+  - `front/libs/mss/src/features/mail/components/mail-folder-list/mail-folder-list.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.component.scss`
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.search-mode.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-tag/mail-tag.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-tag/mail-tag.component.scss`
+  - `front/libs/mss/src/features/mail/components/mail-tag/mail-tag.component.ts`
+  - `front/libs/mss/src/features/mail/mss-mail.component.ts`
+  - `front/libs/mss/src/features/mail/services/mail-event.service.ts`
+  - `front/libs/mss/src/features/mail/services/mail-state.service.ts`
+  - `front/libs/mss/src/ui/mail-widget/mail-widget.component.html`
+  - `front/libs/mss/src/ui/mail-widget/mail-widget.component.ts`
+  - non suivis :
+    - `front/libs/mss/src/core/services/mss-api.tag-view.service.spec.ts`
+    - `front/libs/mss/src/core/services/mss-api.tags.service.spec.ts`
+    - `front/libs/mss/src/core/utils/tag-suggestions.util.spec.ts`
+    - `front/libs/mss/src/core/utils/tag-suggestions.util.ts`
+    - `front/libs/mss/src/features/mail/components/mail-folder-list/mail-folder-list.tags.spec.ts`
+    - `front/libs/mss/src/features/mail/components/mail-list/mail-list.tag-view.spec.ts`
+    - `front/libs/mss/src/features/mail/components/mail-tag/mail-tag.component.spec.ts`
+    - `front/libs/mss/src/features/mail/mss-mail.component.tag-view-settings.spec.ts`
+    - `front/libs/mss/src/features/mail/mss-mail.component.tag-view.spec.ts`
+    - `front/libs/mss/src/features/mail/services/mail-state.service.tag-view.spec.ts`
+    - `front/libs/mss/src/ui/mail-widget/mail-widget.component.spec.ts`
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-456 --sync` — ne pas éditer à la main)*
@@ -1026,6 +1091,7 @@ appel dans `waitForTagView`.
 | /lint-angular | ok | 2 min 45 s | 1 (1.4 s) | 2 (56 s) | — | client-angular 1B/2T |
 | /lint-mobile | ok | 16 s | — | — | — | lint propre |
 | /e2e | ok | 11 min 36 s | — | — | — | e2e ×8 (1 h 18 min), angular rejouée verte après reprise 3, mobile réutilisée |
-| **Total cycle** | | **40 min 25 s** | **11 (1 min 39 s)** | **20 (42 min 57 s)** | **4 (1 min 23 s)** | |
+| /review | ok | 4 min 01 s | 2 (14 s) | 1 (30 s) | — | dtos-mss 1B/0T, client-angular 1B/1T |
+| **Total cycle** | | **44 min 27 s** | **13 (1 min 53 s)** | **21 (43 min 28 s)** | **4 (1 min 23 s)** | |
 
 Autres commandes mesurées : lint ×3 (16 s), nuget-wait ×1 (40 s)
