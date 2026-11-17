@@ -258,7 +258,7 @@
   (intersection des tags, 404 et 400 en `ProblemDetails`).
   - Les dossiers de tag rendent le total et les non lus ; les tags système sont toujours présents.
   - `IsAutomatic` est rendu par les routes de liste et de message.
-  - Les anciennes routes `tags/{tagcode}/emails[/{uids}]` sont retirées, avec le code mort
+  - Les anciennes routes `tags/{tagcode}/emails[/{uids}]` sont retirées, avec la surcharge publique sans appelant
     `AddCategoryTagsToMailAsync`.
 - **dtos-mss 614.0.0** : `MailDto.IsAutomatic`, `FolderDto.TagType`, `UserSettingsDto.TagViewFilter`.
 - **api-mcp** : `ToolViews.IsVirtual` écarte les dossiers de tag de `list_folders`. Impact relevé par
@@ -290,6 +290,21 @@
   Après la reprise 3 : Angular 87 verts, mobile 66 verts, 0 flaky, parité verte.
 - **Pièges** : conventions `assert-all-jamais-sur-du-vide` (csharp), `spec-qui-lit-une-ligne-de-liste-cible-l-objet`
   (angular), `etat-decide-a-l-analyse-attendu-cote-serveur` (e2e).
+- **Reprise 4 (retour humain du 2026-11-17) — tags de catégorie rétablis, sauf la biologie** :
+  - La task avait retiré à tort la pose des tags `CATEGORY` (Imagerie, Consultation, LettreLiaison…), donnée pour
+    « code mort ». Sa migration supprimait aussi tous ces tags.
+  - La pose est rétablie à l'insertion et à la promotion, dans la transaction d'ingestion, sans le type Bio. La
+    biologie n'est portée que par le tag système « Biologie ». La migration ne supprime plus que le tag `BIO`.
+  - Aucun script de repose : les bases déjà migrées sont des bases de test.
+  - Tests : `TheDocumentCategoryTags_ArePosedAtInsertionAndPromotion_ButBiologyIsOnlyTheSystemTag` (CDA ANS imagerie
+    et microbiologie), `AddSystemTagsMigrationTests`, et les trois cas de `MailRepositoryCategoryTagRaceTests`, dont
+    l'atomicité AUD-36. Tous vus rouges.
+  - Commits : api-mail `a9859b87` et `9c6f6a43`, client-mobile `71dc3b2b` (`TagKind`).
+  - Revue anticipée : passage 6 CHANGES REQUESTED (atomicité sans preuve, comblée dans la reprise), passage 7
+    APPROVED. Sonar : QG OK, 0 issue. E2E : mobile 66/66, Angular 87/87, parité verte.
+  - Arbitrages ajoutés :
+    - la pose des tags de catégorie et IA n'est pas tracée en acte système (règle 14) ;
+    - un tag « BIO » de type IA survivrait à la migration.
 
 ---
 

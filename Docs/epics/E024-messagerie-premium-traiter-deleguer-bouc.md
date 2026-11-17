@@ -226,6 +226,9 @@ validation (task-456), 4 au backlog.
   « Non lus ». Ce choix lui est propre et revient à la réouverture. Un tag système retiré à la main ne revient
   jamais. Sur l'application mobile, des puces de l'Accueil mènent aux vues. Disponible sur l'application web et sur
   l'application mobile (task-456).
+  Les tags de classification des documents reçus (Consultation, Imagerie, Lettre de liaison…) restent posés
+  automatiquement et ont aussi leur vue. Seule la biologie n'a plus de tag de classification : le tag « Biologie »
+  la porte (task-456).
 
 ### Conformité réglementaire
 
