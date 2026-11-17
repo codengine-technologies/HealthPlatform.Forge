@@ -638,26 +638,20 @@ Correctifs de la liste « À corriger par la reprise ». Chacun a été vu rouge
 
 ## E2E log
 
+Rejoué après la reprise 3 (hors plafond, autorisée par l'humain). Le premier passage était rouge en voie Angular
+(E2E-TAG-002 et E2E-TAG-003) : l'aide weda2 `waitForTagView` n'analysait pas le message. Détail dans le
+`## Develop log`, § Reprise 3.
+
 | Voie | Jouée / réutilisée | Dépôts couverts (HEAD) | Résultat |
 |---|---|---|---|
-| mobile | jouée | api-mail `b95ce350`, client-mobile `62cf9ba` | ✅ 66 verts, 0 flaky, 0 rouge, parité verte |
-| angular | jouée | api-mail `b95ce350`, client-angular `f0e9ee95` + arbre de travail, client-mobile/e2e `62cf9ba` | ❌ 85 verts, 0 flaky, **2 rouges** (E2E-TAG-002, E2E-TAG-003), parité verte |
+| mobile | réutilisée (même empreinte que le passage vert du 2026-11-17 01:43) | api-mail `b95ce350`, client-mobile `62cf9ba` | ✅ 66 verts, 0 flaky, 0 rouge, parité verte |
+| angular | jouée | api-mail `b95ce350`, client-angular `f0e9ee95` + arbre de travail (reprise 3), client-mobile/e2e `62cf9ba` | ✅ 87 verts, 0 flaky, 0 rouge, parité verte (10,3 min) |
 
-- **Démontage** vérifié : ports 5052, 3993, 3465 et 3143 libres, aucun conteneur e2e résiduel.
-- **Cause des 2 rouges** : défaut du **test weda2**, pas une régression du produit.
-  - Son aide `waitForTagView` attend la vue BIOLOGIE côté serveur sans jamais faire analyser le message
-    (`enrich/sync`). Le tag Biologie, décidé à l'analyse, n'arrive donc jamais : attente de 180 s épuisée, aux deux
-    essais de chaque test.
-  - Le test mobile du même scénario appelle `enrich/sync` (`OtherDevice.waitForTags`) : il est vert sur le même
-    backend.
-  - Prévention : `conventions/e2e.md` § `etat-decide-a-l-analyse-attendu-cote-serveur`.
+- **Démontage** vérifié : aucun conteneur e2e résiduel, ports libres.
+- **Écrans touchés sans spec e2e** : aucun. Les écrans de la task sont couverts par E2E-TAG-002 et E2E-TAG-003, sur
+  les deux clients.
 
-**E2E : ROUGE** — 2 motif(s) de blocage.
-
-**Bloquant** (2) :
-
-- [angular] rouge : « tags — les tags système classent la Boîte de réception : Biologie, Patient, Pour info » (E2E-TAG-002)
-- [angular] rouge : « tags — combiner deux tags et retrouver le filtre « Non lus » » (E2E-TAG-003)
+**E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
 
 **En quarantaine (posée par l'humain, non bloquant)** (1) :
 
@@ -754,8 +748,8 @@ Correctifs de la liste « À corriger par la reprise ». Chacun a été vu rouge
 | E2E-MAILBOX-007 | 1 | headless | Après un changement de boîte, l'onglet Patients ne montre plus rien de la précédente | ✅ | ✅ |
 | E2E-ERROR-001 | 1 | headless | Une erreur affiche un code et une référence à transmettre au support | ✅ | ✅ |
 | E2E-TAG-001 | 1 | headless | Choisir un tag de la boîte dans la liste, créer un tag de plusieurs mots | ✅ | ✅ |
-| E2E-TAG-002 | 1 | headless | Les tags système classent la Boîte de réception : Biologie, Patient, Pour info | ❌ | ✅ |
-| E2E-TAG-003 | 1 | headless | Combiner deux tags et retrouver le filtre « Non lus » | ❌ | ✅ |
+| E2E-TAG-002 | 1 | headless | Les tags système classent la Boîte de réception : Biologie, Patient, Pour info | ✅ | ✅ |
+| E2E-TAG-003 | 1 | headless | Combiner deux tags et retrouver le filtre « Non lus » | ✅ | ✅ |
 
 **Divergences temporaires ouvertes** (9) :
 
@@ -1031,7 +1025,7 @@ appel dans `waitForTagView`.
 | /sonar | ok | 20 min 38 s | 2 (1 min 00 s) | 10 (14 min 54 s) | 4 (1 min 23 s) | 2 itération(s), api-mail 2B/10T |
 | /lint-angular | ok | 2 min 45 s | 1 (1.4 s) | 2 (56 s) | — | client-angular 1B/2T |
 | /lint-mobile | ok | 16 s | — | — | — | lint propre |
-| /e2e | failed | 35 min 35 s | — | — | — | e2e ×5 (1 h 07 min), angular : E2E-TAG-002/003 rouges (test weda2 sans enrich) |
-| **Total cycle** | | **1 h 04 min** | **11 (1 min 39 s)** | **20 (42 min 57 s)** | **4 (1 min 23 s)** | |
+| /e2e | ok | 11 min 36 s | — | — | — | e2e ×8 (1 h 18 min), angular rejouée verte après reprise 3, mobile réutilisée |
+| **Total cycle** | | **40 min 25 s** | **11 (1 min 39 s)** | **20 (42 min 57 s)** | **4 (1 min 23 s)** | |
 
 Autres commandes mesurées : lint ×3 (16 s), nuget-wait ×1 (40 s)
