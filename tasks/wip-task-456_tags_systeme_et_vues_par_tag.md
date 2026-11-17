@@ -1,7 +1,7 @@
 # todo-task-456.md — Tags système et vues par tag : biologie, patient, professionnel de santé, pour info
 
 **Repos**: api-mail, dtos-mss, client-angular, client-mobile, api-mcp
-**Reprises**: 4 (la 3e hors plafond, autorisée par l'humain le 2026-11-17, limitée au test e2e weda2 ; la 4e ordonnée par l'humain le 2026-11-17 : tags de catégorie rétablis sauf la biologie)
+**Reprises**: 5 (la 3e hors plafond, autorisée par l'humain le 2026-11-17, limitée au test e2e weda2 ; la 4e ordonnée par l'humain le 2026-11-17 : tags de catégorie rétablis sauf la biologie ; la 5e ordonnée par l'humain le 2026-11-17 : un tag sans message n'est pas affiché)
 **Dependencies**: aucune
 **Epic**: E024
 
@@ -93,8 +93,10 @@ Règles :
     dans les réglages de la **personne** (`UserSetting`) : le dernier choix revient à la prochaine ouverture. Défaut :
     « Tous » ;
   - le **compteur** d'un tag reste celui des **non lus**, quel que soit le filtre ;
-  - un tag système est toujours affiché, même à zéro ; un tag IA ou utilisateur est affiché tant qu'il porte au
-    moins un message de la Boîte de réception, lu ou non.
+  - **tout tag** (système, catégorie, IA, utilisateur) est affiché tant qu'il porte au moins un message de la Boîte
+    de réception, lu ou non. Un tag sans aucun message n'est pas affiché. *(Décision humaine du 2026-11-17 : elle
+    remplace « un tag système est toujours affiché, même à zéro ». Les tags système restent en tête quand ils sont
+    affichés.)*
 - **Combinaison** : le praticien sélectionne plusieurs tags ; la vue montre les messages qui portent **tous** les
   tags sélectionnés (intersection). L'en-tête de la vue nomme la combinaison et son nombre de messages.
 - **Où** :
@@ -1221,6 +1223,26 @@ commentaires sont exacts. Restent les ⚠️ et les arbitrages du passage 6, non
 - **api-mcp** : impact inchangé, déjà adapté (PR #2).
 - **PRs** : les quatre corps sont mis à jour (section « Reprise 4 », arbitrages ouverts, nouveau « Parcours e2e »).
   Le label `awaiting-human-merge` est conservé.
+
+### Passage 8 (retour humain, 2026-11-17) — CHANGES REQUESTED
+
+> **Décision humaine du 2026-11-17** : « si un tag a 0 éléments, il ne s'affiche pas ». La règle « un tag système est
+> toujours affiché, même à zéro » est retirée de l'Objectif. Reprise 5, hors plafond, ordonnée par l'humain.
+> Lecture retenue : « 0 élément » veut dire aucun message de la Boîte de réception, ni lu ni non lu. Un tag dont
+> tous les messages sont lus reste affiché, puisque sa vue « Tous » n'est pas vide.
+
+#### À corriger par la reprise
+
+- **R5 — Un tag système sans message n'est pas listé** (api-mail, `GetTagFoldersAsync`) :
+  - les quatre tags système ne sont listés que s'ils portent au moins un message de la Boîte de réception, lu ou
+    non, comme les autres tags. Quand ils sont listés, ils restent en tête, dans l'ordre de la règle ;
+  - **test d'intégration (règle 1b)**, vu rouge : une boîte où seul « Patient » porte un message ne liste que
+    `tag:PATIENT` parmi les tags système. Un tag système dont le seul message est lu reste listé ;
+  - les tests qui affirment l'ancienne règle passent à la nouvelle : `CountingQueriesEndToEndTests`
+    (`…OnlyTheFourSystemTagsAtZero`) et `MailRepositoryTests` (`…TheFourSystemTagsAtZero…`) ;
+  - les clients relisent la liste au serveur (weda2 par `tagCountChanged$`, mobile par `tagFolders`). Vérifier
+    qu'aucun spec client ni scénario e2e n'attend un tag système à zéro.
+- **Doc** : commentaire de `GetTagFoldersAsync` et develop log (« Dossiers de tag ») alignés.
 
 ## PRs
 
