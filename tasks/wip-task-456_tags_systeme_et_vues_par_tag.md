@@ -674,6 +674,27 @@ Portée : la liste « À corriger par la reprise » du passage 5.
 | Duplication | 0,4 % | 0,4 % | 0 |
 | Reliability / Security / Maintainability | A/A/A | A/A/A | → |
 
+### Reprise 4 (2026-11-17) — nouvelle analyse sur `9c6f6a43`
+
+- **Phase 1 (new code)** : ✓ Quality Gate OK, new_coverage = 96,7 %. **0 issue** sur le nouveau code : aucun
+  correctif, 0 itération. Hotspots : 0.
+- **Phase 2 (legacy)** : 0 issue ouverte sur le projet. Rien à traiter.
+- **Analyse** : 1, sur SonarQube 9.9.8 (`sonar.login`).
+- **Build et tests** (Release, couverture OpenCover) : verts.
+
+  | Projet | Tests |
+  |---|---|
+  | domaine | 331/331 |
+  | application | 4 263/4 263 |
+  | infrastructure | 749/749 |
+  | api | 1 382/1 382 |
+  | intégration | 1 333/1 333 (+16 ignorés) |
+
+  Vert marqué sur `9c6f6a43`.
+- **KPIs** : identiques à la colonne « Final » ci-dessus (QG OK, new coverage 96,7 %, 0/0/0, coverage 97,8 %,
+  duplication 0,4 %, A/A/A).
+- **Amélioration continue** : aucune leçon Sonar (aucune issue).
+
 ## Lint log
 
 - **Périmètre** : `client-angular` (code-only, branche `feature/nova-mss-weda-integration`), fichiers de task-456
@@ -1230,12 +1251,12 @@ commentaires sont exacts. Restent les ⚠️ et les arbitrages du passage 6, non
 | /start | ok | 28 s | — | — | — | — |
 | /develop | ok | 22 min 06 s | 11 (58 s) | 20 (44 min 22 s) | — | api-mail 7B/16T, api-mcp 2B/2T, client-mobile 2B/2T, e2e ×1 (1 min 16 s) |
 | /review-code | ok | 9 min 45 s | — | — | — | — |
-| /sonar | ok | 20 min 38 s | 2 (1 min 00 s) | 10 (14 min 54 s) | 4 (1 min 23 s) | 2 itération(s), api-mail 2B/10T |
+| /sonar | ok | 10 min 31 s | 3 (1 min 29 s) | 15 (23 min 00 s) | 6 (2 min 22 s) | api-mail 3B/15T |
 | /lint-angular | ok | 2 min 45 s | 1 (1.4 s) | 2 (56 s) | — | client-angular 1B/2T |
 | /lint-mobile | ok | 16 s | — | — | — | lint propre |
 | /e2e | ok | 11 min 36 s | — | — | — | e2e ×8 (1 h 18 min), angular rejouée verte après reprise 3, mobile réutilisée |
 | /review | ok | 4 min 01 s | 2 (14 s) | 1 (30 s) | — | dtos-mss 1B/0T, client-angular 1B/1T |
 | /tech-writer | ok | 1 min 19 s | — | — | — | — |
-| **Total cycle** | | **1 h 13 min** | **16 (2 min 14 s)** | **33 (1 h 00 min)** | **4 (1 min 23 s)** | |
+| **Total cycle** | | **1 h 02 min** | **17 (2 min 43 s)** | **38 (1 h 08 min)** | **6 (2 min 22 s)** | |
 
 Autres commandes mesurées : lint ×3 (16 s), nuget-wait ×1 (40 s)
