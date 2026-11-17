@@ -771,6 +771,13 @@ Portée : la liste « À corriger par la reprise » du passage 8.
 - Arbre final : `nx build weda2` vert ; `nx test mss-lib` (sortie statique) **157 fichiers, 1 743 tests** verts. Vert
   marqué (`lint-angular`).
 
+### Reprise 5 (2026-11-17)
+
+- ESLint sur les fichiers `.ts` touchés (`mail-state.service.ts`, `mail-widget.component.ts`, `folder.model.ts`) :
+  **0 erreur**, 3 avertissements antérieurs (`max-lines`, `jsdoc`), aucun sur une ligne modifiée. Les specs et l'e2e
+  sont exclus par la configuration. Aucune itération.
+- Vert de `/develop` toujours valide sur l'arbre final (`nx build weda2`, `nx test mss-lib` 1 743).
+
 ## Lint mobile log
 
 - **Périmètre** : `client-mobile`, branche `feat/task-456-…` (`62cf9ba`).
@@ -1405,11 +1412,11 @@ Corps mis à jour le 2026-11-17 après la reprise 4 (tags de catégorie rétabli
 | /develop | ok | 13 min 10 s | 16 (1 min 38 s) | 29 (53 min 59 s) | — | api-mail 8B/20T, api-mcp 2B/2T, client-mobile 4B/5T, client-angular 2B/2T, e2e ×1 (1 min 16 s) |
 | /review-code | ok | 13 min 42 s | — | — | — | — |
 | /sonar | ok | 20 min 18 s | 5 (2 min 44 s) | 25 (38 min 56 s) | 10 (3 min 55 s) | 1 itération(s), api-mail 5B/25T |
-| /lint-angular | ok | 2 min 51 s | 2 (20 s) | 4 (2 min 13 s) | — | client-angular 2B/4T |
+| /lint-angular | ok | 42 s | 2 (20 s) | 4 (2 min 13 s) | — | client-angular 2B/4T |
 | /lint-mobile | ok | 29 s | — | — | — | — |
 | /e2e | ok | 22 min 40 s | — | — | — | e2e ×13 (2 h 02 min) |
 | /review | ok | 1 min 23 s | 2 (14 s) | 1 (30 s) | — | dtos-mss 1B/0T, client-angular 1B/1T |
 | /tech-writer | ok | 19 s | — | — | — | — |
-| **Total cycle** | | **1 h 15 min** | **25 (4 min 57 s)** | **59 (1 h 35 min)** | **10 (3 min 55 s)** | |
+| **Total cycle** | | **1 h 13 min** | **25 (4 min 57 s)** | **59 (1 h 35 min)** | **10 (3 min 55 s)** | |
 
-Autres commandes mesurées : lint ×6 (1 min 34 s), nuget-wait ×1 (40 s)
+Autres commandes mesurées : lint ×7 (2 min 07 s), nuget-wait ×1 (40 s)
