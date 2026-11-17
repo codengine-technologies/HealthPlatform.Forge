@@ -591,6 +591,20 @@ Correctifs de la liste « À corriger par la reprise ». Chacun a été vu rouge
 | Duplication | 0,4 % | 0,4 % | 0 |
 | Reliability / Security / Maintainability | A/A/A | A/A/A | → |
 
+## Lint log
+
+- **Périmètre** : `client-angular` (code-only, branche `feature/nova-mss-weda-integration`), fichiers de task-456
+  seulement. ESLint lancé directement sur les 16 fichiers de la task : les 13 `.ts`, et les 3 `.html`, que la
+  configuration ignore. C'est le contournement documenté depuis task-367 : `nx affected --projects=tag:scope:mss` ne
+  restreint pas le périmètre sur ce workspace.
+- **Résultat** : **0 erreur**. 34 avertissements (`max-lines`, `jsdoc/require-example`), dont **aucun** sur une ligne
+  ajoutée par la task (attribution par `git diff -U0 HEAD`). Les specs sont exclues par la configuration ESLint.
+- Lint propre pour la task : aucune itération, aucun auto-fix, aucun fichier modifié.
+- **Validation de l'arbre final** :
+  - `nx build weda2` vert ;
+  - `nx test mss-lib` : 157 fichiers, **1 743 tests** verts (sortie statique, ligne « Tests » lue) ;
+  - vert marqué (`lint-angular`).
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -813,6 +827,7 @@ de `GetMailAsync` ne sort par aucune route.
 | /develop | ok | 11 min 56 s | 8 (37 s) | 8 (27 min 06 s) | — | api-mail 5B/5T, api-mcp 2B/2T, client-mobile 1B/1T, reprise 2 |
 | /review-code | ok | 6 min 17 s | — | — | — | — |
 | /sonar | ok | 20 min 38 s | 2 (1 min 00 s) | 10 (14 min 54 s) | 4 (1 min 23 s) | 2 itération(s), api-mail 2B/10T |
-| **Total cycle** | | **39 min 21 s** | **10 (1 min 38 s)** | **18 (42 min 01 s)** | **4 (1 min 23 s)** | |
+| /lint-angular | ok | 2 min 45 s | 1 (1.4 s) | 2 (56 s) | — | client-angular 1B/2T |
+| **Total cycle** | | **42 min 07 s** | **11 (1 min 39 s)** | **20 (42 min 57 s)** | **4 (1 min 23 s)** | |
 
-Autres commandes mesurées : nuget-wait ×1 (40 s)
+Autres commandes mesurées : lint ×2 (11 s), nuget-wait ×1 (40 s)
