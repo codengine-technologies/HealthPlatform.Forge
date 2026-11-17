@@ -552,6 +552,45 @@ Correctifs de la liste « À corriger par la reprise ». Chacun a été vu rouge
 - **client-mobile** : build vert ; Karma 1 506/1 506 au second passage (le premier avait 3 rouges dans
   `HtmlEditorComponent`, le flaky connu) ; lint sans erreur ; vert marqué (`62cf9ba4`).
 
+## Sonar log
+
+- **Phase 1 (new code)** : ✓ Quality Gate OK, new_coverage = 96,7 %.
+  - Issues fixées : **1** code smell, `CA1862`, sur la requête du rattrapage
+    (`d.Category!.ToUpper() == …` → `EF.Functions.ILike`). Commit `b95ce350`.
+  - Test : le rattrapage de Biologie est ajouté à `TheCatchUp_…`, vu rouge par mutation (comparaison sensible à la
+    casse).
+  - Hotspots du new code : 0.
+- **Phase 2 (legacy)** : rien à traiter (0 bug, 0 vulnérabilité, 0 code smell sur le projet). 0 itération.
+- **Analyses** : 2 (initiale, puis après correctif). Serveur SonarQube 9.9.8 (`sonar.login`).
+- **Build / tests** (Release, couverture OpenCover) : ✓ vert à la seconde analyse.
+
+  | Projet | Résultat |
+  |---|---|
+  | domaine | 331/331 |
+  | application | 4 263/4 263 |
+  | infrastructure | 749/749 |
+  | api | 1 382/1 382 |
+  | intégration | 1 328/1 328 (+16 ignorés) |
+
+  Vert marqué sur `b95ce350`.
+- **Amélioration continue** : `conventions/csharp.md` § CA1862, occurrences 3 → 4. C'est une récidive de la variante
+  EF, écrite pendant la reprise 1 sans relire le fichier. La convention citait un `SearchQueryHelper.ToExactPattern`
+  qui n'existe pas : corrigé.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | → |
+| New coverage | 96,6 % | 96,7 % | +0,1 pt |
+| Bugs | 0 | 0 | 0 |
+| Vulnerabilities | 0 | 0 | 0 |
+| Security hotspots | 0 | 0 | 0 |
+| Code smells | 0 | 0 (1 en cours de run, corrigé) | 0 |
+| Coverage (projet) | 97,8 % | 97,8 % | 0 |
+| Duplication | 0,4 % | 0,4 % | 0 |
+| Reliability / Security / Maintainability | A/A/A | A/A/A | → |
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -773,6 +812,7 @@ de `GetMailAsync` ne sort par aucune route.
 | /start | ok | 28 s | — | — | — | — |
 | /develop | ok | 11 min 56 s | 8 (37 s) | 8 (27 min 06 s) | — | api-mail 5B/5T, api-mcp 2B/2T, client-mobile 1B/1T, reprise 2 |
 | /review-code | ok | 6 min 17 s | — | — | — | — |
-| **Total cycle** | | **18 min 42 s** | **8 (37 s)** | **8 (27 min 06 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 20 min 38 s | 2 (1 min 00 s) | 10 (14 min 54 s) | 4 (1 min 23 s) | 2 itération(s), api-mail 2B/10T |
+| **Total cycle** | | **39 min 21 s** | **10 (1 min 38 s)** | **18 (42 min 01 s)** | **4 (1 min 23 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (40 s)

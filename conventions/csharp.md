@@ -2083,7 +2083,7 @@ réécrire `DisposeAsync` que pour un vrai travail asynchrone, et alors sans
 
 ## CA1862 — une comparaison de casse ne passe pas par `ToUpperInvariant()` / `ToLowerInvariant()`
 
-**Occurrences : 3** (task-449, `/sonar` — `m.FromAddress.ToLower() == adresse` et `r.Address.ToLower() == adresse` pour comparer une adresse choisie, dans une requête EF : `EF.Functions.ILike` sur `SearchQueryHelper.ToExactPattern` (échappé : un `_` d'adresse n'est pas un joker). Récidive : la variante EF était écrite, le fichier n'a pas été relu avant d'écrire la requête ; task-443, `/sonar` — `m.FromAddress.ToLower() != own` dans une requête EF ; task-420, `/sonar` —
+**Occurrences : 4** (task-456, `/sonar` — `d.Category!.ToUpper() == "BIO"` dans la requête du rattrapage des tags système, écrit pendant une reprise de revue sans relire ce fichier : `EF.Functions.ILike(d.Category!, "Bio")`, la constante ne portant aucun joker. ⚠️ `SearchQueryHelper.ToExactPattern`, cité ci-dessous, **n'existe pas** dans le code (seul `ToContainsPattern` existe) : pour une valeur libre, échapper `%`, `_` et `\` comme lui, sans les `%` d'encadrement ; task-449, `/sonar` — `m.FromAddress.ToLower() == adresse` et `r.Address.ToLower() == adresse` pour comparer une adresse choisie, dans une requête EF : `EF.Functions.ILike` sur `SearchQueryHelper.ToExactPattern` (échappé : un `_` d'adresse n'est pas un joker). Récidive : la variante EF était écrite, le fichier n'a pas été relu avant d'écrire la requête ; task-443, `/sonar` — `m.FromAddress.ToLower() != own` dans une requête EF ; task-420, `/sonar` —
 `ErrorCatalogTests` : `value.ToUpperInvariant() == value` pour reconnaître une constante de code en majuscules, dans un
 test)
 
