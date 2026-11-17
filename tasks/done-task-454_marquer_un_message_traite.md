@@ -224,7 +224,8 @@ Règles :
 | /lint-mobile | ok | 34 s | — | — | — | — |
 | /e2e | ok | 24 min 13 s | — | — | — | e2e ×3 (22 min 57 s), 2 voies jouées : mobile 71 verts, angular 92 verts ; porte verte, parité verte |
 | /review | ok | 2 min 08 s | 1 (2.2 s) | — | — | dtos-mss 1B/0T |
-| **Total cycle** | | **1 h 49 min** | **16 (3 min 25 s)** | **35 (1 h 50 min)** | **4 (1 min 32 s)** | |
+| /tech-writer | ok | 1 min 35 s | — | — | — | — |
+| **Total cycle** | | **1 h 50 min** | **16 (3 min 25 s)** | **35 (1 h 50 min)** | **4 (1 min 32 s)** | |
 
 Autres commandes mesurées : lint ×8 (1 min 11 s), nuget-wait ×3 (59 s), restore ×1 (3.9 s)
 

@@ -316,6 +316,63 @@
   - E2E : mobile 66/66, Angular 87/87.
   - Arbitrage ajouté : refermer aussi sur weda2 une vue par tag dont le tag disparaît.
 
+### v0.6 — task-454 : marquer un message traité (api-mail, dtos-mss, client-mobile, weda2)
+
+- **PRs** : dtos-mss [#69](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/69), api-mail
+  [#373](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/373), client-mobile
+  [#128](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/128). Label `awaiting-human-merge`, ordre de
+  merge dtos-mss → api-mail → client-mobile. client-angular est en code-only, sur `feature/nova-mss-weda-integration`
+  (arbre mêlé aux fichiers non commités de task-456 et task-486) : à commiter sur TFS avant le merge de la PR api-mail.
+- **dtos-mss 618.0.0** (617.0.0 puis 618.0.0 à la reprise) : `MailDto.Handling` (`MailHandlingDto`),
+  `MailDto.ForwardedMessageId`, `FolderDto.ToHandleCount`, `MailHandlingGesture`, `MailHandlingRequestDto`,
+  `MailHandlingBulkResultDto` (dont `PutBack`), `TagViewFilterType.ToHandle`, `InboxFilterType.ToHandle`,
+  `UserSettingsDto.FolderCounter`, `AuditActionType.MailMarkedHandled = 73`, `MailMarkedToHandle = 74`.
+- **api-mail — la règle** : `MailHandlingRule` (domaine). Un message est à traiter si son dossier n'est ni Envoyés, ni
+  Brouillons, ni Corbeille, et :
+  - il porte un compte rendu signalé, suivi et non résolu (quel que soit son état) ; ou
+  - un état explicite « remis à traiter » existe ; ou
+  - il n'a pas d'état « traité », est suivi (task-466) et ne porte pas le tag système « Pour info » (task-456).
+- **api-mail — les données** : table `MailHandlingStates`, une ligne par message, clé = Message-ID (comme `MailReply`,
+  task-459), sans clé étrangère vers `Mails` : l'état survit au déplacement et à la purge sans relieur. Migration
+  `20261117150000_AddMailHandlingStates` (`Down` = suppression de la table, aucune donnée existante touchée, règle 7c
+  relue). Un message sans Message-ID ne peut pas porter d'état : 409 `ProblemDetails`.
+- **api-mail — routes et service** : `MailHandlingController` (5 routes), `MailHandlingService`, `MailHandlingQueries`
+  (compteurs, pages, filtre de vue, en SQL dans la base de la boîte).
+  - `PUT folders/{f}/emails/{uid}/status/handled|to-handle` ; groupé `…/bulk/status/handled` ; vue par tag
+    `PUT tags/emails/status/handled?tag=&filter=` (+ `withoutAnomaly=true`) ; page `GET …/emails/to-handle/page`.
+  - Gestes naturels posés côté serveur au nom de la personne : réponse et transfert (`MailReplyRecorder`,
+    `OutgoingMailService`), rangement unitaire et groupé (`MailController`, `BulkMailActionService`), rattachement
+    (`MedicalDocumentsController`), « Résolu » (`BiologyAckService`).
+  - SSE `MailHandlingChanged` ; flag `dashboard_widget_to_handle` (fail-open).
+  - Audit : `[TracedInCode]`, le geste dans `ServerRequest`, famille `HealthDataAccess`. « Traité » n'écrit jamais de
+    `BiologyMarkedResolved`.
+  - Hors ligne : l'état est écrit directement en base, sans `PendingAction` (un rejeu sans personne violerait la règle 14).
+- **weda2 (code-only) et client-mobile** : filtre « À traiter », sélecteur de compteurs, bouton de ligne, détail, panneau
+  « Actions & dossier », balayage mobile, toast « Annuler » 6 s (`mail-undo-toast`), traitement de la vue, tuile du tableau de
+  bord, SSE. Specs nouvelles `*.handled.spec.ts`, `*.handling.spec.ts`, `mail-handling.service.spec.ts`.
+- **Preuves rouges (règle 1b)** : par mutation sur api-mail (script `mutate.py`, M1 à M15 puis R5 à R7 de la reprise), sur
+  weda2 (W17 à W21) et sur client-mobile (M1 à M28, V1 à V7, R1 à R8), consignées au `## Develop log` de la task ; sources
+  restaurées. Intégration : `FolderOperationsEndToEndTests.Handling` et `ReplyBannerEndToEndTests` (réponse, transfert,
+  délégataire), `BulkMovesOutOfTheInbox_…`, `InvalidHandlingRequests_AreRefusedIn400_AndHandleNothing`.
+- **Cycle** : revue anticipée passage 1 CHANGES REQUESTED (B1 un traitement groupé et « Annuler » touchaient des états qu'ils
+  ne devaient pas ; B2 rangement groupé non prouvé ; B3 preuves mobiles non consignées) → reprise 1 : le groupé ne traite que
+  l'à traiter, `PutBack` restitue l'état d'avant → passage 2 APPROVED. Une seule reprise.
+- **Sonar** : Quality Gate OK, new coverage 96,7 %, 10 code smells corrigés (CA1826 ×3, CA1859, CA1866 ×2 dont un justifié
+  localement, CA1861 ×4 — récidive de task-449 et task-459), 4 tests ajoutés vus rouges ; legacy : 0 issue.
+- **Lint** : Angular 107 → 0 erreurs (98 prettier, 9 JSDoc), mobile propre.
+- **E2E** : mobile 71/71, angular 92/92, parité verte. Nouveaux scénarios : E2E-TRIAGE-001, 002, 006, 007, E2E-SHARED-003 (v1) ;
+  E2E-TAG-002 passe en v2. Quarantaine E2E-COMPOSE-002 [angular] âgée de 39 jours, passée verte : levée à décider par l'humain.
+- **Timings** : cycle de 1 h 49 min (develop 30 min 40 s, sonar 37 min 25 s, e2e 24 min 13 s).
+- **Arbitrages portés dans la PR** :
+  - hors ligne sans `PendingAction` (écart à l'US) ;
+  - un geste naturel sur un message à biologie en attente écrit « traité — rangé » alors que le message reste à traiter
+    (libellé à compléter) ;
+  - coût des requêtes sur les chemins chauds à mesurer sur une boîte de 6 à 11 000 messages avant toute optimisation.
+- **Limites résiduelles (suggestions non bloquantes)** : la doc de `UndoHandledAsync` est plus large que le comportement
+  (un « Annuler » peut effacer l'état posé entre-temps par un délégataire) ; bornes inégales (annulation limitée à 2 000,
+  groupé sans borne ; `"handled": null` → 500) ; `GetTargetOfDocumentAsync` sans test vu rouge ; sans SSE, un détail ouvert
+  garde « Traité par … » après « Annuler ».
+
 ---
 
 ## Annexe A — Cartographie des briques applicatives
@@ -353,15 +410,21 @@
 | `api-mail/src/Api/Controllers/V1/MailController.cs` (`GET tags/emails`) | vue paginée par tag(s), filtre | task-456 |
 | `dtos-mss` `MailDto.IsAutomatic`, `FolderDto.TagType`, `UserSettingsDto.TagViewFilter` | contrat des vues par tag | task-456 |
 | `api-mcp` `ToolViews.IsVirtual` | dossiers de tag hors de `list_folders` | task-456 |
+| `api-mail/src/Domain/Rules/MailHandlingRule.cs` | règle « à traiter », décision unique | task-454 |
+| `api-mail` `MailHandlingService`, `MailHandlingQueries`, `MailHandlingController` | gestes, compteurs, pages, 5 routes | task-454 |
+| `api-mail/src/Infrastructure/Migrations/MailDb/20261117150000_AddMailHandlingStates.cs` | table `MailHandlingStates` (clé Message-ID) | task-454 |
+| `dtos-mss` `MailHandlingDto`, `MailHandlingBulkResultDto`, `FolderDto.ToHandleCount`, `UserSettingsDto.FolderCounter`, `AuditActionType` 73 et 74 | contrat de l'état traité | task-454 |
+| weda2 `mail-handling.service.ts`, `mail-handling.util.ts`, `ui/mail-undo-toast/`, `to-handle-kpi-tile/` | geste, annulation, tuile web | task-454 |
+| client-mobile `mail-handling.service.ts`, balayage `mail-list` | geste, annulation, balayage mobile | task-454 |
 
 ---
 
 ## Annexe B — Inventaire fonctionnel daté (2026-11-17)
 
-- Tasks de l'EPIC : 10 — 4 `archived` (453, 459, 466, 486), 1 `done` (456), 4 `todo` (454, 457, 458, 462),
+- Tasks de l'EPIC : 10 — 4 `archived` (453, 459, 466, 486), 2 `done` (456, 454), 3 `todo` (457, 458, 462),
   1 annulée (465).
-- Scénarios e2e de l'EPIC au catalogue : 6 (E2E-BIO-004, E2E-BIO-007, E2E-DETAIL-006, E2E-TAG-001, E2E-TAG-002,
-  E2E-TAG-003).
+- Scénarios e2e de l'EPIC au catalogue : 11 (E2E-BIO-004, E2E-BIO-007, E2E-DETAIL-006, E2E-TAG-001, E2E-TAG-002,
+  E2E-TAG-003, E2E-TRIAGE-001, E2E-TRIAGE-002, E2E-TRIAGE-006, E2E-TRIAGE-007, E2E-SHARED-003).
 
 ---
 
@@ -375,3 +438,4 @@
 | task-466 | Date de début du suivi par boîte : seul ce qui arrive après réclame un acquittement ; socle de « À traiter » (task-454) | `archived` (PRs #368, #66, #124) |
 | task-486 | Saisie des tags : noms de plusieurs mots (40 caractères), liste des tags de la boîte à la frappe, créations concurrentes sans doublon ; première brique des vues par tag (task-456) | `archived` (PRs #371, #126) |
 | task-456 | Tags système (Biologie, Patient, Professionnel de santé, Pour info) posés à l'arrivée et par rattrapage, vues par tag combinables en « Tous » / « Non lus », réglage par personne | `done` (PRs #68, #372, #2, #127) |
+| task-454 | Marquer un message traité : état partagé par la boîte (Message-ID), compteurs et filtre « À traiter », gestes naturels, bouton et balayage, « Annuler », traitement groupé sans jamais acquitter une biologie, tuile du tableau de bord | `done` (PRs #69, #373, #128) |
