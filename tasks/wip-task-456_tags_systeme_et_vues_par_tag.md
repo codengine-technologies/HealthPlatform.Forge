@@ -637,6 +637,44 @@ Portée : la liste « À corriger par la reprise » du passage 5.
 - **Banc local** : cinq processus `mss.mail.api` (AppHost de l'humain) verrouillaient les binaires Debug ; build et
   suites joués en **Release**, sans les arrêter.
 
+### Reprise 5 (ordonnée par l'humain le 2026-11-17 — un tag sans message n'est pas affiché)
+
+Portée : la liste « À corriger par la reprise » du passage 8.
+
+- **R5 — api-mail, `GetTagFoldersAsync`** : un tag système n'est plus listé que s'il porte au moins un message de la
+  Boîte de réception, lu ou non, comme les autres tags. Quand il est listé, il reste en tête, dans l'ordre de
+  `SystemTagRule.All`. La documentation de la méthode est alignée.
+  - **Test d'intégration** `ASystemTagWithoutMail_IsNotListed_AndOneWhoseOnlyMailIsRead_StaysListed` (vraie pile
+    HTTP, Dovecot, PostgreSQL). Un message de patient, lu : seul `tag:PATIENT` est listé, en (1 message, 0 non lu).
+    Le praticien retire « Patient » : plus aucun dossier de tag.
+  - **Vus rouges** sur le code d'avant le correctif :
+    - ce test : `Assert.Single() Failure: The collection contained 4 items` (Biologie, Professionnel de santé et
+      Pour info listés à 0) ;
+    - `CountingQueriesEndToEndTests.AMailboxWithoutTags_ListsItsFolders_AndNoTagFolder`, renommé depuis
+      `…OnlyTheFourSystemTagsAtZero` : `Assert.DoesNotContain() Failure` (les quatre dossiers à zéro).
+  - Test unitaire `MailRepositoryTests.GetTagFoldersAsyncShouldReturnNoFolder_WhenNothingIsTaggedAsync`, qui
+    remplace `…TheFourSystemTagsAtZero…`.
+- **Catalogue e2e** : **E2E-TAG-002 passe en v2**, attendu réécrit (« un tag sans aucun message n'est pas affiché »).
+  Les deux clients déclarent la v2. Leurs assertions ne changent pas : le parcours dépose lui-même un message pour
+  chacun des quatre tags système. La disparition d'un tag sans message est prouvée par le test d'intégration.
+- **Clients** : ils affichent la liste rendue par le serveur, sans filtre local. Seuls des commentaires et des titres
+  de spec qui disaient « système toujours, même à zéro » sont corrigés : `messaging-counters-widget` (mobile),
+  `mail-state.service`, `mail-widget` et `mail-folder-list.tags.spec` (weda2).
+- **Build et suites** :
+  - **api-mail** : build Release 0 erreur ; 8 059 tests verts et 16 ignorés (intégration 1 334). Commit `3ee8c973`,
+    poussé, vert marqué ;
+  - **client-mobile** : build vert ; 1 506 tests sur 1 506 au **second** passage. Au premier,
+    `MailboxSwitcherComponent` est tombé sur `onAriaChanged` : c'est l'aléa connu, et `conventions/angular.md`
+    passe de 4 à 5 occurrences. Commit `7aefb357`, poussé, vert marqué ;
+  - **weda2** : ESLint 0 erreur (3 avertissements antérieurs) ; `nx build weda2` vert ; `nx test mss-lib` 157
+    fichiers, 1 743 tests. Vert marqué ;
+  - **api-mcp** : `mcp_impact.py check` signale toujours l'impact de `MailController.cs`, celui de la task, déjà
+    adapté (PR #2). `list_folders` écarte déjà les dossiers de tag.
+- **Auto-contrôle du correctif** :
+  - si l'on retire d'une vue par tag le dernier message, le dossier disparaît de la liste, mais la vue ouverte
+    reste lisible : le tag existe toujours en base, donc la route rend une page vide, pas un 404 ;
+  - le rattrapage et la pose des tags système ne lisent pas la liste des dossiers : ils ne changent pas.
+
 ## Sonar log
 
 - **Phase 1 (new code)** : ✓ Quality Gate OK, new_coverage = 96,7 %.
@@ -1300,7 +1338,7 @@ Corps mis à jour le 2026-11-17 après la reprise 4 (tags de catégorie rétabli
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 28 s | — | — | — | — |
-| /develop | ok | 22 min 06 s | 11 (58 s) | 20 (44 min 22 s) | — | api-mail 7B/16T, api-mcp 2B/2T, client-mobile 2B/2T, e2e ×1 (1 min 16 s) |
+| /develop | ok | 13 min 10 s | 14 (1 min 22 s) | 27 (52 min 36 s) | — | api-mail 8B/20T, api-mcp 2B/2T, client-mobile 3B/4T, client-angular 1B/1T, e2e ×1 (1 min 16 s) |
 | /review-code | ok | 9 min 45 s | — | — | — | — |
 | /sonar | ok | 10 min 31 s | 3 (1 min 29 s) | 15 (23 min 00 s) | 6 (2 min 22 s) | api-mail 3B/15T |
 | /lint-angular | ok | 2 min 51 s | 2 (20 s) | 4 (2 min 13 s) | — | client-angular 2B/4T |
@@ -1308,6 +1346,6 @@ Corps mis à jour le 2026-11-17 après la reprise 4 (tags de catégorie rétabli
 | /e2e | ok | 22 min 40 s | — | — | — | e2e ×13 (2 h 02 min) |
 | /review | ok | 1 min 23 s | 2 (14 s) | 1 (30 s) | — | dtos-mss 1B/0T, client-angular 1B/1T |
 | /tech-writer | ok | 19 s | — | — | — | — |
-| **Total cycle** | | **1 h 10 min** | **18 (3 min 02 s)** | **40 (1 h 10 min)** | **6 (2 min 22 s)** | |
+| **Total cycle** | | **1 h 01 min** | **21 (3 min 26 s)** | **47 (1 h 18 min)** | **6 (2 min 22 s)** | |
 
 Autres commandes mesurées : lint ×5 (1 min 15 s), nuget-wait ×1 (40 s)
