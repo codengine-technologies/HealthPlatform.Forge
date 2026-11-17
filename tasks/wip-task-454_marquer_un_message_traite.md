@@ -216,7 +216,10 @@ Règles :
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 30 s | — | — | — | — |
-| **Total cycle** | | **30 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 3 h 28 min | 8 (1 min 14 s) | 20 (1 h 18 min) | — | dtos-mss 1B/0T, api-mail 2B/12T, client-mobile 4B/5T, client-angular 1B/3T |
+| **Total cycle** | | **3 h 28 min** | **8 (1 min 14 s)** | **20 (1 h 18 min)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : lint ×3 (18 s), nuget-wait ×2 (15 s), restore ×1 (3.9 s)
 
 ## Branches
 - `api-mail` (pushed) : feat/task-454-marquer-un-message-traite — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-454-marquer-un-message-traite (depuis `develop` `fe801f26`, task-456 incluse)
@@ -293,3 +296,169 @@ dossier.
 
 **Hors ligne** : l'état n'existe qu'en base, il s'écrit donc aussi hors ligne. Pas de `PendingAction`, ce qui évite un
 rejeu sans personne (règle 14).
+
+### Implémentation (2026-11-17)
+
+- **dtos-mss** : contrat publié (paquet `617.0.0`, commit `8584a008`) ; consommateurs .NET bumpés (api-mail `d9232f32`).
+- **api-mail** : table `MailHandlingStates` (migration `20261117150000_AddMailHandlingStates`, `Down` = suppression de la
+  table, aucune donnée existante touchée — règle 7c relue), règle `MailHandlingRule` (domaine), requêtes SQL
+  `MailHandlingQueries` (compteurs, pages, filtre de vue), service `MailHandlingService`, contrôleur
+  `MailHandlingController` (5 routes), gestes naturels branchés (réponse et transfert dans `OutgoingMailService`,
+  rangement unitaire et groupé dans `MailController` et `BulkMailActionService`, rattachement dans
+  `MedicalDocumentsController`, « Résolu » dans `BiologyAckService`), évènement SSE `MailHandlingChanged`, flag
+  `dashboard_widget_to_handle` (fail-open, comme les autres widgets, semé par le banc).
+- **weda2** (code-only) : modèles, API, `MailHandlingService` (geste, toast « Annuler » 6 s, avis biologie), filtre
+  « À traiter » (boîte et vues par tag, servi en pages), sélecteur des compteurs en tête des dossiers, bouton de ligne,
+  détail, sélection, « Traiter les N messages affichés » et « sans anomalie », tuile du tableau de bord derrière le flag,
+  SSE.
+- **client-mobile** : en cours (même découpage).
+
+### Preuves rouges — api-mail (règle 1b), par mutation
+
+Script `mutate.py` (scratchpad), build Release + test d'intégration ciblé par mutant, restauration vérifiée
+(`RESTAURATION | build ok`, aucun `.mutbak` restant). Tests : `FolderOperationsEndToEndTests.Handling`
+(UseCaseHttpHost, vraie pile HTTP, PostgreSQL et Dovecot du fixture) et `ReplyBannerEndToEndTests.ReplyingAndForwarding…`.
+
+| Comportement (route) | Mutation | Test vu rouge |
+|---|---|---|
+| `PUT …/status/handled` écrit l'état | M1 état non écrit | `TheHandledButton_…` (Assert.Equal) |
+| refus 409 sur biologie en attente | M2 refus retiré | `HandledIsRefused_…` (attendu 409, reçu 200) |
+| groupé : exclusion biologie | M3 règle d'avant (sans exclusion) | `TheBulkHandling_…` |
+| vue Biologie « sans anomalie » | M4 filtre ignoré | `HandlingTheBiologyViewWithoutAnomaly_…` |
+| rangement hors Boîte de réception | M5 geste non posé | `TidyingAMessageOutOfTheInbox_…` |
+| rattachement d'un document | M6 geste non posé | `AttachingADocumentToAPatient_…` |
+| « Résolu » du dernier compte rendu | M7 geste non posé | `AttachingADocumentToAPatient_…` |
+| réponse | M8 geste non posé | `ReplyingAndForwarding_…` |
+| transfert (`ForwardedMessageId`) | M9 geste non posé | `ReplyingAndForwarding_…` |
+| SQL « remis à traiter » (compteur, page, filtre) | M10 branche retirée | `TheToHandleCounterPageAndTagFilter_…` |
+| compteurs posés sur `GET folders` | M11 non posés | `TheHandledButton_…` |
+| imputation à la personne (règle 14) | M12 auteur = la boîte | `TheDelegateHandles_…` |
+| évènement temps réel | M13 non publié | `TheDelegateHandles_…` (aucun appel reçu) |
+| `PUT …/status/to-handle` | M14 écrit « traité » | `PuttingBackToHandle_…` |
+| règle « Pour info » | M15 ignorée | `PuttingBackToHandle_…` (« Pour info » n'entre pas) |
+
+Tests unitaires : `MailHandlingRuleTests` (12), `MailHandlingServiceTests` (11 : traité ⇒ lu, lu ⇏ traité, refus
+biologie sans rien écrire, inconnu / sans Message-ID, remettre à traiter sans toucher à l'état lu, groupé exclut et
+compte, rangement sans « lu », geste naturel qui n'échoue jamais, « Résolu » partiel, déplacements qui ne rangent pas).
+
+### Preuves rouges — weda2 (tests de composant), par mutation
+
+Script `mutate_w.py` (scratchpad), Vitest ciblé par mutant, sources restaurées (aucun `.mutbak`).
+
+| Comportement | Mutation | Spec vue rouge |
+|---|---|---|
+| bouton de ligne Traité / Remettre à traiter | W1 toujours « Traité » | `mail-header.handled.spec` |
+| libellé « Traité par … — geste » | W2 libellé vide | `mail-detail.handled.spec` |
+| bouton Traité du détail | W3 remet à traiter | `mail-detail.handled.spec` |
+| toast « Message traité » | W4 libellé ignoré | `mail-undo-toast.component.spec` |
+| « Annuler » | W5 aucun appel serveur | `mail-handling.service.spec`, `mss-mail.component.handling.spec` |
+| avis biologie → panneau d'acquittement | W6 panneau non demandé | `mss-mail.component.handling.spec` |
+| « sans anomalie » | W7 = toute la vue | `mail-list.tag-view.spec` |
+| confirmation du nombre | W8 sans confirmation | `mail-list.tag-view.spec` |
+| filtre « À traiter » des vues par tag | W9 `to-handle` perdu | `mail-list.tag-view.spec`, `mail-state.service.handling.spec` |
+| filtre « À traiter » servi par le serveur | W10 refiltré localement | idem |
+| refus 409 reconnu | W11 | `mail-handling.service.spec`, `mss-mail.component.handling.spec` |
+| avis du groupé | W12 muet | `mail-handling.service.spec` |
+| sélecteur des compteurs | W13 Non lus = à traiter | `mail-state.service.handling.spec`, `mail-folder-list.tags.spec` |
+| tuile « À traiter » | W14 sans filtre | `to-handle-kpi-tile.component.spec` |
+| geste « répondu » | W15 perdu | `mail-handling.util.spec`, `mail-detail.handled.spec` |
+| traité ⇒ lu | W16 | `mail-state.service.handling.spec` |
+
+Correctif trouvé en écrivant l'e2e : « Annuler » rechargeait la liste avant la réponse du serveur (la ligne remise à
+traiter pouvait ne pas revenir) ; le rechargement attend désormais les réponses.
+
+`mss-lib` : 1764/1764 vert après adaptation des specs existantes (fourniture de `MailHandlingService`, flux
+`handlingChanged$`, `requestedSidePanel`) ; « Traiter les N messages affichés » prend la classe `handle-btn` (ce n'est
+pas un filtre, et le test task-456 « ni filtres locaux dans une vue par tag » le distinguait par `filter-btn`).
+
+api-mcp : `mcp_impact.py check` → aucun impact.
+
+### Passe qualité §Q — api-mail (/simplify, 4 relectures : réutilisation, simplification, efficacité, altitude)
+
+**Appliqué** (non commité au moment de l'écriture, re-validé par la suite complète) :
+- correspondance Message-ID factorisée (`WithState`) et chevrons retirés **du côté `Mails`** : l'index unique
+  `UX_MailHandlingStates_MessageId` sert les deux formes (le `OR "<" + h.MessageId + ">"` l'empêchait) ; surcharges
+  `string` de `StartsWith`/`EndsWith` (Npgsql ne traduit pas la surcharge `char` — vu en rejouant les tests) ;
+- prédicat « Pour info » réutilisé (`ForInformation`) au lieu d'être réécrit ;
+- surcharge morte `RecordGestureAsync(folderPath, uids, …)` retirée (aucun appelant) ;
+- constante `INBOX` privée remplacée par `MailHandlingDefaults.InboxFolderPath` ; `Decode` du contrôleur remplacé par
+  `MailController.DecodeFolderName` (rendu `internal`) ;
+- « traité ⇒ lu » passe par `IEmailFlagService.UpdateEmailsReadStatusAsync` (chemin « lu » existant, sans trace
+  `MailRead`), par dossier : une propagation IMAP en lot au lieu d'une par message ;
+- les états relus pour la publication SSE servent aussi la réponse du geste (une lecture au lieu de deux) ;
+- `Gesture = view.State?.Gesture` (l'écriture ne garde déjà le geste que d'un état traité) ; `IdSetAsync` réutilisé.
+
+Preuves rouges rejouées après la passe : M1, M10 à M15 rouges (M13 réécrit : `if (false)` ne compile pas, CS0162).
+
+**Écarté** (au-delà d'une passe qualité ; à juger en revue) :
+- une seule requête « messages de la vue par tag » pour la page (`MailRepository.GetTagViewPageAsync`, task-456) et
+  pour « Traiter les N messages affichés » (`MailHandlingRepository.GetTagViewUidsAsync`) : les deux copies filtrent
+  la génération courante différemment (`CurrentGeneration` contre `CurrentInboxMailsAsync`), équivalentes en pratique ;
+  refactor du code de task-456 ;
+- le geste « rangé » posé une fois dans `ImapFolderService` (déplacements unitaire et groupé) plutôt que dans trois
+  appelants ; le rattachement dans `PatientService` plutôt que dans le contrôleur (changerait le comportement des
+  autres appelants) ; un évènement de domaine plutôt qu'une dépendance optionnelle dans huit producteurs ;
+- requête « à traiter » en une passe au lieu de l'union de trois ensembles, compteurs dossiers et tags en un aller-retour
+  (et mis en cache), vues d'une page en une projection : optimisations SQL à mesurer avant (règle d'or 5) ;
+- index sur `Mails.MessageId` (ou colonne d'ancre normalisée) : migration, hors passe qualité ;
+- un évènement SSE par lot plutôt que par message : change le contrat de l'évènement.
+
+### Parcours e2e — voie mobile (`--serve-only`, scénarios seuls)
+
+`conventions/e2e.md` relu **après** l'écriture des tests (étape 0 de 6b sautée, puis rattrapée) : deux consignes
+appliquées en conséquence côté Angular (`depot-hors-application` : rouvrir la boîte jusqu'à l'arrivée du message ;
+`catalogue-yaml-relu` : `yaml.safe_load` du catalogue, 94 scénarios). Les deux suites compilent (`tsc`).
+
+Premier passage : 3/5 verts (TRIAGE-002, 006, 007). Deux défauts du test, corrigés :
+- TRIAGE-001 : le menu des dossiers, ouvert pour lire le badge, n'était pas toujours refermé par Échap et couvrait la
+  ligne au balayage suivant (`ion-menu.close()` sans effet non plus) ; refermé par le geste du médecin (« INBOX »),
+  puis le filtre « À traiter » est reposé ;
+- SHARED-003 : la trace d'audit porte l'auteur dans `actor.rpps` (objet `ActorDto`), pas `actorRpps`.
+Second passage : 5/5 verts.
+
+Preuves par mutation (client, `Date.now()` pour compiler ; nouveau bundle attendu dans `ngserve.log` ; `git checkout`
+du fichier après chaque mutant, arbre propre à la fin) :
+
+| Mutation | Scénario(s) rouge(s) | Assertion |
+|---|---|---|
+| E1 « Traité » n'appelle pas le serveur | TRIAGE-001, SHARED-003 | attente de `PUT …/status/handled` |
+| E2 « Traiter la vue » n'appelle pas le serveur | TRIAGE-002 | attente de `PUT tags/emails/status/handled` |
+| E3 « sans anomalie » envoyé à faux | TRIAGE-006 | attente de la requête `withoutAnomaly=true` |
+| E4 réponse sans `In-Reply-To` | TRIAGE-007 | « relu du serveur, le message … est hors de « À traiter » » |
+| E5 « Annuler » n'appelle pas le serveur | TRIAGE-001 | attente de `PUT …/status/to-handle` |
+
+Témoin restauré : la voie mobile complète, rejouée par `/e2e` sur le code final.
+
+### Parcours e2e — voie Angular (`--serve-only`, scénarios seuls)
+
+Premier passage : 4/5 verts ; TRIAGE-001 cherchait le dossier « Boîte de réception », que weda2 affiche « INBOX »
+(corrigé dans l'aide `expectInboxToHandleCounter`). Second passage : 5/5.
+
+Preuves par mutation (weda2 code-only : sauvegarde et restauration octet pour octet ; journal du serveur de dev muet,
+donc marqueur `String('MUTATION-Ax').length` qui survit à esbuild, vu servi dans les chunks avant de jouer, puis 15 s ;
+restauration vérifiée et marqueur retiré du bundle après chaque mutant) :
+
+| Mutation | Scénario(s) rouge(s) | Assertion |
+|---|---|---|
+| A1 « Traité » n'appelle pas le serveur | TRIAGE-001, SHARED-003 | attente de `PUT …/status/handled` |
+| A2 « Traiter la vue » n'appelle pas le serveur | TRIAGE-002 | attente de `PUT tags/emails/status/handled` |
+| A3 « sans anomalie » envoyé à faux | TRIAGE-006 | attente de la requête `withoutAnomaly=true` |
+| A4 réponse sans `In-Reply-To` | TRIAGE-007 | « relu du serveur, le message … est hors de « À traiter » » |
+| A5 « Annuler » n'appelle pas le serveur | TRIAGE-001 | attente de `PUT …/status/to-handle` |
+
+Témoin restauré : 5/5 verts après la série.
+
+> **À commiter sur TFS avant le merge de la PR api-mail** (conventions/e2e.md, `test-angular-non-commite`) :
+> `front/e2e/mss-e2e/specs/functional.e2e.ts` et `front/e2e/mss-e2e/support/e2e-backend.ts` (scénarios
+> E2E-TRIAGE-001, 002, 006, 007, E2E-SHARED-003 ; E2E-TAG-002 fixe les compteurs sur « Non lus »).
+
+### Fin de /develop
+
+- api-mail : `6ce18c8a` (feature) + `9eaf2062` (passe qualité), poussé ; suite complète verte deux fois (8093 puis
+  8094 réussis, 0 échec) ; vert marqué.
+- client-mobile : `38c487d`, `3bfae5d`, `86f269a` (passe qualité), `e07b0d6`, `bb5836f` (e2e), poussé ; 1580/1580 ;
+  lint propre ; vert marqué.
+- client-angular (code-only, non commité) : `nx test mss-lib` 1777/1777, `nx test weda2` 2683/2683, `nx build weda2`
+  vert ; vert marqué sur l'arbre.
+- dtos-mss : `8584a008`, paquet `617.0.0` publié.
+- Flaky : `MailboxSwitcherComponent onAriaChanged`, 6e occurrence (conventions/angular.md).
