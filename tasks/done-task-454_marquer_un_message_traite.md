@@ -890,3 +890,21 @@ Vert marqué : `green.py mark --task task-454 --repo client-angular --by lint-an
 - E2E-SEARCH-008 [mobile] — les critères médicaux arrivent sur le mobile avec la refonte mobile — résorbée par task-451
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## PRs
+
+- `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/69 — `awaiting-human-merge` (à merger en premier)
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/373 — `awaiting-human-merge`
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/128 — `awaiting-human-merge`
+- `client-angular` : code-only — humain gère commit/push TFS et ouverture PR, sur `feature/nova-mss-weda-integration`
+  (arbre qui porte aussi le travail non commité de task-456 et task-486). Fichiers task-454 :
+  `front/libs/mss/src/core/models/{audit,folder,mail-event,mail,user-settings}.model.ts`,
+  `core/services/{mail-events-stream,mss-api}.service.ts`, `core/utils/mail-handling.util.ts` (+ spec),
+  `features/dashboard/components/to-handle-kpi-tile/` (+ `mss-dashboard.component.html`),
+  `features/mail/components/{mail-compose,mail-detail,mail-folder-item,mail-folder-list,mail-header,mail-list,weda-import}/…`,
+  `features/mail/mss-mail.component.{ts,html,scss}`, `features/mail/services/{mail-handling,mail-state}.service.ts`,
+  `ui/mail-undo-toast/`, les specs nouvelles (`*.handled.spec.ts`, `*.handling.spec.ts`, `mail-handling.service.spec.ts`,
+  `mail-folder-list.tags.spec.ts`, `mail-list.tag-view.spec.ts`) et les specs existantes adaptées (fourniture de
+  `MailHandlingService`, flux `handlingChanged$`, `requestedSidePanel`) ; e2e `front/e2e/mss-e2e/specs/functional.e2e.ts`
+  et `support/e2e-backend.ts`. **À commiter sur TFS avant le merge de la PR api-mail** (le catalogue les déclare
+  requis pour angular).
