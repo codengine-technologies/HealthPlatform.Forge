@@ -10358,3 +10358,5 @@
 {"ts":"2026-11-17T03:16:19+01:00","run_id":"-","type":"step_start","task":"task-456","step":"develop"}
 {"ts":"2026-11-17T03:18:15+01:00","run_id":"-","type":"cmd","task":"task-456","step":"develop","repo":"client-angular","kind":"e2e","label":"angular-serve","cwd":"Client/Angular/front","cmd":"node e2e/mss-e2e/run.mjs --serve-only","duration_ms":76771,"exit_code":0}
 {"ts":"2026-11-17T03:19:12+01:00","run_id":"-","type":"step","task":"task-456","step":"develop","status":"ok","note":"reprise 3 (hors plafond, humain) : helper e2e weda2","iterations":null,"duration_ms":172772}
+{"ts":"2026-11-17T03:19:26+01:00","run_id":"-","type":"step_start","task":"task-456","step":"review-code"}
+{"ts":"2026-11-17T03:21:12+01:00","run_id":"-","type":"step","task":"task-456","step":"review-code","status":"ok","note":"passage 4 APPROVED (reprise 3)","iterations":null,"duration_ms":106131}

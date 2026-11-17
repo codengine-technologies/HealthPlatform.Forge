@@ -983,6 +983,42 @@ de `GetMailAsync` ne sort par aucune route.
 - **S-3** — Dans le test de course « garde », l'absence de trace n'est pas affirmée. Le mécanisme est le même que dans
   le cas du conflit, déjà prouvé par la mutation T.
 
+### Passage 4 (revue anticipée, après la reprise 3 hors plafond) — APPROVED
+
+Un relecteur indépendant a lu le diff de la reprise 3 : deux fichiers e2e weda2, `OtherDevice.analyse(uid)` et son
+appel dans `waitForTagView`.
+
+- **Ce que le correctif pourrait casser** : rien de constaté.
+  - L'analyse (`enrich/sync`) ne pose jamais `\Seen`. Les états lu / non lu que TAG-002 et TAG-003 affirment
+    (filtre « Non lus », clic sur le compte rendu non lu) restent discriminants.
+  - Les compteurs sont comparés à la valeur relue du serveur.
+- **Pas de vert qui ment** : les scénarios affirment le classement et son affichage, pas le déclenchement de
+  l'analyse par weda2. L'attente précédait déjà `openInbox`. L'aide mobile `waitForTags` fait les mêmes appels.
+- **Coût** : une analyse déjà faite se court-circuite (`ComputePendingEnrichmentAsync` nul) ; un appel concurrent
+  est absorbé par `MailPromotionClaim`.
+- **4a, 4b, 4c** : inchangés depuis le passage 3. Aucun code produit ne change. api-mcp : impact (code 1) déjà
+  adapté (`ac95965`).
+- **approved at** : api-mail `b95ce350`, api-mcp `ac95965`, dtos-mss `ea1af9f`, client-mobile `62cf9ba`, weda2 arbre
+  de travail (reprise 3).
+- **Suite de la chaîne** : `/sonar`, `/lint-angular` et `/lint-mobile` ont déjà tourné sur ces SHA, et rien n'a
+  changé depuis hors des deux fichiers e2e weda2, sans nouvel avertissement ESLint. La chaîne reprend donc à
+  `/e2e`, qui rejoue les voies complètes.
+
+#### Suggestions (non bloquantes, à la PR)
+
+- **S-4** : `functional.e2e.ts:6637` — `.catch(() => null)` jette le statut HTTP. Une analyse en 503 durable
+  finirait en « … est dans la vue BIOLOGIE » après 180 s, qui se lit comme une régression du classement. Garder la
+  dernière erreur dans le `message` du poll. L'aide mobile a le même trou.
+
+#### Arbitrage humain (non bloquant, à trancher au merge)
+
+- **Trou du filet weda2** : aucun scénario Angular ne prouve que weda2 lui-même déclenche l'analyse d'un message de
+  la boîte. Le seul appel `enrichEmailsSync` de `libs/mss` est dans `mail-notification-widget.component.ts:111`.
+  - Si la boîte weda2 n'analyse jamais un message, la vue Biologie reste vide pour un médecin qui n'utilise que
+    weda2, et la suite resterait verte.
+  - Recommandation de la forge : vérifier au test manuel (Manual Test Plan, vue Biologie depuis weda2 seul). Si le
+    trou est confirmé, ouvrir une task avec son scénario e2e.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-456 --sync` — ne pas éditer à la main)*
@@ -991,11 +1027,11 @@ de `GetMailAsync` ne sort par aucune route.
 |---|---|---|---|---|---|---|
 | /start | ok | 28 s | — | — | — | — |
 | /develop | ok | 2 min 52 s | 8 (37 s) | 8 (27 min 06 s) | — | api-mail 5B/5T, api-mcp 2B/2T, client-mobile 1B/1T, e2e ×1 (1 min 16 s), reprise 3 (hors plafond, humain) : helper e2e weda2 |
-| /review-code | ok | 6 min 17 s | — | — | — | — |
+| /review-code | ok | 1 min 46 s | — | — | — | passage 4 APPROVED (reprise 3) |
 | /sonar | ok | 20 min 38 s | 2 (1 min 00 s) | 10 (14 min 54 s) | 4 (1 min 23 s) | 2 itération(s), api-mail 2B/10T |
 | /lint-angular | ok | 2 min 45 s | 1 (1.4 s) | 2 (56 s) | — | client-angular 1B/2T |
 | /lint-mobile | ok | 16 s | — | — | — | lint propre |
 | /e2e | failed | 35 min 35 s | — | — | — | e2e ×5 (1 h 07 min), angular : E2E-TAG-002/003 rouges (test weda2 sans enrich) |
-| **Total cycle** | | **1 h 08 min** | **11 (1 min 39 s)** | **20 (42 min 57 s)** | **4 (1 min 23 s)** | |
+| **Total cycle** | | **1 h 04 min** | **11 (1 min 39 s)** | **20 (42 min 57 s)** | **4 (1 min 23 s)** | |
 
 Autres commandes mesurées : lint ×3 (16 s), nuget-wait ×1 (40 s)
