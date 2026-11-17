@@ -605,6 +605,14 @@ Correctifs de la liste « À corriger par la reprise ». Chacun a été vu rouge
   - `nx test mss-lib` : 157 fichiers, **1 743 tests** verts (sortie statique, ligne « Tests » lue) ;
   - vert marqué (`lint-angular`).
 
+## Lint mobile log
+
+- **Périmètre** : `client-mobile`, branche `feat/task-456-…` (`62cf9ba`).
+- **Résultat** : `npm run lint` → **All files pass linting** (0 erreur, 0 avertissement).
+- Aucune itération, aucun auto-fix, aucun commit.
+- **Build et Karma** : 1 506 / 1 506 verts sur ce code exact (marqueur vert de la reprise 2 de `/develop`, vérifié par
+  `green.py check`).
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -828,6 +836,7 @@ de `GetMailAsync` ne sort par aucune route.
 | /review-code | ok | 6 min 17 s | — | — | — | — |
 | /sonar | ok | 20 min 38 s | 2 (1 min 00 s) | 10 (14 min 54 s) | 4 (1 min 23 s) | 2 itération(s), api-mail 2B/10T |
 | /lint-angular | ok | 2 min 45 s | 1 (1.4 s) | 2 (56 s) | — | client-angular 1B/2T |
-| **Total cycle** | | **42 min 07 s** | **11 (1 min 39 s)** | **20 (42 min 57 s)** | **4 (1 min 23 s)** | |
+| /lint-mobile | ok | 16 s | — | — | — | lint propre |
+| **Total cycle** | | **42 min 24 s** | **11 (1 min 39 s)** | **20 (42 min 57 s)** | **4 (1 min 23 s)** | |
 
-Autres commandes mesurées : lint ×2 (11 s), nuget-wait ×1 (40 s)
+Autres commandes mesurées : lint ×3 (16 s), nuget-wait ×1 (40 s)
