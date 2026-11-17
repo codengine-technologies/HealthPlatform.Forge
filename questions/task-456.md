@@ -1,3 +1,5 @@
+Résolu le 2026-11-17 : l'humain a autorisé la reprise 3 (`/develop task-456 --reprise`). Le correctif de test est appliqué, E2E-TAG-002 et E2E-TAG-003 sont verts en rejeu ciblé ; la chaîne reprend à `/review --code` puis `/e2e`.
+
 # task-456 — /e2e rouge : E2E-TAG-002 et E2E-TAG-003 en voie Angular (défaut du test)
 
 **Étape** : `/e2e` (après la revue anticipée APPROVED au passage 3, `/sonar` vert, lint propre).

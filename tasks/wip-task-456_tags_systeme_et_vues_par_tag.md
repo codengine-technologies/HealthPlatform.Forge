@@ -1,7 +1,7 @@
 # todo-task-456.md — Tags système et vues par tag : biologie, patient, professionnel de santé, pour info
 
 **Repos**: api-mail, dtos-mss, client-angular, client-mobile, api-mcp
-**Reprises**: 2
+**Reprises**: 3 (la 3e hors plafond, autorisée par l'humain le 2026-11-17, limitée au test e2e weda2)
 **Dependencies**: aucune
 **Epic**: E024
 
@@ -552,6 +552,29 @@ Correctifs de la liste « À corriger par la reprise ». Chacun a été vu rouge
 - **client-mobile** : build vert ; Karma 1 506/1 506 au second passage (le premier avait 3 rouges dans
   `HtmlEditorComponent`, le flaky connu) ; lint sans erreur ; vert marqué (`62cf9ba4`).
 
+### Reprise 3 (hors plafond, autorisée par l'humain — `/e2e` rouge en voie Angular)
+
+- **Portée** : le seul correctif de test décrit dans `questions/task-456.md`. Aucun code produit ne change ; api-mail,
+  api-mcp, dtos-mss et client-mobile sont inchangés.
+- **Cause** : l'aide weda2 `waitForTagView` attendait la vue BIOLOGIE côté serveur sans demander l'analyse du
+  message. Le tag Biologie n'est décidé qu'à l'analyse : l'attente de 180 s s'épuisait.
+- **Correctif** (weda2, code-only, non commité) :
+  - `e2e/mss-e2e/support/e2e-backend.ts` : `OtherDevice.analyse(uid)`, qui demande `POST …/emails/enrich/sync`
+    pour ce message, comme l'app qui l'affiche ;
+  - `e2e/mss-e2e/specs/functional.e2e.ts` : `waitForTagView` relit le message, puis demande son analyse avant
+    de lire la vue.
+- **Vu rouge, puis vert** :
+  - rouge : `/e2e` sur le code d'avant le correctif, E2E-TAG-002 et E2E-TAG-003 rouges aux deux essais
+    (« … est dans la vue BIOLOGIE, côté serveur », 180 s) ;
+  - vert : backend monté par `node e2e/mss-e2e/run.mjs --serve-only`, puis
+    `npx playwright test --grep "E2E-TAG-00[23]" --retries 0` : **2 passed (25,8 s)**. Démontage par `out/STOP`,
+    aucun conteneur résiduel, port 47399 libre.
+- **Lint** : aucun avertissement ESLint sur les lignes ajoutées (les 19 avertissements des deux fichiers sont
+  antérieurs).
+- **Marqueur vert** : weda2 non re-marqué (seuls des scénarios ciblés ont tourné) ; `/review` rejouera build et
+  tests sur cet arbre. Les voies complètes restent jouées par `/e2e`.
+- **Prévention** : déjà écrite, `conventions/e2e.md` § `etat-decide-a-l-analyse-attendu-cote-serveur`.
+
 ## Sonar log
 
 - **Phase 1 (new code)** : ✓ Quality Gate OK, new_coverage = 96,7 %.
@@ -967,12 +990,12 @@ de `GetMailAsync` ne sort par aucune route.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 28 s | — | — | — | — |
-| /develop | ok | 11 min 56 s | 8 (37 s) | 8 (27 min 06 s) | — | api-mail 5B/5T, api-mcp 2B/2T, client-mobile 1B/1T, reprise 2 |
+| /develop | ok | 2 min 52 s | 8 (37 s) | 8 (27 min 06 s) | — | api-mail 5B/5T, api-mcp 2B/2T, client-mobile 1B/1T, e2e ×1 (1 min 16 s), reprise 3 (hors plafond, humain) : helper e2e weda2 |
 | /review-code | ok | 6 min 17 s | — | — | — | — |
 | /sonar | ok | 20 min 38 s | 2 (1 min 00 s) | 10 (14 min 54 s) | 4 (1 min 23 s) | 2 itération(s), api-mail 2B/10T |
 | /lint-angular | ok | 2 min 45 s | 1 (1.4 s) | 2 (56 s) | — | client-angular 1B/2T |
 | /lint-mobile | ok | 16 s | — | — | — | lint propre |
 | /e2e | failed | 35 min 35 s | — | — | — | e2e ×5 (1 h 07 min), angular : E2E-TAG-002/003 rouges (test weda2 sans enrich) |
-| **Total cycle** | | **1 h 17 min** | **11 (1 min 39 s)** | **20 (42 min 57 s)** | **4 (1 min 23 s)** | |
+| **Total cycle** | | **1 h 08 min** | **11 (1 min 39 s)** | **20 (42 min 57 s)** | **4 (1 min 23 s)** | |
 
 Autres commandes mesurées : lint ×3 (16 s), nuget-wait ×1 (40 s)
