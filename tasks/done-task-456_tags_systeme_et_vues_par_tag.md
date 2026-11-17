@@ -1285,7 +1285,7 @@ Corps mis à jour le 2026-11-17 après la reprise 4 (tags de catégorie rétabli
 | /lint-mobile | ok | 29 s | — | — | — | — |
 | /e2e | ok | 22 min 40 s | — | — | — | e2e ×13 (2 h 02 min) |
 | /review | ok | 1 min 23 s | 2 (14 s) | 1 (30 s) | — | dtos-mss 1B/0T, client-angular 1B/1T |
-| /tech-writer | ok | 1 min 19 s | — | — | — | — |
-| **Total cycle** | | **1 h 11 min** | **18 (3 min 02 s)** | **40 (1 h 10 min)** | **6 (2 min 22 s)** | |
+| /tech-writer | ok | 19 s | — | — | — | — |
+| **Total cycle** | | **1 h 10 min** | **18 (3 min 02 s)** | **40 (1 h 10 min)** | **6 (2 min 22 s)** | |
 
 Autres commandes mesurées : lint ×5 (1 min 15 s), nuget-wait ×1 (40 s)
