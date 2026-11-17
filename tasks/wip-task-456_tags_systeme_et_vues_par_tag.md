@@ -791,6 +791,11 @@ Portée : la liste « À corriger par la reprise » du passage 8.
 - `npm run lint` sur `71dc3b2b` : **All files pass linting**. Aucune itération, aucun fichier modifié, rien à commiter.
 - Vert de `/develop` toujours valide sur ce code exact (`green.py check`).
 
+### Reprise 5 (2026-11-17)
+
+- `npm run lint` sur `f3069875` : **All files pass linting**. Aucune itération, rien à commiter.
+- Vert de `/develop` toujours valide sur ce code exact.
+
 ## E2E log
 
 Rejoué après la reprise 4 (ordonnée par l'humain le 2026-11-17 : tags de catégorie rétablis sauf la biologie).
@@ -1413,10 +1418,10 @@ Corps mis à jour le 2026-11-17 après la reprise 4 (tags de catégorie rétabli
 | /review-code | ok | 13 min 42 s | — | — | — | — |
 | /sonar | ok | 20 min 18 s | 5 (2 min 44 s) | 25 (38 min 56 s) | 10 (3 min 55 s) | 1 itération(s), api-mail 5B/25T |
 | /lint-angular | ok | 42 s | 2 (20 s) | 4 (2 min 13 s) | — | client-angular 2B/4T |
-| /lint-mobile | ok | 29 s | — | — | — | — |
+| /lint-mobile | ok | 24 s | — | — | — | — |
 | /e2e | ok | 22 min 40 s | — | — | — | e2e ×13 (2 h 02 min) |
 | /review | ok | 1 min 23 s | 2 (14 s) | 1 (30 s) | — | dtos-mss 1B/0T, client-angular 1B/1T |
 | /tech-writer | ok | 19 s | — | — | — | — |
 | **Total cycle** | | **1 h 13 min** | **25 (4 min 57 s)** | **59 (1 h 35 min)** | **10 (3 min 55 s)** | |
 
-Autres commandes mesurées : lint ×7 (2 min 07 s), nuget-wait ×1 (40 s)
+Autres commandes mesurées : lint ×8 (2 min 13 s), nuget-wait ×1 (40 s)
