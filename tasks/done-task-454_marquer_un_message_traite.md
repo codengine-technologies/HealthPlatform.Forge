@@ -223,7 +223,8 @@ Règles :
 | /lint-angular | ok | 9 min 19 s | 1 (22 s) | 1 (1 min 49 s) | — | 3 itération(s), client-angular 1B/1T |
 | /lint-mobile | ok | 34 s | — | — | — | — |
 | /e2e | ok | 24 min 13 s | — | — | — | e2e ×3 (22 min 57 s), 2 voies jouées : mobile 71 verts, angular 92 verts ; porte verte, parité verte |
-| **Total cycle** | | **1 h 47 min** | **15 (3 min 23 s)** | **35 (1 h 50 min)** | **4 (1 min 32 s)** | |
+| /review | ok | 2 min 08 s | 1 (2.2 s) | — | — | dtos-mss 1B/0T |
+| **Total cycle** | | **1 h 49 min** | **16 (3 min 25 s)** | **35 (1 h 50 min)** | **4 (1 min 32 s)** | |
 
 Autres commandes mesurées : lint ×8 (1 min 11 s), nuget-wait ×3 (59 s), restore ×1 (3.9 s)
 
@@ -679,6 +680,17 @@ points « même passe » corrigés, avec leurs tests et leurs preuves rouges. ap
   par le test d'intégration.
 - Après « Annuler », les clients ne réappliquent pas l'état localement : sans SSE, un détail déjà ouvert garde
   « Traité par … » jusqu'à son rechargement.
+
+### Validation finale — APPROVED
+
+- Build + tests : verts réutilisés (marqueurs) — api-mail `b7f20f06` (/sonar), client-mobile `948047a` (/develop),
+  client-angular `f0e9ee95` + arbre (/lint-angular) ; dtos-mss `47e57b7` : build rejoué, vert.
+- Diff depuis l'approbation relu : corrections Sonar (CA1826, CA1859, CA1866 justifié, CA1861) et tests de couverture
+  (gardes 400 vues rouges), lint Angular (mise en forme, JSDoc, extraction `applyPrefillThreading` sans changement
+  d'ordre). Rien de bloquant.
+- DoD : tous les points vérifiés par commande ou test ; restent au test manuel les points observables (Manual Test Plan).
+  Écart à l'US porté en arbitrage : hors ligne sans `PendingAction`.
+- E2E : vert (mobile 71/71, angular 92/92, parité verte). api-mcp : aucun impact.
 
 ## Lint log
 
