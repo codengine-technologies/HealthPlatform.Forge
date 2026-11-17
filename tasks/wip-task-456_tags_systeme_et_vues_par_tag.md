@@ -731,18 +731,17 @@ Portée : la liste « À corriger par la reprise » du passage 5.
 
 ## E2E log
 
-Rejoué après la reprise 3 (hors plafond, autorisée par l'humain). Le premier passage était rouge en voie Angular
-(E2E-TAG-002 et E2E-TAG-003) : l'aide weda2 `waitForTagView` n'analysait pas le message. Détail dans le
-`## Develop log`, § Reprise 3.
+Rejoué après la reprise 4 (ordonnée par l'humain le 2026-11-17 : tags de catégorie rétablis sauf la biologie).
+api-mail a changé (`9c6f6a43`) : les deux voies sont jouées en entier.
 
 | Voie | Jouée / réutilisée | Dépôts couverts (HEAD) | Résultat |
 |---|---|---|---|
-| mobile | réutilisée (même empreinte que le passage vert du 2026-11-17 01:43) | api-mail `b95ce350`, client-mobile `62cf9ba` | ✅ 66 verts, 0 flaky, 0 rouge, parité verte |
-| angular | jouée | api-mail `b95ce350`, client-angular `f0e9ee95` + arbre de travail (reprise 3), client-mobile/e2e `62cf9ba` | ✅ 87 verts, 0 flaky, 0 rouge, parité verte (10,3 min) |
+| mobile | jouée | api-mail `9c6f6a43`, client-mobile `71dc3b2b` | ✅ 66 verts, 0 flaky, 0 rouge, parité verte |
+| angular | jouée | api-mail `9c6f6a43`, client-angular `f0e9ee95` + arbre de travail, client-mobile/e2e `71dc3b2b` | ✅ 87 verts, 0 flaky, 0 rouge, parité verte |
 
-- **Démontage** vérifié : aucun conteneur e2e résiduel, ports libres.
-- **Écrans touchés sans spec e2e** : aucun. Les écrans de la task sont couverts par E2E-TAG-002 et E2E-TAG-003, sur
-  les deux clients.
+- **Porte** : code 0, sur le catalogue de la branche (`Api/Mail/e2e/scenarios.yml`).
+- **Démontage** vérifié : aucun conteneur e2e résiduel, ports 5052, 3993, 3465, 3143 et 47399 libres.
+- **Écrans touchés sans spec e2e** : aucun. La reprise ne touche aucun écran (côté clients, seuls un type TypeScript et un commentaire changent).
 
 **E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
 
@@ -1266,9 +1265,9 @@ commentaires sont exacts. Restent les ⚠️ et les arbitrages du passage 6, non
 | /sonar | ok | 10 min 31 s | 3 (1 min 29 s) | 15 (23 min 00 s) | 6 (2 min 22 s) | api-mail 3B/15T |
 | /lint-angular | ok | 2 min 51 s | 2 (20 s) | 4 (2 min 13 s) | — | client-angular 2B/4T |
 | /lint-mobile | ok | 29 s | — | — | — | — |
-| /e2e | ok | 11 min 36 s | — | — | — | e2e ×8 (1 h 18 min), angular rejouée verte après reprise 3, mobile réutilisée |
+| /e2e | ok | 22 min 40 s | — | — | — | e2e ×13 (2 h 02 min) |
 | /review | ok | 4 min 01 s | 2 (14 s) | 1 (30 s) | — | dtos-mss 1B/0T, client-angular 1B/1T |
 | /tech-writer | ok | 1 min 19 s | — | — | — | — |
-| **Total cycle** | | **1 h 03 min** | **18 (3 min 02 s)** | **40 (1 h 10 min)** | **6 (2 min 22 s)** | |
+| **Total cycle** | | **1 h 14 min** | **18 (3 min 02 s)** | **40 (1 h 10 min)** | **6 (2 min 22 s)** | |
 
 Autres commandes mesurées : lint ×5 (1 min 15 s), nuget-wait ×1 (40 s)
