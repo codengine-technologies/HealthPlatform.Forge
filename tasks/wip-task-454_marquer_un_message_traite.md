@@ -20,6 +20,18 @@
 > - le traitement groupé existe, mais **n'acquitte jamais de biologie** : la règle du 2026-11-11 « marquer traité fait
 >   passer l'acquittement à « Résolu » » est **retirée** (risque de résoudre en masse des résultats jamais lus).
 
+> **Décisions humaines du 2026-11-17, au `/develop`** (task-456 mergée entre-temps : vues par tag avec filtre
+> Tous / Non lus retenu par personne, badge des non lus, un tag sans message n'est pas affiché) :
+> - **Compteurs** : un **sélecteur en tête de la liste des dossiers** bascule tous les compteurs (dossiers et tags)
+>   entre **« À traiter »** (par défaut) et **« Non lus »**. *Lecture de la forge* : ce choix est retenu dans les
+>   réglages de la **personne** (`UserSetting`), comme le filtre de task-456.
+> - **Filtres** : un **3e filtre « À traiter »** s'ajoute à Tous / Non lus, dans la Boîte de réception comme dans les
+>   vues par tag, toujours retenu par personne. Il remplace la règle « les vues `tag:XXX` gardent les non traités au
+>   lieu des non lus » : un message urgent lu mais non traité se retrouve par le filtre « À traiter ».
+> - Les lignes « Ce qui est établi » sur les vues d'étiquettes (non lus seulement) et l'étape 5 du Manual Test Plan
+>   (vue « Courriers et comptes rendus », retirée par task-456) sont périmées : la vue « Biologie » et la Boîte de
+>   réception filtrée les remplacent.
+
 ## Ce qui est établi
 
 Lecture du code au 2026-11-11 :
