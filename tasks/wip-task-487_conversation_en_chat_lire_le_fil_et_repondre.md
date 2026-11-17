@@ -231,3 +231,12 @@ vrai email, sans passer par la rédaction.
 - `client-mobile` (pushed) : feat/task-487-conversation-en-chat-lire-le-fil-et — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-487-conversation-en-chat-lire-le-fil-et (depuis `develop` `14ec5c0`)
 - `dtos-mss` (branche paresseuse) : créée par `/develop` au moment où il touche le contrat
 - `client-angular` (code-only) : la forge écrit sur la branche courante de `Client/Angular/` (au /start : `feature/nova-mss-weda-integration`, arbre propre) — l'humain gère branche, commit, push, PR TFS
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-487 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 29 s | — | — | — | — |
+| **Total cycle** | | **29 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
