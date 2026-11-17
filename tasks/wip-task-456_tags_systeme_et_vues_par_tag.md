@@ -237,6 +237,10 @@ Règles :
   courante de la Boîte de réception dont un bit reste à décider **et** peut l'être.
 - **Code mort retiré** (DOD) : `AddCategoryTagsToMailAsync`, `AddDocumentCategoryTagsAsync`, `AddTagsToMailAsync`,
   `TryAddCategoryMailTagAsync`. Les tags de catégorie de document sont remplacés par les tags système.
+  > ⚠️ **Corrigé par la reprise 4 (retour humain du 2026-11-17).** Ce retrait était une erreur : seule la surcharge
+  > publique `IMailRepository.AddCategoryTagsToMailAsync` (et son double d'`Infrastructure.Mock`) était sans
+  > appelant. `AddDocumentCategoryTagsAsync` posait les tags de catégorie à l'insertion et à la promotion depuis
+  > task-344. La pose est rétablie, sans le type Bio ; voir « Reprise 4 ».
   - `MailRepositoryCategoryTagRaceTests` est retiré avec eux : la course qu'il gardait (création concurrente d'un tag
     de catégorie à l'ingestion) n'existe plus, les tags système étant posés par la migration.
   - Son invariant d'atomicité reste prouvé par `MailIngestionWriteOrderTests`, dont l'injection de panne passe de
@@ -574,6 +578,62 @@ Correctifs de la liste « À corriger par la reprise ». Chacun a été vu rouge
 - **Marqueur vert** : weda2 non re-marqué (seuls des scénarios ciblés ont tourné) ; `/review` rejouera build et
   tests sur cet arbre. Les voies complètes restent jouées par `/e2e`.
 - **Prévention** : déjà écrite, `conventions/e2e.md` § `etat-decide-a-l-analyse-attendu-cote-serveur`.
+
+### Reprise 4 (ordonnée par l'humain le 2026-11-17 — tags de catégorie rétablis sauf la biologie)
+
+Portée : la liste « À corriger par la reprise » du passage 5.
+
+- **R1 — Tags de catégorie rétablis** (api-mail, `MailRepository`) :
+  - `AddDocumentCategoryTagsAsync` (privée) rejouée dans la transaction de l'insertion (`PersistNewMailAsync`) et de
+    la promotion, au même endroit qu'avant la task ;
+  - un tag `CATEGORY` par type de document, couleur `#3B82F6`, création concurrente rattrapée par
+    `CreateTagOrReadWinnerAsync` ;
+  - le type de biologie est écarté par `SystemTagRule.IsBiology`, la règle qui décide le tag système, casse
+    indifférente ;
+  - la surcharge publique `AddCategoryTagsToMailAsync` n'est pas rétablie : elle n'avait pas d'appelant.
+  - **Test d'intégration** `TheDocumentCategoryTags_ArePosedAtInsertionAndPromotion_ButBiologyIsOnlyTheSystemTag`
+    (vraie pile HTTP, Dovecot, PostgreSQL, CDA ANS imagerie 18748-4 et microbiologie 11502-2). Il vérifie :
+    - le tag `IMAGERIE` (`CATEGORY`) est posé à l'insertion et à la promotion, et lu dans `GET …/emails/{uid}` ;
+    - le dossier `tag:IMAGERIE` est listé, et sa vue rend les deux messages ;
+    - le message de biologie porte `BIOLOGIE` (`SYSTEM`), jamais `BIO` ;
+    - aucun dossier `tag:BIO` n'est listé.
+  - **Vu rouge** : sur le code d'avant le correctif, 404 « Ce tag n'existe pas dans la boîte » (`IMAGERIE`).
+    Par mutation : exclusion de Bio retirée → `Assert.DoesNotContain` échoue sur `TagDto { Code = "BIO", Type =
+    "CATEGORY" }`. Les deux mutants ont été restaurés, puis le code recompilé.
+  - `MailRepositoryCategoryTagRaceTests` rétabli (ses deux cas de course ; le troisième, l'atomicité, reste prouvé
+    par `MailIngestionWriteOrderTests`) : vert.
+- **R2 — Migration `AddSystemTags`** : `DELETE FROM "Tags" WHERE "Type" = 'CATEGORY' AND "Code" = 'BIO'`.
+  Documentation de la migration mise à jour.
+  - **Audit 7c** : la migration a été relue. Une seule opération destructive, bornée au tag `BIO` de type `CATEGORY`,
+    avec ses poses en cascade. La descente ne la restaure pas, et sa documentation le dit.
+  - **Test** `AddSystemTagsMigrationTests` (coureur de production, base neuve sans pool). Avant la montée :
+    `BIO`, `IMAGERIE` et `CONSULTATION`, plus des poses de `BIO` et `IMAGERIE`. Après : `CONSULTATION` et
+    `IMAGERIE` restent, et seule la pose d'`IMAGERIE` reste. **Vu rouge par mutation** (ancien `DELETE` de tous
+    les `CATEGORY`) : `Expected ["CONSULTATION", "IMAGERIE"]`.
+- **R3 — Miroirs TypeScript** : `TagKind` du mobile porte `'CATEGORY'`. Le commentaire de `tagType` (weda2) est
+  aligné. Aucune logique cliente ne dépend du type, qui ne sert qu'à l'attribut `data-tag-type` : les dossiers
+  arrivent déjà ordonnés par le serveur, et `TagNameRule.KindRank` range `CATEGORY` avec les tags système.
+- **R4** : le paragraphe « Code mort retiré » est corrigé ci-dessus.
+- **Hors reprise** (décision humaine) : aucun script de repose sur les bases déjà migrées.
+- **Auto-contrôle du correctif** : la pose est écrite avant le commit de la transaction, comme avant la task. Une
+  panne pendant cette pose annule donc le message entier, ce que `MailIngestionWriteOrderTests` prouve déjà. Les
+  tags système ne dépendent pas de cette pose. La vue par tags et le compteur traitent un tag `CATEGORY` comme un
+  tag IA ou utilisateur : il est listé tant qu'il porte un message de la Boîte de réception.
+- **Test encodant l'erreur, rétabli** : `MailRepositoryTagDraftCoverageTests` (renommé par la task en
+  `…_WithoutCategoryTags`, assertion inversée) retrouve son nom et son assertion de `develop`
+  (`…PromotesContentDocumentsAndCategoryTags`, le tag Consultation est posé à la promotion). Il était le seul rouge
+  de la première suite complète. Deux commentaires devenus faux sont corrigés (`MailRepositoryBranchCoverageTests`,
+  `MailIngestionWriteOrderTests`).
+- **Build et suites** :
+  - **api-mail** : build Release 0 erreur ; suite complète verte, 8 055 tests et 16 ignorés (domaine 331,
+    infrastructure 749, application 4 263, api 1 382, intégration 1 332 + 16 ignorés). Commit `a9859b87`, poussé,
+    vert marqué ;
+  - **client-mobile** : `npm run build` vert ; 1 506 tests sur 1 506. Commit `71dc3b2b`, poussé, vert marqué ;
+  - **weda2** : seul un commentaire change, aucun build rejoué, pas de marqueur vert. `/review` rejoue son build ;
+  - **api-mcp** : `mcp_impact.py check` signale toujours l'impact de `MailController.cs`, celui de la task, déjà
+    adapté (PR #2). La reprise ne touche pas cette surface.
+- **Banc local** : cinq processus `mss.mail.api` (AppHost de l'humain) verrouillaient les binaires Debug ; build et
+  suites joués en **Release**, sans les arrêter.
 
 ## Sonar log
 
@@ -1118,7 +1178,7 @@ produit qu'aucune décision humaine ne portait. Les quatre passages de revue ne 
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 28 s | — | — | — | — |
-| /develop | ok | 2 min 52 s | 8 (37 s) | 8 (27 min 06 s) | — | api-mail 5B/5T, api-mcp 2B/2T, client-mobile 1B/1T, e2e ×1 (1 min 16 s), reprise 3 (hors plafond, humain) : helper e2e weda2 |
+| /develop | ok | 22 min 06 s | 11 (58 s) | 18 (42 min 46 s) | — | api-mail 7B/14T, api-mcp 2B/2T, client-mobile 2B/2T, e2e ×1 (1 min 16 s) |
 | /review-code | ok | 1 min 46 s | — | — | — | passage 4 APPROVED (reprise 3) |
 | /sonar | ok | 20 min 38 s | 2 (1 min 00 s) | 10 (14 min 54 s) | 4 (1 min 23 s) | 2 itération(s), api-mail 2B/10T |
 | /lint-angular | ok | 2 min 45 s | 1 (1.4 s) | 2 (56 s) | — | client-angular 1B/2T |
@@ -1126,6 +1186,6 @@ produit qu'aucune décision humaine ne portait. Les quatre passages de revue ne 
 | /e2e | ok | 11 min 36 s | — | — | — | e2e ×8 (1 h 18 min), angular rejouée verte après reprise 3, mobile réutilisée |
 | /review | ok | 4 min 01 s | 2 (14 s) | 1 (30 s) | — | dtos-mss 1B/0T, client-angular 1B/1T |
 | /tech-writer | ok | 1 min 19 s | — | — | — | — |
-| **Total cycle** | | **45 min 46 s** | **13 (1 min 53 s)** | **21 (43 min 28 s)** | **4 (1 min 23 s)** | |
+| **Total cycle** | | **1 h 05 min** | **16 (2 min 14 s)** | **31 (59 min 08 s)** | **4 (1 min 23 s)** | |
 
 Autres commandes mesurées : lint ×3 (16 s), nuget-wait ×1 (40 s)
