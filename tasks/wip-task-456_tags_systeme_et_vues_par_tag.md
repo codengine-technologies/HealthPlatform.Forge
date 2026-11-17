@@ -798,17 +798,19 @@ Portée : la liste « À corriger par la reprise » du passage 8.
 
 ## E2E log
 
-Rejoué après la reprise 4 (ordonnée par l'humain le 2026-11-17 : tags de catégorie rétablis sauf la biologie).
-api-mail a changé (`9c6f6a43`) : les deux voies sont jouées en entier.
+Rejoué après la reprise 5 (ordonnée par l'humain le 2026-11-17 : un tag sans message n'est pas affiché ; E2E-TAG-002
+passe en v2). api-mail (`9697e4f6`) et client-mobile (`f3069875`) ont changé : les deux voies sont jouées en entier.
 
 | Voie | Jouée / réutilisée | Dépôts couverts (HEAD) | Résultat |
 |---|---|---|---|
-| mobile | jouée | api-mail `9c6f6a43`, client-mobile `71dc3b2b` | ✅ 66 verts, 0 flaky, 0 rouge, parité verte |
-| angular | jouée | api-mail `9c6f6a43`, client-angular `f0e9ee95` + arbre de travail, client-mobile/e2e `71dc3b2b` | ✅ 87 verts, 0 flaky, 0 rouge, parité verte |
+| mobile | jouée | api-mail `9697e4f6`, client-mobile `f3069875` | ✅ 66 verts, 0 flaky, 0 rouge, parité verte |
+| angular | jouée | api-mail `9697e4f6`, client-angular `f0e9ee95` + arbre de travail, client-mobile/e2e `f3069875` | ✅ 87 verts, 0 flaky, 0 rouge, parité verte |
 
-- **Porte** : code 0, sur le catalogue de la branche (`Api/Mail/e2e/scenarios.yml`).
+- **Porte** : code 0, sur le catalogue de la branche. E2E-TAG-002 v2 est vert sur les deux clients.
 - **Démontage** vérifié : aucun conteneur e2e résiduel, ports 5052, 3993, 3465, 3143 et 47399 libres.
-- **Écrans touchés sans spec e2e** : aucun. La reprise ne touche aucun écran (côté clients, seuls un type TypeScript et un commentaire changent).
+- **Écrans touchés sans spec e2e** : la vue par tag mobile (relâche d'une puce disparue) est couverte par les specs
+  unitaires de `MailStateService` et `MailFolderListComponent`. Aucun scénario ne retire le dernier message d'une vue
+  par tag : suggestion de la revue, non bloquante.
 
 **E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
 
@@ -907,7 +909,7 @@ api-mail a changé (`9c6f6a43`) : les deux voies sont jouées en entier.
 | E2E-MAILBOX-007 | 1 | headless | Après un changement de boîte, l'onglet Patients ne montre plus rien de la précédente | ✅ | ✅ |
 | E2E-ERROR-001 | 1 | headless | Une erreur affiche un code et une référence à transmettre au support | ✅ | ✅ |
 | E2E-TAG-001 | 1 | headless | Choisir un tag de la boîte dans la liste, créer un tag de plusieurs mots | ✅ | ✅ |
-| E2E-TAG-002 | 1 | headless | Les tags système classent la Boîte de réception : Biologie, Patient, Pour info | ✅ | ✅ |
+| E2E-TAG-002 | 2 | headless | Les tags système classent la Boîte de réception : Biologie, Patient, Pour info | ✅ | ✅ |
 | E2E-TAG-003 | 1 | headless | Combiner deux tags et retrouver le filtre « Non lus » | ✅ | ✅ |
 
 **Divergences temporaires ouvertes** (9) :
@@ -1419,7 +1421,7 @@ Corps mis à jour le 2026-11-17 après la reprise 4 (tags de catégorie rétabli
 | /sonar | ok | 20 min 18 s | 5 (2 min 44 s) | 25 (38 min 56 s) | 10 (3 min 55 s) | 1 itération(s), api-mail 5B/25T |
 | /lint-angular | ok | 42 s | 2 (20 s) | 4 (2 min 13 s) | — | client-angular 2B/4T |
 | /lint-mobile | ok | 24 s | — | — | — | — |
-| /e2e | ok | 22 min 40 s | — | — | — | e2e ×13 (2 h 02 min) |
+| /e2e | ok | 23 min 01 s | — | — | — | e2e ×18 (2 h 47 min) |
 | /review | ok | 1 min 23 s | 2 (14 s) | 1 (30 s) | — | dtos-mss 1B/0T, client-angular 1B/1T |
 | /tech-writer | ok | 19 s | — | — | — | — |
 | **Total cycle** | | **1 h 13 min** | **25 (4 min 57 s)** | **59 (1 h 35 min)** | **10 (3 min 55 s)** | |
