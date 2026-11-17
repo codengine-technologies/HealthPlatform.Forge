@@ -1360,6 +1360,25 @@ quand le tag a disparu.
 - **approved at** : api-mail `3ee8c973`, client-mobile `f3069875`, weda2 `f0e9ee95` + arbre de travail. api-mcp
   et dtos-mss : inchangés.
 
+### Validation finale après la reprise 5 — APPROVED
+
+- **Build et tests** : vert réutilisé sur le code exact :
+  - api-mail `9697e4f6` (`/sonar`, 8 059 tests) ;
+  - client-mobile `f3069875` (`/develop`, 1 510) ;
+  - weda2 `f0e9ee95` + arbre (`/develop`, 1 743) ;
+  - api-mcp `ac959658` et dtos-mss `ea1af9f0`, inchangés.
+- **Diff depuis l'approbation** (`3ee8c973` → `9697e4f6`) : le correctif S3267 de `/sonar`. C'est un pur passage en
+  LINQ, au comportement identique (même ordre, même filtre ; `tag.Code` égal à `system.Code`) : ✅. Branches à jour
+  avec `develop`.
+- **DoD et Objectif** : la règle d'affichage des tags est amendée par la décision humaine du 2026-11-17 (Objectif,
+  section « Vues par tag »). Le reste est inchangé.
+- **Règle 1b** : `ASystemTagWithoutMail_IsNotListed_…` et `AMailboxWithoutTags_…_AndNoTagFolder`, vus rouges.
+- **E2E** : vert. Mobile 66/66, Angular 87/87, porte en code 0, E2E-TAG-002 v2 au catalogue et dans les deux
+  clients.
+- **api-mcp** : impact inchangé, déjà adapté (PR #2).
+- **PRs** : les quatre corps sont mis à jour (section « Reprise 5 », arbitrage weda2, nouveau « Parcours e2e ») ;
+  le label `awaiting-human-merge` est conservé.
+
 ## PRs
 
 Corps mis à jour le 2026-11-17 après la reprise 4 (tags de catégorie rétablis sauf la biologie).
@@ -1422,8 +1441,8 @@ Corps mis à jour le 2026-11-17 après la reprise 4 (tags de catégorie rétabli
 | /lint-angular | ok | 42 s | 2 (20 s) | 4 (2 min 13 s) | — | client-angular 2B/4T |
 | /lint-mobile | ok | 24 s | — | — | — | — |
 | /e2e | ok | 23 min 01 s | — | — | — | e2e ×18 (2 h 47 min) |
-| /review | ok | 1 min 23 s | 2 (14 s) | 1 (30 s) | — | dtos-mss 1B/0T, client-angular 1B/1T |
+| /review | ok | 50 s | 2 (14 s) | 1 (30 s) | — | dtos-mss 1B/0T, client-angular 1B/1T |
 | /tech-writer | ok | 19 s | — | — | — | — |
-| **Total cycle** | | **1 h 13 min** | **25 (4 min 57 s)** | **59 (1 h 35 min)** | **10 (3 min 55 s)** | |
+| **Total cycle** | | **1 h 12 min** | **25 (4 min 57 s)** | **59 (1 h 35 min)** | **10 (3 min 55 s)** | |
 
 Autres commandes mesurées : lint ×8 (2 min 13 s), nuget-wait ×1 (40 s)
