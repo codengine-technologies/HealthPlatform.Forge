@@ -1092,6 +1092,7 @@ appel dans `waitForTagView`.
 | /lint-mobile | ok | 16 s | — | — | — | lint propre |
 | /e2e | ok | 11 min 36 s | — | — | — | e2e ×8 (1 h 18 min), angular rejouée verte après reprise 3, mobile réutilisée |
 | /review | ok | 4 min 01 s | 2 (14 s) | 1 (30 s) | — | dtos-mss 1B/0T, client-angular 1B/1T |
-| **Total cycle** | | **44 min 27 s** | **13 (1 min 53 s)** | **21 (43 min 28 s)** | **4 (1 min 23 s)** | |
+| /tech-writer | ok | 1 min 19 s | — | — | — | — |
+| **Total cycle** | | **45 min 46 s** | **13 (1 min 53 s)** | **21 (43 min 28 s)** | **4 (1 min 23 s)** | |
 
 Autres commandes mesurées : lint ×3 (16 s), nuget-wait ×1 (40 s)

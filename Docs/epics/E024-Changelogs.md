@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques (ingénierie, backlog, dette)
 > **Vue produit** : [E024-messagerie-premium-traiter-deleguer-bouc.md](E024-messagerie-premium-traiter-deleguer-bouc.md)
-> **Dernière mise à jour** : 2026-11-16
+> **Dernière mise à jour** : 2026-11-17
 
 ---
 
@@ -233,6 +233,64 @@
   suites sur deux) ; conventions `borne-de-saisie-egale-a-la-colonne`, `base-neuve-de-test-sans-pool`,
   `unicite-garantie-par-la-base` (2), `suggestions-de-saisie-choisies-visibles` (5).
 
+### v0.5 — task-456 : tags système et vues par tag (api-mail, dtos-mss, api-mcp, client-mobile, weda2)
+
+- **PRs** : dtos-mss [#68](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/68), api-mail
+  [#372](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/372), api-mcp
+  [#2](https://github.com/codengine-technologies/HealthPlatform.Api.Mcp/pull/2), client-mobile
+  [#127](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/127). Label `awaiting-human-merge`, ordre
+  de merge dtos-mss → api-mail → api-mcp → client-mobile. client-angular est en code-only, sur la branche
+  `feature/nova-mss-weda-integration`, mêlé aux fichiers non commités de task-486.
+- **api-mail — la règle** : `SystemTagRule` (domaine) porte les quatre tags `SYSTEM` (bits Biologie 1, Patient 2,
+  Professionnel de santé 4, Pour info 8) et la décision unique `Decide(…)`.
+  - Colonne `Mails.SystemTagsDecided` : un tag est décidé une seule fois, donc un tag retiré n'est jamais reposé.
+  - Migration `20261116232800_AddSystemTags`, aux littéraux figés, avec un index partiel des messages INBOX non
+    décidés.
+- **api-mail — quand les tags sont posés** :
+  - à l'insertion, sur les en-têtes ;
+  - à la promotion, pour la biologie, par `EF.Functions.ILike` sur le type du document ;
+  - par le rattrapage `RecoverSystemTagsAsync` : verrou des lignes `Mails` du lot (`FOR UPDATE`, même ordre que la
+    promotion), insertions `unnest` en UUID v7 avec `ON CONFLICT DO NOTHING`, trace des seules poses réelles.
+  - Le rattrapage est porté par `SystemTagsRecoveryService` (lot de 200, 50 lots au plus) et
+    `SystemTagsRecoveryScheduler` (créneau Redis de 10 min, file `system-tags-recovery`), programmé à la première
+    ouverture de la boîte.
+- **api-mail — la vue par tag** : route `GET api/v1/mail/tags/emails?tag=&filter=all|unread&page=&pageSize=`
+  (intersection des tags, 404 et 400 en `ProblemDetails`).
+  - Les dossiers de tag rendent le total et les non lus ; les tags système sont toujours présents.
+  - `IsAutomatic` est rendu par les routes de liste et de message.
+  - Les anciennes routes `tags/{tagcode}/emails[/{uids}]` sont retirées, avec le code mort
+    `AddCategoryTagsToMailAsync`.
+- **dtos-mss 614.0.0** : `MailDto.IsAutomatic`, `FolderDto.TagType`, `UserSettingsDto.TagViewFilter`.
+- **api-mcp** : `ToolViews.IsVirtual` écarte les dossiers de tag de `list_folders`. Impact relevé par
+  `mcp_impact.py`, avec un faux positif de forme JSON sur une route supprimée.
+- **Clients** :
+  - weda2 : section « Tags » (tags système en tête), combinaison, filtre retenu par personne, recherche masquée en
+    vue par tag, tableau de bord en non lus ;
+  - mobile : puces de l'Accueil, vue par tag avec garde d'abandon (`tagViewAbortSeq`).
+- **Tests** :
+  - `SystemTagRuleTests` (29) ;
+  - `FolderOperationsEndToEndTests.SystemTags` (arrivée, vues, intersection, 404/400, rattrapage, promotion d'en-têtes,
+    réglage par personne, retrait par un délégataire et journal) ;
+  - `SystemTagsRecoveryRaceTests` (conflit, garde, interblocage) et `SystemTagsRecoverySchedulerTests` ;
+  - tous vus rouges par mutation (M1–M10, R1–R5, B5, T, A2, CA1862) ;
+  - scénarios **E2E-TAG-002** et **E2E-TAG-003** v1, mobile et Angular.
+- **Revue** : 4 passages de revue anticipée.
+  - Passage 1, CHANGES REQUESTED (B1–B4, S1–S6, clients C1–C3) ; passage 2, CHANGES REQUESTED (B5, interblocage né du
+    correctif S1).
+  - Passage 3 APPROVED ; reprise 3 hors plafond, autorisée par l'humain, pour l'aide e2e weda2 ; passage 4 APPROVED.
+  - Arbitrages ouverts au merge :
+    - « Pour info » et la copie cachée ;
+    - adresse de la boîte inconnue ;
+    - choix d'interface ;
+    - « Non lus » non enregistré ;
+    - le trou du filet weda2 : aucun scénario ne prouve que weda2 déclenche l'analyse.
+  - Suggestions S-1 à S-4.
+- **Sonar** : Quality Gate OK, `new_coverage` 96,7 %, 1 CA1862 corrigé (4e occurrence).
+- **E2E** : premier passage rouge en voie Angular (E2E-TAG-002 et 003 : l'aide weda2 n'analysait pas le message).
+  Après la reprise 3 : Angular 87 verts, mobile 66 verts, 0 flaky, parité verte.
+- **Pièges** : conventions `assert-all-jamais-sur-du-vide` (csharp), `spec-qui-lit-une-ligne-de-liste-cible-l-objet`
+  (angular), `etat-decide-a-l-analyse-attendu-cote-serveur` (e2e).
+
 ---
 
 ## Annexe A — Cartographie des briques applicatives
@@ -263,14 +321,22 @@
 | `api-mail/src/Api/Controllers/V1/MailController.cs` (`GET tags`) | liste des tags de la boîte | task-486 |
 | `api-mail/src/Infrastructure/Migrations/MailDb/20261116203100_WidenTagNames.cs` | `Tags.Name`/`Code` à 40 | task-486 |
 | `client-mobile` + weda2 `core/utils/tag-suggestions.util.ts` | liste de choix de la saisie d'un tag | task-486 |
+| `api-mail/src/Domain/Rules/SystemTagRule.cs` | les quatre tags système, décision unique | task-456 |
+| `api-mail/src/Infrastructure/Repositories/MailDb/MailRepository.SystemTags.cs` | pose à l'arrivée, promotion, rattrapage | task-456 |
+| `api-mail/src/Infrastructure/Migrations/MailDb/20261116232800_AddSystemTags.cs` | tags `SYSTEM`, `Mails.SystemTagsDecided` | task-456 |
+| `api-mail` `SystemTagsRecoveryService` / `SystemTagsRecoveryScheduler` | rattrapage des messages existants | task-456 |
+| `api-mail/src/Api/Controllers/V1/MailController.cs` (`GET tags/emails`) | vue paginée par tag(s), filtre | task-456 |
+| `dtos-mss` `MailDto.IsAutomatic`, `FolderDto.TagType`, `UserSettingsDto.TagViewFilter` | contrat des vues par tag | task-456 |
+| `api-mcp` `ToolViews.IsVirtual` | dossiers de tag hors de `list_folders` | task-456 |
 
 ---
 
-## Annexe B — Inventaire fonctionnel daté (2026-11-16)
+## Annexe B — Inventaire fonctionnel daté (2026-11-17)
 
-- Tasks de l'EPIC : 10 — 4 `archived` (453, 459, 466, 486), 5 `todo` (454, 456, 457, 458, 462), 1 annulée
-  (465).
-- Scénarios e2e de l'EPIC au catalogue : 4 (E2E-BIO-004, E2E-BIO-007, E2E-DETAIL-006, E2E-TAG-001).
+- Tasks de l'EPIC : 10 — 4 `archived` (453, 459, 466, 486), 1 `done` (456), 4 `todo` (454, 457, 458, 462),
+  1 annulée (465).
+- Scénarios e2e de l'EPIC au catalogue : 6 (E2E-BIO-004, E2E-BIO-007, E2E-DETAIL-006, E2E-TAG-001, E2E-TAG-002,
+  E2E-TAG-003).
 
 ---
 
@@ -279,7 +345,8 @@
 | Task | Contribution | État |
 |---|---|---|
 | task-453 | Ancrage des acquittements et du rattachement manuel à l'identité stable du document ; re-liaison ; modèle imposé aux tasks 454 à 463 | `archived` (PRs #364, #63, #123) |
-| task-459 | Bandeau « Vous avez répondu à ce message le… » : trace `MailReplies`, résumé par lecteur, `\Answered`, bandeau et icône sur les deux clients | `done` (PRs #369, #67, #125) |
+| task-459 | Bandeau « Vous avez répondu à ce message le… » : trace `MailReplies`, résumé par lecteur, `\Answered`, bandeau et icône sur les deux clients | `archived` (PRs #369, #67, #125) |
 | task-465 | Mesure de la charge et de l'usage — **annulée** le 2026-11-12 (décision humaine, reprise hors API par un cron job) | annulée (PRs #366, #64 fermées) |
-| task-466 | Date de début du suivi par boîte : seul ce qui arrive après réclame un acquittement ; socle de « À traiter » (task-454) | `done` (PRs #368, #66, #124) |
+| task-466 | Date de début du suivi par boîte : seul ce qui arrive après réclame un acquittement ; socle de « À traiter » (task-454) | `archived` (PRs #368, #66, #124) |
 | task-486 | Saisie des tags : noms de plusieurs mots (40 caractères), liste des tags de la boîte à la frappe, créations concurrentes sans doublon ; première brique des vues par tag (task-456) | `archived` (PRs #371, #126) |
+| task-456 | Tags système (Biologie, Patient, Professionnel de santé, Pour info) posés à l'arrivée et par rattrapage, vues par tag combinables en « Tous » / « Non lus », réglage par personne | `done` (PRs #68, #372, #2, #127) |
