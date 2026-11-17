@@ -732,6 +732,38 @@ Deux relecteurs indépendants ont lu **d'abord le diff de la reprise** (api-mail
     panne des réglages.
 - Les arbitrages du passage 1 restent ouverts.
 
+### Passage 3 (revue anticipée, après la reprise 2) — APPROVED
+
+Relecteur indépendant. Il a lu **d'abord le diff de la reprise 2** (api-mail `dd90c9dc..b58d71c0`, mobile
+`7e3860f..62cf9ba`) et n'y a trouvé aucune régression :
+- ordre des verrous vérifié face à la promotion, à l'ingestion et à la suppression par lot ;
+- `FOR UPDATE` tenu jusqu'au commit ;
+- `unnest` de deux `uuid[]` correct ;
+- test d'interblocage valide, ni vide ni bloquant ;
+- compteur d'abandons mobile sans effet sur la pagination, le filtre, le tirage ni C1.
+
+B5 et les défauts du passage 2 sont corrigés et prouvés. La survie de la mutation A1 est jugée acceptable : le `MailDto`
+de `GetMailAsync` ne sort par aucune route.
+
+**Approved at** :
+- api-mail `b58d71c0` ;
+- api-mcp `ac95965` ;
+- dtos-mss `ea1af9f` ;
+- client-mobile `62cf9ba` ;
+- client-angular : arbre de travail de `feature/nova-mss-weda-integration` au 2026-11-17 (fichiers listés dans les
+  reprises 1 et 2 du Develop log).
+
+#### Suggestions (non bloquantes, pour la PR)
+
+- **S-1** — Le `FOR UPDATE` du rattrapage est plus fort que nécessaire. Il bloque aussi le verrou de clé étrangère des
+  insertions enfants : un passage à « lu » ou un marquage peut attendre une promotion lourde. Une piste :
+  `FOR NO KEY UPDATE SKIP LOCKED`, avec un lot restreint aux lignes réellement verrouillées.
+- **S-2** — La promotion rattrape une violation d'unicité dans une transaction déjà annulée par PostgreSQL. Si le
+  praticien pose à la main un tag système pendant la promotion du message, la promotion échoue en `25P02` et sera
+  rejouée. Antérieur à la reprise 2. Une piste : `ON CONFLICT DO NOTHING` dans la promotion.
+- **S-3** — Dans le test de course « garde », l'absence de trace n'est pas affirmée. Le mécanisme est le même que dans
+  le cas du conflit, déjà prouvé par la mutation T.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-456 --sync` — ne pas éditer à la main)*
@@ -740,7 +772,7 @@ Deux relecteurs indépendants ont lu **d'abord le diff de la reprise** (api-mail
 |---|---|---|---|---|---|---|
 | /start | ok | 28 s | — | — | — | — |
 | /develop | ok | 11 min 56 s | 8 (37 s) | 8 (27 min 06 s) | — | api-mail 5B/5T, api-mcp 2B/2T, client-mobile 1B/1T, reprise 2 |
-| /review-code | changes | 4 min 42 s | — | — | — | reprise 2 |
-| **Total cycle** | | **17 min 07 s** | **8 (37 s)** | **8 (27 min 06 s)** | **0 (0.0 s)** | |
+| /review-code | ok | 6 min 17 s | — | — | — | — |
+| **Total cycle** | | **18 min 42 s** | **8 (37 s)** | **8 (27 min 06 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (40 s)
