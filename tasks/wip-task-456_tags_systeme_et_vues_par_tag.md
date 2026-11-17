@@ -1,7 +1,7 @@
 # todo-task-456.md — Tags système et vues par tag : biologie, patient, professionnel de santé, pour info
 
 **Repos**: api-mail, dtos-mss, client-angular, client-mobile, api-mcp
-**Reprises**: 3 (la 3e hors plafond, autorisée par l'humain le 2026-11-17, limitée au test e2e weda2)
+**Reprises**: 4 (la 3e hors plafond, autorisée par l'humain le 2026-11-17, limitée au test e2e weda2 ; la 4e ordonnée par l'humain le 2026-11-17 : tags de catégorie rétablis sauf la biologie)
 **Dependencies**: aucune
 **Epic**: E024
 
@@ -1030,6 +1030,39 @@ appel dans `waitForTagView`.
 - **E2E** : vert. Voie Angular 87/87, voie mobile réutilisée (66), parité verte.
 - **api-mcp** : impact adapté (PR #2).
 - **Diff depuis l'approbation** : aucun commit. Les branches étaient déjà à jour avec `develop`, aucune fusion.
+
+### Passage 5 (retour humain après la validation finale, 2026-11-17) — CHANGES REQUESTED
+
+> **Décision humaine du 2026-11-17.** L'humain constate la disparition des tags de classification (Consultation,
+> Courrier…) après la task. Il demande leur retour, sauf pour la biologie : « on ne garde que le tag système pour la
+> biologie ». Pas de script de repose pour les bases déjà migrées : ce sont des bases de test, des mails seront
+> réinjectés. Reprise 4, hors plafond, ordonnée par l'humain.
+
+**Cause** : le task file affirmait que `AddCategoryTagsToMailAsync` était du « code mort, sans appelant ». C'était
+faux : `AddDocumentCategoryTagsAsync` l'appelait à l'insertion et à la promotion d'un message (task-344,
+`MailRepository.cs:689` et `:819` sur `origin/develop`). `/develop` a retiré toute la chaîne, et la migration
+`AddSystemTags` a supprimé tous les tags `CATEGORY` (`DELETE FROM "Tags" WHERE "Type" = 'CATEGORY'`). C'est un choix
+produit qu'aucune décision humaine ne portait. Les quatre passages de revue ne l'ont pas relevé.
+
+#### À corriger par la reprise
+
+- **R1 — Tags de catégorie de document rétablis, sauf la biologie** (bloquant, régression produit) :
+  - rétablir leur pose dans la transaction de l'insertion et de la promotion d'un message (un tag `CATEGORY` par
+    type de document, couleur `#3B82F6`, création concurrente tolérée par `CreateTagOrReadWinnerAsync`) ;
+  - **sans** le type de biologie (`SystemTagRule.BiologyDocumentType`, casse indifférente) : la biologie n'est
+    portée que par le tag système « Biologie » ;
+  - **test d'intégration (règle 1b)**, vu rouge : un message porteur d'un document Consultation et d'un document
+    Bio porte `CONSULTATION` (type `CATEGORY`) et `BIOLOGIE` (type `SYSTEM`), jamais `BIO`. Le dossier
+    `tag:CONSULTATION` figure dans la liste des dossiers de tags, et sa vue rend le message ;
+  - rétablir le test de course `MailRepositoryCategoryTagRaceTests`, adapté à un type autre que Bio.
+- **R2 — Migration `AddSystemTags`** : le `DELETE` ne retire plus que le tag de catégorie de la biologie (`Code` =
+  `BIO`, `Type` = `CATEGORY`), avec ses poses en cascade. Les autres tags `CATEGORY` restent. Mettre à jour la
+  documentation de la migration et refaire l'audit 7c.
+- **R3 — Miroirs TypeScript** : le type de tag `CATEGORY` existe de nouveau dans les dossiers de tags. Ajouter
+  `CATEGORY` à `TagKind` (client-mobile) et au commentaire de `tagType` (weda2).
+- **R4 — Develop log** : corriger le paragraphe « Code mort retiré » (seule la surcharge publique
+  `IMailRepository.AddCategoryTagsToMailAsync`, et son double dans `Infrastructure.Mock`, étaient sans appelant).
+- **Hors reprise** : aucun script de repose des tags de catégorie sur les bases déjà migrées (décision humaine).
 
 ## PRs
 
