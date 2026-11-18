@@ -138,7 +138,8 @@ Règles :
 | /lint-angular | ok | 13 min 42 s | 1 (1 min 06 s) | 1 (6 min 28 s) | — | 1 itération(s), client-angular 1B/1T |
 | /lint-mobile | ok | 1 min 34 s | — | — | — | — |
 | /e2e | ok | 30 min 28 s | — | — | — | e2e ×5 (58 min 32 s) |
-| **Total cycle** | | **2 h 31 min** | **20 (12 min 10 s)** | **32 (1 h 40 min)** | **4 (5 min 49 s)** | |
+| /review | ok | 3 min 06 s | 1 (4.8 s) | — | — | dtos-mss 1B/0T |
+| **Total cycle** | | **2 h 34 min** | **21 (12 min 15 s)** | **32 (1 h 40 min)** | **4 (5 min 49 s)** | |
 
 Autres commandes mesurées : lint ×1 (1 min 06 s), nuget-wait ×2 (28 s), restore ×2 (15 s)
 
@@ -777,3 +778,69 @@ consigne ajoutée à `conventions/angular.md`, `liste-ordonnee-par-le-serveur` (
 
 **Approved at** : api-mail `d2a0c7a3` · client-mobile `02c9aa8` · dtos-mss `3e8bfa5` · client-angular arbre de
 travail sur `5fbc7e28` (code-only, vert marqué).
+
+### Validation finale — APPROVED (2026-11-18)
+
+- Build + tests : vert réutilisé — api-mail `45b2624a` (/sonar : 348 / 4 303 / 749 / 1 382 / 1 358, 0 échec),
+  client-mobile `02c9aa8` (/develop : 1 614/1 614), client-angular arbre sur `5fbc7e28` (/lint-angular : 12 projets,
+  11 984 tests ; build `weda2` vert, budget de bundle `mss` / `prescription` rouge antérieur) ; dtos-mss `3e8bfa5`
+  construit ici (build 0, pas de tests).
+- DOD : ✓ chaque ligne. Personnes de la boîte (`GET mailbox/people`, 403 hors boîte) ; attribution dans la base de la
+  boîte ancrée au Message-ID, migration FluentMigrator ; contrat 623.0.0 ; `MailAssigned` = 75, `MailUnassigned` = 76
+  en fin d'énumération, miroirs TypeScript ; avis adressé à la personne (`RecipientId`), prouvé sur les vrais flux ;
+  tests unitaires, d'intégration (dont 400 / 403 / 404 en problem+json), de composant, vus rouges ; E2E-ASSIGN-001 et
+  -002 v1 verts sur les deux voies. La route de la DOD (`emails/{id}/assignee`) est servie sous
+  `folders/{dossier}/emails/{id}/assignee`, comme toutes les routes de message.
+- 4a (règle 1b) : tables des passages 1 et 2, plus Q1-Q3 du `## Sonar log`.
+- 4b : `## E2E log` vert, parité verte. 4c : api-mcp, aucun impact.
+- Revue des changements postérieurs à l'approbation (`d2a0c7a3..45b2624a` api-mail ; séparation de
+  `mail-assignment.model.ts` côté weda2 ; aucun sur mobile ni dtos-mss) : ✅ refactor pur et tests, aucun constat.
+- Synchronisation : `develop` n'avait pas avancé sous les trois branches (0 commit à fusionner).
+
+## PRs
+
+- `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/70 (awaiting-human-merge)
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/374 (awaiting-human-merge)
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/129 (awaiting-human-merge)
+- `client-angular` : code-only — humain gère commit/push TFS et ouverture PR, **avant le merge de la PR api-mail** (les specs e2e E2E-ASSIGN en font partie). Branche `feature/nova-mss-weda-integration`. Liste des fichiers modifiés :
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`
+  - `front/e2e/mss-e2e/support/e2e-backend.ts`
+  - `front/libs/mss/src/core/index.ts`
+  - `front/libs/mss/src/core/models/audit.model.spec.ts`
+  - `front/libs/mss/src/core/models/audit.model.ts`
+  - `front/libs/mss/src/core/models/folder.model.ts`
+  - `front/libs/mss/src/core/models/mail-assignment.model.ts`
+  - `front/libs/mss/src/core/models/mail-event.model.ts`
+  - `front/libs/mss/src/core/models/mail.model.ts`
+  - `front/libs/mss/src/core/models/notification-payload.model.ts`
+  - `front/libs/mss/src/core/models/user-settings.model.ts`
+  - `front/libs/mss/src/core/services/mail-events-stream.service.ts`
+  - `front/libs/mss/src/core/services/mss-api.service.ts`
+  - `front/libs/mss/src/core/utils/mail-assignment.util.spec.ts`
+  - `front/libs/mss/src/core/utils/mail-assignment.util.ts`
+  - `front/libs/mss/src/features/mail/components/mail-assignee-picker/mail-assignee-picker.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-assignee-picker/mail-assignee-picker.component.scss`
+  - `front/libs/mss/src/features/mail/components/mail-assignee-picker/mail-assignee-picker.component.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-assignee-picker/mail-assignee-picker.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.component.scss`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-folder-list/mail-folder-list.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-folder-list/mail-folder-list.component.scss`
+  - `front/libs/mss/src/features/mail/components/mail-folder-list/mail-folder-list.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-folder-list/mail-folder-list.for-me.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-header/mail-header.assignment.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-header/mail-header.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-header/mail-header.component.scss`
+  - `front/libs/mss/src/features/mail/components/mail-header/mail-header.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.component.ts`
+  - `front/libs/mss/src/features/mail/mss-mail.component.html`
+  - `front/libs/mss/src/features/mail/mss-mail.component.ts`
+  - `front/libs/mss/src/features/mail/services/mail-assignment.service.spec.ts`
+  - `front/libs/mss/src/features/mail/services/mail-assignment.service.ts`
+  - `front/libs/mss/src/features/mail/services/mail-event.service.ts`
+  - `front/libs/mss/src/features/mail/services/mail-handling.service.ts`
+  - `front/libs/mss/src/features/mail/services/mail-state.service.handling.spec.ts`
+  - `front/libs/mss/src/features/mail/services/mail-state.service.ts`
+- Ordre de merge : dtos-mss, api-mail, client-mobile (règle 11 : la US entière, testée de bout en bout).
