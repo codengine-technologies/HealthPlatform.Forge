@@ -137,12 +137,12 @@ Règles :
 | /sonar | ok | 41 min 19 s | 3 (1 min 38 s) | 12 (21 min 35 s) | 4 (5 min 49 s) | 2 itération(s), api-mail 3B/12T |
 | /lint-angular | ok | 13 min 42 s | 1 (1 min 06 s) | 1 (6 min 28 s) | — | 1 itération(s), client-angular 1B/1T |
 | /lint-mobile | ok | 1 min 34 s | — | — | — | — |
-| /e2e | ok | 30 min 28 s | — | — | — | e2e ×5 (58 min 32 s) |
-| /review | ok | 3 min 06 s | 1 (4.8 s) | — | — | dtos-mss 1B/0T |
+| /e2e | ok | 30 min 28 s | — | — | — | e2e ×7 (1 h 30 min) |
+| /review | ok | 47 min 11 s | 3 (1 min 52 s) | 2 (10 min 10 s) | — | dtos-mss 1B/0T, api-mail 1B/1T, client-mobile 1B/1T, e2e ×2 (31 min 45 s), sync develop (task-487) |
 | /tech-writer | ok | 2 min 15 s | — | — | — | — |
-| **Total cycle** | | **2 h 37 min** | **21 (12 min 15 s)** | **32 (1 h 40 min)** | **4 (5 min 49 s)** | |
+| **Total cycle** | | **3 h 21 min** | **23 (14 min 02 s)** | **34 (1 h 50 min)** | **4 (5 min 49 s)** | |
 
-Autres commandes mesurées : lint ×1 (1 min 06 s), nuget-wait ×2 (28 s), restore ×2 (15 s)
+Autres commandes mesurées : lint ×2 (2 min 09 s), nuget-wait ×3 (35 s), restore ×3 (26 s)
 
 ## Develop log
 
@@ -845,3 +845,21 @@ travail sur `5fbc7e28` (code-only, vert marqué).
   - `front/libs/mss/src/features/mail/services/mail-state.service.handling.spec.ts`
   - `front/libs/mss/src/features/mail/services/mail-state.service.ts`
 - Ordre de merge : dtos-mss, api-mail, client-mobile (règle 11 : la US entière, testée de bout en bout).
+
+### Synchronisation avec develop après task-487 (2026-11-18, demande humaine)
+
+`/merge task-457 --i-tested` s'est arrêté au gate 5 : task-487 (conversation en chat) avait été mergée entre-temps,
+api-mail #374 et client-mobile #129 étaient en conflit. Synchronisation par merge (règle 4) :
+
+- dtos-mss : `origin/develop` fusionné sans conflit (`7521de3`), paquet **627.0.0** publié depuis la branche, porteur
+  des contrats de task-457 et de task-487.
+- api-mail `0ef2848a` : `Directory.Packages.props` et les `packages.lock.json` passés à 627.0.0
+  (`dotnet restore --force-evaluate`) ; `e2e/scenarios.yml` = les scénarios des deux tasks (deux ajouts en fin de
+  catalogue) ; `UseCaseFixture.cs` garde les enregistrements des deux tasks. Build 0 ; suite complète 368 / 4 346 /
+  749 / 1 382 / 1 369 (+16 ignorés), 0 échec.
+- client-mobile `11f0603` : `functional.spec.ts` (les deux blocs de scénarios), `mail-detail.component.ts` (les
+  imports des deux tasks), `mail-detail.component.scss` (les styles des deux tasks). `ng lint` propre, build 0,
+  1 679/1 679.
+- e2e rejoués en entier sur le code synchronisé : mobile 76 verts, Angular 96 verts (1 flaky : E2E-SEARCH-001), porte
+  verte, parité verte — E2E-ASSIGN-001/002 et E2E-CONV-001/002/003 verts sur les deux clients.
+- Les trois PRs : MERGEABLE, CLEAN, CI verte.
