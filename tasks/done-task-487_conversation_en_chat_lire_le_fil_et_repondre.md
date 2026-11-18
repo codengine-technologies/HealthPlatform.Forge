@@ -608,6 +608,21 @@ de `feature/nova-mss-weda-integration` au 2026-11-18 (code-only).
 - mobile : après confirmation, la réponse disparaît le temps que la copie d'Envoyés arrive (inchangé, pas une
   régression).
 
+### Validation finale (2026-11-18) — APPROVED
+
+- Build + tests : dtos-mss build ✓ ; api-mail build ✓, suite complète **0 échec** (domaine 361, infrastructure 749,
+  application 4322, api 1382, intégration 1358/1374, 16 ignorés) — `ImapSessionSweep…ConnectAsync_WhileTheSweepRuns…`
+  **inclus et vert** (joué avec `--blame-hang-timeout 10m`) : son blocage d'une heure pendant `/develop` était passager ;
+  client-mobile et client-angular : vert de `/develop` réutilisé (`3921a69e`, `5fbc7e28`, arbres inchangés).
+- Revue du diff postérieur à l'approbation (passage 3) : api-mail `34451a35` (S3604, constructeur explicite de
+  `ConversationService.Texts`) — ✅ aucun effet de comportement ; dtos-mss, client-mobile, client-angular inchangés.
+- DOD : vérifiée item par item par les passages 1 à 3 et le `## Develop log` ; « joindre un document du dossier »
+  depuis weda2 reste en arbitrage humain (point 1 de la PR).
+- Règle 1b : table comportement → test → preuve rouge du passage 1, complétée M30-M37 — inchangée.
+- E2E : `## E2E log` **vert** (mobile 73, angular 94, porte 0), E2E-CONV-001/002 v1 verts sur les deux clients.
+- api-mcp : aucun impact.
+- Arbitrages humains ouverts (7) recopiés en tête de chaque PR.
+
 ## Sonar log
 
 Projet `healthplatform-api-mail` (SonarQube 9.9.8), branche `feat/task-487-conversation-en-chat-lire-le-fil-et`.
@@ -796,6 +811,63 @@ Convention : `conventions/csharp.md` S3604 → Occurrences 6 (récidive sur du c
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
 
+## PRs
+
+- `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/71 — `awaiting-human-merge`
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/375 — `awaiting-human-merge`
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/130 — `awaiting-human-merge`
+- Ordre de merge (règle 11, US complète) : dtos-mss → api-mail → client-mobile, avec le commit TFS de weda2.
+- `client-angular` : code-only — humain gère commit/push TFS et ouverture PR. Liste des fichiers modifiés ci-dessous
+  (branche `feature/nova-mss-weda-integration`, 47 fichiers / dossiers) :
+
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`
+  - `front/e2e/mss-e2e/support/e2e-backend.ts`
+  - `front/libs/mss/src/core/services/mss-api.service.ts`
+  - `front/libs/mss/src/core/tokens/mss-sync-interval.token.ts`
+  - `front/libs/mss/src/core/utils/mail-key.util.ts`
+  - `front/libs/mss/src/core/utils/problem-details.utils.ts`
+  - `front/libs/mss/src/features/audit/mss-audit.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-compose/mail-compose.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.component.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.handled.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.on-behalf-of.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.read-receipt.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.reply-banner.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.search-highlight.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.side-panel.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.stale-content.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-header/mail-header.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-header/mail-header.component.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-header/mail-header.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.component.ts`
+  - `front/libs/mss/src/features/mail/mss-mail.component.html`
+  - `front/libs/mss/src/features/mail/mss-mail.component.ts`
+  - `front/libs/mss/src/features/mail/services/mail-state.service.ts`
+  - `front/libs/mss/src/features/settings/mss-settings.component.ts`
+  - `front/libs/mss/src/core/models/conversation.model.ts`
+  - `front/libs/mss/src/core/services/mss-api.conversation.service.spec.ts`
+  - `front/libs/mss/src/core/utils/attachment-limit.util.ts`
+  - `front/libs/mss/src/core/utils/conversation.util.spec.ts`
+  - `front/libs/mss/src/core/utils/conversation.util.ts`
+  - `front/libs/mss/src/core/utils/file-read.util.spec.ts`
+  - `front/libs/mss/src/core/utils/file-read.util.ts`
+  - `front/libs/mss/src/features/mail/components/mail-conversation/chat-bubble.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-conversation/chat-bubble.component.scss`
+  - `front/libs/mss/src/features/mail/components/mail-conversation/chat-bubble.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-conversation/chat-bubble.model.ts`
+  - `front/libs/mss/src/features/mail/components/mail-conversation/chat-bubble.utils.ts`
+  - `front/libs/mss/src/features/mail/components/mail-conversation/chat-composer.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-conversation/chat-composer.component.scss`
+  - `front/libs/mss/src/features/mail/components/mail-conversation/chat-composer.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-conversation/mail-conversation.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-conversation/mail-conversation.component.scss`
+  - `front/libs/mss/src/features/mail/components/mail-conversation/mail-conversation.component.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-conversation/mail-conversation.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.conversation.spec.ts`
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-487 --sync` — ne pas éditer à la main)*
@@ -809,6 +881,7 @@ Convention : `conventions/csharp.md` S3604 → Occurrences 6 (récidive sur du c
 | /lint-angular | ok | 1 min 27 s | — | — | — | — |
 | /lint-mobile | ok | 18 s | — | — | — | — |
 | /e2e | ok | 24 min 55 s | — | — | — | e2e ×3 (24 min 04 s) |
-| **Total cycle** | | **1 h 14 min** | **12 (3 min 12 s)** | **52 (1 h 52 min)** | **4 (1 min 35 s)** | |
+| /review | ok | 9 min 39 s | 2 (14 s) | 1 (6 min 55 s) | — | dtos-mss 1B/0T, api-mail 1B/1T |
+| **Total cycle** | | **1 h 23 min** | **14 (3 min 26 s)** | **53 (1 h 59 min)** | **4 (1 min 35 s)** | |
 
 Autres commandes mesurées : lint ×4 (24 s), nuget-wait ×1 (19 s)
