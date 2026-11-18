@@ -957,3 +957,19 @@ Convention : `conventions/csharp.md` S3604 → Occurrences 6 (récidive sur du c
 | **Total cycle** | | **1 h 18 min** | **20 (4 min 45 s)** | **63 (2 h 08 min)** | **4 (1 min 35 s)** | |
 
 Autres commandes mesurées : lint ×6 (53 s), nuget-wait ×1 (19 s)
+
+## Merged
+
+Mergé le 2026-11-18 par l'humain (`/merge task-487 --i-tested`), squash, CI `develop` verte sur les trois dépôts.
+
+| Dépôt | PR | Commit squash sur `develop` |
+|---|---|---|
+| dtos-mss | [#71](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/71) | `dbf6be1289` |
+| api-mail | [#375](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/375) | `fab760ec63` |
+| client-mobile | [#130](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/130) | `6ad9830922` |
+
+- Branches `feat/task-487-conversation-en-chat-lire-le-fil-et` supprimées (distantes et locales).
+- `client-angular` (weda2) : code-only, **non commité** sur `feature/nova-mss-weda-integration` au moment du merge ;
+  commit, push TFS et PR à la charge de l'humain. Le clone Angular n'a pas été touché.
+- Suite mss-lib entière non rejouée avant le merge (lanceur Vitest du poste en panne, voir la recette 3) : chaque spec
+  touchée était verte seule.
