@@ -10641,3 +10641,6 @@
 {"ts":"2026-11-18T03:46:10+01:00","run_id":"-","type":"cmd","task":"task-457","step":"lint-angular","repo":"client-angular","kind":"build","label":"","cwd":"Client/Angular/front","cmd":"npx nx affected -t build --base=origin/next --head=HEAD --parallel=3 --output-style=static","duration_ms":66388,"exit_code":1}
 {"ts":"2026-11-18T03:52:43+01:00","run_id":"-","type":"cmd","task":"task-457","step":"lint-angular","repo":"client-angular","kind":"test","label":"","cwd":"Client/Angular/front","cmd":"npx nx affected -t test --base=origin/next --head=HEAD --parallel=3 --skipNxCache --output-style=static","duration_ms":388156,"exit_code":0}
 {"ts":"2026-11-18T03:53:24+01:00","run_id":"-","type":"step","task":"task-457","step":"lint-angular","status":"ok","note":"","iterations":1,"duration_ms":822846}
+{"ts":"2026-11-18T03:53:42+01:00","run_id":"-","type":"step_start","task":"task-457","step":"lint-mobile"}
+{"ts":"2026-11-18T03:54:55+01:00","run_id":"-","type":"cmd","task":"task-457","step":"lint-mobile","repo":"client-mobile","kind":"lint","label":"","cwd":"Client/Mobile","cmd":"npm run lint","duration_ms":66343,"exit_code":0}
+{"ts":"2026-11-18T03:55:17+01:00","run_id":"-","type":"step","task":"task-457","step":"lint-mobile","status":"ok","note":"","iterations":0,"duration_ms":94341}

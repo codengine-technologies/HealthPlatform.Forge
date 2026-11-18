@@ -136,9 +136,10 @@ Règles :
 | /review-code | ok | 11 min 07 s | — | — | — | — |
 | /sonar | ok | 41 min 19 s | 3 (1 min 38 s) | 12 (21 min 35 s) | 4 (5 min 49 s) | 2 itération(s), api-mail 3B/12T |
 | /lint-angular | ok | 13 min 42 s | 1 (1 min 06 s) | 1 (6 min 28 s) | — | 1 itération(s), client-angular 1B/1T |
-| **Total cycle** | | **1 h 59 min** | **20 (12 min 10 s)** | **32 (1 h 40 min)** | **4 (5 min 49 s)** | |
+| /lint-mobile | ok | 1 min 34 s | — | — | — | — |
+| **Total cycle** | | **2 h 01 min** | **20 (12 min 10 s)** | **32 (1 h 40 min)** | **4 (5 min 49 s)** | |
 
-Autres commandes mesurées : nuget-wait ×2 (28 s), restore ×2 (15 s)
+Autres commandes mesurées : lint ×1 (1 min 06 s), nuget-wait ×2 (28 s), restore ×2 (15 s)
 
 ## Develop log
 
@@ -530,6 +531,13 @@ Correctif de l'itération 1 : les quatre types de task-457 (`MailAssignmentDto`,
 `MailAssignmentBulkResultDto`, `MailAssignmentNoticeDto`) sortent de `mail.model.ts` dans
 `core/models/mail-assignment.model.ts`, exporté par le barrel `core/index.ts` comme `mail.model`. Les 12 fichiers qui les
 importaient lisent le nouveau fichier (imports `type`, aucun changement de comportement). `mail.model.ts` : 478 lignes.
+
+## Lint mobile log
+
+- Branche : `feat/task-457-a-traiter-par-attribuer-un-message-dans` @ `02c9aa8`, arbre propre.
+- Baseline : `npm run lint` → « All files pass linting » (0 error, 0 warning).
+- Iterations : 0 / 5. Aucun correctif, donc aucun commit et aucun build ni test rejoués : le vert de /develop
+  (`02c9aa8` : build 0, 1 614/1 614) tient sur ce code exact (`green.py check` → 0).
 
 ## Code Review Summary
 
