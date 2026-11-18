@@ -954,7 +954,8 @@ Convention : `conventions/csharp.md` S3604 → Occurrences 6 (récidive sur du c
 | /e2e | ok | 28 min 28 s | — | — | — | e2e ×12 (1 h 28 min), rejeu après recette 3 |
 | /review | ok | 9 min 39 s | 2 (14 s) | 1 (6 min 55 s) | — | dtos-mss 1B/0T, api-mail 1B/1T |
 | /tech-writer | ok | 1 min 35 s | — | — | — | — |
-| **Total cycle** | | **1 h 18 min** | **20 (4 min 45 s)** | **63 (2 h 08 min)** | **4 (1 min 35 s)** | |
+| /merge | ok | 6 min 46 s | — | — | — | — |
+| **Total cycle** | | **1 h 25 min** | **20 (4 min 45 s)** | **63 (2 h 08 min)** | **4 (1 min 35 s)** | |
 
 Autres commandes mesurées : lint ×6 (53 s), nuget-wait ×1 (19 s)
 
