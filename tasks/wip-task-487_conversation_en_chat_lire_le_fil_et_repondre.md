@@ -575,6 +575,39 @@ toléré une fois en récidive) et demandé la reprise 2.
 - Défauts réels du passage 2 corrigés dans la même passe : `HasRichContent` compte les lignes du corps hors signature
   (un tableau dans un PS coupe la bulle) ; weda2 : `downloadError` remis à zéro au changement de fil.
 
+### Passage 3 (revue anticipée, après la reprise 2) — APPROVED
+
+Relecteur indépendant, diff de la reprise 2 lu d'abord. api-mcp : aucun impact.
+
+**approved at** : dtos-mss `1e4c449` ; api-mail `7f80eaf8` ; client-mobile `3921a69` ; client-angular : arbre de travail
+de `feature/nova-mss-weda-integration` au 2026-11-18 (code-only).
+
+- R1 (récidive de B2) : **corrigé** — signature numérotée hors citation, seule la première fermée retenue, fin avant
+  l'historique ; cas tracés (marque ouverte puis parent signé, fin dans la citation, en-têtes Outlook, conteneurs
+  imbriqués, deux ouvertures) : rien de non vérifié n'est replié.
+- R2 (weda2) : **corrigé**. R3 (mobile) : **corrigé**. `ReadAt`, `HasRichContent`, `downloadError`, garde R2 mobile :
+  **corrigés**.
+- Règle 1b : rien de nouveau n'est atteignable par une route sans test d'intégration vu rouge (table du Develop log,
+  M30-M37). Règle 14 : imputation inchangée.
+
+#### Arbitrage humain (ajout du passage 3)
+
+- **Réponse abandonnée sans le dire** : si le médecin change de fil (ou ouvre « Vue email ») pendant la relecture qui
+  précède l'envoi, rien ne part (correctif R2), mais la saisie et la bulle « envoi… » disparaissent sans message. Choix
+  produit : envoyer quand même au fil d'origine (destinataires relus, sans rien écrire dans la vue), ou le dire et rendre
+  le brouillon. Recommandation : le dire et rendre le brouillon.
+
+#### Suggestions (non bloquantes)
+
+- mobile : l'identification d'une réponse en attente compare le texte à tout le corps, citation comprise, liste du plus
+  ancien au plus récent ; préférer « commence par le texte saisi » et une date de création postérieure à l'envoi.
+- mobile : `loadFirstPage` revérifie `seq` après l'attente de `pending-emails` (changement de route dans la même page).
+- mobile : la réconciliation après un 202 sort du `try` de `post` (une exception marquerait « erreur » une réponse déjà
+  en file, et « Réessayer » la doublerait).
+- weda2 : garde `seq` sur l'erreur de téléchargement (erreur tardive affichée dans le fil suivant).
+- mobile : après confirmation, la réponse disparaît le temps que la copie d'Envoyés arrive (inchangé, pas une
+  régression).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-487 --sync` — ne pas éditer à la main)*
@@ -583,7 +616,7 @@ toléré une fois en récidive) et demandé la reprise 2.
 |---|---|---|---|---|---|---|
 | /start | ok | 29 s | — | — | — | — |
 | /develop | ok | 14 min 37 s | 10 (1 min 27 s) | 42 (1 h 35 min) | — | dtos-mss 1B/0T, api-mail 9B/42T, reprise 2 |
-| /review-code | failed | 9 min 25 s | — | — | — | B2 revenu (R1), R2, R3 |
-| **Total cycle** | | **24 min 32 s** | **10 (1 min 27 s)** | **42 (1 h 35 min)** | **0 (0.0 s)** | |
+| /review-code | ok | 8 min 26 s | — | — | — | — |
+| **Total cycle** | | **23 min 32 s** | **10 (1 min 27 s)** | **42 (1 h 35 min)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (19 s)
