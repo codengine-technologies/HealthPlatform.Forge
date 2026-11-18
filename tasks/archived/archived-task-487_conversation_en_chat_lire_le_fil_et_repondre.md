@@ -950,6 +950,8 @@ texte cité et la signature »).
   voies e2e (ports occupés par l'environnement de recette). Lint, build, 1679/1679.
 - weda2 : `chat-bubble.component.{html,scss,ts}` et la spec de la vue chat (39/39), non commités.
 - Tests vus rouges avant le correctif (mobile et weda2 : texte présent, pas d'`aria-label`, toggle hors du texte).
+- weda2, décision humaine du même jour : le fil revient en **colonne centrée** (`max-width: 880px`, `margin: 0 auto`
+  sur `.chat-thread`), qui avait été retirée à la recette 2 ; la saisie reste pleine largeur. Non commité.
 
 ## Timings
 
