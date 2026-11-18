@@ -417,6 +417,24 @@ brut » change le corpus Thunderbird (aucune signature) et la plateforme (marque
 Tests : domaine 18 (Conversation), application 112 (Conversation), intégration 9/9 (`ConversationEndToEndTests`) ; mobile
 1644/1644 deux fois ; weda2 mss-lib 1842/1842, weda2 2683/2683.
 
+### Reprise 2 après /review (règle 13 relevée le 2026-11-18)
+
+| Constat | Correctif | Test | Preuve rouge |
+|---|---|---|---|
+| **R1 (récidive de B2)** PS masqué quand la réponse et le parent cité sont signés, ou sans marque de fin | `ConversationText` : chaque signature de la réponse (marques de la plateforme, `moz-signature`, `gmail_signature`) reçoit un numéro, **hors citation** ; seule la **première signature fermée** est retenue ; une marque d'ouverture sans fermeture ne donne aucune signature. `ConversationQuoteSplitter` : la signature doit se terminer avant l'historique (`range.End <= bodyEnd`) | corpus `signed-both` (réponse Thunderbird signée + PS + parent signé par la plateforme) ; `Text_AnUnclosedSignatureMarker_HasNoKnownSignature` ; `Text_ASignatureInsideTheQuote_IsNotTheReplySignature` ; intégration `UnverifiedTextIsNeverFolded_…` étendu (même forme, lue dans la réponse réelle) | les trois tests unitaires et le corpus rouges avant correctif ; mutation M37 (les trois gardes retirées) rouge (`Sub-string not found`). M35 (une seule garde retirée) survit : les gardes se recouvrent, c'est voulu |
+| `HasRichContent` aveugle à un tableau écrit après la signature | `ConversationSplit.Shows(line)` : une ligne est montrée si elle est avant l'historique et hors signature | `Get_ATableAfterTheSignature_MakesTheBubbleRich` ; intégration (tableau dans le PS du cas `signed-both`) | rouge avant correctif (`Assert.True() Failure`) ; mutation M36 rouge |
+| `ReadAt` sur la date d'en-tête étiquetée UTC (liste du passage 1) | la date d'arrivée UTC seulement | — (la date d'arrivée est toujours écrite par l'ingestion : le repli était mort) | non applicable |
+| **R2 (weda2)** réponse partie vers un fil quitté | `send` capture le fil, ses destinataires et `loadSeq` ; la relecture d'avant envoi n'écrit et n'envoie rien si le fil a changé ; `transmit(reply, target)` n'envoie qu'à sa cible | `ouvrir un autre fil pendant la relecture d'avant envoi : rien ne part, rien n'est écrit dans le nouveau fil` | rouge (`replyToConversation` appelé) ; mutation du filtre `loadSeq` rouge |
+| weda2 : `downloadError` survit au changement de fil | `reset()` l'efface | `l'échec de téléchargement d'un fil ne s'affiche pas dans le fil suivant` | rouge |
+| **R3 (mobile)** « prêt à partir » retiré sans confirmation | la bulle n'est retirée que lorsque l'envoi en attente qui lui correspond (objet « RE: … » + texte saisi, lu par `pending-emails`) a disparu ; non identifiable → gardée ; « envoyé » gardé jusqu'à la bulle du serveur de même Message-ID | `R3 — a page 1 reload keeps an unconfirmed « prêt à partir » bubble…` (remplace le test qui affirmait le défaut), `R3 — coming back from /pending-emails without confirming…`, `R3 — a reply that pending-emails does not reliably identify is kept`, `R3 — a sent reply stays until the server bubble…` | rouges sur 7f0ae07 ; mutations rouges |
+| mobile : garde R2 | `send` capture l'identifiant et les destinataires ; rien ne part si la route a changé | `R2 — when the route changes during the pre-send reload, nothing is posted` | rouge |
+
+Tests : api-mail domaine 361, infrastructure 749, application 4322, api 1382, intégration 1357/1373 (16 ignorés),
+**0 échec** — suite jouée en excluant seulement `ImapSessionSweepIntegrationTests.ConnectAsync_WhileTheSweepRunsDuringTheConnection_OpensTheSessionAsync`,
+qui bloque une heure (code non modifié par la task : `ImapService` et le service de connexion identiques à `develop`) ;
+vert api-mail non marqué pour cette raison. Mobile 1648/1648 deux fois ; weda2 mss-lib 1844/1844, weda2 2683/2683.
+Commits : api-mail `7f80eaf8`, client-mobile `3921a69`.
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -564,8 +582,8 @@ toléré une fois en récidive) et demandé la reprise 2.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 29 s | — | — | — | — |
-| /develop | ok | 1 h 29 min | 9 (1 min 16 s) | 32 (1 h 27 min) | — | dtos-mss 1B/0T, api-mail 8B/32T, reprise 1 |
+| /develop | ok | 14 min 37 s | 10 (1 min 27 s) | 42 (1 h 35 min) | — | dtos-mss 1B/0T, api-mail 9B/42T, reprise 2 |
 | /review-code | failed | 9 min 25 s | — | — | — | B2 revenu (R1), R2, R3 |
-| **Total cycle** | | **1 h 39 min** | **9 (1 min 16 s)** | **32 (1 h 27 min)** | **0 (0.0 s)** | |
+| **Total cycle** | | **24 min 32 s** | **10 (1 min 27 s)** | **42 (1 h 35 min)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (19 s)
