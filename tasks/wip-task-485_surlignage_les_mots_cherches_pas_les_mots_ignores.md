@@ -161,6 +161,38 @@ réellement cherchés**, et la phrase entière quand il l'a trouvée telle quell
 - weda2 : `nx test weda2` 107 fichiers verts, `nx build weda2` OK (dépassements de budget déjà présents : 2,40 Mo,
   `mss-contacts.component.scss`) ; ESLint et prettier propres. Vert client-angular marqué.
 
+## Code Review Summary
+
+### Passage 1 (revue anticipée) — APPROVED
+
+Relecteur indépendant (sous-agent, code et US seulement). **approved at** : api-mail `28ce310f` (catalogue seul) ;
+client-angular : arbre de travail de `feature/nova-mss-weda-integration` (HEAD `c434dd3e`) au 2026-11-19 (code-only).
+
+- **Règle 1b** : aucun comportement atteignable par une route ne change (api-mail : catalogue e2e seulement).
+- **api-mcp** : aucun impact (`mcp_impact.py check` → 0).
+- **DoD, scénario** : E2E-SEARCH-015 v1 au catalogue, même version dans la spec weda2 (`scenario('E2E-SEARCH-015', 1)`).
+- **Revue** : règles 1, 2, 3, 5 respectées ; liste des mots vides identique à `SearchQueryHelper.StopWords` ; constantes
+  alignées sur le serveur (3 caractères, 3 mots ignorés) ; les extraits des résultats ne changent pas
+  (`mail-search-results.component.ts` n'utilise que `highlightSegments` sur les positions du serveur) ; aucun HTML reçu
+  injecté. Cas vérifiés : un bloc ne relie que deux mots cherchés, un mot ignoré n'entre jamais en morceau, « Clinique
+  du Clinique » → deux blocs, trois mots cherchés à la suite → un bloc, ordre inverse lié.
+
+#### Suggestions (non bloquantes)
+
+- **Ligatures** (antérieur, task-446) : `foldChar` ne décompose pas « œ », « æ », que le serveur écrit « oe », « ae » :
+  « oedeme » trouve « œdème » mais ne le surligne pas (« œdème », « cœur », « œsophage » sont courants). Recopier la
+  table `Ligatures` de `SearchTerms` ; test « oedeme » → « Œdème ». **Recommandé en task séparée.**
+- Plafond `MaxSearchTerms` (10 mots) non appliqué au surlignage : un 11ᵉ mot serait surligné sans avoir été cherché.
+- Saisie en forme décomposée (NFD) découpée avant repliement : `query.normalize('NFC')` avant le découpage.
+- Garde de l'écart (`^[^\p{L}\p{N}]` / `[^\p{L}\p{N}]$`) jamais testée : cas « ere » au milieu de « Belvédère »
+  juste après un pont.
+- Pas de bloc à travers deux nœuds HTML (« Clinique <b>du</b> Belvédère » → deux surlignages, « du » non surligné) :
+  limite à documenter.
+- Règle 4, noms des pièces jointes : aucun surlignage n'existe aujourd'hui sur ces noms dans le détail ; rien à changer
+  (« là où le surlignage existe »), à savoir pour la recette.
+- E2E-SEARCH-015 : la prémisse lit une ligne générique (`MAIL_ROW`) ; l'assertion principale (exactement
+  `['Clinique du Belvédère']`) ne peut pas mentir. Durcissement possible : chercher la ligne dans les résultats.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-485 --sync` — ne pas éditer à la main)*
@@ -169,4 +201,5 @@ réellement cherchés**, et la phrase entière quand il l'a trouvée telle quell
 |---|---|---|---|---|---|---|
 | /start | ok | 17 s | — | — | — | — |
 | /develop | ok | 1 h 12 min | — | — | — | — |
-| **Total cycle** | | **1 h 12 min** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /review-code | ok | 3 min 14 s | — | — | — | — |
+| **Total cycle** | | **1 h 15 min** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
