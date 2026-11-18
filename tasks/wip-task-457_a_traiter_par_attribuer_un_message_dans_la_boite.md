@@ -135,7 +135,8 @@ Règles :
 | /develop | ok | 52 min 03 s | 16 (9 min 25 s) | 19 (1 h 12 min) | — | api-mail 9B/9T, client-angular 3B/6T, client-mobile 4B/4T, reprise 1 |
 | /review-code | ok | 11 min 07 s | — | — | — | — |
 | /sonar | ok | 41 min 19 s | 3 (1 min 38 s) | 12 (21 min 35 s) | 4 (5 min 49 s) | 2 itération(s), api-mail 3B/12T |
-| **Total cycle** | | **1 h 46 min** | **19 (11 min 03 s)** | **31 (1 h 33 min)** | **4 (5 min 49 s)** | |
+| /lint-angular | ok | 13 min 42 s | 1 (1 min 06 s) | 1 (6 min 28 s) | — | 1 itération(s), client-angular 1B/1T |
+| **Total cycle** | | **1 h 59 min** | **20 (12 min 10 s)** | **32 (1 h 40 min)** | **4 (5 min 49 s)** | |
 
 Autres commandes mesurées : nuget-wait ×2 (28 s), restore ×2 (15 s)
 
@@ -498,6 +499,37 @@ Baseline : la dernière analyse sur ce serveur (2026-11-13, `b87aa7cf`, task-459
 Le +1 code smell n'est pas attribué : la branche porte aussi les commits de `develop` postérieurs à la baseline
 (task-454 notamment), et aucun constat restant n'est sur une ligne de la task (`git blame`). Bugs, vulnérabilités et
 notes D (fiabilité, sécurité) : constats d'autres tasks, inchangés par celle-ci.
+
+## Lint log
+
+- Mode : affected (npx nx affected -t lint --base=origin/next --head=HEAD --projects=tag:scope:mss)
+- Scope : tag:scope:mss (default — `mss`, `mss-lib`, `mss-e2e`) ; aucun override `**LintBase**` / `**LintProjects**`
+- Pipeline fidelity : same commands as Client/Angular/azure-pipelines.yml (Stage 2 CI),
+  with two intentional divergences :
+  1. BASE_BRANCH default = origin/next (active TFS branch, not pipeline's origin/master fallback)
+  2. Lint scoped to tag:scope:mss (the pipeline lints every affected project)
+  Build/test stay un-scoped to catch downstream regressions.
+- Arbre : branche `feature/nova-mss-weda-integration` @ `5fbc7e28` (code-only, rien de commité). Le `git fetch origin
+  next` a échoué sur l'authentification TFS (invite de mot de passe impossible) : `origin/next` local, tel quel.
+- Comptage : `npx eslint libs/mss apps/mss e2e/mss-e2e --format json` (contournement de task-367, comme task-454).
+- Baseline : 0 errors / 100 warnings (75 `jsdoc/require-example`, 22 `max-lines`, 3 `complexity`)
+- Final    : 0 errors / 99 warnings (75 `jsdoc/require-example`, 21 `max-lines`, 3 `complexity` — tous antérieurs,
+  aucun sur une ligne de la task)
+- Iterations : 1 / 5
+- Build / tests : ✓ tests 12 projets, 11 984 tests, 0 échec. Build : `weda2` et deux autres projets verts ;
+  `mss:build:production` et `prescription:build:production` rouges sur le budget de bundle initial, rouge connu,
+  antérieur à la task (déjà noté par task-454). Vert marqué (`green.py mark --by lint-angular`).
+
+| Iter | Errors before | Errors after | Warnings before | Warnings after | Build | Tests |
+|------|---------------|--------------|-----------------|----------------|-------|-------|
+| 1 — `max-lines` de la task : `mail.model.ts` passé de 472 à 521 lignes par les types « À traiter par » | 0 | 0 | 100 | 99 | ✓ ¹ | ✓ |
+
+¹ Hors budget de bundle initial de `mss` / `prescription`, antérieur.
+
+Correctif de l'itération 1 : les quatre types de task-457 (`MailAssignmentDto`, `MailboxPersonDto`,
+`MailAssignmentBulkResultDto`, `MailAssignmentNoticeDto`) sortent de `mail.model.ts` dans
+`core/models/mail-assignment.model.ts`, exporté par le barrel `core/index.ts` comme `mail.model`. Les 12 fichiers qui les
+importaient lisent le nouveau fichier (imports `type`, aucun changement de comportement). `mail.model.ts` : 478 lignes.
 
 ## Code Review Summary
 
