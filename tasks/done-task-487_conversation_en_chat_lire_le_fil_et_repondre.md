@@ -496,10 +496,12 @@ de E2E-CONV-002 (`catalogue-edite-sans-son-test`, nouvelle) ; E2E-CONV-003 mobil
 Suites : mobile lint, build, 1650/1650 ; weda2 2683/2683 ; mss-lib 1844/1848 au dernier passage collecté (les 4 rouges
 corrigés depuis, specs vertes une à une), puis lanceur Vitest en panne (« reading 'config' » / « initTestEnvironment »,
 mémoire `vitest-mss-lanceur-instable-ngmodule`). À 13:16, `mail-list.component.spec.ts` 14/14 (correctif d'assertion de
-date vérifié) et `mail-conversation.component.spec.ts` 39/39. **Restent à rejouer** : la mutation du défilement
-(lanceur retombé en panne aussitôt après, 24 essais), la suite mss-lib entière, et les deux voies e2e — ces dernières
-attendent l'arrêt de l'environnement de recette, qui occupe les ports (un premier essai de la voie Angular a joué
-contre lui : sans valeur). Commits : mobile `b05dbfa`, `5e7a739` ; api-mail `3d924a0e`, `721e0bc1` ; weda2 non commité.
+date vérifié) et `mail-conversation.component.spec.ts` 39/39. Mutation du défilement **obtenue** après les voies e2e : `followEnd` sans
+`isAtEnd()` → rouge (`expected 300 to be 800`), restauré 39/39. Voies e2e **vertes** après l'arrêt de l'environnement de recette (mobile 74,
+angular 95, porte 0 ; un premier essai de la voie Angular avait joué contre lui : sans valeur). La suite mss-lib
+entière n'a pas pu être rejouée (lanceur Vitest en panne, 167 fichiers rouges en bloc à la collecte) : chaque spec
+touchée est verte seule, et le dernier passage collecté (1 844/1 848) n'avait que les 4 rouges corrigés depuis.
+Vert weda2 **non marqué** pour cette raison : `/review` rejouera la suite. Commits : mobile `b05dbfa`, `5e7a739` ; api-mail `3d924a0e`, `721e0bc1` ; weda2 non commité.
 
 ## Code Review Summary
 
@@ -745,17 +747,17 @@ Convention : `conventions/csharp.md` S3604 → Occurrences 6 (récidive sur du c
 
 ## E2E log
 
-> **Rejoué le 2026-11-18 après les correctifs de recette** (note à soi-même, auteur sur chaque bulle, pleine largeur).
-> Le passage précédent (api-mail `34451a35`, client-mobile `3921a69e`) était vert lui aussi : 73 / 94.
+> **Rejoué le 2026-11-18 après la recette 3** (vue chat et mode Conversation, bouton au survol, défilement), sur
+> l'environnement de recette arrêté. Passages précédents : 73 / 94 verts (`34451a35`, puis `60593b22`).
 
 | Voie | Jouée / réutilisée | Code | Résultat | HEAD couverts |
 |---|---|---|---|---|
-| mobile (`npm run e2e:headless`) | jouée | 0 | 73 verts, 0 flaky, 0 rouge, 0 sauté ; parité de la colonne verte | api-mail `60593b22`, client-mobile `aad4c829` |
-| angular (`npm run e2e:mss`) | jouée | 0 | 94 verts, 0 flaky, 0 rouge, 0 sauté ; parité de la colonne verte | api-mail `60593b22`, weda2 arbre de travail (code-only), orchestrateur mobile `aad4c829` |
+| mobile (`npm run e2e:headless`) | jouée | 0 | 74 verts, 0 flaky, 0 rouge, 0 sauté ; parité de la colonne verte | api-mail `721e0bc1`, client-mobile `5e7a7390` |
+| angular (`npm run e2e:mss`) | jouée | 0 | 95 verts, 0 flaky, 0 rouge, 0 sauté ; parité de la colonne verte | api-mail `721e0bc1`, weda2 arbre de travail (code-only), orchestrateur mobile `5e7a7390` |
 | porte (`gate`) | — | 0 | vert | catalogue de la branche api-mail |
 
 - Démontage : complet (ports 5052, 8100, 4200, 3993, 3465, 3143 libres ; aucun conteneur e2e en marche).
-- Parcours de la task : E2E-CONV-001 et E2E-CONV-002 (v1) joués et verts sur les deux clients.
+- Parcours de la task : E2E-CONV-001, E2E-CONV-002 et E2E-CONV-003 (v1) joués et verts sur les deux clients.
 - Écrans modifiés sans spec e2e modifié : aucun.
 
 **E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
@@ -864,6 +866,7 @@ Convention : `conventions/csharp.md` S3604 → Occurrences 6 (récidive sur du c
 | E2E-SHARED-003 | 1 | headless | Le délégataire traite un message, le titulaire le voit traité « par » le délégataire | ✅ | ✅ |
 | E2E-CONV-001 | 1 | headless | Lire un fil en vue chat et y répondre en une ligne, à tous les participants | ✅ | ✅ |
 | E2E-CONV-002 | 1 | headless | Joindre un fichier depuis la vue chat | ✅ | ✅ |
+| E2E-CONV-003 | 1 | headless | La vue chat s'ouvre d'elle-même sur un fil engagé, et n'existe qu'en mode Conversation | ✅ | ✅ |
 
 **Divergences temporaires ouvertes** (9) :
 
@@ -943,14 +946,14 @@ Convention : `conventions/csharp.md` S3604 → Occurrences 6 (récidive sur du c
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 29 s | — | — | — | — |
-| /develop | ok | 4 min 23 s | 15 (2 min 38 s) | 51 (1 h 45 min) | — | dtos-mss 1B/0T, api-mail 13B/48T, client-mobile 1B/2T, client-angular 0B/1T, recette : auteur sur chaque bulle, pleine largeur |
+| /develop | ok | 4 min 23 s | 16 (2 min 46 s) | 52 (1 h 45 min) | — | dtos-mss 1B/0T, api-mail 13B/48T, client-mobile 2B/3T, client-angular 0B/1T, recette : auteur sur chaque bulle, pleine largeur |
 | /review-code | ok | 8 min 26 s | — | — | — | — |
 | /sonar | ok | 23 min 47 s | 2 (1 min 45 s) | 10 (16 min 11 s) | 4 (1 min 35 s) | 2 itération(s), api-mail 2B/10T |
 | /lint-angular | ok | 1 min 27 s | — | — | — | — |
 | /lint-mobile | ok | 18 s | — | — | — | — |
-| /e2e | ok | 24 min 36 s | — | — | — | e2e ×6 (48 min 11 s), rejeu après correctifs de recette |
+| /e2e | ok | 28 min 28 s | — | — | — | e2e ×12 (1 h 28 min), rejeu après recette 3 |
 | /review | ok | 9 min 39 s | 2 (14 s) | 1 (6 min 55 s) | — | dtos-mss 1B/0T, api-mail 1B/1T |
 | /tech-writer | ok | 1 min 35 s | — | — | — | — |
-| **Total cycle** | | **1 h 14 min** | **19 (4 min 37 s)** | **62 (2 h 08 min)** | **4 (1 min 35 s)** | |
+| **Total cycle** | | **1 h 18 min** | **20 (4 min 45 s)** | **63 (2 h 08 min)** | **4 (1 min 35 s)** | |
 
-Autres commandes mesurées : lint ×5 (47 s), nuget-wait ×1 (19 s)
+Autres commandes mesurées : lint ×6 (53 s), nuget-wait ×1 (19 s)
