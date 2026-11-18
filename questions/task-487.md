@@ -1,3 +1,5 @@
+> **Résolu le 2026-11-18** — l'humain a relevé la règle 13 (5 reprises, un bloquant toléré une fois en récidive) et demandé la reprise 2.
+
 # task-487 — revue anticipée, passage 2 : un bloquant revenu après la reprise
 
 **Étape** : /review --code (passage 2, après la reprise 1). **Chaîne arrêtée** (règle 13 : un bloquant qui revient après

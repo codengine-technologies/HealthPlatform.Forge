@@ -1,7 +1,7 @@
 # todo-task-487.md — Conversation en chat : lire le fil et répondre
 
 **Repos**: api-mail, dtos-mss, client-mobile, client-angular
-**Reprises**: 1
+**Reprises**: 2
 **Dependencies**: none
 **Epic**: E024
 **Priorité**: EPIC E024, demandée par l'humain le 2026-11-17. Un échange entre confrères se lit aujourd'hui message
@@ -537,6 +537,25 @@ arrête la chaîne ») s'applique, même si la reprise 2 reste permise par le pl
   « inconnu » à tort ; une exception de `OpenAsync` fait encore tomber la requête.
 - weda2 : `downloadError` survit à `reset()` (l'erreur d'un fil s'affiche dans le suivant).
 - mobile : relecture et pastille retirent aussi les bulles « envoyé » pas encore relues du serveur (elles réapparaissent).
+
+#### À corriger par la reprise (passage 2, après relèvement de la règle 13 le 2026-11-18)
+
+La chaîne avait été arrêtée par l'ancienne règle de récidive ; l'humain a relevé la règle 13 (5 reprises, un bloquant
+toléré une fois en récidive) et demandé la reprise 2.
+
+- **R1 (récidive de B2)** — signature : ne retenir que la **première** suite de lignes de signature, **hors citation**
+  (profondeur de citation 0), et seulement si elle **se termine avant l'historique** ; une marque d'ouverture sans
+  fermeture ne replie rien. Corpus : un cas où la réponse **et** le parent cité sont signés (marques de la plateforme et
+  `moz-signature`), avec un PS entre la signature et la citation. Test d'intégration vu rouge sur la même forme.
+- **R2 (weda2)** — l'envoi capture le fil ouvert, ses destinataires et le numéro de chargement ; la relecture d'avant
+  envoi n'écrit rien et n'envoie rien si le fil a changé (ou si la vue email a été ouverte). Même garde sur mobile
+  (`send` → `post` : identifiant du fil revérifié).
+- **R3 (mobile)** — une bulle « prêt à partir » n'est retirée qu'une fois l'envoi en attente parti ou abandonné (liste
+  `pending-emails`), jamais par une simple relecture de la page 1 ; les bulles « envoyé » restent jusqu'à ce que la bulle
+  du serveur les relaie. Corriger le test qui affirmait le défaut.
+- **`ReadAt`** (liste du passage 1, oublié) — l'instant de lecture vient de la date d'arrivée (UTC) seulement.
+- Défauts réels du passage 2 corrigés dans la même passe : `HasRichContent` compte les lignes du corps hors signature
+  (un tableau dans un PS coupe la bulle) ; weda2 : `downloadError` remis à zéro au changement de fil.
 
 ## Timings
 
