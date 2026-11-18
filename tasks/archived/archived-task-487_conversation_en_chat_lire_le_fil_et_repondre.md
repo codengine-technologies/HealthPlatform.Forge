@@ -939,6 +939,18 @@ Convention : `conventions/csharp.md` S3604 → Occurrences 6 (récidive sur du c
   - `front/libs/mss/src/features/mail/components/mail-conversation/mail-conversation.component.ts`
   - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.conversation.spec.ts`
 
+## Correctif après merge (2026-11-18, demande humaine)
+
+« Texte cité et signature » prenait le pas sur le texte à lire : remplacé, sur les deux clients, par une icône
+discrète (chevron) à droite du texte, dans la bulle, avec libellé lecteur d'écran et infobulle (« Afficher / Masquer le
+texte cité et la signature »).
+
+- client-mobile : branche `fix/task-487-texte-cite-en-icone` (`d33c9d5`), PR
+  [#131](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/131) **en brouillon** jusqu'au rejeu des
+  voies e2e (ports occupés par l'environnement de recette). Lint, build, 1679/1679.
+- weda2 : `chat-bubble.component.{html,scss,ts}` et la spec de la vue chat (39/39), non commités.
+- Tests vus rouges avant le correctif (mobile et weda2 : texte présent, pas d'`aria-label`, toggle hors du texte).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-487 --sync` — ne pas éditer à la main)*
