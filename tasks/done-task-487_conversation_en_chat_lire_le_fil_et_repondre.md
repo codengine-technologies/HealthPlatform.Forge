@@ -466,10 +466,9 @@ Tests : weda2 mss-lib 1844/1844, weda2 2683/2683, ESLint 0 erreur (avertissement
 prettier propres ; mobile lint propre, build OK, 1648/1648. Commit mobile `aad4c82` (PR #130) ; weda2 non commité
 (code-only). Verts marqués : api-mail `60593b22`, client-mobile `aad4c829`, client-angular (arbre).
 
-**E2E à rejouer** : le rejeu des deux voies a été interrompu — l'environnement de recette de l'humain (AppHost, `ng serve`
+**E2E rejoué et vert** (voir `## E2E log`, mobile 73, angular 94, porte 0). Premier essai interrompu — l'environnement de recette de l'humain (AppHost, `ng serve`
 8100, weda2 4200, démarrés à 10:35) occupe les ports des voies e2e, qui jouaient donc contre lui (rouges E2E-SEARCH sans
-valeur). Le `## E2E log` ci-dessous date d'avant ces correctifs : les voies se rejouent une fois l'environnement de
-recette arrêté.
+valeur). Rejoué après l'arrêt de l'environnement de recette.
 
 ## Code Review Summary
 
@@ -715,16 +714,18 @@ Convention : `conventions/csharp.md` S3604 → Occurrences 6 (récidive sur du c
 
 ## E2E log
 
+> **Rejoué le 2026-11-18 après les correctifs de recette** (note à soi-même, auteur sur chaque bulle, pleine largeur).
+> Le passage précédent (api-mail `34451a35`, client-mobile `3921a69e`) était vert lui aussi : 73 / 94.
+
 | Voie | Jouée / réutilisée | Code | Résultat | HEAD couverts |
 |---|---|---|---|---|
-| mobile (`npm run e2e:headless`) | jouée | 0 | 73 verts, 0 flaky, 0 rouge, 0 sauté ; parité de la colonne verte | api-mail `34451a35`, client-mobile `3921a69e` |
-| angular (`npm run e2e:mss`) | jouée | 0 | 94 verts, 0 flaky, 0 rouge, 0 sauté ; parité de la colonne verte | api-mail `34451a35`, weda2 arbre de travail (code-only) |
+| mobile (`npm run e2e:headless`) | jouée | 0 | 73 verts, 0 flaky, 0 rouge, 0 sauté ; parité de la colonne verte | api-mail `60593b22`, client-mobile `aad4c829` |
+| angular (`npm run e2e:mss`) | jouée | 0 | 94 verts, 0 flaky, 0 rouge, 0 sauté ; parité de la colonne verte | api-mail `60593b22`, weda2 arbre de travail (code-only), orchestrateur mobile `aad4c829` |
 | porte (`gate`) | — | 0 | vert | catalogue de la branche api-mail |
 
-- Démontage : complet (ports 5052, 8100, 4200, 3993, 3465, 3143 libres ; aucun conteneur e2e en marche — deux conteneurs
-  arrêtés du 2026-10-14, sans rapport avec ce run, laissés en place).
+- Démontage : complet (ports 5052, 8100, 4200, 3993, 3465, 3143 libres ; aucun conteneur e2e en marche).
 - Parcours de la task : E2E-CONV-001 et E2E-CONV-002 (v1) joués et verts sur les deux clients.
-- Écrans modifiés sans spec e2e modifié : aucun (les specs des deux clients portent les parcours CONV).
+- Écrans modifiés sans spec e2e modifié : aucun.
 
 **E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
 
@@ -916,9 +917,9 @@ Convention : `conventions/csharp.md` S3604 → Occurrences 6 (récidive sur du c
 | /sonar | ok | 23 min 47 s | 2 (1 min 45 s) | 10 (16 min 11 s) | 4 (1 min 35 s) | 2 itération(s), api-mail 2B/10T |
 | /lint-angular | ok | 1 min 27 s | — | — | — | — |
 | /lint-mobile | ok | 18 s | — | — | — | — |
-| /e2e | skipped | 17 min 30 s | — | — | — | e2e ×3 (24 min 04 s), rejeu interrompu : environnement de recette sur les ports e2e |
+| /e2e | ok | 24 min 36 s | — | — | — | e2e ×6 (48 min 11 s), rejeu après correctifs de recette |
 | /review | ok | 9 min 39 s | 2 (14 s) | 1 (6 min 55 s) | — | dtos-mss 1B/0T, api-mail 1B/1T |
 | /tech-writer | ok | 1 min 35 s | — | — | — | — |
-| **Total cycle** | | **1 h 07 min** | **19 (4 min 37 s)** | **62 (2 h 08 min)** | **4 (1 min 35 s)** | |
+| **Total cycle** | | **1 h 14 min** | **19 (4 min 37 s)** | **62 (2 h 08 min)** | **4 (1 min 35 s)** | |
 
 Autres commandes mesurées : lint ×5 (47 s), nuget-wait ×1 (19 s)
