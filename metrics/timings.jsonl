@@ -10830,3 +10830,5 @@
 {"ts":"2026-11-19T00:17:17+01:00","run_id":"-","type":"step_start","task":"task-485","step":"lint-angular"}
 {"ts":"2026-11-19T00:17:29+01:00","run_id":"-","type":"cmd","task":"task-485","step":"lint-angular","repo":"client-angular","kind":"lint","label":"","cwd":"Client/Angular/front","cmd":"npx eslint libs/mss apps/mss e2e/mss-e2e --format json --output-file C:/Users/pasca/AppData/Local/Temp/claude/0206db1786f2c114/1582bf5b-23b4-42dd-9755-ae7537be952c/scratchpad/lint485.json","duration_ms":9751,"exit_code":0}
 {"ts":"2026-11-19T00:17:46+01:00","run_id":"-","type":"step","task":"task-485","step":"lint-angular","status":"ok","note":"","iterations":0,"duration_ms":28276}
+{"ts":"2026-11-19T00:17:59+01:00","run_id":"-","type":"step_start","task":"task-485","step":"lint-mobile"}
+{"ts":"2026-11-19T00:18:00+01:00","run_id":"-","type":"step","task":"task-485","step":"lint-mobile","status":"skipped","note":"client-mobile non touché","iterations":null,"duration_ms":847}

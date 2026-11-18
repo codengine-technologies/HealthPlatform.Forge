@@ -213,6 +213,10 @@ client-angular : arbre de travail de `feature/nova-mss-weda-integration` (HEAD `
 - L'arbre porte aussi, non commités, les correctifs d'après merge de task-487 (`chat-bubble.*`,
   `mail-conversation.component.{scss,spec.ts}`) : à commiter sur TFS par l'humain, avec ou sans task-485.
 
+## Lint mobile log
+
+- skipped — client-mobile non touché par la task (hors `**Repos**`).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-485 --sync` — ne pas éditer à la main)*
@@ -224,6 +228,7 @@ client-angular : arbre de travail de `feature/nova-mss-weda-integration` (HEAD `
 | /review-code | ok | 3 min 14 s | — | — | — | — |
 | /sonar | skipped | 0.8 s | — | — | — | api-mail : catalogue e2e (YAML) seul, aucun fichier analysé par Sonar |
 | /lint-angular | ok | 28 s | — | — | — | — |
+| /lint-mobile | skipped | 0.8 s | — | — | — | client-mobile non touché |
 | **Total cycle** | | **1 h 16 min** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×1 (9.7 s)
