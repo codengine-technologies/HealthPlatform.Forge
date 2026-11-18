@@ -863,3 +863,14 @@ api-mail #374 et client-mobile #129 étaient en conflit. Synchronisation par mer
 - e2e rejoués en entier sur le code synchronisé : mobile 76 verts, Angular 96 verts (1 flaky : E2E-SEARCH-001), porte
   verte, parité verte — E2E-ASSIGN-001/002 et E2E-CONV-001/002/003 verts sur les deux clients.
 - Les trois PRs : MERGEABLE, CLEAN, CI verte.
+
+## Merged
+
+- 2026-11-18, `/merge task-457 --i-tested` (HAG : test humain attesté), squash, dans l'ordre :
+  - dtos-mss #70 → `dcc413cd` — CI `develop` verte (https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/actions/runs/44357298523)
+  - api-mail #374 → `143563ea` — CI `develop` verte (https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/44357338260)
+  - client-mobile #129 → `881c74a3` — CI `develop` verte (https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/44357388919)
+- Branches `feat/task-457-a-traiter-par-attribuer-un-message-dans` supprimées (distantes et locales) ; clones sur `develop`.
+- Label `awaiting-human-merge` retiré des trois PRs.
+- client-angular : managed manually by the human.
+- Aucune branche staging (task lancée par `/start`, hors run `/forge`).
