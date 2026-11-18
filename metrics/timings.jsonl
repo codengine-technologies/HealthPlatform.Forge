@@ -10617,3 +10617,5 @@
 {"ts":"2026-11-18T01:11:28+01:00","run_id":"-","type":"cmd","task":"task-487","step":"develop","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test tests/mss.mail.integration.tests --filter FullyQualifiedName~ConversationEndToEndTests","duration_ms":25271,"exit_code":0}
 {"ts":"2026-11-18T01:12:00+01:00","run_id":"-","type":"cmd","task":"task-487","step":"develop","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test tests/mss.mail.integration.tests --filter FullyQualifiedName~AFarPageIsEmpty","duration_ms":17510,"exit_code":0}
 {"ts":"2026-11-18T01:26:13+01:00","run_id":"-","type":"step","task":"task-487","step":"develop","status":"ok","note":"reprise 1","iterations":null,"duration_ms":5356054}
+{"ts":"2026-11-18T01:26:26+01:00","run_id":"-","type":"step_start","task":"task-487","step":"review-code"}
+{"ts":"2026-11-18T01:35:52+01:00","run_id":"-","type":"step","task":"task-487","step":"review-code","status":"failed","note":"B2 revenu (R1), R2, R3","iterations":null,"duration_ms":565561}

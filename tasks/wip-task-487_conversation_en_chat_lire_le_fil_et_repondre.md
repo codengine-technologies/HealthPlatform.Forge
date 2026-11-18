@@ -495,6 +495,49 @@ sans le Develop log.
 - Idempotence serveur de `POST …/reply` (un « Réessayer » après un délai dépassé où le SMTP avait accepté).
 - Signature des signatures weda2 (Tiptap) non repliée : affichée, sans risque.
 
+### Passage 2 (revue anticipée, après la reprise 1) — CHANGES REQUESTED, chaîne arrêtée
+
+Relecteur indépendant, diff de la reprise lu d'abord. api-mcp : aucun impact.
+
+État des constats du passage 1 : B1 corrigé ; **B2 non corrigé en général** (R1) ; B3 corrigé ; B4 corrigé mais
+sur-corrigé (R3) ; accusés (panne, disparu), page lointaine, weda2 (téléchargement, garde, `canSend`, titre, pièce
+demandée), mobile (défilement, garde `isSplitSafe`, message réseau) corrigés ; pastille avant envoi corrigée sur mobile,
+corrigée sur weda2 mais source de R2 ; `ReadAt` non corrigé (passé en suggestion par la reprise, à tort : il était dans la
+liste « À corriger »).
+
+#### Bloquants
+
+- **R1 (serveur, retour de B2)** — `ConversationText.Build` forme une seule `SignatureRange` de la première à la dernière
+  ligne de signature de **tout** le message, citation comprise (marques de la plateforme, `moz-signature`,
+  `gmail_signature` dans le `blockquote`). Quand la réponse et le parent cité sont tous deux signés — la forme la plus
+  courante, puisque `ConversationReplyComposer` cite le HTML du parent avec ses marques — la plage dépasse le début de
+  l'historique, `after` est vide, et tout ce qui suit la signature de la réponse (un PS) est replié avec
+  `IsSafe = true`. Une marque `<!-- signature -->` sans fermeture marque aussi tout le reste du message. Le test
+  d'intégration citait un parent sans signature.
+- **R2 (weda2)** — la relecture de la page 1 avant l'envoi (`send` → `loadRecent$(…).subscribe({ complete: transmit })`)
+  échappe au `switchMap` sur la conversation ouverte et ne vérifie pas `loadSeq`. Si le médecin ouvre un autre fil
+  pendant cette relecture, l'ancienne page s'écrit dans la nouvelle vue, puis la réponse part avec le `messageId` du fil
+  B et les destinataires du fil A : l'historique cité (B) va aux correspondants de A. « Vue email » dans la même fenêtre
+  perd la réponse en silence. (Même schéma sur mobile, `send` → `post`, moins exposé : suggestion.)
+- **R3 (mobile)** — toute relecture de la page 1 retire les bulles « prêt à partir » (`queued`), y compris quand la
+  réponse n'a pas été confirmée : retour de `/pending-emails` sans confirmer, toucher de la pastille, relecture avant
+  envoi. La réponse n'est pas partie et le chat ne le dit plus (DoD : « prêt à partir » + « Confirmer avec ma carte »).
+  Le test `B4 — a page 1 reload drops a local « prêt à partir » bubble` affirme ce défaut.
+
+#### Pourquoi la chaîne s'arrête
+
+R1 est le bloquant B2 du passage 1, revenu après la reprise : la règle 13 (« un bloquant qui revient après une reprise
+arrête la chaîne ») s'applique, même si la reprise 2 reste permise par le plafond. Question écrite :
+`questions/task-487.md`.
+
+#### Suggestions (non bloquantes)
+
+- `HasRichContent` ne compte que les lignes avant la signature : un tableau dans un PS n'est pas coupé.
+- `MailExportService` rend `NotFound` pour une `ImapCommandException` (refus temporaire possible) : l'accusé serait marqué
+  « inconnu » à tort ; une exception de `OpenAsync` fait encore tomber la requête.
+- weda2 : `downloadError` survit à `reset()` (l'erreur d'un fil s'affiche dans le suivant).
+- mobile : relecture et pastille retirent aussi les bulles « envoyé » pas encore relues du serveur (elles réapparaissent).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-487 --sync` — ne pas éditer à la main)*
@@ -503,7 +546,7 @@ sans le Develop log.
 |---|---|---|---|---|---|---|
 | /start | ok | 29 s | — | — | — | — |
 | /develop | ok | 1 h 29 min | 9 (1 min 16 s) | 32 (1 h 27 min) | — | dtos-mss 1B/0T, api-mail 8B/32T, reprise 1 |
-| /review-code | changes | 9 min 44 s | — | — | — | reprise 1 |
+| /review-code | failed | 9 min 25 s | — | — | — | B2 revenu (R1), R2, R3 |
 | **Total cycle** | | **1 h 39 min** | **9 (1 min 16 s)** | **32 (1 h 27 min)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (19 s)
