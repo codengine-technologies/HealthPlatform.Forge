@@ -110,6 +110,57 @@ réellement cherchés**, et la phrase entière quand il l'a trouvée telle quell
   `feature/nova-mss-weda-integration`, arbre portant le code non commité de task-487) — l'humain gère branche, commit,
   push, PR TFS
 
+## Develop log
+
+### client-angular (weda2, code-only)
+
+- **`core/utils/text-highlight.util.ts`** :
+  - `searchTermsOf` garde les mots de 3 caractères ou plus, hors mots vides : mêmes règles que `SearchTerms.Parse`
+    (api-mail). La liste `SEARCH_STOP_WORDS` est recopiée de `SearchQueryHelper.StopWords`, source citée, même
+    découpage de lignes (`// prettier-ignore`) ; identité vérifiée par script (144 mots des deux côtés).
+  - `findTermRanges` lie d'un bloc deux mots cherchés **différents** que séparent seulement des séparateurs et au plus
+    3 mots ignorés (`bridgesTerms`, `MAX_IGNORED_WORDS_BETWEEN`), comme `SearchTextSchema.AdjacentPattern`. Un même mot
+    répété (« Hémoglobine, hémoglobine ») reste deux surlignages ; un vrai mot entre deux mots cherchés coupe le bloc.
+  - Le calcul est le même pour l'objet, le corps texte, le corps HTML, le document médical et les noms de pièces : tous
+    passent par `searchTermsOf` puis `findTermRanges` / `highlightHtml`.
+- **Tests** (Vitest, lancés **via PowerShell** : depuis Git Bash, le lanceur échoue en bloc, mémoire
+  `vitest-mss-lanceur-instable-ngmodule`) :
+  - `text-highlight.util.spec.ts` : 24/24, dont 9 tests de task-485 (bloc « Clinique du Belvédère », « du » seul ou
+    dans un mot, mot de 2 caractères, « kaliémie » dans « hypokaliémie », vrai mot entre deux mots cherchés, un seul
+    vrai mot, au plus 3 mots ignorés, recherche faite de mots ignorés, accents et casse, corps HTML). Le test
+    « Catherine BERNARD » attend désormais un seul bloc (changement voulu, règle 2).
+  - `mail-body.component.spec.ts` (22/22) : corps HTML et document médical surlignent le bloc, aucun « du » isolé.
+  - `mail-detail.search-highlight.spec.ts` (5/5) : seuls « Clinique », « Belvédère » sont transmis au corps ; l'objet
+    surligne le bloc.
+  - Suite mss-lib complète : 174 fichiers, **1 889/1 889**.
+- **Preuves rouges** :
+  - 7 tests de l'utilitaire rouges avant le correctif ; les deux tests de composant rouges sur l'utilitaire d'avant
+    (version TFS de `HEAD`), verts sur le correctif.
+  - Mutations (`mutate_highlight.py`) : M1 3 → 2 mots ignorés, M2 longueur 3 → 2, M3 mots vides oubliés, M4 un même mot
+    se lie, M6 aucun bloc : **tuées**. M5 (tout mot de l'écart réputé ignoré) **survivait** — le seul test « vrai mot »
+    avait 4 mots dans l'écart, coupé par la limite de 3 ; test « un seul vrai mot » ajouté (« Clinique Pasteur du
+    Belvédère »), M5 **tuée** ensuite.
+
+### api-mail
+
+- Catalogue : **E2E-SEARCH-015** v1 (angular requis ; mobile non-applicable, raison au catalogue), après
+  E2E-SEARCH-012 ; `ScenarioCatalogTests` 17/17 avant le push (consigne `catalogue-edite-sans-son-test`). Commit
+  `28ce310f`. Aucun code serveur modifié.
+
+### E2E
+
+- Scénario implémenté dans `e2e/mss-e2e/specs/functional.e2e.ts` : message déposé hors de l'application (corps texte
+  « Mode de sortie : Clinique du Belvédère », « produits », « durant », « état du périnée »), recherche « Clinique du
+  Belvédère », résultat ouvert ; les surlignages du corps sont exactement `['Clinique du Belvédère']`.
+- **Preuve rouge (trou du filet)** sur le banc `--serve-only`, weda2 servi avec l'utilitaire d'avant (version TFS de
+  `HEAD`) : rouge sur l'assertion du surlignage, 7 marques (`du`, `Clinique`, `du`, `Belvédère`, `du`, `du`, `du`).
+  Correctif restauré, recompilation : **vert deux fois**. Démontage complet (ports libres, aucun conteneur).
+- Défaut de mon test trouvé en route : la prémisse lisait `isVisible()` aussitôt après la réponse de recherche (rouge
+  sans rapport avec le code, message pourtant à l'écran) ; attente du rendu ajoutée, convention
+  `attendre-le-rendu-apres-la-reponse` créée dans `conventions/e2e.md`. Ligne « Trous du filet » ajoutée.
+- weda2 : `nx test weda2` 107 fichiers verts, `nx build weda2` OK (dépassements de budget déjà présents : 2,40 Mo,
+  `mss-contacts.component.scss`) ; ESLint et prettier propres. Vert client-angular marqué.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-485 --sync` — ne pas éditer à la main)*
@@ -117,4 +168,5 @@ réellement cherchés**, et la phrase entière quand il l'a trouvée telle quell
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 17 s | — | — | — | — |
-| **Total cycle** | | **17 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 1 h 12 min | — | — | — | — |
+| **Total cycle** | | **1 h 12 min** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |

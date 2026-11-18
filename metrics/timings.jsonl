@@ -10821,3 +10821,5 @@
 {"ts":"2026-11-18T19:33:09+01:00","run_id":"-","type":"step","task":"task-485","step":"start","status":"skipped","note":"pré-flight refusé : client-mobile sur fix/task-487-texte-cite-en-icone","iterations":null,"duration_ms":14756}
 {"ts":"2026-11-18T22:58:34+01:00","run_id":"-","type":"step_start","task":"task-485","step":"start"}
 {"ts":"2026-11-18T22:58:52+01:00","run_id":"-","type":"step","task":"task-485","step":"start","status":"ok","note":"","iterations":null,"duration_ms":17881}
+{"ts":"2026-11-18T23:01:01+01:00","run_id":"-","type":"step_start","task":"task-485","step":"develop"}
+{"ts":"2026-11-19T00:13:05+01:00","run_id":"-","type":"step","task":"task-485","step":"develop","status":"ok","note":"","iterations":null,"duration_ms":4323730}
