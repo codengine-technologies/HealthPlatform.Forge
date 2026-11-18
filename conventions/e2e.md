@@ -242,8 +242,8 @@
   ME2 sont tombés rouges sur une autre assertion (le clic « Envoyer », le signal de la pièce), et le
   témoin restauré lui-même a échoué. **Consigne** : laisser passer ~15 s après le nouveau bundle
   avant de jouer, et toujours rejouer le témoin restauré : un témoin rouge invalide la série.
-- **Origine** : task-343, task-349, task-354, task-363, task-367, task-372 (méthode privée laissée sans appel par la mutation : TS6133, aucun bundle), task-459 (import `replySummaryText` laissé inutilisé par la mutation d'un getter weda2 : la page ne se charge plus et le test tombe sur un clic de `openFolder`, pas sur l'assertion protégée ; une mutation garde ses imports utilisés — `replySummaryText(this.mail.reply && null)`)
-- **Occurrences** : 7
+- **Origine** : task-343, task-349, task-354, task-363, task-367, task-372 (méthode privée laissée sans appel par la mutation : TS6133, aucun bundle), task-459 (import `replySummaryText` laissé inutilisé par la mutation d'un getter weda2 : la page ne se charge plus et le test tombe sur un clic de `openFolder`, pas sur l'assertion protégée ; une mutation garde ses imports utilisés — `replySummaryText(this.mail.reply && null)`), task-457 (paramètre `mail` laissé inutilisé, puis méthode privée `forMePage$` laissée sans appel : même clic de `openFolder` en échec dans la session de la délégataire, avant le geste visé ; réécrites en `void mail` et `&& Date.now() < 0`, qui gardent tout utilisé)
+- **Occurrences** : 8
 
 ### predicat-de-reponse — Un prédicat de `waitForResponse` se lit comme du code, pas comme un texte
 - **Piège** : une expression régulière littérale réécrite en ligne de commande est devenue
@@ -782,6 +782,21 @@ dépassée.
 - **Occurrences** : 4
 
 ---
+
+### personne-nommee-a-sa-session — Un délégataire rattaché par l'API n'est nommé qu'à sa première session sur la boîte
+- **Piège** : le registre enregistre le nom d'une personne quand une de ses requêtes résout son rattachement
+  (`PersonNameResolver`, dans le middleware), pas au rattachement lui-même. `attachDelegation` rattache par l'API,
+  sans ouvrir la boîte : tant que la délégataire n'a rien lu, « À traiter par » la propose par son RPPS
+  (« 90000009003 — délégataire »). Deux parcours écrits sans ce détail sont tombés au premier passage (option
+  introuvable par le nom, « Attribué à 90000009003 »).
+- **Consigne** : un parcours qui fait **nommer** une personne rattachée par l'API lui fait d'abord ouvrir la boîte dans
+  son application (`waitForInbox` mobile, `openInboxUntilRow` weda2), comme le fait l'écran après un rattachement.
+  Côté serveur, une donnée affichée qui recopie un nom (attribution, trace) lit le nom **courant** du registre pour une
+  personne encore active.
+- **Preuve** : E2E-ASSIGN-001 et 002, rouges au premier passage mobile ; le correctif serveur (nom courant) est vu
+  rouge par la mutation M16 du test d'intégration.
+- **Origine** : task-457
+- **Occurrences** : 1
 
 ## Registre des flaky
 

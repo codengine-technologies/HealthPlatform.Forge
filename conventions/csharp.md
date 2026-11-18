@@ -538,7 +538,10 @@ private Task<T> ReadCoreAsync(string key, string? correlationId, CancellationTok
 
 ## xUnit1051 — un test qui appelle une méthode à `CancellationToken` doit passer celui du contexte
 
-**Occurrences : 5** (task-459 — 7 vérifications `DidNotReceiveWithAnyArgs().X(default!, …, default)` dans trois fichiers de tests neufs, attrapées par le build ; même forme pour la quatrième fois, d'où la vérification mécanique ajoutée à `agents/develop.md` §Q 2b ; task-378 — `DidNotReceiveWithAnyArgs().TestImapConnectionAsync(default!, default, default)` dans un test d'intégration neuf : le `default` du jeton est la forme exacte de task-329, attrapée par le build avant tout commit ; task-297 le 2026-09-13 — 10 appels, CI `develop` cassée ;
+**Occurrences : 6** (task-457 — 5 vérifications `DidNotReceiveWithAnyArgs().SetAsync(default!, …, default)` et
+`PublishAsync(default!, default!, default)` dans un fichier de tests neuf, attrapées par le build : la consigne
+ci-dessous n'avait pas été relue avant d'écrire les vérifications de substituts, alors que le raccourci `Ct` était
+déjà déclaré en tête de classe ; task-459 — 7 vérifications `DidNotReceiveWithAnyArgs().X(default!, …, default)` dans trois fichiers de tests neufs, attrapées par le build ; même forme pour la quatrième fois, d'où la vérification mécanique ajoutée à `agents/develop.md` §Q 2b ; task-378 — `DidNotReceiveWithAnyArgs().TestImapConnectionAsync(default!, default, default)` dans un test d'intégration neuf : le `default` du jeton est la forme exacte de task-329, attrapée par le build avant tout commit ; task-297 le 2026-09-13 — 10 appels, CI `develop` cassée ;
 task-303 le même jour — 12 appels, attrapés avant le push ; task-329 — 3 appels
 `DidNotReceiveWithAnyArgs().SendMailAsync(default!, default)`, attrapés par le build : le
 `default` d'un `CancellationToken` dans une vérification de substitut compte aussi)
@@ -2938,3 +2941,27 @@ pose n'arrivait au journal de la boîte, et le test restait vert. La mutation «
 mutation `IsSystemAct = false` est alors rouge (4 traces sur 4).
 
 **Origine** : task-456 (/develop, mutation survivante). **Occurrences** : 1
+
+---
+
+## boite-de-test-partagee — deux tests d'intégration ne partagent pas la boîte (`userIndex`) d'une même collection
+
+**Règle** : convention de test (intégration, `UseCaseHttpHost`), invisible au compilateur, au lint et à Sonar.
+
+**Piège** (task-454, trouvé par task-457) : `StartAsync(userIndex, …)` ouvre la boîte IMAP **et** la base de l'utilisateur
+synthétique `userIndex`. `TheBulkHandling_…` et `TheToHandleCounterPageAndTagFilter_…` utilisaient tous deux `4549` :
+selon l'ordre d'exécution de la collection, le compteur « à traiter » du second comptait les six messages déposés par le
+premier (8 au lieu de 4). Vert seul, vert en revue, rouge dans la suite d'une autre task.
+
+**Consigne** :
+- Un nouveau test prend un `userIndex` **inutilisé dans tout le projet** : avant de l'écrire,
+  `grep -rhoE "45[0-9]{2}" tests/mss.mail.integration.tests --include=*.cs | sort | uniq -c` (adapter le préfixe).
+- Deux personnes de la **même** boîte (titulaire et délégataire) partagent volontairement un `userIndex` dans **un seul**
+  test ; jamais d'un test à l'autre.
+- Un test qui compte (compteur, page, total) est le premier suspect quand il rougit en collection et pas seul.
+
+**Preuve** : task-457, suite `FolderOperationsEndToEndTests` (92 tests) rouge sur le compteur (8 contre 4), verte après
+avoir donné `4553` au test du traitement groupé.
+
+**Origine** : task-457 (/develop). **Occurrences** : 1
+
