@@ -435,6 +435,42 @@ qui bloque une heure (code non modifié par la task : `ImapService` et le servic
 vert api-mail non marqué pour cette raison. Mobile 1648/1648 deux fois ; weda2 mss-lib 1844/1844, weda2 2683/2683.
 Commits : api-mail `7f80eaf8`, client-mobile `3921a69`.
 
+### Correctif de recette (2026-11-18, HAG)
+
+Constat humain en recette sur weda2 : en mode conversation, « Envoyer » reste grisé et « À : » est vide. Cause : le fil
+ne contient que des messages envoyés par la boîte **à elle-même** (note à soi-même) ; « tous les participants sauf la
+boîte » rendait une liste vide, et les deux clients désactivent l'envoi sans destinataire.
+
+| Constat | Correctif | Test | Preuve rouge |
+|---|---|---|---|
+| Fil où la boîte est seule → aucun destinataire, envoi impossible | `ConversationParticipants.Of` : quand personne d'autre que la boîte ne figure dans le fil, la réponse va à la boîte ; `HaveChanged` lit les destinataires du dernier envoi par la même règle (pas d'avertissement sur une note à soi-même) | domaine `Participants_ANoteToSelf_RepliesToTheBox_AndNothingHasChanged`, `Participants_TheBoxIsNeverAddedWhenSomeoneElseTakesPart` ; intégration `ANoteToSelf_IsAnsweredToTheBox_TheReplyIsDelivered_AndNoChangeIsSignalled` (`replyRecipients` lu dans la réponse réelle, réponse reçue par GreenMail) | domaine et intégration rouges avant correctif (`Collections differ`, `Actual: []`) ; mutation M38 (ancien `HaveChanged`) rouge (`Assert.False() Failure`) |
+
+Tests (Release — le Debug de `src/Api` est verrouillé par le backend de recette en marche) : domaine 363, infrastructure
+749, application 4322, api 1382, intégration 1359/1375 (16 ignorés), **0 échec**, `--blame-hang-timeout 10m`. Vert
+api-mail marqué (`60593b22`). Commit api-mail `60593b22`, poussé sur la PR #375.
+Limite restante (suggestion) : un fil sans aucune adresse lisible garderait « Envoyer » grisé sans explication côté
+clients.
+
+#### Recette 2 (2026-11-18, décisions humaines) — auteur sur chaque bulle, pleine largeur
+
+Demande humaine sur weda2 : « la conversation devrait utiliser tout l'espace » ; « on devrait voir au-dessus de la bulle
+qui a répondu, et pour le texte envoyé par moi, “moi” en haut de la bulle ». Appliqué aux **deux clients** (parité de
+l'US) ; la largeur ne concerne que weda2 (le mobile est déjà plein écran).
+
+| Changement | Code | Test | Preuve rouge |
+|---|---|---|---|
+| Nom de l'expéditeur au-dessus de **chaque** bulle reçue (avant : seulement à plus de deux personnes) ; « Moi » au-dessus des bulles de la personne courante et de la réponse en cours d'envoi ; l'auteur réel d'une autre personne de la boîte inchangé | weda2 `chat-bubble.utils.ts` (`senderLabelOf`, `OWN_LABEL`, `participantCount` retiré du contexte) ; mobile `conversation-chat.page.ts` (`senderNameOf`, `OWN_LABEL`) | weda2 `mail-conversation.component.spec.ts` (4 tests : ordre des bulles, échange à deux, boîte partagée, envoi) ; mobile `conversation-chat.page.spec.ts` (3 tests) | weda2 4 rouges avant correctif (`expected [] to deeply equal ['Dr Moreau', 'Moi', …]`) ; mobile 3 rouges sur le code d'avant (`Expected $.length = 0 to equal 1`) |
+| Le fil occupe toute la largeur (colonne centrée de 880 px retirée) | weda2 `mail-conversation.component.scss` | visuel, au test manuel | — |
+
+Tests : weda2 mss-lib 1844/1844, weda2 2683/2683, ESLint 0 erreur (avertissement `max-lines` déjà accepté), stylelint et
+prettier propres ; mobile lint propre, build OK, 1648/1648. Commit mobile `aad4c82` (PR #130) ; weda2 non commité
+(code-only). Verts marqués : api-mail `60593b22`, client-mobile `aad4c829`, client-angular (arbre).
+
+**E2E à rejouer** : le rejeu des deux voies a été interrompu — l'environnement de recette de l'humain (AppHost, `ng serve`
+8100, weda2 4200, démarrés à 10:35) occupe les ports des voies e2e, qui jouaient donc contre lui (rouges E2E-SEARCH sans
+valeur). Le `## E2E log` ci-dessous date d'avant ces correctifs : les voies se rejouent une fois l'environnement de
+recette arrêté.
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -875,14 +911,14 @@ Convention : `conventions/csharp.md` S3604 → Occurrences 6 (récidive sur du c
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 29 s | — | — | — | — |
-| /develop | ok | 14 min 37 s | 10 (1 min 27 s) | 42 (1 h 35 min) | — | dtos-mss 1B/0T, api-mail 9B/42T, reprise 2 |
+| /develop | ok | 4 min 23 s | 15 (2 min 38 s) | 51 (1 h 45 min) | — | dtos-mss 1B/0T, api-mail 13B/48T, client-mobile 1B/2T, client-angular 0B/1T, recette : auteur sur chaque bulle, pleine largeur |
 | /review-code | ok | 8 min 26 s | — | — | — | — |
 | /sonar | ok | 23 min 47 s | 2 (1 min 45 s) | 10 (16 min 11 s) | 4 (1 min 35 s) | 2 itération(s), api-mail 2B/10T |
 | /lint-angular | ok | 1 min 27 s | — | — | — | — |
 | /lint-mobile | ok | 18 s | — | — | — | — |
-| /e2e | ok | 24 min 55 s | — | — | — | e2e ×3 (24 min 04 s) |
+| /e2e | skipped | 17 min 30 s | — | — | — | e2e ×3 (24 min 04 s), rejeu interrompu : environnement de recette sur les ports e2e |
 | /review | ok | 9 min 39 s | 2 (14 s) | 1 (6 min 55 s) | — | dtos-mss 1B/0T, api-mail 1B/1T |
 | /tech-writer | ok | 1 min 35 s | — | — | — | — |
-| **Total cycle** | | **1 h 25 min** | **14 (3 min 26 s)** | **53 (1 h 59 min)** | **4 (1 min 35 s)** | |
+| **Total cycle** | | **1 h 07 min** | **19 (4 min 37 s)** | **62 (2 h 08 min)** | **4 (1 min 35 s)** | |
 
-Autres commandes mesurées : lint ×4 (24 s), nuget-wait ×1 (19 s)
+Autres commandes mesurées : lint ×5 (47 s), nuget-wait ×1 (19 s)
