@@ -655,6 +655,13 @@ Convention : `conventions/csharp.md` S3604 → Occurrences 6 (récidive sur du c
 - Final : 0 error / 100 warnings. Itérations : 0 / 5 (rien à corriger, aucun fichier modifié).
 - Build / tests : non rejoués — arbre inchangé, vert de `/develop` toujours valide (`green.py check` : `5fbc7e28`).
 
+## Lint mobile log
+
+- Branche `feat/task-487-conversation-en-chat-lire-le-fil-et` @ `3921a69`, arbre propre.
+- Baseline : `npm run lint` (ng lint) → **All files pass linting** : 0 error / 0 warning.
+- Itérations : 0 / 5, aucun commit. Build / tests non rejoués : vert de `/develop` valide sur ce code exact
+  (`green.py check` : `3921a69e`).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-487 --sync` — ne pas éditer à la main)*
@@ -666,6 +673,7 @@ Convention : `conventions/csharp.md` S3604 → Occurrences 6 (récidive sur du c
 | /review-code | ok | 8 min 26 s | — | — | — | — |
 | /sonar | ok | 23 min 47 s | 2 (1 min 45 s) | 10 (16 min 11 s) | 4 (1 min 35 s) | 2 itération(s), api-mail 2B/10T |
 | /lint-angular | ok | 1 min 27 s | — | — | — | — |
-| **Total cycle** | | **48 min 48 s** | **12 (3 min 12 s)** | **52 (1 h 52 min)** | **4 (1 min 35 s)** | |
+| /lint-mobile | ok | 18 s | — | — | — | — |
+| **Total cycle** | | **49 min 07 s** | **12 (3 min 12 s)** | **52 (1 h 52 min)** | **4 (1 min 35 s)** | |
 
-Autres commandes mesurées : lint ×3 (18 s), nuget-wait ×1 (19 s)
+Autres commandes mesurées : lint ×4 (24 s), nuget-wait ×1 (19 s)
