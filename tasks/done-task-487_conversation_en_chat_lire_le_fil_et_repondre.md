@@ -882,6 +882,7 @@ Convention : `conventions/csharp.md` S3604 → Occurrences 6 (récidive sur du c
 | /lint-mobile | ok | 18 s | — | — | — | — |
 | /e2e | ok | 24 min 55 s | — | — | — | e2e ×3 (24 min 04 s) |
 | /review | ok | 9 min 39 s | 2 (14 s) | 1 (6 min 55 s) | — | dtos-mss 1B/0T, api-mail 1B/1T |
-| **Total cycle** | | **1 h 23 min** | **14 (3 min 26 s)** | **53 (1 h 59 min)** | **4 (1 min 35 s)** | |
+| /tech-writer | ok | 1 min 35 s | — | — | — | — |
+| **Total cycle** | | **1 h 25 min** | **14 (3 min 26 s)** | **53 (1 h 59 min)** | **4 (1 min 35 s)** | |
 
 Autres commandes mesurées : lint ×4 (24 s), nuget-wait ×1 (19 s)

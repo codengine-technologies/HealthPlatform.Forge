@@ -427,6 +427,59 @@
   N2 pas d'évènement en direct pour une ligne « Pour moi » d'un autre dossier ; N3 jointure sur une ancre calculée, sans index
   sur `Mails.MessageId`, à chaque `GET /folders` (à mesurer au banc) ; N4 pagination sans départage par dossier.
 
+### v0.8 — task-487 : conversation en chat, lire le fil et répondre (api-mail, dtos-mss, client-mobile, weda2)
+
+- **PRs** : dtos-mss [#71](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/71), api-mail
+  [#375](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/375), client-mobile
+  [#130](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/130). Label `awaiting-human-merge`, ordre de
+  merge dtos-mss → api-mail → client-mobile. client-angular est en code-only, sur `feature/nova-mss-weda-integration`
+  (47 fichiers ou dossiers non commités, dont les specs e2e E2E-CONV) : à commiter sur TFS avant le merge de la PR
+  api-mail. La PR api-mail compte 72 fichiers (règle 5 : ~30), dont 44 sous `tests/` ; la règle 11 interdit de la scinder.
+- **dtos-mss 621.0.0** : `MailConversationDto` (objet, patient, participants, destinataires de réponse,
+  `RecipientsChanged`, pagination `Page`/`PageSize`/`HasOlder`), `ConversationMessageDto` (sens, auteur réel, `NewText`,
+  `FullText`, `IsSplitSafe`, `HasFoldedText`, `HasRichContent`, pièces, `DeliveryState`, `ReadAt`),
+  `ConversationAttachmentDto`, `ConversationDirection`, `ConversationDeliveryState`, `ConversationAttachmentKind`,
+  `ConversationReplyRequestDto`, `ConversationReplyResultDto`.
+- **api-mail — règles** : `ConversationQuoteSplitter` (ne replie que le texte retrouvé dans le parent ; une signature
+  ne se replie que si son début et sa fin sont connus — commentaires `<!-- signature -->` de la plateforme,
+  conteneurs `moz-signature` / `gmail_signature` hors citation, la première fermée, avant l'historique),
+  `ConversationDeliveryStates` (échec > lu, le plus ancien > distribué > envoyé), `ConversationParticipants`,
+  `ThreadMessageIds` (parcours du fil par Message-ID / In-Reply-To, avec ou sans chevrons), `DeliveryReportParser`
+  (RFC 3464 et RFC 8098, rattachement par `Original-Message-ID` ou en-têtes renvoyés, repli In-Reply-To),
+  `ConversationReplyComposer` (« RE: », `References`, citation, signature, aucun `Disposition-Notification-To`).
+- **api-mail — routes et service** : `ConversationController` (`GET api/v1/mail/conversation/{messageId}`, `POST …/reply`),
+  `ConversationService`, `ConversationRepository` (fil sans brouillons, copies de réponse non synchronisées, accusés à
+  lire, `SetReportAsync`). Accusés lus à l'ouverture du fil (page 1, en ligne, 20 au plus par ouverture). Lecture des
+  reçus non lus de la page 1 par `UpdateEmailReadStatusAsync` : une trace `MailRead` par message, au nom de la personne
+  réelle. Migration `20261117221900_AddMailReportLinks` (liens des accusés vers le message envoyé, aucune donnée
+  supprimée, règle 7c relue).
+- **weda2 (code-only) et client-mobile** : vue chat (`mail-conversation` + `chat-bubble` + `chat-composer` sur weda2,
+  `conversation-chat.page` sur mobile, écran conçu avec `/stitch-design`), séparateurs de jour, texte replié, message
+  long coupé à 12 lignes, états d'envoi, pastille « nouveau message », chargement des précédents, avertissement de
+  changement de destinataires, garde IME et double envoi, réessai. Mobile : `patient-document-picker` pour joindre un
+  document du dossier.
+- **Preuves rouges (règle 1b)** : intégration `ConversationEndToEndTests` (10 tests : fil de trois messages, 404,
+  réponse composée et relue en bulle envoyée, 400, accusés distribué / lu / non distribué sans bulle, délégataire et
+  titulaire sur la même boîte, brouillons exclus, page lointaine et accusé expurgé, texte non vérifié jamais replié) ;
+  corpus anonymisé du découpage (Mailiz, Outlook, Thunderbird, Apple Mail, `>`, plateforme, signé des deux côtés) ;
+  29 mutations serveur puis M30-M37, mutations e2e mobile et weda2 (A1-A4), consignées au `## Develop log`.
+- **Cycle** : revue anticipée passage 1 CHANGES REQUESTED → reprise 1 → passage 2 CHANGES REQUESTED, B2 (signature)
+  revenu : la chaîne s'est arrêtée ; la règle 13 a été relevée le 2026-11-18 (5 reprises, un bloquant toléré une fois
+  en récidive) → reprise 2 → passage 3 APPROVED. Deux reprises.
+- **Sonar** (9.9.8) : 2 S3604 de la task corrigés (`ConversationService.Texts`, récidive : `conventions/csharp.md` → 6) ;
+  Quality Gate OK, new coverage 96,2 %, 0 constat sur le new code.
+- **Lint** : Angular 0 erreur, 1 avertissement né de la task accepté (`max-lines`, `mail-conversation.component.ts`,
+  790 lignes) ; mobile propre.
+- **E2E** : mobile 73/73, angular 94/94, 0 flaky, parité verte. Nouveaux scénarios : E2E-CONV-001, E2E-CONV-002 (v1).
+- **Timings** : 1 h 23 min mesurées sur les dernières étapes (develop de la reprise 2 15 min, sonar 24 min, e2e 25 min) ;
+  les passages précédents, avant la levée de l'arrêt, ne sont pas dans ce total.
+- **Arbitrages portés dans la PR** : joindre un document du dossier depuis weda2 (absent, task à ouvrir) ; entrée weda2
+  par bouton ; sens de l'avertissement de changement de destinataires ; coupe en lignes de texte ; réalisme du corpus ;
+  accusés reçus avant task-459 encore affichés en bulles ; réponse abandonnée sans le dire quand le fil change pendant
+  la relecture.
+- **Limites résiduelles (suggestions non bloquantes)** : accusés lus à la synchronisation plutôt qu'à l'ouverture ;
+  pagination par curseur ; idempotence serveur de `POST …/reply` ; identification mobile d'une réponse en attente.
+
 ---
 
 ## Annexe A — Cartographie des briques applicatives
@@ -476,16 +529,24 @@
 | `dtos-mss/MailAssignmentDto.cs`, `FolderDto.ForMeCount`, `AuditActionType` 75 et 76 | contrat de l'attribution | task-457 |
 | weda2 `mail-assignment.service.ts`, `mail-assignee-picker/`, `core/models/mail-assignment.model.ts` | sélecteur, vue, avis web | task-457 |
 | client-mobile `mail-assignment.service.ts`, `inbox.page.ts` (`loadNextForMePage`) | sélecteur, vue, avis mobile | task-457 |
+| `api-mail/src/Domain/Rules/ConversationQuoteSplitter.cs` | découpage sûr de la citation et de la signature | task-487 |
+| `api-mail` `ConversationDeliveryStates`, `DeliveryReportParser` | état d'envoi tiré des accusés reçus | task-487 |
+| `api-mail` `ConversationController`, `ConversationService`, `ConversationRepository`, `ThreadMessageIds` | fil, lecture, réponse | task-487 |
+| `api-mail` `ConversationReplyComposer`, `SignatureMarkers` | réponse composée par le serveur | task-487 |
+| `api-mail/src/Infrastructure/Migrations/MailDb/20261117221900_AddMailReportLinks.cs` | liens des accusés vers l'envoi | task-487 |
+| `dtos-mss/MailConversationDto.cs` | contrat de la conversation | task-487 |
+| weda2 `features/mail/components/mail-conversation/`, `core/utils/conversation.util.ts` | vue chat web | task-487 |
+| client-mobile `conversation/conversation-chat.page.*`, `patient-document-picker` | vue chat mobile | task-487 |
 
 ---
 
 ## Annexe B — Inventaire fonctionnel daté (2026-11-18)
 
-- Tasks de l'EPIC : 10 — 6 `archived` (453, 454, 456, 459, 466, 486), 1 `done` (457), 2 `todo` (458, 462),
+- Tasks de l'EPIC : 11 — 6 `archived` (453, 454, 456, 459, 466, 486), 2 `done` (457, 487), 2 `todo` (458, 462),
   1 annulée (465).
-- Scénarios e2e de l'EPIC au catalogue : 13 (E2E-BIO-004, E2E-BIO-007, E2E-DETAIL-006, E2E-TAG-001, E2E-TAG-002,
+- Scénarios e2e de l'EPIC au catalogue : 15 (E2E-BIO-004, E2E-BIO-007, E2E-DETAIL-006, E2E-TAG-001, E2E-TAG-002,
   E2E-TAG-003, E2E-TRIAGE-001, E2E-TRIAGE-002, E2E-TRIAGE-006, E2E-TRIAGE-007, E2E-SHARED-003, E2E-ASSIGN-001,
-  E2E-ASSIGN-002).
+  E2E-ASSIGN-002, E2E-CONV-001, E2E-CONV-002).
 
 ---
 
@@ -501,3 +562,4 @@
 | task-456 | Tags système (Biologie, Patient, Professionnel de santé, Pour info) posés à l'arrivée et par rattrapage, vues par tag combinables en « Tous » / « Non lus », réglage par personne | `archived` (PRs #68, #372, #2, #127) |
 | task-454 | Marquer un message traité : état partagé par la boîte (Message-ID), compteurs et filtre « À traiter », gestes naturels, bouton et balayage, « Annuler », traitement groupé sans jamais acquitter une biologie, tuile du tableau de bord | `archived` (PRs #69, #373, #128) |
 | task-457 | « À traiter par » : attribuer un message à une personne active de la boîte (Message-ID), vue et compteur « Pour moi » sur tous les dossiers, avis ciblé sur la personne, attribution groupée, imputée à l'auteur réel | `done` (PRs #70, #374, #129) |
+| task-487 | Conversation en chat : fil en bulles, découpage sûr de la citation, état d'envoi par les accusés reçus (jamais des bulles), réponse en une ligne composée par le serveur et adressée à tous les participants, lecture tracée au nom de la personne réelle | `done` (PRs #71, #375, #130) |

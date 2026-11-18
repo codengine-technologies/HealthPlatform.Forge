@@ -1,10 +1,10 @@
 # E024 — Messagerie premium : traiter, déléguer, boucler
 
-> **Statut** : 🟡 en cours — 6 features livrées et validées, 1 livrée en attente de validation (task-457),
+> **Statut** : 🟡 en cours — 6 features livrées et validées, 2 livrées en attente de validation (tasks 457, 487),
 > 2 au backlog (tasks 458, 462).
 > Le 2026-11-12, toutes les features prévues avaient
 > été retirées du backlog ; une partie y est revenue le 2026-11-13.
-> **Version** : 0.7
+> **Version** : 0.8
 > **Auteur** : PO forge (task-453)
 > **Modèle** : task-driven
 > **Dernière mise à jour** : 2026-11-18
@@ -81,6 +81,7 @@ disparaissent jamais parce que le message a été rangé ailleurs, depuis la pla
 | Tags système et vues par tag | Retrouver d'un coup d'œil la biologie, les patients, les professionnels de santé et les messages reçus pour information, par des tags posés à l'arrivée | task-456 | ✅ Livrée et validée |
 | Marquer un message traité | Voir ce qui reste à traiter, pas seulement ce qui n'est pas lu : un compteur et un filtre « À traiter », un bouton « Traité » (ou un balayage sur mobile), « Annuler » pendant 6 secondes, « Remettre à traiter ». Répondre, ranger ou rattacher un message le traite aussi. Traiter plusieurs messages d'un coup, sans jamais acquitter une biologie. Voir qui a traité et quand | task-454 | ✅ Livrée et validée |
 | « À traiter par » | Confier un message à une personne de la boîte : la choisir dans la liste des personnes rattachées et actives, avec leur rôle ; la retrouver sur la ligne (initiales) et dans le détail ; attribuer une sélection d'un coup. La personne le trouve dans sa vue « Pour moi », avec un compteur, et en est avertie ; traiter le message clôt l'attribution | task-457 | 🟢 Livrée — en attente de validation |
+| Conversation en chat | Lire un fil comme une conversation : bulles dans l'ordre, les siennes à droite, auteur réel et rôle, pièces jointes, texte cité et signature repliés seulement quand c'est sûr. Voir l'état de chaque envoi (envoyé, distribué, non distribué, lu à l'heure) sans que les accusés encombrent le fil. Répondre en une ligne à tous les participants, avec un fichier joint (et, sur mobile, un document du dossier patient) ; être averti si les destinataires ont changé | task-487 | 🟢 Livrée — en attente de validation |
 | Notes internes | Laisser sur un message une note visible des seules personnes de la boîte | task-458 | ⏳ À faire |
 | Relance sans réponse | Voir revenir un message resté sans réponse depuis plusieurs jours | task-462 | ⏳ À faire |
 
@@ -128,6 +129,11 @@ personne de la boîte : le médecin titulaire, un confrère membre, la secrétai
 apparaît dans la vue « Pour moi » de cette personne, qui en est avertie ; quand elle le traite, il en sort, et le
 détail garde « Attribué à … — traité par … ».
 
+Pour **répondre**, le praticien ouvre le fil en conversation (task-487) : il lit les échanges comme dans une
+messagerie instantanée, voit si ses envois ont été distribués et lus, et répond en une ligne à tous les participants.
+La réponse part comme un vrai courrier (objet « RE: », historique cité, signature), et répondre traite le message
+(task-454) et le signale « répondu » (task-459). Ouvrir le fil marque ses messages lus, au nom de la personne qui l'ouvre.
+
 Seuls les messages arrivés depuis la **date de début du suivi** de la boîte entrent dans ce parcours comme travail à
 faire (task-466). L'historique ramené par une première synchronisation reste consultable et s'acquitte si le
 praticien le souhaite, mais il n'encombre ni « Bio à acquitter » ni le tableau de bord.
@@ -147,6 +153,8 @@ praticien le souhaite, mais il n'encombre ni « Bio à acquitter » ni le tablea
 | Un message traité l'est pour toute la boîte | L'état « traité » appartient à la boîte : traité par une personne, il l'est pour toutes. Chacun voit « Traité par {Prénom NOM} ({rôle}) le … » avec le geste (répondu, rangé, rattaché, résultats acquittés) ; la pose et le retrait sont tracés au nom de la personne réelle. Il n'est visible que dans la plateforme, pas d'un autre logiciel de messagerie | ✅ Implémenté (task-454) |
 | On confie un message à une personne, jamais à un nom saisi | « À traiter par » ne propose que les personnes rattachées à la boîte et actives, avec leur rôle ; une seule personne à la fois, réattribuable ou retirée. Une personne qui perd l'accès n'est plus proposée, et ses attributions en cours affichent « (accès retiré) ». Traiter le message clôt l'attribution | 🟡 Implémenté, en attente de validation (task-457) |
 | Chaque attribution est imputée et ne prévient que la personne visée | Attribuer, réattribuer ou retirer est tracé au nom de la personne réelle, avec la personne attribuée ; l'avis « … vous a attribué un message » ne parvient qu'à la personne attribuée, sans contenu clinique | 🟡 Implémenté, en attente de validation (task-457) |
+| Au moindre doute, le message se montre en entier | En conversation, un texte n'est replié que s'il est retrouvé dans le message auquel il répond, et une signature seulement si son début et sa fin sont connus ; sinon la bulle montre tout le message. Masquer à tort une information médicale est pire qu'afficher un historique en trop | 🟡 Implémenté, en attente de validation (task-487) |
+| Un accusé n'est jamais un message | Les rapports de distribution et les accusés de lecture se rattachent au message envoyé et en donnent l'état (distribué, non distribué, lu à l'heure) ; ils ne deviennent jamais une bulle de la conversation | 🟡 Implémenté, en attente de validation (task-487) |
 | La date de suivi est une donnée de la boîte | Toute personne rattachée à la boîte (titulaire, membre, délégataire) peut changer la date de début du suivi ; la date ne peut pas être dans le futur, et chaque changement est tracé au nom de son auteur, avec l'ancienne et la nouvelle date | ✅ Implémenté (task-466) |
 
 ---
@@ -193,11 +201,12 @@ praticien le souhaite, mais il n'encombre ni « Bio à acquitter » ni le tablea
 | Tags système et vues par tag | ✅ Livrée et validée | 100 % | task-456 |
 | Marquer un message traité | ✅ Livrée et validée | 100 % | task-454 |
 | « À traiter par » | 🟢 Livrée — en attente de validation | 100 % livré | task-457 |
+| Conversation en chat | 🟢 Livrée — en attente de validation | 100 % livré (joindre un document du dossier depuis l'application web : en arbitrage) | task-487 |
 | Notes internes | ⏳ À faire | 0 % | task-458 |
 | Relance sans réponse | ⏳ À faire | 0 % | task-462 |
 
-**Couverture EPIC consolidée : 6 features livrées et validées sur 9 retenues**, 1 livrée en attente de
-validation (task-457), 2 au backlog.
+**Couverture EPIC consolidée : 6 features livrées et validées sur 10 retenues**, 2 livrées en attente de
+validation (tasks 457, 487), 2 au backlog.
 
 ---
 
@@ -269,6 +278,17 @@ validation (task-457), 2 au backlog.
   perdu l'accès n'est plus proposée ; ses attributions en cours affichent « (accès retiré) ». Sur l'application web
   et sur l'application mobile (task-457).
 
+- **v0.8 — Conversation en chat.** Le praticien ouvre un fil en conversation (« Voir en conversation » sur un message,
+  bouton « ouvrir en conversation » dans la liste web, toucher du fil sur mobile). Les messages s'affichent en bulles,
+  du plus ancien au plus récent, les siens à droite, avec l'auteur réel et son rôle, les séparateurs de jour, les pièces
+  jointes et les comptes rendus. Le texte cité et la signature sont repliés quand c'est sûr ; au moindre doute, la bulle
+  montre tout. « Lire le message complet » et « Vue email » restent à portée. Chaque envoi indique « envoyé »,
+  « distribué », « non distribué » ou « lu à {heure} », d'après les accusés reçus, qui n'apparaissent jamais comme des
+  messages. La saisie montre les destinataires (tous les participants du fil) et avertit s'ils ont changé ; sur le web,
+  Entrée envoie et Maj+Entrée va à la ligne ; sur mobile, la flèche envoie. On joint un fichier, ou sur mobile un
+  document du dossier patient. Ouvrir le fil marque ses messages lus. Sur l'application web et sur l'application
+  mobile (task-487).
+
 ### Conformité réglementaire
 
 - **v0.1 — Imputabilité.** Un acquittement qui revient garde l'auteur réel qui l'avait posé, délégataire compris. Le
@@ -291,6 +311,10 @@ validation (task-457), 2 au backlog.
 - **v0.7 — Attribuer est un acte tracé.** Attribuer, réattribuer ou retirer une attribution est inscrit au journal au
   nom de la personne réelle, avec la personne attribuée en objet (task-457).
 
+- **v0.8 — Lire et répondre en conversation sont des actes tracés.** Chaque message lu à l'ouverture d'un fil est
+  inscrit au journal au nom de la personne qui l'a ouvert ; la réponse est tracée au nom de la personne qui l'a écrite,
+  et sa bulle porte son nom et son rôle chez les autres personnes de la boîte (task-487).
+
 ### Sécurité
 
 - **v0.1 — Aucune perte silencieuse.** Un message supprimé pour de bon ne détruit plus la trace de prise de
@@ -301,6 +325,8 @@ validation (task-457), 2 au backlog.
 - **v0.7 — L'avis ne parvient qu'à la personne visée.** Dans une boîte partagée, l'avis d'attribution n'atteint que
   la personne attribuée, jamais les autres personnes de la boîte, et ne porte aucun contenu clinique. Seules les
   personnes actives de la boîte voient la liste des personnes et peuvent attribuer (task-457).
+- **v0.8 — Rien ne part vers le mauvais fil.** Si le praticien change de fil pendant la relecture qui précède l'envoi,
+  la réponse ne part pas ; aucune réponse ne demande d'accusé de lecture au correspondant (task-487).
 - **v0.4 — Refus lisibles.** Un nom de tag refusé (vide, trop long, caractère interdit) l'est avec un
   message en français, affiché sous le champ (task-486).
 
@@ -329,6 +355,11 @@ validation (task-457), 2 au backlog.
 - **v0.7 — L'attribution suit le message.** Elle survit à un déplacement ou à un rangement depuis un autre logiciel ;
   un message en double copie ne compte qu'une fois dans « Pour moi ». Deux parcours automatiques vérifient
   l'attribution et la vue « Pour moi » sur les deux applications (task-457).
+
+- **v0.8 — La réponse est composée par le serveur.** Objet « RE: », chaînage des références, historique cité et
+  signature sont posés par la plateforme, de sorte que la réponse se range dans le bon fil chez le correspondant,
+  quel que soit son logiciel. Deux parcours automatiques vérifient, sur les deux applications, la lecture du fil, la
+  réponse à tous les participants et l'envoi d'une pièce jointe (task-487).
 
 ---
 
