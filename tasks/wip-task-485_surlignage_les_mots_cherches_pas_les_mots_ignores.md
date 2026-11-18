@@ -193,6 +193,15 @@ client-angular : arbre de travail de `feature/nova-mss-weda-integration` (HEAD `
 - E2E-SEARCH-015 : la prémisse lit une ligne générique (`MAIL_ROW`) ; l'assertion principale (exactement
   `['Clinique du Belvédère']`) ne peut pas mentir. Durcissement possible : chercher la ligne dans les résultats.
 
+## Sonar log
+
+- **Sonar : non joué (skip mesuré)** — la seule modification d'api-mail est le catalogue e2e (`e2e/scenarios.yml`,
+  commit `28ce310f`), hors du périmètre analysé par Sonar (code C#). Une analyse ne mesurerait rien de nouveau sur ce
+  code. Aucune dette introduite côté serveur.
+- Écart au playbook, signalé : `agents/sonar.md` ne prévoit le skip que pour « aucun commit api-mail ». Suggestion :
+  étendre ce skip au cas « aucun fichier du périmètre Sonar modifié » (changement du plan de contrôle, relu par
+  l'humain avant push).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-485 --sync` — ne pas éditer à la main)*
@@ -202,4 +211,5 @@ client-angular : arbre de travail de `feature/nova-mss-weda-integration` (HEAD `
 | /start | ok | 17 s | — | — | — | — |
 | /develop | ok | 1 h 12 min | — | — | — | — |
 | /review-code | ok | 3 min 14 s | — | — | — | — |
+| /sonar | skipped | 0.8 s | — | — | — | api-mail : catalogue e2e (YAML) seul, aucun fichier analysé par Sonar |
 | **Total cycle** | | **1 h 15 min** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
