@@ -101,3 +101,20 @@ réellement cherchés**, et la phrase entière quand il l'a trouvée telle quell
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : non — aucune donnée nouvelle stockée ni transmise
 - **AIPD / impact RGPD** : inchangé — aucun traitement nouveau
+
+
+## Branches
+
+- `api-mail` (pushed) : feat/task-485-surlignage-les-mots-cherches-pas-les — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-485-surlignage-les-mots-cherches-pas-les
+- `client-angular` (code-only) : la forge écrit sur la branche courante de `Client/Angular/` (au /start :
+  `feature/nova-mss-weda-integration`, arbre portant le code non commité de task-487) — l'humain gère branche, commit,
+  push, PR TFS
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-485 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 17 s | — | — | — | — |
+| **Total cycle** | | **17 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |

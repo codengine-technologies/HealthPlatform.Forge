@@ -10817,3 +10817,7 @@
 {"ts":"2026-11-18T17:37:46+01:00","run_id":"-","type":"step","task":"task-457","step":"review","status":"ok","note":"sync develop (task-487)","iterations":null,"duration_ms":2831956}
 {"ts":"2026-11-18T19:24:50+01:00","run_id":"-","type":"cmd","task":"task-487","step":"develop","repo":"client-mobile","kind":"build","label":"","cwd":"Client/Mobile","cmd":"npm run build","duration_ms":8653,"exit_code":0}
 {"ts":"2026-11-18T19:25:12+01:00","run_id":"-","type":"cmd","task":"task-487","step":"develop","repo":"client-mobile","kind":"test","label":"","cwd":"Client/Mobile","cmd":"npm test -- --watch=false --browsers=ChromeHeadless","duration_ms":21223,"exit_code":0}
+{"ts":"2026-11-18T19:32:54+01:00","run_id":"-","type":"step_start","task":"task-485","step":"start"}
+{"ts":"2026-11-18T19:33:09+01:00","run_id":"-","type":"step","task":"task-485","step":"start","status":"skipped","note":"pré-flight refusé : client-mobile sur fix/task-487-texte-cite-en-icone","iterations":null,"duration_ms":14756}
+{"ts":"2026-11-18T22:58:34+01:00","run_id":"-","type":"step_start","task":"task-485","step":"start"}
+{"ts":"2026-11-18T22:58:52+01:00","run_id":"-","type":"step","task":"task-485","step":"start","status":"ok","note":"","iterations":null,"duration_ms":17881}
