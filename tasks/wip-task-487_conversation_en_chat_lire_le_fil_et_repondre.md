@@ -638,6 +638,23 @@ Suites jouées par l'analyse : domaine 361, application 4322, infrastructure 749
 heure, code identique à `develop`). Vert api-mail **non marqué** pour cette raison : `/review` rejouera.
 Convention : `conventions/csharp.md` S3604 → Occurrences 6 (récidive sur du code frais).
 
+## Lint log
+
+- Mode : A (chaîné), scope `tag:scope:mss` (défaut — `mss`, `mss-lib`, `mss-e2e`), base `origin/next` ; aucun override
+  `**LintBase**` / `**LintProjects**`.
+- Arbre : branche `feature/nova-mss-weda-integration` (code-only, rien de commité) ; même `git status` avant / après
+  l'étape (44 fichiers `.ts`/`.html` de la task).
+- Comptage : `npx eslint libs/mss apps/mss e2e/mss-e2e --format json` (contournement de task-367 : `--projects` ne
+  restreint pas `nx affected`, `--output-file` en chemin Windows absolu échoue) ; attribution à la task par
+  `git diff -U0 HEAD` + fichiers non suivis.
+- Baseline : **0 error** / 100 warnings (75 `jsdoc/require-example`, 22 `max-lines`, 3 `complexity`).
+- Warning né de la task : **1** — `max-lines` sur `mail-conversation.component.ts` (fichier neuf, 790 lignes, seuil
+  500). **Accepté** (best-effort, avertissement) : découper le conteneur du chat après l'approbation de la revue
+  rouvrirait une revue pour un gain de lisibilité seul ; à reprendre si le composant grossit. Les 99 autres sont
+  antérieurs (aucun sur une ligne ajoutée).
+- Final : 0 error / 100 warnings. Itérations : 0 / 5 (rien à corriger, aucun fichier modifié).
+- Build / tests : non rejoués — arbre inchangé, vert de `/develop` toujours valide (`green.py check` : `5fbc7e28`).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-487 --sync` — ne pas éditer à la main)*
@@ -648,6 +665,7 @@ Convention : `conventions/csharp.md` S3604 → Occurrences 6 (récidive sur du c
 | /develop | ok | 14 min 37 s | 10 (1 min 27 s) | 42 (1 h 35 min) | — | dtos-mss 1B/0T, api-mail 9B/42T, reprise 2 |
 | /review-code | ok | 8 min 26 s | — | — | — | — |
 | /sonar | ok | 23 min 47 s | 2 (1 min 45 s) | 10 (16 min 11 s) | 4 (1 min 35 s) | 2 itération(s), api-mail 2B/10T |
-| **Total cycle** | | **47 min 20 s** | **12 (3 min 12 s)** | **52 (1 h 52 min)** | **4 (1 min 35 s)** | |
+| /lint-angular | ok | 1 min 27 s | — | — | — | — |
+| **Total cycle** | | **48 min 48 s** | **12 (3 min 12 s)** | **52 (1 h 52 min)** | **4 (1 min 35 s)** | |
 
-Autres commandes mesurées : nuget-wait ×1 (19 s)
+Autres commandes mesurées : lint ×3 (18 s), nuget-wait ×1 (19 s)
