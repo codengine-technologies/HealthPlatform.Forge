@@ -470,6 +470,36 @@ prettier propres ; mobile lint propre, build OK, 1648/1648. Commit mobile `aad4c
 8100, weda2 4200, démarrés à 10:35) occupe les ports des voies e2e, qui jouaient donc contre lui (rouges E2E-SEARCH sans
 valeur). Rejoué après l'arrêt de l'environnement de recette.
 
+#### Recette 3 (2026-11-18, décisions humaines) — la vue chat suit le mode Conversation ; bouton au survol ; défilement
+
+1. **Mode Conversation désactivé dans les réglages → la vue chat n'est proposée nulle part** (« Voir en conversation »
+   du détail, weda2 et mobile ; le bouton de ligne weda2 l'était déjà).
+2. **Mode Conversation : sélectionner un fil engagé (deux messages ou plus) ouvre la vue chat d'office** ; un message
+   seul s'ouvre dans la vue habituelle ; un message d'un fil déplié reste un choix explicite (vue habituelle).
+3. **weda2 : « Ouvrir en conversation » au survol seulement**, avec les actions de la ligne (Traité, Supprimer…).
+4. **Défilement** : une vue en bas y reste quand la copie d'Envoyés de la réponse arrive avec son texte cité ; qui
+   remonte le fil n'est pas déplacé.
+
+| Changement | Code | Tests | Preuve rouge |
+|---|---|---|---|
+| 1 | weda2 `mail-detail.component.ts` (`canOpenConversation`) ; mobile `mail-detail.component.ts` | weda2 `mail-detail.conversation.spec.ts` (6/6), 8 specs du détail mises au mode Liste ; mobile `mail-detail.open-conversation.spec.ts` (3/3) | rouges avant correctif (weda2 1, mobile 1) |
+| 2 | weda2 `mail-list.component.ts` (`selectThreadRow`, lignes racines) ; mobile `mail-list.component.ts` (`threadCount ≥ 2`) | weda2 `mail-list.component.spec.ts` (3 tests) ; mobile `mail-list.conversation-chat.spec.ts` (3/3) | rouges avant correctif (weda2 3, mobile 1) |
+| 3 | weda2 `mail-header.component.html` | `mail-header.component.spec.ts` (13/13) | rouge avant correctif (`closest('.mail-line-actions')` nul) |
+| 4 | weda2 `mail-conversation.component.ts` (`isAtEnd`, `followEnd`) | `mail-conversation.component.spec.ts` (39/39, dont 2 nouveaux) | **preuve par mutation non obtenue** : lanceur Vitest en panne au moment de la jouer |
+
+E2E : scénario **E2E-CONV-003** (v1, mobile et angular requis) ajouté au catalogue et implémenté dans les deux clients ;
+E2E-CONV-001 (weda2) ouvre le fil par sa ligne, E2E-CONV-002 passe en mode Conversation avant « Voir en conversation ».
+Défauts trouvés en route, chacun avec sa prévention (`conventions/e2e.md`) : catalogue cassé par une insertion au milieu
+de E2E-CONV-002 (`catalogue-edite-sans-son-test`, nouvelle) ; E2E-CONV-003 mobile qui ne lisait pas le message d'origine
+(`fil-depose-a-la-seconde`, récidive → 2).
+
+Suites : mobile lint, build, 1650/1650 ; weda2 2683/2683 ; mss-lib 1844/1848 au dernier passage collecté (les 4 rouges
+corrigés depuis, specs vertes une à une), puis lanceur Vitest en panne (« reading 'config' » / « initTestEnvironment »,
+mémoire `vitest-mss-lanceur-instable-ngmodule`). **Restent à rejouer** : `mail-list.component.spec.ts` (correctif
+d'assertion de date), la mutation du défilement, la suite mss-lib entière, et les deux voies e2e — ces dernières
+attendent l'arrêt de l'environnement de recette, qui occupe les ports (un premier essai de la voie Angular a joué
+contre lui : sans valeur). Commits : mobile `b05dbfa`, `5e7a739` ; api-mail `3d924a0e`, `721e0bc1` ; weda2 non commité.
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED

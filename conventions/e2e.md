@@ -59,6 +59,21 @@
   l'API relue sur un passage rouge rendait les deux messages à la même seconde, avec
   `isThreadRoot: false` pour la réponse.
 - **Origine** : task-375
+- **Occurrences** : 2 (task-487, recette du 2026-11-18 — **récidive sur du code frais** : le test mobile E2E-CONV-003
+  n'ouvrait que la réponse en vue Liste, pas le message d'origine ; le fil ne s'est jamais formé en 90 s au premier
+  essai, vert au second. Un parcours qui forme un fil fait lire **tous** ses messages, chacun par son uid.)
+
+### catalogue-edite-sans-son-test — Une entrée insérée au milieu d'une autre casse le catalogue
+- **Piège** : une entrée de `Api/Mail/e2e/scenarios.yml` se termine par `mode:` et `origine:`, **après** `clients:`.
+  Insérer la nouvelle entrée juste après `clients:` de la précédente lui vole ces deux champs : l'entrée précédente
+  n'a plus de `mode`, et le catalogue devient invalide. Rien ne le dit avant la fin d'une voie e2e, une demi-heure
+  plus tard (« catalogue invalide : … mode «  » inconnu »).
+- **Consigne** : insérer une entrée **après la ligne vide** qui suit `origine:` de la précédente. Toute modification
+  du catalogue joue `dotnet test tests/mss.mail.api.tests --filter "FullyQualifiedName~ScenarioCatalogTests"` avant
+  le push : `RealCatalog_Loads` charge le vrai catalogue en 0,3 s.
+- **Preuve** : `RealCatalog_Loads` et `RealCatalog_DeclaresExactlyTheDataTheSeedProduces` rouges sur le catalogue
+  cassé (`3d924a0e`), verts sur la réparation.
+- **Origine** : task-487 (recette du 2026-11-18)
 - **Occurrences** : 1
 
 ### garde-de-port-ipv4-seul — Un port « libre » en IPv4 peut être tenu en IPv6
