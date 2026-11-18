@@ -380,6 +380,43 @@ seulement, accusés lus en ligne seulement à l'ouverture, accusé disparu, dest
 
 - Next step : /review task-487 --code
 
+### Reprise 1 après /review
+
+Chaque correctif écrit test d'abord, vu rouge sur le code d'avant, puis vert.
+
+| Constat | Correctif | Test | Preuve rouge |
+|---|---|---|---|
+| **B1** historique fait d'en-têtes seuls jugé sûr | `ConversationQuoteSplitter` : un contenu vide après les marques n'est plus une preuve (`content.Length > 0 &&`) | `ConversationRulesTests.Split_AHeaderOnlyQuote_IsNotSafe_AndEveryLineStays` ; intégration `UnverifiedTextIsNeverFolded_HeaderOnlyQuote_AndPostScriptAfterTheSignature` | rouge avant correctif (unitaire) ; mutation M30 rouge (`Assert.False() Failure`) |
+| **B2** texte après la signature replié | la signature ne se replie que si son début et sa fin sont connus (`SignatureRange`, lue par `ConversationText` : marques `<!-- signature -->`…`<!-- /signature -->`, conteneurs `moz-signature` / `gmail_signature`) ; le texte écrit après elle reste ; un simple « -- » en texte brut ne replie rien | `Split_TextAfterAPlainSignature_StaysVisible`, `Split_TextAfterTheSignatureEnd_StaysVisible_AndTheQuoteStillFolds`, `Split_ASignatureWithAKnownEndFolds_ButAPlainDelimiterFoldsNothing` ; intégration (même test que B1) | rouge avant correctif (unitaire) ; mutation M31 rouge (`Sub-string not found`) |
+| **B3** brouillons dans le fil | `ConversationRepository.GetThreadAsync` exclut `IsDraft` et le dossier des brouillons | `AReplyDraftSavedByAnotherSoftware_IsNotABubble_NorTheLastMessage` (brouillon déposé dans Drafts, `\Draft`) | rouge avant correctif (le brouillon était la 4e bulle) ; mutation M32 rouge |
+| **B4** mobile : bulle « prêt à partir » jamais résolue | rechargement de la page 1 et retour sur la page retirent les bulles locales en attente | `B4 — a reply ready to go (202) leaves the thread on re-entry…`, `B4 — a page 1 reload drops a local « prêt à partir » bubble` | rouges sur ab03b32 (`Expected $[0] = 'prêt à partir' to equal 'envoyé'`, bouton « Confirmer avec ma carte » encore là) |
+| mobile : rechargements de confirmation qui défilent | plus de `scrollToEnd` sur ces rechargements | `the confirmation reloads after a send never scroll the view…` | rouge (`Expected 2 to be 1`) |
+| mobile : garde `isSplitSafe` | texte complet, pas de bouton, si le découpage n'est pas sûr | `shows the whole message, without « Texte cité et signature »…` | rouge |
+| mobile : erreur réseau technique | `problemMessage(error, …)` | `says a network failure in plain words…` | rouge (l'URL s'affichait) |
+| les deux clients : destinataires périmés quand la pastille annonce des messages | l'envoi relit d'abord la page 1 | mobile `when the pill announces new messages, sending first reloads page 1…` ; weda2 `quand la pastille annonce des messages, l'envoi relit d'abord le fil…` | rouges (anciens destinataires envoyés) |
+| weda2 : téléchargement en échec sans gestion | message à l'écran (code et référence), rien en console | `le téléchargement d'une pièce en échec se dit à l'écran…` | rouge (« Unhandled Error ») |
+| weda2 : « Voir en conversation » sans garde | `canOpenConversation` (Message-ID, ni brouillon ni accusé) | `mail-detail.conversation.spec.ts` (4 cas) | rouges |
+| weda2 : envoi sans destinataire, « 1 participants » | `canSend` exige un destinataire ; titre au singulier, sujet sans participant | `n'envoie pas sans destinataire`, `sans participant connu…` | rouges |
+| weda2 : pièce demandée introuvable gardée | la demande est effacée dès que le message demandé s'affiche | `une pièce demandée introuvable dans le message n'est pas gardée…` | rouge |
+
+| serveur : lecture des accusés pendant une panne, accusé disparu en tête de file | `NotFound` → lu « inconnu » ; autre échec → arrêt de la lecture (une tentative par ouverture) | unitaires `Get_TheMailServerDown_StopsReadingReportsAtTheFirstFailure`, `Get_AReportGoneFromTheServer_…` ; intégration `AFarPageIsEmpty_AndAReportGoneFromTheServerNeverBreaksTheOpening` (accusé expurgé du serveur) | unitaires rouges avant correctif ; mutation M34 rouge (`Assert.Empty() Failure`) |
+| serveur : page lointaine en 500 | calcul de la page en `long`, bornée au fil | unitaire `Get_APageFarBeyondTheThread_IsEmpty` ; intégration (même test, `page=1000000000&pageSize=200`) | unitaire rouge ; mutation M33 rouge (« Attendu 200, reçu 500 ») — survivante d'abord avec une page qui ne débordait pas, test corrigé |
+
+Non repris (suggestion) : `ReadAt` retombe encore sur la date d'en-tête quand la date d'arrivée manque.
+
+Suite complète api-mail de la reprise : domaine, infrastructure, application, api verts ; intégration 1353/1373, 4 rouges
+hors de la task — trois tests « du jour » joués entre 0 h et 2 h (fenêtre connue : filtre SINCE en UTC) et
+`ImapSessionSweepIntegrationTests.ConnectAsync_WhileTheSweepRunsDuringTheConnection_OpensTheSessionAsync`, bloqué une heure,
+bloqué de nouveau en isolé (ni le service de connexion ni `ImapService` ne diffèrent de `develop`). Vert api-mail **non
+marqué** : la validation finale rejoue la suite complète.
+
+Relecture du correctif comme correctif : `Split` a un seul appelant de production (le service) ; le filtre des brouillons
+ne touche ni la lecture des copies d'Envoyés ni l'analyse des messages manquants ; la règle « pas de repli sur un « -- »
+brut » change le corpus Thunderbird (aucune signature) et la plateforme (marques présentes) sans écart.
+
+Tests : domaine 18 (Conversation), application 112 (Conversation), intégration 9/9 (`ConversationEndToEndTests`) ; mobile
+1644/1644 deux fois ; weda2 mss-lib 1842/1842, weda2 2683/2683.
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -465,8 +502,8 @@ sans le Develop log.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 29 s | — | — | — | — |
-| /develop | ok | 1 h 41 min | 7 (1 min 00 s) | 22 (18 min 05 s) | — | dtos-mss 1B/0T, api-mail 6B/22T |
+| /develop | ok | 1 h 29 min | 9 (1 min 16 s) | 32 (1 h 27 min) | — | dtos-mss 1B/0T, api-mail 8B/32T, reprise 1 |
 | /review-code | changes | 9 min 44 s | — | — | — | reprise 1 |
-| **Total cycle** | | **1 h 51 min** | **7 (1 min 00 s)** | **22 (18 min 05 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **1 h 39 min** | **9 (1 min 16 s)** | **32 (1 h 27 min)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (19 s)
