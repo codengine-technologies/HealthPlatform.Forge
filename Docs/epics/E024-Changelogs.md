@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques (ingénierie, backlog, dette)
 > **Vue produit** : [E024-messagerie-premium-traiter-deleguer-bouc.md](E024-messagerie-premium-traiter-deleguer-bouc.md)
-> **Dernière mise à jour** : 2026-11-17
+> **Dernière mise à jour** : 2026-11-18
 
 ---
 
@@ -373,6 +373,60 @@
   groupé sans borne ; `"handled": null` → 500) ; `GetTargetOfDocumentAsync` sans test vu rouge ; sans SSE, un détail ouvert
   garde « Traité par … » après « Annuler ».
 
+### v0.7 — task-457 : « À traiter par », attribuer un message dans la boîte (api-mail, dtos-mss, client-mobile, weda2)
+
+- **PRs** : dtos-mss [#70](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/70), api-mail
+  [#374](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/374), client-mobile
+  [#129](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/129). Label `awaiting-human-merge`, ordre de
+  merge dtos-mss → api-mail → client-mobile. client-angular est en code-only, sur `feature/nova-mss-weda-integration`
+  (40 fichiers non commités, dont les specs e2e E2E-ASSIGN) : à commiter sur TFS avant le merge de la PR api-mail.
+- **dtos-mss 623.0.0** (622.0.0, puis 623.0.0 : `MailAssignmentDto.cs` réencodé en UTF-8) : `MailAssignmentDto`,
+  `MailboxPersonDto`, `MailAssignRequestDto`, `MailBulkAssignRequestDto`, `MailAssignmentBulkResultDto`,
+  `MailAssignmentNoticeDto` ; `MailDto.Assignment`, `FolderDto.ForMeCount`, `InboxFilter.ForMe`,
+  `NotificationPayloadDto.RecipientId`, `NotificationKind.MailAssigned = 2`, `AuditActionType.MailAssigned = 75`,
+  `MailUnassigned = 76`.
+- **api-mail — les données** : table `MailAssignments` dans la base de la boîte, une ligne par message, clé = Message-ID
+  (ancrage task-453, comme `MailHandlingStates`), avec la personne attribuée recopiée (nom, RPPS, rôle), l'auteur, l'instant
+  et `SeenAt` (avis vu). L'attribution est close quand le message a été traité après elle (lecture croisée avec
+  `MailHandlingStates`, sans écriture). Migration `20261117180000_AddMailAssignments` (`Down` =
+  suppression de la table, aucune donnée existante touchée, règle 7c relue).
+- **api-mail — routes et service** : `MailAssignmentController`, `MailAssignmentService`, `MailAssignmentRepository`.
+  - `GET mailbox/people` (personnes du registre commun rattachées et `Active`, 403 hors boîte) ;
+    `PUT|DELETE folders/{f}/emails/{uid}/assignee` ; `PUT folders/{f}/emails/bulk/assignee` (2 000 au plus) ;
+    `GET emails/for-me/page` (clés dossier + UID, tous dossiers hors Envoyés, Brouillons, Corbeille, une ligne par
+    Message-ID) ; `GET assignments/notices`, `PUT assignments/notices/seen?until=`.
+  - Compteur `ForMeCount` posé dans `GET /folders` (`ApplyWorkCountsAsync`, avec « à traiter ») ; nom de la personne
+    attribuée lu au registre tant qu'elle est active (sinon le nom recopié, « accès retiré »).
+  - Avis : `SseNotificationBroker` filtre sur `RecipientId` ; l'abonnement des contrôleurs de flux porte `TenantId`.
+    Avis non vus rendus à l'ouverture (attributions ouvertes seules, 50 au plus).
+  - Audit : `[TracedInCode]`, personne attribuée dans `ServerRequest`, famille `HealthDataAccess` ; un retrait sans objet
+    ne trace rien.
+- **weda2 (code-only) et client-mobile** : sélecteur « À traiter par » (`mail-assignee-picker` sur weda2, `ion-select` sur
+  mobile), pastille d'initiales, ligne « attribué par … le … », vue et compteur « Pour moi » (arborescence weda2 ; puce et tuile
+  d'Accueil mobile, flag `dashboard_widget_for_me`), attribution groupée, avis à l'ouverture et en direct. Types weda2 dans
+  `core/models/mail-assignment.model.ts`.
+- **Preuves rouges (règle 1b)** : mutations api-mail M1 à M24 et Q1 à Q3, weda2 W/A et WM1 à WM5, client-mobile MM1 à MM6 et
+  parcours E1 à E4, A1 à A4, consignées au `## Develop log` et au `## Sonar log` de la task. Intégration :
+  `FolderOperationsEndToEndTests.Assignment` (parcours de la DoD, 400, 403, 404, groupé, « Pour moi » multi-dossiers,
+  avis), `MailboxAccessLockIntegrationTests.AnAddressedNotice_ReachesTheStreamOfItsRecipientOnly_…` (vrais flux SSE).
+- **Défaut trouvé par le parcours e2e** : une personne n'est nommée au registre qu'à sa première session sur la boîte ;
+  l'attribution recopiait donc un RPPS. Correctif : nom courant lu au registre (`eb6d9a10`, M16).
+- **Cycle** : revue anticipée passage 1 CHANGES REQUESTED (B1 avis ciblé non prouvé sur les vrais flux ; B2 « Pour moi »
+  limité à la Boîte de réception ; S2-S4, S6-S8, S10) → reprise 1 → passage 2 APPROVED. Une seule reprise.
+- **Sonar** (serveur 25.6) : 1 S3776 de la task corrigé (`GetFoldersAsync`, récidive : `conventions/csharp.md` → 9),
+  2 tests ajoutés vus rouges ; new coverage 97,7 %. Quality Gate ERROR inchangé depuis la baseline (constats d'autres tasks
+  dans la période de new code, dont les scripts du banc).
+- **Lint** : Angular 0 erreur ; `max-lines` de `mail.model.ts` (521) résolu par la séparation des types ; mobile propre.
+- **E2E** : mobile 73/73, angular 92/92 (2 flaky : E2E-SEARCH-001, E2E-SESSION-004), parité verte. Nouveaux scénarios :
+  E2E-ASSIGN-001, E2E-ASSIGN-002 (v1). Quarantaine E2E-COMPOSE-002 [angular] âgée de 40 jours, passée verte.
+- **Timings** : cycle de 2 h 34 min (develop 52 min, sonar 41 min, e2e 30 min).
+- **Arbitrages portés dans la PR** : S1 « active » = rattachement `Active` (la révocation devient visible à la prochaine
+  requête de la personne révoquée) ; S5 une lecture du registre par page portant des attributions ; S9 test 403 par la garde
+  du service, pas par le middleware.
+- **Limites résiduelles (suggestions non bloquantes)** : N1 la page « Pour moi » mobile ne demande pas l'enrichissement ;
+  N2 pas d'évènement en direct pour une ligne « Pour moi » d'un autre dossier ; N3 jointure sur une ancre calculée, sans index
+  sur `Mails.MessageId`, à chaque `GET /folders` (à mesurer au banc) ; N4 pagination sans départage par dossier.
+
 ---
 
 ## Annexe A — Cartographie des briques applicatives
@@ -416,15 +470,22 @@
 | `dtos-mss` `MailHandlingDto`, `MailHandlingBulkResultDto`, `FolderDto.ToHandleCount`, `UserSettingsDto.FolderCounter`, `AuditActionType` 73 et 74 | contrat de l'état traité | task-454 |
 | weda2 `mail-handling.service.ts`, `mail-handling.util.ts`, `ui/mail-undo-toast/`, `to-handle-kpi-tile/` | geste, annulation, tuile web | task-454 |
 | client-mobile `mail-handling.service.ts`, balayage `mail-list` | geste, annulation, balayage mobile | task-454 |
+| `api-mail` `MailAssignmentController`, `MailAssignmentService`, `MailAssignmentRepository` | attribution, « Pour moi », avis | task-457 |
+| `api-mail/src/Infrastructure/Migrations/MailDb/20261117180000_AddMailAssignments.cs` | table `MailAssignments` (clé Message-ID) | task-457 |
+| `api-mail` `SseNotificationBroker` (`RecipientId`) | avis adressé à une personne de la boîte | task-457 |
+| `dtos-mss/MailAssignmentDto.cs`, `FolderDto.ForMeCount`, `AuditActionType` 75 et 76 | contrat de l'attribution | task-457 |
+| weda2 `mail-assignment.service.ts`, `mail-assignee-picker/`, `core/models/mail-assignment.model.ts` | sélecteur, vue, avis web | task-457 |
+| client-mobile `mail-assignment.service.ts`, `inbox.page.ts` (`loadNextForMePage`) | sélecteur, vue, avis mobile | task-457 |
 
 ---
 
-## Annexe B — Inventaire fonctionnel daté (2026-11-17)
+## Annexe B — Inventaire fonctionnel daté (2026-11-18)
 
-- Tasks de l'EPIC : 10 — 4 `archived` (453, 459, 466, 486), 2 `done` (456, 454), 3 `todo` (457, 458, 462),
+- Tasks de l'EPIC : 10 — 6 `archived` (453, 454, 456, 459, 466, 486), 1 `done` (457), 2 `todo` (458, 462),
   1 annulée (465).
-- Scénarios e2e de l'EPIC au catalogue : 11 (E2E-BIO-004, E2E-BIO-007, E2E-DETAIL-006, E2E-TAG-001, E2E-TAG-002,
-  E2E-TAG-003, E2E-TRIAGE-001, E2E-TRIAGE-002, E2E-TRIAGE-006, E2E-TRIAGE-007, E2E-SHARED-003).
+- Scénarios e2e de l'EPIC au catalogue : 13 (E2E-BIO-004, E2E-BIO-007, E2E-DETAIL-006, E2E-TAG-001, E2E-TAG-002,
+  E2E-TAG-003, E2E-TRIAGE-001, E2E-TRIAGE-002, E2E-TRIAGE-006, E2E-TRIAGE-007, E2E-SHARED-003, E2E-ASSIGN-001,
+  E2E-ASSIGN-002).
 
 ---
 
@@ -437,5 +498,6 @@
 | task-465 | Mesure de la charge et de l'usage — **annulée** le 2026-11-12 (décision humaine, reprise hors API par un cron job) | annulée (PRs #366, #64 fermées) |
 | task-466 | Date de début du suivi par boîte : seul ce qui arrive après réclame un acquittement ; socle de « À traiter » (task-454) | `archived` (PRs #368, #66, #124) |
 | task-486 | Saisie des tags : noms de plusieurs mots (40 caractères), liste des tags de la boîte à la frappe, créations concurrentes sans doublon ; première brique des vues par tag (task-456) | `archived` (PRs #371, #126) |
-| task-456 | Tags système (Biologie, Patient, Professionnel de santé, Pour info) posés à l'arrivée et par rattrapage, vues par tag combinables en « Tous » / « Non lus », réglage par personne | `done` (PRs #68, #372, #2, #127) |
-| task-454 | Marquer un message traité : état partagé par la boîte (Message-ID), compteurs et filtre « À traiter », gestes naturels, bouton et balayage, « Annuler », traitement groupé sans jamais acquitter une biologie, tuile du tableau de bord | `done` (PRs #69, #373, #128) |
+| task-456 | Tags système (Biologie, Patient, Professionnel de santé, Pour info) posés à l'arrivée et par rattrapage, vues par tag combinables en « Tous » / « Non lus », réglage par personne | `archived` (PRs #68, #372, #2, #127) |
+| task-454 | Marquer un message traité : état partagé par la boîte (Message-ID), compteurs et filtre « À traiter », gestes naturels, bouton et balayage, « Annuler », traitement groupé sans jamais acquitter une biologie, tuile du tableau de bord | `archived` (PRs #69, #373, #128) |
+| task-457 | « À traiter par » : attribuer un message à une personne active de la boîte (Message-ID), vue et compteur « Pour moi » sur tous les dossiers, avis ciblé sur la personne, attribution groupée, imputée à l'auteur réel | `done` (PRs #70, #374, #129) |

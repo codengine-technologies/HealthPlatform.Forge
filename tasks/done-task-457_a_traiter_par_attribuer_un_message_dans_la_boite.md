@@ -139,7 +139,8 @@ Règles :
 | /lint-mobile | ok | 1 min 34 s | — | — | — | — |
 | /e2e | ok | 30 min 28 s | — | — | — | e2e ×5 (58 min 32 s) |
 | /review | ok | 3 min 06 s | 1 (4.8 s) | — | — | dtos-mss 1B/0T |
-| **Total cycle** | | **2 h 34 min** | **21 (12 min 15 s)** | **32 (1 h 40 min)** | **4 (5 min 49 s)** | |
+| /tech-writer | ok | 2 min 15 s | — | — | — | — |
+| **Total cycle** | | **2 h 37 min** | **21 (12 min 15 s)** | **32 (1 h 40 min)** | **4 (5 min 49 s)** | |
 
 Autres commandes mesurées : lint ×1 (1 min 06 s), nuget-wait ×2 (28 s), restore ×2 (15 s)
 
