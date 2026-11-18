@@ -132,9 +132,9 @@ Règles :
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 1 min 32 s | — | — | — | — |
-| /develop | ok | 3 h 33 min | 13 (6 min 45 s) | 15 (56 min 19 s) | — | api-mail 8B/8T, client-angular 2B/4T, client-mobile 3B/3T |
+| /develop | ok | 52 min 03 s | 16 (9 min 25 s) | 19 (1 h 12 min) | — | api-mail 9B/9T, client-angular 3B/6T, client-mobile 4B/4T, reprise 1 |
 | /review-code | changes | 10 min 44 s | — | — | — | reprise 1 |
-| **Total cycle** | | **3 h 45 min** | **13 (6 min 45 s)** | **15 (56 min 19 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **1 h 04 min** | **16 (9 min 25 s)** | **19 (1 h 12 min)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×2 (28 s), restore ×2 (15 s)
 
@@ -406,6 +406,43 @@ en mémoire (« Python écrit en CRLF sur ce poste ») ; les scripts d'édition 
   (fenêtre 00:00–02:00, connus) ; `TenantRegistryIntegrationTests.AttachMailboxAsync_UnderConcurrency_…` (flaky,
   vert au passage suivant) ; mobile `MailComposeComponent` suggestions ×4 (rouge aussi sans les changements de la task,
   vert au passage suivant : flaky de présentation du `ion-modal`).
+
+### Reprise 1 après /review (2026-11-18)
+
+Périmètre : la liste « À corriger par la reprise » du passage 1 (B1, B2, S2, S3, S4, S6, S7, S8, S10). Les arbitrages
+S1, S5, S9 ne sont pas touchés : ils vont à la PR.
+
+| Constat | Correctif | Test | Preuve rouge |
+|---|---|---|---|
+| **B1** avis en direct non prouvé par le vrai flux | — (le code était juste : la preuve manquait) | intégration `MailboxAccessLockIntegrationTests.AnAddressedNotice_ReachesTheStreamOfItsRecipientOnly_NotTheOtherPersonOfTheMailbox` (Theory : `notifications/stream` et `events/stream`) : les deux personnes ouvrent leur flux HTTP réel, le titulaire attribue, `MailAssigned` n'arrive que sur le flux de la délégataire | **M17** (abonnement des avis sans la personne) et **M18** (abonnement des évènements sans la personne) : rouges, chacune sur sa route |
+| **B2** « Pour moi » limité à la Boîte de réception | api-mail : `GET emails/for-me/page` rend une page de clés (dossier, UID) sur tous les dossiers hors Envoyés, Brouillons et Corbeille (`MailHandlingQueries.OutsideSelfActionFolders`, la règle d'« À traiter »), triée par instant d'attribution ; compteur sur la boîte. Clients : page de clés, puis lecture dossier par dossier, remise dans l'ordre du serveur | intégration `ForMe_CoversAMessageFiledInAnotherFolder_AndCountsAMessageInTwoCopiesOnce` ; weda2 `mail-state.service.handling.spec` (dossiers entrelacés) ; mobile `mail-state.for-me.spec` « keeps the server order… » | **M19** (Boîte de réception seule) rouge ; weda2 **WM4** (ordre des lectures par dossier) et **WM5** (un seul dossier lu) rouges ; mobile **MM6** rouge |
+| **S2** une copie en double compte deux fois | compteur et page : une ligne par ancre (Message-ID), copie de la Boîte de réception d'abord | même test d'intégration (deux copies, compté une fois, une ligne) | **M20** (compteur par copie), **M21** (page par copie) rouges |
+| **S3** avis non bornés, avis d'attributions closes, « vus » trop large | `GetUnseenNoticesAsync` : attributions ouvertes seules, 50 au plus ; `PUT assignments/notices/seen?until=` ne marque que jusqu'à l'instant lu ; les deux clients passent l'instant du plus récent avis montré | intégration `Notices_AreThoseOfOpenAssignments_AndSeenStopsAtTheInstantRead` ; unitaire `MarkNoticesSeenAsync_StopsAtTheInstantRead…` ; specs weda2 et mobile (`until`) | **M22** (« vus » au-delà de l'instant), **M23** (avis d'une attribution close) rouges ; weda2 **WM1**, **WM2** ; mobile **MM4**, **MM5** rouges |
+| **S4** retrait sans objet tracé et publié | `UnassignAsync` sort sans acte quand le message n'est attribué à personne | unitaire `UnassignAsync_OnAMessageAssignedToNobody…` ; intégration (DELETE sur un message non attribué dans le test groupé) | **M24** (retrait sans objet imputé) rouge |
+| **S6** avis en double | mobile : la page Messages ne fait plus de toast pour `MailAssigned` (seul `MailAssignmentService` le montre) ; weda2 : le service ne pose plus le bandeau sur l'avis en direct (le diffuseur des notifications l'affiche déjà), il relit les compteurs | mobile `inbox.page.spec` « does not toast an assignment notice itself » (un seul toast) ; weda2 `mail-assignment.service.spec` (bandeau nul, compteurs relus) | mobile **MM1**, weda2 **WM3** rouges |
+| **S7** l'`ion-select` garde un choix non confirmé | le détail remet tout de suite la liste sur l'attribution confirmée ; seule la réponse du serveur la change | `mail-detail.component.spec` « resets the « À traiter par » select… » | **MM2** rouge |
+| **S8** ligne d'attribution groupée sans « attribué par » | la ligne porte la personne qui lit comme auteur | `mail-assignment.service.spec` « assigns a selection at once » | **MM3** rouge |
+| **S10** JSDoc d'`attachDelegation` séparée de sa fonction | replacée au-dessus de sa fonction | — (commentaire) | — |
+
+Mutations api-mail M17 à M24 : chacune réinjectée seule, rouge sur son test ciblé, restauration recompilée (build 0).
+M18 et M19, jouées d'abord sans `touch`, rougissaient le test de M17 (binaire non reconstruit) : rejouées après `touch`,
+chacune rouge sur son seul test (consigne `mutation-non-servie`).
+Mutations des clients : weda2 WM1 à WM5 (vitest), mobile MM1 à MM6 (Karma), chacune seule, restauration octet pour
+octet. **WM4 a d'abord survécu** : la page du test listait les dossiers dans l'ordre de leurs lectures, donc une page non
+réordonnée restait verte. Le test entrelace désormais les dossiers (INBOX, Patients, INBOX) ; WM4 rouge.
+
+Pièges du test mobile : `applyForMePage(1, …)` s'ajoute à la liste en place (`startTagViewPaging` d'abord, comme
+l'écran) ; le toast de `MailAssignmentService` passe par le même `ToastController` que la page, d'où l'assertion « un
+seul toast » au lieu d'« aucun ».
+
+Validation de la reprise :
+- api-mail `d2a0c7a3`, poussé : build 0 ; suite complète 8 138 réussis, 0 échec, 16 ignorés ; vert marqué.
+- client-mobile `02c9aa8`, poussé : build 0 ; 1 614/1 614 ; `ng lint` propre ; vert marqué.
+- client-angular (code-only, non commité) : `mss-lib` 1 808/1 808, `weda2` 2 683/2 683, `nx build weda2` 0 ; eslint
+  0 erreur, prettier appliqué ; vert marqué sur l'arbre.
+- api-mcp : `mcp_impact.py check` → aucun impact.
+- Parcours rejoués seuls (`--serve-only`, `--grep E2E-ASSIGN`), les routes ayant changé : voie mobile 2/2 verts, voie
+  Angular 2/2 verts. Les voies complètes restent à `/e2e`.
 
 ## Code Review Summary
 
