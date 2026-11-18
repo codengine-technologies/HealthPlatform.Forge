@@ -277,19 +277,23 @@ In autonomous mode (`/develop` upstream) this halts the chain ; in
 
    **Automatic reprise** — when **every blocking finding is corrigeable** :
    1. Read the field `**Reprises**: N` (just under `**Repos**:`, absent = 0).
-   2. If `N < 2` **and** no blocking finding of this pass already appeared in the
-      previous pass's list (a finding that comes back is one the forge cannot
-      fix) : write `**Reprises**: N+1`, end the step
+   2. A blocking finding of this pass that already appeared in the previous pass's
+      list is a **récidive** : mark it « (récidive) » in `#### À corriger par la reprise`.
+      A récidive is tolerated **once per finding** (relevé le 2026-11-18, task-487 : B2 came
+      back because its fix was partial, root cause known). A finding that comes back while
+      it was already marked « (récidive) » — its third appearance — is one the forge cannot
+      fix.
+      If `N < 5` **and** no finding came back a second time : write `**Reprises**: N+1`, end the step
       (`step.sh end --step review --status changes --note "reprise N+1"`),
       commit the control plane, and **invoke `Skill(develop, "{task-id} --reprise")`
       in the same turn**. Do **not** write `questions/` : nobody is waited for,
       so nobody is notified. The `#### Arbitrage humain` items do not block :
       they travel to the PR body (section « Arbitrage humain ouvert ») and are
       settled at merge time (HAG).
-   3. Otherwise (cap of 2 reprises reached, a finding came back) : halt as below.
+   3. Otherwise (cap of 5 reprises reached, or a finding came back a second time) : halt as below.
 
    **Halt** — when a blocking finding needs a human decision, the reprise cap is
-   reached, or a finding came back : write `questions/{task-id}.md` with the
+   reached, or a finding came back a second time : write `questions/{task-id}.md` with the
    blocking issues and the arbitrations, leave the task in `wip-*`, end the step
    `--status failed`, and **halt the chain**.
 
@@ -480,7 +484,8 @@ Tools/timing/step.sh end --task {task-id} --step review --status ok
   creation. The human's only manual intervention is merging the PR
   (HAG, rule 10).
 - If code review is **CHANGES REQUESTED** → never commit, never open PRs. If
-  every blocking finding is corrigeable and fewer than 2 reprises were done, chain
+  every blocking finding is corrigeable, fewer than 5 reprises were done and no
+  finding came back a second time, chain
   into `/develop {task-id} --reprise` (step 6) ; otherwise write
   `questions/{task-id}.md` and halt the chain.
 - Every DOD item must be checked or explicitly marked as deferred to manual
@@ -530,7 +535,7 @@ c'est le seul arrêt normal, et tu le dis en une ligne dans le rapport final.
 lui, que tu produis le rapport de fin de cycle à l'humain.
 
 **Si la revue rend CHANGES REQUESTED et que tous les bloquants sont corrigeables
-par la forge** (étape 6, moins de 2 reprises, aucun bloquant revenu) : tu invoques
+par la forge** (étape 6, moins de 5 reprises, aucun bloquant revenu une seconde fois) : tu invoques
 `Skill(develop, "{task-id} --reprise")` dans le même tour, sans rapport
 intermédiaire. La reprise revient à `/review --code` (boucle courte, sans Sonar ni
 e2e), puis la chaîne de nettoyage repart une fois, sur le code approuvé. Une

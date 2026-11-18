@@ -123,7 +123,7 @@ feature branches.
 
 A `/review` CHANGES_REQUESTED whose blocking findings are all corrigeable by the
 forge is **not** a failure : `/review` chains `/develop {task-id} --reprise` itself
-(2 reprises at most, CLAUDE.md rule 13) and the task stays in the run.
+(5 reprises at most, a finding tolerated once as a récidive, CLAUDE.md rule 13) and the task stays in the run.
 
 If any step fails (`/develop` blocker, Sonar tooling failure, `/review`
 CHANGES_REQUESTED that needs a human decision or exceeds the reprise cap,

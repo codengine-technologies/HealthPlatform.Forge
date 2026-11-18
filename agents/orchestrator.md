@@ -147,7 +147,7 @@ Per-task failure handling : on first failed step, write
 `questions/{task-id}.md`, leave the task in its current state, log the
 failure, and move to the next task in the backlog. A `/review` CHANGES REQUESTED
 whose blocking findings are all corrigeable is not a failure : `/review` chains
-`/develop {task-id} --reprise` (2 reprises at most), which comes back to
+`/develop {task-id} --reprise` (5 reprises at most, CLAUDE.md rule 13), which comes back to
 `/review --code` (short loop, no Sonar, no e2e) before the cleanup chain runs once. The run report lists each task's reprises. A task that failed before
 `/review` is **not** aggregated into staging.
 

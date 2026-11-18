@@ -73,7 +73,7 @@ avant la vitesse et avant l'autonomie. Une forge qui corrige les mêmes défauts
                                      avant tout Sonar / e2e)
     ↓ (auto)                        CHANGES REQUESTED corrigeable → (auto)
                                      /develop {NNN} --reprise → /review --code,
-                                     boucle courte, 2 reprises au plus
+                                     boucle courte, 5 reprises au plus
     ↓ (auto, APPROVED)
 /sonar {NNN}                        (cleanup SonarQube best-effort 5 itérations,
                                      api-mail uniquement — skip si non touché)
@@ -137,8 +137,8 @@ de bout en bout, sauf merge final.
    rejoue les voies complètes à `/e2e` : la non-régression reste prouvée sur les deux suites
    avant toute PR.
 
-Les garde-fous ne changent pas : 2 reprises au plus, un bloquant qui revient arrête la chaîne,
-HAG au merge. Mesure attendue (règle d'or 5) : un tour de reprise ≈ 15 min au lieu de ≈ 45 min,
+Les garde-fous : 5 reprises au plus, un même bloquant revenu une seconde fois arrête la chaîne
+(règle 13, relevée le 2026-11-18), HAG au merge. Mesure attendue (règle d'or 5) : un tour de reprise ≈ 15 min au lieu de ≈ 45 min,
 coût fixe de fin de cycle inchangé — à vérifier par `report.sh --last N` sur les tasks suivantes.
 
 ### Instrumentation — le cycle se mesure (depuis 2026-08-31)
@@ -981,9 +981,19 @@ enchaîne `/develop {task-id} --reprise`, qui corrige la liste « À corriger pa
 reprise » (chaque correctif vu rouge), puis la **boucle courte** reprend : `/review --code`
 (revue anticipée, sans build ni Sonar ni e2e — voir « Revue anticipée et marqueur vert »). Les
 arbitrages ne bloquent pas : ils vont dans la PR, à trancher au merge (HAG).
-Garde-fous : **2 reprises au plus** par task (champ `**Reprises**: N` du task file) ; un
-bloquant **qui revient** après une reprise arrête la chaîne ; un bloquant qui demande une
-décision l'arrête aussitôt. Une reprise n'écrit pas `questions/` : personne n'est
+Garde-fous : **5 reprises au plus** par task (champ `**Reprises**: N` du task file) ; un même
+bloquant **peut revenir une fois** (récidive tolérée, notée « récidive » dans la liste de la reprise) ;
+**revenu une seconde fois**, il arrête la chaîne ; un bloquant qui demande une décision l'arrête
+aussitôt.
+
+> **Relevé le 2026-11-18, demande humaine (task-487).** Le plafond était de 2 reprises, et un
+> bloquant revenu une seule fois arrêtait tout. Le plafond datait d'avant la revue anticipée,
+> quand une reprise relançait Sonar, les deux voies e2e et deux suites (≈ 45 min) ; la boucle
+> courte coûte ≈ 15 à 30 min. Sur task-487, B2 est revenu parce que le correctif était partiel,
+> cause identifiée et correctif borné : l'arrêt n'apportait rien. Trois échecs sur le même
+> bloquant restent le signe d'un défaut que la forge ne sait pas corriger. Mesure (règle d'or 5) :
+> nombre de reprises et durée de cycle par `report.sh --last N`, pour vérifier que 5 ne devient
+> pas la norme. Une reprise n'écrit pas `questions/` : personne n'est
 attendu, personne n'est notifié. Avant cette règle, chaque CHANGES REQUESTED corrigeable
 (task-448 B1/B2, task-449 B1) attendait que l'humain relance `/develop` à la main. **HAG (règle 10) est la seule barrière humaine du cycle, et
 elle se situe au merge de la PR — jamais avant.**
@@ -1090,7 +1100,7 @@ Never modify without human arbitration:
 | `/lint-angular {task-id}` | Best-effort ESLint cleanup on `client-angular` (Working dir `Client/Angular/front/`). Reproduit la forme des commandes lint/build/test du pipeline Azure `Client/Angular/azure-pipelines.yml` (Stage 2 CI), avec deux divergences intentionnelles : (1) default `$BASE_BRANCH = origin/next` (branche d'intégration vivante du repo TFS, pas l'`origin/master` du pipeline) ; (2) lint scopé via `--projects=tag:scope:mss` (le forge ne fixe que le module MSS — `mss` + `mss-lib`). Build/test restent en scope complet pour détecter les régressions downstream. Auto-fix puis fix manuels 5 itérations max, accepte les errors restantes. Code-only — ne touche jamais à git. Standard step in the autonomous chain, skip clean si client-angular non touché. See `agents/lint-angular.md`. |
 | `/sonar-s3776 api-mail` | **[Manual]** Reduce cognitive complexity of ONE method (S3776). One method = one PR. Characterisation tests written first. Out of the autonomous chain. See `.claude/commands/sonar-s3776.md`. |
 | `/loadtest-findings {rapport.md}` | **[Hors chaîne autonome — banc]** (task-433) Après un tir de banc, explore au plus 8 formes SQL coûteuses (signalées par `report_signals.py` d'abord) jusqu'à leur code et leur plan, et ajoute au rapport la section « Findings — analyse de code ». Chaque finding porte : site au commit du tir, plan sur une base du banc, cause, gain borné par le tir, correctif et test (règle 1b), verdict confirmé / plausible / écarté. Tient `Docs/audits/findings-registry.md` (récidives nommées). Contrôle de non-confabulation bloquant (`Tools/loadtest-findings/findings.py check`). Appelé par le skill de banc (§ 5b-quater) pour tout rapport copié dans `Docs/audits/`. **Ne rédige aucune task** : l'humain choisit, puis `/po`. See `agents/loadtest-findings.md`. |
-| `/review {task-id} --code` | **Revue anticipée** (depuis le 2026-11-12) : juste après `/develop`, revue de code + règle 1b sur le diff, **sans build, sans test, sans PR**. APPROVED → `/sonar` (puis lint, `/e2e`, `/review`). CHANGES REQUESTED corrigeable → `/develop {task-id} --reprise` → `/review --code` (boucle courte, 2 reprises au plus). Après une reprise, lit d'abord le diff de la reprise pour ce qu'il a cassé. |
+| `/review {task-id} --code` | **Revue anticipée** (depuis le 2026-11-12) : juste après `/develop`, revue de code + règle 1b sur le diff, **sans build, sans test, sans PR**. APPROVED → `/sonar` (puis lint, `/e2e`, `/review`). CHANGES REQUESTED corrigeable → `/develop {task-id} --reprise` → `/review --code` (boucle courte, 5 reprises au plus, un bloquant toléré une fois en récidive). Après une reprise, lit d'abord le diff de la reprise pour ce qu'il a cassé. |
 | `/review {task-id}` | **Validation finale** : build + tests (sautés par repo si `Tools/green/green.py check` confirme le vert de ce code exact), DOD, verrous 1b / e2e, revue du seul diff postérieur à l'approbation de `--code` (fixes Sonar / lint), commit/push/sync develop, open the PR (label `awaiting-human-merge`), rename `done-*`, chain into `/tech-writer`. Autonomous — no human prompt. |
 | `/merge {task-id} --i-tested` | **[Human only]** After the human has tested the US end-to-end on the open PRs, squash-merge each pushable PR, sync `develop`, delete the branches, move the task into `tasks/archived/archived-{task-id}[_{titre}].md`. Refuses without `--i-tested`, on `awaiting-us-completion` label, or red CI. Never invoked by `/forge` — HAG (rule 10) stays. See `agents/merge.md`. |
 | `/tech-writer E{NNN}` | Refresh `docs/epics/E{NNN}-{slug}.md` from all tasks that declare `**Epic**: E{NNN}` — y compris la galerie **« État visuel de l'application »** (copies d'écran de `Docs/epics/img/screens/{app}/` appartenant à l'EPIC, embeds relatifs, libellés produit). Called automatically at the tail of `/review` ; can be run manually for retro-generation or `--refresh`. See `agents/technical-writer.md`. |

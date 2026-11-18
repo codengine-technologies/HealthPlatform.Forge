@@ -4,7 +4,7 @@ Usage : `/develop {task-id}` (e.g. `/develop task-018`)
 
 Reprise : `/develop {task-id} --reprise` — invoked **by `/review`** when its
 verdict is CHANGES REQUESTED and every blocking finding is corrigeable by the
-forge (at most 2 reprises per task). The scope is the list
+forge (at most 5 reprises per task, CLAUDE.md rule 13). The scope is the list
 `#### À corriger par la reprise` of the task file's `## Code Review Summary`,
 not the whole DoD ; each fix is seen red, then the **short loop** resumes :
 `/review {task-id} --code` (revue anticipée — no Sonar, no e2e, since 2026-11-12).
