@@ -495,8 +495,9 @@ de E2E-CONV-002 (`catalogue-edite-sans-son-test`, nouvelle) ; E2E-CONV-003 mobil
 
 Suites : mobile lint, build, 1650/1650 ; weda2 2683/2683 ; mss-lib 1844/1848 au dernier passage collecté (les 4 rouges
 corrigés depuis, specs vertes une à une), puis lanceur Vitest en panne (« reading 'config' » / « initTestEnvironment »,
-mémoire `vitest-mss-lanceur-instable-ngmodule`). **Restent à rejouer** : `mail-list.component.spec.ts` (correctif
-d'assertion de date), la mutation du défilement, la suite mss-lib entière, et les deux voies e2e — ces dernières
+mémoire `vitest-mss-lanceur-instable-ngmodule`). À 13:16, `mail-list.component.spec.ts` 14/14 (correctif d'assertion de
+date vérifié) et `mail-conversation.component.spec.ts` 39/39. **Restent à rejouer** : la mutation du défilement
+(lanceur retombé en panne aussitôt après, 24 essais), la suite mss-lib entière, et les deux voies e2e — ces dernières
 attendent l'arrêt de l'environnement de recette, qui occupe les ports (un premier essai de la voie Angular a joué
 contre lui : sans valeur). Commits : mobile `b05dbfa`, `5e7a739` ; api-mail `3d924a0e`, `721e0bc1` ; weda2 non commité.
 
