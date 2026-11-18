@@ -690,12 +690,17 @@ par lint sur du code frais est un échec de lecture de ce fichier.
     plus », qui demande la page suivante au serveur), `isDegraded` (bandeau), le groupe de chaque
     résultat (parties titrées) ;
   - une erreur se dit, et vide la liste : jamais l'ancienne liste sous une nouvelle requête ;
-  - côté test : un double de réponse porte ces signaux, et un test par signal le lit à l'écran.
+  - côté test : un double de réponse porte ces signaux, et un test par signal le lit à l'écran ;
+  - une page de clés **sur plusieurs dossiers**, relue dossier par dossier, se remet dans l'ordre
+    des clés. Son test **entrelace** les dossiers (`INBOX`, `Patients`, `INBOX`). Si l'ordre de la
+    réponse coïncide avec celui des lectures par dossier, une page non réordonnée reste verte
+    (task-457, mutant WM4 d'abord survivant).
 - **Preuve** : `mail-search-session.spec.ts`, `mail-list.search-mode.spec.ts` (task-445), rouges sous
   mutation (tri local, rattachement par le dossier affiché, panne non lue, « Voir plus » sur la
-  première page, erreur qui garde la liste) ; `E2E-SEARCH-004` à `007`.
+  première page, erreur qui garde la liste) ; `E2E-SEARCH-004` à `007`. « Pour moi » :
+  `mail-state.service.handling.spec.ts` (weda2), `mail-state.for-me.spec.ts` (mobile), task-457.
 - **Origine** : task-445 (campagne recherche du 2026-11-09, reprise de task-441)
-- **Occurrences** : 1
+- **Occurrences** : 2
 
 ### retrait-optimiste-dans-chaque-liste — Un « Annuler » remet l'élément dans chaque liste dont il l'a retiré
 - **Règle** : convention projet (régression silencieuse, invisible au lint)

@@ -538,7 +538,10 @@ private Task<T> ReadCoreAsync(string key, string? correlationId, CancellationTok
 
 ## xUnit1051 — un test qui appelle une méthode à `CancellationToken` doit passer celui du contexte
 
-**Occurrences : 5** (task-459 — 7 vérifications `DidNotReceiveWithAnyArgs().X(default!, …, default)` dans trois fichiers de tests neufs, attrapées par le build ; même forme pour la quatrième fois, d'où la vérification mécanique ajoutée à `agents/develop.md` §Q 2b ; task-378 — `DidNotReceiveWithAnyArgs().TestImapConnectionAsync(default!, default, default)` dans un test d'intégration neuf : le `default` du jeton est la forme exacte de task-329, attrapée par le build avant tout commit ; task-297 le 2026-09-13 — 10 appels, CI `develop` cassée ;
+**Occurrences : 6** (task-457 — 5 vérifications `DidNotReceiveWithAnyArgs().SetAsync(default!, …, default)` et
+`PublishAsync(default!, default!, default)` dans un fichier de tests neuf, attrapées par le build : la consigne
+ci-dessous n'avait pas été relue avant d'écrire les vérifications de substituts, alors que le raccourci `Ct` était
+déjà déclaré en tête de classe ; task-459 — 7 vérifications `DidNotReceiveWithAnyArgs().X(default!, …, default)` dans trois fichiers de tests neufs, attrapées par le build ; même forme pour la quatrième fois, d'où la vérification mécanique ajoutée à `agents/develop.md` §Q 2b ; task-378 — `DidNotReceiveWithAnyArgs().TestImapConnectionAsync(default!, default, default)` dans un test d'intégration neuf : le `default` du jeton est la forme exacte de task-329, attrapée par le build avant tout commit ; task-297 le 2026-09-13 — 10 appels, CI `develop` cassée ;
 task-303 le même jour — 12 appels, attrapés avant le push ; task-329 — 3 appels
 `DidNotReceiveWithAnyArgs().SendMailAsync(default!, default)`, attrapés par le build : le
 `default` d'un `CancellationToken` dans une vérification de substitut compte aussi)
@@ -779,7 +782,7 @@ l'issue FALSE-POSITIVE avec ce motif, comme toutes les exceptions voisines de
 
 ## S3776 — un `try/catch` ajouté à une méthode déjà chargée la fait déborder
 
-**Occurrences : 8** (task-449 — `SemanticSearchRepository.ApplyFieldFilters` : la reprise 3 a ajouté un `||` (nom **ou** adresse) aux filtres « De » et « À » d'une suite de `if` facultatifs déjà à 15, complexité 17. Les critères tapés (De / À / Objet) sont extraits en `ApplyTypedTextFilters`. Même consigne que task-400 : une suite de `if` facultatifs se factorise **avant** d'en enrichir un cas ; task-453 — `DocumentWorkStateRelinker.RelinkAsync` : chargement des orphelins puis, dans la boucle par identité, un `if/else` et un `if` imbriqué (re-liaison ou refus, rattachement à ré-appliquer), complexité 16. Le traitement d'une identité est extrait en `RelinkKeyAsync`, à retour anticipé. Même consigne : une boucle dont le corps décide entre deux issues sort ce corps dans une méthode dès l'écriture ; task-409 — `UserContextEnricherMiddleware.ApplyMailboxSelectionAsync` : un appel de plus (le préremplissage) dans le bloc « rattachement retenu », déjà enrichi par task-405, a porté la complexité à 18 ; le bloc est extrait en `ApplyAttachmentAsync`. Même consigne : une méthode d'aiguillage qui reçoit une étape de plus se factorise avant ; task-400 — ×3 : `PostgresAuditReader.ApplySort`, un ternaire `isAsc ? OrderBy : OrderByDescending` par colonne triable, porté à 19 par deux colonnes de plus, résolu par un assistant `By<TKey>` ; `ApplyFilters`, deux filtres de plus sur une méthode déjà pleine, extraits en `ApplyContentFilters` ; `TestBypassAuthenticationHandler.HandleAuthenticateAsync`, un en-tête facultatif de plus, les trois extraits en `AddClaimFromHeader`. Consigne étendue : une méthode faite d'un `switch` ou d'une suite de `if` facultatifs déborde à l'ajout d'un cas — factoriser le cas avant de l'ajouter ; task-386 — `AnnuaireSanteService.ValidateSearchCriteria` : une garde de plus (séparateurs FHIR refusés) en tête d'une méthode de validation déjà à 15 ; extraite en `EnsureNoReservedCharacters` ; task-330 — `DraftService.SendDraftAsync`, complexité cognitive 16)
+**Occurrences : 9** (task-457 — `MailController.GetFoldersAsync` : task-454 y avait posé un `if (mailHandling is not null)` (compteurs « à traiter »), à 15 ; le compteur « Pour moi » en a ajouté un second, complexité 16. Les deux sont extraits en `ApplyWorkCountsAsync`. Même consigne : un service facultatif de plus dans une action déjà pleine se branche par une méthode dédiée, dès le premier ; task-449 — `SemanticSearchRepository.ApplyFieldFilters` : la reprise 3 a ajouté un `||` (nom **ou** adresse) aux filtres « De » et « À » d'une suite de `if` facultatifs déjà à 15, complexité 17. Les critères tapés (De / À / Objet) sont extraits en `ApplyTypedTextFilters`. Même consigne que task-400 : une suite de `if` facultatifs se factorise **avant** d'en enrichir un cas ; task-453 — `DocumentWorkStateRelinker.RelinkAsync` : chargement des orphelins puis, dans la boucle par identité, un `if/else` et un `if` imbriqué (re-liaison ou refus, rattachement à ré-appliquer), complexité 16. Le traitement d'une identité est extrait en `RelinkKeyAsync`, à retour anticipé. Même consigne : une boucle dont le corps décide entre deux issues sort ce corps dans une méthode dès l'écriture ; task-409 — `UserContextEnricherMiddleware.ApplyMailboxSelectionAsync` : un appel de plus (le préremplissage) dans le bloc « rattachement retenu », déjà enrichi par task-405, a porté la complexité à 18 ; le bloc est extrait en `ApplyAttachmentAsync`. Même consigne : une méthode d'aiguillage qui reçoit une étape de plus se factorise avant ; task-400 — ×3 : `PostgresAuditReader.ApplySort`, un ternaire `isAsc ? OrderBy : OrderByDescending` par colonne triable, porté à 19 par deux colonnes de plus, résolu par un assistant `By<TKey>` ; `ApplyFilters`, deux filtres de plus sur une méthode déjà pleine, extraits en `ApplyContentFilters` ; `TestBypassAuthenticationHandler.HandleAuthenticateAsync`, un en-tête facultatif de plus, les trois extraits en `AddClaimFromHeader`. Consigne étendue : une méthode faite d'un `switch` ou d'une suite de `if` facultatifs déborde à l'ajout d'un cas — factoriser le cas avant de l'ajouter ; task-386 — `AnnuaireSanteService.ValidateSearchCriteria` : une garde de plus (séparateurs FHIR refusés) en tête d'une méthode de validation déjà à 15 ; extraite en `EnsureNoReservedCharacters` ; task-330 — `DraftService.SendDraftAsync`, complexité cognitive 16)
 
 La méthode tenait sous le seuil. Le changement de contrat de `SmtpService` (il lève là où il
 rendait un `Result`) a demandé trois `catch` autour de l'appel SMTP. Chacun compte, imbriqué dans
@@ -2938,6 +2941,29 @@ pose n'arrivait au journal de la boîte, et le test restait vert. La mutation «
 mutation `IsSystemAct = false` est alors rouge (4 traces sur 4).
 
 **Origine** : task-456 (/develop, mutation survivante). **Occurrences** : 1
+
+---
+
+## boite-de-test-partagee — deux tests d'intégration ne partagent pas la boîte (`userIndex`) d'une même collection
+
+**Règle** : convention de test (intégration, `UseCaseHttpHost`), invisible au compilateur, au lint et à Sonar.
+
+**Piège** (task-454, trouvé par task-457) : `StartAsync(userIndex, …)` ouvre la boîte IMAP **et** la base de l'utilisateur
+synthétique `userIndex`. `TheBulkHandling_…` et `TheToHandleCounterPageAndTagFilter_…` utilisaient tous deux `4549` :
+selon l'ordre d'exécution de la collection, le compteur « à traiter » du second comptait les six messages déposés par le
+premier (8 au lieu de 4). Vert seul, vert en revue, rouge dans la suite d'une autre task.
+
+**Consigne** :
+- Un nouveau test prend un `userIndex` **inutilisé dans tout le projet** : avant de l'écrire,
+  `grep -rhoE "45[0-9]{2}" tests/mss.mail.integration.tests --include=*.cs | sort | uniq -c` (adapter le préfixe).
+- Deux personnes de la **même** boîte (titulaire et délégataire) partagent volontairement un `userIndex` dans **un seul**
+  test ; jamais d'un test à l'autre.
+- Un test qui compte (compteur, page, total) est le premier suspect quand il rougit en collection et pas seul.
+
+**Preuve** : task-457, suite `FolderOperationsEndToEndTests` (92 tests) rouge sur le compteur (8 contre 4), verte après
+avoir donné `4553` au test du traitement groupé.
+
+**Origine** : task-457 (/develop). **Occurrences** : 1
 
 ### lecture-imap-ponctuelle-par-le-chemin-existant — Lire un message entier passe par `BuildEmlAsync`, jamais par une copie
 
