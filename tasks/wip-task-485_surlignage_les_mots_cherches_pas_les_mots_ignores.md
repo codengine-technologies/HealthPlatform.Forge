@@ -202,6 +202,17 @@ client-angular : arbre de travail de `feature/nova-mss-weda-integration` (HEAD `
   étendre ce skip au cas « aucun fichier du périmètre Sonar modifié » (changement du plan de contrôle, relu par
   l'humain avant push).
 
+## Lint log
+
+- Mode A (chaîné), scope `tag:scope:mss`, base `origin/next` ; aucun override.
+- Comptage : `npx eslint libs/mss apps/mss e2e/mss-e2e --format json` (contournement de task-367) ; attribution par
+  `git diff -U0 HEAD` + fichiers non suivis.
+- Résultat : **0 erreur**, 100 avertissements (75 `jsdoc/require-example`, 22 `max-lines`, 3 `complexity`), **aucun sur
+  une ligne de la task**. Itérations : 0 / 5, aucun fichier modifié. Prettier propre sur les fichiers de la task.
+- Build / tests non rejoués : vert de `/develop` valide sur cet arbre (`green.py check` : `c434dd3e`).
+- L'arbre porte aussi, non commités, les correctifs d'après merge de task-487 (`chat-bubble.*`,
+  `mail-conversation.component.{scss,spec.ts}`) : à commiter sur TFS par l'humain, avec ou sans task-485.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-485 --sync` — ne pas éditer à la main)*
@@ -212,4 +223,7 @@ client-angular : arbre de travail de `feature/nova-mss-weda-integration` (HEAD `
 | /develop | ok | 1 h 12 min | — | — | — | — |
 | /review-code | ok | 3 min 14 s | — | — | — | — |
 | /sonar | skipped | 0.8 s | — | — | — | api-mail : catalogue e2e (YAML) seul, aucun fichier analysé par Sonar |
-| **Total cycle** | | **1 h 15 min** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /lint-angular | ok | 28 s | — | — | — | — |
+| **Total cycle** | | **1 h 16 min** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : lint ×1 (9.7 s)
