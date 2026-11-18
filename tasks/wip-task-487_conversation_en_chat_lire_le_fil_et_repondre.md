@@ -608,6 +608,36 @@ de `feature/nova-mss-weda-integration` au 2026-11-18 (code-only).
 - mobile : après confirmation, la réponse disparaît le temps que la copie d'Envoyés arrive (inchangé, pas une
   régression).
 
+## Sonar log
+
+Projet `healthplatform-api-mail` (SonarQube 9.9.8), branche `feat/task-487-conversation-en-chat-lire-le-fil-et`.
+2 analyses (build Release + 5 suites avec couverture OpenCover + scan).
+
+| Itération | Constat new code | Correctif | Commit |
+|---|---|---|---|
+| 1 | 2 × S3604 (MINOR) — `ConversationService.Texts` : `_read = []` et `_indexes = bubbles.Select(…)` initialisés en champ d'une classe privée à constructeur primaire | constructeur explicite, aucun changement de comportement (refactor pur, suites inchangées) | api-mail `34451a35` |
+| 2 | 0 | — | — |
+
+### KPIs qualité (baseline → final)
+
+| Indicateur | Baseline (avant task) | Final |
+|---|---|---|
+| Quality Gate | OK | **OK** |
+| Bugs | 0 | 0 |
+| Vulnérabilités | 0 | 0 |
+| Code smells | 0 | 0 (2 pendant l'itération 1, corrigés) |
+| Security hotspots | 0 | 0 |
+| Couverture | 97,8 % | 97,7 % |
+| Couverture du new code | — | 96,2 % (seuil ≥ 95 %) |
+| Duplication | 0,3 % | 0,3 % (new code 0,04 %) |
+| Fiabilité / Sécurité / Maintenabilité | A / A / A | A / A / A |
+
+Suites jouées par l'analyse : domaine 361, application 4322, infrastructure 749, api 1382, intégration 1357/1373
+(16 ignorés), **0 échec** — en excluant seulement
+`ImapSessionSweepIntegrationTests.ConnectAsync_WhileTheSweepRunsDuringTheConnection_OpensTheSessionAsync` (bloque une
+heure, code identique à `develop`). Vert api-mail **non marqué** pour cette raison : `/review` rejouera.
+Convention : `conventions/csharp.md` S3604 → Occurrences 6 (récidive sur du code frais).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-487 --sync` — ne pas éditer à la main)*
@@ -617,6 +647,7 @@ de `feature/nova-mss-weda-integration` au 2026-11-18 (code-only).
 | /start | ok | 29 s | — | — | — | — |
 | /develop | ok | 14 min 37 s | 10 (1 min 27 s) | 42 (1 h 35 min) | — | dtos-mss 1B/0T, api-mail 9B/42T, reprise 2 |
 | /review-code | ok | 8 min 26 s | — | — | — | — |
-| **Total cycle** | | **23 min 32 s** | **10 (1 min 27 s)** | **42 (1 h 35 min)** | **0 (0.0 s)** | |
+| /sonar | ok | 23 min 47 s | 2 (1 min 45 s) | 10 (16 min 11 s) | 4 (1 min 35 s) | 2 itération(s), api-mail 2B/10T |
+| **Total cycle** | | **47 min 20 s** | **12 (3 min 12 s)** | **52 (1 h 52 min)** | **4 (1 min 35 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (19 s)

@@ -401,7 +401,9 @@ convention de nommage.
 
 ## S3604 — un constructeur primaire n'accepte pas d'initialiseur de champ
 
-**Occurrences : 5** (task-432 — `SqlCallSiteResolver` : deux `ConcurrentDictionary` initialisés en champ d'une classe à constructeur primaire, **avec un second constructeur chaîné** `: this(CurrentStack)`. Le chaînage ne protège pas : constructeurs classiques ; task-386 — `InProcessAnnuaireQuotaGate` (`Lock`, `_window = -1`) et `RedisAnnuaireQuotaGate` (`_fallback = new(options, timeProvider)`) : la 9.9 relève tout initialiseur de champ d'une classe à constructeur primaire, même `new Lock()` ; constructeurs classiques ; task-342, relevé par le `/sonar` de task-325 — `private readonly TimeProvider clock =
+**Occurrences : 6** (task-487 /sonar — **récidive sur du code frais** : la classe privée `Texts(List<Bubble> bubbles)`
+de `ConversationService`, écrite par la reprise 2, initialisait `_read = []` et `_indexes = bubbles.Select(…)` en champ ;
+constructeur explicite. Un helper **privé imbriqué** n'échappe pas à la règle ; task-432 — `SqlCallSiteResolver` : deux `ConcurrentDictionary` initialisés en champ d'une classe à constructeur primaire, **avec un second constructeur chaîné** `: this(CurrentStack)`. Le chaînage ne protège pas : constructeurs classiques ; task-386 — `InProcessAnnuaireQuotaGate` (`Lock`, `_window = -1`) et `RedisAnnuaireQuotaGate` (`_fallback = new(options, timeProvider)`) : la 9.9 relève tout initialiseur de champ d'une classe à constructeur primaire, même `new Lock()` ; constructeurs classiques ; task-342, relevé par le `/sonar` de task-325 — `private readonly TimeProvider clock =
 timeProvider ?? TimeProvider.System;` dans `ImapService` et `OfflineMailDataProvider` : un **défaut de repli**
 sur un paramètre optionnel est aussi un initialiseur. Correctif sans constructeur explicite quand la valeur ne
 coûte rien à recalculer : une propriété `private TimeProvider Clock => timeProvider ?? TimeProvider.System;` ;
