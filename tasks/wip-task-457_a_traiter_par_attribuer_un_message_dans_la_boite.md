@@ -133,7 +133,7 @@ Règles :
 |---|---|---|---|---|---|---|
 | /start | ok | 1 min 32 s | — | — | — | — |
 | /develop | ok | 52 min 03 s | 16 (9 min 25 s) | 19 (1 h 12 min) | — | api-mail 9B/9T, client-angular 3B/6T, client-mobile 4B/4T, reprise 1 |
-| /review-code | changes | 10 min 44 s | — | — | — | reprise 1 |
+| /review-code | ok | 11 min 07 s | — | — | — | — |
 | **Total cycle** | | **1 h 04 min** | **16 (9 min 25 s)** | **19 (1 h 12 min)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×2 (28 s), restore ×2 (15 s)
@@ -489,3 +489,48 @@ objet, aucun contenu clinique dans les avis ni les journaux, migration (règle 7
   d'or 5).
 - **S9** — le test 403 joue la garde du service avec une persona fabriquée, pas le refus du middleware
   (`Client-Email` d'une boîte non rattachée), déjà couvert par les tests du verrou d'accès.
+
+### Passage 2 (revue anticipée) — APPROVED
+
+Relecture de la reprise d'abord (diffs `f5f58002..d2a0c7a3` api-mail, `361c0d6..02c9aa8` mobile, arbre weda2), par
+un relecteur indépendant, à la recherche de ce que le correctif a cassé : tous les appelants des routes et méthodes
+changées (`GET emails/for-me/page`, `PUT assignments/notices/seen?until=`, `GetForMePageAsync`,
+`GetUnseenNoticesAsync`, `MarkNoticesSeenAsync`, `forMeUids`) sont à jour dans api-mail, les deux clients et leurs
+supports e2e ; aucun appelant dans client-blazor ni api-mcp. `until` fait l'aller-retour sans perte (`+` encodé
+`%2B` par les deux clients ; `At` tronqué à la microseconde par Npgsql, donc `At <= until` tient pour l'avis
+montré). Les actions groupées sur une liste « Pour moi » à plusieurs dossiers agissent déjà dossier par dossier.
+
+**Constats du passage 1** : B1, B2, S2, S3, S4, S6, S7, S8, S10 corrigés (preuves rouges : Develop log,
+« Reprise 1 »).
+
+**Verrou 1b (4a)** :
+
+| Comportement | Test d'intégration (vraie pile) | Preuve rouge |
+|---|---|---|
+| L'avis n'arrive que sur le flux de la personne visée (`notifications/stream`, `events/stream`) | `MailboxAccessLockIntegrationTests.AnAddressedNotice_ReachesTheStreamOfItsRecipientOnly_NotTheOtherPersonOfTheMailbox` ; moitié `PUT …/assignee` → relais : `FolderOperationsEndToEndTests.Assignment` | M17, M18 |
+| « Pour moi » sur tous les dossiers hors Envoyés, Brouillons, Corbeille ; une ligne et un compte par Message-ID | `ForMe_CoversAMessageFiledInAnotherFolder_AndCountsAMessageInTwoCopiesOnce` | M19, M20, M21 |
+| Avis : attributions ouvertes seules, bornés ; « vus » jusqu'à l'instant lu | `Notices_AreThoseOfOpenAssignments_AndSeenStopsAtTheInstantRead` | M22, M23 |
+| Retrait sans objet : ni acte ni évènement | `DELETE` d'un message non attribué dans le test groupé (`Assert.Single` sur la trace `MailUnassigned`) | M24 |
+
+**api-mcp** : aucun impact (`mcp_impact.py check` → 0).
+**DOD, scénarios** : `E2E-ASSIGN-001` et `-002` en v1 au catalogue, déclarés v1 par les deux clients ; rejoués seuls
+après la reprise, 2/2 verts par voie.
+
+**Suggestions (non bloquantes)** :
+- N1 — mobile : `loadNextForMePage` ne demande pas l'enrichissement des lignes (le chemin « À traiter » le fait).
+  Portée faible : attribuer un message exige de l'avoir affiché, donc enrichi dans la base de la boîte, partagée.
+  Les pages servies de weda2 n'enrichissent pas non plus (antérieur à la task).
+- N2 — les lignes « Pour moi » d'un autre dossier ne reçoivent pas les évènements en direct (flux par dossier, ouvert
+  sur la Boîte de réception) : elles se mettent à jour au rechargement, le compteur au rafraîchissement des dossiers.
+- N3 — performance : « Pour moi » joint `Mails` aux attributions sur une ancre calculée, sans index sur
+  `Mails.MessageId`, sur toute la boîte à chaque `GET /folders` ; la page et les avis se chargent en mémoire avant
+  la pagination. À mesurer au banc avec S5 (règle d'or 5).
+- N4 — l'ordre de pagination n'a pas de départage par dossier : un message à plusieurs copies hors Boîte de
+  réception, attribué en lot (même instant), pourrait changer de page entre deux requêtes. Ajouter `ThenBy(FolderPath)`
+  et un choix de copie ordonné.
+
+**Amélioration continue** : le mutant WM4 a d'abord survécu (fixture dans l'ordre des lectures par dossier) →
+consigne ajoutée à `conventions/angular.md`, `liste-ordonnee-par-le-serveur` (occurrences 2).
+
+**Approved at** : api-mail `d2a0c7a3` · client-mobile `02c9aa8` · dtos-mss `3e8bfa5` · client-angular arbre de
+travail sur `5fbc7e28` (code-only, vert marqué).
