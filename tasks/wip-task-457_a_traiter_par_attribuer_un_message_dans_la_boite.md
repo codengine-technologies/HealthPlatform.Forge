@@ -134,7 +134,8 @@ Règles :
 | /start | ok | 1 min 32 s | — | — | — | — |
 | /develop | ok | 52 min 03 s | 16 (9 min 25 s) | 19 (1 h 12 min) | — | api-mail 9B/9T, client-angular 3B/6T, client-mobile 4B/4T, reprise 1 |
 | /review-code | ok | 11 min 07 s | — | — | — | — |
-| **Total cycle** | | **1 h 04 min** | **16 (9 min 25 s)** | **19 (1 h 12 min)** | **0 (0.0 s)** | |
+| /sonar | ok | 41 min 19 s | 3 (1 min 38 s) | 12 (21 min 35 s) | 4 (5 min 49 s) | 2 itération(s), api-mail 3B/12T |
+| **Total cycle** | | **1 h 46 min** | **19 (11 min 03 s)** | **31 (1 h 33 min)** | **4 (5 min 49 s)** | |
 
 Autres commandes mesurées : nuget-wait ×2 (28 s), restore ×2 (15 s)
 
@@ -443,6 +444,60 @@ Validation de la reprise :
 - api-mcp : `mcp_impact.py check` → aucun impact.
 - Parcours rejoués seuls (`--serve-only`, `--grep E2E-ASSIGN`), les routes ayant changé : voie mobile 2/2 verts, voie
   Angular 2/2 verts. Les voies complètes restent à `/e2e`.
+
+## Sonar log
+
+- Analyse de la branche `feat/task-457-a-traiter-par-attribuer-un-message-dans` (SonarQube 25.6.0, `sonar.token`,
+  conteneurs redémarrés : `sonarqube_db` puis `sonarqube`, port 9001), deux passes : `d2a0c7a3` (code approuvé par la
+  revue anticipée, passage 2), puis `45b2624a` (correctifs).
+- Provenance vérifiée constat par constat (`git blame` contre `origin/develop`) : la période de new code (30 jours)
+  porte 97 constats et 16 hotspots d'autres tasks (scripts du banc `tests/loadtest-k6`, `Dockerfile`, `AppHost`,
+  `BaseRepository`…), déjà présents à la baseline. Un seul constat vient des lignes de la task.
+- Phase 1 (new code de la task) : ✓ 0 constat restant sur les lignes de la task, 0 hotspot, new_coverage 97,7 %.
+- Phase 1 — Issue fixée : **S3776** ×1 — `MailController.GetFoldersAsync`, complexité 16 : le compteur « Pour moi »
+  ajoutait un second `if` de service facultatif après celui de task-454. Les deux sont extraits en
+  `ApplyWorkCountsAsync` (`e79b443d`), complexité 14. Refactor pur : les compteurs restent lus dans `GET /folders` par
+  les tests d'intégration de task-454 et task-457.
+- Phase 1 — Tests ajoutés (`45b2624a`) :
+  - intégration `InvalidAssignmentRequests_AreRefusedInProblemJson_AndAssignNothing` (vraie pile, problem+json) :
+    message absent → 404 à l'attribution et au retrait, sélection vide → 400, sélection de plus de 2 000 messages →
+    400, aucune attribution écrite. Trois mutations, chacune rouge : Q1 sélection vide acceptée (« Attendu 400, reçu
+    200 »), Q2 sélection trop grande acceptée (« Attendu 400, reçu 200 »), Q3 message absent non refusé (« Attendu 404,
+    reçu 500 »). Restauration recompilée (build 0) ;
+  - unitaire `ForbiddenException_EveryConstructor_KeepsMessageAndCause`.
+  - Couverture new code des fichiers de la task : `MailAssignmentController` 80,3 → 89,4 %, `MailAssignmentService`
+    91,9 → 92,8 %, `ForbiddenException` 33,3 → 100 %, `MailAssignmentRepository` 90,7 % (reste : reprise sur conflit
+    23505, retours anticipés sur entrée vide, propriétés de la ligne de projection). La cible globale du new code est
+    tenue.
+- Restent dans des fichiers touchés, sur des lignes **antérieures** à la task : S1067 `PostgresTenantRegistryClient`
+  l.1392 (`PractitionerOf`, task-409), S103 `SseNotificationBroker` l.107 (ligne de log antérieure). Non corrigés.
+- Phase 2 (legacy) : non jouée. Les constats restants de la période de new code appartiennent à d'autres tasks, la
+  couverture du projet est de 97,7 % et la note de maintenabilité est A. Une passe Phase 2 coûte une analyse complète,
+  environ 15 min.
+- Build / tests (Release) : ✓ vert sur `45b2624a`. Suite complète 348 / 4 303 / 749 / 1 382 / 1 358 (+16 ignorés),
+  0 échec, soit +1 unitaire et +1 intégration. Première passe : 1 rouge flaky connu,
+  `TenantRegistryIntegrationTests.AttachMailboxAsync_UnderConcurrency_PersistsExactlyOneTenant`, vert à la passe
+  suivante. Vert marqué (`green.py mark --by sonar`, api-mail `45b2624a`).
+- `conventions/csharp.md` : S3776 → 9 (récidive : un service facultatif de plus dans une action déjà pleine).
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | ERROR | ERROR | → (constats d'autres tasks, voir ci-dessus) |
+| New coverage | 97,8 % | 97,7 % | −0,1 pt |
+| Bugs | 2 | 2 | 0 |
+| Vulnerabilities | 2 | 2 | 0 |
+| Security hotspots | 16 | 16 | 0 |
+| Code smells | 94 | 95 | +1 |
+| Coverage (projet) | 97,8 % | 97,7 % | −0,1 pt |
+| Duplication | 0,3 % | 0,3 % | 0 |
+| Reliability / Security / Maintainability | D/D/A | D/D/A | → |
+
+Baseline : la dernière analyse sur ce serveur (2026-11-13, `b87aa7cf`, task-459) ; new code = 30 derniers jours.
+Le +1 code smell n'est pas attribué : la branche porte aussi les commits de `develop` postérieurs à la baseline
+(task-454 notamment), et aucun constat restant n'est sur une ligne de la task (`git blame`). Bugs, vulnérabilités et
+notes D (fiabilité, sécurité) : constats d'autres tasks, inchangés par celle-ci.
 
 ## Code Review Summary
 
