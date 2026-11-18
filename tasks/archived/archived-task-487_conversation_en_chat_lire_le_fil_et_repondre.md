@@ -946,8 +946,9 @@ discrète (chevron) à droite du texte, dans la bulle, avec libellé lecteur d'�
 texte cité et la signature »).
 
 - client-mobile : branche `fix/task-487-texte-cite-en-icone` (`d33c9d5`), PR
-  [#131](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/131) **en brouillon** jusqu'au rejeu des
-  voies e2e (ports occupés par l'environnement de recette). Lint, build, 1679/1679.
+  [#131](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/131) **mergée** sur décision humaine
+  (squash `7c6e713fbd`), sans rejeu e2e préalable (ports occupés par l'environnement de recette) : la voie mobile de
+  task-485 rejoue `develop`, ce correctif compris. Lint, build, 1679/1679.
 - weda2 : `chat-bubble.component.{html,scss,ts}` et la spec de la vue chat (39/39), non commités.
 - Tests vus rouges avant le correctif (mobile et weda2 : texte présent, pas d'`aria-label`, toggle hors du texte).
 - weda2, décision humaine du même jour : le fil revient en **colonne centrée** (`max-width: 880px`, `margin: 0 auto`
