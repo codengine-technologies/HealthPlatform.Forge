@@ -542,7 +542,7 @@
 
 ## Annexe B — Inventaire fonctionnel daté (2026-11-18)
 
-- Tasks de l'EPIC : 11 — 6 `archived` (453, 454, 456, 459, 466, 486), 2 `done` (457, 487), 2 `todo` (458, 462),
+- Tasks de l'EPIC : 12 — 7 `archived` (453, 454, 456, 459, 466, 486, 487), 1 `done` (457), 3 `todo` (458, 462, 488),
   1 annulée (465).
 - Scénarios e2e de l'EPIC au catalogue : 15 (E2E-BIO-004, E2E-BIO-007, E2E-DETAIL-006, E2E-TAG-001, E2E-TAG-002,
   E2E-TAG-003, E2E-TRIAGE-001, E2E-TRIAGE-002, E2E-TRIAGE-006, E2E-TRIAGE-007, E2E-SHARED-003, E2E-ASSIGN-001,
@@ -562,4 +562,4 @@
 | task-456 | Tags système (Biologie, Patient, Professionnel de santé, Pour info) posés à l'arrivée et par rattrapage, vues par tag combinables en « Tous » / « Non lus », réglage par personne | `archived` (PRs #68, #372, #2, #127) |
 | task-454 | Marquer un message traité : état partagé par la boîte (Message-ID), compteurs et filtre « À traiter », gestes naturels, bouton et balayage, « Annuler », traitement groupé sans jamais acquitter une biologie, tuile du tableau de bord | `archived` (PRs #69, #373, #128) |
 | task-457 | « À traiter par » : attribuer un message à une personne active de la boîte (Message-ID), vue et compteur « Pour moi » sur tous les dossiers, avis ciblé sur la personne, attribution groupée, imputée à l'auteur réel | `done` (PRs #70, #374, #129) |
-| task-487 | Conversation en chat : fil en bulles, découpage sûr de la citation, état d'envoi par les accusés reçus (jamais des bulles), réponse en une ligne composée par le serveur et adressée à tous les participants, lecture tracée au nom de la personne réelle | `done` (PRs #71, #375, #130) |
+| task-487 | Conversation en chat : fil en bulles, découpage sûr de la citation, état d'envoi par les accusés reçus (jamais des bulles), réponse en une ligne composée par le serveur et adressée à tous les participants, lecture tracée au nom de la personne réelle | `archived` (PRs #71, #375, #130) |
