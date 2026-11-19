@@ -73,3 +73,6 @@ rougit le fait pour une raison du code testé, jamais parce qu'une ressource d'o
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : non — banc local, données synthétiques
 - **AIPD / impact RGPD** : inchangé — aucune donnée réelle
+
+## Branches
+- `api-mail` (pushed) : feat/task-489-outillage-e2e-relais-et-faux-services — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-489-outillage-e2e-relais-et-faux-services
