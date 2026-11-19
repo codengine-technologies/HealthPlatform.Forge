@@ -384,3 +384,10 @@ rougit le fait pour une raison du code testé, jamais parce qu'une ressource d'o
 ## PRs
 
 - `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/377 — label `awaiting-human-merge`
+
+## Merged
+
+- **Date** : 2026-11-19 (`/merge task-489 --i-tested`, test manuel attesté par l'humain)
+- `api-mail` : squash `3db6e33e` — PR #377 mergée, label `awaiting-human-merge` retiré, branche `feat/task-489-outillage-e2e-relais-et-faux-services` supprimée (distante et locale)
+- CI `develop` : verte — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/44533675994
+- Staging : aucune branche staging (task lancée par `/start`, hors run `/forge`)
