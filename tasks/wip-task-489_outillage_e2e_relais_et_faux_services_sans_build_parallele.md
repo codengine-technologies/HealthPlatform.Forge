@@ -86,7 +86,8 @@ rougit le fait pour une raison du code testé, jamais parce qu'une ressource d'o
 | /start | ok | 20 s | — | — | — | — |
 | /develop | ok | 41 min 15 s | 2 (14 s) | 4 (34 min 33 s) | — | api-mail 2B/2T, client-mobile 0B/2T |
 | /review-code | ok | 1 min 58 s | — | — | — | — |
-| **Total cycle** | | **43 min 35 s** | **2 (14 s)** | **4 (34 min 33 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 11 min 41 s | 1 (50 s) | 5 (8 min 35 s) | 2 (48 s) | 1 itération(s), api-mail 1B/5T |
+| **Total cycle** | | **55 min 16 s** | **3 (1 min 05 s)** | **9 (43 min 09 s)** | **2 (48 s)** | |
 
 ## Develop log
 
@@ -175,3 +176,35 @@ rougit le fait pour une raison du code testé, jamais parce qu'une ressource d'o
   Capturer l'argument et l'égaler à `tooling.Dll` fermerait l'écart entre le chemin testé et le chemin rendu.
 - ⚠️ **S125 dans un `///`** : « …avant l'AppHost ; la ressource tourne… » (doc XML d'un test). Sonar ignore
   d'ordinaire les commentaires XML, mais la consigne vise toute ligne de commentaire. `/sonar` le dira s'il le relève.
+
+## Sonar log
+
+- Mode A (chaîné), branche `feat/task-489-…`. Analyse complète, parce que le diff touche un fichier C# analysé
+  (`tests/mss.mail.api.tests/E2e/E2eProfileTests.cs`). `src/AppHost/**` est exclu de l'analyse.
+- Serveur 9.9.8.100196 (`sonar.login`). Build Release à 0 erreur, 5 suites OpenCover vertes (domain 368,
+  application 4 346, infrastructure 749, api 1 388, integration 1 369 + 16 sautés).
+- Phase 1 (new code) : ✓ Quality Gate OK, new_coverage = 96,0 %.
+- Phase 1 — 1 issue, **hors du diff de la task** : `csharpsquid:S3925` sur `src/Application/Exceptions/ForbiddenException.cs`
+  (task-457, déjà sur `develop`). Le triplet de constructeurs est présent : marquée **FALSE-POSITIVE** avec motif
+  (faux positif consigné, `conventions/csharp.md` S3925, compteur 10). Aucun code modifié.
+- Phase 1 — tests ajoutés : 0. Aucune issue sur les fichiers de la task.
+- Phase 2 (legacy) : non jouée. Les cibles projet sont déjà atteintes (0 bug, 0 vulnérabilité, maintenabilité A,
+  couverture 97,6 % ≥ 95 %).
+- Build / tests : ✓ verts. Vert marqué (`green.py`, par sonar, abca6aec).
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | → |
+| New coverage | 96,2 % | 96,0 % | −0,2 pt |
+| Bugs | 0 | 0 | 0 |
+| Vulnerabilities | 0 | 0 | 0 |
+| Security hotspots | 0 | 0 | 0 |
+| Code smells | 0 | 1 → 0 après FALSE-POSITIVE (S3925, hors task) | 0 |
+| Coverage (projet) | 97,7 % | 97,6 % | −0,1 pt |
+| Duplication | 0,3 % | 0,3 % | 0 |
+| Reliability / Security / Maintainability | A/A/A | A/A/A | → |
+
+> La couverture bouge de −0,1 pt sans rapport avec la task : `src/AppHost/**` et `tests/**` sont exclus de la couverture.
+> L'écart vient de la période de new code, qui inclut ce que `develop` a reçu depuis la référence (task-457).
