@@ -87,7 +87,8 @@ rougit le fait pour une raison du code testé, jamais parce qu'une ressource d'o
 | /develop | ok | 41 min 15 s | 2 (14 s) | 4 (34 min 33 s) | — | api-mail 2B/2T, client-mobile 0B/2T |
 | /review-code | ok | 1 min 58 s | — | — | — | — |
 | /sonar | ok | 11 min 41 s | 1 (50 s) | 5 (8 min 35 s) | 2 (48 s) | 1 itération(s), api-mail 1B/5T |
-| **Total cycle** | | **55 min 16 s** | **3 (1 min 05 s)** | **9 (43 min 09 s)** | **2 (48 s)** | |
+| /lint-angular | skipped | 4.8 s | — | — | — | client-angular non touché |
+| **Total cycle** | | **55 min 21 s** | **3 (1 min 05 s)** | **9 (43 min 09 s)** | **2 (48 s)** | |
 
 ## Develop log
 
@@ -208,3 +209,6 @@ rougit le fait pour une raison du code testé, jamais parce qu'une ressource d'o
 
 > La couverture bouge de −0,1 pt sans rapport avec la task : `src/AppHost/**` et `tests/**` sont exclus de la couverture.
 > L'écart vient de la période de new code, qui inclut ce que `develop` a reçu depuis la référence (task-457).
+
+## Lint log
+- skipped — no angular change (client-angular hors **Repos**, arbre `Client/Angular/front` propre)
