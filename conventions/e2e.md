@@ -89,6 +89,26 @@
 - **Origine** : task-485
 - **Occurrences** : 1
 
+### relais-non-demarre-build-concurrent — Un envoi « jamais reçu » peut être un relais qui n'a pas démarré
+- **Piège** : l'AppHost e2e lance trois ressources depuis le même projet d'outillage (`e2e-relay`, `e2e-fake-ai`,
+  `e2e-fake-annuaire`, toutes `AddProject(…mss.mail.e2e.csproj)`), chacune par `dotnet run --project` **sans
+  `--no-build`**, en parallèle. Quand MSBuild réécrit un fichier partagé
+  (`obj/Debug/net10.0/mss.mail.testing.shared.sourcelink.json`), deux builds se disputent le fichier et échouent
+  (« The build failed ») :
+  le relais ou le faux annuaire ne démarre pas, sans que la voie le dise. Symptôme : 12 rouges sur la voie mobile
+  (task-485, 2026-11-19), tous des parcours qui attendent un message envoyé (« un nouvel email arrive », « le transfert
+  arrive ») ou l'annuaire (E2E-MAILBOX-003/004/006) ; `sendmail` répond 200, `GET folders/INBOX` garde le même
+  `uidNext`, et l'écran finit blanc après les rechargements.
+- **Consigne** : devant des rouges groupés sur l'arrivée d'un envoi ou l'annuaire, **vérifier les ressources de
+  l'outillage avant de soupçonner le code** : `mss.mail.e2e.exe` doit tourner trois fois (`relay`, `fake-ai`,
+  `fake-annuaire`) ; sinon lire les `*_err` du dossier `%TEMP%/aspire-dcp*` (« The build failed »). C'est une **panne d'outillage**,
+  pas une régression : la voie se rejoue. Correctif de fond à faire : lancer l'outillage déjà construit
+  (`AddExecutable` sur la DLL, ou `--no-build`), le script `e2e:headless` le construisant déjà avant l'AppHost.
+- **Preuve** : sur le banc `--serve-only`, seul `fake-ai` tournait ; `relay` lancé à la main relaie aussitôt le message
+  bloqué (« 1 message(s) relayé(s) ») ; deux `_err` DCP portent « The build failed ».
+- **Origine** : task-485
+- **Occurrences** : 1
+
 ### garde-de-port-ipv4-seul — Un port « libre » en IPv4 peut être tenu en IPv6
 - **Piège** : l'orchestrateur Angular (`run.mjs`, `portBusy`) ne sonde que `127.0.0.1:4200`.
   Or `nx serve` en dev écoute sur `[::1]:4200`, et `https://localhost:4200` (`BASE_URL`,

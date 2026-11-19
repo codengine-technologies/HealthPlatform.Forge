@@ -1,6 +1,7 @@
 # todo-task-485.md — Surlignage : les mots cherchés, pas les mots ignorés
 
 **Repos**: client-angular, api-mail
+**E2E**: bypass — décision humaine du 2026-11-19 (panne d'outillage du relais e2e, `questions/task-485.md`)
 **Dependencies**: —
 **Epic**: E023
 **Single frontend**: true
@@ -217,6 +218,27 @@ client-angular : arbre de travail de `feature/nova-mss-weda-integration` (HEAD `
 
 - skipped — client-mobile non touché par la task (hors `**Repos**`).
 
+## E2E log
+
+**E2E : non joué — bypass demandé par l'humain** (2026-11-19), après une panne d'outillage de la voie mobile.
+
+| Voie | Code | Résultat | HEAD couverts |
+|---|---|---|---|
+| angular (`npm run e2e:mss`) | 0 | **98 verts**, 0 flaky, 0 rouge ; parité verte ; **E2E-SEARCH-015 vert** (parcours de la task) | api-mail `28ce310f`, weda2 arbre de travail (`c434dd3e` + task-485) |
+| mobile (`npm run e2e:headless`) | 1 | 64 verts, **12 rouges, outillage** (deux passages identiques) | api-mail `28ce310f`, client-mobile `develop` `7c6e713f` |
+| porte (`gate`) | 1 | rouge (les 12 rouges mobiles) | catalogue de la branche api-mail |
+
+- **Cause des rouges mobiles — outillage, pas régression** : l'AppHost e2e lance `e2e-relay`, `e2e-fake-ai`,
+  `e2e-fake-annuaire` par `dotnet run` sans `--no-build`, en parallèle ; les builds se gênent (`MSB3027` sur
+  `apphost.exe`, « The build failed ») et le relais ne démarre pas : aucun envoi n'arrive (`uidNext` inchangé), le faux
+  annuaire manque à E2E-MAILBOX-003/004/006. Relais lancé à la main : il relaie aussitôt. task-485 ne touche ni le
+  mobile ni le serveur (catalogue seul).
+- **Décision humaine** : bypass e2e de task-485 (question `questions/task-485.md`). La non-régression mobile n'est
+  pas prouvée par ce cycle ; le parcours de la task (weda2) l'est.
+- Prévention : `conventions/e2e.md`, `relais-non-demarre-build-concurrent`. Correctif de l'AppHost à faire (task à
+  ouvrir).
+- Démontage : complet (ports libres, aucun conteneur ni processus d'outillage résiduel).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-485 --sync` — ne pas éditer à la main)*
@@ -229,6 +251,7 @@ client-angular : arbre de travail de `feature/nova-mss-weda-integration` (HEAD `
 | /sonar | skipped | 0.8 s | — | — | — | api-mail : catalogue e2e (YAML) seul, aucun fichier analysé par Sonar |
 | /lint-angular | ok | 28 s | — | — | — | — |
 | /lint-mobile | skipped | 0.8 s | — | — | — | client-mobile non touché |
-| **Total cycle** | | **1 h 16 min** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /e2e | skipped | 7 h 29 min | — | — | — | e2e ×6 (2 h 13 min), bypass humain après panne d'outillage du relais (angular vert, mobile outillage) |
+| **Total cycle** | | **8 h 45 min** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×1 (9.7 s)
