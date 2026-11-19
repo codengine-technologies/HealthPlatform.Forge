@@ -90,7 +90,8 @@ rougit le fait pour une raison du code testé, jamais parce qu'une ressource d'o
 | /lint-angular | skipped | 4.8 s | — | — | — | client-angular non touché |
 | /lint-mobile | skipped | 1.0 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 28 min 26 s | — | — | — | e2e ×3 (27 min 00 s) |
-| **Total cycle** | | **1 h 23 min** | **3 (1 min 05 s)** | **9 (43 min 09 s)** | **2 (48 s)** | |
+| /review | ok | 38 s | — | — | — | — |
+| **Total cycle** | | **1 h 24 min** | **3 (1 min 05 s)** | **9 (43 min 09 s)** | **2 (48 s)** | |
 
 ## Develop log
 
@@ -370,3 +371,16 @@ rougit le fait pour une raison du code testé, jamais parce qu'une ressource d'o
 - E2E-SEARCH-008 [mobile] — les critères médicaux arrivent sur le mobile avec la refonte mobile — résorbée par task-451
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
+
+### Passage 2 (validation finale) — APPROVED
+
+- Build + tests : vert de /sonar réutilisé (api-mail `abca6aec`, `green.py check`). Aucun commit depuis l'approbation,
+  donc aucun diff à relire.
+- DOD : 7/7. Build, tests, `AddExecutable` sans `dotnet run`, trois processus au banc, voies vertes avec la preuve
+  rouge, refus explicite (`ResolveTooling_DllMissing_RefusesToStartAndSaysWhatToBuild`), convention mise à jour.
+- Verrou e2e : `## E2E log` vert (mobile 76/76, Angular 97 verts dont 1 flaky, porte verte).
+- api-mcp : aucun impact. Sync `develop` : aucun commit en avance, pas de merge.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/377 — label `awaiting-human-merge`
