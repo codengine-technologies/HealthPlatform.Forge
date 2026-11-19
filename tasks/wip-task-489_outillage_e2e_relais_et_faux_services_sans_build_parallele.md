@@ -84,7 +84,9 @@ rougit le fait pour une raison du code testé, jamais parce qu'une ressource d'o
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 20 s | — | — | — | — |
-| **Total cycle** | | **20 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 41 min 15 s | 2 (14 s) | 4 (34 min 33 s) | — | api-mail 2B/2T, client-mobile 0B/2T |
+| /review-code | ok | 1 min 58 s | — | — | — | — |
+| **Total cycle** | | **43 min 35 s** | **2 (14 s)** | **4 (34 min 33 s)** | **0 (0.0 s)** | |
 
 ## Develop log
 
@@ -141,3 +143,35 @@ rougit le fait pour une raison du code testé, jamais parce qu'une ressource d'o
   deux voies vertes avec la preuve rouge, refus explicite, convention mise à jour).
 - Green marked : api-mail (`Tools/green/green.py`, abca6aec)
 - Next step : /review task-489 --code
+
+## Code Review Summary
+
+### Passage 1 (revue anticipée) — APPROVED
+
+- **approved at** : api-mail `abca6aec`
+- Relecteur indépendant (sous-agent, code seul) : 3 fichiers relus, 0 bloquant, 4 suggestions.
+- **Règle 1b (4a)** : sans objet. Aucun comportement atteignable par un endpoint ne change : le diff ne touche que
+  l'AppHost (profil e2e) et ses tests unitaires. La preuve d'assemblage est le banc réel, consignée au `## Develop log` :
+  trois processus `dotnet <dll>`, sorties DCP sans build, deux voies mobiles vertes, contre 12 rouges avant (task-485).
+- **api-mcp (4c)** : aucun impact (`mcp_impact.py check`, sortie 0).
+- **Clause DOD e2e (4b)** : aucun parcours médecin créé ni modifié, aucun scénario au catalogue attendu.
+
+| Fichier | Verdict |
+|---|---|
+| `src/AppHost/AppHost.cs` | ✅ `AddExecutable("dotnet", <projet>, <dll>, …)` : aucun build. Seul le relais attend Dovecot et GreenMail. Le répertoire de travail est le projet, comme sous `AddProject`. Refus levé avant `builder.Build()`. Ce que `AddProject` ajoutait (OTEL, service discovery, profil de lancement) n'est pas utilisé par l'outillage, dont les serveurs se lient par `UseUrls`. |
+| `src/AppHost/E2eProfile.cs` | ✅ Arguments identiques à ceux d'avant (invariant culture). Le message de refus ne porte que le chemin relatif au dépôt. Tableaux hissés (CA1861). |
+| `tests/mss.mail.api.tests/E2e/E2eProfileTests.cs` | ✅ avec suggestions |
+
+#### Suggestions (non bloquantes)
+
+- ⚠️ **DLL périmée** : `dotnet run` reconstruisait un outillage modifié. Lancé à la main sans `dotnet build
+  tests/mss.mail.e2e`, l'AppHost lance désormais l'ancienne DLL. Le script `e2e:headless` construit toujours avant,
+  donc c'est hors règle 3. Une phrase dans le commentaire de `ToolingDllDisplayPath` suffirait.
+- ⚠️ **Câblage non couvert par un test** : la règle 1 (« `AddExecutable`, pas `AddProject` ») vit dans la boucle de
+  l'AppHost, qu'aucun test unitaire ne couvre, faute de référence Aspire au projet de tests. Remettre `AddProject`
+  laisserait les tests verts. La preuve de la règle 1, c'est le banc (processus + sorties DCP), pas
+  `CommandFor_RunsTheBuiltDll_NeverDotnetRun`.
+- ⚠️ **Argument de `fileExists` non contrôlé** : les stubs `_ => true` / `_ => false` ignorent le chemin testé.
+  Capturer l'argument et l'égaler à `tooling.Dll` fermerait l'écart entre le chemin testé et le chemin rendu.
+- ⚠️ **S125 dans un `///`** : « …avant l'AppHost ; la ressource tourne… » (doc XML d'un test). Sonar ignore
+  d'ordinaire les commentaires XML, mais la consigne vise toute ligne de commentaire. `/sonar` le dira s'il le relève.
