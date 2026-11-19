@@ -104,7 +104,8 @@ between them but the pre-flight, branch model and hand-off differ.
 - Branch : the existing `feat/{task-id}-{slug}` on `api-mail` (reused)
 - Iterations : best-effort 5 max, accept remaining issues
 - Hand-off : `/review {task-id}` (the same task, NOT a separate Sonar PR)
-- Skip cleanly when the task did not touch `api-mail`
+- Skip cleanly when the task did not touch `api-mail`, **or touched no file Sonar analyses** (C# outside the
+  exclusions : only the e2e catalogue, documentation, configuration…) — decided by the human on 2026-11-19 (task-485)
 
 ### Mode B — stand-alone (manual housekeeping)
 
@@ -347,6 +348,18 @@ gitignored).
    If the task didn't touch `api-mail` (no commits since the merge-base with
    `develop`), **skip cleanly** : log "no api-mail change → /sonar skipped"
    and chain directly to `/review`.
+
+   **Same measured skip when no analysed file changed** (human decision of 2026-11-19, task-485 : the only api-mail
+   change was `e2e/scenarios.yml`, and a full analysis — ≈ 20 min — measured nothing) :
+   ```bash
+   cd Api/Mail
+   git diff --name-only origin/develop...HEAD -- '*.cs' \
+     ':!**/Migrations/**' ':!**/AppHost/**' ':!**/load-tests/**' ':!**/devops/**'
+   ```
+   Empty output → no C# file Sonar analyses has changed (same exclusions as `sonar.exclusions`) : `step.sh end
+   --status skipped --note "aucun fichier analysé par Sonar"`, a `## Sonar log` saying so (no KPI table, the api-mail
+   PR body states it), then chain to `/lint-angular`. Tests-only C# changes are **not** a skip : test files are analysed
+   too (rules on test code).
 
 3. **Mode B — stand-alone** : verify `api-mail` is on `develop` with a clean
    working tree :
