@@ -10872,3 +10872,8 @@
 {"ts":"2026-11-19T09:00:59+01:00","run_id":"-","type":"step","task":"task-489","step":"lint-angular","status":"skipped","note":"client-angular non touché","iterations":null,"duration_ms":4854}
 {"ts":"2026-11-19T09:01:06+01:00","run_id":"-","type":"step_start","task":"task-489","step":"lint-mobile"}
 {"ts":"2026-11-19T09:01:08+01:00","run_id":"-","type":"step","task":"task-489","step":"lint-mobile","status":"skipped","note":"client-mobile non touché","iterations":null,"duration_ms":1035}
+{"ts":"2026-11-19T09:01:25+01:00","run_id":"-","type":"step_start","task":"task-489","step":"e2e"}
+{"ts":"2026-11-19T09:15:04+01:00","run_id":"-","type":"cmd","task":"task-489","step":"e2e","repo":"client-mobile","kind":"e2e","label":"mobile","cwd":"Client/Mobile","cmd":"npm run e2e:headless","duration_ms":805748,"exit_code":0}
+{"ts":"2026-11-19T09:28:58+01:00","run_id":"-","type":"cmd","task":"task-489","step":"e2e","repo":"client-angular","kind":"e2e","label":"angular","cwd":"Client/Angular/front","cmd":"npm run e2e:mss","duration_ms":814961,"exit_code":0}
+{"ts":"2026-11-19T09:29:06+01:00","run_id":"-","type":"cmd","task":"task-489","step":"e2e","repo":"api-mail","kind":"e2e","label":"gate","cwd":"Api/Mail","cmd":"dotnet tests/mss.mail.e2e/bin/Debug/net10.0/mss.mail.e2e.dll gate --catalog e2e/scenarios.yml --report mobile=C:\\Users\\pasca\\AppData\\Local\\Temp/forge-e2e/task-489/mobile-report.json --report angular=C:\\Users\\pasca\\AppData\\Local\\Temp/forge-e2e/task-489/angular-report.json --out C:\\Users\\pasca\\AppData\\Local\\Temp/forge-e2e/task-489/e2e-log.md","duration_ms":189,"exit_code":0}
+{"ts":"2026-11-19T09:29:51+01:00","run_id":"-","type":"step","task":"task-489","step":"e2e","status":"ok","note":"","iterations":null,"duration_ms":1706343}
