@@ -279,6 +279,7 @@ client-angular : arbre de travail de `feature/nova-mss-weda-integration` (HEAD `
 | /lint-mobile | skipped | 0.8 s | — | — | — | client-mobile non touché |
 | /e2e | skipped | 7 h 29 min | — | — | — | e2e ×6 (2 h 13 min), bypass humain après panne d'outillage du relais (angular vert, mobile outillage) |
 | /review | ok | 8 min 03 s | 1 (21 s) | 1 (7 min 04 s) | — | api-mail 1B/1T |
-| **Total cycle** | | **8 h 53 min** | **1 (21 s)** | **1 (7 min 04 s)** | **0 (0.0 s)** | |
+| /tech-writer | ok | 43 s | — | — | — | — |
+| **Total cycle** | | **8 h 54 min** | **1 (21 s)** | **1 (7 min 04 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×1 (9.7 s)

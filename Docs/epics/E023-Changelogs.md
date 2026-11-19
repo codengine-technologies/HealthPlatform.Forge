@@ -296,6 +296,29 @@
   SQL ; critère choisi exact ; regex de paire vide ; deux lectures d'un critère ; borne de coût SQL unique ; S3776,
   CA1862), `conventions/angular.md` § `suggestions-de-saisie-choisies-visibles`.
 
+### v0.8 — task-485 : surlignage, les mots cherchés et pas les mots ignorés (weda2, api-mail)
+
+- **PR** : api-mail [#376](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/376) (catalogue e2e
+  seul), label `awaiting-human-merge`. weda2 : code-only, non commité sur `feature/nova-mss-weda-integration`.
+- **weda2 — `core/utils/text-highlight.util.ts`** : `searchTermsOf` garde les mots de 3 caractères ou plus, hors mots
+  vides (`SEARCH_STOP_WORDS`, recopiée de `SearchQueryHelper.StopWords`, identité vérifiée : 144 mots) ;
+  `findTermRanges` lie d'un bloc deux mots cherchés **différents** séparés par au plus 3 mots ignorés
+  (`bridgesTerms`, comme `SearchTextSchema.AdjacentPattern`). Un même mot répété reste deux surlignages ; un vrai mot
+  coupe le bloc. Objet, corps texte, corps HTML et document médical passent par ces deux fonctions ; les extraits de la
+  liste de résultats (positions du serveur) ne changent pas.
+- **Preuves** : 24 tests de l'utilitaire (9 nouveaux), tests de composant du corps et du détail, rouges sur l'utilitaire
+  d'avant ; 6 mutations tuées (dont une qui survivait et a fait ajouter le cas « un seul vrai mot »). Suite mss-lib
+  1 889/1 889, weda2 vert, `nx build weda2` OK.
+- **E2E** : `E2E-SEARCH-015` v1 (angular requis, mobile non-applicable) : rouge sur le code d'avant (7 surlignages),
+  vert deux fois. Voie angular verte (98) ; voie mobile tombée en **panne d'outillage** (relais e2e qui ne démarre pas,
+  builds parallèles de l'AppHost) : **bypass humain** du 2026-11-19, correctif en task-489.
+- **Sonar** : non joué (catalogue YAML seul) — le playbook `/sonar` saute désormais quand aucun fichier analysé ne
+  change (décision humaine du 2026-11-19).
+- **Revue** : APPROVED (relecteur indépendant) ; suggestions retenues : ligatures (task-490), plafond de 10 mots,
+  saisie décomposée, garde d'écart non testée, bloc à travers deux nœuds HTML.
+- **Leçons** : Vitest de weda2 rouge en bloc lancé depuis Git Bash, vert via PowerShell (mémoire) ;
+  `conventions/e2e.md` : `attendre-le-rendu-apres-la-reponse`, `relais-non-demarre-build-concurrent`, trou du filet.
+
 ---
 
 ## Annexe A — Cartographie des briques applicatives
@@ -311,10 +334,10 @@
 | `Dtos/SearchMatchLocation.cs`, `Dtos/SearchHighlightDto.cs`, `Dtos/SearchFoundPatientDto.cs` | Contrat de la réponse enrichie (task-444) |
 | `Client/Angular/front/libs/mss/src/features/mail/services/mail-search-{session,tags}.ts` | Mode « Résultats de recherche » : session, étiquettes (task-445) |
 | `Client/Angular/front/libs/mss/src/features/mail/components/mail-search-results/` | Espace des résultats : étiquettes, affinage, parties, « Voir plus » (task-445) |
-| `Client/Angular/front/libs/mss/src/core/utils/text-highlight.util.ts` | Surlignage par positions, test de forme partagé avec le cadre (task-446) |
+| `Client/Angular/front/libs/mss/src/core/utils/text-highlight.util.ts` | Surlignage par positions, test de forme partagé avec le cadre (task-446) ; mots cherchés seulement, mots vides recopiés du serveur, bloc d'une phrase (task-485) |
 | `Api/Mail/src/Application/Services/Implementation/BulkMailActionService.cs`, `Api/Mail/src/Api/Controllers/V1/BulkMailActionsController.cs` | Actions groupées (task-448) |
 | `Client/Angular/front/libs/mss/src/features/mail/services/mail-search-bulk.service.ts`, `components/mail-search-bulk/` | Tous les résultats et actions groupées dans weda2 (task-448) |
-| `Api/Mail/e2e/scenarios.yml` | Catalogue des parcours : `E2E-SEARCH-001` v2, `004` à `010`, `012` v1 |
+| `Api/Mail/e2e/scenarios.yml` | Catalogue des parcours : `E2E-SEARCH-001` v2, `004` à `010`, `012`, `015` v1 |
 
 ---
 
@@ -337,3 +360,5 @@
 | task-448 | archived (PRs dtos-mss #62, api-mail #363 mergées ; weda2 à pousser sur TFS) | Sélectionner tous les résultats et actions groupées ; `E2E-SEARCH-012` v1 ; « non lu » tracé |
 | task-449 | abandonnée le 2026-11-12 (PRs dtos-mss #65, api-mail #367 fermées sans merge ; rien de livré) | Suggestions pendant la frappe, préfixes `de :` / `à :` / `objet :`, recherche exacte entre guillemets ; `E2E-SEARCH-013`, `014` v1 |
 | task-452 | supprimée (2026-11-11) | Mesure anonyme de l'expérience : reportée par l'humain |
+| task-485 | done (PR api-mail #376 ; weda2 à pousser sur TFS) | Surlignage du détail : mots cherchés seulement, phrase d'un bloc ; `E2E-SEARCH-015` v1 |
+| task-490 | todo | Surlignage des ligatures (« oedeme » → « œdème ») ; `E2E-SEARCH-015` v2 |

@@ -1,10 +1,10 @@
 # E023 — Expérience de recherche
 
-> **Statut** : 🟡 En cours (5 features sur 7 livrées)
-> **Version** : 0.5
-> **Auteur** : PO forge (tasks 442 à 446, 448, 449)
+> **Statut** : 🟡 En cours (6 features livrées, 1 en attente de validation, 1 au backlog)
+> **Version** : 0.8
+> **Auteur** : PO forge (tasks 442 à 446, 448, 449, 485, 490)
 > **Modèle** : task-driven
-> **Dernière mise à jour** : 2026-11-11
+> **Dernière mise à jour** : 2026-11-19
 > **Vue ingénierie** : [E023-Changelogs.md](E023-Changelogs.md)
 
 ---
@@ -70,6 +70,8 @@ le même modèle. Le modèle retenu le 2026-11-10 avec l'humain s'inspire de la 
 | Lire un résultat | Voir l'extrait surligné de chaque résultat et ouvrir le patient trouvé en tête | task-446 | ✅ Livrée dans weda2 |
 | Actions groupées | Sélectionner tous les résultats, même ceux pas encore affichés, et leur appliquer une action | task-448 | ✅ Livrée |
 | Suggestions pendant la frappe | Recevoir des propositions par catégories (patients, messages) dès les premières lettres | task-449 | ⛔ Abandonnée le 2026-11-12 (non livrée) |
+| Surligner ce qui a été cherché | En ouvrant un message depuis une recherche, voir surlignés seulement les mots que la recherche a cherchés, et la phrase entière d'un bloc (« Clinique du Belvédère ») ; plus aucun « du » surligné partout | task-485 | 🟢 Livrée dans weda2 — en attente de validation |
+| Surlignage des ligatures | « oedeme » surligne « œdème », comme la recherche le trouve | task-490 | ⏳ À faire |
 
 > Le bilan d'avancement par feature (statut, couverture, tasks contributives) est consigné en fin de document, dans la
 > section *État de couverture*.
@@ -166,7 +168,7 @@ la rend telle quelle, à la même position.
 
 ---
 
-## État de couverture (2026-11-12)
+## État de couverture (2026-11-19)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
@@ -177,9 +179,12 @@ la rend telle quelle, à la même position.
 | Lire un résultat | ✅ Livrée dans weda2 | 100 % | task-446 |
 | Actions groupées | ✅ Livrée | 100 % | task-448 |
 | Suggestions pendant la frappe | ⛔ Abandonnée le 2026-11-12 | — | task-449 |
+| Surligner ce qui a été cherché | 🟢 Livrée dans weda2 — en attente de validation | 100 % livré | task-485 |
+| Surlignage des ligatures | ⏳ À faire | 0 % | task-490 |
 
-**Couverture EPIC consolidée : 100 %** des features retenues (6 livrées). La 7e, « Suggestions pendant la frappe », est
-abandonnée sur décision humaine du 2026-11-12 : PRs api-mail #367 et dtos-mss #65 fermées sans merge.
+**Couverture EPIC consolidée** : 6 features livrées et validées, 1 livrée en attente de validation (task-485), 1 au
+backlog (task-490). « Suggestions pendant la frappe » est abandonnée sur décision humaine du 2026-11-12 : PRs api-mail
+#367 et dtos-mss #65 fermées sans merge.
 
 ---
 
@@ -214,6 +219,11 @@ abandonnée sur décision humaine du 2026-11-12 : PRs api-mail #367 et dtos-mss 
 - v0.7 — **non livrée.** Les suggestions pendant la frappe, les préfixes de critère et la recherche exacte entre
   guillemets (task-449) ont été abandonnés par l'humain le 2026-11-12 : le résultat n'a pas convaincu.
 
+- v0.8 — Dans le détail d'un message ouvert depuis une recherche, weda2 ne surligne plus que les mots que la recherche
+  a réellement cherchés (3 lettres au moins, sans les petits mots comme « du », « de », « la ») et la phrase entière
+  d'un bloc quand elle y est : « Clinique du Belvédère » ressort, au lieu de tous les « du » du compte rendu, y
+  compris dans « produits » ou « durant » (task-485).
+
 **Conformité réglementaire**
 - Chaque recherche lancée reste tracée au nom de son auteur ; la trace ne porte ni le texte cherché, ni l'identité du
   patient filtré, ni les expéditeurs choisis (task-443).
@@ -238,6 +248,9 @@ abandonnée sur décision humaine du 2026-11-12 : PRs api-mail #367 et dtos-mss 
   sans accent, « Aucun résultat », « Voir plus », recherche en échec, fermeture à la même position (task-445).
 - Le parcours « reconnaître un résultat et ouvrir le dossier du patient » l'est aussi (task-446).
 - Le parcours « traiter tous les résultats d'une recherche » l'est aussi (task-448).
+- v0.8 — Le surlignage du détail suit les règles de la recherche (même liste de mots ignorés, mêmes seuils) : ce qui
+  est surligné d'un bloc est ce que la recherche classe en tête. Un parcours automatique le vérifie dans weda2
+  (task-485).
 
 ---
 
