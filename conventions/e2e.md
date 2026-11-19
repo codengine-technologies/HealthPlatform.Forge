@@ -59,7 +59,7 @@
   l'API relue sur un passage rouge rendait les deux messages à la même seconde, avec
   `isThreadRoot: false` pour la réponse.
 - **Origine** : task-375
-- **Occurrences** : 2 (task-487, recette du 2026-11-18 — **récidive sur du code frais** : le test mobile E2E-CONV-003
+- **Occurrences** : 3 (task-489, voie mobile du 2026-11-19 — rouge au 1er essai, vert au retry : « les deux messages forment un fil » non vu en 90 s, **sur le test de `develop` qui porte déjà le correctif de task-487**. La lecture de chaque message ne suffit donc pas toujours. Cause non établie, à instrumenter si une 4ᵉ occurrence tombe (relire `isThreadRoot` et les dates des deux messages sur le passage rouge) ; task-487, recette du 2026-11-18 — **récidive sur du code frais** : le test mobile E2E-CONV-003
   n'ouvrait que la réponse en vue Liste, pas le message d'origine ; le fil ne s'est jamais formé en 90 s au premier
   essai, vert au second. Un parcours qui forme un fil fait lire **tous** ses messages, chacun par son uid.)
 
@@ -102,11 +102,16 @@
 - **Consigne** : devant des rouges groupés sur l'arrivée d'un envoi ou l'annuaire, **vérifier les ressources de
   l'outillage avant de soupçonner le code** : `mss.mail.e2e.exe` doit tourner trois fois (`relay`, `fake-ai`,
   `fake-annuaire`) ; sinon lire les `*_err` du dossier `%TEMP%/aspire-dcp*` (« The build failed »). C'est une **panne d'outillage**,
-  pas une régression : la voie se rejoue. Correctif de fond à faire : lancer l'outillage déjà construit
-  (`AddExecutable` sur la DLL, ou `--no-build`), le script `e2e:headless` le construisant déjà avant l'AppHost.
+  pas une régression : la voie se rejoue.
+- **Correctif livré (task-489)** : les trois ressources lancent l'outillage **déjà construit**
+  (`AddExecutable("dotnet", …, "tests/mss.mail.e2e/bin/Debug/net10.0/mss.mail.e2e.dll", "<sous-commande>", …)`),
+  déclarées par `E2eProfile.Tools` et `E2eProfile.ResolveTooling`. Plus aucun build au démarrage de l'AppHost
+  e2e. DLL absente → le profil refuse de démarrer et dit quoi construire (`dotnet build tests/mss.mail.e2e`,
+  ce que fait le script `e2e:headless`). **Consigne pour toute nouvelle ressource d'outillage** de l'AppHost :
+  l'ajouter à `E2eProfile.Tools`, jamais par `AddProject` sur un projet que d'autres ressources lancent aussi.
 - **Preuve** : sur le banc `--serve-only`, seul `fake-ai` tournait ; `relay` lancé à la main relaie aussitôt le message
   bloqué (« 1 message(s) relayé(s) ») ; deux `_err` DCP portent « The build failed ».
-- **Origine** : task-485
+- **Origine** : task-485 ; correctif de fond task-489
 - **Occurrences** : 1
 
 ### garde-de-port-ipv4-seul — Un port « libre » en IPv4 peut être tenu en IPv6

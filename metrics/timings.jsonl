@@ -10846,3 +10846,12 @@
 {"ts":"2026-11-19T07:56:22+01:00","run_id":"-","type":"step","task":"task-485","step":"review","status":"ok","note":"","iterations":null,"duration_ms":483865}
 {"ts":"2026-11-19T07:56:59+01:00","run_id":"-","type":"step_start","task":"task-485","step":"tech-writer"}
 {"ts":"2026-11-19T07:57:42+01:00","run_id":"-","type":"step","task":"task-485","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":43207}
+{"ts":"2026-11-19T08:04:57+01:00","run_id":"-","type":"step_start","task":"task-489","step":"start"}
+{"ts":"2026-11-19T08:05:18+01:00","run_id":"-","type":"step","task":"task-489","step":"start","status":"ok","note":"","iterations":null,"duration_ms":20678}
+{"ts":"2026-11-19T08:05:25+01:00","run_id":"-","type":"step_start","task":"task-489","step":"develop"}
+{"ts":"2026-11-19T08:07:48+01:00","run_id":"-","type":"cmd","task":"task-489","step":"develop","repo":"api-mail","kind":"build","label":"","cwd":"Api/Mail","cmd":"dotnet build src/AppHost/mss.mail.AppHost.csproj -v q -nologo","duration_ms":2563,"exit_code":0}
+{"ts":"2026-11-19T08:07:58+01:00","run_id":"-","type":"cmd","task":"task-489","step":"develop","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test tests/mss.mail.api.tests/mss.mail.api.tests.csproj --filter FullyQualifiedName~E2eProfileTests -nologo","duration_ms":8328,"exit_code":0}
+{"ts":"2026-11-19T08:24:37+01:00","run_id":"-","type":"cmd","task":"task-489","step":"develop","repo":"client-mobile","kind":"test","label":"","cwd":"Client/Mobile","cmd":"npm run e2e:headless","duration_ms":843129,"exit_code":0}
+{"ts":"2026-11-19T08:37:59+01:00","run_id":"-","type":"cmd","task":"task-489","step":"develop","repo":"client-mobile","kind":"test","label":"","cwd":"Client/Mobile","cmd":"npm run e2e:headless","duration_ms":793995,"exit_code":0}
+{"ts":"2026-11-19T08:38:46+01:00","run_id":"-","type":"cmd","task":"task-489","step":"develop","repo":"api-mail","kind":"build","label":"","cwd":"Api/Mail","cmd":"dotnet build HealthPlatform.Api.Mail.sln -v q -nologo","duration_ms":11851,"exit_code":0}
+{"ts":"2026-11-19T08:45:55+01:00","run_id":"-","type":"cmd","task":"task-489","step":"develop","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln --no-build --blame-hang-timeout 10m -nologo","duration_ms":428112,"exit_code":0}

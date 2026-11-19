@@ -76,3 +76,68 @@ rougit le fait pour une raison du code testé, jamais parce qu'une ressource d'o
 
 ## Branches
 - `api-mail` (pushed) : feat/task-489-outillage-e2e-relais-et-faux-services — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-489-outillage-e2e-relais-et-faux-services
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-489 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 20 s | — | — | — | — |
+| **Total cycle** | | **20 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+
+## Develop log
+
+- Repos touched : api-mail
+- DTOs published : no DTO change
+- Interop published : no interop change
+- api-mcp : aucun impact (`mcp_impact.py check`, sortie 0)
+- Commits :
+  - api-mail : abca6aec fix(e2e): lancer l'outillage e2e déjà construit, sans build concurrent (task-489)
+- Correctif : `E2eProfile.Tools` déclare les trois ressources (`e2e-relay`, `e2e-fake-ai`, `e2e-fake-annuaire`), avec
+  leurs arguments, ports et attentes inchangés. Seul le relais attend Dovecot et GreenMail. `E2eProfile.ResolveTooling`
+  résout `tests/mss.mail.e2e/bin/Debug/net10.0/mss.mail.e2e.dll` depuis `builder.AppHostDirectory` et refuse de démarrer
+  si elle manque. L'AppHost lance chaque ressource par `AddExecutable("dotnet", <projet>, <dll>, <sous-commande>…)` :
+  plus aucun `dotnet run`. Le profil `loadtest` (`loadtest-fake-openai`, une seule ressource) est hors périmètre et inchangé.
+- Tests unitaires (`E2eProfileTests`, +6) et preuves par mutation (chaque mutation fait échouer le test prévu, puis
+  restauration et recompilation) :
+  - M1, pas de refus quand la DLL manque → rouge `ResolveTooling_DllMissing_RefusesToStartAndSaysWhatToBuild` ;
+  - M2, retour à `run --project <dll>` → rouge `CommandFor_RunsTheBuiltDll_NeverDotnetRun` ;
+  - M3, port du relais remplacé par celui de la fausse IA → rouge `Tools_AreTheRelayTheFakeAiAndTheFakeAnnuaire_WithUnchangedArguments` ;
+  - M4, la fausse IA attend les serveurs mail → rouge `Tools_OnlyTheRelayWaitsForTheMailServers` ;
+  - M5, DLL cherchée en Release → rouge `ResolveTooling_DllBuilt_PointsAtTheBuiltDllOfTheToolingProject` et
+    `ToolingDllDisplayPath_IsTheResolvedDllRelativeToTheRepository`.
+- Règle 1b : sans objet. Aucun comportement atteignable par un endpoint ne change, seul l'outillage de test de l'AppHost
+  change. La preuve d'intégration de ce changement, c'est le banc e2e réel (ci-dessous).
+- Banc `--serve-only` (2026-11-19, 08:09) :
+  - trois processus `dotnet …\mss.mail.e2e.dll` tournent : `fake-ai --port 11534 --tagging-delay-ms 5000`,
+    `fake-annuaire --port 11535`, `relay --sink-port 3143 --password loadtest` ;
+  - sorties DCP (`%TEMP%/aspire-dcpt0c52jh1.p3x`) : aucune trace de build (`Build`, `MSB3027`, « build failed »),
+    les neuf `*_err` sont vides. Le relais affiche « actif pour 1 boîte(s) » 3 s après le démarrage, le faux annuaire et
+    la fausse IA écoutent dès le lancement ;
+  - démontage complet par `out/STOP` en 2 s.
+- Voie e2e mobile (`npm run e2e:headless`), **verte deux fois de suite** :
+  - passage 1 : 75 verts, 1 flaky, 0 rouge, parité verte. Le flaky est E2E-CONV-003 (« les deux messages forment un
+    fil », rouge au 1er essai puis vert au retry). Il est sans rapport avec l'outillage : entrée `fil-depose-a-la-seconde`
+    de `conventions/e2e.md`, passée à 3 occurrences ;
+  - passage 2 : 76 verts, 0 flaky, 0 rouge, parité verte ;
+  - E2E-COMPOSE-001 (envoyer à « robert », recevoir) et E2E-MAILBOX-003 (« Mes boîtes », faux annuaire) verts aux
+    deux passages.
+- Preuve rouge sur le code d'avant : la même voie à 12 rouges, deux fois de suite, le 2026-11-19 (task-485,
+  `questions/task-485.md`). Les 12 rouges sont tous des parcours qui attendent un envoi relayé ou l'annuaire. Seul
+  `fake-ai` tournait, et deux `_err` DCP portaient « The build failed ».
+- DLL absente → refus explicite au démarrage du profil e2e, prouvé par `ResolveTooling_DllMissing_RefusesToStartAndSaysWhatToBuild`
+  (le message cite `tests/mss.mail.e2e/bin/Debug/net10.0/mss.mail.e2e.dll` et `dotnet build tests/mss.mail.e2e`).
+- `conventions/e2e.md`, `relais-non-demarre-build-concurrent` : « Correctif de fond à faire » est remplacé par le correctif
+  livré, avec une consigne pour toute nouvelle ressource d'outillage.
+- Local build / test : ✓ api-mail. Build à 0 erreur et 0 avertissement. Suite complète à 0 échec : domain 368,
+  infrastructure 749, application 4 346, api 1 388, integration 1 369 (+16 sautés).
+- Passe qualité (/simplify) :
+  - No change : api-mail. Le diff est déjà minimal, une seule déclaration des trois ressources.
+  - Contrôles mécaniques §Q 2b : 1 hit S125 (« … ; … » dans un commentaire de l'AppHost), réécrit avant le commit.
+    Compteur incrémenté dans `conventions/csharp.md` (30).
+  - Skipped (contract/excluded) : dtos-mss, interop-cda, sdk non touchés.
+- DOD self-check : 7/7 vérifiés (build, tests, aucun `dotnet run` ni build au démarrage, trois processus au banc,
+  deux voies vertes avec la preuve rouge, refus explicite, convention mise à jour).
+- Green marked : api-mail (`Tools/green/green.py`, abca6aec)
+- Next step : /review task-489 --code
