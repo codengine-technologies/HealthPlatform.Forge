@@ -88,7 +88,8 @@ rougit le fait pour une raison du code testé, jamais parce qu'une ressource d'o
 | /review-code | ok | 1 min 58 s | — | — | — | — |
 | /sonar | ok | 11 min 41 s | 1 (50 s) | 5 (8 min 35 s) | 2 (48 s) | 1 itération(s), api-mail 1B/5T |
 | /lint-angular | skipped | 4.8 s | — | — | — | client-angular non touché |
-| **Total cycle** | | **55 min 21 s** | **3 (1 min 05 s)** | **9 (43 min 09 s)** | **2 (48 s)** | |
+| /lint-mobile | skipped | 1.0 s | — | — | — | client-mobile non touché |
+| **Total cycle** | | **55 min 22 s** | **3 (1 min 05 s)** | **9 (43 min 09 s)** | **2 (48 s)** | |
 
 ## Develop log
 
@@ -212,3 +213,6 @@ rougit le fait pour une raison du code testé, jamais parce qu'une ressource d'o
 
 ## Lint log
 - skipped — no angular change (client-angular hors **Repos**, arbre `Client/Angular/front` propre)
+
+## Lint mobile log
+- skipped — no mobile change (client-mobile hors **Repos**, arbre `Client/Mobile` propre sur `develop`)
