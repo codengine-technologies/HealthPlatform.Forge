@@ -239,6 +239,32 @@ client-angular : arbre de travail de `feature/nova-mss-weda-integration` (HEAD `
   ouvrir).
 - Démontage : complet (ports libres, aucun conteneur ni processus d'outillage résiduel).
 
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/376 — `awaiting-human-merge`
+  (catalogue e2e : E2E-SEARCH-015 v1). Suite complète verte (Release : domaine 368, infrastructure 749, application
+  4346, api 1382, intégration 1369/1385, 16 ignorés).
+- `client-angular` : code-only — humain gère commit/push TFS et ouverture PR. Fichiers de task-485 (branche
+  `feature/nova-mss-weda-integration`) :
+  - `front/libs/mss/src/core/utils/text-highlight.util.ts`
+  - `front/libs/mss/src/core/utils/text-highlight.util.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-body/mail-body.component.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.search-highlight.spec.ts`
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`
+- L'arbre weda2 porte aussi, non commités, les correctifs d'après merge de task-487 (`mail-conversation/chat-bubble.*`,
+  `mail-conversation.component.{scss,spec.ts}`).
+
+### Validation finale (2026-11-19)
+
+- Build + tests : api-mail rejoués (vert ci-dessus, marqué) ; client-angular : vert de `/develop` réutilisé (`c434dd3e`,
+  arbre inchangé depuis).
+- DoD : vérifiée item par item (build et tests weda2, unitaires vus rouges par mutation, tests de composant, liste des
+  mots vides recopiée, E2E-SEARCH-015 au catalogue et implémenté, trou du filet prouvé rouge et consigné, `data-testid`
+  existant `mail-body-plain`, rien journalisé).
+- Règle 1b : sans objet (aucun comportement serveur). api-mcp : aucun impact. E2E : bypass humain (champ `**E2E**`),
+  voie angular verte avec E2E-SEARCH-015.
+- Revue du diff postérieur à l'approbation : aucun changement de code depuis `28ce310f` et l'arbre weda2 approuvé.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-485 --sync` — ne pas éditer à la main)*
@@ -252,6 +278,7 @@ client-angular : arbre de travail de `feature/nova-mss-weda-integration` (HEAD `
 | /lint-angular | ok | 28 s | — | — | — | — |
 | /lint-mobile | skipped | 0.8 s | — | — | — | client-mobile non touché |
 | /e2e | skipped | 7 h 29 min | — | — | — | e2e ×6 (2 h 13 min), bypass humain après panne d'outillage du relais (angular vert, mobile outillage) |
-| **Total cycle** | | **8 h 45 min** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /review | ok | 8 min 03 s | 1 (21 s) | 1 (7 min 04 s) | — | api-mail 1B/1T |
+| **Total cycle** | | **8 h 53 min** | **1 (21 s)** | **1 (7 min 04 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×1 (9.7 s)
