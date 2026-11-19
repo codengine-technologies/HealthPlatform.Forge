@@ -283,3 +283,9 @@ client-angular : arbre de travail de `feature/nova-mss-weda-integration` (HEAD `
 | **Total cycle** | | **8 h 54 min** | **1 (21 s)** | **1 (7 min 04 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×1 (9.7 s)
+
+## Merged
+
+- 2026-11-19, `/merge 485 --i-tested` (validé par l'humain).
+- `api-mail` : PR #376 squash-mergée, `9b6d7e26` sur `develop` ; branche `feat/task-485-surlignage-les-mots-cherches-pas-les` supprimée (distante et locale).
+- `client-angular` : code-only, commit/push TFS par l'humain.
