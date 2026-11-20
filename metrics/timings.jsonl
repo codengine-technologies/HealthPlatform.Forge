@@ -10923,3 +10923,6 @@
 {"ts":"2026-11-20T21:22:17+01:00","run_id":"-","type":"step","task":"task-462","step":"develop","status":"ok","note":"reprise 1","iterations":null,"duration_ms":3651810}
 {"ts":"2026-11-20T21:22:24+01:00","run_id":"-","type":"step_start","task":"task-462","step":"review-code"}
 {"ts":"2026-11-20T21:30:55+01:00","run_id":"-","type":"step","task":"task-462","step":"review-code","status":"changes","note":"reprise 2","iterations":null,"duration_ms":510973}
+{"ts":"2026-11-20T21:43:57+01:00","run_id":"-","type":"cmd","task":"task-462","step":"develop","repo":"api-mail","kind":"build","label":"","cwd":"Api/Mail","cmd":"dotnet build HealthPlatform.Api.Mail.sln -v q -nologo","duration_ms":8580,"exit_code":0}
+{"ts":"2026-11-20T21:51:21+01:00","run_id":"-","type":"cmd","task":"task-462","step":"develop","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln --no-build --blame-hang-timeout 10m","duration_ms":443058,"exit_code":0}
+{"ts":"2026-11-20T21:51:42+01:00","run_id":"-","type":"step","task":"task-462","step":"develop","status":"ok","note":"reprise 2; no start marker","iterations":null,"duration_ms":null}

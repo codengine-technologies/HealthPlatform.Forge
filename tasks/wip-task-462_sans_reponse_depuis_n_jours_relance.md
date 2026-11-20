@@ -383,6 +383,45 @@ relecture après une réponse ordinaire ; un message reçu n'a pas de rappel (no
   cherche aussitôt dans l'autre) ;
 - `conventions/e2e.md` : nouvelle consigne `disparition-lue-sur-une-marque-derivee`.
 
+### Reprise 2 après /review (revue anticipée, passage 2)
+
+Périmètre : api-mail seul (mobile et weda2 approuvés au passage 2). Les arbitrages AH1-AH3 ne sont pas touchés.
+
+| Constat | Correctif | Test | Preuve rouge |
+|---|---|---|---|
+| **F3** (récidive B1) plancher fondé sur des dates, trompable | le plancher est l'`UIDNEXT` de la Boîte de réception relevé **à la demande** (envoi ou détail), avec son `UIDVALIDITY` (`MailFollowUp.InboxUidNext`, `InboxUidValidity`, migration `20261121090000`) ; `MailFollowUpRule.FloorOf` : plus petit `UIDNEXT` des rappels échus moins un ; un relevé absent ou un `UIDVALIDITY` changé → pas de plancher (toute la boîte attendue) | intégration `AnOldMessagePutBackAboveAnUningestedReply_NoFalseNudge` (ancien message remis avec sa date d'origine, UID au-dessus de la réponse, seul ingéré) ; unitaires `FloorOf`, `UIDVALIDITY` changé, relevé à l'envoi | **rouge sur le code d'avant la reprise 2** (plancher par dates) |
+| **F2** (récidive B1) plancher non prouvé | — (le plancher par UIDNEXT le rend déterministe) | intégration `AnOldInboxMessageNeverIngested_DoesNotHoldTheReturn` (historique jamais ingéré, le rappel revient) | rouge sur le code d'avant ; R11 (aucun plancher) |
+| **F1** (récidive B2) échec noyé sous plus de 20 accusés | avant un retour, les accusés non classés de la Boîte de réception **au-dessus du plancher** sont lus du plus ancien au plus récent (`GetUnclassifiedInboxReportsAsync`, `DeliveryReportReader.ReadAsync`), par paquets de 20 ; s'il en reste, ou si la lecture s'interrompt, le retour attend | intégration `ADeliveryFailureFollowedByManyReports_StillClosesTheFollowUp` (échec daté avant 21 accusés plus récents) ; unitaires : lecture au-dessus du plancher avant la recherche des échecs, retour différé (trop d'accusés, lecture interrompue) | rouge sur le code d'avant (après avoir daté les accusés du test : sans en-tête `Date`, l'ordre « plus récents d'abord » ne les ordonnait pas) |
+| **F4** accusé dans un dossier disparu bloquant la lecture | `MailExportService.BuildEmlAsync` : `FolderNotFoundException` → `NotFound` (le lecteur le classe « inconnu » et passe au suivant ; l'export d'un message d'un dossier supprimé répond 404) | unitaire `BuildEmlAsync_FolderGone_ReturnsNotFound` | mutation (garde neutralisée) rouge |
+| **F5** clé de cache non normalisée | `RedisKeys.FollowUp.Evaluated` normalise l'adresse ; sans adresse, ni lecture ni écriture du cache | unitaire `…TheEvaluationStamp_NamesTheMailboxNormalised_AndNeedsOne` | mutation (normalisation retirée) rouge |
+| **F7** 409 sans Message-ID non prouvé | — (comportement existant) | intégration `AFollowUpOnASentMessageWithoutMessageId_Is409` (copie d'Envoyés déposée sans Message-ID) | R12 (409 → 200) |
+
+**Migration (règle 7c)** : `20261121090000_AddMailFollowUpInboxFloor` lue : deux colonnes nullables ajoutées à
+`MailFollowUps`, aucune donnée existante modifiée ni supprimée ; descente : les deux colonnes retirées. Mapping EF aligné
+(`HasColumnName` sur les constantes de la migration) ; la suite complète bâtit le schéma depuis le modèle et joue les
+migrations.
+
+**Limite assumée (liée à AH1)** : pour un rappel posé depuis le détail, le plancher est l'`UIDNEXT` de la demande : une
+réponse (ou un échec de remise) arrivée entre l'envoi et la demande et pas encore ingérée n'est pas attendue. Si
+l'arbitrage AH1 retient « seules les réponses postérieures à la demande comptent », c'est exactement la règle.
+
+**Autocontrôle du correctif** : la relecture de la Boîte de réception a lieu désormais aussi à chaque demande (STATUS,
+cache 10 s) ; une panne y laisse le plancher vide sans faire échouer la demande (best-effort, toute la boîte attendue).
+Un rappel antérieur à la migration n'a pas de plancher : son retour ne peut qu'être retardé. Le lecteur partagé garde
+le comportement de la vue conversation (`ReadUnreadAsync` délègue à `ReadAsync`).
+
+**Mutations** : R11, R12 (intégration) rouges, « restauré : 18/18 » ; F4, F5 (unitaires) rouges, restaurés (42/42).
+
+**Builds / tests** : api-mail suite complète 8 308 tests, 0 échec, sur `dc39d1d3` ; marqueur vert `dc39d1d3`. Mobile et weda2 inchangés depuis le passage 2
+(marqueurs verts `82fc95e` et arbre weda2).
+
+**Commit** : api-mail `dc39d1d3`.
+
+**Prévention (règle d'or)** : `conventions/csharp.md`, deux consignes neuves : `repere-imap-par-uidnext` (un repère
+« depuis tel instant » dans un dossier IMAP se prend en UID, pas en date) et `lot-borne-avant-decision` (un traitement
+par lots qui conditionne une décision lit depuis un repère, dans l'ordre d'arrivée, et diffère la décision s'il en reste) ;
+S125 occurrence 33.
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -534,8 +573,8 @@ Inchangé : AH1, AH2, AH3 du passage 1.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 2 min 17 s | — | — | — | — |
-| /develop | ok | 1 h 00 min | 15 (2 min 28 s) | 13 (40 min 13 s) | — | dtos-mss 1B/0T, api-mail 9B/6T, client-mobile 3B/4T, client-angular 2B/3T, reprise 1 |
+| /develop | ok | — | 16 (2 min 37 s) | 14 (47 min 36 s) | — | dtos-mss 1B/0T, api-mail 10B/7T, client-mobile 3B/4T, client-angular 2B/3T, reprise 2; no start marker |
 | /review-code | changes | 8 min 30 s | — | — | — | reprise 2 |
-| **Total cycle** | | **1 h 11 min** | **15 (2 min 28 s)** | **13 (40 min 13 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **10 min 48 s** | **16 (2 min 37 s)** | **14 (47 min 36 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (29 s), restore ×1 (3.6 s)
