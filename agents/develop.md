@@ -57,6 +57,10 @@ may still run it by hand). Same pre-flight, same repos, same branches.
 3. **A finding the forge cannot fix after all** (it turns out to need a decision,
    or the fix contradicts a rule) → stop : write `questions/{task-id}.md` and halt.
    Never « fix » by changing the requirement.
+   **A test the review named is not optional** (task-462, reprise 3 : the « rebond rapide »
+   integration test required by the review was logged as a « limite assumée », and came back
+   as N2) : write it, or stop on `questions/`. Only the human can turn a required proof into
+   an accepted limit.
 4. **Develop log** : append `### Reprise N après /review` to the `## Develop log` —
    one line per finding (what was wrong, the fix, the test, its red proof).
 5. **Prevention (règle d'or)** : a finding that reveals a recurring trap leaves its

@@ -1,7 +1,7 @@
 # todo-task-462.md — Sans réponse depuis N jours : relance
 
 **Repos**: api-mail, dtos-mss, client-angular, client-mobile
-**Reprises**: 3
+**Reprises**: 4
 **Dependencies**: done-task-454 (vue « À traiter »), done-task-459 (détection des réponses, rapports exclus)
 **Epic**: E024
 **Priorité**: EPIC E024, demandée par l'humain le 2026-11-11. Douleur n° 5 (2/5). Une demande d'avis restée sans
@@ -678,6 +678,80 @@ L'humain accepte les recommandations (AH1 à AH3, voir l'Objectif) et relance la
 - **AH3** — clore sur échec de remise seulement si tous les destinataires sont en échec ; test d'intégration vu rouge
   (deux destinataires, un seul en échec : le rappel reste ouvert et revient).
 
+### Passage 4 (revue anticipée, après reprise 3) — CHANGES REQUESTED, reprise 4
+
+Relecteur indépendant sur le diff de la reprise 3 (api-mail `dc39d1d3..a3923a85`, 22 fichiers), N1 vérifié sur le code.
+Mobile et weda2 inchangés depuis le passage 2.
+
+**contract_impact** : api-mcp aucun impact ; client-mobile aucun impact ; client-angular IMPACT
+(`AuditActionType` décodé par rang), adapté (arbre de travail, inchangé depuis le passage 2).
+
+**DOD, scénario e2e** : `E2E-FOLLOWUP-001` inchangé, au catalogue à la version déclarée par les tests.
+
+| Constat | Corrigé | Test d'intégration | Preuve rouge |
+|---|---|---|---|
+| R1 UIDVALIDITY, chemin du cache | oui | `OnACacheHitOfTheInbox_TheFloorHolds` | R13 |
+| R2 + AH1 repère avant SMTP, fenêtre | code oui ; rebond rapide et filtre de date des échecs **sans test d'intégration** (N2) | `AReplyBeforeTheRequestFromTheDetail_DoesNotCloseIt` (réponse seulement) | AH1 (réponse seulement) |
+| R3 retour différé | oui | `ManyReportsBeforeTheFailure_TheReturnWaits_ThenTheFailureClosesIt` | R14 |
+| AH2 automatique, tiers | oui | `AnOutOfOfficeAutoReply_DoesNotCloseIt`, `AMessageFromAThirdParty_DoesNotCloseIt` | AH2a, AH2b, code d'avant |
+| AH3 échec partiel | oui, mais par IMAP sur le chemin de la liste (N1) | `ADeliveryFailureOfOneRecipientOutOfTwo_KeepsItOpen`, `ADeliveryFailureOfAllRecipients_ClosesIt` | AH3, code d'avant |
+
+Vérifié sans constat : les 3 sites de `FolderStatusCache` (entrées antérieures désérialisées à 0), les deux STATUS, le
+repère sur tous les chemins d'envoi (direct, brouillon, réponse, confirmation différée, annule et remplace), les Cc,
+la migration `20261121120000` (règle 7c), règles 12 et 14, aucune donnée de santé en log, aucun « ; » en commentaire.
+
+#### Bloquants
+
+- **N1 (né du correctif d'AH3) — la liste des messages fait de l'IMAP et peut échouer.** `ApplyAsync`, appelé à chaque
+  page d'en-têtes par `OnlineMailDataProvider` et `OfflineMailDataProvider` sans garde, passe par `CloseAnsweredAsync`,
+  donc `AllRecipientsFailedAsync` → `ReadFailedRecipientsAsync` → `BuildEmlAsync` : verrou de session, connexion,
+  FETCH de l'accusé entier. Avant la reprise, `ApplyAsync` ne lisait que la base. Un rappel en échec partiel (AH3 : il
+  reste ouvert) refait ce FETCH à chaque chargement d'Envoyés ou d'« À traiter » et à chaque évaluation, jusqu'à la
+  clôture manuelle. Un `TimeoutException` du verrou ou un `OpenAsync` en échec fait échouer tout le `GET` de la liste.
+- **N2 (récidive de R2) — preuves d'intégration demandées et absentes.** L'ordre « repère avant SMTP » n'est prouvé que
+  par un test unitaire, et le Develop log l'a classé « limite assumée » sans décision humaine. Le test est faisable :
+  envelopper `ISmtpService` (fournisseur externe) pour déposer un accusé dans la Boîte de réception juste après l'envoi
+  réel. Le filtre de date des échecs (AH1, `MailFollowUpRepository`) n'a pas de test non plus. L'argument « sous le
+  plancher » est faux quand la vue conversation a déjà classé l'accusé : rebond, le médecin ouvre la conversation, puis
+  pose un rappel depuis le détail. Selon AH1, le rappel doit rester ouvert.
+
+#### Suggestions
+
+- AH3 : rapprocher aussi `Original-Recipient` (adresse telle qu'écrite par l'expéditeur) des À/Cc, en plus de
+  `Final-Recipient`.
+- R1 : avec 0 lu comme inconnu, `OnACacheHit…` prouve que le plancher tient, pas que la garde UIDVALIDITY agit sur le
+  chemin du cache. Un repère relevé à UIDVALIDITY nul ne détecte jamais un changement ultérieur.
+- Une vue de cache vieille de 10 s peut produire un « Sans réponse » passager (corrigé à la synchronisation suivante).
+- Un accusé dont la relecture échoue toujours (`null`) bloque le retour de ce rappel indéfiniment (même famille que S5).
+- `FindRepliesAsync` filtre la date en mémoire : pousser `ArrivalDate >= min(Since)` dans le SQL.
+- `CaptureAnchorAsync` ajoute un `GetFolderAsync` avant chaque envoi avec rappel ; un STATUS suffirait (S2).
+
+#### À corriger par la reprise
+
+- **N1** — sortir l'IMAP d'`ApplyAsync` et du chemin de la liste. Extraire les destinataires en échec au **classement**
+  de l'accusé, qui lit déjà l'EML (`DeliveryReportReader.ReadAsync`, classement de la vue conversation), et les
+  persister. AH3 devient une décision en base, et l'évaluation n'a plus à relire l'accusé. Test d'intégration vu rouge :
+  la liste d'Envoyés avec un rappel en échec partiel reste 200 quand l'accusé n'est plus lisible sur le serveur.
+- **N2 (récidive)** — tests d'intégration vus rouges : rebond rapide arrivé pendant l'envoi SMTP (mutation : repère
+  relevé après SMTP), et échec déjà classé avant une demande depuis le détail (mutation : filtre de date retiré).
+
+#### Arbitrage humain
+
+Aucun.
+
+#### Comptage (règle 13)
+
+R2 a été la troisième apparition de B2 au passage 3 ; l'humain a relancé la chaîne le 2026-11-20. N2 est la première
+apparition de R2 depuis cette relance : récidive tolérée une fois. Si un constat de cette lignée revient encore, la
+chaîne s'arrête.
+
+#### Amélioration continue
+
+- N2 : une preuve exigée par la revue a été déclassée en « limite assumée » par la forge. La consigne est désormais dans
+  `agents/develop.md`, « Mode reprise », point 3 : seul l'humain transforme une preuve exigée en limite acceptée.
+- N1 : le point 6 du même mode (« qu'est-ce que le correctif casse ailleurs ? ») existait déjà. Récidive de lecture :
+  la reprise 4 relit les appelants d'`ApplyAsync` avant de rendre la main.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-462 --sync` — ne pas éditer à la main)*
@@ -686,7 +760,7 @@ L'humain accepte les recommandations (AH1 à AH3, voir l'Objectif) et relance la
 |---|---|---|---|---|---|---|
 | /start | ok | 2 min 17 s | — | — | — | — |
 | /develop | ok | 34 min 42 s | 17 (2 min 45 s) | 15 (54 min 58 s) | — | dtos-mss 1B/0T, api-mail 11B/8T, client-mobile 3B/4T, client-angular 2B/3T, reprise 3 |
-| /review-code | failed | 8 min 35 s | — | — | — | règle 13 : B1/B2 revenus une troisième fois ; AH1 requis |
-| **Total cycle** | | **45 min 34 s** | **17 (2 min 45 s)** | **15 (54 min 58 s)** | **0 (0.0 s)** | |
+| /review-code | changes | 6 min 36 s | — | — | — | reprise 4 |
+| **Total cycle** | | **43 min 35 s** | **17 (2 min 45 s)** | **15 (54 min 58 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (29 s), restore ×1 (3.6 s)
