@@ -464,6 +464,49 @@ de 5 min ne compte comme postérieure qu'une réponse arrivée dans les 5 min qu
 dont dépend une décision se vérifie sur tous les chemins qui fabriquent le DTO, frais et cache) et
 `fenetre-imap-tolerance-horloge` ; S125 occurrence 34.
 
+### Reprise 4 après /review (revue anticipée, passage 4)
+
+Périmètre : api-mail (N1, N2). Mobile et weda2 inchangés.
+
+| Constat | Correctif | Test d'intégration | Preuve rouge |
+|---|---|---|---|
+| **N1** la liste des messages relisait le rapport d'échec sur le serveur | Les adresses en échec (`Final-Recipient` et `Original-Recipient` des groupes `failed`) sont lues **au classement** du rapport, qui relit déjà le message (`DeliveryReportReader.ReadAsync`, partagé par l'évaluation et la vue conversation). Elles sont gardées dans `Mails.ReportFailedRecipients` (migration `20261121150000`). `FindDeliveryFailuresAsync` les rend, et AH3 se décide en base. `IDeliveryReportReader.ReadFailedRecipientsAsync` est retiré, ainsi que l'état « indécis ». `ApplyAsync` et l'évaluation ne vont plus sur le serveur pour un rappel. | `AFailureClassifiedThenGoneFromTheServer_TheListStillClosesIt` : rapport classé par la vue conversation puis effacé du serveur (EXPUNGE). La liste d'Envoyés répond 200 et clôt le rappel « non distribué ». | Rouge sur le code de la reprise 3 (le rapport disparu ne donnait aucune adresse, le rappel restait ouvert). Mutation N1 (adresses non gardées au classement) : 6 tests rouges, dont celui-ci. |
+| **N2 (récidive)** rebond rapide, et échec antérieur à la demande | Comportements déjà dans le code de la reprise 3 : seules leurs preuves d'intégration manquaient. | `ARapidBounceDuringTheSmtpSend_ClosesIt` : le SMTP réel, puis un rapport d'échec déposé dans la Boîte de réception avant que l'envoi ne rende la main (décorateur `BouncingSmtp` sur `ISmtpService`, fournisseur externe). `AFailureClassifiedBeforeTheRequestFromTheDetail_DoesNotCloseIt` : échec arrivé une heure avant et classé par la vue conversation, puis rappel posé depuis le détail. Le rappel reste ouvert et revient. | Mutations N2a (repère relevé après le SMTP) et N2b (filtre de date des échecs retiré) : chacune rouge sur son test seul. Vertes sur le code de la reprise 3, qui portait déjà ces comportements. |
+
+**Suggestions du passage 4 reprises** : `Original-Recipient` rapproché des À/Cc (test unitaire
+`FailedRecipients_AlsoTheOriginalRecipient_OfAFailedGroup`). Un rapport illisible ne bloque plus le retour, puisque l'état
+« indécis » a disparu avec la relecture.
+
+**Tests unitaires** :
+- `Get_ADeliveryFailure_IsClassifiedWithItsFailedRecipients` (vue conversation) ;
+- `ApplyAsync_ADeliveryFailureOfAllRecipients_IsDecidedInTheDatabase_WithoutTheMailServer` (aucun appel au lecteur
+  d'accusés ni à IMAP) ;
+- `GetReturnedAsync_TwoReportsEachFailingOneRecipient_CloseTheFollowUp` ;
+- signatures `SetReportAsync` mises à jour.
+
+**Migration (règle 7c)** : `20261121150000_AddMailReportFailedRecipients` lue. Elle ajoute une colonne `text` nullable sur
+`Mails`, sans défaut. Aucune donnée n'est modifiée ni supprimée, et la descente retire la colonne. Le mapping EF passe par
+la constante (FluentMigrator, sans instantané de modèle).
+- Les rapports classés avant gardent `NULL`, soit aucune adresse : un rappel dont les destinataires sont connus n'est pas
+  clos par eux.
+- Ils précèdent de toute façon toute demande de rappel, qui n'existe qu'avec cette task.
+
+**Autocontrôle du correctif** :
+- `SetReportAsync` n'a qu'un appelant (le lecteur d'accusés), mis à jour.
+- La vue conversation (`GetReportsAsync`) n'est pas touchée.
+- `CloseAnsweredAsync` ne fait plus aucun appel IMAP, et ses deux appelants (`ApplyAsync`, l'évaluation) lisent la base.
+- La réingestion d'un rapport ne remet pas son classement à zéro.
+
+**Mutations** : `mutate_462_r4.py` : N1, N2a et N2b rouges, « restauré : 28/28 ».
+
+**Builds / tests** : api-mail suite complète verte (domain 385, infrastructure 749, application 4 396, api 1 388, intégration 1 399 + 16 ignorés, 0 échec, aucun FATAL). Commit `be75a84f`.
+
+**Prévention (règle d'or)** :
+- `conventions/csharp.md` : `decision-de-liste-en-base` (ce que décide la liste se lit en base, et ce qu'il faut lire
+  sur le serveur se lit une fois, au classement). S125, occurrence 35.
+- `agents/develop.md`, mode reprise, point 3 : un test exigé par la revue n'est jamais déclassé en « limite assumée »
+  sans décision humaine.
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -759,8 +802,8 @@ chaîne s'arrête.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 2 min 17 s | — | — | — | — |
-| /develop | ok | 34 min 42 s | 17 (2 min 45 s) | 15 (54 min 58 s) | — | dtos-mss 1B/0T, api-mail 11B/8T, client-mobile 3B/4T, client-angular 2B/3T, reprise 3 |
+| /develop | ok | 19 min 18 s | 18 (2 min 54 s) | 16 (1 h 02 min) | — | dtos-mss 1B/0T, api-mail 12B/9T, client-mobile 3B/4T, client-angular 2B/3T, reprise 4 |
 | /review-code | changes | 6 min 36 s | — | — | — | reprise 4 |
-| **Total cycle** | | **43 min 35 s** | **17 (2 min 45 s)** | **15 (54 min 58 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **28 min 11 s** | **18 (2 min 54 s)** | **16 (1 h 02 min)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (29 s), restore ×1 (3.6 s)
