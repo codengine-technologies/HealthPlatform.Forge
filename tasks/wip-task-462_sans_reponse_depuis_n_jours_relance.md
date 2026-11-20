@@ -1,7 +1,7 @@
 # todo-task-462.md — Sans réponse depuis N jours : relance
 
 **Repos**: api-mail, dtos-mss, client-angular, client-mobile
-**Reprises**: 1
+**Reprises**: 2
 **Dependencies**: done-task-454 (vue « À traiter »), done-task-459 (détection des réponses, rapports exclus)
 **Epic**: E024
 **Priorité**: EPIC E024, demandée par l'humain le 2026-11-11. Douleur n° 5 (2/5). Une demande d'avis restée sans
@@ -474,6 +474,59 @@ sera contrôlé par la validation finale.
 - Une réponse rangée dans la Corbeille, ou classée ailleurs par une règle serveur avant l'évaluation, n'est pas vue
   (fausse relance possible) : à mesurer avant de corriger.
 
+### Passage 2 (revue anticipée, après reprise 1) — CHANGES REQUESTED
+
+Relecteur indépendant, diff de la reprise lu d'abord (api-mail `f8678551..1a656785`, mobile `fc0a981..82fc95e`, arbre
+weda2). Rien de cassé ailleurs par la reprise : `ConversationService` délégant au lecteur (comportement inchangé),
+enregistrements DI, `refreshReply` (sans effet hors rappel), export d'`isSameMail`, fusions weda2 par `mailKeyString`,
+pagination weda2 (A2), parcours e2e (présence vue avant l'absence), requêtes traduites en SQL, S1067.
+
+**Statut des constats du passage 1** : B3, P1, P2, P3, M1, M2/A1, M3, M4/A3, A2 corrigés. **B1 et B2 partiels** (ci-dessous).
+
+**Verdicts par repo** : api-mail ❌ · dtos-mss ✅ · client-mobile ✅ · client-angular ✅.
+
+**4c — contract_impact** : inchangé (api-mcp, client-mobile : aucun impact ; client-angular : `AuditActionType`, adapté).
+
+#### À corriger par la reprise
+
+- **F1 (récidive de B2) — api-mail, l'échec de remise peut encore être manqué.** `GetUnreadReportsAsync` rend les 20
+  accusés non classés les plus **récents** ; l'évaluation fait revenir le rappel dans la même passe. Un échec arrivé peu
+  après l'envoi, suivi de plus de 20 accusés plus récents non classés (accusés d'autres envois, arriéré historique),
+  n'est pas lu : le message non distribué revient « Sans réponse », et plus jamais relu ensuite (la lecture n'a lieu que
+  pour un rappel échu et pas encore revenu). Correctif attendu : avant un retour, classer **tous** les accusés non
+  classés arrivés depuis le plus ancien envoi échu (du plus ancien au plus récent, ou bornés par date), ou différer le
+  retour tant qu'il en reste (même logique d'ensemble que B1). Test d'intégration : échec de remise suivi de plus de 20
+  accusés plus récents non classés → aucun retour, rappel clos ; vu rouge.
+  - **F4 (même correctif)** : un accusé non classé dont le dossier a disparu fait échouer `BuildEmlAsync` en `Error`
+    (pas `NotFound`), et la lecture s'arrête sur lui à chaque évaluation : plus rien n'est classé. Le lecteur ne doit pas
+    rester bloqué sur un accusé illisible (le classer « inconnu », ou le passer).
+- **F2 (récidive de B1) — api-mail, le plancher n'est prouvé par aucun test d'intégration (règle 1b).** Toutes les
+  boîtes de test ont une Boîte de réception entièrement ingérée ou vide : forcer « aucun plancher » (toute la boîte
+  attendue) laisserait probablement tout vert, et désactiverait en production le rappel de toute boîte dont l'historique
+  n'est pas ingéré. Test attendu : un message ancien, déposé avant l'envoi et jamais ingéré, et le rappel revient
+  quand même après l'échéance ; vu rouge sans le plancher.
+- **F3 (récidive de B1) — api-mail, plancher fondé sur des dates, trompable.** Le plancher est le plus grand UID ingéré
+  dont `ArrivalDate ?? SentDate` précède l'envoi ; UID et date ne vont pas ensemble. Un ancien message remis dans la
+  Boîte de réception (IMAP COPY/MOVE garde INTERNALDATE) reçoit un UID au-dessus d'une réponse non ingérée : une fois
+  ingéré, le plancher saute la réponse → fausse relance. Même effet avec un en-tête `Date` antidaté et `ArrivalDate`
+  nul. Piste déterministe : retenir l'`UIDNEXT` de la Boîte de réception au moment de l'envoi (ou de la demande) et en
+  faire le plancher. Le choix d'implémentation est libre, tant que le plancher ne dépend plus des dates ; test vu rouge.
+- **F5 — api-mail, convention `cle-de-cache-de-boite`** : `RedisKeys.FollowUp.Evaluated(userContextInfo.Email)` ne
+  normalise pas l'adresse et met en cache même quand elle est vide. Appliquer la consigne.
+- **F7 — api-mail, règle 1b** : le 409 (message envoyé sans Message-ID) est atteignable (copie d'Envoyés déposée sans
+  Message-ID) et n'est pas prouvé. Test d'intégration vu rouge.
+
+#### Arbitrage humain
+
+Inchangé : AH1, AH2, AH3 du passage 1.
+
+#### Suggestions (non bloquantes)
+
+- F6 : la preuve de P2 (évaluations concurrentes) est probabiliste ; une preuve déterministe au niveau du dépôt serait
+  plus solide.
+- F8 : mobile `isSelected` reprend la tolérance d'`isSameMail` (dossier absent = égal) ; `threadChildren` reste suivi
+  par `child.uid` (antérieur).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-462 --sync` — ne pas éditer à la main)*
@@ -482,7 +535,7 @@ sera contrôlé par la validation finale.
 |---|---|---|---|---|---|---|
 | /start | ok | 2 min 17 s | — | — | — | — |
 | /develop | ok | 1 h 00 min | 15 (2 min 28 s) | 13 (40 min 13 s) | — | dtos-mss 1B/0T, api-mail 9B/6T, client-mobile 3B/4T, client-angular 2B/3T, reprise 1 |
-| /review-code | changes | 10 min 02 s | — | — | — | reprise 1 |
-| **Total cycle** | | **1 h 13 min** | **15 (2 min 28 s)** | **13 (40 min 13 s)** | **0 (0.0 s)** | |
+| /review-code | changes | 8 min 30 s | — | — | — | reprise 2 |
+| **Total cycle** | | **1 h 11 min** | **15 (2 min 28 s)** | **13 (40 min 13 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (29 s), restore ×1 (3.6 s)
