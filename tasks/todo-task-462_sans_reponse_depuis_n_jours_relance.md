@@ -1,11 +1,14 @@
 # todo-task-462.md — Sans réponse depuis N jours : relance
 
 **Repos**: api-mail, dtos-mss, client-angular, client-mobile
-**Dependencies**: done-task-454 (vue « À traiter »), done-task-459 (détection des réponses), done-task-460 (rapports
-exclus)
+**Dependencies**: done-task-454 (vue « À traiter »), done-task-459 (détection des réponses, rapports exclus)
 **Epic**: E024
 **Priorité**: EPIC E024, demandée par l'humain le 2026-11-11. Douleur n° 5 (2/5). Une demande d'avis restée sans
 réponse est une boucle de coordination non fermée, donc un risque de soins.
+
+> **Décision humaine du 2026-11-20 (au `/start`).** La dépendance à task-460 (suivi d'acheminement, supprimée le
+> 2026-11-13 sans avoir été faite) est retirée. Ce qu'elle apportait existe en partie : rapports exclus (task-459),
+> état « non distribué » dans la conversation (task-487). La règle « Échec de remise » est réécrite en conséquence.
 
 > **Origine.** Analyse du 2026-11-11, manque A3 (Superhuman « Remind me », Gmail « Nudges », Nextcloud « follow-up »,
 > renvoi automatique de Lifen ; « dialogmelding » norvégien avec un délai de réponse attendu).
@@ -36,7 +39,9 @@ Règles :
   - **Relancer** ouvre une réponse aux mêmes destinataires, objet « Relance : … », message d'origine cité ; à l'envoi,
     un nouveau rappel de même durée est proposé ;
   - **Clore** arrête le rappel. Le geste est imputé.
-- **Échec de remise** (task-460) : un envoi en échec ne pose pas de rappel ; l'échec est déjà dans « À traiter ».
+- **Échec de remise** : un envoi marqué « non distribué » par un rapport d'échec (`ReportKind`, task-487) ne pose pas
+  de rappel, et un rappel déjà posé se clôt (acte système). Rien n'est promis dans « À traiter » pour l'échec
+  lui-même : task-460, qui l'y aurait rangé, a été retirée.
 - **Boîte partagée** : le rappel appartient à la boîte et affiche qui l'a demandé (règle 14).
 - **Ancrage** selon task-453.
 
