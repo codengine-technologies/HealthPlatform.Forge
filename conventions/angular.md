@@ -841,5 +841,8 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   ce dossier (enrichissement, compteurs). Un spec de liste mélange au moins deux messages de même UID dans deux dossiers.
 - **Preuve** : E2E-FOLLOWUP-001 weda2 rouge (marque absente), vert après correction ; specs `mail-list` (fusion) et
   `mail-header.follow-up` (squelette) vus rouges par mutation (W13, W14).
-- **Origine** : task-462 (/develop, banc e2e weda2)
-- **Occurrences** : 1
+- **Origine** : task-462 (/develop, banc e2e weda2 ; revue anticipée, passage 1)
+- **Occurrences** : 2 (task-462, revue anticipée — la liste mobile suivait encore ses lignes et la ligne ouverte par
+  `mail.uid` ; et la relecture après une relance n'appliquait pas le rappel relu à la ligne, ni sur mobile ni sur weda2.
+  La consigne avait été écrite pour weda2 seul, le jour même : un défaut trouvé dans un client se cherche aussitôt dans
+  l'autre)

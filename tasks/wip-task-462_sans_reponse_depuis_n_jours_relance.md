@@ -302,6 +302,87 @@ seed `envoi-rappel-echu`) :
   test de page (M13) ; il venait d'un écart d'architecture propre au mobile (le détail est un `@Input` de la page),
   que le test de composant ne pouvait pas voir.
 
+### Reprise 1 après /review (revue anticipée, passage 1)
+
+Périmètre : la liste « À corriger par la reprise » du passage 1. Les arbitrages AH1-AH3 ne sont pas touchés.
+
+| Constat | Correctif | Test | Preuve rouge |
+|---|---|---|---|
+| **B1** fausse relance : garde sur le plus grand UID ingéré | chaque UID de la Boîte de réception arrivé depuis l'envoi doit être en base : plancher = plus grand UID ingéré arrivé avant le plus ancien envoi (date de la copie, à défaut de la demande, reculée d'un jour : la date d'en-tête est en heure du serveur), puis `UidsAwaitingIngestion` / `IsInboxIngested` par ensembles | intégration `AReplyBuriedUnderNewerMessages_NotYetIngested_NoFalseNudge` (réponse UID n, trois messages plus récents ingérés seuls) ; unitaires de la règle et du service | R1 (plus récent seul), R1b (jamais exigé) |
+| B1, second volet (cache Redis 5 min) | non applicable : `ImapService.GetFolderAsync` revalide par STATUS, statut en cache 10 s (`CacheDurations.FolderStatus`) | — | — |
+| **B2** échec de remise jamais classé hors vue conversation | lecture des accusés non classés extraite en `DeliveryReportReader` (partagée avec la vue conversation, comportement inchangé), jouée par l'évaluation en ligne, bornée à 20, **seulement quand un rappel est échu** (chemin de la liste des dossiers) | intégration `ADeliveryFailure_SeenOnlyFromTheInbox_ClosesTheFollowUp_AsASystemAct` (aucune ouverture de conversation) ; unitaires : lecture si échu, rien hors ligne, rien avant l'échéance | R2 (lecture retirée), R10 (lecture avant l'échéance) |
+| **B3** relance qui clôt l'original | — (comportement existant) | `ANudge_ClosesTheOriginalFollowUp_InThePersonsName_AndCarriesItsOwn` (motif « relancé », imputé au titulaire, la relance porte son rappel à 7 j) | R3 |
+| **B3** rappel porté par un brouillon | — | `AFollowUpChosenInADraft_IsReadBack_AndSetWhenTheDraftIsSent` (POST, GET, envoi du brouillon) | R5 |
+| **B3** confirmation tardive d'un envoi mis de côté | — | `APendingSendConfirmedAfterItsDueDate_LeavesWithoutFollowUp` (hors ligne → 202, horloge +2 j, confirmation → 200, sans rappel) | R6 (400 sans le retrait de l'échéance) |
+| **B3** « Clore » sans rappel | — | `ClosingWithoutFollowUp_Is404_InProblemDetails` | R7 |
+| B3, 409 sans Message-ID | non atteignable par la route : un envoi de la plateforme porte toujours un Message-ID ; couvert par l'unitaire du service | — | — |
+| **P1** coût sur chaque chargement | balayage `References LIKE` limité aux messages sans `In-Reply-To` (comme task-459) ; une évaluation par boîte réutilisée 10 s (horodatage Redis, horloge du service) : la liste des dossiers et `follow-ups/returned` d'un même chargement n'évaluent qu'une fois | unitaires : évaluation récente réutilisée, ancienne rejouée et horodatée ; `References` seul toujours prouvé par `AReplyBeforeTheDueDate…` | — (performance) |
+| **P2** retour tracé deux fois | `MarkReturnedAsync` : mise à jour conditionnelle par rappel, seul celui qui marque trace | `ConcurrentEvaluations_TraceTheReturnOnlyOnce` (6 évaluations concurrentes) | R8 (lecture puis écriture) |
+| **P3** annule et remplace | prémisse corrigée : le rappel de l'original était bien clos (In-Reply-To posé par l'annule-et-remplace), mais au motif « relancé ». Motif « clos » quand `CancelAndReplaceUid` est posé | `ACancelAndReplace_ClosesTheOriginalFollowUp_NotAsANudge` ; unitaire | R4 |
+| **Défaut trouvé par l'autocontrôle** : plancher `Kind=Utc` comparé à des colonnes sans fuseau → 500 (Npgsql), un passage sur deux | plancher posé `DateTimeKind.Unspecified` | `AnEvaluationBeforeTheSentCopyIsIngested_DoesNotFail` (déterministe) | R9 (6 tests rouges) |
+| **M1** liste mobile par UID seul | `track rowKey(mail)` et `isSelected(mail)` par (dossier, UID) (`isSameMail` exporté) | spec `mail-list` : Envoyés/42 et Boîte de réception/42, une seule ligne surlignée | M15 |
+| **M2 / A1** ligne « Sans réponse » après relance | `refreshReply` (mobile `MailActionsService`, weda2 `MailStateService`) pose le rappel relu (`applyFollowUp`) | specs mobile `mail-actions` et weda2 `mail-state` : la ligne quitte « À traiter » | M14, W15 |
+| **M3** testid prolongeant `mail-row-` | `followup-chip-{uid}` dans les deux clients, leurs specs et leurs parcours | — | — |
+| **M4 / A3** assertion e2e qui ne pouvait pas rougir | les deux parcours affirment, après « Clore » et avant les relectures serveur, que la **ligne** (par son objet) a quitté « À traiter » (mobile : retour à la liste) | E2E-FOLLOWUP-001 | voir ci-dessous |
+| **A2** total gonflé | `toHandlePage$` garde le total du dossier | spec `mail-state.handling` (total 2, plus 3) | W16 |
+
+**Mutations api-mail** (`mutate_462_r1.py`, build + classe `FollowUpEndToEndTests`, restauration octet pour octet puis
+date) : R1-R9 toutes rouges sur leur test visé ; « restauré : 14/14 verts ». R10 (unitaire) rouge, restauré.
+Pendant la première série, `…SurvivesAMoveOutsideThePlatform…` rougissait sous des mutations sans rapport : ce n'était
+pas un flaky mais le défaut `Kind=Utc` ci-dessus (rejoué seul : 2 rouges sur 4, erreur Npgsql lue), corrigé, puis 4/4
+verts et la série rejouée propre.
+
+**Mutations clients** : mobile M14, M15 rouges ; weda2 W15, W16 rouges (Vitest par PowerShell, rouges sur assertion).
+
+**E2E-FOLLOWUP-001, nouvelles assertions** (banc weda2 `--serve-only`, qui sert aussi l'app mobile ; rappel réarmé par
+l'API entre deux passages, échéance à +2 s comme le seed) :
+- mutations posées : serveur (`GetReturnedKeysAsync` garde les rappels clos), weda2 (`applyFollowUp` ne retire pas la
+  ligne), mobile (`applyFollowUp` ne retire pas la ligne) ; marqueurs prouvés servis dans les chunks ;
+- mobile : avec la seule mutation serveur, rouge sur la relecture serveur mais la ligne avait quitté la liste (l'état
+  client la retire, le retour ne recharge pas « À traiter ») ; avec la mutation client en plus, **rouge sur « le message
+  quitte « À traiter » »** ;
+- weda2 : **rouge sur « le message quitte « À traiter » »** ;
+- banc propre remonté (marqueurs prouvés absents) : mobile **1 passed**, weda2 **1 passed**.
+
+**Builds / tests de la reprise**
+
+| Repo | Build | Tests |
+|---|---|---|
+| api-mail | vert | suite complète 8 296 tests, 0 échec, sur `1a656785` ; marqueur vert `1a656785` |
+| client-mobile | `npm run build` vert | Karma 1705/1705 ; marqueur vert `82fc95e` |
+| client-angular | `nx build weda2` vert | mss-lib 1 923/1 923, `nx test weda2` vert, ESLint 0 erreur, Prettier propre sur mes blocs ; marqueur vert sur l'arbre final |
+
+**Commits** : api-mail `80ba1762`, `1a656785` ; client-mobile `82fc95e` ; client-angular non commité (code-only).
+
+**contract_impact** (rejoué) : api-mcp aucun impact ; client-mobile aucun impact ; client-angular IMPACT
+`AuditActionType` — adapté (inchangé depuis le passage 1).
+
+**client-angular — fichiers ajoutés ou modifiés par la reprise** (à commiter sur TFS avec ceux du Develop log) :
+
+| Fichier | Raison |
+|---|---|
+| `libs/mss/src/features/mail/services/mail-state.service.ts` | relecture après relance qui pose le rappel ; pagination non gonflée |
+| `libs/mss/src/features/mail/services/mail-state.service.spec.ts` | relecture après relance (A1) |
+| `libs/mss/src/features/mail/services/mail-state.service.handling.spec.ts` | total de la page 1 (A2) |
+| `libs/mss/src/features/mail/components/mail-header/mail-header.component.html` (+ `mail-header.follow-up.spec.ts`) | testid `followup-chip-{uid}` (M3) |
+| `e2e/mss-e2e/specs/functional.e2e.ts` | testid renommé ; sortie de la ligne affirmée (A3) |
+
+**Autocontrôle du correctif** (« ce que ça casse ailleurs ») : `refreshReply` sert aussi « Voir la réponse » et la
+relecture après une réponse ordinaire ; un message reçu n'a pas de rappel (no-op), et seul un rappel revenu figure dans
+« À traiter » : pas d'effet de bord. La lecture des accusés extraite garde le comportement de la vue conversation
+(`ConversationServiceTests` verts sans changement). Le défaut `Kind=Utc` et le coût IMAP sur la liste des dossiers ont
+été trouvés et corrigés dans cette même reprise.
+
+**Flaky connu** : `ImapServiceTests.GetFolderNotSeenAsync_HappyPath_TagsTheImapActivityWithPerCommandDurationsAsync`
+(ActivityListener global) rouge une fois en suite complète, vert au rejeu du projet (4 377/4 377).
+
+**Prévention (règle d'or)** :
+- `conventions/csharp.md` : nouvelle consigne `npgsql-instant-utc-colonne-sans-fuseau` ; S125 occurrence 32 ;
+  `premisse-de-test-integration` occurrence 3 (le test unitaire de l'échec de remise simulait sa prémisse) ;
+- `conventions/angular.md` `liste-multi-dossiers-cle-dossier-uid` : occurrence 2 (un défaut trouvé dans un client se
+  cherche aussitôt dans l'autre) ;
+- `conventions/e2e.md` : nouvelle consigne `disparition-lue-sur-une-marque-derivee`.
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -400,8 +481,8 @@ sera contrôlé par la validation finale.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 2 min 17 s | — | — | — | — |
-| /develop | ok | 1 h 51 min | 7 (1 min 12 s) | 6 (16 min 16 s) | — | dtos-mss 1B/0T, api-mail 3B/2T, client-mobile 2B/3T, client-angular 1B/1T |
+| /develop | ok | 1 h 00 min | 15 (2 min 28 s) | 13 (40 min 13 s) | — | dtos-mss 1B/0T, api-mail 9B/6T, client-mobile 3B/4T, client-angular 2B/3T, reprise 1 |
 | /review-code | changes | 10 min 02 s | — | — | — | reprise 1 |
-| **Total cycle** | | **2 h 03 min** | **7 (1 min 12 s)** | **6 (16 min 16 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **1 h 13 min** | **15 (2 min 28 s)** | **13 (40 min 13 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (29 s), restore ×1 (3.6 s)

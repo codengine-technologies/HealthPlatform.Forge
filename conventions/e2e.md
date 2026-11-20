@@ -1033,3 +1033,15 @@ scénario qui l'aurait attrapé, prouvé rouge sur le bug)*
   attente de 180 s épuisée), voie mobile verte sur le même backend.
 - **Origine** : task-456 (`/e2e`)
 - **Occurrences** : 1
+
+---
+
+### disparition-lue-sur-une-marque-derivee — « Le message quitte la liste » se lit sur la ligne, pas sur sa marque
+- **Piège** (task-462, revue anticipée) : E2E-FOLLOWUP-001 affirmait « le message quitte « À traiter » » par la
+  disparition du bandeau (mobile) ou de la marque « Sans réponse » (weda2). Or la marque tombe dès que le rappel n'est
+  plus revenu, même si la ligne reste dans la liste : l'assertion ne pouvait pas rougir sur le défaut qu'elle nommait.
+- **Consigne** : une sortie de liste s'affirme sur la **ligne** elle-même, désignée par une donnée stable (son objet),
+  après le geste et avant les relectures serveur ; jamais sur un élément dérivé d'un état que le geste change aussi.
+- **Preuve** : voir le `## Develop log` de task-462, reprise 1 (mutations e2e).
+- **Origine** : task-462 (/review --code)
+- **Occurrences** : 1
