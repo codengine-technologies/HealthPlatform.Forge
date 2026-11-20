@@ -1,6 +1,7 @@
 # todo-task-462.md — Sans réponse depuis N jours : relance
 
 **Repos**: api-mail, dtos-mss, client-angular, client-mobile
+**Reprises**: 1
 **Dependencies**: done-task-454 (vue « À traiter »), done-task-459 (détection des réponses, rapports exclus)
 **Epic**: E024
 **Priorité**: EPIC E024, demandée par l'humain le 2026-11-11. Douleur n° 5 (2/5). Une demande d'avis restée sans
@@ -301,6 +302,97 @@ seed `envoi-rappel-echu`) :
   test de page (M13) ; il venait d'un écart d'architecture propre au mobile (le détail est un `@Input` de la page),
   que le test de composant ne pouvait pas voir.
 
+## Code Review Summary
+
+### Passage 1 (revue anticipée) — CHANGES REQUESTED
+
+Revue de code par un relecteur indépendant (sous-agent, code seul, sans le Develop log), constats lourds vérifiés sur
+le code. Revus : api-mail `f8678551`, dtos-mss `d668837`, client-mobile `fc0a981`, client-angular (arbre non commité).
+
+**4a — règle 1b** (comportement → test d'intégration → preuve rouge) :
+
+| Comportement | Test d'intégration | Preuve rouge |
+|---|---|---|
+| envoi avec rappel → retour après l'échéance, demandeur (délégataire) lu par le titulaire, acte système, compteur « À traiter », « Clore » imputé | `ASentMessageWithoutReply_ReturnsAfterItsDueDate_WithTheRequester_ThenCloseRemovesIt` | M1, M4, M5, M6, M10, M11, M12 |
+| réponse par `References` seul avant l'échéance, pas de retour tant qu'elle n'est pas ingérée | `AReplyBeforeTheDueDate_ClosesTheFollowUp_AndNoFalseNudgeWhileItIsNotSynchronised` | M2, M3 |
+| échéance passée → 400 `ProblemDetails` (détail et envoi) | `APastDueDate_Is400_InProblemDetails_FromTheDetail_AndAtSending` | M7 |
+| rappel sur un message reçu → 400 | `AFollowUpOnAReceivedMessage_Is400` | M8 |
+| rappel posé depuis le détail, survit au déplacement | `AFollowUpRequestedFromTheDetail_SurvivesAMoveOutsideThePlatform_AndReturnsOnTheMovedCopy` | M9 |
+| **la relance clôt le rappel précédent (« relancé », imputé)** | **aucun** (unitaire seul) | — |
+| **clôture sur échec de remise** | **aucun** (unitaire qui simule sa propre prémisse) | — |
+| **le rappel suit le brouillon (envoi depuis le brouillon)** | **aucun** | — |
+| **confirmation tardive d'un envoi mis de côté : échéance passée retirée** | **aucun** (unitaire seul) | — |
+| **« Clore » sans rappel → 404, sans Message-ID → 409** | **aucun** | — |
+
+**4b — clause DoD** : E2E-FOLLOWUP-001 v1 au catalogue (diff api-mail), déclaré v1 par les deux clients. Le `## E2E log`
+sera contrôlé par la validation finale.
+
+**4c — contract_impact** :
+- `api-mcp` : aucun impact ;
+- `client-mobile` : aucun impact ;
+- `client-angular` : IMPACT — `AuditActionType` décodée par rang : **adapté** (`audit.model.ts`, actes 77-79 et
+  libellés, spec), arbre non commité.
+
+**Verdicts par repo** : api-mail ❌ · dtos-mss ✅ · client-mobile ❌ · client-angular ❌.
+
+#### À corriger par la reprise
+
+- **B1 — api-mail, « pas de fausse relance » fondée sur le plus grand UID ingéré.** `MailFollowUpRule.IsInboxIngested`
+  et `MailFollowUpRepository.GetInboxMaxIngestedUidAsync` : la page d'en-têtes n'écrit que les UID affichés. Une
+  réponse (UID 500) suivie de 60 messages (501-560) : la page 1 ingère 511-560, max ingéré = max serveur, la réponse
+  n'est pas en base → **fausse relance**. Comparer des ensembles (tout UID serveur de la Boîte de réception présent en
+  base pour la génération courante), sans se fier à une liste d'UID servie par le cache Redis de 5 min. Test
+  d'intégration : réponse noyée sous des messages plus récents, page 1 seule chargée → aucun retour ; vu rouge.
+- **B2 — api-mail, la clôture sur échec de remise ne se déclenche presque jamais.** `FindDeliveryFailuresAsync` lit
+  `ReportKind == Failed`, que seul `ConversationRepository` (vue conversation) renseigne. Un médecin qui ne travaille
+  que dans la boîte : le rapport reste non classé, le rappel revient « Sans réponse ». Classer les rapports nécessaires
+  avant l'évaluation (ou lire l'échec autrement), et un test d'intégration : rapport d'échec déposé, aucune ouverture
+  de conversation → rappel clos (acte système), pas de retour ; vu rouge. Le test unitaire actuel simule sa prémisse.
+- **B3 — api-mail, règle 1b** : tests d'intégration de bout en bout, vus rouges, pour la relance qui clôt le rappel
+  précédent (motif « relancé », imputé à la personne, via l'envoi avec `InReplyTo`), le rappel porté par un brouillon
+  envoyé, la confirmation tardive d'un envoi mis de côté (échéance passée retirée), et « Clore » sans rappel (404
+  `ProblemDetails`) ; sans Message-ID (409) si le cas est atteignable.
+- **P1 — api-mail, performance** (chemin chaud) : l'évaluation tourne deux fois par chargement de la page 1 (compteurs
+  des dossiers et `follow-ups/returned`) et, dès qu'un rappel est ouvert, balaie `References LIKE '%id%'` sur tous les
+  messages reçus, sans index. Restreindre le balayage `References` aux messages sans `InReplyTo` (comme task-459), et
+  ne pas réévaluer deux fois pour un même chargement. Plan (EXPLAIN) consigné dans le Develop log.
+- **P2 — api-mail, retour tracé deux fois** : `MarkReturnedAsync` lit puis met à jour sans garde ; deux évaluations
+  concurrentes tracent deux `FollowUpReturned`. Mise à jour conditionnelle (seules les lignes encore non revenues),
+  test vu rouge.
+- **P3 — api-mail, annule et remplace** (task-376) : l'original annulé garde son rappel ouvert et revient plus tard
+  « Sans réponse » sur un message annulé. Clore le rappel de l'original annulé, au nom de la personne qui envoie le
+  remplaçant ; test d'intégration vu rouge.
+- **M1 — client-mobile, identité (dossier, UID)** : `mail-list.component.html` suit les lignes par `mail.uid` et la
+  sélection par `mail.uid === selectedUid()`. Envoyés/42 et Boîte de réception/42 dans « À traiter » : même clé, la
+  mauvaise ligne surlignée. Clé (dossier, UID) partout (convention `liste-multi-dossiers-cle-dossier-uid`) ; spec vue
+  rouge.
+- **M2 / A1 — mobile et weda2, après une relance la ligne d'origine reste « Sans réponse »** : la relecture après
+  envoi (`refreshReply`) ne pose que `reply` / `isAnswered`, jamais le rappel clos (« relancé »). Adopter le `followUp`
+  relu (`applyFollowUp`) dans la liste ; specs vues rouges, des deux côtés.
+- **M3 — mobile et weda2, convention `testid-prefixe-d-un-autre`** : `mail-row-followup-{uid}` prolonge le préfixe de
+  ligne `mail-row-` (sélecteurs `[data-testid^="mail-row-"]` du spec de liste et du parcours mobile). Renommer (par
+  ex. `followup-chip-{uid}`) dans les deux clients et les deux parcours.
+- **M4 / A3 — E2E-FOLLOWUP-001, assertion qui ne peut pas rougir** : « le message quitte « À traiter » » n'est vérifié
+  que par la disparition du bandeau (mobile) ou de la marque (weda2), qui disparaît dès que `isReturned` tombe.
+  Affirmer que la **ligne** (par son objet) a quitté la liste, dans les deux clients ; vu rouge.
+- **A2 — weda2, total gonflé** : `toHandlePage$` rend `total: rest.total + returned.length`, d'où un « charger plus »
+  vide. Ne pas compter les envois revenus dans la pagination (comme le mobile).
+
+#### Arbitrage humain
+
+- **AH1 — rappel posé depuis le détail sur un message déjà répondu** : la réponse antérieure le clôt aussitôt
+  (« réponse reçue le <date ancienne> »). Recommandation : ne compter que les réponses arrivées **après** la demande.
+- **AH2 — réponse automatique d'absence** (`Auto-Submitted`, `Mails.IsAutomatic` de task-456) : elle clôt aujourd'hui
+  le rappel, alors que c'est le cas où il sert le plus ; et un message d'un non-destinataire compte comme réponse.
+  Recommandation : exclure les messages automatiques ; ne compter que les expéditeurs parmi les destinataires (À, Cc).
+- **AH3 — échec de remise partiel** (un destinataire sur plusieurs) : il clôt le rappel pour tous. Recommandation : ne
+  clore que si tous les destinataires sont en échec.
+
+#### Suggestions (non bloquantes)
+
+- Une réponse rangée dans la Corbeille, ou classée ailleurs par une règle serveur avant l'évaluation, n'est pas vue
+  (fausse relance possible) : à mesurer avant de corriger.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-462 --sync` — ne pas éditer à la main)*
@@ -309,6 +401,7 @@ seed `envoi-rappel-echu`) :
 |---|---|---|---|---|---|---|
 | /start | ok | 2 min 17 s | — | — | — | — |
 | /develop | ok | 1 h 51 min | 7 (1 min 12 s) | 6 (16 min 16 s) | — | dtos-mss 1B/0T, api-mail 3B/2T, client-mobile 2B/3T, client-angular 1B/1T |
-| **Total cycle** | | **1 h 53 min** | **7 (1 min 12 s)** | **6 (16 min 16 s)** | **0 (0.0 s)** | |
+| /review-code | changes | 10 min 02 s | — | — | — | reprise 1 |
+| **Total cycle** | | **2 h 03 min** | **7 (1 min 12 s)** | **6 (16 min 16 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (29 s), restore ×1 (3.6 s)

@@ -10902,3 +10902,5 @@
 {"ts":"2026-11-20T20:05:32+01:00","run_id":"-","type":"cmd","task":"task-462","step":"develop","repo":"client-angular","kind":"test","label":"","cwd":"Client/Angular/front","cmd":"npx nx test weda2 --skip-nx-cache","duration_ms":21901,"exit_code":0}
 {"ts":"2026-11-20T20:10:28+01:00","run_id":"-","type":"cmd","task":"task-462","step":"develop","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln --no-build --blame-hang-timeout 10m","duration_ms":457320,"exit_code":0}
 {"ts":"2026-11-20T20:11:03+01:00","run_id":"-","type":"step","task":"task-462","step":"develop","status":"ok","note":"","iterations":null,"duration_ms":6672865}
+{"ts":"2026-11-20T20:11:16+01:00","run_id":"-","type":"step_start","task":"task-462","step":"review-code"}
+{"ts":"2026-11-20T20:21:18+01:00","run_id":"-","type":"step","task":"task-462","step":"review-code","status":"changes","note":"reprise 1","iterations":null,"duration_ms":602099}
