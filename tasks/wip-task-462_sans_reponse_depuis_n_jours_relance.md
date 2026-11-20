@@ -93,3 +93,19 @@ Règles :
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : oui — base de la boîte
 - **AIPD / impact RGPD** : inchangé
+
+## Branches
+
+- `api-mail` (pushed) : feat/task-462-sans-reponse-depuis-n-jours-relance — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-462-sans-reponse-depuis-n-jours-relance
+- `client-mobile` (pushed) : feat/task-462-sans-reponse-depuis-n-jours-relance — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-462-sans-reponse-depuis-n-jours-relance
+- `dtos-mss` (paresseuse) : aucune branche au /start — créée par /develop au premier contrat touché
+- `client-angular` (code-only) : forge writes code on the branch currently checked out in `Client/Angular/` (`feature/nova-mss-weda-integration` au /start) — humain gère branche, commit, push, PR TFS
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-462 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 2 min 17 s | — | — | — | — |
+| **Total cycle** | | **2 min 17 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
