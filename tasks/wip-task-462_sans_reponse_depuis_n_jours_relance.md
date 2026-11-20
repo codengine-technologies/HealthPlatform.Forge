@@ -566,6 +566,57 @@ Inchangé : AH1, AH2, AH3 du passage 1.
 - F8 : mobile `isSelected` reprend la tolérance d'`isSameMail` (dossier absent = égal) ; `threadChildren` reste suivi
   par `child.uid` (antérieur).
 
+### Passage 3 (revue anticipée, après reprise 2) — CHANGES REQUESTED, chaîne arrêtée
+
+Relecteur indépendant sur le diff de la reprise 2 (api-mail `1a656785..dc39d1d3`), R1 vérifié sur le code
+(`ImapHelper.CreateCachedFolderDto` ne pose pas `UidValidity`, `FolderStatusCache` ne le porte pas).
+
+**Statut des constats du passage 2** : F3, F4, F5, F7 corrigés. **F1 et F2 partiels.**
+
+**Verdicts par repo** : api-mail ❌ · dtos-mss ✅ · client-mobile ✅ (passage 2) · client-angular ✅ (passage 2).
+
+#### Bloquants
+
+- **R1 (B1 → F2 → R1, troisième apparition) — le plancher disparaît sur le chemin du cache.** Un succès de cache de
+  `GetFolderAsync` rend un `FolderDto` sans `UidValidity` (0). Une évaluation qui suit de moins de 10 s une liste de la
+  Boîte de réception voit 0, différent de la valeur relevée à la demande : `FloorOf` rend `null`, toute la Boîte de
+  réception est attendue, et le rappel ne revient pas tant que l'historique n'est pas ingéré. Une demande faite sur un
+  succès de cache enregistre 0, et la garde `UIDVALIDITY` est contournée. Les tests d'intégration ne le voient pas :
+  `UseCaseFixture` simule `IResilientCacheService` (jamais de succès de cache). Correctif : porter `UidValidity` dans
+  `FolderStatusCache`, ou lire STATUS frais pour le plancher ; test avec un vrai cache.
+- **R2 (B2 → F1 → R2, troisième apparition) — un échec de remise sous le plancher n'est jamais lu.** Le plancher est
+  l'`UIDNEXT` de la **demande**. Rappel posé depuis le détail après un rebond déjà arrivé (non classé), ou rebond rapide
+  arrivé entre l'envoi SMTP et le relevé : l'accusé est sous le plancher, jamais classé, et le message non distribué
+  revient « Sans réponse ». Les accusés hors Boîte de réception ne sont plus lus non plus. Le bon repère (envoi ou
+  demande) dépend de l'arbitrage **AH1**.
+- **R3 (règle 1b)** — la branche « le retour attend tant qu'il reste plus de 20 accusés » n'est prouvée que par un test
+  unitaire : dans le test d'intégration, l'échec est le plus ancien accusé, donc lu au premier paquet ; `return allRead;`
+  laisserait le test vert. Test attendu : plus de 20 accusés **avant** l'échec, aucun retour à la première évaluation,
+  clôture à une suivante.
+
+#### Suggestions
+
+- S1 : un rappel échu sans plancher fait attendre toute la boîte à tous les autres ; évaluer chaque rappel contre son
+  propre plancher.
+- S2 : le relevé du plancher passe par `GetFolderAsync` (verrou de session, SELECT/SEARCH si le cache d'UID est périmé,
+  purge des disparus) sur le chemin de la réponse d'envoi ; un STATUS seul suffit.
+- S3 (lié à AH1) : redemander un rappel ouvert écrase son plancher ; une réponse arrivée entre les deux demandes et non
+  ingérée n'est plus attendue.
+- S4 : la relecture de la Boîte de réception a lieu avant la clôture sur réponse ; une exception d'acquisition du verrou
+  saute la clôture et fait tomber `follow-ups/returned`.
+- S5 : une erreur persistante (autre que NotFound) de `BuildEmlAsync` sur un accusé bloque désormais tout retour de la
+  boîte, au lieu de retarder une classification.
+
+#### Pourquoi la chaîne s'arrête
+
+1. **Règle 13** : R1 et R2 sont la troisième apparition des bloquants B1 (fausse relance / retour bloqué par
+   l'ingestion) et B2 (échec de remise manqué), déjà revenus une fois en récidive (F2/F3, F1). Les causes sont nouvelles à
+   chaque reprise, mais le symptôme est le même : dans le doute, la règle arrête.
+2. **Décision requise** : le correctif de R2 (et S3) dépend d'AH1. Le repère du plancher est l'envoi si toute réponse
+   compte, la demande si seules les réponses postérieures à la demande comptent.
+
+Question écrite : `questions/task-462.md`.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-462 --sync` — ne pas éditer à la main)*
@@ -574,7 +625,7 @@ Inchangé : AH1, AH2, AH3 du passage 1.
 |---|---|---|---|---|---|---|
 | /start | ok | 2 min 17 s | — | — | — | — |
 | /develop | ok | — | 16 (2 min 37 s) | 14 (47 min 36 s) | — | dtos-mss 1B/0T, api-mail 10B/7T, client-mobile 3B/4T, client-angular 2B/3T, reprise 2; no start marker |
-| /review-code | changes | 8 min 30 s | — | — | — | reprise 2 |
-| **Total cycle** | | **10 min 48 s** | **16 (2 min 37 s)** | **14 (47 min 36 s)** | **0 (0.0 s)** | |
+| /review-code | failed | 8 min 35 s | — | — | — | règle 13 : B1/B2 revenus une troisième fois ; AH1 requis |
+| **Total cycle** | | **10 min 52 s** | **16 (2 min 37 s)** | **14 (47 min 36 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (29 s), restore ×1 (3.6 s)
