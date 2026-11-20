@@ -520,25 +520,42 @@ entièrement automatisé, comme `api-mail` : branche, commit, push, PR, passe qu
   CIBA e-CPS à travers psc-auth-proxy (`/auth/connect` puis `/auth/keycloak-exchange`, comme
   `client-mobile`). Le jeton remis au client IA n'est valable que pour `api-mcp`. Le jeton
   Keycloak ne sort jamais du serveur.
-- **La forge suit le contrat qu'api-mcp consomme** (depuis le 2026-11-13, demande humaine). api-mcp lit
-  api-mail sans dépendance NuGet : un changement d'api-mail ou de dtos-mss ne le casse pas à la
-  compilation, mais peut lui retirer un champ, une route ou un code d'erreur sans que rien ne rougisse.
-  - **Outil** : `python Tools/contracts/mcp_impact.py check`. Il déduit la surface consommée **du code
-    d'api-mcp** (`ApiMailContracts.cs`, `ApiMailRoutes.cs`) et la compare à ce que la branche change dans
-    api-mail et dtos-mss, par rapport à `origin/develop`. Il remonte les champs lus qui disparaissent ou
-    changent de type, les routes appelées qui disparaissent, une énumération décodée par rang qui change,
-    un code d'erreur, un en-tête ou un cookie retiré, et la forme du JSON modifiée. Sorties : 0 aucun
-    impact, 1 impact (raisons listées), 2 erreur d'outil (surface introuvable sur `origin/develop` : un
-    analyseur est périmé, jamais un feu vert silencieux). `surface` affiche ce qu'api-mcp consomme.
-    Tests : `python -m unittest Tools/contracts/test_mcp_impact.py`.
-  - **`/po`** liste `api-mcp` dans les `**Repos**` d'une US qui touche cette surface.
-  - **`/develop`** joue `check` après le code d'api-mail et de dtos-mss (Step 4c). Impact → `api-mcp` entre
-    dans la task : sa branche est créée **paresseusement**, comme celle de dtos-mss (seuls ces deux dépôts
-    reçoivent une branche sans être listés au `/start`), le champ `**Repos**` est complété, api-mcp est
-    adapté (contrats locaux, simulations WireMock, tests vus rouges) et sa suite rejouée.
-  - **`/review`** joue `check` (étape 4c, en `--code` comme en validation finale). Un impact sans branche
-    api-mcp adaptée est un **CHANGES REQUESTED corrigeable**. La PR api-mcp se merge **avec** la PR
-    api-mail (US complète, règle 11), et après elle (ordre de `/merge`).
+- **La forge suit le contrat que lisent ses consommateurs** (api-mcp depuis le 2026-11-13 ;
+  client-mobile et client-angular depuis le 2026-11-20, task-484 ; demandes humaines). api-mcp lit
+  api-mail par ses contrats locaux C#, et les deux clients recopient les contrats à la main dans leurs
+  modèles TypeScript. Aucun ne dépend d'un paquet NuGet : un changement d'api-mail ou de dtos-mss ne les
+  casse pas à la compilation, mais peut leur retirer un champ, une route ou un code d'erreur sans que
+  rien ne rougisse. `/e2e` ne le voit pas quand aucun parcours n'affirme le champ : l'écran affiche un vide.
+  - **Outil** : `python Tools/contracts/contract_impact.py check` (`mcp_impact.py` : alias, même ligne de
+    commande). Il déduit la surface lue **du code de chaque consommateur** et la compare à ce que la
+    branche change dans api-mail et dtos-mss, par rapport à `origin/develop`. Verdict **par
+    consommateur** : `api-mcp`, `client-mobile`, `client-angular`.
+    - Surface d'api-mcp : `ApiMailContracts.cs` et `ApiMailRoutes.cs` (table `RECORD_TO_DTO`).
+    - Surface d'un client : les interfaces et types de ses dossiers de modèles qui portent le nom d'une
+      classe de dtos-mss, ou qui sont déclarés dans `CLIENT_ALIASES`. Un modèle en `*Dto` sans classe est
+      une erreur d'outil, sauf s'il est déclaré dans `CLIENT_OUTSIDE_DTOS`. S'y ajoutent les énumérations
+      homonymes, les routes `api/v1/…` de ses services et les codes d'erreur qu'il cite. Les autres
+      modèles sont des modèles de vue locaux, hors surface.
+    - Impacts remontés : un champ lu qui disparaît ou change de type, une route appelée qui disparaît,
+      une énumération décodée par rang qui change, un code d'erreur, un en-tête ou un cookie retiré, la
+      forme du JSON modifiée. Ajouter un champ n'est jamais un impact.
+    - Sorties : 0 aucun impact, 1 impact (raisons listées par consommateur), 2 erreur d'outil (surface
+      introuvable sur `origin/develop` : un analyseur ou une déclaration est périmé, jamais un feu vert
+      silencieux). `surface --consumer {nom}` affiche la surface d'un consommateur, modèles de vue à part.
+    - Tests : `python -m unittest Tools/contracts/test_mcp_impact.py Tools/contracts/test_contract_impact.py`.
+  - **`/po`** liste le consommateur touché dans les `**Repos**` d'une US qui touche sa surface.
+  - **`/develop`** joue `check` après le code d'api-mail et de dtos-mss (Step 4c). Un consommateur en
+    IMPACT entre dans la task :
+    - `api-mcp` et `client-mobile` reçoivent une branche **paresseuse**, comme dtos-mss : seuls ces trois
+      dépôts reçoivent une branche sans être listés au `/start`. Le champ `**Repos**` est complété, le
+      consommateur est adapté (tests vus rouges ; scénario e2e pour le mobile si un parcours lit le
+      champ) et sa suite rejouée ;
+    - `client-angular` est adapté sur la branche extraite par l'humain, **sans git**. Le `## Develop log`
+      liste les fichiers à commiter sur TFS, avec la raison de chacun, et le rapport final la recopie.
+  - **`/review`** joue `check` (étape 4c, en `--code` comme en validation finale). Un impact non adapté est
+    un **CHANGES REQUESTED corrigeable**. Pour client-angular, l'adaptation se lit sur l'arbre de travail
+    non commité. Les PR api-mcp et client-mobile se mergent **avec** la PR api-mail (US complète,
+    règle 11), et après elle (ordre de `/merge`).
   - **Limite assumée** : psc-auth-proxy et Keycloak sont hors forge. Un changement de leurs contrats
     (`/auth/connect`, `/auth/keycloak-exchange`, `/auth/refresh`, codes `PROXY-*`) reste à reporter à la
     main dans api-mcp.
@@ -684,7 +701,9 @@ produit donc aucune branche sur ce repo.
 
 - `api-mail`, `client-blazor` consume `dtos-mss` as a NuGet package.
   `client-angular` and `client-mobile` consume the contracts via their own
-  TypeScript types (regenerated manually).
+  TypeScript types (regenerated manually) — `contract_impact.py check` detects
+  what a change of api-mail or dtos-mss removes from them (« La forge suit le
+  contrat que lisent ses consommateurs », section api-mcp).
   Any contract change → `/publish-dtos` first (publishes + bumps .NET consumers).
 - `client-blazor` and `host` consume `sdk`.
 - `psc-proxy-server` consumes `psc-proxy-dto`.

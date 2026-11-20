@@ -150,4 +150,70 @@ ajoute ce client à la task et adapte ses modèles. Le médecin ne découvre plu
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 32 s | — | — | — | plan de contrôle : aucune branche, implémentation en session |
-| **Total cycle** | | **32 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 14 min 48 s | — | — | — | plan de contrôle : outil + playbooks, 29 tests, 4 mutations |
+| **Total cycle** | | **15 min 21 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+
+## Develop log
+
+> Implémentée en session le 2026-11-20 (plan de contrôle, pas de `/develop`). Diff à relire par l'humain avant le push.
+
+### Ce qui change
+
+- `Tools/contracts/contract_impact.py` (issu de `mcp_impact.py`, dont il reprend le code ; l'historique git reste sur `mcp_impact.py`, devenu l'alias) : trois consommateurs
+  (`Consumer` : nom, mode git, surface, dossier exigé) — `api-mcp` (inchangé), `client-mobile`, `client-angular`.
+  - Surface d'un client déduite de ses fichiers : modèles TypeScript (`interface`, `type = {…}`) rattachés par nom
+    à une classe de dtos-mss ; table `CLIENT_ALIASES` (15 entrées, relevées par recouvrement de champs à 100 %) ;
+    `CLIENT_OUTSIDE_DTOS` (4 réponses en `*Dto` sans classe nulle part). Un `*Dto` non résolu = erreur d'outil.
+  - Routes : un vrai lexeur de chaînes et gabarits TypeScript (une regex débordait d'un littéral au suivant),
+    verbe lu sur l'appel `http.get|post|put|delete|patch`, « * » quand l'appel n'est pas lisible (flux SSE).
+    121 routes mobile et 157 Angular, **toutes** retrouvées dans les contrôleurs de `develop`.
+  - Énumérations homonymes (`export enum` côté mobile, `const` + `type` côté Angular) ; codes d'erreur cités.
+- **Deux défauts de l'analyseur C# existant, corrigés** (ils touchaient aussi api-mcp) :
+  - les records positionnels (`record SyncCoverageDto(int GlobalPercent, …)`) n'exposaient aucun champ ;
+  - une documentation XML contenant « record » ou « class » (« …record or filter on the patient… ») était lue
+    comme une déclaration : la classe était coupée, ses champs suivants sortaient de l'analyse — un champ lu
+    pouvait disparaître sans impact remonté.
+- `mcp_impact.py` : alias (même ligne de commande ; en Python, `check(root)` et `derive_surface` restent ceux d'api-mcp).
+- Playbooks : `agents/develop.md` (Step 4c → 4c-1 api-mcp, 4c-2 client-mobile, 4c-3 client-angular),
+  `.claude/commands/review.md` (étape 4c), `agents/po.md`, `CLAUDE.md` (« La forge suit le contrat que lisent ses
+  consommateurs », et renvoi depuis « Cross-repo dependencies »).
+
+### Preuves
+
+- `python -m unittest Tools/contracts/test_mcp_impact.py` : **13/13 verts** (aucune régression api-mcp).
+- `python -m unittest Tools/contracts/test_contract_impact.py` : **16/16 verts**, sur dépôts temporaires alimentés
+  par les vrais fichiers. Couvrent : surface mobile (`FolderDto`, `MailAddressDto`, `MailboxDto` via la table,
+  `GET api/v1/account/mailboxes`, `FolderType`), interface Angular rattachée à sa classe C#, toutes les routes des
+  clients présentes sur `develop`, champ lu par le seul mobile retiré (`MailDto.CancelAndReplaceUid`) → impact
+  mobile seul, champ lu par la seule Angular retiré (`AttachmentDto.Packaging`) → impact Angular seul, route
+  appelée par les clients retirée (`DELETE api/v1/contact/groups/{}`), champ ajouté → aucun impact, modèle de vue
+  local → hors surface, classe renommée sur `develop` (`ContactGroupDto`) → code 2, consommateur inconnu → code 2,
+  record positionnel, commentaire « record », normalisation des gabarits.
+- **Vus rouges par mutation** (fichier restauré octet pour octet, `__pycache__` purgé) :
+  - comparaison neutralisée → 3 tests rouges ;
+  - rattachement par nom neutralisé → 4 tests rouges ;
+  - records positionnels ignorés → 1 rouge ; commentaires C# conservés → 1 rouge.
+- Manual Test Plan, point 4, rejoué dans un espace temporaire (`MailDto.Subject` → `Objet`) : code 1,
+  `api-mcp`, `client-mobile` **et** `client-angular` en IMPACT, chacun avec son fichier lecteur.
+
+### Verdict sur `develop` (2026-11-20)
+
+task-466 est archivée : le verdict est relevé sur l'état courant des dépôts (`develop` partout).
+
+```
+api-mcp        : aucun impact
+client-mobile  : avertissement — 14 champ(s) lu(s) absent(s) de origin/develop (lecture tolérante, sans effet)
+client-mobile  : aucun impact
+client-angular : avertissement — 13 champ(s) lu(s) absent(s) de origin/develop (lecture tolérante, sans effet)
+client-angular : aucun impact
+```
+
+Les champs absents sont des champs propres aux clients (`isCritical`, `initials`, `fullName`…), calculés côté
+écran ; ils ne sont pas des contrats.
+
+### Amélioration continue
+
+- Défaut trouvé dans l'outil existant (records positionnels, commentaires lus comme déclarations) : prévention =
+  deux tests vus rouges par mutation (`ParserTests`).
+- Limite assumée : le lexeur TypeScript ne résout pas une URL assemblée hors littéral (variable passée à `fetch`) ;
+  son verbe vaut « * » et le gabarit seul est comparé. Une URL sans `/api/v1/` littéral échappe à l'outil.

@@ -10881,3 +10881,5 @@
 {"ts":"2026-11-19T09:30:38+01:00","run_id":"-","type":"step","task":"task-489","step":"review","status":"ok","note":"","iterations":null,"duration_ms":38339}
 {"ts":"2026-11-20T15:41:06+01:00","run_id":"-","type":"step_start","task":"task-484","step":"start"}
 {"ts":"2026-11-20T15:41:38+01:00","run_id":"-","type":"step","task":"task-484","step":"start","status":"ok","note":"plan de contrôle : aucune branche, implémentation en session","iterations":null,"duration_ms":32533}
+{"ts":"2026-11-20T15:41:40+01:00","run_id":"-","type":"step_start","task":"task-484","step":"develop"}
+{"ts":"2026-11-20T15:56:29+01:00","run_id":"-","type":"step","task":"task-484","step":"develop","status":"ok","note":"plan de contrôle : outil + playbooks, 29 tests, 4 mutations","iterations":null,"duration_ms":888936}

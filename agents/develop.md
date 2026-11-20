@@ -174,10 +174,12 @@ Reasoning :
 - Backend before frontend so the frontend test phase can hit the new contract.
 
 If a repo isn't listed in `**Repos**:`, skip it — **sans exception** depuis le
-2026-09-16. Seuls `dtos-mss` et `api-mcp` peuvent recevoir une branche sans être
-listés : l'étape 2 crée celle de `dtos-mss`, uniquement si un contrat change ;
-l'étape 4c crée celle d'`api-mcp`, uniquement si `mcp_impact.py check` détecte
-un impact.
+2026-09-16. Seuls `dtos-mss`, `api-mcp` et `client-mobile` peuvent recevoir une
+branche sans être listés : l'étape 2 crée celle de `dtos-mss`, uniquement si un
+contrat change ; l'étape 4c crée celle d'`api-mcp` ou de `client-mobile`,
+uniquement si `contract_impact.py check` détecte un impact sur ce consommateur.
+L'étape 4c fait aussi entrer `client-angular` (code seul, jamais de git) dans
+le même cas.
 
 ### §Q — Passe qualité intégrée (`/simplify`) — spec commune
 
@@ -597,20 +599,29 @@ For each backend repo listed, in order :
    git -C {repo-path} push origin feat/{task-id}-{slug}
    ```
 
-### Step 4c — api-mcp, consommateur d'api-mail (depuis le 2026-11-13)
+### Step 4c — les consommateurs du contrat d'api-mail : api-mcp, client-mobile, client-angular (depuis le 2026-11-13, clients depuis task-484)
 
-api-mcp lit api-mail sans dépendance NuGet : rien ne rougit à la compilation quand api-mail ou
-dtos-mss lui retire ce qu'il lit. Après le code d'api-mail et de dtos-mss (commité ou non) :
+Aucun des trois ne dépend d'un paquet NuGet : api-mcp lit api-mail par ses contrats locaux, et les
+deux clients recopient les contrats à la main dans leurs modèles TypeScript. Rien ne rougit à la
+compilation quand api-mail ou dtos-mss leur retire ce qu'ils lisent, et `/e2e` ne voit pas un champ
+qu'aucun parcours n'affirme. Après le code d'api-mail et de dtos-mss (commité ou non) :
 
 ```bash
-python Tools/contracts/mcp_impact.py check
+python Tools/contracts/contract_impact.py check     # mcp_impact.py check : alias, même sortie
 ```
 
-- **0 (aucun impact)** : une ligne dans le `## Develop log` (« api-mcp : aucun impact »), et on continue.
-- **2 (erreur d'outil)** : surface introuvable sur `origin/develop`. Un analyseur ou une déclaration de
-  l'outil est périmé. Fail-fast : `questions/{task-id}.md`, avec la sortie de l'outil. On ne conclut
-  jamais à « aucun impact ».
-- **1 (impact)** : api-mcp entre dans la task.
+L'outil rend **un verdict par consommateur** (`api-mcp`, `client-mobile`, `client-angular`). Les trois
+lignes vont dans le `## Develop log`, avertissements compris.
+
+- **0 (aucun impact)** : rien à adapter, on continue.
+- **2 (erreur d'outil)** : surface introuvable sur `origin/develop` pour au moins un consommateur. Un
+  analyseur ou une déclaration de l'outil (`RECORD_TO_DTO`, `CLIENT_ALIASES`, `CLIENT_OUTSIDE_DTOS`) est
+  périmé. Fail-fast : `questions/{task-id}.md`, avec la sortie de l'outil. On ne conclut jamais à
+  « aucun impact ».
+- **1 (impact)** : chaque consommateur marqué IMPACT entre dans la task, selon son mode.
+
+#### 4c-1. `api-mcp` touché (pushable)
+
   1. **Branche paresseuse**, comme dtos-mss, si api-mcp n'est pas déjà listé :
      ```bash
      cd Api/Mcp
@@ -619,7 +630,7 @@ python Tools/contracts/mcp_impact.py check
      git push -u origin feat/{task-id}-{slug}
      ```
      Ajouter `api-mcp` au champ `**Repos**:` et une ligne à `## Branches` (« créée par /develop :
-     impact détecté par mcp_impact »), en citant les raisons de l'outil.
+     impact détecté par contract_impact »), en citant les raisons de l'outil.
   2. **Adapter api-mcp**, test d'abord, comme tout backend (Step 4) :
      - les contrats locaux (`ApiMail/ApiMailContracts.cs`) et les routes (`ApiMailRoutes.cs`) ;
      - les simulations WireMock des tests (`tests/…/Infrastructure/Stubs.cs`), qui doivent reproduire le
@@ -629,8 +640,35 @@ python Tools/contracts/mcp_impact.py check
      Chaque comportement modifié est prouvé par un test d'intégration vu rouge (règle 1b).
   3. Build + suite complète d'api-mcp, passe qualité §Q, push, puis vert marqué
      (`green.py mark --repo api-mcp`).
-  4. Rejouer `mcp_impact.py check` : il doit toujours lister l'impact, puisque api-mail change bel et
-     bien. Le `## Develop log` dit, pour chaque raison, comment api-mcp y répond.
+  4. Rejouer `contract_impact.py check` : il doit toujours lister l'impact, puisque api-mail change bel
+     et bien. Le `## Develop log` dit, pour chaque raison, comment api-mcp y répond.
+
+#### 4c-2. `client-mobile` touché (pushable)
+
+  1. **Branche paresseuse** si `client-mobile` n'est pas déjà listé, même commande qu'en 4c-1 dans
+     `Client/Mobile`. Ajouter `client-mobile` au champ `**Repos**:` et une ligne à `## Branches`
+     (« créée par /develop : impact détecté par contract_impact »), en citant les raisons.
+  2. **Adapter le mobile au Step 5c**, test d'abord : les modèles (`src/app/core/models/`), les
+     services qui lisent le champ ou appellent la route, les écrans qui l'affichent, et leurs tests
+     unitaires vus rouges. Un champ renommé se renomme partout où le client le lit : la raison de
+     l'outil cite le fichier de modèle, `grep` trouve les lecteurs.
+  3. **Scénario e2e** : si le champ ou la route sert un parcours du catalogue
+     (`Api/Mail/e2e/scenarios.yml`), mettre à jour le scénario et son implémentation mobile. `/e2e`
+     rejoue ensuite la voie mobile, puisque la task touche api-mail ou dtos-mss.
+  4. Rejouer `check` : l'impact reste listé. Le `## Develop log` dit, pour chaque raison, quel fichier
+     mobile y répond.
+
+#### 4c-3. `client-angular` touché (code seul)
+
+  1. **Aucune opération git** : ni branche, ni commit, ni push. Ajouter `client-angular` au champ
+     `**Repos**:` s'il n'y est pas, et à `## Branches` la ligne « code seul : modifié par /develop
+     (impact contract_impact) sur la branche extraite par l'humain, `{branche courante}` ».
+  2. **Adapter l'Angular au Step 5b**, test d'abord, sur la branche extraite : modèles
+     (`front/libs/mss/src/core/models/`), services, composants, specs vues rouges.
+  3. **Liste pour l'humain** : le `## Develop log` porte une section « client-angular — fichiers à
+     commiter sur TFS » avec, par fichier modifié, la raison de l'outil à laquelle il répond. Le
+     rapport final de `/review` la recopie : c'est l'humain qui commite et pousse.
+  4. Rejouer `check` : l'impact reste listé, et chaque raison a sa réponse dans la liste.
 
 ### Step 5 — Implement on frontends (`client-blazor`, `client-angular`, `client-mobile`)
 
