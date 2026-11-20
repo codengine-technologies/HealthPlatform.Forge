@@ -430,6 +430,40 @@ le comportement de la vue conversation (`ReadUnreadAsync` délègue à `ReadAsyn
 par lots qui conditionne une décision lit depuis un repère, dans l'ordre d'arrivée, et diffère la décision s'il en reste) ;
 S125 occurrence 33.
 
+### Reprise 3 après /review (passage 3, arbitrages rendus le 2026-11-20)
+
+Périmètre : api-mail (R1, R2 + AH1, R3, AH2, AH3). Mobile et weda2 inchangés (approuvés au passage 2).
+
+| Constat | Correctif | Test | Preuve rouge |
+|---|---|---|---|
+| **R1** UIDVALIDITY perdu sur le chemin du cache | cause plus large : le chemin frais lui-même (`ImapService.BuildFolderDto`, STATUS sans `UidValidity`) rendait 0, la garde `UIDVALIDITY` n'était jamais active. Le STATUS demande l'`UIDVALIDITY` (même aller-retour), `BuildFolderDto` le pose, `FolderStatusCache` le transporte, `CreateCachedFolderDto` le rend ; un `UIDVALIDITY` inconnu (0, entrée de cache antérieure) ne contredit plus le plancher | intégration `OnACacheHitOfTheInbox_TheFloorHolds` (demande lue sur le serveur, évaluation servie par le cache, historique non ingéré) ; unitaires `CreateCachedFolderDto_CarriesTheUidValidity`, `FloorOf_AnUnknownUidValidity_ContradictsNothing` | R13 (cache sans UIDVALIDITY + comparaison stricte) |
+| **R2 + AH1** repère et fenêtre | `CaptureAnchorAsync` relève le repère (instant, UIDNEXT, UIDVALIDITY) **avant** l'envoi SMTP, transmis à `RecordSentAsync` par `OutgoingMailService` (envoi direct, brouillon, confirmation, annule et remplace) ; `RequestedAt` = instant du repère ; réponses et échecs ne comptent qu'à partir de la demande, moins 5 min de tolérance d'horloge (INTERNALDATE à la seconde, horloge du serveur de messagerie — un VM Docker du banc retarde d'≈ 1 s) | intégration `AReplyBeforeTheRequestFromTheDetail_DoesNotCloseIt` ; unitaires : ordre repère → SMTP → rappel (`SendAsync_CapturesTheFollowUpAnchorBeforeTheSmtpSend…`), repère utilisé tel quel, fenêtre depuis la demande | AH1 rouge sur le code d'avant et par mutation |
+| **R3** retour différé non prouvé | — | intégration `ManyReportsBeforeTheFailure_TheReturnWaits_ThenTheFailureClosesIt` (20 accusés avant l'échec : première évaluation ni retour ni clôture, la suivante clôt « non distribué ») | R14 (`return allRead;`) |
+| **AH2** réponse automatique, tiers | réponses : `!IsAutomatic`, et expéditeur parmi les destinataires À/Cc de l'envoi (`MailFollowUp.RecipientAddresses`, migration `20261121120000`) ; destinataires inconnus (rappel antérieur) : tout expéditeur | intégration `AnOutOfOfficeAutoReply_DoesNotCloseIt`, `AMessageFromAThirdParty_DoesNotCloseIt` ; unitaire `ClosesTheFollowUp_…` | rouges sur le code d'avant et par mutation (AH2a, AH2b) |
+| **AH3** échec partiel | un échec ne clôt que si tous les destinataires sont en échec : adresses `Final-Recipient` des groupes `failed` relues dans les rapports (`DeliveryReportParser.FailedRecipients`, `DeliveryReportReader.ReadFailedRecipientsAsync`) ; rapport illisible : ni clôture ni retour cette fois | intégration `ADeliveryFailureOfOneRecipientOutOfTwo_KeepsItOpen`, `ADeliveryFailureOfAllRecipients_ClosesIt` ; unitaires du service, de la règle et du parseur | rouge sur le code d'avant (échec partiel) et par mutation |
+
+**Migration (règle 7c)** : `20261121120000_AddMailFollowUpRecipients` lue : une colonne `text` nullable, aucune
+donnée existante modifiée ni supprimée, descente qui la retire, mapping EF aligné sur la constante.
+
+**Limites assumées** : la preuve de l'ordre « repère avant SMTP » est unitaire (le banc ne sait pas faire arriver un
+rebond pendant l'envoi SMTP) ; le filtre de date des échecs de remise (AH1) n'a pas de test d'intégration dédié — un
+échec antérieur à la demande est de toute façon sous le plancher et jamais classé par l'évaluation.
+
+**Mutations** : `mutate_462_r3.py` — R13, R14, AH1, AH2a, AH2b, AH3 toutes rouges sur leur test visé, « restauré :
+25/25 ». Rouges sur le code d'avant la reprise 3 : AH1, AH2a, AH2b, AH3 (échec partiel).
+
+**Autocontrôle du correctif** : le STATUS du chemin de liste porte un item de plus (même aller-retour) ; le corps
+`FolderDto` de `GET folders/{dossier}` porte désormais un `uidValidity` non nul, déjà déclaré au contrat. La tolérance
+de 5 min ne compte comme postérieure qu'une réponse arrivée dans les 5 min qui précèdent la demande.
+
+**Builds / tests** : api-mail suite complète verte (domain 385, infrastructure 749, application 4 393, api 1 388, intégration 1 396 + 16 ignorés, 0 échec, aucun FATAL). Mobile et weda2 inchangés.
+
+**Commit** : api-mail `a3923a85`.
+
+**Prévention (règle d'or)** : `conventions/csharp.md`, deux consignes neuves : `champ-de-dto-tous-les-chemins` (un champ
+dont dépend une décision se vérifie sur tous les chemins qui fabriquent le DTO, frais et cache) et
+`fenetre-imap-tolerance-horloge` ; S125 occurrence 34.
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -651,8 +685,8 @@ L'humain accepte les recommandations (AH1 à AH3, voir l'Objectif) et relance la
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 2 min 17 s | — | — | — | — |
-| /develop | ok | — | 16 (2 min 37 s) | 14 (47 min 36 s) | — | dtos-mss 1B/0T, api-mail 10B/7T, client-mobile 3B/4T, client-angular 2B/3T, reprise 2; no start marker |
+| /develop | ok | 34 min 42 s | 17 (2 min 45 s) | 15 (54 min 58 s) | — | dtos-mss 1B/0T, api-mail 11B/8T, client-mobile 3B/4T, client-angular 2B/3T, reprise 3 |
 | /review-code | failed | 8 min 35 s | — | — | — | règle 13 : B1/B2 revenus une troisième fois ; AH1 requis |
-| **Total cycle** | | **10 min 52 s** | **16 (2 min 37 s)** | **14 (47 min 36 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **45 min 34 s** | **17 (2 min 45 s)** | **15 (54 min 58 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (29 s), restore ×1 (3.6 s)
