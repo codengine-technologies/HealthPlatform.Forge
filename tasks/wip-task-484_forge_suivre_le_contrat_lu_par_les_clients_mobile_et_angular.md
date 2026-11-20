@@ -134,3 +134,20 @@ ajoute ce client à la task et adapte ses modèles. Le médecin ne découvre plu
   cas, une table de correspondance déclarée dans l'outil, comme `RECORD_TO_DTO` pour api-mcp.
 - Les comparateurs côté api-mail et dtos-mss existent déjà ; seule la surface change par consommateur. Factoriser
   par une classe `Consumer` (nom, surface, dépôt, mode git : pushable ou code seul).
+
+## Branches
+
+> **Mode** : plan de contrôle — aucune branche. `/start` lancé le 2026-11-20 ; la task est implémentée dans la session, sur `develop` du plan de contrôle (`HealthPlatform.Forge`), et l'humain relit le diff avant le push (règle 5, règle d'or 7).
+
+- `forge` (plan de contrôle) : `develop`, commit local, push après relecture humaine
+- `client-angular` : non modifié par cette task (lecture seule de ses modèles par l'outil) — branche extraite au /start : `feature/nova-mss-weda-integration`
+- `client-mobile` : non modifié par cette task (lecture seule de ses modèles par l'outil)
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-484 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 32 s | — | — | — | plan de contrôle : aucune branche, implémentation en session |
+| **Total cycle** | | **32 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
