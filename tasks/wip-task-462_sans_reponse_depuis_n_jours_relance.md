@@ -1,7 +1,7 @@
 # todo-task-462.md — Sans réponse depuis N jours : relance
 
 **Repos**: api-mail, dtos-mss, client-angular, client-mobile
-**Reprises**: 2
+**Reprises**: 3
 **Dependencies**: done-task-454 (vue « À traiter »), done-task-459 (détection des réponses, rapports exclus)
 **Epic**: E024
 **Priorité**: EPIC E024, demandée par l'humain le 2026-11-11. Douleur n° 5 (2/5). Une demande d'avis restée sans
@@ -45,6 +45,14 @@ Règles :
   lui-même : task-460, qui l'y aurait rangé, a été retirée.
 - **Boîte partagée** : le rappel appartient à la boîte et affiche qui l'a demandé (règle 14).
 - **Ancrage** selon task-453.
+
+**Décisions humaines du 2026-11-20** (arbitrages AH1 à AH3 de la revue, recommandations acceptées) :
+- **AH1** — seules les réponses et les échecs de remise arrivés **après la demande** du rappel le clôturent. Le repère
+  de la Boîte de réception est l'`UIDNEXT` relevé à la demande ; pour un rappel posé à l'envoi, il est relevé **avant**
+  l'envoi SMTP. Une réponse antérieure à la demande ne clôt pas le rappel.
+- **AH2** — une réponse automatique (`Auto-Submitted`, message automatique de task-456) ne clôt pas le rappel ; seule
+  compte la réponse d'un destinataire de l'envoi (À ou Cc).
+- **AH3** — un échec de remise ne clôt le rappel que si **tous** les destinataires sont en échec.
 
 ## Definition of Done
 
@@ -616,6 +624,25 @@ Relecteur indépendant sur le diff de la reprise 2 (api-mail `1a656785..dc39d1d3
    compte, la demande si seules les réponses postérieures à la demande comptent.
 
 Question écrite : `questions/task-462.md`.
+
+#### Arbitrage rendu — reprise 3 autorisée (décision humaine du 2026-11-20)
+
+L'humain accepte les recommandations (AH1 à AH3, voir l'Objectif) et relance la chaîne.
+
+#### À corriger par la reprise
+
+- **R1** — porter l'`UIDVALIDITY` dans le chemin du cache (`FolderStatusCache`), ou relire un STATUS frais pour le
+  plancher ; test d'intégration sur un vrai cache (succès de cache entre la liste et l'évaluation), vu rouge.
+- **R2 + AH1** — le repère est la demande : relevé **avant** l'envoi SMTP pour un rappel posé à l'envoi (le rebond rapide
+  est au-dessus) ; seules les réponses et les échecs arrivés après la demande clôturent le rappel (une réponse
+  antérieure, ingérée ou non, ne le clôt plus). Tests d'intégration vus rouges : rebond rapide après l'envoi, réponse
+  antérieure à une demande depuis le détail.
+- **R3** — test d'intégration de la branche « le retour attend » : plus de 20 accusés non classés avant l'échec, aucun
+  retour à la première évaluation, clôture « non distribué » à une suivante ; vu rouge (`return allRead;`).
+- **AH2** — exclure les messages automatiques (`IsAutomatic`) des réponses, et ne compter que les expéditeurs parmi les
+  destinataires À et Cc de l'envoi ; tests d'intégration vus rouges (réponse d'absence, message d'un tiers).
+- **AH3** — clore sur échec de remise seulement si tous les destinataires sont en échec ; test d'intégration vu rouge
+  (deux destinataires, un seul en échec : le rappel reste ouvert et revient).
 
 ## Timings
 
