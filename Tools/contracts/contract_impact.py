@@ -563,6 +563,15 @@ def read_base(root: Path) -> Base:
                 controllers=base_sources(root / REPOS['api-mail'], 'src/Api/Controllers'))
 
 
+def with_branch(base: Base, changes: dict[str, tuple[dict[str, str], dict[str, str]]]) -> Base:
+    """origin/develop, complété de ce que la branche écrit dans dtos-mss et dans les contrôleurs d'api-mail."""
+    dtos_new = changes.get('dtos-mss', ({}, {}))[1]
+    api_new = changes.get('api-mail', ({}, {}))[1]
+    controllers_new = [content for path, content in api_new.items() if path.startswith('src/Api/Controllers')]
+    return Base(dtos=chr(10).join([base.dtos, *dtos_new.values()]),
+                controllers=chr(10).join([base.controllers, *controllers_new]))
+
+
 def consumers(base: Base | None = None) -> list[Consumer]:
     def mobile(root: Path) -> Surface:
         b = base or read_base(root)
@@ -610,21 +619,27 @@ def check(root: Path = ROOT, only: tuple[str, ...] = CONSUMER_NAMES) -> int:
         print(f'contract_impact : erreur — {error}')
         return 2
 
+    # La surface se cherche sur origin/develop ET sur ce que la branche ajoute : une task qui ajoute un contrat et le
+    # fait lire par un client dans le même cycle n'est pas une surface introuvable (task-462, premier cas). Seul ce qui
+    # n'existe nulle part est une erreur d'outil.
+    branch = with_branch(base, changes)
+
     worst = 0
     width = max(len(n) for n in only)
-    for consumer in consumers(base):
+    for consumer in consumers(branch):
         if consumer.name not in only:
             continue
         label = consumer.name.ljust(width)
         try:
             surface = consumer.derive(root)
-            errors, warnings = missing_from_base(surface, base.dtos, base.controllers)
+            errors, warnings = missing_from_base(surface, branch.dtos, branch.controllers)
         except (LookupError, RuntimeError, OSError, KeyError) as error:
             print(f'{label} : ERREUR — {error}')
             worst = 2
             continue
         if errors:
-            print(f'{label} : ERREUR — surface introuvable sur origin/develop (analyseur ou déclaration périmé) :')
+            print(f'{label} : ERREUR — surface introuvable sur origin/develop comme sur la branche '
+                  '(analyseur ou déclaration périmé) :')
             for item in errors:
                 print(f'  - {item}')
             worst = 2

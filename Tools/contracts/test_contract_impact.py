@@ -1,7 +1,7 @@
 """Tests de Tools/contracts/contract_impact.py côté clients (task-484) — sur des dépôts git temporaires.
 
 Les dépôts temporaires reprennent les vrais fichiers : dtos-mss et les contrôleurs d'api-mail tels qu'ils
-sont sur origin/develop, les modèles et services TypeScript de client-mobile et client-angular tels qu'ils
+sont sur le disque (fichiers suivis), les modèles et services TypeScript de client-mobile et client-angular tels qu'ils
 sont sur le disque, et les contrats d'api-mcp. Un analyseur qui ne comprendrait plus le code réel échoue ici.
 
     python -m unittest Tools/contracts/test_contract_impact.py
@@ -33,11 +33,17 @@ def sh(cwd: Path, *args: str) -> None:
 
 @lru_cache(maxsize=None)
 def develop_files(repo: str, prefix: str) -> dict[str, str]:
-    """Les fichiers .cs d'un dossier d'un dépôt, tels qu'ils sont sur origin/develop (lus une fois)."""
+    """
+    Les fichiers .cs d'un dossier d'un dépôt (suivis ou nouveaux), tels qu'ils sont sur le disque (lus une fois).
+
+    Le disque, et non origin/develop : les modèles des clients sont copiés du disque, et une task en cours y fait lire
+    un contrat qu'elle ajoute (task-462). Lire dtos-mss et api-mail ailleurs que là où sont lus les clients ferait
+    échouer ces tests à chaque task qui touche le contrat.
+    """
     root = WORKSPACE / repo
-    paths = [p for p in ci.git(root, 'ls-tree', '-r', '--name-only', 'origin/develop', '--', prefix).split()
+    paths = [p for p in ci.git(root, 'ls-files', '--cached', '--others', '--exclude-standard', '--', prefix).split()
              if p.endswith('.cs')]
-    return {p: ci.old_content(root, p) for p in paths}
+    return {p: ci.new_content(root, p) for p in paths}
 
 
 def make_repo(path: Path, files: dict[str, str]) -> None:
@@ -62,7 +68,7 @@ def copy_typescript(source: Path, target: Path) -> None:
 
 
 class Workspace:
-    """Un espace de travail temporaire : les trois consommateurs réels, dtos-mss et api-mail de origin/develop."""
+    """Un espace de travail temporaire : les trois consommateurs réels, dtos-mss et api-mail du disque."""
 
     def __init__(self, root: Path):
         self.root = root
@@ -116,7 +122,9 @@ class SurfaceTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.base = ci.read_base(WORKSPACE)
+        # La même base que les clients copiés : le disque (voir develop_files).
+        cls.base = ci.Base(dtos=chr(10).join(develop_files('Dtos', '.').values()),
+                           controllers=chr(10).join(develop_files('Api/Mail', CONTROLLERS).values()))
         cls.surfaces = {c.name: c.derive(WORKSPACE) for c in ci.consumers(cls.base)}
 
     def test_the_mobile_surface_holds_its_contract_models_and_the_mailboxes_route(self):
@@ -135,7 +143,7 @@ class SurfaceTests(unittest.TestCase):
         self.assertTrue(angular.readers['FolderDto'].startswith(ci.CLIENT_ANGULAR_MODELS.as_posix()))
         self.assertIn('FolderType', angular.enums, 'const + type homonymes de l\'énumération C#')
 
-    def test_every_route_a_client_calls_exists_on_develop(self):
+    def test_every_route_a_client_calls_exists_in_api_mail(self):
         for name in ('client-mobile', 'client-angular'):
             errors, _ = ci.missing_from_base(self.surfaces[name], self.base.dtos, self.base.controllers)
             self.assertEqual([], errors, name)
@@ -231,6 +239,24 @@ class CheckTests(unittest.TestCase):
         self.assertEqual(2, code, out)
         self.assertIn('ERREUR', verdict(out, 'client-mobile'))
         self.assertIn('classe ContactGroupDto', out)
+
+    def test_a_contract_the_branch_adds_and_a_client_reads_is_not_a_tool_error(self):
+        # task-462 : le contrat (classe et route) naît sur la branche, et le client le lit dans le même cycle.
+        (self.ws.dtos / 'RappelNeufDto.cs').write_text(
+            'namespace HealthPlatform.Dtos.Mss;\npublic class RappelNeufDto\n{\n    public string Echeance { get; set; } = "";\n}\n',
+            encoding='utf-8')
+        controller = self.ws.file_declaring(self.ws.api, r'\[HttpDelete\("groups/\{')
+        self.ws.edit(self.ws.api, controller, '[HttpDelete("groups/', '[HttpGet("rappels-neufs")]\n    [HttpDelete("groups/')
+        models = self.ws.root / ci.CLIENT_MOBILE_MODELS
+        (models / 'rappel-neuf.model.ts').write_text('export interface RappelNeufDto {\n  echeance: string;\n}\n', encoding='utf-8')
+        (self.ws.root / ci.CLIENT_MOBILE_SOURCES / 'rappel-neuf.service.ts').write_text(
+            'export const call = (http: any, base: string) => http.get<unknown>(`${base}/api/v1/contact/rappels-neufs`);\n',
+            encoding='utf-8')
+
+        code, out = self.ws.check()
+
+        self.assertNotEqual(2, code, out)
+        self.assertNotIn('ERREUR', verdict(out, 'client-mobile'))
 
     def test_an_unknown_consumer_is_a_tool_error(self):
         out = io.StringIO()
