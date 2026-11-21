@@ -544,6 +544,24 @@ redémarré (`sonarqube_db` puis `sonarqube`).
 - S125 : occurrence 36.
 - S1905 : nouvelle entrée, avec son contrôle mécanique.
 
+## Lint log
+
+- Mode : A (chaîné), scope `tag:scope:mss` (défaut : `mss`, `mss-lib`, `mss-e2e`), base `origin/next`. Aucun override
+  `**LintBase**` / `**LintProjects**`.
+- Arbre : branche `feature/nova-mss-weda-integration` (code seul, rien de commité). `git status` identique avant et après
+  l'étape (31 entrées de la task).
+- Comptage : `npx eslint libs/mss apps/mss e2e/mss-e2e --format json` (même contournement que task-367 et task-487).
+  Attribution à la task par `git diff -U0 HEAD` et les fichiers non suivis.
+- Baseline : **0 error** / 100 warnings (75 `jsdoc/require-example`, 22 `max-lines`, 3 `complexity`), le même compte
+  qu'à task-487.
+- Constats sur une ligne ajoutée par la task : **0**.
+  - Les `max-lines` et le `complexity` des fichiers touchés existaient avant la task. Ces fichiers ont grossi, sans
+    nouvel avertissement.
+  - Cela vaut pour `mail-header` (906 lignes), `mail-list`, `mss-mail`, `mail-state.service`, `mss-api.service`, la
+    composition, le détail et les specs e2e.
+- Final : 0 error / 100 warnings. Itérations : 0 / 5 (rien à corriger, aucun fichier modifié).
+- Build / tests : non rejoués. Arbre inchangé, le vert de `/develop` reste valide (`green.py check` : `f8164238`).
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -901,6 +919,7 @@ Aucun.
 | /develop | ok | 19 min 18 s | 18 (2 min 54 s) | 16 (1 h 02 min) | — | dtos-mss 1B/0T, api-mail 12B/9T, client-mobile 3B/4T, client-angular 2B/3T, reprise 4 |
 | /review-code | ok | 17 h 44 min | — | — | — | passage 5, revue par la forge (décision humaine) |
 | /sonar | ok | 24 min 41 s | 2 (1 min 31 s) | 10 (17 min 52 s) | 4 (1 min 33 s) | 2 itération(s), api-mail 2B/10T |
-| **Total cycle** | | **18 h 30 min** | **20 (4 min 26 s)** | **26 (1 h 20 min)** | **4 (1 min 33 s)** | |
+| /lint-angular | ok | 1 min 37 s | — | — | — | 0 error, rien à corriger |
+| **Total cycle** | | **18 h 32 min** | **20 (4 min 26 s)** | **26 (1 h 20 min)** | **4 (1 min 33 s)** | |
 
-Autres commandes mesurées : nuget-wait ×1 (29 s), restore ×1 (3.6 s)
+Autres commandes mesurées : lint ×1 (51 s), nuget-wait ×1 (29 s), restore ×1 (3.6 s)
