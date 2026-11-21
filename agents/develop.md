@@ -255,6 +255,10 @@ whole cycle, and it doubles as the repo's final verification (Step 6).
    git diff origin/develop...HEAD -- '*.cs' | grep -nE '^\+.*\(string\?\)\w'
    # C# — CA1826 : FirstOrDefault() on an awaited list (IReadOnlyList) — use Count/[0] (task-454, 3 hits).
    git diff origin/develop...HEAD -- '*.cs' | grep -nE '^\+.*\)\)\.FirstOrDefault\(\)'
+   # TS — un abonnement à minuterie ajouté (task-491 : jauge à 6 décomptes par seconde). Chaque ligne est relue :
+   # souscrite une fois à l'initialisation avec takeUntilDestroyed, ou gardée et résiliée à la désactivation.
+   # client-angular est en code seul : lire `git diff` de l'arbre de travail et les fichiers non suivis.
+   git diff origin/develop...HEAD -- '*.ts' ':!*.spec.ts' | grep -nE '^\+.*(interval|timer)\('
    # TS / HTML / SCSS — mixed line endings : LF lines inserted into a CRLF file (task-459 : 91 lines
    # appended to functional.e2e.ts, 160 to two specs ; prettier « Insert ␍ », seen only by /lint-angular).
    # client-angular is code-only : list its files with `git diff --name-only` + untracked instead.

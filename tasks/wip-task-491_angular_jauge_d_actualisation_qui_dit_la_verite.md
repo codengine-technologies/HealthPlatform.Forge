@@ -109,3 +109,71 @@ où une actualisation automatique a lieu.
 
 ## Branches
 - `client-angular` (code-only) : la forge écrit le code sur la branche extraite dans `Client/Angular/` (au /start : `feature/nova-mss-weda-integration`, arbre propre) — humain gère branche, commit, push, PR TFS
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-491 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 12 s | — | — | — | — |
+| **Total cycle** | | **12 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+
+## Develop log
+
+- **Repos touchés** : client-angular seul (code seul, branche `feature/nova-mss-weda-integration`, non commité). Aucun DTO,
+  aucune interop, aucun dépôt poussé.
+- **Conception** :
+  - `MailStateService` (vit et meurt avec l'écran mail) tient `nextRefreshAt`, l'horloge de la jauge et
+    `refreshSecondsLeft` (calculé). `startRefreshCountdown` arme **une** horloge d'une seconde, protégée contre un
+    second appel, résiliée par `takeUntilDestroyed`. `scheduleNextRefresh` pose l'échéance et l'horloge au même
+    instant : le décompte part de 30, jamais de 31.
+  - `MssMailComponent.startPeriodicRefresh` démarre la jauge et repose l'échéance **à chaque tour de
+    `interval(syncIntervalMs)`**, et seulement là : un rafraîchissement par notification ne la décale pas (règle 3).
+    Le rythme d'actualisation est inchangé.
+  - `isAutoRefreshed(folder)` (état) est la seule écriture de la règle « actualisé automatiquement » : lue par
+    `refreshSelectedFolder`, par le filtre des notifications « nouveau mail » et par la jauge (règle 4).
+  - `mail-folder-item` n'a plus de minuterie, ni `ngOnInit` / `ngOnChanges` : `refreshCountdown()` lit l'état,
+    `showRefreshGauge()` exige dossier sélectionné, non-tag, actualisé automatiquement. Infobulle « Actualisation dans
+    {n} s ».
+- **Fichiers à commiter sur TFS** (client-angular, code seul) :
+
+  | Fichier | Raison |
+  |---|---|
+  | `libs/mss/src/features/mail/services/mail-state.service.ts` | échéance, horloge unique, règle `isAutoRefreshed` |
+  | `libs/mss/src/features/mail/mss-mail.component.ts` | échéance reposée à chaque tour de la minuterie réelle ; règle lue dans l'état |
+  | `libs/mss/src/features/mail/components/mail-folder-item/mail-folder-item.component.ts` | plus de minuterie par ligne ; jauge lue dans l'état |
+  | `libs/mss/src/features/mail/components/mail-folder-item/mail-folder-item.component.html` | `@if (showRefreshGauge())` |
+  | `libs/mss/src/features/mail/components/mail-folder-item/mail-folder-item.component.spec.ts` (nouveau) | 7 tests de la jauge |
+  | `libs/mss/src/features/mail/mss-mail.component.refresh-gauge.spec.ts` (nouveau) | 4 tests de l'échéance |
+
+- **Preuves rouges** :
+
+  | Test | Preuve |
+  |---|---|
+  | jauge : 5 allers-retours, 1 par seconde | code d'avant : `expected '24' to be '29'` (le constat humain : 6 par seconde) |
+  | jauge : temps restant de l'écran, pas 30 à la sélection | code d'avant : `expected '30' to be '20'` |
+  | une ligne n'arme aucune minuterie | code d'avant : `setInterval` appelé 2 fois |
+  | infobulle en français, même chiffre | code d'avant : `'Refresh dans 28s'` |
+  | pas de jauge sur les brouillons virtuels / la vue patient | code d'avant : jauge présente (×2) ; mutation M6 (condition `isAutoRefreshed` retirée de la ligne) : rouge ×2 |
+  | pas de jauge sur un tag | vert sur le code d'avant (garde de non-régression) |
+  | échéance : +1 intervalle à chaque tour | mutation M1 (`tap` de l'échéance neutralisé) : rouge |
+  | notification : l'échéance ne bouge pas | mutation M2 (échéance reposée à chaque rafraîchissement) : rouge |
+  | une seule horloge, arrêtée avec l'écran | M3 (`takeUntilDestroyed` retiré) : rouge ; M4 (garde du second appel retirée) : rouge |
+  | brouillons et vue patient non actualisés, règle partagée | M5 (`isAutoRefreshed` réduit aux tags) : rouge |
+
+  Mutations jouées par script, chaque source restaurée octet pour octet et vérifiée.
+- **Build / tests** : `nx build weda2` vert ; mss-lib 176 fichiers, **1 901 tests verts** (Vitest via PowerShell,
+  `--pool=forks`) ; weda2 107 fichiers verts.
+- **Lint** : `npx eslint` des fichiers touchés : 0 erreur. Restent des avertissements antérieurs (`max-lines` des deux
+  gros fichiers, deux `@example` sans description hors du diff). Prettier appliqué au seul spec créé ; le `.html`
+  existant n'était déjà pas au format de Prettier, il n'est pas reformaté (`prettier-fichier-existant`).
+- **Contrôles mécaniques (§Q 2b)** : fins de ligne homogènes (CRLF partout) ; nouveau contrôle `interval(` / `timer(` :
+  2 occurrences, toutes deux souscrites une fois à l'initialisation avec `takeUntilDestroyed`.
+- **Passe qualité** : relue à la main sur un diff de 4 fichiers : aucune simplification appliquée.
+- **Scénario e2e** : aucun, comme le décide la DOD (indicateur, pas un geste ; le test de composant à horloge simulée
+  est le filet).
+- **Prévention (règle d'or)** : `conventions/angular.md`, nouvelle entrée `abonnement-resilie-a-la-desactivation` ;
+  `agents/develop.md` §Q 2b, contrôle mécanique des minuteries ajoutées.
+- **Vert marqué** : client-angular (`Tools/green/green.py`, arbre final).
+- **Étape suivante** : `/review task-491 --code`.

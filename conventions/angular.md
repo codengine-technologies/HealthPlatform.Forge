@@ -846,3 +846,26 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   `mail.uid` ; et la relecture après une relance n'appliquait pas le rappel relu à la ligne, ni sur mobile ni sur weda2.
   La consigne avait été écrite pour weda2 seul, le jour même : un défaut trouvé dans un client se cherche aussitôt dans
   l'autre)
+
+### abonnement-resilie-a-la-desactivation — Un abonnement lancé à chaque activation est résilié à chaque désactivation
+- **Règle** : convention projet (défaut invisible au lint et aux tests de rendu)
+- **Repos** : les deux
+- **Piège** : constat humain du 2026-11-21 : la jauge d'actualisation de weda2 annonçait 30 s et passait à 0 en 5 s.
+  `mail-folder-item` lançait un `interval(1000)` à chaque sélection du dossier, et sa « désactivation » ne faisait que
+  lever un drapeau (`timerRunning = false`). L'abonnement ne tombait qu'à la destruction de la ligne, qui n'arrive pas :
+  à chaque retour sur le dossier, une minuterie de plus, et les anciennes repartaient avec le drapeau. Après 5 retours,
+  6 décomptes par seconde.
+- **Consigne** :
+  - un `interval(` / `timer(` / `fromEvent(` souscrit **ailleurs qu'à l'initialisation** (sélection, `ngOnChanges`,
+    clic) garde sa `Subscription` et la résilie à la désactivation. Un drapeau qui fait « ignorer » les ticks ne suffit
+    jamais ;
+  - mieux : une seule horloge par écran, tenue par l'écran (ou son état), que les lignes **lisent**. Une ligne de liste
+    n'arme pas de minuterie ;
+  - un indicateur qui annonce une échéance (« dans 30 s ») lit l'échéance de l'action réelle, pas une copie de son
+    intervalle.
+- **Contrôle mécanique** (agents/develop.md, §Q 2b) : chaque `interval(` / `timer(` ajouté est relu. Il est soit appelé
+  une fois à l'initialisation avec `takeUntilDestroyed`, soit gardé et résilié à la désactivation.
+- **Preuve** : `mail-folder-item.component.spec.ts`, « après cinq allers-retours sur le dossier, la jauge perd une
+  seconde par seconde » : rouge sur le code d'avant (24 au lieu de 29), vert après.
+- **Origine** : task-491 (/develop, constat humain)
+- **Occurrences** : 1
