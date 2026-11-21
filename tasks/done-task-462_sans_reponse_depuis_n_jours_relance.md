@@ -1179,6 +1179,32 @@ correction sont dans le `## Develop log`, aux reprises 5 et 6.
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
 
+## PRs
+
+Merger ensemble (règle 11), dans cet ordre, après le test manuel (HAG, règle 10) :
+1. `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/72 (`awaiting-human-merge`)
+2. `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/378 (`awaiting-human-merge`)
+3. `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/132 (`awaiting-human-merge`)
+4. `client-angular` (code seul) : l'humain gère le commit et le push sur TFS, et la PR. Les fichiers sont ceux de la
+   section « client-angular — fichiers à commiter sur TFS » du `## Develop log`, sur la branche
+   `feature/nova-mss-weda-integration`.
+
+### Validation finale (/review, 2026-11-21) — APPROVED
+
+- **Build + tests** : les verts déjà marqués sont réutilisés, chacun pour ce code exact :
+  - api-mail `c4c5e976` (`/sonar`) ;
+  - client-mobile `e91d3ed` (`/develop`) ;
+  - client-angular `f8164238` (`/develop`) ;
+  - dtos-mss `d668837` : build OK.
+- **DoD** : vérifiée, ligne par ligne, aux passages 1 à 7. Le scénario E2E-FOLLOWUP-001 v1 est vert sur les deux
+  clients.
+- **Verrous** :
+  - règle 1b : oui (passages 4 et 5) ;
+  - `## E2E log` vert : oui ;
+  - contract_impact : seul client-angular est concerné (`AuditActionType`), et il est adapté dans l'arbre de travail.
+- **Diff depuis l'approbation du passage 7** : aucun.
+- **Synchronisation avec develop** : aucune avance de `develop` sur les trois dépôts poussables.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-462 --sync` — ne pas éditer à la main)*
@@ -1192,6 +1218,7 @@ correction sont dans le `## Develop log`, aux reprises 5 et 6.
 | /lint-angular | skipped | 2.9 s | — | — | — | arbre client-angular inchangé, 0 error |
 | /lint-mobile | skipped | 3.4 s | — | — | — | lint joué par la reprise 6 sur e91d3ed : all files pass |
 | /e2e | ok | 26 min 23 s | — | — | — | e2e ×4 (40 min 59 s), mobile 77/77, angular 99/99, porte verte |
-| **Total cycle** | | **29 min 43 s** | **22 (4 min 41 s)** | **29 (1 h 21 min)** | **4 (1 min 33 s)** | |
+| /review | ok | 1 min 39 s | — | — | — | PR #72 #378 #132 |
+| **Total cycle** | | **31 min 23 s** | **22 (4 min 41 s)** | **29 (1 h 21 min)** | **4 (1 min 33 s)** | |
 
 Autres commandes mesurées : lint ×2 (1 min 24 s), nuget-wait ×1 (29 s), restore ×1 (3.6 s)
