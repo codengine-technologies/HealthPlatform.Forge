@@ -402,3 +402,10 @@ Aucun.
   - `front/libs/mss/src/features/mail/components/mail-folder-item/mail-folder-item.component.spec.ts`
   - `front/libs/mss/src/features/mail/mss-mail.component.refresh-gauge.spec.ts`
 - Aucun dépôt poussé : pas de PR GitHub pour cette task.
+
+## Merged
+
+- 2026-11-21, `/merge task-491 --i-tested` (test humain : envois à soi-même, message arrivé à l'échéance de la jauge).
+- Aucune PR GitHub : aucun dépôt poussé.
+- `client-angular` : géré à la main par l'humain (commit, push et PR sur TFS, branche
+  `feature/nova-mss-weda-integration`).
