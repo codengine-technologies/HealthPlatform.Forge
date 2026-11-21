@@ -10972,3 +10972,5 @@
 {"ts":"2026-11-21T19:26:37+01:00","run_id":"-","type":"cmd","task":"task-462","step":"develop","repo":"client-mobile","kind":"test","label":"","cwd":"Client/Mobile","cmd":"npm test -- --watch=false --browsers=ChromeHeadless","duration_ms":23118,"exit_code":0}
 {"ts":"2026-11-21T19:27:38+01:00","run_id":"-","type":"step","task":"task-462","step":"develop","status":"ok","note":"reprise 5 (E2E-CONV-003)","iterations":null,"duration_ms":729112}
 {"ts":"2026-11-21T19:27:40+01:00","run_id":"-","type":"step","task":"task-462","step":"e2e","status":"failed","note":"E2E-CONV-003 rouge, corrigé par la reprise 5","iterations":null,"duration_ms":5517722}
+{"ts":"2026-11-21T19:27:51+01:00","run_id":"-","type":"step_start","task":"task-462","step":"review-code"}
+{"ts":"2026-11-21T19:28:22+01:00","run_id":"-","type":"step","task":"task-462","step":"review-code","status":"changes","note":"passage 6, reprise 6","iterations":null,"duration_ms":31633}

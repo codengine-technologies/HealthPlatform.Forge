@@ -1,7 +1,7 @@
 # todo-task-462.md — Sans réponse depuis N jours : relance
 
 **Repos**: api-mail, dtos-mss, client-angular, client-mobile
-**Reprises**: 5
+**Reprises**: 6
 **Limites de reprise**: levées — décision humaine du 2026-11-21 (« il faut poursuivre, on dépasse les limites »), après le parcours E2E-CONV-003 rouge à `/e2e`. Le plafond de 5 reprises et l'arrêt sur récidive ne s'appliquent plus à cette task ; HAG inchangé.
 **Dependencies**: done-task-454 (vue « À traiter »), done-task-459 (détection des réponses, rapports exclus)
 **Epic**: E024
@@ -967,6 +967,42 @@ le mapping EF par la constante.
 
 Aucun.
 
+### Passage 6 (revue anticipée, après reprise 5) — CHANGES REQUESTED, reprise 6
+
+> Revue faite par la forge (décision humaine du 2026-11-21, relecteur indépendant indisponible). Limites de reprise
+> levées par l'humain le même jour.
+
+Diff relu : client-mobile `82fc95e..8af48c7` (3 fichiers). api-mail et weda2 inchangés.
+
+Ce que le correctif a pu casser :
+- `onViewModeChange` ne réagit qu'au geste : `ion-segment` n'émet pas `ionChange` sur une valeur posée par programme,
+  et les réglages d'ouverture passent par l'état, sans double chargement.
+- Une vue servie par pages n'est pas rechargée.
+- Brouillons : un rechargement inoffensif.
+
+#### Bloquants
+
+- **P1 — Le rechargement en vue Conversation n'a pas de preuve de parcours (règle 1b, côté frontend).** Le test e2e
+  d'E2E-CONV-003 reste vert sans ce correctif (mutation au banc). Aucun parcours n'affirme donc que deux messages neufs
+  se regroupent au passage en vue Conversation. Le correctif répare un défaut déjà présent sur `develop`. Il est hors du
+  périmètre de task-462 et n'est pas nécessaire au vert du parcours.
+
+#### Suggestions
+
+- Le commentaire ajouté au test cite une consigne inexistante (`vue-rechargee-attendre-le-resultat`). La bonne est
+  `attendre-le-rendu-apres-la-reponse`.
+
+#### À corriger par la reprise
+
+- **P1** — retirer de task-462 le rechargement en vue Conversation et ses deux tests de composant. Garder la correction
+  du test e2e. Le défaut va au rapport de fin de cycle comme task à ouvrir par l'humain, avec son scénario e2e
+  (regrouper deux messages neufs au passage en vue Conversation, sans rechargement).
+- Corriger le nom de consigne dans le commentaire du test.
+
+#### Arbitrage humain
+
+Aucun.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-462 --sync` — ne pas éditer à la main)*
@@ -975,11 +1011,11 @@ Aucun.
 |---|---|---|---|---|---|---|
 | /start | ok | 2 min 17 s | — | — | — | — |
 | /develop | ok | 12 min 09 s | 19 (3 min 02 s) | 18 (1 h 02 min) | — | dtos-mss 1B/0T, api-mail 12B/9T, client-mobile 4B/6T, client-angular 2B/3T, reprise 5 (E2E-CONV-003) |
-| /review-code | ok | 17 h 44 min | — | — | — | passage 5, revue par la forge (décision humaine) |
+| /review-code | changes | 31 s | — | — | — | passage 6, reprise 6 |
 | /sonar | ok | 24 min 41 s | 2 (1 min 31 s) | 10 (17 min 52 s) | 4 (1 min 33 s) | 2 itération(s), api-mail 2B/10T |
 | /lint-angular | ok | 1 min 37 s | — | — | — | 0 error, rien à corriger |
 | /lint-mobile | ok | 47 s | — | — | — | all files pass |
 | /e2e | failed | 1 h 31 min | — | — | — | e2e ×1 (15 min 15 s), E2E-CONV-003 rouge, corrigé par la reprise 5 |
-| **Total cycle** | | **19 h 57 min** | **21 (4 min 33 s)** | **28 (1 h 20 min)** | **4 (1 min 33 s)** | |
+| **Total cycle** | | **2 h 14 min** | **21 (4 min 33 s)** | **28 (1 h 20 min)** | **4 (1 min 33 s)** | |
 
 Autres commandes mesurées : lint ×2 (1 min 24 s), nuget-wait ×1 (29 s), restore ×1 (3.6 s)
