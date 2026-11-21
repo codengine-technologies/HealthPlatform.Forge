@@ -562,6 +562,14 @@ redémarré (`sonarqube_db` puis `sonarqube`).
 - Final : 0 error / 100 warnings. Itérations : 0 / 5 (rien à corriger, aucun fichier modifié).
 - Build / tests : non rejoués. Arbre inchangé, le vert de `/develop` reste valide (`green.py check` : `f8164238`).
 
+## Lint mobile log
+
+- Mode : A (chaîné), branche `feat/task-462-sans-reponse-depuis-n-jours-relance`, `82fc95e`.
+- Baseline : `npm run lint` → « All files pass linting. » (0 error, 0 warning).
+- Itérations : 0 / 5. Rien à corriger, aucun commit.
+- Build / tests : non rejoués, arbre inchangé. Le vert de `/develop` reste valide (`green.py check` : `82fc95ec`).
+  Le dossier `e2e/out/` non suivi est une sortie des bancs e2e, hors code.
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -920,6 +928,7 @@ Aucun.
 | /review-code | ok | 17 h 44 min | — | — | — | passage 5, revue par la forge (décision humaine) |
 | /sonar | ok | 24 min 41 s | 2 (1 min 31 s) | 10 (17 min 52 s) | 4 (1 min 33 s) | 2 itération(s), api-mail 2B/10T |
 | /lint-angular | ok | 1 min 37 s | — | — | — | 0 error, rien à corriger |
-| **Total cycle** | | **18 h 32 min** | **20 (4 min 26 s)** | **26 (1 h 20 min)** | **4 (1 min 33 s)** | |
+| /lint-mobile | ok | 47 s | — | — | — | all files pass |
+| **Total cycle** | | **18 h 33 min** | **20 (4 min 26 s)** | **26 (1 h 20 min)** | **4 (1 min 33 s)** | |
 
-Autres commandes mesurées : lint ×1 (51 s), nuget-wait ×1 (29 s), restore ×1 (3.6 s)
+Autres commandes mesurées : lint ×2 (1 min 24 s), nuget-wait ×1 (29 s), restore ×1 (3.6 s)
