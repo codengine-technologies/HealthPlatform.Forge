@@ -119,7 +119,10 @@ où une actualisation automatique a lieu.
 | /start | ok | 12 s | — | — | — | — |
 | /develop | ok | 12 min 01 s | 1 (19 s) | 2 (1 min 03 s) | — | client-angular 1B/2T |
 | /review-code | ok | 4 min 25 s | — | — | — | — |
-| **Total cycle** | | **16 min 39 s** | **1 (19 s)** | **2 (1 min 03 s)** | **0 (0.0 s)** | |
+| /lint-angular | ok | 23 s | — | — | — | — |
+| **Total cycle** | | **17 min 03 s** | **1 (19 s)** | **2 (1 min 03 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : lint ×1 (13 s)
 
 ## Develop log
 
@@ -227,3 +230,7 @@ Aucun.
 - Aucune correction : itération 1 sans objet, arbre inchangé. Build et tests non rejoués : le vert de `/develop` porte
   sur ce même arbre.
 - Aucune règle corrigée à la main : `conventions/angular.md` inchangé par cette étape.
+
+## Lint mobile log
+
+- Skipped : client-mobile non touché (absent des `**Repos**`, aucune branche de la task).
