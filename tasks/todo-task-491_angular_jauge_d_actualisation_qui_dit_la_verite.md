@@ -1,7 +1,7 @@
 # todo-task-491.md — Angular : la jauge d'actualisation dit la vérité
 
 **Repos**: client-angular
-**Dependencies**: task-462
+**Dependencies**: aucune
 **Single frontend**: true
 
 > Constat humain du 2026-11-21 : la jauge ronde affichée à côté du dossier sélectionné (« INBOX ») annonce 30 s,
@@ -11,9 +11,8 @@
 > **Une seule couche, justifiée** : la jauge n'existe que dans weda2. client-mobile n'en a pas (aucune occurrence d'un
 > compte à rebours d'actualisation dans `Client/Mobile/src`), et le rythme d'actualisation côté api-mail ne change pas.
 >
-> **Dépendance pratique** : l'arbre de travail de weda2 porte encore les fichiers non commités de task-462, dont
-> `mss-mail.component.ts` et `mail-state.service.ts`, que cette task modifie aussi. **L'humain commite task-462 sur TFS
-> avant le `/start` de cette task**, pour que les deux livraisons ne se mélangent pas.
+> task-462, d'abord posée en dépendance (arbre de weda2 partagé), a été annulée le 2026-11-21 : l'arbre de weda2 est
+> revenu à son dernier commit, la dépendance est levée.
 
 ## Objectif
 

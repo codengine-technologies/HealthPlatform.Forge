@@ -1,10 +1,11 @@
 # todo-task-462.md — Sans réponse depuis N jours : relance
 
+**Statut**: ANNULÉE — décision humaine du 2026-11-21 (« je ne veux pas conserver le développement de 462, il ne me convient pas »). PRs fermées sans merge (Dtos #72, Api.Mail #378, Mobile #132), branches supprimées (restaurables depuis les PRs), arbre de weda2 remis à son dernier commit. Les leçons consignées dans `conventions/` et `agents/` sont conservées.
 **Repos**: api-mail, dtos-mss, client-angular, client-mobile
 **Reprises**: 6
 **Limites de reprise**: levées — décision humaine du 2026-11-21 (« il faut poursuivre, on dépasse les limites »), après le parcours E2E-CONV-003 rouge à `/e2e`. Le plafond de 5 reprises et l'arrêt sur récidive ne s'appliquent plus à cette task ; HAG inchangé.
 **Dependencies**: done-task-454 (vue « À traiter »), done-task-459 (détection des réponses, rapports exclus)
-**Epic**: E024
+**Epic (annulée, hors doc d'EPIC)**: E024
 **Priorité**: EPIC E024, demandée par l'humain le 2026-11-11. Douleur n° 5 (2/5). Une demande d'avis restée sans
 réponse est une boucle de coordination non fermée, donc un risque de soins.
 

@@ -1,13 +1,13 @@
 # E024 — Messagerie premium : traiter, déléguer, boucler
 
-> **Statut** : 🟡 en cours — 7 features livrées et validées, 2 livrées en attente de validation (tasks 457, 462),
-> 2 au backlog (tasks 458, 488).
+> **Statut** : 🟡 en cours — 7 features livrées et validées, 1 livrée en attente de validation (task-457),
+> 3 au backlog (tasks 458, 462, 488).
 > Le 2026-11-12, toutes les features prévues avaient
 > été retirées du backlog ; une partie y est revenue le 2026-11-13.
-> **Version** : 0.9
+> **Version** : 0.8
 > **Auteur** : PO forge (task-453)
 > **Modèle** : task-driven
-> **Dernière mise à jour** : 2026-11-21
+> **Dernière mise à jour** : 2026-11-18
 > **Vue ingénierie** : [E024-Changelogs.md](E024-Changelogs.md)
 
 ---
@@ -25,7 +25,7 @@
 - [7. Contraintes et hypothèses](#7-contraintes-et-hypothèses)
 - [8. Critères d'acceptation de l'EPIC](#8-critères-dacceptation-de-lepic)
 - [9. Hors périmètre](#9-hors-périmètre)
-- [État de couverture (2026-11-21)](#état-de-couverture-2026-11-21)
+- [État de couverture (2026-11-18)](#état-de-couverture-2026-11-18)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -84,13 +84,13 @@ disparaissent jamais parce que le message a été rangé ailleurs, depuis la pla
 | Conversation en chat | Lire un fil comme une conversation : bulles dans l'ordre, les siennes à droite, auteur réel et rôle, pièces jointes, texte cité et signature repliés seulement quand c'est sûr. Voir l'état de chaque envoi (envoyé, distribué, non distribué, lu à l'heure) sans que les accusés encombrent le fil. Répondre en une ligne à tous les participants, avec un fichier joint (et, sur mobile, un document du dossier patient) ; être averti si les destinataires ont changé | task-487 | ✅ Livrée et validée |
 | Réponse : ne citer que le message d'origine | Répondre en ne citant que ce que le correspondant vient d'écrire, sans tout l'historique ; la citation est retirée, avec un avertissement, vers un destinataire qui n'était pas dans l'échange ; une case « Inclure le message d'origine » | task-488 | ⏳ À faire |
 | Notes internes | Laisser sur un message une note visible des seules personnes de la boîte | task-458 | ⏳ À faire |
-| Relance sans réponse | Demander, à l'envoi ou plus tard depuis le message envoyé, « Me rappeler si pas de réponse sous… » (3, 7 ou 14 jours, ou une date). Sans réponse d'un destinataire à l'échéance, le message envoyé revient en tête de « À traiter », marqué « Sans réponse de … depuis … » avec la personne qui a demandé le rappel. « Relancer » prépare la relance aux mêmes destinataires ; « Clore » arrête le rappel. La réponse d'un destinataire, ou un échec de remise à tous, le clôt de lui-même | task-462 | 🟢 Livrée — en attente de validation |
+| Relance sans réponse | Voir revenir un message resté sans réponse depuis plusieurs jours | task-462 | ⏳ À faire |
 
 ---
 
 ## 5. Workflow entre Features
 
-> ⚠️ Vision d'origine. Est au backlog : notes. Restent retirés depuis le 2026-11-12 : « À revoir le », suivi d'acheminement, suivi de biologie.
+> ⚠️ Vision d'origine. Sont au backlog : notes, relance. Restent retirés depuis le 2026-11-12 : « À revoir le », suivi d'acheminement, suivi de biologie.
 
 Le parcours d'un message dans le cabinet, tel que l'EPIC l'envisageait :
 
@@ -135,12 +135,6 @@ messagerie instantanée, voit si ses envois ont été distribués et lus, et ré
 La réponse part comme un vrai courrier (objet « RE: », historique cité, signature), et répondre traite le message
 (task-454) et le signale « répondu » (task-459). Ouvrir le fil marque ses messages lus, au nom de la personne qui l'ouvre.
 
-Quand le praticien **attend une réponse**, il le dit à l'envoi : « Me rappeler si pas de réponse sous… »
-(task-462). Le rappel peut aussi se poser plus tard, depuis le message envoyé. Si aucun destinataire ne répond à
-temps, le message envoyé revient en tête de « À traiter », avec qui attend la réponse et depuis quand. Le praticien
-relance d'un geste, ou clôt le rappel. Une réponse d'un destinataire le clôt d'elle-même ; une réponse automatique
-d'absence ne compte pas.
-
 Seuls les messages arrivés depuis la **date de début du suivi** de la boîte entrent dans ce parcours comme travail à
 faire (task-466). L'historique ramené par une première synchronisation reste consultable et s'acquitte si le
 praticien le souhaite, mais il n'encombre ni « Bio à acquitter » ni le tableau de bord.
@@ -163,9 +157,6 @@ praticien le souhaite, mais il n'encombre ni « Bio à acquitter » ni le tablea
 | Au moindre doute, le message se montre en entier | En conversation, un texte n'est replié que s'il est retrouvé dans le message auquel il répond, et une signature seulement si son début et sa fin sont connus ; sinon la bulle montre tout le message. Masquer à tort une information médicale est pire qu'afficher un historique en trop | ✅ Implémenté (task-487) |
 | Un accusé n'est jamais un message | Les rapports de distribution et les accusés de lecture se rattachent au message envoyé et en donnent l'état (distribué, non distribué, lu à l'heure) ; ils ne deviennent jamais une bulle de la conversation | ✅ Implémenté (task-487) |
 | La date de suivi est une donnée de la boîte | Toute personne rattachée à la boîte (titulaire, membre, délégataire) peut changer la date de début du suivi ; la date ne peut pas être dans le futur, et chaque changement est tracé au nom de son auteur, avec l'ancienne et la nouvelle date | ✅ Implémenté (task-466) |
-| Seul un destinataire clôt un rappel | Une réponse ne clôt un rappel « sans réponse » que si elle vient d'un destinataire de l'envoi (À ou Cc) et arrive après la demande. Une réponse automatique d'absence ou le message d'un tiers ne le clôt pas. Un échec de remise ne le clôt que si tous les destinataires sont en échec | 🟡 Implémenté, en attente de validation (task-462) |
-| Pas de fausse relance | Un rappel ne revient qu'une fois la Boîte de réception relue après l'échéance, et tous les messages arrivés depuis la demande pris en compte ; dans le doute, il attend | 🟡 Implémenté, en attente de validation (task-462) |
-| Le rappel appartient à la boîte | Toutes les personnes de la boîte voient le rappel et qui l'a demandé ; le poser, le relancer et le clore sont tracés au nom de la personne réelle. La clôture sur réponse et le retour dans « À traiter » sont des actes de la plateforme | 🟡 Implémenté, en attente de validation (task-462) |
 
 ---
 
@@ -200,7 +191,7 @@ praticien le souhaite, mais il n'encombre ni « Bio à acquitter » ni le tablea
 
 ---
 
-## État de couverture (2026-11-21)
+## État de couverture (2026-11-18)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
@@ -214,10 +205,10 @@ praticien le souhaite, mais il n'encombre ni « Bio à acquitter » ni le tablea
 | Conversation en chat | ✅ Livrée et validée | 100 % (joindre un document du dossier depuis l'application web : en arbitrage) | task-487 |
 | Réponse : ne citer que le message d'origine | ⏳ À faire | 0 % | task-488 |
 | Notes internes | ⏳ À faire | 0 % | task-458 |
-| Relance sans réponse | 🟢 Livrée — en attente de validation | 100 % livré | task-462 |
+| Relance sans réponse | ⏳ À faire | 0 % | task-462 |
 
-**Couverture EPIC consolidée : 7 features livrées et validées sur 11 retenues**, 2 livrées en attente de
-validation (tasks 457, 462), 2 au backlog.
+**Couverture EPIC consolidée : 7 features livrées et validées sur 11 retenues**, 1 livrée en attente de
+validation (task-457), 3 au backlog.
 
 ---
 
@@ -300,15 +291,6 @@ validation (tasks 457, 462), 2 au backlog.
   document du dossier patient. Ouvrir le fil marque ses messages lus. Sur l'application web et sur l'application
   mobile (task-487).
 
-- **v0.9 — Relance sans réponse.** À l'envoi, ou plus tard depuis le message envoyé, le praticien demande « Me
-  rappeler si pas de réponse sous… » : 3, 7 ou 14 jours, ou une date choisie. Sans réponse d'un destinataire à
-  l'échéance, le message envoyé revient en tête de « À traiter » avec « Sans réponse de {destinataire} depuis
-  {N} jours — demandé par {Prénom NOM} ». « Relancer » ouvre une réponse « Relance : … » aux mêmes destinataires, avec
-  le message d'origine cité et le même délai reproposé ; « Clore » arrête le rappel. La réponse d'un destinataire clôt
-  le rappel d'elle-même (« Rappel clos — réponse reçue le … »), une réponse automatique d'absence non. Un message non
-  distribué à tous ses destinataires clôt aussi le rappel. Sur l'application web et sur l'application mobile
-  (task-462).
-
 ### Conformité réglementaire
 
 - **v0.1 — Imputabilité.** Un acquittement qui revient garde l'auteur réel qui l'avait posé, délégataire compris. Le
@@ -335,10 +317,6 @@ validation (tasks 457, 462), 2 au backlog.
   inscrit au journal au nom de la personne qui l'a ouvert ; la réponse est tracée au nom de la personne qui l'a écrite,
   et sa bulle porte son nom et son rôle chez les autres personnes de la boîte (task-487).
 
-- **v0.9 — Le rappel dit qui l'a demandé.** En boîte partagée, le rappel affiche la personne qui l'a demandé. Le
-  poser, le relancer et le clore sont tracés au nom de la personne réelle ; sa clôture sur réponse et son retour dans
-  « À traiter » sont tracés comme actes de la plateforme (task-462).
-
 ### Sécurité
 
 - **v0.1 — Aucune perte silencieuse.** Un message supprimé pour de bon ne détruit plus la trace de prise de
@@ -353,8 +331,6 @@ validation (tasks 457, 462), 2 au backlog.
   la réponse ne part pas ; aucune réponse ne demande d'accusé de lecture au correspondant (task-487).
 - **v0.4 — Refus lisibles.** Un nom de tag refusé (vide, trop long, caractère interdit) l'est avec un
   message en français, affiché sous le champ (task-486).
-- **v0.9 — Aucun contenu clinique dans le rappel.** Le bandeau et la marque « Sans réponse » ne portent que le
-  destinataire, le délai et la personne qui a demandé le rappel (task-462).
 
 ### Technique / observabilité (sans impact utilisateur direct)
 
@@ -386,11 +362,6 @@ validation (tasks 457, 462), 2 au backlog.
   signature sont posés par la plateforme, de sorte que la réponse se range dans le bon fil chez le correspondant,
   quel que soit son logiciel. Deux parcours automatiques vérifient, sur les deux applications, la lecture du fil, la
   réponse à tous les participants et l'envoi d'une pièce jointe (task-487).
-
-- **v0.9 — Le rappel se décide sur l'état réel de la boîte.** Il ne revient qu'après une relecture de la Boîte de
-  réception postérieure à l'échéance, et ne se décide qu'avec ce que la plateforme a déjà enregistré : l'ouverture de la
-  liste ne va jamais interroger le serveur de messagerie pour un rappel. Un parcours automatique vérifie, sur les deux
-  applications, le retour d'un message sans réponse dans « À traiter » et sa clôture (task-462).
 
 ---
 

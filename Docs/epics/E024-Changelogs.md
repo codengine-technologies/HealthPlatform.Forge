@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques (ingénierie, backlog, dette)
 > **Vue produit** : [E024-messagerie-premium-traiter-deleguer-bouc.md](E024-messagerie-premium-traiter-deleguer-bouc.md)
-> **Dernière mise à jour** : 2026-11-21
+> **Dernière mise à jour** : 2026-11-18
 
 ---
 
@@ -482,69 +482,6 @@
 
 ---
 
-### v0.9 — task-462 : sans réponse depuis N jours, relance (api-mail, dtos-mss, client-mobile, weda2)
-
-- **PRs** : dtos-mss [#72](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/72), api-mail
-  [#378](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/378), client-mobile
-  [#132](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/132). Label `awaiting-human-merge`,
-  ordre de merge dtos-mss → api-mail → client-mobile. client-angular est en code-only sur
-  `feature/nova-mss-weda-integration` (31 entrées non commitées) : à commiter sur TFS avant le merge de la PR api-mail.
-- **dtos-mss 630.0.0** : `MailFollowUpDto`, `MailFollowUpClosedReason`, `MailFollowUpRequestDto` ;
-  `MailDto.FollowUpDueAt` (option à l'envoi) et `MailDto.FollowUp` (état) ; `FollowUpDueAt` sur `SaveDraftDto` et
-  `DraftDto` ; `AuditActionType` 77 `FollowUpRequested`, 78 `FollowUpClosed`, 79 `FollowUpReturned` (weda2 décode
-  l'énumération par rang : adapté).
-- **api-mail — modèle** : table `MailFollowUps`, ancrée par Message-ID (modèle de task-453). Elle porte l'échéance, le
-  demandeur et la date de demande, ainsi que le plancher de la Boîte de réception (UIDNEXT et UIDVALIDITY relevés à la
-  demande, avant le SMTP pour un rappel posé à l'envoi). S'y ajoutent les destinataires À/Cc, la clôture et le retour.
-  `Mails.ReportFailedRecipients` garde les adresses en échec, lues au classement d'un rapport. Quatre migrations
-  FluentMigrator (`AddMailFollowUps`, `AddMailFollowUpInboxFloor`, `AddMailFollowUpRecipients`,
-  `AddMailReportFailedRecipients`), toutes nullables ou nouvelles, sans suppression de donnée (règle 7c relue).
-- **api-mail — règles** : `MailFollowUpRule`. Le plancher se lit avec un UIDVALIDITY nul compris comme inconnu. La
-  fenêtre part de la demande, moins 5 min de tolérance d'horloge. La clôture exige un destinataire, sans réponse
-  automatique (AH1, AH2) ; l'échec de remise n'est retenu que s'il touche tous les destinataires (AH3). Le retour attend
-  l'ingestion de tout UID au-dessus du plancher, et les accusés sont lus par paquets de 20.
-- **api-mail — service et routes** : `MailFollowUpService` porte l'évaluation, réutilisée 10 s par un tampon Redis. La
-  Boîte de réception n'est relue que si un rappel est échu, et la liste ne fait aucun appel IMAP. Les routes
-  `MailFollowUpController` sont `PUT`/`DELETE …/emails/{uid}/follow-up` et `GET …/follow-ups/returned`. L'option est
-  prise à l'envoi direct, au brouillon, à la confirmation différée et à l'annule-et-remplace. Le STATUS et le
-  `FolderDto` portent désormais l'UIDVALIDITY, cache de statut compris.
-- **weda2 (code-only) et client-mobile** : option à la rédaction, rappel depuis le détail, bandeau et marque « Sans
-  réponse », « Relancer » (objet « Relance : … », destinataires À/Cc, délai reproposé), « Clore » ; envois revenus en
-  tête de « À traiter », lignes clés par (dossier, UID) (`conventions/angular.md`, liste-multi-dossiers-cle-dossier-uid).
-- **Preuves rouges (règle 1b)** : intégration `FollowUpEndToEndTests` (28 tests : retour avec demandeur puis clôture,
-  réponse avant échéance, 400 `ProblemDetails`, délégataire et titulaire, déplacement hors plateforme, réponse non
-  ingérée, cache de la Boîte de réception, réponse antérieure à la demande, réponse automatique, tiers, échec partiel
-  et total, accusés en nombre avant l'échec, rebond rapide pendant l'envoi SMTP, échec déjà classé avant une demande
-  depuis le détail, rapport effacé du serveur après classement…). Mutations R13, R14, AH1, AH2a/b, AH3, N1, N2a, N2b ;
-  tests rouges sur le code d'avant chaque reprise. E2E-FOLLOWUP-001 v1 au catalogue, mobile et angular.
-- **Cycle** : 7 passages de revue anticipée, 6 reprises.
-  - Le passage 3 a arrêté la chaîne sur trois arbitrages (AH1 à AH3), tranchés par l'humain le 2026-11-20.
-  - Les passages 5 à 7 ont été faits par la forge sur décision humaine (relecteur indépendant arrêté par la limite
-    d'usage).
-  - Les limites de reprise ont été levées par l'humain le 2026-11-21.
-- **Sonar** (9.9.8) : 6 constats new code à la première analyse (S1905 ×4, S125, CA1861), corrigés ; Quality Gate OK,
-  new coverage 95,7 %, 0 bug / vulnérabilité / smell, couverture projet 97,5 %.
-- **Lint** : Angular 0 erreur, aucun avertissement né de la task ; mobile propre.
-- **E2E** : premier passage rouge, E2E-CONV-003 en mobile.
-  - Le test lisait la puce du fil à l'instant qui suit le passage en vue Conversation : il ne passait que si la liste
-    arrivait avant la lecture.
-  - Le croisement des dépôts au banc (sources de `develop`, puis de task-462) l'a établi.
-  - Corrigé par une attente (`waitFor`), et consigné dans `conventions/e2e.md` (`attendre-le-rendu-apres-la-reponse`,
-    2 occurrences, contrôle mécanique).
-  - Rejeu : mobile 77/77, angular 99/99, 0 flaky, parité verte.
-- **Timings** : 31 min 23 s sur les dernières bornes d'étape. Commandes mesurées : 22 builds (4 min 41 s), 29 suites
-  (1 h 21 min), 4 scans, 4 voies e2e (41 min).
-- **À ouvrir par l'humain** :
-  - **Vue Conversation** : regrouper les messages neufs sans rechargement. Défaut présent sur `develop`, vu au banc ;
-    un correctif sans parcours a été retiré de la task, point de départ client-mobile `8af48c7`.
-  - **Lectures `isVisible()` immédiates dans un `expect.poll`** : 1 côté mobile, 13 côté Angular.
-- **Limites résiduelles (suggestions non bloquantes)** :
-  - une vue de la Boîte de réception servie par le cache (10 s) peut faire revenir un rappel une fois ;
-  - `FindRepliesAsync` filtre la date en mémoire ;
-  - `CaptureAnchorAsync` relit le dossier, là où un STATUS suffirait.
-
----
-
 ## Annexe A — Cartographie des briques applicatives
 
 | Brique | Rôle | Task |
@@ -600,22 +537,16 @@
 | `dtos-mss/MailConversationDto.cs` | contrat de la conversation | task-487 |
 | weda2 `features/mail/components/mail-conversation/`, `core/utils/conversation.util.ts` | vue chat web | task-487 |
 | client-mobile `conversation/conversation-chat.page.*`, `patient-document-picker` | vue chat mobile | task-487 |
-| `api-mail` `MailFollowUpService`, `MailFollowUpController`, `MailFollowUpRepository` | rappel « sans réponse » : demande, évaluation, retour, clôture | task-462 |
-| `api-mail/src/Domain/Rules/MailFollowUpRule.cs` | plancher, fenêtre, destinataires, échec de tous | task-462 |
-| `api-mail/src/Infrastructure/Migrations/MailDb/20261120182800_AddMailFollowUps.cs` (+ `…InboxFloor`, `…Recipients`, `20261121150000_AddMailReportFailedRecipients`) | table `MailFollowUps`, adresses en échec des rapports | task-462 |
-| `api-mail` `OutgoingMailService` (`CaptureAnchorAsync` avant SMTP), `DeliveryReportReader`, `DeliveryReportParser.FailedRecipients` | repère d'envoi, classement des échecs | task-462 |
-| `dtos-mss/MailFollowUpDto.cs`, `MailDto.FollowUpDueAt` / `FollowUp`, `AuditActionType` 77 à 79 | contrat du rappel | task-462 |
-| weda2 et client-mobile `follow-up.util.ts`, `follow-up-picker`, `follow-up-banner` | option, bandeau, Relancer, Clore | task-462 |
 
 ---
 
-## Annexe B — Inventaire fonctionnel daté (2026-11-21)
+## Annexe B — Inventaire fonctionnel daté (2026-11-18)
 
-- Tasks de l'EPIC : 12 — 7 `archived` (453, 454, 456, 459, 466, 486, 487), 2 `done` (457, 462), 2 `todo` (458, 488),
+- Tasks de l'EPIC : 12 — 7 `archived` (453, 454, 456, 459, 466, 486, 487), 1 `done` (457), 3 `todo` (458, 462, 488),
   1 annulée (465).
 - Scénarios e2e de l'EPIC au catalogue : 15 (E2E-BIO-004, E2E-BIO-007, E2E-DETAIL-006, E2E-TAG-001, E2E-TAG-002,
   E2E-TAG-003, E2E-TRIAGE-001, E2E-TRIAGE-002, E2E-TRIAGE-006, E2E-TRIAGE-007, E2E-SHARED-003, E2E-ASSIGN-001,
-  E2E-ASSIGN-002, E2E-CONV-001, E2E-CONV-002) et 16 avec E2E-FOLLOWUP-001 (task-462).
+  E2E-ASSIGN-002, E2E-CONV-001, E2E-CONV-002).
 
 ---
 
@@ -632,4 +563,3 @@
 | task-454 | Marquer un message traité : état partagé par la boîte (Message-ID), compteurs et filtre « À traiter », gestes naturels, bouton et balayage, « Annuler », traitement groupé sans jamais acquitter une biologie, tuile du tableau de bord | `archived` (PRs #69, #373, #128) |
 | task-457 | « À traiter par » : attribuer un message à une personne active de la boîte (Message-ID), vue et compteur « Pour moi » sur tous les dossiers, avis ciblé sur la personne, attribution groupée, imputée à l'auteur réel | `done` (PRs #70, #374, #129) |
 | task-487 | Conversation en chat : fil en bulles, découpage sûr de la citation, état d'envoi par les accusés reçus (jamais des bulles), réponse en une ligne composée par le serveur et adressée à tous les participants, lecture tracée au nom de la personne réelle | `archived` (PRs #71, #375, #130) |
-| task-462 | Relance sans réponse : rappel posé à l'envoi ou depuis le détail, ancré par Message-ID, retour dans « À traiter » sans fausse relance (plancher UIDNEXT, ingestion), clôture par un destinataire ou par l'échec de tous, Relancer et Clore imputés | `done` (PRs #72, #378, #132) |
