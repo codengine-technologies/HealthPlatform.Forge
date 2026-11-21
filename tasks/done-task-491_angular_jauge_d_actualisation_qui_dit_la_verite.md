@@ -121,7 +121,8 @@ où une actualisation automatique a lieu.
 | /review-code | ok | 4 min 25 s | — | — | — | — |
 | /lint-angular | ok | 23 s | — | — | — | — |
 | /lint-mobile | skipped | 0.8 s | — | — | — | client-mobile non touché |
-| **Total cycle** | | **17 min 04 s** | **1 (19 s)** | **2 (1 min 03 s)** | **0 (0.0 s)** | |
+| /e2e | ok | 13 min 43 s | — | — | — | e2e ×3 (26 min 10 s) |
+| **Total cycle** | | **30 min 47 s** | **1 (19 s)** | **2 (1 min 03 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×1 (13 s)
 
@@ -377,3 +378,26 @@ Aucun.
 - E2E-SEARCH-008 [mobile] — les critères médicaux arrivent sur le mobile avec la refonte mobile — résorbée par task-451
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
+
+### Validation finale (/review, 2026-11-21) — APPROVED
+
+- Build + tests : vert de /develop réutilisé (`green.py check` : même arbre, HEAD `f8164238`).
+- Diff depuis l'approbation de la revue anticipée : aucun (ni /lint-angular ni /e2e n'ont modifié le code).
+- DOD : build et suites verts ; tests de composant vus rouges (Develop log) ; condition `isAutoRefreshed` unique ;
+  plus aucun `interval(` dans `mail-folder-item.component.ts` ; infobulle en français ; pas de scénario e2e (décision
+  de la DOD) ; prévention écrite (`conventions/angular.md`, `agents/develop.md`). Les points observables vont au
+  test manuel (HAG).
+- E2E : **vert** (voie angular jouée, mobile listé, parité verte).
+- Qualité : /sonar non joué, api-mail non touché.
+
+## PRs
+
+- `client-angular` (code seul) : humain gère commit/push TFS et ouverture PR, sur `feature/nova-mss-weda-integration`.
+  Fichiers modifiés :
+  - `front/libs/mss/src/features/mail/components/mail-folder-item/mail-folder-item.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-folder-item/mail-folder-item.component.ts`
+  - `front/libs/mss/src/features/mail/mss-mail.component.ts`
+  - `front/libs/mss/src/features/mail/services/mail-state.service.ts`
+  - `front/libs/mss/src/features/mail/components/mail-folder-item/mail-folder-item.component.spec.ts`
+  - `front/libs/mss/src/features/mail/mss-mail.component.refresh-gauge.spec.ts`
+- Aucun dépôt poussé : pas de PR GitHub pour cette task.
