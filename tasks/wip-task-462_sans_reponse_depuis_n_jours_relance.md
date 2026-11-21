@@ -635,6 +635,8 @@ redémarré (`sonarqube_db` puis `sonarqube`).
 - Build / tests : non rejoués, arbre inchangé. Le vert de `/develop` reste valide (`green.py check` : `82fc95ec`).
   Le dossier `e2e/out/` non suivi est une sortie des bancs e2e, hors code.
 
+- Après la reprise 6 (`e91d3ed`) : `npm run lint` « All files pass linting. ». Lint joué par la reprise, étape notée
+  sautée (mesurée).
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -1043,10 +1045,10 @@ Diff relu : client-mobile `82fc95e..e91d3ed`.
 | /start | ok | 2 min 17 s | — | — | — | — |
 | /develop | ok | 53 s | 20 (3 min 09 s) | 19 (1 h 03 min) | — | dtos-mss 1B/0T, api-mail 12B/9T, client-mobile 5B/7T, client-angular 2B/3T, reprise 6 |
 | /review-code | ok | 0.8 s | — | — | — | passage 7 |
-| /sonar | ok | 24 min 41 s | 2 (1 min 31 s) | 10 (17 min 52 s) | 4 (1 min 33 s) | 2 itération(s), api-mail 2B/10T |
-| /lint-angular | ok | 1 min 37 s | — | — | — | 0 error, rien à corriger |
-| /lint-mobile | ok | 47 s | — | — | — | all files pass |
+| /sonar | skipped | 2.4 s | 2 (1 min 31 s) | 10 (17 min 52 s) | 4 (1 min 33 s) | api-mail 2B/10T, api-mail inchangé depuis l'analyse de c4c5e976 (QG OK) |
+| /lint-angular | skipped | 2.9 s | — | — | — | arbre client-angular inchangé, 0 error |
+| /lint-mobile | skipped | 3.4 s | — | — | — | lint joué par la reprise 6 sur e91d3ed : all files pass |
 | /e2e | failed | 1 h 31 min | — | — | — | e2e ×1 (15 min 15 s), E2E-CONV-003 rouge, corrigé par la reprise 5 |
-| **Total cycle** | | **2 h 02 min** | **22 (4 min 41 s)** | **29 (1 h 21 min)** | **4 (1 min 33 s)** | |
+| **Total cycle** | | **1 h 35 min** | **22 (4 min 41 s)** | **29 (1 h 21 min)** | **4 (1 min 33 s)** | |
 
 Autres commandes mesurées : lint ×2 (1 min 24 s), nuget-wait ×1 (29 s), restore ×1 (3.6 s)
