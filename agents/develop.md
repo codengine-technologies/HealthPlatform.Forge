@@ -248,8 +248,11 @@ whole cycle, and it doubles as the repo's final verification (Step 6).
    # C# — xUnit1051 : a substitute check passing `default` as the token (task-459, 5th occurrence).
    git diff origin/develop...HEAD -- '*.cs' | grep -nE '^\+.*Receiv(e|ed)(WithAnyArgs)?\([0-9]*\)\..*, default\);'
    # C# — CA1861 : a literal array compared in a test predicate (task-459, 8th occurrence, same form as task-449).
-   git diff origin/develop...HEAD -- '*.cs' | grep -nE '^\+.*SequenceEqual\(new( ?\w*)?\[\]'
+   git diff origin/develop...HEAD -- '*.cs' | grep -nE '^\+.*(SequenceEqual|SetEquals)\(new( ?\w*)?\[\]'
+   #   (task-462 : SetEquals(new[] { … }) in an Arg.Is, same form, missed by the SequenceEqual-only grep.)
    #   (task-454 : 4 hits more, seen only by /sonar — this grep was not run : a reading recurrence.)
+   # C# — S1905 : a cast to `string?` of a member that is already a string (task-462, /sonar ×4).
+   git diff origin/develop...HEAD -- '*.cs' | grep -nE '^\+.*\(string\?\)\w'
    # C# — CA1826 : FirstOrDefault() on an awaited list (IReadOnlyList) — use Count/[0] (task-454, 3 hits).
    git diff origin/develop...HEAD -- '*.cs' | grep -nE '^\+.*\)\)\.FirstOrDefault\(\)'
    # TS / HTML / SCSS — mixed line endings : LF lines inserted into a CRLF file (task-459 : 91 lines

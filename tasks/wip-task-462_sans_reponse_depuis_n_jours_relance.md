@@ -507,6 +507,43 @@ la constante (FluentMigrator, sans instantané de modèle).
 - `agents/develop.md`, mode reprise, point 3 : un test exigé par la revue n'est jamais déclassé en « limite assumée »
   sans décision humaine.
 
+## Sonar log
+
+Projet `healthplatform-api-mail` (SonarQube 9.9.8), branche `feat/task-462-sans-reponse-depuis-n-jours-relance`.
+Deux analyses complètes : build Release, 5 suites avec couverture OpenCover, scan. Le serveur était arrêté, il a été
+redémarré (`sonarqube_db` puis `sonarqube`).
+
+| Itération | Constat new code | Correctif | Commit |
+|---|---|---|---|
+| 1 | 6 : S1905 ×4 (casts `(string?)` inutiles, `MailFollowUpRepository`, `MailFollowUpService`), S125 ×1 (commentaire de `MailRepository` venu du correctif « boîte de Virginie » fait sur `develop`), CA1861 ×1 (`SetEquals(new[] { … })` dans un `Arg.Is`) | refactor pur, aucun changement de comportement | api-mail `c4c5e976` |
+| 2 | 0 issue, 0 hotspot | — | — |
+
+- Phase 1 (new code) : Quality Gate OK, `new_coverage` = 95,7 % (seuil ≥ 95 %).
+- Phase 2 (legacy) : sans objet, 0 code smell sur le projet.
+- Suites jouées par l'analyse : domaine 385, application 4 396, infrastructure 749, api 1 388, intégration 1 399 (16
+  ignorés), **0 échec**.
+- Vert api-mail marqué par `/sonar` à `c4c5e976`.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | → |
+| New coverage | 96,0 % | 95,7 % | −0,3 pt |
+| Bugs | 0 | 0 | 0 |
+| Vulnerabilities | 0 | 0 | 0 |
+| Security hotspots | 0 | 0 | 0 |
+| Code smells | 0 | 0 (6 à l'itération 1, corrigés) | 0 |
+| Coverage (projet) | 97,6 % | 97,5 % | −0,1 pt |
+| Duplication | 0,3 % | 0,3 % (new code 0,04 %) | → |
+| Reliability / Security / Maintainability | A / A / A | A / A / A | → |
+
+**Conventions** (`conventions/csharp.md`) :
+- CA1861 : occurrence 10. Le contrôle mécanique de `agents/develop.md` §Q 2b ne cherchait que `SequenceEqual` : il est
+  élargi à `SetEquals`.
+- S125 : occurrence 36.
+- S1905 : nouvelle entrée, avec son contrôle mécanique.
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -863,6 +900,7 @@ Aucun.
 | /start | ok | 2 min 17 s | — | — | — | — |
 | /develop | ok | 19 min 18 s | 18 (2 min 54 s) | 16 (1 h 02 min) | — | dtos-mss 1B/0T, api-mail 12B/9T, client-mobile 3B/4T, client-angular 2B/3T, reprise 4 |
 | /review-code | ok | 17 h 44 min | — | — | — | passage 5, revue par la forge (décision humaine) |
-| **Total cycle** | | **18 h 05 min** | **18 (2 min 54 s)** | **16 (1 h 02 min)** | **0 (0.0 s)** | |
+| /sonar | ok | 24 min 41 s | 2 (1 min 31 s) | 10 (17 min 52 s) | 4 (1 min 33 s) | 2 itération(s), api-mail 2B/10T |
+| **Total cycle** | | **18 h 30 min** | **20 (4 min 26 s)** | **26 (1 h 20 min)** | **4 (1 min 33 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (29 s), restore ×1 (3.6 s)
