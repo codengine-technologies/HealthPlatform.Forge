@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques (ingénierie, backlog, dette)
 > **Vue produit** : [E024-messagerie-premium-traiter-deleguer-bouc.md](E024-messagerie-premium-traiter-deleguer-bouc.md)
-> **Dernière mise à jour** : 2026-11-18
+> **Dernière mise à jour** : 2026-11-21
 
 ---
 
@@ -480,6 +480,12 @@
 - **Limites résiduelles (suggestions non bloquantes)** : accusés lus à la synchronisation plutôt qu'à l'ouverture ;
   pagination par curseur ; idempotence serveur de `POST …/reply` ; identification mobile d'une réponse en attente.
 
+### v0.8.1 — task-462 : relance sans réponse — ANNULÉE
+
+- **Décision humaine du 2026-11-21** : « je ne veux pas conserver le développement de 462, il ne me convient pas ». La feature « Relance sans réponse » est retirée de l'EPIC.
+- **Rien n'a été mergé** : PRs Dtos #72, Api.Mail #378 et Mobile #132 fermées sans merge, branches supprimées ; l'arbre de weda2 est revenu à son dernier commit. Aucune migration n'a atteint `develop`.
+- **Conservé** : les consignes apprises pendant le cycle (`conventions/csharp.md`, `conventions/e2e.md`, `agents/develop.md`) et le correctif de `Tools/contracts/contract_impact.py`, indépendants du code retiré.
+
 ---
 
 ## Annexe A — Cartographie des briques applicatives
@@ -540,10 +546,10 @@
 
 ---
 
-## Annexe B — Inventaire fonctionnel daté (2026-11-18)
+## Annexe B — Inventaire fonctionnel daté (2026-11-21)
 
-- Tasks de l'EPIC : 12 — 7 `archived` (453, 454, 456, 459, 466, 486, 487), 1 `done` (457), 3 `todo` (458, 462, 488),
-  1 annulée (465).
+- Tasks de l'EPIC : 12 — 7 `archived` (453, 454, 456, 459, 466, 486, 487), 1 `done` (457), 2 `todo` (458, 488),
+  2 annulées (465, 462).
 - Scénarios e2e de l'EPIC au catalogue : 15 (E2E-BIO-004, E2E-BIO-007, E2E-DETAIL-006, E2E-TAG-001, E2E-TAG-002,
   E2E-TAG-003, E2E-TRIAGE-001, E2E-TRIAGE-002, E2E-TRIAGE-006, E2E-TRIAGE-007, E2E-SHARED-003, E2E-ASSIGN-001,
   E2E-ASSIGN-002, E2E-CONV-001, E2E-CONV-002).
@@ -557,6 +563,7 @@
 | task-453 | Ancrage des acquittements et du rattachement manuel à l'identité stable du document ; re-liaison ; modèle imposé aux tasks 454 à 463 | `archived` (PRs #364, #63, #123) |
 | task-459 | Bandeau « Vous avez répondu à ce message le… » : trace `MailReplies`, résumé par lecteur, `\Answered`, bandeau et icône sur les deux clients | `archived` (PRs #369, #67, #125) |
 | task-465 | Mesure de la charge et de l'usage — **annulée** le 2026-11-12 (décision humaine, reprise hors API par un cron job) | annulée (PRs #366, #64 fermées) |
+| task-462 | Relance sans réponse — **annulée** le 2026-11-21 (décision humaine : développement non conservé) | annulée (PRs #378, #72, #132 fermées) |
 | task-466 | Date de début du suivi par boîte : seul ce qui arrive après réclame un acquittement ; socle de « À traiter » (task-454) | `archived` (PRs #368, #66, #124) |
 | task-486 | Saisie des tags : noms de plusieurs mots (40 caractères), liste des tags de la boîte à la frappe, créations concurrentes sans doublon ; première brique des vues par tag (task-456) | `archived` (PRs #371, #126) |
 | task-456 | Tags système (Biologie, Patient, Professionnel de santé, Pour info) posés à l'arrivée et par rattrapage, vues par tag combinables en « Tous » / « Non lus », réglage par personne | `archived` (PRs #68, #372, #2, #127) |

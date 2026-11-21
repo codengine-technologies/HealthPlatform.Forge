@@ -1,13 +1,13 @@
 # E024 — Messagerie premium : traiter, déléguer, boucler
 
 > **Statut** : 🟡 en cours — 7 features livrées et validées, 1 livrée en attente de validation (task-457),
-> 3 au backlog (tasks 458, 462, 488).
+> 2 au backlog (tasks 458, 488). La relance sans réponse (task-462) est retirée le 2026-11-21.
 > Le 2026-11-12, toutes les features prévues avaient
 > été retirées du backlog ; une partie y est revenue le 2026-11-13.
-> **Version** : 0.8
+> **Version** : 0.8.1
 > **Auteur** : PO forge (task-453)
 > **Modèle** : task-driven
-> **Dernière mise à jour** : 2026-11-18
+> **Dernière mise à jour** : 2026-11-21
 > **Vue ingénierie** : [E024-Changelogs.md](E024-Changelogs.md)
 
 ---
@@ -25,7 +25,7 @@
 - [7. Contraintes et hypothèses](#7-contraintes-et-hypothèses)
 - [8. Critères d'acceptation de l'EPIC](#8-critères-dacceptation-de-lepic)
 - [9. Hors périmètre](#9-hors-périmètre)
-- [État de couverture (2026-11-18)](#état-de-couverture-2026-11-18)
+- [État de couverture (2026-11-21)](#état-de-couverture-2026-11-21)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -36,8 +36,7 @@
 
 La messagerie ne se contente plus de recevoir et d'envoyer. Elle aide le cabinet à **traiter** ce qui arrive, à
 **déléguer** ce qui revient à quelqu'un d'autre, et à **boucler** chaque échange jusqu'au bout : un résultat de
-biologie acquitté puis communiqué au patient, un courrier envoyé dont on sait qu'il est arrivé et a été lu, une
-demande restée sans réponse qui revient d'elle-même.
+biologie acquitté puis communiqué au patient, un courrier envoyé dont on sait qu'il est arrivé et a été lu.
 
 Tout ce que le cabinet décide sur un message — acquittement, « traité », report, attribution, note, suivi — est une
 trace de travail. Ces traces appartiennent à la boîte, portent le nom de la personne qui les a posées, et ne
@@ -84,13 +83,12 @@ disparaissent jamais parce que le message a été rangé ailleurs, depuis la pla
 | Conversation en chat | Lire un fil comme une conversation : bulles dans l'ordre, les siennes à droite, auteur réel et rôle, pièces jointes, texte cité et signature repliés seulement quand c'est sûr. Voir l'état de chaque envoi (envoyé, distribué, non distribué, lu à l'heure) sans que les accusés encombrent le fil. Répondre en une ligne à tous les participants, avec un fichier joint (et, sur mobile, un document du dossier patient) ; être averti si les destinataires ont changé | task-487 | ✅ Livrée et validée |
 | Réponse : ne citer que le message d'origine | Répondre en ne citant que ce que le correspondant vient d'écrire, sans tout l'historique ; la citation est retirée, avec un avertissement, vers un destinataire qui n'était pas dans l'échange ; une case « Inclure le message d'origine » | task-488 | ⏳ À faire |
 | Notes internes | Laisser sur un message une note visible des seules personnes de la boîte | task-458 | ⏳ À faire |
-| Relance sans réponse | Voir revenir un message resté sans réponse depuis plusieurs jours | task-462 | ⏳ À faire |
 
 ---
 
 ## 5. Workflow entre Features
 
-> ⚠️ Vision d'origine. Sont au backlog : notes, relance. Restent retirés depuis le 2026-11-12 : « À revoir le », suivi d'acheminement, suivi de biologie.
+> ⚠️ Vision d'origine. Sont au backlog : notes. Restent retirés depuis le 2026-11-12 : « À revoir le », suivi d'acheminement, suivi de biologie. Relance sans réponse : retirée le 2026-11-21.
 
 Le parcours d'un message dans le cabinet, tel que l'EPIC l'envisageait :
 
@@ -105,7 +103,7 @@ flowchart LR
     G -->|Moi| H[Répondre, noter,<br/>marquer traité]
     G -->|Un autre| I[À traiter par…]
     G -->|Plus tard| J[À revoir le…]
-    H --> K[Suivi d'acheminement,<br/>relance sans réponse]
+    H --> K[Suivi d'acheminement]
     F --> L[Traces de travail<br/>conservées, jamais perdues]
     H --> L
     I --> L
@@ -191,7 +189,7 @@ praticien le souhaite, mais il n'encombre ni « Bio à acquitter » ni le tablea
 
 ---
 
-## État de couverture (2026-11-18)
+## État de couverture (2026-11-21)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
@@ -205,10 +203,9 @@ praticien le souhaite, mais il n'encombre ni « Bio à acquitter » ni le tablea
 | Conversation en chat | ✅ Livrée et validée | 100 % (joindre un document du dossier depuis l'application web : en arbitrage) | task-487 |
 | Réponse : ne citer que le message d'origine | ⏳ À faire | 0 % | task-488 |
 | Notes internes | ⏳ À faire | 0 % | task-458 |
-| Relance sans réponse | ⏳ À faire | 0 % | task-462 |
 
-**Couverture EPIC consolidée : 7 features livrées et validées sur 11 retenues**, 1 livrée en attente de
-validation (task-457), 3 au backlog.
+**Couverture EPIC consolidée : 7 features livrées et validées sur 10 retenues**, 1 livrée en attente de
+validation (task-457), 2 au backlog.
 
 ---
 
