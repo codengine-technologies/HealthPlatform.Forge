@@ -117,7 +117,8 @@ où une actualisation automatique a lieu.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 12 s | — | — | — | — |
-| **Total cycle** | | **12 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 12 min 01 s | 1 (19 s) | 2 (1 min 03 s) | — | client-angular 1B/2T |
+| **Total cycle** | | **12 min 13 s** | **1 (19 s)** | **2 (1 min 03 s)** | **0 (0.0 s)** | |
 
 ## Develop log
 
@@ -177,3 +178,42 @@ où une actualisation automatique a lieu.
   `agents/develop.md` §Q 2b, contrôle mécanique des minuteries ajoutées.
 - **Vert marqué** : client-angular (`Tools/green/green.py`, arbre final).
 - **Étape suivante** : `/review task-491 --code`.
+
+## Code Review Summary
+
+### Passage 1 (revue anticipée) — APPROVED
+
+- **Relecteur indépendant** (sous-agent, code et task seulement, sans le `## Develop log`) : APPROVED, aucun bloquant.
+- **approved at** : client-angular — arbre de travail non commité sur `feature/nova-mss-weda-integration` (HEAD
+  `f8164238`), état marqué vert par `/develop`.
+- **Règle 1b** : non applicable — aucun dépôt backend touché, aucun comportement atteignable par un endpoint.
+- **4c, consommateurs du contrat** (`contract_impact.py check`) : api-mcp aucun impact ; client-mobile aucun impact ;
+  client-angular aucun impact (avertissements de lecture tolérante préexistants, sans effet).
+- **4b, clause DOD** : pas de scénario e2e, décidé par la DOD (indicateur, pas un geste). Les tests de composant à
+  horloge simulée sont le filet.
+- **Règles 1 à 5** : toutes tenues (horloge unique tenue par l'état de l'écran ; décompte lu par la ligne ; rythme
+  inchangé, la notification ne décale pas l'échéance ; règle `isAutoRefreshed` lue par l'actualisation, le filtre des
+  notifications et la jauge ; infobulle en français).
+- **Filtre des notifications** : il exige désormais aussi l'absence de vue « Mails du patient ». Sans effet pratique :
+  la vue patient sélectionne un pseudo-dossier, que le filtre par chemin écartait déjà.
+
+#### Suggestions (non bloquantes)
+
+- **S1** `mail-folder-item.component.ts` : `!this.isTag` répète une partie de la règle (un tag a `source === Tag`).
+- **S2** `mail-state.service.ts` : la borne haute `[0, intervalle]` n'est pas appliquée. Avec un intervalle qui n'est
+  pas un nombre entier de secondes (2 500 ms), la progression dépasserait 100 %. Sans effet avec les 30 000 ms réels.
+- **S3** : à l'échéance, l'horloge d'une seconde peut passer avant la minuterie de 30 s. La jauge disparaît alors une
+  fraction de seconde (cosmétique).
+- **S4** : `nextRefreshAt` est un signal public modifiable. `.asReadonly()` le réserverait à `scheduleNextRefresh`.
+- **S5** : le test « arrêtée avec l'écran » détruit tout l'injecteur de TestBed, pas le seul composant.
+- **S6** : le test « aucune jauge sur un tag » caractérise l'existant : il était déjà vert sur le code d'avant, ce que
+  le Develop log dit. Le cas « vue patient avec INBOX sélectionné » est une combinaison que l'application ne produit
+  pas ; il éprouve la règle, pas un parcours.
+
+#### À corriger par la reprise
+
+Aucun.
+
+#### Arbitrage humain
+
+Aucun.
