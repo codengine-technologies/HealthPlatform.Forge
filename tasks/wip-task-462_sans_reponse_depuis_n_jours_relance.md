@@ -1018,6 +1018,22 @@ Ce que le correctif a pu casser :
 
 Aucun.
 
+### Passage 7 (revue anticipée, après reprise 6) — APPROVED
+
+> Revue faite par la forge (décision humaine du 2026-11-21).
+
+Diff relu : client-mobile `82fc95e..e91d3ed`.
+- La seule différence avec le code approuvé au passage 2 est E2E-CONV-003 : le poll attend la puce du fil
+  (`waitFor`, 15 s) au lieu de la lire à l'instant. Le commentaire cite la bonne consigne.
+- Le scénario et sa version au catalogue ne changent pas.
+- P1 est corrigé : le rechargement hors périmètre est retiré.
+- `inbox.page.ts` est identique à `82fc95e`.
+
+**approved at** :
+- api-mail `c4c5e976`, inchangé depuis `/sonar` ;
+- client-mobile `e91d3ed` ;
+- client-angular : arbre inchangé depuis le passage 2.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-462 --sync` — ne pas éditer à la main)*
@@ -1026,7 +1042,7 @@ Aucun.
 |---|---|---|---|---|---|---|
 | /start | ok | 2 min 17 s | — | — | — | — |
 | /develop | ok | 53 s | 20 (3 min 09 s) | 19 (1 h 03 min) | — | dtos-mss 1B/0T, api-mail 12B/9T, client-mobile 5B/7T, client-angular 2B/3T, reprise 6 |
-| /review-code | changes | 31 s | — | — | — | passage 6, reprise 6 |
+| /review-code | ok | 0.8 s | — | — | — | passage 7 |
 | /sonar | ok | 24 min 41 s | 2 (1 min 31 s) | 10 (17 min 52 s) | 4 (1 min 33 s) | 2 itération(s), api-mail 2B/10T |
 | /lint-angular | ok | 1 min 37 s | — | — | — | 0 error, rien à corriger |
 | /lint-mobile | ok | 47 s | — | — | — | all files pass |
