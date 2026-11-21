@@ -118,7 +118,8 @@ où une actualisation automatique a lieu.
 |---|---|---|---|---|---|---|
 | /start | ok | 12 s | — | — | — | — |
 | /develop | ok | 12 min 01 s | 1 (19 s) | 2 (1 min 03 s) | — | client-angular 1B/2T |
-| **Total cycle** | | **12 min 13 s** | **1 (19 s)** | **2 (1 min 03 s)** | **0 (0.0 s)** | |
+| /review-code | ok | 4 min 25 s | — | — | — | — |
+| **Total cycle** | | **16 min 39 s** | **1 (19 s)** | **2 (1 min 03 s)** | **0 (0.0 s)** | |
 
 ## Develop log
 
@@ -217,3 +218,12 @@ Aucun.
 #### Arbitrage humain
 
 Aucun.
+
+## Lint log
+
+- `npx nx affected -t lint --base=origin/next --head=HEAD --parallel=3 --projects=tag:scope:mss` : **0 erreur**,
+  13 projets. Seuls restent des avertissements antérieurs à la task (`max-lines` des deux gros fichiers, deux `@example`
+  sans description, hors du diff).
+- Aucune correction : itération 1 sans objet, arbre inchangé. Build et tests non rejoués : le vert de `/develop` porte
+  sur ce même arbre.
+- Aucune règle corrigée à la main : `conventions/angular.md` inchangé par cette étape.
