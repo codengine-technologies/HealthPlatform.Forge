@@ -10938,3 +10938,5 @@
 {"ts":"2026-11-20T23:35:32+01:00","run_id":"-","type":"cmd","task":"task-462","step":"develop","repo":"api-mail","kind":"build","label":"","cwd":"Api/Mail","cmd":"dotnet build HealthPlatform.Api.Mail.sln -v q -nologo","duration_ms":9208,"exit_code":0}
 {"ts":"2026-11-20T23:42:52+01:00","run_id":"-","type":"cmd","task":"task-462","step":"develop","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln --no-build --blame-hang-timeout 10m","duration_ms":438406,"exit_code":0}
 {"ts":"2026-11-20T23:43:05+01:00","run_id":"-","type":"step","task":"task-462","step":"develop","status":"ok","note":"reprise 4","iterations":null,"duration_ms":1158269}
+{"ts":"2026-11-20T23:43:12+01:00","run_id":"-","type":"step_start","task":"task-462","step":"review-code"}
+{"ts":"2026-11-21T17:27:35+01:00","run_id":"-","type":"step","task":"task-462","step":"review-code","status":"ok","note":"passage 5, revue par la forge (décision humaine)","iterations":null,"duration_ms":63863429}

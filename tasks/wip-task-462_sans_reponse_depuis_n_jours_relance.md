@@ -795,6 +795,65 @@ chaîne s'arrête.
 - N1 : le point 6 du même mode (« qu'est-ce que le correctif casse ailleurs ? ») existait déjà. Récidive de lecture :
   la reprise 4 relit les appelants d'`ApplyAsync` avant de rendre la main.
 
+### Passage 5 (revue anticipée, après reprise 4) — APPROVED
+
+> **Revue faite par la forge elle-même, sur décision humaine du 2026-11-21** (« fais la revue et continue la chaîne »).
+> Le relecteur indépendant s'est arrêté sur la limite d'usage hebdomadaire, avant tout verdict. L'auteur des reprises 3
+> et 4 relit donc son propre code : l'humain en tient compte au merge (HAG).
+
+Diff relu : api-mail `a3923a85..be75a84f` (15 fichiers). Mobile et weda2 inchangés depuis le passage 2.
+
+**approved at** :
+- api-mail `be75a84f` ;
+- client-mobile `82fc95e` ;
+- client-angular : arbre de travail non commité, inchangé depuis le passage 2 (31 entrées).
+
+**contract_impact** :
+- api-mcp : aucun impact ;
+- client-mobile : aucun impact ;
+- client-angular : IMPACT (`AuditActionType` décodé par rang), adapté dans l'arbre de travail.
+
+**DOD, scénario e2e** : `E2E-FOLLOWUP-001` inchangé.
+
+**Ce que le correctif a pu casser** (lu en premier) :
+- `SetReportAsync` n'a qu'un appelant de production, le lecteur d'accusés, mis à jour. La vue conversation lit toujours
+  `GetReportsAsync`, intact.
+- `ReadFailedRecipientsAsync` n'a plus aucune référence.
+- `DeliveryFailureReport` n'est consommé que par `CloseAnsweredAsync`.
+- `ApplyAsync` ne contient plus aucun appel IMAP ni au lecteur d'accusés : il ne lit que la base, comme avant la reprise 3.
+- `Original-Recipient` ne fait qu'ajouter l'adresse d'un groupe déjà en échec. Il ne peut pas faire clore à tort.
+- Un rapport d'échec sans adresse lisible est gardé à `NULL`. Il ne clôt pas un rappel dont les destinataires sont
+  connus : le rappel revient à l'échéance, comme au code de la reprise 3.
+
+| Constat | Corrigé | Test d'intégration | Preuve rouge |
+|---|---|---|---|
+| N1 la liste relisait le rapport sur le serveur | oui (adresses gardées au classement, décision en base) | `AFailureClassifiedThenGoneFromTheServer_TheListStillClosesIt` | rouge sur le code de la reprise 3, mutation N1 (6 rouges) |
+| N2 rebond rapide | oui (repère avant SMTP, déjà en place) | `ARapidBounceDuringTheSmtpSend_ClosesIt` (SMTP réel, puis rebond déposé avant le retour de l'envoi) | mutation N2a |
+| N2 échec antérieur à la demande | oui (filtre de date, déjà en place) | `AFailureClassifiedBeforeTheRequestFromTheDetail_DoesNotCloseIt` | mutation N2b |
+
+Le banc du rebond construit `OutgoingMailService` par `ActivatorUtilities` sur le scope de la fixture, avec ses vraies
+dépendances. Seul le SMTP est enveloppé : c'est un fournisseur externe, que la règle 1b permet de simuler.
+
+**Migration `20261121150000` (règle 7c)** : une colonne `text` nullable, aucune donnée modifiée ni supprimée, une descente,
+le mapping EF par la constante.
+
+**Règles 12 et 14** : rien de neuf. Aucune donnée de santé en log, aucun « ; » en commentaire.
+
+#### Suggestions (non bloquantes, à porter dans la PR)
+
+- **Vue Boîte de réception servie par le cache (10 s).** Une réponse arrivée dans ces 10 s et pas encore ingérée peut
+  faire revenir le rappel une fois. Il est clos à la synchronisation suivante.
+- **Filtre de date en mémoire.** `FindRepliesAsync` filtre la date en mémoire : pousser `ArrivalDate >= min(Since)` dans
+  le SQL.
+- **Coût du repère.** `CaptureAnchorAsync` relit le dossier (`GetFolderAsync`) avant chaque envoi qui porte un rappel. Un
+  STATUS suffirait (S2).
+- **Portée du test R1.** Il prouve que le plancher tient sur un succès de cache, pas que la garde UIDVALIDITY agit sur ce
+  chemin.
+
+#### Arbitrage humain
+
+Aucun.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-462 --sync` — ne pas éditer à la main)*
@@ -803,7 +862,7 @@ chaîne s'arrête.
 |---|---|---|---|---|---|---|
 | /start | ok | 2 min 17 s | — | — | — | — |
 | /develop | ok | 19 min 18 s | 18 (2 min 54 s) | 16 (1 h 02 min) | — | dtos-mss 1B/0T, api-mail 12B/9T, client-mobile 3B/4T, client-angular 2B/3T, reprise 4 |
-| /review-code | changes | 6 min 36 s | — | — | — | reprise 4 |
-| **Total cycle** | | **28 min 11 s** | **18 (2 min 54 s)** | **16 (1 h 02 min)** | **0 (0.0 s)** | |
+| /review-code | ok | 17 h 44 min | — | — | — | passage 5, revue par la forge (décision humaine) |
+| **Total cycle** | | **18 h 05 min** | **18 (2 min 54 s)** | **16 (1 h 02 min)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (29 s), restore ×1 (3.6 s)
