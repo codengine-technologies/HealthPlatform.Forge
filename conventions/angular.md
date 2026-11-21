@@ -840,12 +840,25 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   dans chaque dossier). Une ligne venue d'un autre dossier que celui de la liste ne dépend pas d'un état calculé pour
   ce dossier (enrichissement, compteurs). Un spec de liste mélange au moins deux messages de même UID dans deux dossiers.
 - **Preuve** : E2E-FOLLOWUP-001 weda2 rouge (marque absente), vert après correction ; specs `mail-list` (fusion) et
-  `mail-header.follow-up` (squelette) vus rouges par mutation (W13, W14).
+  `mail-header.follow-up` (squelette) vus rouges par mutation (W13, W14). Ces preuves sont parties avec task-462,
+  annulée le 2026-11-21. Les preuves actuelles sont deux specs vus rouges sur `develop`, le 2026-11-21 :
+  `mail-list.component.spec.ts` « l'analyse d'un dossier ne remplace jamais la ligne d'un autre dossier de même UID »
+  et `mail-state.service.spec.ts` « restoreMailsToList remet le message même si un autre dossier a un message de même
+  UID ».
+- **Contrôle mécanique** (agents/develop.md, §Q 2b) : une `Map`, un `Set`, un `.has(…)` ou un `.get(…)` ajouté sur
+  `.uid` seul est relevé, et réécrit avec `mailKeyString`.
+- **Piège de test** : dans `mail-list.component.spec.ts`, l'état est un double dont `pagedUids()` rend `[]`. L'analyse
+  y filtre tout, et un test de fusion passe sans rien fusionner. Un test de fusion donne d'abord au double les UID de
+  la page.
 - **Origine** : task-462 (/develop, banc e2e weda2 ; revue anticipée, passage 1)
 - **Occurrences** : 2 (task-462, revue anticipée — la liste mobile suivait encore ses lignes et la ligne ouverte par
   `mail.uid` ; et la relecture après une relance n'appliquait pas le rappel relu à la ligne, ni sur mobile ni sur weda2.
   La consigne avait été écrite pour weda2 seul, le jour même : un défaut trouvé dans un client se cherche aussitôt dans
   l'autre)
+  — puis 3 (2026-11-21, correction directe demandée par l'humain : l'annulation de task-462 avait retiré les
+  correctifs de weda2. « Pour moi » (task-457) remplaçait Patients/1 par INBOX/1 quand une analyse d'INBOX finissait
+  après le passage à « Pour moi », et « Annuler » une suppression ne remettait pas INBOX/7 si Patients/7 était listé.
+  Un correctif retiré avec une task annulée laisse revenir le défaut : il faut le relever avant l'annulation)
 
 ### abonnement-resilie-a-la-desactivation — Un abonnement lancé à chaque activation est résilié à chaque désactivation
 - **Règle** : convention projet (défaut invisible au lint et aux tests de rendu)

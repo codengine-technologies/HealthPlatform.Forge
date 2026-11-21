@@ -259,6 +259,9 @@ whole cycle, and it doubles as the repo's final verification (Step 6).
    # souscrite une fois à l'initialisation avec takeUntilDestroyed, ou gardée et résiliée à la désactivation.
    # client-angular est en code seul : lire `git diff` de l'arbre de travail et les fichiers non suivis.
    git diff origin/develop...HEAD -- '*.ts' ':!*.spec.ts' | grep -nE '^\+.*(interval|timer)\('
+   # TS — une clé de message sur l'UID seul (liste-multi-dossiers-cle-dossier-uid, 3 occurrences) : réécrire avec
+   # mailKeyString (weda2) ou isSameMail / mailKey (mobile).
+   git diff origin/develop...HEAD -- '*.ts' ':!*.spec.ts' | grep -nE '^\+.*((Map|Set)\(.*\.uid\b|\.(has|get)\(\w+\.uid\))'
    # TS / HTML / SCSS — mixed line endings : LF lines inserted into a CRLF file (task-459 : 91 lines
    # appended to functional.e2e.ts, 160 to two specs ; prettier « Insert ␍ », seen only by /lint-angular).
    # client-angular is code-only : list its files with `git diff --name-only` + untracked instead.
