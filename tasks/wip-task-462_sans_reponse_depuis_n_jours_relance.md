@@ -557,6 +557,21 @@ cette lecture. Le code de task-462 a déplacé ce minutage : « À traiter » ch
 - La dette déjà présente est relevée : 1 occurrence côté mobile, 13 côté Angular. Une task de résorption est à ouvrir
   par l'humain.
 
+### Reprise 6 après /review (passage 6)
+
+| Constat | Correctif | Preuve |
+|---|---|---|
+| P1 : le rechargement en vue Conversation (reprise 5) n'a pas de parcours e2e qui l'affirme, et il est hors du périmètre de la task | retiré de task-462, avec ses deux tests de composant : `inbox.page.ts` et sa spec reviennent à `82fc95e`. La correction d'E2E-CONV-003 (attendre la puce) reste | Au banc, sans ce rechargement (mutation de la reprise 5), E2E-CONV-003 est vert 2 fois sur 2 avec l'attente : le parcours ne dépend pas du correctif retiré |
+| Suggestion : commentaire du test | la consigne citée est `attendre-le-rendu-apres-la-reponse` | — |
+
+- **Builds / tests mobile** : lint « All files pass », build OK, 1 705 tests verts (les 2 tests retirés en moins). Vert
+  `client-mobile` marqué à `e91d3ed`.
+- **À ouvrir par l'humain** (rapport de fin de cycle) : une task « vue Conversation, regrouper les messages neufs sans
+  rechargement ». Passer en vue Conversation ne recharge pas les compteurs de fils d'une liste chargée en vue Liste :
+  deux messages neufs restent séparés jusqu'au rechargement suivant. Le défaut est présent sur `develop`, vu au banc le
+  2026-11-21. Il faut un scénario e2e qui l'affirme, et le correctif de la reprise 5 (`8af48c7`) en est le point de
+  départ.
+
 ## Sonar log
 
 Projet `healthplatform-api-mail` (SonarQube 9.9.8), branche `feat/task-462-sans-reponse-depuis-n-jours-relance`.
@@ -1010,12 +1025,12 @@ Aucun.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 2 min 17 s | — | — | — | — |
-| /develop | ok | 12 min 09 s | 19 (3 min 02 s) | 18 (1 h 02 min) | — | dtos-mss 1B/0T, api-mail 12B/9T, client-mobile 4B/6T, client-angular 2B/3T, reprise 5 (E2E-CONV-003) |
+| /develop | ok | 53 s | 20 (3 min 09 s) | 19 (1 h 03 min) | — | dtos-mss 1B/0T, api-mail 12B/9T, client-mobile 5B/7T, client-angular 2B/3T, reprise 6 |
 | /review-code | changes | 31 s | — | — | — | passage 6, reprise 6 |
 | /sonar | ok | 24 min 41 s | 2 (1 min 31 s) | 10 (17 min 52 s) | 4 (1 min 33 s) | 2 itération(s), api-mail 2B/10T |
 | /lint-angular | ok | 1 min 37 s | — | — | — | 0 error, rien à corriger |
 | /lint-mobile | ok | 47 s | — | — | — | all files pass |
 | /e2e | failed | 1 h 31 min | — | — | — | e2e ×1 (15 min 15 s), E2E-CONV-003 rouge, corrigé par la reprise 5 |
-| **Total cycle** | | **2 h 14 min** | **21 (4 min 33 s)** | **28 (1 h 20 min)** | **4 (1 min 33 s)** | |
+| **Total cycle** | | **2 h 02 min** | **22 (4 min 41 s)** | **29 (1 h 21 min)** | **4 (1 min 33 s)** | |
 
 Autres commandes mesurées : lint ×2 (1 min 24 s), nuget-wait ×1 (29 s), restore ×1 (3.6 s)
