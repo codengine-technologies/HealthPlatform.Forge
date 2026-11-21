@@ -86,8 +86,15 @@
   l'assertion qui porte le comportement : on lit la capture avant de croire un rouge de prémisse.
 - **Preuve** : E2E-SEARCH-015, rouge trois fois sur « la recherche trouve le message » avec le message à l'écran ;
   vert sur la prémisse dès l'attente du rendu, puis rouge sur l'assertion du surlignage (code d'avant).
-- **Origine** : task-485
-- **Occurrences** : 1
+  task-462 : E2E-CONV-003 (mobile), même forme. Le poll recharge la page, passe en vue Conversation, puis lit aussitôt
+  `isVisible()` sur la puce du fil. Il ne passait que si la liste arrivait avant la lecture : vert sur `develop`, rouge
+  4 fois sur 4 dès que task-462 a déplacé ce minutage, et vert 3 fois sur 3 avec `waitFor`.
+- **Contrôle mécanique** (depuis task-462) : `grep -nE "return .*\.isVisible\(\)" e2e/specs/*.ts` et
+  `grep -nE "return .*\.isVisible\(\)" e2e/mss-e2e/specs/*.ts` ne doivent rien rendre dans un `expect.poll`.
+  Dette relevée le 2026-11-21 : 1 occurrence(s) côté mobile et 13 côté Angular. Toutes ne suivent pas un
+  rechargement : chacune se lit avant de corriger. Une task de résorption est à ouvrir par l'humain.
+- **Origine** : task-485, task-462
+- **Occurrences** : 2
 
 ### relais-non-demarre-build-concurrent — Un envoi « jamais reçu » peut être un relais qui n'a pas démarré
 - **Piège** : l'AppHost e2e lance trois ressources depuis le même projet d'outillage (`e2e-relay`, `e2e-fake-ai`,

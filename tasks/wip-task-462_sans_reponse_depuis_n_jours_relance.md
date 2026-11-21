@@ -1,7 +1,8 @@
 # todo-task-462.md — Sans réponse depuis N jours : relance
 
 **Repos**: api-mail, dtos-mss, client-angular, client-mobile
-**Reprises**: 4
+**Reprises**: 5
+**Limites de reprise**: levées — décision humaine du 2026-11-21 (« il faut poursuivre, on dépasse les limites »), après le parcours E2E-CONV-003 rouge à `/e2e`. Le plafond de 5 reprises et l'arrêt sur récidive ne s'appliquent plus à cette task ; HAG inchangé.
 **Dependencies**: done-task-454 (vue « À traiter »), done-task-459 (détection des réponses, rapports exclus)
 **Epic**: E024
 **Priorité**: EPIC E024, demandée par l'humain le 2026-11-11. Douleur n° 5 (2/5). Une demande d'avis restée sans
@@ -507,6 +508,55 @@ la constante (FluentMigrator, sans instantané de modèle).
 - `agents/develop.md`, mode reprise, point 3 : un test exigé par la revue n'est jamais déclassé en « limite assumée »
   sans décision humaine.
 
+### Reprise 5 après /e2e (parcours E2E-CONV-003 rouge) — limites levées par l'humain le 2026-11-21
+
+Périmètre : client-mobile. api-mail et weda2 sont inchangés.
+
+**Constat de `/e2e`.** Voie mobile : 76 tests verts, 1 rouge, parité verte. Le rouge est E2E-CONV-003 (« en mode
+Conversation, un fil engagé s'ouvre en vue chat ») : « les deux messages forment un fil », délai de 90 s dépassé, rouge
+aussi au second essai.
+
+**Diagnostic** : scénario rejoué seul (`--serve-only` puis `--grep`), en croisant les deux dépôts.
+
+| api-mail | client-mobile | Résultat |
+|---|---|---|
+| task-462 | task-462 | rouge (voie, puis 2 sur 2) |
+| task-462 | `develop` | rouge |
+| task-462 sans `6bd1a610` (correctif « boîte de Virginie ») | task-462 | rouge (2 sur 2) |
+| `develop` | task-462 | rouge (3 sur 3) |
+| `develop` | `develop` | vert (3 sur 3) |
+
+Lecture de ces croisements :
+- Le correctif `6bd1a610` est hors de cause.
+- La clé de ligne (dossier, UID) est hors de cause : toujours rouge avec `track mail.uid`.
+- `inbox.page.ts` seul est hors de cause : rouge 4 fois sur 5 avec la version de `develop`.
+
+**Cause : un test qui lisait l'instant.** À chaque tour, le poll du test rechargeait la page, passait en vue
+Conversation, puis lisait aussitôt `isVisible()` sur la puce du fil. Il ne passait que si la liste arrivait avant
+cette lecture. Le code de task-462 a déplacé ce minutage : « À traiter » charge aussi les rappels revenus.
+
+**Corrections** (`client-mobile` `8af48c7`) :
+
+| Constat | Correctif | Test | Preuve |
+|---|---|---|---|
+| E2E-CONV-003 lisait la puce sans l'attendre | le poll attend la puce (`waitFor`, 15 s). Le scénario ne change pas, sa version au catalogue non plus | E2E-CONV-003 | rouge 4 fois sur 4 sans l'attente, vert 3 fois sur 3 avec |
+| Défaut vu pendant le diagnostic, déjà présent sur `develop` : passer en vue Conversation ne recharge pas les compteurs de fils d'une liste chargée en vue Liste. Deux messages neufs restent séparés jusqu'au rechargement suivant | `onViewModeChange` recharge le dossier en passant en vue Conversation. Une vue servie par pages (« À traiter », tags) reste à plat | `switching to the conversation view reloads the list with its thread counts`, `switching back to the list view does not reload the list` | mutation (rechargement retiré) : le premier test est rouge. Constaté au banc : une ligne et sa puce après le passage, contre deux lignes sans puce sur le code d'avant |
+
+- **Le second correctif est hors du périmètre de la task.** Il n'est pas nécessaire au vert d'E2E-CONV-003, qui passe
+  aussi sans lui une fois l'attente en place. Il est gardé parce qu'il corrige un défaut visible du médecin, et il est
+  signalé dans la PR (arbitrage au merge).
+- **Builds / tests mobile** : lint « All files pass », build OK, 1 707 tests verts. Vert `client-mobile` marqué à
+  `8af48c7`.
+- **Restauration** : les sources d'api-mail et de client-mobile sont revenues exactement à leurs commits. Les fichiers
+  de diagnostic temporaires (`e2e/specs/zz-debug-462.spec.ts`, `e2e/zz-debug-462.config.ts`) sont supprimés, et le
+  backend e2e est démonté.
+
+**Prévention (règle d'or)** : dans `conventions/e2e.md`, l'entrée `attendre-le-rendu-apres-la-reponse` passe à
+2 occurrences.
+- Elle reçoit un contrôle mécanique : `return ….isVisible()` dans un `expect.poll`.
+- La dette déjà présente est relevée : 1 occurrence côté mobile, 13 côté Angular. Une task de résorption est à ouvrir
+  par l'humain.
+
 ## Sonar log
 
 Projet `healthplatform-api-mail` (SonarQube 9.9.8), branche `feat/task-462-sans-reponse-depuis-n-jours-relance`.
@@ -924,11 +974,12 @@ Aucun.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 2 min 17 s | — | — | — | — |
-| /develop | ok | 19 min 18 s | 18 (2 min 54 s) | 16 (1 h 02 min) | — | dtos-mss 1B/0T, api-mail 12B/9T, client-mobile 3B/4T, client-angular 2B/3T, reprise 4 |
+| /develop | ok | 12 min 09 s | 19 (3 min 02 s) | 18 (1 h 02 min) | — | dtos-mss 1B/0T, api-mail 12B/9T, client-mobile 4B/6T, client-angular 2B/3T, reprise 5 (E2E-CONV-003) |
 | /review-code | ok | 17 h 44 min | — | — | — | passage 5, revue par la forge (décision humaine) |
 | /sonar | ok | 24 min 41 s | 2 (1 min 31 s) | 10 (17 min 52 s) | 4 (1 min 33 s) | 2 itération(s), api-mail 2B/10T |
 | /lint-angular | ok | 1 min 37 s | — | — | — | 0 error, rien à corriger |
 | /lint-mobile | ok | 47 s | — | — | — | all files pass |
-| **Total cycle** | | **18 h 33 min** | **20 (4 min 26 s)** | **26 (1 h 20 min)** | **4 (1 min 33 s)** | |
+| /e2e | failed | 1 h 31 min | — | — | — | e2e ×1 (15 min 15 s), E2E-CONV-003 rouge, corrigé par la reprise 5 |
+| **Total cycle** | | **19 h 57 min** | **21 (4 min 33 s)** | **28 (1 h 20 min)** | **4 (1 min 33 s)** | |
 
 Autres commandes mesurées : lint ×2 (1 min 24 s), nuget-wait ×1 (29 s), restore ×1 (3.6 s)

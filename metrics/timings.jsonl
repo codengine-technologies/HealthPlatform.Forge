@@ -10964,3 +10964,11 @@
 {"ts":"2026-11-21T17:54:40+01:00","run_id":"-","type":"step_start","task":"task-462","step":"lint-mobile"}
 {"ts":"2026-11-21T17:55:14+01:00","run_id":"-","type":"cmd","task":"task-462","step":"lint-mobile","repo":"client-mobile","kind":"lint","label":"","cwd":"Client/Mobile","cmd":"npm run lint","duration_ms":33052,"exit_code":0}
 {"ts":"2026-11-21T17:55:27+01:00","run_id":"-","type":"step","task":"task-462","step":"lint-mobile","status":"ok","note":"all files pass","iterations":0,"duration_ms":47356}
+{"ts":"2026-11-21T17:55:42+01:00","run_id":"-","type":"step_start","task":"task-462","step":"e2e"}
+{"ts":"2026-11-21T18:11:03+01:00","run_id":"-","type":"cmd","task":"task-462","step":"e2e","repo":"client-mobile","kind":"e2e","label":"mobile","cwd":"Client/Mobile","cmd":"npm run e2e:headless","duration_ms":915478,"exit_code":1}
+{"ts":"2026-11-21T19:15:29+01:00","run_id":"-","type":"step_start","task":"task-462","step":"develop"}
+{"ts":"2026-11-21T19:15:46+01:00","run_id":"-","type":"cmd","task":"task-462","step":"develop","repo":"client-mobile","kind":"test","label":"","cwd":"Client/Mobile","cmd":"npx ng test --watch=false --browsers=ChromeHeadless --include src/app/inbox/inbox.page.spec.ts","duration_ms":15305,"exit_code":1}
+{"ts":"2026-11-21T19:26:13+01:00","run_id":"-","type":"cmd","task":"task-462","step":"develop","repo":"client-mobile","kind":"build","label":"","cwd":"Client/Mobile","cmd":"npm run build","duration_ms":7580,"exit_code":0}
+{"ts":"2026-11-21T19:26:37+01:00","run_id":"-","type":"cmd","task":"task-462","step":"develop","repo":"client-mobile","kind":"test","label":"","cwd":"Client/Mobile","cmd":"npm test -- --watch=false --browsers=ChromeHeadless","duration_ms":23118,"exit_code":0}
+{"ts":"2026-11-21T19:27:38+01:00","run_id":"-","type":"step","task":"task-462","step":"develop","status":"ok","note":"reprise 5 (E2E-CONV-003)","iterations":null,"duration_ms":729112}
+{"ts":"2026-11-21T19:27:40+01:00","run_id":"-","type":"step","task":"task-462","step":"e2e","status":"failed","note":"E2E-CONV-003 rouge, corrigé par la reprise 5","iterations":null,"duration_ms":5517722}
