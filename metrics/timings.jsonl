@@ -10993,3 +10993,5 @@
 {"ts":"2026-11-21T19:56:32+01:00","run_id":"-","type":"step","task":"task-462","step":"e2e","status":"ok","note":"mobile 77/77, angular 99/99, porte verte","iterations":null,"duration_ms":1583088}
 {"ts":"2026-11-21T19:57:00+01:00","run_id":"-","type":"step_start","task":"task-462","step":"review"}
 {"ts":"2026-11-21T19:58:40+01:00","run_id":"-","type":"step","task":"task-462","step":"review","status":"ok","note":"PR #72 #378 #132","iterations":null,"duration_ms":99543}
+{"ts":"2026-11-21T19:58:47+01:00","run_id":"-","type":"step_start","task":"task-462","step":"tech-writer"}
+{"ts":"2026-11-21T20:00:36+01:00","run_id":"-","type":"step","task":"task-462","step":"tech-writer","status":"ok","note":"E024 v0.9","iterations":null,"duration_ms":109179}

@@ -1219,6 +1219,7 @@ Merger ensemble (règle 11), dans cet ordre, après le test manuel (HAG, règle 
 | /lint-mobile | skipped | 3.4 s | — | — | — | lint joué par la reprise 6 sur e91d3ed : all files pass |
 | /e2e | ok | 26 min 23 s | — | — | — | e2e ×4 (40 min 59 s), mobile 77/77, angular 99/99, porte verte |
 | /review | ok | 1 min 39 s | — | — | — | PR #72 #378 #132 |
-| **Total cycle** | | **31 min 23 s** | **22 (4 min 41 s)** | **29 (1 h 21 min)** | **4 (1 min 33 s)** | |
+| /tech-writer | ok | 1 min 49 s | — | — | — | E024 v0.9 |
+| **Total cycle** | | **33 min 12 s** | **22 (4 min 41 s)** | **29 (1 h 21 min)** | **4 (1 min 33 s)** | |
 
 Autres commandes mesurées : lint ×2 (1 min 24 s), nuget-wait ×1 (29 s), restore ×1 (3.6 s)
