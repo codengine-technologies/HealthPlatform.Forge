@@ -106,3 +106,6 @@ où une actualisation automatique a lieu.
 - **Référentiels métier** : aucun
 - **Hébergement HDS** : non — aucune donnée de santé nouvelle, rien ne quitte le navigateur
 - **AIPD / impact RGPD** : inchangé — aucun traitement nouveau
+
+## Branches
+- `client-angular` (code-only) : la forge écrit le code sur la branche extraite dans `Client/Angular/` (au /start : `feature/nova-mss-weda-integration`, arbre propre) — humain gère branche, commit, push, PR TFS
