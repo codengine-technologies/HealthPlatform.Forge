@@ -122,7 +122,8 @@ où une actualisation automatique a lieu.
 | /lint-angular | ok | 23 s | — | — | — | — |
 | /lint-mobile | skipped | 0.8 s | — | — | — | client-mobile non touché |
 | /e2e | ok | 13 min 43 s | — | — | — | e2e ×3 (26 min 10 s) |
-| **Total cycle** | | **30 min 47 s** | **1 (19 s)** | **2 (1 min 03 s)** | **0 (0.0 s)** | |
+| /review | ok | 11 s | — | — | — | — |
+| **Total cycle** | | **30 min 59 s** | **1 (19 s)** | **2 (1 min 03 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×1 (13 s)
 
