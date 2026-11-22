@@ -135,3 +135,9 @@ gauche de weda2 ne porte plus d'entrée « Pour moi », qui doublait la puce.
 - **Référentiels métier** : aucun.
 - **Hébergement HDS** : inchangé — aucune donnée nouvelle stockée ; les compteurs viennent du serveur existant.
 - **AIPD / impact RGPD** : inchangée — aucun traitement nouveau.
+
+## Branches
+- `api-mail` (pushed) : feat/task-492-pour-moi-et-a-traiter-la-puce-porte-son — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-492-pour-moi-et-a-traiter-la-puce-porte-son (catalogue e2e seulement)
+- `client-mobile` (pushed) : feat/task-492-pour-moi-et-a-traiter-la-puce-porte-son — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-492-pour-moi-et-a-traiter-la-puce-porte-son
+- `client-angular` (code-only) : la forge écrit sur la branche extraite dans `Client/Angular/` (au /start : `feature/nova-mss-weda-integration`) — humain gère branche, commit, push, PR TFS.
+  ⚠️ L'arbre de travail porte déjà des changements non commités de task-491 (jauge) et du correctif « Pour moi » du 2026-11-22 (`mail-list.component.ts`, `mail-state.service.ts`, …) : les changements de task-492 s'y ajoutent, à séparer au commit TFS.
