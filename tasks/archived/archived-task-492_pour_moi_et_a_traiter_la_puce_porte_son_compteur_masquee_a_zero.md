@@ -443,3 +443,12 @@ en absolu), visibles entre « Supprimer » et « Lu / non lu ». Elles s'effacen
 
 **weda2 — fichiers à commiter sur TFS (en plus des retouches ci-dessus)** : `mail-header.component.scss` (initiales),
 `e2e/mss-e2e/specs/functional.e2e.ts` et `e2e/mss-e2e/support/e2e-backend.ts` (E2E-TAG-004, `markHandled`).
+
+## Merged
+
+- **Date** : 2026-11-22, `/merge task-492 --i-tested` (HAG : US testée par l'humain).
+- `api-mail` : PR #379 squash-mergée → `e7b7c8e0` — CI develop verte (https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/45059512384).
+- `client-mobile` : PR #133 squash-mergée → `184a9cb3` — CI develop verte (https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/45059527349).
+- Branches `feat/task-492-pour-moi-et-a-traiter-la-puce-porte-son` supprimées (distantes et locales), label `awaiting-human-merge` retiré.
+- `client-angular` : géré à la main par l'humain (TFS).
+- Staging : aucune branche (task hors run `/forge`).
