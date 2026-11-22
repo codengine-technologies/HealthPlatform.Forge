@@ -149,7 +149,8 @@ gauche de weda2 ne porte plus d'entrée « Pour moi », qui doublait la puce.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 26 s | — | — | — | — |
-| **Total cycle** | | **26 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 33 min 46 s | 3 (47 s) | 5 (9 min 41 s) | — | client-angular 1B/3T, api-mail 1B/1T, client-mobile 1B/1T |
+| **Total cycle** | | **34 min 12 s** | **3 (47 s)** | **5 (9 min 41 s)** | **0 (0.0 s)** | |
 
 ## Develop log
 
