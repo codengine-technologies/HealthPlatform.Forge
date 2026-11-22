@@ -154,9 +154,10 @@ gauche de weda2 ne porte plus d'entrée « Pour moi », qui doublait la puce.
 | /review-code | ok | 4 min 07 s | — | — | — | — |
 | /sonar | skipped | 1.0 s | — | — | — | aucun fichier analysé par Sonar |
 | /lint-angular | ok | 1 min 10 s | — | — | — | — |
-| **Total cycle** | | **15 min 09 s** | **4 (56 s)** | **7 (10 min 42 s)** | **0 (0.0 s)** | |
+| /lint-mobile | ok | 40 s | — | — | — | — |
+| **Total cycle** | | **15 min 50 s** | **4 (56 s)** | **7 (10 min 42 s)** | **0 (0.0 s)** | |
 
-Autres commandes mesurées : lint ×1 (59 s)
+Autres commandes mesurées : lint ×2 (1 min 32 s)
 
 ## Develop log
 
@@ -244,3 +245,8 @@ Relecteur indépendant, diff de la reprise lu en premier. Rien de cassé par la 
 
 - Base `origin/next`, lint `tag:scope:mss` (nx affected, 13 projets lintés) : **0 erreur**, warnings seulement (JSDoc `@example`, `max-lines`, préexistants). Aucune itération, aucun fichier modifié.
 - Build + tests : arbre inchangé depuis le vert de /develop (reprise 1), marqueur valide — non rejoués.
+
+## Lint mobile log
+
+- `ng lint` : **All files pass linting.** Aucune itération, aucun commit.
+- Build + tests : vert de /develop (reprise 1, `38cdb89`) toujours valide — non rejoués.
