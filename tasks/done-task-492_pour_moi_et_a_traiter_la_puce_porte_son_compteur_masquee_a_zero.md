@@ -412,3 +412,10 @@ Scénarios de la task joués dans les deux voies : E2E-TRIAGE-001 v2, E2E-ASSIGN
   - `front/libs/mss/src/features/mail/services/mail-state.service.ts` (partagé avec task-491 et le correctif « Pour moi »), `mail-state.service.handling.spec.ts`, `mail-event.service.ts`
   - `front/libs/mss/src/features/mail/mss-mail.component.ts` (partagé avec task-491)
   - `front/e2e/mss-e2e/specs/functional.e2e.ts`, `front/e2e/mss-e2e/support/e2e-backend.ts`
+
+## Retouches après la PR (2026-11-22, demandes directes de l'humain en recette)
+
+- **Barre de filtres (weda2)** : variante A du canevas Claude Design (https://claude.ai/artifact/X5kSgwhLzz4yWdnP2ewPfc) — « Tous · Non lus · Lus » libellés, séparateur, « À traiter » / « Pour moi » en icône 24 px avec leur nombre ; recherche repliée derrière une loupe dans l'en-tête (champ affiché tant que des résultats sont à l'écran). Tests de liste et e2e (helper `searchInput`) adaptés.
+- **Tags (weda2)** : plus de case à cocher ; Ctrl+clic (Cmd+clic) combine, les tags combinés sont en surbrillance (fond d'urgence remplacé). E2E-TAG-003 passe par Ctrl+clic.
+- **Défaut de la règle 6, constaté par l'humain** : « Important » + « Biologie » affichait une liste vide. La vue combinée partait sur le filtre retenu « À traiter » (Seq : `?tag=IMPORTANT&tag=BIOLOGIE&filter=to-handle`), sans aucun message à traiter, alors que 18 messages portent les deux tags (base de la boîte). Une combinaison n'avait pas de compteur (règle 6 : inconnu → puce sans chiffre, pas de repli). Correctif, weda2 et mobile (`4e51f3a`) : le total que le serveur rend avec la page « À traiter » d'une combinaison devient le compteur de sa puce ; à 0, la vue repasse sur « Tous » sans toucher au réglage. Tests rouges puis verts (2 par client).
+- Suites : mss-lib 1 939, weda2 2 683 (via PowerShell), mobile 1 704 ; e2e non rejoués (ports de la recette occupés).

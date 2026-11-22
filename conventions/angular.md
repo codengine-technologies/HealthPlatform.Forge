@@ -917,3 +917,18 @@ par lint sur du code frais est un échec de lecture de ce fichier.
 - **Preuve** : `mail-list.chip-counters.spec.ts`, « les filtres … sont des icônes » : la taille `md` y est vérifiée.
 - **Origine** : filtres en icônes de la liste (2026-11-22, demande directe de l'humain)
 - **Occurrences** : 1
+
+### filtre-retenu-jamais-sur-une-vue-vide-muette — Un filtre retenu ne mène jamais à une liste vide sans repli
+- **Règle** : convention projet (défaut fonctionnel, invisible au lint)
+- **Repos** : les deux
+- **Piège** : task-492 ramenait une vue sur « Tous » quand sa puce « À traiter » comptait 0, mais laissait sans repli
+  une vue dont le compteur était « inconnu » (combinaison de tags). L'humain a combiné « Important » + « Biologie » :
+  la vue est partie sur le filtre retenu « À traiter », sans aucun message à traiter, et a affiché une liste vide alors
+  que 18 messages portaient les deux tags.
+- **Consigne** : quand un filtre est réappliqué d'un réglage ou d'une session précédente, son nombre doit être connu
+  avant de décider ; s'il n'est pas dans la liste des dossiers, le total que le serveur rend avec la page filtrée en
+  tient lieu. « Inconnu » ne vaut jamais « on garde le filtre ».
+- **Preuve** : `mail-list.chip-counters.spec.ts` (weda2) et `inbox.page.chip-counters.spec.ts` (mobile), « combinaison
+  sur « À traiter » … rien à traiter » : rouges sur le code de task-492, verts après.
+- **Origine** : retouche de task-492 (2026-11-22, constat de l'humain en recette)
+- **Occurrences** : 1
