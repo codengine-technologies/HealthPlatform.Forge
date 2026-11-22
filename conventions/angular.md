@@ -904,3 +904,16 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   sous-dossier » : rouges sur le code revu, verts avec `findFolderByPath`.
 - **Origine** : task-492 (/review --code, B1)
 - **Occurrences** : 1
+
+### icone-a-sa-taille-native — Une icône s'affiche à la taille de sa grille, sinon elle est floue
+- **Règle** : convention projet (défaut visuel, invisible au lint et aux tests)
+- **Repos** : client-angular
+- **Piège** : les SVG de weda2 (`apps/weda2/src/assets/icons/lib/…`) sont dessinés sur une grille de 24 px, traits de
+  2 px calés sur le pixel. Les filtres de la liste (2026-11-22) les affichaient en `ds-icon size="sm"` (20 px) : réduction
+  à 83 %, traits de 1,67 px, bords entre deux pixels, rendu flou. Constaté par l'humain sur capture.
+- **Consigne** : `ds-icon` en `size="md"` (24 px) ou `xl` (48 px), les seules tailles entières de la grille. Pour une
+  rangée compacte, réduire la marge du conteneur, pas l'icône. `xs` (16) et `sm` (20) ne valent que pour une icône
+  dessinée sur cette grille-là.
+- **Preuve** : `mail-list.chip-counters.spec.ts`, « les filtres … sont des icônes » : la taille `md` y est vérifiée.
+- **Origine** : filtres en icônes de la liste (2026-11-22, demande directe de l'humain)
+- **Occurrences** : 1
