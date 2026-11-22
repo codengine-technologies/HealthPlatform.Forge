@@ -1,6 +1,7 @@
 # todo-task-492.md — « Pour moi » et « À traiter » : la puce porte son compteur, masquée à zéro
 
 **Repos**: client-angular, client-mobile, api-mail
+**Reprises**: 1
 **Dependencies**: task-454, task-457
 **Epic**: E024
 
@@ -150,7 +151,8 @@ gauche de weda2 ne porte plus d'entrée « Pour moi », qui doublait la puce.
 |---|---|---|---|---|---|---|
 | /start | ok | 26 s | — | — | — | — |
 | /develop | ok | 33 min 46 s | 3 (47 s) | 5 (9 min 41 s) | — | client-angular 1B/3T, api-mail 1B/1T, client-mobile 1B/1T |
-| **Total cycle** | | **34 min 12 s** | **3 (47 s)** | **5 (9 min 41 s)** | **0 (0.0 s)** | |
+| /review-code | changes | 9 min 08 s | — | — | — | reprise 1 |
+| **Total cycle** | | **43 min 21 s** | **3 (47 s)** | **5 (9 min 41 s)** | **0 (0.0 s)** | |
 
 ## Develop log
 
@@ -180,3 +182,29 @@ gauche de weda2 ne porte plus d'entrée « Pour moi », qui doublait la puce.
 - DOD self-check : 13/13 lignes vérifiables par commande ; observations du Manual Test Plan → HAG.
 - Green marked : api-mail, client-mobile, client-angular (`Tools/green/green.py`).
 - Next step : /review task-492 --code
+
+## Code Review Summary
+
+### Passage 1 (revue anticipée) — CHANGES REQUESTED
+
+Relecteur indépendant (sous-agent, code seul). Règle 1b : aucun comportement atteignable par un endpoint ne change (api-mail : catalogue e2e seulement) — sans objet. Contrat (`contract_impact.py check`) :
+- api-mcp : aucun impact
+- client-mobile : aucun impact
+- client-angular : aucun impact
+
+Clause DOD e2e : E2E-TRIAGE-001 v2, E2E-ASSIGN-001 v2, E2E-ASSIGN-003 v1 au catalogue, mêmes versions déclarées par les tests des deux clients.
+
+#### À corriger par la reprise
+
+- **B1 (bloquant)** — la puce « À traiter » d'un **sous-dossier** n'a pas de nombre et n'est jamais masquée : `toHandleChipCount` cherche le dossier affiché au seul premier niveau de `folders()` (weda2 `mail-state.service.ts`, mobile `mail-state.service.ts`), alors que le serveur rend un arbre (`folder.folders`) et compte chaque nœud. Patients/Dupont à 0 → puce affichée sans chiffre ; à 3 → menu 3, puce sans chiffre ; la règle 8 ne s'y applique pas. Correctif : chercher dans l'arbre, dans les deux clients ; specs avec un sous-dossier à 0 et un à 3, vus rouges.
+- **S2 (défaut réel)** — weda2 : la mémoire de la puce active (`countedChipSeen`) vit dans `MailListComponent`, démonté quand un message, une rédaction ou l'assistant occupe l'écran (volet de lecture absent). Un compteur relu pendant ce temps (actualisation 30 s, retour de rédaction) fait repasser la liste sur « Tous » alors que le praticien n'a pas quitté la puce. Correctif : la mémoire dans `MailStateService` (conventions/angular.md « service-propre-au-composant »), spec qui démonte et remonte la liste.
+- **S1 (défaut réel)** — mobile : la clé de vue de la puce n'inclut pas la boîte ; après un changement de boîte (filtre conservé), une boîte sans message à traiter garde la puce à 0 au lieu de repasser sur « Tous » (règle 8). Correctif : la génération de la session de boîte dans la clé (ou mémoire effacée au changement), spec.
+- **S3 (défaut réel, e2e)** — `settleForMe` ne solde que les attributions de l'INBOX (`forMeUids` filtre INBOX, `markHandledAs` code `folders/INBOX`) alors que `forMeCount` compte toute la boîte : une attribution restée dans un autre dossier fait échouer E2E-ASSIGN-003 à chaque run. Correctif : parcourir les clés (dossier, UID) de « Pour moi », `markHandledAs` avec le dossier, dans les deux suites.
+- **S4 (tests mobile)** — combler les cas présents côté weda2 : le réglage « À traiter » réappliqué au tag suivant qui a des messages à traiter après un repli (par `onTagToggled`), la puce de vue par tag active qui reste à 0, « À traiter » qui disparaît au changement de filtre.
+
+#### Arbitrage humain
+
+Aucun.
+
+Vérifié sans constat : aucun reste des membres retirés (`forMeRequested$`, `openForMe`, `forMeCount()`, `folder-for-me`, `inbox-for-me-count`) ; chaque clic e2e sur une puce se fait après qu'elle a un compteur non nul ; les absences sont lues après chargement ; effets sans boucle, chargement précédent abandonné ; aucun repli n'enregistre le réglage ; jetons SCSS existants avec repli ; `data-testid` sur chaque compteur.
+
