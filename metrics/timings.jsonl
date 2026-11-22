@@ -11035,3 +11035,5 @@
 {"ts":"2026-11-22T11:22:11+01:00","run_id":"-","type":"cmd","task":"task-492","step":"develop","repo":"client-mobile","kind":"build","label":"","cwd":"Client/Mobile","cmd":"npm run build","duration_ms":8726,"exit_code":0}
 {"ts":"2026-11-22T11:22:31+01:00","run_id":"-","type":"cmd","task":"task-492","step":"develop","repo":"client-mobile","kind":"test","label":"","cwd":"Client/Mobile","cmd":"npm test -- --watch=false --browsers=ChromeHeadless","duration_ms":19158,"exit_code":0}
 {"ts":"2026-11-22T11:23:32+01:00","run_id":"-","type":"step","task":"task-492","step":"develop","status":"ok","note":"reprise 1","iterations":null,"duration_ms":564100}
+{"ts":"2026-11-22T11:23:40+01:00","run_id":"-","type":"step_start","task":"task-492","step":"review-code"}
+{"ts":"2026-11-22T11:27:48+01:00","run_id":"-","type":"step","task":"task-492","step":"review-code","status":"ok","note":"","iterations":null,"duration_ms":247929}

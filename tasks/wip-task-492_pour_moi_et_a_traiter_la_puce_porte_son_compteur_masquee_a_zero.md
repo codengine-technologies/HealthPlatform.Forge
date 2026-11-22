@@ -151,8 +151,8 @@ gauche de weda2 ne porte plus d'entrée « Pour moi », qui doublait la puce.
 |---|---|---|---|---|---|---|
 | /start | ok | 26 s | — | — | — | — |
 | /develop | ok | 9 min 24 s | 4 (56 s) | 7 (10 min 42 s) | — | client-angular 1B/4T, api-mail 1B/1T, client-mobile 2B/2T, reprise 1 |
-| /review-code | changes | 9 min 08 s | — | — | — | reprise 1 |
-| **Total cycle** | | **18 min 59 s** | **4 (56 s)** | **7 (10 min 42 s)** | **0 (0.0 s)** | |
+| /review-code | ok | 4 min 07 s | — | — | — | — |
+| **Total cycle** | | **13 min 58 s** | **4 (56 s)** | **7 (10 min 42 s)** | **0 (0.0 s)** | |
 
 ## Develop log
 
@@ -220,3 +220,14 @@ Vérifié sans constat : aucun reste des membres retirés (`forMeRequested$`, `o
 - Suites : mss-lib 178 fichiers / 1 927 tests ; weda2 build OK, 2 683 tests ; mobile `ng lint` propre, build OK, 1 702 tests. ESLint weda2 0 erreur.
 - Prévention : `conventions/angular.md` — nouvelle entrée `dossier-cherche-dans-l-arbre` (deux autres sites de même forme relevés, hors task) ; `service-propre-au-composant` passe à 2 occurrences. `agents/develop.md` §Q 2b : contrôle mécanique ajouté, vérifié (attrape le code d'origine, rien après la reprise).
 - Green marked : client-mobile, client-angular ; api-mail inchangé (vert de /develop valide).
+
+### Passage 2 (revue anticipée) — APPROVED
+
+Relecteur indépendant, diff de la reprise lu en premier. Rien de cassé par la reprise : `markHandledAs` n'a qu'un appelant par suite (`settleForMe`), passé à la clé ; `countedChipSeen` vit dans le `MailStateService` fourni par l'écran mail, recréé au changement de boîte (aucune fuite) ; la génération dans la clé mobile suit l'ordre réel purge → génération. B1, S1, S2, S3, S4 corrigés. Contrat : api-mcp, client-mobile, client-angular — aucun impact.
+
+- approved at : api-mail `73bcb503` ; client-mobile `38cdb89` ; client-angular arbre de travail (empreinte du vert marqué par /develop, reprise 1).
+
+#### Suggestions (non bloquantes)
+
+- **S-a** — `forMeKeys` ne lit que la première page de 100 : au-delà de 100 attributions ouvertes pour la délégataire dans la boîte partagée de test, `settleForMe` ne solderait pas tout (improbable avec le seed actuel).
+- **S-b** — weda2 : la mémoire survivant au démontage de la liste, rechoisir le même dossier dans le menu pendant qu'un message est ouvert garde une puce active à 0. Conforme à la règle 5 (le praticien n'a pas quitté la puce).
