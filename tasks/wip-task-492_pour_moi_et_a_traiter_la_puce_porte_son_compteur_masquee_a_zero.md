@@ -141,3 +141,41 @@ gauche de weda2 ne porte plus d'entrée « Pour moi », qui doublait la puce.
 - `client-mobile` (pushed) : feat/task-492-pour-moi-et-a-traiter-la-puce-porte-son — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-492-pour-moi-et-a-traiter-la-puce-porte-son
 - `client-angular` (code-only) : la forge écrit sur la branche extraite dans `Client/Angular/` (au /start : `feature/nova-mss-weda-integration`) — humain gère branche, commit, push, PR TFS.
   ⚠️ L'arbre de travail porte déjà des changements non commités de task-491 (jauge) et du correctif « Pour moi » du 2026-11-22 (`mail-list.component.ts`, `mail-state.service.ts`, …) : les changements de task-492 s'y ajoutent, à séparer au commit TFS.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-492 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 26 s | — | — | — | — |
+| **Total cycle** | | **26 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+
+## Develop log
+
+- Repos touched : client-angular (code seul, non commité), client-mobile, api-mail (catalogue e2e seulement).
+- DTOs published : no DTO change. Interop published : no interop change. `contract_impact.py` : aucun code d'api-mail ni de dtos-mss modifié.
+- Commits :
+  - api-mail : 73bcb503 test(e2e): E2E-TRIAGE-001 et E2E-ASSIGN-001 en v2, E2E-ASSIGN-003
+  - client-mobile : d8609e3 feat(mobile): « À traiter » et « Pour moi » : la puce porte son compteur, masquée à zéro
+- **client-angular — fichiers à commiter sur TFS** (branche `feature/nova-mss-weda-integration`, non commités) :
+  - `mail-list/mail-list.component.ts|html|scss` : compteur sur les puces « À traiter » (dossier et vue par tag) et « Pour moi », puce masquée à 0 sauf active, retour sur « Tous » quand le compteur d'arrivée est nul ; `data-testid` sur Tous / Non lus / Lus.
+  - `services/mail-state.service.ts` : `toHandleChipCount`, `forMeChipCount` (remplace `forMeCount`), repli de la vue par tag sur « Tous » sans toucher au réglage. ⚠️ Ce fichier porte aussi les changements non commités de task-491 et du correctif « Pour moi » du 2026-11-22.
+  - `mail-folder-list/mail-folder-list.component.ts|html|scss` : entrée « Pour moi » retirée du menu de gauche, avec ses styles.
+  - `services/mail-event.service.ts`, `mss-mail.component.ts` : `forMeRequested$` et `openForMe()` retirés (plus aucun émetteur).
+  - `mail-list/mail-list.chip-counters.spec.ts` (nouveau), `mail-folder-list/mail-folder-list.for-me.spec.ts` (réécrit), `services/mail-state.service.handling.spec.ts` (`forMeChipCount`).
+  - `e2e/mss-e2e/specs/functional.e2e.ts`, `e2e/mss-e2e/support/e2e-backend.ts` : E2E-TRIAGE-001 v2, E2E-ASSIGN-001 v2, E2E-ASSIGN-003 v1 (**à commiter sur TFS avant le merge de la PR api-mail**, conventions/e2e.md « test-angular-non-commite »).
+- Local build / test :
+  - api-mail : build 0 erreur ; 8 222 tests verts (dont `ScenarioCatalogTests`), 0 FATAL.
+  - client-mobile : `ng lint` propre ; build OK ; 1 693 tests verts.
+  - client-angular : `nx build weda2` OK ; mss-lib 177 fichiers / 1 921 tests ; weda2 107 fichiers / 2 683 tests ; ESLint 0 erreur sur les fichiers touchés (warnings préexistants) ; `tsc` de la suite e2e propre.
+- Preuves rouges :
+  - weda2, `mail-list.chip-counters.spec.ts` : 15/19 rouges sur le code d'avant (les 4 verts décrivent le compteur inconnu, déjà vrai). Mutations, chacune rouge sur l'assertion visée : M1 jamais collante (4 tests), M2 aucun retour sur « Tous » (4), M3 « Pour moi » toujours affichée (3), M4 compteur de la boîte pour tout dossier (3), M5 repli qui enregistre le réglage (1), M7/M8/M8b/M9 compteur inconnu lu comme 0 (1 chacun). `mail-folder-list.for-me.spec.ts` : M6 entrée « Pour moi » remise au menu → rouge.
+  - mobile, `inbox.page.chip-counters.spec.ts` : 11/14 rouges sur le code d'avant (stash), les 3 verts sont les cas « compteur inconnu ». Mutations MM1 à MM6 (collante, retour sur « Tous », inconnu lu comme 0 ×3, repli qui enregistre) : rouges sur l'assertion visée.
+  - e2e, bancs `--serve-only` : TRIAGE-001, ASSIGN-001, ASSIGN-002, ASSIGN-003 verts sur les deux clients (4/4 chacun). Mutations servies (bundle relu, marqueur compté) : « Pour moi » toujours affichée → ASSIGN-003 rouge « compteur nul : pas de puce » ; jamais collante → ASSIGN-003 rouge « la puce active reste affichée avec 0 » ; compteur « À traiter » absent → TRIAGE-001 rouge « la puce porte le nombre du serveur ». Mêmes trois rouges sur mobile (ME1-ME3) et weda2 (MW1-MW3). Bancs démontés (ports libres, aucun conteneur e2e).
+- Passe qualité (/simplify) : diff relu (weda2, mobile) — aucun nettoyage retenu : logique de puce identique dans les deux clients (pas de code partagé entre eux), aucune duplication interne. Contrôles mécaniques §Q 2b : aucune minuterie ni clé sur l'UID seul ajoutée ; fins de ligne cohérentes (un `sed -i` a converti `functional.spec.ts` mobile en LF, CRLF rétablis avant le commit).
+  - Skipped (contract/excluded) : dtos-mss, interop-cda, sdk.
+- Choix d'implémentation à relire : la vue par tag ramenée sur « Tous » (règle 8) l'est pour cette combinaison seulement, sans enregistrer le réglage ; une combinaison de plusieurs tags et la vue « Mails du patient » n'ont pas de nombre servi, leur puce s'affiche sans chiffre (règle 6).
+- DOD self-check : 13/13 lignes vérifiables par commande ; observations du Manual Test Plan → HAG.
+- Green marked : api-mail, client-mobile, client-angular (`Tools/green/green.py`).
+- Next step : /review task-492 --code
