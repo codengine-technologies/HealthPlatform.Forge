@@ -152,7 +152,8 @@ gauche de weda2 ne porte plus d'entrée « Pour moi », qui doublait la puce.
 | /start | ok | 26 s | — | — | — | — |
 | /develop | ok | 9 min 24 s | 4 (56 s) | 7 (10 min 42 s) | — | client-angular 1B/4T, api-mail 1B/1T, client-mobile 2B/2T, reprise 1 |
 | /review-code | ok | 4 min 07 s | — | — | — | — |
-| **Total cycle** | | **13 min 58 s** | **4 (56 s)** | **7 (10 min 42 s)** | **0 (0.0 s)** | |
+| /sonar | skipped | 1.0 s | — | — | — | aucun fichier analysé par Sonar |
+| **Total cycle** | | **13 min 59 s** | **4 (56 s)** | **7 (10 min 42 s)** | **0 (0.0 s)** | |
 
 ## Develop log
 
@@ -231,3 +232,7 @@ Relecteur indépendant, diff de la reprise lu en premier. Rien de cassé par la 
 
 - **S-a** — `forMeKeys` ne lit que la première page de 100 : au-delà de 100 attributions ouvertes pour la délégataire dans la boîte partagée de test, `settleForMe` ne solderait pas tout (improbable avec le seed actuel).
 - **S-b** — weda2 : la mémoire survivant au démontage de la liste, rechoisir le même dossier dans le menu pendant qu'un message est ouvert garde une puce active à 0. Conforme à la règle 5 (le praticien n'a pas quitté la puce).
+
+## Sonar log
+
+**Sonar : skipped — aucun fichier analysé par Sonar.** Seul `e2e/scenarios.yml` change dans api-mail (règle du 2026-11-19, task-485). Pas de tableau de KPIs ; la PR api-mail le dit.

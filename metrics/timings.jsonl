@@ -11037,3 +11037,5 @@
 {"ts":"2026-11-22T11:23:32+01:00","run_id":"-","type":"step","task":"task-492","step":"develop","status":"ok","note":"reprise 1","iterations":null,"duration_ms":564100}
 {"ts":"2026-11-22T11:23:40+01:00","run_id":"-","type":"step_start","task":"task-492","step":"review-code"}
 {"ts":"2026-11-22T11:27:48+01:00","run_id":"-","type":"step","task":"task-492","step":"review-code","status":"ok","note":"","iterations":null,"duration_ms":247929}
+{"ts":"2026-11-22T11:28:02+01:00","run_id":"-","type":"step_start","task":"task-492","step":"sonar"}
+{"ts":"2026-11-22T11:28:03+01:00","run_id":"-","type":"step","task":"task-492","step":"sonar","status":"skipped","note":"aucun fichier analysé par Sonar","iterations":null,"duration_ms":1007}
