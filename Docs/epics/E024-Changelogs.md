@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques (ingénierie, backlog, dette)
 > **Vue produit** : [E024-messagerie-premium-traiter-deleguer-bouc.md](E024-messagerie-premium-traiter-deleguer-bouc.md)
-> **Dernière mise à jour** : 2026-11-21
+> **Dernière mise à jour** : 2026-11-22
 
 ---
 
@@ -486,6 +486,47 @@
 - **Rien n'a été mergé** : PRs Dtos #72, Api.Mail #378 et Mobile #132 fermées sans merge, branches supprimées ; l'arbre de weda2 est revenu à son dernier commit. Aucune migration n'a atteint `develop`.
 - **Conservé** : les consignes apprises pendant le cycle (`conventions/csharp.md`, `conventions/e2e.md`, `agents/develop.md`) et le correctif de `Tools/contracts/contract_impact.py`, indépendants du code retiré.
 
+### v0.9 — task-492 : « Pour moi » et « À traiter », la puce porte son compteur (client-mobile, weda2, catalogue api-mail)
+
+- **État** : `done` — PRs en attente du merge humain (HAG).
+- **PRs** : api-mail [#379](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/379) (catalogue
+  e2e seul), client-mobile [#133](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/133).
+  client-angular en code-only, non commité sur `feature/nova-mss-weda-integration` (mêlé à task-491 et au correctif
+  « Pour moi » du 2026-11-22), **à commiter sur TFS avant le merge de la PR api-mail** (tests e2e Angular des
+  scénarios montés).
+- **Aucun changement de contrat** : `FolderDto.ToHandleCount` (chaque dossier IMAP et chaque tag) et `ForMeCount`
+  (Boîte de réception, par personne) existaient. `contract_impact.py` : aucun impact.
+- **Règles** (les deux clients) :
+  - `toHandleChipCount` : le dossier affiché cherché **dans l'arbre** (`findFolderByPath`, `core/utils/folder-tree.util.ts`),
+    ou le tag d'une vue sur un seul tag ; `null` pour une combinaison de tags et (weda2) la vue « Mails du patient » ;
+  - `forMeChipCount` : `ForMeCount` de la Boîte de réception, `null` s'il n'est pas servi ;
+  - puce affichée si le compteur n'est pas 0, ou si elle est active ; sans chiffre si `null` ;
+  - effet de la liste : la vue active (puce, tags, dossier, et la génération de la boîte sur mobile) est retenue dès
+    qu'elle compte au moins 1 ; un compteur 0 dans une vue jamais vue non nulle renvoie sur « Tous » (weda2 :
+    `setFilter`, mobile : `applyInboxFilter`), et pour une vue par tag un repli sur « Tous » propre à la combinaison
+    (`tagViewFilterFallback` weda2, `tagViewFallback` mobile) qui n'enregistre jamais le réglage ;
+  - weda2 : la mémoire de la vue vit dans `MailStateService.countedChipSeen` (la liste est démontée quand un message
+    occupe l'écran) ; l'entrée « Pour moi » du menu (`folder-for-me`), `MailEventService.forMeRequested$` et
+    `MssMailComponent.openForMe` sont retirés.
+- **Revue** : passage 1 CHANGES REQUESTED — B1 (sous-dossiers : recherche au seul premier niveau), S1 (mobile, clé
+  sans la boîte), S2 (weda2, mémoire dans le composant), S3 (solde e2e limité à l'INBOX), S4 (tests mobile) ; reprise 1 ;
+  passage 2 APPROVED.
+- **Tests** :
+  - weda2 `mail-list.chip-counters.spec.ts` (22 cas), `folder-tree.util.spec.ts`, `mail-folder-list.for-me.spec.ts`
+    réécrit (l'entrée a disparu) ; mobile `inbox.page.chip-counters.spec.ts` (20 cas), `folder-tree.util.spec.ts` ;
+    rouges sur le code d'avant ou par mutation (collante, retour sur « Tous », inconnu lu comme 0, repli qui enregistre) ;
+  - e2e : E2E-TRIAGE-001 v2 (la puce porte le nombre du serveur et baisse de un), E2E-ASSIGN-001 v2 (puce « Pour moi »
+    au nombre du serveur, plus d'entrée de menu sur weda2), E2E-ASSIGN-003 v1 (0 → 1 → 0 actif → disparaît sur
+    « Tous ») ; mutations servies rouges sur l'assertion visée, sur les deux clients ;
+  - voies complètes : mobile 77/77, angular 98/98 (1 flaky E2E-SEARCH-004 hors task), parité verte ; Sonar skipped
+    (aucun fichier analysé).
+- **Prévention** : `conventions/angular.md` — `dossier-cherche-dans-l-arbre` (deux autres sites de même forme
+  relevés : weda2 `mail-list.component.ts`, dossier source d'un déplacement ; mobile `mail-detail.component.ts`),
+  `service-propre-au-composant` passe à 2 ; `agents/develop.md` §Q 2b : contrôle mécanique `folders().find` sur un
+  chemin.
+- **Ouvert** : S-a (`forMeKeys` lit 100 attributions au plus) ; S-b (weda2, même dossier rechoisi, message ouvert :
+  la puce active reste à 0, conforme à la règle).
+
 ---
 
 ## Annexe A — Cartographie des briques applicatives
@@ -546,13 +587,13 @@
 
 ---
 
-## Annexe B — Inventaire fonctionnel daté (2026-11-21)
+## Annexe B — Inventaire fonctionnel daté (2026-11-22)
 
-- Tasks de l'EPIC : 12 — 7 `archived` (453, 454, 456, 459, 466, 486, 487), 1 `done` (457), 2 `todo` (458, 488),
+- Tasks de l'EPIC : 13 — 7 `archived` (453, 454, 456, 459, 466, 486, 487), 2 `done` (457, 492), 2 `todo` (458, 488),
   2 annulées (465, 462).
-- Scénarios e2e de l'EPIC au catalogue : 15 (E2E-BIO-004, E2E-BIO-007, E2E-DETAIL-006, E2E-TAG-001, E2E-TAG-002,
-  E2E-TAG-003, E2E-TRIAGE-001, E2E-TRIAGE-002, E2E-TRIAGE-006, E2E-TRIAGE-007, E2E-SHARED-003, E2E-ASSIGN-001,
-  E2E-ASSIGN-002, E2E-CONV-001, E2E-CONV-002).
+- Scénarios e2e de l'EPIC au catalogue : 16 (E2E-BIO-004, E2E-BIO-007, E2E-DETAIL-006, E2E-TAG-001, E2E-TAG-002,
+  E2E-TAG-003, E2E-TRIAGE-001 v2, E2E-TRIAGE-002, E2E-TRIAGE-006, E2E-TRIAGE-007, E2E-SHARED-003, E2E-ASSIGN-001 v2,
+  E2E-ASSIGN-002, E2E-ASSIGN-003, E2E-CONV-001, E2E-CONV-002).
 
 ---
 
@@ -570,3 +611,4 @@
 | task-454 | Marquer un message traité : état partagé par la boîte (Message-ID), compteurs et filtre « À traiter », gestes naturels, bouton et balayage, « Annuler », traitement groupé sans jamais acquitter une biologie, tuile du tableau de bord | `archived` (PRs #69, #373, #128) |
 | task-457 | « À traiter par » : attribuer un message à une personne active de la boîte (Message-ID), vue et compteur « Pour moi » sur tous les dossiers, avis ciblé sur la personne, attribution groupée, imputée à l'auteur réel | `done` (PRs #70, #374, #129) |
 | task-487 | Conversation en chat : fil en bulles, découpage sûr de la citation, état d'envoi par les accusés reçus (jamais des bulles), réponse en une ligne composée par le serveur et adressée à tous les participants, lecture tracée au nom de la personne réelle | `archived` (PRs #71, #375, #130) |
+| task-492 | Puces « À traiter » et « Pour moi » à compteur, masquées à zéro sauf active, repli sur « Tous » ; entrée « Pour moi » retirée du menu de weda2 | `done` (PRs #379, #133) |

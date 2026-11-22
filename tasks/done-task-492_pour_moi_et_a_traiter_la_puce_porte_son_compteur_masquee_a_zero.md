@@ -157,7 +157,8 @@ gauche de weda2 ne porte plus d'entrée « Pour moi », qui doublait la puce.
 | /lint-mobile | ok | 40 s | — | — | — | — |
 | /e2e | ok | 28 min 10 s | — | — | — | e2e ×5 (55 min 01 s) |
 | /review | ok | 41 s | — | — | — | — |
-| **Total cycle** | | **44 min 41 s** | **4 (56 s)** | **7 (10 min 42 s)** | **0 (0.0 s)** | |
+| /tech-writer | ok | 1 min 02 s | — | — | — | — |
+| **Total cycle** | | **45 min 44 s** | **4 (56 s)** | **7 (10 min 42 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×2 (1 min 32 s)
 

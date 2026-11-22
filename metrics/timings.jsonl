@@ -11054,3 +11054,5 @@
 {"ts":"2026-11-22T11:58:24+01:00","run_id":"-","type":"step","task":"task-492","step":"e2e","status":"ok","note":"","iterations":null,"duration_ms":1690246}
 {"ts":"2026-11-22T11:58:34+01:00","run_id":"-","type":"step_start","task":"task-492","step":"review"}
 {"ts":"2026-11-22T11:59:15+01:00","run_id":"-","type":"step","task":"task-492","step":"review","status":"ok","note":"","iterations":null,"duration_ms":41361}
+{"ts":"2026-11-22T11:59:24+01:00","run_id":"-","type":"step_start","task":"task-492","step":"tech-writer"}
+{"ts":"2026-11-22T12:00:27+01:00","run_id":"-","type":"step","task":"task-492","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":62744}

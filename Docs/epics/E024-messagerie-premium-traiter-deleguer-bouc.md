@@ -1,13 +1,14 @@
 # E024 — Messagerie premium : traiter, déléguer, boucler
 
 > **Statut** : 🟡 en cours — 7 features livrées et validées, 1 livrée en attente de validation (task-457),
-> 2 au backlog (tasks 458, 488). La relance sans réponse (task-462) est retirée le 2026-11-21.
+> 2 au backlog (tasks 458, 488). Les puces « À traiter » et « Pour moi » à compteur (task-492) sont livrées, en
+> attente de validation. La relance sans réponse (task-462) est retirée le 2026-11-21.
 > Le 2026-11-12, toutes les features prévues avaient
 > été retirées du backlog ; une partie y est revenue le 2026-11-13.
-> **Version** : 0.8.1
+> **Version** : 0.9
 > **Auteur** : PO forge (task-453)
 > **Modèle** : task-driven
-> **Dernière mise à jour** : 2026-11-21
+> **Dernière mise à jour** : 2026-11-22
 > **Vue ingénierie** : [E024-Changelogs.md](E024-Changelogs.md)
 
 ---
@@ -25,7 +26,7 @@
 - [7. Contraintes et hypothèses](#7-contraintes-et-hypothèses)
 - [8. Critères d'acceptation de l'EPIC](#8-critères-dacceptation-de-lepic)
 - [9. Hors périmètre](#9-hors-périmètre)
-- [État de couverture (2026-11-21)](#état-de-couverture-2026-11-21)
+- [État de couverture (2026-11-22)](#état-de-couverture-2026-11-22)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -78,8 +79,8 @@ disparaissent jamais parce que le message a été rangé ailleurs, depuis la pla
 | « Vous avez répondu à ce message le… » | Savoir, en ouvrant un message, qu'on y a déjà répondu, ou qu'un collègue de la boîte l'a fait, quand et combien de fois ; ouvrir la réponse ; repérer d'une icône les messages répondus dans la liste | task-459 | ✅ Livrée et validée |
 | Saisie des tags | Poser un tag en quelques touches : la liste propose les tags de la boîte dès qu'on commence à taper, sans tenir compte des majuscules ni des accents ; un nom de plusieurs mots est accepté, jusqu'à 40 caractères ; « Créer le tag » quand aucun tag ne porte ce nom | task-486 | ✅ Livrée et validée |
 | Tags système et vues par tag | Retrouver d'un coup d'œil la biologie, les patients, les professionnels de santé et les messages reçus pour information, par des tags posés à l'arrivée | task-456 | ✅ Livrée et validée |
-| Marquer un message traité | Voir ce qui reste à traiter, pas seulement ce qui n'est pas lu : un compteur et un filtre « À traiter », un bouton « Traité » (ou un balayage sur mobile), « Annuler » pendant 6 secondes, « Remettre à traiter ». Répondre, ranger ou rattacher un message le traite aussi. Traiter plusieurs messages d'un coup, sans jamais acquitter une biologie. Voir qui a traité et quand | task-454 | ✅ Livrée et validée |
-| « À traiter par » | Confier un message à une personne de la boîte : la choisir dans la liste des personnes rattachées et actives, avec leur rôle ; la retrouver sur la ligne (initiales) et dans le détail ; attribuer une sélection d'un coup. La personne le trouve dans sa vue « Pour moi », avec un compteur, et en est avertie ; traiter le message clôt l'attribution | task-457 | 🟢 Livrée — en attente de validation |
+| Marquer un message traité | Voir ce qui reste à traiter, pas seulement ce qui n'est pas lu : un compteur et un filtre « À traiter », un bouton « Traité » (ou un balayage sur mobile), « Annuler » pendant 6 secondes, « Remettre à traiter ». Répondre, ranger ou rattacher un message le traite aussi. Traiter plusieurs messages d'un coup, sans jamais acquitter une biologie. Voir qui a traité et quand. La puce « À traiter » en tête de liste porte le nombre du dossier ou du tag affiché et n'apparaît que s'il y a quelque chose à traiter | task-454, task-492 | ✅ Livrée et validée (puce à compteur, task-492 : en attente de validation) |
+| « À traiter par » | Confier un message à une personne de la boîte : la choisir dans la liste des personnes rattachées et actives, avec leur rôle ; la retrouver sur la ligne (initiales) et dans le détail ; attribuer une sélection d'un coup. La personne le trouve sous la puce « Pour moi » de la liste, qui porte son compteur et n'apparaît que si un message lui est attribué, et en est avertie ; traiter le message clôt l'attribution | task-457, task-492 | 🟢 Livrée — en attente de validation |
 | Conversation en chat | Lire un fil comme une conversation : bulles dans l'ordre, les siennes à droite, auteur réel et rôle, pièces jointes, texte cité et signature repliés seulement quand c'est sûr. Voir l'état de chaque envoi (envoyé, distribué, non distribué, lu à l'heure) sans que les accusés encombrent le fil. Répondre en une ligne à tous les participants, avec un fichier joint (et, sur mobile, un document du dossier patient) ; être averti si les destinataires ont changé | task-487 | ✅ Livrée et validée |
 | Réponse : ne citer que le message d'origine | Répondre en ne citant que ce que le correspondant vient d'écrire, sans tout l'historique ; la citation est retirée, avec un avertissement, vers un destinataire qui n'était pas dans l'échange ; une case « Inclure le message d'origine » | task-488 | ⏳ À faire |
 | Notes internes | Laisser sur un message une note visible des seules personnes de la boîte | task-458 | ⏳ À faire |
@@ -189,7 +190,7 @@ praticien le souhaite, mais il n'encombre ni « Bio à acquitter » ni le tablea
 
 ---
 
-## État de couverture (2026-11-21)
+## État de couverture (2026-11-22)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
@@ -198,8 +199,8 @@ praticien le souhaite, mais il n'encombre ni « Bio à acquitter » ni le tablea
 | « Vous avez répondu à ce message le… » | ✅ Livrée et validée | 100 % | task-459 |
 | Saisie des tags | ✅ Livrée et validée | 100 % | task-486 |
 | Tags système et vues par tag | ✅ Livrée et validée | 100 % | task-456 |
-| Marquer un message traité | ✅ Livrée et validée | 100 % | task-454 |
-| « À traiter par » | 🟢 Livrée — en attente de validation | 100 % livré | task-457 |
+| Marquer un message traité | ✅ Livrée et validée | 100 % (puce à compteur : en attente de validation) | task-454, task-492 |
+| « À traiter par » | 🟢 Livrée — en attente de validation | 100 % livré | task-457, task-492 |
 | Conversation en chat | ✅ Livrée et validée | 100 % (joindre un document du dossier depuis l'application web : en arbitrage) | task-487 |
 | Réponse : ne citer que le message d'origine | ⏳ À faire | 0 % | task-488 |
 | Notes internes | ⏳ À faire | 0 % | task-458 |
@@ -288,6 +289,16 @@ validation (task-457), 2 au backlog.
   document du dossier patient. Ouvrir le fil marque ses messages lus. Sur l'application web et sur l'application
   mobile (task-487).
 
+- **v0.9 — « Pour moi » et « À traiter » : la puce porte son compteur.** En tête de la liste, la puce « À traiter »
+  porte le nombre de messages à traiter du dossier (ou sous-dossier) affiché, ou du tag dans une vue par tag ; la puce
+  « Pour moi » porte le nombre de messages attribués à la personne et non traités, pour toute la boîte. À zéro, la puce
+  ne s'affiche pas. Si le praticien traite le dernier message pendant qu'il est sur la puce, elle reste affichée avec 0
+  (« Annuler » peut remettre le message sous ses yeux) et disparaît dès qu'il change de filtre ou de dossier. Ouvrir un
+  filtre dont il n'y a rien à afficher montre « Tous », sans toucher au filtre retenu des vues par tag ; un nombre que
+  le serveur ne fournit pas (combinaison de tags, vue « Mails du patient ») laisse la puce sans chiffre. Sur weda2,
+  l'entrée « Pour moi » du menu de gauche disparaît : la puce est sa seule entrée. Sur l'application web et sur
+  l'application mobile (task-492).
+
 ### Conformité réglementaire
 
 - **v0.1 — Imputabilité.** Un acquittement qui revient garde l'auteur réel qui l'avait posé, délégataire compris. Le
@@ -359,6 +370,10 @@ validation (task-457), 2 au backlog.
   signature sont posés par la plateforme, de sorte que la réponse se range dans le bon fil chez le correspondant,
   quel que soit son logiciel. Deux parcours automatiques vérifient, sur les deux applications, la lecture du fil, la
   réponse à tous les participants et l'envoi d'une pièce jointe (task-487).
+
+- **v0.9 — Les compteurs des puces viennent du serveur.** Ce sont les nombres déjà calculés pour le menu des dossiers
+  et des tags : aucun calcul local, aucun changement de contrat. Trois parcours automatiques vérifient, sur les deux
+  applications, le nombre porté par les puces, leur disparition à zéro et la puce active qui reste à 0 (task-492).
 
 ---
 
