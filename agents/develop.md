@@ -262,6 +262,9 @@ whole cycle, and it doubles as the repo's final verification (Step 6).
    # TS — une clé de message sur l'UID seul (liste-multi-dossiers-cle-dossier-uid, 3 occurrences) : réécrire avec
    # mailKeyString (weda2) ou isSameMail / mailKey (mobile).
    git diff origin/develop...HEAD -- '*.ts' ':!*.spec.ts' | grep -nE '^\+.*((Map|Set)\(.*\.uid\b|\.(has|get)\(\w+\.uid\))'
+   # TS — un dossier cherché au seul premier niveau (dossier-cherche-dans-l-arbre, task-492) : le serveur rend un arbre ;
+   # réécrire avec findFolderByPath (core/utils/folder-tree.util.ts). La Boîte de réception seule se cherche au premier niveau.
+   git diff origin/develop...HEAD -- '*.ts' ':!*.spec.ts' | grep -nE '^\+.*folders\(\)\.find\(\(f\) => f\.path ==='
    # TS / HTML / SCSS — mixed line endings : LF lines inserted into a CRLF file (task-459 : 91 lines
    # appended to functional.e2e.ts, 160 to two specs ; prettier « Insert ␍ », seen only by /lint-angular).
    # client-angular is code-only : list its files with `git diff --name-only` + untracked instead.

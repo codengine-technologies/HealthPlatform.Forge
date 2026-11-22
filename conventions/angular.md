@@ -291,7 +291,9 @@ par lint sur du code frais est un échec de lecture de ce fichier.
 - **Preuve** : tests unitaires `mss-mail.component.compose-intent.spec.ts` (instance détruite pendant
   la préparation ; premier dossier puis dossier suivant), rouges sous mutation du correctif.
 - **Origine** : task-367 (/develop, e2e et passe qualité)
-- **Occurrences** : 1
+- **Occurrences** : 2 (task-492, revue anticipée S2 : la mémoire « puce active vue non nulle » vivait dans
+  `MailListComponent`, démonté quand un message occupe l'écran ; un compteur relu pendant ce temps renvoyait la liste
+  sur « Tous ». Déplacée dans `MailStateService`, prouvée par un spec qui démonte et remonte la liste.)
 
 ### garde-sur-point-d-entree-commun — recenser tous les appelants avant de durcir une entrée partagée
 - **Piège** : task-350 ajoute une défense en profondeur à l'ouverture de la rédaction : une réponse
@@ -881,4 +883,24 @@ par lint sur du code frais est un échec de lecture de ce fichier.
 - **Preuve** : `mail-folder-item.component.spec.ts`, « après cinq allers-retours sur le dossier, la jauge perd une
   seconde par seconde » : rouge sur le code d'avant (24 au lieu de 29), vert après.
 - **Origine** : task-491 (/develop, constat humain)
+- **Occurrences** : 1
+
+### dossier-cherche-dans-l-arbre — Un dossier se cherche dans l'arbre, jamais au seul premier niveau
+- **Règle** : convention projet (défaut invisible au lint, et aux tests dont les dossiers sont à plat)
+- **Repos** : les deux
+- **Piège** : le serveur rend les dossiers en **arbre** (`folder.folders`, `ImapHelper.BuildFolderHierarchy`) et pose
+  ses compteurs sur chaque nœud. task-492 cherchait le dossier affiché par `folders().find((f) => f.path === path)` :
+  dans un sous-dossier (« Patients/Dupont »), rien n'était trouvé, la puce « À traiter » n'avait pas de nombre et n'était
+  jamais masquée. Tous les specs étaient verts : leurs dossiers étaient au premier niveau.
+- **Consigne** :
+  - chercher un dossier par son chemin avec `findFolderByPath` (`core/utils/folder-tree.util.ts`, dans chaque client),
+    jamais `folders().find` sur un chemin quelconque. `find` au premier niveau ne vaut que pour la Boîte de réception ;
+  - un spec qui lit une donnée d'un dossier a au moins un cas de **sous-dossier**.
+- **Reste à corriger** (même forme, hors task-492) : weda2 `mail-list.component.ts` (dossier source d'un message
+  déplacé, `folders().find((f) => f.path === sourcePath)`) ; mobile `mail-detail.component.ts` (« Traité » proposé et
+  Corbeille, lus par `folders().find` sur le dossier du message).
+- **Contrôle mécanique** : `git diff … -- '*.ts' ':!*.spec.ts' | grep -nE "^\+.*folders\(\)\.find\(\(f\) => f\.path ==="`.
+- **Preuve** : `mail-list.chip-counters.spec.ts` (weda2) et `inbox.page.chip-counters.spec.ts` (mobile), cas « B1 —
+  sous-dossier » : rouges sur le code revu, verts avec `findFolderByPath`.
+- **Origine** : task-492 (/review --code, B1)
 - **Occurrences** : 1

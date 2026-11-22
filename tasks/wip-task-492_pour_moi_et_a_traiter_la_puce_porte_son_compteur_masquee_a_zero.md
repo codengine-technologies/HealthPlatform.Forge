@@ -150,9 +150,9 @@ gauche de weda2 ne porte plus d'entrée « Pour moi », qui doublait la puce.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 26 s | — | — | — | — |
-| /develop | ok | 33 min 46 s | 3 (47 s) | 5 (9 min 41 s) | — | client-angular 1B/3T, api-mail 1B/1T, client-mobile 1B/1T |
+| /develop | ok | 9 min 24 s | 4 (56 s) | 7 (10 min 42 s) | — | client-angular 1B/4T, api-mail 1B/1T, client-mobile 2B/2T, reprise 1 |
 | /review-code | changes | 9 min 08 s | — | — | — | reprise 1 |
-| **Total cycle** | | **43 min 21 s** | **3 (47 s)** | **5 (9 min 41 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **18 min 59 s** | **4 (56 s)** | **7 (10 min 42 s)** | **0 (0.0 s)** | |
 
 ## Develop log
 
@@ -208,3 +208,15 @@ Aucun.
 
 Vérifié sans constat : aucun reste des membres retirés (`forMeRequested$`, `openForMe`, `forMeCount()`, `folder-for-me`, `inbox-for-me-count`) ; chaque clic e2e sur une puce se fait après qu'elle a un compteur non nul ; les absences sont lues après chargement ; effets sans boucle, chargement précédent abandonné ; aucun repli n'enregistre le réglage ; jetons SCSS existants avec repli ; `data-testid` sur chaque compteur.
 
+
+### Reprise 1 (passage 1 de la revue anticipée)
+
+- **B1** — recherche du dossier affiché dans l'arbre : `findFolderByPath` (`core/utils/folder-tree.util.ts`, weda2 et mobile, avec spec), utilisé par `toHandleChipCount` des deux clients. Specs « B1 — sous-dossier » (×2 par client) : rouges sur le code revu (« Expected undefined to be '3' », puce présente à 0), verts après.
+- **S2** (weda2) — mémoire de la puce active dans `MailStateService.countedChipSeen` (plus dans `MailListComponent`). Spec « S2 — la liste démontée puis remontée » : rouge sur le code revu (repli sur « Tous »), vert après.
+- **S1** (mobile) — la génération de la session de boîte entre dans la clé de vue. Spec « S1 — changement de boîte » : rouge sans le correctif (stash de `inbox.page.ts`), vert avec. Le test sert les dossiers de la nouvelle boîte par l'API simulée : un premier jet qui posait les dossiers à la main était réécrit par le rechargement asynchrone de la page.
+- **S3** (e2e, deux suites) — `settleForMe` solde les attributions de **tous** les dossiers : `forMeKeys` (clés dossier + UID), `markHandledAs` prend la clé. `tsc` des deux suites propre. Voies complètes rejouées par `/e2e`.
+- **S4** (mobile) — 3 cas ajoutés : réglage « À traiter » relu après un repli (par `onTagToggled`), puce de vue par tag active qui reste à 0, « À traiter » qui disparaît sur « Non lus ». Verts dès l'écriture, prouvés par mutation : MS4a relecture du réglage retirée → rouge ; MS4b jamais collante → 4 rouges ; MS4c « À traiter » toujours affichée → 5 rouges.
+- Commits : client-mobile `38cdb89` ; client-angular non commité (nouveaux fichiers : `core/utils/folder-tree.util.ts` et `.spec.ts`, à ajouter à la liste TFS).
+- Suites : mss-lib 178 fichiers / 1 927 tests ; weda2 build OK, 2 683 tests ; mobile `ng lint` propre, build OK, 1 702 tests. ESLint weda2 0 erreur.
+- Prévention : `conventions/angular.md` — nouvelle entrée `dossier-cherche-dans-l-arbre` (deux autres sites de même forme relevés, hors task) ; `service-propre-au-composant` passe à 2 occurrences. `agents/develop.md` §Q 2b : contrôle mécanique ajouté, vérifié (attrape le code d'origine, rien après la reprise).
+- Green marked : client-mobile, client-angular ; api-mail inchangé (vert de /develop valide).
