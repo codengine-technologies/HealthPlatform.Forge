@@ -156,7 +156,8 @@ gauche de weda2 ne porte plus d'entrée « Pour moi », qui doublait la puce.
 | /lint-angular | ok | 1 min 10 s | — | — | — | — |
 | /lint-mobile | ok | 40 s | — | — | — | — |
 | /e2e | ok | 28 min 10 s | — | — | — | e2e ×5 (55 min 01 s) |
-| **Total cycle** | | **44 min 00 s** | **4 (56 s)** | **7 (10 min 42 s)** | **0 (0.0 s)** | |
+| /review | ok | 41 s | — | — | — | — |
+| **Total cycle** | | **44 min 41 s** | **4 (56 s)** | **7 (10 min 42 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×2 (1 min 32 s)
 
@@ -390,3 +391,23 @@ Scénarios de la task joués dans les deux voies : E2E-TRIAGE-001 v2, E2E-ASSIGN
 - E2E-SEARCH-008 [mobile] — les critères médicaux arrivent sur le mobile avec la refonte mobile — résorbée par task-451
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## Validation finale
+
+- Build + tests : vert de /develop réutilisé sur les trois dépôts (api-mail `73bcb503`, client-mobile `38cdb89`, client-angular arbre de travail) — empreintes inchangées, non rejoués.
+- Aucun diff de code depuis l'approbation du passage 2 (/sonar skipped, lint sans correction).
+- Branches à jour avec `origin/develop` (0 commit de retard), aucun merge nécessaire.
+- E2E : vert (mobile 77/77 ; angular 98/98, 1 flaky E2E-SEARCH-004 hors task) ; parité verte.
+- DOD : vérifiée (tests de composant vus rouges, data-testid, scénarios au catalogue aux versions des tests, `contract_impact.py` sans impact) ; observations du Manual Test Plan → HAG.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/379 — label `awaiting-human-merge`
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/133 — label `awaiting-human-merge`, à merger avec et après api-mail (règle 11)
+- `client-angular` (code-only) : humain gère commit/push TFS et ouverture PR, sur `feature/nova-mss-weda-integration`. ⚠️ À commiter sur TFS **avant** le merge de la PR api-mail (tests e2e Angular des scénarios montés). L'arbre porte aussi task-491 et le correctif « Pour moi » du 2026-11-22. Fichiers de task-492 :
+  - `front/libs/mss/src/core/utils/folder-tree.util.ts`, `folder-tree.util.spec.ts` (nouveaux)
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.component.ts|html|scss`, `mail-list.chip-counters.spec.ts` (nouveau)
+  - `front/libs/mss/src/features/mail/components/mail-folder-list/mail-folder-list.component.ts|html|scss`, `mail-folder-list.for-me.spec.ts`
+  - `front/libs/mss/src/features/mail/services/mail-state.service.ts` (partagé avec task-491 et le correctif « Pour moi »), `mail-state.service.handling.spec.ts`, `mail-event.service.ts`
+  - `front/libs/mss/src/features/mail/mss-mail.component.ts` (partagé avec task-491)
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`, `front/e2e/mss-e2e/support/e2e-backend.ts`
