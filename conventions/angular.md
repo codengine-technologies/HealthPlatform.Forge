@@ -918,6 +918,21 @@ par lint sur du code frais est un échec de lecture de ce fichier.
 - **Origine** : filtres en icônes de la liste (2026-11-22, demande directe de l'humain)
 - **Occurrences** : 1
 
+### actions-au-survol-masquent-ce-qu-elles-recouvrent — Des actions posées en absolu au survol masquent ce qu'elles recouvrent
+- **Règle** : convention projet (défaut visuel, invisible au lint et aux tests jsdom)
+- **Repos** : client-angular, client-mobile
+- **Piège** : dans une ligne de la liste (weda2, `mail-header`), les actions du survol (répondre, traité, supprimer,
+  lu/non lu, signaler) sont posées en `position: absolute` sur la fin de la ligne, avec 2 px entre deux boutons. Seule la
+  date était effacée au survol : la pastille d'initiales de la personne attribuée (task-457) et la pastille « Traité »
+  (task-454), ajoutées plus tard dans cette zone, restaient dessous et se voyaient entre « Supprimer » et « Lu / non
+  lu ». Constaté par l'humain sur capture, le 2026-11-22.
+- **Consigne** : tout élément ajouté dans la zone que recouvrent des actions au survol rejoint la règle qui l'efface
+  (`.mail-header:hover …` : `opacity: 0`, `pointer-events: none`). Ne pas rendre la barre opaque : les lignes
+  sélectionnées ou non lues ont un fond translucide qui remplace celui du survol, une barre opaque y ferait une tache.
+- **Preuve** : aucune automatique (style au survol, hors de portée de jsdom) ; vérification à l'écran par l'humain.
+- **Origine** : recette de task-492 (2026-11-22, demande directe de l'humain)
+- **Occurrences** : 1
+
 ### filtre-retenu-jamais-sur-une-vue-vide-muette — Un filtre retenu ne mène jamais à une liste vide sans repli
 - **Règle** : convention projet (défaut fonctionnel, invisible au lint)
 - **Repos** : les deux

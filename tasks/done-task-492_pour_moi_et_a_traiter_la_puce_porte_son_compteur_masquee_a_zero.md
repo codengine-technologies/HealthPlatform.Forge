@@ -419,3 +419,27 @@ Scénarios de la task joués dans les deux voies : E2E-TRIAGE-001 v2, E2E-ASSIGN
 - **Tags (weda2)** : plus de case à cocher ; Ctrl+clic (Cmd+clic) combine, les tags combinés sont en surbrillance (fond d'urgence remplacé). E2E-TAG-003 passe par Ctrl+clic.
 - **Défaut de la règle 6, constaté par l'humain** : « Important » + « Biologie » affichait une liste vide. La vue combinée partait sur le filtre retenu « À traiter » (Seq : `?tag=IMPORTANT&tag=BIOLOGIE&filter=to-handle`), sans aucun message à traiter, alors que 18 messages portent les deux tags (base de la boîte). Une combinaison n'avait pas de compteur (règle 6 : inconnu → puce sans chiffre, pas de repli). Correctif, weda2 et mobile (`4e51f3a`) : le total que le serveur rend avec la page « À traiter » d'une combinaison devient le compteur de sa puce ; à 0, la vue repasse sur « Tous » sans toucher au réglage. Tests rouges puis verts (2 par client).
 - Suites : mss-lib 1 939, weda2 2 683 (via PowerShell), mobile 1 704 ; e2e non rejoués (ports de la recette occupés).
+### Trou du filet comblé (2026-11-22, accord de l'humain)
+
+Pourquoi le défaut est passé : le serveur répondait juste (rien à traiter), les tests unitaires affirmaient la règle 6
+fautive, et E2E-TAG-003 remet le filtre sur « Tous » avant de commencer, donc aucun parcours ne jouait une vue par tag
+ouverte sur « À traiter » retenu.
+
+| Comportement | Test | Preuve rouge |
+|---|---|---|
+| Le total d'une combinaison filtrée « À traiter » est celui du filtre, à 0 comme au-delà | `ACombinationOfTags_ServesTheToHandleTotal_EvenAtZeroWhileItStillHoldsMails` (api-mail, intégration, `15db648f`) | mutation : total compté avant le filtre → `(1, 0)` au lieu de `(0, 0)` |
+| Combinaison sans rien à traiter sur « À traiter » retenu : la vue passe sur « Tous », le réglage reste « À traiter » | **E2E-TAG-004 v1** (catalogue `15db648f`, mobile `18140d8`, weda2 non commité) | mutation sur le banc `--serve-only` (combinaison au compteur inconnu) : rouge sur les deux clients, la combinaison n'est jamais redemandée avec « Tous » ; vert après restauration |
+
+- Voies complètes rejouées : mobile 78 verts, Angular 100 verts, 0 flaky, 0 rouge ; porte `gate` verte, parité verte
+  (E2E-TAG-004 ✅ sur les deux clients). Suite api-mail : 8 223 verts (16 sautés, inchangés).
+- Prévention : `conventions/e2e.md` (`reglage-remis-au-defaut-pour-s-isoler`, ligne « trous du filet »).
+
+### Initiales sous les actions de survol (weda2, 2026-11-22)
+
+La pastille d'initiales de la personne attribuée et la pastille « Traité » restaient sous les actions de survol (posées
+en absolu), visibles entre « Supprimer » et « Lu / non lu ». Elles s'effacent désormais au survol comme la date
+(`mail-header.component.scss`). Pas de test automatique (style au survol) : à vérifier à l'écran. Prévention :
+`conventions/angular.md`, `actions-au-survol-masquent-ce-qu-elles-recouvrent`.
+
+**weda2 — fichiers à commiter sur TFS (en plus des retouches ci-dessus)** : `mail-header.component.scss` (initiales),
+`e2e/mss-e2e/specs/functional.e2e.ts` et `e2e/mss-e2e/support/e2e-backend.ts` (E2E-TAG-004, `markHandled`).
