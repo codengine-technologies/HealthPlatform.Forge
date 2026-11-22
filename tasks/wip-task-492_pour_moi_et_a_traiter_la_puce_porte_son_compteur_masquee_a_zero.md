@@ -153,7 +153,10 @@ gauche de weda2 ne porte plus d'entrée « Pour moi », qui doublait la puce.
 | /develop | ok | 9 min 24 s | 4 (56 s) | 7 (10 min 42 s) | — | client-angular 1B/4T, api-mail 1B/1T, client-mobile 2B/2T, reprise 1 |
 | /review-code | ok | 4 min 07 s | — | — | — | — |
 | /sonar | skipped | 1.0 s | — | — | — | aucun fichier analysé par Sonar |
-| **Total cycle** | | **13 min 59 s** | **4 (56 s)** | **7 (10 min 42 s)** | **0 (0.0 s)** | |
+| /lint-angular | ok | 1 min 10 s | — | — | — | — |
+| **Total cycle** | | **15 min 09 s** | **4 (56 s)** | **7 (10 min 42 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : lint ×1 (59 s)
 
 ## Develop log
 
@@ -236,3 +239,8 @@ Relecteur indépendant, diff de la reprise lu en premier. Rien de cassé par la 
 ## Sonar log
 
 **Sonar : skipped — aucun fichier analysé par Sonar.** Seul `e2e/scenarios.yml` change dans api-mail (règle du 2026-11-19, task-485). Pas de tableau de KPIs ; la PR api-mail le dit.
+
+## Lint log
+
+- Base `origin/next`, lint `tag:scope:mss` (nx affected, 13 projets lintés) : **0 erreur**, warnings seulement (JSDoc `@example`, `max-lines`, préexistants). Aucune itération, aucun fichier modifié.
+- Build + tests : arbre inchangé depuis le vert de /develop (reprise 1), marqueur valide — non rejoués.
