@@ -11117,3 +11117,5 @@
 {"ts":"2026-11-25T11:15:56+01:00","run_id":"-","type":"cmd","task":"task-493","step":"develop","repo":"client-angular","kind":"test","label":"","cwd":"Client/Angular/front","cmd":"powershell -NoProfile -Command npx nx test mss-lib --skip-nx-cache --output-style=static","duration_ms":38768,"exit_code":0}
 {"ts":"2026-11-25T11:16:23+01:00","run_id":"-","type":"cmd","task":"task-493","step":"develop","repo":"client-angular","kind":"test","label":"","cwd":"Client/Angular/front","cmd":"powershell -NoProfile -Command npx nx test weda2 --skip-nx-cache --output-style=static","duration_ms":24858,"exit_code":0}
 {"ts":"2026-11-25T11:16:35+01:00","run_id":"-","type":"step","task":"task-493","step":"develop","status":"ok","note":"reprise 1","iterations":null,"duration_ms":1152846}
+{"ts":"2026-11-25T11:16:49+01:00","run_id":"-","type":"step_start","task":"task-493","step":"review-code"}
+{"ts":"2026-11-25T11:19:55+01:00","run_id":"-","type":"step","task":"task-493","step":"review-code","status":"ok","note":"","iterations":null,"duration_ms":185887}

@@ -393,6 +393,47 @@ puis vérification de chaque constat dans le code.
 #### Arbitrage humain
 - Aucun.
 
+### Passage 2 (revue anticipée) — APPROVED
+
+**Approved at** : dtos-mss `504ca8f` · api-mail `22468e59` · client-mobile `ba360d0` · client-angular `feature/nova-mss-weda-integration`
+(`b5add4e3` + arbre non commité, marqueur vert de l'arbre final).
+
+Relecture indépendante du **diff de la reprise d'abord** (api-mail `499a6fa6..22468e59`, mobile `556be05..ba360d0`, spec e2e
+weda2), à la recherche de ce qu'elle a cassé : appelants de `PlanAsync` / `HandlingPlan` / `PredecessorsAsync` (vue par tag
+sans fil, bouton après le refus `NoMessageId`, gestes naturels hors plan), comparateur de `Designated` (ordinal, comme
+avant), assertions existantes (aucune affaiblie : `toHaveBeenCalledWith(…, false)` plus strict, « affichés » toujours gardé
+par `mail-list.handling.spec`), précondition « non lu » (lecture `GET emails/{uid}` sans effet de lecture, messages déposés
+par un autre client IMAP), lectures en parallèle e2e (aucune convention ne les interdit). Rien de cassé.
+
+**4c** inchangé : api-mcp aucun impact ; client-mobile et client-angular IMPACT « énumération MailHandlingGesture modifiée »,
+adaptés. **4b** : E2E-TRIAGE-008 v1. **4a** : la ligne « précédents marqués lus » a désormais son test
+(`HandlingAMessage_…`, `TheBulkHandling_…`) et sa preuve rouge (M11).
+
+| Constat | Statut | Preuve |
+|---|---|---|
+| B1 mobile, sélection sans fil | corrigé | `inbox.page.spec` (`handleMany(…, true)`), `mail-handling.service.spec`, `mss-api.service.spec` (`?thread=true`), vus rouges |
+| B2 CR sélectionné compté deux fois | corrigé | `…_IsExcludedOnce` vu rouge (`[5, 5]`), M12 |
+| B3 « lu » des précédents | corrigé | précondition non lus, A et C lus, D non lu ; M11 rouge |
+| S1 copie à traiter gardée | corrigé | `…_TheCopyToHandleIsKept` vu rouge, M13 |
+| S4 fenêtre d'annulation e2e | corrigé (non borné) | relectures en une fois, « Annuler » affirmé visible |
+| S5 commentaire du cas d'échec | corrigé | — |
+
+**Suggestions (non bloquantes, pour la PR)** :
+- ⚠️ Mobile `applyBulk` : les précédents rendus par `?thread=true` sont posés localement avec le geste `Bulk` et sans auteur
+  (« (avec le fil) » absent jusqu'au temps réel ou au rechargement). Appliquer `Thread` aux clés traitées non sélectionnées.
+- ⚠️ Sélection sur deux dossiers (mobile et weda2 : une requête par dossier) : un message sélectionné dans un dossier peut
+  être précédent d'un message sélectionné dans l'autre ; il serait traité deux fois et un CR compté deux fois. Dédoublonner
+  les résultats fusionnés par clé (`mergeResults`, `handleBulk`). Cas rare (fil dont les messages sont rangés dans deux
+  dossiers et sélectionnés ensemble).
+- ⚠️ E2E-TRIAGE-008 : borner le temps entre la réponse de « Traité » et le clic « Annuler » (convention `geste-differe`),
+  ou relire les quatre messages en un seul `GET emails/{u1,…,u4}`.
+- ⚠️ `TheBulkHandling_RaisesTheThreadOnlyWhenAsked` : affirmer A non lu avant le geste, dans le test même.
+- ⚠️ (passage 1, S2, S3) preuve d'intégration Corbeille / brouillons ; coût de la collecte du fil au banc (boîte cible
+  ~10 000 messages).
+
+#### Arbitrage humain
+- Aucun.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-493 --sync` — ne pas éditer à la main)*
@@ -401,7 +442,7 @@ puis vérification de chaque constat dans le code.
 |---|---|---|---|---|---|---|
 | /start | ok | 27 s | — | — | — | — |
 | /develop | ok | 19 min 12 s | 13 (2 min 59 s) | 29 (37 min 32 s) | — | dtos-mss 1B/0T, api-mail 6B/20T, client-mobile 3B/3T, client-angular 3B/6T, reprise 1 |
-| /review-code | changes | 5 min 13 s | — | — | — | reprise 1 |
-| **Total cycle** | | **24 min 53 s** | **13 (2 min 59 s)** | **29 (37 min 32 s)** | **0 (0.0 s)** | |
+| /review-code | ok | 3 min 05 s | — | — | — | — |
+| **Total cycle** | | **22 min 45 s** | **13 (2 min 59 s)** | **29 (37 min 32 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (15 s)
