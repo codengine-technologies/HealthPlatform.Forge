@@ -1,14 +1,14 @@
 # E024 — Messagerie premium : traiter, déléguer, boucler
 
-> **Statut** : 🟡 en cours — 7 features livrées et validées, 1 livrée en attente de validation (task-457),
-> 2 au backlog (tasks 458, 488). Les puces « À traiter » et « Pour moi » à compteur (task-492) sont livrées, en
-> attente de validation. La relance sans réponse (task-462) est retirée le 2026-11-21.
+> **Statut** : 🟡 en cours — 8 features livrées et validées, 3 au backlog (tasks 458, 488, 494). « Traité » sur un
+> message d'un fil traite aussi ses précédents (task-493) : livré, en attente de validation. La relance sans réponse
+> (task-462) est retirée le 2026-11-21.
 > Le 2026-11-12, toutes les features prévues avaient
 > été retirées du backlog ; une partie y est revenue le 2026-11-13.
-> **Version** : 0.9
+> **Version** : 0.10
 > **Auteur** : PO forge (task-453)
 > **Modèle** : task-driven
-> **Dernière mise à jour** : 2026-11-22
+> **Dernière mise à jour** : 2026-11-25
 > **Vue ingénierie** : [E024-Changelogs.md](E024-Changelogs.md)
 
 ---
@@ -26,7 +26,7 @@
 - [7. Contraintes et hypothèses](#7-contraintes-et-hypothèses)
 - [8. Critères d'acceptation de l'EPIC](#8-critères-dacceptation-de-lepic)
 - [9. Hors périmètre](#9-hors-périmètre)
-- [État de couverture (2026-11-22)](#état-de-couverture-2026-11-22)
+- [État de couverture (2026-11-25)](#état-de-couverture-2026-11-25)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -79,11 +79,12 @@ disparaissent jamais parce que le message a été rangé ailleurs, depuis la pla
 | « Vous avez répondu à ce message le… » | Savoir, en ouvrant un message, qu'on y a déjà répondu, ou qu'un collègue de la boîte l'a fait, quand et combien de fois ; ouvrir la réponse ; repérer d'une icône les messages répondus dans la liste | task-459 | ✅ Livrée et validée |
 | Saisie des tags | Poser un tag en quelques touches : la liste propose les tags de la boîte dès qu'on commence à taper, sans tenir compte des majuscules ni des accents ; un nom de plusieurs mots est accepté, jusqu'à 40 caractères ; « Créer le tag » quand aucun tag ne porte ce nom | task-486 | ✅ Livrée et validée |
 | Tags système et vues par tag | Retrouver d'un coup d'œil la biologie, les patients, les professionnels de santé et les messages reçus pour information, par des tags posés à l'arrivée | task-456 | ✅ Livrée et validée |
-| Marquer un message traité | Voir ce qui reste à traiter, pas seulement ce qui n'est pas lu : un compteur et un filtre « À traiter », un bouton « Traité » (ou un balayage sur mobile), « Annuler » pendant 6 secondes, « Remettre à traiter ». Répondre, ranger ou rattacher un message le traite aussi. Traiter plusieurs messages d'un coup, sans jamais acquitter une biologie. Voir qui a traité et quand. La puce « À traiter » en tête de liste porte le nombre du dossier ou du tag affiché et n'apparaît que s'il y a quelque chose à traiter | task-454, task-492 | ✅ Livrée et validée (puce à compteur, task-492 : en attente de validation) |
-| « À traiter par » | Confier un message à une personne de la boîte : la choisir dans la liste des personnes rattachées et actives, avec leur rôle ; la retrouver sur la ligne (initiales) et dans le détail ; attribuer une sélection d'un coup. La personne le trouve sous la puce « Pour moi » de la liste, qui porte son compteur et n'apparaît que si un message lui est attribué, et en est avertie ; traiter le message clôt l'attribution | task-457, task-492 | 🟢 Livrée — en attente de validation |
+| Marquer un message traité | Voir ce qui reste à traiter, pas seulement ce qui n'est pas lu : un compteur et un filtre « À traiter », un bouton « Traité » (ou un balayage sur mobile), « Annuler » pendant 6 secondes, « Remettre à traiter ». Répondre, ranger ou rattacher un message le traite aussi. Traiter plusieurs messages d'un coup, sans jamais acquitter une biologie. Voir qui a traité et quand. La puce « À traiter » en tête de liste porte le nombre du dossier ou du tag affiché et n'apparaît que s'il y a quelque chose à traiter. « Traité » sur un message d'une conversation traite aussi les messages précédents du fil, jamais un plus récent | task-454, task-492, task-493 | ✅ Livrée et validée (traiter avec le fil, task-493 : en attente de validation) |
+| « À traiter par » | Confier un message à une personne de la boîte : la choisir dans la liste des personnes rattachées et actives, avec leur rôle ; la retrouver sur la ligne (initiales) et dans le détail ; attribuer une sélection d'un coup. La personne le trouve sous la puce « Pour moi » de la liste, qui porte son compteur et n'apparaît que si un message lui est attribué, et en est avertie ; traiter le message clôt l'attribution | task-457, task-492 | ✅ Livrée et validée |
 | Conversation en chat | Lire un fil comme une conversation : bulles dans l'ordre, les siennes à droite, auteur réel et rôle, pièces jointes, texte cité et signature repliés seulement quand c'est sûr. Voir l'état de chaque envoi (envoyé, distribué, non distribué, lu à l'heure) sans que les accusés encombrent le fil. Répondre en une ligne à tous les participants, avec un fichier joint (et, sur mobile, un document du dossier patient) ; être averti si les destinataires ont changé | task-487 | ✅ Livrée et validée |
 | Réponse : ne citer que le message d'origine | Répondre en ne citant que ce que le correspondant vient d'écrire, sans tout l'historique ; la citation est retirée, avec un avertissement, vers un destinataire qui n'était pas dans l'échange ; une case « Inclure le message d'origine » | task-488 | ⏳ À faire |
 | Notes internes | Laisser sur un message une note visible des seules personnes de la boîte | task-458 | ⏳ À faire |
+| Liste en conversation plus sobre | En vue Conversation, voir chaque fil sur une seule ligne, avec un indicateur discret du nombre de messages, en gras tant qu'un message du fil reste non lu ; le fil s'ouvre en conversation au lieu de se déplier sous la ligne | task-494 | ⏳ À faire |
 
 ---
 
@@ -123,6 +124,8 @@ Professionnel de santé, Pour info (task-456). Le praticien ouvre la vue d'un ta
 Le praticien suit ce qui **reste à traiter** (task-454). Un message sort de « À traiter » quand la personne fait le
 geste naturel : elle y répond, le transfère, le range hors de la Boîte de réception ou le rattache à un patient. Le
 bouton « Traité » sert au reste. Un compte rendu de biologie à acquitter reste à traiter tant qu'il n'est pas acquitté.
+Sur un message d'une conversation, « Traité » clôt l'échange jusque-là : les messages précédents du même fil, encore à
+traiter, sortent avec lui ; une réponse plus récente reste à traiter (task-493).
 
 Quand un message revient à **quelqu'un d'autre**, la personne qui le lit indique « À traiter par » et choisit une
 personne de la boîte : le médecin titulaire, un confrère membre, la secrétaire délégataire (task-457). Le message
@@ -151,8 +154,9 @@ praticien le souhaite, mais il n'encombre ni « Bio à acquitter » ni le tablea
 | Seul le nouveau réclame une action | Un message ne réclame une action (acquitter aujourd'hui, traiter demain) que s'il est arrivé depuis la date de début du suivi de la boîte, comparée à sa date d'arrivée réelle ; l'historique reste consultable et actionnable sans rien réclamer, même s'il revient après un incident de la messagerie | ✅ Implémenté pour l'acquittement (task-466) |
 | Lire ne traite pas, traiter ne résout pas | Un message est « à traiter » s'il est suivi et n'est pas classé « Pour info ». Traiter un message le marque aussi comme lu ; le lire ne le traite pas. Marquer traité n'acquitte jamais un compte rendu de biologie : un message qui porte un compte rendu à acquitter reste à traiter, et le traitement groupé l'écarte. « Traité » peut être annulé pendant 6 secondes, et « Annuler » rend l'état d'avant | ✅ Implémenté (task-454) |
 | Un message traité l'est pour toute la boîte | L'état « traité » appartient à la boîte : traité par une personne, il l'est pour toutes. Chacun voit « Traité par {Prénom NOM} ({rôle}) le … » avec le geste (répondu, rangé, rattaché, résultats acquittés) ; la pose et le retrait sont tracés au nom de la personne réelle. Il n'est visible que dans la plateforme, pas d'un autre logiciel de messagerie | ✅ Implémenté (task-454) |
-| On confie un message à une personne, jamais à un nom saisi | « À traiter par » ne propose que les personnes rattachées à la boîte et actives, avec leur rôle ; une seule personne à la fois, réattribuable ou retirée. Une personne qui perd l'accès n'est plus proposée, et ses attributions en cours affichent « (accès retiré) ». Traiter le message clôt l'attribution | 🟡 Implémenté, en attente de validation (task-457) |
-| Chaque attribution est imputée et ne prévient que la personne visée | Attribuer, réattribuer ou retirer est tracé au nom de la personne réelle, avec la personne attribuée ; l'avis « … vous a attribué un message » ne parvient qu'à la personne attribuée, sans contenu clinique | 🟡 Implémenté, en attente de validation (task-457) |
+| On confie un message à une personne, jamais à un nom saisi | « À traiter par » ne propose que les personnes rattachées à la boîte et actives, avec leur rôle ; une seule personne à la fois, réattribuable ou retirée. Une personne qui perd l'accès n'est plus proposée, et ses attributions en cours affichent « (accès retiré) ». Traiter le message clôt l'attribution | ✅ Implémenté (task-457) |
+| Chaque attribution est imputée et ne prévient que la personne visée | Attribuer, réattribuer ou retirer est tracé au nom de la personne réelle, avec la personne attribuée ; l'avis « … vous a attribué un message » ne parvient qu'à la personne attribuée, sans contenu clinique | ✅ Implémenté (task-457) |
+| Traiter un message, c'est traiter l'échange jusque-là | « Traité » sur un message d'une conversation traite aussi les messages du même fil envoyés avant lui et encore à traiter, dans tous les dossiers sauf la Corbeille. Un message plus récent n'est jamais clos : le praticien ne l'a peut-être pas vu. Un message attribué à une autre personne reste dans son « Pour moi », un compte rendu de biologie à acquitter reste à acquitter, et l'avis le dit. Chaque message traité porte sa propre trace au nom de la personne, « avec le fil » ; « Annuler » les remet tous | 🟡 Implémenté, en attente de validation (task-493) |
 | Au moindre doute, le message se montre en entier | En conversation, un texte n'est replié que s'il est retrouvé dans le message auquel il répond, et une signature seulement si son début et sa fin sont connus ; sinon la bulle montre tout le message. Masquer à tort une information médicale est pire qu'afficher un historique en trop | ✅ Implémenté (task-487) |
 | Un accusé n'est jamais un message | Les rapports de distribution et les accusés de lecture se rattachent au message envoyé et en donnent l'état (distribué, non distribué, lu à l'heure) ; ils ne deviennent jamais une bulle de la conversation | ✅ Implémenté (task-487) |
 | La date de suivi est une donnée de la boîte | Toute personne rattachée à la boîte (titulaire, membre, délégataire) peut changer la date de début du suivi ; la date ne peut pas être dans le futur, et chaque changement est tracé au nom de son auteur, avec l'ancienne et la nouvelle date | ✅ Implémenté (task-466) |
@@ -174,7 +178,7 @@ praticien le souhaite, mais il n'encombre ni « Bio à acquitter » ni le tablea
 - [ ] Toutes les features du §4 sont livrées et validées par l'humain.
 - [x] Un acquittement de biologie et un rattachement manuel survivent au rangement d'un message depuis un autre
       logiciel (vérifié automatiquement sur l'application mobile et sur l'application web, task-453).
-- [ ] Le praticien voit, en ouvrant sa boîte, ce qui reste à traiter et par qui.
+- [x] Le praticien voit, en ouvrant sa boîte, ce qui reste à traiter et par qui.
 
 ---
 
@@ -190,7 +194,7 @@ praticien le souhaite, mais il n'encombre ni « Bio à acquitter » ni le tablea
 
 ---
 
-## État de couverture (2026-11-22)
+## État de couverture (2026-11-25)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
@@ -199,14 +203,15 @@ praticien le souhaite, mais il n'encombre ni « Bio à acquitter » ni le tablea
 | « Vous avez répondu à ce message le… » | ✅ Livrée et validée | 100 % | task-459 |
 | Saisie des tags | ✅ Livrée et validée | 100 % | task-486 |
 | Tags système et vues par tag | ✅ Livrée et validée | 100 % | task-456 |
-| Marquer un message traité | ✅ Livrée et validée | 100 % (puce à compteur : en attente de validation) | task-454, task-492 |
-| « À traiter par » | 🟢 Livrée — en attente de validation | 100 % livré | task-457, task-492 |
+| Marquer un message traité | ✅ Livrée et validée | 100 % (traiter avec le fil : en attente de validation) | task-454, task-492, task-493 |
+| « À traiter par » | ✅ Livrée et validée | 100 % | task-457, task-492 |
 | Conversation en chat | ✅ Livrée et validée | 100 % (joindre un document du dossier depuis l'application web : en arbitrage) | task-487 |
 | Réponse : ne citer que le message d'origine | ⏳ À faire | 0 % | task-488 |
 | Notes internes | ⏳ À faire | 0 % | task-458 |
+| Liste en conversation plus sobre | ⏳ À faire | 0 % | task-494 |
 
-**Couverture EPIC consolidée : 7 features livrées et validées sur 10 retenues**, 1 livrée en attente de
-validation (task-457), 2 au backlog.
+**Couverture EPIC consolidée : 8 features livrées et validées sur 11 retenues**, dont « Marquer un message traité »
+étendu par task-493 (en attente de validation), 3 au backlog.
 
 ---
 
@@ -299,6 +304,14 @@ validation (task-457), 2 au backlog.
   l'entrée « Pour moi » du menu de gauche disparaît : la puce est sa seule entrée. Sur l'application web et sur
   l'application mobile (task-492).
 
+- **v0.10 — « Traité » sur un message d'un fil traite aussi ses précédents.** Quand le praticien marque « Traité » un
+  message d'une conversation, les messages précédents du même fil, encore à traiter, sortent avec lui de « À traiter » ;
+  une réponse plus récente reste à traiter. L'avis dit « Traité — 3 messages du fil », et « Annuler » les remet tous
+  dans leur état d'avant. Un message du fil attribué à une autre personne reste dans son « Pour moi » ; un compte rendu
+  de biologie à acquitter reste à acquitter, et l'avis le dit. Le détail d'un message traité ainsi dit « Traité par …
+  le … (avec le fil) ». Partout où « Traité » se propose : ligne, détail, conversation, balayage sur mobile, sélection ;
+  « Traiter les N messages affichés » garde sa règle. Sur l'application web et sur l'application mobile (task-493).
+
 ### Conformité réglementaire
 
 - **v0.1 — Imputabilité.** Un acquittement qui revient garde l'auteur réel qui l'avait posé, délégataire compris. Le
@@ -325,6 +338,10 @@ validation (task-457), 2 au backlog.
   inscrit au journal au nom de la personne qui l'a ouvert ; la réponse est tracée au nom de la personne qui l'a écrite,
   et sa bulle porte son nom et son rôle chez les autres personnes de la boîte (task-487).
 
+- **v0.10 — Une trace par message traité avec le fil.** Chaque message du fil traité par le même geste a sa propre
+  trace au journal, au nom de la personne réelle et de son rôle, délégataire compris, avec la mention « avec le fil » ;
+  « Annuler » est tracé de même, message par message (task-493).
+
 ### Sécurité
 
 - **v0.1 — Aucune perte silencieuse.** Un message supprimé pour de bon ne détruit plus la trace de prise de
@@ -337,6 +354,9 @@ validation (task-457), 2 au backlog.
   personnes actives de la boîte voient la liste des personnes et peuvent attribuer (task-457).
 - **v0.8 — Rien ne part vers le mauvais fil.** Si le praticien change de fil pendant la relecture qui précède l'envoi,
   la réponse ne part pas ; aucune réponse ne demande d'accusé de lecture au correspondant (task-487).
+- **v0.10 — Rien n'est clos sans avoir pu être vu.** Traiter un fil ne clôt jamais un message plus récent que celui
+  sur lequel le praticien agit, ne touche pas un message confié à une autre personne et n'acquitte jamais une biologie
+  (task-493).
 - **v0.4 — Refus lisibles.** Un nom de tag refusé (vide, trop long, caractère interdit) l'est avec un
   message en français, affiché sous le champ (task-486).
 
@@ -374,6 +394,11 @@ validation (task-457), 2 au backlog.
 - **v0.9 — Les compteurs des puces viennent du serveur.** Ce sont les nombres déjà calculés pour le menu des dossiers
   et des tags : aucun calcul local, aucun changement de contrat. Trois parcours automatiques vérifient, sur les deux
   applications, le nombre porté par les puces, leur disparition à zéro et la puce active qui reste à 0 (task-492).
+
+- **v0.10 — Le fil est retrouvé par le serveur.** Les messages d'un fil sont réunis d'après les en-têtes de réponse
+  standard de la messagerie de santé, dans tous les dossiers, en une seule lecture pour toute une sélection. Un parcours
+  automatique vérifie, sur les deux applications, le traitement d'un fil de quatre messages et son annulation ; le
+  parcours de la vue Conversation, qui échouait par intermittence, a été stabilisé (task-493).
 
 ---
 

@@ -681,6 +681,7 @@ adaptés. **4b** : E2E-TRIAGE-008 v1. **4a** : la ligne « précédents marqués
 | /lint-mobile | ok | 16 s | — | — | — | lint clean |
 | /e2e | ok | 49 min 47 s | — | — | — | e2e ×4 (42 min 26 s) |
 | /review | ok | 2 min 26 s | 2 (10 s) | 1 (20 s) | — | dtos-mss 1B/0T, client-mobile 1B/1T |
-| **Total cycle** | | **1 h 39 min** | **17 (5 min 06 s)** | **40 (54 min 28 s)** | **4 (1 min 40 s)** | |
+| /tech-writer | ok | 1 min 48 s | — | — | — | — |
+| **Total cycle** | | **1 h 41 min** | **17 (5 min 06 s)** | **40 (54 min 28 s)** | **4 (1 min 40 s)** | |
 
 Autres commandes mesurées : lint ×2 (19 s), nuget-wait ×1 (15 s)

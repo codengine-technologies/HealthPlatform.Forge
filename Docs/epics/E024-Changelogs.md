@@ -2,7 +2,7 @@
 
 > **Audience** : équipes techniques (ingénierie, backlog, dette)
 > **Vue produit** : [E024-messagerie-premium-traiter-deleguer-bouc.md](E024-messagerie-premium-traiter-deleguer-bouc.md)
-> **Dernière mise à jour** : 2026-11-22
+> **Dernière mise à jour** : 2026-11-25
 
 ---
 
@@ -526,6 +526,64 @@
   chemin.
 - **Ouvert** : S-a (`forMeKeys` lit 100 attributions au plus) ; S-b (weda2, même dossier rechoisi, message ouvert :
   la puce active reste à 0, conforme à la règle).
+- **État au 2026-11-25** : `archived` (mergée).
+
+### v0.10 — task-493 : « Traité » traite aussi les précédents du fil (api-mail, dtos-mss, client-mobile, weda2)
+
+- **État** : `done` — PRs en attente du merge humain (HAG).
+- **PRs** : dtos-mss [#73](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/73), api-mail
+  [#380](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/380), client-mobile
+  [#134](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/134). client-angular en code-only, non
+  commité sur `feature/nova-mss-weda-integration` (10 fichiers, liste dans le task file).
+- **Contrat** : `HealthPlatform.Dtos.Mss` **632.0.0** — `MailHandlingGesture.Thread = 8` (ajouté en fin),
+  `MailHandlingResultDto : MailHandlingDto { Thread }` (réponse du bouton, corps de « Annuler »).
+  `contract_impact.py` : api-mcp aucun impact ; client-mobile et client-angular IMPACT « énumération
+  MailHandlingGesture modifiée », adaptés (`Thread = 8`, libellé « (avec le fil) »).
+- **Règles** (`MailHandlingService`, `MailThreadHandlingRule`) :
+  - bouton « Traité » et `PUT …/emails/bulk/status/handled?thread=true` (« Traité » sur une sélection) : précédents =
+    messages du fil envoyés strictement avant (date d'envoi), ni brouillon ni Corbeille (SPECIAL-USE ; la Corbeille par
+    nom est déjà hors « À traiter »), **à traiter**, non attribués à une autre personne (attribution ouverte,
+    `AssigneeTenantId` ≠ la personne) ; un CR de biologie en attente est écarté et rendu dans `ExcludedBiology` ;
+  - un message **désigné** par le geste n'est jamais candidat précédent (B2) ; filtre « à traiter » avant le
+    dédoublonnage par Message-ID (S1) ;
+  - geste `Thread`, une trace `MailMarkedHandled` par message ; une passe « lu » et une publication temps réel pour le
+    message et son fil ; l'import Weda et « Traiter les N messages affichés » restent sans fil.
+- **Lecture des fils** : `MailHandlingRepository.GetThreadsAsync` — `ThreadMessageIds.CollectAsync` à plusieurs départs
+  (une passe de requêtes pour toute une sélection), `ThreadMessageIds.Roots` (union-find sur `In-Reply-To` /
+  `References`), `ThreadMessageIds.Variants` partagé ; génération courante, biologie en attente en une requête.
+- **Revue** : anticipée passage 1 CHANGES REQUESTED — B1 (mobile : `inbox.page.ts` `bulkHandle` sans `thread`), B2 (CR
+  sélectionné écarté deux fois), B3 (« lu » des précédents non prouvé), S1, S4 (fenêtre d'annulation e2e), S5 ; reprise
+  1 ; passage 2 APPROVED ; validation finale APPROVED.
+- **Tests** :
+  - unitaires `MailHandlingServiceTests` (+14 cas : précédents seuls, plus récent exclu, déjà traité, attribué à un
+    autre / à soi, biologie, Corbeille et brouillons, hors fil, biologie sur le message, import Weda, remis à traiter,
+    sélection avec / sans fil, CR désigné écarté une fois, deux copies) ;
+  - intégration `FolderOperationsEndToEndTests.ThreadHandling` (3) : fil A, CR signalé, B attribué à la délégataire, C,
+    D ; refus 409 ; délégataire et « Annuler » ; sélection avec / sans fil ; « lu » des précédents ;
+  - mutations rouges M1 à M13 (bouton sans fil, attribution ignorée, plus récent traité, sélection sans fil, biologie
+    traitée, « Annuler » réduit, Corbeille/brouillon, biologie du message, affichés avec fil, dépôt sans fil,
+    précédents non lus, désigné candidat, dédoublonnage avant filtre) ;
+  - weda2 : `mail-handling.service.spec` (+7), `mail-handling.util.spec`, `mail-detail.handled.spec`,
+    `mail-list.gestures.spec` ; mobile : `mail-handling.service.spec` (+6), `mail-handling.util.spec`,
+    `mail-detail.handling.spec`, `mss-api.service.spec`, `inbox.page.spec` ;
+  - suites : api-mail 368 + 4 360 + 749 + 1 388 + 1 375 (Release, couverture) ; mobile 1 713 ; mss-lib 1 948 ; weda2
+    2 683 ;
+  - e2e : **E2E-TRIAGE-008** v1 (mobile et angular, rouge sous mutation client sur mobile) ; voies mobile 79/79,
+    angular 100 (+1 flaky E2E-SEARCH-004, 1 quarantaine E2E-COMPOSE-002), parité verte.
+- **Sonar** : QG OK, new coverage 95,7 → 95,9 %, 0 bug / vulnérabilité / smell ; 1 S125 corrigé dans `MailRepository`
+  (commentaire du correctif `6bd1a610`, hors task).
+- **E2E-CONV-003 stabilisé** (mobile, `d748346`, sur demande humaine) : la poll lisait le chip du fil par `isVisible()`
+  juste après le rechargement (rouge 2/2 alors que le fil était formé) ; lecture par `isShown`, choix de la vue rejoué
+  jusqu'au segment coché ; rouge sous mutation (chip masqué). Le parcours weda2 a la même forme, vert, non modifié.
+- **Prévention** : `conventions/csharp.md` S125 → 39 ; `conventions/angular.md` `action-a-deux-entrees` → 2 (recenser
+  les points d'entrée sur tout `src/` de chaque client) ; `conventions/e2e.md` `mutation-non-servie` → 9 (serveur weda2
+  tombé, ne jamais laisser une mutation dans l'arbre servi par la recette), `fil-depose-a-la-seconde` → 4 (cause
+  établie), `isvisible-sans-attente` → 2.
+- **Ouvert (suggestions de revue)** : mobile `applyBulk` pose `Bulk` sans auteur sur les précédents rendus par
+  `?thread=true` jusqu'au temps réel ; sélection sur deux dossiers (une requête par dossier) : un message peut être
+  traité deux fois et un CR compté deux fois ; coût de `References LIKE` à mesurer au banc ; preuve d'intégration
+  Corbeille / brouillons ; preuve par mutation du parcours weda2 non obtenue (serveur de dev tombé, puis recette de
+  l'humain sur les ports), parcours vert sans mutation.
 
 ---
 
@@ -584,16 +642,21 @@
 | `dtos-mss/MailConversationDto.cs` | contrat de la conversation | task-487 |
 | weda2 `features/mail/components/mail-conversation/`, `core/utils/conversation.util.ts` | vue chat web | task-487 |
 | client-mobile `conversation/conversation-chat.page.*`, `patient-document-picker` | vue chat mobile | task-487 |
+| `api-mail/src/Domain/Rules/MailThreadHandlingRule.cs` | règle « précédent du fil » | task-493 |
+| `api-mail` `MailHandlingRepository.GetThreadsAsync`, `ThreadMessageIds` (`CollectAsync` multi-départs, `Roots`, `Variants`) | fils d'une sélection en une lecture | task-493 |
+| `api-mail` `MailHandlingService` (`PlanAsync`, `PredecessorsAsync`, `HandleWithThreadAsync`), `MailHandlingController` (`thread`) | traiter avec le fil | task-493 |
+| `dtos-mss` `MailHandlingGesture.Thread`, `MailHandlingResultDto` | contrat du geste « avec le fil » | task-493 |
+| weda2 et client-mobile `mail-handling.service.ts`, `mail-handling.util.ts` ; mobile `inbox.page.ts` (`bulkHandle`) | avis, liste, « Annuler », sélection avec fil | task-493 |
 
 ---
 
-## Annexe B — Inventaire fonctionnel daté (2026-11-22)
+## Annexe B — Inventaire fonctionnel daté (2026-11-25)
 
-- Tasks de l'EPIC : 13 — 7 `archived` (453, 454, 456, 459, 466, 486, 487), 2 `done` (457, 492), 2 `todo` (458, 488),
-  2 annulées (465, 462).
-- Scénarios e2e de l'EPIC au catalogue : 16 (E2E-BIO-004, E2E-BIO-007, E2E-DETAIL-006, E2E-TAG-001, E2E-TAG-002,
-  E2E-TAG-003, E2E-TRIAGE-001 v2, E2E-TRIAGE-002, E2E-TRIAGE-006, E2E-TRIAGE-007, E2E-SHARED-003, E2E-ASSIGN-001 v2,
-  E2E-ASSIGN-002, E2E-ASSIGN-003, E2E-CONV-001, E2E-CONV-002).
+- Tasks de l'EPIC : 15 — 9 `archived` (453, 454, 456, 457, 459, 466, 486, 487, 492), 1 `done` (493), 3 `todo`
+  (458, 488, 494), 2 annulées (465, 462).
+- Scénarios e2e de l'EPIC au catalogue : 17 (E2E-BIO-004, E2E-BIO-007, E2E-DETAIL-006, E2E-TAG-001, E2E-TAG-002,
+  E2E-TAG-003, E2E-TRIAGE-001 v2, E2E-TRIAGE-002, E2E-TRIAGE-006, E2E-TRIAGE-007, E2E-TRIAGE-008, E2E-SHARED-003,
+  E2E-ASSIGN-001 v2, E2E-ASSIGN-002, E2E-ASSIGN-003, E2E-CONV-001, E2E-CONV-002).
 
 ---
 
@@ -609,6 +672,8 @@
 | task-486 | Saisie des tags : noms de plusieurs mots (40 caractères), liste des tags de la boîte à la frappe, créations concurrentes sans doublon ; première brique des vues par tag (task-456) | `archived` (PRs #371, #126) |
 | task-456 | Tags système (Biologie, Patient, Professionnel de santé, Pour info) posés à l'arrivée et par rattrapage, vues par tag combinables en « Tous » / « Non lus », réglage par personne | `archived` (PRs #68, #372, #2, #127) |
 | task-454 | Marquer un message traité : état partagé par la boîte (Message-ID), compteurs et filtre « À traiter », gestes naturels, bouton et balayage, « Annuler », traitement groupé sans jamais acquitter une biologie, tuile du tableau de bord | `archived` (PRs #69, #373, #128) |
-| task-457 | « À traiter par » : attribuer un message à une personne active de la boîte (Message-ID), vue et compteur « Pour moi » sur tous les dossiers, avis ciblé sur la personne, attribution groupée, imputée à l'auteur réel | `done` (PRs #70, #374, #129) |
+| task-457 | « À traiter par » : attribuer un message à une personne active de la boîte (Message-ID), vue et compteur « Pour moi » sur tous les dossiers, avis ciblé sur la personne, attribution groupée, imputée à l'auteur réel | `archived` (PRs #70, #374, #129) |
 | task-487 | Conversation en chat : fil en bulles, découpage sûr de la citation, état d'envoi par les accusés reçus (jamais des bulles), réponse en une ligne composée par le serveur et adressée à tous les participants, lecture tracée au nom de la personne réelle | `archived` (PRs #71, #375, #130) |
-| task-492 | Puces « À traiter » et « Pour moi » à compteur, masquées à zéro sauf active, repli sur « Tous » ; entrée « Pour moi » retirée du menu de weda2 | `done` (PRs #379, #133) |
+| task-492 | Puces « À traiter » et « Pour moi » à compteur, masquées à zéro sauf active, repli sur « Tous » ; entrée « Pour moi » retirée du menu de weda2 | `archived` (PRs #379, #133) |
+| task-493 | « Traité » sur un message d'un fil traite aussi ses précédents à traiter (jamais un plus récent, ni un message attribué à un autre, ni une biologie à acquitter), « Annuler » de tout le fil, trace par message « avec le fil », « Traité » sur une sélection avec fil | `done` (PRs #73, #380, #134) |
+| task-494 | Liste en conversation plus sobre : un fil sur une ligne, indicateur discret, plus de dépliage | `todo` |
