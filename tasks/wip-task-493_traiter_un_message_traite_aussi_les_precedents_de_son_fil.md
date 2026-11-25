@@ -315,6 +315,36 @@ chaque message d'un fil qu'il vient de lire en entier, et la liste « À traiter
   vert, mss-lib 1 948/1 948, weda2 2 683/2 683, vert marqué (arbre final).
 - **Passe qualité** : aucune nouvelle (correctifs ciblés de la revue, sans code à simplifier).
 
+## Sonar log
+
+- Mode A (chaîné), serveur SonarQube 9.9.8 (`sonar.login`), conteneurs redémarrés (arrêtés depuis 40 h).
+- Analyse en **Release** : la recette de l'humain verrouille les DLL `Debug` d'`Api/Mail/src/Api` (non arrêtée).
+- Itérations : 2.
+- Phase 1 (new code) : ✓ Quality Gate OK, new_coverage = 95,9 %.
+- Phase 1 — Issues fixées : 1 smell (S125, `MailRepository.cs:2238`, « ; » en fin de commentaire venu du correctif
+  `6bd1a610` du 2026-11-20, hors task-493) — `c6f6abde`. Aucun test ajouté (correction de commentaire).
+- Phase 1 — Hotspots : 0.
+- Phase 2 (legacy) : rien à traiter (0 bug, 0 vulnérabilité, 0 smell).
+- Build / tests : ✓ vert aux deux itérations (Release, couverture OpenCover) — domaine 368, application 4 360,
+  infrastructure 749, api 1 388, intégration 1 375 (+16 ignorés), 0 échec. Vert marqué (`--by sonar`).
+- `conventions/csharp.md` : S125 → 39.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | → |
+| New coverage | 95,7 % | 95,9 % | +0,2 pt |
+| Bugs | 0 | 0 | 0 |
+| Vulnerabilities | 0 | 0 | 0 |
+| Security hotspots | 0 | 0 | 0 |
+| Code smells | 0 | 0 | 0 |
+| Coverage (projet) | 97,5 % | 97,5 % | 0 |
+| Duplication | 0,3 % | 0,3 % | 0 |
+| Reliability / Security / Maintainability | A/A/A | A/A/A | → |
+
+Baseline : dernière analyse du projet (2026-11-21), avant la branche de la task.
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -443,6 +473,7 @@ adaptés. **4b** : E2E-TRIAGE-008 v1. **4a** : la ligne « précédents marqués
 | /start | ok | 27 s | — | — | — | — |
 | /develop | ok | 19 min 12 s | 13 (2 min 59 s) | 29 (37 min 32 s) | — | dtos-mss 1B/0T, api-mail 6B/20T, client-mobile 3B/3T, client-angular 3B/6T, reprise 1 |
 | /review-code | ok | 3 min 05 s | — | — | — | — |
-| **Total cycle** | | **22 min 45 s** | **13 (2 min 59 s)** | **29 (37 min 32 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 23 min 02 s | 2 (1 min 56 s) | 10 (16 min 35 s) | 4 (1 min 40 s) | 2 itération(s), api-mail 2B/10T |
+| **Total cycle** | | **45 min 47 s** | **15 (4 min 56 s)** | **39 (54 min 07 s)** | **4 (1 min 40 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (15 s)
