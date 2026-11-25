@@ -632,6 +632,41 @@ adaptés. **4b** : E2E-TRIAGE-008 v1. **4a** : la ligne « précédents marqués
 #### Arbitrage humain
 - Aucun.
 
+### Validation finale — APPROVED
+
+- Build + tests : api-mail vert de `/sonar` réutilisé (`c6f6abde`) ; client-angular vert de `/develop` réutilisé (arbre
+  final) ; dtos-mss build rejoué (0 erreur) ; client-mobile rejoué après le correctif d'E2E-CONV-003 : build vert,
+  **1 713/1 713**.
+- Revue du diff postérieur à l'approbation : `c6f6abde` (S125, commentaire seul) ✅ ; `d748346` (E2E-CONV-003 : lecture
+  par attente bornée, choix de la vue rejoué ; rouge sous mutation, témoin vert) ✅.
+- 4a : table du passage 1 complétée par M11 (passage 2) ✅. 4b : `## E2E log` **vert** ✅, E2E-TRIAGE-008 v1 ✅.
+  4c : inchangé (impacts adaptés) ✅.
+- DOD : build et tests des quatre dépôts ✓ ; tests unitaires du service ✓ (vus rouges) ; intégration `status/handled`,
+  « Annuler », deux personnes sur la boîte ✓ (vus rouges) ; composants weda2 et mobile ✓ ; aucun élément d'interface
+  ajouté ✓ ; contrat publié (632.0.0) et consommateurs adaptés ✓ ; E2E-TRIAGE-008 au catalogue et dans les deux clients,
+  vert dans les deux voies ✓ ; aucune donnée de santé dans l'avis ni les journaux ✓. Observables (étapes 1 à 7 du plan
+  de test) : au test manuel (HAG).
+- Branches à jour avec `develop` (aucun retard), PR ouvertes, label `awaiting-human-merge`.
+
+## PRs
+
+- dtos-mss : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/73 — `awaiting-human-merge`
+- api-mail : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/380 — `awaiting-human-merge`
+- client-mobile : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/134 — `awaiting-human-merge`
+- client-angular : code-only — humain gère commit/push TFS et ouverture PR, sur `feature/nova-mss-weda-integration`.
+  Liste des fichiers modifiés :
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`
+  - `front/libs/mss/src/core/models/mail.model.ts`
+  - `front/libs/mss/src/core/services/mss-api.service.ts`
+  - `front/libs/mss/src/core/utils/mail-handling.util.spec.ts`
+  - `front/libs/mss/src/core/utils/mail-handling.util.ts`
+  - `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.handled.spec.ts`
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-list/mail-list.gestures.spec.ts`
+  - `front/libs/mss/src/features/mail/services/mail-handling.service.spec.ts`
+  - `front/libs/mss/src/features/mail/services/mail-handling.service.ts`
+- Ordre de merge (règle 11, US complète) : dtos-mss, puis api-mail, puis client-mobile, avec le commit TFS de weda2.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-493 --sync` — ne pas éditer à la main)*
@@ -645,6 +680,7 @@ adaptés. **4b** : E2E-TRIAGE-008 v1. **4a** : la ligne « précédents marqués
 | /lint-angular | ok | 56 s | — | — | — | lint clean |
 | /lint-mobile | ok | 16 s | — | — | — | lint clean |
 | /e2e | ok | 49 min 47 s | — | — | — | e2e ×4 (42 min 26 s) |
-| **Total cycle** | | **1 h 36 min** | **15 (4 min 56 s)** | **39 (54 min 07 s)** | **4 (1 min 40 s)** | |
+| /review | ok | 2 min 26 s | 2 (10 s) | 1 (20 s) | — | dtos-mss 1B/0T, client-mobile 1B/1T |
+| **Total cycle** | | **1 h 39 min** | **17 (5 min 06 s)** | **40 (54 min 28 s)** | **4 (1 min 40 s)** | |
 
 Autres commandes mesurées : lint ×2 (19 s), nuget-wait ×1 (15 s)
