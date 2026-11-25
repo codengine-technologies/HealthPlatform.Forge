@@ -302,8 +302,16 @@
   ME2 sont tombés rouges sur une autre assertion (le clic « Envoyer », le signal de la pièce), et le
   témoin restauré lui-même a échoué. **Consigne** : laisser passer ~15 s après le nouveau bundle
   avant de jouer, et toujours rejouer le témoin restauré : un témoin rouge invalide la série.
-- **Origine** : task-343, task-349, task-354, task-363, task-367, task-372 (méthode privée laissée sans appel par la mutation : TS6133, aucun bundle), task-459 (import `replySummaryText` laissé inutilisé par la mutation d'un getter weda2 : la page ne se charge plus et le test tombe sur un clic de `openFolder`, pas sur l'assertion protégée ; une mutation garde ses imports utilisés — `replySummaryText(this.mail.reply && null)`), task-457 (paramètre `mail` laissé inutilisé, puis méthode privée `forMePage$` laissée sans appel : même clic de `openFolder` en échec dans la session de la délégataire, avant le geste visé ; réécrites en `void mail` et `&& Date.now() < 0`, qui gardent tout utilisé)
-- **Occurrences** : 8
+- **Variante « serveur tombé » (task-493)** : sur le banc `--serve-only` weda2, la réécriture du fichier muté a fait
+  tomber `nx serve weda2` (code 1, `1 task: 0 succeeded, 1 failed`, aucun message d'erreur dans `out/logs/weda2.log`),
+  et l'orchestrateur a démonté tout le banc. Le lecteur de chunks rendait « marqueur servi : 0 » à chaque passage, sans
+  dire que le serveur était parti. Cause non établie (une seule occurrence). **Consigne** : avant de conclure « non
+  servi », relire la fin du journal de l'orchestrateur (`OUTILLAGE : weda2 s'est arrêté`). Parade : monter le banc avec
+  la mutation déjà en place, jouer, puis restaurer et remonter pour le témoin. **Et ne jamais laisser une mutation dans
+  l'arbre de `client-angular` quand le banc ne tourne plus** : l'humain sert ce même arbre en recette (task-493 : sa
+  recette a démarré sur le code muté, restauré dans la minute).
+- **Origine** : task-343, task-349, task-354, task-363, task-367, task-372 (méthode privée laissée sans appel par la mutation : TS6133, aucun bundle), task-459 (import `replySummaryText` laissé inutilisé par la mutation d'un getter weda2 : la page ne se charge plus et le test tombe sur un clic de `openFolder`, pas sur l'assertion protégée ; une mutation garde ses imports utilisés — `replySummaryText(this.mail.reply && null)`), task-457 (paramètre `mail` laissé inutilisé, puis méthode privée `forMePage$` laissée sans appel : même clic de `openFolder` en échec dans la session de la délégataire, avant le geste visé ; réécrites en `void mail` et `&& Date.now() < 0`, qui gardent tout utilisé), task-493 (serveur weda2 tombé à la recompilation de la mutation)
+- **Occurrences** : 9
 
 ### predicat-de-reponse — Un prédicat de `waitForResponse` se lit comme du code, pas comme un texte
 - **Piège** : une expression régulière littérale réécrite en ligne de commande est devenue
