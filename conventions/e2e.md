@@ -59,7 +59,10 @@
   l'API relue sur un passage rouge rendait les deux messages à la même seconde, avec
   `isThreadRoot: false` pour la réponse.
 - **Origine** : task-375
-- **Occurrences** : 3 (task-489, voie mobile du 2026-11-19 — rouge au 1er essai, vert au retry : « les deux messages forment un fil » non vu en 90 s, **sur le test de `develop` qui porte déjà le correctif de task-487**. La lecture de chaque message ne suffit donc pas toujours. Cause non établie, à instrumenter si une 4ᵉ occurrence tombe (relire `isThreadRoot` et les dates des deux messages sur le passage rouge) ; task-487, recette du 2026-11-18 — **récidive sur du code frais** : le test mobile E2E-CONV-003
+- **Occurrences** : 4 (task-493, voie mobile du 2026-11-25 — rouge aux **deux** essais, et **cause établie** : à l'échec, la
+  ligne du fil portait bien le chip « 2 messages » (`mail-thread-{uid}`). Le fil était formé ; c'est l'interrogation du test qui
+  lisait l'écran par `isVisible()` juste après la bascule en vue Conversation, avant le rendu de la liste regroupée
+  (`isvisible-sans-attente`). Corrigé côté mobile par `isShown(…, 10_000)`. Le parcours weda2 a la même forme (`isVisible()` dans la poll), vert ce jour : à corriger de même au prochain passage ; task-489, voie mobile du 2026-11-19 — rouge au 1er essai, vert au retry : « les deux messages forment un fil » non vu en 90 s, **sur le test de `develop` qui porte déjà le correctif de task-487**. La lecture de chaque message ne suffit donc pas toujours. Cause non établie, à instrumenter si une 4ᵉ occurrence tombe (relire `isThreadRoot` et les dates des deux messages sur le passage rouge) ; task-487, recette du 2026-11-18 — **récidive sur du code frais** : le test mobile E2E-CONV-003
   n'ouvrait que la réponse en vue Liste, pas le message d'origine ; le fil ne s'est jamais formé en 90 s au premier
   essai, vert au second. Un parcours qui forme un fil fait lire **tous** ses messages, chacun par son uid.)
 
@@ -163,8 +166,11 @@
 - **Consigne** : utiliser `locator.waitFor({ state })` ou un helper `isShown(locator, ms)`, jamais
   `isVisible({ timeout })`.
 - **Preuve** : 29 occurrences corrigées ; les parcours concernés sont devenus déterministes.
-- **Origine** : task-345
-- **Occurrences** : 1
+- **Récidive (task-493)** : `isVisible()` sans attente dans un `expect.poll` qui recharge la page à chaque passage :
+  chaque lecture tombe juste après le rechargement, avant le rendu, et la poll échoue même quand l'état attendu est atteint
+  (E2E-CONV-003 mobile ; même forme dans le parcours weda2). Dans une poll, lire par une attente bornée (`isShown`, `waitFor`), jamais par `isVisible()`.
+- **Origine** : task-345, task-493
+- **Occurrences** : 2
 
 ### headless-jamais-skip — En headless, une donnée seedée absente est une régression
 - **Piège** : `if (!visible) return;`, `expect.soft` puis `return`, `test.skip`. Hérités du mode
