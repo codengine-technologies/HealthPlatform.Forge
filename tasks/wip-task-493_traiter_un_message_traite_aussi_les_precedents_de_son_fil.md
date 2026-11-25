@@ -1,6 +1,7 @@
 # todo-task-493.md — Traiter un message traite aussi les précédents de son fil
 
 **Repos**: api-mail, dtos-mss, client-angular, client-mobile
+**Reprises**: 1
 **Dependencies**: task-454, task-492
 **Epic**: E024
 
@@ -268,6 +269,84 @@ chaque message d'un fil qu'il vient de lire en entier, et la liste « À traiter
 - **Vert marqué** : api-mail `499a6fa6`, client-mobile `556be05`, client-angular (arbre final) — `Tools/green/green.py`.
 - **Étape suivante** : `/review task-493 --code`.
 
+## Code Review Summary
+
+### Passage 1 (revue anticipée) — CHANGES REQUESTED
+
+Revue du diff de `dtos-mss` (`504ca8f`), `api-mail` (`499a6fa6`), `client-mobile` (`556be05`) et de l'arbre non commité de
+`client-angular` (`feature/nova-mss-weda-integration`), par un relecteur indépendant (code seul, sans le `## Develop log`),
+puis vérification de chaque constat dans le code.
+
+**4c — consommateurs du contrat** (`contract_impact.py check`) :
+- api-mcp : aucun impact.
+- client-mobile : IMPACT « énumération MailHandlingGesture modifiée » → adapté (`Thread = 8`, libellé, `MailHandlingResultDto`).
+- client-angular : IMPACT « énumération MailHandlingGesture modifiée » → adapté (arbre non commité, liste TFS au `## Develop log`).
+
+**4b — clause DOD du parcours** : E2E-TRIAGE-008 v1 au catalogue (`Api/Mail/e2e/scenarios.yml`), v1 dans les deux clients ✓.
+
+**4a — comportement → test d'intégration → preuve rouge** :
+
+| Comportement (endpoint) | Test d'intégration | Preuve rouge |
+|---|---|---|
+| `PUT …/{uid}/status/handled` : précédents à traiter traités, geste Thread, plus récent intact | `HandlingAMessage_HandlesItsEarlierMessagesToHandle_…` | M1, M3, M10 |
+| idem : attribué à une autre personne intact, reste dans son « Pour moi » | même test | M2 |
+| idem : CR de biologie du fil écarté, rendu dans `thread.excludedBiology`, aucun acquittement | même test | M5 |
+| idem : refus 409 sur un CR en attente, précédent intact | même test | M8 (unitaire) |
+| idem : une trace par message, au nom de la personne réelle (délégataire) | même test + `TheDelegateHandlesTheThread_…` | M1 |
+| `PUT emails/status/handled/undo` avec `thread` : tous les messages remis | `TheDelegateHandlesTheThread_…` | M6 (rouge sur `thread.handled`, avant la relecture) |
+| `PUT …/bulk/status/handled?thread=true` / sans `thread` | `TheBulkHandling_RaisesTheThreadOnlyWhenAsked` | M4, M9 |
+| idem : **les précédents traités sont marqués lus** (« traité implique lu ») | **aucun** | **aucune** → B3 |
+
+**Constats vérifiés** :
+- ❌ **B1** — `client-mobile` : « Traité » sur une sélection ne traite jamais le fil. `inbox.page.ts:1079` (`bulkHandle()`)
+  appelle `handleMany(mails)`, et ni `MailHandlingService.handleMany` ni `MssApiService.bulkMarkHandled` ne savent envoyer
+  `?thread=true`. Règle 1 (« Traité » sur une sélection, dans les deux clients). weda2 a été adapté, le mobile non : le
+  recensement des appelants de `/develop` a été tronqué (`| head`).
+- ❌ **B2** — `api-mail` `MailHandlingService.HandleBulkAsync` / `PredecessorsAsync` : un compte rendu de biologie
+  **sélectionné** (donc dans `excluded`) qui est aussi un précédent d'un autre message sélectionné revient dans
+  `thread.ExcludedBiology` (`seedIds` ne contient que les messages traités) ; `Concat` ne dédoublonne pas. Sélection {CR, C}
+  avec `thread=true` → `ExcludedBiology = [CR, CR]`, avis « 2 comptes rendus de biologie restent à acquitter » pour un seul
+  (règles 5 et 7).
+- ❌ **B3** — règle 1b : « traité implique lu » est un comportement nouveau pour les précédents du fil (une passe « lu »
+  pour le message et son fil, `HandleAsync`), atteignable par `PUT …/status/handled` et `bulk?thread=true`, et aucun test
+  d'intégration ne relit `isRead` d'un précédent.
+- ⚠️ **S1** — `PredecessorsAsync` : `DistinctBy(MessageId)` passe **avant** le filtre `IsToHandle`. Deux copies d'un même
+  précédent : la copie gardée peut être celle qui n'est pas à traiter (Corbeille reconnue à son seul nom, dossier
+  d'auto-action), et la copie de la Boîte de réception reste à traiter. Filtrer, puis dédoublonner.
+- ⚠️ **S4** — e2e E2E-TRIAGE-008 (mobile `functional.spec.ts`, weda2 `functional.e2e.ts`) : entre la réponse de « Traité » et
+  le clic « Annuler », les deux tests attendent l'avis, la sortie de 3 lignes et font 4 relectures serveur ; la fenêtre
+  d'annulation est de 6 s. Rouges intermittents à prévoir (convention `fenetre-annulation`). Relire les états serveur
+  en parallèle, et affirmer que « Annuler » est encore visible juste avant le clic.
+- ⚠️ S2 — aucune preuve d'intégration de l'exclusion Corbeille / brouillons (couverte par l'exclusion « À traiter » des
+  dossiers d'auto-action, et par les tests unitaires). Non bloquant.
+- ⚠️ S3 — performance : chaque « Traité » lance la collecte du fil (`References LIKE` sans index, au moins deux passes) ; une
+  sélection sans borne avec `thread=true` porte N motifs par passe. À mesurer au banc (boîte cible ~10 000 messages) ; non
+  bloquant pour cette task.
+- ⚠️ S5 — le cas d'échec de la DOD (« C en biologie en attente ») est joué sur le CR, qui a A pour précédent : équivalent, à
+  dire dans le commentaire du test.
+- ✅ Vérifié correct : états d'avant lus avant toute écriture ; attribution comparée par `TenantId` (même clé que
+  `MailAssignmentService`), traiter clôt l'attribution et « Annuler » la rouvre ; une trace `MailMarkedHandled` par
+  précédent, geste Thread, au nom de la personne ; refus en problem+json ; import Weda et « messages affichés » ne remontent
+  pas le fil ; `Thread = 8` ajouté en fin, tables des clients complètes ; `MailHandlingResultDto` additif ; aucune donnée de
+  santé dans les journaux ni dans l'avis.
+
+#### À corriger par la reprise
+1. **B1** — `client-mobile` : `bulkMarkHandled(…, withThread)` (`?thread=true`), `handleMany(mails, withThread = false)`,
+   `inbox.page.ts` `bulkHandle()` passe `true`, `handleDisplayed()` reste sans fil ; un spec par point d'entrée, vus rouges.
+   Prévention : `conventions/angular.md` `action-a-deux-entrees` (récidive : un point d'entrée d'un client oublié), et le
+   recensement des appelants se fait sans `| head`.
+2. **B2** — `api-mail` : les messages désignés (tous, pas seulement ceux traités) ne sont jamais candidats précédents, et
+   `ExcludedBiology` est dédoublonné ; test unitaire vu rouge (sélection {CR, C}, `thread=true` → un seul CR écarté).
+3. **B3** — `api-mail` : test d'intégration qui relit `isRead` des précédents traités (non lus avant le geste), vu rouge par
+   mutation (passe « lu » limitée au message).
+4. **S1** — `api-mail` : filtrer `IsToHandle` avant le dédoublonnage par `Message-ID` ; test unitaire vu rouge (deux copies,
+   la première hors « À traiter »).
+5. **S4** — e2e des deux clients : relectures serveur des messages traités en parallèle (`Promise.all`), puis « Annuler »
+   affirmé visible avant le clic ; parcours mobile rejoué vert (`--serve-only`), weda2 au type-check si ses ports sont pris.
+
+#### Arbitrage humain
+- Aucun.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-493 --sync` — ne pas éditer à la main)*
@@ -276,6 +355,7 @@ chaque message d'un fil qu'il vient de lire en entier, et la liste « À traiter
 |---|---|---|---|---|---|---|
 | /start | ok | 27 s | — | — | — | — |
 | /develop | ok | 1 h 03 min | 9 (2 min 12 s) | 18 (25 min 45 s) | — | dtos-mss 1B/0T, api-mail 4B/12T, client-mobile 2B/2T, client-angular 2B/4T |
-| **Total cycle** | | **1 h 04 min** | **9 (2 min 12 s)** | **18 (25 min 45 s)** | **0 (0.0 s)** | |
+| /review-code | changes | 5 min 13 s | — | — | — | reprise 1 |
+| **Total cycle** | | **1 h 09 min** | **9 (2 min 12 s)** | **18 (25 min 45 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (15 s)
