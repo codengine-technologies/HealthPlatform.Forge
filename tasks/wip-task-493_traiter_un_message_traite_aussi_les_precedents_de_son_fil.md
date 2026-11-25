@@ -345,6 +345,21 @@ chaque message d'un fil qu'il vient de lire en entier, et la liste « À traiter
 
 Baseline : dernière analyse du projet (2026-11-21), avant la branche de la task.
 
+## Lint log
+
+- **client-angular** (code seul, branche `feature/nova-mss-weda-integration`, base `origin/next`) : lint clean → no work.
+  - `nx run-many -t lint --projects=mss-lib` : 0 erreur (49 avertissements préexistants sur le projet). Contournement
+    task-367 appliqué (`nx affected --projects=tag:scope:mss` ne restreint pas ; sortie JSON par `eslint` direct).
+  - Fichiers de la task (`mail.model.ts`, `mss-api.service.ts`, `mail-handling.util.ts`, `mail-list.component.ts`,
+    `mail-handling.service.ts`, `e2e/mss-e2e/specs/functional.e2e.ts`) : 0 erreur, 12 avertissements, **aucun sur une ligne
+    ajoutée** (`git diff -U0 HEAD`).
+  - Itérations : 0. Arbre inchangé : le vert marqué par `/develop` reste valide (`green.py check`).
+
+## Lint mobile log
+
+- **client-mobile** (`feat/task-493-traiter-un-message-traite-aussi-les`, `ba360d0`) : `npm run lint` → « All files pass
+  linting ». Lint clean → no work, aucun commit. Itérations : 0. Le vert marqué par `/develop` (reprise 1) reste valide.
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -474,6 +489,8 @@ adaptés. **4b** : E2E-TRIAGE-008 v1. **4a** : la ligne « précédents marqués
 | /develop | ok | 19 min 12 s | 13 (2 min 59 s) | 29 (37 min 32 s) | — | dtos-mss 1B/0T, api-mail 6B/20T, client-mobile 3B/3T, client-angular 3B/6T, reprise 1 |
 | /review-code | ok | 3 min 05 s | — | — | — | — |
 | /sonar | ok | 23 min 02 s | 2 (1 min 56 s) | 10 (16 min 35 s) | 4 (1 min 40 s) | 2 itération(s), api-mail 2B/10T |
-| **Total cycle** | | **45 min 47 s** | **15 (4 min 56 s)** | **39 (54 min 07 s)** | **4 (1 min 40 s)** | |
+| /lint-angular | ok | 56 s | — | — | — | lint clean |
+| /lint-mobile | ok | 16 s | — | — | — | lint clean |
+| **Total cycle** | | **47 min 01 s** | **15 (4 min 56 s)** | **39 (54 min 07 s)** | **4 (1 min 40 s)** | |
 
-Autres commandes mesurées : nuget-wait ×1 (15 s)
+Autres commandes mesurées : lint ×2 (19 s), nuget-wait ×1 (15 s)
