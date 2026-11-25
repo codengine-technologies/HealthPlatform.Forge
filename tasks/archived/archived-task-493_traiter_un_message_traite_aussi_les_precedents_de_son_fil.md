@@ -667,6 +667,16 @@ adaptés. **4b** : E2E-TRIAGE-008 v1. **4a** : la ligne « précédents marqués
   - `front/libs/mss/src/features/mail/services/mail-handling.service.ts`
 - Ordre de merge (règle 11, US complète) : dtos-mss, puis api-mail, puis client-mobile, avec le commit TFS de weda2.
 
+## Merged
+
+- Le 2026-11-25, par `/merge task-493 --i-tested` (test manuel attesté par l'humain), squash :
+  - dtos-mss : `eb053929` (PR #73) — CI `develop` verte : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/actions/runs/45613436666
+  - api-mail : `69d6e128` (PR #380) — CI `develop` verte : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/45613469242
+  - client-mobile : `5ff6d2d0` (PR #134) — CI `develop` verte : https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/45613498306
+- Branches `feat/task-493-traiter-un-message-traite-aussi-les` supprimées (distantes et locales), clones revenus sur `develop`.
+- client-angular : géré par l'humain (TFS).
+- Aucune branche staging (task hors run `/forge`).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-493 --sync` — ne pas éditer à la main)*
