@@ -465,8 +465,14 @@ par lint sur du code frais est un échec de lecture de ce fichier.
 - **Consigne** : quand une action est offerte à plusieurs endroits (ligne, aperçu, menu, raccourci), écrire un test par
   point d'entrée, avec l'état de départ de ce point (aucune sélection, autre élément sélectionné). Un état affiché à un
   seul endroit (dialogue, sélecteur) ne dépend jamais d'une sélection que l'autre point d'entrée ne pose pas.
-- **Origine** : task-393 (/review, CHANGES REQUESTED)
-- **Occurrences** : 1
+- **Récidive (task-493, revue anticipée, B1)** : « Traité » sur une sélection devait traiter le fil dans les deux clients.
+  weda2 a été adapté (`mail-list.component.ts`), le mobile non : son point d'entrée vit dans `inbox.page.ts`
+  (`bulkHandle()`), hors du dossier `features/mail`, et le recensement des appelants avait été lu à travers un `| head`
+  qui l'a coupé. **Consigne ajoutée** : recenser les points d'entrée d'une action sur **tout** `src/` de **chaque**
+  client (`grep -rn "{méthode}(" src --include=*.ts --include=*.html`, sans `head` ni filtre de dossier), et écrire leur
+  liste au `## Develop log` avant le code ; un point d'entrée trouvé dans un client se cherche aussitôt dans l'autre.
+- **Origine** : task-393 (/review, CHANGES REQUESTED), task-493 (/review --code, CHANGES REQUESTED)
+- **Occurrences** : 2
 
 ### page-ionic-non-demontee — Une page Ionic rendue en test retombe sur les tests de rendu suivants
 - **Règle** : convention projet (instabilité Karma, invisible au lint)

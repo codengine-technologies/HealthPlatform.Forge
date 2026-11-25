@@ -269,6 +269,52 @@ chaque message d'un fil qu'il vient de lire en entier, et la liste « À traiter
 - **Vert marqué** : api-mail `499a6fa6`, client-mobile `556be05`, client-angular (arbre final) — `Tools/green/green.py`.
 - **Étape suivante** : `/review task-493 --code`.
 
+### Reprise 1 après /review
+
+- **B1 (mobile, « Traité » sur une sélection sans fil)** : `MssApiService.bulkMarkHandled(…, withThread)` envoie
+  `?thread=true` ; `MailHandlingService.handleMany(mails, withThread = false)` le transmet ; `InboxPage.bulkHandle()`
+  passe `true`, « Traiter les N messages affichés » (`mail-list.component.ts`) reste sans fil. Points d'entrée recensés
+  sur tout `src/` des deux clients, sans filtre : mobile `inbox.page.ts:1079` (sélection), `mail-list.component.ts:199`
+  (affichés) ; weda2 `mail-list.component.ts` `bulkMarkHandled` (sélection, déjà adapté) et `handleDisplayed` (affichés).
+  Specs vus rouges (paramètres ajoutés sans effet d'abord : 4 FAILED sur les assertions d'URL et d'arguments), puis
+  verts : `mss-api.service.spec` (`?thread=true`), `mail-handling.service.spec` (sélection avec / affichés sans fil,
+  et l'existant passé à `false` explicite), `inbox.page.spec` (`handleMany(…, true)`) ; `mail-list.handling.spec`
+  (affichés, sans fil) inchangé et vert.
+- **B2 (api-mail, CR sélectionné compté deux fois)** : les messages **désignés** par le geste (tous, pas seulement ceux
+  traités) ne sont jamais candidats précédents (`HandlingPlan.Designated`). Test
+  `MarkHandledBulkAsync_WithThread_ASelectedPendingReportThatIsAlsoAPredecessor_IsExcludedOnce` vu rouge
+  (`[5, 5]` au lieu de `[5]`), puis vert ; mutation M12 (filtre retiré) rouge.
+- **B3 (api-mail, « traité implique lu » des précédents non prouvé)** : `HandlingAMessage_…` affirme désormais, en
+  précondition, que les cinq messages ne sont pas lus, puis que A (précédent) et C sont lus et D (plus récent) ne l'est
+  pas ; `TheBulkHandling_RaisesTheThreadOnlyWhenAsked` relit A traité **et** lu. Mutation M11 (passe « lu » limitée aux
+  messages désignés) : rouge sur « le précédent traité avec le fil est lu » et sur le tuple geste/lu de la sélection.
+- **S1 (api-mail, dédoublonnage avant le filtre)** : `IsToHandle` filtre avant `DistinctBy(Message-ID)`. Test
+  `MarkHandledAsync_APredecessorInTwoCopies_TheCopyToHandleIsKept` vu rouge (copie « Corbeille » gardée, INBOX
+  ignorée), puis vert ; mutation M13 (ordre inversé) rouge.
+- **S4 (e2e, fenêtre d'annulation de 6 s)** : dans les deux parcours E2E-TRIAGE-008, les quatre relectures serveur sont
+  faites en une fois (`Promise.all`), puis « Annuler » est affirmé visible juste avant le clic. Type-check vert dans les
+  deux suites, ESLint 0 erreur. **Rejeu `--serve-only` non fait** : 5052/4200/8100 sont tenus par la recette de
+  l'humain (AppHost, `nx serve weda2`, `ng serve` mobile, lancés à 10:47:11), qui n'est pas arrêtée. La voie complète
+  reste à `/e2e`.
+- **S5** : le commentaire du cas d'échec dit qu'il est joué sur le compte rendu du fil, qui a A pour précédent.
+- **Auto-contrôle du correctif** (ce que la reprise casse ailleurs) : `PredecessorsAsync` n'a que deux appelants
+  (bouton : désignés = le message, comme avant ; sélection : désignés = toute la sélection) ; `handleMany` garde
+  `false` par défaut, donc « messages affichés » (mobile et weda2) inchangé ; `bulkMarkHandled` sans `withThread`
+  envoie la même URL qu'avant (spec existant vert).
+- **Validation** : la recette de l'humain verrouille `Api/Mail/src/Api/bin` (5 processus `mss.mail.api`, non arrêtés) :
+  build et suites d'api-mail joués dans un worktree détaché du même commit, patch de la reprise appliqué, contenu
+  vérifié identique (`diff` des deux `git diff`). Mutations M11 à M13 jouées dans ce worktree.
+- **Prévention** : `conventions/angular.md` `action-a-deux-entrees` → 2 (recenser les points d'entrée sur tout `src/` de
+  chaque client, sans `head`) ; `conventions/csharp.md` S125 → 38.
+- **Commits** : api-mail `22468e59` ; client-mobile `ba360d0` ; client-angular : `front/e2e/mss-e2e/specs/functional.e2e.ts`
+  (S4) s'ajoute à la liste TFS, non commité.
+- **Build / tests** : api-mail (worktree) build 0 erreur, suite complète 7 881 verts et **1 rouge d'environnement**
+  (`AiDiagnosticsControllerIntegrationTests.DebugVectorSearchAsync_…`, « different vector dimensions 3 and 1536 », AppHost
+  de recette en marche ; vert seul 2/2 — mémoire `integration-semantic-search-rouge-apphost-dev`) : **vert non marqué**,
+  à rejouer par `/review`. client-mobile build vert, suite **1 713/1 713**, vert marqué. client-angular `nx build weda2`
+  vert, mss-lib 1 948/1 948, weda2 2 683/2 683, vert marqué (arbre final).
+- **Passe qualité** : aucune nouvelle (correctifs ciblés de la revue, sans code à simplifier).
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -354,8 +400,8 @@ puis vérification de chaque constat dans le code.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 27 s | — | — | — | — |
-| /develop | ok | 1 h 03 min | 9 (2 min 12 s) | 18 (25 min 45 s) | — | dtos-mss 1B/0T, api-mail 4B/12T, client-mobile 2B/2T, client-angular 2B/4T |
+| /develop | ok | 19 min 12 s | 13 (2 min 59 s) | 29 (37 min 32 s) | — | dtos-mss 1B/0T, api-mail 6B/20T, client-mobile 3B/3T, client-angular 3B/6T, reprise 1 |
 | /review-code | changes | 5 min 13 s | — | — | — | reprise 1 |
-| **Total cycle** | | **1 h 09 min** | **9 (2 min 12 s)** | **18 (25 min 45 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **24 min 53 s** | **13 (2 min 59 s)** | **29 (37 min 32 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (15 s)
