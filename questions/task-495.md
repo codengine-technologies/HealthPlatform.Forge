@@ -1,3 +1,5 @@
+Résolu le 2026-11-26 : plage libérée par l'humain, `/e2e task-495` rejoué vert (voie Angular 102 verts, 1 flaky).
+
 # task-495 — /e2e rouge : outillage (port 47399 réservé par Windows)
 
 **Étape** : `/e2e`, voie Angular (weda2).

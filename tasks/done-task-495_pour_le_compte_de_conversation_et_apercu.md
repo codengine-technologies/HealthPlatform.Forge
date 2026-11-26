@@ -142,7 +142,8 @@ patient, doublons).
 | /lint-angular | ok | 23 s | — | — | — | — |
 | /lint-mobile | ok | 16 s | — | — | — | — |
 | /e2e | ok | 14 min 51 s | — | — | — | e2e ×6 (40 min 27 s), rejeu angular après libération du port 47399 ; mobile réutilisée |
-| **Total cycle** | | **1 h 16 min** | **7 (1 min 37 s)** | **19 (21 min 12 s)** | **2 (57 s)** | |
+| /review | ok | 1 min 51 s | 1 (2.3 s) | — | — | dtos-mss 1B/0T |
+| **Total cycle** | | **1 h 18 min** | **8 (1 min 40 s)** | **19 (21 min 12 s)** | **2 (57 s)** | |
 
 Autres commandes mesurées : lint ×2 (20 s), nuget-wait ×1 (23 s), restore ×1 (3.8 s)
 
@@ -248,6 +249,15 @@ E2E-SHARED-004 et 005 sont `requis` pour angular.
      dans le `try` (les suppressions du `finally` tolèrent un message absent).
   2. weda2 E2E-SHARED-004 : `const [first, second] = thread?.messages` suppose l'ordre du serveur ; choisir par uid
      comme le test mobile (sans risque de vert menteur : `newText` est affirmé aussitôt).
+
+### Validation finale — APPROVED
+
+- Aucun commit depuis l'approbation (dtos-mss `03f16e1`, api-mail `ec5cc612`, client-mobile `70c161b`, arbre Angular
+  inchangé) : rien de plus à relire. `develop` n'a pas avancé : aucune synchronisation nécessaire.
+- Build + tests : api-mail vert de /sonar réutilisé (`ec5cc612`) ; client-mobile et client-angular verts de /develop
+  réutilisés ; dtos-mss build rejoué (0 erreur, pas de suite).
+- DoD : tenue ; scénarios E2E-SHARED-004 et 005 (décalés d'un rang, contenu conforme).
+- 4b : `## E2E log` vert (second passage, après libération du port 47399). 4c : aucun impact sur les trois consommateurs.
 
 ## Sonar log
 
@@ -437,3 +447,26 @@ Baseline : dernière analyse du projet (2026-11-25), avant la branche de la task
 - E2E-SEARCH-008 [mobile] — les critères médicaux arrivent sur le mobile avec la refonte mobile — résorbée par task-451
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## PRs
+
+- `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/74 — `awaiting-human-merge`
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/381 — `awaiting-human-merge`
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/135 — `awaiting-human-merge`
+- `client-angular` : code-only — humain gère commit/push TFS et ouverture PR, sur `feature/nova-mss-weda-integration`.
+  Fichiers modifiés (`git diff --name-only` + non suivis) :
+  - front/e2e/mss-e2e/specs/functional.e2e.ts
+  - front/e2e/mss-e2e/support/e2e-backend.ts
+  - front/libs/mss/src/core/models/conversation.model.ts
+  - front/libs/mss/src/core/utils/on-behalf-of.util.ts (nouveau)
+  - front/libs/mss/src/core/utils/on-behalf-of.util.spec.ts (nouveau)
+  - front/libs/mss/src/features/mail/components/mail-conversation/chat-bubble.component.html
+  - front/libs/mss/src/features/mail/components/mail-conversation/chat-bubble.component.scss
+  - front/libs/mss/src/features/mail/components/mail-conversation/chat-bubble.model.ts
+  - front/libs/mss/src/features/mail/components/mail-conversation/chat-bubble.utils.ts
+  - front/libs/mss/src/features/mail/components/mail-conversation/mail-conversation.component.spec.ts
+  - front/libs/mss/src/features/mail/components/mail-detail/mail-detail.component.ts
+  - front/libs/mss/src/features/mail/components/mail-read-only-view/mail-read-only-view.component.html
+  - front/libs/mss/src/features/mail/components/mail-read-only-view/mail-read-only-view.component.scss
+  - front/libs/mss/src/features/mail/components/mail-read-only-view/mail-read-only-view.component.spec.ts
+  - front/libs/mss/src/features/mail/components/mail-read-only-view/mail-read-only-view.component.ts
