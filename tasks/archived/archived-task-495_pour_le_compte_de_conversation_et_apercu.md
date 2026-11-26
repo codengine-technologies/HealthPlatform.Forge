@@ -471,3 +471,13 @@ Baseline : dernière analyse du projet (2026-11-25), avant la branche de la task
   - front/libs/mss/src/features/mail/components/mail-read-only-view/mail-read-only-view.component.scss
   - front/libs/mss/src/features/mail/components/mail-read-only-view/mail-read-only-view.component.spec.ts
   - front/libs/mss/src/features/mail/components/mail-read-only-view/mail-read-only-view.component.ts
+
+## Merged
+
+- **Date** : 2026-11-26, `/merge task-495 --i-tested` (HAG : US testée par l'humain).
+- `dtos-mss` : PR #74 squash-mergée → `af9f7d72` — CI develop verte (https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/actions/runs/45892307576).
+- `api-mail` : PR #381 squash-mergée → `db063c0d` — CI develop verte (https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/45892328397).
+- `client-mobile` : PR #135 squash-mergée → `3c048644` — CI develop verte (https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/45892352543).
+- Branches `feat/task-495-pour-le-compte-de-conversation-et-apercu` supprimées (distantes et locales), label `awaiting-human-merge` retiré.
+- `client-angular` : géré à la main par l'humain (TFS).
+- Staging : aucune branche (task hors run `/forge`).
