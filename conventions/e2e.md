@@ -886,6 +886,31 @@ dépassée.
 - **Origine** : task-492 (recette du 2026-11-22)
 - **Occurrences** : 1
 
+### stop-du-banc-laisse-en-place — Le fichier `out/STOP` d'un `--serve-only` survit à l'arrêt
+- **Piège** : `--serve-only` s'arrête quand on crée `out/STOP`, mais ni la voie mobile ni la voie Angular ne le
+  suppriment, ni à l'arrêt ni au démarrage. Le banc Angular monte le backend par le script mobile : avec un
+  `Client/Mobile/e2e/headless/out/STOP` resté d'un banc précédent, le backend s'arrête aussitôt monté.
+- **Consigne** : après chaque arrêt d'un banc `--serve-only`, retirer les deux fichiers par leur chemin littéral
+  (`rm Client/Mobile/e2e/headless/out/STOP Client/Angular/front/e2e/mss-e2e/out/STOP`), et le vérifier avant
+  d'en monter un autre.
+- **Origine** : task-495 (/develop, preuves par mutation des voies mobile puis Angular)
+- **Occurrences** : 1
+
+### widget-patients-non-lus-trois-conditions — Un message n'entre dans « Patients avec mails non lus » qu'à trois conditions
+- **Piège** : la route `Patients/with-unread-mails` ne retient qu'un document **rattaché à une fiche**
+  (`PatientId`), **non doublon** (`DuplicateOfId` vide) et porté par un message **non lu** de l'INBOX. Un résultat
+  HPRIM n'a pas de fiche ; `--kind bio-hprim` reprend le contenu du seed `cr-bio-hprim`, donc un doublon ; et
+  `ActorInMailbox.attachDocument` lit le contenu du message pour trouver son document, ce qui le **marque lu**.
+  Trois essais rouges de E2E-SHARED-005 pour une seule cause à chaque fois. Le pire : « Voir l'email » ouvrait
+  alors un autre message de la fiche (le seed `cr-bio-a-acquitter`) et le marquait lu.
+- **Consigne** : déposer un contenu absent du seed (`bio-hprim-normal`), rattacher le document, **remettre le
+  message non lu** (`ActorInMailbox.markUnread`), puis attendre par l'API que la fiche annonce ce message comme son
+  dernier non lu (`lastUnreadMailOf`) avant d'ouvrir le widget. Ne jamais juger la seule présence de la ligne de
+  la fiche : elle peut venir d'un autre message.
+- **Preuve** : E2E-SHARED-005 vert après les trois corrections, rouge sous mutation de l'aperçu.
+- **Origine** : task-495 (/develop)
+- **Occurrences** : 1
+
 ## Registre des flaky
 
 *(tenu par `/e2e` : une ligne par test vert au second essai ; troisième occurrence du même test →
