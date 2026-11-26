@@ -143,7 +143,8 @@ patient, doublons).
 | /lint-mobile | ok | 16 s | — | — | — | — |
 | /e2e | ok | 14 min 51 s | — | — | — | e2e ×6 (40 min 27 s), rejeu angular après libération du port 47399 ; mobile réutilisée |
 | /review | ok | 1 min 51 s | 1 (2.3 s) | — | — | dtos-mss 1B/0T |
-| **Total cycle** | | **1 h 18 min** | **8 (1 min 40 s)** | **19 (21 min 12 s)** | **2 (57 s)** | |
+| /tech-writer | ok | 1 min 02 s | — | — | — | — |
+| **Total cycle** | | **1 h 19 min** | **8 (1 min 40 s)** | **19 (21 min 12 s)** | **2 (57 s)** | |
 
 Autres commandes mesurées : lint ×2 (20 s), nuget-wait ×1 (23 s), restore ×1 (3.8 s)
 

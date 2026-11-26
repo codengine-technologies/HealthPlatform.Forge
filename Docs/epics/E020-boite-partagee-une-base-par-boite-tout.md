@@ -1,11 +1,11 @@
 # E020 — Boîte partagée : une base par boîte, tout acte imputé
 
-> **Statut** : 🟢 Livrée — 6 fonctionnalités sur 6, en attente de recette ; correctifs d'audit en cours (task-410 à 415)
+> **Statut** : 🟢 Livrée — 6 fonctionnalités sur 6 ; complément ECO.1.2.10 (task-495) en attente de recette
 > **Modèle** : task-driven
-> **Version** : 1.10
+> **Version** : 1.13
 > **Auteur** : PO forge
 > **Audience** : PO, direction, équipe produit — la vue ingénierie vit dans [E020-Changelogs.md](E020-Changelogs.md)
-> **Dernière mise à jour** : 2026-10-30
+> **Dernière mise à jour** : 2026-11-26
 
 ---
 
@@ -22,7 +22,7 @@
 - [7. Contraintes et hypothèses](#7-contraintes-et-hypothèses)
 - [8. Critères d'acceptation de l'EPIC](#8-critères-dacceptation-de-lepic)
 - [9. Hors périmètre](#9-hors-périmètre)
-- [État de couverture (2026-10-28)](#état-de-couverture-2026-10-28)
+- [État de couverture (2026-11-26)](#état-de-couverture-2026-11-26)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -81,7 +81,7 @@ titulaire, le journal dit que c'est le délégataire qui l'a supprimé.
 | E020-F003 | Une base par boîte | Travailler à plusieurs dans la même boîte : rattachements patient, étiquettes, acquittements et classements partagés ; réglages et signatures restent personnels | task-404, task-410 | 🟢 Livrée, en attente de recette |
 | E020-F004 | Tout acte imputé à son auteur | Lire, dans le journal de la boîte, qui a fait quoi, quand et sur quel objet | task-405 | 🟢 Livrée, en attente de recette |
 | E020-F005 | Tenue en charge d'une boîte partagée | Garder une messagerie réactive quand plusieurs personnes travaillent dans la même boîte | task-406 | 🟢 Mesurée — verdict rendu, deux suites proposées |
-| E020-F006 | Écrire pour le compte de la boîte | Le délégataire écrit depuis la boîte du titulaire : le destinataire voit qui a écrit et pour quelle boîte, et sa réponse revient à la boîte ; le médecin qui reçoit un tel message le lit dans l'écran | task-407, task-416 | 🟢 Livrée, en attente de recette |
+| E020-F006 | Écrire pour le compte de la boîte | Le délégataire écrit depuis la boîte du titulaire : le destinataire voit qui a écrit et pour quelle boîte, et sa réponse revient à la boîte ; le médecin qui reçoit un tel message le lit dans l'écran de lecture, dans la conversation et dans l'aperçu de la fiche patient | task-407, task-416, task-495 | 🟢 Livrée, en attente de recette |
 
 > Le bilan d'avancement par feature (statut, couverture, tasks contributives) est consigné en fin de
 > document, dans la section *État de couverture*.
@@ -142,7 +142,7 @@ graph LR
 | RG-E020-04 | L'opérateur ouvre l'accès | Lire ou écrire les données d'une boîte exige un avis favorable récent de l'opérateur MSSanté. Un refus ou une révocation ferment tout accès. | ✅ Implémenté (task-403) |
 | RG-E020-05 | Hors ligne réservé au titulaire | Seul le titulaire garde la lecture hors ligne de sa boîte personnelle. Un délégataire, un membre ou une boîte « à requalifier » n'ont pas de hors-ligne. | ✅ Implémenté (task-403) |
 | RG-E020-06 | Tout acte imputé à son auteur réel | Chaque action est tracée au nom de la personne qui l'a faite : identité, rôle, boîte, instant, action et objet. Jamais au nom de la boîte ni du titulaire. Un acte automatique est tracé comme acte système. | ✅ Implémenté (task-405 ; task-402 et task-403 pour les rattachements et les refus d'accès) |
-| RG-E020-08 | Écrire pour le compte de la boîte | Un message écrit par un délégataire part de la boîte (`From`) et nomme la personne qui l'a écrit (`Sender` : nom PSC, sa BAL personnelle chez le même opérateur, sinon une adresse `no-reply-…`). Le titulaire et le membre n'en posent pas. Un `From` qui n'est pas la boîte ouverte est refusé, rien ne part. Les réponses vont à la boîte, jamais au délégataire. | ✅ Implémenté (task-407) |
+| RG-E020-08 | Écrire pour le compte de la boîte | Un message écrit par un délégataire part de la boîte (`From`) et nomme la personne qui l'a écrit (`Sender` : nom PSC, sa BAL personnelle chez le même opérateur, sinon une adresse `no-reply-…`). Le titulaire et le membre n'en posent pas. Un `From` qui n'est pas la boîte ouverte est refusé, rien ne part. Les réponses vont à la boîte, jamais au délégataire. Partout où un message reçu s'affiche (lecture, conversation, aperçu), un `Sender` distinct du `From` se lit « Envoyé par {Sender} pour le compte de {From} ». | ✅ Implémenté (task-407, task-495) |
 | RG-E020-07 | Le journal est lisible de toute la boîte | Toute personne rattachée à une boîte voit tous les actes faits sur cette boîte. Conservation : 10 ans pour les accès aux données de santé. | ✅ Implémenté (task-405) |
 
 ---
@@ -184,7 +184,7 @@ graph LR
 
 ---
 
-## État de couverture (2026-10-30)
+## État de couverture (2026-11-26)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
@@ -193,7 +193,7 @@ graph LR
 | E020-F003 — Une base par boîte | 🟢 Livrée, en attente de recette | 100 % | task-404, task-410 |
 | E020-F004 — Tout acte imputé à son auteur | 🟢 Livrée, en attente de recette | 100 % | task-405 |
 | E020-F005 — Tenue en charge d'une boîte partagée | 🟢 Mesurée, en attente de recette | 100 % | task-406 |
-| E020-F006 — Écrire pour le compte de la boîte | 🟢 Livrée, en attente de recette | 100 % | task-407, task-416 |
+| E020-F006 — Écrire pour le compte de la boîte | 🟢 Livrée, en attente de recette | 100 % | task-407, task-416, task-495 |
 
 **Couverture EPIC consolidée : 100 %** (6 fonctionnalités sur 6, en attente de recette).
 
@@ -260,6 +260,10 @@ graph LR
 - v1.12 — Dans un modèle de message, le RPPS de l'expéditeur est celui de la personne qui écrit
   (titulaire ou délégataire), lu sur sa carte. Ce n'est plus un morceau de l'adresse de la boîte
   (task-418).
+- v1.13 — Un message écrit par un délégataire le dit aussi dans la conversation et dans l'aperçu.
+  La bulle reçue (mobile et Weda) et l'aperçu d'un message dans la fiche patient de Weda affichent
+  « Envoyé par {délégataire} pour le compte de {boîte} », comme l'écran de lecture. Répondre depuis la
+  conversation vise toujours la boîte (task-495).
 
 ### Conformité réglementaire
 
@@ -278,6 +282,10 @@ graph LR
   `Sender` nomme le délégataire, jamais par son RPPS ; l'enveloppe SMTP part de la boîte ; les
   réponses vont à la boîte. AIPD à compléter : le nom du délégataire est communiqué aux
   destinataires (task-407).
+- v1.13 — Guide ANS *MSSanté – délégation de BAL via API LPS* v1.0 (26/11/2026), ECO.1.2.10 : la
+  mention du délégataire s'affiche dans toutes les vues d'un message reçu, plus seulement à la
+  lecture ; ECO.1.2.11 (réponse au `From`) est verrouillé par test dans la conversation. Aucun
+  nouveau traitement de données (task-495).
 
 ### Sécurité
 

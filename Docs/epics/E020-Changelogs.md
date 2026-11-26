@@ -2,11 +2,43 @@
 
 > **Audience** : équipes techniques, backlog, dette.
 > Vue produit : [E020-boite-partagee-une-base-par-boite-tout.md](E020-boite-partagee-une-base-par-boite-tout.md).
-> **Dernière mise à jour** : 2026-10-30 (v1.12)
+> **Dernière mise à jour** : 2026-11-26 (v1.13)
 
 ---
 
 ## Historique détaillé des changelogs
+
+### v1.13 — « Pour le compte de » dans la conversation et dans l'aperçu (ECO.1.2.10) — task-495
+
+- **Task** : task-495, statut `done`. PRs `dtos-mss` #74, `api-mail` #381, `client-mobile` #135, label
+  `awaiting-human-merge`, à merger ensemble (règle 11). `client-angular` : code non commité sur
+  `feature/nova-mss-weda-integration`, à commiter sur TFS avant le merge d'api-mail.
+- **Origine** : audit de conformité du 2026-11-26 contre le guide ANS *délégation de BAL via API LPS* v1.0
+  (écarts 2 et 3). task-407 affichait la mention dans l'écran de lecture seulement ; la conversation et
+  l'aperçu en lecture seule de weda2 attribuaient au titulaire un message écrit par son délégataire.
+- **Livré** :
+  - `dtos-mss` 635.0.0 : `ConversationMessageDto.Sender` (`MailAddressDto?`), ajout de champ ;
+  - api-mail : `ConversationService` rend le `Sender` d'un message reçu (jamais d'un envoyé) ; les
+    destinataires de réponse restent calculés sur le `From` ;
+  - mobile et weda2 : `on-behalf-of.util.ts`, une règle unique (mention si `Sender` ≠ `From`, adresses
+    normalisées), partagée par l'écran de lecture, la bulle reçue (`chat-on-behalf-of`) et, sur weda2,
+    l'aperçu en lecture seule (`mail-readonly-on-behalf-of`).
+- **Tests** : intégration de bout en bout `ConversationEndToEndTests.AReceivedMessageWrittenOnBehalf_…`, vue
+  rouge par mutation (M1 `Sender = null`, M2 `Sender` dans les adresses du fil) ; unitaires du service et des
+  composants ; `contract_impact.py check` : aucun impact sur api-mcp, mobile, weda2.
+- **Scénarios** : **E2E-SHARED-004** v1 (conversation ; mobile et angular requis) et **E2E-SHARED-005** v1
+  (aperçu de la fiche patient ; angular requis, mobile non applicable). Numéros décalés d'un rang par rapport
+  à la DoD (E2E-SHARED-003 déjà pris par task-492).
+- **Qualité** :
+  - Sonar : Quality Gate OK, new coverage 95,9 %, 0 constat, couverture projet 97,5 → 97,6 % ;
+  - lint propre sur mobile et weda2 ;
+  - E2E vert : mobile 80, Angular 102 (1 flaky E2E-SEARCH-004), parité verte. Premier passage rouge
+    d'outillage : port 47399 dans une plage réservée par Windows (WinNAT), libérée par l'humain.
+- **Prévention** :
+  - `conventions/e2e.md` : fichier STOP d'un banc `--serve-only` laissé en place, et les trois conditions du
+    widget « Patients avec mails non lus » ;
+  - flaky E2E-SEARCH-004 en 3ᵉ occurrence (`HTTP 500` sur la lecture d'INBOX) : task de stabilisation due ;
+  - mémoire : port 47399, `EADDRINUSE` (processus) contre `EACCES` (plage réservée).
 
 ### v1.12 — Modèles de message : `{{SenderRPPS}}` est le RPPS de la personne qui écrit — task-418
 
@@ -515,7 +547,7 @@
 
 - Routes ajoutées : 3 (`GET /api/v1/account/mailboxes/directory` ; `POST|DELETE /api/v1/testing/operator-refusals`, banc seulement ; `GET|PUT /api/v1/account/mailboxes/current/sender-identity`).
 - Migrations du registre : 3 (`AddMailboxRole`, `AddMailboxes`, `AddAuditActor`) ; base de boîte : 3 (`AddUserAuthenticationSubject`, `AddActorColumns`, `AddMailSenderColumns`).
-- Scénarios e2e : 9 ajoutés (E2E-MAILBOX-003, E2E-MAILBOX-004, E2E-MAILBOX-005, E2E-MAILBOX-007, E2E-SHARED-001, E2E-SHARED-002, E2E-AUDIT-001, E2E-SESSION-004, E2E-AI-002), 2 versionnés (E2E-WEDA-001 v2, E2E-BIO-001 v2).
+- Scénarios e2e : 11 ajoutés (E2E-MAILBOX-003, E2E-MAILBOX-004, E2E-MAILBOX-005, E2E-MAILBOX-007, E2E-SHARED-001, E2E-SHARED-002, E2E-SHARED-004, E2E-SHARED-005, E2E-AUDIT-001, E2E-SESSION-004, E2E-AI-002), 2 versionnés (E2E-WEDA-001 v2, E2E-BIO-001 v2).
 
 ---
 
@@ -532,7 +564,8 @@
 | task-408 | archivée (mergée le 2026-10-29) | Source de l'annuaire FHIR ou LDAP choisie dans appsettings ; attente visible au rattachement | RG-E020-03 |
 | task-409 | archivée (mergée le 2026-10-29) | Rattachement : identité du praticien préremplie, accueil en un geste | RG-E020-03, RG-E020-06 |
 | task-410 | archivée (mergée le 2026-10-30) | Correctif d'audit C1 : le cache patient par INS nomme la boîte | RG-E020-01 |
-| task-412 | done (PRs mobile #119, api-mail #332 en attente de merge) | Poste partagé : la déconnexion ferme la boîte ; l'assistant agit sur la boîte ouverte ; fenêtres fermées à la suspension | RG-E020-04, RG-E020-06 |
-| task-417 | done (PRs mobile #120, api-mail #333 en attente de merge, empilées sur task-412) | Changement de boîte : rien de la précédente ne reste (assistant, patients, accueil, réglages, identité) ; requête épinglée sans suspension ; envoyés par type | RG-E020-01, RG-E020-04 |
-| task-418 | done (code-only weda2, aucune PR GitHub) | Modèles de message : `{{SenderRPPS}}` est le RPPS de la personne qui écrit | RG-E020-06, RG-E020-08 |
+| task-412 | archivée (mergée le 2026-10-30) | Poste partagé : la déconnexion ferme la boîte ; l'assistant agit sur la boîte ouverte ; fenêtres fermées à la suspension | RG-E020-04, RG-E020-06 |
+| task-417 | archivée (mergée le 2026-10-30) | Changement de boîte : rien de la précédente ne reste (assistant, patients, accueil, réglages, identité) ; requête épinglée sans suspension ; envoyés par type | RG-E020-01, RG-E020-04 |
+| task-418 | archivée (2026-10-30, code-only weda2) | Modèles de message : `{{SenderRPPS}}` est le RPPS de la personne qui écrit | RG-E020-06, RG-E020-08 |
 | task-416 | archivée (mergée le 2026-10-30) | Le nom PSC du délégataire est lu sur la bonne route du proxy : l'envoi pour le compte de la boîte fonctionne | RG-E020-06, RG-E020-08 |
+| task-495 | done (PRs dtos-mss #74, api-mail #381, mobile #135 en attente de merge ; weda2 à commiter sur TFS) | « Pour le compte de » dans la conversation et dans l'aperçu (ECO.1.2.10, guide ANS v1.0) | RG-E020-08 |
