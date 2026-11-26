@@ -141,8 +141,8 @@ patient, doublons).
 | /sonar | ok | 11 min 51 s | 1 (26 s) | 5 (8 min 54 s) | 2 (57 s) | 1 itération(s), api-mail 1B/5T |
 | /lint-angular | ok | 23 s | — | — | — | — |
 | /lint-mobile | ok | 16 s | — | — | — | — |
-| /e2e | failed | 27 min 43 s | — | — | — | e2e ×3 (26 min 22 s), outillage : port 47399 dans une plage réservée par Windows (EACCES) |
-| **Total cycle** | | **1 h 29 min** | **7 (1 min 37 s)** | **19 (21 min 12 s)** | **2 (57 s)** | |
+| /e2e | ok | 14 min 51 s | — | — | — | e2e ×6 (40 min 27 s), rejeu angular après libération du port 47399 ; mobile réutilisée |
+| **Total cycle** | | **1 h 16 min** | **7 (1 min 37 s)** | **19 (21 min 12 s)** | **2 (57 s)** | |
 
 Autres commandes mesurées : lint ×2 (20 s), nuget-wait ×1 (23 s), restore ×1 (3.8 s)
 
@@ -296,25 +296,15 @@ Baseline : dernière analyse du projet (2026-11-25), avant la branche de la task
 
 | Voie | Jouée | Résultat | Durée / remarque |
 |---|---|---|---|
-| mobile | oui (`lane_cache.py run`) | ✅ 80 verts, 0 flaky, 0 rouge, parité verte | démontage complet |
-| angular | oui (`lane_cache.py run`) | ❌ 96 verts, 1 flaky, **6 rouges** (outillage), parité verte | démontage complet |
+| mobile | réutilisée (`lane_cache.py run`, empreinte identique, verte le 2026-11-26 18:06) | ✅ 80 verts, 0 flaky, 0 rouge, parité verte | démontage complet |
+| angular | oui (`lane_cache.py run`, rejeu) | ✅ 102 verts, 1 flaky, 0 rouge, parité verte | démontage complet |
 
-> **Cause des 6 rouges : outillage du poste, pas régression.** Tous sont les parcours Weda embarqué, et tous
-> échouent au démarrage de l'hôte Weda factice sur `listen EACCES: permission denied 0.0.0.0:47399`. Aucun
-> processus n'écoute sur 47399 : le port est dans une **plage TCP réservée par Windows** (`netsh interface ipv4
-> show excludedportrange` : 47394–47493), posée dynamiquement par WinNAT/Hyper-V. Les scénarios de la task
-> (E2E-SHARED-004, 005) sont verts, comme toute la voie mobile. Rejeu inutile tant que la plage tient.
+> **Premier passage rouge, outillage.** Au premier `/e2e` (2026-11-26), les 6 parcours Weda embarqué ont
+> échoué sur `listen EACCES 0.0.0.0:47399` : le port était dans une plage TCP réservée par Windows
+> (47394–47493, WinNAT). L'humain a libéré la plage, la voie Angular a été rejouée : les 6 parcours sont verts.
+> Le flaky E2E-SEARCH-004 (`lecture du dossier INBOX : HTTP 500` au 1er essai) est apparu aux deux passages.
 
-**E2E : ROUGE** — 6 motif(s) de blocage.
-
-**Bloquant** (6) :
-
-- [angular] rouge : « weda — embarqué, la messagerie s’ouvre sur la boîte que Weda désigne » (E2E-WEDA-001)
-- [angular] rouge : « messagerie — changer de boîte depuis l’écran mail, embarqué » (E2E-MAILBOX-001)
-- [angular] rouge : « weda — dossier Weda du patient, ouverture, puis import à la demande dans un dossier » (E2E-WEDA-002)
-- [angular] rouge : « weda — envoyer un document du dossier patient par la nouvelle messagerie » (E2E-WEDA-003)
-- [angular] rouge : « session — naviguer dans Weda ne multiplie pas les sessions de messagerie » (E2E-SESSION-001)
-- [angular] rouge : « session — la session fermée par Weda fait quitter weda2 embarqué » (E2E-SESSION-003)
+**E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
 
 **Flaky (vert au second essai, non bloquant)** (1) :
 
@@ -391,14 +381,14 @@ Baseline : dernière analyse du projet (2026-11-25), avant la branche de la task
 | E2E-AUTH-002 | 1 | humain | Se déconnecter | 👤 non joué (humain) | 👤 non joué (humain) |
 | E2E-LIVE-001 | 1 | headless | Recevoir un nouveau message en temps réel, sans recharger | ✅ | ✅ |
 | E2E-AI-001 | 1 | headless | Interroger l'assistant sur des messages sélectionnés et poser des questions de suite | ✅ | ✅ |
-| E2E-WEDA-001 | 2 | headless | Dans Weda, la messagerie s'ouvre sur la boîte que Weda désigne | ❌ | — |
-| E2E-WEDA-002 | 2 | headless | Voir le dossier Weda du patient d'un document reçu, l'ouvrir, puis importer des documents dans un dossier | ❌ | — |
-| E2E-WEDA-003 | 2 | headless | Envoyer un document du dossier patient Weda par la nouvelle messagerie | ❌ | — |
+| E2E-WEDA-001 | 2 | headless | Dans Weda, la messagerie s'ouvre sur la boîte que Weda désigne | ✅ | — |
+| E2E-WEDA-002 | 2 | headless | Voir le dossier Weda du patient d'un document reçu, l'ouvrir, puis importer des documents dans un dossier | ✅ | — |
+| E2E-WEDA-003 | 2 | headless | Envoyer un document du dossier patient Weda par la nouvelle messagerie | ✅ | — |
 | E2E-RECEIPT-001 | 1 | headless | Demander un accusé de lecture à l'envoi | ✅ | ✅ |
 | E2E-RECEIPT-002 | 1 | headless | Envoyer l'accusé de lecture d'un message reçu, une seule fois | ✅ | ✅ |
 | E2E-RECEIPT-003 | 1 | headless | Refuser l'accusé de lecture d'un message reçu | ✅ | ✅ |
 | E2E-SECURITY-001 | 1 | headless | Un contenu reçu piégé ne s'exécute pas | ✅ | ✅ |
-| E2E-MAILBOX-001 | 1 | headless | Changer de messagerie depuis l'écran mail | ❌ | ✅ |
+| E2E-MAILBOX-001 | 1 | headless | Changer de messagerie depuis l'écran mail | ✅ | ✅ |
 | E2E-MAILBOX-002 | 1 | headless | api-mail indisponible à l'entrée — écran de panne puis réessai | ✅ | ✅ |
 | E2E-MAILBOX-003 | 2 | headless | Rattacher ses boîtes depuis « Mes boîtes » en un geste — titulaire et membre | ✅ | ✅ |
 | E2E-MAILBOX-006 | 1 | headless | Après le rattachement, l'identité d'expéditeur et la signature sont déjà là | ✅ | ✅ |
@@ -410,9 +400,9 @@ Baseline : dernière analyse du projet (2026-11-25), avant la branche de la task
 | E2E-SHARED-002 | 1 | headless | Le délégataire écrit pour le compte du titulaire — le destinataire voit qui a écrit, sa réponse revient à la boîte | ✅ | ✅ |
 | E2E-SHARED-004 | 1 | headless | Dans la conversation, un message écrit par un délégataire pour le compte de son expéditeur le dit | ✅ | ✅ |
 | E2E-SHARED-005 | 1 | headless | Dans la fiche patient, l'aperçu d'un message écrit par un délégataire le dit sous « De » | ✅ | — |
-| E2E-SESSION-001 | 1 | headless | Naviguer dans Weda ne multiplie pas les sessions de messagerie | ❌ | — |
+| E2E-SESSION-001 | 1 | headless | Naviguer dans Weda ne multiplie pas les sessions de messagerie | ✅ | — |
 | E2E-SESSION-002 | 2 | headless | Quitter weda2 autonome ne ferme pas la session partagée | ✅ | — |
-| E2E-SESSION-003 | 2 | headless | La session fermée par Weda fait quitter weda2 | ❌ | — |
+| E2E-SESSION-003 | 2 | headless | La session fermée par Weda fait quitter weda2 | ✅ | — |
 | E2E-SESSION-004 | 1 | headless | Sur un appareil partagé, la personne suivante n'arrive jamais dans la boîte de la précédente | ✅ | ✅ |
 | E2E-AI-002 | 1 | headless | Un délégataire interroge l'assistant dans la boîte qu'il a ouverte | ✅ | ✅ |
 | E2E-MAILBOX-007 | 1 | headless | Après un changement de boîte, l'onglet Patients ne montre plus rien de la précédente | ✅ | ✅ |
