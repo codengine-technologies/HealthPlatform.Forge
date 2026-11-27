@@ -491,6 +491,10 @@ Décision : sur weda2, le bloc de l'anneau quitte la tête du message pour la se
 
 ## Sonar log
 
+> **Après les reprises 2 et 3 (2026-11-27)** : non rejoué. Depuis `bbb6d978`, seul `e2e/scenarios.yml` a changé dans
+> api-mail (`git diff --name-only bbb6d978..HEAD -- '*.cs'` vide) : aucun fichier analysé par Sonar. Les KPIs ci-dessous
+> restent ceux du code C# de la PR. Skip mesuré, dans l'esprit de la décision humaine du 2026-11-19 (task-485).
+
 Analysé à api-mail `bbb6d978` (2026-11-27, SonarQube 9.9.8, projet `healthplatform-api-mail`, période de nouveau code :
 30 jours depuis le 2026-10-28). Une analyse complète : begin → build Release → cinq suites avec couverture OpenCover → end.
 
@@ -912,12 +916,12 @@ client-mobile inchangés. Relecteur indépendant, diff de la reprise lu en premi
 | /start | ok | 46 s | — | — | — | — |
 | /develop | ok | — | 9 (1 min 52 s) | 28 (25 min 44 s) | — | dtos-mss 1B/0T, api-mail 4B/12T, client-mobile 0B/2T, client-angular 4B/14T, reprise 3 (B5, S7, S8, S9); no start marker |
 | /review-code | ok | 1 min 50 s | — | — | — | — |
-| /sonar | ok | 15 min 44 s | 1 (1 min 03 s) | 5 (10 min 39 s) | 2 (1 min 07 s) | 1 itération(s), api-mail 1B/5T, 0 issue new code, QG OK, new_coverage 96.1, aucun commit |
+| /sonar | skipped | 9.2 s | 1 (1 min 03 s) | 5 (10 min 39 s) | 2 (1 min 07 s) | api-mail 1B/5T, aucun fichier analysé par Sonar depuis bbb6d978 (scenarios.yml seul) |
 | /lint-angular | ok | 2 min 25 s | — | — | — | — |
 | /lint-mobile | ok | 16 s | — | — | — | 0 erreur |
 | /e2e | ok | 30 min 19 s | — | — | — | e2e ×5 (59 min 15 s), mobile 84 + angular 107 verts, parité verte |
 | /review | ok | 1 min 36 s | 1 (2.7 s) | — | — | dtos-mss 1B/0T, PRs dtos #75, api-mail #382, mobile #136 |
 | /tech-writer | ok | 3 min 58 s | — | — | — | — |
-| **Total cycle** | | **56 min 57 s** | **11 (2 min 58 s)** | **33 (36 min 23 s)** | **2 (1 min 07 s)** | |
+| **Total cycle** | | **41 min 22 s** | **11 (2 min 58 s)** | **33 (36 min 23 s)** | **2 (1 min 07 s)** | |
 
 Autres commandes mesurées : lint ×3 (40 s), nuget-wait ×1 (15 s), restore ×1 (4.2 s)
