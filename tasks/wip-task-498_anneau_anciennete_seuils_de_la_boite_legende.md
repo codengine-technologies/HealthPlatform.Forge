@@ -159,3 +159,21 @@ Lecture du code au 2026-11-27 :
 - **Hébergement HDS** : oui — les seuils sont une donnée de la boîte, dans sa base, environnement HDS existant ; les
   réglages d'affichage sont une donnée de la personne. Aucune donnée de santé nouvelle.
 - **AIPD / impact RGPD** : inchangée — un réglage d'organisation, aucune donnée de santé ni décision automatisée.
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-498 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | failed | 13 s | — | — | — | pré-flight refusé : client-mobile sur fix/task-500-recette-anneau-allege (PR #138 ouverte) |
+| **Total cycle** | | **13 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+
+## Branches
+
+- `api-mail` (pushed) : feat/task-498-anneau-anciennete-seuils-de-la-boite — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-498-anneau-anciennete-seuils-de-la-boite
+- `client-mobile` (pushed) : feat/task-498-anneau-anciennete-seuils-de-la-boite — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-498-anneau-anciennete-seuils-de-la-boite
+- `dtos-mss` (pushed, paresseuse) : aucune branche au /start — `/develop` la crée depuis `origin/develop` s'il touche un contrat
+- `client-angular` (code-only) : la forge écrit sur la branche extraite dans `Client/Angular/` (au /start :
+  `feature/nova-mss-weda-integration`, arbre propre, après `3f6e9119` « Anneau ajustement ») — l'humain gère branche,
+  commit, push, PR TFS
