@@ -171,9 +171,11 @@ Lecture du code au 2026-11-27 :
 | /develop | ok | 20 min 31 s | 13 (1 min 55 s) | 59 (26 min 48 s) | — | dtos-mss 1B/0T, api-mail 7B/56T, client-mobile 3B/3T, client-angular 2B/0T, reprise 1 |
 | /review-code | ok | 4 min 15 s | — | — | — | passage 2 |
 | /sonar | ok | 11 min 52 s | 1 (49 s) | 5 (8 min 19 s) | 2 (47 s) | 1 itération(s), api-mail 1B/5T |
-| **Total cycle** | | **37 min 11 s** | **14 (2 min 45 s)** | **64 (35 min 07 s)** | **2 (47 s)** | |
+| /lint-angular | ok | 26 s | — | — | — | — |
+| /lint-mobile | ok | 16 s | — | — | — | — |
+| **Total cycle** | | **37 min 53 s** | **14 (2 min 45 s)** | **64 (35 min 07 s)** | **2 (47 s)** | |
 
-Autres commandes mesurées : nuget-wait ×1 (11 s), restore ×1 (3.6 s)
+Autres commandes mesurées : lint ×2 (17 s), nuget-wait ×1 (11 s), restore ×1 (3.6 s)
 
 ## Branches
 
@@ -1010,3 +1012,14 @@ Analysé à api-mail `459e5769` (2026-11-28, SonarQube 9.9.8, projet `healthplat
 | Coverage (projet) | 97,6 % | 97,5 % | −0,1 pt |
 | Duplication | 0,3 % | 0,3 % | 0 pt |
 | Reliability / Security / Maintainability | A/A/A | A/A/A | → |
+
+## Lint log
+
+- `npx nx affected -t lint --base=origin/next --head=HEAD --parallel=3 --projects=tag:scope:mss` (arbre de
+  `feature/nova-mss-weda-integration`) : **0 erreur**, 13 cibles réussies. Aucune itération de correction, aucun fichier
+  modifié ; le vert de `/develop` (reprise 1 : `nx build weda2`, mss-lib 2 326, weda2 2 684) tient.
+
+## Lint mobile log
+
+- `npm run lint` sur `feat/task-498-anneau-anciennete-seuils-de-la-boite` (`1f490eb`) : **All files pass linting**.
+  Aucune itération, aucun commit ; le vert de `/develop` (reprise 1 : build OK, 2 094 verts) tient.
