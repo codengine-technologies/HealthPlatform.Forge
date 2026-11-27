@@ -210,8 +210,8 @@ envoyée. Je lis la liste plus vite, sans perdre d'information.
 |---|---|---|---|---|---|---|
 | /start | ok | 19 s | — | — | — | — |
 | /develop | ok | 7 min 14 s | 4 (40 s) | 6 (2 min 39 s) | — | client-mobile 2B/2T, client-angular 2B/4T, reprise 1 (B1, S1, S3) |
-| /review-code | changes | 6 min 18 s | — | — | — | reprise 1 (B1 mode sélection weda2) |
-| **Total cycle** | | **13 min 52 s** | **4 (40 s)** | **6 (2 min 39 s)** | **0 (0.0 s)** | |
+| /review-code | ok | 1 min 08 s | — | — | — | — |
+| **Total cycle** | | **8 min 42 s** | **4 (40 s)** | **6 (2 min 39 s)** | **0 (0.0 s)** | |
 
 ## Develop log
 
@@ -338,3 +338,18 @@ Relecteur indépendant, sans le `## Develop log`.
 
 Suggestions sans suite dans cette reprise : RING-005 mobile pourrait comparer l'infobulle au texte du bandeau du détail,
 comme weda2 (aujourd'hui une expression régulière).
+
+### Passage 2 (revue anticipée, après la reprise 1) — APPROVED
+
+**Approved at** : api-mail `c8aa3845`, client-mobile `205c8eb`, client-angular arbre de travail (après la reprise 1).
+
+- Diff de la reprise lu en premier : rien de cassé. En mode sélection, la ligne affiche ce qu'affiche l'icône classique
+  (« N messages », icône « répondu », initiales, « Traité ») ; les mentions de l'anneau restent cohérentes. Aucun appelant
+  oublié de `TreatmentRing.unassigned`. L'attente bornée ne fabrique pas de faux vert (précondition `width > 0`).
+- B1, S1, S3 corrigés, chacun prouvé.
+
+#### Suggestions non bloquantes (recopiées dans la PR)
+
+- **N1 — weda2 — « 99+ »** : 9 px dans 19 px, lisible en théorie mais très petit ; à vérifier à l'écran sur un fil de plus
+  de 99 messages (jsdom ne mesure pas les polices).
+- **N2 — mobile — RING-005** : comparer l'infobulle « répondu » au texte du bandeau du détail, comme weda2.
