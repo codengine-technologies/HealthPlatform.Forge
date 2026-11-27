@@ -208,4 +208,77 @@ envoyée. Je lis la liste plus vite, sans perdre d'information.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 19 s | — | — | — | — |
-| **Total cycle** | | **19 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 40 min 32 s | 2 (20 s) | 3 (1 min 19 s) | — | client-mobile 1B/1T, client-angular 1B/2T |
+| **Total cycle** | | **40 min 52 s** | **2 (20 s)** | **3 (1 min 19 s)** | **0 (0.0 s)** | |
+
+## Develop log
+
+Implémenté le 2026-11-27 par deux agents en parallèle (weda2, mobile), chacun test d'abord puis preuve par mutation,
+puis une passe qualité commune (§Q). Journaux : `scratchpad/weda2-500/`, `scratchpad/mobile-500/`, `scratchpad/simplify-500/`.
+
+### api-mail (catalogue)
+
+- `e2e/scenarios.yml` (`c8aa3845`) : `E2E-RING-003` v2 (« Non affecté » lu dans l'état en clair de l'anneau),
+  `E2E-RING-005` v1 (pastille du compteur de conversation, icône « répondu » au bord de l'anneau). Aucun code C#.
+
+### client-angular (code seul) — fichiers à commiter sur TFS
+
+| Fichier | Raison |
+|---|---|
+| `libs/mss/src/ui/mail-ring/mail-ring.component.{ts,html,scss}` (+ spec) | pastilles compteur et réponse au bord de l'anneau, infobulle `hint` (identifiant), positions à 32 px |
+| `libs/mss/src/features/mail/components/mail-header/mail-header.component.{ts,html,scss}` (+ `mail-header.ring.spec.ts`) | ligne allégée : « Non affecté », `[uid]`, « N messages », icône répondu retirés en mode anneau ; biologie 2 + « +N » ; une date ; type et « Envoyé » / « Brouillon » ; espaceur de ligne 1 |
+| `libs/mss/src/features/mail/components/mail-header/mail-header.light-row.spec.ts` (nouveau) | 27 tests des règles 1 à 11 |
+| `libs/mss/src/features/mail/services/mail-state.service.ts` (+ `mail-state.service.listed-folder.spec.ts`, nouveau) | `listedFolderType` : type du dossier listé (Envoyés / Brouillons et sous-dossiers), vues mêlées |
+| `libs/mss/src/core/utils/mail-ring.util.ts`, `mail-ring-row.util.ts` (+ specs) | mention `unassigned` retirée de `MailRingChips` |
+| `e2e/mss-e2e/specs/functional.e2e.ts` | E2E-RING-003 v2, E2E-RING-005 v1 |
+
+### client-mobile
+
+- `mail-header.component.{ts,html,scss}` : `.mail-ring-wrap` porte le bouton compteur `mail-thread-{uid}` (zone 32×32,
+  `aria-expanded`, `pointerdown` stoppé, pas d'ouverture du message) et la pastille réponse `mail-replied-{uid}` ; en mode
+  anneau, plus de puce « N messages », d'icône répondu de ligne, de « Non affecté », de puce « Biologie » ; biologie 2 +
+  « +N » ; plus de « (H) » (sens porté par la flèche) ; « Document médical » en icône.
+- Specs : `mail-header.ring-badges.spec.ts` et `mail-header.lightened.spec.ts` (nouveaux), `mail-header.ring.spec.ts`,
+  `mail-header.component.spec.ts`, `mail-list.ring.spec.ts`. e2e : E2E-RING-003 v2, E2E-RING-005 v1.
+
+### Preuves rouges (tests vus rouges sur le code d'avant, puis mutations)
+
+- weda2 : 42 rouges sur 177 avant le code ; 36 mutations, chacune rouge sur son test : règle 1 (M1), 2 (M2a-e),
+  3 (M3a-f), 4 (M4a-c), 5 (M5a-b), 6 (M6a-c, positions à 32 px), 8 (M8a-d), 9 (M9a-c), 10 (M10, M10b),
+  11 (M11a-g ; M11d a d'abord survécu — le test passait par `openTagView`, durci, puis rouge).
+- mobile : 38 rouges sur 109 avant le code ; mutations M1, M3a-h, M4, M5, M6a-d (positions dans un vrai navigateur, à la
+  taille réelle de l'anneau mobile, 40 px), M8a-c, M12, M13a-b, M14a-b, chacune rouge.
+- e2e, rejoués seuls sur le banc (`--serve-only` + `--grep`) : mobile RING-001/002/003/005, CONV-003, SHARED-004,
+  DETAIL-006 **7 / 7 verts** ; weda2 les mêmes + CONV-001 **8 / 8 verts**. Mutations e2e, recompilation prouvée (mobile :
+  compteur `ngserve.log` ; weda2 : marqueur dans le bundle servi, puis absent après restauration) : compteur faux →
+  RING-005 rouge (« la pastille porte / dit « 2 » ») ; « Non affecté » réécrit sur la ligne → RING-003 rouge (« la ligne
+  n'écrit plus « Non affecté » »), sur les deux clients ; restaurés, 2 / 2 verts.
+
+### Choix faits là où la US ne tranchait pas (à relire en revue)
+
+1. « +1 autre » au singulier ; testid `mail-bio-more-{uid}` ; libellé « N autres valeurs anormales, à lire dans le message ».
+2. weda2 : l'anneau est `role="img"` ; son nom accessible reprend le libellé des pastilles (« Conversation de N
+   messages. », phrase de réponse), l'identifiant n'y entre pas. Mobile : bouton et icône lus séparément.
+3. weda2 : « Pour moi » et « Mails d'un patient » comptent parmi les vues mêlées (règle 11) ; sous-dossiers d'Envoyés
+   reconnus par le type de leur parent (`isSentMail`).
+4. weda2 : jour de réception lu sur `sentDate` (date de la ligne 1), comparé en jour local (règle 9).
+5. Mobile : règles 8, 13, 14 dans les deux modes (anneau et icône classique) ; seule la 12 est limitée au mode anneau.
+6. Mobile : test de position à 40 px (taille réelle de l'anneau de la liste), la DoD disait 32 px (taille weda2).
+7. Couleurs par jetons : weda2 `--ds-color-background-neutral-strong` (7,2:1), mobile `--app-on-surface-variant` (9,4:1).
+
+### Passe qualité (§Q)
+
+- weda2 et mobile : les quatre getters de biologie de la ligne (re-parcours des documents ~6 fois par rendu) regroupés
+  en un seul `rowBiology` lu par `@let` ; mobile : appels doublés de `bioMeaning` / `getBioIcon` retirés. Sans changement
+  de comportement ; specs ciblées vertes (weda2 788, mobile 137).
+
+### Validations
+
+- client-mobile (`9d17da7`, poussé) : `npm run build` OK ; suite complète **1 977 / 1 977**, deux fois. Un test de position
+  (`ne masquent pas le badge ⚠`) était vert seul et rouge en suite complète : `ion-badge` mesuré avant son hydratation ;
+  corrigé (attente de `componentOnReady`), consigne `mesure-composant-ionic-apres-hydratation` (`conventions/angular.md`).
+- client-angular (arbre de travail, 16 fichiers) : `nx test mss-lib` **2 211 / 2 211**, `nx test weda2` **2 683 / 2 683**,
+  `nx build weda2` OK, ESLint 0 erreur, stylelint 0 erreur.
+- api-mail (`c8aa3845`, poussé) : catalogue seul ; build et suite rejoués par `/review`.
+- Vert marqué : client-mobile, client-angular.
+- Next step : `/review task-500 --code`.

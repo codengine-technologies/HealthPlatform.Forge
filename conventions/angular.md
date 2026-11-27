@@ -1010,3 +1010,16 @@ par lint sur du code frais est un échec de lecture de ce fichier.
 - **Preuve** : `mail-detail.side-panel.spec.ts` (B5) ; mutations B5a à B5c de la reprise 3.
 - **Origine** : task-497, revue anticipée passage 4 (B5)
 - **Occurrences** : 1
+
+### mesure-composant-ionic-apres-hydratation — Un test qui mesure un composant Ionic attend son hydratation
+- **Règle** : convention projet (test instable selon l'ordre de la suite, invisible au lint)
+- **Repos** : client-mobile
+- **Piège** : task-500, `mail-header.ring-badges.spec.ts` mesurait `ion-badge` (`getBoundingClientRect`) juste après
+  le rendu : vert seul (25/25, deux fois), rouge en suite complète (largeur 0) — l'hydratation du composant Ionic est
+  asynchrone et dépend de ce qui a tourné avant.
+- **Consigne** : avant de mesurer un composant `ion-*`, `await customElements.whenDefined('ion-…')`, puis
+  `await el.componentOnReady?.()` et une frame (`requestAnimationFrame`). Un test de mise en page se juge sur la suite
+  complète, pas seulement en ciblé.
+- **Preuve** : `mail-header.ring-badges.spec.ts` (« ne masquent pas le badge ⚠ ») vert sur deux suites complètes.
+- **Origine** : task-500, /develop
+- **Occurrences** : 1
