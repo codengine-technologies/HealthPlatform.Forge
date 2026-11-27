@@ -212,7 +212,10 @@ envoyée. Je lis la liste plus vite, sans perdre d'information.
 | /develop | ok | 7 min 14 s | 4 (40 s) | 6 (2 min 39 s) | — | client-mobile 2B/2T, client-angular 2B/4T, reprise 1 (B1, S1, S3) |
 | /review-code | ok | 1 min 08 s | — | — | — | — |
 | /sonar | skipped | 0.9 s | — | — | — | aucun fichier analysé par Sonar |
-| **Total cycle** | | **8 min 43 s** | **4 (40 s)** | **6 (2 min 39 s)** | **0 (0.0 s)** | |
+| /lint-angular | ok | 18 s | — | — | — | 1 itération(s) |
+| **Total cycle** | | **9 min 01 s** | **4 (40 s)** | **6 (2 min 39 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : lint ×1 (11 s)
 
 ## Develop log
 
@@ -360,3 +363,9 @@ comme weda2 (aujourd'hui une expression régulière).
 - **Sonar : non joué — aucun fichier analysé par Sonar.** Dans api-mail, la task ne change que `e2e/scenarios.yml`
   (`git diff --name-only origin/develop...HEAD -- '*.cs'` vide, mêmes exclusions que `sonar.exclusions`) : skip mesuré
   (décision humaine du 2026-11-19, task-485). Pas de tableau de KPIs ; la PR api-mail le dit.
+
+## Lint log
+
+- `nx run-many -t lint --projects=tag:scope:mss` (mss, mss-lib, weda2) sur l'arbre de travail : **0 erreur**,
+  100 avertissements préexistants (longueur de fichier, JSDoc `@example`). Itérations : 1 sur 5, rien à corriger, arbre
+  inchangé (le vert de `/develop` tient).
