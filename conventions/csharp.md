@@ -3141,3 +3141,19 @@ cast.
 nu à un paramètre déjà typé. Contrôle mécanique : `agents/develop.md` §Q 2b (`\(string\?\)\w`).
 
 **Origine** : task-462 (/sonar). **Occurrences** : 1
+
+### catalogue-erreur-document-regenere — Un code d'erreur ajouté au catalogue régénère `docs/codes-erreur.md`
+
+**Règle** : convention projet (`api-mail`, `ErrorCatalogDocumentTests`), invisible aux tests filtrés.
+
+**Piège** (task-498, /develop) : `MAILBOX_AGING_THRESHOLDS_INVALID` a été ajouté à `ErrorCatalog` sans régénérer le
+document versionné des fiches. Les tests filtrés de l'agent étaient verts ; seule la suite complète d'`api.tests` l'a vu
+(`TheDocumentInTheRepository_IsTheOneTheCatalogRenders`).
+
+**Consigne** : tout ajout ou changement dans `src/Application/Errors/ErrorCatalog.cs` (ou dans `MailboxErrorCodes`
+quand le code entre au catalogue) se commite avec le document régénéré :
+`MSS_WRITE_ERROR_CATALOG_DOC=1 dotnet test tests/mss.mail.api.tests --filter ErrorCatalogDocumentTests`.
+
+**Preuve** : `ErrorCatalogDocumentTests` rouge sur `b568314c`, vert après régénération (`61aadb25`).
+
+**Occurrences** : 1
