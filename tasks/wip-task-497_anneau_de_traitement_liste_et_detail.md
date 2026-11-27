@@ -495,6 +495,14 @@ Analysé à api-mail `bbb6d978` (2026-11-27, SonarQube 9.9.8, projet `healthplat
 |------|---------------|--------------|-------|-------|
 | — (baseline) | 0 | 0 | n/a (aucun fichier touché) | n/a |
 
+## Lint mobile log
+
+- Branche : `feat/task-497-anneau-de-traitement-liste-et-detail` (HEAD `06fb9b5`).
+- Baseline `npm run lint` : **All files pass linting** — 0 erreur, 0 avertissement.
+- Itérations : 0 sur 5. Aucune correction, aucun commit. Build et suite non rejoués (rien de modifié) : le vert de
+  `/develop` (reprise 1, 1 933 / 1 933) tient sur ce code.
+- Conventions : rien à consigner.
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -604,6 +612,7 @@ les tests unitaires de B2 en tiennent lieu dans cette reprise).
 | /review-code | ok | 4 min 22 s | — | — | — | passage 2 APPROVED |
 | /sonar | ok | 15 min 44 s | 1 (1 min 03 s) | 5 (10 min 39 s) | 2 (1 min 07 s) | 1 itération(s), api-mail 1B/5T, 0 issue new code, QG OK, new_coverage 96.1, aucun commit |
 | /lint-angular | ok | 2 min 25 s | — | — | — | — |
-| **Total cycle** | | **45 min 50 s** | **7 (2 min 15 s)** | **28 (34 min 02 s)** | **2 (1 min 07 s)** | |
+| /lint-mobile | ok | 16 s | — | — | — | 0 erreur |
+| **Total cycle** | | **46 min 06 s** | **7 (2 min 15 s)** | **28 (34 min 02 s)** | **2 (1 min 07 s)** | |
 
-Autres commandes mesurées : lint ×2 (34 s), nuget-wait ×1 (15 s), restore ×1 (4.2 s)
+Autres commandes mesurées : lint ×3 (40 s), nuget-wait ×1 (15 s), restore ×1 (4.2 s)
