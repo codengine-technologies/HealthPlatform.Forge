@@ -169,8 +169,8 @@ Lecture du code au 2026-11-27 :
 |---|---|---|---|---|---|---|
 | /start | ok | 31 s | — | — | — | — |
 | /develop | ok | 20 min 31 s | 13 (1 min 55 s) | 59 (26 min 48 s) | — | dtos-mss 1B/0T, api-mail 7B/56T, client-mobile 3B/3T, client-angular 2B/0T, reprise 1 |
-| /review-code | changes | 9 min 47 s | — | — | — | reprise 1 |
-| **Total cycle** | | **30 min 51 s** | **13 (1 min 55 s)** | **59 (26 min 48 s)** | **0 (0.0 s)** | |
+| /review-code | ok | 4 min 15 s | — | — | — | passage 2 |
+| **Total cycle** | | **25 min 18 s** | **13 (1 min 55 s)** | **59 (26 min 48 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (11 s), restore ×1 (3.6 s)
 
@@ -743,60 +743,98 @@ Notes :
 
 #### client-angular (weda2)
 
-##### Fichiers à commiter sur TFS (46 après la reprise 1 ; les 5 ajoutés sont dans la section « Reprise 1 »)
+##### Reprise 1 (revue anticipée, passage 1 — CHANGES REQUESTED)
 
-Chemins relatifs à `Client/Angular/`.
-
-##### Modifiés (26)
+##### Fichiers TFS ajoutés par la reprise (5 ; total : 46, dont 31 modifiés et 15 créés)
 
 | Fichier | Raison |
 |---|---|
-| `front/libs/mss/src/core/models/user-settings.model.ts` | Modèles du contrat : `AgingThresholdsDto`, `MailboxAgingThresholdsDto`, `AgingCategory`, `RingDisplayPreferencesDto`, valeurs par défaut (règles 3 et 9), `ringDisplayOf` (préférences absentes ou incomplètes = défauts), `UserSettingsDto.ringDisplay`. |
-| `front/libs/mss/src/core/models/audit.model.ts` | **Adaptation de contrat** (`contract_impact.py`) : `AuditActionType.MailboxAgingThresholdsChanged = 77`, libellé « Seuils d'ancienneté de la boîte modifiés ». |
-| `front/libs/mss/src/core/models/audit.model.spec.ts` | **Adaptation de contrat** : ordinal 77 figé, libellé vérifié (vu rouge). |
-| `front/libs/mss/src/core/services/mss-api.service.ts` | `getMailboxAgingThresholds` / `saveMailboxAgingThresholds` (`GET|PUT api/v1/account/mailboxes/current/aging-thresholds`). |
-| `front/libs/mss/src/core/utils/mail-ring.util.ts` | Contexte de l'anneau : `display` (préférences). Initiales et gravité masquées via `shownRing` ; « Attente » masquée dans `mailRingChips`. L'état en clair reste complet. |
-| `front/libs/mss/src/core/utils/mail-ring.util.spec.ts` | Tests des préférences (affectation, gravité, attente, ⚠ atténué indépendant). |
-| `front/libs/mss/src/core/utils/mail-ring-row.util.ts` | La mémoire d'une ligne compare aussi les préférences (sinon un changement de préférence ne redessinait pas la ligne). |
-| `front/libs/mss/src/core/utils/mail-ring-row.util.spec.ts` | Test : la mémoire suit les préférences. |
-| `front/libs/mss/src/ui/mail-ring/mail-ring.component.ts` | Entrées `late` (« , en retard » après la nature dans le libellé lu et l'infobulle), `animated`, `highContrast` ; attributs `data-late`, `data-contrast`. |
-| `front/libs/mss/src/ui/mail-ring/mail-ring.component.html` | Classe `mss-mail-ring--contrast`. |
-| `front/libs/mss/src/ui/mail-ring/mail-ring.component.scss` | Contraste renforcé : teintes plus sombres (rapports mesurés en commentaire), traits plus épais. |
-| `front/libs/mss/src/ui/mail-ring/mail-ring.component.spec.ts` | Tests retard / animations / contraste. |
-| `front/libs/mss/src/features/mail/components/mail-header/mail-header.component.ts` | Ancienneté de la ligne (`ringAging`, `ageChip`), préférences passées au contexte et à l'anneau ; `hasRingMentions` sorti de `collapsesTypeLine` (complexité 21 > 20 avec le compteur, convention `complexity`). |
-| `front/libs/mss/src/features/mail/components/mail-header/mail-header.component.html` | Mention « J+N » / « H+N » dans la rangée des mentions (`data-testid="mail-row-age-{uid}"`, `aria-label` = phrase entière) ; entrées `late`, `animated`, `highContrast` de l'anneau. |
-| `front/libs/mss/src/features/mail/components/mail-header/mail-header.component.scss` | `.mail-ring-chip--late` (fond plein, 14,6:1) ; s'efface au survol avec les autres mentions. |
-| `front/libs/mss/src/features/mail/components/mail-header/mail-header.light-row.spec.ts` | Horloge figée (`MSS_CLOCK`) le jour de la date d'envoi du jeu : sinon un compteur qui vieillit change la ligne (convention `spec-qui-lit-une-ligne-de-liste…`). |
-| `front/libs/mss/src/features/mail/components/mail-header/mail-header.ring.spec.ts` | Même horloge figée (l'état en clair attendu ne dépend plus du calendrier). |
-| `front/libs/mss/src/features/mail/components/mail-ring-panel/mail-ring-panel.component.ts` | Ancienneté par unité (message : catégorie du message ; compte rendu : catégorie de sa gravité, date du message), préférences au contexte et aux anneaux. |
-| `front/libs/mss/src/features/mail/components/mail-ring-panel/mail-ring-panel.component.html` | Ligne « Ouvert depuis N jours. » (`data-testid="mail-ring-aging"`, `data-late`) ; entrées de l'anneau. |
-| `front/libs/mss/src/features/mail/components/mail-ring-panel/mail-ring-panel.component.scss` | Style de la ligne d'ancienneté (gras au dernier seuil). |
-| `front/libs/mss/src/features/mail/mss-mail.component.ts` | Seuils lus une fois avec les réglages ; préférences posées depuis les réglages lus. |
-| `front/libs/mss/src/features/settings/mss-settings.component.ts` | Section « Anneau de traitement » (6 préférences, enregistrées par la sauvegarde des réglages existante) ; seuils (saisie, validation locale, enregistrement différé 300 ms, refus serveur sous la catégorie, saisie redevenue invalide jamais envoyée). |
-| `front/libs/mss/src/features/settings/mss-settings.component.html` | Section « Anneau de traitement » après « Lecture » (toggles + légende) ; seuils dans « Boîte aux lettres » après la date de suivi (`settings-aging-{catégorie}-{first|second|late}`, `settings-aging-{catégorie}-error`). |
-| `front/libs/mss/src/features/settings/mss-settings.component.scss` | Grille des seuils. |
-| `front/e2e/mss-e2e/support/e2e-backend.ts` | Option `arrivedDaysAgo` → `--arrived-days-ago` ; `E2eMail.arrivalDate` ; `OtherDevice.saveTrackingStart`, `agingThresholds`, `saveAgingThresholds` ; `DEFAULT_E2E_AGING_THRESHOLDS`. |
-| `front/e2e/mss-e2e/specs/functional.e2e.ts` | E2E-RING-004 v1 et E2E-SETTINGS-006 v1 (+ aides `useDefaultRingDisplay`, `trackTenDaysBack`, `restoreRingState`, `calendarDaysSince`) ; et, à la demande du coordinateur, formatage prettier de 4 lignes de RING-005 (task-500, recette), sans changement de logique. |
+| `front/apps/weda2/src/app/app.config.ts` | S-W4 : `RingSettingsService` inscrit dans `MSS_RESETTABLE_STORES`, donc purgé à la bascule de boîte. |
+| `front/apps/weda2/src/app/app.config.spec.ts` | S-W4 : test de l'inscription (vu rouge). |
+| `front/libs/mss/src/core/index.ts` | S-W4 : `RingSettingsService` exporté par `@weda/mss` (nécessaire à `app.config.ts`). |
+| `front/libs/mss/src/features/mail/components/mail-ring-panel/mail-ring-panel.component.spec.ts` | B5 : horloge figée (`MSS_CLOCK`) le soir de l'arrivée du jeu. |
+| `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.ring.spec.ts` | B5 : même horloge figée. |
 
-##### Créés (15)
+Fichiers déjà listés et retouchés : `ring-settings.service(.spec).ts`, `mail-aging.util(.spec).ts`, `mss-settings.component.{ts,html,scss}`, `mss-settings.ring.spec.ts`, `mail-header.component.{ts,html}`, `mail-header.aging.spec.ts`, `ring-legend.component.{html,spec.ts}`, `functional.e2e.ts`.
 
-| Fichier | Raison |
-|---|---|
-| `front/libs/mss/src/core/utils/mail-aging.util.ts` | Calcul pur de l'ancienneté (§ 3), horloge passée en paramètre ; `lateRingLabel` ; validation locale des seuils ; lecture du refus serveur (`agingThresholdsRefusal`). |
-| `front/libs/mss/src/core/utils/mail-aging.util.spec.ts` | Tests du calcul à horloge fixée (DoD), de la validation et du refus. |
-| `front/libs/mss/src/core/utils/mail-ring-display.util.ts` | `shownRing` : préférences appliquées à la vue (initiales, gravité). Fichier à part pour garder `mail-ring.util.ts` sous 500 lignes (avertissement `max-lines`). |
-| `front/libs/mss/src/core/services/ring-settings.service.ts` | Service racine : seuils de la boîte (lus, relus après PUT réussi, lecture dépassée ignorée, échec = défauts) et préférences de la personne, partagés liste / détail / Paramètres. |
-| `front/libs/mss/src/core/services/ring-settings.service.spec.ts` | Tests du service. |
-| `front/libs/mss/src/core/services/mss-api.aging-thresholds.service.spec.ts` | Route et corps prouvés jusqu'à la requête HTTP. |
-| `front/libs/mss/src/core/tokens/mss-clock.token.ts` | `MSS_CLOCK` : horloge injectée (tests à horloge figée). |
-| `front/libs/mss/src/features/mail/components/mail-header/mail-header.aging.spec.ts` | Tests composant de la ligne : J+N, H+N, fond plein, « en retard », chaque préférence. |
-| `front/libs/mss/src/features/mail/components/mail-ring-panel/mail-ring-panel.aging.spec.ts` | Tests du bloc du détail : « Ouvert depuis… », retard, préférences. |
-| `front/libs/mss/src/features/mail/mss-mail.component.ring-settings.spec.ts` | Seuils lus avec les réglages, préférences posées. |
-| `front/libs/mss/src/features/settings/mss-settings.ring.spec.ts` | Tests des Paramètres (section, préférences, seuils, refus). |
-| `front/libs/mss/src/features/settings/ring-legend/ring-legend.component.ts` | Légende (règle 10) : chaque état dessiné par `mss-mail-ring` + `mailRingView` réels sur des messages d'exemple ; seuils cités ; préférences suivies. |
-| `front/libs/mss/src/features/settings/ring-legend/ring-legend.component.html` | Gabarit (`ring-legend-entry-{clé}`, `ring-legend-thresholds-{catégorie}`, `ring-legend-age`). |
-| `front/libs/mss/src/features/settings/ring-legend/ring-legend.component.scss` | Styles de la légende. |
-| `front/libs/mss/src/features/settings/ring-legend/ring-legend.component.spec.ts` | Tests de la légende. |
+##### Correctif → test → preuve rouge
+
+| Constat | Correctif | Test | Preuve rouge |
+|---|---|---|---|
+| **B3** | Les brouillons des seuils ne prennent une valeur lue ou relue que si la saisie est encore intacte : égale aux seuils en vigueur d'avant, ou aux seuils envoyés (`linkedSignal` à source et valeur précédente, `sameAgingThresholds`). Après succès, les refus sont recalculés sur la saisie gardée. | `mss-settings.ring.spec.ts` : « une saisie faite pendant l'enregistrement n'est pas écrasée… », « une relecture qui arrive après une saisie ne l'écrase pas ; sans saisie, elle s'applique », « sans saisie pendant l'aller-retour, les valeurs relues remplacent celles envoyées » | Écrits avant le code, rouges (`'7'` au lieu de `'9'`, `'4'` au lieu de `'2'`). Mutations R1 (toujours la valeur du serveur) : 2 rouges ; R2 (clause « seuils envoyés » retirée) : 1 rouge. |
+| **B4** | Le service expose `thresholdsStatus` (`unread` / `read` / `failed`). Sans lecture réussie : champs désactivés, aucun enregistrement (garde à la saisie et filtre avant l'envoi), « Les seuils de la boîte n'ont pas pu être lus. » et un bouton « Réessayer » (`settings-aging-retry`). En échec de relecture, la dernière valeur lue de la boîte est gardée. | `mss-settings.ring.spec.ts` « B4 — seuils non lus… » ; `ring-settings.service.spec.ts` (état non lu / lu / en échec, valeur gardée) | Rouges avant le code. R3 (`thresholdsReady` toujours vrai) : 1 rouge ; R11 (état « en échec » jamais posé) : 2 rouges. |
+| **B5** | `MSS_CLOCK` figé dans `mail-ring-panel.component.spec.ts` et `mail-detail.ring.spec.ts`. **Recherche** : horloge par défaut forcée au 2026-12-15, puis au 2028-06-01, sur les 198 fichiers de specs de `src/features`, `src/ui` et `src/core` (qui rendent la ligne, le bloc du détail, le détail et la légende). Seuls ces deux fichiers tombent ; la légende utilise un « maintenant » d'exemple fixe. | — | Mutation B5-horloge-2026-12-15 : 2 rouges (« Courrier, en retard. » au lieu de « Courrier. »). B5-horloge-2028 : les mêmes 2 rouges, aucun autre. Après correctif : B5-apres-correctif-2028, 3 fichiers et 30 tests verts. |
+| **B6** | E2E-RING-004 : le courrier reste aux défauts (le scénario l'exige). La biologie (2, 4, 9) et la biologie critique (6, 30, 80) sont posées à des valeurs distinctes, que les champs doivent citer. La relecture finale vérifie que les autres catégories sont inchangées. E2E-SETTINGS-006 : seuils distincts posés par l'API (courrier 4, 9, 20 ; critique 6, 30, 80) ; la légende cite « Courrier : 4 j, 9 j, en retard à 20 j. » et « Biologie critique : 6 h, 30 h, en retard à 80 h. », avec les pastilles J+4, J+20 et H+6 ; les champs citent 4, 20 et 6. Les défauts sont remis dans le `finally`. | — | **Non joués** (banc partagé). `tsc` e2e : 0. ESLint : 0 erreur. **Mutation proposée à /e2e** : `ring-legend.component.ts`, `thresholdLines` lit `DEFAULT_AGING_THRESHOLDS` au lieu de `this.thresholds()` → SETTINGS-006 rouge sur le texte de la légende ; pour les champs, `thresholdDrafts` sur `DEFAULT_AGING_THRESHOLDS` → RING-004 et SETTINGS-006 rouges. |
+| **S-W1** | `saveThresholds` rend une issue `{ thresholds, reread }`. PUT réussi mais relecture en échec : les valeurs envoyées entrent en vigueur, et l'écran dit « Les seuils sont enregistrés, mais n'ont pas pu être relus. » (`settings-aging-reread-error`), jamais « non enregistrés ». | service et settings (« S-W1 — enregistré mais non relu… ») | Rouges avant le code. R9 (relecture en échec propagée) : 1 rouge ; R4 (issue ignorée par l'écran) : 1 rouge. |
+| **S-W2** | Nouveau getter `showsAssigneeChip` : en mode sélection, la pastille d'initiales suit la préférence « Affectation » ; en icône classique elle reste (arbitrage A1, recommandation retenue). Utilisé par le gabarit et `collapsesTypeLine`. | `mail-header.aging.spec.ts` : « en mode sélection… », « en icône classique… (arbitrage A1) » | Rouge avant le code (pastille présente). R5 (préférence ignorée) : 1 rouge ; R6 (icône classique masquée aussi) : 1 rouge. |
+| **S-W3** | Aucun changement de code (`Math.round` était déjà en place). | `mail-aging.util.spec.ts` : « à travers le passage à l'heure d'été, deux jours restent J+2 » (2026-03-28 10 h → 2026-03-30 10 h) | R7 (`Math.floor`) : 1 rouge, sur un poste à Paris (heure d'été ; consigne `fuseau-fige-sous-vmthreads`). |
+| **S-W4** | `RingSettingsService.reset()` : seuils par défaut et non lus, préférences par défaut (les réglages de la personne vivent dans la base de la boîte), lecture en vol ignorée. Le service est inscrit dans `MSS_RESETTABLE_STORES` et exporté par `@weda/mss`. | service (« reset() à la bascule… ») ; `app.config.spec.ts` (« RingSettingsService est inscrit… ») | `app.config.spec.ts` rouge avant l'inscription (`[{}, {}]`). R10 (`reset` laisse passer la lecture en vol) : 1 rouge. |
+| **S-W5** | Légende : `track chip.text` devient `track $index`. | — | Pas de test : deux mentions de même texte ne peuvent pas se produire aujourd'hui. Changement défensif. |
+| **S-L1** | Déjà en place : les pastilles d'exemple de weda2 sont tirées des seuils en vigueur (1er et dernier seuil du courrier, 1er seuil de la biologie critique). Le test les lie maintenant aussi à la biologie critique modifiée. | `ring-legend.component.spec.ts` : « suit les seuils modifiés… : texte et pastilles » (attend J+2, J+8, H+6) | R8 (pastilles calculées sur les seuils par défaut) : 1 rouge. |
+
+##### Vérifications
+
+- **Vitest**, specs ciblés (`src/core`, `src/ui/mail-ring`, mail-header, mail-ring-panel, mail-detail, mail-list, `mss-mail*`, settings, audit, layout) : 113 fichiers, 1 300 tests verts. `apps/weda2` `app.config.spec.ts` : 6/6.
+- **ESLint**, fichiers touchés : 0 erreur. Les avertissements restants sont antérieurs : `max-lines`, et `require-example` de `loadMailServer`.
+- **Stylelint** des Paramètres : 0.
+- **Prettier** : seules les lignes ajoutées sont formatées. `app.config.spec.ts` garde deux lignes non formatées antérieures (`userActivity`, lignes 142 et 155), hors task.
+- **e2e** : `tsc -p e2e/mss-e2e/tsconfig.json` sort à 0 ; ESLint : 0 erreur.
+
+##### Hors de mon périmètre, noté
+
+- S-M2 est relevé pour le mobile, mais weda2 a la même forme : si les seuils ne sont pas lus, la légende cite les seuils par défaut comme ceux de la boîte. Le bloc « Boîte aux lettres » dit bien l'échec de lecture ; la légende, elle, ne le dit pas. Non corrigé, car ce n'est pas dans la liste de la reprise. À trancher par la revue.
+
+##### Fichiers à commiter sur TFS (état réel de l'arbre, `git status -uall`, après la reprise 1) — 31 modifiés, 15 créés
+
+Modifiés :
+- `front/apps/weda2/src/app/app.config.spec.ts`
+- `front/apps/weda2/src/app/app.config.ts`
+- `front/e2e/mss-e2e/specs/functional.e2e.ts`
+- `front/e2e/mss-e2e/support/e2e-backend.ts`
+- `front/libs/mss/src/core/index.ts`
+- `front/libs/mss/src/core/models/audit.model.spec.ts`
+- `front/libs/mss/src/core/models/audit.model.ts`
+- `front/libs/mss/src/core/models/user-settings.model.ts`
+- `front/libs/mss/src/core/services/mss-api.service.ts`
+- `front/libs/mss/src/core/utils/mail-ring-row.util.spec.ts`
+- `front/libs/mss/src/core/utils/mail-ring-row.util.ts`
+- `front/libs/mss/src/core/utils/mail-ring.util.spec.ts`
+- `front/libs/mss/src/core/utils/mail-ring.util.ts`
+- `front/libs/mss/src/features/mail/components/mail-detail/mail-detail.ring.spec.ts`
+- `front/libs/mss/src/features/mail/components/mail-header/mail-header.component.html`
+- `front/libs/mss/src/features/mail/components/mail-header/mail-header.component.scss`
+- `front/libs/mss/src/features/mail/components/mail-header/mail-header.component.ts`
+- `front/libs/mss/src/features/mail/components/mail-header/mail-header.light-row.spec.ts`
+- `front/libs/mss/src/features/mail/components/mail-header/mail-header.ring.spec.ts`
+- `front/libs/mss/src/features/mail/components/mail-ring-panel/mail-ring-panel.component.html`
+- `front/libs/mss/src/features/mail/components/mail-ring-panel/mail-ring-panel.component.scss`
+- `front/libs/mss/src/features/mail/components/mail-ring-panel/mail-ring-panel.component.spec.ts`
+- `front/libs/mss/src/features/mail/components/mail-ring-panel/mail-ring-panel.component.ts`
+- `front/libs/mss/src/features/mail/mss-mail.component.ts`
+- `front/libs/mss/src/features/settings/mss-settings.component.html`
+- `front/libs/mss/src/features/settings/mss-settings.component.scss`
+- `front/libs/mss/src/features/settings/mss-settings.component.ts`
+- `front/libs/mss/src/ui/mail-ring/mail-ring.component.html`
+- `front/libs/mss/src/ui/mail-ring/mail-ring.component.scss`
+- `front/libs/mss/src/ui/mail-ring/mail-ring.component.spec.ts`
+- `front/libs/mss/src/ui/mail-ring/mail-ring.component.ts`
+
+Créés :
+- `front/libs/mss/src/core/services/mss-api.aging-thresholds.service.spec.ts`
+- `front/libs/mss/src/core/services/ring-settings.service.spec.ts`
+- `front/libs/mss/src/core/services/ring-settings.service.ts`
+- `front/libs/mss/src/core/tokens/mss-clock.token.ts`
+- `front/libs/mss/src/core/utils/mail-aging.util.spec.ts`
+- `front/libs/mss/src/core/utils/mail-aging.util.ts`
+- `front/libs/mss/src/core/utils/mail-ring-display.util.ts`
+- `front/libs/mss/src/features/mail/components/mail-header/mail-header.aging.spec.ts`
+- `front/libs/mss/src/features/mail/components/mail-ring-panel/mail-ring-panel.aging.spec.ts`
+- `front/libs/mss/src/features/mail/mss-mail.component.ring-settings.spec.ts`
+- `front/libs/mss/src/features/settings/mss-settings.ring.spec.ts`
+- `front/libs/mss/src/features/settings/ring-legend/ring-legend.component.html`
+- `front/libs/mss/src/features/settings/ring-legend/ring-legend.component.scss`
+- `front/libs/mss/src/features/settings/ring-legend/ring-legend.component.spec.ts`
+- `front/libs/mss/src/features/settings/ring-legend/ring-legend.component.ts`
 
 #### client-mobile
 
@@ -910,3 +948,31 @@ Notes sans suite : réglages d'affichage rangés par personne dans la base de la
 personne (N6 mobile) ; client-blazor non bumpé, un enregistrement depuis Blazor remettrait `RingDisplay` aux défauts
 (hors task, N2 api) ; refus d'un seuil non entier par la liaison ASP.NET, sans `field` (N1 api) ; horloge non réactive à
 minuit (calcul à l'affichage, S5 weda2) ; « Ouvert depuis » dans l'`<ol>` des étapes (forme existante, N3 weda2).
+
+### Passage 2 (revue anticipée, après la reprise 1) — APPROVED
+
+Relecteurs du passage 1, diff de la reprise lu en premier (ce qu'il a cassé), puis chaque constat vérifié.
+- **api-mail** : APPROVED — corps local `MailboxAgingThresholdsRequest` sans effet sur les clients ni api-mcp ; transaction
+  `INSERT … ON CONFLICT DO NOTHING` + `FOR UPDATE` sans interblocage, annulée proprement ; test de concurrence
+  déterministe (3 verts) et rouge sur l'ancien code ; S-A1 (rouge : 200 au lieu de 400, critique écrasée), S-A2 (R2a, R2b),
+  S-A3 (500 `23505`, R3, R4, R5) corrigés.
+- **client-mobile** : APPROVED — `ensureLoaded()` sans fuite entre boîtes, valeur gardée sur échec, gardes de route,
+  saisie brute, pastilles calculées ; B1, B2, S-M1 à S-M4, S-W3, S-L1 corrigés (rouges et mutations consignés).
+- **client-angular** : code APPROVED (aucune régression ; B3 à B6, S-W1 à S-W6, S-L1 corrigés, mutations R1 à R12). Un
+  bloquant de **traçabilité** du plan de contrôle : la sous-section weda2 de la « Reprise 1 » ne portait pas la table
+  correctif → test → preuve, et la liste TFS omettait 5 fichiers (`app.config.ts`, `app.config.spec.ts`, `core/index.ts`,
+  specs `mail-ring-panel` et `mail-detail.ring`). **Corrigé par l'orchestrateur** (recopie du journal de reprise, liste
+  TFS régénérée depuis `git status -uall` : 31 modifiés, 15 créés), sans changement de code.
+- `contract_impact.py check` : api-mcp aucun impact ; client-mobile aucun impact ; client-angular IMPACT adapté (77).
+
+**Approved at** : api-mail `459e5769` ; dtos-mss `158d4e46` ; client-mobile `1f490eb` ; client-angular arbre de
+`feature/nova-mss-weda-integration` (base `3f6e9119`, 46 fichiers listés).
+
+Suggestions sans suite (non bloquantes, pour une task ultérieure ou le merge) :
+- api-mail : test par réflexion « `MailboxAgingThresholdsRequest` = propriétés de `MailboxAgingThresholdsDto` » (une
+  catégorie ajoutée au contrat sans la requête serait remise aux défauts) ; nom de table en dur dans deux requêtes SQL.
+- weda2 : la légende dit « non lus » quand une **relecture** échoue après une lecture réussie (les vraies valeurs sont
+  affichées), et la mention clignote pendant le chargement ; une saisie jetée par un échec de lecture n'est pas renvoyée
+  après « Réessayer » (fenêtre de 300 ms).
+- mobile : bascules de la légende grisées sans explication si les réglages n'ont pas pu être lus ; champs de seuils
+  modifiables pendant l'enregistrement (`reponse-sur-instantane`).

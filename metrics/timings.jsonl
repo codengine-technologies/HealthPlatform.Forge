@@ -11447,3 +11447,5 @@
 {"ts":"2026-11-28T00:24:51+01:00","run_id":"-","type":"cmd","task":"task-498","step":"develop","repo":"api-mail","kind":"test","label":"","cwd":"Api/Mail","cmd":"dotnet test HealthPlatform.Api.Mail.sln --no-build","duration_ms":472289,"exit_code":1}
 {"ts":"2026-11-28T00:25:24+01:00","run_id":"-","type":"cmd","task":"task-498","step":"develop","repo":"client-angular","kind":"build","label":"","cwd":"Client/Angular/front","cmd":"npx nx build weda2 --skip-nx-cache","duration_ms":12481,"exit_code":0}
 {"ts":"2026-11-28T00:26:55+01:00","run_id":"-","type":"step","task":"task-498","step":"develop","status":"ok","note":"reprise 1","iterations":null,"duration_ms":1231630}
+{"ts":"2026-11-28T00:27:26+01:00","run_id":"-","type":"step_start","task":"task-498","step":"review-code"}
+{"ts":"2026-11-28T00:31:41+01:00","run_id":"-","type":"step","task":"task-498","step":"review-code","status":"ok","note":"passage 2","iterations":null,"duration_ms":255565}
