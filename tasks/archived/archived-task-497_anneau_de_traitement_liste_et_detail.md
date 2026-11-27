@@ -941,3 +941,15 @@ client-mobile inchangés. Relecteur indépendant, diff de la reprise lu en premi
 | **Total cycle** | | **42 min 38 s** | **13 (3 min 12 s)** | **36 (44 min 42 s)** | **2 (1 min 07 s)** | |
 
 Autres commandes mesurées : lint ×4 (52 s), nuget-wait ×1 (15 s), restore ×1 (4.2 s)
+
+## Merged
+
+Mergé le 2026-11-27 par `/merge task-497 --i-tested` (validation humaine attestée), squash, dans l'ordre de la règle 11 :
+
+- `dtos-mss` #75 → `develop` `2fffadc`
+- `api-mail` #382 → `develop` `6e4ff8f5`
+- `client-mobile` #136 → `develop` `6d408c0`
+- `client-angular` : managed manually by the human (TFS).
+
+Branches `feat/task-497-anneau-de-traitement-liste-et-detail` supprimées (distantes et locales), label
+`awaiting-human-merge` retiré. CI `develop` : dtos-mss verte ; api-mail et client-mobile relues après le merge.
