@@ -10,6 +10,30 @@
 
 ## Historique détaillé des changelogs
 
+### v0.2 — task-500 : une ligne de liste allégée (api-mail, client-mobile, weda2)
+
+- **État** : `done` — PRs en attente du merge humain (HAG). 1 reprise.
+- **PRs** : api-mail [#383](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/383) (catalogue e2e
+  seul), client-mobile [#137](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/137) — label
+  `awaiting-human-merge`. client-angular en code-only : 16 fichiers non commités sur `feature/nova-mss-weda-integration`
+  (liste dans le task file). Ordre de merge : api-mail, puis client-mobile ; weda2 avec eux.
+- **Contrat** : aucun changement ; `contract_impact.py check` : aucun impact pour les trois consommateurs.
+- **api-mail** (`c8aa3845`) : catalogue — `E2E-RING-003` v2 (« Non affecté » lu dans l'état en clair de l'anneau),
+  `E2E-RING-005` v1 (pastille du compteur de conversation, icône « répondu » au bord de l'anneau). /sonar : skip mesuré
+  (aucun fichier analysé).
+- **weda2** : `MailRingComponent` porte les pastilles (`threadCount`, `replyText`, `hint` pour l'identifiant ; boîtes
+  `BADGES_AT_32`, compteur borné à la gouttière de la ligne, « 99+ » en 9 px) ; `MailHeaderComponent` allégé (règles 1 à
+  11, `rowBiology`, espaceur de ligne 1) ; `MailStateService.listedFolderType` (dossier listé, vues mêlées) ;
+  `MailRingChips.unassigned` retiré. Revue : B1 (mode sélection : la ligne reprend ce que l'anneau porterait), S1
+  (« 99+ » dans la gouttière).
+- **client-mobile** (`9d17da7`, `205c8eb`) : `.mail-ring-wrap` (bouton compteur 32×32, `aria-expanded`, `pointerdown`
+  stoppé ; pastille réponse) ; biologie 2 + « +N », sens de la valeur sur la flèche, « Document médical » en icône ;
+  `TreatmentRing.unassigned` retiré.
+- **Preuves** : weda2 36 mutations, mobile ~20 mutations, chacune rouge ; e2e RING-003 et RING-005 vus rouges par
+  mutation sur les deux clients (recompilation prouvée). Validation : mobile 1 977, weda2 2 212 + 2 683, api-mail 8 284 ;
+  /e2e vert (mobile 85, angular 107 + 1 flaky SEARCH-004, 4ᵉ occurrence au registre).
+- **Consignes** : `mesure-composant-ionic-apres-hydratation` (`conventions/angular.md`).
+
 ### v0.1 — task-497 : l'anneau dans la liste et le détail (api-mail, dtos-mss, client-mobile, weda2)
 
 - **État** : `done` — PRs en attente du merge humain (HAG). 3 reprises (1 sur revue, 1 sur décision humaine au HAG,
@@ -155,7 +179,7 @@
 
 | Task | Contribution | État |
 |---|---|---|
-| task-497 | L'anneau dans la liste et le détail : étape d'acquittement servie sur la ligne sans requête de plus, historique daté dans le détail, évènement en direct pour tout acquittement, anneau et bloc du détail sur les deux clients, initiales dans l'anneau, « Non affecté » / « Attente patient » / « Attente confrère », boutons d'acquittement sous l'anneau (section « Traitement » du panneau latéral sur weda2), préférence anneau / icône classique | `done` (PRs #75, #382, #136) |
+| task-497 | L'anneau dans la liste et le détail : étape d'acquittement servie sur la ligne sans requête de plus, historique daté dans le détail, évènement en direct pour tout acquittement, anneau et bloc du détail sur les deux clients, initiales dans l'anneau, « Non affecté » / « Attente patient » / « Attente confrère », boutons d'acquittement sous l'anneau (section « Traitement » du panneau latéral sur weda2), préférence anneau / icône classique | `archived` — mergée le 2026-11-27 (PRs #75, #382, #136) |
 | task-498 | Ancienneté : seuils par catégorie réglés au niveau de la boîte (changement tracé), compteur J+N / H+N calculé sur le poste, préférences d'affichage, contraste renforcé, légende | `todo` |
 | task-499 | Tableau de bord : « dont N en retard » sur les tuiles existantes, tuile « Non affectées », listes filtrées servies par le serveur, après mesure sur une boîte de 10 000 messages | `todo` |
-| task-500 | Ligne de liste allégée : « Non affecté » et identifiant hors de la ligne (survol de l'anneau), compteur de conversation en pastille grise sur l'anneau, icône « répondu » au bord de l'anneau, 2 valeurs de biologie au plus, une seule date, moins de puces redondantes (weda2 et mobile) | `todo` |
+| task-500 | Ligne de liste allégée : « Non affecté » et identifiant hors de la ligne (survol de l'anneau), compteur de conversation en pastille grise sur l'anneau, icône « répondu » au bord de l'anneau, 2 valeurs de biologie au plus, une seule date, moins de puces redondantes (weda2 et mobile) | `done` (PRs #383, #137) |

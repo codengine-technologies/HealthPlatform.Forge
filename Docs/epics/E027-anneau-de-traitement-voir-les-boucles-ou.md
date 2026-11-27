@@ -1,8 +1,8 @@
 # E027 — Anneau de traitement : voir les boucles ouvertes
 
-> **Statut** : 🟡 En cours — 1 feature livrée, en attente de validation (task-497) ; 3 au backlog (tasks 498, 499, 500).
+> **Statut** : 🟡 En cours — 1 feature mergée (task-497), 1 livrée en attente de validation (task-500) ; 2 au backlog (tasks 498, 499).
 > **Modèle** : task-driven
-> **Version** : 0.1
+> **Version** : 0.2
 > **Auteur** : PO forge (task-497)
 > **Audience** : PO, médecins, secrétaires médicales, direction, conformité
 > **Dernière mise à jour** : 2026-11-27
@@ -78,8 +78,8 @@ il dessine ce que la boîte sait déjà (lu, traité, attribué, acquitté), pou
 
 | Fonctionnalité | Ce que le praticien peut faire | Tasks | Statut |
 |---|---|---|---|
-| L'anneau dans la liste et le détail | Voir, à la place de l'initiale de l'expéditeur, un anneau qui dit l'étape atteinte par chaque message à traiter : trois étapes pour un courrier (reçu, lu, traité), quatre pour un compte rendu de biologie à acquitter (reçu, pris connaissance, suite donnée, résolu). Lire au centre les initiales de la personne à qui le message est confié, sur fond plein quand c'est soi ; lire à droite « Non affecté », « Attente patient » ou « Attente confrère ». Reconnaître la gravité à la couleur, ambre pour une anomalie, rouge pour une valeur critique. Ouvrir le message et trouver l'anneau, les étapes datées et signées, et les boutons d'acquittement rangés par étape : dans la section « Traitement » du panneau latéral sur le web, en tête du message sur le mobile. Revenir à l'icône classique si on le préfère | task-497 | 🟡 Livrée, en attente de validation |
-| Une ligne de liste allégée | Lire une ligne qui ne dit que l'utile : plus de « Non affecté » ni d'identifiant écrits, le nombre de messages d'une conversation en pastille grise sur l'anneau, la réponse envoyée en icône au bord de l'anneau, deux valeurs de biologie au plus puis « +N », une seule date, moins de puces redondantes | task-500 | ⏳ À faire |
+| L'anneau dans la liste et le détail | Voir, à la place de l'initiale de l'expéditeur, un anneau qui dit l'étape atteinte par chaque message à traiter : trois étapes pour un courrier (reçu, lu, traité), quatre pour un compte rendu de biologie à acquitter (reçu, pris connaissance, suite donnée, résolu). Lire au centre les initiales de la personne à qui le message est confié, sur fond plein quand c'est soi ; lire à droite « Non affecté », « Attente patient » ou « Attente confrère ». Reconnaître la gravité à la couleur, ambre pour une anomalie, rouge pour une valeur critique. Ouvrir le message et trouver l'anneau, les étapes datées et signées, et les boutons d'acquittement rangés par étape : dans la section « Traitement » du panneau latéral sur le web, en tête du message sur le mobile. Revenir à l'icône classique si on le préfère | task-497 | ✅ Livrée et mergée |
+| Une ligne de liste allégée | Lire une ligne qui ne dit que l'utile : plus de « Non affecté » ni d'identifiant écrits, le nombre de messages d'une conversation en pastille grise sur l'anneau, la réponse envoyée en icône au bord de l'anneau, deux valeurs de biologie au plus puis « +N », une seule date, moins de puces redondantes | task-500 | 🟡 Livrée, en attente de validation |
 | Ancienneté et légende des anneaux | Voir depuis combien de temps une boucle est ouverte (« J+N », ou « H+N » pour une valeur critique) dès le premier seuil, et « en retard » au dernier ; régler les seuils de la boîte ; choisir les signes affichés ; ouvrir une légende qui dessine chaque état | task-498 | ⏳ À faire |
 | Tableau de bord : boucles en retard et non affectées | Lire sur les tuiles du tableau de bord « dont N en retard » et le nombre de messages que personne n'a pris, puis ouvrir d'un geste la liste correspondante | task-499 | ⏳ À faire |
 
@@ -131,6 +131,15 @@ L'anneau prend la place de l'initiale de l'expéditeur, à gauche de la ligne. L
 restent. La pastille d'initiales et la pastille « Traité » disparaissent de la ligne : l'anneau les porte. Dans
 Envoyés, Brouillons et Corbeille, la ligne garde l'initiale de l'expéditeur. Le badge ⚠ du nombre de comptes rendus à
 acquitter reste à droite, inchangé (task-497).
+
+La ligne est allégée (task-500, décisions du 2026-11-27) : l'anneau porte aussi le nombre de messages d'une
+conversation, en pastille grise en haut à droite (sur le mobile, un appui déplie le fil), et l'icône « répondu » à son
+bord, en bas à droite. « Non affecté », « N messages » et l'identifiant du message ne s'écrivent plus sur la ligne :
+« Non affecté » reste dans l'état en clair de l'anneau, l'identifiant dans son texte au survol. Deux valeurs de
+biologie au plus, les critiques d'abord, puis « +N autres » ; une seule date par ligne ; plus de « MESSAGE » ni de
+« COURRIER » ; « Envoyé » et « Brouillon » seulement hors de leur dossier ; sur le mobile, plus de puce « Biologie » en
+mode anneau, plus de code « (H) », et « Document médical » en icône. En mode sélection, la case remplace l'anneau et
+la ligne reprend ce qu'il porterait.
 
 ### Dans le détail
 
@@ -238,12 +247,12 @@ pas. Ce choix est propre à chaque personne et revient à la réouverture (task-
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
-| L'anneau dans la liste et le détail | 🟡 Livrée, en attente de validation | 100 % livré sur l'application web et l'application mobile | task-497 |
+| L'anneau dans la liste et le détail | ✅ Livrée et mergée | 100 % sur l'application web et l'application mobile | task-497 |
 | Ancienneté et légende des anneaux | ⏳ À faire | 0 % | task-498 |
 | Tableau de bord : boucles en retard et non affectées | ⏳ À faire | 0 % | task-499 |
-| Une ligne de liste allégée | ⏳ À faire | 0 % | task-500 |
+| Une ligne de liste allégée | 🟡 Livrée, en attente de validation | 100 % sur l'application web et l'application mobile | task-500 |
 
-**Couverture EPIC consolidée : 1 feature livrée sur 4**, en attente de validation ; 3 au backlog.
+**Couverture EPIC consolidée : 2 features livrées sur 4** (1 mergée, 1 en attente de validation) ; 2 au backlog.
 
 ---
 
@@ -261,6 +270,11 @@ pas. Ce choix est propre à chaque personne et revient à la réouverture (task-
   en dessous : dans la section « Traitement » du panneau latéral sur l'application web (décision du 2026-11-27, pour
   ne pas alourdir la lecture), en tête du message sur l'application mobile. Chacun peut revenir à l'icône classique.
   Sur l'application web et sur l'application mobile (task-497).
+- **v0.2 — Une ligne de liste allégée.** L'anneau rassemble l'état du message : le nombre de messages d'une
+  conversation en pastille grise, la réponse envoyée en icône à son bord. La ligne ne dit plus « Non affecté », ni
+  « N messages », ni l'identifiant (passé au survol), montre deux valeurs de biologie au plus puis « +N », une seule date,
+  et perd les mentions redondantes (« MESSAGE », « Envoyé » dans Envoyés, puce « Biologie » et code « (H) » sur le
+  mobile). Sur l'application web et sur l'application mobile (task-500).
 
 ### Conformité réglementaire
 
