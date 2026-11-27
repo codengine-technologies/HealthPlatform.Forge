@@ -572,6 +572,8 @@ comme weda2 (aujourd'hui une expression régulière).
   - `client-mobile` : `ce783078` (PR #137) — CI `develop` verte : https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/46071594377
 - Branches `feat/task-500-…` supprimées (distantes et locales). Pas de branche staging (task hors `/forge`).
 - `client-angular` : géré à la main par l'humain (TFS).
+- 2026-11-27, recette R3 mobile, à la demande de l'humain : `client-mobile` `d91dba08` (PR #138, squash), CI verte ;
+  branche `fix/task-500-recette-anneau-allege` supprimée (distante et locale), clone revenu sur `develop`.
 
 ## Recette (après merge)
 
