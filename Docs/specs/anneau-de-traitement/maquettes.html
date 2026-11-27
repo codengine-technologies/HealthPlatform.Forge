@@ -1,0 +1,860 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anneau de traitement — maquettes</title>
+<style>
+  :root{
+    --page:#eef1f5; --card:#fff; --text:#1f2937; --muted:#6b7280; --border:#e5e7eb; --hover:#f3f4f6;
+    --primary:#3b82f6; --primary-d:#2563eb;
+    --ink:#475569; --track:#d9dfe8; --warn:#d97706; --crit:#dc2626; --closed:#a3adbb;
+    --m-primary:#00478d; --m-tertiary:#920d00; --m-danger:#ba1a1a; --m-outline:#c2c6d4; --m-onvar:#424752;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--text);font:14px/1.45 Manrope,"Segoe UI",system-ui,-apple-system,sans-serif}
+  body.gray main{filter:grayscale(1)}
+  h1{font-size:20px;margin:0}
+  h2{font-size:18px;margin:0 0 4px}
+  h3{font-size:14px;margin:18px 0 8px;color:#111827}
+  p{margin:6px 0}
+  .lead{color:var(--muted);max-width:92ch}
+  .bar{position:sticky;top:0;z-index:20;background:#111827;color:#fff;padding:10px 20px;display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center}
+  .bar h1{font-size:15px;font-weight:700;margin-right:6px}
+  .bar label{font-size:12px;display:inline-flex;gap:6px;align-items:center;cursor:pointer}
+  .seg{display:inline-flex;border:1px solid #4b5563;border-radius:8px;overflow:hidden}
+  .seg button{background:transparent;color:#d1d5db;border:0;padding:6px 10px;font:inherit;font-size:12px;cursor:pointer}
+  .seg button[aria-pressed=true]{background:#fff;color:#111827;font-weight:700}
+  .bar nav{margin-left:auto;display:flex;flex-wrap:wrap;gap:10px}
+  .bar nav a{color:#93c5fd;font-size:12px;text-decoration:none}
+  main{max-width:1320px;margin:0 auto;padding:20px}
+  section.sheet{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:22px}
+  .variant-note{background:#f8fafc;border-left:4px solid var(--ink);padding:10px 14px;border-radius:0 8px 8px 0;margin:10px 0 0}
+  .grid{display:grid;gap:14px}
+  .states{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+  .state{border:1px solid var(--border);border-radius:10px;padding:14px 10px 10px;text-align:center;background:#fff}
+  .state .big{height:76px;display:flex;align-items:center;justify-content:center}
+  .state .small{height:44px;display:flex;align-items:center;justify-content:center;gap:16px;border-top:1px dashed var(--border);margin-top:8px;padding-top:6px}
+  .state b{display:block;font-size:12px;margin-top:6px}
+  .state span.d{display:block;font-size:11px;color:var(--muted);min-height:30px}
+  svg.ring{overflow:visible;flex:none;display:block}
+  .ring .seg-new{stroke-dasharray:1;stroke-dashoffset:1;animation:draw .38s cubic-bezier(.2,0,0,1) forwards}
+  .ring .tip-new{opacity:0;animation:fade .2s .3s forwards}
+  @keyframes draw{to{stroke-dashoffset:0}}
+  @keyframes fade{to{opacity:1}}
+  @media (prefers-reduced-motion:reduce){.ring .seg-new,.ring .tip-new{animation:none;stroke-dashoffset:0;opacity:1}}
+  .two{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:22px;align-items:start}
+  @media (max-width:1000px){.two{grid-template-columns:1fr}}
+  .cap{font-size:11px;color:var(--muted);margin:6px 2px 0}
+
+  /* liste bureau (weda2) */
+  .wlist{border:1px solid var(--border);border-radius:10px;overflow:hidden;background:#fff}
+  .wfilters{display:flex;gap:8px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px;flex-wrap:wrap}
+  .pill{border:1px solid var(--border);border-radius:999px;padding:3px 10px;background:#fff;color:var(--text)}
+  .pill.on{background:#dbeafe;border-color:#bfdbfe;color:#1e40af;font-weight:700}
+  .wrow{display:flex;gap:12px;padding:9px 16px 9px 14px;border-bottom:1px solid var(--border);position:relative;align-items:flex-start}
+  .wrow:hover{background:var(--hover)}
+  .wrow.unread::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--primary)}
+  .wrow .slot{width:44px;display:flex;justify-content:center;padding-top:2px;flex:none}
+  .wrow .body{min-width:0;flex:1}
+  .l1{display:flex;gap:8px;align-items:center;font-size:11px;color:var(--muted)}
+  .l1 .type{text-transform:uppercase;letter-spacing:.02em;font-size:12px;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .unread .l1 .type,.unread .subj{font-weight:700;color:#111827}
+  .l1 .sp{flex:1}
+  .subj{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pat{font-size:11px;color:var(--primary-d)}
+  .bio{font-size:11px;font-weight:600}
+  .bio.crit{color:var(--crit)} .bio.warn{color:#b45309}
+  .avatar{width:32px;height:32px;border-radius:50%;background:#d1d5db;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex:none}
+  .unread .avatar{background:var(--primary)}
+  .chip{display:inline-flex;align-items:center;justify-content:center;height:18px;min-width:22px;padding:0 5px;border-radius:9px;font-size:10px;font-weight:600;background:#dbeafe;color:#1e40af}
+  .chip.mine{background:var(--primary-d);color:#fff}
+  .chip.none{background:#fff;color:#6b7280;border:1px dashed #9ca3af}
+  .chip.done{background:#dcfce7;color:#166534}
+  .chip.late{background:#f1f5f9;color:#334155;border:1px solid #cbd5e1}
+  .badge-ack{white-space:nowrap;display:inline-flex;gap:3px;align-items:center;border:1px solid currentColor;border-radius:9px;padding:0 6px;height:18px;font-size:10px;font-weight:700}
+  .badge-ack.w{color:var(--warn)} .badge-ack.c{color:var(--crit)}
+  .badge-ack.solid{background:var(--crit);color:#fff;border-color:var(--crit)}
+  .chip.txt{background:#fff;color:#1e293b;border:1px solid #64748b;white-space:nowrap}
+  .chip.txt.dashed{border-style:dashed}
+  .chip.txt.strong{background:#1e293b;color:#fff;border-color:#1e293b}
+  .mchips{display:flex;gap:6px;flex-wrap:wrap;margin-top:3px}
+  .actgrp{display:flex;flex-direction:column;gap:4px}
+  .actgrp small{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  .actgrp div{display:flex;gap:8px;flex-wrap:wrap}
+  .tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;max-width:460px}
+  .tile{border:1px solid var(--border);border-radius:10px;padding:12px;background:#fff}
+  .tile b{display:block;font-size:26px;line-height:1.1}
+  .tile span{font-size:12px;color:var(--muted);display:block}
+  .tile em{font-style:normal;font-size:12px;font-weight:700;color:#1e293b;display:block;margin-top:4px}
+
+  /* mobile */
+  .phone{width:390px;max-width:100%;border:1px solid #cbd5e1;border-radius:22px;overflow:hidden;background:#fff;font-family:"Public Sans","Segoe UI",system-ui,sans-serif;box-shadow:0 4px 12px rgba(0,0,0,.08)}
+  .phone .top{padding:14px 16px;font-weight:600;font-size:18px;border-bottom:1px solid var(--m-outline)}
+  .mrow{display:flex;gap:12px;padding:8px 16px;min-height:56px;border-bottom:1px solid var(--m-outline);align-items:center}
+  .mrow .slot{width:48px;display:flex;justify-content:center;flex:none}
+  .mav{width:40px;height:40px;border-radius:8px;background:var(--m-onvar);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:18px}
+  .mrow.unread .mav{background:var(--m-primary)}
+  .mrow .body{min-width:0;flex:1}
+  .mrow .name{font-size:14px;display:flex;gap:6px;align-items:center}
+  .mrow.unread .name b,.mrow.unread .msub{font-weight:700}
+  .mrow .name b{font-weight:400;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mrow .name small{color:var(--m-onvar);font-size:12px}
+  .msub{font-size:14px;color:#1a1c1e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mbio{font-size:12px;font-weight:600;color:var(--m-danger)}
+  .mbio.crit{color:var(--m-tertiary);font-weight:700}
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--m-primary);flex:none}
+
+  /* détail */
+  .detail{border:1px solid var(--border);border-radius:10px;background:#fff;overflow:hidden}
+  .dhead{padding:14px 18px;border-bottom:1px solid var(--border)}
+  .dhead .s{font-size:17px;font-weight:700}
+  .dhead .m{font-size:12px;color:var(--muted)}
+  .ringpanel{display:flex;gap:22px;align-items:center;padding:18px;border-bottom:1px solid var(--border);background:#fbfcfe;flex-wrap:wrap}
+  .steps{list-style:none;margin:0;padding:0;display:grid;gap:6px;flex:1;min-width:230px}
+  .steps li{display:flex;gap:8px;align-items:baseline;font-size:13px}
+  .steps .k{width:9px;height:9px;border-radius:50%;border:2px solid var(--ink);flex:none}
+  .steps li.on .k{background:var(--ink)}
+  .steps li.cur{font-weight:700}
+  .steps small{color:var(--muted);font-weight:400}
+  .actions{display:flex;flex-wrap:wrap;gap:8px;padding:12px 18px;border-bottom:1px solid var(--border);align-items:center}
+  .btn{border:1px solid #cbd5e1;background:#fff;border-radius:999px;padding:6px 14px;font:inherit;font-size:13px;cursor:pointer}
+  .btn:hover{background:var(--hover)}
+  .btn.primary{background:#1e293b;color:#fff;border-color:#1e293b}
+  .btn.cur{background:#dbeafe;border-color:#93c5fd;font-weight:700}
+  .btn.ghost{border-style:dashed;color:var(--muted)}
+  .dbody{padding:16px 18px;color:var(--muted);font-size:13px}
+  .who{font-size:12px;color:var(--muted);padding:0 18px 12px}
+
+  /* tableau de bord */
+  .dash{border:1px solid var(--border);border-radius:12px;background:#fff;padding:16px;max-width:460px}
+  .dash header{display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:10px}
+  .dash header b{font-size:16px;flex:1}
+  .help{width:22px;height:22px;border-radius:50%;border:1px solid #9ca3af;background:#fff;color:#374151;font-weight:700;cursor:pointer;font-size:12px}
+  .hero{display:flex;gap:14px;align-items:center;margin:4px 0 12px}
+  .hero .n{font-size:30px;font-weight:700;line-height:1}
+  .hero .late{margin-left:auto;text-align:right;border:2px solid #1e293b;border-radius:10px;padding:6px 10px}
+  .hero .late .n{font-size:22px}
+  .drow{display:grid;grid-template-columns:30px minmax(0,1fr) 92px 34px;gap:10px;align-items:center;padding:8px 6px;border-radius:8px;cursor:pointer;border:0;background:transparent;width:100%;text-align:left;font:inherit;color:inherit}
+  .drow:hover{background:var(--hover)}
+  .drow .lbl small{display:block;color:var(--muted);font-size:11px}
+  .drow .cnt{font-weight:700;text-align:right;font-size:15px}
+  .age{display:flex;height:10px;border-radius:5px;overflow:hidden;background:#f1f5f9}
+  .age i{display:block;height:100%}
+  .age .a0{background:#cbd5e1}.age .a1{background:#94a3b8}.age .a2{background:#475569}
+  .age .a3{background:#0f172a;background-image:repeating-linear-gradient(135deg,#0f172a 0 3px,#64748b 3px 5px)}
+  .agekey{display:flex;gap:12px;font-size:11px;color:var(--muted);margin-top:8px;flex-wrap:wrap}
+  .agekey span{display:inline-flex;gap:5px;align-items:center}
+  .agekey i{width:14px;height:8px;border-radius:3px;display:inline-block}
+  .tbd{opacity:.55}
+
+  /* préférences */
+  .prefs{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:26px}
+  @media (max-width:900px){.prefs{grid-template-columns:1fr}}
+  .prefs fieldset{border:1px solid var(--border);border-radius:10px;margin:0 0 12px;padding:10px 14px}
+  .prefs legend{font-weight:700;font-size:12px;padding:0 6px}
+  .prefs label{display:flex;gap:8px;align-items:center;padding:3px 0;font-size:13px}
+  .prefs input[type=number]{width:54px;padding:3px 4px;font:inherit;border:1px solid #cbd5e1;border-radius:6px}
+  .thr{display:grid;grid-template-columns:110px repeat(3,auto);gap:6px 8px;align-items:center;font-size:12px}
+  .legend{display:grid;gap:4px}
+  .lg{display:grid;grid-template-columns:210px 1fr;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
+  .lg .ic{display:flex;gap:14px;align-items:center;min-height:52px;padding-left:10px}
+  .lg b{display:block;font-size:13px}
+  .lg span{font-size:12px;color:var(--muted)}
+  .q{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:14px 0 0;font-weight:700}
+
+  /* scénarios */
+  .scn{border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px}
+  .strip{display:flex;flex-wrap:wrap;gap:10px;padding:14px 4px 6px}
+  .step{min-width:168px;max-width:200px;border:1px solid var(--border);border-radius:10px;padding:14px 10px 10px;text-align:center;background:#fff;flex:none}
+  .step .t{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  .step .r{height:92px;display:flex;align-items:center;justify-content:center}
+  .step p{font-size:12px;margin:4px 0 0}
+  .step .tt{font-size:11px;color:var(--muted);font-style:italic;margin-top:6px}
+  .pack{display:flex;flex-wrap:wrap;gap:12px 14px;justify-content:center;padding:10px 6px;min-height:66px;align-items:center}
+  .dense{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0 18px;max-height:560px;overflow:auto;border:1px solid var(--border);border-radius:10px;padding:6px 10px}
+  @media (max-width:1100px){.dense{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .drw{display:flex;gap:10px;align-items:center;height:36px;border-bottom:1px solid #f1f5f9;font-size:12px;white-space:nowrap;overflow:hidden}
+  .drw .slot{width:40px;display:flex;justify-content:center;flex:none}
+  .drw.unread{font-weight:700}
+  .drw span{overflow:hidden;text-overflow:ellipsis}
+  .alt{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}
+  .altc{border:1px solid var(--border);border-radius:10px;padding:12px}
+  .altc h4{margin:0 0 6px;font-size:13px}
+  .altc .ic{display:flex;gap:16px;align-items:center;min-height:54px;padding:4px 8px}
+  .altc p{font-size:12px;color:var(--muted)}
+  .tag-reco{display:inline-block;background:#1e293b;color:#fff;border-radius:6px;padding:1px 6px;font-size:10px;margin-left:6px;vertical-align:middle}
+  code{background:#f1f5f9;border-radius:4px;padding:0 4px;font-size:12px}
+</style>
+</head>
+<body>
+<div class="bar">
+  <h1>Anneau de traitement — maquettes</h1>
+  <span class="seg" id="variantSeg" role="group" aria-label="Variante">
+    <button data-v="A">A · Demande littérale</button>
+    <button data-v="B">B · Le centre dit à qui</button>
+    <button data-v="C">C · Sobre</button>
+    <button data-v="D">D · Hybride issu de la revue</button>
+    <button data-v="X">Actuel (sans anneau)</button>
+  </span>
+  <label><input type="checkbox" id="tTrack" checked> Piste des étapes restantes</label>
+  <label><input type="checkbox" id="tGray"> Niveaux de gris (test daltonisme)</label>
+  <label><input type="checkbox" id="tContrast"> Contraste renforcé</label>
+  <nav>
+    <a href="#planche">Planche</a><a href="#liste">Liste</a><a href="#detail">Détail</a>
+    <a href="#dash">Tableau de bord</a><a href="#prefs">Préférences</a><a href="#alt">Alternatives</a>
+    <a href="#scn">Scénarios</a><a href="#dense">200 lignes</a>
+  </nav>
+</div>
+
+<main>
+<section class="sheet">
+  <h2>Mode d'emploi</h2>
+  <p class="lead">Maquettes statiques autonomes : aucune donnée réelle, noms fictifs. Le même composant <code>anneau()</code> dessine tous les écrans.
+  Le sélecteur du bandeau redessine toute la page dans chaque variante, pour les comparer à données égales. Survoler un anneau affiche son état en clair (infobulle).</p>
+  <div class="variant-note" id="variantNote"></div>
+</section>
+
+<section class="sheet" id="planche">
+  <h2>1. Planche d'états</h2>
+  <p class="lead">Chaque état en grand (64 px), puis à la taille de la liste bureau et mobile. La lisibilité se juge sur la ligne du bas.</p>
+  <div id="boards"></div>
+</section>
+
+<section class="sheet" id="liste">
+  <h2>2. Liste des messages</h2>
+  <p class="lead">Boîte partagée du Dr Virginie MARTIN (titulaire, « moi »), avec Cyril DELEGUE (délégataire, CD) et le Dr Paul ESSAI (membre, PE). Vendredi 27/11, 9 h.</p>
+  <div class="two">
+    <div>
+      <h3>Application web (weda2) — volet liste</h3>
+      <div class="wlist">
+        <div class="wfilters"><span class="pill on">Tous</span><span class="pill">Non lus</span><span class="pill">Lus</span>
+          <span class="pill">◷ À traiter 36</span><span class="pill">◉ Pour moi 6</span><span class="pill">⚗ Bio à acquitter (12)</span></div>
+        <div id="wlist"></div>
+      </div>
+      <p class="cap">La colonne de gauche porte aujourd'hui l'initiale de l'expéditeur dans un rond de 32 px. Variantes B et D : l'anneau prend cette place, à la même taille. Variantes A et C : il s'y substitue en plus petit.</p>
+    </div>
+    <div>
+      <h3>Application mobile — Boîte de réception</h3>
+      <div class="phone"><div class="top">Boîte de réception</div><div id="mlist"></div></div>
+      <p class="cap">Sur mobile, le point bleu « non lu » à droite et le gras sont conservés. Variante D : les initiales de la personne attribuée sont dans l'anneau, il n'y a plus de pastille d'initiales sur la ligne.</p>
+    </div>
+  </div>
+</section>
+
+<section class="sheet" id="detail">
+  <h2>3. Panneau de détail</h2>
+  <p class="lead">Grand anneau en tête, étapes légendées et datées, boutons juste dessous, rangés par étape. Les boutons sont actifs : chaque geste remplit son segment.</p>
+  <div class="two">
+    <div>
+      <h3>Compte rendu de biologie avec anomalie — acquittement existant</h3>
+      <div class="detail">
+        <div class="dhead"><div class="s">Compte rendu d'analyses biologiques</div><div class="m">Laboratoire BIOTEST → Dr Virginie MARTIN · 26/11/2026 17:42 · Patient : DEMO Marie (54 ans)</div></div>
+        <div class="ringpanel"><div id="dRingBio"></div><ul class="steps" id="dStepsBio"></ul></div>
+        <div class="actions" id="dActBio"></div>
+        <div class="who" id="dWhoBio"></div>
+        <div class="dbody">↑ Potassium : 6,1 mmol/L (HH) — valeurs de référence 3,5 – 5,1 · … corps du compte rendu …</div>
+      </div>
+      <p class="cap">Les cinq actions sont celles d'aujourd'hui (Pris connaissance, Rappel patient, Convocation, Adressage confrère, Marquer comme résolu). Aucune saisie nouvelle.</p>
+    </div>
+    <div>
+      <h3>Courrier d'un confrère</h3>
+      <div class="detail">
+        <div class="dhead"><div class="s">Compte rendu de consultation de cardiologie</div><div class="m">Dr Camille ARNAUD → Dr Virginie MARTIN · 25/11/2026 11:05 · Patient : ESSAI Paul (71 ans)</div></div>
+        <div class="ringpanel"><div id="dRingStd"></div><ul class="steps" id="dStepsStd"></ul></div>
+        <div class="actions" id="dActStd"></div>
+        <div class="who" id="dWhoStd"></div>
+        <div class="dbody">… corps du courrier …</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sheet" id="dash">
+  <h2>4. Tuile du tableau de bord — « Boucles ouvertes »</h2>
+  <p class="lead">Une tuile de plus, à côté de « À traiter », « Pour moi » et « Bio à acquitter ». Chaque ligne ouvre la liste filtrée. La barre montre l'ancienneté des boucles du groupe ; elle n'utilise pas la couleur de gravité.</p>
+  <div class="two">
+    <div class="dash" id="dashCard"></div>
+    <div>
+      <h3>Lecture</h3>
+      <p>La tuile compte des <b>boucles de la boîte</b> (partagées par toutes les personnes), sauf « Pour moi ».</p>
+      <p>« En retard » = boucles au dernier seuil d'ancienneté de leur catégorie. C'est le seul chiffre encadré.</p>
+      <p>« Non affectées » n'apparaît que dans une boîte où travaillent au moins deux personnes.</p>
+      <p>Les trois groupes se somment : 12 + 9 + 15 = 36. « Non affectées » et « Pour moi » recoupent ces groupes.</p>
+      <p>Les envois sans réponse n'y figurent pas : ils dépendent d'un arbitrage (task-462 annulée le 21/11/2026).</p>
+      <p>Le « ? » ouvre la légende (section 5).</p>
+      <h3>Alternative : enrichir les tuiles existantes</h3>
+      <p>Pas de tuile « Boucles ouvertes ». Les trois tuiles d'aujourd'hui gagnent « dont N en retard », et une seule tuile s'ajoute.</p>
+      <div class="tiles" id="dashAlt"></div>
+    </div>
+  </div>
+</section>
+
+<section class="sheet" id="prefs">
+  <h2>5. Préférences et légende</h2>
+  <p class="lead">La légende est dessinée par le composant réel et suit les réglages : modifier un seuil ou décocher un élément la met à jour, ainsi que toute la page.</p>
+  <div class="prefs">
+    <form id="prefForm" onsubmit="return false">
+      <fieldset><legend>Affichage dans la liste</legend>
+        <label><input type="radio" name="mode" value="ring" checked> Anneau de traitement</label>
+        <label><input type="radio" name="mode" value="classic"> Icône classique</label>
+      </fieldset>
+      <fieldset><legend>Éléments affichés</legend>
+        <label><input type="checkbox" data-show="who" checked> Affectation (initiales, non affecté)</label>
+        <label><input type="checkbox" data-show="ball" checked> Attente d'un tiers</label>
+        <label><input type="checkbox" data-show="sev" checked> Marque de gravité</label>
+        <label><input type="checkbox" data-show="rings" checked> Ancienneté</label>
+        <label><input type="checkbox" data-show="anim" checked> Animations</label>
+      </fieldset>
+      <fieldset><legend>Seuils d'ancienneté (jours) — réglage de la boîte</legend>
+        <div class="thr">
+          <span></span><b>1er seuil</b><b>2e seuil</b><b>En retard</b>
+          <span>Bio. critique (h)</span><input type="number" min="1" data-thr="crit0" value="4"><input type="number" min="1" data-thr="crit1" value="24"><input type="number" min="1" data-thr="crit2" value="72">
+          <span>Biologie</span><input type="number" min="1" data-thr="bio0" value="1"><input type="number" min="1" data-thr="bio1" value="3"><input type="number" min="1" data-thr="bio2" value="7">
+          <span>Courrier</span><input type="number" min="1" data-thr="std0" value="3"><input type="number" min="1" data-thr="std1" value="7"><input type="number" min="1" data-thr="std2" value="14">
+          <span>Envoyé</span><input type="number" min="1" data-thr="sent0" value="7"><input type="number" min="1" data-thr="sent1" value="14"><input type="number" min="1" data-thr="sent2" value="30">
+        </div>
+      </fieldset>
+      <fieldset><legend>Accessibilité</legend>
+        <label><input type="checkbox" id="pContrast"> Contraste renforcé</label>
+      </fieldset>
+      <fieldset><legend>Messages sans action attendue</legend>
+        <p style="font-size:12px;color:var(--muted);margin:0">Les messages « Pour info » (reçus en copie, automatiques) et les accusés n'ouvrent pas de boucle. Règle existante de la boîte, non paramétrable par personne.</p>
+      </fieldset>
+    </form>
+    <div class="legend" id="legend"></div>
+  </div>
+</section>
+
+<section class="sheet" id="alt">
+  <h2>6. Alternatives par choix visuel</h2>
+  <p class="lead">Pour chaque question, les options dessinées côte à côte à la taille de la liste (et en 48 px). L'argumentaire complet est dans <code>revue-design.md</code>.</p>
+  <div class="alt" id="alts"></div>
+</section>
+
+<section class="sheet" id="scn">
+  <h2>7. Scénarios de validation</h2>
+  <div id="scenarios"></div>
+</section>
+
+<section class="sheet" id="dense">
+  <h2>8. Densité : 200 lignes</h2>
+  <p class="lead">Une boîte active réaliste : 200 messages, dont environ 30 boucles ouvertes. Ce qui doit ressortir sans lire : les quelques boucles en retard et les anomalies.</p>
+  <div class="dense" id="denseGrid"></div>
+</section>
+</main>
+
+<script>
+/* ============================================================
+   Composant anneau() — une seule fonction dessine tous les écrans
+   ============================================================ */
+const S = { variant:'D', track:true, contrast:false,
+  show:{who:true, ball:true, sev:true, rings:true, anim:true},
+  thr:{crit:[4,24,72], bio:[1,3,7], std:[3,7,14], sent:[7,14,30]}, mode:'ring' };
+
+const GEO = { A:{R:19,W:7,gap:16}, B:{R:24,W:7,gap:13}, C:{R:21,W:11,gap:18}, D:{R:24,W:8,gap:15} };
+const PX  = { A:{web:24,mob:26,big:56}, B:{web:32,mob:40,big:64}, C:{web:18,mob:20,big:48}, D:{web:32,mob:40,big:64} };
+const STEPS = {
+  std:['Reçu','Lu','Traité'],
+  bio:['Reçu','Pris connaissance','Suite donnée','Résolu'],
+  bioDemande:['Reçu','Patient contacté','Patient vu','Traité'],
+  sent:['Envoyé','Distribué','Lu','Répondu']
+};
+const CAT = { std:'Courrier', bio:'Biologie avec anomalie', bioDemande:'Biologie', sent:'Message envoyé', info:'Pour info' };
+const C0 = 45;
+const RICH = v => v==='A' || v==='B';
+const f = n => (Math.round(n*100)/100);
+const pol = (r,a) => { const t=a*Math.PI/180; return [f(C0+r*Math.cos(t)), f(C0+r*Math.sin(t))]; };
+const arc = (r,a0,a1,dir) => { const p0=pol(r,a0), p1=pol(r,a1);
+  return `M${p0[0]} ${p0[1]}A${r} ${r} 0 ${Math.abs(a1-a0)>180?1:0} ${dir>0?1:0} ${p1[0]} ${p1[1]}`; };
+
+function palette(){
+  return S.contrast
+    ? {ink:'#0f172a', track:'#94a3b8', warn:'#b45309', crit:'#b91c1c', closed:'#64748b', paper:'#fff'}
+    : {ink:'#475569', track:'#d9dfe8', warn:'#d97706', crit:'#dc2626', closed:'#a3adbb', paper:'#fff'};
+}
+
+function describe(s){
+  if (s.cat==='info') return 'Pour info — aucune action attendue, hors compteurs.';
+  const steps = STEPS[s.cat]; const parts = [];
+  let head = CAT[s.cat];
+  if (s.sev===2) head += ' — valeur critique'; else if (s.sev===1) head += ' — valeur anormale';
+  if (s.fail) head += ' — non distribué';
+  parts.push(head + '.');
+  if (s.closed) parts.push('Boucle fermée (' + steps[steps.length-1].toLowerCase() + ').');
+  else {
+    parts.push('Étape ' + s.done + ' sur ' + steps.length + ' : ' + steps[s.done-1].toLowerCase() + ' ; reste : ' + steps.slice(s.done).join(', ').toLowerCase() + '.');
+    if (s.turn==='me') parts.push('À vous de jouer.');
+    if (s.turn==='peer') parts.push('À traiter par ' + (s.whoName||s.who) + '.');
+    if (s.turn==='ext') parts.push('En attente ' + (s.extName||'d\'un tiers') + '.');
+    if (s.turn==='none') parts.push('Non affecté.');
+    if (s.sev===2 && s.hours!=null) parts.push('Ouvert depuis ' + s.hours + ' heures' + (late(s)===3?' — en retard.':'.'));
+    else if (s.days!=null) parts.push(s.days===0 ? "Ouvert aujourd'hui." : 'Ouvert depuis ' + s.days + ' jour' + (s.days>1?'s':'') + (RICH(S.variant) ? (late(s)?' (' + late(s) + (late(s)>1?' cernes':' cerne') + ').':'.') : (late(s)===3?' — en retard.':'.')));
+  }
+  return parts.join(' ');
+}
+function late(s){
+  if (s.closed || s.cat==='info') return 0;
+  if (s.late!=null) return s.late;
+  if (s.sev===2 && s.hours!=null){ const c = S.thr.crit; return s.hours>=c[2]?3 : s.hours>=c[1]?2 : s.hours>=c[0]?1 : 0; }
+  if (s.days==null) return 0;
+  const t = S.thr[s.cat==='bioDemande'?'bio':s.cat] || S.thr.std;
+  return s.days>=t[2]?3 : s.days>=t[1]?2 : s.days>=t[0]?1 : 0;
+}
+
+function anneau(s, px, o={}){
+  const V = o.variant || S.variant; if (V==='X') return '';
+  const g = GEO[V], P = palette(), W = S.contrast ? g.W+1.5 : g.W, R = g.R;
+  const half = R + W/2 + 1.5, vb = `${f(C0-half)} ${f(C0-half)} ${f(half*2)} ${f(half*2)}`;
+  const track = o.track!=null ? o.track : S.track;
+  const title = describe(s);
+  let out = `<svg class="ring" width="${px}" height="${px}" viewBox="${vb}" role="img" aria-label="${title.replace(/"/g,'&quot;')}"><title>${title}</title>`;
+
+  if (s.cat==='info'){
+    out += `<circle cx="${C0}" cy="${C0}" r="${R}" fill="none" stroke="${P.closed}" stroke-width="2.2" stroke-dasharray="2.5 5" stroke-linecap="round"/></svg>`;
+    return out;
+  }
+  const n = STEPS[s.cat].length, dir = s.cat==='sent' ? -1 : 1;
+  const col = s.closed ? P.closed : (S.show.sev && (s.sev===2 || (s.fail && V!=='D'))) ? P.crit : (S.show.sev && s.sev===1) ? P.warn : P.ink;
+  const span = (360 - n*g.gap)/n, L = late(s);
+
+  // cernes d'ancienneté (A et B)
+  if (RICH(V) && S.show.rings) for (let i=1;i<=L;i++)
+    out += `<circle cx="${C0}" cy="${C0}" r="${f(R+W/2+i*3.4)}" fill="none" stroke="${col}" stroke-width="${S.contrast?1.9:1.5}"/>`;
+
+  if (s.closed && V==='D'){
+    out += `<circle cx="${C0}" cy="${C0}" r="${R}" fill="none" stroke="${P.closed}" stroke-width="2.4"/><path d="M${C0-9} ${C0+0.5}l6.5 6.5 12-13.5" fill="none" stroke="${P.closed}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    return out;
+  }
+  if (s.closed){
+    out += `<circle cx="${C0}" cy="${C0}" r="${R}" fill="none" stroke="${col}" stroke-width="${W}" opacity=".8"/>`;
+    if (V==='B') out += `<path d="M${C0-7} ${C0+0.5}l5 5 9.5-10.5" fill="none" stroke="${col}" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>`;
+    return out + '</svg>';
+  }
+  let tipAngle = -90;
+  for (let i=0;i<n;i++){
+    const a0 = -90 + dir*(i*(span+g.gap) + g.gap/2), a1 = a0 + dir*span;
+    const filled = i < s.done, last = i === s.done-1;
+    if (!filled){ if (track) out += `<path d="${arc(R,a0,a1,dir)}" fill="none" stroke="${V==='D'?'#7c8aa0':P.track}" stroke-width="${f(V==='D'?W*0.3:W*0.55)}" stroke-linecap="butt"/>`; continue; }
+    const fresh = o.fresh && last && S.show.anim;
+    if (last && RICH(V)){
+      const tip = 15, b = a1 - dir*tip, p1 = pol(R+W*0.95,b), p2 = pol(R-W*0.95,b), p3 = pol(R, a1+dir*5);
+      out += `<path d="${arc(R,a0,b,dir)}" fill="none" stroke="${col}" stroke-width="${W}"${fresh?' pathLength="1" class="seg-new"':''}/>`;
+      out += `<polygon points="${p1} ${p2} ${p3}" fill="${col}"${fresh?' class="tip-new"':''}/>`;
+      tipAngle = a1 + dir*5;
+    } else out += `<path d="${arc(R,a0,a1,dir)}" fill="none" stroke="${col}" stroke-width="${W}"${fresh?' pathLength="1" class="seg-new"':''}/>`;
+  }
+  const outer = R + W/2 + (RICH(V) && S.show.rings ? L*3.4 : 0);
+  if (V==='D' && s.fail) out += `<path d="M${C0-7} ${C0-7}l14 14M${C0+7} ${C0-7}l-14 14" stroke="${P.ink}" stroke-width="4.2" stroke-linecap="round"/>`;
+  else if (V==='D' && S.show.who && s.turn==='peer') out += `<text x="${C0}" y="${C0+6.4}" text-anchor="middle" font-size="18" font-weight="700" font-family="inherit" fill="${S.contrast?'#0f172a':'#1e293b'}"${s.removed?' text-decoration="line-through"':''}>${s.who}</text>`;
+  else if (V==='D' && S.show.who && s.turn==='me' && s.assigned) out += `<circle cx="${C0}" cy="${C0}" r="15.5" fill="#2563eb"/><text x="${C0}" y="${C0+5.6}" text-anchor="middle" font-size="15.5" font-weight="700" font-family="inherit" fill="#fff">${s.who||'VM'}</text>`;
+
+  if (V==='B'){
+    // le centre dit « à qui » dans la boîte ; la balle sort quand on attend un tiers
+    if (s.fail) out += `<path d="M${C0-6} ${C0-6}l12 12M${C0+6} ${C0-6}l-12 12" stroke="${col}" stroke-width="3.6" stroke-linecap="round"/>`;
+    else if (s.turn==='me' && S.show.ball) out += `<circle cx="${C0}" cy="${C0}" r="7" fill="${col}"/>`;
+    else if (s.turn==='peer' && S.show.who) out += `<text x="${C0}" y="${C0+6.4}" text-anchor="middle" font-size="18" font-weight="700" font-family="inherit" fill="${S.contrast?'#0f172a':'#1e293b'}">${s.who}</text>`;
+    else if (s.turn==='none' && S.show.who) out += `<circle cx="${C0}" cy="${C0}" r="6.5" fill="none" stroke="${P.ink}" stroke-width="2" stroke-dasharray="3 2.6"/>`;
+    if (s.turn==='ext' && S.show.ball){ const p = pol(outer+7.5, tipAngle + dir*8);
+      out += `<circle cx="${p[0]}" cy="${p[1]}" r="5.2" fill="${col}" stroke="${P.paper}" stroke-width="1.6"/>`; }
+    if (S.show.sev && s.sev){ out += tri(pol(outer+3,-135), 8.5, col, s.sev===2); }
+  }
+  if (V==='A'){
+    // demande littérale : balle au centre / dehors, initiales « sur » l'anneau, pastille rouge, pastille vide
+    if (S.show.ball && s.turn==='me') out += `<circle cx="${C0}" cy="${C0}" r="5.5" fill="${col}"/>`;
+    if (S.show.ball && s.turn==='ext'){ const p = pol(outer+7,135); out += `<circle cx="${p[0]}" cy="${p[1]}" r="5" fill="${col}" stroke="${P.paper}" stroke-width="1.5"/>`; }
+    if (S.show.sev && s.sev){ const p = pol(outer+4,-45); out += `<circle cx="${p[0]}" cy="${p[1]}" r="6" fill="${P.crit}" stroke="${P.paper}" stroke-width="1.5"/>`; }
+    if (S.show.who && s.turn==='peer'){ const p = pol(outer+2,42);
+      out += `<rect x="${f(p[0]-13)}" y="${f(p[1]-8)}" width="26" height="16" rx="8" fill="#dbeafe" stroke="${P.paper}" stroke-width="1.5"/><text x="${p[0]}" y="${f(p[1]+4.2)}" text-anchor="middle" font-size="11.5" font-weight="700" font-family="inherit" fill="#1e40af">${s.who}</text>`; }
+    if (S.show.who && s.turn==='none'){ const p = pol(outer+4,42);
+      out += `<circle cx="${p[0]}" cy="${p[1]}" r="6" fill="${P.paper}" stroke="${P.ink}" stroke-width="1.6" stroke-dasharray="2.6 2.2"/>`; }
+  }
+  return out + '</svg>';
+}
+function tri(p, size, col, solid){
+  const [x,y]=p, h=size;
+  const pts = `${x},${f(y-h)} ${f(x+h*0.95)},${f(y+h*0.7)} ${f(x-h*0.95)},${f(y+h*0.7)}`;
+  return `<polygon points="${pts}" fill="${solid?col:'#fff'}" stroke="${solid?'#fff':col}" stroke-width="${solid?1.6:2.4}" stroke-linejoin="round"/>`
+    + (solid?`<rect x="${f(x-1)}" y="${f(y-h*0.45)}" width="2" height="${f(h*0.62)}" fill="#fff"/><rect x="${f(x-1)}" y="${f(y+h*0.33)}" width="2" height="2" fill="#fff"/>`:'');
+}
+
+/* ---------- compléments hors anneau (variantes C et A) ---------- */
+function sideChips(s){
+  const V = S.variant; let h='';
+  if (V==='X'){
+    if (s.sev) h += `<span class="badge-ack ${s.sev===2?'c':'w'}">⚠ 1</span>`;
+    if (s.closed) h += `<span class="chip done">Traité</span>`;
+    else if (s.turn==='peer') h += `<span class="chip">${s.who}</span>`;
+    return h;
+  }
+  if (V==='D'){
+    if (S.show.sev && s.sev) h += `<span class="badge-ack ${s.sev===2?'c':'w'} ${s.sev===2?'solid':''}"${s.closed?' style="opacity:.5"':''}>⚠ ${s.n||1}</span>`;
+    if (s.closed) return h;
+    if (s.fail) h += `<span class="chip txt strong">Non distribué</span>`;
+    else if (S.show.ball && s.turn==='ext') h += `<span class="chip txt">${s.extLabel||'Attente'}</span>`;
+    if (S.show.who && s.turn==='none') h += `<span class="chip txt dashed">Non affecté</span>`;
+    if (S.show.rings && late(s)) h += `<span class="chip txt ${late(s)===3?'strong':''}">${s.sev===2&&s.hours!=null?'H+'+s.hours:'J+'+s.days}</span>`;
+    return h;
+  }
+  if (V==='C'){
+    if (S.show.sev && s.sev) h += `<span class="badge-ack ${s.sev===2?'c':'w'}">⚠ 1</span>`;
+    if (S.show.who && !s.closed && s.turn==='peer') h += `<span class="chip">${s.who}</span>`;
+    if (S.show.who && !s.closed && s.turn==='me' && s.assigned) h += `<span class="chip mine">VM</span>`;
+    if (S.show.who && !s.closed && s.turn==='none') h += `<span class="chip none">—</span>`;
+    if (S.show.ball && !s.closed && s.turn==='ext') h += `<span class="chip late">↗ tiers</span>`;
+    if (S.show.rings && late(s)) h += `<span class="chip late">J+${s.days}</span>`;
+  }
+  return h;
+}
+
+/* ============================================================
+   Données fictives
+   ============================================================ */
+const ROWS = [
+ {from:'Laboratoire BIOTEST', type:'Biologie', subj:'Compte rendu d\'analyses biologiques', pat:'DEMO Marie · 54 ans', date:'26/11', unread:true, bio:'↑ Potassium 6,1 mmol/L (HH)', crit:true,
+  s:{cat:'bio',done:1,turn:'none',sev:2,days:1,hours:15}},
+ {from:'Laboratoire BIOTEST', type:'Biologie', subj:'Compte rendu d\'analyses biologiques', pat:'ESSAI Paul · 71 ans', date:'23/11', bio:'↑ INR 4,2 (H)',
+  s:{cat:'bio',done:3,turn:'ext',extName:'du patient (rappel patient)',extLabel:'Attente patient',sev:1,days:4}},
+ {from:'Laboratoire BIOTEST', type:'Biologie', subj:'Compte rendu d\'analyses biologiques', pat:'TEST Jeanne · 38 ans', date:'26/11', unread:true,
+  s:{cat:'std',done:1,turn:'none',days:1}},
+ {from:'Dr Camille ARNAUD', type:'Consultation', subj:'Compte rendu de consultation de cardiologie', pat:'ESSAI Paul · 71 ans', date:'25/11',
+  s:{cat:'std',done:2,turn:'peer',who:'CD',whoName:'Cyril DELEGUE (délégataire)',days:2}},
+ {from:'CH Démo — Service ORL', type:'Lettre de liaison', subj:'Lettre de liaison de sortie', pat:'DEMO Marie · 54 ans', date:'12/11',
+  s:{cat:'std',done:2,turn:'me',assigned:true,days:15}},
+ {from:'Dr Paul ESSAI', type:'Message', subj:'Avis sur un dossier — pouvez-vous me rappeler ?', pat:'', date:'20/11', unread:true,
+  s:{cat:'std',done:1,turn:'me',assigned:true,days:7}},
+ {from:'Dr Virginie MARTIN', type:'Envoyé', subj:'Demande d\'avis dermatologique', pat:'TEST Jeanne · 38 ans', date:'17/11', sent:true,
+  s:{cat:'sent',done:3,turn:'ext',extName:'de la réponse du Dr LEROY',extLabel:'Attente réponse',days:10}},
+ {from:'Dr Virginie MARTIN', type:'Envoyé', subj:'Courrier d\'adressage', pat:'ESSAI Paul · 71 ans', date:'26/11', sent:true,
+  s:{cat:'sent',done:1,turn:'ext',fail:true,extName:'— adresse refusée',days:1}},
+ {from:'Radiologie Démo', type:'Imagerie', subj:'Compte rendu de radiographie thoracique', pat:'DEMO Marie · 54 ans', date:'24/11',
+  s:{cat:'std',done:3,closed:true}},
+ {from:'Laboratoire BIOTEST', type:'Biologie', subj:'Compte rendu d\'analyses biologiques', pat:'DEMO Luc · 62 ans', date:'24/11',
+  s:{cat:'bio',done:4,closed:true,sev:1}},
+ {from:'Messagerie MSSanté', type:'Pour info', subj:'Accusé de lecture : Courrier d\'adressage', pat:'', date:'26/11',
+  s:{cat:'info'}},
+ {from:'Secrétariat Démo', type:'Message', subj:'Planning de la semaine prochaine (copie)', pat:'', date:'25/11',
+  s:{cat:'info'}},
+];
+
+function leftSlot(r, kind){
+  if (S.variant==='X' || S.mode==='classic') return kind==='mob' ? `<div class="mav">${r.from[0]}</div>` : `<div class="avatar">${r.from[0]}</div>`;
+  return anneau(r.s, PX[S.variant][kind]);
+}
+function renderLists(){
+  const chips = s => S.mode==='classic' ? sideChipsClassic(s) : sideChips(s);
+  const under = S.mode!=='classic' && (S.variant==='C' || S.variant==='D');
+  document.getElementById('wlist').innerHTML = ROWS.map(r => `
+    <div class="wrow ${r.unread?'unread':''}">
+      <div class="slot">${leftSlot(r,'web')}</div>
+      <div class="body">
+        <div class="l1"><span class="type">${r.type} · ${r.from}</span><span class="sp"></span>${S.mode==='classic'?sideChipsClassic(r.s):sideChips(r.s)}<span>${r.date}</span></div>
+        <div class="subj">${r.subj}</div>
+        ${r.pat?`<div class="pat">${r.pat}</div>`:''}
+        ${r.bio?`<div class="bio ${r.crit?'crit':'warn'}">${r.bio}</div>`:''}
+      </div>
+    </div>`).join('');
+  document.getElementById('mlist').innerHTML = ROWS.slice(0,8).map(r => `
+    <div class="mrow ${r.unread?'unread':''}">
+      <div class="slot">${leftSlot(r,'mob')}</div>
+      <div class="body">
+        <div class="name"><b>${r.from}</b>${under?'':chips(r.s)}<small>${r.date}</small></div>
+        <div class="msub">${r.subj}${r.pat?' — '+r.pat.split(' · ')[0]:''}</div>
+        ${r.bio?`<div class="mbio ${r.crit?'crit':''}">${r.bio}</div>`:''}
+        ${under && chips(r.s)?`<div class="mchips">${chips(r.s)}</div>`:''}
+      </div>
+      ${r.unread?'<span class="dot"></span>':''}
+    </div>`).join('');
+}
+function withV(v, fn){ const k=S.variant; S.variant=v; const r=fn(); S.variant=k; return r; }
+function sideChipsClassic(s){ const v=S.variant; S.variant='X'; const h=sideChips(s); S.variant=v; return h; }
+
+/* ---------- planche ---------- */
+const BOARDS = [
+ ['Courrier, message — reçu → lu → traité', [
+   [{cat:'std',done:1,turn:'me',days:0},'Reçu, non lu','À moi (boîte à une personne)'],
+   [{cat:'std',done:2,turn:'me',days:1},'Lu','Reste à traiter'],
+   [{cat:'std',done:2,turn:'none',days:1},'Lu, non affecté','Boîte partagée : personne ne l\'a pris'],
+   [{cat:'std',done:2,turn:'peer',who:'CD',days:2},'Affecté à CD','À traiter par un collègue'],
+   [{cat:'std',done:2,turn:'ext',days:2},'En attente d\'un tiers',"Sans donnée aujourd'hui : répondre ferme la boucle"],
+   [{cat:'std',done:3,closed:true},'Traité','Boucle fermée, atténuée'],
+ ]],
+ ['Biologie avec anomalie — segments alignés sur l\'acquittement existant (recommandé)', [
+   [{cat:'bio',done:1,turn:'me',sev:1,days:0},'Reçu — anormal','À acquitter'],
+   [{cat:'bio',done:1,turn:'me',sev:2,days:0},'Reçu — critique','Valeur critique (HH, LL, AA)'],
+   [{cat:'bio',done:2,turn:'me',sev:1,days:1},'Pris connaissance','Suite à décider'],
+   [{cat:'bio',done:3,turn:'ext',sev:1,days:2},'Rappel patient','En attente du patient'],
+   [{cat:'bio',done:3,turn:'ext',sev:2,days:8},'Convocation, J+8','3 cernes : en retard'],
+   [{cat:'bio',done:4,closed:true,sev:1},'Résolu','Fermé'],
+ ]],
+ ['Biologie — segments de la demande : reçu → patient contacté → patient vu → traité', [
+   [{cat:'bioDemande',done:1,turn:'me',sev:1,days:0},'Reçu',''],
+   [{cat:'bioDemande',done:2,turn:'ext',sev:1,days:1},'Patient contacté',''],
+   [{cat:'bioDemande',done:3,turn:'me',sev:1,days:3},'Patient vu','Donnée absente aujourd\'hui'],
+   [{cat:'bioDemande',done:4,closed:true,sev:1},'Traité',''],
+ ]],
+ ['Message envoyé — sens inverse : envoyé → distribué → lu → répondu', [
+   [{cat:'sent',done:1,turn:'ext',days:0},'Envoyé',''],
+   [{cat:'sent',done:2,turn:'ext',days:1},'Distribué','Rapport de distribution reçu'],
+   [{cat:'sent',done:3,turn:'ext',days:3},'Lu','Accusé de lecture reçu'],
+   [{cat:'sent',done:3,turn:'ext',days:10},'Sans réponse, J+10','1 cerne (seuil 7 j)'],
+   [{cat:'sent',done:1,turn:'ext',fail:true,days:0},'Non distribué','Échec de remise'],
+   [{cat:'sent',done:4,closed:true},'Répondu ou clos','Fermé'],
+ ]],
+ ['Ancienneté (cernes) et hors suivi', [
+   [{cat:'std',done:2,turn:'me',late:0},'Dans les temps','Aucun cerne'],
+   [{cat:'std',done:2,turn:'me',late:1},'1er palier','1 cerne'],
+   [{cat:'std',done:2,turn:'me',late:2},'2e palier','2 cernes'],
+   [{cat:'std',done:2,turn:'me',late:3},'3e palier','3 cernes : en retard'],
+   [{cat:'info'},'Pour info / accusé','Pas de boucle, hors compteurs'],
+   [{cat:'info'},'Antérieur au suivi','Historique : pas de boucle'],
+ ]],
+];
+function renderBoards(){
+  const V = S.variant==='X' ? 'D' : S.variant, px = PX[V];
+  document.getElementById('boards').innerHTML = BOARDS.map(([title, items]) => `
+    <h3>${title}</h3>
+    <div class="grid states">${items.map(([s,l,d]) => `
+      <div class="state"><div class="big">${anneau(s,px.big,{variant:V})}</div><b>${l}</b><span class="d">${d}</span>
+      <div class="small">${anneau(s,px.web,{variant:V})}${anneau(s,px.mob,{variant:V})}</div></div>`).join('')}</div>`).join('');
+}
+
+/* ---------- détail interactif ---------- */
+const D = {
+  bio:{ s:{cat:'bio',done:1,turn:'none',sev:2,days:1,hours:15}, log:['26/11 17:42 — reçu du laboratoire'], fresh:false, cur:null },
+  std:{ s:{cat:'std',done:2,turn:'none',days:2}, log:['25/11 11:05 — reçu','25/11 14:20 — lu par Dr Virginie MARTIN (titulaire)'], fresh:false }
+};
+function renderDetail(){
+  const V = S.variant==='X' ? 'D' : S.variant, big = V==='C'?72:96;
+  for (const k of ['bio','std']){
+    const d = D[k], K = k==='bio'?'Bio':'Std', steps = STEPS[d.s.cat];
+    document.getElementById('dRing'+K).innerHTML = `<div style="padding:12px 16px">${anneau(d.s,big,{variant:V,fresh:d.fresh})}</div>`
+      + (RICH(V) ? '' : `<div class="mchips" style="justify-content:center;max-width:150px">${withV(V, () => sideChips(d.s))}</div>`);
+    document.getElementById('dSteps'+K).innerHTML = steps.map((st,i) => {
+      const on = d.s.closed || i < d.s.done, cur = !d.s.closed && i===d.s.done-1;
+      return `<li class="${on?'on':''} ${cur?'cur':''}"><span class="k"></span><span>${st} <small>${d.log[i]?'· '+d.log[i]:''}</small></span></li>`; }).join('');
+    document.getElementById('dWho'+K).textContent = describe(d.s);
+    d.fresh = false;
+  }
+  const b = D.bio, btn = a => `<button class="btn ${b.cur===a?'cur':''}" data-a="${a}">${a}</button>`;
+  document.getElementById('dActBio').innerHTML = b.s.closed
+    ? `<span>Acquittement résolu par Dr Virginie MARTIN · 27/11 09:12</span><button class="btn ghost" data-a="reopenBio">Rouvrir</button>`
+    : `<div class="actgrp"><small>Étape 2</small><div>${btn('Pris connaissance')}</div></div>
+       <div class="actgrp"><small>Étape 3 — suite donnée</small><div>${['Rappel patient','Convocation','Adressage confrère'].map(btn).join('')}</div></div>
+       <div class="actgrp"><small>Fermer la boucle</small><div><button class="btn primary" data-a="resolve">✓ Marquer comme résolu</button></div></div>`;
+  const t = D.std;
+  document.getElementById('dActStd').innerHTML = t.s.closed
+    ? `<span>Traité par Cyril DELEGUE (délégataire) · 27/11 09:30</span><button class="btn ghost" data-a="reopenStd">Remettre à traiter</button>`
+    : `<button class="btn" data-a="assignCD">À traiter par : Cyril DELEGUE</button><button class="btn" data-a="assignMe">À traiter par : moi</button><button class="btn" data-a="unassign">Retirer l'attribution</button><button class="btn primary" data-a="treat">✓ Traité</button>`;
+}
+document.addEventListener('click', e => {
+  const a = e.target.closest('[data-a]')?.dataset.a; if (!a) return;
+  const b = D.bio, t = D.std;
+  if (a==='Pris connaissance'){ b.s.done=2; b.s.turn='none'; b.cur=a; b.log[1]='27/11 09:02 — Dr Virginie MARTIN'; b.log.length=2; b.fresh=true; }
+  else if (['Rappel patient','Convocation','Adressage confrère'].includes(a)){
+    if (!b.log[1]) b.log[1]='27/11 09:02 — Dr Virginie MARTIN';
+    b.s.done=3; b.s.turn='ext'; b.s.extLabel = a==='Adressage confrère'?'Attente confrère':'Attente patient'; b.s.extName = a==='Adressage confrère'?'du confrère':'du patient ('+a.toLowerCase()+')'; b.cur=a; b.log[2]='27/11 09:05 — '+a+', Dr Virginie MARTIN'; b.fresh=true; }
+  else if (a==='resolve'){ b.s.closed=true; b.s.done=4; b.log[3]='27/11 09:12 — Dr Virginie MARTIN'; }
+  else if (a==='reopenBio'){ D.bio={ s:{cat:'bio',done:1,turn:'none',sev:2,days:1,hours:15}, log:['26/11 17:42 — reçu du laboratoire'], fresh:false, cur:null }; }
+  else if (a==='assignCD'){ t.s.turn='peer'; t.s.who='CD'; t.s.whoName='Cyril DELEGUE (délégataire)'; }
+  else if (a==='assignMe'){ t.s.turn='me'; t.s.assigned=true; }
+  else if (a==='unassign'){ t.s.turn='none'; }
+  else if (a==='treat'){ t.s.closed=true; t.s.done=3; t.log[2]='27/11 09:30 — Cyril DELEGUE (délégataire)'; }
+  else if (a==='reopenStd'){ D.std={ s:{cat:'std',done:2,turn:'none',days:2}, log:['25/11 11:05 — reçu','25/11 14:20 — lu par Dr Virginie MARTIN (titulaire)'], fresh:false }; }
+  renderDetail();
+});
+
+/* ---------- tableau de bord ---------- */
+const DASH = [
+ [{cat:'bio',done:1,turn:'me',sev:1,late:0},'Biologies à acquitter','<span class="badge-ack c solid">⚠ 1 critique</span> <span class="badge-ack w">⚠ 3 anormales</span>',[5,4,2,1],12,1],
+ [{cat:'std',done:1,turn:'me',late:0},'Non lus','reçus, pas encore ouverts',[6,2,1,0],9,0],
+ [{cat:'std',done:2,turn:'me',late:0},'Lus, à traiter','ouverts, boucle non fermée',[6,5,2,2],15,2],
+];
+function renderDash(){
+  const V = S.variant==='X' ? 'D' : S.variant;
+  const ageBar = a => { const t=a.reduce((x,y)=>x+y,0)||1; return `<div class="age" title="dans les temps ${a[0]} · 1er seuil ${a[1]} · 2e seuil ${a[2]} · en retard ${a[3]}">${a.map((n,i)=>`<i class="a${i}" style="width:${n/t*100}%"></i>`).join('')}</div>`; };
+  document.getElementById('dashCard').innerHTML = `
+    <header><b>Boucles ouvertes</b><button class="help" title="Légende des anneaux" onclick="location.hash='#prefs'">?</button></header>
+    <div class="hero">${anneau({cat:'std',done:2,turn:'me',late:0},44,{variant:V})}
+      <div><div class="n">36</div><div style="font-size:12px;color:var(--muted)">boucles ouvertes dans la boîte</div></div>
+      <div class="late" title="Boucles au dernier seuil d'ancienneté"><div class="n">3</div><div style="font-size:11px">en retard</div></div>
+    </div>
+    ${DASH.map(([s,l,sub,a,n,ret]) => `<button class="drow" onclick="location.hash='#liste'">${anneau(s,V==='C'?18:22,{variant:V})}<span class="lbl">${l}<small>${sub}${ret?` · <b style="color:#1e293b">${ret} en retard</b>`:''}</small></span>${ageBar(a)}<span class="cnt">${n}</span></button>`).join('')}
+    <div style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Parmi elles</div>
+    <button class="drow" style="grid-template-columns:30px minmax(0,1fr) 34px" onclick="location.hash='#liste'"><span class="chip txt dashed" style="min-width:0">—</span><span class="lbl">Non affectées<small>personne ne les a prises</small></span><span class="cnt">4</span></button>
+    <button class="drow" style="grid-template-columns:30px minmax(0,1fr) 34px" onclick="location.hash='#liste'">${anneau({cat:'std',done:2,turn:'me',assigned:true},26,{variant:V})}<span class="lbl">Pour moi<small>qui me sont attribuées · <b style="color:#1e293b">1 en retard</b></small></span><span class="cnt">6</span></button>
+    <div class="agekey"><span><i style="background:#cbd5e1"></i>dans les temps</span><span><i style="background:#94a3b8"></i>1er seuil</span><span><i style="background:#475569"></i>2e seuil</span><span><i style="background:repeating-linear-gradient(135deg,#0f172a 0 3px,#64748b 3px 5px)"></i>en retard</span></div>`;
+  document.getElementById('dashAlt').innerHTML = [
+    ['36','À traiter','3 en retard'],['6','Pour moi','1 en retard'],['12','Bio à acquitter','1 critique · 1 en retard'],['4','Non affectées','tuile nouvelle']
+  ].map(([n,l,e]) => `<div class="tile"><b>${n}</b><span>${l}</span><em>${e}</em></div>`).join('');
+}
+
+/* ---------- légende ---------- */
+function renderLegend(){
+  const V = S.variant==='X' ? 'D' : S.variant, px = Math.max(PX[V].mob, 34), T = S.thr, rich = RICH(V);
+  const row = (ic, b, t) => `<div class="lg"><div class="ic">${ic}</div><div><b>${b}</b><span>${t}</span></div></div>`;
+  const lg = (states, b, t) => row(states.map(s=>anneau(s,px,{variant:V})).join(''), b, t);
+  const seuils = `Biologie critique : ${T.crit[0]} h, ${T.crit[1]} h, ${T.crit[2]} h. Biologie : ${T.bio[0]} j, ${T.bio[1]} j, ${T.bio[2]} j. Courrier : ${T.std[0]} j, ${T.std[1]} j, ${T.std[2]} j. Envoyé : ${T.sent[0]} j, ${T.sent[1]} j, ${T.sent[2]} j.`;
+  let h = `<div class="q">Où en est-on ?</div>` +
+    lg([{cat:'std',done:1,turn:'me'},{cat:'std',done:2,turn:'me'}],'Un segment par étape franchie','Courrier : reçu, lu, traité. Les traits fins sont les étapes qui restent.') +
+    lg([{cat:'bio',done:2,turn:'me',sev:1}],'Biologie avec anomalie : quatre étapes','Reçu, pris connaissance, suite donnée (rappel, convocation, adressage), résolu.') +
+    lg([{cat:'std',done:3,closed:true}],'Boucle fermée', rich ? 'Anneau complet et atténué : plus rien à faire.' : 'Une coche : plus rien à faire.');
+  if (rich) h += `<div class="q">Dans quel sens ?</div>` +
+    lg([{cat:'std',done:2,turn:'me'},{cat:'sent',done:2,turn:'ext'}],'La pointe donne le sens','Reçu : l\'arc tourne comme une horloge. Envoyé : il tourne à l\'envers.');
+  h += `<div class="q">À qui le tour ?</div>`;
+  if (rich) h +=
+    lg([{cat:'std',done:2,turn:'me',assigned:true}],'À vous', V==='B' ? 'Un point plein au centre.' : 'Balle au centre.') +
+    lg([{cat:'std',done:2,turn:'peer',who:'CD'}],'À un collègue de la boîte','Ses initiales. Ici Cyril DELEGUE.') +
+    lg([{cat:'std',done:2,turn:'none'}],'À personne','Rond vide en pointillé. Affiché seulement si la boîte a plusieurs personnes.') +
+    lg([{cat:'bio',done:3,turn:'ext',sev:1}],'À un tiers','La balle est sortie de l\'anneau : on attend le patient ou un confrère.');
+  else if (V==='D') h +=
+    lg([{cat:'std',done:2,turn:'me',assigned:true}],'À vous','Vos initiales sur fond plein, dans l\'anneau.') +
+    lg([{cat:'std',done:2,turn:'peer',who:'CD'}],'À un collègue de la boîte','Ses initiales dans l\'anneau. Ici Cyril DELEGUE.') +
+    row('<span class="chip txt dashed">Non affecté</span>','À personne','Anneau vide et mention écrite. Affiché seulement si la boîte a plusieurs personnes.') +
+    row('<span class="chip txt">Attente patient</span>','À un tiers','Après « Rappel patient », « Convocation » ou « Adressage confrère ».');
+  else h +=
+    row('<span class="chip mine">VM</span>','À vous','Vos initiales sur fond plein.') +
+    row('<span class="chip">CD</span>','À un collègue de la boîte','Ses initiales. Ici Cyril DELEGUE.') +
+    row('<span class="chip txt dashed">Non affecté</span>','À personne','Affiché seulement si la boîte a plusieurs personnes.') +
+    row('<span class="chip txt">Attente patient</span>','À un tiers','Après « Rappel patient », « Convocation » ou « Adressage confrère ».');
+  h += `<div class="q">Depuis combien de temps ?</div>`;
+  if (rich) h += lg([{cat:'std',done:2,turn:'me',late:1},{cat:'std',done:2,turn:'me',late:2},{cat:'std',done:2,turn:'me',late:3}],'Les cernes', seuils + ' Trois cernes : en retard.');
+  else h += row('<span class="chip txt">J+4</span><span class="chip txt strong">J+15</span><span class="chip txt">H+15</span>','Le compteur', 'Il apparaît au premier seuil et passe en fond plein quand la boucle est en retard. ' + seuils);
+  h += `<div class="q">Est-ce grave ?</div>`;
+  if (V==='D') h += row(anneau({cat:'bio',done:1,turn:'me',sev:1},px,{variant:V}) + '<span class="badge-ack w">⚠ 2</span>' + anneau({cat:'bio',done:1,turn:'me',sev:2},px,{variant:V}) + '<span class="badge-ack c solid">⚠ 1</span>',
+      'Anormal, critique','Couleur de l\'anneau et pastille : contour = anormal, pleine = critique. Le chiffre est le nombre de comptes rendus à acquitter.');
+  else h += lg([{cat:'bio',done:1,turn:'me',sev:1},{cat:'bio',done:1,turn:'me',sev:2}],'Anormal, critique','La gravité posée par le laboratoire.');
+  h += lg([{cat:'info'}],'Hors suivi','Pour info, accusé, message antérieur au suivi : pas de boucle.');
+  document.getElementById('legend').innerHTML = h;
+}
+
+/* ---------- alternatives ---------- */
+function renderAlts(){
+  const duo = (s,o,px=32) => anneau(s,px,o) + anneau(s,48,o);
+  const s2 = {cat:'std',done:2,turn:'me'}, alts = [
+   ['Ce qui reste à faire', [
+     ['Trou vide', duo(s2,{variant:'B',track:false}), 'Fidèle à l\'image de la boucle ouverte. On ne sait pas combien d\'étapes restent.'],
+     ['Piste claire', duo(s2,{variant:'B',track:true}), 'On compte les étapes. Mais le « reste à faire » est presque invisible (contraste insuffisant).'],
+     ['Traits fins contrastés', duo(s2,{variant:'D',track:true}), 'Les étapes restantes se comptent et se voient (contraste ≥ 3:1).', true]]],
+   ['Le sens (reçu / envoyé)', [
+     ['Pointe + sens de rotation', duo({cat:'sent',done:2,turn:'ext'},{variant:'B'}), 'La demande. À 32 px personne ne lit horaire ou antihoraire, et la pointe évoque « actualiser ».'],
+     ['Sans pointe', duo({cat:'sent',done:2,turn:'ext'},{variant:'D'}), 'Le sens n\'est pas codé : le dossier « Envoyés » et le libellé le disent déjà.', true]]],
+   ['À qui le tour', [
+     ['Balle dedans / dehors + initiales sur l\'anneau', duo({cat:'std',done:2,turn:'peer',who:'CD'},{variant:'A'}), 'La demande. Initiales de 8 px, illisibles.'],
+     ['Le centre dit à qui', duo({cat:'std',done:2,turn:'peer',who:'CD'},{variant:'B'}), 'Un seul endroit à regarder, mais quatre signes différents au centre.'],
+     ['Pastille d\'initiales à droite', anneau({cat:'std',done:2,turn:'none'},32,{variant:'D'}) + '<span class="chip">CD</span>', 'L\'existant (task-457). Proposé par la revue, écarté : l\'information serait en double avec l\'anneau.'],
+     ['Initiales dans l\'anneau, le reste écrit', anneau({cat:'std',done:2,turn:'peer',who:'CD'},32,{variant:'D'}) + anneau({cat:'std',done:2,turn:'me',assigned:true},32,{variant:'D'}) + '<span class="chip txt dashed">Non affecté</span><span class="chip txt">Attente patient</span>', 'Décision du product owner du 27/11/2026. La pastille d\'initiales disparaît de la ligne et du détail. Fond plein = moi.', true]]],
+   ['L\'ancienneté', [
+     ['Cernes', duo({cat:'std',done:2,turn:'me',late:3},{variant:'B'}), 'La demande. Le retard « épaissit » l\'anneau, mais 2 et 3 cernes se confondent et débordent de la ligne.'],
+     ['Compteur J+N', anneau(s2,32,{variant:'D'}) + '<span class="chip txt">J+4</span><span class="chip txt strong">J+15</span>', 'Exact, lu sans apprentissage. Fond plein au dernier seuil.', true]]],
+   ['La gravité', [
+     ['Pastille rouge', duo({cat:'bio',done:1,turn:'me',sev:2},{variant:'A'}), 'La demande. Couleur seule : ne distingue pas anormal de critique.'],
+     ['Couleur + triangle', duo({cat:'bio',done:1,turn:'me',sev:2},{variant:'B'}) , 'Forme en plus de la couleur. Le « ! » est illisible à 32 px.'],
+     ['Couleur + pastille ⚠ existante', anneau({cat:'bio',done:1,turn:'me',sev:2},32,{variant:'D'}) + '<span class="badge-ack c solid">⚠ 1</span><span class="badge-ack w">⚠ 2</span>', 'Déjà apprise, porte le nombre de comptes rendus à acquitter. Pleine = critique.', true]]],
+   ['La fermeture', [
+     ['Anneau plein atténué', duo({cat:'std',done:3,closed:true},{variant:'A'}), 'La demande. Se lit « case non cochée ».'],
+     ['Anneau plein + coche', duo({cat:'std',done:3,closed:true},{variant:'B'}), 'Compris, mais 150 anneaux épais dans une liste de 200.'],
+     ['Coche fine', duo({cat:'std',done:3,closed:true},{variant:'D'}), 'Compris, et s\'efface derrière les boucles ouvertes.', true]]],
+  ];
+  document.getElementById('alts').innerHTML = alts.map(([q,opts]) => `<div class="altc"><h4>${q}</h4>${opts.map(([n,ic,t,reco]) =>
+    `<div class="ic">${ic}</div><p><b style="color:var(--text)">${n}</b>${reco?'<span class="tag-reco">retenu après revue</span>':''}<br>${t}</p>`).join('')}</div>`).join('');
+}
+
+/* ---------- scénarios ---------- */
+function renderScenarios(){
+  const V = S.variant==='X' ? 'D' : S.variant, big = PX[V].big, sm = V==='C'?16:22;
+  const one = (t,s,p) => `<div class="step"><div class="t">${t}</div><div class="r">${anneau(s,big,{variant:V})}</div>${RICH(V)?'':`<div class="mchips" style="justify-content:center;min-height:20px">${withV(V, () => sideChips(s))}</div>`}<p>${p}</p><div class="tt">« ${describe(s)} »</div></div>`;
+  const pack = (t,arr,p) => `<div class="step" style="min-width:250px;max-width:270px"><div class="t">${t}</div><div class="pack">${arr.map(s=>anneau(s,sm,{variant:V})).join('')}</div><p>${p}</p></div>`;
+  const n17 = (s) => Array.from({length:17},()=>s);
+  const A1 = {cat:'bio',done:1,turn:'me',sev:1,days:0}, A2 = {cat:'bio',done:1,turn:'me',sev:1,days:0}, A3 = {cat:'bio',done:1,turn:'me',sev:2,days:0,extLabel:'Attente patient'};
+  document.getElementById('scenarios').innerHTML = `
+  <div class="scn"><h3 style="margin-top:0">Scénario 1 — 20 biologies reçues dans la journée, dont 3 avec anomalie</h3>
+   <div class="strip">
+    ${pack('18 h — arrivée',[A3,A1,A2,...n17({cat:'std',done:1,turn:'me',days:0})],'3 anneaux colorés à 4 étapes (à acquitter), 17 anneaux neutres à 3 étapes.')}
+    ${pack('18 h 10 — le médecin ouvre les 3 anomalies',[{...A3,done:3,turn:'ext'},{...A1,done:2},{...A2,done:2},...n17({cat:'std',done:1,turn:'me',days:0})],'Critique : « Rappel patient », il passe en attente du patient. Les deux autres : « Pris connaissance ».')}
+    ${pack('18 h 15 — « Traiter les résultats sans anomalie »',[{...A3,done:3,turn:'ext'},{...A1,done:4,closed:true},{...A2,done:4,closed:true},...n17({cat:'std',done:3,closed:true})],'17 fermés d\'un geste, sans jamais acquitter une biologie. 2 résolus à la main.')}
+    ${pack('J+3 — le patient n\'a pas rappelé',[{...A3,done:3,turn:'ext',days:3,hours:72},{...A1,done:4,closed:true},{...A2,done:4,closed:true},...n17({cat:'std',done:3,closed:true})],'Une seule boucle reste ouverte, et elle est en retard : elle se voit.')}
+    ${pack('J+4 — patient vu, « Marquer comme résolu »',[{...A3,done:4,closed:true},{...A1,done:4,closed:true},{...A2,done:4,closed:true},...n17({cat:'std',done:3,closed:true})],'Tout est fermé.')}
+   </div></div>
+  <div class="scn"><h3 style="margin-top:0">Scénario 2 — courrier d'un confrère, affecté à la secrétaire</h3>
+   <div class="strip">
+    ${one('Mar. 11 h 05',{cat:'std',done:1,turn:'none',days:0},'Reçu. Personne ne l\'a pris.')}
+    ${one('Mar. 14 h 20',{cat:'std',done:2,turn:'none',days:0},'Le Dr MARTIN le lit.')}
+    ${one('Mar. 14 h 21',{cat:'std',done:2,turn:'peer',who:'CD',whoName:'Cyril DELEGUE (délégataire)',days:0},'« À traiter par : Cyril DELEGUE ». Vu par le médecin.')}
+    ${one('Mar. 14 h 21 — écran de Cyril',{cat:'std',done:2,turn:'me',assigned:true,days:0},'Même message, vu par Cyril : c\'est à lui.')}
+    ${one('Ven. — rien n\'a bougé',{cat:'std',done:2,turn:'peer',who:'CD',whoName:'Cyril DELEGUE (délégataire)',days:3},'Premier seuil passé. Le médecin voit que sa délégation traîne.')}
+    ${one('Ven. 9 h 30',{cat:'std',done:3,closed:true},'Cyril prend le rendez-vous et marque « Traité ».')}
+   </div></div>
+  <div class="scn"><h3 style="margin-top:0">Scénario 3 — message envoyé, sans réponse depuis 10 jours</h3>
+   <div class="strip">
+    ${one('J0',{cat:'sent',done:1,turn:'ext',extLabel:'Attente réponse',extName:'de la réponse du Dr LEROY',days:0},'Demande d\'avis envoyée.')}
+    ${one('J0 + 2 min',{cat:'sent',done:2,turn:'ext',extLabel:'Attente réponse',extName:'de la réponse du Dr LEROY',days:0},'Rapport de distribution reçu.')}
+    ${one('J+1',{cat:'sent',done:3,turn:'ext',extLabel:'Attente réponse',extName:'de la réponse du Dr LEROY',days:1},'Accusé de lecture reçu.')}
+    ${one('J+10',{cat:'sent',done:3,turn:'ext',extLabel:'Attente réponse',extName:'de la réponse du Dr LEROY',days:10},'Toujours rien. Premier seuil passé (7 j).')}
+    ${one('J+11',{cat:'sent',done:4,closed:true},'La réponse arrive, ou le médecin clôt.')}
+   </div><p class="cap">Dépend de l'arbitrage sur les messages envoyés (décision 9). Aujourd'hui, les rapports ne sont lus qu'à l'ouverture d'une conversation.</p></div>
+  <div class="scn"><h3 style="margin-top:0">Scénario 4 — accusé de lecture</h3>
+   <div class="strip">
+    ${one('Envoi',{cat:'sent',done:2,turn:'ext',days:0},'Le message envoyé, distribué.')}
+    ${one('L\'accusé arrive',{cat:'sent',done:3,turn:'ext',days:0},'Il remplit le segment « lu » du message envoyé.')}
+    ${one('Dans la Boîte de réception',{cat:'info'},'L\'accusé lui-même : pas de boucle, hors compteurs.')}
+   </div></div>`;
+}
+
+/* ---------- densité ---------- */
+function renderDense(){
+  let seed = 7; const rnd = () => (seed = (seed*16807) % 2147483647) / 2147483647;
+  const names = ['Laboratoire BIOTEST','Dr Camille ARNAUD','CH Démo — ORL','Radiologie Démo','Secrétariat Démo','Dr Paul ESSAI','Clinique Test','Messagerie MSSanté'];
+  const subj = ['Compte rendu d\'analyses','Compte rendu de consultation','Lettre de liaison','Compte rendu d\'imagerie','Demande d\'avis','Accusé de lecture','Résultats','Courrier'];
+  let h = '';
+  for (let i=0;i<200;i++){
+    const r = rnd(); let s;
+    if (i<3) s = [{cat:'bio',done:1,turn:'me',sev:2,days:0},{cat:'std',done:1,turn:'none',days:0},{cat:'std',done:1,turn:'me',days:0}][i];
+    else if (r<0.72) s = {cat: rnd()<0.2?'bio':'std', done:3, closed:true, sev:0};
+    else if (r<0.84) s = {cat:'info'};
+    else if (r<0.90) s = {cat:'std',done:rnd()<0.4?1:2,turn:['me','none','peer'][Math.floor(rnd()*3)],who:'CD',days:Math.floor(rnd()*6)};
+    else if (r<0.94) s = {cat:'bio',done:1+Math.floor(rnd()*3),turn:rnd()<0.5?'me':'ext',sev:rnd()<0.3?2:1,days:Math.floor(rnd()*5)};
+    else if (r<0.97) s = {cat:'std',done:2,turn:rnd()<0.5?'me':'peer',who:'PE',days:8+Math.floor(rnd()*14)};
+    else s = {cat:'sent',done:1+Math.floor(rnd()*3),turn:'ext',days:Math.floor(rnd()*20)};
+    if (s.cat==='bio' && s.closed) s.done = 4;
+    const unread = !s.closed && s.done===1;
+    const slot = (S.variant==='X'||S.mode==='classic') ? `<div class="avatar" style="width:24px;height:24px;font-size:11px${unread?';background:var(--primary)':''}">${names[i%8][0]}</div>` : anneau(s, (S.variant==='B'||S.variant==='D')?24:S.variant==='A'?20:16);
+    h += `<div class="drw ${unread?'unread':''}"><div class="slot">${slot}</div><span>${names[Math.floor(rnd()*8)]} — ${subj[Math.floor(rnd()*8)]}</span></div>`;
+  }
+  document.getElementById('denseGrid').innerHTML = h;
+}
+
+/* ---------- pilotage ---------- */
+const NOTES = {
+ A:'<b>Variante A — la demande, au plus près.</b> Anneau de 24 px. Arc en pointe, sens de rotation, balle au centre (à moi) ou dehors (tiers), cernes, couleur de gravité, pastille rouge d\'anomalie, initiales en pastille sur l\'anneau, pastille vide si non affecté. Jusqu\'à quatre satellites autour de l\'anneau.',
+ B:'<b>Variante B — « le centre dit à qui ».</b> L\'anneau prend la place et la taille de l\'initiale de l\'expéditeur (32 px web, 40 px mobile). Le centre répond à « à qui le tour » : point plein = moi, initiales = un collègue, rond vide = personne, balle sortie de l\'anneau = un tiers. La gravité double la couleur d\'un triangle. Une coche ferme l\'anneau.',
+ C:'<b>Variante C — sobre.</b> Petit anneau de 18 px : étapes et couleur de gravité seulement. Affectation, ancienneté (J+N) et anomalie restent en pastilles de texte, comme aujourd\'hui. Changement minimal.',
+ D:'<b>Variante D — hybride issu de la revue contradictoire (recommandée).</b> L\'anneau garde la place et la taille de la variante B, mais ne dit plus que deux choses : l\'avancement et la gravité. Son centre porte une coche (fermé), une croix (non distribué) ou rien. Quand le message est « à traiter par » quelqu\'un, le centre porte ses initiales (fond plein si c\'est moi) et la pastille d\'initiales disparaît de la ligne et du détail. Le reste est écrit à droite : ⚠ n, « Non affecté », « Attente patient », J+N (H+N pour une valeur critique), « Non distribué ». Ni pointe, ni sens de rotation, ni balle, ni cernes.',
+ X:'<b>Actuel.</b> L\'écran d\'aujourd\'hui, sans anneau : initiale de l\'expéditeur, pastille d\'initiales, badge d\'acquittement, pastille « Traité ». Sert de point de comparaison. Planche, détail et légende restent dessinés en variante D.'
+};
+function renderAll(){
+  document.body.classList.toggle('gray', document.getElementById('tGray').checked);
+  document.querySelectorAll('#variantSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v===S.variant));
+  document.getElementById('variantNote').innerHTML = NOTES[S.variant];
+  renderBoards(); renderLists(); renderDetail(); renderDash(); renderLegend(); renderAlts(); renderScenarios(); renderDense();
+}
+document.getElementById('variantSeg').addEventListener('click', e => { const v=e.target.dataset.v; if(v){ S.variant=v; renderAll(); }});
+document.getElementById('tTrack').addEventListener('change', e => { S.track=e.target.checked; renderAll(); });
+document.getElementById('tGray').addEventListener('change', renderAll);
+const syncContrast = v => { S.contrast=v; document.getElementById('tContrast').checked=v; document.getElementById('pContrast').checked=v; renderAll(); };
+document.getElementById('tContrast').addEventListener('change', e => syncContrast(e.target.checked));
+document.getElementById('pContrast').addEventListener('change', e => syncContrast(e.target.checked));
+document.getElementById('prefForm').addEventListener('input', e => {
+  const t = e.target;
+  if (t.dataset.show) S.show[t.dataset.show] = t.checked;
+  if (t.dataset.thr){ const k=t.dataset.thr.slice(0,-1), i=+t.dataset.thr.slice(-1); S.thr[k][i] = Math.max(1, +t.value||1); }
+  if (t.name==='mode') S.mode = t.value;
+  if (t.id!=='pContrast') renderAll();
+});
+const hv = new URLSearchParams(location.search).get('v'); if (hv && NOTES[hv]) S.variant = hv;
+if (new URLSearchParams(location.search).get('gray')) document.getElementById('tGray').checked = true;
+if (new URLSearchParams(location.search).get('shot')) document.querySelector('.bar').style.position = 'static';
+renderAll();
+</script>
+</body>
+</html>

@@ -11215,3 +11215,11 @@
 {"ts":"2026-11-26T20:40:29+01:00","run_id":"-","type":"step","task":"task-495","step":"review","status":"ok","note":"","iterations":null,"duration_ms":111533}
 {"ts":"2026-11-26T20:40:40+01:00","run_id":"-","type":"step_start","task":"task-495","step":"tech-writer"}
 {"ts":"2026-11-26T20:41:43+01:00","run_id":"-","type":"step","task":"task-495","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":62921}
+{"ts":"2026-11-27T09:11:09+01:00","run_id":"-","type":"step_start","task":"task-496","step":""}
+{"ts":"2026-11-27T09:11:42+01:00","run_id":"-","type":"step","task":"task-496","step":"start","status":"skipped","note":"lancé par erreur (/start 496), interrompu par l'humain avant tout pré-flight ; aucune branche créée","iterations":null,"duration_ms":32643}
+{"ts":"2026-11-27T09:11:44+01:00","run_id":"-","type":"step_start","task":"task-497","step":"start"}
+{"ts":"2026-11-27T09:12:30+01:00","run_id":"-","type":"step","task":"task-497","step":"start","status":"ok","note":"","iterations":null,"duration_ms":46408}
+{"ts":"2026-11-27T09:12:38+01:00","run_id":"-","type":"step_start","task":"task-497","step":"develop"}
+{"ts":"2026-11-27T09:14:20+01:00","run_id":"-","type":"cmd","task":"task-497","step":"develop","repo":"dtos-mss","kind":"build","label":"","cwd":"Dtos","cmd":"dotnet build HealthPlatform.Dtos.Mss.csproj","duration_ms":2864,"exit_code":0}
+{"ts":"2026-11-27T09:15:00+01:00","run_id":"-","type":"cmd","task":"task-497","step":"develop","repo":"dtos-mss","kind":"nuget-wait","label":"","cwd":"Dtos","cmd":"gh run watch 45964152282 --repo codengine-technologies/HealthPlatform.Dtos.Mss --exit-status","duration_ms":15020,"exit_code":0}
+{"ts":"2026-11-27T09:15:20+01:00","run_id":"-","type":"cmd","task":"task-497","step":"develop","repo":"api-mail","kind":"restore","label":"","cwd":"Api/Mail","cmd":"dotnet restore HealthPlatform.Api.Mail.sln --force-evaluate","duration_ms":4201,"exit_code":0}
