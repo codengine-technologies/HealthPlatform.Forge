@@ -1017,9 +1017,10 @@ par lint sur du code frais est un échec de lecture de ce fichier.
 - **Piège** : task-500, `mail-header.ring-badges.spec.ts` mesurait `ion-badge` (`getBoundingClientRect`) juste après
   le rendu : vert seul (25/25, deux fois), rouge en suite complète (largeur 0) — l'hydratation du composant Ionic est
   asynchrone et dépend de ce qui a tourné avant.
-- **Consigne** : avant de mesurer un composant `ion-*`, `await customElements.whenDefined('ion-…')`, puis
-  `await el.componentOnReady?.()` et une frame (`requestAnimationFrame`). Un test de mise en page se juge sur la suite
-  complète, pas seulement en ciblé.
+- **Consigne** : avant de mesurer un composant `ion-*`, attendre `customElements.whenDefined('ion-…')` puis
+  `el.componentOnReady?.()`, **chacun borné** (`Promise.race` avec ~1 s : un sous-ensemble de specs peut ne jamais
+  définir le composant, et l'attente ne se résoudrait pas — constaté à la reprise 1), puis une frame. Un test de mise
+  en page se juge sur la suite complète **et** en ciblé.
 - **Preuve** : `mail-header.ring-badges.spec.ts` (« ne masquent pas le badge ⚠ ») vert sur deux suites complètes.
 - **Origine** : task-500, /develop
 - **Occurrences** : 1

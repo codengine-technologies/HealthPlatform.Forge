@@ -209,9 +209,9 @@ envoyée. Je lis la liste plus vite, sans perdre d'information.
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 19 s | — | — | — | — |
-| /develop | ok | 40 min 32 s | 2 (20 s) | 3 (1 min 19 s) | — | client-mobile 1B/1T, client-angular 1B/2T |
+| /develop | ok | 7 min 14 s | 4 (40 s) | 6 (2 min 39 s) | — | client-mobile 2B/2T, client-angular 2B/4T, reprise 1 (B1, S1, S3) |
 | /review-code | changes | 6 min 18 s | — | — | — | reprise 1 (B1 mode sélection weda2) |
-| **Total cycle** | | **47 min 10 s** | **2 (20 s)** | **3 (1 min 19 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **13 min 52 s** | **4 (40 s)** | **6 (2 min 39 s)** | **0 (0.0 s)** | |
 
 ## Develop log
 
@@ -284,6 +284,22 @@ puis une passe qualité commune (§Q). Journaux : `scratchpad/weda2-500/`, `scra
 - api-mail (`c8aa3845`, poussé) : catalogue seul ; build et suite rejoués par `/review`.
 - Vert marqué : client-mobile, client-angular.
 - Next step : `/review task-500 --code`.
+
+### Reprise 1 après /review
+
+| Point | Défaut | Correctif | Test | Preuve rouge |
+|---|---|---|---|---|
+| B1 (weda2) | en mode sélection, la case remplace l'anneau mais `ring` restait non nul : « N messages », l'icône « répondu » et les initiales disparaissaient de la ligne | `@let ring = selectionMode ? null : row.view` : la ligne reprend ce que l'anneau porterait | `mail-header.light-row.spec` « R5 (revue, B1) — mode sélection » (case présente, anneau absent, puis « 3 messages », icône, initiales dans la ligne) | rouge sur le code d'avant ; mutation B1 (alias sans le mode sélection) : 1 rouge |
+| S1 (weda2) | « 99+ » s'élargissait sur ~7 px au-delà de la gouttière (10 px), sous la ligne 1 | largeur au plus `maxWidth` 19 (bord droit à 32 + 10), fixée pour « 99+ », écrit en 9 px, plus serré (`--wide`) ; deux chiffres tiennent (padding 3 px) | test de géométrie à 32 px : bord droit ≤ 42, largeur fixée, classe `--wide` | mutations S1a (largeur non fixée), S1b (largeur 30), S1c (pas écrit plus petit) : 1 rouge chacune |
+| S3 (mobile) | `TreatmentRing.unassigned` plus lu | champ retiré ; les specs lisent « Non affecté » dans l'état en clair | `treatment-ring.util.spec`, `mail-header.ring.spec` | (retrait sans comportement ; l'assertion sur le libellé existait déjà) |
+
+- Relecture « qu'est-ce que ça casse » : en mode sélection, les mentions de l'anneau (« Attente patient », ⚠ atténué) et la
+  pastille « Traité » s'affichent comme en icône classique ; aucun parcours e2e ne joue le mode sélection en lisant ces
+  éléments. Le test de position mobile du badge ⚠ bloquait (5 s) quand un sous-ensemble de specs ne définit jamais
+  `ion-badge` : attente bornée à 1 s ; consigne `mesure-composant-ionic-apres-hydratation` précisée.
+- Validations : mobile (`205c8eb`, poussé) build OK, **1 977 / 1 977** ; weda2 `nx test mss-lib` **2 212**, `nx test weda2`
+  **2 683**, `nx build weda2` OK ; ESLint, stylelint, Prettier propres sur les fichiers touchés.
+- Vert marqué : client-mobile, client-angular. Next step : `/review task-500 --code`.
 
 ## Code Review Summary
 
