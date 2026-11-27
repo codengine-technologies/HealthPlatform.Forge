@@ -215,7 +215,8 @@ envoyée. Je lis la liste plus vite, sans perdre d'information.
 | /lint-angular | ok | 18 s | — | — | — | 1 itération(s) |
 | /lint-mobile | ok | 13 s | — | — | — | — |
 | /e2e | ok | 29 min 06 s | — | — | — | e2e ×3 (28 min 14 s) |
-| **Total cycle** | | **38 min 21 s** | **4 (40 s)** | **6 (2 min 39 s)** | **0 (0.0 s)** | |
+| /review | ok | 8 min 48 s | 1 (11 s) | 1 (7 min 34 s) | — | api-mail 1B/1T |
+| **Total cycle** | | **47 min 10 s** | **5 (52 s)** | **7 (10 min 14 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×2 (16 s)
 
@@ -528,3 +529,37 @@ comme weda2 (aujourd'hui une expression régulière).
 - E2E-SEARCH-008 [mobile] — les critères médicaux arrivent sur le mobile avec la refonte mobile — résorbée par task-451
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## PRs
+
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/383 — `awaiting-human-merge`
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/137 — `awaiting-human-merge`
+- `client-angular` : code-only — humain gère commit/push TFS et ouverture PR. Fichiers modifiés, non commités sur
+  `feature/nova-mss-weda-integration` :
+  - `front/e2e/mss-e2e/specs/functional.e2e.ts`
+  - `front/libs/mss/src/core/utils/mail-ring-row.util.spec.ts`
+  - `front/libs/mss/src/core/utils/mail-ring-row.util.ts`
+  - `front/libs/mss/src/core/utils/mail-ring.util.spec.ts`
+  - `front/libs/mss/src/core/utils/mail-ring.util.ts`
+  - `front/libs/mss/src/features/mail/components/mail-header/mail-header.component.html`
+  - `front/libs/mss/src/features/mail/components/mail-header/mail-header.component.scss`
+  - `front/libs/mss/src/features/mail/components/mail-header/mail-header.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-header/mail-header.ring.spec.ts`
+  - `front/libs/mss/src/features/mail/services/mail-state.service.ts`
+  - `front/libs/mss/src/ui/mail-ring/mail-ring.component.html`
+  - `front/libs/mss/src/ui/mail-ring/mail-ring.component.scss`
+  - `front/libs/mss/src/ui/mail-ring/mail-ring.component.spec.ts`
+  - `front/libs/mss/src/ui/mail-ring/mail-ring.component.ts`
+  - `front/libs/mss/src/features/mail/components/mail-header/mail-header.light-row.spec.ts`
+  - `front/libs/mss/src/features/mail/services/mail-state.service.listed-folder.spec.ts`
+- Ordre de merge (règle 11, même US) : api-mail, puis client-mobile ; weda2 avec eux.
+
+### Validation finale
+
+- Build + tests : api-mail `c8aa3845` rejoué (aucun vert marqué) — build 0 erreur, **8 284 tests verts**, 16 ignorés, aucun
+  plantage ; client-mobile `205c8eb` et client-angular (arbre final) : vert de `/develop` réutilisé (reprise 1 : mobile
+  1 977, weda2 2 212 + 2 683, builds OK).
+- Diff depuis l'approbation (passage 2) : aucun — /sonar (skip mesuré), /lint-angular et /lint-mobile n'ont rien modifié.
+- DoD : tous les points vérifiés, sauf « référence Stitch de `mail-list` » (best-effort, laissé à l'humain).
+- `## E2E log` : **E2E : vert** (mobile 85, angular 107 + 1 flaky, parité verte).
+- Branches à jour de `develop` (0 commit de retard), aucun merge nécessaire.
