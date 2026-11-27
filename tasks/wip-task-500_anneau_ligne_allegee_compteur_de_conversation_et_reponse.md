@@ -1,6 +1,7 @@
 # todo-task-500.md — Anneau : une ligne allégée, le compteur de conversation et la réponse sur l'anneau
 
 **Repos**: api-mail, client-angular, client-mobile
+**Reprises**: 1
 **Dependencies**: task-497
 **Epic**: E027
 
@@ -209,7 +210,8 @@ envoyée. Je lis la liste plus vite, sans perdre d'information.
 |---|---|---|---|---|---|---|
 | /start | ok | 19 s | — | — | — | — |
 | /develop | ok | 40 min 32 s | 2 (20 s) | 3 (1 min 19 s) | — | client-mobile 1B/1T, client-angular 1B/2T |
-| **Total cycle** | | **40 min 52 s** | **2 (20 s)** | **3 (1 min 19 s)** | **0 (0.0 s)** | |
+| /review-code | changes | 6 min 18 s | — | — | — | reprise 1 (B1 mode sélection weda2) |
+| **Total cycle** | | **47 min 10 s** | **2 (20 s)** | **3 (1 min 19 s)** | **0 (0.0 s)** | |
 
 ## Develop log
 
@@ -282,3 +284,41 @@ puis une passe qualité commune (§Q). Journaux : `scratchpad/weda2-500/`, `scra
 - api-mail (`c8aa3845`, poussé) : catalogue seul ; build et suite rejoués par `/review`.
 - Vert marqué : client-mobile, client-angular.
 - Next step : `/review task-500 --code`.
+
+## Code Review Summary
+
+### Passage 1 (revue anticipée) — CHANGES REQUESTED
+
+Relu à : api-mail `c8aa3845` (catalogue seul), client-mobile `9d17da7`, client-angular arbre de travail (16 fichiers).
+Relecteur indépendant, sans le `## Develop log`.
+
+- **4a** : aucun comportement atteignable par un endpoint ne change (api-mail : catalogue seul). ✅
+- **4c** : `api-mcp : aucun impact` / `client-mobile : aucun impact` / `client-angular : aucun impact`. ✅
+- **4b (DoD)** : E2E-RING-003 v2 et E2E-RING-005 v1 au catalogue, aux versions déclarées par les tests des deux clients. ✅
+- Conformité aux règles 1 à 14 constatée sur les deux clients ; aucun autre appelant cassé ; performance sans inquiétude ;
+  aucun « vert qui ment ».
+
+#### À corriger par la reprise
+
+- **B1 — weda2 — mode sélection** (`mail-header.component.html`) : la case à cocher remplace l'anneau, mais `ring`
+  (`ringRow.view`) reste non nul ; `@if (!ring)` masque alors « N messages » et l'icône « répondu » de la ligne, et
+  l'anneau qui les porterait n'est pas affiché. En vue conversation, cocher des messages fait disparaître le compteur du
+  fil et l'icône « répondu ». Même défaut, antérieur (task-497), pour la pastille d'initiales `!ring &&
+  mail.assignment?.isOpen`. Correctif : un seul alias « anneau affiché » (`ring && !selectionMode`) pour l'anneau, le
+  compteur, l'icône « répondu » et la pastille d'initiales. Test vu rouge.
+- **S1 — weda2 — « 99+ » chevauche la ligne 1** (`mail-ring.component.ts`, `BADGES_AT_32.count`) : la pastille s'élargit
+  vers la droite et « 99+ » (~26 px) déborde d'environ 7 px sur le début de la ligne 1, qui la recouvre. Elle doit
+  s'élargir vers la gauche (ancrage à droite) ; test de géométrie à « 99+ ».
+- **S3 — mobile — code mort** (`treatment-ring.util.ts`, `TreatmentRing.unassigned`) : plus lu par aucun gabarit ;
+  le retirer (le libellé garde « Non affecté. »).
+
+#### Arbitrage humain
+
+- **A1 — mobile — zone d'appui de la pastille du compteur** : 32 × 32 px (règle 3) couvre le quart haut-droit de
+  l'anneau ; à cet endroit, un appui déplie le fil au lieu d'ouvrir le message, et l'appui long ne dit plus l'état de
+  l'anneau. Recommandation : garder 32 px (cible tactile), la pastille ne sert qu'aux fils.
+- **A2 — weda2 — couleur de l'icône « répondu »** : passée de la couleur de marque à une couleur neutre dans sa pastille
+  blanche. Recommandation : neutre (la couleur reste réservée à la gravité).
+
+Suggestions sans suite dans cette reprise : RING-005 mobile pourrait comparer l'infobulle au texte du bandeau du détail,
+comme weda2 (aujourd'hui une expression régulière).
