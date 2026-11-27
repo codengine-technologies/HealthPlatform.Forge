@@ -747,6 +747,26 @@ les tests unitaires de B2 en tiennent lieu dans cette reprise).
   l'avancement d'acquittement et passer `handling` par le service, comme le mobile.
 - **N3 — cohérence** : le web pose `isToHandle` sur la ligne, le mobile s'en remet à la règle ; même affichage.
 
+## PRs
+
+- `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/75 — `awaiting-human-merge`
+- `api-mail` : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/382 — `awaiting-human-merge`
+- `client-mobile` : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/136 — `awaiting-human-merge`
+- `client-angular` : code-only — humain gère commit/push TFS et ouverture PR. 56 fichiers non commités sur
+  `feature/nova-mss-weda-integration` : la liste est dans le `## Develop log` (« client-angular (code seul) — fichiers à
+  commiter sur TFS »), plus `libs/mss/src/core/utils/mail-ring-row.util.ts` et son spec (reprise 1).
+- Ordre de merge (règle 11, même US) : dtos-mss, puis api-mail, puis client-mobile ; weda2 avec eux.
+
+### Validation finale
+
+- Build + tests : vert réutilisé — api-mail `bbb6d978` (/develop), client-mobile `06fb9b5` (/develop, reprise 1),
+  client-angular arbre final (/develop, reprise 1) ; dtos-mss : build rejoué, 0 erreur (pas de projet de test).
+- Diff depuis l'approbation (passage 2) : aucun — /sonar, /lint-angular et /lint-mobile n'ont rien modifié.
+- DoD : tous les points vérifiés, sauf « références Stitch mises à jour » (best-effort, laissé à l'humain : les écrans
+  `mail-list` et `mail-detail` existent mais datent d'avant l'anneau).
+- `## E2E log` : **E2E : vert** (mobile 84, angular 107, parité verte).
+- Branches à jour de `develop` (0 commit de retard), aucun merge nécessaire.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-497 --sync` — ne pas éditer à la main)*
@@ -760,6 +780,7 @@ les tests unitaires de B2 en tiennent lieu dans cette reprise).
 | /lint-angular | ok | 2 min 25 s | — | — | — | — |
 | /lint-mobile | ok | 16 s | — | — | — | 0 erreur |
 | /e2e | ok | 30 min 19 s | — | — | — | e2e ×5 (59 min 15 s), mobile 84 + angular 107 verts, parité verte |
-| **Total cycle** | | **1 h 16 min** | **7 (2 min 15 s)** | **28 (34 min 02 s)** | **2 (1 min 07 s)** | |
+| /review | ok | 1 min 36 s | 1 (2.7 s) | — | — | dtos-mss 1B/0T, PRs dtos #75, api-mail #382, mobile #136 |
+| **Total cycle** | | **1 h 18 min** | **8 (2 min 17 s)** | **28 (34 min 02 s)** | **2 (1 min 07 s)** | |
 
 Autres commandes mesurées : lint ×3 (40 s), nuget-wait ×1 (15 s), restore ×1 (4.2 s)
