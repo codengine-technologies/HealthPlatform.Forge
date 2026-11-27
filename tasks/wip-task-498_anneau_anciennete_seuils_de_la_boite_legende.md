@@ -170,7 +170,8 @@ Lecture du code au 2026-11-27 :
 | /start | ok | 31 s | — | — | — | — |
 | /develop | ok | 20 min 31 s | 13 (1 min 55 s) | 59 (26 min 48 s) | — | dtos-mss 1B/0T, api-mail 7B/56T, client-mobile 3B/3T, client-angular 2B/0T, reprise 1 |
 | /review-code | ok | 4 min 15 s | — | — | — | passage 2 |
-| **Total cycle** | | **25 min 18 s** | **13 (1 min 55 s)** | **59 (26 min 48 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 11 min 52 s | 1 (49 s) | 5 (8 min 19 s) | 2 (47 s) | 1 itération(s), api-mail 1B/5T |
+| **Total cycle** | | **37 min 11 s** | **14 (2 min 45 s)** | **64 (35 min 07 s)** | **2 (47 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (11 s), restore ×1 (3.6 s)
 
@@ -976,3 +977,36 @@ Suggestions sans suite (non bloquantes, pour une task ultérieure ou le merge) :
   après « Réessayer » (fenêtre de 300 ms).
 - mobile : bascules de la légende grisées sans explication si les réglages n'ont pas pu être lus ; champs de seuils
   modifiables pendant l'enregistrement (`reponse-sur-instantane`).
+
+## Sonar log
+
+Analysé à api-mail `459e5769` (2026-11-28, SonarQube 9.9.8, projet `healthplatform-api-mail`, période de nouveau code :
+30 jours depuis le 2026-10-29). Une analyse complète : begin → build Release → cinq suites avec couverture OpenCover → end.
+
+- Phase 1 (new code) : ✓ Quality Gate OK, new_coverage = 96,1 % (lignes 98,4 %, branches 90,7 %)
+- Phase 1 — Issues : 1 code smell `csharpsquid:S3925` sur `MailboxAgingThresholdsInvalidException` (l. 10). Triplet de
+  constructeurs présent d'emblée ; la règle réclame ensuite le constructeur de sérialisation `ISerializable`, obsolète
+  sur .NET 8+ (SYSLIB0051) : **FALSE-POSITIVE** avec ce motif, comme les exceptions voisines (`conventions/csharp.md`,
+  S3925, occurrence 11). 0 bug, 0 vulnérabilité, 0 hotspot.
+- Phase 1 — Tests ajoutés : 0 (cible de couverture du nouveau code atteinte)
+- Phase 2 (legacy) : itérations 0 / 5 — non jouée : toutes les cibles projet sont tenues (0 bug, 0 vulnérabilité,
+  maintenabilité A, couverture 97,5 % ≥ 95 %)
+- Aucun commit : HEAD inchangé (`459e5769`)
+- Build / tests (Release, couverture) : domain 388, application 4 397, infrastructure 749, api 1 398, integration 1 395
+  (+ 16 ignorés) ; **3 rouges « du jour »** (`FilterTodayEmails…`, `GetFolderTodayAsync…`, `GetFolderNotSeenTodayAsync…`)
+  : suite jouée entre 00 h 30 et 00 h 45 heure locale (avant minuit UTC), piège connu de la fenêtre de minuit (corpus en
+  heure locale, Dovecot compare `SINCE` en UTC) ; rejoués après 00 h 05 UTC.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | → |
+| New coverage | 96,1 % | 96,1 % | 0 pt |
+| Bugs | 0 | 0 | 0 |
+| Vulnerabilities | 0 | 0 | 0 |
+| Security hotspots | 0 | 0 | 0 |
+| Code smells | 0 | 0 (1 faux positif S3925 marqué) | 0 |
+| Coverage (projet) | 97,6 % | 97,5 % | −0,1 pt |
+| Duplication | 0,3 % | 0,3 % | 0 pt |
+| Reliability / Security / Maintainability | A/A/A | A/A/A | → |
