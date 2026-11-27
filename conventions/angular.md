@@ -1024,3 +1024,17 @@ par lint sur du code frais est un échec de lecture de ce fichier.
 - **Preuve** : `mail-header.ring-badges.spec.ts` (« ne masquent pas le badge ⚠ ») vert sur deux suites complètes.
 - **Origine** : task-500, /develop
 - **Occurrences** : 1
+
+### glyphe-de-tete-cale-sur-le-titre — Retirer un élément d'une ligne de liste oblige à revoir l'alignement de ce qui la borde
+- **Règle** : convention projet (mise en page, invisible au lint et aux tests jsdom)
+- **Repos** : client-angular (weda2) ; vaut pour toute ligne de liste
+- **Piège** : task-500 a retiré « MESSAGE » / « COURRIER » et l'uid de la ligne 1 de weda2. Celle-ci est restée, vide à
+  gauche, avec la date à droite. L'anneau, calé en dur sur cette ligne (`margin-top: 2px`), flottait 13 px au-dessus du
+  titre. Revue et e2e n'ont rien vu : aucun test ne mesurait la géométrie. Constaté par l'humain en recette.
+- **Consigne** : quand une US vide ou retire un élément d'une ligne de liste, relire ce qui se cale dessus (anneau,
+  initiale, case, chevron). Exprimer le calage en variables CSS qui nomment la relation (hauteur de ligne, écart,
+  demi-ligne de titre), jamais en décalage magique. Prouver l'alignement par une **mesure e2e**
+  (`getBoundingClientRect`, tolérance de quelques px) : jsdom ne calcule aucune mise en page.
+- **Preuve** : RING-005 (weda2) affirme « le centre de l'anneau est sur l'axe de la première ligne du titre (± 3 px) ».
+- **Origine** : recette task-500 (2026-11-27)
+- **Occurrences** : 1

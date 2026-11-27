@@ -216,7 +216,8 @@ envoyée. Je lis la liste plus vite, sans perdre d'information.
 | /lint-mobile | ok | 13 s | — | — | — | — |
 | /e2e | ok | 29 min 06 s | — | — | — | e2e ×3 (28 min 14 s) |
 | /review | ok | 8 min 48 s | 1 (11 s) | 1 (7 min 34 s) | — | api-mail 1B/1T |
-| **Total cycle** | | **47 min 10 s** | **5 (52 s)** | **7 (10 min 14 s)** | **0 (0.0 s)** | |
+| /tech-writer | ok | 33 s | — | — | — | — |
+| **Total cycle** | | **47 min 44 s** | **5 (52 s)** | **7 (10 min 14 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : lint ×2 (16 s)
 
@@ -563,3 +564,28 @@ comme weda2 (aujourd'hui une expression régulière).
 - DoD : tous les points vérifiés, sauf « référence Stitch de `mail-list` » (best-effort, laissé à l'humain).
 - `## E2E log` : **E2E : vert** (mobile 85, angular 107 + 1 flaky, parité verte).
 - Branches à jour de `develop` (0 commit de retard), aucun merge nécessaire.
+
+## Merged
+
+- 2026-11-27, `/merge task-500 --i-tested` (squash) :
+  - `api-mail` : `3b834ac4` (PR #383) — CI `develop` verte : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/46071572317
+  - `client-mobile` : `ce783078` (PR #137) — CI `develop` verte : https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/46071594377
+- Branches `feat/task-500-…` supprimées (distantes et locales). Pas de branche staging (task hors `/forge`).
+- `client-angular` : géré à la main par l'humain (TFS).
+
+## Recette (après merge)
+
+### R1 — weda2 : l'anneau flottait au-dessus du titre (constaté par l'humain le 2026-11-27)
+
+- **Cause** : la ligne 1 de la ligne de liste (type de document, uid) est vide à gauche depuis task-500 (règles 2 et 10).
+  L'anneau, calé sur elle (`margin-top: 2px`), avait son centre à 18 px quand celui de la 1re ligne du titre est à ~31 px.
+  L'initiale de l'icône classique avait la même cause. Le mobile n'est pas touché (sa ligne 1 porte l'expéditeur).
+- **Correctif** (arbre weda2, non commité, dans les fichiers déjà listés en `## PRs`) : `mail-header.component.scss`,
+  calage de l'anneau et de l'initiale sur la 1re ligne du titre, en variables qui nomment la relation
+  (`--mail-line-1-height` + `--mail-content-gap` + demi `--mail-title-line-height` − demi `--mail-leading-size`).
+- **Test** : `functional.e2e.ts`, RING-005 (weda2) mesure l'écart entre le centre de l'anneau et l'axe de la 1re ligne
+  du titre (± 3 px). Vitest mail-header + mail-ring : 117/117 verts ; stylelint 0 erreur ; `tsc` des specs e2e OK.
+- **Preuve rouge : en attente.** Les ports du banc e2e (5052, 4200) sont tenus par la recette de l'humain. À l'arrêt de
+  la recette : `--serve-only`, rejeu de RING-005 sur le correctif (vert), puis sur `margin-top: 2px` réinjecté (rouge
+  attendu, recompilation prouvée), puis restauration.
+- **Prévention** : `conventions/angular.md`, `glyphe-de-tete-cale-sur-le-titre`.
