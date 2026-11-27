@@ -609,3 +609,15 @@ comme weda2 (aujourd'hui une expression régulière).
 - Suite mss-lib complète : 2 222 verts (2 212 + 10) ; build de production weda2 OK.
 - Aucun changement de catalogue : mise en page d'une ligne, pas de parcours nouveau.
 - **Preuve e2e : en attente** de l'arrêt de la recette (comme R1).
+
+### R3 — weda2 : l'anneau prenait le dessus et touchait le texte (demande humaine du 2026-11-27)
+
+- **Allègement** (`mail-ring.component.scss`, vaut pour la liste et le panneau « Traitement » du détail) : teintes
+  éclaircies, contraste recalculé et consigné en tête du fichier, tout au-dessus de 3:1 sur les quatre fonds de ligne :
+  neutre `#475569` → `#64748b`, étapes restantes `#6b7a90` → `#7b8798`, ambre `#b45309` → `#c2620a`, rouge critique
+  inchangé. Traits affinés (segment franchi 8 → 5,5, traits fins 2,4 → 1,8, coche 4 → 3). Initiales en demi-gras,
+  `#475569` (texte, 6,61:1 au plus bas).
+- **Écart** : `margin-right: 3px` sur l'anneau de la ligne (les pastilles débordent à droite du cercle).
+- **Tests** : Vitest ligne + anneau + panneau 141/141. RING-005 (weda2) mesure l'écart anneau → texte (≥ 12,5 px).
+  Mobile non modifié (composant d'anneau distinct).
+- **Preuve e2e : en attente** de l'arrêt de la recette (comme R1, R2).
