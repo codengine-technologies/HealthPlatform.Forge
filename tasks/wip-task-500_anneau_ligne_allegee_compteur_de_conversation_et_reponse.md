@@ -211,7 +211,8 @@ envoyée. Je lis la liste plus vite, sans perdre d'information.
 | /start | ok | 19 s | — | — | — | — |
 | /develop | ok | 7 min 14 s | 4 (40 s) | 6 (2 min 39 s) | — | client-mobile 2B/2T, client-angular 2B/4T, reprise 1 (B1, S1, S3) |
 | /review-code | ok | 1 min 08 s | — | — | — | — |
-| **Total cycle** | | **8 min 42 s** | **4 (40 s)** | **6 (2 min 39 s)** | **0 (0.0 s)** | |
+| /sonar | skipped | 0.9 s | — | — | — | aucun fichier analysé par Sonar |
+| **Total cycle** | | **8 min 43 s** | **4 (40 s)** | **6 (2 min 39 s)** | **0 (0.0 s)** | |
 
 ## Develop log
 
@@ -353,3 +354,9 @@ comme weda2 (aujourd'hui une expression régulière).
 - **N1 — weda2 — « 99+ »** : 9 px dans 19 px, lisible en théorie mais très petit ; à vérifier à l'écran sur un fil de plus
   de 99 messages (jsdom ne mesure pas les polices).
 - **N2 — mobile — RING-005** : comparer l'infobulle « répondu » au texte du bandeau du détail, comme weda2.
+
+## Sonar log
+
+- **Sonar : non joué — aucun fichier analysé par Sonar.** Dans api-mail, la task ne change que `e2e/scenarios.yml`
+  (`git diff --name-only origin/develop...HEAD -- '*.cs'` vide, mêmes exclusions que `sonar.exclusions`) : skip mesuré
+  (décision humaine du 2026-11-19, task-485). Pas de tableau de KPIs ; la PR api-mail le dit.

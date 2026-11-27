@@ -11343,3 +11343,5 @@
 {"ts":"2026-11-27T20:44:18+01:00","run_id":"-","type":"step","task":"task-500","step":"develop","status":"ok","note":"reprise 1 (B1, S1, S3)","iterations":null,"duration_ms":434826}
 {"ts":"2026-11-27T20:44:31+01:00","run_id":"-","type":"step_start","task":"task-500","step":"review-code"}
 {"ts":"2026-11-27T20:45:39+01:00","run_id":"-","type":"step","task":"task-500","step":"review-code","status":"ok","note":"","iterations":null,"duration_ms":68121}
+{"ts":"2026-11-27T20:45:51+01:00","run_id":"-","type":"step_start","task":"task-500","step":"sonar"}
+{"ts":"2026-11-27T20:45:52+01:00","run_id":"-","type":"step","task":"task-500","step":"sonar","status":"skipped","note":"aucun fichier analysé par Sonar","iterations":null,"duration_ms":933}
