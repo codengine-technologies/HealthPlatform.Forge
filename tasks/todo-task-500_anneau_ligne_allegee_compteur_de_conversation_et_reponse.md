@@ -16,6 +16,11 @@
 >   (biologie critique) ;
 > - l'icône « répondu » va au bord de l'anneau **dès qu'une réponse existe**, que l'anneau soit ouvert ou fermé ;
 > - **nouvelle task**, après task-497, qui se merge telle quelle.
+>
+> **Allègements complémentaires**, proposés par la forge après relecture des deux lignes et **validés par l'humain le
+> 2026-11-27** (règles 8 à 14) : 2 valeurs de biologie au plus puis « +N » ; une seule date par ligne ; plus de
+> « MESSAGE » / « COURRIER » ; « Envoyé » / « Brouillon » seulement hors de leur dossier ; sur le mobile, plus de puce
+> « Biologie » en mode anneau, plus de code « (H) » / « (L) », « Document médical » en icône.
 
 ## Objectif
 
@@ -42,6 +47,11 @@ envoyée. Je lis la liste plus vite, sans perdre d'information.
   lecteur d'écran.
 - Parcours e2e qui lisent ces éléments : E2E-RING-003 (« Non affecté » écrit sur la ligne), E2E-CONV-001, CONV-003 et
   SHARED-004 (présence du compteur pour reconnaître un fil), E2E-DETAIL-006 (présence de l'icône « répondu »).
+- Aucun parcours e2e ne lit les éléments des règles 8 à 14 (valeurs de biologie de la ligne, dates, type, « Envoyé »,
+  puces « Biologie » et « Document médical », codes d'interprétation) : seuls les tests de composant suivent.
+- weda2 : `documentDate` retombe aujourd'hui sur la date d'envoi, d'où la même date écrite deux fois sur un message
+  ordinaire ; `docTypeText` rend « MESSAGE » ou « COURRIER » sans document médical ; `flaggedBiologyResults` n'a pas de
+  limite.
 
 ### Règles
 
@@ -77,6 +87,27 @@ envoyée. Je lis la liste plus vite, sans perdre d'information.
    `mail-thread-{uid}` (mobile) ; l'icône « répondu » garde `mail-replied-{uid}`. Les parcours qui reconnaissent un fil
    ou une réponse restent valides.
 
+**Allègements complémentaires (validés le 2026-11-27)**
+
+8. **Valeurs de biologie : 2 au plus sur la ligne**, les deux clients. Ordre : critiques d'abord, puis les autres
+   anormales, dans l'ordre du compte rendu. Au-delà, une mention « +N autres » (libellé accessible : « N autres valeurs
+   anormales, à lire dans le message »). Le détail du message montre toujours toutes les valeurs. La règle de
+   task-392 ne change pas : seule la valeur signalée par le laboratoire est mise en évidence.
+9. **Une seule date par ligne** (weda2). La date de réception reste en ligne 1. La date du document (ligne 3) ne
+   s'écrit que pour un document médical dont la date diffère du **jour** de réception ; sinon, rien. Le repli actuel
+   sur la date d'envoi disparaît.
+10. **Plus de « MESSAGE » ni de « COURRIER »** (weda2) : le type ne s'écrit en ligne 1 que pour un document médical
+    (BIOLOGIE, IMAGERIE, … ou DOCUMENT). Le badge « PATIENT » d'un message de patient ne change pas.
+11. **« Envoyé » / « Brouillon » seulement hors de leur dossier** (weda2) : pas d'indicateur dans le dossier Envoyés (ou
+    un de ses sous-dossiers) ni dans Brouillons, reconnus par leur type, jamais par leur nom (task-417). Il reste dans
+    les vues mélangées : conversation, vue par étiquette, résultats de recherche.
+12. **Mobile — plus de puce « Biologie » / « Biologie CRITIQUE » en mode anneau** : l'anneau (couleur de gravité), le
+    badge ⚠ N et les valeurs la disent déjà. En icône classique, elle reste.
+13. **Mobile — plus de code d'interprétation « (H) », « (L) »… après la valeur** : la flèche devant la valeur le dit. Le
+    libellé accessible de la valeur garde le sens (« élevé », « bas », « critique »).
+14. **Mobile — « Document médical » devient une icône** (document) sans texte ; « Document médical » et, s'il y a lieu,
+    « version N » passent dans l'infobulle et le libellé accessible. La puce « À rattacher (N) » ne change pas.
+
 ### Hors périmètre
 
 - Le grand anneau du détail et la section « Traitement » (task-497) : inchangés.
@@ -96,6 +127,16 @@ envoyée. Je lis la liste plus vite, sans perdre d'information.
       - mobile : un appui sur la pastille déplie le fil sans ouvrir le message, `aria-expanded` suit ;
       - icône « répondu » au bord de l'anneau ouvert comme fermé, plus dans la ligne ; infobulle = phrase du bandeau ;
       - ligne sans anneau : « N messages » et icône « répondu » à leur place d'aujourd'hui.
+- [ ] Tests de composant des allègements complémentaires, chacun vu rouge :
+      - 2 valeurs de biologie au plus, critiques d'abord, « +N autres » avec son libellé accessible ; 2 valeurs ou moins :
+        aucune mention (weda2 et mobile) ;
+      - weda2 : date du document absente sur un message ordinaire et sur un document daté du jour de réception, présente
+        sinon ;
+      - weda2 : aucun type écrit sur un message sans document médical, « BIOLOGIE » sur un compte rendu de biologie ;
+      - weda2 : pas d'« Envoyé » dans Envoyés ni dans un sous-dossier, « Envoyé » en vue conversation et en vue par
+        étiquette ; même règle pour « Brouillon » ;
+      - mobile : pas de puce « Biologie » en mode anneau, présente en icône classique ; plus de « (H) » ; « Document
+        médical v2 » dans l'infobulle et le libellé accessible de l'icône.
 - [ ] Test de composant de l'anneau, weda2 et mobile : à 32 px, les pastilles sont hors du cercle des initiales et du
       badge ⚠ (positions relues), vu rouge.
 - [ ] Contraste du chiffre blanc sur la pastille gris foncé ≥ 4,5:1 ; couleur par jeton du design system quand il
@@ -130,6 +171,12 @@ envoyée. Je lis la liste plus vite, sans perdre d'information.
    sans identifiant écrit.
 6. Mobile, mêmes données : points 1 à 3 (sans identifiant) ; en vue conversation, un appui sur la pastille déplie le fil
    sans ouvrir le message ; un second appui le replie.
+7. Données complémentaires : un bilan de biologie à 5 valeurs anormales dont 1 critique ; un compte rendu daté de la
+   veille de sa réception ; un message ordinaire. weda2 : le bilan montre la valeur critique, une autre, puis « +3 autres » ;
+   le compte rendu montre sa date de document, le message ordinaire une seule date et aucun « MESSAGE ». Dossier Envoyés :
+   aucune ligne n'écrit « Envoyé » ; en vue conversation, la réponse envoyée l'écrit.
+8. Mobile : le bilan n'a pas de puce « Biologie » (mode anneau), ses valeurs n'ont pas de « (H) », et le document médical
+   est une icône dont l'appui long dit « Document médical ». En icône classique, la puce « Biologie » revient.
 
 ## Conformité santé / Ségur / ANS
 
