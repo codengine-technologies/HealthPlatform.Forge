@@ -1,7 +1,7 @@
 # todo-task-497.md — Anneau de traitement : la liste et le détail
 
 **Repos**: api-mail, dtos-mss, client-angular, client-mobile
-**Reprises**: 2
+**Reprises**: 3
 **Dependencies**: aucune (task-467 conseillée avant : tant qu'elle est ouverte, un anneau peut être neutre à tort)
 **Epic**: E027
 **EpicTitle**: Anneau de traitement : voir les boucles ouvertes
@@ -809,6 +809,43 @@ Après la validation finale, l'humain a demandé de déplacer le bloc de l'annea
     montée seulement si l'assertion du client change, sans toucher la voie mobile ;
   - mobile : inchangé.
 
+### Passage 4 (revue anticipée, après la reprise 2) — CHANGES REQUESTED
+
+Relu à : api-mail `3ad2b65b` (catalogue seul depuis `bbb6d978`), client-angular arbre de travail ; dtos-mss et
+client-mobile inchangés. Relecteur indépendant, diff de la reprise lu en premier.
+
+- **4a** : aucun comportement atteignable par un endpoint ne change (api-mail : texte du catalogue seul). ✅
+- **4c** : `api-mcp : aucun impact` / `client-mobile : aucun impact` / `client-angular : aucun impact`. ✅
+- **4b (DoD)** : BIO-001 v3, BIO-003 v2, BIO-007 v2, DETAIL-004 v2 corrigés pour weda2, versions égales à celles
+  déclarées par les tests ; voie mobile inchangée. ✅
+- Vérifié et tenu : plus aucune référence à `ack` ; présence de la section = unités du bloc (ni section vide, ni bloc
+  hors section) ; contenu projeté une fois et monté quand le panneau est masqué ; largeur 320 px ; « Marquer comme
+  résolu » à l'écran en superposé ; acquittement, relecture de la ligne et évènement en direct inchangés.
+- Le dernier rapport e2e rouge de `out/test-results` est celui de la mutation volontaire (`data-mutx`), après un
+  passage 6 / 6 vert : pas un défaut.
+
+#### À corriger par la reprise
+
+- **B5 — weda2 — l'avis « reste à acquitter » n'ouvre plus le panneau en lecture étroite** (`mail-detail.component.ts`,
+  effet task-454 ; `mss-mail.component.ts` `openPendingAck` ; `mail-side-panel.component.ts` effet `resetKey`) : la
+  section `ring` existe dès la sélection (anneau du message), alors que l'ancienne section `ack` attendait le contenu.
+  L'effet consomme la demande et déplie le panneau, puis le nouveau `resetKey` du message le replie
+  (`expanded = !narrow`) : panneau en rail, demande perdue. Reproduit par le relecteur avec le vrai panneau
+  (`scratchpad/reviewer-r2/race.spec.ts`). Le test unitaire posait la demande sur le message déjà affiché (vert qui
+  ment). Correctif : la demande survit au changement de message (consommée une fois la section affichée pour le
+  message demandé). Test : lecture étroite, demande et changement de message dans le même tour, rail disparu ; vu rouge.
+- **S7 — weda2 — pastille du rail absente avant le chargement du contenu** (`sidePanelSections`) : tant que le contenu
+  n'est pas chargé (ou s'il échoue), `pending` est faux alors que la ligne porte `pendingBiologyAcksCount > 0`.
+  Retomber sur la ligne tant que le contenu n'est pas là. Test vu rouge.
+- **S8 — weda2 — commentaires périmés** : `biology-ack-panel.component.html` (« a quitté Actions & dossier »),
+  `biology-ack-panel.component.scss` (en-tête, `&__groups`) décrivent l'ancien emplacement.
+- **S9 — e2e weda2 — anneau fermé lu sans être vu** (`functional.e2e.ts`, RING-001 étape 3) : après
+  `openSidePanelSection(page, 'ring')`, affirmer la visibilité de l'anneau avant ses attributs.
+
+#### Arbitrage humain
+
+- Couleurs littérales `#475569` de `mail-ring-panel.component.scss` : relève de l'arbitrage A2 déjà ouvert (jetons `--ds-*`).
+
 ## PRs
 
 - `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/75 — `awaiting-human-merge`
@@ -837,13 +874,13 @@ Après la validation finale, l'humain a demandé de déplacer le bloc de l'annea
 |---|---|---|---|---|---|---|
 | /start | ok | 46 s | — | — | — | — |
 | /develop | ok | 28 min 11 s | 8 (1 min 39 s) | 26 (24 min 52 s) | — | dtos-mss 1B/0T, api-mail 4B/12T, client-mobile 0B/2T, client-angular 3B/12T, reprise 2 (décision humaine : bloc de l'anneau dans le panneau latéral weda2) |
-| /review-code | ok | 4 min 22 s | — | — | — | passage 2 APPROVED |
+| /review-code | changes | 8 min 24 s | — | — | — | reprise 3 (B5 : avis biologie en lecture étroite) |
 | /sonar | ok | 15 min 44 s | 1 (1 min 03 s) | 5 (10 min 39 s) | 2 (1 min 07 s) | 1 itération(s), api-mail 1B/5T, 0 issue new code, QG OK, new_coverage 96.1, aucun commit |
 | /lint-angular | ok | 2 min 25 s | — | — | — | — |
 | /lint-mobile | ok | 16 s | — | — | — | 0 erreur |
 | /e2e | ok | 30 min 19 s | — | — | — | e2e ×5 (59 min 15 s), mobile 84 + angular 107 verts, parité verte |
 | /review | ok | 1 min 36 s | 1 (2.7 s) | — | — | dtos-mss 1B/0T, PRs dtos #75, api-mail #382, mobile #136 |
 | /tech-writer | ok | 3 min 58 s | — | — | — | — |
-| **Total cycle** | | **1 h 27 min** | **10 (2 min 45 s)** | **31 (35 min 31 s)** | **2 (1 min 07 s)** | |
+| **Total cycle** | | **1 h 31 min** | **10 (2 min 45 s)** | **31 (35 min 31 s)** | **2 (1 min 07 s)** | |
 
 Autres commandes mesurées : lint ×3 (40 s), nuget-wait ×1 (15 s), restore ×1 (4.2 s)
