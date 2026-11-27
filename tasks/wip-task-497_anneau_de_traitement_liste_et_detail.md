@@ -1,6 +1,7 @@
 # todo-task-497.md — Anneau de traitement : la liste et le détail
 
 **Repos**: api-mail, dtos-mss, client-angular, client-mobile
+**Reprises**: 1
 **Dependencies**: aucune (task-467 conseillée avant : tant qu'elle est ouverte, un anneau peut être neutre à tort)
 **Epic**: E027
 **EpicTitle**: Anneau de traitement : voir les boucles ouvertes
@@ -398,6 +399,81 @@ Branche extraite : `feature/nova-mss-weda-integration`. Aucune opération git. 5
 - api-mail `bbb6d978`, client-mobile (HEAD poussé), client-angular (arbre final) — `Tools/green/green.py`.
 - Next step : `/review task-497 --code`.
 
+## Code Review Summary
+
+### Passage 1 (revue anticipée) — CHANGES REQUESTED
+
+Relu à : dtos-mss `6f00908`, api-mail `bbb6d978`, client-mobile `6f0e8f7`, client-angular arbre de travail (54 fichiers).
+Deux relecteurs indépendants (backend + contrat ; deux clients), sans le `## Develop log`.
+
+**4a — verrou intégration (règle 1b)** : chaque comportement atteignable par un endpoint a son test d'intégration sur la
+vraie pile, lu dans la réponse réelle, vu rouge (tableau du `## Develop log`, api-mail) : étape et dernière action sur les
+trois chemins de liste (dossier, tag, hors ligne), cas d'échec sans anomalie, deux comptes rendus, page sans commande SQL
+de plus, historique sur la lecture d'un message seulement, évènement en direct en boîte partagée avec l'auteur réel dans
+la trace, réglage `listMarker` par personne. ✅
+
+**4c — consommateurs du contrat** : `api-mcp : aucun impact` / `client-mobile : aucun impact` / `client-angular : aucun
+impact` (avertissements de lecture tolérante habituels). ✅
+
+**4b — clause DoD du parcours** : RING-001/002/003 et SETTINGS-005 v1, ASSIGN-001 v3, BIO-001 v3, BIO-003 v2,
+BIO-007 v2, DETAIL-004 v2 (angular) au catalogue, aux versions déclarées par les tests des deux clients. ✅
+
+**Backend (dtos-mss, api-mail)** : APPROVED. Suggestions non bloquantes : une seule collecte pour la ligne et
+l'évènement (codes critiques copiés deux fois), test de composition du relais sur le vrai conteneur, `ThenBy(Id)` sur
+l'historique, message d'échec du test SQL qui dit de remesurer la référence.
+
+**Clients** : CHANGES REQUESTED.
+
+#### À corriger par la reprise
+
+- **B1 — mobile — `core/utils/treatment-ring.util.ts` (≈ l. 150)** : `isHandled` est testé avant `isToHandle`. Une ligne
+  servie `{ isToHandle: true, isHandled: true }` — compte rendu analysé après un « Traité », ou action intermédiaire
+  posée après « Résolu » — donne un anneau **fermé**, même après rechargement, contre la règle 1 (« à traiter » = anneau
+  ouvert) et contre `MailHandlingRule` du serveur. Correctif : « à traiter » (ou un compte rendu en attente) prime sur
+  « traité ». Test unitaire du cas `{ isToHandle: true, isHandled: true }`, vu rouge.
+- **B2 — mobile et web — mise à jour en direct** : après « Résolu », une action intermédiaire ne publie que
+  `MailBiologyAckChanged` ; le patch de ligne (`biologyAckPatch` / `applyBiologyAckSummary` mobile,
+  `applyBiologyAckProgress` web) ne touche que les champs de biologie, la ligne garde `isHandled` et l'anneau reste
+  fermé chez les autres personnes jusqu'au rechargement. Correctif : un compte rendu en attente (`pending > 0`, hors
+  Envoyés / Brouillons / Corbeille) ouvre l'anneau quel que soit `handling`, ou le patch pose `isToHandle = true`.
+  Côté web, le détail ne relit la ligne qu'après « Résolu » (le mobile après chaque acte) : aligner. Un test unitaire
+  par client, vu rouge.
+- **B3 — mobile — `mail-detail/mail-detail.page.ts` (abonnement `biologyAckChanged$`)** : la page fusionne le patch dans
+  **sa** copie du message, jamais mise à jour par `handling.applied$`, `assignments.applied$` ni la lecture ; elle
+  renvoie au composant un message périmé (ancien traitement, ancien « À traiter par », non lu). Correctif : la page
+  rafraîchit le contenu, la fusion des agrégats se fait dans le composant sur son message courant. Test vu rouge.
+- **B4 — web — `mail-header.component.ts`, getter `ringRow`** : à chaque rendu de chaque ligne, parcours de tout
+  l'arbre des dossiers et allocation d'une vue neuve ; l'entrée de `mss-mail-ring` change à chaque rendu (segments
+  recalculés, transition d'un segment gagné coupée), et `folders()` change à chaque acquittement. Correctif : table
+  chemin → type calculée une fois (comme le `computed` du mobile), vue mémorisée par message. Test vu rouge (la
+  transition survit à un rafraîchissement de la liste, ou la vue est la même instance tant que le message ne change pas).
+- **S1 → à corriger — web — `mail-ring-panel` / `mailRingSteps`** : un anneau de message à 4 segments sans comptes rendus
+  chargés liste les étapes Reçu / Lu / Traité ; le mobile liste les 4 étapes de la biologie. Aligner, test vu rouge.
+- **S2 → à corriger — mobile — `reportRing`** : « Antérieur au suivi » est déduit de `!!last && pendingBiologyAcksCount
+  === 0` et s'affiche à tort sur une ligne périmée. Lire `isTracked` du document (déjà servi par le contrat), comme le
+  web (`isBiologyAckClaimed`). Test vu rouge.
+- **S3 → à corriger — mobile — `canHandleFolder`** : un sous-dossier d'Envoyés reçoit un anneau ; le web hérite du type
+  du parent (`ringFolderType`). Aligner (règle 1 : « Dans Envoyés, Brouillons et Corbeille, la ligne garde l'initiale »).
+  Test vu rouge.
+- **S6 → à corriger — mobile — `biology-ack-panel`** : le bouton « Masquer » peut cacher les boutons d'acquittement
+  désormais en tête du message. Le retirer de ce contexte ; test vu rouge.
+
+#### Arbitrage humain
+
+- **A1 — règle 8, exemple 2** : l'exemple « Biologie, valeur critique. Étape 1 sur 4 : reçu. Non affecté. » omet
+  « reste : … », que les deux clients ajoutent à tous les libellés (comme les maquettes). Recommandation de la forge :
+  garder « reste : … » partout, plus utile au lecteur d'écran.
+- **A2 — règles SCSS de weda2** : `mail-ring.component.scss` porte des couleurs littérales (contraste mesuré sur ces
+  valeurs), contraire à `front/CLAUDE.md`. Recommandation : passer aux jetons `--ds-*` équivalents si leur contraste
+  reste ≥ 3:1, sinon acter l'exception en commentaire.
+- **A3 — cohérence d'affichage entre clients** : un compte rendu résolu montre un anneau fermé sur mobile, ses seules
+  étapes sur web ; la coche est animée sur mobile, pas sur web. Recommandation : anneau fermé sur les deux, sans
+  animation de la coche.
+
+Suggestions sans suite dans cette reprise : collecte unique backend, test de composition du relais, `ThenBy(Id)`,
+message du test SQL ; scénario e2e en direct à deux personnes avec une action après « Résolu » (il aurait attrapé B2 ;
+les tests unitaires de B2 en tiennent lieu dans cette reprise).
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-497 --sync` — ne pas éditer à la main)*
@@ -406,6 +482,7 @@ Branche extraite : `feature/nova-mss-weda-integration`. Aucune opération git. 5
 |---|---|---|---|---|---|---|
 | /start | ok | 46 s | — | — | — | — |
 | /develop | ok | 2 h 44 min | 6 (1 min 11 s) | 23 (23 min 22 s) | — | dtos-mss 1B/0T, api-mail 4B/12T, client-mobile 0B/2T, client-angular 1B/9T |
-| **Total cycle** | | **2 h 45 min** | **6 (1 min 11 s)** | **23 (23 min 22 s)** | **0 (0.0 s)** | |
+| /review-code | changes | 3 h 12 min | — | — | — | reprise 1 — B1 à B4 + S1 S2 S3 S6 (clients) |
+| **Total cycle** | | **5 h 58 min** | **6 (1 min 11 s)** | **23 (23 min 22 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (15 s), restore ×1 (4.2 s)
