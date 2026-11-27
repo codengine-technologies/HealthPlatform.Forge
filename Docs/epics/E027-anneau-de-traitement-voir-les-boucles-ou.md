@@ -1,6 +1,6 @@
 # E027 — Anneau de traitement : voir les boucles ouvertes
 
-> **Statut** : 🟡 En cours — 1 feature livrée, en attente de validation (task-497) ; 2 au backlog (tasks 498, 499).
+> **Statut** : 🟡 En cours — 1 feature livrée, en attente de validation (task-497) ; 3 au backlog (tasks 498, 499, 500).
 > **Modèle** : task-driven
 > **Version** : 0.1
 > **Auteur** : PO forge (task-497)
@@ -78,7 +78,8 @@ il dessine ce que la boîte sait déjà (lu, traité, attribué, acquitté), pou
 
 | Fonctionnalité | Ce que le praticien peut faire | Tasks | Statut |
 |---|---|---|---|
-| L'anneau dans la liste et le détail | Voir, à la place de l'initiale de l'expéditeur, un anneau qui dit l'étape atteinte par chaque message à traiter : trois étapes pour un courrier (reçu, lu, traité), quatre pour un compte rendu de biologie à acquitter (reçu, pris connaissance, suite donnée, résolu). Lire au centre les initiales de la personne à qui le message est confié, sur fond plein quand c'est soi ; lire à droite « Non affecté », « Attente patient » ou « Attente confrère ». Reconnaître la gravité à la couleur, ambre pour une anomalie, rouge pour une valeur critique. Ouvrir le message et trouver en tête un grand anneau, les étapes datées et signées, et les boutons d'acquittement rangés par étape. Revenir à l'icône classique si on le préfère | task-497 | 🟡 Livrée, en attente de validation |
+| L'anneau dans la liste et le détail | Voir, à la place de l'initiale de l'expéditeur, un anneau qui dit l'étape atteinte par chaque message à traiter : trois étapes pour un courrier (reçu, lu, traité), quatre pour un compte rendu de biologie à acquitter (reçu, pris connaissance, suite donnée, résolu). Lire au centre les initiales de la personne à qui le message est confié, sur fond plein quand c'est soi ; lire à droite « Non affecté », « Attente patient » ou « Attente confrère ». Reconnaître la gravité à la couleur, ambre pour une anomalie, rouge pour une valeur critique. Ouvrir le message et trouver l'anneau, les étapes datées et signées, et les boutons d'acquittement rangés par étape : dans la section « Traitement » du panneau latéral sur le web, en tête du message sur le mobile. Revenir à l'icône classique si on le préfère | task-497 | 🟡 Livrée, en attente de validation |
+| Une ligne de liste allégée | Lire une ligne qui ne dit que l'utile : plus de « Non affecté » ni d'identifiant écrits, le nombre de messages d'une conversation en pastille grise sur l'anneau, la réponse envoyée en icône au bord de l'anneau, deux valeurs de biologie au plus puis « +N », une seule date, moins de puces redondantes | task-500 | ⏳ À faire |
 | Ancienneté et légende des anneaux | Voir depuis combien de temps une boucle est ouverte (« J+N », ou « H+N » pour une valeur critique) dès le premier seuil, et « en retard » au dernier ; régler les seuils de la boîte ; choisir les signes affichés ; ouvrir une légende qui dessine chaque état | task-498 | ⏳ À faire |
 | Tableau de bord : boucles en retard et non affectées | Lire sur les tuiles du tableau de bord « dont N en retard » et le nombre de messages que personne n'a pris, puis ouvrir d'un geste la liste correspondante | task-499 | ⏳ À faire |
 
@@ -133,7 +134,11 @@ acquitter reste à droite, inchangé (task-497).
 
 ### Dans le détail
 
-En tête du message, un grand anneau et la liste de ses étapes : « Reçu » avec sa date d'arrivée, « Lu », « Traité par …
+Sur l'application web, le bloc de l'anneau est la première section, « Traitement », du panneau « Actions & dossier » :
+il ne charge pas la lecture du message. Panneau replié, son icône porte une pastille tant qu'un compte rendu reste à
+acquitter ; la puce « Acquittement à traiter » de l'en-tête et l'avis « ce compte rendu reste à acquitter » ouvrent la
+section (décision du 2026-11-27). Sur l'application mobile, qui n'a pas de panneau latéral, le bloc est en tête du
+message. Il montre un anneau et la liste de ses étapes : « Reçu » avec sa date d'arrivée, « Lu », « Traité par …
 le … » avec le geste, et chaque acquittement avec son auteur et sa date. Pour un compte rendu à acquitter, les boutons
 sont juste sous l'anneau, rangés par étape : « Pris connaissance » ; « Rappel patient », « Convocation », « Adressage
 confrère » ; « Marquer comme résolu ». La fenêtre de confirmation et la note ne changent pas. Un message qui porte
@@ -236,8 +241,9 @@ pas. Ce choix est propre à chaque personne et revient à la réouverture (task-
 | L'anneau dans la liste et le détail | 🟡 Livrée, en attente de validation | 100 % livré sur l'application web et l'application mobile | task-497 |
 | Ancienneté et légende des anneaux | ⏳ À faire | 0 % | task-498 |
 | Tableau de bord : boucles en retard et non affectées | ⏳ À faire | 0 % | task-499 |
+| Une ligne de liste allégée | ⏳ À faire | 0 % | task-500 |
 
-**Couverture EPIC consolidée : 1 feature livrée sur 3**, en attente de validation ; 2 au backlog.
+**Couverture EPIC consolidée : 1 feature livrée sur 4**, en attente de validation ; 3 au backlog.
 
 ---
 
@@ -251,9 +257,10 @@ pas. Ce choix est propre à chaque personne et revient à la réouverture (task-
   en pointillé signale un message qui n'attend rien. Les initiales de la personne à qui le message est confié sont au
   centre de l'anneau, sur fond plein pour soi ; « Non affecté », « Attente patient » et « Attente confrère » s'écrivent
   à droite. L'anneau est ambre pour une anomalie, rouge pour une valeur critique, et un ⚠ atténué reste sur une boucle
-  fermée. Le détail s'ouvre sur un grand anneau, les étapes datées et signées, et les boutons d'acquittement rangés par
-  étape juste en dessous. Chacun peut revenir à l'icône classique. Sur l'application web et sur l'application mobile
-  (task-497).
+  fermée. Le détail montre l'anneau, les étapes datées et signées, et les boutons d'acquittement rangés par étape juste
+  en dessous : dans la section « Traitement » du panneau latéral sur l'application web (décision du 2026-11-27, pour
+  ne pas alourdir la lecture), en tête du message sur l'application mobile. Chacun peut revenir à l'icône classique.
+  Sur l'application web et sur l'application mobile (task-497).
 
 ### Conformité réglementaire
 

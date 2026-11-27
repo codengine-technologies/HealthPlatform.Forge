@@ -12,13 +12,26 @@
 
 ### v0.1 — task-497 : l'anneau dans la liste et le détail (api-mail, dtos-mss, client-mobile, weda2)
 
-- **État** : `done` — PRs en attente du merge humain (HAG). 1 reprise.
+- **État** : `done` — PRs en attente du merge humain (HAG). 3 reprises (1 sur revue, 1 sur décision humaine au HAG,
+  1 sur la revue de cette décision).
 - **PRs** : dtos-mss [#75](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/75), api-mail
   [#382](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/382), client-mobile
   [#136](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/136) — label `awaiting-human-merge`.
-  client-angular en code-only : 56 fichiers non commités sur `feature/nova-mss-weda-integration` (liste dans le task
-  file, `## Develop log` + `mail-ring-row.util.ts` et son spec de la reprise 1). Ordre de merge : dtos-mss, api-mail,
-  client-mobile ; weda2 avec eux.
+  client-angular : commité par l'humain sur TFS, `feature/nova-mss-weda-integration` `2b991559` (56 fichiers). Ordre de
+  merge : dtos-mss, api-mail, client-mobile ; weda2 avec eux.
+- **Reprise 2 — décision humaine au HAG (2026-11-27)** : sur weda2, le bloc de l'anneau quitte `.mail-detail-reading`
+  pour la section `ring` (« Traitement », icône `check-circle`) de `MailSidePanelComponent`, en premier ; présence par
+  `hasRingSection` (= unités du bloc), pastille du rail, puce « Acquittement à traiter » rétablie, `requestedSidePanel`
+  rétabli pour l'avis task-454 ; anneau du détail 72 → 56 px (panneau de 320 px). Catalogue (`3ad2b65b`) : textes de
+  BIO-001 v3, BIO-003 v2, BIO-007 v2, DETAIL-004 v2 corrigés pour weda2, sans montée de version. Consigne
+  `bloc-en-tete-de-lecture` (`conventions/angular.md`).
+- **Reprise 3** (passage 4, B5) : l'avis consommait sa demande dans le tour du changement de message, puis le
+  `resetKey` du panneau le repliait en lecture étroite. `RequestedSidePanel` porte désormais sa clé de message et n'est
+  consommé qu'une fois ce message affiché et son contenu servi ; pastille du rail lue sur la ligne avant le chargement
+  (S7). Consigne `demande-d-ouverture-liee-a-son-objet`. Passage 5 APPROVED ; suggestions N4 (demande en suspens), N5
+  (ordre d'effets), N6 (`openSidePanelSection`).
+- **Après les reprises** : /sonar et /lint-mobile en skip mesuré (aucun code concerné changé), /lint-angular 0 erreur,
+  /e2e vert (mobile 84, angular 107), validation finale : api-mail 8 284 tests, mss-lib 2 167, weda2 2 683.
 - **Contrat** : `HealthPlatform.Dtos.Mss` 635.0.0 → **638.0.0** (`6f00908`) — `MailDto.PendingBiologyAckStage` /
   `PendingBiologyAckLastAction`, `MailMedicalDocumentDto.BiologyAckHistory`, `MailBiologyAckProgressDto`,
   `UserSettingsDto.ListMarker` ; bump `api-mail` seul (avec ses `packages.lock.json`). `contract_impact.py check` :
@@ -142,6 +155,7 @@
 
 | Task | Contribution | État |
 |---|---|---|
-| task-497 | L'anneau dans la liste et le détail : étape d'acquittement servie sur la ligne sans requête de plus, historique daté dans le détail, évènement en direct pour tout acquittement, anneau et bloc du détail sur les deux clients, initiales dans l'anneau, « Non affecté » / « Attente patient » / « Attente confrère », boutons d'acquittement sous l'anneau, préférence anneau / icône classique | `done` (PRs #75, #382, #136) |
+| task-497 | L'anneau dans la liste et le détail : étape d'acquittement servie sur la ligne sans requête de plus, historique daté dans le détail, évènement en direct pour tout acquittement, anneau et bloc du détail sur les deux clients, initiales dans l'anneau, « Non affecté » / « Attente patient » / « Attente confrère », boutons d'acquittement sous l'anneau (section « Traitement » du panneau latéral sur weda2), préférence anneau / icône classique | `done` (PRs #75, #382, #136) |
 | task-498 | Ancienneté : seuils par catégorie réglés au niveau de la boîte (changement tracé), compteur J+N / H+N calculé sur le poste, préférences d'affichage, contraste renforcé, légende | `todo` |
 | task-499 | Tableau de bord : « dont N en retard » sur les tuiles existantes, tuile « Non affectées », listes filtrées servies par le serveur, après mesure sur une boîte de 10 000 messages | `todo` |
+| task-500 | Ligne de liste allégée : « Non affecté » et identifiant hors de la ligne (survol de l'anneau), compteur de conversation en pastille grise sur l'anneau, icône « répondu » au bord de l'anneau, 2 valeurs de biologie au plus, une seule date, moins de puces redondantes (weda2 et mobile) | `todo` |

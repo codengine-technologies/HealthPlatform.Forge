@@ -937,7 +937,7 @@ client-mobile inchangés. Relecteur indépendant, diff de la reprise lu en premi
 | /lint-mobile | skipped | 6.7 s | — | — | — | client-mobile inchangé depuis 06fb9b5 (déjà linté) |
 | /e2e | ok | 28 min 51 s | — | — | — | e2e ×8 (1 h 27 min) |
 | /review | ok | 9 min 50 s | 3 (16 s) | 3 (8 min 18 s) | — | dtos-mss 1B/0T, api-mail 1B/1T, client-angular 1B/2T |
-| /tech-writer | ok | 3 min 58 s | — | — | — | — |
-| **Total cycle** | | **45 min 53 s** | **13 (3 min 12 s)** | **36 (44 min 42 s)** | **2 (1 min 07 s)** | |
+| /tech-writer | ok | 44 s | — | — | — | — |
+| **Total cycle** | | **42 min 38 s** | **13 (3 min 12 s)** | **36 (44 min 42 s)** | **2 (1 min 07 s)** | |
 
 Autres commandes mesurées : lint ×4 (52 s), nuget-wait ×1 (15 s), restore ×1 (4.2 s)
