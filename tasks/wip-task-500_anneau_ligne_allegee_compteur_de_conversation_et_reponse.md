@@ -193,3 +193,19 @@ envoyée. Je lis la liste plus vite, sans perdre d'information.
 - **Hébergement HDS** : inchangé — aucune donnée nouvelle, aucune donnée de santé dans les infobulles (l'identifiant
   IMAP est technique).
 - **AIPD / impact RGPD** : inchangée.
+
+## Branches
+
+- `api-mail` (pushed) : feat/task-500-anneau-ligne-allegee-compteur-de — https://github.com/codengine-technologies/HealthPlatform.Api.Mail/tree/feat/task-500-anneau-ligne-allegee-compteur-de
+- `client-mobile` (pushed) : feat/task-500-anneau-ligne-allegee-compteur-de — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-500-anneau-ligne-allegee-compteur-de
+- `client-angular` (code-only) : la forge écrit sur la branche extraite dans `Client/Angular/` (au /start :
+  `feature/nova-mss-weda-integration`, après le commit task-497 `2b991559`) — l'humain gère branche, commit, push, PR TFS
+
+## Timings
+
+*(généré par `tools/timing/report.sh --task task-500 --sync` — ne pas éditer à la main)*
+
+| Étape | Statut | Durée | Builds | Tests | Scans | Détail |
+|---|---|---|---|---|---|---|
+| /start | ok | 19 s | — | — | — | — |
+| **Total cycle** | | **19 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
