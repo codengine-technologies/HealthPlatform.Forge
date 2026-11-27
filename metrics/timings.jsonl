@@ -11419,3 +11419,5 @@
 {"ts":"2026-11-27T23:50:41+01:00","run_id":"-","type":"cmd","task":"task-498","step":"develop","repo":"client-mobile","kind":"test","label":"","cwd":"Client/Mobile","cmd":"npm test -- --watch=false --browsers=ChromeHeadless","duration_ms":19078,"exit_code":0}
 {"ts":"2026-11-27T23:53:48+01:00","run_id":"-","type":"cmd","task":"task-498","step":"develop","repo":"client-angular","kind":"build","label":"","cwd":"Client/Angular/front","cmd":"npx nx build weda2 --skip-nx-cache","duration_ms":13397,"exit_code":0}
 {"ts":"2026-11-27T23:55:39+01:00","run_id":"-","type":"step","task":"task-498","step":"develop","status":"ok","note":"","iterations":null,"duration_ms":2601355}
+{"ts":"2026-11-27T23:55:57+01:00","run_id":"-","type":"step_start","task":"task-498","step":"review-code"}
+{"ts":"2026-11-28T00:05:45+01:00","run_id":"-","type":"step","task":"task-498","step":"review-code","status":"changes","note":"reprise 1","iterations":null,"duration_ms":587719}

@@ -3,6 +3,7 @@
 **Repos**: api-mail, dtos-mss, client-angular, client-mobile
 **Dependencies**: task-497
 **Epic**: E027
+**Reprises**: 1
 
 > **Origine.** Demande humaine du 2026-11-27 (« le médecin voit ce qui n'est pas bouclé et ce qui traîne »), phase de
 > conception validée le même jour : `Docs/specs/anneau-de-traitement/` (spécification § 6 et § 10, maquettes
@@ -168,7 +169,8 @@ Lecture du code au 2026-11-27 :
 |---|---|---|---|---|---|---|
 | /start | ok | 31 s | — | — | — | — |
 | /develop | ok | 43 min 21 s | 8 (1 min 16 s) | 40 (14 min 59 s) | — | dtos-mss 1B/0T, api-mail 4B/38T, client-mobile 2B/2T, client-angular 1B/0T |
-| **Total cycle** | | **43 min 53 s** | **8 (1 min 16 s)** | **40 (14 min 59 s)** | **0 (0.0 s)** | |
+| /review-code | changes | 9 min 47 s | — | — | — | reprise 1 |
+| **Total cycle** | | **53 min 40 s** | **8 (1 min 16 s)** | **40 (14 min 59 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (11 s), restore ×1 (3.6 s)
 
@@ -700,3 +702,76 @@ catégories du service lues dans `AGING_CATEGORIES`. Comportement inchangé. Spe
 lint propre. Écartés : styles carte/section de la légende recopiés de l'écran Paramètres (une extraction
 globale toucherait d'autres écrans) ; `calendarDaysAgo` de l'e2e (suite hors de `src`, sans import de l'app).
 
+## Code Review Summary
+
+### Passage 1 (revue anticipée) — CHANGES REQUESTED
+
+Trois relecteurs indépendants (api-mail + dtos, weda2, mobile), code seul. Contrôles préalables :
+- `contract_impact.py check` : api-mcp aucun impact ; client-mobile aucun impact ; client-angular IMPACT
+  (`AuditActionType` décodé par rang) → **adapté** (`audit.model.ts` valeur 77 + libellé, spec vu rouge).
+- Catalogue : `E2E-RING-004` v1 et `E2E-SETTINGS-006` v1 (`mobile: requis`, `angular: requis`), implémentés en v1 dans
+  les deux clients.
+- Règle 1b (api-mail) : 11 comportements prouvés par des tests d'intégration sur la vraie pile, preuves rouges par
+  mutation crédibles (M1-M19) ; seul trou : le verdict opérateur de la route n'a pas de test propre (S-A2 ci-dessous).
+
+#### À corriger par la reprise
+
+Bloquants :
+- **B1 (mobile)** — une lecture des seuils en échec fige les défauts pour la session (`mailbox-aging-thresholds.service.ts`
+  ne relit qu'au changement de boîte, l'écran promet « Revenez dans un instant ») ; et une relecture en échec après un PUT
+  réussi efface les valeurs connues. Relire à l'entrée des Paramètres et de la légende si non lus ; garder la dernière
+  valeur connue (ou celle du PUT) quand la relecture échoue. Test « échec puis entrée → relu ».
+- **B2 (mobile) / B6 (weda2)** — E2E-SETTINGS-006 compare la légende aux seuils par défaut qu'il vient de poser : vert
+  qui ment (`assertion-sans-cas-declencheur`). Poser par l'API des seuils distincts des défauts avant d'ouvrir la légende
+  et les Paramètres, et affirmer que la légende **et** les champs les citent (même faiblesse sur les champs de RING-004,
+  `toHaveValue('3')`). Mutation à consigner : légende sur les défauts en dur → rouge.
+- **B3 (weda2)** — la relecture après PUT (et la lecture initiale) remet toute la saisie aux valeurs du serveur : une
+  modification faite pendant l'aller-retour est écrasée en silence (`reponse-sur-instantane`). N'appliquer la relecture
+  que si la saisie est encore celle envoyée ; test « saisie pendant l'enregistrement », rouge sur le code actuel.
+- **B4 (weda2)** — une lecture des seuils en échec pose les défauts, affichés et modifiables comme ceux de la boîte : le
+  PUT des trois catégories écrase les réglages d'un collègue (donnée partagée, règle 14, trace au nom de quelqu'un qui ne
+  l'a pas voulu). Sans lecture réussie : aucun PUT, champs désactivés, « Les seuils de la boîte n'ont pas pu être lus » et
+  « Réessayer ». Test.
+- **B5 (weda2)** — `mail-ring-panel.component.spec.ts` et `mail-detail.ring.spec.ts` (fixture `arrivalDate`
+  2026-11-26) montent un composant qui injecte `MSS_CLOCK` sans la figer : rouges à partir du 2026-12-10 (passage en
+  retard). Figer l'horloge ; chercher tout autre spec qui rend `mss-mail-header` / `mss-mail-ring-panel` avec une date
+  fixe. Prévention : consigne `conventions/angular.md`.
+
+Défauts réels corrigés dans la même passe :
+- **S-A1 (api-mail)** — une catégorie **absente** du corps prend la valeur par défaut du DTO : un PUT partiel remet en
+  silence les autres catégories aux défauts, tracé comme voulu. Refuser une catégorie absente comme une catégorie `null`
+  (400, `field`), test d'intégration vu rouge. Contrat § 2 mis à jour.
+- **S-A2 (api-mail)** — test d'architecture : `MailboxAgingThresholdsController` (et `MailboxTrackingStartController`)
+  ne portent pas `[MailboxNotRequired]` (le verdict opérateur, règle 14, est alors exigé par le middleware). Vu rouge.
+- **S-A3 (api-mail)** — deux premières écritures simultanées violent la clé `Id=1` (500) et la trace peut porter de
+  fausses anciennes valeurs : écriture en `INSERT … ON CONFLICT DO UPDATE`, lecture des anciennes valeurs verrouillée dans
+  la même transaction.
+- **S-W1 (weda2)** — PUT réussi mais relecture en échec : l'écran dit « non enregistrés ». Distinguer les deux échecs.
+- **S-W2 (weda2)** — en mode sélection, la pastille d'initiales revient même si « Affectation » est masquée : appliquer la
+  préférence.
+- **S-W3 (weda2)** — aucun test de changement d'heure (`Math.round` → `Math.floor` survit) : ajouter le cas
+  2026-03-28 10 h → 2026-03-30 10 h = J+2 (consigne `fuseau-fige-sous-vmthreads`). Même cas côté mobile.
+- **S-W4 (weda2)** — `RingSettingsService` (état de boîte) absent de `MSS_RESETTABLE_STORES` : les seuils de la boîte A
+  s'appliquent à la boîte B jusqu'à la relecture. `reset()` + inscription.
+- **S-W5 (weda2)** — légende `track chip.text` → `track $index` (clé dupliquée possible).
+- **S-M1 (mobile)** — bascules de la légende actives avant la lecture des réglages (appui perdu en silence) et route
+  `/treatment-ring-legend` sans `authGuard` / `mailboxGuard` : conditionner aux réglages chargés, gardes comme les routes
+  voisines.
+- **S-M2 (mobile)** — la légende cite les défauts comme seuils de la boîte quand ils ne sont pas lus : le dire.
+- **S-M3 (mobile)** — un champ de seuil vidé réaffiche « 0 » pendant la saisie : garder la saisie brute, convertir à la
+  validation.
+- **S-M4 (mobile)** — test « les champs reprennent les seuils relus » non discriminant : le serveur simulé doit rendre
+  une valeur différente de la saisie.
+- **S-L1 (les deux clients)** — les pastilles d'exemple de la légende (« J+4 », « J+15 ») sont fixes et peuvent contredire
+  des seuils modifiés : les dériver des seuils en vigueur de la boîte.
+
+#### Arbitrage humain
+
+- **A1** — en **icône classique**, la préférence « Affectation » doit-elle aussi masquer la pastille d'initiales de la
+  ligne (et « Attente » ses mentions) ? La US parle des préférences de l'anneau. Recommandation : non — la personne qui
+  choisit l'icône classique garde les mentions écrites de la ligne.
+
+Notes sans suite : réglages d'affichage rangés par personne dans la base de la boîte, comme tous les réglages de la
+personne (N6 mobile) ; client-blazor non bumpé, un enregistrement depuis Blazor remettrait `RingDisplay` aux défauts
+(hors task, N2 api) ; refus d'un seuil non entier par la liaison ASP.NET, sans `field` (N1 api) ; horloge non réactive à
+minuit (calcul à l'affichage, S5 weda2) ; « Ouvert depuis » dans l'`<ol>` des étapes (forme existante, N3 weda2).
