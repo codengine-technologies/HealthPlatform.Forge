@@ -863,6 +863,26 @@ client-mobile inchangés. Relecteur indépendant, diff de la reprise lu en premi
 
 - Couleurs littérales `#475569` de `mail-ring-panel.component.scss` : relève de l'arbitrage A2 déjà ouvert (jetons `--ds-*`).
 
+### Passage 5 (revue anticipée, après la reprise 3) — APPROVED
+
+**Approved at** : dtos-mss `6f00908`, api-mail `3ad2b65b`, client-mobile `06fb9b5`, client-angular arbre de travail
+(après la reprise 3).
+
+- Relecteur indépendant, diff de la reprise 3 lu en premier : rien de cassé. `requestedSidePanel` n'a qu'un écrivain
+  (`openPendingAck`) et un lecteur (le détail). B5 corrigé : la demande n'est consommée qu'une fois son message affiché et
+  son contenu servi ou en échec, après la remise à zéro du panneau ; le test joue le vrai enchaînement. S7, S8, S9 corrigés.
+- 4a / 4b / 4c : inchangés depuis le passage 4 (✅).
+
+#### Suggestions non bloquantes (recopiées dans la PR)
+
+- **N4 — weda2 — demande en suspens** : si le médecin quitte le message de l'avis avant son chargement, la demande reste
+  attachée à ce message et ouvre sa section « Traitement » à la visite suivante. Correctif possible : la vider dès qu'un
+  autre message est affiché.
+- **N5 — weda2 — ordre d'effets implicite** : le correctif B5 suppose que l'effet de chargement (qui remet
+  `contentLoadFailed` à faux) est déclaré avant celui de la demande ; un échec lié à la clé du message rendrait l'ordre
+  indifférent.
+- **N6 — e2e weda2 — `openSidePanelSection`** (antérieure à la task) ne regarde le rail qu'une fois.
+
 ## PRs
 
 - `dtos-mss` : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/75 — `awaiting-human-merge`
@@ -891,13 +911,13 @@ client-mobile inchangés. Relecteur indépendant, diff de la reprise lu en premi
 |---|---|---|---|---|---|---|
 | /start | ok | 46 s | — | — | — | — |
 | /develop | ok | — | 9 (1 min 52 s) | 28 (25 min 44 s) | — | dtos-mss 1B/0T, api-mail 4B/12T, client-mobile 0B/2T, client-angular 4B/14T, reprise 3 (B5, S7, S8, S9); no start marker |
-| /review-code | changes | 8 min 24 s | — | — | — | reprise 3 (B5 : avis biologie en lecture étroite) |
+| /review-code | ok | 1 min 50 s | — | — | — | — |
 | /sonar | ok | 15 min 44 s | 1 (1 min 03 s) | 5 (10 min 39 s) | 2 (1 min 07 s) | 1 itération(s), api-mail 1B/5T, 0 issue new code, QG OK, new_coverage 96.1, aucun commit |
 | /lint-angular | ok | 2 min 25 s | — | — | — | — |
 | /lint-mobile | ok | 16 s | — | — | — | 0 erreur |
 | /e2e | ok | 30 min 19 s | — | — | — | e2e ×5 (59 min 15 s), mobile 84 + angular 107 verts, parité verte |
 | /review | ok | 1 min 36 s | 1 (2.7 s) | — | — | dtos-mss 1B/0T, PRs dtos #75, api-mail #382, mobile #136 |
 | /tech-writer | ok | 3 min 58 s | — | — | — | — |
-| **Total cycle** | | **1 h 03 min** | **11 (2 min 58 s)** | **33 (36 min 23 s)** | **2 (1 min 07 s)** | |
+| **Total cycle** | | **56 min 57 s** | **11 (2 min 58 s)** | **33 (36 min 23 s)** | **2 (1 min 07 s)** | |
 
 Autres commandes mesurées : lint ×3 (40 s), nuget-wait ×1 (15 s), restore ×1 (4.2 s)
