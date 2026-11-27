@@ -11304,3 +11304,6 @@
 {"ts":"2026-11-27T18:33:30+01:00","run_id":"-","type":"step","task":"task-497","step":"review-code","status":"ok","note":"","iterations":null,"duration_ms":110660}
 {"ts":"2026-11-27T18:33:46+01:00","run_id":"-","type":"step_start","task":"task-497","step":"sonar"}
 {"ts":"2026-11-27T18:33:56+01:00","run_id":"-","type":"step","task":"task-497","step":"sonar","status":"skipped","note":"aucun fichier analysé par Sonar depuis bbb6d978 (scenarios.yml seul)","iterations":null,"duration_ms":9216}
+{"ts":"2026-11-27T18:34:05+01:00","run_id":"-","type":"step_start","task":"task-497","step":"lint-angular"}
+{"ts":"2026-11-27T18:34:18+01:00","run_id":"-","type":"cmd","task":"task-497","step":"lint-angular","repo":"client-angular","kind":"lint","label":"","cwd":"Client/Angular/front","cmd":"powershell.exe -NoProfile -Command Set-Location 'D:\\TechWatch\\HealthPlatform\\Client\\Angular\\front'; npx nx run-many -t lint --projects=tag:scope:mss --skipNxCache --output-style=static 2>&1 | Out-File -Encoding utf8 'C:/Users/pasca/AppData/Local/Temp/claude/0206db1786f2c114/672d1a89-11e7-47ad-ad69-1a465fb69bb7/scratchpad/r2/lint-ng.log'","duration_ms":11619,"exit_code":0}
+{"ts":"2026-11-27T18:34:25+01:00","run_id":"-","type":"step","task":"task-497","step":"lint-angular","status":"ok","note":"","iterations":1,"duration_ms":19674}
