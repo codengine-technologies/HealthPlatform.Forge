@@ -567,14 +567,17 @@ Analysé à api-mail `bbb6d978` (2026-11-27, SonarQube 9.9.8, projet `healthplat
 
 ## E2E log
 
+Rejoué après les reprises 2 et 3 (bloc de l'anneau dans la section « Traitement » du panneau weda2), sur le code approuvé
+au passage 5.
+
 | Voie | Déclencheur | Jouée | Résultat | Durée |
 |---|---|---|---|---|
-| mobile (`npm run e2e:headless`) | api-mail, client-mobile, dtos-mss touchés | oui (code 06fb9b5) | **84 verts**, 0 flaky, 0 rouge, parité verte | 14 min |
-| angular (`npm run e2e:mss`) | api-mail, client-angular, dtos-mss touchés | oui (arbre de travail final) | **107 verts**, 0 flaky, 0 rouge, parité verte | ~15 min |
+| mobile (`npm run e2e:headless`) | api-mail (catalogue `3ad2b65b`), client-mobile, dtos-mss touchés | oui (client-mobile `06fb9b5`) | **84 verts**, 0 flaky, 0 rouge, parité verte | ~15 min |
+| angular (`npm run e2e:mss`) | api-mail, client-angular, dtos-mss touchés | oui (arbre de travail final) | **107 verts**, 0 flaky, 0 rouge, parité verte | ~20 min |
 
-- Démontage vérifié : ports 5052 / 8100 / 4200 / 3993 / 3465 / 3143 / 47399 libres, aucun conteneur e2e résiduel.
-- Écrans modifiés sans spec e2e modifié : aucun (les deux suites portent les parcours RING, SETTINGS-005 et les
-  versions montées).
+- Démontage vérifié : ports 5052 / 8100 / 4200 / 47399 libres, aucun conteneur e2e résiduel.
+- Écrans modifiés sans spec e2e modifié : aucun (DETAIL-004, BIO-001/003/007, RING-001/002 ciblent la section
+  « Traitement »).
 - Porte (`mss.mail.e2e.dll gate`, catalogue de la branche api-mail) : code 0.
 
 **E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
@@ -922,9 +925,9 @@ client-mobile inchangés. Relecteur indépendant, diff de la reprise lu en premi
 | /sonar | skipped | 9.2 s | 1 (1 min 03 s) | 5 (10 min 39 s) | 2 (1 min 07 s) | api-mail 1B/5T, aucun fichier analysé par Sonar depuis bbb6d978 (scenarios.yml seul) |
 | /lint-angular | ok | 19 s | — | — | — | 1 itération(s) |
 | /lint-mobile | skipped | 6.7 s | — | — | — | client-mobile inchangé depuis 06fb9b5 (déjà linté) |
-| /e2e | ok | 30 min 19 s | — | — | — | e2e ×5 (59 min 15 s), mobile 84 + angular 107 verts, parité verte |
+| /e2e | ok | 28 min 51 s | — | — | — | e2e ×8 (1 h 27 min) |
 | /review | ok | 1 min 36 s | 1 (2.7 s) | — | — | dtos-mss 1B/0T, PRs dtos #75, api-mail #382, mobile #136 |
 | /tech-writer | ok | 3 min 58 s | — | — | — | — |
-| **Total cycle** | | **39 min 07 s** | **11 (2 min 58 s)** | **33 (36 min 23 s)** | **2 (1 min 07 s)** | |
+| **Total cycle** | | **37 min 40 s** | **11 (2 min 58 s)** | **33 (36 min 23 s)** | **2 (1 min 07 s)** | |
 
 Autres commandes mesurées : lint ×4 (52 s), nuget-wait ×1 (15 s), restore ×1 (4.2 s)
