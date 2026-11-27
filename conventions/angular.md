@@ -953,3 +953,30 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   sur « À traiter » … rien à traiter » : rouges sur le code de task-492, verts après.
 - **Origine** : retouche de task-492 (2026-11-22, constat de l'humain en recette)
 - **Occurrences** : 1
+
+### drapeaux-serveur-combinables — Deux drapeaux d'état que le serveur peut servir ensemble se testent ensemble
+- **Règle** : convention projet (défaut fonctionnel, invisible au lint)
+- **Repos** : les deux
+- **Piège** : task-497, l'anneau mobile testait `handling.isHandled` avant `handling.isToHandle`. Le serveur sert
+  `{ isToHandle: true, isHandled: true }` quand un compte rendu à acquitter garde le message « à traiter » après un
+  « Traité » (analyse tardive, action posée après « Résolu ») : l'anneau restait fermé sur un message à traiter. weda2,
+  qui testait l'autre drapeau d'abord, était juste.
+- **Consigne** : avant de brancher sur un drapeau du contrat, lire la règle serveur qui le calcule (`MailHandlingRule`
+  pour « traité / à traiter ») et écrire le test de la combinaison des deux drapeaux à vrai. Ne pas déduire côté client
+  ce que le contrat sert déjà (ex. `isTracked` d'un document, plutôt qu'une heuristique sur les compteurs).
+- **Preuve** : `treatment-ring.util.spec.ts` (mobile), cas « à traiter et traité » : rouge sur le code d'avant la reprise.
+- **Origine** : task-497, revue anticipée passage 1 (B1, S2)
+- **Occurrences** : 1
+
+### page-hote-ne-renvoie-pas-sa-copie — Une page hôte ne renvoie jamais au composant sa copie périmée d'un objet
+- **Règle** : convention projet (défaut fonctionnel, invisible au lint)
+- **Repos** : les deux
+- **Piège** : task-497, la page de détail mobile fusionnait le patch d'un évènement en direct dans **sa** copie du
+  message, jamais mise à jour par le traitement, l'attribution ni la lecture faits dans le composant, et la renvoyait
+  au composant : le détail revenait à l'ancien « traité », à l'ancien « À traiter par » et à « non lu ».
+- **Consigne** : un évènement qui modifie un objet tenu par un composant se fusionne **dans ce composant**, sur son
+  état courant ; la page hôte se limite à recharger ce que le composant ne tient pas (le contenu). Même règle pour tout
+  nouvel abonnement d'une page à un flux en direct.
+- **Preuve** : `mail-detail.ring.spec.ts` et `mail-detail.page.spec.ts` (mobile) : mutations rouges de la reprise 1.
+- **Origine** : task-497, revue anticipée passage 1 (B3)
+- **Occurrences** : 1

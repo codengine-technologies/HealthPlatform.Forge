@@ -399,6 +399,41 @@ Branche extraite : `feature/nova-mss-weda-integration`. Aucune opération git. 5
 - api-mail `bbb6d978`, client-mobile (HEAD poussé), client-angular (arbre final) — `Tools/green/green.py`.
 - Next step : `/review task-497 --code`.
 
+### Reprise 1 après /review
+
+| Point | Défaut | Correctif | Test | Preuve rouge |
+|---|---|---|---|---|
+| B1 (mobile) | `isHandled` testé avant `isToHandle` : anneau fermé sur un message à traiter | « à traiter » ou compte rendu en attente prime sur « traité » | `treatment-ring.util.spec` (2 cas) | rouges sur le code d'avant (`closed` au lieu de `open`), puis mutation |
+| B2 (mobile) | le patch de `MailBiologyAckChanged` laissait la ligne « traitée » | `pendingBiologyAcksCount > 0` ouvre l'anneau quel que soit `handling` | `mail-list.ring.spec` + 2 cas util | rouges sur le code d'avant, puis mutation |
+| B2 (web) | même défaut ; le détail ne relisait la ligne qu'après « Résolu » | même règle ; `applyBiologyAckProgress` remet `isToHandle` sans effacer qui a traité ; `refreshRing` après chaque acquittement | util, état, détail | rouges sur le code d'avant (`closed`, `refreshRing` 0 fois), 6 mutations |
+| B3 (mobile) | la page renvoyait au détail sa copie périmée du message | la page relit seulement les documents ; le composant fusionne l'évènement sur son message courant | `mail-detail.page.spec`, `mail-detail.ring.spec` | mutations B3a à B3d |
+| B4 (web) | parcours de l'arbre et vue neuve à chaque rendu de chaque ligne | `MailStateService.ringFolderTypes` (computed), `mailRingRowMemo` par ligne (`core/utils/mail-ring-row.util.ts`) | même instance tant que rien ne change ; transition qui survit au rafraîchissement | rouges sur le code d'avant, 11 mutations (1 équivalente survit : `filled` hors comparaison, le libellé porte l'étape) |
+| S1 (web) | anneau à 4 segments sans comptes rendus : étapes du courrier | 4 étapes de la biologie | util et bloc du détail (4 tests) | rouges sur le code d'avant, 3 mutations |
+| S2 (mobile) | « Antérieur au suivi » déduit des compteurs | `isTracked` lu du document (ajouté au modèle) | util et détail | mutations S2a à S2c |
+| S3 (mobile) | sous-dossier d'Envoyés avec anneau | `ringFolderType`, type hérité du parent | util (6 cas), liste, détail | mutations S3a à S3c |
+| S6 (mobile) | « Masquer » cachait les boutons d'acquittement | entrée `dismissible`, à `false` dans le bloc de l'anneau | détail, panneau | mutations S6a, S6b |
+
+- Relecture « qu'est-ce que ça casse » :
+  - web : la première version de B2 ouvrait l'anneau quand `handling` est inconnu (ligne non synchronisée) et aurait
+    affiché « Non affecté » sans le savoir — garde remise, test et mutation rouge ; un double de `refreshRing` qui
+    répondait toujours « traité » rendu neutre ;
+  - mobile : `withBiologyAck` aurait passé « suivi » un compte rendu antérieur au suivi acquitté localement — corrigé
+    (`isTracked` à `false`), test.
+- Défaut voisin laissé ouvert (antérieur à la task, hors liste de la revue) : la page de détail mobile remplace encore le
+  message du détail par sa copie sur `mailUpdated$` (réponse partie) et `emailsEnriched$` ; le traitement, l'attribution
+  et l'avancement d'acquittement reçus depuis l'ouverture s'y perdent jusqu'au rechargement.
+- Prévention (règle d'or) : `conventions/angular.md`, entrées `drapeaux-serveur-combinables` et
+  `page-hote-ne-renvoie-pas-sa-copie`.
+- Validations :
+  - mobile : commit `06fb9b5`, poussé ; suite complète **1 933 / 1 933**, build OK, ESLint 0 erreur, CRLF OK ;
+  - web : 2 fichiers nouveaux (`core/utils/mail-ring-row.util.ts` + spec, liste TFS : **56 fichiers**), 9 modifiés ;
+    `nx test mss-lib` **2 160 / 2 160**, `nx test weda2` **2 683 / 2 683**, `nx build weda2` OK, ESLint 0 erreur ;
+  - api-mail, dtos-mss : non touchés.
+- e2e : aucun scénario existant ne change. Le cas B2 en direct (« Résolu », puis une action d'un autre poste) n'a pas de
+  parcours ; une étape de E2E-RING-002 (v2) le couvrirait — décision de catalogue laissée à la revue.
+- Vert marqué : client-mobile `06fb9b5`, client-angular (arbre final).
+- Next step : `/review task-497 --code`.
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -481,8 +516,8 @@ les tests unitaires de B2 en tiennent lieu dans cette reprise).
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 46 s | — | — | — | — |
-| /develop | ok | 2 h 44 min | 6 (1 min 11 s) | 23 (23 min 22 s) | — | dtos-mss 1B/0T, api-mail 4B/12T, client-mobile 0B/2T, client-angular 1B/9T |
+| /develop | ok | 22 min 31 s | 6 (1 min 11 s) | 23 (23 min 22 s) | — | dtos-mss 1B/0T, api-mail 4B/12T, client-mobile 0B/2T, client-angular 1B/9T, reprise 1 |
 | /review-code | changes | 3 h 12 min | — | — | — | reprise 1 — B1 à B4 + S1 S2 S3 S6 (clients) |
-| **Total cycle** | | **5 h 58 min** | **6 (1 min 11 s)** | **23 (23 min 22 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **3 h 36 min** | **6 (1 min 11 s)** | **23 (23 min 22 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (15 s), restore ×1 (4.2 s)
