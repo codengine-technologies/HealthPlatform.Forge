@@ -509,6 +509,29 @@ Suggestions sans suite dans cette reprise : collecte unique backend, test de com
 message du test SQL ; scénario e2e en direct à deux personnes avec une action après « Résolu » (il aurait attrapé B2 ;
 les tests unitaires de B2 en tiennent lieu dans cette reprise).
 
+### Passage 2 (revue anticipée) — APPROVED
+
+**Approved at** : dtos-mss `6f00908`, api-mail `bbb6d978`, client-mobile `06fb9b5`, client-angular arbre de travail
+(56 fichiers, après la reprise 1).
+
+- Backend : inchangé depuis le passage 1, APPROVED. `contract_impact.py check` : aucun impact pour les trois consommateurs.
+- Clients : relecteur indépendant, diff de la reprise lu en premier. Rien de cassé : même règle d'ouverture et même
+  ordre que `MailHandlingRule` dans les deux clients (Envoyés / Brouillons / Corbeille et sous-dossiers filtrés d'abord,
+  `handling` inconnu n'ouvre rien) ; mémoire de ligne web sans risque de vue périmée (aucun message modifié en place) ;
+  une seule relecture par acquittement, résiliée avec le composant.
+- B1, B2, B3, B4, S1, S2, S3, S6 : corrigés, tests qui échoueraient au retour du code d'avant.
+
+#### Suggestions non bloquantes (recopiées dans la PR)
+
+- **N1 — mobile — `mail-detail.page.ts` (`mailUpdated$`, `emailsEnriched$`)** : la page renvoie encore sa copie du
+  message au composant (défaut antérieur à la task, contraire à la consigne `page-hote-ne-renvoie-pas-sa-copie`) ; ne
+  fusionner que `reply` / `isAnswered` et les champs d'enrichissement, dans le composant.
+- **N2 — web — `mail-state.service.ts` (`refreshRing`)** : la relecture après un acquittement peut écraser `isRead` et
+  `assignment` par une réponse partie avant un geste plus récent, et pose `handling` sans passer par
+  `MailHandlingService.apply` (une ligne résolue ne sort pas d'une vue filtrée « À traiter » sans flux) ; n'adopter que
+  l'avancement d'acquittement et passer `handling` par le service, comme le mobile.
+- **N3 — cohérence** : le web pose `isToHandle` sur la ligne, le mobile s'en remet à la règle ; même affichage.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-497 --sync` — ne pas éditer à la main)*
@@ -517,7 +540,7 @@ les tests unitaires de B2 en tiennent lieu dans cette reprise).
 |---|---|---|---|---|---|---|
 | /start | ok | 46 s | — | — | — | — |
 | /develop | ok | 22 min 31 s | 6 (1 min 11 s) | 23 (23 min 22 s) | — | dtos-mss 1B/0T, api-mail 4B/12T, client-mobile 0B/2T, client-angular 1B/9T, reprise 1 |
-| /review-code | changes | 3 h 12 min | — | — | — | reprise 1 — B1 à B4 + S1 S2 S3 S6 (clients) |
-| **Total cycle** | | **3 h 36 min** | **6 (1 min 11 s)** | **23 (23 min 22 s)** | **0 (0.0 s)** | |
+| /review-code | ok | 4 min 22 s | — | — | — | passage 2 APPROVED |
+| **Total cycle** | | **27 min 40 s** | **6 (1 min 11 s)** | **23 (23 min 22 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (15 s), restore ×1 (4.2 s)
