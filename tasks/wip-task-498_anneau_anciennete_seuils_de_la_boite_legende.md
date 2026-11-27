@@ -168,9 +168,9 @@ Lecture du code au 2026-11-27 :
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 31 s | — | — | — | — |
-| /develop | ok | 43 min 21 s | 8 (1 min 16 s) | 40 (14 min 59 s) | — | dtos-mss 1B/0T, api-mail 4B/38T, client-mobile 2B/2T, client-angular 1B/0T |
+| /develop | ok | 20 min 31 s | 13 (1 min 55 s) | 59 (26 min 48 s) | — | dtos-mss 1B/0T, api-mail 7B/56T, client-mobile 3B/3T, client-angular 2B/0T, reprise 1 |
 | /review-code | changes | 9 min 47 s | — | — | — | reprise 1 |
-| **Total cycle** | | **53 min 40 s** | **8 (1 min 16 s)** | **40 (14 min 59 s)** | **0 (0.0 s)** | |
+| **Total cycle** | | **30 min 51 s** | **13 (1 min 55 s)** | **59 (26 min 48 s)** | **0 (0.0 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (11 s), restore ×1 (3.6 s)
 
@@ -701,6 +701,141 @@ Commit `refactor(mail): simplify pass (/simplify) — task-498` : `clockMinute()
 catégories du service lues dans `AGING_CATEGORIES`. Comportement inchangé. Specs ciblées 269/269 (`simplify.log`),
 lint propre. Écartés : styles carte/section de la légende recopiés de l'écran Paramètres (une extraction
 globale toucherait d'autres écrans) ; `calendarDaysAgo` de l'e2e (suite hors de `src`, sans import de l'app).
+
+
+### Reprise 1
+
+Validation de l'orchestrateur après la reprise :
+- **api-mail** `459e5769` (local) : build 0 erreur ; domain 388, infrastructure 749, application 4 397, api 1 398 verts ;
+  intégration 1 395 verts + **3 rouges « du jour »** (`FilterTodayEmails…`, `GetFolderTodayAsync…`,
+  `GetFolderNotSeenTodayAsync…`) : suite jouée à 00 h 25 heure locale (23 h 25 UTC), piège connu de la fenêtre de minuit
+  (corpus en heure locale, Dovecot compare `SINCE` en UTC) — rejoués après 00 h 05 UTC.
+- **client-mobile** `1f490eb` (poussé) : build OK, suite complète 2 094 verts.
+- **client-angular** (arbre) : `nx build weda2` OK, mss-lib 2 326 verts, weda2 2 684 verts.
+- Prévention B5 : `conventions/angular.md`, `spec-qui-lit-une-ligne-de-liste-cible-l-objet` (récidive, corollaire de
+  l'horloge injectée).
+
+#### api-mail
+
+##### Reprise 1 (revue anticipée : APPROVED côté api-mail, trois défauts S-A1 à S-A3)
+
+Commits locaux, non poussés, sur `feat/task-498-anneau-anciennete-seuils-de-la-boite` (après `61aadb25`, la fiche d'erreur régénérée par l'orchestrateur) :
+
+| SHA | Message |
+|---|---|
+| `fc077f80` | test(mailbox): les réglages de la boîte exigent le verdict de l'opérateur (S-A2) |
+| `459e5769` | fix(mailbox): seuils d'ancienneté — catégorie absente refusée, écritures simultanées sérialisées (S-A1, S-A3) |
+
+| Défaut | Correctif | Test | Preuve rouge |
+|---|---|---|---|
+| **S-A1** : une catégorie absente prenait la valeur par défaut, et un PUT partiel remettait les autres catégories aux défauts | Le PUT lit `MailboxAgingThresholdsRequest` (dans le fichier du contrôleur) : même JSON, catégories nullables, sans initialiseur. Une catégorie absente arrive `null` à la règle, qui la refuse : 400 problem+json, `field` = la première catégorie absente, « Les seuils … sont requis. », rien d'écrit. Le contrat dtos-mss ne change pas. | `FolderOperationsEndToEndTests.APartialBody_IsRefusedNamingTheFirstMissingCategory_AndNothingIsWritten` : PUT `{"biologyDays":…,"correspondenceDays":…}` après un réglage → 400, `field` = `criticalBiologyHours`, valeurs relues (GET et base) inchangées | **Code d'avant** : rouge (`r1-red-before.log`, statut 200 au lieu de 400). **Mutation R1** : `ToDto` remplace la catégorie absente par les défauts → rouge |
+| **S-A2** : aucun test ne gardait l'absence de `[MailboxNotRequired]` (verdict de l'opérateur, règle 14) | Test d'architecture, sur le modèle de `BuildInfoControllerTests` | `tests/mss.mail.api.tests/Controllers/V1/MailboxDataRoutesRequireTheOperatorVerdictTests.cs` : théorie sur `MailboxAgingThresholdsController` et `MailboxTrackingStartController`, attribut absent du contrôleur et de chaque action publique | **R2a** : attribut posé sur la classe `MailboxAgingThresholdsController` → rouge. **R2b** : attribut posé sur `PUT` de `MailboxTrackingStartController` → rouge |
+| **S-A3** : deux premières écritures simultanées violaient la clé `Id=1` (500), et la trace pouvait porter de fausses anciennes valeurs | `IMailboxAgingThresholdsRepository.ReplaceAsync` remplace `SetAsync` et rend les valeurs remplacées. Le tout dans **une transaction** : (1) `INSERT … VALUES (défauts) ON CONFLICT ("Id") DO NOTHING`, (2) `SELECT … FOR UPDATE` des valeurs remplacées, (3) écriture, (4) validation. Le service trace ces valeurs-là. | `FolderOperationsEndToEndTests.TwoFirstWritesAtTheSameTime_BothSucceed_TheLastWins_AndTheirTracesChain` : 8 tours de deux PUT parallèles (titulaire et délégataire). Tours pairs sur une boîte sans ligne, tours impairs sur une ligne existante. Deux 200 ; la dernière valeur gagne ; 16 traces dont les anciennes valeurs s'enchaînent (première = ce qui était en vigueur, seconde = valeur de la première). Unitaire `TheTrace_CarriesTheValuesTheWriteReplaced`. | **Code d'avant** : rouge, 500 réel (`r1-red-before.log`, violation de clé). **R3** (pose de la ligne retirée) : 500, aucune ligne à verrouiller. **R4** (`FOR UPDATE` retiré) : chaîne rompue, les deux écritures lisent la même ancienne valeur `1/2/10`. **R5** (anciennes valeurs relues hors verrou par le service) : rouge en unitaire et en intégration |
+
+Notes :
+- **Pourquoi `ON CONFLICT DO NOTHING` + `FOR UPDATE` plutôt qu'un seul `INSERT … ON CONFLICT DO UPDATE`** : sur une boîte sans ligne, un `FOR UPDATE` ne verrouille rien. Les deux écritures liraient « aucune ligne » et traceraient toutes deux les défauts en anciennes valeurs : la chaîne serait rompue. Poser d'abord la ligne aux défauts fait attendre la seconde sur la clé jusqu'à la validation de la première. Elle relit ensuite les valeurs écrites. L'écriture finale est un `UPDATE` sur la ligne verrouillée. La ligne par défaut n'est jamais visible seule, puisqu'elle reste dans la même transaction.
+- **Stabilité du test de concurrence** : 3 passages consécutifs verts sur le code corrigé. Sur le code d'avant et sous R4, il a rougi au premier essai : TestServer fait bien se chevaucher deux requêtes en `Task.WhenAll`, et les 8 tours multiplient les occasions.
+- **Catalogue d'erreurs** : la cause et l'action de `MAILBOX_AGING_THRESHOLDS_INVALID` couvrent désormais les seuils incomplets. `docs/codes-erreur.md` est régénéré (`MSS_WRITE_ERROR_CATALOG_DOC=1 … ErrorCatalogDocumentTests`) et commité avec le changement.
+- **Mutations restaurées depuis une copie, mtime rafraîchi** (script `mutate.py`, ids R1 à R5). Toutes ont compilé et rougi sur une assertion, ou sur le 500 visé pour R3.
+- **Tests verts après la reprise** : application 37/37 (seuils, catalogue d'erreurs) ; api.tests 38/38, puis 3/3 (catalogue, document d'erreurs, architecture) ; intégration 12/12 (les 9 tests de la task, plus 3 de migration). Build : 0 erreur, 0 avertissement. Pas de suite complète.
+- **Contrôles mécaniques 2b** sur le diff de la reprise : rien.
+- **`contract_impact.py check`** : api-mcp et client-mobile sans impact. client-angular reste en IMPACT sur `AuditActionType`, décodé par rang : c'est le miroir `audit.model.ts`, côté agent weda2.
+
+#### client-angular (weda2)
+
+##### Fichiers à commiter sur TFS (46 après la reprise 1 ; les 5 ajoutés sont dans la section « Reprise 1 »)
+
+Chemins relatifs à `Client/Angular/`.
+
+##### Modifiés (26)
+
+| Fichier | Raison |
+|---|---|
+| `front/libs/mss/src/core/models/user-settings.model.ts` | Modèles du contrat : `AgingThresholdsDto`, `MailboxAgingThresholdsDto`, `AgingCategory`, `RingDisplayPreferencesDto`, valeurs par défaut (règles 3 et 9), `ringDisplayOf` (préférences absentes ou incomplètes = défauts), `UserSettingsDto.ringDisplay`. |
+| `front/libs/mss/src/core/models/audit.model.ts` | **Adaptation de contrat** (`contract_impact.py`) : `AuditActionType.MailboxAgingThresholdsChanged = 77`, libellé « Seuils d'ancienneté de la boîte modifiés ». |
+| `front/libs/mss/src/core/models/audit.model.spec.ts` | **Adaptation de contrat** : ordinal 77 figé, libellé vérifié (vu rouge). |
+| `front/libs/mss/src/core/services/mss-api.service.ts` | `getMailboxAgingThresholds` / `saveMailboxAgingThresholds` (`GET|PUT api/v1/account/mailboxes/current/aging-thresholds`). |
+| `front/libs/mss/src/core/utils/mail-ring.util.ts` | Contexte de l'anneau : `display` (préférences). Initiales et gravité masquées via `shownRing` ; « Attente » masquée dans `mailRingChips`. L'état en clair reste complet. |
+| `front/libs/mss/src/core/utils/mail-ring.util.spec.ts` | Tests des préférences (affectation, gravité, attente, ⚠ atténué indépendant). |
+| `front/libs/mss/src/core/utils/mail-ring-row.util.ts` | La mémoire d'une ligne compare aussi les préférences (sinon un changement de préférence ne redessinait pas la ligne). |
+| `front/libs/mss/src/core/utils/mail-ring-row.util.spec.ts` | Test : la mémoire suit les préférences. |
+| `front/libs/mss/src/ui/mail-ring/mail-ring.component.ts` | Entrées `late` (« , en retard » après la nature dans le libellé lu et l'infobulle), `animated`, `highContrast` ; attributs `data-late`, `data-contrast`. |
+| `front/libs/mss/src/ui/mail-ring/mail-ring.component.html` | Classe `mss-mail-ring--contrast`. |
+| `front/libs/mss/src/ui/mail-ring/mail-ring.component.scss` | Contraste renforcé : teintes plus sombres (rapports mesurés en commentaire), traits plus épais. |
+| `front/libs/mss/src/ui/mail-ring/mail-ring.component.spec.ts` | Tests retard / animations / contraste. |
+| `front/libs/mss/src/features/mail/components/mail-header/mail-header.component.ts` | Ancienneté de la ligne (`ringAging`, `ageChip`), préférences passées au contexte et à l'anneau ; `hasRingMentions` sorti de `collapsesTypeLine` (complexité 21 > 20 avec le compteur, convention `complexity`). |
+| `front/libs/mss/src/features/mail/components/mail-header/mail-header.component.html` | Mention « J+N » / « H+N » dans la rangée des mentions (`data-testid="mail-row-age-{uid}"`, `aria-label` = phrase entière) ; entrées `late`, `animated`, `highContrast` de l'anneau. |
+| `front/libs/mss/src/features/mail/components/mail-header/mail-header.component.scss` | `.mail-ring-chip--late` (fond plein, 14,6:1) ; s'efface au survol avec les autres mentions. |
+| `front/libs/mss/src/features/mail/components/mail-header/mail-header.light-row.spec.ts` | Horloge figée (`MSS_CLOCK`) le jour de la date d'envoi du jeu : sinon un compteur qui vieillit change la ligne (convention `spec-qui-lit-une-ligne-de-liste…`). |
+| `front/libs/mss/src/features/mail/components/mail-header/mail-header.ring.spec.ts` | Même horloge figée (l'état en clair attendu ne dépend plus du calendrier). |
+| `front/libs/mss/src/features/mail/components/mail-ring-panel/mail-ring-panel.component.ts` | Ancienneté par unité (message : catégorie du message ; compte rendu : catégorie de sa gravité, date du message), préférences au contexte et aux anneaux. |
+| `front/libs/mss/src/features/mail/components/mail-ring-panel/mail-ring-panel.component.html` | Ligne « Ouvert depuis N jours. » (`data-testid="mail-ring-aging"`, `data-late`) ; entrées de l'anneau. |
+| `front/libs/mss/src/features/mail/components/mail-ring-panel/mail-ring-panel.component.scss` | Style de la ligne d'ancienneté (gras au dernier seuil). |
+| `front/libs/mss/src/features/mail/mss-mail.component.ts` | Seuils lus une fois avec les réglages ; préférences posées depuis les réglages lus. |
+| `front/libs/mss/src/features/settings/mss-settings.component.ts` | Section « Anneau de traitement » (6 préférences, enregistrées par la sauvegarde des réglages existante) ; seuils (saisie, validation locale, enregistrement différé 300 ms, refus serveur sous la catégorie, saisie redevenue invalide jamais envoyée). |
+| `front/libs/mss/src/features/settings/mss-settings.component.html` | Section « Anneau de traitement » après « Lecture » (toggles + légende) ; seuils dans « Boîte aux lettres » après la date de suivi (`settings-aging-{catégorie}-{first|second|late}`, `settings-aging-{catégorie}-error`). |
+| `front/libs/mss/src/features/settings/mss-settings.component.scss` | Grille des seuils. |
+| `front/e2e/mss-e2e/support/e2e-backend.ts` | Option `arrivedDaysAgo` → `--arrived-days-ago` ; `E2eMail.arrivalDate` ; `OtherDevice.saveTrackingStart`, `agingThresholds`, `saveAgingThresholds` ; `DEFAULT_E2E_AGING_THRESHOLDS`. |
+| `front/e2e/mss-e2e/specs/functional.e2e.ts` | E2E-RING-004 v1 et E2E-SETTINGS-006 v1 (+ aides `useDefaultRingDisplay`, `trackTenDaysBack`, `restoreRingState`, `calendarDaysSince`) ; et, à la demande du coordinateur, formatage prettier de 4 lignes de RING-005 (task-500, recette), sans changement de logique. |
+
+##### Créés (15)
+
+| Fichier | Raison |
+|---|---|
+| `front/libs/mss/src/core/utils/mail-aging.util.ts` | Calcul pur de l'ancienneté (§ 3), horloge passée en paramètre ; `lateRingLabel` ; validation locale des seuils ; lecture du refus serveur (`agingThresholdsRefusal`). |
+| `front/libs/mss/src/core/utils/mail-aging.util.spec.ts` | Tests du calcul à horloge fixée (DoD), de la validation et du refus. |
+| `front/libs/mss/src/core/utils/mail-ring-display.util.ts` | `shownRing` : préférences appliquées à la vue (initiales, gravité). Fichier à part pour garder `mail-ring.util.ts` sous 500 lignes (avertissement `max-lines`). |
+| `front/libs/mss/src/core/services/ring-settings.service.ts` | Service racine : seuils de la boîte (lus, relus après PUT réussi, lecture dépassée ignorée, échec = défauts) et préférences de la personne, partagés liste / détail / Paramètres. |
+| `front/libs/mss/src/core/services/ring-settings.service.spec.ts` | Tests du service. |
+| `front/libs/mss/src/core/services/mss-api.aging-thresholds.service.spec.ts` | Route et corps prouvés jusqu'à la requête HTTP. |
+| `front/libs/mss/src/core/tokens/mss-clock.token.ts` | `MSS_CLOCK` : horloge injectée (tests à horloge figée). |
+| `front/libs/mss/src/features/mail/components/mail-header/mail-header.aging.spec.ts` | Tests composant de la ligne : J+N, H+N, fond plein, « en retard », chaque préférence. |
+| `front/libs/mss/src/features/mail/components/mail-ring-panel/mail-ring-panel.aging.spec.ts` | Tests du bloc du détail : « Ouvert depuis… », retard, préférences. |
+| `front/libs/mss/src/features/mail/mss-mail.component.ring-settings.spec.ts` | Seuils lus avec les réglages, préférences posées. |
+| `front/libs/mss/src/features/settings/mss-settings.ring.spec.ts` | Tests des Paramètres (section, préférences, seuils, refus). |
+| `front/libs/mss/src/features/settings/ring-legend/ring-legend.component.ts` | Légende (règle 10) : chaque état dessiné par `mss-mail-ring` + `mailRingView` réels sur des messages d'exemple ; seuils cités ; préférences suivies. |
+| `front/libs/mss/src/features/settings/ring-legend/ring-legend.component.html` | Gabarit (`ring-legend-entry-{clé}`, `ring-legend-thresholds-{catégorie}`, `ring-legend-age`). |
+| `front/libs/mss/src/features/settings/ring-legend/ring-legend.component.scss` | Styles de la légende. |
+| `front/libs/mss/src/features/settings/ring-legend/ring-legend.component.spec.ts` | Tests de la légende. |
+
+#### client-mobile
+
+##### Reprise 1 (revue anticipée, CHANGES REQUESTED)
+
+Commits : `6122e22` fix(settings) (B1, S-M1 à S-M4, S-L1, S-W3), `1f490eb` test(mobile) (B2). Non poussés.
+
+Preuves : specs écrits avant le correctif. D'abord rouges à la compilation (`r1-red.log` : `routes` non exporté,
+`ensureLoaded` inexistant). Puis `routes` exporté et `ensureLoaded` posé vide, sans comportement : 12 rouges à
+l'exécution (`r1-red2.log`). Après le correctif, vert 95/95 (`r1-green.log`). Quatre tests passaient déjà sur le
+code d'avant ; ils ont été prouvés par mutation (`r1-mut.log`, 4 FAILED, restauré). Passe ciblée finale **1098/1098**
+(`r1-final.log`). Lint des fichiers touchés : 0. `tsc` e2e : 0 (`r1-e2e-tsc.log`).
+
+| Constat | Correctif | Test | Preuve rouge |
+|---|---|---|---|
+| B1 — échec de lecture figé pour la session | `ensureLoaded()` (lit si non lus), appelé à l'entrée des Paramètres (`ionViewWillEnter`) et de la légende | service « échec puis entrée → relu » ; Paramètres « l'entrée demande la lecture » ; légende « la page demande la lecture » | `r1-red2.log` (3 rouges) |
+| B1 — relecture en échec efface les valeurs connues | `load()` ne pose que ce qu'il a lu ; `save()` pose la réponse du PUT avant de relire | « relecture en échec garde la dernière valeur » ; « PUT accepté puis relecture en échec : valeur du PUT gardée » | `r1-red2.log` (2 rouges) |
+| B1 — pas de relecture inutile | `ensureLoaded` ne relit pas des seuils lus | « déjà lus ne sont pas relus » | mutation (garde `!loaded()` retirée) → rouge |
+| S-M1 — bascules actives avant la lecture | `[disabled]="!settingsLoaded()"` | « bascules inactives tant que les réglages ne sont pas lus » | `r1-red2.log` |
+| S-M1 — route sans gardes | `canActivate: [authGuard, mailboxGuard]` (comme `pending-emails`, `conversation`) | `app-routing.module.spec.ts` | `r1-red2.log` |
+| S-M2 — défauts cités comme ceux de la boîte | mention `ring-legend-thresholds-unread` | « seuils non lus : la légende le dit » | `r1-red2.log` + mutation (`@if (false)`) → rouge |
+| S-M3 — champ vidé réaffiche 0 | saisie brute `agingInput` (texte), convertie par `agingDraft` (vide = NaN, refusé) | « un champ vidé reste vide, et la validation le refuse » | `r1-red2.log` |
+| S-M4 — test non discriminant | le serveur simulé relit 21 pour une saisie de 20 | « les champs reprennent les seuils relus » | mutation `linkedSignal` → `signal` pris une fois → rouge |
+| S-W3 — changement d'heure | (code déjà juste, `Math.round`) | « 28/03 10 h → 30/03 10 h = J+2 » | mutation `Math.round` → `Math.floor` → rouge (poste en Europe/Paris) |
+| S-L1 — pastilles d'exemple figées | `agingSamples()` : calcul réel (`mailRingAging`) au 1er et au dernier seuil du courrier, au 1er seuil critique, horloge `CLOCK` | « aux défauts : J+3, J+14, H+4 » ; « courrier 4/9/20, critique 6/30/80 : J+4, J+20, H+6 » ; « 1er seuil critique 96 h : J+4 » | `r1-red2.log` (3 rouges) |
+| B2 — e2e vert qui ment | SETTINGS-006 : seuils distincts posés par l'API (critique 6/30/80, biologie 2/4/9, courrier 4/9/20) avant les Paramètres et la légende ; les 9 champs, la phrase et les pastilles (J+4, J+20, H+6) sont affirmés ; défauts remis dans le `finally`. RING-004 : champs relus 2/5/8 après rechargement | e2e non joués (banc partagé) | **mutation à jouer à `/e2e`** : dans `treatment-ring-legend.page.html`, remplacer `{{ thresholdsSummary() }}` par la phrase des défauts → SETTINGS-006 rouge (« la légende cite les seuils de la boîte ») |
+
+Horloge figée partout où une spec rend la ligne, le détail ou la légende avec une date fixe : `mail-detail.ring.spec.ts`,
+`mail-header.aging.spec.ts` et `treatment-ring-legend.page.spec.ts` l'étaient ou le sont maintenant ;
+`mail-list.component.spec.ts` (envois de 2026-01 et 2026-03) a désormais `CLOCK` figé. Recherche faite sur toutes les
+specs qui rendent `MailHeaderComponent`, `MailListComponent`, `MailDetailComponent` ou la page de légende avec une date
+littérale : il n'en reste aucune sans horloge figée.
+
+Non fait, et pourquoi :
+- **Relecture au retour en ligne** : `MailboxSessionService` expose `offline()`, mais beaucoup de specs le remplacent
+  par des doubles sans ce signal (`{ currentEmail }`). Un effet de plus dans le service racine les ferait tomber sans
+  qu'on le voie en specs ciblées. La relecture à l'entrée des deux écrans suffit pour B1.
+- **B4 (weda2)** : déjà vrai sur mobile. Sans lecture réussie, aucun champ n'est proposé (`settings-aging-unavailable`),
+  donc aucun PUT n'est possible.
 
 ## Code Review Summary
 

@@ -831,8 +831,15 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   `data-testid`), jamais le texte complet de la ligne. Une date d'envoi de jeu de test est relative à l'horloge (ou
   l'horloge est figée), jamais un littéral qui vieillit.
 - **Preuve** : les 9 specs, rouges le 2026-11-17 sur la ligne entière, verts en ciblant `.mail-subject-text`.
-- **Origine** : task-456 (reprise 1, weda2)
-- **Occurrences** : 1
+- **Récidive (task-498, revue anticipée B5)** : l'anneau calcule désormais l'ancienneté à partir de l'horloge
+  (`MSS_CLOCK` weda2, `CLOCK` mobile). Deux specs existants (`mail-ring-panel`, `mail-detail.ring`) montaient le
+  composant avec `arrivalDate: '2026-11-26…'` sans figer l'horloge : verts le jour de l'écriture, rouges à partir du
+  2026-12-10 (la boucle passe « en retard » et le libellé change). **Corollaire** : quand un composant se met à lire
+  l'horloge, chercher (`grep` sur son sélecteur et ses hôtes) **tous** les specs qui le rendent, y compris les specs
+  d'autres composants qui l'embarquent, et figer l'horloge dans chacun ; le prouver en avançant l'horloge de
+  quelques semaines dans un essai jetable.
+- **Origine** : task-456 (reprise 1, weda2) ; task-498 (revue anticipée, weda2)
+- **Occurrences** : 2
 
 ### liste-multi-dossiers-cle-dossier-uid — Une liste qui mêle les dossiers se fusionne, se suit et se dédoublonne par (dossier, UID)
 - **Règle** : convention projet (défaut latent, invisible tant qu'une liste ne montre qu'un dossier)
