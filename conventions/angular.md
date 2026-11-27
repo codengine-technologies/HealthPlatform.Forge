@@ -980,3 +980,19 @@ par lint sur du code frais est un échec de lecture de ce fichier.
 - **Preuve** : `mail-detail.ring.spec.ts` et `mail-detail.page.spec.ts` (mobile) : mutations rouges de la reprise 1.
 - **Origine** : task-497, revue anticipée passage 1 (B3)
 - **Occurrences** : 1
+
+### bloc-en-tete-de-lecture — Un nouveau bloc d'action ne s'ajoute pas en tête de la lecture d'un message (weda2)
+- **Règle** : convention projet (décision d'ergonomie, invisible au lint)
+- **Repos** : client-angular
+- **Piège** : task-497 a posé le bloc de l'anneau (anneau, étapes, boutons d'acquittement) en tête de la zone de
+  lecture, et en a retiré la section d'acquittement du panneau « Actions & dossier ». La revue de design avait jugé le
+  bloc seul ; l'humain, sur la lecture assemblée, l'a trouvé trop lourd : le contenu du message descendait d'autant.
+- **Consigne** : sur weda2, ce qui sert à **agir** sur un message (acquitter, traiter, rattacher, étiqueter) va dans
+  une section du panneau « Actions & dossier » (`SidePanelSectionKey`), avec son icône de rail, sa pastille quand une
+  action est attendue et, au besoin, une puce de l'en-tête qui ouvre la section. La zone de lecture ne porte que le
+  contenu et les alertes sur le message lui-même. Un bloc en tête de lecture demande une décision humaine écrite dans
+  la task.
+- **Preuve** : `mail-detail.side-panel.spec.ts` (section « Traitement » en premier, bloc absent de la lecture) et
+  E2E-DETAIL-004 v2.
+- **Origine** : task-497, décision humaine au HAG (reprise 2)
+- **Occurrences** : 1

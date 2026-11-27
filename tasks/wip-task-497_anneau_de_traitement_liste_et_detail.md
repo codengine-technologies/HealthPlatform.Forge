@@ -440,6 +440,38 @@ Branche extraite : `feature/nova-mss-weda-integration`. Aucune opération git. 5
 - Vert marqué : client-mobile `06fb9b5`, client-angular (arbre final).
 - Next step : `/review task-497 --code`.
 
+### Reprise 2 après décision humaine (HAG, 2026-11-27)
+
+Décision : sur weda2, le bloc de l'anneau quitte la tête du message pour la section « Traitement » du panneau
+« Actions & dossier », en premier (Objectif, règle 9). Le mobile ne change pas.
+
+| Point | Changement | Test | Preuve rouge |
+|---|---|---|---|
+| H1 — section | `SidePanelSectionKey` `ring` (« Traitement », icône `check-circle`), première section du panneau ; `mss-mail-ring-panel` projeté dans `[mssPanelSection=ring]`, retiré de `.mail-detail-reading` | `mail-side-panel.component.spec` (section en premier, rail), `mail-detail.side-panel.spec` (section en premier, bloc hors lecture), `mail-detail.ring.spec` (rendu réel ciblé dans la section) | M1 (section jamais poussée) : 5 rouges ; M6 (bloc dans la lecture) : 14 rouges ; M7 (section introuvable) : 4 rouges |
+| H1 — présence | `hasRingSection` : un compte rendu signalé, ou l'anneau du message (`mailRingView`, même règle que les unités du bloc) ; aucune section dans Envoyés / Brouillons / Corbeille sans compte rendu, ni tant que l'état de traitement est inconnu | `mail-detail.side-panel.spec` (Envoyés ; courrier dont l'état arrive) | M3 (Envoyés reçoit une section) : 2 rouges |
+| H1 — signal | pastille du rail (`pending`) et puce « Acquittement à traiter » (rétablies) tant qu'un compte rendu reste à acquitter ; la puce ouvre la section | `mail-detail.side-panel.spec` (pastille, puce, compte rendu résolu) | M2 (pastille jamais posée) : 1 rouge ; M8 (puce absente) : 2 rouges |
+| H1 — avis | l'avis « Ce compte rendu de biologie reste à acquitter » ouvre le message sur la section (`requestedSidePanel = 'ring'`, rétabli) | `mss-mail.component.handling.spec`, `mail-detail.side-panel.spec` (panneau en rail redéplié) | M4 (l'avis ne demande rien) : 1 rouge ; M5 (le détail ignore la demande) : 1 rouge |
+| H1 — largeur | bloc à la largeur du panneau (320 px) : anneau 56 px à côté des étapes, sans défilement propre (le corps du panneau défile) | `mail-ring-panel.component.spec` (taille de l'anneau) | — (mise en page, jugée par E2E-DETAIL-004 : « Marquer comme résolu » à l'écran) |
+
+- Mutations : `scratchpad/r2/mutate.py`, huit mutations, chacune rouge sur l'assertion prévue, fichiers restaurés.
+- Parcours e2e (weda2) : E2E-DETAIL-004 v2 réécrit (icône « Traitement » et sa pastille au rail, puce, bloc absent de la
+  lecture, contenu en haut, la puce ouvre la section avec « Marquer comme résolu » à l'écran) ; aide `expectAckUnderRing`
+  ouvre la section « Traitement » et y cherche l'acquittement (BIO-001, BIO-003, BIO-007, RING-002) ; RING-001 ouvre la
+  section avant de lire le grand anneau. Catalogue : textes de BIO-001 v3, BIO-003 v2, BIO-007 v2 et DETAIL-004 v2 corrigés
+  pour weda2, **sans montée de version** (versions nées dans cette task, absentes de `develop` ; voie mobile inchangée).
+  Rejoués seuls sur le banc (`--serve-only` + `--grep`) : DETAIL-004, BIO-001, BIO-003, BIO-007, RING-001, RING-002
+  **6 / 6 verts**. Mutation e2e : bloc remis dans la lecture (`data-mutx`, recompilation prouvée dans le bundle servi
+  puis son absence après restauration) → DETAIL-004 et BIO-001 rouges sur « l'acquittement est dans la section
+  « Traitement » du panneau ». Les voies complètes restent à `/e2e`.
+- Validations : `nx test mss-lib` **2 164 / 2 164**, `nx test weda2` **2 683 / 2 683**, `nx build weda2` OK, ESLint 0 erreur
+  sur les fichiers touchés, stylelint OK, `tsc` e2e OK.
+- Prévention (règle d'or) : le défaut vient d'une revue de design qui jugeait le bloc seul, sans la lecture assemblée ;
+  consigne `bloc-en-tete-de-lecture` ajoutée dans `conventions/angular.md`.
+- Fichiers weda2 à commiter sur TFS (en plus des 56) : aucun nouveau fichier ; modifiés : `mail-side-panel.component.{ts,html,spec.ts}`,
+  `mail-detail.component.{ts,html,scss}` et ses specs, `mail-ring-panel.component.{ts,scss,spec.ts}`,
+  `mail-state.service.ts`, `mss-mail.component.ts`, `mss-mail.component.handling.spec.ts`, `e2e/mss-e2e/support/weda.ts`,
+  `e2e/mss-e2e/specs/functional.e2e.ts`.
+
 ## Sonar log
 
 Analysé à api-mail `bbb6d978` (2026-11-27, SonarQube 9.9.8, projet `healthplatform-api-mail`, période de nouveau code :
@@ -804,7 +836,7 @@ Après la validation finale, l'humain a demandé de déplacer le bloc de l'annea
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 46 s | — | — | — | — |
-| /develop | ok | 22 min 31 s | 6 (1 min 11 s) | 23 (23 min 22 s) | — | dtos-mss 1B/0T, api-mail 4B/12T, client-mobile 0B/2T, client-angular 1B/9T, reprise 1 |
+| /develop | ok | 28 min 11 s | 8 (1 min 39 s) | 26 (24 min 52 s) | — | dtos-mss 1B/0T, api-mail 4B/12T, client-mobile 0B/2T, client-angular 3B/12T, reprise 2 (décision humaine : bloc de l'anneau dans le panneau latéral weda2) |
 | /review-code | ok | 4 min 22 s | — | — | — | passage 2 APPROVED |
 | /sonar | ok | 15 min 44 s | 1 (1 min 03 s) | 5 (10 min 39 s) | 2 (1 min 07 s) | 1 itération(s), api-mail 1B/5T, 0 issue new code, QG OK, new_coverage 96.1, aucun commit |
 | /lint-angular | ok | 2 min 25 s | — | — | — | — |
@@ -812,6 +844,6 @@ Après la validation finale, l'humain a demandé de déplacer le bloc de l'annea
 | /e2e | ok | 30 min 19 s | — | — | — | e2e ×5 (59 min 15 s), mobile 84 + angular 107 verts, parité verte |
 | /review | ok | 1 min 36 s | 1 (2.7 s) | — | — | dtos-mss 1B/0T, PRs dtos #75, api-mail #382, mobile #136 |
 | /tech-writer | ok | 3 min 58 s | — | — | — | — |
-| **Total cycle** | | **1 h 22 min** | **8 (2 min 17 s)** | **28 (34 min 02 s)** | **2 (1 min 07 s)** | |
+| **Total cycle** | | **1 h 27 min** | **10 (2 min 45 s)** | **31 (35 min 31 s)** | **2 (1 min 07 s)** | |
 
 Autres commandes mesurées : lint ×3 (40 s), nuget-wait ×1 (15 s), restore ×1 (4.2 s)
