@@ -469,6 +469,32 @@ Analysé à api-mail `bbb6d978` (2026-11-27, SonarQube 9.9.8, projet `healthplat
 | Duplication | 0,3 % | 0,3 % | 0 pt |
 | Reliability / Security / Maintainability | A/A/A | A/A/A | → |
 
+## Lint log
+
+- Mode : affected (`npx nx affected -t lint --base=origin/next --head=HEAD --parallel=3 --projects=tag:scope:mss`),
+  branche Angular `feature/nova-mss-weda-integration`, `origin/next` rafraîchi (`c49efacd..16c31ba9`).
+- Scope : `tag:scope:mss` (défaut, aucun champ `**LintBase**` / `**LintProjects**`).
+- Pipeline fidelity : mêmes commandes que `Client/Angular/azure-pipelines.yml` (Stage 2 CI), avec les deux
+  divergences voulues (base `origin/next`, lint filtré `tag:scope:mss`).
+- Baseline : **0 erreur** / 139 warnings sur les 13 projets que lance la commande (`--projects` ne restreint toujours
+  pas `nx affected` sur ce workspace, défaut déjà constaté sur task-367) ; dans `tag:scope:mss` : 0 erreur /
+  100 warnings (`mss-lib` 49, `mss-e2e` 51, `mss` 0).
+- Fichiers de la task (51 `.ts`/`.html` de l'arbre de travail, `npx eslint --format json`) : **0 erreur /
+  41 warnings, tous préexistants** — aucun sur une ligne ajoutée par la task (`git diff -U0 HEAD`), aucun dans les
+  fichiers neufs. Détail : `max-lines` sur 7 fichiers déjà au-delà de 500 lignes à HEAD (`mail-detail.component.ts`,
+  `mail-header.component.ts`, `mss-mail.component.ts`, `mail-state.service.ts`, `mss-settings.component.ts`,
+  `functional.e2e.ts`, `e2e-backend.ts`) ; `jsdoc/require-example` (34) sur des fonctions existantes.
+- Final : identique à la baseline (0 erreur). Aucun `--fix` lancé : le critère d'arrêt de l'étape (0 erreur) est
+  atteint d'emblée, et l'auto-fixer aurait réécrit des warnings préexistants dans 13 projets, hors de la tranche de
+  la task (règle 6 ; le seul warning corrigible dans ses fichiers insère un `@example` vide).
+- Iterations : 0 / 5. Fichiers modifiés par `/lint-angular` : **aucun** — build et suites non rejoués, vert non
+  re-marqué (l'arbre est celui qu'a laissé la reprise 1).
+- `conventions/angular.md` : rien à consigner (aucune correction manuelle).
+
+| Iter | Errors before | Errors after | Build | Tests |
+|------|---------------|--------------|-------|-------|
+| — (baseline) | 0 | 0 | n/a (aucun fichier touché) | n/a |
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -577,6 +603,7 @@ les tests unitaires de B2 en tiennent lieu dans cette reprise).
 | /develop | ok | 22 min 31 s | 6 (1 min 11 s) | 23 (23 min 22 s) | — | dtos-mss 1B/0T, api-mail 4B/12T, client-mobile 0B/2T, client-angular 1B/9T, reprise 1 |
 | /review-code | ok | 4 min 22 s | — | — | — | passage 2 APPROVED |
 | /sonar | ok | 15 min 44 s | 1 (1 min 03 s) | 5 (10 min 39 s) | 2 (1 min 07 s) | 1 itération(s), api-mail 1B/5T, 0 issue new code, QG OK, new_coverage 96.1, aucun commit |
-| **Total cycle** | | **43 min 24 s** | **7 (2 min 15 s)** | **28 (34 min 02 s)** | **2 (1 min 07 s)** | |
+| /lint-angular | ok | 2 min 25 s | — | — | — | — |
+| **Total cycle** | | **45 min 50 s** | **7 (2 min 15 s)** | **28 (34 min 02 s)** | **2 (1 min 07 s)** | |
 
-Autres commandes mesurées : nuget-wait ×1 (15 s), restore ×1 (4.2 s)
+Autres commandes mesurées : lint ×2 (34 s), nuget-wait ×1 (15 s), restore ×1 (4.2 s)
