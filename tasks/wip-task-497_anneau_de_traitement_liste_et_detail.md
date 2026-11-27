@@ -563,6 +563,7 @@ Analysé à api-mail `bbb6d978` (2026-11-27, SonarQube 9.9.8, projet `healthplat
 - Itérations : 0 sur 5. Aucune correction, aucun commit. Build et suite non rejoués (rien de modifié) : le vert de
   `/develop` (reprise 1, 1 933 / 1 933) tient sur ce code.
 - Conventions : rien à consigner.
+- Après les reprises 2 et 3 (2026-11-27) : client-mobile inchangé (HEAD `06fb9b5`, déjà lintée) — skip mesuré.
 
 ## E2E log
 
@@ -920,10 +921,10 @@ client-mobile inchangés. Relecteur indépendant, diff de la reprise lu en premi
 | /review-code | ok | 1 min 50 s | — | — | — | — |
 | /sonar | skipped | 9.2 s | 1 (1 min 03 s) | 5 (10 min 39 s) | 2 (1 min 07 s) | api-mail 1B/5T, aucun fichier analysé par Sonar depuis bbb6d978 (scenarios.yml seul) |
 | /lint-angular | ok | 19 s | — | — | — | 1 itération(s) |
-| /lint-mobile | ok | 16 s | — | — | — | 0 erreur |
+| /lint-mobile | skipped | 6.7 s | — | — | — | client-mobile inchangé depuis 06fb9b5 (déjà linté) |
 | /e2e | ok | 30 min 19 s | — | — | — | e2e ×5 (59 min 15 s), mobile 84 + angular 107 verts, parité verte |
 | /review | ok | 1 min 36 s | 1 (2.7 s) | — | — | dtos-mss 1B/0T, PRs dtos #75, api-mail #382, mobile #136 |
 | /tech-writer | ok | 3 min 58 s | — | — | — | — |
-| **Total cycle** | | **39 min 16 s** | **11 (2 min 58 s)** | **33 (36 min 23 s)** | **2 (1 min 07 s)** | |
+| **Total cycle** | | **39 min 07 s** | **11 (2 min 58 s)** | **33 (36 min 23 s)** | **2 (1 min 07 s)** | |
 
 Autres commandes mesurées : lint ×4 (52 s), nuget-wait ×1 (15 s), restore ×1 (4.2 s)
