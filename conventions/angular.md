@@ -1036,5 +1036,7 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   demi-ligne de titre), jamais en décalage magique. Prouver l'alignement par une **mesure e2e**
   (`getBoundingClientRect`, tolérance de quelques px) : jsdom ne calcule aucune mise en page.
 - **Preuve** : RING-005 (weda2) affirme « le centre de l'anneau est sur l'axe de la première ligne du titre (± 3 px) ».
+- **Corollaire (R2)** : une ligne qui n'a plus rien à porter ne se rend pas ; ce qu'elle portait à droite (date, actions)
+  remonte sur la ligne suivante sans recouvrir ses contrôles (le chevron reste hors de la zone des actions).
 - **Origine** : recette task-500 (2026-11-27)
 - **Occurrences** : 1

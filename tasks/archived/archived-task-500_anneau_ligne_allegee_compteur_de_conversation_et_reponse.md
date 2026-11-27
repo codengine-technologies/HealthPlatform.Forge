@@ -589,3 +589,23 @@ comme weda2 (aujourd'hui une expression régulière).
   la recette : `--serve-only`, rejeu de RING-005 sur le correctif (vert), puis sur `margin-top: 2px` réinjecté (rouge
   attendu, recompilation prouvée), puis restauration.
 - **Prévention** : `conventions/angular.md`, `glyphe-de-tete-cale-sur-le-titre`.
+
+### R2 — weda2 : un message sans type gardait une ligne vide au-dessus de l'objet (demande humaine du 2026-11-27)
+
+- **Demande** : « si un email n'a pas de catégorie, on pourrait éviter un espace vide et remonter l'objet du mail d'une
+  ligne ».
+- **Règle retenue** : la ligne du type n'est pas rendue quand elle ne porterait que la date. Elle reste dès qu'elle
+  affiche un type de document, une version, « DOUBLON », « REMPLACÉ », « SUPPRESSION DEMANDÉE », une biologie à
+  acquitter, l'anomalie atténuée, une pièce jointe, « Brouillon » ou « Envoyé », une attente, ou, en icône classique, la
+  réponse, l'attribution ou « Traité ». La date et les actions du survol remontent alors en fin de ligne de l'objet,
+  **avant le chevron** du fil, pour que les actions ne le recouvrent pas. L'anneau (ou l'initiale) se cale sur le haut
+  de l'objet : un centrage sur sa première ligne le ferait sortir de la ligne de liste.
+- **Code** (arbre weda2, fichiers déjà listés) : `mail-header.component.ts` (`collapsesTypeLine`, `NgTemplateOutlet`),
+  `.html` (date et actions dans un `ng-template` rendu dans l'une ou l'autre ligne), `.scss` (`--mail-type-line-span`,
+  `.mail-line-end`).
+- **Tests** : `mail-header.light-row.spec.ts`, 3 cas « la ligne disparaît » (vus rouges avant le code) et 7 cas « la
+  ligne reste » (mutation : retirer la pièce jointe de la condition fait échouer son cas). RING-005 (weda2) affirme
+  l'absence de ligne vide, la date sur la ligne de l'objet, et l'alignement de l'anneau selon la mise en page.
+- Suite mss-lib complète : 2 222 verts (2 212 + 10) ; build de production weda2 OK.
+- Aucun changement de catalogue : mise en page d'une ligne, pas de parcours nouveau.
+- **Preuve e2e : en attente** de l'arrêt de la recette (comme R1).
