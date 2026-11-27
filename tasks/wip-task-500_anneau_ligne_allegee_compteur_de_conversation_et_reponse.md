@@ -213,9 +213,10 @@ envoyée. Je lis la liste plus vite, sans perdre d'information.
 | /review-code | ok | 1 min 08 s | — | — | — | — |
 | /sonar | skipped | 0.9 s | — | — | — | aucun fichier analysé par Sonar |
 | /lint-angular | ok | 18 s | — | — | — | 1 itération(s) |
-| **Total cycle** | | **9 min 01 s** | **4 (40 s)** | **6 (2 min 39 s)** | **0 (0.0 s)** | |
+| /lint-mobile | ok | 13 s | — | — | — | — |
+| **Total cycle** | | **9 min 14 s** | **4 (40 s)** | **6 (2 min 39 s)** | **0 (0.0 s)** | |
 
-Autres commandes mesurées : lint ×1 (11 s)
+Autres commandes mesurées : lint ×2 (16 s)
 
 ## Develop log
 
@@ -369,3 +370,8 @@ comme weda2 (aujourd'hui une expression régulière).
 - `nx run-many -t lint --projects=tag:scope:mss` (mss, mss-lib, weda2) sur l'arbre de travail : **0 erreur**,
   100 avertissements préexistants (longueur de fichier, JSDoc `@example`). Itérations : 1 sur 5, rien à corriger, arbre
   inchangé (le vert de `/develop` tient).
+
+## Lint mobile log
+
+- Branche `feat/task-500-anneau-ligne-allegee-compteur-de` (HEAD `205c8eb`). `npm run lint` : **All files pass linting**,
+  0 erreur. Itérations : 0 sur 5, aucune correction, aucun commit ; le vert de `/develop` (reprise 1, 1 977 / 1 977) tient.
