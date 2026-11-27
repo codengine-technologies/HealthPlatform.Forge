@@ -11285,3 +11285,5 @@
 {"ts":"2026-11-27T16:29:57+01:00","run_id":"-","type":"step_start","task":"task-497","step":"review"}
 {"ts":"2026-11-27T16:30:12+01:00","run_id":"-","type":"cmd","task":"task-497","step":"review","repo":"dtos-mss","kind":"build","label":"","cwd":"Dtos","cmd":"dotnet build HealthPlatform.Dtos.Mss.csproj","duration_ms":2738,"exit_code":0}
 {"ts":"2026-11-27T16:31:34+01:00","run_id":"-","type":"step","task":"task-497","step":"review","status":"ok","note":"PRs dtos #75, api-mail #382, mobile #136","iterations":null,"duration_ms":96786}
+{"ts":"2026-11-27T16:31:44+01:00","run_id":"-","type":"step_start","task":"task-497","step":"tech-writer"}
+{"ts":"2026-11-27T16:35:43+01:00","run_id":"-","type":"step","task":"task-497","step":"tech-writer","status":"ok","note":"","iterations":null,"duration_ms":238873}

@@ -781,6 +781,7 @@ les tests unitaires de B2 en tiennent lieu dans cette reprise).
 | /lint-mobile | ok | 16 s | — | — | — | 0 erreur |
 | /e2e | ok | 30 min 19 s | — | — | — | e2e ×5 (59 min 15 s), mobile 84 + angular 107 verts, parité verte |
 | /review | ok | 1 min 36 s | 1 (2.7 s) | — | — | dtos-mss 1B/0T, PRs dtos #75, api-mail #382, mobile #136 |
-| **Total cycle** | | **1 h 18 min** | **8 (2 min 17 s)** | **28 (34 min 02 s)** | **2 (1 min 07 s)** | |
+| /tech-writer | ok | 3 min 58 s | — | — | — | — |
+| **Total cycle** | | **1 h 22 min** | **8 (2 min 17 s)** | **28 (34 min 02 s)** | **2 (1 min 07 s)** | |
 
 Autres commandes mesurées : lint ×3 (40 s), nuget-wait ×1 (15 s), restore ×1 (4.2 s)
