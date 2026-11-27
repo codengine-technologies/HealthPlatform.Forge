@@ -249,6 +249,155 @@ Lecture du code au 2026-11-27 :
 - `client-mobile` (pushed) : feat/task-497-anneau-de-traitement-liste-et-detail — https://github.com/codengine-technologies/HealthPlatform.Mobile/tree/feat/task-497-anneau-de-traitement-liste-et-detail
 - `client-angular` (code-only) : branche checkout au /start : `feature/nova-mss-weda-integration` — humain gère branche, commit, push, PR TFS
 
+## Develop log
+
+- Repos touched : dtos-mss, api-mail, client-mobile, client-angular (code seul)
+- DTOs published : 635.0.0 → **638.0.0** (`6f00908`, CI run 45964152282) — `MailDto.PendingBiologyAckStage` /
+  `PendingBiologyAckLastAction`, `MailMedicalDocumentDto.BiologyAckHistory`, `MailBiologyAckProgressDto`,
+  `UserSettingsDto.ListMarker` ; api-mail bumpé avec ses `packages.lock.json`
+- Interop published : no interop change
+- Commits :
+  - dtos-mss : `6f00908` feat(dto): anneau de traitement
+  - api-mail : `9fe4f8d9` chore(deps): bump 638.0.0 ; `bbb6d978` feat(mail): anneau de traitement
+  - client-mobile : `888f7cc` feat(mobile) ; `9ec2ddb` refactor simplify pass ; `6f0e8f7` test(mobile) E2E-SETTINGS-005
+- **contract_impact.py check** (après le code des trois dépôts) : `api-mcp : aucun impact` / `client-mobile : aucun
+  impact` / `client-angular : aucun impact` (avertissements de lecture tolérante habituels). Un premier passage sortait
+  en 2 : le modèle mobile s'appelait `MailBiologyAckSummaryDto`, renommé `MailBiologyAckProgressDto`.
+
+### api-mail
+
+- Règle pure `Domain/Rules/BiologyAckProgressRule.cs` : étape d'un compte rendu (aucune action → Reçu ; Pris
+  connaissance ; rappel / convocation / adressage → Suite donnée ; Résolu ou antérieur au suivi → ne réclame rien). Le
+  message suit le compte rendu le moins avancé, puis la dernière action la plus récente.
+- `MailRepository.ApplyEnrichmentToMail` l'applique dans la lecture groupée existante : **32 commandes SQL avant et
+  après** sur la page de liste (test `TheListPage_ServesTheStage_WithoutOneMoreSqlCommand`).
+- Historique des acquittements servi par la lecture du contenu d'un message seulement (`GET …/emails/content/{uid}`),
+  `null` sur les pages de liste et la vue par tag.
+- Évènement `MailBiologyAckChanged` poussé après **tout** acquittement, intermédiaire compris, recalculé de la base.
+  Best-effort : une panne du relais ne fait pas échouer l'acquittement, rien de clinique dans le journal. Il part aussi au
+  rejeu de la file hors ligne : il ne porte ni auteur ni donnée de santé.
+- Tests, tous vus rouges sur le code d'avant ou par mutation (mutations restaurées, recompilées) :
+
+| Test | Prouve | Preuve rouge |
+|---|---|---|
+| `BiologyAckProgressRuleTests` (20) | les 9 cas de la DoD, départage, gravité | 9 mutations, chacune rouge sur son cas |
+| `TheListRow_SaysTheAcknowledgementStage…` ×3 (dossier, tag, hors ligne) | Reçu → Suite donnée + Rappel patient → plus rien + `isHandled` | code d'avant : `Expected (1, Received, null) Actual (1, null, null)` |
+| `TheListRow_CarriesTheStageAsAnInteger…` | entiers camelCase ; compte rendu sans anomalie → 400 et aucune étape | code d'avant : nombre attendu, null reçu |
+| `TwoReportsInOneMessage…` | le moins avancé commande ; chaque évènement égale la ligne relue | publication retirée : `Expected 3 Actual 0` |
+| `AnAcknowledgementOnAMessageOfAPastFolderGeneration…` | pas d'évènement pour une ligne périmée | filtre de génération retiré : rouge |
+| `TheListPage_ServesTheStage_WithoutOneMoreSqlCommand` | 32 commandes avant et après | lecture d'historique ajoutée aux listes : rouge |
+| `ReadingOneMessage_ServesTheAcknowledgementHistory…` | du plus ancien au plus récent, délégataire puis titulaire, null sur les listes | 4 mutations rouges |
+| `TheDelegateAcknowledges_…` (règle 14) | le titulaire relit l'étape ; la trace nomme le délégataire ; un évènement est livré | charge retirée, évènement renommé, audit sauté : 3 rouges |
+| `TheListMarker_…` | défaut Anneau, propre à la personne, `"listMarker":1` | enregistrement forcé à Anneau : rouge |
+| `BiologyAckServiceLiveProgressTests`, cas du broker | chaque action et le rejeu publient ; panne tolérée | publication coupée : 6 rouges |
+
+- Suite complète : domain 388, infrastructure 749, application 4 373, api 1 388, intégration 1 386 (+16 ignorés) —
+  **0 échec, aucun plantage** ; build 0 erreur 0 avertissement.
+
+### client-mobile
+
+- `treatment-ring.util.ts` (règle pure), `mss-treatment-ring` (SVG), `mss-treatment-ring-steps` (bloc du détail).
+- Ligne : anneau à la place de l'initiale, initiales au centre, pastille d'initiales retirée ; pastilles « Non affecté »,
+  « Attente patient », « Attente confrère », ⚠ atténué.
+- Détail : boutons d'acquittement sous l'anneau, rangés par étape, retirés de l'onglet Biologie. Réglage dans
+  « Organisation ». Évènement en direct appliqué à la ligne et au détail ouvert.
+- Contraste mesuré par le spec du composant : étapes restantes `--app-outline` 4,49 à 3,67:1 ; anomalie `--app-flag`
+  ≥ 4,84:1.
+- Unitaires : 120 mutations, 118 rouges sur l'assertion visée, 2 sans effet observable (U15, C13).
+- Suite complète après la passe qualité : **1 906 / 1 906**. Build OK, ESLint 0 erreur sur les 46 fichiers touchés.
+
+### client-angular (code seul) — fichiers à commiter sur TFS
+
+Branche extraite : `feature/nova-mss-weda-integration`. Aucune opération git. 54 fichiers sous `Client/Angular/front/` :
+
+- **nouveaux** : `libs/mss/src/core/utils/mail-ring.util.ts` (+spec), `core/utils/mail-ring-steps.util.ts` (+spec),
+  `ui/mail-ring/` (composant `mss-mail-ring`), `features/mail/components/mail-ring-panel/` (bloc du détail),
+  `features/mail/services/mail-biology-ack-live.service.ts` (+spec), specs `mail-header.ring`, `mail-detail.ring`,
+  `mail-state.service.ring` ;
+- **modifiés** : modèles `biology-ack`, `mail`, `mail-event`, `user-settings` ; `mail-events-stream.service` (+spec) ;
+  `mail-header.component.{html,ts,scss}` ; `mail-detail.component.{html,ts,scss}` et ses 9 specs ;
+  `biology-ack-panel.component.*` ; `mail-side-panel.component.{html,ts,spec}` (section d'acquittement retirée) ;
+  `mss-mail.component.ts` (+ spec handling) ; `mail-state.service.ts` ; `mss-settings.component.{html,ts,spec}` ;
+  e2e `functional.e2e.ts`, `support/weda.ts`, `support/e2e-backend.ts`.
+- Unitaires : 83 mutations, toutes rouges sur le test visé. Suites après la passe qualité, lancées par PowerShell :
+  `nx test mss-lib` **2 129 / 2 129**, `nx test weda2` **2 683 / 2 683** ; `nx build weda2` OK ; ESLint 0 erreur.
+
+### Passe qualité (/simplify)
+
+- Applied & committed : client-mobile : 3 fichiers (`9ec2ddb`) — type de dossier mis en cache par chemin (la liste
+  parcourait l'arbre des dossiers à chaque ligne et à chaque rendu), tableau mort retiré, gardes redondantes.
+- Applied (code-only, uncommitted) : client-angular : 3 fichiers — contexte de l'anneau calculé une fois par ligne au
+  lieu de deux, enveloppe inutile retirée du bloc du détail.
+- No change : api-mail.
+- Skipped (contract) : dtos-mss.
+
+### Parcours e2e
+
+- Catalogue (api-mail) : ajoutés v1 `E2E-RING-001`, `E2E-RING-002`, `E2E-RING-003`, `E2E-SETTINGS-005` ; montés
+  `E2E-ASSIGN-001` 2 → 3, `E2E-BIO-001` 2 → 3, `E2E-BIO-003` 1 → 2, `E2E-BIO-007` 1 → 2, `E2E-DETAIL-004` 1 → 2
+  (angular seul). Adapté sans changer de version : `E2E-BIO-004` (les deux clients).
+- **Mobile, joués contre le banc `--serve-only`** : RING-001/002/003, SETTINGS-005, ASSIGN-001, BIO-001/003/004/007.
+  8 verts au premier passage ; SETTINGS-005 rouge sur le test lui-même (motif `/^\S$/` contre « C » entouré
+  d'espaces), corrigé (`6f0e8f7`) puis vert.
+- **Preuves par mutation mobiles** (ng serve recompile, scénario rejoué, source restaurée) :
+
+| Mutation | Scénario | Rouge sur |
+|---|---|---|
+| M1 `isRead ? 2 : 1` → `1` | E2E-RING-001 | « courrier ouvert — 2 étape(s) franchie(s) » |
+| M2 `withBiologyAck` neutralisé dans le détail | E2E-RING-002 | « compte rendu résolu, dans le détail — anneau fermé » |
+| M3 `waitingOf` ne rend plus `patient` | E2E-RING-002 | « après « Rappel patient » — 3 étape(s) franchie(s) » |
+| M4 `unassigned` forcé à faux | E2E-RING-003 | « la ligne écrit « Non affecté » » |
+| M5 `mine` forcé à faux | E2E-RING-003 | « le message est à elle » |
+| M6 `updateListMarker` sans effet | E2E-SETTINGS-005 | enregistrement du réglage |
+| M7b initiales vides au centre | E2E-ASSIGN-001 | « l'anneau de sa ligne porte ses initiales » |
+
+  Une première M7 ne compilait pas (TS18047) : ng serve gardait l'ancien bundle et le scénario restait vert. Refaite
+  avec une mutation qui compile, contrôlée par le compteur de bundles du journal de ng serve.
+
+- **weda2, joués contre le banc `--serve-only`** : RING-001/002/003, SETTINGS-005, ASSIGN-001, BIO-001/003/004/007,
+  DETAIL-004. Premier passage : 9 verts, **DETAIL-004 rouge sur un vrai défaut** — à 1366×768, le bloc de l'anneau
+  défilait en interne (plafond 50 %) et coupait le bouton « Marquer comme résolu » : deux zones de défilement dans la
+  lecture, contre « un seul défilement » de l'attendu. Correctif : `biology-ack-panel` compacté (dernière action sur la
+  ligne d'en-tête, « Choisir l'action » remplacé par les intitulés d'étape, boutons de 28 px, les trois groupes sur une
+  rangée qui passe à la ligne), plafond de sécurité du bloc à 75 % ; mesuré 265 px sans défilement interne
+  (`clientHeight = scrollHeight`), bouton entièrement visible. DETAIL-004 v2 affirme désormais le bouton dans la vue
+  (`toBeInViewport({ ratio: 1 })`) ; l'assertion « au plus la moitié de la lecture », que l'attendu ne demande pas, est
+  retirée ; le test retire d'abord l'étiquette « Lecture-e2e » d'un essai précédent (`removeTagFromInbox`).
+- **Rejeu sur un seed neuf, après correctif** : **10 / 10 verts**.
+- **Preuves par mutation weda2** (recompilation prouvée par un marqueur cherché dans le bundle servi, sources restaurées,
+  sommes de contrôle identiques) :
+
+| Mutation | Scénario | Rouge sur |
+|---|---|---|
+| util : `filled` forcé à 1 | E2E-RING-001 | « courrier ouvert, dans le détail : 2 segment(s) plein(s) sur 3 » |
+| util : étape `+ 0` | E2E-RING-002 | « compte rendu à acquitter : 1 segment(s) plein(s) sur 4 » |
+| ligne : mention d'attente coupée | E2E-RING-002 | « la ligne écrit « Attente patient » » |
+| ligne : « Non affecté » coupé | E2E-RING-003 | « la ligne écrit « Non affecté » » |
+| util : centre forcé vide | E2E-RING-003 | « chez le titulaire, l'anneau porte les initiales de la délégataire » |
+| réglages : `triggerSave()` neutralisé | E2E-SETTINGS-005 | « « Icône classique » est enregistrée par le serveur » |
+| util : `mine` forcé à faux | E2E-ASSIGN-001 | « ses initiales sont sur fond plein : le message est à elle » |
+| détail : `[documents]="[]"` | E2E-BIO-001, BIO-003, BIO-007, DETAIL-004 | « l'acquittement est dans le bloc de l'anneau, en tête du message » |
+
+- weda2 après le correctif du bloc : `nx build weda2` OK, `nx test mss-lib` **2 129 / 2 129**, `nx test weda2`
+  **2 683 / 2 683** (PowerShell), ESLint 0 erreur, stylelint 0. La liste TFS reste de 54 fichiers.
+
+### Points laissés ouverts (pour la revue et le HAG)
+
+- Mobile : l'anneau remplace aussi l'avatar vert des messages de patient (la couleur disparaît de la ligne, le tag
+  « Patient » reste).
+- Mobile : après un acquittement, la ligne du message est relue du serveur (une requête de plus), en plus de l'évènement.
+- Stitch : les écrans `mail-list` et `mail-detail` du projet `client-mobile` datent d'avant l'anneau. Ni `edit_screens`
+  (interdit) ni génération lancée : la ligne de DoD « références Stitch mises à jour » reste à faire dans Stitch, d'après
+  la variante D des maquettes.
+- Hors ligne, le contenu d'un message ne porte pas ses documents (antérieur à la task) : pas d'historique d'acquittement
+  hors ligne.
+- Taille : PR mobile ≈ 52 fichiers, PR api-mail 16 fichiers, au-delà du repère d'environ 30 pour le mobile.
+
+### Vert marqué
+
+- api-mail `bbb6d978`, client-mobile (HEAD poussé), client-angular (arbre final) — `Tools/green/green.py`.
+- Next step : `/review task-497 --code`.
+
 ## Timings
 
 *(généré par `tools/timing/report.sh --task task-497 --sync` — ne pas éditer à la main)*
@@ -256,4 +405,7 @@ Lecture du code au 2026-11-27 :
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 46 s | — | — | — | — |
-| **Total cycle** | | **46 s** | **0 (0.0 s)** | **0 (0.0 s)** | **0 (0.0 s)** | |
+| /develop | ok | 2 h 44 min | 6 (1 min 11 s) | 23 (23 min 22 s) | — | dtos-mss 1B/0T, api-mail 4B/12T, client-mobile 0B/2T, client-angular 1B/9T |
+| **Total cycle** | | **2 h 45 min** | **6 (1 min 11 s)** | **23 (23 min 22 s)** | **0 (0.0 s)** | |
+
+Autres commandes mesurées : nuget-wait ×1 (15 s), restore ×1 (4.2 s)
