@@ -619,5 +619,8 @@ comme weda2 (aujourd'hui une expression régulière).
   `#475569` (texte, 6,61:1 au plus bas).
 - **Écart** : `margin-right: 3px` sur l'anneau de la ligne (les pastilles débordent à droite du cercle).
 - **Tests** : Vitest ligne + anneau + panneau 141/141. RING-005 (weda2) mesure l'écart anneau → texte (≥ 12,5 px).
-  Mobile non modifié (composant d'anneau distinct).
+  Mobile : même allègement à la demande de l'humain, PR https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/138
+  (`fix/task-500-recette-anneau-allege`, `awaiting-human-merge`) : neutre au gris des traits (`--app-outline`), traits
+  affinés, initiales en demi-gras ; spec de l'anneau 4 rouges puis 41/41 ; build et lint OK ; suite 1 976 verts + 4
+  rouges `MailComposeComponent` (task-388) rouges aussi sur `develop` (rouge connu, hors périmètre).
 - **Preuve e2e : en attente** de l'arrêt de la recette (comme R1, R2).
