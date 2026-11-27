@@ -434,6 +434,41 @@ Branche extraite : `feature/nova-mss-weda-integration`. Aucune opération git. 5
 - Vert marqué : client-mobile `06fb9b5`, client-angular (arbre final).
 - Next step : `/review task-497 --code`.
 
+## Sonar log
+
+Analysé à api-mail `bbb6d978` (2026-11-27, SonarQube 9.9.8, projet `healthplatform-api-mail`, période de nouveau code :
+30 jours depuis le 2026-10-28). Une analyse complète : begin → build Release → cinq suites avec couverture OpenCover → end.
+
+- Phase 1 (new code) : ✓ Quality Gate OK, new_coverage = 96,1 % (lignes 98,3 %, branches 90,6 %)
+- Phase 1 — Issues fixées : 0 (0 bug / 0 vulnérabilité / 0 code smell / 0 hotspot : aucune issue ouverte sur le nouveau
+  code, ni sur le projet entier)
+- Phase 1 — Tests ajoutés : 0 (cible de couverture du nouveau code atteinte)
+- Phase 2 (legacy) : itérations 0 / 5 — non jouée : toutes les cibles projet sont déjà tenues (0 bug, 0 vulnérabilité,
+  maintenabilité A, couverture 97,6 % ≥ 95 %), arrêt anticipé du Step 1
+- Phase 2 — Issues fixées : 0
+- Phase 2 — Issues restantes : 0
+- Aucun commit : HEAD inchangé (`bbb6d978`), le marqueur vert de `/develop` tient
+- Build / tests : ✓ green — domain 388, application 4 373, infrastructure 749, api 1 388, integration 1 386 (+ 16 skipped),
+  0 échec, aucun FATAL
+- Couverture résiduelle du code de la task (non bloquante, sous le seuil de signalement) : 2 conditions de
+  `BiologyAckProgressRule.Leader.Leads` (comparaison d'instants nullables, l. 99) et 1 de
+  `MailRepository.ToBiologyAckDto` (`MedicalDocumentId ?? Guid.Empty`, l. 5492). Les 4 lignes non couvertes de
+  `SseMailEventBroker` (l. 111-121) appartiennent à task-456 et task-457, pas à cette task.
+
+### KPIs qualité (baseline → final)
+
+| Métrique | Baseline | Final | Δ |
+|---|---|---|---|
+| Quality Gate (new code) | OK | OK | → |
+| New coverage | 95,9 % | 96,1 % | +0,2 pt |
+| Bugs | 0 | 0 | 0 |
+| Vulnerabilities | 0 | 0 | 0 |
+| Security hotspots | 0 | 0 | 0 |
+| Code smells | 0 | 0 | 0 |
+| Coverage (projet) | 97,6 % | 97,6 % | 0 pt |
+| Duplication | 0,3 % | 0,3 % | 0 pt |
+| Reliability / Security / Maintainability | A/A/A | A/A/A | → |
+
 ## Code Review Summary
 
 ### Passage 1 (revue anticipée) — CHANGES REQUESTED
@@ -541,6 +576,7 @@ les tests unitaires de B2 en tiennent lieu dans cette reprise).
 | /start | ok | 46 s | — | — | — | — |
 | /develop | ok | 22 min 31 s | 6 (1 min 11 s) | 23 (23 min 22 s) | — | dtos-mss 1B/0T, api-mail 4B/12T, client-mobile 0B/2T, client-angular 1B/9T, reprise 1 |
 | /review-code | ok | 4 min 22 s | — | — | — | passage 2 APPROVED |
-| **Total cycle** | | **27 min 40 s** | **6 (1 min 11 s)** | **23 (23 min 22 s)** | **0 (0.0 s)** | |
+| /sonar | ok | 15 min 44 s | 1 (1 min 03 s) | 5 (10 min 39 s) | 2 (1 min 07 s) | 1 itération(s), api-mail 1B/5T, 0 issue new code, QG OK, new_coverage 96.1, aucun commit |
+| **Total cycle** | | **43 min 24 s** | **7 (2 min 15 s)** | **28 (34 min 02 s)** | **2 (1 min 07 s)** | |
 
 Autres commandes mesurées : nuget-wait ×1 (15 s), restore ×1 (4.2 s)
