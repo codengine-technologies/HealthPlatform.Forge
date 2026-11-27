@@ -1,7 +1,7 @@
 # todo-task-497.md — Anneau de traitement : la liste et le détail
 
 **Repos**: api-mail, dtos-mss, client-angular, client-mobile
-**Reprises**: 1
+**Reprises**: 2
 **Dependencies**: aucune (task-467 conseillée avant : tant qu'elle est ouverte, un anneau peut être neutre à tort)
 **Epic**: E027
 **EpicTitle**: Anneau de traitement : voir les boucles ouvertes
@@ -113,6 +113,12 @@ Lecture du code au 2026-11-27 :
      ne changent pas ;
    - plusieurs comptes rendus à acquitter : un anneau et ses boutons par compte rendu ;
    - « Traité », « Remettre à traiter » et « À traiter par » restent où ils sont aujourd'hui.
+   - **weda2 — décision humaine du 2026-11-27, après la validation finale** : « le bloc alourdit l'affichage du
+     détail, il a plus sa place dans les actions & dossier de la barre latérale ». Sur weda2, le bloc (grand anneau,
+     étapes, boutons d'acquittement rangés par étape, un anneau par compte rendu) **quitte la tête du message** et
+     devient une section du panneau latéral « Actions & dossier », en premier. Panneau replié : l'icône de la section
+     sur le rail porte la pastille « en attente » quand un compte rendu reste à acquitter, et un clic ouvre le panneau
+     sur la section. Le mobile, qui n'a pas de panneau latéral, garde le bloc en tête du message.
 10. **Chaque geste remplit son segment** par une transition brève. Aucune animation au chargement de la liste, ni
     quand le système demande de réduire les animations.
 11. **En direct.** Un acquittement, y compris intermédiaire, met à jour l'anneau chez les autres personnes connectées
@@ -746,6 +752,30 @@ les tests unitaires de B2 en tiennent lieu dans cette reprise).
   `MailHandlingService.apply` (une ligne résolue ne sort pas d'une vue filtrée « À traiter » sans flux) ; n'adopter que
   l'avancement d'acquittement et passer `handling` par le service, comme le mobile.
 - **N3 — cohérence** : le web pose `isToHandle` sur la ligne, le mobile s'en remet à la règle ; même affichage.
+
+### Passage 3 — décision humaine au HAG (2026-11-27)
+
+Après la validation finale, l'humain a demandé de déplacer le bloc de l'anneau du détail weda2 vers le panneau latéral
+(Objectif, règle 9, dernier point). Ce changement de comportement repasse par `/develop --reprise` avant le merge.
+
+#### À corriger par la reprise
+
+- **H1 — weda2 — le bloc de l'anneau va dans « Actions & dossier »** :
+  - `mail-detail.component.html` : `mss-mail-ring-panel` quitte la zone de lecture et est projeté dans
+    `mss-mail-side-panel`, dans une nouvelle section placée **en premier** (avant le doublon et le patient) ; libellé et
+    icône de section cohérents avec les autres (`meta`), section absente quand le message n'a pas d'anneau ;
+  - rail du panneau replié : icône de la section, pastille « en attente » (`pending`) quand un compte rendu reste à
+    acquitter, clic qui ouvre le panneau sur la section ;
+  - le bloc tient dans la largeur du panneau (anneau réduit si besoin, étapes et boutons empilés), sans défilement
+    interne qui masque « Marquer comme résolu » ; mode superposé (écran étroit) compris ;
+  - comportement inchangé : acquittement, confirmation et note, transition du segment, mise à jour en direct,
+    relecture de la ligne (`refreshRing`) ;
+  - tests unitaires vus rouges (section présente / absente, pastille du rail, bloc absent de la zone de lecture) ;
+  - parcours e2e weda2 qui cherchent le bloc ou les boutons en tête du message (E2E-BIO-001, BIO-003, BIO-007,
+    DETAIL-004, RING-002) : les cibler dans le panneau latéral, scénarios rouges rejoués d'abord (`--serve-only` +
+    `--grep`) ; textes du catalogue qui disent « ont quitté le panneau latéral de weda2 » corrigés pour weda2, version
+    montée seulement si l'assertion du client change, sans toucher la voie mobile ;
+  - mobile : inchangé.
 
 ## PRs
 
