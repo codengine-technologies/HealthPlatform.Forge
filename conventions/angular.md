@@ -996,3 +996,17 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   E2E-DETAIL-004 v2.
 - **Origine** : task-497, décision humaine au HAG (reprise 2)
 - **Occurrences** : 1
+
+### demande-d-ouverture-liee-a-son-objet — Une demande « ouvre X au prochain affichage » désigne son objet et attend qu'il soit prêt
+- **Règle** : convention projet (course entre effets Angular, invisible au lint)
+- **Repos** : les deux
+- **Piège** : task-497, l'avis « reste à acquitter » posait `requestedSidePanel = 'ring'` puis sélectionnait un autre
+  message dans le même tour. L'effet du détail consommait la demande et dépliait le panneau ; le `resetKey` du nouveau
+  message, appliqué ensuite (effets de la vue parente avant ceux du composant enfant), le repliait en lecture étroite.
+  La demande était perdue. Le test unitaire posait la demande sur le message déjà affiché : vert qui ment.
+- **Consigne** : une demande d'ouverture différée (section, pièce, onglet) porte la **clé de l'objet** visé, et n'est
+  consommée que quand cet objet est affiché **et** chargé — jamais dans le tour qui change d'objet. Son test joue le vrai
+  enchaînement : demande et changement d'objet dans le même tour.
+- **Preuve** : `mail-detail.side-panel.spec.ts` (B5) ; mutations B5a à B5c de la reprise 3.
+- **Origine** : task-497, revue anticipée passage 4 (B5)
+- **Occurrences** : 1

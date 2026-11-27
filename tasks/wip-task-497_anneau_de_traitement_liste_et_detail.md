@@ -472,6 +472,23 @@ Décision : sur weda2, le bloc de l'anneau quitte la tête du message pour la se
   `mail-state.service.ts`, `mss-mail.component.ts`, `mss-mail.component.handling.spec.ts`, `e2e/mss-e2e/support/weda.ts`,
   `e2e/mss-e2e/specs/functional.e2e.ts`.
 
+### Reprise 3 après /review (passage 4)
+
+| Point | Défaut | Correctif | Test | Preuve rouge |
+|---|---|---|---|---|
+| B5 | l'avis « reste à acquitter » consommait sa demande dans le tour qui change de message ; le `resetKey` du nouveau message repliait ensuite le panneau en lecture étroite | la demande désigne son message (`RequestedSidePanel` : section, dossier, uid) ; consommée seulement quand ce message est affiché **et** son contenu servi (ou en échec) | `mail-detail.side-panel.spec` : autre message en lecture étroite (demande + sélection dans le même tour, rail disparu) ; demande pour un autre message sans effet ; `mss-mail.component.handling.spec` (la demande porte le message) | rouges sur le code d'avant (rail toujours là) ; mutations B5a (sans attendre le contenu), B5b (sans vérifier le message), B5c (l'avis ne désigne aucun message) : chacune 1 rouge |
+| S7 | pastille du rail absente avant le chargement du contenu | `isBiologyAckPending` : la ligne (`pendingBiologyAcksCount`) tant que le contenu n'est pas chargé, les comptes rendus ensuite | `mail-detail.side-panel.spec` (avant / après chargement) | rouge sur le code d'avant ; mutation S7 : 1 rouge |
+| S8 | commentaires périmés du panneau d'acquittement | `biology-ack-panel.component.{html,scss}` décrivent la section « Traitement » (320 px) | — | — |
+| S9 | anneau fermé lu sans être vu (RING-001, étape 3) | visibilité de l'anneau dans la section avant ses attributs | e2e RING-001 | même garde que l'étape 2, rejouée par `/e2e` |
+
+- Relecture « qu'est-ce que ça casse » : `requestedSidePanel` n'a que deux usages (l'avis, le détail) ; une demande jamais
+  consommée (message quitté avant son chargement) reste attachée à ce seul message et ouvre sa section à la prochaine
+  visite, sans effet sur les autres. Test : `afterEach` du spec rend l'horloge réelle avant `verify`, et le test S7 n'affirme
+  qu'après avoir servi la requête : un rouge n'entraîne plus les tests suivants en cascade (constaté sous mutation).
+- Validations : `nx test mss-lib` **2 167 / 2 167**, `nx test weda2` **2 683 / 2 683**, `nx build weda2` OK, ESLint 0 erreur,
+  Prettier OK, `tsc` e2e OK. api-mail, dtos-mss, client-mobile : non touchés.
+- Prévention : `conventions/angular.md`, entrée `demande-d-ouverture-liee-a-son-objet`.
+
 ## Sonar log
 
 Analysé à api-mail `bbb6d978` (2026-11-27, SonarQube 9.9.8, projet `healthplatform-api-mail`, période de nouveau code :
@@ -873,7 +890,7 @@ client-mobile inchangés. Relecteur indépendant, diff de la reprise lu en premi
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 46 s | — | — | — | — |
-| /develop | ok | 28 min 11 s | 8 (1 min 39 s) | 26 (24 min 52 s) | — | dtos-mss 1B/0T, api-mail 4B/12T, client-mobile 0B/2T, client-angular 3B/12T, reprise 2 (décision humaine : bloc de l'anneau dans le panneau latéral weda2) |
+| /develop | ok | — | 9 (1 min 52 s) | 28 (25 min 44 s) | — | dtos-mss 1B/0T, api-mail 4B/12T, client-mobile 0B/2T, client-angular 4B/14T, reprise 3 (B5, S7, S8, S9); no start marker |
 | /review-code | changes | 8 min 24 s | — | — | — | reprise 3 (B5 : avis biologie en lecture étroite) |
 | /sonar | ok | 15 min 44 s | 1 (1 min 03 s) | 5 (10 min 39 s) | 2 (1 min 07 s) | 1 itération(s), api-mail 1B/5T, 0 issue new code, QG OK, new_coverage 96.1, aucun commit |
 | /lint-angular | ok | 2 min 25 s | — | — | — | — |
@@ -881,6 +898,6 @@ client-mobile inchangés. Relecteur indépendant, diff de la reprise lu en premi
 | /e2e | ok | 30 min 19 s | — | — | — | e2e ×5 (59 min 15 s), mobile 84 + angular 107 verts, parité verte |
 | /review | ok | 1 min 36 s | 1 (2.7 s) | — | — | dtos-mss 1B/0T, PRs dtos #75, api-mail #382, mobile #136 |
 | /tech-writer | ok | 3 min 58 s | — | — | — | — |
-| **Total cycle** | | **1 h 31 min** | **10 (2 min 45 s)** | **31 (35 min 31 s)** | **2 (1 min 07 s)** | |
+| **Total cycle** | | **1 h 03 min** | **11 (2 min 58 s)** | **33 (36 min 23 s)** | **2 (1 min 07 s)** | |
 
 Autres commandes mesurées : lint ×3 (40 s), nuget-wait ×1 (15 s), restore ×1 (4.2 s)
