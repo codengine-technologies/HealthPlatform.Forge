@@ -173,7 +173,7 @@ Lecture du code au 2026-11-27 :
 | /sonar | skipped | 0.9 s | 1 (49 s) | 5 (8 min 19 s) | 2 (47 s) | api-mail 1B/5T, api-mail inchangé depuis l'analyse à 459e5769 |
 | /lint-angular | ok | 28 s | — | — | — | — |
 | /lint-mobile | ok | 14 s | — | — | — | — |
-| /e2e | failed | 32 min 12 s | — | — | — | e2e ×3 (30 min 00 s), RING-004 mobile rouge : dates serveur sans Z lues en heure locale |
+| /e2e | ok | 31 min 34 s | — | — | — | e2e ×6 (1 h 00 min) |
 | **Total cycle** | | **1 h 07 min** | **17 (4 min 02 s)** | **67 (36 min 53 s)** | **2 (47 s)** | |
 
 Autres commandes mesurées : lint ×4 (38 s), nuget-wait ×1 (11 s), restore ×1 (3.6 s)
@@ -1115,25 +1115,17 @@ Les KPIs ci-dessous valent pour le code de la PR. Skip mesuré (`aucun changemen
 
 | Voie | Commit / arbre | Résultat |
 |---|---|---|
-| mobile | client-mobile `1f490eb`, api-mail `459e5769` | **rouge** — E2E-RING-004 rouge (deux essais) ; E2E-SETTINGS-006 vert au second essai |
-| angular | weda2 (arbre, base `3f6e9119`), api-mail `459e5769` | vert — 110 verts, 0 flaky, 0 rouge, parité verte |
+| mobile | client-mobile `1745cea`, api-mail `459e5769` | vert — jouée, 87 verts, 0 flaky, 0 rouge, parité verte |
+| angular | weda2 (arbre, base `3f6e9119`, reprise 2), api-mail `459e5769` | vert — jouée, 110 verts, 0 flaky, 0 rouge, parité verte |
 
-**Cause (diagnostic de l'orchestrateur)** : la voie mobile a tourné vers 23 h 50 UTC (00 h 50 heure locale). api-mail
-stocke `ArrivalDate` / `SentDate` en `timestamp without time zone` (UTC, `DateTimeKind.Unspecified`) et les sert **sans
-`Z`** ; le calcul d'ancienneté des deux clients (`readDate` / `agingReference`) et le helper e2e `calendarDaysAgo` lisent
-ces chaînes comme des heures **locales**. Un courrier arrivé il y a 8 jours exactement est alors compté J+9 entre minuit
-local et minuit UTC, et le compteur « H+N » de la biologie critique est faux d'une heure (deux en été) **à toute heure**.
-La voie Angular a tourné après minuit UTC : verte, mais le défaut y est le même.
+Run du 2026-11-28, 09 h 40-10 h 20 heure locale, après la reprise 2 (B-E1). Le run précédent (2026-11-27, vers 00 h 50
+locale) était **rouge** sur la voie mobile : E2E-RING-004 (prémisse « arrivé il y a 8 jours » lue J+9) et
+E2E-SETTINGS-006 flaky, cause : dates du serveur sans `Z` lues en heure locale par les clients et le helper e2e —
+corrigé par la reprise 2. Ce run-ci est joué hors de la fenêtre minuit local / minuit UTC : la non-régression du
+correctif sur « J+N » est portée par les tests unitaires vus rouges (`## Develop log`, reprise 2). Démontage vérifié :
+ports libres, aucun conteneur `e2e-*` résiduel. Aucun écran modifié par la reprise.
 
-**E2E : ROUGE** — 1 motif(s) de blocage.
-
-**Bloquant** (1) :
-
-- [mobile] rouge : « anneau — une boucle ouverte porte son ancienneté « J+N », en fond plein et « en retard » au dernier seuil de la boîte » (E2E-RING-004)
-
-**Flaky (vert au second essai, non bloquant)** (1) :
-
-- [mobile] « réglages — la légende des anneaux cite les seuils de la boîte ; masquer l’ancienneté est retenu pour la personne » (E2E-SETTINGS-006)
+**E2E : vert** — aucun parcours rouge hors quarantaine, parité verte.
 
 **En quarantaine (posée par l'humain, non bloquant)** (1) :
 
@@ -1251,10 +1243,10 @@ La voie Angular a tourné après minuit UTC : verte, mais le défaut y est le m�
 | E2E-RING-001 | 1 | headless | L'anneau d'un courrier se remplit de « reçu » à « lu » puis se ferme à « traité » | ✅ | ✅ |
 | E2E-RING-002 | 1 | headless | L'anneau d'un compte rendu de biologie à acquitter suit ses acquittements, jusqu'à « résolu » | ✅ | ✅ |
 | E2E-RING-003 | 2 | headless | En boîte partagée, « Non affecté » puis les initiales de la personne attribuée dans l'anneau | ✅ | ✅ |
-| E2E-RING-004 | 1 | headless | Une boucle ouverte porte son ancienneté « J+N », en fond plein et « en retard » au dernier seuil de la boîte | ✅ | ❌ |
+| E2E-RING-004 | 1 | headless | Une boucle ouverte porte son ancienneté « J+N », en fond plein et « en retard » au dernier seuil de la boîte | ✅ | ✅ |
 | E2E-RING-005 | 1 | headless | L'anneau porte le nombre de messages de la conversation et l'icône d'une réponse envoyée | ✅ | ✅ |
 | E2E-SETTINGS-005 | 1 | headless | Choisir « Icône classique » pour la liste, le retrouver après rechargement, revenir à l'anneau | ✅ | ✅ |
-| E2E-SETTINGS-006 | 1 | headless | La légende des anneaux cite les seuils de la boîte ; masquer l'ancienneté est retenu pour la personne | ✅ | ⚠️ flaky |
+| E2E-SETTINGS-006 | 1 | headless | La légende des anneaux cite les seuils de la boîte ; masquer l'ancienneté est retenu pour la personne | ✅ | ✅ |
 
 **Divergences temporaires ouvertes** (9) :
 
