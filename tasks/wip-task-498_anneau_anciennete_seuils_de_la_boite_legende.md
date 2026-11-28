@@ -170,13 +170,13 @@ Lecture du code au 2026-11-27 :
 | /start | ok | 31 s | — | — | — | — |
 | /develop | ok | 32 min 16 s | 16 (3 min 12 s) | 62 (28 min 34 s) | — | dtos-mss 1B/0T, api-mail 7B/56T, client-mobile 4B/4T, client-angular 4B/2T, reprise 2 (B-E1) |
 | /review-code | ok | 2 min 11 s | — | — | — | passage 3 APPROVED |
-| /sonar | ok | 11 min 52 s | 1 (49 s) | 5 (8 min 19 s) | 2 (47 s) | 1 itération(s), api-mail 1B/5T |
-| /lint-angular | ok | 26 s | — | — | — | — |
-| /lint-mobile | ok | 16 s | — | — | — | — |
+| /sonar | skipped | 0.9 s | 1 (49 s) | 5 (8 min 19 s) | 2 (47 s) | api-mail 1B/5T, api-mail inchangé depuis l'analyse à 459e5769 |
+| /lint-angular | ok | 28 s | — | — | — | — |
+| /lint-mobile | ok | 14 s | — | — | — | — |
 | /e2e | failed | 32 min 12 s | — | — | — | e2e ×3 (30 min 00 s), RING-004 mobile rouge : dates serveur sans Z lues en heure locale |
-| **Total cycle** | | **1 h 19 min** | **17 (4 min 02 s)** | **67 (36 min 53 s)** | **2 (47 s)** | |
+| **Total cycle** | | **1 h 07 min** | **17 (4 min 02 s)** | **67 (36 min 53 s)** | **2 (47 s)** | |
 
-Autres commandes mesurées : lint ×2 (17 s), nuget-wait ×1 (11 s), restore ×1 (3.6 s)
+Autres commandes mesurées : lint ×4 (38 s), nuget-wait ×1 (11 s), restore ×1 (3.6 s)
 
 ## Branches
 
@@ -1076,6 +1076,10 @@ Analysé à api-mail `459e5769` (2026-11-28, SonarQube 9.9.8, projet `healthplat
   : suite jouée entre 00 h 30 et 00 h 45 heure locale (avant minuit UTC), piège connu de la fenêtre de minuit (corpus en
   heure locale, Dovecot compare `SINCE` en UTC) ; rejoués après 00 h 05 UTC.
 
+**Après la reprise 2 (2026-11-28)** : non rejoué. La reprise n'a touché qu'aux clients ; api-mail est resté à `459e5769`,
+et la dernière analyse du serveur (`api/project_analyses/search`, 2026-11-27T23:42Z) porte exactement cette révision.
+Les KPIs ci-dessous valent pour le code de la PR. Skip mesuré (`aucun changement api-mail depuis l'analyse`).
+
 ### KPIs qualité (baseline → final)
 
 | Métrique | Baseline | Final | Δ |
@@ -1095,11 +1099,17 @@ Analysé à api-mail `459e5769` (2026-11-28, SonarQube 9.9.8, projet `healthplat
 - `npx nx affected -t lint --base=origin/next --head=HEAD --parallel=3 --projects=tag:scope:mss` (arbre de
   `feature/nova-mss-weda-integration`) : **0 erreur**, 13 cibles réussies. Aucune itération de correction, aucun fichier
   modifié ; le vert de `/develop` (reprise 1 : `nx build weda2`, mss-lib 2 326, weda2 2 684) tient.
+- **Après la reprise 2 (2026-11-28)** : même commande sur l'arbre de la reprise (`server-date.util.ts` ajouté,
+  `mail-aging.util.ts` et sa spec, helper e2e) : **0 erreur**, 13 cibles réussies (avertissements préexistants hors
+  task). Aucune itération, aucun fichier modifié ; le vert de `/develop` (reprise 2 : `nx build weda2`, mss-lib 2 330,
+  weda2 2 684) tient.
 
 ## Lint mobile log
 
 - `npm run lint` sur `feat/task-498-anneau-anciennete-seuils-de-la-boite` (`1f490eb`) : **All files pass linting**.
   Aucune itération, aucun commit ; le vert de `/develop` (reprise 1 : build OK, 2 094 verts) tient.
+- **Après la reprise 2 (2026-11-28)** : `npm run lint` sur `1745cea` : **All files pass linting**. Aucune itération,
+  aucun commit ; le vert de `/develop` (reprise 2 : build OK, 2 098 verts) tient.
 
 ## E2E log
 

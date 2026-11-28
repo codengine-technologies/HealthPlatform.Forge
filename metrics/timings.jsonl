@@ -11480,3 +11480,11 @@
 {"ts":"2026-11-28T09:35:02+01:00","run_id":"-","type":"step","task":"task-498","step":"develop","status":"ok","note":"reprise 2 (B-E1)","iterations":null,"duration_ms":1936229}
 {"ts":"2026-11-28T09:35:21+01:00","run_id":"-","type":"step_start","task":"task-498","step":"review-code"}
 {"ts":"2026-11-28T09:37:32+01:00","run_id":"-","type":"step","task":"task-498","step":"review-code","status":"ok","note":"passage 3 APPROVED","iterations":null,"duration_ms":131036}
+{"ts":"2026-11-28T09:38:04+01:00","run_id":"-","type":"step_start","task":"task-498","step":"sonar"}
+{"ts":"2026-11-28T09:38:05+01:00","run_id":"-","type":"step","task":"task-498","step":"sonar","status":"skipped","note":"api-mail inchangé depuis l'analyse à 459e5769","iterations":null,"duration_ms":902}
+{"ts":"2026-11-28T09:38:16+01:00","run_id":"-","type":"step_start","task":"task-498","step":"lint-angular"}
+{"ts":"2026-11-28T09:38:32+01:00","run_id":"-","type":"cmd","task":"task-498","step":"lint-angular","repo":"client-angular","kind":"lint","label":"","cwd":"Client/Angular/front","cmd":"powershell -NoProfile -NonInteractive -Command npx nx affected -t lint --base=origin/next --head=HEAD --parallel=3 --projects=tag:scope:mss --output-style=static 2>&1 | Out-File -Encoding utf8 $env:TEMP\\lint-angular-498.log; exit $LASTEXITCODE","duration_ms":13947,"exit_code":0}
+{"ts":"2026-11-28T09:38:44+01:00","run_id":"-","type":"step","task":"task-498","step":"lint-angular","status":"ok","note":"","iterations":0,"duration_ms":28344}
+{"ts":"2026-11-28T09:38:52+01:00","run_id":"-","type":"step_start","task":"task-498","step":"lint-mobile"}
+{"ts":"2026-11-28T09:38:59+01:00","run_id":"-","type":"cmd","task":"task-498","step":"lint-mobile","repo":"client-mobile","kind":"lint","label":"","cwd":"Client/Mobile","cmd":"npm run lint","duration_ms":6384,"exit_code":0}
+{"ts":"2026-11-28T09:39:06+01:00","run_id":"-","type":"step","task":"task-498","step":"lint-mobile","status":"ok","note":"","iterations":0,"duration_ms":14569}
